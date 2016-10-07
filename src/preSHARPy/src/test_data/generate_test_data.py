@@ -163,7 +163,8 @@ def generate_solver_file(route, case_name):
     config['GRID'] = {'M': 5,
                       'M_distribution': 'linear',
                       'wake_length': 10,
-                      'rollup': 'on'}
+                      'rollup': 'on',
+                      'aligned_grid': 'on'}
 
     with open(file_name, 'w') as configfile:
         config.write(configfile)

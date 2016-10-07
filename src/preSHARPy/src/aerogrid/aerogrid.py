@@ -25,6 +25,7 @@ class AeroGrid(object):
         self.M_distribution = solver_config['GRID']['M_distribution']
         self.wake_length = solver_config['GRID'].getfloat('wake_length')
         self.rollup = solver_config['GRID'].getboolean('rollup')
+        self.aligned_grid = solver_config['GRID'].getboolean('aligned_grid')
 
         self.beta = (flightcon_config['FLIGHT_CONDITIONS'].
                                                 getfloat('beta')*np.pi/180)
