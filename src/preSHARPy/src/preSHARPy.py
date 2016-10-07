@@ -87,12 +87,6 @@ class ProblemData(object):
         return config
 
 
-    def process_data(self):
-        '''
-        Nodal and element data is generated from the dictionaries,
-        especially the aero data
-        '''
-        pass
 
     def plot_configuration(self):
         fig = plt.figure()
@@ -102,39 +96,39 @@ class ProblemData(object):
         ax.set_ylabel('y (m)')
         ax.set_zlabel('z (m)')
 
-        self.plot_fem(fig, ax)
-        self.plot_aero(fig, ax)
+        self.beam.plot(fig, ax)
+        # self.plot_aero(fig, ax)
 
         plt.show()
 
-    def plot_fem(self, fig=None, ax=None):
-        if fig == None:
-            fig = plt.figure()
-            ax = fig.add_subplot(111, projection='3d')
-            plt.title('Case: %s -- structure plot'%self.case_name)
-            ax.set_xlabel('x (m)')
-            ax.set_ylabel('y (m)')
-            ax.set_zlabel('z (m)')
-        plt.hold('on')
-        # nodes plot
-        nodes = ax.scatter(self.fem_data_dict['coordinates'][:,0],
-                           self.fem_data_dict['coordinates'][:,1],
-                           self.fem_data_dict['coordinates'][:,2])
+    # def plot_fem(self, fig=None, ax=None):
+        # if fig == None:
+            # fig = plt.figure()
+            # ax = fig.add_subplot(111, projection='3d')
+            # plt.title('Case: %s -- structure plot'%self.case_name)
+            # ax.set_xlabel('x (m)')
+            # ax.set_ylabel('y (m)')
+            # ax.set_zlabel('z (m)')
+        # plt.hold('on')
+        # # nodes plot
+        # nodes = ax.scatter(self.fem_data_dict['coordinates'][:,0],
+                           # self.fem_data_dict['coordinates'][:,1],
+                           # self.fem_data_dict['coordinates'][:,2])
 
-        colors = ['k', 'b', 'r', 'y']
-        # elements plot
-        for ielem in range(self.fem_data_dict['num_elem']):
-            ax.plot(self.fem_data_dict['coordinates']
-                        [self.fem_data_dict['connectivities'][ielem,:],0],
-                    self.fem_data_dict['coordinates']
-                        [self.fem_data_dict['connectivities'][ielem,:],1],
-                    self.fem_data_dict['coordinates']
-                        [self.fem_data_dict['connectivities'][ielem,:],2],
-                    linewidth=3*1/(self.fem_data_dict['elem_stiffness'][ielem]+1),
-                    color=colors[self.fem_data_dict['elem_mass'][ielem]])
+        # colors = ['k', 'b', 'r', 'y']
+        # # elements plot
+        # for ielem in range(self.fem_data_dict['num_elem']):
+            # ax.plot(self.fem_data_dict['coordinates']
+                        # [self.fem_data_dict['connectivities'][ielem,:],0],
+                    # self.fem_data_dict['coordinates']
+                        # [self.fem_data_dict['connectivities'][ielem,:],1],
+                    # self.fem_data_dict['coordinates']
+                        # [self.fem_data_dict['connectivities'][ielem,:],2],
+                    # linewidth=3*1/(self.fem_data_dict['elem_stiffness'][ielem]+1),
+                    # color=colors[self.fem_data_dict['elem_mass'][ielem]])
 
-        plt.hold('off')
-        return fig, ax
+        # plt.hold('off')
+        # return fig, ax
 
 
     def plot_aero(self, fig=None, ax=None):

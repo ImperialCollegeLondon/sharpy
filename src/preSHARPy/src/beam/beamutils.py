@@ -42,7 +42,7 @@ def normal_vector_xz_plane(tangent):
     '''
     Computes the vector normal to the tangent one.
     The one here included is the one contained in the plane xz
-    (there are infinite solutions)
+    (if not, there are infinite solutions)
     The vector is computed such that np.dot(tangent, normal) = 0,
     y_normal = 0 and mod(normal) = 1
     '''

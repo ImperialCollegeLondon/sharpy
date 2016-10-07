@@ -21,6 +21,8 @@ class Element(object):
         self.global_connectivities = global_connectivities
         # coordinates of the nodes in a (body-fixed frame)
         self.coordinates = coordinates
+        # element length
+        self.length = np.linalg.norm(self.coordinates[0,:] - self.coordinates[n_nodes-1,:])
 
         # now, calculate tangent vector (and coefficients of the polynomial
         # fit just in case)
@@ -43,4 +45,53 @@ class Element(object):
         for key, value in dictionary.items():
             setattr(self, key, value)
 
-    #TODO: add plotting routine
+    def generate_curve(self, n_elem_curve):
+        curve = np.zeros((n_elem_curve, 3))
+        t_vec = np.linspace(0, 2, n_elem_curve)
+        for i in range(n_elem_curve):
+            t = t_vec[i]
+            for idim in range(3):
+                polyf = np.poly1d(self.polyfit_vec[idim])
+                curve[i,idim] = (polyf(t))
+        return curve
+
+
+    def plot(self, fig=None, ax=None, plot_triad=False, n_elem_plot=10):
+        import matplotlib.pyplot as plt
+        from mpl_toolkits.mplot3d import Axes3D, proj3d
+        if fig == None or ax==None:
+            fig = plt.figure()
+            ax = fig.add_subplot(111, projection='3d')
+            plt.title('Case: %s -- structure plot'%self.case_name)
+            ax.set_xlabel('x (m)')
+            ax.set_ylabel('y (m)')
+            ax.set_zlabel('z (m)')
+
+        plt.hold('on')
+        # generate line for plotting element
+        curve = self.generate_curve(n_elem_plot)
+        ax.plot(curve[:,0], curve[:,1], curve[:,2], 'k-')
+        if plot_triad:
+            scale_val = 1/self.length
+            ax.quiver(self.coordinates[:,0], self.coordinates[:,1], self.coordinates[:,2],
+                      self.tangent_vector[:,0]*scale_val, self.tangent_vector[:,1]*scale_val, self.tangent_vector[:,2]*scale_val,
+                      pivot='tail', colors=[0.5, 0.5, 0.5])
+            ax.quiver(self.coordinates[:,0], self.coordinates[:,1], self.coordinates[:,2],
+                      self.binormal_vector[:,0]*scale_val, self.binormal_vector[:,1]*scale_val, self.binormal_vector[:,2]*scale_val,
+                      pivot='tail', colors=[0, 1, 0])
+            ax.quiver(self.coordinates[:,0], self.coordinates[:,1], self.coordinates[:,2],
+                      self.normal_vector[:,0]*scale_val, self.normal_vector[:,1]*scale_val, self.normal_vector[:,2]*scale_val,
+                      pivot='tail', colors=[1, 0, 0])
+        plt.hold('off')
+
+
+
+
+
+
+
+
+
+
+
+

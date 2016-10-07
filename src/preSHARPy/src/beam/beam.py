@@ -98,6 +98,54 @@ class Beam(object):
                                 self.master_nodes[ielem] = self.num_node_elem
 
 
-        import pdb; pdb.set_trace()
+        # import pdb; pdb.set_trace()
+
+    def plot(self, fig=None, ax=None):
+        import matplotlib.pyplot as plt
+        from mpl_toolkits.mplot3d import Axes3D, proj3d
+        if fig == None or ax==None:
+            fig = plt.figure()
+            ax = fig.add_subplot(111, projection='3d')
+            plt.title('Case: %s -- structure plot'%self.case_name)
+            ax.set_xlabel('x (m)')
+            ax.set_ylabel('y (m)')
+            ax.set_zlabel('z (m)')
+
+        plt.hold('on')
+
+        # nodes
+        nodes = ax.scatter(self.node_coordinates[:,0],
+                           self.node_coordinates[:,1],
+                           self.node_coordinates[:,2])
+        for elem in self.elements:
+            elem.plot(fig, ax, plot_triad = True)
+
+
+        plt.hold('off')
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 

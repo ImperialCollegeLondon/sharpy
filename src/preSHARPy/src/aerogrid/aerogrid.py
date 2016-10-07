@@ -26,6 +26,8 @@ class AeroGrid(object):
         self.wake_length = solver_config['GRID'].getfloat('wake_length')
         self.rollup = solver_config['GRID'].getboolean('rollup')
         self.aligned_grid = solver_config['GRID'].getboolean('aligned_grid')
+        if not self.aligned_grid:
+            raise NotImplemented('Not aligned grids are not supported (yet)')
 
         self.beta = (flightcon_config['FLIGHT_CONDITIONS'].
                                                 getfloat('beta')*np.pi/180)
