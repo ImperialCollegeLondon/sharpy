@@ -89,7 +89,7 @@ ENV/
 .ropeproject
 
 # Vim stuff
-*~
-swp
-txt
-h5
+*.*~
+*.swp
+*.txt
+*.h5
