@@ -1,0 +1,7 @@
+[FLIGHT_CONDITIONS]
+beta = 0
+delta = 0
+q = 5
+alpha = 3
+rho = 1.225
+

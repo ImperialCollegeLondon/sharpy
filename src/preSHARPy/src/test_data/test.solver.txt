@@ -1,0 +1,6 @@
+[GRID]
+m_distribution = linear
+wake_length = 10
+rollup = on
+m = 5
+
