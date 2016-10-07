@@ -91,3 +91,5 @@ ENV/
 # Vim stuff
 .*~
 .swp
+.txt
+.h5
