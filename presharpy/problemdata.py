@@ -7,14 +7,14 @@
 # preSHARPy is the FEM and aero data preprocessor for the SHARPy code
 # It reads the information from *.fem.h5 and *.aero.h5 files.
 
-import h5py as h5
 import configparser
 
-import presharpy.h5utils as h5utils
+import h5py as h5
+import matplotlib.pyplot as plt
+
 import presharpy.aerogrid.aerogrid as aerogrid
 import presharpy.beam.beam as beam
-
-import matplotlib.pyplot as plt
+import presharpy.utils.h5utils as h5utils
 
 
 class ProblemData(object):
