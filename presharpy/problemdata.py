@@ -83,6 +83,8 @@ class ProblemData(object):
         return config
 
     def plot_configuration(self):
+        import matplotlib.pyplot as plt
+        from mpl_toolkits.mplot3d import Axes3D, proj3d
         fig = plt.figure()
         ax = fig.add_subplot(111, projection='3d')
         plt.title('Case: %s -- structure plot' % self.case_name)
