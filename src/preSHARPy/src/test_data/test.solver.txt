@@ -1,7 +1,0 @@
-[GRID]
-rollup = on
-m_distribution = linear
-wake_length = 10
-m = 5
-aligned_grid = on
-

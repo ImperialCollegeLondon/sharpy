@@ -11,6 +11,7 @@ import os
 import errno
 import numpy as np
 
+
 def check_file_exists(file_name):
     '''
     Checks if the file exists and throws a FileNotFoundError exception
@@ -24,7 +25,7 @@ def check_file_exists(file_name):
         return True
 
 
-def load_h5_in_dict(handle, path = '/'):
+def load_h5_in_dict(handle, path='/'):
     dictionary = {}
     for k,i in handle[path].items():
         if isinstance(i, h5._hl.dataset.Dataset):
@@ -37,12 +38,14 @@ def load_h5_in_dict(handle, path = '/'):
 
     return dictionary
 
+
 def load_attributes(handle, path):
     attributes = []
     for k, i in handle[path].attrs.items():
         attributes.append((k,i))
 
     return attributes
+
 
 def check_fem_dict(fem_dict):
     print('\tRunning tests for the FEM input file...', end='')
@@ -54,6 +57,7 @@ def check_fem_dict(fem_dict):
         raise Exception('ERROR: FEM input file is not consistent')
     else:
         print(' PASSED')
+
 
 def check_aero_dict(aero_dict):
     pass
