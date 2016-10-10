@@ -9,9 +9,9 @@ def tangent_vector(coord, n_nodes, ndim=3):
 
     CAUTION: only supports equispaced nodes inside the element
     '''
-    #TODO check coord and n_nodes are coherent
-    polynomial_degree = n_nodes - 1
 
+    polynomial_degree = n_nodes - 1
+    #TODO check coord and n_nodes are coherent
     # first, the polynomial fit.
     # we are going to differentiate wrt the indices ([0, 1, 2] for a 3-node)
     polyfit_vec = []  # we are going to store here the coefficients of the polyfit
@@ -26,17 +26,17 @@ def tangent_vector(coord, n_nodes, ndim=3):
 
     # tangent vector calculation
     # \vec{t} = \frac{fx'i + fy'j + fz'k}/mod(...)
-    tangent_vector = np.zeros_like(coord)
+    tangent = np.zeros_like(coord)
     for inode in range(n_nodes):
         vector = []
         for idim in range(ndim):
             vector.append((polyfit_der_vec[idim])(inode))
         # vector = np.array([polyfit_der_vec[0](inode),
         vector = np.array(vector)
-        vector = vector/np.linalg.norm(vector)
-        tangent_vector[inode,:] = vector
+        vector /= np.linalg.norm(vector)
+        tangent[inode, :] = vector
 
-    return tangent_vector, polyfit_vec
+    return tangent, polyfit_vec
 
 def normal_vector_xz_plane(tangent):
     '''
@@ -49,13 +49,13 @@ def normal_vector_xz_plane(tangent):
     # import pdb; pdb.set_trace()
     if tangent.ndim == 2:
         n_vec, n_dim = tangent.shape
-        normal_vec = np.zeros_like(tangent)
+        normal = np.zeros_like(tangent)
         for ivec in range(n_vec):
-            normal_vec[ivec,:] = single_normal_xz_plane(tangent[ivec,:])
+            normal[ivec,:] = single_normal_xz_plane(tangent[ivec,:])
     else:
-        normal_vec = single_normal_xz_plane(tangent)
+        normal = single_normal_xz_plane(tangent)
 
-    return normal_vec
+    return normal
 
 
 def single_normal_xz_plane(tangent):
@@ -67,9 +67,9 @@ def single_normal_xz_plane(tangent):
     zz = -xx/xz
     zx = 1
     normal = np.array([zx, 0, zz])
-    normal = normal/np.linalg.norm(normal)
+    normal /= np.linalg.norm(normal)
     if normal[2] < 0:
-        normal = -1*normal
+        normal *= -1
     return normal
 
 if __name__ == '__main__':
