@@ -33,23 +33,42 @@ def generate_files(route, case_name, num_elem=10, num_node_elem=3):
     generate_flightcon_file(route, case_name)
 
 
-def generate_fem_file(route, case_name, num_elem, num_node_elem):
+def generate_fem_file(route, case_name, num_elem, num_node_elem=3):
     # generate dummy set
-    num_node_elem = 3
-    num_node = (num_node_elem - 1)*num_elem+1
+    num_node = (num_node_elem - 1)*num_elem+2
+    n_vertical_elem = 2
+    n_vertical_node = n_vertical_elem*num_node_elem - 1
     # import pdb; pdb.set_trace()
-    x = np.linspace(0, 1, num_node)  #np.zeros((num_node,))
-    y = np.linspace(0, 1, num_node)
-    z = np.power(y, 2)
+    x = np.zeros((num_node,))
+    y = np.zeros((num_node,))
+    z = np.zeros((num_node,))
+
+    x[n_vertical_node:] = np.linspace(0, 1, num_node-n_vertical_node)  #np.zeros((num_node,))
+    y[n_vertical_node:] = np.power(np.linspace(0, 1, num_node-n_vertical_node), 1.5)
+    z[n_vertical_node:] = np.power(y[:num_node - n_vertical_node], 2)
+
+    x[:n_vertical_node] = 0
+    y[:n_vertical_node] = 0
+    z[:n_vertical_node] = np.linspace(0.5, 1, n_vertical_node)
+
+    scale = 10
+
+    x *= scale
+    y *= scale
+    z *= scale
 
     conn = np.zeros((num_elem, num_node_elem), dtype=int)
     for ielem in range(num_elem):
-        conn[ielem,:] = (np.ones((3,))*ielem*(num_node_elem - 1)
-                        + [0, 1, 2]);
+        if ielem < 2:
+            conn[ielem, :] = (np.ones((3,)) * ielem * (num_node_elem - 1)
+                              + [0, 1, 2])
+        else:
+            conn[ielem,:] = (np.ones((3,))*ielem*(num_node_elem - 1)
+                            + [0, 1, 2] + 1)
 
     # stiffness array
     # import pdb; pdb.set_trace()
-    num_stiffness = 2;
+    num_stiffness = 2
     base_stiffness = 1e4*np.diag([10, 10, 10, 1, 1, 1])
     stiffness = np.zeros((num_stiffness, 6, 6))
     # import pdb; pdb.set_trace()
@@ -91,8 +110,6 @@ def generate_fem_file(route, case_name, num_elem, num_node_elem):
             'elem_mass', data = elem_mass)
 
     return num_node, coordinates
-
-
 
 def generate_aero_file(route, case_name, num_elem, num_node, coordinates):
     # example airfoil

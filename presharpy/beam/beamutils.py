@@ -36,6 +36,24 @@ def tangent_vector(coord, n_nodes, ndim=3):
         vector /= np.linalg.norm(vector)
         tangent[inode, :] = vector
 
+    # check orientation of tangent vector
+    fake_tangent = np.zeros_like(tangent)
+    for inode in range(n_nodes):
+        if inode == n_nodes - 1:
+            # use previous vector
+            fake_tangent[inode, :] = fake_tangent[inode - 1, :]
+            continue
+        fake_tangent[inode, :] = coord[inode+1, :] - coord[inode, :]
+
+    inverted_tangent = False
+    for inode in range(n_nodes):
+        if np.dot(tangent[inode, :], fake_tangent[inode, :]) < 0:
+            inverted_tangent = True
+            break
+
+    if inverted_tangent:
+        tangent *= -1
+
     return tangent, polyfit_vec
 
 def normal_vector_xz_plane(tangent):
@@ -62,12 +80,15 @@ def single_normal_xz_plane(tangent):
     xx = tangent[0]
     xz = tangent[2]
 
-    # these numbers come from solving the problem explained in the header
-    # of the function
-    zz = -xx/xz
-    zx = 1
-    normal = np.array([zx, 0, zz])
-    normal /= np.linalg.norm(normal)
+    if np.abs(xz) < 1e-6:
+        normal = [0, 0, 1]
+    else:
+        # these numbers come from solving the problem explained in the header
+        # of the function
+        zz = -xx/xz
+        zx = 1
+        normal = np.array([zx, 0, zz])
+        normal /= np.linalg.norm(normal)
     if normal[2] < 0:
         normal *= -1
     return normal
@@ -75,8 +96,8 @@ def single_normal_xz_plane(tangent):
 if __name__ == '__main__':
     coord = np.zeros((3, 3))
     coord[0, :] = [0, 0, 0]
-    coord[1, :] = [1, 1, 1]
-    coord[2, :] = [2, 2, 0]
+    coord[1, :] = [1, 0, 0]
+    coord[2, :] = [2, 0, 0]
     tangent_vec, polyfit_vec = tangent_vector(coord, 3, 3)
     normal_vec = np.zeros_like(coord)
     binormal_vec = np.zeros_like(coord)
@@ -133,4 +154,5 @@ if __name__ == '__main__':
                          [0, 0, -1e-5, zback]])
 
     proj3d.persp_transformation = orthogonal_projection
+    plt.axis('equal')
     plt.show()

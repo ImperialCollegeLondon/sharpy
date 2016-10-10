@@ -30,15 +30,16 @@ class AeroGrid(object):
         if not self.aligned_grid:
             raise NotImplemented('Not aligned grids are not supported (yet)')
 
-        self.beta = (flightcon_config['FLIGHT_CONDITIONS'].
-                getfloat('beta')*np.pi/180)
-        self.alpha = (flightcon_config['FLIGHT_CONDITIONS'].
-                getfloat('alpha')*np.pi/180)
-        self.delta = (flightcon_config['FLIGHT_CONDITIONS'].
-                getfloat('delta')*np.pi/180)
+        self.beta = (flightcon_config['FLIGHT_CONDITIONS'].getfloat('beta')*np.pi/180)
+        self.alpha = (flightcon_config['FLIGHT_CONDITIONS'].getfloat('alpha')*np.pi/180)
+        self.delta = (flightcon_config['FLIGHT_CONDITIONS'].getfloat('delta')*np.pi/180)
         self.Q = flightcon_config['FLIGHT_CONDITIONS'].getfloat('Q')
+        self.freestream_direction = [np.cos(self.alpha)*np.cos(self.beta),
+                                     np.sin(self.beta),
+                                     np.sin(self.alpha)]
 
-        # import pdb; pdb.set_trace()
+
+
 
 
 
