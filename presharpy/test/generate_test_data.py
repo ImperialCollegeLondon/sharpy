@@ -3,6 +3,7 @@ import numpy as np
 import os
 import configparser
 
+
 def clean_test_files(route, case_name):
     fem_file_name = route + '/' + case_name + '.fem.h5'
     if os.path.isfile(fem_file_name):
@@ -19,7 +20,6 @@ def clean_test_files(route, case_name):
     flightcon_file_name = route + '/' + case_name + '.flightcon.txt'
     if os.path.isfile(flightcon_file_name):
         os.remove(flightcon_file_name)
-
 
 
 def generate_files(route, case_name, num_elem=10, num_node_elem=3):
@@ -111,6 +111,7 @@ def generate_fem_file(route, case_name, num_elem, num_node_elem=3):
 
     return num_node, coordinates
 
+
 def generate_aero_file(route, case_name, num_elem, num_node, coordinates):
     # example airfoil
     naca_file, naca_x, naca_y, naca_description = generate_naca_camber(route)
@@ -173,6 +174,7 @@ def generate_naca_camber(route, M=2, P=4):
     np.savetxt(route + '/naca.csv', mat, delimiter=',')
 
     return route + '/naca.csv', x_vec, y_vec, 'NACA%i%ixx'%(M, P)
+
 
 def generate_solver_file(route, case_name):
     file_name = route + '/' + case_name + '.solver.txt'

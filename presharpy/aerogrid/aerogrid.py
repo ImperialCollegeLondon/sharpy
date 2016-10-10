@@ -38,6 +38,9 @@ class AeroGrid(object):
                                      np.sin(self.beta),
                                      np.sin(self.alpha)]
 
+    def generate_grid(self):
+        # for every node, align the given airfoil with the [1, 0, 0] vector in body frame
+        # and then apply the other transformations (twist...)
 
 
 

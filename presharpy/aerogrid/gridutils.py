@@ -1,6 +1,5 @@
 #
 import numpy as np
-import scipy.linalg
 
 
 def unit_vector(vector):
