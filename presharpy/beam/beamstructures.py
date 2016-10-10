@@ -72,7 +72,7 @@ class Element(object):
         curve = self.generate_curve(n_elem_plot)
         ax.plot(curve[:, 0], curve[:, 1], curve[:, 2], 'k-')
         if plot_triad:
-            scale_val = 0.1/self.length
+            scale_val = 0.01/self.length
             ax.quiver(self.coordinates[:, 0], self.coordinates[:, 1], self.coordinates[:, 2],
                       self.tangent_vector[:, 0]*scale_val,
                       self.tangent_vector[:, 1]*scale_val,

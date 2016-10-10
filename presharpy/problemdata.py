@@ -110,7 +110,3 @@ class ProblemData(object):
         plt.hold('off')
         return fig, ax
 
-if __name__ == '__main__':
-    problem = ProblemData('test', './test/')
-    problem.plot_configuration()
-    # print(problem.aero_data_dict)
