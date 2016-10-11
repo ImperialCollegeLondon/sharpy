@@ -123,6 +123,9 @@ def generate_aero_file(route, case_name, num_elem, num_node, coordinates):
         else:
             airfoil_distribution.append(1)
 
+    aero_node = np.zeros(num_node, dtype=bool)
+    aero_node[5:] = True
+
     # twist distribution
     twist = np.linspace(0, 5, num_node)*np.pi/180
 
@@ -155,6 +158,9 @@ def generate_aero_file(route, case_name, num_elem, num_node, coordinates):
         airfoil_distribution_input = h5file.create_dataset(
                         'airfoil_distribution',
                         data =airfoil_distribution)
+
+        aero_node_input = h5file.create_dataset('aero_node', data=aero_node)
+
 
 def generate_naca_camber(route, M=2, P=4):
     m = M/100
