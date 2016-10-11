@@ -32,7 +32,7 @@ class Element(object):
                                                     self.n_nodes)
 
         # we need to define the FoR z direction for every beam element
-        self.normal_vector = beamutils.normal_vector_xz_plane(
+        self.normal_vector = beamutils.normal_vector(
                                                     self.tangent_vector)
         # import pdb; pdb.set_trace()
         # y direction of the beam elem

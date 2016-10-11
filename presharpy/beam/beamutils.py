@@ -56,7 +56,7 @@ def tangent_vector(coord, n_nodes, ndim=3):
 
     return tangent, polyfit_vec
 
-def normal_vector_xz_plane(tangent):
+def normal_vector(tangent):
     '''
     Computes the vector normal to the tangent one.
     The one here included is the one contained in the plane xz
@@ -69,39 +69,52 @@ def normal_vector_xz_plane(tangent):
         n_vec, n_dim = tangent.shape
         normal = np.zeros_like(tangent)
         for ivec in range(n_vec):
-            normal[ivec,:] = single_normal_xz_plane(tangent[ivec,:])
+            normal[ivec, :] = single_normal(tangent[ivec,:])
     else:
-        normal = single_normal_xz_plane(tangent)
+        normal = single_normal(tangent)
 
     return normal
 
 
-def single_normal_xz_plane(tangent):
-    xx = tangent[0]
-    xz = tangent[2]
+def unit_vector(vector):
+    return vector/np.linalg.norm(vector)
 
-    if np.abs(xz) < 1e-6:
-        normal = [0, 0, 1]
-    else:
-        # these numbers come from solving the problem explained in the header
-        # of the function
-        zz = -xx/xz
-        zx = 1
-        normal = np.array([zx, 0, zz])
-        normal /= np.linalg.norm(normal)
+
+def single_normal(tangent):
+    x_direction = np.array([1, 0, 0])
+    normal = np.cross(tangent, x_direction)
+    if np.linalg.norm(normal) < 1e-3:
+        x_direction = np.array([0, 1, 0])
+        normal = np.cross(tangent, x_direction)
+    normal = unit_vector(normal)
     if normal[2] < 0:
         normal *= -1
+
+    # xx = tangent[0]
+    # xz = tangent[2]
+    #
+    # if np.abs(xz) < 1e-6:
+    #     normal = [0, 0, 1]
+    # else:
+    #     # these numbers come from solving the problem explained in the header
+    #     # of the function
+    #     zz = -xx/xz
+    #     zx = 1
+    #     normal = np.array([zx, 0, zz])
+    #     normal /= np.linalg.norm(normal)
+    # if normal[2] < 0:
+    #     normal *= -1
     return normal
 
 if __name__ == '__main__':
     coord = np.zeros((3, 3))
     coord[0, :] = [0, 0, 0]
-    coord[1, :] = [1, 0, 0]
-    coord[2, :] = [2, 0, 0]
+    coord[1, :] = [1, 2, -1]
+    coord[2, :] = [2, 3, -1]
     tangent_vec, polyfit_vec = tangent_vector(coord, 3, 3)
     normal_vec = np.zeros_like(coord)
     binormal_vec = np.zeros_like(coord)
-    normal_vec = normal_vector_xz_plane(tangent_vec)
+    normal_vec = normal_vector(tangent_vec)
     for inode in range(3):
         binormal_vec[inode, :] = np.cross(tangent_vec[inode, :], normal_vec[inode, :])
     n_curve = 100
