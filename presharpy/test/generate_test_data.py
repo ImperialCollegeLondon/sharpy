@@ -132,6 +132,9 @@ def generate_aero_file(route, case_name, num_elem, num_node, coordinates):
     # chord distribution
     chord = np.linspace(0.1, 0.05, num_node)
 
+    # elastic axis distribution
+    elastic_axis = 0.35*np.ones((num_node,))
+
     # import pdb; pdb.set_trace()
     with h5.File(route + '/' + case_name + '.aero.h5', 'a') as h5file:
         airfoils_group = h5file.create_group('airfoils')
@@ -160,6 +163,7 @@ def generate_aero_file(route, case_name, num_elem, num_node, coordinates):
                         data =airfoil_distribution)
 
         aero_node_input = h5file.create_dataset('aero_node', data=aero_node)
+        elastic_axis_input = h5file.create_dataset('elastic_axis', data=elastic_axis)
 
 
 def generate_naca_camber(route, M=2, P=4):
