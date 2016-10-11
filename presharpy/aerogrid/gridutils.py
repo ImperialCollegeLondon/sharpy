@@ -11,12 +11,12 @@ def skew(vector):
         raise Exception('The input vector is not 3D')
 
     matrix = np.zeros((3, 3))
-    matrix[0, 1] = -vector[2]
-    matrix[1, 0] = vector[2]
-    matrix[2, 0] = -vector[1]
-    matrix[0, 2] = vector[1]
     matrix[1, 2] = -vector[0]
+    matrix[2, 0] = -vector[1]
+    matrix[0, 1] = -vector[2]
     matrix[2, 1] = vector[0]
+    matrix[0, 2] = vector[1]
+    matrix[1, 0] = vector[2]
     return matrix
 
 #
@@ -52,6 +52,10 @@ def triad2rot(xb, yb, zb):
     '''
     rot = np.column_stack((xb, yb, zb))
     return rot
+
+
+def rot_matrix_2d(angle):
+    return np.array([[np.cos(angle), -np.sin(angle)], [np.sin(angle), np.cos(angle)]])
 
 if __name__ == '__main__':
     pass
