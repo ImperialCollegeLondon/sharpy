@@ -45,6 +45,7 @@ class AeroGrid(object):
         self.airfoils = aero_dict['airfoils']
         self.twist = aero_dict['twist']
         self.chord = aero_dict['chord']
+        self.elastic_axis = aero_dict['elastic_axis']
 
         # generating zeta
         self.generate_grid()
@@ -88,8 +89,12 @@ class AeroGrid(object):
             raise NotImplemented('Non-uniform chordwise distribution not yet supported')
 
         local_z = (self.airfoil_interpolators[kairfoil])(local_x)
+        # elastic axis
+        local_x -= self.elastic_axis[inode]
         local_x *= self.chord[inode]
         local_z *= self.chord[inode]
+
+        # we apply the twist rotation now
 
 
 
