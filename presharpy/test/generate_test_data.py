@@ -43,8 +43,8 @@ def generate_fem_file(route, case_name, num_elem, num_node_elem=3):
     y = np.zeros((num_node,))
     z = np.zeros((num_node,))
 
-    x[n_vertical_node:] = np.linspace(0, 1, num_node-n_vertical_node)  #np.zeros((num_node,))
-    y[n_vertical_node:] = np.power(np.linspace(0, 1, num_node-n_vertical_node), 1.5)
+    x[n_vertical_node:] = np.linspace(0, .1, num_node-n_vertical_node)  #np.zeros((num_node,))
+    y[n_vertical_node:] = np.power(np.linspace(0, 1, num_node-n_vertical_node), 1.1)
     z[n_vertical_node:] = np.power(y[:num_node - n_vertical_node], 2)
 
     x[:n_vertical_node] = 0
