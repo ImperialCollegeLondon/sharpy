@@ -57,5 +57,10 @@ def triad2rot(xb, yb, zb):
 def rot_matrix_2d(angle):
     return np.array([[np.cos(angle), -np.sin(angle)], [np.sin(angle), np.cos(angle)]])
 
+
+def angle_between_vectors(vec_a, vec_b):
+    return np.arctan2(np.linalg.norm(np.cross(vec_a, vec_b)), np.dot(vec_a, vec_b))
+
+
 if __name__ == '__main__':
     pass
