@@ -58,6 +58,12 @@ def rot_matrix_2d(angle):
     return np.array([[np.cos(angle), -np.sin(angle)], [np.sin(angle), np.cos(angle)]])
 
 
+def x_rotation_matrix_3d(angle):
+    return np.array([[1, 0, 0],\
+                     [0, np.cos(angle), -np.sin(angle)],\
+                     [0, np.sin(angle), np.cos(angle)]])
+
+
 def angle_between_vectors(vec_a, vec_b):
     return np.arctan2(np.linalg.norm(np.cross(vec_a, vec_b)), np.dot(vec_a, vec_b))
 

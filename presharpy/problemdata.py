@@ -93,7 +93,8 @@ class ProblemData(object):
         ax.set_ylabel('y (m)')
         ax.set_zlabel('z (m)')
 
-        self.beam.plot(fig, ax)
+        self.beam.plot(fig, ax, plot_triad=False)
+        self.grid.plot(fig, ax)
         # self.plot_aero(fig, ax)
         # correction of perspective
         def orthogonal_projection(zfront, zback):

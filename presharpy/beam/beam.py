@@ -104,14 +104,15 @@ class Beam(object):
         Returns a matrix indicating the master element for a given node
         :return:
         '''
-        self.node_master_elem = np.zeros((self.num_node,), dtype=int)
+        self.node_master_elem = np.zeros((self.num_node, 2), dtype=int)
         for ielem in range(self.num_elem):
             for inode in range(self.num_node_elem):
                 iinode = self.connectivities[ielem, inode]
-                if self.node_master_elem[iinode] == 0:
-                    self.node_master_elem[iinode] = ielem
+                if self.node_master_elem[iinode, 0] == 0:
+                    self.node_master_elem[iinode, 0] = ielem
+                    self.node_master_elem[iinode, 1] = inode
 
-    def plot(self, fig=None, ax=None):
+    def plot(self, fig=None, ax=None, plot_triad=True):
         import matplotlib.pyplot as plt
         from mpl_toolkits.mplot3d import Axes3D, proj3d
         if fig is None or ax is None:
@@ -128,7 +129,7 @@ class Beam(object):
                            self.node_coordinates[:, 1],
                            self.node_coordinates[:, 2])
         for elem in self.elements:
-            elem.plot(fig, ax, plot_triad=True)
+            elem.plot(fig, ax, plot_triad=plot_triad)
         plt.hold('off')
 
 
