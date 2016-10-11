@@ -97,7 +97,19 @@ class Beam(object):
                             elif iinode == 1:
                                 self.master_nodes[ielem] = self.num_node_elem
 
-        # import pdb; pdb.set_trace()
+        self.generate_node_master_elem()
+
+    def generate_node_master_elem(self):
+        '''
+        Returns a matrix indicating the master element for a given node
+        :return:
+        '''
+        self.node_master_elem = np.zeros((self.num_node,), dtype=int)
+        for ielem in range(self.num_elem):
+            for inode in range(self.num_node_elem):
+                iinode = self.connectivities[ielem, inode]
+                if self.node_master_elem[iinode] == 0:
+                    self.node_master_elem[iinode] = ielem
 
     def plot(self, fig=None, ax=None):
         import matplotlib.pyplot as plt
