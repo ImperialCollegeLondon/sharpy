@@ -22,21 +22,21 @@ def clean_test_files(route, case_name):
         os.remove(flightcon_file_name)
 
 
-def generate_files(route, case_name, num_elem=10, num_node_elem=3):
+def generate_files(route, case_name, num_elem=100, num_node_elem=3, n_vertical_elem=2):
     clean_test_files(route, case_name)
     num_node, coordinates = generate_fem_file(route,
                                               case_name,
                                               num_elem,
-                                              num_node_elem)
+                                              num_node_elem,
+                                              n_vertical_elem)
     generate_aero_file(route, case_name, num_elem, num_node, coordinates)
     generate_solver_file(route, case_name)
     generate_flightcon_file(route, case_name)
 
 
-def generate_fem_file(route, case_name, num_elem, num_node_elem=3):
+def generate_fem_file(route, case_name, num_elem, num_node_elem=3, n_vertical_elem=2):
     # generate dummy set
     num_node = (num_node_elem - 1)*num_elem+2
-    n_vertical_elem = 2
     n_vertical_node = n_vertical_elem*num_node_elem - 1
     # import pdb; pdb.set_trace()
     x = np.zeros((num_node,))
@@ -51,7 +51,7 @@ def generate_fem_file(route, case_name, num_elem, num_node_elem=3):
     y[:n_vertical_node] = 0
     z[:n_vertical_node] = np.linspace(0.5, 1, n_vertical_node)
 
-    scale = 10
+    scale = 1
 
     x *= scale
     y *= scale
@@ -112,19 +112,19 @@ def generate_fem_file(route, case_name, num_elem, num_node_elem=3):
     return num_node, coordinates
 
 
-def generate_aero_file(route, case_name, num_elem, num_node, coordinates):
+def generate_aero_file(route, case_name, num_elem, num_node, coordinates, n_vertical_node=5):
     # example airfoil
-    naca_file, naca_x, naca_y, naca_description = generate_naca_camber(route)
+    naca_file, naca_x, naca_y, naca_description = generate_naca_camber(route, 9)
     # airfoil distribution
     airfoil_distribution = []
     for i in range(num_node):
-        if (i < num_node/2):
+        if (i < n_vertical_node):
             airfoil_distribution.append(0)
         else:
-            airfoil_distribution.append(1)
+            airfoil_distribution.append(0)
 
     aero_node = np.zeros(num_node, dtype=bool)
-    aero_node[5:] = True
+    aero_node[:] = True
 
     # twist distribution
     twist = np.linspace(0, 5, num_node)*np.pi/180
@@ -228,4 +228,4 @@ def generate_flightcon_file(route, case_name):
 
 
 if __name__ == '__main__':
-    generate_files('./', 'test', 10, 3)
+    generate_files('./', 'test', 100, 3)

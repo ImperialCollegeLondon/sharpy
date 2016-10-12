@@ -44,6 +44,7 @@ def skew(vector):
 def triad2rot(xb, yb, zb):
     '''
     If the input triad is the "b" coord system given in "a" frame,
+    (the vectors of the triad are xb, yb, zb)
     this function returns Rab
     :param xb:
     :param yb:
@@ -68,5 +69,24 @@ def angle_between_vectors(vec_a, vec_b):
     return np.arctan2(np.linalg.norm(np.cross(vec_a, vec_b)), np.dot(vec_a, vec_b))
 
 
+def angle_between_vector_and_plane(vector, plane_normal):
+    angle = np.arcsin((np.linalg.norm(np.dot(vector, plane_normal)))/
+                      (np.linalg.norm(vector)*np.linalg.norm(plane_normal)))
+    return angle
+
+
+def rotation_matrix_around_axis(axis, angle):
+    axis = unit_vector(axis)
+    rot = np.cos(angle)*np.eye(3)
+    rot += np.sin(angle)*skew(axis)
+    rot += (1 - np.cos(angle))*np.outer(axis, axis)
+    return rot
+
 if __name__ == '__main__':
+    a = np.array([0, 1, 0])
+    b = np.array([0, 1, 1])
+    angle = angle_between_vectors(a, b)
+    print(angle*180/np.pi)
+    xrot = x_rotation_matrix_3d(angle)
+    print(np.dot(xrot, a))
     pass
