@@ -115,6 +115,9 @@ def generate_fem_file(route, case_name, num_elem, num_node_elem=3, n_vertical_el
             'mass_db', data = mass)
         mass_handle = h5file.create_dataset(
             'elem_mass', data = elem_mass)
+        frame_of_reference_delta_handle = h5file.create_dataset(
+            'frame_of_reference_delta', data=frame_of_reference_delta)
+
 
     return num_node, coordinates
 
