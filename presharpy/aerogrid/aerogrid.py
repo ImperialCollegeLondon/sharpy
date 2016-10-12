@@ -55,7 +55,7 @@ class AeroGrid(object):
         self.generate_zeta()
 
     def generate_zeta(self):
-        self.zeta = np.zeros((self.M + 1, self.N + 1, 3))
+        self.zeta = np.zeros((self.M + 1, self.N + 1, 3))  #TODO N calculation
         i = -1  # chordwise counter
         j = -1  # spanwise counter
         for ielem in range(self.num_elem):
@@ -67,6 +67,7 @@ class AeroGrid(object):
 
     def generate_surfaces(self):
         #
+        pass
 
 
     def generate_nodes(self):
@@ -173,6 +174,7 @@ class Surface(object):
     Contains a single continuous surface
     '''
     def __init__(self):
+        pass
 
 
 

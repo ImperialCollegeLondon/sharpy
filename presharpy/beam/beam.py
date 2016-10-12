@@ -3,6 +3,7 @@ import numpy as np
 import presharpy.beam.beamutils as beamutils
 import presharpy.beam.beamstructures as beamstructures
 
+
 class Beam(object):
     def __init__(self, fem_dictionary):
         # read and store data
@@ -18,6 +19,8 @@ class Beam(object):
         self.elem_stiffness = fem_dictionary['elem_stiffness']
         # mass per unit length of elems
         self.elem_mass = fem_dictionary['elem_mass']
+        # frame of reference delta
+        self.frame_of_reference_delta = fem_dictionary['frame_of_reference_delta']
 
         # now, we are going to import the mass and stiffness
         # databases
@@ -31,8 +34,9 @@ class Beam(object):
                 beamstructures.Element(
                        ielem,
                        self.num_node_elem,
-                       self.connectivities[ielem,:],
-                       self.node_coordinates[self.connectivities[ielem,:],:]))
+                       self.connectivities[ielem, :],
+                       self.node_coordinates[self.connectivities[ielem, :], :],
+                       self.frame_of_reference_delta[self.connectivities[ielem, :], :]))
 
         # now we need to add the attributes like mass and stiffness index
         for ielem in range(self.num_elem):

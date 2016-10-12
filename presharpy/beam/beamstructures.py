@@ -12,7 +12,8 @@ class Element(object):
                  ielem,
                  n_nodes,
                  global_connectivities,
-                 coordinates):
+                 coordinates,
+                 frame_of_reference_delta):
         # store info in instance
         # global element number
         self.ielem = ielem
@@ -24,6 +25,8 @@ class Element(object):
         self.coordinates = coordinates
         # element length
         self.length = np.linalg.norm(self.coordinates[0, :] - self.coordinates[n_nodes-1, :])
+        # frame of reference points
+        self.frame_of_reference_delta = frame_of_reference_delta
 
         # now, calculate tangent vector (and coefficients of the polynomial
         # fit just in case)
@@ -32,15 +35,17 @@ class Element(object):
                                                     self.n_nodes)
 
         # we need to define the FoR z direction for every beam element
-        self.normal_vector = beamutils.normal_vector(
-                                                    self.tangent_vector)
+        # self.normal_vector = beamutils.normal_vector(
+        #                                             self.tangent_vector)
+        self.get_triad()
+
         # import pdb; pdb.set_trace()
         # y direction of the beam elem
-        self.binormal_vector = np.zeros_like(self.normal_vector)
-        for inode in range(self.n_nodes):
-            self.binormal_vector[inode, :] = (
-                    np.cross(self.normal_vector[inode, :],
-                             self.tangent_vector[inode, :]))
+        # self.binormal_vector = np.zeros_like(self.normal_vector)
+        # for inode in range(self.n_nodes):
+        #     self.binormal_vector[inode, :] = (
+        #             np.cross(self.normal_vector[inode, :],
+        #                      self.tangent_vector[inode, :]))
 
     def preferent_direction(self):
         index = np.argmax(np.abs(self.tangent_vector[0, :]))
@@ -61,6 +66,10 @@ class Element(object):
                 polyf = np.poly1d(self.polyfit_vec[idim])
                 curve[i, idim] = (polyf(t))
         return curve
+
+    def get_triad(self):
+        #TODO
+        pass
 
     def plot(self, fig=None, ax=None, plot_triad=False, n_elem_plot=10):
         import matplotlib.pyplot as plt

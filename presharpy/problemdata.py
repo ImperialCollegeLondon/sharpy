@@ -71,10 +71,10 @@ class ProblemData(object):
         print('Processing fem input and generating beam model...')
         self.beam = beam.Beam(self.fem_data_dict)
         print('Processing aero input and generating grid...')
-        ProblemData.grid = aerogrid.AeroGrid(self.aero_data_dict,
-                                             self.solver_config,
-                                             self.flightcon_config,
-                                             self.beam)
+        # ProblemData.grid = aerogrid.AeroGrid(self.aero_data_dict,
+        #                                      self.solver_config,
+        #                                      self.flightcon_config,
+        #                                      self.beam)
 
     @staticmethod
     def load_config_file(file_name):
@@ -93,8 +93,8 @@ class ProblemData(object):
         ax.set_ylabel('y (m)')
         ax.set_zlabel('z (m)')
 
-        self.beam.plot(fig, ax, plot_triad=False)
-        self.grid.plot(fig, ax)
+        self.beam.plot(fig, ax, plot_triad=True)
+        # self.grid.plot(fig, ax)
         # self.plot_aero(fig, ax)
 
         # correction of perspective
