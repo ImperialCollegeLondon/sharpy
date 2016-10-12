@@ -54,9 +54,9 @@ def generate_fem_file(route, case_name, num_elem, num_node_elem=3, n_vertical_el
     frame_of_reference_delta = np.zeros((num_node, 3))
     for inode in range(num_node):
         if inode < n_vertical_node:
-            frame_of_reference_delta[inode, :] = [0, 1, 0]
+            frame_of_reference_delta[inode, :] = [1, 0, 0]
         else:
-            frame_of_reference_delta[inode, :] = [0, 0, 1]
+            frame_of_reference_delta[inode, :] = [0, -1, 0]
 
     scale = 1
 
