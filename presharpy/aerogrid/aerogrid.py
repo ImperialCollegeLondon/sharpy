@@ -71,7 +71,7 @@ class AeroGrid(object):
                                                                  z,
                                                                  kind=2)
 
-        self.airfoil_coords = np.zeros((self.num_node, self.M, 3))
+        self.airfoil_coords = np.zeros((self.num_node, self.M + 1, 3))
         for inode in range(self.num_node):
             # just beam, no lifting surface
             if not self.aero_node[inode]:
@@ -83,10 +83,10 @@ class AeroGrid(object):
         # finds the orientation and location of the airfoil based on
         # aero data and the structure class
         # returns the airfoil coordinates in body (a) FoR
-        airfoil_coords = np.zeros((self.M, 3))
+        airfoil_coords = np.zeros((self.M + 1, 3))
         kairfoil = str(self.airfoil_distribution[inode])
         if self.M_distribution == 'uniform':
-            local_x = np.linspace(0, 1, self.M)
+            local_x = np.linspace(0, 1, self.M + 1)
         else:
             raise NotImplemented('Non-uniform chordwise distribution not yet supported')
 
@@ -96,39 +96,37 @@ class AeroGrid(object):
         local_x *= self.chord[inode]
         local_z *= self.chord[inode]
 
-        # we apply the twist rotation now
-        rotation = gridutils.rot_matrix_2d(self.twist[inode])
-        for iM in range(self.M):
-            temp = np.dot(rotation, np.array([local_x[iM], local_z[iM]]))
-            local_x[iM] = temp[0]
-            local_z[iM] = temp[1]
+        # we apply the twist rotation
+        twist_rotation = gridutils.rotation_matrix_around_axis([0, 1, 0], self.twist[inode])
 
         # now dihedral rotation
         local_y = np.zeros_like(local_x)
         ielem = self.beam.node_master_elem[inode, 0]  # elem to which the node belongs
         i_local_node = self.beam.node_master_elem[inode, 1]  # node of the element which is our node
+        # elem instance
         elem = self.beam.elements[ielem]
+        # FoR of element
         tangent_vec = elem.tangent_vector
         normal_vec = elem.normal_vector
         binormal_vec = elem.binormal_vector
         preferent_direction = elem.preferent_direction()
-        # dihedral_angle = gridutils.angle_between_vectors([0, 1, 0], [0,
-        #                                                              tangent_vec[i_local_node, 1],
-        #                                                              tangent_vec[i_local_node, 2]])
-        dihedral_angle = gridutils.angle_between_vector_and_plane(tangent_vec[i_local_node, :], preferent_direction)
+        dihedral_angle = gridutils.angle_between_vector_and_plane([0,
+                                                                   tangent_vec[i_local_node, 1],
+                                                                   tangent_vec[i_local_node, 2]],
+                                                                  [0, 1, 0])
         chord_axis = [local_x[-1] - local_x[0],
                       local_y[-1] - local_y[0],
                       local_z[-1] - local_z[0]]
-        dihedral_rotation = gridutils.rotation_matrix_around_axis(chord_axis, np.pi/2 - dihedral_angle)
+        dihedral_rotation = gridutils.rotation_matrix_around_axis([1, 0, 0], np.pi/2 - dihedral_angle)
         # dihedral_rotation = gridutils.triad2rot(tangent_vec[i_local_node, :],
         #                                         normal_vec[i_local_node, :],
         #                                         binormal_vec[i_local_node, :])
-        for iM in range(self.M):
+        for iM in range(self.M + 1):
             airfoil_coords[iM, :] = (self.beam.node_coordinates[inode] +
                                      np.dot(dihedral_rotation,
-                                            np.array([local_x[iM],
-                                                      local_y[iM],
-                                                      local_z[iM]])))
+                                            np.dot(twist_rotation, np.array([local_x[iM],
+                                                                             local_y[iM],
+                                                                             local_z[iM]*5]))))
 
         return airfoil_coords
 
