@@ -22,7 +22,7 @@ def clean_test_files(route, case_name):
         os.remove(flightcon_file_name)
 
 
-def generate_files(route, case_name, num_elem=100, num_node_elem=3, n_vertical_elem=2):
+def generate_files(route, case_name, num_elem=10, num_node_elem=3, n_vertical_elem=2):
     clean_test_files(route, case_name)
     num_node, coordinates = generate_fem_file(route,
                                               case_name,
@@ -50,6 +50,13 @@ def generate_fem_file(route, case_name, num_elem, num_node_elem=3, n_vertical_el
     x[:n_vertical_node] = 0
     y[:n_vertical_node] = 0
     z[:n_vertical_node] = np.linspace(0.5, 1, n_vertical_node)
+
+    frame_of_reference_delta = np.zeros((num_node, 3))
+    for inode in range(num_node):
+        if inode < n_vertical_node:
+            frame_of_reference_delta[inode, :] = [0, 1, 0]
+        else:
+            frame_of_reference_delta[inode, :] = [0, 0, 1]
 
     scale = 1
 
@@ -228,4 +235,4 @@ def generate_flightcon_file(route, case_name):
 
 
 if __name__ == '__main__':
-    generate_files('./', 'test', 100, 3)
+    generate_files('./', 'test', 10, 3)
