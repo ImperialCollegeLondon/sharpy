@@ -43,7 +43,10 @@ class Element(object):
                              self.tangent_vector[inode, :]))
 
     def preferent_direction(self):
-        return np.argmax(np.abs(self.tangent_vector))
+        index = np.argmax(np.abs(self.tangent_vector))
+        direction = np.zeros((3,))
+        direction[index] = 1
+        return direction
 
     def add_attributes(self, dictionary):
         for key, value in dictionary.items():
