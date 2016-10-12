@@ -78,21 +78,25 @@ class Element(object):
         curve = self.generate_curve(n_elem_plot)
         ax.plot(curve[:, 0], curve[:, 1], curve[:, 2], 'k-')
         if plot_triad:
-            scale_val = 0.01/self.length
+            scale_val = 1
+            length = 0.06
             ax.quiver(self.coordinates[:, 0], self.coordinates[:, 1], self.coordinates[:, 2],
                       self.tangent_vector[:, 0]*scale_val,
                       self.tangent_vector[:, 1]*scale_val,
                       self.tangent_vector[:, 2]*scale_val,
-                      pivot='tail', colors=[0.5, 0.5, 0.5])
+                      length=length,
+                      pivot='tail', colors=[1, 0, 0])
             ax.quiver(self.coordinates[:, 0], self.coordinates[:, 1], self.coordinates[:, 2],
                       self.binormal_vector[:, 0]*scale_val,
                       self.binormal_vector[:, 1]*scale_val,
                       self.binormal_vector[:, 2]*scale_val,
+                      length=length,
                       pivot='tail', colors=[0, 1, 0])
             ax.quiver(self.coordinates[:, 0], self.coordinates[:, 1], self.coordinates[:, 2],
                       self.normal_vector[:, 0]*scale_val,
                       self.normal_vector[:, 1]*scale_val,
                       self.normal_vector[:, 2]*scale_val,
-                      pivot='tail', colors=[1, 0, 0])
+                      length=length,
+                      pivot='tail', colors=[0, 0, 1])
         plt.hold('off')
 
