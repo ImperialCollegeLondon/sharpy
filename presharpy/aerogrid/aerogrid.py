@@ -97,19 +97,15 @@ class AeroGrid(object):
         local_x *= self.chord[inode]
         local_z *= self.chord[inode]
 
-        # we apply the twist rotation now
-        rotation = gridutils.rot_matrix_2d(self.twist[inode])
-        for iM in range(self.M):
-            temp = np.dot(rotation, np.array([local_x[iM], local_z[iM]]))
-            local_x[iM] = temp[0]
-            local_z[iM] = temp[1]
         # now dihedral rotation (given by angle between [0 1 0] and t vector)
         local_y = np.zeros_like(local_x)
         ielem = self.beam.node_master_elem[inode, 0]  # elem to which the node belongs
         i_local_node = self.beam.node_master_elem[inode, 1]  # node of the element which is our node
         elem = self.beam.elements[ielem]
         tangent_vec = elem.tangent_vector
-        dihedral_angle = gridutils.angle_between_vectors([0, 1, 0], tangent_vec[i_local_node, :])
+        dihedral_angle = gridutils.angle_between_vectors([0, 1, 0], [0,
+                                                                     tangent_vec[i_local_node, 1],
+                                                                     tangent_vec[i_local_node, 2]])
         dihedral_rotation = gridutils.x_rotation_matrix_3d(dihedral_angle)
         for iM in range(self.M):
             temp = np.dot(dihedral_rotation,
@@ -117,6 +113,13 @@ class AeroGrid(object):
             local_x[iM] = temp[0]
             local_y[iM] = temp[1]
             local_z[iM] = temp[2]
+
+        # we apply the twist rotation now
+        rotation = gridutils.rot_matrix_2d(self.twist[inode])
+        for iM in range(self.M):
+            temp = np.dot(rotation, np.array([local_x[iM], local_z[iM]]))
+            local_x[iM] = temp[0]
+            local_z[iM] = temp[1]
 
         # this could be merged in the previous loop, but I like it simple
         for iM in range(self.M):
