@@ -106,7 +106,7 @@ class ProblemData(object):
                              [0, 0, a, b],
                              [0, 0, -1e-5, zback]])
 
-        proj3d.persp_transformation = orthogonal_projection
+        # proj3d.persp_transformation = orthogonal_projection
         plt.axis('equal')
         plt.show()
 

@@ -43,7 +43,7 @@ def generate_fem_file(route, case_name, num_elem, num_node_elem=3, n_vertical_el
     y = np.zeros((num_node,))
     z = np.zeros((num_node,))
 
-    x[n_vertical_node:] = np.linspace(0, .1, num_node-n_vertical_node)  #np.zeros((num_node,))
+    x[n_vertical_node:] = 0*np.linspace(0, .1, num_node-n_vertical_node)  #np.zeros((num_node,))
     y[n_vertical_node:] = np.power(np.linspace(0, 1, num_node-n_vertical_node), 1.1)
     z[n_vertical_node:] = np.power(y[:num_node - n_vertical_node], 2)
 
@@ -189,7 +189,7 @@ def generate_naca_camber(route, M=2, P=4):
 def generate_solver_file(route, case_name):
     file_name = route + '/' + case_name + '.solver.txt'
     config = configparser.ConfigParser()
-    config['GRID'] = {'M': 5,
+    config['GRID'] = {'M': 15,
                       'M_distribution': 'uniform',
                       'wake_length': 10,
                       'rollup': 'on',

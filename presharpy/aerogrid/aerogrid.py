@@ -50,9 +50,26 @@ class AeroGrid(object):
         self.beam = beam
 
         # generating zeta
-        self.generate_grid()
+        self.generate_nodes()
+        self.generate_surfaces()
+        self.generate_zeta()
 
-    def generate_grid(self):
+    def generate_zeta(self):
+        self.zeta = np.zeros((self.M + 1, self.N + 1, 3))
+        i = -1  # chordwise counter
+        j = -1  # spanwise counter
+        for ielem in range(self.num_elem):
+            for i_local_node in range(self.num_node_elem):
+                i_global_node = self.beam.connectivities[ielem, i_local_node]
+                if not self.aero_node[i_global_node]:
+                    # non-aero node, no grid
+                    pass #TODO
+
+    def generate_surfaces(self):
+        #
+
+
+    def generate_nodes(self):
         # for every node, align the given airfoil with the [1, 0, 0] vector in body frame
         # and then apply the other transformations (twist...)
         x_direction = np.array([1, 0, 0])
@@ -151,6 +168,11 @@ class AeroGrid(object):
                               'k')
         plt.hold('off')
 
+class Surface(object):
+    '''
+    Contains a single continuous surface
+    '''
+    def __init__(self):
 
 
 
