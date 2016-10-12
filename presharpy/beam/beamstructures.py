@@ -42,6 +42,9 @@ class Element(object):
                     np.cross(self.normal_vector[inode, :],
                              self.tangent_vector[inode, :]))
 
+    def preferent_direction(self):
+        return np.argmax(np.abs(self.tangent_vector))
+
     def add_attributes(self, dictionary):
         for key, value in dictionary.items():
             setattr(self, key, value)
