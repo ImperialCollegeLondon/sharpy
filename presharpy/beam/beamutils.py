@@ -106,6 +106,29 @@ def single_normal(tangent):
     #     normal *= -1
     return normal
 
+
+def rotation_matrix_around_axis(axis, angle):
+    axis = unit_vector(axis)
+    rot = np.cos(angle)*np.eye(3)
+    rot += np.sin(angle)*skew(axis)
+    rot += (1 - np.cos(angle))*np.outer(axis, axis)
+    return rot
+
+
+def skew(vector):
+    if not vector.size == 3:
+        raise Exception('The input vector is not 3D')
+
+    matrix = np.zeros((3, 3))
+    matrix[1, 2] = -vector[0]
+    matrix[2, 0] = -vector[1]
+    matrix[0, 1] = -vector[2]
+    matrix[2, 1] = vector[0]
+    matrix[0, 2] = vector[1]
+    matrix[1, 0] = vector[2]
+    return matrix
+
+
 if __name__ == '__main__':
     coord = np.zeros((3, 3))
     coord[0, :] = [0, 0, 0]

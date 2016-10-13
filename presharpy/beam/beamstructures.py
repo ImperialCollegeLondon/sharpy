@@ -13,7 +13,8 @@ class Element(object):
                  n_nodes,
                  global_connectivities,
                  coordinates,
-                 frame_of_reference_delta):
+                 frame_of_reference_delta,
+                 structural_twist):
         # store info in instance
         # global element number
         self.ielem = ielem
@@ -27,6 +28,8 @@ class Element(object):
         self.length = np.linalg.norm(self.coordinates[0, :] - self.coordinates[n_nodes-1, :])
         # frame of reference points
         self.frame_of_reference_delta = frame_of_reference_delta
+        # structural twist
+        self.structural_twist = structural_twist
 
         # now, calculate tangent vector (and coefficients of the polynomial
         # fit just in case)
@@ -68,8 +71,36 @@ class Element(object):
         return curve
 
     def get_triad(self):
-        #TODO
-        pass
+        '''
+        Generates two unit vectors in body FoR that define the local FoR for
+        a beam element. These vectors are calculated using `frame_of_reference_delta`
+        :return:
+        '''
+
+        self.normal_vector = np.zeros_like(self.tangent_vector)
+        self.binormal_vector = np.zeros_like(self.tangent_vector)
+
+        # v_vector is the vector with origin the FoR node and delta
+        # equals frame_of_reference_delta
+        for inode in range(self.n_nodes):
+            v_vector = self.frame_of_reference_delta[inode, :]
+            self.normal_vector[inode, :] = beamutils.unit_vector(np.cross(
+                                                                        self.tangent_vector[inode, :],
+                                                                        v_vector
+                                                                        )
+                                                                )
+            self.binormal_vector[inode, :] = -beamutils.unit_vector(np.cross(
+                                                                        self.tangent_vector[inode, :],
+                                                                        self.normal_vector[inode, :]
+                                                                            )
+                                                                  )
+
+        # we apply twist now
+        for inode in range(self.n_nodes):
+            rotation_mat = beamutils.rotation_matrix_around_axis(self.tangent_vector[inode, :],
+                                                                 self.structural_twist)
+            self.normal_vector[inode, :] = np.dot(rotation_mat, self.normal_vector[inode, :])
+            self.binormal_vector[inode, :] = np.dot(rotation_mat, self.binormal_vector[inode, :])
 
     def plot(self, fig=None, ax=None, plot_triad=False, n_elem_plot=10):
         import matplotlib.pyplot as plt

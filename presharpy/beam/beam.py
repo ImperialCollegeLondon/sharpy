@@ -21,6 +21,8 @@ class Beam(object):
         self.elem_mass = fem_dictionary['elem_mass']
         # frame of reference delta
         self.frame_of_reference_delta = fem_dictionary['frame_of_reference_delta']
+        # structural twist
+        self.structural_twist = fem_dictionary['structural_twist']
 
         # now, we are going to import the mass and stiffness
         # databases
@@ -36,7 +38,8 @@ class Beam(object):
                        self.num_node_elem,
                        self.connectivities[ielem, :],
                        self.node_coordinates[self.connectivities[ielem, :], :],
-                       self.frame_of_reference_delta[self.connectivities[ielem, :], :]))
+                       self.frame_of_reference_delta[self.connectivities[ielem, :], :],
+                       self.structural_twist[self.connectivities[ielem, :]]))
 
         # now we need to add the attributes like mass and stiffness index
         for ielem in range(self.num_elem):

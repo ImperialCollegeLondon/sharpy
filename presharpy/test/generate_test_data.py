@@ -51,12 +51,15 @@ def generate_fem_file(route, case_name, num_elem, num_node_elem=3, n_vertical_el
     y[:n_vertical_node] = 0
     z[:n_vertical_node] = np.linspace(0.5, 1, n_vertical_node)
 
+    structural_twist = np.zeros_like(x)
+    structural_twist[n_vertical_node:] = np.linspace(0, -40, num_node - n_vertical_node)*np.pi/180
+
     frame_of_reference_delta = np.zeros((num_node, 3))
     for inode in range(num_node):
         if inode < n_vertical_node:
-            frame_of_reference_delta[inode, :] = [1, 0, 0]
+            frame_of_reference_delta[inode, :] = [0, 1, 0]
         else:
-            frame_of_reference_delta[inode, :] = [0, -1, 0]
+            frame_of_reference_delta[inode, :] = [0, 0, 1]
 
     scale = 1
 
@@ -117,7 +120,8 @@ def generate_fem_file(route, case_name, num_elem, num_node_elem=3, n_vertical_el
             'elem_mass', data = elem_mass)
         frame_of_reference_delta_handle = h5file.create_dataset(
             'frame_of_reference_delta', data=frame_of_reference_delta)
-
+        structural_twist_handle = h5file.create_dataset(
+            'structural_twist', data=structural_twist)
     return num_node, coordinates
 
 
