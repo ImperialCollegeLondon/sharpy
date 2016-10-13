@@ -1,6 +1,5 @@
 import numpy as np
 
-import presharpy.beam.beamutils as beamutils
 import presharpy.beam.beamstructures as beamstructures
 
 

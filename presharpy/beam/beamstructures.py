@@ -1,6 +1,7 @@
 # Alfonso del Carre
 import numpy as np
-import presharpy.beam.beamutils as beamutils
+import presharpy.utils.algebra as algebra
+# import presharpy.beam.beamutils as beamutils
 
 
 class Element(object):
@@ -33,7 +34,7 @@ class Element(object):
 
         # now, calculate tangent vector (and coefficients of the polynomial
         # fit just in case)
-        self.tangent_vector, self.polyfit_vec = beamutils.tangent_vector(
+        self.tangent_vector, self.polyfit_vec = algebra.tangent_vector(
                                                     self.coordinates,
                                                     self.n_nodes)
 
@@ -84,12 +85,12 @@ class Element(object):
         # equals frame_of_reference_delta
         for inode in range(self.n_nodes):
             v_vector = self.frame_of_reference_delta[inode, :]
-            self.normal_vector[inode, :] = beamutils.unit_vector(np.cross(
+            self.normal_vector[inode, :] = algebra.unit_vector(np.cross(
                                                                         self.tangent_vector[inode, :],
                                                                         v_vector
                                                                         )
                                                                 )
-            self.binormal_vector[inode, :] = -beamutils.unit_vector(np.cross(
+            self.binormal_vector[inode, :] = -algebra.unit_vector(np.cross(
                                                                         self.tangent_vector[inode, :],
                                                                         self.normal_vector[inode, :]
                                                                             )
@@ -97,8 +98,8 @@ class Element(object):
 
         # we apply twist now
         for inode in range(self.n_nodes):
-            rotation_mat = beamutils.rotation_matrix_around_axis(self.tangent_vector[inode, :],
-                                                                 self.structural_twist)
+            rotation_mat =algebra.rotation_matrix_around_axis(self.tangent_vector[inode, :],
+                                                              self.structural_twist)
             self.normal_vector[inode, :] = np.dot(rotation_mat, self.normal_vector[inode, :])
             self.binormal_vector[inode, :] = np.dot(rotation_mat, self.binormal_vector[inode, :])
 

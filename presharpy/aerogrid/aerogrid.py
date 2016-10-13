@@ -10,8 +10,7 @@
 import numpy as np
 import scipy as sc
 import scipy.interpolate as interpolate
-import sympy.geometry as geo
-import presharpy.aerogrid.gridutils as gridutils
+import presharpy.utils.algebra as algebra
 
 
 class AeroGrid(object):
@@ -115,7 +114,7 @@ class AeroGrid(object):
         local_z *= self.chord[inode]
 
         # we apply the twist rotation
-        twist_rotation = gridutils.rotation_matrix_around_axis([0, 1, 0], self.twist[inode])
+        twist_rotation = algebra.rotation_matrix_around_axis([0, 1, 0], self.twist[inode])
 
         # now dihedral rotation
         local_y = np.zeros_like(local_x)
@@ -128,17 +127,14 @@ class AeroGrid(object):
         normal_vec = elem.normal_vector
         binormal_vec = elem.binormal_vector
         preferent_direction = elem.preferent_direction()
-        dihedral_angle = gridutils.angle_between_vector_and_plane([0,
-                                                                   tangent_vec[i_local_node, 1],
-                                                                   tangent_vec[i_local_node, 2]],
-                                                                  [0, 1, 0])
+        dihedral_angle = algebra.angle_between_vector_and_plane([0,
+                                                                  tangent_vec[i_local_node, 1],
+                                                                  tangent_vec[i_local_node, 2]],
+                                                                 [0, 1, 0])
         chord_axis = [local_x[-1] - local_x[0],
                       local_y[-1] - local_y[0],
                       local_z[-1] - local_z[0]]
-        dihedral_rotation = gridutils.rotation_matrix_around_axis([1, 0, 0], np.pi/2 - dihedral_angle)
-        # dihedral_rotation = gridutils.triad2rot(tangent_vec[i_local_node, :],
-        #                                         normal_vec[i_local_node, :],
-        #                                         binormal_vec[i_local_node, :])
+        dihedral_rotation = algebra.rotation_matrix_around_axis([1, 0, 0], np.pi/2 - dihedral_angle)
         for iM in range(self.M + 1):
             airfoil_coords[iM, :] = (self.beam.node_coordinates[inode] +
                                      np.dot(dihedral_rotation,
