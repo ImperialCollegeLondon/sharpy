@@ -3,8 +3,8 @@
    You can adapt this file completely to your liking, but it should at least
    contain the root `toctree` directive.
 
-Welcome to SHARPy's documentation!
-==================================
+SHARPy documentation
+====================
 
 Contents:
 
@@ -16,6 +16,9 @@ The ProblemData Class
 .. automodule:: presharpy.problemdata
    :members:
 
+Utilities
+=========
+.. include:: content/algebra_content.rst
 
 Indices and tables
 ==================
