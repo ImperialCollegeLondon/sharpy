@@ -101,7 +101,7 @@ class ProblemData(object):
             file_name (str): contains the path and file name of the file to be read by the ``configparser``
                 reader.
 
-        Retuns:
+        Returns:
             config (dict): a ``ConfigParser`` object that behaves like a dictionary
         """
         config = configparser.ConfigParser()
