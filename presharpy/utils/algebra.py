@@ -1,22 +1,29 @@
 import numpy as np
 
 
-def tangent_vector(coord, n_nodes, ndim=3):
-    '''
+def tangent_vector(coord):
+    """ Tangent vector calculation for 2+ noded elements.
+
     Calculates the tangent vector interpolating every dimension
     separately. It uses a (n_nodes - 1) degree polynomial, and the
-    differentiation is analytical
+    differentiation is analytical.
 
-    CAUTION: only supports equispaced nodes inside the element
-    '''
+    Args:
+        coord (np.ndarray): array of coordinates of the nodes. Dimensions = ``[n_nodes, ndim]``
+
+    Notes:
+        Dimensions are treated independent from each other, interpolating polynomials are computed
+        individually.
+
+    """
+    n_nodes, ndim = coord.shape
 
     polynomial_degree = n_nodes - 1
-    #TODO check coord and n_nodes are coherent
     # first, the polynomial fit.
     # we are going to differentiate wrt the indices ([0, 1, 2] for a 3-node)
     polyfit_vec = []  # we are going to store here the coefficients of the polyfit
     for idim in range(ndim):
-        polyfit_vec.append(np.polyfit(range(n_nodes), coord[:,idim],
+        polyfit_vec.append(np.polyfit(range(n_nodes), coord[:, idim],
                                       polynomial_degree))
 
     # differentiation

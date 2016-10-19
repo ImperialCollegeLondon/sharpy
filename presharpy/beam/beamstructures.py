@@ -35,8 +35,7 @@ class Element(object):
         # now, calculate tangent vector (and coefficients of the polynomial
         # fit just in case)
         self.tangent_vector, self.polyfit_vec = algebra.tangent_vector(
-                                                    self.coordinates,
-                                                    self.n_nodes)
+                                                    self.coordinates)
 
         # we need to define the FoR z direction for every beam element
         # self.normal_vector = beamutils.normal_vector(
