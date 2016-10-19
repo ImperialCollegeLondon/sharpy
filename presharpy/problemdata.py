@@ -95,11 +95,43 @@ class ProblemData(object):
 
     @staticmethod
     def load_config_file(file_name):
+        """This function reads the flight condition and solver input files.
+
+        Args:
+            file_name (str): contains the path and file name of the file to be read by the ``configparser``
+                reader.
+
+        Retuns:
+            config (dict): a ``ConfigParser`` object that behaves like a dictionary
+        """
         config = configparser.ConfigParser()
         config.read(file_name)
         return config
 
-    def plot_configuration(self):
+    def plot_configuration(self, plot_beam=True, plot_grid=True, persp_correction=True):
+        """Main wrapper for case plotting in 3D using matplotlib.
+
+        Args:
+            plot_beam (bool, optional): if ``True`` the beam is plotted
+            plot_grid (bool, optional): if ``True`` the aero grid is plotted
+            persp_correction (bool, optional): if ``True``, the perspective is disable to try to
+                simulate an orthogonal perspective.
+                (see http://stackoverflow.com/questions/23840756/how-to-disable-perspective-in-mplot3d)
+
+        Returns:
+            None
+
+        Notes:
+            A new set of axes is created using:
+
+               >>> fig = plt.figure()
+               >>> ax = fig.add_subplot(111, projection='3d')
+               >>> plt.title('Case: %s -- structure plot' % self.case_name)
+               >>> ax.set_xlabel('x (m)')
+               >>> ax.set_ylabel('y (m)')
+               >>> ax.set_zlabel('z (m)')
+
+        """
         import matplotlib.pyplot as plt
         from mpl_toolkits.mplot3d import Axes3D, proj3d
         import numpy as np
@@ -110,43 +142,22 @@ class ProblemData(object):
         ax.set_ylabel('y (m)')
         ax.set_zlabel('z (m)')
 
-        self.beam.plot(fig, ax, plot_triad=True)
-        self.grid.plot(fig, ax)
-        # self.plot_aero(fig, ax)
+        if plot_beam:
+            self.beam.plot(fig, ax, plot_triad=True)
+        if plot_grid:
+            self.grid.plot(fig, ax)
 
-        # correction of perspective
-        def orthogonal_projection(zfront, zback):
-            a = (zfront + zback) / (zfront - zback)
-            b = -2 * (zfront * zback) / (zfront - zback)
-            return np.array([[1, 0, 0, 0],
-                             [0, 1, 0, 0],
-                             [0, 0, a, b],
-                             [0, 0, -1e-5, zback]])
+        if persp_correction:
+            # correction of perspective
+            def orthogonal_projection(zfront, zback):
+                a = (zfront + zback) / (zfront - zback)
+                b = -2 * (zfront * zback) / (zfront - zback)
+                return np.array([[1, 0, 0, 0],
+                                 [0, 1, 0, 0],
+                                 [0, 0, a, b],
+                                 [0, 0, -1e-5, zback]])
 
-        # proj3d.persp_transformation = orthogonal_projection
+            proj3d.persp_transformation = orthogonal_projection
         plt.axis('equal')
         plt.show()
-
-    def plot_aero(self, fig=None, ax=None) -> None:
-        """Main wrapper for aerodynamic grid plotting in 3D using matplotlib.
-
-        Args:
-            fig: optional, pyplot figure handle for adding several sources of information into the
-                figure (i.e. structure and aero)
-            ax: optional, pyplot axes handle.
-
-        Returns:
-            None
-
-        """
-        if fig is None:
-            fig = plt.figure()
-            ax = fig.add_subplot(111, projection='3d')
-            plt.title('Case: %s -- structure plot' % self.case_name)
-            ax.set_xlabel('x (m)')
-            ax.set_ylabel('y (m)')
-            ax.set_zlabel('z (m)')
-        plt.hold('on')
-        plt.hold('off')
-        return fig, ax
 
