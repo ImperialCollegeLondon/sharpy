@@ -1,11 +1,14 @@
-# Alfonso del Carre
-# alfonso.del-carre14@imperial.ac.uk
-# Imperial College London
-# LoCA lab
-# 28 Sept 2016
+"""The main class for preSHARPy.
 
-# preSHARPy is the FEM and aero data preprocessor for the SHARPy code
-# It reads the information from *.fem.h5 and *.aero.h5 files.
+Contains the necessary code for reading, processing and storing the input data. It implements
+the ``ProblemData`` class, which is the base for the preSHARPy module.
+
+Examples:
+    This example assumes that ``generate_test_data`` has been already executed and ``pwd`` is set
+    at ``sharpy/bin``.
+        >>> from presharpy.problemdata import ProblemData
+        >>> problem = ProblemData('test', '../presharpy/test/')
+"""
 
 import configparser
 
@@ -18,16 +21,26 @@ import presharpy.utils.h5utils as h5utils
 
 
 class ProblemData(object):
-    # Reads the FEM and aero files and stores them in
-    # the class instance.
+    """Main class for preSHARPy.
+
+    Args:
+        in_case_name (str): name for the current case. The input files will be named
+            ``<in_case_name>.[fem.h5/aero.h5]``
+        in_case_route (str, optional): relative route to the case files. Defaults to ``./``.
+
+    Note:
+        As a summary, the case data files have to be located in ``<in_case_route>/<in_case_name>+ext``
+
+        The ``fem_handle`` and ``aero_handle`` attributes will still be open until the destruction of
+        the ``ProblemData`` instance.
+    """
     def __init__(self, in_case_name, in_case_route = './'):
-        '''
-        AERO SUPPORT IN PROGRESS
-        '''
         print('Reading input info for the case: %s in %s...' % (in_case_name,
                                                                 in_case_route))
         self.case_route = in_case_route
+        """str: instance copy of in_case_route"""
         self.case_name = in_case_name
+        """str: instance copy of in_case_name"""
         fem_file_name = in_case_route + '/' + in_case_name + '.fem.h5'
         aero_file_name = in_case_route + '/' + in_case_name + '.aero.h5'
 
@@ -43,15 +56,19 @@ class ProblemData(object):
         # we manually close them or the instance of
         # ProblemData is destroyed
         self.fem_handle = h5.File(fem_file_name, 'r')
+        """h5py.File: .fem.h5 file handle"""
         self.aero_handle = h5.File(aero_file_name, 'r')
+        """h5py.File: .aero.h5 file handle"""
 
         # Store h5 info in dictionaries
         self.fem_data_dict = (
             h5utils.load_h5_in_dict(self.fem_handle))
+        """dict: contains all the input data of the ``FEM`` file stored in a dictionary"""
         h5utils.check_fem_dict(self.fem_data_dict)
 
         self.aero_data_dict = (
             h5utils.load_h5_in_dict(self.aero_handle))
+        """dict: contains all the input data of the ``aero`` file stored in a dictionary"""
         # h5utils.check_aero_dict(self.aero_data_dict)   #TODO
 
         # FLIGHT CONDITIONS and SOLVER settings files input
@@ -71,10 +88,10 @@ class ProblemData(object):
         print('Processing fem input and generating beam model...')
         self.beam = beam.Beam(self.fem_data_dict)
         print('Processing aero input and generating grid...')
-        # ProblemData.grid = aerogrid.AeroGrid(self.aero_data_dict,
-        #                                      self.solver_config,
-        #                                      self.flightcon_config,
-        #                                      self.beam)
+        ProblemData.grid = aerogrid.AeroGrid(self.aero_data_dict,
+                                             self.solver_config,
+                                             self.flightcon_config,
+                                             self.beam)
 
     @staticmethod
     def load_config_file(file_name):
@@ -94,7 +111,7 @@ class ProblemData(object):
         ax.set_zlabel('z (m)')
 
         self.beam.plot(fig, ax, plot_triad=True)
-        # self.grid.plot(fig, ax)
+        self.grid.plot(fig, ax)
         # self.plot_aero(fig, ax)
 
         # correction of perspective
@@ -110,7 +127,18 @@ class ProblemData(object):
         plt.axis('equal')
         plt.show()
 
-    def plot_aero(self, fig=None, ax=None):
+    def plot_aero(self, fig=None, ax=None) -> None:
+        """Main wrapper for aerodynamic grid plotting in 3D using matplotlib.
+
+        Args:
+            fig: optional, pyplot figure handle for adding several sources of information into the
+                figure (i.e. structure and aero)
+            ax: optional, pyplot axes handle.
+
+        Returns:
+            None
+
+        """
         if fig is None:
             fig = plt.figure()
             ax = fig.add_subplot(111, projection='3d')
