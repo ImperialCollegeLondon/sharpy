@@ -202,6 +202,9 @@ def generate_naca_camber(route, M=2, P=4):
 def generate_solver_file(route, case_name):
     file_name = route + '/' + case_name + '.solver.txt'
     config = configparser.ConfigParser()
+    config['SHARPy'] = {'case': 'test',
+                        'route': './',
+                        'flow': ['preSHARPy', 'NonLinearStatic']}
     config['GRID'] = {'M': 15,
                       'M_distribution': 'uniform',
                       'wake_length': 10,
