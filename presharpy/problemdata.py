@@ -18,15 +18,15 @@ import matplotlib.pyplot as plt
 import presharpy.aerogrid.aerogrid as aerogrid
 import presharpy.beam.beam as beam
 import presharpy.utils.h5utils as h5utils
+from sharpy.utils.solver_interface import solver, solver_types
 
 
+@solver
 class ProblemData(object):
     """Main class for preSHARPy.
 
     Args:
-        in_case_name (str): name for the current case. The input files will be named
-            ``<in_case_name>.[fem.h5/aero.h5]``
-        in_case_route (str, optional): relative route to the case files. Defaults to ``./``.
+        settings (dict): dictionary from DictConfigParser
 
     Note:
         As a summary, the case data files have to be located in ``<in_case_route>/<in_case_name>+ext``
@@ -34,19 +34,34 @@ class ProblemData(object):
         The ``fem_handle`` and ``aero_handle`` attributes will still be open until the destruction of
         the ``ProblemData`` instance.
     """
-    def __init__(self, in_case_name, in_case_route = './'):
-        print('Reading input info for the case: %s in %s...' % (in_case_name,
-                                                                in_case_route))
-        self.case_route = in_case_route
-        """str: instance copy of in_case_route"""
-        self.case_name = in_case_name
-        """str: instance copy of in_case_name"""
-        fem_file_name = in_case_route + '/' + in_case_name + '.fem.h5'
-        aero_file_name = in_case_route + '/' + in_case_name + '.aero.h5'
+    solver_id = 'preSHARPy'
+    solver_type = 'general'
+
+    def __init__(self, settings):
+        self.solver_config = settings
+        self.case_route = settings['SHARPy']['route'] + '/'
+        self.case_name = settings['SHARPy']['case']
+
+        self.only_structural = True
+        for solver_name in settings['SHARPy']['flow']:
+            if (not solver_types[solver_name] == 'general' and
+                not solver_types[solver_name] == 'structural'):
+                self.only_structural = False
+
+        if self.only_structural:
+            print('Running a structural case only')
+
+        self.initialise()
+
+    def initialise(self):
+        fem_file_name = self.case_route + '/' + self.case_name + '.fem.h5'
+        if not self.only_structural:
+            aero_file_name = self.case_route + '/' + self.case_name + '.aero.h5'
 
         # Check if files exist
         h5utils.check_file_exists(fem_file_name)
-        h5utils.check_file_exists(aero_file_name)
+        if not self.only_structural:
+            h5utils.check_file_exists(aero_file_name)
         print('\tThe FEM and aero files exist, they will be loaded.')
 
         # Assign handles
@@ -57,8 +72,9 @@ class ProblemData(object):
         # ProblemData is destroyed
         self.fem_handle = h5.File(fem_file_name, 'r')
         """h5py.File: .fem.h5 file handle"""
-        self.aero_handle = h5.File(aero_file_name, 'r')
-        """h5py.File: .aero.h5 file handle"""
+        if not self.only_structural:
+            self.aero_handle = h5.File(aero_file_name, 'r')
+            """h5py.File: .aero.h5 file handle"""
 
         # Store h5 info in dictionaries
         self.fem_data_dict = (
@@ -66,32 +82,32 @@ class ProblemData(object):
         """dict: contains all the input data of the ``FEM`` file stored in a dictionary"""
         h5utils.check_fem_dict(self.fem_data_dict)
 
-        self.aero_data_dict = (
-            h5utils.load_h5_in_dict(self.aero_handle))
-        """dict: contains all the input data of the ``aero`` file stored in a dictionary"""
-        # h5utils.check_aero_dict(self.aero_data_dict)   #TODO
+        if not self.only_structural:
+            self.aero_data_dict = (
+                h5utils.load_h5_in_dict(self.aero_handle))
+            """dict: contains all the input data of the ``aero`` file stored in a dictionary"""
+            # h5utils.check_aero_dict(self.aero_data_dict)   #TODO
 
-        # FLIGHT CONDITIONS and SOLVER settings files input
-        flightcon_file_name = (in_case_route + '/' +
-                               in_case_name + '.flightcon.txt')
-        solver_file_name = in_case_route + '/' + in_case_name + '.solver.txt'
+        # FLIGHT CONDITIONS settings file input
+        flightcon_file_name = (self.case_route + '/' +
+                               self.case_name + '.flightcon.txt')
         # Check if files exist
         h5utils.check_file_exists(flightcon_file_name)
-        h5utils.check_file_exists(solver_file_name)
-        print('\tThe FLIGHTCON and SOLVER files exist, they will be loaded.')
+        print('\tThe FLIGHTCON file exist, it will be loaded.')
         self.flightcon_config = self.load_config_file(flightcon_file_name)
-        self.solver_config = self.load_config_file(solver_file_name)
 
         # import pdb;pdb.set_trace()
         print('\tDONE')
         print('--------------------------------------------------------------')
         print('Processing fem input and generating beam model...')
         self.beam = beam.Beam(self.fem_data_dict)
-        print('Processing aero input and generating grid...')
-        ProblemData.grid = aerogrid.AeroGrid(self.aero_data_dict,
-                                             self.solver_config,
-                                             self.flightcon_config,
-                                             self.beam)
+        if not self.only_structural:
+            print('Processing aero input and generating grid...')
+            ProblemData.grid = aerogrid.AeroGrid(self.aero_data_dict,
+                                                 self.solver_config,
+                                                 self.flightcon_config,
+                                                 self.beam)
+
 
     @staticmethod
     def load_config_file(file_name):

@@ -203,8 +203,8 @@ def generate_solver_file(route, case_name):
     file_name = route + '/' + case_name + '.solver.txt'
     config = configparser.ConfigParser()
     config['SHARPy'] = {'case': 'test',
-                        'route': './',
-                        'flow': ['preSHARPy', 'NonLinearStatic']}
+                        'route': './presharpy/test/',
+                        'flow': 'NonLinearStatic'}
     config['GRID'] = {'M': 15,
                       'M_distribution': 'uniform',
                       'wake_length': 10,
