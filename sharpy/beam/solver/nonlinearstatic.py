@@ -30,10 +30,10 @@ class NonLinearStatic(BaseSolver):
         pass
 
     def initialise(self, data):
-        pass
+        self.data = data
 
     def run(self):
-        pass
+        return self.data
 
 
 
