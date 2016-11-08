@@ -1,5 +1,7 @@
 from abc import ABCMeta, abstractmethod
 available_solvers = {}
+dict_of_solvers = {}
+solver_types = {}
 
 
 # decorator
@@ -19,6 +21,8 @@ def solver(arg):
     except KeyError:
         available_solvers[arg.solver_type] = []
     available_solvers[arg.solver_type].append(arg.solver_id)
+    dict_of_solvers[arg.solver_id] = arg
+    solver_types[arg.solver_id] = arg.solver_type
     return arg
 
 
@@ -50,3 +54,10 @@ class BaseSolver(metaclass=ABCMeta):
     @abstractmethod
     def run(self):
         pass
+
+
+def solver_from_string(string):
+    import sys
+    import functools
+    return dict_of_solvers[string]
+    # return functools.reduce(getattr, string.split("."), sys.modules[__name__])

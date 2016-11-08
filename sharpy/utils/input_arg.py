@@ -21,4 +21,5 @@ def read_settings():
 def parse_settings(file):
     from presharpy.utils.settings import load_config_file
     settings = load_config_file(file)
+    settings['SHARPy']['flow'] = settings['SHARPy']['flow'].split('\n')
     return settings

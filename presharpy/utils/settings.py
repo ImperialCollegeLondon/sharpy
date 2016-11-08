@@ -1,6 +1,16 @@
 import configparser
 
 
+class DictConfigParser(configparser.ConfigParser):
+
+    def as_dict(self):
+        d = dict(self._sections)
+        for k in d:
+            d[k] = dict(self._defaults, **d[k])
+            d[k].pop('__name__', None)
+        return d
+
+
 def load_config_file(file_name: str) -> dict:
     """This function reads the flight condition and solver input files.
 
@@ -11,6 +21,8 @@ def load_config_file(file_name: str) -> dict:
     Returns:
         config (dict): a ``ConfigParser`` object that behaves like a dictionary
     """
-    config = configparser.ConfigParser()
+    config = DictConfigParser()
     config.read(file_name)
-    return config
+    dict_config = config.as_dict()
+    return dict_config
+
