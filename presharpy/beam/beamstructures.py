@@ -1,14 +1,13 @@
 # Alfonso del Carre
 import numpy as np
 import presharpy.utils.algebra as algebra
-# import presharpy.beam.beamutils as beamutils
 
 
 class Element(object):
-    '''
+    """
     This class stores all the required data for the definition of
     a linear or quadratic beam element.
-    '''
+    """
     def __init__(self,
                  ielem,
                  n_nodes,
@@ -38,17 +37,8 @@ class Element(object):
                                                     self.coordinates)
 
         # we need to define the FoR z direction for every beam element
-        # self.normal_vector = beamutils.normal_vector(
-        #                                             self.tangent_vector)
         self.get_triad()
 
-        # import pdb; pdb.set_trace()
-        # y direction of the beam elem
-        # self.binormal_vector = np.zeros_like(self.normal_vector)
-        # for inode in range(self.n_nodes):
-        #     self.binormal_vector[inode, :] = (
-        #             np.cross(self.normal_vector[inode, :],
-        #                      self.tangent_vector[inode, :]))
 
     def preferent_direction(self):
         index = np.argmax(np.abs(self.tangent_vector[0, :]))
