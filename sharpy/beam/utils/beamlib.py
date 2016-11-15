@@ -33,42 +33,42 @@ def cbeam3_solv_nlnstatic(beam, settings):
      reflected in the data of the calling script after execution.
      Modified by Alfonso del Carre"""
 
-    f_cbeam3_solv_nlnstatic(ct.byref(NumDof),\
-                ct.byref(ct.c_int(XBINPUT.NumElems)),\
-                XBELEM.NumNodes.ctypes.data_as(ct.POINTER(ct.c_int)),\
-                XBELEM.MemNo.ctypes.data_as(ct.POINTER(ct.c_int)),\
-                XBELEM.Conn.ctypes.data_as(ct.POINTER(ct.c_int)),\
-                XBELEM.Master.ctypes.data_as(ct.POINTER(ct.c_int)),\
-                XBELEM.Length.ctypes.data_as(ct.POINTER(ct.c_double)),\
-                XBELEM.PreCurv.ctypes.data_as(ct.POINTER(ct.c_double)),\
-                XBELEM.Psi.ctypes.data_as(ct.POINTER(ct.c_double)),\
-                XBELEM.Vector.ctypes.data_as(ct.POINTER(ct.c_double)),\
-                XBELEM.Mass.ctypes.data_as(ct.POINTER(ct.c_double)),\
-                XBELEM.Stiff.ctypes.data_as(ct.POINTER(ct.c_double)),\
-                XBELEM.InvStiff.ctypes.data_as(ct.POINTER(ct.c_double)),\
-                XBELEM.RBMass.ctypes.data_as(ct.POINTER(ct.c_double)), \
-                ct.byref(NumNodes_tot),\
-                XBNODE.Master.ctypes.data_as(ct.POINTER(ct.c_int)),\
-                XBNODE.Vdof.ctypes.data_as(ct.POINTER(ct.c_int)),\
-                XBNODE.Fdof.ctypes.data_as(ct.POINTER(ct.c_int)),\
-                XBINPUT.ForceStatic.ctypes.data_as(ct.POINTER(ct.c_double)),\
-                PosIni.ctypes.data_as(ct.POINTER(ct.c_double)),\
-                PsiIni.ctypes.data_as(ct.POINTER(ct.c_double)),\
-                PosDefor.ctypes.data_as(ct.POINTER(ct.c_double)),\
-                PsiDefor.ctypes.data_as(ct.POINTER(ct.c_double)),\
-                ct.byref(XBOPTS.FollowerForce),\
-                ct.byref(XBOPTS.FollowerForceRig),\
-                ct.byref(XBOPTS.PrintInfo),\
-                ct.byref(XBOPTS.OutInBframe),\
-                ct.byref(XBOPTS.OutInaframe),\
-                ct.byref(XBOPTS.ElemProj),\
-                ct.byref(XBOPTS.MaxIterations),\
-                ct.byref(XBOPTS.NumLoadSteps),\
-                ct.byref(XBOPTS.NumGauss),\
-                ct.byref(XBOPTS.Solution),\
-                ct.byref(XBOPTS.DeltaCurved),\
-                ct.byref(XBOPTS.MinDelta),\
-                ct.byref(XBOPTS.NewmarkDamp) )
+    f_cbeam3_solv_nlnstatic(ct.byref(beam.num_dof),
+                            ct.byref(ct.c_int(beam.num_elem)),
+                            beam.num_nodes_matrix.ctypes.data_as(ct.POINTER(ct.c_int)),
+                            beam.num_mem_matrix.ctypes.data_as(ct.POINTER(ct.c_int)),
+                            beam.connectivities.ctypes.data_as(ct.POINTER(ct.c_int)),
+                            beam.master_nodes.ctypes.data_as(ct.POINTER(ct.c_int)),
+                            beam.length_matrix.ctypes.data_as(ct.POINTER(ct.c_double)),
+                            beam.precurv.ctypes.data_as(ct.POINTER(ct.c_double)),
+                            beam.psi.ctypes.data_as(ct.POINTER(ct.c_double)),
+                            beam.local_vec.ctypes.data_as(ct.POINTER(ct.c_double)),
+                            beam.mass_matrix.ctypes.data_as(ct.POINTER(ct.c_double)),
+                            beam.stiffness_matrix.ctypes.data_as(ct.POINTER(ct.c_double)),
+                            beam.inv_stiffness_matrix.ctypes.data_as(ct.POINTER(ct.c_double)),
+                            beam.rbmass_matrix.ctypes.data_as(ct.POINTER(ct.c_double)),
+                            ct.byref(beam.num_node),
+                            beam.node_master_elem.ctypes.data_as(ct.POINTER(ct.c_int)),\
+                            XBNODE.Vdof.ctypes.data_as(ct.POINTER(ct.c_int)),\
+                            XBNODE.Fdof.ctypes.data_as(ct.POINTER(ct.c_int)),\
+                            XBINPUT.ForceStatic.ctypes.data_as(ct.POINTER(ct.c_double)),\
+                            PosIni.ctypes.data_as(ct.POINTER(ct.c_double)),\
+                            PsiIni.ctypes.data_as(ct.POINTER(ct.c_double)),\
+                            PosDefor.ctypes.data_as(ct.POINTER(ct.c_double)),\
+                            PsiDefor.ctypes.data_as(ct.POINTER(ct.c_double)),\
+                            ct.byref(XBOPTS.FollowerForce),\
+                            ct.byref(XBOPTS.FollowerForceRig),\
+                            ct.byref(XBOPTS.PrintInfo),\
+                            ct.byref(XBOPTS.OutInBframe),\
+                            ct.byref(XBOPTS.OutInaframe),\
+                            ct.byref(XBOPTS.ElemProj),\
+                            ct.byref(XBOPTS.MaxIterations),\
+                            ct.byref(XBOPTS.NumLoadSteps),\
+                            ct.byref(XBOPTS.NumGauss),\
+                            ct.byref(XBOPTS.Solution),\
+                            ct.byref(XBOPTS.DeltaCurved),\
+                            ct.byref(XBOPTS.MinDelta),\
+                            ct.byref(XBOPTS.NewmarkDamp) )
 
 #
 # def Cbeam3_Solv_NonlinearDynamic(XBINPUT, XBOPTS, NumNodes_tot, XBELEM, PosIni,\

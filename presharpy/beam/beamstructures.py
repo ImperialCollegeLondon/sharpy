@@ -14,7 +14,10 @@ class Element(object):
                  global_connectivities,
                  coordinates,
                  frame_of_reference_delta,
-                 structural_twist):
+                 structural_twist,
+                 num_mem,
+                 stiff_index,
+                 mass_index):
         # store info in instance
         # global element number
         self.ielem = ielem
@@ -22,7 +25,7 @@ class Element(object):
         self.n_nodes = n_nodes
         # global connectivities (global node numbers)
         self.global_connectivities = global_connectivities
-        # coordinates of the nodes in a (body-fixed frame)
+        # coordinates of the nodes in a-frame (body-fixed frame)
         self.coordinates = coordinates
         # element length
         self.length = np.linalg.norm(self.coordinates[0, :] - self.coordinates[n_nodes-1, :])
@@ -30,6 +33,11 @@ class Element(object):
         self.frame_of_reference_delta = frame_of_reference_delta
         # structural twist
         self.structural_twist = structural_twist
+        # number in memory (for fortran routines)
+        self.num_mem = num_mem
+        # stiffness and mass matrices indices (stored in parent beam class)
+        self.stiff_index = stiff_index
+        self.mass_index = mass_index
 
         # now, calculate tangent vector (and coefficients of the polynomial
         # fit just in case)
@@ -38,7 +46,6 @@ class Element(object):
 
         # we need to define the FoR z direction for every beam element
         self.get_triad()
-
 
     def preferent_direction(self):
         index = np.argmax(np.abs(self.tangent_vector[0, :]))

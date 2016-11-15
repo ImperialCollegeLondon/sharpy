@@ -1,4 +1,5 @@
 import numpy as np
+import ctypes as ct
 
 import presharpy.beam.beamstructures as beamstructures
 
@@ -11,6 +12,7 @@ class Beam(object):
         # node coordinates
         self.num_node = fem_dictionary['num_node']
         self.node_coordinates = fem_dictionary['coordinates']
+        self.pos = self.node_coordinates.copy()
         # element connectivity
         self.num_elem = fem_dictionary['num_elem']
         self.connectivities = fem_dictionary['connectivities']
@@ -22,6 +24,10 @@ class Beam(object):
         self.frame_of_reference_delta = fem_dictionary['frame_of_reference_delta']
         # structural twist
         self.structural_twist = fem_dictionary['structural_twist']
+        # boundary conditions
+        self.boundary_conditions = fem_dictionary['boundary_conditions']
+        # beam number for every elem
+        self.beam_number = fem_dictionary['beam_number']
 
         # now, we are going to import the mass and stiffness
         # databases
@@ -38,7 +44,10 @@ class Beam(object):
                        self.connectivities[ielem, :],
                        self.node_coordinates[self.connectivities[ielem, :], :],
                        self.frame_of_reference_delta[self.connectivities[ielem, :], :],
-                       self.structural_twist[self.connectivities[ielem, :]]))
+                       self.structural_twist[self.connectivities[ielem, :]],
+                       self.beam_number[ielem],
+                       self.elem_stiffness[ielem],
+                       self.elem_mass[ielem]))
 
         # now we need to add the attributes like mass and stiffness index
         for ielem in range(self.num_elem):
@@ -47,8 +56,11 @@ class Beam(object):
             dictionary['mass_index'] = self.elem_mass[ielem]
             self.elements[ielem].add_attributes(dictionary)
 
-        # import pdb; pdb.set_trace()
+        # master-slave structure
         self.generate_master_structure()
+
+        # number of degrees of freedom calculation
+        self.num_dof = ct.c_int(6*sum(self.boundary_conditions < 1))
 
     def generate_master_structure(self):
         '''
@@ -106,10 +118,10 @@ class Beam(object):
         self.generate_node_master_elem()
 
     def generate_node_master_elem(self):
-        '''
+        """
         Returns a matrix indicating the master element for a given node
         :return:
-        '''
+        """
         self.node_master_elem = np.zeros((self.num_node, 2), dtype=int)
         for ielem in range(self.num_elem):
             for inode in range(self.num_node_elem):
@@ -117,6 +129,48 @@ class Beam(object):
                 if self.node_master_elem[iinode, 0] == 0:
                     self.node_master_elem[iinode, 0] = ielem
                     self.node_master_elem[iinode, 1] = inode
+
+    def generate_aux_information(self):
+        self.num_nodes_matrix = np.ones((self.num_elem,), dtype=int)
+
+        self.num_mem_matrix = np.zeros_like(self.num_nodes_matrix, dtype=int)
+        for elem in self.elements:
+            self.num_mem_matrix[elem.ielem] = elem.num_mem
+
+        # correction of the indices
+        self.master_nodes_fortran = self.master_nodes + 1
+        self.master_nodes_fortran.flatten('F')
+
+        self.length_matrix = np.zeros_like(self.num_nodes_matrix)
+        for elem in self.elements:
+            self.length_matrix[elem.ielem] = elem.length
+
+        self.precurv = np.zeros((self.num_elem, 3))
+        self.precurv = self.precurv.flatten('F')
+
+        self.psi = np.zeros((self.num_elem, 3))
+        self.psi = self.psi.flatten('F')
+
+        self.local_vec = np.zeros((self.num_elem, 3), order='F')
+        for elem in self.elements:
+            self.local_vec[elem.ielem, :] = elem.frame_of_reference_delta[0, :]
+
+        self.mass_matrix = np.zeros((self.num_elem*6, 6), order='F')
+        self.stiffness_matrix = np.zeros((self.num_elem*6, 6), order='F')
+        self.inv_stiffness_matrix = np.zeros((self.num_elem*6, 6), order='F')
+        for elem in self.elements:
+            self.mass_matrix[6*elem.ielem:6*elem.ielem + 6, :] = self.mass_db[elem.mass_index, :, :]
+            self.stiffness_matrix[6*elem.ielem:6*elem.ielem + 6, :] = self.stiffness_db[elem.stiff_index, :, :]
+            self.inv_stiffness_matrix[6*elem.ielem:6*elem.ielem + 6, :] = np.linalg.inv(self.stiffness_db[elem.stiff_index, :, :])
+
+        # TODO RBMass support
+        self.rbmass_matrix = np.zeros((self.num_elem*
+                                       self.num_node_elem*
+                                       6*6))
+
+        self.node_master_elem_fortran = self.node_master_elem + 1
+
+
 
     def plot(self, fig=None, ax=None, plot_triad=True):
         import matplotlib.pyplot as plt

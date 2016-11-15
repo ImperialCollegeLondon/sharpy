@@ -1,4 +1,4 @@
-'''@package PyBeam.Solver.NonlinearStatic
+"""@package PyBeam.Solver.NonlinearStatic
 @brief      Nonlinear static solvers.
 @author     Rob Simpson
 @contact    r.simpson11@imperial.ac.uk
@@ -8,7 +8,7 @@
 @warning    None
 
 @modified   Alfonso del Carre
-'''
+"""
 
 import sys
 # import DerivedTypes
@@ -19,6 +19,7 @@ import sys
 import numpy as np
 import ctypes as ct
 from sharpy.utils.solver_interface import solver, BaseSolver
+import sharpy.beam.utils.beamlib as beamlib
 
 
 @solver
@@ -31,12 +32,11 @@ class NonLinearStatic(BaseSolver):
 
     def initialise(self, data):
         self.data = data
+        data.beam.generate_aux_information()
 
     def run(self):
+        beamlib.cbeam3_solv_nlnstatic(self.data.beam, self.data.settings)
         return self.data
-
-
-
 
 
 def Solve_F90(XBINPUT,XBOPTS):
