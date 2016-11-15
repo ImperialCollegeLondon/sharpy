@@ -27,7 +27,22 @@ class Beam(object):
         # boundary conditions
         self.boundary_conditions = fem_dictionary['boundary_conditions']
         # beam number for every elem
-        self.beam_number = fem_dictionary['beam_number']
+        try:
+            self.beam_number = fem_dictionary['beam_number']
+        except KeyError:
+            self.beam_number = np.zeros((self.num_elem, ), dtype=int)
+
+        # applied forces
+        try:
+            self.app_forces = fem_dictionary['app_forces']
+        except KeyError:
+            print('*** No applied forces indicated')
+            self.app_forces = None
+
+        try:
+            self.app_forces_type = fem_dictionary['app_forces_type']
+        except KeyError:
+            self.app_forces_type = np.zeros((self.num_node, ), dtype=int)
 
         # now, we are going to import the mass and stiffness
         # databases
@@ -62,12 +77,34 @@ class Beam(object):
         # number of degrees of freedom calculation
         self.num_dof = ct.c_int(6*sum(self.boundary_conditions < 1))
 
+
+    def generate_dof_arrays(self, indexing='C'):
+        self.vdof = np.zeros((self.num_node,), dtype=int) - 1
+        self.fdof = np.zeros((self.num_node,), dtype=int) - 1
+
+        counter = -1
+        vcounter = -1
+        fcounter = -1
+        for bc in self.boundary_conditions:
+            counter += 1
+            fcounter += 1
+            self.fdof[counter] = fcounter
+            if bc == 1:
+                pass
+            else:
+                vcounter += 1
+                self.vdof[counter] = vcounter
+
+        if indexing == 'F':
+            self.vdof = self.vdof + 1
+            self.fdof = self.fdof + 1
+
     def generate_master_structure(self):
-        '''
+        """
         Master-slave relationships are necessary for
         later stages, as nodes belonging to two different
         elements have two different values of their rotation.
-        '''
+        """
         # let's just keep the outer nodes of the element
         temp_connectivities = np.zeros((self.num_elem, 2),
                                        dtype=int)
@@ -145,6 +182,7 @@ class Beam(object):
         for elem in self.elements:
             self.length_matrix[elem.ielem] = elem.length
 
+        # TODO precurv support
         self.precurv = np.zeros((self.num_elem, 3))
         self.precurv = self.precurv.flatten('F')
 
@@ -154,14 +192,20 @@ class Beam(object):
         self.local_vec = np.zeros((self.num_elem, 3), order='F')
         for elem in self.elements:
             self.local_vec[elem.ielem, :] = elem.frame_of_reference_delta[0, :]
+        self.local_vec = self.local_vec.flatten('F')
 
         self.mass_matrix = np.zeros((self.num_elem*6, 6), order='F')
         self.stiffness_matrix = np.zeros((self.num_elem*6, 6), order='F')
         self.inv_stiffness_matrix = np.zeros((self.num_elem*6, 6), order='F')
+
         for elem in self.elements:
             self.mass_matrix[6*elem.ielem:6*elem.ielem + 6, :] = self.mass_db[elem.mass_index, :, :]
             self.stiffness_matrix[6*elem.ielem:6*elem.ielem + 6, :] = self.stiffness_db[elem.stiff_index, :, :]
             self.inv_stiffness_matrix[6*elem.ielem:6*elem.ielem + 6, :] = np.linalg.inv(self.stiffness_db[elem.stiff_index, :, :])
+
+        self.mass_matrix = self.mass_matrix.flatten('F')
+        self.stiffness_matrix = self.stiffness_matrix.flatten('F')
+        self.inv_stiffness_matrix = self.inv_stiffness_matrix.flatten('F')
 
         # TODO RBMass support
         self.rbmass_matrix = np.zeros((self.num_elem*
@@ -169,8 +213,10 @@ class Beam(object):
                                        6*6))
 
         self.node_master_elem_fortran = self.node_master_elem + 1
+        self.node_master_elem_fortran = self.node_master_elem_fortran.flatten('F')
 
-
+        # Vdof and Fdof vector calculation
+        self.generate_dof_arrays('F')
 
     def plot(self, fig=None, ax=None, plot_triad=True):
         import matplotlib.pyplot as plt

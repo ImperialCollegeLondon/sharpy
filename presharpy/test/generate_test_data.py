@@ -90,15 +90,29 @@ def generate_fem_file(route, case_name, num_elem, num_node_elem=3, n_vertical_el
     elem_stiffness[int(num_elem/2):] = 1
 
     # mass array
-    num_mass = 3;
+    num_mass = 3
     base_mass = 0.4*np.diag([1, 1, 1, 0.1, 0.5, 0.5])
     mass = np.zeros((num_mass, 6, 6))
     for i in range(num_mass):
-        mass[i,:,:] = 1/(i+1)*base_mass
-    #element masses
+        mass[i, :, :] = 1/(i+1)*base_mass
+    # element masses
     elem_mass = np.zeros((num_elem,), dtype=int)
     elem_mass[int(num_elem/3+1):int(2*num_elem/3)] = 1
     elem_mass[int(2*num_elem/3+1):] = 2
+
+    # bocos
+    boundary_conditions = np.zeros((num_node, 1), dtype=int)
+    boundary_conditions[0] = 1
+    boundary_conditions[-1] = -1
+
+    # beam number
+    beam_number = np.ones((num_elem, 1), dtype=int)
+
+    # applied forces
+    app_forces = np.zeros((num_node, 6))
+    app_forces[-1, :] = [0, 0, 100, 0, 0, 0]
+    app_forces_type = np.zeros((num_node, 6), dtype=int)  # 0 for follower, 1 for rigid
+
 
     # import pdb; pdb.set_trace()
     with h5.File(route + '/' + case_name + '.fem.h5', 'a') as h5file:
@@ -122,6 +136,14 @@ def generate_fem_file(route, case_name, num_elem, num_node_elem=3, n_vertical_el
             'frame_of_reference_delta', data=frame_of_reference_delta)
         structural_twist_handle = h5file.create_dataset(
             'structural_twist', data=structural_twist)
+        bocos_handle = h5file.create_dataset(
+            'boundary_conditions', data=boundary_conditions)
+        beam_handle = h5file.create_dataset(
+            'beam_number', data=beam_number)
+        app_forces_handle = h5file.create_dataset(
+            'app_forces', data=app_forces)
+        app_forces_type_handle = h5file.create_dataset(
+            'app_forces_type', data=app_forces_type)
     return num_node, coordinates
 
 

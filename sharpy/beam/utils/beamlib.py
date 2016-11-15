@@ -48,9 +48,9 @@ def cbeam3_solv_nlnstatic(beam, settings):
                             beam.inv_stiffness_matrix.ctypes.data_as(ct.POINTER(ct.c_double)),
                             beam.rbmass_matrix.ctypes.data_as(ct.POINTER(ct.c_double)),
                             ct.byref(beam.num_node),
-                            beam.node_master_elem.ctypes.data_as(ct.POINTER(ct.c_int)),\
-                            XBNODE.Vdof.ctypes.data_as(ct.POINTER(ct.c_int)),\
-                            XBNODE.Fdof.ctypes.data_as(ct.POINTER(ct.c_int)),\
+                            beam.node_master_elem_fortran.ctypes.data_as(ct.POINTER(ct.c_int)),\
+                            beam.vdof.ctypes.data_as(ct.POINTER(ct.c_int)),\
+                            beam.fdof.ctypes.data_as(ct.POINTER(ct.c_int)),\
                             XBINPUT.ForceStatic.ctypes.data_as(ct.POINTER(ct.c_double)),\
                             PosIni.ctypes.data_as(ct.POINTER(ct.c_double)),\
                             PsiIni.ctypes.data_as(ct.POINTER(ct.c_double)),\
