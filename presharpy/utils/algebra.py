@@ -65,6 +65,8 @@ def tangent_vector(coord):
 
 
 def unit_vector(vector):
+    if np.linalg.norm(vector) < 1e-6:
+        return np.array([0.0, 0.0, 0.0])
     return vector/np.linalg.norm(vector)
 
 
@@ -117,3 +119,19 @@ def angle_between_vector_and_plane(vector, plane_normal):
                       (np.linalg.norm(vector)*np.linalg.norm(plane_normal)))
     return angle
 
+
+def rot2crv(rot):
+    vector = np.array([rot[2, 1] - rot[1, 2],
+                       rot[0, 2] - rot[2, 0],
+                       rot[1, 0] - rot[0, 1]])
+    angle = np.arccos((np.trace(rot) - 1)*0.5)
+    vector = angle*unit_vector(vector)
+    return vector
+
+if __name__ == '__main__':
+    rot = np.eye(3)
+    print(rot2crv(rot))
+    rot = np.array([[0, 0, 1], [1, 0, 0], [0, 1, 0]])
+    crv = rot2crv(rot)
+    print(crv)
+    print(np.linalg.norm(crv)*180/np.pi)
