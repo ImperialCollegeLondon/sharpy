@@ -1,5 +1,6 @@
 import configparser
 
+false_list = ['false', 'off', '0', 'no']
 
 class DictConfigParser(configparser.ConfigParser):
 
@@ -26,3 +27,11 @@ def load_config_file(file_name: str) -> dict:
     dict_config = config.as_dict()
     return dict_config
 
+
+def str2bool(string):
+    if not string:
+        return False
+    elif string.lower() in false_list:
+        return False
+    else:
+        return True
