@@ -52,7 +52,7 @@ def generate_fem_file(route, case_name, num_elem, num_node_elem=3, n_vertical_el
     z[:n_vertical_node] = np.linspace(0.5, 1, n_vertical_node)
 
     structural_twist = np.zeros_like(x)
-    structural_twist[n_vertical_node:] = np.linspace(0, -40, num_node - n_vertical_node)*np.pi/180
+    structural_twist[n_vertical_node:] = np.linspace(0, -5, num_node - n_vertical_node)*np.pi/180
 
     frame_of_reference_delta = np.zeros((num_node, 3))
     for inode in range(num_node):
@@ -232,6 +232,18 @@ def generate_solver_file(route, case_name):
                       'wake_length': 10,
                       'rollup': 'on',
                       'aligned_grid': 'on'}
+    config['NonLinearStatic'] = {'follower_force': 'on',
+                                 'follower_force_rig': 'off',
+                                 'print_info': 'on',
+                                 'out_b_frame': 'off',
+                                 'out_a_frame': 'on',
+                                 'elem_proj': 0,
+                                 'max_iterations': 99,
+                                 'num_load_steps': 5,
+                                 'num_gauss': 1,
+                                 'delta_curved': 1e-5,
+                                 'min_delta': 1e-8,
+                                 'newmark_damp': 0.0001}
 
     with open(file_name, 'w') as configfile:
         config.write(configfile)
