@@ -32,6 +32,7 @@ def cbeam3_solv_nlnstatic(beam, settings):
     @details Numpy arrays are mutable so the changes (solution) made here are
      reflected in the data of the calling script after execution.
      Modified by Alfonso del Carre"""
+    solution = ct.c_int(112)
 
     f_cbeam3_solv_nlnstatic(ct.byref(beam.num_dof),
                             ct.byref(ct.c_int(beam.num_elem)),
@@ -47,28 +48,28 @@ def cbeam3_solv_nlnstatic(beam, settings):
                             beam.stiffness_matrix.ctypes.data_as(ct.POINTER(ct.c_double)),
                             beam.inv_stiffness_matrix.ctypes.data_as(ct.POINTER(ct.c_double)),
                             beam.rbmass_matrix.ctypes.data_as(ct.POINTER(ct.c_double)),
-                            ct.byref(beam.num_node),
-                            beam.node_master_elem_fortran.ctypes.data_as(ct.POINTER(ct.c_int)),\
-                            beam.vdof.ctypes.data_as(ct.POINTER(ct.c_int)),\
-                            beam.fdof.ctypes.data_as(ct.POINTER(ct.c_int)),\
-                            XBINPUT.ForceStatic.ctypes.data_as(ct.POINTER(ct.c_double)),\
-                            PosIni.ctypes.data_as(ct.POINTER(ct.c_double)),\
-                            PsiIni.ctypes.data_as(ct.POINTER(ct.c_double)),\
-                            PosDefor.ctypes.data_as(ct.POINTER(ct.c_double)),\
-                            PsiDefor.ctypes.data_as(ct.POINTER(ct.c_double)),\
-                            ct.byref(XBOPTS.FollowerForce),\
-                            ct.byref(XBOPTS.FollowerForceRig),\
-                            ct.byref(XBOPTS.PrintInfo),\
-                            ct.byref(XBOPTS.OutInBframe),\
-                            ct.byref(XBOPTS.OutInaframe),\
-                            ct.byref(XBOPTS.ElemProj),\
-                            ct.byref(XBOPTS.MaxIterations),\
-                            ct.byref(XBOPTS.NumLoadSteps),\
-                            ct.byref(XBOPTS.NumGauss),\
-                            ct.byref(XBOPTS.Solution),\
-                            ct.byref(XBOPTS.DeltaCurved),\
-                            ct.byref(XBOPTS.MinDelta),\
-                            ct.byref(XBOPTS.NewmarkDamp) )
+                            ct.byref(ct.c_int(beam.num_node)),
+                            beam.node_master_elem_fortran.ctypes.data_as(ct.POINTER(ct.c_int)),
+                            beam.vdof.ctypes.data_as(ct.POINTER(ct.c_int)),
+                            beam.fdof.ctypes.data_as(ct.POINTER(ct.c_int)),
+                            beam.app_forces_fortran.ctypes.data_as(ct.POINTER(ct.c_double)),
+                            beam.node_coordinates_fortran.ctypes.data_as(ct.POINTER(ct.c_double)),
+                            beam.psi_fortran.ctypes.data_as(ct.POINTER(ct.c_double)),
+                            beam.node_coordinates_defor_fortran.ctypes.data_as(ct.POINTER(ct.c_double)),
+                            beam.psi_defor_fortran.ctypes.data_as(ct.POINTER(ct.c_double)),
+                            ct.byref(settings['follower_force']),
+                            ct.byref(settings['follower_force_rig']),
+                            ct.byref(settings['print_info']),
+                            ct.byref(settings['out_b_frame']),
+                            ct.byref(settings['out_a_frame']),
+                            ct.byref(settings['elem_proj']),
+                            ct.byref(settings['max_iterations']),
+                            ct.byref(settings['num_load_steps']),
+                            ct.byref(settings['num_gauss']),
+                            ct.byref(solution),
+                            ct.byref(settings['delta_curved']),
+                            ct.byref(settings['min_delta']),
+                            ct.byref(settings['newmark_damp']))
 
 #
 # def Cbeam3_Solv_NonlinearDynamic(XBINPUT, XBOPTS, NumNodes_tot, XBELEM, PosIni,\

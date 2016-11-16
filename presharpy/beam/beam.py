@@ -2,6 +2,7 @@ import numpy as np
 import ctypes as ct
 
 import presharpy.beam.beamstructures as beamstructures
+import presharpy.utils.algebra as algebra
 
 
 class Beam(object):
@@ -217,6 +218,29 @@ class Beam(object):
 
         # Vdof and Fdof vector calculation
         self.generate_dof_arrays('F')
+
+        self.app_forces_fortran = self.app_forces.flatten('F')
+
+        self.node_coordinates_fortran = self.node_coordinates.flatten('F')
+
+        # Psi matrix
+        self.generate_psi()
+        self.psi_fortran = self.psi.flatten('F')
+
+        # deformed structure matrices
+        self.node_coordinates_defor_fortran = self.node_coordinates_fortran.copy()
+        self.psi_defor_fortran = self.psi_fortran.copy()
+
+    def generate_psi(self):
+        # it will just generate the CRV for the first node of
+        # each element
+        self.psi = np.zeros((self.num_elem, 3))
+        for elem in self.elements:
+            self.psi[elem.ielem, :] = algebra.triad2crv(elem.tangent_vector[0, :],
+                                                        elem.normal_vector[0, :],
+                                                        elem.binormal_vector[0, :])
+
+
 
     def plot(self, fig=None, ax=None, plot_triad=True):
         import matplotlib.pyplot as plt

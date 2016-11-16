@@ -94,7 +94,7 @@ class Element(object):
 
         # we apply twist now
         for inode in range(self.n_nodes):
-            rotation_mat =algebra.rotation_matrix_around_axis(self.tangent_vector[inode, :],
+            rotation_mat = algebra.rotation_matrix_around_axis(self.tangent_vector[inode, :],
                                                               self.structural_twist)
             self.normal_vector[inode, :] = np.dot(rotation_mat, self.normal_vector[inode, :])
             self.binormal_vector[inode, :] = np.dot(rotation_mat, self.binormal_vector[inode, :])

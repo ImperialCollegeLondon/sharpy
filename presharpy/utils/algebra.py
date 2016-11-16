@@ -93,7 +93,7 @@ def skew(vector):
 
 
 def triad2rot(xb, yb, zb):
-    '''
+    """
     If the input triad is the "b" coord system given in "a" frame,
     (the vectors of the triad are xb, yb, zb)
     this function returns Rab
@@ -101,7 +101,7 @@ def triad2rot(xb, yb, zb):
     :param yb:
     :param zb:
     :return: rotation matrix Rab
-    '''
+    """
     rot = np.column_stack((xb, yb, zb))
     return rot
 
@@ -127,6 +127,10 @@ def rot2crv(rot):
     angle = np.arccos((np.trace(rot) - 1)*0.5)
     vector = angle*unit_vector(vector)
     return vector
+
+
+def triad2crv(xb, yb, zb):
+    return rot2crv(triad2rot(xb, yb, zb))
 
 if __name__ == '__main__':
     rot = np.eye(3)

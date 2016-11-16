@@ -38,6 +38,7 @@ class ProblemData(object):
     solver_type = 'general'
 
     def __init__(self, settings):
+        self.settings = settings
         self.solver_config = settings
         self.case_route = settings['SHARPy']['route'] + '/'
         self.case_name = settings['SHARPy']['case']
@@ -45,13 +46,15 @@ class ProblemData(object):
         self.only_structural = True
         for solver_name in settings['SHARPy']['flow']:
             if (not solver_types[solver_name] == 'general' and
-                not solver_types[solver_name] == 'structural'):
+               not solver_types[solver_name] == 'structural'):
                 self.only_structural = False
 
         if self.only_structural:
             print('Running a structural case only')
 
         self.initialise()
+
+        # self.plot_configuration(plot_grid=False)
 
     def initialise(self):
         fem_file_name = self.case_route + '/' + self.case_name + '.fem.h5'
@@ -107,7 +110,6 @@ class ProblemData(object):
                                                  self.solver_config,
                                                  self.flightcon_config,
                                                  self.beam)
-
 
     @staticmethod
     def load_config_file(file_name):

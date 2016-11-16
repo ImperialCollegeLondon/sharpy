@@ -2,6 +2,7 @@ import configparser
 
 false_list = ['false', 'off', '0', 'no']
 
+
 class DictConfigParser(configparser.ConfigParser):
 
     def as_dict(self):
