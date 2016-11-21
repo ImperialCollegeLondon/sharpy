@@ -48,7 +48,12 @@ class Beam(object):
         # now, we are going to import the mass and stiffness
         # databases
         self.mass_db = fem_dictionary['mass_db']
+        (self.n_mass, _, _) = self.mass_db.shape
         self.stiffness_db = fem_dictionary['stiffness_db']
+        (self.n_stiff, _, _) = self.stiffness_db.shape
+        self.inv_stiffness_db = np.zeros_like(self.stiffness_db, dtype=ct.c_double, order='F')
+        for i in range(self.n_stiff):
+            self.inv_stiffness_db[i, :, :] = np.linalg.inv(self.stiffness_db[i, :, :])
 
         # generate the Element array
         self.elements = []
@@ -83,8 +88,8 @@ class Beam(object):
 
 
     def generate_dof_arrays(self, indexing='C'):
-        self.vdof = np.zeros((self.num_node,), dtype=int) - 1
-        self.fdof = np.zeros((self.num_node,), dtype=int) - 1
+        self.vdof = np.zeros((self.num_node,), dtype=ct.c_int, order='F') - 1
+        self.fdof = np.zeros((self.num_node,), dtype=ct.c_int, order='F') - 1
 
         counter = -1
         vcounter = -1
@@ -104,6 +109,34 @@ class Beam(object):
             self.fdof = self.fdof + 1
 
     def generate_master_structure(self):
+        for elem in self.elements:
+            elem.master = np.zeros((elem.n_nodes, 2), dtype=ct.c_int, order='F') - 1
+            ielem = elem.ielem
+            previous_connectivities = self.connectivities[0:ielem, :]
+            for inode_local in range(elem.n_nodes):
+                inode_global = self.connectivities[ielem, inode_local]
+
+                if inode_global == 0 and ielem == 0:
+                    # this is the master node in the master elem
+                    # has to stay [-1, -1]
+                    continue
+
+                for i_prev_elem in range(0, ielem):
+                    for i_prev_node in range(self.elements[i_prev_elem].n_nodes):
+                        i_prev_node_global = self.connectivities[i_prev_elem, i_prev_node]
+                        if inode_global == i_prev_node_global:
+                            # found node in previous elements in list
+                            # the master is the first element to own the node
+                            if elem.master[inode_local, 1] == -1:
+                                elem.master[inode_local, :] = [i_prev_elem, i_prev_node]
+                            continue
+
+                # next case: nodes belonging to their element only
+                elem.master[inode_local, :] = [ielem, inode_local - 1]
+
+        self.generate_node_master_elem()
+
+    def generate_master_structure_old(self):
         """
         Master-slave relationships are necessary for
         later stages, as nodes belonging to two different
@@ -130,8 +163,8 @@ class Beam(object):
             if ielem == 0:
                 continue
 
-            temp = temp_connectivities[0:ielem,:]
-            elem_nodes = temp_connectivities[ielem,:]
+            temp = temp_connectivities[0:ielem, :]
+            elem_nodes = temp_connectivities[ielem, :]
             # case: global master elem
             # (none of the extreme nodes appear in previous
             #  connectivities)
@@ -163,7 +196,7 @@ class Beam(object):
         Returns a matrix indicating the master element for a given node
         :return:
         """
-        self.node_master_elem = np.zeros((self.num_node, 2), dtype=int)
+        self.node_master_elem = np.zeros((self.num_node, 2), dtype=ct.c_int, order='F')
         for ielem in range(self.num_elem):
             for inode in range(self.num_node_elem):
                 iinode = self.connectivities[ielem, inode]
@@ -176,50 +209,41 @@ class Beam(object):
         for elem in self.elements:
             self.num_nodes_matrix[elem.ielem] = elem.n_nodes
 
-        self.num_mem_matrix = np.zeros_like(self.num_nodes_matrix, dtype=int)
+        self.num_mem_matrix = np.zeros_like(self.num_nodes_matrix, dtype=ct.c_int)
         for elem in self.elements:
             self.num_mem_matrix[elem.ielem] = elem.num_mem
 
+        self.connectivities_fortran = self.connectivities.astype(ct.c_int, order='F') + 1
+
         # correction of the indices
-        self.master_nodes_fortran = self.master_nodes + 1
-        self.master_nodes_fortran.flatten('F')
+        self.master_nodes = np.zeros((self.num_elem, self.num_node_elem, 2), dtype=ct.c_int, order='F')
+        for elem in self.elements:
+            ielem = elem.ielem
+            self.master_nodes[ielem, :, :] = elem.master + 1
+        self.master_nodes_fortran = self.master_nodes.flatten('F')
 
         self.length_matrix = np.zeros_like(self.num_nodes_matrix)
         for elem in self.elements:
             self.length_matrix[elem.ielem] = elem.length
 
         # TODO precurv support
-        self.precurv = np.zeros((self.num_elem, 3))
-        self.precurv = self.precurv.flatten('F')
+        # self.precurv = np.zeros((self.num_elem, 3))
+        # self.precurv = self.precurv.flatten('F')
+        #
+        # self.local_vec = np.zeros((self.num_elem, 3), order='F', dtype=ct.c_double)
+        # for elem in self.elements:
+        #     self.local_vec[elem.ielem, :] = elem.frame_of_reference_delta[1, :]
 
-        self.psi = np.zeros((self.num_elem, 3))
-        self.psi = self.psi.flatten('F')
-
-        self.local_vec = np.zeros((self.num_elem, 3), order='F')
-        for elem in self.elements:
-            self.local_vec[elem.ielem, :] = elem.frame_of_reference_delta[0, :]
-        self.local_vec = self.local_vec.flatten('F')
-
-        self.mass_matrix = np.zeros((self.num_elem*6, 6), order='F')
-        self.stiffness_matrix = np.zeros((self.num_elem*6, 6), order='F')
-        self.inv_stiffness_matrix = np.zeros((self.num_elem*6, 6), order='F')
-
-        for elem in self.elements:
-            self.mass_matrix[6*elem.ielem:6*elem.ielem + 6, :] = self.mass_db[elem.mass_index, :, :]
-            self.stiffness_matrix[6*elem.ielem:6*elem.ielem + 6, :] = self.stiffness_db[elem.stiff_index, :, :]
-            self.inv_stiffness_matrix[6*elem.ielem:6*elem.ielem + 6, :] = np.linalg.inv(self.stiffness_db[elem.stiff_index, :, :])
-
-        self.mass_matrix = self.mass_matrix.flatten('F')
-        self.stiffness_matrix = self.stiffness_matrix.flatten('F')
-        self.inv_stiffness_matrix = self.inv_stiffness_matrix.flatten('F')
+        self.mass_matrix = self.mass_db.astype(ct.c_double, order='F')
+        self.stiffness_matrix = self.stiffness_db.astype(ct.c_double, order='F')
+        self.mass_indices = self.elem_mass.astype(ct.c_int, order='F') + 1
+        self.stiffness_indices = self.elem_stiffness.astype(ct.c_int, order='F') + 1
 
         # TODO RBMass support
-        self.rbmass_matrix = np.zeros((self.num_elem*
-                                       self.num_node_elem*
-                                       6*6))
-
-        self.node_master_elem_fortran = self.node_master_elem + 1
-        self.node_master_elem_fortran = self.node_master_elem_fortran.flatten('F')
+        self.rbmass_matrix = np.zeros((self.num_elem,
+                                       3,
+                                       6,
+                                       6), dtype=ct.c_double, order='F')
 
         # Vdof and Fdof vector calculation
         self.generate_dof_arrays('F')
@@ -235,6 +259,7 @@ class Beam(object):
         # deformed structure matrices
         self.node_coordinates_defor_fortran = self.node_coordinates_fortran.copy()
         self.psi_defor_fortran = self.psi_fortran.copy()
+
 
     def generate_psi(self):
         # it will just generate the CRV for the first node of

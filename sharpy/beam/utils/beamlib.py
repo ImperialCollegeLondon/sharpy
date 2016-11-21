@@ -21,9 +21,23 @@ else:
 
 BeamPath += ext
 BeamLib = ct.cdll.LoadLibrary(BeamPath)
-
-f_cbeam3_solv_nlnstatic = BeamLib.wrap_cbeam3_solv_nlnstatic
+f_cbeam3_solv_nlnstatic = BeamLib.cbeam3_solv_nlnstatic_python
 f_cbeam3_solv_nlnstatic.restype = None
+f_cbeam3_solv_nlnstatic.argtype = [ct.POINTER(ct.c_int),
+                                   ct.POINTER(ct.c_int),
+                                   ct.POINTER(ct.c_int),
+                                   ct.POINTER(ct.c_int),
+                                   ct.POINTER(ct.c_int),
+                                   ct.POINTER(ct.c_int),
+                                   ct.POINTER(ct.c_int),
+                                   ct.POINTER(ct.c_double),
+                                   ct.POINTER(ct.c_int),
+                                   ct.POINTER(ct.c_int),
+                                   ct.POINTER(ct.c_double),
+                                   ct.POINTER(ct.c_double),
+                                   ct.POINTER(ct.c_int),
+                                   ct.POINTER(ct.c_double)
+                                   ]
 
 
 def cbeam3_solv_nlnstatic(beam, settings):
@@ -33,43 +47,115 @@ def cbeam3_solv_nlnstatic(beam, settings):
      reflected in the data of the calling script after execution.
      Modified by Alfonso del Carre"""
     solution = ct.c_int(112)
+    n_elem = ct.c_int(beam.num_elem)
+    n_nodes = ct.c_int(beam.num_node)
+    n_mass = ct.c_int(beam.n_mass)
+    n_stiff = ct.c_int(beam.n_stiff)
 
-    f_cbeam3_solv_nlnstatic(ct.byref(beam.num_dof),
-                            ct.byref(ct.c_int(beam.num_elem)),
+
+    f_cbeam3_solv_nlnstatic(ct.byref(n_elem),
+                            ct.byref(n_nodes),
                             beam.num_nodes_matrix.ctypes.data_as(ct.POINTER(ct.c_int)),
                             beam.num_mem_matrix.ctypes.data_as(ct.POINTER(ct.c_int)),
-                            beam.connectivities.ctypes.data_as(ct.POINTER(ct.c_int)),
+                            beam.connectivities_fortran.ctypes.data_as(ct.POINTER(ct.c_int)),
                             beam.master_nodes.ctypes.data_as(ct.POINTER(ct.c_int)),
-                            beam.length_matrix.ctypes.data_as(ct.POINTER(ct.c_double)),
-                            beam.precurv.ctypes.data_as(ct.POINTER(ct.c_double)),
-                            beam.psi.ctypes.data_as(ct.POINTER(ct.c_double)),
-                            beam.local_vec.ctypes.data_as(ct.POINTER(ct.c_double)),
+                            ct.byref(n_mass),
                             beam.mass_matrix.ctypes.data_as(ct.POINTER(ct.c_double)),
+                            beam.mass_indices.ctypes.data_as(ct.POINTER(ct.c_int)),
+                            ct.byref(n_stiff),
                             beam.stiffness_matrix.ctypes.data_as(ct.POINTER(ct.c_double)),
-                            beam.inv_stiffness_matrix.ctypes.data_as(ct.POINTER(ct.c_double)),
+                            beam.inv_stiffness_db.ctypes.data_as(ct.POINTER(ct.c_double)),
+                            beam.stiffness_indices.ctypes.data_as(ct.POINTER(ct.c_int)),
                             beam.rbmass_matrix.ctypes.data_as(ct.POINTER(ct.c_double)),
-                            ct.byref(ct.c_int(beam.num_node)),
-                            beam.node_master_elem_fortran.ctypes.data_as(ct.POINTER(ct.c_int)),
+                            beam.node_master_elem.ctypes.data_as(ct.POINTER(ct.c_int)),
                             beam.vdof.ctypes.data_as(ct.POINTER(ct.c_int)),
-                            beam.fdof.ctypes.data_as(ct.POINTER(ct.c_int)),
-                            beam.app_forces_fortran.ctypes.data_as(ct.POINTER(ct.c_double)),
-                            beam.node_coordinates_fortran.ctypes.data_as(ct.POINTER(ct.c_double)),
-                            beam.psi_fortran.ctypes.data_as(ct.POINTER(ct.c_double)),
-                            beam.node_coordinates_defor_fortran.ctypes.data_as(ct.POINTER(ct.c_double)),
-                            beam.psi_defor_fortran.ctypes.data_as(ct.POINTER(ct.c_double)),
-                            ct.byref(settings['follower_force']),
-                            ct.byref(settings['follower_force_rig']),
-                            ct.byref(settings['print_info']),
-                            ct.byref(settings['out_b_frame']),
-                            ct.byref(settings['out_a_frame']),
-                            ct.byref(settings['elem_proj']),
-                            ct.byref(settings['max_iterations']),
-                            ct.byref(settings['num_load_steps']),
-                            ct.byref(settings['num_gauss']),
-                            ct.byref(solution),
-                            ct.byref(settings['delta_curved']),
-                            ct.byref(settings['min_delta']),
-                            ct.byref(settings['newmark_damp']))
+                            beam.fdof.ctypes.data_as(ct.POINTER(ct.c_int))
+                            )
+
+#
+# f_cbeam3_solv_nlnstatic = BeamLib.wrap_cbeam3_solv_nlnstatic
+# f_cbeam3_solv_nlnstatic.restype = None
+# f_cbeam3_solv_nlnstatic.argtypes = [ct.POINTER(ct.c_int),
+#                                     ct.POINTER(ct.c_int),
+#                                     ct.POINTER(ct.c_int),
+#                                     ct.POINTER(ct.c_int),
+#                                     ct.POINTER(ct.c_int),
+#                                     ct.POINTER(ct.c_int),
+#                                     ct.POINTER(ct.c_double),
+#                                     ct.POINTER(ct.c_double),
+#                                     ct.POINTER(ct.c_double),
+#                                     ct.POINTER(ct.c_double),
+#                                     ct.POINTER(ct.c_double),
+#                                     ct.POINTER(ct.c_double),
+#                                     ct.POINTER(ct.c_double),
+#                                     ct.POINTER(ct.c_double),
+#                                     ct.POINTER(ct.c_int),
+#                                     ct.POINTER(ct.c_int),
+#                                     ct.POINTER(ct.c_int),
+#                                     ct.POINTER(ct.c_int),
+#                                     ct.POINTER(ct.c_double),
+#                                     ct.POINTER(ct.c_double),
+#                                     ct.POINTER(ct.c_double),
+#                                     ct.POINTER(ct.c_double),
+#                                     ct.POINTER(ct.c_double),
+#                                     ct.POINTER(ct.c_bool),
+#                                     ct.POINTER(ct.c_bool),
+#                                     ct.POINTER(ct.c_bool),
+#                                     ct.POINTER(ct.c_bool),
+#                                     ct.POINTER(ct.c_bool),
+#                                     ct.POINTER(ct.c_int),
+#                                     ct.POINTER(ct.c_int),
+#                                     ct.POINTER(ct.c_int),
+#                                     ct.POINTER(ct.c_int),
+#                                     ct.POINTER(ct.c_int),
+#                                     ct.POINTER(ct.c_double),
+#                                     ct.POINTER(ct.c_double),
+#                                     ct.POINTER(ct.c_double)]
+#
+# def cbeam3_solv_nlnstatic(beam, settings):
+#     """@brief Python wrapper for f_cbeam3_solv_nlnstatic
+#
+#     @details Numpy arrays are mutable so the changes (solution) made here are
+#      reflected in the data of the calling script after execution.
+#      Modified by Alfonso del Carre"""
+#     solution = ct.c_int(112)
+#
+#     f_cbeam3_solv_nlnstatic(ct.byref(beam.num_dof),
+#                             ct.byref(ct.c_int(beam.num_elem)),
+#                             beam.num_nodes_matrix.ctypes.data_as(ct.POINTER(ct.c_int)),
+#                             beam.num_mem_matrix.ctypes.data_as(ct.POINTER(ct.c_int)),
+#                             beam.connectivities_fortran.ctypes.data_as(ct.POINTER(ct.c_int)),
+#                             beam.master_nodes.ctypes.data_as(ct.POINTER(ct.c_int)),
+#                             beam.length_matrix.ctypes.data_as(ct.POINTER(ct.c_double)),
+#                             beam.precurv.ctypes.data_as(ct.POINTER(ct.c_double)),
+#                             beam.psi.ctypes.data_as(ct.POINTER(ct.c_double)),
+#                             beam.local_vec.ctypes.data_as(ct.POINTER(ct.c_double)),
+#                             beam.mass_matrix.ctypes.data_as(ct.POINTER(ct.c_double)),
+#                             beam.stiffness_matrix.ctypes.data_as(ct.POINTER(ct.c_double)),
+#                             beam.inv_stiffness_matrix.ctypes.data_as(ct.POINTER(ct.c_double)),
+#                             beam.rbmass_matrix.ctypes.data_as(ct.POINTER(ct.c_double)),
+#                             ct.byref(ct.c_int(beam.num_node)),
+#                             beam.node_master_elem_fortran.ctypes.data_as(ct.POINTER(ct.c_int)),
+#                             beam.vdof.ctypes.data_as(ct.POINTER(ct.c_int)),
+#                             beam.fdof.ctypes.data_as(ct.POINTER(ct.c_int)),
+#                             beam.app_forces_fortran.ctypes.data_as(ct.POINTER(ct.c_double)),
+#                             beam.node_coordinates_fortran.ctypes.data_as(ct.POINTER(ct.c_double)),
+#                             beam.psi_fortran.ctypes.data_as(ct.POINTER(ct.c_double)),
+#                             beam.node_coordinates_defor_fortran.ctypes.data_as(ct.POINTER(ct.c_double)),
+#                             beam.psi_defor_fortran.ctypes.data_as(ct.POINTER(ct.c_double)),
+#                             ct.byref(settings['follower_force']),
+#                             ct.byref(settings['follower_force_rig']),
+#                             ct.byref(settings['print_info']),
+#                             ct.byref(settings['out_b_frame']),
+#                             ct.byref(settings['out_a_frame']),
+#                             ct.byref(settings['elem_proj']),
+#                             ct.byref(settings['max_iterations']),
+#                             ct.byref(settings['num_load_steps']),
+#                             ct.byref(settings['num_gauss']),
+#                             ct.byref(solution),
+#                             ct.byref(settings['delta_curved']),
+#                             ct.byref(settings['min_delta']),
+#                             ct.byref(settings['newmark_damp']))
 
 #
 # def Cbeam3_Solv_NonlinearDynamic(XBINPUT, XBOPTS, NumNodes_tot, XBELEM, PosIni,\

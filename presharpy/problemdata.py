@@ -19,6 +19,7 @@ import presharpy.aerogrid.aerogrid as aerogrid
 import presharpy.beam.beam as beam
 import presharpy.utils.h5utils as h5utils
 from sharpy.utils.solver_interface import solver, solver_types
+import sharpy.utils.plotutils as plotutils
 
 
 @solver
@@ -91,13 +92,13 @@ class ProblemData(object):
             """dict: contains all the input data of the ``aero`` file stored in a dictionary"""
             # h5utils.check_aero_dict(self.aero_data_dict)   #TODO
 
-        # FLIGHT CONDITIONS settings file input
-        flightcon_file_name = (self.case_route + '/' +
-                               self.case_name + '.flightcon.txt')
-        # Check if files exist
-        h5utils.check_file_exists(flightcon_file_name)
-        print('\tThe FLIGHTCON file exist, it will be loaded.')
-        self.flightcon_config = self.load_config_file(flightcon_file_name)
+            # FLIGHT CONDITIONS settings file input
+            flightcon_file_name = (self.case_route + '/' +
+                                   self.case_name + '.flightcon.txt')
+            # Check if files exist
+            h5utils.check_file_exists(flightcon_file_name)
+            print('\tThe FLIGHTCON file exist, it will be loaded.')
+            self.flightcon_config = self.load_config_file(flightcon_file_name)
 
         # import pdb;pdb.set_trace()
         print('\tDONE')
@@ -177,5 +178,6 @@ class ProblemData(object):
 
             proj3d.persp_transformation = orthogonal_projection
         plt.axis('equal')
+        plotutils.set_axes_equal(ax)
         plt.show()
 
