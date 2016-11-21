@@ -78,6 +78,9 @@ class Beam(object):
         # number of degrees of freedom calculation
         self.num_dof = ct.c_int(6*sum(self.boundary_conditions < 1))
 
+        # psi calculation
+        self.generate_psi()
+
 
     def generate_dof_arrays(self, indexing='C'):
         self.vdof = np.zeros((self.num_node,), dtype=int) - 1
@@ -151,7 +154,7 @@ class Beam(object):
                             if iinode == 0:
                                 self.master_nodes[ielem] = iinode
                             elif iinode == 1:
-                                self.master_nodes[ielem] = self.num_node_elem
+                                self.master_nodes[ielem] = self.num_node_elem - 1
 
         self.generate_node_master_elem()
 
@@ -169,7 +172,9 @@ class Beam(object):
                     self.node_master_elem[iinode, 1] = inode
 
     def generate_aux_information(self):
-        self.num_nodes_matrix = np.ones((self.num_elem,), dtype=int)
+        self.num_nodes_matrix = np.zeros((self.num_elem,), dtype=int)
+        for elem in self.elements:
+            self.num_nodes_matrix[elem.ielem] = elem.n_nodes
 
         self.num_mem_matrix = np.zeros_like(self.num_nodes_matrix, dtype=int)
         for elem in self.elements:
@@ -236,9 +241,16 @@ class Beam(object):
         # each element
         self.psi = np.zeros((self.num_elem, 3))
         for elem in self.elements:
-            self.psi[elem.ielem, :] = algebra.triad2crv(elem.tangent_vector[0, :],
-                                                        elem.normal_vector[0, :],
-                                                        elem.binormal_vector[0, :])
+            if elem.n_nodes == 2:
+                index = 0
+            elif elem.n_nodes == 3:
+                index = 1
+            else:
+                raise NotImplementedError('Only 2 or 3-noded elements are supported')
+
+            self.psi[elem.ielem, :] = algebra.triad2crv(elem.tangent_vector[index, :],
+                                                        elem.normal_vector[index, :],
+                                                        elem.binormal_vector[index, :])
 
 
 
