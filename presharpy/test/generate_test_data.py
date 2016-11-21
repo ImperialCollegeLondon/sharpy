@@ -240,7 +240,7 @@ def generate_solver_file(route, case_name):
                                  'elem_proj': 0,
                                  'max_iterations': 99,
                                  'num_load_steps': 5,
-                                 'num_gauss': 1,
+                                 'num_gauss': 2,
                                  'delta_curved': 1e-5,
                                  'min_delta': 1e-8,
                                  'newmark_damp': 0.0001}
