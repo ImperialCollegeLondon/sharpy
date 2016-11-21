@@ -37,7 +37,7 @@ def generate_files(route, case_name, num_elem=10, num_node_elem=3):
 def generate_fem_file(route, case_name, num_elem, num_node_elem=3):
     length = 5
 
-    num_node = (num_node_elem - 1)*num_elem+2
+    num_node = (num_node_elem - 1)*num_elem + 1
     # import pdb; pdb.set_trace()
     x = np.linspace(0, length, num_node)  #np.zeros((num_node,))
     y = np.zeros((num_node,))
@@ -57,12 +57,8 @@ def generate_fem_file(route, case_name, num_elem, num_node_elem=3):
 
     conn = np.zeros((num_elem, num_node_elem), dtype=int)
     for ielem in range(num_elem):
-        if ielem < 2:
-            conn[ielem, :] = (np.ones((3,)) * ielem * (num_node_elem - 1)
-                              + [0, 1, 2])
-        else:
-            conn[ielem, :] = (np.ones((3,))*ielem*(num_node_elem - 1)
-                              + [0, 1, 2] + 1)
+        conn[ielem, :] = (np.ones((3,)) * ielem * (num_node_elem - 1)
+                          + [0, 1, 2])
 
     # stiffness array
     # import pdb; pdb.set_trace()
@@ -215,15 +211,10 @@ def generate_naca_camber(route, M=2, P=4):
 def generate_solver_file(route, case_name):
     file_name = route + '/' + case_name + '.solver.txt'
     config = configparser.ConfigParser()
-    config['SHARPy'] = {'case': 'test',
+    config['SHARPy'] = {'case': 'geradin_cardona',
                         'route': './presharpy/test/',
                         'flow': 'NonLinearStatic'}
-    config['GRID'] = {'M': 15,
-                      'M_distribution': 'uniform',
-                      'wake_length': 10,
-                      'rollup': 'on',
-                      'aligned_grid': 'on'}
-    config['NonLinearStatic'] = {'follower_force': 'on',
+    config['NonLinearStatic'] = {'follower_force': 'off',
                                  'follower_force_rig': 'off',
                                  'print_info': 'on',
                                  'out_b_frame': 'off',
