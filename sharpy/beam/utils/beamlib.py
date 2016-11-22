@@ -19,6 +19,43 @@ elif platform.system() == 'Linux':
 else:
     raise NotImplementedError('The platform ' + platform.system() + 'is not supported')
 
+
+class Xbopts(ct.Structure):
+    """Structure skeleton for options input in xbeam
+
+    """
+    _fields_ = [("FollowerForce", ct.c_bool),
+                ("FollowerForceRig", ct.c_bool),
+                ("PrintInfo", ct.c_bool),
+                ("OutInBframe", ct.c_bool),
+                ("OutInaframe", ct.c_bool),
+                ("ElemProj", ct.c_int),
+                ("MaxIterations", ct.c_int),
+                ("NumLoadSteps", ct.c_int),
+                ("NumGauss", ct.c_int),
+                ("Solution", ct.c_int),
+                ("DeltaCurved", ct.c_double),
+                ("MinDelta", ct.c_double),
+                ("NewmarkDamp", ct.c_double)
+                ]
+
+    def __init__(self):
+        ct.Structure.__init__(self)
+        self.FollowerForce = ct.c_bool(True)
+        self.FollowerForceRig = ct.c_bool(True)
+        self.PrintInfo = ct.c_bool(True)
+        self.OutInBframe = ct.c_bool(True)
+        self.OutInaframe = ct.c_bool(False)
+        self.ElemProj = ct.c_int(0)
+        self.MaxIterations = ct.c_int(99)
+        self.NumLoadSteps = ct.c_int(5)
+        self.NumGauss = ct.c_int(1)
+        self.Solution = ct.c_int(111)
+        self.DeltaCurved = ct.c_double(1.0e-5)
+        self.MinDelta = ct.c_double(1.0e-8)
+        self.NewmarkDamp = ct.c_double(1.0e-4)
+
+
 BeamPath += ext
 BeamLib = ct.cdll.LoadLibrary(BeamPath)
 f_cbeam3_solv_nlnstatic = BeamLib.cbeam3_solv_nlnstatic_python
@@ -36,8 +73,8 @@ f_cbeam3_solv_nlnstatic.argtype = [ct.POINTER(ct.c_int),
                                    ct.POINTER(ct.c_double),
                                    ct.POINTER(ct.c_double),
                                    ct.POINTER(ct.c_int),
-                                   ct.POINTER(ct.c_double)
-                                   ]
+                                   ct.POINTER(ct.c_double),
+                                   ct.POINTER(Xbopts)]
 
 
 def cbeam3_solv_nlnstatic(beam, settings):
@@ -46,12 +83,16 @@ def cbeam3_solv_nlnstatic(beam, settings):
     @details Numpy arrays are mutable so the changes (solution) made here are
      reflected in the data of the calling script after execution.
      Modified by Alfonso del Carre"""
-    solution = ct.c_int(112)
     n_elem = ct.c_int(beam.num_elem)
     n_nodes = ct.c_int(beam.num_node)
     n_mass = ct.c_int(beam.n_mass)
     n_stiff = ct.c_int(beam.n_stiff)
 
+    xbopts = Xbopts()
+    xbopts.FollowerForce = ct.c_bool(False)
+    xbopts.FollowerForceRig = ct.c_bool(False)
+    xbopts.Solution = ct.c_int(112)
+    xbopts.NumGauss = ct.c_int(beam.num_node_elem - 1)
 
     f_cbeam3_solv_nlnstatic(ct.byref(n_elem),
                             ct.byref(n_nodes),
@@ -69,7 +110,8 @@ def cbeam3_solv_nlnstatic(beam, settings):
                             beam.rbmass_matrix.ctypes.data_as(ct.POINTER(ct.c_double)),
                             beam.node_master_elem.ctypes.data_as(ct.POINTER(ct.c_int)),
                             beam.vdof.ctypes.data_as(ct.POINTER(ct.c_int)),
-                            beam.fdof.ctypes.data_as(ct.POINTER(ct.c_int))
+                            beam.fdof.ctypes.data_as(ct.POINTER(ct.c_int)),
+                            ct.byref(xbopts)
                             )
 
 #
