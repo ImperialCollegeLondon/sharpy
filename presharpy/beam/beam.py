@@ -192,23 +192,19 @@ class Beam(object):
         # Vdof and Fdof vector calculation
         self.generate_dof_arrays('F')
 
-        self.app_forces_fortran = self.app_forces.flatten('F')
-
-        self.node_coordinates_fortran = self.node_coordinates.flatten('F')
+        self.app_forces_fortran = self.app_forces.astype(dtype=ct.c_double, order='F')
 
         # Psi matrix
         self.generate_psi()
-        self.psi_fortran = self.psi.flatten('F')
+        self.psi_defor = self.psi_ini.copy()
 
         # deformed structure matrices
-        self.node_coordinates_defor_fortran = self.node_coordinates_fortran.copy()
-        self.psi_defor_fortran = self.psi_fortran.copy()
-
+        self.node_coordinates_defor = self.node_coordinates.astype(dtype=ct.c_double, order='F')
 
     def generate_psi(self):
         # it will just generate the CRV for the first node of
         # each element
-        self.psi = np.zeros((self.num_elem, 3))
+        self.psi_ini = np.zeros((self.num_elem, 3), dtype=ct.c_double, order='F')
         for elem in self.elements:
             if elem.n_nodes == 2:
                 index = 0
@@ -217,9 +213,9 @@ class Beam(object):
             else:
                 raise NotImplementedError('Only 2 or 3-noded elements are supported')
 
-            self.psi[elem.ielem, :] = algebra.triad2crv(elem.tangent_vector[index, :],
-                                                        elem.normal_vector[index, :],
-                                                        elem.binormal_vector[index, :])
+            self.psi_ini[elem.ielem, :] = algebra.triad2crv(elem.tangent_vector[index, :],
+                                                            elem.normal_vector[index, :],
+                                                            elem.binormal_vector[index, :])
 
 
 

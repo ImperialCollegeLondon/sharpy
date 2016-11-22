@@ -74,7 +74,9 @@ f_cbeam3_solv_nlnstatic.argtype = [ct.POINTER(ct.c_int),
                                    ct.POINTER(ct.c_double),
                                    ct.POINTER(ct.c_int),
                                    ct.POINTER(ct.c_double),
-                                   ct.POINTER(Xbopts)]
+                                   ct.POINTER(Xbopts),
+                                   ct.POINTER(ct.c_double)
+                                   ]
 
 
 def cbeam3_solv_nlnstatic(beam, settings):
@@ -111,7 +113,8 @@ def cbeam3_solv_nlnstatic(beam, settings):
                             beam.node_master_elem.ctypes.data_as(ct.POINTER(ct.c_int)),
                             beam.vdof.ctypes.data_as(ct.POINTER(ct.c_int)),
                             beam.fdof.ctypes.data_as(ct.POINTER(ct.c_int)),
-                            ct.byref(xbopts)
+                            ct.byref(xbopts),
+                            beam.app_forces_fortran.ctypes.data_as(ct.POINTER(ct.c_double))
                             )
 
 #
