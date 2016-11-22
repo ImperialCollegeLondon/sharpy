@@ -112,7 +112,7 @@ class Beam(object):
             elem.master = np.zeros((elem.n_nodes, 2), dtype=ct.c_int, order='F') - 1
             ielem = elem.ielem
             previous_connectivities = self.connectivities[0:ielem, :]
-            for inode_local in range(elem.n_nodes):
+            for inode_local in range(elem.n_nodes - 1, -1, -1):
                 inode_global = self.connectivities[ielem, inode_local]
 
                 if inode_global == 0 and ielem == 0:
@@ -120,18 +120,22 @@ class Beam(object):
                     # has to stay [-1, -1]
                     continue
 
+                found_previous = False
                 for i_prev_elem in range(0, ielem):
                     for i_prev_node in range(self.elements[i_prev_elem].n_nodes):
+                        if found_previous:
+                            continue
                         i_prev_node_global = self.connectivities[i_prev_elem, i_prev_node]
                         if inode_global == i_prev_node_global:
                             # found node in previous elements in list
                             # the master is the first element to own the node
-                            if elem.master[inode_local, 1] == -1:
-                                elem.master[inode_local, :] = [i_prev_elem, i_prev_node]
+                            # if elem.master[inode_local, 1] == -1:
+                            elem.master[inode_local, :] = [i_prev_elem, i_prev_node]
+                            found_previous = True
                             continue
-
-                # next case: nodes belonging to their element only
-                elem.master[inode_local, :] = [ielem, inode_local - 1]
+                if not found_previous:
+                    # next case: nodes belonging to their element only
+                    elem.master[inode_local, :] = [ielem, inode_local - 1]
 
         self.generate_node_master_elem()
         1
