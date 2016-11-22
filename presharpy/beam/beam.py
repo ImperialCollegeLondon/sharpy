@@ -86,7 +86,6 @@ class Beam(object):
         # psi calculation
         self.generate_psi()
 
-
     def generate_dof_arrays(self, indexing='C'):
         self.vdof = np.zeros((self.num_node,), dtype=ct.c_int, order='F') - 1
         self.fdof = np.zeros((self.num_node,), dtype=ct.c_int, order='F') - 1
@@ -133,61 +132,6 @@ class Beam(object):
 
                 # next case: nodes belonging to their element only
                 elem.master[inode_local, :] = [ielem, inode_local - 1]
-
-        self.generate_node_master_elem()
-
-    def generate_master_structure_old(self):
-        """
-        Master-slave relationships are necessary for
-        later stages, as nodes belonging to two different
-        elements have two different values of their rotation.
-        """
-        # let's just keep the outer nodes of the element
-        temp_connectivities = np.zeros((self.num_elem, 2),
-                                       dtype=int)
-        temp_connectivities[:, 0] = self.connectivities[:, 0]
-        temp_connectivities[:, -1] = self.connectivities[:, -1]
-
-        # master_elems contains the index of the master
-        # element for every element
-        # master_nodes contains the index of the master
-        # node belongin to the master element
-        # the numbering of the nodes is based on the
-        # local one (0, 1 or 2) for a 3-noded element
-        self.master_elems = np.zeros(self.num_elem,
-                dtype=int) - 1
-        self.master_nodes = np.zeros_like(self.master_elems,
-                dtype=int) - 1
-        for ielem in range(self.num_elem):
-            # import pdb; pdb.set_trace()
-            if ielem == 0:
-                continue
-
-            temp = temp_connectivities[0:ielem, :]
-            elem_nodes = temp_connectivities[ielem, :]
-            # case: global master elem
-            # (none of the extreme nodes appear in previous
-            #  connectivities)
-            if not (elem_nodes[0] in temp or
-                    elem_nodes[1] in temp):
-                continue
-
-            # nodes in elem ielem
-            for inode in range(1, -1, -1):
-                # previous elements in the list
-                for iielem in range(ielem):
-                    # nodes of the previous elements in the list
-                    for iinode in range(1, -1, -1):
-                        # connectivity already found
-                        if not self.master_elems[ielem] == -1:
-                            continue
-                        if elem_nodes[inode] == temp_connectivities[iielem, iinode]:
-                            # found a repeated connectivity
-                            self.master_elems[ielem] = iielem
-                            if iinode == 0:
-                                self.master_nodes[ielem] = iinode
-                            elif iinode == 1:
-                                self.master_nodes[ielem] = self.num_node_elem - 1
 
         self.generate_node_master_elem()
 
