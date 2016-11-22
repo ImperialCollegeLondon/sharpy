@@ -202,22 +202,13 @@ class Beam(object):
         self.node_coordinates_defor = self.node_coordinates.astype(dtype=ct.c_double, order='F')
 
     def generate_psi(self):
-        # it will just generate the CRV for the first node of
-        # each element
-        self.psi_ini = np.zeros((self.num_elem, 3), dtype=ct.c_double, order='F')
+        # it will just generate the CRV for all the nodes of the element
+        self.psi_ini = np.zeros((self.num_elem, self.num_node_elem, 3), dtype=ct.c_double, order='F')
         for elem in self.elements:
-            if elem.n_nodes == 2:
-                index = 0
-            elif elem.n_nodes == 3:
-                index = 1
-            else:
-                raise NotImplementedError('Only 2 or 3-noded elements are supported')
-
-            self.psi_ini[elem.ielem, :] = algebra.triad2crv(elem.tangent_vector[index, :],
-                                                            elem.normal_vector[index, :],
-                                                            elem.binormal_vector[index, :])
-
-
+            for inode in range(elem.n_node):
+                self.psi_ini[elem.ielem, inode, :] = algebra.triad2crv(elem.tangent_vector[inode, :],
+                                                                       elem.normal_vector[inode, :],
+                                                                       elem.binormal_vector[inode, :])
 
     def plot(self, fig=None, ax=None, plot_triad=True):
         import matplotlib.pyplot as plt
