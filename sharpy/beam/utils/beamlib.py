@@ -110,7 +110,7 @@ def cbeam3_solv_nlnstatic(beam, settings):
                             beam.inv_stiffness_db.ctypes.data_as(ct.POINTER(ct.c_double)),
                             beam.stiffness_indices.ctypes.data_as(ct.POINTER(ct.c_int)),
                             beam.rbmass_matrix.ctypes.data_as(ct.POINTER(ct.c_double)),
-                            beam.node_master_elem.ctypes.data_as(ct.POINTER(ct.c_int)),
+                            beam.node_master_elem_fortran.ctypes.data_as(ct.POINTER(ct.c_int)),
                             beam.vdof.ctypes.data_as(ct.POINTER(ct.c_int)),
                             beam.fdof.ctypes.data_as(ct.POINTER(ct.c_int)),
                             ct.byref(xbopts),

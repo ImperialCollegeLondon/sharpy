@@ -134,6 +134,7 @@ class Beam(object):
                 elem.master[inode_local, :] = [ielem, inode_local - 1]
 
         self.generate_node_master_elem()
+        1
 
     def generate_node_master_elem(self):
         """
@@ -164,7 +165,8 @@ class Beam(object):
         for elem in self.elements:
             ielem = elem.ielem
             self.master_nodes[ielem, :, :] = elem.master + 1
-        self.master_nodes_fortran = self.master_nodes.flatten('F')
+
+        self.node_master_elem_fortran = self.node_master_elem.astype(dtype=ct.c_int, order='F') + 1
 
         self.length_matrix = np.zeros_like(self.num_nodes_matrix)
         for elem in self.elements:
