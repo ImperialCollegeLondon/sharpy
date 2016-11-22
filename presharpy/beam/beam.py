@@ -196,16 +196,17 @@ class Beam(object):
 
         # Psi matrix
         self.generate_psi()
-        self.psi_defor = self.psi_ini.copy()
+        self.psi_def = self.psi_ini.copy()
 
         # deformed structure matrices
+        self.node_coordinates = self.node_coordinates.astype(dtype=ct.c_double, order='F')
         self.node_coordinates_defor = self.node_coordinates.astype(dtype=ct.c_double, order='F')
 
     def generate_psi(self):
         # it will just generate the CRV for all the nodes of the element
         self.psi_ini = np.zeros((self.num_elem, self.num_node_elem, 3), dtype=ct.c_double, order='F')
         for elem in self.elements:
-            for inode in range(elem.n_node):
+            for inode in range(elem.n_nodes):
                 self.psi_ini[elem.ielem, inode, :] = algebra.triad2crv(elem.tangent_vector[inode, :],
                                                                        elem.normal_vector[inode, :],
                                                                        elem.binormal_vector[inode, :])

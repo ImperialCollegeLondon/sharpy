@@ -114,7 +114,11 @@ def cbeam3_solv_nlnstatic(beam, settings):
                             beam.vdof.ctypes.data_as(ct.POINTER(ct.c_int)),
                             beam.fdof.ctypes.data_as(ct.POINTER(ct.c_int)),
                             ct.byref(xbopts),
-                            beam.app_forces_fortran.ctypes.data_as(ct.POINTER(ct.c_double))
+                            beam.app_forces_fortran.ctypes.data_as(ct.POINTER(ct.c_double)),
+                            beam.node_coordinates.ctypes.data_as(ct.POINTER(ct.c_double)),
+                            beam.psi_ini.ctypes.data_as(ct.POINTER(ct.c_double)),
+                            beam.node_coordinates_defor.ctypes.data_as(ct.POINTER(ct.c_double)),
+                            beam.psi_def.ctypes.data_as(ct.POINTER(ct.c_double)),
                             )
 
 #
