@@ -80,9 +80,6 @@ class Beam(object):
         # master-slave structure
         self.generate_master_structure()
 
-        # number of degrees of freedom calculation
-        self.num_dof = ct.c_int(6*sum(self.boundary_conditions < 1))
-
         # psi calculation
         self.generate_psi()
 
@@ -105,7 +102,7 @@ class Beam(object):
                 fcounter += 1
                 self.fdof[inode] = fcounter
 
-        self.num_dof = vcounter*6
+        self.num_dof = ct.c_int(vcounter*6)
 
         if indexing == 'F':
             self.vdof += 1
@@ -115,7 +112,6 @@ class Beam(object):
         for elem in self.elements:
             elem.master = np.zeros((elem.n_nodes, 2), dtype=ct.c_int, order='F') - 1
             ielem = elem.ielem
-            previous_connectivities = self.connectivities[0:ielem, :]
             for inode_local in range(elem.n_nodes - 1, -1, -1):
                 inode_global = self.connectivities[ielem, inode_local]
 
@@ -149,13 +145,32 @@ class Beam(object):
         Returns a matrix indicating the master element for a given node
         :return:
         """
-        self.node_master_elem = np.zeros((self.num_node, 2), dtype=ct.c_int, order='F')
+        self.node_master_elem = np.zeros((self.num_node, 2), dtype=ct.c_int, order='F') - 1
         for ielem in range(self.num_elem):
             for inode in range(self.num_node_elem):
-                iinode = self.connectivities[ielem, inode]
-                if self.node_master_elem[iinode, 0] == 0:
-                    self.node_master_elem[iinode, 0] = ielem
-                    self.node_master_elem[iinode, 1] = inode
+                inode_global = self.connectivities[ielem, inode]
+
+                if self.node_master_elem[inode_global, 0] == -1:
+                    self.node_master_elem[inode_global, :] = self.elements[ielem].master[inode, :]
+
+
+                # if self.elements[ielem].master[inode, 0] == -1:
+                #     self.node_master_elem[inode_global, 0] = ielem
+                #     self.node_master_elem[inode_global, 1] = inode
+                # found_previous = False
+                # for i_prev_elem in range(ielem):
+                #     for i_prev_node in range(self.elements[i_prev_elem].n_nodes):
+                #         if found_previous:
+                #             continue
+                #         i_prev_node_global = self.connectivities[i_prev_elem, i_prev_node]
+                #         if i_prev_node_global == inode_global:
+                #             self.node_master_elem[inode, :] = [i_prev_elem, i_prev_node]
+                #             found_previous = True
+                #
+                # if not found_previous:
+                #     self.node_master_elem[inode, :] = [ielem, inode]
+
+
 
     def generate_aux_information(self):
         self.num_nodes_matrix = np.zeros((self.num_elem,), dtype=int)
