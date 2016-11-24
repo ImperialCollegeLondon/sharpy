@@ -90,22 +90,26 @@ class Beam(object):
         self.vdof = np.zeros((self.num_node,), dtype=ct.c_int, order='F') - 1
         self.fdof = np.zeros((self.num_node,), dtype=ct.c_int, order='F') - 1
 
-        counter = -1
         vcounter = -1
         fcounter = -1
-        for bc in self.boundary_conditions:
-            counter += 1
-            fcounter += 1
-            self.fdof[counter] = fcounter
-            if bc == 1:
-                pass
-            else:
+        for inode in range(self.num_node):
+            if self.boundary_conditions[inode] == 0:
                 vcounter += 1
-                self.vdof[counter] = vcounter
+                fcounter += 1
+                self.vdof[inode] = vcounter
+                self.fdof[inode] = fcounter
+            elif self.boundary_conditions[inode] == -1:
+                vcounter += 1
+                self.vdof[inode] = vcounter
+            elif self.boundary_conditions[inode] == 1:
+                fcounter += 1
+                self.fdof[inode] = fcounter
+
+        self.num_dof = vcounter*6
 
         if indexing == 'F':
-            self.vdof = self.vdof + 1
-            self.fdof = self.fdof + 1
+            self.vdof += 1
+            self.fdof += 1
 
     def generate_master_structure(self):
         for elem in self.elements:
@@ -206,7 +210,7 @@ class Beam(object):
 
         # deformed structure matrices
         self.node_coordinates = self.node_coordinates.astype(dtype=ct.c_double, order='F')
-        self.node_coordinates_defor = self.node_coordinates.astype(dtype=ct.c_double, order='F')
+        self.node_coordinates_defor = self.node_coordinates.copy(order='F')
 
     def generate_psi(self):
         # it will just generate the CRV for all the nodes of the element
