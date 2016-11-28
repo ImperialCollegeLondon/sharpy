@@ -58,7 +58,7 @@ def generate_fem_file(route, case_name, num_elem, num_node_elem=3):
     conn = np.zeros((num_elem, num_node_elem), dtype=int)
     for ielem in range(num_elem):
         conn[ielem, :] = (np.ones((3,)) * ielem * (num_node_elem - 1)
-                          + [0, 1, 2])
+                          + [0, 2, 1])
 
     # stiffness array
     # import pdb; pdb.set_trace()
@@ -93,11 +93,11 @@ def generate_fem_file(route, case_name, num_elem, num_node_elem=3):
     boundary_conditions[-1] = -1
 
     # beam number
-    beam_number = np.ones((num_elem, 1), dtype=int)
+    beam_number = np.zeros((num_elem, 1), dtype=int)
 
     # applied forces
     app_forces = np.zeros((num_node, 6))
-    app_forces[-1, :] = [0, 0, -600e3, 0, 0, 0]
+    app_forces[-1, :] = [0, 0, -600e0, 0, 0, 0]
     app_forces_type = np.zeros((num_node, 1), dtype=int)  # 0 for follower, 1 for dead
 
 
