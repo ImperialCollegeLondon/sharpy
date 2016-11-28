@@ -18,3 +18,5 @@ for solver_name in settings['SHARPy']['flow']:
     solver = cls_type()
     solver.initialise(data)
     data = solver.run()
+
+data.plot_configuration(plot_grid=False)

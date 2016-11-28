@@ -55,8 +55,6 @@ class ProblemData(object):
 
         self.initialise()
 
-        # self.plot_configuration(plot_grid=False)
-
     def initialise(self):
         fem_file_name = self.case_route + '/' + self.case_name + '.fem.h5'
         if not self.only_structural:
@@ -151,33 +149,34 @@ class ProblemData(object):
                >>> ax.set_zlabel('z (m)')
 
         """
-        import matplotlib.pyplot as plt
-        from mpl_toolkits.mplot3d import Axes3D, proj3d
-        import numpy as np
-        fig = plt.figure()
-        ax = fig.add_subplot(111, projection='3d')
-        plt.title('Case: %s -- structure plot' % self.case_name)
-        ax.set_xlabel('x (m)')
-        ax.set_ylabel('y (m)')
-        ax.set_zlabel('z (m)')
+        if self.settings['SHARPy']['plot']:
+            import matplotlib.pyplot as plt
+            from mpl_toolkits.mplot3d import Axes3D, proj3d
+            import numpy as np
+            fig = plt.figure()
+            ax = fig.add_subplot(111, projection='3d')
+            plt.title('Case: %s -- structure plot' % self.case_name)
+            ax.set_xlabel('x (m)')
+            ax.set_ylabel('y (m)')
+            ax.set_zlabel('z (m)')
 
-        if plot_beam:
-            self.beam.plot(fig, ax, plot_triad=True)
-        if plot_grid:
-            self.grid.plot(fig, ax)
+            if plot_beam:
+                self.beam.plot(fig, ax, plot_triad=True, defor=True, ini=True)
+            if plot_grid:
+                self.grid.plot(fig, ax)
 
-        if persp_correction:
-            # correction of perspective
-            def orthogonal_projection(zfront, zback):
-                a = (zfront + zback) / (zfront - zback)
-                b = -2 * (zfront * zback) / (zfront - zback)
-                return np.array([[1, 0, 0, 0],
-                                 [0, 1, 0, 0],
-                                 [0, 0, a, b],
-                                 [0, 0, -1e-5, zback]])
+            if persp_correction:
+                # correction of perspective
+                def orthogonal_projection(zfront, zback):
+                    a = (zfront + zback) / (zfront - zback)
+                    b = -2 * (zfront * zback) / (zfront - zback)
+                    return np.array([[1, 0, 0, 0],
+                                     [0, 1, 0, 0],
+                                     [0, 0, a, b],
+                                     [0, 0, -1e-5, zback]])
 
-            proj3d.persp_transformation = orthogonal_projection
-        plt.axis('equal')
-        plotutils.set_axes_equal(ax)
-        plt.show()
+                proj3d.persp_transformation = orthogonal_projection
+            plt.axis('equal')
+            plotutils.set_axes_equal(ax)
+            plt.show()
 

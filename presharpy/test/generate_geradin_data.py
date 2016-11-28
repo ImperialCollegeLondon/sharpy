@@ -97,7 +97,7 @@ def generate_fem_file(route, case_name, num_elem, num_node_elem=3):
 
     # applied forces
     app_forces = np.zeros((num_node, 6))
-    app_forces[-1, :] = [0, 0, -600e0, 0, 0, 0]
+    app_forces[-1, :] = [0, 0, -600e3, 0, 0, 0]
     app_forces_type = np.zeros((num_node, 1), dtype=int)  # 0 for follower, 1 for dead
 
 
@@ -213,10 +213,11 @@ def generate_solver_file(route, case_name):
     config = configparser.ConfigParser()
     config['SHARPy'] = {'case': 'geradin_cardona',
                         'route': './presharpy/test/',
-                        'flow': 'NonLinearStatic'}
+                        'flow': 'NonLinearStatic',
+                        'plot': 'on'}
     config['NonLinearStatic'] = {'follower_force': 'off',
                                  'follower_force_rig': 'off',
-                                 'print_info': 'on',
+                                 'print_info': 'off',
                                  'out_b_frame': 'off',
                                  'out_a_frame': 'on',
                                  'elem_proj': 0,

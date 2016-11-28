@@ -1,5 +1,6 @@
 import numpy as np
 import ctypes as ct
+import copy
 
 import presharpy.beam.beamstructures as beamstructures
 import presharpy.utils.algebra as algebra
@@ -12,8 +13,8 @@ class Beam(object):
         self.num_node_elem = fem_dictionary['num_node_elem']
         # node coordinates
         self.num_node = fem_dictionary['num_node']
-        self.node_coordinates = fem_dictionary['coordinates']
-        self.pos = self.node_coordinates.copy()
+        self.pos_ini = fem_dictionary['coordinates']
+        self.pos_def = self.pos_ini.copy()
         # element connectivity
         self.num_elem = fem_dictionary['num_elem']
         self.connectivities = fem_dictionary['connectivities']
@@ -63,7 +64,7 @@ class Beam(object):
                        ielem,
                        self.num_node_elem,
                        self.connectivities[ielem, :],
-                       self.node_coordinates[self.connectivities[ielem, :], :],
+                       self.pos_ini[self.connectivities[ielem, :], :],
                        self.frame_of_reference_delta[self.connectivities[ielem, :], :],
                        self.structural_twist[self.connectivities[ielem, :]],
                        self.beam_number[ielem],
@@ -138,7 +139,6 @@ class Beam(object):
                     elem.master[inode_local, :] = [ielem, inode_local - 1]
 
         self.generate_node_master_elem()
-        1
 
     def generate_node_master_elem(self):
         """
@@ -161,6 +161,7 @@ class Beam(object):
                     self.node_master_elem[inode_global, 1] = inode
 
     def generate_aux_information(self):
+
         self.num_nodes_matrix = np.zeros((self.num_elem,), dtype=ct.c_int, order='F')
         for elem in self.elements:
             self.num_nodes_matrix[elem.ielem] = elem.n_nodes
@@ -187,14 +188,6 @@ class Beam(object):
         for elem in self.elements:
             self.length_matrix[elem.ielem] = elem.length
 
-        # TODO precurv support
-        # self.precurv = np.zeros((self.num_elem, 3))
-        # self.precurv = self.precurv.flatten('F')
-        #
-        # self.local_vec = np.zeros((self.num_elem, 3), order='F', dtype=ct.c_double)
-        # for elem in self.elements:
-        #     self.local_vec[elem.ielem, :] = elem.frame_of_reference_delta[1, :]
-
         self.mass_matrix = self.mass_db.astype(ct.c_double, order='F')
         self.stiffness_matrix = self.stiffness_db.astype(ct.c_double, order='F')
         self.mass_indices = self.elem_mass.astype(ct.c_int, order='F') + 1
@@ -216,19 +209,24 @@ class Beam(object):
         self.psi_def = self.psi_ini.copy()
 
         # deformed structure matrices
-        self.node_coordinates = self.node_coordinates.astype(dtype=ct.c_double, order='F')
-        self.node_coordinates_defor = self.node_coordinates.copy(order='F')
+        self.pos_ini = self.pos_ini.astype(dtype=ct.c_double, order='F')
+        self.pos_def = self.pos_ini.copy(order='F')
 
     def generate_psi(self):
         # it will just generate the CRV for all the nodes of the element
         self.psi_ini = np.zeros((self.num_elem, self.num_node_elem, 3), dtype=ct.c_double, order='F')
         for elem in self.elements:
             for inode in range(elem.n_nodes):
-                self.psi_ini[elem.ielem, inode, :] = algebra.triad2crv(elem.tangent_vector[inode, :],
-                                                                       elem.normal_vector[inode, :],
-                                                                       elem.binormal_vector[inode, :])
+                self.psi_ini[elem.ielem, inode, :] = algebra.triad2crv(elem.tangent_vector_ini[inode, :],
+                                                                       elem.normal_vector_ini[inode, :],
+                                                                       elem.binormal_vector_ini[inode, :])
 
-    def plot(self, fig=None, ax=None, plot_triad=True):
+    def update(self):
+        for elem in self.elements:
+            # TODO psi update?
+            elem.update(self.pos_def[self.connectivities[elem.ielem, :], :])
+
+    def plot(self, fig=None, ax=None, plot_triad=True, defor=False, ini=True):
         import matplotlib.pyplot as plt
         from mpl_toolkits.mplot3d import Axes3D, proj3d
         if fig is None or ax is None:
@@ -240,12 +238,21 @@ class Beam(object):
             ax.set_zlabel('z (m)')
 
         plt.hold('on')
-        # nodes
-        nodes = ax.scatter(self.node_coordinates[:, 0],
-                           self.node_coordinates[:, 1],
-                           self.node_coordinates[:, 2])
-        for elem in self.elements:
-            elem.plot(fig, ax, plot_triad=plot_triad)
+        if ini:
+            for elem in self.elements:
+                elem.plot(fig, ax, plot_triad=plot_triad, defor=False)
+            # nodes
+            nodes = ax.scatter(self.pos_ini[:, 0],
+                               self.pos_ini[:, 1],
+                               self.pos_ini[:, 2])
+        if defor:
+            for elem in self.elements:
+                elem.plot(fig, ax, plot_triad=plot_triad, defor=True)
+            # nodes
+            nodes = ax.scatter(self.pos_def[:, 0],
+                               self.pos_def[:, 1],
+                               self.pos_def[:, 2])
+
         plt.hold('off')
 
 
