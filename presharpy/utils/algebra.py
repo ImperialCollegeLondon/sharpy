@@ -1,7 +1,7 @@
 import numpy as np
 
 
-def tangent_vector(coord):
+def tangent_vector(in_coord, ordering=None):
     """ Tangent vector calculation for 2+ noded elements.
 
     Calculates the tangent vector interpolating every dimension
@@ -16,7 +16,20 @@ def tangent_vector(coord):
         individually.
 
     """
-    n_nodes, ndim = coord.shape
+    n_nodes, ndim = in_coord.shape
+
+    if ordering == None:
+        if n_nodes == 2:
+            ordering = [0, n_nodes - 1]
+        elif n_nodes == 3:
+            ordering = [0, n_nodes - 1, n_nodes]
+        else:
+            raise NotImplementedError('Elements with more than 3 nodes are not supported')
+
+    coord = in_coord.copy()
+    for index in range(n_nodes):
+        order = ordering[index]
+        coord[index, :] = in_coord[order, :]
 
     polynomial_degree = n_nodes - 1
     # first, the polynomial fit.

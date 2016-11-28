@@ -146,34 +146,22 @@ class Beam(object):
         :return:
         """
         self.node_master_elem = np.zeros((self.num_node, 2), dtype=ct.c_int, order='F') - 1
+        # for ielem in range(self.num_elem):
+        #     for inode in range(self.num_node_elem):
+        #         inode_global = self.connectivities[ielem, inode]
+        #
+        #         if self.node_master_elem[inode_global, 0] == -1:
+        #             self.node_master_elem[inode_global, :] = self.elements[ielem].master[inode, :]
         for ielem in range(self.num_elem):
-            for inode in range(self.num_node_elem):
+            elem = self.elements[ielem]
+            for inode in range(elem.n_nodes):
                 inode_global = self.connectivities[ielem, inode]
-
                 if self.node_master_elem[inode_global, 0] == -1:
-                    self.node_master_elem[inode_global, :] = self.elements[ielem].master[inode, :]
-
-
-                # if self.elements[ielem].master[inode, 0] == -1:
-                #     self.node_master_elem[inode_global, 0] = ielem
-                #     self.node_master_elem[inode_global, 1] = inode
-                # found_previous = False
-                # for i_prev_elem in range(ielem):
-                #     for i_prev_node in range(self.elements[i_prev_elem].n_nodes):
-                #         if found_previous:
-                #             continue
-                #         i_prev_node_global = self.connectivities[i_prev_elem, i_prev_node]
-                #         if i_prev_node_global == inode_global:
-                #             self.node_master_elem[inode, :] = [i_prev_elem, i_prev_node]
-                #             found_previous = True
-                #
-                # if not found_previous:
-                #     self.node_master_elem[inode, :] = [ielem, inode]
-
-
+                    self.node_master_elem[inode_global, 0] = ielem
+                    self.node_master_elem[inode_global, 1] = inode
 
     def generate_aux_information(self):
-        self.num_nodes_matrix = np.zeros((self.num_elem,), dtype=int)
+        self.num_nodes_matrix = np.zeros((self.num_elem,), dtype=ct.c_int, order='F')
         for elem in self.elements:
             self.num_nodes_matrix[elem.ielem] = elem.n_nodes
 
@@ -188,6 +176,10 @@ class Beam(object):
         for elem in self.elements:
             ielem = elem.ielem
             self.master_nodes[ielem, :, :] = elem.master + 1
+
+        # ADC: test CAREFUL
+        for i in range(1,3):
+            self.master_nodes[:, i, :] = 0
 
         self.node_master_elem_fortran = self.node_master_elem.astype(dtype=ct.c_int, order='F') + 1
 

@@ -91,10 +91,12 @@ def cbeam3_solv_nlnstatic(beam, settings):
     n_stiff = ct.c_int(beam.n_stiff)
 
     xbopts = Xbopts()
-    xbopts.FollowerForce = ct.c_bool(False)
-    xbopts.FollowerForceRig = ct.c_bool(False)
+    xbopts.FollowerForce = ct.c_bool(settings['follower_force'])
+    xbopts.FollowerForceRig = ct.c_bool(settings['follower_force_rig'])
     xbopts.Solution = ct.c_int(112)
-    xbopts.NumGauss = ct.c_int(beam.num_node_elem - 1)
+    xbopts.NumGauss = settings['num_gauss']
+
+
 
     f_cbeam3_solv_nlnstatic(ct.byref(n_elem),
                             ct.byref(n_nodes),
@@ -120,7 +122,10 @@ def cbeam3_solv_nlnstatic(beam, settings):
                             beam.node_coordinates_defor.ctypes.data_as(ct.POINTER(ct.c_double)),
                             beam.psi_def.ctypes.data_as(ct.POINTER(ct.c_double)),
                             )
-
+    print(beam.node_coordinates)
+    print(beam.node_coordinates_defor)
+    print("Out of fortran now")
+    1
 #
 # f_cbeam3_solv_nlnstatic = BeamLib.wrap_cbeam3_solv_nlnstatic
 # f_cbeam3_solv_nlnstatic.restype = None

@@ -8,6 +8,8 @@ class Element(object):
     This class stores all the required data for the definition of
     a linear or quadratic beam element.
     """
+    ordering = [0, 2, 1]
+
     def __init__(self,
                  ielem,
                  n_nodes,
@@ -28,7 +30,8 @@ class Element(object):
         # coordinates of the nodes in a-frame (body-fixed frame)
         self.coordinates = coordinates
         # element length
-        self.length = np.linalg.norm(self.coordinates[0, :] - self.coordinates[n_nodes-1, :])
+        # TODO implement length based on integration
+        self.length = np.linalg.norm(self.coordinates[0, :] - self.coordinates[1, :])
         # frame of reference points
         self.frame_of_reference_delta = frame_of_reference_delta
         # structural twist
@@ -42,7 +45,8 @@ class Element(object):
         # now, calculate tangent vector (and coefficients of the polynomial
         # fit just in case)
         self.tangent_vector, self.polyfit_vec = algebra.tangent_vector(
-                                                    self.coordinates)
+                                                    self.coordinates,
+                                                    Element.ordering)
 
         # we need to define the FoR z direction for every beam element
         self.get_triad()
@@ -85,7 +89,7 @@ class Element(object):
                                                                         self.tangent_vector[inode, :],
                                                                         v_vector
                                                                         )
-                                                                )
+                                                               )
             self.binormal_vector[inode, :] = -algebra.unit_vector(np.cross(
                                                                         self.tangent_vector[inode, :],
                                                                         self.normal_vector[inode, :]
@@ -95,7 +99,7 @@ class Element(object):
         # we apply twist now
         for inode in range(self.n_nodes):
             rotation_mat = algebra.rotation_matrix_around_axis(self.tangent_vector[inode, :],
-                                                              self.structural_twist)
+                                                               self.structural_twist)
             self.normal_vector[inode, :] = np.dot(rotation_mat, self.normal_vector[inode, :])
             self.binormal_vector[inode, :] = np.dot(rotation_mat, self.binormal_vector[inode, :])
 
