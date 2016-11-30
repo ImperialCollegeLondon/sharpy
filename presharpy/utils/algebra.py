@@ -9,7 +9,7 @@ def tangent_vector(in_coord, ordering=None):
     differentiation is analytical.
 
     Args:
-        coord (np.ndarray): array of coordinates of the nodes. Dimensions = ``[n_nodes, ndim]``
+        in_coord (np.ndarray): array of coordinates of the nodes. Dimensions = ``[n_nodes, ndim]``
 
     Notes:
         Dimensions are treated independent from each other, interpolating polynomials are computed
@@ -18,7 +18,7 @@ def tangent_vector(in_coord, ordering=None):
     """
     n_nodes, ndim = in_coord.shape
 
-    if ordering == None:
+    if ordering is None:
         if n_nodes == 2:
             ordering = [0, n_nodes - 1]
         elif n_nodes == 3:
@@ -115,7 +115,7 @@ def triad2rot(xb, yb, zb):
     :param zb:
     :return: rotation matrix Rab
     """
-    rot = np.column_stack((xb, yb, zb))
+    rot = np.row_stack((xb, yb, zb))
     return rot
 
 
@@ -134,21 +134,104 @@ def angle_between_vector_and_plane(vector, plane_normal):
 
 
 def rot2crv(rot):
-    vector = np.array([rot[2, 1] - rot[1, 2],
-                       rot[0, 2] - rot[2, 0],
-                       rot[1, 0] - rot[0, 1]])
-    angle = np.arccos((np.trace(rot) - 1)*0.5)
-    vector = angle*unit_vector(vector)
+    if np.linalg.norm(rot) < 1e-6:
+        raise AttributeError('Element Vector V is not orthogonal to reference line (51105)')
+
+    quat = mat2quat(rot)
+    crv = quat2crv(quat)
+
+    if np.linalg.norm(crv) < 1.0e-15:
+        crv[0] = rot[1, 2]
+        crv[1] = rot[2, 0]
+        crv[2] = rot[0, 1]
+
+    crv = crv_bounds(crv)
+    return crv
+
+
+def mat2quat(mat):
+    matT = mat.T
+
+    s = np.zeros((4, 4))
+
+    s[0, 0] = 1.0 + np.trace(matT)
+    s[0, 1:] = matrix2skewvec(matT)
+
+    s[1, 0] = matT[2, 1] - matT[1, 2]
+    s[1, 1] = 1.0 + matT[0, 0] - matT[1, 1] - matT[2, 2]
+    s[1, 2] = matT[0, 1] + matT[1, 0]
+    s[1, 3] = matT[0, 2] + matT[2, 0]
+
+    s[2, 0] = matT[0, 2] - matT[2, 0]
+    s[2, 1] = matT[1, 0] + matT[0, 1]
+    s[2, 2] = 1.0 - matT[0, 0] + matT[1, 1] - matT[2, 2]
+    s[2, 3] = matT[1, 2] + matT[2, 1]
+
+    s[3, 0] = matT[1, 0] - matT[0, 1]
+    s[3, 1] = matT[0, 2] + matT[2, 0]
+    s[3, 2] = matT[1, 2] + matT[2, 1]
+    s[3, 3] = 1.0 - matT[0, 0] - matT[1, 1] + matT[2, 2]
+
+    smax = np.max(np.diag(s))
+    ismax = np.argmax(np.diag(s))
+
+    # compute quaternion angles
+    quat = np.zeros((4,))
+    quat[ismax] = 0.5*np.sqrt(smax)
+    for i in range(4):
+        if i == ismax:
+            continue
+        quat[i] = 0.25*s[ismax, i]/quat[ismax]
+
+    return quat
+
+
+def matrix2skewvec(matrix):
+    vector = np.array([matrix[2, 1] - matrix[1, 2],
+                       matrix[0, 2] - matrix[2, 0],
+                       matrix[1, 0] - matrix[0, 1]])
     return vector
+
+
+def quat2crv(quat):
+    crv_norm = 2.0*np.arccos(max(-1.0, min(quat[0], 1.0)))
+
+    # normal vector
+    if abs(crv_norm) < 1e-15:
+        psi = np.zeros((3,))
+    else:
+        psi = crv_norm*quat[1:4]/np.sin(crv_norm*0.5)
+
+    return psi
+
+
+def crv_bounds(crv_ini):
+    crv = crv_ini.copy()
+    # original norm
+    norm_ini = np.linalg.norm(crv_ini)
+
+    # force the norm to be in [-pi, pi]
+    norm = norm_ini - 2.0*np.pi*int(norm_ini/(2*np.pi))
+
+    if norm == 0.0:
+        crv *= 0.0
+    else:
+        if norm > np.pi:
+            norm -= 2.0*np.pi
+        elif norm < -np.pi:
+            norm += 2.0*np.pi
+        crv *= (norm/norm_ini)
+
+    return crv
 
 
 def triad2crv(xb, yb, zb):
     return rot2crv(triad2rot(xb, yb, zb))
 
+
 if __name__ == '__main__':
-    rot = np.eye(3)
-    print(rot2crv(rot))
-    rot = np.array([[0, 0, 1], [1, 0, 0], [0, 1, 0]])
-    crv = rot2crv(rot)
-    print(crv)
-    print(np.linalg.norm(crv)*180/np.pi)
+    t = np.array([0, 1, 0])
+    n = np.array([1, 0, 0])
+    b = np.array([0, 0, -1])
+
+    print(triad2crv(t, n, b))

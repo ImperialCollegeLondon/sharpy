@@ -193,6 +193,8 @@ class Beam(object):
         self.mass_indices = self.elem_mass.astype(ct.c_int, order='F') + 1
         self.stiffness_indices = self.elem_stiffness.astype(ct.c_int, order='F') + 1
 
+        self.frame_of_reference_delta = self.frame_of_reference_delta.astype(ct.c_double, order='F')
+
         # TODO RBMass support
         self.rbmass_matrix = np.zeros((self.num_elem,
                                        3,
@@ -206,20 +208,20 @@ class Beam(object):
 
         # Psi matrix
         self.generate_psi()
-        self.psi_def = self.psi_ini.copy()
+        self.psi_def = self.psi_ini.astype(dtype=ct.c_double, order='F')
 
         # deformed structure matrices
         self.pos_ini = self.pos_ini.astype(dtype=ct.c_double, order='F')
-        self.pos_def = self.pos_ini.copy(order='F')
+        self.pos_def = self.pos_ini.astype(dtype=ct.c_double, order='F')
 
     def generate_psi(self):
         # it will just generate the CRV for all the nodes of the element
-        self.psi_ini = np.zeros((self.num_elem, self.num_node_elem, 3), dtype=ct.c_double, order='F')
+        self.psi_ini = np.zeros((self.num_elem, 3, 3), dtype=ct.c_double, order='F')
         for elem in self.elements:
             for inode in range(elem.n_nodes):
                 self.psi_ini[elem.ielem, inode, :] = algebra.triad2crv(elem.tangent_vector_ini[inode, :],
-                                                                       elem.normal_vector_ini[inode, :],
-                                                                       elem.binormal_vector_ini[inode, :])
+                                                                       elem.binormal_vector_ini[inode, :],
+                                                                       elem.normal_vector_ini[inode, :])
 
     def update(self):
         for elem in self.elements:

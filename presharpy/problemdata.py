@@ -55,6 +55,8 @@ class ProblemData(object):
 
         self.initialise()
 
+        self.plot_configuration(defor=False, plot_grid=False)
+
     def initialise(self):
         fem_file_name = self.case_route + '/' + self.case_name + '.fem.h5'
         if not self.only_structural:
@@ -125,7 +127,7 @@ class ProblemData(object):
         config.read(file_name)
         return config
 
-    def plot_configuration(self, plot_beam=True, plot_grid=True, persp_correction=True):
+    def plot_configuration(self, plot_beam=True, plot_grid=True, persp_correction=True, defor=True):
         """Main wrapper for case plotting in 3D using matplotlib.
 
         Args:
@@ -134,6 +136,7 @@ class ProblemData(object):
             persp_correction (bool, optional): if ``True``, the perspective is disable to try to
                 simulate an orthogonal perspective.
                 (see http://stackoverflow.com/questions/23840756/how-to-disable-perspective-in-mplot3d)
+            defor (bool, optional): if ``True``, the deformed configuration is also plotted
 
         Returns:
             None
@@ -161,7 +164,7 @@ class ProblemData(object):
             ax.set_zlabel('z (m)')
 
             if plot_beam:
-                self.beam.plot(fig, ax, plot_triad=True, defor=True, ini=True)
+                self.beam.plot(fig, ax, plot_triad=True, defor=defor, ini=True)
             if plot_grid:
                 self.grid.plot(fig, ax)
 

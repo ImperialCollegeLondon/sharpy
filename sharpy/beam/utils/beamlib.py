@@ -49,7 +49,7 @@ class Xbopts(ct.Structure):
         self.ElemProj = ct.c_int(0)
         self.MaxIterations = ct.c_int(99)
         self.NumLoadSteps = ct.c_int(5)
-        self.NumGauss = ct.c_int(1)
+        self.NumGauss = ct.c_int(2)
         self.Solution = ct.c_int(111)
         self.DeltaCurved = ct.c_double(1.0e-5)
         self.MinDelta = ct.c_double(1.0e-8)
@@ -60,23 +60,27 @@ BeamPath += ext
 BeamLib = ct.cdll.LoadLibrary(BeamPath)
 f_cbeam3_solv_nlnstatic = BeamLib.cbeam3_solv_nlnstatic_python
 f_cbeam3_solv_nlnstatic.restype = None
-f_cbeam3_solv_nlnstatic.argtype = [ct.POINTER(ct.c_int),
-                                   ct.POINTER(ct.c_int),
-                                   ct.POINTER(ct.c_int),
-                                   ct.POINTER(ct.c_int),
-                                   ct.POINTER(ct.c_int),
-                                   ct.POINTER(ct.c_int),
-                                   ct.POINTER(ct.c_int),
-                                   ct.POINTER(ct.c_double),
-                                   ct.POINTER(ct.c_int),
-                                   ct.POINTER(ct.c_int),
-                                   ct.POINTER(ct.c_double),
-                                   ct.POINTER(ct.c_double),
-                                   ct.POINTER(ct.c_int),
-                                   ct.POINTER(ct.c_double),
-                                   ct.POINTER(Xbopts),
-                                   ct.POINTER(ct.c_double)
-                                   ]
+# f_cbeam3_solv_nlnstatic.argtype = [ct.POINTER(ct.c_int),
+#                                    ct.POINTER(ct.c_int),
+#                                    ct.POINTER(ct.c_int),
+#                                    ct.POINTER(ct.c_int),
+#                                    ct.POINTER(ct.c_int),
+#                                    ct.POINTER(ct.c_int),
+#                                    ct.POINTER(ct.c_int),
+#                                    ct.POINTER(ct.c_double),
+#                                    ct.POINTER(ct.c_int),
+#                                    ct.POINTER(ct.c_int),
+#                                    ct.POINTER(ct.c_double),
+#                                    ct.POINTER(ct.c_double),
+#                                    ct.POINTER(ct.c_int),
+#                                    ct.POINTER(ct.c_double),
+#                                    ct.POINTER(Xbopts),
+#                                    ct.POINTER(ct.c_double),
+#                                    ct.POINTER(ct.c_double),
+#                                    ct.POINTER(ct.c_double),
+#                                    ct.POINTER(ct.c_double),
+#                                    ct.POINTER(ct.c_double)
+#                                    ]
 
 
 def cbeam3_solv_nlnstatic(beam, settings):
@@ -110,6 +114,7 @@ def cbeam3_solv_nlnstatic(beam, settings):
                             beam.stiffness_matrix.ctypes.data_as(ct.POINTER(ct.c_double)),
                             beam.inv_stiffness_db.ctypes.data_as(ct.POINTER(ct.c_double)),
                             beam.stiffness_indices.ctypes.data_as(ct.POINTER(ct.c_int)),
+                            beam.frame_of_reference_delta.ctypes.data_as(ct.POINTER(ct.c_double)),
                             beam.rbmass_matrix.ctypes.data_as(ct.POINTER(ct.c_double)),
                             beam.node_master_elem_fortran.ctypes.data_as(ct.POINTER(ct.c_int)),
                             beam.vdof.ctypes.data_as(ct.POINTER(ct.c_int)),
@@ -121,3 +126,6 @@ def cbeam3_solv_nlnstatic(beam, settings):
                             beam.pos_def.ctypes.data_as(ct.POINTER(ct.c_double)),
                             beam.psi_def.ctypes.data_as(ct.POINTER(ct.c_double)),
                             )
+    print(beam.pos_def[-1, :])
+    print(beam.psi_def[-1, 2, :])
+

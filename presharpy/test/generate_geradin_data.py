@@ -39,7 +39,9 @@ def generate_fem_file(route, case_name, num_elem, num_node_elem=3):
 
     num_node = (num_node_elem - 1)*num_elem + 1
     # import pdb; pdb.set_trace()
-    x = np.linspace(0, length, num_node)  #np.zeros((num_node,))
+    # y = np.linspace(0, length, num_node)
+    # x = np.zeros((num_node,))
+    x = np.linspace(0, length, num_node)
     y = np.zeros((num_node,))
     z = np.zeros((num_node,))
 
@@ -48,6 +50,7 @@ def generate_fem_file(route, case_name, num_elem, num_node_elem=3):
     frame_of_reference_delta = np.zeros((num_node, 3))
     for inode in range(num_node):
         frame_of_reference_delta[inode, :] = [0, 1, 0]
+        # frame_of_reference_delta[inode, :] = [1, 0, 0]
 
     scale = 1
 
@@ -216,8 +219,8 @@ def generate_solver_file(route, case_name):
                         'flow': 'NonLinearStatic',
                         'plot': 'on'}
     config['NonLinearStatic'] = {'follower_force': 'off',
-                                 'follower_force_rig': 'off',
-                                 'print_info': 'off',
+                                 'follower_force_rig': 'on',
+                                 'print_info': 'on',
                                  'out_b_frame': 'off',
                                  'out_a_frame': 'on',
                                  'elem_proj': 0,
