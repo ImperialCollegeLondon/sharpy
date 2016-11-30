@@ -26,23 +26,7 @@ def tangent_vector(in_coord, ordering=None):
         else:
             raise NotImplementedError('Elements with more than 3 nodes are not supported')
 
-    coord = in_coord.copy()
-    for index in range(n_nodes):
-        order = ordering[index]
-        coord[index, :] = in_coord[order, :]
-
-    polynomial_degree = n_nodes - 1
-    # first, the polynomial fit.
-    # we are going to differentiate wrt the indices ([0, 1, 2] for a 3-node)
-    polyfit_vec = []  # we are going to store here the coefficients of the polyfit
-    for idim in range(ndim):
-        polyfit_vec.append(np.polyfit(range(n_nodes), coord[:, idim],
-                                      polynomial_degree))
-
-    # differentiation
-    polyfit_der_vec = []
-    for idim in range(ndim):
-        polyfit_der_vec.append(np.poly1d(np.polyder(polyfit_vec[idim])))
+    polyfit_vec, polyfit_der_vec, coord = get_polyfit(in_coord, ordering)
 
     # tangent vector calculation
     # \vec{t} = \frac{fx'i + fy'j + fz'k}/mod(...)
@@ -76,6 +60,28 @@ def tangent_vector(in_coord, ordering=None):
 
     return tangent, polyfit_vec
 
+
+def get_polyfit(in_coord, ordering):
+    coord = in_coord.copy()
+    n_nodes, ndim = coord.shape
+    for index in range(n_nodes):
+        order = ordering[index]
+        coord[index, :] = in_coord[order, :]
+
+    polynomial_degree = n_nodes - 1
+    # first, the polynomial fit.
+    # we are going to differentiate wrt the indices ([0, 1, 2] for a 3-node)
+    polyfit_vec = []  # we are going to store here the coefficients of the polyfit
+    for idim in range(ndim):
+        polyfit_vec.append(np.polyfit(range(n_nodes), coord[:, idim],
+                                      polynomial_degree))
+
+    # differentiation
+    polyfit_der_vec = []
+    for idim in range(ndim):
+        polyfit_der_vec.append(np.poly1d(np.polyder(polyfit_vec[idim])))
+
+    return polyfit_vec, polyfit_der_vec, coord
 
 def unit_vector(vector):
     if np.linalg.norm(vector) < 1e-6:
@@ -229,9 +235,66 @@ def triad2crv(xb, yb, zb):
     return rot2crv(triad2rot(xb, yb, zb))
 
 
+def crv2triad(psi):
+    norm_psi = np.linalg.norm(psi)
+
+    if norm_psi < 1e-15:
+        skew_psi = rot_skew(psi)
+        rot_matrix = np.eye(3) + skew_psi + 0.5*np.dot(skew_psi, skew_psi)
+    else:
+        normal = psi/norm_psi
+        skew_normal = rot_skew(normal)
+
+        rot_matrix = np.eye(3)
+        rot_matrix += np.sin(norm_psi)*skew_normal
+        rot_matrix += (1.0 - np.cos(norm_psi))*np.dot(skew_normal, skew_normal)
+
+    return rot_matrix[:, 0], rot_matrix[:, 1], rot_matrix[:, 2]
+
+
+def triad2crv_vec(v1, v2, v3):
+    n_nodes, _ = v1.shape
+    crv_vec = np.zeros((n_nodes, 3))
+    for inode in range(n_nodes):
+        crv_vec[inode, :] = triad2crv(v1[inode, :], v2[inode, :], v3[inode, :])
+
+    return crv_vec
+
+
+def crv2triad_vec(crv_vec):
+    n_nodes, _ = crv_vec.shape
+    v1 = np.zeros((n_nodes, 3))
+    v2 = np.zeros((n_nodes, 3))
+    v3 = np.zeros((n_nodes, 3))
+    for inode in range(n_nodes):
+        v1[inode, :], v2[inode, :], v3[inode, :] = crv2triad(crv_vec[inode, :])
+
+    return v1, v2, v3
+
+
+def rot_skew(vec):
+    matrix = np.zeros((3, 3))
+    matrix[0, 1] = -vec[2]
+    matrix[0, 2] = vec[1]
+    matrix[1, 0] = vec[2]
+    matrix[1, 2] = -vec[0]
+    matrix[2, 0] = -vec[1]
+    matrix[2, 1] = vec[0]
+    return matrix
+
+
 if __name__ == '__main__':
     t = np.array([0, 1, 0])
     n = np.array([1, 0, 0])
     b = np.array([0, 0, -1])
 
-    print(triad2crv(t, n, b))
+    psi = triad2crv(t, n, b)
+
+    tt, nn, bb = crv2triad(psi)
+
+    print(t)
+    print(tt)
+    print(n)
+    print(nn)
+    print(b)
+    print(bb)

@@ -40,33 +40,25 @@ class Element(object):
         self.stiff_index = stiff_index
         self.mass_index = mass_index
 
-        self.update(self.coordinates_def, ini=True)
+        self.update(self.coordinates_def)
 
-
-    def update(self, coordinates_def, ini=False):
+    def update(self, coordinates_def, psi_def=None):
         self.coordinates_def = coordinates_def.copy()
 
-        # now, calculate tangent vector (and coefficients of the polynomial
-        # fit just in case)
-        self.tangent_vector_def, self.polyfit_vec_def = algebra.tangent_vector(
-            self.coordinates_def,
-            Element.ordering)
-
-        # we need to define the FoR z direction for every beam element
-        self.get_triad()
+        if psi_def is not None:
+            # element orientation
+            self.psi_def = psi_def.copy()
 
         # element length
         self.calculate_length()
 
-        if ini:
+        if psi_def is None:  # ini conditions, initial crv has to be calculated
+            # we need to define the FoR z direction for every beam element
+            v1, v2, v3 = self.get_triad()
+            self.psi_ini = algebra.triad2crv_vec(v1, v2, v3)
+
             # copy all the info to _ini fields
             self.coordinates_ini = self.coordinates_def.copy()
-
-            self.tangent_vector_ini = self.tangent_vector_def.copy()
-            self.normal_vector_ini = self.normal_vector_def.copy()
-            self.binormal_vector_ini = self.binormal_vector_def.copy()
-
-            self.polyfit_vec_ini = copy.deepcopy(self.polyfit_vec_def)
 
     def calculate_length(self):
         # TODO implement length based on integration
@@ -89,9 +81,10 @@ class Element(object):
             t = t_vec[i]
             for idim in range(3):
                 if defor:
-                    polyf = np.poly1d(self.polyfit_vec_def[idim])
+                    polyfit, _, _ = algebra.get_polyfit(self.coordinates_def, self.ordering)
                 else:
-                    polyf = np.poly1d(self.polyfit_vec_ini[idim])
+                    polyfit, _, _ = algebra.get_polyfit(self.coordinates_ini, self.ordering)
+                polyf = np.poly1d(polyfit[idim])
                 curve[i, idim] = (polyf(t))
         return curve
 
@@ -101,31 +94,37 @@ class Element(object):
         a beam element. These vectors are calculated using `frame_of_reference_delta`
         :return:
         """
-
-        self.normal_vector_def = np.zeros_like(self.tangent_vector_def)
-        self.binormal_vector_def = np.zeros_like(self.tangent_vector_def)
+        # now, calculate tangent vector (and coefficients of the polynomial
+        # fit just in case)
+        tangent, polyfit = algebra.tangent_vector(
+            self.coordinates_def,
+            Element.ordering)
+        normal = np.zeros_like(tangent)
+        binormal = np.zeros_like(tangent)
 
         # v_vector is the vector with origin the FoR node and delta
         # equals frame_of_reference_delta
         for inode in range(self.n_nodes):
             v_vector = self.frame_of_reference_delta[inode, :]
-            self.normal_vector_def[inode, :] = algebra.unit_vector(np.cross(
-                                                                        self.tangent_vector_def[inode, :],
-                                                                        v_vector
-                                                                        )
-                                                               )
-            self.binormal_vector_def[inode, :] = -algebra.unit_vector(np.cross(
-                                                                        self.tangent_vector_def[inode, :],
-                                                                        self.normal_vector_def[inode, :]
-                                                                            )
-                                                                  )
+            normal[inode, :] = algebra.unit_vector(np.cross(
+                                                        tangent[inode, :],
+                                                        v_vector
+                                                        )
+                                                   )
+            binormal[inode, :] = -algebra.unit_vector(np.cross(
+                                                        tangent[inode, :],
+                                                        normal[inode, :]
+                                                                )
+                                                      )
 
         # we apply twist now
         for inode in range(self.n_nodes):
-            rotation_mat = algebra.rotation_matrix_around_axis(self.tangent_vector_def[inode, :],
+            rotation_mat = algebra.rotation_matrix_around_axis(tangent[inode, :],
                                                                self.structural_twist)
-            self.normal_vector_def[inode, :] = np.dot(rotation_mat, self.normal_vector_def[inode, :])
-            self.binormal_vector_def[inode, :] = np.dot(rotation_mat, self.binormal_vector_def[inode, :])
+            normal[inode, :] = np.dot(rotation_mat, normal[inode, :])
+            binormal[inode, :] = np.dot(rotation_mat, binormal[inode, :])
+
+        return tangent, binormal, normal
 
     def plot(self, fig=None, ax=None, plot_triad=False, n_elem_plot=10, defor=False):
         import matplotlib.pyplot as plt
@@ -151,31 +150,27 @@ class Element(object):
             length = 0.06
             if not defor:
                 coords = self.coordinates_ini
-                tangent_vec = self.tangent_vector_ini
-                normal_vec = self.normal_vector_ini
-                binormal_vec = self.binormal_vector_ini
+                v1, v2, v3 = algebra.crv2triad_vec(self.psi_ini)
             else:
                 coords = self.coordinates_def
-                tangent_vec = self.tangent_vector_def
-                normal_vec = self.normal_vector_def
-                binormal_vec = self.binormal_vector_def
+                v1, v2, v3 = algebra.crv2triad_vec(self.psi_def)
 
             ax.quiver(coords[:, 0], coords[:, 1], coords[:, 2],
-                      tangent_vec[:, 0]*scale_val,
-                      tangent_vec[:, 1]*scale_val,
-                      tangent_vec[:, 2]*scale_val,
+                      v1[:, 0]*scale_val,
+                      v1[:, 1]*scale_val,
+                      v1[:, 2]*scale_val,
                       length=length,
                       pivot='tail', colors=[1, 0, 0])
             ax.quiver(coords[:, 0], coords[:, 1], coords[:, 2],
-                      binormal_vec[:, 0]*scale_val,
-                      binormal_vec[:, 1]*scale_val,
-                      binormal_vec[:, 2]*scale_val,
+                      v2[:, 0]*scale_val,
+                      v2[:, 1]*scale_val,
+                      v2[:, 2]*scale_val,
                       length=length,
                       pivot='tail', colors=[0, 1, 0])
             ax.quiver(coords[:, 0], coords[:, 1], coords[:, 2],
-                      normal_vec[:, 0]*scale_val,
-                      normal_vec[:, 1]*scale_val,
-                      normal_vec[:, 2]*scale_val,
+                      v3[:, 0]*scale_val,
+                      v3[:, 1]*scale_val,
+                      v3[:, 2]*scale_val,
                       length=length,
                       pivot='tail', colors=[0, 0, 1])
         plt.hold('off')

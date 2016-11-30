@@ -207,7 +207,7 @@ class Beam(object):
         self.app_forces_fortran = self.app_forces.astype(dtype=ct.c_double, order='F')
 
         # Psi matrix
-        self.generate_psi()
+        # self.generate_psi()
         self.psi_def = self.psi_ini.astype(dtype=ct.c_double, order='F')
 
         # deformed structure matrices
@@ -215,18 +215,15 @@ class Beam(object):
         self.pos_def = self.pos_ini.astype(dtype=ct.c_double, order='F')
 
     def generate_psi(self):
-        # it will just generate the CRV for all the nodes of the element
+        #     # it will just generate the CRV for all the nodes of the element
         self.psi_ini = np.zeros((self.num_elem, 3, 3), dtype=ct.c_double, order='F')
         for elem in self.elements:
-            for inode in range(elem.n_nodes):
-                self.psi_ini[elem.ielem, inode, :] = algebra.triad2crv(elem.tangent_vector_ini[inode, :],
-                                                                       elem.binormal_vector_ini[inode, :],
-                                                                       elem.normal_vector_ini[inode, :])
+            self.psi_ini[elem.ielem, :, :] = elem.psi_ini
 
     def update(self):
         for elem in self.elements:
-            # TODO psi update?
-            elem.update(self.pos_def[self.connectivities[elem.ielem, :], :])
+            elem.update(self.pos_def[self.connectivities[elem.ielem, :], :],
+                        self.psi_def[elem.ielem, :, :])
 
     def plot(self, fig=None, ax=None, plot_triad=True, defor=False, ini=True):
         import matplotlib.pyplot as plt

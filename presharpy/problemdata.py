@@ -55,7 +55,7 @@ class ProblemData(object):
 
         self.initialise()
 
-        self.plot_configuration(defor=False, plot_grid=False)
+        # self.plot_configuration(defor=False, plot_grid=False)
 
     def initialise(self):
         fem_file_name = self.case_route + '/' + self.case_name + '.fem.h5'
