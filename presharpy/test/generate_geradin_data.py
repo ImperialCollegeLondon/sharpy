@@ -39,18 +39,17 @@ def generate_fem_file(route, case_name, num_elem, num_node_elem=3):
 
     num_node = (num_node_elem - 1)*num_elem + 1
     # import pdb; pdb.set_trace()
-    # y = np.linspace(0, length, num_node)
-    # x = np.zeros((num_node,))
-    x = np.linspace(0, length, num_node)
-    y = np.zeros((num_node,))
+    angle = 0*np.pi/180.0
+    x = (np.linspace(0, length, num_node))*np.cos(angle)
+    y = (np.linspace(0, length, num_node))*np.sin(angle)
     z = np.zeros((num_node,))
 
     structural_twist = np.zeros_like(x)
 
     frame_of_reference_delta = np.zeros((num_node, 3))
     for inode in range(num_node):
-        frame_of_reference_delta[inode, :] = [0, 1, 0]
-        # frame_of_reference_delta[inode, :] = [1, 0, 0]
+        # frame_of_reference_delta[inode, :] = [0, 1, 0]
+        frame_of_reference_delta[inode, :] = [-np.sin(angle), np.cos(angle), 0]
 
     scale = 1
 
@@ -100,11 +99,10 @@ def generate_fem_file(route, case_name, num_elem, num_node_elem=3):
 
     # applied forces
     app_forces = np.zeros((num_node, 6))
-    app_forces[-1, :] = [0, 0, -600e3, 0, 0, 0]
-    app_forces_type = np.zeros((num_node, 1), dtype=int)  # 0 for follower, 1 for dead
+    app_forces[-1, :] = [0, 0.0, 3000e3, 0, 0, 0]
+    app_forces_type = np.zeros((num_node, 1), dtype=int)  # todo: not yet implemented
+                                                          #  0 for follower, 1 for dead
 
-
-    # import pdb; pdb.set_trace()
     with h5.File(route + '/' + case_name + '.fem.h5', 'a') as h5file:
         coordinates = h5file.create_dataset('coordinates', data = np.column_stack((x, y, z)))
         conectivities = h5file.create_dataset('connectivities', data = conn)
@@ -218,17 +216,17 @@ def generate_solver_file(route, case_name):
                         'route': './presharpy/test/',
                         'flow': 'NonLinearStatic',
                         'plot': 'on'}
-    config['NonLinearStatic'] = {'follower_force': 'off',
+    config['NonLinearStatic'] = {'follower_force': 'on',
                                  'follower_force_rig': 'on',
-                                 'print_info': 'on',
+                                 'print_info': 'off',
                                  'out_b_frame': 'off',
                                  'out_a_frame': 'on',
-                                 'elem_proj': 0,
+                                 'elem_proj': 2,
                                  'max_iterations': 99,
-                                 'num_load_steps': 5,
+                                 'num_load_steps': 10,
                                  'num_gauss': 2,
                                  'delta_curved': 1e-5,
-                                 'min_delta': 1e-8,
+                                 'min_delta': 1e-5,
                                  'newmark_damp': 0.0001}
 
     with open(file_name, 'w') as configfile:
@@ -248,20 +246,5 @@ def generate_flightcon_file(route, case_name):
         config.write(configfile)
 
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 if __name__ == '__main__':
-    generate_files('./', 'geradin_cardona', 10, 3)
+    generate_files('./', 'geradin_cardona', 50, 3)
