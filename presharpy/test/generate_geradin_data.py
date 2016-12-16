@@ -99,7 +99,7 @@ def generate_fem_file(route, case_name, num_elem, num_node_elem=3):
 
     # applied forces
     app_forces = np.zeros((num_node, 6))
-    app_forces[-1, :] = [0, 0.0, 3000e3, 0, 0, 0]
+    app_forces[-1, :] = [0, 0, 3000e3, 0, 0, 0]
     app_forces_type = np.zeros((num_node, 1), dtype=int)  # todo: not yet implemented
                                                           #  0 for follower, 1 for dead
 
