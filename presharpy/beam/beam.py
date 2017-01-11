@@ -37,14 +37,11 @@ class Beam(object):
         # applied forces
         try:
             self.app_forces = fem_dictionary['app_forces']
+            self.node_app_forces = fem_dictionary['node_app_forces']
         except KeyError:
-            print('*** No applied forces indicated')
+            print('*** No applied forces indicated (or in a wrong format)')
             self.app_forces = None
-
-        try:
-            self.app_forces_type = fem_dictionary['app_forces_type']
-        except KeyError:
-            self.app_forces_type = np.zeros((self.num_node, ), dtype=int)
+            self.node_app_forces = None
 
         # now, we are going to import the mass and stiffness
         # databases
@@ -204,10 +201,12 @@ class Beam(object):
         # Vdof and Fdof vector calculation
         self.generate_dof_arrays('F')
 
+        self.n_app_forces, _ = self.app_forces.shape
+        self.n_app_forces = ct.c_int(self.n_app_forces)
         self.app_forces_fortran = self.app_forces.astype(dtype=ct.c_double, order='F')
+        self.node_app_forces_fortran = self.node_app_forces.astype(dtype=ct.c_int, order='F')
 
         # Psi matrix
-        # self.generate_psi()
         self.psi_def = self.psi_ini.astype(dtype=ct.c_double, order='F')
 
         # deformed structure matrices
@@ -243,14 +242,14 @@ class Beam(object):
             # nodes
             nodes = ax.scatter(self.pos_ini[:, 0],
                                self.pos_ini[:, 1],
-                               self.pos_ini[:, 2])
+                               self.pos_ini[:, 2], color='k')
         if defor:
             for elem in self.elements:
                 elem.plot(fig, ax, plot_triad=plot_triad, defor=True)
             # nodes
             nodes = ax.scatter(self.pos_def[:, 0],
                                self.pos_def[:, 1],
-                               self.pos_def[:, 2])
+                               self.pos_def[:, 2], color='b')
 
         plt.hold('off')
 

@@ -236,6 +236,11 @@ def triad2crv(xb, yb, zb):
 
 
 def crv2triad(psi):
+    rot_matrix = crv2rot(psi)
+    return rot_matrix[:, 0], rot_matrix[:, 1], rot_matrix[:, 2]
+
+
+def crv2rot(psi):
     norm_psi = np.linalg.norm(psi)
 
     if norm_psi < 1e-15:
@@ -249,8 +254,7 @@ def crv2triad(psi):
         rot_matrix += np.sin(norm_psi)*skew_normal
         rot_matrix += (1.0 - np.cos(norm_psi))*np.dot(skew_normal, skew_normal)
 
-    return rot_matrix[:, 0], rot_matrix[:, 1], rot_matrix[:, 2]
-
+    return rot_matrix
 
 def triad2crv_vec(v1, v2, v3):
     n_nodes, _ = v1.shape

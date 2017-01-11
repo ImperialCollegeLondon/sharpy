@@ -45,8 +45,6 @@ class NonLinearStatic(BaseSolver):
         return self.data
 
     def convert_settings(self):
-        self.settings['follower_force'] = ct.c_bool(str2bool(self.settings['follower_force']))
-        self.settings['follower_force_rig'] = ct.c_bool(str2bool(self.settings['follower_force_rig']))
         self.settings['print_info'] = ct.c_bool(str2bool(self.settings['print_info']))
         self.settings['out_b_frame'] = ct.c_bool(str2bool(self.settings['out_b_frame']))
         self.settings['out_a_frame'] = ct.c_bool(str2bool(self.settings['out_a_frame']))

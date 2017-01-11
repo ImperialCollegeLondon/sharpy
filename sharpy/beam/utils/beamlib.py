@@ -82,6 +82,10 @@ f_cbeam3_solv_nlnstatic.restype = None
 #                                    ct.POINTER(ct.c_double)
 #                                    ]
 
+# ctypes pointer types
+doubleP = ct.POINTER(ct.c_double)
+intP = ct.POINTER(ct.c_int)
+charP = ct.POINTER(ct.c_char_p)
 
 def cbeam3_solv_nlnstatic(beam, settings):
     """@brief Python wrapper for f_cbeam3_solv_nlnstatic
@@ -96,36 +100,64 @@ def cbeam3_solv_nlnstatic(beam, settings):
 
     xbopts = Xbopts()
     xbopts.PrintInfo = ct.c_bool(settings['print_info'])
-    xbopts.FollowerForce = ct.c_bool(settings['follower_force'])
-    xbopts.FollowerForceRig = ct.c_bool(settings['follower_force_rig'])
     xbopts.Solution = ct.c_int(112)
+    xbopts.OutInaframe = ct.c_bool(settings['out_a_frame'])
+    xbopts.OutInBframe = ct.c_bool(settings['out_b_frame'])
+    xbopts.ElemProj = settings['elem_proj']
+    xbopts.MaxIterations = settings['max_iterations']
+    xbopts.NumLoadSteps = settings['num_load_steps']
     xbopts.NumGauss = settings['num_gauss']
+    xbopts.DeltaCurved = settings['delta_curved']
+    xbopts.MinDelta = settings['min_delta']
+    xbopts.NewmarkDamp = settings['newmark_damp']
+
+    # applied forces as 0=G, 1=a, 2=b
+    # here we only need to set the flags at True, all the forces are follower
+    xbopts.FollowerForce = ct.c_bool(True)
+    xbopts.FollowerForceRig = ct.c_bool(True)
 
     f_cbeam3_solv_nlnstatic(ct.byref(n_elem),
                             ct.byref(n_nodes),
-                            beam.num_nodes_matrix.ctypes.data_as(ct.POINTER(ct.c_int)),
-                            beam.num_mem_matrix.ctypes.data_as(ct.POINTER(ct.c_int)),
-                            beam.connectivities_fortran.ctypes.data_as(ct.POINTER(ct.c_int)),
-                            beam.master_nodes.ctypes.data_as(ct.POINTER(ct.c_int)),
+                            beam.num_nodes_matrix.ctypes.data_as(intP),
+                            beam.num_mem_matrix.ctypes.data_as(intP),
+                            beam.connectivities_fortran.ctypes.data_as(intP),
+                            beam.master_nodes.ctypes.data_as(intP),
                             ct.byref(n_mass),
-                            beam.mass_matrix.ctypes.data_as(ct.POINTER(ct.c_double)),
-                            beam.mass_indices.ctypes.data_as(ct.POINTER(ct.c_int)),
+                            beam.mass_matrix.ctypes.data_as(doubleP),
+                            beam.mass_indices.ctypes.data_as(intP),
                             ct.byref(n_stiff),
-                            beam.stiffness_matrix.ctypes.data_as(ct.POINTER(ct.c_double)),
-                            beam.inv_stiffness_db.ctypes.data_as(ct.POINTER(ct.c_double)),
-                            beam.stiffness_indices.ctypes.data_as(ct.POINTER(ct.c_int)),
-                            beam.frame_of_reference_delta.ctypes.data_as(ct.POINTER(ct.c_double)),
-                            beam.rbmass_matrix.ctypes.data_as(ct.POINTER(ct.c_double)),
-                            beam.node_master_elem_fortran.ctypes.data_as(ct.POINTER(ct.c_int)),
-                            beam.vdof.ctypes.data_as(ct.POINTER(ct.c_int)),
-                            beam.fdof.ctypes.data_as(ct.POINTER(ct.c_int)),
+                            beam.stiffness_matrix.ctypes.data_as(doubleP),
+                            beam.inv_stiffness_db.ctypes.data_as(doubleP),
+                            beam.stiffness_indices.ctypes.data_as(intP),
+                            beam.frame_of_reference_delta.ctypes.data_as(doubleP),
+                            beam.rbmass_matrix.ctypes.data_as(doubleP),
+                            beam.node_master_elem_fortran.ctypes.data_as(intP),
+                            beam.vdof.ctypes.data_as(intP),
+                            beam.fdof.ctypes.data_as(intP),
                             ct.byref(xbopts),
-                            beam.app_forces_fortran.ctypes.data_as(ct.POINTER(ct.c_double)),
-                            beam.pos_ini.ctypes.data_as(ct.POINTER(ct.c_double)),
-                            beam.psi_ini.ctypes.data_as(ct.POINTER(ct.c_double)),
-                            beam.pos_def.ctypes.data_as(ct.POINTER(ct.c_double)),
-                            beam.psi_def.ctypes.data_as(ct.POINTER(ct.c_double)),
+                            beam.pos_ini.ctypes.data_as(doubleP),
+                            beam.psi_ini.ctypes.data_as(doubleP),
+                            beam.pos_def.ctypes.data_as(doubleP),
+                            beam.psi_def.ctypes.data_as(doubleP),
+                            ct.byref(beam.n_app_forces),
+                            beam.app_forces_fortran.ctypes.data_as(doubleP),
+                            beam.node_app_forces_fortran.ctypes.data_as(intP)
                             )
+    angle = 0*np.pi/180
+    import presharpy.utils.algebra as algebra
+    rot = np.zeros((3, 3))
+    rot[0, :] = [np.cos(angle), -np.sin(angle), 0.0]
+    rot[1, :] = [np.sin(angle), np.cos(angle), 0.0]
+    rot[2, :] = [0, 0, 1.0]
+
+    psi = beam.psi_def[-1, 2, :]
+    total = algebra.crv2rot(psi)
+
+    def_rot = np.dot(rot.T, total)
+    psi_proj = algebra.rot2crv(def_rot)
+    print(psi_proj)
+
     print(beam.pos_def[-1, :])
+    # print(np.dot(rot.T, beam.psi_def[-1, 2, :]))
     print(beam.psi_def[-1, 2, :])
 

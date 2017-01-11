@@ -97,11 +97,11 @@ def generate_fem_file(route, case_name, num_elem, num_node_elem=3):
     # beam number
     beam_number = np.zeros((num_elem, 1), dtype=int)
 
-    # new app forces scheme (only follower)
-    n_app_forces = 1
-    node_app_forces = np.array([num_node - 1])
-    app_forces = np.zeros((n_app_forces, 6))
-    app_forces[0, :] = [0, 0, 0, 0, 0, -11744.5275328e3]
+    # applied forces
+    app_forces = np.zeros((num_node, 6))
+    app_forces[-1, :] = [0, 0.0, 3000e3, 0, 0, 0]
+    app_forces_type = np.zeros((num_node, 1), dtype=int)  # todo: not yet implemented
+                                                          #  0 for follower, 1 for dead
 
     with h5.File(route + '/' + case_name + '.fem.h5', 'a') as h5file:
         coordinates = h5file.create_dataset('coordinates', data = np.column_stack((x, y, z)))
@@ -130,9 +130,8 @@ def generate_fem_file(route, case_name, num_elem, num_node_elem=3):
             'beam_number', data=beam_number)
         app_forces_handle = h5file.create_dataset(
             'app_forces', data=app_forces)
-        node_app_forces_handle = h5file.create_dataset(
-            'node_app_forces', data=node_app_forces)
-
+        app_forces_type_handle = h5file.create_dataset(
+            'app_forces_type', data=app_forces_type)
     return num_node, coordinates
 
 
@@ -142,7 +141,7 @@ def generate_aero_file(route, case_name, num_elem, num_node, coordinates, n_vert
     # airfoil distribution
     airfoil_distribution = []
     for i in range(num_node):
-        if i < n_vertical_node:
+        if (i < n_vertical_node):
             airfoil_distribution.append(0)
         else:
             airfoil_distribution.append(0)
@@ -162,7 +161,7 @@ def generate_aero_file(route, case_name, num_elem, num_node, coordinates, n_vert
     # import pdb; pdb.set_trace()
     with h5.File(route + '/' + case_name + '.aero.h5', 'a') as h5file:
         airfoils_group = h5file.create_group('airfoils')
-        # add one airfoil
+        #add one airfoil
         naca_airfoil = airfoils_group.create_dataset('0',
                                     data = np.column_stack((naca_x, naca_y)))
         naca_airfoil.attrs['airfoil'] = naca_description
@@ -217,8 +216,10 @@ def generate_solver_file(route, case_name):
                         'route': './presharpy/test/',
                         'flow': 'NonLinearStatic',
                         'plot': 'on'}
-    config['NonLinearStatic'] = {'print_info': 'on',
-                                 'out_b_frame': 'on',
+    config['NonLinearStatic'] = {'follower_force': 'on',
+                                 'follower_force_rig': 'on',
+                                 'print_info': 'off',
+                                 'out_b_frame': 'off',
                                  'out_a_frame': 'on',
                                  'elem_proj': 2,
                                  'max_iterations': 99,
@@ -226,7 +227,7 @@ def generate_solver_file(route, case_name):
                                  'num_gauss': 2,
                                  'delta_curved': 1e-5,
                                  'min_delta': 1e-5,
-                                 'newmark_damp': 0.000}
+                                 'newmark_damp': 0.0001}
 
     with open(file_name, 'w') as configfile:
         config.write(configfile)
