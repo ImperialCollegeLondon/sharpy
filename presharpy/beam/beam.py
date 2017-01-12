@@ -43,6 +43,17 @@ class Beam(object):
             self.app_forces = None
             self.node_app_forces = None
 
+        # lumped masses
+        try:
+            self.lumped_mass = fem_dictionary['lumped_mass']
+        except KeyError:
+            self.lumped_mass = None
+        else:
+            self.lumped_mass_nodes = fem_dictionary['lumped_mass_nodes']
+            self.lumped_mass_inertia = fem_dictionary['lumped_mass_inertia']
+            self.lumped_mass_position = fem_dictionary['lumped_mass_position']
+            self.n_lumped_mass, _ = self.lumped_mass_position.shape
+
         # now, we are going to import the mass and stiffness
         # databases
         self.mass_db = fem_dictionary['mass_db']
@@ -78,6 +89,10 @@ class Beam(object):
         # master-slave structure
         self.generate_master_structure()
 
+        # lumped masses to element mass
+        if self.lumped_mass is not None:
+            self.lump_masses()
+
         # psi calculation
         self.generate_psi()
 
@@ -105,6 +120,31 @@ class Beam(object):
         if indexing == 'F':
             self.vdof += 1
             self.fdof += 1
+
+    def lump_masses(self):
+        for i_lumped in range(self.n_lumped_mass):
+            r = self.lumped_mass_position[i_lumped, :]
+            m = self.lumped_mass[i_lumped]
+            j = self.lumped_mass_inertia[i_lumped, :, :]
+
+            i_lumped_node = self.lumped_mass_nodes[i_lumped]
+            i_lumped_master_elem, i_lumped_master_node_local = self.node_master_elem[i_lumped_node]
+
+            inertia_tensor = np.zeros((6, 6))
+            r_skew = algebra.rot_skew(r)
+            inertia_tensor[0:3, 0:3] = m*np.eye(3)
+            inertia_tensor[0:3, 3:6] = m*np.transpose(r_skew)
+            inertia_tensor[3:6, 0:3] = m*r_skew
+            inertia_tensor[3:6, 3:6] = j + m*(np.dot(np.transpose(r_skew), r_skew))
+
+            if self.elements[i_lumped_master_elem].RBMass is None:
+                # allocate memory
+                self.elements[i_lumped_master_elem].RBMass = np.zeros((
+                    self.elements[i_lumped_master_elem].max_nodes_elem, 6, 6))
+
+            self.elements[i_lumped_master_elem].RBMass[i_lumped_master_node_local, :, :] += (
+                inertia_tensor)
+
 
     def generate_master_structure(self):
         for elem in self.elements:
@@ -192,12 +232,6 @@ class Beam(object):
 
         self.frame_of_reference_delta = self.frame_of_reference_delta.astype(ct.c_double, order='F')
 
-        # TODO RBMass support
-        self.rbmass_matrix = np.zeros((self.num_elem,
-                                       3,
-                                       6,
-                                       6), dtype=ct.c_double, order='F')
-
         # Vdof and Fdof vector calculation
         self.generate_dof_arrays('F')
 
@@ -212,6 +246,42 @@ class Beam(object):
         # deformed structure matrices
         self.pos_ini = self.pos_ini.astype(dtype=ct.c_double, order='F')
         self.pos_def = self.pos_ini.astype(dtype=ct.c_double, order='F')
+
+        # lumped masses to new organisation
+        # self.n_lumped_mass_fortran = 0  # will need to convert that to c_int
+        #                                 # !!! not the same value as n_lumped_mass
+        #                                 # this one counts the number of nodes with applied RBMass
+        # lumped_mass_elem = []
+        # lumped_mass_local_node = []
+        # for elem in self.elements:
+        #     if elem.RBMass is None:
+        #         continue
+        #     for inode in range(elem.max_nodes_elem):
+        #         if np.linalg.norm(elem.RBMass[inode, :, :]) < 1e-6:
+        #             continue
+        #         self.n_lumped_mass_fortran += 1
+        #         lumped_mass_elem.append(elem.ielem)
+        #         lumped_mass_local_node.append(inode)
+        #
+        # # we know the nodes which have RBMass, now we copy it into a temp matrix
+        # rbmass_temp = np.zeros((self.n_lumped_mass_fortran, 6, 6))
+        # for i_lumped_mass in range(self.n_lumped_mass_fortran):
+        #     rbmass_temp[i_lumped_mass, :, :] = (self.elements[lumped_mass_elem[i_lumped_mass]].
+        #                                         RBMass[lumped_mass_local_node[i_lumped_mass], :, :])
+        #
+        # # conversion to ctypes matrices
+        # self.lumped_mass_elem_fortran = np.array(lumped_mass_elem, dtype=ct.c_int, order='F')
+        # self.lumped_mass_local_node_fortran = np.array(lumped_mass_local_node, dtype=ct.c_int, order='F')
+        # self.lumped_mass_fortran = np.array(rbmass_temp, dtype=ct.c_double, order='F')
+        # self.n_lumped_mass_fortran = ct.c_int(self.n_lumped_mass_fortran)
+        max_nodes_elem = self.elements[0].max_nodes_elem
+        rbmass_temp = np.zeros((self.num_elem, max_nodes_elem, 6, 6))
+        for elem in self.elements:
+            for inode in range(elem.n_nodes):
+                if elem.RBMass is not None:
+                    rbmass_temp[elem.ielem, inode, :, :] = elem.RBMass[inode, :, :]
+
+        self.rbmass_fortran = rbmass_temp.astype(dtype=ct.c_double, order='F')
 
     def generate_psi(self):
         #     # it will just generate the CRV for all the nodes of the element

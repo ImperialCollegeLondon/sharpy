@@ -10,6 +10,7 @@ class Element(object):
     a linear or quadratic beam element.
     """
     ordering = [0, 2, 1]
+    max_nodes_elem = 3
 
     def __init__(self,
                  ielem,
@@ -26,6 +27,8 @@ class Element(object):
         self.ielem = ielem
         # number of nodes per elem
         self.n_nodes = n_nodes
+        if self.max_nodes_elem < self.n_nodes:
+            raise AttributeError('Elements with more than 3 nodes are not allowed')
         # global connectivities (global node numbers)
         self.global_connectivities = global_connectivities
         # coordinates of the nodes in a-frame (body-fixed frame)
@@ -39,6 +42,9 @@ class Element(object):
         # stiffness and mass matrices indices (stored in parent beam class)
         self.stiff_index = stiff_index
         self.mass_index = mass_index
+
+        # placeholder for RBMass
+        self.RBMass = None  # np.zeros((self.max_nodes_elem, 6, 6))
 
         self.update(self.coordinates_def)
 

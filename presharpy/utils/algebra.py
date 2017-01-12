@@ -83,6 +83,7 @@ def get_polyfit(in_coord, ordering):
 
     return polyfit_vec, polyfit_der_vec, coord
 
+
 def unit_vector(vector):
     if np.linalg.norm(vector) < 1e-6:
         return np.array([0.0, 0.0, 0.0])
@@ -255,6 +256,7 @@ def crv2rot(psi):
         rot_matrix += (1.0 - np.cos(norm_psi))*np.dot(skew_normal, skew_normal)
 
     return rot_matrix
+
 
 def triad2crv_vec(v1, v2, v3):
     n_nodes, _ = v1.shape

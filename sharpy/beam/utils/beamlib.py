@@ -130,7 +130,7 @@ def cbeam3_solv_nlnstatic(beam, settings):
                             beam.inv_stiffness_db.ctypes.data_as(doubleP),
                             beam.stiffness_indices.ctypes.data_as(intP),
                             beam.frame_of_reference_delta.ctypes.data_as(doubleP),
-                            beam.rbmass_matrix.ctypes.data_as(doubleP),
+                            beam.rbmass_fortran.ctypes.data_as(doubleP),
                             beam.node_master_elem_fortran.ctypes.data_as(intP),
                             beam.vdof.ctypes.data_as(intP),
                             beam.fdof.ctypes.data_as(intP),
