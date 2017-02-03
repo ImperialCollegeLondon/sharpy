@@ -143,7 +143,7 @@ class Element(object):
             ax.set_ylabel('y (m)')
             ax.set_zlabel('z (m)')
 
-        plt.hold('on')
+        # plt.hold('on')
         # generate line for plotting element
         curve = self.generate_curve(n_elem_plot, defor)
         if defor:
@@ -179,5 +179,5 @@ class Element(object):
                       v3[:, 2]*scale_val,
                       length=length,
                       pivot='tail', colors=[0, 0, 1])
-        plt.hold('off')
+        # plt.hold('off')
 

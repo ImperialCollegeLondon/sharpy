@@ -18,7 +18,7 @@ import matplotlib.pyplot as plt
 import presharpy.aerogrid.aerogrid as aerogrid
 import presharpy.beam.beam as beam
 import presharpy.utils.h5utils as h5utils
-from sharpy.utils.solver_interface import solver, solver_types
+from sharpy.utils.solver_interface import solver, solver_types, dict_of_solvers
 import sharpy.utils.plotutils as plotutils
 
 
@@ -39,34 +39,55 @@ class ProblemData(object):
     solver_type = 'general'
 
     def __init__(self, settings):
+        settings['SHARPy']['flow'] = settings['SHARPy']['flow'][0].split(',')
+        # getting rid of leading and trailing spaces
+        settings['SHARPy']['flow'] = list(map(lambda x: x.strip(), settings['SHARPy']['flow']))
+
         self.settings = settings
         self.solver_config = settings
         self.case_route = settings['SHARPy']['route'] + '/'
         self.case_name = settings['SHARPy']['case']
 
+
         self.only_structural = True
         for solver_name in settings['SHARPy']['flow']:
             if (not solver_types[solver_name] == 'general' and
-               not solver_types[solver_name] == 'structural'):
+                not solver_types[solver_name] == 'structural' and
+                not solver_types[solver_name] == 'postproc'):
                 self.only_structural = False
 
         if self.only_structural:
             print('Running a structural case only')
 
-        self.initialise()
+        # Check if the problem is steady or not
+        self.steady_problem = True
+        for solver_name in settings['SHARPy']['flow']:
+            try:
+                if dict_of_solvers[solver_name].solver_unsteady:
+                    self.steady_problem = False
+                    break
+            except AttributeError:
+                pass
 
-        # self.plot_configuration(defor=False, plot_grid=False)
+        self.initialise()
 
     def initialise(self):
         fem_file_name = self.case_route + '/' + self.case_name + '.fem.h5'
         if not self.only_structural:
             aero_file_name = self.case_route + '/' + self.case_name + '.aero.h5'
 
+        if not self.steady_problem:
+            dyn_file_name = self.case_route + '/' + self.case_name + '.dyn.h5'
+
         # Check if files exist
         h5utils.check_file_exists(fem_file_name)
+        print('\tThe FEM file exists, it will be loaded.')
         if not self.only_structural:
             h5utils.check_file_exists(aero_file_name)
-        print('\tThe FEM and aero files exist, they will be loaded.')
+            print('\tThe aero file exists, it will be loaded.')
+        if not self.steady_problem:
+            h5utils.check_file_exists(dyn_file_name)
+            print('\tThe dynamic forces file exists, it will be loaded.')
 
         # Assign handles
         # !!!
@@ -79,6 +100,8 @@ class ProblemData(object):
         if not self.only_structural:
             self.aero_handle = h5.File(aero_file_name, 'r')
             """h5py.File: .aero.h5 file handle"""
+        if not self.steady_problem:
+            self.dyn_handle = h5.File(dyn_file_name, 'r')
 
         # Store h5 info in dictionaries
         self.fem_data_dict = (
@@ -95,16 +118,23 @@ class ProblemData(object):
             # FLIGHT CONDITIONS settings file input
             flightcon_file_name = (self.case_route + '/' +
                                    self.case_name + '.flightcon.txt')
-            # Check if files exist
+            # Check if flightcon file exists
             h5utils.check_file_exists(flightcon_file_name)
             print('\tThe FLIGHTCON file exist, it will be loaded.')
             self.flightcon_config = self.load_config_file(flightcon_file_name)
 
-        # import pdb;pdb.set_trace()
+        if not self.steady_problem:
+            self.dyn_data_dict = (
+                h5utils.load_h5_in_dict(self.dyn_handle))
+
         print('\tDONE')
         print('--------------------------------------------------------------')
         print('Processing fem input and generating beam model...')
-        self.beam = beam.Beam(self.fem_data_dict)
+        if not self.steady_problem:
+            self.beam = beam.Beam(self.fem_data_dict, self.dyn_data_dict)
+        else:
+            self.beam = beam.Beam(self.fem_data_dict)
+
         if not self.only_structural:
             print('Processing aero input and generating grid...')
             ProblemData.grid = aerogrid.AeroGrid(self.aero_data_dict,

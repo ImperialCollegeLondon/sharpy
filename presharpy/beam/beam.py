@@ -7,7 +7,7 @@ import presharpy.utils.algebra as algebra
 
 
 class Beam(object):
-    def __init__(self, fem_dictionary):
+    def __init__(self, fem_dictionary, dyn_dictionary=None):
         # read and store data
         # type of node
         self.num_node_elem = fem_dictionary['num_node_elem']
@@ -95,6 +95,31 @@ class Beam(object):
 
         # psi calculation
         self.generate_psi()
+
+        # unsteady part
+        if dyn_dictionary is not None:
+            self.load_unsteady_data(dyn_dictionary)
+
+
+    def load_unsteady_data(self, dyn_dictionary):
+        self.n_tsteps = dyn_dictionary['num_steps']
+        try:
+            self.dynamic_forces_amplitude = dyn_dictionary['dynamic_forces_amplitude']
+            self.dynamic_forces_time = dyn_dictionary['dynamic_forces_time']
+        except KeyError:
+            self.dynamic_forces_amplitude = None
+            self.dynamic_forces_time = None
+
+        try:
+            self.forced_vel = dyn_dictionary['forced_vel']
+        except KeyError:
+            self.forced_vel = None
+
+        try:
+            self.forced_acc = dyn_dictionary['forced_acc']
+        except KeyError:
+            self.forced_acc = None
+
 
     def generate_dof_arrays(self, indexing='C'):
         self.vdof = np.zeros((self.num_node,), dtype=ct.c_int, order='F') - 1
@@ -197,7 +222,7 @@ class Beam(object):
                     self.node_master_elem[inode_global, 0] = ielem
                     self.node_master_elem[inode_global, 1] = inode
 
-    def generate_aux_information(self):
+    def generate_aux_information(self, dynamic=False):
 
         self.num_nodes_matrix = np.zeros((self.num_elem,), dtype=ct.c_int, order='F')
         for elem in self.elements:
@@ -235,10 +260,15 @@ class Beam(object):
         # Vdof and Fdof vector calculation
         self.generate_dof_arrays('F')
 
-        self.n_app_forces, _ = self.app_forces.shape
-        self.n_app_forces = ct.c_int(self.n_app_forces)
-        self.app_forces_fortran = self.app_forces.astype(dtype=ct.c_double, order='F')
-        self.node_app_forces_fortran = self.node_app_forces.astype(dtype=ct.c_int, order='F')
+        if self.app_forces is None:
+            self.n_app_forces = ct.c_int(0)
+            self.app_forces_fortran = np.zeros((0, 0), dtype=ct.c_double, order='F')
+            self.node_app_forces_fortran = np.zeros((0,), dtype=ct.c_int, order='F')
+        else:
+            self.n_app_forces, _ = self.app_forces.shape
+            self.n_app_forces = ct.c_int(self.n_app_forces)
+            self.app_forces_fortran = self.app_forces.astype(dtype=ct.c_double, order='F')
+            self.node_app_forces_fortran = self.node_app_forces.astype(dtype=ct.c_int, order='F') + 1
 
         # Psi matrix
         self.psi_def = self.psi_ini.astype(dtype=ct.c_double, order='F')
@@ -247,33 +277,6 @@ class Beam(object):
         self.pos_ini = self.pos_ini.astype(dtype=ct.c_double, order='F')
         self.pos_def = self.pos_ini.astype(dtype=ct.c_double, order='F')
 
-        # lumped masses to new organisation
-        # self.n_lumped_mass_fortran = 0  # will need to convert that to c_int
-        #                                 # !!! not the same value as n_lumped_mass
-        #                                 # this one counts the number of nodes with applied RBMass
-        # lumped_mass_elem = []
-        # lumped_mass_local_node = []
-        # for elem in self.elements:
-        #     if elem.RBMass is None:
-        #         continue
-        #     for inode in range(elem.max_nodes_elem):
-        #         if np.linalg.norm(elem.RBMass[inode, :, :]) < 1e-6:
-        #             continue
-        #         self.n_lumped_mass_fortran += 1
-        #         lumped_mass_elem.append(elem.ielem)
-        #         lumped_mass_local_node.append(inode)
-        #
-        # # we know the nodes which have RBMass, now we copy it into a temp matrix
-        # rbmass_temp = np.zeros((self.n_lumped_mass_fortran, 6, 6))
-        # for i_lumped_mass in range(self.n_lumped_mass_fortran):
-        #     rbmass_temp[i_lumped_mass, :, :] = (self.elements[lumped_mass_elem[i_lumped_mass]].
-        #                                         RBMass[lumped_mass_local_node[i_lumped_mass], :, :])
-        #
-        # # conversion to ctypes matrices
-        # self.lumped_mass_elem_fortran = np.array(lumped_mass_elem, dtype=ct.c_int, order='F')
-        # self.lumped_mass_local_node_fortran = np.array(lumped_mass_local_node, dtype=ct.c_int, order='F')
-        # self.lumped_mass_fortran = np.array(rbmass_temp, dtype=ct.c_double, order='F')
-        # self.n_lumped_mass_fortran = ct.c_int(self.n_lumped_mass_fortran)
         max_nodes_elem = self.elements[0].max_nodes_elem
         rbmass_temp = np.zeros((self.num_elem, max_nodes_elem, 6, 6))
         for elem in self.elements:
@@ -283,11 +286,32 @@ class Beam(object):
 
         self.rbmass_fortran = rbmass_temp.astype(dtype=ct.c_double, order='F')
 
+        if dynamic:
+            if self.dynamic_forces_amplitude is not None:
+                self.dynamic_forces_amplitude_fortran = self.dynamic_forces_amplitude.astype(dtype=ct.c_double, order='F')
+                self.dynamic_forces_time_fortran = self.dynamic_forces_time.astype(dtype=ct.c_double, order='F')
+            else:
+                self.dynamic_forces_amplitude_fortran = np.zeros((self.num_node, 6), dtype=ct.c_double, order='F')
+                self.dynamic_forces_time_fortran = np.zeros((self.n_tsteps, 1), dtype=ct.c_double, order='F')
+
+            if self.forced_vel is not None:
+                self.forced_vel_fortran = self.forced_vel.astype(dtype=ct.c_double, order='F')
+            else:
+                self.forced_vel_fortran = np.zeros((self.n_tsteps, 6), dtype=ct.c_double, order='F')
+
+            if self.forced_acc is not None:
+                self.forced_acc_fortran = self.forced_acc.astype(dtype=ct.c_double, order='F')
+            else:
+                self.forced_acc_fortran = np.zeros((self.n_tsteps, 6), dtype=ct.c_double, order='F')
+
     def generate_psi(self):
         #     # it will just generate the CRV for all the nodes of the element
         self.psi_ini = np.zeros((self.num_elem, 3, 3), dtype=ct.c_double, order='F')
         for elem in self.elements:
             self.psi_ini[elem.ielem, :, :] = elem.psi_ini
+
+    def read_dynamic_data(self):
+        pass
 
     def update(self):
         for elem in self.elements:
@@ -304,8 +328,8 @@ class Beam(object):
             ax.set_xlabel('x (m)')
             ax.set_ylabel('y (m)')
             ax.set_zlabel('z (m)')
-
-        plt.hold('on')
+            plt.axis('equal')
+        # plt.hold('on')
         if ini:
             for elem in self.elements:
                 elem.plot(fig, ax, plot_triad=plot_triad, defor=False)
@@ -321,7 +345,7 @@ class Beam(object):
                                self.pos_def[:, 1],
                                self.pos_def[:, 2], color='b')
 
-        plt.hold('off')
+        # plt.hold('off')
 
 
 

@@ -19,7 +19,8 @@ def read_settings():
 
 
 def parse_settings(file):
+    import os
     from presharpy.utils.settings import load_config_file
-    settings = load_config_file(file)
+    settings = load_config_file(os.path.realpath(file))
     settings['SHARPy']['flow'] = settings['SHARPy']['flow'].split('\n')
     return settings

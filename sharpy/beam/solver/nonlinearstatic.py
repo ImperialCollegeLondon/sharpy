@@ -51,7 +51,6 @@ class NonLinearStatic(BaseSolver):
         self.settings['elem_proj'] = ct.c_int(int(self.settings['elem_proj']))
         self.settings['max_iterations'] = ct.c_int(int(self.settings['max_iterations']))
         self.settings['num_load_steps'] = ct.c_int(int(self.settings['num_load_steps']))
-        self.settings['num_gauss'] = ct.c_int(int(self.settings['num_gauss']))
         self.settings['delta_curved'] = ct.c_double(float(self.settings['delta_curved']))
         self.settings['min_delta'] = ct.c_double(float(self.settings['min_delta']))
         self.settings['newmark_damp'] = ct.c_double(float(self.settings['newmark_damp']))

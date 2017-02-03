@@ -56,8 +56,8 @@ def generate_fem_file(route, case_name, num_elem, num_node_elem=3):
     z[0:nx] = np.zeros((nx,))
     # y direction beam
     tempx = (np.linspace(0, length, ny))*np.cos(angle + pi_2)
-    tempy = (np.linspace(0, length, ny))*np.sin(angle + pi_2)
-    x[nx:] = tempx[1:]
+    tempy = (np.linspace(0, length, ny))*np.sin(angle + pi_2) + y[nx - 1]
+    x[nx:] = x[nx - 1]
     y[nx:] = tempy[1:]
     z[nx:] = np.zeros((ny - 1,))
 
@@ -79,14 +79,13 @@ def generate_fem_file(route, case_name, num_elem, num_node_elem=3):
 
     conn = np.zeros((num_elem, num_node_elem), dtype=int)
     for ielem in range(num_elem):
-        if ielem < num_elem/2:
+        if ielem < nx:
             conn[ielem, :] = (np.ones((3,)) * ielem * (num_node_elem - 1)
                               + [0, 2, 1])
-        elif ielem == num_elem/2:
+        elif ielem == nx:
             # first element of the beam 2
             conn[ielem, :] = (np.ones((3,)) * ielem * (num_node_elem - 1)
                               + [0, 2, 1])
-            conn[ielem, 0] = 0
         else:
             # rest of beam 2
             conn[ielem, :] = (np.ones((3,)) * ielem * (num_node_elem - 1)
@@ -100,12 +99,15 @@ def generate_fem_file(route, case_name, num_elem, num_node_elem=3):
     ei = 9.346e6
     base_stiffness = np.diag([ea, ga, ga, gj, ei, ei])
     stiffness = np.zeros((num_stiffness, 6, 6))
+    sigma = 1
     # import pdb; pdb.set_trace()
     for i in range(num_stiffness):
-        stiffness[i, :, :] = base_stiffness
+        stiffness[i, :, :] = (i+1)/2*sigma*base_stiffness
+
 
     # element stiffness
     elem_stiffness = np.zeros((num_elem,), dtype=int)
+    elem_stiffness[nx:] = 1
 
     # mass array
     num_mass = 1
@@ -122,18 +124,16 @@ def generate_fem_file(route, case_name, num_elem, num_node_elem=3):
     boundary_conditions = np.zeros((num_node, 1), dtype=int)
     boundary_conditions[0] = 1
     boundary_conditions[-1] = -1
-    boundary_conditions[nx] = -1
 
     # beam number
     beam_number = np.zeros((num_elem, 1), dtype=int)
     beam_number[nx:-1] = 1
 
     # new app forces scheme (only follower)
-    n_app_forces = 2
-    node_app_forces = np.array([num_node - 1, nx - 1])
+    n_app_forces = 1
+    node_app_forces = np.array([num_node - 1])
     app_forces = np.zeros((n_app_forces, 6))
-    app_forces[0, :] = [0, 0, 0, 0, 0, -11744.5275328e3]
-    app_forces[1, :] = [0, 0, 0, 0, -11744.5275328e3, 0]
+    app_forces[0, :] = [100e2, 0, 100e2, 000, 0, 0]
 
     with h5.File(route + '/' + case_name + '.fem.h5', 'a') as h5file:
         coordinates = h5file.create_dataset('coordinates', data = np.column_stack((x, y, z)))
@@ -246,15 +246,15 @@ def generate_solver_file(route, case_name):
     file_name = route + '/' + case_name + '.solver.txt'
     config = configparser.ConfigParser()
     config['SHARPy'] = {'case': 'multibeam',
-                        'route': './presharpy/test/',
+                        'route': './tests/beam/static/multibeam',
                         'flow': 'NonLinearStatic',
                         'plot': 'on'}
     config['NonLinearStatic'] = {'print_info': 'on',
                                  'out_b_frame': 'on',
                                  'out_a_frame': 'on',
                                  'elem_proj': 2,
-                                 'max_iterations': 99,
-                                 'num_load_steps': 10,
+                                 'max_iterations': 500,
+                                 'num_load_steps': 15,
                                  'num_gauss': 2,
                                  'delta_curved': 1e-5,
                                  'min_delta': 1e-5,

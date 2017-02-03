@@ -39,7 +39,7 @@ def generate_fem_file(route, case_name, num_elem, num_node_elem=3):
 
     num_node = (num_node_elem - 1)*num_elem + 1
     # import pdb; pdb.set_trace()
-    angle = 0*np.pi/180.0
+    angle = 180*np.pi/180.0
     x = (np.linspace(0, length, num_node))*np.cos(angle)
     y = (np.linspace(0, length, num_node))*np.sin(angle)
     z = np.zeros((num_node,))
@@ -101,7 +101,8 @@ def generate_fem_file(route, case_name, num_elem, num_node_elem=3):
     n_app_forces = 1
     node_app_forces = np.array([num_node - 1])
     app_forces = np.zeros((n_app_forces, 6))
-    app_forces[0, :] = [0, 0, 0, 0, 0, -11744.5275328e3]
+    app_forces[0, :] = [0, 0, 3000e3, 0, 0, 0]
+    # app_forces[0, :] = [0, 0, 0, 0, 0, -11744.5275328e3]
 
     with h5.File(route + '/' + case_name + '.fem.h5', 'a') as h5file:
         coordinates = h5file.create_dataset('coordinates', data = np.column_stack((x, y, z)))
@@ -214,16 +215,16 @@ def generate_solver_file(route, case_name):
     file_name = route + '/' + case_name + '.solver.txt'
     config = configparser.ConfigParser()
     config['SHARPy'] = {'case': 'geradin_cardona',
-                        'route': './presharpy/test/',
+                        'route': './tests/beam/static/geradin_cardona',
                         'flow': 'NonLinearStatic',
                         'plot': 'on'}
     config['NonLinearStatic'] = {'print_info': 'on',
-                                 'out_b_frame': 'on',
-                                 'out_a_frame': 'on',
+                                 'out_b_frame': 'off',
+                                 'out_a_frame': 'off',
                                  'elem_proj': 2,
                                  'max_iterations': 99,
                                  'num_load_steps': 10,
-                                 'num_gauss': 2,
+                                 'num_gauss': 3,
                                  'delta_curved': 1e-5,
                                  'min_delta': 1e-5,
                                  'newmark_damp': 0.000}
@@ -246,4 +247,4 @@ def generate_flightcon_file(route, case_name):
 
 
 if __name__ == '__main__':
-    generate_files('./', 'geradin_cardona', 50, 3)
+    generate_files('./', 'geradin_cardona', 10, 3)

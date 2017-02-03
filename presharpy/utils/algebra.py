@@ -22,7 +22,7 @@ def tangent_vector(in_coord, ordering=None):
         if n_nodes == 2:
             ordering = [0, n_nodes - 1]
         elif n_nodes == 3:
-            ordering = [0, n_nodes - 1, n_nodes]
+            ordering = [0, 2, 1]
         else:
             raise NotImplementedError('Elements with more than 3 nodes are not supported')
 
@@ -276,6 +276,39 @@ def crv2triad_vec(crv_vec):
         v1[inode, :], v2[inode, :], v3[inode, :] = crv2triad(crv_vec[inode, :])
 
     return v1, v2, v3
+
+
+def quat2rot(q1):
+    """@brief Calculate rotation matrix based on quaternions.
+    See Aircraft Control and Simulation, pag. 31, by Stevens, Lewis.
+    Copied from S. Maraniello's SHARPy
+
+    Remark: if A is a FoR obtained rotating a FoR G of angle fi about an axis n (remind n will be
+    invariant during the rotation), and q is the related quaternion q(fi,n), the function will
+    return the matrix Cag such that:
+        - Cag rotates A to G
+        - Cag transforms the coordinates of a vector defined in G component to A components.
+    """
+
+    q = q1.copy(order='F')
+    q /= np.linalg.norm(q)
+
+    rot_mat = np.zeros((3, 3), order='F')
+
+    rot_mat[0,0] = q[0]**2 + q[1]**2 - q[2]**2 - q[3]**2
+    rot_mat[1,1] = q[0]**2 - q[1]**2 + q[2]**2 - q[3]**2
+    rot_mat[2,2] = q[0]**2 - q[1]**2 - q[2]**2 + q[3]**2
+
+    rot_mat[0,1] = 2.*(q[1]*q[2] + q[0]*q[3])
+    rot_mat[1,0] = 2.*(q[1]*q[2] - q[0]*q[3])
+
+    rot_mat[0,2] = 2.*(q[1]*q[3] - q[0]*q[2])
+    rot_mat[2,0] = 2.*(q[1]*q[3] + q[0]*q[2])
+
+    rot_mat[1,2] = 2.*(q[2]*q[3] + q[0]*q[1])
+    rot_mat[2,1] = 2.*(q[2]*q[3] - q[0]*q[1])
+
+    return rot_mat
 
 
 def rot_skew(vec):
