@@ -1,12 +1,3 @@
-"""@package PyBeam.Utils.BeamLib
-@brief      Loads the f90 subroutines with Python wrappers.
-@author     Rob Simpson
-@contact    r.simpson11@imperial.ac.uk
-@version    0.0
-@date       10/12/2012
-@pre        Compile the beam code into wrapped dynamic library.
-@warning    None
-"""
 import numpy as np
 import ctypes as ct
 import scipy as sc
