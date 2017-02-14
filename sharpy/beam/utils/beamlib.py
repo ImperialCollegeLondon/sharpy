@@ -129,7 +129,6 @@ def cbeam3_solv_nlnstatic(beam, settings):
                             beam.app_forces_fortran.ctypes.data_as(doubleP),
                             beam.node_app_forces_fortran.ctypes.data_as(intP)
                             )
-    print('here')
     angle = 0*np.pi/180
     import presharpy.utils.algebra as algebra
     rot = np.zeros((3, 3))
@@ -143,22 +142,9 @@ def cbeam3_solv_nlnstatic(beam, settings):
     def_rot = np.dot(rot.T, total)
     psi_proj = algebra.rot2crv(def_rot)
     print(psi_proj)
-
     print(beam.pos_def[-1, :])
-
-    # print(np.dot(rot.T, beam.psi_def[-1, 2, :]))
     print(beam.psi_def[-1, 2, :])
 
-    import matplotlib.pyplot as plt
-    from mpl_toolkits.mplot3d import Axes3D
-
-    fig = plt.figure()
-    ax = fig.add_subplot(111, projection='3d')
-    ax.plot(beam.pos_def[:,0], beam.pos_def[:,1], beam.pos_def[:,2])
-    plt.xlabel('x')
-    plt.ylabel('y')
-    plt.axis('equal')
-    plt.show()
 
 f_cbeam3_solv_modal = BeamLib.cbeam3_solv_modal_python
 f_cbeam3_solv_modal.restype = None
