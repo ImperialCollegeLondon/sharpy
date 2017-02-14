@@ -39,7 +39,7 @@ def generate_fem_file(route, case_name, num_elem, num_node_elem=3):
 
     num_node = (num_node_elem - 1)*num_elem + 1
     # import pdb; pdb.set_trace()
-    angle = 180*np.pi/180.0
+    angle = 0*np.pi/180.0
     x = (np.linspace(0, length, num_node))*np.cos(angle)
     y = (np.linspace(0, length, num_node))*np.sin(angle)
     z = np.zeros((num_node,))
@@ -80,7 +80,7 @@ def generate_fem_file(route, case_name, num_elem, num_node_elem=3):
 
     # mass array
     num_mass = 1
-    m_bar = 100
+    m_bar = 0*100
     j = 10
     base_mass = np.diag([m_bar, m_bar, m_bar, j, j, j])
     mass = np.zeros((num_mass, 6, 6))
@@ -98,11 +98,18 @@ def generate_fem_file(route, case_name, num_elem, num_node_elem=3):
     beam_number = np.zeros((num_elem, 1), dtype=int)
 
     # new app forces scheme (only follower)
-    n_app_forces = 1
-    node_app_forces = np.array([num_node - 1])
+    n_app_forces = 0
+    node_app_forces = np.array([])
     app_forces = np.zeros((n_app_forces, 6))
-    app_forces[0, :] = [0, 0, 3000e3, 0, 0, 0]
     # app_forces[0, :] = [0, 0, 0, 0, 0, -11744.5275328e3]
+
+    # lumped masses input
+    n_lumped_mass = 1
+    lumped_mass_nodes = np.array([num_node - 1], dtype=int)
+    lumped_mass = np.zeros((n_lumped_mass, ))
+    lumped_mass[0] = 600e3/9.81
+    lumped_mass_inertia = np.zeros((n_lumped_mass, 3, 3))
+    lumped_mass_position = np.zeros((n_lumped_mass, 3))
 
     with h5.File(route + '/' + case_name + '.fem.h5', 'a') as h5file:
         coordinates = h5file.create_dataset('coordinates', data = np.column_stack((x, y, z)))
@@ -133,7 +140,14 @@ def generate_fem_file(route, case_name, num_elem, num_node_elem=3):
             'app_forces', data=app_forces)
         node_app_forces_handle = h5file.create_dataset(
             'node_app_forces', data=node_app_forces)
-
+        lumped_mass_nodes_handle = h5file.create_dataset(
+            'lumped_mass_nodes', data=lumped_mass_nodes)
+        lumped_mass_handle = h5file.create_dataset(
+            'lumped_mass', data=lumped_mass)
+        lumped_mass_inertia_handle = h5file.create_dataset(
+            'lumped_mass_inertia', data=lumped_mass_inertia)
+        lumped_mass_position_handle = h5file.create_dataset(
+            'lumped_mass_position', data=lumped_mass_position)
     return num_node, coordinates
 
 
@@ -223,11 +237,14 @@ def generate_solver_file(route, case_name):
                                  'out_a_frame': 'off',
                                  'elem_proj': 2,
                                  'max_iterations': 99,
-                                 'num_load_steps': 10,
-                                 'num_gauss': 3,
+                                 'num_load_steps': 20,
                                  'delta_curved': 1e-5,
                                  'min_delta': 1e-5,
-                                 'newmark_damp': 0.000}
+                                 'newmark_damp': 0.000,
+                                 'gravity_on': 'on',
+                                 'gravity': 9.81,
+                                 'gravity_dir': '0, 0, 1'
+                                 }
 
     with open(file_name, 'w') as configfile:
         config.write(configfile)

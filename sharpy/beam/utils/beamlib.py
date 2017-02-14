@@ -40,7 +40,12 @@ class Xbopts(ct.Structure):
                 ("Solution", ct.c_int),
                 ("DeltaCurved", ct.c_double),
                 ("MinDelta", ct.c_double),
-                ("NewmarkDamp", ct.c_double)
+                ("NewmarkDamp", ct.c_double),
+                ("gravity_on", ct.c_bool),
+                ("gravity", ct.c_double),
+                ("gravity_dir_x", ct.c_double),
+                ("gravity_dir_y", ct.c_double),
+                ("gravity_dir_z", ct.c_double)
                 ]
 
     def __init__(self):
@@ -53,11 +58,15 @@ class Xbopts(ct.Structure):
         self.ElemProj = ct.c_int(0)
         self.MaxIterations = ct.c_int(99)
         self.NumLoadSteps = ct.c_int(5)
-        self.NumGauss = ct.c_int(2)
         self.Solution = ct.c_int(111)
         self.DeltaCurved = ct.c_double(1.0e-5)
         self.MinDelta = ct.c_double(1.0e-8)
         self.NewmarkDamp = ct.c_double(1.0e-4)
+        self.gravity_on = ct.c_bool(False)
+        self.gravity = ct.c_double(0.0)
+        self.gravity_dir_x = ct.c_double(0.0)
+        self.gravity_dir_y = ct.c_double(0.0)
+        self.gravity_dir_z = ct.c_double(1.0)
 
 
 BeamPath += ext
@@ -91,6 +100,11 @@ def cbeam3_solv_nlnstatic(beam, settings):
     xbopts.DeltaCurved = settings['delta_curved']
     xbopts.MinDelta = settings['min_delta']
     xbopts.NewmarkDamp = settings['newmark_damp']
+    xbopts.gravity_on = settings['gravity_on']
+    xbopts.gravity = settings['gravity']
+    xbopts.gravity_dir_x = ct.c_double(settings['gravity_dir'][0])
+    xbopts.gravity_dir_y = ct.c_double(settings['gravity_dir'][1])
+    xbopts.gravity_dir_z = ct.c_double(settings['gravity_dir'][2])
 
     # applied forces as 0=G, 1=a, 2=b
     # here we only need to set the flags at True, all the forces are follower
@@ -124,6 +138,7 @@ def cbeam3_solv_nlnstatic(beam, settings):
                             beam.app_forces_fortran.ctypes.data_as(doubleP),
                             beam.node_app_forces_fortran.ctypes.data_as(intP)
                             )
+    print('here')
     angle = 0*np.pi/180
     import presharpy.utils.algebra as algebra
     rot = np.zeros((3, 3))
@@ -142,6 +157,17 @@ def cbeam3_solv_nlnstatic(beam, settings):
 
     # print(np.dot(rot.T, beam.psi_def[-1, 2, :]))
     print(beam.psi_def[-1, 2, :])
+
+    import matplotlib.pyplot as plt
+    from mpl_toolkits.mplot3d import Axes3D
+
+    fig = plt.figure()
+    ax = fig.add_subplot(111, projection='3d')
+    ax.plot(beam.pos_def[:,0], beam.pos_def[:,1], beam.pos_def[:,2])
+    plt.xlabel('x')
+    plt.ylabel('y')
+    plt.axis('equal')
+    plt.show()
 
 f_cbeam3_solv_modal = BeamLib.cbeam3_solv_modal_python
 f_cbeam3_solv_modal.restype = None

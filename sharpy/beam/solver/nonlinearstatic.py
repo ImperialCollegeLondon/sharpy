@@ -54,5 +54,7 @@ class NonLinearStatic(BaseSolver):
         self.settings['delta_curved'] = ct.c_double(float(self.settings['delta_curved']))
         self.settings['min_delta'] = ct.c_double(float(self.settings['min_delta']))
         self.settings['newmark_damp'] = ct.c_double(float(self.settings['newmark_damp']))
-
+        self.settings['gravity_on'] = ct.c_bool(str2bool(self.settings['gravity_on']))
+        self.settings['gravity'] = ct.c_double(float(self.settings['gravity']))
+        self.settings['gravity_dir'] = np.fromstring(self.settings['gravity_dir'], sep=',', dtype=ct.c_double)
 
