@@ -3,6 +3,7 @@
 """
 
 import ctypes as ct
+import numpy as np
 
 import sharpy.beam.utils.beamlib as beamlib
 from presharpy.utils.settings import str2bool
@@ -98,5 +99,20 @@ class NonLinearDynamic(BaseSolver):
 
         try:
             self.settings['num_steps'] = ct.c_int(int(self.settings['num_steps']))
+        except KeyError:
+            pass
+
+        try:
+            self.settings['gravity_on'] = ct.c_bool(str2bool(self.settings['gravity_on']))
+        except KeyError:
+            pass
+
+        try:
+            self.settings['gravity'] = ct.c_double(float(self.settings['gravity']))
+        except KeyError:
+            pass
+
+        try:
+            self.settings['gravity_dir'] = np.fromstring(self.settings['gravity_dir'], sep=',', dtype=ct.c_double)
         except KeyError:
             pass

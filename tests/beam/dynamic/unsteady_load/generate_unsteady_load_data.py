@@ -4,7 +4,7 @@ import os
 import configparser
 
 dt = 0.01
-simulation_time = 50
+simulation_time = 5
 num_steps = int(simulation_time/dt)
 route = './'
 case_name = 'unsteady_load'
@@ -67,10 +67,10 @@ def generate_dyn_file():
     global num_node_elem
     global num_node
 
-    with_dynamic_forces = True
+    with_dynamic_forces = False
     if with_dynamic_forces:
         dynamic_forces = np.zeros((num_node, 6))
-        dynamic_forces[-1, 2] = 1000
+        dynamic_forces[-1, 2] = 0*1000
         # put some forces in here
         force_time = np.zeros((num_steps, ))
         force_time[int(0.1/dt):int(0.2/dt)] = 1  # np.linspace(0, 1, num_steps - int(1/dt))
@@ -146,13 +146,13 @@ def generate_fem_file():
     # stiffness array
     # import pdb; pdb.set_trace()
     num_stiffness = 1
-    ea = 1e4
-    ga = ea
-    gj = 500
-    ei = 500
+    ea = 4.8e8
+    ga = 3.231e8
+    gj = 1.0e6
+    ei = 9.346e6
     base_stiffness = np.diag([ea, ga, ga, gj, ei, ei])
     stiffness = np.zeros((num_stiffness, 6, 6))
-    sigma = 10
+    sigma = 1
     # import pdb; pdb.set_trace()
     for i in range(num_stiffness):
         stiffness[i, :, :] = sigma*base_stiffness
@@ -162,7 +162,7 @@ def generate_fem_file():
 
     # mass array
     num_mass = 1
-    m_bar = 100
+    m_bar = 10
     j = 10
     base_mass = np.diag([m_bar, m_bar, m_bar, j, j, j])
     mass = np.zeros((num_mass, 6, 6))
@@ -185,11 +185,13 @@ def generate_fem_file():
     app_forces = np.zeros((n_app_forces, 6))
 
     # lumped masses input
-    n_lumped_mass = 0
-    lumped_mass_nodes = np.array([], dtype=int)
+    n_lumped_mass = 1
+    lumped_mass_nodes = np.array([num_node - 1], dtype=int)
     lumped_mass = np.zeros((n_lumped_mass, ))
+    lumped_mass[0] = 600e3/9.81
     lumped_mass_inertia = np.zeros((n_lumped_mass, 3, 3))
     lumped_mass_position = np.zeros((n_lumped_mass, 3))
+
 
     with h5.File(route + '/' + case_name + '.fem.h5', 'a') as h5file:
         coordinates = h5file.create_dataset('coordinates', data = np.column_stack((x, y, z)))
@@ -254,9 +256,12 @@ def generate_solver_file():
                                   'num_gauss': 3,
                                   'delta_curved': 1e-5,
                                   'min_delta': 1e-5,
-                                  'newmark_damp': 0.001,
+                                  'newmark_damp': 0.1,
                                   'dt': dt,
-                                  'num_steps': num_steps}
+                                  'num_steps': num_steps,
+                                  'gravity_on': 'on',
+                                  'gravity_dir': '0, 0, 1',
+                                  'gravity': 9.81}
 
     with open(file_name, 'w') as configfile:
         config.write(configfile)
