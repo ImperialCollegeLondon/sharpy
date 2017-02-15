@@ -314,7 +314,6 @@ def cbeam3_solv_nlndyn(beam, settings):
     cm_subs = np.linspace(0, 1, n_plots)
     colors = [cm.jet(x) for x in cm_subs]
     plt.figure()
-    plt.hold('on')
     plt.title('Time history of tip z displacements and y rotations')
     plt.xlabel('time (s)')
     plt.ylabel('z displacement (m), y rotation (rad)')
@@ -324,7 +323,6 @@ def cbeam3_solv_nlndyn(beam, settings):
     plt.show()
     plt.figure()
     for i in range(n_plots):
-        plt.hold('on')
         plt.plot(pos_def_history[n_tsteps + i*delta, :, 0], pos_def_history[n_tsteps + i*delta, :, 2], color=colors[i])
     plt.grid(True)
     plt.show()
