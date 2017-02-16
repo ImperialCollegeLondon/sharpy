@@ -368,6 +368,11 @@ def xbeam_solv_couplednlndyn(beam, settings):
     xbopts.DeltaCurved = settings['delta_curved']
     xbopts.MinDelta = settings['min_delta']
     xbopts.NewmarkDamp = settings['newmark_damp']
+    xbopts.gravity_on = settings['gravity_on']
+    xbopts.gravity = settings['gravity']
+    xbopts.gravity_dir_x = ct.c_double(settings['gravity_dir'][0])
+    xbopts.gravity_dir_y = ct.c_double(settings['gravity_dir'][1])
+    xbopts.gravity_dir_z = ct.c_double(settings['gravity_dir'][2])
 
     # status flag
     success = ct.c_bool(True)
@@ -431,7 +436,25 @@ def xbeam_solv_couplednlndyn(beam, settings):
         for inode in range(beam.num_node):
             glob_pos_def[it, inode, :] = beam.for_pos[it, 0:3] + np.dot(rot.T, beam.pos_def_history[it, inode, :])
 
+
     import matplotlib.pyplot as plt
+    plt.figure()
+    length = np.zeros((n_tsteps.value,))
+    for it in range(n_tsteps.value):
+        length[it] = np.linalg.norm(beam.pos_def_history[it, 0, :] - beam.pos_def_history[it, -1, :])
+
+    plt.plot(time, length)
+    plt.grid('on')
+    plt.show()
+
+    # gravity value
+    g = -9.81
+    z = 0.5*time**2*g + glob_pos_def[0, beam.num_node/2, 2]
+    plt.figure()
+    plt.plot(time, z, 'k--')
+    plt.plot(time, glob_pos_def[:, beam.num_node/2, 2])
+    plt.grid('on')
+    plt.show()
     import matplotlib.animation as ani
     # plt.figure()
     # plt.hold('on')
@@ -462,8 +485,17 @@ def xbeam_solv_couplednlndyn(beam, settings):
     for i in itime:
         ax.plot(glob_pos_def[i, :, 0], glob_pos_def[i, :, 1], glob_pos_def[i, :, 2], color=colors[i])
     ax.plot(beam.for_pos[:, 0], beam.for_pos[:, 1], beam.for_pos[:, 2], 'r', linewidth=1)
-    half = int(n_nodes.value/2)
-    ax.plot(glob_pos_def[:, half, 0], glob_pos_def[:, half, 1], glob_pos_def[:, half, 2], 'k', linewidth=1)
+    if n_nodes.value % 2 == 1:
+        half1 = int(n_nodes.value/2)
+        half2 = half1 + 1
+    else:
+        half1 = half2 = n_nodes.value/2
+    ax.plot(0.5*(glob_pos_def[:, half1, 0] + glob_pos_def[:, half2, 0]),
+            0.5*(glob_pos_def[:, half1, 1] + glob_pos_def[:, half2, 1]),
+            0.5*(glob_pos_def[:, half1, 2] + glob_pos_def[:, half2, 2]),
+            'k', linewidth=1)
+
+
     ax.plot(glob_pos_def[:, -1, 0], glob_pos_def[:, -1, 1], glob_pos_def[:, -1, 2], 'b', linewidth=1)
     ax.set_xlabel('X')
     ax.set_ylabel('Y')
