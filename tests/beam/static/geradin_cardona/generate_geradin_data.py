@@ -230,14 +230,14 @@ def generate_solver_file(route, case_name):
     config = configparser.ConfigParser()
     config['SHARPy'] = {'case': 'geradin_cardona',
                         'route': './tests/beam/static/geradin_cardona',
-                        'flow': 'NonLinearStatic',
+                        'flow': 'NonLinearStatic, StaticPlot',
                         'plot': 'on'}
     config['NonLinearStatic'] = {'print_info': 'off',
                                  'out_b_frame': 'off',
                                  'out_a_frame': 'off',
                                  'elem_proj': 2,
                                  'max_iterations': 99,
-                                 'num_load_steps': 10,
+                                 'num_load_steps': 5,
                                  'delta_curved': 1e-5,
                                  'min_delta': 1e-5,
                                  'newmark_damp': 0.000,
@@ -245,19 +245,8 @@ def generate_solver_file(route, case_name):
                                  'gravity': 9.81,
                                  'gravity_dir': '0, 0, 1'
                                  }
-
-    with open(file_name, 'w') as configfile:
-        config.write(configfile)
-
-
-def generate_flightcon_file(route, case_name):
-    file_name = route + '/' + case_name + '.flightcon.txt'
-    config = configparser.ConfigParser()
-    config['FLIGHT_CONDITIONS'] = {'Q': 5,
-                                   'rho': 1.225,
-                                   'alpha': 3,
-                                   'beta': 0,
-                                   'delta': 0}
+    config['StaticPlot'] = {'plot_shape': 'on',
+                            'print_info': 'on'}
 
     with open(file_name, 'w') as configfile:
         config.write(configfile)
