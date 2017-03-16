@@ -31,4 +31,4 @@ for solver_name in settings['SHARPy']['flow']:
 
 elapsed_time = time.process_time() - t
 print('FINISHED - Elapsed time = ' + str(elapsed_time) + ' seconds')
-data.plot_configuration(plot_grid=False)
+# data.plot_configuration(plot_grid=False)

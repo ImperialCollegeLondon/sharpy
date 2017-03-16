@@ -116,4 +116,4 @@ If you try to open the `fem.h5` file, you'll get an error or something meaningle
 Congratulations, you've run your first case.
 
 If you want to know how to configure your own cases, check the iPython notebook
-in `./tests/beam/static/geradin_cardona/`.
+[Geradin and Cardona Static Structural Case](https://github.com/fonsocarre/SHARPy/blob/master/tests/beam/static/geradin_cardona/geradin_cardona.ipynb).
