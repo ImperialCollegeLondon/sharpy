@@ -72,15 +72,15 @@ python --version
 ```bash
 python ./tests/beam/static/geradin_cardona/generate_geradin_data.py
 ```
-    Now you should see a success message, and if you check the
-    `./tests/beam/static/geradin_cardona/` folder, you should see two new files:
-    + geradin_cardona.solver.txt
-    + geradin_cardona.fem.h5
+Now you should see a success message, and if you check the
+`./tests/beam/static/geradin_cardona/` folder, you should see two new files:
++ geradin_cardona.solver.txt
++ geradin_cardona.fem.h5
 
-    Try to open the `solver.txt` file and have a quick look. The `solver` file is
-    the main settings file. We'll get deeper into this later.
+Try to open the `solver.txt` file and have a quick look. The `solver` file is
+the main settings file. We'll get deeper into this later.
 
-    If you try to open the `fem.h5` file, you'll get an error or something meaningless. This is because the structural data is stored in [HDF5](https://support.hdfgroup.org/HDF5/) format, which is compressed binary.
+If you try to open the `fem.h5` file, you'll get an error or something meaningless. This is because the structural data is stored in [HDF5](https://support.hdfgroup.org/HDF5/) format, which is compressed binary.
 
 5. Now run it
 
