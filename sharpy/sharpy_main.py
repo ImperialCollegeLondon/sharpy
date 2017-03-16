@@ -2,6 +2,7 @@ import os
 import time
 import sharpy.utils.solver_interface as solver_interface
 import sharpy.utils.input_arg as input_arg
+import sharpy.utils.cout_utils as cout
 
 # solver list -- It is important to import them here
 from presharpy.problemdata import ProblemData
@@ -12,9 +13,13 @@ from sharpy.beam.postproc.vibrationmodesplot import VibrationModesPlot
 from sharpy.beam.postproc.StaticPlot import StaticPlot
 # ------------
 
+# timing
 t = time.process_time()
+# Hi! message
+cout.cout_wrap(cout.sharpy_ascii)
+cout.cout_wrap(cout.sharpy_license)
 cwd = os.getcwd()
-print('Running SHARPy from ' + cwd)
+cout.cout_wrap('Running SHARPy from ' + cwd)
 
 solver_interface.print_available_solvers()
 settings = input_arg.read_settings()
@@ -31,4 +36,3 @@ for solver_name in settings['SHARPy']['flow']:
 
 elapsed_time = time.process_time() - t
 print('FINISHED - Elapsed time = ' + str(elapsed_time) + ' seconds')
-# data.plot_configuration(plot_grid=False)

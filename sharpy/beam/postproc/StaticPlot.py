@@ -4,7 +4,7 @@ import matplotlib.pyplot as plt
 
 from presharpy.utils.settings import str2bool
 from sharpy.utils.solver_interface import solver, BaseSolver
-
+import sharpy.utils.cout_utils as cout
 
 
 @solver
@@ -44,7 +44,7 @@ class StaticPlot(BaseSolver):
         try:
             self.settings['figures_location'] = (str2bool(self.settings['figures_location']))
         except KeyError:
-            print('StaticPlot: no location for figures defined, defaulting to ./')
+            cout.cout_wrap('StaticPlot: no location for figures defined, defaulting to ./')
             self.settings['figures_location'] = './'
 
     def plot_shape(self):

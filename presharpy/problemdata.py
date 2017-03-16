@@ -19,7 +19,7 @@ import presharpy.aerogrid.aerogrid as aerogrid
 import presharpy.beam.beam as beam
 import presharpy.utils.h5utils as h5utils
 from sharpy.utils.solver_interface import solver, solver_types, dict_of_solvers
-import sharpy.utils.plotutils as plotutils
+import sharpy.utils.cout_utils as cout
 
 
 @solver
@@ -120,23 +120,23 @@ class ProblemData(object):
                                    self.case_name + '.flightcon.txt')
             # Check if flightcon file exists
             h5utils.check_file_exists(flightcon_file_name)
-            print('\tThe FLIGHTCON file exist, it will be loaded.')
+            cout.cout_wrap('\tThe FLIGHTCON file exist, it will be loaded.')
             self.flightcon_config = self.load_config_file(flightcon_file_name)
 
         if not self.steady_problem:
             self.dyn_data_dict = (
                 h5utils.load_h5_in_dict(self.dyn_handle))
 
-        print('\tDONE')
-        print('--------------------------------------------------------------')
-        print('Processing fem input and generating beam model...')
+        cout.cout_wrap('\tDONE')
+        cout.cout_wrap(cout.separator)
+        cout.cout_wrap('Processing fem input and generating beam model...')
         if not self.steady_problem:
             self.beam = beam.Beam(self.fem_data_dict, self.dyn_data_dict)
         else:
             self.beam = beam.Beam(self.fem_data_dict)
 
         if not self.only_structural:
-            print('Processing aero input and generating grid...')
+            cout.cout_wrap('Processing aero input and generating grid...')
             ProblemData.grid = aerogrid.AeroGrid(self.aero_data_dict,
                                                  self.solver_config,
                                                  self.flightcon_config,
@@ -156,60 +156,4 @@ class ProblemData(object):
         config = configparser.ConfigParser()
         config.read(file_name)
         return config
-
-    # def plot_configuration(self, plot_beam=True, plot_grid=True, persp_correction=True, defor=True):
-    #     """Main wrapper for case plotting in 3D using matplotlib.
-    #
-    #     Args:
-    #         plot_beam (bool, optional): if ``True`` the beam is plotted
-    #         plot_grid (bool, optional): if ``True`` the aero grid is plotted
-    #         persp_correction (bool, optional): if ``True``, the perspective is disable to try to
-    #             simulate an orthogonal perspective.
-    #             (see http://stackoverflow.com/questions/23840756/how-to-disable-perspective-in-mplot3d)
-    #         defor (bool, optional): if ``True``, the deformed configuration is also plotted
-    #
-    #     Returns:
-    #         None
-    #
-    #     Notes:
-    #         A new set of axes is created using:
-    #
-    #            >>> fig = plt.figure()
-    #            >>> ax = fig.add_subplot(111, projection='3d')
-    #            >>> plt.title('Case: %s -- structure plot' % self.case_name)
-    #            >>> ax.set_xlabel('x (m)')
-    #            >>> ax.set_ylabel('y (m)')
-    #            >>> ax.set_zlabel('z (m)')
-    #
-    #     """
-    #     if self.settings['SHARPy']['plot']:
-    #         import matplotlib.pyplot as plt
-    #         from mpl_toolkits.mplot3d import Axes3D, proj3d
-    #         import numpy as np
-    #         fig = plt.figure()
-    #         ax = fig.add_subplot(111, projection='3d')
-    #         plt.title('Case: %s -- structure plot' % self.case_name)
-    #         ax.set_xlabel('x (m)')
-    #         ax.set_ylabel('y (m)')
-    #         ax.set_zlabel('z (m)')
-    #
-    #         if plot_beam:
-    #             self.beam.plot(fig, ax, plot_triad=True, defor=defor, ini=True)
-    #         if plot_grid:
-    #             self.grid.plot(fig, ax)
-    #
-    #         if persp_correction:
-    #             # correction of perspective
-    #             def orthogonal_projection(zfront, zback):
-    #                 a = (zfront + zback) / (zfront - zback)
-    #                 b = -2 * (zfront * zback) / (zfront - zback)
-    #                 return np.array([[1, 0, 0, 0],
-    #                                  [0, 1, 0, 0],
-    #                                  [0, 0, a, b],
-    #                                  [0, 0, -1e-5, zback]])
-    #
-    #             proj3d.persp_transformation = orthogonal_projection
-    #         plt.axis('equal')
-    #         plotutils.set_axes_equal(ax)
-    #         plt.show()
 
