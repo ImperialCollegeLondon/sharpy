@@ -65,12 +65,14 @@ class Xbopts(ct.Structure):
 
 BeamPath += ext
 BeamLib = ct.cdll.LoadLibrary(BeamPath)
-f_cbeam3_solv_nlnstatic = BeamLib.cbeam3_solv_nlnstatic_python
-f_cbeam3_solv_nlnstatic.restype = None
 # ctypes pointer types
 doubleP = ct.POINTER(ct.c_double)
 intP = ct.POINTER(ct.c_int)
 charP = ct.POINTER(ct.c_char_p)
+
+
+f_cbeam3_solv_nlnstatic = BeamLib.cbeam3_solv_nlnstatic_python
+f_cbeam3_solv_nlnstatic.restype = None
 
 
 def cbeam3_solv_nlnstatic(beam, settings):
