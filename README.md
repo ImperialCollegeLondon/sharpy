@@ -43,16 +43,16 @@ chmod +x ./run_make.sh
 # Now we run run_make
 ./run_make.sh
 ```
-    This compiles a release version of xbeam calling to `gfortran`. If you
-    have several versions of `gcc` compiled, you might have to modify
-    the `FC` flag in `src/Makefile` and `src/xbeam_base/Makefile` in order
-    to account for this. For example, I have `gfortran-5.4.0` for the newer
-    version of `gcc` not included with CentOS, so I need to modify the Makefiles
-    if I want to take advantage of the improved features.
+This compiles a release version of xbeam calling to `gfortran`. If you
+have several versions of `gcc` compiled, you might have to modify
+the `FC` flag in `src/Makefile` and `src/xbeam_base/Makefile` in order
+to account for this. For example, I have `gfortran-5.4.0` for the newer
+version of `gcc` not included with CentOS, so I need to modify the Makefiles
+if I want to take advantage of the improved features.
 
-    After a (hopefully) successful compilation of the xbeam library, the
-    `run_make` script automatically copies the library to the required folder in
-    `SHARPy` (this is why you need to clone `SHARPy` before `xbeam`).
+After a (hopefully) successful compilation of the xbeam library, the
+`run_make` script automatically copies the library to the required folder in
+`SHARPy` (this is why you need to clone `SHARPy` before `xbeam`).
 
 3. Make sure your python version is at least 3.5:
 ```bash
