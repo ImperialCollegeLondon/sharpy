@@ -232,12 +232,12 @@ def generate_solver_file(route, case_name):
                         'route': './tests/beam/static/geradin_cardona',
                         'flow': 'NonLinearStatic',
                         'plot': 'on'}
-    config['NonLinearStatic'] = {'print_info': 'on',
+    config['NonLinearStatic'] = {'print_info': 'off',
                                  'out_b_frame': 'off',
                                  'out_a_frame': 'off',
                                  'elem_proj': 2,
                                  'max_iterations': 99,
-                                 'num_load_steps': 20,
+                                 'num_load_steps': 10,
                                  'delta_curved': 1e-5,
                                  'min_delta': 1e-5,
                                  'newmark_damp': 0.000,
@@ -264,4 +264,7 @@ def generate_flightcon_file(route, case_name):
 
 
 if __name__ == '__main__':
-    generate_files('./', 'geradin_cardona', 10, 3)
+    import os
+    dir_path = os.path.dirname(os.path.realpath(__file__))
+    generate_files(dir_path + '/', 'geradin_cardona', 10, 3)
+    print('The test case has been successfully generated!!!')

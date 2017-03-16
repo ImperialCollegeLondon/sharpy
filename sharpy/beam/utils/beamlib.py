@@ -6,7 +6,10 @@ import platform
 
 import presharpy.utils.algebra as algebra
 
-BeamPath = 'lib/libxbeam'
+import os
+dir_path = os.path.dirname(os.path.realpath(__file__))
+
+BeamPath = dir_path + '/../../../' + 'lib/libxbeam'
 if platform.system() == 'Darwin':
     ext = '.dylib'
 elif platform.system() == 'Linux':
@@ -380,7 +383,8 @@ def xbeam_solv_couplednlndyn(beam, settings):
     # here we only need to set the flags at True, all the forces are follower
     xbopts.FollowerForce = ct.c_bool(True)
     xbopts.FollowerForceRig = ct.c_bool(True)
-
+    import time as ti
+    start_time = ti.time()
     f_xbeam_solv_couplednlndyn(ct.byref(n_elem),
                          ct.byref(n_nodes),
                          ct.byref(n_tsteps),
@@ -420,7 +424,7 @@ def xbeam_solv_couplednlndyn(beam, settings):
                          beam.quat_history.ctypes.data_as(doubleP),
                          ct.byref(success)
                          )
-
+    print("--- %s seconds ---" % (ti.time() - start_time))
     if not success:
         raise Exception('couplednlndyn did not converge')
 
