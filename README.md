@@ -111,4 +111,9 @@ python ./tests/beam/static/geradin_cardona/generate_geradin_data.py
     And a 3D plot in a matplotlib screen.
 
     FYI, the correct solution for this test case by Geradin and Cardona is
-    Delta R_3 = -2.159m and Psi_2 = 0.6720rad. 
+    Delta R_3 = -2.159m and Psi_2 = 0.6720rad.
+
+Congratulations, you've run your first case.
+
+If you want to know how to configure your own cases, check the iPython notebook
+in `./tests/beam/static/geradin_cardona/`.
