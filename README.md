@@ -95,3 +95,20 @@ python ./tests/beam/static/geradin_cardona/generate_geradin_data.py
     ```bash
     python __main__.py ./tests/beam/static/geradin_cardona/geradin_cardona.solver.txt
     ```
+
+6. Results
+
+    After a successful execution, you should get something similar to:
+    ```
+    Plotting the structure...
+    Tip:
+	    Pos_def:
+		      4.403530 0.000000 -2.159692
+	    Psi_def:
+		      0.000000 0.672006 0.000000
+    ...Finished
+    ```
+    And a 3D plot in a matplotlib screen.
+
+    FYI, the correct solution for this test case by Geradin and Cardona is
+    $\Delta R_3 = -2.159$m and $\Psi_2 = 0.6720$rad. 
