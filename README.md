@@ -3,14 +3,14 @@ An aeroelastic analysis package
 
 __WORK STILL IN PROGRESS__
 
-SHARPy depends on [xbeam](http://github.com/fonsocarre/xbeam) and [UVLM](http://github.com/fonsocarre/UVLM).
+sharpy depends on [xbeam](http://github.com/fonsocarre/xbeam) and [UVLM](http://github.com/fonsocarre/UVLM).
 For now, only structural simulations are supported.
 
 ---
 ## Installation
 __Requirements__
 
-SHARPy is developed and tested using:
+sharpy is developed and tested using:
 + Anaconda Python 3.5.3
 + GCC 4.8.5 or (recommended) GCC 5.4.0
 + CentOS 7 and MacOS Sierra
@@ -18,7 +18,6 @@ SHARPy is developed and tested using:
 Certain dependencies are required separately:
 + [LAPACK](http://www.netlib.org/lapack/)
 + [Eigen](http://eigen.tuxfamily.org)
-+ [Boost](http://www.boost.org/)
 
 __Steps__
 
@@ -28,7 +27,7 @@ mkdir ~/working_dir
 cd !$
 ```
 
-1. Clone `SHARPy` in the working folder, if you agree with the license in
+1. Clone `sharpy` in the working folder, if you agree with the license in
 `license.txt`
 ```bash
 git clone http://github.com/fonsocarre/sharpy
@@ -52,7 +51,7 @@ if I want to take advantage of the improved features.
 
 After a (hopefully) successful compilation of the xbeam library, the
 `run_make` script automatically copies the library to the required folder in
-`SHARPy` (this is why you need to clone `SHARPy` before `xbeam`).
+`sharpy` (this is why you need to clone `sharpy` before `xbeam`).
 
 3. Make sure your python version is at least 3.5:
 ```bash
@@ -84,14 +83,14 @@ If you try to open the `fem.h5` file, you'll get an error or something meaningle
 
 5. Now run it
 
-    The usual `SHARPy` call is something like:
+    The usual `sharpy` call is something like:
     ```bash
-    # from the SHARPy folder
+    # from the sharpy folder
     python __main__.py "solver.txt file"
-    # from outside the SHARPy folder (make sure working_dir is in your path:)
-    python SHARPy "solver.txt file"
+    # from outside the sharpy folder (make sure working_dir is in your path:)
+    python sharpy "solver.txt file"
     ```
-    So if you are in the SHARPy folder, just run:
+    So if you are in the sharpy folder, just run:
     ```bash
     python __main__.py ./tests/beam/static/geradin_cardona/geradin_cardona.solver.txt
     ```
@@ -116,4 +115,4 @@ If you try to open the `fem.h5` file, you'll get an error or something meaningle
 Congratulations, you've run your first case.
 
 If you want to know how to configure your own cases, check the iPython notebook
-[Geradin and Cardona Static Structural Case](https://github.com/fonsocarre/SHARPy/blob/master/tests/beam/static/geradin_cardona/geradin_cardona.ipynb).
+[Geradin and Cardona Static Structural Case](https://github.com/fonsocarre/sharpy/blob/master/tests/beam/static/geradin_cardona/geradin_cardona.ipynb).
