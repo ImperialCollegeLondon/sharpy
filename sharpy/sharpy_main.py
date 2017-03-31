@@ -10,7 +10,7 @@ from sharpy.beam.solver.nonlinearstatic import NonLinearStatic
 from sharpy.beam.solver.nonlineardynamic import NonLinearDynamic
 from sharpy.beam.solver.vibrationmodes import VibrationModes
 from sharpy.beam.postproc.vibrationmodesplot import VibrationModesPlot
-from sharpy.beam.postproc.StaticPlot import StaticPlot
+from sharpy.beam.postproc.staticplot import StaticPlot
 # ------------
 
 # timing
