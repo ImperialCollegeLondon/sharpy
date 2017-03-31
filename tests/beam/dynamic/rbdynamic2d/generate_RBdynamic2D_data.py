@@ -15,12 +15,12 @@ UPDATE: modified case, with gravity loads and
 different loads. Still very easy to replicate
 Simo if necessary"""
 
-dt = 0.005
+dt = 0.001
 simulation_time = 1
 num_steps = int(simulation_time/dt)
 route = './'
 case_name = 'rbdynamic2d'
-num_elem = 10
+num_elem = 40
 num_node_elem = 3
 
 # dont touch this
@@ -83,13 +83,15 @@ def generate_dyn_file():
     if with_dynamic_forces:
         angle = 0*np.arctan(8.0/6.0)
         dynamic_forces = np.zeros((num_node, 6))
-        # dynamic_forces[0, 1] = 10
+        dynamic_forces[0, 1] = 100
+        dynamic_forces[0, 5] = 100
+        # dynamic_forces[0, 4] = 100
         # dynamic_forces[-1, 1] = -10
         # dynamic_forces[-1, 4] = -10
         force_time = np.zeros((num_steps, ))
-        force_time[0:50] = np.linspace(0, 1, 50)
-        # i_top = int(2.5/dt)
-        # force_time[:i_top] = np.linspace(0, 1, i_top)
+        i_top = int(0.1/dt)
+        force_time[0:i_top] = np.linspace(0, 1, i_top)
+        force_time[i_top:2*i_top] = np.linspace(1, 0, i_top)
 
     with h5.File(route + '/' + case_name + '.dyn.h5', 'a') as h5file:
         if with_dynamic_forces:
@@ -113,7 +115,7 @@ def generate_fem_file():
 
     num_node = (num_node_elem - 1)*num_elem + 1
     # import pdb; pdb.set_trace()
-    angle = 45*np.pi/180
+    angle = 0*np.pi/180
     x = (np.linspace(0, length, num_node))*np.cos(angle)
     y = np.zeros((num_node,))
     z = (np.linspace(0, length, num_node))*np.sin(angle)
@@ -183,9 +185,10 @@ def generate_fem_file():
     n_lumped_mass = 1
     lumped_mass_nodes = np.array([num_node - 1], dtype=int)
     lumped_mass = np.zeros((n_lumped_mass, ))
-    lumped_mass[0] = 20
+    lumped_mass[0] = 100
     lumped_mass_inertia = np.zeros((n_lumped_mass, 3, 3))
     lumped_mass_position = np.zeros((n_lumped_mass, 3))
+    lumped_mass_position[0, 1] = 1
 
     with h5.File(route + '/' + case_name + '.fem.h5', 'a') as h5file:
         coordinates = h5file.create_dataset('coordinates', data = np.column_stack((x, y, z)))

@@ -75,6 +75,8 @@ class StaticPlot(BaseSolver):
                                       pos_def[:, 1],
                                       pos_def[:, 2], color='b')
 
+        plt.show()
+
 
     def print_info(self):
         psi_def = self.data.beam.psi_def
