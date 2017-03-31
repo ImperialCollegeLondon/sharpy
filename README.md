@@ -69,6 +69,7 @@ python --version
 
     This command generates the required files for running a static, clamped beam.
 ```bash
+cd ../sharpy
 python ./tests/beam/static/geradin_cardona/generate_geradin_data.py
 ```
 Now you should see a success message, and if you check the
