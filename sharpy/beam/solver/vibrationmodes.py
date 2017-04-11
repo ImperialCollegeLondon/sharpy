@@ -1,7 +1,7 @@
 import ctypes as ct
 
 import sharpy.beam.utils.beamlib as beamlib
-from presharpy.utils.settings import str2bool
+from sharpy.presharpy.utils.settings import str2bool
 from sharpy.utils.solver_interface import solver, BaseSolver
 
 

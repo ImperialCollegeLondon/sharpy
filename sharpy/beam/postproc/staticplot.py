@@ -1,10 +1,6 @@
-import ctypes as ct
-import numpy as np
-import matplotlib.pyplot as plt
-
-from presharpy.utils.settings import str2bool
-from sharpy.utils.solver_interface import solver, BaseSolver
 import sharpy.utils.cout_utils as cout
+from sharpy.presharpy.utils.settings import str2bool
+from sharpy.utils.solver_interface import solver, BaseSolver
 
 
 @solver

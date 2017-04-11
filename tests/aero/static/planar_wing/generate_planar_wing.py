@@ -30,7 +30,7 @@ def generate_files(route, case_name, num_elem=10, num_node_elem=3):
                                               )
     generate_aero_file(route, case_name, num_elem, num_node, coordinates)
     generate_solver_file(route, case_name)
-    # generate_flightcon_file(route, case_name)
+    generate_flightcon_file(route, case_name)
 
 
 def generate_fem_file(route, case_name, num_elem, num_node_elem=3):
@@ -230,7 +230,7 @@ def generate_solver_file(route, case_name):
     file_name = route + '/' + case_name + '.solver.txt'
     config = configparser.ConfigParser()
     config['SHARPy'] = {'case': 'planar_wing',
-                        'route': './tests/beam/static/planar_wing',
+                        'route': './tests/aero/static/planar_wing',
                         'flow': 'StaticUvlm',
                         'plot': 'on'}
     config['StaticUvlm'] = {'print_info': 'on'

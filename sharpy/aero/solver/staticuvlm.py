@@ -1,7 +1,7 @@
-import numpy as np
 import ctypes as ct
+
+from sharpy.presharpy.utils.settings import str2bool
 from sharpy.utils.solver_interface import solver, BaseSolver
-from presharpy.utils.settings import str2bool
 
 
 @solver

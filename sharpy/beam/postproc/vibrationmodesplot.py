@@ -1,9 +1,7 @@
-import ctypes as ct
 import numpy as np
-import matplotlib.pyplot as plt
 
 import sharpy.beam.utils.beamlib as beamlib
-from presharpy.utils.settings import str2bool
+from sharpy.presharpy.utils.settings import str2bool
 from sharpy.utils.solver_interface import solver, BaseSolver
 
 
@@ -86,7 +84,6 @@ class VibrationModesPlot(BaseSolver):
                                                  psi_def)
 
         import matplotlib.pyplot as plt
-        from mpl_toolkits.mplot3d import Axes3D
         fig = plt.figure()
         ax = fig.add_subplot(111, projection='3d')
         plt.title('mode 1')
@@ -103,7 +100,6 @@ class VibrationModesPlot(BaseSolver):
                                                  psi_def)
 
         import matplotlib.pyplot as plt
-        from mpl_toolkits.mplot3d import Axes3D
         fig = plt.figure()
         ax = fig.add_subplot(111, projection='3d')
         plt.title('mode 2')
@@ -119,7 +115,6 @@ class VibrationModesPlot(BaseSolver):
                                                  psi_def)
 
         import matplotlib.pyplot as plt
-        from mpl_toolkits.mplot3d import Axes3D
         fig = plt.figure()
         ax = fig.add_subplot(111, projection='3d')
         plt.title('mode 3')

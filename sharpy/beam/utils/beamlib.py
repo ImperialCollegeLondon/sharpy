@@ -1,12 +1,13 @@
-import numpy as np
 import ctypes as ct
-import scipy as sc
-import scipy.integrate
+import os
 import platform
 
-import presharpy.utils.algebra as algebra
+import numpy as np
+import scipy as sc
+import scipy.integrate
 
-import os
+import sharpy.presharpy.utils.algebra as algebra
+
 dir_path = os.path.dirname(os.path.realpath(__file__))
 
 BeamPath = dir_path + '/../../../' + 'lib/libxbeam'
@@ -461,7 +462,6 @@ def xbeam_solv_couplednlndyn(beam, settings):
     plt.plot(time, glob_pos_def[:, beam.num_node/2, 2])
     plt.grid('on')
     plt.show()
-    import matplotlib.animation as ani
     # plt.figure()
     # plt.hold('on')
     # plt.plot(time[:-1], pos_def_history[:-2, -1, 2], 'r')
@@ -479,7 +479,6 @@ def xbeam_solv_couplednlndyn(beam, settings):
     # plt.show()
 
     from matplotlib import cm
-    from mpl_toolkits.mplot3d import Axes3D
 
     delta = int(0.1/dt.value)
     itime = range(1, int(n_tsteps.value)-1, delta)
