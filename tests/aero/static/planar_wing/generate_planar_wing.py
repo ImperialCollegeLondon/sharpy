@@ -231,9 +231,9 @@ def generate_solver_file(route, case_name):
     config = configparser.ConfigParser()
     config['SHARPy'] = {'case': 'planar_wing',
                         'route': './tests/beam/static/planar_wing',
-                        'flow': 'SteadyUvlm',
+                        'flow': 'StaticUvlm',
                         'plot': 'on'}
-    config['SteadyUvlm'] = {'print_info': 'on'
+    config['StaticUvlm'] = {'print_info': 'on'
                                  }
 
     with open(file_name, 'w') as configfile:

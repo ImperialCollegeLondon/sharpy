@@ -11,6 +11,8 @@ from sharpy.beam.solver.nonlineardynamic import NonLinearDynamic
 from sharpy.beam.solver.vibrationmodes import VibrationModes
 from sharpy.beam.postproc.vibrationmodesplot import VibrationModesPlot
 from sharpy.beam.postproc.staticplot import StaticPlot
+
+from sharpy.aero.solver.staticuvlm import StaticUvlm
 # ------------
 
 # timing
