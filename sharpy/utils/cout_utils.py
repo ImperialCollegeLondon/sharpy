@@ -23,14 +23,18 @@ sharpy_license = \
 Copyright (c), Imperial College London.
 All rights reserved. '''
 
-
 wrapper = textwrap.TextWrapper(width=output_columns, break_long_words=False)
+
+
 def cout_wrap(line):
     lines = line.split("\n")
-    newline = ''
-    for line in lines:
-        if len(line) > output_columns:
-            line = '\n'.join(wrapper.wrap(line))
+    if len(lines) == 1:
+        print(line)
+    else:
+        newline = ''
+        for line in lines:
+            if len(line) > output_columns:
+                line = '\n'.join(wrapper.wrap(line))
 
-        newline += line + "\n"
-    print(newline)
+            newline += line + "\n"
+        print(newline)
