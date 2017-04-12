@@ -23,7 +23,7 @@ t = time.process_time()
 cout.cout_wrap(cout.sharpy_ascii)
 cout.cout_wrap(cout.sharpy_license)
 cwd = os.getcwd()
-cout.cout_wrap('Running SHARPy from ' + cwd)
+cout.cout_wrap('Running SHARPy from ' + cwd, 2)
 
 solver_interface.print_available_solvers()
 settings = input_arg.read_settings()
@@ -32,11 +32,11 @@ settings = input_arg.read_settings()
 # run preSHARPy
 data = PreSharpy(settings)
 for solver_name in settings['SHARPy']['flow']:
-    print('Generating an instance of %s' % solver_name)
+    cout.cout_wrap('Generating an instance of %s' % solver_name, 2)
     cls_type = solver_interface.solver_from_string(solver_name)
     solver = cls_type()
     solver.initialise(data)
     data = solver.run()
 
 elapsed_time = time.process_time() - t
-print('FINISHED - Elapsed time = ' + str(elapsed_time) + ' seconds')
+cout.cout_wrap('FINISHED - Elapsed time = ' + str(elapsed_time) + ' seconds', 2)

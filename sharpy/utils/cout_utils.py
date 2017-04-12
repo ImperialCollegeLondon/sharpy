@@ -1,4 +1,8 @@
 import textwrap
+import colorama
+
+fore_colours = ['', colorama.Fore.BLUE, colorama.Fore.CYAN, colorama.Fore.RED]
+reset = colorama.Style.RESET_ALL
 
 
 output_columns = 80
@@ -26,10 +30,11 @@ All rights reserved. '''
 wrapper = textwrap.TextWrapper(width=output_columns, break_long_words=False)
 
 
-def cout_wrap(line):
+def cout_wrap(line, level=0):
     lines = line.split("\n")
+    if level > 3: raise AttributeError('Output level cannot be > 3')
     if len(lines) == 1:
-        print(line)
+        print(fore_colours[level] + line + reset)
     else:
         newline = ''
         for line in lines:
@@ -37,4 +42,4 @@ def cout_wrap(line):
                 line = '\n'.join(wrapper.wrap(line))
 
             newline += line + "\n"
-        print(newline)
+        print(fore_colours[level] + newline + reset)

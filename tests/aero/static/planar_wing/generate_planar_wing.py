@@ -162,6 +162,9 @@ def generate_aero_file(route, case_name, num_elem, num_node, coordinates):
     for i in range(num_node):
         surface_distribution.append(0)
 
+    surface_m = np.zeros((1,), dtype=int)
+    surface_m[0] = 2;
+
     aero_node = np.ones(num_node, dtype=bool)
     # aero_node[:] = True
 
@@ -199,6 +202,7 @@ def generate_aero_file(route, case_name, num_elem, num_node, coordinates):
         airfoil_distribution_input = h5file.create_dataset('airfoil_distribution', data=airfoil_distribution)
 
         surface_distribution_input = h5file.create_dataset('surface_distribution', data=surface_distribution)
+        surface_m_input = h5file.create_dataset('surface_m', data=surface_m)
 
         aero_node_input = h5file.create_dataset('aero_node', data=aero_node)
         elastic_axis_input = h5file.create_dataset('elastic_axis', data=elastic_axis)
@@ -233,12 +237,23 @@ def generate_solver_file(route, case_name):
                         'route': './tests/aero/static/planar_wing',
                         'flow': 'StaticUvlm',
                         'plot': 'on'}
-    config['StaticUvlm'] = {'print_info': 'on'
-                                 }
+    config['StaticUvlm'] = {'print_info': 'on',
+                            'M_distribution': 'uniform',
+                            'wake_length': 1.0,
+                            'rollup': 'off',
+                            'aligned_grid': 'off',
+                            'prescribed_wake': 'off'}
 
     with open(file_name, 'w') as configfile:
         config.write(configfile)
 
+
+def generate_flightcon_file(route, case_name):
+    file_name = route + '/' + case_name + '.flightcon.txt'
+    config = configparser.ConfigParser()
+
+    with open(file_name, 'w') as configfile:
+        config.write(configfile)
 
 if __name__ == '__main__':
     import os

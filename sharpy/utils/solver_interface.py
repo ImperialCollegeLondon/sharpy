@@ -1,4 +1,5 @@
 from abc import ABCMeta, abstractmethod
+from sharpy.utils.cout_utils import cout_wrap
 available_solvers = {}
 dict_of_solvers = {}
 solver_types = {}
@@ -27,11 +28,11 @@ def solver(arg):
 
 
 def print_available_solvers():
-    print('The available solvers on this session are:')
+    cout_wrap('The available solvers on this session are:')
     for k, v in available_solvers.items():
-        print('%s' % k)
+        cout_wrap('%s' % k)
         for i in v:
-            print('   %s' % i)
+            cout_wrap('   %s' % i)
 
 
 class BaseSolver(metaclass=ABCMeta):
