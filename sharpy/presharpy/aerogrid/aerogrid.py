@@ -46,6 +46,5 @@ class AeroGrid(object):
                                                              self.aero_dimensions[i_surf, 0],
                                                              self.aero_dimensions[i_surf, 1]), 1)
             cout.cout_wrap('  In total: %u bound panels' % sum(self.aero_dimensions[:, 0]*
-                                                         self.aero_dimensions[:, 1]), 1)
-
-
+                                                               self.aero_dimensions[:, 1]), 1)
+        # generate placeholder for aero grid zeta coordinates
