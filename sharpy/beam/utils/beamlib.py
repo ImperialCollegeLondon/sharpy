@@ -1,22 +1,11 @@
 import ctypes as ct
-import os
-import platform
-
 import numpy as np
 import scipy as sc
 import scipy.integrate
 
 import sharpy.presharpy.utils.algebra as algebra
-
-dir_path = os.path.dirname(os.path.realpath(__file__))
-
-BeamPath = dir_path + '/../../../' + 'lib/libxbeam'
-if platform.system() == 'Darwin':
-    ext = '.dylib'
-elif platform.system() == 'Linux':
-    ext = '.so'
-else:
-    raise NotImplementedError('The platform ' + platform.system() + 'is not supported')
+import sharpy.utils.ctypes_utils as ct_utils
+from sharpy.utils.sharpydir import SharpyDir
 
 
 class Xbopts(ct.Structure):
@@ -64,8 +53,8 @@ class Xbopts(ct.Structure):
         self.gravity_dir_z = ct.c_double(1.0)
 
 
-BeamPath += ext
-BeamLib = ct.cdll.LoadLibrary(BeamPath)
+BeamLib = ct_utils.import_ctypes_lib(SharpyDir + '/lib/', 'libxbeam')
+
 # ctypes pointer types
 doubleP = ct.POINTER(ct.c_double)
 intP = ct.POINTER(ct.c_int)

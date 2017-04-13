@@ -1,6 +1,7 @@
 import os
 import time
 
+import sharpy.utils.sharpydir as sharpydir
 import sharpy.utils.cout_utils as cout
 import sharpy.utils.input_arg as input_arg
 import sharpy.utils.solver_interface as solver_interface
@@ -24,6 +25,7 @@ cout.cout_wrap(cout.sharpy_ascii)
 cout.cout_wrap(cout.sharpy_license)
 cwd = os.getcwd()
 cout.cout_wrap('Running SHARPy from ' + cwd, 2)
+cout.cout_wrap('SHARPy version being run is in ' + sharpydir.SharpyDir, 2)
 
 solver_interface.print_available_solvers()
 settings = input_arg.read_settings()
