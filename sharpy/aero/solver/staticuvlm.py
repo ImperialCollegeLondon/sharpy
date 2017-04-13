@@ -4,6 +4,7 @@ from sharpy.presharpy.utils.settings import str2bool
 from sharpy.utils.solver_interface import solver, BaseSolver
 import sharpy.utils.cout_utils as cout
 import sharpy.presharpy.aerogrid.aerogrid as aerogrid
+import sharpy.aero.utils.uvlmlib as uvlmlib
 
 
 @solver
@@ -26,7 +27,7 @@ class StaticUvlm(BaseSolver):
 
     def run(self):
         cout.cout_wrap('Running static UVLM solver...', 1)
-
+        uvlmlib.VLM_solver()
         cout.cout_wrap('...Finished', 1)
         return self.data
 
