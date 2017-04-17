@@ -7,8 +7,8 @@ import sharpy.utils.sharpydir as sharpydir
 import sharpy.utils.solver_interface as solver_interface
 from sharpy.presharpy.presharpy import PreSharpy
 
-# solver list -- It is important to import them here
 from sharpy.presharpy.presharpy import PreSharpy
+# Loading solvers and postprocessors
 import sharpy.solvers
 import sharpy.postproc
 # ------------
@@ -29,9 +29,7 @@ settings = input_arg.read_settings()
 # run preSHARPy
 data = PreSharpy(settings)
 for solver_name in settings['SHARPy']['flow']:
-    cout.cout_wrap('Generating an instance of %s' % solver_name, 2)
-    cls_type = solver_interface.solver_from_string(solver_name)
-    solver = cls_type()
+    solver = solver_interface.initialise_solver(solver_name)
     solver.initialise(data)
     data = solver.run()
 

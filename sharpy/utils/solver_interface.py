@@ -80,3 +80,12 @@ def solver_list_from_path(cwd):
 
     files = [file for file in onlyfiles if not file == ""]
     return files
+
+
+def initialise_solver(solver_name):
+    import sharpy.utils.cout_utils as cout
+    import sharpy.utils.solver_interface as solver_interface
+    cout.cout_wrap('Generating an instance of %s' % solver_name, 2)
+    cls_type = solver_interface.solver_from_string(solver_name)
+    solver = cls_type()
+    return solver
