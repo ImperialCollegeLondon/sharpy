@@ -1,21 +1,16 @@
 import os
 import time
 
-import sharpy.utils.sharpydir as sharpydir
 import sharpy.utils.cout_utils as cout
 import sharpy.utils.input_arg as input_arg
+import sharpy.utils.sharpydir as sharpydir
 import sharpy.utils.solver_interface as solver_interface
 from sharpy.presharpy.presharpy import PreSharpy
 
 # solver list -- It is important to import them here
 from sharpy.presharpy.presharpy import PreSharpy
-from sharpy.beam.solver.nonlinearstatic import NonLinearStatic
-from sharpy.beam.solver.nonlineardynamic import NonLinearDynamic
-from sharpy.beam.solver.vibrationmodes import VibrationModes
-from sharpy.beam.postproc.vibrationmodesplot import VibrationModesPlot
-from sharpy.beam.postproc.staticplot import StaticPlot
-
-from sharpy.aero.solver.staticuvlm import StaticUvlm
+import sharpy.solvers
+import sharpy.postproc
 # ------------
 
 # timing

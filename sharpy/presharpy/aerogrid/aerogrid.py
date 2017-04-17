@@ -8,6 +8,7 @@
 # grid based on the input dictionaries.
 
 import numpy as np
+import ctypes as ct
 import scipy.interpolate as interpolate
 
 import sharpy.presharpy.utils.algebra as algebra
@@ -48,3 +49,21 @@ class AeroGrid(object):
             cout.cout_wrap('  In total: %u bound panels' % sum(self.aero_dimensions[:, 0]*
                                                                self.aero_dimensions[:, 1]), 1)
         # generate placeholder for aero grid zeta coordinates
+        self.zeta = []
+        for i_surf in self.n_surf:
+            self.zeta.append(np.zeros((self.aero_dimensions[i_surf, 0] - 1,
+                                       self.aero_dimensions[i_surf, 1] - 1),
+                                      dtype=ct.c_double))
+
+
+
+
+
+
+
+
+
+
+
+
+

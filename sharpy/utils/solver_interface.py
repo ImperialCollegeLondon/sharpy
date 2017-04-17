@@ -1,8 +1,11 @@
 from abc import ABCMeta, abstractmethod
 from sharpy.utils.cout_utils import cout_wrap
+import os
+
 available_solvers = {}
 dict_of_solvers = {}
 solver_types = {}
+solvers = {}  # for internal working
 
 
 # decorator
@@ -61,4 +64,19 @@ def solver_from_string(string):
     import sys
     import functools
     return dict_of_solvers[string]
-    # return functools.reduce(getattr, string.split("."), sys.modules[__name__])
+
+
+def solver_list_from_path(cwd):
+    onlyfiles = [f for f in os.listdir(cwd) if os.path.isfile(os.path.join(cwd, f))]
+
+    for i_file in range(len(onlyfiles)):
+        if ".py" in onlyfiles[i_file]:
+            if onlyfiles[i_file] == "__init__.py":
+                onlyfiles[i_file] = ""
+                continue
+            onlyfiles[i_file] = onlyfiles[i_file].replace('.py', '')
+        else:
+            onlyfiles[i_file] = ""
+
+    files = [file for file in onlyfiles if not file == ""]
+    return files

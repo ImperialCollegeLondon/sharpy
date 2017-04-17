@@ -52,7 +52,6 @@ class Xbopts(ct.Structure):
         self.gravity_dir_y = ct.c_double(0.0)
         self.gravity_dir_z = ct.c_double(1.0)
 
-
 BeamLib = ct_utils.import_ctypes_lib(SharpyDir + '/lib/', 'libxbeam')
 
 # ctypes pointer types
