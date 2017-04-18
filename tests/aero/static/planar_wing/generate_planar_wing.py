@@ -38,10 +38,12 @@ def generate_fem_file(route, case_name, num_elem, num_node_elem=3):
 
     num_node = (num_node_elem - 1)*num_elem + 1
     # import pdb; pdb.set_trace()
-    angle = 0*np.pi/180.0
+    angle = 90*np.pi/180.0
+    dihedral = 20*np.pi/180.0
     x = (np.linspace(0, length, num_node))*np.cos(angle)
-    y = (np.linspace(0, length, num_node))*np.sin(angle)
-    z = np.zeros((num_node,))
+    y = (np.linspace(0, length, num_node))*np.sin(angle)*np.cos(dihedral)
+    z = (np.linspace(0, length, num_node))*np.sin(dihedral)
+    # z = np.zeros((num_node,))
 
     structural_twist = np.zeros_like(x)
 
@@ -152,7 +154,7 @@ def generate_fem_file(route, case_name, num_elem, num_node_elem=3):
 
 def generate_aero_file(route, case_name, num_elem, num_node, coordinates):
     # example airfoil
-    naca_x, naca_y = generate_naca_camber(route)
+    naca_x, naca_y = generate_naca_camber(P=1, M=5)
     # airfoil distribution
     airfoil_distribution = []
     for i in range(num_node):
@@ -163,7 +165,9 @@ def generate_aero_file(route, case_name, num_elem, num_node, coordinates):
         surface_distribution.append(0)
 
     surface_m = np.zeros((1,), dtype=int)
-    surface_m[0] = 2;
+    surface_m[0] = 100
+
+    m_distribution = 'uniform'
 
     aero_node = np.ones(num_node, dtype=bool)
     # aero_node[:] = True
@@ -203,12 +207,13 @@ def generate_aero_file(route, case_name, num_elem, num_node, coordinates):
 
         surface_distribution_input = h5file.create_dataset('surface_distribution', data=surface_distribution)
         surface_m_input = h5file.create_dataset('surface_m', data=surface_m)
+        m_distribution_input = h5file.create_dataset('m_distribution', data=m_distribution.encode('ascii', 'ignore'))
 
         aero_node_input = h5file.create_dataset('aero_node', data=aero_node)
         elastic_axis_input = h5file.create_dataset('elastic_axis', data=elastic_axis)
 
 
-def generate_naca_camber(route, M=0, P=0):
+def generate_naca_camber(M=0, P=0):
     m = M/100
     p = P/10
 
@@ -235,7 +240,7 @@ def generate_solver_file(route, case_name):
     config = configparser.ConfigParser()
     config['SHARPy'] = {'case': 'planar_wing',
                         'route': './tests/aero/static/planar_wing',
-                        'flow': 'StaticUvlm',
+                        'flow': 'StaticUvlm, AeroGridPlot',
                         'plot': 'on'}
     config['StaticUvlm'] = {'print_info': 'on',
                             'M_distribution': 'uniform',
@@ -243,6 +248,8 @@ def generate_solver_file(route, case_name):
                             'rollup': 'off',
                             'aligned_grid': 'off',
                             'prescribed_wake': 'off'}
+    config['AeroGridPlot'] = {'route': './tests/aero/static/planar_wing/output',
+                              'on_screen': 'off'}
 
     with open(file_name, 'w') as configfile:
         config.write(configfile)

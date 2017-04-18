@@ -21,8 +21,7 @@ class StaticUvlm(BaseSolver):
         self.convert_settings()
         cout.cout_wrap('Generating aero grid...', 1)
         self.data.grid = aerogrid.AeroGrid(self.data.beam,
-                                           self.data.aero_data_dict,
-                                           self.settings)
+                                           self.data.aero_data_dict)
         cout.cout_wrap('...Finished', 1)
 
     def run(self):

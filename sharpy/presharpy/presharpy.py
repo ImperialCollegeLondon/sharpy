@@ -125,7 +125,6 @@ class PreSharpy(object):
         else:
             self.beam = beam.Beam(self.fem_data_dict)
 
-
     @staticmethod
     def load_config_file(file_name):
         """This function reads the flight condition and solver input files.
