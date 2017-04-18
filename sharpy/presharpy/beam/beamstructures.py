@@ -1,7 +1,7 @@
 # Alfonso del Carre
 import numpy as np
 
-import sharpy.presharpy.utils.algebra as algebra
+import sharpy.utils.algebra as algebra
 
 
 class Element(object):

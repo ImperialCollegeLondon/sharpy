@@ -1,9 +1,9 @@
 import ctypes as ct
 
 import numpy as np
-import sharpy.presharpy.beam.beamstructures as beamstructures
 
-import sharpy.presharpy.utils.algebra as algebra
+import sharpy.presharpy.beam.beamstructures as beamstructures
+import sharpy.utils.algebra as algebra
 
 
 class Beam(object):
