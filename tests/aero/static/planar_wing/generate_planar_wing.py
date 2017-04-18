@@ -154,7 +154,7 @@ def generate_fem_file(route, case_name, num_elem, num_node_elem=3):
 
 def generate_aero_file(route, case_name, num_elem, num_node, coordinates):
     # example airfoil
-    naca_x, naca_y = generate_naca_camber(P=1, M=5)
+    naca_x, naca_y = generate_naca_camber(P=1, M=7)
     # airfoil distribution
     airfoil_distribution = []
     for i in range(num_node):
@@ -165,7 +165,7 @@ def generate_aero_file(route, case_name, num_elem, num_node, coordinates):
         surface_distribution.append(0)
 
     surface_m = np.zeros((1,), dtype=int)
-    surface_m[0] = 100
+    surface_m[0] = 200
 
     m_distribution = 'uniform'
 

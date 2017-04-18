@@ -61,6 +61,13 @@ class AeroGrid(object):
                                        self.aero_dimensions[i_surf, 1] + 1),
                                       dtype=ct.c_double))
 
+        # panel normals
+        self.normals = []
+        for i_surf in range(self.n_surf):
+            self.normals.append(np.zeros((3,
+                                       self.aero_dimensions[i_surf, 0],
+                                       self.aero_dimensions[i_surf, 1]),
+                                      dtype=ct.c_double))
         # generate placeholder for aero grid zeta_star coordinates
         self.zeta_star = []
         for i_surf in range(self.n_surf):
@@ -113,7 +120,6 @@ class AeroGrid(object):
             node_info['beam_psi'] = beam.psi_ini[i_beam_elem, i_beam_local_node, :]
 
             self.zeta[i_surf][:, :, surface_counter[i_surf]] = generate_strip(node_info, self.airfoil_db)
-        a = 1
 
 
 def generate_strip(node_info, airfoil_db):

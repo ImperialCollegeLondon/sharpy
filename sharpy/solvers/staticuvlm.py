@@ -26,7 +26,7 @@ class StaticUvlm(BaseSolver):
 
     def run(self):
         cout.cout_wrap('Running static UVLM solver...', 1)
-        uvlmlib.VLM_solver()
+        uvlmlib.VLM_solver(self.data.grid, self.settings)
         cout.cout_wrap('...Finished', 1)
         return self.data
 
