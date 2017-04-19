@@ -44,7 +44,6 @@ class AeroGrid(object):
         # accounting for N+1 nodes -> N panels
         self.aero_dimensions[:, 1] -= 1
 
-        # if settings['print_info']:
         cout.cout_wrap('The aerodynamic grid contains %u surfaces' % self.n_surf, 1)
         for i_surf in range(self.n_surf):
             cout.cout_wrap('  Surface %u, M=%u, N=%u' % (i_surf,
@@ -65,18 +64,18 @@ class AeroGrid(object):
         self.normals = []
         for i_surf in range(self.n_surf):
             self.normals.append(np.zeros((3,
-                                       self.aero_dimensions[i_surf, 0],
-                                       self.aero_dimensions[i_surf, 1]),
-                                      dtype=ct.c_double))
+                                          self.aero_dimensions[i_surf, 0],
+                                          self.aero_dimensions[i_surf, 1]),
+                                         dtype=ct.c_double))
         # generate placeholder for aero grid zeta_star coordinates
         self.zeta_star = []
         for i_surf in range(self.n_surf):
             self.zeta_star.append(np.zeros((3,
-                                            self.aero_dimensions[i_surf, 0] + 1,
+                                            1 + 1,
                                             self.aero_dimensions[i_surf, 1] + 1),
                                            dtype=ct.c_double))
 
-        # placeholder for external velocity (includes gust)
+        # placeholder for external velocity
         self.u_ext = []
         for i_surf in range(self.n_surf):
             self.u_ext.append(np.zeros((3,

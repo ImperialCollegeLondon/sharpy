@@ -43,7 +43,6 @@ def generate_fem_file(route, case_name, num_elem, num_node_elem=3):
     x = (np.linspace(0, length, num_node))*np.cos(angle)
     y = (np.linspace(0, length, num_node))*np.sin(angle)*np.cos(dihedral)
     z = (np.linspace(0, length, num_node))*np.sin(dihedral)
-    # z = np.zeros((num_node,))
 
     structural_twist = np.zeros_like(x)
 
@@ -165,15 +164,14 @@ def generate_aero_file(route, case_name, num_elem, num_node, coordinates):
         surface_distribution.append(0)
 
     surface_m = np.zeros((1,), dtype=int)
-    surface_m[0] = 200
+    surface_m[0] = 10
 
     m_distribution = 'uniform'
 
     aero_node = np.ones(num_node, dtype=bool)
-    # aero_node[:] = True
 
     # twist distribution
-    twist = np.linspace(0, 20, num_node)*np.pi/180
+    twist = np.linspace(0, 0, num_node)*np.pi/180
 
     # chord distribution
     chord = np.ones((num_node,), dtype=float)
@@ -186,13 +184,6 @@ def generate_aero_file(route, case_name, num_elem, num_node, coordinates):
         airfoils_group = h5file.create_group('airfoils')
         # add one airfoil
         naca_airfoil = airfoils_group.create_dataset('0', data=np.column_stack((naca_x, naca_y)))
-        # naca_airfoil.attrs['airfoil'] = naca_description
-
-        # add another flat airfoil (or symmetric)
-        # flat_airfoil = airfoils_group.create_dataset('1',
-        #                                              data = np.column_stack((np.linspace(0, 1, 100),
-        #                                                                      np.zeros(100,))))
-        # flat_airfoil.attrs['airfoil'] = 'NACA00xx'
 
         # chord
         chord_input = h5file.create_dataset('chord', data = chord)
