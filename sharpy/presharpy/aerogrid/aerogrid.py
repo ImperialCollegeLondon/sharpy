@@ -137,14 +137,22 @@ def generate_strip(node_info, airfoil_db):
 
     # elastic axis correction
     strip_coordinates_b_frame[1, :] -= node_info['eaxis']
+    strip_coordinates_b_frame[1, :] *= -1
     # chord
     strip_coordinates_b_frame *= node_info['chord']
+
+    # twist rotation
+    if not node_info['twist'] == 0:
+        twist_mat = algebra.rotation3d_x(node_info['twist'])
+        for i_m in range(node_info['M'] + 1):
+            strip_coordinates_b_frame[:, i_m] = np.dot(twist_mat,
+                                                       strip_coordinates_b_frame[:, i_m])
 
     # CRV to rotation matrix
     crv = node_info['beam_psi']
     rotation_mat = algebra.crv2rot(crv)
     for i_m in range(node_info['M'] + 1):
-        strip_coordinates_a_frame[:, i_m] = np.dot(rotation_mat.transpose(),
+        strip_coordinates_a_frame[:, i_m] = np.dot(rotation_mat,
                                                    strip_coordinates_b_frame[:, i_m])
 
     # node coordinates addition

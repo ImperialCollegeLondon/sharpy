@@ -154,7 +154,7 @@ def generate_fem_file(route, case_name, num_elem, num_node_elem=3):
 
 def generate_aero_file(route, case_name, num_elem, num_node, coordinates):
     # example airfoil
-    naca_x, naca_y = generate_naca_camber(P=1, M=7)
+    naca_x, naca_y = generate_naca_camber(P=3, M=7)
     # airfoil distribution
     airfoil_distribution = []
     for i in range(num_node):
@@ -173,7 +173,7 @@ def generate_aero_file(route, case_name, num_elem, num_node, coordinates):
     # aero_node[:] = True
 
     # twist distribution
-    twist = np.linspace(0, 0, num_node)*np.pi/180
+    twist = np.linspace(0, 20, num_node)*np.pi/180
 
     # chord distribution
     chord = np.ones((num_node,), dtype=float)

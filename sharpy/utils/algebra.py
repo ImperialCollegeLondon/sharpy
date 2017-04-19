@@ -322,6 +322,15 @@ def rot_skew(vec):
     return matrix
 
 
+def rotation3d_x(angle):
+    c = np.cos(angle)
+    s = np.sin(angle)
+    mat = np.zeros((3, 3))
+    mat[0, :] = [1.0, 0.0, 0.0]
+    mat[1, :] = [0.0,   c,  -s]
+    mat[2, :] = [0.0,   s,   c]
+    return mat
+
 if __name__ == '__main__':
     t = np.array([0, 1, 0])
     n = np.array([1, 0, 0])
