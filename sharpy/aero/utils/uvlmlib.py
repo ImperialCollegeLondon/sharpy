@@ -39,45 +39,29 @@ class VMopts(ct.Structure):
 t_2int = ct.POINTER(ct.c_int)*2
 
 
-def vlm_solver(grid, settings):
+def vlm_solver(ts_info):
     run_VLM = UvlmLib.run_VLM
     run_VLM.restype = None
 
     vmopts = VMopts()
     vmopts.Steady = ct.c_bool(True)
     vmopts.Mstar = ct.c_uint(1)
-    vmopts.NumSurfaces = ct.c_uint(grid.n_surf)
+    vmopts.NumSurfaces = ct.c_uint(ts_info.n_surf)
 
-    n_surf = grid.n_surf
-    n_dim = ct.c_int(3)
-    dimensions = grid.aero_dimensions.astype(dtype=ct.c_int)
-    dimensions_star = grid.aero_dimensions.astype(dtype=ct.c_int)
-    dimensions_star[0, :] = vmopts.Mstar
+    # n_surf = ts_info.n_surf
+    # from sharpy.utils.constants import NDIM
+    # n_dim = ct.c_int(NDIM)
 
-    zeta_list = []
-    for i_surf in range(n_surf):
-        for i_dim in range(n_dim.value):
-            zeta_list.append(grid.zeta[i_surf][i_dim, :, :].reshape(-1))
-
-    normals_list = []
-    for i_surf in range(n_surf):
-        for i_dim in range(n_dim.value):
-            normals_list.append(grid.normals[i_surf][i_dim, :, :].reshape(-1))
-
-    zeta_star_list = []
-    for i_surf in range(n_surf):
-        for i_dim in range(n_dim.value):
-            zeta_star_list.append(grid.zeta_star[i_surf][i_dim, :, :].reshape(-1))
-
-    p_zeta = (ct.POINTER(ct.c_double)*len(zeta_list))(* [np.ctypeslib.as_ctypes(array) for array in zeta_list])
-    p_normals = (ct.POINTER(ct.c_double)*len(normals_list))(* [np.ctypeslib.as_ctypes(array) for array in normals_list])
-    p_zeta_star = (ct.POINTER(ct.c_double)*len(zeta_star_list))(* [np.ctypeslib.as_ctypes(array) for array in zeta_star_list])
-    p_dimensions = (t_2int)(* np.ctypeslib.as_ctypes(dimensions))
-    p_dimensions_star = (t_2int)(* np.ctypeslib.as_ctypes(dimensions_star))
-
-    run_VLM(ct.byref(vmopts), ct.byref(n_dim), p_dimensions, p_dimensions_star, p_zeta, p_zeta_star, p_normals)
-
-    del p_zeta, zeta_list
-    del p_normals, normals_list
-    del p_dimensions
+    ts_info.generate_ctypes_pointers()
+    run_VLM(ct.byref(vmopts),
+            ts_info.ct_p_dimensions,
+            ts_info.ct_p_dimensions_star,
+            ts_info.ct_p_zeta,
+            ts_info.ct_p_zeta_star,
+            ts_info.ct_p_u_ext,
+            ts_info.ct_p_gamma,
+            ts_info.ct_p_gamma_star,
+            ts_info.ct_p_normals,
+            ts_info.ct_p_forces)
+    ts_info.remove_ctypes_pointers()
 

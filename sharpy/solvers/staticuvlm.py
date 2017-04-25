@@ -16,17 +16,20 @@ class StaticUvlm(BaseSolver):
         pass
 
     def initialise(self, data):
+        self.ts = 0
         self.data = data
         self.settings = data.settings[self.solver_id]
         self.convert_settings()
         cout.cout_wrap('Generating aero grid...', 1)
         self.data.grid = aerogrid.AeroGrid(self.data.beam,
-                                           self.data.aero_data_dict)
+                                           self.data.aero_data_dict,
+                                           self.settings)
+
         cout.cout_wrap('...Finished', 1)
 
     def run(self):
         cout.cout_wrap('Running static UVLM solver...', 1)
-        uvlmlib.vlm_solver(self.data.grid, self.settings)
+        uvlmlib.vlm_solver(self.data.grid.timestep_info[self.ts])
         cout.cout_wrap('...Finished', 1)
         return self.data
 
@@ -35,4 +38,5 @@ class StaticUvlm(BaseSolver):
         self.settings['rollup'] = str2bool(self.settings['rollup'])
         self.settings['aligned_grid'] = str2bool(self.settings['aligned_grid'])
         self.settings['prescribed_wake'] = str2bool(self.settings['prescribed_wake'])
+        self.settings['mstar'] = int(self.settings['mstar'])
 

@@ -235,7 +235,7 @@ def generate_solver_file(route, case_name):
                         'plot': 'on'}
     config['StaticUvlm'] = {'print_info': 'on',
                             'M_distribution': 'uniform',
-                            'wake_length': 1.0,
+                            'Mstar': 1,
                             'rollup': 'off',
                             'aligned_grid': 'off',
                             'prescribed_wake': 'off'}

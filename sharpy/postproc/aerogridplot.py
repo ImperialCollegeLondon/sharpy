@@ -13,6 +13,7 @@ class AeroGridPlot(BaseSolver):
     solver_unsteady = False
 
     def __init__(self):
+        self.ts = 0  # steady solver
         pass
 
     def initialise(self, data):
@@ -29,16 +30,6 @@ class AeroGridPlot(BaseSolver):
         return self.data
 
     def convert_settings(self):
-        # try:
-        #     self.settings['print_info'] = (str2bool(self.settings['print_info']))
-        # except KeyError:
-        #     self.settings['print_info'] = True
-        #
-        # try:
-        #     self.settings['plot_shape'] = (str2bool(self.settings['plot_shape']))
-        # except KeyError:
-        #     self.settings['plot_shape'] = True
-        #
         try:
             self.settings['route'] = (str2bool(self.settings['route']))
         except KeyError:
@@ -47,10 +38,10 @@ class AeroGridPlot(BaseSolver):
         pass
 
     def plot_grid(self):
-        for i_surf in range(self.data.grid.n_surf):
+        for i_surf in range(self.data.grid.timestep_info[self.ts].n_surf):
             filename = 'grid_%s_%03u' % (self.data.settings['SHARPy']['case'], i_surf)
 
-            dims = self.data.grid.aero_dimensions[i_surf, :]
+            dims = self.data.grid.timestep_info[self.ts].dimensions[i_surf, :]
             coords = np.zeros(((dims[0]+1)*(dims[1]+1), 3))
             # conn = np.zeros((dims[0]*dims[1], 4), dtype=int)
             conn = []
@@ -60,7 +51,7 @@ class AeroGridPlot(BaseSolver):
             for i_n in range(dims[1]+1):
                 for i_m in range(dims[0]+1):
                     counter += 1
-                    coords[counter, :] = self.data.grid.zeta[i_surf][:, i_m, i_n]
+                    coords[counter, :] = self.data.grid.timestep_info[self.ts].zeta[i_surf][:, i_m, i_n]
 
             counter = -1
             node_counter = -1
@@ -76,7 +67,7 @@ class AeroGridPlot(BaseSolver):
                                  node_counter + 1,
                                  node_counter + dims[0]+2,
                                  node_counter + dims[0]+1])
-                    normal[counter, :] = self.data.grid.normals[i_surf][:, i_m, i_n]
+                    normal[counter, :] = self.data.grid.timestep_info[self.ts].normals[i_surf][:, i_m, i_n]
                     panel_id[counter] = counter
 
             ug = tvtk.UnstructuredGrid(points=coords)
