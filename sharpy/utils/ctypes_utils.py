@@ -12,7 +12,6 @@ def import_ctypes_lib(route, libname):
         raise NotImplementedError('The platform ' + platform.system() + 'is not supported')
 
     lib_path += ext
-    # library = ct.cdll.LoadLibrary(lib_path, mode=ct.RTLD_GLOBAL)
     try:
         library = ct.CDLL(lib_path, mode=ct.RTLD_GLOBAL)
     except:
