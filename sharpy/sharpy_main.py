@@ -36,5 +36,3 @@ for solver_name in settings['SHARPy']['flow']:
 elapsed_time = time.process_time() - t
 cout.cout_wrap('FINISHED - Elapsed time = ' + str(elapsed_time) + ' seconds', 2)
 
-
-A = 1
