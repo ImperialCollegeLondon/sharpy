@@ -34,34 +34,22 @@ def generate_files(route, case_name, num_elem=10, num_node_elem=3):
 
 
 def generate_fem_file(route, case_name, num_elem, num_node_elem=3):
-    length = 2
+    length = 4
 
     num_node = (num_node_elem - 1)*num_elem + 1
     # import pdb; pdb.set_trace()
-    angle = 90*np.pi/180.0
-    dihedral = 0*np.pi/180.0
-    n_elem_beam = int(num_elem/2)
-    n_node_beam = int((num_node - 1)/2)
-
-    x = np.zeros((num_node,))
-    y = np.zeros((num_node,))
-    z = np.zeros((num_node,))
-    x[0:n_node_beam+1] = (np.linspace(0, length, n_node_beam+1))*np.cos(angle)
-    y[0:n_node_beam+1] = (np.linspace(0, length, n_node_beam+1))*np.sin(angle)*np.cos(dihedral)
-    z[0:n_node_beam+1] = (np.linspace(0, length, n_node_beam+1))*np.sin(dihedral)
-    x[n_node_beam+1:] = ((np.linspace(0, -length, n_node_beam+1))*np.cos(angle))[1:]
-    y[n_node_beam+1:] = ((np.linspace(0, -length, n_node_beam+1))*np.sin(angle)*np.cos(dihedral))[1:]
-    z[n_node_beam+1:] = ((np.linspace(0, -length, n_node_beam+1))*np.sin(dihedral))[1:]
+    angle = 80*np.pi/180.0
+    dihedral = 20*np.pi/180.0
+    x = (np.linspace(0, length, num_node))*np.cos(angle)
+    y = (np.linspace(0, length, num_node))*np.sin(angle)*np.cos(dihedral)
+    z = (np.linspace(0, length, num_node))*np.sin(dihedral)
 
     structural_twist = np.zeros_like(x)
 
     frame_of_reference_delta = np.zeros((num_node, 3))
     for inode in range(num_node):
         # frame_of_reference_delta[inode, :] = [0, 1, 0]
-        if inode < n_node_beam + 1:
-            frame_of_reference_delta[inode, :] = [-np.sin(angle), np.cos(angle), 0]
-        else:
-            frame_of_reference_delta[inode, :] = [-np.sin(angle), np.cos(angle), 0]
+        frame_of_reference_delta[inode, :] = [-np.sin(angle), np.cos(angle), 0]
 
     scale = 1
 
@@ -73,8 +61,6 @@ def generate_fem_file(route, case_name, num_elem, num_node_elem=3):
     for ielem in range(num_elem):
         conn[ielem, :] = (np.ones((3,)) * ielem * (num_node_elem - 1)
                           + [0, 2, 1])
-        if ielem == n_elem_beam:
-            conn[ielem, 0] = 0
 
     # stiffness array
     # import pdb; pdb.set_trace()
@@ -106,12 +92,10 @@ def generate_fem_file(route, case_name, num_elem, num_node_elem=3):
     # bocos
     boundary_conditions = np.zeros((num_node, 1), dtype=int)
     boundary_conditions[0] = 1
-    boundary_conditions[n_node_beam + 1] = -1
     boundary_conditions[-1] = -1
 
     # beam number
     beam_number = np.zeros((num_elem, 1), dtype=int)
-    beam_number[n_elem_beam:] = 1
 
     # new app forces scheme (only follower)
     n_app_forces = 0
@@ -169,19 +153,15 @@ def generate_fem_file(route, case_name, num_elem, num_node_elem=3):
 
 def generate_aero_file(route, case_name, num_elem, num_node, coordinates):
     # example airfoil
-    num_node = (3 - 1)*num_elem + 1
-    # import pdb; pdb.set_trace()
-    n_elem_beam = int(num_elem/2)
-    n_node_beam = int((num_node - 1)/2)
-
     naca_x, naca_y = generate_naca_camber(P=3, M=7)
     # airfoil distribution
     airfoil_distribution = []
     for i in range(num_node):
         airfoil_distribution.append(0)
 
-    surface_distribution = np.zeros((num_node,), dtype=int)
-    surface_distribution[n_node_beam + 1:] = 1
+    surface_distribution = []
+    for i in range(num_node):
+        surface_distribution.append(0)
 
     surface_m = np.zeros((1,), dtype=int)
     surface_m[0] = 10
@@ -191,7 +171,7 @@ def generate_aero_file(route, case_name, num_elem, num_node, coordinates):
     aero_node = np.ones(num_node, dtype=bool)
 
     # twist distribution
-    twist = np.linspace(0, 0, num_node)*np.pi/180
+    twist = np.linspace(0, -10, num_node)*np.pi/180
 
     # chord distribution
     chord = np.ones((num_node,), dtype=float)
@@ -249,8 +229,8 @@ def generate_naca_camber(M=0, P=0):
 def generate_solver_file(route, case_name):
     file_name = route + '/' + case_name + '.solver.txt'
     config = configparser.ConfigParser()
-    config['SHARPy'] = {'case': 'planar_wing',
-                        'route': './tests/aero/static/planar_wing',
+    config['SHARPy'] = {'case': 'one_surface',
+                        'route': './tests/aero/static/one_surface',
                         'flow': 'StaticUvlm, AeroGridPlot',
                         'plot': 'on'}
     config['StaticUvlm'] = {'print_info': 'on',
@@ -259,7 +239,7 @@ def generate_solver_file(route, case_name):
                             'rollup': 'off',
                             'aligned_grid': 'on',
                             'prescribed_wake': 'off'}
-    config['AeroGridPlot'] = {'route': './tests/aero/static/planar_wing/output',
+    config['AeroGridPlot'] = {'route': './tests/aero/static/one_surface/output',
                               'on_screen': 'off'}
 
     with open(file_name, 'w') as configfile:
@@ -276,5 +256,5 @@ def generate_flightcon_file(route, case_name):
 if __name__ == '__main__':
     import os
     dir_path = os.path.dirname(os.path.realpath(__file__))
-    generate_files(dir_path + '/', 'planar_wing', 20, 3)
+    generate_files(dir_path + '/', 'one_surface', 10, 3)
     print('The test case has been successfully generated!!!')
