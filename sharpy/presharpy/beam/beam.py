@@ -319,8 +319,8 @@ class Beam(object):
                         self.psi_def[elem.ielem, :, :])
 
     def plot(self, fig=None, ax=None, plot_triad=True, defor=False, ini=True):
-        import matplotlib.pyplot as plt
         if fig is None or ax is None:
+            import matplotlib.pyplot as plt
             fig = plt.figure()
             ax = fig.add_subplot(111, projection='3d')
             plt.title('Structure plot')
@@ -328,7 +328,6 @@ class Beam(object):
             ax.set_ylabel('y (m)')
             ax.set_zlabel('z (m)')
             plt.axis('equal')
-        # plt.hold('on')
         if ini:
             for elem in self.elements:
                 elem.plot(fig, ax, plot_triad=plot_triad, defor=False)

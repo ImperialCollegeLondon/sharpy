@@ -43,7 +43,6 @@ class AeroGridPlot(BaseSolver):
 
             dims = self.data.grid.timestep_info[self.ts].dimensions[i_surf, :]
             coords = np.zeros(((dims[0]+1)*(dims[1]+1), 3))
-            # conn = np.zeros((dims[0]*dims[1], 4), dtype=int)
             conn = []
             panel_id = np.zeros((dims[0]*dims[1],), dtype=int)
             panel_surf_id = np.zeros((dims[0]*dims[1],), dtype=int)
@@ -58,9 +57,12 @@ class AeroGridPlot(BaseSolver):
             counter = -1
             node_counter = -1
             for i_n in range(dims[1] + 1):
+                # print(self.data.grid.aero2struct_mapping)
+                global_counter = self.data.grid.aero2struct_mapping[i_surf][i_n]
                 for i_m in range(dims[0] + 1):
                     node_counter += 1
-                    point_struct_id[node_counter] = self.data.grid.aero2struct_mapping[i_surf][i_n]
+                    # point data
+                    point_struct_id[node_counter] = global_counter
                     if i_n < dims[1] and i_m < dims[0]:
                         counter += 1
                     else:
@@ -70,6 +72,7 @@ class AeroGridPlot(BaseSolver):
                                  node_counter + 1,
                                  node_counter + dims[0]+2,
                                  node_counter + dims[0]+1])
+                    # cell data
                     normal[counter, :] = self.data.grid.timestep_info[self.ts].normals[i_surf][:, i_m, i_n]
                     panel_id[counter] = counter
                     panel_surf_id[counter] = i_surf

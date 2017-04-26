@@ -140,6 +140,7 @@ class AeroGrid(object):
         self.aero_dict = aero_dict
         self.ts = ts
         self.t = t
+        self.beam = beam
 
         # number of surfaces
         self.n_surf = len(set(aero_dict['surface_distribution']))
@@ -149,6 +150,10 @@ class AeroGrid(object):
         self.total_nodes = len(aero_dict['aero_node'])
         # number of aero nodes
         self.n_aero_nodes = sum(aero_dict['aero_node'])
+        # number of elements
+        self.n_elem = len(aero_dict['surface_distribution'])
+
+        self.node_master_elem = beam.node_master_elem
 
         # get N per surface
         self.aero_dimensions = np.zeros((self.n_surf, 2), dtype=int)
@@ -158,9 +163,18 @@ class AeroGrid(object):
 
         # count N values (actually, the count result
         # will be N+1)
-        for i_node in range(self.n_aero_nodes):
-            self.aero_dimensions[(aero_dict['surface_distribution'][i_node]), 1] +=\
-                int(aero_dict['aero_node'][i_node])
+        nodes_in_surface = [set()]*self.n_surf
+        for i_elem in range(beam.num_elem):
+            nodes = beam.elements[i_elem].global_connectivities
+            i_surf = aero_dict['surface_distribution'][i_elem]
+            for i_global_node in nodes:
+                if i_global_node in nodes_in_surface[i_surf]:
+                    continue
+                else:
+                    nodes_in_surface[i_surf].add(i_global_node)
+                if aero_dict['aero_node'][i_global_node]:
+                    self.aero_dimensions[i_surf, 1] += 1
+
         # accounting for N+1 nodes -> N panels
         self.aero_dimensions[:, 1] -= 1
 
@@ -195,16 +209,19 @@ class AeroGrid(object):
                                                copy=False,
                                                assume_sorted=True))
 
+        self.generate_mapping()
+
         # info from aero.h5 file and mapping with beam elements
         surface_counter = np.zeros((self.n_surf,), dtype=int) - 1
         for i_node in range(self.total_nodes):
-            if not self.aero_dict['aero_node'][i_node]: continue
-
-            i_surf = self.aero_dict['surface_distribution'][i_node]
+            if not self.aero_dict['aero_node'][i_node]:
+                continue
+            i_elem = beam.node_master_elem[i_node, 0]
+            i_surf = self.aero_dict['surface_distribution'][i_elem]
             surface_counter[i_surf] += 1
             node_info = dict()
             node_info['i_node'] = i_node
-            node_info['i_surf'] = i_surf
+            # node_info['i_surf'] = i_surf
             node_info['chord'] = self.aero_dict['chord'][i_node]
             node_info['eaxis'] = self.aero_dict['elastic_axis'][i_node]
             node_info['twist'] = self.aero_dict['twist'][i_node]
@@ -221,38 +238,50 @@ class AeroGrid(object):
                                self.airfoil_db,
                                aero_settings['aligned_grid']))
 
-        self.generate_mapping()
-
     def generate_mapping(self):
-        self.struct2aero_mapping = []
-        max_i_N = np.zeros((self.n_surf,), dtype=int)
+        self.struct2aero_mapping = [[]]*self.total_nodes
         surf_n_counter = np.zeros((self.n_surf,), dtype=int)
-        n_counter = 0
-        for i_node in range(self.total_nodes):
-            if self.aero_dict['aero_node'][i_node]:
-                self.struct2aero_mapping.append({'i_surf': self.aero_dict['surface_distribution'][i_node],
-                                                 'i_N': surf_n_counter[self.aero_dict['surface_distribution'][i_node]]})
-                surf_n_counter[self.aero_dict['surface_distribution'][i_node]] += 1
-                # if n_counter > max_i_N[self.aero_dict['surface_distribution'][i_node]]:
-                #     max_i_N[self.aero_dict['surface_distribution'][i_node]] += 1
-                # n_counter += 1
-            else:
-                self.struct2aero_mapping.append({})
+        for i_elem in range(self.n_elem):
+            i_surf = self.aero_dict['surface_distribution'][i_elem]
+            for i_global_node in self.beam.elements[i_elem].global_connectivities:
+                if not self.aero_dict['aero_node'][i_global_node]:
+                    raise AttributeError('Check the input, the elements that belong to an ' +\
+                                         'aero surface have to contain aero nodes')
+                if self.struct2aero_mapping[i_global_node] == []:
+                    self.struct2aero_mapping[i_global_node] = []
+                self.struct2aero_mapping[i_global_node].append({'i_surf': i_surf,
+                                                                'i_n': surf_n_counter[i_surf]})
+                surf_n_counter[i_surf] += 1
+
+        # for i_node in range(self.total_nodes):
+        #     if self.aero_dict['aero_node'][i_node]:
+        #         i_elem = self.node_master_elem[i_node, 0]
+        #         self.struct2aero_mapping.append({'i_surf': self.aero_dict['surface_distribution'][i_elem],
+        #                                          'i_N': surf_n_counter[self.aero_dict['surface_distribution'][i_elem]]})
+        #         surf_n_counter[self.aero_dict['surface_distribution'][i_elem]] += 1
+        #     else:
+        #         self.struct2aero_mapping.append({})
 
         self.aero2struct_mapping = []
         for i_surf in range(self.n_surf):
             self.aero2struct_mapping.append([-1]*(surf_n_counter[i_surf]))
 
-        for i_node in range(self.total_nodes):
-            try:
-                i_surf = self.struct2aero_mapping[i_node]['i_surf']
-                i_N = self.struct2aero_mapping[i_node]['i_N']
-            except KeyError:
-                continue
-
-            print(i_N)
-            self.aero2struct_mapping[i_surf][i_N] = i_node
-
+        # for i_node in range(self.total_nodes):
+        #     try:
+        #         i_surf = self.struct2aero_mapping[i_node]['i_surf']
+        #         i_N = self.struct2aero_mapping[i_node]['i_N']
+        #     except KeyError:
+        #         continue
+        #     self.aero2struct_mapping[i_surf][i_N] = i_node
+        for i_elem in range(self.n_elem):
+            for i_global_node in self.beam.elements[i_elem].global_connectivities:
+                for i in range(len(self.struct2aero_mapping[i_global_node])):
+                    try:
+                        i_surf = self.struct2aero_mapping[i_global_node][i]['i_surf']
+                        i_N = self.struct2aero_mapping[i_global_node][i]['i_n']
+                    except KeyError:
+                        continue
+                    self.aero2struct_mapping[i_surf][i_N] = i_global_node
 
 
 def generate_strip(node_info, airfoil_db, aligned_grid=True, orientation_in=np.array([1, 0, 0])):

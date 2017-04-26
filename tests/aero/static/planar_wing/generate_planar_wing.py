@@ -61,7 +61,7 @@ def generate_fem_file(route, case_name, num_elem, num_node_elem=3):
         if inode < n_node_beam + 1:
             frame_of_reference_delta[inode, :] = [-np.sin(angle), np.cos(angle), 0]
         else:
-            frame_of_reference_delta[inode, :] = [-np.sin(angle), np.cos(angle), 0]
+            frame_of_reference_delta[inode, :] = [np.sin(angle), -np.cos(angle), 0]
 
     scale = 1
 
@@ -180,8 +180,8 @@ def generate_aero_file(route, case_name, num_elem, num_node, coordinates):
     for i in range(num_node):
         airfoil_distribution.append(0)
 
-    surface_distribution = np.zeros((num_node,), dtype=int)
-    surface_distribution[n_node_beam + 1:] = 1
+    surface_distribution = np.zeros((num_elem,), dtype=int)
+    surface_distribution[n_elem_beam:] = 1
 
     surface_m = np.zeros((1,), dtype=int)
     surface_m[0] = 10
@@ -197,7 +197,7 @@ def generate_aero_file(route, case_name, num_elem, num_node, coordinates):
     chord = np.ones((num_node,), dtype=float)
 
     # elastic axis distribution
-    elastic_axis = 0.5*np.ones((num_node,))
+    elastic_axis = 0.25*np.ones((num_node,))
 
     # import pdb; pdb.set_trace()
     with h5.File(route + '/' + case_name + '.aero.h5', 'a') as h5file:
