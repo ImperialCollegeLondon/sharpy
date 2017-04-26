@@ -216,10 +216,46 @@ class AeroGrid(object):
             node_info['beam_coord'] = beam.pos_ini[i_node, :]
             node_info['beam_psi'] = beam.psi_ini[i_beam_elem, i_beam_local_node, :]
 
-            self.timestep_info[self.ts].zeta[i_surf][:, :, surface_counter[i_surf]] = generate_strip(node_info, self.airfoil_db)
+            self.timestep_info[self.ts].zeta[i_surf][:, :, surface_counter[i_surf]] = (
+                generate_strip(node_info,
+                               self.airfoil_db,
+                               aero_settings['aligned_grid']))
+
+        self.generate_mapping()
+
+    def generate_mapping(self):
+        self.struct2aero_mapping = []
+        max_i_N = np.zeros((self.n_surf,), dtype=int)
+        surf_n_counter = np.zeros((self.n_surf,), dtype=int)
+        n_counter = 0
+        for i_node in range(self.total_nodes):
+            if self.aero_dict['aero_node'][i_node]:
+                self.struct2aero_mapping.append({'i_surf': self.aero_dict['surface_distribution'][i_node],
+                                                 'i_N': surf_n_counter[self.aero_dict['surface_distribution'][i_node]]})
+                surf_n_counter[self.aero_dict['surface_distribution'][i_node]] += 1
+                # if n_counter > max_i_N[self.aero_dict['surface_distribution'][i_node]]:
+                #     max_i_N[self.aero_dict['surface_distribution'][i_node]] += 1
+                # n_counter += 1
+            else:
+                self.struct2aero_mapping.append({})
+
+        self.aero2struct_mapping = []
+        for i_surf in range(self.n_surf):
+            self.aero2struct_mapping.append([-1]*(surf_n_counter[i_surf]))
+
+        for i_node in range(self.total_nodes):
+            try:
+                i_surf = self.struct2aero_mapping[i_node]['i_surf']
+                i_N = self.struct2aero_mapping[i_node]['i_N']
+            except KeyError:
+                continue
+
+            print(i_N)
+            self.aero2struct_mapping[i_surf][i_N] = i_node
 
 
-def generate_strip(node_info, airfoil_db):
+
+def generate_strip(node_info, airfoil_db, aligned_grid=True, orientation_in=np.array([1, 0, 0])):
     strip_coordinates_a_frame = np.zeros((3, node_info['M'] + 1), dtype=ct.c_double)
     strip_coordinates_b_frame = np.zeros_like(strip_coordinates_a_frame, dtype=ct.c_double)
 
@@ -238,6 +274,29 @@ def generate_strip(node_info, airfoil_db):
     # chord
     strip_coordinates_b_frame *= node_info['chord']
 
+    # aligned grid correction
+    crv = node_info['beam_psi']
+    rotation_mat = algebra.crv2rot(crv)
+    if aligned_grid:
+        orientation = orientation_in.copy()
+        orientation = orientation/np.linalg.norm(orientation)
+
+        local_orientation = np.dot(algebra.rotation3d_z(90*np.pi/180.0), orientation)
+
+        # rotation wrt local z:
+        # angle of chord line before correction
+        old_x = orientation.copy()
+        new_x = np.dot(rotation_mat.T, local_orientation)
+
+        old_x[-1] = 0
+        new_x[-1] = 0
+        angle = algebra.angle_between_vectors(old_x, new_x)
+
+        z_rotation_mat = algebra.rotation3d_z(angle)
+        for i_m in range(node_info['M'] + 1):
+            strip_coordinates_b_frame[:, i_m] = np.dot(z_rotation_mat,
+                                                       strip_coordinates_b_frame[:, i_m])
+
     # twist rotation
     if not node_info['twist'] == 0:
         twist_mat = algebra.rotation3d_x(node_info['twist'])
@@ -246,8 +305,6 @@ def generate_strip(node_info, airfoil_db):
                                                        strip_coordinates_b_frame[:, i_m])
 
     # CRV to rotation matrix
-    crv = node_info['beam_psi']
-    rotation_mat = algebra.crv2rot(crv)
     for i_m in range(node_info['M'] + 1):
         strip_coordinates_a_frame[:, i_m] = np.dot(rotation_mat,
                                                    strip_coordinates_b_frame[:, i_m])
