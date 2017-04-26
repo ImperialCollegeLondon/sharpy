@@ -46,6 +46,7 @@ class AeroGridPlot(BaseSolver):
             # conn = np.zeros((dims[0]*dims[1], 4), dtype=int)
             conn = []
             panel_id = np.zeros((dims[0]*dims[1],), dtype=int)
+            panel_surf_id = np.zeros((dims[0]*dims[1],), dtype=int)
             normal = np.zeros((dims[0]*dims[1], 3))
             counter = -1
             for i_n in range(dims[1]+1):
@@ -70,10 +71,15 @@ class AeroGridPlot(BaseSolver):
                     normal[counter, :] = self.data.grid.timestep_info[self.ts].normals[i_surf][:, i_m, i_n]
                     panel_id[counter] = counter
 
+                    # TODO not sure this is correct
+                    # panel_surf_id[counter] = self.data.grid.aero_dict['surface_distribution'][node_counter]
+
             ug = tvtk.UnstructuredGrid(points=coords)
             ug.set_cells(tvtk.Quad().cell_type, conn)
             ug.cell_data.scalars = panel_id
             ug.cell_data.scalars.name = 'panel_id'
+            # ug.cell_data.add_array(panel_surf_id)
+            # ug.cell_data.get_array(1).name = 'surface_id'
             ug.cell_data.vectors = normal
             ug.cell_data.vectors.name = 'normal'
             ug.point_data.scalars = np.arange(0, coords.shape[0])
