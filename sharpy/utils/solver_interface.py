@@ -31,11 +31,11 @@ def solver(arg):
 
 
 def print_available_solvers():
-    cout_wrap('The available solvers on this session are:')
+    cout_wrap('The available solvers on this session are:', 2)
     for k, v in available_solvers.items():
-        cout_wrap('%s' % k)
+        cout_wrap('%s' % k, 2)
         for i in v:
-            cout_wrap('   %s' % i)
+            cout_wrap('   %s' % i, 0)
 
 
 class BaseSolver(metaclass=ABCMeta):
@@ -84,8 +84,7 @@ def solver_list_from_path(cwd):
 
 def initialise_solver(solver_name):
     import sharpy.utils.cout_utils as cout
-    import sharpy.utils.solver_interface as solver_interface
     cout.cout_wrap('Generating an instance of %s' % solver_name, 2)
-    cls_type = solver_interface.solver_from_string(solver_name)
+    cls_type = solver_from_string(solver_name)
     solver = cls_type()
     return solver

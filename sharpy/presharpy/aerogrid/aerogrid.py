@@ -220,7 +220,6 @@ class AeroGrid(object):
                                                copy=False,
                                                assume_sorted=True))
         self.generate_zeta(beam, aero_settings)
-        a = 2
 
     def generate_zeta(self, beam, aero_settings):
         self.generate_mapping()
@@ -251,18 +250,10 @@ class AeroGrid(object):
                     node_info['airfoil'] = self.aero_dict['airfoil_distribution'][i_global_node]
                     node_info['beam_coord'] = beam.pos_ini[i_global_node, :]
                     node_info['beam_psi'] = beam.psi_ini[i_elem, i_local_node, :]
-                    print(i_n)
-                    print(i_global_node)
-                    print(beam.pos_ini[i_global_node, 1])
-                    print('--')
-
                     self.timestep_info[self.ts].zeta[i_surf][:, :, i_n] = (
                         generate_strip(node_info,
                                        self.airfoil_db,
                                        aero_settings['aligned_grid']))
-                    # print(self.timestep_info[self.ts].zeta[i_surf][1, 0, i_n])
-                    # print(i_n)
-        a = 2
 
     def generate_mapping(self):
         self.struct2aero_mapping = [[]]*self.total_nodes
@@ -291,38 +282,6 @@ class AeroGrid(object):
                 self.struct2aero_mapping[i_global_node].append(({'i_surf': i_surf,
                                                                  'i_n': i_n}))
 
-
-
-
-
-        # for i_elem in range(self.n_elem):
-        #     i_surf = self.aero_dict['surface_distribution'][i_elem]
-        #     ordering = self.beam.elements[i_elem].ordering.copy()
-        #     for i_local_node in range(len(self.beam.elements[i_elem].global_connectivities)):
-        #         i_global_node = self.beam.elements[i_elem].global_connectivities[i_local_node]
-        #         # for i_global_node in self.beam.elements[i_elem].reordered_global_connectivities:
-        #         if not self.aero_dict['aero_node'][i_global_node]:
-        #             raise AttributeError('Check the input, the elements that belong to an ' +\
-        #                                  'aero surface have to contain aero nodes')
-        #
-        #         if self.struct2aero_mapping[i_global_node] == []:
-        #             self.struct2aero_mapping[i_global_node] = []
-        #
-        #         if i_global_node in nodes_in_surface[i_surf]:
-        #             continue
-        #         else:
-        #             nodes_in_surface[i_surf].append(i_global_node)
-        #
-        #         self.struct2aero_mapping[i_global_node].append({'i_surf': i_surf,
-        #                                                         'i_n': surf_n_counter[i_surf] + ordering[i_local_node]+ 1})
-        #         print()
-        #         print(i_global_node)
-        #         print(surf_n_counter[i_surf] + ordering[i_local_node] + 1)
-        #         print()
-        #     surf_n_counter[i_surf] += len(ordering)
-        #     print("surf_n_counter = ")
-        #     print(surf_n_counter)
-
         self.aero2struct_mapping = []
         nodes_in_surface = []
         for i_surf in range(self.n_surf):
@@ -344,7 +303,6 @@ class AeroGrid(object):
                     except KeyError:
                         continue
                     self.aero2struct_mapping[i_surf][i_n] = i_global_node
-        a = 1
 
 
 def generate_strip(node_info, airfoil_db, aligned_grid=True, orientation_in=np.array([1, 0, 0])):
