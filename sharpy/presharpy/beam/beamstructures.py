@@ -63,6 +63,7 @@ class Element(object):
             # we need to define the FoR z direction for every beam element
             v1, v2, v3 = self.get_triad()
             self.psi_ini = algebra.triad2crv_vec(v1, v2, v3)
+            self.psi_def = self.psi_ini.copy()
 
             # copy all the info to _ini fields
             self.coordinates_ini = self.coordinates_def.copy()
@@ -132,6 +133,9 @@ class Element(object):
             binormal[inode, :] = np.dot(rotation_mat, binormal[inode, :])
 
         return tangent, binormal, normal
+
+    def deformed_triad(self):
+        return algebra.crv2triad_vec(self.psi_def)
 
     def plot(self, fig=None, ax=None, plot_triad=False, n_elem_plot=10, defor=False):
         import matplotlib.pyplot as plt

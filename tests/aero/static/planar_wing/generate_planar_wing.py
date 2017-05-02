@@ -251,7 +251,7 @@ def generate_solver_file(route, case_name):
     config = configparser.ConfigParser()
     config['SHARPy'] = {'case': 'planar_wing',
                         'route': './tests/aero/static/planar_wing',
-                        'flow': 'StaticUvlm, AeroGridPlot',
+                        'flow': 'StaticUvlm, BeamPlot, AeroGridPlot',
                         'plot': 'on'}
     config['StaticUvlm'] = {'print_info': 'on',
                             'M_distribution': 'uniform',
@@ -260,6 +260,8 @@ def generate_solver_file(route, case_name):
                             'aligned_grid': 'on',
                             'prescribed_wake': 'off'}
     config['AeroGridPlot'] = {'route': './tests/aero/static/planar_wing/output',
+                              'on_screen': 'off'}
+    config['BeamPlot'] = {'route': './tests/aero/static/planar_wing/output',
                               'on_screen': 'off'}
 
     with open(file_name, 'w') as configfile:
