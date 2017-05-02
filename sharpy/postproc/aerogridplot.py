@@ -6,6 +6,7 @@ from tvtk.api import tvtk, write_data
 import numpy as np
 import os
 
+
 @solver
 class AeroGridPlot(BaseSolver):
     solver_id = 'AeroGridPlot'
@@ -49,6 +50,7 @@ class AeroGridPlot(BaseSolver):
             normal = np.zeros((dims[0]*dims[1], 3))
             point_struct_id = np.zeros(((dims[0]+1)*(dims[1]+1), ), dtype=int)
             counter = -1
+            # coordinates of corners
             for i_n in range(dims[1]+1):
                 for i_m in range(dims[0]+1):
                     counter += 1
@@ -57,8 +59,10 @@ class AeroGridPlot(BaseSolver):
             counter = -1
             node_counter = -1
             for i_n in range(dims[1] + 1):
-                # print(self.data.grid.aero2struct_mapping)
                 global_counter = self.data.grid.aero2struct_mapping[i_surf][i_n]
+                # print(i_n)
+                # print(global_counter)
+                # print()
                 for i_m in range(dims[0] + 1):
                     node_counter += 1
                     # point data

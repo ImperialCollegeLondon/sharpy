@@ -115,15 +115,24 @@ class TimeStepInfo(object):
             for i_dim in range(NDIM):
                 self.ct_forces_list.append(self.forces[i_surf][i_dim, :, :].reshape(-1))
 
-        self.ct_p_dimensions = (ct.POINTER(ct.c_uint)*2)(* np.ctypeslib.as_ctypes(self.ct_dimensions))
-        self.ct_p_dimensions_star = (ct.POINTER(ct.c_uint)*2)(* np.ctypeslib.as_ctypes(self.ct_dimensions_star))
-        self.ct_p_zeta = (ct.POINTER(ct.c_double)*len(self.ct_zeta_list))(* [np.ctypeslib.as_ctypes(array) for array in self.ct_zeta_list])
-        self.ct_p_zeta_star = (ct.POINTER(ct.c_double)*len(self.ct_zeta_star_list))(* [np.ctypeslib.as_ctypes(array) for array in self.ct_zeta_star_list])
-        self.ct_p_u_ext = (ct.POINTER(ct.c_double)*len(self.ct_u_ext_list))(* [np.ctypeslib.as_ctypes(array) for array in self.ct_u_ext_list])
-        self.ct_p_gamma = (ct.POINTER(ct.c_double)*len(self.ct_gamma_list))(* [np.ctypeslib.as_ctypes(array) for array in self.ct_gamma_list])
-        self.ct_p_gamma_star = (ct.POINTER(ct.c_double)*len(self.ct_gamma_star_list))(* [np.ctypeslib.as_ctypes(array) for array in self.ct_gamma_star_list])
-        self.ct_p_normals = (ct.POINTER(ct.c_double)*len(self.ct_normals_list))(* [np.ctypeslib.as_ctypes(array) for array in self.ct_normals_list])
-        self.ct_p_forces = (ct.POINTER(ct.c_double)*len(self.ct_forces_list))(* [np.ctypeslib.as_ctypes(array) for array in self.ct_forces_list])
+        self.ct_p_dimensions = ((ct.POINTER(ct.c_uint)*2)
+                                (* np.ctypeslib.as_ctypes(self.ct_dimensions)))
+        self.ct_p_dimensions_star = ((ct.POINTER(ct.c_uint)*2)
+                                     (* np.ctypeslib.as_ctypes(self.ct_dimensions_star)))
+        self.ct_p_zeta = ((ct.POINTER(ct.c_double)*len(self.ct_zeta_list))
+                          (* [np.ctypeslib.as_ctypes(array) for array in self.ct_zeta_list]))
+        self.ct_p_zeta_star = ((ct.POINTER(ct.c_double)*len(self.ct_zeta_star_list))
+                               (* [np.ctypeslib.as_ctypes(array) for array in self.ct_zeta_star_list]))
+        self.ct_p_u_ext = ((ct.POINTER(ct.c_double)*len(self.ct_u_ext_list))
+                           (* [np.ctypeslib.as_ctypes(array) for array in self.ct_u_ext_list]))
+        self.ct_p_gamma = ((ct.POINTER(ct.c_double)*len(self.ct_gamma_list))
+                           (* [np.ctypeslib.as_ctypes(array) for array in self.ct_gamma_list]))
+        self.ct_p_gamma_star = ((ct.POINTER(ct.c_double)*len(self.ct_gamma_star_list))
+                                (* [np.ctypeslib.as_ctypes(array) for array in self.ct_gamma_star_list]))
+        self.ct_p_normals = ((ct.POINTER(ct.c_double)*len(self.ct_normals_list))
+                             (* [np.ctypeslib.as_ctypes(array) for array in self.ct_normals_list]))
+        self.ct_p_forces = ((ct.POINTER(ct.c_double)*len(self.ct_forces_list))
+                            (* [np.ctypeslib.as_ctypes(array) for array in self.ct_forces_list]))
 
     def remove_ctypes_pointers(self):
         del self.ct_p_zeta, self.ct_zeta_list
@@ -163,7 +172,9 @@ class AeroGrid(object):
 
         # count N values (actually, the count result
         # will be N+1)
-        nodes_in_surface = [set()]*self.n_surf
+        nodes_in_surface = []
+        for i_surf in range(self.n_surf):
+            nodes_in_surface.append([])
         for i_elem in range(beam.num_elem):
             nodes = beam.elements[i_elem].global_connectivities
             i_surf = aero_dict['surface_distribution'][i_elem]
@@ -171,7 +182,7 @@ class AeroGrid(object):
                 if i_global_node in nodes_in_surface[i_surf]:
                     continue
                 else:
-                    nodes_in_surface[i_surf].add(i_global_node)
+                    nodes_in_surface[i_surf].append(i_global_node)
                 if aero_dict['aero_node'][i_global_node]:
                     self.aero_dimensions[i_surf, 1] += 1
 
@@ -208,80 +219,132 @@ class AeroGrid(object):
                                                kind='quadratic',
                                                copy=False,
                                                assume_sorted=True))
+        self.generate_zeta(beam, aero_settings)
+        a = 2
 
+    def generate_zeta(self, beam, aero_settings):
         self.generate_mapping()
+        nodes_in_surface = []
+        for i_surf in range(self.n_surf):
+            nodes_in_surface.append([])
+        for i_elem in range(self.n_elem):
+            for i_local_node in self.beam.elements[i_elem].ordering:
+                i_global_node = self.beam.elements[i_elem].global_connectivities[i_local_node]
+                if not self.aero_dict['aero_node'][i_global_node]:
+                    continue
+                for i in range(len(self.struct2aero_mapping[i_global_node])):
+                    i_n = self.struct2aero_mapping[i_global_node][i]['i_n']
+                    i_surf = self.struct2aero_mapping[i_global_node][i]['i_surf']
 
-        # info from aero.h5 file and mapping with beam elements
-        surface_counter = np.zeros((self.n_surf,), dtype=int) - 1
-        for i_node in range(self.total_nodes):
-            if not self.aero_dict['aero_node'][i_node]:
-                continue
-            i_elem = beam.node_master_elem[i_node, 0]
-            i_surf = self.aero_dict['surface_distribution'][i_elem]
-            surface_counter[i_surf] += 1
-            node_info = dict()
-            node_info['i_node'] = i_node
-            # node_info['i_surf'] = i_surf
-            node_info['chord'] = self.aero_dict['chord'][i_node]
-            node_info['eaxis'] = self.aero_dict['elastic_axis'][i_node]
-            node_info['twist'] = self.aero_dict['twist'][i_node]
-            node_info['M'] = self.aero_dimensions[i_surf, 0]
-            node_info['M_distribution'] = self.aero_dict['m_distribution'].decode('ascii')
-            node_info['airfoil'] = self.aero_dict['airfoil_distribution'][i_node]
-            i_beam_elem = beam.node_master_elem[i_node, 0]
-            i_beam_local_node = beam.node_master_elem[i_node, 1]
-            node_info['beam_coord'] = beam.pos_ini[i_node, :]
-            node_info['beam_psi'] = beam.psi_ini[i_beam_elem, i_beam_local_node, :]
+                    if i_n in nodes_in_surface[i_surf]:
+                        continue
+                    else:
+                        nodes_in_surface[i_surf].append(i_n)
 
-            self.timestep_info[self.ts].zeta[i_surf][:, :, surface_counter[i_surf]] = (
-                generate_strip(node_info,
-                               self.airfoil_db,
-                               aero_settings['aligned_grid']))
+                    node_info = dict()
+                    node_info['i_node'] = i_global_node
+                    node_info['chord'] = self.aero_dict['chord'][i_global_node]
+                    node_info['eaxis'] = self.aero_dict['elastic_axis'][i_global_node]
+                    node_info['twist'] = self.aero_dict['twist'][i_global_node]
+                    node_info['M'] = self.aero_dimensions[i_surf, 0]
+                    node_info['M_distribution'] = self.aero_dict['m_distribution'].decode('ascii')
+                    node_info['airfoil'] = self.aero_dict['airfoil_distribution'][i_global_node]
+                    node_info['beam_coord'] = beam.pos_ini[i_global_node, :]
+                    node_info['beam_psi'] = beam.psi_ini[i_elem, i_local_node, :]
+                    print(i_n)
+                    print(i_global_node)
+                    print(beam.pos_ini[i_global_node, 1])
+                    print('--')
+
+                    self.timestep_info[self.ts].zeta[i_surf][:, :, i_n] = (
+                        generate_strip(node_info,
+                                       self.airfoil_db,
+                                       aero_settings['aligned_grid']))
+                    # print(self.timestep_info[self.ts].zeta[i_surf][1, 0, i_n])
+                    # print(i_n)
+        a = 2
 
     def generate_mapping(self):
         self.struct2aero_mapping = [[]]*self.total_nodes
         surf_n_counter = np.zeros((self.n_surf,), dtype=int)
+        nodes_in_surface = []
+        for i_surf in range(self.n_surf):
+            nodes_in_surface.append([])
+
         for i_elem in range(self.n_elem):
             i_surf = self.aero_dict['surface_distribution'][i_elem]
-            for i_global_node in self.beam.elements[i_elem].global_connectivities:
+            for i_global_node in self.beam.elements[i_elem].reordered_global_connectivities:
                 if not self.aero_dict['aero_node'][i_global_node]:
-                    raise AttributeError('Check the input, the elements that belong to an ' +\
-                                         'aero surface have to contain aero nodes')
-                if self.struct2aero_mapping[i_global_node] == []:
-                    self.struct2aero_mapping[i_global_node] = []
-                self.struct2aero_mapping[i_global_node].append({'i_surf': i_surf,
-                                                                'i_n': surf_n_counter[i_surf]})
-                surf_n_counter[i_surf] += 1
+                    continue
 
-        # for i_node in range(self.total_nodes):
-        #     if self.aero_dict['aero_node'][i_node]:
-        #         i_elem = self.node_master_elem[i_node, 0]
-        #         self.struct2aero_mapping.append({'i_surf': self.aero_dict['surface_distribution'][i_elem],
-        #                                          'i_N': surf_n_counter[self.aero_dict['surface_distribution'][i_elem]]})
-        #         surf_n_counter[self.aero_dict['surface_distribution'][i_elem]] += 1
-        #     else:
-        #         self.struct2aero_mapping.append({})
+                if i_global_node in nodes_in_surface[i_surf]:
+                    continue
+                else:
+                    nodes_in_surface[i_surf].append(i_global_node)
+                    surf_n_counter[i_surf] += 1
+                    try:
+                        self.struct2aero_mapping[i_global_node][0]
+                    except IndexError:
+                        self.struct2aero_mapping[i_global_node] = []
+
+                i_n = surf_n_counter[i_surf] - 1
+                self.struct2aero_mapping[i_global_node].append(({'i_surf': i_surf,
+                                                                 'i_n': i_n}))
+
+
+
+
+
+        # for i_elem in range(self.n_elem):
+        #     i_surf = self.aero_dict['surface_distribution'][i_elem]
+        #     ordering = self.beam.elements[i_elem].ordering.copy()
+        #     for i_local_node in range(len(self.beam.elements[i_elem].global_connectivities)):
+        #         i_global_node = self.beam.elements[i_elem].global_connectivities[i_local_node]
+        #         # for i_global_node in self.beam.elements[i_elem].reordered_global_connectivities:
+        #         if not self.aero_dict['aero_node'][i_global_node]:
+        #             raise AttributeError('Check the input, the elements that belong to an ' +\
+        #                                  'aero surface have to contain aero nodes')
+        #
+        #         if self.struct2aero_mapping[i_global_node] == []:
+        #             self.struct2aero_mapping[i_global_node] = []
+        #
+        #         if i_global_node in nodes_in_surface[i_surf]:
+        #             continue
+        #         else:
+        #             nodes_in_surface[i_surf].append(i_global_node)
+        #
+        #         self.struct2aero_mapping[i_global_node].append({'i_surf': i_surf,
+        #                                                         'i_n': surf_n_counter[i_surf] + ordering[i_local_node]+ 1})
+        #         print()
+        #         print(i_global_node)
+        #         print(surf_n_counter[i_surf] + ordering[i_local_node] + 1)
+        #         print()
+        #     surf_n_counter[i_surf] += len(ordering)
+        #     print("surf_n_counter = ")
+        #     print(surf_n_counter)
 
         self.aero2struct_mapping = []
+        nodes_in_surface = []
+        for i_surf in range(self.n_surf):
+            nodes_in_surface.append([])
+
         for i_surf in range(self.n_surf):
             self.aero2struct_mapping.append([-1]*(surf_n_counter[i_surf]))
 
-        # for i_node in range(self.total_nodes):
-        #     try:
-        #         i_surf = self.struct2aero_mapping[i_node]['i_surf']
-        #         i_N = self.struct2aero_mapping[i_node]['i_N']
-        #     except KeyError:
-        #         continue
-        #     self.aero2struct_mapping[i_surf][i_N] = i_node
         for i_elem in range(self.n_elem):
             for i_global_node in self.beam.elements[i_elem].global_connectivities:
                 for i in range(len(self.struct2aero_mapping[i_global_node])):
                     try:
                         i_surf = self.struct2aero_mapping[i_global_node][i]['i_surf']
-                        i_N = self.struct2aero_mapping[i_global_node][i]['i_n']
+                        i_n = self.struct2aero_mapping[i_global_node][i]['i_n']
+                        if i_global_node in nodes_in_surface[i_surf]:
+                            continue
+                        else:
+                            nodes_in_surface[i_surf].append(i_global_node)
                     except KeyError:
                         continue
-                    self.aero2struct_mapping[i_surf][i_N] = i_global_node
+                    self.aero2struct_mapping[i_surf][i_n] = i_global_node
+        a = 1
 
 
 def generate_strip(node_info, airfoil_db, aligned_grid=True, orientation_in=np.array([1, 0, 0])):

@@ -31,6 +31,7 @@ class Element(object):
             raise AttributeError('Elements with more than 3 nodes are not allowed')
         # global connectivities (global node numbers)
         self.global_connectivities = global_connectivities
+        self.reordered_global_connectivities = global_connectivities[self.ordering]
         # coordinates of the nodes in a-frame (body-fixed frame)
         self.coordinates_def = coordinates.copy()
         # frame of reference points
