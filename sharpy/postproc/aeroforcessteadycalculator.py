@@ -1,6 +1,7 @@
 import sharpy.utils.cout_utils as cout
 from sharpy.presharpy.utils.settings import str2bool
 from sharpy.utils.solver_interface import solver, BaseSolver
+import sharpy.presharpy.aerogrid.utils as aero_utils
 
 from tvtk.api import tvtk, write_data
 import numpy as np
@@ -9,7 +10,7 @@ import os
 
 @solver
 class AeroForcesSteadyCalculator(BaseSolver):
-    solver_id = 'AeroForcesCalculator'
+    solver_id = 'AeroForcesSteadyCalculator'
     solver_type = 'postproc'
     solver_unsteady = False
 
@@ -35,18 +36,41 @@ class AeroForcesSteadyCalculator(BaseSolver):
         try:
             self.settings['route'] = (str2bool(self.settings['route']))
         except KeyError:
-            cout.cout_wrap('AeroForcesSteadyCalculator: no location for figures defined, defaulting to ./output', 3)
+            # cout.cout_wrap('AeroForcesSteadyCalculator: no location for figures defined, defaulting to ./output', 3)
             self.settings['route'] = './output'
         pass
 
     def calculate_forces(self):
-        dynamic_pressure = 0.5*self.data.grid
+        dynamic_pressure = (0.5*self.data.flightconditions['FlightCon']['rho_inf']*
+                            self.data.flightconditions['FlightCon']['u_inf']**2*
+                            self.data.flightconditions['FlightCon']['c_ref']*
+                            self.data.flightconditions['FlightCon']['b_ref'])
+        rot = aero_utils.wind2body_rot(self.data.flightconditions['FlightCon']['alpha'],
+                                       self.data.flightconditions['FlightCon']['beta'])
+
+        ts = 0
+
+        force = self.data.grid.timestep_info[ts].forces
+        total_force = np.zeros((3,))
+        n_surf = len(force)
+        for i_surf in range(n_surf):
+            _, n_rows, n_cols = force[i_surf].shape
+            for i_m in range(n_rows):
+                for i_n in range(n_cols):
+                    total_force += np.dot(rot.T, force[i_surf][0:3, i_m, i_n])
+
+        a = 2
+
         # CL
-
+        cl = total_force[2]/dynamic_pressure
+        cout.cout_wrap('CL = %f6 ' % cl)
         # CD
-
+        cd = total_force[0]/dynamic_pressure
+        cout.cout_wrap('CD = %f6 ' % cd)
+        # C side force
+        cs = total_force[1]/dynamic_pressure
+        cout.cout_wrap('CLateral = %f6 ' % cs)
         # CM
-
 
     def output_forces(self):
         pass

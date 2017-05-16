@@ -254,7 +254,7 @@ def generate_solver_file(route, case_name):
     config = configparser.ConfigParser()
     config['SHARPy'] = {'case': 'planar_wing',
                         'route': './tests/aero/static/planar_wing',
-                        'flow': 'StaticUvlm, BeamPlot, AeroGridPlot',
+                        'flow': 'StaticUvlm, BeamPlot, AeroGridPlot, AeroForcesSteadyCalculator',
                         'plot': 'on'}
     config['StaticUvlm'] = {'print_info': 'on',
                             'M_distribution': 'uniform',
@@ -266,6 +266,7 @@ def generate_solver_file(route, case_name):
                               'on_screen': 'off'}
     config['BeamPlot'] = {'route': './tests/aero/static/planar_wing/output',
                               'on_screen': 'off'}
+    config['AeroForcesSteadyCalculator'] = {}
 
     with open(file_name, 'w') as configfile:
         config.write(configfile)
@@ -278,7 +279,8 @@ def generate_flightcon_file(route, case_name):
                            'alpha': 25.0,
                            'beta': 0.0,
                            'rho_inf': 1.225,
-                           'c_ref': 1.0}
+                           'c_ref': 1.0,
+                           'b_ref': 1.0}
 
     with open(file_name, 'w') as configfile:
         config.write(configfile)

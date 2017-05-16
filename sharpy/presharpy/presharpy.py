@@ -49,10 +49,16 @@ class PreSharpy(object):
 
         self.only_structural = True
         for solver_name in settings['SHARPy']['flow']:
-            if (not solver_types[solver_name] == 'general' and
-                not solver_types[solver_name] == 'structural' and
-                not solver_types[solver_name] == 'postproc'):
-                self.only_structural = False
+            try:
+                if (not solver_types[solver_name] == 'general' and
+                    not solver_types[solver_name] == 'structural' and
+                    not solver_types[solver_name] == 'postproc'):
+                    self.only_structural = False
+            except KeyError:
+                cout.cout_wrap('***************************************************************', 3)
+                cout.cout_wrap('Please check that the solver ' + solver_name +
+                      ' is really implemented', 3)
+                exit(1)
 
         if self.only_structural:
             print('Running a structural case only')

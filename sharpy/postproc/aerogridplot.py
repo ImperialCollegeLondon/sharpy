@@ -126,7 +126,7 @@ class AeroGridPlot(BaseSolver):
             ug.point_data.add_array(point_struct_id)
             ug.point_data.get_array(1).name = 'point_struct_id'
             ug.point_data.vectors = point_cf
-            ug.point_data.vectors.name = 'point_cf'
+            ug.point_data.vectors.name = 'point_steady_force'
             write_data(ug, filename)
         pass
 
