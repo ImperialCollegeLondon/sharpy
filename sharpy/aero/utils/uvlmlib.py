@@ -9,6 +9,7 @@ import os
 
 UvlmLib = ct_utils.import_ctypes_lib(SharpyDir + '/lib/', 'libuvlm')
 
+
 class VMopts(ct.Structure):
     """ctypes definition for VMopts class
     """
@@ -35,11 +36,29 @@ class VMopts(ct.Structure):
         self.NumSurfaces = ct.c_uint(1)
 
 
+class FlightConditions(ct.Structure):
+    _fields_ = [("uinf", ct.c_double),
+                ("uinf_direction", ct.c_double*3),
+                ("rho", ct.c_double),
+                ("c_ref", ct.c_double)]
+
+    def __init__(self, fc_dict):
+        ct.Structure.__init__(self)
+        self.uinf = fc_dict['FlightCon']['u_inf']
+        alpha = fc_dict['FlightCon']['alpha']
+        beta = fc_dict['FlightCon']['beta']
+        uinf_direction_temp = np.array([np.cos(alpha)*np.cos(beta),
+                                        np.sin(beta)*np.cos(alpha),
+                                        np.sin(alpha)])
+        self.uinf_direction = np.ctypeslib.as_ctypes(uinf_direction_temp)
+        self.rho = fc_dict['FlightCon']['rho_inf']
+        self.c_ref = fc_dict['FlightCon']['c_ref']
+
 # type for 2d integer matrix
 t_2int = ct.POINTER(ct.c_int)*2
 
 
-def vlm_solver(ts_info):
+def vlm_solver(ts_info, flightconditions_in):
     run_VLM = UvlmLib.run_VLM
     run_VLM.restype = None
 
@@ -48,12 +67,16 @@ def vlm_solver(ts_info):
     vmopts.Mstar = ct.c_uint(1)
     vmopts.NumSurfaces = ct.c_uint(ts_info.n_surf)
 
-    # n_surf = ts_info.n_surf
-    # from sharpy.utils.constants import NDIM
-    # n_dim = ct.c_int(NDIM)
+    flightconditions = FlightConditions(flightconditions_in)
+
+    for u_ext in ts_info.u_ext:
+        u_ext[0, :, :] = flightconditions.uinf*flightconditions.uinf_direction[0]
+        u_ext[1, :, :] = flightconditions.uinf*flightconditions.uinf_direction[1]
+        u_ext[2, :, :] = flightconditions.uinf*flightconditions.uinf_direction[2]
 
     ts_info.generate_ctypes_pointers()
     run_VLM(ct.byref(vmopts),
+            ct.byref(flightconditions),
             ts_info.ct_p_dimensions,
             ts_info.ct_p_dimensions_star,
             ts_info.ct_p_zeta,

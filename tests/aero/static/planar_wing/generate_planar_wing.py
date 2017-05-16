@@ -2,6 +2,9 @@ import h5py as h5
 import numpy as np
 import configparser
 
+aspect_ratio = 1.0
+chord = 1.0
+length = aspect_ratio/chord
 
 def clean_test_files(route, case_name):
     fem_file_name = route + '/' + case_name + '.fem.h5'
@@ -34,7 +37,6 @@ def generate_files(route, case_name, num_elem=10, num_node_elem=3):
 
 
 def generate_fem_file(route, case_name, num_elem, num_node_elem=3):
-    length = 2
 
     num_node = (num_node_elem - 1)*num_elem + 1
     # import pdb; pdb.set_trace()
@@ -174,7 +176,7 @@ def generate_aero_file(route, case_name, num_elem, num_node, coordinates):
     n_elem_beam = int(num_elem/2)
     n_node_beam = int((num_node - 1)/2)
 
-    naca_x, naca_y = generate_naca_camber(P=3, M=7)
+    naca_x, naca_y = generate_naca_camber(P=0, M=0)
     # airfoil distribution
     airfoil_distribution = []
     for i in range(num_node):
@@ -183,8 +185,9 @@ def generate_aero_file(route, case_name, num_elem, num_node, coordinates):
     surface_distribution = np.zeros((num_elem,), dtype=int)
     surface_distribution[n_elem_beam:] = 1
 
-    surface_m = np.zeros((1,), dtype=int)
-    surface_m[0] = 10
+    surface_m = np.zeros((2,), dtype=int)
+    surface_m[0] = 8
+    surface_m[1] = 8
 
     m_distribution = 'uniform'
 
@@ -194,10 +197,10 @@ def generate_aero_file(route, case_name, num_elem, num_node, coordinates):
     twist = np.linspace(0, 0, num_node)*np.pi/180
 
     # chord distribution
-    chord = np.ones((num_node,), dtype=float)
+    chord_dist = chord*np.ones((num_node,), dtype=float)
 
     # elastic axis distribution
-    elastic_axis = 0.25*np.ones((num_node,))
+    elastic_axis = 0.5*np.ones((num_node,))
 
     # import pdb; pdb.set_trace()
     with h5.File(route + '/' + case_name + '.aero.h5', 'a') as h5file:
@@ -206,7 +209,7 @@ def generate_aero_file(route, case_name, num_elem, num_node, coordinates):
         naca_airfoil = airfoils_group.create_dataset('0', data=np.column_stack((naca_x, naca_y)))
 
         # chord
-        chord_input = h5file.create_dataset('chord', data = chord)
+        chord_input = h5file.create_dataset('chord', data = chord_dist)
         dim_attr = chord_input .attrs['units'] = 'm'
 
         # twist
@@ -271,6 +274,11 @@ def generate_solver_file(route, case_name):
 def generate_flightcon_file(route, case_name):
     file_name = route + '/' + case_name + '.flightcon.txt'
     config = configparser.ConfigParser()
+    config['FlightCon'] = {'u_inf': 1.0,
+                           'alpha': 25.0,
+                           'beta': 0.0,
+                           'rho_inf': 1.225,
+                           'c_ref': 1.0}
 
     with open(file_name, 'w') as configfile:
         config.write(configfile)
@@ -278,5 +286,5 @@ def generate_flightcon_file(route, case_name):
 if __name__ == '__main__':
     import os
     dir_path = os.path.dirname(os.path.realpath(__file__))
-    generate_files(dir_path + '/', 'planar_wing', 20, 3)
+    generate_files(dir_path + '/', 'planar_wing', 10, 3)
     print('The test case has been successfully generated!!!')

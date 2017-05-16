@@ -160,7 +160,7 @@ def generate_aero_file(route, case_name, num_elem, num_node, coordinates):
         airfoil_distribution.append(0)
 
     surface_distribution = []
-    for i in range(num_node):
+    for i in range(num_elem):
         surface_distribution.append(0)
 
     surface_m = np.zeros((1,), dtype=int)
@@ -231,7 +231,7 @@ def generate_solver_file(route, case_name):
     config = configparser.ConfigParser()
     config['SHARPy'] = {'case': 'one_surface',
                         'route': './tests/aero/static/one_surface',
-                        'flow': 'StaticUvlm, AeroGridPlot',
+                        'flow': 'StaticUvlm, BeamPlot, AeroGridPlot',
                         'plot': 'on'}
     config['StaticUvlm'] = {'print_info': 'on',
                             'M_distribution': 'uniform',
@@ -240,6 +240,8 @@ def generate_solver_file(route, case_name):
                             'aligned_grid': 'on',
                             'prescribed_wake': 'off'}
     config['AeroGridPlot'] = {'route': './tests/aero/static/one_surface/output',
+                              'on_screen': 'off'}
+    config['BeamPlot'] = {'route': './tests/aero/static/one_surface/output',
                               'on_screen': 'off'}
 
     with open(file_name, 'w') as configfile:

@@ -42,9 +42,9 @@ class TimeStepInfo(object):
         # panel normals
         self.forces= []
         for i_surf in range(self.n_surf):
-            self.forces.append(np.zeros((3,
-                                         dimensions[i_surf, 0],
-                                         dimensions[i_surf, 1]),
+            self.forces.append(np.zeros((6,
+                                         dimensions[i_surf, 0] + 1,
+                                         dimensions[i_surf, 1] + 1),
                                         dtype=ct.c_double))
 
         # generate placeholder for aero grid zeta_star coordinates
@@ -112,7 +112,7 @@ class TimeStepInfo(object):
 
         self.ct_forces_list = []
         for i_surf in range(self.n_surf):
-            for i_dim in range(NDIM):
+            for i_dim in range(NDIM*2):
                 self.ct_forces_list.append(self.forces[i_surf][i_dim, :, :].reshape(-1))
 
         self.ct_p_dimensions = ((ct.POINTER(ct.c_uint)*2)
@@ -346,7 +346,7 @@ def generate_strip(node_info, airfoil_db, aligned_grid=True, orientation_in=np.a
         for i_m in range(node_info['M'] + 1):
             strip_coordinates_b_frame[:, i_m] = np.dot(z_rotation_mat,
                                                        strip_coordinates_b_frame[:, i_m])
-
+    #TODO delta z on definiton of elastic axis
     # twist rotation
     if not node_info['twist'] == 0:
         twist_mat = algebra.rotation3d_x(node_info['twist'])

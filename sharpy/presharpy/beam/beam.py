@@ -318,32 +318,32 @@ class Beam(object):
             elem.update(self.pos_def[self.connectivities[elem.ielem, :], :],
                         self.psi_def[elem.ielem, :, :])
 
-    def plot(self, fig=None, ax=None, plot_triad=True, defor=False, ini=True):
-        if fig is None or ax is None:
-            import matplotlib.pyplot as plt
-            fig = plt.figure()
-            ax = fig.add_subplot(111, projection='3d')
-            plt.title('Structure plot')
-            ax.set_xlabel('x (m)')
-            ax.set_ylabel('y (m)')
-            ax.set_zlabel('z (m)')
-            plt.axis('equal')
-        if ini:
-            for elem in self.elements:
-                elem.plot(fig, ax, plot_triad=plot_triad, defor=False)
-            # nodes
-            nodes = ax.scatter(self.pos_ini[:, 0],
-                               self.pos_ini[:, 1],
-                               self.pos_ini[:, 2], color='k')
-        if defor:
-            for elem in self.elements:
-                elem.plot(fig, ax, plot_triad=plot_triad, defor=True)
-            # nodes
-            nodes = ax.scatter(self.pos_def[:, 0],
-                               self.pos_def[:, 1],
-                               self.pos_def[:, 2], color='b')
-
-        # plt.hold('off')
+    # def plot(self, fig=None, ax=None, plot_triad=True, defor=False, ini=True):
+    #     if fig is None or ax is None:
+    #         import matplotlib.pyplot as plt
+    #         fig = plt.figure()
+    #         ax = fig.add_subplot(111, projection='3d')
+    #         plt.title('Structure plot')
+    #         ax.set_xlabel('x (m)')
+    #         ax.set_ylabel('y (m)')
+    #         ax.set_zlabel('z (m)')
+    #         plt.axis('equal')
+    #     if ini:
+    #         for elem in self.elements:
+    #             elem.plot(fig, ax, plot_triad=plot_triad, defor=False)
+    #         # nodes
+    #         nodes = ax.scatter(self.pos_ini[:, 0],
+    #                            self.pos_ini[:, 1],
+    #                            self.pos_ini[:, 2], color='k')
+    #     if defor:
+    #         for elem in self.elements:
+    #             elem.plot(fig, ax, plot_triad=plot_triad, defor=True)
+    #         # nodes
+    #         nodes = ax.scatter(self.pos_def[:, 0],
+    #                            self.pos_def[:, 1],
+    #                            self.pos_def[:, 2], color='b')
+    #
+    #     # plt.hold('off')
 
 
 
