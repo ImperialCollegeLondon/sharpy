@@ -331,6 +331,14 @@ def rotation3d_x(angle):
     mat[2, :] = [0.0,   s,   c]
     return mat
 
+def rotation3d_y(angle):
+    c = np.cos(angle)
+    s = np.sin(angle)
+    mat = np.zeros((3, 3))
+    mat[0, :] = [c, 0.0, -s]
+    mat[1, :] = [0.0, 1.0, 0.0]
+    mat[2, :] = [s, 0.0,  c]
+    return mat
 
 def rotation3d_z(angle):
     c = np.cos(angle)
