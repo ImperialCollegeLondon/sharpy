@@ -15,133 +15,7 @@ import scipy.interpolate
 import sharpy.utils.algebra as algebra
 import sharpy.utils.cout_utils as cout
 
-
-class TimeStepInfo(object):
-    def __init__(self, dimensions, dimensions_star, i_ts=0, t=0.0):
-        self.dimensions = dimensions
-        self.dimensions_star = dimensions_star
-        self.n_surf = dimensions.shape[0]
-        self.i_ts = i_ts
-        self.t = t
-        # generate placeholder for aero grid zeta coordinates
-        self.zeta = []
-        for i_surf in range(self.n_surf):
-            self.zeta.append(np.zeros((3,
-                                       dimensions[i_surf, 0] + 1,
-                                       dimensions[i_surf, 1] + 1),
-                                      dtype=ct.c_double))
-
-        # panel normals
-        self.normals = []
-        for i_surf in range(self.n_surf):
-            self.normals.append(np.zeros((3,
-                                          dimensions[i_surf, 0],
-                                          dimensions[i_surf, 1]),
-                                         dtype=ct.c_double))
-
-        # panel normals
-        self.forces= []
-        for i_surf in range(self.n_surf):
-            self.forces.append(np.zeros((6,
-                                         dimensions[i_surf, 0] + 1,
-                                         dimensions[i_surf, 1] + 1),
-                                        dtype=ct.c_double))
-
-        # generate placeholder for aero grid zeta_star coordinates
-        self.zeta_star = []
-        for i_surf in range(self.n_surf):
-            self.zeta_star.append(np.zeros((3,
-                                            dimensions_star[i_surf, 0] + 1,
-                                            dimensions_star[i_surf, 1] + 1),
-                                           dtype=ct.c_double))
-
-        # placeholder for external velocity
-        self.u_ext = []
-        for i_surf in range(self.n_surf):
-            self.u_ext.append(np.zeros((3,
-                                        dimensions[i_surf, 0] + 1,
-                                        dimensions[i_surf, 1] + 1),
-                                       dtype=ct.c_double))
-
-        # allocate gamma and gamma star matrices
-        self.gamma = []
-        for i_surf in range(self.n_surf):
-            self.gamma.append(np.zeros((dimensions[i_surf, 0],
-                                        dimensions[i_surf, 1]),
-                                       dtype=ct.c_double))
-
-        self.gamma_star = []
-        for i_surf in range(self.n_surf):
-            self.gamma_star.append(np.zeros((dimensions_star[i_surf, 0],
-                                             dimensions_star[i_surf, 1]),
-                                            dtype=ct.c_double))
-
-    def generate_ctypes_pointers(self):
-        self.ct_dimensions = self.dimensions.astype(dtype=ct.c_uint)
-        self.ct_dimensions_star = self.dimensions_star.astype(dtype=ct.c_uint)
-
-        from sharpy.utils.constants import NDIM
-
-        self.ct_zeta_list = []
-        for i_surf in range(self.n_surf):
-            for i_dim in range(NDIM):
-                self.ct_zeta_list.append(self.zeta[i_surf][i_dim, :, :].reshape(-1))
-
-        self.ct_zeta_star_list = []
-        for i_surf in range(self.n_surf):
-            for i_dim in range(NDIM):
-                self.ct_zeta_star_list.append(self.zeta_star[i_surf][i_dim, :, :].reshape(-1))
-
-        self.ct_u_ext_list = []
-        for i_surf in range(self.n_surf):
-            for i_dim in range(NDIM):
-                self.ct_u_ext_list.append(self.u_ext[i_surf][i_dim, :, :].reshape(-1))
-
-        self.ct_gamma_list = []
-        for i_surf in range(self.n_surf):
-            self.ct_gamma_list.append(self.gamma[i_surf][:, :].reshape(-1))
-
-        self.ct_gamma_star_list = []
-        for i_surf in range(self.n_surf):
-            self.ct_gamma_star_list.append(self.gamma_star[i_surf][:, :].reshape(-1))
-
-        self.ct_normals_list = []
-        for i_surf in range(self.n_surf):
-            for i_dim in range(NDIM):
-                self.ct_normals_list.append(self.normals[i_surf][i_dim, :, :].reshape(-1))
-
-        self.ct_forces_list = []
-        for i_surf in range(self.n_surf):
-            for i_dim in range(NDIM*2):
-                self.ct_forces_list.append(self.forces[i_surf][i_dim, :, :].reshape(-1))
-
-        self.ct_p_dimensions = ((ct.POINTER(ct.c_uint)*2)
-                                (* np.ctypeslib.as_ctypes(self.ct_dimensions)))
-        self.ct_p_dimensions_star = ((ct.POINTER(ct.c_uint)*2)
-                                     (* np.ctypeslib.as_ctypes(self.ct_dimensions_star)))
-        self.ct_p_zeta = ((ct.POINTER(ct.c_double)*len(self.ct_zeta_list))
-                          (* [np.ctypeslib.as_ctypes(array) for array in self.ct_zeta_list]))
-        self.ct_p_zeta_star = ((ct.POINTER(ct.c_double)*len(self.ct_zeta_star_list))
-                               (* [np.ctypeslib.as_ctypes(array) for array in self.ct_zeta_star_list]))
-        self.ct_p_u_ext = ((ct.POINTER(ct.c_double)*len(self.ct_u_ext_list))
-                           (* [np.ctypeslib.as_ctypes(array) for array in self.ct_u_ext_list]))
-        self.ct_p_gamma = ((ct.POINTER(ct.c_double)*len(self.ct_gamma_list))
-                           (* [np.ctypeslib.as_ctypes(array) for array in self.ct_gamma_list]))
-        self.ct_p_gamma_star = ((ct.POINTER(ct.c_double)*len(self.ct_gamma_star_list))
-                                (* [np.ctypeslib.as_ctypes(array) for array in self.ct_gamma_star_list]))
-        self.ct_p_normals = ((ct.POINTER(ct.c_double)*len(self.ct_normals_list))
-                             (* [np.ctypeslib.as_ctypes(array) for array in self.ct_normals_list]))
-        self.ct_p_forces = ((ct.POINTER(ct.c_double)*len(self.ct_forces_list))
-                            (* [np.ctypeslib.as_ctypes(array) for array in self.ct_forces_list]))
-
-    def remove_ctypes_pointers(self):
-        del self.ct_p_zeta, self.ct_zeta_list
-        del self.ct_p_zeta_star, self.ct_zeta_star_list
-        del self.ct_p_u_ext, self.ct_u_ext_list
-        del self.ct_p_gamma, self.ct_gamma_list
-        del self.ct_p_gamma_star, self.ct_gamma_star_list
-        del self.ct_p_normals, self.ct_normals_list
-        del self.ct_p_dimensions
+from sharpy.utils.datastructures import AeroTimeStepInfo
 
 
 class AeroGrid(object):
@@ -201,7 +75,7 @@ class AeroGrid(object):
                                                            self.aero_dimensions[:, 1]), 1)
 
         self.timestep_info = []
-        self.timestep_info.append(TimeStepInfo(self.aero_dimensions,
+        self.timestep_info.append(AeroTimeStepInfo(self.aero_dimensions,
                                                self.aero_dimensions_star,
                                                self.ts,
                                                self.t))
@@ -248,8 +122,8 @@ class AeroGrid(object):
                     node_info['M'] = self.aero_dimensions[i_surf, 0]
                     node_info['M_distribution'] = self.aero_dict['m_distribution'].decode('ascii')
                     node_info['airfoil'] = self.aero_dict['airfoil_distribution'][i_global_node]
-                    node_info['beam_coord'] = beam.pos_ini[i_global_node, :]
-                    node_info['beam_psi'] = beam.psi_ini[i_elem, i_local_node, :]
+                    node_info['beam_coord'] = beam.pos_def[i_global_node, :]
+                    node_info['beam_psi'] = beam.psi_def[i_elem, i_local_node, :]
                     self.timestep_info[self.ts].zeta[i_surf][:, :, i_n] = (
                         generate_strip(node_info,
                                        self.airfoil_db,

@@ -4,6 +4,7 @@ import numpy as np
 
 import sharpy.presharpy.beam.beamstructures as beamstructures
 import sharpy.utils.algebra as algebra
+from sharpy.utils.datastructures import StructTimeStepInfo
 
 
 class Beam(object):
@@ -13,10 +14,19 @@ class Beam(object):
         self.num_node_elem = fem_dictionary['num_node_elem']
         # node coordinates
         self.num_node = fem_dictionary['num_node']
-        self.pos_ini = fem_dictionary['coordinates']
-        self.pos_def = self.pos_ini.copy()
-        # element connectivity
         self.num_elem = fem_dictionary['num_elem']
+
+        self.t = 0.0
+        self.it = 0
+        self.timestep_info = []
+        self.timestep_info.append(StructTimeStepInfo(self.num_node,
+                                                     self.num_elem,
+                                                     self.num_node_elem))
+
+        self.timestep_info[self.it].pos_def[:] = fem_dictionary['coordinates'][:]
+        self.pos_ini = fem_dictionary['coordinates'].copy()
+
+        # element connectivity
         self.connectivities = fem_dictionary['connectivities']
         # stiffness index of the elems
         self.elem_stiffness = fem_dictionary['elem_stiffness']
@@ -35,13 +45,18 @@ class Beam(object):
             self.beam_number = np.zeros((self.num_elem, ), dtype=int)
 
         # applied forces
+        self.app_forces = np.zeros((self.num_node, 6))
         try:
-            self.app_forces = fem_dictionary['app_forces']
-            self.node_app_forces = fem_dictionary['node_app_forces']
+            self.in_app_forces = fem_dictionary['app_forces']
+            self.in_node_app_forces = fem_dictionary['node_app_forces']
+            for i_node in range(len(self.in_node_app_forces)):
+                self.app_forces[self.in_node_app_forces[i_node], :] += self.in_app_forces[i_node,:]
         except KeyError:
             print('*** No applied forces indicated (or in a wrong format)')
-            self.app_forces = None
-            self.node_app_forces = None
+            self.in_app_forces = None
+            self.in_node_app_forces = None
+        self.initial_app_forces = self.app_forces.copy()
+        self.are_forces_updated = False
 
         # lumped masses
         try:
@@ -100,6 +115,9 @@ class Beam(object):
         if dyn_dictionary is not None:
             self.load_unsteady_data(dyn_dictionary)
 
+    def update_forces(self, forces):
+        self.app_forces = self.initial_app_forces + forces
+        self.generate_aux_information()
 
     def load_unsteady_data(self, dyn_dictionary):
         self.n_tsteps = dyn_dictionary['num_steps']
@@ -119,7 +137,6 @@ class Beam(object):
             self.forced_acc = dyn_dictionary['forced_acc']
         except KeyError:
             self.forced_acc = None
-
 
     def generate_dof_arrays(self, indexing='C'):
         self.vdof = np.zeros((self.num_node,), dtype=ct.c_int, order='F') - 1
@@ -241,7 +258,7 @@ class Beam(object):
             self.master_nodes[ielem, :, :] = elem.master + 1
 
         # ADC: test CAREFUL
-        for i in range(1,3):
+        for i in range(1, 3):
             self.master_nodes[:, i, :] = 0
 
         self.node_master_elem_fortran = self.node_master_elem.astype(dtype=ct.c_int, order='F') + 1
@@ -260,22 +277,15 @@ class Beam(object):
         # Vdof and Fdof vector calculation
         self.generate_dof_arrays('F')
 
-        if self.app_forces is None:
-            self.n_app_forces = ct.c_int(0)
-            self.app_forces_fortran = np.zeros((0, 0), dtype=ct.c_double, order='F')
-            self.node_app_forces_fortran = np.zeros((0,), dtype=ct.c_int, order='F')
-        else:
-            self.n_app_forces, _ = self.app_forces.shape
-            self.n_app_forces = ct.c_int(self.n_app_forces)
-            self.app_forces_fortran = self.app_forces.astype(dtype=ct.c_double, order='F')
-            self.node_app_forces_fortran = self.node_app_forces.astype(dtype=ct.c_int, order='F') + 1
+        self.app_forces_fortran = self.app_forces.astype(dtype=ct.c_double, order='F')
 
         # Psi matrix
-        self.psi_def = self.psi_ini.astype(dtype=ct.c_double, order='F')
+        # self.timestep_info[self.it].psi_def = self.psi_ini.astype(dtype=ct.c_double, order='F')
 
-        # deformed structure matrices
+        # # deformed structure matrices
         self.pos_ini = self.pos_ini.astype(dtype=ct.c_double, order='F')
-        self.pos_def = self.pos_ini.astype(dtype=ct.c_double, order='F')
+        self.psi_ini = self.psi_ini.astype(dtype=ct.c_double, order='F')
+        # self.pos_def = self.pos_ini.astype(dtype=ct.c_double, order='F')
 
         max_nodes_elem = self.elements[0].max_nodes_elem
         rbmass_temp = np.zeros((self.num_elem, max_nodes_elem, 6, 6))
@@ -310,64 +320,16 @@ class Beam(object):
         for elem in self.elements:
             self.psi_ini[elem.ielem, :, :] = elem.psi_ini
 
+        self.timestep_info[self.it].psi_def[:] = self.psi_ini[:]
+
     def read_dynamic_data(self):
         pass
 
-    def update(self):
+    def update(self, it=0, t=0.0):
+        self.t = t
+        self.it = it
         for elem in self.elements:
-            elem.update(self.pos_def[self.connectivities[elem.ielem, :], :],
-                        self.psi_def[elem.ielem, :, :])
-
-    # def plot(self, fig=None, ax=None, plot_triad=True, defor=False, ini=True):
-    #     if fig is None or ax is None:
-    #         import matplotlib.pyplot as plt
-    #         fig = plt.figure()
-    #         ax = fig.add_subplot(111, projection='3d')
-    #         plt.title('Structure plot')
-    #         ax.set_xlabel('x (m)')
-    #         ax.set_ylabel('y (m)')
-    #         ax.set_zlabel('z (m)')
-    #         plt.axis('equal')
-    #     if ini:
-    #         for elem in self.elements:
-    #             elem.plot(fig, ax, plot_triad=plot_triad, defor=False)
-    #         # nodes
-    #         nodes = ax.scatter(self.pos_ini[:, 0],
-    #                            self.pos_ini[:, 1],
-    #                            self.pos_ini[:, 2], color='k')
-    #     if defor:
-    #         for elem in self.elements:
-    #             elem.plot(fig, ax, plot_triad=plot_triad, defor=True)
-    #         # nodes
-    #         nodes = ax.scatter(self.pos_def[:, 0],
-    #                            self.pos_def[:, 1],
-    #                            self.pos_def[:, 2], color='b')
-    #
-    #     # plt.hold('off')
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+            elem.update(self.timestep_info[it].pos_def[self.connectivities[elem.ielem, :], :],
+                        self.timestep_info[it].psi_def[elem.ielem, :, :])
 
 

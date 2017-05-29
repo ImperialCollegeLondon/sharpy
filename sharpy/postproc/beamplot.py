@@ -19,6 +19,7 @@ class BeamPlot(BaseSolver):
 
     def initialise(self, data):
         self.data = data
+        self.it = data.beam.it
         self.settings = data.settings[self.solver_id]
         self.convert_settings()
 
@@ -52,7 +53,7 @@ class BeamPlot(BaseSolver):
         local_z = np.zeros((num_nodes, 3))
         # coordinates of corners
         for i_node in range(num_nodes):
-            coords[i_node, :] = self.data.beam.pos_def[i_node, :]
+            coords[i_node, :] = self.data.beam.timestep_info[self.it].pos_def[i_node, :]
 
         for i_node in range(num_nodes):
             i_elem = self.data.beam.node_master_elem[i_node, 0]

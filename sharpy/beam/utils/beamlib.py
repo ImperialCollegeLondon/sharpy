@@ -118,11 +118,9 @@ def cbeam3_solv_nlnstatic(beam, settings):
                             ct.byref(xbopts),
                             beam.pos_ini.ctypes.data_as(doubleP),
                             beam.psi_ini.ctypes.data_as(doubleP),
-                            beam.pos_def.ctypes.data_as(doubleP),
-                            beam.psi_def.ctypes.data_as(doubleP),
-                            ct.byref(beam.n_app_forces),
-                            beam.app_forces_fortran.ctypes.data_as(doubleP),
-                            beam.node_app_forces_fortran.ctypes.data_as(intP)
+                            beam.timestep_info[beam.it].pos_def.ctypes.data_as(doubleP),
+                            beam.timestep_info[beam.it].psi_def.ctypes.data_as(doubleP),
+                            beam.app_forces_fortran.ctypes.data_as(doubleP)
                             )
     # angle = 0*np.pi/180
     # import presharpy.utils.algebra as algebra

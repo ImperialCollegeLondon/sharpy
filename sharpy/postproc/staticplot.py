@@ -44,8 +44,9 @@ class StaticPlot(BaseSolver):
             self.settings['figures_location'] = './'
 
     def plot_shape(self):
-        pos_def = self.data.beam.pos_def
+        pos_def = self.data.beam.timestep_info[self.data.beam.it].pos_def
         pos_ini = self.data.beam.pos_ini
+
 
         import matplotlib.pyplot as plt
         from mpl_toolkits.mplot3d import Axes3D, proj3d

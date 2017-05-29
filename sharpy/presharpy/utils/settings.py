@@ -1,4 +1,5 @@
 import configparser
+import ctypes as ct
 
 false_list = ['false', 'off', '0', 'no']
 
@@ -30,6 +31,11 @@ def load_config_file(file_name: str) -> dict:
 
 
 def str2bool(string):
+    if isinstance(string, bool):
+        return string
+    if isinstance(string, ct.c_bool):
+        return string.value
+
     if not string:
         return False
     elif string.lower() in false_list:

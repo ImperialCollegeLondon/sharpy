@@ -254,19 +254,33 @@ def generate_solver_file(route, case_name):
     config = configparser.ConfigParser()
     config['SHARPy'] = {'case': 'planar_wing',
                         'route': './tests/aero/static/planar_wing',
-                        'flow': 'StaticUvlm, BeamPlot, AeroGridPlot, AeroForcesSteadyCalculator',
+                        'flow': 'StaticCoupled',
                         'plot': 'on'}
+    config['StaticCoupled'] = {'print_info': 'on',
+                               'structural_solver': 'NonLinearStatic',
+                               'aero_solver': 'StaticUvlm',
+                               'max_iter': 10,
+                               'n_load_steps': 2,
+                               'tolerance': 1e-4}
     config['StaticUvlm'] = {'print_info': 'on',
                             'M_distribution': 'uniform',
                             'Mstar': 1,
                             'rollup': 'off',
                             'aligned_grid': 'on',
                             'prescribed_wake': 'off'}
-    config['AeroGridPlot'] = {'route': './tests/aero/static/planar_wing/output',
-                              'on_screen': 'off'}
-    config['BeamPlot'] = {'route': './tests/aero/static/planar_wing/output',
-                              'on_screen': 'off'}
-    config['AeroForcesSteadyCalculator'] = {}
+    config['NonLinearStatic'] = {'print_info': 'on',
+                                 'out_b_frame': 'off',
+                                 'out_a_frame': 'off',
+                                 'elem_proj': 2,
+                                 'max_iterations': 99,
+                                 'num_load_steps': 5,
+                                 'delta_curved': 1e-5,
+                                 'min_delta': 1e-5,
+                                 'newmark_damp': 0.000,
+                                 'gravity_on': 'off',
+                                 'gravity': 9.81,
+                                 'gravity_dir': '0, 0, 1'
+                                 }
 
     with open(file_name, 'w') as configfile:
         config.write(configfile)
@@ -288,5 +302,5 @@ def generate_flightcon_file(route, case_name):
 if __name__ == '__main__':
     import os
     dir_path = os.path.dirname(os.path.realpath(__file__))
-    generate_files(dir_path + '/', 'planar_wing', 10, 3)
+    generate_files(dir_path + '/', 'planar_wing_coupled', 10, 3)
     print('The test case has been successfully generated!!!')

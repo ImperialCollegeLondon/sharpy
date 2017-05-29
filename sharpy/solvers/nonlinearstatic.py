@@ -46,16 +46,55 @@ class NonLinearStatic(BaseSolver):
         return self.data
 
     def convert_settings(self):
-        self.settings['print_info'] = ct.c_bool(str2bool(self.settings['print_info']))
-        self.settings['out_b_frame'] = ct.c_bool(str2bool(self.settings['out_b_frame']))
-        self.settings['out_a_frame'] = ct.c_bool(str2bool(self.settings['out_a_frame']))
-        self.settings['elem_proj'] = ct.c_int(int(self.settings['elem_proj']))
-        self.settings['max_iterations'] = ct.c_int(int(self.settings['max_iterations']))
-        self.settings['num_load_steps'] = ct.c_int(int(self.settings['num_load_steps']))
-        self.settings['delta_curved'] = ct.c_double(float(self.settings['delta_curved']))
-        self.settings['min_delta'] = ct.c_double(float(self.settings['min_delta']))
-        self.settings['newmark_damp'] = ct.c_double(float(self.settings['newmark_damp']))
-        self.settings['gravity_on'] = ct.c_bool(str2bool(self.settings['gravity_on']))
-        self.settings['gravity'] = ct.c_double(float(self.settings['gravity']))
-        self.settings['gravity_dir'] = np.fromstring(self.settings['gravity_dir'], sep=',', dtype=ct.c_double)
+        try:
+            self.settings['print_info'] = ct.c_bool(str2bool(self.settings['print_info']))
+        except ValueError:
+            pass
+        try:
+            self.settings['out_b_frame'] = ct.c_bool(str2bool(self.settings['out_b_frame']))
+        except ValueError:
+            pass
+        try:
+            self.settings['out_a_frame'] = ct.c_bool(str2bool(self.settings['out_a_frame']))
+        except ValueError:
+            pass
+        try:
+            self.settings['elem_proj'] = ct.c_int(int(self.settings['elem_proj']))
+        except ValueError:
+            pass
+        try:
+            self.settings['max_iterations'] = ct.c_int(int(self.settings['max_iterations']))
+        except ValueError:
+            pass
+        try:
+            self.settings['num_load_steps'] = ct.c_int(int(self.settings['num_load_steps']))
+        except ValueError:
+            pass
+        try:
+            self.settings['delta_curved'] = ct.c_double(float(self.settings['delta_curved']))
+        except ValueError:
+            pass
+        try:
+            self.settings['min_delta'] = ct.c_double(float(self.settings['min_delta']))
+        except ValueError:
+            pass
+        try:
+            self.settings['newmark_damp'] = ct.c_double(float(self.settings['newmark_damp']))
+        except ValueError:
+            pass
+        try:
+            self.settings['gravity_on'] = ct.c_bool(str2bool(self.settings['gravity_on']))
+        except ValueError:
+            pass
+        try:
+            self.settings['gravity'] = ct.c_double(float(self.settings['gravity']))
+        except ValueError:
+            pass
+        try:
+            if isinstance(self.settings['gravity_dir'], np.ndarray):
+                pass
+            else:
+                self.settings['gravity_dir'] = np.fromstring(self.settings['gravity_dir'], sep=',', dtype=ct.c_double)
+        except ValueError:
+            pass
 

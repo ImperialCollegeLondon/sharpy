@@ -34,12 +34,17 @@ class StaticUvlm(BaseSolver):
 
         cout.cout_wrap('...Finished', 1)
 
+    def update(self):
+        pass
+
     def run(self):
         cout.cout_wrap('Running static UVLM solver...', 1)
         uvlmlib.vlm_solver(self.data.grid.timestep_info[self.ts],
                            self.data.flightconditions)
+
         cout.cout_wrap('...Finished', 1)
         return self.data
+
 
     def convert_settings(self):
         self.settings['print_info'] = str2bool(self.settings['print_info'])

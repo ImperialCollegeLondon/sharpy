@@ -229,9 +229,9 @@ def generate_solver_file(route, case_name):
     config = configparser.ConfigParser()
     config['SHARPy'] = {'case': 'geradin_cardona',
                         'route': './tests/beam/static/geradin_cardona',
-                        'flow': 'NonLinearStatic, StaticPlot',
+                        'flow': 'NonLinearStatic, BeamPlot',
                         'plot': 'on'}
-    config['NonLinearStatic'] = {'print_info': 'off',
+    config['NonLinearStatic'] = {'print_info': 'on',
                                  'out_b_frame': 'off',
                                  'out_a_frame': 'off',
                                  'elem_proj': 2,
@@ -244,7 +244,7 @@ def generate_solver_file(route, case_name):
                                  'gravity': 9.81,
                                  'gravity_dir': '0, 0, 1'
                                  }
-    config['StaticPlot'] = {'plot_shape': 'on',
+    config['BeamPlot'] = {'plot_shape': 'on',
                             'print_info': 'on'}
 
     with open(file_name, 'w') as configfile:
