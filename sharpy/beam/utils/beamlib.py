@@ -7,6 +7,7 @@ import scipy.integrate
 import sharpy.utils.algebra as algebra
 import sharpy.utils.ctypes_utils as ct_utils
 from sharpy.utils.sharpydir import SharpyDir
+from sharpy.utils.datastructures import StructTimeStepInfo
 
 
 class Xbopts(ct.Structure):
@@ -224,6 +225,8 @@ def cbeam3_solv_nlndyn(beam, settings):
     n_mass = ct.c_int(beam.n_mass)
     n_stiff = ct.c_int(beam.n_stiff)
 
+    it = beam.it
+
     dt = settings['dt'].value
     n_tsteps = settings['num_steps'].value
     time = np.zeros((n_tsteps,), dtype=ct.c_double, order='F')
@@ -284,11 +287,9 @@ def cbeam3_solv_nlndyn(beam, settings):
                          ct.byref(xbopts),
                          beam.pos_ini.ctypes.data_as(doubleP),
                          beam.psi_ini.ctypes.data_as(doubleP),
-                         beam.pos_def.ctypes.data_as(doubleP),
-                         beam.psi_def.ctypes.data_as(doubleP),
-                         ct.byref(beam.n_app_forces),
+                         beam.timestep_info[it].pos_def.ctypes.data_as(doubleP),
+                         beam.timestep_info[it].psi_def.ctypes.data_as(doubleP),
                          beam.app_forces_fortran.ctypes.data_as(doubleP),
-                         beam.node_app_forces_fortran.ctypes.data_as(intP),
                          beam.dynamic_forces_amplitude_fortran.ctypes.data_as(doubleP),
                          beam.dynamic_forces_time_fortran.ctypes.data_as(doubleP),
                          beam.forced_vel_fortran.ctypes.data_as(doubleP),
@@ -298,6 +299,18 @@ def cbeam3_solv_nlndyn(beam, settings):
                          pos_dot_def_history.ctypes.data_as(doubleP),
                          psi_dot_def_history.ctypes.data_as(doubleP)
                          )
+
+    for i in range(1, n_tsteps.value):
+        beam.timestep_info.append(StructTimeStepInfo(beam.num_node,
+                                                     beam.num_elem,
+                                                     beam.num_node_elem,
+                                                     i_ts=i,
+                                                     t=i*dt.value))
+    for i in range(n_tsteps.value):
+        beam.timestep_info[i].pos_def[:] = pos_def_history[i, :]
+        beam.timestep_info[i].psi_def[:] = psi_def_history[i, :]
+        beam.timestep_info[i].pos_dot_def[:] = pos_dot_def_history[i, :]
+        beam.timestep_info[i].psi_dot_def[:] = psi_dot_def_history[i, :]
 
     import matplotlib.pyplot as plt
     import matplotlib.cm as cm

@@ -4,7 +4,7 @@ import os
 import configparser
 
 dt = 0.01
-simulation_time = 5
+simulation_time = 15
 num_steps = int(simulation_time/dt)
 route = './'
 case_name = 'moving_for'
@@ -82,7 +82,7 @@ def generate_dyn_file():
         forced_acc = np.zeros((num_steps, 6))
         for i in range(num_steps):
             amplitude = 0.1
-            freq = 0.5  # hz
+            freq = 5  # hz
             n_cycles = freq*simulation_time
             steps_per_cycle = num_steps/n_cycles
             forced_vel[i, 2] = amplitude*np.sin(2*np.pi*i/(steps_per_cycle - 1))
@@ -188,7 +188,7 @@ def generate_fem_file():
     n_lumped_mass = 1
     lumped_mass_nodes = np.array([num_node - 1], dtype=int)
     lumped_mass = np.zeros((n_lumped_mass, ))
-    lumped_mass[0] = 3000
+    lumped_mass[0] = 0
     lumped_mass_inertia = np.zeros((n_lumped_mass, 3, 3))
     lumped_mass_position = np.zeros((n_lumped_mass, 3))
     lumped_mass_position[0, 1] = 1
@@ -251,8 +251,11 @@ def generate_solver_file():
                                   'out_b_frame': 'off',
                                   'out_a_frame': 'off',
                                   'elem_proj': 2,
+                                  'gravity_on': 'on',
+                                  'gravity': 9.81,
+                                  'gravity_dir': '0, 0, 1',
                                   'max_iterations': 300,
-                                  'num_load_steps': 10,
+                                  'num_load_steps': 20,
                                   'num_gauss': 3,
                                   'delta_curved': 1e-5,
                                   'min_delta': 1e-5,
