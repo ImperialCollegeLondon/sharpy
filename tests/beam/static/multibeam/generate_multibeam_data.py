@@ -247,18 +247,22 @@ def generate_solver_file(route, case_name):
     config = configparser.ConfigParser()
     config['SHARPy'] = {'case': 'multibeam',
                         'route': './tests/beam/static/multibeam',
-                        'flow': 'NonLinearStatic',
+                        'flow': 'NonLinearStatic, BeamPlot',
                         'plot': 'on'}
     config['NonLinearStatic'] = {'print_info': 'on',
-                                 'out_b_frame': 'on',
-                                 'out_a_frame': 'on',
+                                 'out_b_frame': 'off',
+                                 'out_a_frame': 'off',
                                  'elem_proj': 2,
-                                 'max_iterations': 500,
-                                 'num_load_steps': 15,
-                                 'num_gauss': 2,
+                                 'max_iterations': 99,
+                                 'num_load_steps': 5,
                                  'delta_curved': 1e-5,
                                  'min_delta': 1e-5,
-                                 'newmark_damp': 0.000}
+                                 'newmark_damp': 0.000,
+                                 'gravity_on': 'on',
+                                 'gravity': 9.81,
+                                 'gravity_dir': '0, 0, 1'
+                                 }
+    config['BeamPlot'] = {}
 
     with open(file_name, 'w') as configfile:
         config.write(configfile)
