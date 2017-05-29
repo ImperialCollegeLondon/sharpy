@@ -4,7 +4,7 @@ import os
 import configparser
 
 dt = 0.01
-simulation_time = 15
+simulation_time = 5
 num_steps = int(simulation_time/dt)
 route = './'
 case_name = 'moving_for'
@@ -81,8 +81,8 @@ def generate_dyn_file():
         forced_vel = np.zeros((num_steps, 6))
         forced_acc = np.zeros((num_steps, 6))
         for i in range(num_steps):
-            amplitude = 0.1
-            freq = 5  # hz
+            amplitude = 0.2
+            freq = 1  # hz
             n_cycles = freq*simulation_time
             steps_per_cycle = num_steps/n_cycles
             forced_vel[i, 2] = amplitude*np.sin(2*np.pi*i/(steps_per_cycle - 1))
@@ -152,7 +152,7 @@ def generate_fem_file():
     ei = 500
     base_stiffness = np.diag([ea, ga, ga, gj, ei, ei])
     stiffness = np.zeros((num_stiffness, 6, 6))
-    sigma = 1
+    sigma = 100
     # import pdb; pdb.set_trace()
     for i in range(num_stiffness):
         stiffness[i, :, :] = sigma*base_stiffness
@@ -245,13 +245,13 @@ def generate_solver_file():
     config = configparser.ConfigParser()
     config['SHARPy'] = {'case': 'moving_for',
                         'route': './tests/beam/dynamic/moving_for',
-                        'flow': 'NonLinearDynamic',
+                        'flow': 'NonLinearDynamic, BeamPlot',
                         'plot': 'on'}
     config['NonLinearDynamic'] = {'print_info': 'on',
                                   'out_b_frame': 'off',
                                   'out_a_frame': 'off',
                                   'elem_proj': 2,
-                                  'gravity_on': 'on',
+                                  'gravity_on': 'off',
                                   'gravity': 9.81,
                                   'gravity_dir': '0, 0, 1',
                                   'max_iterations': 300,
@@ -262,6 +262,7 @@ def generate_solver_file():
                                   'newmark_damp': 0.001,
                                   'dt': dt,
                                   'num_steps': num_steps}
+    config['BeamPlot'] = {'route': './output'}
 
     with open(file_name, 'w') as configfile:
         config.write(configfile)

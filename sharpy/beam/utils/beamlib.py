@@ -312,26 +312,26 @@ def cbeam3_solv_nlndyn(beam, settings):
         beam.timestep_info[i].pos_dot_def[:] = pos_dot_def_history[i, :]
         beam.timestep_info[i].psi_dot_def[:] = psi_dot_def_history[i, :]
 
-    import matplotlib.pyplot as plt
-    import matplotlib.cm as cm
-    n_tsteps = int(3*n_tsteps.value/4)
-    n_plots = 20
-    delta = 5
-    cm_subs = np.linspace(0, 1, n_plots)
-    colors = [cm.jet(x) for x in cm_subs]
-    plt.figure()
-    plt.title('Time history of tip z displacements and y rotations')
-    plt.xlabel('time (s)')
-    plt.ylabel('z displacement (m), y rotation (rad)')
-    plt.plot(time, pos_def_history[:, -1, 2], 'r')
-    plt.plot(time, psi_def_history[:, -1, 2, 1], 'k')
-    plt.grid(True)
-    plt.show()
-    plt.figure()
-    for i in range(n_plots):
-        plt.plot(pos_def_history[n_tsteps + i*delta, :, 0], pos_def_history[n_tsteps + i*delta, :, 2], color=colors[i])
-    plt.grid(True)
-    plt.show()
+    # import matplotlib.pyplot as plt
+    # import matplotlib.cm as cm
+    # n_tsteps = int(3*n_tsteps.value/4)
+    # n_plots = 20
+    # delta = 5
+    # cm_subs = np.linspace(0, 1, n_plots)
+    # colors = [cm.jet(x) for x in cm_subs]
+    # plt.figure()
+    # plt.title('Time history of tip z displacements and y rotations')
+    # plt.xlabel('time (s)')
+    # plt.ylabel('z displacement (m), y rotation (rad)')
+    # plt.plot(time, pos_def_history[:, -1, 2], 'r')
+    # plt.plot(time, psi_def_history[:, -1, 2, 1], 'k')
+    # plt.grid(True)
+    # plt.show()
+    # plt.figure()
+    # for i in range(n_plots):
+    #     plt.plot(pos_def_history[n_tsteps + i*delta, :, 0], pos_def_history[n_tsteps + i*delta, :, 2], color=colors[i])
+    # plt.grid(True)
+    # plt.show()
 
 
 f_xbeam_solv_couplednlndyn = BeamLib.xbeam_solv_couplednlndyn_python
