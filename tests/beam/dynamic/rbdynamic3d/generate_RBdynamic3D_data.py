@@ -12,7 +12,7 @@ This case has the same loads than Simo, but
 the forces are follower forces"""
 
 dt = 0.01
-simulation_time = 40
+simulation_time = 5
 num_steps = int(simulation_time/dt)
 route = './'
 case_name = 'rbdynamic3d'
@@ -244,21 +244,25 @@ def generate_solver_file():
     config = configparser.ConfigParser()
     config['SHARPy'] = {'case': case_name,
                         'route': './tests/beam/dynamic/rbdynamic3d',
-                        'flow': 'NonLinearDynamic',
+                        'flow': 'NonLinearDynamic, BeamPlot',
                         'plot': 'on'}
     config['NonLinearDynamic'] = {'print_info': 'on',
                                   'out_b_frame': 'off',
                                   'out_a_frame': 'off',
                                   'elem_proj': 2,
-                                  'max_iterations': 150,
-                                  'num_load_steps': 10,
-                                  'num_gauss': 2,
+                                  'gravity_on': 'off',
+                                  'gravity': 9.81,
+                                  'gravity_dir': '0, 0, 1',
+                                  'max_iterations': 300,
+                                  'num_load_steps': 20,
+                                  'num_gauss': 3,
                                   'delta_curved': 1e-5,
                                   'min_delta': 1e-5,
-                                  'newmark_damp': 0.01,
+                                  'newmark_damp': 0.001,
                                   'dt': dt,
                                   'num_steps': num_steps,
                                   'prescribed_motion': 'off'}
+    config['BeamPlot'] = {'route': './output'}
 
     with open(file_name, 'w') as configfile:
         config.write(configfile)

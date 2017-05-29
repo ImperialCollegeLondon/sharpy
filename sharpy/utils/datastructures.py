@@ -131,7 +131,7 @@ class AeroTimeStepInfo(object):
 
 
 class StructTimeStepInfo(object):
-    def __init__(self, num_node, num_elem, num_node_elem=3, i_ts=0, t=0.0):
+    def __init__(self, num_node, num_elem, num_node_elem=3, i_ts=0, t=0.0, rb=False):
         self.num_node = num_node
         self.num_elem = num_elem
         self.num_node_elem = num_node_elem
@@ -144,4 +144,14 @@ class StructTimeStepInfo(object):
         # placeholder for CRV
         self.psi_def = np.zeros((self.num_elem, num_node_elem, 3), dtype=ct.c_double, order='F')
         self.psi_dot_def = np.zeros((self.num_elem, num_node_elem, 3), dtype=ct.c_double, order='F')
+
+        self.with_rb = rb
+
+        if rb:
+            # FoR data
+            self.quat = np.zeros((4,))
+            self.for_pos = np.zeros((3,))
+            self.for_vel = np.zeros((3,))
+            self.glob_pos_def = np.zeros_like(self.pos_def)
+
 
