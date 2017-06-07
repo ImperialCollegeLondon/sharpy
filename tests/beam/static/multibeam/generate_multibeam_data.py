@@ -63,13 +63,17 @@ def generate_fem_file(route, case_name, num_elem, num_node_elem=3):
 
     structural_twist = np.zeros_like(x)
 
-    frame_of_reference_delta = np.zeros((num_node, 3))
-    for inode in range(nx + ny - 1):
-        # frame_of_reference_delta[inode, :] = [0, 1, 0]
-        if inode < nx:
-            frame_of_reference_delta[inode, :] = [-np.sin(angle), np.cos(angle), 0]
-        elif inode > nx:
-            frame_of_reference_delta[inode, :] = [-np.sin(angle+pi_2), np.cos(angle+pi_2), 0]
+    # beam number
+    beam_number = np.zeros((num_elem, 1), dtype=int)
+    beam_number[num_elem/2:] = 1
+
+    frame_of_reference_delta = np.zeros((num_elem, num_node_elem, 3))
+    for ielem in range(num_elem):
+        for inode in range(num_node_elem):
+            if beam_number[ielem] == 0:
+                frame_of_reference_delta[ielem, inode, :] = [-np.sin(angle), np.cos(angle), 0]
+            else:
+                frame_of_reference_delta[ielem, inode, :] = [-np.sin(angle+pi_2), np.cos(angle+pi_2), 0]
 
     scale = 1
 
@@ -93,10 +97,11 @@ def generate_fem_file(route, case_name, num_elem, num_node_elem=3):
 
     # stiffness array
     num_stiffness = 1
-    ea = 4.8e8
-    ga = 3.231e8
-    gj = 1.0e6
-    ei = 9.346e6
+    ea = 2.14e6
+    ga = 1.54e3
+    gj = 72.25e1
+    ei = 6.35e3
+    sigma = 1
     base_stiffness = np.diag([ea, ga, ga, gj, ei, ei])
     stiffness = np.zeros((num_stiffness, 6, 6))
     sigma = 1
@@ -111,7 +116,7 @@ def generate_fem_file(route, case_name, num_elem, num_node_elem=3):
 
     # mass array
     num_mass = 1
-    m_bar = 100
+    m_bar = 0.1
     j = 10
     base_mass = np.diag([m_bar, m_bar, m_bar, j, j, j])
     mass = np.zeros((num_mass, 6, 6))
@@ -125,15 +130,20 @@ def generate_fem_file(route, case_name, num_elem, num_node_elem=3):
     boundary_conditions[0] = 1
     boundary_conditions[-1] = -1
 
-    # beam number
-    beam_number = np.zeros((num_elem, 1), dtype=int)
-    beam_number[nx:-1] = 1
+    # lumped masses input
+    n_lumped_mass = 0
+    lumped_mass_nodes = np.array([], dtype=int)
+    lumped_mass = np.zeros((n_lumped_mass, ))
+    # lumped_mass[0] = 0.1/9.81
+    lumped_mass_inertia = np.zeros((n_lumped_mass, 3, 3))
+    lumped_mass_position = np.zeros((n_lumped_mass, 3))
 
     # new app forces scheme (only follower)
-    n_app_forces = 1
-    node_app_forces = np.array([num_node - 1])
+    n_app_forces = 2
+    node_app_forces = np.array([nx-1, -1])
     app_forces = np.zeros((n_app_forces, 6))
-    app_forces[0, :] = [100e2, 0, 100e2, 000, 0, 0]
+    app_forces[0, :] = [0, 0, -50, 000, 0, 00]
+    app_forces[0, :] = [0, 0, 0, 000, 0, -100]
 
     with h5.File(route + '/' + case_name + '.fem.h5', 'a') as h5file:
         coordinates = h5file.create_dataset('coordinates', data = np.column_stack((x, y, z)))
@@ -253,10 +263,10 @@ def generate_solver_file(route, case_name):
                                  'out_b_frame': 'off',
                                  'out_a_frame': 'off',
                                  'elem_proj': 2,
-                                 'max_iterations': 99,
-                                 'num_load_steps': 5,
+                                 'max_iterations': 999,
+                                 'num_load_steps': 25,
                                  'delta_curved': 1e-5,
-                                 'min_delta': 1e-5,
+                                 'min_delta': 1e-4,
                                  'newmark_damp': 0.000,
                                  'gravity_on': 'on',
                                  'gravity': 9.81,
@@ -282,4 +292,4 @@ def generate_flightcon_file(route, case_name):
 
 
 if __name__ == '__main__':
-    generate_files('./', 'multibeam', 10, 3)
+    generate_files('./', 'multibeam', 20, 3)

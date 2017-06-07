@@ -16,6 +16,11 @@ class Beam(object):
         self.num_node = fem_dictionary['num_node']
         self.num_elem = fem_dictionary['num_elem']
 
+        # try:
+        #     self.orientation = fem_dictionary['orientation']
+        # except KeyError:
+        #     self.orientation = np.eye(3)
+
         self.t = 0.0
         self.it = 0
         self.timestep_info = []
@@ -24,7 +29,7 @@ class Beam(object):
                                                      self.num_node_elem))
 
         self.timestep_info[self.it].pos_def[:] = fem_dictionary['coordinates'][:]
-        self.pos_ini = fem_dictionary['coordinates'].copy()
+        self.pos_ini = fem_dictionary['coordinates'].astype(dtype=float, order='F')
 
         # element connectivity
         self.connectivities = fem_dictionary['connectivities']
@@ -88,7 +93,8 @@ class Beam(object):
                        self.num_node_elem,
                        self.connectivities[ielem, :],
                        self.pos_ini[self.connectivities[ielem, :], :],
-                       self.frame_of_reference_delta[self.connectivities[ielem, :], :],
+                       # self.frame_of_reference_delta[self.connectivities[ielem, :], :],
+                       self.frame_of_reference_delta[ielem, :, :],
                        self.structural_twist[self.connectivities[ielem, :]],
                        self.beam_number[ielem],
                        self.elem_stiffness[ielem],
@@ -116,8 +122,9 @@ class Beam(object):
             self.load_unsteady_data(dyn_dictionary)
 
     def update_forces(self, forces):
-        self.app_forces = self.initial_app_forces + forces
-        self.generate_aux_information()
+        self.app_forces = np.asfortranarray(self.initial_app_forces + forces)
+        self.app_forces_fortran = self.app_forces.astype(dtype=ct.c_double, order='F')
+        # self.generate_aux_information()
 
     def load_unsteady_data(self, dyn_dictionary):
         self.n_tsteps = dyn_dictionary['num_steps']
@@ -189,33 +196,45 @@ class Beam(object):
 
 
     def generate_master_structure(self):
-        for elem in self.elements:
-            elem.master = np.zeros((elem.n_nodes, 2), dtype=ct.c_int, order='F') - 1
-            ielem = elem.ielem
-            for inode_local in range(elem.n_nodes - 1, -1, -1):
-                inode_global = self.connectivities[ielem, inode_local]
-
-                if inode_global == 0 and ielem == 0:
-                    # this is the master node in the master elem
-                    # has to stay [-1, -1]
-                    continue
-
-                found_previous = False
-                for i_prev_elem in range(0, ielem):
-                    for i_prev_node in range(self.elements[i_prev_elem].n_nodes):
-                        if found_previous:
-                            continue
-                        i_prev_node_global = self.connectivities[i_prev_elem, i_prev_node]
-                        if inode_global == i_prev_node_global:
-                            # found node in previous elements in list
-                            # the master is the first element to own the node
-                            # if elem.master[inode_local, 1] == -1:
-                            elem.master[inode_local, :] = [i_prev_elem, i_prev_node]
-                            found_previous = True
-                            continue
-                if not found_previous:
-                    # next case: nodes belonging to their element only
-                    elem.master[inode_local, :] = [ielem, inode_local - 1]
+        # for elem in self.elements:
+        #     elem.master = np.zeros((elem.n_nodes, 2), dtype=ct.c_int, order='F') - 1
+        #     ielem = elem.ielem
+        #     for inode_local in range(elem.n_nodes - 1, -1, -1):
+        #         inode_global = self.connectivities[ielem, inode_local]
+        #
+        #         if inode_global == 0 and ielem == 0:
+        #             # this is the master node in the master elem
+        #             # has to stay [-1, -1]
+        #             continue
+        #
+        #         found_previous = False
+        #         for i_prev_elem in range(0, ielem):
+        #             for i_prev_node in range(self.elements[i_prev_elem].n_nodes):
+        #                 if found_previous:
+        #                     continue
+        #                 i_prev_node_global = self.connectivities[i_prev_elem, i_prev_node]
+        #                 if inode_global == i_prev_node_global:
+        #                     # found node in previous elements in list
+        #                     # the master is the first element to own the node
+        #                     # if elem.master[inode_local, 1] == -1:
+        #                     elem.master[inode_local, :] = [i_prev_elem, i_prev_node]
+        #                     found_previous = True
+        #                     continue
+        #         if not found_previous:
+        #             # next case: nodes belonging to their element only
+        #             elem.master[inode_local, :] = [ielem, inode_local - 1]
+        self.master = np.zeros((self.num_elem, self.num_node_elem, 2)) - 1
+        for i_elem in range(self.num_elem):
+            # for i_node_local in self.elements[i_elem].ordering:
+            for i_node_local in range(self.elements[i_elem].n_nodes):
+                j_elem = 0
+                while self.master[i_elem, i_node_local, 0] == -1 and j_elem < i_elem:
+                    # for j_node_local in self.elements[j_elem].ordering:
+                    for j_node_local in range(self.elements[j_elem].n_nodes):
+                        if (self.connectivities[i_elem, i_node_local] ==
+                                self.connectivities[j_elem, j_node_local]):
+                            self.master[i_elem, i_node_local, :] = [j_elem, j_node_local]
+                    j_elem += 1
 
         self.generate_node_master_elem()
 
@@ -226,18 +245,18 @@ class Beam(object):
         """
         self.node_master_elem = np.zeros((self.num_node, 2), dtype=ct.c_int, order='F') - 1
         # for ielem in range(self.num_elem):
-        #     for inode in range(self.num_node_elem):
+        #     elem = self.elements[ielem]
+        #     for inode in range(elem.n_nodes):
         #         inode_global = self.connectivities[ielem, inode]
-        #
         #         if self.node_master_elem[inode_global, 0] == -1:
-        #             self.node_master_elem[inode_global, :] = self.elements[ielem].master[inode, :]
-        for ielem in range(self.num_elem):
-            elem = self.elements[ielem]
-            for inode in range(elem.n_nodes):
-                inode_global = self.connectivities[ielem, inode]
-                if self.node_master_elem[inode_global, 0] == -1:
-                    self.node_master_elem[inode_global, 0] = ielem
-                    self.node_master_elem[inode_global, 1] = inode
+        #             self.node_master_elem[inode_global, 0] = ielem
+        #             self.node_master_elem[inode_global, 1] = inode
+        for i_elem in range(self.num_elem):
+            # for i_node_local in self.elements[i_elem].ordering:
+            for i_node_local in range(self.elements[i_elem].n_nodes):
+                if self.master[i_elem, i_node_local, 0] == -1:
+                    self.node_master_elem[self.connectivities[i_elem, i_node_local], 0] = i_elem
+                    self.node_master_elem[self.connectivities[i_elem, i_node_local], 1] = i_node_local
 
     def generate_aux_information(self, dynamic=False):
 
@@ -252,15 +271,16 @@ class Beam(object):
         self.connectivities_fortran = self.connectivities.astype(ct.c_int, order='F') + 1
 
         # correction of the indices
-        self.master_nodes = np.zeros((self.num_elem, self.num_node_elem, 2), dtype=ct.c_int, order='F')
-        for elem in self.elements:
-            ielem = elem.ielem
-            self.master_nodes[ielem, :, :] = elem.master + 1
+        # self.master_nodes = np.zeros((self.num_elem, self.num_node_elem, 2), dtype=ct.c_int, order='F')
+        # for elem in self.elements:
+        #     ielem = elem.ielem
+        #     self.master_nodes[ielem, :, :] = elem.master + 1
+        #
+        # # ADC: test CAREFUL
+        # for i in range(1, 3):
+        #     self.master_nodes[:, i, :] = 0
 
-        # ADC: test CAREFUL
-        for i in range(1, 3):
-            self.master_nodes[:, i, :] = 0
-
+        self.master_fortran = self.master.astype(dtype=ct.c_int, order='F') + 1
         self.node_master_elem_fortran = self.node_master_elem.astype(dtype=ct.c_int, order='F') + 1
 
         self.length_matrix = np.zeros_like(self.num_nodes_matrix)
@@ -331,5 +351,4 @@ class Beam(object):
         for elem in self.elements:
             elem.update(self.timestep_info[it].pos_def[self.connectivities[elem.ielem, :], :],
                         self.timestep_info[it].psi_def[elem.ielem, :, :])
-
 

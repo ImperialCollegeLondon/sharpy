@@ -66,6 +66,8 @@ class AeroTimeStepInfo(object):
         self.ct_dimensions = self.dimensions.astype(dtype=ct.c_uint)
         self.ct_dimensions_star = self.dimensions_star.astype(dtype=ct.c_uint)
 
+        n_surf = len(self.dimensions)
+
         from sharpy.utils.constants import NDIM
 
         self.ct_zeta_list = []
@@ -101,9 +103,9 @@ class AeroTimeStepInfo(object):
             for i_dim in range(NDIM*2):
                 self.ct_forces_list.append(self.forces[i_surf][i_dim, :, :].reshape(-1))
 
-        self.ct_p_dimensions = ((ct.POINTER(ct.c_uint)*2)
+        self.ct_p_dimensions = ((ct.POINTER(ct.c_uint)*n_surf)
                                 (* np.ctypeslib.as_ctypes(self.ct_dimensions)))
-        self.ct_p_dimensions_star = ((ct.POINTER(ct.c_uint)*2)
+        self.ct_p_dimensions_star = ((ct.POINTER(ct.c_uint)*n_surf)
                                      (* np.ctypeslib.as_ctypes(self.ct_dimensions_star)))
         self.ct_p_zeta = ((ct.POINTER(ct.c_double)*len(self.ct_zeta_list))
                           (* [np.ctypeslib.as_ctypes(array) for array in self.ct_zeta_list]))

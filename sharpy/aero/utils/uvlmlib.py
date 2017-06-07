@@ -70,9 +70,13 @@ def vlm_solver(ts_info, flightconditions_in):
     flightconditions = FlightConditions(flightconditions_in)
 
     for u_ext in ts_info.u_ext:
-        u_ext[0, :, :] = flightconditions.uinf*flightconditions.uinf_direction[0]
-        u_ext[1, :, :] = flightconditions.uinf*flightconditions.uinf_direction[1]
-        u_ext[2, :, :] = flightconditions.uinf*flightconditions.uinf_direction[2]
+        # u_ext[0, :, :] = flightconditions.uinf*flightconditions.uinf_direction[0]
+        # u_ext[1, :, :] = flightconditions.uinf*flightconditions.uinf_direction[1]
+        # u_ext[2, :, :] = flightconditions.uinf*flightconditions.uinf_direction[2]
+        u_ext[0, :, :] = flightconditions.uinf
+        u_ext[1, :, :] = 0.0
+        u_ext[2, :, :] = 0.0
+
 
     ts_info.generate_ctypes_pointers()
     run_VLM(ct.byref(vmopts),

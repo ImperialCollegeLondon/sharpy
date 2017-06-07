@@ -19,6 +19,7 @@ class AeroGridPlot(BaseSolver):
 
     def initialise(self, data):
         self.data = data
+        self.it = data.beam.it
         self.settings = data.settings[self.solver_id]
         self.convert_settings()
 
@@ -32,15 +33,24 @@ class AeroGridPlot(BaseSolver):
 
     def convert_settings(self):
         try:
-            self.settings['route'] = (str2bool(self.settings['route']))
+            self.settings['route'] = ((self.settings['route']))
         except KeyError:
             cout.cout_wrap('AeroGridPlot: no location for figures defined, defaulting to ./output', 3)
             self.settings['route'] = './output'
         pass
 
     def plot_grid(self):
+        folder = self.settings['route'] + '/' + self.data.settings['SHARPy']['case'] + '/aero/'
+        if not os.path.exists(folder):
+            os.makedirs(folder)
         for i_surf in range(self.data.grid.timestep_info[self.ts].n_surf):
-            filename = 'grid_%s_%03u' % (self.data.settings['SHARPy']['case'], i_surf)
+            filename = (folder +
+                           'aero_' +
+                           self.data.settings['SHARPy']['case'] +
+                           '_' +
+                           '%02u_' % i_surf +
+                           '%06u' % self.it)
+            # filename = 'grid_%s_%03u' % (self.data.settings['SHARPy']['case'], i_surf)
 
             dims = self.data.grid.timestep_info[self.ts].dimensions[i_surf, :]
             dims_star = self.data.grid.timestep_info[self.ts].dimensions_star[i_surf, :]

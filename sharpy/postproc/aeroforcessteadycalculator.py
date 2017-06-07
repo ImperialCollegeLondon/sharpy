@@ -6,6 +6,15 @@ import sharpy.presharpy.aerogrid.utils as aero_utils
 from tvtk.api import tvtk, write_data
 import numpy as np
 import os
+import ctypes as ct
+
+
+class ForcesContainer(object):
+    def __init__(self):
+        self.ts = 0
+        self.t = 0.0
+        self.forces = []
+        self.coords = []
 
 
 @solver
@@ -23,12 +32,30 @@ class AeroForcesSteadyCalculator(BaseSolver):
         self.settings = data.settings[self.solver_id]
         self.convert_settings()
 
+        # nodes per beam
+        # self.n_nodes_beam = max(self.settings['beams'])*[]
+        # for i_beam in self.settings['beams']:
+        #     self.n_nodes_beam[i_beam] = sum([1 for i in self.data.beam.beam_number if i == i_beam])
+        #     print('Beam %u, %u nodes' % (i_beam, self.n_nodes_beam[i_beam]))
+        #
+        # # initialise forces container
+        # self.data.beam.forces_container = []
+        # self.data.beam.forces_container.append(ForcesContainer())
+        # self.data.beam.forces_container[0].ts = self.ts
+        # self.data.beam.forces_container[0].t = self.t
+        # self.data.beam.forces_container[0].forces = max(self.settings['beams'])*[]
+        # for i_beam in self.settings['beams']:
+        #     self.data.beam.forces_container[0].forces.append(np.zeros())
+
     def run(self):
+        self.ts = 0
+
+
         # create folder for containing files if necessary
         if not os.path.exists(self.settings['route']):
             os.makedirs(self.settings['route'])
         self.calculate_forces()
-        self.output_forces()
+        # self.output_forces()
         cout.cout_wrap('...Finished', 1)
         return self.data
 
@@ -38,19 +65,21 @@ class AeroForcesSteadyCalculator(BaseSolver):
         except KeyError:
             # cout.cout_wrap('AeroForcesSteadyCalculator: no location for figures defined, defaulting to ./output', 3)
             self.settings['route'] = './output'
-        pass
+        try:
+            self.settings['beams'] = np.fromstring(self.settings['beams'], sep=',', dtype=ct.c_double)
+        except KeyError:
+            self.settings['beams'] = [0]
 
     def calculate_forces(self):
-        dynamic_pressure = (0.5*self.data.flightconditions['FlightCon']['rho_inf']*
-                            self.data.flightconditions['FlightCon']['u_inf']**2*
-                            self.data.flightconditions['FlightCon']['c_ref']*
-                            self.data.flightconditions['FlightCon']['b_ref'])
+        # dynamic_pressure = (0.5*self.data.flightconditions['FlightCon']['rho_inf']*
+        #                     self.data.flightconditions['FlightCon']['u_inf']**2*
+        #                     self.data.flightconditions['FlightCon']['c_ref']*
+        #                     self.data.flightconditions['FlightCon']['b_ref'])
         rot = aero_utils.wind2body_rot(self.data.flightconditions['FlightCon']['alpha'],
                                        self.data.flightconditions['FlightCon']['beta'])
 
-        ts = 0
 
-        force = self.data.grid.timestep_info[ts].forces
+        force = self.data.grid.timestep_info[self.ts].forces
         total_force = np.zeros((3,))
         n_surf = len(force)
         for i_surf in range(n_surf):
@@ -60,20 +89,60 @@ class AeroForcesSteadyCalculator(BaseSolver):
                     total_force += np.dot(rot.T, force[i_surf][0:3, i_m, i_n])
 
         a = 2
+        lift = total_force[2]
+        cout.cout_wrap('Lift = %f6 (N)' % lift)
+        drag = total_force[0]
+        cout.cout_wrap('Drag= %f6 (N)' % drag)
+        side_force = total_force[1]
+        cout.cout_wrap('Side force = %f6 (N)' % side_force)
 
         # CL
-        cl = total_force[2]/dynamic_pressure
-        cout.cout_wrap('CL = %f6 ' % cl)
-        # CD
-        cd = total_force[0]/dynamic_pressure
-        cout.cout_wrap('CD = %f6 ' % cd)
-        # C side force
-        cs = total_force[1]/dynamic_pressure
-        cout.cout_wrap('CLateral = %f6 ' % cs)
+        # cl = total_force[2]/dynamic_pressure
+        # # CD
+        # cd = total_force[0]/dynamic_pressure
+        # cout.cout_wrap('CD = %f6 ' % cd)
+        # # C side force
+        # cs = total_force[1]/dynamic_pressure
+        # cout.cout_wrap('CLateral = %f6 ' % cs)
         # CM
 
     def output_forces(self):
-        pass
+        self.coor = []
+        self.forces = []
+        for i_beam in self.settings['beams']:
+            n_nodes_beam = sum([1 for i in self.data.beam.beam_number if i == i_beam])
+            print('Beam %u, %u nodes' % (i_beam, n_nodes_beam))
+        # i_surf = 0
+        # in_force = self.data.grid.timestep_info[self.ts].forces
+        # y_coor = np.zeros((self.data.grid.aero_dimensions[i_surf][1],))
+        # spacing = np.zeros((self.data.grid.aero_dimensions[i_surf][1],))
+        # self.forces = np.zeros((self.data.grid.aero_dimensions[i_surf][1], 6))
+        # beam_global_node = np.zeros((self.data.grid.aero_dimensions[i_surf][1],), dtype=int)
+        # for i_n in range(self.data.grid.aero_dimensions[i_surf][1]):
+        #     beam_global_node[i_n] = self.data.grid.aero2struct_mapping[i_surf][i_n]
+        #     y_coor[i_n] = self.data.beam.timestep_info[self.ts].pos_def[beam_global_node[i_n], 1]
+        #     if i_n == 0:
+        #         spacing[i_n] =
+        #     elif i_n == self.data.grid.aero_dimensions[i_surf][1] - 1:
+        #         spacing[i_n] =
+        #     else:
+        #         i_1 = i_n - 1
+        #         i_2 = i_n + 1
+        #         spacing[i_n] =
+        #
+        #     for i_m in range(self.data.grid.aero_dimensions[i_surf][0]):
+        #         # TODO moments
+        #         for i_dim in range(3):
+        #             self.forces[i_n, i_dim] += in_force[i_surf][i_dim, i_m, i_n]
+
+
+        import matplotlib.pyplot as plt
+        plt.figure()
+        plt.plot(y_coor, self.forces[:, 0], 'r')
+        plt.plot(y_coor, self.forces[:, 1], 'k')
+        plt.plot(y_coor, self.forces[:, 2], 'b')
+        plt.grid('on')
+        plt.show()
 
     # def plot_grid(self):
     #     for i_surf in range(self.data.grid.timestep_info[self.ts].n_surf):

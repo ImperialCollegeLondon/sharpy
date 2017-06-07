@@ -19,22 +19,26 @@ from sharpy.utils.datastructures import AeroTimeStepInfo
 
 
 class AeroGrid(object):
-    def __init__(self, beam, aero_dict, aero_settings, ts=0, t=0.0):
+    def __init__(self, beam, aero_dict, aero_settings, inertial2aero=None, quiet=False, ts=0, t=0.0):
         self.aero_dict = aero_dict
         self.ts = ts
         self.t = t
         self.beam = beam
+        self.quiet = quiet
+        self.inertial2aero = inertial2aero
 
-        # number of surfaces
-        self.n_surf = len(set(aero_dict['surface_distribution']))
-        # number of chordwise panels
-        self.surface_m = aero_dict['surface_m']
         # number of total nodes (structural + aero&struc)
         self.total_nodes = len(aero_dict['aero_node'])
-        # number of aero nodes
-        self.n_aero_nodes = sum(aero_dict['aero_node'])
         # number of elements
         self.n_elem = len(aero_dict['surface_distribution'])
+        # number of surfaces
+        temp = set(aero_dict['surface_distribution'])
+        self.n_surf = sum(1 for i in temp if i >= 0)
+        # self.n_surf = len(set(aero_dict['surface_distribution']))
+        # number of chordwise panels
+        self.surface_m = aero_dict['surface_m']
+        # number of aero nodes
+        self.n_aero_nodes = sum(aero_dict['aero_node'])
 
         self.node_master_elem = beam.node_master_elem
 
@@ -42,7 +46,7 @@ class AeroGrid(object):
         self.aero_dimensions = np.zeros((self.n_surf, 2), dtype=int)
         for i in range(self.n_surf):
             # adding M values
-            self.aero_dimensions[i, 0] = self.surface_m[0]
+            self.aero_dimensions[i, 0] = self.surface_m[i]
 
         # count N values (actually, the count result
         # will be N+1)
@@ -52,6 +56,8 @@ class AeroGrid(object):
         for i_elem in range(beam.num_elem):
             nodes = beam.elements[i_elem].global_connectivities
             i_surf = aero_dict['surface_distribution'][i_elem]
+            if i_surf < 0:
+                continue
             for i_global_node in nodes:
                 if i_global_node in nodes_in_surface[i_surf]:
                     continue
@@ -66,13 +72,14 @@ class AeroGrid(object):
         self.aero_dimensions_star = self.aero_dimensions.copy()
         self.aero_dimensions_star[:, 0] = aero_settings['mstar']
 
-        cout.cout_wrap('The aerodynamic grid contains %u surfaces' % self.n_surf, 1)
-        for i_surf in range(self.n_surf):
-            cout.cout_wrap('  Surface %u, M=%u, N=%u' % (i_surf,
-                                                         self.aero_dimensions[i_surf, 0],
-                                                         self.aero_dimensions[i_surf, 1]), 1)
-        cout.cout_wrap('  In total: %u bound panels' % sum(self.aero_dimensions[:, 0]*
-                                                           self.aero_dimensions[:, 1]), 1)
+        if not self.quiet:
+            cout.cout_wrap('The aerodynamic grid contains %u surfaces' % self.n_surf, 1)
+            for i_surf in range(self.n_surf):
+                cout.cout_wrap('  Surface %u, M=%u, N=%u' % (i_surf,
+                                                             self.aero_dimensions[i_surf, 0],
+                                                             self.aero_dimensions[i_surf, 1]), 1)
+            cout.cout_wrap('  In total: %u bound panels' % sum(self.aero_dimensions[:, 0]*
+                                                               self.aero_dimensions[:, 1]), 1)
 
         self.timestep_info = []
         self.timestep_info.append(AeroTimeStepInfo(self.aero_dimensions,
@@ -94,6 +101,7 @@ class AeroGrid(object):
                                                copy=False,
                                                assume_sorted=True))
         self.generate_zeta(beam, aero_settings)
+        a =1
 
     def generate_zeta(self, beam, aero_settings):
         self.generate_mapping()
@@ -122,12 +130,13 @@ class AeroGrid(object):
                     node_info['M'] = self.aero_dimensions[i_surf, 0]
                     node_info['M_distribution'] = self.aero_dict['m_distribution'].decode('ascii')
                     node_info['airfoil'] = self.aero_dict['airfoil_distribution'][i_global_node]
-                    node_info['beam_coord'] = beam.pos_def[i_global_node, :]
-                    node_info['beam_psi'] = beam.psi_def[i_elem, i_local_node, :]
+                    node_info['beam_coord'] = beam.timestep_info[-1].pos_def[i_global_node, :]
+                    node_info['beam_psi'] = beam.timestep_info[-1].psi_def[i_elem, i_local_node, :]
                     self.timestep_info[self.ts].zeta[i_surf][:, :, i_n] = (
                         generate_strip(node_info,
                                        self.airfoil_db,
-                                       aero_settings['aligned_grid']))
+                                       aero_settings['aligned_grid'],
+                                       inertial2aero=self.inertial2aero))
 
     def generate_mapping(self):
         self.struct2aero_mapping = [[]]*self.total_nodes
@@ -138,6 +147,8 @@ class AeroGrid(object):
 
         for i_elem in range(self.n_elem):
             i_surf = self.aero_dict['surface_distribution'][i_elem]
+            if i_surf == -1:
+                continue
             for i_global_node in self.beam.elements[i_elem].reordered_global_connectivities:
                 if not self.aero_dict['aero_node'][i_global_node]:
                     continue
@@ -179,7 +190,7 @@ class AeroGrid(object):
                     self.aero2struct_mapping[i_surf][i_n] = i_global_node
 
 
-def generate_strip(node_info, airfoil_db, aligned_grid=True, orientation_in=np.array([1, 0, 0])):
+def generate_strip(node_info, airfoil_db, aligned_grid=True, inertial2aero=None, orientation_in=np.array([1, 0, 0])):
     strip_coordinates_a_frame = np.zeros((3, node_info['M'] + 1), dtype=ct.c_double)
     strip_coordinates_b_frame = np.zeros_like(strip_coordinates_a_frame, dtype=ct.c_double)
 
@@ -212,9 +223,14 @@ def generate_strip(node_info, airfoil_db, aligned_grid=True, orientation_in=np.a
         old_x = orientation.copy()
         new_x = np.dot(rotation_mat.T, local_orientation)
 
-        old_x[-1] = 0
-        new_x[-1] = 0
-        angle = algebra.angle_between_vectors(old_x, new_x)
+        if np.linalg.norm(new_x[:-1]) < 1e-10:
+            angle = 0
+        else:
+            old_x[-1] = 0
+            new_x[-1] = 0
+            angle = algebra.angle_between_vectors(old_x, new_x)
+            if new_x[1] < 0.0:
+                angle *= -1
 
         z_rotation_mat = algebra.rotation3d_z(angle)
         for i_m in range(node_info['M'] + 1):
@@ -236,6 +252,13 @@ def generate_strip(node_info, airfoil_db, aligned_grid=True, orientation_in=np.a
     # node coordinates addition
     for i_m in range(node_info['M'] + 1):
         strip_coordinates_a_frame[:, i_m] += node_info['beam_coord']
+
+    # inertial2aero application
+    if inertial2aero is not None:
+        print(inertial2aero)
+        for i_m in range(node_info['M'] + 1):
+            strip_coordinates_a_frame[:, i_m] = np.dot(inertial2aero.T,
+                                                       strip_coordinates_a_frame[:, i_m])
 
     return strip_coordinates_a_frame
 

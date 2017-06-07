@@ -36,7 +36,10 @@ def tangent_vector(in_coord, ordering=None):
         for idim in range(ndim):
             vector.append((polyfit_der_vec[idim])(inode))
         # vector = np.array([polyfit_der_vec[0](inode),
+        # DEBUG
         vector = np.array(vector)
+        if (np.linalg.norm(vector)) == 0.0:
+            print(vector)
         vector /= np.linalg.norm(vector)
         tangent[inode, :] = vector
 

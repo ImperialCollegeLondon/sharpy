@@ -103,7 +103,7 @@ def cbeam3_solv_nlnstatic(beam, settings):
                             beam.num_nodes_matrix.ctypes.data_as(intP),
                             beam.num_mem_matrix.ctypes.data_as(intP),
                             beam.connectivities_fortran.ctypes.data_as(intP),
-                            beam.master_nodes.ctypes.data_as(intP),
+                            beam.master_fortran.ctypes.data_as(intP),
                             ct.byref(n_mass),
                             beam.mass_matrix.ctypes.data_as(doubleP),
                             beam.mass_indices.ctypes.data_as(intP),
@@ -123,6 +123,7 @@ def cbeam3_solv_nlnstatic(beam, settings):
                             beam.timestep_info[beam.it].psi_def.ctypes.data_as(doubleP),
                             beam.app_forces_fortran.ctypes.data_as(doubleP)
                             )
+    a = 1
     # angle = 0*np.pi/180
     # import presharpy.utils.algebra as algebra
     # rot = np.zeros((3, 3))
@@ -430,7 +431,7 @@ def xbeam_solv_couplednlndyn(beam, settings):
                          beam.quat_history.ctypes.data_as(doubleP),
                          ct.byref(success)
                          )
-    print("--- %s seconds ---" % (ti.time() - start_time))
+    print("\n--- %s seconds ---" % (ti.time() - start_time))
     if not success:
         raise Exception('couplednlndyn did not converge')
 
@@ -439,15 +440,13 @@ def xbeam_solv_couplednlndyn(beam, settings):
     beam.for_pos[:, 1] = sc.integrate.cumtrapz(beam.for_vel[:, 1], dx=dt.value, initial=0)
     beam.for_pos[:, 2] = sc.integrate.cumtrapz(beam.for_vel[:, 2], dx=dt.value, initial=0)
 
-    glob_pos_def = np.zeros_like(beam.pos_def_history)
+    glob_pos_def = np.zeros_like(pos_def_history)
     for it in range(n_tsteps.value):
         # rot = algebra.crv2rot(algebra.quat2crv(beam.quat_history[it, :]))
         rot = algebra.quat2rot(beam.quat_history[it, :])
         for inode in range(beam.num_node):
             glob_pos_def[it, inode, :] = beam.for_pos[it, 0:3] + np.dot(rot.T, pos_def_history[it, inode, :])
 
-
-    # for it in range(n_tsteps.value):
     beam.timestep_info[0] = (StructTimeStepInfo(beam.num_node,
                                                 beam.num_elem,
                                                 beam.num_node_elem,
@@ -474,74 +473,6 @@ def xbeam_solv_couplednlndyn(beam, settings):
 
     beam.for_pos = []
     beam.for_vel = []
-
-
-    # import matplotlib.pyplot as plt
-    # plt.figure()
-    # length = np.zeros((n_tsteps.value,))
-    # for it in range(n_tsteps.value):
-    #     length[it] = np.linalg.norm(beam.pos_def_history[it, 0, :] - beam.pos_def_history[it, -1, :])
-    #
-    # plt.plot(time, length)
-    # plt.grid('on')
-    # plt.show()
-    #
-    # # gravity value
-    # g = -9.81
-    # z = 0.5*time**2*g + glob_pos_def[0, beam.num_node/2, 2]
-    # plt.figure()
-    # plt.plot(time, z, 'k--')
-    # plt.plot(time, glob_pos_def[:, beam.num_node/2, 2])
-    # plt.grid('on')
-    # plt.show()
-    # # plt.figure()
-    # # plt.hold('on')
-    # # plt.plot(time[:-1], pos_def_history[:-2, -1, 2], 'r')
-    # # plt.plot(time[:-1], pos_def_history[:-2, -1, 1], 'b')
-    # # plt.grid(True)
-    # # plt.show()
-    # # n_tsteps = settings['num_steps'].value/2
-    # # n_plots = 5
-    # # delta = 199
-    # # plt.figure()
-    # # for i in range(n_plots):
-    # #     plt.hold('on')
-    # #     plt.plot(beam.pos_def_history[n_tsteps + i*delta, :, 0], beam.pos_def_history[n_tsteps + i*delta, :, 2])
-    # # plt.grid(True)
-    # # plt.show()
-    #
-    # from matplotlib import cm
-    #
-    # delta = int(0.1/dt.value)
-    # itime = range(1, int(n_tsteps.value)-1, delta)
-    # cm_subs = np.linspace(0, 1, n_tsteps.value)
-    # colors = [cm.jet(x) for x in cm_subs]
-    # fig = plt.figure()
-    # ax = fig.add_subplot(111, projection='3d')
-    # # plt.hold('on')
-    # for i in itime:
-    #     ax.plot(glob_pos_def[i, :, 0], glob_pos_def[i, :, 1], glob_pos_def[i, :, 2], color=colors[i])
-    # ax.plot(beam.for_pos[:, 0], beam.for_pos[:, 1], beam.for_pos[:, 2], 'r', linewidth=1)
-    # if n_nodes.value % 2 == 1:
-    #     half1 = int(n_nodes.value/2)
-    #     half2 = half1 + 1
-    # else:
-    #     half1 = half2 = n_nodes.value/2
-    # ax.plot(0.5*(glob_pos_def[:, half1, 0] + glob_pos_def[:, half2, 0]),
-    #         0.5*(glob_pos_def[:, half1, 1] + glob_pos_def[:, half2, 1]),
-    #         0.5*(glob_pos_def[:, half1, 2] + glob_pos_def[:, half2, 2]),
-    #         'k', linewidth=1)
-    #
-    #
-    # ax.plot(glob_pos_def[:, -1, 0], glob_pos_def[:, -1, 1], glob_pos_def[:, -1, 2], 'b', linewidth=1)
-    # ax.set_xlabel('X')
-    # ax.set_ylabel('Y')
-    # ax.set_zlabel('Z')
-    # ax.axis('equal')
-    # plt.show()
-    #
-    # a = 1
-
 
 f_cbeam3_solv_update_static = BeamLib.cbeam3_solv_update_static_python
 f_cbeam3_solv_update_static.restype = None

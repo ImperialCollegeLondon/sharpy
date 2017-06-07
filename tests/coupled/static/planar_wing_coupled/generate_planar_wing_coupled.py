@@ -2,9 +2,9 @@ import h5py as h5
 import numpy as np
 import configparser
 
-aspect_ratio = 10.0
-chord = 1.0
-length = aspect_ratio/chord
+aspect_ratio = 10
+chord = 1
+length = aspect_ratio*chord
 
 def clean_test_files(route, case_name):
     fem_file_name = route + '/' + case_name + '.fem.h5'
@@ -42,28 +42,17 @@ def generate_fem_file(route, case_name, num_elem, num_node_elem=3):
     # import pdb; pdb.set_trace()
     angle = 90*np.pi/180.0
     dihedral = 0*np.pi/180.0
-    n_elem_beam = int(num_elem/2)
-    n_node_beam = int((num_node - 1)/2)
 
-    x = np.zeros((num_node,))
-    y = np.zeros((num_node,))
-    z = np.zeros((num_node,))
-    x[0:n_node_beam+1] = (np.linspace(0, length, n_node_beam+1))*np.cos(angle)
-    y[0:n_node_beam+1] = (np.linspace(0, length, n_node_beam+1))*np.sin(angle)*np.cos(dihedral)
-    z[0:n_node_beam+1] = (np.linspace(0, length, n_node_beam+1))*np.sin(dihedral)
-    x[n_node_beam+1:] = ((np.linspace(0, -length, n_node_beam+1))*np.cos(angle))[1:]
-    y[n_node_beam+1:] = ((np.linspace(0, -length, n_node_beam+1))*np.sin(angle)*np.cos(dihedral))[1:]
-    z[n_node_beam+1:] = ((np.linspace(0, -length, n_node_beam+1))*np.sin(dihedral))[1:]
+    x = (np.linspace(0, length, num_node))*np.cos(angle)
+    y = (np.linspace(0, length, num_node))*np.sin(angle)*np.cos(dihedral)
+    z = (np.linspace(0, length, num_node))*np.sin(dihedral)
 
     structural_twist = np.zeros_like(x)
 
-    frame_of_reference_delta = np.zeros((num_node, 3))
-    for inode in range(num_node):
-        # frame_of_reference_delta[inode, :] = [0, 1, 0]
-        if inode < n_node_beam + 1:
-            frame_of_reference_delta[inode, :] = [-np.sin(angle), np.cos(angle), 0]
-        else:
-            frame_of_reference_delta[inode, :] = [np.sin(angle), -np.cos(angle), 0]
+    frame_of_reference_delta = np.zeros((num_elem,num_node_elem, 3))
+    for ielem in range(num_elem):
+        for inode in range(num_node_elem):
+            frame_of_reference_delta[ielem, inode, :] = [-np.sin(angle), np.cos(angle), 0]
 
     scale = 1
 
@@ -75,17 +64,15 @@ def generate_fem_file(route, case_name, num_elem, num_node_elem=3):
     for ielem in range(num_elem):
         conn[ielem, :] = (np.ones((3,)) * ielem * (num_node_elem - 1)
                           + [0, 2, 1])
-        if ielem == n_elem_beam:
-            conn[ielem, 0] = 0
-
     # stiffness array
     # import pdb; pdb.set_trace()
     num_stiffness = 1
-    ea = 4.8e8
-    ga = 3.231e8
-    gj = 1.0e6
-    ei = 9.346e6
-    base_stiffness = np.diag([ea, ga, ga, gj, ei, ei])
+    ea = 2.14e6
+    ga = 1.54e3
+    gj = 72.25e1
+    ei = 6.35e3
+    sigma = 10
+    base_stiffness = sigma*np.diag([ea, ga, ga, gj, ei, ei])
     stiffness = np.zeros((num_stiffness, 6, 6))
     # import pdb; pdb.set_trace()
     for i in range(num_stiffness):
@@ -96,8 +83,8 @@ def generate_fem_file(route, case_name, num_elem, num_node_elem=3):
 
     # mass array
     num_mass = 1
-    m_bar = 100
-    j = 10
+    m_bar = 0.319
+    j = 8.09e-4
     base_mass = np.diag([m_bar, m_bar, m_bar, j, j, j])
     mass = np.zeros((num_mass, 6, 6))
     for i in range(num_mass):
@@ -108,12 +95,10 @@ def generate_fem_file(route, case_name, num_elem, num_node_elem=3):
     # bocos
     boundary_conditions = np.zeros((num_node, 1), dtype=int)
     boundary_conditions[0] = 1
-    boundary_conditions[n_node_beam + 1] = -1
     boundary_conditions[-1] = -1
 
     # beam number
     beam_number = np.zeros((num_elem, 1), dtype=int)
-    beam_number[n_elem_beam:] = 1
 
     # new app forces scheme (only follower)
     n_app_forces = 0
@@ -125,7 +110,7 @@ def generate_fem_file(route, case_name, num_elem, num_node_elem=3):
     n_lumped_mass = 0
     lumped_mass_nodes = np.array([], dtype=int)
     lumped_mass = np.zeros((n_lumped_mass, ))
-    # lumped_mass[0] = 600e3/9.81
+    # lumped_mass[0] = 600/9.81
     lumped_mass_inertia = np.zeros((n_lumped_mass, 3, 3))
     lumped_mass_position = np.zeros((n_lumped_mass, 3))
 
@@ -173,21 +158,17 @@ def generate_aero_file(route, case_name, num_elem, num_node, coordinates):
     # example airfoil
     num_node = (3 - 1)*num_elem + 1
     # import pdb; pdb.set_trace()
-    n_elem_beam = int(num_elem/2)
-    n_node_beam = int((num_node - 1)/2)
 
-    naca_x, naca_y = generate_naca_camber(P=0, M=0)
+    naca_x, naca_y = generate_naca_camber(P=4, M=4)
     # airfoil distribution
     airfoil_distribution = []
     for i in range(num_node):
         airfoil_distribution.append(0)
 
     surface_distribution = np.zeros((num_elem,), dtype=int)
-    surface_distribution[n_elem_beam:] = 1
 
-    surface_m = np.zeros((2,), dtype=int)
-    surface_m[0] = 8
-    surface_m[1] = 8
+    surface_m = np.zeros((1,), dtype=int)
+    surface_m[0] = 20
 
     m_distribution = 'uniform'
 
@@ -197,10 +178,10 @@ def generate_aero_file(route, case_name, num_elem, num_node, coordinates):
     twist = np.linspace(0, 0, num_node)*np.pi/180
 
     # chord distribution
-    chord_dist = chord*np.ones((num_node,), dtype=float)
+    chord_dist = chord*np.linspace(1, 0.5, num_node)
 
     # elastic axis distribution
-    elastic_axis = 0.5*np.ones((num_node,))
+    elastic_axis = np.linspace(0.3, 0.5, num_node)
 
     # import pdb; pdb.set_trace()
     with h5.File(route + '/' + case_name + '.aero.h5', 'a') as h5file:
@@ -252,16 +233,16 @@ def generate_naca_camber(M=0, P=0):
 def generate_solver_file(route, case_name):
     file_name = route + '/' + case_name + '.solver.txt'
     config = configparser.ConfigParser()
-    config['SHARPy'] = {'case': 'planar_wing',
-                        'route': './tests/aero/static/planar_wing',
-                        'flow': 'StaticCoupled',
+    config['SHARPy'] = {'case': 'planar_wing_coupled',
+                        'route': './tests/coupled/static/planar_wing_coupled/',
+                        'flow': 'StaticCoupled, BeamPlot, AeroGridPlot',
                         'plot': 'on'}
     config['StaticCoupled'] = {'print_info': 'on',
                                'structural_solver': 'NonLinearStatic',
                                'aero_solver': 'StaticUvlm',
                                'max_iter': 10,
                                'n_load_steps': 2,
-                               'tolerance': 1e-4}
+                               'tolerance': 1e-10}
     config['StaticUvlm'] = {'print_info': 'on',
                             'M_distribution': 'uniform',
                             'Mstar': 1,
@@ -273,14 +254,16 @@ def generate_solver_file(route, case_name):
                                  'out_a_frame': 'off',
                                  'elem_proj': 2,
                                  'max_iterations': 99,
-                                 'num_load_steps': 5,
+                                 'num_load_steps': 15,
                                  'delta_curved': 1e-5,
-                                 'min_delta': 1e-5,
+                                 'min_delta': 1e-3,
                                  'newmark_damp': 0.000,
-                                 'gravity_on': 'off',
+                                 'gravity_on': 'on',
                                  'gravity': 9.81,
                                  'gravity_dir': '0, 0, 1'
                                  }
+    config['BeamPlot'] = {'route': './output'}
+    config['AeroGridPlot'] = {'route': './output'}
 
     with open(file_name, 'w') as configfile:
         config.write(configfile)
@@ -289,11 +272,11 @@ def generate_solver_file(route, case_name):
 def generate_flightcon_file(route, case_name):
     file_name = route + '/' + case_name + '.flightcon.txt'
     config = configparser.ConfigParser()
-    config['FlightCon'] = {'u_inf': 1.0,
-                           'alpha': 25.0,
+    config['FlightCon'] = {'u_inf': 25.0,
+                           'alpha': 5.0,
                            'beta': 0.0,
                            'rho_inf': 1.225,
-                           'c_ref': 1.0,
+                           'c_ref': chord,
                            'b_ref': 1.0}
 
     with open(file_name, 'w') as configfile:
@@ -302,5 +285,5 @@ def generate_flightcon_file(route, case_name):
 if __name__ == '__main__':
     import os
     dir_path = os.path.dirname(os.path.realpath(__file__))
-    generate_files(dir_path + '/', 'planar_wing_coupled', 10, 3)
+    generate_files(dir_path + '/', 'planar_wing_coupled', 20, 3)
     print('The test case has been successfully generated!!!')

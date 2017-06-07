@@ -1,22 +1,4 @@
-"""@package PyBeam.Solver.NonlinearStatic
-@brief      Nonlinear static solvers.
-@author     Rob Simpson
-@contact    r.simpson11@imperial.ac.uk
-@version    0.0
-@date       25/10/2012
-@pre        None
-@warning    None
-
-@modified   Alfonso del Carre
-"""
-
-# import DerivedTypes
-# import BeamIO
-# import beam.utils.derivedtypes as derivedtypes
-# import XbeamLib
-# import BeamInit
 import ctypes as ct
-
 import numpy as np
 
 import sharpy.beam.utils.beamlib as beamlib
@@ -36,6 +18,8 @@ class NonLinearStatic(BaseSolver):
         self.data = data
         self.settings = data.settings[self.solver_id]
         self.convert_settings()
+        # data.beam.timestep_info[0].pos_def[:] = data.beam.pos_ini[:]
+        # data.beam.timestep_info[0].psi_def[:] = data.beam.psi_ini[:]
         data.beam.generate_aux_information()
 
     def run(self):

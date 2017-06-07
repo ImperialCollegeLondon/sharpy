@@ -37,7 +37,11 @@ class BeamPlot(BaseSolver):
         except KeyError:
             cout.cout_wrap(self.solver_id + ': no location for figures defined, defaulting to ./output', 3)
             self.settings['route'] = './output'
-        pass
+
+        try:
+            self.settings['applied_forces'] = str2bool(self.settings['applied_forces'])
+        except KeyError:
+            self.settings['applied_forces'] = False
 
     def plot(self):
         folder = self.settings['route'] + '/' + self.data.settings['SHARPy']['case'] + '/beam/'
@@ -59,12 +63,17 @@ class BeamPlot(BaseSolver):
             local_x = np.zeros((num_nodes, 3))
             local_y = np.zeros((num_nodes, 3))
             local_z = np.zeros((num_nodes, 3))
+            if self.settings['applied_forces']:
+                app_forces = np.zeros((num_nodes, 3))
             # coordinates of corners
             for i_node in range(num_nodes):
                 if self.data.beam.timestep_info[it].with_rb:
                     coords[i_node, :] = self.data.beam.timestep_info[it].glob_pos_def[i_node, :]
                 else:
-                    coords[i_node, :] = self.data.beam.timestep_info[it].pos_def[i_node, :]
+                    if self.settings['frame'] == 'inertial':
+                        coords[i_node, :] = np.dot(self.data.grid.inertial2aero.T, self.data.beam.timestep_info[it].pos_def[i_node, :])
+                    else:
+                        coords[i_node, :] = self.data.beam.timestep_info[it].pos_def[i_node, :]
 
             for i_node in range(num_nodes):
                 i_elem = self.data.beam.node_master_elem[i_node, 0]
@@ -74,9 +83,22 @@ class BeamPlot(BaseSolver):
                 self.data.beam.update(it)
 
                 v1, v2, v3 = self.data.beam.elements[i_elem].deformed_triad()
-                local_x[i_node, :] = v1[i_local_node, :]
-                local_y[i_node, :] = v2[i_local_node, :]
-                local_z[i_node, :] = v3[i_local_node, :]
+                if self.settings['frame'] == 'inertial':
+                    local_x[i_node, :] = np.dot(self.data.grid.inertial2aero.T, v1[i_local_node, :])
+                    local_y[i_node, :] = np.dot(self.data.grid.inertial2aero.T, v2[i_local_node, :])
+                    local_z[i_node, :] = np.dot(self.data.grid.inertial2aero.T, v3[i_local_node, :])
+                else:
+                    local_x[i_node, :] = v1[i_local_node, :]
+                    local_y[i_node, :] = v2[i_local_node, :]
+                    local_z[i_node, :] = v3[i_local_node, :]
+
+                # applied forces
+                if self.settings['applied_forces']:
+                    import sharpy.utils.algebra as algebra
+                    Cab = algebra.crv2rot(self.data.beam.timestep_info[it].psi_def[i_elem, i_local_node, :])
+                    app_forces[i_node, :] = np.dot(self.data.grid.inertial2aero.T,
+                                                   np.dot(Cab,
+                                                          self.data.beam.app_forces[i_node, 0:3]))
 
             for i_elem in range(num_elem):
                 conn[i_elem, :] = self.data.beam.elements[i_elem].reordered_global_connectivities
@@ -88,12 +110,20 @@ class BeamPlot(BaseSolver):
             ug.cell_data.scalars.name = 'elem_id'
             ug.point_data.scalars = node_id
             ug.point_data.scalars.name = 'node_id'
+            point_vector_counter = 1
             ug.point_data.add_array(local_x, 'vector')
-            ug.point_data.get_array(1).name = 'local_x'
+            ug.point_data.get_array(point_vector_counter).name = 'local_x'
+            point_vector_counter += 1
             ug.point_data.add_array(local_y, 'vector')
-            ug.point_data.get_array(2).name = 'local_y'
+            ug.point_data.get_array(point_vector_counter).name = 'local_y'
+            point_vector_counter += 1
             ug.point_data.add_array(local_z, 'vector')
-            ug.point_data.get_array(3).name = 'local_z'
+            ug.point_data.get_array(point_vector_counter).name = 'local_z'
+            if self.settings['applied_forces']:
+                point_vector_counter += 1
+                ug.point_data.add_array(app_forces, 'vector')
+                ug.point_data.get_array(point_vector_counter).name = 'app_forces'
+
             write_data(ug, it_filename)
 
 

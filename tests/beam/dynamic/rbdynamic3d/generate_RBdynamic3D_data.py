@@ -11,8 +11,8 @@ xbeam will not support dead loads.
 This case has the same loads than Simo, but
 the forces are follower forces"""
 
-dt = 0.01
-simulation_time = 5
+dt = 0.005
+simulation_time = 20
 num_steps = int(simulation_time/dt)
 route = './'
 case_name = 'rbdynamic3d'
@@ -250,7 +250,7 @@ def generate_solver_file():
                                   'out_b_frame': 'off',
                                   'out_a_frame': 'off',
                                   'elem_proj': 2,
-                                  'gravity_on': 'off',
+                                  'gravity_on': 'on',
                                   'gravity': 9.81,
                                   'gravity_dir': '0, 0, 1',
                                   'max_iterations': 300,
