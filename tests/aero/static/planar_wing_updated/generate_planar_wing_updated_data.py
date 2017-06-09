@@ -9,7 +9,7 @@ route = os.path.dirname(os.path.realpath(__file__)) + '/'
 # flight conditions
 u_inf = 10
 rho = 1.225
-alpha = 5
+alpha = 20
 beta = 0
 c_ref = 1
 b_ref = 16
@@ -50,7 +50,8 @@ momenty = 0
 momentx = 0
 
 # discretisation data
-num_elem_main = int(10*aspect_ratio/2)
+import math
+num_elem_main = math.ceil(10*aspect_ratio/2/2)*2
 num_elem_tail = 5
 num_elem_fin = 4
 num_elem_fuselage = 10
@@ -69,7 +70,7 @@ num_node = num_node_main + (num_node_main - 1)
 # num_node += num_node_fin - 1
 nodes_distributed = num_node
 
-m_main = 8
+m_main = 16
 m_tail = 5
 m_fin = 5
 
