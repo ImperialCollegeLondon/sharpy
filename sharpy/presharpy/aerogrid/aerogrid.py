@@ -255,7 +255,6 @@ def generate_strip(node_info, airfoil_db, aligned_grid=True, inertial2aero=None,
 
     # inertial2aero application
     if inertial2aero is not None:
-        print(inertial2aero)
         for i_m in range(node_info['M'] + 1):
             strip_coordinates_a_frame[:, i_m] = np.dot(inertial2aero.T,
                                                        strip_coordinates_a_frame[:, i_m])

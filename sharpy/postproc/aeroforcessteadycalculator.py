@@ -75,8 +75,9 @@ class AeroForcesSteadyCalculator(BaseSolver):
         #                     self.data.flightconditions['FlightCon']['u_inf']**2*
         #                     self.data.flightconditions['FlightCon']['c_ref']*
         #                     self.data.flightconditions['FlightCon']['b_ref'])
-        rot = aero_utils.wind2body_rot(self.data.flightconditions['FlightCon']['alpha'],
-                                       self.data.flightconditions['FlightCon']['beta'])
+        # rot = aero_utils.wind2body_rot(self.data.flightconditions['FlightCon']['alpha'],
+        #                                self.data.flightconditions['FlightCon']['beta'])
+        rot = np.eye(3)
 
 
         force = self.data.grid.timestep_info[self.ts].forces
