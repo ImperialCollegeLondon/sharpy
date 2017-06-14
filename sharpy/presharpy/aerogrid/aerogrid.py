@@ -83,9 +83,9 @@ class AeroGrid(object):
 
         self.timestep_info = []
         self.timestep_info.append(AeroTimeStepInfo(self.aero_dimensions,
-                                               self.aero_dimensions_star,
-                                               self.ts,
-                                               self.t))
+                                                   self.aero_dimensions_star,
+                                                   self.ts,
+                                                   self.t))
 
         # airfoils db
         self.airfoil_db = {}
@@ -101,7 +101,6 @@ class AeroGrid(object):
                                                copy=False,
                                                assume_sorted=True))
         self.generate_zeta(beam, aero_settings)
-        a =1
 
     def generate_zeta(self, beam, aero_settings):
         self.generate_mapping()
@@ -130,8 +129,8 @@ class AeroGrid(object):
                     node_info['M'] = self.aero_dimensions[i_surf, 0]
                     node_info['M_distribution'] = self.aero_dict['m_distribution'].decode('ascii')
                     node_info['airfoil'] = self.aero_dict['airfoil_distribution'][i_global_node]
-                    node_info['beam_coord'] = beam.timestep_info[-1].pos_def[i_global_node, :]
-                    node_info['beam_psi'] = beam.timestep_info[-1].psi_def[i_elem, i_local_node, :]
+                    node_info['beam_coord'] = beam.timestep_info[beam.it].pos_def[i_global_node, :]
+                    node_info['beam_psi'] = beam.timestep_info[beam.it].psi_def[i_elem, i_local_node, :]
                     self.timestep_info[self.ts].zeta[i_surf][:, :, i_n] = (
                         generate_strip(node_info,
                                        self.airfoil_db,
@@ -197,6 +196,9 @@ def generate_strip(node_info, airfoil_db, aligned_grid=True, inertial2aero=None,
     # airfoil coordinates
     if node_info['M_distribution'] == 'uniform':
         strip_coordinates_b_frame[1, :] = np.linspace(0.0, 1.0, node_info['M'] + 1)
+    elif node_info['M_distribution'] == '1-cos':
+        domain = np.linspace(0, 1.0, node_info['M'] + 1)
+        strip_coordinates_b_frame[1, :] = 0.5*(1.0 - np.cos(domain*np.pi))
     else:
         raise NotImplemented('M_distribution is ' + node_info['M_distribution'] +
                              ' and it is not yet supported')
@@ -254,6 +256,7 @@ def generate_strip(node_info, airfoil_db, aligned_grid=True, inertial2aero=None,
         strip_coordinates_a_frame[:, i_m] += node_info['beam_coord']
 
     # inertial2aero application
+    # strip_coordinates_a_frame is now in inertial FoR
     if inertial2aero is not None:
         for i_m in range(node_info['M'] + 1):
             strip_coordinates_a_frame[:, i_m] = np.dot(inertial2aero.T,
