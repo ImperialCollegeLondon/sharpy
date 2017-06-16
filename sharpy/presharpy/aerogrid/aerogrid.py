@@ -231,7 +231,7 @@ def generate_strip(node_info, airfoil_db, aligned_grid=True, inertial2aero=None,
 
     # angle = algebra.angle_between_vectors(-delta, orientation_in)
     angle = algebra.angle_between_vectors(delta, orientation_in)
-    print('%3u, %4f\n' % (node_info['i_node'], angle))
+    # print('%3u, %4f\n' % (node_info['i_node'], angle))
     # a = 2
     # if (np.abs(angle) > 60*np.pi/180):
     Cab = np.dot(Cab, algebra.rotation3d_z(-angle))
