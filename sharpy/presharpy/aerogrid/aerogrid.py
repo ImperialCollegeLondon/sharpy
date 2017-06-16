@@ -16,7 +16,7 @@ import sharpy.utils.algebra as algebra
 import sharpy.utils.cout_utils as cout
 
 from sharpy.utils.datastructures import AeroTimeStepInfo
-
+from sharpy.presharpy.beam.beamstructures import Element
 
 class AeroGrid(object):
     def __init__(self, beam, aero_dict, aero_settings, inertial2aero=None, quiet=False, ts=0, t=0.0):
@@ -31,6 +31,8 @@ class AeroGrid(object):
         self.total_nodes = len(aero_dict['aero_node'])
         # number of elements
         self.n_elem = len(aero_dict['surface_distribution'])
+        # surface distribution
+        self.surface_distribution = aero_dict['surface_distribution']
         # number of surfaces
         temp = set(aero_dict['surface_distribution'])
         self.n_surf = sum(1 for i in temp if i >= 0)
@@ -115,14 +117,19 @@ class AeroGrid(object):
                 for i in range(len(self.struct2aero_mapping[i_global_node])):
                     i_n = self.struct2aero_mapping[i_global_node][i]['i_n']
                     i_surf = self.struct2aero_mapping[i_global_node][i]['i_surf']
-
                     if i_n in nodes_in_surface[i_surf]:
                         continue
                     else:
                         nodes_in_surface[i_surf].append(i_n)
 
+                    master_elem, master_elem_node = beam.master[i_elem, i_local_node, :]
+                    if master_elem < 0:
+                        master_elem = i_elem
+                        master_elem_node = i_local_node
+
                     node_info = dict()
                     node_info['i_node'] = i_global_node
+                    node_info['i_local_node'] = i_local_node
                     node_info['chord'] = self.aero_dict['chord'][i_global_node]
                     node_info['eaxis'] = self.aero_dict['elastic_axis'][i_global_node]
                     node_info['twist'] = self.aero_dict['twist'][i_global_node]
@@ -130,7 +137,9 @@ class AeroGrid(object):
                     node_info['M_distribution'] = self.aero_dict['m_distribution'].decode('ascii')
                     node_info['airfoil'] = self.aero_dict['airfoil_distribution'][i_global_node]
                     node_info['beam_coord'] = beam.timestep_info[beam.it].pos_def[i_global_node, :]
-                    node_info['beam_psi'] = beam.timestep_info[beam.it].psi_def[i_elem, i_local_node, :]
+                    node_info['beam_psi'] = beam.timestep_info[beam.it].psi_def[master_elem, master_elem_node, :]
+                    node_info['for_delta'] = beam.frame_of_reference_delta[master_elem, master_elem_node, :]
+                    node_info['elem'] = beam.elements[master_elem]
                     self.timestep_info[self.ts].zeta[i_surf][:, :, i_n] = (
                         generate_strip(node_info,
                                        self.airfoil_db,
@@ -207,37 +216,55 @@ def generate_strip(node_info, airfoil_db, aligned_grid=True, inertial2aero=None,
 
     # elastic axis correction
     strip_coordinates_b_frame[1, :] -= node_info['eaxis']
-    strip_coordinates_b_frame[1, :] *= -1
     # chord
     strip_coordinates_b_frame *= node_info['chord']
 
-    # aligned grid correction
-    crv = node_info['beam_psi']
-    rotation_mat = algebra.crv2rot(crv)
-    if aligned_grid:
-        orientation = orientation_in.copy()
-        orientation = orientation/np.linalg.norm(orientation)
+    delta = node_info['for_delta']
+    # v1, v2, v3 = node_info['elem'].get_triad()
+    # psi = algebra.triad2crv_vec(v1,
+    #                             v2,
+    #                             v3)
+    # psi = psi[node_info['i_local_node'], :]
+    psi = node_info['beam_psi']
+    # Cab = algebra.crv2rot(psi).T
+    Cab = algebra.crv2rot(psi)
 
-        local_orientation = np.dot(algebra.rotation3d_z(90*np.pi/180.0), orientation)
+    # angle = algebra.angle_between_vectors(-delta, orientation_in)
+    angle = algebra.angle_between_vectors(delta, orientation_in)
+    print('%3u, %4f\n' % (node_info['i_node'], angle))
+    # a = 2
+    # if (np.abs(angle) > 60*np.pi/180):
+    Cab = np.dot(Cab, algebra.rotation3d_z(-angle))
 
-        # rotation wrt local z:
-        # angle of chord line before correction
-        old_x = orientation.copy()
-        new_x = np.dot(rotation_mat.T, local_orientation)
-
-        if np.linalg.norm(new_x[:-1]) < 1e-10:
-            angle = 0
-        else:
-            old_x[-1] = 0
-            new_x[-1] = 0
-            angle = algebra.angle_between_vectors(old_x, new_x)
-            if new_x[1] < 0.0:
-                angle *= -1
-
-        z_rotation_mat = algebra.rotation3d_z(angle)
-        for i_m in range(node_info['M'] + 1):
-            strip_coordinates_b_frame[:, i_m] = np.dot(z_rotation_mat,
-                                                       strip_coordinates_b_frame[:, i_m])
+    # strip_coordinates_b_frame[1, :] *= -1
+    #
+    # # aligned grid correction
+    # crv = node_info['beam_psi']
+    # rotation_mat = algebra.crv2rot(crv)
+    # if aligned_grid:
+    #     orientation = orientation_in.copy()
+    #     orientation = orientation/np.linalg.norm(orientation)
+    #
+    #     local_orientation = np.dot(algebra.rotation3d_z(90*np.pi/180.0), orientation)
+    #
+    #     # rotation wrt local z:
+    #     # angle of chord line before correction
+    #     old_x = orientation.copy()
+    #     new_x = np.dot(rotation_mat.T, local_orientation)
+    #
+    #     if np.linalg.norm(new_x[:-1]) < 1e-10:
+    #         angle = 0
+    #     else:
+    #         old_x[-1] = 0
+    #         new_x[-1] = 0
+    #         angle = algebra.angle_between_vectors(old_x, new_x)
+    #         if new_x[1] < 0.0:
+    #             angle *= -1
+    #
+    #     z_rotation_mat = algebra.rotation3d_z(angle)
+    #     for i_m in range(node_info['M'] + 1):
+    #         strip_coordinates_b_frame[:, i_m] = np.dot(z_rotation_mat,
+    #                                                    strip_coordinates_b_frame[:, i_m])
     #TODO delta z on definiton of elastic axis
     # twist rotation
     if not node_info['twist'] == 0:
@@ -248,7 +275,7 @@ def generate_strip(node_info, airfoil_db, aligned_grid=True, inertial2aero=None,
 
     # CRV to rotation matrix
     for i_m in range(node_info['M'] + 1):
-        strip_coordinates_a_frame[:, i_m] = np.dot(rotation_mat,
+        strip_coordinates_a_frame[:, i_m] = np.dot(Cab,
                                                    strip_coordinates_b_frame[:, i_m])
 
     # node coordinates addition

@@ -16,11 +16,6 @@ class Beam(object):
         self.num_node = fem_dictionary['num_node']
         self.num_elem = fem_dictionary['num_elem']
 
-        # try:
-        #     self.orientation = fem_dictionary['orientation']
-        # except KeyError:
-        #     self.orientation = np.eye(3)
-
         self.t = 0.0
         self.it = 0
         self.timestep_info = []
@@ -55,7 +50,7 @@ class Beam(object):
             self.in_app_forces = fem_dictionary['app_forces']
             self.in_node_app_forces = fem_dictionary['node_app_forces']
             for i_node in range(len(self.in_node_app_forces)):
-                self.app_forces[self.in_node_app_forces[i_node], :] += self.in_app_forces[i_node,:]
+                self.app_forces[self.in_node_app_forces[i_node], :] += self.in_app_forces[i_node, :]
         except KeyError:
             print('*** No applied forces indicated (or in a wrong format)')
             self.in_app_forces = None
@@ -73,6 +68,11 @@ class Beam(object):
             self.lumped_mass_inertia = fem_dictionary['lumped_mass_inertia']
             self.lumped_mass_position = fem_dictionary['lumped_mass_position']
             self.n_lumped_mass, _ = self.lumped_mass_position.shape
+
+        try:
+            self.orientation = fem_dictionary['orientation']
+        except KeyError:
+            self.orientation = None
 
         # now, we are going to import the mass and stiffness
         # databases
@@ -93,7 +93,6 @@ class Beam(object):
                        self.num_node_elem,
                        self.connectivities[ielem, :],
                        self.pos_ini[self.connectivities[ielem, :], :],
-                       # self.frame_of_reference_delta[self.connectivities[ielem, :], :],
                        self.frame_of_reference_delta[ielem, :, :],
                        self.structural_twist[self.connectivities[ielem, :]],
                        self.beam_number[ielem],
@@ -123,8 +122,7 @@ class Beam(object):
 
     def update_forces(self, forces):
         self.app_forces = np.asfortranarray(self.initial_app_forces + forces)
-        self.app_forces_fortran = self.app_forces.astype(dtype=ct.c_double, order='F')
-        # self.generate_aux_information()
+        self.generate_aux_information()
 
     def load_unsteady_data(self, dyn_dictionary):
         self.n_tsteps = dyn_dictionary['num_steps']
@@ -196,33 +194,6 @@ class Beam(object):
 
 
     def generate_master_structure(self):
-        # for elem in self.elements:
-        #     elem.master = np.zeros((elem.n_nodes, 2), dtype=ct.c_int, order='F') - 1
-        #     ielem = elem.ielem
-        #     for inode_local in range(elem.n_nodes - 1, -1, -1):
-        #         inode_global = self.connectivities[ielem, inode_local]
-        #
-        #         if inode_global == 0 and ielem == 0:
-        #             # this is the master node in the master elem
-        #             # has to stay [-1, -1]
-        #             continue
-        #
-        #         found_previous = False
-        #         for i_prev_elem in range(0, ielem):
-        #             for i_prev_node in range(self.elements[i_prev_elem].n_nodes):
-        #                 if found_previous:
-        #                     continue
-        #                 i_prev_node_global = self.connectivities[i_prev_elem, i_prev_node]
-        #                 if inode_global == i_prev_node_global:
-        #                     # found node in previous elements in list
-        #                     # the master is the first element to own the node
-        #                     # if elem.master[inode_local, 1] == -1:
-        #                     elem.master[inode_local, :] = [i_prev_elem, i_prev_node]
-        #                     found_previous = True
-        #                     continue
-        #         if not found_previous:
-        #             # next case: nodes belonging to their element only
-        #             elem.master[inode_local, :] = [ielem, inode_local - 1]
         self.master = np.zeros((self.num_elem, self.num_node_elem, 2)) - 1
         for i_elem in range(self.num_elem):
             # for i_node_local in self.elements[i_elem].ordering:
@@ -259,7 +230,6 @@ class Beam(object):
                     self.node_master_elem[self.connectivities[i_elem, i_node_local], 1] = i_node_local
 
     def generate_aux_information(self, dynamic=False):
-
         self.num_nodes_matrix = np.zeros((self.num_elem,), dtype=ct.c_int, order='F')
         for elem in self.elements:
             self.num_nodes_matrix[elem.ielem] = elem.n_nodes
@@ -269,16 +239,6 @@ class Beam(object):
             self.num_mem_matrix[elem.ielem] = elem.num_mem
 
         self.connectivities_fortran = self.connectivities.astype(ct.c_int, order='F') + 1
-
-        # correction of the indices
-        # self.master_nodes = np.zeros((self.num_elem, self.num_node_elem, 2), dtype=ct.c_int, order='F')
-        # for elem in self.elements:
-        #     ielem = elem.ielem
-        #     self.master_nodes[ielem, :, :] = elem.master + 1
-        #
-        # # ADC: test CAREFUL
-        # for i in range(1, 3):
-        #     self.master_nodes[:, i, :] = 0
 
         self.master_fortran = self.master.astype(dtype=ct.c_int, order='F') + 1
         self.node_master_elem_fortran = self.node_master_elem.astype(dtype=ct.c_int, order='F') + 1
@@ -299,13 +259,9 @@ class Beam(object):
 
         self.app_forces_fortran = self.app_forces.astype(dtype=ct.c_double, order='F')
 
-        # Psi matrix
-        # self.timestep_info[self.it].psi_def = self.psi_ini.astype(dtype=ct.c_double, order='F')
-
-        # # deformed structure matrices
+        # undeformed structure matrices
         self.pos_ini = self.pos_ini.astype(dtype=ct.c_double, order='F')
         self.psi_ini = self.psi_ini.astype(dtype=ct.c_double, order='F')
-        # self.pos_def = self.pos_ini.astype(dtype=ct.c_double, order='F')
 
         max_nodes_elem = self.elements[0].max_nodes_elem
         rbmass_temp = np.zeros((self.num_elem, max_nodes_elem, 6, 6))
@@ -335,7 +291,7 @@ class Beam(object):
                 self.forced_acc_fortran = np.zeros((self.n_tsteps, 6), dtype=ct.c_double, order='F')
 
     def generate_psi(self):
-        #     # it will just generate the CRV for all the nodes of the element
+        # it will just generate the CRV for all the nodes of the element
         self.psi_ini = np.zeros((self.num_elem, 3, 3), dtype=ct.c_double, order='F')
         for elem in self.elements:
             self.psi_ini[elem.ielem, :, :] = elem.psi_ini

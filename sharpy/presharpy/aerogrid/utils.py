@@ -12,9 +12,3 @@ def flightcon_file_parser(fc_dict):
     fc['b_ref'] = float(fc['b_ref'])
 
 
-def wind2body_rot(alpha, beta):
-    cb = np.cos(beta)
-    sb = np.sin(beta)
-    beta_rot = algebra.rotation3d_z(beta)
-    alpha_rot = algebra.rotation3d_y(alpha)
-    return np.dot(beta_rot, alpha_rot)

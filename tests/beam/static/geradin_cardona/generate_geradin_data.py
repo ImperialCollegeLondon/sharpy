@@ -38,17 +38,18 @@ def generate_fem_file(route, case_name, num_elem, num_node_elem=3):
 
     num_node = (num_node_elem - 1)*num_elem + 1
     # import pdb; pdb.set_trace()
-    angle = 0*np.pi/180.0
+    angle = 90*np.pi/180.0
     x = (np.linspace(0, length, num_node))*np.cos(angle)
     y = (np.linspace(0, length, num_node))*np.sin(angle)
     z = np.zeros((num_node,))
 
     structural_twist = np.zeros_like(x)
 
-    frame_of_reference_delta = np.zeros((num_node, 3))
-    for inode in range(num_node):
-        # frame_of_reference_delta[inode, :] = [0, 1, 0]
-        frame_of_reference_delta[inode, :] = [-np.sin(angle), np.cos(angle), 0]
+    frame_of_reference_delta = np.zeros((num_elem, num_node_elem, 3))
+    for ielem in range(num_elem):
+        for inode in range(num_node_elem):
+            # frame_of_reference_delta[inode, :] = [0, 1, 0]
+            frame_of_reference_delta[ielem, inode, :] = [-np.sin(angle), np.cos(angle), 0]
 
     scale = 1
 
@@ -100,7 +101,7 @@ def generate_fem_file(route, case_name, num_elem, num_node_elem=3):
     n_app_forces = 0
     node_app_forces = np.array([])
     app_forces = np.zeros((n_app_forces, 6))
-    # app_forces[0, :] = [0, 0, 0, 0, 0, -11744.5275328e3]
+    # app_forces[0, :] = [0, 0, 3000000, 0, 0, 0]
 
     # lumped masses input
     n_lumped_mass = 1

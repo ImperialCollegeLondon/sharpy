@@ -27,9 +27,23 @@ class BeamPlot(BaseSolver):
         # create folder for containing files if necessary
         if not os.path.exists(self.settings['route']):
             os.makedirs(self.settings['route'])
+        self.print_info()
         self.plot()
         cout.cout_wrap('...Finished', 1)
         return self.data
+
+    def print_info(self):
+        # find first bc == -1
+        for inode in range(self.data.beam.num_node):
+            if self.data.beam.boundary_conditions[inode] == -1:
+                inode_tip = inode
+                break
+
+        cout.cout_wrap('Node %3u position:' % inode_tip, 2)
+        cout.cout_wrap('\t%6f, %6f, %6f' % (
+            self.data.beam.timestep_info[self.ts].pos_def[inode_tip, 0],
+            self.data.beam.timestep_info[self.ts].pos_def[inode_tip, 1],
+            self.data.beam.timestep_info[self.ts].pos_def[inode_tip, 2]), 2)
 
     def convert_settings(self):
         try:
@@ -42,6 +56,11 @@ class BeamPlot(BaseSolver):
             self.settings['applied_forces'] = str2bool(self.settings['applied_forces'])
         except KeyError:
             self.settings['applied_forces'] = False
+
+        try:
+            self.settings['frame']
+        except KeyError:
+            self.settings['frame'] = ''
 
     def plot(self):
         folder = self.settings['route'] + '/' + self.data.settings['SHARPy']['case'] + '/beam/'
@@ -65,15 +84,19 @@ class BeamPlot(BaseSolver):
             local_z = np.zeros((num_nodes, 3))
             if self.settings['applied_forces']:
                 app_forces = np.zeros((num_nodes, 3))
+
+            if self.settings['frame'] == 'inertial':
+                try:
+                    self.aero2inertial = self.data.grid.inertial2aero.T
+                except AttributeError:
+                    self.aero2inertial = np.eye(3)
+                    cout.cout_wrap('BeamPlot: No inertial2aero information, output will be in body FoR', 0)
             # coordinates of corners
             for i_node in range(num_nodes):
                 if self.data.beam.timestep_info[it].with_rb:
                     coords[i_node, :] = self.data.beam.timestep_info[it].glob_pos_def[i_node, :]
                 else:
-                    if self.settings['frame'] == 'inertial':
-                        coords[i_node, :] = np.dot(self.data.grid.inertial2aero.T, self.data.beam.timestep_info[it].pos_def[i_node, :])
-                    else:
-                        coords[i_node, :] = self.data.beam.timestep_info[it].pos_def[i_node, :]
+                    coords[i_node, :] = np.dot(self.aero2inertial, self.data.beam.timestep_info[it].pos_def[i_node, :])
 
             for i_node in range(num_nodes):
                 i_elem = self.data.beam.node_master_elem[i_node, 0]
@@ -83,22 +106,18 @@ class BeamPlot(BaseSolver):
                 self.data.beam.update(it)
 
                 v1, v2, v3 = self.data.beam.elements[i_elem].deformed_triad()
-                if self.settings['frame'] == 'inertial':
-                    local_x[i_node, :] = np.dot(self.data.grid.inertial2aero.T, v1[i_local_node, :])
-                    local_y[i_node, :] = np.dot(self.data.grid.inertial2aero.T, v2[i_local_node, :])
-                    local_z[i_node, :] = np.dot(self.data.grid.inertial2aero.T, v3[i_local_node, :])
-                else:
-                    local_x[i_node, :] = v1[i_local_node, :]
-                    local_y[i_node, :] = v2[i_local_node, :]
-                    local_z[i_node, :] = v3[i_local_node, :]
+                local_x[i_node, :] = np.dot(self.aero2inertial, v1[i_local_node, :])
+                local_y[i_node, :] = np.dot(self.aero2inertial, v2[i_local_node, :])
+                local_z[i_node, :] = np.dot(self.aero2inertial, v3[i_local_node, :])
 
                 # applied forces
                 if self.settings['applied_forces']:
                     import sharpy.utils.algebra as algebra
                     Cab = algebra.crv2rot(self.data.beam.timestep_info[it].psi_def[i_elem, i_local_node, :])
-                    app_forces[i_node, :] = np.dot(self.data.grid.inertial2aero.T,
+                    app_forces[i_node, :] = np.dot(self.aero2inertial,
                                                    np.dot(Cab,
                                                           self.data.beam.app_forces[i_node, 0:3]))
+                    # app_forces[i_node, :] = self.data.beam.app_forces[i_node, 0:3]
 
             for i_elem in range(num_elem):
                 conn[i_elem, :] = self.data.beam.elements[i_elem].reordered_global_connectivities

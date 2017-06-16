@@ -15,35 +15,64 @@ def aero2struct_force_mapping(aero_forces,
                               pos_def,
                               psi_def,
                               master,
+                              master_elem,
                               inertial2aero=None):
 
     n_node, _ = pos_def.shape
     struct_forces = np.zeros((n_node, 6))
 
-    n_surf = len(aero_forces)
-    for i_surf in range(n_surf):
-        _, m, n = aero_forces[i_surf].shape
-        for i_n in range(n):
-            i_global_node = struct2aero_mapping[i_surf][i_n]
-            i_local_node = master[i_global_node, 1]
-            i_elem = master[i_global_node, 0]
+    if inertial2aero is None:
+        Cag = np.eye(3)
+    else:
+        Cag = inertial2aero
 
-            if inertial2aero is not None:
-                Cag = inertial2aero
-            else:
-                Cag = np.eye(3)
+    for i_global_node in range(n_node):
+        for mapping in struct2aero_mapping[i_global_node]:
+            i_surf = mapping['i_surf']
+            i_n = mapping['i_n']
+            _, n_m, _ = aero_forces[i_surf].shape
 
-            Cbg = np.dot(algebra.crv2rot(psi_def[i_elem, i_local_node, :]).T,
-                         Cag)
+            i_elem, i_local_node = master[i_global_node, :]
+            i_master_elem, master_elem_local_node = master_elem[i_elem, i_local_node, :]
+            if i_master_elem == -1:
+                i_master_elem = i_elem
+                master_elem_local_node = i_local_node
 
-            for i_m in range(m):
-                chi_a = pos_def[i_global_node, :] - zeta[i_surf][:, i_m, i_n]
-                chi_b = np.dot(Cbg, -chi_a)
-                skew_chi_b = algebra.skew(chi_b)
+            crv = psi_def[i_master_elem, master_elem_local_node, :]
+            Cab = algebra.crv2rot(crv)
+            Cbg = np.dot(Cab.T, Cag)
+
+            for i_m in range(n_m):
+                chi_g = zeta[i_surf][:, i_m, i_n] - np.dot(Cag.T, pos_def[i_global_node, :])
 
                 struct_forces[i_global_node, 0:3] += np.dot(Cbg, aero_forces[i_surf][0:3, i_m, i_n])
-                struct_forces[i_global_node, 3:6] += np.dot(np.dot(skew_chi_b, Cbg), aero_forces[i_surf][0:3, i_m, i_n])
                 struct_forces[i_global_node, 3:6] += np.dot(Cbg, aero_forces[i_surf][3:6, i_m, i_n])
+                struct_forces[i_global_node, 3:6] += np.dot(Cbg, np.cross(chi_g, aero_forces[i_surf][0:3, i_m, i_n]))
+
+    # n_surf = len(aero_forces)
+    # for i_surf in range(n_surf):
+    #     _, m, n = aero_forces[i_surf].shape
+    #     for i_n in range(n):
+    #         i_global_node = struct2aero_mapping[i_surf][i_n]
+    #         i_local_node = master[i_global_node, 1]
+    #         i_elem = master[i_global_node, 0]
+    #
+    #         if inertial2aero is not None:
+    #             Cag = inertial2aero
+    #         else:
+    #             Cag = np.eye(3)
+    #
+    #         Cbg = np.dot(algebra.crv2rot(psi_def[i_elem, i_local_node, :]).T,
+    #                      Cag)
+    #
+    #         for i_m in range(m):
+    #             chi_g = zeta[i_surf][:, i_m, i_n] - np.dot(Cag.T, pos_def[i_global_node, :])
+    #             chi_b = np.dot(Cbg, chi_g)
+    #             # skew_chi_b = algebra.skew(chi_b)
+    #
+    #             struct_forces[i_global_node, 0:3] += np.dot(Cbg, aero_forces[i_surf][0:3, i_m, i_n])
+    #             struct_forces[i_global_node, 3:6] += np.dot(Cbg, np.cross(chi_g, aero_forces[i_surf][0:3, i_m, i_n]))
+    #             struct_forces[i_global_node, 3:6] += np.dot(Cbg, aero_forces[i_surf][3:6, i_m, i_n])
 
     return struct_forces
 

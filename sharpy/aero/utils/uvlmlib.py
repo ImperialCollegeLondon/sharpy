@@ -6,7 +6,6 @@ import numpy as np
 import platform
 import os
 
-
 UvlmLib = ct_utils.import_ctypes_lib(SharpyDir + '/lib/', 'libuvlm')
 
 
@@ -47,9 +46,7 @@ class FlightConditions(ct.Structure):
         self.uinf = fc_dict['FlightCon']['u_inf']
         alpha = fc_dict['FlightCon']['alpha']
         beta = fc_dict['FlightCon']['beta']
-        uinf_direction_temp = np.array([np.cos(alpha)*np.cos(beta),
-                                        np.sin(beta)*np.cos(alpha),
-                                        np.sin(alpha)])
+        uinf_direction_temp = np.array([1, 0, 0], dtype=ct.c_double)
         self.uinf_direction = np.ctypeslib.as_ctypes(uinf_direction_temp)
         self.rho = fc_dict['FlightCon']['rho_inf']
         self.c_ref = fc_dict['FlightCon']['c_ref']
@@ -70,13 +67,9 @@ def vlm_solver(ts_info, flightconditions_in):
     flightconditions = FlightConditions(flightconditions_in)
 
     for u_ext in ts_info.u_ext:
-        # u_ext[0, :, :] = flightconditions.uinf*flightconditions.uinf_direction[0]
-        # u_ext[1, :, :] = flightconditions.uinf*flightconditions.uinf_direction[1]
-        # u_ext[2, :, :] = flightconditions.uinf*flightconditions.uinf_direction[2]
         u_ext[0, :, :] = flightconditions.uinf
         u_ext[1, :, :] = 0.0
         u_ext[2, :, :] = 0.0
-
 
     ts_info.generate_ctypes_pointers()
     run_VLM(ct.byref(vmopts),

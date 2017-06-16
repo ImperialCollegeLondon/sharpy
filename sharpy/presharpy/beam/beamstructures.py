@@ -127,14 +127,14 @@ class Element(object):
 
         # we apply twist now
         for inode in range(self.n_nodes):
-            rotation_mat = algebra.rotation_matrix_around_axis(tangent[inode, :],
-                                                               self.structural_twist)
-            normal[inode, :] = np.dot(rotation_mat, normal[inode, :])
-            binormal[inode, :] = np.dot(rotation_mat, binormal[inode, :])
+            if not self.structural_twist[inode] == 0.0:
+                rotation_mat = algebra.rotation_matrix_around_axis(tangent[inode, :],
+                                                                   self.structural_twist[inode])
+                normal[inode, :] = np.dot(rotation_mat, normal[inode, :])
+                binormal[inode, :] = np.dot(rotation_mat, binormal[inode, :])
 
         return tangent, binormal, normal
 
     def deformed_triad(self):
         return algebra.crv2triad_vec(self.psi_def)
-
 

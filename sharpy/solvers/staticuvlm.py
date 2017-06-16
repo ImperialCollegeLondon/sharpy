@@ -34,15 +34,20 @@ class StaticUvlm(BaseSolver):
                                                                    '.flightcon.txt')
             aero_utils.flightcon_file_parser(self.data.flightconditions)
 
-        self.inertial2aero = mapping.inertial2aero_rotation(self.data.flightconditions['FlightCon']['alpha'],
-                                                            self.data.flightconditions['FlightCon']['beta'])
+        try:
+            self.inertial2aero = self.data.beam.orientation
+        except AttributeError:
+            self.inertial2aero = mapping.inertial2aero_rotation(self.data.flightconditions['FlightCon']['alpha'],
+                                                                self.data.flightconditions['FlightCon']['beta'])
+        if self.inertial2aero is None:
+            self.inertial2aero = mapping.inertial2aero_rotation(self.data.flightconditions['FlightCon']['alpha'],
+                                                                self.data.flightconditions['FlightCon']['beta'])
+
         self.data.grid = aerogrid.AeroGrid(self.data.beam,
                                            self.data.aero_data_dict,
                                            self.settings,
-                                           inertial2aero=self.inertial2aero)
-
-
-
+                                           inertial2aero=self.inertial2aero,
+                                           quiet=self.quiet)
         if not self.quiet:
             cout.cout_wrap('...Finished', 1)
 

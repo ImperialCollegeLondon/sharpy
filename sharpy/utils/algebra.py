@@ -89,7 +89,7 @@ def get_polyfit(in_coord, ordering):
 
 def unit_vector(vector):
     if np.linalg.norm(vector) < 1e-6:
-        return np.array([0.0, 0.0, 0.0])
+        return np.zeros((3,))
     return vector/np.linalg.norm(vector)
 
 
@@ -245,6 +245,7 @@ def crv2triad(psi):
 
 
 def crv2rot(psi):
+    # this is psi2mat
     norm_psi = np.linalg.norm(psi)
 
     if norm_psi < 1e-15:
@@ -257,6 +258,19 @@ def crv2rot(psi):
         rot_matrix = np.eye(3)
         rot_matrix += np.sin(norm_psi)*skew_normal
         rot_matrix += (1.0 - np.cos(norm_psi))*np.dot(skew_normal, skew_normal)
+
+    # psi2rot
+    # norm_psi = np.linalg.norm(psi)
+    # psi_skew = rot_skew(psi)
+    #
+    # if norm_psi < 1e-15:
+    #     k1 = 1.0
+    #     k2 = 1.0/6.0
+    # else:
+    #     k1 = np.sin(norm_psi*0.5)/(norm_psi*0.5)
+    #     k2 = (1.0 - np.sin(norm_psi)/norm_psi)/(norm_psi*norm_psi)
+    #
+    # rot_matrix = np.eye(3) - (0.5*k1*k1)*psi_skew + k2*np.dot(psi_skew, psi_skew)
 
     return rot_matrix
 
@@ -366,4 +380,10 @@ if __name__ == '__main__':
     print(n)
     print(nn)
     print(b)
+    print(bb)
+
+    crv = np.array([0.31366386982554767, -0.31366386982554767, 1.5479424693982715])
+    tt, nn, bb = crv2triad(crv)
+    print(tt)
+    print(nn)
     print(bb)

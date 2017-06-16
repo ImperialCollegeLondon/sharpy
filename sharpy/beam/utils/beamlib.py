@@ -66,7 +66,7 @@ f_cbeam3_solv_nlnstatic = BeamLib.cbeam3_solv_nlnstatic_python
 f_cbeam3_solv_nlnstatic.restype = None
 
 
-def cbeam3_solv_nlnstatic(beam, settings):
+def cbeam3_solv_nlnstatic(beam, settings, coeff):
     """@brief Python wrapper for f_cbeam3_solv_nlnstatic
 
      Modified by Alfonso del Carre"""
@@ -121,24 +121,9 @@ def cbeam3_solv_nlnstatic(beam, settings):
                             beam.psi_ini.ctypes.data_as(doubleP),
                             beam.timestep_info[beam.it].pos_def.ctypes.data_as(doubleP),
                             beam.timestep_info[beam.it].psi_def.ctypes.data_as(doubleP),
-                            beam.app_forces_fortran.ctypes.data_as(doubleP)
+                            beam.app_forces_fortran.ctypes.data_as(doubleP),
+                            ct.byref(coeff)
                             )
-    a = 1
-    # angle = 0*np.pi/180
-    # import presharpy.utils.algebra as algebra
-    # rot = np.zeros((3, 3))
-    # rot[0, :] = [np.cos(angle), -np.sin(angle), 0.0]
-    # rot[1, :] = [np.sin(angle), np.cos(angle), 0.0]
-    # rot[2, :] = [0, 0, 1.0]
-    #
-    # psi = beam.psi_def[-1, 2, :]
-    # total = algebra.crv2rot(psi)
-    #
-    # def_rot = np.dot(rot.T, total)
-    # psi_proj = algebra.rot2crv(def_rot)
-    # print(psi_proj)
-    # print(beam.pos_def[-1, :])
-    # print(beam.psi_def[-1, 2, :])
 
 
 f_cbeam3_solv_modal = BeamLib.cbeam3_solv_modal_python

@@ -22,9 +22,9 @@ class NonLinearStatic(BaseSolver):
         # data.beam.timestep_info[0].psi_def[:] = data.beam.psi_ini[:]
         data.beam.generate_aux_information()
 
-    def run(self):
+    def run(self, coeff=ct.c_double(1.0)):
         print('Running non linear static solver...')
-        beamlib.cbeam3_solv_nlnstatic(self.data.beam, self.settings)
+        beamlib.cbeam3_solv_nlnstatic(self.data.beam, self.settings, coeff)
         self.data.beam.update()
         print('...Finished')
         return self.data
