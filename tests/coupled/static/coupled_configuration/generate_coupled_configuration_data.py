@@ -9,7 +9,7 @@ route = os.path.dirname(os.path.realpath(__file__)) + '/'
 # flight conditions
 u_inf = 25
 rho = 0.08891
-alpha = 2
+alpha = 4
 beta = 0
 c_ref = 1
 b_ref = 16
@@ -25,21 +25,24 @@ main_sigma = 1
 main_airfoil_P = 0
 main_airfoil_M = 0
 
-fuselage_length = 10
-fuselage_sigma = 1
+fuselage_length = 6
+fuselage_sigma = 0.8
+fuselage_mass_sigma = 0.1
 
-tail_span = 2.0
-tail_chord = 1
-tail_ea = 0.25
-tail_sigma = 0.7
+tail_span = 4.0
+tail_chord = 0.5
+tail_ea = 0.33
+tail_sigma = 1
+tail_mass_sigma = 0.1
 tail_airfoil_P = 5
 tail_airfoil_M = 5
 tail_twist = 0*np.pi/180
 
-fin_span = 1.5
-fin_chord = 1
-fin_ea = 0.25
-fin_sigma = 1.5
+fin_span = 2.5
+fin_chord = 0.5
+fin_ea = 0.33
+fin_sigma = 1
+fin_mass_sigma = 0.1
 fin_airfoil_P = 0
 fin_airfoil_M = 0
 
@@ -129,9 +132,9 @@ def generate_fem_file():
     base_mass = np.diag([m_base, m_base, m_base, j_base, 0.01, 0.01])
     mass = np.zeros((num_mass, 6, 6))
     mass[0, :, :] = np.sqrt(main_sigma)*base_mass
-    mass[1, :, :] = np.sqrt(fuselage_sigma)*base_mass
-    mass[2, :, :] = np.sqrt(tail_sigma)*base_mass
-    mass[3, :, :] = np.sqrt(fin_sigma)*base_mass
+    mass[1, :, :] = fuselage_mass_sigma*base_mass
+    mass[2, :, :] = tail_mass_sigma*base_mass
+    mass[3, :, :] = fin_mass_sigma*base_mass
     elem_mass = np.zeros((num_elem,), dtype=int)
     # boundary conditions
     boundary_conditions = np.zeros((num_node, ), dtype=int)
@@ -410,26 +413,26 @@ def generate_aero_file():
 
     # # right tail (surface 2, beam 3)
     i_surf = 2
-    airfoil_distribution[working_node:working_node + num_node_tail] = 0
+    airfoil_distribution[working_node:working_node + num_node_tail] = 1
     surface_distribution[working_elem:working_elem + num_elem_tail] = i_surf
     surface_m[i_surf] = m_tail
     # XXX not very elegant
     aero_node[working_node:] = True
     chord[working_node:working_node + num_node_tail] = tail_chord
     elastic_axis[working_node:working_node + num_node_main] = tail_ea
-    twist[working_node:working_node + num_node_tail] = tail_twist
+    twist[working_node:working_node + num_node_tail] = -tail_twist
     working_elem += num_elem_tail
     working_node += num_node_tail
 
     # left tail (surface 3, beam 4)
     i_surf = 3
-    airfoil_distribution[working_node:working_node + num_node_tail] = 0
+    airfoil_distribution[working_node:working_node + num_node_tail-1] = 1
     surface_distribution[working_elem:working_elem + num_elem_tail] = i_surf
     surface_m[i_surf] = m_tail
     aero_node[working_node:working_node + num_node_tail - 1] = True
     chord[working_node:working_node + num_node_tail] = tail_chord
     elastic_axis[working_node:working_node + num_node_main] = tail_ea
-    twist[working_node:working_node + num_node_tail] = tail_twist
+    twist[working_node:working_node + num_node_tail-1] = -tail_twist
     working_elem += num_elem_tail
     working_node += num_node_tail
 
@@ -496,16 +499,16 @@ def generate_solver_file():
     config = configparser.ConfigParser()
     config['SHARPy'] = {'case': case_name,
                         'route': route,
-                        # 'flow': 'StaticCoupled, BeamPlot, AeroGridPlot, AeroForcesSteadyCalculator',
+                        'flow': 'StaticCoupled, BeamPlot, AeroGridPlot, AeroForcesSteadyCalculator',
                         # 'flow': 'NonLinearStatic, BeamPlot',
-                        'flow': 'StaticUvlm, AeroForcesSteadyCalculator, BeamPlot, AeroGridPlot',
+                        # 'flow': 'StaticUvlm, AeroForcesSteadyCalculator, BeamPlot, AeroGridPlot',
                         'plot': 'on'}
     config['StaticCoupled'] = {'print_info': 'on',
                                'structural_solver': 'NonLinearStatic',
                                'aero_solver': 'StaticUvlm',
                                'max_iter': 90,
-                               'n_load_steps': 2,
-                               'tolerance': 1e-5,
+                               'n_load_steps': 10,
+                               'tolerance': 1e-4,
                                'relaxation_factor': 0.0,
                                'residual_plot': 'off'}
     config['StaticUvlm'] = {'print_info': 'on',
@@ -520,7 +523,7 @@ def generate_solver_file():
                                  'max_iterations': 99,
                                  'num_load_steps': 25,
                                  'delta_curved': 1e-5,
-                                 'min_delta': 1e-4,
+                                 'min_delta': 1e-3,
                                  'newmark_damp': 0.000,
                                  'gravity_on': 'on',
                                  'gravity': 9.754,

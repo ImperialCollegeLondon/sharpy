@@ -27,16 +27,35 @@ class BeamPlot(BaseSolver):
         # create folder for containing files if necessary
         if not os.path.exists(self.settings['route']):
             os.makedirs(self.settings['route'])
+        self.folder = self.settings['route'] + '/' + self.data.settings['SHARPy']['case'] + '/beam/'
+        if not os.path.exists(self.folder):
+            os.makedirs(self.folder)
+        self.filename = (self.folder +
+                         'beam_' +
+                         self.data.settings['SHARPy']['case'] +
+                         '_' +
+                         self.settings['name_prefix'])
         self.print_info()
+        self.text()
         self.plot()
         cout.cout_wrap('...Finished', 1)
         return self.data
+
+    def text(self):
+        if self.settings['print_pos_def']:
+            for it in range(len(self.data.beam.timestep_info)):
+                it_filename = (self.filename +
+                               '%06u' % it +
+                               '.csv')
+                # write file
+                np.savetxt(it_filename, self.data.beam.timestep_info[it].pos_def)
 
     def print_info(self):
         # find first bc == -1
         for inode in range(self.data.beam.num_node):
             if self.data.beam.boundary_conditions[inode] == -1:
                 inode_tip = inode
+                ielem_tip, i_local_node = self.data.beam.node_master_elem[inode_tip, :]
                 break
 
         cout.cout_wrap('Node %3u position:' % inode_tip, 2)
@@ -44,6 +63,11 @@ class BeamPlot(BaseSolver):
             self.data.beam.timestep_info[self.ts].pos_def[inode_tip, 0],
             self.data.beam.timestep_info[self.ts].pos_def[inode_tip, 1],
             self.data.beam.timestep_info[self.ts].pos_def[inode_tip, 2]), 2)
+        cout.cout_wrap('Node %3u CRV:' % inode_tip, 2)
+        cout.cout_wrap('\t%6f, %6f, %6f' % (
+            self.data.beam.timestep_info[self.ts].psi_def[ielem_tip, i_local_node, 0],
+            self.data.beam.timestep_info[self.ts].psi_def[ielem_tip, i_local_node, 1],
+            self.data.beam.timestep_info[self.ts].psi_def[ielem_tip, i_local_node, 2]), 2)
 
     def convert_settings(self):
         try:
@@ -62,15 +86,19 @@ class BeamPlot(BaseSolver):
         except KeyError:
             self.settings['frame'] = ''
 
+        try:
+            self.settings['print_pos_def'] = str2bool(self.settings['print_pos_def'])
+        except KeyError:
+            self.settings['print_pos_def'] = False
+
+        try:
+            self.settings['name_prefix']
+        except KeyError:
+            self.settings['name_prefix'] = ''
+
     def plot(self):
-        folder = self.settings['route'] + '/' + self.data.settings['SHARPy']['case'] + '/beam/'
-        if not os.path.exists(folder):
-            os.makedirs(folder)
         for it in range(len(self.data.beam.timestep_info)):
-            it_filename = (folder +
-                           'beam_' +
-                           self.data.settings['SHARPy']['case'] +
-                           '_' +
+            it_filename = (self.filename +
                            '%06u' % it)
             num_nodes = self.data.beam.num_node
             num_elem = self.data.beam.num_elem
@@ -91,6 +119,8 @@ class BeamPlot(BaseSolver):
                 except AttributeError:
                     self.aero2inertial = np.eye(3)
                     cout.cout_wrap('BeamPlot: No inertial2aero information, output will be in body FoR', 0)
+            else:
+                self.aero2inertial = np.eye(3)
             # coordinates of corners
             for i_node in range(num_nodes):
                 if self.data.beam.timestep_info[it].with_rb:

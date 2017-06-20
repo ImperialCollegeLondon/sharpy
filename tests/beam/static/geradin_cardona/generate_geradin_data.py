@@ -38,7 +38,7 @@ def generate_fem_file(route, case_name, num_elem, num_node_elem=3):
 
     num_node = (num_node_elem - 1)*num_elem + 1
     # import pdb; pdb.set_trace()
-    angle = 90*np.pi/180.0
+    angle = 0*np.pi/180.0
     x = (np.linspace(0, length, num_node))*np.cos(angle)
     y = (np.linspace(0, length, num_node))*np.sin(angle)
     z = np.zeros((num_node,))
@@ -239,14 +239,15 @@ def generate_solver_file(route, case_name):
                                  'max_iterations': 99,
                                  'num_load_steps': 5,
                                  'delta_curved': 1e-5,
-                                 'min_delta': 1e-5,
+                                 'min_delta': 1e-8,
                                  'newmark_damp': 0.000,
                                  'gravity_on': 'on',
                                  'gravity': 9.81,
                                  'gravity_dir': '0, 0, 1'
                                  }
     config['BeamPlot'] = {'plot_shape': 'on',
-                            'print_info': 'on'}
+                          'print_info': 'on',
+                          'print_pos_def': 'on'}
 
     with open(file_name, 'w') as configfile:
         config.write(configfile)
@@ -255,5 +256,5 @@ def generate_solver_file(route, case_name):
 if __name__ == '__main__':
     import os
     dir_path = os.path.dirname(os.path.realpath(__file__))
-    generate_files(dir_path + '/', 'geradin_cardona', 10, 3)
+    generate_files(dir_path + '/', 'geradin_cardona', 80, 3)
     print('The test case has been successfully generated!!!')
