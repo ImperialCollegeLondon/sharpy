@@ -366,6 +366,14 @@ def rotation3d_z(angle):
     mat[2, :] = [0.0, 0.0, 1.0]
     return mat
 
+def rotate_crv(crv_in, axis, angle):
+    crv = np.zeros_like(crv_in)
+    C = crv2rot(crv_in).T
+    rot = rotation_matrix_around_axis(axis, angle)
+    C = np.dot(C, rot)
+    crv = rot2crv(C)
+    return crv
+
 if __name__ == '__main__':
     t = np.array([0, 1, 0])
     n = np.array([1, 0, 0])
@@ -387,3 +395,10 @@ if __name__ == '__main__':
     print(tt)
     print(nn)
     print(bb)
+
+    print('--------------------')
+    crv = np.array([2.013359e+00, -2.013359e+00, 3.874294e-01])
+    angle = 90*np.pi/180.
+    axis = np.array([0, 0, 1])
+    new_crv = rotate_crv(crv, axis, angle)
+    print(new_crv)
