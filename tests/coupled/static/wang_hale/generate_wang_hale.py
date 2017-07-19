@@ -3,77 +3,66 @@ import numpy as np
 import configparser
 import os
 
-case_name = 'coupled_configuration'
+case_name = 'wang_hale'
 route = os.path.dirname(os.path.realpath(__file__)) + '/'
 
+ft2m = 0.3048
+lb2kg = 0.454
+
 # flight conditions
-u_inf = 25
-rho = 0.08891
-alpha = 4
+u_inf = 40*ft2m
+rho = 1.229
+alpha = 5
 beta = 0
-c_ref = 1
-b_ref = 16
-dihedral = 0*np.pi/180.
 
 alpha_rad = alpha*np.pi/180
 
 # main geometry data
-main_span = 16
-main_chord = 1.0
-main_ea = 0.5
-main_sigma = 1
-main_airfoil_P = 0
-main_airfoil_M = 0
+inner_span = 80*ft2m
+inner_chord = 8*ft2m
+inner_ea = 0.25
+inner_sigma = 1
+inner_airfoil_P = 0
+inner_airfoil_M = 0
+inner_dihedral = 0.0*np.pi/180.
 
-fuselage_length = 6
-fuselage_sigma = 0.8
-fuselage_mass_sigma = 0.1
+outer_span = 40*ft2m
+outer_chord = 8*ft2m
+outer_ea = 0.25
+outer_sigma = 1
+outer_airfoil_P = 0
+outer_airfoil_M = 0
+outer_dihedral = 10*np.pi/180.
 
-tail_span = 4.0
-tail_chord = 0.5
-tail_ea = 0.33
-tail_sigma = 1
-tail_mass_sigma = 0.1
-tail_airfoil_P = 5
-tail_airfoil_M = 5
-tail_twist = 0*np.pi/180
-
-fin_span = 2.5
-fin_chord = 0.5
-fin_ea = 0.33
+fin_span = 6*ft2m
+fin_chord = 8*ft2m
+fin_ea = 0.25
 fin_sigma = 1
-fin_mass_sigma = 0.1
 fin_airfoil_P = 0
 fin_airfoil_M = 0
+fin_dihedral = 0*np.pi/180.
 
-n_surfaces = 2
-force = 0
-momenty = 0
-momentx = 0
+n_surfaces = 4
 
 # discretisation data
-num_elem_main = 40
-num_elem_tail = 5
+num_elem_inner = 20
+num_elem_outer = 10
 num_elem_fin = 4
-num_elem_fuselage = 10
+num_elem = (num_elem_inner +
+            num_elem_inner +
+            num_elem_outer +
+            num_elem_outer) # +
+            # num_elem_fin)
 
 
 num_node_elem = 3
-num_elem = num_elem_main + num_elem_main# + num_elem_fuselage + num_elem_tail + num_elem_tail + num_elem_fin
-num_node_main = num_elem_main*(num_node_elem - 1) + 1
-# num_node_fuselage = num_elem_fuselage*(num_node_elem - 1) + 1
-# num_node_tail = num_elem_tail*(num_node_elem - 1) + 1
-# num_node_fin = num_elem_fin*(num_node_elem - 1) + 1
+num_node_inner = (num_node_elem - 1)*num_elem_inner + 1
+num_node_outer = (num_node_elem - 1)*num_elem_outer + 1
+num_node = 2*(num_node_inner) - 1\
+           + 2*(num_node_outer) - 2
 
-num_node = num_node_main + (num_node_main - 1)
-# num_node += num_node_fuselage - 1
-# num_node += (num_node_tail - 1)
-# num_node += (num_node_tail - 1)
-# num_node += num_node_fin - 1
-# nodes_distributed = num_node
-
-m_main = 20
-m_tail = 8
+m_inner = 5
+m_outer = 5
 m_fin = 5
 
 
@@ -98,7 +87,7 @@ def clean_test_files():
 def generate_fem_file():
     # placeholders
     # coordinates
-    global x, y, z
+    # global x, y, z
     x = np.zeros((num_node, ))
     y = np.zeros((num_node, ))
     z = np.zeros((num_node, ))
@@ -111,164 +100,139 @@ def generate_fem_file():
     # connectivities
     conn = np.zeros((num_elem, num_node_elem), dtype=int)
     # stiffness
-    num_stiffness = 4
-    ea = 1e7
-    ga = 1e7
-    gj = 1e4
-    eiy = 2e4
-    eiz = 5e6
+    num_stiffness = 1
+    ea = 1e6
+    ga = 1e6
+    gj = 1.65301e5
+    eiy = 1.03313e6
+    eiz = 1.23976e7
     sigma = 1
     base_stiffness = sigma*np.diag([ea, ga, ga, gj, eiy, eiz])
     stiffness = np.zeros((num_stiffness, 6, 6))
-    stiffness[0, :, :] = main_sigma*base_stiffness
-    stiffness[1, :, :] = fuselage_sigma*base_stiffness
-    stiffness[2, :, :] = tail_sigma*base_stiffness
-    stiffness[3, :, :] = fin_sigma*base_stiffness
+    stiffness[0, :, :] = inner_sigma*base_stiffness
     elem_stiffness = np.zeros((num_elem,), dtype=int)
     # mass
-    num_mass = 4
-    m_base = 0.75
-    j_base = 0.1
-    base_mass = np.diag([m_base, m_base, m_base, j_base, 0.01, 0.01])
+    num_mass = 1
+    m_base = 8.92898
+    jx_base = 4.14765
+    jy_base = 0.691275
+    jz_base = 3.45637
+    base_mass = np.diag([m_base, m_base, m_base, jx_base, jy_base, jz_base])
     mass = np.zeros((num_mass, 6, 6))
-    mass[0, :, :] = np.sqrt(main_sigma)*base_mass
-    mass[1, :, :] = fuselage_mass_sigma*base_mass
-    mass[2, :, :] = tail_mass_sigma*base_mass
-    mass[3, :, :] = fin_mass_sigma*base_mass
+    mass[0, :, :] = base_mass
     elem_mass = np.zeros((num_elem,), dtype=int)
     # boundary conditions
     boundary_conditions = np.zeros((num_node, ), dtype=int)
     boundary_conditions[0] = 1
     # applied forces
-    n_app_forces = 1
+    n_app_forces = 0
     node_app_forces = np.zeros((n_app_forces,), dtype=int)
     app_forces = np.zeros((n_app_forces, 6))
     # orientation
-    inertial2aero = np.eye(3)
+    inertial2aero = np.zeros((3,3))
     inertial2aero[0, :] = [np.cos(alpha_rad), 0.0, -np.sin(alpha_rad)]
     inertial2aero[1, :] = [0.0, 1.0, 0.0]
     inertial2aero[2, :] = [np.sin(alpha_rad), 0.0, np.cos(alpha_rad)]
 
     # lumped masses
-    n_lumped_mass = 0
-    lumped_mass_nodes = np.array([], dtype=int)
+    n_lumped_mass = 3
+    lumped_mass_nodes = np.array([0, 0, 0], dtype=int)
     lumped_mass = np.zeros((n_lumped_mass, ))
     lumped_mass_inertia = np.zeros((n_lumped_mass, 3, 3))
     lumped_mass_position = np.zeros((n_lumped_mass, 3))
 
-    # right wing (beam 0) --------------------------------------------------------------
+    # inner right wing (beam 0) --------------------------------------------------------------
     working_elem = 0
     working_node = 0
-    beam_number[working_elem:working_elem + num_elem_main] = 0
-    y[working_node:working_node + num_node_main] = np.linspace(0.0, np.cos(dihedral)*main_span, num_node_main)
-    z[working_node:working_node + num_node_main] = np.linspace(0.0, np.sin(dihedral)*main_span, num_node_main)
-    for ielem in range(num_elem_main):
+    beam_number[working_elem:working_elem + num_elem_inner] = 0
+    y[working_node:working_node + num_node_inner] = np.linspace(0.0, inner_span, num_node_inner)
+    for ielem in range(num_elem_inner):
         for inode in range(num_node_elem):
             frame_of_reference_delta[working_elem + ielem, inode, :] = [-1, 0, 0]
     # connectivity
-    for ielem in range(num_elem_main):
+    for ielem in range(num_elem_inner):
         conn[working_elem + ielem, :] = ((np.ones((3,))*(working_elem + ielem)*(num_node_elem - 1)) +
                                          [0, 2, 1])
-    elem_stiffness[working_elem:working_elem + num_elem_main] = 0
-    elem_mass[working_elem:working_elem + num_elem_main] = 0
+    lumped_mass_nodes[0] = working_node
+    lumped_mass[0] = 560*lb2kg
+    elem_stiffness[working_elem:working_elem + num_elem_inner] = 0
+    elem_mass[working_elem:working_elem + num_elem_inner] = 0
     boundary_conditions[0] = 1
-    boundary_conditions[working_node + num_node_main - 1] = -1
-    # node_app_forces[0] = working_node + num_node_main - 1
-    # app_forces[0, :] = [0, 0, 0, 0, 0*2*np.pi*eiy/main_span, 0]
-    working_elem += num_elem_main
-    working_node += num_node_main
+    # boundary_conditions[working_node + num_node_inner - 1] = -1
+    working_elem += num_elem_inner
+    working_node += num_node_inner
+    global inode_tip_inner_right
+    inode_tip_inner_right = working_node - 1
 
-    # left wing (beam 1) --------------------------------------------------------------
-    beam_number[working_elem:working_elem + num_elem_main] = 1
-    # tempy = np.linspace(0.0, -main_span, num_node_main)
-    tempy = np.linspace(-np.cos(dihedral)*main_span, 0.0, num_node_main)
-    tempz = np.linspace(np.sin(dihedral)*main_span, 0.0, num_node_main)
-    y[working_node:working_node + num_node_main - 1] = tempy[0:-1]
-    z[working_node:working_node + num_node_main - 1] = tempz[0:-1]
-    for ielem in range(num_elem_main):
+    # inner left wing (beam 1) --------------------------------------------------------------
+    beam_number[working_elem:working_elem + num_elem_inner] = 1
+    y[working_node:working_node + num_node_inner - 1] = np.linspace(-inner_span, 0.0, num_node_inner)[:-1]
+    for ielem in range(num_elem_inner):
         for inode in range(num_node_elem):
-            # frame_of_reference_delta[working_elem + ielem, inode, :] = [1, 0, 0]
             frame_of_reference_delta[working_elem + ielem, inode, :] = [-1, 0, 0]
     # connectivity
-    for ielem in range(num_elem_main):
-        # conn[working_elem + ielem, :] = ((np.ones((3,))*(working_elem + ielem)*(num_node_elem - 1)) +
-        #                                  [0, 2, 1])
+    for ielem in range(num_elem_inner):
         conn[working_elem + ielem, :] = ((np.ones((3,))*(working_elem + ielem)*(num_node_elem - 1)) +
                                          [0, 2, 1]) + 1
-    conn[working_elem + num_elem_main - 1, 1] = 0
-    # conn[working_elem, 0] = 0
-    elem_stiffness[working_elem:working_elem + num_elem_main] = 0
-    elem_mass[working_elem:working_elem + num_elem_main] = 0
-    # boundary_conditions[working_node + num_node_main - 1 - 1] = -1
-    boundary_conditions[working_node] = -1
-    # node_app_forces[1] = working_node + num_node_main - 1 - 1
-    working_elem += num_elem_main
-    working_node += num_node_main - 1
+    conn[working_elem + num_elem_inner - 1, 1] = 0
+    elem_stiffness[working_elem:working_elem + num_elem_inner] = 0
+    elem_mass[working_elem:working_elem + num_elem_inner] = 0
+    lumped_mass_nodes[2] = working_node
+    # lumped_mass_position[2, 2] = -3*ft2m
+    lumped_mass[2] = 50*lb2kg
+    # boundary_conditions[working_node + num_node_inner - 1 - 1] = -1
+    global inode_tip_inner_left
+    inode_tip_inner_left = working_node
+    working_elem += num_elem_inner
+    working_node += num_node_inner - 1
 
-    # fuselage (beam 2) --------------------------------------------------------------
-    # beam_number[working_elem:working_elem + num_elem_fuselage] = 2
-    # tempx = np.linspace(0.0, fuselage_length, num_node_fuselage)
-    # x[working_node:working_node + num_node_fuselage - 1] = tempx[1:]
-    # for ielem in range(num_elem_fuselage):
-    #     for inode in range(num_node_elem):
-    #         frame_of_reference_delta[working_elem + ielem, inode, :] = [0, 1, 0]
-    # # connectivity
-    # for ielem in range(num_elem_fuselage):
-    #     conn[working_elem + ielem, :] = ((np.ones((3,))*(working_elem + ielem)*(num_node_elem - 1)) +
-    #                                      [0, 2, 1])
-    # conn[working_elem, 0] = 0
-    # elem_stiffness[working_elem:working_elem + num_elem_fuselage] = 1
-    # elem_mass[working_elem:working_elem + num_elem_fuselage] = 1
-    # # node_app_forces[2] = working_node + num_node_fuselage - 1 - 1
-    # # app_forces[2, :] = [0, 0, force, 0, 0, 0]
-    # # 60 nodes, 29 elems
-    # working_elem += num_elem_fuselage
-    # working_node += num_node_fuselage - 1
-    # global end_of_fuselage_node
-    # end_of_fuselage_node = working_node - 1
-    #
-    # # right tail (beam 3) --------------------------------------------------------------
-    # beam_number[working_elem:working_elem + num_elem_tail] = 3
-    # tempy = np.linspace(0.0, tail_span, num_node_tail)
-    # y[working_node:working_node + num_node_tail - 1] = tempy[1:]
-    # x[working_node:working_node + num_node_tail - 1] = x[working_node - 1]
-    # for ielem in range(num_elem_tail):
-    #     for inode in range(num_node_elem):
-    #         frame_of_reference_delta[working_elem + ielem, inode, :] = [-1, 0, 0]
-    # # connectivity
-    # for ielem in range(num_elem_tail):
-    #     conn[working_elem + ielem, :] = ((np.ones((3,))*(working_elem + ielem)*(num_node_elem - 1)) +
-    #                                      [0, 2, 1])
-    # conn[working_elem, 0] = conn[working_elem - 1, 1]
-    # elem_stiffness[working_elem:working_elem + num_elem_tail] = 2
-    # elem_mass[working_elem:working_elem + num_elem_fuselage] = 2
-    # boundary_conditions[working_node + num_node_tail - 1 - 1] = -1
-    # # 70 nodes, 34 elems
-    # working_elem += num_elem_tail
-    # working_node += num_node_tail - 1
-    #
-    # # left tail (beam 4) --------------------------------------------------------------
-    # beam_number[working_elem:working_elem + num_elem_tail] = 4
-    # tempy = np.linspace(-tail_span, 0, num_node_tail)
-    # y[working_node:working_node + num_node_tail - 1] = tempy[:-1]
-    # x[working_node:working_node + num_node_tail - 1] = x[working_node - 1]
-    # for ielem in range(num_elem_tail):
-    #     for inode in range(num_node_elem):
-    #         frame_of_reference_delta[working_elem + ielem, inode, :] = [-1, 0, 0]
-    # # connectivity
-    # for ielem in range(num_elem_tail):
-    #     conn[working_elem + ielem, :] = ((np.ones((3,))*(working_elem + ielem)*(num_node_elem - 1)) +
-    #                                      [0, 2, 1]) + 1
-    # conn[working_elem + num_elem_tail - 1, 1] = end_of_fuselage_node
-    # elem_stiffness[working_elem:working_elem + num_elem_tail] = 2
-    # elem_mass[working_elem:working_elem + num_elem_fuselage] = 2
-    # boundary_conditions[working_node] = -1
-    # # node_app_forces[2] = working_node + num_node_tail - 2
-    # # app_forces[2, :] = [0, 0, 0*force, 0, 0, 0]
-    # working_elem += num_elem_tail
-    # working_node += num_node_tail - 1
-    # #
-    # # # fin (beam 5) --------------------------------------------------------------
+    # outer right wing (beam 2) --------------------------------------------------------------
+    beam_number[working_elem:working_elem + num_elem_outer] = 2
+    y[working_node:working_node + num_node_outer - 1] = np.linspace(y[inode_tip_inner_right], np.cos(outer_dihedral)*outer_span + y[inode_tip_inner_right], num_node_outer)[1:]
+    z[working_node:working_node + num_node_outer - 1] = np.linspace(0.0, np.sin(outer_dihedral)*outer_span, num_node_outer)[1:]
+
+    for ielem in range(num_elem_outer):
+        for inode in range(num_node_elem):
+            frame_of_reference_delta[working_elem + ielem, inode, :] = [-1, 0, 0]
+    # connectivity
+    for ielem in range(num_elem_outer):
+        conn[working_elem + ielem, :] = ((np.ones((3,))*(working_elem + ielem)*(num_node_elem - 1)) +
+                                         [0, 2, 1])
+    conn[working_elem, 0] = inode_tip_inner_right
+    lumped_mass_nodes[1] = working_node
+    # lumped_mass_position[1, 2] = -3*ft2m
+    lumped_mass[1] = 50*lb2kg
+    elem_stiffness[working_elem:working_elem + num_elem_outer] = 0
+    elem_mass[working_elem:working_elem] = 0
+    boundary_conditions[working_node + num_node_outer - 1 - 1] = -1
+    working_elem += num_elem_outer
+    working_node += num_node_outer - 1
+
+    # outer left wing (beam 3) --------------------------------------------------------------
+    beam_number[working_elem:working_elem + num_elem_outer] = 3
+    y[working_node:working_node + num_node_outer - 1] = np.linspace(
+        -np.cos(outer_dihedral)*outer_span + y[inode_tip_inner_left],
+        y[inode_tip_inner_left],
+        num_node_outer)[:-1]
+    z[working_node:working_node + num_node_outer - 1] = np.linspace(np.sin(outer_dihedral)*outer_span,
+                                                                    0.0,
+                                                                    num_node_outer)[:-1]
+
+    for ielem in range(num_elem_outer):
+        for inode in range(num_node_elem):
+            frame_of_reference_delta[working_elem + ielem, inode, :] = [-1, 0, 0]
+    # connectivity
+    for ielem in range(num_elem_outer):
+        conn[working_elem + ielem, :] = ((np.ones((3,))*(working_elem + ielem)*(num_node_elem - 1)) +
+                                         [0, 2, 1]) + 1
+    conn[working_elem + num_elem_outer - 1, 1] = inode_tip_inner_left
+    elem_stiffness[working_elem:working_elem + num_elem_outer] = 0
+    elem_mass[working_elem:working_elem + num_elem_outer] = 0
+    boundary_conditions[working_node] = -1
+    working_elem += num_elem_outer
+    working_node += num_node_outer - 1
+
+    # fin (beam 4) --------------------------------------------------------------
     # beam_number[working_elem:working_elem + num_elem_fin] = 5
     # tempz = np.linspace(0.0, fin_span, num_node_fin)
     # x[working_node:working_node + num_node_fin - 1] = x[working_node - 1]
@@ -326,8 +290,8 @@ def generate_fem_file():
             'lumped_mass_inertia', data=lumped_mass_inertia)
         lumped_mass_position_handle = h5file.create_dataset(
             'lumped_mass_position', data=lumped_mass_position)
-        # orientation_handle = h5file.create_dataset(
-        #     'orientation', data=inertial2aero)
+        orientation_handle = h5file.create_dataset(
+            'orientation', data=inertial2aero)
 
 
 def generate_aero_file():
@@ -335,7 +299,7 @@ def generate_aero_file():
     airfoil_distribution = np.zeros((num_node,), dtype=int)
     surface_distribution = np.zeros((num_elem,), dtype=int) - 1
     surface_m = np.zeros((n_surfaces, ), dtype=int)
-    m_distribution = '1-cos'
+    m_distribution = 'uniform'
     aero_node = np.zeros((num_node,), dtype=bool)
     twist = np.zeros((num_node,))
     chord = np.zeros((num_node,))
@@ -345,29 +309,51 @@ def generate_aero_file():
     working_node = 0
     # right wing (surface 0, beam 0)
     i_surf = 0
-    airfoil_distribution[working_node:working_node + num_node_main] = 0
-    surface_distribution[working_elem:working_elem + num_elem_main] = i_surf
-    surface_m[i_surf] = m_main
-    aero_node[working_node:working_node + num_node_main] = True
-    chord[working_node:working_node + num_node_main] = main_chord
-    elastic_axis[working_node:working_node + num_node_main] = main_ea
-    working_elem += num_elem_main
-    working_node += num_node_main
+    # airfoil_distribution[working_node:working_node + num_node_main] = 0
+    surface_distribution[working_elem:working_elem + num_elem_inner] = i_surf
+    surface_m[i_surf] = m_inner
+    aero_node[working_node:working_node + num_node_inner] = True
+    chord[working_node:working_node + num_node_inner] = inner_chord
+    elastic_axis[working_node:working_node + num_node_inner] = inner_ea
+    working_elem += num_elem_inner
+    working_node += num_node_inner
 
     # left wing (surface 1, beam 1)
     i_surf = 1
-    airfoil_distribution[working_node:working_node + num_node_main - 1] = 0
-    surface_distribution[working_elem:working_elem + num_elem_main] = i_surf
-    surface_m[i_surf] = m_main
-    aero_node[working_node:working_node + num_node_main - 1] = True
-    chord[working_node:working_node + num_node_main - 1] = main_chord
-    elastic_axis[working_node:working_node + num_node_main - 1] = main_ea
-    working_elem += num_elem_main
-    working_node += num_node_main - 1
+    airfoil_distribution[working_node:working_node + num_node_inner - 1] = 0
+    surface_distribution[working_elem:working_elem + num_elem_inner] = i_surf
+    surface_m[i_surf] = m_inner
+    aero_node[working_node:working_node + num_node_inner - 1] = True
+    chord[working_node:working_node + num_node_inner - 1] = inner_chord
+    elastic_axis[working_node:working_node + num_node_inner - 1] = inner_ea
+    working_elem += num_elem_inner
+    working_node += num_node_inner - 1
 
-    # working_elem += num_elem_fuselage
-    # working_node += num_node_fuselage - 1 - 1
-    #
+    # outer right wing (surface 2, beam 2)
+    i_surf = 2
+    # airfoil_distribution[working_node:working_node + num_node_main] = 0
+    surface_distribution[working_elem:working_elem + num_elem_outer] = i_surf
+    surface_m[i_surf] = m_outer
+    aero_node[working_node:working_node + num_node_outer] = True
+    chord[working_node:working_node + num_node_outer] = outer_chord
+    elastic_axis[working_node:working_node + num_node_outer] = outer_ea
+    working_elem += num_elem_outer
+    working_node += num_node_outer - 1
+
+    # outer left wing (surface 3, beam 3)
+    i_surf = 3
+    # airfoil_distribution[working_node:working_node + num_node_main] = 0
+    surface_distribution[working_elem:working_elem + num_elem_outer] = i_surf
+    surface_m[i_surf] = m_outer
+    aero_node[working_node:working_node + num_node_outer] = True
+    chord[working_node:working_node + num_node_outer] = outer_chord
+    elastic_axis[working_node:working_node + num_node_outer] = outer_ea
+    working_elem += num_elem_outer
+    working_node += num_node_outer - 1
+
+
+
+
     # # # right tail (surface 2, beam 3)
     # i_surf = 2
     # airfoil_distribution[working_node:working_node + num_node_tail] = 1
@@ -410,11 +396,11 @@ def generate_aero_file():
         airfoils_group = h5file.create_group('airfoils')
         # add one airfoil
         naca_airfoil_main = airfoils_group.create_dataset('0', data=np.column_stack(
-                                generate_naca_camber(P=main_airfoil_P, M=main_airfoil_M)))
-        naca_airfoil_tail = airfoils_group.create_dataset('1', data=np.column_stack(
-            generate_naca_camber(P=tail_airfoil_P, M=tail_airfoil_M)))
-        naca_airfoil_fin = airfoils_group.create_dataset('2', data=np.column_stack(
-            generate_naca_camber(P=0, M=0)))
+                                generate_naca_camber(P=inner_airfoil_P, M=inner_airfoil_M)))
+        # naca_airfoil_tail = airfoils_group.create_dataset('1', data=np.column_stack(
+        #     generate_naca_camber(P=tail_airfoil_P, M=tail_airfoil_M)))
+        # naca_airfoil_fin = airfoils_group.create_dataset('2', data=np.column_stack(
+        #     generate_naca_camber(P=0, M=0)))
 
         # chord
         chord_input = h5file.create_dataset('chord', data=chord)
@@ -463,28 +449,27 @@ def generate_solver_file():
     config['StaticCoupled'] = {'print_info': 'on',
                                'structural_solver': 'NonLinearStatic',
                                'aero_solver': 'StaticUvlm',
-                               'max_iter': 90,
+                               'max_iter': 150,
                                'n_load_steps': 15,
-                               'tolerance': 1e-5,
-                               'relaxation_factor': 0.5,
-                               'residual_plot': 'off'}
+                               'tolerance': 1e-7,
+                               'relaxation_factor': 0.2,
+                               'residual_plot': 'on'}
     config['StaticUvlm'] = {'print_info': 'on',
                             'Mstar': 1,
                             'rollup': 'off',
                             'aligned_grid': 'on',
-                            'prescribed_wake': 'on',
-                            'num_cores': 4}
+                            'prescribed_wake': 'on'}
     config['NonLinearStatic'] = {'print_info': 'off',
                                  'out_b_frame': 'off',
                                  'out_a_frame': 'off',
                                  'elem_proj': 0,
                                  'max_iterations': 99,
-                                 'num_load_steps': 55,
+                                 'num_load_steps': 25,
                                  'delta_curved': 1e-5,
                                  'min_delta': 1e-5,
                                  'newmark_damp': 0.000,
                                  'gravity_on': 'on',
-                                 'gravity': 9.754,
+                                 'gravity': 9.81,
                                  'gravity_dir': (str(-np.sin(alpha_rad)) +
                                                  ', ' +
                                                  str(0.0) +
@@ -497,7 +482,7 @@ def generate_solver_file():
                           'print_pos_def': 'on',
                           'name_prefix': ''}
     config['AeroGridPlot'] = {'route': './output'}
-    config['AeroForcesSteadyCalculator'] = {'beams': '0, 1'}
+    config['AeroForcesSteadyCalculator'] = {'beams': '0, 1, 2, 3'}
 
     with open(file_name, 'w') as configfile:
         config.write(configfile)
@@ -510,8 +495,8 @@ def generate_flightcon_file():
                            'alpha': alpha,
                            'beta': beta,
                            'rho_inf': rho,
-                           'c_ref': c_ref,
-                           'b_ref': b_ref}
+                           'c_ref': 0,
+                           'b_ref': 0}
 
     with open(file_name, 'w') as configfile:
         config.write(configfile)

@@ -3,13 +3,13 @@ import numpy as np
 import configparser
 import os
 
-case_name = 'coupled_configuration'
+case_name = 't_tail'
 route = os.path.dirname(os.path.realpath(__file__)) + '/'
 
 # flight conditions
 u_inf = 25
 rho = 0.08891
-alpha = 4
+alpha = 2
 beta = 0
 c_ref = 1
 b_ref = 16
@@ -46,35 +46,35 @@ fin_mass_sigma = 0.1
 fin_airfoil_P = 0
 fin_airfoil_M = 0
 
-n_surfaces = 2
+n_surfaces = 5
 force = 0
 momenty = 0
 momentx = 0
 
 # discretisation data
-num_elem_main = 40
-num_elem_tail = 5
-num_elem_fin = 4
+num_elem_main = 5
+num_elem_tail = 3
+num_elem_fin = 3
 num_elem_fuselage = 10
 
 
 num_node_elem = 3
-num_elem = num_elem_main + num_elem_main# + num_elem_fuselage + num_elem_tail + num_elem_tail + num_elem_fin
+num_elem = num_elem_main + num_elem_main + num_elem_fuselage + num_elem_tail + num_elem_tail + num_elem_fin
 num_node_main = num_elem_main*(num_node_elem - 1) + 1
-# num_node_fuselage = num_elem_fuselage*(num_node_elem - 1) + 1
-# num_node_tail = num_elem_tail*(num_node_elem - 1) + 1
-# num_node_fin = num_elem_fin*(num_node_elem - 1) + 1
+num_node_fuselage = num_elem_fuselage*(num_node_elem - 1) + 1
+num_node_tail = num_elem_tail*(num_node_elem - 1) + 1
+num_node_fin = num_elem_fin*(num_node_elem - 1) + 1
 
 num_node = num_node_main + (num_node_main - 1)
-# num_node += num_node_fuselage - 1
-# num_node += (num_node_tail - 1)
-# num_node += (num_node_tail - 1)
-# num_node += num_node_fin - 1
-# nodes_distributed = num_node
+num_node += num_node_fuselage - 1
+num_node += (num_node_tail - 1)
+num_node += (num_node_tail - 1)
+num_node += num_node_fin - 1
+nodes_distributed = num_node
 
-m_main = 20
-m_tail = 8
-m_fin = 5
+m_main = 4
+m_tail = 4
+m_fin = 4
 
 
 def clean_test_files():
@@ -112,8 +112,8 @@ def generate_fem_file():
     conn = np.zeros((num_elem, num_node_elem), dtype=int)
     # stiffness
     num_stiffness = 4
-    ea = 1e7
-    ga = 1e7
+    ea = 1e6
+    ga = 1e6
     gj = 1e4
     eiy = 2e4
     eiz = 5e6
@@ -144,7 +144,7 @@ def generate_fem_file():
     node_app_forces = np.zeros((n_app_forces,), dtype=int)
     app_forces = np.zeros((n_app_forces, 6))
     # orientation
-    inertial2aero = np.eye(3)
+    inertial2aero = np.zeros((3,3))
     inertial2aero[0, :] = [np.cos(alpha_rad), 0.0, -np.sin(alpha_rad)]
     inertial2aero[1, :] = [0.0, 1.0, 0.0]
     inertial2aero[2, :] = [np.sin(alpha_rad), 0.0, np.cos(alpha_rad)]
@@ -173,8 +173,8 @@ def generate_fem_file():
     elem_mass[working_elem:working_elem + num_elem_main] = 0
     boundary_conditions[0] = 1
     boundary_conditions[working_node + num_node_main - 1] = -1
-    # node_app_forces[0] = working_node + num_node_main - 1
-    # app_forces[0, :] = [0, 0, 0, 0, 0*2*np.pi*eiy/main_span, 0]
+    node_app_forces[0] = working_node + num_node_main - 1
+    app_forces[0, :] = [0, 0, 0, 0, 0*2*np.pi*eiy/main_span, 0]
     working_elem += num_elem_main
     working_node += num_node_main
 
@@ -206,88 +206,92 @@ def generate_fem_file():
     working_node += num_node_main - 1
 
     # fuselage (beam 2) --------------------------------------------------------------
-    # beam_number[working_elem:working_elem + num_elem_fuselage] = 2
-    # tempx = np.linspace(0.0, fuselage_length, num_node_fuselage)
-    # x[working_node:working_node + num_node_fuselage - 1] = tempx[1:]
-    # for ielem in range(num_elem_fuselage):
-    #     for inode in range(num_node_elem):
-    #         frame_of_reference_delta[working_elem + ielem, inode, :] = [0, 1, 0]
-    # # connectivity
-    # for ielem in range(num_elem_fuselage):
-    #     conn[working_elem + ielem, :] = ((np.ones((3,))*(working_elem + ielem)*(num_node_elem - 1)) +
-    #                                      [0, 2, 1])
-    # conn[working_elem, 0] = 0
-    # elem_stiffness[working_elem:working_elem + num_elem_fuselage] = 1
-    # elem_mass[working_elem:working_elem + num_elem_fuselage] = 1
-    # # node_app_forces[2] = working_node + num_node_fuselage - 1 - 1
-    # # app_forces[2, :] = [0, 0, force, 0, 0, 0]
-    # # 60 nodes, 29 elems
-    # working_elem += num_elem_fuselage
-    # working_node += num_node_fuselage - 1
-    # global end_of_fuselage_node
-    # end_of_fuselage_node = working_node - 1
-    #
-    # # right tail (beam 3) --------------------------------------------------------------
-    # beam_number[working_elem:working_elem + num_elem_tail] = 3
-    # tempy = np.linspace(0.0, tail_span, num_node_tail)
-    # y[working_node:working_node + num_node_tail - 1] = tempy[1:]
-    # x[working_node:working_node + num_node_tail - 1] = x[working_node - 1]
-    # for ielem in range(num_elem_tail):
-    #     for inode in range(num_node_elem):
-    #         frame_of_reference_delta[working_elem + ielem, inode, :] = [-1, 0, 0]
-    # # connectivity
-    # for ielem in range(num_elem_tail):
-    #     conn[working_elem + ielem, :] = ((np.ones((3,))*(working_elem + ielem)*(num_node_elem - 1)) +
-    #                                      [0, 2, 1])
-    # conn[working_elem, 0] = conn[working_elem - 1, 1]
-    # elem_stiffness[working_elem:working_elem + num_elem_tail] = 2
-    # elem_mass[working_elem:working_elem + num_elem_fuselage] = 2
-    # boundary_conditions[working_node + num_node_tail - 1 - 1] = -1
-    # # 70 nodes, 34 elems
-    # working_elem += num_elem_tail
-    # working_node += num_node_tail - 1
-    #
-    # # left tail (beam 4) --------------------------------------------------------------
-    # beam_number[working_elem:working_elem + num_elem_tail] = 4
-    # tempy = np.linspace(-tail_span, 0, num_node_tail)
-    # y[working_node:working_node + num_node_tail - 1] = tempy[:-1]
-    # x[working_node:working_node + num_node_tail - 1] = x[working_node - 1]
-    # for ielem in range(num_elem_tail):
-    #     for inode in range(num_node_elem):
-    #         frame_of_reference_delta[working_elem + ielem, inode, :] = [-1, 0, 0]
-    # # connectivity
-    # for ielem in range(num_elem_tail):
-    #     conn[working_elem + ielem, :] = ((np.ones((3,))*(working_elem + ielem)*(num_node_elem - 1)) +
-    #                                      [0, 2, 1]) + 1
-    # conn[working_elem + num_elem_tail - 1, 1] = end_of_fuselage_node
-    # elem_stiffness[working_elem:working_elem + num_elem_tail] = 2
-    # elem_mass[working_elem:working_elem + num_elem_fuselage] = 2
-    # boundary_conditions[working_node] = -1
-    # # node_app_forces[2] = working_node + num_node_tail - 2
-    # # app_forces[2, :] = [0, 0, 0*force, 0, 0, 0]
-    # working_elem += num_elem_tail
-    # working_node += num_node_tail - 1
-    # #
-    # # # fin (beam 5) --------------------------------------------------------------
-    # beam_number[working_elem:working_elem + num_elem_fin] = 5
-    # tempz = np.linspace(0.0, fin_span, num_node_fin)
-    # x[working_node:working_node + num_node_fin - 1] = x[working_node - 1]
-    # z[working_node:working_node + num_node_fin - 1] = tempz[1:]
-    # for ielem in range(num_elem_fin):
-    #     for inode in range(num_node_elem):
-    #         frame_of_reference_delta[working_elem + ielem, inode, :] = [-1, 0, 0]
-    # # connectivity
-    # for ielem in range(num_elem_fin):
-    #     conn[working_elem + ielem, :] = ((np.ones((3,))*(working_elem + ielem)*(num_node_elem - 1)) +
-    #                                      [0, 2, 1])
-    # conn[working_elem, 0] = end_of_fuselage_node
-    # elem_stiffness[working_elem:working_elem + num_elem_fin] = 3
-    # elem_mass[working_elem:working_elem + num_elem_fin] = 3
+    beam_number[working_elem:working_elem + num_elem_fuselage] = 2
+    tempx = np.linspace(0.0, fuselage_length, num_node_fuselage)
+    x[working_node:working_node + num_node_fuselage - 1] = tempx[1:]
+    for ielem in range(num_elem_fuselage):
+        for inode in range(num_node_elem):
+            frame_of_reference_delta[working_elem + ielem, inode, :] = [0, 1, 0]
+    # connectivity
+    for ielem in range(num_elem_fuselage):
+        conn[working_elem + ielem, :] = ((np.ones((3,))*(working_elem + ielem)*(num_node_elem - 1)) +
+                                         [0, 2, 1])
+    conn[working_elem, 0] = 0
+    elem_stiffness[working_elem:working_elem + num_elem_fuselage] = 1
+    elem_mass[working_elem:working_elem + num_elem_fuselage] = 1
+    # node_app_forces[2] = working_node + num_node_fuselage - 1 - 1
+    # app_forces[2, :] = [0, 0, force, 0, 0, 0]
+    # 60 nodes, 29 elems
+    working_elem += num_elem_fuselage
+    working_node += num_node_fuselage - 1
+    global end_of_fuselage_node
+    end_of_fuselage_node = working_node - 1
+
+    # # fin (beam 5) --------------------------------------------------------------
+    beam_number[working_elem:working_elem + num_elem_fin] = 3
+    tempz = np.linspace(0.0, fin_span, num_node_fin)
+    x[working_node:working_node + num_node_fin - 1] = x[end_of_fuselage_node]
+    z[working_node:working_node + num_node_fin - 1] = tempz[1:]
+    for ielem in range(num_elem_fin):
+        for inode in range(num_node_elem):
+            frame_of_reference_delta[working_elem + ielem, inode, :] = [-1, 0, 0]
+    # connectivity
+    for ielem in range(num_elem_fin):
+        conn[working_elem + ielem, :] = ((np.ones((3,))*(working_elem + ielem)*(num_node_elem - 1)) +
+                                         [0, 2, 1])
+    conn[working_elem, 0] = end_of_fuselage_node
+    elem_stiffness[working_elem:working_elem + num_elem_fin] = 3
+    elem_mass[working_elem:working_elem + num_elem_fin] = 3
     # boundary_conditions[working_node + num_node_fin - 1 - 1] = -1
-    # # node_app_forces[3] = -1
-    # # app_forces[3, :] = [force, 0, 0, 0, 0, 0]
-    # working_elem += num_elem_fin
-    # working_node += num_node_fin - 1
+    # node_app_forces[3] = -1
+    # app_forces[3, :] = [force, 0, 0, 0, 0, 0]
+    end_of_fin_node = working_node + num_node_fin - 2
+    working_elem += num_elem_fin
+    working_node += num_node_fin - 1
+
+    # right tail (beam 3) --------------------------------------------------------------
+    beam_number[working_elem:working_elem + num_elem_tail] = 3
+    tempy = np.linspace(0.0, tail_span, num_node_tail)
+    y[working_node:working_node + num_node_tail - 1] = tempy[1:]
+    x[working_node:working_node + num_node_tail - 1] = x[end_of_fin_node]
+    z[working_node:working_node + num_node_tail - 1] = z[end_of_fin_node]
+    for ielem in range(num_elem_tail):
+        for inode in range(num_node_elem):
+            frame_of_reference_delta[working_elem + ielem, inode, :] = [-1, 0, 0]
+    # connectivity
+    for ielem in range(num_elem_tail):
+        conn[working_elem + ielem, :] = ((np.ones((3,))*(working_elem + ielem)*(num_node_elem - 1)) +
+                                         [0, 2, 1])
+    conn[working_elem, 0] = conn[working_elem - 1, 1]
+    elem_stiffness[working_elem:working_elem + num_elem_tail] = 2
+    elem_mass[working_elem:working_elem + num_elem_fuselage] = 2
+    boundary_conditions[working_node + num_node_tail - 1 - 1] = -1
+    # 70 nodes, 34 elems
+    working_elem += num_elem_tail
+    working_node += num_node_tail - 1
+
+    # left tail (beam 4) --------------------------------------------------------------
+    beam_number[working_elem:working_elem + num_elem_tail] = 4
+    tempy = np.linspace(-tail_span, 0, num_node_tail)
+    y[working_node:working_node + num_node_tail - 1] = tempy[:-1]
+    x[working_node:working_node + num_node_tail - 1] = x[end_of_fin_node]
+    z[working_node:working_node + num_node_tail - 1] = z[end_of_fin_node]
+    for ielem in range(num_elem_tail):
+        for inode in range(num_node_elem):
+            frame_of_reference_delta[working_elem + ielem, inode, :] = [-1, 0, 0]
+    # connectivity
+    for ielem in range(num_elem_tail):
+        conn[working_elem + ielem, :] = ((np.ones((3,))*(working_elem + ielem)*(num_node_elem - 1)) +
+                                         [0, 2, 1]) + 1
+    conn[working_elem + num_elem_tail - 1, 1] = end_of_fin_node
+    elem_stiffness[working_elem:working_elem + num_elem_tail] = 2
+    elem_mass[working_elem:working_elem + num_elem_fuselage] = 2
+    boundary_conditions[working_node] = -1
+    # node_app_forces[2] = working_node + num_node_tail - 2
+    # app_forces[2, :] = [0, 0, 0*force, 0, 0, 0]
+    working_elem += num_elem_tail
+    working_node += num_node_tail - 1
+    #
 
     with h5.File(route + '/' + case_name + '.fem.h5', 'a') as h5file:
         coordinates = h5file.create_dataset('coordinates', data=np.column_stack((x, y, z)))
@@ -335,7 +339,7 @@ def generate_aero_file():
     airfoil_distribution = np.zeros((num_node,), dtype=int)
     surface_distribution = np.zeros((num_elem,), dtype=int) - 1
     surface_m = np.zeros((n_surfaces, ), dtype=int)
-    m_distribution = '1-cos'
+    m_distribution = 'uniform'
     aero_node = np.zeros((num_node,), dtype=bool)
     twist = np.zeros((num_node,))
     chord = np.zeros((num_node,))
@@ -365,46 +369,47 @@ def generate_aero_file():
     working_elem += num_elem_main
     working_node += num_node_main - 1
 
-    # working_elem += num_elem_fuselage
-    # working_node += num_node_fuselage - 1 - 1
-    #
-    # # # right tail (surface 2, beam 3)
-    # i_surf = 2
-    # airfoil_distribution[working_node:working_node + num_node_tail] = 1
-    # surface_distribution[working_elem:working_elem + num_elem_tail] = i_surf
-    # surface_m[i_surf] = m_tail
-    # # XXX not very elegant
-    # aero_node[working_node:] = True
-    # chord[working_node:working_node + num_node_tail] = tail_chord
-    # elastic_axis[working_node:working_node + num_node_main] = tail_ea
-    # twist[working_node:working_node + num_node_tail] = -tail_twist
-    # working_elem += num_elem_tail
-    # working_node += num_node_tail
-    #
-    # # left tail (surface 3, beam 4)
-    # i_surf = 3
-    # airfoil_distribution[working_node:working_node + num_node_tail-1] = 1
-    # surface_distribution[working_elem:working_elem + num_elem_tail] = i_surf
-    # surface_m[i_surf] = m_tail
-    # aero_node[working_node:working_node + num_node_tail - 1] = True
-    # chord[working_node:working_node + num_node_tail] = tail_chord
-    # elastic_axis[working_node:working_node + num_node_main] = tail_ea
-    # twist[working_node:working_node + num_node_tail-1] = -tail_twist
-    # working_elem += num_elem_tail
-    # working_node += num_node_tail
-    #
-    # # fin (surface 4, beam 5)
-    # i_surf = 4
-    # airfoil_distribution[working_node:working_node + num_node_fin] = 0
-    # surface_distribution[working_elem:working_elem + num_elem_fin] = i_surf
-    # surface_m[i_surf] = m_fin
-    # aero_node[working_node:working_node + num_node_fin] = True
-    # chord[working_node:working_node + num_node_fin] = fin_chord
-    # twist[end_of_fuselage_node] = 0
-    # twist[working_node:] = 0
-    # elastic_axis[working_node:working_node + num_node_main] = fin_ea
-    # working_elem += num_elem_fin
-    # working_node += num_node_fin
+    working_elem += num_elem_fuselage
+    working_node += num_node_fuselage - 1 - 1
+
+    # fin (surface 2, beam 3)
+    i_surf = 2
+    airfoil_distribution[working_node:working_node + num_node_fin] = 0
+    surface_distribution[working_elem:working_elem + num_elem_fin] = i_surf
+    surface_m[i_surf] = m_fin
+    aero_node[working_node:working_node + num_node_fin] = True
+    chord[working_node:working_node + num_node_fin] = fin_chord
+    twist[end_of_fuselage_node] = 0
+    twist[working_node:] = 0
+    elastic_axis[working_node:working_node + num_node_main] = fin_ea
+    working_elem += num_elem_fin
+    working_node += num_node_fin
+
+    # # right tail (surface 3, beam 4)
+    i_surf = 3
+    airfoil_distribution[working_node:working_node + num_node_tail] = 1
+    surface_distribution[working_elem:working_elem + num_elem_tail] = i_surf
+    surface_m[i_surf] = m_tail
+    # XXX not very elegant
+    aero_node[working_node:] = True
+    chord[working_node:working_node + num_node_tail] = tail_chord
+    elastic_axis[working_node:working_node + num_node_main] = tail_ea
+    twist[working_node:working_node + num_node_tail] = -tail_twist
+    working_elem += num_elem_tail
+    working_node += num_node_tail
+
+    # left tail (surface 4, beam 5)
+    i_surf = 4
+    airfoil_distribution[working_node:working_node + num_node_tail-1] = 1
+    surface_distribution[working_elem:working_elem + num_elem_tail] = i_surf
+    surface_m[i_surf] = m_tail
+    aero_node[working_node:working_node + num_node_tail - 1] = True
+    chord[working_node:working_node + num_node_tail] = tail_chord
+    elastic_axis[working_node:working_node + num_node_main] = tail_ea
+    twist[working_node:working_node + num_node_tail-1] = -tail_twist
+    working_elem += num_elem_tail
+    working_node += num_node_tail
+
 
     with h5.File(route + '/' + case_name + '.aero.h5', 'a') as h5file:
         airfoils_group = h5file.create_group('airfoils')
@@ -464,24 +469,23 @@ def generate_solver_file():
                                'structural_solver': 'NonLinearStatic',
                                'aero_solver': 'StaticUvlm',
                                'max_iter': 90,
-                               'n_load_steps': 15,
-                               'tolerance': 1e-5,
-                               'relaxation_factor': 0.5,
+                               'n_load_steps': 10,
+                               'tolerance': 1e-4,
+                               'relaxation_factor': 0.0,
                                'residual_plot': 'off'}
     config['StaticUvlm'] = {'print_info': 'on',
                             'Mstar': 1,
                             'rollup': 'off',
                             'aligned_grid': 'on',
-                            'prescribed_wake': 'on',
-                            'num_cores': 4}
+                            'prescribed_wake': 'on'}
     config['NonLinearStatic'] = {'print_info': 'off',
                                  'out_b_frame': 'off',
                                  'out_a_frame': 'off',
                                  'elem_proj': 0,
                                  'max_iterations': 99,
-                                 'num_load_steps': 55,
+                                 'num_load_steps': 25,
                                  'delta_curved': 1e-5,
-                                 'min_delta': 1e-5,
+                                 'min_delta': 1e-3,
                                  'newmark_damp': 0.000,
                                  'gravity_on': 'on',
                                  'gravity': 9.754,
@@ -493,9 +497,7 @@ def generate_solver_file():
                                  }
     config['BeamPlot'] = {'route': './output',
                           'frame': 'inertial',
-                          'applied_forces': 'on',
-                          'print_pos_def': 'on',
-                          'name_prefix': ''}
+                          'applied_forces': 'on'}
     config['AeroGridPlot'] = {'route': './output'}
     config['AeroForcesSteadyCalculator'] = {'beams': '0, 1'}
 

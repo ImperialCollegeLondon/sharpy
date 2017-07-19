@@ -64,11 +64,14 @@ class StaticUvlm(BaseSolver):
             cout.cout_wrap('...Finished', 1)
         return self.data
 
-
     def convert_settings(self):
         self.settings['print_info'] = str2bool(self.settings['print_info'])
         self.settings['rollup'] = str2bool(self.settings['rollup'])
         self.settings['aligned_grid'] = str2bool(self.settings['aligned_grid'])
         self.settings['prescribed_wake'] = str2bool(self.settings['prescribed_wake'])
         self.settings['mstar'] = int(self.settings['mstar'])
+        try:
+            self.settings['num_cores'] = int(self.settings['num_cores'])
+        except KeyError:
+            self.settings['num_cores'] = 4
 

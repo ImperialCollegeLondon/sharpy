@@ -79,7 +79,6 @@ class AeroForcesSteadyCalculator(BaseSolver):
         #                                self.data.flightconditions['FlightCon']['beta'])
         rot = np.eye(3)
 
-
         force = self.data.grid.timestep_info[self.ts].forces
         total_force = np.zeros((3,))
         n_surf = len(force)
@@ -91,7 +90,6 @@ class AeroForcesSteadyCalculator(BaseSolver):
                 for i_n in range(n_cols):
                     total_force += np.dot(rot.T, force[i_surf][0:3, i_m, i_n])
 
-        a = 2
         lift = total_force[2]
         cout.cout_wrap('Lift = %f6 (N)' % lift)
         drag = total_force[0]

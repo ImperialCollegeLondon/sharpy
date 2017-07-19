@@ -58,11 +58,12 @@ class StaticCoupled(BaseSolver):
                     self.data.beam.master,
                     self.data.grid.inertial2aero)
 
-                #
-                # if self.relaxation_factor > 0.0:
-                #     struct_forces = ((1.0 - self.relaxation_factor)*struct_forces +
-                #                     self.relaxation_factor*self.previous_forces)
 
+                if self.relaxation_factor > 0.0:
+                    struct_forces = ((1.0 - self.relaxation_factor)*struct_forces +
+                                    self.relaxation_factor*self.previous_forces)
+
+                self.previous_forces = struct_forces
                 self.data.beam.update_forces(struct_forces)
                 self.structural_solver.initialise(self.data)
                 self.data = self.structural_solver.run(coeff)
@@ -92,9 +93,10 @@ class StaticCoupled(BaseSolver):
             return False
 
         self.current_residual = np.linalg.norm(self.data.beam.timestep_info[0].pos_def)
+        cout.cout_wrap('Res = %8e' % (np.abs(self.current_residual - self.previous_residual)/self.previous_residual), 2)
 
         if return_value is None:
-            if np.abs(self.current_residual - self.previous_residual)/self.previous_residual < self.settings['tolerance']:
+            if np.abs(self.current_residual - self.previous_residual)/self.initial_residual < self.settings['tolerance']:
                 return_value = True
             else:
                 self.previous_residual = self.current_residual

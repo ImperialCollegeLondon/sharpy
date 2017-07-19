@@ -38,7 +38,7 @@ def generate_fem_file(route, case_name, num_elem, num_node_elem=3):
 
     num_node = (num_node_elem - 1)*num_elem + 1
     # import pdb; pdb.set_trace()
-    angle = 0*np.pi/180.0
+    angle = 270*np.pi/180.0
     x = (np.linspace(0, length, num_node))*np.cos(angle)
     y = (np.linspace(0, length, num_node))*np.sin(angle)
     z = np.zeros((num_node,))
@@ -98,16 +98,15 @@ def generate_fem_file(route, case_name, num_elem, num_node_elem=3):
     beam_number = np.zeros((num_elem, 1), dtype=int)
 
     # new app forces scheme (only follower)
-    n_app_forces = 0
-    node_app_forces = np.array([])
+    n_app_forces = 1
+    node_app_forces = np.array([-1])
     app_forces = np.zeros((n_app_forces, 6))
-    # app_forces[0, :] = [0, 0, 3000000, 0, 0, 0]
+    app_forces[0, :] = [0, 0, 3000000, 0, 0, 0]
 
     # lumped masses input
-    n_lumped_mass = 1
-    lumped_mass_nodes = np.array([num_node - 1], dtype=int)
+    n_lumped_mass = 0
+    lumped_mass_nodes = np.array([], dtype=int)
     lumped_mass = np.zeros((n_lumped_mass, ))
-    lumped_mass[0] = 600e3/9.81
     lumped_mass_inertia = np.zeros((n_lumped_mass, 3, 3))
     lumped_mass_position = np.zeros((n_lumped_mass, 3))
 
@@ -228,8 +227,8 @@ def generate_naca_camber(route, M=2, P=4):
 def generate_solver_file(route, case_name):
     file_name = route + '/' + case_name + '.solver.txt'
     config = configparser.ConfigParser()
-    config['SHARPy'] = {'case': 'geradin_cardona',
-                        'route': './tests/beam/static/geradin_cardona',
+    config['SHARPy'] = {'case': 'rotation_objectivity',
+                        'route': './tests/beam/static/rotation_objectivity',
                         'flow': 'NonLinearStatic, BeamPlot',
                         'plot': 'on'}
     config['NonLinearStatic'] = {'print_info': 'on',
@@ -237,18 +236,18 @@ def generate_solver_file(route, case_name):
                                  'out_a_frame': 'off',
                                  'elem_proj': 2,
                                  'max_iterations': 99,
-                                 'num_load_steps': 5,
+                                 'num_load_steps': 15,
                                  'delta_curved': 1e-5,
                                  'min_delta': 1e-8,
                                  'newmark_damp': 0.000,
-                                 'gravity_on': 'on',
+                                 'gravity_on': 'off',
                                  'gravity': 9.81,
                                  'gravity_dir': '0, 0, 1'
                                  }
     config['BeamPlot'] = {'plot_shape': 'on',
                           'print_info': 'on',
                           'print_pos_def': 'on',
-                          'name_prefix': '_2_'}
+                          'name_prefix': '_0deg_50_'}
 
     with open(file_name, 'w') as configfile:
         config.write(configfile)
@@ -257,5 +256,5 @@ def generate_solver_file(route, case_name):
 if __name__ == '__main__':
     import os
     dir_path = os.path.dirname(os.path.realpath(__file__))
-    generate_files(dir_path + '/', 'geradin_cardona', 2, 3)
+    generate_files(dir_path + '/', 'rotation_objectivity', 10, 3)
     print('The test case has been successfully generated!!!')

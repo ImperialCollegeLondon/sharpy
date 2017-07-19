@@ -4,6 +4,7 @@ import numpy as np
 import sharpy.beam.utils.beamlib as beamlib
 from sharpy.presharpy.utils.settings import str2bool
 from sharpy.utils.solver_interface import solver, BaseSolver
+import sharpy.utils.cout_utils as cout
 
 
 @solver
@@ -14,19 +15,22 @@ class NonLinearStatic(BaseSolver):
     def __init__(self):
         pass
 
-    def initialise(self, data):
+    def initialise(self, data, quiet=False):
         self.data = data
         self.settings = data.settings[self.solver_id]
         self.convert_settings()
+        self.quiet = quiet
         # data.beam.timestep_info[0].pos_def[:] = data.beam.pos_ini[:]
         # data.beam.timestep_info[0].psi_def[:] = data.beam.psi_ini[:]
         data.beam.generate_aux_information()
 
     def run(self, coeff=ct.c_double(1.0)):
-        print('Running non linear static solver...')
+        if self.quiet:
+            cout.cout_wrap('Running non linear static solver...', 2)
         beamlib.cbeam3_solv_nlnstatic(self.data.beam, self.settings, coeff)
         self.data.beam.update()
-        print('...Finished')
+        if self.quiet:
+            cout.cout_wrap('...Finished', 2)
         return self.data
 
     def convert_settings(self):

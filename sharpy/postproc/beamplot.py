@@ -52,22 +52,24 @@ class BeamPlot(BaseSolver):
 
     def print_info(self):
         # find first bc == -1
+        inode_tip = None
         for inode in range(self.data.beam.num_node):
             if self.data.beam.boundary_conditions[inode] == -1:
                 inode_tip = inode
                 ielem_tip, i_local_node = self.data.beam.node_master_elem[inode_tip, :]
                 break
 
-        cout.cout_wrap('Node %3u position:' % inode_tip, 2)
-        cout.cout_wrap('\t%6f, %6f, %6f' % (
-            self.data.beam.timestep_info[self.ts].pos_def[inode_tip, 0],
-            self.data.beam.timestep_info[self.ts].pos_def[inode_tip, 1],
-            self.data.beam.timestep_info[self.ts].pos_def[inode_tip, 2]), 2)
-        cout.cout_wrap('Node %3u CRV:' % inode_tip, 2)
-        cout.cout_wrap('\t%6f, %6f, %6f' % (
-            self.data.beam.timestep_info[self.ts].psi_def[ielem_tip, i_local_node, 0],
-            self.data.beam.timestep_info[self.ts].psi_def[ielem_tip, i_local_node, 1],
-            self.data.beam.timestep_info[self.ts].psi_def[ielem_tip, i_local_node, 2]), 2)
+        if inode_tip is not None:
+            cout.cout_wrap('Node %3u position:' % inode_tip, 2)
+            cout.cout_wrap('\t%6f, %6f, %6f' % (
+                self.data.beam.timestep_info[self.ts].pos_def[inode_tip, 0],
+                self.data.beam.timestep_info[self.ts].pos_def[inode_tip, 1],
+                self.data.beam.timestep_info[self.ts].pos_def[inode_tip, 2]), 2)
+            cout.cout_wrap('Node %3u CRV:' % inode_tip, 2)
+            cout.cout_wrap('\t%8e, %8e, %8e' % (
+                self.data.beam.timestep_info[self.ts].psi_def[ielem_tip, i_local_node, 0],
+                self.data.beam.timestep_info[self.ts].psi_def[ielem_tip, i_local_node, 1],
+                self.data.beam.timestep_info[self.ts].psi_def[ielem_tip, i_local_node, 2]), 2)
 
     def convert_settings(self):
         try:

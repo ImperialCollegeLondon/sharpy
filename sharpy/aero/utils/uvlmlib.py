@@ -31,7 +31,7 @@ class VMopts(ct.Structure):
         self.NewAIC = ct.c_bool(False)  # legacy var
         self.DelTime = ct.c_double(1.0)
         self.Rollup = ct.c_bool(False)
-        self.NumCores = ct.c_uint(1)
+        self.NumCores = ct.c_uint(4)
         self.NumSurfaces = ct.c_uint(1)
 
 

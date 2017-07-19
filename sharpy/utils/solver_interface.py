@@ -84,7 +84,7 @@ def solver_list_from_path(cwd):
 
 def initialise_solver(solver_name):
     import sharpy.utils.cout_utils as cout
-    cout.cout_wrap('Generating an instance of %s' % solver_name, 2)
+    cout_wrap('Generating an instance of %s' % solver_name, 2)
     cls_type = solver_from_string(solver_name)
     solver = cls_type()
     return solver

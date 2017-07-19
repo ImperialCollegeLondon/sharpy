@@ -397,8 +397,8 @@ if __name__ == '__main__':
     print(bb)
 
     print('--------------------')
-    crv = np.array([2.013359e+00, -2.013359e+00, 3.874294e-01])
-    angle = 90*np.pi/180.
+    crv = np.array([-2.013275e+00, -2.013227e+00, -3.871769e-01])
+    angle = 270*np.pi/180.
     axis = np.array([0, 0, 1])
     new_crv = rotate_crv(crv, axis, angle)
     print(new_crv)
