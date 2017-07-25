@@ -14,9 +14,12 @@ import scipy.interpolate
 
 import sharpy.utils.algebra as algebra
 import sharpy.utils.cout_utils as cout
+import sharpy.presharpy.aerogrid.utils as aero_utils
 
 from sharpy.utils.datastructures import AeroTimeStepInfo
 from sharpy.presharpy.beam.beamstructures import Element
+
+
 
 class AeroGrid(object):
     def __init__(self, beam, aero_dict, aero_settings, inertial2aero=None, quiet=False, ts=0, t=0.0):
@@ -103,6 +106,7 @@ class AeroGrid(object):
                                                copy=False,
                                                assume_sorted=True))
         self.generate_zeta(beam, aero_settings)
+
 
     def generate_zeta(self, beam, aero_settings):
         self.generate_mapping()
@@ -197,6 +201,30 @@ class AeroGrid(object):
                         continue
                     self.aero2struct_mapping[i_surf][i_n] = i_global_node
 
+    def initialise_unsteady_wake(self, flightconditions, delta_t):
+        ts = self.ts
+        orientation = aero_utils.alpha_beta_to_direction(flightconditions['FlightCon']['alpha'],
+                                                         flightconditions['FlightCon']['beta'])
+        delta_x = flightconditions['FlightCon']['u_inf']*delta_t
+        delta = algebra.unit_vector(orientation)*delta_x
+        for i_surf in range(self.n_surf):
+            for i_N in range(self.aero_dimensions[i_surf, 1]):
+                base_pos = self.timestep_info[ts].zeta[i_surf][:, -1, i_N]
+                for i_M in range(self.aero_dimensions_star[i_surf, 0]):
+                    self.timestep_info[ts].zeta_star[i_surf][:, i_M, i_N] = base_pos + i_M*delta
+
+    def initialise_steady_wake(self, flightconditions):
+        ts = 0
+        orientation = aero_utils.alpha_beta_to_direction(flightconditions['FlightCon']['alpha'],
+                                                         flightconditions['FlightCon']['beta'])
+        delta_x = 1.0
+        delta = algebra.unit_vector(orientation)*delta_x
+        for i_surf in range(self.n_surf):
+            for i_N in range(self.aero_dimensions[i_surf, 1]):
+                base_pos = self.timestep_info[ts].zeta[i_surf][:, -1, i_N]
+                for i_M in range(self.aero_dimensions_star[i_surf, 0]):
+                    self.timestep_info[ts].zeta_star[i_surf][:, i_M, i_N] = base_pos + i_M*delta
+
 
 def generate_strip(node_info, airfoil_db, aligned_grid=True, inertial2aero=None, orientation_in=np.array([1, 0, 0])):
     strip_coordinates_a_frame = np.zeros((3, node_info['M'] + 1), dtype=ct.c_double)
@@ -236,35 +264,6 @@ def generate_strip(node_info, airfoil_db, aligned_grid=True, inertial2aero=None,
     # if (np.abs(angle) > 60*np.pi/180):
     Cab = np.dot(Cab, algebra.rotation3d_z(-angle))
 
-    # strip_coordinates_b_frame[1, :] *= -1
-    #
-    # # aligned grid correction
-    # crv = node_info['beam_psi']
-    # rotation_mat = algebra.crv2rot(crv)
-    # if aligned_grid:
-    #     orientation = orientation_in.copy()
-    #     orientation = orientation/np.linalg.norm(orientation)
-    #
-    #     local_orientation = np.dot(algebra.rotation3d_z(90*np.pi/180.0), orientation)
-    #
-    #     # rotation wrt local z:
-    #     # angle of chord line before correction
-    #     old_x = orientation.copy()
-    #     new_x = np.dot(rotation_mat.T, local_orientation)
-    #
-    #     if np.linalg.norm(new_x[:-1]) < 1e-10:
-    #         angle = 0
-    #     else:
-    #         old_x[-1] = 0
-    #         new_x[-1] = 0
-    #         angle = algebra.angle_between_vectors(old_x, new_x)
-    #         if new_x[1] < 0.0:
-    #             angle *= -1
-    #
-    #     z_rotation_mat = algebra.rotation3d_z(angle)
-    #     for i_m in range(node_info['M'] + 1):
-    #         strip_coordinates_b_frame[:, i_m] = np.dot(z_rotation_mat,
-    #                                                    strip_coordinates_b_frame[:, i_m])
     #TODO delta z on definiton of elastic axis
     # twist rotation
     if not node_info['twist'] == 0:
@@ -290,5 +289,6 @@ def generate_strip(node_info, airfoil_db, aligned_grid=True, inertial2aero=None,
                                                        strip_coordinates_a_frame[:, i_m])
 
     return strip_coordinates_a_frame
+
 
 

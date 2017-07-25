@@ -48,6 +48,7 @@ class StaticUvlm(BaseSolver):
                                            self.settings,
                                            inertial2aero=self.inertial2aero,
                                            quiet=self.quiet)
+        self.data.grid.initialise_steady_wake(self.data.flightconditions)
         if not self.quiet:
             cout.cout_wrap('...Finished', 1)
 
