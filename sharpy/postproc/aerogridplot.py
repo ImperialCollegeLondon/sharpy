@@ -28,6 +28,7 @@ class AeroGridPlot(BaseSolver):
         if not os.path.exists(self.settings['route']):
             os.makedirs(self.settings['route'])
         self.plot_grid()
+        self.plot_wake()
         cout.cout_wrap('...Finished', 1)
         return self.data
 
@@ -53,9 +54,9 @@ class AeroGridPlot(BaseSolver):
             # filename = 'grid_%s_%03u' % (self.data.settings['SHARPy']['case'], i_surf)
 
             dims = self.data.grid.timestep_info[self.ts].dimensions[i_surf, :]
-            dims_star = self.data.grid.timestep_info[self.ts].dimensions_star[i_surf, :]
-            point_data_dim = (dims[0]+1)*(dims[1]+1) + (dims_star[0]+1)*(dims_star[1]+1)
-            panel_data_dim = (dims[0])*(dims[1]) + (dims_star[0])*(dims_star[1])
+            # dims_star = self.data.grid.timestep_info[self.ts].dimensions_star[i_surf, :]
+            point_data_dim = (dims[0]+1)*(dims[1]+1)  # + (dims_star[0]+1)*(dims_star[1]+1)
+            panel_data_dim = (dims[0])*(dims[1])  # + (dims_star[0])*(dims_star[1])
 
             coords = np.zeros((point_data_dim, 3))
             conn = []
@@ -71,10 +72,10 @@ class AeroGridPlot(BaseSolver):
                 for i_m in range(dims[0]+1):
                     counter += 1
                     coords[counter, :] = self.data.grid.timestep_info[self.ts].zeta[i_surf][:, i_m, i_n]
-            for i_n in range(dims_star[1]+1):
-                for i_m in range(dims_star[0]+1):
-                    counter += 1
-                    coords[counter, :] = self.data.grid.timestep_info[self.ts].zeta_star[i_surf][:, i_m, i_n]
+            # for i_n in range(dims_star[1]+1):
+            #     for i_m in range(dims_star[0]+1):
+            #         counter += 1
+            #         coords[counter, :] = self.data.grid.timestep_info[self.ts].zeta_star[i_surf][:, i_m, i_n]
 
             counter = -1
             node_counter = -1
@@ -100,25 +101,25 @@ class AeroGridPlot(BaseSolver):
                     panel_surf_id[counter] = i_surf
                     panel_gamma[counter] = self.data.grid.timestep_info[self.ts].gamma[i_surf][i_m, i_n]
 
-            # wake
-            for i_n in range(dims_star[1]+1):
-                for i_m in range(dims_star[0]+1):
-                    node_counter += 1
-                    # point data
-
-                    # cell data
-                    if i_n < dims_star[1] and i_m < dims_star[0]:
-                        counter += 1
-                    else:
-                        continue
-
-                    conn.append([node_counter + 0,
-                                 node_counter + 1,
-                                 node_counter + dims_star[0]+2,
-                                 node_counter + dims_star[0]+1])
-                    panel_id[counter] = counter
-                    panel_surf_id[counter] = i_surf
-                    panel_gamma[counter] = self.data.grid.timestep_info[self.ts].gamma_star[i_surf][i_m, i_n]
+            # # wake
+            # for i_n in range(dims_star[1]+1):
+            #     for i_m in range(dims_star[0]+1):
+            #         node_counter += 1
+            #         # point data
+            #
+            #         # cell data
+            #         if i_n < dims_star[1] and i_m < dims_star[0]:
+            #             counter += 1
+            #         else:
+            #             continue
+            #
+            #         conn.append([node_counter + 0,
+            #                      node_counter + 1,
+            #                      node_counter + dims_star[0]+2,
+            #                      node_counter + dims_star[0]+1])
+            #         panel_id[counter] = counter
+            #         panel_surf_id[counter] = i_surf
+            #         panel_gamma[counter] = self.data.grid.timestep_info[self.ts].gamma_star[i_surf][i_m, i_n]
 
 
             ug = tvtk.UnstructuredGrid(points=coords)
@@ -140,4 +141,62 @@ class AeroGridPlot(BaseSolver):
             write_data(ug, filename)
         pass
 
+    def plot_wake(self):
+        folder = self.settings['route'] + '/' + self.data.settings['SHARPy']['case'] + '/aero/'
+        if not os.path.exists(folder):
+            os.makedirs(folder)
+        for i_surf in range(self.data.grid.timestep_info[self.ts].n_surf):
+            filename = (folder +
+                        'grid_' +
+                        self.data.settings['SHARPy']['case'] +
+                        '_' +
+                        '%02u_' % i_surf +
+                        '%06u' % self.it)
 
+            dims_star = self.data.grid.timestep_info[self.ts].dimensions_star[i_surf, :]
+            point_data_dim = (dims_star[0]+1)*(dims_star[1]+1)
+            panel_data_dim = (dims_star[0])*(dims_star[1])
+
+            coords = np.zeros((point_data_dim, 3))
+            conn = []
+            panel_id = np.zeros((panel_data_dim,), dtype=int)
+            panel_surf_id = np.zeros((panel_data_dim,), dtype=int)
+            panel_gamma = np.zeros((panel_data_dim,))
+            counter = -1
+            # coordinates of corners
+            for i_n in range(dims_star[1]+1):
+                for i_m in range(dims_star[0]+1):
+                    counter += 1
+                    coords[counter, :] = self.data.grid.timestep_info[self.ts].zeta_star[i_surf][:, i_m, i_n]
+
+            counter = -1
+            node_counter = -1
+            # wake
+            for i_n in range(dims_star[1]+1):
+                for i_m in range(dims_star[0]+1):
+                    node_counter += 1
+                    # cell data
+                    if i_n < dims_star[1] and i_m < dims_star[0]:
+                        counter += 1
+                    else:
+                        continue
+
+                    conn.append([node_counter + 0,
+                                 node_counter + 1,
+                                 node_counter + dims_star[0]+2,
+                                 node_counter + dims_star[0]+1])
+                    panel_id[counter] = counter
+                    panel_surf_id[counter] = i_surf
+                    panel_gamma[counter] = self.data.grid.timestep_info[self.ts].gamma_star[i_surf][i_m, i_n]
+
+            ug = tvtk.UnstructuredGrid(points=coords)
+            ug.set_cells(tvtk.Quad().cell_type, conn)
+            ug.cell_data.scalars = panel_id
+            ug.cell_data.scalars.name = 'panel_n_id'
+            ug.cell_data.add_array(panel_surf_id)
+            ug.cell_data.get_array(1).name = 'panel_surface_id'
+            ug.cell_data.add_array(panel_gamma)
+            ug.cell_data.get_array(2).name = 'panel_gamma'
+            ug.point_data.scalars = np.arange(0, coords.shape[0])
+            ug.point_data.scalars.name = 'n_id'
+            write_data(ug, filename)

@@ -48,7 +48,7 @@ class StaticUvlm(BaseSolver):
                                            self.settings,
                                            inertial2aero=self.inertial2aero,
                                            quiet=self.quiet)
-        self.data.grid.initialise_steady_wake(self.data.flightconditions)
+        # self.data.grid.initialise_steady_wake(self.data.flightconditions)
         if not self.quiet:
             cout.cout_wrap('...Finished', 1)
 
@@ -59,7 +59,8 @@ class StaticUvlm(BaseSolver):
         if not self.quiet:
             cout.cout_wrap('Running static UVLM solver...', 1)
         uvlmlib.vlm_solver(self.data.grid.timestep_info[self.ts],
-                           self.data.flightconditions)
+                           self.data.flightconditions,
+                           self.settings)
 
         if not self.quiet:
             cout.cout_wrap('...Finished', 1)
@@ -70,9 +71,26 @@ class StaticUvlm(BaseSolver):
         self.settings['rollup'] = str2bool(self.settings['rollup'])
         self.settings['aligned_grid'] = str2bool(self.settings['aligned_grid'])
         self.settings['prescribed_wake'] = str2bool(self.settings['prescribed_wake'])
+        self.settings['horseshoe'] = str2bool(self.settings['horseshoe'])
         self.settings['mstar'] = int(self.settings['mstar'])
         try:
             self.settings['num_cores'] = int(self.settings['num_cores'])
         except KeyError:
             self.settings['num_cores'] = 4
+        try:
+            self.settings['n_rollup'] = int(self.settings['n_rollup'])
+        except KeyError:
+            self.settings['n_rollup'] = 0
+        try:
+            self.settings['rollup_tolerance'] = float(self.settings['rollup_tolerance'])
+        except KeyError:
+            self.settings['rollup_tolerance'] = 1e-5
+        try:
+            self.settings['rollup_aic_refresh'] = int(self.settings['rollup_aic_refresh'])
+        except KeyError:
+            self.settings['rollup_aic_refresh'] = 1
+        try:
+            self.settings['rollup_dt'] = float(self.settings['rollup_dt'])
+        except KeyError:
+            self.settings['rollup_dt'] = 0.01
 

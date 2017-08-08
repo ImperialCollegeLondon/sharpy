@@ -12,3 +12,9 @@ def flightcon_file_parser(fc_dict):
     fc['b_ref'] = float(fc['b_ref'])
 
 
+def alpha_beta_to_direction(alpha, beta):
+    direction = np.array([1, 0, 0])
+    alpha_rot = algebra.rotation3d_y(alpha)
+    beta_rot = algebra.rotation3d_z(beta)
+    direction = np.dot(beta_rot, np.dot(alpha_rot, direction))
+    return direction

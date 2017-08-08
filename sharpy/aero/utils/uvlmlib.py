@@ -11,28 +11,50 @@ UvlmLib = ct_utils.import_ctypes_lib(SharpyDir + '/lib/', 'libuvlm')
 
 class VMopts(ct.Structure):
     """ctypes definition for VMopts class
+        struct VMopts {
+            bool ImageMethod;
+            unsigned int Mstar;
+            bool Steady;
+            bool horseshoe;
+            bool KJMeth;
+            bool NewAIC;
+            double DelTime;
+            bool Rollup;
+            unsigned int NumCores;
+            unsigned int NumSurfaces;
+        };
     """
     _fields_ = [("ImageMethod", ct.c_bool),
                 ("Mstar", ct.c_uint),
                 ("Steady", ct.c_bool),
+                ("horseshoe", ct.c_bool),
                 ("KJMeth", ct.c_bool),
                 ("NewAIC", ct.c_bool),
                 ("DelTime", ct.c_double),
                 ("Rollup", ct.c_bool),
                 ("NumCores", ct.c_uint),
-                ("NumSurfaces", ct.c_uint)]
+                ("NumSurfaces", ct.c_uint),
+                ("dt", ct.c_double),
+                ("n_rollup", ct.c_uint),
+                ("rollup_tolerance", ct.c_double),
+                ("rollup_aic_refresh", ct.c_uint)]
 
     def __init__(self):
         ct.Structure.__init__(self)
         self.ImageMethod = ct.c_bool(False)
         self.Mstar = ct.c_uint(1)
         self.Steady = ct.c_bool(True)
+        self.horseshoe = ct.c_bool(True)
         self.KJMeth = ct.c_bool(False)  # legacy var
         self.NewAIC = ct.c_bool(False)  # legacy var
         self.DelTime = ct.c_double(1.0)
         self.Rollup = ct.c_bool(False)
         self.NumCores = ct.c_uint(4)
         self.NumSurfaces = ct.c_uint(1)
+        self.dt = ct.c_double(0.01)
+        self.n_rollup = ct.c_uint(0)
+        self.rollup_tolerance = ct.c_double(1e-5)
+        self.rollup_aic_refresh = ct.c_uint(1)
 
 
 class FlightConditions(ct.Structure):
@@ -55,14 +77,19 @@ class FlightConditions(ct.Structure):
 t_2int = ct.POINTER(ct.c_int)*2
 
 
-def vlm_solver(ts_info, flightconditions_in):
+def vlm_solver(ts_info, flightconditions_in, options):
     run_VLM = UvlmLib.run_VLM
     run_VLM.restype = None
 
     vmopts = VMopts()
     vmopts.Steady = ct.c_bool(True)
-    vmopts.Mstar = ct.c_uint(1)
+    vmopts.Mstar = ct.c_uint(options['mstar'])
     vmopts.NumSurfaces = ct.c_uint(ts_info.n_surf)
+    vmopts.horseshoe = ct.c_bool(options['horseshoe'])
+    vmopts.dt = ct.c_double(options["rollup_dt"])
+    vmopts.n_rollup = ct.c_uint(options["n_rollup"])
+    vmopts.rollup_tolerance = ct.c_double(options["rollup_tolerance"])
+    vmopts.rollup_aic_refresh = ct.c_uint(options['rollup_aic_refresh'])
 
     flightconditions = FlightConditions(flightconditions_in)
 
