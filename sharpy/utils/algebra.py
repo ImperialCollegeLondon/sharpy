@@ -134,8 +134,14 @@ def rot_matrix_2d(angle):
 
 
 def angle_between_vectors(vec_a, vec_b):
-    return np.arctan2(np.linalg.norm(np.cross(vec_a, vec_b)), np.dot(vec_a, vec_b))
+    angle =  np.arctan2(np.linalg.norm(np.cross(vec_a, vec_b)), np.dot(vec_a, vec_b))
+    return angle
 
+def angle_between_vectors_sign(vec_a, vec_b, plane_normal=np.array([0, 0, 1])):
+    angle = np.arctan2(np.linalg.norm(np.cross(vec_a, vec_b)), np.dot(vec_a, vec_b))
+    if np.dot(plane_normal, np.cross(vec_a, vec_b)) < 0:
+        angle *= -1
+    return angle
 
 def angle_between_vector_and_plane(vector, plane_normal):
     angle = np.arcsin((np.linalg.norm(np.dot(vector, plane_normal)))/

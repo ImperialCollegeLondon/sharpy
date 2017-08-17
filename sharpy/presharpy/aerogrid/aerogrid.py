@@ -248,8 +248,11 @@ def generate_strip(node_info, airfoil_db, aligned_grid=True, inertial2aero=None,
 
     psi = node_info['beam_psi']
     Cab = algebra.crv2rot(psi)
-    axis = np.dot(Cab, strip_coordinates_b_frame[:, -1] - strip_coordinates_b_frame[:, 0])
-    angle = algebra.angle_between_vectors(axis, orientation_in)
+    if aligned_grid:
+        axis = np.dot(Cab, np.array([0, 1, 0]))
+        angle = algebra.angle_between_vectors_sign(axis, orientation_in)
+    else:
+        angle = 0
 
     # used to work except for sweep
     # delta = node_info['for_delta']
@@ -257,7 +260,8 @@ def generate_strip(node_info, airfoil_db, aligned_grid=True, inertial2aero=None,
     # Cab = algebra.crv2rot(psi)
     #
     # angle = algebra.angle_between_vectors(delta, orientation_in)
-    Cab = np.dot(Cab, algebra.rotation3d_z(-angle))
+    # Cab = np.dot(Cab, algebra.rotation3d_z(-angle))
+    Cab = np.dot(algebra.rotation3d_z(angle), Cab)
 
     #TODO delta z on definiton of elastic axis
     # twist rotation
