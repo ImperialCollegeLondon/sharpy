@@ -274,6 +274,20 @@ def crv2rot(psi):
 
     return rot_matrix
 
+def crv2tan(psi):
+    norm_psi = np.linalg.norm(psi)
+    psi_skew = skew(psi)
+
+    eps = 1e-5
+    if norm_psi < eps:
+        k1 = 1.0
+        k2 = 1.0/6.0
+    else:
+        k1 = np.sin(norm_psi*0.5)/(norm_psi*0.5)
+        k2 = (1.0 - np.sin(norm_psi)/norm_psi)/(norm_psi*norm_psi)
+
+    T = np.eye(3) - (0.5*k1*k1)*psi_skew + k2*psi_skew*psi_skew
+    return T
 
 def triad2crv_vec(v1, v2, v3):
     n_nodes, _ = v1.shape

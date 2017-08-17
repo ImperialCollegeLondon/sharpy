@@ -112,6 +112,16 @@ class BeamPlot(BaseSolver):
             local_x = np.zeros((num_nodes, 3))
             local_y = np.zeros((num_nodes, 3))
             local_z = np.zeros((num_nodes, 3))
+            output_loads = True
+            try:
+                self.data.beam.timestep_info[it].loads
+            except AttributeError:
+                output_loads = False
+
+            if output_loads:
+                gamma = np.zeros((num_elem, 3))
+                kappa = np.zeros((num_elem, 3))
+
             if self.settings['applied_forces']:
                 app_forces = np.zeros((num_nodes, 3))
 
@@ -154,11 +164,19 @@ class BeamPlot(BaseSolver):
             for i_elem in range(num_elem):
                 conn[i_elem, :] = self.data.beam.elements[i_elem].reordered_global_connectivities
                 elem_id[i_elem] = i_elem
+                if output_loads:
+                    gamma[i_elem, :] = self.data.beam.timestep_info[it].loads[i_elem, 0:3]
+                    kappa[i_elem, :] = self.data.beam.timestep_info[it].loads[i_elem, 3:6]
 
             ug = tvtk.UnstructuredGrid(points=coords)
             ug.set_cells(tvtk.Line().cell_type, conn)
             ug.cell_data.scalars = elem_id
             ug.cell_data.scalars.name = 'elem_id'
+            if output_loads:
+                ug.cell_data.add_array(gamma, 'vector')
+                ug.cell_data.get_array(1).name = 'gamma'
+                ug.cell_data.add_array(kappa, 'vector')
+                ug.cell_data.get_array(2).name = 'kappa'
             ug.point_data.scalars = node_id
             ug.point_data.scalars.name = 'node_id'
             point_vector_counter = 1

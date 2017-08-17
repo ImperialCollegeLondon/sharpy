@@ -90,6 +90,7 @@ def vlm_solver(ts_info, flightconditions_in, options):
     vmopts.n_rollup = ct.c_uint(options["n_rollup"])
     vmopts.rollup_tolerance = ct.c_double(options["rollup_tolerance"])
     vmopts.rollup_aic_refresh = ct.c_uint(options['rollup_aic_refresh'])
+    vmopts.NumCores = ct.c_uint(2)
 
     flightconditions = FlightConditions(flightconditions_in)
 

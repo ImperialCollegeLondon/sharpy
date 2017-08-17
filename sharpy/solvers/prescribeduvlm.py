@@ -12,14 +12,14 @@ import sharpy.aero.utils.mapping as mapping
 
 
 @solver
-class StaticUvlm(BaseSolver):
-    solver_id = 'StaticUvlm'
+class PrescribedUvlm(BaseSolver):
+    solver_id = 'PrescribedUvlm'
     solver_type = 'aero'
 
     def __init__(self):
         pass
 
-    def initialise(self, data, update_flightcon=True, quiet=False):
+    def initialise(self, data, quiet=False):
         self.ts = 0
         self.data = data
         self.settings = data.settings[self.solver_id]
