@@ -84,7 +84,7 @@ class AeroForcesSteadyCalculator(BaseSolver):
         n_surf = len(force)
         for i_surf in range(n_surf):
             if self.settings['beams'] is not []:
-                if i_surf not in self.settings:
+                if i_surf not in self.settings['beams']:
                     continue
             _, n_rows, n_cols = force[i_surf].shape
             for i_m in range(n_rows):

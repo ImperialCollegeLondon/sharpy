@@ -107,7 +107,6 @@ class AeroGrid(object):
                                                assume_sorted=True))
         self.generate_zeta(beam, aero_settings)
 
-
     def generate_zeta(self, beam, aero_settings):
         self.generate_mapping()
         nodes_in_surface = []
@@ -247,21 +246,17 @@ def generate_strip(node_info, airfoil_db, aligned_grid=True, inertial2aero=None,
     # chord
     strip_coordinates_b_frame *= node_info['chord']
 
-    delta = node_info['for_delta']
-    # v1, v2, v3 = node_info['elem'].get_triad()
-    # psi = algebra.triad2crv_vec(v1,
-    #                             v2,
-    #                             v3)
-    # psi = psi[node_info['i_local_node'], :]
     psi = node_info['beam_psi']
-    # Cab = algebra.crv2rot(psi).T
     Cab = algebra.crv2rot(psi)
+    axis = np.dot(Cab, strip_coordinates_b_frame[:, -1] - strip_coordinates_b_frame[:, 0])
+    angle = algebra.angle_between_vectors(axis, orientation_in)
 
-    # angle = algebra.angle_between_vectors(-delta, orientation_in)
-    angle = algebra.angle_between_vectors(delta, orientation_in)
-    # print('%3u, %4f\n' % (node_info['i_node'], angle))
-    # a = 2
-    # if (np.abs(angle) > 60*np.pi/180):
+    # used to work except for sweep
+    # delta = node_info['for_delta']
+    # psi = node_info['beam_psi']
+    # Cab = algebra.crv2rot(psi)
+    #
+    # angle = algebra.angle_between_vectors(delta, orientation_in)
     Cab = np.dot(Cab, algebra.rotation3d_z(-angle))
 
     #TODO delta z on definiton of elastic axis
