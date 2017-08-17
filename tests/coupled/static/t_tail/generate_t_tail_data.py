@@ -1,3 +1,4 @@
+#! /usr/bin/env python
 import h5py as h5
 import numpy as np
 import configparser
@@ -7,9 +8,9 @@ case_name = 't_tail'
 route = os.path.dirname(os.path.realpath(__file__)) + '/'
 
 # flight conditions
-u_inf = 25
+u_inf = 10
 rho = 0.08891
-alpha = 2
+alpha = 10
 beta = 0
 c_ref = 1
 b_ref = 16
@@ -18,7 +19,7 @@ dihedral = 0*np.pi/180.
 alpha_rad = alpha*np.pi/180
 
 # main geometry data
-main_span = 16
+main_span = 10
 main_chord = 1.0
 main_ea = 0.5
 main_sigma = 1
@@ -38,7 +39,7 @@ tail_airfoil_P = 5
 tail_airfoil_M = 5
 tail_twist = 0*np.pi/180
 
-fin_span = 2.5
+fin_span = 1.5
 fin_chord = 0.5
 fin_ea = 0.33
 fin_sigma = 1
@@ -52,10 +53,10 @@ momenty = 0
 momentx = 0
 
 # discretisation data
-num_elem_main = 5
-num_elem_tail = 3
-num_elem_fin = 3
-num_elem_fuselage = 10
+num_elem_main = 15
+num_elem_tail = 5
+num_elem_fin = 5
+num_elem_fuselage = 4
 
 
 num_node_elem = 3
@@ -72,9 +73,9 @@ num_node += (num_node_tail - 1)
 num_node += num_node_fin - 1
 nodes_distributed = num_node
 
-m_main = 4
-m_tail = 4
-m_fin = 4
+m_main = 10
+m_tail = 5
+m_fin = 5
 
 
 def clean_test_files():
@@ -160,8 +161,11 @@ def generate_fem_file():
     working_elem = 0
     working_node = 0
     beam_number[working_elem:working_elem + num_elem_main] = 0
-    y[working_node:working_node + num_node_main] = np.linspace(0.0, np.cos(dihedral)*main_span, num_node_main)
-    z[working_node:working_node + num_node_main] = np.linspace(0.0, np.sin(dihedral)*main_span, num_node_main)
+    domain = np.linspace(0.5, 1, num_node_main)
+    y[working_node:working_node + num_node_main] = np.cos(dihedral)*main_span*(-np.cos(domain*np.pi))
+    z[working_node:working_node + num_node_main] = np.sin(dihedral)*main_span*(-np.cos(domain*np.pi))
+    # y[working_node:working_node + num_node_main] = np.linspace(0.0, np.cos(dihedral)*main_span, num_node_main)
+    # z[working_node:working_node + num_node_main] = np.linspace(0.0, np.sin(dihedral)*main_span, num_node_main)
     for ielem in range(num_elem_main):
         for inode in range(num_node_elem):
             frame_of_reference_delta[working_elem + ielem, inode, :] = [-1, 0, 0]
@@ -181,10 +185,13 @@ def generate_fem_file():
     # left wing (beam 1) --------------------------------------------------------------
     beam_number[working_elem:working_elem + num_elem_main] = 1
     # tempy = np.linspace(0.0, -main_span, num_node_main)
-    tempy = np.linspace(-np.cos(dihedral)*main_span, 0.0, num_node_main)
-    tempz = np.linspace(np.sin(dihedral)*main_span, 0.0, num_node_main)
-    y[working_node:working_node + num_node_main - 1] = tempy[0:-1]
-    z[working_node:working_node + num_node_main - 1] = tempz[0:-1]
+    domain = np.linspace(1, 0.5, num_node_main)
+    y[working_node:working_node + num_node_main - 1] = -np.cos(dihedral)*main_span*(-np.cos(domain*np.pi))[0:-1]
+    z[working_node:working_node + num_node_main - 1] = np.sin(dihedral)*main_span*(-np.cos(domain*np.pi))[0:-1]
+    # tempy = np.linspace(-np.cos(dihedral)*main_span, 0.0, num_node_main)
+    # tempz = np.linspace(np.sin(dihedral)*main_span, 0.0, num_node_main)
+    # y[working_node:working_node + num_node_main - 1] = tempy[0:-1]
+    # z[working_node:working_node + num_node_main - 1] = tempz[0:-1]
     for ielem in range(num_elem_main):
         for inode in range(num_node_elem):
             # frame_of_reference_delta[working_elem + ielem, inode, :] = [1, 0, 0]
@@ -251,8 +258,10 @@ def generate_fem_file():
 
     # right tail (beam 3) --------------------------------------------------------------
     beam_number[working_elem:working_elem + num_elem_tail] = 3
-    tempy = np.linspace(0.0, tail_span, num_node_tail)
-    y[working_node:working_node + num_node_tail - 1] = tempy[1:]
+    domain = np.linspace(0.5, 1, num_node_tail)
+    y[working_node:working_node + num_node_tail - 1] = tail_span*(-np.cos(domain*np.pi))[1:]
+    # tempy = np.linspace(0.0, tail_span, num_node_tail)
+    # y[working_node:working_node + num_node_tail - 1] = tempy[1:]
     x[working_node:working_node + num_node_tail - 1] = x[end_of_fin_node]
     z[working_node:working_node + num_node_tail - 1] = z[end_of_fin_node]
     for ielem in range(num_elem_tail):
@@ -272,8 +281,10 @@ def generate_fem_file():
 
     # left tail (beam 4) --------------------------------------------------------------
     beam_number[working_elem:working_elem + num_elem_tail] = 4
-    tempy = np.linspace(-tail_span, 0, num_node_tail)
-    y[working_node:working_node + num_node_tail - 1] = tempy[:-1]
+    domain = np.linspace(1, 0.5, num_node_tail)
+    y[working_node:working_node + num_node_tail - 1] = -tail_span*(-np.cos(domain*np.pi))[0:-1]
+    # tempy = np.linspace(-tail_span, 0, num_node_tail)
+    # y[working_node:working_node + num_node_tail - 1] = tempy[:-1]
     x[working_node:working_node + num_node_tail - 1] = x[end_of_fin_node]
     z[working_node:working_node + num_node_tail - 1] = z[end_of_fin_node]
     for ielem in range(num_elem_tail):
@@ -461,9 +472,9 @@ def generate_solver_file():
     config = configparser.ConfigParser()
     config['SHARPy'] = {'case': case_name,
                         'route': route,
-                        'flow': 'StaticCoupled, BeamPlot, AeroGridPlot, AeroForcesSteadyCalculator',
+                        # 'flow': 'StaticCoupled, BeamPlot, AeroGridPlot, AeroForcesSteadyCalculator',
                         # 'flow': 'NonLinearStatic, BeamPlot',
-                        # 'flow': 'StaticUvlm, AeroForcesSteadyCalculator, BeamPlot, AeroGridPlot',
+                        'flow': 'StaticUvlm, AeroForcesSteadyCalculator, BeamPlot, AeroGridPlot',
                         'plot': 'on'}
     config['StaticCoupled'] = {'print_info': 'on',
                                'structural_solver': 'NonLinearStatic',
@@ -474,10 +485,16 @@ def generate_solver_file():
                                'relaxation_factor': 0.0,
                                'residual_plot': 'off'}
     config['StaticUvlm'] = {'print_info': 'on',
-                            'Mstar': 1,
-                            'rollup': 'off',
+                            'M_distribution': 'uniform',
+                            'Mstar': 200,
+                            'rollup': 'on',
                             'aligned_grid': 'on',
-                            'prescribed_wake': 'on'}
+                            'prescribed_wake': 'on',
+                            'horseshoe': 'off',
+                            'rollup_dt': main_chord/m_main/u_inf,
+                            'n_rollup': 400,
+                            'rollup_tolerance': 5e-5,
+                            'rollup_aic_refresh': 1}
     config['NonLinearStatic'] = {'print_info': 'off',
                                  'out_b_frame': 'off',
                                  'out_a_frame': 'off',

@@ -230,7 +230,7 @@ def generate_solver_file(route, case_name):
     config = configparser.ConfigParser()
     config['SHARPy'] = {'case': 'geradin_cardona',
                         'route': './tests/beam/static/geradin_cardona',
-                        'flow': 'NonLinearStatic, BeamPlot',
+                        'flow': 'NonLinearStatic, BeamLoadsCalculator, BeamPlot',
                         'plot': 'on'}
     config['NonLinearStatic'] = {'print_info': 'on',
                                  'out_b_frame': 'off',
@@ -250,6 +250,8 @@ def generate_solver_file(route, case_name):
                           'print_pos_def': 'on',
                           'name_prefix': '_2_'}
 
+    config['BeamLoadsCalculator'] = {}
+
     with open(file_name, 'w') as configfile:
         config.write(configfile)
 
@@ -257,5 +259,5 @@ def generate_solver_file(route, case_name):
 if __name__ == '__main__':
     import os
     dir_path = os.path.dirname(os.path.realpath(__file__))
-    generate_files(dir_path + '/', 'geradin_cardona', 2, 3)
+    generate_files(dir_path + '/', 'geradin_cardona', 50, 3)
     print('The test case has been successfully generated!!!')

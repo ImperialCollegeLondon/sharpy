@@ -9,7 +9,7 @@ route = os.path.dirname(os.path.realpath(__file__)) + '/'
 # flight conditions
 u_inf = 25
 rho = 0.08891
-alpha = 4
+alpha = 2
 beta = 0
 c_ref = 1
 b_ref = 16
@@ -52,7 +52,7 @@ momenty = 0
 momentx = 0
 
 # discretisation data
-num_elem_main = 40
+num_elem_main = 20
 num_elem_tail = 5
 num_elem_fin = 4
 num_elem_fuselage = 10
@@ -72,7 +72,7 @@ num_node = num_node_main + (num_node_main - 1)
 # num_node += num_node_fin - 1
 # nodes_distributed = num_node
 
-m_main = 20
+m_main = 10
 m_tail = 8
 m_fin = 5
 
@@ -456,7 +456,7 @@ def generate_solver_file():
     config = configparser.ConfigParser()
     config['SHARPy'] = {'case': case_name,
                         'route': route,
-                        'flow': 'StaticCoupled, BeamPlot, AeroGridPlot, AeroForcesSteadyCalculator',
+                        'flow': 'StaticCoupled, BeamLoadsCalculator, BeamPlot, AeroGridPlot, AeroForcesSteadyCalculator',
                         # 'flow': 'NonLinearStatic, BeamPlot',
                         # 'flow': 'StaticUvlm, AeroForcesSteadyCalculator, BeamPlot, AeroGridPlot',
                         'plot': 'on'}
@@ -464,24 +464,25 @@ def generate_solver_file():
                                'structural_solver': 'NonLinearStatic',
                                'aero_solver': 'StaticUvlm',
                                'max_iter': 90,
-                               'n_load_steps': 15,
+                               'n_load_steps': 5,
                                'tolerance': 1e-5,
-                               'relaxation_factor': 0.5,
+                               'relaxation_factor': 0.0,
                                'residual_plot': 'off'}
     config['StaticUvlm'] = {'print_info': 'on',
                             'Mstar': 1,
                             'rollup': 'off',
                             'aligned_grid': 'on',
                             'prescribed_wake': 'on',
-                            'num_cores': 4}
-    config['NonLinearStatic'] = {'print_info': 'off',
+                            'num_cores': 4,
+                            'horseshoe': 'on'}
+    config['NonLinearStatic'] = {'print_info': 'on',
                                  'out_b_frame': 'off',
                                  'out_a_frame': 'off',
                                  'elem_proj': 0,
                                  'max_iterations': 99,
-                                 'num_load_steps': 55,
+                                 'num_load_steps': 10,
                                  'delta_curved': 1e-5,
-                                 'min_delta': 1e-5,
+                                 'min_delta': 1e-4,
                                  'newmark_damp': 0.000,
                                  'gravity_on': 'on',
                                  'gravity': 9.754,
@@ -498,6 +499,7 @@ def generate_solver_file():
                           'name_prefix': ''}
     config['AeroGridPlot'] = {'route': './output'}
     config['AeroForcesSteadyCalculator'] = {'beams': '0, 1'}
+    config['BeamLoadsCalculator'] = {}
 
     with open(file_name, 'w') as configfile:
         config.write(configfile)
