@@ -50,6 +50,17 @@ class BeamPlot(BaseSolver):
                 # write file
                 np.savetxt(it_filename, self.data.beam.timestep_info[it].pos_def)
 
+                it_filename = (self.filename +
+                               '%06u' % it + '_crv_' +
+                               '.csv')
+                crv_matrix = np.zeros((self.data.beam.num_node, 3))
+                for i_node in range(self.data.beam.num_node):
+                    i_elem, i_local_node = self.data.beam.node_master_elem[i_node, :]
+                    crv_matrix[i_node, :] = self.data.beam.timestep_info[it].psi_def[i_elem, i_local_node, :]
+                # write file
+                np.savetxt(it_filename, crv_matrix)
+
+
     def print_info(self):
         # find first bc == -1
         inode_tip = None
