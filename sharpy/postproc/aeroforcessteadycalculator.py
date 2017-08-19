@@ -92,11 +92,11 @@ class AeroForcesSteadyCalculator(BaseSolver):
                     total_force += np.dot(rot.T, force[i_surf][0:3, i_m, i_n])
 
         lift = total_force[2]
-        cout.cout_wrap('Lift = %f6 (N)' % lift)
+        cout.cout_wrap('Lift = %f (N)' % lift)
         drag = total_force[0]
-        cout.cout_wrap('Drag= %f6 (N)' % drag)
+        cout.cout_wrap('Drag= %f (N)' % drag)
         side_force = total_force[1]
-        cout.cout_wrap('Side force = %f6 (N)' % side_force)
+        cout.cout_wrap('Side force = %f (N)' % side_force)
 
         # CL
         # cl = total_force[2]/dynamic_pressure
