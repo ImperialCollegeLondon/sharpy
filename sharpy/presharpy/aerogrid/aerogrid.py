@@ -225,11 +225,14 @@ class AeroGrid(object):
                     self.timestep_info[ts].zeta_star[i_surf][:, i_M, i_N] = base_pos + i_M*delta
 
 
-def generate_strip(node_info, airfoil_db, aligned_grid=True, inertial2aero=None, orientation_in=np.array([1, 0, 0])):
+
+def generate_strip(node_info, airfoil_db, aligned_grid=True, inertial2aero=np.eye(3), orientation_in=np.array([1, 0, 0])):
     strip_coordinates_a_frame = np.zeros((3, node_info['M'] + 1), dtype=ct.c_double)
-    strip_coordinates_b_frame = np.zeros_like(strip_coordinates_a_frame, dtype=ct.c_double)
+    strip_coordinates_b_frame = np.zeros((3, node_info['M'] + 1), dtype=ct.c_double)
 
     # airfoil coordinates
+    # we are going to store everything in the x-z plane of the b
+    # FoR, so that the transformation Cab rotates everything in place.
     if node_info['M_distribution'] == 'uniform':
         strip_coordinates_b_frame[1, :] = np.linspace(0.0, 1.0, node_info['M'] + 1)
     elif node_info['M_distribution'] == '1-cos':
@@ -242,52 +245,110 @@ def generate_strip(node_info, airfoil_db, aligned_grid=True, inertial2aero=None,
                                             strip_coordinates_b_frame[1, :])
 
     # elastic axis correction
-    strip_coordinates_b_frame[1, :] -= node_info['eaxis']
-    # chord
+    for i_M in range(node_info['M'] + 1):
+        strip_coordinates_b_frame[1, i_M] -= node_info['eaxis']
+
+    # chord scaling
     strip_coordinates_b_frame *= node_info['chord']
 
-    psi = node_info['beam_psi']
-    Cab = algebra.crv2rot(psi)
-    if aligned_grid:
-        axis = np.dot(Cab, np.array([0, 1, 0]))
-        angle = algebra.angle_between_vectors_sign(axis, orientation_in)
+    # twist transformation (rotation around y_b axis)
+    if np.abs(node_info['twist']) > 1e-6:
+        Ctwist = algebra.rotation3d_y(node_info['twist'])
     else:
-        angle = 0
-    # Cab = np.dot(algebra.rotation3d_z(angle), Cab)
+        Ctwist = np.eye(3)
 
-    # used to work except for sweep
-    delta = node_info['for_delta']
-    psi = node_info['beam_psi']
-    Cab = algebra.crv2rot(psi)
+    # Cab transformation
+    Cab = algebra.crv2rot(node_info['beam_psi'])
 
-    angle = algebra.angle_between_vectors(delta, orientation_in)
-    Cab = np.dot(Cab, algebra.rotation3d_z(-angle))
+    # sweep angle correction
+    # angle between orientation_in and chord line
+    chord_line_b_frame = strip_coordinates_b_frame[:, -1] - strip_coordinates_b_frame[:, 0]
+    chord_line_a_frame = np.dot(Cab, chord_line_b_frame)
+    sweep_angle = algebra.angle_between_vectors_sign(orientation_in, chord_line_a_frame, np.array([0, 0, 1]))
+    # rotation matrix
+    Csweep = algebra.rotation3d_z(-sweep_angle)
 
-    #TODO delta z on definiton of elastic axis
-    # twist rotation
-    if not node_info['twist'] == 0:
-        twist_mat = algebra.rotation3d_x(node_info['twist'])
-        for i_m in range(node_info['M'] + 1):
-            strip_coordinates_b_frame[:, i_m] = np.dot(twist_mat,
-                                                       strip_coordinates_b_frame[:, i_m])
+    # transformation from beam to aero
+    for i_M in range(node_info['M'] + 1):
+        strip_coordinates_a_frame[:, i_M] = np.dot(Cab, np.dot(Csweep, np.dot(Ctwist, strip_coordinates_b_frame[:, i_M])))
 
-    # CRV to rotation matrix
-    for i_m in range(node_info['M'] + 1):
-        strip_coordinates_a_frame[:, i_m] = np.dot(Cab,
-                                                   strip_coordinates_b_frame[:, i_m])
+    # add node coords
+    for i_M in range(node_info['M'] + 1):
+        strip_coordinates_a_frame[:, i_M] += node_info['beam_coord']
 
-    # node coordinates addition
-    for i_m in range(node_info['M'] + 1):
-        strip_coordinates_a_frame[:, i_m] += node_info['beam_coord']
-
-    # inertial2aero application
-    # strip_coordinates_a_frame is now in inertial FoR
-    if inertial2aero is not None:
-        for i_m in range(node_info['M'] + 1):
-            strip_coordinates_a_frame[:, i_m] = np.dot(inertial2aero.T,
-                                                       strip_coordinates_a_frame[:, i_m])
+    # apply rotation of a to G
+    for i_M in range(node_info['M'] + 1):
+        strip_coordinates_a_frame[:, i_M] = np.dot(inertial2aero.transpose(), strip_coordinates_a_frame[:, i_M])
 
     return strip_coordinates_a_frame
+
+
+
+
+
+# def generate_strip(node_info, airfoil_db, aligned_grid=True, inertial2aero=None, orientation_in=np.array([1, 0, 0])):
+#     strip_coordinates_a_frame = np.zeros((3, node_info['M'] + 1), dtype=ct.c_double)
+#     strip_coordinates_b_frame = np.zeros_like(strip_coordinates_a_frame, dtype=ct.c_double)
+#
+#     # airfoil coordinates
+#     if node_info['M_distribution'] == 'uniform':
+#         strip_coordinates_b_frame[1, :] = np.linspace(0.0, 1.0, node_info['M'] + 1)
+#     elif node_info['M_distribution'] == '1-cos':
+#         domain = np.linspace(0, 1.0, node_info['M'] + 1)
+#         strip_coordinates_b_frame[1, :] = 0.5*(1.0 - np.cos(domain*np.pi))
+#     else:
+#         raise NotImplemented('M_distribution is ' + node_info['M_distribution'] +
+#                              ' and it is not yet supported')
+#     strip_coordinates_b_frame[2, :] = airfoil_db[node_info['airfoil']](
+#                                             strip_coordinates_b_frame[1, :])
+#
+#     # elastic axis correction
+#     strip_coordinates_b_frame[1, :] -= node_info['eaxis']
+#     # chord
+#     strip_coordinates_b_frame *= node_info['chord']
+#
+#     psi = node_info['beam_psi']
+#     Cab = algebra.crv2rot(psi)
+#     if aligned_grid:
+#         axis = np.dot(Cab, np.array([0, 1, 0]))
+#         angle = algebra.angle_between_vectors_sign(axis, orientation_in)
+#     else:
+#         angle = 0
+#     # Cab = np.dot(algebra.rotation3d_z(angle), Cab)
+#
+#     # used to work except for sweep
+#     delta = node_info['for_delta']
+#     psi = node_info['beam_psi']
+#     Cab = algebra.crv2rot(psi)
+#
+#     angle = algebra.angle_between_vectors(delta, orientation_in)
+#     Cab = np.dot(Cab, algebra.rotation3d_z(-angle))
+#
+#     #TODO delta z on definiton of elastic axis
+#     # twist rotation
+#     if not node_info['twist'] == 0:
+#         twist_mat = algebra.rotation3d_x(node_info['twist'])
+#         for i_m in range(node_info['M'] + 1):
+#             strip_coordinates_b_frame[:, i_m] = np.dot(twist_mat,
+#                                                        strip_coordinates_b_frame[:, i_m])
+#
+#     # CRV to rotation matrix
+#     for i_m in range(node_info['M'] + 1):
+#         strip_coordinates_a_frame[:, i_m] = np.dot(Cab,
+#                                                    strip_coordinates_b_frame[:, i_m])
+#
+#     # node coordinates addition
+#     for i_m in range(node_info['M'] + 1):
+#         strip_coordinates_a_frame[:, i_m] += node_info['beam_coord']
+#
+#     # inertial2aero application
+#     # strip_coordinates_a_frame is now in inertial FoR
+#     if inertial2aero is not None:
+#         for i_m in range(node_info['M'] + 1):
+#             strip_coordinates_a_frame[:, i_m] = np.dot(inertial2aero.T,
+#                                                        strip_coordinates_a_frame[:, i_m])
+#
+#     return strip_coordinates_a_frame
 
 
 
