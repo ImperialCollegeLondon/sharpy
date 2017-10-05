@@ -86,11 +86,9 @@ class AeroGrid(object):
             cout.cout_wrap('  In total: %u bound panels' % sum(self.aero_dimensions[:, 0]*
                                                                self.aero_dimensions[:, 1]), 1)
 
+        # allocate containers for solution
         self.timestep_info = []
-        self.timestep_info.append(AeroTimeStepInfo(self.aero_dimensions,
-                                                   self.aero_dimensions_star,
-                                                   self.ts,
-                                                   self.t))
+        self.add_timestep()
 
         # airfoils db
         self.airfoil_db = {}
@@ -106,6 +104,12 @@ class AeroGrid(object):
                                                copy=False,
                                                assume_sorted=True))
         self.generate_zeta(beam, aero_settings)
+
+    def add_timestep(self):
+        self.timestep_info.append(AeroTimeStepInfo(self.aero_dimensions,
+                                                   self.aero_dimensions_star))
+        if len(self.timestep_info) > 1:
+            self.timestep_info[-1] = self.timestep_info[-2].copy()
 
     def generate_zeta(self, beam, aero_settings):
         self.generate_mapping()

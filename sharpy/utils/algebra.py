@@ -137,11 +137,13 @@ def angle_between_vectors(vec_a, vec_b):
     angle =  np.arctan2(np.linalg.norm(np.cross(vec_a, vec_b)), np.dot(vec_a, vec_b))
     return angle
 
+
 def angle_between_vectors_sign(vec_a, vec_b, plane_normal=np.array([0, 0, 1])):
     angle = np.arctan2(np.linalg.norm(np.cross(vec_a, vec_b)), np.dot(vec_a, vec_b))
     if np.dot(plane_normal, np.cross(vec_a, vec_b)) < 0:
         angle *= -1
     return angle
+
 
 def angle_between_vector_and_plane(vector, plane_normal):
     angle = np.arcsin((np.linalg.norm(np.dot(vector, plane_normal)))/
@@ -280,6 +282,7 @@ def crv2rot(psi):
 
     return rot_matrix
 
+
 def crv2tan(psi):
     norm_psi = np.linalg.norm(psi)
     psi_skew = skew(psi)
@@ -294,6 +297,7 @@ def crv2tan(psi):
 
     T = np.eye(3) - (0.5*k1*k1)*psi_skew + k2*psi_skew*psi_skew
     return T
+
 
 def triad2crv_vec(v1, v2, v3):
     n_nodes, _ = v1.shape
@@ -386,6 +390,7 @@ def rotation3d_z(angle):
     mat[2, :] = [0.0, 0.0, 1.0]
     return mat
 
+
 def rotate_crv(crv_in, axis, angle):
     crv = np.zeros_like(crv_in)
     C = crv2rot(crv_in).T
@@ -393,6 +398,14 @@ def rotate_crv(crv_in, axis, angle):
     C = np.dot(C, rot)
     crv = rot2crv(C)
     return crv
+
+
+def euler2rot(euler):
+    rot = rotation3d_z(euler[2])
+    rot = np.dot(rotation3d_y(euler[1]), rot)
+    rot = np.dot(rotation3d_x(euler[0]), rot)
+    return rot
+
 
 if __name__ == '__main__':
     t = np.array([0, 1, 0])

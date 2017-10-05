@@ -57,7 +57,7 @@ class PreSharpy(object):
             except KeyError:
                 cout.cout_wrap('***************************************************************', 3)
                 cout.cout_wrap('Please check that the solver ' + solver_name +
-                      ' is really implemented', 3)
+                               ' is really implemented', 3)
                 exit(1)
 
         if self.only_structural:

@@ -11,6 +11,7 @@ from sharpy.presharpy.presharpy import PreSharpy
 # Loading solvers and postprocessors
 import sharpy.solvers
 import sharpy.postproc
+import sharpy.generators
 # ------------
 
 # timing

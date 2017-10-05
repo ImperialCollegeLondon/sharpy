@@ -19,9 +19,7 @@ class Beam(object):
         self.t = 0.0
         self.it = 0
         self.timestep_info = []
-        self.timestep_info.append(StructTimeStepInfo(self.num_node,
-                                                     self.num_elem,
-                                                     self.num_node_elem))
+        self.add_timestep(with_rb=True)
 
         self.timestep_info[self.it].pos_def[:] = fem_dictionary['coordinates'][:]
         self.pos_ini = fem_dictionary['coordinates'].astype(dtype=float, order='F')
@@ -119,6 +117,14 @@ class Beam(object):
         # unsteady part
         if dyn_dictionary is not None:
             self.load_unsteady_data(dyn_dictionary)
+
+    def add_timestep(self, with_rb=False):
+        self.timestep_info.append(StructTimeStepInfo(self.num_node,
+                                                     self.num_elem,
+                                                     self.num_node_elem,
+                                                     rb=with_rb))
+        if len(self.timestep_info) > 1:
+            self.timestep_info[-1] = self.timestep_info[-2].copy()
 
     def update_forces(self, forces):
         self.app_forces = np.asfortranarray(self.initial_app_forces + forces)

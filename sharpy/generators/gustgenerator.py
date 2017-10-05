@@ -10,7 +10,7 @@ import sharpy.presharpy.utils.settings as settings
 @solver
 class GustGenerator(BaseSolver):
     solver_id = 'GustGenerator'
-    solver_type = 'general'
+    solver_type = 'generator'
 
     def __init__(self):
         self.implemented_shapes = []

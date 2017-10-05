@@ -7,15 +7,20 @@ case_name = 'coupled_configuration'
 route = os.path.dirname(os.path.realpath(__file__)) + '/'
 
 # flight conditions
-u_inf = 25
+u_inf = 30
 rho = 0.08891
-alpha = 2
+alpha = 0
 beta = 0
 c_ref = 1
 b_ref = 16
 dihedral = 0*np.pi/180.
 
 alpha_rad = alpha*np.pi/180
+
+n_time_steps = 300
+dt = 0.01
+A = 5
+period = 2
 
 # main geometry data
 main_span = 16
@@ -52,7 +57,7 @@ momenty = 0
 momentx = 0
 
 # discretisation data
-num_elem_main = 20
+num_elem_main = 10
 num_elem_tail = 5
 num_elem_fin = 4
 num_elem_fuselage = 10
@@ -72,7 +77,7 @@ num_node = num_node_main + (num_node_main - 1)
 # num_node += num_node_fin - 1
 # nodes_distributed = num_node
 
-m_main = 10
+m_main = 5
 m_tail = 8
 m_fin = 5
 
@@ -81,6 +86,10 @@ def clean_test_files():
     fem_file_name = route + '/' + case_name + '.fem.h5'
     if os.path.isfile(fem_file_name):
         os.remove(fem_file_name)
+
+    dyn_file_name = route + '/' + case_name + '.dyn.h5'
+    if os.path.isfile(dyn_file_name):
+        os.remove(dyn_file_name)
 
     aero_file_name = route + '/' + case_name + '.aero.h5'
     if os.path.isfile(aero_file_name):
@@ -330,12 +339,29 @@ def generate_fem_file():
         #     'orientation', data=inertial2aero)
 
 
+def generate_dyn_file():
+    rbm_pos = np.zeros((n_time_steps, 6))
+    rbm_vel = np.zeros_like(rbm_pos)
+
+    for it in range(n_time_steps):
+        rbm_pos[it, 2] = A*np.sin(2*np.pi/period * it*dt)
+        rbm_vel[it, 2] = 2*np.pi/period*A*np.cos(2*np.pi*it*dt/period)
+
+    with h5.File(route + '/' + case_name + '.dyn.h5', 'a') as h5file:
+        rbm_pos_handle = h5file.create_dataset(
+            'rbm_pos', data=rbm_pos)
+        rbm_vel_handle = h5file.create_dataset(
+            'rbm_vel', data=rbm_vel)
+        n_tsteps_handle = h5file.create_dataset(
+            'num_steps', data=n_time_steps)
+
+
 def generate_aero_file():
     global x, y, z
     airfoil_distribution = np.zeros((num_node,), dtype=int)
     surface_distribution = np.zeros((num_elem,), dtype=int) - 1
     surface_m = np.zeros((n_surfaces, ), dtype=int)
-    m_distribution = '1-cos'
+    m_distribution = 'uniform'
     aero_node = np.zeros((num_node,), dtype=bool)
     twist = np.zeros((num_node,))
     chord = np.zeros((num_node,))
@@ -456,9 +482,10 @@ def generate_solver_file():
     config = configparser.ConfigParser()
     config['SHARPy'] = {'case': case_name,
                         'route': route,
-                        'flow': 'StaticCoupled, BeamLoadsCalculator, BeamPlot, AeroGridPlot, AeroForcesSteadyCalculator',
+                        # 'flow': 'StaticCoupled, BeamLoadsCalculator, BeamPlot, AeroGridPlot, AeroForcesSteadyCalculator',
                         # 'flow': 'NonLinearStatic, BeamPlot',
                         # 'flow': 'StaticUvlm, AeroForcesSteadyCalculator, BeamPlot, AeroGridPlot',
+                        'flow': 'PrescribedUvlm, AeroForcesSteadyCalculator, BeamPlot, AeroGridPlot',
                         'plot': 'on'}
     config['StaticCoupled'] = {'print_info': 'on',
                                'structural_solver': 'NonLinearStatic',
@@ -469,12 +496,26 @@ def generate_solver_file():
                                'relaxation_factor': 0.0,
                                'residual_plot': 'off'}
     config['StaticUvlm'] = {'print_info': 'on',
-                            'Mstar': 1,
+                            'Mstar': 17,
                             'rollup': 'off',
                             'aligned_grid': 'on',
                             'prescribed_wake': 'on',
                             'num_cores': 4,
-                            'horseshoe': 'on'}
+                            'horseshoe': 'off'}
+    config['PrescribedUvlm'] = {'print_info': 'off',
+                                'Mstar': 30,
+                                'aligned_grid': 'on',
+                                'num_cores': 4,
+                                'steady_n_rollup': 4,
+                                'steady_rollup_dt': main_chord/m_main/u_inf,
+                                'steady_rollup_aic_refresh': 1,
+                                'steady_rollup_tolerance': 1e-5,
+                                'convection_scheme': 3,
+                                'n_time_steps': n_time_steps,
+                                'iterative_solver': 'on',
+                                'iterative_tol': 1e-3,
+                                'iterative_precond': 'off'}
+
     config['NonLinearStatic'] = {'print_info': 'on',
                                  'out_b_frame': 'off',
                                  'out_a_frame': 'off',
@@ -497,7 +538,8 @@ def generate_solver_file():
                           'applied_forces': 'on',
                           'print_pos_def': 'on',
                           'name_prefix': ''}
-    config['AeroGridPlot'] = {'route': './output'}
+    config['AeroGridPlot'] = {'route': './output',
+                              'include_rbm': 'on'}
     config['AeroForcesSteadyCalculator'] = {'beams': '0, 1'}
     config['BeamLoadsCalculator'] = {}
 
@@ -522,6 +564,7 @@ def generate_flightcon_file():
 if __name__ == '__main__':
     clean_test_files()
     generate_fem_file()
+    generate_dyn_file()
     generate_solver_file()
     generate_aero_file()
     generate_flightcon_file()
