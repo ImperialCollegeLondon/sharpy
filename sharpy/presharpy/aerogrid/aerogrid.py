@@ -255,9 +255,9 @@ def generate_strip(node_info, airfoil_db, aligned_grid=True, inertial2aero=np.ey
     # chord scaling
     strip_coordinates_b_frame *= node_info['chord']
 
-    # twist transformation (rotation around y_b axis)
+    # twist transformation (rotation around x_b axis)
     if np.abs(node_info['twist']) > 1e-6:
-        Ctwist = algebra.rotation3d_y(node_info['twist'])
+        Ctwist = algebra.rotation3d_x(node_info['twist'])
     else:
         Ctwist = np.eye(3)
 
