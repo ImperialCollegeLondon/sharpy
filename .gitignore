@@ -91,3 +91,6 @@ ENV/
 *.swp
 *.txt
 *.h5
+
+# project dependant stuff
+lib/*
