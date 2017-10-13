@@ -15,12 +15,12 @@ UPDATE: modified case, with gravity loads and
 different loads. Still very easy to replicate
 Simo if necessary"""
 
-dt = 0.001
+dt = 0.01
 simulation_time = 1
 num_steps = int(simulation_time/dt)
 route = './'
 case_name = 'rbdynamic2d'
-num_elem = 40
+num_elem = 30
 num_node_elem = 3
 
 # dont touch this
@@ -84,14 +84,15 @@ def generate_dyn_file():
         angle = 0*np.arctan(8.0/6.0)
         dynamic_forces = np.zeros((num_node, 6))
         dynamic_forces[0, 1] = 100
-        dynamic_forces[0, 5] = 100
+        # dynamic_forces[0, 5] = 100
         # dynamic_forces[0, 4] = 100
         # dynamic_forces[-1, 1] = -10
         # dynamic_forces[-1, 4] = -10
         force_time = np.zeros((num_steps, ))
-        i_top = int(0.1/dt)
-        force_time[0:i_top] = np.linspace(0, 1, i_top)
-        force_time[i_top:2*i_top] = np.linspace(1, 0, i_top)
+        force_time[1] = 1
+        # i_top = int(0.1/dt)
+        # force_time[0:i_top] = np.linspace(0, 1, i_top)
+        # force_time[i_top:2*i_top] = np.linspace(1, 0, i_top)
 
     with h5.File(route + '/' + case_name + '.dyn.h5', 'a') as h5file:
         if with_dynamic_forces:
@@ -122,10 +123,12 @@ def generate_fem_file():
 
     structural_twist = np.zeros_like(x)
 
-    frame_of_reference_delta = np.zeros((num_node, 3))
-    for inode in range(num_node):
-        # frame_of_reference_delta[inode, :] = [0, 1, 0]
-        frame_of_reference_delta[inode, :] = [0, 1, 0]
+    frame_of_reference_delta = np.zeros((num_elem, num_node_elem, 3))
+    for ielem in range(num_elem):
+        for inode in range(num_node_elem):
+            # frame_of_reference_delta[inode, :] = [0, 1, 0]
+            # frame_of_reference_delta[inode, :] = [0, 1, 0]
+            frame_of_reference_delta[ielem, inode, :] = [0, 1, 0]
 
     scale = 1
 
@@ -185,7 +188,7 @@ def generate_fem_file():
     n_lumped_mass = 1
     lumped_mass_nodes = np.array([num_node - 1], dtype=int)
     lumped_mass = np.zeros((n_lumped_mass, ))
-    lumped_mass[0] = 100
+    lumped_mass[0] = 00
     lumped_mass_inertia = np.zeros((n_lumped_mass, 3, 3))
     lumped_mass_position = np.zeros((n_lumped_mass, 3))
     lumped_mass_position[0, 1] = 1
@@ -242,7 +245,7 @@ def generate_solver_file():
     config = configparser.ConfigParser()
     config['SHARPy'] = {'case': case_name,
                         'route': './tests/beam/dynamic/rbdynamic2d',
-                        'flow': 'NonLinearDynamic',
+                        'flow': 'NonLinearDynamic, BeamPlot',
                         'plot': 'on'}
     config['NonLinearDynamic'] = {'print_info': 'on',
                                   'out_b_frame': 'off',
@@ -257,12 +260,14 @@ def generate_solver_file():
                                   'dt': dt,
                                   'num_steps': num_steps,
                                   'prescribed_motion': 'off',
-                                  'gravity_on': 'on',
+                                  'gravity_on': 'off',
                                   'gravity': 9.81,
                                   'gravity_dir': '0, 0, 1'}
+    config['BeamPlot'] = {'applied_forces': 'on'}
 
     with open(file_name, 'w') as configfile:
         config.write(configfile)
+
 
 if __name__ == '__main__':
     generate_files()
