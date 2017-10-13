@@ -88,8 +88,13 @@ def get_polyfit(in_coord, ordering):
 
 
 def unit_vector(vector):
+    """
+    Tested
+    :param vector:
+    :return:
+    """
     if np.linalg.norm(vector) < 1e-6:
-        return np.zeros((3,))
+        return np.zeros_like(vector)
     return vector/np.linalg.norm(vector)
 
 
@@ -103,7 +108,7 @@ def rotation_matrix_around_axis(axis, angle):
 
 def skew(vector):
     if not vector.size == 3:
-        raise Exception('The input vector is not 3D')
+        raise ValueError('The input vector is not 3D')
 
     matrix = np.zeros((3, 3))
     matrix[1, 2] = -vector[0]
@@ -336,18 +341,18 @@ def quat2rot(q1):
 
     rot_mat = np.zeros((3, 3), order='F')
 
-    rot_mat[0,0] = q[0]**2 + q[1]**2 - q[2]**2 - q[3]**2
-    rot_mat[1,1] = q[0]**2 - q[1]**2 + q[2]**2 - q[3]**2
-    rot_mat[2,2] = q[0]**2 - q[1]**2 - q[2]**2 + q[3]**2
+    rot_mat[0, 0] = q[0]**2 + q[1]**2 - q[2]**2 - q[3]**2
+    rot_mat[1, 1] = q[0]**2 - q[1]**2 + q[2]**2 - q[3]**2
+    rot_mat[2, 2] = q[0]**2 - q[1]**2 - q[2]**2 + q[3]**2
 
-    rot_mat[0,1] = 2.*(q[1]*q[2] + q[0]*q[3])
-    rot_mat[1,0] = 2.*(q[1]*q[2] - q[0]*q[3])
+    rot_mat[0, 1] = 2.*(q[1]*q[2] + q[0]*q[3])
+    rot_mat[1, 0] = 2.*(q[1]*q[2] - q[0]*q[3])
 
-    rot_mat[0,2] = 2.*(q[1]*q[3] - q[0]*q[2])
-    rot_mat[2,0] = 2.*(q[1]*q[3] + q[0]*q[2])
+    rot_mat[0, 2] = 2.*(q[1]*q[3] - q[0]*q[2])
+    rot_mat[2, 0] = 2.*(q[1]*q[3] + q[0]*q[2])
 
-    rot_mat[1,2] = 2.*(q[2]*q[3] + q[0]*q[1])
-    rot_mat[2,1] = 2.*(q[2]*q[3] - q[0]*q[1])
+    rot_mat[1, 2] = 2.*(q[2]*q[3] + q[0]*q[1])
+    rot_mat[2, 1] = 2.*(q[2]*q[3] - q[0]*q[1])
 
     return rot_mat
 
@@ -405,6 +410,12 @@ def euler2rot(euler):
     rot = np.dot(rotation3d_y(euler[1]), rot)
     rot = np.dot(rotation3d_x(euler[0]), rot)
     return rot
+
+
+
+
+
+
 
 
 if __name__ == '__main__':
