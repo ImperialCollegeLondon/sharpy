@@ -13,7 +13,7 @@ def solver(arg):
     global available_solvers
     try:
         arg.solver_id
-    except:
+    except AttributeError:
         raise AttributeError('Class defined as solver has no solver_id attribute')
     try:
         arg.solver_type

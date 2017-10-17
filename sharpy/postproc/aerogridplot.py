@@ -20,7 +20,7 @@ class AeroGridPlot(BaseSolver):
 
     def initialise(self, data):
         self.data = data
-        self.it_max = data.grid.ts
+        self.it_max = max(data.grid.ts, 1)
         self.settings = data.settings[self.solver_id]
         self.convert_settings()
 

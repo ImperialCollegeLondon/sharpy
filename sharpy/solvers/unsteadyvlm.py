@@ -12,8 +12,8 @@ import sharpy.aero.utils.mapping as mapping
 
 
 @solver
-class PrescribedUvlm(BaseSolver):
-    solver_id = 'PrescribedUvlm'
+class UnsteadyVlm(BaseSolver):
+    solver_id = 'UnsteadyVlm'
     solver_type = 'aero'
     solver_unsteady = True
 

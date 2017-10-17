@@ -146,13 +146,13 @@ class BeamPlot(BaseSolver):
                 self.aero2inertial = np.eye(3)
             # coordinates of corners
             for i_node in range(num_nodes):
-                if self.data.beam.timestep_info[it].with_rb:
-                    try:
-                        coords[i_node, :] = self.data.beam.timestep_info[it].glob_pos_def[i_node, :]
-                    except AttributeError:
-                        coords[i_node, :] = np.dot(self.aero2inertial, self.data.beam.timestep_info[it].pos_def[i_node, :])
-                else:
-                    coords[i_node, :] = np.dot(self.aero2inertial, self.data.beam.timestep_info[it].pos_def[i_node, :])
+                # if self.data.beam.timestep_info[it].with_rb:
+                #     try:
+                #         coords[i_node, :] = self.data.beam.timestep_info[it].glob_pos_def[i_node, :]
+                #     except AttributeError:
+                #         coords[i_node, :] = np.dot(self.aero2inertial, self.data.beam.timestep_info[it].pos_def[i_node, :])
+                # else:
+                coords[i_node, :] = np.dot(self.aero2inertial, self.data.beam.timestep_info[it].pos_def[i_node, :])
 
             for i_node in range(num_nodes):
                 i_elem = self.data.beam.node_master_elem[i_node, 0]

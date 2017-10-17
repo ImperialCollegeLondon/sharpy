@@ -126,9 +126,9 @@ def vlm_solver(ts_info, flightconditions_in, options):
     vmopts.n_rollup = ct.c_uint(options["n_rollup"])
     vmopts.rollup_tolerance = ct.c_double(options["rollup_tolerance"])
     vmopts.rollup_aic_refresh = ct.c_uint(options['rollup_aic_refresh'])
-    vmopts.NumCores = ct.c_uint(2)
+    vmopts.NumCores = ct.c_uint(options['num_cores'])
     vmopts.iterative_solver = ct.c_bool(options['iterative_solver'])
-    vmopts.iterative_tol = ct.c_bool(options['iterative_tol'])
+    vmopts.iterative_tol = ct.c_double(options['iterative_tol'])
     vmopts.iterative_precond = ct.c_bool(options['iterative_precond'])
 
     flightconditions = FlightConditions(flightconditions_in)
@@ -151,6 +151,7 @@ def vlm_solver(ts_info, flightconditions_in, options):
             ts_info.ct_p_normals,
             ts_info.ct_p_forces)
     ts_info.remove_ctypes_pointers()
+
 
 def uvlm_init(ts_info, struct_ts_info, flightconditions_in, options, inertial2aero):
     init_UVLM = UvlmLib.init_UVLM

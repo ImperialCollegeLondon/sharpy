@@ -3,21 +3,21 @@ import numpy as np
 import configparser
 import os
 
-case_name = 'coupled_configuration'
+case_name = '5_surfaces'
 route = os.path.dirname(os.path.realpath(__file__)) + '/'
 
 # flight conditions
 u_inf = 30
-rho = 0.08891
-alpha = 2
+rho = 1.225
+alpha = 10
 beta = 0
-c_ref = 1
-b_ref = 16
+# c_ref = 1
+# b_ref = 16
 dihedral = 0*np.pi/180.
 
 alpha_rad = alpha*np.pi/180
 
-n_time_steps = 50
+n_time_steps = 0
 dt = 0.01
 A = 5
 period = 2
@@ -57,9 +57,9 @@ momenty = 0
 momentx = 0
 
 # discretisation data
-num_elem_main = 10
-num_elem_tail = 5
-num_elem_fin = 4
+num_elem_main = 8
+num_elem_tail = 8
+num_elem_fin = 8
 num_elem_fuselage = 10
 
 
@@ -77,9 +77,9 @@ num_node += (num_node_tail - 1)
 num_node += num_node_fin - 1
 # nodes_distributed = num_node
 
-m_main = 5
-m_tail = 5
-m_fin = 5
+m_main = 4
+m_tail = 4
+m_fin = 4
 
 
 def clean_test_files():
@@ -486,7 +486,7 @@ def generate_solver_file():
                         'route': route,
                         # 'flow': 'StaticCoupled, BeamLoadsCalculator, BeamPlot, AeroGridPlot, AeroForcesSteadyCalculator',
                         # 'flow': 'NonLinearStatic, BeamPlot',
-                        'flow': 'StaticUvlm, AeroForcesSteadyCalculator, BeamPlot, AeroGridPlot',
+                        'flow': 'StaticUvlm, AeroForcesSteadyCalculator, AeroGridPlot',
                         # 'flow': 'PrescribedUvlm, AeroForcesSteadyCalculator, BeamPlot, AeroGridPlot',
                         'plot': 'on'}
     config['StaticCoupled'] = {'print_info': 'on',
@@ -497,15 +497,19 @@ def generate_solver_file():
                                'tolerance': 1e-5,
                                'relaxation_factor': 0.0,
                                'residual_plot': 'off'}
-    config['StaticUvlm'] = {'print_info': 'on',
+    config['StaticUvlm'] = {'print_info': 'off',
                             'Mstar': 50,
-                            'rollup': 'off',
+                            'n_rollup': 75,
                             'aligned_grid': 'on',
-                            'prescribed_wake': 'on',
-                            'num_cores': 4,
-                            'horseshoe': 'off'}
+                            'num_cores': 1,
+                            'horseshoe': 'off',
+                            'rollup_tolerance': 1e-5,
+                            'rollup_aic_refresh': 1,
+                            'rollup_dt': main_chord/m_main/u_inf,
+                            'iterative_solver': 'off'}
+
     config['PrescribedUvlm'] = {'print_info': 'off',
-                                'Mstar': 90,
+                                'Mstar': 50,
                                 'aligned_grid': 'on',
                                 'num_cores': 4,
                                 'steady_n_rollup': 0,
@@ -556,8 +560,8 @@ def generate_flightcon_file():
                            'alpha': alpha,
                            'beta': beta,
                            'rho_inf': rho,
-                           'c_ref': c_ref,
-                           'b_ref': b_ref}
+                           'c_ref': 0,
+                           'b_ref': 0}
 
     with open(file_name, 'w') as configfile:
         config.write(configfile)

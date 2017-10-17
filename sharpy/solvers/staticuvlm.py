@@ -67,9 +67,9 @@ class StaticUvlm(BaseSolver):
 
     def convert_settings(self):
         self.settings['print_info'] = str2bool(self.settings['print_info'])
-        self.settings['rollup'] = str2bool(self.settings['rollup'])
+        # self.settings['rollup'] = str2bool(self.settings['rollup'])
         self.settings['aligned_grid'] = str2bool(self.settings['aligned_grid'])
-        self.settings['prescribed_wake'] = str2bool(self.settings['prescribed_wake'])
+        # self.settings['prescribed_wake'] = str2bool(self.settings['prescribed_wake'])
         try:
             self.settings['horseshoe'] = str2bool(self.settings['horseshoe'])
         except KeyError:
@@ -95,4 +95,16 @@ class StaticUvlm(BaseSolver):
             self.settings['rollup_dt'] = float(self.settings['rollup_dt'])
         except KeyError:
             self.settings['rollup_dt'] = 0.01
+        try:
+            self.settings['iterative_solver'] = str2bool(self.settings['iterative_solver'])
+        except KeyError:
+            self.settings['iterative_solver'] = False
+        try:
+            self.settings['iterative_tol'] = float(self.settings['iterative_tol'])
+        except KeyError:
+            self.settings['iterative_tol'] = 0.0
+        try:
+            self.settings['iterative_precond'] = str2bool(self.settings['iterative_precond'])
+        except KeyError:
+            self.settings['iterative_precond'] = False
 
