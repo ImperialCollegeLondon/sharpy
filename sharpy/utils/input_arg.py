@@ -22,7 +22,10 @@ def read_settings():
 
 def parse_settings(file):
     import os
-    from sharpy.presharpy.utils.settings import load_config_file
+    from sharpy.utils.settings import load_config_file
     settings = load_config_file(os.path.realpath(file))
-    settings['SHARPy']['flow'] = settings['SHARPy']['flow'].split('\n')
+    try:
+        settings['SHARPy']['flow'] = settings['SHARPy']['flow'].split('\n')
+    except KeyError:
+        raise KeyError('The solver file does not contain a SHARPy header.')
     return settings
