@@ -57,7 +57,12 @@ def to_custom_types(dictionary, types, default):
                 dictionary[k] = cast(k, default[k], str2bool, ct.c_bool, default[k])
 
         elif v == 'list(str)':
-            raise NotImplementedError
+            try:
+                dictionary[k] = dictionary[k].split(',')
+                # getting rid of leading and trailing spaces
+                dictionary[k] = list(map(lambda x: x.strip(), dictionary[k]))
+            except KeyError:
+                dictionary[k] = default[k].copy()
 
 
 def load_config_file(file_name: str) -> dict:

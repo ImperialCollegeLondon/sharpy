@@ -1,6 +1,7 @@
 import sharpy.utils.settings as settings
 import sharpy.utils.exceptions as exceptions
 import sharpy.utils.cout_utils as cout
+from copy import deepcopy
 import numpy as np
 import unittest
 
@@ -33,6 +34,13 @@ class TestSettings(unittest.TestCase):
         types_dict['bool_var'] = 'bool'
         default_dict['bool_var'] = False
 
+        in_dict['list_var'] = 'aa, bb, 11, ss'
+        types_dict['list_var'] = 'list(str)'
+        default_dict['list_var'] = ['a', 'b']
+        split_list = ['aa', 'bb', '11', 'ss']
+
+        original_dict = deepcopy(in_dict)
+
         # assigned values test
         result = settings.to_custom_types(in_dict, types_dict, default_dict)
         # integer variable
@@ -43,6 +51,9 @@ class TestSettings(unittest.TestCase):
         self.assertEqual(in_dict['str_var'], 'aaaa', 'String test for assigned values not passed')
         # bool variable
         self.assertEqual(in_dict['bool_var'].value, True, 'Bool test for assigned values not passed')
+        # list variable
+        for i in range(4):
+            self.assertEqual(in_dict['list_var'][i], split_list[i], 'List test for assigned values not passed')
 
         # default values test
         in_default_dict = dict()
@@ -66,7 +77,7 @@ class TestSettings(unittest.TestCase):
             temp_default_dict['integer_var'] = None
 
             # remove value in in_dict
-            temp_in_dict = in_dict.copy()
+            temp_in_dict = deepcopy(original_dict)
             del temp_in_dict['integer_var']
             result = settings.to_custom_types(temp_in_dict, types_dict, temp_default_dict)
 
@@ -75,7 +86,7 @@ class TestSettings(unittest.TestCase):
             temp_default_dict['float_var'] = None
 
             # remove value in in_dict
-            temp_in_dict = in_dict.copy()
+            temp_in_dict = deepcopy(original_dict)
             del temp_in_dict['float_var']
             result = settings.to_custom_types(temp_in_dict, types_dict, temp_default_dict)
 
@@ -84,7 +95,7 @@ class TestSettings(unittest.TestCase):
             temp_default_dict['str_var'] = None
 
             # remove value in in_dict
-            temp_in_dict = in_dict.copy()
+            temp_in_dict = deepcopy(original_dict)
             del temp_in_dict['str_var']
             result = settings.to_custom_types(temp_in_dict, types_dict, temp_default_dict)
 
@@ -93,7 +104,7 @@ class TestSettings(unittest.TestCase):
             temp_default_dict['bool_var'] = None
 
             # remove value in in_dict
-            temp_in_dict = in_dict.copy()
+            temp_in_dict = deepcopy(original_dict)
             del temp_in_dict['bool_var']
             result = settings.to_custom_types(temp_in_dict, types_dict, temp_default_dict)
 
