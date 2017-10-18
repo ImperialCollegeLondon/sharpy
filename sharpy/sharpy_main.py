@@ -35,5 +35,5 @@ for solver_name in settings['SHARPy']['flow']:
     data = solver.run()
 
 elapsed_time = time.process_time() - t
-cout.cout_wrap('FINISHED - Elapsed time = ' + str(elapsed_time) + ' seconds', 2)
+cout.cout_wrap('FINISHED - Elapsed time = %f6 seconds' % elapsed_time, 2)
 
