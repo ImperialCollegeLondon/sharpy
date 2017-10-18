@@ -29,6 +29,18 @@ All rights reserved. '''
 
 wrapper = textwrap.TextWrapper(width=output_columns, break_long_words=False)
 
+suppress_output = False
+
+
+def cout_quiet():
+    global suppress_output
+    suppress_output = True
+
+
+def cout_talk():
+    global suppress_output
+    suppress_output = False
+
 
 def cout_wrap(line, level=0):
     lines = line.split("\n")
