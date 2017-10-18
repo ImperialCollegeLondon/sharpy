@@ -43,18 +43,20 @@ def cout_talk():
 
 
 def cout_wrap(line, level=0):
-    lines = line.split("\n")
-    if level > 3: raise AttributeError('Output level cannot be > 3')
-    if len(lines) == 1:
-        print(fore_colours[level] + line + reset)
-    else:
-        newline = ''
-        for line in lines:
-            if len(line) > output_columns:
-                line = '\n'.join(wrapper.wrap(line))
+    global suppress_output
+    if not suppress_output:
+        lines = line.split("\n")
+        if level > 3: raise AttributeError('Output level cannot be > 3')
+        if len(lines) == 1:
+            print(fore_colours[level] + line + reset)
+        else:
+            newline = ''
+            for line in lines:
+                if len(line) > output_columns:
+                    line = '\n'.join(wrapper.wrap(line))
 
-            newline += line + "\n"
-        print(fore_colours[level] + newline + reset)
+                newline += line + "\n"
+            print(fore_colours[level] + newline + reset)
 
 
 # Print iterations progress
