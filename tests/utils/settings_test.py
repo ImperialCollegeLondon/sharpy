@@ -39,6 +39,11 @@ class TestSettings(unittest.TestCase):
         default_dict['list_var'] = ['a', 'b']
         split_list = ['aa', 'bb', '11', 'ss']
 
+        in_dict['float_list_var'] = '1.1, 2.2, 3.3'
+        types_dict['float_list_var'] = 'list(float)'
+        default_dict['float_list_var'] = np.array([0.0, -1.1])
+        split_float_list = np.array([1.1, 2.2, 3.3])
+
         original_dict = deepcopy(in_dict)
 
         # assigned values test
@@ -54,6 +59,9 @@ class TestSettings(unittest.TestCase):
         # list variable
         for i in range(4):
             self.assertEqual(in_dict['list_var'][i], split_list[i], 'List test for assigned values not passed')
+        # float list variable
+        for i in range(3):
+            self.assertEqual(in_dict['float_list_var'][i], split_float_list[i], 'Floating point list test for assigned values not passed')
 
         # default values test
         in_default_dict = dict()
@@ -70,6 +78,14 @@ class TestSettings(unittest.TestCase):
         # bool variable
         self.assertEqual(in_default_dict['bool_var'].value, default_dict['bool_var'],
                          'Bool test for default values not passed')
+        # list(str) variable
+        for i in range(2):
+            self.assertEqual(in_default_dict['list_var'][i], default_dict['list_var'][i],
+                             'String list test for default values not passed')
+        # list(float) variable
+        for i in range(2):
+            self.assertEqual(in_default_dict['float_list_var'][i], default_dict['float_list_var'][i],
+                             'float list test for default values not passed')
 
         # non-existant default values
         with self.assertRaises(exceptions.NoDefaultValueException):
@@ -106,6 +122,24 @@ class TestSettings(unittest.TestCase):
             # remove value in in_dict
             temp_in_dict = deepcopy(original_dict)
             del temp_in_dict['bool_var']
+            result = settings.to_custom_types(temp_in_dict, types_dict, temp_default_dict)
+
+        with self.assertRaises(exceptions.NoDefaultValueException):
+            temp_default_dict = default_dict.copy()
+            temp_default_dict['list_var'] = None
+
+            # remove value in in_dict
+            temp_in_dict = deepcopy(original_dict)
+            del temp_in_dict['list_var']
+            result = settings.to_custom_types(temp_in_dict, types_dict, temp_default_dict)
+
+        with self.assertRaises(exceptions.NoDefaultValueException):
+            temp_default_dict = default_dict.copy()
+            temp_default_dict['float_list_var'] = None
+
+            # remove value in in_dict
+            temp_in_dict = deepcopy(original_dict)
+            del temp_in_dict['float_list_var']
             result = settings.to_custom_types(temp_in_dict, types_dict, temp_default_dict)
 
         cout.cout_talk()
