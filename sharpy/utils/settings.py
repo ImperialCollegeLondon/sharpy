@@ -17,8 +17,8 @@ class DictConfigParser(configparser.ConfigParser):
 
 def cast(k, v, pytype, ctype, default):
     try:
-        if default is None:
-            raise TypeError
+        # if default is None:
+        #     raise TypeError
         val = ctype(pytype(v))
     except KeyError:
         val = ctype(default)
@@ -36,32 +36,44 @@ def to_custom_types(dictionary, types, default):
             try:
                 dictionary[k] = cast(k, dictionary[k], int, ct.c_int, default[k])
             except KeyError:
+                if default[k] is None:
+                    raise exceptions.NoDefaultValueException(k)
                 dictionary[k] = cast(k, default[k], int, ct.c_int, default[k])
 
         elif v == 'float':
             try:
                 dictionary[k] = cast(k, dictionary[k], float, ct.c_double, default[k])
             except KeyError:
+                if default[k] is None:
+                    raise exceptions.NoDefaultValueException(k)
                 dictionary[k] = cast(k, default[k], float, ct.c_double, default[k])
 
         elif v == 'str':
             try:
                 dictionary[k] = cast(k, dictionary[k], str, str, default[k])
             except KeyError:
-                dictionary[k] = cast(k, default[k], str, str, default[k])
+                if default[k] is None:
+                    raise exceptions.NoDefaultValueException(k)
+                dictionary[k] = cast(k, default[k], eval(v), eval(v), default[k])
 
         elif v == 'bool':
             try:
                 dictionary[k] = cast(k, dictionary[k], str2bool, ct.c_bool, default[k])
             except KeyError:
+                if default[k] is None:
+                    raise exceptions.NoDefaultValueException(k)
                 dictionary[k] = cast(k, default[k], str2bool, ct.c_bool, default[k])
 
         elif v == 'list(str)':
             try:
+                if isinstance(dictionary[k], list):
+                    continue
                 dictionary[k] = dictionary[k].split(',')
                 # getting rid of leading and trailing spaces
                 dictionary[k] = list(map(lambda x: x.strip(), dictionary[k]))
             except KeyError:
+                if default[k] is None:
+                    raise exceptions.NoDefaultValueException(k)
                 dictionary[k] = default[k].copy()
 
 
