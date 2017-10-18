@@ -1,5 +1,5 @@
 import sys
-
+import sharpy.utils.exceptions as exceptions
 import sharpy.utils.cout_utils as cout
 
 
@@ -27,5 +27,5 @@ def parse_settings(file):
     try:
         settings['SHARPy']['flow'] = settings['SHARPy']['flow'].split('\n')
     except KeyError:
-        raise KeyError('The solver file does not contain a SHARPy header.')
+        raise exceptions.NotValidInputFile('The solver file does not contain a SHARPy header.')
     return settings

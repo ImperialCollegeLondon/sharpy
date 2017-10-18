@@ -17,3 +17,9 @@ class NoDefaultValueException(DefaultValueBaseException):
 class NotValidInputFile(Exception):
     def __init__(self, message):
         super().__init__(message)
+
+
+class NotImplementedSolver(Exception):
+    def __init__(self, solver_name, message=''):
+        super().__init__(message)
+        cout.cout_wrap("The solver " + solver_name + " is not implemented. Check the list of available solvers when starting SHARPy", 3)
