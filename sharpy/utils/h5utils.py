@@ -21,8 +21,6 @@ def check_file_exists(file_name):
         raise FileNotFoundError(
             errno.ENOENT, os.strerror(errno.ENOENT),
             file_name)
-    else:
-        return True
 
 
 def load_h5_in_dict(handle, path='/'):

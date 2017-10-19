@@ -1,5 +1,4 @@
 import ctypes as ct
-
 import numpy as np
 import scipy as sc
 import scipy.integrate
@@ -47,14 +46,15 @@ class Xbopts(ct.Structure):
         self.Solution = ct.c_int(111)
         self.DeltaCurved = ct.c_double(1.0e-5)
         self.MinDelta = ct.c_double(1.0e-8)
-        self.NewmarkDamp = ct.c_double(1.0e-4)
+        self.NewmarkDamp = ct.c_double(0.0)
         self.gravity_on = ct.c_bool(False)
         self.gravity = ct.c_double(0.0)
         self.gravity_dir_x = ct.c_double(0.0)
         self.gravity_dir_y = ct.c_double(0.0)
         self.gravity_dir_z = ct.c_double(1.0)
 
-BeamLib = ct_utils.import_ctypes_lib(SharpyDir + '/lib/', 'libxbeam')
+
+xbeamlib = ct_utils.import_ctypes_lib(SharpyDir + '/lib/', 'libxbeam')
 
 # ctypes pointer types
 doubleP = ct.POINTER(ct.c_double)
@@ -62,14 +62,14 @@ intP = ct.POINTER(ct.c_int)
 charP = ct.POINTER(ct.c_char_p)
 
 
-f_cbeam3_solv_nlnstatic = BeamLib.cbeam3_solv_nlnstatic_python
+f_cbeam3_solv_nlnstatic = xbeamlib.cbeam3_solv_nlnstatic_python
 f_cbeam3_solv_nlnstatic.restype = None
 
 
-def cbeam3_solv_nlnstatic(beam, settings, coeff):
+def cbeam3_solv_nlnstatic(beam, settings):
     """@brief Python wrapper for f_cbeam3_solv_nlnstatic
-
-     Modified by Alfonso del Carre"""
+     Alfonso del Carre
+    """
     n_elem = ct.c_int(beam.num_elem)
     n_nodes = ct.c_int(beam.num_node)
     n_mass = ct.c_int(beam.n_mass)
@@ -78,15 +78,15 @@ def cbeam3_solv_nlnstatic(beam, settings, coeff):
     xbopts = Xbopts()
     xbopts.PrintInfo = ct.c_bool(settings['print_info'])
     xbopts.Solution = ct.c_int(112)
-    xbopts.OutInaframe = ct.c_bool(settings['out_a_frame'])
-    xbopts.OutInBframe = ct.c_bool(settings['out_b_frame'])
-    xbopts.ElemProj = settings['elem_proj']
+    # xbopts.OutInaframe = ct.c_bool(settings['out_a_frame'])
+    # xbopts.OutInBframe = ct.c_bool(settings['out_b_frame'])
+    # xbopts.ElemProj = settings['elem_proj']
     xbopts.MaxIterations = settings['max_iterations']
     xbopts.NumLoadSteps = settings['num_load_steps']
-    xbopts.NumGauss = ct.c_int(0)
+    # xbopts.NumGauss = ct.c_int(0)
     xbopts.DeltaCurved = settings['delta_curved']
-    xbopts.MinDelta = settings['min_delta']
-    xbopts.NewmarkDamp = settings['newmark_damp']
+    # xbopts.MinDelta = settings['min_delta']
+    # xbopts.NewmarkDamp = settings['newmark_damp']
     xbopts.gravity_on = settings['gravity_on']
     xbopts.gravity = settings['gravity']
     xbopts.gravity_dir_x = ct.c_double(settings['gravity_dir'][0])
@@ -100,33 +100,32 @@ def cbeam3_solv_nlnstatic(beam, settings, coeff):
 
     f_cbeam3_solv_nlnstatic(ct.byref(n_elem),
                             ct.byref(n_nodes),
-                            beam.num_nodes_matrix.ctypes.data_as(intP),
-                            beam.num_mem_matrix.ctypes.data_as(intP),
-                            beam.connectivities_fortran.ctypes.data_as(intP),
-                            beam.master_fortran.ctypes.data_as(intP),
+                            beam.fortran['num_nodes'].ctypes.data_as(intP),
+                            beam.fortran['num_mem'].ctypes.data_as(intP),
+                            beam.fortran['connectivities'].ctypes.data_as(intP),
+                            beam.fortran['master'].ctypes.data_as(intP),
                             ct.byref(n_mass),
-                            beam.mass_matrix.ctypes.data_as(doubleP),
-                            beam.mass_indices.ctypes.data_as(intP),
+                            beam.fortran['mass'].ctypes.data_as(doubleP),
+                            beam.fortran['mass_indices'].ctypes.data_as(intP),
                             ct.byref(n_stiff),
-                            beam.stiffness_matrix.ctypes.data_as(doubleP),
-                            beam.inv_stiffness_db.ctypes.data_as(doubleP),
-                            beam.stiffness_indices.ctypes.data_as(intP),
-                            beam.frame_of_reference_delta.ctypes.data_as(doubleP),
-                            beam.rbmass_fortran.ctypes.data_as(doubleP),
-                            beam.node_master_elem_fortran.ctypes.data_as(intP),
-                            beam.vdof.ctypes.data_as(intP),
-                            beam.fdof.ctypes.data_as(intP),
+                            beam.fortran['stiffness'].ctypes.data_as(doubleP),
+                            beam.fortran['inv_stiffness'].ctypes.data_as(doubleP),
+                            beam.fortran['stiffness_indices'].ctypes.data_as(intP),
+                            beam.fortran['frame_of_reference_delta'].ctypes.data_as(doubleP),
+                            beam.fortran['rbmass'].ctypes.data_as(doubleP),
+                            beam.fortran['node_master_elem'].ctypes.data_as(intP),
+                            beam.fortran['vdof'].ctypes.data_as(intP),
+                            beam.fortran['fdof'].ctypes.data_as(intP),
                             ct.byref(xbopts),
-                            beam.pos_ini.ctypes.data_as(doubleP),
-                            beam.psi_ini.ctypes.data_as(doubleP),
-                            beam.timestep_info[beam.it].pos_def.ctypes.data_as(doubleP),
-                            beam.timestep_info[beam.it].psi_def.ctypes.data_as(doubleP),
-                            beam.app_forces_fortran.ctypes.data_as(doubleP),
-                            ct.byref(coeff)
+                            beam.ini_info.pos.ctypes.data_as(doubleP),
+                            beam.ini_info.psi.ctypes.data_as(doubleP),
+                            beam.timestep_info[beam.it].pos.ctypes.data_as(doubleP),
+                            beam.timestep_info[beam.it].psi.ctypes.data_as(doubleP),
+                            beam.fortran['steady_applied_forces'].ctypes.data_as(doubleP)
                             )
 
 
-f_cbeam3_solv_modal = BeamLib.cbeam3_solv_modal_python
+f_cbeam3_solv_modal = xbeamlib.cbeam3_solv_modal_python
 f_cbeam3_solv_modal.restype = None
 
 
@@ -200,7 +199,7 @@ def cbeam3_solv_modal(beam, settings):
     beam.w, beam.v = la.eigh(fullK, fullM)
 
 
-f_cbeam3_solv_nlndyn = BeamLib.cbeam3_solv_nlndyn_python
+f_cbeam3_solv_nlndyn = xbeamlib.cbeam3_solv_nlndyn_python
 f_cbeam3_solv_nlndyn.restype = None
 
 
@@ -296,7 +295,7 @@ def cbeam3_solv_nlndyn(beam, settings):
         beam.timestep_info[i].psi_dot_def[:] = psi_dot_def_history[i, :]
 
 
-f_xbeam_solv_couplednlndyn = BeamLib.xbeam_solv_couplednlndyn_python
+f_xbeam_solv_couplednlndyn = xbeamlib.xbeam_solv_couplednlndyn_python
 f_xbeam_solv_couplednlndyn.restype = None
 
 
@@ -433,7 +432,7 @@ def xbeam_solv_couplednlndyn(beam, settings):
     beam.for_vel = []
 
 
-f_cbeam3_solv_update_static = BeamLib.cbeam3_solv_update_static_python
+f_cbeam3_solv_update_static = xbeamlib.cbeam3_solv_update_static_python
 f_cbeam3_solv_update_static.restype = None
 
 

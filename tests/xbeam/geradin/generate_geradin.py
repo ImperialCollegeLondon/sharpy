@@ -140,10 +140,10 @@ def generate_solver_file():
     config = configparser.ConfigParser()
     config['SHARPy'] = {'case': case_name,
                         'route': route,
-                        'flow': 'BeamLoader, NonLinearStatic'}
+                        'flow': 'BeamLoader, NonLinearStatic, BeamCsvOutput'}
 
-    config['BeamLoader'] = {'unsteady': 'on'}
-    config['NonLinearStatic'] = {'print_info': 'on',
+    config['BeamLoader'] = {'unsteady': 'off'}
+    config['NonLinearStatic'] = {'print_info': 'off',
                                  'max_iterations': 99,
                                  'num_load_steps': 5,
                                  'delta_curved': 1e-5,
@@ -151,6 +151,10 @@ def generate_solver_file():
                                  'gravity_on': 'on',
                                  'gravity': 9.81,
                                  'gravity_dir': '0, 0, 1'}
+    config['BeamCsvOutput'] = {'folder': os.path.dirname(__file__) + '/../',
+                               'output_pos': 'on',
+                               'output_psi': 'on',
+                               'screen_output': 'off'}
 
     with open(file_name, 'w') as configfile:
         config.write(configfile)
@@ -158,7 +162,7 @@ def generate_solver_file():
 
 # run everything
 clean_test_files()
-generate_fem_file(route, case_name, 30)
+generate_fem_file(route, case_name, 10)
 generate_solver_file()
 
 

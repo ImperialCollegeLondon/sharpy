@@ -231,25 +231,23 @@ class AeroTimeStepInfo(object):
 
 
 class StructTimeStepInfo(object):
-    def __init__(self, num_node, num_elem, num_node_elem=3, rb=True):
+    def __init__(self, num_node, num_elem, num_node_elem=3):
         self.num_node = num_node
         self.num_elem = num_elem
         self.num_node_elem = num_node_elem
         # generate placeholder for node coordinates
-        self.pos_def = np.zeros((self.num_node, 3), dtype=ct.c_double, order='F')
-        self.pos_dot_def = np.zeros((self.num_node, 3), dtype=ct.c_double, order='F')
+        self.pos = np.zeros((self.num_node, 3), dtype=ct.c_double, order='F')
+        self.pos_dot = np.zeros((self.num_node, 3), dtype=ct.c_double, order='F')
 
         # placeholder for CRV
-        self.psi_def = np.zeros((self.num_elem, num_node_elem, 3), dtype=ct.c_double, order='F')
-        self.psi_dot_def = np.zeros((self.num_elem, num_node_elem, 3), dtype=ct.c_double, order='F')
+        self.psi = np.zeros((self.num_elem, num_node_elem, 3), dtype=ct.c_double, order='F')
+        self.psi_dot = np.zeros((self.num_elem, num_node_elem, 3), dtype=ct.c_double, order='F')
 
-        self.with_rb = rb
-        if rb:
-            # FoR data
-            self.quat = np.array([1, 0, 0, 0])
-            self.for_pos = np.zeros((6,))
-            self.for_vel = np.zeros((6,))
-            self.glob_pos_def = np.zeros_like(self.pos_def)
+        # FoR data
+        self.quat = np.array([1, 0, 0, 0])
+        self.for_pos = np.zeros((6,))
+        self.for_vel = np.zeros((6,))
+        self.glob_pos = np.zeros_like(self.pos)
 
     def copy(self):
         from copy import deepcopy

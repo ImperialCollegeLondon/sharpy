@@ -45,7 +45,7 @@ class Element(object):
         self.mass_index = mass_index
 
         # placeholder for RBMass
-        self.RBMass = None  # np.zeros((self.max_nodes_elem, 6, 6))
+        self.rbmass = None  # np.zeros((self.max_nodes_elem, 6, 6))
 
         self.update(self.coordinates_def)
 
