@@ -3,17 +3,17 @@ import sharpy.utils.exceptions as exceptions
 import sharpy.utils.cout_utils as cout
 
 
-def read_settings():
-    if len(sys.argv) == 1:
+def read_settings(args):
+    if len(args) == 1:
         cout.cout_wrap('Running SHARPy using the default settings file:')
         case_settings = './test.solver.txt'
         cout.cout_wrap('%s is the main settings file' % case_settings)
-    elif len(sys.argv) == 2:
-        case_settings = sys.argv[1]
+    elif len(args) == 2:
+        case_settings = args[1]
         cout.cout_wrap('Running SHARPy using the settings file: %s' % case_settings)
     else:
         cout.cout_wrap('*** Too many arguments, only the first one will be used')
-        case_settings = sys.argv[1]
+        case_settings = args[1]
         cout.cout_wrap('Running SHARPy using the settings file: %s' % case_settings)
 
     settings = parse_settings(case_settings)

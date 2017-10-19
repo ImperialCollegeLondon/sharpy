@@ -1,5 +1,6 @@
 import configparser
 import ctypes as ct
+import numpy as np
 import sharpy.utils.exceptions as exceptions
 import sharpy.utils.cout_utils as cout
 
@@ -66,11 +67,24 @@ def to_custom_types(dictionary, types, default):
 
         elif v == 'list(str)':
             try:
-                if isinstance(dictionary[k], list):
-                    continue
+                # if isinstance(dictionary[k], list):
+                #     continue
                 dictionary[k] = dictionary[k].split(',')
                 # getting rid of leading and trailing spaces
                 dictionary[k] = list(map(lambda x: x.strip(), dictionary[k]))
+            except KeyError:
+                if default[k] is None:
+                    raise exceptions.NoDefaultValueException(k)
+                dictionary[k] = default[k].copy()
+
+        elif v == 'list(float)':
+            try:
+                if isinstance(dictionary[k], np.ndarray):
+                    continue
+                # dictionary[k] = dictionary[k].split(',')
+                # # getting rid of leading and trailing spaces
+                # dictionary[k] = list(map(lambda x: x.strip(), dictionary[k]))
+                dictionary[k] = np.fromstring(dictionary[k], sep=',', dtype=ct.c_double)
             except KeyError:
                 if default[k] is None:
                     raise exceptions.NoDefaultValueException(k)
