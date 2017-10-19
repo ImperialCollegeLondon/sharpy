@@ -116,6 +116,6 @@ def str2bool(string):
     if not string:
         return False
     elif string.lower() in false_list:
-        return True
+        return False
     else:
         return True
