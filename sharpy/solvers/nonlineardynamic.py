@@ -3,117 +3,82 @@
 """
 
 import ctypes as ct
-
 import numpy as np
 
-import sharpy.beam.utils.beamlib as beamlib
-from sharpy.presharpy.utils.settings import str2bool
+import sharpy.structure.utils.xbeamlib as xbeamlib
+from sharpy.utils.settings import str2bool
 from sharpy.utils.solver_interface import solver, BaseSolver
+import sharpy.utils.settings as settings
+import sharpy.utils.cout_utils as cout
 
 
 @solver
 class NonLinearDynamic(BaseSolver):
     solver_id = 'NonLinearDynamic'
-    solver_type = 'structural'
-    solver_unsteady = True
 
     def __init__(self):
-        pass
+        self.settings_types = dict()
+        self.settings_default = dict()
+
+        self.settings_types['print_info'] = 'bool'
+        self.settings_default['print_info'] = True
+
+        self.settings_types['max_iterations'] = 'int'
+        self.settings_default['max_iterations'] = 100
+
+        self.settings_types['num_load_steps'] = 'int'
+        self.settings_default['num_load_steps'] = 5
+
+        self.settings_types['delta_curved'] = 'float'
+        self.settings_default['delta_curved'] = 1e-5
+
+        self.settings_types['min_delta'] = 'float'
+        self.settings_default['min_delta'] = 1e-5
+
+        self.settings_types['newmark_damp'] = 'float'
+        self.settings_default['newmark_damp'] = 1e-4
+
+        self.settings_types['prescribed_motion'] = 'bool'
+        self.settings_default['prescribed_motion'] = None
+
+        self.settings_types['dt'] = 'float'
+        self.settings_default['dt'] = 0.01
+
+        self.settings_types['num_steps'] = 'int'
+        self.settings_default['num_steps'] = 500
+
+        self.settings_types['gravity_on'] = 'bool'
+        self.settings_default['gravity_on'] = False
+
+        self.settings_types['gravity'] = 'float'
+        self.settings_default['gravity'] = 9.81
+
+        self.settings_types['gravity_dir'] = 'list(float)'
+        self.settings_default['gravity_dir'] = np.array([0, 0, 1])
+
+        self.data = None
+        self.settings = None
 
     def initialise(self, data):
         self.data = data
         self.settings = data.settings[self.solver_id]
-        self.convert_settings()
-        data.beam.read_dynamic_data()
-        data.beam.generate_aux_information(dynamic=True)
+        settings.to_custom_types(self.settings, self.settings_types, self.settings_default)
+
+        # load info from dyn dictionary
+        self.data.structure.add_unsteady_information(self.data.structure.dyn_dict, self.settings['num_steps'].value)
 
     def run(self):
-        prescribed_motion = True
+        prescribed_motion = False
         try:
             prescribed_motion = self.settings['prescribed_motion'].value
         except KeyError:
             pass
         if prescribed_motion is True:
-            print('Running non linear dynamic solver...')
-            beamlib.cbeam3_solv_nlndyn(self.data.beam, self.settings)
+            cout.cout_wrap('Running non linear dynamic solver...', 2)
+            # xbeamlib.cbeam3_solv_nlndyn(self.data.beam, self.settings)
         else:
-            print('Running non linear dynamic solver with RB...')
-            beamlib.xbeam_solv_couplednlndyn(self.data.beam, self.settings)
-        self.data.beam.update()
-        print('...Finished')
+            cout.cout_wrap('Running non linear dynamic solver with RB...', 2)
+            xbeamlib.xbeam_solv_couplednlndyn(self.data.structure, self.settings)
+        cout.cout_wrap('...Finished', 2)
         return self.data
 
-    def convert_settings(self):
-        try:
-            self.settings['print_info'] = ct.c_bool(str2bool(self.settings['print_info']))
-        except KeyError:
-            pass
-        try:
-            self.settings['out_b_frame'] = ct.c_bool(str2bool(self.settings['out_b_frame']))
-        except KeyError:
-            pass
-
-        try:
-            self.settings['out_a_frame'] = ct.c_bool(str2bool(self.settings['out_a_frame']))
-        except KeyError:
-            pass
-
-        try:
-            self.settings['elem_proj'] = ct.c_int(int(self.settings['elem_proj']))
-        except KeyError:
-            pass
-
-        try:
-            self.settings['max_iterations'] = ct.c_int(int(self.settings['max_iterations']))
-        except KeyError:
-            pass
-
-        try:
-            self.settings['num_load_steps'] = ct.c_int(int(self.settings['num_load_steps']))
-        except KeyError:
-            pass
-
-        try:
-            self.settings['delta_curved'] = ct.c_double(float(self.settings['delta_curved']))
-        except KeyError:
-            pass
-
-        try:
-            self.settings['min_delta'] = ct.c_double(float(self.settings['min_delta']))
-        except KeyError:
-            pass
-
-        try:
-            self.settings['newmark_damp'] = ct.c_double(float(self.settings['newmark_damp']))
-        except KeyError:
-            pass
-
-        try:
-            self.settings['prescribed_motion'] = ct.c_bool(str2bool(self.settings['prescribed_motion']))
-        except KeyError:
-            pass
-
-        try:
-            self.settings['dt'] = ct.c_double(float(self.settings['dt']))
-        except KeyError:
-            pass
-
-        try:
-            self.settings['num_steps'] = ct.c_int(int(self.settings['num_steps']))
-        except KeyError:
-            pass
-
-        try:
-            self.settings['gravity_on'] = ct.c_bool(str2bool(self.settings['gravity_on']))
-        except KeyError:
-            pass
-
-        try:
-            self.settings['gravity'] = ct.c_double(float(self.settings['gravity']))
-        except KeyError:
-            pass
-
-        try:
-            self.settings['gravity_dir'] = np.fromstring(self.settings['gravity_dir'], sep=',', dtype=ct.c_double)
-        except KeyError:
-            pass

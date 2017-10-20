@@ -24,6 +24,9 @@ class BeamCsvOutput(BaseSolver):
         self.settings_types['output_psi'] = 'bool'
         self.settings_default['output_psi'] = False
 
+        self.settings_types['output_glob_pos'] = 'bool'
+        self.settings_default['output_glob_pos'] = False
+
         self.settings_types['screen_output'] = 'bool'
         self.settings_default['screen_output'] = False
 
@@ -78,6 +81,13 @@ class BeamCsvOutput(BaseSolver):
                     crv_matrix[i_node, :] = self.data.structure.timestep_info[it].psi[i_elem, i_local_node, :]
                 # write file
                 np.savetxt(it_filename, crv_matrix)
+
+            if self.settings['output_glob_pos']:
+                it_filename = (self.filename + 'glob_' +
+                               '%06u' % it +
+                               '.csv')
+                # write file
+                np.savetxt(it_filename, self.data.structure.timestep_info[it].glob_pos)
 
     def print_info(self):
         if self.settings['screen_output']:

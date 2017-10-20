@@ -68,13 +68,8 @@ class BeamLoader(BaseSolver):
     def validate_dyn_file(self):
         raise NotImplementedError('validation of the dyn file in beamloader is not yet implemented!')
 
-
-
-
-
-
-
     def run(self):
         self.data.structure = beam.Beam()
         self.data.structure.generate(self.fem_data_dict, self.settings)
+        self.data.structure.dyn_dict = self.dyn_data_dict
         return self.data

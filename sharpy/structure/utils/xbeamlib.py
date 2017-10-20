@@ -7,6 +7,8 @@ import sharpy.utils.algebra as algebra
 import sharpy.utils.ctypes_utils as ct_utils
 from sharpy.utils.sharpydir import SharpyDir
 from sharpy.utils.datastructures import StructTimeStepInfo
+import sharpy.utils.cout_utils as cout
+import sharpy.utils.exceptions as exc
 
 
 class Xbopts(ct.Structure):
@@ -312,13 +314,13 @@ def xbeam_solv_couplednlndyn(beam, settings):
         time[i] = i*dt
 
     # deformation history matrices
-    beam.for_vel = np.zeros((n_tsteps + 1, 6), order='F')
-    beam.for_acc = np.zeros((n_tsteps + 1, 6), order='F')
+    for_vel = np.zeros((n_tsteps + 1, 6), order='F')
+    for_acc = np.zeros((n_tsteps + 1, 6), order='F')
     # beam.pos_def_history = np.zeros((n_tsteps, beam.num_node, 3), order='F')
     # beam.pos_dot_def_history = np.zeros((n_tsteps, beam.num_node, 3), order='F')
     # beam.psi_def_history = np.zeros((n_tsteps, beam.num_elem, 3, 3), order='F')
     # beam.psi_dot_def_history = np.zeros((n_tsteps, beam.num_elem, 3, 3), order='F')
-    beam.quat_history = np.zeros((n_tsteps, 4), order='F')
+    quat_history = np.zeros((n_tsteps, 4), order='F')
 
     dt = ct.c_double(dt)
     n_tsteps = ct.c_int(n_tsteps)
@@ -326,9 +328,9 @@ def xbeam_solv_couplednlndyn(beam, settings):
     xbopts = Xbopts()
     xbopts.PrintInfo = ct.c_bool(settings['print_info'])
     xbopts.Solution = ct.c_int(910)
-    xbopts.OutInaframe = ct.c_bool(settings['out_a_frame'])
-    xbopts.OutInBframe = ct.c_bool(settings['out_b_frame'])
-    xbopts.ElemProj = settings['elem_proj']
+    # xbopts.OutInaframe = ct.c_bool(settings['out_a_frame'])
+    # xbopts.OutInBframe = ct.c_bool(settings['out_b_frame'])
+    # xbopts.ElemProj = settings['elem_proj']
     xbopts.MaxIterations = settings['max_iterations']
     xbopts.NumLoadSteps = settings['num_load_steps']
     xbopts.NumGauss = ct.c_int(0)
@@ -346,6 +348,10 @@ def xbeam_solv_couplednlndyn(beam, settings):
     psi_def_history = np.zeros((n_tsteps.value, beam.num_elem, 3, 3), order='F', dtype=ct.c_double)
     psi_dot_def_history = np.zeros((n_tsteps.value, beam.num_elem, 3, 3), order='F', dtype=ct.c_double)
 
+    dynamic_force = np.zeros((n_nodes.value, 6, n_tsteps.value), dtype=ct.c_double, order='F')
+    for it in range(n_tsteps.value):
+        dynamic_force[:, :, it] = beam.dynamic_input[it]['dynamic_forces']
+
     # status flag
     success = ct.c_bool(True)
 
@@ -355,81 +361,79 @@ def xbeam_solv_couplednlndyn(beam, settings):
     import time as ti
     start_time = ti.time()
     f_xbeam_solv_couplednlndyn(ct.byref(n_elem),
-                         ct.byref(n_nodes),
-                         ct.byref(n_tsteps),
-                         time.ctypes.data_as(doubleP),
-                         beam.num_nodes_matrix.ctypes.data_as(intP),
-                         beam.num_mem_matrix.ctypes.data_as(intP),
-                         beam.connectivities_fortran.ctypes.data_as(intP),
-                         beam.master_fortran.ctypes.data_as(intP),
-                         ct.byref(n_mass),
-                         beam.mass_matrix.ctypes.data_as(doubleP),
-                         beam.mass_indices.ctypes.data_as(intP),
-                         ct.byref(n_stiff),
-                         beam.stiffness_matrix.ctypes.data_as(doubleP),
-                         beam.inv_stiffness_db.ctypes.data_as(doubleP),
-                         beam.stiffness_indices.ctypes.data_as(intP),
-                         beam.frame_of_reference_delta.ctypes.data_as(doubleP),
-                         beam.rbmass_fortran.ctypes.data_as(doubleP),
-                         beam.node_master_elem_fortran.ctypes.data_as(intP),
-                         beam.vdof.ctypes.data_as(intP),
-                         beam.fdof.ctypes.data_as(intP),
-                         ct.byref(xbopts),
-                         beam.pos_ini.ctypes.data_as(doubleP),
-                         beam.psi_ini.ctypes.data_as(doubleP),
-                         beam.timestep_info[0].pos_def.ctypes.data_as(doubleP),
-                         beam.timestep_info[0].psi_def.ctypes.data_as(doubleP),
-                         beam.app_forces_fortran.ctypes.data_as(doubleP),
-                         beam.dynamic_forces_amplitude_fortran.ctypes.data_as(doubleP),
-                         beam.dynamic_forces_time_fortran.ctypes.data_as(doubleP),
-                         beam.for_vel.ctypes.data_as(doubleP),
-                         beam.for_acc.ctypes.data_as(doubleP),
-                         pos_def_history.ctypes.data_as(doubleP),
-                         psi_def_history.ctypes.data_as(doubleP),
-                         pos_dot_def_history.ctypes.data_as(doubleP),
-                         psi_dot_def_history.ctypes.data_as(doubleP),
-                         beam.quat_history.ctypes.data_as(doubleP),
-                         ct.byref(success)
-                         )
-    print("\n--- %s seconds ---" % (ti.time() - start_time))
+                               ct.byref(n_nodes),
+                               ct.byref(n_tsteps),
+                               time.ctypes.data_as(doubleP),
+                               beam.fortran['num_nodes'].ctypes.data_as(intP),
+                               beam.fortran['num_mem'].ctypes.data_as(intP),
+                               beam.fortran['connectivities'].ctypes.data_as(intP),
+                               beam.fortran['master'].ctypes.data_as(intP),
+                               ct.byref(n_mass),
+                               beam.fortran['mass'].ctypes.data_as(doubleP),
+                               beam.fortran['mass_indices'].ctypes.data_as(intP),
+                               ct.byref(n_stiff),
+                               beam.fortran['stiffness'].ctypes.data_as(doubleP),
+                               beam.fortran['inv_stiffness'].ctypes.data_as(doubleP),
+                               beam.fortran['stiffness_indices'].ctypes.data_as(intP),
+                               beam.fortran['frame_of_reference_delta'].ctypes.data_as(doubleP),
+                               beam.fortran['rbmass'].ctypes.data_as(doubleP),
+                               beam.fortran['node_master_elem'].ctypes.data_as(intP),
+                               beam.fortran['vdof'].ctypes.data_as(intP),
+                               beam.fortran['fdof'].ctypes.data_as(intP),
+                               ct.byref(xbopts),
+                               beam.ini_info.pos.ctypes.data_as(doubleP),
+                               beam.ini_info.psi.ctypes.data_as(doubleP),
+                               # beam.timestep_info[0].pos.ctypes.data_as(doubleP),
+                               # beam.timestep_info[0].psi.ctypes.data_as(doubleP),
+                               beam.fortran['steady_applied_forces'].ctypes.data_as(doubleP),
+                               dynamic_force.ctypes.data_as(doubleP),
+                               for_vel.ctypes.data_as(doubleP),
+                               for_acc.ctypes.data_as(doubleP),
+                               pos_def_history.ctypes.data_as(doubleP),
+                               psi_def_history.ctypes.data_as(doubleP),
+                               pos_dot_def_history.ctypes.data_as(doubleP),
+                               psi_dot_def_history.ctypes.data_as(doubleP),
+                               quat_history.ctypes.data_as(doubleP),
+                               ct.byref(success))
+    cout.cout_wrap("\n--- %s seconds ---" % (ti.time() - start_time), 1)
     if not success:
         raise Exception('couplednlndyn did not converge')
 
-    beam.for_pos = np.zeros_like(beam.for_vel)
-    beam.for_pos[:, 0] = sc.integrate.cumtrapz(beam.for_vel[:, 0], dx=dt.value, initial=0)
-    beam.for_pos[:, 1] = sc.integrate.cumtrapz(beam.for_vel[:, 1], dx=dt.value, initial=0)
-    beam.for_pos[:, 2] = sc.integrate.cumtrapz(beam.for_vel[:, 2], dx=dt.value, initial=0)
+    for_pos = np.zeros_like(for_vel)
+    for_pos[:, 0] = sc.integrate.cumtrapz(for_vel[:, 0], dx=dt.value, initial=0)
+    for_pos[:, 1] = sc.integrate.cumtrapz(for_vel[:, 1], dx=dt.value, initial=0)
+    for_pos[:, 2] = sc.integrate.cumtrapz(for_vel[:, 2], dx=dt.value, initial=0)
 
     glob_pos_def = np.zeros_like(pos_def_history)
     for it in range(n_tsteps.value):
-        rot = algebra.quat2rot(beam.quat_history[it, :])
+        rot = algebra.quat2rot(quat_history[it, :])
         for inode in range(beam.num_node):
-            glob_pos_def[it, inode, :] = beam.for_pos[it, 0:3] + np.dot(rot.T, pos_def_history[it, inode, :])
+            glob_pos_def[it, inode, :] = for_pos[it, 0:3] + np.dot(rot.T, pos_def_history[it, inode, :])
 
-    beam.timestep_info[0] = (StructTimeStepInfo(beam.num_node,
-                                                beam.num_elem,
-                                                beam.num_node_elem,
-                                                rb=True))
-    for i in range(1, n_tsteps.value):
-        beam.timestep_info.append(StructTimeStepInfo(beam.num_node,
-                                                     beam.num_elem,
-                                                     beam.num_node_elem,
-                                                     rb=True))
+    # beam.timestep_info[0] = (StructTimeStepInfo(beam.num_node,
+    #                                             beam.num_elem,
+    #                                             beam.num_node_elem,
+    #                                             rb=True))
+    # for i in range(1, n_tsteps.value):
+    #     beam.timestep_info.append(StructTimeStepInfo(beam.num_node,
+    #                                                  beam.num_elem,
+    #                                                  beam.num_node_elem,
+    #                                                  rb=True))
     for i in range(n_tsteps.value):
-        beam.timestep_info[i].pos_def[:] = pos_def_history[i, :]
-        beam.timestep_info[i].psi_def[:] = psi_def_history[i, :]
-        beam.timestep_info[i].pos_dot_def[:] = pos_dot_def_history[i, :]
-        beam.timestep_info[i].psi_dot_def[:] = psi_dot_def_history[i, :]
+        beam.timestep_info[i + 1].pos[:] = pos_def_history[i, :]
+        beam.timestep_info[i + 1].psi[:] = psi_def_history[i, :]
+        beam.timestep_info[i + 1].pos_dot[:] = pos_dot_def_history[i, :]
+        beam.timestep_info[i + 1].psi_dot[:] = psi_dot_def_history[i, :]
 
-        beam.timestep_info[i].quat[:] = beam.quat_history[i, :]
+        beam.timestep_info[i + 1].quat[:] = quat_history[i, :]
         # beam.timestep_info[i].for_pos[:] = beam.for_pos[i, 0:3]
         # beam.timestep_info[i].for_vel[:] = beam.for_vel[i, 0:3]
-        beam.timestep_info[i].for_pos[:] = beam.for_pos[i, :]
-        beam.timestep_info[i].for_vel[:] = beam.for_vel[i, :]
-        beam.timestep_info[i].glob_pos_def[:] = glob_pos_def[i, :]
+        beam.timestep_info[i + 1].for_pos[:] = for_pos[i, :]
+        beam.timestep_info[i + 1].for_vel[:] = for_vel[i, :]
+        beam.timestep_info[i + 1].glob_pos[:] = glob_pos_def[i, :]
 
-    beam.for_pos = []
-    beam.for_vel = []
+    # beam.for_pos = []
+    # beam.for_vel = []
 
 
 f_cbeam3_solv_update_static = xbeamlib.cbeam3_solv_update_static_python

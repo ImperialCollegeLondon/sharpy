@@ -23,3 +23,10 @@ class NotImplementedSolver(Exception):
     def __init__(self, solver_name, message=''):
         super().__init__(message)
         cout.cout_wrap("The solver " + solver_name + " is not implemented. Check the list of available solvers when starting SHARPy", 3)
+
+
+class NotConvergedStructuralSolver(Exception):
+    def __init__(self, solver_name, n_iter=None, message=''):
+        super().__init__(message)
+        cout.cout_wrap("The solver " + solver_name + " did not converge in " + str(n_iter) + " iterations.", 3)
+

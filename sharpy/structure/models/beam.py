@@ -19,6 +19,7 @@ class Beam(BaseStructure):
         self.it = 0
         self.timestep_info = []
         self.ini_info = None
+        self.dynamic_input = []
 
         self.connectivities = None
 
@@ -96,7 +97,6 @@ class Beam(BaseStructure):
         except KeyError:
             self.beam_number = np.zeros((self.num_elem, ), dtype=int)
 
-
         # applied forces
         self.steady_app_forces = np.zeros((self.num_node, 6))
         try:
@@ -159,9 +159,22 @@ class Beam(BaseStructure):
         for elem in self.elements:
             self.ini_info.psi[elem.ielem, :, :] = elem.psi_ini
 
-    def add_unsteady_information(self, dyn_dict):
-        # TODO
-        pass
+    def add_unsteady_information(self, dyn_dict, num_steps):
+        # data storage for time dependant output
+        for it in range(num_steps + 1):
+            self.add_timestep(self.timestep_info)
+        self.timestep_info[0] = self.ini_info.copy()
+
+        # data storage for time dependant input
+        for it in range(num_steps):
+            self.dynamic_input.append(dict())
+
+        try:
+            for it in range(num_steps):
+                self.dynamic_input[it]['dynamic_forces'] = dyn_dict['dynamic_forces'][it, :, :]
+        except KeyError:
+            for it in range(num_steps):
+                self.dynamic_input[it]['dynamic_forces'] = np.zeros((self.num_node, 6), dtype=ct.c_double, order='F')
 
     def generate_dof_arrays(self):
         self.vdof = np.zeros((self.num_node,), dtype=ct.c_int, order='F') - 1
