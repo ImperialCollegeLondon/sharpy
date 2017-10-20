@@ -96,3 +96,5 @@ ENV/
 lib/*
 output/*
 .idea
+
+*.csv
