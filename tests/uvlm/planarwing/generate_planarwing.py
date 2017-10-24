@@ -253,18 +253,35 @@ def generate_naca_camber(M=0, P=0):
 
 def generate_solver_file():
     file_name = route + '/' + case_name + '.solver.txt'
-    config = configparser.ConfigParser()
+    # config = configparser.ConfigParser()
+    import configobj
+    config = configobj.ConfigObj()
+    config.filename = file_name
     config['SHARPy'] = {'case': case_name,
                         'route': route,
-                        'flow': 'BeamLoader, AerogridLoader, SteadyVelocityFieldGenerator'}
-
+                        'flow': ['BeamLoader', 'AerogridLoader', 'StaticUvlm', 'AerogridPlot']}
     config['BeamLoader'] = {'unsteady': 'off'}
-    config['AeroGridLoader'] = {'unsteady': 'off',
+    config['AerogridLoader'] = {'unsteady': 'off',
                                 'aligned_grid': 'on',
-                                'freestream_dir': '1, 0, 0'}
+                                'freestream_dir': ['1', '0', '0']}
+    config['StaticUvlm'] = {'print_info': 'on',
+                            'horseshoe': 'on',
+                            'num_cores': 1,
+                            'n_rollup': 0,
+                            'rollup_dt': main_chord/m_main/u_inf,
+                            'rollup_aic_refresh': 1,
+                            'rollup_tolerance': 1e-4,
+                            'velocity_field_generator': 'SteadyVelocityField'
+                            }
+    config['StaticUvlm']['SteadyVelocityField'] = {'u_inf': u_inf,
+                                                   'u_inf_direction': [np.cos(alpha_rad), 0.0, np.sin(alpha_rad)]}
+    config['AerogridPlot'] = {'folder': os.path.dirname(__file__) + '/../',
+                              'include_rbm': 'off',
+                              'include_applied_forces': 'on'}
 
-    with open(file_name, 'w') as configfile:
-        config.write(configfile)
+    # with open(file_name, 'w') as configfile:
+    #     config.write(configfile)
+    config.write()
 
 
 # def generate_flightcon_file():
@@ -279,12 +296,10 @@ def generate_solver_file():
 #         config.write(configfile)
 
 
-if __name__ == '__main__':
-    clean_test_files()
-    generate_fem_file()
-    generate_solver_file()
-    generate_aero_file()
-    # generate_flightcon_file()
+clean_test_files()
+generate_fem_file()
+generate_solver_file()
+generate_aero_file()
 
 
 

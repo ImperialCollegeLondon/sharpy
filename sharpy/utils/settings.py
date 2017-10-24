@@ -69,7 +69,7 @@ def to_custom_types(dictionary, types, default):
             try:
                 # if isinstance(dictionary[k], list):
                 #     continue
-                dictionary[k] = dictionary[k].split(',')
+                # dictionary[k] = dictionary[k].split(',')
                 # getting rid of leading and trailing spaces
                 dictionary[k] = list(map(lambda x: x.strip(), dictionary[k]))
             except KeyError:
@@ -80,6 +80,11 @@ def to_custom_types(dictionary, types, default):
         elif v == 'list(float)':
             try:
                 if isinstance(dictionary[k], np.ndarray):
+                    continue
+                if isinstance(dictionary[k], list):
+                    for i in range(len(dictionary[k])):
+                        dictionary[k][i] = float(dictionary[k][i])
+                    dictionary[k] = np.array(dictionary[k])
                     continue
                 # dictionary[k] = dictionary[k].split(',')
                 # # getting rid of leading and trailing spaces
@@ -101,9 +106,11 @@ def load_config_file(file_name: str) -> dict:
     Returns:
         config (dict): a ``ConfigParser`` object that behaves like a dictionary
     """
-    config = DictConfigParser()
-    config.read(file_name)
-    dict_config = config.as_dict()
+    # config = DictConfigParser()
+    # config.read(file_name)
+    # dict_config = config.as_dict()
+    import configobj
+    dict_config = configobj.ConfigObj(file_name)
     return dict_config
 
 

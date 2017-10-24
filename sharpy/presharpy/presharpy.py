@@ -26,7 +26,7 @@ class PreSharpy(object):
         self.settings_default['route'] = None
 
         self.settings = in_settings
-        self.settings['SHARPy']['flow'] = self.settings['SHARPy']['flow'][0]
+        self.settings['SHARPy']['flow'] = self.settings['SHARPy']['flow']
         settings.to_custom_types(self.settings['SHARPy'], self.settings_types, self.settings_default)
         self.case_route = in_settings['SHARPy']['route'] + '/'
         self.case_name = in_settings['SHARPy']['case']

@@ -24,7 +24,7 @@ class TestPlanarWingUvlm(unittest.TestCase):
     def test_geradin(self):
         import sharpy.sharpy_main
         # suppress screen output
-        sharpy.sharpy_main.cout.cout_quiet()
+        # sharpy.sharpy_main.cout.cout_quiet()
         solver_path = os.path.abspath(os.path.dirname(os.path.realpath(__file__)) + '/planarwing/planarwing.solver.txt')
         sharpy.sharpy_main.main(['', solver_path])
         sharpy.sharpy_main.cout.cout_talk()
