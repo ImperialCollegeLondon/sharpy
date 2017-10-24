@@ -34,12 +34,12 @@ class TestSettings(unittest.TestCase):
         types_dict['bool_var'] = 'bool'
         default_dict['bool_var'] = False
 
-        in_dict['list_var'] = 'aa, bb, 11, ss'
+        in_dict['list_var'] = ['aa', 'bb', '11', 'ss']
         types_dict['list_var'] = 'list(str)'
         default_dict['list_var'] = ['a', 'b']
         split_list = ['aa', 'bb', '11', 'ss']
 
-        in_dict['float_list_var'] = '1.1, 2.2, 3.3'
+        in_dict['float_list_var'] = ['1.1', '2.2', '3.3']
         types_dict['float_list_var'] = 'list(float)'
         default_dict['float_list_var'] = np.array([0.0, -1.1])
         split_float_list = np.array([1.1, 2.2, 3.3])

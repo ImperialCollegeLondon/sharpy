@@ -25,7 +25,7 @@ def parse_settings(file):
     from sharpy.utils.settings import load_config_file
     settings = load_config_file(os.path.realpath(file))
     try:
-        settings['SHARPy']['flow'] = settings['SHARPy']['flow'].split('\n')
+        settings['SHARPy']['flow']# = settings['SHARPy']['flow'].split('\n')
     except KeyError:
         raise exceptions.NotValidInputFile('The solver file does not contain a SHARPy header.')
     return settings
