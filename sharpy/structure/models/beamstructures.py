@@ -45,7 +45,7 @@ class Element(object):
         self.mass_index = mass_index
 
         # placeholder for RBMass
-        self.RBMass = None  # np.zeros((self.max_nodes_elem, 6, 6))
+        self.rbmass = None  # np.zeros((self.max_nodes_elem, 6, 6))
 
         self.update(self.coordinates_def)
 
@@ -135,6 +135,10 @@ class Element(object):
 
         return tangent, binormal, normal
 
-    def deformed_triad(self):
-        return algebra.crv2triad_vec(self.psi_def)
+    def deformed_triad(self, psi=None):
+        if psi is None:
+            return algebra.crv2triad_vec(self.psi_def)
+        else:
+            return algebra.crv2triad_vec(psi)
+
 

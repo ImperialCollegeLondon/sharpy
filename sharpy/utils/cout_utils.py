@@ -29,20 +29,34 @@ All rights reserved. '''
 
 wrapper = textwrap.TextWrapper(width=output_columns, break_long_words=False)
 
+suppress_output = False
+
+
+def cout_quiet():
+    global suppress_output
+    suppress_output = True
+
+
+def cout_talk():
+    global suppress_output
+    suppress_output = False
+
 
 def cout_wrap(line, level=0):
-    lines = line.split("\n")
-    if level > 3: raise AttributeError('Output level cannot be > 3')
-    if len(lines) == 1:
-        print(fore_colours[level] + line + reset)
-    else:
-        newline = ''
-        for line in lines:
-            if len(line) > output_columns:
-                line = '\n'.join(wrapper.wrap(line))
+    global suppress_output
+    if not suppress_output:
+        lines = line.split("\n")
+        if level > 3: raise AttributeError('Output level cannot be > 3')
+        if len(lines) == 1:
+            print(fore_colours[level] + line + reset)
+        else:
+            newline = ''
+            for line in lines:
+                if len(line) > output_columns:
+                    line = '\n'.join(wrapper.wrap(line))
 
-            newline += line + "\n"
-        print(fore_colours[level] + newline + reset)
+                newline += line + "\n"
+            print(fore_colours[level] + newline + reset)
 
 
 # Print iterations progress
