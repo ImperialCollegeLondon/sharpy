@@ -14,10 +14,7 @@ import scipy.interpolate
 
 import sharpy.utils.algebra as algebra
 import sharpy.utils.cout_utils as cout
-import sharpy.presharpy.aerogrid.utils as aero_utils
-
 from sharpy.utils.datastructures import AeroTimeStepInfo
-from sharpy.presharpy.beam.beamstructures import Element
 
 
 class AeroGrid(object):
