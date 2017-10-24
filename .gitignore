@@ -98,3 +98,9 @@ output/*
 .idea
 
 *.csv
+
+*.vtu
+
+utils/eigen_debug/__init__\.py
+
+utils/eigen_debug/printers\.py
