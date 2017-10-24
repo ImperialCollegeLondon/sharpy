@@ -68,7 +68,6 @@ class Beam(BaseStructure):
         self.ini_info = StructTimeStepInfo(self.num_node, self.num_elem, self.num_node_elem)
         # attention, it has to be copied, not only referenced
         self.ini_info.pos[:] = in_data['coordinates'][:]
-        # self.ini_info.glob_pos[:] = in_data['coordinates'][:]
 
         # connectivity information
         self.connectivities = in_data['connectivities'].astype(dtype=ct.c_int, order='F')
