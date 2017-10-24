@@ -70,11 +70,7 @@ class TestDynamic2dXbeam(unittest.TestCase):
         sharpy.sharpy_main.cout.cout_talk()
 
         # read output and compare
-        # output_path = os.path.dirname(solver_path) + '/beam/'
-        # pos_def
-        # pos_data = np.genfromtxt(output_path + 'beam_dynamic2d_000000.csv')
-        # self.assertAlmostEqual(pos_data[-1, 2], -2.159, 2)
-        # self.assertAlmostEqual(5.0 - pos_data[-1, 0], 0.596, 3)
-        # # psi_def
-        # psi_data = np.genfromtxt(output_path + 'beam_dynamic2d_crv_000000.csv')
-        # self.assertAlmostEqual(psi_data[-1, 1], 0.6720, 3)
+        output_path = os.path.dirname(solver_path) + '/beam/'
+        pos_data = np.genfromtxt(output_path + 'beam_dynamic2d_glob_000999.csv')
+        self.assertAlmostEqual(pos_data[-1, 0], -3.7350, 3)
+        self.assertAlmostEqual(pos_data[-1, 1], 13.9267, 3)

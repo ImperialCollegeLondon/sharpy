@@ -8,21 +8,18 @@ import configparser
 see Hesse thesis (chap. 5.1.1)
 Introduced by Simo and Vu-Quoc, modified because
 xbeam will not support dead loads.
-This case has the same loads than Simo, but
-the forces are follower forces
 """
 
 dt = 0.01
-simulation_time = 5
+simulation_time = 10
 num_steps = int(simulation_time/dt)
 route = os.path.dirname(os.path.realpath(__file__)) + '/'
 case_name = 'dynamic2d'
-num_elem = 30
+num_elem = 10
 num_node_elem = 3
 
 # dont touch this
 num_node = 0
-
 
 def clean_test_files():
     global dt
@@ -83,9 +80,10 @@ def generate_dyn_file():
         m1 = 80
         f1 = 8
         dynamic_forces = np.zeros((num_node, 6))
-        dynamic_forces[0, 0] = f1*np.cos(angle)
-        dynamic_forces[0, 1] = -f1*np.sin(angle)
-        dynamic_forces[0, 5] = m1
+        app_node = int(0)
+        dynamic_forces[app_node, 0] = -f1*np.cos(angle)
+        dynamic_forces[app_node, 1] = -f1*np.sin(angle)
+        dynamic_forces[app_node, 5] = m1
         force_time = np.zeros((num_steps, ))
         limit = round(2.5/dt)
         force_time[:limit] = 1
@@ -246,7 +244,7 @@ def generate_solver_file():
                         'route': route,
                         'flow': 'BeamLoader, NonLinearDynamic, BeamCsvOutput'}
     config['BeamLoader'] = {'unsteady': 'on'}
-    config['NonLinearDynamic'] = {'print_info': 'on',
+    config['NonLinearDynamic'] = {'print_info': 'off',
                                   'max_iterations': 150,
                                   'num_load_steps': 5,
                                   # 'num_gauss': 2,
@@ -264,10 +262,14 @@ def generate_solver_file():
                                'output_psi': 'on',
                                'output_glob_pos': 'on',
                                'screen_output': 'off'}
+    # not being run
+    # config['BeamPlot'] = {'folder': os.path.dirname(__file__) + '/../',
+    #                       'include_rbm': 'on',
+    #                       'include_applied_forces': 'on',
+    #                       'include_unsteady_applied_forces': 'on'}
 
     with open(file_name, 'w') as configfile:
         config.write(configfile)
 
 
-# if __name__ == '__main__':
 generate_files()

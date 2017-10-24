@@ -140,7 +140,7 @@ def generate_solver_file():
     config = configparser.ConfigParser()
     config['SHARPy'] = {'case': case_name,
                         'route': route,
-                        'flow': 'BeamLoader, NonLinearStatic, BeamCsvOutput'}
+                        'flow': 'BeamLoader, NonLinearStatic, BeamCsvOutput, BeamPlot'}
 
     config['BeamLoader'] = {'unsteady': 'off'}
     config['NonLinearStatic'] = {'print_info': 'off',
@@ -155,6 +155,9 @@ def generate_solver_file():
                                'output_pos': 'on',
                                'output_psi': 'on',
                                'screen_output': 'off'}
+    config['BeamPlot'] = {'folder': os.path.dirname(__file__) + '/../',
+                          'include_rbm': 'off',
+                          'include_applied_forces': 'on'}
 
     with open(file_name, 'w') as configfile:
         config.write(configfile)

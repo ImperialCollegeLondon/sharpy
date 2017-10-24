@@ -126,6 +126,9 @@ def cbeam3_solv_nlnstatic(beam, settings):
                             beam.fortran['steady_applied_forces'].ctypes.data_as(doubleP)
                             )
 
+    # beam.timestep_info[beam.it].glob_pos = beam.timestep_info[beam.it].pos
+    # beam.timestep_info[beam.it].glob_psi = beam.timestep_info[beam.it].psi
+
 
 f_cbeam3_solv_modal = xbeamlib.cbeam3_solv_modal_python
 f_cbeam3_solv_modal.restype = None
@@ -316,10 +319,6 @@ def xbeam_solv_couplednlndyn(beam, settings):
     # deformation history matrices
     for_vel = np.zeros((n_tsteps + 1, 6), order='F')
     for_acc = np.zeros((n_tsteps + 1, 6), order='F')
-    # beam.pos_def_history = np.zeros((n_tsteps, beam.num_node, 3), order='F')
-    # beam.pos_dot_def_history = np.zeros((n_tsteps, beam.num_node, 3), order='F')
-    # beam.psi_def_history = np.zeros((n_tsteps, beam.num_elem, 3, 3), order='F')
-    # beam.psi_dot_def_history = np.zeros((n_tsteps, beam.num_elem, 3, 3), order='F')
     quat_history = np.zeros((n_tsteps, 4), order='F')
 
     dt = ct.c_double(dt)
@@ -328,12 +327,10 @@ def xbeam_solv_couplednlndyn(beam, settings):
     xbopts = Xbopts()
     xbopts.PrintInfo = ct.c_bool(settings['print_info'])
     xbopts.Solution = ct.c_int(910)
-    # xbopts.OutInaframe = ct.c_bool(settings['out_a_frame'])
-    # xbopts.OutInBframe = ct.c_bool(settings['out_b_frame'])
-    # xbopts.ElemProj = settings['elem_proj']
+    xbopts.OutInaframe = ct.c_bool(False)
     xbopts.MaxIterations = settings['max_iterations']
     xbopts.NumLoadSteps = settings['num_load_steps']
-    xbopts.NumGauss = ct.c_int(0)
+    # xbopts.NumGauss = ct.c_int(0)
     xbopts.DeltaCurved = settings['delta_curved']
     xbopts.MinDelta = settings['min_delta']
     xbopts.NewmarkDamp = settings['newmark_damp']
@@ -383,8 +380,6 @@ def xbeam_solv_couplednlndyn(beam, settings):
                                ct.byref(xbopts),
                                beam.ini_info.pos.ctypes.data_as(doubleP),
                                beam.ini_info.psi.ctypes.data_as(doubleP),
-                               # beam.timestep_info[0].pos.ctypes.data_as(doubleP),
-                               # beam.timestep_info[0].psi.ctypes.data_as(doubleP),
                                beam.fortran['steady_applied_forces'].ctypes.data_as(doubleP),
                                dynamic_force.ctypes.data_as(doubleP),
                                for_vel.ctypes.data_as(doubleP),
@@ -406,34 +401,19 @@ def xbeam_solv_couplednlndyn(beam, settings):
 
     glob_pos_def = np.zeros_like(pos_def_history)
     for it in range(n_tsteps.value):
-        rot = algebra.quat2rot(quat_history[it, :])
+        rot = algebra.quat2rot(quat_history[it, :]).transpose()
         for inode in range(beam.num_node):
-            glob_pos_def[it, inode, :] = for_pos[it, 0:3] + np.dot(rot.T, pos_def_history[it, inode, :])
+            glob_pos_def[it, inode, :] = np.dot(rot.T, pos_def_history[it, inode, :])
 
-    # beam.timestep_info[0] = (StructTimeStepInfo(beam.num_node,
-    #                                             beam.num_elem,
-    #                                             beam.num_node_elem,
-    #                                             rb=True))
-    # for i in range(1, n_tsteps.value):
-    #     beam.timestep_info.append(StructTimeStepInfo(beam.num_node,
-    #                                                  beam.num_elem,
-    #                                                  beam.num_node_elem,
-    #                                                  rb=True))
-    for i in range(n_tsteps.value):
-        beam.timestep_info[i + 1].pos[:] = pos_def_history[i, :]
-        beam.timestep_info[i + 1].psi[:] = psi_def_history[i, :]
-        beam.timestep_info[i + 1].pos_dot[:] = pos_dot_def_history[i, :]
-        beam.timestep_info[i + 1].psi_dot[:] = psi_dot_def_history[i, :]
+    for i in range(n_tsteps.value - 1):
+        beam.timestep_info[i + 1].pos[:] = pos_def_history[i+1, :]
+        beam.timestep_info[i + 1].psi[:] = psi_def_history[i+1, :]
+        beam.timestep_info[i + 1].pos_dot[:] = pos_dot_def_history[i+1, :]
+        beam.timestep_info[i + 1].psi_dot[:] = psi_dot_def_history[i+1, :]
 
-        beam.timestep_info[i + 1].quat[:] = quat_history[i, :]
-        # beam.timestep_info[i].for_pos[:] = beam.for_pos[i, 0:3]
-        # beam.timestep_info[i].for_vel[:] = beam.for_vel[i, 0:3]
-        beam.timestep_info[i + 1].for_pos[:] = for_pos[i, :]
-        beam.timestep_info[i + 1].for_vel[:] = for_vel[i, :]
-        beam.timestep_info[i + 1].glob_pos[:] = glob_pos_def[i, :]
-
-    # beam.for_pos = []
-    # beam.for_vel = []
+        beam.timestep_info[i + 1].quat[:] = quat_history[i+1, :]
+        beam.timestep_info[i + 1].for_pos[:] = for_pos[i+1, :]
+        beam.timestep_info[i + 1].for_vel[:] = for_vel[i+1, :]
 
 
 f_cbeam3_solv_update_static = xbeamlib.cbeam3_solv_update_static_python

@@ -68,6 +68,7 @@ class Beam(BaseStructure):
         self.ini_info = StructTimeStepInfo(self.num_node, self.num_elem, self.num_node_elem)
         # attention, it has to be copied, not only referenced
         self.ini_info.pos[:] = in_data['coordinates'][:]
+        # self.ini_info.glob_pos[:] = in_data['coordinates'][:]
 
         # connectivity information
         self.connectivities = in_data['connectivities'].astype(dtype=ct.c_int, order='F')
@@ -161,7 +162,7 @@ class Beam(BaseStructure):
 
     def add_unsteady_information(self, dyn_dict, num_steps):
         # data storage for time dependant output
-        for it in range(num_steps + 1):
+        for it in range(num_steps):
             self.add_timestep(self.timestep_info)
         self.timestep_info[0] = self.ini_info.copy()
 

@@ -256,13 +256,11 @@ class StructTimeStepInfo(object):
         return deepcopy(self)
 
     def glob_pos(self, include_rbm=True):
-        coords = np.zeros((self.num_node, 3))
-        for i_node in self.num_node:
-            coords[i_node, :] = self.pos[i_node, :]
-            coords[i_node, :] = np.dot(algebra.quat2rot(self.quat), coords[i_node, :])
+        coords = self.pos.copy()
+        for i_node in range(self.num_node):
+            coords[i_node, :] = np.dot(algebra.quat2rot(self.quat).transpose(), coords[i_node, :])
             if include_rbm:
                 coords[i_node, :] += self.for_pos[0:3]
-
         return coords
 
 

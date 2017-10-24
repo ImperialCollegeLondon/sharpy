@@ -87,7 +87,7 @@ class BeamCsvOutput(BaseSolver):
                                '%06u' % it +
                                '.csv')
                 # write file
-                np.savetxt(it_filename, self.data.structure.timestep_info[it].glob_pos)
+                np.savetxt(it_filename, self.data.structure.timestep_info[it].glob_pos(include_rbm=True))
 
     def print_info(self):
         if self.settings['screen_output']:
