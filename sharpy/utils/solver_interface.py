@@ -2,9 +2,7 @@ from abc import ABCMeta, abstractmethod
 import sharpy.utils.cout_utils as cout
 import os
 
-# available_solvers = {}
 dict_of_solvers = {}
-# solver_types = {}
 solvers = {}  # for internal working
 
 
@@ -16,27 +14,12 @@ def solver(arg):
         arg.solver_id
     except AttributeError:
         raise AttributeError('Class defined as solver has no solver_id attribute')
-    # try:
-    #     arg.solver_type
-    # except:
-    #     raise AttributeError('Class defined as solver has no solver_type attribute')
-
-    # try:
-    #     available_solvers[arg.solver_type]
-    # except KeyError:
-    #     available_solvers[arg.solver_type] = []
-    # available_solvers[arg.solver_type].append(arg.solver_id)
     dict_of_solvers[arg.solver_id] = arg
-    # solver_types[arg.solver_id] = arg.solver_type
     return arg
 
 
 def print_available_solvers():
     cout.cout_wrap('The available solvers on this session are:', 2)
-    # for k, v in available_solvers.items():
-    #     cout.cout_wrap('%s' % k, 2)
-    #     for i in v:
-    #         cout.cout_wrap('   %s' % i, 0)
     for name, i_solver in dict_of_solvers.items():
         cout.cout_wrap('%s ' % i_solver.solver_id, 2)
 
@@ -47,18 +30,6 @@ class BaseSolver(metaclass=ABCMeta):
     @property
     def solver_id(self):
         raise NotImplementedError
-
-    # @property
-    # def solver_type(self):
-    #     raise NotImplementedError
-
-    # @property
-    # def settings_types(self):
-    #     raise NotImplementedError
-    #
-    # @property
-    # def settings_default(self):
-    #     raise NotImplementedError
 
     # The input is a ProblemData class structure
     @abstractmethod
@@ -72,8 +43,6 @@ class BaseSolver(metaclass=ABCMeta):
 
 
 def solver_from_string(string):
-    # import sys
-    # import functools
     return dict_of_solvers[string]
 
 
