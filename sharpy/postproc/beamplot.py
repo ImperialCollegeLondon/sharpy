@@ -14,22 +14,22 @@ class BeamPlot(BaseSolver):
     solver_id = 'BeamPlot'
 
     def __init__(self):
-        self.settings_type = dict()
+        self.settings_types = dict()
         self.settings_default = dict()
 
-        self.settings_type['folder'] = 'str'
+        self.settings_types['folder'] = 'str'
         self.settings_default['folder'] = './output'
 
-        self.settings_type['include_rbm'] = 'bool'
+        self.settings_types['include_rbm'] = 'bool'
         self.settings_default['include_rbm'] = True
 
-        self.settings_type['include_applied_forces'] = 'bool'
+        self.settings_types['include_applied_forces'] = 'bool'
         self.settings_default['include_applied_forces'] = True
 
-        self.settings_type['include_unsteady_applied_forces'] = 'bool'
+        self.settings_types['include_unsteady_applied_forces'] = 'bool'
         self.settings_default['include_unsteady_applied_forces'] = False
 
-        self.settings_type['name_prefix'] = 'str'
+        self.settings_types['name_prefix'] = 'str'
         self.settings_default['name_prefix'] = ''
 
         self.settings = None
@@ -41,7 +41,7 @@ class BeamPlot(BaseSolver):
     def initialise(self, data):
         self.data = data
         self.settings = data.settings[self.solver_id]
-        settings.to_custom_types(self.settings, self.settings_type, self.settings_default)
+        settings.to_custom_types(self.settings, self.settings_types, self.settings_default)
         # create folder for containing files if necessary
         if not os.path.exists(self.settings['folder']):
             os.makedirs(self.settings['folder'])
