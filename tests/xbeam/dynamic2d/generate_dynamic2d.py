@@ -21,6 +21,7 @@ num_node_elem = 3
 # dont touch this
 num_node = 0
 
+
 def clean_test_files():
     global dt
     global num_steps
@@ -94,13 +95,13 @@ def generate_dyn_file():
 
     with h5.File(route + '/' + case_name + '.dyn.h5', 'a') as h5file:
         if with_dynamic_forces:
-            dynamic_forces_handle = h5file.create_dataset(
+            h5file.create_dataset(
                 'dynamic_forces', data=dynamic_forces_time)
             # dynamic_forces_handle = h5file.create_dataset(
             #     'dynamic_forces_amplitude', data=dynamic_forces)
             # dynamic_forces_handle = h5file.create_dataset(
             #     'dynamic_forces_time', data=force_time)
-        num_steps_handle = h5file.create_dataset(
+        h5file.create_dataset(
             'num_steps', data=num_steps)
 
 

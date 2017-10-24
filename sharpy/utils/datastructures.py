@@ -7,6 +7,9 @@ import sharpy.utils.algebra as algebra
 
 class AeroTimeStepInfo(object):
     def __init__(self, dimensions, dimensions_star):
+        self.ct_dimensions = None
+        self.ct_dimensions_star = None
+
         self.dimensions = dimensions
         self.dimensions_star = dimensions_star
         self.n_surf = dimensions.shape[0]
@@ -20,9 +23,9 @@ class AeroTimeStepInfo(object):
         self.zeta_dot = []
         for i_surf in range(self.n_surf):
             self.zeta_dot.append(np.zeros((3,
-                                       dimensions[i_surf, 0] + 1,
-                                       dimensions[i_surf, 1] + 1),
-                                      dtype=ct.c_double))
+                                           dimensions[i_surf, 0] + 1,
+                                           dimensions[i_surf, 1] + 1),
+                                          dtype=ct.c_double))
 
         # panel normals
         self.normals = []

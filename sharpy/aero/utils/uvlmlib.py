@@ -82,9 +82,6 @@ class UVMopts(ct.Structure):
         self.dt = ct.c_double(0.01)
         self.NumCores = ct.c_uint(4)
         self.NumSurfaces = ct.c_uint(1)
-        # self.steady_n_rollup = ct.c_uint(0)
-        # self.steady_rollup_tolerance = ct.c_double(1e-5)
-        # self.steady_rollup_aic_refresh = ct.c_uint(1)
         self.convection_scheme = ct.c_uint(2)
         self.Mstar = ct.c_uint(10)
         self.ImageMethod = ct.c_bool(False)
@@ -108,6 +105,7 @@ class FlightConditions(ct.Structure):
         self.uinf_direction = np.ctypeslib.as_ctypes(uinf_direction_temp)
         self.rho = fc_dict['FlightCon']['rho_inf']
         self.c_ref = fc_dict['FlightCon']['c_ref']
+
 
 # type for 2d integer matrix
 t_2int = ct.POINTER(ct.c_int)*2
