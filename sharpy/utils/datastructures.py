@@ -234,6 +234,13 @@ class AeroTimeStepInfo(object):
         out.forces = copy.deepcopy(self.forces)
         return out
 
+    def update_orientation(self, rot):
+        for i_surf in range(self.n_surf):
+            for i_row in range(self.zeta[i_surf].shape[1]):
+                for i_col in range(self.zeta[i_surf].shape[2]):
+                    self.zeta[i_surf][:, i_row, i_col] = np.dot(rot,
+                                                                self.zeta[i_surf][:, i_row, i_col])
+
 
 class StructTimeStepInfo(object):
     def __init__(self, num_node, num_elem, num_node_elem=3):
@@ -252,7 +259,6 @@ class StructTimeStepInfo(object):
         self.quat = np.array([1, 0, 0, 0], dtype=float)
         self.for_pos = np.zeros((6,))
         self.for_vel = np.zeros((6,))
-        # self.glob_pos = np.zeros_like(self.pos)
 
     def copy(self):
         from copy import deepcopy
@@ -260,10 +266,15 @@ class StructTimeStepInfo(object):
 
     def glob_pos(self, include_rbm=True):
         coords = self.pos.copy()
+        c = algebra.quat2rot(self.quat).transpose()
         for i_node in range(self.num_node):
-            coords[i_node, :] = np.dot(algebra.quat2rot(self.quat).transpose(), coords[i_node, :])
+            coords[i_node, :] = np.dot(c, coords[i_node, :])
             if include_rbm:
                 coords[i_node, :] += self.for_pos[0:3]
         return coords
+
+    def update_orientation(self, quat):
+        self.quat = quat.copy()
+
 
 
