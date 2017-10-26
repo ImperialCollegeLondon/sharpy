@@ -25,6 +25,9 @@ class AerogridLoader(BaseSolver):
         self.settings_types['freestream_dir'] = 'list(float)'
         self.settings_default['freestream_dir'] = np.array([1.0, 0, 0])
 
+        self.settings_types['mstar'] = 'int'
+        self.settings_default['mstar'] = 10
+
         self.data = None
         self.settings = None
         self.aero_file_name = ''
