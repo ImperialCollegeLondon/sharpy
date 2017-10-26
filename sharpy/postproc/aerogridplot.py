@@ -43,7 +43,6 @@ class AerogridPlot(BaseSolver):
         self.body_filename = ''
         self.wake_filename = ''
         self.ts_max = 0
-        pass
 
     def initialise(self, data):
         self.data = data
