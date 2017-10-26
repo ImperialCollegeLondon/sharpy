@@ -129,7 +129,7 @@ class Aerogrid(object):
 
         self.aero_dimensions_star = self.aero_dimensions.copy()
         for i_surf in range(self.n_surf):
-            self.aero_dimensions_star[i_surf, 0] = self.aero_dict['surface_m'][i_surf]
+            self.aero_dimensions_star[i_surf, 0] = self.aero_settings['mstar'].value
 
     def add_timestep(self):
         self.timestep_info.append(AeroTimeStepInfo(self.aero_dimensions,
@@ -228,6 +228,10 @@ class Aerogrid(object):
                     except KeyError:
                         continue
                     self.aero2struct_mapping[i_surf][i_n] = i_global_node
+
+    def update_orientation(self, quat, ts=-1):
+        rot = algebra.quat2rot(quat)
+        self.timestep_info[ts].update_orientation(rot)
 
 
 def generate_strip(node_info, airfoil_db, aligned_grid, orientation_in=np.array([1, 0, 0])):
