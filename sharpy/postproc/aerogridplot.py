@@ -30,6 +30,9 @@ class AerogridPlot(BaseSolver):
         self.settings_types['include_unsteady_applied_forces'] = 'bool'
         self.settings_default['include_unsteady_applied_forces'] = False
 
+        self.settings_types['minus_m_star'] = 'int'
+        self.settings_default['minus_m_star'] = 0
+
         self.settings_types['name_prefix'] = 'str'
         self.settings_default['name_prefix'] = ''
 
@@ -161,6 +164,8 @@ class AerogridPlot(BaseSolver):
                         '%06u' % self.ts)
 
             dims_star = self.data.aero.timestep_info[self.ts].dimensions_star[i_surf, :]
+            dims_star[0] -= self.settings['minus_m_star']
+
             point_data_dim = (dims_star[0]+1)*(dims_star[1]+1)
             panel_data_dim = (dims_star[0])*(dims_star[1])
 

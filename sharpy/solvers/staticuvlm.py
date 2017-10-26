@@ -1,13 +1,14 @@
 import ctypes as ct
+import numpy as np
 
-import sharpy.aero.models.aerogrid as aerogrid
-import sharpy.aero.utils.mapping as mapping
-import sharpy.aero.utils.utils as aero_utils
+# import sharpy.aero.models.aerogrid as aerogrid
+# import sharpy.aero.utils.mapping as mapping
+import sharpy.utils.algebra as algebra
 import sharpy.aero.utils.uvlmlib as uvlmlib
 import sharpy.utils.cout_utils as cout
 import sharpy.utils.settings as settings
-from sharpy.utils.settings import str2bool
 from sharpy.utils.solver_interface import solver, BaseSolver
+import sharpy.utils.generator_interface as gen_interface
 
 @solver
 class StaticUvlm(BaseSolver):
@@ -39,12 +40,37 @@ class StaticUvlm(BaseSolver):
         self.settings_types['rollup_tolerance'] = 'float'
         self.settings_default['rollup_tolerance'] = 1e-4
 
+        self.settings_types['iterative_solver'] = 'bool'
+        self.settings_default['iterative_solver'] = False
+
+        self.settings_types['iterative_tol'] = 'float'
+        self.settings_default['iterative_tol'] = 1e-4
+
+        self.settings_types['iterative_precond'] = 'bool'
+        self.settings_default['iterative_precond'] = False
+
+        self.settings_types['velocity_field_generator'] = 'str'
+        self.settings_default['velocity_field_generator'] = 'SteadyVelocityField'
+
+        self.settings_types['velocity_field_input'] = 'dict'
+        self.settings_default['velocity_field_input'] = {}
+
+        self.settings_types['alpha'] = 'float'
+        self.settings_default['alpha'] = None
+
+        self.settings_types['beta'] = 'float'
+        self.settings_default['beta'] = 0.0
+
+        self.settings_types['roll'] = 'float'
+        self.settings_default['roll'] = 0.0
+
+        self.settings_types['rho'] = 'float'
+        self.settings_default['rho'] = 1.225
 
         self.ts = 0
         self.data = None
         self.settings = None
-
-        pass
+        self.velocity_generator = None
 
     def initialise(self, data):
         self.ts = 0
@@ -52,13 +78,30 @@ class StaticUvlm(BaseSolver):
         self.settings = data.settings[self.solver_id]
         settings.to_custom_types(self.settings, self.settings_types, self.settings_default)
 
-    def update(self):
-        pass
+        # update beam orientation
+        # beam orientation is used as the parametrisation of the aero orientation
+        # too (it will come handy for the fully coupled simulation)
+        euler_rot = np.array([self.settings['roll'].value,
+                              self.settings['alpha'].value,
+                              self.settings['beta'].value])
+        quat = algebra.mat2quat(algebra.euler2rot(euler_rot).transpose())
+        self.data.structure.update_orientation(quat, self.ts)
+        self.data.aero.update_orientation(quat, self.ts)
+
+        # init velocity generator
+        velocity_generator_type = gen_interface.generator_from_string(
+            self.settings['velocity_field_generator'])
+        self.velocity_generator = velocity_generator_type()
+        self.velocity_generator.initialise(self.settings['velocity_field_input'])
 
     def run(self):
         cout.cout_wrap('Running static UVLM solver...', 1)
+        # generate uext
+        self.velocity_generator.generate({'zeta': self.data.aero.timestep_info[self.ts].zeta},
+                                         self.data.aero.timestep_info[self.ts].u_ext)
+        # grid orientation
+
         uvlmlib.vlm_solver(self.data.aero.timestep_info[self.ts],
-                           self.data.flightconditions,
                            self.settings)
 
         cout.cout_wrap('...Finished', 1)
