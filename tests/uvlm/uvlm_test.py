@@ -21,24 +21,37 @@ class TestPlanarWingUvlm(unittest.TestCase):
     def tearDownClass(cls):
         pass
 
-    def test_geradin(self):
+    def test_planarwing(self):
         import sharpy.sharpy_main
+        # from sharpy.utils.cout_utils import cout_wrap
         # suppress screen output
-        # sharpy.sharpy_main.cout.cout_quiet()
         solver_path = os.path.abspath(os.path.dirname(os.path.realpath(__file__)) + '/planarwing/planarwing.solver.txt')
         sharpy.sharpy_main.main(['', solver_path])
-        sharpy.sharpy_main.cout.cout_talk()
 
-        # # read output and compare
-        # output_path = os.path.dirname(solver_path) + '/beam/'
-        # # pos_def
-        # pos_data = np.genfromtxt(output_path + 'beam_geradin_000000.csv')
-        # self.assertAlmostEqual(pos_data[-1, 2], -2.159, 2)
-        # self.assertAlmostEqual(5.0 - pos_data[-1, 0], 0.596, 3)
-        # # psi_def
-        # psi_data = np.genfromtxt(output_path + 'beam_geradin_crv_000000.csv')
-        # self.assertAlmostEqual(psi_data[-1, 1], 0.6720, 3)
+        # read output and compare
+        output_path = os.path.dirname(solver_path) + '/output/planarwing/forces/'
+        forces_data = np.matrix(np.genfromtxt(output_path + 'planarwing_aeroforces.csv', delimiter=','))
+        self.assertAlmostEqual(forces_data[-1, 1], 2.245e1, 2)
+        self.assertAlmostEqual(forces_data[-1, 2], 0.0, 2)
+        self.assertAlmostEqual(forces_data[-1, 3], 4.88705e3, 1)
 
+
+class TestPlanarWingWakeUvlm(unittest.TestCase):
+    """
+    """
+
+    def test_planarwing_discrete_wake(self):
+        import sharpy.sharpy_main
+        # suppress screen output
+        solver_path = os.path.abspath(os.path.dirname(os.path.realpath(__file__)) + '/planarwing/planarwing_discretewake.solver.txt')
+        sharpy.sharpy_main.main(['', solver_path])
+
+        # read output and compare
+        output_path = os.path.dirname(solver_path) + '/output/planarwing_discretewake/forces/'
+        forces_data = np.genfromtxt(output_path + 'planarwing_discretewake_aeroforces.csv', delimiter=',')
+        self.assertAlmostEqual(forces_data[-1, 1], 2.91e1, 2)
+        self.assertAlmostEqual(forces_data[-1, 2], 0.0, 2)
+        self.assertAlmostEqual(forces_data[-1, 3], 4.764e3, 2)
 
 # class TestDynamic2dXbeam(unittest.TestCase):
 #     """

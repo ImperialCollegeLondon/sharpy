@@ -3,18 +3,18 @@ import numpy as np
 import configparser
 import os
 
-case_name = 'planarwing'
+case_name = 'smith_nog_2deg'
 route = os.path.dirname(os.path.realpath(__file__)) + '/'
 
 # flight conditions
 u_inf = 25
-rho = 1.225
-alpha = 4
+rho = 0.08891
+alpha = 2
 beta = 0
 c_ref = 1
 b_ref = 16
 sweep = 0*np.pi/180.
-aspect_ratio = 32 # = total wing span (chord = 1)
+aspect_ratio = 32  # = total wing span (chord = 1)
 
 alpha_rad = alpha*np.pi/180
 
@@ -29,14 +29,15 @@ main_airfoil_M = 0
 n_surfaces = 2
 
 # discretisation data
-num_elem_main = 20
+num_elem_main = 10
 
 num_node_elem = 3
 num_elem = num_elem_main + num_elem_main
 num_node_main = num_elem_main*(num_node_elem - 1) + 1
 num_node = num_node_main + (num_node_main - 1)
 
-m_main = 10
+m_main = 5
+
 
 def clean_test_files():
     fem_file_name = route + '/' + case_name + '.fem.h5'
@@ -279,9 +280,38 @@ def generate_solver_file(horseshoe=False):
                         'flow': ['BeamLoader', 'AerogridLoader', 'StaticUvlm', 'AerogridPlot', 'AeroForcesCalculator'],
                         'write_screen': 'off',
                         'write_log': 'on',
-                        'log_folder': os.path.dirname(__file__) + '/output/',
+                        'log_folder': os.path.dirname(__file__) + '/../',
                         'log_file': case_name + '.log'}
     config['BeamLoader'] = {'unsteady': 'off'}
+    config['StaticCoupled'] = {'print_info': 'on',
+                               'structural_solver': 'NonLinearStatic',
+                               'structural_solver_settings': {'print_info': 'off',
+                                                              'max_iterations': 99,
+                                                              'num_load_steps': 5,
+                                                              'delta_curved': 1e-5,
+                                                              'min_delta': 1e-8,
+                                                              'gravity_on': 'on',
+                                                              'gravity': 9.81,
+                                                              'gravity_dir': '0, 0, 1'},
+                               'aero_solver': 'StaticUvlm',
+                               'aero_solver_settings': {'print_info': 'off',
+                                                        'horseshoe': 'on',
+                                                        'num_cores': 4,
+                                                        'n_rollup': 0,
+                                                        'rollup_dt': main_chord/m_main/u_inf,
+                                                        'rollup_aic_refresh': 1,
+                                                        'rollup_tolerance': 1e-4,
+                                                        'velocity_field_generator': 'SteadyVelocityField',
+                                                        'velocity_field_input': {'u_inf': u_inf,
+                                                                                 'u_inf_direction': [1., 0, 0]},
+                                                        'rho': 1.225,
+                                                        'alpha': alpha_rad,
+                                                        'beta': beta},
+                               'max_iter': 90,
+                               'n_load_steps': 5,
+                               'tolerance': 1e-5,
+                               'relaxation_factor': 0.0,
+                               'residual_plot': 'off'}
     if horseshoe is True:
         config['AerogridLoader'] = {'unsteady': 'off',
                                     'aligned_grid': 'on',
@@ -329,7 +359,7 @@ def generate_solver_file(horseshoe=False):
                               'include_applied_forces': 'on',
                               'minus_m_star': 0
                               }
-    config['AeroForcesCalculator'] = {'folder': os.path.dirname(__file__) + '/output/',
+    config['AeroForcesCalculator'] = {'folder': os.path.dirname(__file__) + '/output/forces',
                                       'write_text_file': 'on',
                                       'text_file_name': case_name + '_aeroforces.csv',
                                       'screen_output': 'on',

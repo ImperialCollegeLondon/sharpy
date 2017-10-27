@@ -137,10 +137,17 @@ def generate_fem_file(route, case_name, num_elem, num_node_elem=3):
 
 def generate_solver_file():
     file_name = route + '/' + case_name + '.solver.txt'
-    config = configparser.ConfigParser()
+    # config = configparser.ConfigParser()
+    import configobj
+    config = configobj.ConfigObj()
+    config.filename = file_name
     config['SHARPy'] = {'case': case_name,
                         'route': route,
-                        'flow': 'BeamLoader, NonLinearStatic, BeamCsvOutput, BeamPlot'}
+                        'flow': ['BeamLoader', 'NonLinearStatic', 'BeamCsvOutput', 'BeamPlot'],
+                        'write_screen': 'off',
+                        'write_log': 'on',
+                        'log_folder': os.path.dirname(__file__) + '/output/',
+                        'log_file': case_name + '.log'}
 
     config['BeamLoader'] = {'unsteady': 'off'}
     config['NonLinearStatic'] = {'print_info': 'off',
@@ -150,7 +157,7 @@ def generate_solver_file():
                                  'min_delta': 1e-8,
                                  'gravity_on': 'on',
                                  'gravity': 9.81,
-                                 'gravity_dir': '0, 0, 1'}
+                                 'gravity_dir': ['0', '0', '1']}
     config['BeamCsvOutput'] = {'folder': os.path.dirname(__file__) + '/../',
                                'output_pos': 'on',
                                'output_psi': 'on',
@@ -159,8 +166,9 @@ def generate_solver_file():
                           'include_rbm': 'off',
                           'include_applied_forces': 'on'}
 
-    with open(file_name, 'w') as configfile:
-        config.write(configfile)
+    config.write()
+    # with open(file_name, 'w') as configfile:
+    #     config.write(configfile)
 
 
 # run everything
