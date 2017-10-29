@@ -1,6 +1,3 @@
-# import sharpy.utils.settings as settings
-# import sharpy.utils.exceptions as exceptions
-# import sharpy.utils.cout_utils as cout
 import numpy as np
 import importlib
 import unittest
