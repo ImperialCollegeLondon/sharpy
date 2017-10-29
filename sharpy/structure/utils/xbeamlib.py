@@ -68,7 +68,7 @@ f_cbeam3_solv_nlnstatic = xbeamlib.cbeam3_solv_nlnstatic_python
 f_cbeam3_solv_nlnstatic.restype = None
 
 
-def cbeam3_solv_nlnstatic(beam, settings):
+def cbeam3_solv_nlnstatic(beam, settings, ts):
     """@brief Python wrapper for f_cbeam3_solv_nlnstatic
      Alfonso del Carre
     """
@@ -95,7 +95,6 @@ def cbeam3_solv_nlnstatic(beam, settings):
     xbopts.gravity_dir_y = ct.c_double(settings['gravity_dir'][1])
     xbopts.gravity_dir_z = ct.c_double(settings['gravity_dir'][2])
 
-    # applied forces as 0=G, 1=a, 2=b
     # here we only need to set the flags at True, all the forces are follower
     xbopts.FollowerForce = ct.c_bool(True)
     xbopts.FollowerForceRig = ct.c_bool(True)
@@ -121,13 +120,10 @@ def cbeam3_solv_nlnstatic(beam, settings):
                             ct.byref(xbopts),
                             beam.ini_info.pos.ctypes.data_as(doubleP),
                             beam.ini_info.psi.ctypes.data_as(doubleP),
-                            beam.timestep_info[beam.it].pos.ctypes.data_as(doubleP),
-                            beam.timestep_info[beam.it].psi.ctypes.data_as(doubleP),
-                            beam.fortran['steady_applied_forces'].ctypes.data_as(doubleP)
+                            beam.timestep_info[ts].pos.ctypes.data_as(doubleP),
+                            beam.timestep_info[ts].psi.ctypes.data_as(doubleP),
+                            beam.timestep_info[ts].steady_applied_forces.ctypes.data_as(doubleP)
                             )
-
-    # beam.timestep_info[beam.it].glob_pos = beam.timestep_info[beam.it].pos
-    # beam.timestep_info[beam.it].glob_psi = beam.timestep_info[beam.it].psi
 
 
 f_cbeam3_solv_modal = xbeamlib.cbeam3_solv_modal_python
@@ -380,7 +376,7 @@ def xbeam_solv_couplednlndyn(beam, settings):
                                ct.byref(xbopts),
                                beam.ini_info.pos.ctypes.data_as(doubleP),
                                beam.ini_info.psi.ctypes.data_as(doubleP),
-                               beam.fortran['steady_applied_forces'].ctypes.data_as(doubleP),
+                               beam.timestep_info[0].steady_applied_forces.ctypes.data_as(doubleP),
                                dynamic_force.ctypes.data_as(doubleP),
                                for_vel.ctypes.data_as(doubleP),
                                for_acc.ctypes.data_as(doubleP),

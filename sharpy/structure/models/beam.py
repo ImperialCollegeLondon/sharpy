@@ -15,8 +15,6 @@ class Beam(BaseStructure):
         self.num_node = -1
         self.num_elem = -1
 
-        self.t = 0.0
-        self.it = 0
         self.timestep_info = []
         self.ini_info = None
         self.dynamic_input = []
@@ -67,7 +65,7 @@ class Beam(BaseStructure):
         # ini info
         self.ini_info = StructTimeStepInfo(self.num_node, self.num_elem, self.num_node_elem)
         # attention, it has to be copied, not only referenced
-        self.ini_info.pos[:] = in_data['coordinates'][:]
+        self.ini_info.pos = in_data['coordinates'].astype(dtype=ct.c_double, order='F')
 
         # connectivity information
         self.connectivities = in_data['connectivities'].astype(dtype=ct.c_int, order='F')
@@ -100,10 +98,7 @@ class Beam(BaseStructure):
         # applied forces
         self.steady_app_forces = np.zeros((self.num_node, 6))
         try:
-            in_app_forces = in_data['app_forces']
-            in_node_app_forces = in_data['node_app_forces']
-            for i_node in range(len(in_node_app_forces)):
-                self.steady_app_forces[in_node_app_forces[i_node], :] += in_app_forces[i_node, :]
+            self.steady_app_forces = in_data['app_forces'].copy()
         except KeyError:
             pass
 
@@ -134,7 +129,9 @@ class Beam(BaseStructure):
         self.generate_master_structure()
 
         # the timestep_info[0] is the steady state or initial state for unsteady solutions
+        self.ini_info.steady_applied_forces = self.steady_app_forces.astype(dtype=ct.c_double, order='F')
         self.timestep_info.append(self.ini_info.copy())
+        self.timestep_info[-1].steady_applied_forces = self.steady_app_forces.astype(dtype=ct.c_double, order='F')
 
         # lumped masses
         try:
@@ -243,6 +240,11 @@ class Beam(BaseStructure):
         if len(timestep_info) > 1:
             timestep_info[-1] = timestep_info[-2].copy()
 
+        timestep_info[-1].steady_applied_forces = self.ini_info.steady_applied_forces.astype(dtype=ct.c_double, order='F')
+
+    def next_step(self):
+        self.add_timestep(self.timestep_info)
+
     def generate_node_master_elem(self):
         """
         Returns a matrix indicating the master element for a given node
@@ -284,7 +286,7 @@ class Beam(BaseStructure):
         self.fortran['vdof'] = self.vdof.astype(ct.c_int, order='F') + 1
         self.fortran['fdof'] = self.fdof.astype(ct.c_int, order='F') + 1
 
-        self.fortran['steady_applied_forces'] = self.steady_app_forces.astype(dtype=ct.c_double, order='F')
+        # self.fortran['steady_applied_forces'] = self.steady_app_forces.astype(dtype=ct.c_double, order='F')
 
         # undeformed structure matrices
         self.fortran['pos_ini'] = self.ini_info.pos.astype(dtype=ct.c_double, order='F')
@@ -318,10 +320,11 @@ class Beam(BaseStructure):
             # else:
             #     self.forced_acc_fortran = np.zeros((self.n_tsteps, 6), dtype=ct.c_double, order='F')
 
+    def update_orientation(self, quat, ts=-1):
+        self.timestep_info[ts].quat = quat.copy()
 
 
-#----------------------------------------------------------------------------------------------------------------------
-
+# ----------------------------------------------------------------------------------------------------------------------
 
     # def __init_(self, fem_dictionary, dyn_dictionary=None):
         # try:
@@ -332,11 +335,6 @@ class Beam(BaseStructure):
         # unsteady part
         # if dyn_dictionary is not None:
         #     self.load_unsteady_data(dyn_dictionary)
-
-
-    def update_forces(self, forces):
-        self.app_forces = np.asfortranarray(self.initial_app_forces + forces)
-        self.generate_aux_information()
 
     def load_unsteady_data(self, dyn_dictionary):
         self.n_tsteps = dyn_dictionary['num_steps']
@@ -357,18 +355,4 @@ class Beam(BaseStructure):
         except KeyError:
             self.forced_acc = None
 
-
-
-
-
-
-    def read_dynamic_data(self):
-        pass
-
-    # def update(self, it=0, t=0.0):
-    #     self.t = t
-    #     self.it = it
-    #     for elem in self.elements:
-    #         elem.update(self.timestep_info[it].pos_def[self.connectivities[elem.ielem, :], :],
-    #                     self.timestep_info[it].psi_def[elem.ielem, :, :])
 
