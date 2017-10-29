@@ -39,7 +39,7 @@ class Aerogrid(object):
         self.n_surf = 0
         self.n_aero_node = 0
 
-    def generate(self, aero_dict, beam, aero_settings):
+    def generate(self, aero_dict, beam, aero_settings, ts):
         self.aero_dict = aero_dict
         self.beam = beam
         self.aero_settings = aero_settings
@@ -81,7 +81,8 @@ class Aerogrid(object):
                                                copy=False,
                                                assume_sorted=True))
         self.add_timestep()
-        self.generate_zeta(self.beam, self.aero_settings, ts=0)
+        self.generate_mapping()
+        self.generate_zeta(self.beam, self.aero_settings, ts)
 
     def output_info(self):
         cout.cout_wrap('The aerodynamic grid contains %u surfaces' % self.n_surf, 1)
@@ -95,7 +96,7 @@ class Aerogrid(object):
         cout.cout_wrap('  In total: %u bound panels' % (sum(self.aero_dimensions[:, 0]*
                                                             self.aero_dimensions[:, 1], 1)))
         cout.cout_wrap('  In total: %u wake panels' % (sum(self.aero_dimensions_star[:, 0]*
-                                                            self.aero_dimensions_star[:, 1], 1)))
+                                                           self.aero_dimensions_star[:, 1], 1)))
         cout.cout_wrap('  Total number of panels = %u' % (sum(self.aero_dimensions_star[:, 0]*
                                                               self.aero_dimensions_star[:, 1], 1) +
                                                           sum(self.aero_dimensions_star[:, 0]*
@@ -137,8 +138,11 @@ class Aerogrid(object):
         if len(self.timestep_info) > 1:
             self.timestep_info[-1] = self.timestep_info[-2].copy()
 
-    def generate_zeta(self, beam, aero_settings, ts=0):
-        self.generate_mapping()
+        for i_surf in range(self.n_surf):
+            self.timestep_info[-1].forces[i_surf].fill(0.0)
+            self.timestep_info[-1].dynamic_forces[i_surf].fill(0.0)
+
+    def generate_zeta(self, beam, aero_settings, ts):
         nodes_in_surface = []
         for i_surf in range(self.n_surf):
             nodes_in_surface.append([])
@@ -169,8 +173,8 @@ class Aerogrid(object):
                     node_info['M'] = self.aero_dimensions[i_surf, 0]
                     node_info['M_distribution'] = self.aero_dict['m_distribution'].decode('ascii')
                     node_info['airfoil'] = self.aero_dict['airfoil_distribution'][i_global_node]
-                    node_info['beam_coord'] = beam.timestep_info[beam.it].pos[i_global_node, :]
-                    node_info['beam_psi'] = beam.timestep_info[beam.it].psi[master_elem, master_elem_node, :]
+                    node_info['beam_coord'] = beam.timestep_info[ts].pos[i_global_node, :]
+                    node_info['beam_psi'] = beam.timestep_info[ts].psi[master_elem, master_elem_node, :]
                     node_info['for_delta'] = beam.frame_of_reference_delta[master_elem, master_elem_node, :]
                     node_info['elem'] = beam.elements[master_elem]
                     self.timestep_info[ts].zeta[i_surf][:, :, i_n] = (
