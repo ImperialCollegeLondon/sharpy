@@ -47,10 +47,10 @@ class AerogridPlot(BaseSolver):
     def initialise(self, data):
         self.data = data
         self.settings = data.settings[self.solver_id]
-        if self.data.structure.settings['unsteady']:
-            self.ts_max = self.data.structure.settings['num_steps']
-        else:
-            self.ts_max = 1
+        # if self.data.structure.settings['unsteady']:
+        self.ts_max = self.data.ts + 1
+        # else:
+        #     self.ts_max = 1
         settings.to_custom_types(self.settings, self.settings_types, self.settings_default)
         # create folder for containing files if necessary
         if not os.path.exists(self.settings['folder']):
