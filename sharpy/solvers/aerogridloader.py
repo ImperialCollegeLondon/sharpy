@@ -65,5 +65,5 @@ class AerogridLoader(BaseSolver):
 
     def run(self):
         self.data.aero = aerogrid.Aerogrid()
-        self.data.aero.generate(self.aero_data_dict, self.data.structure, self.settings)
+        self.data.aero.generate(self.aero_data_dict, self.data.structure, self.settings, self.data.ts)
         return self.data
