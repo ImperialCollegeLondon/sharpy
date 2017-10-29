@@ -56,7 +56,7 @@ class StaticUvlm(BaseSolver):
         self.settings_default['velocity_field_input'] = {}
 
         self.settings_types['alpha'] = 'float'
-        self.settings_default['alpha'] = None
+        self.settings_default['alpha'] = 0.0
 
         self.settings_types['beta'] = 'float'
         self.settings_default['beta'] = 0.0
@@ -67,26 +67,29 @@ class StaticUvlm(BaseSolver):
         self.settings_types['rho'] = 'float'
         self.settings_default['rho'] = 1.225
 
-        self.ts = 0
         self.data = None
         self.settings = None
         self.velocity_generator = None
 
-    def initialise(self, data):
-        self.ts = 0
+    def initialise(self, data, custom_settings=None):
         self.data = data
-        self.settings = data.settings[self.solver_id]
+        if custom_settings is None:
+            self.settings = data.settings[self.solver_id]
+        else:
+            self.settings = custom_settings
         settings.to_custom_types(self.settings, self.settings_types, self.settings_default)
 
         # update beam orientation
         # beam orientation is used as the parametrisation of the aero orientation
         # too (it will come handy for the fully coupled simulation)
-        euler_rot = np.array([self.settings['roll'].value,
-                              self.settings['alpha'].value,
-                              self.settings['beta'].value])
-        quat = algebra.mat2quat(algebra.euler2rot(euler_rot).transpose())
-        self.data.structure.update_orientation(quat, self.ts)
-        self.data.aero.update_orientation(quat, self.ts)
+        # euler = np.array([self.settings['roll'].value,
+        #                   self.settings['alpha'].value,
+        #                   self.settings['beta'].value])
+        # euler_rot = algebra.euler2rot(euler)  # this is Cag
+        # quat = algebra.mat2quat(euler_rot.T)
+        # self.data.structure.update_orientation(quat, self.data.ts)
+        # self.data.aero.update_orientation(quat, self.data.ts)
+        self.update_step()
 
         # init velocity generator
         velocity_generator_type = gen_interface.generator_from_string(
@@ -95,14 +98,49 @@ class StaticUvlm(BaseSolver):
         self.velocity_generator.initialise(self.settings['velocity_field_input'])
 
     def run(self):
-        cout.cout_wrap('Running static UVLM solver...', 1)
+        # cout.cout_wrap('Running static UVLM solver...', 1)
         # generate uext
-        self.velocity_generator.generate({'zeta': self.data.aero.timestep_info[self.ts].zeta},
-                                         self.data.aero.timestep_info[self.ts].u_ext)
+        self.velocity_generator.generate({'zeta': self.data.aero.timestep_info[self.data.ts].zeta,
+                                          'override': True},
+                                         self.data.aero.timestep_info[self.data.ts].u_ext)
         # grid orientation
-
-        uvlmlib.vlm_solver(self.data.aero.timestep_info[self.ts],
+        print('aero solving with ts=' + str(self.data.ts))
+        uvlmlib.vlm_solver(self.data.aero.timestep_info[self.data.ts],
                            self.settings)
 
-        cout.cout_wrap('...Finished', 1)
+        # cout.cout_wrap('...Finished', 1)
         return self.data
+
+    def next_step(self):
+        """ Updates de aerogrid based on the info of the step, and increases
+        the self.ts counter """
+        self.data.aero.add_timestep()
+        self.update_step()
+
+    def update_step(self):
+        self.data.aero.generate_zeta(self.data.structure,
+                                     self.data.aero.aero_settings,
+                                     self.data.ts)
+        # for i_surf in range(self.data.aero.timestep_info[self.ts].n_surf):
+        #     self.data.aero.timestep_info[self.ts].forces[i_surf].fill(0.0)
+        #     self.data.aero.timestep_info[self.ts].dynamic_forces[i_surf].fill(0.0)
+        euler = np.array([self.settings['roll'].value,
+                          self.settings['alpha'].value,
+                          self.settings['beta'].value])
+        euler_rot = algebra.euler2rot(euler)  # this is Cag
+        quat = algebra.mat2quat(euler_rot.T)
+        self.data.structure.update_orientation(quat, self.data.ts)
+        self.data.aero.update_orientation(quat, self.data.ts)
+
+
+
+
+
+
+
+
+
+
+
+
+
