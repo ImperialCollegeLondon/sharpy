@@ -31,7 +31,10 @@ class SteadyVelocityField(generator_interface.BaseGenerator):
 
     def generate(self, params, uext):
         zeta = params['zeta']
+        override = params['override']
         for i_surf in range(len(zeta)):
+            if override:
+                uext[i_surf].fill(0.0)
             for i in range(zeta[i_surf].shape[1]):
                 for j in range(zeta[i_surf].shape[2]):
                     uext[i_surf][:, i, j] += self.u_inf*self.u_inf_direction
