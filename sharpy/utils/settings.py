@@ -100,7 +100,6 @@ def to_custom_types(dictionary, types, default):
                 raise TypeError
 
 
-
 def load_config_file(file_name: str) -> dict:
     """This function reads the flight condition and solver input files.
 
