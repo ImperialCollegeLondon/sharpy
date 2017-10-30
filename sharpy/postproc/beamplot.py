@@ -132,11 +132,14 @@ class BeamPlot(BaseSolver):
                 cab = algebra.crv2rot(self.data.structure.timestep_info[it].psi[i_elem, i_local_node, :])
                 app_forces[i_node, :] = np.dot(aero2inertial,
                                                np.dot(cab,
-                                                      self.data.structure.steady_app_forces[i_node, 0:3]))
+                                                      self.data.structure.timestep_info[it].steady_applied_forces[i_node, 0:3]))
                 if not it == 0:
-                    unsteady_app_forces[i_node, :] = np.dot(aero2inertial,
-                                                            np.dot(cab,
-                                                                   self.data.structure.dynamic_input[it - 1]['dynamic_forces'][i_node, 0:3]))
+                    try:
+                        unsteady_app_forces[i_node, :] = np.dot(aero2inertial,
+                                                                np.dot(cab,
+                                                                       self.data.structure.dynamic_input[it - 1]['dynamic_forces'][i_node, 0:3]))
+                    except IndexError:
+                        pass
 
             for i_elem in range(num_elem):
                 conn[i_elem, :] = self.data.structure.elements[i_elem].reordered_global_connectivities

@@ -98,17 +98,14 @@ class StaticUvlm(BaseSolver):
         self.velocity_generator.initialise(self.settings['velocity_field_input'])
 
     def run(self):
-        # cout.cout_wrap('Running static UVLM solver...', 1)
         # generate uext
         self.velocity_generator.generate({'zeta': self.data.aero.timestep_info[self.data.ts].zeta,
                                           'override': True},
                                          self.data.aero.timestep_info[self.data.ts].u_ext)
         # grid orientation
-        print('aero solving with ts=' + str(self.data.ts))
         uvlmlib.vlm_solver(self.data.aero.timestep_info[self.data.ts],
                            self.settings)
 
-        # cout.cout_wrap('...Finished', 1)
         return self.data
 
     def next_step(self):

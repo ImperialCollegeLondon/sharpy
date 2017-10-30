@@ -130,6 +130,8 @@ class Beam(BaseStructure):
 
         # the timestep_info[0] is the steady state or initial state for unsteady solutions
         self.ini_info.steady_applied_forces = self.steady_app_forces.astype(dtype=ct.c_double, order='F')
+        # rigid body rotations
+        self.ini_info.update_orientation(self.settings['orientation'])
         self.timestep_info.append(self.ini_info.copy())
         self.timestep_info[-1].steady_applied_forces = self.steady_app_forces.astype(dtype=ct.c_double, order='F')
 
@@ -149,6 +151,7 @@ class Beam(BaseStructure):
 
         self.generate_dof_arrays()
         self.generate_fortran()
+
 
     def generate_psi(self):
         # it will just generate the CRV for all the nodes of the element
@@ -321,7 +324,7 @@ class Beam(BaseStructure):
             #     self.forced_acc_fortran = np.zeros((self.n_tsteps, 6), dtype=ct.c_double, order='F')
 
     def update_orientation(self, quat, ts=-1):
-        self.timestep_info[ts].quat = quat.copy()
+        self.timestep_info[ts].update_orientation(quat)
 
 
 # ----------------------------------------------------------------------------------------------------------------------

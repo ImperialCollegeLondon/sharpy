@@ -13,6 +13,8 @@ class PreSharpy(object):
     solver_id = 'PreSharpy'
 
     def __init__(self, in_settings):
+        self.ts = 0
+
         self.settings_types = dict()
         self.settings_default = dict()
 
@@ -24,6 +26,9 @@ class PreSharpy(object):
 
         self.settings_types['route'] = 'str'
         self.settings_default['route'] = None
+
+        self.settings_types['write_screen'] = 'bool'
+        self.settings_default['write_screen'] = True
 
         self.settings_types['write_log'] = 'bool'
         self.settings_default['write_log'] = False
@@ -38,7 +43,8 @@ class PreSharpy(object):
         self.settings['SHARPy']['flow'] = self.settings['SHARPy']['flow']
         settings.to_custom_types(self.settings['SHARPy'], self.settings_types, self.settings_default)
 
-        cout.cout_wrap.initialise(True, self.settings['SHARPy']['write_log'],
+        cout.cout_wrap.initialise(self.settings['SHARPy']['write_screen'],
+                                  self.settings['SHARPy']['write_log'],
                                   self.settings['SHARPy']['log_folder'],
                                   self.settings['SHARPy']['log_file'])
 

@@ -80,20 +80,14 @@ def cbeam3_solv_nlnstatic(beam, settings, ts):
     xbopts = Xbopts()
     xbopts.PrintInfo = ct.c_bool(settings['print_info'])
     xbopts.Solution = ct.c_int(112)
-    # xbopts.OutInaframe = ct.c_bool(settings['out_a_frame'])
-    # xbopts.OutInBframe = ct.c_bool(settings['out_b_frame'])
-    # xbopts.ElemProj = settings['elem_proj']
     xbopts.MaxIterations = settings['max_iterations']
     xbopts.NumLoadSteps = settings['num_load_steps']
-    # xbopts.NumGauss = ct.c_int(0)
     xbopts.DeltaCurved = settings['delta_curved']
-    # xbopts.MinDelta = settings['min_delta']
-    # xbopts.NewmarkDamp = settings['newmark_damp']
     xbopts.gravity_on = settings['gravity_on']
     xbopts.gravity = settings['gravity']
-    xbopts.gravity_dir_x = ct.c_double(settings['gravity_dir'][0])
-    xbopts.gravity_dir_y = ct.c_double(settings['gravity_dir'][1])
-    xbopts.gravity_dir_z = ct.c_double(settings['gravity_dir'][2])
+    xbopts.gravity_dir_x = ct.c_double(algebra.unit_vector(beam.timestep_info[ts].gravity_vector_body[0]))
+    xbopts.gravity_dir_y = ct.c_double(algebra.unit_vector(beam.timestep_info[ts].gravity_vector_body[1]))
+    xbopts.gravity_dir_z = ct.c_double(algebra.unit_vector(beam.timestep_info[ts].gravity_vector_body[2]))
 
     # here we only need to set the flags at True, all the forces are follower
     xbopts.FollowerForce = ct.c_bool(True)

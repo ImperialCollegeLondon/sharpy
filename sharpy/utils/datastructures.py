@@ -92,6 +92,14 @@ class AeroTimeStepInfo(object):
                                              dimensions_star[i_surf, 1]),
                                             dtype=ct.c_double))
 
+        # total forces
+        self.inertial_total_forces = np.zeros((self.n_surf, 6))
+        self.body_total_forces = np.zeros((self.n_surf, 6))
+        self.inertial_steady_forces = np.zeros((self.n_surf, 6))
+        self.body_steady_forces = np.zeros((self.n_surf, 6))
+        self.inertial_unsteady_forces = np.zeros((self.n_surf, 6))
+        self.body_unsteady_forces = np.zeros((self.n_surf, 6))
+
     def generate_ctypes_pointers(self):
         self.ct_dimensions = self.dimensions.astype(dtype=ct.c_uint)
         self.ct_dimensions_star = self.dimensions_star.astype(dtype=ct.c_uint)
@@ -260,6 +268,11 @@ class StructTimeStepInfo(object):
         self.for_pos = np.zeros((6,))
         self.for_vel = np.zeros((6,))
 
+        self.gravity_vector_inertial = np.array([0.0, 0.0, 1.0], dtype=ct.c_double, order='F')
+        self.gravity_vector_body = np.array([0.0, 0.0, 1.0], dtype=ct.c_double, order='F')
+
+        self.steady_applied_forces = np.zeros((self.num_node, 6), dtype=ct.c_double, order='F')
+
     def copy(self):
         from copy import deepcopy
         return deepcopy(self)
@@ -275,6 +288,13 @@ class StructTimeStepInfo(object):
 
     def update_orientation(self, quat):
         self.quat = quat.copy()
+        # rotate gravity_vector_inertial to body
+        # in fact the gracvity vector is the vertical vector
+        rot = algebra.quat2rot(self.quat)
+        self.gravity_vector_body = np.dot(rot.T, self.gravity_vector_inertial)
+
+
+
 
 
 
