@@ -1,4 +1,4 @@
 from tests.utils import *
-from tests.uvlm import *
 from tests.xbeam import *
-from tests.sharpy import *
+from tests.uvlm import *
+from tests.coupled import *

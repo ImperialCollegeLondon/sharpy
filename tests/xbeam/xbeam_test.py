@@ -26,10 +26,8 @@ class TestGeradinXbeam(unittest.TestCase):
     def test_geradin(self):
         import sharpy.sharpy_main
         # suppress screen output
-        # sharpy.sharpy_main.cout.cout_quiet()
         solver_path = os.path.abspath(os.path.dirname(os.path.realpath(__file__)) + '/geradin/geradin.solver.txt')
         sharpy.sharpy_main.main(['', solver_path])
-        # sharpy.sharpy_main.cout.cout_talk()
 
         # read output and compare
         output_path = os.path.dirname(solver_path) + '/beam/'
