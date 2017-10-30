@@ -152,7 +152,6 @@ class Beam(BaseStructure):
         self.generate_dof_arrays()
         self.generate_fortran()
 
-
     def generate_psi(self):
         # it will just generate the CRV for all the nodes of the element
         self.ini_info.psi = np.zeros((self.num_elem, 3, 3), dtype=ct.c_double, order='F')
@@ -243,7 +242,8 @@ class Beam(BaseStructure):
         if len(timestep_info) > 1:
             timestep_info[-1] = timestep_info[-2].copy()
 
-        timestep_info[-1].steady_applied_forces = self.ini_info.steady_applied_forces.astype(dtype=ct.c_double, order='F')
+        timestep_info[-1].steady_applied_forces = self.ini_info.steady_applied_forces.astype(dtype=ct.c_double,
+                                                                                             order='F')
 
     def next_step(self):
         self.add_timestep(self.timestep_info)
@@ -324,7 +324,7 @@ class Beam(BaseStructure):
             #     self.forced_acc_fortran = np.zeros((self.n_tsteps, 6), dtype=ct.c_double, order='F')
 
     def update_orientation(self, quat, ts=-1):
-        self.timestep_info[ts].update_orientation(quat)
+        self.timestep_info[ts].update_orientation(quat)  # Cga going in here
 
 
 # ----------------------------------------------------------------------------------------------------------------------

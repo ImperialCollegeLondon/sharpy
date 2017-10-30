@@ -101,7 +101,7 @@ class StaticCoupled(BaseSolver):
                     self.data.structure.timestep_info[self.data.ts].psi,
                     self.data.structure.node_master_elem,
                     self.data.structure.master,
-                    algebra.quat2rot(self.data.structure.timestep_info[self.data.ts].quat))
+                    algebra.quat2rot(self.data.structure.timestep_info[self.data.ts].quat).T)
 
                 if not self.settings['relaxation_factor'].value == 0.:
                     if i_iter == 0:

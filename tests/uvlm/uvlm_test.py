@@ -51,7 +51,7 @@ class TestPlanarWingWakeUvlm(unittest.TestCase):
         forces_data = np.matrix(np.genfromtxt(output_path + 'planarwing_discretewake_aeroforces.csv', delimiter=','))
         self.assertAlmostEqual(forces_data[-1, 1], 2.91e1, 1)
         self.assertAlmostEqual(forces_data[-1, 2], 0.0, 2)
-        self.assertAlmostEqual(forces_data[-1, 3], 4.764e3, 1)
+        self.assertAlmostEqual(forces_data[-1, 3], 4.764e3, 0)
 
 # class TestDynamic2dXbeam(unittest.TestCase):
 #     """

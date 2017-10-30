@@ -126,8 +126,8 @@ class StaticUvlm(BaseSolver):
                           self.settings['beta'].value])
         euler_rot = algebra.euler2rot(euler)  # this is Cag
         quat = algebra.mat2quat(euler_rot.T)
-        self.data.structure.update_orientation(quat, self.data.ts)
-        self.data.aero.update_orientation(quat, self.data.ts)
+        self.data.structure.update_orientation(quat, self.data.ts)  # quat corresponding to Cga
+        self.data.aero.update_orientation(quat, self.data.ts)       # quat corresponding to Cga
 
 
 

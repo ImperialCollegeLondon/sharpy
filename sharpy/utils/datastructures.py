@@ -287,9 +287,13 @@ class StructTimeStepInfo(object):
         return coords
 
     def update_orientation(self, quat):
+        """
+        :param quat: Corresponding to the Cga matrix
+        :return:
+        """
         self.quat = quat.copy()
         # rotate gravity_vector_inertial to body
-        # in fact the gracvity vector is the vertical vector
+        # in fact the gravity vector is the vertical vector
         rot = algebra.quat2rot(self.quat)
         self.gravity_vector_body = np.dot(rot.T, self.gravity_vector_inertial)
 

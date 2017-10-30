@@ -1,1 +1,1 @@
-from tests.coupled.sharpy_test import *
+from tests.coupled.coupled_test import *

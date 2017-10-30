@@ -33,9 +33,6 @@ class NonLinearStatic(BaseSolver):
         self.settings_types['gravity'] = 'float'
         self.settings_default['gravity'] = 9.81
 
-        self.settings_types['gravity_dir'] = 'list(float)'
-        self.settings_default['gravity_dir'] = np.array([0, 0, 1])
-
         self.data = None
         self.settings = None
 

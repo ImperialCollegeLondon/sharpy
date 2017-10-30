@@ -84,9 +84,9 @@ def cbeam3_solv_nlnstatic(beam, settings, ts):
     xbopts.DeltaCurved = settings['delta_curved']
     xbopts.gravity_on = settings['gravity_on']
     xbopts.gravity = settings['gravity']
-    xbopts.gravity_dir_x = ct.c_double(algebra.unit_vector(beam.timestep_info[ts].gravity_vector_body[0]))
-    xbopts.gravity_dir_y = ct.c_double(algebra.unit_vector(beam.timestep_info[ts].gravity_vector_body[1]))
-    xbopts.gravity_dir_z = ct.c_double(algebra.unit_vector(beam.timestep_info[ts].gravity_vector_body[2]))
+    xbopts.gravity_dir_x = ct.c_double(beam.timestep_info[ts].gravity_vector_body[0])
+    xbopts.gravity_dir_y = ct.c_double(beam.timestep_info[ts].gravity_vector_body[1])
+    xbopts.gravity_dir_z = ct.c_double(beam.timestep_info[ts].gravity_vector_body[2])
 
     # here we only need to set the flags at True, all the forces are follower
     xbopts.FollowerForce = ct.c_bool(True)
