@@ -295,7 +295,7 @@ def generate_solver_file(horseshoe=False):
                                                               'num_load_steps': 20,
                                                               'delta_curved': 1e-5,
                                                               'min_delta': 1e-5,
-                                                              'gravity_on': 'on',
+                                                              'gravity_on': 'off',
                                                               'gravity': 9.754},
                                'aero_solver': 'StaticUvlm',
                                'aero_solver_settings': {'print_info': 'off',
