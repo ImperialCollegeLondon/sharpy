@@ -82,9 +82,7 @@ def generate_fem_file(route, case_name, num_elem, num_node_elem=3):
     beam_number = np.zeros((num_elem, 1), dtype=int)
 
     # new app forces scheme (only follower)
-    n_app_forces = 0
-    node_app_forces = np.array([])
-    app_forces = np.zeros((n_app_forces, 6))
+    app_forces = np.zeros((num_node, 6))
     # app_forces[0, :] = [0, 0, 3000000, 0, 0, 0]
 
     # lumped masses input
@@ -122,8 +120,6 @@ def generate_fem_file(route, case_name, num_elem, num_node_elem=3):
             'beam_number', data=beam_number)
         app_forces_handle = h5file.create_dataset(
             'app_forces', data=app_forces)
-        node_app_forces_handle = h5file.create_dataset(
-            'node_app_forces', data=node_app_forces)
         lumped_mass_nodes_handle = h5file.create_dataset(
             'lumped_mass_nodes', data=lumped_mass_nodes)
         lumped_mass_handle = h5file.create_dataset(
@@ -137,20 +133,27 @@ def generate_fem_file(route, case_name, num_elem, num_node_elem=3):
 
 def generate_solver_file():
     file_name = route + '/' + case_name + '.solver.txt'
-    config = configparser.ConfigParser()
+    # config = configparser.ConfigParser()
+    import configobj
+    config = configobj.ConfigObj()
+    config.filename = file_name
     config['SHARPy'] = {'case': case_name,
                         'route': route,
-                        'flow': 'BeamLoader, NonLinearStatic, BeamCsvOutput, BeamPlot'}
+                        'flow': ['BeamLoader', 'NonLinearStatic', 'BeamCsvOutput', 'BeamPlot'],
+                        'write_screen': 'off',
+                        'write_log': 'on',
+                        'log_folder': os.path.dirname(__file__) + '/output/',
+                        'log_file': case_name + '.log'}
 
     config['BeamLoader'] = {'unsteady': 'off'}
     config['NonLinearStatic'] = {'print_info': 'off',
                                  'max_iterations': 99,
-                                 'num_load_steps': 5,
+                                 'num_load_steps': 10,
                                  'delta_curved': 1e-5,
                                  'min_delta': 1e-8,
                                  'gravity_on': 'on',
                                  'gravity': 9.81,
-                                 'gravity_dir': '0, 0, 1'}
+                                 'gravity_dir': ['0', '0', '1']}
     config['BeamCsvOutput'] = {'folder': os.path.dirname(__file__) + '/../',
                                'output_pos': 'on',
                                'output_psi': 'on',
@@ -159,13 +162,14 @@ def generate_solver_file():
                           'include_rbm': 'off',
                           'include_applied_forces': 'on'}
 
-    with open(file_name, 'w') as configfile:
-        config.write(configfile)
+    config.write()
+    # with open(file_name, 'w') as configfile:
+    #     config.write(configfile)
 
 
 # run everything
 clean_test_files()
-generate_fem_file(route, case_name, 10)
+generate_fem_file(route, case_name, 20)
 generate_solver_file()
 
 

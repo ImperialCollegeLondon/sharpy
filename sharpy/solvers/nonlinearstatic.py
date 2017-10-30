@@ -33,20 +33,22 @@ class NonLinearStatic(BaseSolver):
         self.settings_types['gravity'] = 'float'
         self.settings_default['gravity'] = 9.81
 
-        self.settings_types['gravity_dir'] = 'list(float)'
-        self.settings_default['gravity_dir'] = np.array([0, 0, 1])
-
         self.data = None
         self.settings = None
 
-    def initialise(self, data):
+    def initialise(self, data, custom_settings=None):
         self.data = data
-        self.settings = data.settings[self.solver_id]
+        if custom_settings is None:
+            self.settings = data.settings[self.solver_id]
+        else:
+            self.settings = custom_settings
         settings.to_custom_types(self.settings, self.settings_types, self.settings_default)
 
     def run(self):
-        cout.cout_wrap('Running non linear static solver...', 2)
-        xbeamlib.cbeam3_solv_nlnstatic(self.data.structure, self.settings)
-        cout.cout_wrap('...Finished', 2)
+        # cout.cout_wrap('Running non linear static solver...', 2)
+        xbeamlib.cbeam3_solv_nlnstatic(self.data.structure, self.settings, self.data.ts)
+        # cout.cout_wrap('...Finished', 2)
         return self.data
 
+    def next_step(self):
+        self.data.structure.next_step()

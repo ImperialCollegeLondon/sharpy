@@ -1,6 +1,3 @@
-# import sharpy.utils.settings as settings
-# import sharpy.utils.exceptions as exceptions
-# import sharpy.utils.cout_utils as cout
 import numpy as np
 import importlib
 import unittest
@@ -29,10 +26,8 @@ class TestGeradinXbeam(unittest.TestCase):
     def test_geradin(self):
         import sharpy.sharpy_main
         # suppress screen output
-        sharpy.sharpy_main.cout.cout_quiet()
         solver_path = os.path.abspath(os.path.dirname(os.path.realpath(__file__)) + '/geradin/geradin.solver.txt')
         sharpy.sharpy_main.main(['', solver_path])
-        sharpy.sharpy_main.cout.cout_talk()
 
         # read output and compare
         output_path = os.path.dirname(solver_path) + '/beam/'
@@ -64,10 +59,10 @@ class TestDynamic2dXbeam(unittest.TestCase):
     def test_dynamic2d(self):
         import sharpy.sharpy_main
         # suppress screen output
-        sharpy.sharpy_main.cout.cout_quiet()
+        # sharpy.sharpy_main.cout.cout_quiet()
         solver_path = os.path.abspath(os.path.dirname(os.path.realpath(__file__)) + '/dynamic2d/dynamic2d.solver.txt')
         sharpy.sharpy_main.main(['', solver_path])
-        sharpy.sharpy_main.cout.cout_talk()
+        # sharpy.sharpy_main.cout.cout_talk()
 
         # read output and compare
         output_path = os.path.dirname(solver_path) + '/beam/'

@@ -1,110 +1,143 @@
 import ctypes as ct
 import numpy as np
 
-from sharpy.presharpy.utils.settings import str2bool
-from sharpy.utils.solver_interface import solver, BaseSolver
-import sharpy.utils.cout_utils as cout
-import sharpy.presharpy.aerogrid.aerogrid as aerogrid
+# import sharpy.aero.models.aerogrid as aerogrid
+# import sharpy.aero.utils.mapping as mapping
+import sharpy.utils.algebra as algebra
 import sharpy.aero.utils.uvlmlib as uvlmlib
-import sharpy.presharpy.utils.settings as settings
-import sharpy.presharpy.aerogrid.utils as aero_utils
-import sharpy.aero.utils.mapping as mapping
-
+import sharpy.utils.cout_utils as cout
+import sharpy.utils.settings as settings
+from sharpy.utils.solver_interface import solver, BaseSolver
+import sharpy.utils.generator_interface as gen_interface
 
 @solver
 class StaticUvlm(BaseSolver):
     solver_id = 'StaticUvlm'
-    solver_type = 'aero'
 
     def __init__(self):
-        pass
+        # settings list
+        self.settings_types = dict()
+        self.settings_default = dict()
 
-    def initialise(self, data, update_flightcon=True, quiet=False):
-        self.ts = 0
+        self.settings_types['print_info'] = 'bool'
+        self.settings_default['print_info'] = True
+
+        self.settings_types['horseshoe'] = 'bool'
+        self.settings_default['horseshoe'] = False
+
+        self.settings_types['num_cores'] = 'int'
+        self.settings_default['num_cores'] = 0
+
+        self.settings_types['n_rollup'] = 'int'
+        self.settings_default['n_rollup'] = 1
+
+        self.settings_types['rollup_dt'] = 'float'
+        self.settings_default['rollup_dt'] = 0.1
+
+        self.settings_types['rollup_aic_refresh'] = 'int'
+        self.settings_default['rollup_aic_refresh'] = 1
+
+        self.settings_types['rollup_tolerance'] = 'float'
+        self.settings_default['rollup_tolerance'] = 1e-4
+
+        self.settings_types['iterative_solver'] = 'bool'
+        self.settings_default['iterative_solver'] = False
+
+        self.settings_types['iterative_tol'] = 'float'
+        self.settings_default['iterative_tol'] = 1e-4
+
+        self.settings_types['iterative_precond'] = 'bool'
+        self.settings_default['iterative_precond'] = False
+
+        self.settings_types['velocity_field_generator'] = 'str'
+        self.settings_default['velocity_field_generator'] = 'SteadyVelocityField'
+
+        self.settings_types['velocity_field_input'] = 'dict'
+        self.settings_default['velocity_field_input'] = {}
+
+        self.settings_types['alpha'] = 'float'
+        self.settings_default['alpha'] = 0.0
+
+        self.settings_types['beta'] = 'float'
+        self.settings_default['beta'] = 0.0
+
+        self.settings_types['roll'] = 'float'
+        self.settings_default['roll'] = 0.0
+
+        self.settings_types['rho'] = 'float'
+        self.settings_default['rho'] = 1.225
+
+        self.data = None
+        self.settings = None
+        self.velocity_generator = None
+
+    def initialise(self, data, custom_settings=None):
         self.data = data
-        self.settings = data.settings[self.solver_id]
-        self.quiet = quiet
-        self.convert_settings()
-        if not self.quiet:
-            cout.cout_wrap('Generating aero grid...', 1)
-        if update_flightcon:
-            self.data.flightconditions = settings.load_config_file(self.data.case_route +
-                                                                   '/' +
-                                                                   self.data.case_name +
-                                                                   '.flightcon.txt')
-            aero_utils.flightcon_file_parser(self.data.flightconditions)
+        if custom_settings is None:
+            self.settings = data.settings[self.solver_id]
+        else:
+            self.settings = custom_settings
+        settings.to_custom_types(self.settings, self.settings_types, self.settings_default)
 
-        try:
-            self.inertial2aero = self.data.beam.orientation
-        except AttributeError:
-            self.inertial2aero = mapping.inertial2aero_rotation(self.data.flightconditions['FlightCon']['alpha'],
-                                                                self.data.flightconditions['FlightCon']['beta'])
-        if self.inertial2aero is None:
-            self.inertial2aero = mapping.inertial2aero_rotation(self.data.flightconditions['FlightCon']['alpha'],
-                                                                self.data.flightconditions['FlightCon']['beta'])
+        # update beam orientation
+        # beam orientation is used as the parametrisation of the aero orientation
+        # too (it will come handy for the fully coupled simulation)
+        # euler = np.array([self.settings['roll'].value,
+        #                   self.settings['alpha'].value,
+        #                   self.settings['beta'].value])
+        # euler_rot = algebra.euler2rot(euler)  # this is Cag
+        # quat = algebra.mat2quat(euler_rot.T)
+        # self.data.structure.update_orientation(quat, self.data.ts)
+        # self.data.aero.update_orientation(quat, self.data.ts)
+        self.update_step()
 
-        self.data.grid = aerogrid.AeroGrid(self.data.beam,
-                                           self.data.aero_data_dict,
-                                           self.settings,
-                                           inertial2aero=self.inertial2aero,
-                                           quiet=self.quiet)
-        if not self.quiet:
-            cout.cout_wrap('...Finished', 1)
-
-    def update(self):
-        pass
+        # init velocity generator
+        velocity_generator_type = gen_interface.generator_from_string(
+            self.settings['velocity_field_generator'])
+        self.velocity_generator = velocity_generator_type()
+        self.velocity_generator.initialise(self.settings['velocity_field_input'])
 
     def run(self):
-        if not self.quiet:
-            cout.cout_wrap('Running static UVLM solver...', 1)
-        uvlmlib.vlm_solver(self.data.grid.timestep_info[self.ts],
-                           self.data.flightconditions,
+        # generate uext
+        self.velocity_generator.generate({'zeta': self.data.aero.timestep_info[self.data.ts].zeta,
+                                          'override': True},
+                                         self.data.aero.timestep_info[self.data.ts].u_ext)
+        # grid orientation
+        uvlmlib.vlm_solver(self.data.aero.timestep_info[self.data.ts],
                            self.settings)
 
-        if not self.quiet:
-            cout.cout_wrap('...Finished', 1)
         return self.data
 
-    def convert_settings(self):
-        self.settings['print_info'] = str2bool(self.settings['print_info'])
-        # self.settings['rollup'] = str2bool(self.settings['rollup'])
-        self.settings['aligned_grid'] = str2bool(self.settings['aligned_grid'])
-        # self.settings['prescribed_wake'] = str2bool(self.settings['prescribed_wake'])
-        try:
-            self.settings['horseshoe'] = str2bool(self.settings['horseshoe'])
-        except KeyError:
-            self.settings['horseshoe'] = ct.c_bool(True)
-        self.settings['mstar'] = int(self.settings['mstar'])
-        try:
-            self.settings['num_cores'] = int(self.settings['num_cores'])
-        except KeyError:
-            self.settings['num_cores'] = 4
-        try:
-            self.settings['n_rollup'] = int(self.settings['n_rollup'])
-        except KeyError:
-            self.settings['n_rollup'] = 0
-        try:
-            self.settings['rollup_tolerance'] = float(self.settings['rollup_tolerance'])
-        except KeyError:
-            self.settings['rollup_tolerance'] = 1e-5
-        try:
-            self.settings['rollup_aic_refresh'] = int(self.settings['rollup_aic_refresh'])
-        except KeyError:
-            self.settings['rollup_aic_refresh'] = 1
-        try:
-            self.settings['rollup_dt'] = float(self.settings['rollup_dt'])
-        except KeyError:
-            self.settings['rollup_dt'] = 0.01
-        try:
-            self.settings['iterative_solver'] = str2bool(self.settings['iterative_solver'])
-        except KeyError:
-            self.settings['iterative_solver'] = False
-        try:
-            self.settings['iterative_tol'] = float(self.settings['iterative_tol'])
-        except KeyError:
-            self.settings['iterative_tol'] = 0.0
-        try:
-            self.settings['iterative_precond'] = str2bool(self.settings['iterative_precond'])
-        except KeyError:
-            self.settings['iterative_precond'] = False
+    def next_step(self):
+        """ Updates de aerogrid based on the info of the step, and increases
+        the self.ts counter """
+        self.data.aero.add_timestep()
+        self.update_step()
+
+    def update_step(self):
+        self.data.aero.generate_zeta(self.data.structure,
+                                     self.data.aero.aero_settings,
+                                     self.data.ts)
+        # for i_surf in range(self.data.aero.timestep_info[self.ts].n_surf):
+        #     self.data.aero.timestep_info[self.ts].forces[i_surf].fill(0.0)
+        #     self.data.aero.timestep_info[self.ts].dynamic_forces[i_surf].fill(0.0)
+        euler = np.array([self.settings['roll'].value,
+                          self.settings['alpha'].value,
+                          self.settings['beta'].value])
+        euler_rot = algebra.euler2rot(euler)  # this is Cag
+        quat = algebra.mat2quat(euler_rot.T)
+        self.data.structure.update_orientation(quat, self.data.ts)  # quat corresponding to Cga
+        self.data.aero.update_orientation(quat, self.data.ts)       # quat corresponding to Cga
+
+
+
+
+
+
+
+
+
+
+
+
 

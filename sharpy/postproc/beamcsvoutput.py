@@ -41,7 +41,7 @@ class BeamCsvOutput(BaseSolver):
 
     def initialise(self, data):
         self.data = data
-        self.it = data.structure.it
+        self.it = self.data.ts
         self.settings = data.settings[self.solver_id]
         settings.to_custom_types(self.settings, self.settings_types, self.settings_default)
 
@@ -57,13 +57,14 @@ class BeamCsvOutput(BaseSolver):
                          self.data.settings['SHARPy']['case'] +
                          '_' +
                          self.settings['name_prefix'])
+        # for self.it in range(self.data.ts):
         self.text()
         self.print_info()
         cout.cout_wrap('...Finished', 1)
         return self.data
 
     def text(self):
-        for it in range(len(self.data.structure.timestep_info)):
+        for it in range(self.data.ts + 1):
             if self.settings['output_pos']:
                 it_filename = (self.filename +
                                '%06u' % it +
@@ -92,13 +93,13 @@ class BeamCsvOutput(BaseSolver):
     def print_info(self):
         if self.settings['screen_output']:
             cout.cout_wrap('Pos_def', 1)
-            cout.cout_wrap(str(self.data.structure.timestep_info[self.it].pos), 1)
+            cout.cout_wrap(str(self.data.structure.timestep_info[-1].pos), 1)
             cout.cout_wrap('', 1)
 
             cout.cout_wrap('Psi_def', 1)
             crv_matrix = np.zeros((self.data.structure.num_node, 3))
             for i_node in range(self.data.structure.num_node):
                 i_elem, i_local_node = self.data.structure.node_master_elem[i_node, :]
-                crv_matrix[i_node, :] = self.data.structure.timestep_info[self.it].psi[i_elem, i_local_node, :]
+                crv_matrix[i_node, :] = self.data.structure.timestep_info[-1].psi[i_elem, i_local_node, :]
             cout.cout_wrap(str(crv_matrix), 1)
 

@@ -3,18 +3,18 @@ import numpy as np
 import configparser
 import os
 
-case_name = 'planarwing'
+case_name = 'smith_nog_2deg'
 route = os.path.dirname(os.path.realpath(__file__)) + '/'
 
 # flight conditions
 u_inf = 25
-rho = 1.225
-alpha = 4
+rho = 0.08891
+alpha = 2
 beta = 0
 c_ref = 1
 b_ref = 16
 sweep = 0*np.pi/180.
-aspect_ratio = 32 # = total wing span (chord = 1)
+aspect_ratio = 32  # = total wing span (chord = 1)
 
 alpha_rad = alpha*np.pi/180
 
@@ -29,14 +29,15 @@ main_airfoil_M = 0
 n_surfaces = 2
 
 # discretisation data
-num_elem_main = 20
+num_elem_main = 10
 
 num_node_elem = 3
 num_elem = num_elem_main + num_elem_main
 num_node_main = num_elem_main*(num_node_elem - 1) + 1
 num_node = num_node_main + (num_node_main - 1)
 
-m_main = 10
+m_main = 15
+
 
 def clean_test_files():
     fem_file_name = route + '/' + case_name + '.fem.h5'
@@ -73,11 +74,11 @@ def generate_fem_file():
     conn = np.zeros((num_elem, num_node_elem), dtype=int)
     # stiffness
     num_stiffness = 1
-    ea = 1e4
-    ga = 1e4
+    ea = 1e5
+    ga = 1e5
     gj = 1e4
     eiy = 2e4
-    eiz = 5e4
+    eiz = 5e6
     sigma = 1
     base_stiffness = sigma*np.diag([ea, ga, ga, gj, eiy, eiz])
     stiffness = np.zeros((num_stiffness, 6, 6))
@@ -89,15 +90,15 @@ def generate_fem_file():
     j_base = 0.1
     base_mass = np.diag([m_base, m_base, m_base, j_base, j_base, j_base])
     mass = np.zeros((num_mass, 6, 6))
-    mass[0, :, :] = np.sqrt(main_sigma)*base_mass
+    mass[0, :, :] = base_mass
     elem_mass = np.zeros((num_elem,), dtype=int)
     # boundary conditions
     boundary_conditions = np.zeros((num_node, ), dtype=int)
     boundary_conditions[0] = 1
     # applied forces
-    n_app_forces = 0
-    node_app_forces = np.zeros((n_app_forces,), dtype=int)
-    app_forces = np.zeros((n_app_forces, 6))
+    # n_app_forces = 2
+    # node_app_forces = np.zeros((n_app_forces,), dtype=int)
+    app_forces = np.zeros((num_node, 6))
 
     spacing_param = 3
 
@@ -118,7 +119,6 @@ def generate_fem_file():
     y[0] = 0
     # y[working_node:working_node + num_node_main] = np.cos(sweep)*np.linspace(0.0, main_span, num_node_main)
     # x[working_node:working_node + num_node_main] = np.sin(sweep)*np.linspace(0.0, main_span, num_node_main)
-    # y[working_node:working_node + num_node_main] = np.cos(sweep)*np.linspace(0.0, main_span, num_node_main)
     for ielem in range(num_elem_main):
         for inode in range(num_node_elem):
             frame_of_reference_delta[working_elem + ielem, inode, :] = [-1, 0, 0]
@@ -188,8 +188,8 @@ def generate_fem_file():
             'beam_number', data=beam_number)
         app_forces_handle = h5file.create_dataset(
             'app_forces', data=app_forces)
-        node_app_forces_handle = h5file.create_dataset(
-            'node_app_forces', data=node_app_forces)
+        # node_app_forces_handle = h5file.create_dataset(
+        #     'node_app_forces', data=node_app_forces)
 
 
 def generate_aero_file():
@@ -197,7 +197,7 @@ def generate_aero_file():
     airfoil_distribution = np.zeros((num_node,), dtype=int)
     surface_distribution = np.zeros((num_elem,), dtype=int) - 1
     surface_m = np.zeros((n_surfaces, ), dtype=int)
-    m_distribution = 'uniform'
+    m_distribution = '1-cos'
     aero_node = np.zeros((num_node,), dtype=bool)
     twist = np.zeros((num_node,))
     chord = np.zeros((num_node,))
@@ -276,83 +276,82 @@ def generate_solver_file(horseshoe=False):
     config.filename = file_name
     config['SHARPy'] = {'case': case_name,
                         'route': route,
-                        'flow': ['BeamLoader', 'AerogridLoader', 'StaticUvlm', 'AerogridPlot', 'AeroForcesCalculator'],
-                        'write_screen': 'off',
+                        'flow': ['BeamLoader', 'AerogridLoader', 'StaticCoupled', 'AerogridPlot', 'BeamPlot', 'AeroForcesCalculator', 'BeamCsvOutput'],
+                        # 'flow': ['BeamLoader', 'NonLinearStatic', 'BeamPlot'],
+                        'write_screen': 'on',
                         'write_log': 'on',
                         'log_folder': os.path.dirname(__file__) + '/output/',
                         'log_file': case_name + '.log'}
     config['BeamLoader'] = {'unsteady': 'off'}
+    config['NonLinearStatic'] = {'print_info': 'off',
+                                 'max_iterations': 99,
+                                 'num_load_steps': 5,
+                                 'delta_curved': 1e-5,
+                                 'min_delta': 1e-8,
+                                 'gravity_on': 'off',
+                                 'gravity': 9.81,
+                                 'gravity_dir': ['0', '0', '1']}
+    config['StaticCoupled'] = {'print_info': 'on',
+                               'structural_solver': 'NonLinearStatic',
+                               'structural_solver_settings': {'print_info': 'off',
+                                                              'max_iterations': 150,
+                                                              'num_load_steps': 10,
+                                                              'delta_curved': 1e-5,
+                                                              'min_delta': 1e-4,
+                                                              'gravity_on': 'off',
+                                                              'gravity': 9.81},
+                               'aero_solver': 'StaticUvlm',
+                               'aero_solver_settings': {'print_info': 'off',
+                                                        'horseshoe': 'on',
+                                                        'num_cores': 4,
+                                                        'n_rollup': 100,
+                                                        'rollup_dt': main_chord/m_main/u_inf,
+                                                        'rollup_aic_refresh': 1,
+                                                        'rollup_tolerance': 1e-4,
+                                                        'velocity_field_generator': 'SteadyVelocityField',
+                                                        'velocity_field_input': {'u_inf': u_inf,
+                                                                                 'u_inf_direction': [1., 0, 0]},
+                                                        'rho': rho,
+                                                        'alpha': alpha_rad,
+                                                        'beta': beta},
+                               'max_iter': 50,
+                               'n_load_steps': 1,
+                               'tolerance': 1e-5,
+                               'relaxation_factor': 0.0}
+
     if horseshoe is True:
         config['AerogridLoader'] = {'unsteady': 'off',
                                     'aligned_grid': 'on',
                                     'mstar': 1,
                                     'freestream_dir': ['1', '0', '0']}
-        config['StaticUvlm'] = {'print_info': 'off',
-                                'horseshoe': 'on',
-                                'num_cores': 4,
-                                'n_rollup': 0,
-                                'rollup_dt': main_chord/m_main/u_inf,
-                                'rollup_aic_refresh': 1,
-                                'rollup_tolerance': 1e-4,
-                                'velocity_field_generator': 'SteadyVelocityField',
-                                'velocity_field_input': {'u_inf': u_inf,
-                                                         'u_inf_direction': [1., 0, 0]},
-                                'rho': 1.225,
-                                'alpha': alpha_rad,
-                                'beta': beta
-                                }
     else:
         config['AerogridLoader'] = {'unsteady': 'off',
                                     'aligned_grid': 'on',
-                                    'mstar': 90,
+                                    'mstar': 1,
                                     'freestream_dir': ['1', '0', '0']}
-        config['StaticUvlm'] = {'print_info': 'off',
-                                'horseshoe': 'off',
-                                'num_cores': 4,
-                                'n_rollup': 100,
-                                'rollup_dt': main_chord/m_main/u_inf,
-                                'rollup_aic_refresh': 5,
-                                'rollup_tolerance': 1e-4,
-                                'velocity_field_generator': 'SteadyVelocityField',
-                                'velocity_field_input': {'u_inf': u_inf,
-                                                         'u_inf_direction': [1., 0, 0]},
-                                'rho': 1.225,
-                                'alpha': alpha_rad,
-                                'beta': beta
-                                }
-
-    minus_m_star = 0
-    if config['StaticUvlm']['horseshoe'] is 'on':
-        minus_m_star = max(m_main - 1, 1)
     config['AerogridPlot'] = {'folder': os.path.dirname(__file__) + '/output/',
                               'include_rbm': 'off',
                               'include_applied_forces': 'on',
                               'minus_m_star': 0
                               }
-    config['AeroForcesCalculator'] = {'folder': os.path.dirname(__file__) + '/output/',
+    config['AeroForcesCalculator'] = {'folder': os.path.dirname(__file__) + '/output/forces',
                                       'write_text_file': 'on',
                                       'text_file_name': case_name + '_aeroforces.csv',
                                       'screen_output': 'on',
                                       'unsteady': 'off'
                                       }
-
+    config['BeamPlot'] = {'folder': os.path.dirname(__file__) + '/output/',
+                          'include_rbm': 'off',
+                          'include_applied_forces': 'on'}
+    config['BeamCsvOutput'] = {'folder': os.path.dirname(__file__) + '/output/',
+                               'output_pos': 'on',
+                               'output_psi': 'on',
+                               'screen_output': 'off'}
     config.write()
 
 
 clean_test_files()
 generate_fem_file()
-generate_solver_file(horseshoe=True)
-generate_aero_file()
-
-case_name = 'planarwing_discretewake'
-clean_test_files()
-generate_fem_file()
 generate_solver_file(horseshoe=False)
 generate_aero_file()
-
-
-
-
-
-
 

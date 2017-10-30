@@ -12,7 +12,6 @@ class TestSettings(unittest.TestCase):
     """
 
     def test_settings_to_custom_types(self):
-        cout.cout_quiet()
         in_dict = dict()
         default_dict = dict()
 
@@ -142,5 +141,4 @@ class TestSettings(unittest.TestCase):
             del temp_in_dict['float_list_var']
             result = settings.to_custom_types(temp_in_dict, types_dict, temp_default_dict)
 
-        cout.cout_talk()
 

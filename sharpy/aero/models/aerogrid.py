@@ -4,7 +4,7 @@
 # LoCA lab
 # 29 Sept 2016
 
-# AeroGrid contains all the necessary routines to generate an aerodynamic
+# Aerogrid contains all the necessary routines to generate an aerodynamic
 # grid based on the input dictionaries.
 
 import ctypes as ct
@@ -17,17 +17,35 @@ import sharpy.utils.cout_utils as cout
 from sharpy.utils.datastructures import AeroTimeStepInfo
 
 
-class AeroGrid(object):
-    def __init__(self, beam, aero_dict, aero_settings, inertial2aero=None, quiet=False, ts=0, t=0.0):
+class Aerogrid(object):
+    def __init__(self):
+        self.aero_dict = None
+        self.beam = None
+        self.aero_settings = None
+
+        self.timestep_info = []
+        self.ini_info = None
+
+        self.surface_distribution = None
+        self.surface_m = None
+        self.aero_dimensions = None
+        self.aero_dimensions_star = None
+        self.airfoil_db = dict()
+        self.struct2aero_mapping = None
+        self.aero2struct_mapping = []
+
+        self.n_node = 0
+        self.n_elem = 0
+        self.n_surf = 0
+        self.n_aero_node = 0
+
+    def generate(self, aero_dict, beam, aero_settings, ts):
         self.aero_dict = aero_dict
-        self.ts = ts
-        self.t = t
         self.beam = beam
-        self.quiet = quiet
-        self.inertial2aero = inertial2aero
+        self.aero_settings = aero_settings
 
         # number of total nodes (structural + aero&struc)
-        self.total_nodes = len(aero_dict['aero_node'])
+        self.n_node = len(aero_dict['aero_node'])
         # number of elements
         self.n_elem = len(aero_dict['surface_distribution'])
         # surface distribution
@@ -35,60 +53,23 @@ class AeroGrid(object):
         # number of surfaces
         temp = set(aero_dict['surface_distribution'])
         self.n_surf = sum(1 for i in temp if i >= 0)
-        # self.n_surf = len(set(aero_dict['surface_distribution']))
         # number of chordwise panels
         self.surface_m = aero_dict['surface_m']
         # number of aero nodes
-        self.n_aero_nodes = sum(aero_dict['aero_node'])
-
-        self.node_master_elem = beam.node_master_elem
+        self.n_aero_node = sum(aero_dict['aero_node'])
 
         # get N per surface
-        self.aero_dimensions = np.zeros((self.n_surf, 2), dtype=int)
-        for i in range(self.n_surf):
-            # adding M values
-            self.aero_dimensions[i, 0] = self.surface_m[i]
+        self.calculate_dimensions()
 
-        # count N values (actually, the count result
-        # will be N+1)
-        nodes_in_surface = []
-        for i_surf in range(self.n_surf):
-            nodes_in_surface.append([])
-        for i_elem in range(beam.num_elem):
-            nodes = beam.elements[i_elem].global_connectivities
-            i_surf = aero_dict['surface_distribution'][i_elem]
-            if i_surf < 0:
-                continue
-            for i_global_node in nodes:
-                if i_global_node in nodes_in_surface[i_surf]:
-                    continue
-                else:
-                    nodes_in_surface[i_surf].append(i_global_node)
-                if aero_dict['aero_node'][i_global_node]:
-                    self.aero_dimensions[i_surf, 1] += 1
+        # write grid info to screen
+        self.output_info()
 
-        # accounting for N+1 nodes -> N panels
-        self.aero_dimensions[:, 1] -= 1
+        # allocating initial grid storage
+        self.ini_info = AeroTimeStepInfo(self.aero_dimensions,
+                                         self.aero_dimensions_star)
 
-        self.aero_dimensions_star = self.aero_dimensions.copy()
-        self.aero_dimensions_star[:, 0] = aero_settings['mstar']
-
-        if not self.quiet:
-            cout.cout_wrap('The aerodynamic grid contains %u surfaces' % self.n_surf, 1)
-            for i_surf in range(self.n_surf):
-                cout.cout_wrap('  Surface %u, M=%u, N=%u' % (i_surf,
-                                                             self.aero_dimensions[i_surf, 0],
-                                                             self.aero_dimensions[i_surf, 1]), 1)
-            cout.cout_wrap('  In total: %u bound panels' % sum(self.aero_dimensions[:, 0]*
-                                                               self.aero_dimensions[:, 1]), 1)
-
-        # allocate containers for solution
-        self.timestep_info = []
-        self.add_timestep()
-
-        # airfoils db
-        self.airfoil_db = {}
-        for i_node in range(self.total_nodes):
+        # load airfoils db
+        for i_node in range(self.n_node):
             try:
                 self.airfoil_db[self.aero_dict['airfoil_distribution'][i_node]]
             except KeyError:
@@ -99,7 +80,57 @@ class AeroGrid(object):
                                                kind='quadratic',
                                                copy=False,
                                                assume_sorted=True))
-        self.generate_zeta(beam, aero_settings)
+        self.add_timestep()
+        self.generate_mapping()
+        self.generate_zeta(self.beam, self.aero_settings, ts)
+
+    def output_info(self):
+        cout.cout_wrap('The aerodynamic grid contains %u surfaces' % self.n_surf, 1)
+        for i_surf in range(self.n_surf):
+            cout.cout_wrap('  Surface %u, M=%u, N=%u' % (i_surf,
+                                                         self.aero_dimensions[i_surf, 0],
+                                                         self.aero_dimensions[i_surf, 1]), 1)
+            cout.cout_wrap('     Wake %u, M=%u, N=%u' % (i_surf,
+                                                         self.aero_dimensions_star[i_surf, 0],
+                                                         self.aero_dimensions_star[i_surf, 1]), 1)
+        cout.cout_wrap('  In total: %u bound panels' % (sum(self.aero_dimensions[:, 0]*
+                                                            self.aero_dimensions[:, 1], 1)))
+        cout.cout_wrap('  In total: %u wake panels' % (sum(self.aero_dimensions_star[:, 0]*
+                                                           self.aero_dimensions_star[:, 1], 1)))
+        cout.cout_wrap('  Total number of panels = %u' % (sum(self.aero_dimensions_star[:, 0]*
+                                                              self.aero_dimensions_star[:, 1], 1) +
+                                                          sum(self.aero_dimensions_star[:, 0]*
+                                                              self.aero_dimensions_star[:, 1], 1)))
+
+    def calculate_dimensions(self):
+        self.aero_dimensions = np.zeros((self.n_surf, 2), dtype=int)
+        for i in range(self.n_surf):
+            # adding M values
+            self.aero_dimensions[i, 0] = self.surface_m[i]
+        # count N values (actually, the count result
+        # will be N+1)
+        nodes_in_surface = []
+        for i_surf in range(self.n_surf):
+            nodes_in_surface.append([])
+        for i_elem in range(self.beam.num_elem):
+            nodes = self.beam.elements[i_elem].global_connectivities
+            i_surf = self.aero_dict['surface_distribution'][i_elem]
+            if i_surf < 0:
+                continue
+            for i_global_node in nodes:
+                if i_global_node in nodes_in_surface[i_surf]:
+                    continue
+                else:
+                    nodes_in_surface[i_surf].append(i_global_node)
+                if self.aero_dict['aero_node'][i_global_node]:
+                    self.aero_dimensions[i_surf, 1] += 1
+
+        # accounting for N+1 nodes -> N panels
+        self.aero_dimensions[:, 1] -= 1
+
+        self.aero_dimensions_star = self.aero_dimensions.copy()
+        for i_surf in range(self.n_surf):
+            self.aero_dimensions_star[i_surf, 0] = self.aero_settings['mstar'].value
 
     def add_timestep(self):
         self.timestep_info.append(AeroTimeStepInfo(self.aero_dimensions,
@@ -107,8 +138,11 @@ class AeroGrid(object):
         if len(self.timestep_info) > 1:
             self.timestep_info[-1] = self.timestep_info[-2].copy()
 
-    def generate_zeta(self, beam, aero_settings):
-        self.generate_mapping()
+        for i_surf in range(self.n_surf):
+            self.timestep_info[-1].forces[i_surf].fill(0.0)
+            self.timestep_info[-1].dynamic_forces[i_surf].fill(0.0)
+
+    def generate_zeta(self, beam, aero_settings, ts):
         nodes_in_surface = []
         for i_surf in range(self.n_surf):
             nodes_in_surface.append([])
@@ -139,18 +173,18 @@ class AeroGrid(object):
                     node_info['M'] = self.aero_dimensions[i_surf, 0]
                     node_info['M_distribution'] = self.aero_dict['m_distribution'].decode('ascii')
                     node_info['airfoil'] = self.aero_dict['airfoil_distribution'][i_global_node]
-                    node_info['beam_coord'] = beam.timestep_info[beam.it].pos_def[i_global_node, :]
-                    node_info['beam_psi'] = beam.timestep_info[beam.it].psi_def[master_elem, master_elem_node, :]
+                    node_info['beam_coord'] = beam.timestep_info[ts].pos[i_global_node, :]
+                    node_info['beam_psi'] = beam.timestep_info[ts].psi[master_elem, master_elem_node, :]
                     node_info['for_delta'] = beam.frame_of_reference_delta[master_elem, master_elem_node, :]
                     node_info['elem'] = beam.elements[master_elem]
-                    self.timestep_info[self.ts].zeta[i_surf][:, :, i_n] = (
+                    self.timestep_info[ts].zeta[i_surf][:, :, i_n] = (
                         generate_strip(node_info,
                                        self.airfoil_db,
                                        aero_settings['aligned_grid'],
-                                       inertial2aero=self.inertial2aero))
+                                       orientation_in=aero_settings['freestream_dir']))
 
     def generate_mapping(self):
-        self.struct2aero_mapping = [[]]*self.total_nodes
+        self.struct2aero_mapping = [[]]*self.n_node
         surf_n_counter = np.zeros((self.n_surf,), dtype=int)
         nodes_in_surface = []
         for i_surf in range(self.n_surf):
@@ -175,10 +209,9 @@ class AeroGrid(object):
                         self.struct2aero_mapping[i_global_node] = []
 
                 i_n = surf_n_counter[i_surf] - 1
-                self.struct2aero_mapping[i_global_node].append(({'i_surf': i_surf,
-                                                                 'i_n': i_n}))
+                self.struct2aero_mapping[i_global_node].append({'i_surf': i_surf,
+                                                                'i_n': i_n})
 
-        self.aero2struct_mapping = []
         nodes_in_surface = []
         for i_surf in range(self.n_surf):
             nodes_in_surface.append([])
@@ -200,8 +233,21 @@ class AeroGrid(object):
                         continue
                     self.aero2struct_mapping[i_surf][i_n] = i_global_node
 
+    def update_orientation(self, quat, ts=-1):
+        rot = algebra.quat2rot(quat)
+        self.timestep_info[ts].update_orientation(rot)
 
-def generate_strip(node_info, airfoil_db, aligned_grid=True, inertial2aero=np.eye(3), orientation_in=np.array([1, 0, 0])):
+
+def generate_strip(node_info, airfoil_db, aligned_grid, orientation_in=np.array([1, 0, 0])):
+    """
+    Returns a strip in "a" frame of reference, it has to be then rotated to
+    simulate angles of attack, etc
+    :param node_info:
+    :param airfoil_db:
+    :param aligned_grid:
+    :param orientation_in:
+    :return:
+    """
     strip_coordinates_a_frame = np.zeros((3, node_info['M'] + 1), dtype=ct.c_double)
     strip_coordinates_b_frame = np.zeros((3, node_info['M'] + 1), dtype=ct.c_double)
 
@@ -250,10 +296,6 @@ def generate_strip(node_info, airfoil_db, aligned_grid=True, inertial2aero=np.ey
     # add node coords
     for i_M in range(node_info['M'] + 1):
         strip_coordinates_a_frame[:, i_M] += node_info['beam_coord']
-
-    # apply rotation of a to G
-    for i_M in range(node_info['M'] + 1):
-        strip_coordinates_a_frame[:, i_M] = np.dot(inertial2aero.transpose(), strip_coordinates_a_frame[:, i_M])
 
     return strip_coordinates_a_frame
 

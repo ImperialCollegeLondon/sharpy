@@ -400,10 +400,20 @@ def rotate_crv(crv_in, axis, angle):
 
 
 def euler2rot(euler):
+    """
+    :param euler: [roll, pitch, yaw]
+    :return:
+    """
     rot = rotation3d_z(euler[2])
     rot = np.dot(rotation3d_y(euler[1]), rot)
     rot = np.dot(rotation3d_x(euler[0]), rot)
     return rot
+
+
+def euler2quat(euler):
+    euler_rot = euler2rot(euler)  # this is Cag
+    quat = mat2quat(euler_rot.T)
+    return quat
 
 
 # if __name__ == '__main__':

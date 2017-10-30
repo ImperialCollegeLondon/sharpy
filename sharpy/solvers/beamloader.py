@@ -1,4 +1,5 @@
 import h5py as h5
+import numpy as np
 
 from sharpy.utils.solver_interface import solver, BaseSolver
 import sharpy.structure.models.beam as beam
@@ -17,6 +18,9 @@ class BeamLoader(BaseSolver):
 
         self.settings_types['unsteady'] = 'bool'
         self.settings_default['unsteady'] = False
+
+        self.settings_types['orientation'] = 'list(float)'
+        self.settings_default['orientation'] = np.array([1., 0, 0, 0])
 
         self.data = None
         self.settings = None

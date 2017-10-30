@@ -25,7 +25,6 @@ class VMopts(ct.Structure):
         };
     """
     _fields_ = [("ImageMethod", ct.c_bool),
-                ("Mstar", ct.c_uint),
                 ("Steady", ct.c_bool),
                 ("horseshoe", ct.c_bool),
                 ("KJMeth", ct.c_bool),
@@ -45,7 +44,6 @@ class VMopts(ct.Structure):
     def __init__(self):
         ct.Structure.__init__(self)
         self.ImageMethod = ct.c_bool(False)
-        self.Mstar = ct.c_uint(1)
         self.Steady = ct.c_bool(True)
         self.horseshoe = ct.c_bool(True)
         self.KJMeth = ct.c_bool(False)  # legacy var
@@ -82,9 +80,6 @@ class UVMopts(ct.Structure):
         self.dt = ct.c_double(0.01)
         self.NumCores = ct.c_uint(4)
         self.NumSurfaces = ct.c_uint(1)
-        # self.steady_n_rollup = ct.c_uint(0)
-        # self.steady_rollup_tolerance = ct.c_double(1e-5)
-        # self.steady_rollup_aic_refresh = ct.c_uint(1)
         self.convection_scheme = ct.c_uint(2)
         self.Mstar = ct.c_uint(10)
         self.ImageMethod = ct.c_bool(False)
@@ -99,44 +94,45 @@ class FlightConditions(ct.Structure):
                 ("rho", ct.c_double),
                 ("c_ref", ct.c_double)]
 
-    def __init__(self, fc_dict):
+    def __init__(self):
         ct.Structure.__init__(self)
-        self.uinf = fc_dict['FlightCon']['u_inf']
-        alpha = fc_dict['FlightCon']['alpha']
-        beta = fc_dict['FlightCon']['beta']
-        uinf_direction_temp = np.array([1, 0, 0], dtype=ct.c_double)
-        self.uinf_direction = np.ctypeslib.as_ctypes(uinf_direction_temp)
-        self.rho = fc_dict['FlightCon']['rho_inf']
-        self.c_ref = fc_dict['FlightCon']['c_ref']
+
+    # def __init__(self, fc_dict):
+    #     ct.Structure.__init__(self)
+    #     self.uinf = fc_dict['FlightCon']['u_inf']
+    #     alpha = fc_dict['FlightCon']['alpha']
+    #     beta = fc_dict['FlightCon']['beta']
+    #     uinf_direction_temp = np.array([1, 0, 0], dtype=ct.c_double)
+    #     self.uinf_direction = np.ctypeslib.as_ctypes(uinf_direction_temp)
+    #     self.rho = fc_dict['FlightCon']['rho_inf']
+    #     self.c_ref = fc_dict['FlightCon']['c_ref']
+
 
 # type for 2d integer matrix
 t_2int = ct.POINTER(ct.c_int)*2
 
 
-def vlm_solver(ts_info, flightconditions_in, options):
+def vlm_solver(ts_info, options):
     run_VLM = UvlmLib.run_VLM
     run_VLM.restype = None
 
     vmopts = VMopts()
     vmopts.Steady = ct.c_bool(True)
-    vmopts.Mstar = ct.c_uint(options['mstar'])
     vmopts.NumSurfaces = ct.c_uint(ts_info.n_surf)
-    vmopts.horseshoe = ct.c_bool(options['horseshoe'])
-    vmopts.dt = ct.c_double(options["rollup_dt"])
-    vmopts.n_rollup = ct.c_uint(options["n_rollup"])
-    vmopts.rollup_tolerance = ct.c_double(options["rollup_tolerance"])
-    vmopts.rollup_aic_refresh = ct.c_uint(options['rollup_aic_refresh'])
-    vmopts.NumCores = ct.c_uint(options['num_cores'])
-    vmopts.iterative_solver = ct.c_bool(options['iterative_solver'])
-    vmopts.iterative_tol = ct.c_double(options['iterative_tol'])
-    vmopts.iterative_precond = ct.c_bool(options['iterative_precond'])
+    vmopts.horseshoe = ct.c_bool(options['horseshoe'].value)
+    vmopts.dt = ct.c_double(options["rollup_dt"].value)
+    vmopts.n_rollup = ct.c_uint(options["n_rollup"].value)
+    vmopts.rollup_tolerance = ct.c_double(options["rollup_tolerance"].value)
+    vmopts.rollup_aic_refresh = ct.c_uint(options['rollup_aic_refresh'].value)
+    vmopts.NumCores = ct.c_uint(options['num_cores'].value)
+    vmopts.iterative_solver = ct.c_bool(options['iterative_solver'].value)
+    vmopts.iterative_tol = ct.c_double(options['iterative_tol'].value)
+    vmopts.iterative_precond = ct.c_bool(options['iterative_precond'].value)
 
-    flightconditions = FlightConditions(flightconditions_in)
-
-    for u_ext in ts_info.u_ext:
-        u_ext[0, :, :] = flightconditions.uinf
-        u_ext[1, :, :] = 0.0
-        u_ext[2, :, :] = 0.0
+    flightconditions = FlightConditions()
+    flightconditions.rho = options['rho']
+    flightconditions.uinf = np.ctypeslib.as_ctypes(np.linalg.norm(ts_info.u_ext[0][:, 0, 0]))
+    flightconditions.uinf_direction = np.ctypeslib.as_ctypes(ts_info.u_ext[0][:, 0, 0]/flightconditions.uinf)
 
     ts_info.generate_ctypes_pointers()
     run_VLM(ct.byref(vmopts),

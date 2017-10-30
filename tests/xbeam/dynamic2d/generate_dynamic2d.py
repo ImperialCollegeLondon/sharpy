@@ -21,6 +21,7 @@ num_node_elem = 3
 # dont touch this
 num_node = 0
 
+
 def clean_test_files():
     global dt
     global num_steps
@@ -94,13 +95,13 @@ def generate_dyn_file():
 
     with h5.File(route + '/' + case_name + '.dyn.h5', 'a') as h5file:
         if with_dynamic_forces:
-            dynamic_forces_handle = h5file.create_dataset(
+            h5file.create_dataset(
                 'dynamic_forces', data=dynamic_forces_time)
             # dynamic_forces_handle = h5file.create_dataset(
             #     'dynamic_forces_amplitude', data=dynamic_forces)
             # dynamic_forces_handle = h5file.create_dataset(
             #     'dynamic_forces_time', data=force_time)
-        num_steps_handle = h5file.create_dataset(
+        h5file.create_dataset(
             'num_steps', data=num_steps)
 
 
@@ -239,10 +240,17 @@ def generate_solver_file():
     global num_node_elem
     global num_node
     file_name = route + '/' + case_name + '.solver.txt'
-    config = configparser.ConfigParser()
+    # config = configparser.ConfigParser()
+    import configobj
+    config = configobj.ConfigObj()
+    config.filename = file_name
     config['SHARPy'] = {'case': case_name,
                         'route': route,
-                        'flow': 'BeamLoader, NonLinearDynamic, BeamCsvOutput'}
+                        'flow': ['BeamLoader', 'NonLinearDynamic', 'BeamCsvOutput'],
+                        'write_screen': 'off',
+                        'write_log': 'on',
+                        'log_folder': os.path.dirname(__file__) + '/output/',
+                        'log_file': case_name + '.log'}
     config['BeamLoader'] = {'unsteady': 'on'}
     config['NonLinearDynamic'] = {'print_info': 'off',
                                   'max_iterations': 150,
@@ -256,7 +264,7 @@ def generate_solver_file():
                                   'prescribed_motion': 'off',
                                   'gravity_on': 'off',
                                   'gravity': 9.81,
-                                  'gravity_dir': '0, 0, 1'}
+                                  'gravity_dir': ['0', '0', '1']}
     config['BeamCsvOutput'] = {'folder': os.path.dirname(__file__) + '/../',
                                'output_pos': 'on',
                                'output_psi': 'on',
@@ -268,8 +276,9 @@ def generate_solver_file():
     #                       'include_applied_forces': 'on',
     #                       'include_unsteady_applied_forces': 'on'}
 
-    with open(file_name, 'w') as configfile:
-        config.write(configfile)
+    config.write()
+    # with open(file_name, 'w') as configfile:
+    #     config.write(configfile)
 
 
 generate_files()
