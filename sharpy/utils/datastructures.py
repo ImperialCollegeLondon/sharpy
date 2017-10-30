@@ -272,6 +272,7 @@ class StructTimeStepInfo(object):
         self.gravity_vector_body = np.array([0.0, 0.0, 1.0], dtype=ct.c_double, order='F')
 
         self.steady_applied_forces = np.zeros((self.num_node, 6), dtype=ct.c_double, order='F')
+        self.unsteady_applied_forces = np.zeros((self.num_node, 6), dtype=ct.c_double, order='F')
 
     def copy(self):
         from copy import deepcopy
