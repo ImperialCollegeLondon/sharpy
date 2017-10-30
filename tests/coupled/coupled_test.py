@@ -93,9 +93,10 @@ class TestSmithCoupled(unittest.TestCase):
         sharpy.sharpy_main.main(['', solver_path])
 
         # read output and compare
-        # output_path = os.path.dirname(solver_path) + 'output/aero/'
-        # forces_data = np.genfromtxt(output_path + 'smith_nog_2deg_aeroforces.csv')
-        # self.assertAlmostEqual(forces_data[-1, 3], 4.88705e3, 2)
+        output_path = os.path.dirname(solver_path) + '/output/smith_nog_2deg/beam/'
+        pos_data = np.genfromtxt(output_path + 'beam_smith_nog_2deg_000002.csv')
+        self.assertAlmostEqual((pos_data[20, 1] - 15.4472)/15.4472, 0.00, 2)
+        self.assertAlmostEqual((pos_data[20, 2] - 3.8839)/3.8839, 0.00, 2)
 
         # results:
         # N = 10 elements
@@ -103,10 +104,11 @@ class TestSmithCoupled(unittest.TestCase):
         # full wake:
         # Nrollup = 100
         # Mstar = 80
-        # pos last beam of the wing
+        # pos last node of the wing
+        # 0.05668 15.5422 3.53971
         # total forces:
         # tstep | fx_st | fy_st | fz_st
-        #
+        #   0   | 3.229 | -1.059e-3| 3.766e2
         # seconds
 
         # will use this one for validation.
