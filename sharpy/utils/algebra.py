@@ -1,4 +1,5 @@
 import numpy as np
+import scipy.linalg
 
 
 def tangent_vector(in_coord, ordering=None):
@@ -88,8 +89,13 @@ def get_polyfit(in_coord, ordering):
 
 
 def unit_vector(vector):
+    """
+    Tested
+    :param vector:
+    :return:
+    """
     if np.linalg.norm(vector) < 1e-6:
-        return np.zeros((3,))
+        return np.zeros_like(vector)
     return vector/np.linalg.norm(vector)
 
 
@@ -103,7 +109,7 @@ def rotation_matrix_around_axis(axis, angle):
 
 def skew(vector):
     if not vector.size == 3:
-        raise Exception('The input vector is not 3D')
+        raise ValueError('The input vector is not 3D')
 
     matrix = np.zeros((3, 3))
     matrix[1, 2] = -vector[0]
@@ -253,7 +259,12 @@ def crv2triad(psi):
 
 
 def crv2rot(psi):
-    # this is psi2mat
+    # test using exponential map instead of the formula in Geradin&Cardin
+    # it works, but it is VERY slow
+    # rot_matrix = scipy.linalg.expm(rot_skew(psi))
+    # return rot_matrix
+
+    # this is psi2mat in the matlab version
     norm_psi = np.linalg.norm(psi)
 
     if norm_psi < 1e-15:
@@ -266,19 +277,6 @@ def crv2rot(psi):
         rot_matrix = np.eye(3)
         rot_matrix += np.sin(norm_psi)*skew_normal
         rot_matrix += (1.0 - np.cos(norm_psi))*np.dot(skew_normal, skew_normal)
-
-    # psi2rot
-    # norm_psi = np.linalg.norm(psi)
-    # psi_skew = rot_skew(psi)
-    #
-    # if norm_psi < 1e-15:
-    #     k1 = 1.0
-    #     k2 = 1.0/6.0
-    # else:
-    #     k1 = np.sin(norm_psi*0.5)/(norm_psi*0.5)
-    #     k2 = (1.0 - np.sin(norm_psi)/norm_psi)/(norm_psi*norm_psi)
-    #
-    # rot_matrix = np.eye(3) - (0.5*k1*k1)*psi_skew + k2*np.dot(psi_skew, psi_skew)
 
     return rot_matrix
 
@@ -315,7 +313,6 @@ def crv2triad_vec(crv_vec):
     v3 = np.zeros((n_nodes, 3))
     for inode in range(n_nodes):
         v1[inode, :], v2[inode, :], v3[inode, :] = crv2triad(crv_vec[inode, :])
-
     return v1, v2, v3
 
 
@@ -336,18 +333,18 @@ def quat2rot(q1):
 
     rot_mat = np.zeros((3, 3), order='F')
 
-    rot_mat[0,0] = q[0]**2 + q[1]**2 - q[2]**2 - q[3]**2
-    rot_mat[1,1] = q[0]**2 - q[1]**2 + q[2]**2 - q[3]**2
-    rot_mat[2,2] = q[0]**2 - q[1]**2 - q[2]**2 + q[3]**2
+    rot_mat[0, 0] = q[0]**2 + q[1]**2 - q[2]**2 - q[3]**2
+    rot_mat[1, 1] = q[0]**2 - q[1]**2 + q[2]**2 - q[3]**2
+    rot_mat[2, 2] = q[0]**2 - q[1]**2 - q[2]**2 + q[3]**2
 
-    rot_mat[0,1] = 2.*(q[1]*q[2] + q[0]*q[3])
-    rot_mat[1,0] = 2.*(q[1]*q[2] - q[0]*q[3])
+    rot_mat[0, 1] = 2.*(q[1]*q[2] + q[0]*q[3])
+    rot_mat[1, 0] = 2.*(q[1]*q[2] - q[0]*q[3])
 
-    rot_mat[0,2] = 2.*(q[1]*q[3] - q[0]*q[2])
-    rot_mat[2,0] = 2.*(q[1]*q[3] + q[0]*q[2])
+    rot_mat[0, 2] = 2.*(q[1]*q[3] - q[0]*q[2])
+    rot_mat[2, 0] = 2.*(q[1]*q[3] + q[0]*q[2])
 
-    rot_mat[1,2] = 2.*(q[2]*q[3] + q[0]*q[1])
-    rot_mat[2,1] = 2.*(q[2]*q[3] - q[0]*q[1])
+    rot_mat[1, 2] = 2.*(q[2]*q[3] + q[0]*q[1])
+    rot_mat[2, 1] = 2.*(q[2]*q[3] - q[0]*q[1])
 
     return rot_mat
 
@@ -372,6 +369,7 @@ def rotation3d_x(angle):
     mat[2, :] = [0.0,   s,   c]
     return mat
 
+
 def rotation3d_y(angle):
     c = np.cos(angle)
     s = np.sin(angle)
@@ -380,6 +378,7 @@ def rotation3d_y(angle):
     mat[1, :] = [0.0, 1.0, 0.0]
     mat[2, :] = [s, 0.0,  c]
     return mat
+
 
 def rotation3d_z(angle):
     c = np.cos(angle)
@@ -401,37 +400,47 @@ def rotate_crv(crv_in, axis, angle):
 
 
 def euler2rot(euler):
+    """
+    :param euler: [roll, pitch, yaw]
+    :return:
+    """
     rot = rotation3d_z(euler[2])
     rot = np.dot(rotation3d_y(euler[1]), rot)
     rot = np.dot(rotation3d_x(euler[0]), rot)
     return rot
 
 
-if __name__ == '__main__':
-    t = np.array([0, 1, 0])
-    n = np.array([1, 0, 0])
-    b = np.array([0, 0, -1])
+def euler2quat(euler):
+    euler_rot = euler2rot(euler)  # this is Cag
+    quat = mat2quat(euler_rot.T)
+    return quat
 
-    psi = triad2crv(t, n, b)
 
-    tt, nn, bb = crv2triad(psi)
-
-    print(t)
-    print(tt)
-    print(n)
-    print(nn)
-    print(b)
-    print(bb)
-
-    crv = np.array([0.31366386982554767, -0.31366386982554767, 1.5479424693982715])
-    tt, nn, bb = crv2triad(crv)
-    print(tt)
-    print(nn)
-    print(bb)
-
-    print('--------------------')
-    crv = np.array([-2.013275e+00, -2.013227e+00, -3.871769e-01])
-    angle = 270*np.pi/180.
-    axis = np.array([0, 0, 1])
-    new_crv = rotate_crv(crv, axis, angle)
-    print(new_crv)
+# if __name__ == '__main__':
+#     t = np.array([0, 1, 0])
+#     n = np.array([1, 0, 0])
+#     b = np.array([0, 0, -1])
+#
+#     psi = triad2crv(t, n, b)
+#
+#     tt, nn, bb = crv2triad(psi)
+#
+#     print(t)
+#     print(tt)
+#     print(n)
+#     print(nn)
+#     print(b)
+#     print(bb)
+#
+#     crv = np.array([0.31366386982554767, -0.31366386982554767, 1.5479424693982715])
+#     tt, nn, bb = crv2triad(crv)
+#     print(tt)
+#     print(nn)
+#     print(bb)
+#
+#     print('--------------------')
+#     crv = np.array([-2.013275e+00, -2.013227e+00, -3.871769e-01])
+#     angle = 270*np.pi/180.
+#     axis = np.array([0, 0, 1])
+#     new_crv = rotate_crv(crv, axis, angle)
+#     print(new_crv)

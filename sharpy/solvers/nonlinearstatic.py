@@ -1,88 +1,54 @@
-import ctypes as ct
 import numpy as np
 
-import sharpy.beam.utils.beamlib as beamlib
-from sharpy.presharpy.utils.settings import str2bool
-from sharpy.utils.solver_interface import solver, BaseSolver
+import sharpy.structure.utils.xbeamlib as xbeamlib
 import sharpy.utils.cout_utils as cout
+import sharpy.utils.settings as settings
+from sharpy.utils.solver_interface import solver, BaseSolver
 
 
 @solver
 class NonLinearStatic(BaseSolver):
     solver_id = 'NonLinearStatic'
-    solver_type = 'structural'
 
     def __init__(self):
-        pass
+        # settings list
+        self.settings_types = dict()
+        self.settings_default = dict()
 
-    def initialise(self, data, quiet=False):
+        self.settings_types['print_info'] = 'bool'
+        self.settings_default['print_info'] = True
+
+        self.settings_types['max_iterations'] = 'int'
+        self.settings_default['max_iterations'] = 100
+
+        self.settings_types['num_load_steps'] = 'int'
+        self.settings_default['num_load_steps'] = 5
+
+        self.settings_types['delta_curved'] = 'float'
+        self.settings_default['delta_curved'] = 1e-5
+
+        self.settings_types['gravity_on'] = 'bool'
+        self.settings_default['gravity_on'] = False
+
+        self.settings_types['gravity'] = 'float'
+        self.settings_default['gravity'] = 9.81
+
+        self.data = None
+        self.settings = None
+
+    def initialise(self, data, custom_settings=None):
         self.data = data
-        self.settings = data.settings[self.solver_id]
-        self.convert_settings()
-        self.quiet = quiet
-        # data.beam.timestep_info[0].pos_def[:] = data.beam.pos_ini[:]
-        # data.beam.timestep_info[0].psi_def[:] = data.beam.psi_ini[:]
-        data.beam.generate_aux_information()
+        if custom_settings is None:
+            self.settings = data.settings[self.solver_id]
+        else:
+            self.settings = custom_settings
+        settings.to_custom_types(self.settings, self.settings_types, self.settings_default)
 
-    def run(self, coeff=ct.c_double(1.0)):
-        if self.quiet:
-            cout.cout_wrap('Running non linear static solver...', 2)
-        beamlib.cbeam3_solv_nlnstatic(self.data.beam, self.settings, coeff)
-        self.data.beam.update()
-        if self.quiet:
-            cout.cout_wrap('...Finished', 2)
+    def run(self):
+        # cout.cout_wrap('Running non linear static solver...', 2)
+        xbeamlib.cbeam3_solv_nlnstatic(self.data.structure, self.settings, self.data.ts)
+        # cout.cout_wrap('...Finished', 2)
         return self.data
 
-    def convert_settings(self):
-        try:
-            self.settings['print_info'] = ct.c_bool(str2bool(self.settings['print_info']))
-        except ValueError:
-            pass
-        try:
-            self.settings['out_b_frame'] = ct.c_bool(str2bool(self.settings['out_b_frame']))
-        except ValueError:
-            pass
-        try:
-            self.settings['out_a_frame'] = ct.c_bool(str2bool(self.settings['out_a_frame']))
-        except ValueError:
-            pass
-        try:
-            self.settings['elem_proj'] = ct.c_int(int(self.settings['elem_proj']))
-        except ValueError:
-            pass
-        try:
-            self.settings['max_iterations'] = ct.c_int(int(self.settings['max_iterations']))
-        except ValueError:
-            pass
-        try:
-            self.settings['num_load_steps'] = ct.c_int(int(self.settings['num_load_steps']))
-        except ValueError:
-            pass
-        try:
-            self.settings['delta_curved'] = ct.c_double(float(self.settings['delta_curved']))
-        except ValueError:
-            pass
-        try:
-            self.settings['min_delta'] = ct.c_double(float(self.settings['min_delta']))
-        except ValueError:
-            pass
-        try:
-            self.settings['newmark_damp'] = ct.c_double(float(self.settings['newmark_damp']))
-        except ValueError:
-            pass
-        try:
-            self.settings['gravity_on'] = ct.c_bool(str2bool(self.settings['gravity_on']))
-        except ValueError:
-            pass
-        try:
-            self.settings['gravity'] = ct.c_double(float(self.settings['gravity']))
-        except ValueError:
-            pass
-        try:
-            if isinstance(self.settings['gravity_dir'], np.ndarray):
-                pass
-            else:
-                self.settings['gravity_dir'] = np.fromstring(self.settings['gravity_dir'], sep=',', dtype=ct.c_double)
-        except ValueError:
-            pass
-
+    def next_step(self):
+        self.data.structure.next_step()

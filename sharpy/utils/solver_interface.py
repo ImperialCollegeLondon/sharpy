@@ -1,41 +1,27 @@
 from abc import ABCMeta, abstractmethod
-from sharpy.utils.cout_utils import cout_wrap
+import sharpy.utils.cout_utils as cout
 import os
 
-available_solvers = {}
 dict_of_solvers = {}
-solver_types = {}
 solvers = {}  # for internal working
 
 
 # decorator
 def solver(arg):
-    global available_solvers
+    # global available_solvers
+    global dict_of_solvers
     try:
         arg.solver_id
-    except:
+    except AttributeError:
         raise AttributeError('Class defined as solver has no solver_id attribute')
-    try:
-        arg.solver_type
-    except:
-        raise AttributeError('Class defined as solver has no solver_type attribute')
-
-    try:
-        available_solvers[arg.solver_type]
-    except KeyError:
-        available_solvers[arg.solver_type] = []
-    available_solvers[arg.solver_type].append(arg.solver_id)
     dict_of_solvers[arg.solver_id] = arg
-    solver_types[arg.solver_id] = arg.solver_type
     return arg
 
 
 def print_available_solvers():
-    cout_wrap('The available solvers on this session are:', 2)
-    for k, v in available_solvers.items():
-        cout_wrap('%s' % k, 2)
-        for i in v:
-            cout_wrap('   %s' % i, 0)
+    cout.cout_wrap('The available solvers on this session are:', 2)
+    for name, i_solver in dict_of_solvers.items():
+        cout.cout_wrap('%s ' % i_solver.solver_id, 2)
 
 
 class BaseSolver(metaclass=ABCMeta):
@@ -43,10 +29,6 @@ class BaseSolver(metaclass=ABCMeta):
     # Solver id for populating available_solvers[]
     @property
     def solver_id(self):
-        raise NotImplementedError
-
-    @property
-    def solver_type(self):
         raise NotImplementedError
 
     # The input is a ProblemData class structure
@@ -61,8 +43,6 @@ class BaseSolver(metaclass=ABCMeta):
 
 
 def solver_from_string(string):
-    import sys
-    import functools
     return dict_of_solvers[string]
 
 
@@ -83,8 +63,7 @@ def solver_list_from_path(cwd):
 
 
 def initialise_solver(solver_name):
-    import sharpy.utils.cout_utils as cout
-    cout_wrap('Generating an instance of %s' % solver_name, 2)
+    cout.cout_wrap('Generating an instance of %s' % solver_name, 2)
     cls_type = solver_from_string(solver_name)
     solver = cls_type()
     return solver

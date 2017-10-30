@@ -2,9 +2,14 @@ import ctypes as ct
 import numpy as np
 import copy
 
+import sharpy.utils.algebra as algebra
+
 
 class AeroTimeStepInfo(object):
     def __init__(self, dimensions, dimensions_star):
+        self.ct_dimensions = None
+        self.ct_dimensions_star = None
+
         self.dimensions = dimensions
         self.dimensions_star = dimensions_star
         self.n_surf = dimensions.shape[0]
@@ -18,9 +23,9 @@ class AeroTimeStepInfo(object):
         self.zeta_dot = []
         for i_surf in range(self.n_surf):
             self.zeta_dot.append(np.zeros((3,
-                                       dimensions[i_surf, 0] + 1,
-                                       dimensions[i_surf, 1] + 1),
-                                      dtype=ct.c_double))
+                                           dimensions[i_surf, 0] + 1,
+                                           dimensions[i_surf, 1] + 1),
+                                          dtype=ct.c_double))
 
         # panel normals
         self.normals = []
@@ -86,6 +91,14 @@ class AeroTimeStepInfo(object):
             self.gamma_star.append(np.zeros((dimensions_star[i_surf, 0],
                                              dimensions_star[i_surf, 1]),
                                             dtype=ct.c_double))
+
+        # total forces
+        self.inertial_total_forces = np.zeros((self.n_surf, 6))
+        self.body_total_forces = np.zeros((self.n_surf, 6))
+        self.inertial_steady_forces = np.zeros((self.n_surf, 6))
+        self.body_steady_forces = np.zeros((self.n_surf, 6))
+        self.inertial_unsteady_forces = np.zeros((self.n_surf, 6))
+        self.body_unsteady_forces = np.zeros((self.n_surf, 6))
 
     def generate_ctypes_pointers(self):
         self.ct_dimensions = self.dimensions.astype(dtype=ct.c_uint)
@@ -229,30 +242,63 @@ class AeroTimeStepInfo(object):
         out.forces = copy.deepcopy(self.forces)
         return out
 
+    def update_orientation(self, rot):
+        for i_surf in range(self.n_surf):
+            for i_row in range(self.zeta[i_surf].shape[1]):
+                for i_col in range(self.zeta[i_surf].shape[2]):
+                    self.zeta[i_surf][:, i_row, i_col] = np.dot(rot,
+                                                                self.zeta[i_surf][:, i_row, i_col])
+
 
 class StructTimeStepInfo(object):
-    def __init__(self, num_node, num_elem, num_node_elem=3, rb=True):
+    def __init__(self, num_node, num_elem, num_node_elem=3):
         self.num_node = num_node
         self.num_elem = num_elem
         self.num_node_elem = num_node_elem
         # generate placeholder for node coordinates
-        self.pos_def = np.zeros((self.num_node, 3), dtype=ct.c_double, order='F')
-        self.pos_dot_def = np.zeros((self.num_node, 3), dtype=ct.c_double, order='F')
+        self.pos = np.zeros((self.num_node, 3), dtype=ct.c_double, order='F')
+        self.pos_dot = np.zeros((self.num_node, 3), dtype=ct.c_double, order='F')
 
         # placeholder for CRV
-        self.psi_def = np.zeros((self.num_elem, num_node_elem, 3), dtype=ct.c_double, order='F')
-        self.psi_dot_def = np.zeros((self.num_elem, num_node_elem, 3), dtype=ct.c_double, order='F')
+        self.psi = np.zeros((self.num_elem, num_node_elem, 3), dtype=ct.c_double, order='F')
+        self.psi_dot = np.zeros((self.num_elem, num_node_elem, 3), dtype=ct.c_double, order='F')
 
-        self.with_rb = rb
-        if rb:
-            # FoR data
-            self.quat = np.array([1, 0, 0, 0])
-            self.for_pos = np.zeros((6,))
-            self.for_vel = np.zeros((6,))
-            self.glob_pos_def = np.zeros_like(self.pos_def)
+        # FoR data
+        self.quat = np.array([1, 0, 0, 0], dtype=float)
+        self.for_pos = np.zeros((6,))
+        self.for_vel = np.zeros((6,))
+
+        self.gravity_vector_inertial = np.array([0.0, 0.0, 1.0], dtype=ct.c_double, order='F')
+        self.gravity_vector_body = np.array([0.0, 0.0, 1.0], dtype=ct.c_double, order='F')
+
+        self.steady_applied_forces = np.zeros((self.num_node, 6), dtype=ct.c_double, order='F')
 
     def copy(self):
         from copy import deepcopy
         return deepcopy(self)
+
+    def glob_pos(self, include_rbm=True):
+        coords = self.pos.copy()
+        c = algebra.quat2rot(self.quat).transpose()
+        for i_node in range(self.num_node):
+            coords[i_node, :] = np.dot(c, coords[i_node, :])
+            if include_rbm:
+                coords[i_node, :] += self.for_pos[0:3]
+        return coords
+
+    def update_orientation(self, quat):
+        """
+        :param quat: Corresponding to the Cga matrix
+        :return:
+        """
+        self.quat = quat.copy()
+        # rotate gravity_vector_inertial to body
+        # in fact the gravity vector is the vertical vector
+        rot = algebra.quat2rot(self.quat)
+        self.gravity_vector_body = np.dot(rot.T, self.gravity_vector_inertial)
+
+
+
+
 
 

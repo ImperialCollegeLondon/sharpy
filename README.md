@@ -3,7 +3,7 @@ An aeroelastic analysis package
 
 __WORK STILL IN PROGRESS__
 
-sharpy depends on [xbeam](http://github.com/fonsocarre/xbeam) and [UVLM](http://github.com/fonsocarre/UVLM).
+sharpy depends on [xbeam](http://github.com/imperialcollegelondon/xbeam) and [UVLM](http://github.com/imperialcollegelondon/UVLM).
 For now, only structural simulations are supported.
 
 ---
