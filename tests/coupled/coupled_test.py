@@ -109,7 +109,7 @@ class TestSmithCoupled(unittest.TestCase):
         # total forces:
         # tstep | fx_st | fy_st | fz_st
         #   0   | 3.229 | -1.059e-3| 3.766e2
-        # seconds
+        # 7500 seconds
 
         # will use this one for validation.
         # same discretisation, with horseshoe:
@@ -121,6 +121,8 @@ class TestSmithCoupled(unittest.TestCase):
 
     def test_smith4deg_nog(self):
         """
+        Hodges result for Euler+Nonlinear is
+        14.668547249647393, 5.451612903225806
         :return:
         """
         import sharpy.sharpy_main
@@ -129,9 +131,10 @@ class TestSmithCoupled(unittest.TestCase):
         sharpy.sharpy_main.main(['', solver_path])
 
         # read output and compare
-        # output_path = os.path.dirname(solver_path) + 'output/aero/'
-        # forces_data = np.genfromtxt(output_path + 'smith_nog_2deg_aeroforces.csv')
-        # self.assertAlmostEqual(forces_data[-1, 3], 4.88705e3, 2)
+        output_path = os.path.dirname(solver_path) + '/output/smith_nog_2deg/beam/'
+        pos_data = np.genfromtxt(output_path + 'beam_smith_nog_2deg_000003.csv')
+        self.assertAlmostEqual((pos_data[20, 1] - 14.80636555)/14.80636555, 0.00, 2)
+        self.assertAlmostEqual((pos_data[20, 2] - 5.65457501)/5.65457501, 0.00, 2)
 
         # results:
         # N = 10 elements
@@ -140,15 +143,16 @@ class TestSmithCoupled(unittest.TestCase):
         # Nrollup = 100
         # Mstar = 80
         # pos last beam of the wing
+        # 5.59418e-2 1.49094e1 5.41518
         # total forces:
         # tstep | fx_st | fy_st | fz_st
-        #
-        # seconds
+        # 0     | 3.045 | -1.089e-4 | 3.678e2
+        # 7380 seconds
 
         # will use this one for validation.
         # same discretisation, with horseshoe:
-        #
+        # [  0.05849521  14.80636555   5.65457501]
         # forces:
         # tstep |   fx_st    |   fy_st    |   fz_st
-        #
-        #  seconds
+        #     0 |  1.996e+00 | -2.116e-06 |  3.888e+02
+        # 142 seconds

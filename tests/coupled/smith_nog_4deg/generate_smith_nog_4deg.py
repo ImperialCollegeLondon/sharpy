@@ -299,7 +299,7 @@ def generate_solver_file(horseshoe=False):
                                                               'gravity': 9.754},
                                'aero_solver': 'StaticUvlm',
                                'aero_solver_settings': {'print_info': 'off',
-                                                        'horseshoe': 'off',
+                                                        'horseshoe': 'on',
                                                         'num_cores': 4,
                                                         'n_rollup': 100,
                                                         'rollup_dt': main_chord/m_main/u_inf,
@@ -349,6 +349,6 @@ def generate_solver_file(horseshoe=False):
 
 clean_test_files()
 generate_fem_file()
-generate_solver_file(horseshoe=False)
+generate_solver_file(horseshoe=True)
 generate_aero_file()
 
