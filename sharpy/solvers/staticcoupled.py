@@ -69,8 +69,6 @@ class StaticCoupled(BaseSolver):
         self.aero_solver.next_step()
 
     def run(self):
-        cout.cout_wrap('Running static coupled solver...', 1)
-
         for i_step in range(self.settings['n_load_steps'].value):
             # load step coefficient
             if not self.settings['n_load_steps'].value == 0:
@@ -129,43 +127,6 @@ class StaticCoupled(BaseSolver):
                 if self.convergence(i_iter, i_step):
                     break
 
-
-        # for i_step in range(self.settings['n_load_steps']):
-        #     coeff = ct.c_double((i_step + 1.0)/(self.settings['n_load_steps']))
-        #     for i_iter in range(self.settings['max_iter']):
-        #         cout.cout_wrap('Iter: %u, step: %u' % (i_iter, i_step), 2)
-        #
-        #         self.aero_solver.initialise(self.data, update_flightcon=False, quiet=True)
-        #         self.data = self.aero_solver.run()
-        #
-        #         struct_forces = mapping.aero2struct_force_mapping(
-        #             self.data.grid.timestep_info[self.ts].forces,
-        #             self.data.grid.struct2aero_mapping,
-        #             self.data.grid.timestep_info[self.ts].zeta,
-        #             self.data.beam.timestep_info[self.ts].pos_def,
-        #             self.data.beam.timestep_info[self.ts].psi_def,
-        #             self.data.beam.node_master_elem,
-        #             self.data.beam.master,
-        #             self.data.grid.inertial2aero)
-        #
-        #         if self.relaxation_factor > 0.0:
-        #             struct_forces = ((1.0 - self.relaxation_factor)*struct_forces +
-        #                             self.relaxation_factor*self.previous_forces)
-        #
-        #         self.previous_forces = struct_forces
-        #         self.data.beam.update_forces(struct_forces)
-        #         self.structural_solver.initialise(self.data)
-        #         self.data = self.structural_solver.run(coeff)
-        #
-        #         if self.convergence(i_iter):
-        #             self.data.flightconditions['FlightCon']['u_inf'] = self.original_u_inf
-        #             self.aero_solver.initialise(self.data, quiet=True)
-        #             self.data = self.aero_solver.run()
-        #             if i_step == self.settings['n_load_steps'] - 1:
-        #                 cout.cout_wrap('Converged in %u iterations' % (i_iter + 1), 2)
-        #             break
-
-        cout.cout_wrap('...Finished', 1)
         return self.data
 
     def convergence(self, i_iter, i_step):
