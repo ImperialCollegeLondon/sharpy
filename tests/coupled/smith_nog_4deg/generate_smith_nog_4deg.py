@@ -312,9 +312,9 @@ def generate_solver_file(horseshoe=False):
                                                         'alpha': alpha_rad,
                                                         'beta': beta},
                                'max_iter': 100,
-                               'n_load_steps': 3,
+                               'n_load_steps': 4,
                                'tolerance': 1e-6,
-                               'relaxation_factor': 0.}
+                               'relaxation_factor': 0.1}
 
     if horseshoe is True:
         config['AerogridLoader'] = {'unsteady': 'off',

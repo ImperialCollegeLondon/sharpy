@@ -20,6 +20,8 @@ class TestSmithCoupled(unittest.TestCase):
         mod2 = importlib.import_module('tests.coupled.' + case + '.generate_' + case)
         case = 'smith_g_4deg'
         mod3 = importlib.import_module('tests.coupled.' + case + '.generate_' + case)
+        case = 'smith_nog_4deg'
+        mod4 = importlib.import_module('tests.coupled.' + case + '.generate_' + case)
 
     @classmethod
     def tearDownClass(cls):
@@ -114,3 +116,37 @@ class TestSmithCoupled(unittest.TestCase):
         # tstep |   fx_st    |   fy_st    |   fz_st
         #    0 |  2.150e+00 |  3.136e-06 |  4.000e+02
         # 52 seconds
+
+    def test_smith4deg_nog(self):
+        """
+        :return:
+        """
+        import sharpy.sharpy_main
+        solver_path = os.path.abspath(os.path.dirname(os.path.realpath(__file__)) +
+                                      '/smith_nog_4deg/smith_nog_4deg.solver.txt')
+        sharpy.sharpy_main.main(['', solver_path])
+
+        # read output and compare
+        # output_path = os.path.dirname(solver_path) + 'output/aero/'
+        # forces_data = np.genfromtxt(output_path + 'smith_nog_2deg_aeroforces.csv')
+        # self.assertAlmostEqual(forces_data[-1, 3], 4.88705e3, 2)
+
+        # results:
+        # N = 10 elements
+        # M = 15 elements
+        # full wake:
+        # Nrollup = 100
+        # Mstar = 80
+        # pos last beam of the wing
+        # total forces:
+        # tstep | fx_st | fy_st | fz_st
+        #
+        # seconds
+
+        # will use this one for validation.
+        # same discretisation, with horseshoe:
+        #
+        # forces:
+        # tstep |   fx_st    |   fy_st    |   fz_st
+        #
+        #  seconds
