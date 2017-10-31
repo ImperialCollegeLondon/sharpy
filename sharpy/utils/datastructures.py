@@ -280,12 +280,15 @@ class StructTimeStepInfo(object):
 
     def glob_pos(self, include_rbm=True):
         coords = self.pos.copy()
-        c = algebra.quat2rot(self.quat).transpose()
+        c = self.cga()
         for i_node in range(self.num_node):
             coords[i_node, :] = np.dot(c, coords[i_node, :])
             if include_rbm:
                 coords[i_node, :] += self.for_pos[0:3]
         return coords
+
+    def cga(self):
+        return algebra.quat2rot(self.quat).transpose()
 
     def update_orientation(self, quat):
         """
