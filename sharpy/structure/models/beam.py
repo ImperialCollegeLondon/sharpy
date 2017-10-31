@@ -327,35 +327,3 @@ class Beam(BaseStructure):
         self.timestep_info[ts].update_orientation(quat)  # Cga going in here
 
 
-# ----------------------------------------------------------------------------------------------------------------------
-
-    # def __init_(self, fem_dictionary, dyn_dictionary=None):
-        # try:
-        #     self.orientation = fem_dictionary['orientation']
-        # except KeyError:
-        #     self.orientation = None
-        #
-        # unsteady part
-        # if dyn_dictionary is not None:
-        #     self.load_unsteady_data(dyn_dictionary)
-
-    def load_unsteady_data(self, dyn_dictionary):
-        self.n_tsteps = dyn_dictionary['num_steps']
-        try:
-            self.dynamic_forces_amplitude = dyn_dictionary['dynamic_forces_amplitude']
-            self.dynamic_forces_time = dyn_dictionary['dynamic_forces_time']
-        except KeyError:
-            self.dynamic_forces_amplitude = None
-            self.dynamic_forces_time = None
-
-        try:
-            self.forced_vel = dyn_dictionary['forced_vel']
-        except KeyError:
-            self.forced_vel = None
-
-        try:
-            self.forced_acc = dyn_dictionary['forced_acc']
-        except KeyError:
-            self.forced_acc = None
-
-

@@ -29,7 +29,7 @@ main_airfoil_M = 0
 n_surfaces = 2
 
 # discretisation data
-num_elem_main = 20
+num_elem_main = 10
 
 num_node_elem = 3
 num_elem = num_elem_main + num_elem_main
@@ -304,12 +304,12 @@ def generate_solver_file(horseshoe=False):
     else:
         config['AerogridLoader'] = {'unsteady': 'off',
                                     'aligned_grid': 'on',
-                                    'mstar': 90,
+                                    'mstar': 40,
                                     'freestream_dir': ['1', '0', '0']}
         config['StaticUvlm'] = {'print_info': 'off',
                                 'horseshoe': 'off',
                                 'num_cores': 4,
-                                'n_rollup': 100,
+                                'n_rollup': 50,
                                 'rollup_dt': main_chord/m_main/u_inf,
                                 'rollup_aic_refresh': 5,
                                 'rollup_tolerance': 1e-4,

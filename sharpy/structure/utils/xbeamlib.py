@@ -308,6 +308,7 @@ def xbeam_solv_couplednlndyn(beam, settings):
     for_vel = np.zeros((n_tsteps + 1, 6), order='F')
     for_acc = np.zeros((n_tsteps + 1, 6), order='F')
     quat_history = np.zeros((n_tsteps, 4), order='F')
+    quat_history[0, 0] = 1.0
 
     dt = ct.c_double(dt)
     n_tsteps = ct.c_int(n_tsteps)
@@ -324,9 +325,9 @@ def xbeam_solv_couplednlndyn(beam, settings):
     xbopts.NewmarkDamp = settings['newmark_damp']
     xbopts.gravity_on = settings['gravity_on']
     xbopts.gravity = settings['gravity']
-    xbopts.gravity_dir_x = ct.c_double(settings['gravity_dir'][0])
-    xbopts.gravity_dir_y = ct.c_double(settings['gravity_dir'][1])
-    xbopts.gravity_dir_z = ct.c_double(settings['gravity_dir'][2])
+    xbopts.gravity_dir_x = ct.c_double(beam.ini_info.gravity_vector_body[0])
+    xbopts.gravity_dir_y = ct.c_double(beam.ini_info.gravity_vector_body[1])
+    xbopts.gravity_dir_z = ct.c_double(beam.ini_info.gravity_vector_body[2])
 
     pos_def_history = np.zeros((n_tsteps.value, beam.num_node, 3), order='F', dtype=ct.c_double)
     pos_dot_def_history = np.zeros((n_tsteps.value, beam.num_node, 3), order='F', dtype=ct.c_double)
@@ -368,7 +369,7 @@ def xbeam_solv_couplednlndyn(beam, settings):
                                ct.byref(xbopts),
                                beam.ini_info.pos.ctypes.data_as(doubleP),
                                beam.ini_info.psi.ctypes.data_as(doubleP),
-                               beam.timestep_info[0].steady_applied_forces.ctypes.data_as(doubleP),
+                               beam.ini_info.steady_applied_forces.ctypes.data_as(doubleP),
                                dynamic_force.ctypes.data_as(doubleP),
                                for_vel.ctypes.data_as(doubleP),
                                for_acc.ctypes.data_as(doubleP),

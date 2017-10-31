@@ -86,9 +86,6 @@ class StaticCoupled(BaseSolver):
                 # run aero
                 self.data = self.aero_solver.run()
 
-                print('Beam last node: ')
-                print(self.data.structure.timestep_info[self.data.ts].pos[20, :])
-
                 # map force
                 struct_forces = mapping.aero2struct_force_mapping(
                     self.data.aero.timestep_info[self.data.ts].forces,

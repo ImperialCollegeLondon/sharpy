@@ -93,8 +93,8 @@ class TestSmithCoupled(unittest.TestCase):
         sharpy.sharpy_main.main(['', solver_path])
 
         # read output and compare
-        output_path = os.path.dirname(solver_path) + '/output/smith_nog_2deg/beam/'
-        pos_data = np.genfromtxt(output_path + 'beam_smith_nog_2deg_000002.csv')
+        output_path = os.path.dirname(solver_path) + '/output/smith_g_4deg/beam/'
+        pos_data = np.genfromtxt(output_path + 'beam_smith_g_4deg_000002.csv')
         self.assertAlmostEqual((pos_data[20, 1] - 15.4472)/15.4472, 0.00, 2)
         self.assertAlmostEqual((pos_data[20, 2] - 3.8839)/3.8839, 0.00, 2)
 
@@ -131,8 +131,8 @@ class TestSmithCoupled(unittest.TestCase):
         sharpy.sharpy_main.main(['', solver_path])
 
         # read output and compare
-        output_path = os.path.dirname(solver_path) + '/output/smith_nog_2deg/beam/'
-        pos_data = np.genfromtxt(output_path + 'beam_smith_nog_2deg_000003.csv')
+        output_path = os.path.dirname(solver_path) + '/output/smith_nog_4deg/beam/'
+        pos_data = np.genfromtxt(output_path + 'beam_smith_nog_4deg_000003.csv')
         self.assertAlmostEqual((pos_data[20, 1] - 14.80636555)/14.80636555, 0.00, 2)
         self.assertAlmostEqual((pos_data[20, 2] - 5.65457501)/5.65457501, 0.00, 2)
 

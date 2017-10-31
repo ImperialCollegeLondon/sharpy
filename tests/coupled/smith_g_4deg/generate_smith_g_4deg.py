@@ -5,7 +5,7 @@ import os
 
 import sharpy.utils.algebra as algebra
 
-case_name = 'smith_nog_4deg'
+case_name = 'smith_g_4deg'
 route = os.path.dirname(os.path.realpath(__file__)) + '/'
 
 # flight conditions
@@ -280,7 +280,7 @@ def generate_solver_file(horseshoe=False):
                         'route': route,
                         'flow': ['BeamLoader', 'AerogridLoader', 'StaticCoupled', 'AerogridPlot', 'BeamPlot', 'AeroForcesCalculator', 'BeamCsvOutput'],
                         # 'flow': ['BeamLoader', 'NonLinearStatic', 'BeamPlot'],
-                        'write_screen': 'on',
+                        'write_screen': 'off',
                         'write_log': 'on',
                         'log_folder': os.path.dirname(__file__) + '/output/',
                         'log_file': case_name + '.log'}
@@ -299,7 +299,7 @@ def generate_solver_file(horseshoe=False):
                                                               'gravity': 9.754},
                                'aero_solver': 'StaticUvlm',
                                'aero_solver_settings': {'print_info': 'off',
-                                                        'horseshoe': 'off',
+                                                        'horseshoe': 'on',
                                                         'num_cores': 4,
                                                         'n_rollup': 100,
                                                         'rollup_dt': main_chord/m_main/u_inf,
@@ -324,7 +324,7 @@ def generate_solver_file(horseshoe=False):
     else:
         config['AerogridLoader'] = {'unsteady': 'off',
                                     'aligned_grid': 'on',
-                                    'mstar': 80,
+                                    'mstar': 1,
                                     'freestream_dir': ['1', '0', '0']}
     config['AerogridPlot'] = {'folder': os.path.dirname(__file__) + '/output/',
                               'include_rbm': 'off',
@@ -349,6 +349,6 @@ def generate_solver_file(horseshoe=False):
 
 clean_test_files()
 generate_fem_file()
-generate_solver_file(horseshoe=False)
+generate_solver_file(horseshoe=True)
 generate_aero_file()
 

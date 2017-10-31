@@ -278,7 +278,7 @@ def generate_solver_file(horseshoe=False):
                         'route': route,
                         'flow': ['BeamLoader', 'AerogridLoader', 'StaticCoupled', 'AerogridPlot', 'BeamPlot', 'AeroForcesCalculator', 'BeamCsvOutput'],
                         # 'flow': ['BeamLoader', 'NonLinearStatic', 'BeamPlot'],
-                        'write_screen': 'on',
+                        'write_screen': 'off',
                         'write_log': 'on',
                         'log_folder': os.path.dirname(__file__) + '/output/',
                         'log_file': case_name + '.log'}
