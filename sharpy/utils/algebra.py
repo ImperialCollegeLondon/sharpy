@@ -415,32 +415,3 @@ def euler2quat(euler):
     quat = mat2quat(euler_rot.T)
     return quat
 
-
-# if __name__ == '__main__':
-#     t = np.array([0, 1, 0])
-#     n = np.array([1, 0, 0])
-#     b = np.array([0, 0, -1])
-#
-#     psi = triad2crv(t, n, b)
-#
-#     tt, nn, bb = crv2triad(psi)
-#
-#     print(t)
-#     print(tt)
-#     print(n)
-#     print(nn)
-#     print(b)
-#     print(bb)
-#
-#     crv = np.array([0.31366386982554767, -0.31366386982554767, 1.5479424693982715])
-#     tt, nn, bb = crv2triad(crv)
-#     print(tt)
-#     print(nn)
-#     print(bb)
-#
-#     print('--------------------')
-#     crv = np.array([-2.013275e+00, -2.013227e+00, -3.871769e-01])
-#     angle = 270*np.pi/180.
-#     axis = np.array([0, 0, 1])
-#     new_crv = rotate_crv(crv, axis, angle)
-#     print(new_crv)

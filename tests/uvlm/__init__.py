@@ -1,1 +1,2 @@
-from tests.uvlm.uvlm_test import *
+from tests.uvlm.static import *
+from tests.uvlm.dynamic import *

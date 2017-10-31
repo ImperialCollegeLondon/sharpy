@@ -7,7 +7,7 @@ import unittest
 import os
 
 
-class TestPlanarWingUvlm(unittest.TestCase):
+class TestStaticUvlm(unittest.TestCase):
     """
     """
 
@@ -15,7 +15,7 @@ class TestPlanarWingUvlm(unittest.TestCase):
     def setUpClass(cls):
         # run all the cases generators
         case = 'planarwing'
-        mod = importlib.import_module('tests.uvlm.' + case + '.generate_' + case)
+        mod = importlib.import_module('tests.uvlm.static.' + case + '.generate_' + case)
 
     @classmethod
     def tearDownClass(cls):
@@ -35,11 +35,6 @@ class TestPlanarWingUvlm(unittest.TestCase):
         self.assertAlmostEqual(forces_data[-1, 2], 0.0, 2)
         self.assertAlmostEqual(forces_data[-1, 3], 4.901e3, 0)
 
-
-class TestPlanarWingWakeUvlm(unittest.TestCase):
-    """
-    """
-
     def test_planarwing_discrete_wake(self):
         import sharpy.sharpy_main
         # suppress screen output
@@ -53,32 +48,4 @@ class TestPlanarWingWakeUvlm(unittest.TestCase):
         self.assertAlmostEqual(forces_data[-1, 2], 0.0, 2)
         self.assertAlmostEqual(forces_data[-1, 3], 4.555e3, 0)
 
-# class TestDynamic2dXbeam(unittest.TestCase):
-#     """
-#     Tests the xbeam library for the dynamic 2d beam
-#     Validation values taken from...
-#     """
-#
-#     @classmethod
-#     def setUpClass(cls):
-#         # run all the cases generators
-#         case = 'dynamic2d'
-#         mod = importlib.import_module('tests.xbeam.' + case + '.generate_' + case)
-#
-#     @classmethod
-#     def tearDownClass(cls):
-#         pass
-#
-#     def test_dynamic2d(self):
-#         import sharpy.sharpy_main
-#         # suppress screen output
-#         sharpy.sharpy_main.cout.cout_quiet()
-#         solver_path = os.path.abspath(os.path.dirname(os.path.realpath(__file__)) + '/dynamic2d/dynamic2d.solver.txt')
-#         sharpy.sharpy_main.main(['', solver_path])
-#         sharpy.sharpy_main.cout.cout_talk()
-#
-#         # read output and compare
-#         output_path = os.path.dirname(solver_path) + '/beam/'
-#         pos_data = np.genfromtxt(output_path + 'beam_dynamic2d_glob_000999.csv')
-#         self.assertAlmostEqual(pos_data[-1, 0], -3.7350, 3)
-#         self.assertAlmostEqual(pos_data[-1, 1], 13.9267, 3)
+

@@ -104,7 +104,7 @@ class AerogridPlot(BaseSolver):
                     counter += 1
                     coords[counter, :] = self.data.aero.timestep_info[self.ts].zeta[i_surf][:, i_m, i_n]
                     if self.settings['include_rbm']:
-                        coords[counter, :] = np.dot(rotation_mat, self.data.aero.timestep_info[self.ts].zeta[i_surf][:, i_m, i_n])
+                        # coords[counter, :] = np.dot(rotation_mat, self.data.aero.timestep_info[self.ts].zeta[i_surf][:, i_m, i_n])
                         coords[counter, :] += self.data.structure.timestep_info[self.ts].for_pos[0:3]
 
             counter = -1
@@ -181,7 +181,7 @@ class AerogridPlot(BaseSolver):
                     counter += 1
                     coords[counter, :] = self.data.aero.timestep_info[self.ts].zeta_star[i_surf][:, i_m, i_n]
                     if self.settings['include_rbm']:
-                        coords[counter, :] = np.dot(rotation_mat, coords[counter, :])
+                    #     coords[counter, :] = np.dot(rotation_mat, coords[counter, :])
                         coords[counter, :] += self.data.structure.timestep_info[self.ts].for_pos[0:3]
 
             counter = -1

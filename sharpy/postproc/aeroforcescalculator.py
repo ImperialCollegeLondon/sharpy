@@ -51,7 +51,7 @@ class AeroForcesCalculator(BaseSolver):
         self.data = data
         self.settings = data.settings[self.solver_id]
         if self.data.structure.settings['unsteady']:
-            self.ts_max = self.data.structure.settings['num_steps']
+            self.ts_max = self.data.ts + 1
         else:
             self.ts_max = 1
         settings.to_custom_types(self.settings, self.settings_types, self.settings_default)
@@ -99,15 +99,17 @@ class AeroForcesCalculator(BaseSolver):
         cout.cout_wrap.print_separator()
         # output header
         line = "{0:5s} | {1:10s} | {2:10s} | {3:10s}".format(
-            'tstep', '  fx_st', '  fy_st', '  fz_st')
+            'tstep', '  fx_g', '  fy_g', '  fz_g')
         cout.cout_wrap(line, 1)
         for self.ts in range(self.ts_max):
             line = "{0:5d} | {1: 8.3e} | {2: 8.3e} | {3: 8.3e}".format(
                 self.ts,
-                np.sum(self.data.aero.timestep_info[self.ts].inertial_steady_forces[:, 0], 0),
-                np.sum(self.data.aero.timestep_info[self.ts].inertial_steady_forces[:, 1], 0),
-                np.sum(self.data.aero.timestep_info[self.ts].inertial_steady_forces[:, 2], 0),
-            )
+                (np.sum(self.data.aero.timestep_info[self.ts].inertial_steady_forces[:, 0], 0) +
+                 np.sum(self.data.aero.timestep_info[self.ts].inertial_unsteady_forces[:, 0], 0)),
+                (np.sum(self.data.aero.timestep_info[self.ts].inertial_steady_forces[:, 1], 0) +
+                 np.sum(self.data.aero.timestep_info[self.ts].inertial_unsteady_forces[:, 1], 0)),
+                (np.sum(self.data.aero.timestep_info[self.ts].inertial_steady_forces[:, 2], 0) +
+                 np.sum(self.data.aero.timestep_info[self.ts].inertial_unsteady_forces[:, 2], 0)))
             cout.cout_wrap(line, 1)
 
     def file_output(self):

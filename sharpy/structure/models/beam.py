@@ -175,6 +175,20 @@ class Beam(BaseStructure):
             for it in range(num_steps):
                 self.dynamic_input[it]['dynamic_forces'] = np.zeros((self.num_node, 6), dtype=ct.c_double, order='F')
 
+        try:
+            for it in range(num_steps):
+                self.dynamic_input[it]['for_pos'] = dyn_dict['for_pos'][it, :]
+        except KeyError:
+            for it in range(num_steps):
+                self.dynamic_input[it]['for_pos'] = np.zeros((6, ), dtype=ct.c_double, order='F')
+
+        try:
+            for it in range(num_steps):
+                self.dynamic_input[it]['for_vel'] = dyn_dict['for_vel'][it, :]
+        except KeyError:
+            for it in range(num_steps):
+                self.dynamic_input[it]['for_vel'] = np.zeros((6, ), dtype=ct.c_double, order='F')
+
     def generate_dof_arrays(self):
         self.vdof = np.zeros((self.num_node,), dtype=ct.c_int, order='F') - 1
         self.fdof = np.zeros((self.num_node,), dtype=ct.c_int, order='F') - 1
