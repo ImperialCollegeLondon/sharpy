@@ -104,3 +104,7 @@ output/*
 utils/eigen_debug/__init__\.py
 
 utils/eigen_debug/printers\.py
+
+tests/uvlm/\.DS_Store
+
+*/.DS_Store
