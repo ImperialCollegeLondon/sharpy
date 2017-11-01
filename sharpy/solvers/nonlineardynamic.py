@@ -79,6 +79,8 @@ class NonLinearDynamic(BaseSolver):
         else:
             cout.cout_wrap('Running non linear dynamic solver with RB...', 2)
             xbeamlib.xbeam_solv_couplednlndyn(self.data.structure, self.settings)
+
+        self.data.ts = self.settings['num_steps'].value
         cout.cout_wrap('...Finished', 2)
         return self.data
 

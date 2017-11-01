@@ -60,12 +60,13 @@ class TestDynamic2dXbeam(unittest.TestCase):
         import sharpy.sharpy_main
         # suppress screen output
         # sharpy.sharpy_main.cout.cout_quiet()
-        solver_path = os.path.abspath(os.path.dirname(os.path.realpath(__file__)) + '/dynamic2d/dynamic2d.solver.txt')
+        solver_path = os.path.abspath(os.path.dirname(os.path.realpath(__file__)) +
+                                      '/dynamic2d/dynamic2d.solver.txt')
         sharpy.sharpy_main.main(['', solver_path])
         # sharpy.sharpy_main.cout.cout_talk()
 
         # read output and compare
-        output_path = os.path.dirname(solver_path) + '/beam/'
+        output_path = os.path.dirname(solver_path) + '/output/dynamic2d/beam/'
         pos_data = np.genfromtxt(output_path + 'beam_dynamic2d_glob_000999.csv')
         self.assertAlmostEqual(pos_data[-1, 0], -3.7350, 3)
         self.assertAlmostEqual(pos_data[-1, 1], 13.9267, 3)

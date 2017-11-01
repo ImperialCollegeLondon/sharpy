@@ -96,11 +96,12 @@ class Beam(BaseStructure):
             self.beam_number = np.zeros((self.num_elem, ), dtype=int)
 
         # applied forces
-        self.steady_app_forces = np.zeros((self.num_node, 6))
         try:
-            self.steady_app_forces = in_data['app_forces'].copy()
-        except KeyError:
-            pass
+            in_data['app_forces'][self.num_node - 1, 5]
+        except IndexError:
+            in_data['app_forces'] = np.zeros((self.num_node, 6), dtype=ct.c_double, order='F')
+
+        self.steady_app_forces = in_data['app_forces'].astype(dtype=ct.c_double, order='F')
 
         # generate the Element array
         for ielem in range(self.num_elem):
