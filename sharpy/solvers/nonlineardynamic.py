@@ -75,6 +75,7 @@ class NonLinearDynamic(BaseSolver):
             pass
         if prescribed_motion is True:
             cout.cout_wrap('Running non linear dynamic solver...', 2)
+            raise NotImplementedError
             # xbeamlib.cbeam3_solv_nlndyn(self.data.beam, self.settings)
         else:
             cout.cout_wrap('Running non linear dynamic solver with RB...', 2)
