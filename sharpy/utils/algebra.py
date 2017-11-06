@@ -415,3 +415,37 @@ def euler2quat(euler):
     quat = mat2quat(euler_rot.T)
     return quat
 
+
+def crv_dot2omega(crv, crv_dot):
+    omega = np.dot(crv2tan(crv).T, crv_dot)
+    return omega
+
+
+def quaternion_product(q, r):
+    result = np.zeros((4,))
+    result[0] = q[0]*r[0] - q[1]*r[1] - q[2]*r[2] - q[3]*r[3]
+    result[1] = q[0]*r[1] + q[1]*r[0] + q[2]*r[3] - q[3]*r[2]
+    result[2] = q[0]*r[2] - q[1]*r[3] + q[2]*r[0] + q[3]*r[1]
+    result[3] = q[0]*r[3] + q[1]*r[2] - q[2]*r[1] + q[3]*r[0]
+    return result
+
+
+def omegadt2quat(omegadt):
+    quat = np.zeros((4,))
+
+    omegadt_norm = np.linalg.norm(omegadt)
+    quat[0] = np.cos(0.5*omegadt_norm)
+    quat[1:4] = unit_vector(omegadt)*np.sin(0.5*omegadt_norm)
+    return quat
+
+
+def rotate_quaternion(quat, omegadt):
+    return quaternion_product(omegadt2quat(omegadt), quat)
+
+
+
+
+
+
+
+

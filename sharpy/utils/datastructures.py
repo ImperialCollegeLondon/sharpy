@@ -248,6 +248,10 @@ class AeroTimeStepInfo(object):
                 for i_col in range(self.zeta[i_surf].shape[2]):
                     self.zeta[i_surf][:, i_row, i_col] = np.dot(rot,
                                                                 self.zeta[i_surf][:, i_row, i_col])
+            for i_row in range(self.zeta_dot[i_surf].shape[1]):
+                for i_col in range(self.zeta_dot[i_surf].shape[2]):
+                    self.zeta_dot[i_surf][:, i_row, i_col] = np.dot(rot,
+                                                                    self.zeta_dot[i_surf][:, i_row, i_col])
 
 
 class StructTimeStepInfo(object):
@@ -264,9 +268,10 @@ class StructTimeStepInfo(object):
         self.psi_dot = np.zeros((self.num_elem, num_node_elem, 3), dtype=ct.c_double, order='F')
 
         # FoR data
-        self.quat = np.array([1, 0, 0, 0], dtype=float)
-        self.for_pos = np.zeros((6,))
-        self.for_vel = np.zeros((6,))
+        self.quat = np.array([1., 0, 0, 0], dtype=ct.c_double)
+        self.for_pos = np.zeros((6,), dtype=ct.c_double)
+        self.for_vel = np.zeros((6,), dtype=ct.c_double)
+        self.for_acc = np.zeros((6,), dtype=ct.c_double)
 
         self.gravity_vector_inertial = np.array([0.0, 0.0, 1.0], dtype=ct.c_double, order='F')
         self.gravity_vector_body = np.array([0.0, 0.0, 1.0], dtype=ct.c_double, order='F')
@@ -290,12 +295,13 @@ class StructTimeStepInfo(object):
     def cga(self):
         return algebra.quat2rot(self.quat).transpose()
 
-    def update_orientation(self, quat):
+    def update_orientation(self, quat=None, dt=None):
         """
         :param quat: Corresponding to the Cga matrix
         :return:
         """
         self.quat = quat.copy()
+
         # rotate gravity_vector_inertial to body
         # in fact the gravity vector is the vertical vector
         rot = algebra.quat2rot(self.quat)

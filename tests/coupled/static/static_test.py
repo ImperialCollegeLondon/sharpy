@@ -7,7 +7,7 @@ import unittest
 import os
 
 
-class TestSmithCoupled(unittest.TestCase):
+class TestCoupledStatic(unittest.TestCase):
     """
     """
 
@@ -15,13 +15,13 @@ class TestSmithCoupled(unittest.TestCase):
     def setUpClass(cls):
         # run all the cases generators
         case = 'smith_nog_2deg'
-        mod = importlib.import_module('tests.coupled.' + case + '.generate_' + case)
+        mod = importlib.import_module('tests.coupled.static.' + case + '.generate_' + case)
         case = 'smith_g_2deg'
-        mod2 = importlib.import_module('tests.coupled.' + case + '.generate_' + case)
+        mod2 = importlib.import_module('tests.coupled.static.' + case + '.generate_' + case)
         case = 'smith_g_4deg'
-        mod3 = importlib.import_module('tests.coupled.' + case + '.generate_' + case)
+        mod3 = importlib.import_module('tests.coupled.static.' + case + '.generate_' + case)
         case = 'smith_nog_4deg'
-        mod4 = importlib.import_module('tests.coupled.' + case + '.generate_' + case)
+        mod4 = importlib.import_module('tests.coupled.static.' + case + '.generate_' + case)
 
     @classmethod
     def tearDownClass(cls):

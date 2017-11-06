@@ -92,15 +92,15 @@ class Aerogrid(object):
                                                          self.aero_dimensions[i_surf, 1]), 1)
             cout.cout_wrap('     Wake %u, M=%u, N=%u' % (i_surf,
                                                          self.aero_dimensions_star[i_surf, 0],
-                                                         self.aero_dimensions_star[i_surf, 1]), 1)
+                                                         self.aero_dimensions_star[i_surf, 1]))
         cout.cout_wrap('  In total: %u bound panels' % (sum(self.aero_dimensions[:, 0]*
-                                                            self.aero_dimensions[:, 1], 1)))
+                                                            self.aero_dimensions[:, 1])))
         cout.cout_wrap('  In total: %u wake panels' % (sum(self.aero_dimensions_star[:, 0]*
-                                                           self.aero_dimensions_star[:, 1], 1)))
+                                                           self.aero_dimensions_star[:, 1])))
         cout.cout_wrap('  Total number of panels = %u' % (sum(self.aero_dimensions_star[:, 0]*
-                                                              self.aero_dimensions_star[:, 1], 1) +
+                                                              self.aero_dimensions_star[:, 1]) +
                                                           sum(self.aero_dimensions_star[:, 0]*
-                                                              self.aero_dimensions_star[:, 1], 1)))
+                                                              self.aero_dimensions_star[:, 1])))
 
     def calculate_dimensions(self):
         self.aero_dimensions = np.zeros((self.n_surf, 2), dtype=int)
@@ -174,14 +174,18 @@ class Aerogrid(object):
                     node_info['M_distribution'] = self.aero_dict['m_distribution'].decode('ascii')
                     node_info['airfoil'] = self.aero_dict['airfoil_distribution'][i_global_node]
                     node_info['beam_coord'] = beam.timestep_info[ts].pos[i_global_node, :]
+                    node_info['pos_dot'] = beam.timestep_info[ts].pos_dot[i_global_node, :]
                     node_info['beam_psi'] = beam.timestep_info[ts].psi[master_elem, master_elem_node, :]
+                    node_info['psi_dot'] = beam.timestep_info[ts].psi_dot[master_elem, master_elem_node, :]
                     node_info['for_delta'] = beam.frame_of_reference_delta[master_elem, master_elem_node, :]
                     node_info['elem'] = beam.elements[master_elem]
-                    self.timestep_info[ts].zeta[i_surf][:, :, i_n] = (
+                    (self.timestep_info[ts].zeta[i_surf][:, :, i_n],
+                     self.timestep_info[ts].zeta_dot[i_surf][:, :, i_n]) = (
                         generate_strip(node_info,
                                        self.airfoil_db,
                                        aero_settings['aligned_grid'],
-                                       orientation_in=aero_settings['freestream_dir']))
+                                       orientation_in=aero_settings['freestream_dir'],
+                                       calculate_zeta_dot=True))
 
     def generate_mapping(self):
         self.struct2aero_mapping = [[]]*self.n_node
@@ -238,7 +242,7 @@ class Aerogrid(object):
         self.timestep_info[ts].update_orientation(rot)
 
 
-def generate_strip(node_info, airfoil_db, aligned_grid, orientation_in=np.array([1, 0, 0])):
+def generate_strip(node_info, airfoil_db, aligned_grid, orientation_in=np.array([1, 0, 0]), calculate_zeta_dot = False):
     """
     Returns a strip in "a" frame of reference, it has to be then rotated to
     simulate angles of attack, etc
@@ -293,10 +297,30 @@ def generate_strip(node_info, airfoil_db, aligned_grid, orientation_in=np.array(
     for i_M in range(node_info['M'] + 1):
         strip_coordinates_a_frame[:, i_M] = np.dot(Cab, np.dot(Csweep, np.dot(Ctwist, strip_coordinates_b_frame[:, i_M])))
 
+    # now zeta_dot
+    if calculate_zeta_dot:
+        zeta_dot_a_frame = np.zeros((3, node_info['M'] + 1), dtype=ct.c_double)
+
+        # velocity due to pos_dot
+        for i_M in range(node_info['M'] + 1):
+            zeta_dot_a_frame[:, i_M] += node_info['pos_dot']
+
+        # velocity due to psi_dot
+        for i_M in range(node_info['M'] + 1):
+            # zeta_dot_a_frame[:, i_M] += np.cross(algebra.crv_dot2omega(node_info['beam_psi'], node_info['psi_dot']).T,
+            #                                      strip_coordinates_a_frame[:, i_M])
+            zeta_dot_a_frame[:, i_M] += np.cross(algebra.crv_dot2omega(node_info['beam_psi'], node_info['psi_dot']),
+                                                 strip_coordinates_a_frame[:, i_M])
+
+    else:
+        zeta_dot_a_frame = np.zeros((3, node_info['M'] + 1), dtype=ct.c_double)
+
     # add node coords
     for i_M in range(node_info['M'] + 1):
         strip_coordinates_a_frame[:, i_M] += node_info['beam_coord']
 
-    return strip_coordinates_a_frame
+    # zeta_dot_a_frame = np.zeros((3, node_info['M'] + 1), dtype=ct.c_double)
+
+    return strip_coordinates_a_frame, zeta_dot_a_frame
 
 

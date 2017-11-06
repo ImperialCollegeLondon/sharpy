@@ -159,9 +159,12 @@ def uvlm_init(ts_info, options):
     vmopts.NumSurfaces = ct.c_uint(ts_info.n_surf)
     vmopts.horseshoe = ct.c_bool(False)
     vmopts.dt = options["dt"]
-    vmopts.n_rollup = ct.c_uint(options["steady_n_rollup"].value)
-    vmopts.rollup_tolerance = ct.c_double(options["steady_rollup_tolerance"].value)
-    vmopts.rollup_aic_refresh = ct.c_uint(options['steady_rollup_aic_refresh'].value)
+    try:
+        vmopts.n_rollup = ct.c_uint(options["steady_n_rollup"].value)
+        vmopts.rollup_tolerance = ct.c_double(options["steady_rollup_tolerance"].value)
+        vmopts.rollup_aic_refresh = ct.c_uint(options['steady_rollup_aic_refresh'].value)
+    except KeyError:
+        pass
     vmopts.NumCores = ct.c_uint(options['num_cores'].value)
 
     flightconditions = FlightConditions()

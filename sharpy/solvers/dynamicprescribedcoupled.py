@@ -11,8 +11,8 @@ import sharpy.utils.algebra as algebra
 
 
 @solver
-class DynamicCoupled(BaseSolver):
-    solver_id = 'DynamicCoupled'
+class DynamicPrescribedCoupled(BaseSolver):
+    solver_id = 'DynamicPrescribedCoupled'
 
     def __init__(self):
         self.settings_types = dict()
@@ -36,6 +36,9 @@ class DynamicCoupled(BaseSolver):
         self.settings_types['n_time_steps'] = 'int'
         self.settings_default['n_time_steps'] = 100
 
+        self.settings_types['dt'] = 'float'
+        self.settings_default['dt'] = 0.05
+
         self.data = None
         self.settings = None
         self.structural_solver = None
@@ -47,6 +50,7 @@ class DynamicCoupled(BaseSolver):
         self.data = data
         self.settings = data.settings[self.solver_id]
         settings.to_custom_types(self.settings, self.settings_types, self.settings_default)
+        self.dt = self.settings['dt']
 
         self.structural_solver = solver_interface.initialise_solver(self.settings['structural_solver'])
         self.structural_solver.initialise(self.data, self.settings['structural_solver_settings'])
@@ -64,10 +68,12 @@ class DynamicCoupled(BaseSolver):
             self.data.aero.timestep_info[0] = self.data.aero.timestep_info[-1]
             self.data.structure.timestep_info[0] = self.data.structure.timestep_info[-1]
             # delete all the rest
-            for i in range(1, len(self.data.aero.timestep_info)):
-                del self.data.aero.timestep_info[i]
-            for i in range(1, len(self.data.structure.timestep_info)):
-                del self.data.structure.timestep_info[i]
+            # for i in range(1, len(self.data.aero.timestep_info)):
+            while len(self.data.aero.timestep_info) - 1:
+                del self.data.aero.timestep_info[-1]
+            while len(self.data.structure.timestep_info) - 1:
+            # for i in range(1, len(self.data.structure.timestep_info)):
+                del self.data.structure.timestep_info[-1]
 
         self.data.ts = 1
 
@@ -78,6 +84,7 @@ class DynamicCoupled(BaseSolver):
     def run(self):
         # dynamic simulations start at tstep == 1, 0 is reserved for the initial state
         for self.data.ts in range(1, self.settings['n_time_steps'].value + 1):
+            cout.cout_wrap('\nit = %u' % self.data.ts)
             self.increase_ts()
 
             # run aero
@@ -85,12 +92,21 @@ class DynamicCoupled(BaseSolver):
 
             # map forces
             self.map_forces()
+            cout.cout_wrap('Max steady force = %f' %
+                           self.data.aero.timestep_info[self.data.ts].forces[0].max())
+            cout.cout_wrap('Max unsteady force = %f' %
+                           self.data.aero.timestep_info[self.data.ts].dynamic_forces[0].max())
+            cout.cout_wrap('Tip deformation = %f, %f, %f' %
+                           (self.data.structure.timestep_info[self.data.ts].pos[20, 0],
+                            self.data.structure.timestep_info[self.data.ts].pos[20, 1],
+                            self.data.structure.timestep_info[self.data.ts].pos[20, 2]))
+
 
             # run beam
             self.data = self.structural_solver.run()
 
-            # update grid
-            # todo pos_dot and psi_dot calculation
+            # update orientation in beam and
+            # update grid (all done with aero_solver.update_step()
             self.aero_solver.update_step()
 
         cout.cout_wrap('...Finished', 1)

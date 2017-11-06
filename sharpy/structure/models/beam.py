@@ -132,7 +132,7 @@ class Beam(BaseStructure):
         # the timestep_info[0] is the steady state or initial state for unsteady solutions
         self.ini_info.steady_applied_forces = self.steady_app_forces.astype(dtype=ct.c_double, order='F')
         # rigid body rotations
-        self.ini_info.update_orientation(self.settings['orientation'])
+        self.ini_info.update_orientation(quat=self.settings['orientation'])
         self.timestep_info.append(self.ini_info.copy())
         self.timestep_info[-1].steady_applied_forces = self.steady_app_forces.astype(dtype=ct.c_double, order='F')
 
@@ -161,8 +161,8 @@ class Beam(BaseStructure):
 
     def add_unsteady_information(self, dyn_dict, num_steps):
         # data storage for time dependant output
-        for it in range(num_steps):
-            self.add_timestep(self.timestep_info)
+        # for it in range(num_steps):
+        #     self.add_timestep(self.timestep_info)
         self.timestep_info[0] = self.ini_info.copy()
 
         # data storage for time dependant input
@@ -189,6 +189,13 @@ class Beam(BaseStructure):
         except KeyError:
             for it in range(num_steps):
                 self.dynamic_input[it]['for_vel'] = np.zeros((6, ), dtype=ct.c_double, order='F')
+
+        try:
+            for it in range(num_steps):
+                self.dynamic_input[it]['for_acc'] = dyn_dict['for_acc'][it, :]
+        except KeyError:
+            for it in range(num_steps):
+                self.dynamic_input[it]['for_acc'] = np.zeros((6, ), dtype=ct.c_double, order='F')
 
     def generate_dof_arrays(self):
         self.vdof = np.zeros((self.num_node,), dtype=ct.c_int, order='F') - 1
@@ -338,7 +345,17 @@ class Beam(BaseStructure):
             # else:
             #     self.forced_acc_fortran = np.zeros((self.n_tsteps, 6), dtype=ct.c_double, order='F')
 
-    def update_orientation(self, quat, ts=-1):
+    def update_orientation(self, quat=None, ts=-1):
+        if quat is None:
+            quat = algebra.euler2quat(self.timestep_info[ts].for_pos[3:6])
         self.timestep_info[ts].update_orientation(quat)  # Cga going in here
 
-
+    def integrate_position(self, ts, dt):
+        self.timestep_info[ts].for_pos[0:3] = (
+            self.timestep_info[ts - 1].for_pos[0:3] +
+            dt*np.dot(self.timestep_info[ts].cga(),
+                      self.timestep_info[ts].for_vel[0:3]))
+        self.timestep_info[ts].for_pos[3:6] = (
+            self.timestep_info[ts - 1].for_pos[3:6] +
+            dt*np.dot(self.timestep_info[ts].cga(),
+                      self.timestep_info[ts].for_vel[3:6]))

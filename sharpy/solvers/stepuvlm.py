@@ -10,8 +10,8 @@ import sharpy.utils.cout_utils as cout
 
 
 @solver
-class PrescribedUvlm(BaseSolver):
-    solver_id = 'PrescribedUvlm'
+class StepUvlm(BaseSolver):
+    solver_id = 'StepUvlm'
 
     def __init__(self):
         # settings list
@@ -29,15 +29,6 @@ class PrescribedUvlm(BaseSolver):
 
         self.settings_types['convection_scheme'] = 'int'
         self.settings_default['convection_scheme'] = 3
-
-        self.settings_types['steady_n_rollup'] = 'int'
-        self.settings_default['steady_n_rollup'] = 0
-
-        self.settings_types['steady_rollup_tolerance'] = 'float'
-        self.settings_default['steady_rollup_tolerance'] = 1e-4
-
-        self.settings_types['steady_rollup_aic_refresh'] = 'int'
-        self.settings_default['steady_rollup_aic_refresh'] = 1
 
         self.settings_types['dt'] = 'float'
         self.settings_default['dt'] = 0.1
@@ -74,7 +65,6 @@ class PrescribedUvlm(BaseSolver):
 
         self.data.structure.add_unsteady_information(self.data.structure.dyn_dict, self.settings['n_time_steps'].value)
 
-        # generates and rotates the aero grid and rotates the structure
         self.update_step()
 
         # init velocity generator
@@ -94,36 +84,40 @@ class PrescribedUvlm(BaseSolver):
         uvlmlib.uvlm_init(self.data.aero.timestep_info[self.data.ts], self.settings)
 
     def run(self):
-        for self.data.ts in range(1, self.settings['n_time_steps'].value + 1):
-            cout.cout_wrap('i_iter: ' + str(self.data.ts))
-            self.next_step()
-            t = self.data.ts*self.settings['dt'].value
-            # generate uext
-            self.velocity_generator.generate({'zeta': self.data.aero.timestep_info[self.data.ts].zeta,
+        # self.next_step()
+        t = self.data.ts*self.settings['dt'].value
+        # generate uext
+        self.velocity_generator.generate({'zeta': self.data.aero.timestep_info[self.data.ts].zeta,
+                                          'override': True,
+                                          'ts': self.data.ts,
+                                          't': t},
+                                         self.data.aero.timestep_info[self.data.ts].u_ext)
+        if self.settings['convection_scheme'].value > 1:
+            # generate uext_star
+            self.velocity_generator.generate({'zeta': self.data.aero.timestep_info[self.data.ts].zeta_star,
                                               'override': True,
                                               'ts': self.data.ts,
                                               't': t},
-                                             self.data.aero.timestep_info[self.data.ts].u_ext)
-            if self.settings['convection_scheme'].value > 1:
-                # generate uext_star
-                self.velocity_generator.generate({'zeta': self.data.aero.timestep_info[self.data.ts].zeta_star,
-                                                  'override': True,
-                                                  'ts': self.data.ts,
-                                                  't': t},
-                                                 self.data.aero.timestep_info[self.data.ts].u_ext_star)
+                                             self.data.aero.timestep_info[self.data.ts].u_ext_star)
 
-            self.data.structure.timestep_info[self.data.ts].for_vel = self.data.structure.dynamic_input[self.data.ts - 1]['for_vel'].astype(ct.c_double)
+        self.data.structure.timestep_info[self.data.ts].for_vel = self.data.structure.dynamic_input[self.data.ts - 1]['for_vel'].astype(ct.c_double)
 
+        if self.data.ts == 1:
+            uvlmlib.uvlm_solver(self.data.ts,
+                                self.data.aero.timestep_info[self.data.ts],
+                                self.data.aero.timestep_info[self.data.ts],
+                                self.data.structure.timestep_info[self.data.ts],
+                                self.settings)
+        else:
             uvlmlib.uvlm_solver(self.data.ts,
                                 self.data.aero.timestep_info[self.data.ts],
                                 self.data.aero.timestep_info[self.data.ts - 1],
                                 self.data.structure.timestep_info[self.data.ts],
                                 self.settings)
 
-            self.data.structure.timestep_info[self.data.ts].for_pos = (
-                self.data.structure.timestep_info[self.data.ts - 1].for_pos +
-                np.dot(self.data.structure.timestep_info[self.data.ts].cag(),
-                       self.settings['dt'].value*self.data.structure.timestep_info[self.data.ts - 1].for_vel))
+        # self.data.structure.timestep_info[self.data.ts].for_pos = (
+        #     self.data.structure.timestep_info[self.data.ts - 1].for_pos +
+        #     np.dot(self.data.structure.timestep_info[self.data.ts].cga(), self.settings['dt'].value*self.data.structure.timestep_info[self.data.ts - 1].for_vel))
 
         return self.data
 
@@ -138,9 +132,17 @@ class PrescribedUvlm(BaseSolver):
                                      self.data.aero.aero_settings,
                                      self.data.ts)
 
-        euler = self.data.structure.dynamic_input[self.data.ts - 1]['for_pos'][3:6]
-        euler_rot = algebra.euler2rot(euler)  # this is Cag
-        quat = algebra.mat2quat(euler_rot.T)
+        if self.data.ts > 0:
+            # euler = self.data.structure.dynamic_input[self.data.ts - 1]['for_pos'][3:6]
+            # euler_rot = algebra.euler2rot(euler)  # this is Cag
+            # quat = algebra.mat2quat(euler_rot.T)
+            # TODO need to update orientation
+            quat = self.data.structure.timestep_info[self.data.ts - 1].quat
+            quat = algebra.rotate_quaternion(self.data.structure.timestep_info[self.data.ts - 1].quat,
+                                             self.data.structure.timestep_info[self.data.ts - 1].for_vel[3:6]*
+                                             self.settings['dt'])
+        else:
+            quat = self.data.structure.ini_info.quat.copy()
         self.data.structure.update_orientation(quat, self.data.ts)  # quat corresponding to Cga
         self.data.aero.update_orientation(quat, self.data.ts)       # quat corresponding to Cga
 
