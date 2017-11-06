@@ -46,6 +46,8 @@ class DynamicPrescribedCoupled(BaseSolver):
 
         self.previous_force = None
 
+        self.dt = 0.
+
     def initialise(self, data):
         self.data = data
         self.settings = data.settings[self.solver_id]
@@ -68,11 +70,9 @@ class DynamicPrescribedCoupled(BaseSolver):
             self.data.aero.timestep_info[0] = self.data.aero.timestep_info[-1]
             self.data.structure.timestep_info[0] = self.data.structure.timestep_info[-1]
             # delete all the rest
-            # for i in range(1, len(self.data.aero.timestep_info)):
             while len(self.data.aero.timestep_info) - 1:
                 del self.data.aero.timestep_info[-1]
             while len(self.data.structure.timestep_info) - 1:
-            # for i in range(1, len(self.data.structure.timestep_info)):
                 del self.data.structure.timestep_info[-1]
 
         self.data.ts = 1
@@ -101,8 +101,7 @@ class DynamicPrescribedCoupled(BaseSolver):
                             self.data.structure.timestep_info[self.data.ts].pos[20, 1],
                             self.data.structure.timestep_info[self.data.ts].pos[20, 2]))
 
-
-            # run beam
+            # run structural solver
             self.data = self.structural_solver.run()
 
             # update orientation in beam and
@@ -136,31 +135,3 @@ class DynamicPrescribedCoupled(BaseSolver):
             (struct_forces + self.data.structure.ini_info.steady_applied_forces).astype(dtype=ct.c_double, order='F'))
         self.data.structure.timestep_info[self.data.ts].unsteady_applied_forces = (
             dynamic_struct_forces.astype(dtype=ct.c_double, order='F'))
-
-    def convergence(self, i_iter, i_step):
-        if i_iter == self.settings['max_iter'].value - 1:
-            cout.cout_wrap('StaticCoupled did not converge!', 0)
-            quit(-1)
-
-        return_value = None
-        if i_iter == 0:
-            self.initial_residual = np.linalg.norm(self.data.structure.timestep_info[self.data.ts].pos)
-            self.previous_residual = self.initial_residual
-            self.current_residual = self.initial_residual
-            return False
-
-        self.current_residual = np.linalg.norm(self.data.structure.timestep_info[self.data.ts].pos)
-        cout.cout_wrap('Res = %8e' % (np.abs(self.current_residual - self.previous_residual)/self.previous_residual), 2)
-
-        if return_value is None:
-            if np.abs(self.current_residual - self.previous_residual)/self.initial_residual < self.settings['tolerance'].value:
-                return_value = True
-            else:
-                self.previous_residual = self.current_residual
-                return_value = False
-
-        if return_value is None:
-            return_value = False
-
-        return return_value
-
