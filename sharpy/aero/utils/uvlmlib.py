@@ -224,9 +224,10 @@ def uvlm_solver(i_iter, ts_info, previous_ts_info, struct_ts_info, options):
     #         u_ext[2, :, :] = 0.0
 
     rbm_vel = struct_ts_info.for_vel
+    # print('\nBefore uvlm: ' + str(rbm_vel))
 
-    rbm_vel[0:3] = np.dot(struct_ts_info.cga().transpose(), rbm_vel[0:3])
-    rbm_vel[3:6] = np.dot(struct_ts_info.cga().transpose(), rbm_vel[3:6])
+    rbm_vel[0:3] = np.dot(struct_ts_info.cga(), rbm_vel[0:3])
+    rbm_vel[3:6] = np.dot(struct_ts_info.cga(), rbm_vel[3:6])
     p_rbm_vel = rbm_vel.ctypes.data_as(ct.POINTER(ct.c_double))
 
     i = ct.c_uint(i_iter)

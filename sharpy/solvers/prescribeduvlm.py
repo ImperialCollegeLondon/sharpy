@@ -120,31 +120,47 @@ class PrescribedUvlm(BaseSolver):
                                 self.data.structure.timestep_info[self.data.ts],
                                 self.settings)
 
-            self.data.structure.timestep_info[self.data.ts].for_pos = (
-                self.data.structure.timestep_info[self.data.ts - 1].for_pos +
-                np.dot(self.data.structure.timestep_info[self.data.ts].cag(),
-                       self.settings['dt'].value*self.data.structure.timestep_info[self.data.ts - 1].for_vel))
+            self.data.structure.timestep_info[self.data.ts].for_pos[0:3] = (
+                self.data.structure.timestep_info[self.data.ts - 1].for_pos[0:3] +
+                np.dot(self.data.structure.timestep_info[self.data.ts].cga().transpose(),
+                       self.settings['dt'].value*self.data.structure.timestep_info[self.data.ts - 1].for_vel[0:3]))
+            self.data.structure.timestep_info[self.data.ts].for_pos[3:6] = (
+                self.data.structure.timestep_info[self.data.ts - 1].for_pos[3:6] +
+                np.dot(self.data.structure.timestep_info[self.data.ts].cga().transpose(),
+                       self.settings['dt'].value*self.data.structure.timestep_info[self.data.ts - 1].for_vel[3:6]))
 
         return self.data
 
     def next_step(self):
         """ Updates de aerogrid based on the info of the step, and increases
         the self.ts counter """
+        self.data.structure.next_step()
         self.data.aero.add_timestep()
         self.update_step()
 
-    def update_step(self):
+    def update_step(self, integrate_orientation=True):
         self.data.aero.generate_zeta(self.data.structure,
                                      self.data.aero.aero_settings,
                                      self.data.ts)
 
-        euler = self.data.structure.dynamic_input[self.data.ts - 1]['for_pos'][3:6]
-        euler_rot = algebra.euler2rot(euler)  # this is Cag
-        quat = algebra.mat2quat(euler_rot.T)
+        if integrate_orientation:
+            if self.data.ts > 0:
+                # euler = self.data.structure.dynamic_input[self.data.ts - 1]['for_pos'][3:6]
+                # euler_rot = algebra.euler2rot(euler)  # this is Cag
+                # quat = algebra.mat2quat(euler_rot.T)
+                # TODO need to update orientation
+                # quat = self.data.structure.timestep_info[self.data.ts - 1].quat
+                quat = algebra.rotate_quaternion(self.data.structure.timestep_info[self.data.ts].quat,
+                                                 self.data.structure.timestep_info[self.data.ts].for_vel[3:6]*
+                                                 self.settings['dt'])
+            else:
+                quat = self.data.structure.ini_info.quat.copy()
+        else:
+            quat = self.data.structure.timestep_info[self.data.ts].quat
+
+        quat = algebra.unit_vector(quat)
         self.data.structure.update_orientation(quat, self.data.ts)  # quat corresponding to Cga
-        self.data.aero.update_orientation(quat, self.data.ts)       # quat corresponding to Cga
-
-
+        self.data.aero.update_orientation(self.data.structure.timestep_info[self.data.ts].quat, self.data.ts)       # quat corresponding to Cga
 
 
 

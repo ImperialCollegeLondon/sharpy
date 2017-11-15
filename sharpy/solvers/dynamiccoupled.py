@@ -11,8 +11,8 @@ import sharpy.utils.algebra as algebra
 
 
 @solver
-class DynamicPrescribedCoupled(BaseSolver):
-    solver_id = 'DynamicPrescribedCoupled'
+class DynamicCoupled(BaseSolver):
+    solver_id = 'DynamicCoupled'
 
     def __init__(self):
         self.settings_types = dict()
@@ -82,7 +82,7 @@ class DynamicPrescribedCoupled(BaseSolver):
 
     def increase_ts(self):
         self.structural_solver.next_step()
-        self.aero_solver.next_step()
+        self.aero_solver.next_step(integrate_orientation=False)
 
     def run(self):
         # dynamic simulations start at tstep == 1, 0 is reserved for the initial state
@@ -95,23 +95,37 @@ class DynamicPrescribedCoupled(BaseSolver):
 
             # map forces
             self.map_forces()
-            cout.cout_wrap('Max steady force = %f' %
-                           self.data.aero.timestep_info[self.data.ts].forces[0].max())
-            cout.cout_wrap('Max unsteady force = %f' %
-                           self.data.aero.timestep_info[self.data.ts].dynamic_forces[0].max())
-            cout.cout_wrap('Tip deformation = %f, %f, %f' %
-                           (self.data.structure.timestep_info[self.data.ts].pos[-1, 0],
-                            self.data.structure.timestep_info[self.data.ts].pos[-1, 1],
-                            self.data.structure.timestep_info[self.data.ts].pos[-1, 2]))
+            # run structural solver
+            # self.data = self.structural_solver.run()
             for i_substep in range(self.settings['structural_substeps'].value):
                 cout.cout_wrap('Substep: %u' % i_substep)
                 dt = self.settings['dt'].value/self.settings['structural_substeps'].value
                 # run structural solver
                 self.data = self.structural_solver.run(dt=dt)
 
+            # cout.cout_wrap('Max steady force = %f' %
+            #                self.data.aero.timestep_info[self.data.ts].forces[0].max())
+            # cout.cout_wrap('Max unsteady force = %f' %
+            #                self.data.aero.timestep_info[self.data.ts].dynamic_forces[0].max())
+            # cout.cout_wrap('Tip deformation = %f, %f, %f' %
+            #                (self.data.structure.timestep_info[self.data.ts].pos[-1, 0],
+            #                 self.data.structure.timestep_info[self.data.ts].pos[-1, 1],
+            #                 self.data.structure.timestep_info[self.data.ts].pos[-1, 2]))
+            # cout.cout_wrap('Orientation: %f, %f, %f, %f' %
+            #                (self.data.structure.timestep_info[self.data.ts].quat[0],
+            #                 self.data.structure.timestep_info[self.data.ts].quat[1],
+            #                 self.data.structure.timestep_info[self.data.ts].quat[2],
+            #                 self.data.structure.timestep_info[self.data.ts].quat[3]))
+            # cout.cout_wrap('for rot velocity = %f, %f, %f' %
+            #                (self.data.structure.timestep_info[self.data.ts].for_vel[3],
+            #                 self.data.structure.timestep_info[self.data.ts].for_vel[4],
+            #                 self.data.structure.timestep_info[self.data.ts].for_vel[5]))
+
             # update orientation in beam and
             # update grid (all done with aero_solver.update_step()
-            self.aero_solver.update_step()
+            self.aero_solver.update_step(integrate_orientation=False)
+            # print('\nAfter grid update: ' + str(self.data.structure.timestep_info[self.data.ts].for_vel))
+            # print('After grid update: ' + str(self.data.structure.timestep_info[self.data.ts].for_acc))
 
         cout.cout_wrap('...Finished', 1)
         return self.data
@@ -125,7 +139,7 @@ class DynamicPrescribedCoupled(BaseSolver):
             self.data.structure.timestep_info[self.data.ts].psi,
             self.data.structure.node_master_elem,
             self.data.structure.master,
-            algebra.quat2rot(self.data.structure.timestep_info[self.data.ts].quat).T)
+            self.data.structure.timestep_info[self.data.ts].cga().T)
         dynamic_struct_forces = mapping.aero2struct_force_mapping(
             self.data.aero.timestep_info[self.data.ts].dynamic_forces,
             self.data.aero.struct2aero_mapping,
@@ -134,9 +148,10 @@ class DynamicPrescribedCoupled(BaseSolver):
             self.data.structure.timestep_info[self.data.ts].psi,
             self.data.structure.node_master_elem,
             self.data.structure.master,
-            algebra.quat2rot(self.data.structure.timestep_info[self.data.ts].quat).T)
+            self.data.structure.timestep_info[self.data.ts].cga().T)
 
         self.data.structure.timestep_info[self.data.ts].steady_applied_forces = (
             (struct_forces + self.data.structure.ini_info.steady_applied_forces).astype(dtype=ct.c_double, order='F'))
         self.data.structure.timestep_info[self.data.ts].unsteady_applied_forces = (
             dynamic_struct_forces.astype(dtype=ct.c_double, order='F'))
+

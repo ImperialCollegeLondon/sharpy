@@ -99,6 +99,7 @@ class BeamPlot(BaseSolver):
 
             # aero2inertial rotation
             aero2inertial = algebra.quat2rot(self.data.structure.timestep_info[it].quat).transpose()
+            aero2inertial = self.data.structure.timestep_info[it].cga()
 
             # coordinates of corners
             # for i_node in range(num_nodes):

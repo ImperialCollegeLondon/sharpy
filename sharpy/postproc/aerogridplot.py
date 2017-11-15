@@ -174,14 +174,14 @@ class AerogridPlot(BaseSolver):
             panel_surf_id = np.zeros((panel_data_dim,), dtype=int)
             panel_gamma = np.zeros((panel_data_dim,))
             counter = -1
-            rotation_mat = algebra.quat2rot(self.data.structure.timestep_info[self.ts].quat).transpose()
+            rotation_mat = self.data.structure.timestep_info[self.ts].cga().T
             # coordinates of corners
             for i_n in range(dims_star[1]+1):
                 for i_m in range(dims_star[0]+1):
                     counter += 1
                     coords[counter, :] = self.data.aero.timestep_info[self.ts].zeta_star[i_surf][:, i_m, i_n]
                     if self.settings['include_rbm']:
-                    #     coords[counter, :] = np.dot(rotation_mat, coords[counter, :])
+                        # coords[counter, :] = np.dot(rotation_mat, coords[counter, :])
                         coords[counter, :] += self.data.structure.timestep_info[self.ts].for_pos[0:3]
 
             counter = -1

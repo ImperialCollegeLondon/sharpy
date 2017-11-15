@@ -13,8 +13,8 @@ import sharpy.utils.cout_utils as cout
 
 
 @solver
-class NonLinearDynamicPrescribedStep(BaseSolver):
-    solver_id = 'NonLinearDynamicPrescribedStep'
+class NonLinearDynamicCoupledStep(BaseSolver):
+    solver_id = 'NonLinearDynamicCoupledStep'
 
     def __init__(self):
         self.settings_types = dict()
@@ -65,10 +65,11 @@ class NonLinearDynamicPrescribedStep(BaseSolver):
         self.data.structure.add_unsteady_information(self.data.structure.dyn_dict, self.settings['num_steps'].value)
 
     def run(self, dt=None):
-        xbeamlib.cbeam3_step_nlndyn(self.data.structure,
-                                    self.settings,
-                                    self.data.ts,
-                                    dt=dt)
+    # def run(self):
+        xbeamlib.xbeam_step_couplednlndyn(self.data.structure,
+                                          self.settings,
+                                          self.data.ts,
+                                          dt=dt)
         if self.data.ts > 0:
             self.data.structure.integrate_position(self.data.ts, self.settings['dt'].value)
         return self.data
@@ -77,7 +78,5 @@ class NonLinearDynamicPrescribedStep(BaseSolver):
         self.data.structure.next_step()
         ts = len(self.data.structure.timestep_info) - 1
         if ts > 0:
-            self.data.structure.timestep_info[ts].for_vel = self.data.structure.dynamic_input[ts - 1]['for_vel']
-            self.data.structure.timestep_info[ts].for_acc = self.data.structure.dynamic_input[ts - 1]['for_acc']
             self.data.structure.timestep_info[ts].unsteady_applied_forces = self.data.structure.dynamic_input[ts - 1]['dynamic_forces']
 

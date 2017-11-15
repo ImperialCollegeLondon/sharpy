@@ -293,9 +293,10 @@ class StructTimeStepInfo(object):
         return coords
 
     def cga(self):
-        return algebra.quat2rot(self.quat).transpose()
+        # return algebra.quat2rot(self.quat).transpose()
+        return algebra.quat2rot(self.quat)
 
-    def update_orientation(self, quat=None, dt=None):
+    def update_orientation(self, quat=None):
         """
         :param quat: Corresponding to the Cga matrix
         :return:

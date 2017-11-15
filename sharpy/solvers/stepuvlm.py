@@ -78,7 +78,7 @@ class StepUvlm(BaseSolver):
         self.velocity_generator.generate({'zeta': self.data.aero.timestep_info[self.data.ts].zeta,
                                           'override': True,
                                           'ts': self.data.ts,
-                                          't': 0.0},
+                                          'dt': 0},
                                          self.data.aero.timestep_info[self.data.ts].u_ext)
 
         uvlmlib.uvlm_init(self.data.aero.timestep_info[self.data.ts], self.settings)
@@ -90,17 +90,17 @@ class StepUvlm(BaseSolver):
         self.velocity_generator.generate({'zeta': self.data.aero.timestep_info[self.data.ts].zeta,
                                           'override': True,
                                           'ts': self.data.ts,
-                                          't': t},
+                                          'dt': self.settings['dt'].value},
                                          self.data.aero.timestep_info[self.data.ts].u_ext)
         if self.settings['convection_scheme'].value > 1:
             # generate uext_star
             self.velocity_generator.generate({'zeta': self.data.aero.timestep_info[self.data.ts].zeta_star,
                                               'override': True,
                                               'ts': self.data.ts,
-                                              't': t},
+                                              'dt': self.settings['dt'].value},
                                              self.data.aero.timestep_info[self.data.ts].u_ext_star)
 
-        self.data.structure.timestep_info[self.data.ts].for_vel = self.data.structure.dynamic_input[self.data.ts - 1]['for_vel'].astype(ct.c_double)
+        # self.data.structure.timestep_info[self.data.ts].for_vel = self.data.structure.dynamic_input[self.data.ts - 1]['for_vel'].astype(ct.c_double)
 
         if self.data.ts == 1:
             uvlmlib.uvlm_solver(self.data.ts,
@@ -121,30 +121,35 @@ class StepUvlm(BaseSolver):
 
         return self.data
 
-    def next_step(self):
+    def next_step(self, integrate_orientation=True):
         """ Updates de aerogrid based on the info of the step, and increases
         the self.ts counter """
         self.data.aero.add_timestep()
-        self.update_step()
+        self.update_step(integrate_orientation=integrate_orientation)
 
-    def update_step(self):
+    def update_step(self, integrate_orientation=True):
         self.data.aero.generate_zeta(self.data.structure,
                                      self.data.aero.aero_settings,
                                      self.data.ts)
 
-        if self.data.ts > 0:
-            # euler = self.data.structure.dynamic_input[self.data.ts - 1]['for_pos'][3:6]
-            # euler_rot = algebra.euler2rot(euler)  # this is Cag
-            # quat = algebra.mat2quat(euler_rot.T)
-            # TODO need to update orientation
-            quat = self.data.structure.timestep_info[self.data.ts - 1].quat
-            quat = algebra.rotate_quaternion(self.data.structure.timestep_info[self.data.ts - 1].quat,
-                                             self.data.structure.timestep_info[self.data.ts - 1].for_vel[3:6]*
-                                             self.settings['dt'])
+        if integrate_orientation:
+            if self.data.ts > 0:
+                # euler = self.data.structure.dynamic_input[self.data.ts - 1]['for_pos'][3:6]
+                # euler_rot = algebra.euler2rot(euler)  # this is Cag
+                # quat = algebra.mat2quat(euler_rot.T)
+                # TODO need to update orientation
+                # quat = self.data.structure.timestep_info[self.data.ts - 1].quat
+                quat = algebra.rotate_quaternion(self.data.structure.timestep_info[self.data.ts].quat,
+                                                 self.data.structure.timestep_info[self.data.ts].for_vel[3:6]*
+                                                 self.settings['dt'])
+            else:
+                quat = self.data.structure.ini_info.quat.copy()
         else:
-            quat = self.data.structure.ini_info.quat.copy()
+            quat = self.data.structure.timestep_info[self.data.ts].quat
+
+        quat = algebra.unit_vector(quat)
         self.data.structure.update_orientation(quat, self.data.ts)  # quat corresponding to Cga
-        self.data.aero.update_orientation(quat, self.data.ts)       # quat corresponding to Cga
+        self.data.aero.update_orientation(self.data.structure.timestep_info[self.data.ts].quat, self.data.ts)       # quat corresponding to Cga
 
 
 
