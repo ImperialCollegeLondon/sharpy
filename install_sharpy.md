@@ -70,4 +70,5 @@ cd coupled_configuration
 mkdir output
 python generate_coupled_configuration.py
 sharpy coupled_configuration.solver.txt
-
+```
+Results can be open in paraview. The aerodynamic grid is in `output/coupled_configuration/aero/` and the beam is in `output/coupled_configuration/beam`.
