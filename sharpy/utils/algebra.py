@@ -412,12 +412,13 @@ def euler2rot(euler):
 
 def euler2quat(euler):
     euler_rot = euler2rot(euler)  # this is Cag
-    quat = mat2quat(euler_rot.T)
+    quat = mat2quat(euler_rot)
     return quat
 
 
 def crv_dot2omega(crv, crv_dot):
     omega = np.dot(crv2tan(crv).T, crv_dot)
+    # omega = np.dot(crv2tan(crv), crv_dot)
     return omega
 
 
@@ -441,11 +442,4 @@ def omegadt2quat(omegadt):
 
 def rotate_quaternion(quat, omegadt):
     return quaternion_product(omegadt2quat(omegadt), quat)
-
-
-
-
-
-
-
 

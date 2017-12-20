@@ -65,92 +65,71 @@ class StepUvlm(BaseSolver):
 
         self.data.structure.add_unsteady_information(self.data.structure.dyn_dict, self.settings['n_time_steps'].value)
 
-        self.update_step()
-
         # init velocity generator
         velocity_generator_type = gen_interface.generator_from_string(
             self.settings['velocity_field_generator'])
         self.velocity_generator = velocity_generator_type()
         self.velocity_generator.initialise(self.settings['velocity_field_input'])
 
-        self.data.ts = 0
-        # generate uext
-        self.velocity_generator.generate({'zeta': self.data.aero.timestep_info[self.data.ts].zeta,
-                                          'override': True,
-                                          'ts': self.data.ts,
-                                          'dt': 0},
-                                         self.data.aero.timestep_info[self.data.ts].u_ext)
+    def run(self,
+            aero_tstep=None,
+            structure_tstep=None,
+            previous_aero_tstep=None,
+            convect_wake=True,
+            dt=None,
+            t=None):
 
-        uvlmlib.uvlm_init(self.data.aero.timestep_info[self.data.ts], self.settings)
+        if aero_tstep is None:
+            aero_tstep = self.data.aero.timestep_info[-1]
+        if structure_tstep is None:
+            structure_tstep = self.data.structure.timestep_info[-1]
+        if previous_aero_tstep is None:
+            previous_aero_tstep = self.data.aero.timestep_info[-2]
+        if dt is None:
+            dt = self.settings['dt'].value
+        if t is None:
+            t = self.data.ts*dt
 
-    def run(self):
-        # self.next_step()
-        t = self.data.ts*self.settings['dt'].value
         # generate uext
-        self.velocity_generator.generate({'zeta': self.data.aero.timestep_info[self.data.ts].zeta,
+        self.velocity_generator.generate({'zeta': aero_tstep.zeta,
                                           'override': True,
+                                          't': t,
                                           'ts': self.data.ts,
-                                          'dt': self.settings['dt'].value},
-                                         self.data.aero.timestep_info[self.data.ts].u_ext)
-        if self.settings['convection_scheme'].value > 1:
+                                          'dt': dt},
+                                         aero_tstep.u_ext)
+        if self.settings['convection_scheme'].value > 1 and convect_wake:
             # generate uext_star
-            self.velocity_generator.generate({'zeta': self.data.aero.timestep_info[self.data.ts].zeta_star,
+            self.velocity_generator.generate({'zeta': aero_tstep.zeta_star,
                                               'override': True,
                                               'ts': self.data.ts,
-                                              'dt': self.settings['dt'].value},
-                                             self.data.aero.timestep_info[self.data.ts].u_ext_star)
+                                              'dt': dt,
+                                              't': t},
+                                             aero_tstep.u_ext_star)
 
-        # self.data.structure.timestep_info[self.data.ts].for_vel = self.data.structure.dynamic_input[self.data.ts - 1]['for_vel'].astype(ct.c_double)
-
-        if self.data.ts == 1:
-            uvlmlib.uvlm_solver(self.data.ts,
-                                self.data.aero.timestep_info[self.data.ts],
-                                self.data.aero.timestep_info[self.data.ts],
-                                self.data.structure.timestep_info[self.data.ts],
-                                self.settings)
-        else:
-            uvlmlib.uvlm_solver(self.data.ts,
-                                self.data.aero.timestep_info[self.data.ts],
-                                self.data.aero.timestep_info[self.data.ts - 1],
-                                self.data.structure.timestep_info[self.data.ts],
-                                self.settings)
-
-        # self.data.structure.timestep_info[self.data.ts].for_pos = (
-        #     self.data.structure.timestep_info[self.data.ts - 1].for_pos +
-        #     np.dot(self.data.structure.timestep_info[self.data.ts].cga(), self.settings['dt'].value*self.data.structure.timestep_info[self.data.ts - 1].for_vel))
-
+        # previous_ts = max(len(self.data.aero.timestep_info) - 1, 0) - 1
+        # previous_ts = -1
+        # print('previous_step max circulation: %f' % previous_aero_tstep.gamma[0].min())
+        # print('current step max circulation: %f' % aero_tstep.gamma[0].min())
+        uvlmlib.uvlm_solver(self.data.ts,
+                            aero_tstep,
+                            previous_aero_tstep,
+                            # self.data.aero.timestep_info[max(self.data.ts - 1, 0)],
+                            # self.data.structure.timestep_info[self.data.ts - 1],
+                            structure_tstep,
+                            self.settings,
+                            convect_wake=convect_wake,
+                            dt=dt)
+        # print('current step max unsforce: %f' % aero_tstep.dynamic_forces[0].max())
         return self.data
 
-    def next_step(self, integrate_orientation=True):
-        """ Updates de aerogrid based on the info of the step, and increases
-        the self.ts counter """
+    def add_step(self):
         self.data.aero.add_timestep()
-        self.update_step(integrate_orientation=integrate_orientation)
 
-    def update_step(self, integrate_orientation=True):
-        self.data.aero.generate_zeta(self.data.structure,
-                                     self.data.aero.aero_settings,
-                                     self.data.ts)
+    def update_grid(self, beam):
+        self.data.aero.generate_zeta(beam, self.data.aero.aero_settings, -1, beam_ts=-1)
 
-        if integrate_orientation:
-            if self.data.ts > 0:
-                # euler = self.data.structure.dynamic_input[self.data.ts - 1]['for_pos'][3:6]
-                # euler_rot = algebra.euler2rot(euler)  # this is Cag
-                # quat = algebra.mat2quat(euler_rot.T)
-                # TODO need to update orientation
-                # quat = self.data.structure.timestep_info[self.data.ts - 1].quat
-                quat = algebra.rotate_quaternion(self.data.structure.timestep_info[self.data.ts].quat,
-                                                 self.data.structure.timestep_info[self.data.ts].for_vel[3:6]*
-                                                 self.settings['dt'])
-            else:
-                quat = self.data.structure.ini_info.quat.copy()
-        else:
-            quat = self.data.structure.timestep_info[self.data.ts].quat
-
-        quat = algebra.unit_vector(quat)
-        self.data.structure.update_orientation(quat, self.data.ts)  # quat corresponding to Cga
-        self.data.aero.update_orientation(self.data.structure.timestep_info[self.data.ts].quat, self.data.ts)       # quat corresponding to Cga
-
+    def update_custom_grid(self, structure_tstep, aero_tstep):
+        self.data.aero.generate_zeta_timestep_info(structure_tstep, aero_tstep, self.data.structure, self.data.aero.aero_settings)
 
 
 

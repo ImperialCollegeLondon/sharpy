@@ -73,11 +73,14 @@ class NonLinearDynamicPrescribedStep(BaseSolver):
             self.data.structure.integrate_position(self.data.ts, self.settings['dt'].value)
         return self.data
 
+    def add_step(self):
+        self.next_step()
+
     def next_step(self):
         self.data.structure.next_step()
         ts = len(self.data.structure.timestep_info) - 1
         if ts > 0:
-            self.data.structure.timestep_info[ts].for_vel = self.data.structure.dynamic_input[ts - 1]['for_vel']
-            self.data.structure.timestep_info[ts].for_acc = self.data.structure.dynamic_input[ts - 1]['for_acc']
-            self.data.structure.timestep_info[ts].unsteady_applied_forces = self.data.structure.dynamic_input[ts - 1]['dynamic_forces']
+            self.data.structure.timestep_info[ts].for_vel[:] = self.data.structure.dynamic_input[ts - 1]['for_vel']
+            self.data.structure.timestep_info[ts].for_acc[:] = self.data.structure.dynamic_input[ts - 1]['for_acc']
+            self.data.structure.timestep_info[ts].unsteady_applied_forces[:] = self.data.structure.dynamic_input[ts - 1]['dynamic_forces']
 

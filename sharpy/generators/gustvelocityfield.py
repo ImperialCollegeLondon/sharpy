@@ -32,11 +32,15 @@ class GustVelocityField(generator_interface.BaseGenerator):
         self.settings_types['offset'] = 'float'
         self.settings_default['offset'] = 0.0
 
+        self.settings_types['span'] = 'float'
+        self.settings_default['span'] = 0.
+
         self.u_inf = 0.
         self.u_inf_direction = None
 
         self.implemented_gusts = []
         self.implemented_gusts.append('1-cos')
+        self.implemented_gusts.append('DARPA')
 
         self.settings = dict()
 
@@ -57,14 +61,24 @@ class GustVelocityField(generator_interface.BaseGenerator):
         override = params['override']
         ts = params['ts']
         dt = params['dt']
+        t = params['t']
         gust_shape = None
         if self.settings['gust_shape'] == '1-cos':
-            def gust_shape(x, y, z, gust_length, gust_intensity):
+            def gust_shape(x, y, z, gust_length, gust_intensity, span=0):
                 vel = np.zeros((3,))
                 if (x > 0.0 or x < -gust_length):
                     return vel
 
                 vel[2] = (1.0 - np.cos(2.0*np.pi*x/gust_length))*gust_intensity*0.5
+                return vel
+        elif self.settings['gust_shape'] == 'DARPA':
+            def gust_shape(x, y, z, gust_length, gust_intensity, span=0):
+                vel = np.zeros((3,))
+                if (x > 0.0 or x < -gust_length):
+                    return vel
+
+                vel[2] = (1.0 - np.cos(2.0*np.pi*x/gust_length))*gust_intensity*0.5
+                vel[2] *= -np.cos(y/span*np.pi)
                 return vel
 
         for i_surf in range(len(zeta)):
@@ -74,9 +88,10 @@ class GustVelocityField(generator_interface.BaseGenerator):
             for i in range(zeta[i_surf].shape[1]):
                 for j in range(zeta[i_surf].shape[2]):
                     uext[i_surf][:, i, j] += self.u_inf*self.u_inf_direction
-                    uext[i_surf][:, i, j] += gust_shape(zeta[i_surf][0, i, j] - self.u_inf*ts*dt + self.settings['offset'],
+                    uext[i_surf][:, i, j] += gust_shape(zeta[i_surf][0, i, j] - self.u_inf*t + self.settings['offset'],
                                                         zeta[i_surf][1, i, j],
                                                         zeta[i_surf][2, i, j],
                                                         self.settings['gust_length'].value,
-                                                        self.settings['gust_intensity'].value
+                                                        self.settings['gust_intensity'].value,
+                                                        self.settings['span'].value
                                                         )

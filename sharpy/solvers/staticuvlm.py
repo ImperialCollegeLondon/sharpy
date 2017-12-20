@@ -121,13 +121,6 @@ class StaticUvlm(BaseSolver):
         # for i_surf in range(self.data.aero.timestep_info[self.ts].n_surf):
         #     self.data.aero.timestep_info[self.ts].forces[i_surf].fill(0.0)
         #     self.data.aero.timestep_info[self.ts].dynamic_forces[i_surf].fill(0.0)
-        euler = np.array([self.settings['roll'].value,
-                          self.settings['alpha'].value,
-                          self.settings['beta'].value])
-        euler_rot = algebra.euler2rot(euler)  # this is Cag
-        quat = algebra.mat2quat(euler_rot.T)
-        self.data.structure.update_orientation(quat, self.data.ts)  # quat corresponding to Cga
-        self.data.aero.update_orientation(quat, self.data.ts)       # quat corresponding to Cga
 
 
 

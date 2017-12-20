@@ -81,8 +81,8 @@ class DynamicPrescribedCoupled(BaseSolver):
         self.data.ts = 1
 
     def increase_ts(self):
-        self.structural_solver.next_step()
-        self.aero_solver.next_step()
+        self.structural_solver.add_step()
+        self.aero_solver.add_step()
 
     def run(self):
         # dynamic simulations start at tstep == 1, 0 is reserved for the initial state
@@ -111,7 +111,8 @@ class DynamicPrescribedCoupled(BaseSolver):
 
             # update orientation in beam and
             # update grid (all done with aero_solver.update_step()
-            self.aero_solver.update_step()
+            self.aero_solver.update_grid(self.data.structure)
+            self.data.structure.integrate_position(self.data.ts, self.settings['dt'].value)
 
         cout.cout_wrap('...Finished', 1)
         return self.data

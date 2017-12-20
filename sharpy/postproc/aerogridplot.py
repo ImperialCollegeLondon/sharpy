@@ -24,6 +24,9 @@ class AerogridPlot(BaseSolver):
         self.settings_types['include_rbm'] = 'bool'
         self.settings_default['include_rbm'] = True
 
+        self.settings_types['include_forward_motion'] = 'bool'
+        self.settings_default['include_forward_motion'] = False
+
         self.settings_types['include_applied_forces'] = 'bool'
         self.settings_default['include_applied_forces'] = True
 
@@ -35,6 +38,12 @@ class AerogridPlot(BaseSolver):
 
         self.settings_types['name_prefix'] = 'str'
         self.settings_default['name_prefix'] = ''
+
+        self.settings_types['u_inf'] = 'float'
+        self.settings_default['u_inf'] = 0.
+
+        self.settings_types['dt'] = 'float'
+        self.settings_default['dt'] = 0.
 
         self.settings = None
         self.data = None
@@ -106,6 +115,8 @@ class AerogridPlot(BaseSolver):
                     if self.settings['include_rbm']:
                         # coords[counter, :] = np.dot(rotation_mat, self.data.aero.timestep_info[self.ts].zeta[i_surf][:, i_m, i_n])
                         coords[counter, :] += self.data.structure.timestep_info[self.ts].for_pos[0:3]
+                    if self.settings['include_forward_motion']:
+                        coords[counter, 0] -= self.settings['dt'].value*self.ts*self.settings['u_inf'].value
 
             counter = -1
             node_counter = -1
@@ -174,15 +185,16 @@ class AerogridPlot(BaseSolver):
             panel_surf_id = np.zeros((panel_data_dim,), dtype=int)
             panel_gamma = np.zeros((panel_data_dim,))
             counter = -1
-            rotation_mat = self.data.structure.timestep_info[self.ts].cga().T
+            # rotation_mat = self.data.structure.timestep_info[self.ts].cga().T
             # coordinates of corners
             for i_n in range(dims_star[1]+1):
                 for i_m in range(dims_star[0]+1):
                     counter += 1
                     coords[counter, :] = self.data.aero.timestep_info[self.ts].zeta_star[i_surf][:, i_m, i_n]
                     if self.settings['include_rbm']:
-                        # coords[counter, :] = np.dot(rotation_mat, coords[counter, :])
                         coords[counter, :] += self.data.structure.timestep_info[self.ts].for_pos[0:3]
+                    if self.settings['include_forward_motion']:
+                        coords[counter, 0] -= self.settings['dt'].value*self.ts*self.settings['u_inf'].value
 
             counter = -1
             node_counter = -1

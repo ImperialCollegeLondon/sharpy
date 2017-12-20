@@ -54,6 +54,7 @@ class NonLinearDynamicCoupledStep(BaseSolver):
         self.settings = None
 
     def initialise(self, data, custom_settings=None):
+        from sharpy.structure.utils.xbeamlib import cbeam3_solv_disp2state
         self.data = data
         if custom_settings is None:
             self.settings = data.settings[self.solver_id]
@@ -64,19 +65,27 @@ class NonLinearDynamicCoupledStep(BaseSolver):
         # load info from dyn dictionary
         self.data.structure.add_unsteady_information(self.data.structure.dyn_dict, self.settings['num_steps'].value)
 
-    def run(self, dt=None):
-    # def run(self):
+        # generate q, dqdt and dqddt
+        # xbeamlib.xbeam_init_couplednlndyn(self.data.structure, self.settings, self.data.ts, dt=self.settings['dt'].value)
+        # xbeamlib.cbeam3_solv_disp2state(self.data.structure, self.data.structure.timestep_info[-1])
+        xbeamlib.xbeam_solv_disp2state(self.data.structure, self.data.structure.timestep_info[-1])
+
+    def run(self, structural_step=None, dt=None):
         xbeamlib.xbeam_step_couplednlndyn(self.data.structure,
                                           self.settings,
                                           self.data.ts,
+                                          structural_step,
                                           dt=dt)
-        if self.data.ts > 0:
-            self.data.structure.integrate_position(self.data.ts, self.settings['dt'].value)
         return self.data
 
-    def next_step(self):
+    def add_step(self):
         self.data.structure.next_step()
-        ts = len(self.data.structure.timestep_info) - 1
-        if ts > 0:
-            self.data.structure.timestep_info[ts].unsteady_applied_forces = self.data.structure.dynamic_input[ts - 1]['dynamic_forces']
+
+    def next_step(self):
+        pass
+        # self.data.structure.next_step()
+        # ts = len(self.data.structure.timestep_info) - 1
+        # if ts > 0:
+        #     self.data.structure.timestep_info[ts].unsteady_applied_forces = (
+        #         self.data.structure.dynamic_input[ts - 1]['dynamic_forces'].astype(dtype=ct.c_double, order='F'))
 

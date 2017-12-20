@@ -95,7 +95,7 @@ class StaticCoupled(BaseSolver):
                     self.data.structure.timestep_info[self.data.ts].psi,
                     self.data.structure.node_master_elem,
                     self.data.structure.master,
-                    algebra.quat2rot(self.data.structure.timestep_info[self.data.ts].quat).T)
+                    self.data.structure.timestep_info[self.data.ts].cga().T)
 
                 if not self.settings['relaxation_factor'].value == 0.:
                     if i_iter == 0:
@@ -110,10 +110,6 @@ class StaticCoupled(BaseSolver):
                 temp1 = load_step_multiplier*struct_forces
                 self.data.structure.timestep_info[self.data.ts].steady_applied_forces = temp1.astype(dtype=ct.c_double,
                                                                                                      order='F')
-
-                # update gravity direction
-                # TODO
-
                 # run beam
                 self.data = self.structural_solver.run()
 

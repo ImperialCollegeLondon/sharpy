@@ -69,11 +69,12 @@ class UVMopts(ct.Structure):
                 # ("steady_rollup_tolerance", ct.c_double),
                 # ("steady_rollup_aic_refresh", ct.c_uint),
                 ("convection_scheme", ct.c_uint),
-                ("Mstar", ct.c_uint),
+                # ("Mstar", ct.c_uint),
                 ("ImageMethod", ct.c_bool),
                 ("iterative_solver", ct.c_bool),
                 ("iterative_tol", ct.c_double),
-                ("iterative_precond", ct.c_bool)]
+                ("iterative_precond", ct.c_bool),
+                ("convect_wake", ct.c_bool)]
 
     def __init__(self):
         ct.Structure.__init__(self)
@@ -81,11 +82,12 @@ class UVMopts(ct.Structure):
         self.NumCores = ct.c_uint(4)
         self.NumSurfaces = ct.c_uint(1)
         self.convection_scheme = ct.c_uint(2)
-        self.Mstar = ct.c_uint(10)
+        # self.Mstar = ct.c_uint(10)
         self.ImageMethod = ct.c_bool(False)
         self.iterative_solver = ct.c_bool(False)
         self.iterative_tol = ct.c_double(0)
         self.iterative_precond = ct.c_bool(False)
+        self.convect_wake = ct.c_bool(True)
 
 
 class FlightConditions(ct.Structure):
@@ -194,12 +196,15 @@ def uvlm_init(ts_info, options):
     ts_info.remove_ctypes_pointers()
 
 
-def uvlm_solver(i_iter, ts_info, previous_ts_info, struct_ts_info, options):
+def uvlm_solver(i_iter, ts_info, previous_ts_info, struct_ts_info, options, convect_wake=True, dt=None):
     run_UVLM = UvlmLib.run_UVLM
     run_UVLM.restype = None
 
     uvmopts = UVMopts()
-    uvmopts.dt = ct.c_double(options["dt"].value)
+    if dt is None:
+        uvmopts.dt = ct.c_double(options["dt"].value)
+    else:
+        uvmopts.dt = ct.c_double(dt)
     uvmopts.NumCores = ct.c_uint(options["num_cores"].value)
     uvmopts.NumSurfaces = ct.c_uint(ts_info.n_surf)
     uvmopts.ImageMethod = ct.c_bool(False)
@@ -207,25 +212,14 @@ def uvlm_solver(i_iter, ts_info, previous_ts_info, struct_ts_info, options):
     uvmopts.iterative_solver = ct.c_bool(options['iterative_solver'].value)
     uvmopts.iterative_tol = ct.c_double(options['iterative_tol'].value)
     uvmopts.iterative_precond = ct.c_bool(options['iterative_precond'].value)
+    uvmopts.convect_wake = ct.c_bool(convect_wake)
 
     flightconditions = FlightConditions()
     flightconditions.rho = options['rho']
     flightconditions.uinf = np.ctypeslib.as_ctypes(np.linalg.norm(ts_info.u_ext[0][:, 0, 0]))
     flightconditions.uinf_direction = np.ctypeslib.as_ctypes(ts_info.u_ext[0][:, 0, 0]/flightconditions.uinf)
 
-    # for u_ext in ts_info.u_ext:
-    #     u_ext[0, :, :] = flightconditions.uinf
-    #     u_ext[1, :, :] = 0.0
-    #     u_ext[2, :, :] = 0.0
-    # if options['convection_scheme'] > 1:
-    #     for u_ext in ts_info.u_ext_star:
-    #         u_ext[0, :, :] = flightconditions.uinf
-    #         u_ext[1, :, :] = 0.0
-    #         u_ext[2, :, :] = 0.0
-
-    rbm_vel = struct_ts_info.for_vel
-    # print('\nBefore uvlm: ' + str(rbm_vel))
-
+    rbm_vel = struct_ts_info.for_vel.copy()
     rbm_vel[0:3] = np.dot(struct_ts_info.cga(), rbm_vel[0:3])
     rbm_vel[3:6] = np.dot(struct_ts_info.cga(), rbm_vel[3:6])
     p_rbm_vel = rbm_vel.ctypes.data_as(ct.POINTER(ct.c_double))
@@ -243,7 +237,6 @@ def uvlm_solver(i_iter, ts_info, previous_ts_info, struct_ts_info, options):
              ts_info.ct_p_zeta,
              ts_info.ct_p_zeta_star,
              ts_info.ct_p_zeta_dot,
-             ts_info.ct_p_zeta_star_dot,
              p_rbm_vel,
              ts_info.ct_p_gamma,
              ts_info.ct_p_gamma_star,

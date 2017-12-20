@@ -132,7 +132,7 @@ class Beam(BaseStructure):
         # the timestep_info[0] is the steady state or initial state for unsteady solutions
         self.ini_info.steady_applied_forces = self.steady_app_forces.astype(dtype=ct.c_double, order='F')
         # rigid body rotations
-        self.ini_info.update_orientation(quat=self.settings['orientation'])
+        self.ini_info.quat = self.settings['orientation'].astype(dtype=ct.c_double, order='F')
         self.timestep_info.append(self.ini_info.copy())
         self.timestep_info[-1].steady_applied_forces = self.steady_app_forces.astype(dtype=ct.c_double, order='F')
 
@@ -163,7 +163,7 @@ class Beam(BaseStructure):
         # data storage for time dependant output
         # for it in range(num_steps):
         #     self.add_timestep(self.timestep_info)
-        self.timestep_info[0] = self.ini_info.copy()
+        # self.timestep_info[0] = self.ini_info.copy()
 
         # data storage for time dependant input
         for it in range(num_steps):
@@ -216,7 +216,7 @@ class Beam(BaseStructure):
                 fcounter += 1
                 self.fdof[inode] = fcounter
 
-        self.num_dof = ct.c_int(vcounter*6)
+        self.num_dof = ct.c_int((vcounter + 1)*6)
 
     def lump_masses(self):
         for i_lumped in range(self.n_lumped_mass):
@@ -258,14 +258,21 @@ class Beam(BaseStructure):
         self.generate_node_master_elem()
 
     def add_timestep(self, timestep_info):
-        timestep_info.append(StructTimeStepInfo(self.num_node,
-                                                self.num_elem,
-                                                self.num_node_elem))
-        if len(timestep_info) > 1:
-            timestep_info[-1] = timestep_info[-2].copy()
+        if len(timestep_info) == 0:
+            # copy from ini_info
+            timestep_info.append(self.ini_info.copy())
+        else:
+            timestep_info.append(self.timestep_info[-1].copy())
 
-        timestep_info[-1].steady_applied_forces = self.ini_info.steady_applied_forces.astype(dtype=ct.c_double,
-                                                                                             order='F')
+        # timestep_info[-1].steady_applied_forces = self.ini_info.steady_applied_forces.astype(dtype=ct.c_double,
+        #                                                                                      order='F')
+        # ts = len(timestep_info) - 1
+        # try:
+        #     timestep_info[-1].unsteady_applied_forces = self.dynamic_input[ts - 1]['dynamic_forces'].astype(
+        #         dtype=ct.c_double,
+        #         order='F')
+        # except IndexError:
+        #     timestep_info[-1].unsteady_applied_forces.fill(0.0)
 
     def next_step(self):
         self.add_timestep(self.timestep_info)
@@ -345,17 +352,15 @@ class Beam(BaseStructure):
             # else:
             #     self.forced_acc_fortran = np.zeros((self.n_tsteps, 6), dtype=ct.c_double, order='F')
 
-    def update_orientation(self, quat=None, ts=-1):
-        if quat is None:
-            quat = algebra.euler2quat(self.timestep_info[ts].for_pos[3:6])
-        self.timestep_info[ts].update_orientation(quat)  # Cga going in here
+    # def update_orientation(self, quat=None, ts=-1):
+    #     if quat is None:
+    #         quat = algebra.euler2quat(self.timestep_info[ts].for_pos[3:6])
+    #     self.timestep_info[ts].update_orientation(quat)  # Cga going in here
 
     def integrate_position(self, ts, dt):
-        self.timestep_info[ts].for_pos[0:3] = (
-            self.timestep_info[ts - 1].for_pos[0:3] +
+        self.timestep_info[ts].for_pos[0:3] += (
             dt*np.dot(self.timestep_info[ts].cga(),
                       self.timestep_info[ts].for_vel[0:3]))
-        self.timestep_info[ts].for_pos[3:6] = (
-            self.timestep_info[ts - 1].for_pos[3:6] +
+        self.timestep_info[ts].for_pos[3:6] += (
             dt*np.dot(self.timestep_info[ts].cga(),
                       self.timestep_info[ts].for_vel[3:6]))

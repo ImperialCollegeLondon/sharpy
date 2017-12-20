@@ -311,7 +311,7 @@ def generate_solver_file(horseshoe=False):
                                 'num_cores': 4,
                                 'n_rollup': 50,
                                 'rollup_dt': main_chord/m_main/u_inf,
-                                'rollup_aic_refresh': 5,
+                                'rollup_aic_refresh': 1,
                                 'rollup_tolerance': 1e-4,
                                 'velocity_field_generator': 'SteadyVelocityField',
                                 'velocity_field_input': {'u_inf': u_inf,

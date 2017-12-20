@@ -4,18 +4,18 @@ import configparser
 import os
 import sharpy.utils.algebra as algebra
 
-case_name = 'coupled_configuration'
+case_name = 'coupled_configuration_steady'
 route = os.path.dirname(os.path.realpath(__file__)) + '/'
 
 m_main = 10
-amplitude = 30
-period = 0.1
-dt_factor = 0.25
+amplitude = 0.0
+period = 3
+dt_factor = 1
 
 # flight conditions
 u_inf = 10
-rho = 1.225*0.0
-alpha = 0
+rho = 1.225
+alpha = 3
 beta = 0
 sweep = 0*np.pi/180.
 dihedral = 0*np.pi/180.
@@ -24,7 +24,7 @@ aspect_ratio = 16  # = total wing span (chord = 1)
 alpha_rad = alpha*np.pi/180
 
 dt = 1.0/m_main/u_inf*dt_factor
-num_steps = round(2.5/dt)
+num_steps = round(4.5/dt)
 # num_steps = 35
 # num_steps = round(1.85/dt)
 
@@ -360,7 +360,7 @@ def generate_dyn_file():
 
     dynamic_forces_time = None
     with_dynamic_forces = False
-    with_forced_vel = True
+    with_forced_vel = False
     if with_dynamic_forces:
         f1 = 500
         dynamic_forces = np.zeros((num_node, 6))
@@ -378,18 +378,12 @@ def generate_dyn_file():
 
     forced_for_vel = None
     if with_forced_vel:
-        offset = 0.1/dt
         forced_for_vel = np.zeros((num_steps, 6))
         forced_for_acc = np.zeros((num_steps, 6))
         for it in range(num_steps):
-            if dt*it/period < 1.0:
-                forced_for_vel[it, 2] = amplitude*np.sin(2*np.pi*it*dt/period)
-                forced_for_acc[it, 2] = 2*np.pi/period*amplitude*np.cos(2*np.pi*it*dt/period)
-                # forced_for_vel[it, 2] =
-            else:
-                continue
-            # forced_for_vel[it, 2] = 2*np.pi/period*amplitude*np.sin(2*np.pi*dt*it/period)
-            # forced_for_acc[it, 2] = (2*np.pi/period)**2*amplitude*np.cos(2*np.pi*dt*it/period)
+            forced_for_vel[it, 2] = 2*np.pi/period*amplitude*np.sin(2*np.pi*dt*it/period)
+            forced_for_acc[it, 2] = (2*np.pi/period)**2*amplitude*np.cos(2*np.pi*dt*it/period)
+            # forced_for_vel[it, 2] = 2*np.pi/period*np.pi/180*amplitude*np.cos(2*np.pi*dt*it/period)
 
     with h5.File(route + '/' + case_name + '.dyn.h5', 'a') as h5file:
         if with_dynamic_forces:
@@ -536,13 +530,14 @@ def generate_solver_file(horseshoe=False):
     config['SHARPy'] = {'case': case_name,
                         'route': route,
                         'flow': ['BeamLoader',
-                                 'AerogridLoader',
-                                 'StaticCoupled',
+                                 # 'AerogridLoader',
+                                 # 'StaticCoupled',
                                  # 'DynamicCoupled',
-                                 'DynamicPrescribedCoupled',
-                                 'AerogridPlot',
+                                 # 'DynamicPrescribedCoupled',
+                                 # 'AerogridPlot',
+                                 'NonLinearDynamic',
                                  'BeamPlot',
-                                 'AeroForcesCalculator',
+                                 # 'AeroForcesCalculator',
                                  'BeamCsvOutput'],
                         'write_screen': 'on',
                         'write_log': 'on',
@@ -553,136 +548,21 @@ def generate_solver_file(horseshoe=False):
                                                                         alpha_rad,
                                                                         beta*np.pi/180]))}
 
-    config['StaticCoupled'] = {'print_info': 'on',
-                               'structural_solver': 'NonLinearStatic',
-                               'structural_solver_settings': {'print_info': 'off',
-                                                              'max_iterations': 150,
-                                                              'num_load_steps': 10,
-                                                              'delta_curved': 1e-18,
-                                                              'min_delta': 1e-7,
-                                                              'gravity_on': 'off',
-                                                              'gravity': 9.81,
-                                                              'orientation': algebra.euler2quat(np.array([0.0,
-                                                                                                          alpha_rad,
-                                                                                                          beta*np.pi/180]))},
-                               'aero_solver': 'StaticUvlm',
-                               'aero_solver_settings': {'print_info': 'off',
-                                                        'horseshoe': 'off',
-                                                        'num_cores': 4,
-                                                        'n_rollup': 0,
-                                                        'rollup_dt': main_chord/m_main/u_inf,
-                                                        'rollup_aic_refresh': 1,
-                                                        'rollup_tolerance': 1e-4,
-                                                        'velocity_field_generator': 'SteadyVelocityField',
-                                                        'velocity_field_input': {'u_inf': u_inf,
-                                                                                 'u_inf_direction': [1., 0, 0]},
-                                                        'rho': rho,
-                                                        'alpha': alpha_rad,
-                                                        'beta': beta},
-                               'max_iter': 80,
-                               'n_load_steps': 4,
-                               'tolerance': 1e-5,
-                               'relaxation_factor': 0.4}
-    config['DynamicCoupled'] = {'print_info': 'on',
-                                'structural_solver': 'NonLinearDynamicCoupledStep',
-                                'structural_solver_settings': {'print_info': 'off',
-                                                               'max_iterations': 950,
-                                                               'delta_curved': 1e-6,
-                                                               'min_delta': 1e-6,
-                                                               'newmark_damp': 0*5e-2,
-                                                               'gravity_on': 'off',
-                                                               'gravity': 9.81,
-                                                               'num_steps': num_steps,
-                                                               'dt': dt},
-                                'aero_solver': 'StepUvlm',
-                                'aero_solver_settings': {'print_info': 'off',
-                                                         'horseshoe': 'off',
-                                                         'num_cores': 4,
-                                                         'n_rollup': 100,
-                                                         'convection_scheme': 2,
-                                                         'rollup_dt': main_chord/m_main/u_inf,
-                                                         'rollup_aic_refresh': 1,
-                                                         'rollup_tolerance': 1e-4,
-                                                         'velocity_field_generator': 'GustVelocityField',
-                                                         'velocity_field_input': {'u_inf': u_inf,
-                                                                                  'u_inf_direction': [1., 0, 0],
-                                                                                  'gust_shape': '1-cos',
-                                                                                  'gust_length': 10,
-                                                                                  'gust_intensity': 0.4*u_inf,
-                                                                                  'offset': 2.0,
-                                                                                  'span': main_span},
-                                                         'rho': rho,
-                                                         'alpha': alpha_rad,
-                                                         'beta': beta,
-                                                         'n_time_steps': num_steps,
-                                                         'dt': dt},
-                                'fsi_substeps': 100,
-                                'fsi_tolerance': 1e-6,
-                                'relaxation_factor': 0.7,
-                                'minimum_steps': 2,
-                                'relaxtion_steps': 15,
-                                'n_time_steps': num_steps,
-                                'dt': dt,
-                                'structural_substeps': 1}
-    config['DynamicPrescribedCoupled'] = {'print_info': 'on',
-                                          'structural_solver': 'NonLinearDynamicPrescribedStep',
-                                          'structural_solver_settings': {'print_info': 'off',
-                                                                         'max_iterations': 150,
-                                                                         'num_load_steps': 15,
-                                                                         'delta_curved': 1e-5,
-                                                                         'min_delta': 1e-7,
-                                                                         'newmark_damp': 0*5e-4,
-                                                                         'gravity_on': 'off',
-                                                                         'gravity': 9.754,
-                                                                         'num_steps': num_steps,
-                                                                         'dt': dt},
-                                          'aero_solver': 'StepUvlm',
-                                          'aero_solver_settings': {'print_info': 'off',
-                                                                   'horseshoe': 'off',
-                                                                   'num_cores': 4,
-                                                                   'n_rollup': 50,
-                                                                   'convection_scheme': 3,
-                                                                   'rollup_dt': main_chord/m_main/u_inf,
-                                                                   'rollup_aic_refresh': 1,
-                                                                   'rollup_tolerance': 1e-4,
-                                                                   'velocity_field_generator': 'SteadyVelocityField',
-                                                                   'velocity_field_input': {'u_inf': u_inf,
-                                                                                            'u_inf_direction': [1., 0, 0]},
-                                                                   'rho': rho,
-                                                                   'alpha': alpha_rad,
-                                                                   'beta': beta,
-                                                                   'n_time_steps': num_steps,
-                                                                   'dt': dt},
-                                          'max_iter': 100,
-                                          'tolerance': 1e-6,
-                                          'relaxation_factor': 0.,
-                                          'n_time_steps': num_steps,
-                                          'dt': dt}
+    config['NonLinearDynamic'] = {'print_info': 'off',
+                                  'max_iterations': 150,
+                                  'num_load_steps': 10,
+                                  'delta_curved': 1e-18,
+                                  'min_delta': 1e-7,
+                                  'gravity_on': 'off',
+                                  'gravity': 9.81,
+                                  'newmark_damp': 0,
+                                  'prescribed_motion': 'on',
+                                  'dt': dt,
+                                  'num_steps': num_steps,
+                                  'orientation': algebra.euler2quat(np.array([0.0,
+                                                                              alpha_rad,
+                                                                              beta*np.pi/180]))}
 
-    if horseshoe is True:
-        config['AerogridLoader'] = {'unsteady': 'on',
-                                    'aligned_grid': 'on',
-                                    'mstar': 1,
-                                    'freestream_dir': ['1', '0', '0']}
-    else:
-        config['AerogridLoader'] = {'unsteady': 'on',
-                                    'aligned_grid': 'on',
-                                    'mstar': 50,
-                                    'freestream_dir': ['1', '0', '0']}
-    config['AerogridPlot'] = {'folder': os.path.dirname(__file__) + '/output/',
-                              'include_rbm': 'on',
-                              'include_forward_motion': 'off',
-                              'include_applied_forces': 'on',
-                              'minus_m_star': 0,
-                              'u_inf': u_inf,
-                              'dt': dt
-                              }
-    config['AeroForcesCalculator'] = {'folder': os.path.dirname(__file__) + '/output/forces',
-                                      'write_text_file': 'on',
-                                      'text_file_name': case_name + '_aeroforces.csv',
-                                      'screen_output': 'on',
-                                      'unsteady': 'off'
-                                      }
     config['BeamPlot'] = {'folder': os.path.dirname(__file__) + '/output/',
                           'include_rbm': 'on',
                           'include_applied_forces': 'on',
