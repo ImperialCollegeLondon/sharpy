@@ -3,15 +3,18 @@
 mkdir Code
 cd Code
 ```
-    * clone xbeam
+
+* clone xbeam
 ```
 git clone -b feature-coupled-dynamic https://github.com/ImperialCollegeLondon/xbeam
 ```
-    * clone uvlm
+
+* clone uvlm
 ```
 git clone -b feature-coupled-dynamic https://github.com/ImperialCollegeLondon/uvlm
 ```
-    * clone sharpy
+
+* clone sharpy
 ```
 git clone -b feature-coupled-dynamic https://github.com/ImperialCollegeLondon/sharpy
 ```
