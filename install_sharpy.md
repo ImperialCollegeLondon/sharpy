@@ -50,6 +50,7 @@ cd ..
 cd sharpy
 export PYTHONPATH=$(pwd):$PYTHONPATH
 cd bin
+chmod +x ./sharpy
 export PATH=$(pwd):$PATH
 cd ../..
 ```
