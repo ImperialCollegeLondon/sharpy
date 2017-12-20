@@ -59,3 +59,16 @@ cd ../..
 ```
 python tests/runtests.py
 ```
+
+# running the coupled simulation
+```
+cd ..
+mkdir run
+cd run
+cp -r ../sharpy/tests/coupled/dynamic/coupled_configuration
+coupled_configuration
+cd coupled_configuration
+mkdir output
+python generate_coupled_configuration.py
+sharpy coupled_configuration.solver.txt
+
