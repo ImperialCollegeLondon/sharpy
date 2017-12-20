@@ -57,5 +57,5 @@ cd ../..
 
 # check that sharpy works
 ```
-sharpy
+python -m unittest discover sharpy/tests/xbeam '*test.py'
 ```
