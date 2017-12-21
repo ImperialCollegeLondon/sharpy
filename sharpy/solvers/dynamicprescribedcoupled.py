@@ -85,6 +85,9 @@ class DynamicPrescribedCoupled(BaseSolver):
         self.aero_solver.add_step()
 
     def run(self):
+        # TODO this solver could probably be included in dynamic coupled directly
+        # NOTE use only for non-coupled problems (structural or aero, but not both)
+
         # dynamic simulations start at tstep == 1, 0 is reserved for the initial state
         for self.data.ts in range(1, self.settings['n_time_steps'].value + 1):
             cout.cout_wrap('\nit = %u' % self.data.ts)

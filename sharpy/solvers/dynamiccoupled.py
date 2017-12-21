@@ -104,10 +104,6 @@ class DynamicCoupled(BaseSolver):
         self.data.ts = 0
 
     def run(self):
-        # previous_kstep = self.data.structure.timestep_info[-1].copy()
-        # xbeam.cbeam3_solv_state2disp(self.data.structure, previous_kstep)
-
-        # aero_kstep = self.data.aero.timestep_info[-1].copy()
         structural_kstep = self.data.structure.timestep_info[-1].copy()
 
         # dynamic simulations start at tstep == 1, 0 is reserved for the initial state
@@ -117,9 +113,8 @@ class DynamicCoupled(BaseSolver):
             aero_kstep = self.data.aero.timestep_info[-1].copy()
             previous_kstep = self.data.structure.timestep_info[-1].copy()
             structural_kstep = self.data.structure.timestep_info[-1].copy()
-            # structural_predictor(self.data.structure, structural_kstep, 1*self.settings['dt'].value)
 
-            for k in range(0*self.settings['fsi_substeps'].value + 1):
+            for k in range(self.settings['fsi_substeps'].value + 1):
                 if k == self.settings['fsi_substeps'].value:
                     cout.cout_wrap('The FSI solver did not converge!!!')
                     break
@@ -127,16 +122,15 @@ class DynamicCoupled(BaseSolver):
 
                 cout.cout_wrap(str(k))
                 # # generate new grid (already rotated)
-                # self.aero_solver.update_custom_grid(structural_kstep, aero_kstep)
+                self.aero_solver.update_custom_grid(structural_kstep, aero_kstep)
 
-                # # run the solver
-                # self.data = self.aero_solver.run(aero_kstep,
-                                                 # structural_kstep,
-                                                 # self.data.aero.timestep_info[-1],
-                                                 # convect_wake=False)
+                # run the solver
+                self.data = self.aero_solver.run(aero_kstep,
+                                                 structural_kstep,
+                                                 self.data.aero.timestep_info[-1],
+                                                 convect_wake=False)
 
                 structural_kstep = self.data.structure.timestep_info[-1].copy()
-                # structural_predictor(self.data.structure, structural_kstep, 1.*self.settings['dt'].value)
 
                 # map forces
                 self.map_forces(aero_kstep,
@@ -171,22 +165,17 @@ class DynamicCoupled(BaseSolver):
             # allocate and copy previous timestep, copying steady and unsteady forces from input
             self.structural_solver.add_step()
             self.data.structure.timestep_info[-1] = structural_kstep.copy()
-            # structural_predictor(self.data.structure, self.data.structure.timestep_info[-1], self.settings['dt'].value)
-            # self.map_forces(aero_kstep,
-            #                 self.data.structure.timestep_info[-1],
-            #                 0.0)
-            # self.data = self.structural_solver.run(structural_step=self.data.structure.timestep_info[-1])
             self.data.structure.integrate_position(self.data.ts, self.settings['dt'].value)
 
             self.aero_solver.add_step()
-            # self.data.aero.timestep_info[-1] = aero_kstep.copy()
-            # self.aero_solver.update_custom_grid(self.data.structure.timestep_info[-1],
-                                                # self.data.aero.timestep_info[-1])
-            # # run the solver
-            # self.data = self.aero_solver.run(self.data.aero.timestep_info[-1],
-                                             # self.data.structure.timestep_info[-1],
-                                             # self.data.aero.timestep_info[-2],
-                                             # convect_wake=True)
+            self.data.aero.timestep_info[-1] = aero_kstep.copy()
+            self.aero_solver.update_custom_grid(self.data.structure.timestep_info[-1],
+                                                self.data.aero.timestep_info[-1])
+            # run the solver
+            self.data = self.aero_solver.run(self.data.aero.timestep_info[-1],
+                                             self.data.structure.timestep_info[-1],
+                                             self.data.aero.timestep_info[-2],
+                                             convect_wake=True)
 
             print('Time = %f' % (self.data.ts*self.settings['dt'].value))
             print('FoR acc in inertial:')
@@ -223,9 +212,6 @@ class DynamicCoupled(BaseSolver):
             self.data.structure.master,
             structural_kstep.cag())
 
-        # DEBUG
-        # cout.cout_wrap('NO aero dynamic forces')
-
         # prescribed forces + aero forces
         structural_kstep.steady_applied_forces = (
             (struct_forces + self.data.structure.ini_info.steady_applied_forces).
@@ -251,14 +237,9 @@ def relax(beam, timestep, previous_timestep, coeff):
     from sharpy.structure.utils.xbeamlib import xbeam_solv_state2disp
     numdof = beam.num_dof.value
     if coeff > 0.0:
-        # timestep.q[0:numdof] = (1.0 - coeff)*timestep.q[0:numdof] + coeff*previous_timestep.q[0:numdof]
         timestep.q = (1.0 - coeff)*timestep.q + coeff*previous_timestep.q
-        # timestep.dqdt[0:numdof] = (1.0 - coeff)*timestep.dqdt[0:numdof] + coeff*previous_timestep.dqdt[0:numdof]
-        # timestep.dqddt[0:numdof] = (1.0 - coeff)*timestep.dqddt[0:numdof] + coeff*previous_timestep.dqddt[0:numdof]
         timestep.dqdt = (1.0 - coeff)*timestep.dqdt + coeff*previous_timestep.dqdt
         timestep.dqddt = (1.0 - coeff)*timestep.dqddt + coeff*previous_timestep.dqddt
-        # timestep.dqdt[numdof:numdof + 6] = (1.0 - coeff)*timestep.dqdt[numdof:numdof + 6] + coeff*previous_timestep.dqdt[numdof:numdof + 6]
-        # timestep.dqddt[numdof:numdof + 6] = (1.0 - coeff)*timestep.dqddt[numdof:numdof + 6] + coeff*previous_timestep.dqddt[numdof:numdof + 6]
 
         normalise_quaternion(timestep)
         xbeam_solv_state2disp(beam, timestep)

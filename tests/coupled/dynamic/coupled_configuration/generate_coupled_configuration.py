@@ -546,7 +546,7 @@ def generate_solver_file(horseshoe=False):
                                  'BeamCsvOutput'],
                         'write_screen': 'on',
                         'write_log': 'on',
-                        'log_folder': os.path.dirname(__file__) + '/output/',
+                        'log_folder': route + '/output/',
                         'log_file': case_name + '.log'}
     config['BeamLoader'] = {'unsteady': 'on',
                             'orientation': algebra.euler2quat(np.array([0.0,
@@ -669,7 +669,7 @@ def generate_solver_file(horseshoe=False):
                                     'aligned_grid': 'on',
                                     'mstar': 50,
                                     'freestream_dir': ['1', '0', '0']}
-    config['AerogridPlot'] = {'folder': os.path.dirname(__file__) + '/output/',
+    config['AerogridPlot'] = {'folder': route + '/output/',
                               'include_rbm': 'on',
                               'include_forward_motion': 'off',
                               'include_applied_forces': 'on',
@@ -677,17 +677,17 @@ def generate_solver_file(horseshoe=False):
                               'u_inf': u_inf,
                               'dt': dt
                               }
-    config['AeroForcesCalculator'] = {'folder': os.path.dirname(__file__) + '/output/forces',
+    config['AeroForcesCalculator'] = {'folder': route + '/output/forces',
                                       'write_text_file': 'on',
                                       'text_file_name': case_name + '_aeroforces.csv',
                                       'screen_output': 'on',
                                       'unsteady': 'off'
                                       }
-    config['BeamPlot'] = {'folder': os.path.dirname(__file__) + '/output/',
+    config['BeamPlot'] = {'folder': route + '/output/',
                           'include_rbm': 'on',
                           'include_applied_forces': 'on',
                           'include_forward_motion': 'on'}
-    config['BeamCsvOutput'] = {'folder': os.path.dirname(__file__) + '/output/',
+    config['BeamCsvOutput'] = {'folder': route + '/output/',
                                'output_pos': 'on',
                                'output_psi': 'on',
                                'screen_output': 'off'}
