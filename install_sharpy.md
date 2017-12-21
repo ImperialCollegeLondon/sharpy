@@ -57,7 +57,7 @@ cd ../..
 
 # check that sharpy works
 ```
-python tests/runtests.py
+python sharpy/tests/runtests.py
 ```
 
 # running the sample coupled simulation
