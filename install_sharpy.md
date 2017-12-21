@@ -72,12 +72,12 @@ python generate_coupled_configuration.py
 sharpy coupled_configuration.solver.txt
 ```
 Other simulations can be run from a new terminal by doing:
-1. Add `sharpy` to the system `PATH`
-2. Add `sharpy/bin` to the system `PYTHONPATH`
-3. Running `source activate sharpy_env`
+1. Running `source activate sharpy_env`
+2. Add `sharpy` to the system `PATH`
+3. Add `sharpy/bin` to the system `PYTHONPATH`
 4. Navigate to the case files and run `sharpy <case_name>.solver.txt`
 
-My recommendation is to add the first two steps to the `.bashrc` file.
+My recommendation is to add the second and third steps to the `.bashrc` file.
 
 # NOTES
 1. Prescribed FoR motion coupled simulations are not up-to-date. 
