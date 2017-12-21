@@ -71,7 +71,6 @@ mkdir output
 python generate_coupled_configuration.py
 sharpy coupled_configuration.solver.txt
 ```
-
 Other simulations can be run from a new terminal by doing:
 1. Add `sharpy` to the system `PATH`
 2. Add `sharpy/bin` to the system `PYTHONPATH`
@@ -95,3 +94,5 @@ with the positions of all the nodes.
    visualisation).
 All these solvers are called from the flow variable, and need a dictionary with
 their settings (see the coupled_configuration example).
+
+Results can be open in paraview. The aerodynamic grid is in `output/coupled_configuration/aero/` and the beam is in `output/coupled_configuration/beam`.
