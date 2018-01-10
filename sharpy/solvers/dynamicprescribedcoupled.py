@@ -143,4 +143,7 @@ class DynamicPrescribedCoupled(BaseSolver):
         self.data.structure.timestep_info[self.data.ts].steady_applied_forces = (
             (struct_forces + self.data.structure.ini_info.steady_applied_forces).astype(dtype=ct.c_double, order='F'))
         self.data.structure.timestep_info[self.data.ts].unsteady_applied_forces = (
-            dynamic_struct_forces.astype(dtype=ct.c_double, order='F'))
+            (dynamic_struct_forces + self.data.structure.dynamic_input[max(self.data.ts - 1, 0)]['dynamic_forces']).
+                astype(dtype=ct.c_double, order='F', copy=True))
+        # self.data.structure.timestep_info[self.data.ts].unsteady_applied_forces = (
+        #     dynamic_struct_forces.astype(dtype=ct.c_double, order='F'))
