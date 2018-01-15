@@ -96,11 +96,12 @@ class Beam(BaseStructure):
             self.beam_number = np.zeros((self.num_elem, ), dtype=int)
 
         # applied forces
-        self.steady_app_forces = np.zeros((self.num_node, 6))
         try:
-            self.steady_app_forces = in_data['app_forces'].copy()
-        except KeyError:
-            pass
+            in_data['app_forces'][self.num_node - 1, 5]
+        except IndexError:
+            in_data['app_forces'] = np.zeros((self.num_node, 6), dtype=ct.c_double, order='F')
+
+        self.steady_app_forces = in_data['app_forces'].astype(dtype=ct.c_double, order='F')
 
         # generate the Element array
         for ielem in range(self.num_elem):
@@ -131,7 +132,7 @@ class Beam(BaseStructure):
         # the timestep_info[0] is the steady state or initial state for unsteady solutions
         self.ini_info.steady_applied_forces = self.steady_app_forces.astype(dtype=ct.c_double, order='F')
         # rigid body rotations
-        self.ini_info.update_orientation(self.settings['orientation'])
+        self.ini_info.quat = self.settings['orientation'].astype(dtype=ct.c_double, order='F')
         self.timestep_info.append(self.ini_info.copy())
         self.timestep_info[-1].steady_applied_forces = self.steady_app_forces.astype(dtype=ct.c_double, order='F')
 
@@ -160,9 +161,9 @@ class Beam(BaseStructure):
 
     def add_unsteady_information(self, dyn_dict, num_steps):
         # data storage for time dependant output
-        for it in range(num_steps):
-            self.add_timestep(self.timestep_info)
-        self.timestep_info[0] = self.ini_info.copy()
+        # for it in range(num_steps):
+        #     self.add_timestep(self.timestep_info)
+        # self.timestep_info[0] = self.ini_info.copy()
 
         # data storage for time dependant input
         for it in range(num_steps):
@@ -174,6 +175,27 @@ class Beam(BaseStructure):
         except KeyError:
             for it in range(num_steps):
                 self.dynamic_input[it]['dynamic_forces'] = np.zeros((self.num_node, 6), dtype=ct.c_double, order='F')
+
+        try:
+            for it in range(num_steps):
+                self.dynamic_input[it]['for_pos'] = dyn_dict['for_pos'][it, :]
+        except KeyError:
+            for it in range(num_steps):
+                self.dynamic_input[it]['for_pos'] = np.zeros((6, ), dtype=ct.c_double, order='F')
+
+        try:
+            for it in range(num_steps):
+                self.dynamic_input[it]['for_vel'] = dyn_dict['for_vel'][it, :]
+        except KeyError:
+            for it in range(num_steps):
+                self.dynamic_input[it]['for_vel'] = np.zeros((6, ), dtype=ct.c_double, order='F')
+
+        try:
+            for it in range(num_steps):
+                self.dynamic_input[it]['for_acc'] = dyn_dict['for_acc'][it, :]
+        except KeyError:
+            for it in range(num_steps):
+                self.dynamic_input[it]['for_acc'] = np.zeros((6, ), dtype=ct.c_double, order='F')
 
     def generate_dof_arrays(self):
         self.vdof = np.zeros((self.num_node,), dtype=ct.c_int, order='F') - 1
@@ -194,7 +216,7 @@ class Beam(BaseStructure):
                 fcounter += 1
                 self.fdof[inode] = fcounter
 
-        self.num_dof = ct.c_int(vcounter*6)
+        self.num_dof = ct.c_int((vcounter + 1)*6)
 
     def lump_masses(self):
         for i_lumped in range(self.n_lumped_mass):
@@ -236,14 +258,21 @@ class Beam(BaseStructure):
         self.generate_node_master_elem()
 
     def add_timestep(self, timestep_info):
-        timestep_info.append(StructTimeStepInfo(self.num_node,
-                                                self.num_elem,
-                                                self.num_node_elem))
-        if len(timestep_info) > 1:
-            timestep_info[-1] = timestep_info[-2].copy()
+        if len(timestep_info) == 0:
+            # copy from ini_info
+            timestep_info.append(self.ini_info.copy())
+        else:
+            timestep_info.append(self.timestep_info[-1].copy())
 
-        timestep_info[-1].steady_applied_forces = self.ini_info.steady_applied_forces.astype(dtype=ct.c_double,
-                                                                                             order='F')
+        # timestep_info[-1].steady_applied_forces = self.ini_info.steady_applied_forces.astype(dtype=ct.c_double,
+        #                                                                                      order='F')
+        # ts = len(timestep_info) - 1
+        # try:
+        #     timestep_info[-1].unsteady_applied_forces = self.dynamic_input[ts - 1]['dynamic_forces'].astype(
+        #         dtype=ct.c_double,
+        #         order='F')
+        # except IndexError:
+        #     timestep_info[-1].unsteady_applied_forces.fill(0.0)
 
     def next_step(self):
         self.add_timestep(self.timestep_info)
@@ -323,39 +352,15 @@ class Beam(BaseStructure):
             # else:
             #     self.forced_acc_fortran = np.zeros((self.n_tsteps, 6), dtype=ct.c_double, order='F')
 
-    def update_orientation(self, quat, ts=-1):
-        self.timestep_info[ts].update_orientation(quat)  # Cga going in here
+    # def update_orientation(self, quat=None, ts=-1):
+    #     if quat is None:
+    #         quat = algebra.euler2quat(self.timestep_info[ts].for_pos[3:6])
+    #     self.timestep_info[ts].update_orientation(quat)  # Cga going in here
 
-
-# ----------------------------------------------------------------------------------------------------------------------
-
-    # def __init_(self, fem_dictionary, dyn_dictionary=None):
-        # try:
-        #     self.orientation = fem_dictionary['orientation']
-        # except KeyError:
-        #     self.orientation = None
-        #
-        # unsteady part
-        # if dyn_dictionary is not None:
-        #     self.load_unsteady_data(dyn_dictionary)
-
-    def load_unsteady_data(self, dyn_dictionary):
-        self.n_tsteps = dyn_dictionary['num_steps']
-        try:
-            self.dynamic_forces_amplitude = dyn_dictionary['dynamic_forces_amplitude']
-            self.dynamic_forces_time = dyn_dictionary['dynamic_forces_time']
-        except KeyError:
-            self.dynamic_forces_amplitude = None
-            self.dynamic_forces_time = None
-
-        try:
-            self.forced_vel = dyn_dictionary['forced_vel']
-        except KeyError:
-            self.forced_vel = None
-
-        try:
-            self.forced_acc = dyn_dictionary['forced_acc']
-        except KeyError:
-            self.forced_acc = None
-
-
+    def integrate_position(self, ts, dt):
+        self.timestep_info[ts].for_pos[0:3] += (
+            dt*np.dot(self.timestep_info[ts].cga(),
+                      self.timestep_info[ts].for_vel[0:3]))
+        self.timestep_info[ts].for_pos[3:6] += (
+            dt*np.dot(self.timestep_info[ts].cga(),
+                      self.timestep_info[ts].for_vel[3:6]))

@@ -13,8 +13,8 @@ import sharpy.utils.cout_utils as cout
 
 
 @solver
-class NonLinearDynamic(BaseSolver):
-    solver_id = 'NonLinearDynamic'
+class NonLinearDynamicCoupledStep(BaseSolver):
+    solver_id = 'NonLinearDynamicCoupledStep'
 
     def __init__(self):
         self.settings_types = dict()
@@ -38,9 +38,6 @@ class NonLinearDynamic(BaseSolver):
         self.settings_types['newmark_damp'] = 'float'
         self.settings_default['newmark_damp'] = 1e-4
 
-        self.settings_types['prescribed_motion'] = 'bool'
-        self.settings_default['prescribed_motion'] = None
-
         self.settings_types['dt'] = 'float'
         self.settings_default['dt'] = 0.01
 
@@ -53,39 +50,34 @@ class NonLinearDynamic(BaseSolver):
         self.settings_types['gravity'] = 'float'
         self.settings_default['gravity'] = 9.81
 
-        self.settings_types['gravity_dir'] = 'list(float)'
-        self.settings_default['gravity_dir'] = np.array([0, 0, 1])
-
         self.data = None
         self.settings = None
 
-    def initialise(self, data):
+    def initialise(self, data, custom_settings=None):
         self.data = data
-        self.settings = data.settings[self.solver_id]
+        if custom_settings is None:
+            self.settings = data.settings[self.solver_id]
+        else:
+            self.settings = custom_settings
         settings.to_custom_types(self.settings, self.settings_types, self.settings_default)
 
         # load info from dyn dictionary
         self.data.structure.add_unsteady_information(self.data.structure.dyn_dict, self.settings['num_steps'].value)
 
-        # allocate timestep_info
-        for i in range(self.settings['num_steps'].value):
-            self.data.structure.add_timestep(self.data.structure.timestep_info)
+        # generate q, dqdt and dqddt
+        xbeamlib.xbeam_solv_disp2state(self.data.structure, self.data.structure.timestep_info[-1])
 
-    def run(self):
-        prescribed_motion = False
-        try:
-            prescribed_motion = self.settings['prescribed_motion'].value
-        except KeyError:
-            pass
-        if prescribed_motion is True:
-            cout.cout_wrap('Running non linear dynamic solver...', 2)
-            # raise NotImplementedError
-            xbeamlib.cbeam3_solv_nlndyn(self.data.structure, self.settings)
-        else:
-            cout.cout_wrap('Running non linear dynamic solver with RB...', 2)
-            xbeamlib.xbeam_solv_couplednlndyn(self.data.structure, self.settings)
-
-        self.data.ts = self.settings['num_steps'].value
-        cout.cout_wrap('...Finished', 2)
+    def run(self, structural_step=None, dt=None):
+        xbeamlib.xbeam_step_couplednlndyn(self.data.structure,
+                                          self.settings,
+                                          self.data.ts,
+                                          structural_step,
+                                          dt=dt)
         return self.data
+
+    def add_step(self):
+        self.data.structure.next_step()
+
+    def next_step(self):
+        pass
 

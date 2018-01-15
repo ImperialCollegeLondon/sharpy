@@ -10,9 +10,9 @@ class AeroTimeStepInfo(object):
         self.ct_dimensions = None
         self.ct_dimensions_star = None
 
-        self.dimensions = dimensions
-        self.dimensions_star = dimensions_star
-        self.n_surf = dimensions.shape[0]
+        self.dimensions = dimensions.copy()
+        self.dimensions_star = dimensions_star.copy()
+        self.n_surf = self.dimensions.shape[0]
         # generate placeholder for aero grid zeta coordinates
         self.zeta = []
         for i_surf in range(self.n_surf):
@@ -58,12 +58,6 @@ class AeroTimeStepInfo(object):
                                             dimensions_star[i_surf, 1] + 1),
                                            dtype=ct.c_double))
 
-        self.zeta_star_dot = []
-        for i_surf in range(self.n_surf):
-            self.zeta_star_dot.append(np.zeros((3,
-                                                dimensions_star[i_surf, 0] + 1,
-                                                dimensions_star[i_surf, 1] + 1),
-                                               dtype=ct.c_double))
         # placeholder for external velocity
         self.u_ext = []
         for i_surf in range(self.n_surf):
@@ -100,6 +94,55 @@ class AeroTimeStepInfo(object):
         self.inertial_unsteady_forces = np.zeros((self.n_surf, 6))
         self.body_unsteady_forces = np.zeros((self.n_surf, 6))
 
+    def copy(self):
+        copied = AeroTimeStepInfo(self.dimensions, self.dimensions_star)
+        # generate placeholder for aero grid zeta coordinates
+        for i_surf in range(copied.n_surf):
+            copied.zeta[i_surf] = self.zeta[i_surf].astype(dtype=ct.c_double, copy=True, order='C')
+
+        for i_surf in range(copied.n_surf):
+            copied.zeta_dot[i_surf] = self.zeta_dot[i_surf].astype(dtype=ct.c_double, copy=True, order='C')
+
+        # panel normals
+        for i_surf in range(copied.n_surf):
+            copied.normals[i_surf] = self.normals[i_surf].astype(dtype=ct.c_double, copy=True, order='C')
+
+        # panel forces
+        for i_surf in range(copied.n_surf):
+            copied.forces[i_surf] = self.forces[i_surf].astype(dtype=ct.c_double, copy=True, order='C')
+
+        # panel forces
+        for i_surf in range(copied.n_surf):
+            copied.dynamic_forces[i_surf] = self.dynamic_forces[i_surf].astype(dtype=ct.c_double, copy=True, order='C')
+
+        # generate placeholder for aero grid zeta_star coordinates
+        for i_surf in range(copied.n_surf):
+            copied.zeta_star[i_surf] = self.zeta_star[i_surf].astype(dtype=ct.c_double, copy=True, order='C')
+
+        # placeholder for external velocity
+        for i_surf in range(copied.n_surf):
+            copied.u_ext[i_surf] = self.u_ext[i_surf].astype(dtype=ct.c_double, copy=True, order='C')
+
+        for i_surf in range(copied.n_surf):
+            copied.u_ext_star[i_surf] = self.u_ext_star[i_surf].astype(dtype=ct.c_double, copy=True, order='C')
+
+        # allocate gamma and gamma star matrices
+        for i_surf in range(copied.n_surf):
+            copied.gamma[i_surf] = self.gamma[i_surf].astype(dtype=ct.c_double, copy=True, order='C')
+
+        for i_surf in range(copied.n_surf):
+            copied.gamma_star[i_surf] = self.gamma_star[i_surf].astype(dtype=ct.c_double, copy=True, order='C')
+
+        # total forces
+        copied.inertial_total_forces = self.inertial_total_forces.astype(dtype=ct.c_double, copy=True, order='C')
+        copied.body_total_forces = self.body_total_forces.astype(dtype=ct.c_double, copy=True, order='C')
+        copied.inertial_steady_forces = self.inertial_steady_forces.astype(dtype=ct.c_double, copy=True, order='C')
+        copied.body_steady_forces = self.body_steady_forces.astype(dtype=ct.c_double, copy=True, order='C')
+        copied.inertial_unsteady_forces = self.inertial_unsteady_forces.astype(dtype=ct.c_double, copy=True, order='C')
+        copied.body_unsteady_forces = self.body_unsteady_forces.astype(dtype=ct.c_double, copy=True, order='C')
+
+        return copied
+
     def generate_ctypes_pointers(self):
         self.ct_dimensions = self.dimensions.astype(dtype=ct.c_uint)
         self.ct_dimensions_star = self.dimensions_star.astype(dtype=ct.c_uint)
@@ -122,11 +165,6 @@ class AeroTimeStepInfo(object):
         for i_surf in range(self.n_surf):
             for i_dim in range(NDIM):
                 self.ct_zeta_star_list.append(self.zeta_star[i_surf][i_dim, :, :].reshape(-1))
-
-        self.ct_zeta_star_dot_list = []
-        for i_surf in range(self.n_surf):
-            for i_dim in range(NDIM):
-                self.ct_zeta_star_dot_list.append(self.zeta_star_dot[i_surf][i_dim, :, :].reshape(-1))
 
         self.ct_u_ext_list = []
         for i_surf in range(self.n_surf):
@@ -171,8 +209,6 @@ class AeroTimeStepInfo(object):
                           (* [np.ctypeslib.as_ctypes(array) for array in self.ct_zeta_dot_list]))
         self.ct_p_zeta_star = ((ct.POINTER(ct.c_double)*len(self.ct_zeta_star_list))
                                (* [np.ctypeslib.as_ctypes(array) for array in self.ct_zeta_star_list]))
-        self.ct_p_zeta_star_dot = ((ct.POINTER(ct.c_double)*len(self.ct_zeta_star_dot_list))
-                               (* [np.ctypeslib.as_ctypes(array) for array in self.ct_zeta_star_dot_list]))
         self.ct_p_u_ext = ((ct.POINTER(ct.c_double)*len(self.ct_u_ext_list))
                            (* [np.ctypeslib.as_ctypes(array) for array in self.ct_u_ext_list]))
         self.ct_p_u_ext_star = ((ct.POINTER(ct.c_double)*len(self.ct_u_ext_star_list))
@@ -190,64 +226,65 @@ class AeroTimeStepInfo(object):
 
     def remove_ctypes_pointers(self):
         try:
-            del self.ct_p_zeta, self.ct_zeta_list
-        except AttributeError:
-            pass
-        try:
-            del self.ct_p_zeta_star, self.ct_zeta_star_list
-        except AttributeError:
-            pass
-        try:
-            del self.ct_p_u_ext, self.ct_u_ext_list
-        except AttributeError:
-            pass
-        try:
-            del self.ct_p_u_ext_star, self.ct_u_ext_star_list
-        except AttributeError:
-            pass
-        try:
-            del self.ct_p_gamma, self.ct_gamma_list
-        except AttributeError:
-            pass
-        try:
-            del self.ct_p_gamma_star, self.ct_gamma_star_list
-        except AttributeError:
-            pass
-        try:
-            del self.ct_p_normals, self.ct_normals_list
-        except AttributeError:
-            pass
-        try:
-            del self.ct_p_forces, self.ct_forces_list
-        except AttributeError:
-            pass
-        try:
-            del self.ct_p_dynamic_forces, self.ct_dynamic_forces_list
-        except AttributeError:
-            pass
-        try:
             del self.ct_p_dimensions
         except AttributeError:
             pass
 
-    def copy(self):
-        out = AeroTimeStepInfo(self.dimensions, self.dimensions_star)
-        out.zeta = copy.deepcopy(self.zeta)
-        out.zeta_star = copy.deepcopy(self.zeta_star)
-        out.u_ext = copy.deepcopy(self.u_ext)
-        out.u_ext_star = copy.deepcopy(self.u_ext_star)
-        out.gamma = copy.deepcopy(self.gamma)
-        out.gamma_star = copy.deepcopy(self.gamma_star)
-        out.normals = copy.deepcopy(self.normals)
-        out.forces = copy.deepcopy(self.forces)
-        return out
+        try:
+            del self.ct_p_dimensions_star
+        except AttributeError:
+            pass
 
-    def update_orientation(self, rot):
-        for i_surf in range(self.n_surf):
-            for i_row in range(self.zeta[i_surf].shape[1]):
-                for i_col in range(self.zeta[i_surf].shape[2]):
-                    self.zeta[i_surf][:, i_row, i_col] = np.dot(rot,
-                                                                self.zeta[i_surf][:, i_row, i_col])
+        try:
+            del self.ct_p_zeta
+        except AttributeError:
+            pass
+
+        try:
+            del self.ct_p_zeta_star
+        except AttributeError:
+            pass
+
+        try:
+            del self.ct_p_zeta_dot
+        except AttributeError:
+            pass
+
+        try:
+            del self.ct_p_u_ext
+        except AttributeError:
+            pass
+
+        try:
+            del self.ct_p_u_ext_star
+        except AttributeError:
+            pass
+
+        try:
+            del self.ct_p_gamma
+        except AttributeError:
+            pass
+
+        try:
+            del self.ct_p_gamma_star
+        except AttributeError:
+            pass
+
+        try:
+            del self.ct_p_normals
+        except AttributeError:
+            pass
+
+        try:
+            del self.ct_p_forces
+        except AttributeError:
+            pass
+
+        try:
+            del self.ct_p_dynamic_forces
+        except AttributeError:
+            pass
+
 
 
 class StructTimeStepInfo(object):
@@ -264,38 +301,71 @@ class StructTimeStepInfo(object):
         self.psi_dot = np.zeros((self.num_elem, num_node_elem, 3), dtype=ct.c_double, order='F')
 
         # FoR data
-        self.quat = np.array([1, 0, 0, 0], dtype=float)
-        self.for_pos = np.zeros((6,))
-        self.for_vel = np.zeros((6,))
+        self.quat = np.array([1., 0, 0, 0], dtype=ct.c_double)
+        self.for_pos = np.zeros((6,), dtype=ct.c_double)
+        self.for_vel = np.zeros((6,), dtype=ct.c_double)
+        self.for_acc = np.zeros((6,), dtype=ct.c_double)
 
         self.gravity_vector_inertial = np.array([0.0, 0.0, 1.0], dtype=ct.c_double, order='F')
         self.gravity_vector_body = np.array([0.0, 0.0, 1.0], dtype=ct.c_double, order='F')
 
         self.steady_applied_forces = np.zeros((self.num_node, 6), dtype=ct.c_double, order='F')
+        self.unsteady_applied_forces = np.zeros((self.num_node, 6), dtype=ct.c_double, order='F')
+
+        self.q = np.zeros(((self.num_node - 1)*6 + 6 + 4,), dtype=ct.c_double)
+        self.dqdt = np.zeros(((self.num_node - 1)*6 + 6 + 4,), dtype=ct.c_double)
+        self.dqddt = np.zeros(((self.num_node - 1)*6 + 6 + 4,), dtype=ct.c_double)
 
     def copy(self):
-        from copy import deepcopy
-        return deepcopy(self)
+        # from copy import deepcopy
+        # return deepcopy(self)
+        copied = StructTimeStepInfo(self.num_node, self.num_elem)
+
+        copied.num_node = self.num_node
+        copied.num_elem = self.num_elem
+        copied.num_node_elem = self.num_node_elem
+
+        # generate placeholder for node coordinates
+        copied.pos = self.pos.astype(dtype=ct.c_double, order='F', copy=True)
+        copied.pos_dot = self.pos_dot.astype(dtype=ct.c_double, order='F', copy=True)
+        # self.pos_dot = np.zeros((self.num_node, 3), dtype=ct.c_double, order='F')
+
+        # placeholder for CRV
+        copied.psi = self.psi.astype(dtype=ct.c_double, order='F', copy=True)
+        copied.psi_dot = self.psi_dot.astype(dtype=ct.c_double, order='F', copy=True)
+
+        # FoR data
+        copied.quat = self.quat.astype(dtype=ct.c_double, order='F', copy=True)
+        copied.for_pos = self.for_pos.astype(dtype=ct.c_double, order='F', copy=True)
+        copied.for_vel = self.for_vel.astype(dtype=ct.c_double, order='F', copy=True)
+        copied.for_acc = self.for_acc.astype(dtype=ct.c_double, order='F', copy=True)
+
+        copied.gravity_vector_inertial = self.gravity_vector_inertial.astype(dtype=ct.c_double, order='F', copy=True)
+        copied.gravity_vector_body = self.gravity_vector_body.astype(dtype=ct.c_double, order='F', copy=True)
+
+        copied.steady_applied_forces = self.steady_applied_forces.astype(dtype=ct.c_double, order='F', copy=True)
+        copied.unsteady_applied_forces = self.unsteady_applied_forces.astype(dtype=ct.c_double, order='F', copy=True)
+
+        copied.q = self.q.astype(dtype=ct.c_double, order='F', copy=True)
+        copied.dqdt = self.dqdt.astype(dtype=ct.c_double, order='F', copy=True)
+        copied.dqddt = self.dqddt.astype(dtype=ct.c_double, order='F', copy=True)
+
+        return copied
 
     def glob_pos(self, include_rbm=True):
         coords = self.pos.copy()
-        c = algebra.quat2rot(self.quat).transpose()
+        c = self.cga()
         for i_node in range(self.num_node):
             coords[i_node, :] = np.dot(c, coords[i_node, :])
             if include_rbm:
                 coords[i_node, :] += self.for_pos[0:3]
         return coords
 
-    def update_orientation(self, quat):
-        """
-        :param quat: Corresponding to the Cga matrix
-        :return:
-        """
-        self.quat = quat.copy()
-        # rotate gravity_vector_inertial to body
-        # in fact the gravity vector is the vertical vector
-        rot = algebra.quat2rot(self.quat)
-        self.gravity_vector_body = np.dot(rot.T, self.gravity_vector_inertial)
+    def cag(self):
+        return algebra.quat2rot(self.quat)
+
+    def cga(self):
+        return self.cag().T
 
 
 

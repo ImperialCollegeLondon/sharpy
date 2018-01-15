@@ -26,11 +26,14 @@ class BeamPlot(BaseSolver):
         self.settings_types['include_applied_forces'] = 'bool'
         self.settings_default['include_applied_forces'] = True
 
-        self.settings_types['include_unsteady_applied_forces'] = 'bool'
-        self.settings_default['include_unsteady_applied_forces'] = False
+        self.settings_types['include_applied_moments'] = 'bool'
+        self.settings_default['include_applied_moments'] = True
 
         self.settings_types['name_prefix'] = 'str'
         self.settings_default['name_prefix'] = ''
+
+        self.settings_types['output_rbm'] = 'bool'
+        self.settings_default['output_rbm'] = True
 
         self.settings = None
         self.data = None
@@ -55,8 +58,22 @@ class BeamPlot(BaseSolver):
 
     def run(self):
         self.plot()
+        self.write()
         cout.cout_wrap('...Finished', 1)
         return self.data
+
+    def write(self):
+        if self.settings['output_rbm']:
+            filename = self.filename + '_rbm_acc.csv'
+            timesteps = len(self.data.structure.timestep_info)
+            temp_matrix = np.zeros((timesteps, 6))
+            for it in range(timesteps):
+                temp_matrix[it, :] = self.data.structure.timestep_info[it].for_acc
+
+            np.savetxt(filename, temp_matrix, delimiter=',')
+
+
+
 
     def plot(self):
         for it in range(len(self.data.structure.timestep_info)):
@@ -95,17 +112,12 @@ class BeamPlot(BaseSolver):
             #     self.aero2inertial = np.eye(3)
 
             app_forces = np.zeros((num_nodes, 3))
-            unsteady_app_forces = np.zeros((num_nodes, 3))
+            app_moment = np.zeros((num_nodes, 3))
 
             # aero2inertial rotation
-            aero2inertial = algebra.quat2rot(self.data.structure.timestep_info[it].quat).transpose()
+            aero2inertial = self.data.structure.timestep_info[it].cga()
 
             # coordinates of corners
-            # for i_node in range(num_nodes):
-            #     coords[i_node, :] = self.data.structure.timestep_info[it].pos[i_node, :]
-            #     if self.settings['include_rbm']:
-            #         coords[i_node, :] = np.dot(aero2inertial, coords[i_node, :])
-            #         coords[i_node, :] += self.data.structure.timestep_info[it].for_pos[0:3]
             coords = self.data.structure.timestep_info[it].glob_pos(include_rbm=self.settings['include_rbm'])
 
             for i_node in range(num_nodes):
@@ -113,12 +125,6 @@ class BeamPlot(BaseSolver):
                 i_local_node = self.data.structure.node_master_elem[i_node, 1]
                 node_id[i_node] = i_node
 
-                # v1, v2, v3 = self.data.structure.elements[i_elem].deformed_triad(
-                #     self.data.structure.timestep_info[it].psi[i_elem, :, :]
-                # )
-                # local_x[i_node, :] = np.dot(aero2inertial, v1[i_local_node, :])
-                # local_y[i_node, :] = np.dot(aero2inertial, v2[i_local_node, :])
-                # local_z[i_node, :] = np.dot(aero2inertial, v3[i_local_node, :])
                 v1 = np.array([1., 0, 0])
                 v2 = np.array([0., 1, 0])
                 v3 = np.array([0., 0, 1])
@@ -132,14 +138,19 @@ class BeamPlot(BaseSolver):
                 cab = algebra.crv2rot(self.data.structure.timestep_info[it].psi[i_elem, i_local_node, :])
                 app_forces[i_node, :] = np.dot(aero2inertial,
                                                np.dot(cab,
-                                                      self.data.structure.timestep_info[it].steady_applied_forces[i_node, 0:3]))
-                if not it == 0:
-                    try:
-                        unsteady_app_forces[i_node, :] = np.dot(aero2inertial,
-                                                                np.dot(cab,
-                                                                       self.data.structure.dynamic_input[it - 1]['dynamic_forces'][i_node, 0:3]))
-                    except IndexError:
-                        pass
+                                                      self.data.structure.timestep_info[it].steady_applied_forces[i_node, 0:3]+
+                                                      self.data.structure.timestep_info[it].unsteady_applied_forces[i_node, 0:3]))
+                app_moment[i_node, :] = np.dot(aero2inertial,
+                                               np.dot(cab,
+                                                      self.data.structure.timestep_info[it].steady_applied_forces[i_node, 3:6]+
+                                                      self.data.structure.timestep_info[it].unsteady_applied_forces[i_node, 3:6]))
+                # if not it == 0:
+                #     try:
+                #         unsteady_app_forces[i_node, :] = np.dot(aero2inertial,
+                #                                                 np.dot(cab,
+                #                                                        self.data.structure.dynamic_input[it - 1]['dynamic_forces'][i_node, 0:3]))
+                #     except IndexError:
+                #         pass
 
             for i_elem in range(num_elem):
                 conn[i_elem, :] = self.data.structure.elements[i_elem].reordered_global_connectivities
@@ -172,10 +183,10 @@ class BeamPlot(BaseSolver):
                 point_vector_counter += 1
                 ug.point_data.add_array(app_forces, 'vector')
                 ug.point_data.get_array(point_vector_counter).name = 'app_forces'
-            if self.settings['include_unsteady_applied_forces']:
+            if self.settings['include_applied_moments']:
                 point_vector_counter += 1
-                ug.point_data.add_array(unsteady_app_forces, 'vector')
-                ug.point_data.get_array(point_vector_counter).name = 'unsteady_app_forces'
+                ug.point_data.add_array(app_moment, 'vector')
+                ug.point_data.get_array(point_vector_counter).name = 'app_moments'
 
             write_data(ug, it_filename)
 

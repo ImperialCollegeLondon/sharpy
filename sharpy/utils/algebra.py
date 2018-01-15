@@ -412,35 +412,34 @@ def euler2rot(euler):
 
 def euler2quat(euler):
     euler_rot = euler2rot(euler)  # this is Cag
-    quat = mat2quat(euler_rot.T)
+    quat = mat2quat(euler_rot)
     return quat
 
 
-# if __name__ == '__main__':
-#     t = np.array([0, 1, 0])
-#     n = np.array([1, 0, 0])
-#     b = np.array([0, 0, -1])
-#
-#     psi = triad2crv(t, n, b)
-#
-#     tt, nn, bb = crv2triad(psi)
-#
-#     print(t)
-#     print(tt)
-#     print(n)
-#     print(nn)
-#     print(b)
-#     print(bb)
-#
-#     crv = np.array([0.31366386982554767, -0.31366386982554767, 1.5479424693982715])
-#     tt, nn, bb = crv2triad(crv)
-#     print(tt)
-#     print(nn)
-#     print(bb)
-#
-#     print('--------------------')
-#     crv = np.array([-2.013275e+00, -2.013227e+00, -3.871769e-01])
-#     angle = 270*np.pi/180.
-#     axis = np.array([0, 0, 1])
-#     new_crv = rotate_crv(crv, axis, angle)
-#     print(new_crv)
+def crv_dot2omega(crv, crv_dot):
+    omega = np.dot(crv2tan(crv).T, crv_dot)
+    # omega = np.dot(crv2tan(crv), crv_dot)
+    return omega
+
+
+def quaternion_product(q, r):
+    result = np.zeros((4,))
+    result[0] = q[0]*r[0] - q[1]*r[1] - q[2]*r[2] - q[3]*r[3]
+    result[1] = q[0]*r[1] + q[1]*r[0] + q[2]*r[3] - q[3]*r[2]
+    result[2] = q[0]*r[2] - q[1]*r[3] + q[2]*r[0] + q[3]*r[1]
+    result[3] = q[0]*r[3] + q[1]*r[2] - q[2]*r[1] + q[3]*r[0]
+    return result
+
+
+def omegadt2quat(omegadt):
+    quat = np.zeros((4,))
+
+    omegadt_norm = np.linalg.norm(omegadt)
+    quat[0] = np.cos(0.5*omegadt_norm)
+    quat[1:4] = unit_vector(omegadt)*np.sin(0.5*omegadt_norm)
+    return quat
+
+
+def rotate_quaternion(quat, omegadt):
+    return quaternion_product(omegadt2quat(omegadt), quat)
+

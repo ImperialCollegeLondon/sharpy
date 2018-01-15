@@ -5,13 +5,13 @@ import os
 
 import sharpy.utils.algebra as algebra
 
-case_name = 'smith_g_2deg'
+case_name = 'smith_g_4deg'
 route = os.path.dirname(os.path.realpath(__file__)) + '/'
 
 # flight conditions
 u_inf = 25
 rho = 0.08891
-alpha = 2
+alpha = 4
 beta = 0
 c_ref = 1
 b_ref = 16
@@ -38,7 +38,7 @@ num_elem = num_elem_main + num_elem_main
 num_node_main = num_elem_main*(num_node_elem - 1) + 1
 num_node = num_node_main + (num_node_main - 1)
 
-m_main = 20
+m_main = 15
 
 
 def clean_test_files():
@@ -280,11 +280,14 @@ def generate_solver_file(horseshoe=False):
                         'route': route,
                         'flow': ['BeamLoader', 'AerogridLoader', 'StaticCoupled', 'AerogridPlot', 'BeamPlot', 'AeroForcesCalculator', 'BeamCsvOutput'],
                         # 'flow': ['BeamLoader', 'NonLinearStatic', 'BeamPlot'],
-                        'write_screen': 'on',
+                        'write_screen': 'off',
                         'write_log': 'on',
                         'log_folder': os.path.dirname(__file__) + '/output/',
                         'log_file': case_name + '.log'}
-    config['BeamLoader'] = {'unsteady': 'off'}
+    config['BeamLoader'] = {'unsteady': 'off',
+                            'orientation': algebra.euler2quat(np.array([0.0,
+                                                                        alpha_rad,
+                                                                        beta*np.pi/180]))}
     config['StaticCoupled'] = {'print_info': 'on',
                                'structural_solver': 'NonLinearStatic',
                                'structural_solver_settings': {'print_info': 'off',
@@ -293,15 +296,12 @@ def generate_solver_file(horseshoe=False):
                                                               'delta_curved': 1e-5,
                                                               'min_delta': 1e-5,
                                                               'gravity_on': 'on',
-                                                              'gravity': 9.754,
-                                                              'orientation': algebra.euler2quat(np.array([0.0,
-                                                                                                          alpha_rad,
-                                                                                                          beta*np.pi/180]))},
+                                                              'gravity': 9.754},
                                'aero_solver': 'StaticUvlm',
                                'aero_solver_settings': {'print_info': 'off',
                                                         'horseshoe': 'on',
                                                         'num_cores': 4,
-                                                        'n_rollup': 0,
+                                                        'n_rollup': 100,
                                                         'rollup_dt': main_chord/m_main/u_inf,
                                                         'rollup_aic_refresh': 1,
                                                         'rollup_tolerance': 1e-4,
@@ -311,10 +311,10 @@ def generate_solver_file(horseshoe=False):
                                                         'rho': rho,
                                                         'alpha': alpha_rad,
                                                         'beta': beta},
-                               'max_iter': 50,
+                               'max_iter': 100,
                                'n_load_steps': 3,
-                               'tolerance': 1e-7,
-                               'relaxation_factor': 0.0}
+                               'tolerance': 1e-6,
+                               'relaxation_factor': 0.}
 
     if horseshoe is True:
         config['AerogridLoader'] = {'unsteady': 'off',
@@ -324,7 +324,7 @@ def generate_solver_file(horseshoe=False):
     else:
         config['AerogridLoader'] = {'unsteady': 'off',
                                     'aligned_grid': 'on',
-                                    'mstar': 20,
+                                    'mstar': 1,
                                     'freestream_dir': ['1', '0', '0']}
     config['AerogridPlot'] = {'folder': os.path.dirname(__file__) + '/output/',
                               'include_rbm': 'off',

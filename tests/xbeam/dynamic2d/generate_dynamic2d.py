@@ -265,7 +265,7 @@ def generate_solver_file():
                                   'gravity_on': 'off',
                                   'gravity': 9.81,
                                   'gravity_dir': ['0', '0', '1']}
-    config['BeamCsvOutput'] = {'folder': os.path.dirname(__file__) + '/../',
+    config['BeamCsvOutput'] = {'folder': os.path.dirname(__file__) + '/output',
                                'output_pos': 'on',
                                'output_psi': 'on',
                                'output_glob_pos': 'on',
