@@ -55,14 +55,14 @@ class StaticUvlm(BaseSolver):
         self.settings_types['velocity_field_input'] = 'dict'
         self.settings_default['velocity_field_input'] = {}
 
-        self.settings_types['alpha'] = 'float'
-        self.settings_default['alpha'] = 0.0
-
-        self.settings_types['beta'] = 'float'
-        self.settings_default['beta'] = 0.0
-
-        self.settings_types['roll'] = 'float'
-        self.settings_default['roll'] = 0.0
+        # self.settings_types['alpha'] = 'float'
+        # self.settings_default['alpha'] = 0.0
+        #
+        # self.settings_types['beta'] = 'float'
+        # self.settings_default['beta'] = 0.0
+        #
+        # self.settings_types['roll'] = 'float'
+        # self.settings_default['roll'] = 0.0
 
         self.settings_types['rho'] = 'float'
         self.settings_default['rho'] = 1.225
@@ -79,16 +79,6 @@ class StaticUvlm(BaseSolver):
             self.settings = custom_settings
         settings.to_custom_types(self.settings, self.settings_types, self.settings_default)
 
-        # update beam orientation
-        # beam orientation is used as the parametrisation of the aero orientation
-        # too (it will come handy for the fully coupled simulation)
-        # euler = np.array([self.settings['roll'].value,
-        #                   self.settings['alpha'].value,
-        #                   self.settings['beta'].value])
-        # euler_rot = algebra.euler2rot(euler)  # this is Cag
-        # quat = algebra.mat2quat(euler_rot.T)
-        # self.data.structure.update_orientation(quat, self.data.ts)
-        # self.data.aero.update_orientation(quat, self.data.ts)
         self.update_step()
 
         # init velocity generator

@@ -65,14 +65,14 @@ intP = ct.POINTER(ct.c_int)
 charP = ct.POINTER(ct.c_char_p)
 
 
-f_cbeam3_solv_nlnstatic = xbeamlib.cbeam3_solv_nlnstatic_python
-f_cbeam3_solv_nlnstatic.restype = None
-
 
 def cbeam3_solv_nlnstatic(beam, settings, ts):
     """@brief Python wrapper for f_cbeam3_solv_nlnstatic
      Alfonso del Carre
     """
+    f_cbeam3_solv_nlnstatic = xbeamlib.cbeam3_solv_nlnstatic_python
+    f_cbeam3_solv_nlnstatic.restype = None
+
     n_elem = ct.c_int(beam.num_elem)
     n_nodes = ct.c_int(beam.num_node)
     n_mass = ct.c_int(beam.n_mass)
@@ -84,6 +84,7 @@ def cbeam3_solv_nlnstatic(beam, settings, ts):
     xbopts.MaxIterations = settings['max_iterations']
     xbopts.NumLoadSteps = settings['num_load_steps']
     xbopts.DeltaCurved = settings['delta_curved']
+    xbopts.MinDelta = settings['min_delta']
     xbopts.gravity_on = settings['gravity_on']
     xbopts.gravity = settings['gravity']
     xbopts.gravity_dir_x = ct.c_double(beam.timestep_info[ts].gravity_vector_body[0])

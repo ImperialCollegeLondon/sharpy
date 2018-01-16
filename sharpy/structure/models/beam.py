@@ -133,6 +133,7 @@ class Beam(BaseStructure):
         self.ini_info.steady_applied_forces = self.steady_app_forces.astype(dtype=ct.c_double, order='F')
         # rigid body rotations
         self.ini_info.quat = self.settings['orientation'].astype(dtype=ct.c_double, order='F')
+
         self.timestep_info.append(self.ini_info.copy())
         self.timestep_info[-1].steady_applied_forces = self.steady_app_forces.astype(dtype=ct.c_double, order='F')
 
@@ -160,11 +161,6 @@ class Beam(BaseStructure):
             self.ini_info.psi[elem.ielem, :, :] = elem.psi_ini
 
     def add_unsteady_information(self, dyn_dict, num_steps):
-        # data storage for time dependant output
-        # for it in range(num_steps):
-        #     self.add_timestep(self.timestep_info)
-        # self.timestep_info[0] = self.ini_info.copy()
-
         # data storage for time dependant input
         for it in range(num_steps):
             self.dynamic_input.append(dict())
@@ -263,16 +259,6 @@ class Beam(BaseStructure):
             timestep_info.append(self.ini_info.copy())
         else:
             timestep_info.append(self.timestep_info[-1].copy())
-
-        # timestep_info[-1].steady_applied_forces = self.ini_info.steady_applied_forces.astype(dtype=ct.c_double,
-        #                                                                                      order='F')
-        # ts = len(timestep_info) - 1
-        # try:
-        #     timestep_info[-1].unsteady_applied_forces = self.dynamic_input[ts - 1]['dynamic_forces'].astype(
-        #         dtype=ct.c_double,
-        #         order='F')
-        # except IndexError:
-        #     timestep_info[-1].unsteady_applied_forces.fill(0.0)
 
     def next_step(self):
         self.add_timestep(self.timestep_info)

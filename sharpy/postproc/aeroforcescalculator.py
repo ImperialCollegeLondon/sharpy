@@ -54,6 +54,7 @@ class AeroForcesCalculator(BaseSolver):
             self.ts_max = self.data.ts + 1
         else:
             self.ts_max = 1
+            self.ts_max = len(self.data.structure.timestep_info)
         settings.to_custom_types(self.settings, self.settings_types, self.settings_default)
 
     def run(self):

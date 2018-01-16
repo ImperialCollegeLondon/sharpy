@@ -68,8 +68,24 @@ class StaticCoupled(BaseSolver):
         self.structural_solver.next_step()
         self.aero_solver.next_step()
 
+    def cleanup_timestep_info(self):
+        if max(len(self.data.aero.timestep_info), len(self.data.structure.timestep_info)) > 1:
+            # copy last info to first
+            self.data.aero.timestep_info[0] = self.data.aero.timestep_info[-1]
+            self.data.structure.timestep_info[0] = self.data.structure.timestep_info[-1]
+            # delete all the rest
+            while len(self.data.aero.timestep_info) - 1:
+                del self.data.aero.timestep_info[-1]
+            while len(self.data.structure.timestep_info) - 1:
+                del self.data.structure.timestep_info[-1]
+
+        self.data.ts = 0
+
     def run(self):
-        for i_step in range(self.settings['n_load_steps'].value):
+        for i_step in range(self.settings['n_load_steps'].value + 1):
+            if (i_step == self.settings['n_load_steps'].value and
+                    self.settings['n_load_steps'].value > 0):
+                break
             # load step coefficient
             if not self.settings['n_load_steps'].value == 0:
                 load_step_multiplier = (i_step + 1.0)/self.settings['n_load_steps'].value
@@ -95,7 +111,7 @@ class StaticCoupled(BaseSolver):
                     self.data.structure.timestep_info[self.data.ts].psi,
                     self.data.structure.node_master_elem,
                     self.data.structure.master,
-                    self.data.structure.timestep_info[self.data.ts].cga().T)
+                    self.data.structure.timestep_info[self.data.ts].cag())
 
                 if not self.settings['relaxation_factor'].value == 0.:
                     if i_iter == 0:
@@ -107,7 +123,7 @@ class StaticCoupled(BaseSolver):
                     self.previous_force = temp
 
                 # copy force in beam
-                temp1 = load_step_multiplier*struct_forces
+                temp1 = load_step_multiplier*(struct_forces + self.data.structure.ini_info.steady_applied_forces)
                 self.data.structure.timestep_info[self.data.ts].steady_applied_forces = temp1.astype(dtype=ct.c_double,
                                                                                                      order='F')
                 # run beam
@@ -120,6 +136,8 @@ class StaticCoupled(BaseSolver):
                 if self.convergence(i_iter, i_step):
                     break
 
+        # self.cleanup_timestep_info()
+        1
         return self.data
 
     def convergence(self, i_iter, i_step):

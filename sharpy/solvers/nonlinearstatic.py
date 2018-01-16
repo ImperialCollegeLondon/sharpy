@@ -33,6 +33,9 @@ class NonLinearStatic(BaseSolver):
         self.settings_types['gravity'] = 'float'
         self.settings_default['gravity'] = 9.81
 
+        self.settings_types['min_delta'] = 'float'
+        self.settings_default['min_delta'] = 1e-7
+
         self.data = None
         self.settings = None
 
