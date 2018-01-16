@@ -75,9 +75,10 @@ class TestCoupledStatic(unittest.TestCase):
         sharpy.sharpy_main.main(['', solver_path])
 
         # read output and compare
-        # output_path = os.path.dirname(solver_path) + 'output/aero/'
-        # forces_data = np.genfromtxt(output_path + 'smith_nog_2deg_aeroforces.csv')
-        # self.assertAlmostEqual(forces_data[-1, 3], 4.88705e3, 2)
+        output_path = os.path.dirname(solver_path) + '/output/smith_g_2deg/beam/'
+        pos_data = np.genfromtxt(output_path + 'beam_smith_g_2deg_000002.csv')
+        self.assertAlmostEqual((pos_data[20, 1] - 15.9777)/15.9777, 0.00, 2)
+        self.assertAlmostEqual((pos_data[20, 2] - 0.781620)/0.781620, 0.00, 2)
 
     def test_smith4deg_g(self):
         """
@@ -95,8 +96,8 @@ class TestCoupledStatic(unittest.TestCase):
         # read output and compare
         output_path = os.path.dirname(solver_path) + '/output/smith_g_4deg/beam/'
         pos_data = np.genfromtxt(output_path + 'beam_smith_g_4deg_000002.csv')
-        self.assertAlmostEqual((pos_data[20, 1] - 15.4472)/15.4472, 0.00, 2)
-        self.assertAlmostEqual((pos_data[20, 2] - 3.8839)/3.8839, 0.00, 2)
+        self.assertAlmostEqual((pos_data[20, 1] - 15.5097)/15.097, 0.00, 2)
+        self.assertAlmostEqual((pos_data[20, 2] - 3.66200)/3.66200, 0.00, 2)
 
         # results:
         # N = 10 elements
@@ -113,11 +114,11 @@ class TestCoupledStatic(unittest.TestCase):
 
         # will use this one for validation.
         # same discretisation, with horseshoe:
-        # [  0.06318925  15.44724143   3.88387631]
+        # 5.009157275506188889e-02 1.550972930845460596e+01 3.662002908013482383e+00
         # forces:
         # tstep |   fx_st    |   fy_st    |   fz_st
-        #    0 |  2.150e+00 |  3.136e-06 |  4.000e+02
-        # 52 seconds
+        #    2 |  3.765174e+00, -3.611481e-04, 4.882051e+02
+        # 44 seconds
 
     def test_smith4deg_nog(self):
         """

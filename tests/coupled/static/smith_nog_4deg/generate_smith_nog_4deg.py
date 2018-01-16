@@ -31,7 +31,7 @@ main_airfoil_M = 0
 n_surfaces = 2
 
 # discretisation data
-num_elem_main = 10
+num_elem_main = 20
 
 num_node_elem = 3
 num_elem = num_elem_main + num_elem_main
@@ -81,7 +81,7 @@ def generate_fem_file():
     gj = 1e4
     eiy = 2e4
     eiz = 5e6
-    sigma = 1
+    sigma = 1.
     base_stiffness = sigma*np.diag([ea, ga, ga, gj, eiy, eiz])
     stiffness = np.zeros((num_stiffness, 6, 6))
     stiffness[0, :, :] = main_sigma*base_stiffness
@@ -199,7 +199,7 @@ def generate_aero_file():
     airfoil_distribution = np.zeros((num_node,), dtype=int)
     surface_distribution = np.zeros((num_elem,), dtype=int) - 1
     surface_m = np.zeros((n_surfaces, ), dtype=int)
-    m_distribution = '1-cos'
+    m_distribution = 'uniform'
     aero_node = np.zeros((num_node,), dtype=bool)
     twist = np.zeros((num_node,))
     chord = np.zeros((num_node,))
@@ -280,7 +280,7 @@ def generate_solver_file(horseshoe=False):
                         'route': route,
                         'flow': ['BeamLoader', 'AerogridLoader', 'StaticCoupled', 'AerogridPlot', 'BeamPlot', 'AeroForcesCalculator', 'BeamCsvOutput'],
                         # 'flow': ['BeamLoader', 'NonLinearStatic', 'BeamPlot'],
-                        'write_screen': 'off',
+                        'write_screen': 'on',
                         'write_log': 'on',
                         'log_folder': os.path.dirname(__file__) + '/output/',
                         'log_file': case_name + '.log'}
@@ -292,9 +292,9 @@ def generate_solver_file(horseshoe=False):
                                'structural_solver': 'NonLinearStatic',
                                'structural_solver_settings': {'print_info': 'off',
                                                               'max_iterations': 150,
-                                                              'num_load_steps': 20,
+                                                              'num_load_steps': 50,
                                                               'delta_curved': 1e-5,
-                                                              'min_delta': 1e-5,
+                                                              'min_delta': 1e-8,
                                                               'gravity_on': 'off',
                                                               'gravity': 9.754},
                                'aero_solver': 'StaticUvlm',
@@ -312,9 +312,9 @@ def generate_solver_file(horseshoe=False):
                                                         'alpha': alpha_rad,
                                                         'beta': beta},
                                'max_iter': 100,
-                               'n_load_steps': 4,
-                               'tolerance': 1e-6,
-                               'relaxation_factor': 0.1}
+                               'n_load_steps': 25,
+                               'tolerance': 1e-5,
+                               'relaxation_factor': 0.}
 
     if horseshoe is True:
         config['AerogridLoader'] = {'unsteady': 'off',

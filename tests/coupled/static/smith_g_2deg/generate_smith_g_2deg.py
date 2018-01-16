@@ -284,7 +284,10 @@ def generate_solver_file(horseshoe=False):
                         'write_log': 'on',
                         'log_folder': os.path.dirname(__file__) + '/output/',
                         'log_file': case_name + '.log'}
-    config['BeamLoader'] = {'unsteady': 'off'}
+    config['BeamLoader'] = {'unsteady': 'off',
+                            'orientation': algebra.euler2quat(np.array([0.0,
+                                                                        alpha_rad,
+                                                                        beta*np.pi/180]))}
     config['StaticCoupled'] = {'print_info': 'on',
                                'structural_solver': 'NonLinearStatic',
                                'structural_solver_settings': {'print_info': 'off',
@@ -313,7 +316,8 @@ def generate_solver_file(horseshoe=False):
                                                         'beta': beta},
                                'max_iter': 50,
                                'n_load_steps': 3,
-                               'tolerance': 1e-7,
+                               # 'n_load_steps': 5,
+                               'tolerance': 1e-6,
                                'relaxation_factor': 0.0}
 
     if horseshoe is True:

@@ -269,6 +269,7 @@ def generate_naca_camber(M=0, P=0):
 
 
 def generate_solver_file(horseshoe=False):
+    import sharpy.utils.algebra as algebra
     file_name = route + '/' + case_name + '.solver.txt'
     # config = configparser.ConfigParser()
     import configobj
@@ -282,7 +283,10 @@ def generate_solver_file(horseshoe=False):
                         'write_log': 'on',
                         'log_folder': os.path.dirname(__file__) + '/output/',
                         'log_file': case_name + '.log'}
-    config['BeamLoader'] = {'unsteady': 'off'}
+    config['BeamLoader'] = {'unsteady': 'off',
+                            'orientation': algebra.euler2quat(np.array([0.0,
+                                                                        alpha_rad,
+                                                                        beta*np.pi/180]))}
     config['NonLinearStatic'] = {'print_info': 'off',
                                  'max_iterations': 99,
                                  'num_load_steps': 5,
