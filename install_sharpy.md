@@ -6,17 +6,17 @@ cd Code
 
 * clone xbeam
 ```
-git clone -b feature-coupled-dynamic https://github.com/ImperialCollegeLondon/xbeam
+git clone https://github.com/ImperialCollegeLondon/xbeam
 ```
 
 * clone uvlm
 ```
-git clone -b feature-coupled-dynamic https://github.com/ImperialCollegeLondon/uvlm
+git clone https://github.com/ImperialCollegeLondon/uvlm
 ```
 
 * clone sharpy
 ```
-git clone -b feature-coupled-dynamic https://github.com/ImperialCollegeLondon/sharpy
+git clone https://github.com/ImperialCollegeLondon/sharpy
 ```
 
 # create the conda environment
@@ -24,8 +24,8 @@ git clone -b feature-coupled-dynamic https://github.com/ImperialCollegeLondon/sh
 ```
 cd sharpy/utils
 conda env create -f sharpy_environment.yml
-source activate sharpy_env
 cd ../..
+source sharpy/bin/sharpy_vars.sh
 ```
 
 # compile xbeam
@@ -33,7 +33,7 @@ cd ../..
 cd xbeam
 make clean
 chmod +x run_make.sh
-sh run_make.sh
+make install
 ```
 
 # compile uvlm
@@ -45,19 +45,9 @@ sh run_make.sh
 cd ..
 ```
 
-# add variables to PATH and PYTHONPATH
-```
-cd sharpy
-export PYTHONPATH=$(pwd):$PYTHONPATH
-cd bin
-chmod +x ./sharpy
-export PATH=$(pwd):$PATH
-cd ../..
-```
-
 # check that sharpy works
 ```
-python sharpy/tests/runtests.py
+python -m unittest discover -s sharpy/tests -t sharpy/
 ```
 
 # running the sample coupled simulation
@@ -71,13 +61,6 @@ mkdir output
 python generate_coupled_configuration.py
 sharpy coupled_configuration.solver.txt
 ```
-Other simulations can be run from a new terminal by doing:
-1. Running `source activate sharpy_env`
-2. Add `sharpy` to the system `PATH`
-3. Add `sharpy/bin` to the system `PYTHONPATH`
-4. Navigate to the case files and run `sharpy <case_name>.solver.txt`
-
-My recommendation is to add the second and third steps to the `.bashrc` file.
 
 # NOTES
 1. Prescribed FoR motion coupled simulations are not up-to-date. 
