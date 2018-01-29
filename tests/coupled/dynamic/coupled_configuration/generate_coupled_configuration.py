@@ -7,58 +7,59 @@ import sharpy.utils.algebra as algebra
 case_name = 'coupled_configuration'
 route = os.path.dirname(os.path.realpath(__file__)) + '/'
 
-m_main = 10
-amplitude = 30
-period = 0.1
-dt_factor = 0.25
+m_main = 4
+amplitude = 2
+period = 1
+dt_factor = 1.
 
 # flight conditions
-u_inf = 10
-rho = 1.225*0.0
-alpha = 0
+u_inf = 25
+rho = 0.08891
+alpha = 7.00
 beta = 0
 sweep = 0*np.pi/180.
 dihedral = 0*np.pi/180.
 aspect_ratio = 16  # = total wing span (chord = 1)
+gravity = 'on'
 
 alpha_rad = alpha*np.pi/180
 
 dt = 1.0/m_main/u_inf*dt_factor
-num_steps = round(2.5/dt)
-# num_steps = 35
+num_steps = round(8/dt)
+num_steps = 1000
 # num_steps = round(1.85/dt)
 
 # main geometry data
 main_span = 10
 main_chord = 1.0
 main_tip_chord = 1.0
-main_ea = 0.35
+main_ea = 0.3
 main_sigma = 1
 main_airfoil_P = 0
 main_airfoil_M = 0
 
 fuselage_length = 8
-fuselage_sigma = 6
+fuselage_sigma = 100
 fuselage_mass_sigma = 0.5
 
 tail_span = 4.0
 tail_chord = 1.
-tail_ea = 0.33
-tail_sigma = 4
+tail_ea = 0.25
+tail_sigma = 100
 tail_mass_sigma = 1
 tail_airfoil_P = 0
 tail_airfoil_M = 0
-tail_twist = -0*np.pi/180
+tail_twist = 20*np.pi/180
 
 fin_span = 2.5
-fin_chord = 1
-fin_ea = 0.33
-fin_sigma = 1
+fin_chord = 0.3
+fin_ea = 0.5
+fin_sigma = 100
 fin_mass_sigma = 0.5
 fin_airfoil_P = 0
 fin_airfoil_M = 0
 
-n_surfaces = 4
+n_surfaces = 5
 force = 0
 momenty = 0
 momentx = 0
@@ -129,7 +130,7 @@ def generate_fem_file():
     num_stiffness = 4
     ea = 1e6
     ga = 1e6
-    gj = 1e6
+    gj = 1e4
     eiy = 1e4
     eiz = 5e6
     # sigma = 1000
@@ -137,8 +138,8 @@ def generate_fem_file():
     # sigma = 25
     # sigma = 10
     sigma = 10
-    sigma = 1
-    sigma = 0.8
+    sigma = 1.0
+    sigma = 5.0
     base_stiffness = sigma*np.diag([ea, ga, ga, gj, eiy, eiz])
     stiffness = np.zeros((num_stiffness, 6, 6))
     stiffness[0, :, :] = main_sigma*base_stiffness
@@ -190,10 +191,10 @@ def generate_fem_file():
     elem_mass[working_elem:working_elem + num_elem_main] = 0
     boundary_conditions[0] = 1
     boundary_conditions[working_node + num_node_main - 1] = -1
-    f = 4
+    f = 10
     app_forces[0, 0:2] = [-f*np.sin(sweep), f*np.cos(sweep)]
     lumped_mass_position[0, :] = [-1*np.sin(sweep), 1*np.cos(sweep), 0.0]
-    lumped_mass[0] = 5
+    lumped_mass[0] = 15
     working_elem += num_elem_main
     working_node += num_node_main
 
@@ -360,16 +361,17 @@ def generate_dyn_file():
 
     dynamic_forces_time = None
     with_dynamic_forces = False
-    with_forced_vel = True
+    with_forced_vel = False
     if with_dynamic_forces:
         f1 = 500
         dynamic_forces = np.zeros((num_node, 6))
         app_node = int(0)
         dynamic_forces[app_node, 2] = f1
         force_time = np.zeros((num_steps, ))
-        limit = round(20)
-        force_time[5:5+limit] = np.linspace(1.0, 1.0, limit)
-        force_time[5+limit:5+3*limit] = np.linspace(1.0, -2.0, 2*limit)
+        limit = round(0.2/dt)
+        start = round(0.1/dt)
+        force_time[start:start+limit] = np.linspace(1.0, 1.0, limit)
+        force_time[start+limit:start+3*limit] = np.linspace(1.0, -2.0, 2*limit)
         # force_time[5+limit:5+2*limit] = -1
 
         dynamic_forces_time = np.zeros((num_steps, num_node, 6))
@@ -411,9 +413,9 @@ def generate_aero_file():
     surface_m = np.zeros((n_surfaces, ), dtype=int)
     m_distribution = 'uniform'
     aero_node = np.zeros((num_node,), dtype=bool)
-    twist = np.zeros((num_node,))
-    chord = np.zeros((num_node,))
-    elastic_axis = np.zeros((num_node,))
+    twist = np.zeros((num_elem, num_node_elem))
+    chord = np.zeros((num_elem, num_node_elem,))
+    elastic_axis = np.zeros((num_elem, num_node_elem,))
 
     working_elem = 0
     working_node = 0
@@ -423,8 +425,15 @@ def generate_aero_file():
     surface_distribution[working_elem:working_elem + num_elem_main] = i_surf
     surface_m[i_surf] = m_main
     aero_node[working_node:working_node + num_node_main] = True
-    chord[working_node:working_node + num_node_main] = np.linspace(main_chord, main_tip_chord, num_node_main)
-    elastic_axis[working_node:working_node + num_node_main] = main_ea
+    temp_chord = np.linspace(main_chord, main_tip_chord, num_node_main)
+    node_counter = 0
+    for i_elem in range(working_elem, working_elem + num_elem_main):
+        for i_local_node in range(num_node_elem):
+            if not i_local_node == 0:
+                node_counter += 1
+            chord[i_elem, i_local_node] = temp_chord[node_counter]
+            elastic_axis[i_elem, i_local_node] = main_ea
+
     working_elem += num_elem_main
     working_node += num_node_main
 
@@ -434,9 +443,17 @@ def generate_aero_file():
     surface_distribution[working_elem:working_elem + num_elem_main] = i_surf
     surface_m[i_surf] = m_main
     aero_node[working_node:working_node + num_node_main - 1] = True
-    chord[working_node:working_node + num_node_main - 1] = np.linspace(main_chord, main_tip_chord, num_node_main)[1:]
+    # chord[working_node:working_node + num_node_main - 1] = np.linspace(main_chord, main_tip_chord, num_node_main)[1:]
     # chord[working_node:working_node + num_node_main - 1] = main_chord
-    elastic_axis[working_node:working_node + num_node_main - 1] = main_ea
+    # elastic_axis[working_node:working_node + num_node_main - 1] = main_ea
+    temp_chord = np.linspace(main_chord, main_tip_chord, num_node_main)
+    node_counter = 0
+    for i_elem in range(working_elem, working_elem + num_elem_main):
+        for i_local_node in range(num_node_elem):
+            if not i_local_node == 0:
+                node_counter += 1
+            chord[i_elem, i_local_node] = temp_chord[node_counter]
+            elastic_axis[i_elem, i_local_node] = main_ea
     working_elem += num_elem_main
     working_node += num_node_main - 1
 
@@ -444,12 +461,16 @@ def generate_aero_file():
     working_node += num_node_fuselage - 1 - 1
     #
     # # fin (surface 2, beam 3)
-    # i_surf = 2
-    # airfoil_distribution[working_node:working_node + num_node_fin] = 0
-    # surface_distribution[working_elem:working_elem + num_elem_fin] = i_surf
-    # surface_m[i_surf] = m_fin
-    # aero_node[working_node:working_node + num_node_fin] = True
+    i_surf = 2
+    airfoil_distribution[working_node:working_node + num_node_fin] = 0
+    surface_distribution[working_elem:working_elem + num_elem_fin] = i_surf
+    surface_m[i_surf] = m_fin
+    aero_node[working_node:working_node + num_node_fin] = True
     # chord[working_node:working_node + num_node_fin] = fin_chord
+    for i_elem in range(working_elem, working_elem + num_elem_fin):
+        for i_local_node in range(num_node_elem):
+            chord[i_elem, i_local_node] = fin_chord
+            elastic_axis[i_elem, i_local_node] = fin_ea
     # twist[end_of_fuselage_node] = 0
     # twist[working_node:] = 0
     # elastic_axis[working_node:working_node + num_node_main] = fin_ea
@@ -457,27 +478,41 @@ def generate_aero_file():
     working_node += num_node_fin - 1
     #
     # # # right tail (surface 3, beam 4)
-    i_surf = 2
+    i_surf = 3
     airfoil_distribution[working_node:working_node + num_node_tail] = 0
     surface_distribution[working_elem:working_elem + num_elem_tail] = i_surf
     surface_m[i_surf] = m_tail
     # XXX not very elegant
     aero_node[working_node:] = True
-    chord[working_node:working_node + num_node_tail] = tail_chord
-    elastic_axis[working_node:working_node + num_node_main] = tail_ea
-    twist[working_node:working_node + num_node_tail] = -tail_twist
+    # chord[working_node:working_node + num_node_tail] = tail_chord
+    # elastic_axis[working_node:working_node + num_node_main] = tail_ea
+    for i_elem in range(working_elem, working_elem + num_elem_tail):
+        for i_local_node in range(num_node_elem):
+            twist[i_elem, i_local_node] = -tail_twist
+    for i_elem in range(working_elem, working_elem + num_elem_tail):
+        for i_local_node in range(num_node_elem):
+            chord[i_elem, i_local_node] = tail_chord
+            elastic_axis[i_elem, i_local_node] = tail_ea
+
     working_elem += num_elem_tail
     working_node += num_node_tail
     #
     # # left tail (surface 4, beam 5)
-    i_surf = 3
+    i_surf = 4
     airfoil_distribution[working_node:working_node + num_node_tail-1] = 0
     surface_distribution[working_elem:working_elem + num_elem_tail] = i_surf
     surface_m[i_surf] = m_tail
     aero_node[working_node:working_node + num_node_tail - 1] = True
-    chord[working_node:working_node + num_node_tail] = tail_chord
-    elastic_axis[working_node:working_node + num_node_main] = tail_ea
-    twist[working_node:working_node + num_node_tail-1] = -tail_twist
+    # chord[working_node:working_node + num_node_tail] = tail_chord
+    # elastic_axis[working_node:working_node + num_node_main] = tail_ea
+    # twist[working_elem:working_elem + num_elem_tail] = -tail_twist
+    for i_elem in range(working_elem, working_elem + num_elem_tail):
+        for i_local_node in range(num_node_elem):
+            twist[i_elem, i_local_node] = -tail_twist
+    for i_elem in range(working_elem, working_elem + num_elem_tail):
+        for i_local_node in range(num_node_elem):
+            chord[i_elem, i_local_node] = tail_chord
+            elastic_axis[i_elem, i_local_node] = tail_ea
     working_elem += num_elem_tail
     working_node += num_node_tail
 
@@ -539,7 +574,7 @@ def generate_solver_file(horseshoe=False):
                                  'AerogridLoader',
                                  'StaticCoupled',
                                  # 'DynamicCoupled',
-                                 'DynamicPrescribedCoupled',
+                                 # 'DynamicPrescribedCoupled',
                                  'AerogridPlot',
                                  'BeamPlot',
                                  'AeroForcesCalculator',
@@ -559,8 +594,8 @@ def generate_solver_file(horseshoe=False):
                                                               'max_iterations': 150,
                                                               'num_load_steps': 10,
                                                               'delta_curved': 1e-18,
-                                                              'min_delta': 1e-7,
-                                                              'gravity_on': 'off',
+                                                              'min_delta': 1e-5,
+                                                              'gravity_on': gravity,
                                                               'gravity': 9.81,
                                                               'orientation': algebra.euler2quat(np.array([0.0,
                                                                                                           alpha_rad,
@@ -588,9 +623,9 @@ def generate_solver_file(horseshoe=False):
                                 'structural_solver_settings': {'print_info': 'off',
                                                                'max_iterations': 950,
                                                                'delta_curved': 1e-6,
-                                                               'min_delta': 1e-6,
-                                                               'newmark_damp': 0*5e-2,
-                                                               'gravity_on': 'off',
+                                                               'min_delta': 1e-5,
+                                                               'newmark_damp': 5e-3,
+                                                               'gravity_on': gravity,
                                                                'gravity': 9.81,
                                                                'num_steps': num_steps,
                                                                'dt': dt},
@@ -599,7 +634,7 @@ def generate_solver_file(horseshoe=False):
                                                          'horseshoe': 'off',
                                                          'num_cores': 4,
                                                          'n_rollup': 100,
-                                                         'convection_scheme': 2,
+                                                         'convection_scheme': 3,
                                                          'rollup_dt': main_chord/m_main/u_inf,
                                                          'rollup_aic_refresh': 1,
                                                          'rollup_tolerance': 1e-4,
@@ -607,9 +642,9 @@ def generate_solver_file(horseshoe=False):
                                                          'velocity_field_input': {'u_inf': u_inf,
                                                                                   'u_inf_direction': [1., 0, 0],
                                                                                   'gust_shape': '1-cos',
-                                                                                  'gust_length': 10,
-                                                                                  'gust_intensity': 0.4*u_inf,
-                                                                                  'offset': 2.0,
+                                                                                  'gust_length': 15,
+                                                                                  'gust_intensity': 0.2*u_inf,
+                                                                                  'offset': 10.0,
                                                                                   'span': main_span},
                                                          'rho': rho,
                                                          'alpha': alpha_rad,
@@ -620,20 +655,20 @@ def generate_solver_file(horseshoe=False):
                                 'fsi_tolerance': 1e-6,
                                 'relaxation_factor': 0.7,
                                 'minimum_steps': 2,
-                                'relaxtion_steps': 15,
+                                'relaxation_steps': 3,
                                 'n_time_steps': num_steps,
                                 'dt': dt,
-                                'structural_substeps': 1}
+                                'structural_substeps': 0}
     config['DynamicPrescribedCoupled'] = {'print_info': 'on',
                                           'structural_solver': 'NonLinearDynamicPrescribedStep',
                                           'structural_solver_settings': {'print_info': 'off',
                                                                          'max_iterations': 150,
                                                                          'num_load_steps': 15,
                                                                          'delta_curved': 1e-5,
-                                                                         'min_delta': 1e-7,
+                                                                         'min_delta': 1e-5,
                                                                          'newmark_damp': 0*5e-4,
-                                                                         'gravity_on': 'off',
-                                                                         'gravity': 9.754,
+                                                                         'gravity_on': gravity,
+                                                                         'gravity': 9.81,
                                                                          'num_steps': num_steps,
                                                                          'dt': dt},
                                           'aero_solver': 'StepUvlm',
@@ -641,7 +676,7 @@ def generate_solver_file(horseshoe=False):
                                                                    'horseshoe': 'off',
                                                                    'num_cores': 4,
                                                                    'n_rollup': 50,
-                                                                   'convection_scheme': 3,
+                                                                   'convection_scheme': 2,
                                                                    'rollup_dt': main_chord/m_main/u_inf,
                                                                    'rollup_aic_refresh': 1,
                                                                    'rollup_tolerance': 1e-4,
@@ -653,11 +688,14 @@ def generate_solver_file(horseshoe=False):
                                                                    'beta': beta,
                                                                    'n_time_steps': num_steps,
                                                                    'dt': dt},
-                                          'max_iter': 100,
-                                          'tolerance': 1e-6,
-                                          'relaxation_factor': 0.,
+                                          'fsi_substeps': 100,
+                                          'fsi_tolerance': 1e-6,
+                                          'relaxation_factor': 0.2,
+                                          'minimum_steps': 1,
+                                          'relaxation_steps': 15,
                                           'n_time_steps': num_steps,
-                                          'dt': dt}
+                                          'dt': dt,
+                                          'structural_substeps': 0}
 
     if horseshoe is True:
         config['AerogridLoader'] = {'unsteady': 'on',
@@ -667,7 +705,7 @@ def generate_solver_file(horseshoe=False):
     else:
         config['AerogridLoader'] = {'unsteady': 'on',
                                     'aligned_grid': 'on',
-                                    'mstar': 50,
+                                    'mstar': 30,
                                     'freestream_dir': ['1', '0', '0']}
     config['AerogridPlot'] = {'folder': route + '/output/',
                               'include_rbm': 'on',
@@ -699,4 +737,3 @@ generate_fem_file()
 generate_dyn_file()
 generate_solver_file(horseshoe=False)
 generate_aero_file()
-
