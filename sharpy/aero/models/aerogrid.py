@@ -194,11 +194,18 @@ class Aerogrid(object):
     #                                    orientation_in=aero_settings['freestream_dir'],
     #                                    calculate_zeta_dot=True))
 
-    # def generate_zeta_temp(self, beam, aero_settings, ts=-1, beam_ts=-1):
     def generate_zeta_timestep_info(self, structure_tstep, aero_tstep, beam, aero_settings):
         global_node_in_surface = []
         for i_surf in range(self.n_surf):
             global_node_in_surface.append([])
+
+        # check that we have control surface information
+        try:
+            self.aero_dict['control_surface']
+            with_control_surfaces = True
+        except AttributeError:
+            with_control_surfaces = False
+
         # one surface per element
         for i_elem in range(self.n_elem):
             i_surf = self.aero_dict['surface_distribution'][i_elem]
@@ -216,14 +223,14 @@ class Aerogrid(object):
                 else:
                     global_node_in_surface[i_surf].append(i_global_node)
 
-                master_elem, master_elem_node = beam.master[i_elem, i_local_node, :]
-                master_elem = int(master_elem)
-                master_elem_node = int(master_elem_node)
-                if master_elem < 0:
-                    master_elem = i_elem
-                    master_elem_node = i_local_node
+                # master_elem, master_elem_node = beam.master[i_elem, i_local_node, :]
+                # master_elem = int(master_elem)
+                # master_elem_node = int(master_elem_node)
+                # if master_elem < 0:
+                #     master_elem = i_elem
+                #     master_elem_node = i_local_node
 
-                # temp!!!!!!!!!!!!
+                # not necessary to look for the master elem
                 master_elem = i_elem
                 master_elem_node = i_local_node
 
@@ -235,23 +242,42 @@ class Aerogrid(object):
                     ii_surf = self.struct2aero_mapping[i_global_node][i]['i_surf']
                     if ii_surf == i_surf:
                         break
-
                 # make sure it found it
                 if i_n == -1 or ii_surf == -1:
                     raise AssertionError('Error 12958: Something failed with the mapping in aerogrid.py. Check/report!')
+
+                # control surface implementation
+                control_surface_info = None
+                if with_control_surfaces:
+                # 1) check that this node and elem have a control surface
+                    if self.aero_dict['control_surface'][i_elem, i_local_node] >= 0:
+                        i_control_surface = self.aero_dict['control_surface'][i_elem, i_local_node]
+                # 2) type of control surface + write info
+                        control_surface_info = dict()
+                        if self.aero_dict['control_surface_type'][i_control_surface] == 0:
+                            control_surface_info['type'] = 'static'
+                            control_surface_info['deflection'] = self.aero_dict['control_surface_deflection'][i_control_surface]
+                            control_surface_info['chord'] = self.aero_dict['control_surface_chord'][i_control_surface]
+                        elif self.aero_dict['control_surface_type'][i_control_surface] == 1:
+                            raise NotImplementedError('dynamic control surfaces are not yet implemented')
+                        elif self.aero_dict['control_surface_type'][i_control_surface] == 2:
+                            raise NotImplementedError('control-type control surfaces are not yet implemented')
+                        else:
+                            raise NotImplementedError(str(self.aero_dict['control_surface_type'][i_control_surface]) +
+                                ' control surfaces are not yet implemented')
+
+
 
                 node_info = dict()
                 node_info['i_node'] = i_global_node
                 node_info['i_local_node'] = i_local_node
                 node_info['chord'] = self.aero_dict['chord'][i_elem, i_local_node]
                 node_info['eaxis'] = self.aero_dict['elastic_axis'][i_elem, i_local_node]
-                # TODO is here where the twist treatment has to change.
-                # NOTE check in the function down here too
                 node_info['twist'] = self.aero_dict['twist'][i_elem, i_local_node]
-                # node_info['twist'] = self.aero_dict['twist'][i_global_node]
                 node_info['M'] = self.aero_dimensions[i_surf, 0]
                 node_info['M_distribution'] = self.aero_dict['m_distribution'].decode('ascii')
                 node_info['airfoil'] = self.aero_dict['airfoil_distribution'][i_global_node]
+                node_info['control_surface'] = control_surface_info
                 node_info['beam_coord'] = structure_tstep.pos[i_global_node, :]
                 node_info['pos_dot'] = structure_tstep.pos_dot[i_global_node, :]
                 node_info['beam_psi'] = structure_tstep.psi[master_elem, master_elem_node, :]
@@ -439,6 +465,22 @@ def generate_strip(node_info, airfoil_db, aligned_grid, orientation_in=np.array(
     for i_M in range(node_info['M'] + 1):
         strip_coordinates_b_frame[1, i_M] -= node_info['eaxis']
 
+    chord_line_b_frame = strip_coordinates_b_frame[:, -1] - strip_coordinates_b_frame[:, 0]
+
+    # control surface deflection
+    if node_info['control_surface'] is not None:
+        b_frame_hinge_coords = strip_coordinates_b_frame[:, node_info['M'] - node_info['control_surface']['chord']]
+        for i_M in range(node_info['M'] - node_info['control_surface']['chord'], node_info['M'] + 1):
+            relative_coords = strip_coordinates_b_frame[:, i_M] - b_frame_hinge_coords
+            # rotate the control surface
+            relative_coords = np.dot(algebra.rotation3d_x(node_info['control_surface']['deflection']),
+                                     relative_coords)
+            # restore coordinates
+            relative_coords += b_frame_hinge_coords
+
+            # substitute with new coordinates
+            strip_coordinates_b_frame[:, i_M] = relative_coords
+
     # chord scaling
     strip_coordinates_b_frame *= node_info['chord']
 
@@ -453,7 +495,7 @@ def generate_strip(node_info, airfoil_db, aligned_grid, orientation_in=np.array(
 
     # sweep angle correction
     # angle between orientation_in and chord line
-    chord_line_b_frame = strip_coordinates_b_frame[:, -1] - strip_coordinates_b_frame[:, 0]
+    # chord_line_b_frame = strip_coordinates_b_frame[:, -1] - strip_coordinates_b_frame[:, 0]
     chord_line_a_frame = np.dot(Cab, chord_line_b_frame)
     sweep_angle = algebra.angle_between_vectors_sign(orientation_in, chord_line_a_frame, np.array([0, 0, 1]))
     # rotation matrix

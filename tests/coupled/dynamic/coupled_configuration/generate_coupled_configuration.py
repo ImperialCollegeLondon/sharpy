@@ -21,12 +21,13 @@ sweep = 0*np.pi/180.
 dihedral = 0*np.pi/180.
 aspect_ratio = 16  # = total wing span (chord = 1)
 gravity = 'on'
+cs_deflection = 10*np.pi/180
 
 alpha_rad = alpha*np.pi/180
 
 dt = 1.0/m_main/u_inf*dt_factor
 num_steps = round(8/dt)
-num_steps = 1000
+num_steps = 50
 # num_steps = round(1.85/dt)
 
 # main geometry data
@@ -49,7 +50,7 @@ tail_sigma = 100
 tail_mass_sigma = 1
 tail_airfoil_P = 0
 tail_airfoil_M = 0
-tail_twist = 20*np.pi/180
+tail_twist = 0*np.pi/180
 
 fin_span = 2.5
 fin_chord = 0.3
@@ -126,6 +127,7 @@ def generate_fem_file():
     frame_of_reference_delta = np.zeros((num_elem, num_node_elem, 3))
     # connectivities
     conn = np.zeros((num_elem, num_node_elem), dtype=int)
+
     # stiffness
     num_stiffness = 4
     ea = 1e6
@@ -416,6 +418,18 @@ def generate_aero_file():
     twist = np.zeros((num_elem, num_node_elem))
     chord = np.zeros((num_elem, num_node_elem,))
     elastic_axis = np.zeros((num_elem, num_node_elem,))
+    # control surfaces
+    n_control_surfaces = 1
+    control_surface = np.zeros((num_elem, num_node_elem), dtype=int) - 1
+    control_surface_type = np.zeros((n_control_surfaces, ), dtype=int)
+    control_surface_deflection = np.zeros((n_control_surfaces, ))
+    control_surface_chord = np.zeros((n_control_surfaces, ), dtype=int)
+
+    # control surface type 0 = static
+    # control surface type 1 = dynamic
+    control_surface_type[0] = 0
+    control_surface_deflection[0] = cs_deflection
+    control_surface_chord[0] = 1
 
     working_elem = 0
     working_node = 0
@@ -493,6 +507,7 @@ def generate_aero_file():
         for i_local_node in range(num_node_elem):
             chord[i_elem, i_local_node] = tail_chord
             elastic_axis[i_elem, i_local_node] = tail_ea
+            control_surface[i_elem, i_local_node] = 0
 
     working_elem += num_elem_tail
     working_node += num_node_tail
@@ -513,6 +528,7 @@ def generate_aero_file():
         for i_local_node in range(num_node_elem):
             chord[i_elem, i_local_node] = tail_chord
             elastic_axis[i_elem, i_local_node] = tail_ea
+            control_surface[i_elem, i_local_node] = 0
     working_elem += num_elem_tail
     working_node += num_node_tail
 
@@ -545,6 +561,11 @@ def generate_aero_file():
         aero_node_input = h5file.create_dataset('aero_node', data=aero_node)
         elastic_axis_input = h5file.create_dataset('elastic_axis', data=elastic_axis)
 
+        control_surface_input = h5file.create_dataset('control_surface', data=control_surface)
+        control_surface_deflection_input = h5file.create_dataset('control_surface_deflection', data=control_surface_deflection)
+        control_surface_chord_input = h5file.create_dataset('control_surface_chord', data=control_surface_chord)
+        control_surface_types_input = h5file.create_dataset('control_surface_type', data=control_surface_type)
+
 
 def generate_naca_camber(M=0, P=0):
     m = M*1e-2
@@ -573,7 +594,7 @@ def generate_solver_file(horseshoe=False):
                         'flow': ['BeamLoader',
                                  'AerogridLoader',
                                  'StaticCoupled',
-                                 # 'DynamicCoupled',
+                                 'DynamicCoupled',
                                  # 'DynamicPrescribedCoupled',
                                  'AerogridPlot',
                                  'BeamPlot',
@@ -643,7 +664,7 @@ def generate_solver_file(horseshoe=False):
                                                                                   'u_inf_direction': [1., 0, 0],
                                                                                   'gust_shape': '1-cos',
                                                                                   'gust_length': 15,
-                                                                                  'gust_intensity': 0.2*u_inf,
+                                                                                  'gust_intensity': 0.*u_inf,
                                                                                   'offset': 10.0,
                                                                                   'span': main_span},
                                                          'rho': rho,
