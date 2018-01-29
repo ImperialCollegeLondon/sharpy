@@ -86,6 +86,12 @@ class AeroTimeStepInfo(object):
                                              dimensions_star[i_surf, 1]),
                                             dtype=ct.c_double))
 
+        self.gamma_dot = []
+        for i_surf in range(self.n_surf):
+            self.gamma_dot.append(np.zeros((dimensions[i_surf, 0],
+                                            dimensions[i_surf, 1]),
+                                           dtype=ct.c_double))
+
         # total forces
         self.inertial_total_forces = np.zeros((self.n_surf, 6))
         self.body_total_forces = np.zeros((self.n_surf, 6))
@@ -129,6 +135,9 @@ class AeroTimeStepInfo(object):
         # allocate gamma and gamma star matrices
         for i_surf in range(copied.n_surf):
             copied.gamma[i_surf] = self.gamma[i_surf].astype(dtype=ct.c_double, copy=True, order='C')
+
+        for i_surf in range(copied.n_surf):
+            copied.gamma_dot[i_surf] = self.gamma_dot[i_surf].astype(dtype=ct.c_double, copy=True, order='C')
 
         for i_surf in range(copied.n_surf):
             copied.gamma_star[i_surf] = self.gamma_star[i_surf].astype(dtype=ct.c_double, copy=True, order='C')
@@ -180,6 +189,10 @@ class AeroTimeStepInfo(object):
         for i_surf in range(self.n_surf):
             self.ct_gamma_list.append(self.gamma[i_surf][:, :].reshape(-1))
 
+        self.ct_gamma_dot_list = []
+        for i_surf in range(self.n_surf):
+            self.ct_gamma_dot_list.append(self.gamma_dot[i_surf][:, :].reshape(-1))
+
         self.ct_gamma_star_list = []
         for i_surf in range(self.n_surf):
             self.ct_gamma_star_list.append(self.gamma_star[i_surf][:, :].reshape(-1))
@@ -215,6 +228,8 @@ class AeroTimeStepInfo(object):
                            (* [np.ctypeslib.as_ctypes(array) for array in self.ct_u_ext_star_list]))
         self.ct_p_gamma = ((ct.POINTER(ct.c_double)*len(self.ct_gamma_list))
                            (* [np.ctypeslib.as_ctypes(array) for array in self.ct_gamma_list]))
+        self.ct_p_gamma_dot = ((ct.POINTER(ct.c_double)*len(self.ct_gamma_dot_list))
+                               (* [np.ctypeslib.as_ctypes(array) for array in self.ct_gamma_dot_list]))
         self.ct_p_gamma_star = ((ct.POINTER(ct.c_double)*len(self.ct_gamma_star_list))
                                 (* [np.ctypeslib.as_ctypes(array) for array in self.ct_gamma_star_list]))
         self.ct_p_normals = ((ct.POINTER(ct.c_double)*len(self.ct_normals_list))
@@ -262,6 +277,11 @@ class AeroTimeStepInfo(object):
 
         try:
             del self.ct_p_gamma
+        except AttributeError:
+            pass
+
+        try:
+            del self.ct_p_gamma_dot
         except AttributeError:
             pass
 

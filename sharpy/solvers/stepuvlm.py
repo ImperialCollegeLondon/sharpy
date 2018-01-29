@@ -120,6 +120,14 @@ class StepUvlm(BaseSolver):
                             convect_wake=convect_wake,
                             dt=dt)
         # print('current step max unsforce: %f' % aero_tstep.dynamic_forces[0].max())
+
+        # calculate unsteady (added mass) forces:
+        self.data.aero.compute_gamma_dot(dt, aero_tstep, self.data.aero.timestep_info[-2:])
+        uvlmlib.uvlm_calculate_unsteady_forces(aero_tstep,
+                                               structure_tstep,
+                                               self.settings,
+                                               convect_wake=convect_wake,
+                                               dt=dt)
         return self.data
 
     def add_step(self):

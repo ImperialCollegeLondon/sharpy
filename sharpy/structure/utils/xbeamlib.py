@@ -288,11 +288,13 @@ def cbeam3_solv_nlndyn(beam, settings):
         beam.timestep_info[i].psi_dot[:] = psi_dot_def_history[i, :]
 
 
-f_cbeam3_solv_nlndyn_step = xbeamlib.cbeam3_solv_nlndyn_step_python
-f_cbeam3_solv_nlndyn_step.restype = None
 
+def cbeam3_step_nlndyn(beam, settings, ts, tstep=None, dt=None):
+    f_cbeam3_solv_nlndyn_step = xbeamlib.cbeam3_solv_nlndyn_step_python
+    f_cbeam3_solv_nlndyn_step.restype = None
 
-def cbeam3_step_nlndyn(beam, settings, ts, dt=None):
+    if tstep is None:
+        tstep = beam.data.structure.timestep_info[-1]
 
     n_elem = ct.c_int(beam.num_elem)
     n_nodes = ct.c_int(beam.num_node)
@@ -310,9 +312,9 @@ def cbeam3_step_nlndyn(beam, settings, ts, dt=None):
     xbopts.NewmarkDamp = settings['newmark_damp']
     xbopts.gravity_on = settings['gravity_on']
     xbopts.gravity = settings['gravity']
-    xbopts.gravity_dir_x = ct.c_double(beam.timestep_info[ts].gravity_vector_body[0])
-    xbopts.gravity_dir_y = ct.c_double(beam.timestep_info[ts].gravity_vector_body[1])
-    xbopts.gravity_dir_z = ct.c_double(beam.timestep_info[ts].gravity_vector_body[2])
+    xbopts.gravity_dir_x = ct.c_double(tstep.gravity_vector_inertial[0])
+    xbopts.gravity_dir_y = ct.c_double(tstep.gravity_vector_inertial[1])
+    xbopts.gravity_dir_z = ct.c_double(tstep.gravity_vector_inertial[2])
 
     # here we only need to set the flags at True, all the forces are follower
     xbopts.FollowerForce = ct.c_bool(True)
@@ -345,15 +347,15 @@ def cbeam3_step_nlndyn(beam, settings, ts, dt=None):
                               ct.byref(xbopts),
                               beam.ini_info.pos.ctypes.data_as(doubleP),
                               beam.ini_info.psi.ctypes.data_as(doubleP),
-                              beam.timestep_info[ts].pos.ctypes.data_as(doubleP),
-                              beam.timestep_info[ts].pos_dot.ctypes.data_as(doubleP),
-                              beam.timestep_info[ts].psi.ctypes.data_as(doubleP),
-                              beam.timestep_info[ts].psi_dot.ctypes.data_as(doubleP),
-                              beam.timestep_info[ts].steady_applied_forces.ctypes.data_as(doubleP),
-                              beam.timestep_info[ts].unsteady_applied_forces.ctypes.data_as(doubleP),
-                              beam.timestep_info[ts].quat.ctypes.data_as(doubleP),
-                              beam.timestep_info[ts].for_vel.ctypes.data_as(doubleP),
-                              beam.timestep_info[ts].for_acc.ctypes.data_as(doubleP)
+                              tstep.pos.ctypes.data_as(doubleP),
+                              tstep.pos_dot.ctypes.data_as(doubleP),
+                              tstep.psi.ctypes.data_as(doubleP),
+                              tstep.psi_dot.ctypes.data_as(doubleP),
+                              tstep.steady_applied_forces.ctypes.data_as(doubleP),
+                              tstep.unsteady_applied_forces.ctypes.data_as(doubleP),
+                              tstep.quat.ctypes.data_as(doubleP),
+                              tstep.for_vel.ctypes.data_as(doubleP),
+                              tstep.for_acc.ctypes.data_as(doubleP)
                               )
 
 

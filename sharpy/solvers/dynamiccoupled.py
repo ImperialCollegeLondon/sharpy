@@ -115,7 +115,7 @@ class DynamicCoupled(BaseSolver):
             structural_kstep = self.data.structure.timestep_info[-1].copy()
 
             for k in range(self.settings['fsi_substeps'].value + 1):
-                if k == self.settings['fsi_substeps'].value:
+                if k == self.settings['fsi_substeps'].value and not self.settings['fsi_substeps'] == 0:
                     cout.cout_wrap('The FSI solver did not converge!!!')
                     break
                     # TODO Raise Exception

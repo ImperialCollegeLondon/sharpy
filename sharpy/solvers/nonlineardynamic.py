@@ -70,6 +70,10 @@ class NonLinearDynamic(BaseSolver):
         # allocate timestep_info
         for i in range(self.settings['num_steps'].value):
             self.data.structure.add_timestep(self.data.structure.timestep_info)
+            if i>0:
+                self.data.structure.timestep_info[i].unsteady_applied_forces[:] = self.data.structure.dynamic_input[i - 1]['dynamic_forces']
+            self.data.structure.timestep_info[i].steady_applied_forces[:] = self.data.structure.ini_info.steady_applied_forces
+
 
     def run(self):
         prescribed_motion = False

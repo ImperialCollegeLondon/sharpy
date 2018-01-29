@@ -64,23 +64,26 @@ class NonLinearDynamicPrescribedStep(BaseSolver):
         # load info from dyn dictionary
         self.data.structure.add_unsteady_information(self.data.structure.dyn_dict, self.settings['num_steps'].value)
 
-    def run(self, dt=None):
+
+    def run(self, structural_step=None, dt=None):
         xbeamlib.cbeam3_step_nlndyn(self.data.structure,
                                     self.settings,
                                     self.data.ts,
+                                    structural_step,
                                     dt=dt)
-        if self.data.ts > 0:
-            self.data.structure.integrate_position(self.data.ts, self.settings['dt'].value)
+        # if self.data.ts > 0:
+        #     self.data.structure.integrate_position(self.data.ts, self.settings['dt'].value)
         return self.data
 
     def add_step(self):
-        self.next_step()
+        self.data.structure.next_step()
 
     def next_step(self):
-        self.data.structure.next_step()
-        ts = len(self.data.structure.timestep_info) - 1
-        if ts > 0:
-            self.data.structure.timestep_info[ts].for_vel[:] = self.data.structure.dynamic_input[ts - 1]['for_vel']
-            self.data.structure.timestep_info[ts].for_acc[:] = self.data.structure.dynamic_input[ts - 1]['for_acc']
-            self.data.structure.timestep_info[ts].unsteady_applied_forces[:] = self.data.structure.dynamic_input[ts - 1]['dynamic_forces']
+        pass
+        # self.data.structure.next_step()
+        # ts = len(self.data.structure.timestep_info) - 1
+        # if ts > 0:
+        #     self.data.structure.timestep_info[ts].for_vel[:] = self.data.structure.dynamic_input[ts - 1]['for_vel']
+        #     self.data.structure.timestep_info[ts].for_acc[:] = self.data.structure.dynamic_input[ts - 1]['for_acc']
+        #     self.data.structure.timestep_info[ts].unsteady_applied_forces[:] = self.data.structure.dynamic_input[ts - 1]['dynamic_forces']
 
