@@ -1,6 +1,7 @@
 import textwrap
 import colorama
 import os
+import numpy as np
 
 
 class Writer(object):
@@ -105,13 +106,58 @@ class Writer(object):
 
 
 cout_wrap = None
+
+
 def start_writer():
     global cout_wrap
     cout_wrap = Writer()
+
 
 def finish_writer():
     global cout_wrap
     cout_wrap.close()
     cout_wrap = None
+
+
+# table output for residuals
+class TablePrinter(object):
+    global cout_wrap
+
+    def __init__(self, n_fields=3, field_length=12, field_types=[['g']]*100):
+        self.n_fields = n_fields
+        self.field_length = np.full((self.n_fields, ), field_length, dtype=int)
+        self.field_names = None
+        self.field_types = field_types
+
+        if cout_wrap is None:
+            start_writer()
+
+    def print_header(self, field_names):
+        self.field_names = field_names
+        if not len(self.field_names) == self.n_fields:
+            raise Exception('len(field_names) /= n_fields')
+        for i_name in range(self.n_fields):
+            name = self.field_names[i_name]
+            if len(name) >= self.field_length[i_name]:
+                name = name[0:self.field_length[i_name]]
+
+        string = ''
+        for i_field in range(self.n_fields):
+            string += '|{0[' + str(i_field) + ']:^' + str(self.field_length[i_field]) + '}'
+
+        string += '|'
+        cout_wrap(string.format(self.field_names))
+        string = '-'*(sum(self.field_length) + self.n_fields + 1)
+        cout_wrap(string)
+
+    def print_line(self, line_data):
+        string = ''
+        for i_field in range(self.n_fields):
+            string += '|{0[' + str(i_field) + ']:<' + str(self.field_length[i_field]) + self.field_types[i_field] + '}'
+
+        string += '|'
+        cout_wrap(string.format(line_data))
+
+
 
 

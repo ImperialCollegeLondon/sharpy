@@ -74,6 +74,7 @@ class DynamicCoupled(BaseSolver):
         self.dt = 0.
 
         self.predictor = False
+        self.residual_table = None
 
     def initialise(self, data):
         self.data = data
@@ -89,6 +90,12 @@ class DynamicCoupled(BaseSolver):
         self.aero_solver = solver_interface.initialise_solver(self.settings['aero_solver'])
         self.aero_solver.initialise(self.structural_solver.data, self.settings['aero_solver_settings'])
         self.data = self.aero_solver.data
+
+        self.residual_table = cout.TablePrinter(5, 14, ['g', 'f', 'g', 'f', 'e'])
+        self.residual_table.field_length[0] = 6
+        self.residual_table.field_length[1] = 6
+        self.residual_table.field_length[1] = 6
+        self.residual_table.print_header(['ts', 't', 'iter', 'residual', 'norm(acc_for)'])
 
     def cleanup_timestep_info(self):
         if max(len(self.data.aero.timestep_info), len(self.data.structure.timestep_info)) > 1:
@@ -108,8 +115,6 @@ class DynamicCoupled(BaseSolver):
 
         # dynamic simulations start at tstep == 1, 0 is reserved for the initial state
         for self.data.ts in range(1, self.settings['n_time_steps'].value + 1):
-            cout.cout_wrap('\nit = %u' % self.data.ts)
-
             aero_kstep = self.data.aero.timestep_info[-1].copy()
             previous_kstep = self.data.structure.timestep_info[-1].copy()
             structural_kstep = self.data.structure.timestep_info[-1].copy()
@@ -120,8 +125,7 @@ class DynamicCoupled(BaseSolver):
                     break
                     # TODO Raise Exception
 
-                cout.cout_wrap(str(k))
-                # # generate new grid (already rotated)
+                # generate new grid (already rotated)
                 self.aero_solver.update_custom_grid(structural_kstep, aero_kstep)
 
                 # run the solver
@@ -137,7 +141,6 @@ class DynamicCoupled(BaseSolver):
                                 structural_kstep,
                                 1.0)
 
-                # relax_forces(structural_kstep, previous_kstep, self.relaxation_factor(k))
                 # run structural solver
                 self.data = self.structural_solver.run(structural_step=structural_kstep)
 
@@ -146,13 +149,19 @@ class DynamicCoupled(BaseSolver):
                     cout.cout_wrap('***No converged!', 3)
                     break
 
-                print(str(np.log10(np.linalg.norm(structural_kstep.q -
-                                                  previous_kstep.q)/
-                                   np.linalg.norm(previous_kstep.q))))
+                res = (np.linalg.norm(structural_kstep.q -
+                                                   previous_kstep.q)/
+                                    np.linalg.norm(previous_kstep.q))
+
+                self.residual_table.print_line([self.data.ts,
+                                                self.data.ts*self.dt.value,
+                                                k,
+                                                np.log10(res),
+                                                np.linalg.norm(structural_kstep.for_acc[0:3])])
 
                 # convergence
-                if (np.linalg.norm(structural_kstep.q - previous_kstep.q)/np.linalg.norm(previous_kstep.q) <
-                    self.settings['fsi_tolerance'].value)\
+                if (res <
+                    self.settings['fsi_tolerance'].value) \
                         and \
                         k > self.settings['minimum_steps'].value - 1:
                     break
@@ -176,13 +185,6 @@ class DynamicCoupled(BaseSolver):
                                              self.data.structure.timestep_info[-1],
                                              self.data.aero.timestep_info[-2],
                                              convect_wake=True)
-
-            print('Time = %f' % (self.data.ts*self.settings['dt'].value))
-            print('FoR acc in inertial:')
-            print(np.dot(
-                self.data.structure.timestep_info[self.data.ts].cga(),
-                self.data.structure.timestep_info[self.data.ts].for_acc[0:3]))
-            print(np.linalg.norm(self.data.structure.timestep_info[self.data.ts].for_acc[0:3]))
 
         cout.cout_wrap('...Finished', 1)
         return self.data
@@ -243,28 +245,6 @@ def relax(beam, timestep, previous_timestep, coeff):
 
         normalise_quaternion(timestep)
         xbeam_solv_state2disp(beam, timestep)
-
-
-def relax_forces(timestep, previous_timestep, coeff):
-    timestep.steady_applied_forces = ((1.0 - coeff)*timestep.steady_applied_forces + coeff*previous_timestep.steady_applied_forces).astype(dtype=ct.c_double, order='F')
-    timestep.unsteady_applied_forces = ((1.0 - coeff)*timestep.unsteady_applied_forces + coeff*previous_timestep.unsteady_applied_forces).astype(dtype=ct.c_double, order='F')
-
-
-def structural_predictor(structure, timestep, dt):
-    from sharpy.structure.utils.xbeamlib import xbeam_solv_state2disp
-
-    dt = dt
-    # Q = Q + dt*dQdt + 0.5*dt*dt*dQddt
-    # dQdt = dQdt + dt*dQddt
-    timestep.q += dt*timestep.dqdt + 0.25*dt*dt*timestep.dqddt
-    timestep.dqdt += 0.5*dt*timestep.dqddt
-    timestep.dqddt.fill(0.0)
-    # timestep.dqddt[structure.num_dof.value:] = 0.0
-    normalise_quaternion(timestep)
-    xbeam_solv_state2disp(structure, timestep)
-
-    timestep.for_vel = timestep.dqdt[structure.num_dof.value:structure.num_dof.value + 6].astype(dtype=ct.c_double, order='F', copy=True)
-    timestep.for_acc = timestep.dqddt[structure.num_dof.value:structure.num_dof.value + 6].astype(dtype=ct.c_double, order='F', copy=True)
 
 
 def normalise_quaternion(tstep):
