@@ -73,8 +73,6 @@ class BeamPlot(BaseSolver):
             np.savetxt(filename, temp_matrix, delimiter=',')
 
 
-
-
     def plot(self):
         for it in range(len(self.data.structure.timestep_info)):
             it_filename = (self.filename +
@@ -89,27 +87,7 @@ class BeamPlot(BaseSolver):
             local_x = np.zeros((num_nodes, 3))
             local_y = np.zeros((num_nodes, 3))
             local_z = np.zeros((num_nodes, 3))
-            # output_loads = True
-            # try:
-            #     self.data.beam.timestep_info[it].loads
-            # except AttributeError:
-            #     output_loads = False
-
-            # if output_loads:
-            #     gamma = np.zeros((num_elem, 3))
-            #     kappa = np.zeros((num_elem, 3))
-
-            # if self.settings['applied_forces']:
-
-            # if self.settings['frame'] == 'inertial':
-            #     try:
-            #         self.aero2inertial = self.data.grid.inertial2aero.T
-            #     except AttributeError:
-            #         self.aero2inertial = np.eye(3)
-            #         cout.cout_wrap('BeamPlot: No inertial2aero information, output will be in body FoR', 0)
-            #
-            # else:
-            #     self.aero2inertial = np.eye(3)
+            coords_a = np.zeros((num_nodes, 3))
 
             app_forces = np.zeros((num_nodes, 3))
             app_moment = np.zeros((num_nodes, 3))
@@ -119,6 +97,40 @@ class BeamPlot(BaseSolver):
 
             # coordinates of corners
             coords = self.data.structure.timestep_info[it].glob_pos(include_rbm=self.settings['include_rbm'])
+
+            # check if I can output gravity forces
+            with_gravity = False
+            try:
+                gravity_forces = self.data.structure.timestep_info[it].gravity_forces[:]
+                with_gravity = True
+            except AttributeError:
+                pass
+
+            # check if postproc dicts are present and count/prepare
+            with_postproc_cell = False
+            try:
+                self.data.structure.timestep_info[it].postproc_cell
+                with_postproc_cell = True
+            except AttributeError:
+                pass
+
+            # count number of arguments
+            postproc_cell_keys = self.data.structure.timestep_info[it].postproc_cell.keys()
+            postproc_cell_vals = self.data.structure.timestep_info[it].postproc_cell.values()
+            postproc_cell_scalar = []
+            postproc_cell_vector = []
+            postproc_cell_6vector = []
+            for k, v in self.data.structure.timestep_info[it].postproc_cell.items():
+                _, cols = v.shape
+                if cols == 1:
+                    raise NotImplementedError('scalar cell types not supported in beamplot (Easy to implement)')
+                    # postproc_cell_scalar.append(k)
+                elif cols == 3:
+                    postproc_cell_vector.append(k)
+                elif cols == 6:
+                    postproc_cell_6vector.append(k)
+                else:
+                    raise AttributeError('Only scalar and 3-vector types supported in beamplot')
 
             for i_node in range(num_nodes):
                 i_elem = self.data.structure.node_master_elem[i_node, 0]
@@ -134,6 +146,8 @@ class BeamPlot(BaseSolver):
                 local_y[i_node, :] = np.dot(aero2inertial, np.dot(cab, v2))
                 local_z[i_node, :] = np.dot(aero2inertial, np.dot(cab, v3))
 
+                coords_a[i_node, :] = self.data.structure.timestep_info[it].pos[i_node, :]
+
                 # applied forces
                 cab = algebra.crv2rot(self.data.structure.timestep_info[it].psi[i_elem, i_local_node, :])
                 app_forces[i_node, :] = np.dot(aero2inertial,
@@ -144,30 +158,33 @@ class BeamPlot(BaseSolver):
                                                np.dot(cab,
                                                       self.data.structure.timestep_info[it].steady_applied_forces[i_node, 3:6]+
                                                       self.data.structure.timestep_info[it].unsteady_applied_forces[i_node, 3:6]))
-                # if not it == 0:
-                #     try:
-                #         unsteady_app_forces[i_node, :] = np.dot(aero2inertial,
-                #                                                 np.dot(cab,
-                #                                                        self.data.structure.dynamic_input[it - 1]['dynamic_forces'][i_node, 0:3]))
-                #     except IndexError:
-                #         pass
+
+                if with_gravity:
+                    gravity_forces[i_node, 0:3] = np.dot(aero2inertial,
+                                                         gravity_forces[i_node, 0:3])
+                    gravity_forces[i_node, 3:6] = np.dot(aero2inertial,
+                                                         gravity_forces[i_node, 3:6])
 
             for i_elem in range(num_elem):
                 conn[i_elem, :] = self.data.structure.elements[i_elem].reordered_global_connectivities
                 elem_id[i_elem] = i_elem
-                # if output_loads:
-                #     gamma[i_elem, :] = self.data.structure.timestep_info[it].loads[i_elem, 0:3]
-                #     kappa[i_elem, :] = self.data.structure.timestep_info[it].loads[i_elem, 3:6]
 
             ug = tvtk.UnstructuredGrid(points=coords)
             ug.set_cells(tvtk.Line().cell_type, conn)
             ug.cell_data.scalars = elem_id
             ug.cell_data.scalars.name = 'elem_id'
-            # if output_loads:
-            #     ug.cell_data.add_array(gamma, 'vector')
-            #     ug.cell_data.get_array(1).name = 'gamma'
-            #     ug.cell_data.add_array(kappa, 'vector')
-            #     ug.cell_data.get_array(2).name = 'kappa'
+            counter = 1
+            if with_postproc_cell:
+                for k in postproc_cell_vector:
+                    ug.cell_data.add_array(self.data.structure.timestep_info[it].postproc_cell[k])
+                    ug.cell_data.get_array(counter).name = k + '_cell'
+                    counter += 1
+                for k in postproc_cell_6vector:
+                    for i in range(0, 2):
+                        ug.cell_data.add_array(self.data.structure.timestep_info[it].postproc_cell[k][:, 3*i:3*(i+1)])
+                        ug.cell_data.get_array(counter).name = k + '_' + str(i) + '_cell'
+                        counter += 1
+
             ug.point_data.scalars = node_id
             ug.point_data.scalars.name = 'node_id'
             point_vector_counter = 1
@@ -179,14 +196,26 @@ class BeamPlot(BaseSolver):
             point_vector_counter += 1
             ug.point_data.add_array(local_z, 'vector')
             ug.point_data.get_array(point_vector_counter).name = 'local_z'
+            point_vector_counter += 1
+            ug.point_data.add_array(coords_a, 'vector')
+            ug.point_data.get_array(point_vector_counter).name = 'coords_a'
             if self.settings['include_applied_forces']:
                 point_vector_counter += 1
                 ug.point_data.add_array(app_forces, 'vector')
                 ug.point_data.get_array(point_vector_counter).name = 'app_forces'
+                if with_gravity:
+                    point_vector_counter += 1
+                    ug.point_data.add_array(gravity_forces[:, 0:3], 'vector')
+                    ug.point_data.get_array(point_vector_counter).name = 'gravity_forces'
+
             if self.settings['include_applied_moments']:
                 point_vector_counter += 1
                 ug.point_data.add_array(app_moment, 'vector')
                 ug.point_data.get_array(point_vector_counter).name = 'app_moments'
+                if with_gravity:
+                    point_vector_counter += 1
+                    ug.point_data.add_array(gravity_forces[:, 3:6], 'vector')
+                    ug.point_data.get_array(point_vector_counter).name = 'gravity_moments'
 
             write_data(ug, it_filename)
 

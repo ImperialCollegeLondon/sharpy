@@ -153,8 +153,8 @@ class AeroTimeStepInfo(object):
         return copied
 
     def generate_ctypes_pointers(self):
-        self.ct_dimensions = self.dimensions.astype(dtype=ct.c_uint)
-        self.ct_dimensions_star = self.dimensions_star.astype(dtype=ct.c_uint)
+        self.ct_dimensions = self.dimensions.astype(dtype=ct.c_uint, copy=True)
+        self.ct_dimensions_star = self.dimensions_star.astype(dtype=ct.c_uint, copy=True)
 
         n_surf = len(self.dimensions)
 
@@ -306,7 +306,6 @@ class AeroTimeStepInfo(object):
             pass
 
 
-
 class StructTimeStepInfo(object):
     def __init__(self, num_node, num_elem, num_node_elem=3):
         self.num_node = num_node
@@ -321,24 +320,25 @@ class StructTimeStepInfo(object):
         self.psi_dot = np.zeros((self.num_elem, num_node_elem, 3), dtype=ct.c_double, order='F')
 
         # FoR data
-        self.quat = np.array([1., 0, 0, 0], dtype=ct.c_double)
-        self.for_pos = np.zeros((6,), dtype=ct.c_double)
-        self.for_vel = np.zeros((6,), dtype=ct.c_double)
-        self.for_acc = np.zeros((6,), dtype=ct.c_double)
+        self.quat = np.array([1., 0, 0, 0], dtype=ct.c_double, order='F')
+        self.for_pos = np.zeros((6,), dtype=ct.c_double, order='F')
+        self.for_vel = np.zeros((6,), dtype=ct.c_double, order='F')
+        self.for_acc = np.zeros((6,), dtype=ct.c_double, order='F')
 
         self.gravity_vector_inertial = np.array([0.0, 0.0, 1.0], dtype=ct.c_double, order='F')
         self.gravity_vector_body = np.array([0.0, 0.0, 1.0], dtype=ct.c_double, order='F')
 
         self.steady_applied_forces = np.zeros((self.num_node, 6), dtype=ct.c_double, order='F')
         self.unsteady_applied_forces = np.zeros((self.num_node, 6), dtype=ct.c_double, order='F')
+        self.gravity_forces = np.zeros((self.num_node, 6), dtype=ct.c_double, order='F')
 
-        self.q = np.zeros(((self.num_node - 1)*6 + 6 + 4,), dtype=ct.c_double)
-        self.dqdt = np.zeros(((self.num_node - 1)*6 + 6 + 4,), dtype=ct.c_double)
-        self.dqddt = np.zeros(((self.num_node - 1)*6 + 6 + 4,), dtype=ct.c_double)
+        self.q = np.zeros(((self.num_node - 1)*6 + 6 + 4,), dtype=ct.c_double, order='F')
+        self.dqdt = np.zeros(((self.num_node - 1)*6 + 6 + 4,), dtype=ct.c_double, order='F')
+        self.dqddt = np.zeros(((self.num_node - 1)*6 + 6 + 4,), dtype=ct.c_double, order='F')
+
+        self.postproc_cell = dict()
 
     def copy(self):
-        # from copy import deepcopy
-        # return deepcopy(self)
         copied = StructTimeStepInfo(self.num_node, self.num_elem)
 
         copied.num_node = self.num_node
@@ -365,10 +365,13 @@ class StructTimeStepInfo(object):
 
         copied.steady_applied_forces = self.steady_applied_forces.astype(dtype=ct.c_double, order='F', copy=True)
         copied.unsteady_applied_forces = self.unsteady_applied_forces.astype(dtype=ct.c_double, order='F', copy=True)
+        copied.gravity_forces = self.gravity_forces.astype(dtype=ct.c_double, order='F', copy=True)
 
         copied.q = self.q.astype(dtype=ct.c_double, order='F', copy=True)
         copied.dqdt = self.dqdt.astype(dtype=ct.c_double, order='F', copy=True)
         copied.dqddt = self.dqddt.astype(dtype=ct.c_double, order='F', copy=True)
+
+        copied.postproc_cell = dict(self.postproc_cell)
 
         return copied
 

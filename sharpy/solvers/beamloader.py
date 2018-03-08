@@ -52,7 +52,10 @@ class BeamLoader(BaseSolver):
         # then check that the files exists
         h5utils.check_file_exists(self.fem_file_name)
         if self.settings['unsteady']:
-            h5utils.check_file_exists(self.dyn_file_name)
+            try:
+                h5utils.check_file_exists(self.dyn_file_name)
+            except FileNotFoundError:
+                self.settings['unsteady'] = False
         # read and store the hdf5 files
         with h5.File(self.fem_file_name, 'r') as fem_file_handle:
             # store files in dictionary

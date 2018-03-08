@@ -98,6 +98,27 @@ def to_custom_types(dictionary, types, default):
                     raise exceptions.NoDefaultValueException(k)
                 dictionary[k] = default[k].copy()
 
+        elif v == 'list(int)':
+            try:
+                if isinstance(dictionary[k], np.ndarray):
+                    continue
+                if isinstance(dictionary[k], list):
+                    for i in range(len(dictionary[k])):
+                        dictionary[k][i] = int(dictionary[k][i])
+                    dictionary[k] = np.array(dictionary[k])
+                    continue
+                # dictionary[k] = dictionary[k].split(',')
+                # # getting rid of leading and trailing spaces
+                # dictionary[k] = list(map(lambda x: x.strip(), dictionary[k]))
+                if dictionary[k].find(',') < 0:
+                    dictionary[k] = np.fromstring(dictionary[k].strip('[]'), sep=' ', dtype=ct.c_int)
+                else:
+                    dictionary[k] = np.fromstring(dictionary[k].strip('[]'), sep=',', dtype=ct.c_int)
+            except KeyError:
+                if default[k] is None:
+                    raise exceptions.NoDefaultValueException(k)
+                dictionary[k] = default[k].copy()
+
         elif v == 'dict':
             if not isinstance(dictionary[k], dict):
                 raise TypeError

@@ -228,7 +228,6 @@ def quat2crv(quat):
 
     return psi
 
-
 def crv_bounds(crv_ini):
     crv = crv_ini.copy()
     # original norm
@@ -295,6 +294,11 @@ def crv2tan(psi):
 
     T = np.eye(3) - (0.5*k1*k1)*psi_skew + k2*psi_skew*psi_skew
     return T
+
+
+def crv2invtant(psi):
+    tan = crv2tan(psi).T
+    return np.linalg.inv(tan)
 
 
 def triad2crv_vec(v1, v2, v3):

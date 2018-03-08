@@ -52,9 +52,12 @@ class StaticCoupled(BaseSolver):
 
         self.previous_force = None
 
-    def initialise(self, data):
+    def initialise(self, data, input_dict=None):
         self.data = data
-        self.settings = data.settings[self.solver_id]
+        if input_dict is None:
+            self.settings = data.settings[self.solver_id]
+        else:
+            self.settings = input_dict
         settings.to_custom_types(self.settings, self.settings_types, self.settings_default)
 
         self.structural_solver = solver_interface.initialise_solver(self.settings['structural_solver'])
@@ -71,8 +74,8 @@ class StaticCoupled(BaseSolver):
     def cleanup_timestep_info(self):
         if max(len(self.data.aero.timestep_info), len(self.data.structure.timestep_info)) > 1:
             # copy last info to first
-            self.data.aero.timestep_info[0] = self.data.aero.timestep_info[-1]
-            self.data.structure.timestep_info[0] = self.data.structure.timestep_info[-1]
+            self.data.aero.timestep_info[0] = self.data.aero.timestep_info[-1].copy()
+            self.data.structure.timestep_info[0] = self.data.structure.timestep_info[-1].copy()
             # delete all the rest
             while len(self.data.aero.timestep_info) - 1:
                 del self.data.aero.timestep_info[-1]
@@ -97,7 +100,8 @@ class StaticCoupled(BaseSolver):
                 self.increase_ts()
 
             for i_iter in range(self.settings['max_iter'].value):
-                cout.cout_wrap('i_step: %u, i_iter: %u' % (i_step, i_iter))
+                if self.settings['print_info'].value:
+                    cout.cout_wrap('i_step: %u, i_iter: %u' % (i_step, i_iter))
 
                 # run aero
                 self.data = self.aero_solver.run()
@@ -123,11 +127,14 @@ class StaticCoupled(BaseSolver):
                     self.previous_force = temp
 
                 # copy force in beam
+                old_g = self.structural_solver.settings['gravity'].value
+                self.structural_solver.settings['gravity'] = old_g*load_step_multiplier
                 temp1 = load_step_multiplier*(struct_forces + self.data.structure.ini_info.steady_applied_forces)
-                self.data.structure.timestep_info[self.data.ts].steady_applied_forces = temp1.astype(dtype=ct.c_double,
-                                                                                                     order='F')
+                self.data.structure.timestep_info[self.data.ts].steady_applied_forces[:] = temp1
                 # run beam
                 self.data = self.structural_solver.run()
+                self.structural_solver.settings['gravity'] = ct.c_double(old_g)
+                self.structural_solver.extract_resultants()
 
                 # update grid
                 self.aero_solver.update_step()
@@ -136,8 +143,6 @@ class StaticCoupled(BaseSolver):
                 if self.convergence(i_iter, i_step):
                     break
 
-        # self.cleanup_timestep_info()
-        1
         return self.data
 
     def convergence(self, i_iter, i_step):
@@ -153,7 +158,8 @@ class StaticCoupled(BaseSolver):
             return False
 
         self.current_residual = np.linalg.norm(self.data.structure.timestep_info[self.data.ts].pos)
-        cout.cout_wrap('Res = %8e' % (np.abs(self.current_residual - self.previous_residual)/self.previous_residual), 2)
+        if self.settings['print_info'].value:
+            cout.cout_wrap('Res = %8e' % (np.abs(self.current_residual - self.previous_residual)/self.previous_residual), 2)
 
         if return_value is None:
             if np.abs(self.current_residual - self.previous_residual)/self.initial_residual < self.settings['tolerance'].value:
@@ -166,4 +172,64 @@ class StaticCoupled(BaseSolver):
             return_value = False
 
         return return_value
+
+    def change_trim(self, alpha, thrust, thrust_nodes, tail_deflection, tail_cs_index):
+        # self.cleanup_timestep_info()
+        self.data.structure.timestep_info = []
+        self.data.structure.timestep_info.append(self.data.structure.ini_info.copy())
+        aero_copy = self.data.aero.timestep_info[-1]
+        self.data.aero.timestep_info = []
+        self.data.aero.timestep_info.append(aero_copy)
+        self.data.ts = 0
+        # alpha
+        orientation_quat = algebra.euler2quat(np.array([0.0, alpha, 0.0]))
+        self.data.structure.timestep_info[0].quat[:] = orientation_quat[:]
+
+        try:
+            self.force_orientation
+        except AttributeError:
+            self.force_orientation = (
+                algebra.unit_vector(self.data.structure.ini_info.steady_applied_forces[thrust_nodes, 0:3]))
+
+        # thrust
+        # thrust is scaled so that the direction of the forces is conserved
+        # in all nodes.
+        # the `thrust` parameter is the force PER node.
+        # if there are two or more nodes in thrust_nodes, the total forces
+        # is n_nodes_in_thrust_nodes*thrust
+        # thrust forces have to be indicated in structure.ini_info
+        # print(algebra.unit_vector(self.data.structure.ini_info.steady_applied_forces[0, 0:3])*thrust)
+        for i_node in thrust_nodes:
+            # self.data.structure.ini_info.steady_applied_forces[i_node, 0:3] = (
+            #     algebra.unit_vector(self.data.structure.ini_info.steady_applied_forces[i_node, 0:3])*thrust)
+            self.data.structure.ini_info.steady_applied_forces[i_node, 0:3] = (
+                    self.force_orientation*thrust)
+            # self.data.structure.timestep_info[0].steady_applied_forces[i_node, 0:3] = (
+            #         self.force_orientation*thrust)
+
+        # tail deflection
+        try:
+            self.data.aero.aero_dict['control_surface_deflection'][tail_cs_index] = tail_deflection
+        except KeyError:
+            raise Exception('This model has no control surfaces')
+        except IndexError:
+            raise Exception('The tail control surface index > number of surfaces')
+
+        # update grid
+        self.aero_solver.update_step()
+
+    def extract_resultants(self):
+        forces, moments = self.structural_solver.extract_resultants()
+        return forces, moments
+
+
+
+
+
+
+
+
+
+
+
 
