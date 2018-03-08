@@ -50,8 +50,29 @@ class NonLinearStatic(BaseSolver):
     def run(self):
         # cout.cout_wrap('Running non linear static solver...', 2)
         xbeamlib.cbeam3_solv_nlnstatic(self.data.structure, self.settings, self.data.ts)
-        # cout.cout_wrap('...Finished', 2)
         return self.data
 
     def next_step(self):
         self.data.structure.next_step()
+
+    def extract_resultants(self):
+        # gravity_forces, applied_forces = xbeamlib.cbeam3_solv_compute_resultant(self.data.structure.timestep_info[-1],
+        #                                                                         self.data.structure,
+        #                                                                         self.settings)
+
+
+
+        applied_forces = self.data.structure.nodal_b_for_2_a_for(self.data.structure.timestep_info[-1].steady_applied_forces,
+                                                                 self.data.structure.timestep_info[-1])
+
+        gravity_forces = self.data.structure.timestep_info[-1].gravity_forces[:]
+
+        forces = gravity_forces[:, 0:3] + applied_forces[:, 0:3]
+        moments = gravity_forces[:, 3:6] + applied_forces[:, 3:6]
+        # other moment contribution
+        for i_node in range(self.data.structure.num_node):
+            moments[i_node, :] += np.cross(self.data.structure.timestep_info[-1].pos[i_node, :],
+                                           forces[i_node, :])
+        return np.sum(forces, axis=0), np.sum(moments, axis=0)
+
+

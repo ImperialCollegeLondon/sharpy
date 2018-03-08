@@ -146,7 +146,6 @@ def vlm_solver(ts_info, options):
             ts_info.ct_p_u_ext,
             ts_info.ct_p_gamma,
             ts_info.ct_p_gamma_star,
-            ts_info.ct_p_normals,
             ts_info.ct_p_forces)
     ts_info.remove_ctypes_pointers()
 
@@ -217,7 +216,9 @@ def uvlm_solver(i_iter, ts_info, previous_ts_info, struct_ts_info, options, conv
     flightconditions = FlightConditions()
     flightconditions.rho = options['rho']
     flightconditions.uinf = np.ctypeslib.as_ctypes(np.linalg.norm(ts_info.u_ext[0][:, 0, 0]))
-    flightconditions.uinf_direction = np.ctypeslib.as_ctypes(ts_info.u_ext[0][:, 0, 0]/flightconditions.uinf)
+    direction = np.array([1.0, 0, 0])
+    # flightconditions.uinf_direction = np.ctypeslib.as_ctypes(ts_info.u_ext[0][:, 0, 0]/flightconditions.uinf)
+    flightconditions.uinf_direction = np.ctypeslib.as_ctypes(direction)
 
     rbm_vel = struct_ts_info.for_vel.copy()
     rbm_vel[0:3] = np.dot(struct_ts_info.cga(), rbm_vel[0:3])

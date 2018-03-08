@@ -223,12 +223,18 @@ class Beam(BaseStructure):
             i_lumped_node = self.lumped_mass_nodes[i_lumped]
             i_lumped_master_elem, i_lumped_master_node_local = self.node_master_elem[i_lumped_node]
 
+            cba = algebra.crv2rot(self.elements[i_lumped_master_elem].psi_def[i_lumped_master_node_local, :])
+
             inertia_tensor = np.zeros((6, 6))
             r_skew = algebra.rot_skew(r)
+            # inertia_tensor[0:3, 0:3] = m*np.eye(3)
+            # inertia_tensor[0:3, 3:6] = m*np.transpose(r_skew)
+            # inertia_tensor[3:6, 0:3] = m*r_skew
+            # inertia_tensor[3:6, 3:6] = j + m*(np.dot(np.transpose(r_skew), r_skew))
             inertia_tensor[0:3, 0:3] = m*np.eye(3)
-            inertia_tensor[0:3, 3:6] = m*np.transpose(r_skew)
+            inertia_tensor[0:3, 3:6] = -m*r_skew
             inertia_tensor[3:6, 0:3] = m*r_skew
-            inertia_tensor[3:6, 3:6] = j + m*(np.dot(np.transpose(r_skew), r_skew))
+            inertia_tensor[3:6, 3:6] = j + m*(np.dot(r_skew.T, r_skew))
 
             if self.elements[i_lumped_master_elem].rbmass is None:
                 # allocate memory
@@ -350,3 +356,36 @@ class Beam(BaseStructure):
         self.timestep_info[ts].for_pos[3:6] += (
             dt*np.dot(self.timestep_info[ts].cga(),
                       self.timestep_info[ts].for_vel[3:6]))
+
+    def nodal_b_for_2_a_for(self, nodal, tstep, filter=np.array([True]*6)):
+        nodal_a = nodal.copy(order='F')
+        for i_node in range(self.num_node):
+            # get master elem and i_local_node
+            i_master_elem, i_local_node = self.node_master_elem[i_node, :]
+            crv = tstep.psi[i_master_elem, i_local_node, :]
+            cab = algebra.crv2rot(crv)
+            temp = np.zeros((6,))
+            temp[0:3] = np.dot(cab, nodal[i_node, 0:3])
+            temp[3:6] = np.dot(cab, nodal[i_node, 3:6])
+            for i in range(6):
+                if filter[i]:
+                    nodal_a[i_node, i] = temp[i]
+
+        return nodal_a
+
+    def nodal_premultiply_inv_T_transpose(self, nodal, tstep, filter=np.array([True]*6)):
+        # nodal_t = np.zeros_like(nodal, dtype=ct.c_double, order='F')
+        nodal_t = nodal.copy(order='F')
+        for i_node in range(self.num_node):
+            # get master elem and i_local_node
+            i_master_elem, i_local_node = self.node_master_elem[i_node, :]
+            crv = tstep.psi[i_master_elem, i_local_node, :]
+            inv_tanT = algebra.crv2invtant(crv)
+            temp = np.zeros((6,))
+            temp[0:3] = np.dot(inv_tanT, nodal[i_node, 0:3])
+            temp[3:6] = np.dot(inv_tanT, nodal[i_node, 3:6])
+            for i in range(6):
+                if filter[i]:
+                    nodal_t[i_node, i] = temp[i]
+
+        return nodal_t

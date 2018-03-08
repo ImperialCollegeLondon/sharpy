@@ -102,21 +102,28 @@ class Writer(object):
                 self.file.write(newline)
 
     def close(self):
-        self.file.close()
+        if self.file is not None:
+            if not self.file.closed:
+                self.file.close()
+
+    def __del__(self):
+        self.close()
 
 
-cout_wrap = None
+cout_wrap = Writer()
 
 
 def start_writer():
     global cout_wrap
     cout_wrap = Writer()
+    # pass
 
 
 def finish_writer():
     global cout_wrap
-    cout_wrap.close()
-    cout_wrap = None
+    if cout_wrap is not None:
+        cout_wrap.close()
+    # cout_wrap = None
 
 
 # table output for residuals
