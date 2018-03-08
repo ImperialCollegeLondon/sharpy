@@ -81,3 +81,16 @@ class NonLinearDynamicCoupledStep(BaseSolver):
     def next_step(self):
         pass
 
+    # def extract_resultants(self, tstep):
+    #     # applied_forces = self.data.structure.nodal_b_for_2_a_for(tstep.steady_applied_forces, tstep)
+    #     applied_forces = tstep.steady_applied_forces[:]
+    #     gravity_forces = tstep.gravity_forces[:]
+    #
+    #     forces = gravity_forces[:, 0:3] + applied_forces[:, 0:3]
+    #     moments = gravity_forces[:, 3:6] + applied_forces[:, 3:6]
+    #     # other moment contribution
+    #     for i_node in range(self.data.structure.num_node):
+    #         moments[i_node, :] += np.cross(self.data.structure.timestep_info[-1].pos[i_node, :],
+    #                                        forces[i_node, :])
+    #     return np.sum(forces, axis=0), np.sum(moments, axis=0)
+

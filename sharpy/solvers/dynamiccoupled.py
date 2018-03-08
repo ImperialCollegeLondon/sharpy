@@ -50,16 +50,16 @@ class DynamicCoupled(BaseSolver):
         self.settings_default['fsi_tolerance'] = 1e-5
 
         self.settings_types['relaxation_factor'] = 'float'
-        self.settings_default['relaxation_factor'] = 0.9
+        self.settings_default['relaxation_factor'] = 0.2
 
         self.settings_types['final_relaxation_factor'] = 'float'
-        self.settings_default['final_relaxation_factor'] = 0.4
+        self.settings_default['final_relaxation_factor'] = 0.0
 
         self.settings_types['minimum_steps'] = 'int'
         self.settings_default['minimum_steps'] = 3
 
         self.settings_types['relaxation_steps'] = 'int'
-        self.settings_default['relaxation_steps'] = 2
+        self.settings_default['relaxation_steps'] = 100
 
         self.settings_types['dynamic_relaxation'] = 'bool'
         self.settings_default['dynamic_relaxation'] = True
@@ -95,7 +95,7 @@ class DynamicCoupled(BaseSolver):
         self.residual_table.field_length[0] = 6
         self.residual_table.field_length[1] = 6
         self.residual_table.field_length[1] = 6
-        self.residual_table.print_header(['ts', 't', 'iter', 'residual', 'norm(acc_for)'])
+        self.residual_table.print_header(['ts', 't', 'iter', 'residual', 'FoR_vel(z)'])
 
     def cleanup_timestep_info(self):
         if max(len(self.data.aero.timestep_info), len(self.data.structure.timestep_info)) > 1:
@@ -141,6 +141,8 @@ class DynamicCoupled(BaseSolver):
                                 structural_kstep,
                                 1.0)
 
+                # cout.cout_wrap('No added mass effects', 0)
+
                 # run structural solver
                 self.data = self.structural_solver.run(structural_step=structural_kstep)
 
@@ -149,15 +151,15 @@ class DynamicCoupled(BaseSolver):
                     cout.cout_wrap('***No converged!', 3)
                     break
 
-                res = (np.linalg.norm(structural_kstep.q -
-                                                   previous_kstep.q)/
-                                    np.linalg.norm(previous_kstep.q))
+                res = (np.linalg.norm(structural_kstep.dqdt -
+                                      previous_kstep.dqdt)/
+                       np.linalg.norm(previous_kstep.dqdt))
 
                 self.residual_table.print_line([self.data.ts,
                                                 self.data.ts*self.dt.value,
                                                 k,
                                                 np.log10(res),
-                                                np.linalg.norm(structural_kstep.for_acc[0:3])])
+                                                structural_kstep.for_vel[2]])
 
                 # convergence
                 if (res <
@@ -175,6 +177,7 @@ class DynamicCoupled(BaseSolver):
             self.structural_solver.add_step()
             self.data.structure.timestep_info[-1] = structural_kstep.copy()
             self.data.structure.integrate_position(self.data.ts, self.settings['dt'].value)
+            # self.structural_solver.extract_resultants(self.data.structure.timestep_info[-1])
 
             self.aero_solver.add_step()
             self.data.aero.timestep_info[-1] = aero_kstep.copy()
@@ -236,9 +239,9 @@ class DynamicCoupled(BaseSolver):
 
 
 def relax(beam, timestep, previous_timestep, coeff):
-    from sharpy.structure.utils.xbeamlib import xbeam_solv_state2disp
-    numdof = beam.num_dof.value
     if coeff > 0.0:
+        from sharpy.structure.utils.xbeamlib import xbeam_solv_state2disp
+        numdof = beam.num_dof.value
         timestep.q = (1.0 - coeff)*timestep.q + coeff*previous_timestep.q
         timestep.dqdt = (1.0 - coeff)*timestep.dqdt + coeff*previous_timestep.dqdt
         timestep.dqddt = (1.0 - coeff)*timestep.dqddt + coeff*previous_timestep.dqddt

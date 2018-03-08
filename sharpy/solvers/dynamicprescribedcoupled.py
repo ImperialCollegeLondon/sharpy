@@ -52,7 +52,7 @@ class DynamicPrescribedCoupled(BaseSolver):
         self.settings_default['relaxation_factor'] = 0.9
 
         self.settings_types['final_relaxation_factor'] = 'float'
-        self.settings_default['final_relaxation_factor'] = 0.4
+        self.settings_default['final_relaxation_factor'] = 0.1
 
         self.settings_types['minimum_steps'] = 'int'
         self.settings_default['minimum_steps'] = 3
@@ -88,6 +88,12 @@ class DynamicPrescribedCoupled(BaseSolver):
         # timestep_info[0] and remove the rest
         self.cleanup_timestep_info()
 
+        self.residual_table = cout.TablePrinter(5, 14, ['g', 'f', 'g', 'f', 'g'])
+        self.residual_table.field_length[0] = 6
+        self.residual_table.field_length[1] = 6
+        self.residual_table.field_length[1] = 6
+        self.residual_table.print_header(['ts', 't', 'iter', 'residual', 'z_pos[-1]'])
+
     def cleanup_timestep_info(self):
         if max(len(self.data.aero.timestep_info), len(self.data.structure.timestep_info)) > 1:
             # copy last info to first
@@ -113,8 +119,6 @@ class DynamicPrescribedCoupled(BaseSolver):
 
         # dynamic simulations start at tstep == 1, 0 is reserved for the initial state
         for self.data.ts in range(1, self.settings['n_time_steps'].value + 1):
-            cout.cout_wrap('\nit = %u' % self.data.ts)
-
             aero_kstep = self.data.aero.timestep_info[-1].copy()
             previous_kstep = self.data.structure.timestep_info[-1].copy()
             ts = len(self.data.structure.timestep_info) - 1
@@ -130,7 +134,6 @@ class DynamicPrescribedCoupled(BaseSolver):
                     break
                     # TODO Raise Exception
 
-                cout.cout_wrap(str(k))
                 # # generate new grid (already rotated)
                 self.aero_solver.update_custom_grid(structural_kstep, aero_kstep)
 
@@ -156,16 +159,26 @@ class DynamicPrescribedCoupled(BaseSolver):
                     cout.cout_wrap('***No converged!', 3)
                     break
 
-                print(str(np.log10(np.linalg.norm(structural_kstep.pos -
-                                                  previous_kstep.pos)/
-                                   np.linalg.norm(previous_kstep.pos))))
+                if k > 0:
+                    res = (np.linalg.norm(structural_kstep.pos_dot -
+                                          previous_kstep.pos_dot) /
+                           np.linalg.norm(previous_kstep.pos_dot))
+                else:
+                    res = 0.0
+
+                self.residual_table.print_line([self.data.ts,
+                                                self.data.ts*self.dt.value,
+                                                k,
+                                                np.log10(res),
+                                                structural_kstep.pos[-1, 2]])
 
                 # convergence
-                if (np.linalg.norm(structural_kstep.pos - previous_kstep.pos)/np.linalg.norm(previous_kstep.pos) <
-                    self.settings['fsi_tolerance'].value) \
-                        and \
-                        k > self.settings['minimum_steps'].value - 1:
-                    break
+                if k > 0:
+                    if (res <
+                        self.settings['fsi_tolerance'].value) \
+                            and \
+                            k > self.settings['minimum_steps'].value - 1:
+                        break
 
                 # relaxation
                 # relax(self.data.structure, structural_kstep, previous_kstep, self.relaxation_factor(k))
