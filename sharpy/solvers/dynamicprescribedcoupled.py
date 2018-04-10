@@ -49,19 +49,25 @@ class DynamicPrescribedCoupled(BaseSolver):
         self.settings_default['fsi_tolerance'] = 1e-5
 
         self.settings_types['relaxation_factor'] = 'float'
-        self.settings_default['relaxation_factor'] = 0.9
+        self.settings_default['relaxation_factor'] = 0.0
 
         self.settings_types['final_relaxation_factor'] = 'float'
-        self.settings_default['final_relaxation_factor'] = 0.1
+        self.settings_default['final_relaxation_factor'] = 0.7
 
         self.settings_types['minimum_steps'] = 'int'
         self.settings_default['minimum_steps'] = 3
 
         self.settings_types['relaxation_steps'] = 'int'
-        self.settings_default['relaxation_steps'] = 2
+        self.settings_default['relaxation_steps'] = 60
 
         self.settings_types['dynamic_relaxation'] = 'bool'
         self.settings_default['dynamic_relaxation'] = True
+
+        self.settings_types['postprocessors'] = 'list(str)'
+        self.settings_default['postprocessors'] = list()
+
+        self.settings_types['postprocessors_settings'] = 'dict'
+        self.settings_default['postprocessors_settings'] = dict()
 
         self.data = None
         self.settings = None
@@ -71,6 +77,8 @@ class DynamicPrescribedCoupled(BaseSolver):
         self.previous_force = None
 
         self.dt = 0.
+        self.postprocessors = dict()
+        self.with_postprocessors = False
 
     def initialise(self, data):
         self.data = data
@@ -87,6 +95,15 @@ class DynamicPrescribedCoupled(BaseSolver):
         # if there's data in timestep_info[>0], copy the last one to
         # timestep_info[0] and remove the rest
         self.cleanup_timestep_info()
+
+        # initialise postprocessors
+        self.postprocessors = dict()
+        if len(self.settings['postprocessors']) > 0:
+            self.with_postprocessors = True
+        for postproc in self.settings['postprocessors']:
+            self.postprocessors[postproc] = solver_interface.initialise_solver(postproc)
+            self.postprocessors[postproc].initialise(
+                self.data, self.settings['postprocessors_settings'][postproc])
 
         self.residual_table = cout.TablePrinter(5, 14, ['g', 'f', 'g', 'f', 'g'])
         self.residual_table.field_length[0] = 6
@@ -150,7 +167,13 @@ class DynamicPrescribedCoupled(BaseSolver):
                                 structural_kstep,
                                 1.0)
 
-                # relax_forces(structural_kstep, previous_kstep, self.relaxation_factor(k))
+                # relax
+                relax(self.data.structure,
+                      structural_kstep,
+                      previous_kstep,
+                      self.relaxation_factor(k))
+                # print(self.relaxation_factor(k))
+
                 # run structural solver
                 self.data = self.structural_solver.run(structural_step=structural_kstep)
 
@@ -180,8 +203,6 @@ class DynamicPrescribedCoupled(BaseSolver):
                             k > self.settings['minimum_steps'].value - 1:
                         break
 
-                # relaxation
-                # relax(self.data.structure, structural_kstep, previous_kstep, self.relaxation_factor(k))
                 # copy for next iteration
                 previous_kstep = structural_kstep.copy()
 
@@ -199,39 +220,14 @@ class DynamicPrescribedCoupled(BaseSolver):
                                              self.data.structure.timestep_info[-1],
                                              self.data.aero.timestep_info[-2],
                                              convect_wake=True)
+
+            # run postprocessors
+            if self.with_postprocessors:
+                for postproc in self.postprocessors:
+                    self.data = self.postprocessors[postproc].run(online=True)
+
         return self.data
 
-        # dynamic simulations start at tstep == 1, 0 is reserved for the initial state
-        # for self.data.ts in range(1, self.settings['n_time_steps'].value + 1):
-        #     cout.cout_wrap('\nit = %u' % self.data.ts)
-        #     self.increase_ts()
-        #
-        #     # run aero
-        #     self.data = self.aero_solver.run()
-        #
-        #     # map forces
-        #     self.map_forces()
-        #     cout.cout_wrap('Max steady force = %f' %
-        #                    self.data.aero.timestep_info[self.data.ts].forces[0].max())
-        #     cout.cout_wrap('Max unsteady force = %f' %
-        #                    self.data.aero.timestep_info[self.data.ts].dynamic_forces[0].max())
-        #     cout.cout_wrap('Tip deformation = %f, %f, %f' %
-        #                    (self.data.structure.timestep_info[self.data.ts].pos[-1, 0],
-        #                     self.data.structure.timestep_info[self.data.ts].pos[-1, 1],
-        #                     self.data.structure.timestep_info[self.data.ts].pos[-1, 2]))
-        #     for i_substep in range(self.settings['structural_substeps'].value):
-        #         cout.cout_wrap('Substep: %u' % i_substep)
-        #         dt = self.settings['dt'].value/self.settings['structural_substeps'].value
-        #         # run structural solver
-        #         self.data = self.structural_solver.run(dt=dt)
-        #
-        #     # update orientation in beam and
-        #     # update grid (all done with aero_solver.update_step()
-        #     self.aero_solver.update_grid(self.data.structure)
-        #     self.data.structure.integrate_position(self.data.ts, self.settings['dt'].value)
-        #
-        # cout.cout_wrap('...Finished', 1)
-        # return self.data
 
     def map_forces(self, aero_kstep, structural_kstep, unsteady_forces_coeff=1.0):
         # set all forces to 0
@@ -266,30 +262,28 @@ class DynamicPrescribedCoupled(BaseSolver):
             (dynamic_struct_forces + self.data.structure.dynamic_input[max(self.data.ts - 1, 0)]['dynamic_forces']).
                 astype(dtype=ct.c_double, order='F', copy=True))
 
-    # def map_forces(self):
-    #     struct_forces = mapping.aero2struct_force_mapping(
-    #         self.data.aero.timestep_info[self.data.ts].forces,
-    #         self.data.aero.struct2aero_mapping,
-    #         self.data.aero.timestep_info[self.data.ts].zeta,
-    #         self.data.structure.timestep_info[self.data.ts].pos,
-    #         self.data.structure.timestep_info[self.data.ts].psi,
-    #         self.data.structure.node_master_elem,
-    #         self.data.structure.master,
-    #         self.data.structure.timestep_info[self.data.ts].cag())
-    #     dynamic_struct_forces = 0*mapping.aero2struct_force_mapping(
-    #         self.data.aero.timestep_info[self.data.ts].dynamic_forces,
-    #         self.data.aero.struct2aero_mapping,
-    #         self.data.aero.timestep_info[self.data.ts].zeta,
-    #         self.data.structure.timestep_info[self.data.ts].pos,
-    #         self.data.structure.timestep_info[self.data.ts].psi,
-    #         self.data.structure.node_master_elem,
-    #         self.data.structure.master,
-    #         self.data.structure.timestep_info[self.data.ts].cag())
-    #
-    #     self.data.structure.timestep_info[self.data.ts].steady_applied_forces = (
-    #         (struct_forces + self.data.structure.ini_info.steady_applied_forces).astype(dtype=ct.c_double, order='F'))
-    #     self.data.structure.timestep_info[self.data.ts].unsteady_applied_forces = (
-    #         (dynamic_struct_forces + self.data.structure.dynamic_input[max(self.data.ts - 1, 0)]['dynamic_forces']).
-    #             astype(dtype=ct.c_double, order='F', copy=True))
-    #     # self.data.structure.timestep_info[self.data.ts].unsteady_applied_forces = (
-    #     #     dynamic_struct_forces.astype(dtype=ct.c_double, order='F'))
+    def relaxation_factor(self, k):
+        initial = self.settings['relaxation_factor'].value
+        if not self.settings['dynamic_relaxation'].value:
+            return initial
+
+        final = self.settings['final_relaxation_factor'].value
+        if k >= self.settings['relaxation_steps'].value:
+            return final
+
+        value = initial + (final - initial)/self.settings['relaxation_steps'].value*k
+        return value
+
+
+def relax(beam, timestep, previous_timestep, coeff):
+    if coeff > 0.0:
+        timestep.steady_applied_forces[:] = ((1.0 - coeff)*timestep.steady_applied_forces
+                                             + coeff*previous_timestep.steady_applied_forces)
+        timestep.unsteady_applied_forces[:] = ((1.0 - coeff)*timestep.unsteady_applied_forces
+                                               + coeff*previous_timestep.unsteady_applied_forces)
+        # timestep.pos_dot[:] = (1.0 - coeff)*timestep.pos_dot + coeff*previous_timestep.pos_dot
+        # timestep.psi[:] = (1.0 - coeff)*timestep.psi + coeff*previous_timestep.psi
+        # timestep.psi_dot[:] = (1.0 - coeff)*timestep.psi_dot + coeff*previous_timestep.psi_dot
+
+        # normalise_quaternion(timestep)
+        # xbeam_solv_state2disp(beam, timestep)

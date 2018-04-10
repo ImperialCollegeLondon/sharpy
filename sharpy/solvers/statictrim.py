@@ -56,7 +56,7 @@ class StaticTrim(BaseSolver):
         self.settings_default['initial_thrust'] = 0.0
 
         self.settings_types['initial_angle_eps'] = 'float'
-        self.settings_default['initial_angle_eps'] = 0.5*np.pi/180.
+        self.settings_default['initial_angle_eps'] = 0.2*np.pi/180.
 
         self.settings_types['initial_thrust_eps'] = 'float'
         self.settings_default['initial_thrust_eps'] = 2.

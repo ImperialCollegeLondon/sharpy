@@ -148,7 +148,7 @@ class StaticCoupled(BaseSolver):
     def convergence(self, i_iter, i_step):
         if i_iter == self.settings['max_iter'].value - 1:
             cout.cout_wrap('StaticCoupled did not converge!', 0)
-            quit(-1)
+            # quit(-1)
 
         return_value = None
         if i_iter == 0:

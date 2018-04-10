@@ -3,7 +3,7 @@ import numpy as np
 import os
 import sharpy.utils.algebra as algebra
 
-case_name = 'hale'
+case_name = 'hale_01_sigma3_damped_20ms'
 route = os.path.dirname(os.path.realpath(__file__)) + '/'
 
 
@@ -16,43 +16,42 @@ flow = ['BeamLoader',
         'StaticCoupled',
         'DynamicCoupled',
         'AerogridPlot',
-        'BeamPlot']
+        'BeamPlot'
+        ]
 
 
 # FLIGHT CONDITIONS
-u_inf = 30
+u_inf = 20
 rho = 0.08991
 # trim sigma = 1
-# alpha = 5.016*np.pi/180
-# beta = 0*np.pi/180
-# gravity = 'on'
-# cs_deflection = -3.886*np.pi/180
-# thrust = 6.926
-# sigma = 1
-
-# trim sigma = 5
-alpha = 5.064949*np.pi/180
+alpha = 12.2516666*np.pi/180
 beta = 0*np.pi/180
 gravity = 'on'
-cs_deflection = -2.14349*np.pi/180
-thrust = 5.5494485
-sigma = 5
+cs_deflection = -10.7141465*np.pi/180
+thrust = 18.93467588
+sigma = 3
+# trim sigma = 5
+# alpha = 5.0514255*np.pi/180
+# beta = 0*np.pi/180
+# gravity = 'on'
+# cs_deflection = -2.3315358*np.pi/180
+# thrust = 6.7328
+# sigma = 5
 
 gust_intensity = 0.1
 n_step = 1
-relaxation_factor = 0.0
-tolerance = 1e-6
+relaxation_factor = 0.20
+tolerance = 1e-8
 
 # MODEL GEOMETRY
 # beam
-# sigma = 5.
 span_main = 16.0
 lambda_main = 0.25
 lambda_dihedral = 20*np.pi/180
 ea_main = 0.5
 
-ea = 1e5
-ga = 1e5
+ea = 1e6
+ga = 1e6
 gj = 1e4
 eiy = 2e4
 eiz = 4e6
@@ -61,15 +60,15 @@ j_bar_main = 0.1
 
 length_fuselage = 10
 offset_fuselage = 1.25
-sigma_fuselage = 100
+sigma_fuselage = 10
 m_bar_fuselage = 0.08
 j_bar_fuselage = 0.01
 
 span_tail = 2.5
-ea_tail = 0.25
+ea_tail = 0.5
 fin_height = 2.5
-ea_fin = 0.25
-sigma_tail = 100
+ea_fin = 0.5
+sigma_tail = 10
 m_bar_tail = 0.08
 j_bar_tail = 0.01
 
@@ -87,18 +86,22 @@ chord_tail = 0.5
 
 # DISCRETISATION
 # spatial discretisation
-m = 4
-n_elem_main = 6
-n_elem_tail = 2
-n_elem_fin = 2
-n_elem_fuselage = 3
+m = 6
+n_elem_multiplier = 2
+n_elem_main = int(6*n_elem_multiplier)
+n_elem_tail = int(2*n_elem_multiplier)
+n_elem_fin = int(2*n_elem_multiplier)
+n_elem_fuselage = int(3*n_elem_multiplier)
 n_surfaces = 5
 
 # temporal discretisation
-physical_time = 20
-tstep_factor = 1.0
+physical_time = 30
+# physical_time = 5.5
+# physical_time = 3
+tstep_factor = 1
 dt = 1.0/m/u_inf*tstep_factor
 n_tstep = round(physical_time/dt)
+n_tstep = 8000
 
 
 # END OF INPUT-----------------------------------------------------------------
@@ -582,8 +585,8 @@ def generate_solver_file():
     settings['NonLinearStatic'] = {'print_info': 'off',
                                    'max_iterations': 150,
                                    'num_load_steps': 1,
-                                   'delta_curved': 1e-8,
-                                   'min_delta': 1e-5,
+                                   'delta_curved': 1e-15,
+                                   'min_delta': 1e-8,
                                    'gravity_on': gravity,
                                    'gravity': 9.81}
 
@@ -604,7 +607,7 @@ def generate_solver_file():
                                  'structural_solver_settings': settings['NonLinearStatic'],
                                  'aero_solver': 'StaticUvlm',
                                  'aero_solver_settings': settings['StaticUvlm'],
-                                 'max_iter': 80,
+                                 'max_iter': 100,
                                  'n_load_steps': n_step,
                                  'tolerance': tolerance,
                                  'relaxation_factor': relaxation_factor}
@@ -618,8 +621,8 @@ def generate_solver_file():
     settings['NonLinearDynamicCoupledStep'] = {'print_info': 'off',
                                                'max_iterations': 950,
                                                'delta_curved': 1e-9,
-                                               'min_delta': 1e-7,
-                                               'newmark_damp': 0*1e-4,
+                                               'min_delta': 1e-6,
+                                               'newmark_damp': 5e-4,
                                                'gravity_on': gravity,
                                                'gravity': 9.81,
                                                'num_steps': n_tstep,
@@ -637,7 +640,7 @@ def generate_solver_file():
                             'velocity_field_input': {'u_inf': u_inf,
                                                      'u_inf_direction': [1., 0, 0],
                                                      'gust_shape': '1-cos',
-                                                     'gust_length': 30,
+                                                     'gust_length': 60,
                                                      'gust_intensity': gust_intensity*u_inf,
                                                      'offset': 5.0,
                                                      'span': span_main},
@@ -653,13 +656,23 @@ def generate_solver_file():
                                   'fsi_tolerance': 1e-7,
                                   'relaxation_factor': relaxation_factor,
                                   'minimum_steps': 1,
-                                  'relaxation_steps': 1000,
+                                  'relaxation_steps': 150,
+                                  'final_relaxation_factor': 0.8,
                                   'n_time_steps': n_tstep,
-                                  'dt': dt}
+                                  'dt': dt,
+                                  'postprocessors': ['BeamPlot', 'AerogridPlot'],
+                                  'postprocessors_settings': {'BeamPlot': {'folder': route + '/output/',
+                                                                           'include_rbm': 'on',
+                                                                           'include_applied_forces': 'on'},
+                                                              'AerogridPlot': {
+                                                                  'folder': route + '/output/',
+                                                                  'include_rbm': 'on',
+                                                                  'include_applied_forces': 'on',
+                                                                  'minus_m_star': 0}}}
 
     settings['AerogridLoader'] = {'unsteady': 'on',
                                   'aligned_grid': 'on',
-                                  'mstar': 60,
+                                  'mstar': 30,
                                   'freestream_dir': ['1', '0', '0']}
 
     settings['AerogridPlot'] = {'folder': route + '/output/',

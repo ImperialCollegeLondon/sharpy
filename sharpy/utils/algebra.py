@@ -140,7 +140,7 @@ def rot_matrix_2d(angle):
 
 
 def angle_between_vectors(vec_a, vec_b):
-    angle =  np.arctan2(np.linalg.norm(np.cross(vec_a, vec_b)), np.dot(vec_a, vec_b))
+    angle = np.arctan2(np.linalg.norm(np.cross(vec_a, vec_b)), np.dot(vec_a, vec_b))
     return angle
 
 
@@ -258,10 +258,7 @@ def crv2triad(psi):
 
 
 def crv2rot(psi):
-    # test using exponential map instead of the formula in Geradin&Cardin
-    # it works, but it is VERY slow
-    # rot_matrix = scipy.linalg.expm(rot_skew(psi))
-    # return rot_matrix
+    # this returns Cab
 
     # this is psi2mat in the matlab version
     norm_psi = np.linalg.norm(psi)
@@ -284,16 +281,23 @@ def crv2tan(psi):
     norm_psi = np.linalg.norm(psi)
     psi_skew = skew(psi)
 
-    eps = 1e-5
-    if norm_psi < eps:
-        k1 = 1.0
-        k2 = 1.0/6.0
-    else:
-        k1 = np.sin(norm_psi*0.5)/(norm_psi*0.5)
-        k2 = (1.0 - np.sin(norm_psi)/norm_psi)/(norm_psi*norm_psi)
+    eps = 1e-8
+    # if norm_psi < eps:
+    #     k1 = 1.0
+    #     k2 = 1.0/6.0
+    # else:
+    #     k1 = np.sin(norm_psi*0.5)/(norm_psi*0.5)
+    #     k2 = (1.0 - np.sin(norm_psi)/norm_psi)/(norm_psi*norm_psi)
+    #
+    # T = np.eye(3) - (0.5*k1*k1)*psi_skew + k2*np.dot(psi_skew, psi_skew)
 
-    T = np.eye(3) - (0.5*k1*k1)*psi_skew + k2*psi_skew*psi_skew
-    return T
+    # new expression for tangent operator (equation 4.11 in Geradin and Cardona)
+    if norm_psi < eps:
+        return np.eye(3) - 0.5*psi_skew + 1.0/6.0*np.dot(psi_skew, psi_skew)
+    else:
+        k1 = (1.0 - np.cos(norm_psi))/(norm_psi*norm_psi)
+        k2 = (1.0 - np.sin(norm_psi)/norm_psi)/(norm_psi*norm_psi)
+        return np.eye(3) + k1*psi_skew + k2*np.dot(psi_skew, psi_skew)
 
 
 def crv2invtant(psi):
@@ -421,9 +425,7 @@ def euler2quat(euler):
 
 
 def crv_dot2omega(crv, crv_dot):
-    omega = np.dot(crv2tan(crv).T, crv_dot)
-    # omega = np.dot(crv2tan(crv), crv_dot)
-    return omega
+    return np.dot(crv2tan(crv), crv_dot)
 
 
 def quaternion_product(q, r):

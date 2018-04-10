@@ -27,7 +27,7 @@ alpha_rad = alpha*np.pi/180
 
 dt = 1.0/m_main/u_inf*dt_factor
 num_steps = round(8/dt)
-num_steps = 50
+num_steps = 60
 # num_steps = round(1.85/dt)
 
 # main geometry data
@@ -66,7 +66,7 @@ momenty = 0
 momentx = 0
 
 # discretisation data
-num_elem_main = 6
+num_elem_main = 14
 num_elem_tail = 3
 num_elem_fin = 3
 num_elem_fuselage = 3
@@ -597,8 +597,9 @@ def generate_solver_file(horseshoe=False):
                                  'DynamicCoupled',
                                  # 'DynamicPrescribedCoupled',
                                  'AerogridPlot',
+                                 'BeamLoads',
                                  'BeamPlot',
-                                 'AeroForcesCalculator',
+                                 # 'AeroForcesCalculator',
                                  'BeamCsvOutput'],
                         'write_screen': 'on',
                         'write_log': 'on',
@@ -608,6 +609,7 @@ def generate_solver_file(horseshoe=False):
                             'orientation': algebra.euler2quat(np.array([0.0,
                                                                         alpha_rad,
                                                                         beta*np.pi/180]))}
+    config['BeamLoads'] = {}
 
     config['StaticCoupled'] = {'print_info': 'on',
                                'structural_solver': 'NonLinearStatic',
@@ -644,8 +646,8 @@ def generate_solver_file(horseshoe=False):
                                 'structural_solver_settings': {'print_info': 'off',
                                                                'max_iterations': 950,
                                                                'delta_curved': 1e-6,
-                                                               'min_delta': 1e-5,
-                                                               'newmark_damp': 5e-3,
+                                                               'min_delta': 1e-7,
+                                                               'newmark_damp': 0*5e-3,
                                                                'gravity_on': gravity,
                                                                'gravity': 9.81,
                                                                'num_steps': num_steps,
@@ -663,9 +665,9 @@ def generate_solver_file(horseshoe=False):
                                                          'velocity_field_input': {'u_inf': u_inf,
                                                                                   'u_inf_direction': [1., 0, 0],
                                                                                   'gust_shape': '1-cos',
-                                                                                  'gust_length': 15,
-                                                                                  'gust_intensity': 0.*u_inf,
-                                                                                  'offset': 10.0,
+                                                                                  'gust_length': 5,
+                                                                                  'gust_intensity': 0.2*u_inf,
+                                                                                  'offset': 1.0,
                                                                                   'span': main_span},
                                                          'rho': rho,
                                                          'alpha': alpha_rad,
@@ -673,10 +675,10 @@ def generate_solver_file(horseshoe=False):
                                                          'n_time_steps': num_steps,
                                                          'dt': dt},
                                 'fsi_substeps': 100,
-                                'fsi_tolerance': 1e-6,
-                                'relaxation_factor': 0.7,
+                                'fsi_tolerance': 1e-7,
+                                'relaxation_factor': 0.2,
                                 'minimum_steps': 2,
-                                'relaxation_steps': 3,
+                                'relaxation_steps': 1000,
                                 'n_time_steps': num_steps,
                                 'dt': dt,
                                 'structural_substeps': 0}

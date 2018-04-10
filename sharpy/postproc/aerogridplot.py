@@ -53,14 +53,14 @@ class AerogridPlot(BaseSolver):
         self.wake_filename = ''
         self.ts_max = 0
 
-    def initialise(self, data):
+    def initialise(self, data, custom_settings=None):
         self.data = data
-        self.settings = data.settings[self.solver_id]
-        # if self.data.structure.settings['unsteady']:
-        self.ts_max = self.data.ts + 1
-        # else:
-        #     self.ts_max = 1
+        if custom_settings is None:
+            self.settings = data.settings[self.solver_id]
+        else:
+            self.settings = custom_settings
         settings.to_custom_types(self.settings, self.settings_types, self.settings_default)
+        self.ts_max = self.data.ts + 1
         # create folder for containing files if necessary
         if not os.path.exists(self.settings['folder']):
             os.makedirs(self.settings['folder'])
@@ -76,11 +76,16 @@ class AerogridPlot(BaseSolver):
                               'wake_' +
                               self.data.settings['SHARPy']['case'])
 
-    def run(self):
-        for self.ts in range(self.ts_max):
+    def run(self, online=False):
+        if not online:
+            for self.ts in range(self.ts_max):
+                self.plot_body()
+                self.plot_wake()
+            cout.cout_wrap('...Finished', 1)
+        else:
+            self.ts = len(self.data.structure.timestep_info) - 1
             self.plot_body()
             self.plot_wake()
-        cout.cout_wrap('...Finished', 1)
         return self.data
 
     def plot_body(self):

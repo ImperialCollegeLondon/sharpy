@@ -199,11 +199,11 @@ def generate_aero_file():
     airfoil_distribution = np.zeros((num_node,), dtype=int)
     surface_distribution = np.zeros((num_elem,), dtype=int) - 1
     surface_m = np.zeros((n_surfaces, ), dtype=int)
-    m_distribution = '1-cos'
+    m_distribution = 'uniform'
     aero_node = np.zeros((num_node,), dtype=bool)
-    twist = np.zeros((num_node,))
-    chord = np.zeros((num_node,))
-    elastic_axis = np.zeros((num_node,))
+    twist = np.zeros((num_elem, 3))
+    chord = np.zeros((num_elem, 3))
+    elastic_axis = np.zeros((num_elem, 3,))
 
     working_elem = 0
     working_node = 0
@@ -213,8 +213,8 @@ def generate_aero_file():
     surface_distribution[working_elem:working_elem + num_elem_main] = i_surf
     surface_m[i_surf] = m_main
     aero_node[working_node:working_node + num_node_main] = True
-    chord[working_node:working_node + num_node_main] = main_chord
-    elastic_axis[working_node:working_node + num_node_main] = main_ea
+    chord[:] = main_chord
+    elastic_axis[:] = main_ea
     working_elem += num_elem_main
     working_node += num_node_main
 
@@ -224,8 +224,8 @@ def generate_aero_file():
     surface_distribution[working_elem:working_elem + num_elem_main] = i_surf
     surface_m[i_surf] = m_main
     aero_node[working_node:working_node + num_node_main - 1] = True
-    chord[working_node:working_node + num_node_main - 1] = main_chord
-    elastic_axis[working_node:working_node + num_node_main - 1] = main_ea
+    # chord[working_node:working_node + num_node_main - 1] = main_chord
+    # elastic_axis[working_node:working_node + num_node_main - 1] = main_ea
     working_elem += num_elem_main
     working_node += num_node_main - 1
 
@@ -315,7 +315,7 @@ def generate_solver_file(horseshoe=False):
                                                         'alpha': alpha_rad,
                                                         'beta': beta},
                                'max_iter': 50,
-                               'n_load_steps': 3,
+                               'n_load_steps': 1,
                                # 'n_load_steps': 5,
                                'tolerance': 1e-6,
                                'relaxation_factor': 0.0}
@@ -355,4 +355,3 @@ clean_test_files()
 generate_fem_file()
 generate_solver_file(horseshoe=True)
 generate_aero_file()
-

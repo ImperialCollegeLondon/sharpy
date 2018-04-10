@@ -112,7 +112,7 @@ class StepUvlm(BaseSolver):
         # print('current step max circulation: %f' % aero_tstep.gamma[0].min())
         uvlmlib.uvlm_solver(self.data.ts,
                             aero_tstep,
-                            previous_aero_tstep,
+                            # previous_aero_tstep,
                             # self.data.aero.timestep_info[max(self.data.ts - 1, 0)],
                             # self.data.structure.timestep_info[self.data.ts - 1],
                             structure_tstep,

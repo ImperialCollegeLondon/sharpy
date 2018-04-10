@@ -142,7 +142,7 @@ def generate_solver_file():
                         'flow': ['BeamLoader', 'NonLinearStatic', 'BeamCsvOutput', 'BeamPlot'],
                         'write_screen': 'off',
                         'write_log': 'on',
-                        'log_folder': os.path.dirname(__file__) + '/output/',
+                        'log_folder': route + '/output/',
                         'log_file': case_name + '.log'}
 
     config['BeamLoader'] = {'unsteady': 'off'}
@@ -154,11 +154,11 @@ def generate_solver_file():
                                  'gravity_on': 'on',
                                  'gravity': 9.81,
                                  'gravity_dir': ['0', '0', '1']}
-    config['BeamCsvOutput'] = {'folder': os.path.dirname(__file__) + '/../',
+    config['BeamCsvOutput'] = {'folder': route + '/output',
                                'output_pos': 'on',
                                'output_psi': 'on',
                                'screen_output': 'off'}
-    config['BeamPlot'] = {'folder': os.path.dirname(__file__) + '/../',
+    config['BeamPlot'] = {'folder': route + '/output',
                           'include_rbm': 'off',
                           'include_applied_forces': 'on'}
 

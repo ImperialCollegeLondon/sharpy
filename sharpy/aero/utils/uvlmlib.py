@@ -195,7 +195,7 @@ def uvlm_init(ts_info, options):
     ts_info.remove_ctypes_pointers()
 
 
-def uvlm_solver(i_iter, ts_info, previous_ts_info, struct_ts_info, options, convect_wake=True, dt=None):
+def uvlm_solver(i_iter, ts_info, struct_ts_info, options, convect_wake=True, dt=None):
     run_UVLM = UvlmLib.run_UVLM
     run_UVLM.restype = None
 
@@ -227,7 +227,7 @@ def uvlm_solver(i_iter, ts_info, previous_ts_info, struct_ts_info, options, conv
 
     i = ct.c_uint(i_iter)
     ts_info.generate_ctypes_pointers()
-    previous_ts_info.generate_ctypes_pointers()
+    # previous_ts_info.generate_ctypes_pointers()
     run_UVLM(ct.byref(uvmopts),
              ct.byref(flightconditions),
              ts_info.ct_p_dimensions,
@@ -241,12 +241,12 @@ def uvlm_solver(i_iter, ts_info, previous_ts_info, struct_ts_info, options, conv
              p_rbm_vel,
              ts_info.ct_p_gamma,
              ts_info.ct_p_gamma_star,
-             previous_ts_info.ct_p_gamma,
+             # previous_ts_info.ct_p_gamma,
              ts_info.ct_p_normals,
              ts_info.ct_p_forces,
              ts_info.ct_p_dynamic_forces)
     ts_info.remove_ctypes_pointers()
-    previous_ts_info.remove_ctypes_pointers()
+    # previous_ts_info.remove_ctypes_pointers()
 
 
 def uvlm_calculate_unsteady_forces(ts_info,

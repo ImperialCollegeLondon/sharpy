@@ -9,9 +9,9 @@ case_name = 'smith_2deg_prescribed'
 route = os.path.dirname(os.path.realpath(__file__)) + '/'
 
 m_main = 4
-amplitude = 3
+amplitude = 0.
 period = 2
-dt_factor = 1.3
+dt_factor = 1.
 
 # flight conditions
 u_inf = 25
@@ -264,9 +264,11 @@ def generate_aero_file():
     surface_m = np.zeros((n_surfaces, ), dtype=int)
     m_distribution = 'uniform'
     aero_node = np.zeros((num_node,), dtype=bool)
-    twist = np.zeros((num_node,))
-    chord = np.zeros((num_node,))
-    elastic_axis = np.zeros((num_node,))
+    twist = np.zeros((num_elem, num_node_elem))
+    chord = np.zeros((num_elem, num_node_elem))
+    elastic_axis = np.zeros((num_elem, num_node_elem))
+    # chord = np.zeros((num_node,))
+    # elastic_axis = np.zeros((num_node,))
 
     working_elem = 0
     working_node = 0
@@ -276,8 +278,8 @@ def generate_aero_file():
     surface_distribution[working_elem:working_elem + num_elem_main] = i_surf
     surface_m[i_surf] = m_main
     aero_node[working_node:working_node + num_node_main] = True
-    chord[working_node:working_node + num_node_main] = main_chord
-    elastic_axis[working_node:working_node + num_node_main] = main_ea
+    chord[:] = main_chord
+    elastic_axis[:] = main_ea
     working_elem += num_elem_main
     working_node += num_node_main
 
@@ -287,8 +289,8 @@ def generate_aero_file():
     surface_distribution[working_elem:working_elem + num_elem_main] = i_surf
     surface_m[i_surf] = m_main
     aero_node[working_node:working_node + num_node_main - 1] = True
-    chord[working_node:working_node + num_node_main - 1] = main_chord
-    elastic_axis[working_node:working_node + num_node_main - 1] = main_ea
+    # chord[working_node:working_node + num_node_main - 1] = main_chord
+    # elastic_axis[working_node:working_node + num_node_main - 1] = main_ea
     working_elem += num_elem_main
     working_node += num_node_main - 1
 
@@ -351,7 +353,7 @@ def generate_solver_file(horseshoe=False):
                                  'BeamCsvOutput'],
                         'write_screen': 'on',
                         'write_log': 'on',
-                        'log_folder': os.path.dirname(__file__) + '/output/',
+                        'log_folder': route + '/output/',
                         'log_file': case_name + '.log'}
     config['BeamLoader'] = {'unsteady': 'on',
                             'orientation': algebra.euler2quat(np.array([0.0,
@@ -421,7 +423,8 @@ def generate_solver_file(horseshoe=False):
                                           'tolerance': 1e-6,
                                           'relaxation_factor': 0.,
                                           'n_time_steps': num_steps,
-                                          'dt': dt}
+                                          'dt': dt, 
+                                          'postprocessors_settings': dict()}
 
     if horseshoe is True:
         config['AerogridLoader'] = {'unsteady': 'on',
@@ -433,21 +436,21 @@ def generate_solver_file(horseshoe=False):
                                     'aligned_grid': 'on',
                                     'mstar': 120,
                                     'freestream_dir': ['1', '0', '0']}
-    config['AerogridPlot'] = {'folder': os.path.dirname(__file__) + '/output/',
+    config['AerogridPlot'] = {'folder': route + '/output/',
                               'include_rbm': 'on',
                               'include_applied_forces': 'on',
                               'minus_m_star': 0
                               }
-    config['AeroForcesCalculator'] = {'folder': os.path.dirname(__file__) + '/output/forces',
+    config['AeroForcesCalculator'] = {'folder': route + '/output/forces',
                                       'write_text_file': 'on',
                                       'text_file_name': case_name + '_aeroforces.csv',
                                       'screen_output': 'on',
                                       'unsteady': 'off'
                                       }
-    config['BeamPlot'] = {'folder': os.path.dirname(__file__) + '/output/',
+    config['BeamPlot'] = {'folder': route + '/output/',
                           'include_rbm': 'on',
                           'include_applied_forces': 'on'}
-    config['BeamCsvOutput'] = {'folder': os.path.dirname(__file__) + '/output/',
+    config['BeamCsvOutput'] = {'folder': route + '/output/',
                                'output_pos': 'on',
                                'output_psi': 'on',
                                'output_for_pos': 'on',

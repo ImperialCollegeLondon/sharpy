@@ -3,24 +3,18 @@ import numpy as np
 import configparser
 import os
 
-case_name = 'planarwing_dynamic'
+case_name = 'big_wake_planarwing'
 route = os.path.dirname(os.path.realpath(__file__)) + '/'
 
 # flight conditions
-u_inf = 25
+u_inf = 10
 rho = 1.225
-alpha = 4
+alpha = 15
 beta = 0
 c_ref = 1
 b_ref = 16
 sweep = 0*np.pi/180.
-aspect_ratio = 32 # = total wing span (chord = 1)
-
-dt = 0.05
-num_steps = 80
-
-amplitude = 2
-period = 1
+aspect_ratio = 1 # = total wing span (chord = 1)
 
 alpha_rad = alpha*np.pi/180
 
@@ -42,7 +36,7 @@ num_elem = num_elem_main + num_elem_main
 num_node_main = num_elem_main*(num_node_elem - 1) + 1
 num_node = num_node_main + (num_node_main - 1)
 
-m_main = 5
+m_main = 10
 
 def clean_test_files():
     fem_file_name = route + '/' + case_name + '.fem.h5'
@@ -56,10 +50,6 @@ def clean_test_files():
     solver_file_name = route + '/' + case_name + '.solver.txt'
     if os.path.isfile(solver_file_name):
         os.remove(solver_file_name)
-
-    dyn_file_name = route + '/' + case_name + '.dyn.h5'
-    if os.path.isfile(dyn_file_name):
-        os.remove(dyn_file_name)
 
     flightcon_file_name = route + '/' + case_name + '.flightcon.txt'
     if os.path.isfile(flightcon_file_name):
@@ -209,9 +199,11 @@ def generate_aero_file():
     surface_m = np.zeros((n_surfaces, ), dtype=int)
     m_distribution = 'uniform'
     aero_node = np.zeros((num_node,), dtype=bool)
-    twist = np.zeros((num_node,))
-    chord = np.zeros((num_node,))
-    elastic_axis = np.zeros((num_node,))
+    # twist = np.zeros((num_node,))
+    twist= np.zeros((num_elem, num_node_elem))
+    chord = np.zeros((num_elem, num_node_elem))
+    elastic_axis = np.zeros((num_elem, num_node_elem))
+    # elastic_axis = np.zeros((num_node,))
 
     working_elem = 0
     working_node = 0
@@ -221,8 +213,8 @@ def generate_aero_file():
     surface_distribution[working_elem:working_elem + num_elem_main] = i_surf
     surface_m[i_surf] = m_main
     aero_node[working_node:working_node + num_node_main] = True
-    chord[working_node:working_node + num_node_main] = main_chord
-    elastic_axis[working_node:working_node + num_node_main] = main_ea
+    chord[:] = main_chord
+    elastic_axis[:] = main_ea
     working_elem += num_elem_main
     working_node += num_node_main
 
@@ -232,8 +224,8 @@ def generate_aero_file():
     surface_distribution[working_elem:working_elem + num_elem_main] = i_surf
     surface_m[i_surf] = m_main
     aero_node[working_node:working_node + num_node_main - 1] = True
-    chord[working_node:working_node + num_node_main - 1] = main_chord
-    elastic_axis[working_node:working_node + num_node_main - 1] = main_ea
+    # chord[working_node:working_node + num_node_main - 1] = main_chord
+    # elastic_axis[working_node:working_node + num_node_main - 1] = main_ea
     working_elem += num_elem_main
     working_node += num_node_main - 1
 
@@ -261,55 +253,6 @@ def generate_aero_file():
         elastic_axis_input = h5file.create_dataset('elastic_axis', data=elastic_axis)
 
 
-def generate_dyn_file():
-    global dt
-    global num_steps
-    global route
-    global case_name
-    global num_elem
-    global num_node_elem
-    global num_node
-    global amplitude
-    global period
-
-    dynamic_forces_time = None
-    with_dynamic_forces = False
-    with_forced_vel = True
-    if with_dynamic_forces:
-        angle = np.arctan(8.0/6.0)
-        m1 = 80
-        f1 = 8
-        dynamic_forces = np.zeros((num_node, 6))
-        app_node = int(0)
-        dynamic_forces[app_node, 0] = -f1*np.cos(angle)
-        dynamic_forces[app_node, 1] = -f1*np.sin(angle)
-        dynamic_forces[app_node, 5] = m1
-        force_time = np.zeros((num_steps, ))
-        limit = round(2.5/dt)
-        force_time[:limit] = 1
-
-        dynamic_forces_time = np.zeros((num_steps, num_node, 6))
-        for it in range(num_steps):
-            dynamic_forces_time[it, :, :] = force_time[it]*dynamic_forces
-
-    forced_for_vel = None
-    if with_forced_vel:
-        forced_for_vel = np.zeros((num_steps, 6))
-        for it in range(num_steps):
-            forced_for_vel[it, 2] = 2*np.pi/period*amplitude*np.cos(2*np.pi*dt*it/period)
-            # forced_for_vel[it, 2] = 2*np.pi/period*np.pi/180*amplitude*np.cos(2*np.pi*dt*it/period)
-
-    with h5.File(route + '/' + case_name + '.dyn.h5', 'a') as h5file:
-        if with_dynamic_forces:
-            h5file.create_dataset(
-                'dynamic_forces', data=dynamic_forces_time)
-        if with_forced_vel:
-            h5file.create_dataset(
-                'for_vel', data=forced_for_vel)
-        h5file.create_dataset(
-            'num_steps', data=num_steps)
-
-
 def generate_naca_camber(M=0, P=0):
     m = M*1e-2
     p = P*1e-1
@@ -328,6 +271,7 @@ def generate_naca_camber(M=0, P=0):
 
 
 def generate_solver_file(horseshoe=False):
+    import sharpy.utils.algebra as algebra
     file_name = route + '/' + case_name + '.solver.txt'
     # config = configparser.ConfigParser()
     import configobj
@@ -335,46 +279,67 @@ def generate_solver_file(horseshoe=False):
     config.filename = file_name
     config['SHARPy'] = {'case': case_name,
                         'route': route,
-                        # 'flow': ['BeamLoader', 'AerogridLoader', 'StaticUvlm', 'AerogridPlot', 'AeroForcesCalculator'],
-                        'flow': ['BeamLoader',
-                                 'AerogridLoader',
-                                 'PrescribedUvlm',
-                                 # 'BeamPlot',
-                                 'AerogridPlot',
-                                 'AeroForcesCalculator'],
-                        'write_screen': 'on',
+                        'flow': ['BeamLoader', 'AerogridLoader', 'StaticUvlm', 'AerogridPlot', 'AeroForcesCalculator'],
+                        'write_screen': 'off',
                         'write_log': 'on',
-                        'log_folder': os.path.dirname(__file__) + '/output/',
+                        'log_folder': route + '/output/',
                         'log_file': case_name + '.log'}
-    config['BeamLoader'] = {'unsteady': 'on'}
-    config['AerogridLoader'] = {'unsteady': 'on',
-                                'aligned_grid': 'on',
-                                'mstar': 40,
-                                'freestream_dir': ['1', '0', '0']}
-    config['PrescribedUvlm'] = {'print_info': 'off',
+    config['BeamLoader'] = {'unsteady': 'off',
+                            'orientation': algebra.euler2quat(np.array([0.0,
+                                                                        alpha_rad,
+                                                                        beta*np.pi/180]))}
+    if horseshoe is True:
+        config['AerogridLoader'] = {'unsteady': 'off',
+                                    'aligned_grid': 'on',
+                                    'mstar': 1,
+                                    'freestream_dir': ['1', '0', '0']}
+        config['StaticUvlm'] = {'print_info': 'off',
+                                'horseshoe': 'on',
                                 'num_cores': 4,
-                                'n_rollup': 50,
+                                'n_rollup': 0,
                                 'rollup_dt': main_chord/m_main/u_inf,
                                 'rollup_aic_refresh': 1,
                                 'rollup_tolerance': 1e-4,
                                 'velocity_field_generator': 'SteadyVelocityField',
                                 'velocity_field_input': {'u_inf': u_inf,
                                                          'u_inf_direction': [1., 0, 0]},
-                                'rho': rho,
-                                'n_time_steps': num_steps,
-                                'dt': dt
-                             }
+                                'rho': 1.225,
+                                'alpha': alpha_rad,
+                                'beta': beta
+                                }
+    else:
+        config['AerogridLoader'] = {'unsteady': 'off',
+                                    'aligned_grid': 'on',
+                                    'mstar': 90,
+                                    'freestream_dir': ['1', '0', '0']}
+        config['StaticUvlm'] = {'print_info': 'off',
+                                'horseshoe': 'off',
+                                'num_cores': 4,
+                                'n_rollup': 100,
+                                'rollup_dt': main_chord/m_main/u_inf,
+                                'rollup_aic_refresh': 1,
+                                'rollup_tolerance': 1e-4,
+                                'velocity_field_generator': 'SteadyVelocityField',
+                                'velocity_field_input': {'u_inf': u_inf,
+                                                         'u_inf_direction': [1., 0, 0]},
+                                'rho': 1.225,
+                                'alpha': alpha_rad,
+                                'beta': beta
+                                }
 
-    config['AerogridPlot'] = {'folder': os.path.dirname(__file__) + '/output/',
-                              'include_rbm': 'on',
+    minus_m_star = 0
+    if config['StaticUvlm']['horseshoe'] is 'on':
+        minus_m_star = max(m_main - 1, 1)
+    config['AerogridPlot'] = {'folder': route + '/output/',
+                              'include_rbm': 'off',
                               'include_applied_forces': 'on',
                               'minus_m_star': 0
                               }
-    config['AeroForcesCalculator'] = {'folder': os.path.dirname(__file__) + '/output/',
+    config['AeroForcesCalculator'] = {'folder': route + '/output/',
                                       'write_text_file': 'on',
                                       'text_file_name': case_name + '_aeroforces.csv',
                                       'screen_output': 'on',
-                                      'unsteady': 'on'
+                                      'unsteady': 'off'
                                       }
 
     config.write()
@@ -384,7 +349,6 @@ clean_test_files()
 generate_fem_file()
 generate_solver_file(horseshoe=False)
 generate_aero_file()
-generate_dyn_file()
 
 
 

@@ -249,7 +249,7 @@ def generate_solver_file():
                         'flow': ['BeamLoader', 'NonLinearDynamic', 'BeamCsvOutput'],
                         'write_screen': 'on',
                         'write_log': 'on',
-                        'log_folder': os.path.dirname(__file__) + '/output/',
+                        'log_folder': route + '/output/',
                         'log_file': case_name + '.log'}
     config['BeamLoader'] = {'unsteady': 'on'}
     config['NonLinearDynamic'] = {'print_info': 'off',
@@ -265,7 +265,7 @@ def generate_solver_file():
                                   'gravity_on': 'off',
                                   'gravity': 9.81,
                                   'gravity_dir': ['0', '0', '1']}
-    config['BeamCsvOutput'] = {'folder': os.path.dirname(__file__) + '/output',
+    config['BeamCsvOutput'] = {'folder': route + '/output',
                                'output_pos': 'on',
                                'output_psi': 'on',
                                'output_glob_pos': 'on',

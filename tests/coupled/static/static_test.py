@@ -45,8 +45,8 @@ class TestCoupledStatic(unittest.TestCase):
         # read output and compare
         output_path = os.path.dirname(solver_path) + '/output/smith_nog_2deg/beam/'
         pos_data = np.genfromtxt(output_path + 'beam_smith_nog_2deg_000000.csv')
-        self.assertAlmostEqual((pos_data[20, 1] - 15.581)/15.581, 0.00, 2)
-        self.assertAlmostEqual((pos_data[20, 2] - 3.399)/3.399, 0.00, 2)
+        self.assertAlmostEqual((pos_data[20, 1] - 15.58954497)/15.58954497, 0.00, 2)
+        self.assertAlmostEqual((pos_data[20, 2] - 3.365882)/3.365882, 0.00, 2)
 
         # results:
         # N = 10 elements
@@ -60,13 +60,6 @@ class TestCoupledStatic(unittest.TestCase):
         #     0 | 1.464e+00 | -4.480e-03 | 2.389e+02
         # 521 seconds
 
-        # will use this one for validation.
-        # same discretisation, with horseshoe:
-        # [  0.02796747  15.58103469   3.39999052]
-        # forces:
-        # tstep |   fx_st    |   fy_st    |   fz_st
-        #     0 |  1.047e+00 | -5.944e-03 |  2.542e+02
-        # 26 seconds
 
     def test_smith2deg_g(self):
         import sharpy.sharpy_main
@@ -76,7 +69,7 @@ class TestCoupledStatic(unittest.TestCase):
 
         # read output and compare
         output_path = os.path.dirname(solver_path) + '/output/smith_g_2deg/beam/'
-        pos_data = np.genfromtxt(output_path + 'beam_smith_g_2deg_000002.csv')
+        pos_data = np.genfromtxt(output_path + 'beam_smith_g_2deg_000000.csv')
         self.assertAlmostEqual((pos_data[20, 1] - 15.9777)/15.9777, 0.00, 2)
         self.assertAlmostEqual((pos_data[20, 2] - 0.781620)/0.781620, 0.00, 2)
 
@@ -95,9 +88,9 @@ class TestCoupledStatic(unittest.TestCase):
 
         # read output and compare
         output_path = os.path.dirname(solver_path) + '/output/smith_g_4deg/beam/'
-        pos_data = np.genfromtxt(output_path + 'beam_smith_g_4deg_000002.csv')
-        self.assertAlmostEqual((pos_data[20, 1] - 15.5097)/15.097, 0.00, 2)
-        self.assertAlmostEqual((pos_data[20, 2] - 3.66200)/3.66200, 0.00, 2)
+        pos_data = np.genfromtxt(output_path + 'beam_smith_g_4deg_000000.csv')
+        self.assertAlmostEqual((pos_data[20, 1] - 15.4634)/15.4634, 0.00, 2)
+        self.assertAlmostEqual((pos_data[20, 2] - 3.8275041)/3.8275041, 0.00, 2)
 
         # results:
         # N = 10 elements
@@ -112,14 +105,6 @@ class TestCoupledStatic(unittest.TestCase):
         #   0   | 3.229 | -1.059e-3| 3.766e2
         # 7500 seconds
 
-        # will use this one for validation.
-        # same discretisation, with horseshoe:
-        # 5.009157275506188889e-02 1.550972930845460596e+01 3.662002908013482383e+00
-        # forces:
-        # tstep |   fx_st    |   fy_st    |   fz_st
-        #    2 |  3.765174e+00, -3.611481e-04, 4.882051e+02
-        # 44 seconds
-
     def test_smith4deg_nog(self):
         """
         Hodges result for Euler+Nonlinear is
@@ -133,9 +118,9 @@ class TestCoupledStatic(unittest.TestCase):
 
         # read output and compare
         output_path = os.path.dirname(solver_path) + '/output/smith_nog_4deg/beam/'
-        pos_data = np.genfromtxt(output_path + 'beam_smith_nog_4deg_000003.csv')
-        self.assertAlmostEqual((pos_data[20, 1] - 14.80636555)/14.80636555, 0.00, 2)
-        self.assertAlmostEqual((pos_data[20, 2] - 5.65457501)/5.65457501, 0.00, 2)
+        pos_data = np.genfromtxt(output_path + 'beam_smith_nog_4deg_000004.csv')
+        self.assertAlmostEqual((pos_data[20, 1] - 14.792655)/14.792655, 0.00, 2)
+        self.assertAlmostEqual((pos_data[20, 2] - 5.6854071)/5.6854071, 0.00, 2)
 
         # results:
         # N = 10 elements

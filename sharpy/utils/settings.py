@@ -3,6 +3,7 @@ import ctypes as ct
 import numpy as np
 import sharpy.utils.exceptions as exceptions
 import sharpy.utils.cout_utils as cout
+import sharpy.utils.cout_utils as cout
 
 false_list = ['false', 'off', '0', 'no']
 
@@ -40,6 +41,7 @@ def to_custom_types(dictionary, types, default):
                 if default[k] is None:
                     raise exceptions.NoDefaultValueException(k)
                 dictionary[k] = cast(k, default[k], int, ct.c_int, default[k])
+                notify_default_value(k, dictionary[k])
 
         elif v == 'float':
             try:
@@ -48,6 +50,7 @@ def to_custom_types(dictionary, types, default):
                 if default[k] is None:
                     raise exceptions.NoDefaultValueException(k)
                 dictionary[k] = cast(k, default[k], float, ct.c_double, default[k])
+                notify_default_value(k, dictionary[k])
 
         elif v == 'str':
             try:
@@ -56,6 +59,7 @@ def to_custom_types(dictionary, types, default):
                 if default[k] is None:
                     raise exceptions.NoDefaultValueException(k)
                 dictionary[k] = cast(k, default[k], eval(v), eval(v), default[k])
+                notify_default_value(k, dictionary[k])
 
         elif v == 'bool':
             try:
@@ -64,6 +68,7 @@ def to_custom_types(dictionary, types, default):
                 if default[k] is None:
                     raise exceptions.NoDefaultValueException(k)
                 dictionary[k] = cast(k, default[k], str2bool, ct.c_bool, default[k])
+                notify_default_value(k, dictionary[k])
 
         elif v == 'list(str)':
             try:
@@ -76,6 +81,7 @@ def to_custom_types(dictionary, types, default):
                 if default[k] is None:
                     raise exceptions.NoDefaultValueException(k)
                 dictionary[k] = default[k].copy()
+                notify_default_value(k, dictionary[k])
 
         elif v == 'list(float)':
             try:
@@ -97,6 +103,7 @@ def to_custom_types(dictionary, types, default):
                 if default[k] is None:
                     raise exceptions.NoDefaultValueException(k)
                 dictionary[k] = default[k].copy()
+                notify_default_value(k, dictionary[k])
 
         elif v == 'list(int)':
             try:
@@ -118,6 +125,7 @@ def to_custom_types(dictionary, types, default):
                 if default[k] is None:
                     raise exceptions.NoDefaultValueException(k)
                 dictionary[k] = default[k].copy()
+                notify_default_value(k, dictionary[k])
 
         elif v == 'dict':
             if not isinstance(dictionary[k], dict):
@@ -154,3 +162,8 @@ def str2bool(string):
         return False
     else:
         return True
+
+
+def notify_default_value(k, v):
+    cout.cout_wrap('Variable ' + k + ' has no assigned value in the settings file.')
+    cout.cout_wrap('    will default to the value: ' + str(v), 1)

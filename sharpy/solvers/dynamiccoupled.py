@@ -64,6 +64,12 @@ class DynamicCoupled(BaseSolver):
         self.settings_types['dynamic_relaxation'] = 'bool'
         self.settings_default['dynamic_relaxation'] = True
 
+        self.settings_types['postprocessors'] = 'list(str)'
+        self.settings_default['postprocessors'] = list()
+
+        self.settings_types['postprocessors_settings'] = 'dict'
+        self.settings_default['postprocessors_settings'] = dict()
+
         self.data = None
         self.settings = None
         self.structural_solver = None
@@ -75,6 +81,8 @@ class DynamicCoupled(BaseSolver):
 
         self.predictor = False
         self.residual_table = None
+        self.postprocessors = dict()
+        self.with_postprocessors = False
 
     def initialise(self, data):
         self.data = data
@@ -96,6 +104,15 @@ class DynamicCoupled(BaseSolver):
         self.residual_table.field_length[1] = 6
         self.residual_table.field_length[1] = 6
         self.residual_table.print_header(['ts', 't', 'iter', 'residual', 'FoR_vel(z)'])
+
+        # initialise postprocessors
+        self.postprocessors = dict()
+        if len(self.settings['postprocessors']) > 0:
+            self.with_postprocessors = True
+        for postproc in self.settings['postprocessors']:
+            self.postprocessors[postproc] = solver_interface.initialise_solver(postproc)
+            self.postprocessors[postproc].initialise(
+                self.data, self.settings['postprocessors_settings'][postproc])
 
     def cleanup_timestep_info(self):
         if max(len(self.data.aero.timestep_info), len(self.data.structure.timestep_info)) > 1:
@@ -169,9 +186,10 @@ class DynamicCoupled(BaseSolver):
                     break
 
                 # relaxation
+                temp = structural_kstep.copy()
                 relax(self.data.structure, structural_kstep, previous_kstep, self.relaxation_factor(k))
                 # copy for next iteration
-                previous_kstep = structural_kstep.copy()
+                previous_kstep = temp
 
             # allocate and copy previous timestep, copying steady and unsteady forces from input
             self.structural_solver.add_step()
@@ -188,6 +206,11 @@ class DynamicCoupled(BaseSolver):
                                              self.data.structure.timestep_info[-1],
                                              self.data.aero.timestep_info[-2],
                                              convect_wake=True)
+
+            # run postprocessors
+            if self.with_postprocessors:
+                for postproc in self.postprocessors:
+                    self.data = self.postprocessors[postproc].run(online=True)
 
         cout.cout_wrap('...Finished', 1)
         return self.data

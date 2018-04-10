@@ -375,6 +375,11 @@ class Aerogrid(object):
         else:
             # second order
             for i_surf in range(tstep.n_surf):
+                if (not np.isfinite(tstep.gamma[i_surf]).any()) or \
+                    (not np.isfinite(previous_tsteps[-1].gamma[i_surf]).any()) or \
+                        (not np.isfinite(previous_tsteps[-2].gamma[i_surf]).any()):
+                    raise ArithmeticError('NaN found in gamma')
+
                 tstep.gamma_dot[i_surf] = (3.0*tstep.gamma[i_surf]
                                            - 4.0*previous_tsteps[-1].gamma[i_surf]
                                            + previous_tsteps[-2].gamma[i_surf])/(2.0*dt)
@@ -443,7 +448,11 @@ def generate_strip(node_info, airfoil_db, aligned_grid, orientation_in=np.array(
     # angle between orientation_in and chord line
     # chord_line_b_frame = strip_coordinates_b_frame[:, -1] - strip_coordinates_b_frame[:, 0]
     chord_line_a_frame = np.dot(Cab, chord_line_b_frame)
-    sweep_angle = algebra.angle_between_vectors_sign(orientation_in, chord_line_a_frame, np.array([0, 0, 1]))
+    # sweep_angle = algebra.angle_between_vectors_sign(orientation_in, chord_line_a_frame, np.array([0, 0, 1]))
+    sweep_angle = algebra.angle_between_vectors_sign(orientation_in, Cab[:, 1], np.array([0, 0, 1]))
+    # print(sweep_angle)
+# TEMP
+#     sweep_angle = np.sign(sweep_angle)*np.pi
     # rotation matrix
     Csweep = algebra.rotation3d_z(-sweep_angle)
 
@@ -465,8 +474,12 @@ def generate_strip(node_info, airfoil_db, aligned_grid, orientation_in=np.array(
         # velocity due to psi_dot
         omega_b = algebra.crv_dot2omega(node_info['beam_psi'], node_info['psi_dot'])
         for i_M in range(node_info['M'] + 1):
-            zeta_dot_a_frame[:, i_M] += (
+            # zeta_dot_a_frame[:, i_M] += (
+            #     np.dot(Cab, np.cross(omega_b, strip_coordinates_b_frame[:, i_M])))
+            zeta_dot_a_frame[:, i_M] -= (
                 np.dot(Cab, np.cross(omega_b, strip_coordinates_b_frame[:, i_M])))
+                # np.cross(omega_b, strip_coordinates_b_frame[:, i_M]))
+                # np.cross(omega_b, strip_coordinates_a_frame[:, i_M]))
 
                 # np.cross(np.dot(Cab,
                 #                 np.dot(algebra.crv_dot2omega(node_info['beam_psi'], node_info['psi_dot']),

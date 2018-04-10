@@ -43,7 +43,7 @@ class BeamLoads(BaseSolver):
 
         for ielem in range(self.data.structure.num_elem):
             crv = 0.5*(psi[ielem, 1, :] + psi[ielem, 0, :])
-            cba = algebra.crv2rot(crv)
+            cba = algebra.crv2rot(crv).T
             tan = algebra.crv2tan(crv)
 
             inode0 = self.data.structure.elements[ielem].global_connectivities[0]
@@ -70,7 +70,7 @@ class BeamLoads(BaseSolver):
 
             for ielem in range(self.data.structure.num_elem):
                 crv = 0.5*(psi[ielem, 1, :] + psi[ielem, 0, :])
-                cba = algebra.crv2rot(crv)
+                cba = algebra.crv2rot(crv).T
                 tan = algebra.crv2tan(crv)
 
                 inode0 = self.data.structure.elements[ielem].global_connectivities[0]

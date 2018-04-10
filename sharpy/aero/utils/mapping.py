@@ -35,4 +35,5 @@ def aero2struct_force_mapping(aero_forces,
                 struct_forces[i_global_node, 0:3] += np.dot(cbg, aero_forces[i_surf][0:3, i_m, i_n])
                 struct_forces[i_global_node, 3:6] += np.dot(cbg, aero_forces[i_surf][3:6, i_m, i_n])
                 struct_forces[i_global_node, 3:6] += np.dot(cbg, np.cross(chi_g, aero_forces[i_surf][0:3, i_m, i_n]))
+                # struct_forces[i_global_node, 3:6] -= np.dot(cbg, np.cross(chi_g, aero_forces[i_surf][0:3, i_m, i_n]))
     return struct_forces

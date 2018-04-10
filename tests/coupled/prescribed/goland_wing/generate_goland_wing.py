@@ -5,18 +5,19 @@ import os
 
 import sharpy.utils.algebra as algebra
 
-case_name = 'goland_wing_alpha0_130'
+case_name = 'goland_wing_refined_1625'
 route = os.path.dirname(os.path.realpath(__file__)) + '/'
 
+# m = 16 gives flutter with 165
 m_main = 16
 amplitude = 0
-period = 1
-dt_factor = 1
+period = 0
+dt_factor = 0.74
 
 # flight conditions
-u_inf = 130
+u_inf = 162.5
 rho = 1.02
-alpha = 5
+alpha = 0.0
 beta = 0
 c_ref = 1
 b_ref = 16
@@ -38,10 +39,14 @@ n_surfaces = 2
 
 dt = main_chord/m_main/u_inf*dt_factor
 num_steps = int(6/dt)
+num_steps = int(2400)
 num_steps = int(600)
+num_steps = int(526*2/0.75)
+num_steps = int(2500/0.75)
+print(num_steps)
 
 # discretisation data
-num_elem_main = 14
+num_elem_main = 5
 
 num_node_elem = 3
 num_elem = num_elem_main + num_elem_main
@@ -86,17 +91,13 @@ def generate_dyn_file():
     with_dynamic_forces = False
     with_forced_vel = False
     if with_dynamic_forces:
-        angle = np.arctan(8.0/6.0)
-        m1 = 80
-        f1 = 8
+        f1 = 100
         dynamic_forces = np.zeros((num_node, 6))
-        app_node = int(0)
-        dynamic_forces[app_node, 0] = -f1*np.cos(angle)
-        dynamic_forces[app_node, 1] = -f1*np.sin(angle)
-        dynamic_forces[app_node, 5] = m1
+        app_node = [int(num_node_main - 1), int(num_node_main)]
+        dynamic_forces[app_node, 2] = f1
         force_time = np.zeros((num_steps, ))
-        limit = round(2.5/dt)
-        force_time[:limit] = 1
+        limit = round(0.05/dt)
+        force_time[50:61] = 1
 
         dynamic_forces_time = np.zeros((num_steps, num_node, 6))
         for it in range(num_steps):
@@ -144,9 +145,9 @@ def generate_fem_file():
     num_stiffness = 1
     ea = 1e5
     ga = 1e5
-    gj = 0.99e6
-    eiy = 9.77e6
-    eiz = 9.77e6
+    gj = 0.987581e6
+    eiy = 9.77221e6
+    eiz = 9.77221e8
     sigma = 1
     base_stiffness = sigma*np.diag([ea, ga, ga, gj, eiy, eiz])
     stiffness = np.zeros((num_stiffness, 6, 6))
@@ -157,7 +158,8 @@ def generate_fem_file():
     m_base = 35.71
     j_base = 8.64
     import sharpy.utils.algebra as algebra
-    m_chi_cg = algebra.skew(m_base*np.array([0., main_ea - main_cg, 0.]))
+    # m_chi_cg = algebra.skew(m_base*np.array([0., -(main_ea - main_cg), 0.]))
+    m_chi_cg = algebra.skew(m_base*np.array([0., (main_ea - main_cg), 0.]))
     base_mass = np.diag([m_base, m_base, m_base, j_base, 0.1*j_base, 0.1*j_base])
     base_mass[0:3, 3:6] = -m_chi_cg
     base_mass[3:6, 0:3] = m_chi_cg
@@ -354,8 +356,8 @@ def generate_solver_file(horseshoe=False):
                                  'AerogridLoader',
                                  'StaticCoupled',
                                  'DynamicPrescribedCoupled',
-                                 'AerogridPlot',
-                                 'BeamPlot',
+                                 # 'AerogridPlot',
+                                 # 'BeamPlot',
                                  'AeroForcesCalculator',
                                  'BeamCsvOutput'],
                         'write_screen': 'on',
@@ -371,9 +373,9 @@ def generate_solver_file(horseshoe=False):
                                'structural_solver': 'NonLinearStatic',
                                'structural_solver_settings': {'print_info': 'off',
                                                               'max_iterations': 150,
-                                                              'num_load_steps': 10,
+                                                              'num_load_steps': 1,
                                                               'delta_curved': 1e-5,
-                                                              'min_delta': 1e-5,
+                                                              'min_delta': 1e-13,
                                                               'gravity_on': 'off',
                                                               'gravity': 9.754,
                                                               'orientation': algebra.euler2quat(np.array([0.0,
@@ -395,16 +397,16 @@ def generate_solver_file(horseshoe=False):
                                                         'beta': beta},
                                'max_iter': 80,
                                'n_load_steps': 1,
-                               'tolerance': 1e-4,
+                               'tolerance': 1e-10,
                                'relaxation_factor': 0.0}
     config['DynamicPrescribedCoupled'] = {'print_info': 'on',
                                           'structural_solver': 'NonLinearDynamicPrescribedStep',
                                           'structural_solver_settings': {'print_info': 'off',
-                                                                         'max_iterations': 150,
+                                                                         'max_iterations': 550,
                                                                          'num_load_steps': 1,
-                                                                         'delta_curved': 1e-5,
-                                                                         'min_delta': 1e-7,
-                                                                         'newmark_damp': 5e-4,
+                                                                         'delta_curved': 1e-15,
+                                                                         'min_delta': 1e-15,
+                                                                         'newmark_damp': 5e-3,
                                                                          'gravity_on': 'off',
                                                                          'gravity': 9.754,
                                                                          'num_steps': num_steps,
@@ -418,22 +420,32 @@ def generate_solver_file(horseshoe=False):
                                                                    'rollup_dt': main_chord/m_main/u_inf,
                                                                    'rollup_aic_refresh': 1,
                                                                    'rollup_tolerance': 1e-4,
-                                                                   'velocity_field_generator': 'SteadyVelocityField',
+                                                                   'velocity_field_generator': 'GustVelocityField',
                                                                    'velocity_field_input': {'u_inf': u_inf,
-                                                                                            'u_inf_direction': [1., 0, 0]},
+                                                                                            'u_inf_direction': [1., 0, 0],
+                                                                                            'gust_shape': '1-cos',
+                                                                                            'gust_length': 4.0*main_chord,
+                                                                                            'gust_intensity': 0.001*u_inf,
+                                                                                            'offset': 1.0,
+                                                                                            'span': main_span},
                                                                    'rho': rho,
                                                                    'n_time_steps': num_steps,
                                                                    'dt': dt},
-                                          # 'max_iter': 100,
-                                          # 'tolerance': 1e-6,
-                                          # 'relaxation_factor': 0.,
-                                          # 'n_time_steps': num_steps,
-                                          # 'dt': dt}
+                                          'postprocessors': ['BeamPlot', 'AerogridPlot'],
+                                          'postprocessors_settings': {'BeamPlot': {'folder': route + '/output/',
+                                                                                   'include_rbm': 'on',
+                                                                                   'include_applied_forces': 'on'},
+                                                                      'AerogridPlot': {
+                                                                          'folder': route + '/output/',
+                                                                          'include_rbm': 'on',
+                                                                          'include_applied_forces': 'on',
+                                                                          'minus_m_star': 0}},
                                           'fsi_substeps': 100,
-                                          'fsi_tolerance': 1e-8,
-                                          'relaxation_factor': 0.1,
+                                          # 'fsi_substeps': 1,
+                                          'fsi_tolerance': 1e-7,
+                                          'relaxation_factor': 0.0,
                                           'minimum_steps': 1,
-                                          'relaxation_steps': 15,
+                                          'relaxation_steps': 25,
                                           'n_time_steps': num_steps,
                                           'dt': dt,
                                           'structural_substeps': 0}
@@ -446,7 +458,7 @@ def generate_solver_file(horseshoe=False):
     else:
         config['AerogridLoader'] = {'unsteady': 'on',
                                     'aligned_grid': 'on',
-                                    'mstar': 100,
+                                    'mstar': 120,
                                     'freestream_dir': ['1', '0', '0']}
     config['AerogridPlot'] = {'folder': route + '/output/',
                               'include_rbm': 'on',

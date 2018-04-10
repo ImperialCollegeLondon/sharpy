@@ -31,14 +31,14 @@ main_airfoil_M = 0
 n_surfaces = 2
 
 # discretisation data
-num_elem_main = 20
+num_elem_main = 10
 
 num_node_elem = 3
 num_elem = num_elem_main + num_elem_main
 num_node_main = num_elem_main*(num_node_elem - 1) + 1
 num_node = num_node_main + (num_node_main - 1)
 
-m_main = 15
+m_main = 10
 
 
 def clean_test_files():
@@ -201,9 +201,9 @@ def generate_aero_file():
     surface_m = np.zeros((n_surfaces, ), dtype=int)
     m_distribution = 'uniform'
     aero_node = np.zeros((num_node,), dtype=bool)
-    twist = np.zeros((num_node,))
-    chord = np.zeros((num_node,))
-    elastic_axis = np.zeros((num_node,))
+    twist = np.zeros((num_elem, 3))
+    chord = np.zeros((num_elem, 3))
+    elastic_axis = np.zeros((num_elem, 3,))
 
     working_elem = 0
     working_node = 0
@@ -213,8 +213,8 @@ def generate_aero_file():
     surface_distribution[working_elem:working_elem + num_elem_main] = i_surf
     surface_m[i_surf] = m_main
     aero_node[working_node:working_node + num_node_main] = True
-    chord[working_node:working_node + num_node_main] = main_chord
-    elastic_axis[working_node:working_node + num_node_main] = main_ea
+    chord[:] = main_chord
+    elastic_axis[:] = main_ea
     working_elem += num_elem_main
     working_node += num_node_main
 
@@ -224,8 +224,8 @@ def generate_aero_file():
     surface_distribution[working_elem:working_elem + num_elem_main] = i_surf
     surface_m[i_surf] = m_main
     aero_node[working_node:working_node + num_node_main - 1] = True
-    chord[working_node:working_node + num_node_main - 1] = main_chord
-    elastic_axis[working_node:working_node + num_node_main - 1] = main_ea
+    # chord[working_node:working_node + num_node_main - 1] = main_chord
+    # elastic_axis[working_node:working_node + num_node_main - 1] = main_ea
     working_elem += num_elem_main
     working_node += num_node_main - 1
 
@@ -280,7 +280,7 @@ def generate_solver_file(horseshoe=False):
                         'route': route,
                         'flow': ['BeamLoader', 'AerogridLoader', 'StaticCoupled', 'AerogridPlot', 'BeamPlot', 'AeroForcesCalculator', 'BeamCsvOutput'],
                         # 'flow': ['BeamLoader', 'NonLinearStatic', 'BeamPlot'],
-                        'write_screen': 'on',
+                        'write_screen': 'off',
                         'write_log': 'on',
                         'log_folder': os.path.dirname(__file__) + '/output/',
                         'log_file': case_name + '.log'}
@@ -292,7 +292,7 @@ def generate_solver_file(horseshoe=False):
                                'structural_solver': 'NonLinearStatic',
                                'structural_solver_settings': {'print_info': 'off',
                                                               'max_iterations': 150,
-                                                              'num_load_steps': 50,
+                                                              'num_load_steps': 1,
                                                               'delta_curved': 1e-5,
                                                               'min_delta': 1e-8,
                                                               'gravity_on': 'off',
@@ -312,7 +312,7 @@ def generate_solver_file(horseshoe=False):
                                                         'alpha': alpha_rad,
                                                         'beta': beta},
                                'max_iter': 100,
-                               'n_load_steps': 25,
+                               'n_load_steps': 5,
                                'tolerance': 1e-5,
                                'relaxation_factor': 0.}
 
@@ -351,4 +351,3 @@ clean_test_files()
 generate_fem_file()
 generate_solver_file(horseshoe=True)
 generate_aero_file()
-
