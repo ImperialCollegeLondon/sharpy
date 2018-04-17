@@ -366,23 +366,25 @@ class Aerogrid(object):
         :return:
         """
 
-        if len(previous_tsteps) == 1:
-            # first order
-            # f'(n) = (f(n) - f(n - 1))/dx
-            for i_surf in range(tstep.n_surf):
-                tstep.gamma_dot[i_surf] = (tstep.gamma[i_surf] - previous_tsteps[-1].gamma[i_surf])/dt
-
-        else:
-            # second order
-            for i_surf in range(tstep.n_surf):
-                if (not np.isfinite(tstep.gamma[i_surf]).any()) or \
-                    (not np.isfinite(previous_tsteps[-1].gamma[i_surf]).any()) or \
-                        (not np.isfinite(previous_tsteps[-2].gamma[i_surf]).any()):
-                    raise ArithmeticError('NaN found in gamma')
-
-                tstep.gamma_dot[i_surf] = (3.0*tstep.gamma[i_surf]
-                                           - 4.0*previous_tsteps[-1].gamma[i_surf]
-                                           + previous_tsteps[-2].gamma[i_surf])/(2.0*dt)
+        # if len(previous_tsteps) == 1:
+        #     # first order
+        #     # f'(n) = (f(n) - f(n - 1))/dx
+        #     for i_surf in range(tstep.n_surf):
+        #         tstep.gamma_dot[i_surf] = (tstep.gamma[i_surf] - previous_tsteps[-1].gamma[i_surf])/dt
+        #
+        # else:
+        #     # second order
+        #     for i_surf in range(tstep.n_surf):
+        #         if (not np.isfinite(tstep.gamma[i_surf]).any()) or \
+        #             (not np.isfinite(previous_tsteps[-1].gamma[i_surf]).any()) or \
+        #                 (not np.isfinite(previous_tsteps[-2].gamma[i_surf]).any()):
+        #             raise ArithmeticError('NaN found in gamma')
+        #
+        #         tstep.gamma_dot[i_surf] = (3.0*tstep.gamma[i_surf]
+        #                                    - 4.0*previous_tsteps[-1].gamma[i_surf]
+        #                                    + previous_tsteps[-2].gamma[i_surf])/(2.0*dt)
+        for i_surf in range(tstep.n_surf):
+            tstep.gamma_dot[i_surf] = (tstep.gamma[i_surf] - previous_tsteps[-1].gamma[i_surf])/dt
 
 
 def generate_strip(node_info, airfoil_db, aligned_grid, orientation_in=np.array([1, 0, 0]), calculate_zeta_dot = False):
@@ -447,7 +449,7 @@ def generate_strip(node_info, airfoil_db, aligned_grid, orientation_in=np.array(
     # sweep angle correction
     # angle between orientation_in and chord line
     # chord_line_b_frame = strip_coordinates_b_frame[:, -1] - strip_coordinates_b_frame[:, 0]
-    chord_line_a_frame = np.dot(Cab, chord_line_b_frame)
+    # chord_line_a_frame = np.dot(Cab, chord_line_b_frame)
     # sweep_angle = algebra.angle_between_vectors_sign(orientation_in, chord_line_a_frame, np.array([0, 0, 1]))
     sweep_angle = algebra.angle_between_vectors_sign(orientation_in, Cab[:, 1], np.array([0, 0, 1]))
     # print(sweep_angle)
@@ -476,8 +478,16 @@ def generate_strip(node_info, airfoil_db, aligned_grid, orientation_in=np.array(
         for i_M in range(node_info['M'] + 1):
             # zeta_dot_a_frame[:, i_M] += (
             #     np.dot(Cab, np.cross(omega_b, strip_coordinates_b_frame[:, i_M])))
+
+            # zeta_dot_a_frame[:, i_M] += (
+            #     np.cross(np.dot(Cab, np.dot(omega_b, Cab.T)), strip_coordinates_a_frame[:, i_M]))
+
+            # zeta_dot_a_frame[:, i_M] += (
+            #     np.dot(np.dot(Cab, np.dot(algebra.skew(omega_b).T, Cab.T)), strip_coordinates_a_frame[:, i_M]))
+
             zeta_dot_a_frame[:, i_M] += (
-                np.cross(np.dot(Cab, np.dot(omega_b, Cab.T)), strip_coordinates_a_frame[:, i_M]))
+                np.dot(np.dot(Cab, np.dot(algebra.skew(omega_b), Cab.T)), strip_coordinates_a_frame[:, i_M]))
+
                 # np.cross(omega_b, strip_coordinates_b_frame[:, i_M]))
                 # np.cross(omega_b, strip_coordinates_a_frame[:, i_M]))
 

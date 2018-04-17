@@ -120,16 +120,16 @@ def cbeam3_solv_nlnstatic(beam, settings, ts):
                             beam.timestep_info[ts].pos.ctypes.data_as(doubleP),
                             beam.timestep_info[ts].psi.ctypes.data_as(doubleP),
                             beam.timestep_info[ts].steady_applied_forces.ctypes.data_as(doubleP),
-                            beam.timestep_info[ts].gravity_forces.ctypes.data_as(doubleP)
+                            beam.timestep_info[ts].total_gravity_forces.ctypes.data_as(doubleP)
                             )
-    gravity_forces = beam.nodal_premultiply_inv_T_transpose(beam.timestep_info[ts].gravity_forces,
-                                                            beam.timestep_info[ts],
-                                                            filter=np.array([False, False, False,
-                                                                             True, True, True]))
-    gravity_forces[:] = beam.nodal_b_for_2_a_for(gravity_forces,
-                                                 beam.timestep_info[ts],
-                                                 filter=np.array([False, False, False, True, True, True]))
-    beam.timestep_info[ts].gravity_forces[:] = gravity_forces
+    # gravity_forces = beam.nodal_premultiply_inv_T_transpose(beam.timestep_info[ts].gravity_forces,
+    #                                                         beam.timestep_info[ts],
+    #                                                         filter=np.array([False, False, False,
+    #                                                                          True, True, True]))
+    # gravity_forces[:] = beam.nodal_b_for_2_a_for(gravity_forces,
+    #                                              beam.timestep_info[ts],
+    #                                              filter=np.array([False, False, False, True, True, True]))
+    # beam.timestep_info[ts].gravity_forces[:] = gravity_forces
 
 # def cbeam3_solv_compute_resultant(tstep, beam, settings):
 #     raise Exception('Dont use this funciton')
@@ -626,14 +626,6 @@ def xbeam_step_couplednlndyn(beam, settings, ts, tstep=None, dt=None):
                                     tstep.q.ctypes.data_as(doubleP),
                                     tstep.dqdt.ctypes.data_as(doubleP),
                                     tstep.dqddt.ctypes.data_as(doubleP))
-    gravity_forces = beam.nodal_premultiply_inv_T_transpose(tstep.gravity_forces,
-                                                            tstep,
-                                                            filter=np.array([False, False, False,
-                                                                             True, True, True]))
-    gravity_forces = beam.nodal_b_for_2_a_for(gravity_forces,
-                                              tstep,
-                                              filter=np.array([False, False, False, True, True, True]))
-    tstep.gravity_forces = gravity_forces[:]
 
 
 def xbeam_init_couplednlndyn(beam, settings, ts, dt=None):

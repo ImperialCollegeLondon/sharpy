@@ -331,6 +331,8 @@ class StructTimeStepInfo(object):
         self.steady_applied_forces = np.zeros((self.num_node, 6), dtype=ct.c_double, order='F')
         self.unsteady_applied_forces = np.zeros((self.num_node, 6), dtype=ct.c_double, order='F')
         self.gravity_forces = np.zeros((self.num_node, 6), dtype=ct.c_double, order='F')
+        self.total_gravity_forces = np.zeros((6,), dtype=ct.c_double, order='F')
+
 
         self.q = np.zeros(((self.num_node - 1)*6 + 6 + 4,), dtype=ct.c_double, order='F')
         self.dqdt = np.zeros(((self.num_node - 1)*6 + 6 + 4,), dtype=ct.c_double, order='F')
@@ -366,6 +368,7 @@ class StructTimeStepInfo(object):
         copied.steady_applied_forces = self.steady_applied_forces.astype(dtype=ct.c_double, order='F', copy=True)
         copied.unsteady_applied_forces = self.unsteady_applied_forces.astype(dtype=ct.c_double, order='F', copy=True)
         copied.gravity_forces = self.gravity_forces.astype(dtype=ct.c_double, order='F', copy=True)
+        copied.total_gravity_forces = self.total_gravity_forces.astype(dtype=ct.c_double, order='F', copy=True)
 
         copied.q = self.q.astype(dtype=ct.c_double, order='F', copy=True)
         copied.dqdt = self.dqdt.astype(dtype=ct.c_double, order='F', copy=True)

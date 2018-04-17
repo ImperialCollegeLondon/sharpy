@@ -81,6 +81,20 @@ class NonLinearDynamicCoupledStep(BaseSolver):
     def next_step(self):
         pass
 
+    def extract_resultants(self):
+        applied_forces = self.data.structure.nodal_b_for_2_a_for(self.data.structure.timestep_info[-1].steady_applied_forces,
+                                                                 self.data.structure.timestep_info[-1])
+
+        applied_forces_copy = applied_forces.copy()
+        for i_node in range(self.data.structure.num_node):
+            applied_forces_copy[i_node, 3:6] += np.cross(self.data.structure.timestep_info[-1].pos[i_node, :],
+                                                         applied_forces_copy[i_node, 0:3])
+
+        totals = np.sum(applied_forces_copy, axis=0) + self.data.structure.timestep_info[-1].total_gravity_forces
+        # print("applied forces dynamic= ", np.sum(applied_forces_copy, axis=0))
+        # print("Unsteady totals = ", totals)
+        return totals[0:3], totals[3:6]
+
     # def extract_resultants(self, tstep):
     #     # applied_forces = self.data.structure.nodal_b_for_2_a_for(tstep.steady_applied_forces, tstep)
     #     applied_forces = tstep.steady_applied_forces[:]

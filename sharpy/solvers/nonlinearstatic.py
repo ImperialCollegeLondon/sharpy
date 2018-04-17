@@ -56,23 +56,16 @@ class NonLinearStatic(BaseSolver):
         self.data.structure.next_step()
 
     def extract_resultants(self):
-        # gravity_forces, applied_forces = xbeamlib.cbeam3_solv_compute_resultant(self.data.structure.timestep_info[-1],
-        #                                                                         self.data.structure,
-        #                                                                         self.settings)
-
-
-
         applied_forces = self.data.structure.nodal_b_for_2_a_for(self.data.structure.timestep_info[-1].steady_applied_forces,
                                                                  self.data.structure.timestep_info[-1])
 
-        gravity_forces = self.data.structure.timestep_info[-1].gravity_forces[:]
-
-        forces = gravity_forces[:, 0:3] + applied_forces[:, 0:3]
-        moments = gravity_forces[:, 3:6] + applied_forces[:, 3:6]
-        # other moment contribution
+        applied_forces_copy = applied_forces.copy()
         for i_node in range(self.data.structure.num_node):
-            moments[i_node, :] += np.cross(self.data.structure.timestep_info[-1].pos[i_node, :],
-                                           forces[i_node, :])
-        return np.sum(forces, axis=0), np.sum(moments, axis=0)
+            applied_forces_copy[i_node, 3:6] += np.cross(self.data.structure.timestep_info[-1].pos[i_node, :],
+                                                         applied_forces_copy[i_node, 0:3])
+
+        totals = np.sum(applied_forces_copy, axis=0) + self.data.structure.timestep_info[-1].total_gravity_forces
+        # print("steady totals = ", totals)
+        return totals[0:3], totals[3:6]
 
 

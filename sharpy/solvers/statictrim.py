@@ -32,13 +32,13 @@ class StaticTrim(BaseSolver):
         self.settings_default['max_iter'] = 100
 
         self.settings_types['fz_tolerance'] = 'float'
-        self.settings_default['fz_tolerance'] = 0.1
+        self.settings_default['fz_tolerance'] = 0.01
 
         self.settings_types['fx_tolerance'] = 'float'
-        self.settings_default['fx_tolerance'] = 0.1
+        self.settings_default['fx_tolerance'] = 0.01
 
         self.settings_types['m_tolerance'] = 'float'
-        self.settings_default['m_tolerance'] = 0.1
+        self.settings_default['m_tolerance'] = 0.01
 
         self.settings_types['tail_cs_index'] = 'int'
         self.settings_default['tail_cs_index'] = 0
@@ -365,6 +365,7 @@ class StaticTrim(BaseSolver):
             1
 
         print('--')
+        print('Trying trim...')
         print(alpha*180/np.pi, (deflection_gamma - alpha)*180/np.pi, thrust)
         # modify the trim in the static_coupled solver
         self.solver.change_trim(alpha,
@@ -380,7 +381,7 @@ class StaticTrim(BaseSolver):
         forcez = forces[2]
         forcex = forces[0]
         moment = moments[1]
-        print(forcez, moment, forcex)
+        print('Forces and moments...')
         print(forces, moments)
 
         return forcez, moment, forcex

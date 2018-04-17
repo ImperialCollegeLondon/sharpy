@@ -109,6 +109,7 @@ class AerogridPlot(BaseSolver):
             point_struct_id = np.zeros((point_data_dim,), dtype=int)
             point_cf = np.zeros((point_data_dim, 3))
             point_unsteady_cf = np.zeros((point_data_dim, 3))
+            zeta_dot = np.zeros((point_data_dim, 3))
             counter = -1
 
             rotation_mat = algebra.quat2rot(self.data.structure.timestep_info[self.ts].quat).transpose()
@@ -134,6 +135,10 @@ class AerogridPlot(BaseSolver):
                     point_cf[node_counter, :] = self.data.aero.timestep_info[self.ts].forces[i_surf][0:3, i_m, i_n]
                     try:
                         point_unsteady_cf[node_counter, :] = self.data.aero.timestep_info[self.ts].dynamic_forces[i_surf][0:3, i_m, i_n]
+                    except AttributeError:
+                        pass
+                    try:
+                        zeta_dot[node_counter, :] = self.data.aero.timestep_info[self.ts].zeta_dot[i_surf][0:3, i_m, i_n]
                     except AttributeError:
                         pass
                     if i_n < dims[1] and i_m < dims[0]:
@@ -169,6 +174,8 @@ class AerogridPlot(BaseSolver):
             ug.point_data.get_array(2).name = 'point_steady_force'
             ug.point_data.add_array(point_unsteady_cf)
             ug.point_data.get_array(3).name = 'point_unsteady_force'
+            ug.point_data.add_array(zeta_dot)
+            ug.point_data.get_array(4).name = 'zeta_dot'
             write_data(ug, filename)
 
     def plot_wake(self):

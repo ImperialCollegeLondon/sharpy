@@ -136,6 +136,7 @@ class DynamicCoupled(BaseSolver):
             previous_kstep = self.data.structure.timestep_info[-1].copy()
             structural_kstep = self.data.structure.timestep_info[-1].copy()
 
+            k = 0
             for k in range(self.settings['fsi_substeps'].value + 1):
                 if k == self.settings['fsi_substeps'].value and not self.settings['fsi_substeps'] == 0:
                     cout.cout_wrap('The FSI solver did not converge!!!')
@@ -156,7 +157,7 @@ class DynamicCoupled(BaseSolver):
                 # map forces
                 self.map_forces(aero_kstep,
                                 structural_kstep,
-                                1.0)
+                                0*1.0)
 
                 # cout.cout_wrap('No added mass effects', 0)
 
@@ -172,11 +173,11 @@ class DynamicCoupled(BaseSolver):
                                       previous_kstep.dqdt)/
                        np.linalg.norm(previous_kstep.dqdt))
 
-                self.residual_table.print_line([self.data.ts,
-                                                self.data.ts*self.dt.value,
-                                                k,
-                                                np.log10(res),
-                                                structural_kstep.for_vel[2]])
+                # self.residual_table.print_line([self.data.ts,
+                #                                 self.data.ts*self.dt.value,
+                #                                 k,
+                #                                 np.log10(res),
+                #                                 structural_kstep.for_vel[2]])
 
                 # convergence
                 if (res <
@@ -187,7 +188,7 @@ class DynamicCoupled(BaseSolver):
 
                 # relaxation
                 temp = structural_kstep.copy()
-                relax(self.data.structure, structural_kstep, previous_kstep, self.relaxation_factor(k))
+                # relax(self.data.structure, structural_kstep, previous_kstep, self.relaxation_factor(k))
                 # copy for next iteration
                 previous_kstep = temp
 
@@ -195,7 +196,7 @@ class DynamicCoupled(BaseSolver):
             self.structural_solver.add_step()
             self.data.structure.timestep_info[-1] = structural_kstep.copy()
             self.data.structure.integrate_position(self.data.ts, self.settings['dt'].value)
-            # self.structural_solver.extract_resultants(self.data.structure.timestep_info[-1])
+            self.structural_solver.extract_resultants()
 
             self.aero_solver.add_step()
             self.data.aero.timestep_info[-1] = aero_kstep.copy()
@@ -206,6 +207,11 @@ class DynamicCoupled(BaseSolver):
                                              self.data.structure.timestep_info[-1],
                                              self.data.aero.timestep_info[-2],
                                              convect_wake=True)
+            self.residual_table.print_line([self.data.ts,
+                                            self.data.ts*self.dt.value,
+                                            k,
+                                            np.log10(res),
+                                            self.data.structure.timestep_info[-1].for_vel[2]])
 
             # run postprocessors
             if self.with_postprocessors:
