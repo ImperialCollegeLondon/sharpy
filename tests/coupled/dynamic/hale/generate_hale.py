@@ -3,7 +3,7 @@ import numpy as np
 import os
 import sharpy.utils.algebra as algebra
 
-case_name = 'hale_01_sigma3_damped_20ms'
+case_name = 'hale_sigma09'
 route = os.path.dirname(os.path.realpath(__file__)) + '/'
 
 
@@ -14,33 +14,52 @@ flow = ['BeamLoader',
         # 'StaticUvlm',
         # 'StaticTrim',
         'StaticCoupled',
-        'DynamicCoupled',
+        # 'BeamLoads',
         'AerogridPlot',
-        'BeamPlot'
+        'BeamPlot',
+        'DynamicCoupled',
+        # 'AerogridPlot',
+        # 'BeamPlot'
         ]
 
 
 # FLIGHT CONDITIONS
-u_inf = 20
+u_inf = 25
 rho = 0.08991
-# trim sigma = 1
-alpha = 12.2516666*np.pi/180
-beta = 0*np.pi/180
-gravity = 'on'
-cs_deflection = -10.7141465*np.pi/180
-thrust = 18.93467588
-sigma = 3
-# trim sigma = 5
-# alpha = 5.0514255*np.pi/180
+# # trim sigma = 1
+# alpha = 8.255955486426167*np.pi/180
 # beta = 0*np.pi/180
 # gravity = 'on'
-# cs_deflection = -2.3315358*np.pi/180
-# thrust = 6.7328
+# cs_deflection = -8.059102970443668*np.pi/180
+# thrust = 11.095419727078575
+# sigma = 1.
+
+# trim sigma = 1.1
+# alpha = 7.887234946558482*np.pi/180
+# beta = 0*np.pi/180
+# gravity = 'on'
+# cs_deflection = -7.027540281892041*np.pi/180
+# thrust = 10.683301711048266
+# sigma = 1.1
+
+# trim sigma = 0.9
+alpha = 8.536835483534349*np.pi/180
+beta = 0*np.pi/180
+gravity = 'on'
+cs_deflection = -8.78558685925769*np.pi/180
+thrust = 11.362447522189974
+sigma = 0.95
+# trim sigma = 5
+# alpha = 7.753569188296049*np.pi/180
+# beta = 0*np.pi/180
+# gravity = 'on'
+# cs_deflection = -4.4074650492525915*np.pi/180
+# thrust = 9.08445558554907
 # sigma = 5
 
-gust_intensity = 0.1
+gust_intensity = 0.30
 n_step = 1
-relaxation_factor = 0.20
+relaxation_factor = 0.
 tolerance = 1e-8
 
 # MODEL GEOMETRY
@@ -60,7 +79,7 @@ j_bar_main = 0.1
 
 length_fuselage = 10
 offset_fuselage = 1.25
-sigma_fuselage = 10
+sigma_fuselage = 100
 m_bar_fuselage = 0.08
 j_bar_fuselage = 0.01
 
@@ -68,7 +87,7 @@ span_tail = 2.5
 ea_tail = 0.5
 fin_height = 2.5
 ea_fin = 0.5
-sigma_tail = 10
+sigma_tail = 100
 m_bar_tail = 0.08
 j_bar_tail = 0.01
 
@@ -86,8 +105,8 @@ chord_tail = 0.5
 
 # DISCRETISATION
 # spatial discretisation
-m = 6
-n_elem_multiplier = 2
+m = 4
+n_elem_multiplier = 1
 n_elem_main = int(6*n_elem_multiplier)
 n_elem_tail = int(2*n_elem_multiplier)
 n_elem_fin = int(2*n_elem_multiplier)
@@ -101,7 +120,7 @@ physical_time = 30
 tstep_factor = 1
 dt = 1.0/m/u_inf*tstep_factor
 n_tstep = round(physical_time/dt)
-n_tstep = 8000
+n_tstep = 3*3200
 
 
 # END OF INPUT-----------------------------------------------------------------
@@ -144,7 +163,7 @@ n_stiffness = 3
 base_stiffness_main = sigma*np.diag([ea, ga, ga, gj, eiy, eiz])
 base_stiffness_fuselage = base_stiffness_main.copy()*sigma_fuselage
 base_stiffness_fuselage[5, 5] = base_stiffness_fuselage[4, 4]
-base_stiffness_tail = base_stiffness_main*sigma_tail
+base_stiffness_tail = base_stiffness_main.copy()*sigma_tail
 base_stiffness_tail[5, 5] = base_stiffness_tail[4, 4]
 
 n_mass = 3
@@ -153,14 +172,14 @@ base_mass_fuselage = np.diag([m_bar_fuselage,
                               m_bar_fuselage,
                               m_bar_fuselage,
                               j_bar_fuselage,
-                              j_bar_fuselage,
-                              j_bar_fuselage])
+                              j_bar_fuselage*0.1,
+                              j_bar_fuselage*0.1])
 base_mass_tail = np.diag([m_bar_tail,
                           m_bar_tail,
                           m_bar_tail,
                           j_bar_tail,
-                          j_bar_tail,
-                          j_bar_tail])
+                          j_bar_tail*0.1,
+                          j_bar_tail*0.1])
 
 
 # PLACEHOLDERS
@@ -593,7 +612,7 @@ def generate_solver_file():
     settings['StaticUvlm'] = {'print_info': 'on',
                               'horseshoe': 'off',
                               'num_cores': 4,
-                              'n_rollup': 0,
+                              'n_rollup': 1,
                               'rollup_dt': dt,
                               'rollup_aic_refresh': 1,
                               'rollup_tolerance': 1e-4,
@@ -602,7 +621,7 @@ def generate_solver_file():
                                                        'u_inf_direction': [1., 0, 0]},
                               'rho': rho}
 
-    settings['StaticCoupled'] = {'print_info': 'on',
+    settings['StaticCoupled'] = {'print_info': 'off',
                                  'structural_solver': 'NonLinearStatic',
                                  'structural_solver_settings': settings['NonLinearStatic'],
                                  'aero_solver': 'StaticUvlm',
@@ -621,8 +640,8 @@ def generate_solver_file():
     settings['NonLinearDynamicCoupledStep'] = {'print_info': 'off',
                                                'max_iterations': 950,
                                                'delta_curved': 1e-9,
-                                               'min_delta': 1e-6,
-                                               'newmark_damp': 5e-4,
+                                               'min_delta': 1e-8,
+                                               'newmark_damp': 1e-3,
                                                'gravity_on': gravity,
                                                'gravity': 9.81,
                                                'num_steps': n_tstep,
@@ -632,7 +651,7 @@ def generate_solver_file():
                             'horseshoe': 'off',
                             'num_cores': 4,
                             'n_rollup': 100,
-                            'convection_scheme': 2,
+                            'convection_scheme': 3,
                             'rollup_dt': dt,
                             'rollup_aic_refresh': 1,
                             'rollup_tolerance': 1e-4,
@@ -642,7 +661,7 @@ def generate_solver_file():
                                                      'gust_shape': '1-cos',
                                                      'gust_length': 60,
                                                      'gust_intensity': gust_intensity*u_inf,
-                                                     'offset': 5.0,
+                                                     'offset': 10.0,
                                                      'span': span_main},
                             'rho': rho,
                             'n_time_steps': n_tstep,
@@ -653,11 +672,11 @@ def generate_solver_file():
                                   'aero_solver': 'StepUvlm',
                                   'aero_solver_settings': settings['StepUvlm'],
                                   'fsi_substeps': 200,
-                                  'fsi_tolerance': 1e-7,
+                                  'fsi_tolerance': 1e-9,
                                   'relaxation_factor': relaxation_factor,
                                   'minimum_steps': 1,
                                   'relaxation_steps': 150,
-                                  'final_relaxation_factor': 0.8,
+                                  'final_relaxation_factor': 0.0,
                                   'n_time_steps': n_tstep,
                                   'dt': dt,
                                   'postprocessors': ['BeamPlot', 'AerogridPlot'],
@@ -672,7 +691,7 @@ def generate_solver_file():
 
     settings['AerogridLoader'] = {'unsteady': 'on',
                                   'aligned_grid': 'on',
-                                  'mstar': 30,
+                                  'mstar': 40,
                                   'freestream_dir': ['1', '0', '0']}
 
     settings['AerogridPlot'] = {'folder': route + '/output/',
@@ -698,6 +717,8 @@ def generate_solver_file():
                                  'output_pos': 'on',
                                  'output_psi': 'on',
                                  'screen_output': 'off'}
+
+    settings['BeamLoads'] = {}
 
     import configobj
     config = configobj.ConfigObj()
