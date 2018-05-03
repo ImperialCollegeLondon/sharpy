@@ -142,7 +142,6 @@ class DynamicPrescribedCoupled(BaseSolver):
             if ts > 0:
                 self.data.structure.timestep_info[ts].for_vel[:] = self.data.structure.dynamic_input[ts - 1]['for_vel']
                 self.data.structure.timestep_info[ts].for_acc[:] = self.data.structure.dynamic_input[ts - 1]['for_acc']
-                # self.data.structure.timestep_info[ts].unsteady_applied_forces[:] = self.data.structure.dynamic_input[ts - 1]['dynamic_forces']
             structural_kstep = self.data.structure.timestep_info[-1].copy()
 
             for k in range(self.settings['fsi_substeps'].value + 1):
@@ -165,14 +164,13 @@ class DynamicPrescribedCoupled(BaseSolver):
                 # map forces
                 self.map_forces(aero_kstep,
                                 structural_kstep,
-                                1.0)
+                                0*1.0)
 
                 # relax
                 relax(self.data.structure,
                       structural_kstep,
                       previous_kstep,
                       self.relaxation_factor(k))
-                # print(self.relaxation_factor(k))
 
                 # run structural solver
                 self.data = self.structural_solver.run(structural_step=structural_kstep)
@@ -227,7 +225,6 @@ class DynamicPrescribedCoupled(BaseSolver):
                     self.data = self.postprocessors[postproc].run(online=True)
 
         return self.data
-
 
     def map_forces(self, aero_kstep, structural_kstep, unsteady_forces_coeff=1.0):
         # set all forces to 0

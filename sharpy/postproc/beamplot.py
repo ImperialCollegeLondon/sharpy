@@ -123,6 +123,12 @@ class BeamPlot(BaseSolver):
             with_postproc_cell = True
         except AttributeError:
             pass
+        with_postproc_node = False
+        try:
+            self.data.structure.timestep_info[it].postproc_node
+            with_postproc_node = True
+        except AttributeError:
+            pass
 
         # count number of arguments
         postproc_cell_keys = self.data.structure.timestep_info[it].postproc_cell.keys()
@@ -139,6 +145,23 @@ class BeamPlot(BaseSolver):
                 postproc_cell_vector.append(k)
             elif cols == 6:
                 postproc_cell_6vector.append(k)
+            else:
+                raise AttributeError('Only scalar and 3-vector types supported in beamplot')
+        # count number of arguments
+        postproc_node_keys = self.data.structure.timestep_info[it].postproc_node.keys()
+        postproc_node_vals = self.data.structure.timestep_info[it].postproc_node.values()
+        postproc_node_scalar = []
+        postproc_node_vector = []
+        postproc_node_6vector = []
+        for k, v in self.data.structure.timestep_info[it].postproc_node.items():
+            _, cols = v.shape
+            if cols == 1:
+                raise NotImplementedError('scalar node types not supported in beamplot (Easy to implement)')
+                # postproc_cell_scalar.append(k)
+            elif cols == 3:
+                postproc_node_vector.append(k)
+            elif cols == 6:
+                postproc_node_6vector.append(k)
             else:
                 raise AttributeError('Only scalar and 3-vector types supported in beamplot')
 
@@ -226,6 +249,16 @@ class BeamPlot(BaseSolver):
                 point_vector_counter += 1
                 ug.point_data.add_array(gravity_forces[:, 3:6], 'vector')
                 ug.point_data.get_array(point_vector_counter).name = 'gravity_moments'
+        if with_postproc_node:
+            for k in postproc_node_vector:
+                point_vector_counter += 1
+                ug.point_data.add_array(self.data.structure.timestep_info[it].postproc_node[k])
+                ug.point_data.get_array(point_vector_counter).name = k + '_point'
+            for k in postproc_node_6vector:
+                for i in range(0, 2):
+                    point_vector_counter += 1
+                    ug.point_data.add_array(self.data.structure.timestep_info[it].postproc_node[k][:, 3*i:3*(i+1)])
+                    ug.point_data.get_array(point_vector_counter).name = k + '_' + str(i) + '_point'
 
         write_data(ug, it_filename)
 

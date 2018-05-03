@@ -425,7 +425,7 @@ def euler2quat(euler):
 
 
 def crv_dot2omega(crv, crv_dot):
-    return np.dot(crv2tan(crv), crv_dot)
+    return np.dot(crv2tan(crv).T, crv_dot)
 
 
 def quaternion_product(q, r):

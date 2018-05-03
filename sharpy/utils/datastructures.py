@@ -339,6 +339,7 @@ class StructTimeStepInfo(object):
         self.dqddt = np.zeros(((self.num_node - 1)*6 + 6 + 4,), dtype=ct.c_double, order='F')
 
         self.postproc_cell = dict()
+        self.postproc_node = dict()
 
     def copy(self):
         copied = StructTimeStepInfo(self.num_node, self.num_elem)
@@ -375,6 +376,7 @@ class StructTimeStepInfo(object):
         copied.dqddt = self.dqddt.astype(dtype=ct.c_double, order='F', copy=True)
 
         copied.postproc_cell = dict(self.postproc_cell)
+        copied.postproc_node = dict(self.postproc_node)
 
         return copied
 

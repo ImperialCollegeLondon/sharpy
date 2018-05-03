@@ -358,7 +358,6 @@ def cbeam3_solv_nlndyn(beam, settings):
         beam.timestep_info[i].psi_dot[:] = psi_dot_def_history[i, :]
 
 
-
 def cbeam3_step_nlndyn(beam, settings, ts, tstep=None, dt=None):
     f_cbeam3_solv_nlndyn_step = xbeamlib.cbeam3_solv_nlndyn_step_python
     f_cbeam3_solv_nlndyn_step.restype = None
@@ -423,6 +422,7 @@ def cbeam3_step_nlndyn(beam, settings, ts, tstep=None, dt=None):
                               tstep.psi_dot.ctypes.data_as(doubleP),
                               tstep.steady_applied_forces.ctypes.data_as(doubleP),
                               tstep.unsteady_applied_forces.ctypes.data_as(doubleP),
+                              tstep.gravity_forces.ctypes.data_as(doubleP),
                               tstep.quat.ctypes.data_as(doubleP),
                               tstep.for_vel.ctypes.data_as(doubleP),
                               tstep.for_acc.ctypes.data_as(doubleP)
