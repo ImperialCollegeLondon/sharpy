@@ -7,6 +7,7 @@ import sharpy.utils.cout_utils as cout
 from sharpy.utils.solver_interface import solver, BaseSolver
 import sharpy.utils.settings as settings
 import sharpy.utils.algebra as algebra
+import sharpy.structure.utils.xbeamlib as xbeamlib
 
 
 @solver
@@ -31,6 +32,13 @@ class BeamLoads(BaseSolver):
     def run(self):
         self.calculate_loads()
         return self.data
+
+    def calculate_loads(self):
+        for it in range(len(self.data.structure.timestep_info)):
+            (self.data.structure.timestep_info[it].postproc_cell['strain'],
+             self.data.structure.timestep_info[it].postproc_cell['loads']) = xbeamlib.cbeam3_loads(self.data.structure,
+                                                                                                   it)
+
 
     # def calculate_loads(self):
     #     # initial (ini) loads
@@ -96,113 +104,113 @@ class BeamLoads(BaseSolver):
     #                 self.data.structure.stiffness_db[self.data.structure.elements[ielem].stiff_index, :, :],
     #                 tstep.postproc_cell['strain'][ielem, :])
 
-    def calculate_loads(self):
-        order = [0, 2, 1]
-        # initial (ini) loads
-        tstep = self.data.structure.ini_info
-        pos = tstep.pos
-        psi = tstep.psi
-
-        gamma0 = np.zeros((self.data.structure.num_elem, 2, 3))
-        kappa0 = np.zeros((self.data.structure.num_elem, 2, 3))
-        counter = np.zeros((self.data.structure.num_node,), dtype=int)
-
-        for ielem in range(self.data.structure.num_elem):
-            for isegment in range(self.data.structure.elements[ielem].n_nodes - 1):
-                i_local_node0 = order[isegment]
-                i_local_node1 = order[isegment + 1]
-                crv = 0.5*(psi[ielem, i_local_node1, :] + psi[ielem, i_local_node0, :])
-
-                cba = algebra.crv2rot(crv).T
-                tan = algebra.crv2tan(crv)
-
-                inode0 = self.data.structure.elements[ielem].global_connectivities[i_local_node0]
-                inode1 = self.data.structure.elements[ielem].global_connectivities[i_local_node1]
-
-                counter[inode0] += 1
-                counter[inode1] += 1
-
-                print('----')
-                print(ielem)
-                print(isegment)
-                print(inode0, inode1)
-                print(counter[inode0], counter[inode1])
-                print('----')
-
-                gamma0[ielem, isegment, :] = (
-                        np.dot(cba,
-                               pos[inode1, :] - pos[inode0, :]) /
-                        np.linalg.norm(pos[inode1, :] - pos[inode0, :]))
-                kappa0[ielem, isegment, :] = (
-                        np.dot(tan,
-                               psi[ielem, i_local_node1, :] - psi[ielem, i_local_node0, :]) /
-                        np.linalg.norm(pos[inode1, :] - pos[inode0, :]))
-
-        # time-dependant loads
-        for it in range(len(self.data.structure.timestep_info)):
-            tstep = self.data.structure.timestep_info[it]
-            pos = tstep.pos
-            psi = tstep.psi
-
-            gamma = np.zeros((self.data.structure.num_elem, 2, 3))
-            kappa = np.zeros((self.data.structure.num_elem, 2, 3))
-            # tstep.postproc_cell['strain'] = np.zeros((self.data.structure.num_elem, 6))
-            tstep.postproc_node['loads'] = np.zeros((self.data.structure.num_node, 6))
-            strain = np.zeros((self.data.structure.num_elem, 2, 6))
-            for ielem in range(self.data.structure.num_elem):
-                for isegment in range(self.data.structure.elements[ielem].n_nodes - 1):
-                    i_local_node0 = order[isegment]
-                    i_local_node1 = order[isegment + 1]
-                    crv = 0.5*(psi[ielem, i_local_node1, :] + psi[ielem, i_local_node0, :])
-
-                    cba = algebra.crv2rot(crv).T
-                    tan = algebra.crv2tan(crv)
-
-                    inode0 = self.data.structure.elements[ielem].global_connectivities[i_local_node0]
-                    inode1 = self.data.structure.elements[ielem].global_connectivities[i_local_node1]
-
-                    gamma[ielem, isegment, :] = (
-                            np.dot(cba,
-                                   pos[inode1, :] - pos[inode0, :]) /
-                            np.linalg.norm(pos[inode1, :] - pos[inode0, :]))
-                    kappa[ielem, isegment, :] = (
-                            np.dot(tan,
-                                   psi[ielem, i_local_node1, :] - psi[ielem, i_local_node0, :]) /
-                            np.linalg.norm(pos[inode1, :] - pos[inode0, :]))
-                    strain[ielem, isegment, 0:3] += (
-                            gamma[ielem, isegment, :]
-                            -
-                            gamma0[ielem, isegment, :])
-                    strain[ielem, isegment, 3:6] += (
-                            kappa[ielem, isegment, :]
-                            -
-                            kappa0[ielem, isegment, :])
-                    # it might be necessary to rotate the results so that the B frame is the
-                    # Master FoR (so that all the loads -- intrinsically in material FoR -- can be
-                    # added together at the nodes).
-                    prerotate = np.eye(6)
-                    posrotate = np.eye(6)
-                    if not self.data.structure.node_master_elem[inode0, 0] == ielem:
-                        cab2 = algebra.crv2rot(psi[ielem, self.data.structure.node_master_elem[inode0, 1], :])
-                        prerotate[0:3, 0:3] = np.dot(cab2.T, cba.T)
-                        prerotate[3:6, 3:6] = np.dot(cab2.T, cba.T)
-
-                    tstep.postproc_node['loads'][inode0, :] = np.dot(prerotate,
-                        np.dot(np.dot(
-                        self.data.structure.stiffness_db[self.data.structure.elements[ielem].stiff_index, :, :],
-                        strain[ielem, isegment, :])/counter[inode0], posrotate))
-                    prerotate = np.eye(6)
-                    posrotate = np.eye(6)
-                    if not self.data.structure.node_master_elem[inode1, 0] == ielem:
-                        cab2 = algebra.crv2rot(psi[ielem, self.data.structure.node_master_elem[inode1, 1], :])
-                        prerotate[0:3, 0:3] = np.dot(cab2.T, cba.T)
-                        prerotate[3:6, 3:6] = np.dot(cab2.T, cba.T)
-
-                    tstep.postproc_node['loads'][inode1, :] = np.dot(prerotate,
-                                                                     np.dot(np.dot(
-                                                                         self.data.structure.stiffness_db[self.data.structure.elements[ielem].stiff_index, :, :],
-                                                                         strain[ielem, isegment, :])/counter[inode1], posrotate))
-                    # tstep.postproc_node['loads'][inode1, :] = np.dot(
-                    #     self.data.structure.stiffness_db[self.data.structure.elements[ielem].stiff_index, :, :],
-                    #     strain[ielem, isegment, :])/counter[inode1]
+    # def calculate_loads(self):
+    #     order = [0, 2, 1]
+    #     # initial (ini) loads
+    #     tstep = self.data.structure.ini_info
+    #     pos = tstep.pos
+    #     psi = tstep.psi
+    #
+    #     gamma0 = np.zeros((self.data.structure.num_elem, 2, 3))
+    #     kappa0 = np.zeros((self.data.structure.num_elem, 2, 3))
+    #     counter = np.zeros((self.data.structure.num_node,), dtype=int)
+    #
+    #     for ielem in range(self.data.structure.num_elem):
+    #         for isegment in range(self.data.structure.elements[ielem].n_nodes - 1):
+    #             i_local_node0 = order[isegment]
+    #             i_local_node1 = order[isegment + 1]
+    #             crv = 0.5*(psi[ielem, i_local_node1, :] + psi[ielem, i_local_node0, :])
+    #
+    #             cba = algebra.crv2rot(crv).T
+    #             tan = algebra.crv2tan(crv)
+    #
+    #             inode0 = self.data.structure.elements[ielem].global_connectivities[i_local_node0]
+    #             inode1 = self.data.structure.elements[ielem].global_connectivities[i_local_node1]
+    #
+    #             counter[inode0] += 1
+    #             counter[inode1] += 1
+    #
+    #             print('----')
+    #             print(ielem)
+    #             print(isegment)
+    #             print(inode0, inode1)
+    #             print(counter[inode0], counter[inode1])
+    #             print('----')
+    #
+    #             gamma0[ielem, isegment, :] = (
+    #                     np.dot(cba,
+    #                            pos[inode1, :] - pos[inode0, :]) /
+    #                     np.linalg.norm(pos[inode1, :] - pos[inode0, :]))
+    #             kappa0[ielem, isegment, :] = (
+    #                     np.dot(tan,
+    #                            psi[ielem, i_local_node1, :] - psi[ielem, i_local_node0, :]) /
+    #                     np.linalg.norm(pos[inode1, :] - pos[inode0, :]))
+    #
+    #     # time-dependant loads
+    #     for it in range(len(self.data.structure.timestep_info)):
+    #         tstep = self.data.structure.timestep_info[it]
+    #         pos = tstep.pos
+    #         psi = tstep.psi
+    #
+    #         gamma = np.zeros((self.data.structure.num_elem, 2, 3))
+    #         kappa = np.zeros((self.data.structure.num_elem, 2, 3))
+    #         # tstep.postproc_cell['strain'] = np.zeros((self.data.structure.num_elem, 6))
+    #         tstep.postproc_node['loads'] = np.zeros((self.data.structure.num_node, 6))
+    #         strain = np.zeros((self.data.structure.num_elem, 2, 6))
+    #         for ielem in range(self.data.structure.num_elem):
+    #             for isegment in range(self.data.structure.elements[ielem].n_nodes - 1):
+    #                 i_local_node0 = order[isegment]
+    #                 i_local_node1 = order[isegment + 1]
+    #                 crv = 0.5*(psi[ielem, i_local_node1, :] + psi[ielem, i_local_node0, :])
+    #
+    #                 cba = algebra.crv2rot(crv).T
+    #                 tan = algebra.crv2tan(crv)
+    #
+    #                 inode0 = self.data.structure.elements[ielem].global_connectivities[i_local_node0]
+    #                 inode1 = self.data.structure.elements[ielem].global_connectivities[i_local_node1]
+    #
+    #                 gamma[ielem, isegment, :] = (
+    #                         np.dot(cba,
+    #                                pos[inode1, :] - pos[inode0, :]) /
+    #                         np.linalg.norm(pos[inode1, :] - pos[inode0, :]))
+    #                 kappa[ielem, isegment, :] = (
+    #                         np.dot(tan,
+    #                                psi[ielem, i_local_node1, :] - psi[ielem, i_local_node0, :]) /
+    #                         np.linalg.norm(pos[inode1, :] - pos[inode0, :]))
+    #                 strain[ielem, isegment, 0:3] += (
+    #                         gamma[ielem, isegment, :]
+    #                         -
+    #                         gamma0[ielem, isegment, :])
+    #                 strain[ielem, isegment, 3:6] += (
+    #                         kappa[ielem, isegment, :]
+    #                         -
+    #                         kappa0[ielem, isegment, :])
+    #                 # it might be necessary to rotate the results so that the B frame is the
+    #                 # Master FoR (so that all the loads -- intrinsically in material FoR -- can be
+    #                 # added together at the nodes).
+    #                 prerotate = np.eye(6)
+    #                 posrotate = np.eye(6)
+    #                 if not self.data.structure.node_master_elem[inode0, 0] == ielem:
+    #                     cab2 = algebra.crv2rot(psi[ielem, self.data.structure.node_master_elem[inode0, 1], :])
+    #                     prerotate[0:3, 0:3] = np.dot(cab2.T, cba.T)
+    #                     prerotate[3:6, 3:6] = np.dot(cab2.T, cba.T)
+    #
+    #                 tstep.postproc_node['loads'][inode0, :] = np.dot(prerotate,
+    #                     np.dot(np.dot(
+    #                     self.data.structure.stiffness_db[self.data.structure.elements[ielem].stiff_index, :, :],
+    #                     strain[ielem, isegment, :])/counter[inode0], posrotate))
+    #                 prerotate = np.eye(6)
+    #                 posrotate = np.eye(6)
+    #                 if not self.data.structure.node_master_elem[inode1, 0] == ielem:
+    #                     cab2 = algebra.crv2rot(psi[ielem, self.data.structure.node_master_elem[inode1, 1], :])
+    #                     prerotate[0:3, 0:3] = np.dot(cab2.T, cba.T)
+    #                     prerotate[3:6, 3:6] = np.dot(cab2.T, cba.T)
+    #
+    #                 tstep.postproc_node['loads'][inode1, :] = np.dot(prerotate,
+    #                                                                  np.dot(np.dot(
+    #                                                                      self.data.structure.stiffness_db[self.data.structure.elements[ielem].stiff_index, :, :],
+    #                                                                      strain[ielem, isegment, :])/counter[inode1], posrotate))
+    #                 # tstep.postproc_node['loads'][inode1, :] = np.dot(
+    #                 #     self.data.structure.stiffness_db[self.data.structure.elements[ielem].stiff_index, :, :],
+    #                 #     strain[ielem, isegment, :])/counter[inode1]
 
