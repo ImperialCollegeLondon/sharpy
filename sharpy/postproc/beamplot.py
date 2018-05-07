@@ -94,6 +94,7 @@ class BeamPlot(BaseSolver):
         conn = np.zeros((num_elem, 3), dtype=int)
         node_id = np.zeros((num_nodes,), dtype=int)
         elem_id = np.zeros((num_elem,), dtype=int)
+        coords_a_cell = np.zeros((num_elem, 3), dtype=int)
         local_x = np.zeros((num_nodes, 3))
         local_y = np.zeros((num_nodes, 3))
         local_z = np.zeros((num_nodes, 3))
@@ -179,6 +180,8 @@ class BeamPlot(BaseSolver):
             local_y[i_node, :] = np.dot(aero2inertial, np.dot(cab, v2))
             local_z[i_node, :] = np.dot(aero2inertial, np.dot(cab, v3))
 
+            if i_local_node == 2:
+                coords_a_cell[i_elem, :] = self.data.structure.timestep_info[it].pos[i_node, :]
             coords_a[i_node, :] = self.data.structure.timestep_info[it].pos[i_node, :]
 
             # applied forces
@@ -217,6 +220,9 @@ class BeamPlot(BaseSolver):
                     ug.cell_data.add_array(self.data.structure.timestep_info[it].postproc_cell[k][:, 3*i:3*(i+1)])
                     ug.cell_data.get_array(counter).name = k + '_' + str(i) + '_cell'
                     counter += 1
+        ug.cell_data.add_array(coords_a_cell)
+        ug.cell_data.get_array(counter).name = 'coords_a_elem'
+        counter += 1
 
         ug.point_data.scalars = node_id
         ug.point_data.scalars.name = 'node_id'
