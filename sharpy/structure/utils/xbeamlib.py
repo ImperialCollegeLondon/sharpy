@@ -122,14 +122,36 @@ def cbeam3_solv_nlnstatic(beam, settings, ts):
                             beam.timestep_info[ts].steady_applied_forces.ctypes.data_as(doubleP),
                             beam.timestep_info[ts].total_gravity_forces.ctypes.data_as(doubleP)
                             )
-    # gravity_forces = beam.nodal_premultiply_inv_T_transpose(beam.timestep_info[ts].gravity_forces,
-    #                                                         beam.timestep_info[ts],
-    #                                                         filter=np.array([False, False, False,
-    #                                                                          True, True, True]))
-    # gravity_forces[:] = beam.nodal_b_for_2_a_for(gravity_forces,
-    #                                              beam.timestep_info[ts],
-    #                                              filter=np.array([False, False, False, True, True, True]))
-    # beam.timestep_info[ts].gravity_forces[:] = gravity_forces
+
+
+def cbeam3_loads(beam, ts):
+    """@brief Python wrapper for f_cbeam3_loads
+     Alfonso del Carre
+    """
+    f_cbeam3_loads = xbeamlib.cbeam3_loads
+    f_cbeam3_loads.restype = None
+
+    n_elem = ct.c_int(beam.num_elem)
+    n_nodes = ct.c_int(beam.num_node)
+    n_stiff = ct.c_int(beam.n_stiff)
+
+    strain = np.zeros((n_elem.value, 6), dtype=ct.c_double, order='F')
+    loads = np.zeros((n_elem.value, 6), dtype=ct.c_double, order='F')
+
+    f_cbeam3_loads(ct.byref(n_elem),
+                   ct.byref(n_nodes),
+                   beam.fortran['connectivities'].ctypes.data_as(intP),
+                   beam.ini_info.pos.ctypes.data_as(doubleP),
+                   beam.timestep_info[ts].pos.ctypes.data_as(doubleP),
+                   beam.ini_info.psi.ctypes.data_as(doubleP),
+                   beam.timestep_info[ts].psi.ctypes.data_as(doubleP),
+                   beam.fortran['stiffness_indices'].ctypes.data_as(intP),
+                   ct.byref(n_stiff),
+                   beam.fortran['stiffness'].ctypes.data_as(doubleP),
+                   strain.ctypes.data_as(doubleP),
+                   loads.ctypes.data_as(doubleP))
+
+    return strain, loads
 
 # def cbeam3_solv_compute_resultant(tstep, beam, settings):
 #     raise Exception('Dont use this funciton')
