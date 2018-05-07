@@ -128,8 +128,15 @@ def to_custom_types(dictionary, types, default):
                 notify_default_value(k, dictionary[k])
 
         elif v == 'dict':
-            if not isinstance(dictionary[k], dict):
-                raise TypeError
+            try:
+                if not isinstance(dictionary[k], dict):
+                    raise TypeError
+            except KeyError:
+                if default[k] is None:
+                    raise exceptions.NoDefaultValueException(k)
+                dictionary[k] = default[k].copy()
+                notify_default_value(k, dictionary[k])
+
 
 
 def load_config_file(file_name: str) -> dict:
