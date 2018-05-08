@@ -70,10 +70,14 @@ class DynamicCoupled(BaseSolver):
         self.settings_types['postprocessors_settings'] = 'dict'
         self.settings_default['postprocessors_settings'] = dict()
 
+        self.settings_types['cleanup_previous_solution'] = 'bool'
+        self.settings_default['cleanup_previous_solution'] = True
+
         self.data = None
         self.settings = None
         self.structural_solver = None
         self.aero_solver = None
+        self.print_info = False
 
         self.previous_force = None
 
@@ -84,14 +88,19 @@ class DynamicCoupled(BaseSolver):
         self.postprocessors = dict()
         self.with_postprocessors = False
 
-    def initialise(self, data):
+    def initialise(self, data, custom_settings=None):
         self.data = data
-        self.settings = data.settings[self.solver_id]
+        if custom_settings is None:
+            self.settings = data.settings[self.solver_id]
+        else:
+            self.settings = custom_settings
         settings.to_custom_types(self.settings, self.settings_types, self.settings_default)
         self.dt = self.settings['dt']
-        # if there's data in timestep_info[>0], copy the last one to
-        # timestep_info[0] and remove the rest
-        self.cleanup_timestep_info()
+        self.print_info = self.settings['print_info']
+        if self.settings['cleanup_previous_solution']:
+            # if there's data in timestep_info[>0], copy the last one to
+            # timestep_info[0] and remove the rest
+            self.cleanup_timestep_info()
 
         self.structural_solver = solver_interface.initialise_solver(self.settings['structural_solver'])
         self.structural_solver.initialise(self.data, self.settings['structural_solver_settings'])
@@ -99,11 +108,12 @@ class DynamicCoupled(BaseSolver):
         self.aero_solver.initialise(self.structural_solver.data, self.settings['aero_solver_settings'])
         self.data = self.aero_solver.data
 
-        self.residual_table = cout.TablePrinter(5, 14, ['g', 'f', 'g', 'f', 'e'])
-        self.residual_table.field_length[0] = 6
-        self.residual_table.field_length[1] = 6
-        self.residual_table.field_length[1] = 6
-        self.residual_table.print_header(['ts', 't', 'iter', 'residual', 'FoR_vel(z)'])
+        if self.print_info:
+            self.residual_table = cout.TablePrinter(5, 14, ['g', 'f', 'g', 'f', 'e'])
+            self.residual_table.field_length[0] = 6
+            self.residual_table.field_length[1] = 6
+            self.residual_table.field_length[1] = 6
+            self.residual_table.print_header(['ts', 't', 'iter', 'residual', 'FoR_vel(z)'])
 
         # initialise postprocessors
         self.postprocessors = dict()
@@ -131,7 +141,8 @@ class DynamicCoupled(BaseSolver):
         structural_kstep = self.data.structure.timestep_info[-1].copy()
 
         # dynamic simulations start at tstep == 1, 0 is reserved for the initial state
-        for self.data.ts in range(1, self.settings['n_time_steps'].value + 1):
+        for self.data.ts in range(len(self.data.structure.timestep_info),
+                                  self.settings['n_time_steps'].value + len(self.data.structure.timestep_info)):
             aero_kstep = self.data.aero.timestep_info[-1].copy()
             previous_kstep = self.data.structure.timestep_info[-1].copy()
             structural_kstep = self.data.structure.timestep_info[-1].copy()
@@ -207,18 +218,20 @@ class DynamicCoupled(BaseSolver):
                                              self.data.structure.timestep_info[-1],
                                              self.data.aero.timestep_info[-2],
                                              convect_wake=True)
-            self.residual_table.print_line([self.data.ts,
-                                            self.data.ts*self.dt.value,
-                                            k,
-                                            np.log10(res),
-                                            self.data.structure.timestep_info[-1].for_vel[2]])
+            if self.print_info:
+                self.residual_table.print_line([self.data.ts,
+                                                self.data.ts*self.dt.value,
+                                                k,
+                                                np.log10(res),
+                                                self.data.structure.timestep_info[-1].for_vel[2]])
 
             # run postprocessors
             if self.with_postprocessors:
                 for postproc in self.postprocessors:
                     self.data = self.postprocessors[postproc].run(online=True)
 
-        cout.cout_wrap('...Finished', 1)
+        if self.print_info:
+            cout.cout_wrap('...Finished', 1)
         return self.data
 
     def map_forces(self, aero_kstep, structural_kstep, unsteady_forces_coeff=1.0):

@@ -193,6 +193,20 @@ class Beam(BaseStructure):
             for it in range(num_steps):
                 self.dynamic_input[it]['for_acc'] = np.zeros((6, ), dtype=ct.c_double, order='F')
 
+        try:
+            for it in range(num_steps):
+                self.dynamic_input[it]['trayectories'] = dyn_dict['trayectories'][it, :, :]
+        except KeyError:
+            for it in range(num_steps):
+                self.dynamic_input[it]['trayectories'] = None
+
+        try:
+            for it in range(num_steps):
+                self.dynamic_input[it]['enforce_trayectory'] = dyn_dict['enforce_trayectory'][it]
+        except KeyError:
+            for it in range(num_steps):
+                self.dynamic_input[it]['enforce_trayectory'] = False
+
     def generate_dof_arrays(self):
         self.vdof = np.zeros((self.num_node,), dtype=ct.c_int, order='F') - 1
         self.fdof = np.zeros((self.num_node,), dtype=ct.c_int, order='F') - 1
@@ -223,16 +237,10 @@ class Beam(BaseStructure):
             i_lumped_node = self.lumped_mass_nodes[i_lumped]
             i_lumped_master_elem, i_lumped_master_node_local = self.node_master_elem[i_lumped_node]
 
-            # CHANGED
-            # cba = algebra.crv2rot(self.elements[i_lumped_master_elem].psi_def[i_lumped_master_node_local, :])
             cba = algebra.crv2rot(self.elements[i_lumped_master_elem].psi_def[i_lumped_master_node_local, :]).T
 
             inertia_tensor = np.zeros((6, 6))
             r_skew = algebra.rot_skew(r)
-            # inertia_tensor[0:3, 0:3] = m*np.eye(3)
-            # inertia_tensor[0:3, 3:6] = m*np.transpose(r_skew)
-            # inertia_tensor[3:6, 0:3] = m*r_skew
-            # inertia_tensor[3:6, 3:6] = j + m*(np.dot(np.transpose(r_skew), r_skew))
             inertia_tensor[0:3, 0:3] = m*np.eye(3)
             inertia_tensor[0:3, 3:6] = -m*r_skew
             inertia_tensor[3:6, 0:3] = m*r_skew
