@@ -214,8 +214,9 @@ class Aerogrid(object):
                 continue
 
             for i_local_node in range(len(self.beam.elements[i_elem].global_connectivities)):
-                i_global_node = self.beam.elements[i_elem].global_connectivities[
-                    self.beam.elements[i_elem].ordering[i_local_node]]
+                i_global_node = self.beam.elements[i_elem].global_connectivities[i_local_node]
+                # i_global_node = self.beam.elements[i_elem].global_connectivities[
+                #     self.beam.elements[i_elem].ordering[i_local_node]]
                 if not self.aero_dict['aero_node'][i_global_node]:
                     continue
                 if i_global_node in global_node_in_surface[i_surf]:
