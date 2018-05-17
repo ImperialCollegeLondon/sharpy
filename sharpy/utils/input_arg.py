@@ -9,7 +9,7 @@ def read_settings(args):
         case_settings = './test.solver.txt'
         cout.cout_wrap('%s is the main settings file' % case_settings)
     elif len(args) == 2:
-        case_settings = args[0]+'/'+args[1]
+        case_settings = args[1]
         cout.cout_wrap('Running SHARPy using the settings file: %s' % case_settings)
     else:
         cout.cout_wrap('*** Too many arguments, only the first one will be used')
