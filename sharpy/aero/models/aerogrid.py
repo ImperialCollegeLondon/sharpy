@@ -69,12 +69,14 @@ class Aerogrid(object):
                                          self.aero_dimensions_star)
 
         # load airfoils db
-        for i_node in range(self.n_node):
+        # for i_node in range(self.n_node):
+        for i_elem in range(self.n_elem):
+            for i_local_node in range(self.beam.num_node_elem):
             try:
-                self.airfoil_db[self.aero_dict['airfoil_distribution'][i_node]]
+                self.airfoil_db[self.aero_dict['airfoil_distribution'][i_elem, i_local_node]]
             except KeyError:
-                airfoil_coords = self.aero_dict['airfoils'][str(self.aero_dict['airfoil_distribution'][i_node])]
-                self.airfoil_db[self.aero_dict['airfoil_distribution'][i_node]] = (
+                airfoil_coords = self.aero_dict['airfoils'][str(self.aero_dict['airfoil_distribution'][i_elem, i_local_node])]
+                self.airfoil_db[self.aero_dict['airfoil_distribution'][i_elem, i_local_node]] = (
                     scipy.interpolate.interp1d(airfoil_coords[:, 0],
                                                airfoil_coords[:, 1],
                                                kind='quadratic',
@@ -277,7 +279,7 @@ class Aerogrid(object):
                 node_info['twist'] = self.aero_dict['twist'][i_elem, i_local_node]
                 node_info['M'] = self.aero_dimensions[i_surf, 0]
                 node_info['M_distribution'] = self.aero_dict['m_distribution'].decode('ascii')
-                node_info['airfoil'] = self.aero_dict['airfoil_distribution'][i_global_node]
+                node_info['airfoil'] = self.aero_dict['airfoil_distribution'][i_elem, i_local_node]
                 node_info['control_surface'] = control_surface_info
                 node_info['beam_coord'] = structure_tstep.pos[i_global_node, :]
                 node_info['pos_dot'] = structure_tstep.pos_dot[i_global_node, :]
