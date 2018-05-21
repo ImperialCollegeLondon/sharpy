@@ -72,16 +72,16 @@ class Aerogrid(object):
         # for i_node in range(self.n_node):
         for i_elem in range(self.n_elem):
             for i_local_node in range(self.beam.num_node_elem):
-            try:
-                self.airfoil_db[self.aero_dict['airfoil_distribution'][i_elem, i_local_node]]
-            except KeyError:
-                airfoil_coords = self.aero_dict['airfoils'][str(self.aero_dict['airfoil_distribution'][i_elem, i_local_node])]
-                self.airfoil_db[self.aero_dict['airfoil_distribution'][i_elem, i_local_node]] = (
-                    scipy.interpolate.interp1d(airfoil_coords[:, 0],
-                                               airfoil_coords[:, 1],
-                                               kind='quadratic',
-                                               copy=False,
-                                               assume_sorted=True))
+                try:
+                    self.airfoil_db[self.aero_dict['airfoil_distribution'][i_elem, i_local_node]]
+                except KeyError:
+                    airfoil_coords = self.aero_dict['airfoils'][str(self.aero_dict['airfoil_distribution'][i_elem, i_local_node])]
+                    self.airfoil_db[self.aero_dict['airfoil_distribution'][i_elem, i_local_node]] = (
+                        scipy.interpolate.interp1d(airfoil_coords[:, 0],
+                                                   airfoil_coords[:, 1],
+                                                   kind='quadratic',
+                                                   copy=False,
+                                                   assume_sorted=True))
         self.add_timestep()
         self.generate_mapping()
         self.generate_zeta(self.beam, self.aero_settings, ts)
