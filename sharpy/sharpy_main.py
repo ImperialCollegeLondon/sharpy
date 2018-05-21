@@ -48,4 +48,4 @@ def main(args):
     elapsed_time = time.process_time() - t
     cout.cout_wrap('FINISHED - Elapsed time = %f6 seconds' % elapsed_time, 2)
     finish_writer()
-
+    return data
