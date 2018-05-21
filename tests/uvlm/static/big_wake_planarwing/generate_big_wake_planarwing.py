@@ -194,7 +194,7 @@ def generate_fem_file():
 
 def generate_aero_file():
     global x, y, z
-    airfoil_distribution = np.zeros((num_node,), dtype=int)
+    airfoil_distribution = np.zeros((num_elem, num_node_elem), dtype=int)
     surface_distribution = np.zeros((num_elem,), dtype=int) - 1
     surface_m = np.zeros((n_surfaces, ), dtype=int)
     m_distribution = 'uniform'
@@ -209,7 +209,7 @@ def generate_aero_file():
     working_node = 0
     # right wing (surface 0, beam 0)
     i_surf = 0
-    airfoil_distribution[working_node:working_node + num_node_main] = 0
+    airfoil_distribution[working_elem:working_elem + num_elem_main, :] = 0
     surface_distribution[working_elem:working_elem + num_elem_main] = i_surf
     surface_m[i_surf] = m_main
     aero_node[working_node:working_node + num_node_main] = True
@@ -220,7 +220,7 @@ def generate_aero_file():
 
     # left wing (surface 1, beam 1)
     i_surf = 1
-    airfoil_distribution[working_node:working_node + num_node_main - 1] = 0
+    airfoil_distribution[working_elem:working_elem + num_elem_main, :] = 0
     surface_distribution[working_elem:working_elem + num_elem_main] = i_surf
     surface_m[i_surf] = m_main
     aero_node[working_node:working_node + num_node_main - 1] = True
@@ -349,10 +349,3 @@ clean_test_files()
 generate_fem_file()
 generate_solver_file(horseshoe=False)
 generate_aero_file()
-
-
-
-
-
-
-

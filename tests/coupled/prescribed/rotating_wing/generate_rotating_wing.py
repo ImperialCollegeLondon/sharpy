@@ -265,26 +265,37 @@ def generate_fem_file():
 
 def generate_aero_file():
     global x, y, z
-    airfoil_distribution = np.zeros((num_node,), dtype=int)
+    airfoil_distribution = np.zeros((num_elem, num_node_elem), dtype=int)
     surface_distribution = np.zeros((num_elem,), dtype=int) - 1
     surface_m = np.zeros((n_surfaces, ), dtype=int)
     m_distribution = 'uniform'
     aero_node = np.zeros((num_node,), dtype=bool)
-    twist = np.zeros((num_node,))
-    chord = np.zeros((num_node,))
-    elastic_axis = np.zeros((num_node,))
+    twist = np.zeros((num_elem, num_node_elem))
+    chord = np.zeros((num_elem, num_node_elem))
+    elastic_axis = np.zeros((num_elem, num_node_elem,))
 
     working_elem = 0
     working_node = 0
     # right wing (surface 0, beam 0)
     i_surf = 0
-    airfoil_distribution[working_node:working_node + num_node_main] = 0
+    airfoil_distribution[working_elem:working_elem + num_elem_main, :] = 0
     surface_distribution[working_elem:working_elem + num_elem_main] = i_surf
     surface_m[i_surf] = m_main
     aero_node[working_node:working_node + num_node_main] = True
-    chord[working_node:working_node + num_node_main] = np.linspace(main_chord, main_chord_tip, num_node_main)
-    elastic_axis[working_node:working_node + num_node_main] = main_ea
-    twist[working_node:working_node + num_node_main] = np.linspace(0, 70*np.pi/180., num_node_main)
+
+    # chord[working_node:working_node + num_node_main] = np.linspace(main_chord, main_chord_tip, num_node_main)
+    # twist[working_node:working_node + num_node_main] = np.linspace(0, 70*np.pi/180., num_node_main)
+    temp_chord = np.linspace(main_chord, main_chord_tip, num_node_main)
+    temp_twist = np.linspace(0, 70*np.pi/180., num_node_main)
+    node_counter = 0
+    for i_elem in range(working_elem, working_elem + num_elem_main):
+        for i_local_node in range(num_node_elem):
+            if not i_local_node == 0:
+                node_counter += 1
+            chord[i_elem, i_local_node] = temp_chord[node_counter]
+            elastic_axis[i_elem, i_local_node] = main_ea
+            twist[i_elem, i_local_node] = temp_twist[node_counter]
+
     working_elem += num_elem_main
     working_node += num_node_main
 
@@ -294,10 +305,21 @@ def generate_aero_file():
     surface_distribution[working_elem:working_elem + num_elem_main] = i_surf
     surface_m[i_surf] = m_main
     aero_node[working_node:working_node + num_node_main - 1] = True
-    chord[working_node:working_node + num_node_main - 1] = np.linspace(main_chord_tip, main_chord, num_node_main)[:-1]
+    # chord[working_node:working_node + num_node_main - 1] = np.linspace(main_chord_tip, main_chord, num_node_main)[:-1]
     # chord[working_node:working_node + num_node_main - 1] = main_chord
-    elastic_axis[working_node:working_node + num_node_main - 1] = main_ea
-    twist[working_node:working_node + num_node_main - 1] = np.linspace(-70*np.pi/180., 0.0, num_node_main)[:-1]
+    # elastic_axis[working_node:working_node + num_node_main - 1] = main_ea
+    # twist[working_node:working_node + num_node_main - 1] = np.linspace(-70*np.pi/180., 0.0, num_node_main)[:-1]
+
+    temp_chord = np.linspace(main_chord, main_chord_tip, num_node_main)
+    temp_twist = np.linspace(0, -70*np.pi/180., num_node_main)
+    node_counter = 0
+    for i_elem in range(working_elem, working_elem + num_elem_main):
+        for i_local_node in range(num_node_elem):
+            if not i_local_node == 0:
+                node_counter += 1
+            chord[i_elem, i_local_node] = temp_chord[node_counter]
+            elastic_axis[i_elem, i_local_node] = main_ea
+            twist[i_elem, i_local_node] = temp_twist[node_counter]
     working_elem += num_elem_main
     working_node += num_node_main - 1
 
@@ -362,7 +384,7 @@ def generate_solver_file(horseshoe=False):
                                  'BeamCsvOutput'],
                         'write_screen': 'on',
                         'write_log': 'on',
-                        'log_folder': os.path.dirname(__file__) + '/output/',
+                        'log_folder': route + '/output/',
                         'log_file': case_name + '.log'}
     config['BeamLoader'] = {'unsteady': 'on',
                             'orientation': algebra.euler2quat(np.array([0.0,
@@ -472,21 +494,21 @@ def generate_solver_file(horseshoe=False):
                                     'aligned_grid': 'on',
                                     'mstar': 150,
                                     'freestream_dir': ['1', '0', '0']}
-    config['AerogridPlot'] = {'folder': os.path.dirname(__file__) + '/output/',
+    config['AerogridPlot'] = {'folder': route + '/output/',
                               'include_rbm': 'on',
                               'include_applied_forces': 'on',
                               'minus_m_star': 0
                               }
-    config['AeroForcesCalculator'] = {'folder': os.path.dirname(__file__) + '/output/forces',
+    config['AeroForcesCalculator'] = {'folder': route + '/output/forces',
                                       'write_text_file': 'on',
                                       'text_file_name': case_name + '_aeroforces.csv',
                                       'screen_output': 'on',
                                       'unsteady': 'off'
                                       }
-    config['BeamPlot'] = {'folder': os.path.dirname(__file__) + '/output/',
+    config['BeamPlot'] = {'folder': route + '/output/',
                           'include_rbm': 'on',
                           'include_applied_forces': 'on'}
-    config['BeamCsvOutput'] = {'folder': os.path.dirname(__file__) + '/output/',
+    config['BeamCsvOutput'] = {'folder': route + '/output/',
                                'output_pos': 'on',
                                'output_psi': 'on',
                                'output_for_pos': 'on',
@@ -499,4 +521,3 @@ generate_fem_file()
 generate_dyn_file()
 generate_solver_file(horseshoe=False)
 generate_aero_file()
-

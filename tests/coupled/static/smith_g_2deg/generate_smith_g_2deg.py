@@ -196,7 +196,7 @@ def generate_fem_file():
 
 def generate_aero_file():
     global x, y, z
-    airfoil_distribution = np.zeros((num_node,), dtype=int)
+    airfoil_distribution = np.zeros((num_elem, num_node_elem), dtype=int)
     surface_distribution = np.zeros((num_elem,), dtype=int) - 1
     surface_m = np.zeros((n_surfaces, ), dtype=int)
     m_distribution = 'uniform'
@@ -209,7 +209,7 @@ def generate_aero_file():
     working_node = 0
     # right wing (surface 0, beam 0)
     i_surf = 0
-    airfoil_distribution[working_node:working_node + num_node_main] = 0
+    airfoil_distribution[working_elem:working_elem + num_elem_main, :] = 0
     surface_distribution[working_elem:working_elem + num_elem_main] = i_surf
     surface_m[i_surf] = m_main
     aero_node[working_node:working_node + num_node_main] = True
@@ -220,7 +220,8 @@ def generate_aero_file():
 
     # left wing (surface 1, beam 1)
     i_surf = 1
-    airfoil_distribution[working_node:working_node + num_node_main - 1] = 0
+    # airfoil_distribution[working_node:working_node + num_node_main - 1] = 0
+    airfoil_distribution[working_elem:working_elem + num_elem_main, :] = 0
     surface_distribution[working_elem:working_elem + num_elem_main] = i_surf
     surface_m[i_surf] = m_main
     aero_node[working_node:working_node + num_node_main - 1] = True
@@ -278,11 +279,11 @@ def generate_solver_file(horseshoe=False):
     config.filename = file_name
     config['SHARPy'] = {'case': case_name,
                         'route': route,
-                        'flow': ['BeamLoader', 'AerogridLoader', 'StaticCoupled', 'AerogridPlot', 'BeamPlot', 'AeroForcesCalculator', 'BeamCsvOutput'],
+                        'flow': ['BeamLoader', 'AerogridLoader', 'StaticCoupled', 'AerogridPlot', 'BeamPlot', 'AeroForcesCalculator'],
                         # 'flow': ['BeamLoader', 'NonLinearStatic', 'BeamPlot'],
                         'write_screen': 'off',
                         'write_log': 'on',
-                        'log_folder': os.path.dirname(__file__) + '/output/',
+                        'log_folder': route + '/output/',
                         'log_file': case_name + '.log'}
     config['BeamLoader'] = {'unsteady': 'off',
                             'orientation': algebra.euler2quat(np.array([0.0,
@@ -330,24 +331,20 @@ def generate_solver_file(horseshoe=False):
                                     'aligned_grid': 'on',
                                     'mstar': 20,
                                     'freestream_dir': ['1', '0', '0']}
-    config['AerogridPlot'] = {'folder': os.path.dirname(__file__) + '/output/',
+    config['AerogridPlot'] = {'folder': route + '/output/',
                               'include_rbm': 'off',
                               'include_applied_forces': 'on',
                               'minus_m_star': 0
                               }
-    config['AeroForcesCalculator'] = {'folder': os.path.dirname(__file__) + '/output/forces',
+    config['AeroForcesCalculator'] = {'folder': route + '/output/forces',
                                       'write_text_file': 'on',
                                       'text_file_name': case_name + '_aeroforces.csv',
                                       'screen_output': 'on',
                                       'unsteady': 'off'
                                       }
-    config['BeamPlot'] = {'folder': os.path.dirname(__file__) + '/output/',
+    config['BeamPlot'] = {'folder': route + '/output/',
                           'include_rbm': 'off',
                           'include_applied_forces': 'on'}
-    config['BeamCsvOutput'] = {'folder': os.path.dirname(__file__) + '/output/',
-                               'output_pos': 'on',
-                               'output_psi': 'on',
-                               'screen_output': 'off'}
     config.write()
 
 
