@@ -3,6 +3,7 @@ import sys
 import sharpy.sharpy_main
 import warnings
 
+data = None
 with warnings.catch_warnings():
     warnings.simplefilter('ignore')
-    sharpy.sharpy_main.main(sys.argv)
+    data = sharpy.sharpy_main.main(sys.argv)
