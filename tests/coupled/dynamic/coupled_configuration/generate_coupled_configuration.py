@@ -410,7 +410,7 @@ def generate_dyn_file():
 
 def generate_aero_file():
     global x, y, z
-    airfoil_distribution = np.zeros((num_node,), dtype=int)
+    airfoil_distribution = np.zeros((num_elem, num_node_elem), dtype=int)
     surface_distribution = np.zeros((num_elem,), dtype=int) - 1
     surface_m = np.zeros((n_surfaces, ), dtype=int)
     m_distribution = 'uniform'
@@ -435,7 +435,7 @@ def generate_aero_file():
     working_node = 0
     # right wing (surface 0, beam 0)
     i_surf = 0
-    airfoil_distribution[working_node:working_node + num_node_main] = 0
+    airfoil_distribution[working_elem:working_elem + num_elem_main, :] = 0
     surface_distribution[working_elem:working_elem + num_elem_main] = i_surf
     surface_m[i_surf] = m_main
     aero_node[working_node:working_node + num_node_main] = True
@@ -453,7 +453,8 @@ def generate_aero_file():
 
     # left wing (surface 1, beam 1)
     i_surf = 1
-    airfoil_distribution[working_node:working_node + num_node_main - 1] = 0
+    # airfoil_distribution[working_node:working_node + num_node_main - 1] = 0
+    airfoil_distribution[working_elem:working_elem + num_elem_main, :] = 0
     surface_distribution[working_elem:working_elem + num_elem_main] = i_surf
     surface_m[i_surf] = m_main
     aero_node[working_node:working_node + num_node_main - 1] = True
@@ -476,7 +477,8 @@ def generate_aero_file():
     #
     # # fin (surface 2, beam 3)
     i_surf = 2
-    airfoil_distribution[working_node:working_node + num_node_fin] = 0
+    # airfoil_distribution[working_node:working_node + num_node_fin] = 0
+    airfoil_distribution[working_elem:working_elem + num_elem_fin, :] = 0
     surface_distribution[working_elem:working_elem + num_elem_fin] = i_surf
     surface_m[i_surf] = m_fin
     aero_node[working_node:working_node + num_node_fin] = True
@@ -493,7 +495,8 @@ def generate_aero_file():
     #
     # # # right tail (surface 3, beam 4)
     i_surf = 3
-    airfoil_distribution[working_node:working_node + num_node_tail] = 0
+    # airfoil_distribution[working_node:working_node + num_node_tail] = 0
+    airfoil_distribution[working_elem:working_elem + num_elem_tail, :] = 0
     surface_distribution[working_elem:working_elem + num_elem_tail] = i_surf
     surface_m[i_surf] = m_tail
     # XXX not very elegant
@@ -514,7 +517,8 @@ def generate_aero_file():
     #
     # # left tail (surface 4, beam 5)
     i_surf = 4
-    airfoil_distribution[working_node:working_node + num_node_tail-1] = 0
+    # airfoil_distribution[working_node:working_node + num_node_tail-1] = 0
+    airfoil_distribution[working_elem:working_elem + num_elem_tail, :] = 0
     surface_distribution[working_elem:working_elem + num_elem_tail] = i_surf
     surface_m[i_surf] = m_tail
     aero_node[working_node:working_node + num_node_tail - 1] = True
