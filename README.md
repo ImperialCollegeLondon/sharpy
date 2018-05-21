@@ -2,6 +2,7 @@
 An aeroelastic analysis package
 
 __WORK STILL IN PROGRESS__
+__THIS README IS OUT OF DATE__
 
 sharpy depends on [xbeam](http://github.com/imperialcollegelondon/xbeam) and [UVLM](http://github.com/imperialcollegelondon/UVLM).
 For now, only structural simulations are supported.
