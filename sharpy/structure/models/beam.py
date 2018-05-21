@@ -193,19 +193,19 @@ class Beam(BaseStructure):
             for it in range(num_steps):
                 self.dynamic_input[it]['for_acc'] = np.zeros((6, ), dtype=ct.c_double, order='F')
 
-        try:
-            for it in range(num_steps):
-                self.dynamic_input[it]['trayectories'] = dyn_dict['trayectories'][it, :, :]
-        except KeyError:
-            for it in range(num_steps):
-                self.dynamic_input[it]['trayectories'] = None
+        # try:
+        #     for it in range(num_steps):
+        #         self.dynamic_input[it]['trayectories'] = dyn_dict['trayectories'][it, :, :]
+        # except KeyError:
+        #     for it in range(num_steps):
+        #         self.dynamic_input[it]['trayectories'] = None
 
         try:
             for it in range(num_steps):
-                self.dynamic_input[it]['enforce_trayectory'] = dyn_dict['enforce_trayectory'][it]
+                self.dynamic_input[it]['enforce_trajectory'] = dyn_dict['enforce_trayectory'][it, :, :]
         except KeyError:
             for it in range(num_steps):
-                self.dynamic_input[it]['enforce_trayectory'] = False
+                self.dynamic_input[it]['enforce_trajectory'] = np.zeros((self.num_node, 3), dtype=bool)
 
     def generate_dof_arrays(self):
         self.vdof = np.zeros((self.num_node,), dtype=ct.c_int, order='F') - 1
