@@ -20,9 +20,9 @@ flow = ['BeamLoader',
         # 'DynamicPrescribedCoupled',
         # 'BeamLoads',
         # 'DynamicCoupled',
-        'PIDTrajectoryControl',
-        'AerogridPlot',
-        'BeamPlot'
+        'PIDTrajectoryControl'
+        # 'AerogridPlot',
+        # 'BeamPlot'
         ]
 
 
@@ -39,7 +39,7 @@ thrust = 28.6940176
 sigma = 1
 
 trajectory_end_velocity = -(10/np.cos(alpha) - u_inf)
-trajectory_coords_end = np.array([1.*np.cos(alpha), -1.0*np.sin(alpha)])*-10
+trajectory_coords_end = np.array([1.*np.cos(alpha), -1.0*np.sin(alpha)])*-15
 
 # trim sigma = 1.1
 # alpha = 7.887234946558482*np.pi/180
@@ -211,7 +211,7 @@ app_forces = np.zeros((n_node, 6))
 
 
 # aero
-airfoil_distribution = np.zeros((n_node,), dtype=int)
+airfoil_distribution = np.zeros((n_elem, n_node_elem), dtype=int)
 surface_distribution = np.zeros((n_elem,), dtype=int) - 1
 surface_m = np.zeros((n_surfaces, ), dtype=int)
 m_distribution = 'uniform'
@@ -517,7 +517,7 @@ def generate_aero_file():
     wn = 0
     # right wing (surface 0, beam 0)
     i_surf = 0
-    airfoil_distribution[wn:wn + n_node_main] = 0
+    airfoil_distribution[we:we + n_elem_main, :] = 0
     surface_distribution[we:we + n_elem_main] = i_surf
     surface_m[i_surf] = m
     aero_node[wn:wn + n_node_main] = True
@@ -535,7 +535,7 @@ def generate_aero_file():
 
     # left wing (surface 1, beam 1)
     i_surf = 1
-    airfoil_distribution[wn:wn + n_node_main - 1] = 0
+    airfoil_distribution[we:we + n_elem_main, :] = 0
     surface_distribution[we:we + n_elem_main] = i_surf
     surface_m[i_surf] = m
     aero_node[wn:wn + n_node_main - 1] = True
@@ -558,7 +558,7 @@ def generate_aero_file():
 
     # # fin (surface 2, beam 3)
     i_surf = 2
-    airfoil_distribution[wn:wn + n_node_fin] = 0
+    airfoil_distribution[we:we + n_elem_fin, :] = 0
     surface_distribution[we:we + n_elem_fin] = i_surf
     surface_m[i_surf] = m
     aero_node[wn:wn + n_node_fin] = True
@@ -575,7 +575,7 @@ def generate_aero_file():
     #
     # # # right tail (surface 3, beam 4)
     i_surf = 3
-    airfoil_distribution[wn:wn + n_node_tail] = 0
+    airfoil_distribution[we:we + n_elem_tail, :] = 0
     surface_distribution[we:we + n_elem_tail] = i_surf
     surface_m[i_surf] = m
     # XXX not very elegant
@@ -596,7 +596,7 @@ def generate_aero_file():
     #
     # # left tail (surface 4, beam 5)
     i_surf = 4
-    airfoil_distribution[wn:wn + n_node_tail - 1] = 0
+    airfoil_distribution[we:we + n_elem_tail, :] = 0
     surface_distribution[we:we + n_elem_tail] = i_surf
     surface_m[i_surf] = m
     aero_node[wn:wn + n_node_tail - 1] = True
@@ -803,7 +803,8 @@ def generate_solver_file():
                                                                        'dt': dt,
                                                                        'coords_end': trajectory_coords_end,
                                                                        'time_offset': 3.0,
-                                                                       'plot': 'off'},
+                                                                       'plot': 'off',
+                                                                       'print_info': 'on'},
                                         'n_time_steps': n_tstep,
                                         'dt': dt,
                                         'PID_P_gain': 25*100,

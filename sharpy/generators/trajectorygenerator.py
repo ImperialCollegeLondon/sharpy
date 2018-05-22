@@ -6,6 +6,7 @@ import matplotlib.pyplot as plt
 
 import sharpy.utils.generator_interface as generator_interface
 import sharpy.utils.settings as settings
+import sharpy.utils.cout_utils as cout
 
 
 @generator_interface.generator
@@ -38,6 +39,9 @@ class TrajectoryGenerator(generator_interface.BaseGenerator):
         self.settings_types['plot'] = 'bool'
         self.settings_default['plot'] = False
 
+        self.settings_types['print_info'] = 'bool'
+        self.settings_default['print_info'] = False
+
         self.implemented_shapes = ["linear", "quadratic"]
         self.implemented_accelerations = ["constant", "linear"]
 
@@ -48,6 +52,8 @@ class TrajectoryGenerator(generator_interface.BaseGenerator):
         self.y_vec = None
         self.time = None
         self.n_steps = None
+        self.travel_time = None
+        self.curve_length = None
 
     def initialise(self, in_dict):
         self.in_dict = in_dict
@@ -58,9 +64,17 @@ class TrajectoryGenerator(generator_interface.BaseGenerator):
         self.in_dict['acceleration'] = self.in_dict['acceleration'].lower()
 
         self.calculate_trajectory()
+        if self.in_dict['print_info']:
+            self.print_info()
 
         if self.in_dict['plot']:
             self.plot()
+
+    def print_info(self):
+        cout.cout_wrap('Trajectory information:', 2)
+        cout.cout_wrap('\t-travel time: {}'.format(self.travel_time), 2)
+        cout.cout_wrap('\t-curve length: {}'.format(self.curve_length), 2)
+        cout.cout_wrap('-------------------------------', 2)
 
     def plot(self):
         plt.figure()
@@ -102,6 +116,7 @@ class TrajectoryGenerator(generator_interface.BaseGenerator):
             curve_length = quadratic_curve_length(shape_polynomial, in_dict['coords_end'])
 
         curve_length = np.abs(curve_length)
+        # print('curve length ' + str(curve_length))
 
         # acceleration
         acceleration_position_coefficients = None
@@ -109,12 +124,14 @@ class TrajectoryGenerator(generator_interface.BaseGenerator):
         if in_dict['acceleration'] == 'constant':
             acceleration_position_coefficients = constant_acceleration_position_coeffs(curve_length, np.abs(in_dict['veloc_end'].value))
             travel_time = constant_acceleration_travel_time(acceleration_position_coefficients,
-                                                            curve_length)
+                                                            curve_length,
+                                                            np.abs(in_dict['veloc_end'].value))
         elif in_dict['acceleration'] == 'linear':
             acceleration_position_coefficients = linear_acceleration_position_coeffs(curve_length, np.abs(in_dict['veloc_end'].value))
             # acceleration_position_coefficients = linear_acceleration_position_coeffs(curve_length, (in_dict['veloc_end'].value))
             travel_time = linear_acceleration_travel_time(acceleration_position_coefficients,
-                                                          curve_length)
+                                                          curve_length,
+                                                          np.abs(in_dict['veloc_end'].value))
 
         # time
         n_steps_travel = int(round(travel_time/in_dict['dt'].value))
@@ -142,6 +159,15 @@ class TrajectoryGenerator(generator_interface.BaseGenerator):
 
         # with x, I obtain y and done
         self.y_vec = P.polyval(self.x_vec, shape_polynomial)
+        self.travel_time = travel_time
+        self.curve_length = curve_length
+
+        # output last velocity to double check
+        # print('Last velocity:')
+        # s_dot_e = np.sqrt((self.y_vec[-1] - self.y_vec[-2])**2 + (self.x_vec[-1] - self.x_vec[-2])**2)/in_dict['dt'].value
+        # print(s_dot_e)
+        # print('Intended one:')
+        # print(in_dict['veloc_end'].value)
 
 
 def linear_curve_length(shape_polynomial, coords_end):
@@ -166,24 +192,26 @@ def quadratic_curve_length(shape_polynomial, coords_end):
 
 
 def constant_acceleration_position_coeffs(s_e, s_dot_e):
-    coeffs = (0.0, 0.0, 0.5*(0.5*4.0*s_dot_e**2)/s_e, 0.0)
+    coeffs = (0.0, 0.0, (4.0*s_dot_e**2)/s_e, 0.0)
     return coeffs
 
 
 def linear_acceleration_position_coeffs(s_e, s_dot_e):
     # coeffs = (0.0, 0.0, 0.0, ((6.0*s_e)**1.5/s_dot_e)**2/6.)
     # coeffs = (0.0, 0.0, 0.0, ((6.0*s_e)**(2./3.)/s_dot_e)**2/6.)
-    coeff = ((2.*s_dot_e)**1.5 * 6.*s_e)**(2./5.)
-    coeffs = (0.0, 0.0, 0.0, (1./6.)**2*coeff)
+    # coeff = ((2.*s_dot_e)**1.5 * 6.*s_e)**(2./5.)
+    coeff = ((6.0*s_e)**(2./3.)/(2.0*s_dot_e))**(-3.)
+    coeffs = (0.0, 0.0, 0.0, (1./6.)*coeff)
     return coeffs
 
 
-def constant_acceleration_travel_time(pos_coeffs, s_e):
+def constant_acceleration_travel_time(pos_coeffs, s_e, s_dot_e):
     # return np.sqrt(2.0*s_e/pos_coeffs[2])
-    return np.sqrt(1.0*s_e/pos_coeffs[2])
+    return np.sqrt(2.0*s_e/pos_coeffs[2])
 
 
-def linear_acceleration_travel_time(pos_coeffs, s_e):
+def linear_acceleration_travel_time(pos_coeffs, s_e, s_dot_e):
     # return np.cbrt(6.0*s_e/pos_coeffs[3])
-    return np.cbrt(s_e/pos_coeffs[3])
+    # return np.sqrt(2.0*s_dot_e/pos_coeffs[3])
+    return 3.0*s_e/s_dot_e
 
