@@ -24,20 +24,29 @@ class BeamLoads(BaseSolver):
         self.folder = ''
         self.filename = ''
 
-    def initialise(self, data):
+    def initialise(self, data, custom_settings=None):
         self.data = data
-        self.settings = data.settings[self.solver_id]
+        if custom_settings is None:
+            self.settings = data.settings[self.solver_id]
+        else:
+            self.settings = custom_settings
         settings.to_custom_types(self.settings, self.settings_types, self.settings_default)
 
-    def run(self):
-        self.calculate_loads()
+    def run(self, online=False):
+        self.calculate_loads(online)
         return self.data
 
-    def calculate_loads(self):
-        for it in range(len(self.data.structure.timestep_info)):
+    def calculate_loads(self, online):
+        if online:
+            it = -1
             (self.data.structure.timestep_info[it].postproc_cell['strain'],
              self.data.structure.timestep_info[it].postproc_cell['loads']) = xbeamlib.cbeam3_loads(self.data.structure,
                                                                                                    it)
+        else:
+            for it in range(len(self.data.structure.timestep_info)):
+                (self.data.structure.timestep_info[it].postproc_cell['strain'],
+                 self.data.structure.timestep_info[it].postproc_cell['loads']) = xbeamlib.cbeam3_loads(self.data.structure,
+                                                                                                       it)
 
 
     # def calculate_loads(self):

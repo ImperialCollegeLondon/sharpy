@@ -88,6 +88,18 @@ class DynamicCoupled(BaseSolver):
         self.postprocessors = dict()
         self.with_postprocessors = False
 
+    def get_g(self):
+        return self.structural_solver.settings['gravity'].value
+
+    def set_g(self, new_g):
+        self.structural_solver.settings['gravity'] = ct.c_double(new_g)
+
+    def get_rho(self):
+        return self.aero_solver.settings['rho'].value
+
+    def set_rho(self, new_rho):
+        self.aero_solver.settings['rho'] = ct.c_double(new_rho)
+
     def initialise(self, data, custom_settings=None):
         self.data = data
         if custom_settings is None:
