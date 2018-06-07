@@ -37,203 +37,299 @@ class Test_assembly(unittest.TestCase):
 
 
 
-	def test_dAIC_dzeta_const_normals_self_bound(self):
+	def test_dAIC_dzeta_const_normals_bound_to_bound(self):
 		'''
 		Test AIC derivative w.r.t. zeta assuming constant normals. Only the 
-		contribution of the bound wake onto itself is checked.
+		contribution bound to bound surfaces contribution is verified.
 		'''
-		print('---- Testing assembly.dAIC_dzeta (constant normals. self bound)')
+		print('-- Testing assembly.dAIC_dzeta (constant normals, bound->bound)')
 		
 		MS=self.MS
-		ss=0
-		Surf_in=MS.Surfs[0]#MS.Surfs_star[0]##
-		Surf_out=MS.Surfs[1]
-		dAICcoll_an, dAICvert_an=assembly.dAICsdzeta_coll_Sin_to_Sout(
-															   Surf_in,Surf_out)
+		n_surf=MS.n_surf
+		for ss_in in range(n_surf):
+			for ss_out in range(n_surf):
 
-		# map bound surface panel -> vertices
-		Surf_out.maps.map_panels_to_vertices_1D_scalar()
-		Surf_in.maps.map_panels_to_vertices_1D_scalar()
-		K_out=Surf_out.maps.K
-		Kzeta_out=Surf_out.maps.Kzeta 	
-		K_in=Surf_in.maps.K
-		Kzeta_in=Surf_in.maps.Kzeta 	
-		
-		# Reference induced velocity
-		Uind0_norm=Surf_in.get_induced_velocity_over_surface(
+				### bound to bound
+				Surf_in=MS.Surfs[ss_in]
+				Surf_out=MS.Surfs[ss_out]
+
+				K_out=Surf_out.maps.K
+				Kzeta_out=Surf_out.maps.Kzeta
+				Kzeta_in=Surf_in.maps.Kzeta
+
+				dAICcoll_an=np.zeros((K_out,3*Kzeta_out))
+				dAICvert_an=np.zeros((K_out,3*Kzeta_in))		
+
+				dAICcoll_an, dAICvert_an=\
+						assembly.dAICsdzeta_coll_Sin_to_Sout(
+										Surf_in,Surf_out,dAICcoll_an,
+												dAICvert_an,Surf_in_bound=True)
+
+				# map bound surface panel -> vertices
+				Surf_out.maps.map_panels_to_vertices_1D_scalar()
+				Surf_in.maps.map_panels_to_vertices_1D_scalar()
+				K_out=Surf_out.maps.K
+				Kzeta_out=Surf_out.maps.Kzeta 	
+				K_in=Surf_in.maps.K
+				Kzeta_in=Surf_in.maps.Kzeta 	
+				
+				# Reference induced velocity
+				Uind0_norm=Surf_in.get_induced_velocity_over_surface(
 									 Surf_out,target='collocation',Project=True)
 
 
-		# --------------------------- derivative w.r.t. collocaiton points only
+				# --------------------------- derivative w.r.t. collocaiton points only
 
-		step=1e-6
-		dAICcoll_num=np.zeros((K_out,3*Kzeta_out))
+				step=1e-7
+				dAICcoll_num=np.zeros((K_out,3*Kzeta_out))
 
-		# loop collocation points
-		for cc_out in range(K_out):
-			# get panel coordinates
-			mm_out=Surf_out.maps.ind_2d_pan_scal[0][cc_out]
-			nn_out=Surf_out.maps.ind_2d_pan_scal[1][cc_out]
-			# get normal
-			uind0_norm=Uind0_norm[mm_out,nn_out]
-			nc=Surf_out.normals[:,mm_out,nn_out]
-			# get panel vertices
-			zeta_panel=Surf_out.get_panel_vertices_coords(mm_out,nn_out)
-			# get indices of panel vertices
-			gl_ind_panel_out=Surf_out.maps.Mpv1d_scalar[cc_out]
+				# loop collocation points
+				for cc_out in range(K_out):
+					# get panel coordinates
+					mm_out=Surf_out.maps.ind_2d_pan_scal[0][cc_out]
+					nn_out=Surf_out.maps.ind_2d_pan_scal[1][cc_out]
+					# get normal
+					uind0_norm=Uind0_norm[mm_out,nn_out]
+					nc=Surf_out.normals[:,mm_out,nn_out]
+					# get panel vertices
+					zeta_panel=Surf_out.get_panel_vertices_coords(mm_out,nn_out)
+					# get indices of panel vertices
+					gl_ind_panel_out=Surf_out.maps.Mpv1d_scalar[cc_out]
 
-			# perturb each panel vertices
-			for vv in range(4):
-				gl_ind_vv=gl_ind_panel_out[vv]
+					# perturb each panel vertices
+					for vv in range(4):
+						gl_ind_vv=gl_ind_panel_out[vv]
 
-				# perturb each vertex component
-				for vv_comp in range(3):
-					zeta_panel_pert=zeta_panel.copy()
-					zeta_panel_pert[vv,vv_comp]+=step
+						# perturb each vertex component
+						for vv_comp in range(3):
+							zeta_panel_pert=zeta_panel.copy()
+							zeta_panel_pert[vv,vv_comp]+=step
 
-					# compute new collocation point
-					zetac_pert=Surf_out.get_panel_collocation(zeta_panel_pert)
+							# compute new collocation point
+							zetac_pert=Surf_out.get_panel_collocation(zeta_panel_pert)
 
-					# recompute induced velocity at collocation point
-					# this step considers all nodes, we could instead only use libuvlm
-					# but in this case we need to loop for surf_in panels
-					uind=Surf_in.get_induced_velocity(zetac_pert)
-					uind_norm=np.dot(nc,uind)
-					#embed()
-					# compute derivative/allocate
-					dAICcoll_num[cc_out,gl_ind_vv+vv_comp*Kzeta_out]=\
+							# recompute induced velocity at collocation point
+							# this step considers all nodes, we could instead only use libuvlm
+							# but in this case we need to loop for surf_in panels
+							uind=Surf_in.get_induced_velocity(zetac_pert)
+							uind_norm=np.dot(nc,uind)
+							#embed()
+							# compute derivative/allocate
+							dAICcoll_num[cc_out,gl_ind_vv+vv_comp*Kzeta_out]=\
+															 (uind_norm-uind0_norm)/step
+
+				er_coll=np.max(np.abs(dAICcoll_an-dAICcoll_num))
+
+
+				# ----------------------------------- derivative w.r.t. vertices points
+				dAICvert_num=np.zeros((K_out,3*Kzeta_in))
+
+				# loop collocation points
+				for cc_out in range(K_out):
+					# get panel coordinates
+					mm_out=Surf_out.maps.ind_2d_pan_scal[0][cc_out]
+					nn_out=Surf_out.maps.ind_2d_pan_scal[1][cc_out]
+					# get normal
+					nc=Surf_out.normals[:,mm_out,nn_out]
+					zetac=Surf_out.zetac[:,mm_out,nn_out]
+
+					# perturb panels Surf_in
+					for pp_in in range(K_in):
+						# get (m,n) indices of panel
+						mm_in=Surf_in.maps.ind_2d_pan_scal[0][pp_in]
+						nn_in=Surf_in.maps.ind_2d_pan_scal[1][pp_in]	
+						# get vertices coords and circulation			
+						zeta_panel=Surf_in.get_panel_vertices_coords(mm_in,nn_in)
+						gamma_panel=Surf_in.gamma[mm_in,nn_in]
+						# get vertices coordinates
+						gl_ind_panel_in=Surf_in.maps.Mpv1d_scalar[pp_in]
+
+						# compute panel original contribution to Uind
+						uind0=libuvlm.biot_panel(zetac,zeta_panel,gamma=gamma_panel)
+						uind0_norm=np.dot(uind0,nc)
+						# perturb each panel vertices
+						for vv in range(4):
+							gl_ind_vv=gl_ind_panel_in[vv]
+
+							# perturb each vertex component
+							for vv_comp in range(3):
+								zeta_panel_pert=zeta_panel.copy()
+								zeta_panel_pert[vv,vv_comp]+=step
+
+								# compute new induced velocity at collocaiton point
+								uind=libuvlm.biot_panel(zetac,zeta_panel_pert,gamma=gamma_panel)
+								uind_norm=np.dot(nc,uind)
+								#embed()
+								# compute derivative/allocate
+								dAICvert_num[cc_out,gl_ind_vv+vv_comp*Kzeta_in]+=\
+																 (uind_norm-uind0_norm)/step
+
+				er_vert=np.max(np.abs(dAICvert_an-dAICvert_num))
+
+				print('Bound\t%.2d->%.2d\tFDstep\tErColl\tErVert'%(ss_in,ss_out))
+				print('\t\t%.1e\t%.1e\t%.1e\t' %(step,er_coll,er_vert))
+				assert max(er_coll,er_vert)<1e2*step, 'Test failed!'
+
+
+
+
+
+	def test_dAIC_dzeta_const_normals_wake_to_bound(self):
+		'''
+		Test AIC derivative w.r.t. zeta assuming constant normals. Only the 
+		contribution of the wake to bound is checked.
+		The derivatives w.r.t. bound collocaiton point are tested via FDs.
+		'''
+		print('-- Testing assembly.dAIC_dzeta (constant normals, wake->bound)')
+		
+		MS=self.MS
+		n_surf=MS.n_surf
+		for ss_in in range(n_surf):
+			for ss_out in range(n_surf):
+
+				### bound to bound
+				Surf_in=MS.Surfs_star[ss_in]
+				Surf_out=MS.Surfs[ss_out]
+				K_out=Surf_out.maps.K
+				Kzeta_out=Surf_out.maps.Kzeta
+				Kzeta_bound_in=MS.Surfs[ss_in].maps.Kzeta #<--- not a mistake
+
+				dAICcoll_an=np.zeros((K_out,3*Kzeta_out))
+				dAICvert_an=np.zeros((K_out,3*Kzeta_bound_in))		
+				# get bound influence
+				dAICcoll_an, dAICvert_an=\
+						assembly.dAICsdzeta_coll_Sin_to_Sout(
+										Surf_in,Surf_out,dAICcoll_an,
+												dAICvert_an,Surf_in_bound=False)
+
+
+
+				# map bound surface panel -> vertices
+				Surf_out.maps.map_panels_to_vertices_1D_scalar()
+				Surf_in.maps.map_panels_to_vertices_1D_scalar()
+				K_out=Surf_out.maps.K
+				Kzeta_out=Surf_out.maps.Kzeta 	
+				K_in=Surf_in.maps.K
+				Kzeta_in=Surf_in.maps.Kzeta 	
+				
+				# Reference induced velocity
+				Uind0_norm=Surf_in.get_induced_velocity_over_surface(
+									 Surf_out,target='collocation',Project=True)
+
+
+				# -------------------- derivative w.r.t. collocaiton points only
+
+				step=1e-7
+				dAICcoll_num=np.zeros((K_out,3*Kzeta_out))
+
+				# loop collocation points
+				for cc_out in range(K_out):
+					# get panel coordinates
+					mm_out=Surf_out.maps.ind_2d_pan_scal[0][cc_out]
+					nn_out=Surf_out.maps.ind_2d_pan_scal[1][cc_out]
+					# get normal
+					uind0_norm=Uind0_norm[mm_out,nn_out]
+					nc=Surf_out.normals[:,mm_out,nn_out]
+					# get panel vertices
+					zeta_panel=Surf_out.get_panel_vertices_coords(mm_out,nn_out)
+					# get indices of panel vertices
+					gl_ind_panel_out=Surf_out.maps.Mpv1d_scalar[cc_out]
+
+					# perturb each panel vertices
+					for vv in range(4):
+						gl_ind_vv=gl_ind_panel_out[vv]
+
+						# perturb each vertex component
+						for vv_comp in range(3):
+							zeta_panel_pert=zeta_panel.copy()
+							zeta_panel_pert[vv,vv_comp]+=step
+
+							# compute new collocation point
+							zetac_pert=Surf_out.get_panel_collocation(zeta_panel_pert)
+
+							# recompute induced velocity at collocation point
+							# this step considers all nodes, we could instead only 
+							# use libuvlm but in this case we need to loop for 
+							# surf_in panels
+							uind=Surf_in.get_induced_velocity(zetac_pert)
+							uind_norm=np.dot(nc,uind)
+							# compute derivative/allocate
+							dAICcoll_num[cc_out,gl_ind_vv+vv_comp*Kzeta_out]=\
 													 (uind_norm-uind0_norm)/step
 
-		er_coll=np.max(np.abs(dAICcoll_an-dAICcoll_num))
-
-
-		# ----------------------------------- derivative w.r.t. vertices points
-		dAICvert_num=np.zeros((K_out,3*Kzeta_in))
-
-		# loop collocation points
-		for cc_out in range(K_out):
-			# get panel coordinates
-			mm_out=Surf_out.maps.ind_2d_pan_scal[0][cc_out]
-			nn_out=Surf_out.maps.ind_2d_pan_scal[1][cc_out]
-			# get normal
-			nc=Surf_out.normals[:,mm_out,nn_out]
-			zetac=Surf_out.zetac[:,mm_out,nn_out]
-
-			# perturb panels Surf_in
-			for pp_in in range(K_in):
-				# get (m,n) indices of panel
-				mm_in=Surf_in.maps.ind_2d_pan_scal[0][pp_in]
-				nn_in=Surf_in.maps.ind_2d_pan_scal[1][pp_in]	
-				# get vertices coords and circulation			
-				zeta_panel=Surf_in.get_panel_vertices_coords(mm_in,nn_in)
-				gamma_panel=Surf_in.gamma[mm_in,nn_in]
-				# get vertices coordinates
-				gl_ind_panel_in=Surf_in.maps.Mpv1d_scalar[pp_in]
-
-				# compute panel original contribution to Uind
-				uind0=libuvlm.biot_panel(zetac,zeta_panel,gamma=gamma_panel)
-				uind0_norm=np.dot(uind0,nc)
-				# perturb each panel vertices
-				for vv in range(4):
-					gl_ind_vv=gl_ind_panel_in[vv]
-
-					# perturb each vertex component
-					for vv_comp in range(3):
-						zeta_panel_pert=zeta_panel.copy()
-						zeta_panel_pert[vv,vv_comp]+=step
-
-						# compute new induced velocity at collocaiton point
-						uind=libuvlm.biot_panel(zetac,zeta_panel_pert,gamma=gamma_panel)
-						uind_norm=np.dot(nc,uind)
-						#embed()
-						# compute derivative/allocate
-						dAICvert_num[cc_out,gl_ind_vv+vv_comp*Kzeta_in]+=\
-														 (uind_norm-uind0_norm)/step
-
-		er_vert=np.max(np.abs(dAICvert_an-dAICvert_num))
-		embed()
+				er_coll=np.max(np.abs(dAICcoll_an-dAICcoll_num))
 
 
 
+				# ---------------------------- derivative w.r.t. vertices points
+
+				N_in=Surf_in.maps.N
+				Der_num=np.zeros((K_out,N_in+1,3,))
+
+				# loop collocation points
+				for cc_out in range(K_out):
+					# get panel coordinates
+					mm_out=Surf_out.maps.ind_2d_pan_scal[0][cc_out]
+					nn_out=Surf_out.maps.ind_2d_pan_scal[1][cc_out]
+					# get normal
+					nc=Surf_out.normals[:,mm_out,nn_out]
+					zetac=Surf_out.zetac[:,mm_out,nn_out]
+
+					# perturb TE points
+					# perturb panels Surf_in
+					for pp_in in range(K_in):
+						# get (m,n) indices of panel
+						mm_in=Surf_in.maps.ind_2d_pan_scal[0][pp_in]
+						nn_in=Surf_in.maps.ind_2d_pan_scal[1][pp_in]	
+
+						if mm_in !=0:
+							continue
+
+						# get vertices coords and circulation			
+						zeta_panel=Surf_in.get_panel_vertices_coords(mm_in,nn_in)
+						gamma_panel=Surf_in.gamma[mm_in,nn_in]
+						zeta00=zeta_panel[0,:]
+						zeta03=zeta_panel[3,:]
+
+						# compute panel original contribution to Uind
+						uind0=libuvlm.biot_segment(zetac,zeta03,zeta00,gamma=gamma_panel)
+						uind0_norm=np.dot(uind0,nc)
+
+						# perturb each vertex component
+						for vv_comp in range(3):
+							### segment 00
+							zeta00_pert=zeta00.copy()
+							zeta00_pert[vv_comp]+=step
+							uind=libuvlm.biot_segment(zetac,zeta03,zeta00_pert,
+															  gamma=gamma_panel)
+							uind_norm=np.dot(nc,uind)
+							Der_num[cc_out,nn_in,vv_comp]+=(uind_norm-uind0_norm)/step
+
+							### segment 03
+							zeta03_pert=zeta03.copy()
+							zeta03_pert[vv_comp]+=step
+							uind=libuvlm.biot_segment(zetac,zeta03_pert,zeta00,
+															  gamma=gamma_panel)
+							uind_norm=np.dot(nc,uind)
+							Der_num[cc_out,nn_in+1,vv_comp]+=(uind_norm-uind0_norm)/step
+
+
+				### manually reshape output
+				dAICvert_num=np.zeros((K_out,3*Kzeta_bound_in))
+				M_bound_in=Kzeta_bound_in//(N_in+1)-1
+				for comp in range(3):
+					kstart=(1+comp)*Kzeta_bound_in-(N_in+1)
+					kend=(1+comp)*Kzeta_bound_in 
+					dAICvert_num[:,kstart:kend]=Der_num[:,:,comp]
+
+				er_vert=np.max(np.abs(dAICvert_an-dAICvert_num))
+
+				print('Wake%.2d->Bound%.2d\tFDstep\tErColl\tErVert'%(ss_in,ss_out))
+				print('\t\t%.1e\t%.1e\t%.1e\t' %(step,er_coll,er_vert))
+				assert max(er_coll,er_vert)<1e2*step, 'Test failed!'
 
 
 
-
-
-
-
-
-
-	# def test_dAIC_dzeta_coll_const_normals(self):
-
-	# 	print('----------- Testing assembly.dAIC_dzeta_coll (constant normals)')
-		
-	# 	MS=self.MS
-
-	# 	### compute dAIC_dzeta matrices
-	# 	dAICcoll_an,dAICvert_an,dAICvert_star_an=\
-	# 							assembly.dAICsdzeta_coll(MS.Surfs,MS.Surfs_star)
-
-	
-	# 	step=1e-4
-
-	# 	# --------------------------- derivative w.r.t. collocaiton points only
-	# 	dAICcoll_an_tot=[]
-	# 	for ss_out in range(MS.n_surf):
-	# 		dAICcoll_an_tot_here=dAICcoll_an[ss_out][0]
-	# 		for ss_in in range(1,MS.n_surf):
-	# 			dAICcoll_an_tot_here+=dAICcoll_an[ss_out][ss_in]
-	# 		dAICcoll_an_tot.append(dAICcoll_an_tot_here)
-
-
-	# 	dAICcoll_num_tot=[]
-	# 	for ss_out in range(MS.n_surf):
-	# 		Surf_out=MS.Surfs[ss_out]
-	# 		K_out=Surf_out.maps.K
-	# 		Kzeta_out=Surf_out.maps.Kzeta 
-	# 		dAICcoll_num_tot_here=np.zeros((K_out,3*Kzeta_out))
-
-	# 		# Reference induced velocity
-	# 		Uind0=Surf_out.u_ind_coll_norm.copy()
-
-	# 		# loop collocation points
-	# 		for cc_out in range(K_out):
-	# 			# get panel coordinates
-	# 			mm_out=Surf_out.maps.ind_2d_pan_scal[0][cc_out]
-	# 			nn_out=Surf_out.maps.ind_2d_pan_scal[1][cc_out]
-	# 			# get collocation point and normal
-	# 			zetac=Surf_out.zetac[:,mm_out,nn_out]
-	# 			nc=Surf_out.normals[:,mm_out,nn_out]
-	# 			uind0_norm=Surf_out.u_ind_coll_norm[mm_out,nn_out]
-
-	# 			### perturb collocation point component
-	# 			### ps: all surfaces are included
-	# 			for ii in range(3):
-	# 				uind=np.zeros((3,))
-	# 				dzeta=np.zeros((3,))
-	# 				dzeta[ii]=step
-	# 				for ss_in in range(MS.n_surf):
-	# 					Surf_in=MS.Surfs[ss_in]
-	# 					Surf_in_star=MS.Surfs_star[ss_in]
-	# 					uind+=Surf_in.get_induced_velocity(zetac+dzeta)
-	# 					uind+=Surf_in_star.get_induced_velocity(zetac+dzeta)
-	# 				uind_norm=np.dot(nc,uind)
-	# 				dAICcoll_num_tot_here[cc_out,ii*K_out]=\
-	# 												 (uind_norm-uind0_norm)/step
-
-	# 		dAICcoll_num_tot.append(dAICcoll_num_tot_here)
-
-
-	# 	embed()								   
-	# 	# compare
-	# 	Er=[]
-
-	# 	for ss_out in range(MS.n_surf):
-	# 		dAICcoll_an_tot=dAICcoll_an[ss_out][0]
-	# 		for ss_in in range(1,MS.n_surf):
-	# 			dAICcoll_an_tot=dAICcoll_an[ss_out][ss_in]
-	# 		# compare vs numerical
-	# 		Er.append(dAICcoll_an_tot - dAICcoll_num[ss_in] )
 
 
 
@@ -331,9 +427,9 @@ if __name__=='__main__':
 	#unittest.main()
 	T=Test_assembly()
 	T.setUp()
-
-	T.test_dAIC_dzeta_const_normals_self_bound()
-	#T.test_dAIC_dzeta_coll_const_normals()
+	T.test_dAIC_dzeta_const_normals_bound_to_bound()
+	T.test_dAIC_dzeta_const_normals_wake_to_bound()
+	
 
 	## Induced velocity
 	#T.test_dWnvU_dzeta()
