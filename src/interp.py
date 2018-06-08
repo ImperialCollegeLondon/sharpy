@@ -111,13 +111,14 @@ def get_Wvc_vector(Wvc_scalar):
 # 	return np.concatenate(Wnv,axis=1)
 
 
-def get_Wnv_vector(Map,SurfGeo,aM=0.5,aN=0.5):
+def get_Wnv_vector(SurfGeo,aM=0.5,aN=0.5):
 	'''
 	Provide projection matrix from nodal velocities to normal velocity at 
 	collocation points
 	'''
 
 	# initialise
+	Map=SurfGeo.maps
 	K,Kzeta=Map.K,Map.Kzeta
 
 	# retrieve scaling matrix

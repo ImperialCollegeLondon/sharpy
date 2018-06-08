@@ -29,6 +29,16 @@ class MultiAeroGridSurfaces():
 		self.Surfs=[]
 		self.Surfs_star=[]
 
+		# allocate size lists - useful for global assembly
+		self.NN=[]
+		self.MM=[]
+		self.KK=[]
+		self.KKzeta=[]
+		self.NN_star=[]
+		self.MM_star=[]
+		self.KK_star=[]
+		self.KKzeta_star=[]
+		
 		for ss in range(self.n_surf):
 
 			### Allocate bound surfaces
@@ -43,6 +53,11 @@ class MultiAeroGridSurfaces():
 			Surf.aM,Surf.aN=0.5,0.5
 			Surf.generate_collocations()
 			self.Surfs.append(Surf)
+			# store size
+			self.MM.append(M)
+			self.NN.append(N)
+			self.KK.append(Map.K)
+			self.KKzeta.append(Map.Kzeta)
 
 			### Allocate wake surfaces
 			M,N=tsdata.dimensions_star[ss]
@@ -50,6 +65,11 @@ class MultiAeroGridSurfaces():
 			Surf=surface.AeroGridSurface(Map,
 						  zeta=tsdata.zeta_star[ss],gamma=tsdata.gamma_star[ss])
 			self.Surfs_star.append(Surf)
+			# store size
+			self.MM_star.append(M)
+			self.NN_star.append(N)
+			self.KK_star.append(Map.K)
+			self.KKzeta_star.append(Map.Kzeta)
 
 
 	def get_ind_velocities_at_collocation_points(self):
@@ -128,7 +148,15 @@ class MultiAeroGridSurfaces():
 					Surf_out.u_ind_coll_norm+=\
 						Surf_in.get_induced_velocity_over_surface(Surf_out,
 											  target='collocation',Project=True)
-					
+
+
+	def  get_input_velocities_at_collocation_points(self):
+
+		for ss in range(self.n_surf):
+			Surf=self.Surfs[ss]
+			if not hasattr(Surf,'u_input_coll'):
+				Surf.get_input_velocities_at_collocation_points()
+				
 
 	def verify_non_penetration(self):
 		'''
@@ -207,7 +235,6 @@ class MultiAeroGridSurfaces():
 if __name__=='__main__':
 
 	import read
-	import gridmapping, surface
 	import matplotlib.pyplot as plt 
 
 	# select test case

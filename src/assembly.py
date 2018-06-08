@@ -241,11 +241,10 @@ def nc_dqcdzeta(Surfs,Surfs_star):
 			Surf_in=Surfs_star[ss_in]
 			Dcoll,Dvert=nc_dqcdzeta_Sin_to_Sout(
 							   Surf_in,Surf_out,Dcoll,Dvert,Surf_in_bound=False)
-
 			DAICvert_sub.append(Dvert)
 
-		DAICcoll.append(Der_coll)
-		DAICvert.append(Dervert_sub)
+		DAICcoll.append(Dcoll)
+		DAICvert.append(DAICvert_sub)
 
 	return 	DAICcoll, DAICvert
 
@@ -270,7 +269,7 @@ def uc_dncdzeta(Surf):
 		DerList=[]
 		for ss in range(n_surf):
 			DerList.append(uc_dncdzeta(Surf[ss]))
-			return DerList
+		return DerList
 	else:
 		if (not hasattr(Surf,'u_ind_coll')) or (not hasattr(Surf,'u_input_coll')):
 			raise NameError(
