@@ -1,12 +1,27 @@
 '''
 Linearise UVLM assembly
 S. Maraniello, 25 May 2018
+
+Includes:
+
+- Boundary conditions methods:
+	- AICs: allocate aero influence coefficient matrices of multi-surfaces 
+	configurations
+	- nc_dqcdzeta_Sin_to_Sout: derivative matrix of
+		nc*dQ/dzeta 
+	where Q is the induced velocity at the bound colllocation points of one 
+	surface to another
+	- nc_dqcdzeta_coll: assembles "nc_dqcdzeta_coll_Sin_to_Sout" matrices in 
+	multi-surfaces configurations
+	- uc_dncdzeta: assemble derivative matrix dnc/dzeta*Uc at bound collocation 
+	points
+
 '''
 
 import numpy as np
 #import multisurfaces
 
-import libder.dWncUc_dzeta
+import libder.uc_dncdzeta
 import libder.dbiot
 
 from IPython import embed
@@ -53,7 +68,7 @@ def AICs(Surfs,Surfs_star,target='collocation',Project=True):
 
 
 
-def dAICsdzeta_coll_Sin_to_Sout(Surf_in,Surf_out,Der_coll,Der_vert,Surf_in_bound):
+def nc_dqcdzeta_Sin_to_Sout(Surf_in,Surf_out,Der_coll,Der_vert,Surf_in_bound):
 	'''
 	Computes derivative matrix of
 		nc*dQ/dzeta
@@ -174,7 +189,7 @@ def dAICsdzeta_coll_Sin_to_Sout(Surf_in,Surf_out,Der_coll,Der_vert,Surf_in_bound
 
 
 
-def dAICsdzeta_coll(Surfs,Surfs_star,Steady=False):
+def nc_dqcdzeta(Surfs,Surfs_star):
 	'''
 	Produces a list of derivative matrix d(AIC*Gamma)/dzeta, where AIC are the 
 	influence coefficient matrices at the bound surfaces collocation point, 
@@ -219,12 +234,12 @@ def dAICsdzeta_coll(Surfs,Surfs_star,Steady=False):
 
 			# compute terms
 			Dvert=np.zeros((K_out,3*Kzeta_in))
-			Dcoll,Dvert=dAICsdzeta_coll_Sin_to_Sout(
+			Dcoll,Dvert=nc_dqcdzeta_Sin_to_Sout(
 							    Surf_in,Surf_out,Dcoll,Dvert,Surf_in_bound=True)
 
 			##### wake:
 			Surf_in=Surfs_star[ss_in]
-			Dcoll,Dvert=dAICsdzeta_coll_Sin_to_Sout(
+			Dcoll,Dvert=nc_dqcdzeta_Sin_to_Sout(
 							   Surf_in,Surf_out,Dcoll,Dvert,Surf_in_bound=False)
 
 			DAICvert_sub.append(Dvert)
@@ -239,22 +254,27 @@ def dAICsdzeta_coll(Surfs,Surfs_star,Steady=False):
 
 
 
-def dWnvU_dzeta(Surf):
+def uc_dncdzeta(Surf):
 	'''
-	Build derivative of Wnv*u_ext w.r.t grid coordinates. Input Surf can be:
+	Build derivative of uc*dnc/dzeta where uc is the total velocity at the
+	collocation points. Input Surf can be:
 	- an instance of surface.AeroGridSurface.
 	- a list of instance of surface.AeroGridSurface. 	
 	Refs:
 	- develop_sym.linsum_Wnc
-	- libder.dWncUc_dzeta
+	- libder.uc_dncdzeta
 	'''
 
 	if type(Surf) is list:
 		n_surf=len(Surf)
 		DerList=[]
 		for ss in range(n_surf):
-			DerList.append(dWncUc_dzeta(Surf[ss]))
+			DerList.append(uc_dncdzeta(Surf[ss]))
 			return DerList
+	else:
+		if (not hasattr(Surf,'u_ind_coll')) or (not hasattr(Surf,'u_input_coll')):
+			raise NameError(
+			'Surf does not have the required attributes\nu_ind_coll\nu_input_coll')
 
 	Map=Surf.maps
 	K,Kzeta=Map.K,Map.Kzeta
@@ -276,7 +296,8 @@ def dWnvU_dzeta(Surf):
 		# panel m,n coordinates
 		m_pan,n_pan=Map.ind_2d_pan_scal[0][ii],Map.ind_2d_pan_scal[1][ii]
 		# extract u_input_coll
-		u_input_coll_here=Surf.u_input_coll[:,m_pan,n_pan]
+		u_tot_coll_here=\
+				 Surf.u_input_coll[:,m_pan,n_pan]+Surf.u_ind_coll[:,m_pan,n_pan]
 
 		# find vertices
 		mpv=Map.Mpv[m_pan,n_pan,:,:]
@@ -288,8 +309,8 @@ def dWnvU_dzeta(Surf):
 		zeta03=Surf.zeta[:,mpv[3,0],mpv[3,1]]
 
 		# calculate derivative
-		Dlocal=libder.dWncUc_dzeta.eval(zeta00,zeta01,zeta02,zeta03,
-															  u_input_coll_here)
+		Dlocal=libder.uc_dncdzeta.eval(zeta00,zeta01,zeta02,zeta03,
+															    u_tot_coll_here)
 
 		for vv in range(4):
 			# find 1D position of vertices

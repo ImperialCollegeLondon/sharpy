@@ -1,5 +1,5 @@
 '''
-Analytical linearisation of Wnc matrix.
+Analytical linearisation of uc*dnc/dzeta
 
 Sign convention:
 
@@ -81,7 +81,6 @@ dUnorm_dZeta=sm.derive_by_array(Unorm,[Zeta00,Zeta01,Zeta02,Zeta03])
 
 dR_dZeta=sm.derive_by_array([R02,R13],[Zeta00,Zeta01,Zeta02,Zeta03])
 
-
 ### redefine R02,R13
 r02_x,r02_y,r02_z=sm.symbols('r02_x r02_y r02_z', real=True)
 r13_x,r13_y,r13_z=sm.symbols('r13_x r13_y r13_z', real=True)
@@ -99,6 +98,56 @@ Unorm=linfunc.scalar_product(Norm,Uc)
 Unorm=sm.simplify(Unorm)
 # derivative
 dUnorm_dR=sm.derive_by_array(Unorm,[R02,R13])
+
+
+### shorten equations
+Der=dUnorm_dR
+
+
+eq_crR13Uc=linfunc.cross_product(R13,Uc)
+eq_crR02Uc=linfunc.cross_product(R02,Uc)
+eq_crR02R13=linfunc.cross_product(R02,R13)
+crR13Uc_x,crR13Uc_y,crR13Uc_z=sm.symbols('crR13Uc_x crR13Uc_y crR13Uc_z',real=True)
+crR02Uc_x,crR02Uc_y,crR02Uc_z=sm.symbols('crR02Uc_x crR02Uc_y crR02Uc_z',real=True)
+crR02R13_x,crR02R13_y,crR02R13_z=sm.symbols('crR02R13_x crR02R13_y crR02R13_z',real=True)
+
+crR13Uc=smarr.MutableDenseNDimArray([crR13Uc_x,crR13Uc_y,crR13Uc_z])
+crR02Uc=smarr.MutableDenseNDimArray([crR02Uc_x,crR02Uc_y,crR02Uc_z])
+crR02R13=smarr.MutableDenseNDimArray([crR02R13_x,crR02R13_y,crR02R13_z])
+for cc in range(3):
+	Der=Der.subs(eq_crR02Uc[cc],crR02Uc[cc])
+	Der=Der.subs(eq_crR13Uc[cc],crR13Uc[cc])
+	Der=Der.subs(eq_crR02R13[cc],crR02R13[cc])
+norm_crR02R13=sm.symbols('norm_crR02R13',real=True)
+cub_crR02R13=sm.symbols('cub_crR02R13',real=True)
+Der=Der.subs(sm.sqrt(crR02R13_x**2 + crR02R13_y**2 + crR02R13_z**2),norm_crR02R13)
+Der=Der.subs(norm_crR02R13**3,cub_crR02R13)
+
+# other products
+eq_Acr=linfunc.cross_product(crR02R13,R13)
+Acr_x,Acr_y,Acr_z=sm.symbols('Acr_x Acr_y Acr_z',real=True)
+Acr=sm.MutableDenseNDimArray([Acr_x,Acr_y,Acr_z])
+for cc in range(3):
+	Der=Der.subs(eq_Acr[cc],Acr[cc])
+
+eq_Bcr=linfunc.cross_product(crR02R13,R02)
+Bcr_x,Bcr_y,Bcr_z=sm.symbols('Bcr_x Bcr_y Bcr_z',real=True)
+Bcr=sm.MutableDenseNDimArray([Bcr_x,Bcr_y,Bcr_z])
+for cc in range(3):
+	Der=Der.subs(eq_Bcr[cc],Bcr[cc])
+
+eq_Cdot=linfunc.scalar_product(crR02R13,Uc)
+Cdot=sm.symbols('Cdot',real=True)
+Der=Der.subs(eq_Cdot,Cdot)
+
+
+
+
+
+
+
+
+
 
 
 

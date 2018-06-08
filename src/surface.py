@@ -5,7 +5,7 @@ S. Maraniello, 20 May 2018
 
 import numpy as np
 import libuvlm
-
+from IPython import embed
 
 #import gridmapping
 #class Surface(gridmapping.AeroGridMap):
@@ -167,6 +167,67 @@ class AeroGridGeo():
 		pass
 
 
+
+	# ----------------------------------------------- Interpolations/Projection
+
+	def interp_vertex_to_coll(self,q_vert):
+		'''
+		Project a quantity q_vert (scalar or vector) defined at vertices to 
+		collocation points.
+		'''
+
+		M,N=self.maps.M,self.maps.N
+		#embed()
+		inshape=q_vert.shape
+		assert inshape[-2]==M+1 and inshape[-1]==N+1, 'Unexpected shape of q_vert'
+
+		# determine weights
+		wcv=self.get_panel_wcv()
+
+		if len(inshape)==2:
+			q_coll=np.zeros((M,N))
+			for mm in range(M):
+				for nn in range(N):
+					# get q_vert at panel corners
+					mpv=self.maps.from_panel_to_vertices(mm,nn)
+					for vv in range(4):
+						q_coll[mm,nn]=q_coll[mm,nn]+\
+										     wcv[vv]*q_vert[mpv[vv,0],mpv[vv,1]]
+
+		elif len(inshape)==3:
+			q_coll=np.zeros((3,M,N))
+			for mm in range(M):
+				for nn in range(N):
+					# get q_vert at panel corners
+					mpv=self.maps.from_panel_to_vertices(mm,nn)
+					for vv in range(4):
+						q_coll[:,mm,nn]=q_coll[:,mm,nn]+\
+										   wcv[vv]*q_vert[:,mpv[vv,0],mpv[vv,1]]
+		else:
+			raise NameError('Unexpected shape of q_vert')
+
+		return q_coll
+
+
+	def project_coll_to_normal(self,q_coll):
+		'''
+		Project a vector quantity q_coll defined at collocation points to normal.
+		'''
+
+		M,N=self.maps.M,self.maps.N
+		assert q_coll.shape==(3,M,N) , 'Unexpected shape of q_coll'
+
+		if not hasattr(self,'normals'):
+			self.generate_normals()
+
+		q_proj=np.zeros((M,N))
+		for mm in range(M):
+			for nn in range(N):
+				q_proj[mm,nn]=np.dot(self.normals[:,mm,nn], q_coll[:,mm,nn])
+
+		return q_proj
+
+
 	# ------------------------------------------------------- visualise surface
 
 	def plot(self,plot_normals=False):
@@ -244,46 +305,34 @@ class AeroGridSurface(AeroGridGeo):
 		coordinates zeta.
 		'''
 
-		M,N=self.maps.M,self.maps.N
-
 		# define total velocity
 		if self.zeta_dot is not None:
 			u_tot=self.u_ext-self.zeta_dot
 		else:
 			u_tot=self.u_ext
 
-		# compute normal velocity at panels
-		wcv=self.get_panel_wcv()
-		self.u_input_coll=np.zeros((3,M,N))
-		for mm in range(M):
-			for nn in range(N):
-				# get velocity at panel corners
-				mpv=self.maps.from_panel_to_vertices(mm,nn)
-				uc=np.zeros((3,))
-				for vv in range(4):
-					uc=uc+wcv[vv]*u_tot[:,mpv[vv,0],mpv[vv,1]]
-				self.u_input_coll[:,mm,nn]=uc
+		self.u_input_coll=self.interp_vertex_to_coll(u_tot)
 
-		
 
 	def get_normal_input_velocities_at_collocation_points(self):
 		'''
 		From nodal input velocity to normal velocities at collocation points.
 		'''
 
-		M,N=self.maps.M,self.maps.N
+		#M,N=self.maps.M,self.maps.N
 
 		# produce velocities at collocation points
 		self.get_input_velocities_at_collocation_points()
+		self.u_input_coll_norm=self.project_coll_to_normal(self.u_input_coll)
 
-		# compute normal velocity at panels
-		if not hasattr(self,'normals'):
-			self.generate_normals()
-		self.u_input_coll_norm=np.zeros((M,N))
-		for mm in range(M):
-			for nn in range(N):
-				self.u_input_coll_norm[mm,nn]=np.dot(
-							   self.u_input_coll[:,mm,nn],self.normals[:,mm,nn])
+		# # compute normal velocity at panels
+		# if not hasattr(self,'normals'):
+		# 	self.generate_normals()
+		# self.u_input_coll_norm=np.zeros((M,N))
+		# for mm in range(M):
+		# 	for nn in range(N):
+		# 		self.u_input_coll_norm[mm,nn]=np.dot(
+		# 					   self.u_input_coll[:,mm,nn],self.normals[:,mm,nn])
 
 
 
@@ -339,12 +388,16 @@ class AeroGridSurface(AeroGridGeo):
 
 
 	def get_induced_velocity_over_surface(self,Surf_target,
-											 target='collocation',Project=True):
+											target='collocation',Project=False):
 		'''
 		Computes induced velocity over an instance of AeroGridSurface, where
 		target specifies the target grid (collocation or segments). If Project
 		is True, velocities are projected onver panel normal (only available at
 		collocation points). 
+
+		Note: for state-equation, both projected and non-projected velocities at 
+		the collocation points are required. Hence, it is suggested to use this
+		method with Projection=False, and project afterwards.
 		'''
 
 		if target=='collocation':

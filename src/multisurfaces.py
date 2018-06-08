@@ -52,7 +52,7 @@ class MultiAeroGridSurfaces():
 			self.Surfs_star.append(Surf)
 
 
-	def get_normal_ind_velocities_at_collocation_points(self):
+	def get_ind_velocities_at_collocation_points(self):
 		'''
 		Computes normal induced velocities at collocation points from nodal 
 		values u_ext.
@@ -64,22 +64,69 @@ class MultiAeroGridSurfaces():
 			# define array
 			Surf_out=self.Surfs[ss_out]
 			M_out,N_out=self.dimensions[ss_out]
-			#Surf_out.u_ind_coll_norm=np.empty((M_out,N_out))
-			Surf_out.u_ind_coll_norm=np.zeros((M_out,N_out))
+			Surf_out.u_ind_coll=np.zeros((3,M_out,N_out))
 
 			# Loop input surfaces
 			for ss_in in range(self.n_surf):
 
 				# Buond
 				Surf_in=self.Surfs[ss_in]
-				Surf_out.u_ind_coll_norm+=\
+				Surf_out.u_ind_coll+=\
 					Surf_in.get_induced_velocity_over_surface(Surf_out,
-											  target='collocation',Project=True)
+											 target='collocation',Project=False)
 
 				# Wake
 				Surf_in=self.Surfs_star[ss_in]
-				Surf_out.u_ind_coll_norm+=\
+				Surf_out.u_ind_coll+=\
 					Surf_in.get_induced_velocity_over_surface(Surf_out,
+											 target='collocation',Project=False)
+
+
+
+	def get_normal_ind_velocities_at_collocation_points(self):
+		'''
+		Computes normal induced velocities at collocation points. 
+
+		Note: for state-equation both projected and not projected induced
+		velocities are required at the collocation points. Hence, this method
+		tries to first the u_ind_coll attribute in each surface.
+		'''
+
+		# Loop surfaces (where ind. velocity is computed)
+		for ss_out in range(self.n_surf):
+
+			# define array
+			Surf_out=self.Surfs[ss_out]
+			M_out,N_out=self.dimensions[ss_out]
+			#Surf_out.u_ind_coll_norm=np.empty((M_out,N_out))
+			Surf_out.u_ind_coll_norm=np.zeros((M_out,N_out))
+
+
+			if hasattr(Surf_out,'u_ind_coll'):
+				Surf_out.u_ind_coll_norm=\
+							Surf_out.project_coll_to_normal(Surf_out.u_ind_coll)
+				# embed()
+				# Surf_out.u_ind_coll_norm=\
+				# 			 Surf_out.interp_vertex_to_coll(Surf_out.u_ind_coll)
+				# for mm in range(M_out):
+				# 	for nn in range(N_out):
+				# 		Surf_out.u_ind_coll_norm[mm,nn]=\
+				# 				 np.dot( Surf_out.normals[:,mm,nn],
+				# 								  Surf_out.u_ind_coll[:,mm,nn] )
+			else:
+				# Loop input surfaces
+				for ss_in in range(self.n_surf):
+
+					# Buond
+					Surf_in=self.Surfs[ss_in]
+					Surf_out.u_ind_coll_norm+=\
+						Surf_in.get_induced_velocity_over_surface(Surf_out,
+											  target='collocation',Project=True)
+
+					# Wake
+					Surf_in=self.Surfs_star[ss_in]
+					Surf_out.u_ind_coll_norm+=\
+						Surf_in.get_induced_velocity_over_surface(Surf_out,
 											  target='collocation',Project=True)
 					
 
