@@ -478,6 +478,7 @@ def generate_strip(node_info, airfoil_db, aligned_grid, orientation_in=np.array(
 
         # velocity due to psi_dot
         omega_b = algebra.crv_dot2omega(node_info['beam_psi'], node_info['psi_dot'])
+        Omega_b = algebra.crv_dot2Omega(node_info['beam_psi'], node_info['psi_dot'])
         for i_M in range(node_info['M'] + 1):
             # zeta_dot_a_frame[:, i_M] += (
             #     np.dot(Cab, np.cross(omega_b, strip_coordinates_b_frame[:, i_M])))
@@ -489,9 +490,10 @@ def generate_strip(node_info, airfoil_db, aligned_grid, orientation_in=np.array(
             #     np.dot(np.dot(Cab, np.dot(algebra.skew(omega_b).T, Cab.T)), strip_coordinates_a_frame[:, i_M]))
 
             zeta_dot_a_frame[:, i_M] += (
-                np.dot(np.dot(Cab, np.dot(algebra.skew(omega_b), Cab.T)), strip_coordinates_a_frame[:, i_M]))
+                # np.dot(np.dot(Cab, np.dot(algebra.skew(omega_b), Cab.T)), strip_coordinates_a_frame[:, i_M]))
+                # np.dot(algebra.skew(Omega_b), strip_coordinates_a_frame[:, i_M]))
 
-                # np.cross(omega_b, strip_coordinates_b_frame[:, i_M]))
+                np.dot(Cab, np.cross(omega_b, strip_coordinates_b_frame[:, i_M])))
                 # np.cross(omega_b, strip_coordinates_a_frame[:, i_M]))
 
                 # np.cross(np.dot(Cab,

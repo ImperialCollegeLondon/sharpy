@@ -615,7 +615,7 @@ def xbeam_step_couplednlndyn(beam, settings, ts, tstep=None, dt=None):
                                     ct.byref(ctypes_ts),
                                     ct.byref(n_elem),
                                     ct.byref(n_nodes),
-                                    ct.byref(settings['dt']),
+                                    ct.byref(in_dt),
                                     beam.fortran['num_nodes'].ctypes.data_as(intP),
                                     beam.fortran['num_mem'].ctypes.data_as(intP),
                                     beam.fortran['connectivities'].ctypes.data_as(intP),

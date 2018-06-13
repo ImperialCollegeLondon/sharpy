@@ -428,6 +428,10 @@ def crv_dot2omega(crv, crv_dot):
     return np.dot(crv2tan(crv).T, crv_dot)
 
 
+def crv_dot2Omega(crv, crv_dot):
+    return np.dot(crv2tan(crv), crv_dot)
+
+
 def quaternion_product(q, r):
     result = np.zeros((4,))
     result[0] = q[0]*r[0] - q[1]*r[1] - q[2]*r[2] - q[3]*r[3]

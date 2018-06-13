@@ -73,6 +73,9 @@ class DynamicCoupled(BaseSolver):
         self.settings_types['cleanup_previous_solution'] = 'bool'
         self.settings_default['cleanup_previous_solution'] = True
 
+        self.settings_types['include_unsteady_force_contribution'] = 'bool'
+        self.settings_default['include_unsteady_force_contribution'] = False
+
         self.data = None
         self.settings = None
         self.structural_solver = None
@@ -178,14 +181,19 @@ class DynamicCoupled(BaseSolver):
                 structural_kstep = self.data.structure.timestep_info[-1].copy()
 
                 # map forces
+                force_coeff = 0.0
+                if self.settings['include_unsteady_force_contribution']:
+                    force_coeff = -1.0
                 self.map_forces(aero_kstep,
                                 structural_kstep,
-                                0*1.0)
+                                force_coeff)
 
                 # cout.cout_wrap('No added mass effects', 0)
 
                 # run structural solver
-                self.data = self.structural_solver.run(structural_step=structural_kstep)
+                for i_struct_substep in range(max(1, self.settings['structural_substeps'].value)):
+                    self.data = self.structural_solver.run(structural_step=structural_kstep,
+                                                           dt=self.settings['dt'].value/max(1.0, self.settings['structural_substeps'].value))
 
                 # check for non-convergence
                 if not all(np.isfinite(structural_kstep.q)):
