@@ -230,7 +230,7 @@ class DynamicCoupled(BaseSolver):
             self.structural_solver.extract_resultants()
 
             self.aero_solver.add_step()
-            self.data.aero.timestep_info[-1] = aero_kstep.copy()
+            self.data.aero.timestep_info[-1] = self.data.aero.timestep_info[-2].copy()
             self.aero_solver.update_custom_grid(self.data.structure.timestep_info[-1],
                                                 self.data.aero.timestep_info[-1])
             # run the solver
