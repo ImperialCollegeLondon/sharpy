@@ -8,14 +8,6 @@ import itertools
 import libuvlm
 from IPython import embed
 
-#import gridmapping
-#class Surface(gridmapping.AeroGridMap):
-	# '''
-	# Class for bound surface.
-	# Requires a mapping structure
-	# '''
-	# def __init__(self,zeta,n_surf,dimensions):
-	# 	super().__init__(n_surf,dimensions)
 
 
 
@@ -344,29 +336,58 @@ class AeroGridSurface(AeroGridGeo):
 		M,N=self.maps.M,self.maps.N
 		self.u_input_seg=np.empty((3,4,M,N))
 
-		##### panel (0,0)
+
+		# indiced as per self.maps
+		dmver=[ 0, 1, 1, 0] # delta to go from (m,n) panel to (m,n) vertices
+		dnver=[ 0, 0, 1, 1]
+		svec =[ 0, 1, 2, 3] # seg. no.
+		avec =[ 0, 1, 2, 3] # 1st vertex no.
+		bvec =[ 1, 2, 3, 0] # 2nd vertex no.
+
+		##### panel (0,0): compute all
 		mm,nn=0,0
-		self.u_input_seg[:,0,mm,nn]=.5*(u_tot[:,mm  ,nn  ]+u_tot[:,mm+1,nn  ])
-		self.u_input_seg[:,1,mm,nn]=.5*(u_tot[:,mm+1,nn  ]+u_tot[:,mm+1,nn+1])
-		self.u_input_seg[:,2,mm,nn]=.5*(u_tot[:,mm+1,nn+1]+u_tot[:,mm  ,nn+1])
-		self.u_input_seg[:,3,mm,nn]=.5*(u_tot[:,mm  ,nn+1]+u_tot[:,mm  ,nn  ])
+		for ss,aa,bb in zip(svec,avec,bvec):
+			uA=u_tot[:,mm+dmver[aa],nn+dnver[aa]]
+			uB=u_tot[:,mm+dmver[bb],nn+dnver[bb]]
+			self.u_input_seg[:,ss,mm,nn]=.5*(uA+uB)
+		# self.u_input_seg[:,0,mm,nn]=.5*(u_tot[:,mm  ,nn  ]+u_tot[:,mm+1,nn  ])
+		# self.u_input_seg[:,1,mm,nn]=.5*(u_tot[:,mm+1,nn  ]+u_tot[:,mm+1,nn+1])
+		# self.u_input_seg[:,2,mm,nn]=.5*(u_tot[:,mm+1,nn+1]+u_tot[:,mm  ,nn+1])
+		# self.u_input_seg[:,3,mm,nn]=.5*(u_tot[:,mm  ,nn+1]+u_tot[:,mm  ,nn  ])
+
+		##### panels n=0: copy seg.3 
 		nn=0
+		svec=[0,1,2] # seg. no.
+		avec=[0,1,2] # 1st vertex no.
+		bvec=[1,2,3] # 2nd vertex no.
 		for mm in range(1,M):
-			self.u_input_seg[:,0,mm,nn]=.5*(u_tot[:,mm  ,nn  ]+u_tot[:,mm+1,nn  ])
-			self.u_input_seg[:,1,mm,nn]=.5*(u_tot[:,mm+1,nn  ]+u_tot[:,mm+1,nn+1])
-			self.u_input_seg[:,2,mm,nn]=.5*(u_tot[:,mm+1,nn+1]+u_tot[:,mm  ,nn+1])
+			for ss,aa,bb in zip(svec,avec,bvec):
+				uA=u_tot[:,mm+dmver[aa],nn+dnver[aa]]
+				uB=u_tot[:,mm+dmver[bb],nn+dnver[bb]]
+				self.u_input_seg[:,ss,mm,nn]=.5*(uA+uB)
 			self.u_input_seg[:,3,mm,nn]=self.u_input_seg[:,1,mm-1,nn]
+		##### panels m=0: copy seg.0
 		mm=0
+		svec=[1,2,3] # seg. number
+		avec=[1,2,3] # 1st vertex of seg.
+		bvec=[2,3,0] # 2nd vertex of seg.
 		for nn in range(1,N):
+			for ss,aa,bb in zip(svec,avec,bvec):
+				uA=u_tot[:,mm+dmver[aa],nn+dnver[aa]]
+				uB=u_tot[:,mm+dmver[bb],nn+dnver[bb]]
+				self.u_input_seg[:,ss,mm,nn]=.5*(uA+uB)
 			self.u_input_seg[:,0,mm,nn]=self.u_input_seg[:,2,mm,nn-1]
-			self.u_input_seg[:,1,mm,nn]=.5*(u_tot[:,mm+1,nn  ]+u_tot[:,mm+1,nn+1])
-			self.u_input_seg[:,2,mm,nn]=.5*(u_tot[:,mm+1,nn+1]+u_tot[:,mm  ,nn+1])
-			self.u_input_seg[:,3,mm,nn]=.5*(u_tot[:,mm  ,nn+1]+u_tot[:,mm  ,nn  ])
+		##### all others: copy seg. 0 and 3
+		svec=[1,2] # seg. number
+		avec=[1,2] # 1st vertex of seg.
+		bvec=[2,3] # 2nd vertex of seg.
 		for pp in itertools.product(range(1,M),range(1,N)):
 			mm,nn=pp
+			for ss,aa,bb in zip(svec,avec,bvec):
+				uA=u_tot[:,mm+dmver[aa],nn+dnver[aa]]
+				uB=u_tot[:,mm+dmver[bb],nn+dnver[bb]]
+				self.u_input_seg[:,ss,mm,nn]=.5*(uA+uB)
 			self.u_input_seg[:,0,mm,nn]=self.u_input_seg[:,2,mm,nn-1]
-			self.u_input_seg[:,1,mm,nn]=.5*(u_tot[:,mm+1,nn  ]+u_tot[:,mm+1,nn+1])
-			self.u_input_seg[:,2,mm,nn]=.5*(u_tot[:,mm+1,nn+1]+u_tot[:,mm  ,nn+1])
 			self.u_input_seg[:,3,mm,nn]=self.u_input_seg[:,1,mm-1,nn]	
 
 		return self

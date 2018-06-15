@@ -19,13 +19,31 @@ Includes:
 '''
 
 import numpy as np
-#import multisurfaces
 
 import libder.uc_dncdzeta
 import libder.dbiot
 
 from IPython import embed
 
+
+
+# local indiced panel/vertices as per self.maps
+dmver=[ 0, 1, 1, 0] # delta to go from (m,n) panel to (m,n) vertices
+dnver=[ 0, 0, 1, 1]
+svec =[ 0, 1, 2, 3] # seg. no.
+avec =[ 0, 1, 2, 3] # 1st vertex no.
+bvec =[ 1, 2, 3, 0] # 2nd vertex no.
+
+
+def skew(Av):
+	''' Produce skew matrix such that Av x Bv = skew(Av)*Bv	'''	
+
+	ax,ay,az=Av[0],Av[1],Av[2]
+	Askew=np.array([[  0,-az, ay],
+					[ az,  0,-ax],
+					[-ay, ax,  0] ])
+
+	return Askew
 
 
 
@@ -321,6 +339,202 @@ def uc_dncdzeta(Surf):
 			Der[ii,jj+2*Kzeta]=Dlocal[vv,2] # w.r.t. z
 
 	return Der
+
+
+
+
+def dfqsdgamma_vrel(Surfs,Surfs_star):
+	'''
+	Assemble derivative of quasi-steady force w.r.t. gamma with fixed relative
+	velocity - the changes in induced velocities due to gamma are not accounted
+	for. The routine exploits the get_joukovski_qs method insude the 
+	AeroGridSurface class
+	'''
+
+	
+	Der_list=[]
+	Der_star_list=[]
+
+	n_surf=len(Surfs)
+	assert len(Surfs_star)==n_surf,\
+							   'Number of bound and wake surfaces much be equal'
+
+	for ss in range(n_surf):
+
+		Surf=Surfs[ss]
+		if not hasattr(Surf,'u_ind_seg'):
+			raise NameError('Induced velocities at segments missing')
+		if not hasattr(Surf,'u_input_seg'):
+			raise NameError('Input velocities at segments missing')
+		if not hasattr(Surf,'fqs_seg'):
+			Surf.get_joukovski_qs(gammaw_TE=Surfs_star[ss].gamma[0,:])
+
+		M,N=Surf.maps.M,Surf.maps.N
+		K=Surf.maps.K
+		Kzeta=Surf.maps.Kzeta
+		shape_fqs=Surf.maps.shape_vert_vect # (3,M+1,N+1)
+
+		##### unit gamma contribution of BOUND panels
+		Der=np.zeros((3*Kzeta,K))
+
+		# loop panels (input, i.e. matrix columns)
+		for pp_in in range(K):
+			# get (m,n) indices of panel
+			mm_in=Surf.maps.ind_2d_pan_scal[0][pp_in]
+			nn_in=Surf.maps.ind_2d_pan_scal[1][pp_in]	
+
+			# zetav_here=Surf.get_panel_vertices_coords(mm_in,nn_in)
+			for ll,aa,bb in zip(svec,avec,bvec):
+				# import libuvlm 
+				# dfhere=libuvlm.joukovski_qs_segment(
+				# 	zetaA=zetav_here[aa,:],zetaB=zetav_here[bb,:],
+				# 	v_mid=Surf.u_ind_seg[:,ll,mm_in,nn_in]+\
+				# 		  Surf.u_input_seg[:,ll,mm_in,nn_in],
+				# 	gamma=1.0,fact=0.5*Surf.rho)
+				df=(0.5/Surf.gamma[mm_in,nn_in])*Surf.fqs_seg[:,ll,mm_in,nn_in]
+				# assert np.abs(np.max(dfhere-df))<1e-13,'something is wrong'
+
+				# get vertices m,n indices
+				mm_a,nn_a=mm_in+dmver[aa],nn_in+dnver[aa]
+				mm_b,nn_b=mm_in+dmver[bb],nn_in+dnver[bb]
+
+				# get vertices 1d index
+				ii_a=[ np.ravel_multi_index( 
+								  (cc,mm_a,nn_a),shape_fqs ) for cc in range(3)]
+				ii_b=[ np.ravel_multi_index( 
+								  (cc,mm_b,nn_b),shape_fqs ) for cc in range(3)]
+				Der[ii_a,pp_in]+=df
+				Der[ii_b,pp_in]+=df
+
+		Der_list.append(Der)
+
+
+		##### unit gamma contribution of WAKE TE segments
+		# Note: the force due to the wake is attached to Surf when 
+		# get_joukovski_qs is acalled
+		M_star,N_star=Surfs_star[ss].maps.M,Surfs_star[ss].maps.N
+		K_star=Surfs_star[ss].maps.K
+		shape_in=Surfs_star[ss].maps.shape_pan_scal # (M_star,N_star)
+
+		Der_star=np.zeros((3*Kzeta,K_star))
+
+		assert N==N_star,\
+					  'trying to associate wrong wake to current bound surface!'
+
+		# loop bound panels
+		for nn_in in range(N):
+			pp_in=np.ravel_multi_index( (0,nn_in),shape_in)
+
+			df=(0.5/Surfs_star[ss].gamma[0,nn_in])*Surf.fqs_wTE[:,nn_in]
+
+			# get TE bound vertices m,n indices
+			mm_a,nn_a=M,nn_in+dnver[aa]
+			mm_b,nn_b=M,nn_in+dnver[bb]
+
+			# get vertices 1d index
+			ii_a=[ np.ravel_multi_index( 
+								  (cc,mm_a,nn_a),shape_fqs ) for cc in range(3)]
+			ii_b=[ np.ravel_multi_index( 
+								  (cc,mm_b,nn_b),shape_fqs ) for cc in range(3)]
+			Der_star[ii_a,pp_in]+=df
+			Der_star[ii_b,pp_in]+=df
+
+		Der_star_list.append(Der_star)
+
+	return Der_list, Der_star_list
+
+
+
+
+def dfqsdzeta_vrel(Surfs,Surfs_star):
+	'''
+	Assemble derivative of quasi-steady force w.r.t. zeta with fixed relative
+	velocity - the changes in induced velocities due to zeta over the surface
+	inducing the velocity are not accounted for. The routine exploits the 
+	available relative velocities at the mid-segment points
+	'''
+
+	Der_list=[]
+	n_surf=len(Surfs)
+	assert len(Surfs_star)==n_surf,\
+							   'Number of bound and wake surfaces much be equal'
+
+	for ss in range(n_surf):
+
+		Surf=Surfs[ss]
+		if not hasattr(Surf,'u_ind_seg'):
+			raise NameError('Induced velocities at segments missing')
+		if not hasattr(Surf,'u_input_seg'):
+			raise NameError('Input velocities at segments missing')
+
+		M,N=Surf.maps.M,Surf.maps.N
+		K=Surf.maps.K
+		Kzeta=Surf.maps.Kzeta
+		shape_fqs=Surf.maps.shape_vert_vect # (3,M+1,N+1)
+
+		##### unit gamma contribution of BOUND panels
+		Der=np.zeros((3*Kzeta,3*Kzeta))
+
+		# loop panels (input, i.e. matrix columns)
+		for pp_in in range(K):
+			# get (m,n) indices of panel
+			mm_in=Surf.maps.ind_2d_pan_scal[0][pp_in]
+			nn_in=Surf.maps.ind_2d_pan_scal[1][pp_in]	
+
+			for ll,aa,bb in zip(svec,avec,bvec):
+
+				vrel_seg=(Surf.u_input_seg[:,ll,mm_in,nn_in]+
+					          				   Surf.u_ind_seg[:,ll,mm_in,nn_in])
+				Df=skew( (0.5*Surf.rho*Surf.gamma[mm_in,nn_in])*vrel_seg )
+
+				# get vertices m,n indices
+				mm_a,nn_a=mm_in+dmver[aa],nn_in+dnver[aa]
+				mm_b,nn_b=mm_in+dmver[bb],nn_in+dnver[bb]
+
+				# get vertices 1d index
+				ii_a=[ np.ravel_multi_index( 
+								  (cc,mm_a,nn_a),shape_fqs ) for cc in range(3)]
+				ii_b=[ np.ravel_multi_index( 
+								  (cc,mm_b,nn_b),shape_fqs ) for cc in range(3)]
+				# Der[ii_a,:][:,ii_a]+=-Df
+				# Der[ii_b,:][:,ii_b]+=Df
+				Der[np.ix_(ii_a,ii_a)]+=-Df
+				Der[np.ix_(ii_b,ii_a)]+=-Df
+				Der[np.ix_(ii_a,ii_b)]+=Df
+				Der[np.ix_(ii_b,ii_b)]+=Df
+
+		##### contribution of WAKE TE segments.
+		# This is added to Der, as only the bound vertices are included in the 
+		# input
+
+		# loop TE bound segment but:
+		# - using wake gamma
+		# - using orientation of wake panel
+		for nn_in in range(N):
+			# get velocity at seg.3 of wake TE
+			vrel_seg=(Surf.u_input_seg[:,1,M-1,nn_in]+Surf.u_ind_seg[:,1,M-1,nn_in])
+			Df=Df=skew( 
+				(0.5*Surfs_star[ss].rho*Surfs_star[ss].gamma[0,nn_in])*vrel_seg)
+
+			# get TE bound vertices m,n indices
+			nn_a=nn_in+dnver[2]
+			nn_b=nn_in+dnver[1]
+			# get vertices 1d index on bound
+			ii_a=[ np.ravel_multi_index( 
+									 (cc,M,nn_a),shape_fqs ) for cc in range(3)]
+			ii_b=[ np.ravel_multi_index( 
+									 (cc,M,nn_b),shape_fqs ) for cc in range(3)]
+
+			Der[np.ix_(ii_a,ii_a)]+=-Df
+			Der[np.ix_(ii_b,ii_a)]+=-Df
+			Der[np.ix_(ii_a,ii_b)]+=Df
+			Der[np.ix_(ii_b,ii_b)]+=Df
+		Der_list.append(Der)
+
+	return Der_list
+
+
+
 
 
 

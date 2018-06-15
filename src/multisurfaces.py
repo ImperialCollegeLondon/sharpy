@@ -215,7 +215,7 @@ class MultiAeroGridSurfaces():
 
 		for ss in range(self.n_surf):
 			Surf=self.Surfs[ss]
-			Surf.get_joukovski_qs()
+			Surf.get_joukovski_qs(gammaw_TE=self.Surfs_star[ss].gamma[0,:])
 
 
 	def verify_non_penetration(self):
@@ -302,7 +302,7 @@ class MultiAeroGridSurfaces():
 			Surf=self.Surfs[ss]
 
 			Fhere=Surf.fqs.reshape((3,Surf.maps.Kzeta))
-			Fref=tsdata.ct_forces_list[6*ss:6*ss+3,:]
+			Fref=self.tsdata0.ct_forces_list[6*ss:6*ss+3,:]
 			ErMax=np.max(np.abs(Fhere-Fref))
 
 			assert ErMax<1e-12 ,'Wrong quasi-steady force over surface %.2d!'%ss

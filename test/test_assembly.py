@@ -6,6 +6,7 @@ S. Maraniello, 29 May 2018
 import numpy as np 
 import warnings
 import unittest
+import itertools
 import matplotlib.pyplot as plt 
 
 import sys, os
@@ -25,7 +26,8 @@ class Test_assembly(unittest.TestCase):
 	def setUp(self):
 
 		# select test case
-		fname='./h5input/goland_mod_Nsurf02_M003_N004_a040.aero_state.h5'
+		#fname='./h5input/goland_mod_Nsurf02_M003_N004_a040.aero_state.h5'
+		fname='./h5input/goland_mod_Nsurf01_M003_N004_a040.aero_state.h5'
 		haero=read.h5file(fname)
 		tsdata=haero.ts00000
 
@@ -33,6 +35,8 @@ class Test_assembly(unittest.TestCase):
 		MS.get_normal_ind_velocities_at_collocation_points()
 		MS.verify_non_penetration()
 		MS.verify_aic_coll()
+		MS.get_joukovski_qs()
+		MS.verify_joukovski_qs()
 		self.MS=MS
 
 
@@ -407,14 +411,170 @@ class Test_assembly(unittest.TestCase):
 				plt.show()
 
 
+
+	def test_dfqsdgamma_vrel(self):
+
+		MS=self.MS
+		n_surf=MS.n_surf
+
+		Der_list,Der_star_list=assembly.dfqsdgamma_vrel(MS.Surfs,MS.Surfs_star)
+		Er_max=[]
+		Er_max_star=[]
+
+		Steps=[1e-2,1e-4,1e-6,]
+
+
+		for ss in range(n_surf):
+
+			Der_an=Der_list[ss]
+			Der_star_an=Der_star_list[ss]
+
+			Surf=MS.Surfs[ss]
+			Surf_star=MS.Surfs_star[ss]
+			M,N=Surf.maps.M,Surf.maps.N
+			K=Surf.maps.K
+
+			fqs0=Surf.fqs.copy()
+			gamma0=Surf.gamma.copy()
+
+			for step in Steps:
+				Der_num=0.0*Der_an
+				Der_star_num=0.0*Der_star_an
+
+				### Bound
+				for pp in range(K):
+					mm=Surf.maps.ind_2d_pan_scal[0][pp]
+					nn=Surf.maps.ind_2d_pan_scal[1][pp]	
+					Surf.gamma=gamma0.copy()
+					Surf.gamma[mm,nn]+=step
+					Surf.get_joukovski_qs(gammaw_TE=Surf_star.gamma[0,:])
+					df=(Surf.fqs-fqs0)/step
+					Der_num[:,pp]=df.reshape(-1,order='C')
+
+				er_max=np.max(np.abs(Der_an-Der_num))
+				print('Surface %.2d - bound:' %ss)
+				print('FD step: %.2e ---> Max error: %.2e'%(step,er_max) )
+				assert er_max<5e1*step, 'Error larger than 50 times step size'
+				Er_max.append(er_max)
+
+				### Wake
+				Surf.gamma=gamma0.copy()
+				gammaw_TE0=Surf_star.gamma[0,:].copy()
+				M_star,N_star=Surf_star.maps.M,Surf_star.maps.N
+				K_star=Surf_star.maps.K
+				for nn in range(N):
+					pp=np.ravel_multi_index( (0,nn), (M_star,N_star))
+
+					gammaw_TE=gammaw_TE0.copy()
+					gammaw_TE[nn]+=step
+					Surf.get_joukovski_qs(gammaw_TE=gammaw_TE)
+					df=(Surf.fqs-fqs0)/step
+					Der_star_num[:,pp]=df.reshape(-1,order='C')
+
+				er_max=np.max(np.abs(Der_star_an-Der_star_num))
+				print('Surface %.2d - wake:' %ss)
+				print('FD step: %.2e ---> Max error: %.2e'%(step,er_max) )
+				assert er_max<5e1*step, 'Error larger than 50 times step size'
+				Er_max_star.append(er_max)
+			Surf.gamma=gamma0.copy()
+
+
+			### Warning: this test fails: the dependency on gamma is linear, hence
+			# great accuracy is obtained even with large steps. In fact, reducing
+			# the step quickly introduced round-off error.
+
+			# # assert error decreases with step size
+			# for ii in range(1,len(Steps)):
+			# 	assert Er_max[ii]<Er_max[ii-1],\
+			# 	                'Error not decreasing as FD step size is reduced'
+			# 	assert Er_max_star[ii]<Er_max_star[ii-1],\
+			# 	                'Error not decreasing as FD step size is reduced'
+
+
+
+	def test_dfqsdzeta_vrel(self):
+
+		MS=self.MS
+		n_surf=MS.n_surf
+
+		Der_list=assembly.dfqsdzeta_vrel(MS.Surfs,MS.Surfs_star)
+		Er_max=[]
+
+		Steps=[1e-2,1e-4,1e-6,]
+
+
+		for ss in range(n_surf):
+
+			Der_an=Der_list[ss]
+
+			Surf=MS.Surfs[ss]
+			#Surf_star=MS.Surfs_star[ss]
+			M,N=Surf.maps.M,Surf.maps.N
+			K=Surf.maps.K
+			Kzeta=Surf.maps.Kzeta
+
+			fqs0=Surf.fqs.copy()
+			zeta0=Surf.zeta.copy()
+
+			for step in Steps:
+				Der_num=0.0*Der_an
+
+				for kk in range(3*Kzeta):
+					Surf.zeta=zeta0.copy()	
+					ind_3d=np.unravel_index(kk, (3,M+1,N+1) )								
+					Surf.zeta[ind_3d]+=step
+					Surf.get_joukovski_qs(gammaw_TE=MS.Surfs_star[ss].gamma[0,:])
+					df=(Surf.fqs-fqs0)/step
+					Der_num[:,kk]=df.reshape(-1,order='C')
+
+				er_max=np.max(np.abs(Der_an-Der_num))
+				print('Surface %.2d - bound:' %ss)
+				print('FD step: %.2e ---> Max error: %.2e'%(step,er_max) )
+				#assert er_max<5e1*step, 'Error larger than 50 times step size'
+				Er_max.append(er_max)
+			Surf.zeta=zeta0.copy()
+
+			# fig = plt.figure('Spy Der',figsize=(10,4))
+			# ax1 = fig.add_subplot(121)
+			# ax1.spy(Der_an,precision=step)
+			# ax2 = fig.add_subplot(122)
+			# ax2.spy(Der_num,precision=step)
+			# plt.show()
+
+			# fig = plt.figure('Spy Error',figsize=(10,4))
+			# ax = fig.add_subplot(111)
+			# ax.spy( np.abs(Der_an-Der_num),precision=1e2*step)
+			# plt.show()
+
+			### Warning: this test fails: the dependency on gamma is linear, hence
+			# great accuracy is obtained even with large steps. In fact, reducing
+			# the step quickly introduced round-off error.
+
+			# # assert error decreases with step size
+			# for ii in range(1,len(Steps)):
+			# 	assert Er_max[ii]<Er_max[ii-1],\
+			# 	                'Error not decreasing as FD step size is reduced'
+
+
+
 if __name__=='__main__':
 
 	#unittest.main()
 	T=Test_assembly()
 	T.setUp()
+
+	# force equation
+	T.setUp()
+	T.test_dfqsdzeta_vrel()
+	T.setUp()
+	T.test_dfqsdgamma_vrel()
+
 	# state equation terms
+	T.setUp()
 	T.test_uc_dncdzeta()
+	T.setUp()
 	T.test_nc_dqcdzeta_bound_to_bound()
+	T.setUp()
 	T.test_nc_dqcdzeta_wake_to_bound()
 
 	
