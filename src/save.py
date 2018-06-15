@@ -20,12 +20,16 @@ def save_aero(savedir,h5filename,data):
     # if ts_max>1:
     #   raise NameError('Not saving a steady solution!')
 
+    ### other params
+    rho=data.settings['StaticUvlm']['rho'].value
+
     for tt in range(ts_max):
         #tsinfo.name=
         tsinfo=data.aero.timestep_info[0]
         tsinfo.name='ts%.5d'%tt
+        tsinfo.rho=rho
 
-    save.h5file(savedir,h5filename,*tuple(data.aero.timestep_info))
+    h5file(savedir,h5filename,*tuple(data.aero.timestep_info))
 
 
 

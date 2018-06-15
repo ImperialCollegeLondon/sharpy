@@ -4,6 +4,7 @@ S. Maraniello, 20 May 2018
 '''
 
 import numpy as np
+import itertools
 import libuvlm
 from IPython import embed
 
@@ -146,18 +147,10 @@ class AeroGridGeo():
 	def get_panel_wsv(self):
 		pass
 
-		#return wsv 
-
 
 	def get_panel_midsegments(self,zetav_here):
-		'''
-		'''
 		pass
 
-		# wsv=self.get_panel_wsv()
-		# zetac_here=np.dot(wcv,zetav_here)
-
-		# return zetac_here
 
 	def generate_midsegments():
 		pass
@@ -276,13 +269,15 @@ class AeroGridSurface(AeroGridGeo):
 	mid-point segments
 	'''
 
-	def __init__(self,Map,zeta,gamma,u_ext=None,zeta_dot=None,aM=0.5,aN=0.5):
+	def __init__(self,Map,zeta,gamma,u_ext=None,zeta_dot=None,rho=1.,
+																 aM=0.5,aN=0.5):
 
 		super().__init__(Map,zeta,aM,aN)
 
 		self.gamma=gamma 
 		self.zeta_dot=zeta_dot
 		self.u_ext=u_ext
+		self.rho=rho
 
 		msg_out='wrong input shape!'
 		assert self.gamma.shape==(self.maps.M,self.maps.N), msg_out
@@ -293,8 +288,7 @@ class AeroGridSurface(AeroGridGeo):
 			assert self.u_ext.shape==(3,self.maps.M+1,self.maps.N+1), msg_out		
 
 
-
-	# ---------------------------- project input velocity at collocation points
+	# -------------------------------------------------------- input velocities
 
 	def get_input_velocities_at_collocation_points(self):
 		'''
@@ -325,18 +319,61 @@ class AeroGridSurface(AeroGridGeo):
 		self.get_input_velocities_at_collocation_points()
 		self.u_input_coll_norm=self.project_coll_to_normal(self.u_input_coll)
 
-		# # compute normal velocity at panels
-		# if not hasattr(self,'normals'):
-		# 	self.generate_normals()
-		# self.u_input_coll_norm=np.zeros((M,N))
-		# for mm in range(M):
-		# 	for nn in range(N):
-		# 		self.u_input_coll_norm[mm,nn]=np.dot(
-		# 					   self.u_input_coll[:,mm,nn],self.normals[:,mm,nn])
+
+
+	def get_input_velocities_at_segments(self):
+		'''
+		Returns velocities at mid-segment points from nodal values u_ext and
+		zeta_dot of shape (3,M+1,N+1).
+
+		Warning: input velocities at grid segments are stored in a redundant 
+		format:
+			(3,4,M,N)
+		where the element
+			(:,ss,mm,nn)
+		is the induced velocity over the ss-th segment of panel (mm,nn). A fast
+		looping is implemented to re-use previously computed velocities
+		'''
+
+		# define total velocity
+		if self.zeta_dot is not None:
+			u_tot=self.u_ext-self.zeta_dot
+		else:
+			u_tot=self.u_ext
+
+		M,N=self.maps.M,self.maps.N
+		self.u_input_seg=np.empty((3,4,M,N))
+
+		##### panel (0,0)
+		mm,nn=0,0
+		self.u_input_seg[:,0,mm,nn]=.5*(u_tot[:,mm  ,nn  ]+u_tot[:,mm+1,nn  ])
+		self.u_input_seg[:,1,mm,nn]=.5*(u_tot[:,mm+1,nn  ]+u_tot[:,mm+1,nn+1])
+		self.u_input_seg[:,2,mm,nn]=.5*(u_tot[:,mm+1,nn+1]+u_tot[:,mm  ,nn+1])
+		self.u_input_seg[:,3,mm,nn]=.5*(u_tot[:,mm  ,nn+1]+u_tot[:,mm  ,nn  ])
+		nn=0
+		for mm in range(1,M):
+			self.u_input_seg[:,0,mm,nn]=.5*(u_tot[:,mm  ,nn  ]+u_tot[:,mm+1,nn  ])
+			self.u_input_seg[:,1,mm,nn]=.5*(u_tot[:,mm+1,nn  ]+u_tot[:,mm+1,nn+1])
+			self.u_input_seg[:,2,mm,nn]=.5*(u_tot[:,mm+1,nn+1]+u_tot[:,mm  ,nn+1])
+			self.u_input_seg[:,3,mm,nn]=self.u_input_seg[:,1,mm-1,nn]
+		mm=0
+		for nn in range(1,N):
+			self.u_input_seg[:,0,mm,nn]=self.u_input_seg[:,2,mm,nn-1]
+			self.u_input_seg[:,1,mm,nn]=.5*(u_tot[:,mm+1,nn  ]+u_tot[:,mm+1,nn+1])
+			self.u_input_seg[:,2,mm,nn]=.5*(u_tot[:,mm+1,nn+1]+u_tot[:,mm  ,nn+1])
+			self.u_input_seg[:,3,mm,nn]=.5*(u_tot[:,mm  ,nn+1]+u_tot[:,mm  ,nn  ])
+		for pp in itertools.product(range(1,M),range(1,N)):
+			mm,nn=pp
+			self.u_input_seg[:,0,mm,nn]=self.u_input_seg[:,2,mm,nn-1]
+			self.u_input_seg[:,1,mm,nn]=.5*(u_tot[:,mm+1,nn  ]+u_tot[:,mm+1,nn+1])
+			self.u_input_seg[:,2,mm,nn]=.5*(u_tot[:,mm+1,nn+1]+u_tot[:,mm  ,nn+1])
+			self.u_input_seg[:,3,mm,nn]=self.u_input_seg[:,1,mm-1,nn]	
+
+		return self
 
 
 
-	# ------------------------------- get normal velocity at collocation points
+	# ------------------------------------------------------ induced velocities
 
 	def get_induced_velocity(self,zeta_target):
 		'''
@@ -353,14 +390,6 @@ class AeroGridSurface(AeroGridGeo):
 				uind_target+=libuvlm.biot_panel(zeta_target,
 												   zetav_here,self.gamma[mm,nn])
 
-		### Flag to remove last row???
-		# ### remove last row contribution: segments 1->2
-		# M_in,N_in=self.dimensions_star[ss_in]
-		# for nn in range(N_in):			
-		# 	mm=Min-1
-		# 	gamma_here=Surf_in.gamma[mm,nn]							
-		# 	zetav_here=Surf_in.get_panel_vertices_coords(mm,nn)
-		# 	uindc-=libuvlm.biot_segment(zetac,zetav_here[3,:],zetav_here[0])
 
 		return uind_target
 
@@ -398,11 +427,20 @@ class AeroGridSurface(AeroGridGeo):
 		Note: for state-equation, both projected and non-projected velocities at 
 		the collocation points are required. Hence, it is suggested to use this
 		method with Projection=False, and project afterwards.
+
+		Warning: induced velocities at grid segments are stored in a redundant 
+		format:
+			(3,4,M,N)
+		where the element
+			(:,ss,mm,nn)
+		is the induced velocity over the ss-th segment of panel (mm,nn). A fast
+		looping is implemented to re-use previously computed velocities
 		'''
 
+		M_trg=Surf_target.maps.M
+		N_trg=Surf_target.maps.N
+
 		if target=='collocation':
-			M_trg=Surf_target.maps.M
-			N_trg=Surf_target.maps.N
 			if not hasattr(Surf_target,'zetac'):
 				Surf_target.generate_collocations()
 			ZetaTarget=Surf_target.zetac
@@ -414,19 +452,97 @@ class AeroGridSurface(AeroGridGeo):
 			else:
 				Uind=np.empty((3,M_trg,N_trg))			
 
-		if target=='segments':
-			if Project:
-				raise NameError('Normal not defined at collocation points')
-			raise NameError('Method not implemented for segments')
-
-		# loop target points
-		for mm in range(M_trg):
-			for nn in range(N_trg):
+			# loop target points			
+			for pp in itertools.product(range(M_trg),range(N_trg)):
+				mm,nn=pp
 				uind=self.get_induced_velocity(ZetaTarget[:,mm,nn])
 				if Project:
 					Uind[mm,nn]=np.dot(uind,Surf_target.normals[:,mm,nn])
 				else:
 					Uind[:,mm,nn]=uind
+
+		if target=='segments':
+
+			if Project:
+				raise NameError('Normal not defined for segment')
+			
+			Uind=np.zeros((3,4,M_trg,N_trg))
+
+			##### panel (0,0): compute all
+			mm,nn=0,0
+			svec=[0,1,2,3] # seg. number
+			avec=[0,1,2,3] # 1st vertex of seg.
+			bvec=[1,2,3,0] # 2nd vertex of seg.
+			zetav_here=Surf_target.get_panel_vertices_coords(mm,nn)
+			for ss,aa,bb in zip(svec,avec,bvec):
+				zeta_mid=0.5*(zetav_here[aa,:]+zetav_here[bb,:])
+				Uind[:,ss,mm,nn]=self.get_induced_velocity(zeta_mid)
+
+			##### panels n=0: copy seg.3 
+			nn=0
+			svec=[0,1,2] # seg. number
+			avec=[0,1,2] # 1st vertex of seg.
+			bvec=[1,2,3] # 2nd vertex of seg.
+			for mm in range(1,M_trg):
+				zetav_here=Surf_target.get_panel_vertices_coords(mm,nn)
+				for ss,aa,bb in zip(svec,avec,bvec):
+					zeta_mid=0.5*(zetav_here[aa,:]+zetav_here[bb,:])
+					Uind[:,ss,mm,nn]=self.get_induced_velocity(zeta_mid)
+				Uind[:,3,mm,nn]=Uind[:,1,mm-1,nn]
+
+			##### panels m=0: copy seg.0
+			mm=0
+			svec=[1,2,3] # seg. number
+			avec=[1,2,3] # 1st vertex of seg.
+			bvec=[2,3,0] # 2nd vertex of seg.
+			for nn in range(1,N_trg):
+				zetav_here=Surf_target.get_panel_vertices_coords(mm,nn)
+				for ss,aa,bb in zip(svec,avec,bvec):
+					zeta_mid=0.5*(zetav_here[aa,:]+zetav_here[bb,:])
+					Uind[:,ss,mm,nn]=self.get_induced_velocity(zeta_mid)
+				Uind[:,0,mm,nn]=Uind[:,2,mm,nn-1]
+
+			##### all others: copy seg. 0 and 3
+			svec=[1,2] # seg. number
+			avec=[1,2] # 1st vertex of seg.
+			bvec=[2,3] # 2nd vertex of seg.
+			for pp in itertools.product(range(1,M_trg),range(1,N_trg)):
+				mm,nn=pp
+				zetav_here=Surf_target.get_panel_vertices_coords(*pp)
+				for ss,aa,bb in zip(svec,avec,bvec):
+					zeta_mid=0.5*(zetav_here[aa,:]+zetav_here[bb,:])
+					Uind[:,ss,mm,nn]=self.get_induced_velocity(zeta_mid)
+				Uind[:,0,mm,nn]=Uind[:,2,mm,nn-1]
+				Uind[:,3,mm,nn]=Uind[:,1,mm-1,nn]
+
+
+			# ### ----------------------------------------------------- slow loop
+
+			# # local mapping segment/vertices of a panel
+			# svec=Surf_target.maps.svec # seg. number
+			# avec=Surf_target.maps.avec # 1st vertex of seg.
+			# bvec=Surf_target.maps.bvec # 2nd vertex
+
+			# Uind_slow=np.zeros((3,4,M_trg,N_trg))
+			# # ZetaMid=[]
+			# # ID=[]
+			# for pp in itertools.product(range(M_trg),range(N_trg)):
+			# 	mm,nn=pp
+			# 	zetav_here=Surf_target.get_panel_vertices_coords(*pp)
+				
+			# 	# loop segments
+			# 	for ss,aa,bb in zip(svec,avec,bvec):
+			# 		zeta_mid=0.5*(zetav_here[aa,:]+zetav_here[bb,:])
+			# 		Uind_slow[:,ss,mm,nn]=self.get_induced_velocity(zeta_mid)
+			# #		ZetaMid.append(zeta_mid)
+			# # 		ID.append([mm,nn,ss])
+			# # ZetaMid=np.array(ZetaMid)
+			# # import matplotlib.pyplot as plt
+			# # self.plot()
+			# # self.ax.scatter(ZetaMid[:,0],ZetaMid[:,1],ZetaMid[:,2],c='b',s=3)
+			# # plt.show()
+			# Uind_slow=Uind.copy()
+			# assert(np.max(np.abs(Uind-Uind_slow)))<1e-14, 'wrong!'
 
 		return Uind
 
@@ -480,6 +596,111 @@ class AeroGridSurface(AeroGridGeo):
 				AIC[:,cc,:]=aic3
 
 		return AIC
+
+
+	# ------------------------------------------------------------------ forces
+
+	def get_joukovski_qs(self,gammaw_TE=None):
+		'''
+		Returns quasi-steady forces evaluated at mid-segment points over the 
+		surface.
+
+		Important: the circulation at the first row of wake panel is required!
+		Hence all 
+
+		Warning: forces are stored in a NON-redundant format:
+			(3,4,M,N)
+		where the element
+			(:,ss,mm,nn)
+		is the contribution to the force over the ss-th segment due to the
+		circulation of panel (mm,nn).
+		'''
+
+		if not hasattr(self,'u_input_seg'):
+			self.get_input_velocities_at_segments()
+		if not hasattr(self,'u_ind_seg'):
+			raise NameError('u_ind_seg not available!')
+
+		M,N=self.maps.M,self.maps.N
+		self.fqs_seg=np.zeros((3,4,M,N))
+		self.fqs=np.zeros((3,M+1,N+1))
+
+		# indiced as per self.maps
+		dmver=[ 0, 1, 1, 0] # delta to go from (m,n) panel to (m,n) vertices
+		dnver=[ 0, 0, 1, 1]
+		svec =[ 0, 1, 2, 3] # seg. no.
+		avec =[ 0, 1, 2, 3] # 1st vertex no.
+		bvec =[ 1, 2, 3, 0] # 2nd vertex no.
+
+		### force produced by BOUND panels
+		for pp in itertools.product(range(0,M),range(0,N)):
+			mm,nn=pp
+			zetav_here=self.get_panel_vertices_coords(mm,nn)
+			for ss,aa,bb in zip(svec,avec,bvec):
+				df=libuvlm.joukovski_qs_segment(
+					zetaA=zetav_here[aa,:],zetaB=zetav_here[bb,:],
+					v_mid=self.u_ind_seg[:,ss,mm,nn]+self.u_input_seg[:,ss,mm,nn],
+					gamma=self.gamma[mm,nn],fact=self.rho)
+				self.fqs_seg[:,ss,mm,nn]=df
+				# project on vertices
+				self.fqs[:,mm+dmver[aa],nn+dnver[aa]]+=0.5*df
+				self.fqs[:,mm+dmver[bb],nn+dnver[bb]]+=0.5*df
+
+		### force produced by wake T.E. segments
+		# Note:
+		# 1. zetaA & zetaB are ordered such that the wake circulation is
+		# subtracts to the bound circulation over TE segment
+		# 2. the TE segment corresponds to seg.1 of the last row of BOUND panels		
+		if gammaw_TE is None: 
+			gammaw_TE=self.gamma[M-1,:]
+
+		self.fqs_wTE=np.zeros((3,N))
+
+		for nn in range(N):
+			df=libuvlm.joukovski_qs_segment(
+					zetaA=self.zeta[:,M,nn+1],
+					zetaB=self.zeta[:,M,nn],
+					v_mid=self.u_input_seg[:,1,M-1,nn]+self.u_ind_seg[:,1,M-1,nn],
+					gamma=gammaw_TE[nn],
+					fact=self.rho)
+			# record force on TE due to wake and project
+			self.fqs_wTE[:,nn]=df
+			self.fqs[:,M,nn+1]+=0.5*df
+			self.fqs[:,M,nn]+=0.5*df
+
+		# ### Bound contribution
+		# M,N=self.maps.M,self.maps.N
+		# self.fqs_seg=np.zeros((3,4,M,N))
+		# self.fqs=np.zeros((3,M+1,N+1))
+
+		# dmver  =[ 0, 1, 1, 0]
+		# dnver  =[ 0, 0, 1, 1]
+
+		# for pp in itertools.product(range(0,M),range(0,N)):
+		# 	mm,nn=pp
+		# 	zetav_here=self.get_panel_vertices_coords(mm,nn)
+
+		# 	if mm!=M-1:
+		# 		svec=[ 0, 1, 2, 3]
+		# 		avec=[ 0, 1, 2, 3] # 1st vertex
+		# 		bvec=[ 1, 2, 3, 0] # 2nd vertex
+
+		# 	else: # neglect segment 1
+		# 		svec=[0,2,3]
+		# 		avec=[0,2,3] # 1st vertex
+		# 		bvec=[1,3,0] # 2nd vertex
+		# 	for ss,aa,bb in zip(svec,avec,bvec):
+		# 		df=libuvlm.joukovski_qs_segment(
+		# 			zetaA=zetav_here[aa,:],zetaB=zetav_here[bb,:],
+		# 			v_mid=self.u_ind_seg[:,ss,mm,nn]+self.u_input_seg[:,ss,mm,nn],
+		# 			gamma=self.gamma[mm,nn],fact=self.rho)
+		# 		self.fqs_seg[:,ss,mm,nn]=df
+		# 		self.fqs[:,mm+dmver[aa],nn+dnver[aa]]+=0.5*df
+		# 		self.fqs[:,mm+dmver[bb],nn+dnver[bb]]+=0.5*df
+
+		# self.fqs02=self.fqs.copy()
+
+		return self
 
 
 

@@ -49,12 +49,23 @@ class AeroGridMap():
 		self.intxx=np.int16
 		if self.Kzeta>np.iinfo(np.int16).max: self.intxx=np.int32
 
-
 		### shapes for multi-dimensional arrays
 		self.shape_pan_scal=(M,N)
 		self.shape_pan_vect=(3,M,N)
 		self.shape_vert_scal=(M+1,N+1)
 		self.shape_vert_vect=(3,M+1,N+1)
+
+		# local mapping segment/vertices of a panel
+		self.svec=np.array([0,1,2,3],dtype=self.intxx) # seg. number
+		self.avec=np.array([0,1,2,3],dtype=self.intxx) # 1st vertex of seg.
+		self.bvec=np.array([1,2,3,0],dtype=self.intxx) # 2nd vertex of seg.
+
+		# deltas to convert panel (m,n) to vertices (m,n) indices. For each 
+		# vertex of the panel:
+		# 	m_ver,n_ver = m+self.dmver, n+self.dnver
+		self.dmver=np.array([ 0, 1, 1, 0],dtype=self.intxx)
+		self.dnver=np.array([ 0, 0, 1, 1],dtype=self.intxx)
+
 
 
 		### variables 1D <-> nD mapping
@@ -75,10 +86,6 @@ class AeroGridMap():
 		self.ind_1d_pan_scal=range(self.K)
 		self.ind_2d_pan_scal=np.unravel_index(self.ind_1d_pan_scal,
 							   				 dims=self.shape_pan_scal,order='C')
-
-
-
-
 
 
 		# ### mapping to/from 1D arrays
@@ -149,11 +156,12 @@ class AeroGridMap():
 		From panel of indices (m,n) to indices of vertices
 		'''
 
-		mpv=np.zeros((4,2),dtype=self.intxx)
-		mpv[0,:]=m  ,n 
-		mpv[1,:]=m+1,n 
-		mpv[2,:]=m+1,n+1 
-		mpv[3,:]=m  ,n+1 
+		# mpv=np.zeros((4,2),dtype=self.intxx)
+		# mpv[0,:]=m  ,n 
+		# mpv[1,:]=m+1,n 
+		# mpv[2,:]=m+1,n+1 
+		# mpv[3,:]=m  ,n+1 
+		mpv=np.array([m+self.dmver,n+self.dnver]).T
 
 		return mpv
 

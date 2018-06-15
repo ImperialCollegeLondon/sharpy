@@ -46,7 +46,8 @@ class MultiAeroGridSurfaces():
 			Map=gridmapping.AeroGridMap(M,N)
 			Surf=surface.AeroGridSurface(
 					Map,zeta=tsdata.zeta[ss],gamma=tsdata.gamma[ss],
-							u_ext=tsdata.u_ext[ss],zeta_dot=tsdata.zeta_dot[ss])
+					u_ext=tsdata.u_ext[ss],zeta_dot=tsdata.zeta_dot[ss],
+					rho=tsdata.rho)
 			# generate geometry data
 			Surf.generate_areas()
 			Surf.generate_normals()
@@ -63,7 +64,8 @@ class MultiAeroGridSurfaces():
 			M,N=tsdata.dimensions_star[ss]
 			Map=gridmapping.AeroGridMap(M,N)
 			Surf=surface.AeroGridSurface(Map,
-						  zeta=tsdata.zeta_star[ss],gamma=tsdata.gamma_star[ss])
+						  zeta=tsdata.zeta_star[ss],gamma=tsdata.gamma_star[ss],
+						  rho=tsdata.rho)
 			self.Surfs_star.append(Surf)
 			# store size
 			self.MM_star.append(M)
@@ -74,8 +76,7 @@ class MultiAeroGridSurfaces():
 
 	def get_ind_velocities_at_collocation_points(self):
 		'''
-		Computes normal induced velocities at collocation points from nodal 
-		values u_ext.
+		Computes normal induced velocities at collocation points.
 		'''
 
 		# Loop surfaces (where ind. velocity is computed)
@@ -125,14 +126,7 @@ class MultiAeroGridSurfaces():
 			if hasattr(Surf_out,'u_ind_coll'):
 				Surf_out.u_ind_coll_norm=\
 							Surf_out.project_coll_to_normal(Surf_out.u_ind_coll)
-				# embed()
-				# Surf_out.u_ind_coll_norm=\
-				# 			 Surf_out.interp_vertex_to_coll(Surf_out.u_ind_coll)
-				# for mm in range(M_out):
-				# 	for nn in range(N_out):
-				# 		Surf_out.u_ind_coll_norm[mm,nn]=\
-				# 				 np.dot( Surf_out.normals[:,mm,nn],
-				# 								  Surf_out.u_ind_coll[:,mm,nn] )
+
 			else:
 				# Loop input surfaces
 				for ss_in in range(self.n_surf):
@@ -156,7 +150,73 @@ class MultiAeroGridSurfaces():
 			Surf=self.Surfs[ss]
 			if not hasattr(Surf,'u_input_coll'):
 				Surf.get_input_velocities_at_collocation_points()
-				
+
+
+	# -------------------------------------------------------------------------
+
+
+	def get_ind_velocities_at_segments(self):
+		'''
+		Computes induced velocities at mid-segment points.
+		'''
+
+		# Loop surfaces (where ind. velocity is computed)
+		for ss_out in range(self.n_surf):
+
+			Surf_out=self.Surfs[ss_out]
+			if hasattr(Surf_out,'u_ind_seg'):
+				continue
+
+			M_out,N_out=self.dimensions[ss_out]
+			Surf_out.u_ind_seg=np.zeros((3,4,M_out,N_out))
+
+			# Loop input surfaces
+			for ss_in in range(self.n_surf):
+
+				# Buond
+				Surf_in=self.Surfs[ss_in]
+				Surf_out.u_ind_seg+=\
+					Surf_in.get_induced_velocity_over_surface(Surf_out,
+											    target='segments',Project=False)
+
+				# Wake
+				Surf_in=self.Surfs_star[ss_in]
+				Surf_out.u_ind_seg+=\
+					Surf_in.get_induced_velocity_over_surface(Surf_out,
+											    target='segments',Project=False)
+
+
+	def  get_input_velocities_at_segments(self):
+
+		for ss in range(self.n_surf):
+			Surf=self.Surfs[ss]
+			if hasattr(Surf,'u_input_seg'):
+				continue
+			Surf.get_input_velocities_at_segments()
+
+	# -------------------------------------------------------------------------
+
+
+	def get_joukovski_qs(self):
+		'''
+		Returns quasi-steady forces over 
+
+		Warning: forces are stored in a NON-redundant format:
+			(3,4,M,N)
+		where the element
+			(:,ss,mm,nn)
+		is the contribution to the force over the ss-th segment due to the
+		circulation of panel (mm,nn).
+		'''
+
+		# get input and induced velocities at segments
+		self.get_input_velocities_at_segments()
+		self.get_ind_velocities_at_segments()
+
+		for ss in range(self.n_surf):
+			Surf=self.Surfs[ss]
+			Surf.get_joukovski_qs()
+
 
 	def verify_non_penetration(self):
 		'''
@@ -170,7 +230,7 @@ class MultiAeroGridSurfaces():
 				self.get_normal_ind_velocities_at_collocation_points()
 				break
 
-		print('Verify non-penetration at bound...')
+		print('Verifing non-penetration at bound...')
 		for ss in range(self.n_surf):
 			Surf_here=self.Surfs[ss]
 			# project input velocities
@@ -183,7 +243,6 @@ class MultiAeroGridSurfaces():
 
 			assert ErMax<1e-12*np.max(np.abs(self.Surfs[0].u_ext)),\
 			'Linearisation state does not verify the non-penetration condition!'
-
 
 
 	def verify_aic_coll(self):
@@ -215,7 +274,7 @@ class MultiAeroGridSurfaces():
 			 Surf_out.u_ind_coll_norm.reshape((Surf_out.maps.M,Surf_out.maps.N))
 
 
-		print('Verify AICs at collocation points...')
+		print('Verifing AICs at collocation points...')
 		for ss in range(self.n_surf):
 			Surf_here=self.Surfs[ss]
 			# project input velocities
@@ -231,6 +290,26 @@ class MultiAeroGridSurfaces():
 
 
 
+	def verify_joukovski_qs(self):
+		'''
+		Verify quasi-steady contribution for forces matches against SHARPy.
+		'''
+
+		print('Verifing joukovski quasi-steady forces...')
+		self.get_joukovski_qs()
+
+		for ss in range(self.n_surf):
+			Surf=self.Surfs[ss]
+
+			Fhere=Surf.fqs.reshape((3,Surf.maps.Kzeta))
+			Fref=tsdata.ct_forces_list[6*ss:6*ss+3,:]
+			ErMax=np.max(np.abs(Fhere-Fref))
+
+			assert ErMax<1e-12 ,'Wrong quasi-steady force over surface %.2d!'%ss
+			print('Surface %.2d max abs error: %.3e' %(ss,ErMax) )
+
+
+
 
 if __name__=='__main__':
 
@@ -239,19 +318,40 @@ if __name__=='__main__':
 
 	# select test case
 	fname='../test/h5input/goland_mod_Nsurf01_M003_N004_a040.aero_state.h5'
-	fname='../test/h5input/goland_mod_Nsurf02_M003_N004_a040.aero_state.h5'
+	#fname='../test/h5input/goland_mod_Nsurf02_M003_N004_a040.aero_state.h5'
 	haero=read.h5file(fname)
 	tsdata=haero.ts00000
 
 	MS=MultiAeroGridSurfaces(tsdata)
+	
+	# collocation points
 	MS.get_normal_ind_velocities_at_collocation_points()
 	MS.verify_non_penetration()
 	MS.verify_aic_coll()
 
+	# joukovski
+	MS.verify_joukovski_qs()
 
 
+	# # segments
+	# # MS.get_ind_velocities_at_segments()
+	# # MS.get_input_velocities_at_segments()
+	# MS.get_joukovski_qs()
 
+	# S0=MS.Surfs[0]
+	# #F00=S0.fqs.reshape((3,S0.maps.Kzeta))
+	# F00=S0.fqs02.reshape((3,S0.maps.Kzeta))
+	# Fref00=tsdata.ct_forces_list[:3,:]
+	# assert np.max(np.abs(F00-Fref00))<1e-12 , 'wrong force surf 00'
 
+	# if tsdata.n_surf==2:
+	# 	S1=MS.Surfs[1]
+	# 	#F01=S1.fqs.reshape((3,S1.maps.Kzeta))
+	# 	F01=S1.fqs02.reshape((3,S1.maps.Kzeta))
+	# 	Fref01=tsdata.ct_forces_list[6:9,:]
+	# 	assert np.max(np.abs(F01-Fref01))<1e-12 , 'wrong force surf 00'
+	embed()
 
+	### verify u_induced
 
 

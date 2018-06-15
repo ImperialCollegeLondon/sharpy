@@ -119,7 +119,6 @@ def eval_seg(ZetaP,ZetaA,ZetaB,gamma_seg=1.0):
 
 
 
-
 def eval_panel(zetaP,ZetaPanel,gamma_pan=1.0):
 	'''
 	Computes derivatives of induced velocity w.r.t. coordinates of target point,

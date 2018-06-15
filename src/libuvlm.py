@@ -9,6 +9,26 @@ import numpy as np
 cfact_biot=0.25/np.pi
 VORTEX_RADIUS=1e-2 # numerical radious of vortex
 
+# local mapping segment/vertices of a panel
+svec=[0,1,2,3] # seg. number
+avec=[0,1,2,3] # 1st vertex of seg.
+bvec=[1,2,3,0] # 2nd vertex of seg.
+
+
+
+def joukovski_qs_segment(zetaA,zetaB,v_mid,gamma=1.0,fact=0.5):
+	'''
+	Joukovski force over vetices A and B produced by the segment A->B.
+	The factor fact allows to compute directly the contribution over the
+	vertices A and B (e.g. 0.5) or include DENSITY.
+	'''
+
+	rab=zetaB-zetaA
+	fs=np.cross(v_mid,rab)
+	gfact=fact*gamma
+
+	return gfact*fs
+
 
 def biot_segment(zetaP,zetaA,zetaB,gamma=1.0):
 	'''
@@ -45,9 +65,11 @@ def biot_panel(zetaC,ZetaPanel,gamma=1.0):
 	'''
 
 	q=np.zeros((3,))
-	for vv in range(3):
-		q+=biot_segment(zetaC,ZetaPanel[vv,:],ZetaPanel[vv+1,:],gamma)
-	q+=biot_segment(zetaC,ZetaPanel[3,:],ZetaPanel[0,:],gamma)
+	# for vv in range(3):
+	# 	q+=biot_segment(zetaC,ZetaPanel[vv,:],ZetaPanel[vv+1,:],gamma)
+	# q+=biot_segment(zetaC,ZetaPanel[3,:],ZetaPanel[0,:],gamma)
+	for ss,aa,bb in zip(svec,avec,bvec):
+		q+=biot_segment(zetaC,ZetaPanel[aa,:],ZetaPanel[bb,:],gamma)
 
 	return q
 
@@ -92,8 +114,7 @@ def panel_area(ZetaPanel):
 	d23=np.linalg.norm(r23)
 	d30=np.linalg.norm(r30)
 
-	A=0.25*np.sqrt(  (4.*d02**2*d13**2) -
-		((d12**2+d30**2)-(d01**2+d23**2))**2 )
+	A=0.25*np.sqrt(  (4.*d02**2*d13**2) - ((d12**2+d30**2)-(d01**2+d23**2))**2 )
 
 	return A
 
@@ -131,6 +152,11 @@ if __name__=='__main__':
 
 
 	pass
+
+	import itertools
+	M,N=4,6
+
+
 
 
 
