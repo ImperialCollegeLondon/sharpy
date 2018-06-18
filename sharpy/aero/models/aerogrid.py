@@ -262,9 +262,9 @@ class Aerogrid(object):
                             control_surface_info['deflection'] = self.aero_dict['control_surface_deflection'][i_control_surface]
                             control_surface_info['chord'] = self.aero_dict['control_surface_chord'][i_control_surface]
                             try:
-                                control_surface_info['hinge_coord'] = self.aero_dict['control_surface_hinge_coord'][i_control_surface]
+                                control_surface_info['hinge_coords'] = self.aero_dict['control_surface_hinge_coords'][i_control_surface]
                             except KeyError:
-                                control_surface_info['hinge_coord'] = None
+                                control_surface_info['hinge_coords'] = None
                         elif self.aero_dict['control_surface_type'][i_control_surface] == 1:
                             raise NotImplementedError('dynamic control surfaces are not yet implemented')
                         elif self.aero_dict['control_surface_type'][i_control_surface] == 2:
@@ -429,28 +429,23 @@ def generate_strip(node_info, airfoil_db, aligned_grid, orientation_in=np.array(
 
     # control surface deflection
     if node_info['control_surface'] is not None:
-        b_frame_hinge_coord = strip_coordinates_b_frame[:, node_info['M'] - node_info['control_surface']['chord']]
+        b_frame_hinge_coords = strip_coordinates_b_frame[:, node_info['M'] - node_info['control_surface']['chord']]
         # support for different hinge location for fully articulated control surfaces
-        if node_info['control_surface']['hinge_coord'] is not None:
-    	    # if not node_info['control_surface']['hinge_coord'] == 0.:
+        if node_info['control_surface']['hinge_coords'] is not None:
             # make sure the hinge coordinates are only applied when M == cs_chord
             if not node_info['M'] - node_info['control_surface']['chord'] == 0:
-                cout.cout_wrap('The hinge coordinate parameter is only supported when M == cs_chord')
-                node_info['control_surface']['hinge_coord'] = None
+                cout.cout_wrap('The hinge coordinates parameter is only supported when M == cs_chord')
+                node_info['control_surface']['hinge_coords'] = None
             else:
-                # b_frame_hinge_coord =  node_info['chord'] - node_info['control_surface']['hinge_coord']
-                b_frame_hinge_coord = np.array([0, strip_coordinates_b_frame[0, 1] + node_info['control_surface']['hinge_coord'], 0])
-                # print('--')
-                # print(b_frame_hinge_coord)
-                # print(node_info['chord'])
+                b_frame_hinge_coords =  node_info['control_surface']['hinge_coords']
 
         for i_M in range(node_info['M'] - node_info['control_surface']['chord'], node_info['M'] + 1):
-            relative_coords = strip_coordinates_b_frame[:, i_M] - b_frame_hinge_coord
+            relative_coords = strip_coordinates_b_frame[:, i_M] - b_frame_hinge_coords
             # rotate the control surface
             relative_coords = np.dot(algebra.rotation3d_x(-node_info['control_surface']['deflection']),
                                      relative_coords)
             # restore coordinates
-            relative_coords += b_frame_hinge_coord
+            relative_coords += b_frame_hinge_coords
 
             # substitute with new coordinates
             strip_coordinates_b_frame[:, i_M] = relative_coords
