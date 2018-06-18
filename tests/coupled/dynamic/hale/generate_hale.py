@@ -3,7 +3,7 @@ import numpy as np
 import os
 import sharpy.utils.algebra as algebra
 
-case_name = 'hale_flat_sigma100'
+case_name = 'hale_sigma15'
 route = os.path.dirname(os.path.realpath(__file__)) + '/'
 
 
@@ -13,13 +13,13 @@ flow = ['BeamLoader',
         # 'NonLinearStatic',
         # 'StaticUvlm',
         # 'StaticTrim',
-        'StaticCoupled',
-        'BeamLoads',
-        'AerogridPlot',
-        'BeamPlot',
-        'DynamicCoupled',
+        # 'StaticCoupled',
+        # 'BeamLoads',
         # 'AerogridPlot',
-        # 'BeamPlot'
+        # 'BeamPlot',
+        # 'DynamicCoupled',
+        'AerogridPlot',
+        'BeamPlot'
         ]
 
 
@@ -31,26 +31,26 @@ rho = 0.08991
 alpha = 7.6852578*np.pi/180
 beta = 0*np.pi/180
 gravity = 'on'
-cs_deflection = -8.8164255*np.pi/180
+cs_deflection = -20.8164255*np.pi/180
 thrust = 9.99007
 sigma = 1.5
 lambda_dihedral = 20*np.pi/180
 # trim sigma = 100
-alpha = 8.17774068993*np.pi/180
-beta = 0*np.pi/180
-gravity = 'on'
-cs_deflection = -7.07280072502*np.pi/180
-thrust = 9.01249187
-sigma = 100
-lambda_dihedral = 20*np.pi/180
-# trim sigma = 100 FLAT
-alpha = 8.17774068993*np.pi/180
-beta = 0*np.pi/180
-gravity = 'on'
-cs_deflection = -7.07280072502*np.pi/180
-thrust = 9.01249187
-sigma = 100
-lambda_dihedral = 0*np.pi/180
+# alpha = 8.17774068993*np.pi/180
+# beta = 0*np.pi/180
+# gravity = 'on'
+# cs_deflection = -7.07280072502*np.pi/180
+# thrust = 9.01249187
+# sigma = 100
+# lambda_dihedral = 20*np.pi/180
+# # trim sigma = 100 FLAT
+# alpha = 8.17774068993*np.pi/180
+# beta = 0*np.pi/180
+# gravity = 'on'
+# cs_deflection = -7.07280072502*np.pi/180
+# thrust = 9.01249187
+# sigma = 100
+# lambda_dihedral = 0*np.pi/180
 
 gust_intensity = 0.30
 n_step = 1
@@ -420,12 +420,14 @@ def generate_aero_file():
     control_surface_type = np.zeros((n_control_surfaces, ), dtype=int)
     control_surface_deflection = np.zeros((n_control_surfaces, ))
     control_surface_chord = np.zeros((n_control_surfaces, ), dtype=int)
+    control_surface_hinge_coords = np.zeros((n_control_surfaces, 3), dtype=float)
 
     # control surface type 0 = static
     # control surface type 1 = dynamic
     control_surface_type[0] = 0
     control_surface_deflection[0] = cs_deflection
-    control_surface_chord[0] = 1
+    control_surface_chord[0] = m
+    control_surface_hinge_coords[0, :] = [0.25, 0, 0]
 
     we = 0
     wn = 0
@@ -564,6 +566,7 @@ def generate_aero_file():
         control_surface_input = h5file.create_dataset('control_surface', data=control_surface)
         control_surface_deflection_input = h5file.create_dataset('control_surface_deflection', data=control_surface_deflection)
         control_surface_chord_input = h5file.create_dataset('control_surface_chord', data=control_surface_chord)
+        # control_surface_hinge_coords_input = h5file.create_dataset('control_surface_hinge_coords', data=control_surface_hinge_coords)
         control_surface_types_input = h5file.create_dataset('control_surface_type', data=control_surface_type)
 
 
