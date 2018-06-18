@@ -7,6 +7,7 @@ import numpy as np
 import warnings
 import unittest
 import itertools
+import copy
 import matplotlib.pyplot as plt 
 
 import sys, os
@@ -15,7 +16,10 @@ try:
 except KeyError:
 	sys.path.append(os.path.abspath('../src/'))
 import read, assembly, multisurfaces, surface, libuvlm
+
 from IPython import embed
+np.set_printoptions(linewidth=200)
+
 
 
 class Test_assembly(unittest.TestCase):
@@ -26,8 +30,8 @@ class Test_assembly(unittest.TestCase):
 	def setUp(self):
 
 		# select test case
-		#fname='./h5input/goland_mod_Nsurf02_M003_N004_a040.aero_state.h5'
-		fname='./h5input/goland_mod_Nsurf01_M003_N004_a040.aero_state.h5'
+		fname='./h5input/goland_mod_Nsurf02_M003_N004_a040.aero_state.h5'
+		#fname='./h5input/goland_mod_Nsurf01_M003_N004_a040.aero_state.h5'
 		haero=read.h5file(fname)
 		tsdata=haero.ts00000
 
@@ -412,12 +416,15 @@ class Test_assembly(unittest.TestCase):
 
 
 
-	def test_dfqsdgamma_vrel(self):
+	def test_dfqsdgamma_vrel0(self):
+
+
+		print('----------------------------- Testing assembly.dfqsdgamma_vrel0')
 
 		MS=self.MS
 		n_surf=MS.n_surf
 
-		Der_list,Der_star_list=assembly.dfqsdgamma_vrel(MS.Surfs,MS.Surfs_star)
+		Der_list,Der_star_list=assembly.dfqsdgamma_vrel0(MS.Surfs,MS.Surfs_star)
 		Er_max=[]
 		Er_max_star=[]
 
@@ -492,12 +499,19 @@ class Test_assembly(unittest.TestCase):
 
 
 
-	def test_dfqsdzeta_vrel(self):
+	def test_dfqsdzeta_vrel0(self):
+		'''
+		Note: the get_joukovski_qs method re-computes the induced velocity 
+		at the panel segments. A copy of Surf is required to ensure that other
+		tests are not affected.
+		'''
+
+		print('------------------------------ Testing assembly.dfqsdzeta_vrel0')
 
 		MS=self.MS
 		n_surf=MS.n_surf
 
-		Der_list=assembly.dfqsdzeta_vrel(MS.Surfs,MS.Surfs_star)
+		Der_list=assembly.dfqsdzeta_vrel0(MS.Surfs,MS.Surfs_star)
 		Er_max=[]
 
 		Steps=[1e-2,1e-4,1e-6,]
@@ -507,7 +521,8 @@ class Test_assembly(unittest.TestCase):
 
 			Der_an=Der_list[ss]
 
-			Surf=MS.Surfs[ss]
+
+			Surf=copy.deepcopy(MS.Surfs[ss])
 			#Surf_star=MS.Surfs_star[ss]
 			M,N=Surf.maps.M,Surf.maps.N
 			K=Surf.maps.K
@@ -530,9 +545,8 @@ class Test_assembly(unittest.TestCase):
 				er_max=np.max(np.abs(Der_an-Der_num))
 				print('Surface %.2d - bound:' %ss)
 				print('FD step: %.2e ---> Max error: %.2e'%(step,er_max) )
-				#assert er_max<5e1*step, 'Error larger than 50 times step size'
+				assert er_max<5e1*step, 'Error larger than 50 times step size'
 				Er_max.append(er_max)
-			Surf.zeta=zeta0.copy()
 
 			# fig = plt.figure('Spy Der',figsize=(10,4))
 			# ax1 = fig.add_subplot(121)
@@ -557,24 +571,288 @@ class Test_assembly(unittest.TestCase):
 
 
 
+
+	def test_dfqsduinput(self):
+		'''
+		Step change in input velocity is allocated to both u_ext and zeta_dot
+		'''
+
+		print('---------------------------------- Testing assembly.dfqsduinput')
+
+		MS=self.MS
+		n_surf=MS.n_surf
+
+		Der_list=assembly.dfqsduinput(MS.Surfs,MS.Surfs_star)
+		Er_max=[]
+
+		Steps=[1e-2,1e-4,1e-6,]
+
+
+		for ss in range(n_surf):
+
+			Der_an=Der_list[ss]
+
+
+			#Surf=copy.deepcopy(MS.Surfs[ss])
+			Surf=MS.Surfs[ss]
+			#Surf_star=MS.Surfs_star[ss]
+			M,N=Surf.maps.M,Surf.maps.N
+			K=Surf.maps.K
+			Kzeta=Surf.maps.Kzeta
+
+			fqs0=Surf.fqs.copy()
+			u_ext0=Surf.u_ext.copy()
+			zeta_dot0=Surf.zeta_dot.copy()
+
+			for step in Steps:
+				Der_num=0.0*Der_an
+
+				for kk in range(3*Kzeta):
+
+					Surf.u_ext=u_ext0.copy()
+					Surf.zeta_dot=zeta_dot0.copy()
+
+					ind_3d=np.unravel_index(kk, (3,M+1,N+1) )								
+					Surf.u_ext[ind_3d]+=0.5*step
+					Surf.zeta_dot[ind_3d]+=-0.5*step
+					
+					Surf.get_input_velocities_at_segments()
+					Surf.get_joukovski_qs(gammaw_TE=MS.Surfs_star[ss].gamma[0,:])
+					df=(Surf.fqs-fqs0)/step
+					Der_num[:,kk]=df.reshape(-1,order='C')
+
+				er_max=np.max(np.abs(Der_an-Der_num))
+				print('Surface %.2d - bound:' %ss)
+				print('FD step: %.2e ---> Max error: %.2e'%(step,er_max) )
+				assert er_max<5e1*step, 'Error larger than 50 times step size'
+				Er_max.append(er_max)
+
+
+
+
+	def test_dfqsdvind_gamma(self):
+
+
+		print('------------------------------ Testing assembly.dfqsdvind_gamma')
+
+		MS=self.MS
+		n_surf=MS.n_surf
+
+
+		# analytical
+		Der_list,Der_star_list=assembly.dfqsdvind_gamma(MS.Surfs,MS.Surfs_star)
+		
+		# allocate numerical 
+		Der_list_num=[]
+		Der_star_list_num=[]
+		for ii in range(n_surf):
+			sub=[]
+			sub_star=[]
+			for jj in range(n_surf):
+				sub.append(0.0*Der_list[ii][jj])
+				sub_star.append(0.0*Der_star_list[ii][jj])
+			Der_list_num.append(sub)
+			Der_star_list_num.append(sub_star)
+
+		# store reference circulation and force
+		Gamma0=[]
+		Gammaw0=[]
+		Fqs0=[]
+		for ss in range(n_surf):
+			Gamma0.append(MS.Surfs[ss].gamma.copy())
+			Gammaw0.append(MS.Surfs_star[ss].gamma.copy())
+			Fqs0.append(MS.Surfs[ss].fqs.copy())
+
+
+		# calculate vis FDs
+		#Steps=[1e-2,1e-4,1e-6,]
+		Steps=[1e-5,]
+		step=Steps[0]
+
+		###### bound
+		for ss_in in range(n_surf):
+			Surf_in=MS.Surfs[ss_in]
+
+			# perturb
+			for pp in range(Surf_in.maps.K):
+				mm=Surf_in.maps.ind_2d_pan_scal[0][pp]
+				nn=Surf_in.maps.ind_2d_pan_scal[1][pp]	
+				Surf_in.gamma=Gamma0[ss_in].copy()
+				Surf_in.gamma[mm,nn]+=step
+
+				# recalculate induced velocity everywhere
+				MS.get_ind_velocities_at_segments(overwrite=True)
+				# restore circulation: (include only induced velocity contrib.)
+				Surf_in.gamma=Gamma0[ss_in].copy()
+
+				# estimate derivatives
+				for ss_out in range(n_surf):
+
+					Surf_out=MS.Surfs[ss_out]
+					fqs0=Fqs0[ss_out].copy()
+					Surf_out.get_joukovski_qs(
+									 gammaw_TE=MS.Surfs_star[ss_out].gamma[0,:])
+					df=(Surf_out.fqs-fqs0)/step
+					Der_list_num[ss_out][ss_in][:,pp]=df.reshape(-1,order='C')
+
+
+		###### wake
+		for ss_in in range(n_surf):
+			Surf_in=MS.Surfs_star[ss_in]
+
+			# perturb
+			for pp in range(Surf_in.maps.K):
+				mm=Surf_in.maps.ind_2d_pan_scal[0][pp]
+				nn=Surf_in.maps.ind_2d_pan_scal[1][pp]	
+				Surf_in.gamma=Gammaw0[ss_in].copy()
+				Surf_in.gamma[mm,nn]+=step
+
+				# recalculate induced velocity everywhere
+				MS.get_ind_velocities_at_segments(overwrite=True)
+				# restore circulation: (include only induced velocity contrib.)
+				Surf_in.gamma=Gammaw0[ss_in].copy()
+
+				# estimate derivatives
+				for ss_out in range(n_surf):
+
+					Surf_out=MS.Surfs[ss_out]
+					fqs0=Fqs0[ss_out].copy()
+					Surf_out.get_joukovski_qs(
+						gammaw_TE=MS.Surfs_star[ss_out].gamma[0,:]) # <--- gammaw_0 needs to be used here!
+					df=(Surf_out.fqs-fqs0)/step
+					Der_star_list_num[ss_out][ss_in][:,pp]=df.reshape(-1,order='C')
+
+
+		### check error
+		Er_max=[]
+		Er_max_star=[]
+		for ss_out in range(n_surf):
+			for ss_in in range(n_surf):
+				Der_an=Der_list[ss_out][ss_in]
+				Der_num=Der_list_num[ss_out][ss_in]
+				ErMat=Der_an-Der_num
+				ermax=np.max(np.abs(ErMat))
+				print('Bound%.2d->Bound%.2d\tFDstep\tError'%(ss_in,ss_out))
+				print('\t\t\t%.1e\t%.1e' %(step,ermax))
+				assert ermax<50*step, 'Test failed!'
+
+				Der_an=Der_star_list[ss_out][ss_in]
+				Der_num=Der_star_list_num[ss_out][ss_in]
+				ErMat=Der_an-Der_num
+				ermax=np.max(np.abs(ErMat))
+				print('Wake%.2d->Bound%.2d\tFDstep\tError'%(ss_in,ss_out))
+				print('\t\t\t%.1e\t%.1e' %(step,ermax))
+				assert ermax<50*step, 'Test failed!'
+
+				# fig = plt.figure('Spy Der',figsize=(10,4))
+				# ax1 = fig.add_subplot(111)
+				# ax1.spy(ErMat,precision=50*step)
+				# plt.show()
+
+
+
+	def test_dfqsdvind_zeta(self):
+
+
+		print('------------------------------- Testing assembly.dfqsdvind_zeta')
+
+		MS=self.MS
+		n_surf=MS.n_surf
+
+		# analytical
+		Dercoll_list,Dervert_list=assembly.dfqsdvind_zeta(MS.Surfs,MS.Surfs_star)
+		
+		# allocate numerical 
+		Derlist_num=[]
+		for ii in range(n_surf):
+			sub=[]
+			for jj in range(n_surf):
+				sub.append(0.0*Dervert_list[ii][jj])
+			Derlist_num.append(sub)
+			
+		# store reference circulation and force
+		Zeta0=[]
+		Fqs0=[]
+		for ss in range(n_surf):
+			Zeta0.append(MS.Surfs[ss].zeta.copy())
+			Fqs0.append(MS.Surfs[ss].fqs.copy())
+
+		# calculate vis FDs
+		#Steps=[1e-2,1e-4,1e-6,]
+		Steps=[1e-6,]
+		step=Steps[0]
+
+		###### bound
+		for ss_in in range(n_surf):
+			Surf_in=MS.Surfs[ss_in]
+			M_in,N_in=Surf_in.maps.M,Surf_in.maps.N
+
+			# perturb
+			for kk in range(3*Surf_in.maps.Kzeta):
+				cc,mm,nn=np.unravel_index( kk, (3,M_in+1,N_in+1) )
+
+				Surf_in.zeta=Zeta0[ss_in].copy()
+				Surf_in.zeta[cc,mm,nn]+=step
+
+				# recalculate induced velocity everywhere
+				MS.get_ind_velocities_at_segments(overwrite=True)
+				# restore zeta: (include only induced velocity contrib.)
+				Surf_in.zeta=Zeta0[ss_in].copy()
+
+				# estimate derivatives
+				for ss_out in range(n_surf):
+
+					Surf_out=MS.Surfs[ss_out]
+					fqs0=Fqs0[ss_out].copy()
+					Surf_out.get_joukovski_qs(
+									 gammaw_TE=MS.Surfs_star[ss_out].gamma[0,:])
+					df=(Surf_out.fqs-fqs0)/step
+					Derlist_num[ss_out][ss_in][:,kk]=df.reshape(-1,order='C')
+
+
+		### check error
+		Er_max=[]
+		for ss_out in range(n_surf):
+			for ss_in in range(n_surf):
+				Der_an=Dervert_list[ss_out][ss_in].copy()
+				if ss_in==ss_out:
+					Der_an=Der_an+Dercoll_list[ss_out]
+				Der_num=Derlist_num[ss_out][ss_in]
+				ErMat=Der_an-Der_num
+				ermax=np.max(np.abs(ErMat))
+				print('Bound%.2d->Bound%.2d\tFDstep\tError'%(ss_in,ss_out))
+				print('\t\t\t%.1e\t%.1e' %(step,ermax))
+				#assert ermax<50*step, 'Test failed!'
+
+
+
+				fig = plt.figure('Spy Der',figsize=(10,4))
+				ax1 = fig.add_subplot(111)
+				ax1.spy(ErMat,precision=50*step)
+				plt.show()
+		embed()
+
+
+
+
+
 if __name__=='__main__':
 
 	#unittest.main()
 	T=Test_assembly()
 	T.setUp()
 
-	# force equation
-	T.setUp()
-	T.test_dfqsdzeta_vrel()
-	T.setUp()
-	T.test_dfqsdgamma_vrel()
+	# force equation (qs term)
+	T.test_dfqsdvind_zeta()
+	1/0	
+	T.test_dfqsdvind_gamma()
+	T.test_dfqsduinput()
+	T.test_dfqsdzeta_vrel0()
+	T.test_dfqsdgamma_vrel0()
 
 	# state equation terms
-	T.setUp()
 	T.test_uc_dncdzeta()
-	T.setUp()
 	T.test_nc_dqcdzeta_bound_to_bound()
-	T.setUp()
 	T.test_nc_dqcdzeta_wake_to_bound()
 
 	

@@ -575,19 +575,26 @@ class AeroGridSurface(AeroGridGeo):
 		Produces influence coefficient matrices such that the velocity induced
 		over the Surface_target is given by the product:
 
-		if Project:
-			u_ind_coll_norm.rehape(-1)=AIC*self.gamma.reshape(-1,order='C')
-		else:
-			u_ind_coll_norm[ii,:,:].rehape(-1)=
+		if target=='collocation':
+			if Project:
+				u_ind_coll_norm.rehape(-1)=AIC*self.gamma.reshape(-1,order='C')
+			else:
+				u_ind_coll_norm[ii,:,:].rehape(-1)=
 									AIC[ii,:,:]*self.gamma.reshape(-1,order='C')
-			where ii=0,1,2
+				where ii=0,1,2
+
+		if targer=='segments':
+			- AIC has shape (3,self.maps.K,4,Mout,Nout), such that
+				AIC[:,:,ss,mm,nn]
+			is the influence coefficient matrix associated to the induced
+			velocity at segment ss of panel (mm,nn)
 		'''
-		
-		K_in=self.maps.K
+
+		K_in=self.maps.K		
 
 		if target=='collocation':
+			
 			K_out=Surf_target.maps.K
-			#ind_1d_to_multi=
 			if not hasattr(Surf_target,'zetac'):
 				Surf_target.generate_collocations()
 			ZetaTarget=Surf_target.zetac
@@ -599,22 +606,72 @@ class AeroGridSurface(AeroGridGeo):
 			else:
 				AIC=np.empty((3,K_out,K_in))	
 
+			# loop target points
+			for cc in range(K_out): 
+				# retrieve panel coords
+				mm=Surf_target.maps.ind_2d_pan_scal[0][cc]
+				nn=Surf_target.maps.ind_2d_pan_scal[1][cc]
+				# retrieve influence coefficients
+				aic3=self.get_aic3(ZetaTarget[:,mm,nn])
+				if Project:
+					AIC[cc,:]=np.dot(Surf_target.normals[:,mm,nn],aic3)
+				else:
+					AIC[:,cc,:]=aic3
+
+
 		if target=='segments':
 			if Project:
 				raise NameError('Normal not defined at collocation points')
-			raise NameError('Method not implemented for segments')
 
-		# loop target points
-		for cc in range(K_out): 
-			# retrieve panel coords
-			mm=Surf_target.maps.ind_2d_pan_scal[0][cc]
-			nn=Surf_target.maps.ind_2d_pan_scal[1][cc]
-			# retrieve influence coefficients
-			aic3=self.get_aic3(ZetaTarget[:,mm,nn])
-			if Project:
-				AIC[cc,:]=np.dot(Surf_target.normals[:,mm,nn],aic3)
-			else:
-				AIC[:,cc,:]=aic3
+			M_trg,N_trg=Surf_target.maps.M,Surf_target.maps.N
+			AIC=np.zeros((3,K_in,4,M_trg,N_trg))
+
+			##### panel (0,0): compute all
+			mm,nn=0,0
+			svec=[0,1,2,3] # seg. number
+			avec=[0,1,2,3] # 1st vertex of seg.
+			bvec=[1,2,3,0] # 2nd vertex of seg.
+			zetav_here=Surf_target.get_panel_vertices_coords(mm,nn)
+			for ss,aa,bb in zip(svec,avec,bvec):
+				zeta_mid=0.5*(zetav_here[aa,:]+zetav_here[bb,:])
+				AIC[:,:,ss,mm,nn]=self.get_aic3(zeta_mid)
+
+			##### panels n=0: copy seg.3 
+			nn=0
+			svec=[0,1,2] # seg. number
+			avec=[0,1,2] # 1st vertex of seg.
+			bvec=[1,2,3] # 2nd vertex of seg.
+			for mm in range(1,M_trg):
+				zetav_here=Surf_target.get_panel_vertices_coords(mm,nn)
+				for ss,aa,bb in zip(svec,avec,bvec):
+					zeta_mid=0.5*(zetav_here[aa,:]+zetav_here[bb,:])
+					AIC[:,:,ss,mm,nn]=self.get_aic3(zeta_mid)
+				AIC[:,:,3,mm,nn]=AIC[:,:,1,mm-1,nn]
+
+			##### panels m=0: copy seg.0
+			mm=0
+			svec=[1,2,3] # seg. number
+			avec=[1,2,3] # 1st vertex of seg.
+			bvec=[2,3,0] # 2nd vertex of seg.
+			for nn in range(1,N_trg):
+				zetav_here=Surf_target.get_panel_vertices_coords(mm,nn)
+				for ss,aa,bb in zip(svec,avec,bvec):
+					zeta_mid=0.5*(zetav_here[aa,:]+zetav_here[bb,:])
+					AIC[:,:,ss,mm,nn]=self.get_aic3(zeta_mid)
+				AIC[:,:,0,mm,nn]=AIC[:,:,2,mm,nn-1]
+
+			##### all others: copy seg. 0 and 3
+			svec=[1,2] # seg. number
+			avec=[1,2] # 1st vertex of seg.
+			bvec=[2,3] # 2nd vertex of seg.
+			for pp in itertools.product(range(1,M_trg),range(1,N_trg)):
+				mm,nn=pp
+				zetav_here=Surf_target.get_panel_vertices_coords(*pp)
+				for ss,aa,bb in zip(svec,avec,bvec):
+					zeta_mid=0.5*(zetav_here[aa,:]+zetav_here[bb,:])
+					AIC[:,:,ss,mm,nn]=self.get_aic3(zeta_mid)
+				AIC[:,:,3,mm,nn]=AIC[:,:,1,mm-1,nn]
+				AIC[:,:,0,mm,nn]=AIC[:,:,2,mm,nn-1]	
 
 		return AIC
 
@@ -672,7 +729,8 @@ class AeroGridSurface(AeroGridGeo):
 		# 1. zetaA & zetaB are ordered such that the wake circulation is
 		# subtracts to the bound circulation over TE segment
 		# 2. the TE segment corresponds to seg.1 of the last row of BOUND panels		
-		if gammaw_TE is None: 
+		if gammaw_TE is None:
+			raise NameError('Enter gammaw_TE - option disabled for debugging')
 			gammaw_TE=self.gamma[M-1,:]
 
 		self.fqs_wTE=np.zeros((3,N))

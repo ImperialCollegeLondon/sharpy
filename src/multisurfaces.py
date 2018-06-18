@@ -155,7 +155,7 @@ class MultiAeroGridSurfaces():
 	# -------------------------------------------------------------------------
 
 
-	def get_ind_velocities_at_segments(self):
+	def get_ind_velocities_at_segments(self,overwrite=False):
 		'''
 		Computes induced velocities at mid-segment points.
 		'''
@@ -164,7 +164,7 @@ class MultiAeroGridSurfaces():
 		for ss_out in range(self.n_surf):
 
 			Surf_out=self.Surfs[ss_out]
-			if hasattr(Surf_out,'u_ind_seg'):
+			if hasattr(Surf_out,'u_ind_seg') and (not overwrite):
 				continue
 
 			M_out,N_out=self.dimensions[ss_out]
@@ -186,18 +186,18 @@ class MultiAeroGridSurfaces():
 											    target='segments',Project=False)
 
 
-	def  get_input_velocities_at_segments(self):
+	def  get_input_velocities_at_segments(self,overwrite=False):
 
 		for ss in range(self.n_surf):
 			Surf=self.Surfs[ss]
-			if hasattr(Surf,'u_input_seg'):
+			if hasattr(Surf,'u_input_seg') and (not overwrite):
 				continue
 			Surf.get_input_velocities_at_segments()
 
 	# -------------------------------------------------------------------------
 
 
-	def get_joukovski_qs(self):
+	def get_joukovski_qs(self,overwrite=False):
 		'''
 		Returns quasi-steady forces over 
 
@@ -210,8 +210,8 @@ class MultiAeroGridSurfaces():
 		'''
 
 		# get input and induced velocities at segments
-		self.get_input_velocities_at_segments()
-		self.get_ind_velocities_at_segments()
+		self.get_input_velocities_at_segments(overwrite)
+		self.get_ind_velocities_at_segments(overwrite)
 
 		for ss in range(self.n_surf):
 			Surf=self.Surfs[ss]
