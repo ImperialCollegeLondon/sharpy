@@ -100,8 +100,8 @@ chord_tail = 0.5
 
 # DISCRETISATION
 # spatial discretisation
-m = 8
-n_elem_multiplier = 1.5
+m = 4
+n_elem_multiplier = 1.
 n_elem_main = int(6*n_elem_multiplier)
 n_elem_tail = int(2*n_elem_multiplier)
 n_elem_fin = int(2*n_elem_multiplier)
@@ -420,14 +420,14 @@ def generate_aero_file():
     control_surface_type = np.zeros((n_control_surfaces, ), dtype=int)
     control_surface_deflection = np.zeros((n_control_surfaces, ))
     control_surface_chord = np.zeros((n_control_surfaces, ), dtype=int)
-    control_surface_hinge_coords = np.zeros((n_control_surfaces, 3), dtype=float)
+    control_surface_hinge_coord = np.zeros((n_control_surfaces, ), dtype=float)
 
     # control surface type 0 = static
     # control surface type 1 = dynamic
     control_surface_type[0] = 0
     control_surface_deflection[0] = cs_deflection
     control_surface_chord[0] = m
-    control_surface_hinge_coords[0, :] = [0.25, 0, 0]
+    control_surface_hinge_coord[0] = -0.25 # nondimensional wrt elastic axis (+ towards the trailing edge)
 
     we = 0
     wn = 0
@@ -566,7 +566,7 @@ def generate_aero_file():
         control_surface_input = h5file.create_dataset('control_surface', data=control_surface)
         control_surface_deflection_input = h5file.create_dataset('control_surface_deflection', data=control_surface_deflection)
         control_surface_chord_input = h5file.create_dataset('control_surface_chord', data=control_surface_chord)
-        # control_surface_hinge_coords_input = h5file.create_dataset('control_surface_hinge_coords', data=control_surface_hinge_coords)
+        control_surface_hinge_coord_input = h5file.create_dataset('control_surface_hinge_coord', data=control_surface_hinge_coord)
         control_surface_types_input = h5file.create_dataset('control_surface_type', data=control_surface_type)
 
 
@@ -723,7 +723,8 @@ def generate_solver_file():
                                  'output_psi': 'on',
                                  'screen_output': 'off'}
 
-    settings['BeamLoads'] = {}
+    settings['BeamLoads'] = {'folder': route + '/output/',
+	    'csv_output': 'on'}
 
     import configobj
     config = configobj.ConfigObj()
