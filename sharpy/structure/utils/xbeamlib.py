@@ -96,6 +96,7 @@ def cbeam3_solv_nlnstatic(beam, settings, ts):
     xbopts.FollowerForce = ct.c_bool(True)
     xbopts.FollowerForceRig = ct.c_bool(True)
 
+
     f_cbeam3_solv_nlnstatic(ct.byref(n_elem),
                             ct.byref(n_nodes),
                             beam.fortran['num_nodes'].ctypes.data_as(intP),
@@ -120,7 +121,7 @@ def cbeam3_solv_nlnstatic(beam, settings, ts):
                             beam.timestep_info[ts].pos.ctypes.data_as(doubleP),
                             beam.timestep_info[ts].psi.ctypes.data_as(doubleP),
                             beam.timestep_info[ts].steady_applied_forces.ctypes.data_as(doubleP),
-                            beam.timestep_info[ts].total_gravity_forces.ctypes.data_as(doubleP)
+                            beam.timestep_info[ts].gravity_forces.ctypes.data_as(doubleP)
                             )
 
 
@@ -609,7 +610,6 @@ def xbeam_step_couplednlndyn(beam, settings, ts, tstep=None, dt=None):
 
     if np.isnan(np.sum(tstep.unsteady_applied_forces)):
         a = 1
-
 
     f_xbeam_solv_nlndyn_step_python(ct.byref(numdof),
                                     ct.byref(ctypes_ts),
