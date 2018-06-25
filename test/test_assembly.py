@@ -18,7 +18,42 @@ except KeyError:
 import read, assembly, multisurfaces, surface, libuvlm
 
 from IPython import embed
-np.set_printoptions(linewidth=200)
+np.set_printoptions(linewidth=200,precision=3)
+
+
+
+def max_error_tensor(Pder_an,Pder_num):
+	'''
+	Finds the maximum error analytical derivatives Pder_an. The error is:
+	- relative, if the element of Pder_an is nonzero
+	- absolute, otherwise
+
+	The function returns the absolute and relative error tensors, and the
+	maximum error. 
+
+	@warning: The relative error tensor may contain NaN or Inf if the
+	analytical derivative is zero. These elements are filtered out during the
+	search for maximum error, and absolute error is checked.
+	'''
+
+	Eabs=np.abs(Pder_num-Pder_an)
+	Erel=Eabs/Pder_an
+
+	# Relative error check: remove NaN and inf...
+	iifinite=np.isfinite(Erel)
+	err_max=0.0
+	for err_here in Erel[iifinite]:
+		if np.abs(err_here)>err_max:
+			err_max=err_here
+
+	# Zero elements check
+	iinonzero=np.abs(Pder_an)<1e-15
+	for der_here in Pder_num[iinonzero]:
+		if np.abs(der_here)>err_max:
+			err_max=der_here 
+
+	return err_max, Eabs, Erel
+
 
 
 
@@ -42,7 +77,6 @@ class Test_assembly(unittest.TestCase):
 		MS.get_joukovski_qs()
 		MS.verify_joukovski_qs()
 		self.MS=MS
-
 
 
 	def test_nc_dqcdzeta_bound_to_bound(self):
@@ -779,7 +813,7 @@ class Test_assembly(unittest.TestCase):
 
 		# calculate vis FDs
 		#Steps=[1e-2,1e-4,1e-6,]
-		Steps=[1e-6,]
+		Steps=[1e-8,]
 		step=Steps[0]
 
 		###### bound
@@ -809,7 +843,6 @@ class Test_assembly(unittest.TestCase):
 					df=(Surf_out.fqs-fqs0)/step
 					Derlist_num[ss_out][ss_in][:,kk]=df.reshape(-1,order='C')
 
-
 		### check error
 		Er_max=[]
 		for ss_out in range(n_surf):
@@ -818,19 +851,44 @@ class Test_assembly(unittest.TestCase):
 				if ss_in==ss_out:
 					Der_an=Der_an+Dercoll_list[ss_out]
 				Der_num=Derlist_num[ss_out][ss_in]
-				ErMat=Der_an-Der_num
-				ermax=np.max(np.abs(ErMat))
-				print('Bound%.2d->Bound%.2d\tFDstep\tError'%(ss_in,ss_out))
-				print('\t\t\t%.1e\t%.1e' %(step,ermax))
+				ermax, ErAbs, ErRel=max_error_tensor(Der_an,Der_num)
+
+				# max absolute error
+				ermax=np.max(ErAbs)
+				# relative error at max abs error point
+				iimax=np.unravel_index(np.argmax(ErAbs),ErAbs.shape)
+				ermax_rel=ErRel[iimax]
+
+
+				print('Bound%.2d->Bound%.2d\tFDstep\tErrAbs\tErrRel'%(ss_in,ss_out))
+				print('\t\t\t%.1e\t%.1e\t%.1e' %(step,ermax,ermax_rel))
 				#assert ermax<50*step, 'Test failed!'
 
+				Dcsmall=Dercoll_list[ss_out][:10,:10]
+				Dansmall=Der_an[:10,:10]
+				Dnumsmall=Der_num[:10,:10]
+				Ersmall=ErAbs[:10,:10]
 
 
-				fig = plt.figure('Spy Der',figsize=(10,4))
-				ax1 = fig.add_subplot(111)
-				ax1.spy(ErMat,precision=50*step)
+				fig=plt.figure('Spy Er vs coll derivs',figsize=(12,4))
+				ax1=fig.add_subplot(131)
+				ax1.spy(ErAbs,precision=1e2*step)
+				ax1.set_title('error abs %d to %d' %(ss_in,ss_out))
+
+				ax2=fig.add_subplot(132)
+				ax2.spy(ErRel,precision=1e2*step)
+				ax2.set_title('error rel %d to %d' %(ss_in,ss_out))
+
+				ax3=fig.add_subplot(133)
+				ax3.spy(Dercoll_list[ss_out],precision=50*step)
+				ax3.set_title('Dcoll an. %d to %d' %(ss_out,ss_out))		
 				plt.show()
+				plt.close()
+
+
 		embed()
+
+
 
 
 
