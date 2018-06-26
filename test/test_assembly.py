@@ -37,7 +37,7 @@ def max_error_tensor(Pder_an,Pder_num):
 	'''
 
 	Eabs=np.abs(Pder_num-Pder_an)
-	Erel=Eabs/Pder_an
+	Erel=np.abs(Eabs/Pder_an)
 
 	# Relative error check: remove NaN and inf...
 	iifinite=np.isfinite(Erel)
@@ -259,7 +259,6 @@ class Test_assembly(unittest.TestCase):
 				# Reference induced velocity
 				Uind0_norm=Surf_in.get_induced_velocity_over_surface(
 									 Surf_out,target='collocation',Project=True)
-
 
 				# -------------------- derivative w.r.t. collocaiton points only
 
@@ -785,8 +784,130 @@ class Test_assembly(unittest.TestCase):
 
 
 
-	def test_dfqsdvind_zeta(self):
+	def test_dvinddzeta(self):
+		'''
+		For each output surface, there induced velocity is computed, all other
+		surfaces are looped. 
+		For wakes, only TE is displaced.
+		'''
 
+		def comp_vind(zetac,MS):				
+			# comute induced velocity
+			V=np.zeros((3,))
+			for ss in range(n_surf):
+				Surf_in=MS.Surfs[ss]
+				Surf_star_in=MS.Surfs_star[ss]
+				V+=Surf_in.get_induced_velocity(zetac)
+				V+=Surf_star_in.get_induced_velocity(zetac)
+			return V
+
+		print('----------------------------------- Testing assembly.dvinddzeta')
+
+		MS=self.MS
+		n_surf=MS.n_surf
+		zetac=.5*(MS.Surfs[0].zeta[:,1,2]+MS.Surfs[0].zeta[:,1,3])
+
+		Dercoll=np.zeros((3,3))
+		Dervert_list=[]
+		for ss_in in range(n_surf):
+			dcoll_b,dvert_b=assembly.dvinddzeta(zetac,MS.Surfs[ss_in],IsBound=True)
+			dcoll_w,dvert_w=assembly.dvinddzeta(zetac,MS.Surfs_star[ss_in],
+								IsBound=False,M_in_bound=MS.Surfs[ss_in].maps.M)
+			Dercoll+=dcoll_b+dcoll_w
+			Dervert_list.append(dvert_b+dvert_w)
+
+		# allocate numerical 
+		Dercoll_num=np.zeros((3,3))
+		Dervert_list_num=[]
+		for ii in range(n_surf):
+			Dervert_list_num.append(0.0*Dervert_list[ii])
+			
+		# store reference grid
+		Zeta0=[]
+		Zeta0_star=[]
+		for ss in range(n_surf):
+			Zeta0.append(MS.Surfs[ss].zeta.copy())
+			Zeta0_star.append(MS.Surfs_star[ss].zeta.copy())
+		V0=comp_vind(zetac,MS)
+
+		# calculate vis FDs
+		#Steps=[1e-2,1e-4,1e-6,]
+		Steps=[1e-6,]
+		step=Steps[0]
+
+		### vertices
+		for ss_in in range(n_surf):
+			Surf_in=MS.Surfs[ss_in]
+			Surf_star_in=MS.Surfs_star[ss_in]
+			M_in,N_in=Surf_in.maps.M,Surf_in.maps.N
+
+			# perturb
+			for kk in range(3*Surf_in.maps.Kzeta):
+				cc,mm,nn=np.unravel_index( kk, (3,M_in+1,N_in+1) )
+
+				# perturb bound
+				Surf_in.zeta=Zeta0[ss_in].copy()
+				Surf_in.zeta[cc,mm,nn]+=step
+				# perturb wake TE
+				if mm==M_in:
+					Surf_star_in.zeta=Zeta0_star[ss_in].copy()
+					Surf_star_in.zeta[cc,0,nn]+=step
+
+				# recalculate induced velocity everywhere
+				Vnum=comp_vind(zetac,MS)
+				dv=(Vnum-V0)/step
+				Dervert_list_num[ss_in][:,kk]=dv.reshape(-1,order='C')
+
+				# restore
+				Surf_in.zeta=Zeta0[ss_in].copy()
+				if mm==M_in:
+					Surf_star_in.zeta=Zeta0_star[ss_in].copy()
+
+		### check error at colloc
+		Dercoll_num=np.zeros((3,3))
+		for cc in range(3):
+			zetac_pert=zetac.copy()
+			zetac_pert[cc]+=step 
+			Vnum=comp_vind(zetac_pert,MS)
+			Dercoll_num[:,cc]=(Vnum-V0)/step
+		ercoll=np.max(np.abs(Dercoll-Dercoll_num))
+		print('Error coll.\tFDstep\tErrAbs')	
+		print('\t\t%.1e\t%.1e' %(step,ercoll))	
+		assert ercoll<10*step, 'Error at collocation point' 
+
+		### check error at vert
+		for ss_in in range(n_surf):
+			Der_an=Dervert_list[ss_in]
+			Der_num=Dervert_list_num[ss_in]
+			ermax,ErAbs,ErRel=max_error_tensor(Der_an,Der_num)
+
+			# max absolute error
+			ermax=np.max(ErAbs)
+			# relative error at max abs error point
+			iimax=np.unravel_index(np.argmax(ErAbs),ErAbs.shape)
+			ermax_rel=ErRel[iimax]
+			print('Bound and wake%.2d\tFDstep\tErrAbs\tErrRel'%ss_in)
+			print('\t\t\t%.1e\t%.1e\t%.1e' %(step,ermax,ermax_rel))
+			assert ercoll<10*step, 'Error at vertices'
+
+			fig=plt.figure('Spy Er vs coll derivs',figsize=(12,4))
+			ax1=fig.add_subplot(121)
+			ax1.spy(ErAbs,precision=1e2*step)
+			ax1.set_title('error abs %d' %(ss_in))
+			ax2=fig.add_subplot(122)
+			ax2.spy(ErRel,precision=1e2*step)
+			ax2.set_title('error rel %d' %(ss_in))
+			#plt.show()
+			plt.close()
+
+
+
+	def test_dfqsdvind_zeta(self):
+		'''
+		For each output surface, there induced velocity is computed, all other
+		surfaces are looped. 
+		For wakes, only TE is displaced.
+		'''
 
 		print('------------------------------- Testing assembly.dfqsdvind_zeta')
 
@@ -806,33 +927,41 @@ class Test_assembly(unittest.TestCase):
 			
 		# store reference circulation and force
 		Zeta0=[]
+		Zeta0_star=[]
 		Fqs0=[]
 		for ss in range(n_surf):
 			Zeta0.append(MS.Surfs[ss].zeta.copy())
+			Zeta0_star.append(MS.Surfs_star[ss].zeta.copy())
 			Fqs0.append(MS.Surfs[ss].fqs.copy())
 
 		# calculate vis FDs
 		#Steps=[1e-2,1e-4,1e-6,]
-		Steps=[1e-8,]
+		Steps=[1e-6,]
 		step=Steps[0]
 
-		###### bound
+		### loop input surfs
 		for ss_in in range(n_surf):
 			Surf_in=MS.Surfs[ss_in]
+			Surf_star_in=MS.Surfs_star[ss_in]
 			M_in,N_in=Surf_in.maps.M,Surf_in.maps.N
 
 			# perturb
 			for kk in range(3*Surf_in.maps.Kzeta):
 				cc,mm,nn=np.unravel_index( kk, (3,M_in+1,N_in+1) )
 
+				# perturb bound
 				Surf_in.zeta=Zeta0[ss_in].copy()
 				Surf_in.zeta[cc,mm,nn]+=step
+				# perturb wake TE
+				if mm==M_in:
+					Surf_star_in.zeta=Zeta0_star[ss_in].copy()
+					Surf_star_in.zeta[cc,0,nn]+=step
 
 				# recalculate induced velocity everywhere
 				MS.get_ind_velocities_at_segments(overwrite=True)
 				# restore zeta: (include only induced velocity contrib.)
 				Surf_in.zeta=Zeta0[ss_in].copy()
-
+				Surf_star_in.zeta=Zeta0_star[ss_in].copy()
 				# estimate derivatives
 				for ss_out in range(n_surf):
 
@@ -844,7 +973,6 @@ class Test_assembly(unittest.TestCase):
 					Derlist_num[ss_out][ss_in][:,kk]=df.reshape(-1,order='C')
 
 		### check error
-		Er_max=[]
 		for ss_out in range(n_surf):
 			for ss_in in range(n_surf):
 				Der_an=Dervert_list[ss_out][ss_in].copy()
@@ -862,15 +990,10 @@ class Test_assembly(unittest.TestCase):
 
 				print('Bound%.2d->Bound%.2d\tFDstep\tErrAbs\tErrRel'%(ss_in,ss_out))
 				print('\t\t\t%.1e\t%.1e\t%.1e' %(step,ermax,ermax_rel))
-				#assert ermax<50*step, 'Test failed!'
-
-				Dcsmall=Dercoll_list[ss_out][:10,:10]
-				Dansmall=Der_an[:10,:10]
-				Dnumsmall=Der_num[:10,:10]
-				Ersmall=ErAbs[:10,:10]
-
+				assert ermax<5e2*step and ermax_rel<50*step, 'Test failed!'
 
 				fig=plt.figure('Spy Er vs coll derivs',figsize=(12,4))
+
 				ax1=fig.add_subplot(131)
 				ax1.spy(ErAbs,precision=1e2*step)
 				ax1.set_title('error abs %d to %d' %(ss_in,ss_out))
@@ -882,13 +1005,8 @@ class Test_assembly(unittest.TestCase):
 				ax3=fig.add_subplot(133)
 				ax3.spy(Dercoll_list[ss_out],precision=50*step)
 				ax3.set_title('Dcoll an. %d to %d' %(ss_out,ss_out))		
-				plt.show()
+				#plt.show()
 				plt.close()
-
-
-		embed()
-
-
 
 
 
@@ -900,15 +1018,16 @@ if __name__=='__main__':
 	T=Test_assembly()
 	T.setUp()
 
-	# force equation (qs term)
+	# ### force equation (qs term)
+	T.test_dvinddzeta()
 	T.test_dfqsdvind_zeta()
-	1/0	
+	T.setUp()
 	T.test_dfqsdvind_gamma()
 	T.test_dfqsduinput()
 	T.test_dfqsdzeta_vrel0()
 	T.test_dfqsdgamma_vrel0()
 
-	# state equation terms
+	### state equation terms
 	T.test_uc_dncdzeta()
 	T.test_nc_dqcdzeta_bound_to_bound()
 	T.test_nc_dqcdzeta_wake_to_bound()
