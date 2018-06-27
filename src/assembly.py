@@ -117,6 +117,7 @@ def nc_dqcdzeta_Sin_to_Sout(Surf_in,Surf_out,Der_coll,Der_vert,Surf_in_bound):
 	# extract sizes / check matrices
 	K_out=Surf_out.maps.K
 	Kzeta_out=Surf_out.maps.Kzeta
+	shape_zeta_out=Surf_out.maps.shape_vert_vect # (3,M_out,N_out)
 	K_in=Surf_in.maps.K
 	Kzeta_in=Surf_in.maps.Kzeta
 
@@ -128,11 +129,10 @@ def nc_dqcdzeta_Sin_to_Sout(Surf_in,Surf_out,Der_coll,Der_vert,Surf_in_bound):
 		Kzeta_bound_in=Der_vert.shape[1]//3
 		N_in=Surf_in.maps.N
 		M_bound_in=Kzeta_bound_in//(N_in+1)-1
-		shape_bound_in=(M_bound_in+1,N_in+1)
 
 	# create mapping panels to vertices to loop 
 	Surf_out.maps.map_panels_to_vertices_1D_scalar()
-	Surf_in.maps.map_panels_to_vertices_1D_scalar()
+	#Surf_in.maps.map_panels_to_vertices_1D_scalar()
 
 	##### loop collocation points
 	for cc_out in range(K_out):
@@ -140,67 +140,86 @@ def nc_dqcdzeta_Sin_to_Sout(Surf_in,Surf_out,Der_coll,Der_vert,Surf_in_bound):
 		# get (m,n) indices of collocation point
 		mm_out=Surf_out.maps.ind_2d_pan_scal[0][cc_out]
 		nn_out=Surf_out.maps.ind_2d_pan_scal[1][cc_out]
+
 		# get coords and normal
 		zetac_here=ZetaColl[:,mm_out,nn_out]
 		nc_here=Surf_out.normals[:,mm_out,nn_out]
-		# get indices of panel vertices
-		gl_ind_panel_out=Surf_out.maps.Mpv1d_scalar[cc_out]
 
-		######  loop panels input surface 
-		for pp_in in range(K_in):
-			# get (m,n) indices of panel
-			mm_in=Surf_in.maps.ind_2d_pan_scal[0][pp_in]
-			nn_in=Surf_in.maps.ind_2d_pan_scal[1][pp_in]	
-			# get vertices coords and circulation			
-			zeta_panel=Surf_in.get_panel_vertices_coords(mm_in,nn_in)
-			gamma_panel=Surf_in.gamma[mm_in,nn_in]
+		# get derivative of induced velocity w.r.t. zetac
+		if Surf_in_bound:
+			dvind_coll,dvind_vert=dvinddzeta(zetac_here,Surf_in,
+														  IsBound=Surf_in_bound)
+		else:
+			dvind_coll,dvind_vert=dvinddzeta(zetac_here,Surf_in,
+									IsBound=Surf_in_bound,M_in_bound=M_bound_in)
+		
+		### Surf_in vertices contribution
+		Der_vert[cc_out,:]+=np.dot(nc_here,dvind_vert)
 
-			# get local derivatives
-			der_zetac,der_zeta_panel=libder.dbiot.eval_panel(
-								    zetac_here,zeta_panel,gamma_pan=gamma_panel)
+		### Surf_out collocation point contribution
+		# project
+		dvindnorm_coll=np.dot(nc_here,dvind_coll)
+
+		# loop panel vertices
+		for vv,dm,dn in zip(range(4),dmver,dnver):
+			mm_v,nn_v=mm_out+dm,nn_out+dn
+			ii_v=[np.ravel_multi_index( 
+							 (cc,mm_v,nn_v),shape_zeta_out) for cc in range(3)]
+			Der_coll[cc_out,ii_v]+=wcv_out[vv]*dvindnorm_coll
+
+		#embed()
+		# ######  loop panels input surface 
+		# for pp_in in range(K_in):
+		# 	# get (m,n) indices of panel
+		# 	mm_in=Surf_in.maps.ind_2d_pan_scal[0][pp_in]
+		# 	nn_in=Surf_in.maps.ind_2d_pan_scal[1][pp_in]	
+		# 	# get vertices coords and circulation			
+		# 	zeta_panel=Surf_in.get_panel_vertices_coords(mm_in,nn_in)
+		# 	gamma_panel=Surf_in.gamma[mm_in,nn_in]
+
+		# 	# get local derivatives
+		# 	der_zetac,der_zeta_panel=libder.dbiot.eval_panel(
+		# 						    zetac_here,zeta_panel,gamma_pan=gamma_panel)
 			
 
-			##### Allocate collocation point contribution
-			der_zetac_proj=np.dot(nc_here,der_zetac)
-			for vv in range(4):
-				gl_ind_vv=gl_ind_panel_out[vv]
-				for vv_comp in range(3):
-					Der_coll[cc_out,gl_ind_vv+vv_comp*Kzeta_out]+=\
-										 wcv_out[vv]*der_zetac_proj[vv_comp]
+		# 	##### Allocate collocation point contribution
+		# 	der_zetac_proj=np.dot(nc_here,der_zetac)
+		# 	for vv in range(4):
+		# 		gl_ind_vv=gl_ind_panel_out[vv]
+		# 		for vv_comp in range(3):
+		# 			Der_coll[cc_out,gl_ind_vv+vv_comp*Kzeta_out]+=\
+		# 								 wcv_out[vv]*der_zetac_proj[vv_comp]
 
 
-			##### Allocate panel vertices contributions
+		# 	##### Allocate panel vertices contributions
 
-			### Bound wake case
-			if Surf_in_bound is True:
-				# get global indices of panel vertices
-				gl_ind_panel_in=Surf_in.maps.Mpv1d_scalar[pp_in]
-				for vv in range(4):
-					gl_ind_vv=gl_ind_panel_in[vv]
-					for vv_comp in range(3):
-						Der_vert[cc_out,gl_ind_vv+vv_comp*Kzeta_in]+=\
-									np.dot(nc_here,der_zeta_panel[vv,vv_comp,:])
+		# 	### Bound wake case
+		# 	if Surf_in_bound is True:
+		# 		# get global indices of panel vertices
+		# 		gl_ind_panel_in=Surf_in.maps.Mpv1d_scalar[pp_in]
+		# 		for vv in range(4):
+		# 			gl_ind_vv=gl_ind_panel_in[vv]
+		# 			for vv_comp in range(3):
+		# 				Der_vert[cc_out,gl_ind_vv+vv_comp*Kzeta_in]+=\
+		# 							np.dot(nc_here,der_zeta_panel[vv,vv_comp,:])
 
-			### Allocate TE vertices contributions only					
-			else: 
-				if mm_in==0:				
+		# 	### Allocate TE vertices contributions only					
+		# 	else: 
+		# 		if mm_in==0:				
 
-					# Define indices of vertices 0 and 3 on bound surface
-					mm0,mm3=M_bound_in,M_bound_in
-					nn0,nn3=nn_in,nn_in+1
-					gl_ind0=np.ravel_multi_index( [mm0,nn0],\
-									             dims=shape_bound_in, order='C')
-					gl_ind3=np.ravel_multi_index( [mm3,nn3],\
-									             dims=shape_bound_in, order='C')
+		# 			# Define indices of vertices 0 and 3 on bound surface
+		# 			mm0,mm3=M_bound_in,M_bound_in
+		# 			nn0,nn3=nn_in,nn_in+1
+		# 			gl_ind0=np.ravel_multi_index( [mm0,nn0],\
+		# 							             dims=shape_bound_in, order='C')
+		# 			gl_ind3=np.ravel_multi_index( [mm3,nn3],\
+		# 							             dims=shape_bound_in, order='C')
 
-					der_zeta_seg=libder.dbiot.eval_seg(zetac_here,
-						  zeta_panel[3,:],zeta_panel[0,:],gamma_seg=gamma_panel)
-					# allocate
-					for vv_comp in range(3):
-						Der_vert[cc_out,gl_ind3+vv_comp*Kzeta_bound_in]+=\
-									   np.dot(nc_here,der_zeta_seg[1,vv_comp,:])
-						Der_vert[cc_out,gl_ind0+vv_comp*Kzeta_bound_in]+=\
-									   np.dot(nc_here,der_zeta_seg[2,vv_comp,:])
+		# 			for vv_comp in range(3):
+		# 				Der_vert[cc_out,gl_ind3+vv_comp*Kzeta_bound_in]+=\
+		# 							 np.dot(nc_here,der_zeta_panel[3,vv_comp,:])
+		# 				Der_vert[cc_out,gl_ind0+vv_comp*Kzeta_bound_in]+=\
+		# 							 np.dot(nc_here,der_zeta_panel[0,vv_comp,:])
 
 	return Der_coll, Der_vert
 
@@ -734,276 +753,6 @@ def dfqsdvind_gamma(Surfs,Surfs_star):
 		Der_star_list.append(Der_star_list_sub)
 
 	return Der_list, Der_star_list
-
-
-
-
-def dfqsdvind_zeta_long(Surfs,Surfs_star):
-	'''
-	Assemble derivative of quasi-steady force w.r.t. induced velocities changes
-	due to zeta.
-
-	Function kept for debugging.
-	'''
-
-	n_surf=len(Surfs)
-	assert len(Surfs_star)==n_surf,\
-							   'Number of bound and wake surfaces much be equal'
-
-	# allocate 
-	Dercoll_list=[]
-	Dervert_list=[]
-	for ss_out in range(n_surf):
-		Kzeta_out=Surfs[ss_out].maps.Kzeta
-		Dercoll_list.append( np.zeros((3*Kzeta_out,3*Kzeta_out)) )
-		Dervert_list_sub=[]
-		for ss_in in range(n_surf):
-			Kzeta_in=Surfs[ss_in].maps.Kzeta
-			Dervert_list_sub.append( np.zeros((3*Kzeta_out,3*Kzeta_in)) )	
-		Dervert_list.append(Dervert_list_sub)
-
-
-	for ss_out in range(n_surf):
-
-		Surf_out=Surfs[ss_out]
-		M_out,N_out=Surf_out.maps.M,Surf_out.maps.N
-		K_out=Surf_out.maps.K
-		Kzeta_out=Surf_out.maps.Kzeta
-		shape_fqs=Surf_out.maps.shape_vert_vect # (3,M+1,N+1)
-		Dercoll=Dercoll_list[ss_out] # <--link
-
-		### Loop out (bound) surface panels
-		for pp_out in itertools.product(range(0,M_out),range(0,N_out)):
-			mm_out,nn_out=pp_out				
-			# get panel vertices
-			zeta_panel_out=Surf_out.get_panel_vertices_coords(mm_out,nn_out)
-
-			for ll,aa,bb in zip(svec,avec,bvec):
-
-				# get segment, collocation point etc
-				zeta_mid=0.5*(zeta_panel_out[bb,:]+zeta_panel_out[aa,:])
-				lv=zeta_panel_out[bb,:]-zeta_panel_out[aa,:]
-				Lskew=skew((-Surf_out.rho*Surf_out.gamma[mm_out,nn_out])*lv)
-
-				# get vertices m,n indices
-				mm_a,nn_a=mm_out+dmver[aa],nn_out+dnver[aa]
-				mm_b,nn_b=mm_out+dmver[bb],nn_out+dnver[bb]
-				# get vertices 1d index
-				ii_a=[ np.ravel_multi_index( 
-								  (cc,mm_a,nn_a),shape_fqs ) for cc in range(3)]
-				ii_b=[ np.ravel_multi_index( 
-								  (cc,mm_b,nn_b),shape_fqs ) for cc in range(3)]
-				del mm_a,mm_b,nn_a,nn_b
-
-
-				### loop input surfaces coordinates
-				for ss_in in range(n_surf):
-
-
-					### Bound
-					Surf_in=Surfs[ss_in]
-					M_in,N_in=Surf_in.maps.M,Surf_in.maps.N
-					Kzeta_in=Surf_in.maps.Kzeta	
-					shape_zeta_in=(3,M_in+1,N_in+1)
-					Dervert=Dervert_list[ss_out][ss_in] #<- link
-
-					for pp_in in itertools.product(range(0,M_in),range(0,N_in)):
-						mm_in,nn_in=pp_in
-						zeta_panel_in=Surf_in.get_panel_vertices_coords(
-																	mm_in,nn_in)
-	
-						# get local derivatives
-						der_zetac,der_zeta_panel=\
-								libder.dbiot.eval_panel(
-										zeta_mid,zeta_panel_in,
-											gamma_pan=Surf_in.gamma[mm_in,nn_in])
-			
-						### Mid-segment point contribution
-						Df=0.25*np.dot(Lskew,der_zetac.T)
-						Dercoll[np.ix_(ii_a,ii_a)]+=Df
-						Dercoll[np.ix_(ii_b,ii_a)]+=Df
-						Dercoll[np.ix_(ii_a,ii_b)]+=Df
-						Dercoll[np.ix_(ii_b,ii_b)]+=Df
-
-						### Panel vertices contribution
-						for vv_in in range(4):
-
-							# get vertices m,n indices
-							mm_v,nn_v=mm_in+dmver[vv_in],nn_in+dnver[vv_in]
-							# get vertices 1d index
-							jj_v=[ np.ravel_multi_index( 
-							   (cc,mm_v,nn_v),shape_zeta_in) for cc in range(3)]
-
-							Df=0.5*np.dot(Lskew,der_zeta_panel[vv_in,:,:].T)
-							Dervert[np.ix_(ii_a,jj_v)]+=Df
-							Dervert[np.ix_(ii_b,jj_v)]+=Df
-
-
-					### loop input wake surface coordinates
-					# only updare Dercoll
-					# TE will need to be scanned again as:
-					# - we need to include the wake circulation contrib.
-					# - also an extra DerVert contribution is generated
-					Surf_in=Surfs_star[ss_in]
-					M_in_star,N_in=Surf_in.maps.M,Surf_in.maps.N
-
-					for pp_in in itertools.product(range(0,M_in_star),range(0,N_in)):
-						mm_in,nn_in=pp_in
-						zeta_panel_in=Surf_in.get_panel_vertices_coords(
-																	mm_in,nn_in)
-
-						# get local derivatives
-						der_zetac,der_zeta_panel=\
-								libder.dbiot.eval_panel(
-										zeta_mid,zeta_panel_in,
-											gamma_pan=Surf_in.gamma[mm_in,nn_in])
-			
-						### Mid-segment point contribution
-						Df=0.25*np.dot(Lskew,der_zetac.T)
-						Dercoll[np.ix_(ii_a,ii_a)]+=Df
-						Dercoll[np.ix_(ii_b,ii_a)]+=Df
-						Dercoll[np.ix_(ii_a,ii_b)]+=Df
-						Dercoll[np.ix_(ii_b,ii_b)]+=Df
-
-					### loop input TE (include GammaW contribution)
-					mm_in=0
-					for nn_in in range(N_in):
-						# zeta segment (reverse order)
-						zeta00=Surf_in.zeta[:,mm_in,nn_in+1]
-						zeta01=Surf_in.zeta[:,mm_in,nn_in  ]
-
-						der_vert=libder.dbiot.eval_seg(
-								zeta_mid,zeta00,zeta01,
-								   gamma_seg=Surf_in.gamma[mm_in,nn_in])[1:,:,:]
-
-						# find indec in bound
-						jj_v00=[ np.ravel_multi_index( 
-										(cc,M_in,nn_in+1),shape_zeta_in) 
-															 for cc in range(3)]	
-						Df=0.5*np.dot(Lskew,der_vert[0,:,:].T)
-						Dervert[np.ix_(ii_a,jj_v00)]+=Df
-						Dervert[np.ix_(ii_b,jj_v00)]+=Df
-
-						jj_v01=[ np.ravel_multi_index( 
-										(cc,M_in,nn_in),shape_zeta_in) 
-															 for cc in range(3)]
-						Df=0.5*np.dot(Lskew,der_vert[1,:,:].T)
-						Dervert[np.ix_(ii_a,jj_v01)]+=Df
-						Dervert[np.ix_(ii_b,jj_v01)]+=Df
-
-
-		# Loop TE of output
-		# - we use Gammaw_0 over the TE
-		# - we run along the positive direction as defined in the 
-		# first row of wake panels
-		for nn_out in range(N_out):
-
-			# get TE bound vertices m,n indices
-			nn_a=nn_out+dnver[2]
-			nn_b=nn_out+dnver[1]
-
-			# get segment and mid-point
-			zeta_mid=0.5*(Surf_out.zeta[:,M_out,nn_b]+Surf_out.zeta[:,M_out,nn_a])
-			lv=Surf_out.zeta[:,M_out,nn_b]-Surf_out.zeta[:,M_out,nn_a]
-			Lskew=skew((-Surf_out.rho*Surfs_star[ss_out].gamma[0,nn_out])*lv)
-
-			# get vertices 1d index on bound
-			ii_a=[ np.ravel_multi_index( 
-								 (cc,M_out,nn_a),shape_fqs ) for cc in range(3)]
-			ii_b=[ np.ravel_multi_index( 
-								 (cc,M_out,nn_b),shape_fqs ) for cc in range(3)]
-
-			### loop input surface coordinates
-			for ss_in in range(n_surf):
-				Surf_in=Surfs[ss_in]
-				M_in,N_in=Surf_in.maps.M,Surf_in.maps.N
-				Kzeta_in=Surf_in.maps.Kzeta	
-				shape_zeta_in=(3,M_in+1,N_in+1)
-				Dervert=Dervert_list[ss_out][ss_in] #<- link
-
-				for pp_in in itertools.product(range(0,M_in),range(0,N_in)):
-					mm_in,nn_in=pp_in
-					zeta_panel_in=Surf_in.get_panel_vertices_coords(mm_in,nn_in)
-
-					# get local derivatives
-					der_zetac,der_zeta_panel=\
-							libder.dbiot.eval_panel(
-									zeta_mid,zeta_panel_in,
-										   gamma_pan=Surf_in.gamma[mm_in,nn_in])
-		
-					### Mid-segment point contribution
-					Df=0.25*np.dot(Lskew,der_zetac.T)
-					Dercoll[np.ix_(ii_a,ii_a)]+=Df
-					Dercoll[np.ix_(ii_b,ii_a)]+=Df
-					Dercoll[np.ix_(ii_a,ii_b)]+=Df
-					Dercoll[np.ix_(ii_b,ii_b)]+=Df
-
-
-					### Panel vertices contribution
-					for vv_in in range(4):
-
-						# get vertices m,n indices
-						mm_v,nn_v=mm_in+dmver[vv_in],nn_in+dnver[vv_in]
-						# get vertices 1d index
-						jj_v=[ np.ravel_multi_index( 
-						   (cc,mm_v,nn_v),shape_zeta_in) for cc in range(3)]
-
-						Df=0.5*np.dot(Lskew,der_zeta_panel[vv_in,:,:].T)
-						Dervert[np.ix_(ii_a,jj_v)]+=Df
-						Dervert[np.ix_(ii_b,jj_v)]+=Df
-
-
-				### loop input wake surface coordinates
-				# only updare Dercoll
-				Surf_in=Surfs_star[ss_in]
-				M_in_star,N_in=Surf_in.maps.M,Surf_in.maps.N
-
-				for pp_in in itertools.product(range(0,M_in_star),range(0,N_in)):
-					mm_in,nn_in=pp_in
-					zeta_panel_in=Surf_in.get_panel_vertices_coords(mm_in,nn_in)
-
-					# get local derivatives
-					der_zetac,der_zeta_panel=\
-							libder.dbiot.eval_panel(
-									zeta_mid,zeta_panel_in,
-										gamma_pan=Surf_in.gamma[mm_in,nn_in])
-		
-					### Mid-segment point contribution
-					Df=0.25*np.dot(Lskew,der_zetac.T)
-					Dercoll[np.ix_(ii_a,ii_a)]+=Df
-					Dercoll[np.ix_(ii_b,ii_a)]+=Df
-					Dercoll[np.ix_(ii_a,ii_b)]+=Df
-					Dercoll[np.ix_(ii_b,ii_b)]+=Df
-
-				### loop input TE (include GammaW contribution)
-				mm_in=0
-				for nn_in in range(N_in):
-					# zeta segment (reverse order)
-					zeta00=Surf_in.zeta[:,mm_in,nn_in+1]
-					zeta01=Surf_in.zeta[:,mm_in,nn_in  ]
-
-					der_vert=libder.dbiot.eval_seg(
-							zeta_mid,zeta00,zeta01,
-							   gamma_seg=Surf_in.gamma[mm_in,nn_in])[1:,:,:]
-
-					# find indec in bound
-					jj_v00=[ np.ravel_multi_index( 
-									(cc,M_in,nn_in+1),shape_zeta_in) 
-														 for cc in range(3)]	
-					Df=0.5*np.dot(Lskew,der_vert[0,:,:].T)
-					Dervert[np.ix_(ii_a,jj_v00)]+=Df
-					Dervert[np.ix_(ii_b,jj_v00)]+=Df
-
-					jj_v01=[ np.ravel_multi_index( 
-									(cc,M_in,nn_in),shape_zeta_in) 
-														 for cc in range(3)]
-					Df=0.5*np.dot(Lskew,der_vert[1,:,:].T)
-					Dervert[np.ix_(ii_a,jj_v01)]+=Df
-					Dervert[np.ix_(ii_b,jj_v01)]+=Df
-
-	return Dercoll_list, Dervert_list
-
-
 
 
 
