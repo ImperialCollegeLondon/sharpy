@@ -228,6 +228,7 @@ def quat2crv(quat):
 
     return psi
 
+
 def crv_bounds(crv_ini):
     crv = crv_ini.copy()
     # original norm
@@ -295,7 +296,7 @@ def crv2tan(psi):
     if norm_psi < eps:
         return np.eye(3) - 0.5*psi_skew + 1.0/6.0*np.dot(psi_skew, psi_skew)
     else:
-        k1 = (1.0 - np.cos(norm_psi))/(norm_psi*norm_psi)
+        k1 = (np.cos(norm_psi) - 1.0)/(norm_psi*norm_psi)
         k2 = (1.0 - np.sin(norm_psi)/norm_psi)/(norm_psi*norm_psi)
         return np.eye(3) + k1*psi_skew + k2*np.dot(psi_skew, psi_skew)
 
