@@ -15,15 +15,14 @@ import assembly as ass # :D
 class Static():
 
 
-
-
 	def __init__(self,tsdata):
 				
-
-
 		MS=multisurfaces.MultiAeroGridSurfaces(tsdata)
 		MS.get_ind_velocities_at_collocation_points()
 		MS.get_input_velocities_at_collocation_points()
+		MS.get_ind_velocities_at_segments()
+		MS.get_input_velocities_at_segments()
+
 
 		# define total sizes
 		self.K=sum(MS.KK)
@@ -46,7 +45,8 @@ class Static():
 		'''
 		MS=self.MS
 
-		# get matrices
+
+		# ----------------------------------------------------------- state eq.
 		List_uc_dncdzeta=ass.uc_dncdzeta(MS.Surfs)
 		List_nc_dqcdzeta_coll,List_nc_dqcdzeta_vert=\
 										 ass.nc_dqcdzeta(MS.Surfs,MS.Surfs_star)
@@ -58,19 +58,23 @@ class Static():
 				interp.get_Wnv_vector(MS.Surfs[ss],
 											   MS.Surfs[ss].aM,MS.Surfs[ss].aN))
 
-		## zeta derivatives
+		# zeta derivatives
 		self.Ducdzeta=np.block(List_nc_dqcdzeta_vert)
+		del List_nc_dqcdzeta_vert
 		self.Ducdzeta+=scalg.block_diag(*List_nc_dqcdzeta_coll)
+		del List_nc_dqcdzeta_coll
 		self.Ducdzeta+=scalg.block_diag(*List_uc_dncdzeta)
+		del List_uc_dncdzeta
 		# assemble input velocity derivatives
 		self.Ducdu_ext=scalg.block_diag(*List_Wnv)
+		del List_Wnv
 
 		### assemble global matrices
 		# Gamma derivatives (global AICs) # <--- keep for dynamic
 		# AIC=np.block(List_AICs)
 		#AIC_star=np.block(List_AICs_star) 
 
-		### Condense Gammw terms
+		### Condense Gammaw terms
 		for ss_out in range(MS.n_surf):
 			K=MS.KK[ss_out]
 			for ss_in in range(MS.n_surf):
@@ -81,10 +85,48 @@ class Static():
 				# fold aic_star: sum along chord at each span-coordinate
 				aic_star_fold=np.zeros((K,N_star))
 				for jj in range(N_star):
-						aic_star_fold[:,jj]+=np.sum(aic_star[:,jj::N_star],axis=1)
+					aic_star_fold[:,jj]+=np.sum(aic_star[:,jj::N_star],axis=1)
 				aic[:,-N_star:]+=aic_star_fold
 
 		self.AIC=np.block(List_AICs)
+
+
+		# ---------------------------------------------------------- output eq.
+
+		### Zeta derivatives
+		# ... at constant relative velocity		
+		self.Dfqsdzeta=scalg.block_diag(
+								   *ass.dfqsdzeta_vrel0(MS.Surfs,MS.Surfs_star))
+		# ... induced velocity contrib.
+		List_coll,List_vert=ass.dfqsdvind_zeta(MS.Surfs,MS.Surfs_star)
+		for ss in range(MS.n_surf):
+			List_vert[ss][ss]+=List_coll[ss]
+		self.Dfqsdzeta+=np.block(List_vert)
+		del List_vert, List_coll
+
+
+		### Input velocities
+		self.Dfqsdu_ext=scalg.block_diag(
+									   *ass.dfqsduinput(MS.Surfs,MS.Surfs_star))
+
+
+		### Gamma derivatives
+		# ... at constant relative velocity
+		List_dfqsdgamma_vrel0,List_dfqsdgamma_star_vrel0=\
+							   		ass.dfqsdgamma_vrel0(MS.Surfs,MS.Surfs_star)
+		self.Dfqsdgamma=scalg.block_diag(*List_dfqsdgamma_vrel0)
+		self.Dfqsdgamma_star=scalg.block_diag(*List_dfqsdgamma_star_vrel0)
+		del List_dfqsdgamma_vrel0, List_dfqsdgamma_star_vrel0
+		# ... induced velocity contrib.
+		List_dfqsdvind_gamma,List_dfqsdvind_gamma_star=\
+									 ass.dfqsdvind_gamma(MS.Surfs,MS.Surfs_star)
+		self.Dfqsdgamma+=np.block(List_dfqsdvind_gamma)
+		self.Dfqsdgamma_star+=np.block(List_dfqsdvind_gamma_star)
+		del List_dfqsdvind_gamma, List_dfqsdvind_gamma_star
+
+
+		### Condense Gammaw terms
+		# not required for output
 
 
 	def solve(self):
@@ -92,10 +134,67 @@ class Static():
 		solve for bound Gamma
 		'''
 
+		MS=self.MS
+
+		### state
 		bv=np.dot(self.Ducdu_ext,self.u_ext-self.zeta_dot )+\
 												 np.dot(self.Ducdzeta,self.zeta)
 		self.gamma=np.linalg.solve(self.AIC,-bv)
 
+		### retrieve gamma over wake
+		gamma_star=[]
+		Ktot=0
+		for ss in range(MS.n_surf):
+			Ktot+=MS.Surfs[ss].maps.K
+			N=MS.Surfs[ss].maps.N
+			Mstar=MS.Surfs_star[ss].maps.M
+			gamma_star.append(np.concatenate( Mstar*[self.gamma[Ktot-N:Ktot]] ))
+		gamma_star=np.concatenate(gamma_star)
+
+		### compute steady force
+		self.fqs=np.dot(self.Dfqsdgamma,self.gamma) +\
+					np.dot(self.Dfqsdgamma_star,gamma_star) +\
+						np.dot(self.Dfqsdzeta,self.zeta) +\
+								np.dot(self.Dfqsdu_ext,self.u_ext-self.zeta_dot)
+
+
+
+	def reshape(self):
+		'''Reshapes state/output according to sharpy format'''
+
+
+		MS=self.MS
+		if not hasattr(self,'gamma') or not hasattr(self,'fqs'):
+			raise NameError('State and output not found')
+		
+		self.Gamma=[]
+		self.Fqs=[]
+
+		Ktot,Kzeta_tot=0,0
+		for ss in range(MS.n_surf):
+
+			M,N=MS.Surfs[ss].maps.M,MS.Surfs[ss].maps.N
+			K,Kzeta=MS.Surfs[ss].maps.K,MS.Surfs[ss].maps.Kzeta
+
+			iivec=range(Ktot,Ktot+K)
+			self.Gamma.append( self.gamma[iivec].reshape((M,N)) )
+			
+			iivec=range(Kzeta_tot,Kzeta_tot+3*Kzeta)
+			self.Fqs.append( self.fqs[iivec].reshape((3,M+1,N+1)) )
+
+			Ktot+=K
+			Kzeta_tot+=3*Kzeta
+
+
+	def total_forces(self):
+
+		if not hasattr(self,'Gamma') or not hasattr(self,'Fqs'):		
+			self.reshape()
+
+		self.Ftot=np.zeros((3,))
+		for ss in range(self.MS.n_surf):
+			for cc in range(3):
+				self.Ftot[cc]+=np.sum(self.Fqs[ss][cc,:,:])
 
 
 
@@ -104,17 +203,32 @@ if __name__=='__main__':
 	import read
 	import matplotlib.pyplot as plt 
 
-	# select test case
+	# # # select test case
 	fname='../test/h5input/goland_mod_Nsurf01_M003_N004_a040.aero_state.h5'
+	haero=read.h5file(fname)
+	tsdata=haero.ts00000
+	Sol=Static(tsdata)
+	Sol.assemble()
+	# Solve:
+	Sol.u_ext=np.ones((3*Sol.Kzeta,))
+	Sol.solve()
+	Sol.reshape()
+	Sol.total_forces()
+	print(Sol.Ftot)
+
+
 	fname='../test/h5input/goland_mod_Nsurf02_M003_N004_a040.aero_state.h5'
 	haero=read.h5file(fname)
 	tsdata=haero.ts00000
-
-	Sol=Static(tsdata)
-	MS=Sol.MS
-	Sol.assemble()
-
+	Sol2=Static(tsdata)
+	Sol2.assemble()
 	# Solve:
-	Sol.u_ext=np.random.rand(3*Sol.Kzeta)
-	Sol.solve()
+	#Sol.u_ext=np.random.rand(3*Sol.Kzeta)
+	Sol2.u_ext=np.ones((3*Sol2.Kzeta,))
+	Sol2.solve()
+	Sol2.reshape()
+	Sol2.total_forces()
+	print(Sol2.Ftot)
 
+
+	embed()

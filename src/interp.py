@@ -207,7 +207,7 @@ if __name__=='__main__':
 	u_norm_vec_ref=u_norm.reshape(-1,order='C')
 	# compute normal velocity through projection matrix
 	u_ext_vec=u_ext.reshape(-1,order='C')
-	Wnv=get_Wnv_vector(Map,SurfGeo)
+	Wnv=get_Wnv_vector(SurfGeo)
 	u_norm_vec=np.dot(Wnv,u_ext_vec)
 
 	assert np.max(np.abs(u_norm_vec-u_norm_vec_ref))<1e-12, 'Wnv not correct'
