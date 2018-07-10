@@ -5,23 +5,24 @@ Calculate derivative of Wnc(zeta)*Uc w.r.t local panel coordinates
 import numpy as np 
 from IPython import embed
 
-##### constants
+### constants
 cfact_biot=0.25/np.pi
 VORTEX_RADIUS=1e-2 # numerical radious of vortex
 
-### derivatives indices for eval_seg:
-# the 1st is the variable w.r.t. which derivatives are taken.
-# the 2nd is the component of the vaiable w.r.t derivative are taken.
-# the 3rd is the component of the output 
-dRA=np.array([[[ 1, 0, 0], [0, 1, 0], [0, 0, 1]], 
-			  [[-1, 0, 0], [0,-1, 0], [0, 0,-1]], 
-			  [[ 0, 0, 0], [0, 0, 0], [0, 0, 0]]])
-dRB=np.array([[[ 1, 0, 0], [0, 1, 0], [0, 0, 1]], 
-			  [[ 0, 0, 0], [0, 0, 0], [0, 0, 0]], 
-			  [[-1, 0, 0], [0,-1, 0], [0, 0,-1]]])
-dRAB=np.array([[[0, 0, 0], [0, 0, 0], [0, 0, 0]], 
-			  [[-1, 0, 0], [0,-1, 0], [0, 0,-1]], 
-			  [[ 1, 0, 0], [0, 1, 0], [0, 0, 1]]])
+
+### looping through panels
+#svec =[ 0, 1, 2, 3] # seg. no.
+avec =[ 0, 1, 2, 3] # 1st vertex no.
+bvec =[ 1, 2, 3, 0] # 2nd vertex no.
+LoopPanel=[(0,1),(1,2),(2,3),(3,0)]
+
+
+
+def cross3d(ra,rb):
+	'''Faster than np.cross'''
+	return np.array([ 	ra[1]*rb[2]-ra[2]*rb[1],
+					      	ra[2]*rb[0]-ra[0]*rb[2],
+					      		ra[0]*rb[1]-ra[1]*rb[0] ])	
 
 
 def eval_seg(ZetaP,ZetaA,ZetaB,gamma_seg=1.0):
@@ -29,6 +30,9 @@ def eval_seg(ZetaP,ZetaA,ZetaB,gamma_seg=1.0):
 	Derivative of induced velocity Q w.r.t. collocation and segment coordinates 
 	in format:
 		[ (ZetaP,ZetaA,ZetaB), (x,y,z) of Zeta,  (x,y,z) of Q]
+
+	Warning: function optimised for performance. Variables are scaled during the
+	execution.
 	'''
 
 	Der=np.zeros((3,3,3))
@@ -36,84 +40,80 @@ def eval_seg(ZetaP,ZetaA,ZetaB,gamma_seg=1.0):
 	RA=ZetaP-ZetaA
 	RB=ZetaP-ZetaB
 	RAB=ZetaB-ZetaA
-	ra_norm,rb_norm=np.linalg.norm(RA),np.linalg.norm(RB)
-	ra3,rb3=ra_norm**3,rb_norm**3
-
-	vcross=np.cross(RA,RB)
-	vcross2=np.dot(vcross,vcross)
-	vcross4=vcross2**2
+	Vcr=cross3d(RA,RB)
+	vcr2=np.dot(Vcr,Vcr)
 
 	# numerical radious
 	vortex_radious_here=VORTEX_RADIUS*np.linalg.norm(RAB)
-	if vcross2<vortex_radious_here**2:
-		return np.zeros((3,3,3))
+	if vcr2<vortex_radious_here**2:
+		return Der
+
+
+	# scaling
+	ra1,rb1=np.linalg.norm(RA),np.linalg.norm(RB)
+	ra2,rb2=ra1**2,rb1**2
+	rainv=1./ra1
+	rbinv=1./rb1
+	ra_dir,rb_dir=RA*rainv,RB*rbinv
+	ra3inv,rb3inv=rainv**3,rbinv**3
+	Vcr=Vcr/vcr2
+
+	diff_vec=ra_dir-rb_dir
+	vdot_prod=np.dot(diff_vec,RAB)
+	T2=vdot_prod/vcr2
 
 	# Extract components
 	ra_x,ra_y,ra_z=RA
 	rb_x,rb_y,rb_z=RB
 	rab_x,rab_y,rab_z=RAB
-
-	# special terms
-	vdot_prod=(rab_x*(-rb_x/rb_norm + ra_x/ra_norm) + 
-							rab_y*(-rb_y/rb_norm + ra_y/ra_norm) + 
-								rab_z*(-rb_z/rb_norm + ra_z/ra_norm))
-	T2=vdot_prod/vcross2
-	T4=vdot_prod/vcross4
-
-	xdiff=-rb_x/rb_norm + ra_x/ra_norm
-	ydiff=-rb_y/rb_norm + ra_y/ra_norm
-	zdiff=-rb_z/rb_norm + ra_z/ra_norm
-	Rcross=np.cross(RA,RB)
-	rcross_x,rcross_y,rcross_z=Rcross
-	ra_rcross_x, ra_rcross_y, ra_rcross_z=2.*np.cross(RA,Rcross)
-	rb_rcross_x, rb_rcross_y, rb_rcross_z=2.*np.cross(RB,Rcross)
+	vcr_x,vcr_y,vcr_z=Vcr
+	ra2_x,ra2_y,ra2_z=RA**2
+	rb2_x,rb2_y,rb2_z=RB**2
+	ra_vcr_x, ra_vcr_y, ra_vcr_z=2.*cross3d(RA,Vcr)
+	rb_vcr_x, rb_vcr_y, rb_vcr_z=2.*cross3d(RB,Vcr)
+	vcr_sca_x,vcr_sca_y,vcr_sca_z=Vcr*ra3inv
+	vcr_scb_x,vcr_scb_y,vcr_scb_z=Vcr*rb3inv
 
 
-	# ### derivatives indices:
-	# # the 1st is the variable w.r.t. which derivatives are taken.
-	# # the 2nd is the component of the vaiable w.r.t derivative are taken.
-	# # the 3rd is the component of the output 
-	dQ=np.array(
-		[
-		 # derivs w.r.t. RA
-		 [[-T4*rb_rcross_x*rcross_x + rcross_x*(rab_x*(1/ra_norm - ra_x**2/ra3) - ra_x*ra_y*rab_y/ra3 - ra_x*ra_z*rab_z/ra3)/vcross2,
-		   -T2*rb_z - T4*rb_rcross_x*rcross_y + rcross_y*(rab_x*(1/ra_norm - ra_x**2/ra3) - ra_x*ra_y*rab_y/ra3 - ra_x*ra_z*rab_z/ra3)/vcross2,
-		    T2*rb_y - T4*rb_rcross_x*rcross_z + rcross_z*(rab_x*(1/ra_norm - ra_x**2/ra3) - ra_x*ra_y*rab_y/ra3 - ra_x*ra_z*rab_z/ra3)/vcross2],
-		  [ T2*rb_z - T4*rb_rcross_y*rcross_x + rcross_x*(rab_y*(1/ra_norm - ra_y**2/ra3) - ra_x*ra_y*rab_x/ra3 - ra_y*ra_z*rab_z/ra3)/vcross2,
-		   -T4*rb_rcross_y*rcross_y + rcross_y*(rab_y*(1/ra_norm - ra_y**2/ra3) - ra_x*ra_y*rab_x/ra3 - ra_y*ra_z*rab_z/ra3)/vcross2,
-		   -T2*rb_x - T4*rb_rcross_y*rcross_z + rcross_z*(rab_y*(1/ra_norm - ra_y**2/ra3) - ra_x*ra_y*rab_x/ra3 - ra_y*ra_z*rab_z/ra3)/vcross2],
-		  [-T2*rb_y - T4*rb_rcross_z*rcross_x + rcross_x*(rab_z*(1/ra_norm - ra_z**2/ra3) - ra_x*ra_z*rab_x/ra3 - ra_y*ra_z*rab_y/ra3)/vcross2,
-		    T2*rb_x - T4*rb_rcross_z*rcross_y + rcross_y*(rab_z*(1/ra_norm - ra_z**2/ra3) - ra_x*ra_z*rab_x/ra3 - ra_y*ra_z*rab_y/ra3)/vcross2,
-		   -T4*rb_rcross_z*rcross_z + rcross_z*(rab_z*(1/ra_norm - ra_z**2/ra3) - ra_x*ra_z*rab_x/ra3 - ra_y*ra_z*rab_y/ra3)/vcross2]],
-		 # derivs w.r.t. RB
-		 [[ T4*ra_rcross_x*rcross_x + rcross_x*(rab_x*(-1/rb_norm + rb_x**2/rb3) + rab_y*rb_x*rb_y/rb3 + rab_z*rb_x*rb_z/rb3)/vcross2,
-		    T2*ra_z + T4*ra_rcross_x*rcross_y + rcross_y*(rab_x*(-1/rb_norm + rb_x**2/rb3) + rab_y*rb_x*rb_y/rb3 + rab_z*rb_x*rb_z/rb3)/vcross2,
-		   -T2*ra_y + T4*ra_rcross_x*rcross_z + rcross_z*(rab_x*(-1/rb_norm + rb_x**2/rb3) + rab_y*rb_x*rb_y/rb3 + rab_z*rb_x*rb_z/rb3)/vcross2],
-		  [-T2*ra_z + T4*ra_rcross_y*rcross_x + rcross_x*(rab_x*rb_x*rb_y/rb3 + rab_y*(-1/rb_norm + rb_y**2/rb3) + rab_z*rb_y*rb_z/rb3)/vcross2,
-		    T4*ra_rcross_y*rcross_y + rcross_y*(rab_x*rb_x*rb_y/rb3 + rab_y*(-1/rb_norm + rb_y**2/rb3) + rab_z*rb_y*rb_z/rb3)/vcross2,
-		    T2*ra_x + T4*ra_rcross_y*rcross_z + rcross_z*(rab_x*rb_x*rb_y/rb3 + rab_y*(-1/rb_norm + rb_y**2/rb3) + rab_z*rb_y*rb_z/rb3)/vcross2],
-		  [ T2*ra_y + T4*ra_rcross_z*rcross_x + rcross_x*(rab_x*rb_x*rb_z/rb3 + rab_y*rb_y*rb_z/rb3 + rab_z*(-1/rb_norm + rb_z**2/rb3))/vcross2,
-		   -T2*ra_x + T4*ra_rcross_z*rcross_y + rcross_y*(rab_x*rb_x*rb_z/rb3 + rab_y*rb_y*rb_z/rb3 + rab_z*(-1/rb_norm + rb_z**2/rb3))/vcross2,
-		    T4*ra_rcross_z*rcross_z + rcross_z*(rab_x*rb_x*rb_z/rb3 + rab_y*rb_y*rb_z/rb3 + rab_z*(-1/rb_norm + rb_z**2/rb3))/vcross2]],
-		 # derivs. w.r.t. RAB
-		 [[ rcross_x*xdiff/vcross2,
-		    rcross_y*xdiff/vcross2,
-		    rcross_z*xdiff/vcross2],
-		  [ rcross_x*ydiff/vcross2,
-		    rcross_y*ydiff/vcross2,
-		    rcross_z*ydiff/vcross2],
-		  [ rcross_x*zdiff/vcross2,
-		    rcross_y*zdiff/vcross2,
-		    rcross_z*zdiff/vcross2]]])
+	# # ### derivatives indices:
+	# # # the 1st is the component of the vaiable w.r.t derivative are taken.
+	# # # the 2nd is the component of the output 
+	dQ_dRA=np.array(
+		 [[-vdot_prod*rb_vcr_x*vcr_x           + vcr_sca_x*(rab_x*(ra2 - ra2_x) - ra_x*ra_y*rab_y - ra_x*ra_z*rab_z),
+		   -T2*rb_z - vdot_prod*rb_vcr_x*vcr_y + vcr_sca_y*(rab_x*(ra2 - ra2_x) - ra_x*ra_y*rab_y - ra_x*ra_z*rab_z),
+		    T2*rb_y - vdot_prod*rb_vcr_x*vcr_z + vcr_sca_z*(rab_x*(ra2 - ra2_x) - ra_x*ra_y*rab_y - ra_x*ra_z*rab_z)],
+		  [ T2*rb_z - vdot_prod*rb_vcr_y*vcr_x + vcr_sca_x*(rab_y*(ra2 - ra2_y) - ra_x*ra_y*rab_x - ra_y*ra_z*rab_z),
+		   -vdot_prod*rb_vcr_y*vcr_y           + vcr_sca_y*(rab_y*(ra2 - ra2_y) - ra_x*ra_y*rab_x - ra_y*ra_z*rab_z),
+		   -T2*rb_x - vdot_prod*rb_vcr_y*vcr_z + vcr_sca_z*(rab_y*(ra2 - ra2_y) - ra_x*ra_y*rab_x - ra_y*ra_z*rab_z)],
+		  [-T2*rb_y - vdot_prod*rb_vcr_z*vcr_x + vcr_sca_x*(rab_z*(ra2 - ra2_z) - ra_x*ra_z*rab_x - ra_y*ra_z*rab_y),
+		    T2*rb_x - vdot_prod*rb_vcr_z*vcr_y + vcr_sca_y*(rab_z*(ra2 - ra2_z) - ra_x*ra_z*rab_x - ra_y*ra_z*rab_y),
+		   -vdot_prod*rb_vcr_z*vcr_z           + vcr_sca_z*(rab_z*(ra2 - ra2_z) - ra_x*ra_z*rab_x - ra_y*ra_z*rab_y)]])
 
-	for cc_q in range(3):
-		for cc_zeta in range(3):
-			for cc_r in range(3):
-				for zz in range(3): # loop through (ZetaP,ZetaA,ZetaB)
-					Der[zz,cc_zeta,cc_q]=Der[zz,cc_zeta,cc_q]+\
-						dQ[0,cc_r,cc_q]*dRA[zz,cc_zeta,cc_r]+\
-						dQ[1,cc_r,cc_q]*dRB[zz,cc_zeta,cc_r]+\
-						dQ[2,cc_r,cc_q]*dRAB[zz,cc_zeta,cc_r]\
+	dQ_dRB=np.array( 
+		 [[ vdot_prod*ra_vcr_x*vcr_x           + vcr_scb_x*(rab_x*(-rb2 + rb2_x) + rab_y*rb_x*rb_y + rab_z*rb_x*rb_z),
+		    T2*ra_z + vdot_prod*ra_vcr_x*vcr_y + vcr_scb_y*(rab_x*(-rb2 + rb2_x) + rab_y*rb_x*rb_y + rab_z*rb_x*rb_z),
+		   -T2*ra_y + vdot_prod*ra_vcr_x*vcr_z + vcr_scb_z*(rab_x*(-rb2 + rb2_x) + rab_y*rb_x*rb_y + rab_z*rb_x*rb_z)],
+		  [-T2*ra_z + vdot_prod*ra_vcr_y*vcr_x + vcr_scb_x*(rab_x*rb_x*rb_y + rab_y*(-rb2 + rb2_y) + rab_z*rb_y*rb_z),
+		    vdot_prod*ra_vcr_y*vcr_y           + vcr_scb_y*(rab_x*rb_x*rb_y + rab_y*(-rb2 + rb2_y) + rab_z*rb_y*rb_z),
+		    T2*ra_x + vdot_prod*ra_vcr_y*vcr_z + vcr_scb_z*(rab_x*rb_x*rb_y + rab_y*(-rb2 + rb2_y) + rab_z*rb_y*rb_z)],
+		  [ T2*ra_y + vdot_prod*ra_vcr_z*vcr_x + vcr_scb_x*(rab_x*rb_x*rb_z + rab_y*rb_y*rb_z + rab_z*(-rb2 + rb2_z)),
+		   -T2*ra_x + vdot_prod*ra_vcr_z*vcr_y + vcr_scb_y*(rab_x*rb_x*rb_z + rab_y*rb_y*rb_z + rab_z*(-rb2 + rb2_z)),
+		    vdot_prod*ra_vcr_z*vcr_z           + vcr_scb_z*(rab_x*rb_x*rb_z + rab_y*rb_y*rb_z + rab_z*(-rb2 + rb2_z))]])
+
+	dQ_dRAB=np.array(
+			  [[ vcr_x*diff_vec[0],
+			     vcr_y*diff_vec[0],
+			     vcr_z*diff_vec[0]],
+					   [ vcr_x*diff_vec[1],
+					     vcr_y*diff_vec[1],
+					     vcr_z*diff_vec[1]],
+							   [ vcr_x*diff_vec[2],
+							     vcr_y*diff_vec[2],
+							     vcr_z*diff_vec[2]]])
+
+	Der[0,:,:]+=  dQ_dRA  + dQ_dRB # w.r.t. P
+	Der[1,:,:]+= -dQ_dRAB - dQ_dRA # w.r.t. A	
+	Der[2,:,:]+=  dQ_dRAB - dQ_dRB # w.r.t. B
 
 	return (cfact_biot*gamma_seg)*Der
 
@@ -133,25 +133,14 @@ def eval_panel(zetaP,ZetaPanel,gamma_pan=1.0):
 	DerP=np.zeros((3,3))
 	DerVertices=np.zeros((4,3,3))
 
-	for ll in range(0,3):
-		zetaA=ZetaPanel[ll,:]
-		zetaB=ZetaPanel[ll+1,:]
-		DerSeg=eval_seg(zetaP,zetaA,zetaB)
+	for aa,bb in LoopPanel: 
+		DerSeg=eval_seg(zetaP,ZetaPanel[aa,:],ZetaPanel[bb,:],gamma_pan)
 		# sum contribution
 		DerP+=DerSeg[0,:,:]
-		DerVertices[ll,:,:]+=DerSeg[1,:,:]
-		DerVertices[ll+1,:,:]+=DerSeg[2,:,:]
+		DerVertices[aa,:,:]+=DerSeg[1,:,:]
+		DerVertices[bb,:,:]+=DerSeg[2,:,:]
 
-	# last segment
-	zetaA=ZetaPanel[3,:]
-	zetaB=ZetaPanel[0,:]
-	DerSeg=eval_seg(zetaP,zetaA,zetaB)
-	DerP+=DerSeg[0,:,:]
-	DerVertices[3,:,:]+=DerSeg[1,:,:]
-	DerVertices[0,:,:]+=DerSeg[2,:,:]	
-
-	return gamma_pan*DerP,gamma_pan*DerVertices
-
+	return DerP,DerVertices
 
 
 

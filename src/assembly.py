@@ -21,7 +21,7 @@ Includes:
 import numpy as np
 import itertools
 import libder.uc_dncdzeta
-import libder.dbiot
+import libder.dbiot as dbiot
 
 from IPython import embed
 
@@ -178,7 +178,7 @@ def nc_dqcdzeta_Sin_to_Sout(Surf_in,Surf_out,Der_coll,Der_vert,Surf_in_bound):
 		# 	gamma_panel=Surf_in.gamma[mm_in,nn_in]
 
 		# 	# get local derivatives
-		# 	der_zetac,der_zeta_panel=libder.dbiot.eval_panel(
+		# 	der_zetac,der_zeta_panel=dbiot.eval_panel(
 		# 						    zetac_here,zeta_panel,gamma_pan=gamma_panel)
 			
 
@@ -794,7 +794,7 @@ def dvinddzeta(zetac,Surf_in,IsBound,M_in_bound=None):
 			mm_in,nn_in=pp_in
 			zeta_panel_in=Surf_in.get_panel_vertices_coords(mm_in,nn_in)
 			# get local derivatives
-			der_zetac,der_zeta_panel=libder.dbiot.eval_panel(
+			der_zetac,der_zeta_panel=dbiot.eval_panel(
 					zetac,zeta_panel_in,gamma_pan=Surf_in.gamma[mm_in,nn_in])
 			### Mid-segment point contribution
 			Dercoll+=der_zetac.T
@@ -823,7 +823,7 @@ def dvinddzeta(zetac,Surf_in,IsBound,M_in_bound=None):
 			mm_in,nn_in=pp_in
 			zeta_panel_in=Surf_in.get_panel_vertices_coords(mm_in,nn_in)
 			# get local derivatives
-			der_zetac,_=libder.dbiot.eval_panel(
+			der_zetac,_=dbiot.eval_panel(
 					zetac,zeta_panel_in,gamma_pan=Surf_in.gamma[mm_in,nn_in])
 			### Mid-segment point contribution
 			Dercoll+=der_zetac.T
@@ -838,7 +838,7 @@ def dvinddzeta(zetac,Surf_in,IsBound,M_in_bound=None):
 		for nn_in in range(N_in):	
 			zeta_panel_in=Surf_in.get_panel_vertices_coords(0,nn_in)
 			# get local derivatives
-			_,der_zeta_panel=libder.dbiot.eval_panel(
+			_,der_zeta_panel=dbiot.eval_panel(
 						   zetac,zeta_panel_in,gamma_pan=Surf_in.gamma[0,nn_in])
 
 			for vv in range(2):

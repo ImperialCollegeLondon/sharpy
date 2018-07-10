@@ -8,7 +8,7 @@ import warnings
 import unittest
 import matplotlib.pyplot as plt 
 
-import dbiot
+import dbiot as dbiot
 import sys, os
 try:
 	sys.path.append(os.environ['DIRuvlm3d'])
@@ -65,6 +65,45 @@ class Test_ders(unittest.TestCase):
 			print('FD step: %.2e ---> Max error: %.2e'%(step,er_max) )
 			assert er_max<5e1*step, 'Error larger than 50 times step size'
 			Er_max[ss]=er_max	
+
+
+
+
+	def test_dbiot_segment_mid(self):
+		print('\n------------------------- Testing dbiot.eval_seg at mid-point')
+
+		gamma=2.4
+		zetaA=self.zeta1
+		zetaB=self.zeta2
+		zetaP=.3*zetaA+0.7*zetaB
+		Q0=libuvlm.biot_segment(zetaP,zetaA,zetaB,gamma)
+
+		# analytical derivative
+		Der_an=dbiot.eval_seg(zetaP,zetaA,zetaB,gamma)
+
+		# numerical derivative
+		Steps=np.array([1e-2,1e-4,1e-6])
+		Er_max=0.0*Steps
+		for ss in range(len(Steps)):
+			step=Steps[ss]
+			Der_num=0.0*Der_an
+			for cc_zeta in range(3):
+				dzeta=np.zeros((3,))
+				dzeta[cc_zeta]=step
+				Der_num[0,cc_zeta,:]=(
+					libuvlm.biot_segment(zetaP+dzeta,zetaA,zetaB,gamma)-Q0)/step
+				Der_num[1,cc_zeta,:]=(
+					libuvlm.biot_segment(zetaP,zetaA+dzeta,zetaB,gamma)-Q0)/step
+				Der_num[2,cc_zeta,:]=(
+					libuvlm.biot_segment(zetaP,zetaA,zetaB+dzeta,gamma)-Q0)/step
+			er_max=np.max(np.abs(Der_num-Der_an))
+			print('FD step: %.2e ---> Max error: %.2e'%(step,er_max) )
+			assert er_max<5e1*step, 'Error larger than 50 times step size'
+			Er_max[ss]=er_max	
+
+
+
+
 
 
 	def test_dbiot_panel(self):
@@ -174,6 +213,7 @@ class Test_ders(unittest.TestCase):
 			erVer_max=np.max(np.abs(DerVer_num-DerVer_an))
 			print('FD step: %.2e ---> Max error (P,Vert): (%.2e,%.2e)'\
 													  %(step,erP_max,erVer_max))
+
 			assert erP_max<5e1*step,\
 					 	     'Error w.r.t. zetaP larger than 50 times step size'
 			assert erVer_max<5e1*step,\
@@ -194,11 +234,15 @@ class Test_ders(unittest.TestCase):
 if __name__=='__main__':
 
 	unittest.main()
-	#T=Test_assembly()
-	#T.setUp()
 
-	## Induced velocity
-	#T.test_dWnvU_dzeta()
+	# T=Test_ders()
+	# T.setUp()
+	# T.test_dbiot_segment()
+	# T.test_dbiot_segment_mid()
+	# T.test_dbiot_panel()
+	# T.test_dbiot_panel_mid_segment()
+
+
 
 
 
