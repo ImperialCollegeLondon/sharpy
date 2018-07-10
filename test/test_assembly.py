@@ -707,7 +707,9 @@ class Test_assembly(unittest.TestCase):
 		ercoll=np.max(np.abs(Dercoll-Dercoll_num))
 		print('Error coll.\tFDstep\tErrAbs')	
 		print('\t\t%.1e\t%.1e' %(step,ercoll))	
+		#if ercoll>10*step: embed()
 		assert ercoll<10*step, 'Error at collocation point' 
+
 
 		### check error at vert
 		for ss_in in range(n_surf):

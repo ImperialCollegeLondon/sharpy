@@ -6,6 +6,7 @@ S. Maraniello, 7 Jun 2018
 import numpy as np
 import scipy.linalg as scalg
 from IPython import embed
+import time
 
 import interp
 import multisurfaces
@@ -39,12 +40,17 @@ class Static():
 
 
 
+	def assemble_profiling(self):
+		import cProfile
+		cProfile.runctx('self.assemble()',globals(),locals())
+
+
 	def assemble(self):
 		'''
 		Assemble global matrices
 		'''
 		MS=self.MS
-
+		t0=time.time()
 
 		# ----------------------------------------------------------- state eq.
 		List_uc_dncdzeta=ass.uc_dncdzeta(MS.Surfs)
@@ -127,6 +133,8 @@ class Static():
 
 		### Condense Gammaw terms
 		# not required for output
+		self.time_asbly=time.time()-t0
+		print('Assembly done in %.2f sec' %self.time_asbly)
 
 
 	def solve(self):
@@ -135,6 +143,7 @@ class Static():
 		'''
 
 		MS=self.MS
+		t0=time.time()
 
 		### state
 		bv=np.dot(self.Ducdu_ext,self.u_ext-self.zeta_dot )+\
@@ -157,6 +166,8 @@ class Static():
 						np.dot(self.Dfqsdzeta,self.zeta) +\
 								np.dot(self.Dfqsdu_ext,self.u_ext-self.zeta_dot)
 
+		self.time_sol=time.time()-t0
+		print('Solution done in %.2f sec' %self.time_sol)
 
 
 	def reshape(self):
@@ -200,6 +211,7 @@ class Static():
 
 if __name__=='__main__':
 
+	import timeit
 	import read
 	import matplotlib.pyplot as plt 
 
@@ -208,6 +220,11 @@ if __name__=='__main__':
 	haero=read.h5file(fname)
 	tsdata=haero.ts00000
 	Sol=Static(tsdata)
+
+
+	Sol.assemble_profiling()
+	embed()
+
 	Sol.assemble()
 	# Solve:
 	Sol.u_ext=np.ones((3*Sol.Kzeta,))
@@ -217,18 +234,15 @@ if __name__=='__main__':
 	print(Sol.Ftot)
 
 
-	fname='../test/h5input/goland_mod_Nsurf02_M003_N004_a040.aero_state.h5'
-	haero=read.h5file(fname)
-	tsdata=haero.ts00000
-	Sol2=Static(tsdata)
-	Sol2.assemble()
-	# Solve:
-	#Sol.u_ext=np.random.rand(3*Sol.Kzeta)
-	Sol2.u_ext=np.ones((3*Sol2.Kzeta,))
-	Sol2.solve()
-	Sol2.reshape()
-	Sol2.total_forces()
-	print(Sol2.Ftot)
+	# fname='../test/h5input/goland_mod_Nsurf02_M003_N004_a040.aero_state.h5'
+	# haero=read.h5file(fname)
+	# tsdata=haero.ts00000
+	# Sol2=Static(tsdata)
+	# Sol2.assemble()
+	# #timeit.timeit('Sol2.assemble()')
+	# Sol2.u_ext=np.ones((3*Sol2.Kzeta,))
+	# Sol2.solve()
+	# Sol2.reshape()
+	# Sol2.total_forces()
+	# print(Sol2.Ftot)
 
-
-	embed()

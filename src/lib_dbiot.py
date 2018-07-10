@@ -4,6 +4,7 @@ Calculate derivative of Wnc(zeta)*Uc w.r.t local panel coordinates
 
 import numpy as np 
 from IPython import embed
+import libalg
 
 ### constants
 cfact_biot=0.25/np.pi
@@ -16,13 +17,6 @@ avec =[ 0, 1, 2, 3] # 1st vertex no.
 bvec =[ 1, 2, 3, 0] # 2nd vertex no.
 LoopPanel=[(0,1),(1,2),(2,3),(3,0)]
 
-
-
-def cross3d(ra,rb):
-	'''Faster than np.cross'''
-	return np.array([ 	ra[1]*rb[2]-ra[2]*rb[1],
-					      	ra[2]*rb[0]-ra[0]*rb[2],
-					      		ra[0]*rb[1]-ra[1]*rb[0] ])	
 
 
 def eval_seg(ZetaP,ZetaA,ZetaB,gamma_seg=1.0):
@@ -40,17 +34,17 @@ def eval_seg(ZetaP,ZetaA,ZetaB,gamma_seg=1.0):
 	RA=ZetaP-ZetaA
 	RB=ZetaP-ZetaB
 	RAB=ZetaB-ZetaA
-	Vcr=cross3d(RA,RB)
+	Vcr=libalg.cross3d(RA,RB)
 	vcr2=np.dot(Vcr,Vcr)
 
 	# numerical radious
-	vortex_radious_here=VORTEX_RADIUS*np.linalg.norm(RAB)
+	vortex_radious_here=VORTEX_RADIUS*libalg.norm3d(RAB)
 	if vcr2<vortex_radious_here**2:
 		return Der
 
 
 	# scaling
-	ra1,rb1=np.linalg.norm(RA),np.linalg.norm(RB)
+	ra1,rb1=libalg.norm3d(RA),libalg.norm3d(RB)
 	ra2,rb2=ra1**2,rb1**2
 	rainv=1./ra1
 	rbinv=1./rb1
@@ -69,8 +63,8 @@ def eval_seg(ZetaP,ZetaA,ZetaB,gamma_seg=1.0):
 	vcr_x,vcr_y,vcr_z=Vcr
 	ra2_x,ra2_y,ra2_z=RA**2
 	rb2_x,rb2_y,rb2_z=RB**2
-	ra_vcr_x, ra_vcr_y, ra_vcr_z=2.*cross3d(RA,Vcr)
-	rb_vcr_x, rb_vcr_y, rb_vcr_z=2.*cross3d(RB,Vcr)
+	ra_vcr_x, ra_vcr_y, ra_vcr_z=2.*libalg.cross3d(RA,Vcr)
+	rb_vcr_x, rb_vcr_y, rb_vcr_z=2.*libalg.cross3d(RB,Vcr)
 	vcr_sca_x,vcr_sca_y,vcr_sca_z=Vcr*ra3inv
 	vcr_scb_x,vcr_scb_y,vcr_scb_z=Vcr*rb3inv
 
@@ -145,7 +139,5 @@ def eval_panel(zetaP,ZetaPanel,gamma_pan=1.0):
 
 
 
-
 if __name__=='__main__':
-
 	pass	

@@ -6,14 +6,13 @@ S. Maraniello, 4 Jun 2018
 import numpy as np 
 import warnings
 import unittest
-import matplotlib.pyplot as plt 
 
-import dbiot as dbiot
 import sys, os
 try:
 	sys.path.append(os.environ['DIRuvlm3d'])
 except KeyError:
 	sys.path.append(os.path.abspath('../src/'))
+import lib_dbiot as dbiot
 import libuvlm
 from IPython import embed
 

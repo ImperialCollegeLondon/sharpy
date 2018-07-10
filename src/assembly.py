@@ -20,8 +20,8 @@ Includes:
 
 import numpy as np
 import itertools
-import libder.uc_dncdzeta
-import libder.dbiot as dbiot
+import lib_ucdncdzeta
+import lib_dbiot as dbiot
 
 from IPython import embed
 
@@ -298,7 +298,7 @@ def uc_dncdzeta(Surf):
 	- a list of instance of surface.AeroGridSurface. 	
 	Refs:
 	- develop_sym.linsum_Wnc
-	- libder.uc_dncdzeta
+	- lib_ucdncdzeta
 	'''
 
 	if type(Surf) is list:
@@ -345,7 +345,7 @@ def uc_dncdzeta(Surf):
 		zeta03=Surf.zeta[:,mpv[3,0],mpv[3,1]]
 
 		# calculate derivative
-		Dlocal=libder.uc_dncdzeta.eval(zeta00,zeta01,zeta02,zeta03,
+		Dlocal=lib_ucdncdzeta.eval(zeta00,zeta01,zeta02,zeta03,
 															    u_tot_coll_here)
 
 		for vv in range(4):

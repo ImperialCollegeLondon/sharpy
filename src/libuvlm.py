@@ -5,6 +5,7 @@ S. Maraniello, 1 Jun 2018
 '''
 
 import numpy as np
+import libalg
 
 cfact_biot=0.25/np.pi
 VORTEX_RADIUS=1e-2 # numerical radious of vortex
@@ -16,6 +17,7 @@ bvec=[1,2,3,0] # 2nd vertex of seg.
 
 
 
+
 def joukovski_qs_segment(zetaA,zetaB,v_mid,gamma=1.0,fact=0.5):
 	'''
 	Joukovski force over vetices A and B produced by the segment A->B.
@@ -24,7 +26,7 @@ def joukovski_qs_segment(zetaA,zetaB,v_mid,gamma=1.0,fact=0.5):
 	'''
 
 	rab=zetaB-zetaA
-	fs=np.cross(v_mid,rab)
+	fs=libalg.cross3d(v_mid,rab)
 	gfact=fact*gamma
 
 	return gfact*fs
@@ -39,12 +41,12 @@ def biot_segment(zetaP,zetaA,zetaB,gamma=1.0):
 	ra=zetaP-zetaA
 	rb=zetaP-zetaB
 	rab=zetaB-zetaA
-	ra_norm,rb_norm=np.linalg.norm(ra),np.linalg.norm(rb)
-	vcross=np.cross(ra,rb)
+	ra_norm,rb_norm=libalg.norm3d(ra),libalg.norm3d(rb)
+	vcross=libalg.cross3d(ra,rb)
 	vcross_sq=np.dot(vcross,vcross)
 
 	# numerical radious
-	vortex_radious_here=VORTEX_RADIUS*np.linalg.norm(rab)
+	vortex_radious_here=VORTEX_RADIUS*libalg.norm3d(rab)
 	if vcross_sq<vortex_radious_here**2:
 		return np.zeros((3,))
 	#assert vcross_sq>vortex_radious_here**2, 'P along AB line'
@@ -65,9 +67,6 @@ def biot_panel(zetaC,ZetaPanel,gamma=1.0):
 	'''
 
 	q=np.zeros((3,))
-	# for vv in range(3):
-	# 	q+=biot_segment(zetaC,ZetaPanel[vv,:],ZetaPanel[vv+1,:],gamma)
-	# q+=biot_segment(zetaC,ZetaPanel[3,:],ZetaPanel[0,:],gamma)
 	for ss,aa,bb in zip(svec,avec,bvec):
 		q+=biot_segment(zetaC,ZetaPanel[aa,:],ZetaPanel[bb,:],gamma)
 
@@ -84,8 +83,8 @@ def panel_normal(ZetaPanel):
 	r02=ZetaPanel[2,:]-ZetaPanel[0,:]
 	r13=ZetaPanel[3,:]-ZetaPanel[1,:]
 
-	nvec=np.cross(r02,r13)
-	nvec=nvec/np.linalg.norm(nvec)
+	nvec=libalg.cross3d(r02,r13)
+	nvec=nvec/libalg.norm3d(nvec)
 
 	return nvec
 
@@ -107,12 +106,12 @@ def panel_area(ZetaPanel):
 	r30=ZetaPanel[0,:]-ZetaPanel[3,:]
 
 	# compute distances
-	d02=np.linalg.norm(r02)
-	d13=np.linalg.norm(r13)
-	d01=np.linalg.norm(r01)
-	d12=np.linalg.norm(r12)
-	d23=np.linalg.norm(r23)
-	d30=np.linalg.norm(r30)
+	d02=libalg.norm3d(r02)
+	d13=libalg.norm3d(r13)
+	d01=libalg.norm3d(r01)
+	d12=libalg.norm3d(r12)
+	d23=libalg.norm3d(r23)
+	d30=libalg.norm3d(r30)
 
 	A=0.25*np.sqrt(  (4.*d02**2*d13**2) - ((d12**2+d30**2)-(d01**2+d23**2))**2 )
 
@@ -121,7 +120,6 @@ def panel_area(ZetaPanel):
 
 
 if __name__=='__main__':
-
 
 	zetaP=np.array([2,-1.5,1])
 	zetaA=np.array([0,-1,5])
@@ -148,7 +146,7 @@ if __name__=='__main__':
 		ra=np.array([xv[ii],yv[ii],zv[ii]])
 		rb=np.array([xv[ii+1],yv[ii+1],zv[ii+1]])
 		U+=biot_segment( rv_center, ra, rb, gamma  )
-	assert np.linalg.norm(U-Uexp)**2 < 1e-3*np.abs(Uabs_exp), 'Wrong velocity'
+	assert libalg.norm3d(U-Uexp)**2 < 1e-3*np.abs(Uabs_exp), 'Wrong velocity'
 
 
 	pass
