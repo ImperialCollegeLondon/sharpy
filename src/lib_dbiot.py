@@ -270,22 +270,22 @@ def eval_seg_comp_loop(DerP,DerA,DerB,ZetaP,ZetaA,ZetaB,gamma_seg):
 	Ddiff[:,2]=RAB[2]*Vsc
 
 
-	# ### RAB derivative
-	# dQ_dRAB=np.empty((3,3))
-	# dQ_dRAB[:,0]=Tv[0]*Vsc
-	# dQ_dRAB[:,1]=Tv[1]*Vsc
-	# dQ_dRAB[:,2]=Tv[2]*Vsc
+	### RAB derivative
+	dQ_dRAB=np.empty((3,3))
+	dQ_dRAB[:,0]=Tv[0]*Vsc
+	dQ_dRAB[:,1]=Tv[1]*Vsc
+	dQ_dRAB[:,2]=Tv[2]*Vsc
 
 
-	# ##### crucial part!
-	# dQ_dRA=Dvcross_by_skew3d(Dvcross,-RB)\
-	# 							+np.dot(Ddiff, der_runit(RA,rainv,minus_rainv3))
-	# dQ_dRB=Dvcross_by_skew3d(Dvcross, RA)\
-	# 							-np.dot(Ddiff, der_runit(RB,rbinv,minus_rbinv3))
+	##### crucial part!
+	dQ_dRA=Dvcross_by_skew3d(Dvcross,-RB)\
+								+np.dot(Ddiff, der_runit(RA,rainv,minus_rainv3))
+	dQ_dRB=Dvcross_by_skew3d(Dvcross, RA)\
+								-np.dot(Ddiff, der_runit(RB,rbinv,minus_rbinv3))
 
-	# DerP +=  dQ_dRA  + dQ_dRB # w.r.t. P
-	# DerA -=  dQ_dRAB + dQ_dRA # w.r.t. A	
-	# DerB +=  dQ_dRAB - dQ_dRB # w.r.t. B
+	DerP +=  dQ_dRA  + dQ_dRB # w.r.t. P
+	DerA -=  dQ_dRAB + dQ_dRA # w.r.t. A	
+	DerB +=  dQ_dRAB - dQ_dRB # w.r.t. B
 
 
 
