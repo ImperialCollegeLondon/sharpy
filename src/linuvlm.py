@@ -24,7 +24,6 @@ class Static():
 		MS.get_ind_velocities_at_segments()
 		MS.get_input_velocities_at_segments()
 
-
 		# define total sizes
 		self.K=sum(MS.KK)
 		self.K_star=sum(MS.KK_star)
@@ -32,17 +31,19 @@ class Static():
 		self.Kzeta_star=sum(MS.KKzeta_star)		
 		self.MS=MS
 
-
 		# define input perturbation
 		self.zeta=np.zeros((3*self.Kzeta))
 		self.zeta_dot=np.zeros((3*self.Kzeta))
 		self.u_ext=np.zeros((3*self.Kzeta))
 
+		# profiling output
+		self.prof_out='./asbly.prof'
+
 
 
 	def assemble_profiling(self):
 		import cProfile
-		cProfile.runctx('self.assemble()',globals(),locals())
+		cProfile.runctx('self.assemble()',globals(),locals(),filename=self.prof_out)
 
 
 	def assemble(self):

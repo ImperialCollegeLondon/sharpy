@@ -42,25 +42,35 @@ class Test_ders(unittest.TestCase):
 		zetaB=self.zeta2
 		Q0=libuvlm.biot_segment(zetaP,zetaA,zetaB,gamma)
 
-		# analytical derivative
-		Der_an=dbiot.eval_seg(zetaP,zetaA,zetaB,gamma)
+		### compare different analytical derivative
+		DerP_an,DerA_an,DerB_an=dbiot.eval_seg_exp(zetaP,zetaA,zetaB,gamma)
+		DerP_an2,DerA_an2,DerB_an2=dbiot.eval_seg_comp(zetaP,zetaA,zetaB,gamma)
+		er_max=max( np.max(np.abs(DerP_an2-DerP_an)),
+							np.max(np.abs(DerA_an2-DerA_an)),
+								np.max(np.abs(DerB_an2-DerB_an)) )
+		assert er_max<1e-16, 'Analytical models not matching' 
 
-		# numerical derivative
+
+		### compare vs numerical derivative
 		Steps=np.array([1e-2,1e-4,1e-6])
 		Er_max=0.0*Steps
 		for ss in range(len(Steps)):
 			step=Steps[ss]
-			Der_num=0.0*Der_an
+			DerP_num=0.0*DerP_an
+			DerA_num=0.0*DerA_an
+			DerB_num=0.0*DerB_an
 			for cc_zeta in range(3):
 				dzeta=np.zeros((3,))
 				dzeta[cc_zeta]=step
-				Der_num[0,cc_zeta,:]=(
+				DerP_num[:,cc_zeta]=(
 					libuvlm.biot_segment(zetaP+dzeta,zetaA,zetaB,gamma)-Q0)/step
-				Der_num[1,cc_zeta,:]=(
+				DerA_num[:,cc_zeta]=(
 					libuvlm.biot_segment(zetaP,zetaA+dzeta,zetaB,gamma)-Q0)/step
-				Der_num[2,cc_zeta,:]=(
+				DerB_num[:,cc_zeta]=(
 					libuvlm.biot_segment(zetaP,zetaA,zetaB+dzeta,gamma)-Q0)/step
-			er_max=np.max(np.abs(Der_num-Der_an))
+			er_max=max( np.max(np.abs(DerP_num-DerP_an)),
+							np.max(np.abs(DerA_num-DerA_an)),
+								np.max(np.abs(DerB_num-DerB_an)) )
 			print('FD step: %.2e ---> Max error: %.2e'%(step,er_max) )
 			assert er_max<5e1*step, 'Error larger than 50 times step size'
 			Er_max[ss]=er_max	
@@ -75,33 +85,41 @@ class Test_ders(unittest.TestCase):
 		zetaA=self.zeta1
 		zetaB=self.zeta2
 		zetaP=.3*zetaA+0.7*zetaB
+
 		Q0=libuvlm.biot_segment(zetaP,zetaA,zetaB,gamma)
 
-		# analytical derivative
-		Der_an=dbiot.eval_seg(zetaP,zetaA,zetaB,gamma)
+		### compare different analytical derivative
+		DerP_an,DerA_an,DerB_an=dbiot.eval_seg_exp(zetaP,zetaA,zetaB,gamma)
+		DerP_an2,DerA_an2,DerB_an2=dbiot.eval_seg_comp(zetaP,zetaA,zetaB,gamma)
+		er_max=max( np.max(np.abs(DerP_an2-DerP_an)),
+							np.max(np.abs(DerA_an2-DerA_an)),
+								np.max(np.abs(DerB_an2-DerB_an)) )
+		assert er_max<1e-16, 'Analytical models not matching' 
 
-		# numerical derivative
+
+		### compare vs numerical derivative
 		Steps=np.array([1e-2,1e-4,1e-6])
 		Er_max=0.0*Steps
 		for ss in range(len(Steps)):
 			step=Steps[ss]
-			Der_num=0.0*Der_an
+			DerP_num=0.0*DerP_an
+			DerA_num=0.0*DerA_an
+			DerB_num=0.0*DerB_an
 			for cc_zeta in range(3):
 				dzeta=np.zeros((3,))
 				dzeta[cc_zeta]=step
-				Der_num[0,cc_zeta,:]=(
+				DerP_num[:,cc_zeta]=(
 					libuvlm.biot_segment(zetaP+dzeta,zetaA,zetaB,gamma)-Q0)/step
-				Der_num[1,cc_zeta,:]=(
+				DerA_num[:,cc_zeta]=(
 					libuvlm.biot_segment(zetaP,zetaA+dzeta,zetaB,gamma)-Q0)/step
-				Der_num[2,cc_zeta,:]=(
+				DerB_num[:,cc_zeta]=(
 					libuvlm.biot_segment(zetaP,zetaA,zetaB+dzeta,gamma)-Q0)/step
-			er_max=np.max(np.abs(Der_num-Der_an))
+			er_max=max( np.max(np.abs(DerP_num-DerP_an)),
+							np.max(np.abs(DerA_num-DerA_an)),
+								np.max(np.abs(DerB_num-DerB_an)) )
 			print('FD step: %.2e ---> Max error: %.2e'%(step,er_max) )
 			assert er_max<5e1*step, 'Error larger than 50 times step size'
 			Er_max[ss]=er_max	
-
-
-
 
 
 
@@ -118,10 +136,15 @@ class Test_ders(unittest.TestCase):
 		ZetaPanel=np.array([zeta0,zeta1,zeta2,zeta3])
 		Q0=libuvlm.biot_panel(zetaP,ZetaPanel,gamma)
 
-		# analytical derivative
-		DerP_an,DerVer_an=dbiot.eval_panel(zetaP,ZetaPanel,gamma)
+		# compare analytical derivatives models
+		DerP_an,DerVer_an=dbiot.eval_panel_exp(zetaP,ZetaPanel,gamma)
+		DerP_an2,DerVer_an2=dbiot.eval_panel_comp(zetaP,ZetaPanel,gamma)
+		er_max=max( np.max(np.abs(DerP_an2-DerP_an)),
+							np.max(np.abs(DerVer_an2-DerVer_an)) )
+		assert er_max<1e-16, 'Analytical models not matching' 
 
-		# numerical derivative
+
+		# compare vs. numerical derivative
 		Steps=np.array([1e-2,1e-4,1e-6])
 		ErP_max=0.0*Steps
 		ErVer_max=0.0*Steps
@@ -136,14 +159,14 @@ class Test_ders(unittest.TestCase):
 				dzeta[cc]=step
 
 				# derivative w.r.t. target point
-				DerP_num[cc,:]=\
+				DerP_num[:,cc]=\
 					   (libuvlm.biot_panel(zetaP+dzeta,ZetaPanel,gamma)-Q0)/step
 
 				# derivative w.r.t panel vertices
 				for vv in range(4):
 					ZetaPanel_pert=ZetaPanel.copy()
 					ZetaPanel_pert[vv,:]+=dzeta
-					DerVer_num[vv,cc,:]=\
+					DerVer_num[vv,:,cc]=\
 						(libuvlm.biot_panel(zetaP,ZetaPanel_pert,gamma)-Q0)/step
 
 			erP_max=np.max(np.abs(DerP_num-DerP_an))
@@ -180,10 +203,15 @@ class Test_ders(unittest.TestCase):
 		ZetaPanel=np.array([zeta0,zeta1,zeta2,zeta3])
 		Q0=libuvlm.biot_panel(zetaP,ZetaPanel,gamma)
 
-		# analytical derivative
-		DerP_an,DerVer_an=dbiot.eval_panel(zetaP,ZetaPanel,gamma)
+		# compare analytical derivatives models
+		DerP_an,DerVer_an=dbiot.eval_panel_exp(zetaP,ZetaPanel,gamma)
+		DerP_an2,DerVer_an2=dbiot.eval_panel_comp(zetaP,ZetaPanel,gamma)
+		er_max=max( np.max(np.abs(DerP_an2-DerP_an)),
+							np.max(np.abs(DerVer_an2-DerVer_an)) )
+		assert er_max<1e-16, 'Analytical models not matching' 
 
-		# numerical derivative
+
+		# compare vs. numerical derivative
 		Steps=np.array([1e-2,1e-4,1e-6])
 		ErP_max=0.0*Steps
 		ErVer_max=0.0*Steps
@@ -198,21 +226,20 @@ class Test_ders(unittest.TestCase):
 				dzeta[cc]=step
 
 				# derivative w.r.t. target point
-				DerP_num[cc,:]=\
+				DerP_num[:,cc]=\
 					   (libuvlm.biot_panel(zetaP+dzeta,ZetaPanel,gamma)-Q0)/step
 
 				# derivative w.r.t panel vertices
 				for vv in range(4):
 					ZetaPanel_pert=ZetaPanel.copy()
 					ZetaPanel_pert[vv,:]+=dzeta
-					DerVer_num[vv,cc,:]=\
+					DerVer_num[vv,:,cc]=\
 						(libuvlm.biot_panel(zetaP,ZetaPanel_pert,gamma)-Q0)/step
 
 			erP_max=np.max(np.abs(DerP_num-DerP_an))
 			erVer_max=np.max(np.abs(DerVer_num-DerVer_an))
 			print('FD step: %.2e ---> Max error (P,Vert): (%.2e,%.2e)'\
 													  %(step,erP_max,erVer_max))
-
 			assert erP_max<5e1*step,\
 					 	     'Error w.r.t. zetaP larger than 50 times step size'
 			assert erVer_max<5e1*step,\
@@ -232,14 +259,14 @@ class Test_ders(unittest.TestCase):
 
 if __name__=='__main__':
 
-	unittest.main()
+	# unittest.main()
 
-	# T=Test_ders()
-	# T.setUp()
-	# T.test_dbiot_segment()
-	# T.test_dbiot_segment_mid()
-	# T.test_dbiot_panel()
-	# T.test_dbiot_panel_mid_segment()
+	T=Test_ders()
+	T.setUp()
+	T.test_dbiot_segment()
+	T.test_dbiot_segment_mid()
+	T.test_dbiot_panel()
+	T.test_dbiot_panel_mid_segment()
 
 
 

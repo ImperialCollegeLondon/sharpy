@@ -167,60 +167,6 @@ def nc_dqcdzeta_Sin_to_Sout(Surf_in,Surf_out,Der_coll,Der_vert,Surf_in_bound):
 							 (cc,mm_v,nn_v),shape_zeta_out) for cc in range(3)]
 			Der_coll[cc_out,ii_v]+=wcv_out[vv]*dvindnorm_coll
 
-		#embed()
-		# ######  loop panels input surface 
-		# for pp_in in range(K_in):
-		# 	# get (m,n) indices of panel
-		# 	mm_in=Surf_in.maps.ind_2d_pan_scal[0][pp_in]
-		# 	nn_in=Surf_in.maps.ind_2d_pan_scal[1][pp_in]	
-		# 	# get vertices coords and circulation			
-		# 	zeta_panel=Surf_in.get_panel_vertices_coords(mm_in,nn_in)
-		# 	gamma_panel=Surf_in.gamma[mm_in,nn_in]
-
-		# 	# get local derivatives
-		# 	der_zetac,der_zeta_panel=dbiot.eval_panel(
-		# 						    zetac_here,zeta_panel,gamma_pan=gamma_panel)
-			
-
-		# 	##### Allocate collocation point contribution
-		# 	der_zetac_proj=np.dot(nc_here,der_zetac)
-		# 	for vv in range(4):
-		# 		gl_ind_vv=gl_ind_panel_out[vv]
-		# 		for vv_comp in range(3):
-		# 			Der_coll[cc_out,gl_ind_vv+vv_comp*Kzeta_out]+=\
-		# 								 wcv_out[vv]*der_zetac_proj[vv_comp]
-
-
-		# 	##### Allocate panel vertices contributions
-
-		# 	### Bound wake case
-		# 	if Surf_in_bound is True:
-		# 		# get global indices of panel vertices
-		# 		gl_ind_panel_in=Surf_in.maps.Mpv1d_scalar[pp_in]
-		# 		for vv in range(4):
-		# 			gl_ind_vv=gl_ind_panel_in[vv]
-		# 			for vv_comp in range(3):
-		# 				Der_vert[cc_out,gl_ind_vv+vv_comp*Kzeta_in]+=\
-		# 							np.dot(nc_here,der_zeta_panel[vv,vv_comp,:])
-
-		# 	### Allocate TE vertices contributions only					
-		# 	else: 
-		# 		if mm_in==0:				
-
-		# 			# Define indices of vertices 0 and 3 on bound surface
-		# 			mm0,mm3=M_bound_in,M_bound_in
-		# 			nn0,nn3=nn_in,nn_in+1
-		# 			gl_ind0=np.ravel_multi_index( [mm0,nn0],\
-		# 							             dims=shape_bound_in, order='C')
-		# 			gl_ind3=np.ravel_multi_index( [mm3,nn3],\
-		# 							             dims=shape_bound_in, order='C')
-
-		# 			for vv_comp in range(3):
-		# 				Der_vert[cc_out,gl_ind3+vv_comp*Kzeta_bound_in]+=\
-		# 							 np.dot(nc_here,der_zeta_panel[3,vv_comp,:])
-		# 				Der_vert[cc_out,gl_ind0+vv_comp*Kzeta_bound_in]+=\
-		# 							 np.dot(nc_here,der_zeta_panel[0,vv_comp,:])
-
 	return Der_coll, Der_vert
 
 
@@ -794,10 +740,10 @@ def dvinddzeta(zetac,Surf_in,IsBound,M_in_bound=None):
 			mm_in,nn_in=pp_in
 			zeta_panel_in=Surf_in.get_panel_vertices_coords(mm_in,nn_in)
 			# get local derivatives
-			der_zetac,der_zeta_panel=dbiot.eval_panel(
+			der_zetac,der_zeta_panel=dbiot.eval_panel_comp(
 					zetac,zeta_panel_in,gamma_pan=Surf_in.gamma[mm_in,nn_in])
 			### Mid-segment point contribution
-			Dercoll+=der_zetac.T
+			Dercoll+=der_zetac
 			### Panel vertices contribution
 			for vv_in in range(4):
 				# get vertices m,n indices
@@ -805,7 +751,7 @@ def dvinddzeta(zetac,Surf_in,IsBound,M_in_bound=None):
 				# get vertices 1d index
 				jj_v=[ np.ravel_multi_index( 
 				   			   (cc,mm_v,nn_v),shape_zeta_in) for cc in range(3)]
-				Dervert[:,jj_v]+=der_zeta_panel[vv_in,:,:].T
+				Dervert[:,jj_v]+=der_zeta_panel[vv_in,:,:]
 
 	else: 
 		''' 
@@ -823,10 +769,10 @@ def dvinddzeta(zetac,Surf_in,IsBound,M_in_bound=None):
 			mm_in,nn_in=pp_in
 			zeta_panel_in=Surf_in.get_panel_vertices_coords(mm_in,nn_in)
 			# get local derivatives
-			der_zetac,_=dbiot.eval_panel(
+			der_zetac,_=dbiot.eval_panel_comp(
 					zetac,zeta_panel_in,gamma_pan=Surf_in.gamma[mm_in,nn_in])
 			### Mid-segment point contribution
-			Dercoll+=der_zetac.T
+			Dercoll+=der_zetac
 
 		### Re-scan the TE to include vertex contrib.
 		# vertex 0 of wake is vertex 1 of bound (local no.)
@@ -838,7 +784,7 @@ def dvinddzeta(zetac,Surf_in,IsBound,M_in_bound=None):
 		for nn_in in range(N_in):	
 			zeta_panel_in=Surf_in.get_panel_vertices_coords(0,nn_in)
 			# get local derivatives
-			_,der_zeta_panel=dbiot.eval_panel(
+			_,der_zeta_panel=dbiot.eval_panel_comp(
 						   zetac,zeta_panel_in,gamma_pan=Surf_in.gamma[0,nn_in])
 
 			for vv in range(2):
@@ -847,7 +793,7 @@ def dvinddzeta(zetac,Surf_in,IsBound,M_in_bound=None):
 				for cc in range(3):
 					jj_v.append(np.ravel_multi_index(
 						 			  (cc,M_in_bound,nn_v),shape_zeta_in_bound))
-				Dervert[:,jj_v]+=der_zeta_panel[vvec[vv],:,:].T
+				Dervert[:,jj_v]+=der_zeta_panel[vvec[vv],:,:]
 			
 	return Dercoll, Dervert
 	
