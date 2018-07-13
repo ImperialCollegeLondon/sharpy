@@ -740,7 +740,7 @@ def dvinddzeta(zetac,Surf_in,IsBound,M_in_bound=None):
 			mm_in,nn_in=pp_in
 			zeta_panel_in=Surf_in.get_panel_vertices_coords(mm_in,nn_in)
 			# get local derivatives
-			der_zetac,der_zeta_panel=dbiot.eval_panel_comp(
+			der_zetac,der_zeta_panel=dbiot.eval_panel_fast(
 					zetac,zeta_panel_in,gamma_pan=Surf_in.gamma[mm_in,nn_in])
 			### Mid-segment point contribution
 			Dercoll+=der_zetac
@@ -769,7 +769,7 @@ def dvinddzeta(zetac,Surf_in,IsBound,M_in_bound=None):
 			mm_in,nn_in=pp_in
 			zeta_panel_in=Surf_in.get_panel_vertices_coords(mm_in,nn_in)
 			# get local derivatives
-			der_zetac,_=dbiot.eval_panel_comp(
+			der_zetac,_=dbiot.eval_panel_fast(
 					zetac,zeta_panel_in,gamma_pan=Surf_in.gamma[mm_in,nn_in])
 			### Mid-segment point contribution
 			Dercoll+=der_zetac
@@ -784,7 +784,7 @@ def dvinddzeta(zetac,Surf_in,IsBound,M_in_bound=None):
 		for nn_in in range(N_in):	
 			zeta_panel_in=Surf_in.get_panel_vertices_coords(0,nn_in)
 			# get local derivatives
-			_,der_zeta_panel=dbiot.eval_panel_comp(
+			_,der_zeta_panel=dbiot.eval_panel_fast(
 						   zetac,zeta_panel_in,gamma_pan=Surf_in.gamma[0,nn_in])
 
 			for vv in range(2):

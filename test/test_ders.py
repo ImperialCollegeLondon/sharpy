@@ -139,9 +139,14 @@ class Test_ders(unittest.TestCase):
 		# compare analytical derivatives models
 		DerP_an,DerVer_an=dbiot.eval_panel_exp(zetaP,ZetaPanel,gamma)
 		DerP_an2,DerVer_an2=dbiot.eval_panel_comp(zetaP,ZetaPanel,gamma)
+		DerP_an3,DerVer_an3=dbiot.eval_panel_fast(zetaP,ZetaPanel,gamma)
+
 		er_max=max( np.max(np.abs(DerP_an2-DerP_an)),
-							np.max(np.abs(DerVer_an2-DerVer_an)) )
-		assert er_max<1e-16, 'Analytical models not matching' 
+										   np.max(np.abs(DerVer_an2-DerVer_an)))
+		assert er_max<1e-16, 'eval_panel_comp not matching with eval_panel_exp' 
+		er_max=max( np.max(np.abs(DerP_an3-DerP_an)),
+										   np.max(np.abs(DerVer_an3-DerVer_an)))
+		assert er_max<1e-16, 'eval_panel_fast not matching with eval_panel_exp' 
 
 
 		# compare vs. numerical derivative
@@ -206,9 +211,14 @@ class Test_ders(unittest.TestCase):
 		# compare analytical derivatives models
 		DerP_an,DerVer_an=dbiot.eval_panel_exp(zetaP,ZetaPanel,gamma)
 		DerP_an2,DerVer_an2=dbiot.eval_panel_comp(zetaP,ZetaPanel,gamma)
+		DerP_an3,DerVer_an3=dbiot.eval_panel_fast(zetaP,ZetaPanel,gamma)
+
 		er_max=max( np.max(np.abs(DerP_an2-DerP_an)),
-							np.max(np.abs(DerVer_an2-DerVer_an)) )
-		assert er_max<1e-16, 'Analytical models not matching' 
+										   np.max(np.abs(DerVer_an2-DerVer_an)))
+		assert er_max<1e-16, 'eval_panel_comp not matching with eval_panel_exp' 
+		er_max=max( np.max(np.abs(DerP_an3-DerP_an)),
+										   np.max(np.abs(DerVer_an3-DerVer_an)))
+		assert er_max<1e-16, 'eval_panel_fast not matching with eval_panel_exp' 
 
 
 		# compare vs. numerical derivative
