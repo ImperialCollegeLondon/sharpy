@@ -7,15 +7,34 @@ S. Maraniello, 1 Jun 2018
 import numpy as np
 import libalg
 
+import ctypes as ct
+import os
+lib_path=os.environ["DIRuvlm3d"]+'/../cpp/cpplibs.so'
+libc = ct.CDLL(lib_path)
+
 cfact_biot=0.25/np.pi
 VORTEX_RADIUS=1e-2 # numerical radious of vortex
+VORTEX_RADIUS_SQ=VORTEX_RADIUS**2
 
 # local mapping segment/vertices of a panel
 svec=[0,1,2,3] # seg. number
 avec=[0,1,2,3] # 1st vertex of seg.
 bvec=[1,2,3,0] # 2nd vertex of seg.
+LoopPanel=[(0,1),(1,2),(2,3),(3,0)] 		# used in eval_panel_{exp/comp}
 
 
+def biot_panel_cpp(zetaP,ZetaPanel,gamma=1.0):
+
+	assert zetaP.flags['C_CONTIGUOUS'] and ZetaPanel.flags['C_CONTIGUOUS'],\
+														 'Input not C contiguous'
+	velP=np.zeros((3,),order='C')
+	libc.call_biot_panel(
+		velP.ctypes.data_as(ct.POINTER(ct.c_double)), 
+		zetaP.ctypes.data_as(ct.POINTER(ct.c_double)), 
+		ZetaPanel.ctypes.data_as(ct.POINTER(ct.c_double)), 
+		ct.byref(ct.c_double(gamma)))
+
+	return velP
 
 
 def joukovski_qs_segment(zetaA,zetaB,v_mid,gamma=1.0,fact=0.5):
@@ -46,13 +65,9 @@ def biot_segment(zetaP,zetaA,zetaB,gamma=1.0):
 	vcross_sq=np.dot(vcross,vcross)
 
 	# numerical radious
-	vortex_radious_here=VORTEX_RADIUS*libalg.norm3d(rab)
-	if vcross_sq<vortex_radious_here**2:
+	if vcross_sq<(VORTEX_RADIUS_SQ*libalg.normsq3d(rab)):
 		return np.zeros((3,))
-	#assert vcross_sq>vortex_radious_here**2, 'P along AB line'
 
-	# ra_unit=ra/ra_norm
-	# rb_unit=rb/rb_norm
 	q=((cfact_biot*gamma/vcross_sq)*\
 		( np.dot(rab,ra)/ra_norm - np.dot(rab,rb)/rb_norm)) * vcross
 
@@ -71,6 +86,35 @@ def biot_panel(zetaC,ZetaPanel,gamma=1.0):
 		q+=biot_segment(zetaC,ZetaPanel[aa,:],ZetaPanel[bb,:],gamma)
 
 	return q
+
+
+
+def biot_panel_fast(zetaC,ZetaPanel,gamma=1.0):
+	'''
+	Induced velocity over point ZetaC of a panel of vertices coordinates 
+	ZetaPanel and circulaiton gamma, where:
+		ZetaPanel.shape=(4,3)=[vertex local number, (x,y,z) component]
+	'''
+
+	Cfact=cfact_biot*gamma
+	q=np.zeros((3,))
+
+	R_list = zetaC-ZetaPanel
+	Runit_list=[R_list[ii]/libalg.norm3d(R_list[ii]) for ii in svec]
+
+	for aa,bb in LoopPanel:
+
+		RAB=ZetaPanel[bb,:]-ZetaPanel[aa,:]	# segment vector
+		Vcr = libalg.cross3d(R_list[aa],R_list[bb])
+		vcr2=np.dot(Vcr,Vcr)
+		if vcr2<(VORTEX_RADIUS_SQ*libalg.normsq3d(RAB)):
+			continue
+
+		q+=( (Cfact/vcr2)*np.dot(RAB,Runit_list[aa]-Runit_list[bb]) ) *Vcr
+
+	return q
+
+
 
 
 def panel_normal(ZetaPanel):
@@ -121,38 +165,55 @@ def panel_area(ZetaPanel):
 
 if __name__=='__main__':
 
-	zetaP=np.array([2,-1.5,1])
-	zetaA=np.array([0,-1,5])
-	zetaB=np.array([1,-2,2])
-	q=biot_segment(zetaP,zetaA,zetaB,3.)
-	#qcheck=biot_seg_check(zetaP,zetaA,zetaB,3.)
+	import cProfile
 
-	##### verify biot-savart:
-	rv_center=np.array([1,2,3])
-	R=0.4
-	Theta_rad=2.*np.pi 
-	gamma=5.
-	# expected
-	Uabs_exp=gamma*Theta_rad/(4.*np.pi)/R
-	Uexp=np.array([0,0,Uabs_exp])
-	# numerical
-	N=101
-	thvec=np.linspace(0,Theta_rad,N)
-	xv=rv_center[0]+np.cos(thvec)*R
-	yv=rv_center[1]+np.sin(thvec)*R
-	zv=rv_center[2]+0.0*xv 
-	U=np.zeros((3,))
-	for ii in range(N-1):
-		ra=np.array([xv[ii],yv[ii],zv[ii]])
-		rb=np.array([xv[ii+1],yv[ii+1],zv[ii+1]])
-		U+=biot_segment( rv_center, ra, rb, gamma  )
-	assert libalg.norm3d(U-Uexp)**2 < 1e-3*np.abs(Uabs_exp), 'Wrong velocity'
+	### verify consistency amongst models
+	gamma=4.
+	zeta0=np.array([1.0,3.0,0.9])
+	zeta1=np.array([5.0,3.1,1.9])
+	zeta2=np.array([4.8,8.1,2.5])
+	zeta3=np.array([0.9,7.9,1.7])
+	ZetaPanel=np.array([zeta0,zeta1,zeta2,zeta3])
+
+	zetaP=np.array([3.0,5.5,2.0])
+	zetaP=zeta2*0.3+zeta3*0.7
+
+	### verify model consistency
+	qref=biot_panel(zetaP,ZetaPanel,gamma=gamma)
+	qfast=biot_panel_fast(zetaP,ZetaPanel,gamma=gamma)
+	qcpp=biot_panel_cpp(zetaP,ZetaPanel,gamma=gamma)
+
+	ermax=np.max(np.abs(qref-qfast))
+	assert ermax<1e-16, 'biot_panel_fast not matching with biot_panel' 
+	ermax=np.max(np.abs(qref-qcpp))
+	assert ermax<1e-16, 'biot_panel_cpp not matching with biot_panel' 
 
 
-	pass
+	### profiling
+	def run_biot_panel_cpp():
+		for ii in range(10000):
+			biot_panel_cpp(zetaP,ZetaPanel,gamma=3.)
+	def run_biot_panel_fast():
+		for ii in range(10000):
+			biot_panel_fast(zetaP,ZetaPanel,gamma=3.)
+	def run_biot_panel_ref():
+		for ii in range(10000):
+			biot_panel(zetaP,ZetaPanel,gamma=3.)
+	
+	print('------------------------------------------ profiling biot_panel_cpp')
+	cProfile.runctx('run_biot_panel_cpp()',globals(),locals())
 
-	import itertools
-	M,N=4,6
+	print('----------------------------------------- profiling biot_panel_fast')
+	cProfile.runctx('run_biot_panel_fast()',globals(),locals())
+
+	print('------------------------------------------ profiling biot_panel_ref')
+	cProfile.runctx('run_biot_panel_ref()',globals(),locals())
+
+	
+
+
+
+
 
 
 

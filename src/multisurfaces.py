@@ -305,8 +305,9 @@ class MultiAeroGridSurfaces():
 			Fref=self.tsdata0.ct_forces_list[6*ss:6*ss+3,:]
 			ErMax=np.max(np.abs(Fhere-Fref))
 
-			assert ErMax<1e-12 ,'Wrong quasi-steady force over surface %.2d!'%ss
 			print('Surface %.2d max abs error: %.3e' %(ss,ErMax) )
+			assert ErMax<1e-12 ,'Wrong quasi-steady force over surface %.2d!'%ss
+
 
 
 
@@ -333,23 +334,7 @@ if __name__=='__main__':
 	MS.verify_joukovski_qs()
 
 
-	# # segments
-	# # MS.get_ind_velocities_at_segments()
-	# # MS.get_input_velocities_at_segments()
-	# MS.get_joukovski_qs()
 
-	# S0=MS.Surfs[0]
-	# #F00=S0.fqs.reshape((3,S0.maps.Kzeta))
-	# F00=S0.fqs02.reshape((3,S0.maps.Kzeta))
-	# Fref00=tsdata.ct_forces_list[:3,:]
-	# assert np.max(np.abs(F00-Fref00))<1e-12 , 'wrong force surf 00'
-
-	# if tsdata.n_surf==2:
-	# 	S1=MS.Surfs[1]
-	# 	#F01=S1.fqs.reshape((3,S1.maps.Kzeta))
-	# 	F01=S1.fqs02.reshape((3,S1.maps.Kzeta))
-	# 	Fref01=tsdata.ct_forces_list[6:9,:]
-	# 	assert np.max(np.abs(F01-Fref01))<1e-12 , 'wrong force surf 00'
 	embed()
 
 	### verify u_induced

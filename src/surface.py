@@ -8,6 +8,8 @@ import itertools
 import libuvlm
 from IPython import embed
 
+dmver=np.array([ 0, 1, 1, 0]) # delta to go from (m,n) panel to (m,n) vertices
+dnver=np.array([ 0, 0, 1, 1])
 
 
 
@@ -53,13 +55,22 @@ class AeroGridGeo():
 		Retrieves coordinates of panel (m,n) vertices.
 		'''
 
-		#mpv=self.maps.from_panel_to_vertices(m,n)
-		mpv=self.maps.Mpv[m,n,:,:]
-		zetav_here=np.zeros((4,3))
-		for ii in range(4):
-			zetav_here[ii,:]=self.zeta[:,mpv[ii,0],mpv[ii,1]]
+		### 
+		# mpv=self.maps.from_panel_to_vertices(m,n)
 
-		return zetav_here
+		###
+		# mpv=self.maps.Mpv[m,n,:,:]
+		# zetav_here_ref=np.zeros((4,3),order='C')
+		# for ii in range(4):
+		# 	zetav_here_ref[ii,:]=self.zeta[:,mpv[ii,0],mpv[ii,1]]
+		# zetav_here=self.zeta[:,dmver+m,dnver+n].T
+		# assert np.max(np.abs(zetav_here-zetav_here_ref))<1e-16, embed()
+		# return zetav_here
+
+		###
+		# return self.zeta[:,dmver+m,dnver+n].T
+
+		return self.zeta[:, [m+0,m+1,m+1,m+0], [n+0,n+0,n+1,n+1]].T
 
 
 	# ------------------------------------------------------- get panel normals	
@@ -126,7 +137,9 @@ class AeroGridGeo():
 	def generate_collocations(self):
 
 		M,N=self.maps.M,self.maps.N
-		self.zetac=np.zeros((3,M,N))
+		self.zetac=np.zeros((3,M,N),order='F') # F order avoids the need to copy 
+											   # when passing self.zetac[:,x,x] to
+											   # C written libraries.
 
 		for mm in range(M):
 			for nn in range(N):
@@ -402,15 +415,18 @@ class AeroGridSurface(AeroGridGeo):
 		'''
 
 		M,N=self.maps.M,self.maps.N
-		uind_target=np.zeros(zeta_target.shape)
+		uind_target=np.zeros((3,),order='C')
+		#uind_ref=np.zeros((3,),order='C')
 
 		for mm in range(M):
 			for nn in range(N):
 				# panel info
 				zetav_here=self.get_panel_vertices_coords(mm,nn)
-				uind_target+=libuvlm.biot_panel(zeta_target,
+				uind_target+=libuvlm.biot_panel_cpp(zeta_target,
 												   zetav_here,self.gamma[mm,nn])
-
+				# uind_ref+=libuvlm.biot_panel_fast(zeta_target,
+				# 								   zetav_here,self.gamma[mm,nn])
+				# if np.max(np.abs(uind_target-uind_ref))>1e-14: 1/0; embed();
 
 		return uind_target
 
@@ -432,7 +448,7 @@ class AeroGridSurface(AeroGridGeo):
 
 			# get panel coordinates
 			zetav_here=self.get_panel_vertices_coords(mm,nn)
-			aic3[:,cc]=libuvlm.biot_panel(zeta_target,zetav_here,gamma=1.0)	
+			aic3[:,cc]=libuvlm.biot_panel_cpp(zeta_target,zetav_here,gamma=1.0)	
 
 		return aic3
 

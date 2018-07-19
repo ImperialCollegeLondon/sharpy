@@ -11,25 +11,64 @@ Methods:
 - eval_seg_comp and eval_seg_comp_loop: profide ders in format 
 	[Q_{x,y,z},ZetaPoint_{x,y,z}]
   and use compact analytical formula.
-
-
 '''
+
+
 
 import numpy as np 
 from IPython import embed
 import libalg
+
+import ctypes as ct
+import os
+lib_path=os.environ["DIRuvlm3d"]+'/../cpp/cpplibs.so'
+libc = ct.CDLL(lib_path)
 
 ### constants
 cfact_biot=0.25/np.pi
 VORTEX_RADIUS=1e-2 # numerical radious of vortex
 VORTEX_RADIUS_SQ=VORTEX_RADIUS**2
 
-
 ### looping through panels
 svec =[ 0, 1, 2, 3] # seg. no.
 # avec =[ 0, 1, 2, 3] # 1st vertex no.
 # bvec =[ 1, 2, 3, 0] # 2nd vertex no.
 LoopPanel=[(0,1),(1,2),(2,3),(3,0)] 		# used in eval_panel_{exp/comp}
+
+
+
+def eval_panel_cpp(zetaP,ZetaPanel,gamma_pan=1.0):
+	'''
+	Warning: function may fail if zetaP is not stored contiguously.
+
+	Eg: the following will fail
+		zetaP=Mat[:,2,5]
+		eval_panel_cpp(zetaP,ZetaPanel,gamma_pan=1.0) 
+	but
+		zetaP=Mat[:,2,5].copy()
+		eval_panel_cpp(zetaP,ZetaPanel,gamma_pan=1.0) 	
+	will not.
+	'''
+
+	assert zetaP.flags['C_CONTIGUOUS'] and ZetaPanel.flags['C_CONTIGUOUS'],\
+														 'Input not C contiguous'
+
+	DerP=np.zeros((3,3),order='C')
+	DerVertices=np.zeros((4,3,3),order='C')
+
+	libc.call_der_biot_panel(
+						DerP.ctypes.data_as(ct.POINTER(ct.c_double)), 
+						DerVertices.ctypes.data_as(ct.POINTER(ct.c_double)), 
+						zetaP.ctypes.data_as(ct.POINTER(ct.c_double)), 
+						ZetaPanel.ctypes.data_as(ct.POINTER(ct.c_double)), 
+						ct.byref(ct.c_double(gamma_pan)))
+	
+	return DerP,DerVertices
+
+
+def eval_panel_cpp_coll(zetaP,ZetaPanel,gamma_pan=1.0):
+	DerP,DerVertices=eval_panel_cpp(zetaP,ZetaPanel,gamma_pan)
+	return DerP
 
 
 
@@ -412,6 +451,75 @@ def eval_panel_fast(zetaP,ZetaPanel,gamma_pan=1.0):
 
 
 
+def eval_panel_fast_coll(zetaP,ZetaPanel,gamma_pan=1.0):
+	'''
+	Computes derivatives of induced velocity w.r.t. coordinates of target point,
+	zetaP, coordinates. Returns two elements:
+		- DerP: derivative of induced velocity w.r.t. ZetaP, with:
+			DerP.shape=(3,3) : DerC[ Uind_{x,y,z}, ZetaC_{x,y,z} ]
+
+	The function is based on eval_panel_fast, but does not perform operations
+	required to compute the derivatives w.r.t. the panel coordinates.
+	'''
+
+	DerP=np.zeros((3,3))
+
+	### ---------------------------------------------- Compute common variables
+	# these are constants or variables depending only on vertices and P coords
+	Cfact=cfact_biot*gamma_pan
+
+	# distance vertex ii-th from P	
+	R_list = zetaP-ZetaPanel
+	r1_list = [libalg.norm3d(R_list[ii]) for ii in svec]
+	r1inv_list = [1./r1_list[ii] for ii in svec]
+	Runit_list=[R_list[ii]*r1inv_list[ii] for ii in svec]
+	Der_runit_list =[ 
+		der_runit(R_list[ii],r1inv_list[ii],-r1inv_list[ii]**3) for ii in svec]
+
+
+	### ------------------------------------------------- Loop through segments
+	for aa,bb in LoopPanel:
+
+		RAB=ZetaPanel[bb,:]-ZetaPanel[aa,:]	# segment vector
+		Vcr = libalg.cross3d(R_list[aa],R_list[bb])
+		vcr2=np.dot(Vcr,Vcr)
+
+		if vcr2<(VORTEX_RADIUS_SQ*libalg.normsq3d(RAB)):
+			continue
+
+		Tv=Runit_list[aa]-Runit_list[bb]
+		dotprod=np.dot(RAB,Tv)
+
+		### ----------------------------------------- cross-product derivatives
+		# lower triangular part only
+		vcr2inv=1./vcr2
+		vcr4inv=vcr2inv*vcr2inv
+		diag_fact=    Cfact*vcr2inv*dotprod
+		off_fact =-2.*Cfact*vcr4inv*dotprod
+		Dvcross=[
+			[ diag_fact+off_fact*Vcr[0]**2 ],
+			[ off_fact*Vcr[0]*Vcr[1], diag_fact+off_fact*Vcr[1]**2 ],
+			[ off_fact*Vcr[0]*Vcr[2], off_fact*Vcr[1]*Vcr[2], diag_fact+off_fact*Vcr[2]**2]]
+
+		### ---------------------------------------- difference term derivative
+		Vsc=Vcr*vcr2inv*Cfact
+		Ddiff=np.array([ RAB*Vsc[0], RAB*Vsc[1], RAB*Vsc[2] ])
+
+		### ------------------------------------------ Final assembly (crucial)
+
+		# dQ_dRA=Dvcross_by_skew3d(Dvcross,-R_list[bb])\
+		# 									 +np.dot(Ddiff, Der_runit_list[aa] )
+		# dQ_dRB=Dvcross_by_skew3d(Dvcross, R_list[aa])\
+		# 									 -np.dot(Ddiff, Der_runit_list[bb] )
+
+		DerP += Dvcross_by_skew3d(Dvcross,RAB)+\
+							+np.dot(Ddiff, Der_runit_list[aa]-Der_runit_list[bb] )
+
+
+	return DerP
+
+
+
 
 if __name__=='__main__':
 
@@ -425,25 +533,45 @@ if __name__=='__main__':
 	zeta2=np.array([4.8,8.1,2.5])
 	zeta3=np.array([0.9,7.9,1.7])
 	ZetaPanel=np.array([zeta0,zeta1,zeta2,zeta3])
+	zetap=0.3*zeta1+0.7*zeta2
 
+	# ZetaPanel=np.array([[ 1.221, -0.064, -0.085],
+	#        				[ 1.826, -0.064, -0.141],
+	#        				[ 1.933,  1.456, -0.142],
+	#        				[ 1.327,  1.456, -0.087]])
+	# zetaP=np.array([-0.243,  0.776,  0.037])
 
 	### verify model consistency
+	DPcpp,DVcpp=eval_panel_cpp(zetaP,ZetaPanel,gamma_pan=gamma)	
 	DPexp,DVexp=eval_panel_exp(zetaP,ZetaPanel,gamma_pan=gamma)
 	DPcomp,DVcomp=eval_panel_comp(zetaP,ZetaPanel,gamma_pan=gamma)
 	DPfast,DVfast=eval_panel_fast(zetaP,ZetaPanel,gamma_pan=gamma)
+	DPfast_coll=eval_panel_fast_coll(zetaP,ZetaPanel,gamma_pan=gamma)
 
-
-
+	ermax=max( np.max(np.abs(DPcpp-DPexp)), np.max(np.abs(DVcpp-DVexp)) )
+	assert ermax<1e-15, 'eval_panel_cpp not matching with eval_panel_exp' 
 	ermax=max( np.max(np.abs(DPcomp-DPexp)), np.max(np.abs(DVcomp-DVexp)) )
-	assert ermax<1e-16, 'eval_panel_comp not matching with eval_panel_exp' 
+	assert ermax<1e-15, 'eval_panel_comp not matching with eval_panel_exp' 
 	ermax=max( np.max(np.abs(DPfast-DPexp)), np.max(np.abs(DVfast-DVexp)) )
-	assert ermax<1e-16, 'eval_panel_fast not matching with eval_panel_exp' 
+	assert ermax<1e-15, 'eval_panel_fast not matching with eval_panel_exp' 
+	ermax=np.max(np.abs(DPfast_coll-DPexp))
+	assert ermax<1e-15, 'eval_panel_fast_coll not matching with eval_panel_exp' 
+
 
 
 	### profiling
+
+	def run_eval_panel_cpp():
+		for ii in range(10000):
+			eval_panel_cpp(zetaP,ZetaPanel,gamma_pan=3.)
+
 	def run_eval_panel_fast():
 		for ii in range(10000):
 			eval_panel_fast(zetaP,ZetaPanel,gamma_pan=3.)
+	def run_eval_panel_fast_coll():
+		for ii in range(10000):
+			eval_panel_fast_coll(zetaP,ZetaPanel,gamma_pan=3.)
+
 	def run_eval_panel_comp():
 		for ii in range(10000):
 			eval_panel_comp(zetaP,ZetaPanel,gamma_pan=3.)
@@ -452,15 +580,21 @@ if __name__=='__main__':
 			eval_panel_exp(zetaP,ZetaPanel,gamma_pan=3.)
 
 
+
+	print('------------------------------------------ profiling eval_panel_cpp')
+	cProfile.runctx('run_eval_panel_cpp()',globals(),locals())
+
 	print('----------------------------------------- profiling eval_panel_fast')
 	cProfile.runctx('run_eval_panel_fast()',globals(),locals())
+
+	print('------------------------------------ profiling eval_panel_fast_coll')
+	cProfile.runctx('run_eval_panel_fast_coll()',globals(),locals())
 
 	print('----------------------------------------- profiling eval_panel_comp')
 	cProfile.runctx('run_eval_panel_comp()',globals(),locals())
 
 	print('------------------------------------------ profiling eval_panel_exp')
 	cProfile.runctx('run_eval_panel_exp()',globals(),locals())
-
 
 
 	# ### profiling sub-functions
@@ -470,6 +604,5 @@ if __name__=='__main__':
 	# def f02():
 	# 	for ii in range(100000):	
 	# 		R_list = zetaP-ZetaPanel
-
 	# cProfile.runctx('f01()',globals(),locals())	
 	# cProfile.runctx('f02()',globals(),locals())	

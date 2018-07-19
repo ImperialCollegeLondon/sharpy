@@ -15,7 +15,6 @@ Includes:
 	multi-surfaces configurations
 	- uc_dncdzeta: assemble derivative matrix dnc/dzeta*Uc at bound collocation 
 	points
-
 '''
 
 import numpy as np
@@ -142,7 +141,7 @@ def nc_dqcdzeta_Sin_to_Sout(Surf_in,Surf_out,Der_coll,Der_vert,Surf_in_bound):
 		nn_out=Surf_out.maps.ind_2d_pan_scal[1][cc_out]
 
 		# get coords and normal
-		zetac_here=ZetaColl[:,mm_out,nn_out]
+		zetac_here=ZetaColl[:,mm_out,nn_out]#.copy() # non-contiguous array !
 		nc_here=Surf_out.normals[:,mm_out,nn_out]
 
 		# get derivative of induced velocity w.r.t. zetac
@@ -291,8 +290,7 @@ def uc_dncdzeta(Surf):
 		zeta03=Surf.zeta[:,mpv[3,0],mpv[3,1]]
 
 		# calculate derivative
-		Dlocal=lib_ucdncdzeta.eval(zeta00,zeta01,zeta02,zeta03,
-															    u_tot_coll_here)
+		Dlocal=lib_ucdncdzeta.eval(zeta00,zeta01,zeta02,zeta03,u_tot_coll_here)
 
 		for vv in range(4):
 			# find 1D position of vertices
@@ -526,9 +524,12 @@ def dfqsduinput(Surfs,Surfs_star):
 		for pp_in in range(K):
 			# get (m,n) indices of panel
 			mm_in=Surf.maps.ind_2d_pan_scal[0][pp_in]
-			nn_in=Surf.maps.ind_2d_pan_scal[1][pp_in]	
+			nn_in=Surf.maps.ind_2d_pan_scal[1][pp_in]
+
 			# get panel vertices
-			zetav_here=Surf.get_panel_vertices_coords(mm_in,nn_in)
+			#zetav_here=Surf.get_panel_vertices_coords(mm_in,nn_in)
+			zetav_here=Surf.zeta[:, [mm_in+0,mm_in+1,mm_in+1,mm_in+0], 
+											[nn_in+0,nn_in+0,nn_in+1,nn_in+1]].T
 
 			for ll,aa,bb in zip(svec,avec,bvec):
 
@@ -633,7 +634,9 @@ def dfqsdvind_gamma(Surfs,Surfs_star):
 			mm_out=Surf_out.maps.ind_2d_pan_scal[0][pp_out]
 			nn_out=Surf_out.maps.ind_2d_pan_scal[1][pp_out]	
 			# get panel vertices
-			zetav_here=Surf_out.get_panel_vertices_coords(mm_out,nn_out)
+			#zetav_here=Surf_out.get_panel_vertices_coords(mm_out,nn_out)
+			zetav_here=Surf_out.zeta[:,[mm_out+0,mm_out+1,mm_out+1,mm_out+0], 
+									   [nn_out+0,nn_out+0,nn_out+1,nn_out+1]].T
 
 			for ll,aa,bb in zip(svec,avec,bvec):
 
@@ -719,6 +722,9 @@ def dvinddzeta(zetac,Surf_in,IsBound,M_in_bound=None):
 	The output derivatives are:
 	- Dercoll: 3 x 3 matrix
 	- Dervert: 3 x 3*Kzeta (if Surf_in is a wake, Kzeta is that of the bound)
+
+	Warning:
+	zetac must be contiguously stored!
 	'''
 
 
@@ -738,9 +744,11 @@ def dvinddzeta(zetac,Surf_in,IsBound,M_in_bound=None):
 
 		for pp_in in itertools.product(range(0,M_in),range(0,N_in)):
 			mm_in,nn_in=pp_in
-			zeta_panel_in=Surf_in.get_panel_vertices_coords(mm_in,nn_in)
+			#zeta_panel_in=Surf_in.get_panel_vertices_coords(mm_in,nn_in)
+			zeta_panel_in=Surf_in.zeta[:, [mm_in+0,mm_in+1,mm_in+1,mm_in+0], 
+											[nn_in+0,nn_in+0,nn_in+1,nn_in+1]].T
 			# get local derivatives
-			der_zetac,der_zeta_panel=dbiot.eval_panel_fast(
+			der_zetac,der_zeta_panel=dbiot.eval_panel_cpp(
 					zetac,zeta_panel_in,gamma_pan=Surf_in.gamma[mm_in,nn_in])
 			### Mid-segment point contribution
 			Dercoll+=der_zetac
@@ -767,10 +775,17 @@ def dvinddzeta(zetac,Surf_in,IsBound,M_in_bound=None):
 		### loop all panels (coll. contrib)
 		for pp_in in itertools.product(range(0,M_in),range(0,N_in)):
 			mm_in,nn_in=pp_in
-			zeta_panel_in=Surf_in.get_panel_vertices_coords(mm_in,nn_in)
+			#zeta_panel_in=Surf_in.get_panel_vertices_coords(mm_in,nn_in)
+			zeta_panel_in=Surf_in.zeta[:, [mm_in+0,mm_in+1,mm_in+1,mm_in+0], 
+											[nn_in+0,nn_in+0,nn_in+1,nn_in+1]].T
 			# get local derivatives
-			der_zetac,_=dbiot.eval_panel_fast(
+			der_zetac=dbiot.eval_panel_cpp_coll(
 					zetac,zeta_panel_in,gamma_pan=Surf_in.gamma[mm_in,nn_in])
+			# der_zetac_fast=dbiot.eval_panel_fast_coll(
+			# 		zetac,zeta_panel_in,gamma_pan=Surf_in.gamma[mm_in,nn_in])
+			# if np.max(np.abs(der_zetac-der_zetac_fast))>1e-10:
+			# 	embed()
+
 			### Mid-segment point contribution
 			Dercoll+=der_zetac
 
@@ -782,9 +797,11 @@ def dvinddzeta(zetac,Surf_in,IsBound,M_in_bound=None):
 
 		shape_zeta_in_bound=(3,M_in_bound+1,N_in+1)
 		for nn_in in range(N_in):	
-			zeta_panel_in=Surf_in.get_panel_vertices_coords(0,nn_in)
+			#zeta_panel_in=Surf_in.get_panel_vertices_coords(0,nn_in)
+			zeta_panel_in=Surf_in.zeta[:, [0,1,1,0], 
+											[nn_in+0,nn_in+0,nn_in+1,nn_in+1]].T
 			# get local derivatives
-			_,der_zeta_panel=dbiot.eval_panel_fast(
+			_,der_zeta_panel=dbiot.eval_panel_cpp(
 						   zetac,zeta_panel_in,gamma_pan=Surf_in.gamma[0,nn_in])
 
 			for vv in range(2):
@@ -836,7 +853,9 @@ def dfqsdvind_zeta(Surfs,Surfs_star):
 		### Loop out (bound) surface panels
 		for pp_out in itertools.product(range(0,M_out),range(0,N_out)):
 			mm_out,nn_out=pp_out				
-			zeta_panel_out=Surf_out.get_panel_vertices_coords(mm_out,nn_out)
+			#zeta_panel_out=Surf_out.get_panel_vertices_coords(mm_out,nn_out)
+			zeta_panel_out=Surf_out.zeta[:,[mm_out+0,mm_out+1,mm_out+1,mm_out+0], 
+										[nn_out+0,nn_out+0,nn_out+1,nn_out+1]].T
 
 			# Loop segments
 			for ll,aa,bb in zip(svec,avec,bvec):
@@ -956,10 +975,3 @@ def dfqsdvind_zeta(Surfs,Surfs_star):
 
 	return Dercoll_list, Dervert_list
 
-
-
-
-# -----------------------------------------------------------------------------
-
-if __name__=='__main__':
-	pass 
