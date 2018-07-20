@@ -25,6 +25,11 @@ import lib_dbiot as dbiot
 from IPython import embed
 
 
+import ctypes as ct
+import os
+lib_path=os.environ["DIRuvlm3d"]+'/../cpp/cpplibs.so'
+libc = ct.CDLL(lib_path)
+
 
 # local indiced panel/vertices as per self.maps
 dmver=[ 0, 1, 1, 0] # delta to go from (m,n) panel to (m,n) vertices
@@ -146,10 +151,10 @@ def nc_dqcdzeta_Sin_to_Sout(Surf_in,Surf_out,Der_coll,Der_vert,Surf_in_bound):
 
 		# get derivative of induced velocity w.r.t. zetac
 		if Surf_in_bound:
-			dvind_coll,dvind_vert=dvinddzeta(zetac_here,Surf_in,
+			dvind_coll,dvind_vert=dvinddzeta_cpp(zetac_here,Surf_in,
 														  IsBound=Surf_in_bound)
 		else:
-			dvind_coll,dvind_vert=dvinddzeta(zetac_here,Surf_in,
+			dvind_coll,dvind_vert=dvinddzeta_cpp(zetac_here,Surf_in,
 									IsBound=Surf_in_bound,M_in_bound=M_bound_in)
 		
 		### Surf_in vertices contribution
@@ -817,6 +822,57 @@ def dvinddzeta(zetac,Surf_in,IsBound,M_in_bound=None):
 
 
 
+def dvinddzeta_cpp(zetac,Surf_in,IsBound,M_in_bound=None):
+	'''
+	Produces derivatives of induced velocity by Surf_in w.r.t. the zetac point.
+	Derivatives are divided into those associated to the movement of zetac, and
+	to the movement of the Surf_in vertices (DerVert). 
+	
+	If Surf_in is bound (IsBound==True), the circulation over the TE due to the
+	wake is not included in the input.
+
+	If Surf_in is a wake (IsBound==False), derivatives w.r.t. collocation
+	points are computed ad the TE contribution on DerVert. In this case, the
+	chordwise paneling Min_bound of the associated input is required so as to
+	calculate Kzeta and correctly allocate the derivative matrix.
+
+	The output derivatives are:
+	- Dercoll: 3 x 3 matrix
+	- Dervert: 3 x 3*Kzeta (if Surf_in is a wake, Kzeta is that of the bound)
+
+	Warning:
+	zetac must be contiguously stored!
+	'''
+
+
+	M_in,N_in=Surf_in.maps.M,Surf_in.maps.N
+	Kzeta_in=Surf_in.maps.Kzeta	
+	shape_zeta_in=(3,M_in+1,N_in+1)
+
+	# allocate matrices
+	Dercoll=np.zeros((3,3),order='C')
+
+	if IsBound: M_in_bound=M_in
+	Kzeta_in_bound=(M_in_bound+1)*(N_in+1)
+	Dervert=np.zeros((3,3*Kzeta_in_bound))
+
+	libc.call_dvinddzeta( 
+						Dercoll.ctypes.data_as(ct.POINTER(ct.c_double)), 
+						Dervert.ctypes.data_as(ct.POINTER(ct.c_double)),  
+						zetac.ctypes.data_as(ct.POINTER(ct.c_double)), 
+						Surf_in.zeta.ctypes.data_as(ct.POINTER(ct.c_double)), 
+						Surf_in.gamma.ctypes.data_as(ct.POINTER(ct.c_double)), 
+						ct.byref(ct.c_int(M_in)),
+						ct.byref(ct.c_int(N_in)),
+						ct.byref(ct.c_bool(IsBound)),		
+						ct.byref(ct.c_int(M_in_bound)),	
+					)
+		
+	return Dercoll, Dervert
+
+
+
+
 def dfqsdvind_zeta(Surfs,Surfs_star):
 	'''
 	Assemble derivative of quasi-steady force w.r.t. induced velocities changes
@@ -883,7 +939,7 @@ def dfqsdvind_zeta(Surfs,Surfs_star):
 					shape_zeta_in_bound=(3,M_in_bound+1,N_in_bound+1)
 					Dervert=Dervert_list[ss_out][ss_in] #<- link					
 					# deriv wrt induced velocity
-					dvind_mid,dvind_vert=dvinddzeta(
+					dvind_mid,dvind_vert=dvinddzeta_cpp(
 												  zeta_mid,Surf_in,IsBound=True)
 					# allocate coll
 					Df=np.dot(0.25*Lskew,dvind_mid)
@@ -898,7 +954,7 @@ def dfqsdvind_zeta(Surfs,Surfs_star):
 
 					### wake
 					# deriv wrt induced velocity
-					dvind_mid,dvind_vert=dvinddzeta(
+					dvind_mid,dvind_vert=dvinddzeta_cpp(
 								zeta_mid,Surfs_star[ss_in],
 										IsBound=False,M_in_bound=Surf_in.maps.M)
 					# allocate coll
@@ -943,7 +999,7 @@ def dfqsdvind_zeta(Surfs,Surfs_star):
 				shape_zeta_in_bound=(3,M_in_bound+1,N_in_bound+1)
 				Dervert=Dervert_list[ss_out][ss_in] #<- link					
 				# deriv wrt induced velocity
-				dvind_mid,dvind_vert=dvinddzeta(zeta_mid,Surf_in,IsBound=True)
+				dvind_mid,dvind_vert=dvinddzeta_cpp(zeta_mid,Surf_in,IsBound=True)
 				# allocate coll
 				Df=np.dot(0.25*Lskew,dvind_mid)
 				Dercoll[np.ix_(ii_a,ii_a)]+=Df
@@ -957,7 +1013,7 @@ def dfqsdvind_zeta(Surfs,Surfs_star):
 
 				### wake
 				# deriv wrt induced velocity
-				dvind_mid,dvind_vert=dvinddzeta(
+				dvind_mid,dvind_vert=dvinddzeta_cpp(
 							zeta_mid,Surfs_star[ss_in],
 									    IsBound=False,M_in_bound=Surf_in.maps.M)
 				# allocate coll

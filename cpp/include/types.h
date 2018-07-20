@@ -23,7 +23,7 @@ typedef Map< Matrix<double,1,3> > map_RowVec3;
 // For mapping 3D python arrays
 // ps: using std::vector works for Map class. 
 typedef std::vector<map_Mat3by3> Vec_map_Mat3by3;
-typedef std::vector<map_Mat> Vec_map_Mat; 
+typedef std::vector<map_Mat> Vec_map_Mat;
 
 
 

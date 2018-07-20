@@ -17,7 +17,10 @@ class Static():
 
 
 	def __init__(self,tsdata):
-				
+		
+		print('Initialising Static solver class...')
+		t0=time.time()
+
 		MS=multisurfaces.MultiAeroGridSurfaces(tsdata)
 		MS.get_ind_velocities_at_collocation_points()
 		MS.get_input_velocities_at_collocation_points()
@@ -39,6 +42,10 @@ class Static():
 		# profiling output
 		self.prof_out='./asbly.prof'
 
+		self.time_init=time.time()-t0
+		print('Initialisation done in %.2f sec' %self.time_init)
+
+
 
 
 	def assemble_profiling(self):
@@ -50,6 +57,7 @@ class Static():
 		'''
 		Assemble global matrices
 		'''
+		print('Assembly started...')
 		MS=self.MS
 		t0=time.time()
 

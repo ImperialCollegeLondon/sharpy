@@ -43,9 +43,32 @@ Matrix3d Dvcross_by_skew3d(const Matrix3d& Dvcross,
 						   const RowVector3d& rv);
 
 
+void dvinddzeta(map_Mat3by3 DerC, 
+				map_Mat DerV,
+				const map_RowVec3 zetaC, 
+				Vec_map_Mat ZetaIn,
+				map_Mat GammaIn,
+				int& M_in,
+				int& N_in,
+				int& Kzeta_in,
+				bool& IsBound,
+				int& M_in_bound, // M of bound surf associated
+				int& Kzeta_in_bound
+				);
 
 
+void aic3(	map_Mat AIC3,
+			const map_RowVec3 zetaC, 
+			Vec_map_Mat ZetaIn,
+			int& M_in,
+			int& N_in);
 
+void ind_vel(map_RowVec3 velC,
+			const map_RowVec3 zetaC, 
+			Vec_map_Mat ZetaIn,
+			map_Mat GammaIn,
+			int& M_in,
+			int& N_in);
 
 
 

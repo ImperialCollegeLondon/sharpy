@@ -9,6 +9,8 @@ The fundamental routine in this module are:
 	These functions are "identical", except for the input types. While eval_panel 
 works with dense matrices, eval_panel_map works with Eigen Map objects, which are
 required to build array based python input/output interface.
+- dvinddzeta_map: computes derivatives w.r.t. grid coordinates of the velocity 
+induced by a surface to a point.
 */
 
 #include <Eigen/Dense>
@@ -28,6 +30,9 @@ const double PIquart=0.25/PI;
 const int svec[Nvert]={0, 1, 2, 3}; // seg. no.
 const int avec[Nvert]={0, 1, 2, 3}; // seg. no.
 const int bvec[Nvert]={1, 2, 3, 0}; // seg. no.
+const int dm[Nvert]={0,1,1,0};
+const int dn[Nvert]={0,0,1,1};
+
 
 
 
@@ -312,11 +317,198 @@ Matrix3d Dvcross_by_skew3d(const Matrix3d& Dvcross, const RowVector3d& rv){
 
 
 
+// -----------------------------------------------------------------------------
+
+
+void dvinddzeta(map_Mat3by3 DerC, 
+				map_Mat DerV,
+				const map_RowVec3 zetaC, 
+				Vec_map_Mat ZetaIn,
+				map_Mat GammaIn,
+				int& M_in,
+				int& N_in,
+				int& Kzeta_in,
+				bool& IsBound,
+				int& M_in_bound, // M of bound surf associated
+				int& Kzeta_in_bound
+				)
+{
+	int cc, vv, mm, nn, jj, cc_in; //pp
+	//int Kin=M_in*N_in;
+
+
+	// below defined as maps to keep compatibility with der-biot_panel_map
+	//Matrix4by3d ZetaPanel_in;
+	//Matrix3d derv[Nvert];
+	double p_ZetaPanel_in[12];
+	double p_derv[36];
+	map_Mat4by3 ZetaPanel_in(p_ZetaPanel_in);
+	Vec_map_Mat3by3 derv;
+	for(vv=0;vv<4;vv++) derv.push_back( map_Mat3by3(p_derv+9*vv) );
+
+
+/*	cout << "Kzeta_in=" << endl << Kzeta_in << endl;
+	cout << "DerV = " << endl << DerV << endl;
+	cout << "GammaIn = " << endl << GammaIn << endl;
+	for(cc=0;cc<3;cc++){
+		cout << "ZetaIn[" << cc << "] = " << endl <<  ZetaIn[cc] << endl;
+	}*/
+
+
+	if (IsBound){// ------------------------------------------------ Bound case
+
+		// Loop panels (mm,nn)
+		for (mm=0; mm<M_in; mm++){
+			for (nn=0; nn<N_in; nn++){
+				//pp=mm*N_in+nn; // panel no.
+
+				// get panel coords in 4x3 format
+				for(cc=0; cc<3; cc++){
+					for(vv=0; vv<Nvert; vv++){
+						ZetaPanel_in(vv,cc)=ZetaIn[cc](mm+dm[vv],nn+dn[vv]);
+					}
+				}
+
+				// init. local derivatives
+				for(vv=0; vv<Nvert; vv++) derv[vv].setZero();
+				
+				// get local deriv
+				der_biot_panel_map(DerC,derv,zetaC,ZetaPanel_in,GammaIn(mm,nn));
+				//for(vv=0; vv<Nvert; vv++) cout << derv[vv] << endl;
+
+				for(cc=0; cc<3; cc++){
+					for(vv=0; vv<Nvert; vv++){
+						for(cc_in=0; cc_in<3; cc_in++){
+							jj= cc_in*Kzeta_in + (mm+dm[vv])*(N_in+1) + (nn+dn[vv]);
+							DerV(cc,jj)+=derv[vv](cc,cc_in);
+						}
+					}
+				}
+			}
+		}
+
+
+	} else{ // ------------------------------------------------------ Wake case
+
+
+		// scan TE first
+		mm=0;
+		for (nn=0; nn<N_in; nn++){
+			//pp=mm*N_in+nn; // panel no.
+
+			// get panel coords in 4x3 format
+			for(cc=0; cc<3; cc++){
+				for(vv=0; vv<Nvert; vv++){
+					ZetaPanel_in(vv,cc)=ZetaIn[cc](mm+dm[vv],nn+dn[vv]);
+				}
+			}
+
+			// init. local derivatives. only vertices 0 and 3 are on TE
+			derv[0].setZero();
+			derv[3].setZero();			
+
+			// get local deriv
+			der_biot_panel_map(DerC,derv,zetaC,ZetaPanel_in,GammaIn(mm,nn));
+
+			for(cc=0; cc<3; cc++){
+				for(cc_in=0; cc_in<3; cc_in++){
+					// vv=0
+					jj= cc_in*Kzeta_in_bound + M_in_bound*(N_in+1) + (nn);
+					DerV(cc,jj)+=derv[0](cc,cc_in);
+					// vv=3
+					jj= cc_in*Kzeta_in_bound + M_in_bound*(N_in+1) + (nn+1);
+					DerV(cc,jj)+=derv[3](cc,cc_in);
+				}
+				
+			}
+		}
+
+
+		// Loop other panels (mm,nn) for colloc point
+		for (mm=1; mm<M_in; mm++){
+			for (nn=0; nn<N_in; nn++){
+
+				// get panel coords in 4x3 format
+				for(cc=0; cc<3; cc++){
+					for(vv=0; vv<Nvert; vv++){
+						ZetaPanel_in(vv,cc)=ZetaIn[cc](mm+dm[vv],nn+dn[vv]);
+					}
+				}
+				// update DerC
+				der_biot_panel_map(DerC,derv,zetaC,ZetaPanel_in,GammaIn(mm,nn));
+			}// loop nn
+		}// loop mm
+	}// if-else
+}
 
 
 
 
+void aic3(	map_Mat AIC3,
+			const map_RowVec3 zetaC, 
+			Vec_map_Mat ZetaIn,
+			int& M_in,
+			int& N_in)
+{
+
+	int mm,nn,cc,vv;
+
+	double p_ZetaPanel_in[12];
+	map_Mat4by3 ZetaPanel_in(p_ZetaPanel_in);
+
+	double p_vel[3];
+	map_RowVec3 vel(p_vel);
+
+	// Loop panels (mm,nn)
+	for (mm=0; mm<M_in; mm++){
+		for (nn=0; nn<N_in; nn++){
+			//pp=mm*N_in+nn; // panel no.
+
+			// get panel coords in 4x3 format
+			for(cc=0; cc<3; cc++){
+				for(vv=0; vv<Nvert; vv++){
+					ZetaPanel_in(vv,cc)=ZetaIn[cc](mm+dm[vv],nn+dn[vv]);
+				}
+			}
+
+			vel.setZero();
+			biot_panel_map( vel, zetaC, ZetaPanel_in, 1.0);
+			AIC3.col(mm*N_in+nn)=vel;
+
+		}
+	}
+}
 
 
+
+void ind_vel(map_RowVec3 velC,
+			const map_RowVec3 zetaC, 
+			Vec_map_Mat ZetaIn,
+			map_Mat GammaIn,
+			int& M_in,
+			int& N_in)
+{
+
+	int mm,nn,cc,vv;
+
+	double p_ZetaPanel_in[12];
+	map_Mat4by3 ZetaPanel_in(p_ZetaPanel_in);
+
+	// Loop panels (mm,nn)
+	for (mm=0; mm<M_in; mm++){
+		for (nn=0; nn<N_in; nn++){
+			//pp=mm*N_in+nn; // panel no.
+
+			// get panel coords in 4x3 format
+			for(cc=0; cc<3; cc++){
+				for(vv=0; vv<Nvert; vv++){
+					ZetaPanel_in(vv,cc)=ZetaIn[cc](mm+dm[vv],nn+dn[vv]);
+				}
+			}
+
+			biot_panel_map( velC, zetaC, ZetaPanel_in, GammaIn(mm,nn));
+		}
+	}
+}
 
 
