@@ -124,7 +124,7 @@ class Test_ders(unittest.TestCase):
 
 
 	def test_dbiot_panel(self):
-		print('\n------------------------------------ Testing dbiot.eval_panel')
+		print('\n---------------------------------- Testing dbiot.eval_panel_*')
 
 		gamma=2.4
 		zetaP=self.zetaP
@@ -140,6 +140,7 @@ class Test_ders(unittest.TestCase):
 		DerP_an,DerVer_an=dbiot.eval_panel_exp(zetaP,ZetaPanel,gamma)
 		DerP_an2,DerVer_an2=dbiot.eval_panel_comp(zetaP,ZetaPanel,gamma)
 		DerP_an3,DerVer_an3=dbiot.eval_panel_fast(zetaP,ZetaPanel,gamma)
+		DerP_an4,DerVer_an4=dbiot.eval_panel_cpp(zetaP,ZetaPanel,gamma)
 
 		er_max=max( np.max(np.abs(DerP_an2-DerP_an)),
 										   np.max(np.abs(DerVer_an2-DerVer_an)))
@@ -147,6 +148,9 @@ class Test_ders(unittest.TestCase):
 		er_max=max( np.max(np.abs(DerP_an3-DerP_an)),
 										   np.max(np.abs(DerVer_an3-DerVer_an)))
 		assert er_max<1e-16, 'eval_panel_fast not matching with eval_panel_exp' 
+		er_max=max( np.max(np.abs(DerP_an4-DerP_an)),
+										   np.max(np.abs(DerVer_an4-DerVer_an)))
+		assert er_max<1e-16, 'eval_panel_cpp not matching with eval_panel_exp' 
 
 
 		# compare vs. numerical derivative
@@ -212,6 +216,7 @@ class Test_ders(unittest.TestCase):
 		DerP_an,DerVer_an=dbiot.eval_panel_exp(zetaP,ZetaPanel,gamma)
 		DerP_an2,DerVer_an2=dbiot.eval_panel_comp(zetaP,ZetaPanel,gamma)
 		DerP_an3,DerVer_an3=dbiot.eval_panel_fast(zetaP,ZetaPanel,gamma)
+		DerP_an4,DerVer_an4=dbiot.eval_panel_cpp(zetaP,ZetaPanel,gamma)
 
 		er_max=max( np.max(np.abs(DerP_an2-DerP_an)),
 										   np.max(np.abs(DerVer_an2-DerVer_an)))
@@ -219,6 +224,9 @@ class Test_ders(unittest.TestCase):
 		er_max=max( np.max(np.abs(DerP_an3-DerP_an)),
 										   np.max(np.abs(DerVer_an3-DerVer_an)))
 		assert er_max<1e-16, 'eval_panel_fast not matching with eval_panel_exp' 
+		er_max=max( np.max(np.abs(DerP_an4-DerP_an)),
+										   np.max(np.abs(DerVer_an4-DerVer_an)))
+		assert er_max<1e-16, 'eval_panel_cpp not matching with eval_panel_exp' 
 
 
 		# compare vs. numerical derivative
