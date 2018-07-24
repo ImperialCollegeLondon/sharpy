@@ -37,7 +37,7 @@ class StaticCoupled(BaseSolver):
         self.settings_default['max_iter'] = 100
 
         self.settings_types['n_load_steps'] = 'int'
-        self.settings_default['n_load_steps'] = 5
+        self.settings_default['n_load_steps'] = 1
 
         self.settings_types['tolerance'] = 'float'
         self.settings_default['tolerance'] = 1e-5
@@ -192,7 +192,7 @@ class StaticCoupled(BaseSolver):
             for i_node, node in enumerate(thrust_nodes):
                 self.force_orientation[i_node, :] = (
                     algebra.unit_vector(self.data.structure.ini_info.steady_applied_forces[node, 0:3]))
-            print(self.force_orientation)
+            # print(self.force_orientation)
 
         # thrust
         # thrust is scaled so that the direction of the forces is conserved
@@ -222,5 +222,4 @@ class StaticCoupled(BaseSolver):
         self.aero_solver.update_step()
 
     def extract_resultants(self):
-        forces, moments = self.structural_solver.extract_resultants()
-        return forces, moments
+        return self.structural_solver.extract_resultants()
