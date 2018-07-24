@@ -1031,3 +1031,100 @@ def dfqsdvind_zeta(Surfs,Surfs_star):
 
 	return Dercoll_list, Dervert_list
 
+
+
+def dfunstdgamma_dot(Surfs):
+	'''
+	Computes derivative of unsteady aerodynamic force with respect to changes in
+	circulation.
+
+	Note: the function also checks that the first derivative of the circulation
+	at the linearisation point is null. If not, a further contribution to the
+	added mass, depending on the changes in panel area and normal, arises and 
+	needs to be implemented.
+	'''
+
+	DerList=[]
+	n_surf=len(Surfs)
+	for ss in range(n_surf):
+		Surf=Surfs[ss]
+
+		### check gamma_dot is zero
+		assert (np.max(np.abs(Surf.gamma_dot))<1e-16),\
+			'gamma_not not zero! Implement derivative w.r.t. lattice geometry changes'
+
+
+		### compute sensitivity
+		wcv=Surf.get_panel_wcv()
+		Kzeta=Surf.maps.Kzeta
+		K=Surf.maps.K
+		M,N=Surf.maps.M,Surf.maps.N
+		shape_funst=(3, M+1, N+1)
+
+		DerList.append(np.zeros((3*Kzeta,K)))
+		Der=DerList[-1]
+
+
+		# loop panels (input, i.e. matrix columns)
+		for pp in range(K):
+			# get (m,n) indices of panel
+			mm,nn=np.unravel_index( pp, (M,N) )
+
+			dfcoll=Surf.rho*Surf.areas[mm,nn]*Surf.normals[:,mm,nn]
+
+			for vv,dm,dn in zip(svec,dmver,dnver):
+
+				df=wcv[vv]*dfcoll
+
+				# get vertices 1d index
+				iivec=[ np.ravel_multi_index( 
+					 		(vv,mm+dm,nn+dn),shape_funst) for vv in range(3)]
+
+				Der[iivec,pp]+=df
+
+	return DerList
+
+
+
+def wake_prop(Surfs,Surfs_star):
+	'''
+	Assembly of wake propagation matrices
+	'''
+
+	C_list=[]
+	Cstar_list=[]
+
+	n_surf=len(Surfs)
+	assert len(Surfs_star)==n_surf, 'No. of wake and bound surfaces not matching!'
+
+	for ss in range(n_surf):
+
+		Surf=Surfs[ss]
+		Surf_star=Surfs_star[ss]
+
+		N,M,K=Surf.maps.N,Surf.maps.M,Surf.maps.K
+		M_star,K_star=Surf_star.maps.M,Surf_star.maps.K
+		assert Surf_star.maps.N==N,\
+			'Bound and wake surface do not have the same spanwise discretisation'
+
+		iivec=np.array( range(N), dtype=int )
+
+		### Propagation from trailing edge
+		C_list.append( np.zeros((K_star,K)) )
+		C=C_list[-1]
+		C[iivec, N*(M-1)+iivec]=1.0
+
+		### wake propagation
+		Cstar_list.append( np.zeros((K_star,K_star)) )
+		C=Cstar_list[-1]
+		for mm in range(1,M_star):
+			C[mm*N+iivec, (mm-1)*N+iivec]=1.0
+
+
+	return C_list, Cstar_list
+
+
+
+
+
+

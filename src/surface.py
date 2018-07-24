@@ -279,14 +279,16 @@ class AeroGridSurface(AeroGridGeo):
 	mid-point segments
 	'''
 
-	def __init__(self,Map,zeta,gamma,u_ext=None,zeta_dot=None,rho=1.,
-																 aM=0.5,aN=0.5):
+	def __init__(self,Map,zeta,gamma,
+							u_ext=None,zeta_dot=None,gamma_dot=None,
+														  rho=1.,aM=0.5,aN=0.5):
 
 		super().__init__(Map,zeta,aM,aN)
 
 		self.gamma=gamma 
 		self.zeta_dot=zeta_dot
 		self.u_ext=u_ext
+		self.gamma_dot=gamma_dot
 		self.rho=rho
 
 		msg_out='wrong input shape!'
@@ -368,10 +370,6 @@ class AeroGridSurface(AeroGridGeo):
 			uA=u_tot[:,mm+dmver[aa],nn+dnver[aa]]
 			uB=u_tot[:,mm+dmver[bb],nn+dnver[bb]]
 			self.u_input_seg[:,ss,mm,nn]=.5*(uA+uB)
-		# self.u_input_seg[:,0,mm,nn]=.5*(u_tot[:,mm  ,nn  ]+u_tot[:,mm+1,nn  ])
-		# self.u_input_seg[:,1,mm,nn]=.5*(u_tot[:,mm+1,nn  ]+u_tot[:,mm+1,nn+1])
-		# self.u_input_seg[:,2,mm,nn]=.5*(u_tot[:,mm+1,nn+1]+u_tot[:,mm  ,nn+1])
-		# self.u_input_seg[:,3,mm,nn]=.5*(u_tot[:,mm  ,nn+1]+u_tot[:,mm  ,nn  ])
 
 		##### panels n=0: copy seg.3 
 		nn=0
@@ -787,6 +785,34 @@ class AeroGridSurface(AeroGridGeo):
 
 
 
+	def get_joukovski_unsteady(self):
+		'''
+		Returns added mass effects over lattive grid
+		'''
+
+		if self.gamma_dot is None:
+			raise NameError('circulation derivative not specified!')
+		if not hasattr(self,'areas'):
+			self.generate_areas()
+
+		M,N=self.maps.M,self.maps.N
+		self.funst=np.zeros((3,M+1,N+1))
+		wcv=self.get_panel_wcv()
+
+		for pp in itertools.product(range(0,M),range(0,N)):
+			mm,nn=pp
+
+			# force at collocation point
+			fcoll=self.rho*self.areas[mm,nn]*self.normals[:,mm,nn]*self.gamma_dot[mm,nn]
+
+
+			# project at vertices
+			for vv in range(4):
+				self.funst[:,mm+dmver[vv],nn+dnver[vv]]+=wcv[vv]*fcoll
+
+
+
+
 if __name__=='__main__':
 
 	import read, gridmapping
@@ -812,16 +838,25 @@ if __name__=='__main__':
 	plt.close('all')
 	#plt.show()
 
-	S=AeroGridSurface(Map,zeta=tsdata.zeta[ss],gamma=tsdata.gamma[ss],
-							zeta_dot=tsdata.zeta_dot[ss],u_ext=tsdata.u_ext[ss])
+	S=AeroGridSurface(Map,zeta=tsdata.zeta[ss],
+								gamma=tsdata.gamma[ss],
+										zeta_dot=tsdata.zeta_dot[ss],
+												u_ext=tsdata.u_ext[ss],
+													 gamma_dot=tsdata.gamma_dot[ss])
 	S.get_normal_input_velocities_at_collocation_points()
 
 	# verify aic3
 	zeta_out=np.array([1,4,2])
 	uind_out=S.get_induced_velocity_cpp(zeta_out)
-	aic3=S.get_aic3(zeta_out)
+	aic3=S.get_aic3_cpp(zeta_out)
 	uind_out2=np.dot(aic3,S.gamma.reshape(-1,order='C'))
 	assert np.max(np.abs(uind_out-uind_out2))<1e-12, 'Wrong aic3 calculation'
+
+	# calc unsteady joukovski force
+	S.generate_areas()
+	S.get_joukovski_unsteady()
+
+
 
 
 

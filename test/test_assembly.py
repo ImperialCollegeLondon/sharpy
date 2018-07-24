@@ -67,7 +67,7 @@ class Test_assembly(unittest.TestCase):
 
 		# select test case
 		fname='./h5input/goland_mod_Nsurf02_M003_N004_a040.aero_state.h5'
-		#fname='./h5input/goland_mod_Nsurf01_M003_N004_a040.aero_state.h5'
+		fname='./h5input/goland_mod_Nsurf01_M003_N004_a040.aero_state.h5'
 		haero=read.h5file(fname)
 		tsdata=haero.ts00000
 
@@ -843,6 +843,93 @@ class Test_assembly(unittest.TestCase):
 
 
 
+	def test_dfunstdgamma_dot(self):
+		'''
+		Test derivative of unsteady aerodynamic force with respect to changes in 
+		panel circulation.
+
+		Warning: test assumes the derivative of the unsteady force only depends on
+		Gamma_dot, which is true only for steady-state linearisation points
+		'''
+
+		MS=self.MS
+		Ders_an=assembly.dfunstdgamma_dot(MS.Surfs)
+
+
+		step=1e-6
+		Ders_num=[]
+		n_surf=len(MS.Surfs)
+		for ss in range(n_surf):
+
+			Surf=MS.Surfs[ss]
+			Kzeta,K=Surf.maps.Kzeta,Surf.maps.K
+			M,N=Surf.maps.M,Surf.maps.N
+
+			Dnum=np.zeros((3*Kzeta,K))
+
+			# get refernce values
+			Surf.get_joukovski_unsteady()
+			Gamma_dot0=Surf.gamma_dot.copy()
+			F0=Surf.funst.copy()
+
+			for pp in range(K):
+				mm,nn=np.unravel_index( pp, (M,N) )
+
+				Surf.gamma_dot=Gamma_dot0.copy()
+				Surf.gamma_dot[mm,nn]+=step
+				Surf.get_joukovski_unsteady()
+
+				dF=(Surf.funst-F0)/step
+				Dnum[:,pp]=dF.reshape(-1)
+
+			# restore
+			Surf.gamma_dot=Gamma_dot0.copy()
+
+			### verify
+			ermax, ErAbs, ErRel=max_error_tensor(Ders_an[ss],Dnum)
+
+			# max absolute error
+			ermax=np.max(ErAbs)
+			# relative error at max abs error point
+			iimax=np.unravel_index(np.argmax(ErAbs),ErAbs.shape)
+			ermax_rel=ErRel[iimax]
+
+			print('Bound%.2d\t\t\tFDstep\tErrAbs\tErrRel'%(ss,))
+			print('\t\t\t%.1e\t%.1e\t%.1e' %(step,ermax,ermax_rel))
+			assert ermax<5e2*step and ermax_rel<50*step, 'Test failed!'
+
+
+
+	def test_wake_prop(self):
+
+		MS=self.MS
+		C_list,Cstar_list=assembly.wake_prop(MS.Surfs,MS.Surfs_star)
+
+		n_surf=len(MS.Surfs)
+		for ss in range(n_surf):
+
+			Surf=MS.Surfs[ss]
+			Surf_star=MS.Surfs_star[ss]
+			N=Surf.maps.N
+			K_star=Surf_star.maps.K
+			C=C_list[ss]
+			Cstar=Cstar_list[ss]
+
+
+			# add noise to circulations
+			gamma=Surf.gamma+np.random.rand( *Surf.gamma.shape )
+			gamma_star=Surf_star.gamma+np.random.rand( *Surf_star.gamma.shape )
+
+
+			gvec=np.dot(C,gamma.reshape(-1))+np.dot(Cstar,gamma_star.reshape(-1))			
+
+			gvec_ref=np.concatenate((gamma[-1,:],gamma_star[:-1,:].reshape(-1)))
+
+			assert np.max(np.abs(gvec-gvec_ref))<1e-15,\
+										  'Prop. from trailing edge not correct'
+
+
+
 
 
 if __name__=='__main__':
@@ -865,6 +952,11 @@ if __name__=='__main__':
 	# ### state equation terms
 	# T.test_uc_dncdzeta()
 	# T.test_nc_dqcdzeta()	
+
+
+	### force equation (unsteady)
+	# T.test_dfunstdgamma_dot()
+
 
 
 	

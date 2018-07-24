@@ -47,6 +47,7 @@ class MultiAeroGridSurfaces():
 			Surf=surface.AeroGridSurface(
 					Map,zeta=tsdata.zeta[ss],gamma=tsdata.gamma[ss],
 					u_ext=tsdata.u_ext[ss],zeta_dot=tsdata.zeta_dot[ss],
+					gamma_dot=tsdata.gamma_dot[ss],
 					rho=tsdata.rho)
 			# generate geometry data
 			Surf.generate_areas()
