@@ -226,16 +226,14 @@ class Aerogrid(object):
                 else:
                     global_node_in_surface[i_surf].append(i_global_node)
 
-                # master_elem, master_elem_node = beam.master[i_elem, i_local_node, :]
-                # master_elem = int(master_elem)
-                # master_elem_node = int(master_elem_node)
-                # if master_elem < 0:
-                #     master_elem = i_elem
-                #     master_elem_node = i_local_node
-
-                # not necessary to look for the master elem
+                master_elem, master_elem_node = beam.master[i_elem, i_local_node, :]
+                if master_elem < 0:
                 master_elem = i_elem
                 master_elem_node = i_local_node
+
+                # # not necessary to look for the master elem
+                # master_elem = i_elem
+                # master_elem_node = i_local_node
 
                 # find the i_surf and i_n data from the mapping
                 i_n = -1
@@ -373,12 +371,14 @@ class Aerogrid(object):
         :return:
         """
 
-        if len(previous_tsteps) == 1:
+        if len(previous_tsteps) == 0:
+            for i_surf in range(tstep.n_surf):
+                tstep.gamma_dot[i_surf].fill(0.0)
+        elif len(previous_tsteps) == 1:
             # first order
             # f'(n) = (f(n) - f(n - 1))/dx
             for i_surf in range(tstep.n_surf):
                 tstep.gamma_dot[i_surf] = (tstep.gamma[i_surf] - previous_tsteps[-1].gamma[i_surf])/dt
-
         else:
             # second order
             for i_surf in range(tstep.n_surf):
@@ -490,7 +490,7 @@ def generate_strip(node_info, airfoil_db, aligned_grid, orientation_in=np.array(
             zeta_dot_a_frame[:, i_M] += node_info['pos_dot']
 
         # velocity due to psi_dot
-        omega_b = algebra.crv_dot2omega(node_info['beam_psi'], node_info['psi_dot'])
+        # omega_b = algebra.crv_dot2omega(node_info['beam_psi'], node_info['psi_dot'])
         Omega_b = algebra.crv_dot2Omega(node_info['beam_psi'], node_info['psi_dot'])
         for i_M in range(node_info['M'] + 1):
             # zeta_dot_a_frame[:, i_M] += (
@@ -504,25 +504,8 @@ def generate_strip(node_info, airfoil_db, aligned_grid, orientation_in=np.array(
 
             zeta_dot_a_frame[:, i_M] += (
                 # np.dot(np.dot(Cab, np.dot(algebra.skew(omega_b), Cab.T)), strip_coordinates_a_frame[:, i_M]))
-                # np.dot(algebra.skew(Omega_b), strip_coordinates_a_frame[:, i_M]))
+                np.dot(algebra.skew(Omega_b), strip_coordinates_a_frame[:, i_M]))
 
-                np.dot(Cab, np.cross(omega_b, strip_coordinates_b_frame[:, i_M])))
-                # np.cross(omega_b, strip_coordinates_a_frame[:, i_M]))
-
-                # np.cross(np.dot(Cab,
-                #                 np.dot(algebra.crv_dot2omega(node_info['beam_psi'], node_info['psi_dot']),
-                #                        Cab.T)),
-                #          strip_coordinates_a_frame[:, i_M]))
-                # np.cross(algebra.crv_dot2omega(node_info['beam_psi'], node_info['psi_dot']),
-                #                                strip_coordinates_a_frame[:, i_M]))
-                # np.cross(np.dot(Cab,
-                #                 algebra.crv_dot2omega(node_info['beam_psi'], node_info['psi_dot'])),
-                #          np.dot(Cab.T, strip_coordinates_a_frame[:, i_M])))
-
-            # zeta_dot_a_frame[:, i_M] += np.cross(algebra.crv_dot2omega(node_info['beam_psi'], node_info['psi_dot']),
-            #                                      strip_coordinates_a_frame[:, i_M])
-
-        # zeta_dot_a_frame *= -1
     else:
         zeta_dot_a_frame = np.zeros((3, node_info['M'] + 1), dtype=ct.c_double)
 
