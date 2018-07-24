@@ -83,6 +83,8 @@ class PIDTrajectoryControl(BaseSolver):
         self.ini_coord_a = None
         self.trajectory_steps = None
 
+        self.print_info = None
+
     def initialise(self, data):
         self.data = data
         self.settings = data.settings[self.solver_id]
@@ -119,11 +121,19 @@ class PIDTrajectoryControl(BaseSolver):
         # generator
         self.ini_coord_a = self.data.structure.ini_info.glob_pos(include_rbm=False)
 
+        self.print_info = self.settings['print_info']
+        if self.print_info:
+            self.residual_table = cout.TablePrinter(4, 14, ['g', 'f', 'f', 'e'])
+            self.residual_table.field_length[0] = 6
+            self.residual_table.field_length[1] = 6
+            self.residual_table.field_length[1] = 6
+            self.residual_table.print_header(['ts', 't', 'traj. offset', 'norm(force)'])
+
     def run(self):
         local_it = -1
         for self.data.ts in range(len(self.data.structure.timestep_info) - 1,
                                   self.settings['n_time_steps'].value + len(self.data.structure.timestep_info) - 1):
-            print(self.data.ts)
+            # print(self.data.ts)
             local_it += 1
             if local_it < self.settings['transient_nsteps'].value:
                 coeff = local_it/self.settings['transient_nsteps'].value
@@ -154,6 +164,7 @@ class PIDTrajectoryControl(BaseSolver):
                 for inode in range(len(self.settings['nodes_trajectory'])):
                     i_global_node = self.settings['nodes_trajectory'][inode]
                     self.input_trajectory[local_it, inode, :] = self.ini_coord_a[i_global_node, :] + temp_trajectory
+                    # print('node:' + str(i_global_node))
                     self.force_history[local_it, inode, :] = self.calculate_forces(self.trajectory[local_it, inode, :],
                                                                                    self.input_trajectory[local_it, inode, :],
                                                                                    i_global_node,
@@ -176,6 +187,14 @@ class PIDTrajectoryControl(BaseSolver):
             if local_it < self.settings['transient_nsteps'].value:
                 self.solver.set_g(old_g)
                 self.solver.set_rho(old_rho)
+
+            if self.print_info:
+                res = np.linalg.norm(self.input_trajectory[local_it, :, :] - self.trajectory[local_it, :, :])
+                force = np.linalg.norm(self.force_history[local_it, ...])
+                self.residual_table.print_line([self.data.ts,
+                                                self.data.ts*self.settings['dt'].value,
+                                                res,
+                                                force])
 
         return self.data
 
@@ -206,6 +225,7 @@ class PIDTrajectoryControl(BaseSolver):
         #     feedback[i] = controller(state[i])
         force = np.zeros((3,))
         for idim in range(3):
+            # print('dim = ' + str(idim))
             self.controllers[i_trajectory_node][idim].set_point(input_trajectory[idim])
             force[idim] = self.controllers[i_trajectory_node][idim](trajectory[idim])
 
@@ -258,7 +278,7 @@ class PID(object):
         self._error_history = np.zeros((3,))
 
         self._derivator = second_order_fd
-        self._derivative_limits = np.array([-1, 1])*0.1
+        self._derivative_limits = np.array([-1, 1])*0.05
 
         self._n_calls = 0
 
@@ -279,14 +299,14 @@ class PID(object):
         # print(id(self))
         # Proportional gain
         actuation += error*self._kp
-        # print('Error = ' + str(error))
+        # print('Error = ' + str(error*self._kp))
 
         # Derivative gain
         derivative = self._derivator(self._error_history, self._n_calls, self._dt)
         derivative = max(derivative, self._derivative_limits[0])
         derivative = min(derivative, self._derivative_limits[1])
         actuation += derivative*self._kd
-        # print('derivaive = ' + str(self.derivator(self._error_history, self._n_calls, self._dt)))
+        # print('derivaive = ' + str(derivative*self._kd))
 
         # Integral gain
         self._accumulated_integral += error*self._dt
@@ -296,7 +316,7 @@ class PID(object):
         elif self._accumulated_integral > self._integral_limits[1]:
             self._accumulated_integral = self._integral_limits[1]
             # cout.cout_wrap('Integrator in PID controller reached upper limit', 3)
-        # print('accumulated integral = ' + str(self._accumulated_integral))
+        # print('accumulated integral = ' + str(self._accumulated_integral*self._ki))
 
         actuation += self._accumulated_integral*self._ki
 

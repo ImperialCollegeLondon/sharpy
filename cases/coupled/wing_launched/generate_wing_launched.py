@@ -3,7 +3,7 @@ import numpy as np
 import os
 import sharpy.utils.algebra as algebra
 
-case_name = 'wing_launched'
+case_name = 'wing_launched_sig100'
 route = os.path.dirname(os.path.realpath(__file__)) + '/'
 
 
@@ -14,8 +14,9 @@ flow = ['BeamLoader',
         # 'StaticUvlm',
         # 'StaticTrim',
         'StaticCoupled',
-        # 'BeamLoads',
-        # 'AerogridPlot',
+        'BeamLoads',
+        'AerogridPlot',
+        'BeamPlot',
         # 'BeamPlot',
         # 'DynamicPrescribedCoupled',
         # 'BeamLoads',
@@ -27,16 +28,24 @@ flow = ['BeamLoader',
 
 
 # FLIGHT CONDITIONS
-u_inf = 2
+u_inf = 1
 rho = 1.225
 
-# trim sigma = 1
-alpha = 5.32667876974*np.pi/180
+# trim sigma = 1.5
+alpha = 2.67630048357*np.pi/180
 beta = 0*np.pi/180
 gravity = 'on'
-cs_deflection = -4.6036398*np.pi/180
-thrust = 28.6940176
-sigma = 1
+cs_deflection = -1.87363435871*np.pi/180
+thrust = 7.61027246996
+sigma = 1.5
+
+# trim sigma = 100
+alpha = 3.928069298*np.pi/180
+beta = 0*np.pi/180
+gravity = 'on'
+cs_deflection = -4.41665136916*np.pi/180
+thrust = 5.97767421167
+sigma = 100
 
 trajectory_end_velocity = -(10/np.cos(alpha) - u_inf)
 trajectory_coords_end = np.array([1.*np.cos(alpha), -1.0*np.sin(alpha)])*-15
@@ -67,7 +76,7 @@ trajectory_coords_end = np.array([1.*np.cos(alpha), -1.0*np.sin(alpha)])*-15
 gust_intensity = 0.00
 n_step = 1
 relaxation_factor = 0.
-tolerance = 1e-8
+tolerance = 1e-6
 
 # MODEL GEOMETRY
 # beam
@@ -112,8 +121,8 @@ chord_tail = 0.5
 
 # DISCRETISATION
 # spatial discretisation
-m = 4
-n_elem_multiplier = 1
+m = 8
+n_elem_multiplier = 1.5
 n_elem_main = int(6*n_elem_multiplier)
 n_elem_tail = int(2*n_elem_multiplier)
 n_elem_fin = int(2*n_elem_multiplier)
@@ -124,12 +133,12 @@ n_surfaces = 5
 physical_time = 30
 # physical_time = 5.5
 # physical_time = 3
-tstep_factor = 0.2
+tstep_factor = 0.4
 dt = 1.0/m/u_inf*tstep_factor
-dt = 1.0/4/10*tstep_factor
+dt = 1.0/8/10*tstep_factor
 n_tstep = round(physical_time/dt)
 n_tstep = 3*3200
-n_tstep = 3200
+n_tstep = 12000
 
 # trajectory control
 start_traject_time = int(0.5/dt)
@@ -686,7 +695,7 @@ def generate_solver_file():
                                    'max_iterations': 150,
                                    'num_load_steps': 1,
                                    'delta_curved': 1e-15,
-                                   'min_delta': 1e-8,
+                                   'min_delta': tolerance,
                                    'gravity_on': gravity,
                                    'gravity': 9.81*0}
 
@@ -708,6 +717,7 @@ def generate_solver_file():
                                  'aero_solver': 'StaticUvlm',
                                  'aero_solver_settings': settings['StaticUvlm'],
                                  'max_iter': 100,
+                                 'structural_substeps': 1,
                                  'n_load_steps': n_step,
                                  'tolerance': tolerance,
                                  'relaxation_factor': relaxation_factor}
@@ -722,12 +732,13 @@ def generate_solver_file():
                                                'max_iterations': 950,
                                                'delta_curved': 1e-9,
                                                'min_delta': 1e-5,
-                                               'newmark_damp': 1e-3,
+                                               'newmark_damp': 1e-2,
                                                'gravity_on': gravity,
                                                'gravity': 9.81,
                                                'num_steps': n_tstep,
                                                'dt': dt}
 
+    # print('Convection scheme is 2')
     settings['StepUvlm'] = {'print_info': 'off',
                             'horseshoe': 'off',
                             'num_cores': 4,
@@ -754,13 +765,14 @@ def generate_solver_file():
                                   'aero_solver': 'StepUvlm',
                                   'aero_solver_settings': settings['StepUvlm'],
                                   'fsi_substeps': 200,
-                                  'fsi_tolerance': 1e-9,
+                                  'fsi_tolerance': 1e-7,
                                   'relaxation_factor': relaxation_factor,
                                   'minimum_steps': 1,
                                   'relaxation_steps': 150,
                                   'final_relaxation_factor': 0.0,
                                   'n_time_steps': n_tstep,
                                   'dt': dt,
+                                  'include_unsteady_force_contribution': 'off',
                                   'postprocessors': ['BeamLoads', 'BeamPlot', 'AerogridPlot'],
                                   'postprocessors_settings': {'BeamLoads': {},
                                                               'BeamPlot': {'folder': route + '/output/',
@@ -793,7 +805,8 @@ def generate_solver_file():
                                                                             'include_rbm': 'on',
                                                                             'include_applied_forces': 'on',
                                                                             'minus_m_star': 0}}}
-    settings['PIDTrajectoryControl'] = {'trajectory_solver': 'DynamicCoupled',
+    settings['PIDTrajectoryControl'] = {'print_info': 'on',
+                                        'trajectory_solver': 'DynamicCoupled',
                                         'trajectory_solver_settings': settings['DynamicCoupled'],
                                         'trajectory_generator': 'TrajectoryGenerator',
                                         'trajectory_generator_input': {'angle_end': alpha,
@@ -802,19 +815,26 @@ def generate_solver_file():
                                                                        'acceleration': 'linear',
                                                                        'dt': dt,
                                                                        'coords_end': trajectory_coords_end,
-                                                                       'time_offset': 3.0,
-                                                                       'plot': 'off',
+                                                                       'time_offset': 280*dt,
+                                                                       'plot': 'on',
                                                                        'print_info': 'on'},
                                         'n_time_steps': n_tstep,
                                         'dt': dt,
-                                        'PID_P_gain': 25*100,
-                                        'PID_I_gain': 50.*100,
-                                        'PID_D_gain': 20*10,
+                                        # 'PID_P_gain': 25*100,
+                                        # 'PID_I_gain': 50.*100,
+                                        # 'PID_D_gain': 20*10,
+                                        # 'PID_P_gain': 25*100,
+                                        'PID_P_gain': 30*100,
+                                        'PID_I_gain': 25.*100,
+                                        'PID_D_gain': 25*10,
                                         'nodes_trajectory': [0, end_of_fuselage_node],
-                                        'transient_nsteps': 200}
+                                        'transient_nsteps': 250}
+                                        # 'transient_nsteps': 200}
+    # print('Small mstar')
     settings['AerogridLoader'] = {'unsteady': 'on',
                                   'aligned_grid': 'on',
-                                  'mstar': 20,
+                                  'mstar': 40,
+                                  # 'mstar': 20,
                                   'freestream_dir': ['1', '0', '0']}
 
     settings['AerogridPlot'] = {'folder': route + '/output/',

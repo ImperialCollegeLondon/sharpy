@@ -3,7 +3,7 @@ import numpy as np
 import os
 import sharpy.utils.algebra as algebra
 
-case_name = 'hale_sigma09'
+case_name = 'hale_sigma15'
 route = os.path.dirname(os.path.realpath(__file__)) + '/'
 
 
@@ -14,53 +14,48 @@ flow = ['BeamLoader',
         # 'StaticUvlm',
         # 'StaticTrim',
         'StaticCoupled',
-        # 'BeamLoads',
-        'AerogridPlot',
-        'BeamPlot',
-        'DynamicCoupled',
         # 'AerogridPlot',
-        # 'BeamPlot'
+        # 'BeamPlot',
+        # 'DynamicCoupled',
+        'BeamLoads',
+        'AerogridPlot',
+        'BeamPlot'
         ]
 
 
 # FLIGHT CONDITIONS
 u_inf = 25
 rho = 0.08991
-# # trim sigma = 1
-# alpha = 8.255955486426167*np.pi/180
-# beta = 0*np.pi/180
-# gravity = 'on'
-# cs_deflection = -8.059102970443668*np.pi/180
-# thrust = 11.095419727078575
-# sigma = 1.
 
-# trim sigma = 1.1
-# alpha = 7.887234946558482*np.pi/180
-# beta = 0*np.pi/180
-# gravity = 'on'
-# cs_deflection = -7.027540281892041*np.pi/180
-# thrust = 10.683301711048266
-# sigma = 1.1
-
-# trim sigma = 0.9
-alpha = 8.536835483534349*np.pi/180
+# trim sigma = 1.5
+alpha = 7.6852578*np.pi/180
 beta = 0*np.pi/180
 gravity = 'on'
-cs_deflection = -8.78558685925769*np.pi/180
-thrust = 11.362447522189974
-sigma = 0.95
-# trim sigma = 5
-# alpha = 7.753569188296049*np.pi/180
+cs_deflection = -20.8164255*np.pi/180
+thrust = 9.99007
+sigma = 1.5
+lambda_dihedral = 20*np.pi/180
+# trim sigma = 100
+# alpha = 8.17774068993*np.pi/180
 # beta = 0*np.pi/180
 # gravity = 'on'
-# cs_deflection = -4.4074650492525915*np.pi/180
-# thrust = 9.08445558554907
-# sigma = 5
+# cs_deflection = -7.07280072502*np.pi/180
+# thrust = 9.01249187
+# sigma = 100
+# lambda_dihedral = 20*np.pi/180
+# # trim sigma = 100 FLAT
+# alpha = 8.17774068993*np.pi/180
+# beta = 0*np.pi/180
+# gravity = 'on'
+# cs_deflection = -7.07280072502*np.pi/180
+# thrust = 9.01249187
+# sigma = 100
+# lambda_dihedral = 0*np.pi/180
 
 gust_intensity = 0.30
 n_step = 1
 relaxation_factor = 0.
-tolerance = 1e-8
+tolerance = 1e-6
 
 # MODEL GEOMETRY
 # beam
@@ -106,7 +101,7 @@ chord_tail = 0.5
 # DISCRETISATION
 # spatial discretisation
 m = 4
-n_elem_multiplier = 1
+n_elem_multiplier = 1.
 n_elem_main = int(6*n_elem_multiplier)
 n_elem_tail = int(2*n_elem_multiplier)
 n_elem_fin = int(2*n_elem_multiplier)
@@ -117,10 +112,10 @@ n_surfaces = 5
 physical_time = 30
 # physical_time = 5.5
 # physical_time = 3
-tstep_factor = 1
+tstep_factor = 1.
 dt = 1.0/m/u_inf*tstep_factor
 n_tstep = round(physical_time/dt)
-n_tstep = 3*3200
+n_tstep = int(12000)
 
 
 # END OF INPUT-----------------------------------------------------------------
@@ -425,12 +420,14 @@ def generate_aero_file():
     control_surface_type = np.zeros((n_control_surfaces, ), dtype=int)
     control_surface_deflection = np.zeros((n_control_surfaces, ))
     control_surface_chord = np.zeros((n_control_surfaces, ), dtype=int)
+    control_surface_hinge_coord = np.zeros((n_control_surfaces, ), dtype=float)
 
     # control surface type 0 = static
     # control surface type 1 = dynamic
     control_surface_type[0] = 0
     control_surface_deflection[0] = cs_deflection
-    control_surface_chord[0] = 1
+    control_surface_chord[0] = m
+    control_surface_hinge_coord[0] = -0.25 # nondimensional wrt elastic axis (+ towards the trailing edge)
 
     we = 0
     wn = 0
@@ -569,6 +566,7 @@ def generate_aero_file():
         control_surface_input = h5file.create_dataset('control_surface', data=control_surface)
         control_surface_deflection_input = h5file.create_dataset('control_surface_deflection', data=control_surface_deflection)
         control_surface_chord_input = h5file.create_dataset('control_surface_chord', data=control_surface_chord)
+        control_surface_hinge_coord_input = h5file.create_dataset('control_surface_hinge_coord', data=control_surface_hinge_coord)
         control_surface_types_input = h5file.create_dataset('control_surface_type', data=control_surface_type)
 
 
@@ -625,7 +623,7 @@ def generate_solver_file():
                                                        'u_inf_direction': [1., 0, 0]},
                               'rho': rho}
 
-    settings['StaticCoupled'] = {'print_info': 'off',
+    settings['StaticCoupled'] = {'print_info': 'on',
                                  'structural_solver': 'NonLinearStatic',
                                  'structural_solver_settings': settings['NonLinearStatic'],
                                  'aero_solver': 'StaticUvlm',
@@ -683,8 +681,11 @@ def generate_solver_file():
                                   'final_relaxation_factor': 0.0,
                                   'n_time_steps': n_tstep,
                                   'dt': dt,
-                                  'postprocessors': ['BeamPlot', 'AerogridPlot'],
-                                  'postprocessors_settings': {'BeamPlot': {'folder': route + '/output/',
+                                  'include_unsteady_force_contribution': 'off',
+                                  'postprocessors': ['BeamLoads', 'BeamPlot', 'AerogridPlot'],
+                                  'postprocessors_settings': {'BeamLoads': {'folder': route + '/output/',
+                                                                            'csv_output': 'on'},
+                                                              'BeamPlot': {'folder': route + '/output/',
                                                                            'include_rbm': 'on',
                                                                            'include_applied_forces': 'on'},
                                                               'AerogridPlot': {
@@ -695,7 +696,7 @@ def generate_solver_file():
 
     settings['AerogridLoader'] = {'unsteady': 'on',
                                   'aligned_grid': 'on',
-                                  'mstar': 40,
+                                  'mstar': int(80/tstep_factor),
                                   'freestream_dir': ['1', '0', '0']}
 
     settings['AerogridPlot'] = {'folder': route + '/output/',
@@ -722,7 +723,8 @@ def generate_solver_file():
                                  'output_psi': 'on',
                                  'screen_output': 'off'}
 
-    settings['BeamLoads'] = {}
+    settings['BeamLoads'] = {'folder': route + '/output/',
+	    'csv_output': 'on'}
 
     import configobj
     config = configobj.ConfigObj()

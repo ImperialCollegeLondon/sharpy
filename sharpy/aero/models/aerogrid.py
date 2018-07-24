@@ -261,6 +261,10 @@ class Aerogrid(object):
                             control_surface_info['type'] = 'static'
                             control_surface_info['deflection'] = self.aero_dict['control_surface_deflection'][i_control_surface]
                             control_surface_info['chord'] = self.aero_dict['control_surface_chord'][i_control_surface]
+                            try:
+                                control_surface_info['hinge_coords'] = self.aero_dict['control_surface_hinge_coords'][i_control_surface]
+                            except KeyError:
+                                control_surface_info['hinge_coords'] = None
                         elif self.aero_dict['control_surface_type'][i_control_surface] == 1:
                             raise NotImplementedError('dynamic control surfaces are not yet implemented')
                         elif self.aero_dict['control_surface_type'][i_control_surface] == 2:
@@ -426,6 +430,15 @@ def generate_strip(node_info, airfoil_db, aligned_grid, orientation_in=np.array(
     # control surface deflection
     if node_info['control_surface'] is not None:
         b_frame_hinge_coords = strip_coordinates_b_frame[:, node_info['M'] - node_info['control_surface']['chord']]
+        # support for different hinge location for fully articulated control surfaces
+        if node_info['control_surface']['hinge_coords'] is not None:
+            # make sure the hinge coordinates are only applied when M == cs_chord
+            if not node_info['M'] - node_info['control_surface']['chord'] == 0:
+                cout.cout_wrap('The hinge coordinates parameter is only supported when M == cs_chord')
+                node_info['control_surface']['hinge_coords'] = None
+            else:
+                b_frame_hinge_coords =  node_info['control_surface']['hinge_coords']
+
         for i_M in range(node_info['M'] - node_info['control_surface']['chord'], node_info['M'] + 1):
             relative_coords = strip_coordinates_b_frame[:, i_M] - b_frame_hinge_coords
             # rotate the control surface
@@ -478,6 +491,7 @@ def generate_strip(node_info, airfoil_db, aligned_grid, orientation_in=np.array(
 
         # velocity due to psi_dot
         omega_b = algebra.crv_dot2omega(node_info['beam_psi'], node_info['psi_dot'])
+        Omega_b = algebra.crv_dot2Omega(node_info['beam_psi'], node_info['psi_dot'])
         for i_M in range(node_info['M'] + 1):
             # zeta_dot_a_frame[:, i_M] += (
             #     np.dot(Cab, np.cross(omega_b, strip_coordinates_b_frame[:, i_M])))
@@ -489,9 +503,10 @@ def generate_strip(node_info, airfoil_db, aligned_grid, orientation_in=np.array(
             #     np.dot(np.dot(Cab, np.dot(algebra.skew(omega_b).T, Cab.T)), strip_coordinates_a_frame[:, i_M]))
 
             zeta_dot_a_frame[:, i_M] += (
-                np.dot(np.dot(Cab, np.dot(algebra.skew(omega_b), Cab.T)), strip_coordinates_a_frame[:, i_M]))
+                # np.dot(np.dot(Cab, np.dot(algebra.skew(omega_b), Cab.T)), strip_coordinates_a_frame[:, i_M]))
+                # np.dot(algebra.skew(Omega_b), strip_coordinates_a_frame[:, i_M]))
 
-                # np.cross(omega_b, strip_coordinates_b_frame[:, i_M]))
+                np.dot(Cab, np.cross(omega_b, strip_coordinates_b_frame[:, i_M])))
                 # np.cross(omega_b, strip_coordinates_a_frame[:, i_M]))
 
                 # np.cross(np.dot(Cab,

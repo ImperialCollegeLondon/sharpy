@@ -118,9 +118,9 @@ def to_custom_types(dictionary, types, default):
                 # # getting rid of leading and trailing spaces
                 # dictionary[k] = list(map(lambda x: x.strip(), dictionary[k]))
                 if dictionary[k].find(',') < 0:
-                    dictionary[k] = np.fromstring(dictionary[k].strip('[]'), sep=' ', dtype=ct.c_int)
+                    dictionary[k] = np.fromstring(dictionary[k].strip('[]'), sep=' ').astype(ct.c_int)
                 else:
-                    dictionary[k] = np.fromstring(dictionary[k].strip('[]'), sep=',', dtype=ct.c_int)
+                    dictionary[k] = np.fromstring(dictionary[k].strip('[]'), sep=',').astype(ct.c_int)
             except KeyError:
                 if default[k] is None:
                     raise exceptions.NoDefaultValueException(k)

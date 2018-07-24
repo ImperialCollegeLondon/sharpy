@@ -64,8 +64,7 @@ class NonLinearStatic(BaseSolver):
             applied_forces_copy[i_node, 3:6] += np.cross(self.data.structure.timestep_info[-1].pos[i_node, :],
                                                          applied_forces_copy[i_node, 0:3])
 
-        totals = np.sum(applied_forces_copy, axis=0) + self.data.structure.timestep_info[-1].total_gravity_forces
+        totals = np.sum(applied_forces_copy + self.data.structure.timestep_info[-1].gravity_forces, axis=0)
+        # totals = np.sum(applied_forces_copy, axis=0) + self.data.structure.timestep_info[-1].total_gravity_forces
         # print("steady totals = ", totals)
         return totals[0:3], totals[3:6]
-
-
