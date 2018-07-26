@@ -74,7 +74,6 @@ class StepUvlm(BaseSolver):
     def run(self,
             aero_tstep=None,
             structure_tstep=None,
-            previous_aero_tstep=None,
             convect_wake=True,
             dt=None,
             t=None):
@@ -83,8 +82,6 @@ class StepUvlm(BaseSolver):
             aero_tstep = self.data.aero.timestep_info[-1]
         if structure_tstep is None:
             structure_tstep = self.data.structure.timestep_info[-1]
-        if previous_aero_tstep is None:
-            previous_aero_tstep = self.data.aero.timestep_info[-2]
         if dt is None:
             dt = self.settings['dt'].value
         if t is None:
@@ -112,9 +109,6 @@ class StepUvlm(BaseSolver):
         # print('current step max circulation: %f' % aero_tstep.gamma[0].min())
         uvlmlib.uvlm_solver(self.data.ts,
                             aero_tstep,
-                            # previous_aero_tstep,
-                            # self.data.aero.timestep_info[max(self.data.ts - 1, 0)],
-                            # self.data.structure.timestep_info[self.data.ts - 1],
                             structure_tstep,
                             self.settings,
                             convect_wake=convect_wake,
@@ -122,7 +116,7 @@ class StepUvlm(BaseSolver):
         # print('current step max unsforce: %f' % aero_tstep.dynamic_forces[0].max())
 
         # calculate unsteady (added mass) forces:
-        self.data.aero.compute_gamma_dot(dt, aero_tstep, self.data.aero.timestep_info[-2:])
+        self.data.aero.compute_gamma_dot(dt, aero_tstep, self.data.aero.timestep_info[-3:-1])
         uvlmlib.uvlm_calculate_unsteady_forces(aero_tstep,
                                                structure_tstep,
                                                self.settings,

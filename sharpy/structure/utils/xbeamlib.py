@@ -481,7 +481,7 @@ def xbeam_solv_couplednlndyn(beam, settings):
     xbopts = Xbopts()
     xbopts.PrintInfo = ct.c_bool(settings['print_info'])
     xbopts.Solution = ct.c_int(910)
-    xbopts.OutInaframe = ct.c_bool(False)
+    xbopts.OutInaframe = ct.c_bool(True)
     xbopts.MaxIterations = settings['max_iterations']
     xbopts.NumLoadSteps = settings['num_load_steps']
     # xbopts.NumGauss = ct.c_int(0)
@@ -579,7 +579,7 @@ def xbeam_step_couplednlndyn(beam, settings, ts, tstep=None, dt=None):
     f_xbeam_solv_nlndyn_step_python.restype = None
 
     if tstep is None:
-        tstep = beam.data.structure.timestep_info[-1]
+        tstep = beam.timestep_info[-1]
 
     # initialisation
     n_elem = ct.c_int(beam.num_elem)
@@ -596,6 +596,7 @@ def xbeam_step_couplednlndyn(beam, settings, ts, tstep=None, dt=None):
     xbopts.NewmarkDamp = settings['newmark_damp']
     xbopts.gravity_on = settings['gravity_on']
     xbopts.gravity = settings['gravity']
+    xbopts.balancing = settings['balancing']
     xbopts.gravity_dir_x = ct.c_double(tstep.gravity_vector_inertial[0])
     xbopts.gravity_dir_y = ct.c_double(tstep.gravity_vector_inertial[1])
     xbopts.gravity_dir_z = ct.c_double(tstep.gravity_vector_inertial[2])
@@ -608,8 +609,6 @@ def xbeam_step_couplednlndyn(beam, settings, ts, tstep=None, dt=None):
     ctypes_ts = ct.c_int(ts)
     numdof = ct.c_int(beam.num_dof.value)
 
-    if np.isnan(np.sum(tstep.unsteady_applied_forces)):
-        a = 1
 
     f_xbeam_solv_nlndyn_step_python(ct.byref(numdof),
                                     ct.byref(ctypes_ts),
@@ -762,6 +761,7 @@ def xbeam_solv_disp2state(beam, tstep):
     tstep.dqdt[numdof:numdof+6] = tstep.for_vel
     tstep.dqddt[numdof:numdof+6] = tstep.for_acc
     tstep.dqdt[numdof+6:] = algebra.unit_vector(tstep.quat)
+
 
 def cbeam3_solv_disp2state(beam, tstep):
     # library load

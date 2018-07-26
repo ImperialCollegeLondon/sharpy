@@ -254,20 +254,42 @@ class Beam(BaseStructure):
             self.elements[i_lumped_master_elem].rbmass[i_lumped_master_node_local, :, :] += (
                 inertia_tensor)
 
+    # def generate_master_structure(self):
+    #     self.master = np.zeros((self.num_elem, self.num_node_elem, 2), dtype=int) - 1
+    #     for i_elem in range(self.num_elem):
+    #         for i_node_local in range(self.elements[i_elem].n_nodes):
+    #             if not i_elem and not i_node_local:
+    #                 continue
+    #             j_elem = 0
+    #             while self.master[i_elem, i_node_local, 0] == -1 and j_elem <= i_elem:
+    #                 # for j_node_local in self.elements[j_elem].ordering:
+    #                 for j_node_local in range(self.elements[j_elem].n_nodes):
+    #                     if (self.connectivities[i_elem, i_node_local] ==
+    #                             self.connectivities[j_elem, j_node_local]):
+    #                         self.master[i_elem, i_node_local, :] = [j_elem, j_node_local]
+    #                 j_elem += 1
+
+    #     self.generate_node_master_elem()
+    #     a = 1
     def generate_master_structure(self):
-        self.master = np.zeros((self.num_elem, self.num_node_elem, 2)) - 1
+        self.master = np.zeros((self.num_elem, self.num_node_elem, 2), dtype=int) - 1
         for i_elem in range(self.num_elem):
             for i_node_local in range(self.elements[i_elem].n_nodes):
+            # for i_node_local in self.elements[i_elem].ordering:
+                if not i_elem and not i_node_local:
+                    continue
                 j_elem = 0
-                while self.master[i_elem, i_node_local, 0] == -1 and j_elem < i_elem:
+                while self.master[i_elem, i_node_local, 0] == -1 and j_elem <= i_elem:
                     # for j_node_local in self.elements[j_elem].ordering:
                     for j_node_local in range(self.elements[j_elem].n_nodes):
+                    # for j_node_local in self.elements[j_elem].ordering:
                         if (self.connectivities[i_elem, i_node_local] ==
                                 self.connectivities[j_elem, j_node_local]):
                             self.master[i_elem, i_node_local, :] = [j_elem, j_node_local]
                     j_elem += 1
-
+    
         self.generate_node_master_elem()
+        # a = 1
 
     def add_timestep(self, timestep_info):
         if len(timestep_info) == 0:
@@ -279,6 +301,17 @@ class Beam(BaseStructure):
     def next_step(self):
         self.add_timestep(self.timestep_info)
 
+    # def generate_node_master_elem(self):
+    #     """
+    #     Returns a matrix indicating the master element for a given node
+    #     :return:
+    #     """
+    #     self.node_master_elem = np.zeros((self.num_node, 2), dtype=ct.c_int, order='F') - 1
+    #     for i_elem in range(self.num_elem):
+    #         for i_node_local in range(self.elements[i_elem].n_nodes):
+    #             if self.master[i_elem, i_node_local, 0] == -1:
+    #                 self.node_master_elem[self.connectivities[i_elem, i_node_local], 0] = i_elem
+    #                 self.node_master_elem[self.connectivities[i_elem, i_node_local], 1] = i_node_local
     def generate_node_master_elem(self):
         """
         Returns a matrix indicating the master element for a given node
@@ -288,8 +321,16 @@ class Beam(BaseStructure):
         for i_elem in range(self.num_elem):
             for i_node_local in range(self.elements[i_elem].n_nodes):
                 if self.master[i_elem, i_node_local, 0] == -1:
-                    self.node_master_elem[self.connectivities[i_elem, i_node_local], 0] = i_elem
-                    self.node_master_elem[self.connectivities[i_elem, i_node_local], 1] = i_node_local
+                    if self.node_master_elem[self.connectivities[i_elem, i_node_local], 0] < 0:
+                        self.node_master_elem[self.connectivities[i_elem, i_node_local], 0] = i_elem
+                        self.node_master_elem[self.connectivities[i_elem, i_node_local], 1] = i_node_local
+                else:
+                    master_elem = self.master[i_elem, i_node_local, 0]
+                    master_node = self.master[i_elem, i_node_local, 1]
+                    if self.node_master_elem[self.connectivities[i_elem, i_node_local], 0] < 0:
+                        self.node_master_elem[self.connectivities[i_elem, i_node_local], 0] = master_elem
+                        self.node_master_elem[self.connectivities[i_elem, i_node_local], 1] = master_node
+
 
     def generate_fortran(self):
         # steady, no time-dependant information
@@ -364,10 +405,10 @@ class Beam(BaseStructure):
             self.timestep_info[ts - 1].for_pos[0:3] +
             dt*np.dot(self.timestep_info[ts].cga(),
                       self.timestep_info[ts].for_vel[0:3]))
-        self.timestep_info[ts].for_pos[3:6] = (
-            self.timestep_info[ts - 1].for_pos[3:6] +
-            dt*np.dot(self.timestep_info[ts].cga(),
-                      self.timestep_info[ts].for_vel[3:6]))
+        # self.timestep_info[ts].for_pos[3:6] = (
+        #     self.timestep_info[ts - 1].for_pos[3:6] +
+        #     dt*np.dot(self.timestep_info[ts].cga(),
+        #               self.timestep_info[ts].for_vel[3:6]))
 
     def nodal_b_for_2_a_for(self, nodal, tstep, filter=np.array([True]*6)):
         nodal_a = nodal.copy(order='F')

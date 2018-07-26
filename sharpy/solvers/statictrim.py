@@ -78,7 +78,6 @@ class StaticTrim(BaseSolver):
         self.gradient_history = []
         self.trimmed_values = np.zeros((3,))
 
-
     def initialise(self, data):
         self.data = data
         self.settings = data.settings[self.solver_id]
@@ -121,15 +120,6 @@ class StaticTrim(BaseSolver):
 
         if np.abs(fx) < self.settings['fx_tolerance']:
             return_value[2] = True
-
-        # TODO temp for not adjusting thrust
-
-        # if (np.abs(self.forcex_history[-1]) < 1000000*self.settings['fx_tolerance'].value
-        #     and
-        #     np.abs(self.forcez_history[-1]) < self.settings['fz_tolerance'].value
-        #     and
-        #     np.abs(self.moment_history[-1]) < self.settings['m_tolerance'].value):
-        #     return_value = True
 
         return return_value
 
@@ -175,7 +165,7 @@ class StaticTrim(BaseSolver):
                                           self.input_history[self.i_iter][2])
 
                 self.gradient_history[self.i_iter][0] = ((l - self.output_history[self.i_iter][0]) /
-                                                          self.settings['initial_angle_eps'].value)
+                                                         self.settings['initial_angle_eps'].value)
 
                 # dm/dgamma
                 (l, m, d) = self.evaluate(self.input_history[self.i_iter][0],
@@ -183,7 +173,7 @@ class StaticTrim(BaseSolver):
                                           self.input_history[self.i_iter][2])
 
                 self.gradient_history[self.i_iter][1] = ((m - self.output_history[self.i_iter][1]) /
-                                                          self.settings['initial_angle_eps'].value)
+                                                         self.settings['initial_angle_eps'].value)
 
                 # dfx/dthrust
                 (l, m, d) = self.evaluate(self.input_history[self.i_iter][0],
