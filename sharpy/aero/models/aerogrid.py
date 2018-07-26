@@ -228,8 +228,8 @@ class Aerogrid(object):
 
                 master_elem, master_elem_node = beam.master[i_elem, i_local_node, :]
                 if master_elem < 0:
-                master_elem = i_elem
-                master_elem_node = i_local_node
+                    master_elem = i_elem
+                    master_elem_node = i_local_node
 
                 # # not necessary to look for the master elem
                 # master_elem = i_elem
