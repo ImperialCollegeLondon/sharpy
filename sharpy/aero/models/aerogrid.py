@@ -228,8 +228,8 @@ class Aerogrid(object):
 
                 master_elem, master_elem_node = beam.master[i_elem, i_local_node, :]
                 if master_elem < 0:
-                master_elem = i_elem
-                master_elem_node = i_local_node
+                    master_elem = i_elem
+                    master_elem_node = i_local_node
 
                 # # not necessary to look for the master elem
                 # master_elem = i_elem
@@ -480,8 +480,7 @@ def generate_strip(node_info, airfoil_db, aligned_grid, orientation_in=np.array(
                                                    np.dot(Ctwist, strip_coordinates_b_frame[:, i_M]))
         strip_coordinates_a_frame[:, i_M] = np.dot(Cab, strip_coordinates_b_frame[:, i_M])
 
-
-    # now zeta_dot
+    # zeta_dot
     if calculate_zeta_dot:
         zeta_dot_a_frame = np.zeros((3, node_info['M'] + 1), dtype=ct.c_double)
 
@@ -512,7 +511,6 @@ def generate_strip(node_info, airfoil_db, aligned_grid, orientation_in=np.array(
     # add node coords
     for i_M in range(node_info['M'] + 1):
         strip_coordinates_a_frame[:, i_M] += node_info['beam_coord']
-
 
     # rotation from a to g
     for i_M in range(node_info['M'] + 1):
