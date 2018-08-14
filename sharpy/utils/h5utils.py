@@ -164,15 +164,3 @@ class ReadInto:
     pass
 
 
-
-if __name__=='__main__':
-
-    from IPython import embed
-    filename='../../tests/coupled/dynamic/coupled_configuration/output/coupled_configuration.data.h5'
-    filename='/home/sm6110/git/sharpy/dev/test_savingh5/smith_Nsurf01M04N12wk10_a020.data.h5'
-    filename='/home/sm6110/git/uvlm3d_studies/00_coupled_static/00_smith_g/test_of_saving_ss_matrices.h5'
-    filename='/home/sm6110/git/uvlm3d_studies/00_coupled_static/00_smith_g/cases/a0080/smith_Nsurf02M04N20wk15_a0080.data.h5'  
-
-
-    h=readh5(filename)
-    embed()
