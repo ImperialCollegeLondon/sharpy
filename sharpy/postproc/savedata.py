@@ -186,7 +186,6 @@ def add_as_grp(obj,grpParent,
                                      'Can not overwrite group of different type'
 
 
-
     ### lists/tuples only
     # if possible, save as arrays
     if ObjType in ('list','tuple'):
@@ -233,12 +232,9 @@ def add_as_grp(obj,grpParent,
     for attr in dictname:
         if attr in SkipAttr: continue
 
-
         # ----- extract value & type
         value=dictname[attr]
         vtype=type(value)
-        print('saving %s'%attr)
-
 
         # ----- classes/dict/lists
         # ps: no need to delete if overwrite is True
