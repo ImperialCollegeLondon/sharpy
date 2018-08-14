@@ -156,7 +156,6 @@ class DynamicPrescribedCoupled(BaseSolver):
                 # run the solver
                 self.data = self.aero_solver.run(aero_kstep,
                                                  structural_kstep,
-                                                 self.data.aero.timestep_info[-1],
                                                  convect_wake=False)
 
                 structural_kstep = self.data.structure.timestep_info[-1].copy()
