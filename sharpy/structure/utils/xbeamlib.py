@@ -609,7 +609,6 @@ def xbeam_step_couplednlndyn(beam, settings, ts, tstep=None, dt=None):
     ctypes_ts = ct.c_int(ts)
     numdof = ct.c_int(beam.num_dof.value)
 
-
     f_xbeam_solv_nlndyn_step_python(ct.byref(numdof),
                                     ct.byref(ctypes_ts),
                                     ct.byref(n_elem),
