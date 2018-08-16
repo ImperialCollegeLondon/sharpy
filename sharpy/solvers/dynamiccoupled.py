@@ -169,6 +169,13 @@ class DynamicCoupled(BaseSolver):
             for k in range(self.settings['fsi_substeps'].value + 1):
                 if k == self.settings['fsi_substeps'].value and not self.settings['fsi_substeps'] == 0:
                     cout.cout_wrap('The FSI solver did not converge!!!')
+                    print('K step q:')
+                    print(structural_kstep.q)
+                    print('K step dq:')
+                    print(structural_kstep.dqdt)
+                    print('K step ddq:')
+                    print(structural_kstep.dqddt)
+                    a = 1
                     break
 
                 # generate new grid (already rotated)
@@ -196,6 +203,11 @@ class DynamicCoupled(BaseSolver):
                       structural_kstep,
                       previous_kstep,
                       relax_factor)
+
+                if k > 0.9*self.settings['fsi_substeps'].value:
+                    relax_factor = 0.3
+                elif k > 0.8*self.settings['fsi_substeps'].value:
+                    relax_factor = 0.8
 
                 # run structural solver
                 self.data = self.structural_solver.run(structural_step=structural_kstep)

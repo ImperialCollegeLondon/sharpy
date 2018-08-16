@@ -49,9 +49,8 @@ class BeamLoads(BaseSolver):
 
     def print_loads(self, online):
         if online:
-            print('CSV')
             it = len(self.data.structure.timestep_info) - 1
-            n_elem = self.data.structure.timestep_info[it].pos.shape[0]
+            n_elem = self.data.structure.timestep_info[it].psi.shape[0]
             data = np.zeros((n_elem, 10))
             # coords
             data[:, 0:3] = self.data.structure.timestep_info[it].postproc_cell['coords_a']
@@ -68,11 +67,8 @@ class BeamLoads(BaseSolver):
             filename += self.settings['output_file_name'] + '_' + '{0}'.format(it)
             filename += '.csv'
             np.savetxt(filename, data, delimiter=',', header=header)
-
-
         else:
             for it in range(len(self.data.structure.timestep_info)):
-                print('CSV')
                 it = len(self.data.structure.timestep_info) - 1
                 n_elem = self.data.structure.timestep_info[it].num_elem
                 data = np.zeros((n_elem, 10))
