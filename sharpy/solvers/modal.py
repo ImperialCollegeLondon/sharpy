@@ -189,7 +189,7 @@ class Modal(BaseSolver):
             np.savetxt(self.folder + "eigenvalues.dat", eigenvalues, fmt='%.12f',
                        delimiter='\t', newline='\n')
 
-            np.savetxt(self.folder + "eigenvectors.dat", aux_eigenvectors[:num_dof,:],
+            np.savetxt(self.folder + "eigenvectors.dat", eigenvectors[:num_dof,:],
                        fmt='%.12f', delimiter='\t', newline='\n')
 
         # Order
