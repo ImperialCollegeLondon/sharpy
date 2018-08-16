@@ -53,10 +53,12 @@ lambda_dihedral = 20*np.pi/180
 # sigma = 100
 # lambda_dihedral = 0*np.pi/180
 
-gust_intensity = 0.30
+gust_intensity = 0.
+gust_length = 30
 n_step = 1
-relaxation_factor = 0.
-tolerance = 1e-6
+relaxation_factor = 0.1
+tolerance = 5e-3
+fsi_tolerance = 1e-8
 
 # MODEL GEOMETRY
 # beam
