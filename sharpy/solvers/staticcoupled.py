@@ -134,7 +134,7 @@ class StaticCoupled(BaseSolver):
                 # run beam
                 self.data = self.structural_solver.run()
                 self.structural_solver.settings['gravity'] = ct.c_double(old_g)
-                self.structural_solver.extract_resultants()
+                totals = self.structural_solver.extract_resultants()
 
                 # update grid
                 self.aero_solver.update_step()
@@ -221,5 +221,5 @@ class StaticCoupled(BaseSolver):
         # update grid
         self.aero_solver.update_step()
 
-    def extract_resultants(self):
-        return self.structural_solver.extract_resultants()
+    def extract_resultants(self, tstep=None):
+        return self.structural_solver.extract_resultants(tstep)
