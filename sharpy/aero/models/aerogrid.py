@@ -407,7 +407,8 @@ def generate_strip(node_info, airfoil_db, aligned_grid, orientation_in=np.array(
     # chord_line_b_frame = strip_coordinates_b_frame[:, -1] - strip_coordinates_b_frame[:, 0]
     # chord_line_a_frame = np.dot(Cab, chord_line_b_frame)
     # sweep_angle = algebra.angle_between_vectors_sign(orientation_in, chord_line_a_frame, np.array([0, 0, 1]))
-    sweep_angle = algebra.angle_between_vectors_sign(orientation_in, Cab[:, 1], np.array([0, 0, 1]))
+    # sweep_angle = algebra.angle_between_vectors_sign(orientation_in, Cab[:, 1], np.array([0, 0, 1]))
+    sweep_angle = algebra.angle_between_vectors_sign(orientation_in, Cab[:, 1], Cab[:, 2])
 # TEMP
 #     sweep_angle = np.sign(sweep_angle)*np.pi
     # rotation matrix
