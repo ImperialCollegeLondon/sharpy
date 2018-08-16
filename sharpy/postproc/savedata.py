@@ -159,7 +159,6 @@ def add_as_grp(obj,grpParent,
     elif hasattr(obj,'__class__'):
         ObjType='class'
     else:
-        embed()
         raise NameError('object type not supported')
 
 
