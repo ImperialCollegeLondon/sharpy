@@ -181,8 +181,8 @@ class Modal(BaseSolver):
         if(self.settings['write_dat'].value):
             np.savetxt(self.folder + "eigenvalues.dat", eigenvalues, fmt='%.12f',
                        delimiter='\t', newline='\n')
-            if (not zero_FullCglobal):
-                np.savetxt(self.folder + "eigenvectors.dat", aux_eigenvectors[:num_dof,:],
+
+            np.savetxt(self.folder + "eigenvectors.dat", eigenvectors[:num_dof,:],
                        fmt='%.12f', delimiter='\t', newline='\n')
             np.savetxt(self.filename_freq, vib_freq[0:NumLambda],
                        fmt='%e', delimiter='\t', newline='\n')
