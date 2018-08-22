@@ -413,6 +413,9 @@ def generate_strip(node_info, airfoil_db, aligned_grid, orientation_in=np.array(
 #     sweep_angle = np.sign(sweep_angle)*np.pi
     # rotation matrix
     Csweep = algebra.rotation3d_z(-sweep_angle)
+    # ams: remove following 2 lines. I use 180 because I place local_y pointing to the LE
+    sweep_angle = np.pi
+    Csweep = algebra.rotation_matrix_around_axis(Cab[:, 2], sweep_angle)
 
     # transformation from beam to beam prime (with sweep and twist)
     for i_M in range(node_info['M'] + 1):
