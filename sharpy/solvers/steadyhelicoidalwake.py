@@ -8,18 +8,22 @@ import sharpy.utils.solver_interface as solver_interface
 from sharpy.utils.solver_interface import solver, BaseSolver
 import sharpy.utils.settings as settings
 import sharpy.utils.algebra as algebra
+import sharpy.aero.utils.uvlmlib as uvlmlib
 import sharpy.structure.utils.xbeamlib as xbeam
 
-from IPython import embed
-import sharpy.aero.utils.uvlmlib as uvlmlib
+# Needed to refer to the cpp library
 from sharpy.utils.sharpydir import SharpyDir
 import sharpy.utils.ctypes_utils as ct_utils
 UvlmLib = ct_utils.import_ctypes_lib(SharpyDir + '/lib/', 'libuvlm')
 
+from IPython import embed
+#from mpl_toolkits.mplot3d import axes3d
+#import matplotlib.pyplot as plt
+
 
 @solver
-class DynamicPrescribedCoupled(BaseSolver):
-    solver_id = 'DynamicPrescribedCoupled'
+class SteadyHelicoidalWake(BaseSolver):
+    solver_id = 'SteadyHelicoidalWake'
 
     def __init__(self):
         self.settings_types = dict()
@@ -62,7 +66,7 @@ class DynamicPrescribedCoupled(BaseSolver):
         self.settings_default['relaxation_factor'] = 0.2
 
         self.settings_types['final_relaxation_factor'] = 'float'
-        self.settings_default['final_relaxation_factor'] = 0.0
+        self.settings_default['final_relaxation_factor'] = 0.7
 
         self.settings_types['minimum_steps'] = 'int'
         self.settings_default['minimum_steps'] = 3
@@ -96,13 +100,8 @@ class DynamicPrescribedCoupled(BaseSolver):
 
         self.res = 0.0
         self.res_dqdt = 0.0
-        self.res_dqddt = 0.0
+        self.res_gamma = 0.0
 
-        self.previous_force = None
-
-        self.dt = 0.
-
-        self.predictor = False
         self.residual_table = None
         self.postprocessors = dict()
         self.with_postprocessors = False
@@ -144,7 +143,7 @@ class DynamicPrescribedCoupled(BaseSolver):
             self.residual_table.field_length[0] = 6
             self.residual_table.field_length[1] = 6
             self.residual_table.field_length[1] = 6
-            self.residual_table.print_header(['ts', 't', 'iter', 'residual pos', 'residual vel', 'residual acc', 'FoR_vel(z)'])
+            self.residual_table.print_header(['ts', 't', 'iter', 'residual pos', 'residual vel', 'residual gamma', 'pos[0][0,-1]'])
 
         # initialise postprocessors
         self.postprocessors = dict()
@@ -168,162 +167,145 @@ class DynamicPrescribedCoupled(BaseSolver):
 
         self.data.ts = 0
 
-    def increase_ts(self):
-        self.structural_solver.add_step()
-        self.aero_solver.add_step()
-
     def run(self):
-        # previous_kstep = self.data.structure.timestep_info[-1].copy()
-        # dynamic simulations start at tstep == 1, 0 is reserved for the initial state
 
-        for self.data.ts in range(len(self.data.structure.timestep_info),
-                                  self.settings['n_time_steps'].value + len(self.data.structure.timestep_info)):
+        # Define simulation variables
+        self.data.structure.timestep_info[-1].for_vel[:] = self.data.structure.dynamic_input[0]['for_vel']
+        self.data.structure.timestep_info[-1].for_acc[:] = [0.0,0.0,0.0,0.0,0.0,0.0]
+        disp_vel = self.data.structure.timestep_info[-1].for_vel[0:3]
+        rot_vel = np.linalg.norm(self.data.structure.timestep_info[-1].for_vel[3:6])
+        if not rot_vel == 0:
+            rot_axis = self.data.structure.timestep_info[-1].for_vel[3:6] / rot_vel
+        else:
+            rot_axis = np.zeros((3,),)
+        wsp = self.aero_solver.velocity_generator.u_inf * self.aero_solver.velocity_generator.u_inf_direction
 
-            ts = len(self.data.structure.timestep_info) - 1
+        # Definition of the blade aero discretization and the helicoidal wake
+        self.aero_solver.update_custom_grid(self.data.structure.timestep_info[-1], self.data.aero.timestep_info[-1])
+        self.define_helicoidal_wake(self.data.aero.timestep_info[-1], self.data.structure.timestep_info[-1], rot_vel, rot_axis, wsp-disp_vel)
 
-            # Copy the time step information
-            self.data.structure.timestep_info[-1].for_pos[:] = self.data.structure.dynamic_input[ts]['for_pos']
-            self.data.structure.timestep_info[-1].for_vel[:] = self.data.structure.dynamic_input[ts]['for_vel']
-            self.data.structure.timestep_info[-1].for_acc[:] = self.data.structure.dynamic_input[ts]['for_acc']
-            self.data.structure.timestep_info[-1].unsteady_applied_forces[:] = self.data.structure.dynamic_input[ts]['dynamic_forces']
+        # Information for the FSI iteration
+        aero_kstep = self.data.aero.timestep_info[-1].copy()
+        structural_kstep = self.data.structure.timestep_info[-1].copy()
 
-            aero_kstep = self.data.aero.timestep_info[-1].copy()
-            structural_kstep = self.data.structure.timestep_info[-1].copy()
+        # Reference velocity to judge convergence
+        ref_vel_convergence = np.zeros((len(self.data.structure.timestep_info[-1].pos[:,0])),)
+        for inode in range(len(self.data.structure.timestep_info[-1].pos[:,0])):
+            ref_vel_convergence[inode] = np.linalg.norm(self.data.structure.timestep_info[-1].for_vel[0:3] +
+                                                        np.cross(self.data.structure.timestep_info[-1].pos[inode,:],
+                                                                  self.data.structure.timestep_info[-1].for_vel[3:6]))
 
-            # Reference velocity to judge convergence
-            ref_vel_convergence = np.zeros((len(self.data.structure.timestep_info[-1].pos[:,0])),)
-            for inode in range(len(self.data.structure.timestep_info[-1].pos[:,0])):
-                ref_vel_convergence[inode] = np.linalg.norm(self.data.structure.timestep_info[-1].for_vel[0:3] +
-                                                            np.cross(self.data.structure.timestep_info[-1].pos[inode,:],
-                                                                      self.data.structure.timestep_info[-1].for_vel[3:6]))
+        k=0
+        for k in range(self.settings['fsi_substeps'].value + 1):
+            if k == self.settings['fsi_substeps'].value and not self.settings['fsi_substeps'] == 0:
+                cout.cout_wrap('The FSI solver did not converge!!!')
+                break
+                # TODO Raise Exception
 
-            # FSI convergence loop
-            k = 0
-            for k in range(self.settings['fsi_substeps'].value + 1):
-                if k == self.settings['fsi_substeps'].value and not self.settings['fsi_substeps'] == 0:
-                    cout.cout_wrap('The FSI solver did not converge!!!')
-                    break
+            # Set velocity to zero (steady-state solver)
+            structural_kstep.pos_dot = np.zeros_like(structural_kstep.pos_dot)
+            previous_kstep = structural_kstep.copy()
+            previous_aero_kstep = aero_kstep.copy()
 
-                previous_kstep = structural_kstep.copy()
+            # Update aero discretization according to previous structural_kstep
+            self.aero_solver.update_custom_grid(structural_kstep, aero_kstep)
+            self.define_helicoidal_wake(aero_kstep, structural_kstep, rot_vel, rot_axis, wsp-disp_vel)
 
-                # Update blade aerodynamic grid according to previous structural deformations
-                self.aero_solver.update_custom_grid(structural_kstep, aero_kstep)
-                # And update the first row of the wake
-                for isurf in range(len(aero_kstep.zeta_star)):
-                    aero_kstep.zeta_star[isurf][:, 0, :] = aero_kstep.zeta[isurf][:, -1 , :]
+            # Iterations to converge the circuation in the aerodynamic solver
+            k2 = 0
+            for k2 in range(self.settings['fsi_substeps'].value + 1):
 
+                previous_aero_kstep = aero_kstep.copy()
                 self.data = self.aero_solver.run(aero_kstep,
                                                  structural_kstep,
                                                  convect_wake=False)
+                self.copy_gamma_star(aero_kstep)
 
-                # map forces
-                force_coeff = 0.0
-                if self.settings['include_unsteady_force_contribution']:
-                    force_coeff = -1.0
-                self.map_forces(aero_kstep,
-                                structural_kstep,
-                                force_coeff)
-
-                # relaxation
-                relax_factor = self.relaxation_factor(k)
-                relax(self.data.structure,
-                      structural_kstep,
-                      previous_kstep,
-                      relax_factor)
-
-                if not self.settings['rigid_structure']:
-                    # run structural solver
-                    self.data = self.structural_solver.run(structural_step=structural_kstep)
-                    aux_quat = structural_kstep.quat.copy()
-                    structural_kstep.quat = previous_kstep.quat.copy()
-                else:
-                    # Just to get the quat (should be better ways of doing this)
-                    aux_structural_kstep = structural_kstep.copy()
-                    self.data = self.structural_solver.run(structural_step=aux_structural_kstep)
-                    aux_quat = aux_structural_kstep.quat.copy()
-
-                # check for non-convergence
-                #if not all(np.isfinite(structural_kstep.pos)):
-                if not np.isfinite(structural_kstep.pos).all:
-                    cout.cout_wrap('***No converged!', 3)
-                    break
-
-                xbeam.xbeam_solv_disp2state(self.data.structure, structural_kstep)
-                #print(np.linalg.norm(structural_kstep.dqdt))
-                #print(np.linalg.norm(structural_kstep.dqdt-previous_kstep.dqdt))
-
-                self.res = (np.linalg.norm(structural_kstep.q-
-                                           previous_kstep.q)/
-                                           np.linalg.norm(previous_kstep.q))
-                # self.res_dqdt = (np.linalg.norm(structural_kstep.dqdt-
-                #                                 previous_kstep.dqdt)/
-                #                                 np.linalg.norm(structural_kstep.dqdt))
-
-                point_vel = np.zeros((len(structural_kstep.pos[:,0])),)
-                for inode in range(len(self.data.structure.timestep_info[-1].pos[:,0])):
-                    point_vel[inode] = np.linalg.norm(structural_kstep.pos_dot[inode,:] - previous_kstep.pos_dot[inode,:])
-                #self.res_dqdt = np.linalg.norm(np.divide(point_vel,ref_vel_convergence))
-                self.res_dqdt = np.linalg.norm(point_vel)/np.linalg.norm(ref_vel_convergence)
-
-                self.res_dqddt = (np.linalg.norm(structural_kstep.dqddt-
-                                                previous_kstep.dqddt)/
-                                                np.linalg.norm(previous_kstep.dqddt))
-
-                # if self.print_info:
-                #     self.residual_table.print_line([self.data.ts,
-                #                                     self.data.ts*self.dt.value,
-                #                                     k,
-                #                                     np.log10(self.res),
-                #                                     np.log10(self.res_dqdt),
-                #                                     np.log10(self.res_dqddt),
-                #                                     structural_kstep.pos[-1,0]])
+                # Compute the residual of gamma and gamma star
+                self.res_gamma = 0.0
+                for isurf in range(len(aero_kstep.gamma)):
+                    self.res_gamma += (np.linalg.norm(aero_kstep.gamma[isurf]-
+                                               previous_aero_kstep.gamma[isurf])/
+                                               np.linalg.norm(previous_aero_kstep.gamma[isurf]))
+                    self.res_gamma += (np.linalg.norm(aero_kstep.gamma_star[isurf]-
+                                               previous_aero_kstep.gamma_star[isurf])/
+                                               np.linalg.norm(previous_aero_kstep.gamma_star[isurf]))
 
                 # convergence
-                if k > self.settings['minimum_steps'].value - 1:
-                    if self.res < self.settings['fsi_tolerance'].value:
-                        #if self.res_dqdt < (self.settings['fsi_tolerance'].value)**(1.0/2.0):
-                        if self.res_dqdt < self.settings['fsi_vel_tolerance'].value:
-                            #if self.res_dqddt < self.settings['fsi_tolerance'].value:
-                            break
+                if self.res_gamma < self.settings['fsi_tolerance'].value:
+                    break
 
-                # END OF PSEUDO ITERATIONS
+                # END OF ITERATIONS TO CONVERGE CIRCULATION
 
-            # Save the structural solution
-            self.data.structure.timestep_info[-1] = structural_kstep.copy()
-            self.structural_solver.add_step()
-            #Initialize the following time step (with rbm)
-            self.data.structure.integrate_position(-1, self.settings['dt'].value)
-            structural_kstep.quat = aux_quat.copy()
-            self.data.structure.timestep_info[-1] = structural_kstep.copy()
+            # map forces
+            force_coeff = 0.0
+            if self.settings['include_unsteady_force_contribution']:
+                force_coeff = -1.0
+            self.map_forces(aero_kstep,
+                            structural_kstep,
+                            force_coeff)
 
-            # Save the aerodynamic solution
-            self.data.aero.timestep_info[-1] = aero_kstep.copy()
-            self.aero_solver.add_step()
-            # Initialize the following time step (wake convection)
-            self.aero_solver.update_custom_grid(structural_kstep, aero_kstep)
-            self.data = self.aero_solver.run(aero_kstep,
-                                             structural_kstep,
-                                             convect_wake=True)
-            self.data.aero.timestep_info[-1] = aero_kstep.copy()
+            # relaxation
+            relax_factor = self.relaxation_factor(k)
+            relax(self.data.structure,
+                  structural_kstep,
+                  previous_kstep,
+                  relax_factor)
 
-            #Print convergence information
+
+            if not self.settings['rigid_structure']:
+                # run structural solver
+                self.data = self.structural_solver.run(structural_step=structural_kstep)
+                # Move the structure back to the original position
+                structural_kstep.quat = previous_kstep.quat.copy()
+
+            # check for non-convergence
+            if not np.isfinite(structural_kstep.pos).all:
+                   cout.cout_wrap('***No converged!', 3)
+                   break
+
+            xbeam.xbeam_solv_disp2state(self.data.structure, structural_kstep)
+
+            self.res = (np.linalg.norm(structural_kstep.q-
+                                       previous_kstep.q)/
+                                       np.linalg.norm(previous_kstep.q))
+
+            point_vel = np.zeros((len(structural_kstep.pos[:,0])),)
+            for inode in range(len(self.data.structure.timestep_info[-1].pos[:,0])):
+                point_vel[inode] = np.linalg.norm(structural_kstep.pos_dot[inode,:])
+            #self.res_dqdt = np.linalg.norm(np.divide(point_vel,ref_vel_convergence))
+            self.res_dqdt = np.linalg.norm(point_vel)/np.linalg.norm(ref_vel_convergence)
+
+            # self.res_dqdt = (np.linalg.norm(structural_kstep.dqdt-
+            #                                 previous_kstep.dqdt)/
+            #                                 np.linalg.norm(structural_kstep.dqdt))
+
             if self.print_info:
                 self.residual_table.print_line([self.data.ts,
                                                 self.data.ts*self.dt.value,
                                                 k,
                                                 np.log10(self.res),
                                                 np.log10(self.res_dqdt),
-                                                np.log10(self.res_dqddt),
-                                                structural_kstep.pos[-1,0]])
-            #self.structural_solver.extract_resultants()
+                                                np.log10(self.res_gamma),
+                                                structural_kstep.pos[-1, 0]])
 
-            # run postprocessors
-            if self.with_postprocessors:
-                for postproc in self.postprocessors:
-                    self.data = self.postprocessors[postproc].run(online=True)
+            # convergence
+            if k > self.settings['minimum_steps'].value - 1:
+                if self.res < self.settings['fsi_tolerance'].value:
+                    if self.res_dqdt < self.settings['fsi_vel_tolerance'].value:
+                       break
 
-        if self.print_info:
-            cout.cout_wrap('...Finished', 1)
+            # END OF FSI ITERATIONS
+
+        # Overwrite the first time-step solution with the new one
+        self.data.structure.timestep_info[-1] = structural_kstep.copy()
+        self.data.aero.timestep_info[-1] = aero_kstep.copy()
+
+        # run postprocessors
+        if self.with_postprocessors:
+            for postproc in self.postprocessors:
+                self.data = self.postprocessors[postproc].run(online=True)
+
         return self.data
 
     def map_forces(self, aero_kstep, structural_kstep, unsteady_forces_coeff=1.0):
@@ -354,10 +336,10 @@ class DynamicPrescribedCoupled(BaseSolver):
         # prescribed forces + aero forces
         structural_kstep.steady_applied_forces = (
             (struct_forces + self.data.structure.ini_info.steady_applied_forces).
-            astype(dtype=ct.c_double, order='F', copy=True))
+                astype(dtype=ct.c_double, order='F', copy=True))
         structural_kstep.unsteady_applied_forces = (
             (dynamic_struct_forces + self.data.structure.dynamic_input[max(self.data.ts - 1, 0)]['dynamic_forces']).
-            astype(dtype=ct.c_double, order='F', copy=True))
+                astype(dtype=ct.c_double, order='F', copy=True))
 
     def relaxation_factor(self, k):
         initial = self.settings['relaxation_factor'].value
@@ -371,6 +353,37 @@ class DynamicPrescribedCoupled(BaseSolver):
         value = initial + (final - initial)/self.settings['relaxation_steps'].value*k
         return value
 
+    def define_helicoidal_wake(self, aero_data, structure_data, rot_vel, rot_axis, wsp):
+
+        def rotate_vector(vector,direction,angle):
+            # This function rotates a "vector" around a "direction" a certain "angle"
+            # according to Rodrigues formula
+
+            # Assure that "direction" has unit norm
+            if not np.linalg.norm(direction) == 0:
+                direction/=np.linalg.norm(direction)
+
+            rot_vector=vector*np.cos(angle)+np.cross(direction,vector)*np.sin(angle)+direction*np.dot(direction,vector)*(1.0-np.cos(angle))
+
+            return rot_vector
+
+        for i_surf in range(aero_data.n_surf):
+            for i_n in range(aero_data.dimensions_star[i_surf, 1]+1):
+                for i_m in range(aero_data.dimensions_star[i_surf, 0]+1):
+                    associated_t=self.dt.value*i_m
+                    # wake rotates in the opposite direction to the solid
+                    dphi=-1.0*rot_vel*associated_t
+
+                    aero_data.zeta_star[i_surf][:, i_m, i_n] = rotate_vector(aero_data.zeta[i_surf][:, -1 , i_n],rot_axis,dphi)
+                    aero_data.zeta_star[i_surf][:, i_m, i_n] += ( wsp - structure_data.for_vel[0:3] )*associated_t
+
+    def copy_gamma_star(self, aero_data):
+
+        # This function copies the circulation in the TE to all the points in the wake
+        for i_surf in range(aero_data.n_surf):
+            for i_n in range(aero_data.dimensions_star[i_surf, 1]):
+                for i_m in range(aero_data.dimensions_star[i_surf, 0]):
+                        aero_data.gamma_star[i_surf][i_m, i_n] = aero_data.gamma[i_surf][-1, i_n]
 
 def relax(beam, timestep, previous_timestep, coeff):
     # from sharpy.structure.utils.xbeamlib import xbeam_solv_state2disp
@@ -386,8 +399,6 @@ def relax(beam, timestep, previous_timestep, coeff):
             coeff*previous_timestep.steady_applied_forces)
     timestep.unsteady_applied_forces[:] = ((1.0 - coeff)*timestep.unsteady_applied_forces +
             coeff*previous_timestep.unsteady_applied_forces)
-
-
 
 def normalise_quaternion(tstep):
     tstep.dqdt[-4:] = algebra.unit_vector(tstep.dqdt[-4:])
