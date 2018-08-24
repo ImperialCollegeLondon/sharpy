@@ -10,8 +10,6 @@ import sharpy.utils.settings as settings
 import sharpy.utils.algebra as algebra
 import sharpy.structure.utils.xbeamlib as xbeam
 
-from IPython import embed
-import sharpy.aero.utils.uvlmlib as uvlmlib
 from sharpy.utils.sharpydir import SharpyDir
 import sharpy.utils.ctypes_utils as ct_utils
 UvlmLib = ct_utils.import_ctypes_lib(SharpyDir + '/lib/', 'libuvlm')
@@ -249,8 +247,6 @@ class DynamicPrescribedCoupled(BaseSolver):
                     break
 
                 xbeam.xbeam_solv_disp2state(self.data.structure, structural_kstep)
-                #print(np.linalg.norm(structural_kstep.dqdt))
-                #print(np.linalg.norm(structural_kstep.dqdt-previous_kstep.dqdt))
 
                 self.res = (np.linalg.norm(structural_kstep.q-
                                            previous_kstep.q)/
@@ -259,24 +255,15 @@ class DynamicPrescribedCoupled(BaseSolver):
                 #                                 previous_kstep.dqdt)/
                 #                                 np.linalg.norm(structural_kstep.dqdt))
 
+                #Check the convergence of the velocity including the RBM
                 point_vel = np.zeros((len(structural_kstep.pos[:,0])),)
                 for inode in range(len(self.data.structure.timestep_info[-1].pos[:,0])):
                     point_vel[inode] = np.linalg.norm(structural_kstep.pos_dot[inode,:] - previous_kstep.pos_dot[inode,:])
-                #self.res_dqdt = np.linalg.norm(np.divide(point_vel,ref_vel_convergence))
                 self.res_dqdt = np.linalg.norm(point_vel)/np.linalg.norm(ref_vel_convergence)
 
                 self.res_dqddt = (np.linalg.norm(structural_kstep.dqddt-
                                                 previous_kstep.dqddt)/
                                                 np.linalg.norm(previous_kstep.dqddt))
-
-                # if self.print_info:
-                #     self.residual_table.print_line([self.data.ts,
-                #                                     self.data.ts*self.dt.value,
-                #                                     k,
-                #                                     np.log10(self.res),
-                #                                     np.log10(self.res_dqdt),
-                #                                     np.log10(self.res_dqddt),
-                #                                     structural_kstep.pos[-1,0]])
 
                 # convergence
                 if k > self.settings['minimum_steps'].value - 1:

@@ -8,17 +8,12 @@ import sharpy.utils.solver_interface as solver_interface
 from sharpy.utils.solver_interface import solver, BaseSolver
 import sharpy.utils.settings as settings
 import sharpy.utils.algebra as algebra
-import sharpy.aero.utils.uvlmlib as uvlmlib
 import sharpy.structure.utils.xbeamlib as xbeam
 
 # Needed to refer to the cpp library
 from sharpy.utils.sharpydir import SharpyDir
 import sharpy.utils.ctypes_utils as ct_utils
 UvlmLib = ct_utils.import_ctypes_lib(SharpyDir + '/lib/', 'libuvlm')
-
-from IPython import embed
-#from mpl_toolkits.mplot3d import axes3d
-#import matplotlib.pyplot as plt
 
 
 @solver
@@ -270,10 +265,11 @@ class SteadyHelicoidalWake(BaseSolver):
                                        previous_kstep.q)/
                                        np.linalg.norm(previous_kstep.q))
 
+            # check velocity convergence with respect to the velocities from RBM
+            # otherwise, as it is a steady-state solver tend to zero and the residual is not accurate
             point_vel = np.zeros((len(structural_kstep.pos[:,0])),)
             for inode in range(len(self.data.structure.timestep_info[-1].pos[:,0])):
                 point_vel[inode] = np.linalg.norm(structural_kstep.pos_dot[inode,:])
-            #self.res_dqdt = np.linalg.norm(np.divide(point_vel,ref_vel_convergence))
             self.res_dqdt = np.linalg.norm(point_vel)/np.linalg.norm(ref_vel_convergence)
 
             # self.res_dqdt = (np.linalg.norm(structural_kstep.dqdt-
