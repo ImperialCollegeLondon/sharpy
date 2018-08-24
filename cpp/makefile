@@ -70,6 +70,7 @@ COMPOPT= -O3 -g3 -Wall -fmessage-length=0 -fopenmp -fPIC -MMD -MP
 # $? names of all prerequisites that are newer than the target, separated by spaces. 
 
 $(OBJDIR)/%.o: $(SRCDIR)/%.cpp
+	mkdir -p $(OBJDIR)
 	@echo 'Building target: $@'	
 	$(CPPCOMP) $(INCLOPT) $(COMPOPT) -c -o $@ $< 
 	@echo 'Finished building target: $@'
