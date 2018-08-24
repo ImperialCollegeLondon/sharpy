@@ -20,7 +20,7 @@ class Static():
 
 	def __init__(self,tsdata):
 		
-		print('Initialising Static solver class...')
+		print('Initialising Static linear UVLM solver class...')
 		t0=time.time()
 
 		MS=multisurfaces.MultiAeroGridSurfaces(tsdata)
@@ -57,7 +57,7 @@ class Static():
 		'''
 		Assemble global matrices
 		'''
-		print('Assembly of static linear equations started...')
+		print('Assembly of static linear UVLM equations started...')
 		MS=self.MS
 		t0=time.time()
 
@@ -147,8 +147,8 @@ class Static():
 
 
 	def solve(self):
-		'''
-		solve for bound Gamma
+		''' Solve for bound Gamma the equation
+				AIC Gamma^n = u^n 
 		'''
 
 		MS=self.MS
@@ -217,7 +217,19 @@ class Static():
 				self.Ftot[cc]+=np.sum(self.Fqs[ss][cc,:,:])
 
 
+	def get_total_forces_gain(self):
+		self.Kftot=np.zeros( (3,3*self.Kzeta) )
 
+		Kzeta0=0
+		for ss in range(self.MS.n_surf):
+			Kzeta=self.MS.KKzeta[ss]
+			for cc in range(3):
+				jjvec=range( Kzeta0+cc*Kzeta, Kzeta0+(cc+1)*Kzeta)
+				self.Kftot[cc,jjvec]=1.		
+			Kzeta0+=3*Kzeta
+	
+
+# ------------------------------------------------------------------------------
 
 
 class Dynamic(Static):
@@ -231,7 +243,6 @@ class Dynamic(Static):
 		self.integr_order=integr_order
 		self.Uref=1.0 # ref. velocity for scaling
 
-
 		if self.integr_order==1:
 			Nx=2*self.K+self.K_star
 		if self.integr_order==2:
@@ -242,7 +253,6 @@ class Dynamic(Static):
 		self.Nx=Nx
 		self.Nu=Nu
 		self.Ny=Ny
-
 
 		# ### rename static methods
 		# self.assemble_static=self.assemble
@@ -270,7 +280,7 @@ class Dynamic(Static):
 		Warning: all matrices are allocated as full!
 		'''
 
-		print('State-space realisation started...')
+		print('State-space realisation of UVLM equations started...')
 		t0=time.time()	
 		MS=self.MS	
 		K,K_star=self.K,self.K_star
@@ -395,7 +405,8 @@ class Dynamic(Static):
 		Dss=np.zeros((Ny,Nu))
 
 		# zeta (at constant relative velocity)
-		Dss[:,:3*Kzeta]=scalg.block_diag(*ass.dfqsdzeta_vrel0(MS.Surfs,MS.Surfs_star))
+		Dss[:,:3*Kzeta]=scalg.block_diag(
+								   *ass.dfqsdzeta_vrel0(MS.Surfs,MS.Surfs_star))
 		# zeta (induced velocity contrib)
 		List_coll,List_vert=ass.dfqsdvind_zeta(MS.Surfs,MS.Surfs_star)
 		for ss in range(MS.n_surf):
@@ -404,7 +415,8 @@ class Dynamic(Static):
 		del List_vert, List_coll
 
 		# input velocities
-		Dss[:,6*Kzeta:9*Kzeta]=scalg.block_diag(*ass.dfqsduinput(MS.Surfs,MS.Surfs_star) )
+		Dss[:,6*Kzeta:9*Kzeta]=scalg.block_diag(
+									  *ass.dfqsduinput(MS.Surfs,MS.Surfs_star) )
 		Dss[:,3*Kzeta:6*Kzeta]=-Dss[:,6*Kzeta:9*Kzeta]
 	
 		self.Ass=Ass 
@@ -412,30 +424,116 @@ class Dynamic(Static):
 		self.Css=Css
 		self.Dss=Dss
 
+
+		### Gain matrix for total forces
+		self.get_total_forces_gain()
+
+
 		self.time_ss=time.time()-t0
 		print('\t\t\t...done in %.2f sec' %self.time_ss)
 
 
 
+
+
 	def solve_steady(self,usta,method='direct'):
 		'''
-		Steady state solution from state-space model
-		Warning: this method is less efficient than the solver in Static class
-		and should be used only for verification purposes.
+		Steady state solution from state-space model. 
+
+		Warning: these methods are less efficient than the solver in Static 
+		class, Static.solve and should be used only for verification purposes. 
+		The "minsize" method, however, guarantees the inversion of a K x K 
+		matrix only, similarly to what is done in Static.solve. 
 		'''
 
+		if method=='minsize':
+			# as opposed to linuvlm.Static, this solves for the bound circulation
+			# starting from
+			#	Gamma   = [P, Pw] * {Gamma,Gamma_w} + B u_
+			#   Gamma_w = [C, Cw] * {Gamma,Gamma_w}		  			(eq. 1a,1b)
+			# where time indices have been dropped. Transforming into
+			#	Gamma 	= [P+PwC, PwCw] * {Gamma,Gamma_w} + B u 	(eq. 2)
+			# and enforcing Gamma_w = Gamma_TE, this reduces to the KxK system:
+			# 	AIC Gamma = B u 									(eq. 3)
+
+			MS=self.MS
+			K=self.K
+			K_star=self.K_star
+
+			### build eq. 2:
+			P=self.Ass[:K,:K]
+			Pw=self.Ass[:K,K:K+K_star]
+			C=self.Ass[K:K+K_star,:K]
+			Cw=self.Ass[K:K+K_star,K:K+K_star]
+			PwCw=np.dot(Pw,Cw)
+
+			### build eq. 3
+			AIC=np.eye(K)-P-np.dot(Pw,C)
+
+			# condense Gammaw terms
+			K0out,K0out_star=0,0
+			for ss_out in range(MS.n_surf):
+				Kout=MS.KK[ss_out]
+				Kout_star=MS.KK_star[ss_out]
+
+				K0in,K0in_star=0,0
+				for ss_in in range(MS.n_surf):
+					Kin=MS.KK[ss_in]
+					Kin_star=MS.KK_star[ss_in]
+					
+					# link to sub-matrices
+					aic     = AIC[K0out:K0out+Kout, K0in:K0in+Kin]
+					aic_star=PwCw[K0out:K0out+Kout, K0in_star:K0in_star+Kin_star]
+
+					# fold aic_star: sum along chord at each span-coordinate
+					N_star=MS.NN_star[ss_in]
+					aic_star_fold=np.zeros((Kout,N_star))
+					for jj in range(N_star):
+						aic_star_fold[:,jj]+=np.sum(aic_star[:,jj::N_star],axis=1)
+					aic[:,-N_star:]-=aic_star_fold
+
+					K0in+=Kin 
+					K0in_star+=Kin_star
+				K0out+=Kout 
+				K0out_star+=Kout_star	
+
+			### solve
+			# gamma
+			gamma=np.linalg.solve(AIC,np.dot(self.Bss[:K,:],usta))			
+			# retrieve gamma over wake
+			gamma_star=[]
+			Ktot=0
+			for ss in range(MS.n_surf):
+				Ktot+=MS.Surfs[ss].maps.K
+				N=MS.Surfs[ss].maps.N
+				Mstar=MS.Surfs_star[ss].maps.M
+				gamma_star.append(np.concatenate( Mstar*[gamma[Ktot-N:Ktot]] ))
+			gamma_star=np.concatenate(gamma_star)
+
+			if self.integr_order==1:
+				xsta=np.concatenate(( gamma, gamma_star, np.zeros_like(gamma) ))
+			if self.integr_order==2:
+				xsta=np.concatenate(( gamma, gamma_star, np.zeros_like(gamma), 
+																		gamma ))
+
+			ysta=np.dot(self.Css,xsta)+np.dot(self.Dss,usta)
+
+
 		if method=='direct':
+			''' Solves (I - A) x = B u with direct method'''
 			Ass_steady=np.eye(*self.Ass.shape)-self.Ass
 			xsta=np.linalg.solve( Ass_steady, np.dot(self.Bss,usta) )
 			ysta=np.dot(self.Css,xsta)+np.dot(self.Dss,usta)	
 
+
 		if method=='recursive':
+			''' Proovides steady-state solution solving for impulsive response '''
 			tol,er=1e-4,1.0
 			Ftot0=np.zeros((3,))
 			nn=0
 			xsta=np.zeros((self.Nx))
 			while er>tol and nn<1000:
-				xsta=np.dot( Dyn.Ass,xsta )+np.dot(Dyn.Bss,usta)
+				xsta=np.dot( Dyn.Ass,xsta)+np.dot( Dyn.Bss,usta)
 				ysta=np.dot(self.Css,xsta)+np.dot(self.Dss,usta)
 				Ftot=np.array(
 						[ np.sum(ysta[cc*self.Kzeta:(cc+1)*self.Kzeta]) 
@@ -448,7 +546,10 @@ class Dynamic(Static):
 			else:
 				print('Solution not found! Max. iterations reached with error: %.3e'%er)
 
+
 		if method=='subsystem':
+			''' Solves sub-system related to Gamma, Gamma_w states only '''
+
 			Nxsub=self.K+self.K_star
 			Asub_steady=np.eye(Nxsub)-self.Ass[:Nxsub,:Nxsub]
 			xsub=np.linalg.solve( Asub_steady,np.dot(self.Bss[:Nxsub,:],usta))
@@ -470,7 +571,7 @@ if __name__=='__main__':
 	import matplotlib.pyplot as plt 
 
 	# # # select test case
-	fname='../test/h5input/goland_mod_Nsurf01_M003_N004_a040.aero_state.h5'
+	fname='../test/h5input/goland_mod_Nsurf02_M003_N004_a040.aero_state.h5'
 	haero=read.h5file(fname)
 	tsdata=haero.ts00000
 
@@ -478,6 +579,7 @@ if __name__=='__main__':
 	Sta=Static(tsdata)
 	Sta.assemble_profiling()
 	Sta.assemble()
+	Sta.get_total_forces_gain()
 
 	# random input
 	Sta.u_ext   =1.0+0.30*np.random.rand(3*Sta.Kzeta)
@@ -489,6 +591,11 @@ if __name__=='__main__':
 	Sta.total_forces()
 	print(Sta.Ftot)
 
+	# verify total force gains
+	Ftot02=np.dot(Sta.Kftot,Sta.fqs)
+	assert np.max(np.abs(Ftot02-Sta.Ftot))<=1e-10, 'Total force gain matrix wrong!'
+
+
 	# Dynamic solver
 	Dyn=Dynamic(tsdata,dt=0.05,integr_order=2,Uref=1.0)
 	Dyn.assemble_ss()
@@ -499,13 +606,15 @@ if __name__=='__main__':
 	# steady state solution
 	usta=np.concatenate( (Sta.zeta,Sta.zeta_dot,Sta.u_ext) )
 	xsta,ysta=Dyn.solve_steady(usta,method='direct')
+	xmin,ymin=Dyn.solve_steady(usta,method='minsize')
 	xrec,yrec=Dyn.solve_steady(usta,method='recursive')
 	xsub,ysub=Dyn.solve_steady(usta,method='subsystem')
 
 	# assert all solutions are matching
+	assert max(np.linalg.norm(xsta-xmin), np.linalg.norm(ysta-ymin)),\
+								  'Direct and min. size solutions not matching!'	
 	assert max(np.linalg.norm(xsta-xrec), np.linalg.norm(ysta-yrec)),\
 								  'Direct and recursive solutions not matching!'
-
 	assert max(np.linalg.norm(xsta-xsub), np.linalg.norm(ysta-ysub)),\
 								  'Direct and sub-system solutions not matching!'
 
@@ -541,6 +650,7 @@ if __name__=='__main__':
 		print('Error bound circulation previous vs current time-step: %.3e'%er )
 		assert er<1e-13,\
 					'Circulation at previous and current time-step not matching'
+
 
 
 

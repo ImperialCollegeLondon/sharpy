@@ -11,17 +11,81 @@ from IPython import embed
 
 
 
+
+
+
+def save_data(savedir,h5filename,data):
+    pass
+
+
+
+def save_timestep_info(savedir,h5filename,data):
+    '''  Generated an h5 file with timestep_info '''
+
+    OutClasses=[]
+
+    if hasattr(data,'aero'):
+
+        aero2str=Output(name='aero2str')
+        aero2str.mapping=data.aero.aero2struct_mapping
+        OutClasses.append(aero2str)
+
+        ### extract params not included in aero
+        if 'StaticUvlm' in data.settings['SHARPy']['flow']:
+            aerosetting=data.settings['StaticUvlm']
+        elif 'StaticCoupled' in data.settings['SHARPy']['flow']:
+            aerosetting=data.settings['StaticCoupled']['aero_solver_settings']
+         
+        ### add density to time-step info   
+        rho=aerosetting['rho'].value
+
+        ts_max=len(data.aero.timestep_info)        
+        for tt in range(ts_max):
+            tsaero=data.aero.timestep_info[tt]
+            tsaero.name='tsaero%.5d'%tt
+            tsaero.rho=rho
+            OutClasses.append(tsaero)
+
+
+    if hasattr(data,'structure'):
+
+        if hasattr(data,'aero'):
+            assert ts_max==len(data.structure.timestep_info),\
+                'structural and aero solution have different number of time-steps'
+        else:
+            ts_max=len(data.structure.timestep_info)
+
+        for tt in range(ts_max):
+            tsstr=data.structure.timestep_info[tt]
+            tsstr.name='tsstr%.5d'%tt
+            tsstr.Cga=tsstr.cga()
+
+            OutClasses.append(tsstr)
+
+    h5file(savedir,h5filename,*OutClasses)
+
+
+
 def save_aero(savedir,h5filename,data):
     '''
     Saves state of UVLM steady solution to h5 file.
     '''
 
+
+    assert hasattr(data,'aero'), 'No aerodynamic solution found'
     ts_max=len(data.aero.timestep_info)
     # if ts_max>1:
     #   raise NameError('Not saving a steady solution!')
 
-    ### other params
-    rho=data.settings['StaticUvlm']['rho'].value
+
+    ### extract params not included in aero
+    if 'StaticUvlm' in data.settings['SHARPy']['flow']:
+        aerosetting=data.settings['StaticUvlm']
+    elif 'StaticCoupled' in data.settings['SHARPy']['flow']:
+        aerosetting=data.settings['StaticCoupled']['aero_solver_settings']
+        
+    rho=aerosetting['rho'].value
+
 
     for tt in range(ts_max):
         #tsinfo.name=
@@ -115,6 +179,7 @@ def add_class_as_grp(obj,grpParent,compress=False,overwrite=False):
 
         # Add Output class as subgroup
         if isinstance(value,Output):
+
             #print('Detected class %s' %value.name)
             add_class_as_grp(value,grp,compress=compress)
             continue
