@@ -104,11 +104,6 @@ class Trim(BaseSolver):
             self.x_info['thrust_direction'].append(self.settings['thrust_direction'])
             counter += 1
         self.x_info['n_variables'] = counter
-        # if self.x_info['n_variables'] < 6:
-        #     for i in range(6 - self.x_info['n_variables']):
-        #         self.x_info['i_none'] = counter
-        #         counter += 1
-        #     self.x_info['n_variables'] = 6
 
         # initial state vector
         self.initial_state = np.zeros(self.x_info['n_variables'])
@@ -124,8 +119,8 @@ class Trim(BaseSolver):
         self.bounds = self.x_info['n_variables']*[None]
         for k, v in self.x_info.items():
             if k == 'i_alpha':
-                self.bounds[v] = (self.initial_state[self.x_info['i_alpha']] - 3*np.pi/180,
-                                  self.initial_state[self.x_info['i_alpha']] + 3*np.pi/180)
+                self.bounds[v] = (self.initial_state[self.x_info['i_alpha']] - 2*np.pi/180,
+                                  self.initial_state[self.x_info['i_alpha']] + 2*np.pi/180)
             elif k == 'i_beta':
                 self.bounds[v] = (self.initial_state[self.x_info['i_beta']] - 2*np.pi/180,
                                   self.initial_state[self.x_info['i_beta']] + 2*np.pi/180)
@@ -134,14 +129,15 @@ class Trim(BaseSolver):
                                   self.initial_state[self.x_info['i_roll']] + 2*np.pi/180)
             elif k == 'i_thrust':
                 for ii, i in enumerate(v):
-                    self.bounds[i] = (self.initial_state[self.x_info['i_thrust'][ii]] - 3,
-                                      self.initial_state[self.x_info['i_thrust'][ii]] + 3)
+                    self.bounds[i] = (self.initial_state[self.x_info['i_thrust'][ii]] - 1,
+                                      self.initial_state[self.x_info['i_thrust'][ii]] + 1)
             elif k == 'i_control_surfaces':
                 for ii, i in enumerate(v):
                     self.bounds[i] = (self.initial_state[self.x_info['i_control_surfaces'][ii]] - 4*np.pi/180,
                                       self.initial_state[self.x_info['i_control_surfaces'][ii]] + 4*np.pi/180)
-        print('Bounds = ')
-        print(self.bounds)
+        # initialise plot
+        self.fig = plt.figure()
+        self.ax = self.fig.add_subplot(111)
 
     def increase_ts(self):
         self.data.ts += 1
@@ -190,27 +186,28 @@ class Trim(BaseSolver):
         #     print(np.sum(x[x_info['i_thrust']]**2))
         #     return np.sum(x[x_info['i_thrust']]**2) + x[x_info['i_none']]**2
         a = 1
-        # solution = scipy.optimize.minimize(solver_wrapper,
-        #                                    self.initial_state,
-        #                                    args=args,
-        #                                    method='SLSQP',
-        #                                    # constraints=self.eq_constraints,
-        #                                    options={'ftol': 1e-8,
-        #                                             'disp': True,
-        #                                             'eps': 0.1,
-        #                                             'iprint': 2},
-        #                                    bounds=self.bounds)
-        solution = scipy.optimize.differential_evolution(func=solver_wrapper,
-                                                         bounds=self.bounds,
-                                                         args=args,
-                                                         popsize=10,
-                                                         mutation=(0.5, 1.3),
-                                                         disp=True,
-                                                         tol=1e-3,
-                                                         maxiter=100,
-                                                         init='random'
-                                                         # recombination=0.1
-                                                         )
+        solution = scipy.optimize.minimize(solver_wrapper,
+                                           self.initial_state,
+                                           args=args,
+                                           method='Nelder-Mead',
+                                           # constraints=self.eq_constraints,
+                                           options={'ftol': 1e-8,
+                                                    'disp': True,
+                                                    'eps': 0.1,
+                                                    'iprint': 2},
+                                           bounds=self.bounds)
+                                           # callback=callback)
+        # solution = scipy.optimize.differential_evolution(func=solver_wrapper,
+        #                                                  bounds=self.bounds,
+        #                                                  args=args,
+        #                                                  popsize=10,
+        #                                                  mutation=(0.5, 1.3),
+        #                                                  disp=True,
+        #                                                  tol=1e-3,
+        #                                                  maxiter=100,
+        #                                                  init='random'
+        #                                                  # recombination=0.1
+        #                                                  )
         # solution = scipy.optimize.root(fun=solver_wrapper,
         #                                x0=self.initial_state,
         #                                args=args,
