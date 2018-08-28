@@ -104,7 +104,7 @@ class TurbSimVelocityField(generator_interface.BaseGenerator):
 
     def init_interpolator(self, data, x_grid, y_grid, z_grid):
         for i_dim in range(3):
-            self.interpolator[i_dim] = interpolate.RegularGridInterpolator((y_grid, z_grid, x_grid),
+            self.interpolator[i_dim] = interpolate.RegularGridInterpolator((z_grid, y_grid, x_grid),
                                                                            data[i_dim, :, :, :],
                                                                            bounds_error=False,
                                                                            fill_value=0.0)
@@ -116,7 +116,7 @@ class TurbSimVelocityField(generator_interface.BaseGenerator):
                 for i_m in range(n_m):
                     for i_n in range(n_n):
                         coord = zeta[isurf][:, i_m, i_n] + for_pos[0:3]
-                        coord = np.roll(coord, -1)
+                        coord = coord[::-1]
                         try:
                             u_ext[isurf][i_dim, i_m, i_n] = self.interpolator[i_dim](coord)
                         except ValueError:
