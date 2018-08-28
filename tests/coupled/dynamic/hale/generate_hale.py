@@ -12,13 +12,13 @@ flow = ['BeamLoader',
         'AerogridLoader',
         # 'NonLinearStatic',
         # 'StaticUvlm',
-        # 'Trim',
+        'Trim',
         # 'StaticTrim',
-        'StaticCoupled',
-        'BeamLoads',
-        'AerogridPlot',
-        'BeamPlot',
-        'DynamicCoupled',
+        # 'StaticCoupled',
+        # 'BeamLoads',
+        # 'AerogridPlot',
+        # 'BeamPlot',
+        # 'DynamicCoupled',
         ]
 
 
@@ -27,14 +27,14 @@ u_inf = 25
 rho = 0.08991
 
 # trim sigma = 1.5
-alpha = 7.94*np.pi/180
+alpha = 7.22905*np.pi/180
 beta = 0*np.pi/180
 roll = 0.0*np.pi/180
 gravity = 'on'
-cs_deflection = -2.01675*np.pi/180
+cs_deflection = -2.76205*np.pi/180
 rudder_deflection = 0
-thrust = 7.7783
-sigma = 50
+thrust = 8.44719
+sigma = 1.5
 lambda_dihedral = 20*np.pi/180
 # trim sigma = 100
 # alpha = 8.17774068993*np.pi/180
@@ -53,10 +53,11 @@ lambda_dihedral = 20*np.pi/180
 # sigma = 100
 # lambda_dihedral = 0*np.pi/180
 
-gust_intensity = 0.30
+gust_intensity = 0.0
 n_step = 1
 relaxation_factor = 0.
-tolerance = 1e-6
+tolerance = 1e-5
+fsi_tolerance = 1e-7
 
 # MODEL GEOMETRY
 # beam
@@ -675,14 +676,16 @@ def generate_solver_file():
                             'rollup_tolerance': 1e-4,
                             # 'velocity_field_generator': 'TurbSimVelocityField',
                             # 'velocity_field_input': {'turbulent_field': '/home/ad214/Code/test_turbsim/TurbSim.h5',
-                            #                          'offset': [30., 0., -15],
-                            #                          'u_inf': 1.},
+                            #                          'offset': [30., 0., -10],
+                            #                          'u_inf': 0.},
                             'velocity_field_generator': 'GustVelocityField',
-                            'velocity_field_input': {'u_inf': u_inf,
+                            'velocity_field_input': {'u_inf': 0*u_inf,
                                                      'u_inf_direction': [1., 0, 0],
                                                      'gust_shape': '1-cos',
+                                                     'gust_length': 30,
                                                      'gust_length': gust_length,
                                                      'gust_intensity': gust_intensity*u_inf,
+                                                     'offset': 5.0,
                                                      'offset': 1.0,
                                                      'span': span_main},
                             'rho': rho,
