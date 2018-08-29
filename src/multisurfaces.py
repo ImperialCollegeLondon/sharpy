@@ -303,7 +303,10 @@ class MultiAeroGridSurfaces():
 			Surf=self.Surfs[ss]
 
 			Fhere=Surf.fqs.reshape((3,Surf.maps.Kzeta))
-			Fref=self.tsdata0.ct_forces_list[6*ss:6*ss+3,:]
+			Fref=self.tsdata0.forces[ss][0:3].reshape((3,Surf.maps.Kzeta))
+			# Check if forces and ct_forces_list are the same:
+			# Fref_check=np.array(self.tsdata0.ct_forces_list[6*ss:6*ss+3])
+			# print('Check forces: ', Fref_check-Fref)
 			ErMax=np.max(np.abs(Fhere-Fref))
 
 			print('Surface %.2d max abs error: %.3e' %(ss,ErMax) )
