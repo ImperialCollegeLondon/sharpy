@@ -40,6 +40,9 @@ class Trim(BaseSolver):
         self.settings_types['initial_beta'] = 'float'
         self.settings_default['initial_beta'] = 0*np.pi/180.
 
+        self.settings_types['initial_roll'] = 'float'
+        self.settings_default['initial_roll'] = 0*np.pi/180.
+
         self.settings_types['cs_indices'] = 'list(int)'
         self.settings_default['cs_indices'] = np.array([])
 
@@ -109,7 +112,7 @@ class Trim(BaseSolver):
         self.initial_state = np.zeros(self.x_info['n_variables'])
         self.initial_state[self.x_info['i_alpha']] = self.settings['initial_alpha'].value
         self.initial_state[self.x_info['i_beta']] = self.settings['initial_beta'].value
-        self.initial_state[self.x_info['i_roll']] = 0.0
+        self.initial_state[self.x_info['i_roll']] = self.settings['initial_roll'].value
         for i_cs in range(n_control_surfaces):
             self.initial_state[self.x_info['i_control_surfaces'][i_cs]] = self.settings['initial_cs_deflection'][i_cs]
         for i_thrust in range(n_thrust_nodes):
@@ -135,9 +138,6 @@ class Trim(BaseSolver):
                 for ii, i in enumerate(v):
                     self.bounds[i] = (self.initial_state[self.x_info['i_control_surfaces'][ii]] - 4*np.pi/180,
                                       self.initial_state[self.x_info['i_control_surfaces'][ii]] + 4*np.pi/180)
-        # initialise plot
-        self.fig = plt.figure()
-        self.ax = self.fig.add_subplot(111)
 
     def increase_ts(self):
         self.data.ts += 1
@@ -267,24 +267,3 @@ def solver_wrapper(x, x_info, solver_data, i_dim=-1):
         coeffs = np.array([1.0, 1.0, 1.0, 1, 1, 1])
         # print('return = ', np.dot(coeffs*totals, coeffs*totals))
         return np.dot(coeffs*totals, coeffs*totals)
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
