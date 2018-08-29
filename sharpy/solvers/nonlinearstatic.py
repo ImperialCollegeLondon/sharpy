@@ -48,7 +48,6 @@ class NonLinearStatic(BaseSolver):
         settings.to_custom_types(self.settings, self.settings_types, self.settings_default)
 
     def run(self):
-        # cout.cout_wrap('Running non linear static solver...', 2)
         xbeamlib.cbeam3_solv_nlnstatic(self.data.structure, self.settings, self.data.ts)
         self.extract_resultants()
         return self.data
@@ -56,19 +55,19 @@ class NonLinearStatic(BaseSolver):
     def next_step(self):
         self.data.structure.next_step()
 
-    def extract_resultants(self):
-        applied_forces = self.data.structure.nodal_b_for_2_a_for(self.data.structure.timestep_info[-1].steady_applied_forces,
-                                                                 self.data.structure.timestep_info[-1])
+    def extract_resultants(self, tstep=None):
+        if tstep is None:
+            tstep = self.data.structure.timestep_info[self.data.ts]
+        applied_forces = self.data.structure.nodal_b_for_2_a_for(tstep.steady_applied_forces,
+                                                                 tstep)
 
         applied_forces_copy = applied_forces.copy()
-        gravity_forces_copy = self.data.structure.timestep_info[-1].gravity_forces.copy()
+        gravity_forces_copy = tstep.gravity_forces.copy()
         for i_node in range(self.data.structure.num_node):
-            applied_forces_copy[i_node, 3:6] += np.cross(self.data.structure.timestep_info[-1].pos[i_node, :],
+            applied_forces_copy[i_node, 3:6] += np.cross(tstep.pos[i_node, :],
                                                          applied_forces_copy[i_node, 0:3])
-            gravity_forces_copy[i_node, 3:6] += np.cross(self.data.structure.timestep_info[-1].pos[i_node, :],
+            gravity_forces_copy[i_node, 3:6] += np.cross(tstep.pos[i_node, :],
                                                          gravity_forces_copy[i_node, 0:3])
 
         totals = np.sum(applied_forces_copy + gravity_forces_copy, axis=0)
-        # totals = np.sum(applied_forces_copy, axis=0) + self.data.structure.timestep_info[-1].total_gravity_forces
-        # print("steady totals = ", totals)
         return totals[0:3], totals[3:6]
