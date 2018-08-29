@@ -4,6 +4,7 @@ import sharpy.utils.cout_utils as cout
 from sharpy.utils.solver_interface import solver, BaseSolver
 import sharpy.utils.settings as settings
 
+import warnings
 import h5py
 from numpy import ndarray, float64, float32, array, int32, int64
 import ctypes as ct
@@ -12,7 +13,9 @@ from IPython import embed
 
 # Define basic numerical types
 BasicNumTypes=(float,float32,float64,int,int32,int64,complex)
-SkipAttr=[  'airfoil_db',
+SkipAttr=[  'fortran',
+            'airfoils',
+            'airfoil_db',
             'settings_types',
             'beam',
             'ct_dynamic_forces_list',
@@ -54,9 +57,6 @@ class SaveData(BaseSolver):
         self.settings_types['compress_float'] = 'bool'
         self.settings_default['compress_float'] = False
 
-
-
-
         self.settings = None
         self.data = None
 
@@ -91,7 +91,6 @@ class SaveData(BaseSolver):
         if self.settings['save_aero']:
             self.ClassesToSave+=(sharpy.aero.models.aerogrid.Aerogrid,
                                  sharpy.utils.datastructures.AeroTimeStepInfo,)
-
 
         if self.settings['save_struct']:
             self.ClassesToSave+=(
@@ -185,31 +184,14 @@ def add_as_grp(obj,grpParent,
                                      'Can not overwrite group of different type'
 
 
-    ### lists/tuples only
-    # if possible, save as arrays
+    ### lists/tuples only: try to save as arrays
     if ObjType in ('list','tuple'):
-        N=len(obj)
-        if N>0:
-            type0=type(obj[0])
-            if type0 in (BasicNumTypes+(str,)):
-                SaveAsArray=True
-                for nn in range(N):
-                    if type(obj[nn])!=type0:
-                        SaveAsArray=False
-                        break
-                if SaveAsArray:
-                    if '_as_array' in grp: 
-                        del grp['_as_array']
-                    if type0 in BasicNumTypes:
-                        if type0==float and compress_float:
-                            grp['_as_array']=float32(obj)
-                        else:
-                            grp['_as_array']=obj
-                    else:
-                        string_dt = h5py.special_dtype(vlen=str)
-                        grp.create_dataset('_as_array',
-                                   data=array(obj,dtype=object),dtype=string_dt)
-                    return grpParent
+        Success=save_list_as_array(
+                      list_obj=obj,grp_target=grp,compress_float=compress_float)
+        if Success: 
+            return grpParent
+
+
 
 
     ### create/retrieve dictionary of attributes/elements to be saved
@@ -285,3 +267,52 @@ def add_array_to_grp(data,name,grp,compress_float=False):
         grp[name]=data
 
     return grp
+
+
+
+
+def save_list_as_array(list_obj,grp_target,compress_float=False):
+    ''' 
+    Works for both lists and tuples. Returns True if the saving was successful.
+    '''
+
+    N=len(list_obj)
+
+    if N>0:
+        type0=type(list_obj[0])
+        if type0 in (BasicNumTypes+(str,ndarray)):
+            SaveAsArray=True
+            for nn in range(N):
+                if type(list_obj[nn])!=type0:
+                    SaveAsArray=False
+                    break
+            if SaveAsArray:
+                if '_as_array' in grp_target: 
+                    del grp_target['_as_array']
+                if type0 in BasicNumTypes:                # list of scalars
+                    if type0 == float and compress_float:
+                        grp_target['_as_array']=float32(list_obj)
+                    else:
+                        grp_target['_as_array']=list_obj
+                elif type0 == str:                        # list of strings                       
+                    string_dt = h5py.special_dtype(vlen=str)
+                    grp_target.create_dataset('_as_array',
+                               data=array(list_obj,dtype=object),dtype=string_dt)
+
+                elif type0 == ndarray:                    # list of arrays
+                    if list_obj[0].dtype in BasicNumTypes:
+                        if list_obj[0].dtype==float64 and compress_float:
+                                grp_target['_as_array']=float32(list_obj)
+                        else:
+                            grp_target['_as_array']=list_obj
+                    else:
+                        string_dt = h5py.special_dtype(vlen=str)
+                        grp_target.create_dataset('_as_array',
+                               data=array(list_obj,dtype=object),dtype=string_dt)    
+                else:
+                    warnings.warn(
+                        '%s could not be saved as an array' %(grp_target.name,))
+                    return False
+
+                return True
+    return False
