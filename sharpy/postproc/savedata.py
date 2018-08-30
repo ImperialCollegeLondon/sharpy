@@ -19,7 +19,7 @@ SkipAttr=[  'fortran',
             'settings_types',
             'beam',
             'ct_dynamic_forces_list',
-            'ct_forces_list',
+            #'ct_forces_list',
             'ct_gamma_dot_list',
             'ct_gamma_list',
             'ct_gamma_star_list',
@@ -28,7 +28,8 @@ SkipAttr=[  'fortran',
             'ct_u_ext_star_list',
             'ct_zeta_dot_list',
             'ct_zeta_list',
-            'ct_zeta_star_list',]
+            'ct_zeta_star_list',
+            'dynamic_input']
 
 
 @solver
@@ -100,6 +101,10 @@ class SaveData(BaseSolver):
 
     def run(self, online=False):
 
+        # Use the following statement in case the ct types are not defined and
+        # you need them on uvlm3d
+        # self.data.aero.timestep_info[-1].generate_ctypes_pointers()
+
         hdfile=h5py.File(self.filename,'a')
 
         #from IPython import embed;embed()
@@ -124,13 +129,13 @@ def add_as_grp(obj,grpParent,
                                                 compress_float=False,overwrite=False):
 
     '''
-    Given a class, dictionary, list or tuples instance 'obj', the routine adds 
+    Given a class, dictionary, list or tuples instance 'obj', the routine adds
     it as a sub-group of name grpname to the parent group grpParent. An attribute
     _read_as, specifying the type of obj, is added to the group so as to allow
     reading correctly the h5 file.
 
     Usage and Remarks:
-    - if obj contains dictionaries, listes or tuples, these are automatically 
+    - if obj contains dictionaries, listes or tuples, these are automatically
     saved
 
     - if list only contains scalars or arrays of the same dimension, this will
@@ -139,11 +144,11 @@ def add_as_grp(obj,grpParent,
     - if obj contains classes, only those that are instances of the classes
     specified in ClassesToSave will be saved
     - If grpParent already contains a sub-group with name grpname, this will not
-    be overwritten. However, pre-existing attributes of the sub-group will be 
+    be overwritten. However, pre-existing attributes of the sub-group will be
     overwritten if obj contains attrributes with the same names.
 
-    - attributes belonging to SkipAttr will not be saved - This functionality 
-    needs improving  
+    - attributes belonging to SkipAttr will not be saved - This functionality
+    needs improving
     - if compress_float is True, numpy arrays will be saved in single precisions.
     '''
 
@@ -164,7 +169,7 @@ def add_as_grp(obj,grpParent,
     ### determine sub-group name (only classes)
     if grpname is None:
         if ObjType=='class':
-            grpname=obj.__class__.__name__ 
+            grpname=obj.__class__.__name__
         else:
             raise NameError('grpname must be specified for dict,list and tuples')
 
@@ -176,7 +181,7 @@ def add_as_grp(obj,grpParent,
     else:
         if overwrite:
             del grpParent[grpname]
-            grp=grpParent.create_group(grpname) 
+            grp=grpParent.create_group(grpname)
             grp['_read_as']=ObjType
         else:
             grp=grpParent[grpname]
@@ -188,7 +193,7 @@ def add_as_grp(obj,grpParent,
     if ObjType in ('list','tuple'):
         Success=save_list_as_array(
                       list_obj=obj,grp_target=grp,compress_float=compress_float)
-        if Success: 
+        if Success:
             return grpParent
 
 
@@ -199,7 +204,7 @@ def add_as_grp(obj,grpParent,
         dictname=obj
     elif ObjType=='class':
         dictname=obj.__dict__
-    else: 
+    else:
         N=len(obj)
         dictname={}
         for nn in range(N):
@@ -230,13 +235,13 @@ def add_as_grp(obj,grpParent,
 
         # ----- Basic types
         if isinstance(value, BasicNumTypes+(str,bytes) ):
-            grp[attr]=value 
-            continue           
+            grp[attr]=value
+            continue
 
         # c_types
         if isinstance(value,(ct.c_bool,ct.c_double,ct.c_int)):
             value=value.value
-            grp[attr]=value 
+            grp[attr]=value
             continue
 
         # ndarrays
@@ -256,7 +261,7 @@ def add_as_grp(obj,grpParent,
 
 
 def add_array_to_grp(data,name,grp,compress_float=False):
-    ''' Add numpy array (data) as dataset 'name' to the group grp. If 
+    ''' Add numpy array (data) as dataset 'name' to the group grp. If
     compress is True, 64-bit float arrays are converted to 32-bit '''
 
 
@@ -272,7 +277,7 @@ def add_array_to_grp(data,name,grp,compress_float=False):
 
 
 def save_list_as_array(list_obj,grp_target,compress_float=False):
-    ''' 
+    '''
     Works for both lists and tuples. Returns True if the saving was successful.
     '''
 
@@ -287,14 +292,14 @@ def save_list_as_array(list_obj,grp_target,compress_float=False):
                     SaveAsArray=False
                     break
             if SaveAsArray:
-                if '_as_array' in grp_target: 
+                if '_as_array' in grp_target:
                     del grp_target['_as_array']
                 if type0 in BasicNumTypes:                # list of scalars
                     if type0 == float and compress_float:
                         grp_target['_as_array']=float32(list_obj)
                     else:
                         grp_target['_as_array']=list_obj
-                elif type0 == str:                        # list of strings                       
+                elif type0 == str:                        # list of strings
                     string_dt = h5py.special_dtype(vlen=str)
                     grp_target.create_dataset('_as_array',
                                data=array(list_obj,dtype=object),dtype=string_dt)
@@ -308,7 +313,7 @@ def save_list_as_array(list_obj,grp_target,compress_float=False):
                     else:
                         string_dt = h5py.special_dtype(vlen=str)
                         grp_target.create_dataset('_as_array',
-                               data=array(list_obj,dtype=object),dtype=string_dt)    
+                               data=array(list_obj,dtype=object),dtype=string_dt)
                 else:
                     warnings.warn(
                         '%s could not be saved as an array' %(grp_target.name,))
