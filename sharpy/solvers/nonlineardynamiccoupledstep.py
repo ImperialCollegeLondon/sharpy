@@ -54,11 +54,11 @@ class NonLinearDynamicCoupledStep(BaseSolver):
         self.settings_default['gravity'] = 9.81
 
         # initial speed direction is given in inertial FOR!!!
-        self.settings_types['initial_speed_direction'] = 'list(float)'
-        self.settings_default['initial_speed_direction'] = np.array([-1.0, 0.0, 0.0])
+        self.settings_types['initial_velocity_direction'] = 'list(float)'
+        self.settings_default['initial_velocity_direction'] = np.array([-1.0, 0.0, 0.0])
 
-        self.settings_types['initial_speed'] = 'float'
-        self.settings_default['initial_speed'] = 0
+        self.settings_types['initial_velocity'] = 'float'
+        self.settings_default['initial_velocity'] = 0
 
         self.data = None
         self.settings = None
@@ -75,10 +75,10 @@ class NonLinearDynamicCoupledStep(BaseSolver):
         self.data.structure.add_unsteady_information(self.data.structure.dyn_dict, self.settings['num_steps'].value)
 
         # add initial speed to RBM
-        if not self.settings['initial_speed']:
+        if self.settings['initial_velocity']:
             new_direction = np.dot(self.data.structure.timestep_info[-1].cag(),
-                                   self.settings['initial_speed_direction'])
-            self.data.structure.timestep_info[-1].for_vel[0:3] = new_direction*self.settings['initial_speed']
+                                   self.settings['initial_velocity_direction'])
+            self.data.structure.timestep_info[-1].for_vel[0:3] = new_direction*self.settings['initial_velocity']
 
         # generate q, dqdt and dqddt
         xbeamlib.xbeam_solv_disp2state(self.data.structure, self.data.structure.timestep_info[-1])
