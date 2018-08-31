@@ -143,6 +143,9 @@ class StaticCoupled(BaseSolver):
                 if self.convergence(i_iter, i_step):
                     break
 
+        if self.settings['print_info']:
+            resultants = self.extract_resultants()
+            cout.cout_wrap('Resultant forces and moments: ' + str(resultants))
         return self.data
 
     def convergence(self, i_iter, i_step):
