@@ -122,8 +122,8 @@ class Trim(BaseSolver):
         self.bounds = self.x_info['n_variables']*[None]
         for k, v in self.x_info.items():
             if k == 'i_alpha':
-                self.bounds[v] = (self.initial_state[self.x_info['i_alpha']] - 2*np.pi/180,
-                                  self.initial_state[self.x_info['i_alpha']] + 2*np.pi/180)
+                self.bounds[v] = (self.initial_state[self.x_info['i_alpha']] - 3*np.pi/180,
+                                  self.initial_state[self.x_info['i_alpha']] + 3*np.pi/180)
             elif k == 'i_beta':
                 self.bounds[v] = (self.initial_state[self.x_info['i_beta']] - 2*np.pi/180,
                                   self.initial_state[self.x_info['i_beta']] + 2*np.pi/180)
@@ -132,8 +132,8 @@ class Trim(BaseSolver):
                                   self.initial_state[self.x_info['i_roll']] + 2*np.pi/180)
             elif k == 'i_thrust':
                 for ii, i in enumerate(v):
-                    self.bounds[i] = (self.initial_state[self.x_info['i_thrust'][ii]] - 1,
-                                      self.initial_state[self.x_info['i_thrust'][ii]] + 1)
+                    self.bounds[i] = (self.initial_state[self.x_info['i_thrust'][ii]] - 4,
+                                      self.initial_state[self.x_info['i_thrust'][ii]] + 4)
             elif k == 'i_control_surfaces':
                 for ii, i in enumerate(v):
                     self.bounds[i] = (self.initial_state[self.x_info['i_control_surfaces'][ii]] - 4*np.pi/180,
@@ -221,8 +221,13 @@ class Trim(BaseSolver):
         print(solution)
         return solution
 
+def pretty_print_x(x, x_info):
+    # todo
+    pass
 
 def solver_wrapper(x, x_info, solver_data, i_dim=-1):
+    if solver_data.settings['print_info']:
+        cout.cout_wrap('x = ' + str(x), 1)
     # print('x = ', x)
     alpha = x[x_info['i_alpha']]
     beta = x[x_info['i_beta']]
@@ -251,6 +256,8 @@ def solver_wrapper(x, x_info, solver_data, i_dim=-1):
     totals = np.zeros((6,))
     totals[0:3] = forces
     totals[3:6] = moments
+    if solver_data.settings['print_info']:
+        cout.cout_wrap(' forces = ' + str(totals), 1)
     # print('total forces = ', totals)
     # try:
     #     totals += x[x_info['i_none']]
@@ -264,6 +271,8 @@ def solver_wrapper(x, x_info, solver_data, i_dim=-1):
         # return [np.sum(totals[0:3]**2), np.sum(totals[4:6]**2)]
         return totals
     elif i_dim == -2:
-        coeffs = np.array([1.0, 1.0, 1.0, 1, 1, 1])
+        coeffs = np.array([1.0, 1.0, 1.0, 2, 2, 2])
         # print('return = ', np.dot(coeffs*totals, coeffs*totals))
+        if solver_data.settings['print_info']:
+            cout.cout_wrap(' val = ' + str(np.dot(coeffs*totals, coeffs*totals)), 1)
         return np.dot(coeffs*totals, coeffs*totals)
