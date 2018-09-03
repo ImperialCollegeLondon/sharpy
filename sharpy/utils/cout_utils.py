@@ -2,6 +2,7 @@ import textwrap
 import colorama
 import os
 import numpy as np
+import subprocess
 
 
 class Writer(object):
@@ -57,7 +58,8 @@ class Writer(object):
         import sharpy.utils.sharpydir as sharpydir
         cwd = os.getcwd()
         self.__call__('Running SHARPy from ' + cwd, 2)
-        self.__call__('SHARPy version being run is in ' + sharpydir.SharpyDir, 2)
+        self.__call__('SHARPy being run is in ' + sharpydir.SharpyDir, 2)
+        self.__call__(print_git_status(), 2)
         import sharpy.utils.solver_interface as solver_interface
         solver_interface.print_available_solvers()
 
@@ -166,5 +168,23 @@ class TablePrinter(object):
         cout_wrap(string.format(line_data))
 
 
+# version tracker and output
+def get_git_revision_hash():
+    return subprocess.check_output(['git', 'rev-parse', 'HEAD']).strip().decode('utf-8')
 
 
+def get_git_revision_short_hash():
+    return subprocess.check_output(['git', 'rev-parse', '--short', 'HEAD']).strip().decode('utf-8')
+
+
+def get_git_revision_branch():
+    return subprocess.check_output(['git', 'rev-parse', '--abbrev-ref', 'HEAD']).strip().decode('utf-8')
+
+
+def get_git_tag():
+    return subprocess.check_output(['git', 'describe']).strip().decode('utf-8')
+
+
+def print_git_status():
+    return ('The branch being run is ' + get_git_revision_branch() + '\n'\
+            'The version and commit hash are: ' + get_git_tag() + '-' + get_git_revision_short_hash())
