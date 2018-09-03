@@ -358,7 +358,7 @@ def dfqsdgamma_vrel0(Surfs,Surfs_star):
 				# 	v_mid=Surf.u_ind_seg[:,ll,mm_in,nn_in]+\
 				# 		  Surf.u_input_seg[:,ll,mm_in,nn_in],
 				# 	gamma=1.0,fact=0.5*Surf.rho)
-				df=(0.5/Surf.gamma[mm_in,nn_in])*Surf.fqs_seg[:,ll,mm_in,nn_in]
+				df=0.5*Surf.fqs_seg_unit[:,ll,mm_in,nn_in]
 				# assert np.abs(np.max(dfhere-df))<1e-13,'something is wrong'
 
 				# get vertices m,n indices
@@ -392,7 +392,7 @@ def dfqsdgamma_vrel0(Surfs,Surfs_star):
 		for nn_in in range(N):
 			pp_in=np.ravel_multi_index( (0,nn_in),shape_in)
 
-			df=(0.5/Surfs_star[ss].gamma[0,nn_in])*Surf.fqs_wTE[:,nn_in]
+			df=0.5*Surf.fqs_wTE_unit[:,nn_in]
 
 			# get TE bound vertices m,n indices
 			mm_a,nn_a=M,nn_in+dnver[aa]
@@ -503,7 +503,7 @@ def dfqsdzeta_vrel0(Surfs,Surfs_star):
 
 def dfqsduinput(Surfs,Surfs_star):
 	'''
-	Assemble derivative of quasi-steady force w.r.t. external input velcoity.
+	Assemble derivative of quasi-steady force w.r.t. external input velocity.
 	'''
 
 	Der_list=[]

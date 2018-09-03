@@ -734,7 +734,7 @@ class AeroGridSurface(AeroGridGeo):
 			raise NameError('u_ind_seg not available!')
 
 		M,N=self.maps.M,self.maps.N
-		self.fqs_seg=np.zeros((3,4,M,N))
+		self.fqs_seg_unit=np.zeros((3,4,M,N))
 		self.fqs=np.zeros((3,M+1,N+1))
 
 		# indiced as per self.maps
@@ -752,11 +752,11 @@ class AeroGridSurface(AeroGridGeo):
 				df=libuvlm.joukovski_qs_segment(
 					zetaA=zetav_here[aa,:],zetaB=zetav_here[bb,:],
 					v_mid=self.u_ind_seg[:,ss,mm,nn]+self.u_input_seg[:,ss,mm,nn],
-					gamma=self.gamma[mm,nn],fact=self.rho)
-				self.fqs_seg[:,ss,mm,nn]=df
+					gamma=1.0,fact=self.rho)
+				self.fqs_seg_unit[:,ss,mm,nn]=df
 				# project on vertices
-				self.fqs[:,mm+dmver[aa],nn+dnver[aa]]+=0.5*df
-				self.fqs[:,mm+dmver[bb],nn+dnver[bb]]+=0.5*df
+				self.fqs[:,mm+dmver[aa],nn+dnver[aa]]+=0.5*self.gamma[mm,nn]*df
+				self.fqs[:,mm+dmver[bb],nn+dnver[bb]]+=0.5*self.gamma[mm,nn]*df
 
 		### force produced by wake T.E. segments
 		# Note:
@@ -767,19 +767,19 @@ class AeroGridSurface(AeroGridGeo):
 			raise NameError('Enter gammaw_TE - option disabled for debugging')
 			gammaw_TE=self.gamma[M-1,:]
 
-		self.fqs_wTE=np.zeros((3,N))
+		self.fqs_wTE_unit=np.zeros((3,N))
 
 		for nn in range(N):
 			df=libuvlm.joukovski_qs_segment(
 					zetaA=self.zeta[:,M,nn+1],
 					zetaB=self.zeta[:,M,nn],
 					v_mid=self.u_input_seg[:,1,M-1,nn]+self.u_ind_seg[:,1,M-1,nn],
-					gamma=gammaw_TE[nn],
+					gamma=1.0,
 					fact=self.rho)
 			# record force on TE due to wake and project
-			self.fqs_wTE[:,nn]=df
-			self.fqs[:,M,nn+1]+=0.5*df
-			self.fqs[:,M,nn]+=0.5*df
+			self.fqs_wTE_unit[:,nn]=df
+			self.fqs[:,M,nn+1]+=0.5*gammaw_TE[nn]*df
+			self.fqs[:,M,nn]+=0.5*gammaw_TE[nn]*df
 
 		return self
 
