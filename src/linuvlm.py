@@ -5,12 +5,14 @@ S. Maraniello, 7 Jun 2018
 
 import numpy as np
 import scipy.linalg as scalg
+import scipy.signal as scsig
 from IPython import embed
 import time
 
 import interp
 import multisurfaces
 import assembly as ass # :D
+
 
 
 
@@ -419,10 +421,13 @@ class Dynamic(Static):
 									  *ass.dfqsduinput(MS.Surfs,MS.Surfs_star) )
 		Dss[:,3*Kzeta:6*Kzeta]=-Dss[:,6*Kzeta:9*Kzeta]
 	
-		self.Ass=Ass 
-		self.Bss=Bss
-		self.Css=Css
-		self.Dss=Dss
+		
+
+		self.SS=scsig.dlti(Ass,Bss,Css,Dss,dt=self.dt)
+		# self.Ass=Ass 
+		# self.Bss=Bss
+		# self.Css=Css
+		# self.Dss=Dss
 
 
 		### Gain matrix for total forces
@@ -446,6 +451,8 @@ class Dynamic(Static):
 		matrix only, similarly to what is done in Static.solve. 
 		'''
 
+		Ass,Bss,Css,Dss=self.SS.A,self.SS.B,self.SS.C,self.SS.D
+
 		if method=='minsize':
 			# as opposed to linuvlm.Static, this solves for the bound circulation
 			# starting from
@@ -461,10 +468,10 @@ class Dynamic(Static):
 			K_star=self.K_star
 
 			### build eq. 2:
-			P=self.Ass[:K,:K]
-			Pw=self.Ass[:K,K:K+K_star]
-			C=self.Ass[K:K+K_star,:K]
-			Cw=self.Ass[K:K+K_star,K:K+K_star]
+			P=Ass[:K,:K]
+			Pw=Ass[:K,K:K+K_star]
+			C=Ass[K:K+K_star,:K]
+			Cw=Ass[K:K+K_star,K:K+K_star]
 			PwCw=np.dot(Pw,Cw)
 
 			### build eq. 3
@@ -499,7 +506,7 @@ class Dynamic(Static):
 
 			### solve
 			# gamma
-			gamma=np.linalg.solve(AIC,np.dot(self.Bss[:K,:],usta))			
+			gamma=np.linalg.solve(AIC,np.dot(Bss[:K,:],usta))			
 			# retrieve gamma over wake
 			gamma_star=[]
 			Ktot=0
@@ -516,14 +523,14 @@ class Dynamic(Static):
 				xsta=np.concatenate(( gamma, gamma_star, np.zeros_like(gamma), 
 																		gamma ))
 
-			ysta=np.dot(self.Css,xsta)+np.dot(self.Dss,usta)
+			ysta=np.dot(Css,xsta)+np.dot(Dss,usta)
 
 
 		if method=='direct':
 			''' Solves (I - A) x = B u with direct method'''
-			Ass_steady=np.eye(*self.Ass.shape)-self.Ass
-			xsta=np.linalg.solve( Ass_steady, np.dot(self.Bss,usta) )
-			ysta=np.dot(self.Css,xsta)+np.dot(self.Dss,usta)	
+			Ass_steady=np.eye(*Ass.shape)-Ass
+			xsta=np.linalg.solve( Ass_steady, np.dot(Bss,usta) )
+			ysta=np.dot(Css,xsta)+np.dot(Dss,usta)	
 
 
 		if method=='recursive':
@@ -533,8 +540,8 @@ class Dynamic(Static):
 			nn=0
 			xsta=np.zeros((self.Nx))
 			while er>tol and nn<1000:
-				xsta=np.dot( Dyn.Ass,xsta)+np.dot( Dyn.Bss,usta)
-				ysta=np.dot(self.Css,xsta)+np.dot(self.Dss,usta)
+				xsta=np.dot(Ass,xsta)+np.dot(Bss,usta)
+				ysta=np.dot(Css,xsta)+np.dot(Dss,usta)
 				Ftot=np.array(
 						[ np.sum(ysta[cc*self.Kzeta:(cc+1)*self.Kzeta]) 
 															for cc in range(3)])
@@ -551,13 +558,13 @@ class Dynamic(Static):
 			''' Solves sub-system related to Gamma, Gamma_w states only '''
 
 			Nxsub=self.K+self.K_star
-			Asub_steady=np.eye(Nxsub)-self.Ass[:Nxsub,:Nxsub]
-			xsub=np.linalg.solve( Asub_steady,np.dot(self.Bss[:Nxsub,:],usta))
+			Asub_steady=np.eye(Nxsub)-Ass[:Nxsub,:Nxsub]
+			xsub=np.linalg.solve( Asub_steady,np.dot(Bss[:Nxsub,:],usta))
 			if self.integr_order==1:
 				xsta=np.concatenate( (xsub,np.zeros((  self.K,))) ) 
 			if self.integr_order==2:
 				xsta=np.concatenate( (xsub,np.zeros((2*self.K,))) ) 
-			ysta=np.dot(self.Css,xsta)+np.dot(self.Dss,usta)	
+			ysta=np.dot(Css,xsta)+np.dot(Dss,usta)	
 
 		return xsta,ysta
 
