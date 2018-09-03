@@ -132,8 +132,8 @@ class Trim(BaseSolver):
                                   self.initial_state[self.x_info['i_roll']] + 2*np.pi/180)
             elif k == 'i_thrust':
                 for ii, i in enumerate(v):
-                    self.bounds[i] = (self.initial_state[self.x_info['i_thrust'][ii]] - 4,
-                                      self.initial_state[self.x_info['i_thrust'][ii]] + 4)
+                    self.bounds[i] = (self.initial_state[self.x_info['i_thrust'][ii]] - 2,
+                                      self.initial_state[self.x_info['i_thrust'][ii]] + 2)
             elif k == 'i_control_surfaces':
                 for ii, i in enumerate(v):
                     self.bounds[i] = (self.initial_state[self.x_info['i_control_surfaces'][ii]] - 4*np.pi/180,
