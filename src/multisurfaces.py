@@ -3,7 +3,7 @@ Linearise UVLM
 S. Maraniello, 25 May 2018
 '''
 
-import numpy as np 
+import numpy as np
 import libuvlm
 import gridmapping, surface
 import assembly
@@ -15,9 +15,10 @@ class MultiAeroGridSurfaces():
 	Creates and assembles multiple aerodynamic surfaces from data
 	'''
 
-	def __init__(self,tsdata):
+	def __init__(self,tsdata,omega=np.zeros((3),)):
 		'''
 		Initialise rom data structure at time step.
+		omega: rotation speed of the A FoR [rad/s]
 		'''
 
 		self.tsdata0=tsdata
@@ -38,7 +39,7 @@ class MultiAeroGridSurfaces():
 		self.MM_star=[]
 		self.KK_star=[]
 		self.KKzeta_star=[]
-		
+
 		for ss in range(self.n_surf):
 
 			### Allocate bound surfaces
@@ -48,7 +49,8 @@ class MultiAeroGridSurfaces():
 					Map,zeta=tsdata.zeta[ss],gamma=tsdata.gamma[ss],
 					u_ext=tsdata.u_ext[ss],zeta_dot=tsdata.zeta_dot[ss],
 					gamma_dot=tsdata.gamma_dot[ss],
-					rho=tsdata.rho)
+					rho=tsdata.rho,
+					omega=omega)
 			# generate geometry data
 			Surf.generate_areas()
 			Surf.generate_normals()
@@ -107,7 +109,7 @@ class MultiAeroGridSurfaces():
 
 	def get_normal_ind_velocities_at_collocation_points(self):
 		'''
-		Computes normal induced velocities at collocation points. 
+		Computes normal induced velocities at collocation points.
 
 		Note: for state-equation both projected and not projected induced
 		velocities are required at the collocation points. Hence, this method
@@ -200,7 +202,7 @@ class MultiAeroGridSurfaces():
 
 	def get_joukovski_qs(self,overwrite=False):
 		'''
-		Returns quasi-steady forces over 
+		Returns quasi-steady forces over
 
 		Warning: forces are stored in a NON-redundant format:
 			(3,4,M,N)
@@ -208,6 +210,7 @@ class MultiAeroGridSurfaces():
 			(:,ss,mm,nn)
 		is the contribution to the force over the ss-th segment due to the
 		circulation of panel (mm,nn).
+
 		'''
 
 		# get input and induced velocities at segments
@@ -221,8 +224,8 @@ class MultiAeroGridSurfaces():
 
 	def verify_non_penetration(self):
 		'''
-		Verify state variables fulfill non-penetration condition at bound 
-		surfaces 
+		Verify state variables fulfill non-penetration condition at bound
+		surfaces
 		'''
 
 		# verify induced velocities have been computed
@@ -267,7 +270,7 @@ class MultiAeroGridSurfaces():
 
 				# Wakes
 				Surf_in=self.Surfs_star[ss_in]
-				aic=AIC_star_list[ss_out][ss_in]				
+				aic=AIC_star_list[ss_out][ss_in]
 				Surf_out.u_ind_coll_norm+=np.dot(
 										aic,Surf_in.gamma.reshape(-1,order='C'))
 
@@ -319,7 +322,7 @@ class MultiAeroGridSurfaces():
 if __name__=='__main__':
 
 	import read
-	import matplotlib.pyplot as plt 
+	import matplotlib.pyplot as plt
 
 	# select test case
 	fname='../test/h5input/goland_mod_Nsurf01_M003_N004_a040.aero_state.h5'
@@ -328,7 +331,7 @@ if __name__=='__main__':
 	tsdata=haero.ts00000
 
 	MS=MultiAeroGridSurfaces(tsdata)
-	
+
 	# collocation points
 	MS.get_normal_ind_velocities_at_collocation_points()
 	MS.verify_non_penetration()
@@ -342,5 +345,3 @@ if __name__=='__main__':
 	embed()
 
 	### verify u_induced
-
-

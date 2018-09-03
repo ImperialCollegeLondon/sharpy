@@ -20,8 +20,8 @@ libc = ct.CDLL(lib_path)
 
 class AeroGridGeo():
 	'''
-	Allows retrieving geometrical information of a surface. Requires a 
-	gridmapping.AeroGridMap mapping structure in input and the surface vertices 
+	Allows retrieving geometrical information of a surface. Requires a
+	gridmapping.AeroGridMap mapping structure in input and the surface vertices
 	coordinates.
 
 	Indices convention: each panel is characterised through the following
@@ -33,9 +33,9 @@ class AeroGridGeo():
 	- generate_*: apply get_* method to each panel and store info into array.
 
 	Interpolation matrices, W:
-	- these are labelled as 'Wba', where 'a' defines the initial format, b the 
-	final. Hence, given the array vb, it holds va=Wab*vb 
-	
+	- these are labelled as 'Wba', where 'a' defines the initial format, b the
+	final. Hence, given the array vb, it holds va=Wab*vb
+
 	'''
 	def __init__(self,
 				 Map:'gridmapping.AeroGridMap instance',
@@ -45,7 +45,7 @@ class AeroGridGeo():
 
 		self.maps=Map
 		self.maps.map_all()
-		self.zeta=zeta 
+		self.zeta=zeta
 		self.aM=aM
 		self.aN=aN
 
@@ -53,14 +53,14 @@ class AeroGridGeo():
 		#self.wvc=self.get_panel_wcv(self.aM,self.aN)
 
 
-	# -------------------------------------------------------------------------	
+	# -------------------------------------------------------------------------
 
 	def get_panel_vertices_coords(self,m,n):
 		'''
 		Retrieves coordinates of panel (m,n) vertices.
 		'''
 
-		### 
+		###
 		# mpv=self.maps.from_panel_to_vertices(m,n)
 
 		###
@@ -78,7 +78,7 @@ class AeroGridGeo():
 		return self.zeta[:, [m+0,m+1,m+1,m+0], [n+0,n+0,n+1,n+1]].T
 
 
-	# ------------------------------------------------------- get panel normals	
+	# ------------------------------------------------------- get panel normals
 
 	def generate_normals(self):
 
@@ -109,7 +109,7 @@ class AeroGridGeo():
 	def get_panel_wcv(self):
 		'''
 		Produces a compact array with weights for bilinear interpolation, where
-		aN,aM in [0,1] are distances in the chordwise and spanwise directions 
+		aN,aM in [0,1] are distances in the chordwise and spanwise directions
 		such that:
 			- (aM,aN)=(0,0) --> quantity at vertex 0
 			- (aM,aN)=(1,0) --> quantity at vertex 1
@@ -121,12 +121,12 @@ class AeroGridGeo():
 		aN=self.aN
 		wcv=np.array([ (1-aM)*(1-aN), aM*(1-aN), aM*aN, aN*(1-aM) ])
 
-		return wcv 
+		return wcv
 
 	def get_panel_collocation(self,zetav_here):
 		'''
 		Using bilinear interpolation, retrieves panel collocation point, where
-		aN,aM in [0,1] are distances in the chordwise and spanwise directions 
+		aN,aM in [0,1] are distances in the chordwise and spanwise directions
 		such that:
 			- (aM,aN)=(0,0) --> quantity at vertex 0
 			- (aM,aN)=(1,0) --> quantity at vertex 1
@@ -142,7 +142,7 @@ class AeroGridGeo():
 	def generate_collocations(self):
 
 		M,N=self.maps.M,self.maps.N
-		self.zetac=np.zeros((3,M,N),order='F') # F order avoids the need to copy 
+		self.zetac=np.zeros((3,M,N),order='F') # F order avoids the need to copy
 											   # when passing self.zetac[:,x,x] to
 											   # C written libraries.
 
@@ -150,7 +150,7 @@ class AeroGridGeo():
 			for nn in range(N):
 				zetav_here=self.get_panel_vertices_coords(mm,nn)
 				self.zetac[:,mm,nn]=self.get_panel_collocation(zetav_here)
-					
+
 
 	# -------------------------------------------------- get mid-segment points
 
@@ -175,7 +175,7 @@ class AeroGridGeo():
 
 	def interp_vertex_to_coll(self,q_vert):
 		'''
-		Project a quantity q_vert (scalar or vector) defined at vertices to 
+		Project a quantity q_vert (scalar or vector) defined at vertices to
 		collocation points.
 		'''
 
@@ -243,9 +243,9 @@ class AeroGridGeo():
 		ax = fig.add_subplot(111, projection='3d')
 
 		# Plot vertices grid
-		ax.plot_wireframe(self.zeta[0],self.zeta[1],self.zeta[2]) 
+		ax.plot_wireframe(self.zeta[0],self.zeta[1],self.zeta[2])
 		#rstride=10, cstride=10)
-		
+
 		# Plot collocation points
 		ax.scatter(self.zetac[0],self.zetac[1],self.zetac[2],zdir='z',s=3,c='r')
 
@@ -269,27 +269,29 @@ class AeroGridSurface(AeroGridGeo):
 	- gamma: circulation
 
 	With respect to AeroGridGeo, the class contains methods to:
-	- project prescribed input velocity at nodes (u_ext, zeta_dot) over 
+	- project prescribed input velocity at nodes (u_ext, zeta_dot) over
 	collocaiton points.
 	- compute induced velocity over ANOTHER surface.
 	- compute AIC induced over ANOTHER surface
 
 	To add:
-	- project prescribed input velocity at nodes (u_ext, zeta_dot) over 
+	- project prescribed input velocity at nodes (u_ext, zeta_dot) over
 	mid-point segments
 	'''
 
 	def __init__(self,Map,zeta,gamma,
 							u_ext=None,zeta_dot=None,gamma_dot=None,
-														  rho=1.,aM=0.5,aN=0.5):
+														  rho=1.,aM=0.5,aN=0.5,
+														  omega=np.zeros((3),)):
 
 		super().__init__(Map,zeta,aM,aN)
 
-		self.gamma=gamma 
+		self.gamma=gamma
 		self.zeta_dot=zeta_dot
 		self.u_ext=u_ext
 		self.gamma_dot=gamma_dot
 		self.rho=rho
+		self.omega=omega
 
 		msg_out='wrong input shape!'
 		assert self.gamma.shape==(self.maps.M,self.maps.N), msg_out
@@ -297,7 +299,7 @@ class AeroGridSurface(AeroGridGeo):
 		if self.zeta_dot is not None:
 			assert self.zeta_dot.shape==(3,self.maps.M+1,self.maps.N+1), msg_out
 		if self.u_ext is not None:
-			assert self.u_ext.shape==(3,self.maps.M+1,self.maps.N+1), msg_out		
+			assert self.u_ext.shape==(3,self.maps.M+1,self.maps.N+1), msg_out
 
 
 	# -------------------------------------------------------- input velocities
@@ -307,8 +309,11 @@ class AeroGridSurface(AeroGridGeo):
 		Returns velocities at collocation points from nodal values u_ext and
 		zeta_dot of shape (3,M+1,N+1).
 
-		Remark: u_input_coll=Wcv*(u_ext-zet_dot) does not depend on the 
+		Remark: u_input_coll=Wcv*(u_ext-zet_dot) does not depend on the
 		coordinates zeta.
+
+        2018/08/24: Include effects due to rotation (omega x zeta). Now it
+        depends on the coordinates zeta
 		'''
 
 		# define total velocity
@@ -316,6 +321,13 @@ class AeroGridSurface(AeroGridGeo):
 			u_tot=self.u_ext-self.zeta_dot
 		else:
 			u_tot=self.u_ext
+
+		# Include rotation
+		for i_m in range(self.maps.M+1):
+			for i_n in range(self.maps.N+1):
+				#print(u_tot[:,i_m,i_n])
+				#print(np.cross(self.omega,self.zeta[:,i_m,i_n]))
+				u_tot[:,i_m,i_n] -= np.cross(self.omega,self.zeta[:,i_m,i_n])
 
 		self.u_input_coll=self.interp_vertex_to_coll(u_tot)
 
@@ -338,13 +350,16 @@ class AeroGridSurface(AeroGridGeo):
 		Returns velocities at mid-segment points from nodal values u_ext and
 		zeta_dot of shape (3,M+1,N+1).
 
-		Warning: input velocities at grid segments are stored in a redundant 
+		Warning: input velocities at grid segments are stored in a redundant
 		format:
 			(3,4,M,N)
 		where the element
 			(:,ss,mm,nn)
 		is the induced velocity over the ss-th segment of panel (mm,nn). A fast
 		looping is implemented to re-use previously computed velocities
+
+        2018/08/24: Include effects due to rotation (omega x zeta). Now it
+        depends on the coordinates zeta
 		'''
 
 		# define total velocity
@@ -352,6 +367,11 @@ class AeroGridSurface(AeroGridGeo):
 			u_tot=self.u_ext-self.zeta_dot
 		else:
 			u_tot=self.u_ext
+
+        # Include rotation
+		for i_m in range(self.maps.M+1):
+			for i_n in range(self.maps.N+1):
+				u_tot[:,i_m,i_n] -= np.cross(self.omega,self.zeta[:,i_m,i_n])
 
 		M,N=self.maps.M,self.maps.N
 		self.u_input_seg=np.empty((3,4,M,N))
@@ -371,7 +391,7 @@ class AeroGridSurface(AeroGridGeo):
 			uB=u_tot[:,mm+dmver[bb],nn+dnver[bb]]
 			self.u_input_seg[:,ss,mm,nn]=.5*(uA+uB)
 
-		##### panels n=0: copy seg.3 
+		##### panels n=0: copy seg.3
 		nn=0
 		svec=[0,1,2] # seg. no.
 		avec=[0,1,2] # 1st vertex no.
@@ -404,7 +424,7 @@ class AeroGridSurface(AeroGridGeo):
 				uB=u_tot[:,mm+dmver[bb],nn+dnver[bb]]
 				self.u_input_seg[:,ss,mm,nn]=.5*(uA+uB)
 			self.u_input_seg[:,0,mm,nn]=self.u_input_seg[:,2,mm,nn-1]
-			self.u_input_seg[:,3,mm,nn]=self.u_input_seg[:,1,mm-1,nn]	
+			self.u_input_seg[:,3,mm,nn]=self.u_input_seg[:,1,mm-1,nn]
 
 		return self
 
@@ -442,11 +462,11 @@ class AeroGridSurface(AeroGridGeo):
 		M,N=self.maps.M,self.maps.N
 		uind_target=np.zeros((3,),order='C')
 
-		libc.call_ind_vel( 
-			uind_target.ctypes.data_as(ct.POINTER(ct.c_double)), 
-			zeta_target.ctypes.data_as(ct.POINTER(ct.c_double)), 
-			self.zeta.ctypes.data_as(ct.POINTER(ct.c_double)), 
-			self.gamma.ctypes.data_as(ct.POINTER(ct.c_double)), 
+		libc.call_ind_vel(
+			uind_target.ctypes.data_as(ct.POINTER(ct.c_double)),
+			zeta_target.ctypes.data_as(ct.POINTER(ct.c_double)),
+			self.zeta.ctypes.data_as(ct.POINTER(ct.c_double)),
+			self.gamma.ctypes.data_as(ct.POINTER(ct.c_double)),
 			ct.byref(ct.c_int(M)),
 			ct.byref(ct.c_int(N)))
 
@@ -455,7 +475,7 @@ class AeroGridSurface(AeroGridGeo):
 
 	def get_aic3(self,zeta_target):
 		'''
-		Produces influence coefficinet matrix to calculate the induced velocity 
+		Produces influence coefficinet matrix to calculate the induced velocity
 		at a target point. The aic3 matrix has shape (3,K)
 		'''
 
@@ -470,14 +490,14 @@ class AeroGridSurface(AeroGridGeo):
 
 			# get panel coordinates
 			zetav_here=self.get_panel_vertices_coords(mm,nn)
-			aic3[:,cc]=libuvlm.biot_panel_cpp(zeta_target,zetav_here,gamma=1.0)	
+			aic3[:,cc]=libuvlm.biot_panel_cpp(zeta_target,zetav_here,gamma=1.0)
 
 		return aic3
 
 
 	def get_aic3_cpp(self,zeta_target):
 		'''
-		Produces influence coefficinet matrix to calculate the induced velocity 
+		Produces influence coefficinet matrix to calculate the induced velocity
 		at a target point. The aic3 matrix has shape (3,K)
 		'''
 
@@ -486,10 +506,10 @@ class AeroGridSurface(AeroGridGeo):
 		K=self.maps.K
 		aic3=np.zeros((3,K),order='C')
 
-		libc.call_aic3( 
-			aic3.ctypes.data_as(ct.POINTER(ct.c_double)), 
-			zeta_target.ctypes.data_as(ct.POINTER(ct.c_double)), 
-			self.zeta.ctypes.data_as(ct.POINTER(ct.c_double)), 
+		libc.call_aic3(
+			aic3.ctypes.data_as(ct.POINTER(ct.c_double)),
+			zeta_target.ctypes.data_as(ct.POINTER(ct.c_double)),
+			self.zeta.ctypes.data_as(ct.POINTER(ct.c_double)),
 			ct.byref(ct.c_int(self.maps.M)),
 			ct.byref(ct.c_int(self.maps.N)))
 
@@ -503,13 +523,13 @@ class AeroGridSurface(AeroGridGeo):
 		Computes induced velocity over an instance of AeroGridSurface, where
 		target specifies the target grid (collocation or segments). If Project
 		is True, velocities are projected onver panel normal (only available at
-		collocation points). 
+		collocation points).
 
-		Note: for state-equation, both projected and non-projected velocities at 
+		Note: for state-equation, both projected and non-projected velocities at
 		the collocation points are required. Hence, it is suggested to use this
 		method with Projection=False, and project afterwards.
 
-		Warning: induced velocities at grid segments are stored in a redundant 
+		Warning: induced velocities at grid segments are stored in a redundant
 		format:
 			(3,4,M,N)
 		where the element
@@ -531,9 +551,9 @@ class AeroGridSurface(AeroGridGeo):
 					Surf_target.generate_normals()
 				Uind=np.empty((M_trg,N_trg))
 			else:
-				Uind=np.empty((3,M_trg,N_trg))			
+				Uind=np.empty((3,M_trg,N_trg))
 
-			# loop target points			
+			# loop target points
 			for pp in itertools.product(range(M_trg),range(N_trg)):
 				mm,nn=pp
 				uind=self.get_induced_velocity_cpp(ZetaTarget[:,mm,nn])
@@ -546,7 +566,7 @@ class AeroGridSurface(AeroGridGeo):
 
 			if Project:
 				raise NameError('Normal not defined for segment')
-			
+
 			Uind=np.zeros((3,4,M_trg,N_trg))
 
 			##### panel (0,0): compute all
@@ -559,7 +579,7 @@ class AeroGridSurface(AeroGridGeo):
 				zeta_mid=0.5*(zetav_here[aa,:]+zetav_here[bb,:])
 				Uind[:,ss,mm,nn]=self.get_induced_velocity_cpp(zeta_mid)
 
-			##### panels n=0: copy seg.3 
+			##### panels n=0: copy seg.3
 			nn=0
 			svec=[0,1,2] # seg. number
 			avec=[0,1,2] # 1st vertex of seg.
@@ -621,10 +641,10 @@ class AeroGridSurface(AeroGridGeo):
 			velocity at segment ss of panel (mm,nn)
 		'''
 
-		K_in=self.maps.K		
+		K_in=self.maps.K
 
 		if target=='collocation':
-			
+
 			K_out=Surf_target.maps.K
 			if not hasattr(Surf_target,'zetac'):
 				Surf_target.generate_collocations()
@@ -635,10 +655,10 @@ class AeroGridSurface(AeroGridGeo):
 					Surf_target.generate_normals()
 				AIC=np.empty((K_out,K_in))
 			else:
-				AIC=np.empty((3,K_out,K_in))	
+				AIC=np.empty((3,K_out,K_in))
 
 			# loop target points
-			for cc in range(K_out): 
+			for cc in range(K_out):
 				# retrieve panel coords
 				mm=Surf_target.maps.ind_2d_pan_scal[0][cc]
 				nn=Surf_target.maps.ind_2d_pan_scal[1][cc]
@@ -670,7 +690,7 @@ class AeroGridSurface(AeroGridGeo):
 				zeta_mid=0.5*(zetav_here[aa,:]+zetav_here[bb,:])
 				AIC[:,:,ss,mm,nn]=self.get_aic3_cpp(zeta_mid)
 
-			##### panels n=0: copy seg.3 
+			##### panels n=0: copy seg.3
 			nn=0
 			svec=[0,1,2] # seg. number
 			avec=[0,1,2] # 1st vertex of seg.
@@ -705,20 +725,20 @@ class AeroGridSurface(AeroGridGeo):
 					zeta_mid=0.5*(zetav_here[aa,:]+zetav_here[bb,:])
 					AIC[:,:,ss,mm,nn]=self.get_aic3_cpp(zeta_mid)
 				AIC[:,:,3,mm,nn]=AIC[:,:,1,mm-1,nn]
-				AIC[:,:,0,mm,nn]=AIC[:,:,2,mm,nn-1]	
+				AIC[:,:,0,mm,nn]=AIC[:,:,2,mm,nn-1]
 
 		return AIC
 
 
 	# ------------------------------------------------------------------ forces
 
-	def get_joukovski_qs(self,gammaw_TE=None):
+	def get_joukovski_qs(self,gammaw_TE=None,recompute_velocities=True):
 		'''
-		Returns quasi-steady forces evaluated at mid-segment points over the 
+		Returns quasi-steady forces evaluated at mid-segment points over the
 		surface.
 
 		Important: the circulation at the first row of wake panel is required!
-		Hence all 
+		Hence all
 
 		Warning: forces are stored in a NON-redundant format:
 			(3,4,M,N)
@@ -729,6 +749,8 @@ class AeroGridSurface(AeroGridGeo):
 		'''
 
 		if not hasattr(self,'u_input_seg'):
+			if not recompute_velocities:
+				print("WARNING: recomputing velocities")
 			self.get_input_velocities_at_segments()
 		if not hasattr(self,'u_ind_seg'):
 			raise NameError('u_ind_seg not available!')
@@ -762,7 +784,7 @@ class AeroGridSurface(AeroGridGeo):
 		# Note:
 		# 1. zetaA & zetaB are ordered such that the wake circulation is
 		# subtracts to the bound circulation over TE segment
-		# 2. the TE segment corresponds to seg.1 of the last row of BOUND panels		
+		# 2. the TE segment corresponds to seg.1 of the last row of BOUND panels
 		if gammaw_TE is None:
 			raise NameError('Enter gammaw_TE - option disabled for debugging')
 			gammaw_TE=self.gamma[M-1,:]
@@ -816,7 +838,7 @@ class AeroGridSurface(AeroGridGeo):
 if __name__=='__main__':
 
 	import read, gridmapping
-	import matplotlib.pyplot as plt 
+	import matplotlib.pyplot as plt
 
 	# select test case
 	fname='../test/h5input/goland_mod_Nsurf01_M003_N004_a040.aero_state.h5'
@@ -855,12 +877,3 @@ if __name__=='__main__':
 	# calc unsteady joukovski force
 	S.generate_areas()
 	S.get_joukovski_unsteady()
-
-
-
-
-
-
-
-
-

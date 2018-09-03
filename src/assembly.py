@@ -5,15 +5,15 @@ S. Maraniello, 25 May 2018
 Includes:
 
 - Boundary conditions methods:
-	- AICs: allocate aero influence coefficient matrices of multi-surfaces 
+	- AICs: allocate aero influence coefficient matrices of multi-surfaces
 	configurations
 	- nc_dqcdzeta_Sin_to_Sout: derivative matrix of
-		nc*dQ/dzeta 
-	where Q is the induced velocity at the bound colllocation points of one 
+		nc*dQ/dzeta
+	where Q is the induced velocity at the bound colllocation points of one
 	surface to another
-	- nc_dqcdzeta_coll: assembles "nc_dqcdzeta_coll_Sin_to_Sout" matrices in 
+	- nc_dqcdzeta_coll: assembles "nc_dqcdzeta_coll_Sin_to_Sout" matrices in
 	multi-surfaces configurations
-	- uc_dncdzeta: assemble derivative matrix dnc/dzeta*Uc at bound collocation 
+	- uc_dncdzeta: assemble derivative matrix dnc/dzeta*Uc at bound collocation
 	points
 '''
 
@@ -40,7 +40,7 @@ bvec =[ 1, 2, 3, 0] # 2nd vertex no.
 
 
 def skew(Av):
-	''' Produce skew matrix such that Av x Bv = skew(Av)*Bv	'''	
+	''' Produce skew matrix such that Av x Bv = skew(Av)*Bv	'''
 
 	ax,ay,az=Av[0],Av[1],Av[2]
 	Askew=np.array([[  0,-az, ay],
@@ -53,11 +53,11 @@ def skew(Av):
 
 def AICs(Surfs,Surfs_star,target='collocation',Project=True):
 	'''
-	Given a list of bound (Surfs) and wake (Surfs_star) instances of 
+	Given a list of bound (Surfs) and wake (Surfs_star) instances of
 	surface.AeroGridSurface, returns the list of AIC matrices in the format:
-	 	- AIC_list[ii][jj] contains the AIC from the bound surface Surfs[jj] to 
+	 	- AIC_list[ii][jj] contains the AIC from the bound surface Surfs[jj] to
 	 	Surfs[ii].
-	 	- AIC_star_list[ii][jj] contains the AIC from the wake surface Surfs[jj] 
+	 	- AIC_star_list[ii][jj] contains the AIC from the wake surface Surfs[jj]
 	 	to Surfs[ii].
 	'''
 
@@ -83,7 +83,7 @@ def AICs(Surfs,Surfs_star,target='collocation',Project=True):
 			AIC_star_list_here.append(Surf_in.get_aic_over_surface(
 										Surf_out,target=target,Project=Project))
 		AIC_list.append(AIC_list_here)
-		AIC_star_list.append(AIC_star_list_here)	
+		AIC_star_list.append(AIC_star_list_here)
 
 	return AIC_list, AIC_star_list
 
@@ -94,21 +94,21 @@ def nc_dqcdzeta_Sin_to_Sout(Surf_in,Surf_out,Der_coll,Der_vert,Surf_in_bound):
 	'''
 	Computes derivative matrix of
 		nc*dQ/dzeta
-	where Q is the induced velocity induced by bound surface Surf_in onto 
+	where Q is the induced velocity induced by bound surface Surf_in onto
 	bound surface Surf_out. The panel normals of Surf_out are constant.
 
 	The input/output are:
-	- Der_coll of size (Kout,3*Kzeta_out): derivative due to the movement of 
-	collocation point on Surf_out. 
+	- Der_coll of size (Kout,3*Kzeta_out): derivative due to the movement of
+	collocation point on Surf_out.
 	- Der_vert of size:
 		- (Kout,3*Kzeta_in) if Surf_in_bound is True
-		- (Kout,3*Kzeta_bound_in) if Surf_in_bound is False; Kzeta_bound_in is 
+		- (Kout,3*Kzeta_bound_in) if Surf_in_bound is False; Kzeta_bound_in is
 		the number of vertices in the bound surface of whom Surf_out is the wake.
 
 	Note that:
 	- if Surf_in_bound is False, only the TE movement contributes to Der_vert.
 	- if Surf_in_bound is False, the allocation of Der_coll could be speed-up by
-	scanning only the wake segments along the chordwise direction, as on the 
+	scanning only the wake segments along the chordwise direction, as on the
 	others the net circulation is null.
 	'''
 
@@ -134,7 +134,7 @@ def nc_dqcdzeta_Sin_to_Sout(Surf_in,Surf_out,Der_coll,Der_vert,Surf_in_bound):
 		N_in=Surf_in.maps.N
 		M_bound_in=Kzeta_bound_in//(N_in+1)-1
 
-	# create mapping panels to vertices to loop 
+	# create mapping panels to vertices to loop
 	Surf_out.maps.map_panels_to_vertices_1D_scalar()
 	#Surf_in.maps.map_panels_to_vertices_1D_scalar()
 
@@ -156,7 +156,7 @@ def nc_dqcdzeta_Sin_to_Sout(Surf_in,Surf_out,Der_coll,Der_vert,Surf_in_bound):
 		else:
 			dvind_coll,dvind_vert=dvinddzeta_cpp(zetac_here,Surf_in,
 									IsBound=Surf_in_bound,M_in_bound=M_bound_in)
-		
+
 		### Surf_in vertices contribution
 		Der_vert[cc_out,:]+=np.dot(nc_here,dvind_vert)
 
@@ -167,7 +167,7 @@ def nc_dqcdzeta_Sin_to_Sout(Surf_in,Surf_out,Der_coll,Der_vert,Surf_in_bound):
 		# loop panel vertices
 		for vv,dm,dn in zip(range(4),dmver,dnver):
 			mm_v,nn_v=mm_out+dm,nn_out+dn
-			ii_v=[np.ravel_multi_index( 
+			ii_v=[np.ravel_multi_index(
 							 (cc,mm_v,nn_v),shape_zeta_out) for cc in range(3)]
 			Der_coll[cc_out,ii_v]+=wcv_out[vv]*dvindnorm_coll
 
@@ -178,15 +178,15 @@ def nc_dqcdzeta_Sin_to_Sout(Surf_in,Surf_out,Der_coll,Der_vert,Surf_in_bound):
 
 def nc_dqcdzeta(Surfs,Surfs_star):
 	'''
-	Produces a list of derivative matrix d(AIC*Gamma)/dzeta, where AIC are the 
-	influence coefficient matrices at the bound surfaces collocation point, 
+	Produces a list of derivative matrix d(AIC*Gamma)/dzeta, where AIC are the
+	influence coefficient matrices at the bound surfaces collocation point,
 	ASSUMING constant panel norm.
 
 	Eeach list is such that:
 	- the ii-th element is associated to the ii-th bound surface collocation
 	point, and will contain a sub-list such that:
-		- the j-th element of the sub-list is the dAIC_dzeta matrices w.r.t. the 
-		zeta d.o.f. of the j-th bound surface. 
+		- the j-th element of the sub-list is the dAIC_dzeta matrices w.r.t. the
+		zeta d.o.f. of the j-th bound surface.
 	Hence, DAIC*[ii][jj] will have size K_ii x Kzeta_jj
 	'''
 
@@ -214,7 +214,7 @@ def nc_dqcdzeta(Surfs,Surfs_star):
 
 		# loop input surfaces:
 		for ss_in in range(n_surf):
-			
+
 			##### bound
 			Surf_in=Surfs[ss_in]
 			Kzeta_in=Surf_in.maps.Kzeta
@@ -238,14 +238,76 @@ def nc_dqcdzeta(Surfs,Surfs_star):
 
 ################################################################################
 
+def nc_domegazetadzeta(Surfs,Surfs_star):
+	'''
+	Produces a list of derivative matrix d(omaga x zeta)/dzeta, where omega is
+    the rotation speed of the A FoR,
+	ASSUMING constant panel norm.
 
+	Each list is such that:
+	- the ii-th element is associated to the ii-th bound surface collocation
+	point, and will contain a sub-list such that:
+		- the j-th element of the sub-list is the dAIC_dzeta matrices w.r.t. the
+		zeta d.o.f. of the j-th bound surface.
+	Hence, DAIC*[ii][jj] will have size K_ii x Kzeta_jj
+
+	call: ncDOmegaZetacoll, ncDOmegaZetavert = nc_domegazetadzeta(Surfs,Surfs_star)
+	'''
+	n_surf=len(Surfs)
+
+	ncDOmegaZetacoll=[]
+	ncDOmegaZetavert=[]
+
+	### loop output (bound) surfaces
+	for ss in range(n_surf):
+
+		# define output bound surface size
+		Surf=Surfs[ss]
+		skew_omega = skew(Surf.omega)
+		K=Surf.maps.K # K_out = M*N (number of panels)
+		Kzeta=Surf.maps.Kzeta # Kzeta_out = (M+1)*(N+1) (number of vertices/edges)
+		wcv=Surf.get_panel_wcv()
+		shape_zeta=Surf.maps.shape_vert_vect # (3,M,N)
+
+		# The derivatives only depend on the studied surface (Surf_out)
+		ncDcoll=np.zeros((K,3))
+		ncDvert=np.zeros((Kzeta,3))
+
+        # create mapping panels to vertices to loop
+        # Surf_out.maps.map_panels_to_vertices_1D_scalar()
+
+        ##### loop collocation points
+		for cc in range(K):
+
+            # get (m,n) indices of collocation point
+			mm=Surf.maps.ind_2d_pan_scal[0][cc]
+			nn=Surf.maps.ind_2d_pan_scal[1][cc]
+
+			zetac_here=Surf.zetac[:,mm,nn]
+
+            # get normal
+			nc_here=Surf.normals[:,mm,nn]
+
+			ncDcoll[cc,:] -= np.dot(nc_here,skew_omega)
+
+			# loop panel vertices
+			for vv,dm,dn in zip(range(4),dmver,dnver):
+				mm_v,nn_v=mm+dm,nn+dn
+				ii_v=[np.ravel_multi_index(
+								 (cc,mm_v,nn_v),shape_zeta) for cc in range(3)]
+				ncDvert[cc,ii_v]+=wcv[vv]*ncDcoll
+
+		ncDOmegaZetacoll.append(ncDcoll)
+		ncDOmegaZetavert.append(ncDvert)
+
+	return 	ncDOmegaZetacoll, ncDOmegaZetavert
 
 def uc_dncdzeta(Surf):
 	'''
 	Build derivative of uc*dnc/dzeta where uc is the total velocity at the
 	collocation points. Input Surf can be:
 	- an instance of surface.AeroGridSurface.
-	- a list of instance of surface.AeroGridSurface. 	
+	- a list of instance of surface.AeroGridSurface.
 	Refs:
 	- develop_sym.linsum_Wnc
 	- lib_ucdncdzeta
@@ -315,7 +377,7 @@ def dfqsdgamma_vrel0(Surfs,Surfs_star):
 	'''
 	Assemble derivative of quasi-steady force w.r.t. gamma with fixed relative
 	velocity - the changes in induced velocities due to gamma are not accounted
-	for. The routine exploits the get_joukovski_qs method insude the 
+	for. The routine exploits the get_joukovski_qs method insude the
 	AeroGridSurface class
 	'''
 
@@ -348,11 +410,11 @@ def dfqsdgamma_vrel0(Surfs,Surfs_star):
 		for pp_in in range(K):
 			# get (m,n) indices of panel
 			mm_in=Surf.maps.ind_2d_pan_scal[0][pp_in]
-			nn_in=Surf.maps.ind_2d_pan_scal[1][pp_in]	
+			nn_in=Surf.maps.ind_2d_pan_scal[1][pp_in]
 
 			# zetav_here=Surf.get_panel_vertices_coords(mm_in,nn_in)
 			for ll,aa,bb in zip(svec,avec,bvec):
-				# import libuvlm 
+				# import libuvlm
 				# dfhere=libuvlm.joukovski_qs_segment(
 				# 	zetaA=zetav_here[aa,:],zetaB=zetav_here[bb,:],
 				# 	v_mid=Surf.u_ind_seg[:,ll,mm_in,nn_in]+\
@@ -366,9 +428,9 @@ def dfqsdgamma_vrel0(Surfs,Surfs_star):
 				mm_b,nn_b=mm_in+dmver[bb],nn_in+dnver[bb]
 
 				# get vertices 1d index
-				ii_a=[ np.ravel_multi_index( 
+				ii_a=[ np.ravel_multi_index(
 								  (cc,mm_a,nn_a),shape_fqs ) for cc in range(3)]
-				ii_b=[ np.ravel_multi_index( 
+				ii_b=[ np.ravel_multi_index(
 								  (cc,mm_b,nn_b),shape_fqs ) for cc in range(3)]
 				Der[ii_a,pp_in]+=df
 				Der[ii_b,pp_in]+=df
@@ -377,7 +439,7 @@ def dfqsdgamma_vrel0(Surfs,Surfs_star):
 
 
 		##### unit gamma contribution of WAKE TE segments
-		# Note: the force due to the wake is attached to Surf when 
+		# Note: the force due to the wake is attached to Surf when
 		# get_joukovski_qs is acalled
 		M_star,N_star=Surfs_star[ss].maps.M,Surfs_star[ss].maps.N
 		K_star=Surfs_star[ss].maps.K
@@ -399,9 +461,9 @@ def dfqsdgamma_vrel0(Surfs,Surfs_star):
 			mm_b,nn_b=M,nn_in+dnver[bb]
 
 			# get vertices 1d index
-			ii_a=[ np.ravel_multi_index( 
+			ii_a=[ np.ravel_multi_index(
 								  (cc,mm_a,nn_a),shape_fqs ) for cc in range(3)]
-			ii_b=[ np.ravel_multi_index( 
+			ii_b=[ np.ravel_multi_index(
 								  (cc,mm_b,nn_b),shape_fqs ) for cc in range(3)]
 			Der_star[ii_a,pp_in]+=df
 			Der_star[ii_b,pp_in]+=df
@@ -417,7 +479,7 @@ def dfqsdzeta_vrel0(Surfs,Surfs_star):
 	'''
 	Assemble derivative of quasi-steady force w.r.t. zeta with fixed relative
 	velocity - the changes in induced velocities due to zeta over the surface
-	inducing the velocity are not accounted for. The routine exploits the 
+	inducing the velocity are not accounted for. The routine exploits the
 	available relative velocities at the mid-segment points
 	'''
 
@@ -446,7 +508,7 @@ def dfqsdzeta_vrel0(Surfs,Surfs_star):
 		for pp_in in range(K):
 			# get (m,n) indices of panel
 			mm_in=Surf.maps.ind_2d_pan_scal[0][pp_in]
-			nn_in=Surf.maps.ind_2d_pan_scal[1][pp_in]	
+			nn_in=Surf.maps.ind_2d_pan_scal[1][pp_in]
 
 			for ll,aa,bb in zip(svec,avec,bvec):
 
@@ -459,9 +521,9 @@ def dfqsdzeta_vrel0(Surfs,Surfs_star):
 				mm_b,nn_b=mm_in+dmver[bb],nn_in+dnver[bb]
 
 				# get vertices 1d index
-				ii_a=[ np.ravel_multi_index( 
+				ii_a=[ np.ravel_multi_index(
 								  (cc,mm_a,nn_a),shape_fqs ) for cc in range(3)]
-				ii_b=[ np.ravel_multi_index( 
+				ii_b=[ np.ravel_multi_index(
 								  (cc,mm_b,nn_b),shape_fqs ) for cc in range(3)]
 				Der[np.ix_(ii_a,ii_a)]+=-Df
 				Der[np.ix_(ii_b,ii_a)]+=-Df
@@ -469,7 +531,7 @@ def dfqsdzeta_vrel0(Surfs,Surfs_star):
 				Der[np.ix_(ii_b,ii_b)]+=Df
 
 		##### contribution of WAKE TE segments.
-		# This is added to Der, as only the bound vertices are included in the 
+		# This is added to Der, as only the bound vertices are included in the
 		# input
 
 		# loop TE bound segment but:
@@ -478,16 +540,16 @@ def dfqsdzeta_vrel0(Surfs,Surfs_star):
 		for nn_in in range(N):
 			# get velocity at seg.3 of wake TE
 			vrel_seg=(Surf.u_input_seg[:,1,M-1,nn_in]+Surf.u_ind_seg[:,1,M-1,nn_in])
-			Df=Df=skew( 
+			Df=Df=skew(
 				(0.5*Surfs_star[ss].rho*Surfs_star[ss].gamma[0,nn_in])*vrel_seg)
 
 			# get TE bound vertices m,n indices
 			nn_a=nn_in+dnver[2]
 			nn_b=nn_in+dnver[1]
 			# get vertices 1d index on bound
-			ii_a=[ np.ravel_multi_index( 
+			ii_a=[ np.ravel_multi_index(
 									 (cc,M,nn_a),shape_fqs ) for cc in range(3)]
-			ii_b=[ np.ravel_multi_index( 
+			ii_b=[ np.ravel_multi_index(
 									 (cc,M,nn_b),shape_fqs ) for cc in range(3)]
 
 			Der[np.ix_(ii_a,ii_a)]+=-Df
@@ -533,7 +595,7 @@ def dfqsduinput(Surfs,Surfs_star):
 
 			# get panel vertices
 			#zetav_here=Surf.get_panel_vertices_coords(mm_in,nn_in)
-			zetav_here=Surf.zeta[:, [mm_in+0,mm_in+1,mm_in+1,mm_in+0], 
+			zetav_here=Surf.zeta[:, [mm_in+0,mm_in+1,mm_in+1,mm_in+0],
 											[nn_in+0,nn_in+0,nn_in+1,nn_in+1]].T
 
 			for ll,aa,bb in zip(svec,avec,bvec):
@@ -547,9 +609,9 @@ def dfqsduinput(Surfs,Surfs_star):
 				mm_b,nn_b=mm_in+dmver[bb],nn_in+dnver[bb]
 
 				# get vertices 1d index
-				ii_a=[ np.ravel_multi_index( 
+				ii_a=[ np.ravel_multi_index(
 								  (cc,mm_a,nn_a),shape_fqs ) for cc in range(3)]
-				ii_b=[ np.ravel_multi_index( 
+				ii_b=[ np.ravel_multi_index(
 								  (cc,mm_b,nn_b),shape_fqs ) for cc in range(3)]
 				Der[np.ix_(ii_a,ii_a)]+=Df
 				Der[np.ix_(ii_b,ii_a)]+=Df
@@ -557,7 +619,7 @@ def dfqsduinput(Surfs,Surfs_star):
 				Der[np.ix_(ii_b,ii_b)]+=Df
 
 		##### contribution of WAKE TE segments.
-		# This is added to Der, as only velocities at the bound vertices are 
+		# This is added to Der, as only velocities at the bound vertices are
 		# included in the input of the state-space model
 
 		# loop TE bound segment but:
@@ -574,9 +636,9 @@ def dfqsduinput(Surfs,Surfs_star):
 			Df=skew( (-0.25*Surf.rho*Surf.gamma[mm_in,nn_in])*lv )
 
 			# get vertices 1d index on bound
-			ii_a=[ np.ravel_multi_index( 
+			ii_a=[ np.ravel_multi_index(
 									 (cc,M,nn_a),shape_fqs ) for cc in range(3)]
-			ii_b=[ np.ravel_multi_index( 
+			ii_b=[ np.ravel_multi_index(
 									 (cc,M,nn_b),shape_fqs ) for cc in range(3)]
 
 			Der[np.ix_(ii_a,ii_a)]+=Df
@@ -587,13 +649,99 @@ def dfqsduinput(Surfs,Surfs_star):
 
 	return Der_list
 
+#########################  ams start ##################################
 
+def dfqsdzeta_omega(Surfs,Surfs_star):
+	'''
+	Assemble derivative of quasi-steady force w.r.t. to zeta
+    The contribution implemented is related with the omega x zeta term
+	call: Der_list = dfqsdzeta_omega(Surfs,Surfs_star)
+	'''
+
+	Der_list=[]
+	n_surf=len(Surfs)
+
+	for ss in range(n_surf):
+
+		Surf=Surfs[ss]
+		skew_omega = skew(Surf.omega)
+		M,N=Surf.maps.M,Surf.maps.N
+		K=Surf.maps.K
+		Kzeta=Surf.maps.Kzeta
+		shape_fqs=Surf.maps.shape_vert_vect # (3,M+1,N+1)
+
+        ##### omega x zeta contribution
+		Der=np.zeros((3*Kzeta,3*Kzeta))
+
+		# loop panels (input, i.e. matrix columns)
+		for pp_in in range(K):
+			# get (m,n) indices of panel
+			mm_in=Surf.maps.ind_2d_pan_scal[0][pp_in]
+			nn_in=Surf.maps.ind_2d_pan_scal[1][pp_in]
+
+			# get panel vertices
+			zetav_here=Surf.zeta[:, [mm_in+0,mm_in+1,mm_in+1,mm_in+0],
+											[nn_in+0,nn_in+0,nn_in+1,nn_in+1]].T
+
+			for ll,aa,bb in zip(svec,avec,bvec):
+
+				# get segment
+				lv=zetav_here[bb,:]-zetav_here[aa,:]
+				Df= (0.25*Surf.rho*Surf.gamma[mm_in,nn_in])*skew(lv).dot(skew_omega)
+
+				# get vertices m,n indices
+				mm_a,nn_a=mm_in+dmver[aa],nn_in+dnver[aa]
+				mm_b,nn_b=mm_in+dmver[bb],nn_in+dnver[bb]
+
+				# get vertices 1d index
+				ii_a=[ np.ravel_multi_index(
+								  (cc,mm_a,nn_a),shape_fqs ) for cc in range(3)]
+				ii_b=[ np.ravel_multi_index(
+								  (cc,mm_b,nn_b),shape_fqs ) for cc in range(3)]
+				Der[np.ix_(ii_a,ii_a)]+=Df
+				Der[np.ix_(ii_b,ii_a)]+=Df
+				Der[np.ix_(ii_a,ii_b)]+=Df
+				Der[np.ix_(ii_b,ii_b)]+=Df
+
+		##### contribution of WAKE TE segments.
+		# This is added to Der, as only velocities at the bound vertices are
+		# included in the input of the state-space model
+
+		# loop TE bound segment but:
+		# - using wake gamma
+		# - using orientation of wake panel
+		for nn_in in range(N):
+
+			# get TE bound vertices m,n indices
+			nn_a=nn_in+dnver[2]
+			nn_b=nn_in+dnver[1]
+
+			# get segment
+			lv=Surf.zeta[:,M,nn_b]-Surf.zeta[:,M,nn_a]
+			Df=(0.25*Surf.rho*Surf.gamma[mm_in,nn_in])*skew(lv).dot(skew_omega)
+
+			# get vertices 1d index on bound
+			ii_a=[ np.ravel_multi_index(
+									 (cc,M,nn_a),shape_fqs ) for cc in range(3)]
+			ii_b=[ np.ravel_multi_index(
+									 (cc,M,nn_b),shape_fqs ) for cc in range(3)]
+
+			Der[np.ix_(ii_a,ii_a)]+=Df
+			Der[np.ix_(ii_b,ii_a)]+=Df
+			Der[np.ix_(ii_a,ii_b)]+=Df
+			Der[np.ix_(ii_b,ii_b)]+=Df
+
+		Der_list.append(Der)
+
+	return Der_list
+
+#########################  ams end ##################################
 
 def dfqsdvind_gamma(Surfs,Surfs_star):
 	'''
 	Assemble derivative of quasi-steady force w.r.t. induced velocities changes
 	due to gamma.
-	Note: the routine is memory consuming but avoids unnecessary computations. 
+	Note: the routine is memory consuming but avoids unnecessary computations.
 	'''
 
 	n_surf=len(Surfs)
@@ -637,10 +785,10 @@ def dfqsdvind_gamma(Surfs,Surfs_star):
 		for pp_out in range(K_out):
 			# get (m,n) indices of panel
 			mm_out=Surf_out.maps.ind_2d_pan_scal[0][pp_out]
-			nn_out=Surf_out.maps.ind_2d_pan_scal[1][pp_out]	
+			nn_out=Surf_out.maps.ind_2d_pan_scal[1][pp_out]
 			# get panel vertices
 			#zetav_here=Surf_out.get_panel_vertices_coords(mm_out,nn_out)
-			zetav_here=Surf_out.zeta[:,[mm_out+0,mm_out+1,mm_out+1,mm_out+0], 
+			zetav_here=Surf_out.zeta[:,[mm_out+0,mm_out+1,mm_out+1,mm_out+0],
 									   [nn_out+0,nn_out+0,nn_out+1,nn_out+1]].T
 
 			for ll,aa,bb in zip(svec,avec,bvec):
@@ -654,9 +802,9 @@ def dfqsdvind_gamma(Surfs,Surfs_star):
 				mm_b,nn_b=mm_out+dmver[bb],nn_out+dnver[bb]
 
 				# get vertices 1d index
-				ii_a=[ np.ravel_multi_index( 
+				ii_a=[ np.ravel_multi_index(
 								  (cc,mm_a,nn_a),shape_fqs ) for cc in range(3)]
-				ii_b=[ np.ravel_multi_index( 
+				ii_b=[ np.ravel_multi_index(
 								  (cc,mm_b,nn_b),shape_fqs ) for cc in range(3)]
 
 				# update all derivatives
@@ -669,11 +817,11 @@ def dfqsdvind_gamma(Surfs,Surfs_star):
 					Der_list_sub[ss_in][ii_b,:]+=Dfs
 					Der_star_list_sub[ss_in][ii_a,:]+=Dfs_star
 					Der_star_list_sub[ss_in][ii_b,:]+=Dfs_star
-				
+
 		### loop again trailing edge
 		# here we add the Gammaw_0*rho*skew(lv)*dvind/dgamma contribution hence:
 		# - we use Gammaw_0 over the TE
-		# - we run along the positive direction as defined in the first row of 
+		# - we run along the positive direction as defined in the first row of
 		# wake panels
 		for nn_out in range(N_out):
 
@@ -687,9 +835,9 @@ def dfqsdvind_gamma(Surfs,Surfs_star):
 
 
 			# get vertices 1d index on bound
-			ii_a=[ np.ravel_multi_index( 
+			ii_a=[ np.ravel_multi_index(
 								 (cc,M_out,nn_a),shape_fqs ) for cc in range(3)]
-			ii_b=[ np.ravel_multi_index( 
+			ii_b=[ np.ravel_multi_index(
 								 (cc,M_out,nn_b),shape_fqs ) for cc in range(3)]
 
 			# update all derivatives
@@ -714,8 +862,8 @@ def dvinddzeta(zetac,Surf_in,IsBound,M_in_bound=None):
 	'''
 	Produces derivatives of induced velocity by Surf_in w.r.t. the zetac point.
 	Derivatives are divided into those associated to the movement of zetac, and
-	to the movement of the Surf_in vertices (DerVert). 
-	
+	to the movement of the Surf_in vertices (DerVert).
+
 	If Surf_in is bound (IsBound==True), the circulation over the TE due to the
 	wake is not included in the input.
 
@@ -734,7 +882,7 @@ def dvinddzeta(zetac,Surf_in,IsBound,M_in_bound=None):
 
 
 	M_in,N_in=Surf_in.maps.M,Surf_in.maps.N
-	Kzeta_in=Surf_in.maps.Kzeta	
+	Kzeta_in=Surf_in.maps.Kzeta
 	shape_zeta_in=(3,M_in+1,N_in+1)
 
 	# allocate matrices
@@ -750,7 +898,7 @@ def dvinddzeta(zetac,Surf_in,IsBound,M_in_bound=None):
 		for pp_in in itertools.product(range(0,M_in),range(0,N_in)):
 			mm_in,nn_in=pp_in
 			#zeta_panel_in=Surf_in.get_panel_vertices_coords(mm_in,nn_in)
-			zeta_panel_in=Surf_in.zeta[:, [mm_in+0,mm_in+1,mm_in+1,mm_in+0], 
+			zeta_panel_in=Surf_in.zeta[:, [mm_in+0,mm_in+1,mm_in+1,mm_in+0],
 											[nn_in+0,nn_in+0,nn_in+1,nn_in+1]].T
 			# get local derivatives
 			der_zetac,der_zeta_panel=dbiot.eval_panel_cpp(
@@ -762,14 +910,14 @@ def dvinddzeta(zetac,Surf_in,IsBound,M_in_bound=None):
 				# get vertices m,n indices
 				mm_v,nn_v=mm_in+dmver[vv_in],nn_in+dnver[vv_in]
 				# get vertices 1d index
-				jj_v=[ np.ravel_multi_index( 
+				jj_v=[ np.ravel_multi_index(
 				   			   (cc,mm_v,nn_v),shape_zeta_in) for cc in range(3)]
 				Dervert[:,jj_v]+=der_zeta_panel[vv_in,:,:]
 
-	else: 
-		''' 
-		All segments are scanned when computing the contrib. Dercoll. The 
-		TE is scanned a second time to include the contrib. due to the TE 
+	else:
+		'''
+		All segments are scanned when computing the contrib. Dercoll. The
+		TE is scanned a second time to include the contrib. due to the TE
 		elements moviment. The Dervert shape is computed using the chordwse
 		paneling of the associated bound surface (M_in_bound).
 		'''
@@ -781,7 +929,7 @@ def dvinddzeta(zetac,Surf_in,IsBound,M_in_bound=None):
 		for pp_in in itertools.product(range(0,M_in),range(0,N_in)):
 			mm_in,nn_in=pp_in
 			#zeta_panel_in=Surf_in.get_panel_vertices_coords(mm_in,nn_in)
-			zeta_panel_in=Surf_in.zeta[:, [mm_in+0,mm_in+1,mm_in+1,mm_in+0], 
+			zeta_panel_in=Surf_in.zeta[:, [mm_in+0,mm_in+1,mm_in+1,mm_in+0],
 											[nn_in+0,nn_in+0,nn_in+1,nn_in+1]].T
 			# get local derivatives
 			der_zetac=dbiot.eval_panel_cpp_coll(
@@ -801,9 +949,9 @@ def dvinddzeta(zetac,Surf_in,IsBound,M_in_bound=None):
 		dn=[0,1] # delta to go from (m,n) panel to (m,n) vertices (on bound)
 
 		shape_zeta_in_bound=(3,M_in_bound+1,N_in+1)
-		for nn_in in range(N_in):	
+		for nn_in in range(N_in):
 			#zeta_panel_in=Surf_in.get_panel_vertices_coords(0,nn_in)
-			zeta_panel_in=Surf_in.zeta[:, [0,1,1,0], 
+			zeta_panel_in=Surf_in.zeta[:, [0,1,1,0],
 											[nn_in+0,nn_in+0,nn_in+1,nn_in+1]].T
 			# get local derivatives
 			_,der_zeta_panel=dbiot.eval_panel_cpp(
@@ -816,9 +964,9 @@ def dvinddzeta(zetac,Surf_in,IsBound,M_in_bound=None):
 					jj_v.append(np.ravel_multi_index(
 						 			  (cc,M_in_bound,nn_v),shape_zeta_in_bound))
 				Dervert[:,jj_v]+=der_zeta_panel[vvec[vv],:,:]
-			
+
 	return Dercoll, Dervert
-	
+
 
 
 
@@ -826,8 +974,8 @@ def dvinddzeta_cpp(zetac,Surf_in,IsBound,M_in_bound=None):
 	'''
 	Produces derivatives of induced velocity by Surf_in w.r.t. the zetac point.
 	Derivatives are divided into those associated to the movement of zetac, and
-	to the movement of the Surf_in vertices (DerVert). 
-	
+	to the movement of the Surf_in vertices (DerVert).
+
 	If Surf_in is bound (IsBound==True), the circulation over the TE due to the
 	wake is not included in the input.
 
@@ -846,7 +994,7 @@ def dvinddzeta_cpp(zetac,Surf_in,IsBound,M_in_bound=None):
 
 
 	M_in,N_in=Surf_in.maps.M,Surf_in.maps.N
-	Kzeta_in=Surf_in.maps.Kzeta	
+	Kzeta_in=Surf_in.maps.Kzeta
 	shape_zeta_in=(3,M_in+1,N_in+1)
 
 	# allocate matrices
@@ -856,18 +1004,18 @@ def dvinddzeta_cpp(zetac,Surf_in,IsBound,M_in_bound=None):
 	Kzeta_in_bound=(M_in_bound+1)*(N_in+1)
 	Dervert=np.zeros((3,3*Kzeta_in_bound))
 
-	libc.call_dvinddzeta( 
-						Dercoll.ctypes.data_as(ct.POINTER(ct.c_double)), 
-						Dervert.ctypes.data_as(ct.POINTER(ct.c_double)),  
-						zetac.ctypes.data_as(ct.POINTER(ct.c_double)), 
-						Surf_in.zeta.ctypes.data_as(ct.POINTER(ct.c_double)), 
-						Surf_in.gamma.ctypes.data_as(ct.POINTER(ct.c_double)), 
+	libc.call_dvinddzeta(
+						Dercoll.ctypes.data_as(ct.POINTER(ct.c_double)),
+						Dervert.ctypes.data_as(ct.POINTER(ct.c_double)),
+						zetac.ctypes.data_as(ct.POINTER(ct.c_double)),
+						Surf_in.zeta.ctypes.data_as(ct.POINTER(ct.c_double)),
+						Surf_in.gamma.ctypes.data_as(ct.POINTER(ct.c_double)),
 						ct.byref(ct.c_int(M_in)),
 						ct.byref(ct.c_int(N_in)),
-						ct.byref(ct.c_bool(IsBound)),		
-						ct.byref(ct.c_int(M_in_bound)),	
+						ct.byref(ct.c_bool(IsBound)),
+						ct.byref(ct.c_int(M_in_bound)),
 					)
-		
+
 	return Dercoll, Dervert
 
 
@@ -883,7 +1031,7 @@ def dfqsdvind_zeta(Surfs,Surfs_star):
 	assert len(Surfs_star)==n_surf,\
 							   'Number of bound and wake surfaces much be equal'
 
-	# allocate 
+	# allocate
 	Dercoll_list=[]
 	Dervert_list=[]
 	for ss_out in range(n_surf):
@@ -892,7 +1040,7 @@ def dfqsdvind_zeta(Surfs,Surfs_star):
 		Dervert_list_sub=[]
 		for ss_in in range(n_surf):
 			Kzeta_in=Surfs[ss_in].maps.Kzeta
-			Dervert_list_sub.append( np.zeros((3*Kzeta_out,3*Kzeta_in)) )	
+			Dervert_list_sub.append( np.zeros((3*Kzeta_out,3*Kzeta_in)) )
 		Dervert_list.append(Dervert_list_sub)
 
 
@@ -908,9 +1056,9 @@ def dfqsdvind_zeta(Surfs,Surfs_star):
 
 		### Loop out (bound) surface panels
 		for pp_out in itertools.product(range(0,M_out),range(0,N_out)):
-			mm_out,nn_out=pp_out				
+			mm_out,nn_out=pp_out
 			#zeta_panel_out=Surf_out.get_panel_vertices_coords(mm_out,nn_out)
-			zeta_panel_out=Surf_out.zeta[:,[mm_out+0,mm_out+1,mm_out+1,mm_out+0], 
+			zeta_panel_out=Surf_out.zeta[:,[mm_out+0,mm_out+1,mm_out+1,mm_out+0],
 										[nn_out+0,nn_out+0,nn_out+1,nn_out+1]].T
 
 			# Loop segments
@@ -923,9 +1071,9 @@ def dfqsdvind_zeta(Surfs,Surfs_star):
 				mm_a,nn_a=mm_out+dmver[aa],nn_out+dnver[aa]
 				mm_b,nn_b=mm_out+dmver[bb],nn_out+dnver[bb]
 				# get vertices 1d index
-				ii_a=[ np.ravel_multi_index( 
+				ii_a=[ np.ravel_multi_index(
 								  (cc,mm_a,nn_a),shape_fqs ) for cc in range(3)]
-				ii_b=[ np.ravel_multi_index( 
+				ii_b=[ np.ravel_multi_index(
 								  (cc,mm_b,nn_b),shape_fqs ) for cc in range(3)]
 				del mm_a,mm_b,nn_a,nn_b
 
@@ -937,7 +1085,7 @@ def dfqsdvind_zeta(Surfs,Surfs_star):
 					Surf_in=Surfs[ss_in]
 					M_in_bound,N_in_bound=Surf_in.maps.M,Surf_in.maps.N
 					shape_zeta_in_bound=(3,M_in_bound+1,N_in_bound+1)
-					Dervert=Dervert_list[ss_out][ss_in] #<- link					
+					Dervert=Dervert_list[ss_out][ss_in] #<- link
 					# deriv wrt induced velocity
 					dvind_mid,dvind_vert=dvinddzeta_cpp(
 												  zeta_mid,Surf_in,IsBound=True)
@@ -971,7 +1119,7 @@ def dfqsdvind_zeta(Surfs,Surfs_star):
 
 		# Loop output surf. TE
 		# - we use Gammaw_0 over the TE
-		# - we run along the positive direction as defined in the first row of 
+		# - we run along the positive direction as defined in the first row of
 		# wake panels
 		for nn_out in range(N_out):
 
@@ -985,9 +1133,9 @@ def dfqsdvind_zeta(Surfs,Surfs_star):
 			Lskew=skew((-Surf_out.rho*Surfs_star[ss_out].gamma[0,nn_out])*lv)
 
 			# get vertices 1d index on bound
-			ii_a=[ np.ravel_multi_index( 
+			ii_a=[ np.ravel_multi_index(
 								 (cc,M_out,nn_a),shape_fqs ) for cc in range(3)]
-			ii_b=[ np.ravel_multi_index( 
+			ii_b=[ np.ravel_multi_index(
 								 (cc,M_out,nn_b),shape_fqs ) for cc in range(3)]
 
 			### loop input surfaces coordinates
@@ -997,7 +1145,7 @@ def dfqsdvind_zeta(Surfs,Surfs_star):
 				Surf_in=Surfs[ss_in]
 				M_in_bound,N_in_bound=Surf_in.maps.M,Surf_in.maps.N
 				shape_zeta_in_bound=(3,M_in_bound+1,N_in_bound+1)
-				Dervert=Dervert_list[ss_out][ss_in] #<- link					
+				Dervert=Dervert_list[ss_out][ss_in] #<- link
 				# deriv wrt induced velocity
 				dvind_mid,dvind_vert=dvinddzeta_cpp(zeta_mid,Surf_in,IsBound=True)
 				# allocate coll
@@ -1040,7 +1188,7 @@ def dfunstdgamma_dot(Surfs):
 
 	Note: the function also checks that the first derivative of the circulation
 	at the linearisation point is null. If not, a further contribution to the
-	added mass, depending on the changes in panel area and normal, arises and 
+	added mass, depending on the changes in panel area and normal, arises and
 	needs to be implemented.
 	'''
 
@@ -1077,7 +1225,7 @@ def dfunstdgamma_dot(Surfs):
 				df=wcv[vv]*dfcoll
 
 				# get vertices 1d index
-				iivec=[ np.ravel_multi_index( 
+				iivec=[ np.ravel_multi_index(
 					 		(vv,mm+dm,nn+dn),shape_funst) for vv in range(3)]
 
 				Der[iivec,pp]+=df
@@ -1122,9 +1270,3 @@ def wake_prop(Surfs,Surfs_star):
 
 
 	return C_list, Cstar_list
-
-
-
-
-
-
