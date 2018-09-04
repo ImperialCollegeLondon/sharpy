@@ -259,11 +259,15 @@ class SteadyHelicoidalWake(BaseSolver):
                    cout.cout_wrap('***No converged!', 3)
                    break
 
-            xbeam.xbeam_solv_disp2state(self.data.structure, structural_kstep)
+            #xbeam.xbeam_solv_disp2state(self.data.structure, structural_kstep)
 
-            self.res = (np.linalg.norm(structural_kstep.q-
-                                       previous_kstep.q)/
-                                       np.linalg.norm(previous_kstep.q))
+            # self.res = (np.linalg.norm(structural_kstep.q-
+            #                            previous_kstep.q)/
+            #                            np.linalg.norm(previous_kstep.q))
+
+            self.res = (np.linalg.norm(structural_kstep.pos-
+                                       previous_kstep.pos)/
+                                       np.linalg.norm(previous_kstep.pos))
 
             # check velocity convergence with respect to the velocities from RBM
             # otherwise, as it is a steady-state solver tend to zero and the residual is not accurate

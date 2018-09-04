@@ -246,11 +246,14 @@ class DynamicPrescribedCoupled(BaseSolver):
                     cout.cout_wrap('***No converged!', 3)
                     break
 
-                xbeam.xbeam_solv_disp2state(self.data.structure, structural_kstep)
+                #xbeam.xbeam_solv_disp2state(self.data.structure, structural_kstep)
 
-                self.res = (np.linalg.norm(structural_kstep.q-
-                                           previous_kstep.q)/
-                                           np.linalg.norm(previous_kstep.q))
+                # self.res = (np.linalg.norm(structural_kstep.q-
+                #                            previous_kstep.q)/
+                #                            np.linalg.norm(previous_kstep.q))
+                self.res = (np.linalg.norm(structural_kstep.pos-
+                                           previous_kstep.pos)/
+                                           np.linalg.norm(previous_kstep.pos))
                 # self.res_dqdt = (np.linalg.norm(structural_kstep.dqdt-
                 #                                 previous_kstep.dqdt)/
                 #                                 np.linalg.norm(structural_kstep.dqdt))
@@ -264,6 +267,8 @@ class DynamicPrescribedCoupled(BaseSolver):
                 self.res_dqddt = (np.linalg.norm(structural_kstep.dqddt-
                                                 previous_kstep.dqddt)/
                                                 np.linalg.norm(previous_kstep.dqddt))
+
+                print("FSI subit res: ", self.res, self.res_dqdt)
 
                 # convergence
                 if k > self.settings['minimum_steps'].value - 1:
