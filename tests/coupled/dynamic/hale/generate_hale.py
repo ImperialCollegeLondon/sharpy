@@ -12,13 +12,13 @@ flow = ['BeamLoader',
         'AerogridLoader',
         # 'NonLinearStatic',
         # 'StaticUvlm',
-        'Trim',
+        # 'Trim',
         # 'StaticTrim',
-        # 'StaticCoupled',
-        # 'BeamLoads',
-        # 'AerogridPlot',
-        # 'BeamPlot',
-        # 'DynamicCoupled',
+        'StaticCoupled',
+        'BeamLoads',
+        'AerogridPlot',
+        'BeamPlot',
+        'DynamicCoupled',
         ]
 
 
@@ -27,13 +27,13 @@ u_inf = 25
 rho = 0.08991
 
 # trim sigma = 1.5
-alpha = 7.22905*np.pi/180
-beta = 0*np.pi/180
-roll = 0.0*np.pi/180
+alpha = 1.24473127e-1
+beta = -4.44309e-7
+roll = 1.25903870e-5
 gravity = 'on'
-cs_deflection = -2.76205*np.pi/180
-rudder_deflection = 0
-thrust = 8.44719
+cs_deflection = -5.38020751e-2
+rudder_deflection = 7.7593896e-5
+thrust = 8.02637032
 sigma = 1.5
 lambda_dihedral = 20*np.pi/180
 # trim sigma = 100
@@ -55,7 +55,7 @@ lambda_dihedral = 20*np.pi/180
 
 gust_intensity = 0.0
 n_step = 1
-relaxation_factor = 0.
+relaxation_factor = 0.1
 tolerance = 1e-5
 fsi_tolerance = 1e-7
 
@@ -99,7 +99,7 @@ lumped_mass_position = np.zeros((n_lumped_mass, 3))
 # aero
 chord_main = 1.0
 chord_tail = 0.5
-chord_fin = 1
+chord_fin = 0.5
 
 # DISCRETISATION
 # spatial discretisation
@@ -664,7 +664,8 @@ def generate_solver_file():
                                                'gravity_on': gravity,
                                                'gravity': 9.81,
                                                'num_steps': n_tstep,
-                                               'dt': dt}
+                                               'dt': dt,
+                                               'initial_velocity': u_inf}
 
     settings['StepUvlm'] = {'print_info': 'off',
                             'horseshoe': 'off',
@@ -674,20 +675,18 @@ def generate_solver_file():
                             'rollup_dt': dt,
                             'rollup_aic_refresh': 1,
                             'rollup_tolerance': 1e-4,
-                            # 'velocity_field_generator': 'TurbSimVelocityField',
-                            # 'velocity_field_input': {'turbulent_field': '/home/ad214/Code/test_turbsim/TurbSim.h5',
-                            #                          'offset': [30., 0., -10],
-                            #                          'u_inf': 0.},
-                            'velocity_field_generator': 'GustVelocityField',
-                            'velocity_field_input': {'u_inf': 0*u_inf,
-                                                     'u_inf_direction': [1., 0, 0],
-                                                     'gust_shape': '1-cos',
-                                                     'gust_length': 30,
-                                                     'gust_length': gust_length,
-                                                     'gust_intensity': gust_intensity*u_inf,
-                                                     'offset': 5.0,
-                                                     'offset': 1.0,
-                                                     'span': span_main},
+                            'velocity_field_generator': 'TurbSimVelocityField',
+                            'velocity_field_input': {'turbulent_field': '/2TB/turbsim_fields/TurbSim_wide_long_A_low.h5',
+                                                     'offset': [30., 0., -10],
+                                                     'u_inf': 0.},
+                            # 'velocity_field_generator': 'GustVelocityField',
+                            # 'velocity_field_input': {'u_inf': 0*u_inf,
+                            #                          'u_inf_direction': [1., 0, 0],
+                            #                          'gust_shape': '1-cos',
+                            #                          'gust_length': 1,
+                            #                          'gust_intensity': gust_intensity*u_inf,
+                            #                          'offset': 5.0,
+                            #                          'span': span_main},
                             'rho': rho,
                             'n_time_steps': n_tstep,
                             'dt': dt}
