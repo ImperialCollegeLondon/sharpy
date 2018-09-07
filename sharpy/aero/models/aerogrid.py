@@ -420,7 +420,7 @@ def generate_strip(node_info, airfoil_db, aligned_grid, orientation_in=np.array(
                                                    np.dot(Ctwist, strip_coordinates_b_frame[:, i_M]))
         strip_coordinates_a_frame[:, i_M] = np.dot(Cab, strip_coordinates_b_frame[:, i_M])
 
-    # now zeta_dot
+    # zeta_dot
     if calculate_zeta_dot:
         zeta_dot_a_frame = np.zeros((3, node_info['M'] + 1), dtype=ct.c_double)
 
