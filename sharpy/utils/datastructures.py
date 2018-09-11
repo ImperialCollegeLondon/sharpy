@@ -3,6 +3,7 @@ import numpy as np
 import copy
 
 import sharpy.utils.algebra as algebra
+import copy
 
 
 class AeroTimeStepInfo(object):
@@ -100,6 +101,9 @@ class AeroTimeStepInfo(object):
         self.inertial_unsteady_forces = np.zeros((self.n_surf, 6))
         self.body_unsteady_forces = np.zeros((self.n_surf, 6))
 
+        self.postproc_cell = dict()
+        self.postproc_node = dict()
+
     def copy(self):
         copied = AeroTimeStepInfo(self.dimensions, self.dimensions_star)
         # generate placeholder for aero grid zeta coordinates
@@ -149,6 +153,9 @@ class AeroTimeStepInfo(object):
         copied.body_steady_forces = self.body_steady_forces.astype(dtype=ct.c_double, copy=True, order='C')
         copied.inertial_unsteady_forces = self.inertial_unsteady_forces.astype(dtype=ct.c_double, copy=True, order='C')
         copied.body_unsteady_forces = self.body_unsteady_forces.astype(dtype=ct.c_double, copy=True, order='C')
+
+        copied.postproc_cell = copy.deepcopy(self.postproc_cell)
+        copied.postproc_node = copy.deepcopy(self.postproc_node)
 
         return copied
 
@@ -305,6 +312,49 @@ class AeroTimeStepInfo(object):
         except AttributeError:
             pass
 
+        for k in list(self.postproc_cell.keys()):
+            if 'ct_list' in k:
+                del self.postproc_cell[k]
+            elif 'ct_pointer' in k:
+                del self.postproc_cell[k]
+
+
+def init_matrix_structure(dimensions, with_dim_dimension, added_size=0):
+    matrix = []
+    for i_surf in range(len(dimensions)):
+        if with_dim_dimension:
+            matrix.append(np.zeros((3,
+                                    dimensions[i_surf, 0] + added_size,
+                                    dimensions[i_surf, 1] + added_size),
+                                   dtype=ct.c_double))
+        else:
+            matrix.append(np.zeros((dimensions[i_surf, 0] + added_size,
+                                    dimensions[i_surf, 1] + added_size),
+                                   dtype=ct.c_double))
+    return matrix
+
+
+def standalone_ctypes_pointer(matrix):
+    ct_list = []
+    n_surf = len(matrix)
+
+    if len(matrix[0].shape) == 2:
+        # [i_surf][m, n], like gamma
+        for i_surf in range(n_surf):
+            ct_list.append(matrix[i_surf][:, :].reshape(-1))
+
+    elif len(matrix[0].shape) == 3:
+        # [i_surf][i_dim, m, n], like zeta
+        for i_surf in range(n_surf):
+            n_dim = matrix[i_surf].shape[0]
+            for i_dim in range(n_dim):
+                ct_list.append(matrix[i_surf][i_dim, :, :].reshape(-1))
+
+    ct_pointer = ((ct.POINTER(ct.c_double)*len(ct_list))
+                  (* [np.ctypeslib.as_ctypes(array) for array in ct_list]))
+
+    return ct_list, ct_pointer
+
 
 class StructTimeStepInfo(object):
     def __init__(self, num_node, num_elem, num_node_elem=3):
@@ -332,7 +382,6 @@ class StructTimeStepInfo(object):
         self.unsteady_applied_forces = np.zeros((self.num_node, 6), dtype=ct.c_double, order='F')
         self.gravity_forces = np.zeros((self.num_node, 6), dtype=ct.c_double, order='F')
         self.total_gravity_forces = np.zeros((6,), dtype=ct.c_double, order='F')
-
 
         self.q = np.zeros(((self.num_node - 1)*6 + 6 + 4,), dtype=ct.c_double, order='F')
         self.dqdt = np.zeros(((self.num_node - 1)*6 + 6 + 4,), dtype=ct.c_double, order='F')
@@ -375,8 +424,8 @@ class StructTimeStepInfo(object):
         copied.dqdt = self.dqdt.astype(dtype=ct.c_double, order='F', copy=True)
         copied.dqddt = self.dqddt.astype(dtype=ct.c_double, order='F', copy=True)
 
-        copied.postproc_cell = dict(self.postproc_cell)
-        copied.postproc_node = dict(self.postproc_node)
+        copied.postproc_cell = copy.deepcopy(self.postproc_cell)
+        copied.postproc_node = copy.deepcopy(self.postproc_node)
 
         return copied
 
