@@ -16,7 +16,7 @@ import sharpy.utils.settings as settings
 import sharpy.utils.algebra as algebra
 
 import scipy.linalg
-from IPython import embed
+# from IPython import embed
 
 
 @solver

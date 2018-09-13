@@ -8,7 +8,7 @@ import warnings
 import h5py
 from numpy import ndarray, float64, float32, array, int32, int64
 import ctypes as ct
-from IPython import embed
+# from IPython import embed
 
 
 # Define basic numerical types
