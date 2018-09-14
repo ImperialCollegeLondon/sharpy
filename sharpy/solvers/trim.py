@@ -168,7 +168,8 @@ class Trim(BaseSolver):
         self.optimise(solver_wrapper,
                       tolerance=self.settings['tolerance'].value,
                       print_info=True,
-                      method='powell')
+                      # method='BFGS')
+                      method='Nelder-Mead')
         # self.optimise(self.solver_wrapper, )
         pass
 
@@ -189,12 +190,15 @@ class Trim(BaseSolver):
         solution = scipy.optimize.minimize(solver_wrapper,
                                            self.initial_state,
                                            args=args,
-                                           method='Nelder-Mead',
+                                           method=method,
+                                           # method='Nelder-Mead',
                                            # constraints=self.eq_constraints,
                                            options={'ftol': 1e-8,
                                                     'disp': True,
-                                                    'eps': 0.1,
-                                                    'iprint': 2},
+                                                    'eps': 0.05,
+                                                    'iprint': 2,
+                                                    'maxfev': 5000,
+                                                    'fatol': 1e-4},
                                            bounds=self.bounds)
                                            # callback=callback)
         # solution = scipy.optimize.differential_evolution(func=solver_wrapper,
