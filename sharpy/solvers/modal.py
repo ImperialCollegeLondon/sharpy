@@ -9,13 +9,14 @@ import os
 import itertools
 import warnings
 from tvtk.api import tvtk, write_data
+import scipy.linalg
+import matplotlib.pyplot as plt
 
 import sharpy.structure.utils.xbeamlib as xbeamlib
 from sharpy.utils.solver_interface import solver, BaseSolver
 import sharpy.utils.settings as settings
 import sharpy.utils.algebra as algebra
 
-import scipy.linalg
 
 
 @solver
@@ -51,6 +52,15 @@ class Modal(BaseSolver):
 
         self.settings_types['write_dat'] = 'bool'  # write modes shapes/freq./damp. to dat file
         self.settings_default['write_dat'] = True
+
+        self.settings_types['continuous_eigenvalues'] = 'bool'
+        self.settings_default['continuous_eigenvalues'] = False
+
+        self.settings_types['dt'] = 'float'
+        self.settings_default['dt'] = 0
+
+        self.settings_types['plot_eigenvalues'] = 'bool'
+        self.settings_default['plot_eigenvalues'] = False
 
         self.data = None
         self.settings = None
@@ -197,6 +207,11 @@ class Modal(BaseSolver):
                 ii += 1
             freq_damped = freq_damped[include]
             eigenvalues = eigenvalues[include]
+            if self.settings['continuous_eigenvalues']:
+                if self.settings['dt'].value == 0.:
+                    raise ValueError('Cannot compute the continuous eigenvalues without a dt value')
+                eigenvalues = np.log(eigenvalues)/self.settings['dt'].value
+
             order = order[include]
             damping = damping[order]
             eigenvectors = eigenvectors[:, order]
@@ -227,14 +242,26 @@ class Modal(BaseSolver):
         else:
             Kin_damp = None
 
+        # plot eigenvalues
+        fig = plt.figure()
+        plt.scatter(eigenvalues.real, eigenvalues.imag)
+
+        plt.show()
+        # plt.savefig(self.folder + 'eigenvalues.png', transparent=True, bbox_inches='tight')
+
+
         # Write dat files
         if self.settings['write_dat'].value:
             np.savetxt(self.folder + "eigenvalues.dat", eigenvalues, fmt='%.12f',
                        delimiter='\t', newline='\n')
             np.savetxt(self.folder + "eigenvectors.dat", eigenvectors[:num_dof].real,
                        fmt='%.12f', delimiter='\t', newline='\n')
-            # np.savetxt(self.filename_freq, freq_damped[:NumLambda],
-            #            fmt='%e', delimiter='\t', newline='\n')
+            try:
+                np.savetxt(self.folder + 'frequencies.dat', freq_damped[:NumLambda],
+                           fmt='%e', delimiter='\t', newline='\n')
+            except NameError:
+                np.savetxt(self.folder + 'frequencies.dat', freq_natural[:NumLambda],
+                           fmt='%e', delimiter='\t', newline='\n')
             np.savetxt(self.filename_damp, damping[:NumLambda],
                        fmt='%e', delimiter='\t', newline='\n')
 
