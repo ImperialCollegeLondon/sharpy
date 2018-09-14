@@ -19,6 +19,7 @@ flow = ['BeamLoader',
         'AerogridPlot',
         'BeamPlot',
         'DynamicCoupled',
+        # 'Modal'
         ]
 
 
@@ -483,7 +484,7 @@ def generate_aero_file():
     #
     # # fin (surface 2, beam 3)
     i_surf = 2
-    airfoil_distribution[we:we + n_elem_fin, :] = 0
+    airfoil_distribution[we:we + n_elem_fin, :] = 1
     # airfoil_distribution[wn:wn + n_node_fin] = 0
     surface_distribution[we:we + n_elem_fin] = i_surf
     surface_m[i_surf] = m
@@ -502,7 +503,7 @@ def generate_aero_file():
     #
     # # # right tail (surface 3, beam 4)
     i_surf = 3
-    airfoil_distribution[we:we + n_elem_tail, :] = 0
+    airfoil_distribution[we:we + n_elem_tail, :] = 2
     # airfoil_distribution[wn:wn + n_node_tail] = 0
     surface_distribution[we:we + n_elem_tail] = i_surf
     surface_m[i_surf] = m
@@ -524,7 +525,7 @@ def generate_aero_file():
     #
     # # left tail (surface 4, beam 5)
     i_surf = 4
-    airfoil_distribution[we:we + n_elem_tail, :] = 0
+    airfoil_distribution[we:we + n_elem_tail, :] = 2
     # airfoil_distribution[wn:wn + n_node_tail - 1] = 0
     surface_distribution[we:we + n_elem_tail] = i_surf
     surface_m[i_surf] = m
@@ -675,18 +676,18 @@ def generate_solver_file():
                             'rollup_dt': dt,
                             'rollup_aic_refresh': 1,
                             'rollup_tolerance': 1e-4,
-                            'velocity_field_generator': 'TurbSimVelocityField',
-                            'velocity_field_input': {'turbulent_field': '/2TB/turbsim_fields/TurbSim_wide_long_A_low.h5',
-                                                     'offset': [30., 0., -10],
-                                                     'u_inf': 0.},
-                            # 'velocity_field_generator': 'GustVelocityField',
-                            # 'velocity_field_input': {'u_inf': 0*u_inf,
-                            #                          'u_inf_direction': [1., 0, 0],
-                            #                          'gust_shape': '1-cos',
-                            #                          'gust_length': 1,
-                            #                          'gust_intensity': gust_intensity*u_inf,
-                            #                          'offset': 5.0,
-                            #                          'span': span_main},
+                            # 'velocity_field_generator': 'TurbSimVelocityField',
+                            # 'velocity_field_input': {'turbulent_field': '/2TB/turbsim_fields/TurbSim_wide_long_A_low.h5',
+                            #                          'offset': [30., 0., -10],
+                            #                          'u_inf': 0.},
+                            'velocity_field_generator': 'GustVelocityField',
+                            'velocity_field_input': {'u_inf': 0*u_inf,
+                                                     'u_inf_direction': [1., 0, 0],
+                                                     'gust_shape': '1-cos',
+                                                     'gust_length': 1,
+                                                     'gust_intensity': gust_intensity*u_inf,
+                                                     'offset': 5.0,
+                                                     'span': span_main},
                             'rho': rho,
                             'n_time_steps': n_tstep,
                             'dt': dt}
@@ -704,9 +705,13 @@ def generate_solver_file():
                                   'n_time_steps': n_tstep,
                                   'dt': dt,
                                   'include_unsteady_force_contribution': 'off',
-                                  'postprocessors': ['BeamLoads', 'BeamPlot', 'AerogridPlot'],
+                                  'postprocessors': ['BeamLoads', 'StallCheck', 'BeamPlot', 'AerogridPlot'],
                                   'postprocessors_settings': {'BeamLoads': {'folder': route + '/output/',
                                                                             'csv_output': 'off'},
+                                                              'StallCheck': {'output_degrees': True,
+                                                                             'stall_angles': {'0': [-12*np.pi/180, 6*np.pi/180],
+                                                                                              '1': [-12*np.pi/180, 6*np.pi/180],
+                                                                                              '2': [-12*np.pi/180, 6*np.pi/180]}},
                                                               'BeamPlot': {'folder': route + '/output/',
                                                                            'include_rbm': 'on',
                                                                            'include_applied_forces': 'on'},
@@ -715,6 +720,16 @@ def generate_solver_file():
                                                                   'include_rbm': 'on',
                                                                   'include_applied_forces': 'on',
                                                                   'minus_m_star': 0}}}
+
+    settings['Modal'] = {'print_info': 'on',
+                         'use_undamped_modes': 'on',
+                         'NumLambda': 100,
+                         'write_modes_vtk': 'on',
+                         'print_matrices': 'on',
+                         'write_data': 'on',
+                         'continuous_eigenvalues': 'off',
+                         'dt': dt,
+                         'plot_eigenvalues': 'on'}
 
     settings['AerogridLoader'] = {'unsteady': 'on',
                                   'aligned_grid': 'on',
