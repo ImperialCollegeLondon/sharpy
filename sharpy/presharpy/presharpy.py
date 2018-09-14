@@ -59,6 +59,16 @@ class PreSharpy(object):
     def initialise(self):
         pass
 
+    def update_settings(self, new_settings):
+        self.settings = new_settings
+        self.settings['SHARPy']['flow'] = self.settings['SHARPy']['flow']
+        settings.to_custom_types(self.settings['SHARPy'], self.settings_types, self.settings_default)
+
+        cout.cout_wrap.initialise(self.settings['SHARPy']['write_screen'],
+                                  self.settings['SHARPy']['write_log'],
+                                  self.settings['SHARPy']['log_folder'],
+                                  self.settings['SHARPy']['log_file'])
+
     @staticmethod
     def load_config_file(file_name):
         """This function reads the flight condition and solver input files.
