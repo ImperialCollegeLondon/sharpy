@@ -110,6 +110,7 @@ class Modal(BaseSolver):
                                 '_ModalShape')
 
     def run(self):
+        self.data.ts = len(self.data.structure.timestep_info) - 1
         # Initialize matrices
         num_dof = self.data.structure.num_dof.value
         FullMglobal = np.zeros((num_dof, num_dof),
