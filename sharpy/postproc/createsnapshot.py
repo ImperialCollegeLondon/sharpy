@@ -57,15 +57,21 @@ class CreateSnapshot(BaseSolver):
                          self.data.settings['SHARPy']['case'] +
                          '.snapshot')
 
+    def snap_name(self, ts=None):
+        if ts is None:
+            ts = self.ts
+
+        return "%s.%06d" % (self.filename, ts)
+
     def run(self, online=True):
         self.ts = self.data.ts
 
         # clean older files
-        if self.settings['keep']:
+        if self.settings['keep'].value:
             self.delete_previous_snapshots()
 
         # create file
-        file = "%s.%06d" % (self.filename, self.ts)
+        file = self.snap_name()
         with open(file, 'wb') as f:
             pickle.dump(self.data, f)
 
@@ -91,6 +97,13 @@ class CreateSnapshot(BaseSolver):
         # make sure the symlink is kept (so out of the list)
         files = [a for a in files if '.snapshot.' in a]
 
-        del files[:-n_keep]
+        if len(files) <= n_keep:
+            return
+
+        # delete from the list the snapshots we want to keep
+        del files[len(files) - n_keep:]
+
+        for file in files:
+            os.unlink(os.path.abspath(self.settings['folder'] + '/' + file))
 
 
