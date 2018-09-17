@@ -62,6 +62,12 @@ class Modal(BaseSolver):
         self.settings_types['plot_eigenvalues'] = 'bool'
         self.settings_default['plot_eigenvalues'] = False
 
+        self.settings_types['max_rotation_deg'] = 'float'
+        self.settings_default['max_rotation_deg'] = 15
+
+        self.settings_types['max_displacement'] = 'float'
+        self.settings_default['max_displacement'] = 0.15
+
         self.data = None
         self.settings = None
 
@@ -271,7 +277,9 @@ class Modal(BaseSolver):
                 self.data,
                 eigenvectors[:num_dof],
                 NumLambda,
-                self.filename_shapes)
+                self.filename_shapes,
+                self.settings['max_rotation_deg'],
+                self.settings['max_displacement'])
 
         outdict = dict()
 
@@ -445,7 +453,7 @@ def get_mode_zeta(data, eigvect):
 
 
 def write_modes_vtk(data, eigenvectors, NumLambda, filename_root, 
-                                                root_max_deg=15.,perc_max=0.15):
+                                                rot_max_deg=15.,perc_max=0.15):
     '''
     Writes a vtk file for each of the first NumLambda eigenvectors. When these
     are associated to the state-space form of the structural equations, only
@@ -465,7 +473,7 @@ def write_modes_vtk(data, eigenvectors, NumLambda, filename_root,
 
         # scale eigenvector
         eigvec=eigenvectors[:num_dof,mode]
-        eigvec=scale_mode(data,eigvec,root_max_deg,perc_max)
+        eigvec=scale_mode(data,eigvec,rot_max_deg,perc_max)
         zeta_mode=get_mode_zeta(data,eigvec)
 
         for i_surf in range(tsaero.n_surf):
