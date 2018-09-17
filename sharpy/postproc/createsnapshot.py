@@ -1,16 +1,51 @@
 import os
-import numpy as np
 import pickle
-import pathlib
-from tvtk.api import tvtk, write_data
 
-import sharpy.utils.cout_utils as cout
 from sharpy.utils.solver_interface import solver, BaseSolver
 import sharpy.utils.settings as settings
-import sharpy.utils.algebra as algebra
-import sharpy.structure.utils.xbeamlib as xbeamlib
 
+"""CreateSnapshot Solver documentation.
 
+CreateSnapshot stores all the necessary data to restart a simulation
+when the execution has been halted.
+
+The *.snapshot.<ts> file contains the current version of the self.data structure.
+The data structure is packaged with pickle (https://docs.python.org/3/library/pickle.html), and
+it is totally seamless to extract it. The current usage of this is to call this as an inline post processor.
+For example, the DynamicCoupled settings would look like:
+    {
+    'postprocessors': ['BeamLoads', '...', 'CreateSnapshot'],
+    'postprocessors_settings': {'BeamLoads': {},
+                                'CreateSnapshot': {}}
+    }
+
+It has been tested with DynamicCoupled when no settings are modified.
+
+In order to restart the simulation, one has to do:
+{
+    sharpy <path to the solver.txt> -r <path to the snapshot>
+}
+It is important to note that the flow setting has to be modified so that
+the previously run solvers are not re-run. For example, a standard simulation would have a flow such that:
+{
+flow = [
+        'BeamLoader',
+        'AerogridLoader',
+        'StaticCoupled',
+        'BeamLoads',
+        'AerogridPlot',
+        'BeamPlot',
+        'DynamicCoupled',
+        ]
+}
+Before restarting the solution, we need to comment everything up to DynamicCoupled (not included).
+DynamicCoupled will restart at the last stored timestep.
+
+Todo:
+    * No tests have been conducted about modifying the settings (for example number of time steps, or
+    relaxation factors...)
+    * No other solvers have been tested yet.
+"""
 @solver
 class CreateSnapshot(BaseSolver):
     solver_id = 'CreateSnapshot'
@@ -80,8 +115,8 @@ class CreateSnapshot(BaseSolver):
                 try:
                     os.unlink(self.filename)
                 except FileNotFoundError:
-            pass
-        os.symlink(os.path.abspath(file), self.filename)
+                    pass
+                os.symlink(os.path.abspath(file), self.filename)
 
         return self.data
 
