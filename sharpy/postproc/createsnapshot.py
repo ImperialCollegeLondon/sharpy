@@ -20,13 +20,14 @@ class CreateSnapshot(BaseSolver):
         self.settings_default = dict()
 
         self.settings_types['frequency'] = 'int'
-        self.settings_default['frequency'] = 1
+        self.settings_default['frequency'] = 5
 
         self.settings_types['keep'] = 'int'
-        self.settings_default['keep'] = 5
+        self.settings_default['keep'] = 2
 
         self.settings_types['compression'] = 'str'
         self.settings_default['compression'] = ''
+        # TODO not yet implemented
 
         self.settings_types['folder'] = 'str'
         self.settings_default['folder'] = './snapshots/'
