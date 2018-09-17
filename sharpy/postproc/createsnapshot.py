@@ -76,7 +76,7 @@ class CreateSnapshot(BaseSolver):
                 pickle.dump(self.data, f, protocol=pickle.HIGHEST_PROTOCOL)
 
             # update symlink
-            if settings['symlink']:
+            if self.settings['symlink']:
                 try:
                     os.unlink(self.filename)
                 except FileNotFoundError:
