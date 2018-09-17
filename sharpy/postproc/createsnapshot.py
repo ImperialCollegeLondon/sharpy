@@ -60,15 +60,14 @@ class CreateSnapshot(BaseSolver):
     def snap_name(self, ts=None):
         if ts is None:
             ts = self.ts
-
         return "%s.%06d" % (self.filename, ts)
 
     def run(self, online=True):
         self.ts = self.data.ts
-
-        # clean older files
-        if self.settings['keep'].value:
-            self.delete_previous_snapshots()
+        if self.ts % self.settings['frequency'].value == 0:
+            # clean older files
+            if self.settings['keep'].value:
+                self.delete_previous_snapshots()
 
         # create file
         file = self.snap_name()
