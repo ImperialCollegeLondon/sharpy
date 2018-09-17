@@ -70,15 +70,16 @@ class CreateSnapshot(BaseSolver):
             if self.settings['keep'].value:
                 self.delete_previous_snapshots()
 
-        # create file
-        file = self.snap_name()
-        with open(file, 'wb') as f:
-            pickle.dump(self.data, f)
+            # create file
+            file = self.snap_name()
+            with open(file, 'wb') as f:
+                pickle.dump(self.data, f, protocol=pickle.HIGHEST_PROTOCOL)
 
-        # update symlink
-        try:
-            os.unlink(self.filename)
-        except FileNotFoundError:
+            # update symlink
+            if settings['symlink']:
+                try:
+                    os.unlink(self.filename)
+                except FileNotFoundError:
             pass
         os.symlink(os.path.abspath(file), self.filename)
 
