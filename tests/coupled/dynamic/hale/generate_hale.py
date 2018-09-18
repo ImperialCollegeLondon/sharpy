@@ -205,6 +205,7 @@ surface_m = np.zeros((n_surfaces, ), dtype=int)
 m_distribution = 'uniform'
 aero_node = np.zeros((n_node,), dtype=bool)
 twist = np.zeros((n_elem, n_node_elem))
+sweep = np.zeros((n_elem, n_node_elem))
 chord = np.zeros((n_elem, n_node_elem,))
 elastic_axis = np.zeros((n_elem, n_node_elem,))
 
@@ -562,6 +563,10 @@ def generate_aero_file():
         # twist
         twist_input = h5file.create_dataset('twist', data=twist)
         dim_attr = twist_input.attrs['units'] = 'rad'
+
+        # sweep
+        sweep_input = h5file.create_dataset('sweep', data=sweep)
+        dim_attr = sweep_input.attrs['units'] = 'rad'
 
         # airfoil distribution
         airfoil_distribution_input = h5file.create_dataset('airfoil_distribution', data=airfoil_distribution)
