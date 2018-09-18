@@ -710,7 +710,7 @@ def generate_solver_file():
                                   'n_time_steps': n_tstep,
                                   'dt': dt,
                                   'include_unsteady_force_contribution': 'off',
-                                  'postprocessors': ['BeamLoads', 'StallCheck', 'BeamPlot', 'AerogridPlot'],
+                                  'postprocessors': ['BeamLoads', 'StallCheck', 'BeamPlot', 'AerogridPlot', 'CreateSnapshot'],
                                   'postprocessors_settings': {'BeamLoads': {'folder': route + '/output/',
                                                                             'csv_output': 'off'},
                                                               'StallCheck': {'output_degrees': True,
@@ -724,7 +724,8 @@ def generate_solver_file():
                                                                   'folder': route + '/output/',
                                                                   'include_rbm': 'on',
                                                                   'include_applied_forces': 'on',
-                                                                  'minus_m_star': 0}}}
+                                                                  'minus_m_star': 0},
+                                                              'CreateSnapshot': {}}}
 
     settings['Modal'] = {'print_info': 'on',
                          'use_undamped_modes': 'on',
