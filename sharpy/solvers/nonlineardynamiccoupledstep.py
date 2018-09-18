@@ -47,8 +47,18 @@ class NonLinearDynamicCoupledStep(BaseSolver):
         self.settings_types['gravity_on'] = 'bool'
         self.settings_default['gravity_on'] = False
 
+        self.settings_types['balancing'] = 'bool'
+        self.settings_default['balancing'] = False
+
         self.settings_types['gravity'] = 'float'
         self.settings_default['gravity'] = 9.81
+
+        # initial speed direction is given in inertial FOR!!!
+        self.settings_types['initial_velocity_direction'] = 'list(float)'
+        self.settings_default['initial_velocity_direction'] = np.array([-1.0, 0.0, 0.0])
+
+        self.settings_types['initial_velocity'] = 'float'
+        self.settings_default['initial_velocity'] = 0
 
         self.data = None
         self.settings = None
@@ -64,6 +74,12 @@ class NonLinearDynamicCoupledStep(BaseSolver):
         # load info from dyn dictionary
         self.data.structure.add_unsteady_information(self.data.structure.dyn_dict, self.settings['num_steps'].value)
 
+        # add initial speed to RBM
+        if self.settings['initial_velocity']:
+            new_direction = np.dot(self.data.structure.timestep_info[-1].cag(),
+                                   self.settings['initial_velocity_direction'])
+            self.data.structure.timestep_info[-1].for_vel[0:3] = new_direction*self.settings['initial_velocity']
+
         # generate q, dqdt and dqddt
         xbeamlib.xbeam_solv_disp2state(self.data.structure, self.data.structure.timestep_info[-1])
 
@@ -73,6 +89,7 @@ class NonLinearDynamicCoupledStep(BaseSolver):
                                           self.data.ts,
                                           structural_step,
                                           dt=dt)
+        self.extract_resultants(structural_step)
         return self.data
 
     def add_step(self):
@@ -81,30 +98,20 @@ class NonLinearDynamicCoupledStep(BaseSolver):
     def next_step(self):
         pass
 
-    def extract_resultants(self):
-        applied_forces = self.data.structure.nodal_b_for_2_a_for(self.data.structure.timestep_info[-1].steady_applied_forces,
-                                                                 self.data.structure.timestep_info[-1])
+    def extract_resultants(self, step=None):
+        if step is None:
+            step = self.data.structure.timestep_info[-1]
+        applied_forces = self.data.structure.nodal_b_for_2_a_for(step.steady_applied_forces,
+                                                                 step)
 
         applied_forces_copy = applied_forces.copy()
+        gravity_forces_copy = step.gravity_forces.copy()
         for i_node in range(self.data.structure.num_node):
-            applied_forces_copy[i_node, 3:6] += np.cross(self.data.structure.timestep_info[-1].pos[i_node, :],
+            applied_forces_copy[i_node, 3:6] += np.cross(step.pos[i_node, :],
                                                          applied_forces_copy[i_node, 0:3])
+            gravity_forces_copy[i_node, 3:6] += np.cross(step.pos[i_node, :],
+                                                         gravity_forces_copy[i_node, 0:3])
 
-        totals = np.sum(applied_forces_copy, axis=0) + self.data.structure.timestep_info[-1].total_gravity_forces
-        # print("applied forces dynamic= ", np.sum(applied_forces_copy, axis=0))
-        # print("Unsteady totals = ", totals)
+        totals = np.sum(applied_forces_copy + gravity_forces_copy, axis=0)
         return totals[0:3], totals[3:6]
-
-    # def extract_resultants(self, tstep):
-    #     # applied_forces = self.data.structure.nodal_b_for_2_a_for(tstep.steady_applied_forces, tstep)
-    #     applied_forces = tstep.steady_applied_forces[:]
-    #     gravity_forces = tstep.gravity_forces[:]
-    #
-    #     forces = gravity_forces[:, 0:3] + applied_forces[:, 0:3]
-    #     moments = gravity_forces[:, 3:6] + applied_forces[:, 3:6]
-    #     # other moment contribution
-    #     for i_node in range(self.data.structure.num_node):
-    #         moments[i_node, :] += np.cross(self.data.structure.timestep_info[-1].pos[i_node, :],
-    #                                        forces[i_node, :])
-    #     return np.sum(forces, axis=0), np.sum(moments, axis=0)
 

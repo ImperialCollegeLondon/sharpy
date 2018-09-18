@@ -3,7 +3,7 @@ import numpy as np
 import os
 import sharpy.utils.algebra as algebra
 
-case_name = 'hale_sigma09'
+case_name = 'hale_sigma15'
 route = os.path.dirname(os.path.realpath(__file__)) + '/'
 
 
@@ -12,55 +12,53 @@ flow = ['BeamLoader',
         'AerogridLoader',
         # 'NonLinearStatic',
         # 'StaticUvlm',
+        # 'Trim',
         # 'StaticTrim',
         'StaticCoupled',
-        # 'BeamLoads',
+        'BeamLoads',
         'AerogridPlot',
         'BeamPlot',
         'DynamicCoupled',
-        # 'AerogridPlot',
-        # 'BeamPlot'
+        # 'Modal'
         ]
 
 
 # FLIGHT CONDITIONS
 u_inf = 25
 rho = 0.08991
-# # trim sigma = 1
-# alpha = 8.255955486426167*np.pi/180
-# beta = 0*np.pi/180
-# gravity = 'on'
-# cs_deflection = -8.059102970443668*np.pi/180
-# thrust = 11.095419727078575
-# sigma = 1.
 
-# trim sigma = 1.1
-# alpha = 7.887234946558482*np.pi/180
-# beta = 0*np.pi/180
-# gravity = 'on'
-# cs_deflection = -7.027540281892041*np.pi/180
-# thrust = 10.683301711048266
-# sigma = 1.1
-
-# trim sigma = 0.9
-alpha = 8.536835483534349*np.pi/180
-beta = 0*np.pi/180
+# trim sigma = 1.5
+alpha = 1.24473127e-1
+beta = -4.44309e-7
+roll = 1.25903870e-5
 gravity = 'on'
-cs_deflection = -8.78558685925769*np.pi/180
-thrust = 11.362447522189974
-sigma = 0.95
-# trim sigma = 5
-# alpha = 7.753569188296049*np.pi/180
+cs_deflection = -5.38020751e-2
+rudder_deflection = 7.7593896e-5
+thrust = 8.02637032
+sigma = 1.5
+lambda_dihedral = 20*np.pi/180
+# trim sigma = 100
+# alpha = 8.17774068993*np.pi/180
 # beta = 0*np.pi/180
 # gravity = 'on'
-# cs_deflection = -4.4074650492525915*np.pi/180
-# thrust = 9.08445558554907
-# sigma = 5
+# cs_deflection = -7.07280072502*np.pi/180
+# thrust = 9.01249187
+# sigma = 100
+# lambda_dihedral = 20*np.pi/180
+# # trim sigma = 100 FLAT
+# alpha = 8.17774068993*np.pi/180
+# beta = 0*np.pi/180
+# gravity = 'on'
+# cs_deflection = -7.07280072502*np.pi/180
+# thrust = 9.01249187
+# sigma = 100
+# lambda_dihedral = 0*np.pi/180
 
-gust_intensity = 0.30
+gust_intensity = 0.0
 n_step = 1
-relaxation_factor = 0.
-tolerance = 1e-8
+relaxation_factor = 0.1
+tolerance = 1e-5
+fsi_tolerance = 1e-7
 
 # MODEL GEOMETRY
 # beam
@@ -75,13 +73,13 @@ gj = 1e4
 eiy = 2e4
 eiz = 4e6
 m_bar_main = 0.75
-j_bar_main = 0.1
+j_bar_main = 0.075
 
 length_fuselage = 10
-offset_fuselage = 1.25
+offset_fuselage = 1.25*0
 sigma_fuselage = 100
 m_bar_fuselage = 0.08
-j_bar_fuselage = 0.01
+j_bar_fuselage = 0.008
 
 span_tail = 2.5
 ea_tail = 0.5
@@ -89,7 +87,7 @@ fin_height = 2.5
 ea_fin = 0.5
 sigma_tail = 100
 m_bar_tail = 0.08
-j_bar_tail = 0.01
+j_bar_tail = 0.008
 
 # lumped masses
 n_lumped_mass = 1
@@ -102,25 +100,26 @@ lumped_mass_position = np.zeros((n_lumped_mass, 3))
 # aero
 chord_main = 1.0
 chord_tail = 0.5
+chord_fin = 0.5
 
 # DISCRETISATION
 # spatial discretisation
-m = 4
-n_elem_multiplier = 1
-n_elem_main = int(6*n_elem_multiplier)
+m = 3
+n_elem_multiplier = 1.
+n_elem_main = int(4*n_elem_multiplier)
 n_elem_tail = int(2*n_elem_multiplier)
 n_elem_fin = int(2*n_elem_multiplier)
-n_elem_fuselage = int(3*n_elem_multiplier)
+n_elem_fuselage = int(2*n_elem_multiplier)
 n_surfaces = 5
 
 # temporal discretisation
 physical_time = 30
 # physical_time = 5.5
 # physical_time = 3
-tstep_factor = 1
+tstep_factor = 1.
 dt = 1.0/m/u_inf*tstep_factor
 n_tstep = round(physical_time/dt)
-n_tstep = 3*3200
+n_tstep = int(12000)
 
 
 # END OF INPUT-----------------------------------------------------------------
@@ -162,24 +161,24 @@ n_node += n_node_tail - 1
 n_stiffness = 3
 base_stiffness_main = sigma*np.diag([ea, ga, ga, gj, eiy, eiz])
 base_stiffness_fuselage = base_stiffness_main.copy()*sigma_fuselage
-base_stiffness_fuselage[5, 5] = base_stiffness_fuselage[4, 4]
+base_stiffness_fuselage[4, 4] = base_stiffness_fuselage[5, 5]
 base_stiffness_tail = base_stiffness_main.copy()*sigma_tail
-base_stiffness_tail[5, 5] = base_stiffness_tail[4, 4]
+base_stiffness_tail[4, 4] = base_stiffness_tail[5, 5]
 
 n_mass = 3
-base_mass_main = np.diag([m_bar_main, m_bar_main, m_bar_main, j_bar_main, j_bar_main, j_bar_main])
+base_mass_main = np.diag([m_bar_main, m_bar_main, m_bar_main, j_bar_main, 0.5*j_bar_main, 0.5*j_bar_main])
 base_mass_fuselage = np.diag([m_bar_fuselage,
                               m_bar_fuselage,
                               m_bar_fuselage,
                               j_bar_fuselage,
-                              j_bar_fuselage*0.1,
-                              j_bar_fuselage*0.1])
+                              j_bar_fuselage*0.5,
+                              j_bar_fuselage*0.5])
 base_mass_tail = np.diag([m_bar_tail,
                           m_bar_tail,
                           m_bar_tail,
                           j_bar_tail,
-                          j_bar_tail*0.1,
-                          j_bar_tail*0.1])
+                          j_bar_tail*0.5,
+                          j_bar_tail*0.5])
 
 
 # PLACEHOLDERS
@@ -200,12 +199,13 @@ app_forces = np.zeros((n_node, 6))
 
 
 # aero
-airfoil_distribution = np.zeros((n_node,), dtype=int)
+airfoil_distribution = np.zeros((n_elem, n_node_elem), dtype=int)
 surface_distribution = np.zeros((n_elem,), dtype=int) - 1
 surface_m = np.zeros((n_surfaces, ), dtype=int)
 m_distribution = 'uniform'
 aero_node = np.zeros((n_node,), dtype=bool)
 twist = np.zeros((n_elem, n_node_elem))
+sweep = np.zeros((n_elem, n_node_elem))
 chord = np.zeros((n_elem, n_node_elem,))
 elastic_axis = np.zeros((n_elem, n_node_elem,))
 
@@ -420,23 +420,30 @@ def generate_fem():
 def generate_aero_file():
     global x, y, z
     # control surfaces
-    n_control_surfaces = 1
+    n_control_surfaces = 2
     control_surface = np.zeros((n_elem, n_node_elem), dtype=int) - 1
     control_surface_type = np.zeros((n_control_surfaces, ), dtype=int)
     control_surface_deflection = np.zeros((n_control_surfaces, ))
     control_surface_chord = np.zeros((n_control_surfaces, ), dtype=int)
+    control_surface_hinge_coord = np.zeros((n_control_surfaces, ), dtype=float)
 
     # control surface type 0 = static
     # control surface type 1 = dynamic
     control_surface_type[0] = 0
     control_surface_deflection[0] = cs_deflection
-    control_surface_chord[0] = 1
+    control_surface_chord[0] = m
+    control_surface_hinge_coord[0] = -0.25 # nondimensional wrt elastic axis (+ towards the trailing edge)
+
+    control_surface_type[1] = 0
+    control_surface_deflection[1] = rudder_deflection
+    control_surface_chord[1] = m
+    control_surface_hinge_coord[1] = -0.25 # nondimensional wrt elastic axis (+ towards the trailing edge)
 
     we = 0
     wn = 0
     # right wing (surface 0, beam 0)
     i_surf = 0
-    airfoil_distribution[wn:wn + n_node_main] = 0
+    airfoil_distribution[we:we + n_elem_main, :] = 0
     surface_distribution[we:we + n_elem_main] = i_surf
     surface_m[i_surf] = m
     aero_node[wn:wn + n_node_main] = True
@@ -454,7 +461,8 @@ def generate_aero_file():
 
     # left wing (surface 1, beam 1)
     i_surf = 1
-    airfoil_distribution[wn:wn + n_node_main - 1] = 0
+    airfoil_distribution[we:we + n_elem_main, :] = 0
+    # airfoil_distribution[wn:wn + n_node_main - 1] = 0
     surface_distribution[we:we + n_elem_main] = i_surf
     surface_m[i_surf] = m
     aero_node[wn:wn + n_node_main - 1] = True
@@ -477,15 +485,17 @@ def generate_aero_file():
     #
     # # fin (surface 2, beam 3)
     i_surf = 2
-    airfoil_distribution[wn:wn + n_node_fin] = 0
+    airfoil_distribution[we:we + n_elem_fin, :] = 1
+    # airfoil_distribution[wn:wn + n_node_fin] = 0
     surface_distribution[we:we + n_elem_fin] = i_surf
     surface_m[i_surf] = m
     aero_node[wn:wn + n_node_fin] = True
     # chord[wn:wn + num_node_fin] = fin_chord
     for i_elem in range(we, we + n_elem_fin):
         for i_local_node in range(n_node_elem):
-            chord[i_elem, i_local_node] = chord_tail
+            chord[i_elem, i_local_node] = chord_fin
             elastic_axis[i_elem, i_local_node] = ea_fin
+            control_surface[i_elem, i_local_node] = 1
     # twist[end_of_fuselage_node] = 0
     # twist[wn:] = 0
     # elastic_axis[wn:wn + num_node_main] = fin_ea
@@ -494,7 +504,8 @@ def generate_aero_file():
     #
     # # # right tail (surface 3, beam 4)
     i_surf = 3
-    airfoil_distribution[wn:wn + n_node_tail] = 0
+    airfoil_distribution[we:we + n_elem_tail, :] = 2
+    # airfoil_distribution[wn:wn + n_node_tail] = 0
     surface_distribution[we:we + n_elem_tail] = i_surf
     surface_m[i_surf] = m
     # XXX not very elegant
@@ -515,7 +526,8 @@ def generate_aero_file():
     #
     # # left tail (surface 4, beam 5)
     i_surf = 4
-    airfoil_distribution[wn:wn + n_node_tail - 1] = 0
+    airfoil_distribution[we:we + n_elem_tail, :] = 2
+    # airfoil_distribution[wn:wn + n_node_tail - 1] = 0
     surface_distribution[we:we + n_elem_tail] = i_surf
     surface_m[i_surf] = m
     aero_node[wn:wn + n_node_tail - 1] = True
@@ -552,6 +564,10 @@ def generate_aero_file():
         twist_input = h5file.create_dataset('twist', data=twist)
         dim_attr = twist_input.attrs['units'] = 'rad'
 
+        # sweep
+        sweep_input = h5file.create_dataset('sweep', data=sweep)
+        dim_attr = sweep_input.attrs['units'] = 'rad'
+
         # airfoil distribution
         airfoil_distribution_input = h5file.create_dataset('airfoil_distribution', data=airfoil_distribution)
 
@@ -565,6 +581,7 @@ def generate_aero_file():
         control_surface_input = h5file.create_dataset('control_surface', data=control_surface)
         control_surface_deflection_input = h5file.create_dataset('control_surface_deflection', data=control_surface_deflection)
         control_surface_chord_input = h5file.create_dataset('control_surface_chord', data=control_surface_chord)
+        control_surface_hinge_coord_input = h5file.create_dataset('control_surface_hinge_coord', data=control_surface_hinge_coord)
         control_surface_types_input = h5file.create_dataset('control_surface_type', data=control_surface_type)
 
 
@@ -597,15 +614,15 @@ def generate_solver_file():
                           'log_file': case_name + '.log'}
 
     settings['BeamLoader'] = {'unsteady': 'on',
-                              'orientation': algebra.euler2quat(np.array([0.0,
+                              'orientation': algebra.euler2quat(np.array([roll,
                                                                           alpha,
                                                                           beta]))}
 
     settings['NonLinearStatic'] = {'print_info': 'off',
                                    'max_iterations': 150,
                                    'num_load_steps': 1,
-                                   'delta_curved': 1e-15,
-                                   'min_delta': 1e-8,
+                                   'delta_curved': 1e-8,
+                                   'min_delta': tolerance,
                                    'gravity_on': gravity,
                                    'gravity': 9.81}
 
@@ -628,7 +645,7 @@ def generate_solver_file():
                                  'aero_solver_settings': settings['StaticUvlm'],
                                  'max_iter': 100,
                                  'n_load_steps': n_step,
-                                 'tolerance': tolerance,
+                                 'tolerance': fsi_tolerance,
                                  'relaxation_factor': relaxation_factor}
 
     settings['StaticTrim'] = {'solver': 'StaticCoupled',
@@ -637,31 +654,44 @@ def generate_solver_file():
                               'initial_deflection': cs_deflection,
                               'initial_thrust': thrust}
 
+    settings['Trim'] = {'solver': 'StaticCoupled',
+                        'solver_settings': settings['StaticCoupled'],
+                        'initial_alpha': alpha,
+                        'initial_beta': beta,
+                        'cs_indices': [0, 1],
+                        'initial_cs_deflection': [cs_deflection, rudder_deflection],
+                        'initial_thrust': [thrust]}
+
     settings['NonLinearDynamicCoupledStep'] = {'print_info': 'off',
                                                'max_iterations': 950,
-                                               'delta_curved': 1e-9,
-                                               'min_delta': 1e-8,
-                                               'newmark_damp': 1e-3,
+                                               'delta_curved': 1e-6,
+                                               'min_delta': tolerance,
+                                               'newmark_damp': 5e-3,
                                                'gravity_on': gravity,
                                                'gravity': 9.81,
                                                'num_steps': n_tstep,
-                                               'dt': dt}
+                                               'dt': dt,
+                                               'initial_velocity': u_inf}
 
     settings['StepUvlm'] = {'print_info': 'off',
                             'horseshoe': 'off',
                             'num_cores': 4,
                             'n_rollup': 100,
-                            'convection_scheme': 3,
+                            'convection_scheme': 2,
                             'rollup_dt': dt,
                             'rollup_aic_refresh': 1,
                             'rollup_tolerance': 1e-4,
+                            # 'velocity_field_generator': 'TurbSimVelocityField',
+                            # 'velocity_field_input': {'turbulent_field': '/2TB/turbsim_fields/TurbSim_wide_long_A_low.h5',
+                            #                          'offset': [30., 0., -10],
+                            #                          'u_inf': 0.},
                             'velocity_field_generator': 'GustVelocityField',
-                            'velocity_field_input': {'u_inf': u_inf,
+                            'velocity_field_input': {'u_inf': 0*u_inf,
                                                      'u_inf_direction': [1., 0, 0],
                                                      'gust_shape': '1-cos',
-                                                     'gust_length': 60,
+                                                     'gust_length': 1,
                                                      'gust_intensity': gust_intensity*u_inf,
-                                                     'offset': 10.0,
+                                                     'offset': 5.0,
                                                      'span': span_main},
                             'rho': rho,
                             'n_time_steps': n_tstep,
@@ -672,26 +702,44 @@ def generate_solver_file():
                                   'aero_solver': 'StepUvlm',
                                   'aero_solver_settings': settings['StepUvlm'],
                                   'fsi_substeps': 200,
-                                  'fsi_tolerance': 1e-9,
+                                  'fsi_tolerance': fsi_tolerance,
                                   'relaxation_factor': relaxation_factor,
                                   'minimum_steps': 1,
                                   'relaxation_steps': 150,
                                   'final_relaxation_factor': 0.0,
                                   'n_time_steps': n_tstep,
                                   'dt': dt,
-                                  'postprocessors': ['BeamPlot', 'AerogridPlot'],
-                                  'postprocessors_settings': {'BeamPlot': {'folder': route + '/output/',
+                                  'include_unsteady_force_contribution': 'off',
+                                  'postprocessors': ['BeamLoads', 'StallCheck', 'BeamPlot', 'AerogridPlot', 'CreateSnapshot'],
+                                  'postprocessors_settings': {'BeamLoads': {'folder': route + '/output/',
+                                                                            'csv_output': 'off'},
+                                                              'StallCheck': {'output_degrees': True,
+                                                                             'stall_angles': {'0': [-12*np.pi/180, 6*np.pi/180],
+                                                                                              '1': [-12*np.pi/180, 6*np.pi/180],
+                                                                                              '2': [-12*np.pi/180, 6*np.pi/180]}},
+                                                              'BeamPlot': {'folder': route + '/output/',
                                                                            'include_rbm': 'on',
                                                                            'include_applied_forces': 'on'},
                                                               'AerogridPlot': {
                                                                   'folder': route + '/output/',
                                                                   'include_rbm': 'on',
                                                                   'include_applied_forces': 'on',
-                                                                  'minus_m_star': 0}}}
+                                                                  'minus_m_star': 0},
+                                                              'CreateSnapshot': {}}}
+
+    settings['Modal'] = {'print_info': 'on',
+                         'use_undamped_modes': 'on',
+                         'NumLambda': 100,
+                         'write_modes_vtk': 'on',
+                         'print_matrices': 'on',
+                         'write_data': 'on',
+                         'continuous_eigenvalues': 'off',
+                         'dt': dt,
+                         'plot_eigenvalues': 'on'}
 
     settings['AerogridLoader'] = {'unsteady': 'on',
                                   'aligned_grid': 'on',
-                                  'mstar': 40,
+                                  'mstar': int(80/tstep_factor),
                                   'freestream_dir': ['1', '0', '0']}
 
     settings['AerogridPlot'] = {'folder': route + '/output/',
@@ -713,12 +761,13 @@ def generate_solver_file():
                             'include_applied_forces': 'on',
                             'include_forward_motion': 'on'}
 
-    settings['BeamCsvOutput'] = {'folder': route + '/output/',
-                                 'output_pos': 'on',
-                                 'output_psi': 'on',
-                                 'screen_output': 'off'}
+    # settings['BeamCsvOutput'] = {'folder': route + '/output/',
+    #                              'output_pos': 'on',
+    #                              'output_psi': 'on',
+    #                              'screen_output': 'off'}
 
-    settings['BeamLoads'] = {}
+    settings['BeamLoads'] = {'folder': route + '/output/',
+                             'csv_output': 'off'}
 
     import configobj
     config = configobj.ConfigObj()

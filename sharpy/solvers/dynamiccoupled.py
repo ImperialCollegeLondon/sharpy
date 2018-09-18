@@ -73,11 +73,18 @@ class DynamicCoupled(BaseSolver):
         self.settings_types['cleanup_previous_solution'] = 'bool'
         self.settings_default['cleanup_previous_solution'] = True
 
+        self.settings_types['include_unsteady_force_contribution'] = 'bool'
+        self.settings_default['include_unsteady_force_contribution'] = False
+
         self.data = None
         self.settings = None
         self.structural_solver = None
         self.aero_solver = None
         self.print_info = False
+
+        self.res = 0.0
+        self.res_dqdt = 0.0
+        self.res_dqddt = 0.0
 
         self.previous_force = None
 
@@ -87,6 +94,18 @@ class DynamicCoupled(BaseSolver):
         self.residual_table = None
         self.postprocessors = dict()
         self.with_postprocessors = False
+
+    def get_g(self):
+        return self.structural_solver.settings['gravity'].value
+
+    def set_g(self, new_g):
+        self.structural_solver.settings['gravity'] = ct.c_double(new_g)
+
+    def get_rho(self):
+        return self.aero_solver.settings['rho'].value
+
+    def set_rho(self, new_rho):
+        self.aero_solver.settings['rho'] = ct.c_double(new_rho)
 
     def initialise(self, data, custom_settings=None):
         self.data = data
@@ -109,11 +128,11 @@ class DynamicCoupled(BaseSolver):
         self.data = self.aero_solver.data
 
         if self.print_info:
-            self.residual_table = cout.TablePrinter(5, 14, ['g', 'f', 'g', 'f', 'e'])
+            self.residual_table = cout.TablePrinter(7, 14, ['g', 'f', 'g', 'f', 'f', 'f', 'e'])
             self.residual_table.field_length[0] = 6
             self.residual_table.field_length[1] = 6
             self.residual_table.field_length[1] = 6
-            self.residual_table.print_header(['ts', 't', 'iter', 'residual', 'FoR_vel(z)'])
+            self.residual_table.print_header(['ts', 't', 'iter', 'residual pos', 'residual vel', 'residual acc', 'FoR_vel(z)'])
 
         # initialise postprocessors
         self.postprocessors = dict()
@@ -123,6 +142,7 @@ class DynamicCoupled(BaseSolver):
             self.postprocessors[postproc] = solver_interface.initialise_solver(postproc)
             self.postprocessors[postproc].initialise(
                 self.data, self.settings['postprocessors_settings'][postproc])
+
 
     def cleanup_timestep_info(self):
         if max(len(self.data.aero.timestep_info), len(self.data.structure.timestep_info)) > 1:
@@ -138,93 +158,83 @@ class DynamicCoupled(BaseSolver):
         self.data.ts = 0
 
     def run(self):
-        structural_kstep = self.data.structure.timestep_info[-1].copy()
-
+        # previous_kstep = self.data.structure.timestep_info[-1].copy()
         # dynamic simulations start at tstep == 1, 0 is reserved for the initial state
         for self.data.ts in range(len(self.data.structure.timestep_info),
                                   self.settings['n_time_steps'].value + len(self.data.structure.timestep_info)):
-            aero_kstep = self.data.aero.timestep_info[-1].copy()
-            previous_kstep = self.data.structure.timestep_info[-1].copy()
+            # aero_kstep = self.data.aero.timestep_info[-1].copy()
             structural_kstep = self.data.structure.timestep_info[-1].copy()
 
+            # previous_kstep = self.data.structure.timestep_info[-1].copy()
             k = 0
             for k in range(self.settings['fsi_substeps'].value + 1):
                 if k == self.settings['fsi_substeps'].value and not self.settings['fsi_substeps'] == 0:
                     cout.cout_wrap('The FSI solver did not converge!!!')
+                    print('K step q:')
+                    print(structural_kstep.q)
+                    print('K step dq:')
+                    print(structural_kstep.dqdt)
+                    print('K step ddq:')
+                    print(structural_kstep.dqddt)
+                    a = 1
                     break
-                    # TODO Raise Exception
 
                 # generate new grid (already rotated)
+                aero_kstep = self.data.aero.timestep_info[-1].copy()
                 self.aero_solver.update_custom_grid(structural_kstep, aero_kstep)
 
                 # run the solver
                 self.data = self.aero_solver.run(aero_kstep,
                                                  structural_kstep,
-                                                 self.data.aero.timestep_info[-1],
-                                                 convect_wake=False)
+                                                 convect_wake=True)
 
+                previous_kstep = structural_kstep.copy()
                 structural_kstep = self.data.structure.timestep_info[-1].copy()
-
                 # map forces
+                force_coeff = 0.0
+                if self.settings['include_unsteady_force_contribution']:
+                    force_coeff = -1.0
                 self.map_forces(aero_kstep,
                                 structural_kstep,
-                                0*1.0)
+                                force_coeff)
 
-                # cout.cout_wrap('No added mass effects', 0)
+                # relaxation
+                relax_factor = self.relaxation_factor(k)
+                relax(self.data.structure,
+                      structural_kstep,
+                      previous_kstep,
+                      relax_factor)
+
+                if k > 0.9*self.settings['fsi_substeps'].value:
+                    relax_factor = 0.3
+                elif k > 0.8*self.settings['fsi_substeps'].value:
+                    relax_factor = 0.8
 
                 # run structural solver
                 self.data = self.structural_solver.run(structural_step=structural_kstep)
 
-                # check for non-convergence
-                if not all(np.isfinite(structural_kstep.q)):
-                    cout.cout_wrap('***No converged!', 3)
+                # check convergence
+                if self.convergence(k,
+                                    structural_kstep,
+                                    previous_kstep):
                     break
-
-                res = (np.linalg.norm(structural_kstep.dqdt -
-                                      previous_kstep.dqdt)/
-                       np.linalg.norm(previous_kstep.dqdt))
-
-                # self.residual_table.print_line([self.data.ts,
-                #                                 self.data.ts*self.dt.value,
-                #                                 k,
-                #                                 np.log10(res),
-                #                                 structural_kstep.for_vel[2]])
-
-                # convergence
-                if (res <
-                    self.settings['fsi_tolerance'].value) \
-                        and \
-                        k > self.settings['minimum_steps'].value - 1:
-                    break
-
-                # relaxation
-                temp = structural_kstep.copy()
-                # relax(self.data.structure, structural_kstep, previous_kstep, self.relaxation_factor(k))
-                # copy for next iteration
-                previous_kstep = temp
-
-            # allocate and copy previous timestep, copying steady and unsteady forces from input
-            self.structural_solver.add_step()
-            self.data.structure.timestep_info[-1] = structural_kstep.copy()
-            self.data.structure.integrate_position(self.data.ts, self.settings['dt'].value)
-            self.structural_solver.extract_resultants()
 
             self.aero_solver.add_step()
             self.data.aero.timestep_info[-1] = aero_kstep.copy()
-            self.aero_solver.update_custom_grid(self.data.structure.timestep_info[-1],
-                                                self.data.aero.timestep_info[-1])
-            # run the solver
-            self.data = self.aero_solver.run(self.data.aero.timestep_info[-1],
-                                             self.data.structure.timestep_info[-1],
-                                             self.data.aero.timestep_info[-2],
-                                             convect_wake=True)
+
+            self.structural_solver.add_step()
+            self.data.structure.timestep_info[-1] = structural_kstep.copy()
+            self.data.structure.integrate_position(-1, self.settings['dt'].value)
+
             if self.print_info:
                 self.residual_table.print_line([self.data.ts,
                                                 self.data.ts*self.dt.value,
                                                 k,
-                                                np.log10(res),
-                                                self.data.structure.timestep_info[-1].for_vel[2]])
-
+                                                np.log10(self.res),
+                                                np.log10(self.res_dqdt),
+                                                np.log10(self.res_dqddt),
+                                                structural_kstep.for_vel[2]])
+            self.structural_solver.extract_resultants()
             # run postprocessors
             if self.with_postprocessors:
                 for postproc in self.postprocessors:
@@ -233,6 +243,30 @@ class DynamicCoupled(BaseSolver):
         if self.print_info:
             cout.cout_wrap('...Finished', 1)
         return self.data
+
+    def convergence(self, k, tstep, previous_tstep):
+        # check for non-convergence
+        if not all(np.isfinite(tstep.q)):
+            raise Exception('***Not converged! There is a NaN value in the forces!')
+
+        self.res = (np.linalg.norm(tstep.q-
+                                   previous_tstep.q)/
+                    np.linalg.norm(previous_tstep.q))
+        self.res_dqdt = (np.linalg.norm(tstep.dqdt-
+                                        previous_tstep.dqdt)/
+                         np.linalg.norm(previous_tstep.dqdt))
+        self.res_dqddt = (np.linalg.norm(tstep.dqddt-
+                                         previous_tstep.dqddt)/
+                          np.linalg.norm(previous_tstep.dqddt))
+
+        # convergence
+        if k > self.settings['minimum_steps'].value - 1:
+            if self.res < self.settings['fsi_tolerance'].value:
+                if self.res_dqdt < self.settings['fsi_tolerance'].value:
+                    if self.res_dqddt < self.settings['fsi_tolerance'].value:
+                        return True
+
+        return False
 
     def map_forces(self, aero_kstep, structural_kstep, unsteady_forces_coeff=1.0):
         # set all forces to 0
@@ -281,19 +315,22 @@ class DynamicCoupled(BaseSolver):
 
 
 def relax(beam, timestep, previous_timestep, coeff):
-    if coeff > 0.0:
-        from sharpy.structure.utils.xbeamlib import xbeam_solv_state2disp
-        numdof = beam.num_dof.value
-        timestep.q = (1.0 - coeff)*timestep.q + coeff*previous_timestep.q
-        timestep.dqdt = (1.0 - coeff)*timestep.dqdt + coeff*previous_timestep.dqdt
-        timestep.dqddt = (1.0 - coeff)*timestep.dqddt + coeff*previous_timestep.dqddt
+    # from sharpy.structure.utils.xbeamlib import xbeam_solv_state2disp
+    # numdof = beam.num_dof.value
+    # timestep.q[:] = (1.0 - coeff)*timestep.q + coeff*previous_timestep.q
+    # timestep.dqdt[:] = (1.0 - coeff)*timestep.dqdt + coeff*previous_timestep.dqdt
+    # timestep.dqddt[:] = (1.0 - coeff)*timestep.dqddt + coeff*previous_timestep.dqddt
 
-        normalise_quaternion(timestep)
-        xbeam_solv_state2disp(beam, timestep)
+    # normalise_quaternion(timestep)
+    # xbeam_solv_state2disp(beam, timestep)
+
+    timestep.steady_applied_forces[:] = ((1.0 - coeff)*timestep.steady_applied_forces +
+            coeff*previous_timestep.steady_applied_forces)
+    timestep.unsteady_applied_forces[:] = ((1.0 - coeff)*timestep.unsteady_applied_forces +
+            coeff*previous_timestep.unsteady_applied_forces)
+
 
 
 def normalise_quaternion(tstep):
     tstep.dqdt[-4:] = algebra.unit_vector(tstep.dqdt[-4:])
     tstep.quat = tstep.dqdt[-4:].astype(dtype=ct.c_double, order='F', copy=True)
-
-

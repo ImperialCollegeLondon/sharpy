@@ -1,5 +1,6 @@
 import ctypes as ct
 import platform
+import os
 
 
 def import_ctypes_lib(route, libname):
@@ -12,6 +13,7 @@ def import_ctypes_lib(route, libname):
         raise NotImplementedError('The platform ' + platform.system() + 'is not supported')
 
     lib_path += ext
+    lib_path = os.path.abspath(lib_path)
     try:
         library = ct.CDLL(lib_path, mode=ct.RTLD_GLOBAL)
     except:

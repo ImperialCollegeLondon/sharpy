@@ -20,11 +20,7 @@ def aero2struct_force_mapping(aero_forces,
             i_n = mapping['i_n']
             _, n_m, _ = aero_forces[i_surf].shape
 
-            i_elem, i_local_node = master[i_global_node, :]
-            i_master_elem, master_elem_local_node = master_elem[i_elem, i_local_node, :]
-            if i_master_elem == -1:
-                i_master_elem = i_elem
-                master_elem_local_node = i_local_node
+            i_master_elem, master_elem_local_node = master[i_global_node, :]
 
             crv = psi_def[i_master_elem, master_elem_local_node, :]
             cab = algebra.crv2rot(crv)
@@ -35,5 +31,4 @@ def aero2struct_force_mapping(aero_forces,
                 struct_forces[i_global_node, 0:3] += np.dot(cbg, aero_forces[i_surf][0:3, i_m, i_n])
                 struct_forces[i_global_node, 3:6] += np.dot(cbg, aero_forces[i_surf][3:6, i_m, i_n])
                 struct_forces[i_global_node, 3:6] += np.dot(cbg, np.cross(chi_g, aero_forces[i_surf][0:3, i_m, i_n]))
-                # struct_forces[i_global_node, 3:6] -= np.dot(cbg, np.cross(chi_g, aero_forces[i_surf][0:3, i_m, i_n]))
     return struct_forces

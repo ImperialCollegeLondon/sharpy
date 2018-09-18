@@ -37,7 +37,7 @@ class StaticCoupled(BaseSolver):
         self.settings_default['max_iter'] = 100
 
         self.settings_types['n_load_steps'] = 'int'
-        self.settings_default['n_load_steps'] = 5
+        self.settings_default['n_load_steps'] = 1
 
         self.settings_types['tolerance'] = 'float'
         self.settings_default['tolerance'] = 1e-5
@@ -134,7 +134,7 @@ class StaticCoupled(BaseSolver):
                 # run beam
                 self.data = self.structural_solver.run()
                 self.structural_solver.settings['gravity'] = ct.c_double(old_g)
-                self.structural_solver.extract_resultants()
+                totals = self.structural_solver.extract_resultants()
 
                 # update grid
                 self.aero_solver.update_step()
@@ -143,6 +143,9 @@ class StaticCoupled(BaseSolver):
                 if self.convergence(i_iter, i_step):
                     break
 
+        if self.settings['print_info']:
+            resultants = self.extract_resultants()
+            cout.cout_wrap('Resultant forces and moments: ' + str(resultants))
         return self.data
 
     def convergence(self, i_iter, i_step):
@@ -188,8 +191,11 @@ class StaticCoupled(BaseSolver):
         try:
             self.force_orientation
         except AttributeError:
-            self.force_orientation = (
-                algebra.unit_vector(self.data.structure.ini_info.steady_applied_forces[thrust_nodes, 0:3]))
+            self.force_orientation = np.zeros((len(thrust_nodes), 3))
+            for i_node, node in enumerate(thrust_nodes):
+                self.force_orientation[i_node, :] = (
+                    algebra.unit_vector(self.data.structure.ini_info.steady_applied_forces[node, 0:3]))
+            # print(self.force_orientation)
 
         # thrust
         # thrust is scaled so that the direction of the forces is conserved
@@ -199,13 +205,13 @@ class StaticCoupled(BaseSolver):
         # is n_nodes_in_thrust_nodes*thrust
         # thrust forces have to be indicated in structure.ini_info
         # print(algebra.unit_vector(self.data.structure.ini_info.steady_applied_forces[0, 0:3])*thrust)
-        for i_node in thrust_nodes:
+        for i_node, node in enumerate(thrust_nodes):
             # self.data.structure.ini_info.steady_applied_forces[i_node, 0:3] = (
             #     algebra.unit_vector(self.data.structure.ini_info.steady_applied_forces[i_node, 0:3])*thrust)
-            self.data.structure.ini_info.steady_applied_forces[i_node, 0:3] = (
-                    self.force_orientation*thrust)
-            # self.data.structure.timestep_info[0].steady_applied_forces[i_node, 0:3] = (
-            #         self.force_orientation*thrust)
+            self.data.structure.ini_info.steady_applied_forces[node, 0:3] = (
+                    self.force_orientation[i_node, :]*thrust)
+            self.data.structure.timestep_info[0].steady_applied_forces[node, 0:3] = (
+                    self.force_orientation[i_node, :]*thrust)
 
         # tail deflection
         try:
@@ -218,18 +224,5 @@ class StaticCoupled(BaseSolver):
         # update grid
         self.aero_solver.update_step()
 
-    def extract_resultants(self):
-        forces, moments = self.structural_solver.extract_resultants()
-        return forces, moments
-
-
-
-
-
-
-
-
-
-
-
-
+    def extract_resultants(self, tstep=None):
+        return self.structural_solver.extract_resultants(tstep)

@@ -18,27 +18,95 @@ class BeamLoads(BaseSolver):
         self.settings_types = dict()
         self.settings_default = dict()
 
+        self.settings_types['csv_output'] = 'bool'
+        self.settings_default['csv_output'] = False
+
+        self.settings_types['output_file_name'] = 'str'
+        self.settings_default['output_file_name'] = 'beam_loads'
+
+        self.settings_types['folder'] = 'str'
+        self.settings_default['folder'] = './output'
+
         self.settings = None
         self.data = None
 
         self.folder = ''
         self.filename = ''
 
-    def initialise(self, data):
+    def initialise(self, data, custom_settings=None):
         self.data = data
-        self.settings = data.settings[self.solver_id]
+        if custom_settings is None:
+            self.settings = data.settings[self.solver_id]
+        else:
+            self.settings = custom_settings
         settings.to_custom_types(self.settings, self.settings_types, self.settings_default)
 
-    def run(self):
-        self.calculate_loads()
+    def run(self, online=False):
+        self.calculate_loads(online)
+        if self.settings['csv_output']:
+            self.print_loads(online)
         return self.data
 
-    def calculate_loads(self):
-        for it in range(len(self.data.structure.timestep_info)):
+    def print_loads(self, online):
+        if online:
+            it = len(self.data.structure.timestep_info) - 1
+            n_elem = self.data.structure.timestep_info[it].psi.shape[0]
+            data = np.zeros((n_elem, 10))
+            # coords
+            data[:, 0:3] = self.data.structure.timestep_info[it].postproc_cell['coords_a']
+            header = 'x_a, y_a, z_a, '
+            # beam number
+            data[:, 3] = self.data.structure.beam_number
+            header += 'beam_number, '
+            # loads_0
+            data[:, 4:10] = self.data.structure.timestep_info[it].postproc_cell['loads'][:, :]
+            header += 'Fx, Fy, Fz, Mx, My, Mz'
+
+            filename = self.settings['folder'] + '/'
+            filename += self.data.case_name + '/' + 'beam/'
+            filename += self.settings['output_file_name'] + '_' + '{0}'.format(it)
+            filename += '.csv'
+            np.savetxt(filename, data, delimiter=',', header=header)
+        else:
+            for it in range(len(self.data.structure.timestep_info)):
+                it = len(self.data.structure.timestep_info) - 1
+                n_elem = self.data.structure.timestep_info[it].num_elem
+                data = np.zeros((n_elem, 10))
+                # coords
+                data[:, 0:3] = self.data.structure.timestep_info[it].postproc_cell['coords_a']
+                header = 'x_a, y_a, z_a, '
+                # beam number
+                data[:, 3] = self.data.structure.beam_number
+                header += 'beam_number, '
+                # loads_0
+                data[:, 4:10] = self.data.structure.timestep_info[it].postproc_cell['loads'][:, :]
+                header += 'Fx, Fy, Fz, Mx, My, Mz'
+
+                filename = self.settings['folder'] + '/'
+                filename += self.data.case_name + '/' + 'beam/'
+                filename += self.settings['output_file_name'] + '_' + '{0}'.format(it)
+                filename += '.csv'
+                np.savetxt(filename, data, delimiter=',', header=header)
+
+    def calculate_loads(self, online):
+        if online:
+            it = -1
             (self.data.structure.timestep_info[it].postproc_cell['strain'],
              self.data.structure.timestep_info[it].postproc_cell['loads']) = xbeamlib.cbeam3_loads(self.data.structure,
                                                                                                    it)
+            self.calculate_coords_a(self.data.structure.timestep_info[it])
+        else:
+            for it in range(len(self.data.structure.timestep_info)):
+                (self.data.structure.timestep_info[it].postproc_cell['strain'],
+                 self.data.structure.timestep_info[it].postproc_cell['loads']) = xbeamlib.cbeam3_loads(self.data.structure,
+                                                                                                       it)
+                self.calculate_coords_a(self.data.structure.timestep_info[it])
 
+    def calculate_coords_a(self, timestep_info):
+        timestep_info.postproc_cell['coords_a'] = np.zeros((timestep_info.num_elem, 3))
+        for ielem in range(timestep_info.num_elem):
+            iglobal_node = self.data.structure.connectivities[ielem, 2]
+            timestep_info.postproc_cell['coords_a'][ielem, :] = timestep_info.pos[iglobal_node, :]
 
     # def calculate_loads(self):
     #     # initial (ini) loads
@@ -213,4 +281,3 @@ class BeamLoads(BaseSolver):
     #                 # tstep.postproc_node['loads'][inode1, :] = np.dot(
     #                 #     self.data.structure.stiffness_db[self.data.structure.elements[ielem].stiff_index, :, :],
     #                 #     strain[ielem, isegment, :])/counter[inode1]
-
