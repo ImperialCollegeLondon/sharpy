@@ -259,17 +259,21 @@ def crv2triad(psi):
 
 
 def crv2rot(psi):
-    # this returns Cab
+    '''
+    Given a Cartesian rotation vector psi, the function produces the rotation
+    matrix required to rotate a vector according to psi.
 
-    # this is psi2mat in the matlab version
+    Note: this is psi2mat in the matlab version
+    '''
+
     norm_psi = np.linalg.norm(psi)
 
     if norm_psi < 1e-15:
-        skew_psi = rot_skew(psi)
+        skew_psi = skew(psi)
         rot_matrix = np.eye(3) + skew_psi + 0.5*np.dot(skew_psi, skew_psi)
     else:
         normal = psi/norm_psi
-        skew_normal = rot_skew(normal)
+        skew_normal = skew(normal)
 
         rot_matrix = np.eye(3)
         rot_matrix += np.sin(norm_psi)*skew_normal
@@ -359,14 +363,9 @@ def quat2rot(q1):
 
 
 def rot_skew(vec):
-    matrix = np.zeros((3, 3))
-    matrix[0, 1] = -vec[2]
-    matrix[0, 2] = vec[1]
-    matrix[1, 0] = vec[2]
-    matrix[1, 2] = -vec[0]
-    matrix[2, 0] = -vec[1]
-    matrix[2, 1] = vec[0]
-    return matrix
+    from warnings import warn
+    warn("use 'skew' function instead of 'rot_skew'")
+    return skew(vec)
 
 
 def rotation3d_x(angle):

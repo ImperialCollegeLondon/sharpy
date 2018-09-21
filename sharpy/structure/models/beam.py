@@ -240,7 +240,7 @@ class Beam(BaseStructure):
             cba = algebra.crv2rot(self.elements[i_lumped_master_elem].psi_def[i_lumped_master_node_local, :]).T
 
             inertia_tensor = np.zeros((6, 6))
-            r_skew = algebra.rot_skew(r)
+            r_skew = algebra.skew(r)
             inertia_tensor[0:3, 0:3] = m*np.eye(3)
             inertia_tensor[0:3, 3:6] = -m*r_skew
             inertia_tensor[3:6, 0:3] = m*r_skew
