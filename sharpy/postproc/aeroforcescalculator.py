@@ -77,7 +77,7 @@ class AeroForcesCalculator(BaseSolver):
 
     def calculate_forces(self):
         for self.ts in range(self.ts_max):
-            rot = algebra.quat2rot(self.data.structure.timestep_info[self.ts].quat)
+            rot = algebra.quat2rotation(self.data.structure.timestep_info[self.ts].quat)
 
             force = self.data.aero.timestep_info[self.ts].forces
             unsteady_force = self.data.aero.timestep_info[self.ts].dynamic_forces

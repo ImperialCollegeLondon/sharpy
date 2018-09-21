@@ -4,11 +4,20 @@ Rotation algebra library
 Note: testing in tests/utils/algebra_test
 '''
 
-
-
 import numpy as np
 import scipy.linalg
+from warnings import warn 
 
+#######
+# functions for back compatibility
+def quat2rot(quat):
+    warn('quat2rot(quat) is obsolite! Use quat2rotation(quat).T instead!')
+    return quat2rotation(quat).T
+def crv2rot(psi):
+    warn('crv2rot(psi) is obsolite! Use crv2rotation(psi) instead!')    
+    return crv2rotation(psi)
+
+#######
 
 def tangent_vector(in_coord, ordering=None):
     """ Tangent vector calculation for 2+ noded elements.
@@ -289,7 +298,7 @@ def crv2triad(psi):
     return rot_matrix[:, 0], rot_matrix[:, 1], rot_matrix[:, 2]
 
 
-def crv2rot(psi):
+def crv2rotation(psi):
     '''
     Given a Cartesian rotation vector psi, the function produces the rotation
     matrix required to rotate a vector according to psi.
@@ -360,7 +369,7 @@ def crv2triad_vec(crv_vec):
     return v1, v2, v3
 
 
-def quat2rot(q1):
+def quat2rotation(q1):
     """@brief Calculate rotation matrix based on quaternions.
     See Aircraft Control and Simulation, pag. 31, by Stevens, Lewis.
     Copied from S. Maraniello's SHARPy
@@ -489,7 +498,7 @@ def rotate_quaternion(quat, omegadt):
 def der_Cquat_by_v(q,v):
     '''
     Being C=C(quat) the rotational matrix depending on the quaternion q and 
-    defined as C=quat2rot(q), the function returns the derivative, w.r.t. the
+    defined as C=quat2rotation(q), the function returns the derivative, w.r.t. the
     quanternion components, of the vector dot(C,v), where v is a constant 
     vector.
     The elements of the resulting derivative matrix D are ordered such that:
@@ -512,7 +521,7 @@ def der_Cquat_by_v(q,v):
 def der_CquatT_by_v(q,v):
     '''
     Being C=C(quat).T the projection matrix depending on the quaternion q and 
-    defined as C=quat2rot(q).T, the function returns the derivative, w.r.t. the
+    defined as C=quat2rotation(q).T, the function returns the derivative, w.r.t. the
     quanternion components, of the vector dot(C,v), where v is a constant 
     vector.
     The elements of the resulting derivative matrix D are ordered such that:

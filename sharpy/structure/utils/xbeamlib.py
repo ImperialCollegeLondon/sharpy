@@ -555,7 +555,7 @@ def xbeam_solv_couplednlndyn(beam, settings):
 
     glob_pos_def = np.zeros_like(pos_def_history)
     for it in range(n_tsteps.value):
-        rot = algebra.quat2rot(quat_history[it, :])
+        rot = algebra.quat2rotation(quat_history[it, :])
         for inode in range(beam.num_node):
             glob_pos_def[it, inode, :] = np.dot(rot.T, pos_def_history[it, inode, :])
 

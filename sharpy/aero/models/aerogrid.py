@@ -303,7 +303,7 @@ class Aerogrid(object):
                     self.aero2struct_mapping[i_surf][i_n] = i_global_node
 
     def update_orientation(self, quat, ts=-1):
-        rot = algebra.quat2rot(quat)
+        rot = algebra.quat2rotation(quat)
         self.timestep_info[ts].update_orientation(rot.T)
 
     @staticmethod

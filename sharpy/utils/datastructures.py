@@ -439,7 +439,7 @@ class StructTimeStepInfo(object):
         return coords
 
     def cga(self):
-        return algebra.quat2rot(self.quat)
+        return algebra.quat2rotation(self.quat)
 
     def cag(self):
         return self.cga().T
