@@ -1,3 +1,11 @@
+'''
+Rotation algebra library
+
+Note: testing in tests/utils/algebra_test
+'''
+
+
+
 import numpy as np
 import scipy.linalg
 
@@ -229,7 +237,30 @@ def quat2crv(quat):
     return psi
 
 
+def crv2quat(psi):
+    '''
+    Converts a Cartesian rotation vector to quaternion
+    '''
+
+    # minimise crv rotation
+    psi_new=crv_bounds(psi)    
+
+    fi=np.linalg.norm(psi_new)
+    nv=psi_new/fi
+
+    quat=np.zeros((4,))
+    quat[0]=np.cos(.5*fi)
+    quat[1:]=np.sin(.5*fi)*nv 
+
+    return quat 
+
+
 def crv_bounds(crv_ini):
+    '''
+    Forces the Cartesian rotation vector norm to be in [-pi,pi]
+    '''
+
+
     crv = crv_ini.copy()
     # original norm
     norm_ini = np.linalg.norm(crv_ini)
@@ -334,11 +365,12 @@ def quat2rot(q1):
     See Aircraft Control and Simulation, pag. 31, by Stevens, Lewis.
     Copied from S. Maraniello's SHARPy
 
-    Remark: if A is a FoR obtained rotating a FoR G of angle fi about an axis n (remind n will be
-    invariant during the rotation), and q is the related quaternion q(fi,n), the function will
-    return the matrix Cag such that:
-        - Cag rotates A to G
-        - Cag transforms the coordinates of a vector defined in G component to A components.
+    Remark: if A is a FoR obtained rotating a FoR G of angle fi about an axis n 
+    (remind n will be invariant during the rotation), and q is the related 
+    quaternion q(fi,n), the function will return the matrix Cga such that:
+        - Cga rotates G to A
+        - Cga transforms the coordinates of a vector defined in A component to 
+        G components.
     """
 
     q = q1.copy(order='F')
@@ -359,7 +391,7 @@ def quat2rot(q1):
     rot_mat[1, 2] = 2.*(q[2]*q[3] + q[0]*q[1])
     rot_mat[2, 1] = 2.*(q[2]*q[3] - q[0]*q[1])
 
-    return rot_mat
+    return rot_mat.T
 
 
 def rot_skew(vec):
@@ -454,10 +486,10 @@ def rotate_quaternion(quat, omegadt):
     return quaternion_product(omegadt2quat(omegadt), quat)
 
 
-def der_CquatT_by_v(q,v):
+def der_Cquat_by_v(q,v):
     '''
     Being C=C(quat) the rotational matrix depending on the quaternion q and 
-    defined as C=quat2rot(q).T, the function returns the derivative, w.r.t. the
+    defined as C=quat2rot(q), the function returns the derivative, w.r.t. the
     quanternion components, of the vector dot(C,v), where v is a constant 
     vector.
     The elements of the resulting derivative matrix D are ordered such that:
@@ -477,10 +509,10 @@ def der_CquatT_by_v(q,v):
 
 
 
-def der_Cquat_by_v(q,v):
+def der_CquatT_by_v(q,v):
     '''
-    Being C=C(quat) the rotational matrix depending on the quaternion q and 
-    defined as C=quat2rot(q), the function returns the derivative, w.r.t. the
+    Being C=C(quat).T the projection matrix depending on the quaternion q and 
+    defined as C=quat2rot(q).T, the function returns the derivative, w.r.t. the
     quanternion components, of the vector dot(C,v), where v is a constant 
     vector.
     The elements of the resulting derivative matrix D are ordered such that:

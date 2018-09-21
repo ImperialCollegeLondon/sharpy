@@ -304,7 +304,7 @@ class Aerogrid(object):
 
     def update_orientation(self, quat, ts=-1):
         rot = algebra.quat2rot(quat)
-        self.timestep_info[ts].update_orientation(rot)
+        self.timestep_info[ts].update_orientation(rot.T)
 
     @staticmethod
     def compute_gamma_dot(dt, tstep, previous_tsteps):

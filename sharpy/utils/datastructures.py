@@ -438,11 +438,11 @@ class StructTimeStepInfo(object):
                 coords[i_node, :] += self.for_pos[0:3]
         return coords
 
-    def cag(self):
+    def cga(self):
         return algebra.quat2rot(self.quat)
 
-    def cga(self):
-        return self.cag().T
+    def cag(self):
+        return self.cga().T
 
 
 

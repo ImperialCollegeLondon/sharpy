@@ -394,8 +394,8 @@ def get_mode_zeta(data, eigvect):
 
 
     jj=0 # structural dofs index
-    Cag0=algebra.quat2rot(tsstr.quat)
-    Cga0=Cag0.T
+    Cga0=algebra.quat2rot(tsstr.quat)
+    Cag0=Cga0.T
     for node_glob in range(struct.num_node):
 
         ### detect bc at node (and no. of dofs)
