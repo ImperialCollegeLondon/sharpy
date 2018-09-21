@@ -294,7 +294,7 @@ def triad2crv(xb, yb, zb):
 
 
 def crv2triad(psi):
-    rot_matrix = crv2rot(psi)
+    rot_matrix = crv2rotation(psi)
     return rot_matrix[:, 0], rot_matrix[:, 1], rot_matrix[:, 2]
 
 
@@ -441,7 +441,7 @@ def rotation3d_z(angle):
 
 def rotate_crv(crv_in, axis, angle):
     crv = np.zeros_like(crv_in)
-    C = crv2rot(crv_in).T
+    C = crv2rotation(crv_in).T
     rot = rotation_matrix_around_axis(axis, angle)
     C = np.dot(C, rot)
     crv = rot2crv(C)

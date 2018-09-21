@@ -81,7 +81,7 @@ class TestAlgebra(unittest.TestCase):
 
         print(60*'-')
         print('Testing functions to build rotation matrices')
-        print('quat2rotation\n' + 'crv2rot')
+        print('quat2rotation\n' + 'crv2rotation')
         print('Note: Euler and triad not included')
 
 
@@ -96,15 +96,14 @@ class TestAlgebra(unittest.TestCase):
 
         # rot from crv
         fv=a*nv
-        Cab_num=algebra.crv2rot(fv)
+        Cab_num=algebra.crv2rotation(fv)
         assert np.linalg.norm(Cab_num-Cab_exp)<1e-15,\
-                                        'crv2rot not producing the right result'
-
+                                        'crv2rotation not producing the right result'
         # rot from quat
         quat=algebra.crv2quat(fv)
         Cab_num=algebra.quat2rotation(quat)
         assert np.linalg.norm(Cab_num-Cab_exp)<1e-15,\
-                                       'quat2rotation not producing the right result'
+                                  'quat2rotation not producing the right result'
 
         # N=1000
         # for nn in range(N):
@@ -190,15 +189,7 @@ class TestAlgebra(unittest.TestCase):
 
         assert er_ga<A[-2], 'der_Cquat_by_v error too large'
         assert er_ag<A[-2], 'der_CquatT_by_v error too large'
-
-
-
-
-
-
-        #embed()
-
-
+        print(50*'-'+' all good!\n')
 
 
 

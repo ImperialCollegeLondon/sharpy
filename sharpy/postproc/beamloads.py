@@ -119,7 +119,7 @@ class BeamLoads(BaseSolver):
     #
     #     for ielem in range(self.data.structure.num_elem):
     #         crv = 0.5*(psi[ielem, 1, :] + psi[ielem, 0, :])
-    #         cba = algebra.crv2rot(crv).T
+    #         cba = algebra.crv2rotation(crv).T
     #         tan = algebra.crv2tan(crv)
     #
     #         inode0 = self.data.structure.elements[ielem].global_connectivities[0]
@@ -146,7 +146,7 @@ class BeamLoads(BaseSolver):
     #
     #         for ielem in range(self.data.structure.num_elem):
     #             crv = 0.5*(psi[ielem, 2, :] + psi[ielem, 0, :])
-    #             cba = algebra.crv2rot(crv).T
+    #             cba = algebra.crv2rotation(crv).T
     #             tan = algebra.crv2tan(crv)
     #
     #             inode0 = self.data.structure.elements[ielem].global_connectivities[0]
@@ -189,7 +189,7 @@ class BeamLoads(BaseSolver):
     #             i_local_node1 = order[isegment + 1]
     #             crv = 0.5*(psi[ielem, i_local_node1, :] + psi[ielem, i_local_node0, :])
     #
-    #             cba = algebra.crv2rot(crv).T
+    #             cba = algebra.crv2rotation(crv).T
     #             tan = algebra.crv2tan(crv)
     #
     #             inode0 = self.data.structure.elements[ielem].global_connectivities[i_local_node0]
@@ -231,7 +231,7 @@ class BeamLoads(BaseSolver):
     #                 i_local_node1 = order[isegment + 1]
     #                 crv = 0.5*(psi[ielem, i_local_node1, :] + psi[ielem, i_local_node0, :])
     #
-    #                 cba = algebra.crv2rot(crv).T
+    #                 cba = algebra.crv2rotation(crv).T
     #                 tan = algebra.crv2tan(crv)
     #
     #                 inode0 = self.data.structure.elements[ielem].global_connectivities[i_local_node0]
@@ -259,7 +259,7 @@ class BeamLoads(BaseSolver):
     #                 prerotate = np.eye(6)
     #                 posrotate = np.eye(6)
     #                 if not self.data.structure.node_master_elem[inode0, 0] == ielem:
-    #                     cab2 = algebra.crv2rot(psi[ielem, self.data.structure.node_master_elem[inode0, 1], :])
+    #                     cab2 = algebra.crv2rotation(psi[ielem, self.data.structure.node_master_elem[inode0, 1], :])
     #                     prerotate[0:3, 0:3] = np.dot(cab2.T, cba.T)
     #                     prerotate[3:6, 3:6] = np.dot(cab2.T, cba.T)
     #
@@ -270,7 +270,7 @@ class BeamLoads(BaseSolver):
     #                 prerotate = np.eye(6)
     #                 posrotate = np.eye(6)
     #                 if not self.data.structure.node_master_elem[inode1, 0] == ielem:
-    #                     cab2 = algebra.crv2rot(psi[ielem, self.data.structure.node_master_elem[inode1, 1], :])
+    #                     cab2 = algebra.crv2rotation(psi[ielem, self.data.structure.node_master_elem[inode1, 1], :])
     #                     prerotate[0:3, 0:3] = np.dot(cab2.T, cba.T)
     #                     prerotate[3:6, 3:6] = np.dot(cab2.T, cba.T)
     #

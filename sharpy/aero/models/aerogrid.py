@@ -407,7 +407,7 @@ def generate_strip(node_info, airfoil_db, aligned_grid, orientation_in=np.array(
         Ctwist = np.eye(3)
 
     # Cab transformation
-    Cab = algebra.crv2rot(node_info['beam_psi'])
+    Cab = algebra.crv2rotation(node_info['beam_psi'])
 
     rot_angle = algebra.angle_between_vectors_sign(orientation_in, Cab[:, 1], Cab[:, 2])
     Crot = algebra.rotation3d_z(-rot_angle)
