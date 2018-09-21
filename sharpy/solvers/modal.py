@@ -249,11 +249,10 @@ class Modal(BaseSolver):
         else:
             Kin_damp = None
 
-        # plot eigenvalues
-        fig = plt.figure()
-        plt.scatter(eigenvalues.real, eigenvalues.imag)
-
-        plt.show()
+        # # plot eigenvalues
+        # fig = plt.figure()
+        # plt.scatter(eigenvalues.real, eigenvalues.imag)
+        # plt.show()
         # plt.savefig(self.folder + 'eigenvalues.png', transparent=True, bbox_inches='tight')
 
 
