@@ -92,7 +92,8 @@ class StepUvlm(BaseSolver):
                                           'override': True,
                                           't': t,
                                           'ts': self.data.ts,
-                                          'dt': dt},
+                                          'dt': dt,
+                                          'for_pos': structure_tstep.for_pos},
                                          aero_tstep.u_ext)
         if self.settings['convection_scheme'].value > 1 and convect_wake:
             # generate uext_star
@@ -100,7 +101,8 @@ class StepUvlm(BaseSolver):
                                               'override': True,
                                               'ts': self.data.ts,
                                               'dt': dt,
-                                              't': t},
+                                              't': t,
+                                              'for_pos': structure_tstep.for_pos},
                                              aero_tstep.u_ext_star)
 
         # previous_ts = max(len(self.data.aero.timestep_info) - 1, 0) - 1

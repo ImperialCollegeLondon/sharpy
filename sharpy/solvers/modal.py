@@ -9,14 +9,14 @@ import os
 import itertools
 import warnings
 from tvtk.api import tvtk, write_data
+import scipy.linalg
+import matplotlib.pyplot as plt
 
 import sharpy.structure.utils.xbeamlib as xbeamlib
 from sharpy.utils.solver_interface import solver, BaseSolver
 import sharpy.utils.settings as settings
 import sharpy.utils.algebra as algebra
 
-import scipy.linalg
-from IPython import embed
 
 
 @solver
@@ -33,27 +33,48 @@ class Modal(BaseSolver):
         self.settings_types['folder'] = 'str'
         self.settings_default['folder'] = './output'
 
-        ### solution options
-        self.settings_types['use_undamped_modes'] = 'bool' # basis for modal projection
+        # solution options
+        self.settings_types['use_undamped_modes'] = 'bool'  # basis for modal projection
         self.settings_default['use_undamped_modes'] = True
 
-        self.settings_types['NumLambda'] = 'int' # no. of different modes to retain
+        self.settings_types['NumLambda'] = 'int'  # no. of different modes to retain
         self.settings_default['NumLambda'] = 20  # doubles if use_undamped_modes is False 
 
-        self.settings_types['keep_linear_matrices'] = 'bool' # attach linear M,C,K matrices to output dictionary
+        self.settings_types['keep_linear_matrices'] = 'bool'  # attach linear M,C,K matrices to output dictionary
         self.settings_default['keep_linear_matrices'] = True
 
-        ### output options
-        self.settings_types['write_modes_vtk'] = 'bool' # write displacements mode shapes in vtk file
+        # output options
+        self.settings_types['write_modes_vtk'] = 'bool'  # write displacements mode shapes in vtk file
         self.settings_default['write_modes_vtk'] = True        
 
-        self.settings_types['print_matrices'] = 'bool' # print M,C,K matrices to dat file
+        self.settings_types['print_matrices'] = 'bool'  # print M,C,K matrices to dat file
         self.settings_default['print_matrices'] = False
 
-        self.settings_types['write_dat'] = 'bool' # write modes shapes/freq./damp. to dat file
+        self.settings_types['write_dat'] = 'bool'  # write modes shapes/freq./damp. to dat file
         self.settings_default['write_dat'] = True
 
+        self.settings_types['continuous_eigenvalues'] = 'bool'
+        self.settings_default['continuous_eigenvalues'] = False
 
+        self.settings_types['dt'] = 'float'
+        self.settings_default['dt'] = 0
+
+        self.settings_types['plot_eigenvalues'] = 'bool'
+        self.settings_default['plot_eigenvalues'] = False
+
+        self.settings_types['max_rotation_deg'] = 'float'
+        self.settings_default['max_rotation_deg'] = 15
+
+        self.settings_types['max_displacement'] = 'float'
+        self.settings_default['max_displacement'] = 0.15
+
+        self.data = None
+        self.settings = None
+
+        self.folder = None
+        self.filename_freq = None
+        self.filename_damp = None
+        self.filename_shapes = None
 
     def initialise(self, data, custom_settings=None):
         self.data = data
@@ -88,10 +109,8 @@ class Modal(BaseSolver):
                                 'tstep' + ("%06d" % self.data.ts) +
                                 '_ModalShape')
 
-
-
     def run(self):
-
+        self.data.ts = len(self.data.structure.timestep_info) - 1
         # Initialize matrices
         num_dof = self.data.structure.num_dof.value
         FullMglobal = np.zeros((num_dof, num_dof),
@@ -107,14 +126,13 @@ class Modal(BaseSolver):
                                    FullMglobal, FullCglobal, FullKglobal)
 
         # Print matrices
-        if(self.settings['print_matrices'].value):
+        if self.settings['print_matrices'].value:
             np.savetxt(self.folder + "Mglobal.dat", FullMglobal, fmt='%.12f',
                        delimiter='\t', newline='\n')
             np.savetxt(self.folder + "Cglobal.dat", FullCglobal, fmt='%.12f',
                        delimiter='\t', newline='\n')
             np.savetxt(self.folder + "Kglobal.dat", FullKglobal, fmt='%.12f',
                        delimiter='\t', newline='\n')
-
 
         # Check if the damping matrix is zero (issue working)
         if self.settings['use_undamped_modes'].value:
@@ -123,7 +141,7 @@ class Modal(BaseSolver):
                 if(np.absolute(FullCglobal[i, j]) > np.finfo(float).eps):
                     zero_FullCglobal = False
                     warnings.warn(
-                    'Projecting a system with damping on undamped modal shapes')
+                        'Projecting a system with damping on undamped modal shapes')
                     break
         # Check if the damping matrix is skew-symmetric
         # skewsymmetric_FullCglobal = True
@@ -154,19 +172,19 @@ class Modal(BaseSolver):
 
         else:
             # State-space model
-            Minv_neg=-np.linalg.inv(FullMglobal)
+            Minv_neg = -np.linalg.inv(FullMglobal)
             A = np.zeros((2*num_dof, 2*num_dof), dtype=ct.c_double, order='F')
-            A[range(num_dof),range(num_dof,2*num_dof)]=1.
-            A[num_dof:,:num_dof] = np.dot(Minv_neg,FullKglobal)
-            A[num_dof:,num_dof:] = np.dot(Minv_neg,FullCglobal)
+            A[range(num_dof), range(num_dof,2*num_dof)] = 1.
+            A[num_dof:, :num_dof] = np.dot(Minv_neg, FullKglobal)
+            A[num_dof:, num_dof:] = np.dot(Minv_neg, FullCglobal)
 
             # Solve the eigenvalues problem
-            eigenvalues,eigenvectors_left,eigenvectors=\
-                                           sc.linalg.eig(A,left=True,right=True)
-            freq_damped=np.abs(eigenvalues)
-            damping=np.zeros_like(freq_damped)
-            iiflex=freq_damped>1e-16*np.mean(freq_damped)
-            damping[iiflex]=eigenvalues[iiflex].real/freq_damped[iiflex]
+            eigenvalues, eigenvectors_left, eigenvectors = \
+                sc.linalg.eig(A,left=True,right=True)
+            freq_damped = np.abs(eigenvalues)
+            damping = np.zeros_like(freq_damped)
+            iiflex = freq_damped > 1e-16*np.mean(freq_damped)
+            damping[iiflex] = eigenvalues[iiflex].real/freq_damped[iiflex]
 
             # Order & downselect complex conj:
             # this algorithm assumes that complex conj eigenvalues appear consecutively 
@@ -179,103 +197,118 @@ class Modal(BaseSolver):
             freq_damped = freq_damped[order]
             eigenvalues = eigenvalues[order]
 
-            include=np.ones((2*NumLambda,),dtype=np.bool)
-            ii=0
-            tol_rel=np.finfo(float).eps * freq_damped[ii]
-            while ii<2*NumLambda:
+            include = np.ones((2*NumLambda,), dtype=np.bool)
+            ii = 0
+            tol_rel = np.finfo(float).eps * freq_damped[ii]
+            while ii < 2*NumLambda:
                 # check complex
-                if np.abs(eigenvalues[ii].imag)>0.:
-                    if np.abs(eigenvalues[ii+1].real-eigenvalues[ii].real)>tol_rel or\
-                       np.abs(eigenvalues[ii+1].imag+eigenvalues[ii].imag)>tol_rel:
+                if np.abs(eigenvalues[ii].imag) > 0.:
+                    if np.abs(eigenvalues[ii+1].real-eigenvalues[ii].real) > tol_rel or\
+                       np.abs(eigenvalues[ii+1].imag+eigenvalues[ii].imag) > tol_rel:
                         raise NameError('Complex conjugate expected but not found!')
-                    ii+=1
+                    ii += 1
                     try:
-                        include[ii]=False
+                        include[ii] = False
                     except IndexError:
                         pass
-                ii+=1
+                ii += 1
             freq_damped = freq_damped[include]
             eigenvalues = eigenvalues[include]
-            order=order[include]
+            if self.settings['continuous_eigenvalues']:
+                if self.settings['dt'].value == 0.:
+                    raise ValueError('Cannot compute the continuous eigenvalues without a dt value')
+                eigenvalues = np.log(eigenvalues)/self.settings['dt'].value
+
+            order = order[include]
             damping = damping[order]
-            eigenvectors = eigenvectors[:,order]
-            eigenvectors_left=eigenvectors_left[:,order].conj()
+            eigenvectors = eigenvectors[:, order]
+            eigenvectors_left = eigenvectors_left[:, order].conj()
 
         # Scaling
         if self.settings['use_undamped_modes']:
             # mass normalise (diagonalises M and K)
-            dfact=np.diag(np.dot(eigenvectors.T,np.dot(FullMglobal,eigenvectors)))
-            eigenvectors=(1./np.sqrt(dfact))*eigenvectors
+            dfact = np.diag(np.dot(eigenvectors.T, np.dot(FullMglobal, eigenvectors)))
+            eigenvectors = (1./np.sqrt(dfact))*eigenvectors
         else:
             # unit normalise (diagonalises A)
             for ii in range(NumLambda):
-                fact=1./np.sqrt(np.dot(eigenvectors_left[:,ii],eigenvectors[:,ii]))
-                eigenvectors_left[:,ii]=fact*eigenvectors_left[:,ii]
-                eigenvectors[:,ii]=fact*eigenvectors[:,ii]
+                fact = 1./np.sqrt(np.dot(eigenvectors_left[:, ii], eigenvectors[:, ii]))
+                eigenvectors_left[:, ii] = fact*eigenvectors_left[:, ii]
+                eigenvectors[:, ii] = fact*eigenvectors[:, ii]
 
-
-        ### Other terms required for state-space realisation
-
+        # Other terms required for state-space realisation
         # non-zero damping matrix
         if self.settings['use_undamped_modes'] and not(zero_FullCglobal):
-            Ccut=np.dot(eigenvectors.T,np.dot(FullCglobal,eigenvectors))
+            Ccut = np.dot(eigenvectors.T, np.dot(FullCglobal, eigenvectors))
         else:
             Ccut=None
 
         # forces gain matrix (nodal -> modal)
         if not self.settings['use_undamped_modes']:
-            Kin_damp=np.dot(eigenvectors_left[num_dof:,:].T,-Minv_neg)
+            Kin_damp = np.dot(eigenvectors_left[num_dof:, :].T, -Minv_neg)
         else:
-            Kin_damp=None
+            Kin_damp = None
+
+        # plot eigenvalues
+        fig = plt.figure()
+        plt.scatter(eigenvalues.real, eigenvalues.imag)
+
+        plt.show()
+        # plt.savefig(self.folder + 'eigenvalues.png', transparent=True, bbox_inches='tight')
+
 
         # Write dat files
-        if(self.settings['write_dat'].value):
+        if self.settings['write_dat'].value:
             np.savetxt(self.folder + "eigenvalues.dat", eigenvalues, fmt='%.12f',
                        delimiter='\t', newline='\n')
             np.savetxt(self.folder + "eigenvectors.dat", eigenvectors[:num_dof].real,
                        fmt='%.12f', delimiter='\t', newline='\n')
-            # np.savetxt(self.filename_freq, freq_damped[:NumLambda],
-            #            fmt='%e', delimiter='\t', newline='\n')
+            try:
+                np.savetxt(self.folder + 'frequencies.dat', freq_damped[:NumLambda],
+                           fmt='%e', delimiter='\t', newline='\n')
+            except NameError:
+                np.savetxt(self.folder + 'frequencies.dat', freq_natural[:NumLambda],
+                           fmt='%e', delimiter='\t', newline='\n')
             np.savetxt(self.filename_damp, damping[:NumLambda],
                        fmt='%e', delimiter='\t', newline='\n')
 
         # Write vtk
         if self.settings['write_modes_vtk'].value:
             write_modes_vtk(
-                self.data,eigenvectors[:num_dof],NumLambda,self.filename_shapes)
+                self.data,
+                eigenvectors[:num_dof],
+                NumLambda,
+                self.filename_shapes,
+                self.settings['max_rotation_deg'],
+                self.settings['max_displacement'])
 
-        outdict=dict()
+        outdict = dict()
 
         if self.settings['use_undamped_modes']:
-            outdict['modes']='undamped'
-            outdict['freq_natural']=freq_natural
-            if zero_FullCglobal == False:
-                outdict['warning']=\
+            outdict['modes'] = 'undamped'
+            outdict['freq_natural'] = freq_natural
+            if not zero_FullCglobal:
+                outdict['warning'] =\
                     'system with damping: mode shapes and natural frequencies do not account for damping!'
         else: 
-            outdict['modes']='damped'
-            outdict['freq_damped']=freq_damped 
+            outdict['modes'] = 'damped'
+            outdict['freq_damped'] = freq_damped
 
-
-
-
-
-        outdict['damping']=damping       
-        outdict['eigenvalues']=eigenvalues
-        outdict['eigenvectors']=eigenvectors
+        outdict['damping'] = damping
+        outdict['eigenvalues'] = eigenvalues
+        outdict['eigenvectors'] = eigenvectors
         if Ccut is not None:
-            outdict['Ccut']=Ccut
+            outdict['Ccut'] = Ccut
         if Kin_damp is not None:
-            outdict['Kin_damp']=Kin_damp
+            outdict['Kin_damp'] = Kin_damp
         if not self.settings['use_undamped_modes']:    
-            outdict['eigenvectors_left']=eigenvectors_left
+            outdict['eigenvectors_left'] = eigenvectors_left
 
         if self.settings['keep_linear_matrices'].value:
-            outdict['M']=FullMglobal
-            outdict['C']=FullCglobal
-            outdict['K']=FullKglobal
-        self.data.structure.timestep_info[self.data.ts].modal=outdict
-
+            outdict['M'] = FullMglobal
+            outdict['C'] = FullCglobal
+            outdict['K'] = FullKglobal
+        self.data.structure.timestep_info[self.data.ts].modal = outdict
         return self.data
 
 
@@ -421,7 +454,7 @@ def get_mode_zeta(data, eigvect):
 
 
 def write_modes_vtk(data, eigenvectors, NumLambda, filename_root, 
-                                                root_max_deg=15.,perc_max=0.15):
+                                                rot_max_deg=15.,perc_max=0.15):
     '''
     Writes a vtk file for each of the first NumLambda eigenvectors. When these
     are associated to the state-space form of the structural equations, only
@@ -441,7 +474,7 @@ def write_modes_vtk(data, eigenvectors, NumLambda, filename_root,
 
         # scale eigenvector
         eigvec=eigenvectors[:num_dof,mode]
-        eigvec=scale_mode(data,eigvec,root_max_deg,perc_max)
+        eigvec=scale_mode(data,eigvec,rot_max_deg,perc_max)
         zeta_mode=get_mode_zeta(data,eigvec)
 
         for i_surf in range(tsaero.n_surf):
