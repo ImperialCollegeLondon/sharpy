@@ -22,6 +22,9 @@ def rot2crv(rot):
 def triad2rot(xb,yb,zb):
     warn('triad2rot(xb,yb,zb) is obsolite! Use triad2rotation(xb,yb,zb).T instead!') 
     return triad2rotation(xb,yb,zb).T
+def mat2quat(rot):
+     warn('mat2quat(rot) is obsolite! Use rotation2quat(rot.T) instead!')
+     return rotation2quat(rot.T)
 #######
 
 def tangent_vector(in_coord, ordering=None):
@@ -180,41 +183,41 @@ def angle_between_vector_and_plane(vector, plane_normal):
     return angle
 
 
-def mat2quat(mat):
-    matT = mat.T
+# def mat2quat(mat):
+#     matT = mat.T
 
-    s = np.zeros((4, 4))
+#     s = np.zeros((4, 4))
 
-    s[0, 0] = 1.0 + np.trace(matT)
-    s[0, 1:] = matrix2skewvec(matT)
+#     s[0, 0] = 1.0 + np.trace(matT)
+#     s[0, 1:] = matrix2skewvec(matT)
 
-    s[1, 0] = matT[2, 1] - matT[1, 2]
-    s[1, 1] = 1.0 + matT[0, 0] - matT[1, 1] - matT[2, 2]
-    s[1, 2] = matT[0, 1] + matT[1, 0]
-    s[1, 3] = matT[0, 2] + matT[2, 0]
+#     s[1, 0] = matT[2, 1] - matT[1, 2]
+#     s[1, 1] = 1.0 + matT[0, 0] - matT[1, 1] - matT[2, 2]
+#     s[1, 2] = matT[0, 1] + matT[1, 0]
+#     s[1, 3] = matT[0, 2] + matT[2, 0]
 
-    s[2, 0] = matT[0, 2] - matT[2, 0]
-    s[2, 1] = matT[1, 0] + matT[0, 1]
-    s[2, 2] = 1.0 - matT[0, 0] + matT[1, 1] - matT[2, 2]
-    s[2, 3] = matT[1, 2] + matT[2, 1]
+#     s[2, 0] = matT[0, 2] - matT[2, 0]
+#     s[2, 1] = matT[1, 0] + matT[0, 1]
+#     s[2, 2] = 1.0 - matT[0, 0] + matT[1, 1] - matT[2, 2]
+#     s[2, 3] = matT[1, 2] + matT[2, 1]
 
-    s[3, 0] = matT[1, 0] - matT[0, 1]
-    s[3, 1] = matT[0, 2] + matT[2, 0]
-    s[3, 2] = matT[1, 2] + matT[2, 1]
-    s[3, 3] = 1.0 - matT[0, 0] - matT[1, 1] + matT[2, 2]
+#     s[3, 0] = matT[1, 0] - matT[0, 1]
+#     s[3, 1] = matT[0, 2] + matT[2, 0]
+#     s[3, 2] = matT[1, 2] + matT[2, 1]
+#     s[3, 3] = 1.0 - matT[0, 0] - matT[1, 1] + matT[2, 2]
 
-    smax = np.max(np.diag(s))
-    ismax = np.argmax(np.diag(s))
+#     smax = np.max(np.diag(s))
+#     ismax = np.argmax(np.diag(s))
 
-    # compute quaternion angles
-    quat = np.zeros((4,))
-    quat[ismax] = 0.5*np.sqrt(smax)
-    for i in range(4):
-        if i == ismax:
-            continue
-        quat[i] = 0.25*s[ismax, i]/quat[ismax]
+#     # compute quaternion angles
+#     quat = np.zeros((4,))
+#     quat[ismax] = 0.5*np.sqrt(smax)
+#     for i in range(4):
+#         if i == ismax:
+#             continue
+#         quat[i] = 0.25*s[ismax, i]/quat[ismax]
 
-    return quat
+#     return quat
 
 
 def rotation2quat(Cab):

@@ -139,9 +139,7 @@ class TestAlgebra(unittest.TestCase):
             assert np.linalg.norm(quat-quat0)<1e-12,\
                                   'rotation2quat not producing the right result'
 
-
         print(50*'-'+' all good!\n')  
-        embed()
 
 
 
