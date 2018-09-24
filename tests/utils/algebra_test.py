@@ -80,10 +80,10 @@ class TestAlgebra(unittest.TestCase):
         '''
 
         print(60*'-')
-        print('Testing functions to build rotation matrices')
+        print('Testing functions to build rotation matrices (and inverse)')
         print('quat2rotation\n' + 'crv2rotation')
+        print('rotation2quat\n' + 'rotation2crv')
         print('Note: Euler and triad not included')
-
 
         ### Verify that function build rotation matrix (not projection matrix)
         # set an easy rotation (x axis)
@@ -94,34 +94,53 @@ class TestAlgebra(unittest.TestCase):
                           [0, ca, -sa],
                           [0, sa,  ca],])
 
-        # rot from crv
+        ### rot from crv
         fv=a*nv
         Cab_num=algebra.crv2rotation(fv)
         assert np.linalg.norm(Cab_num-Cab_exp)<1e-15,\
-                                        'crv2rotation not producing the right result'
-        # rot from quat
+                                   'crv2rotation not producing the right result'
+        ### rot from quat
         quat=algebra.crv2quat(fv)
         Cab_num=algebra.quat2rotation(quat)
         assert np.linalg.norm(Cab_num-Cab_exp)<1e-15,\
-                                  'quat2rotation not producing the right result'
+                                  'quat2rotation not producing the right result'                           
 
-        # N=1000
-        # for nn in range(N):
-        #     # def random rotation in [-pi,pi]
-        #     a=np.pi*( 2.*np.random.rand()-1 )
-        #     nv=2.*np.random.rand(3)-1
-        #     nv=nv/np.linalg.norm(nv)
-        #     # reference
-        #     fv0=a*nv
-        #     quat0=np.zeros((4,))
-        #     quat0[0]=np.cos(.5*a)
-        #     quat0[1:]=np.sin(.5*a)*nv
-        #     # check against reference
-        #     assert np.linalg.norm(fv0-algebra.quat2crv(quat0))<1e-12,\
-        #                                                      'Error in quat2crv'
-        #     assert np.linalg.norm(quat0-algebra.crv2quat(fv0))<1e-12,\
-        #                                                      'Error in crv2quat'
-        print(50*'-'+' all good!\n')
+        ### inverse relations (crv)
+        # check crv2rotation and rotation2crv are biunivolcal in [-pi,pi]
+        # check quat2rotation and rotation2quat are biunivocal in [-pi,pi]
+        N=100
+        for nn in range(N):
+            # def random rotation in [-pi,pi]
+            a=np.pi*( 2.*np.random.rand()-1 )
+            nv=2.*np.random.rand(3)-1
+            nv=nv/np.linalg.norm(nv)
+            # reference
+            fv0=a*nv
+            fv=algebra.rotation2crv(algebra.crv2rotation(fv0))
+            assert np.linalg.norm(fv-fv0)<1e-12,\
+                                   'rotation2crv not producing the right result'
+
+        ### inverse relations (quaternion)
+
+        for nn in range(N):
+            # def random rotation in [-pi,pi]
+            a=np.pi*( 2.*np.random.rand()-1 )
+            nv=2.*np.random.rand(3)-1
+            nv=nv/np.linalg.norm(nv)
+            # reference
+            fv0=a*nv
+            quat0=np.zeros((4,))
+            quat0[0]=np.cos(.5*a)
+            quat0[1:]=np.sin(.5*a)*nv
+            # inverse crv
+            fv=algebra.rotation2crv(algebra.crv2rotation(fv0))
+            assert np.linalg.norm(fv-fv0)<1e-12,\
+                                   'rotation2crv not producing the right result'
+            # inverse quat
+            quat=algebra.rotation2quat(algebra.quat2rotation(quat0))
+            assert np.linalg.norm(quat-quat0)<1e-12,\
+                                  'rotation2quat not producing the right result'
+        print(50*'-'+' all good!\n')  
 
 
 
@@ -190,6 +209,7 @@ class TestAlgebra(unittest.TestCase):
         assert er_ga<A[-2], 'der_Cquat_by_v error too large'
         assert er_ag<A[-2], 'der_CquatT_by_v error too large'
         print(50*'-'+' all good!\n')
+
 
 
 

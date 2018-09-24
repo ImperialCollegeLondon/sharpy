@@ -17,6 +17,7 @@ def crv2rot(psi):
     warn('crv2rot(psi) is obsolite! Use crv2rotation(psi) instead!')    
     return crv2rotation(psi)
 
+
 #######
 
 def tangent_vector(in_coord, ordering=None):
@@ -190,6 +191,7 @@ def rot2crv(rot):
     return crv
 
 
+
 def mat2quat(mat):
     matT = mat.T
 
@@ -227,6 +229,65 @@ def mat2quat(mat):
     return quat
 
 
+def rotation2quat(Cab):
+    '''
+    Given a rotation matrix Cab rotating the frame a onto b, the function returns
+    the minimal "positive angle" quaternion representing this rotation. 
+
+    Note: this is the inverse of quat2rotation for Cartesian rotation vectors 
+    associated to rotations in the range [-pi,pi], i.e.:
+        fv == algebra.rotation2crv(algebra.crv2rotation(fv))  
+    for each fv=a*nv such that nv is a unit vector and the scalar a in [-pi,pi].
+    '''
+
+    s = np.zeros((4, 4))
+
+    s[0, 0] = 1.0 + np.trace(Cab)
+    s[0, 1:] = matrix2skewvec(Cab)
+
+    s[1, 0] = Cab[2, 1] - Cab[1, 2]
+    s[1, 1] = 1.0 + Cab[0, 0] - Cab[1, 1] - Cab[2, 2]
+    s[1, 2] = Cab[0, 1] + Cab[1, 0]
+    s[1, 3] = Cab[0, 2] + Cab[2, 0]
+
+    s[2, 0] = Cab[0, 2] - Cab[2, 0]
+    s[2, 1] = Cab[1, 0] + Cab[0, 1]
+    s[2, 2] = 1.0 - Cab[0, 0] + Cab[1, 1] - Cab[2, 2]
+    s[2, 3] = Cab[1, 2] + Cab[2, 1]
+
+    s[3, 0] = Cab[1, 0] - Cab[0, 1]
+    s[3, 1] = Cab[0, 2] + Cab[2, 0]
+    s[3, 2] = Cab[1, 2] + Cab[2, 1]
+    s[3, 3] = 1.0 - Cab[0, 0] - Cab[1, 1] + Cab[2, 2]
+
+    smax = np.max(np.diag(s))
+    ismax = np.argmax(np.diag(s))
+
+    # compute quaternion angles
+    quat = np.zeros((4,))
+    quat[ismax] = 0.5*np.sqrt(smax)
+    for i in range(4):
+        if i == ismax:
+            continue
+        quat[i] = 0.25*s[ismax, i]/quat[ismax]
+
+    return quat_bound(quat)
+
+
+def quat_bound(quat):
+    '''
+    Given a quaternion associated to a rotation of angle a about an axis nv, the 
+    function "bounds" the quaternion, i.e. sets the rotation axis nv such that
+    a in [-pi,pi]. 
+
+    Note: as quaternions are defined as qv=[cos(a/2); sin(a/2)*nv], this is
+    equivalent to enforce qv[0]>=0.
+    '''
+    if quat[0]<0:
+        quat*=-1.
+    return quat
+
+
 def matrix2skewvec(matrix):
     vector = np.array([matrix[2, 1] - matrix[1, 2],
                        matrix[0, 2] - matrix[2, 0],
@@ -248,7 +309,11 @@ def quat2crv(quat):
 
 def crv2quat(psi):
     '''
-    Converts a Cartesian rotation vector to quaternion
+    Converts a Cartesian rotation vector into a "minimal rotation" quaternion,
+    ie, being the quaternion defined as:
+        qv= [cos(a/2); sin(a/2)*nv ]
+    the rotation axis is such that the rotation angle a is in [-pi,pi] or,
+    equivalently, qv[0]>=0.    
     '''
 
     # minimise crv rotation
@@ -261,14 +326,14 @@ def crv2quat(psi):
     quat[0]=np.cos(.5*fi)
     quat[1:]=np.sin(.5*fi)*nv 
 
-    return quat 
+    return quat
 
 
 def crv_bounds(crv_ini):
     '''
-    Forces the Cartesian rotation vector norm to be in [-pi,pi]
+    Forces the Cartesian rotation vector norm to be in [-pi,pi], i.e. determines
+    the rotation axis orientation so as to ensure "minimal rotation".
     '''
-
 
     crv = crv_ini.copy()
     # original norm
@@ -320,6 +385,33 @@ def crv2rotation(psi):
         rot_matrix += (1.0 - np.cos(norm_psi))*np.dot(skew_normal, skew_normal)
 
     return rot_matrix
+
+
+def rotation2crv(Cab):
+    '''
+    Given a rotation matrix Cab rotating the frame a onto b, the function returns
+    the minimal size Cartesian rotation vector representing this rotation. 
+
+    Note: this is the inverse of crv2rotation for Cartesian rotation vectors 
+    associated to rotations in the range [-pi,pi], i.e.:
+        fv == algebra.rotation2crv(algebra.crv2rotation(fv))  
+    for each fv=a*nv such that nv is a unit vector and the scalar a in [-pi,pi].
+    '''
+    
+    if np.linalg.norm(Cab) < 1e-6:
+        raise AttributeError(\
+                 'Element Vector V is not orthogonal to reference line (51105)')
+
+    quat = rotation2quat(Cab)
+    psi = quat2crv(quat)
+
+    if np.linalg.norm(Cab) < 1.0e-15:
+        psi[0] = Cab[1, 2]
+        psi[1] = Cab[2, 0]
+        psi[2] = Cab[0, 1]
+
+    return crv_bounds(psi)
+
 
 
 def crv2tan(psi):
@@ -374,12 +466,12 @@ def quat2rotation(q1):
     See Aircraft Control and Simulation, pag. 31, by Stevens, Lewis.
     Copied from S. Maraniello's SHARPy
 
-    Remark: if A is a FoR obtained rotating a FoR G of angle fi about an axis n 
+    Remark: if B is a FoR obtained rotating a FoR A of angle fi about an axis n 
     (remind n will be invariant during the rotation), and q is the related 
-    quaternion q(fi,n), the function will return the matrix Cga such that:
-        - Cga rotates G to A
-        - Cga transforms the coordinates of a vector defined in A component to 
-        G components.
+    quaternion q(fi,n), the function will return the matrix Cab such that:
+        - Cab rotates A onto B
+        - Cab transforms the coordinates of a vector defined in B component to 
+        A components.
     """
 
     q = q1.copy(order='F')
@@ -391,16 +483,16 @@ def quat2rotation(q1):
     rot_mat[1, 1] = q[0]**2 - q[1]**2 + q[2]**2 - q[3]**2
     rot_mat[2, 2] = q[0]**2 - q[1]**2 - q[2]**2 + q[3]**2
 
-    rot_mat[0, 1] = 2.*(q[1]*q[2] + q[0]*q[3])
-    rot_mat[1, 0] = 2.*(q[1]*q[2] - q[0]*q[3])
+    rot_mat[1, 0] = 2.*(q[1]*q[2] + q[0]*q[3])
+    rot_mat[0, 1] = 2.*(q[1]*q[2] - q[0]*q[3])
 
-    rot_mat[0, 2] = 2.*(q[1]*q[3] - q[0]*q[2])
-    rot_mat[2, 0] = 2.*(q[1]*q[3] + q[0]*q[2])
+    rot_mat[2, 0] = 2.*(q[1]*q[3] - q[0]*q[2])
+    rot_mat[0, 2] = 2.*(q[1]*q[3] + q[0]*q[2])
 
-    rot_mat[1, 2] = 2.*(q[2]*q[3] + q[0]*q[1])
-    rot_mat[2, 1] = 2.*(q[2]*q[3] - q[0]*q[1])
+    rot_mat[2, 1] = 2.*(q[2]*q[3] + q[0]*q[1])
+    rot_mat[1, 2] = 2.*(q[2]*q[3] - q[0]*q[1])
 
-    return rot_mat.T
+    return rot_mat
 
 
 def rot_skew(vec):
