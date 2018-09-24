@@ -76,14 +76,14 @@ class TestAlgebra(unittest.TestCase):
         Checks routines and consistency of functions to generate rotation 
         matrices.
 
-        Note: test only includes CRV <-> quaternions conversions
+        Note: test only includes triad <-> CRV <-> quaternions conversions
         '''
 
         print(60*'-')
         print('Testing functions to build rotation matrices (and inverse)')
-        print('quat2rotation\n' + 'crv2rotation')
-        print('rotation2quat\n' + 'rotation2crv')
-        print('Note: Euler and triad not included')
+        print('quat2rotation\n' + 'crv2rotation\n' + 'triad2rotation')
+        print('rotation2quat\n' + 'rotation2crv\n' + 'triad2crv')
+        print('Note: Euler not included')
 
         ### Verify that function build rotation matrix (not projection matrix)
         # set an easy rotation (x axis)
@@ -93,7 +93,10 @@ class TestAlgebra(unittest.TestCase):
         Cab_exp=np.array([[1,  0,   0], 
                           [0, ca, -sa],
                           [0, sa,  ca],])
-
+        ### rot from triad
+        Cab_num=algebra.triad2rotation(Cab_exp[:,0],Cab_exp[:,1],Cab_exp[:,2])
+        assert np.linalg.norm(Cab_num-Cab_exp)<1e-15,\
+                                   'crv2rotation not producing the right result'
         ### rot from crv
         fv=a*nv
         Cab_num=algebra.crv2rotation(fv)
@@ -105,7 +108,7 @@ class TestAlgebra(unittest.TestCase):
         assert np.linalg.norm(Cab_num-Cab_exp)<1e-15,\
                                   'quat2rotation not producing the right result'                           
 
-        ### inverse relations (crv)
+        ### inverse relations 
         # check crv2rotation and rotation2crv are biunivolcal in [-pi,pi]
         # check quat2rotation and rotation2quat are biunivocal in [-pi,pi]
         N=100
@@ -114,33 +117,31 @@ class TestAlgebra(unittest.TestCase):
             a=np.pi*( 2.*np.random.rand()-1 )
             nv=2.*np.random.rand(3)-1
             nv=nv/np.linalg.norm(nv)
-            # reference
+
+            # inverse crv
             fv0=a*nv
-            fv=algebra.rotation2crv(algebra.crv2rotation(fv0))
+            Cab=algebra.crv2rotation(fv0)
+            fv=algebra.rotation2crv(Cab)
             assert np.linalg.norm(fv-fv0)<1e-12,\
                                    'rotation2crv not producing the right result'
 
-        ### inverse relations (quaternion)
+            # triad2crv
+            xa,ya,za=Cab[:,0],Cab[:,1],Cab[:,2]
+            assert np.linalg.norm(
+                        algebra.triad2crv(xa,ya,za)-fv0)<1e-12,\
+                                      'triad2crv not producing the right result'
 
-        for nn in range(N):
-            # def random rotation in [-pi,pi]
-            a=np.pi*( 2.*np.random.rand()-1 )
-            nv=2.*np.random.rand(3)-1
-            nv=nv/np.linalg.norm(nv)
-            # reference
-            fv0=a*nv
+            # inverse quat
             quat0=np.zeros((4,))
             quat0[0]=np.cos(.5*a)
             quat0[1:]=np.sin(.5*a)*nv
-            # inverse crv
-            fv=algebra.rotation2crv(algebra.crv2rotation(fv0))
-            assert np.linalg.norm(fv-fv0)<1e-12,\
-                                   'rotation2crv not producing the right result'
-            # inverse quat
             quat=algebra.rotation2quat(algebra.quat2rotation(quat0))
             assert np.linalg.norm(quat-quat0)<1e-12,\
                                   'rotation2quat not producing the right result'
+
+
         print(50*'-'+' all good!\n')  
+        embed()
 
 
 
@@ -180,7 +181,6 @@ class TestAlgebra(unittest.TestCase):
         derCag=algebra.der_CquatT_by_v(qv0,xv)
 
         print('step\t\terror der_Cquat_by_v\terror der_CquatT_by_v')
-
         A=np.array([1e-1,1e-2,1e-3,1e-4,1e-5,1e-6])
         er_ag=10.
         er_ga=10.
@@ -232,6 +232,8 @@ if __name__=='__main__':
     T.test_rotation_vectors_conversions()
     T.test_rotation_matrices()
     T.test_rotation_matrices_derivatives()
+
+
 
 
 

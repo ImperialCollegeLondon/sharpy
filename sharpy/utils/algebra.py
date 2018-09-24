@@ -16,8 +16,12 @@ def quat2rot(quat):
 def crv2rot(psi):
     warn('crv2rot(psi) is obsolite! Use crv2rotation(psi) instead!')    
     return crv2rotation(psi)
-
-
+def rot2crv(rot):
+    warn('rot2crv(rot) is obsolite! Use rotation2crv(rot.T) instead!')    
+    return rotation2crv(rot.T)
+def triad2rot(xb,yb,zb):
+    warn('triad2rot(xb,yb,zb) is obsolite! Use triad2rotation(xb,yb,zb).T instead!') 
+    return triad2rotation(xb,yb,zb).T
 #######
 
 def tangent_vector(in_coord, ordering=None):
@@ -139,18 +143,19 @@ def skew(vector):
     return matrix
 
 
-def triad2rot(xb, yb, zb):
+def triad2rotation(xb, yb, zb):
     """
     If the input triad is the "b" coord system given in "a" frame,
-    (the vectors of the triad are xb, yb, zb)
-    this function returns Rab
+    (the vectors of the triad are xb, yb, zb), this function returns Rab, ie the
+    rotation matrix required to rotate the FoR A onto B.
     :param xb:
     :param yb:
     :param zb:
     :return: rotation matrix Rab
-    """
-    rot = np.row_stack((xb, yb, zb))
-    return rot
+    """  
+    return np.column_stack((xb, yb, zb))
+
+
 
 
 def rot_matrix_2d(angle):
@@ -173,23 +178,6 @@ def angle_between_vector_and_plane(vector, plane_normal):
     angle = np.arcsin((np.linalg.norm(np.dot(vector, plane_normal)))/
                       (np.linalg.norm(vector)*np.linalg.norm(plane_normal)))
     return angle
-
-
-def rot2crv(rot):
-    if np.linalg.norm(rot) < 1e-6:
-        raise AttributeError('Element Vector V is not orthogonal to reference line (51105)')
-
-    quat = mat2quat(rot)
-    crv = quat2crv(quat)
-
-    if np.linalg.norm(crv) < 1.0e-15:
-        crv[0] = rot[1, 2]
-        crv[1] = rot[2, 0]
-        crv[2] = rot[0, 1]
-
-    crv = crv_bounds(crv)
-    return crv
-
 
 
 def mat2quat(mat):
@@ -355,7 +343,7 @@ def crv_bounds(crv_ini):
 
 
 def triad2crv(xb, yb, zb):
-    return rot2crv(triad2rot(xb, yb, zb))
+    return rotation2crv(triad2rotation(xb, yb, zb))
 
 
 def crv2triad(psi):
