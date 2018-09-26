@@ -1,7 +1,7 @@
 import sharpy.utils.algebra as algebra
 import numpy as np
 import unittest
-from IPython import embed
+# from IPython import embed
 
 
 class TestAlgebra(unittest.TestCase):
@@ -37,6 +37,7 @@ class TestAlgebra(unittest.TestCase):
         vector_in = 'aa'
         with self.assertRaises(ValueError):
             algebra.unit_vector(vector_in)
+
 
 
     def test_rotation_vectors_conversions(self):
@@ -210,7 +211,99 @@ class TestAlgebra(unittest.TestCase):
 
 
 
+    def test_crv_tangetial_operator(self):
+        ''' Checks Cartesian rotation vector tangential operator '''
 
+        print(60*'-')
+        print('Testing CRV tangential operator function')
+        print('crv2tan')
+
+        # linearisation point
+        fi0=-np.pi/6
+        nv0=np.array([1,3,1])
+        nv0=np.array([1,0,0])
+        nv0=nv0/np.linalg.norm(nv0)
+        fv0=fi0*nv0
+
+        # dummy
+        fi1=np.pi/3
+        nv1=np.array([2,4,1])
+        nv1=nv1/np.linalg.norm(nv1)
+        fv1=fi1*nv1
+
+
+        print('step\t\terror crv2tan')
+        er_tan=10.
+        A=np.array([1e-1,1e-2,1e-3,1e-4,1e-5,1e-6])
+        for a in A:
+            # perturbed
+            fv=a*fv1 + (1.-a)*fv0
+            dfv=fv-fv0
+
+            ### Compute relevant quantities
+            Cab=algebra.crv2rotation(fv0) # fv0 is rotation from A to B
+            dCab=algebra.crv2rotation(fv0+dfv)-Cab 
+
+            T=algebra.crv2tan(fv0)
+            Tdfv=np.dot(T,dfv)
+            Tdfv_skew=algebra.skew(Tdfv)
+            dCab_an=np.dot(Cab,Tdfv_skew)
+
+            er_tan_new=np.max(np.abs(dCab-dCab_an))/np.max(np.abs(dCab_an))
+            print('%.3e\t%.3e'%(a,er_tan_new,) )
+            assert er_tan_new<er_tan, 'crv2tan error not converging to 0'
+            er_tan=er_tan_new
+
+        assert er_tan<A[-2], 'crv2tan error too large'
+        print(50*'-'+' all good!\n')
+
+
+
+    def test_crv_tangetial_operator_derivative(self):
+        ''' Checks Cartesian rotation vector tangential operator '''
+
+        print(60*'-')
+        print('Testing CRV tangential operator derivative function')
+        print('der_Tan_by_xv')
+
+        # linearisation point
+        fi0=np.pi/6
+        nv0=np.array([1,3,1])
+        nv0=nv0/np.linalg.norm(nv0)
+        fv0=fi0*nv0
+        T0=algebra.crv2tan(fv0)
+
+        # dummy vector
+        xv=np.ones((3,))
+        T0xv=np.dot(T0,xv)
+        #derT_an=dTxv(fv0,xv)
+        derT_an=algebra.der_Tan_by_xv(fv0,xv)
+        #derT_an=algebra.der_Tan_by_xv_an(fv0,xv)
+        # dummy
+        fi1=np.pi/3
+        nv1=np.array([4,1,-2])
+        nv1=nv1/np.linalg.norm(nv1)
+        fv1=fi1*nv1
+
+        print('step\t\terror der_Tan_by_xv')
+        er=10.
+        A=np.array([1e-1,1e-2,1e-3,1e-4,1e-5,1e-6])
+        for a in A:
+            # perturbed
+            fv=a*fv1 + (1.-a)*fv0
+            dfv=fv-fv0
+            Tpert=algebra.crv2tan(fv)
+            Tpertxv=np.dot(Tpert,xv)
+            dT_num=Tpertxv-T0xv
+            dT_an=np.dot(derT_an,dfv)
+
+            er_new=np.max(np.abs(dT_num-dT_an))/np.max(np.abs(dT_an))
+            print('%.3e\t%.3e'%(a,er_new,) )
+            assert er_new<er, 'der_Tan_by_xv error not converging to 0'
+            er=er_new
+
+        assert er<A[-2], 'der_Tan_by_xv error too large'
+        print(50*'-'+' all good!\n')
 
 
 
@@ -226,10 +319,13 @@ if __name__=='__main__':
 
     T=TestAlgebra()
     # T.setUp()
-
     T.test_rotation_vectors_conversions()
     T.test_rotation_matrices()
     T.test_rotation_matrices_derivatives()
+    T.test_crv_tangetial_operator()
+    T.test_crv_tangetial_operator_derivative()
+
+
 
 
 
