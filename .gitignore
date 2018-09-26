@@ -16,11 +16,18 @@ src/superceeded
 docs
 *.ods
 *.ods#
-profiling/*.txt
-test/*.txt
-test/*/*.txt
 *.prof
 *.log
+
+
+
+profiling/*.txt
+
+test/*.txt
+test/*/*.txt
+test/test_lin_aeroelastic/*h5
+
+
 
 cpp/obj/*o
 cpp/obj/*d

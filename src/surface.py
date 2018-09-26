@@ -803,7 +803,7 @@ class AeroGridSurface(AeroGridGeo):
 			mm,nn=pp
 
 			# force at collocation point
-			fcoll=self.rho*self.areas[mm,nn]*self.normals[:,mm,nn]*self.gamma_dot[mm,nn]
+			fcoll=-self.rho*self.areas[mm,nn]*self.normals[:,mm,nn]*self.gamma_dot[mm,nn]
 
 
 			# project at vertices
