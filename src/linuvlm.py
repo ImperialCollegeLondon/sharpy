@@ -8,10 +8,14 @@ import scipy.linalg as scalg
 import scipy.signal as scsig
 from IPython import embed
 import time
+import warnings
 
 import interp
 import multisurfaces
 import assembly as ass # :D
+import libss
+
+import sharpy.utils.algebra as algebra
 
 
 
@@ -208,28 +212,131 @@ class Static():
 			Kzeta_tot+=3*Kzeta
 
 
-	def total_forces(self):
+	def total_forces(self,zeta_pole=np.zeros((3,))):
+		'''
+		Calculates total force (Ftot) and moment (Mtot) (about pole zeta_pole). 
+		'''
 
 		if not hasattr(self,'Gamma') or not hasattr(self,'Fqs'):		
 			self.reshape()
 
 		self.Ftot=np.zeros((3,))
+		self.Mtot=np.zeros((3,))
+
 		for ss in range(self.MS.n_surf):
-			for cc in range(3):
-				self.Ftot[cc]+=np.sum(self.Fqs[ss][cc,:,:])
+			M,N=self.MS.Surfs[ss].maps.M,self.MS.Surfs[ss].maps.N
+			for nn in range(N+1):
+				for mm in range(M+1):
+					zeta_node=self.MS.Surfs[ss].zeta[:,mm,nn]
+					fnode=self.Fqs[ss][:,mm,nn]
+					self.Ftot+=fnode
+					self.Mtot+=np.cross(zeta_node-zeta_pole,fnode)
+			# for cc in range(3):
+			# 	self.Ftot[cc]+=np.sum(self.Fqs[ss][cc,:,:])
 
 
-	def get_total_forces_gain(self):
+	def get_total_forces_gain(self,zeta_pole=np.zeros((3,))):
+		'''
+		Calculates gain matrices to calculate the total force (Kftot) and moment
+		(Kmtot) about the pole zeta_pole.
+		'''
+
 		self.Kftot=np.zeros( (3,3*self.Kzeta) )
+		self.Kmtot=np.zeros( (3,3*self.Kzeta) )		
 
-		Kzeta0=0
 		for ss in range(self.MS.n_surf):
-			Kzeta=self.MS.KKzeta[ss]
-			for cc in range(3):
-				jjvec=range( Kzeta0+cc*Kzeta, Kzeta0+(cc+1)*Kzeta)
-				self.Kftot[cc,jjvec]=1.		
-			Kzeta0+=3*Kzeta
-	
+
+			M,N=self.MS.Surfs[ss].maps.M,self.MS.Surfs[ss].maps.N
+
+			for nn in range(N+1):
+				for mm in range(M+1):
+
+					jjvec=[ np.ravel_multi_index( (ss,cc,mm,nn),
+								(self.MS.n_surf,3,M+1,N+1) ) for cc in range(3)]
+
+					self.Kftot[[0,1,2],jjvec]=1.
+					self.Kmtot[np.ix_([0,1,2],jjvec)]=algebra.skew(
+									  self.MS.Surfs[ss].zeta[:,mm,nn]-zeta_pole)
+
+
+	def get_sect_forces_gain(self):
+		''' 
+		Gains to computes sectional forces. Moments are computed w.r.t. 
+		mid-vertex (chord-wise index M/2) of each section.
+		'''
+
+		Ntot=0
+		for ss in range(self.MS.n_surf):
+			Ntot+=self.MS.NN[ss]+1
+		self.Kfsec=np.zeros( (6*Ntot,3*self.Kzeta) )
+
+
+		for ss in range(self.MS.n_surf):
+			M,N=self.MS.MM[ss],self.MS.NN[ss]
+
+			for nn in range(N+1):	
+				zeta_sec=self.MS.Surfs[ss].zeta[:,:,nn]
+				# section indices
+				iivec=[ np.ravel_multi_index( (ss,cc,nn),
+					 			 	 (self.MS.n_surf,6,N+1)) for cc in range(6)]
+
+				for mm in range(M+1):
+					# vertex indices
+					jjvec=[ np.ravel_multi_index( (ss,cc,mm,nn),
+								(self.MS.n_surf,3,M+1,N+1) ) for cc in range(3)]
+
+					# sectional force
+					self.Kfsec[iivec[:3],jjvec]=1.0
+
+					# sectional moment
+					dx,dy,dz=zeta_sec[:,mm]-zeta_sec[:,M//2]
+					self.Kfsec[np.ix_(iivec[3:],jjvec)]=np.array([[  0,-dz, dy],
+																  [ dz,  0,-dx],
+																  [-dy, dx,  0]])
+
+
+
+	def get_rigid_motion_gains( self,zeta_rotation=np.zeros((3,)) ):
+		''' 
+		Gains to reproduce rigid-body motion such that grid displacements and
+		velocities are given by:
+			dzeta     = Ktra*u_tra         + Krot*u_rot
+			dzeta_dot = Ktra_vel*u_tra_dot + Krot*u_rot_dot
+
+		Rotations are assumed to happen independently with respect to the 
+		zeta_rotation point and about the x,y and z axes of the inertial frame.
+		'''
+
+		warnings.warn('Rigid rotation matrix not implemented!')
+
+		Ntot=0
+		for ss in range(self.MS.n_surf):
+			Ntot+=self.MS.NN[ss]+1
+		self.Ktra    =np.zeros( (3*self.Kzeta,3) )
+		self.Ktra_dot=np.zeros( (3*self.Kzeta,3) )
+		self.Krot    =np.zeros( (3*self.Kzeta,3) )
+		self.Krot_dot=np.zeros( (3*self.Kzeta,3) )
+
+
+		for ss in range(self.MS.n_surf):
+			M,N=self.MS.MM[ss],self.MS.NN[ss]
+			zeta=self.MS.Surfs[ss].zeta
+
+			for nn in range(N+1):	
+				for mm in range(M+1):
+					# vertex indices
+					iivec=[ np.ravel_multi_index( (ss,cc,mm,nn),
+								(self.MS.n_surf,3,M+1,N+1) ) for cc in range(3)]
+
+					self.Ktra    [iivec,[0,1,2]]+=1.
+					self.Ktra_dot[iivec,[0,1,2]]+=1.
+
+					# # sectional moment
+					# dx,dy,dz=zeta[:,mm,nn]-zeta_rotation
+					# Dskew=np.array([[0,-dz, dy],[dz,0,-dx],[-dy,dx,0]])	
+					# self.Krot[iivec,:]=Dskew
+					# self.Krot_dot[iivec,:]=Dskew
+
 
 # ------------------------------------------------------------------------------
 
@@ -237,7 +344,8 @@ class Static():
 class Dynamic(Static):
 
 
-	def __init__(self,tsdata,dt,integr_order=2,Uref=1.0):
+
+	def __init__(self,tsdata,dt,integr_order=2,Uref=1.0,RemovePredictor=True):
 
 		super().__init__(tsdata)
 
@@ -255,6 +363,10 @@ class Dynamic(Static):
 		self.Nx=Nx
 		self.Nu=Nu
 		self.Ny=Ny
+
+		self.remove_predictor=RemovePredictor
+		self.include_added_mass=True
+
 
 		# ### rename static methods
 		# self.assemble_static=self.assemble
@@ -277,8 +389,18 @@ class Dynamic(Static):
 	def assemble_ss(self):
 		'''
 		Produces state-space model
-			x_{n+1} = A x_n + B u_{n+1}
-			y = C x + D u
+			x_{n+1} = A x_n + Bp u_{n+1}
+			y = C x + Dp u
+		where the staete, inputs and outputs are:
+			x_n = { dgamma_n, dgamma_w_n, dt*dgamma'_n, dgamma_{n-1} }
+			u_n = { dzeta_n, dzeta'_n, duext_n }
+			y = { nodal forces }
+
+		By default (self.remove_predictor), the predictor term u_{n+1} is 
+		eliminated through the change of variables 
+			x_n = h_n + Bp u_n
+		which only modifies the Bp and Dp matrices.
+
 		Warning: all matrices are allocated as full!
 		'''
 
@@ -366,8 +488,8 @@ class Dynamic(Static):
 		# B matrix assembly
 		Bss=np.zeros((Nx,Nu))
 		Bss[:K,:3*Kzeta]=-scalg.lu_solve( (LU,P), Ducdzeta )
-		Bss[:K,3*Kzeta:6*Kzeta]= AinvWnv0
-		Bss[:K,6*Kzeta:9*Kzeta]=-AinvWnv0
+		Bss[:K,3*Kzeta:6*Kzeta]= AinvWnv0 # dzeta_dot
+		Bss[:K,6*Kzeta:9*Kzeta]=-AinvWnv0 # du_ext
 		if self.integr_order==1:
 			Bss[K+K_star:2*K+K_star,:]=Bss[:K,:]
 		if self.integr_order==2:
@@ -399,8 +521,9 @@ class Dynamic(Static):
 		Css=np.zeros((Ny,Nx))
 		Css[:,:K]=Dfqsdgamma
 		Css[:,K:K+K_star]=Dfqsdgamma_star
-		Css[:,K+K_star:2*K+K_star]=Dfunstdgamma_dot/self.dt
-
+		if self.include_added_mass:
+			Css[:,K+K_star:2*K+K_star]=Dfunstdgamma_dot/self.dt
+		# print('dt used: %.3e'%self.dt)
 
 
 		### input terms (D matrix)
@@ -416,23 +539,32 @@ class Dynamic(Static):
 		Dss[:,:3*Kzeta]+=np.block(List_vert)
 		del List_vert, List_coll
 
-		# input velocities
+		# input velocities (external)
 		Dss[:,6*Kzeta:9*Kzeta]=scalg.block_diag(
 									  *ass.dfqsduinput(MS.Surfs,MS.Surfs_star) )
-		Dss[:,3*Kzeta:6*Kzeta]=-Dss[:,6*Kzeta:9*Kzeta]
+
+		# input velocities (body moviment)
+		if self.include_added_mass:
+			Dss[:,3*Kzeta:6*Kzeta]=-Dss[:,6*Kzeta:9*Kzeta] 
 	
 		
+		if self.remove_predictor:
+			Ass,Bmod,Css,Dmod=\
+					   libss.SSconv(Ass,np.zeros_like(Bss),Bss,Css,Dss,Bm1=None)
+			self.SS=scsig.dlti(Ass,Bmod,Css,Dmod,dt=self.dt)					   
+			print(	'state-space model produced in form:\n\t'\
+				  		'h_{n+1} = A h_{n} + B u_{n}\n\t'\
+				  	'with:\n\tx_n = h_n + Bp u_n')
+		else:
+			self.SS=scsig.dlti(Ass,Bss,Css,Dss,dt=self.dt)
+			print(	'state-space model produced in form:\n\t'\
+					'x_{n+1} = A x_{n} + Bp u_{n+1}')
 
-		self.SS=scsig.dlti(Ass,Bss,Css,Dss,dt=self.dt)
-		# self.Ass=Ass 
-		# self.Bss=Bss
-		# self.Css=Css
-		# self.Dss=Dss
+
 
 
 		### Gain matrix for total forces
-		self.get_total_forces_gain()
-
+		# self.get_total_forces_gain()
 
 		self.time_ss=time.time()-t0
 		print('\t\t\t...done in %.2f sec' %self.time_ss)
@@ -451,6 +583,10 @@ class Dynamic(Static):
 		matrix only, similarly to what is done in Static.solve. 
 		'''
 
+		if self.remove_predictor is True and method!='direct':
+			raise NameError('Only direct solution is available if predictor'\
+				'term has been removed from the state-space equations (see assembly_ss)')
+
 		Ass,Bss,Css,Dss=self.SS.A,self.SS.B,self.SS.C,self.SS.D
 
 		if method=='minsize':
@@ -462,7 +598,6 @@ class Dynamic(Static):
 			#	Gamma 	= [P+PwC, PwCw] * {Gamma,Gamma_w} + B u 	(eq. 2)
 			# and enforcing Gamma_w = Gamma_TE, this reduces to the KxK system:
 			# 	AIC Gamma = B u 									(eq. 3)
-
 			MS=self.MS
 			K=self.K
 			K_star=self.K_star
@@ -526,14 +661,14 @@ class Dynamic(Static):
 			ysta=np.dot(Css,xsta)+np.dot(Dss,usta)
 
 
-		if method=='direct':
+		elif method=='direct':
 			''' Solves (I - A) x = B u with direct method'''
 			Ass_steady=np.eye(*Ass.shape)-Ass
 			xsta=np.linalg.solve( Ass_steady, np.dot(Bss,usta) )
 			ysta=np.dot(Css,xsta)+np.dot(Dss,usta)	
 
 
-		if method=='recursive':
+		elif method=='recursive':
 			''' Proovides steady-state solution solving for impulsive response '''
 			tol,er=1e-4,1.0
 			Ftot0=np.zeros((3,))
@@ -554,7 +689,7 @@ class Dynamic(Static):
 				print('Solution not found! Max. iterations reached with error: %.3e'%er)
 
 
-		if method=='subsystem':
+		elif method=='subsystem':
 			''' Solves sub-system related to Gamma, Gamma_w states only '''
 
 			Nxsub=self.K+self.K_star
@@ -566,7 +701,23 @@ class Dynamic(Static):
 				xsta=np.concatenate( (xsub,np.zeros((2*self.K,))) ) 
 			ysta=np.dot(Css,xsta)+np.dot(Dss,usta)	
 
+		else:
+			raise NameError('Method %s not recognised!' %method)
+
 		return xsta,ysta
+
+
+	def unpack_state(self,xvec):
+
+		K,K_star=self.K,self.K_star
+		gamma_vec=xvec[:K]
+		gamma_star_vec=xvec[K:K+K_star]
+		gamma_dot_vec=xvec[K+K_star:2*K+K_star]
+
+		return gamma_vec,gamma_star_vec,gamma_dot_vec
+
+
+
 
 
 
@@ -603,12 +754,14 @@ if __name__=='__main__':
 	assert np.max(np.abs(Ftot02-Sta.Ftot))<=1e-10, 'Total force gain matrix wrong!'
 
 
+
+
+
+	### ---------------------------------- Verify dynamic solver - steady state
+
 	# Dynamic solver
-	Dyn=Dynamic(tsdata,dt=0.05,integr_order=2,Uref=1.0)
+	Dyn=Dynamic(tsdata,dt=0.05,integr_order=2,Uref=1.0,RemovePredictor=False)
 	Dyn.assemble_ss()
-
-
-	### Verify dynamic solver
 
 	# steady state solution
 	usta=np.concatenate( (Sta.zeta,Sta.zeta_dot,Sta.u_ext) )
@@ -661,6 +814,50 @@ if __name__=='__main__':
 
 
 
+	### ---------------------------------------------------------- Verify gains
+	Dyn.get_total_forces_gain()
+	Dyn.get_sect_forces_gain()
+
+	# sectional forces - algorithm for surfaces with equal M
+	n_surf=Dyn.MS.n_surf
+	M,N=Dyn.MS.MM[0],Dyn.MS.NN[0]
+	fnodes=ysub.reshape((n_surf,3,M+1,N+1))
+	Fsect_ref=np.zeros((n_surf,6,N+1))
+	for ss in range(n_surf):
+		for nn in range(N+1):
+			for mm in range(M+1):
+				Fsect_ref[ss,:3,nn]+=fnodes[ss,:,mm,nn]
+				arm=Dyn.MS.Surfs[ss].zeta[:,mm,nn]-Dyn.MS.Surfs[ss].zeta[:,M//2,nn]
+				Fsect_ref[ss,3:,nn]+=np.cross(arm,fnodes[ss,:,mm,nn])
+
+	Fsect=np.dot(Dyn.Kfsec,ysub).reshape((n_surf,6,N+1))
+	assert np.max(np.abs(Fsect-Fsect_ref))<1e-12,\
+									 'Error in gains for cross-sectional forces'
+
+	# total forces
+	Ftot_ref=np.zeros((3,))
+	for cc in range(3):
+		Ftot_ref[cc]=np.sum(Fsect_ref[:,cc,:])
+	Ftot=np.dot(Dyn.Kftot,ysub)
+	assert np.max(np.abs(Ftot-Ftot_ref))<1e-12,'Error in gains for total forces'
+
+
+
+
+	### ------------------------------- Verify assembly without prediction term
+
+	# Dynamic solver
+	Dyn=Dynamic(tsdata,dt=0.05,integr_order=2,Uref=1.0,RemovePredictor=True)
+	Dyn.assemble_ss()
+
+	# steady state solution
+	usta=np.concatenate( (Sta.zeta,Sta.zeta_dot,Sta.u_ext) )
+	xdir,ydir=Dyn.solve_steady(usta,method='direct')
+
+	# compare against Static solver solution
+	er=np.max(np.abs(ydir-Sta.fqs)/np.linalg.norm(Sta.Ftot)  )
+	print('Error force distribution: %.3e' %er)
+	assert er<1e-12,'Steady-state force not matching!'
 
 
 
