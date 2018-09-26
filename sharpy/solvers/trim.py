@@ -35,7 +35,7 @@ class Trim(BaseSolver):
         self.settings_default['tolerance'] = 1e-4
 
         self.settings_types['initial_alpha'] = 'float'
-        self.settings_default['initial_alpha'] = 4*np.pi/180.
+        self.settings_default['initial_alpha'] = 0*np.pi/180.
 
         self.settings_types['initial_beta'] = 'float'
         self.settings_default['initial_beta'] = 0*np.pi/180.
