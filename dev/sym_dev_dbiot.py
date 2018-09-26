@@ -50,18 +50,3 @@ for ii in range(3):
 		print(h)
 		h=sm.simplify(DvRBskew[ii,jj]-DvRBskew[jj,ii])
 		print(h)
-
-
-
-
-
-
-
-
-
-# vectors
-#Asym=smarr.MutableDenseNDimArray([[a00,a01,a02],[a01,a11,a12],[a02,a12,a22] ])
-
-
-
-
