@@ -1070,7 +1070,7 @@ def dfunstdgamma_dot(Surfs):
 			# get (m,n) indices of panel
 			mm,nn=np.unravel_index( pp, (M,N) )
 
-			dfcoll=Surf.rho*Surf.areas[mm,nn]*Surf.normals[:,mm,nn]
+			dfcoll=-Surf.rho*Surf.areas[mm,nn]*Surf.normals[:,mm,nn]
 
 			for vv,dm,dn in zip(svec,dmver,dnver):
 
