@@ -1,6 +1,12 @@
+# unused scripts - to be removed
+profiling
+cpp/pywrap.py
+cpp/test_dvinddzeta_wrap.py
+src/dev_dbiot.py
+
+
 __pycache__
 */__pycache__
-
 
 *_fast.py
 *_slow.py
@@ -10,7 +16,11 @@ src/superceeded
 docs
 *.ods
 *.ods#
-profiling/*txt
+profiling/*.txt
+test/*.txt
+test/*/*.txt
+*.prof
+*.log
 
 cpp/obj/*o
 cpp/obj/*d

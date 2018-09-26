@@ -18,15 +18,21 @@ from IPython import embed
 
 
 
-def couple(SS01,SS02,K12,K21):
+def couple(ss01,ss02,K12,K21):
 	'''
-	Couples 2 dlti systems SS01 and SS02 through the gains K12 and K21, where
-	K12 transforms the output of SS02 into an input of SS01.
+	Couples 2 dlti systems ss01 and ss02 through the gains K12 and K21, where
+	K12 transforms the output of ss02 into an input of ss01.
 	'''
 
-	assert SS01.dt==SS02.dt, 'Time steps not matching!'
-	A1,B1,C1,D1=SS01.A,SS01.B,SS01.C,SS01.D
-	A2,B2,C2,D2=SS02.A,SS02.B,SS02.C,SS02.D
+	assert ss01.dt==ss02.dt, 'Time-steps not matching!'
+	assert K12.shape == (ss01.inputs,ss02.outputs),\
+			 'Gain K12 shape not matching with systems number of inputs/outputs'
+	assert K21.shape == (ss02.inputs,ss01.outputs),\
+			 'Gain K21 shape not matching with systems number of inputs/outputs'
+
+
+	A1,B1,C1,D1=ss01.A,ss01.B,ss01.C,ss01.D
+	A2,B2,C2,D2=ss02.A,ss02.B,ss02.C,ss02.D
 
 	# extract size
 	Nx1,Nu1=B1.shape
@@ -37,14 +43,169 @@ def couple(SS01,SS02,K12,K21):
 	#  terms to invert
 	maxD1=np.max(np.abs(D1))
 	maxD2=np.max(np.abs(D2))
+	if maxD1<1e-32:
+		pass 
+	if maxD2<1e-32:
+		pass 
+
+	# compute self-influence gains
+	K11=np.dot(K12,np.dot(D2,K21))
+	K22=np.dot(K21,np.dot(D1,K12))
+
+	# left hand side terms
+	L1=np.eye(Nu1)-np.dot(K11,D1)
+	L2=np.eye(Nu2)-np.dot(K22,D2)
+
+	# invert left hand side terms
+	L1inv=np.linalg.inv(L1)
+	L2inv=np.linalg.inv(L2)
+
+	# coupling terms
+	cpl_12=np.dot(L1inv,K12)
+	cpl_21=np.dot(L2inv,K21)	
+
+	cpl_11=np.dot(cpl_12, np.dot(D2,K21) )
+	cpl_22=np.dot(cpl_21, np.dot(D1,K12) )
+
+
+	# Build coupled system
+	A=np.block([
+		[ A1+np.dot(np.dot(B1,cpl_11),C1),    np.dot(np.dot(B1,cpl_12),C2) ], 
+		[    np.dot(np.dot(B2,cpl_21),C1), A2+np.dot(np.dot(B2,cpl_22),C2) ]])
+
+	C=np.block([
+		[ C1+np.dot(np.dot(D1,cpl_11),C1),    np.dot(np.dot(D1,cpl_12),C2) ], 
+		[    np.dot(np.dot(D2,cpl_21),C1), C2+np.dot(np.dot(D2,cpl_22),C2) ]])
+
+	B=np.block([
+		[B1+np.dot(np.dot(B1,cpl_11),D1),    np.dot(np.dot(B1,cpl_12),D2) ],
+		[   np.dot(np.dot(B2,cpl_21),D1), B2+np.dot(np.dot(B2,cpl_22),D2) ]])
+
+	D=np.block([
+		[D1+np.dot(np.dot(D1,cpl_11),D1),    np.dot(np.dot(D1,cpl_12),D2) ],
+		[   np.dot(np.dot(D2,cpl_21),D1), D2+np.dot(np.dot(D2,cpl_22),D2) ]])
+
+
+	if ss01.dt is None:
+		sstot=scsig.lti(A,B,C,D)
+	else:
+		sstot=scsig.dlti(A,B,C,D,dt=ss01.dt)
+	return sstot
+
+
+
+
+def couple_wrong02(ss01,ss02,K12,K21):
+	'''
+	Couples 2 dlti systems ss01 and ss02 through the gains K12 and K21, where
+	K12 transforms the output of ss02 into an input of ss01.
+	'''
+
+	assert ss01.dt==ss02.dt, 'Time-steps not matching!'
+	assert K12.shape == (ss01.inputs,ss02.outputs),\
+			 'Gain K12 shape not matching with systems number of inputs/outputs'
+	assert K21.shape == (ss02.inputs,ss01.outputs),\
+			 'Gain K21 shape not matching with systems number of inputs/outputs'
+
+
+	A1,B1,C1,D1=ss01.A,ss01.B,ss01.C,ss01.D
+	A2,B2,C2,D2=ss02.A,ss02.B,ss02.C,ss02.D
+
+	# extract size
+	Nx1,Nu1=B1.shape
+	Ny1=C1.shape[0]
+	Nx2,Nu2=B2.shape
+	Ny2=C2.shape[0]
+
+	#  terms to invert
+	maxD1=np.max(np.abs(D1))
+	maxD2=np.max(np.abs(D2))
+	if maxD1<1e-32:
+		pass 
+	if maxD2<1e-32:
+		pass 
+
+
+	# terms solving for u21 (input of ss02 due to ss01)
+	K11=np.dot(K12,np.dot(D2,K21))
+	#L1=np.eye(Nu1)-np.dot(K11,D1)
+	L1inv=np.linalg.inv( np.eye(Nu1)-np.dot(K11,D1) )
+
+	# coupling terms for u21
+	cpl_11=np.dot(L1inv,K11)
+	cpl_12=np.dot(L1inv,K12)
+
+	# terms solving for u12 (input of ss01 due to ss02)
+	T=np.dot( np.dot( K21,D1 ),L1inv )
+
+	# coupling terms for u21
+	cpl_21=K21+np.dot(T,K11)
+	cpl_22=np.dot(T,K12)
+
+
+	# Build coupled system
+	A=np.block([
+		[ A1+np.dot(np.dot(B1,cpl_11),C1),    np.dot(np.dot(B1,cpl_12),C2) ], 
+		[    np.dot(np.dot(B2,cpl_21),C1), A2+np.dot(np.dot(B2,cpl_22),C2) ]])
+
+	C=np.block([
+		[ C1+np.dot(np.dot(D1,cpl_11),C1),    np.dot(np.dot(D1,cpl_12),C2) ], 
+		[    np.dot(np.dot(D2,cpl_21),C1), C2+np.dot(np.dot(D2,cpl_22),C2) ]])
+
+	B=np.block([
+		[B1+np.dot(np.dot(B1,cpl_11),D1),    np.dot(np.dot(B1,cpl_12),D2) ],
+		[   np.dot(np.dot(B2,cpl_21),D1), B2+np.dot(np.dot(B2,cpl_22),D2) ]])
+
+	D=np.block([
+		[D1+np.dot(np.dot(D1,cpl_11),D1),    np.dot(np.dot(D1,cpl_12),D2) ],
+		[   np.dot(np.dot(D2,cpl_21),D1), D2+np.dot(np.dot(D2,cpl_22),D2) ]])
+
+
+	if ss01.dt is None:
+		sstot=scsig.lti(A,B,C,D)
+	else:
+		sstot=scsig.dlti(A,B,C,D,dt=ss01.dt)
+	return sstot
+
+
+
+def couple_wrong(ss01,ss02,K12,K21):
+	'''
+	Couples 2 dlti systems ss01 and ss02 through the gains K12 and K21, where
+	K12 transforms the output of ss02 into an input of ss01.
+	'''
+
+	assert ss01.dt==ss02.dt, 'Time-steps not matching!'
+	assert K12.shape == (ss01.inputs,ss02.outputs),\
+			 'Gain K12 shape not matching with systems number of inputs/outputs'
+	assert K21.shape == (ss02.inputs,ss01.outputs),\
+			 'Gain K21 shape not matching with systems number of inputs/outputs'
+
+
+	A1,B1,C1,D1=ss01.A,ss01.B,ss01.C,ss01.D
+	A2,B2,C2,D2=ss02.A,ss02.B,ss02.C,ss02.D
+
+	# extract size
+	Nx1,Nu1=B1.shape
+	Ny1=C1.shape[0]
+	Nx2,Nu2=B2.shape
+	Ny2=C2.shape[0]
+
+	#  terms to invert
+	maxD1=np.max(np.abs(D1))
+	maxD2=np.max(np.abs(D2))
+	if maxD1<1e-32:
+		pass 
+	if maxD2<1e-32:
+		pass 
 
 	# compute self-coupling terms
 	S1=np.dot(K12,np.dot(D2,K21))
 	S2=np.dot(K21,np.dot(D1,K12))
 
 	# left hand side terms
-	L1=np.eye(Nu1)-np.dot(S11,D1)
-	L2=np.eye(Nu2)-np.dot(S22,D2)
+	L1=np.eye(Nu1)-np.dot(S1,D1)
+	L2=np.eye(Nu2)-np.dot(S2,D2)
 
 	# invert left hand side terms
 	L1inv=np.linalg.inv(L1)
@@ -61,6 +222,7 @@ def couple(SS01,SS02,K12,K21):
 	A=np.block([
 		[ A1+np.dot(np.dot(B1,L1invS1), C1),    np.dot(np.dot(B1,L1invK12),C2) ], 
 		[    np.dot(np.dot(B2,L2invK21),C1), A2+np.dot(np.dot(B2,L2invS2), C2) ]])
+
 	C=np.block([
 		[ C1+np.dot(np.dot(D1,L1invS1), C1),    np.dot(np.dot(D1,L1invK12),C2) ], 
 		[    np.dot(np.dot(D2,L2invK21),C1), C2+np.dot(np.dot(D2,L2invS2), C2) ]])
@@ -68,15 +230,17 @@ def couple(SS01,SS02,K12,K21):
 	B=np.block([
 		[B1+np.dot(np.dot(B1,L1invS1), D1),    np.dot(np.dot(B1,L1invK12),D2) ],
 		[   np.dot(np.dot(B2,L2invK21),D1), B2+np.dot(np.dot(B2,L2invS2), D2) ]])
+
 	D=np.block([
 		[D1+np.dot(np.dot(D1,L1invS1), D1),    np.dot(np.dot(D1,L1invK12),D2) ],
 		[   np.dot(np.dot(D2,L2invK21),D1), D2+np.dot(np.dot(D2,L2invS2), D2) ]])
 
 
-
-
-
-
+	if ss01.dt is None:
+		sstot=scsig.lti(A,B,C,D)
+	else:
+		sstot=scsig.dlti(A,B,C,D,dt=ss01.dt)
+	return sstot
 
 
 
@@ -106,6 +270,7 @@ def freqresp(SS,wv,eng=None,method='standard',dlti=True):
 		Nw=len(wv)
 		Yfreq=np.empty((Ny,Nu,Nw,),dtype=np.complex_)
 		Eye=np.eye(Nx)
+
 		for ii in range(Nw):
 			Yfreq[:,:,ii]=np.dot(SS.C,
 				              		 np.linalg.solve(zv[ii]*Eye-SS.A,SS.B))+SS.D
