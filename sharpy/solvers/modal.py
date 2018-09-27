@@ -479,7 +479,8 @@ def write_modes_vtk(data, eigenvectors, NumLambda, filename_root,
 
         for i_surf in range(tsaero.n_surf):
 
-            filename=filename_root+"_%06u_%02u.vtu" %(mode,i_surf)
+            # filename=filename_root+"_%06u_%02u.vtu" %(mode,i_surf)
+            filename = filename_root + "_%02u_%06u.vtu" % (i_surf, mode)
 
             dims = tsaero.dimensions[i_surf, :]
             point_data_dim = (dims[0]+1)*(dims[1]+1)  # + (dims_star[0]+1)*(dims_star[1]+1)
