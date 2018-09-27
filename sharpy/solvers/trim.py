@@ -58,6 +58,9 @@ class Trim(BaseSolver):
         self.settings_types['thrust_direction'] = 'list(float)'
         self.settings_default['thrust_direction'] = np.array([.0, 1.0, 0.0])
 
+        self.settings_types['special_case'] = 'dict'
+        self.settings_default['special_case'] = dict()
+
         self.data = None
         self.settings = None
         self.solver = None
@@ -65,8 +68,7 @@ class Trim(BaseSolver):
         self.x_info = dict()
         self.initial_state = None
 
-        self.eq_constraints = {'type': 'eq'}
-        self.ineq_constraints = {'type': 'ineq'}
+        self.with_special_case = False
 
     def initialise(self, data):
         self.data = data
@@ -108,6 +110,24 @@ class Trim(BaseSolver):
             counter += 1
         self.x_info['n_variables'] = counter
 
+        # special cases
+        self.with_special_case = self.settings['special_case']
+        if self.with_special_case:
+            if self.settings['special_case']['case_name'] == 'differential_thrust':
+                self.x_info['special_case'] = 'differential_thrust'
+                self.x_info['i_base_thrust'] = counter
+                counter += 1
+                self.x_info['i_differential_parameter'] = counter
+                counter += 1
+                self.x_info['initial_base_thrust'] = self.settings['special_case']['initial_base_thrust']
+                self.x_info['initial_differential_parameter'] = self.settings['special_case']['initial_differential_parameter']
+                self.x_info['base_thrust_nodes'] = [int(e) for e in self.settings['special_case']['base_thrust_nodes']]
+                self.x_info['negative_thrust_nodes'] = [int(e) for e in self.settings['special_case']['negative_thrust_nodes']]
+                self.x_info['positive_thrust_nodes'] = [int(e) for e in self.settings['special_case']['positive_thrust_nodes']]
+
+            self.x_info['n_variables'] = counter
+
+
         # initial state vector
         self.initial_state = np.zeros(self.x_info['n_variables'])
         self.initial_state[self.x_info['i_alpha']] = self.settings['initial_alpha'].value
@@ -117,8 +137,14 @@ class Trim(BaseSolver):
             self.initial_state[self.x_info['i_control_surfaces'][i_cs]] = self.settings['initial_cs_deflection'][i_cs]
         for i_thrust in range(n_thrust_nodes):
             self.initial_state[self.x_info['i_thrust'][i_thrust]] = self.settings['initial_thrust'][i_thrust]
+        if self.with_special_case:
+            if self.settings['special_case']['case_name'] == 'differential_thrust':
+                self.initial_state[self.x_info['i_base_thrust']] = self.x_info['initial_base_thrust']
+                self.initial_state[self.x_info['i_differential_parameter']] = self.x_info['initial_differential_parameter']
+
 
         # bounds
+        # NOTE probably not necessary anymore, as Nelder-Mead method doesn't use them
         self.bounds = self.x_info['n_variables']*[None]
         for k, v in self.x_info.items():
             if k == 'i_alpha':
@@ -174,19 +200,7 @@ class Trim(BaseSolver):
         pass
 
     def optimise(self, func, tolerance, print_info, method):
-        solution = None
-
-        cons_args = (self.x_info, self, -1)
-        # add constraints
-        self.eq_constraints['fun'] = func
-        self.eq_constraints['args'] = cons_args
-
         args = (self.x_info, self, -2)
-
-        # def obj_function(x, x_info):
-        #     print(np.sum(x[x_info['i_thrust']]**2))
-        #     return np.sum(x[x_info['i_thrust']]**2) + x[x_info['i_none']]**2
-        a = 1
         solution = scipy.optimize.minimize(solver_wrapper,
                                            self.initial_state,
                                            args=args,
@@ -200,34 +214,16 @@ class Trim(BaseSolver):
                                                     'maxfev': 5000,
                                                     'fatol': 1e-4},
                                            bounds=self.bounds)
-                                           # callback=callback)
-        # solution = scipy.optimize.differential_evolution(func=solver_wrapper,
-        #                                                  bounds=self.bounds,
-        #                                                  args=args,
-        #                                                  popsize=10,
-        #                                                  mutation=(0.5, 1.3),
-        #                                                  disp=True,
-        #                                                  tol=1e-3,
-        #                                                  maxiter=100,
-        #                                                  init='random'
-        #                                                  # recombination=0.1
-        #                                                  )
-        # solution = scipy.optimize.root(fun=solver_wrapper,
-        #                                x0=self.initial_state,
-        #                                args=args,
-        #                                method='hybr',
-        #                                options={
-        #                                    'eps': 0.05,
-        #                                    'diag': [1, 1, 1, 1, 0.1, 1]
-        #                                })
 
         print('Solution = ', solution.x)
         print(solution)
         return solution
 
+
 def pretty_print_x(x, x_info):
     # todo
     pass
+
 
 def solver_wrapper(x, x_info, solver_data, i_dim=-1):
     if solver_data.settings['print_info']:
@@ -238,7 +234,6 @@ def solver_wrapper(x, x_info, solver_data, i_dim=-1):
     roll = x[x_info['i_roll']]
     # change input data
     solver_data.data.structure.timestep_info[solver_data.data.ts] = solver_data.data.structure.ini_info.copy()
-    # solver_data.data.aero.timestep_info[solver_data.data.ts] = solver_data.data.aero.ini_info.copy()
     tstep = solver_data.data.structure.timestep_info[solver_data.data.ts]
     aero_tstep = solver_data.data.aero.timestep_info[solver_data.data.ts]
     orientation_quat = algebra.euler2quat(np.array([roll, alpha, beta]))
@@ -248,10 +243,25 @@ def solver_wrapper(x, x_info, solver_data, i_dim=-1):
         solver_data.data.aero.aero_dict['control_surface_deflection'][x_info['control_surfaces_id'][i_cs]] = x[x_info['i_control_surfaces'][i_cs]]
     # thrust input
     tstep.steady_applied_forces[:] = 0.0
-    for i_thrust in range(len(x_info['i_thrust'])):
-        thrust = x[x_info['i_thrust'][i_thrust]]
-        i_node = x_info['thrust_nodes'][i_thrust]
-        solver_data.data.structure.ini_info.steady_applied_forces[i_node, 0:3] = thrust*x_info['thrust_direction'][i_thrust]
+    try:
+        x_info['special_case']
+    except KeyError:
+        for i_thrust in range(len(x_info['i_thrust'])):
+            thrust = x[x_info['i_thrust'][i_thrust]]
+            i_node = x_info['thrust_nodes'][i_thrust]
+            solver_data.data.structure.ini_info.steady_applied_forces[i_node, 0:3] = thrust*x_info['thrust_direction'][i_thrust]
+    else:
+        if x_info['special_case'] == 'differential_thrust':
+            base_thrust = x[x_info['i_base_thrust']]
+            pos_thrust = base_thrust*(1.0 + x[x_info['i_differential_parameter']])
+            neg_thrust = -base_thrust*(1.0 - x[x_info['i_differential_parameter']])
+            for i_base_node in x_info['base_thrust_nodes']:
+                solver_data.data.structure.ini_info.steady_applied_forces[i_base_node, 1] = base_thrust
+            for i_pos_diff_node in x_info['positive_thrust_nodes']:
+                solver_data.data.structure.ini_info.steady_applied_forces[i_pos_diff_node, 1] = pos_thrust
+            for i_neg_diff_node in x_info['negative_thrust_nodes']:
+                solver_data.data.structure.ini_info.steady_applied_forces[i_neg_diff_node, 1] = neg_thrust
+
     # run the solver
     solver_data.solver.run()
     # extract resultants
