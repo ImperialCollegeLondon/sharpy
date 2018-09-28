@@ -72,6 +72,8 @@ class WriteVariablesTime(BaseSolver):
     def run(self, online=False):
 
     # settings['WriteVariablesTime'] = {'delimiter': ' ',
+    #                                   'FoR_varibles': ['GFoR_pos', 'GFoR_vel', 'GFoR_acc'],
+    #                                   'FoR_number': [0,1],
     #                                   'structure_variables': ['AFoR_steady_forces', 'AFoR_unsteady_forces','AFoR_position'],
     #                                   'structure_nodes': [0,-1],
     #                                   'aero_panels_variables': ['gamma', 'norm_gamma', 'norm_gamma_star'],
@@ -82,6 +84,29 @@ class WriteVariablesTime(BaseSolver):
     #                                   'aero_nodes_isurf': [0,1,2],
     #                                   'aero_nodes_im': [1,1,1],
     #                                   'aero_nodes_in': [-2,-2,-2]}
+
+        # FoR variables
+        if not 'FoR_number' in self.settings:
+            self.settings['FoR_number'] = np.array([0], dtype=int)
+
+        for ivariable in range(len(self.settings['FoR_variables'])):
+            if (self.settings['FoR_variables'][ivariable] == 'GFoR_pos'):
+                filename = self.dir + "FoR_" + self.settings['structure_variables'][ivariable] + ".dat"
+                fid = open(filename,"a")
+                self.write_nparray_to_file(fid, self.data.ts, self.data.structure.timestep_info[-1].for_pos, self.settings['delimiter'])
+                fid.close()
+            elif (self.settings['FoR_variables'][ivariable] == 'GFoR_vel'):
+                filename = self.dir + "FoR_" + self.settings['structure_variables'][ivariable] + ".dat"
+                fid = open(filename,"a")
+                self.write_nparray_to_file(fid, self.data.ts, self.data.structure.timestep_info[-1].for_vel, self.settings['delimiter'])
+                fid.close()
+            elif (self.settings['FoR_variables'][ivariable] == 'GFoR_acc'):
+                filename = self.dir + "FoR_" + self.settings['structure_variables'][ivariable] + ".dat"
+                fid = open(filename,"a")
+                self.write_nparray_to_file(fid, self.data.ts, self.data.structure.timestep_info[-1].for_acc, self.settings['delimiter'])
+                fid.close()
+            else:
+                print("Unrecognized " + self.settings['FoR_variables'][ivariable] + " variable")
 
         # Structure variables at nodes
         for ivariable in range(len(self.settings['structure_variables'])):
@@ -96,6 +121,8 @@ class WriteVariablesTime(BaseSolver):
                     self.write_nparray_to_file(fid, self.data.ts, self.data.structure.timestep_info[-1].unsteady_applied_forces[node,:], self.settings['delimiter'])
                 elif (self.settings['structure_variables'][ivariable] == 'AFoR_position'):
                     self.write_nparray_to_file(fid, self.data.ts, self.data.structure.timestep_info[-1].pos[node,:], self.settings['delimiter'])
+                elif (self.settings['structure_variables'][ivariable] == 'AFoR_velocity'):
+                    self.write_nparray_to_file(fid, self.data.ts, self.data.structure.timestep_info[-1].pos_dot[node,:], self.settings['delimiter'])
                 else:
                     print("Unrecognized " + self.settings['structure_variables'][ivariable] + " variable")
 
