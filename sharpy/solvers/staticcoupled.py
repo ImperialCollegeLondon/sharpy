@@ -134,13 +134,15 @@ class StaticCoupled(BaseSolver):
                 # run beam
                 self.data = self.structural_solver.run()
                 self.structural_solver.settings['gravity'] = ct.c_double(old_g)
-                totals = self.structural_solver.extract_resultants()
 
                 # update grid
                 self.aero_solver.update_step()
 
                 # convergence
                 if self.convergence(i_iter, i_step):
+                    # create q and dqdt vectors
+                    self.structural_solver.update(self.data.structure.timestep_info[self.data.ts])
+                    self.cleanup_timestep_info()
                     break
 
         if self.settings['print_info']:
