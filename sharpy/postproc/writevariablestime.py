@@ -86,27 +86,26 @@ class WriteVariablesTime(BaseSolver):
     #                                   'aero_nodes_in': [-2,-2,-2]}
 
         # FoR variables
-        if not 'FoR_number' in self.settings:
+        if 'FoR_number' in self.settings:
+            pass
+        else:
             self.settings['FoR_number'] = np.array([0], dtype=int)
 
         for ivariable in range(len(self.settings['FoR_variables'])):
-            if (self.settings['FoR_variables'][ivariable] == 'GFoR_pos'):
-                filename = self.dir + "FoR_" + self.settings['structure_variables'][ivariable] + ".dat"
+            for ifor in range(len(self.settings['FoR_number'])):
+                filename = self.dir + "FoR_" + self.settings['FoR_number'][ifor] + "_" + self.settings['FoR_variables'][ivariable] + ".dat"
                 fid = open(filename,"a")
-                self.write_nparray_to_file(fid, self.data.ts, self.data.structure.timestep_info[-1].for_pos, self.settings['delimiter'])
+
+                if (self.settings['FoR_variables'][ivariable] == 'GFoR_pos'):
+                    self.write_nparray_to_file(fid, self.data.ts, self.data.structure.timestep_info[-1].for_pos, self.settings['delimiter'])
+                elif (self.settings['FoR_variables'][ivariable] == 'GFoR_vel'):
+                    self.write_nparray_to_file(fid, self.data.ts, self.data.structure.timestep_info[-1].for_vel, self.settings['delimiter'])
+                elif (self.settings['FoR_variables'][ivariable] == 'GFoR_acc'):
+                    self.write_nparray_to_file(fid, self.data.ts, self.data.structure.timestep_info[-1].for_acc, self.settings['delimiter'])
+                else:
+                    print("Unrecognized " + self.settings['FoR_variables'][ivariable] + " variable")
+
                 fid.close()
-            elif (self.settings['FoR_variables'][ivariable] == 'GFoR_vel'):
-                filename = self.dir + "FoR_" + self.settings['structure_variables'][ivariable] + ".dat"
-                fid = open(filename,"a")
-                self.write_nparray_to_file(fid, self.data.ts, self.data.structure.timestep_info[-1].for_vel, self.settings['delimiter'])
-                fid.close()
-            elif (self.settings['FoR_variables'][ivariable] == 'GFoR_acc'):
-                filename = self.dir + "FoR_" + self.settings['structure_variables'][ivariable] + ".dat"
-                fid = open(filename,"a")
-                self.write_nparray_to_file(fid, self.data.ts, self.data.structure.timestep_info[-1].for_acc, self.settings['delimiter'])
-                fid.close()
-            else:
-                print("Unrecognized " + self.settings['FoR_variables'][ivariable] + " variable")
 
         # Structure variables at nodes
         for ivariable in range(len(self.settings['structure_variables'])):
