@@ -108,9 +108,9 @@ class StaticUvlm(BaseSolver):
         self.data.aero.generate_zeta(self.data.structure,
                                      self.data.aero.aero_settings,
                                      self.data.ts)
-        for i_surf in range(self.data.aero.timestep_info[self.data.ts].n_surf):
-            self.data.aero.timestep_info[self.data.ts].forces[i_surf].fill(0.0)
-            self.data.aero.timestep_info[self.data.ts].dynamic_forces[i_surf].fill(0.0)
+        # for i_surf in range(self.data.aero.timestep_info[self.data.ts].n_surf):
+        #     self.data.aero.timestep_info[self.data.ts].forces[i_surf].fill(0.0)
+        #     self.data.aero.timestep_info[self.data.ts].dynamic_forces[i_surf].fill(0.0)
 
 
 

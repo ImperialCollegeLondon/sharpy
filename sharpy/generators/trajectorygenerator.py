@@ -106,6 +106,8 @@ class TrajectoryGenerator(generator_interface.BaseGenerator):
         if in_dict['shape'] == "linear":
             shape_polynomial[0] = 0.0
             shape_polynomial[1] = in_dict['coords_end'][1]/in_dict['coords_end'][0]
+            if np.isnan(shape_polynomial[1]):
+                shape_polynomial[1] = 0.0
             shape_polynomial[2] = 0.0
             curve_length = linear_curve_length(shape_polynomial, in_dict['coords_end'])
 

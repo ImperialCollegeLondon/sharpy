@@ -6,7 +6,7 @@ import scipy.integrate
 import sharpy.utils.algebra as algebra
 import sharpy.utils.ctypes_utils as ct_utils
 from sharpy.utils.sharpydir import SharpyDir
-from sharpy.utils.datastructures import StructTimeStepInfo
+# from sharpy.utils.datastructures import StructTimeStepInfo
 import sharpy.utils.cout_utils as cout
 
 

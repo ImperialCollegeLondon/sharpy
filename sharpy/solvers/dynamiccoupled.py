@@ -143,6 +143,7 @@ class DynamicCoupled(BaseSolver):
             self.postprocessors[postproc].initialise(
                 self.data, self.settings['postprocessors_settings'][postproc])
 
+
     def cleanup_timestep_info(self):
         if max(len(self.data.aero.timestep_info), len(self.data.structure.timestep_info)) > 1:
             # copy last info to first
@@ -212,38 +213,16 @@ class DynamicCoupled(BaseSolver):
                 # run structural solver
                 self.data = self.structural_solver.run(structural_step=structural_kstep)
 
-                # check for non-convergence
-                if not all(np.isfinite(structural_kstep.q)):
-                    cout.cout_wrap('***No converged!', 3)
+                # check convergence
+                if self.convergence(k,
+                                    structural_kstep,
+                                    previous_kstep):
                     break
-
-                self.res = (np.linalg.norm(structural_kstep.q-
-                                           previous_kstep.q)/
-                            np.linalg.norm(previous_kstep.q))
-                self.res_dqdt = (np.linalg.norm(structural_kstep.dqdt-
-                                                previous_kstep.dqdt)/
-                                 np.linalg.norm(previous_kstep.dqdt))
-                self.res_dqddt = (np.linalg.norm(structural_kstep.dqddt-
-                                                 previous_kstep.dqddt)/
-                                  np.linalg.norm(previous_kstep.dqddt))
-
-                # convergence
-                if k > self.settings['minimum_steps'].value - 1:
-                    if self.res < self.settings['fsi_tolerance'].value:
-                        if self.res_dqdt < self.settings['fsi_tolerance'].value:
-                            if self.res_dqddt < self.settings['fsi_tolerance'].value:
-                                break
 
             self.aero_solver.add_step()
             self.data.aero.timestep_info[-1] = aero_kstep.copy()
-            # self.aero_solver.update_custom_grid(structural_kstep,
-                                                # self.data.aero.timestep_info[-1])
-            # # run the solver convecting the wake
-            # self.data = self.aero_solver.run(self.data.aero.timestep_info[-1],
-                                             # structural_kstep,
-                                             # convect_wake=True)
-            self.structural_solver.add_step()
 
+            self.structural_solver.add_step()
             self.data.structure.timestep_info[-1] = structural_kstep.copy()
             self.data.structure.integrate_position(-1, self.settings['dt'].value)
 
@@ -264,6 +243,30 @@ class DynamicCoupled(BaseSolver):
         if self.print_info:
             cout.cout_wrap('...Finished', 1)
         return self.data
+
+    def convergence(self, k, tstep, previous_tstep):
+        # check for non-convergence
+        if not all(np.isfinite(tstep.q)):
+            raise Exception('***Not converged! There is a NaN value in the forces!')
+
+        self.res = (np.linalg.norm(tstep.q-
+                                   previous_tstep.q)/
+                    np.linalg.norm(previous_tstep.q))
+        self.res_dqdt = (np.linalg.norm(tstep.dqdt-
+                                        previous_tstep.dqdt)/
+                         np.linalg.norm(previous_tstep.dqdt))
+        self.res_dqddt = (np.linalg.norm(tstep.dqddt-
+                                         previous_tstep.dqddt)/
+                          np.linalg.norm(previous_tstep.dqddt))
+
+        # convergence
+        if k > self.settings['minimum_steps'].value - 1:
+            if self.res < self.settings['fsi_tolerance'].value:
+                if self.res_dqdt < self.settings['fsi_tolerance'].value:
+                    if self.res_dqddt < self.settings['fsi_tolerance'].value:
+                        return True
+
+        return False
 
     def map_forces(self, aero_kstep, structural_kstep, unsteady_forces_coeff=1.0):
         # set all forces to 0

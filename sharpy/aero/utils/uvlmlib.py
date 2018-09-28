@@ -298,3 +298,27 @@ def uvlm_calculate_unsteady_forces(ts_info,
                               ts_info.ct_p_normals,
                               ts_info.ct_p_dynamic_forces)
     ts_info.remove_ctypes_pointers()
+
+
+def uvlm_calculate_incidence_angle(ts_info,
+                                   struct_ts_info):
+    calculate_incidence_angle = UvlmLib.UVLM_check_incidence_angle
+    calculate_incidence_angle.restype = None
+
+    rbm_vel = struct_ts_info.for_vel.copy()
+    rbm_vel[0:3] = np.dot(struct_ts_info.cga(), rbm_vel[0:3])
+    rbm_vel[3:6] = np.dot(struct_ts_info.cga(), rbm_vel[3:6])
+    p_rbm_vel = rbm_vel.ctypes.data_as(ct.POINTER(ct.c_double))
+
+    n_surf = ct.c_uint(ts_info.n_surf)
+
+    ts_info.generate_ctypes_pointers()
+    calculate_incidence_angle(ct.byref(n_surf),
+                              ts_info.ct_p_dimensions,
+                              ts_info.ct_p_u_ext,
+                              ts_info.ct_p_zeta,
+                              ts_info.ct_p_zeta_dot,
+                              ts_info.ct_p_normals,
+                              p_rbm_vel,
+                              ts_info.postproc_cell['incidence_angle_ct_pointer'])
+    ts_info.remove_ctypes_pointers()

@@ -152,6 +152,12 @@ class Aerogrid(object):
         except KeyError:
             with_control_surfaces = False
 
+        # check that we have sweep information
+        try:
+            self.aero_dict['sweep']
+        except KeyError:
+            self.aero_dict['sweep'] = np.zeros_like(self.aero_dict['twist'])
+
         # one surface per element
         for i_elem in range(self.n_elem):
             i_surf = self.aero_dict['surface_distribution'][i_elem]
@@ -219,6 +225,7 @@ class Aerogrid(object):
                 node_info['chord'] = self.aero_dict['chord'][i_elem, i_local_node]
                 node_info['eaxis'] = self.aero_dict['elastic_axis'][i_elem, i_local_node]
                 node_info['twist'] = self.aero_dict['twist'][i_elem, i_local_node]
+                node_info['sweep'] = self.aero_dict['sweep'][i_elem, i_local_node]
                 node_info['M'] = self.aero_dimensions[i_surf, 0]
                 node_info['M_distribution'] = self.aero_dict['m_distribution'].decode('ascii')
                 node_info['airfoil'] = self.aero_dict['airfoil_distribution'][i_elem, i_local_node]
@@ -402,28 +409,20 @@ def generate_strip(node_info, airfoil_db, aligned_grid, orientation_in=np.array(
     # Cab transformation
     Cab = algebra.crv2rot(node_info['beam_psi'])
 
-    # sweep angle correction
-    # angle between orientation_in and chord line
-    # chord_line_b_frame = strip_coordinates_b_frame[:, -1] - strip_coordinates_b_frame[:, 0]
-    # chord_line_a_frame = np.dot(Cab, chord_line_b_frame)
-    # sweep_angle = algebra.angle_between_vectors_sign(orientation_in, chord_line_a_frame, np.array([0, 0, 1]))
-    # sweep_angle = algebra.angle_between_vectors_sign(orientation_in, Cab[:, 1], np.array([0, 0, 1]))
-    sweep_angle = algebra.angle_between_vectors_sign(orientation_in, Cab[:, 1], Cab[:, 2])
-# TEMP
-#     sweep_angle = np.sign(sweep_angle)*np.pi
-    # rotation matrix
-    Csweep = algebra.rotation3d_z(-sweep_angle)
-    # ams: remove following 2 lines. I use 180 because I place local_y pointing to the LE
-    sweep_angle = np.pi
-    Csweep = algebra.rotation_matrix_around_axis(Cab[:, 2], sweep_angle)
+    rot_angle = algebra.angle_between_vectors_sign(orientation_in, Cab[:, 1], Cab[:, 2])
+    Crot = algebra.rotation3d_z(-rot_angle)
+
+    c_sweep = np.eye(3)
+    if np.abs(node_info['sweep']) > 1e-6:
+        c_sweep = algebra.rotation3d_z(node_info['sweep'])
 
     # transformation from beam to beam prime (with sweep and twist)
     for i_M in range(node_info['M'] + 1):
-        strip_coordinates_b_frame[:, i_M] = np.dot(Csweep,
-                                                   np.dot(Ctwist, strip_coordinates_b_frame[:, i_M]))
+        strip_coordinates_b_frame[:, i_M] = np.dot(c_sweep, np.dot(Crot,
+                                                   np.dot(Ctwist, strip_coordinates_b_frame[:, i_M])))
         strip_coordinates_a_frame[:, i_M] = np.dot(Cab, strip_coordinates_b_frame[:, i_M])
 
-    # now zeta_dot
+    # zeta_dot
     if calculate_zeta_dot:
         zeta_dot_a_frame = np.zeros((3, node_info['M'] + 1), dtype=ct.c_double)
 
