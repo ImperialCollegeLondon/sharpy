@@ -59,7 +59,7 @@ class WriteVariablesTime(BaseSolver):
             self.settings = custom_settings
         settings.to_custom_types(self.settings, self.settings_types, self.settings_default)
 
-        self.dir =  'output/' + self.data.case_name + '/' + 'WriteVariablesTime/'
+        self.dir =   self.data.case_route + 'output/' + self.data.case_name + '/' + 'WriteVariablesTime/'
         if not os.path.isdir(self.dir):
             os.makedirs(self.dir)
 
