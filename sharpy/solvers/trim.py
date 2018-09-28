@@ -61,6 +61,9 @@ class Trim(BaseSolver):
         self.settings_types['special_case'] = 'dict'
         self.settings_default['special_case'] = dict()
 
+        self.settings_types['refine_solution'] = 'bool'
+        self.settings_default['refine_solution'] = False
+
         self.data = None
         self.settings = None
         self.solver = None
@@ -164,6 +167,15 @@ class Trim(BaseSolver):
                 for ii, i in enumerate(v):
                     self.bounds[i] = (self.initial_state[self.x_info['i_control_surfaces'][ii]] - 4*np.pi/180,
                                       self.initial_state[self.x_info['i_control_surfaces'][ii]] + 4*np.pi/180)
+            elif k == 'i_base_thrust':
+                if self.with_special_case:
+                    if self.settings['special_case']['case_name'] == 'differential_thrust':
+                        self.bounds[v] = (float(self.x_info['initial_base_thrust'])*0.5,
+                                          float(self.x_info['initial_base_thrust'])*1.5)
+            elif k == 'i_differential_parameter':
+                if self.with_special_case:
+                    if self.settings['special_case']['case_name'] == 'differential_thrust':
+                        self.bounds[v] = (-0.5, 0.5)
 
     def increase_ts(self):
         self.data.ts += 1
@@ -195,34 +207,50 @@ class Trim(BaseSolver):
                       tolerance=self.settings['tolerance'].value,
                       print_info=True,
                       # method='BFGS')
-                      method='Nelder-Mead')
+                      method='Nelder-Mead',
+                      # method='SLSQP',
+                      refine=self.settings['refine_solution'])
+
         # self.optimise(self.solver_wrapper, )
         pass
 
-    def optimise(self, func, tolerance, print_info, method):
+    def optimise(self, func, tolerance, print_info, method, refine):
         args = (self.x_info, self, -2)
-        solution = scipy.optimize.minimize(solver_wrapper,
+
+        solution = scipy.optimize.minimize(func,
                                            self.initial_state,
                                            args=args,
                                            method=method,
-                                           # method='Nelder-Mead',
-                                           # constraints=self.eq_constraints,
-                                           options={'ftol': 1e-8,
-                                                    'disp': True,
-                                                    'eps': 0.05,
-                                                    'iprint': 2,
-                                                    'maxfev': 5000,
-                                                    'fatol': 1e-4},
-                                           bounds=self.bounds)
+                                           options={'disp': print_info,
+                                                    'maxfev': 1000,
+                                                    'xatol': tolerance,
+                                                    'fatol': 1e-4})
+        if refine:
+            cout.cout_wrap('Refining results with a gradient-based method', 1)
+            solution = scipy.optimize.minimize(func,
+                                               solution.x,
+                                               args=args,
+                                               method='BFGS',
+                                               options={'disp': print_info,
+                                                        'eps': 0.05,
+                                                        'maxfev': 5000,
+                                                        'fatol': 1e-4})
 
-        print('Solution = ', solution.x)
-        print(solution)
+        cout.cout_wrap('Solution = ')
+        cout.cout_wrap(solution.x)
+        # pretty_print_x(x, x_info)
         return solution
 
 
-def pretty_print_x(x, x_info):
-    # todo
-    pass
+# def pretty_print_x(x, x_info):
+#     cout.cout_wrap('X vector:', 1)
+#     for k, v in x_info:
+#         if k.startswith('i_'):
+#             if isinstance(v, list):
+#                 for i, vv in v:
+#                     cout.cout_wrap(k + ' ' + str(i) + ': ', vv)
+#             else:
+#                 cout.cout_wrap(k + ': ', v)
 
 
 def solver_wrapper(x, x_info, solver_data, i_dim=-1):
