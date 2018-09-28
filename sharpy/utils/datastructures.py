@@ -3,6 +3,8 @@ import numpy as np
 import copy
 
 import sharpy.utils.algebra as algebra
+from IPython import embed
+import ipdb
 
 
 class AeroTimeStepInfo(object):
@@ -99,6 +101,9 @@ class AeroTimeStepInfo(object):
         self.body_steady_forces = np.zeros((self.n_surf, 6))
         self.inertial_unsteady_forces = np.zeros((self.n_surf, 6))
         self.body_unsteady_forces = np.zeros((self.n_surf, 6))
+
+        # Multibody variables
+        self.in_global_AFoR = True
 
     def copy(self):
         copied = AeroTimeStepInfo(self.dimensions, self.dimensions_star)
@@ -307,7 +312,7 @@ class AeroTimeStepInfo(object):
 
 
 class StructTimeStepInfo(object):
-    def __init__(self, num_node, num_elem, num_node_elem=3):
+    def __init__(self, num_node, num_elem, num_node_elem=3, num_bodies=1):
         self.num_node = num_node
         self.num_elem = num_elem
         self.num_node_elem = num_node_elem
@@ -341,8 +346,15 @@ class StructTimeStepInfo(object):
         self.postproc_cell = dict()
         self.postproc_node = dict()
 
+        # Multibody
+        self.mb_FoR_pos = np.zeros((num_bodies,6), dtype=ct.c_double, order='F')
+        self.mb_FoR_vel = np.zeros((num_bodies,6), dtype=ct.c_double, order='F')
+        self.mb_FoR_acc = np.zeros((num_bodies,6), dtype=ct.c_double, order='F')
+        self.mb_quat = np.zeros((num_bodies,4), dtype=ct.c_double, order='F')
+        self.mb_quat[:,0] = np.ones((num_bodies), dtype=ct.c_double, order='F')
+
     def copy(self):
-        copied = StructTimeStepInfo(self.num_node, self.num_elem)
+        copied = StructTimeStepInfo(self.num_node, self.num_elem, self.num_node_elem, self.mb_quat.shape[0])
 
         copied.num_node = self.num_node
         copied.num_elem = self.num_elem
@@ -378,6 +390,12 @@ class StructTimeStepInfo(object):
         copied.postproc_cell = dict(self.postproc_cell)
         copied.postproc_node = dict(self.postproc_node)
 
+        #if not self.mb_quat is None:
+        copied.mb_FoR_pos = self.mb_FoR_pos.astype(dtype=ct.c_double, order='F', copy=True)
+        copied.mb_FoR_vel = self.mb_FoR_vel.astype(dtype=ct.c_double, order='F', copy=True)
+        copied.mb_FoR_acc = self.mb_FoR_acc.astype(dtype=ct.c_double, order='F', copy=True)
+        copied.mb_quat = self.mb_quat.astype(dtype=ct.c_double, order='F', copy=True)
+
         return copied
 
     def glob_pos(self, include_rbm=True):
@@ -395,8 +413,118 @@ class StructTimeStepInfo(object):
     def cga(self):
         return self.cag().T
 
+    def get_body(self, beam, ibody):
 
+        # Define the first and last elements belonging to the body
+        # It assumes that all the elements in a body are consecutive in the global fem description
+        is_first_element = True
+        ibody_first_element = 0
+        ibody_last_element = 0
+        ibody_num_elem = 0
 
+        for ielem in range(beam.num_elem):
+            if (beam.body_number[ielem] == ibody):
+                if is_first_element:
+                    is_first_element = False
+                    ibody_first_element = ielem
+                ibody_last_element = ielem
+                ibody_num_elem += 1
 
+        ibody_last_element += 1
 
+        # Define the size and location of the body
+        ibody_num_node = ibody_num_elem*(self.num_node_elem - 1) + 1
+        ibody_first_node = beam.connectivities[ibody_first_element,0]
+        ibody_last_node = beam.connectivities[ibody_last_element-1,1]
+
+        ibody_last_node += 1
+
+        # Assign all the properties to the new StructTimeStepInfo
+        ibody_StructTimeStepInfo = StructTimeStepInfo(ibody_num_node, ibody_num_elem, self.num_node_elem, beam.num_bodies)
+
+        # if not self.mb_quat is None:
+        #     ibody_StructTimeStepInfo.quat = self.mb_quat[ibody,:].copy()
+        #     ibody_StructTimeStepInfo.for_pos = self.mb_for_pos[ibody,:].copy()
+        #     ibody_StructTimeStepInfo.for_vel = self.mb_for_vel[ibody,:].copy()
+        #     ibody_StructTimeStepInfo.for_acc = self.mb_for_acc[ibody,:].copy()
+        #
+        # C = algebra.quat2rot(ibody_StructTimeStepInfo.quat).T
+        # for inode in range(ibody_num_node):
+        #     ibody_StructTimeStepInfo.pos[inode,:] = np.dot(C,self.pos[ibody_first_node+inode,:] - ibody_StructTimeStepInfo.for_pos[0:3])
+        #     ibody_StructTimeStepInfo.pos_dot[inode,:] = np.dot(C,self.pos_dot[ibody_first_node+inode,:] - ibody_StructTimeStepInfo.for_vel[0:3])
+        #
+        # for ielem in range(ibody_num_elem):
+        #     for inode in range(3):
+        #         ibody_StructTimeStepInfo.psi[ielem,inode,:] = np.dot(C,self.psi[ibody_first_element+ielem,inode,:])
+        #         ibody_StructTimeStepInfo.psi_dot[ielem,inode,:] = np.dot(C,self.psi_dot[ibody_first_element+ielem,inode,:])
+
+        ibody_StructTimeStepInfo.quat = self.quat.astype(dtype=ct.c_double, order='F', copy=True)
+        ibody_StructTimeStepInfo.for_pos = self.for_pos.astype(dtype=ct.c_double, order='F', copy=True)
+        ibody_StructTimeStepInfo.for_vel = self.for_vel.astype(dtype=ct.c_double, order='F', copy=True)
+        ibody_StructTimeStepInfo.for_acc = self.for_acc.astype(dtype=ct.c_double, order='F', copy=True)
+
+        ibody_StructTimeStepInfo.pos = self.pos[ibody_first_node:ibody_last_node,:].astype(dtype=ct.c_double, order='F', copy=True)
+        ibody_StructTimeStepInfo.pos_dot = self.pos_dot[ibody_first_node:ibody_last_node,:].astype(dtype=ct.c_double, order='F', copy=True)
+
+        ibody_StructTimeStepInfo.psi = self.psi[ibody_first_element:ibody_last_element,:,:].astype(dtype=ct.c_double, order='F', copy=True)
+        ibody_StructTimeStepInfo.psi_dot = self.psi_dot[ibody_first_element:ibody_last_element,:,:].astype(dtype=ct.c_double, order='F', copy=True)
+
+        ibody_StructTimeStepInfo.gravity_vector_inertial = self.gravity_vector_inertial.astype(dtype=ct.c_double, order='F', copy=True)
+        ibody_StructTimeStepInfo.gravity_vector_body = self.gravity_vector_body.astype(dtype=ct.c_double, order='F', copy=True)
+
+        ibody_StructTimeStepInfo.steady_applied_forces = self.steady_applied_forces[ibody_first_node:ibody_last_node,:].astype(dtype=ct.c_double, order='F', copy=True)
+        ibody_StructTimeStepInfo.unsteady_applied_forces = self.unsteady_applied_forces[ibody_first_node:ibody_last_node,:].astype(dtype=ct.c_double, order='F', copy=True)
+        ibody_StructTimeStepInfo.gravity_forces = self.gravity_forces[ibody_first_node:ibody_last_node,:].astype(dtype=ct.c_double, order='F', copy=True)
+        ibody_StructTimeStepInfo.total_gravity_forces = self.total_gravity_forces.astype(dtype=ct.c_double, order='F', copy=True)
+
+        # TODO: if there is more (or less) than on clamped node, it will NOT work
+        ibody_StructTimeStepInfo.q[0:(ibody_num_node-1)*6] = self.q[ibody_first_node*6:(ibody_last_node-1)*6].astype(dtype=ct.c_double, order='F', copy=True)
+        ibody_StructTimeStepInfo.dqdt[0:(ibody_num_node-1)*6] = self.dqdt[ibody_first_node*6:(ibody_last_node-1)*6].astype(dtype=ct.c_double, order='F', copy=True)
+        ibody_StructTimeStepInfo.dqddt[0:(ibody_num_node-1)*6] = self.dqddt[ibody_first_node*6:(ibody_last_node-1)*6].astype(dtype=ct.c_double, order='F', copy=True)
+
+        ibody_StructTimeStepInfo.q[-10:] = self.q[-10:].astype(dtype=ct.c_double, order='F', copy=True)
+        ibody_StructTimeStepInfo.dqdt[-10:] = self.dqdt[-10:].astype(dtype=ct.c_double, order='F', copy=True)
+        ibody_StructTimeStepInfo.dqddt[-10:] = self.dqddt[-10:].astype(dtype=ct.c_double, order='F', copy=True)
+
+        ibody_StructTimeStepInfo.mb_quat = self.mb_quat.astype(dtype=ct.c_double, order='F', copy=True)
+        ibody_StructTimeStepInfo.mb_FoR_pos = self.mb_FoR_pos.astype(dtype=ct.c_double, order='F', copy=True)
+        ibody_StructTimeStepInfo.mb_FoR_vel = self.mb_FoR_vel.astype(dtype=ct.c_double, order='F', copy=True)
+        ibody_StructTimeStepInfo.mb_FoR_acc = self.mb_FoR_acc.astype(dtype=ct.c_double, order='F', copy=True)
+
+        # ibody_StructTimeStepInfo.change_AFoR(ibody, updateDB=updateDB)
+
+        return ibody_StructTimeStepInfo
+
+    def change_to_local_AFoR(self, global_ibody):
+        # NOTICE: this function only works for one body at a time to prevent errors
+
+        # Cag = algebra.quat2rot(self.mb_quat[global_ibody,:])
+        CAslaveG = algebra.quat2rot(self.mb_quat[global_ibody,:])
+        CGAmaster = np.transpose(algebra.quat2rot(self.mb_quat[0,:]))
+        Csm = np.dot(CAslaveG, CGAmaster)
+
+        delta_pos_ms = self.mb_FoR_pos[global_ibody,:] - self.mb_FoR_pos[0,:]
+        delta_vel_ms = self.mb_FoR_vel[global_ibody,:] - self.mb_FoR_vel[0,:]
+        delta_crv = algebra.quat2crv(self.mb_quat[global_ibody,:])
+
+        # Modify variables
+        for inode in range(self.pos.shape[0]):
+            self.pos[inode,:] = np.dot(Csm,self.pos[inode,:]) - np.dot(CAslaveG,delta_pos_ms[0:3])
+            self.pos_dot[inode,:] = np.dot(Csm,self.pos_dot[inode,:]) - np.dot(CAslaveG,delta_vel_ms[0:3])
+        for ielem in range(self.psi.shape[0]):
+            for inode in range(3):
+                # self.psi[ielem,inode,:] = np.dot(Csm,self.psi[ielem,inode,:]) - np.dot(CAslaveG,delta_pos_ms[3:6])
+                # self.psi_dot[ielem,inode,:] = np.dot(Csm,self.psi_dot[ielem,inode,:]) - np.dot(CAslaveG,delta_vel_ms[3:6])
+                self.psi[ielem,inode,:] = np.dot(Csm,self.psi[ielem,inode,:]) + delta_crv
+                self.psi_dot[ielem,inode,:] = np.dot(Csm,self.psi_dot[ielem,inode,:])
+
+        # Set the output FoR variables
+        self.for_pos = self.mb_FoR_pos[0,:].astype(dtype=ct.c_double, order='F', copy=True)
+        # TODO: should I use the reletive velocity between the frame and Amaster?
+        self.for_vel[0:3] = np.dot(np.transpose(CGAmaster),self.mb_FoR_vel[global_ibody,0:3])
+        self.for_vel[3:6] = np.dot(np.transpose(CGAmaster),self.mb_FoR_vel[global_ibody,3:6])
+        self.for_acc[0:3] = np.dot(np.transpose(CGAmaster),self.mb_FoR_acc[global_ibody,0:3])
+        self.for_acc[3:6] = np.dot(np.transpose(CGAmaster),self.mb_FoR_acc[global_ibody,3:6])
+        #TODO: how should I modify quaternions?
+        self.quat = self.mb_quat[0,:]
 

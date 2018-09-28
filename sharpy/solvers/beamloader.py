@@ -5,6 +5,7 @@ from sharpy.utils.solver_interface import solver, BaseSolver
 import sharpy.structure.models.beam as beam
 import sharpy.utils.settings as settings_utils
 import sharpy.utils.h5utils as h5utils
+from IPython import embed
 
 
 @solver
@@ -29,6 +30,7 @@ class BeamLoader(BaseSolver):
         # storage of file contents
         self.fem_data_dict = dict()
         self.dyn_data_dict = dict()
+        self.mb_data_dict = dict()
 
         # structure storage
         self.structure = None
@@ -69,6 +71,19 @@ class BeamLoader(BaseSolver):
                 # TODO implement dyn file validation
                 # self.validate_dyn_file()
 
+        # Multibody information
+        self.mb_file_name = self.data.case_route + '/' + self.data.case_name + '.mb.h5'
+        h5utils.check_file_exists(self.mb_file_name)
+        with h5.File(self.mb_file_name, 'r') as mb_file_handle:
+            self.mb_data_dict = h5utils.load_h5_in_dict(mb_file_handle)
+
+        # Need to redefine strings to remove the "b" at the beginning
+        for iconstraint in range(self.mb_data_dict['num_constraints']):
+            self.mb_data_dict["constraint_%02d" % iconstraint]['behaviour'] = self.mb_data_dict["constraint_%02d" % iconstraint]['behaviour'].decode()
+        #for ibody in range(self.mb_data_dict['num_bodies']):
+        #    self.mb_data_dict["body_%02d" % ibody]['FoR_movement'] = self.mb_data_dict["body_%02d" % ibody]['FoR_movement'].decode()
+
+
     def validate_fem_file(self):
         raise NotImplementedError('validation of the fem file in beamloader is not yet implemented!')
 
@@ -77,6 +92,7 @@ class BeamLoader(BaseSolver):
 
     def run(self):
         self.data.structure = beam.Beam()
+        self.data.structure.mb_dict = self.mb_data_dict
         self.data.structure.generate(self.fem_data_dict, self.settings)
         self.data.structure.dyn_dict = self.dyn_data_dict
         return self.data
