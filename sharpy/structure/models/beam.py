@@ -78,8 +78,12 @@ class Beam(BaseStructure):
             self.body_number = np.zeros((self.num_elem, ), dtype=int)
             self.num_bodies = 1
 
+        # boundary conditions
+        self.boundary_conditions = in_data['boundary_conditions'].copy()
+        self.generate_dof_arrays()
+
         # ini info
-        self.ini_info = StructTimeStepInfo(self.num_node, self.num_elem, self.num_node_elem, self.num_bodies)
+        self.ini_info = StructTimeStepInfo(self.num_node, self.num_elem, self.num_node_elem, num_dof = self.num_dof.value, num_bodies = self.num_bodies)
 
         # mutibody: FoR information
         try:
@@ -118,7 +122,7 @@ class Beam(BaseStructure):
         # structural twist
         self.structural_twist = in_data['structural_twist'].copy()
         # boundary conditions
-        self.boundary_conditions = in_data['boundary_conditions'].copy()
+        # self.boundary_conditions = in_data['boundary_conditions'].copy()
         # beam number for every elem
         try:
             self.beam_number = in_data['beam_number'].copy()
@@ -181,7 +185,7 @@ class Beam(BaseStructure):
         if self.lumped_mass is not None:
             self.lump_masses()
 
-        self.generate_dof_arrays()
+        # self.generate_dof_arrays()
         self.generate_fortran()
 
     def generate_psi(self):

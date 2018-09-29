@@ -362,7 +362,7 @@ def standalone_ctypes_pointer(matrix):
 
 
 class StructTimeStepInfo(object):
-    def __init__(self, num_node, num_elem, num_node_elem=3, num_bodies=1):
+    def __init__(self, num_node, num_elem, num_node_elem=3, num_dof=None, num_bodies=1):
         self.num_node = num_node
         self.num_elem = num_elem
         self.num_node_elem = num_node_elem
@@ -388,9 +388,11 @@ class StructTimeStepInfo(object):
         self.gravity_forces = np.zeros((self.num_node, 6), dtype=ct.c_double, order='F')
         self.total_gravity_forces = np.zeros((6,), dtype=ct.c_double, order='F')
 
-        self.q = np.zeros(((self.num_node - 1)*6 + 6 + 4,), dtype=ct.c_double, order='F')
-        self.dqdt = np.zeros(((self.num_node - 1)*6 + 6 + 4,), dtype=ct.c_double, order='F')
-        self.dqddt = np.zeros(((self.num_node - 1)*6 + 6 + 4,), dtype=ct.c_double, order='F')
+        if num_dof is None:
+            num_dof = (self.num_node - 1)*6
+        self.q = np.zeros((num_dof + 6 + 4,), dtype=ct.c_double, order='F')
+        self.dqdt = np.zeros((num_dof + 6 + 4,), dtype=ct.c_double, order='F')
+        self.dqddt = np.zeros((num_dof + 6 + 4,), dtype=ct.c_double, order='F')
 
         self.postproc_cell = dict()
         self.postproc_node = dict()
@@ -489,7 +491,7 @@ class StructTimeStepInfo(object):
         ibody_last_node += 1
 
         # Assign all the properties to the new StructTimeStepInfo
-        ibody_StructTimeStepInfo = StructTimeStepInfo(ibody_num_node, ibody_num_elem, self.num_node_elem, beam.num_bodies)
+        ibody_StructTimeStepInfo = StructTimeStepInfo(ibody_num_node, ibody_num_elem, self.num_node_elem, num_bodies = beam.num_bodies)
 
         # if not self.mb_quat is None:
         #     ibody_StructTimeStepInfo.quat = self.mb_quat[ibody,:].copy()
@@ -576,4 +578,3 @@ class StructTimeStepInfo(object):
         self.for_acc[3:6] = np.dot(np.transpose(CGAmaster),self.mb_FoR_acc[global_ibody,3:6])
         #TODO: how should I modify quaternions?
         self.quat = self.mb_quat[0,:]
-
