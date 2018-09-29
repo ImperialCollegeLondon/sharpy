@@ -3,6 +3,7 @@ import numpy as np
 
 
 from sharpy.utils.settings import str2bool
+import sharpy.utils.solver_interface as solver_interface
 from sharpy.utils.solver_interface import solver, BaseSolver
 #from sharpy.solvers.nonlineardynamicprescribedstep import NonLinearDynamicPrescribedStep
 import sharpy.utils.settings as settings
@@ -78,6 +79,14 @@ class NonLinearDynamicMultibody(BaseSolver):
         # load info from dyn dictionary
         self.data.structure.add_unsteady_information(self.data.structure.dyn_dict, self.settings['num_steps'].value)
 
+        # initialise postprocessors
+        self.postprocessors = dict()
+        if len(self.settings['postprocessors']) > 0:
+            self.with_postprocessors = True
+        for postproc in self.settings['postprocessors']:
+            self.postprocessors[postproc] = solver_interface.initialise_solver(postproc)
+            self.postprocessors[postproc].initialise(
+                self.data, self.settings['postprocessors_settings'][postproc])
 
         # Define Newmark constants
         self.gamma = 0.5 + self.settings['newmark_damp'].value
@@ -218,13 +227,16 @@ class NonLinearDynamicMultibody(BaseSolver):
                 vel[0:3] = np.dot(MB_beam[ibody].timestep_info.cga(),MB_beam[ibody].timestep_info.for_vel[0:3])
                 MB_tstep[ibody].for_pos[0:3] = dt*(vel[0:3] + dt*acc[0:3])
             else:
-                MB_tstep[ibody].for_pos[0:3] = dt*np.dot(MB_tstep[ibody].cga(),MB_tstep[ibody].for_vel[0:3])
+                # print("quat: ", MB_tstep[ibody].quat)
+                # print("cga: ", MB_tstep[ibody].cga())
+                # print("for_vel: ", MB_tstep[ibody].for_vel)
+                MB_tstep[ibody].for_pos[0:3] += dt*np.dot(MB_tstep[ibody].cga(),MB_tstep[ibody].for_vel[0:3])
 
     def run(self):
 
         # Initialize varaibles
         MBdict = self.data.structure.mb_dict
-        dt = self.settings['num_steps'].value
+        dt = self.settings['dt'].value
 
         # TODO: only working for constant forces
         self.data.structure.timestep_info[-1].unsteady_applied_forces = self.data.structure.dynamic_input[1]['dynamic_forces'].astype(dtype=ct.c_double, order='F', copy=True)
@@ -242,9 +254,10 @@ class NonLinearDynamicMultibody(BaseSolver):
             # Predictor step
             mb.disp2state(MB_beam, MB_tstep, q, dqdt, dqddt)
 
-            dqddt = np.zeros_like(dqdt)
-            dqdt = dqdt + (1.0 - self.gamma)*dt*dqddt
             q = q + dt*dqdt + (0.5 - self.beta)*dt*dt*dqddt
+            dqdt = dqdt + (1.0 - self.gamma)*dt*dqddt
+            dqddt = np.zeros_like(dqdt)
+
             # TODO: what to do with lambda
 
             # Newmark-beta iterations
@@ -282,7 +295,7 @@ class NonLinearDynamicMultibody(BaseSolver):
                 # Evaluate convergence
                 if (iter > 0):
                     res = np.max(np.abs(Dq[0:self.sys_size]))/old_Dq
-                    print(res)
+                    # print("res: ", res)
                     if not num_LM_eq == 0:
                         LM_res = np.max(np.abs(Dq[self.sys_size:self.sys_size+num_LM_eq]))/LM_old_Dq
                     else:
@@ -294,7 +307,7 @@ class NonLinearDynamicMultibody(BaseSolver):
                 # TODO:decide If I want other way of updating lambda
                 q = q + Dq
                 # Corrector step
-                if not num_LM_eq ==0:
+                if not num_LM_eq == 0:
                     #dqdt = dqdt + self.gamma/(self.beta*dt)*Dq
                     dqdt[:-num_LM_eq] = dqdt[:-num_LM_eq] + self.gamma/(self.beta*dt)*Dq[:-num_LM_eq]
                     #print("Dq: ", Dq[-4-num_LM_eq:-num_LM_eq])
@@ -322,8 +335,17 @@ class NonLinearDynamicMultibody(BaseSolver):
 
             self.integrate_position(MB_beam, MB_tstep, dt)
 
-            print("time step: ", ts, "pos[-1,:] 1: ", MB_tstep[1].pos[-1,:])
-            # print("time step: ", ts, "for_pos 0: ", MB_tstep[0].for_pos[0:3], "for_pos 1: ", MB_tstep[1].for_pos[0:3])
-            # print("time step: ", ts, "for_quat 0: ", MB_tstep[0].quat, "for_quat 1: ", MB_tstep[1].quat)
-            # embed()
+            # I do this to be able to write variables, but I want them to be in GFoR in the future
+            self.data.ts += 1
+            for ibody in range(len(MB_tstep)):
+                self.data.structure.timestep_info[-1].mb_FoR_pos[ibody,:] = MB_tstep[ibody].for_pos.astype(dtype=ct.c_double, order='F')
+                self.data.structure.timestep_info[-1].mb_FoR_vel[ibody,:] = MB_tstep[ibody].for_vel.astype(dtype=ct.c_double, order='F')
+                self.data.structure.timestep_info[-1].mb_FoR_acc[ibody,:] = MB_tstep[ibody].for_acc.astype(dtype=ct.c_double, order='F')
+                self.data.structure.timestep_info[-1].mb_quat[ibody,:] = MB_tstep[ibody].quat.astype(dtype=ct.c_double, order='F')
+
+            # run postprocessors
+            if self.with_postprocessors:
+                for postproc in self.postprocessors:
+                    self.data = self.postprocessors[postproc].run(online=True)
+        self.data.ts -= 1
         return self.data
