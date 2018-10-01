@@ -230,7 +230,7 @@ class PIDTrajectoryControl(BaseSolver):
             force[idim] = self.controllers[i_trajectory_node][idim](trajectory[idim])
 
         master_elem, i_local_node_master_elem = self.data.structure.node_master_elem[i_global_node, :]
-        cba = algebra.crv2rot(
+        cba = algebra.crv2rotation(
             self.data.structure.timestep_info[self.data.ts].psi[master_elem, i_local_node_master_elem, :]).T
         cag = self.data.structure.timestep_info[self.data.ts].cag()
 

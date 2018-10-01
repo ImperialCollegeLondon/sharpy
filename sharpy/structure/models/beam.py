@@ -271,7 +271,7 @@ class Beam(BaseStructure):
             i_lumped_node = self.lumped_mass_nodes[i_lumped]
             i_lumped_master_elem, i_lumped_master_node_local = self.node_master_elem[i_lumped_node]
 
-            # cba = algebra.crv2rot(self.elements[i_lumped_master_elem].psi_def[i_lumped_master_node_local, :]).T
+            cba = algebra.crv2rotation(self.elements[i_lumped_master_elem].psi_def[i_lumped_master_node_local, :]).T
 
             inertia_tensor = np.zeros((6, 6))
             r_skew = algebra.skew(r)
@@ -450,7 +450,7 @@ class Beam(BaseStructure):
             # get master elem and i_local_node
             i_master_elem, i_local_node = self.node_master_elem[i_node, :]
             crv = tstep.psi[i_master_elem, i_local_node, :]
-            cab = algebra.crv2rot(crv)
+            cab = algebra.crv2rotation(crv)
             temp = np.zeros((6,))
             temp[0:3] = np.dot(cab, nodal[i_node, 0:3])
             temp[3:6] = np.dot(cab, nodal[i_node, 3:6])

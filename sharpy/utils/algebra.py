@@ -1,6 +1,31 @@
+'''
+Rotation algebra library
+
+Note: testing in tests/utils/algebra_test
+'''
+
 import numpy as np
 import scipy.linalg
+from warnings import warn 
 
+#######
+# functions for back compatibility
+def quat2rot(quat):
+    warn('quat2rot(quat) is obsolite! Use quat2rotation(quat).T instead!')
+    return quat2rotation(quat).T
+def crv2rot(psi):
+    warn('crv2rot(psi) is obsolite! Use crv2rotation(psi) instead!')    
+    return crv2rotation(psi)
+def rot2crv(rot):
+    warn('rot2crv(rot) is obsolite! Use rotation2crv(rot.T) instead!')    
+    return rotation2crv(rot.T)
+def triad2rot(xb,yb,zb):
+    warn('triad2rot(xb,yb,zb) is obsolite! Use triad2rotation(xb,yb,zb).T instead!') 
+    return triad2rotation(xb,yb,zb).T
+def mat2quat(rot):
+     warn('mat2quat(rot) is obsolite! Use rotation2quat(rot.T) instead!')
+     return rotation2quat(rot.T)
+#######
 
 def tangent_vector(in_coord, ordering=None):
     """ Tangent vector calculation for 2+ noded elements.
@@ -121,18 +146,19 @@ def skew(vector):
     return matrix
 
 
-def triad2rot(xb, yb, zb):
+def triad2rotation(xb, yb, zb):
     """
     If the input triad is the "b" coord system given in "a" frame,
-    (the vectors of the triad are xb, yb, zb)
-    this function returns Rab
+    (the vectors of the triad are xb, yb, zb), this function returns Rab, ie the
+    rotation matrix required to rotate the FoR A onto B.
     :param xb:
     :param yb:
     :param zb:
     :return: rotation matrix Rab
-    """
-    rot = np.row_stack((xb, yb, zb))
-    return rot
+    """  
+    return np.column_stack((xb, yb, zb))
+
+
 
 
 def rot_matrix_2d(angle):
@@ -157,44 +183,73 @@ def angle_between_vector_and_plane(vector, plane_normal):
     return angle
 
 
-def rot2crv(rot):
-    if np.linalg.norm(rot) < 1e-6:
-        raise AttributeError('Element Vector V is not orthogonal to reference line (51105)')
+# def mat2quat(mat):
+#     matT = mat.T
 
-    quat = mat2quat(rot)
-    crv = quat2crv(quat)
+#     s = np.zeros((4, 4))
 
-    if np.linalg.norm(crv) < 1.0e-15:
-        crv[0] = rot[1, 2]
-        crv[1] = rot[2, 0]
-        crv[2] = rot[0, 1]
+#     s[0, 0] = 1.0 + np.trace(matT)
+#     s[0, 1:] = matrix2skewvec(matT)
 
-    crv = crv_bounds(crv)
-    return crv
+#     s[1, 0] = matT[2, 1] - matT[1, 2]
+#     s[1, 1] = 1.0 + matT[0, 0] - matT[1, 1] - matT[2, 2]
+#     s[1, 2] = matT[0, 1] + matT[1, 0]
+#     s[1, 3] = matT[0, 2] + matT[2, 0]
+
+#     s[2, 0] = matT[0, 2] - matT[2, 0]
+#     s[2, 1] = matT[1, 0] + matT[0, 1]
+#     s[2, 2] = 1.0 - matT[0, 0] + matT[1, 1] - matT[2, 2]
+#     s[2, 3] = matT[1, 2] + matT[2, 1]
+
+#     s[3, 0] = matT[1, 0] - matT[0, 1]
+#     s[3, 1] = matT[0, 2] + matT[2, 0]
+#     s[3, 2] = matT[1, 2] + matT[2, 1]
+#     s[3, 3] = 1.0 - matT[0, 0] - matT[1, 1] + matT[2, 2]
+
+#     smax = np.max(np.diag(s))
+#     ismax = np.argmax(np.diag(s))
+
+#     # compute quaternion angles
+#     quat = np.zeros((4,))
+#     quat[ismax] = 0.5*np.sqrt(smax)
+#     for i in range(4):
+#         if i == ismax:
+#             continue
+#         quat[i] = 0.25*s[ismax, i]/quat[ismax]
+
+#     return quat
 
 
-def mat2quat(mat):
-    matT = mat.T
+def rotation2quat(Cab):
+    '''
+    Given a rotation matrix Cab rotating the frame a onto b, the function returns
+    the minimal "positive angle" quaternion representing this rotation. 
+
+    Note: this is the inverse of quat2rotation for Cartesian rotation vectors 
+    associated to rotations in the range [-pi,pi], i.e.:
+        fv == algebra.rotation2crv(algebra.crv2rotation(fv))  
+    for each fv=a*nv such that nv is a unit vector and the scalar a in [-pi,pi].
+    '''
 
     s = np.zeros((4, 4))
 
-    s[0, 0] = 1.0 + np.trace(matT)
-    s[0, 1:] = matrix2skewvec(matT)
+    s[0, 0] = 1.0 + np.trace(Cab)
+    s[0, 1:] = matrix2skewvec(Cab)
 
-    s[1, 0] = matT[2, 1] - matT[1, 2]
-    s[1, 1] = 1.0 + matT[0, 0] - matT[1, 1] - matT[2, 2]
-    s[1, 2] = matT[0, 1] + matT[1, 0]
-    s[1, 3] = matT[0, 2] + matT[2, 0]
+    s[1, 0] = Cab[2, 1] - Cab[1, 2]
+    s[1, 1] = 1.0 + Cab[0, 0] - Cab[1, 1] - Cab[2, 2]
+    s[1, 2] = Cab[0, 1] + Cab[1, 0]
+    s[1, 3] = Cab[0, 2] + Cab[2, 0]
 
-    s[2, 0] = matT[0, 2] - matT[2, 0]
-    s[2, 1] = matT[1, 0] + matT[0, 1]
-    s[2, 2] = 1.0 - matT[0, 0] + matT[1, 1] - matT[2, 2]
-    s[2, 3] = matT[1, 2] + matT[2, 1]
+    s[2, 0] = Cab[0, 2] - Cab[2, 0]
+    s[2, 1] = Cab[1, 0] + Cab[0, 1]
+    s[2, 2] = 1.0 - Cab[0, 0] + Cab[1, 1] - Cab[2, 2]
+    s[2, 3] = Cab[1, 2] + Cab[2, 1]
 
-    s[3, 0] = matT[1, 0] - matT[0, 1]
-    s[3, 1] = matT[0, 2] + matT[2, 0]
-    s[3, 2] = matT[1, 2] + matT[2, 1]
-    s[3, 3] = 1.0 - matT[0, 0] - matT[1, 1] + matT[2, 2]
+    s[3, 0] = Cab[1, 0] - Cab[0, 1]
+    s[3, 1] = Cab[0, 2] + Cab[2, 0]
+    s[3, 2] = Cab[1, 2] + Cab[2, 1]
+    s[3, 3] = 1.0 - Cab[0, 0] - Cab[1, 1] + Cab[2, 2]
 
     smax = np.max(np.diag(s))
     ismax = np.argmax(np.diag(s))
@@ -207,6 +262,20 @@ def mat2quat(mat):
             continue
         quat[i] = 0.25*s[ismax, i]/quat[ismax]
 
+    return quat_bound(quat)
+
+
+def quat_bound(quat):
+    '''
+    Given a quaternion associated to a rotation of angle a about an axis nv, the 
+    function "bounds" the quaternion, i.e. sets the rotation axis nv such that
+    a in [-pi,pi]. 
+
+    Note: as quaternions are defined as qv=[cos(a/2); sin(a/2)*nv], this is
+    equivalent to enforce qv[0]>=0.
+    '''
+    if quat[0]<0:
+        quat*=-1.
     return quat
 
 
@@ -229,7 +298,34 @@ def quat2crv(quat):
     return psi
 
 
+def crv2quat(psi):
+    '''
+    Converts a Cartesian rotation vector into a "minimal rotation" quaternion,
+    ie, being the quaternion defined as:
+        qv= [cos(a/2); sin(a/2)*nv ]
+    the rotation axis is such that the rotation angle a is in [-pi,pi] or,
+    equivalently, qv[0]>=0.    
+    '''
+
+    # minimise crv rotation
+    psi_new=crv_bounds(psi)    
+
+    fi=np.linalg.norm(psi_new)
+    nv=psi_new/fi
+
+    quat=np.zeros((4,))
+    quat[0]=np.cos(.5*fi)
+    quat[1:]=np.sin(.5*fi)*nv 
+
+    return quat
+
+
 def crv_bounds(crv_ini):
+    '''
+    Forces the Cartesian rotation vector norm to be in [-pi,pi], i.e. determines
+    the rotation axis orientation so as to ensure "minimal rotation".
+    '''
+
     crv = crv_ini.copy()
     # original norm
     norm_ini = np.linalg.norm(crv_ini)
@@ -250,15 +346,15 @@ def crv_bounds(crv_ini):
 
 
 def triad2crv(xb, yb, zb):
-    return rot2crv(triad2rot(xb, yb, zb))
+    return rotation2crv(triad2rotation(xb, yb, zb))
 
 
 def crv2triad(psi):
-    rot_matrix = crv2rot(psi)
+    rot_matrix = crv2rotation(psi)
     return rot_matrix[:, 0], rot_matrix[:, 1], rot_matrix[:, 2]
 
 
-def crv2rot(psi):
+def crv2rotation(psi):
     '''
     Given a Cartesian rotation vector psi, the function produces the rotation
     matrix required to rotate a vector according to psi.
@@ -280,6 +376,33 @@ def crv2rot(psi):
         rot_matrix += (1.0 - np.cos(norm_psi))*np.dot(skew_normal, skew_normal)
 
     return rot_matrix
+
+
+def rotation2crv(Cab):
+    '''
+    Given a rotation matrix Cab rotating the frame a onto b, the function returns
+    the minimal size Cartesian rotation vector representing this rotation. 
+
+    Note: this is the inverse of crv2rotation for Cartesian rotation vectors 
+    associated to rotations in the range [-pi,pi], i.e.:
+        fv == algebra.rotation2crv(algebra.crv2rotation(fv))  
+    for each fv=a*nv such that nv is a unit vector and the scalar a in [-pi,pi].
+    '''
+    
+    if np.linalg.norm(Cab) < 1e-6:
+        raise AttributeError(\
+                 'Element Vector V is not orthogonal to reference line (51105)')
+
+    quat = rotation2quat(Cab)
+    psi = quat2crv(quat)
+
+    if np.linalg.norm(Cab) < 1.0e-15:
+        psi[0] = Cab[1, 2]
+        psi[1] = Cab[2, 0]
+        psi[2] = Cab[0, 1]
+
+    return crv_bounds(psi)
+
 
 
 def crv2tan(psi):
@@ -329,16 +452,17 @@ def crv2triad_vec(crv_vec):
     return v1, v2, v3
 
 
-def quat2rot(q1):
+def quat2rotation(q1):
     """@brief Calculate rotation matrix based on quaternions.
     See Aircraft Control and Simulation, pag. 31, by Stevens, Lewis.
     Copied from S. Maraniello's SHARPy
 
-    Remark: if A is a FoR obtained rotating a FoR G of angle fi about an axis n (remind n will be
-    invariant during the rotation), and q is the related quaternion q(fi,n), the function will
-    return the matrix Cag such that:
-        - Cag rotates A to G
-        - Cag transforms the coordinates of a vector defined in G component to A components.
+    Remark: if B is a FoR obtained rotating a FoR A of angle fi about an axis n 
+    (remind n will be invariant during the rotation), and q is the related 
+    quaternion q(fi,n), the function will return the matrix Cab such that:
+        - Cab rotates A onto B
+        - Cab transforms the coordinates of a vector defined in B component to 
+        A components.
     """
 
     q = q1.copy(order='F')
@@ -350,14 +474,14 @@ def quat2rot(q1):
     rot_mat[1, 1] = q[0]**2 - q[1]**2 + q[2]**2 - q[3]**2
     rot_mat[2, 2] = q[0]**2 - q[1]**2 - q[2]**2 + q[3]**2
 
-    rot_mat[0, 1] = 2.*(q[1]*q[2] + q[0]*q[3])
-    rot_mat[1, 0] = 2.*(q[1]*q[2] - q[0]*q[3])
+    rot_mat[1, 0] = 2.*(q[1]*q[2] + q[0]*q[3])
+    rot_mat[0, 1] = 2.*(q[1]*q[2] - q[0]*q[3])
 
-    rot_mat[0, 2] = 2.*(q[1]*q[3] - q[0]*q[2])
-    rot_mat[2, 0] = 2.*(q[1]*q[3] + q[0]*q[2])
+    rot_mat[2, 0] = 2.*(q[1]*q[3] - q[0]*q[2])
+    rot_mat[0, 2] = 2.*(q[1]*q[3] + q[0]*q[2])
 
-    rot_mat[1, 2] = 2.*(q[2]*q[3] + q[0]*q[1])
-    rot_mat[2, 1] = 2.*(q[2]*q[3] - q[0]*q[1])
+    rot_mat[2, 1] = 2.*(q[2]*q[3] + q[0]*q[1])
+    rot_mat[1, 2] = 2.*(q[2]*q[3] - q[0]*q[1])
 
     return rot_mat
 
@@ -400,7 +524,7 @@ def rotation3d_z(angle):
 
 def rotate_crv(crv_in, axis, angle):
     crv = np.zeros_like(crv_in)
-    C = crv2rot(crv_in).T
+    C = crv2rotation(crv_in).T
     rot = rotation_matrix_around_axis(axis, angle)
     C = np.dot(C, rot)
     crv = rot2crv(C)
@@ -454,52 +578,10 @@ def rotate_quaternion(quat, omegadt):
     return quaternion_product(omegadt2quat(omegadt), quat)
 
 
-def get_triad(coordinates_def, frame_of_reference_delta, twist=None, n_nodes=3, ordering=np.array([0, 2, 1])):
-    """
-    Generates two unit vectors in body FoR that define the local FoR for
-    a beam element. These vectors are calculated using `frame_of_reference_delta`
-    :return:
-    """
-    # now, calculate tangent vector (and coefficients of the polynomial
-    # fit just in case)
-    tangent, polyfit = tangent_vector(
-        coordinates_def,
-        ordering)
-    normal = np.zeros_like(tangent)
-    binormal = np.zeros_like(tangent)
-
-    # v_vector is the vector with origin the FoR node and delta
-    # equals frame_of_reference_delta
-    for inode in range(n_nodes):
-        v_vector = frame_of_reference_delta[inode, :]
-        normal[inode, :] = unit_vector(np.cross(
-                                                tangent[inode, :],
-                                                v_vector
-                                                )
-                                           )
-        binormal[inode, :] = -unit_vector(np.cross(
-                                                tangent[inode, :],
-                                                normal[inode, :]
-                                                        )
-                                              )
-
-    if twist is not None:
-        raise NotImplementedError('Structural twist is not yet supported in algebra.get_triad, but it is in beamstructures.py')
-    # # we apply twist now
-    # for inode in range(self.n_nodes):
-    #     if not self.structural_twist[inode] == 0.0:
-    #         rotation_mat = algebra.rotation_matrix_around_axis(tangent[inode, :],
-    #                                                            self.structural_twist[inode])
-    #         normal[inode, :] = np.dot(rotation_mat, normal[inode, :])
-    #         binormal[inode, :] = np.dot(rotation_mat, binormal[inode, :])
-
-    return tangent, binormal, normal
-
-
-def der_CquatT_by_v(q,v):
+def der_Cquat_by_v(q,v):
     '''
-    Being C=C(quat) the rotational matrix depending on the quaternion q and
-    defined as C=quat2rot(q).T, the function returns the derivative, w.r.t. the
+    Being C=C(quat) the rotational matrix depending on the quaternion q and 
+    defined as C=quat2rotation(q), the function returns the derivative, w.r.t. the
     quanternion components, of the vector dot(C,v), where v is a constant 
     vector.
     The elements of the resulting derivative matrix D are ordered such that:
@@ -519,10 +601,10 @@ def der_CquatT_by_v(q,v):
 
 
 
-def der_Cquat_by_v(q,v):
+def der_CquatT_by_v(q,v):
     '''
-    Being C=C(quat) the rotational matrix depending on the quaternion q and 
-    defined as C=quat2rot(q), the function returns the derivative, w.r.t. the
+    Being C=C(quat).T the projection matrix depending on the quaternion q and 
+    defined as C=quat2rotation(q).T, the function returns the derivative, w.r.t. the
     quanternion components, of the vector dot(C,v), where v is a constant 
     vector.
     The elements of the resulting derivative matrix D are ordered such that:

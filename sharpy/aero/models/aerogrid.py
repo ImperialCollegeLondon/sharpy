@@ -303,8 +303,8 @@ class Aerogrid(object):
                     self.aero2struct_mapping[i_surf][i_n] = i_global_node
 
     def update_orientation(self, quat, ts=-1):
-        rot = algebra.quat2rot(quat)
-        self.timestep_info[ts].update_orientation(rot)
+        rot = algebra.quat2rotation(quat)
+        self.timestep_info[ts].update_orientation(rot.T)
 
     @staticmethod
     def compute_gamma_dot(dt, tstep, previous_tsteps):
@@ -407,7 +407,7 @@ def generate_strip(node_info, airfoil_db, aligned_grid, orientation_in=np.array(
         Ctwist = np.eye(3)
 
     # Cab transformation
-    Cab = algebra.crv2rot(node_info['beam_psi'])
+    Cab = algebra.crv2rotation(node_info['beam_psi'])
 
     rot_angle = algebra.angle_between_vectors_sign(orientation_in, Cab[:, 1], Cab[:, 2])
     Crot = algebra.rotation3d_z(-rot_angle)

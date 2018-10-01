@@ -1,6 +1,7 @@
 import sharpy.utils.algebra as algebra
 import numpy as np
 import unittest
+# from IPython import embed
 
 
 class TestAlgebra(unittest.TestCase):
@@ -37,10 +38,295 @@ class TestAlgebra(unittest.TestCase):
         with self.assertRaises(ValueError):
             algebra.unit_vector(vector_in)
 
+
+
+    def test_rotation_vectors_conversions(self):
+        '''
+        Checks routine to convert rotation vectors.
+
+        Note: test only includes CRV <-> quaternions conversions
+        '''
+
+        print(60*'-')
+        print('Testing rotations vectors conversion functions')
+        print('quat2crv\n' + 'crv2quat')
+        print('Note: Euler and triad not included')
+
+        N=1000
+        for nn in range(N):
+            # def random rotation in [-pi,pi]
+            a=np.pi*( 2.*np.random.rand()-1 )
+            nv=2.*np.random.rand(3)-1
+            nv=nv/np.linalg.norm(nv)
+            # reference
+            fv0=a*nv
+            quat0=np.zeros((4,))
+            quat0[0]=np.cos(.5*a)
+            quat0[1:]=np.sin(.5*a)*nv
+            # check against reference
+            assert np.linalg.norm(fv0-algebra.quat2crv(quat0))<1e-12,\
+                                                             'Error in quat2crv'
+            assert np.linalg.norm(quat0-algebra.crv2quat(fv0))<1e-12,\
+                                                             'Error in crv2quat'
+        print(50*'-'+' all good!\n')
+
+
+
+    def test_rotation_matrices(self):
+        '''
+        Checks routines and consistency of functions to generate rotation 
+        matrices.
+
+        Note: test only includes triad <-> CRV <-> quaternions conversions
+        '''
+
+        print(60*'-')
+        print('Testing functions to build rotation matrices (and inverse)')
+        print('quat2rotation\n' + 'crv2rotation\n' + 'triad2rotation')
+        print('rotation2quat\n' + 'rotation2crv\n' + 'triad2crv')
+        print('Note: Euler not included')
+
+        ### Verify that function build rotation matrix (not projection matrix)
+        # set an easy rotation (x axis)
+        a=np.pi/6.
+        nv=np.array([1,0,0])
+        sa,ca=np.sin(a),np.cos(a)
+        Cab_exp=np.array([[1,  0,   0], 
+                          [0, ca, -sa],
+                          [0, sa,  ca],])
+        ### rot from triad
+        Cab_num=algebra.triad2rotation(Cab_exp[:,0],Cab_exp[:,1],Cab_exp[:,2])
+        assert np.linalg.norm(Cab_num-Cab_exp)<1e-15,\
+                                   'crv2rotation not producing the right result'
+        ### rot from crv
+        fv=a*nv
+        Cab_num=algebra.crv2rotation(fv)
+        assert np.linalg.norm(Cab_num-Cab_exp)<1e-15,\
+                                   'crv2rotation not producing the right result'
+        ### rot from quat
+        quat=algebra.crv2quat(fv)
+        Cab_num=algebra.quat2rotation(quat)
+        assert np.linalg.norm(Cab_num-Cab_exp)<1e-15,\
+                                  'quat2rotation not producing the right result'                           
+
+        ### inverse relations 
+        # check crv2rotation and rotation2crv are biunivolcal in [-pi,pi]
+        # check quat2rotation and rotation2quat are biunivocal in [-pi,pi]
+        N=100
+        for nn in range(N):
+            # def random rotation in [-pi,pi]
+            a=np.pi*( 2.*np.random.rand()-1 )
+            nv=2.*np.random.rand(3)-1
+            nv=nv/np.linalg.norm(nv)
+
+            # inverse crv
+            fv0=a*nv
+            Cab=algebra.crv2rotation(fv0)
+            fv=algebra.rotation2crv(Cab)
+            assert np.linalg.norm(fv-fv0)<1e-12,\
+                                   'rotation2crv not producing the right result'
+
+            # triad2crv
+            xa,ya,za=Cab[:,0],Cab[:,1],Cab[:,2]
+            assert np.linalg.norm(
+                        algebra.triad2crv(xa,ya,za)-fv0)<1e-12,\
+                                      'triad2crv not producing the right result'
+
+            # inverse quat
+            quat0=np.zeros((4,))
+            quat0[0]=np.cos(.5*a)
+            quat0[1:]=np.sin(.5*a)*nv
+            quat=algebra.rotation2quat(algebra.quat2rotation(quat0))
+            assert np.linalg.norm(quat-quat0)<1e-12,\
+                                  'rotation2quat not producing the right result'
+
+        print(50*'-'+' all good!\n')  
+
+
+
+    def test_rotation_matrices_derivatives(self):
+        '''
+        Checks derivatives of rotation matrix derivatives with respect to
+        quaternions and Cartesian rotation vectors
+
+        Note: test only includes CRV <-> quaternions conversions
+        '''
+
+        print(60*'-')
+        print('Testing functions to build rotation matrices derivatives')
+        print('der_Cquat_by_v\n' + 'der_CquatT_by_v')
+
+        ### linearisation point
+        fi0=np.pi/6
+        nv0=np.array([1,3,1])
+        nv0=nv0/np.linalg.norm(nv0)
+        fv0=fi0*nv0
+        qv0=algebra.crv2quat(fv0)
+
+        # direction of perturbation
+        fi1=np.pi/3
+        nv1=np.array([-2,4,1])
+        nv1=nv1/np.linalg.norm(nv1)
+        fv1=fi1*nv1
+        qv1=algebra.crv2quat(fv1)
+
+        # linearsation point
+        Cga0=algebra.quat2rotation(qv0)
+        Cag0=Cga0.T
+
+        # derivatives
+        xv=np.ones((3,)) # dummy vector
+        derCga=algebra.der_Cquat_by_v(qv0,xv)
+        derCag=algebra.der_CquatT_by_v(qv0,xv)
+
+        print('step\t\terror der_Cquat_by_v\terror der_CquatT_by_v')
+        A=np.array([1e-1,1e-2,1e-3,1e-4,1e-5,1e-6])
+        er_ag=10.
+        er_ga=10.
+        for a in A:
+
+            # perturbed
+            qv=a*qv1 + (1.-a)*qv0
+            dqv=qv-qv0
+            Cga=algebra.quat2rotation(qv)
+            Cag=Cga.T   
+
+            dCag_num=np.dot(Cag-Cag0,xv)
+            dCga_num=np.dot(Cga-Cga0,xv)
+            dCag_an=np.dot(derCag,dqv)
+            dCga_an=np.dot(derCga,dqv)
+
+            er_ag_new=np.max(np.abs(dCag_num-dCag_an))
+            er_ga_new=np.max(np.abs(dCga_num-dCga_an))
+
+            print('%.3e\t%.3e\t\t%.3e'%(a,er_ag_new,er_ga_new) )
+            assert er_ga_new<er_ga, 'der_Cquat_by_v error not converging to 0'
+            assert er_ag_new<er_ag, 'der_CquatT_by_v error not converging to 0'
+            er_ag=er_ag_new
+            er_ga=er_ga_new
+
+        assert er_ga<A[-2], 'der_Cquat_by_v error too large'
+        assert er_ag<A[-2], 'der_CquatT_by_v error too large'
+        print(50*'-'+' all good!\n')
+
+
+
+    def test_crv_tangetial_operator(self):
+        ''' Checks Cartesian rotation vector tangential operator '''
+
+        print(60*'-')
+        print('Testing CRV tangential operator function')
+        print('crv2tan')
+
+        # linearisation point
+        fi0=-np.pi/6
+        nv0=np.array([1,3,1])
+        nv0=np.array([1,0,0])
+        nv0=nv0/np.linalg.norm(nv0)
+        fv0=fi0*nv0
+
+        # dummy
+        fi1=np.pi/3
+        nv1=np.array([2,4,1])
+        nv1=nv1/np.linalg.norm(nv1)
+        fv1=fi1*nv1
+
+
+        print('step\t\terror crv2tan')
+        er_tan=10.
+        A=np.array([1e-1,1e-2,1e-3,1e-4,1e-5,1e-6])
+        for a in A:
+            # perturbed
+            fv=a*fv1 + (1.-a)*fv0
+            dfv=fv-fv0
+
+            ### Compute relevant quantities
+            Cab=algebra.crv2rotation(fv0) # fv0 is rotation from A to B
+            dCab=algebra.crv2rotation(fv0+dfv)-Cab 
+
+            T=algebra.crv2tan(fv0)
+            Tdfv=np.dot(T,dfv)
+            Tdfv_skew=algebra.skew(Tdfv)
+            dCab_an=np.dot(Cab,Tdfv_skew)
+
+            er_tan_new=np.max(np.abs(dCab-dCab_an))/np.max(np.abs(dCab_an))
+            print('%.3e\t%.3e'%(a,er_tan_new,) )
+            assert er_tan_new<er_tan, 'crv2tan error not converging to 0'
+            er_tan=er_tan_new
+
+        assert er_tan<A[-2], 'crv2tan error too large'
+        print(50*'-'+' all good!\n')
+
+
+
+    def test_crv_tangetial_operator_derivative(self):
+        ''' Checks Cartesian rotation vector tangential operator '''
+
+        print(60*'-')
+        print('Testing CRV tangential operator derivative function')
+        print('der_Tan_by_xv')
+
+        # linearisation point
+        fi0=np.pi/6
+        nv0=np.array([1,3,1])
+        nv0=nv0/np.linalg.norm(nv0)
+        fv0=fi0*nv0
+        T0=algebra.crv2tan(fv0)
+
+        # dummy vector
+        xv=np.ones((3,))
+        T0xv=np.dot(T0,xv)
+        #derT_an=dTxv(fv0,xv)
+        derT_an=algebra.der_Tan_by_xv(fv0,xv)
+        #derT_an=algebra.der_Tan_by_xv_an(fv0,xv)
+        # dummy
+        fi1=np.pi/3
+        nv1=np.array([4,1,-2])
+        nv1=nv1/np.linalg.norm(nv1)
+        fv1=fi1*nv1
+
+        print('step\t\terror der_Tan_by_xv')
+        er=10.
+        A=np.array([1e-1,1e-2,1e-3,1e-4,1e-5,1e-6])
+        for a in A:
+            # perturbed
+            fv=a*fv1 + (1.-a)*fv0
+            dfv=fv-fv0
+            Tpert=algebra.crv2tan(fv)
+            Tpertxv=np.dot(Tpert,xv)
+            dT_num=Tpertxv-T0xv
+            dT_an=np.dot(derT_an,dfv)
+
+            er_new=np.max(np.abs(dT_num-dT_an))/np.max(np.abs(dT_an))
+            print('%.3e\t%.3e'%(a,er_new,) )
+            assert er_new<er, 'der_Tan_by_xv error not converging to 0'
+            er=er_new
+
+        assert er<A[-2], 'der_Tan_by_xv error too large'
+        print(50*'-'+' all good!\n')
+
+
+
     # def test_rotation_matrix_around_axis(self):
     #     axis = np.array([1, 0, 0])
     #     angle = 90
     #     self.assert
+
+
+
+if __name__=='__main__':
+    # unittest.main()
+
+    T=TestAlgebra()
+    # T.setUp()
+    T.test_rotation_vectors_conversions()
+    T.test_rotation_matrices()
+    T.test_rotation_matrices_derivatives()
+    T.test_crv_tangetial_operator()
+    T.test_crv_tangetial_operator_derivative()
+
+
+
 
 
 
