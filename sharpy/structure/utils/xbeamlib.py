@@ -889,10 +889,10 @@ def cbeam3_asbly_dynamic(beam, tstep, settings):
     xbopts.gravity_dir_z = ct.c_double(tstep.gravity_vector_inertial[2])
 
     # Initialize matrices
-    Mglobal = np.zeros((num_dof, num_dof), order='F')
-    Cglobal = np.zeros((num_dof, num_dof), order='F')
-    Kglobal = np.zeros((num_dof, num_dof), order='F')
-    Qglobal = np.zeros((num_dof, ), order='F')
+    Mglobal = np.zeros((num_dof, num_dof), dtype=ct.c_double, order='F')
+    Cglobal = np.zeros((num_dof, num_dof), dtype=ct.c_double, order='F')
+    Kglobal = np.zeros((num_dof, num_dof), dtype=ct.c_double, order='F')
+    Qglobal = np.zeros((num_dof, ), dtype=ct.c_double, order='F')
 
     f_cbeam3_asbly_dynamic_python(ct.byref(ct.c_int(num_dof)),
                             ct.byref(n_nodes),
@@ -966,10 +966,10 @@ def xbeam3_asbly_dynamic(beam, tstep, settings):
     xbopts.gravity_dir_z = ct.c_double(tstep.gravity_vector_inertial[2])
 
     # Initialize matrices
-    Mtotal = np.zeros((num_dof+10, num_dof+10), order='F')
-    Ctotal = np.zeros((num_dof+10, num_dof+10), order='F')
-    Ktotal = np.zeros((num_dof+10, num_dof+10), order='F')
-    Qtotal = np.zeros((num_dof+10, ), order='F')
+    Mtotal = np.zeros((num_dof+10, num_dof+10), dtype=ct.c_double, order='F')
+    Ctotal = np.zeros((num_dof+10, num_dof+10), dtype=ct.c_double, order='F')
+    Ktotal = np.zeros((num_dof+10, num_dof+10), dtype=ct.c_double, order='F')
+    Qtotal = np.zeros((num_dof+10, ), dtype=ct.c_double, order='F')
     # if dQuatdt is None:
     #     dQuatdt = np.zeros((4,),)
     # if dQddt is None:
@@ -1019,4 +1019,3 @@ def xbeam3_asbly_dynamic(beam, tstep, settings):
                             Qtotal.ctypes.data_as(doubleP))
 
     return Mtotal, Ctotal, Ktotal, Qtotal
-

@@ -131,7 +131,8 @@ class NonLinearDynamicMultibody(BaseSolver):
                 print("ERROR: not recognized constraint type")
 
 
-    def generate_lagrange_matrix(self, MB_beam, MB_tstep, dt):
+    def generate_lagrange_matrix(self, MB_beam, MB_tstep, dt, Lambda, Lambda_dot):
+
         '''
         Generates the matrix associated to the Lagrange multipliers of a dictionary of "constraints"
         It is the matrix called "B" in Geradin and Cardona
@@ -140,35 +141,102 @@ class NonLinearDynamicMultibody(BaseSolver):
         Qeq: vector of the constraints evaluated at
         call: LM_pos_matrix, LM_vel_matrix, LM_Q = generate_lagrange_matrix(self.data.structure, structural_step)
         '''
+        # Lagrange multipliers parameters
+        penaltyFactor = 0.0
+        scalingFactor = 1.0
 
-        # TODO: This is not correct, just wanted to check if it runs
-        data_structure = MB_beam[0]
-        structural_step = MB_tstep[0]
-
+        # Rename variables
         MBdict = self.data.structure.mb_dict
         num_constraints = MBdict['num_constraints']
         num_eq = self.num_LM_eq
         sys_size = self.sys_size
 
-        LM_pos_matrix = np.zeros((num_eq,sys_size), dtype=ct.c_double, order = 'F')
-        LM_vel_matrix = np.zeros((num_eq,sys_size), dtype=ct.c_double, order = 'F')
-        LM_Q = np.zeros((num_eq,),dtype=ct.c_double, order = 'F')
+        # Initialize matrices
+        LM_C = np.zeros((sys_size + num_eq,sys_size + num_eq), dtype=ct.c_double, order = 'F')
+        LM_K = np.zeros((sys_size + num_eq,sys_size + num_eq), dtype=ct.c_double, order = 'F')
+        LM_Q = np.zeros((sys_size + num_eq,),dtype=ct.c_double, order = 'F')
+
+        Bnh = np.zeros((num_eq, sys_size), dtype=ct.c_double, order = 'F')
+        B = np.zeros((num_eq, sys_size), dtype=ct.c_double, order = 'F')
+
+        # Define the matrices associated to the constratints
+        ieq = 0
+        for iconstraint in range(num_constraints):
+
+            # Rename variables from dictionary
+            behaviour = MBdict["constraint_%02d" % iconstraint]['behaviour']
+
+            # Build the matrices associate to the BC
+            if behaviour == 'hinge_node_FoR':
+
+                # Rename variables from dictionary
+                node_in_body = MBdict["constraint_%02d" % iconstraint]['node_in_body']
+                node_body = MBdict["constraint_%02d" % iconstraint]['body']
+                body_FoR = MBdict["constraint_%02d" % iconstraint]['body_FoR']
+
+                # Define the position of the first degree of freedom associated to the node
+                node_dof = 0
+                for ibody in range(node_body):
+                    node_dof += MB_beam[ibody].num_dof.value
+                    if MB_beam[ibody].FoR_movement == 'free':
+                        node_dof += 10
+                # TODO: this will NOT work for more than one clamped node
+                node_dof += 6*(node_in_body-1)
+
+                # Define the position of the first degree of freedom associated to the FoR
+                FoR_dof = 0
+                for ibody in range(body_FoR):
+                    FoR_dof += MB_beam[ibody].num_dof.value
+                    if MB_beam[ibody].FoR_movement == 'free':
+                        FoR_dof += 10
+                FoR_dof += MB_beam[body_FoR].num_dof.value
+
+                # Option with non holonomic constraints
+                #if True:
+                Bnh[ieq:ieq+3, node_dof:node_dof+3] = -1.0*np.eye(3)
+                #TODO: change this when the master AFoR is able to move
+                quat = algebra.quat_bound(MB_tstep[body_FoR].quat)
+                Bnh[ieq:ieq+3, FoR_dof:FoR_dof+3] = algebra.quat2rotation(quat)
+                # Bnh[ieq:ieq+3, FoR_dof:FoR_dof+3] = np.eye(3)
+
+                LM_C[sys_size:,:sys_size] = scalingFactor*Bnh
+                LM_C[:sys_size,sys_size:] = scalingFactor*np.transpose(Bnh)
+
+                LM_Q[:sys_size] = scalingFactor*np.dot(np.transpose(Bnh),Lambda_dot)
+                LM_Q[sys_size:] = -MB_tstep[0].pos_dot[-1,:] + np.dot(algebra.quat2rotation(quat),MB_tstep[1].for_vel[0:3])
+
+                #LM_K[FoR_dof:FoR_dof+3,FoR_dof+6:FoR_dof+10] = algebra.der_CquatT_by_v(MB_tstep[body_FoR].quat,Lambda_dot)
+                LM_C[FoR_dof:FoR_dof+3,FoR_dof+6:FoR_dof+10] += algebra.der_CquatT_by_v(quat,scalingFactor*Lambda_dot)
+                # else:
+                #     B[ieq:ieq+3, node_dof:node_dof+3] = np.eye(3)
+                #     B[ieq:ieq+3, FoR_dof:FoR_dof+3] = -1.0*algebra.quat2rotation(MB_tstep[body_FoR].quat)
+                #
+                #     LM_K[sys_size:,:sys_size] = scalingFactor*B
+                #     LM_K[:sys_size,sys_size:] = scalingFactor*np.transpose(B)
+                #
+                #     #LM_C[FoR_dof:FoR_dof+3,FoR_dof+6:FoR_dof+10] += algebra.der_CquatT_by_v(MB_tstep[body_FoR].quat,scalingFactor*Lambda)
+                #
+                #     LM_Q[:sys_size] = scalingFactor*np.dot(np.transpose(B), Lambda)
+                #     # LM_Q[sys_size:] = np.array([10.0,0.0,0.0])
+                #     LM_Q[sys_size:] = MB_tstep[0].pos[-1,:]- np.dot(algebra.quat2rotation(MB_tstep[body_FoR].quat),MB_tstep[body_FoR].for_pos[0:3])-np.array([1.0,0.0,0.0])
+
+                ieq += 3
+
+        return LM_C, LM_K, LM_Q
 
 
-        return LM_pos_matrix, LM_vel_matrix, LM_Q
 
     def assembly_MB_eq_system(self, MB_beam, MB_tstep, dt, Lambda, Lambda_dot):
 
         #print("Lambda: ", Lambda)
         #print("LambdaDot: ", Lambda_dot)
         MBdict = self.data.structure.mb_dict
-        MB_Asys = np.zeros((self.sys_size+self.num_LM_eq, self.sys_size+self.num_LM_eq),)
-        MB_Q = np.zeros((self.sys_size+self.num_LM_eq, ),)
-
-        # Lagrange multipliers parameters
-        penaltyFactor = 0.0
-        scalingFactor = 1.0
-
+        MB_M = np.zeros((self.sys_size+self.num_LM_eq, self.sys_size+self.num_LM_eq), dtype=ct.c_double, order='F')
+        MB_C = np.zeros((self.sys_size+self.num_LM_eq, self.sys_size+self.num_LM_eq), dtype=ct.c_double, order='F')
+        MB_K = np.zeros((self.sys_size+self.num_LM_eq, self.sys_size+self.num_LM_eq), dtype=ct.c_double, order='F')
+        MB_Asys = np.zeros((self.sys_size+self.num_LM_eq, self.sys_size+self.num_LM_eq), dtype=ct.c_double, order='F')
+        MB_Q = np.zeros((self.sys_size+self.num_LM_eq,), dtype=ct.c_double, order='F')
+        #ipdb.set_trace()
         first_dof = 0
         last_dof = 0
         # Loop through the different bodies
@@ -191,27 +259,31 @@ class NonLinearDynamicMultibody(BaseSolver):
 
             ############### Assembly into the global matrices
             # Flexible and RBM contribution to Asys
-            MB_Asys[first_dof:last_dof,first_dof:last_dof] = K
-            MB_Asys[first_dof:last_dof,first_dof:last_dof] += C*self.gamma/(self.beta*dt)
-            MB_Asys[first_dof:last_dof,first_dof:last_dof] += M/(self.beta*dt*dt)
+            MB_M[first_dof:last_dof, first_dof:last_dof] = M.astype(dtype=ct.c_double, copy=True, order='F')
+            MB_C[first_dof:last_dof, first_dof:last_dof] = C.astype(dtype=ct.c_double, copy=True, order='F')
+            MB_K[first_dof:last_dof, first_dof:last_dof] = K.astype(dtype=ct.c_double, copy=True, order='F')
 
             #Q
             MB_Q[first_dof:last_dof] = Q
 
             first_dof = last_dof
 
-        if not self.num_LM_eq == 0:
-            # Generate matrices associated to Lagrange multipliers
-            LM_pos_matrix, LM_vel_matrix, LM_Q = self.generate_lagrange_matrix(MB_beam, MB_tstep, dt)
 
-            # Include the matrices associated to Lagrange Multipliers
-            # MB_Asys[0:first_dof, 0:first_dof] += penaltyFactor*np.dot(np.transpose(LM_vel_matrix), LM_vel_matrix)
-            MB_Asys[0:first_dof, 0:first_dof] += penaltyFactor*np.dot(np.transpose(LM_vel_matrix), LM_vel_matrix)
-            MB_Asys[first_dof:, 0:first_dof] = scalingFactor*LM_vel_matrix
-            MB_Asys[0:first_dof, first_dof:] = scalingFactor*np.transpose(LM_vel_matrix)
+        # Generate matrices associated to Lagrange multipliers
+        LM_C, LM_K, LM_Q = self.generate_lagrange_matrix(MB_beam, MB_tstep, dt, Lambda, Lambda_dot)
 
-            MB_Q[0:first_dof] += np.dot(np.transpose(LM_vel_matrix), penaltyFactor*LM_Q + scalingFactor*Lambda_dot)
-            MB_Q[first_dof:] = LM_Q
+        # Include the matrices associated to Lagrange Multipliers
+        MB_C += LM_C
+        MB_K += LM_K
+        MB_Q += LM_Q
+
+        MB_Asys = MB_K + MB_C*self.gamma/(self.beta*dt) + MB_M/(self.beta*dt*dt)
+        # sys_size = self.sys_size
+        # MB_Asys[:sys_size,:sys_size] = MB_K[:sys_size,:sys_size] + MB_C[:sys_size,:sys_size]*self.gamma/(self.beta*dt) + MB_M[:sys_size,:sys_size]/(self.beta*dt*dt)
+        # # MB_Asys[sys_size:,:] = MB_K[sys_size:,:] + MB_C[sys_size:,:] + MB_M[sys_size:,:]
+        # # MB_Asys[:,sys_size:] = MB_K[:,sys_size:] + MB_C[:,sys_size:] + MB_M[:,sys_size:]
+        # MB_Asys[sys_size:,:] = MB_C[sys_size:,:]
+        # MB_Asys[:,sys_size:] = MB_C[:,sys_size:]
 
         return MB_Asys, MB_Q
 
@@ -244,8 +316,11 @@ class NonLinearDynamicMultibody(BaseSolver):
 
         # Lagrange multipliers parameters
         num_LM_eq = self.num_LM_eq
+        Lambda = np.zeros((num_LM_eq,), dtype=ct.c_double, order='F')
+        Lambda_dot = np.zeros((num_LM_eq,), dtype=ct.c_double, order='F')
 
         for ts in range(self.settings['num_steps'].value):
+            # ipdb.set_trace()
             # Initialize
             q = np.zeros((self.sys_size + num_LM_eq,), dtype=ct.c_double, order='F')
             dqdt = np.zeros((self.sys_size + num_LM_eq,), dtype=ct.c_double, order='F')
@@ -254,15 +329,17 @@ class NonLinearDynamicMultibody(BaseSolver):
             # Predictor step
             mb.disp2state(MB_beam, MB_tstep, q, dqdt, dqddt)
 
+            # dqddt = np.zeros_like(dqdt)
             q = q + dt*dqdt + (0.5 - self.beta)*dt*dt*dqddt
             dqdt = dqdt + (1.0 - self.gamma)*dt*dqddt
-            dqddt = np.zeros_like(dqdt)
-
+            Lambda = q[-num_LM_eq:].astype(dtype=ct.c_double, copy=True, order='F')
+            Lambda_dot = dqdt[-num_LM_eq:].astype(dtype=ct.c_double, copy=True, order='F')
             # TODO: what to do with lambda
 
             # Newmark-beta iterations
             old_Dq = 1.0
             LM_old_Dq = 1.0
+
             for iter in range(self.settings['max_iterations'].value):
 
                 # Check if the maximum of iterations has been reached
@@ -273,17 +350,17 @@ class NonLinearDynamicMultibody(BaseSolver):
                 # Update positions and velocities
                 mb.state2disp(q, dqdt, dqddt, MB_beam, MB_tstep)
                 # Define matrices
-                if num_LM_eq == 0:
-                    Lambda = np.zeros((num_LM_eq,),)
-                    LambdaDot = np.zeros((num_LM_eq,),)
-                else:
-                    Lambda = np.zeros((num_LM_eq,),)
-                    LambdaDot = q[-num_LM_eq:]
+                # if num_LM_eq == 0:
+                #     Lambda = np.zeros((num_LM_eq,),)
+                #     LambdaDot = np.zeros((num_LM_eq,),)
+                # else:
+                #     Lambda = np.zeros((num_LM_eq,),)
+                #     LambdaDot = q[-num_LM_eq:]
 
-                MB_Asys, MB_Q = self.assembly_MB_eq_system(MB_beam, MB_tstep, dt, Lambda, LambdaDot)
+                MB_Asys, MB_Q = self.assembly_MB_eq_system(MB_beam, MB_tstep, dt, Lambda, Lambda_dot)
 
                 # Compute the correction
-                Dq = np.zeros((self.sys_size+num_LM_eq,),)
+                Dq = np.zeros((self.sys_size+num_LM_eq,), dtype=ct.c_double, order='F')
                 if np.isnan(MB_Asys).any():
                     print("ERROR: Nan in Asys")
                     embed()
@@ -292,60 +369,59 @@ class NonLinearDynamicMultibody(BaseSolver):
                 if np.isnan(Dq).any():
                     print("ERROR: Nan in DX")
 
+
+
                 # Evaluate convergence
                 if (iter > 0):
                     res = np.max(np.abs(Dq[0:self.sys_size]))/old_Dq
-                    # print("res: ", res)
-                    if not num_LM_eq == 0:
-                        LM_res = np.max(np.abs(Dq[self.sys_size:self.sys_size+num_LM_eq]))/LM_old_Dq
-                    else:
-                        LM_res = res
+                    LM_res = np.max(np.abs(Dq[self.sys_size:self.sys_size+num_LM_eq]))/LM_old_Dq
                     if (res < self.settings['min_delta']) and (LM_res < self.settings['min_delta']):
+                        # print("res: ", res)
+                        # print("LMres: ", LM_res)
                         break
 
                 # Compute variables from previous values and increments
                 # TODO:decide If I want other way of updating lambda
                 q = q + Dq
-                # Corrector step
-                if not num_LM_eq == 0:
-                    #dqdt = dqdt + self.gamma/(self.beta*dt)*Dq
-                    dqdt[:-num_LM_eq] = dqdt[:-num_LM_eq] + self.gamma/(self.beta*dt)*Dq[:-num_LM_eq]
-                    #print("Dq: ", Dq[-4-num_LM_eq:-num_LM_eq])
-                    #dqddt = dqddt + 1.0/(self.beta*dt*dt)*Dq
-                    dqddt[:-num_LM_eq] = dqddt[:-num_LM_eq] + 1.0/(self.beta*dt*dt)*Dq[:-num_LM_eq]
-                else:
-                    dqdt = dqdt + self.gamma/(self.beta*dt)*Dq
-                    dqddt = dqddt + 1.0/(self.beta*dt*dt)*Dq
+                dqdt = dqdt + self.gamma/(self.beta*dt)*Dq
+                dqddt = dqddt + 1.0/(self.beta*dt*dt)*Dq
+                Lambda = q[-num_LM_eq:].astype(dtype=ct.c_double, copy=True, order='F')
+                Lambda_dot = dqdt[-num_LM_eq:].astype(dtype=ct.c_double, copy=True, order='F')
+
+                # MB_tstep[1].for_pos = q[self.sys_size-10:self.sys_size-4].astype(dtype=ct.c_double, copy=True, order='F')
 
                 if iter == 0:
                     old_Dq = np.max(np.abs(Dq[0:self.sys_size]))
                     if old_Dq < 1.0:
                         old_Dq = 1.0
-                    if not num_LM_eq == 0:
-                        LM_old_Dq = np.max(np.abs(Dq[self.sys_size:self.sys_size+num_LM_eq]))
-                    else:
-                        LM_old_Dq = old_Dq
-
+                    LM_old_Dq = np.max(np.abs(Dq[self.sys_size:self.sys_size+num_LM_eq]))
                     if LM_old_Dq < 1.0:
                         LM_old_Dq = 1.0
 
 
-            #ipdb.set_trace()
             mb.state2disp(q, dqdt, dqddt, MB_beam, MB_tstep)
+
+            # BC Check
+            # print("last_point AFoR vel: ", MB_tstep[0].pos_dot[-1,:])
+            # print("FoR AFoR vel       : ", np.dot(algebra.quat2rotation(MB_tstep[1].quat),MB_tstep[1].for_vel[0:3]))
+            # print("FoR acc theta_z:     ", np.dot(algebra.quat2rotation(MB_tstep[1].quat),MB_tstep[1].for_acc[0:3]))
 
             self.integrate_position(MB_beam, MB_tstep, dt)
 
             # I do this to be able to write variables, but I want them to be in GFoR in the future
             self.data.ts += 1
             for ibody in range(len(MB_tstep)):
-                self.data.structure.timestep_info[-1].mb_FoR_pos[ibody,:] = MB_tstep[ibody].for_pos.astype(dtype=ct.c_double, order='F')
-                self.data.structure.timestep_info[-1].mb_FoR_vel[ibody,:] = MB_tstep[ibody].for_vel.astype(dtype=ct.c_double, order='F')
-                self.data.structure.timestep_info[-1].mb_FoR_acc[ibody,:] = MB_tstep[ibody].for_acc.astype(dtype=ct.c_double, order='F')
-                self.data.structure.timestep_info[-1].mb_quat[ibody,:] = MB_tstep[ibody].quat.astype(dtype=ct.c_double, order='F')
+                self.data.structure.timestep_info[-1].mb_FoR_pos[ibody,:] = MB_tstep[ibody].for_pos.astype(dtype=ct.c_double, copy=True, order='F')
+                self.data.structure.timestep_info[-1].mb_FoR_vel[ibody,:] = MB_tstep[ibody].for_vel.astype(dtype=ct.c_double, copy=True, order='F')
+                self.data.structure.timestep_info[-1].mb_FoR_acc[ibody,:] = MB_tstep[ibody].for_acc.astype(dtype=ct.c_double, copy=True, order='F')
+                self.data.structure.timestep_info[-1].mb_quat[ibody,:] = MB_tstep[ibody].quat.astype(dtype=ct.c_double, copy=True, order='F')
 
             # run postprocessors
             if self.with_postprocessors:
                 for postproc in self.postprocessors:
                     self.data = self.postprocessors[postproc].run(online=True)
+
+            print("ts: ", ts, " finished")
+
         self.data.ts -= 1
         return self.data

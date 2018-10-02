@@ -97,11 +97,21 @@ class WriteVariablesTime(BaseSolver):
                 fid = open(filename,"a")
 
                 if (self.settings['FoR_variables'][ivariable] == 'GFoR_pos'):
-                    self.write_nparray_to_file(fid, self.data.ts, self.data.structure.timestep_info[-1].for_pos, self.settings['delimiter'])
+                    self.write_nparray_to_file(fid, self.data.ts, self.data.structure.timestep_info[-1].mb_FoR_pos[ifor,:], self.settings['delimiter'])
                 elif (self.settings['FoR_variables'][ivariable] == 'GFoR_vel'):
-                    self.write_nparray_to_file(fid, self.data.ts, self.data.structure.timestep_info[-1].for_vel, self.settings['delimiter'])
+                    self.write_nparray_to_file(fid, self.data.ts, self.data.structure.timestep_info[-1].mb_FoR_vel[ifor,:], self.settings['delimiter'])
                 elif (self.settings['FoR_variables'][ivariable] == 'GFoR_acc'):
+                    self.write_nparray_to_file(fid, self.data.ts, self.data.structure.timestep_info[-1].mb_FoR_acc[ifor,:], self.settings['delimiter'])
+                elif (self.settings['FoR_variables'][ivariable] == 'GFoR_quat'):
+                    self.write_nparray_to_file(fid, self.data.ts, self.data.structure.timestep_info[-1].mb_quat[ifor,:], self.settings['delimiter'])
+                elif (self.settings['FoR_variables'][ivariable] == 'AFoR_pos'):
+                    self.write_nparray_to_file(fid, self.data.ts, self.data.structure.timestep_info[-1].for_pos, self.settings['delimiter'])
+                elif (self.settings['FoR_variables'][ivariable] == 'AFoR_vel'):
+                    self.write_nparray_to_file(fid, self.data.ts, self.data.structure.timestep_info[-1].for_vel, self.settings['delimiter'])
+                elif (self.settings['FoR_variables'][ivariable] == 'AFoR_acc'):
                     self.write_nparray_to_file(fid, self.data.ts, self.data.structure.timestep_info[-1].for_acc, self.settings['delimiter'])
+                elif (self.settings['FoR_variables'][ivariable] == 'AFoR_quat'):
+                    self.write_nparray_to_file(fid, self.data.ts, self.data.structure.timestep_info[-1].quat, self.settings['delimiter'])
                 else:
                     print("Unrecognized " + self.settings['FoR_variables'][ivariable] + " variable")
 
