@@ -1,6 +1,7 @@
 import sharpy.utils.algebra as algebra
 import numpy as np
 import unittest
+import random
 # from IPython import embed
 
 
@@ -74,7 +75,7 @@ class TestAlgebra(unittest.TestCase):
 
     def test_rotation_matrices(self):
         '''
-        Checks routines and consistency of functions to generate rotation 
+        Checks routines and consistency of functions to generate rotation
         matrices.
 
         Note: test only includes triad <-> CRV <-> quaternions conversions
@@ -91,7 +92,7 @@ class TestAlgebra(unittest.TestCase):
         a=np.pi/6.
         nv=np.array([1,0,0])
         sa,ca=np.sin(a),np.cos(a)
-        Cab_exp=np.array([[1,  0,   0], 
+        Cab_exp=np.array([[1,  0,   0],
                           [0, ca, -sa],
                           [0, sa,  ca],])
         ### rot from triad
@@ -107,9 +108,9 @@ class TestAlgebra(unittest.TestCase):
         quat=algebra.crv2quat(fv)
         Cab_num=algebra.quat2rotation(quat)
         assert np.linalg.norm(Cab_num-Cab_exp)<1e-15,\
-                                  'quat2rotation not producing the right result'                           
+                                  'quat2rotation not producing the right result'
 
-        ### inverse relations 
+        ### inverse relations
         # check crv2rotation and rotation2crv are biunivolcal in [-pi,pi]
         # check quat2rotation and rotation2quat are biunivocal in [-pi,pi]
         N=100
@@ -140,7 +141,7 @@ class TestAlgebra(unittest.TestCase):
             assert np.linalg.norm(quat-quat0)<1e-12,\
                                   'rotation2quat not producing the right result'
 
-        print(50*'-'+' all good!\n')  
+        print(50*'-'+' all good!\n')
 
 
 
@@ -157,15 +158,19 @@ class TestAlgebra(unittest.TestCase):
         print('der_Cquat_by_v\n' + 'der_CquatT_by_v')
 
         ### linearisation point
-        fi0=np.pi/6
-        nv0=np.array([1,3,1])
+        # fi0=np.pi/6
+        # nv0=np.array([1,3,1])
+        fi0=2.0*np.pi*random.random()-np.pi
+        nv0=np.array([random.random(),random.random(),random.random()])
         nv0=nv0/np.linalg.norm(nv0)
         fv0=fi0*nv0
         qv0=algebra.crv2quat(fv0)
 
         # direction of perturbation
-        fi1=np.pi/3
-        nv1=np.array([-2,4,1])
+        # fi1=np.pi/3
+        # nv1=np.array([-2,4,1])
+        fi1=2.0*np.pi*random.random()-np.pi
+        nv1=np.array([random.random(),random.random(),random.random()])
         nv1=nv1/np.linalg.norm(nv1)
         fv1=fi1*nv1
         qv1=algebra.crv2quat(fv1)
@@ -175,7 +180,8 @@ class TestAlgebra(unittest.TestCase):
         Cag0=Cga0.T
 
         # derivatives
-        xv=np.ones((3,)) # dummy vector
+        # xv=np.ones((3,)) # dummy vector
+        xv=np.array([random.random(),random.random(),random.random()]) # dummy vector
         derCga=algebra.der_Cquat_by_v(qv0,xv)
         derCag=algebra.der_CquatT_by_v(qv0,xv)
 
@@ -189,7 +195,7 @@ class TestAlgebra(unittest.TestCase):
             qv=a*qv1 + (1.-a)*qv0
             dqv=qv-qv0
             Cga=algebra.quat2rotation(qv)
-            Cag=Cga.T   
+            Cag=Cga.T
 
             dCag_num=np.dot(Cag-Cag0,xv)
             dCga_num=np.dot(Cga-Cga0,xv)
@@ -209,7 +215,31 @@ class TestAlgebra(unittest.TestCase):
         assert er_ag<A[-2], 'der_CquatT_by_v error too large'
         print(50*'-'+' all good!\n')
 
+    def test_new_rotation_matrices_derivatives(self):
+        '''
+        Test if there is any difference between both functions
+        '''
 
+        print(60*'-')
+        print('Testing if functions to build rotation matrices derivatives are equivalent')
+        print('der_Cquat_by_v\n' + 'der_CquatT_by_v')
+
+        ### linearisation point
+        # fi0=np.pi/6
+        # nv0=np.array([1,3,1])
+        fi0=2.0*np.pi*random.random()-np.pi
+        nv0=np.array([random.random(),random.random(),random.random()])
+        nv0=nv0/np.linalg.norm(nv0)
+        fv0=fi0*nv0
+        qv0=algebra.crv2quat(fv0)
+
+        xv=np.array([random.random(),random.random(),random.random()]) # dummy vector
+
+        derCga=algebra.der_Cquat_by_v(qv0,xv)
+        derCag=algebra.der_CquatT_by_v(qv0,xv)
+
+        error=np.max(np.abs(derCga-derCag))
+        print("error: ", error)
 
     def test_crv_tangetial_operator(self):
         ''' Checks Cartesian rotation vector tangential operator '''
@@ -242,7 +272,7 @@ class TestAlgebra(unittest.TestCase):
 
             ### Compute relevant quantities
             Cab=algebra.crv2rotation(fv0) # fv0 is rotation from A to B
-            dCab=algebra.crv2rotation(fv0+dfv)-Cab 
+            dCab=algebra.crv2rotation(fv0+dfv)-Cab
 
             T=algebra.crv2tan(fv0)
             Tdfv=np.dot(T,dfv)
@@ -324,17 +354,4 @@ if __name__=='__main__':
     T.test_rotation_matrices_derivatives()
     T.test_crv_tangetial_operator()
     T.test_crv_tangetial_operator_derivative()
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+    T.test_new_rotation_matrices_derivatives()

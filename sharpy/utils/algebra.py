@@ -6,7 +6,7 @@ Note: testing in tests/utils/algebra_test
 
 import numpy as np
 import scipy.linalg
-from warnings import warn 
+from warnings import warn
 
 #######
 # functions for back compatibility
@@ -14,13 +14,13 @@ def quat2rot(quat):
     warn('quat2rot(quat) is obsolite! Use quat2rotation(quat).T instead!')
     return quat2rotation(quat).T
 def crv2rot(psi):
-    warn('crv2rot(psi) is obsolite! Use crv2rotation(psi) instead!')    
+    warn('crv2rot(psi) is obsolite! Use crv2rotation(psi) instead!')
     return crv2rotation(psi)
 def rot2crv(rot):
-    warn('rot2crv(rot) is obsolite! Use rotation2crv(rot.T) instead!')    
+    warn('rot2crv(rot) is obsolite! Use rotation2crv(rot.T) instead!')
     return rotation2crv(rot.T)
 def triad2rot(xb,yb,zb):
-    warn('triad2rot(xb,yb,zb) is obsolite! Use triad2rotation(xb,yb,zb).T instead!') 
+    warn('triad2rot(xb,yb,zb) is obsolite! Use triad2rotation(xb,yb,zb).T instead!')
     return triad2rotation(xb,yb,zb).T
 def mat2quat(rot):
      warn('mat2quat(rot) is obsolite! Use rotation2quat(rot.T) instead!')
@@ -155,7 +155,7 @@ def triad2rotation(xb, yb, zb):
     :param yb:
     :param zb:
     :return: rotation matrix Rab
-    """  
+    """
     return np.column_stack((xb, yb, zb))
 
 
@@ -223,11 +223,11 @@ def angle_between_vector_and_plane(vector, plane_normal):
 def rotation2quat(Cab):
     '''
     Given a rotation matrix Cab rotating the frame a onto b, the function returns
-    the minimal "positive angle" quaternion representing this rotation. 
+    the minimal "positive angle" quaternion representing this rotation.
 
-    Note: this is the inverse of quat2rotation for Cartesian rotation vectors 
+    Note: this is the inverse of quat2rotation for Cartesian rotation vectors
     associated to rotations in the range [-pi,pi], i.e.:
-        fv == algebra.rotation2crv(algebra.crv2rotation(fv))  
+        fv == algebra.rotation2crv(algebra.crv2rotation(fv))
     for each fv=a*nv such that nv is a unit vector and the scalar a in [-pi,pi].
     '''
 
@@ -267,9 +267,9 @@ def rotation2quat(Cab):
 
 def quat_bound(quat):
     '''
-    Given a quaternion associated to a rotation of angle a about an axis nv, the 
+    Given a quaternion associated to a rotation of angle a about an axis nv, the
     function "bounds" the quaternion, i.e. sets the rotation axis nv such that
-    a in [-pi,pi]. 
+    a in [-pi,pi].
 
     Note: as quaternions are defined as qv=[cos(a/2); sin(a/2)*nv], this is
     equivalent to enforce qv[0]>=0.
@@ -304,18 +304,18 @@ def crv2quat(psi):
     ie, being the quaternion defined as:
         qv= [cos(a/2); sin(a/2)*nv ]
     the rotation axis is such that the rotation angle a is in [-pi,pi] or,
-    equivalently, qv[0]>=0.    
+    equivalently, qv[0]>=0.
     '''
 
     # minimise crv rotation
-    psi_new=crv_bounds(psi)    
+    psi_new=crv_bounds(psi)
 
     fi=np.linalg.norm(psi_new)
     nv=psi_new/fi
 
     quat=np.zeros((4,))
     quat[0]=np.cos(.5*fi)
-    quat[1:]=np.sin(.5*fi)*nv 
+    quat[1:]=np.sin(.5*fi)*nv
 
     return quat
 
@@ -381,14 +381,14 @@ def crv2rotation(psi):
 def rotation2crv(Cab):
     '''
     Given a rotation matrix Cab rotating the frame a onto b, the function returns
-    the minimal size Cartesian rotation vector representing this rotation. 
+    the minimal size Cartesian rotation vector representing this rotation.
 
-    Note: this is the inverse of crv2rotation for Cartesian rotation vectors 
+    Note: this is the inverse of crv2rotation for Cartesian rotation vectors
     associated to rotations in the range [-pi,pi], i.e.:
-        fv == algebra.rotation2crv(algebra.crv2rotation(fv))  
+        fv == algebra.rotation2crv(algebra.crv2rotation(fv))
     for each fv=a*nv such that nv is a unit vector and the scalar a in [-pi,pi].
     '''
-    
+
     if np.linalg.norm(Cab) < 1e-6:
         raise AttributeError(\
                  'Element Vector V is not orthogonal to reference line (51105)')
@@ -457,11 +457,11 @@ def quat2rotation(q1):
     See Aircraft Control and Simulation, pag. 31, by Stevens, Lewis.
     Copied from S. Maraniello's SHARPy
 
-    Remark: if B is a FoR obtained rotating a FoR A of angle fi about an axis n 
-    (remind n will be invariant during the rotation), and q is the related 
+    Remark: if B is a FoR obtained rotating a FoR A of angle fi about an axis n
+    (remind n will be invariant during the rotation), and q is the related
     quaternion q(fi,n), the function will return the matrix Cab such that:
         - Cab rotates A onto B
-        - Cab transforms the coordinates of a vector defined in B component to 
+        - Cab transforms the coordinates of a vector defined in B component to
         A components.
     """
 
@@ -580,9 +580,9 @@ def rotate_quaternion(quat, omegadt):
 
 def der_Cquat_by_v(q,v):
     '''
-    Being C=C(quat) the rotational matrix depending on the quaternion q and 
+    Being C=C(quat) the rotational matrix depending on the quaternion q and
     defined as C=quat2rotation(q), the function returns the derivative, w.r.t. the
-    quanternion components, of the vector dot(C,v), where v is a constant 
+    quanternion components, of the vector dot(C,v), where v is a constant
     vector.
     The elements of the resulting derivative matrix D are ordered such that:
         d(C*v) = D*d(q)
@@ -592,20 +592,20 @@ def der_Cquat_by_v(q,v):
     vx,vy,vz=v
     q0,q1,q2,q3=q
 
-    return 2.*np.array( [[ q0*vx + q2*vz - q3*vy, q1*vx + q2*vy + q3*vz, 
-                                 q0*vz + q1*vy - q2*vx, -q0*vy + q1*vz - q3*vx], 
-                         [ q0*vy - q1*vz + q3*vx, -q0*vz - q1*vy + q2*vx, 
-                                 q1*vx + q2*vy + q3*vz,  q0*vx + q2*vz - q3*vy], 
-                         [ q0*vz + q1*vy - q2*vx, q0*vy - q1*vz + q3*vx, 
+    return 2.*np.array( [[ q0*vx + q2*vz - q3*vy, q1*vx + q2*vy + q3*vz,
+                                 q0*vz + q1*vy - q2*vx, -q0*vy + q1*vz - q3*vx],
+                         [ q0*vy - q1*vz + q3*vx, -q0*vz - q1*vy + q2*vx,
+                                 q1*vx + q2*vy + q3*vz,  q0*vx + q2*vz - q3*vy],
+                         [ q0*vz + q1*vy - q2*vx, q0*vy - q1*vz + q3*vx,
                                 -q0*vx - q2*vz + q3*vy, q1*vx + q2*vy + q3*vz]])
 
 
 
 def der_CquatT_by_v(q,v):
     '''
-    Being C=C(quat).T the projection matrix depending on the quaternion q and 
+    Being C=C(quat).T the projection matrix depending on the quaternion q and
     defined as C=quat2rotation(q).T, the function returns the derivative, w.r.t. the
-    quanternion components, of the vector dot(C,v), where v is a constant 
+    quanternion components, of the vector dot(C,v), where v is a constant
     vector.
     The elements of the resulting derivative matrix D are ordered such that:
         d(C*v) = D*d(q)
@@ -615,18 +615,16 @@ def der_CquatT_by_v(q,v):
     vx,vy,vz=v
     q0,q1,q2,q3=q
 
-    return 2.*np.array( [[ q0*vx + q2*vz - q3*vy, q1*vx + q2*vy + q3*vz, 
-                                 q0*vz + q1*vy - q2*vx, -q0*vy + q1*vz - q3*vx], 
-                         [q0*vy - q1*vz + q3*vx, -q0*vz - q1*vy + q2*vx, 
-                                   q1*vx + q2*vy + q3*vz,q0*vx + q2*vz - q3*vy], 
-                         [q0*vz + q1*vy - q2*vx, q0*vy - q1*vz + q3*vx,
-                                -q0*vx - q2*vz + q3*vy, q1*vx + q2*vy + q3*vz]])
-
-
+    return 2.*np.array( [[ q0*vx - q2*vz + q3*vy, q1*vx + q2*vy + q3*vz,
+                                 - q0*vz + q1*vy - q2*vx, q0*vy + q1*vz - q3*vx],
+                         [q0*vy + q1*vz - q3*vx, q0*vz - q1*vy + q2*vx,
+                                   q1*vx + q2*vy + q3*vz,-q0*vx + q2*vz - q3*vy],
+                         [q0*vz - q1*vy + q2*vx, -q0*vy - q1*vz + q3*vx,
+                                q0*vx - q2*vz + q3*vy, q1*vx + q2*vy + q3*vz]])
 
 def der_Tan_by_xv(fv0,xv):
     '''
-    Being fv0 a cartesian rotation vector and Tan the corresponding tangential 
+    Being fv0 a cartesian rotation vector and Tan the corresponding tangential
     operator (computed through crv2tan(fv)), the function returns the derivative
     of dot(Tan,xv), where xv is a constant vector.
 
@@ -634,23 +632,23 @@ def der_Tan_by_xv(fv0,xv):
         d(Tan*xv) = D*d(fv)
     where d(.) is a delta operator.
 
-    Note: the derivative expression has been derived symbolically and verified 
+    Note: the derivative expression has been derived symbolically and verified
     by FDs. A more compact expression may be possible.
     '''
 
     f0=np.linalg.norm(fv0)
     sf0,cf0=np.sin(f0),np.cos(f0)
 
-    fv0_x,fv0_y,fv0_z=fv0 
+    fv0_x,fv0_y,fv0_z=fv0
     xv_x,xv_y,xv_z=xv
 
     f0p2=f0**2
     f0p3=f0**3
-    f0p4=f0**4  
+    f0p4=f0**4
 
-    rs01=sf0/f0  
-    rs03=sf0/f0p3 
-    rc02=(cf0 - 1)/f0p2   
+    rs01=sf0/f0
+    rs03=sf0/f0p3
+    rc02=(cf0 - 1)/f0p2
     rc04=(cf0 - 1)/f0p4
 
     Ts02=(1 - rs01)/f0p2
@@ -658,62 +656,62 @@ def der_Tan_by_xv(fv0,xv):
 
     # if f0<1e-8: rs01=1.0 # no need
     return np.array(
-        [[xv_x*((-fv0_y**2 - fv0_z**2)*(-cf0*fv0_x/f0p2 + fv0_x*rs03)/f0p2 - 
+        [[xv_x*((-fv0_y**2 - fv0_z**2)*(-cf0*fv0_x/f0p2 + fv0_x*rs03)/f0p2 -
             2*fv0_x*(1 - rs01)*(-fv0_y**2 - fv0_z**2)/f0p4) + xv_y*(fv0_x*fv0_y*(
-                -cf0*fv0_x/f0p2 + fv0_x*rs03)/f0p2 + fv0_y*Ts02 + 
+                -cf0*fv0_x/f0p2 + fv0_x*rs03)/f0p2 + fv0_y*Ts02 +
             fv0_x*fv0_z*rs03 - 2*fv0_x**2*fv0_y*Ts04 + 2*fv0_x*fv0_z*
-            rc04) + xv_z*(fv0_x*fv0_z*(-cf0*fv0_x/f0p2 + fv0_x*rs03)/f0p2 + 
-            fv0_z*Ts02 - fv0_x*fv0_y*rs03 - 2*fv0_x**2*fv0_z*Ts04 
+            rc04) + xv_z*(fv0_x*fv0_z*(-cf0*fv0_x/f0p2 + fv0_x*rs03)/f0p2 +
+            fv0_z*Ts02 - fv0_x*fv0_y*rs03 - 2*fv0_x**2*fv0_z*Ts04
             - 2*fv0_x*fv0_y*rc04),
             #
-          xv_x*(-2*fv0_y*Ts02 + (-fv0_y**2 - fv0_z**2)*(-cf0*fv0_y/f0p2 + 
-            fv0_y*rs03)/f0p2 - 2*fv0_y*(1 - rs01)*(-fv0_y**2 - fv0_z**2)/f0p4) + 
-          xv_y*(fv0_x*fv0_y*(-cf0*fv0_y/f0p2 + fv0_y*rs03)/f0p2 + fv0_x*Ts02 + 
-            fv0_y*fv0_z*rs03 - 2*fv0_x*fv0_y**2*Ts04 + 2*fv0_y*fv0_z*rc04) 
-          + xv_z*(fv0_x*fv0_z*(-cf0*fv0_y/f0p2 + fv0_y*rs03)/f0p2 + rc02 - 
+          xv_x*(-2*fv0_y*Ts02 + (-fv0_y**2 - fv0_z**2)*(-cf0*fv0_y/f0p2 +
+            fv0_y*rs03)/f0p2 - 2*fv0_y*(1 - rs01)*(-fv0_y**2 - fv0_z**2)/f0p4) +
+          xv_y*(fv0_x*fv0_y*(-cf0*fv0_y/f0p2 + fv0_y*rs03)/f0p2 + fv0_x*Ts02 +
+            fv0_y*fv0_z*rs03 - 2*fv0_x*fv0_y**2*Ts04 + 2*fv0_y*fv0_z*rc04)
+          + xv_z*(fv0_x*fv0_z*(-cf0*fv0_y/f0p2 + fv0_y*rs03)/f0p2 + rc02 -
             fv0_y**2*rs03 - 2*fv0_x*fv0_y*fv0_z*Ts04 - 2*fv0_y**2*rc04),
           #
-          xv_x*(-2*fv0_z*Ts02 + (-fv0_y**2 - fv0_z**2)*(-cf0*fv0_z/f0p2 
-            + fv0_z*rs03)/f0p2 - 2*fv0_z*(1 - rs01)*(-fv0_y**2 - fv0_z**2)/f0p4) + 
-          xv_y*(fv0_x*fv0_y*(-cf0*fv0_z/f0p2 + fv0_z*rs03)/f0p2 - rc02 
-            + fv0_z**2*rs03 - 2*fv0_x*fv0_y*fv0_z*Ts04 + 2*fv0_z**2*rc04) 
-          + xv_z*(fv0_x*fv0_z*(-cf0*fv0_z/f0p2 + fv0_z*rs03)/f0p2 + fv0_x*Ts02 
+          xv_x*(-2*fv0_z*Ts02 + (-fv0_y**2 - fv0_z**2)*(-cf0*fv0_z/f0p2
+            + fv0_z*rs03)/f0p2 - 2*fv0_z*(1 - rs01)*(-fv0_y**2 - fv0_z**2)/f0p4) +
+          xv_y*(fv0_x*fv0_y*(-cf0*fv0_z/f0p2 + fv0_z*rs03)/f0p2 - rc02
+            + fv0_z**2*rs03 - 2*fv0_x*fv0_y*fv0_z*Ts04 + 2*fv0_z**2*rc04)
+          + xv_z*(fv0_x*fv0_z*(-cf0*fv0_z/f0p2 + fv0_z*rs03)/f0p2 + fv0_x*Ts02
             - fv0_y*fv0_z*rs03 - 2*fv0_x*fv0_z**2*Ts04 - 2*fv0_y*fv0_z*rc04)],
-         [xv_x*(fv0_x*fv0_y*(-cf0*fv0_x/f0p2 + fv0_x*rs03)/f0p2 + 
-            fv0_y*Ts02 - fv0_x*fv0_z*rs03 - 2*fv0_x**2*fv0_y*Ts04 - 
-            2*fv0_x*fv0_z*rc04) + xv_y*(-2*fv0_x*Ts02 + 
-            (-fv0_x**2 - fv0_z**2)*(-cf0*fv0_x/f0p2 + fv0_x*rs03)/f0p2 
-            - 2*fv0_x*(1 - rs01)*(-fv0_x**2 - fv0_z**2)/f0p4) + 
-            xv_z*(fv0_y*fv0_z*(-cf0*fv0_x/f0p2 + fv0_x*rs03)/f0p2 - rc02 
+         [xv_x*(fv0_x*fv0_y*(-cf0*fv0_x/f0p2 + fv0_x*rs03)/f0p2 +
+            fv0_y*Ts02 - fv0_x*fv0_z*rs03 - 2*fv0_x**2*fv0_y*Ts04 -
+            2*fv0_x*fv0_z*rc04) + xv_y*(-2*fv0_x*Ts02 +
+            (-fv0_x**2 - fv0_z**2)*(-cf0*fv0_x/f0p2 + fv0_x*rs03)/f0p2
+            - 2*fv0_x*(1 - rs01)*(-fv0_x**2 - fv0_z**2)/f0p4) +
+            xv_z*(fv0_y*fv0_z*(-cf0*fv0_x/f0p2 + fv0_x*rs03)/f0p2 - rc02
                 + fv0_x**2*rs03 + 2*fv0_x**2*rc04 - 2*fv0_x*fv0_y*fv0_z*Ts04),
-          xv_x*(fv0_x*fv0_y*(-cf0*fv0_y/f0p2 + fv0_y*rs03)/f0p2 + 
-            fv0_x*Ts02 - fv0_y*fv0_z*rs03 - 2*fv0_x*fv0_y**2*Ts04 
-            - 2*fv0_y*fv0_z*rc04) + xv_y*((-fv0_x**2 - fv0_z**2)*(-cf0*fv0_y/f0p2 
-                + fv0_y*rs03)/f0p2 - 2*fv0_y*(1 - rs01)*(-fv0_x**2 - fv0_z**2)/f0p4) 
-            + xv_z*(fv0_y*fv0_z*(-cf0*fv0_y/f0p2 + fv0_y*rs03)/f0p2 + fv0_z*Ts02 
+          xv_x*(fv0_x*fv0_y*(-cf0*fv0_y/f0p2 + fv0_y*rs03)/f0p2 +
+            fv0_x*Ts02 - fv0_y*fv0_z*rs03 - 2*fv0_x*fv0_y**2*Ts04
+            - 2*fv0_y*fv0_z*rc04) + xv_y*((-fv0_x**2 - fv0_z**2)*(-cf0*fv0_y/f0p2
+                + fv0_y*rs03)/f0p2 - 2*fv0_y*(1 - rs01)*(-fv0_x**2 - fv0_z**2)/f0p4)
+            + xv_z*(fv0_y*fv0_z*(-cf0*fv0_y/f0p2 + fv0_y*rs03)/f0p2 + fv0_z*Ts02
                 + fv0_x*fv0_y*rs03 + 2*fv0_x*fv0_y*rc04 - 2*fv0_y**2*fv0_z*Ts04),
-          xv_x*(fv0_x*fv0_y*(-cf0*fv0_z/f0p2 + fv0_z*rs03)/f0p2 + rc02 - fv0_z**2*rs03 
-            - 2*fv0_x*fv0_y*fv0_z*Ts04 - 2*fv0_z**2*rc04) + xv_y*(-2*fv0_z*Ts02 
-            + (-fv0_x**2 - fv0_z**2)*(-cf0*fv0_z/f0p2 + fv0_z*rs03)/f0p2 - 
-            2*fv0_z*(1 - rs01)*(-fv0_x**2 - fv0_z**2)/f0p4) + xv_z*(fv0_y*fv0_z*(-cf0*fv0_z/f0p2 
-                + fv0_z*rs03)/f0p2 + fv0_y*Ts02 + fv0_x*fv0_z*rs03 + 2*fv0_x*fv0_z*rc04 
+          xv_x*(fv0_x*fv0_y*(-cf0*fv0_z/f0p2 + fv0_z*rs03)/f0p2 + rc02 - fv0_z**2*rs03
+            - 2*fv0_x*fv0_y*fv0_z*Ts04 - 2*fv0_z**2*rc04) + xv_y*(-2*fv0_z*Ts02
+            + (-fv0_x**2 - fv0_z**2)*(-cf0*fv0_z/f0p2 + fv0_z*rs03)/f0p2 -
+            2*fv0_z*(1 - rs01)*(-fv0_x**2 - fv0_z**2)/f0p4) + xv_z*(fv0_y*fv0_z*(-cf0*fv0_z/f0p2
+                + fv0_z*rs03)/f0p2 + fv0_y*Ts02 + fv0_x*fv0_z*rs03 + 2*fv0_x*fv0_z*rc04
             - 2*fv0_y*fv0_z**2*Ts04)],
-         [xv_x*(fv0_x*fv0_z*(-cf0*fv0_x/f0p2 + fv0_x*rs03)/f0p2 + fv0_z*Ts02 
-            + fv0_x*fv0_y*rs03 - 2*fv0_x**2*fv0_z*Ts04 + 2*fv0_x*fv0_y*rc04) 
-         + xv_y*(fv0_y*fv0_z*(-cf0*fv0_x/f0p2 + fv0_x*rs03)/f0p2 + rc02 - fv0_x**2*rs03 
-            - 2*fv0_x**2*rc04 - 2*fv0_x*fv0_y*fv0_z*Ts04) + xv_z*(-2*fv0_x*Ts02 
-            + (-fv0_x**2 - fv0_y**2)*(-cf0*fv0_x/f0p2 + fv0_x*rs03)/f0p2 - 
+         [xv_x*(fv0_x*fv0_z*(-cf0*fv0_x/f0p2 + fv0_x*rs03)/f0p2 + fv0_z*Ts02
+            + fv0_x*fv0_y*rs03 - 2*fv0_x**2*fv0_z*Ts04 + 2*fv0_x*fv0_y*rc04)
+         + xv_y*(fv0_y*fv0_z*(-cf0*fv0_x/f0p2 + fv0_x*rs03)/f0p2 + rc02 - fv0_x**2*rs03
+            - 2*fv0_x**2*rc04 - 2*fv0_x*fv0_y*fv0_z*Ts04) + xv_z*(-2*fv0_x*Ts02
+            + (-fv0_x**2 - fv0_y**2)*(-cf0*fv0_x/f0p2 + fv0_x*rs03)/f0p2 -
             2*fv0_x*(1 - rs01)*(-fv0_x**2 - fv0_y**2)/f0p4),
-          xv_x*(fv0_x*fv0_z*(-cf0*fv0_y/f0p2 + fv0_y*rs03)/f0p2 - rc02 + fv0_y**2*rs03 - 
-            2*fv0_x*fv0_y*fv0_z*Ts04 + 2*fv0_y**2*rc04) + xv_y*(fv0_y*fv0_z*(-cf0*fv0_y/f0p2 
-                + fv0_y*rs03)/f0p2 + fv0_z*Ts02 - fv0_x*fv0_y*rs03 - 2*fv0_x*fv0_y*rc04 
-            - 2*fv0_y**2*fv0_z*Ts04) + xv_z*(-2*fv0_y*Ts02 + (-fv0_x**2 
-                - fv0_y**2)*(-cf0*fv0_y/f0p2 + fv0_y*rs03)/f0p2 - 2*fv0_y*(1 - rs01)*(-fv0_x**2 
+          xv_x*(fv0_x*fv0_z*(-cf0*fv0_y/f0p2 + fv0_y*rs03)/f0p2 - rc02 + fv0_y**2*rs03 -
+            2*fv0_x*fv0_y*fv0_z*Ts04 + 2*fv0_y**2*rc04) + xv_y*(fv0_y*fv0_z*(-cf0*fv0_y/f0p2
+                + fv0_y*rs03)/f0p2 + fv0_z*Ts02 - fv0_x*fv0_y*rs03 - 2*fv0_x*fv0_y*rc04
+            - 2*fv0_y**2*fv0_z*Ts04) + xv_z*(-2*fv0_y*Ts02 + (-fv0_x**2
+                - fv0_y**2)*(-cf0*fv0_y/f0p2 + fv0_y*rs03)/f0p2 - 2*fv0_y*(1 - rs01)*(-fv0_x**2
                 - fv0_y**2)/f0p4),
-          xv_x*(fv0_x*fv0_z*(-cf0*fv0_z/f0p2 + fv0_z*rs03)/f0p2 + fv0_x*Ts02 + 
-            fv0_y*fv0_z*rs03 - 2*fv0_x*fv0_z**2*Ts04 + 2*fv0_y*fv0_z*rc04) + 
-          xv_y*(fv0_y*fv0_z*(-cf0*fv0_z/f0p2 + fv0_z*rs03)/f0p2 + fv0_y*Ts02 
-            - fv0_x*fv0_z*rs03 - 2*fv0_x*fv0_z*rc04 - 2*fv0_y*fv0_z**2*Ts04) + 
-          xv_z*((-fv0_x**2 - fv0_y**2)*(-cf0*fv0_z/f0p2 + fv0_z*rs03)/f0p2 - 
+          xv_x*(fv0_x*fv0_z*(-cf0*fv0_z/f0p2 + fv0_z*rs03)/f0p2 + fv0_x*Ts02 +
+            fv0_y*fv0_z*rs03 - 2*fv0_x*fv0_z**2*Ts04 + 2*fv0_y*fv0_z*rc04) +
+          xv_y*(fv0_y*fv0_z*(-cf0*fv0_z/f0p2 + fv0_z*rs03)/f0p2 + fv0_y*Ts02
+            - fv0_x*fv0_z*rs03 - 2*fv0_x*fv0_z*rc04 - 2*fv0_y*fv0_z**2*Ts04) +
+          xv_z*((-fv0_x**2 - fv0_y**2)*(-cf0*fv0_z/f0p2 + fv0_z*rs03)/f0p2 -
             2*fv0_z*(1 - rs01)*(-fv0_x**2 - fv0_y**2)/f0p4)]])
     # end der_Tan_by_xv

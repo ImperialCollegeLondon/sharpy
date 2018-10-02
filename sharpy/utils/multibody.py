@@ -122,5 +122,3 @@ def state2disp(q, dqdt, dqddt, MB_beam, MB_tstep):
         # print("state2disp")
         # embed()
         # MB_beam[ibody].timestep_info = MB_tstep[ibody].copy()
-
-

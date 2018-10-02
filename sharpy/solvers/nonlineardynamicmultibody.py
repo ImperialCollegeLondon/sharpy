@@ -124,7 +124,7 @@ class NonLinearDynamicMultibody(BaseSolver):
 
             if MBdict["constraint_%02d" % iconstraint]['behaviour'] == 'hinge_node_FoR':
                 #self.num_LM_eq += 6*(MBdict["constraint_%02d" % iconstraint]['num_nodes_involved']-1)
-                self.num_LM_eq += 3
+                self.num_LM_eq += 4
             elif MBdict["constraint_%02d" % iconstraint]['behaviour'] == 'free':
                 self.num_LM_eq += 0
             else:
@@ -199,11 +199,14 @@ class NonLinearDynamicMultibody(BaseSolver):
                 Bnh[ieq:ieq+3, FoR_dof:FoR_dof+3] = algebra.quat2rotation(quat)
                 # Bnh[ieq:ieq+3, FoR_dof:FoR_dof+3] = np.eye(3)
 
+                Bnh[3,FoR_dof+3] = 1.0
+
                 LM_C[sys_size:,:sys_size] = scalingFactor*Bnh
                 LM_C[:sys_size,sys_size:] = scalingFactor*np.transpose(Bnh)
 
                 LM_Q[:sys_size] = scalingFactor*np.dot(np.transpose(Bnh),Lambda_dot)
-                LM_Q[sys_size:] = -MB_tstep[0].pos_dot[-1,:] + np.dot(algebra.quat2rotation(quat),MB_tstep[1].for_vel[0:3])
+                LM_Q[sys_size:sys_size+3] = -MB_tstep[0].pos_dot[-1,:] + np.dot(algebra.quat2rotation(quat),MB_tstep[1].for_vel[0:3])
+                LM_Q[sys_size+3] = MB_tstep[1].for_vel[3]
 
                 #LM_K[FoR_dof:FoR_dof+3,FoR_dof+6:FoR_dof+10] = algebra.der_CquatT_by_v(MB_tstep[body_FoR].quat,Lambda_dot)
                 LM_C[FoR_dof:FoR_dof+3,FoR_dof+6:FoR_dof+10] += algebra.der_CquatT_by_v(quat,scalingFactor*Lambda_dot)
@@ -220,7 +223,7 @@ class NonLinearDynamicMultibody(BaseSolver):
                 #     # LM_Q[sys_size:] = np.array([10.0,0.0,0.0])
                 #     LM_Q[sys_size:] = MB_tstep[0].pos[-1,:]- np.dot(algebra.quat2rotation(MB_tstep[body_FoR].quat),MB_tstep[body_FoR].for_pos[0:3])-np.array([1.0,0.0,0.0])
 
-                ieq += 3
+                ieq += 4
 
         return LM_C, LM_K, LM_Q
 
@@ -405,6 +408,7 @@ class NonLinearDynamicMultibody(BaseSolver):
             # print("last_point AFoR vel: ", MB_tstep[0].pos_dot[-1,:])
             # print("FoR AFoR vel       : ", np.dot(algebra.quat2rotation(MB_tstep[1].quat),MB_tstep[1].for_vel[0:3]))
             # print("FoR acc theta_z:     ", np.dot(algebra.quat2rotation(MB_tstep[1].quat),MB_tstep[1].for_acc[0:3]))
+            print("FoR AFoR rot vel xA: ", MB_tstep[1].for_vel[3])
 
             self.integrate_position(MB_beam, MB_tstep, dt)
 
