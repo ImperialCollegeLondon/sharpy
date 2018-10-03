@@ -14,5 +14,5 @@ Method:
 
 where :math:`'` notes the differentiation with respect to the index number
 
-.. automodule:: presharpy.utils.algebra
+.. automodule:: sharpy.utils.algebra
     :members: tangent_vector

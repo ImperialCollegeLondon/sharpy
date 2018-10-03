@@ -19,7 +19,7 @@
 #
 import os
 import sys
-sys.path.insert(0, os.path.abspath('../..'))
+sys.path.insert(0, os.path.abspath('../'))
 # print(sys.path)
 # -- General configuration ------------------------------------------------
 
@@ -60,7 +60,7 @@ master_doc = 'index'
 
 # General information about the project.
 project = 'SHARPy'
-copyright = '2016, LoCA Lab ICL'
+copyright = '2018, LoCA Lab ICL'
 author = 'LoCA Lab ICL'
 
 # The version info for the project you're documenting, acts as replacement for

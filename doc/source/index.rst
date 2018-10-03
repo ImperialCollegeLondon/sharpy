@@ -13,7 +13,7 @@ Contents:
 
 The ProblemData Class
 =====================
-.. automodule:: presharpy.problemdata
+.. automodule:: sharpy.presharpy
    :members:
 
 Utilities
