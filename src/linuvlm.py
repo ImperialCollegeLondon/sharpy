@@ -344,14 +344,12 @@ class Static():
 class Dynamic(Static):
 
 
-
-	def __init__(self,tsdata,dt,integr_order=2,Uref=1.0,RemovePredictor=True):
+	def __init__(self,tsdata,dt,integr_order=2,RemovePredictor=True,ScalingDict=None):
 
 		super().__init__(tsdata)
 
 		self.dt=dt
 		self.integr_order=integr_order
-		self.Uref=1.0 # ref. velocity for scaling
 
 		if self.integr_order==1:
 			Nx=2*self.K+self.K_star
@@ -367,6 +365,22 @@ class Dynamic(Static):
 		self.remove_predictor=RemovePredictor
 		self.include_added_mass=True
 
+		# create scaling quantities
+		if ScalingDict is None:
+			ScalingFacts={ 'length' : 1.,
+						   'speed'  : 1.,
+						   'density': 1.}
+		else:
+			ScalingFacts=ScalingDict
+
+		for key in ScalingFacts:
+			ScalingFacts[key]=np.float(ScalingFacts[key])
+
+		ScalingFacts['time']=ScalingFacts['length']/ScalingFacts['speed']
+		ScalingFacts['circulation']=ScalingFacts['speed']*ScalingFacts['length']
+		ScalingFacts['dyn_pressure']=0.5*ScalingFacts['density']*ScalingFacts['speed']**2
+		ScalingFacts['force']=ScalingFacts['dyn_pressure']*ScalingFacts['length']**2
+		self.ScalingFacts=ScalingFacts
 
 		# ### rename static methods
 		# self.assemble_static=self.assemble
@@ -380,10 +394,23 @@ class Dynamic(Static):
 		# print('\t\t\t...done in %.2f sec' %self.time_init_dyn)
 
 
-	def nondimvars(self):
-		pass
+	def nondimss(self):
+		'''
+		Scale state-space model based of self.SalingFacts
+		'''
 
-	def dimvars(self):
+		self.state_scal=self.ScalingFacts['circulation']
+		self.output_scal=self.ScalingFacts['force']
+
+		Kzeta=self.Kzeta
+		self.input_scal=np.concatenate(( 
+									3*Kzeta*[ self.ScalingFacts['length'] ],
+									6*Kzeta*[ self.ScalingFacts['speed']  ]))
+		self.SS=libss.scale_SS(
+					   self.SS,self.input_scal,self.output_scal,self.state_scal)
+
+
+	def dimss(self):
 		pass
 
 	def assemble_ss(self):
@@ -559,8 +586,6 @@ class Dynamic(Static):
 			self.SS=scsig.dlti(Ass,Bss,Css,Dss,dt=self.dt)
 			print(	'state-space model produced in form:\n\t'\
 					'x_{n+1} = A x_{n} + Bp u_{n+1}')
-
-
 
 
 		### Gain matrix for total forces
@@ -760,7 +785,7 @@ if __name__=='__main__':
 	### ---------------------------------- Verify dynamic solver - steady state
 
 	# Dynamic solver
-	Dyn=Dynamic(tsdata,dt=0.05,integr_order=2,Uref=1.0,RemovePredictor=False)
+	Dyn=Dynamic(tsdata,dt=0.05,integr_order=2,RemovePredictor=False)
 	Dyn.assemble_ss()
 
 	# steady state solution
@@ -847,7 +872,7 @@ if __name__=='__main__':
 	### ------------------------------- Verify assembly without prediction term
 
 	# Dynamic solver
-	Dyn=Dynamic(tsdata,dt=0.05,integr_order=2,Uref=1.0,RemovePredictor=True)
+	Dyn=Dynamic(tsdata,dt=0.05,integr_order=2,RemovePredictor=True)
 	Dyn.assemble_ss()
 
 	# steady state solution

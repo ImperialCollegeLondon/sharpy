@@ -3,6 +3,7 @@ Linear aeroelastic model based on coupled GEBM + UVLM
 S. Maraniello, Jul 2018
 '''
 
+import warnings
 from IPython import embed
 import numpy as np
 import scipy.signal as scsig
@@ -38,12 +39,10 @@ class LinAeroEla():
 		settings['LinearUvlm']['dt']=np.float(settings['LinearUvlm']['dt'])
 		settings['LinearUvlm']['integr_order']=\
 								  np.int(settings['LinearUvlm']['integr_order'])
-		settings['LinearUvlm']['Uref']=np.float(settings['LinearUvlm']['Uref'])
 
 
 		### extract aeroelastic info
 		self.dt=settings['LinearUvlm']['dt']
-
 
 		### reference to timestep_info
 		# aero
@@ -53,14 +52,20 @@ class LinAeroEla():
 		structure=data.structure
 		self.tsstr=structure.timestep_info[data.ts]
 
-		# --- To Fix: this is ugly and inconsistent
-		rho=data.settings['StaticCoupled']['aero_solver_settings']['rho']
+		# --- backward compatibility
+		try:
+			rho=data.settings['LinearUvlm']['density']
+		except KeyError:
+			warnings.warn(
+				"Key 'density' not found in 'LinearUvlm' solver settings. '\
+									  'Trying to read it from 'StaticCoupled'.")
+			rho=data.settings['StaticCoupled']['aero_solver_settings']['rho']
 		if type(rho)==str:
 			rho=np.float(rho)
 		if hasattr(rho,'value'):
 			rho=rho.value
 		self.tsaero.rho=rho
-		# --- To Fix
+		# --- backward compatibility
 
 
 		### gebm
@@ -75,10 +80,7 @@ class LinAeroEla():
 						self.tsaero,
 						dt=settings['LinearUvlm']['dt'],
 						integr_order=settings['LinearUvlm']['integr_order'],
-						Uref=settings['LinearUvlm']['Uref'] )
-
-
-
+						ScalingDict=settings['LinearUvlm']['ScalingDict'])
 
 
 	def reshape_struct_input(self):

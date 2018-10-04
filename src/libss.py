@@ -1,21 +1,16 @@
 '''
-Discrete Linear Time Invariant systems
+Linear Time Invariant systems
 author: S. Maraniello
 date: 15 Sep 2017 (still basement...)
 
-Library of methods to manipulate DLTI systems
+Library of methods to manipulate state-space models
 '''
 
+import copy
 import numpy as np
 import scipy.sparse as sparse
 import scipy.signal as scsig
-
 from IPython import embed
-
-# debugging
-# try: import control
-# except: pass
-
 
 
 def couple(ss01,ss02,K12,K21):
@@ -609,11 +604,11 @@ def sum(SS1,SS2,negative=False):
 	return SStot
 
 
-def scale_SS(SS,input_scal=1.,output_scal=1.):
+def scale_SS(SSin,input_scal=1.,output_scal=1.,state_scal=1.,byref=True):
 	'''
 	Given a state-space system, scales the equations such that the original
 	input and output, u and y, are substituted by uad=u/uref and yad=y/yref.
-	The entries input_scal/output_scal can be:
+	The entries input_scal/output_scal/state_scal can be:
 		- floats: in this case all input/output are scaled by the same value
 		- lists/arrays of length Nin/Nout: in this case each dof will be scaled
 		by a different factor
@@ -622,24 +617,40 @@ def scale_SS(SS,input_scal=1.,output_scal=1.):
 		xnew=A*x+B*u
 		y=C*x+D*u
 	the transformation is such that:
-		xnew=A*x+(B*uref)*uad
-		yad=1/yref( C*x+D*uref*uad )
+		xnew=A*x+(B*uref/xref)*uad
+		yad=1/yref( C*xref*x+D*uref*uad )
+
+	By default, the state-space model is manipulated by reference (byref=True)
 	'''
 
 	# check input:
-	Nin,Nout=SS.inputs,SS.outputs
+	Nin,Nout=SSin.inputs,SSin.outputs
+	Nstates=SSin.A.shape[0]
 
 	if isinstance(input_scal,(list,np.ndarray)):
 		assert len(input_scal)==Nin,\
-			     'Length of input_scal must match number of state-space inputs!'
+			   'Length of input_scal not matching number of state-space inputs!'
 	else:
 		input_scal=Nin*[input_scal]
 
 	if isinstance(output_scal,(list,np.ndarray)):
 		assert len(output_scal)==Nout,\
-			   'Length of output_scal must match number of state-space outputs!'
+			 'Length of output_scal not matching number of state-space outputs!'
 	else:
 		output_scal=Nout*[output_scal]
+
+	if isinstance(state_scal,(list,np.ndarray)):
+		assert len(state_scal)==Nstates,\
+			   'Length of state_scal not matching number of state-space states!'
+	else:
+		state_scal=Nstates*[state_scal]
+
+
+	if byref:
+		SS=SSin
+	else:
+		print('deep-copying state-space model before scaling')
+		SS=copy.deepcopy(SSin)
 
 
 	# update input related matrices
@@ -651,6 +662,11 @@ def scale_SS(SS,input_scal=1.,output_scal=1.):
 	for ii in range(Nout):
 		SS.C[ii,:]=SS.C[ii,:]/output_scal[ii]
 		SS.D[ii,:]=SS.D[ii,:]/output_scal[ii]
+
+	# update state related matrices
+	for ii in range(Nstates):
+		SS.B[ii,:]=SS.B[ii,:]/state_scal[ii]
+		SS.C[:,ii]=SS.C[:,ii]*state_scal[ii]
 
 	return SS
 
