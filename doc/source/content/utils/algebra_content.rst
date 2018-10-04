@@ -16,3 +16,5 @@ where :math:`'` notes the differentiation with respect to the index number
 
 .. automodule:: sharpy.utils.algebra
     :members: tangent_vector
+
+

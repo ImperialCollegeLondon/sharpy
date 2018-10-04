@@ -11,14 +11,11 @@ Contents:
 .. toctree::
    :maxdepth: 2
 
-The ProblemData Class
-=====================
-.. automodule:: sharpy.presharpy
-   :members:
+   content/installation
+   content/solvers
+   content/utilities
+   content/test_cases
 
-Utilities
-=========
-.. include:: content/algebra_content.rst
 
 Indices and tables
 ==================
