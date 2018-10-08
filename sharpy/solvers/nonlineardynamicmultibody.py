@@ -127,6 +127,10 @@ class NonLinearDynamicMultibody(BaseSolver):
                 self.num_LM_eq += 4
             elif MBdict["constraint_%02d" % iconstraint]['behaviour'] == 'free':
                 self.num_LM_eq += 0
+            elif MBdict["constraint_%02d" % iconstraint]['behaviour'] == 'hinge_FoR':
+                self.num_LM_eq += 3
+            elif MBdict["constraint_%02d" % iconstraint]['behaviour'] == 'fully_constrained_node_FoR':
+                self.num_LM_eq += 6
             else:
                 print("ERROR: not recognized constraint type")
 
@@ -166,7 +170,9 @@ class NonLinearDynamicMultibody(BaseSolver):
             # Rename variables from dictionary
             behaviour = MBdict["constraint_%02d" % iconstraint]['behaviour']
 
-            # Build the matrices associate to the BC
+            ###################################################################
+            ###################  HINGE BETWEEN NODE AND FOR  ##################
+            ###################################################################
             if behaviour == 'hinge_node_FoR':
 
                 # Rename variables from dictionary
@@ -209,7 +215,7 @@ class NonLinearDynamicMultibody(BaseSolver):
                 LM_Q[sys_size+3] = MB_tstep[1].for_vel[3]
 
                 #LM_K[FoR_dof:FoR_dof+3,FoR_dof+6:FoR_dof+10] = algebra.der_CquatT_by_v(MB_tstep[body_FoR].quat,Lambda_dot)
-                LM_C[FoR_dof:FoR_dof+3,FoR_dof+6:FoR_dof+10] += algebra.der_CquatT_by_v(quat,scalingFactor*Lambda_dot)
+                LM_C[FoR_dof:FoR_dof+3,FoR_dof+6:FoR_dof+10] += algebra.der_CquatT_by_v(quat,scalingFactor*Lambda_dot[0:3])
                 # else:
                 #     B[ieq:ieq+3, node_dof:node_dof+3] = np.eye(3)
                 #     B[ieq:ieq+3, FoR_dof:FoR_dof+3] = -1.0*algebra.quat2rotation(MB_tstep[body_FoR].quat)
@@ -224,6 +230,85 @@ class NonLinearDynamicMultibody(BaseSolver):
                 #     LM_Q[sys_size:] = MB_tstep[0].pos[-1,:]- np.dot(algebra.quat2rotation(MB_tstep[body_FoR].quat),MB_tstep[body_FoR].for_pos[0:3])-np.array([1.0,0.0,0.0])
 
                 ieq += 4
+
+            ###################################################################
+            ###############################  HINGE FOR  #######################
+            ###################################################################
+            elif behaviour == 'hinge_FoR':
+
+                # Rename variables from dictionary
+                body_FoR = MBdict["constraint_%02d" % iconstraint]['body_FoR']
+
+                # Define the position of the first degree of freedom associated to the FoR
+                FoR_dof = 0
+                for ibody in range(body_FoR):
+                    FoR_dof += MB_beam[ibody].num_dof.value
+                    if MB_beam[ibody].FoR_movement == 'free':
+                        FoR_dof += 10
+                FoR_dof += MB_beam[body_FoR].num_dof.value
+
+                Bnh[ieq:ieq+3, FoR_dof:FoR_dof+3] = 1.0*np.eye(3)
+
+                LM_C[sys_size:,:sys_size] = scalingFactor*Bnh
+                LM_C[:sys_size,sys_size:] = scalingFactor*np.transpose(Bnh)
+
+                LM_Q[:sys_size] = scalingFactor*np.dot(np.transpose(Bnh),Lambda_dot)
+                LM_Q[FoR_dof:FoR_dof+3] = MB_tstep[body_FoR].for_vel[0:3].astype(dtype=ct.c_double, copy=True, order='F')
+
+            ###################################################################
+            #############  FULL CONSTRAINT BETWEEN NODE AND FOR  ##############
+            ###################################################################
+            elif MBdict["constraint_%02d" % iconstraint]['behaviour'] == 'fully_constrained_node_FoR':
+
+                # Rename variables from dictionary
+                node_in_body = MBdict["constraint_%02d" % iconstraint]['node_in_body']
+                node_body = MBdict["constraint_%02d" % iconstraint]['body']
+                body_FoR = MBdict["constraint_%02d" % iconstraint]['body_FoR']
+
+                # Define the position of the first degree of freedom associated to the node
+                node_dof = 0
+                for ibody in range(node_body):
+                    node_dof += MB_beam[ibody].num_dof.value
+                    if MB_beam[ibody].FoR_movement == 'free':
+                        node_dof += 10
+                # TODO: this will NOT work for more than one clamped node
+                node_dof += 6*(node_in_body-1)
+
+                # Define the position of the first degree of freedom associated to the FoR
+                FoR_dof = 0
+                for ibody in range(body_FoR):
+                    FoR_dof += MB_beam[ibody].num_dof.value
+                    if MB_beam[ibody].FoR_movement == 'free':
+                        FoR_dof += 10
+                FoR_dof += MB_beam[body_FoR].num_dof.value
+
+                # Option with non holonomic constraints
+                # BC for linear velocities
+                Bnh[ieq:ieq+3, node_dof:node_dof+3] = -1.0*np.eye(3)
+                #TODO: change this when the master AFoR is able to move
+                quat = algebra.quat_bound(MB_tstep[body_FoR].quat)
+                Bnh[ieq:ieq+3, FoR_dof:FoR_dof+3] = algebra.quat2rotation(quat)
+
+                # BC for angular velocities
+                Bnh[ieq+3:ieq+6,FoR_dof+3:FoR_dof+6] = -1.0*algebra.quat2rotation(quat)
+                ielem, inode_in_elem = MB_beam[0].node_master_elem[node_in_body]
+                Bnh[ieq+3:ieq+6,node_dof+3:node_dof+6] = algebra.crv2tan(MB_tstep[0].psi[ielem, inode_in_elem, :])
+
+                LM_C[sys_size:,:sys_size] = scalingFactor*Bnh
+                LM_C[:sys_size,sys_size:] = scalingFactor*np.transpose(Bnh)
+
+                LM_Q[:sys_size] = scalingFactor*np.dot(np.transpose(Bnh),Lambda_dot)
+                LM_Q[sys_size:sys_size+3] = -MB_tstep[0].pos_dot[-1,:] + np.dot(algebra.quat2rotation(quat),MB_tstep[1].for_vel[0:3])
+                LM_Q[sys_size+3:sys_size+6] = (np.dot(algebra.crv2tan(MB_tstep[0].psi[ielem, inode_in_elem, :]),MB_tstep[0].psi_dot[ielem, inode_in_elem, :]) -
+                                              np.dot(algebra.quat2rotation(quat), MB_tstep[body_FoR].for_vel[3:6]))
+
+                #LM_K[FoR_dof:FoR_dof+3,FoR_dof+6:FoR_dof+10] = algebra.der_CquatT_by_v(MB_tstep[body_FoR].quat,Lambda_dot)
+                LM_C[FoR_dof:FoR_dof+3,FoR_dof+6:FoR_dof+10] += algebra.der_CquatT_by_v(quat,scalingFactor*Lambda_dot[0:3])
+                LM_C[FoR_dof+3:FoR_dof+6,FoR_dof+6:FoR_dof+10] -= algebra.der_CquatT_by_v(quat,scalingFactor*Lambda_dot[3:6])
+
+                LM_K[node_dof+3:node_dof+6,node_dof+3:node_dof+6] += algebra.der_TanT_by_xv(MB_tstep[0].psi[ielem, inode_in_elem, :],scalingFactor*Lambda_dot[3:6])
+
+                ieq += 6
 
         return LM_C, LM_K, LM_Q
 
@@ -259,6 +344,7 @@ class NonLinearDynamicMultibody(BaseSolver):
             elif MB_beam[ibody].FoR_movement == 'free':
                 last_dof = first_dof + MB_beam[ibody].num_dof.value + 10
                 M, C, K, Q = xbeamlib.xbeam3_asbly_dynamic(MB_beam[ibody], MB_tstep[ibody], self.settings)
+
 
             ############### Assembly into the global matrices
             # Flexible and RBM contribution to Asys
@@ -335,6 +421,7 @@ class NonLinearDynamicMultibody(BaseSolver):
             # dqddt = np.zeros_like(dqdt)
             q = q + dt*dqdt + (0.5 - self.beta)*dt*dt*dqddt
             dqdt = dqdt + (1.0 - self.gamma)*dt*dqddt
+            dqddt = np.zeros((self.sys_size + num_LM_eq,), dtype=ct.c_double, order='F')
             Lambda = q[-num_LM_eq:].astype(dtype=ct.c_double, copy=True, order='F')
             Lambda_dot = dqdt[-num_LM_eq:].astype(dtype=ct.c_double, copy=True, order='F')
             # TODO: what to do with lambda
@@ -377,8 +464,11 @@ class NonLinearDynamicMultibody(BaseSolver):
                 # Evaluate convergence
                 if (iter > 0):
                     res = np.max(np.abs(Dq[0:self.sys_size]))/old_Dq
-                    LM_res = np.max(np.abs(Dq[self.sys_size:self.sys_size+num_LM_eq]))/LM_old_Dq
-                    if (res < self.settings['min_delta']) and (LM_res < self.settings['min_delta']):
+                    if not num_LM_eq == 0:
+                        LM_res = np.max(np.abs(Dq[self.sys_size:self.sys_size+num_LM_eq]))/LM_old_Dq
+                    else:
+                        LM_res = 0.0
+                    if (res < self.settings['min_delta'].value) and (LM_res < self.settings['min_delta'].value):
                         # print("res: ", res)
                         # print("LMres: ", LM_res)
                         break
@@ -397,7 +487,10 @@ class NonLinearDynamicMultibody(BaseSolver):
                     old_Dq = np.max(np.abs(Dq[0:self.sys_size]))
                     if old_Dq < 1.0:
                         old_Dq = 1.0
-                    LM_old_Dq = np.max(np.abs(Dq[self.sys_size:self.sys_size+num_LM_eq]))
+                    if not num_LM_eq == 0:
+                        LM_old_Dq = np.max(np.abs(Dq[self.sys_size:self.sys_size+num_LM_eq]))
+                    else:
+                        LM_old_Dq = np.abs(Dq[self.sys_size:self.sys_size+num_LM_eq])
                     if LM_old_Dq < 1.0:
                         LM_old_Dq = 1.0
 
@@ -408,7 +501,9 @@ class NonLinearDynamicMultibody(BaseSolver):
             # print("last_point AFoR vel: ", MB_tstep[0].pos_dot[-1,:])
             # print("FoR AFoR vel       : ", np.dot(algebra.quat2rotation(MB_tstep[1].quat),MB_tstep[1].for_vel[0:3]))
             # print("FoR acc theta_z:     ", np.dot(algebra.quat2rotation(MB_tstep[1].quat),MB_tstep[1].for_acc[0:3]))
-            print("FoR AFoR rot vel xA: ", MB_tstep[1].for_vel[3])
+            # print("FoR AFoR rot vel xA: ", MB_tstep[1].for_vel[3])
+            # print("psi camping Aslave: ", MB_tstep[1].psi[0,0,:])
+            # print("psi camping G: ",np.dot(algebra.quat2rotation(MB_tstep[1].quat), MB_tstep[1].psi[0,0,:]))
 
             self.integrate_position(MB_beam, MB_tstep, dt)
 
@@ -419,13 +514,18 @@ class NonLinearDynamicMultibody(BaseSolver):
                 self.data.structure.timestep_info[-1].mb_FoR_vel[ibody,:] = MB_tstep[ibody].for_vel.astype(dtype=ct.c_double, copy=True, order='F')
                 self.data.structure.timestep_info[-1].mb_FoR_acc[ibody,:] = MB_tstep[ibody].for_acc.astype(dtype=ct.c_double, copy=True, order='F')
                 self.data.structure.timestep_info[-1].mb_quat[ibody,:] = MB_tstep[ibody].quat.astype(dtype=ct.c_double, copy=True, order='F')
-
+            #print("BC error: ", np.dot(np.transpose(algebra.crv2tan(MB_tstep[0].psi[-1,1,:])),MB_tstep[0].psi_dot[-1,1,:]) - np.dot(algebra.quat2rotation(MB_tstep[1].quat),MB_tstep[1].for_vel[3:6]))
+            # print("rotation error: ", MB_tstep[0].psi[-1,1,:] - algebra.quat2crv(MB_tstep[1].quat))
+            # print("tip pos: ", MB_tstep[1].pos[-1,1])
             # run postprocessors
             if self.with_postprocessors:
                 for postproc in self.postprocessors:
                     self.data = self.postprocessors[postproc].run(online=True)
 
             print("ts: ", ts, " finished")
+            if ts == 999:
+                embed()
+
 
         self.data.ts -= 1
         return self.data
