@@ -335,6 +335,53 @@ class TestAlgebra(unittest.TestCase):
         assert er<A[-2], 'der_Tan_by_xv error too large'
         print(50*'-'+' all good!\n')
 
+    def test_crv_tangetial_operator_transpose_derivative(self):
+        ''' Checks Cartesian rotation vector tangential operator transpose'''
+
+        print(60*'-')
+        print('Testing CRV tangential operator transpose derivative function')
+        print('der_TanT_by_xv')
+
+        # dummy vector
+        xv=np.array([random.random(),random.random(),random.random()])
+
+        # linearisation point
+        fi0=2.0*np.pi*random.random()
+        nv0=np.array([random.random(),random.random(),random.random()])
+        nv0=nv0/np.linalg.norm(nv0)
+        fv0=fi0*nv0
+        T0_T=np.transpose(algebra.crv2tan(fv0))
+        T0_Txv=np.dot(T0_T,xv)
+
+        # Analytical solution
+        derT_T_an=algebra.der_TanT_by_xv(fv0,xv)
+
+        # End point
+        fi1=2.0*np.pi*random.random()
+        nv1=np.array([random.random(),random.random(),random.random()])
+        nv1=nv1/np.linalg.norm(nv1)
+        fv1=fi1*nv1
+
+        print('step\t\terror der_TanT_by_xv')
+        er=10.
+        A=np.array([1e-1,1e-2,1e-3,1e-4,1e-5,1e-6])
+        for a in A:
+            # perturbed
+            fv=a*fv1 + (1.-a)*fv0
+            dfv=fv-fv0
+            Tpert_T=np.transpose(algebra.crv2tan(fv))
+            Tpert_Txv=np.dot(Tpert_T,xv)
+            dT_T_num=Tpert_Txv-T0_Txv
+            dT_T_an=np.dot(derT_T_an,dfv)
+
+            # Error
+            er_new=np.max(np.abs(dT_T_num-dT_T_an))/np.max(np.abs(dT_T_an))
+            print('%.3e\t%.3e'%(a,er_new,) )
+            assert er_new<er, 'der_TanT_by_xv error not converging to 0'
+            er=er_new
+
+        assert er<A[-2], 'der_TanT_by_xv error too large'
+        print(50*'-'+' all good!\n')
 
 
     # def test_rotation_matrix_around_axis(self):
@@ -354,4 +401,4 @@ if __name__=='__main__':
     T.test_rotation_matrices_derivatives()
     T.test_crv_tangetial_operator()
     T.test_crv_tangetial_operator_derivative()
-    T.test_new_rotation_matrices_derivatives()
+    T.test_crv_tangetial_operator_transpose_derivative()
