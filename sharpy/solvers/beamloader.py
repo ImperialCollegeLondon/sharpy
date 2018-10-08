@@ -9,6 +9,28 @@ import sharpy.utils.h5utils as h5utils
 
 @solver
 class BeamLoader(BaseSolver):
+    '''
+    Loads the structural beam solver with the specified user settings.
+
+
+    Attributes:
+        settings_types (dict): Dictionary containing the settings for the solver.
+        settings_default (dict): Dictionary containing the default solver settings, should none be provided.
+        data: structure from .solver.txt file containing the solver settings
+
+    Notes:
+        The ``settings_types`` dictionary contains the following name-value pair arguments:
+
+        ===============  ==============  ==========================================================  ================
+        Key              Type            Description                                                 Default
+        ===============  ==============  ==========================================================  ================
+        ``unsteady``     Boolean         Dynamic problem                                             ``False``
+        ``orientation``  List of floats  Beam orientation with respect to flow in Quaternion format  ``[1, 0, 0, 0]``
+        ===============  ==============  ==========================================================  ================
+
+        For further reference on Quaternions see:
+        `https://en.wikipedia.org/wiki/Quaternion <https://en.wikipedia.org/wiki/Quaternion>`_
+    '''
     solver_id = 'BeamLoader'
 
     def __init__(self):
