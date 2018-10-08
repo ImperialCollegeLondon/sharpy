@@ -215,32 +215,6 @@ class TestAlgebra(unittest.TestCase):
         assert er_ag<A[-2], 'der_CquatT_by_v error too large'
         print(50*'-'+' all good!\n')
 
-    def test_new_rotation_matrices_derivatives(self):
-        '''
-        Test if there is any difference between both functions
-        '''
-
-        print(60*'-')
-        print('Testing if functions to build rotation matrices derivatives are equivalent')
-        print('der_Cquat_by_v\n' + 'der_CquatT_by_v')
-
-        ### linearisation point
-        # fi0=np.pi/6
-        # nv0=np.array([1,3,1])
-        fi0=2.0*np.pi*random.random()-np.pi
-        nv0=np.array([random.random(),random.random(),random.random()])
-        nv0=nv0/np.linalg.norm(nv0)
-        fv0=fi0*nv0
-        qv0=algebra.crv2quat(fv0)
-
-        xv=np.array([random.random(),random.random(),random.random()]) # dummy vector
-
-        derCga=algebra.der_Cquat_by_v(qv0,xv)
-        derCag=algebra.der_CquatT_by_v(qv0,xv)
-
-        error=np.max(np.abs(derCga-derCag))
-        print("error: ", error)
-
     def test_crv_tangetial_operator(self):
         ''' Checks Cartesian rotation vector tangential operator '''
 
