@@ -19,7 +19,7 @@ def couple(ss01,ss02,K12,K21):
 	K12 transforms the output of ss02 into an input of ss01.
 	'''
 
-	assert ss01.dt==ss02.dt, 'Time-steps not matching!'
+	assert np.abs(ss01.dt-ss02.dt)<1e-10*ss01.dt, 'Time-steps not matching!'
 	assert K12.shape == (ss01.inputs,ss02.outputs),\
 			 'Gain K12 shape not matching with systems number of inputs/outputs'
 	assert K21.shape == (ss02.inputs,ss01.outputs),\
@@ -657,6 +657,8 @@ def scale_SS(SSin,input_scal=1.,output_scal=1.,state_scal=1.,byref=True):
 	for ii in range(Nin):
 		SS.B[:,ii]=SS.B[:,ii]*input_scal[ii]
 		SS.D[:,ii]=SS.D[:,ii]*input_scal[ii]
+	# SS.B*=input_scale
+	# SS.D*=input_scale
 
 	# update output related matrices
 	for ii in range(Nout):
@@ -667,6 +669,7 @@ def scale_SS(SSin,input_scal=1.,output_scal=1.,state_scal=1.,byref=True):
 	for ii in range(Nstates):
 		SS.B[ii,:]=SS.B[ii,:]/state_scal[ii]
 		SS.C[:,ii]=SS.C[:,ii]*state_scal[ii]
+	# SS.B /= state_scal	
 
 	return SS
 
