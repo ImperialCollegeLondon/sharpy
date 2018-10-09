@@ -331,11 +331,11 @@ class Static():
 					self.Ktra    [iivec,[0,1,2]]+=1.
 					self.Ktra_dot[iivec,[0,1,2]]+=1.
 
-					# # sectional moment
-					# dx,dy,dz=zeta[:,mm,nn]-zeta_rotation
-					# Dskew=np.array([[0,-dz, dy],[dz,0,-dx],[-dy,dx,0]])	
-					# self.Krot[iivec,:]=Dskew
-					# self.Krot_dot[iivec,:]=Dskew
+					# sectional moment
+					dx,dy,dz=zeta[:,mm,nn]-zeta_rotation
+					Dskew=np.array([[0,-dz, dy],[dz,0,-dx],[-dy,dx,0]])	
+					self.Krot[iivec,:]=Dskew
+					self.Krot_dot[iivec,:]=Dskew
 
 
 # ------------------------------------------------------------------------------
@@ -347,6 +347,17 @@ class Dynamic(Static):
 	def __init__(self,tsdata,dt,integr_order=2,RemovePredictor=True,ScalingDict=None):
 
 		super().__init__(tsdata)
+
+        # self.settings_types = dict()
+        # self.settings_default = dict()
+
+        # # dimensional time-step 
+        # self.settings_types['dt'] = 'float'
+        # self.settings_default['dt'] = 0.1
+
+        # # integration order for bound circulation first derivative (unsteady force)   
+        # self.settings_types['integr_order'] = 'int'
+        # self.settings_default['integr_order'] = 2
 
 		self.dt=dt
 		self.integr_order=integr_order
@@ -408,6 +419,7 @@ class Dynamic(Static):
 									6*Kzeta*[ self.ScalingFacts['speed']  ]))
 		self.SS=libss.scale_SS(
 					   self.SS,self.input_scal,self.output_scal,self.state_scal)
+		self.SS.dt=self.SS.dt/self.ScalingFacts['time']
 
 
 	def dimss(self):
@@ -418,7 +430,7 @@ class Dynamic(Static):
 		Produces state-space model
 			x_{n+1} = A x_n + Bp u_{n+1}
 			y = C x + Dp u
-		where the staete, inputs and outputs are:
+		where the state, inputs and outputs are:
 			x_n = { dgamma_n, dgamma_w_n, dt*dgamma'_n, dgamma_{n-1} }
 			u_n = { dzeta_n, dzeta'_n, duext_n }
 			y = { nodal forces }
