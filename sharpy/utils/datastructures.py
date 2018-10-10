@@ -550,13 +550,12 @@ class StructTimeStepInfo(object):
         # NOTICE: this function only works for one body at a time to prevent errors
 
         # Cag = algebra.quat2rot(self.mb_quat[global_ibody,:])
-        CAslaveG = algebra.quat2rot(self.mb_quat[global_ibody,:])
-        CGAmaster = np.transpose(algebra.quat2rot(self.mb_quat[0,:]))
+        CAslaveG = algebra.quat2rotation(self.mb_quat[global_ibody,:]).T
+        CGAmaster = algebra.quat2rotation(self.mb_quat[0,:])
         Csm = np.dot(CAslaveG, CGAmaster)
 
         delta_pos_ms = self.mb_FoR_pos[global_ibody,:] - self.mb_FoR_pos[0,:]
         delta_vel_ms = self.mb_FoR_vel[global_ibody,:] - self.mb_FoR_vel[0,:]
-        delta_crv = algebra.quat2crv(self.mb_quat[global_ibody,:])
 
         # Modify variables
         for inode in range(self.pos.shape[0]):
@@ -566,15 +565,20 @@ class StructTimeStepInfo(object):
             for inode in range(3):
                 # self.psi[ielem,inode,:] = np.dot(Csm,self.psi[ielem,inode,:]) - np.dot(CAslaveG,delta_pos_ms[3:6])
                 # self.psi_dot[ielem,inode,:] = np.dot(Csm,self.psi_dot[ielem,inode,:]) - np.dot(CAslaveG,delta_vel_ms[3:6])
-                self.psi[ielem,inode,:] = np.dot(Csm,self.psi[ielem,inode,:]) + delta_crv
-                self.psi_dot[ielem,inode,:] = np.dot(Csm,self.psi_dot[ielem,inode,:])
+                # self.psi[ielem,inode,:] = np.dot(Csm,self.psi[ielem,inode,:]) + delta_crv
+                # self.psi_dot[ielem,inode,:] = np.dot(Csm,self.psi_dot[ielem,inode,:])
+                # self.psi_dot[ielem,inode,:] = algebra.rotation2crv(np.dot(Csm,algebra.crv2rotation(self.psi_dot[ielem,inode,:])))
+                psi_previous = self.psi[ielem,inode,:] + np.zeros((3,),)
+                self.psi[ielem,inode,:] = algebra.rotation2crv(np.dot(Csm,algebra.crv2rotation(self.psi[ielem,inode,:])))
+                self.psi_dot[ielem, inode, :] = np.dot(np.dot(algebra.crv2tan(self.psi[ielem,inode,:]),Csm),
+                                                    (np.dot(algebra.crv2tan(psi_previous).T,self.psi_dot[ielem,inode,:]) - np.dot(CGAmaster.T,delta_vel_ms[3:6])))
 
         # Set the output FoR variables
-        self.for_pos = self.mb_FoR_pos[0,:].astype(dtype=ct.c_double, order='F', copy=True)
+        self.for_pos = self.mb_FoR_pos[global_ibody,:].astype(dtype=ct.c_double, order='F', copy=True)
         # TODO: should I use the reletive velocity between the frame and Amaster?
-        self.for_vel[0:3] = np.dot(np.transpose(CGAmaster),self.mb_FoR_vel[global_ibody,0:3])
-        self.for_vel[3:6] = np.dot(np.transpose(CGAmaster),self.mb_FoR_vel[global_ibody,3:6])
-        self.for_acc[0:3] = np.dot(np.transpose(CGAmaster),self.mb_FoR_acc[global_ibody,0:3])
-        self.for_acc[3:6] = np.dot(np.transpose(CGAmaster),self.mb_FoR_acc[global_ibody,3:6])
+        self.for_vel[0:3] = np.dot(CAslaveG,self.mb_FoR_vel[global_ibody,0:3])
+        self.for_vel[3:6] = np.dot(CAslaveG,self.mb_FoR_vel[global_ibody,3:6])
+        self.for_acc[0:3] = np.dot(CAslaveG,self.mb_FoR_acc[global_ibody,0:3])
+        self.for_acc[3:6] = np.dot(CAslaveG,self.mb_FoR_acc[global_ibody,3:6])
         #TODO: how should I modify quaternions?
-        self.quat = self.mb_quat[0,:]
+        self.quat = self.mb_quat[global_ibody,:].astype(dtype=ct.c_double, order='F', copy=True)

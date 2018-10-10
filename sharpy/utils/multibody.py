@@ -9,8 +9,60 @@ import ctypes as ct
 # import sharpy.utils.multibody as mb
 import traceback
 
+####################  ALGEBRA  ####################
+def rotate_crv(crv_in, quat_in):
 
+    quat_in_copy = algebra.quat_bound(quat_in)
+    quat_from_crv_in = algebra.quat_bound(algebra.crv2quat(crv_in))
+    quat_out = algebra.quat_bound(algebra.quaternion_product(quat_from_crv_in,quat_in_copy))
+    crv_out = algebra.quat2crv(quat_out)
+
+    return crv_out
+
+def opposed_quat(quat_in):
+
+    theta_from_quat = -2.0*np.arccos(quat_in[0])
+    nv_from_quat = quat_in[1:4].copy()
+    if np.linalg.norm(nv_from_quat) > tol_norm:
+        nv_from_quat /= np.linalg.norm(nv_from_quat)
+    opposed_quat = np.zeros((4,),)
+    opposed_quat[0] = np.cos(theta_from_quat/2.0)
+    opposed_quat[1:4] = np.sin(theta_from_quat/2.0)*nv_from_quat
+    opposed_quat = algebra.quat_bound(opposed_quat)
+
+    return opposed_quat
+
+####################  MULTIBODY  ####################
 def split_multibody(beam, tstep, mb_data_dict):
+    """
+    split_multibody
+
+    This functions splits a structure at a certain time step in its different bodies
+
+    Longer description
+
+    Args:
+    	beam (BaseStructure): arg1 description
+    	tstep (StructTimeStepInfo): arg2 description
+        mb_data_dict (): Dictionary including the multibody information
+
+    Returns:
+        MB_beam (list of BaseStructure): each entry represents a body
+        MB_tstep (list of StructTimeStepInfo): each entry represents a body
+
+    Examples:
+
+    Notes:
+
+    	Here you can have specifics and math descriptions.
+    	To enter math mode simply write
+    	.. math:: e^{i\\pi} + 1 = 0
+
+    	Math mode supports TeX sintax but note that you should use two backslashes \\ instead of one.
+    	Sphinx supports reStructuredText should you want to format text...
+
+    """
+
     # call: MB_beam, MB_tstep = split_multibody(self, beam, tstep)
 
     update_mb_db_before_split(tstep)
@@ -39,6 +91,7 @@ def split_multibody(beam, tstep, mb_data_dict):
         MB_tstep.append(ibody_tstep)
 
     return MB_beam, MB_tstep
+
 
 
 def update_mb_db_before_split(tstep):

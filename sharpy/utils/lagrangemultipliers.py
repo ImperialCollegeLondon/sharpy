@@ -30,7 +30,7 @@ def define_num_LM_eq(MBdict):
             num_LM_eq += 3
         elif MBdict["constraint_%02d" % iconstraint]['behaviour'] == 'fully_constrained_node_FoR':
             num_LM_eq += 6
-        if MBdict["constraint_%02d" % iconstraint]['behaviour'] == 'hinge_node_FoR_constant_rotation':
+        elif MBdict["constraint_%02d" % iconstraint]['behaviour'] == 'hinge_node_FoR_constant_rotation':
             num_LM_eq += 4
         else:
             print("ERROR: not recognized constraint type")
@@ -201,7 +201,7 @@ def generate_lagrange_matrix(MBdict, MB_beam, MB_tstep, num_LM_eq, sys_size, dt,
         ###################################################################
         ###################  HINGE BETWEEN NODE AND FOR  ##################
         ###################################################################
-        if behaviour == 'hinge_node_FoR_constant_rotation':
+        elif behaviour == 'hinge_node_FoR_constant_rotation':
 
             # Rename variables from dictionary
             node_in_body = MBdict["constraint_%02d" % iconstraint]['node_in_body']

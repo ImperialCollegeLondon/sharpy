@@ -19,6 +19,7 @@ import sharpy.utils.multibody as mb
 import ipdb
 import sharpy.utils.utils_ams as uams
 import sharpy.utils.lagrangemultipliers as lagrangemultipliers
+import matplotlib.pyplot as plt
 
 @solver
 class NonLinearDynamicMultibody(BaseSolver):
