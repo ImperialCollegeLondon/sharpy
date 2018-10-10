@@ -582,3 +582,50 @@ class StructTimeStepInfo(object):
         self.for_acc[3:6] = np.dot(CAslaveG,self.mb_FoR_acc[global_ibody,3:6])
         #TODO: how should I modify quaternions?
         self.quat = self.mb_quat[global_ibody,:].astype(dtype=ct.c_double, order='F', copy=True)
+
+
+    def change_to_global_AFoR(self, global_ibody):
+
+        # Change the variables FROM the local AFoR to the global AFoR
+
+        CAslaveG = algebra.quat2rotation(self.mb_quat[global_ibody,:]).T
+        CGAmaster = algebra.quat2rotation(self.mb_quat[0,:])
+        Csm = np.dot(CAslaveG, CGAmaster)
+
+        delta_pos_ms = self.mb_FoR_pos[global_ibody,:] - self.mb_FoR_pos[0,:]
+        delta_vel_ms = self.mb_FoR_vel[global_ibody,:] - self.mb_FoR_vel[0,:]
+        # delta_acc_ms = self.mb_FoR_acc[global_ibody,:] - self.mb_FoR_acc[0,:]
+        # delta_crv = algebra.quat2crv(self.mb_quat[global_ibody,:])
+
+
+        for inode in range(self.pos.shape[0]):
+            # self.pos[inode,:] = np.dot(np.transpose(Csm),self.pos[inode,:] + 0.05*np.cross(self.for_vel[3:6],self.pos[inode,:])) + np.dot(np.transpose(CGAmaster),delta_pos_ms[0:3])
+            # self.pos_dot[inode,:] = np.dot(np.transpose(Csm),self.pos_dot[inode,:]+ np.cross(self.for_vel[3:6],self.pos_dot[inode,:])) + np.dot(np.transpose(CGAmaster),delta_vel_ms[0:3])
+            self.pos[inode,:] = np.dot(np.transpose(Csm),self.pos[inode,:]) + np.dot(np.transpose(CGAmaster),delta_pos_ms[0:3])
+            self.pos_dot[inode,:] = np.dot(np.transpose(Csm),self.pos_dot[inode,:]) + np.dot(np.transpose(CGAmaster),delta_vel_ms[0:3])
+
+        for ielem in range(self.psi.shape[0]):
+            for inode in range(3):
+                # self.psi[ielem,inode,:] = np.dot(np.transpose(Csm),self.psi[ielem,inode,:]) + np.dot(np.transpose(CGAmaster),delta_pos_ms[3:6])
+                # self.psi_dot[ielem,inode,:] = np.dot(np.transpose(Csm),self.psi_dot[ielem,inode,:]) + np.dot(np.transpose(CGAmaster),delta_vel_ms[3:6])
+                # self.psi[ielem,inode,:] = np.dot(np.transpose(Csm),self.psi[ielem,inode,:]) - delta_crv
+                # self.psi_dot[ielem,inode,:] = np.dot(np.transpose(Csm),self.psi_dot[ielem,inode,:])
+                psi_previous = self.psi[ielem,inode,:] + np.zeros((3,),)
+                self.psi[ielem,inode,:] = algebra.rotation2crv(np.dot(Csm.T, algebra.crv2rotation(self.psi[ielem,inode,:])))
+                self.psi_dot[ielem, inode, :] = np.dot(algebra.crv2tan(self.psi[ielem,inode,:]),
+                                                (np.dot(Csm.T, np.dot(algebra.crv2tan(psi_previous).T, self.psi_dot[ielem, inode, :])) +
+                                                np.dot(algebra.quat2rotation(self.mb_quat[0,:]).T, delta_vel_ms[3:6])))
+
+        # Set the output FoR variables
+        self.for_pos = self.mb_FoR_pos[0,:].astype(dtype=ct.c_double, order='F', copy=True)
+        self.for_vel[0:3] = np.dot(np.transpose(CGAmaster),self.mb_FoR_vel[0,0:3])
+        self.for_vel[3:6] = np.dot(np.transpose(CGAmaster),self.mb_FoR_vel[0,3:6])
+        self.for_acc[0:3] = np.dot(np.transpose(CGAmaster),self.mb_FoR_acc[0,0:3])
+        self.for_acc[3:6] = np.dot(np.transpose(CGAmaster),self.mb_FoR_acc[0,3:6])
+        # self.for_vel = self.mb_FoR_vel[0,:]
+        # self.for_acc = self.mb_FoR_acc[0,:]
+        self.quat = self.mb_quat[0,:].astype(dtype=ct.c_double, order='F', copy=True)
+        #self.quat = self.mb_quat[0,:].astype(dtype=ct.c_double, order='F', copy=True)
+
+
+        # TODO: make sure whether I need q or not and set it to zero

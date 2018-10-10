@@ -196,15 +196,17 @@ class NonLinearDynamicMultibody(BaseSolver):
                 # print("for_vel: ", MB_tstep[ibody].for_vel)
                 MB_tstep[ibody].for_pos[0:3] += dt*np.dot(MB_tstep[ibody].cga(),MB_tstep[ibody].for_vel[0:3])
 
-    def run(self):
+    def run(self, structural_step=None):
 
+        if structural_step is None:
+            structural_step = self.data.structure.timestep_info[-1]
         # Initialize varaibles
         MBdict = self.data.structure.mb_dict
         dt = self.settings['dt'].value
 
         # TODO: only working for constant forces
-        self.data.structure.timestep_info[-1].unsteady_applied_forces = self.data.structure.dynamic_input[1]['dynamic_forces'].astype(dtype=ct.c_double, order='F', copy=True)
-        MB_beam, MB_tstep = mb.split_multibody(self.data.structure, self.data.structure.timestep_info[-1], MBdict)
+        # self.data.structure.timestep_info[-1].unsteady_applied_forces = self.data.structure.dynamic_input[1]['dynamic_forces'].astype(dtype=ct.c_double, order='F', copy=True)
+        MB_beam, MB_tstep = mb.split_multibody(self.data.structure, structural_step, MBdict)
 
         # Lagrange multipliers parameters
         num_LM_eq = self.num_LM_eq
@@ -310,27 +312,29 @@ class NonLinearDynamicMultibody(BaseSolver):
 
         # End of Newmark-beta iterations
 
-            self.integrate_position(MB_beam, MB_tstep, dt)
+        self.integrate_position(MB_beam, MB_tstep, dt)
 
-            # I do this to be able to write variables, but I want them to be in GFoR in the future
-            self.data.ts += 1
-            for ibody in range(len(MB_tstep)):
-                self.data.structure.timestep_info[-1].mb_FoR_pos[ibody,:] = MB_tstep[ibody].for_pos.astype(dtype=ct.c_double, copy=True, order='F')
-                self.data.structure.timestep_info[-1].mb_FoR_vel[ibody,:] = MB_tstep[ibody].for_vel.astype(dtype=ct.c_double, copy=True, order='F')
-                self.data.structure.timestep_info[-1].mb_FoR_acc[ibody,:] = MB_tstep[ibody].for_acc.astype(dtype=ct.c_double, copy=True, order='F')
-                self.data.structure.timestep_info[-1].mb_quat[ibody,:] = MB_tstep[ibody].quat.astype(dtype=ct.c_double, copy=True, order='F')
-            #print("BC error: ", np.dot(np.transpose(algebra.crv2tan(MB_tstep[0].psi[-1,1,:])),MB_tstep[0].psi_dot[-1,1,:]) - np.dot(algebra.quat2rotation(MB_tstep[1].quat),MB_tstep[1].for_vel[3:6]))
-            # print("rotation error: ", MB_tstep[0].psi[-1,1,:] - algebra.quat2crv(MB_tstep[1].quat))
-            # print("tip pos: ", MB_tstep[1].pos[-1,1])
-            # run postprocessors
-            if self.with_postprocessors:
-                for postproc in self.postprocessors:
-                    self.data = self.postprocessors[postproc].run(online=True)
+        mb.merge_multibody(MB_tstep, MB_beam, self.data.structure, structural_step, MBdict, dt)
 
-            print("ts: ", ts, " finished")
-            if ts == 999:
-                embed()
-
-
-        self.data.ts -= 1
+        # I do this to be able to write variables, but I want them to be in GFoR in the future
+        # self.data.ts += 1
+        # for ibody in range(len(MB_tstep)):
+        #     self.data.structure.timestep_info[-1].mb_FoR_pos[ibody,:] = MB_tstep[ibody].for_pos.astype(dtype=ct.c_double, copy=True, order='F')
+        #     self.data.structure.timestep_info[-1].mb_FoR_vel[ibody,:] = MB_tstep[ibody].for_vel.astype(dtype=ct.c_double, copy=True, order='F')
+        #     self.data.structure.timestep_info[-1].mb_FoR_acc[ibody,:] = MB_tstep[ibody].for_acc.astype(dtype=ct.c_double, copy=True, order='F')
+        #     self.data.structure.timestep_info[-1].mb_quat[ibody,:] = MB_tstep[ibody].quat.astype(dtype=ct.c_double, copy=True, order='F')
+        #print("BC error: ", np.dot(np.transpose(algebra.crv2tan(MB_tstep[0].psi[-1,1,:])),MB_tstep[0].psi_dot[-1,1,:]) - np.dot(algebra.quat2rotation(MB_tstep[1].quat),MB_tstep[1].for_vel[3:6]))
+        # print("rotation error: ", MB_tstep[0].psi[-1,1,:] - algebra.quat2crv(MB_tstep[1].quat))
+        # print("tip pos: ", MB_tstep[1].pos[-1,1])
+        # run postprocessors
+        # if self.with_postprocessors:
+        #     for postproc in self.postprocessors:
+        #         self.data = self.postprocessors[postproc].run(online=True)
+        #
+        # print("ts: ", ts, " finished")
+        # if ts == 999:
+        #     embed()
+        #
+        #
+        # self.data.ts -= 1
         return self.data
