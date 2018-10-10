@@ -20,10 +20,10 @@
 import os
 import sys
 sys.path.insert(0, os.path.abspath('../'))
-import recommonmark
-from recommonmark.transform import AutoStructify
-# Markdown Source Parsers
-from recommonmark.parser import CommonMarkParser
+# import recommonmark
+# from recommonmark.transform import AutoStructify
+# # Markdown Source Parsers
+# from recommonmark.parser import CommonMarkParser
 
 # print(sys.path)
 # -- General configuration ------------------------------------------------
@@ -51,8 +51,8 @@ templates_path = ['_templates']
 mathjax_path = "https://cdn.mathjax.org/mathjax/latest/MathJax.js?config=TeX-AMS-MML_HTMLorMML"
 
 # Markdown Source Parsers
-source_parsers = {
-   '.md': CommonMarkParser}
+# source_parsers = {
+#    '.md': CommonMarkParser}
 
 # The suffix(es) of source filenames.
 # You can specify multiple suffix as a list of string:

@@ -18,6 +18,21 @@ import sys
 
 
 def main(args):
+    """
+    Main ``SHARPy`` routine
+
+    This is the main ``SHARPy`` routine.
+    It starts the solution process by reading the settings that are included in the ``.solver.txt`` file that is parsed
+    as an argument.
+    It reads the solvers specific settings and runs them in order
+
+    Args:
+        args (str): ``.solver.txt`` file with the problem information and settings
+
+    Returns:
+        ``PreSharpy`` class object
+
+    """
     import time
 
     import sharpy.utils.input_arg as input_arg

@@ -15,7 +15,13 @@ Contents:
    :maxdepth: 2
 
    content/installation
+   content/presharpy
+   content/run_sharpy
+   content/aero
+   content/generators
+   content/structure
    content/solvers
+   content/postproc
    content/utilities
    content/test_cases
 

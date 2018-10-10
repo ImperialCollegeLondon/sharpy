@@ -3,14 +3,36 @@ import scipy.linalg
 
 
 def tangent_vector(in_coord, ordering=None):
-    """ Tangent vector calculation for 2+ noded elements.
+    """
+    Tangent vector calculation for 2+ noded elements.
 
-    Calculates the tangent vector interpolating every dimension
-    separately. It uses a (n_nodes - 1) degree polynomial, and the
-    differentiation is analytical.
+    Calculates the tangent vector interpolating every dimension separately. It uses a (``n_nodes - 1``) degree polynomial,
+    and the differentiation is analytical.
+
+    Calculation method:
+
+        1. A n_nodes-1 polynomial is fitted through the nodes per dimension.
+        2. Those polynomials are analytically differentiated with respect to the node index
+        3. The tangent vector is given by:
+
+        .. math::
+
+            \\vec{t} = \\frac{s_x'\\vec{i} + s_y'\\vec{j} + s_z'\\vec{k}}{\\left| s_x'\\vec{i} + s_y'\\vec{j} + s_z'\\vec{k}\\right|}
+
+
+        where :math:`'` notes the differentiation with respect to the index number
+
 
     Args:
         in_coord (np.ndarray): array of coordinates of the nodes. Dimensions = ``[n_nodes, ndim]``
+        ordering (None): ordering required?
+
+    Returns:
+        np.ndarray: tangent vector
+
+
+    Examples:
+          example goes here
 
     Notes:
         Dimensions are treated independent from each other, interpolating polynomials are computed
