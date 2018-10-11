@@ -1,0 +1,77 @@
+name: sharpy_env
+channels:
+- menpo
+- anaconda
+- defaults
+dependencies:
+- ca-certificates=2017.08.26=h1d4fec5_0
+- dbus=1.10.22=h3b5a359_0
+- fontconfig=2.12.4=h88586e7_1
+- freetype=2.8=hab7d2ae_1
+- glib=2.53.6=h5d9569c_2
+- gst-plugins-base=1.12.4=h33fb286_0
+- gstreamer=1.12.4=hb53b477_0
+- h5py=2.8.0=py36h989c5e5_3
+- hdf5=1.10.2=hba1933b_1
+- icu=58.2=h9c2bf20_1
+- intel-openmp=2018.0.0=hc7b2577_8
+- kiwisolver=1.0.1=py36hf484d3e_0
+- libedit=3.1=heed3624_0
+- libgcc-ng=8.2.0=hdf63c60_1
+- libgfortran-ng=7.2.0=h9f7466a_2
+- libpng=1.6.34=hb9fc6fc_0
+- libstdcxx-ng=8.2.0=hdf63c60_1
+- matplotlib=2.2.2=py36h0e671d2_0
+- mkl=2018.0.3=1
+- mkl_fft=1.0.4=py36h4414c95_1
+- mkl_random=1.0.1=py36h4414c95_1
+- ncurses=6.0=h9df7e31_2
+- numpy=1.15.1=py36h1d66e8a_0
+- numpy-base=1.15.1=py36h81de0dd_0
+- python=3.6.3=h0ef2715_3
+- qt=5.6.2=h974d657_12
+- readline=7.0=ha6073c6_4
+- scipy=1.1.0=py36hfa4b5c9_1
+- sqlite=3.23.1=he433501_0
+- tk=8.6.8=hbc83047_0
+- blas=1.0=mkl
+- certifi=2016.2.28=py36_0
+- colorama=0.3.9=py36_0
+- cycler=0.10.0=py36_0
+- expat=2.1.0=0
+- jpeg=9b=0
+- libffi=3.2.1=1
+- libgcc=5.2.0=0
+- libgfortran=3.0.0=1
+- libiconv=1.14=0
+- libxcb=1.12=1
+- libxml2=2.9.4=0
+- openssl=1.0.2l=0
+- pandas=0.20.3=py36_0
+- pcre=8.39=1
+- pip=9.0.1=py36_1
+- pyparsing=2.2.0=py36_0
+- pyqt=5.6.0=py36_2
+- python-dateutil=2.6.1=py36_0
+- pytz=2017.2=py36_0
+- setuptools=36.4.0=py36_1
+- sip=4.18=py36_0
+- six=1.10.0=py36_0
+- tornado=4.5.2=py36_0
+- wheel=0.29.0=py36_0
+- xlrd=1.1.0=py36_0
+- xz=5.2.3=0
+- zlib=1.2.11=0
+- vtk=7.0.0=py36_0
+- pip:
+  - apptools==4.4.0
+  - configobj==5.0.6
+  - cython==0.28.5
+  - mayavi==4.5.0
+  - mkl-fft==1.0.4
+  - mkl-random==1.0.1
+  - pyface==5.1.0
+  - pygments==2.2.0
+  - traits==4.6.0
+  - traitsui==5.1.0
+

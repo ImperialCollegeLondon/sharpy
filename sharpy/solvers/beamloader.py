@@ -9,6 +9,44 @@ import sharpy.utils.h5utils as h5utils
 
 @solver
 class BeamLoader(BaseSolver):
+    """
+    ``BeamLoader`` class solver inherited from ``BaseSolver``
+
+    Loads the structural beam solver with the specified user settings.
+
+    Args:
+        data (ProblemData): class containing the problem information
+
+    Attributes:
+        settings (dict): containins the specific settings for the solver
+        settings_types (dict): Key  value pairs of the accepted types for the settings values
+        settings_default (dict): Dictionary containing the default solver settings, should none be provided.
+        data (ProblemData): class containing the data for the problem
+        fem_file_name (str): name of the ``.fem.h5`` HDF5 file
+        dyn_file_name (str): name of the ``.dyn.h5`` HDF5 file
+        fem_data_dict (dict): key-value pairs of FEM data
+        dyn_data_dict (dict): key-value pairs of data for dynamic problems
+        structure (None): Empty attribute
+
+    Notes:
+        The ``settings`` dictionary contains the following name-value pair arguments:
+
+        ===============  ===============  ==========================================================  ================
+        Key              Type             Description                                                 Default
+        ===============  ===============  ==========================================================  ================
+        ``unsteady``     ``bool``         Dynamic problem                                             ``False``
+        ``orientation``  ``list(float)``  Beam orientation with respect to flow in Quaternion format  ``[1, 0, 0, 0]``
+        ===============  ===============  ==========================================================  ================
+
+        For further reference on Quaternions see:
+        `https://en.wikipedia.org/wiki/Quaternion <https://en.wikipedia.org/wiki/Quaternion>`_
+
+    See Also:
+          .. py:class:: sharpy.utils.solver_interface.BaseSolver
+
+          .. py:class:: sharpy.structure.models.beam.Beam
+
+    """
     solver_id = 'BeamLoader'
 
     def __init__(self):

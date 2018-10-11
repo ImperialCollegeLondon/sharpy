@@ -80,24 +80,25 @@ class StallCheck(BaseSolver):
         for i_elem in range(self.data.structure.num_elem):
             for i_local_node in range(self.data.structure.num_node_elem):
                 airfoil_id = self.data.aero.aero_dict['airfoil_distribution'][i_elem, i_local_node]
-                i_global_node = self.data.structure.connectivities[i_elem, i_local_node]
-                for i_dict in self.data.aero.struct2aero_mapping[i_global_node]:
-                    i_surf = i_dict['i_surf']
-                    i_n = i_dict['i_n']
+                if self.settings['airfoil_stall_angles']:
+                    i_global_node = self.data.structure.connectivities[i_elem, i_local_node]
+                    for i_dict in self.data.aero.struct2aero_mapping[i_global_node]:
+                        i_surf = i_dict['i_surf']
+                        i_n = i_dict['i_n']
 
-                    if i_n in added_panels[i_surf]:
-                        continue
+                        if i_n in added_panels[i_surf]:
+                            continue
 
-                    if i_n == tstep.dimensions[i_surf][1]:
-                        continue
+                        if i_n == tstep.dimensions[i_surf][1]:
+                            continue
 
-                    limits = self.settings['stall_angles'][str(airfoil_id)]
-                    if tstep.postproc_cell['incidence_angle'][i_surf][0, i_n] < float(limits[0]):
-                        stalled_panels = True
-                        stalled_surfs[i_surf] += tstep.postproc_cell['incidence_angle'][i_surf].shape[1]
-                    elif tstep.postproc_cell['incidence_angle'][i_surf][0, i_n] > float(limits[1]):
-                        stalled_panels = True
-                        stalled_surfs[i_surf] += tstep.postproc_cell['incidence_angle'][i_surf].shape[1]
+                        limits = self.settings['airfoil_stall_angles'][str(airfoil_id)]
+                        if tstep.postproc_cell['incidence_angle'][i_surf][0, i_n] < float(limits[0]):
+                            stalled_panels = True
+                            stalled_surfs[i_surf] += tstep.postproc_cell['incidence_angle'][i_surf].shape[1]
+                        elif tstep.postproc_cell['incidence_angle'][i_surf][0, i_n] > float(limits[1]):
+                            stalled_panels = True
+                            stalled_surfs[i_surf] += tstep.postproc_cell['incidence_angle'][i_surf].shape[1]
 
         if stalled_panels:
             if self.settings['print_info']:

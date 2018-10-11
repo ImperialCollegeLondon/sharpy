@@ -3,14 +3,36 @@ import scipy.linalg
 
 
 def tangent_vector(in_coord, ordering=None):
-    """ Tangent vector calculation for 2+ noded elements.
+    """
+    Tangent vector calculation for 2+ noded elements.
 
-    Calculates the tangent vector interpolating every dimension
-    separately. It uses a (n_nodes - 1) degree polynomial, and the
-    differentiation is analytical.
+    Calculates the tangent vector interpolating every dimension separately. It uses a (``n_nodes - 1``) degree polynomial,
+    and the differentiation is analytical.
+
+    Calculation method:
+
+        1. A n_nodes-1 polynomial is fitted through the nodes per dimension.
+        2. Those polynomials are analytically differentiated with respect to the node index
+        3. The tangent vector is given by:
+
+        .. math::
+
+            \\vec{t} = \\frac{s_x'\\vec{i} + s_y'\\vec{j} + s_z'\\vec{k}}{\\left| s_x'\\vec{i} + s_y'\\vec{j} + s_z'\\vec{k}\\right|}
+
+
+        where :math:`'` notes the differentiation with respect to the index number
+
 
     Args:
         in_coord (np.ndarray): array of coordinates of the nodes. Dimensions = ``[n_nodes, ndim]``
+        ordering (None): ordering required?
+
+    Returns:
+        np.ndarray: tangent vector
+
+
+    Examples:
+          example goes here
 
     Notes:
         Dimensions are treated independent from each other, interpolating polynomials are computed
@@ -259,17 +281,21 @@ def crv2triad(psi):
 
 
 def crv2rot(psi):
-    # this returns Cab
+    '''
+    Given a Cartesian rotation vector psi, the function produces the rotation
+    matrix required to rotate a vector according to psi.
 
-    # this is psi2mat in the matlab version
+    Note: this is psi2mat in the matlab version
+    '''
+
     norm_psi = np.linalg.norm(psi)
 
     if norm_psi < 1e-15:
-        skew_psi = rot_skew(psi)
+        skew_psi = skew(psi)
         rot_matrix = np.eye(3) + skew_psi + 0.5*np.dot(skew_psi, skew_psi)
     else:
         normal = psi/norm_psi
-        skew_normal = rot_skew(normal)
+        skew_normal = skew(normal)
 
         rot_matrix = np.eye(3)
         rot_matrix += np.sin(norm_psi)*skew_normal
@@ -333,8 +359,8 @@ def quat2rot(q1):
     Remark: if A is a FoR obtained rotating a FoR G of angle fi about an axis n (remind n will be
     invariant during the rotation), and q is the related quaternion q(fi,n), the function will
     return the matrix Cag such that:
-        - Cag rotates A to G
-        - Cag transforms the coordinates of a vector defined in G component to A components.
+    - Cag rotates A to G
+    - Cag transforms the coordinates of a vector defined in G component to A components.
     """
 
     q = q1.copy(order='F')
@@ -359,14 +385,9 @@ def quat2rot(q1):
 
 
 def rot_skew(vec):
-    matrix = np.zeros((3, 3))
-    matrix[0, 1] = -vec[2]
-    matrix[0, 2] = vec[1]
-    matrix[1, 0] = vec[2]
-    matrix[1, 2] = -vec[0]
-    matrix[2, 0] = -vec[1]
-    matrix[2, 1] = vec[0]
-    return matrix
+    from warnings import warn
+    warn("use 'skew' function instead of 'rot_skew'")
+    return skew(vec)
 
 
 def rotation3d_x(angle):
@@ -454,3 +475,185 @@ def omegadt2quat(omegadt):
 def rotate_quaternion(quat, omegadt):
     return quaternion_product(omegadt2quat(omegadt), quat)
 
+
+def get_triad(coordinates_def, frame_of_reference_delta, twist=None, n_nodes=3, ordering=np.array([0, 2, 1])):
+    """
+    Generates two unit vectors in body FoR that define the local FoR for
+    a beam element. These vectors are calculated using `frame_of_reference_delta`
+    :return:
+    """
+    # now, calculate tangent vector (and coefficients of the polynomial
+    # fit just in case)
+    tangent, polyfit = tangent_vector(
+        coordinates_def,
+        ordering)
+    normal = np.zeros_like(tangent)
+    binormal = np.zeros_like(tangent)
+
+    # v_vector is the vector with origin the FoR node and delta
+    # equals frame_of_reference_delta
+    for inode in range(n_nodes):
+        v_vector = frame_of_reference_delta[inode, :]
+        normal[inode, :] = unit_vector(np.cross(
+                                                tangent[inode, :],
+                                                v_vector
+                                                )
+                                           )
+        binormal[inode, :] = -unit_vector(np.cross(
+                                                tangent[inode, :],
+                                                normal[inode, :]
+                                                        )
+                                              )
+
+    if twist is not None:
+        raise NotImplementedError('Structural twist is not yet supported in algebra.get_triad, but it is in beamstructures.py')
+    # # we apply twist now
+    # for inode in range(self.n_nodes):
+    #     if not self.structural_twist[inode] == 0.0:
+    #         rotation_mat = algebra.rotation_matrix_around_axis(tangent[inode, :],
+    #                                                            self.structural_twist[inode])
+    #         normal[inode, :] = np.dot(rotation_mat, normal[inode, :])
+    #         binormal[inode, :] = np.dot(rotation_mat, binormal[inode, :])
+
+    return tangent, binormal, normal
+
+
+def der_CquatT_by_v(q,v):
+    """
+    Being C=C(quat) the rotational matrix depending on the quaternion q and
+    defined as C=quat2rot(q).T, the function returns the derivative, w.r.t. the
+    quanternion components, of the vector dot(C,v), where v is a constant
+    vector.
+    The elements of the resulting derivative matrix D are ordered such that:
+    ``d(C*v) = D*d(q)``
+    where d(.) is a delta operator.
+    """
+
+    vx,vy,vz=v
+    q0,q1,q2,q3=q
+
+    return 2.*np.array( [[ q0*vx + q2*vz - q3*vy, q1*vx + q2*vy + q3*vz,
+                                 q0*vz + q1*vy - q2*vx, -q0*vy + q1*vz - q3*vx],
+                         [ q0*vy - q1*vz + q3*vx, -q0*vz - q1*vy + q2*vx,
+                                 q1*vx + q2*vy + q3*vz,  q0*vx + q2*vz - q3*vy],
+                         [ q0*vz + q1*vy - q2*vx, q0*vy - q1*vz + q3*vx,
+                                -q0*vx - q2*vz + q3*vy, q1*vx + q2*vy + q3*vz]])
+
+
+
+def der_Cquat_by_v(q,v):
+    """
+    Being C=C(quat) the rotational matrix depending on the quaternion q and
+    defined as C=quat2rot(q), the function returns the derivative, w.r.t. the
+    quanternion components, of the vector dot(C,v), where v is a constant
+    vector.
+    The elements of the resulting derivative matrix D are ordered such that:
+    ``d(C*v) = D*d(q)``
+    where d(.) is a delta operator.
+    """
+
+    vx,vy,vz=v
+    q0,q1,q2,q3=q
+
+    return 2.*np.array( [[ q0*vx + q2*vz - q3*vy, q1*vx + q2*vy + q3*vz,
+                                 q0*vz + q1*vy - q2*vx, -q0*vy + q1*vz - q3*vx],
+                         [q0*vy - q1*vz + q3*vx, -q0*vz - q1*vy + q2*vx,
+                                   q1*vx + q2*vy + q3*vz,q0*vx + q2*vz - q3*vy],
+                         [q0*vz + q1*vy - q2*vx, q0*vy - q1*vz + q3*vx,
+                                -q0*vx - q2*vz + q3*vy, q1*vx + q2*vy + q3*vz]])
+
+
+
+def der_Tan_by_xv(fv0,xv):
+    """
+    Being fv0 a cartesian rotation vector and Tan the corresponding tangential
+    operator (computed through crv2tan(fv)), the function returns the derivative
+    of dot(Tan,xv), where xv is a constant vector.
+
+    The elements of the resulting derivative matrix D are ordered such that:
+    ``d(Tan*xv) = D*d(fv)``
+    where d(.) is a delta operator.
+
+    Note: the derivative expression has been derived symbolically and verified
+    by FDs. A more compact expression may be possible.
+    """
+
+    f0=np.linalg.norm(fv0)
+    sf0,cf0=np.sin(f0),np.cos(f0)
+
+    fv0_x,fv0_y,fv0_z=fv0
+    xv_x,xv_y,xv_z=xv
+
+    f0p2=f0**2
+    f0p3=f0**3
+    f0p4=f0**4
+
+    rs01=sf0/f0
+    rs03=sf0/f0p3
+    rc02=(cf0 - 1)/f0p2
+    rc04=(cf0 - 1)/f0p4
+
+    Ts02=(1 - rs01)/f0p2
+    Ts04=(1 - rs01)/f0p4
+
+    # if f0<1e-8: rs01=1.0 # no need
+    return np.array(
+        [[xv_x*((-fv0_y**2 - fv0_z**2)*(-cf0*fv0_x/f0p2 + fv0_x*rs03)/f0p2 -
+            2*fv0_x*(1 - rs01)*(-fv0_y**2 - fv0_z**2)/f0p4) + xv_y*(fv0_x*fv0_y*(
+                -cf0*fv0_x/f0p2 + fv0_x*rs03)/f0p2 + fv0_y*Ts02 +
+            fv0_x*fv0_z*rs03 - 2*fv0_x**2*fv0_y*Ts04 + 2*fv0_x*fv0_z*
+            rc04) + xv_z*(fv0_x*fv0_z*(-cf0*fv0_x/f0p2 + fv0_x*rs03)/f0p2 +
+            fv0_z*Ts02 - fv0_x*fv0_y*rs03 - 2*fv0_x**2*fv0_z*Ts04
+            - 2*fv0_x*fv0_y*rc04),
+            #
+          xv_x*(-2*fv0_y*Ts02 + (-fv0_y**2 - fv0_z**2)*(-cf0*fv0_y/f0p2 +
+            fv0_y*rs03)/f0p2 - 2*fv0_y*(1 - rs01)*(-fv0_y**2 - fv0_z**2)/f0p4) +
+          xv_y*(fv0_x*fv0_y*(-cf0*fv0_y/f0p2 + fv0_y*rs03)/f0p2 + fv0_x*Ts02 +
+            fv0_y*fv0_z*rs03 - 2*fv0_x*fv0_y**2*Ts04 + 2*fv0_y*fv0_z*rc04)
+          + xv_z*(fv0_x*fv0_z*(-cf0*fv0_y/f0p2 + fv0_y*rs03)/f0p2 + rc02 -
+            fv0_y**2*rs03 - 2*fv0_x*fv0_y*fv0_z*Ts04 - 2*fv0_y**2*rc04),
+          #
+          xv_x*(-2*fv0_z*Ts02 + (-fv0_y**2 - fv0_z**2)*(-cf0*fv0_z/f0p2
+            + fv0_z*rs03)/f0p2 - 2*fv0_z*(1 - rs01)*(-fv0_y**2 - fv0_z**2)/f0p4) +
+          xv_y*(fv0_x*fv0_y*(-cf0*fv0_z/f0p2 + fv0_z*rs03)/f0p2 - rc02
+            + fv0_z**2*rs03 - 2*fv0_x*fv0_y*fv0_z*Ts04 + 2*fv0_z**2*rc04)
+          + xv_z*(fv0_x*fv0_z*(-cf0*fv0_z/f0p2 + fv0_z*rs03)/f0p2 + fv0_x*Ts02
+            - fv0_y*fv0_z*rs03 - 2*fv0_x*fv0_z**2*Ts04 - 2*fv0_y*fv0_z*rc04)],
+         [xv_x*(fv0_x*fv0_y*(-cf0*fv0_x/f0p2 + fv0_x*rs03)/f0p2 +
+            fv0_y*Ts02 - fv0_x*fv0_z*rs03 - 2*fv0_x**2*fv0_y*Ts04 -
+            2*fv0_x*fv0_z*rc04) + xv_y*(-2*fv0_x*Ts02 +
+            (-fv0_x**2 - fv0_z**2)*(-cf0*fv0_x/f0p2 + fv0_x*rs03)/f0p2
+            - 2*fv0_x*(1 - rs01)*(-fv0_x**2 - fv0_z**2)/f0p4) +
+            xv_z*(fv0_y*fv0_z*(-cf0*fv0_x/f0p2 + fv0_x*rs03)/f0p2 - rc02
+                + fv0_x**2*rs03 + 2*fv0_x**2*rc04 - 2*fv0_x*fv0_y*fv0_z*Ts04),
+          xv_x*(fv0_x*fv0_y*(-cf0*fv0_y/f0p2 + fv0_y*rs03)/f0p2 +
+            fv0_x*Ts02 - fv0_y*fv0_z*rs03 - 2*fv0_x*fv0_y**2*Ts04
+            - 2*fv0_y*fv0_z*rc04) + xv_y*((-fv0_x**2 - fv0_z**2)*(-cf0*fv0_y/f0p2
+                + fv0_y*rs03)/f0p2 - 2*fv0_y*(1 - rs01)*(-fv0_x**2 - fv0_z**2)/f0p4)
+            + xv_z*(fv0_y*fv0_z*(-cf0*fv0_y/f0p2 + fv0_y*rs03)/f0p2 + fv0_z*Ts02
+                + fv0_x*fv0_y*rs03 + 2*fv0_x*fv0_y*rc04 - 2*fv0_y**2*fv0_z*Ts04),
+          xv_x*(fv0_x*fv0_y*(-cf0*fv0_z/f0p2 + fv0_z*rs03)/f0p2 + rc02 - fv0_z**2*rs03
+            - 2*fv0_x*fv0_y*fv0_z*Ts04 - 2*fv0_z**2*rc04) + xv_y*(-2*fv0_z*Ts02
+            + (-fv0_x**2 - fv0_z**2)*(-cf0*fv0_z/f0p2 + fv0_z*rs03)/f0p2 -
+            2*fv0_z*(1 - rs01)*(-fv0_x**2 - fv0_z**2)/f0p4) + xv_z*(fv0_y*fv0_z*(-cf0*fv0_z/f0p2
+                + fv0_z*rs03)/f0p2 + fv0_y*Ts02 + fv0_x*fv0_z*rs03 + 2*fv0_x*fv0_z*rc04
+            - 2*fv0_y*fv0_z**2*Ts04)],
+         [xv_x*(fv0_x*fv0_z*(-cf0*fv0_x/f0p2 + fv0_x*rs03)/f0p2 + fv0_z*Ts02
+            + fv0_x*fv0_y*rs03 - 2*fv0_x**2*fv0_z*Ts04 + 2*fv0_x*fv0_y*rc04)
+         + xv_y*(fv0_y*fv0_z*(-cf0*fv0_x/f0p2 + fv0_x*rs03)/f0p2 + rc02 - fv0_x**2*rs03
+            - 2*fv0_x**2*rc04 - 2*fv0_x*fv0_y*fv0_z*Ts04) + xv_z*(-2*fv0_x*Ts02
+            + (-fv0_x**2 - fv0_y**2)*(-cf0*fv0_x/f0p2 + fv0_x*rs03)/f0p2 -
+            2*fv0_x*(1 - rs01)*(-fv0_x**2 - fv0_y**2)/f0p4),
+          xv_x*(fv0_x*fv0_z*(-cf0*fv0_y/f0p2 + fv0_y*rs03)/f0p2 - rc02 + fv0_y**2*rs03 -
+            2*fv0_x*fv0_y*fv0_z*Ts04 + 2*fv0_y**2*rc04) + xv_y*(fv0_y*fv0_z*(-cf0*fv0_y/f0p2
+                + fv0_y*rs03)/f0p2 + fv0_z*Ts02 - fv0_x*fv0_y*rs03 - 2*fv0_x*fv0_y*rc04
+            - 2*fv0_y**2*fv0_z*Ts04) + xv_z*(-2*fv0_y*Ts02 + (-fv0_x**2
+                - fv0_y**2)*(-cf0*fv0_y/f0p2 + fv0_y*rs03)/f0p2 - 2*fv0_y*(1 - rs01)*(-fv0_x**2
+                - fv0_y**2)/f0p4),
+          xv_x*(fv0_x*fv0_z*(-cf0*fv0_z/f0p2 + fv0_z*rs03)/f0p2 + fv0_x*Ts02 +
+            fv0_y*fv0_z*rs03 - 2*fv0_x*fv0_z**2*Ts04 + 2*fv0_y*fv0_z*rc04) +
+          xv_y*(fv0_y*fv0_z*(-cf0*fv0_z/f0p2 + fv0_z*rs03)/f0p2 + fv0_y*Ts02
+            - fv0_x*fv0_z*rs03 - 2*fv0_x*fv0_z*rc04 - 2*fv0_y*fv0_z**2*Ts04) +
+          xv_z*((-fv0_x**2 - fv0_y**2)*(-cf0*fv0_z/f0p2 + fv0_z*rs03)/f0p2 -
+            2*fv0_z*(1 - rs01)*(-fv0_x**2 - fv0_y**2)/f0p4)]])
+    # end der_Tan_by_xv

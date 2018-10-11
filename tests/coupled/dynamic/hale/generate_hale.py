@@ -448,6 +448,7 @@ def generate_aero_file():
     surface_m[i_surf] = m
     aero_node[wn:wn + n_node_main] = True
     temp_chord = np.linspace(chord_main, chord_main, n_node_main)
+    temp_sweep = np.linspace(0.0, 0*np.pi/180, n_node_main)
     node_counter = 0
     for i_elem in range(we, we + n_elem_main):
         for i_local_node in range(n_node_elem):
@@ -455,6 +456,7 @@ def generate_aero_file():
                 node_counter += 1
             chord[i_elem, i_local_node] = temp_chord[node_counter]
             elastic_axis[i_elem, i_local_node] = ea_main
+            sweep[i_elem, i_local_node] = temp_sweep[node_counter]
 
     we += n_elem_main
     wn += n_node_main
@@ -477,6 +479,8 @@ def generate_aero_file():
                 node_counter += 1
             chord[i_elem, i_local_node] = temp_chord[node_counter]
             elastic_axis[i_elem, i_local_node] = ea_main
+            sweep[i_elem, i_local_node] = -temp_sweep[node_counter]
+
     we += n_elem_main
     wn += n_node_main - 1
 
@@ -714,9 +718,9 @@ def generate_solver_file():
                                   'postprocessors_settings': {'BeamLoads': {'folder': route + '/output/',
                                                                             'csv_output': 'off'},
                                                               'StallCheck': {'output_degrees': True,
-                                                                             'stall_angles': {'0': [-12*np.pi/180, 6*np.pi/180],
-                                                                                              '1': [-12*np.pi/180, 6*np.pi/180],
-                                                                                              '2': [-12*np.pi/180, 6*np.pi/180]}},
+                                                                             'stall_angles': {'0': [-12*np.pi/180, 12*np.pi/180],
+                                                                                              '1': [-12*np.pi/180, 12*np.pi/180],
+                                                                                              '2': [-12*np.pi/180, 12*np.pi/180]}},
                                                               'BeamPlot': {'folder': route + '/output/',
                                                                            'include_rbm': 'on',
                                                                            'include_applied_forces': 'on'},
