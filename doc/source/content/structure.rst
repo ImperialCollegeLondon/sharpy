@@ -1,3 +1,2 @@
-Structures
-----------
-
+Structural Models
+-----------------
