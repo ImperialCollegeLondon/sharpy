@@ -581,6 +581,48 @@ def rotate_quaternion(quat, omegadt):
     return quaternion_product(omegadt2quat(omegadt), quat)
 
 
+def get_triad(coordinates_def, frame_of_reference_delta, twist=None, n_nodes=3, ordering=np.array([0, 2, 1])):
+    """
+    Generates two unit vectors in body FoR that define the local FoR for
+    a beam element. These vectors are calculated using `frame_of_reference_delta`
+    :return:
+    """
+    # now, calculate tangent vector (and coefficients of the polynomial
+    # fit just in case)
+    tangent, polyfit = tangent_vector(
+        coordinates_def,
+        ordering)
+    normal = np.zeros_like(tangent)
+    binormal = np.zeros_like(tangent)
+
+    # v_vector is the vector with origin the FoR node and delta
+    # equals frame_of_reference_delta
+    for inode in range(n_nodes):
+        v_vector = frame_of_reference_delta[inode, :]
+        normal[inode, :] = unit_vector(np.cross(
+                                                tangent[inode, :],
+                                                v_vector
+                                                )
+                                           )
+        binormal[inode, :] = -unit_vector(np.cross(
+                                                tangent[inode, :],
+                                                normal[inode, :]
+                                                        )
+                                              )
+
+    if twist is not None:
+        raise NotImplementedError('Structural twist is not yet supported in algebra.get_triad, but it is in beamstructures.py')
+    # # we apply twist now
+    # for inode in range(self.n_nodes):
+    #     if not self.structural_twist[inode] == 0.0:
+    #         rotation_mat = algebra.rotation_matrix_around_axis(tangent[inode, :],
+    #                                                            self.structural_twist[inode])
+    #         normal[inode, :] = np.dot(rotation_mat, normal[inode, :])
+    #         binormal[inode, :] = np.dot(rotation_mat, binormal[inode, :])
+
+    return tangent, binormal, normal
+
+
 def der_Cquat_by_v(q,v):
     '''
     Being C=C(quat) the rotational matrix depending on the quaternion q and 
