@@ -305,6 +305,7 @@ class TestAlgebra(unittest.TestCase):
         assert er<A[-2], 'der_Tan_by_xv error too large'
         print(50*'-'+' all good!\n')
 
+
     def test_crv_tangetial_operator_transpose_derivative(self):
         ''' Checks Cartesian rotation vector tangential operator transpose'''
 
@@ -313,11 +314,11 @@ class TestAlgebra(unittest.TestCase):
         print('der_TanT_by_xv')
 
         # dummy vector
-        xv=np.array([random.random(),random.random(),random.random()])
+        xv=np.random.rand(3)
 
         # linearisation point
-        fi0=2.0*np.pi*random.random()
-        nv0=np.array([random.random(),random.random(),random.random()])
+        fi0=2.0*np.pi*np.random.rand(1)
+        nv0=np.random.rand(3)
         nv0=nv0/np.linalg.norm(nv0)
         fv0=fi0*nv0
         T0_T=np.transpose(algebra.crv2tan(fv0))
@@ -327,8 +328,8 @@ class TestAlgebra(unittest.TestCase):
         derT_T_an=algebra.der_TanT_by_xv(fv0,xv)
 
         # End point
-        fi1=2.0*np.pi*random.random()
-        nv1=np.array([random.random(),random.random(),random.random()])
+        fi1=2.0*np.pi*np.random.rand()
+        nv1=np.random.rand(3)
         nv1=nv1/np.linalg.norm(nv1)
         fv1=fi1*nv1
 
