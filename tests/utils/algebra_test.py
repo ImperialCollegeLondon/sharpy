@@ -74,7 +74,7 @@ class TestAlgebra(unittest.TestCase):
 
     def test_rotation_matrices(self):
         '''
-        Checks routines and consistency of functions to generate rotation 
+        Checks routines and consistency of functions to generate rotation
         matrices.
 
         Note: test only includes triad <-> CRV <-> quaternions conversions
@@ -91,7 +91,7 @@ class TestAlgebra(unittest.TestCase):
         a=np.pi/6.
         nv=np.array([1,0,0])
         sa,ca=np.sin(a),np.cos(a)
-        Cab_exp=np.array([[1,  0,   0], 
+        Cab_exp=np.array([[1,  0,   0],
                           [0, ca, -sa],
                           [0, sa,  ca],])
         ### rot from triad
@@ -107,9 +107,9 @@ class TestAlgebra(unittest.TestCase):
         quat=algebra.crv2quat(fv)
         Cab_num=algebra.quat2rotation(quat)
         assert np.linalg.norm(Cab_num-Cab_exp)<1e-15,\
-                                  'quat2rotation not producing the right result'                           
+                                  'quat2rotation not producing the right result'
 
-        ### inverse relations 
+        ### inverse relations
         # check crv2rotation and rotation2crv are biunivolcal in [-pi,pi]
         # check quat2rotation and rotation2quat are biunivocal in [-pi,pi]
         N=100
@@ -140,7 +140,7 @@ class TestAlgebra(unittest.TestCase):
             assert np.linalg.norm(quat-quat0)<1e-12,\
                                   'rotation2quat not producing the right result'
 
-        print(50*'-'+' all good!\n')  
+        print(50*'-'+' all good!\n')
 
 
 
@@ -189,7 +189,7 @@ class TestAlgebra(unittest.TestCase):
             qv=a*qv1 + (1.-a)*qv0
             dqv=qv-qv0
             Cga=algebra.quat2rotation(qv)
-            Cag=Cga.T   
+            Cag=Cga.T
 
             dCag_num=np.dot(Cag-Cag0,xv)
             dCga_num=np.dot(Cga-Cga0,xv)
@@ -242,7 +242,7 @@ class TestAlgebra(unittest.TestCase):
 
             ### Compute relevant quantities
             Cab=algebra.crv2rotation(fv0) # fv0 is rotation from A to B
-            dCab=algebra.crv2rotation(fv0+dfv)-Cab 
+            dCab=algebra.crv2rotation(fv0+dfv)-Cab
 
             T=algebra.crv2tan(fv0)
             Tdfv=np.dot(T,dfv)
@@ -305,6 +305,53 @@ class TestAlgebra(unittest.TestCase):
         assert er<A[-2], 'der_Tan_by_xv error too large'
         print(50*'-'+' all good!\n')
 
+    def test_crv_tangetial_operator_transpose_derivative(self):
+        ''' Checks Cartesian rotation vector tangential operator transpose'''
+
+        print(60*'-')
+        print('Testing CRV tangential operator transpose derivative function')
+        print('der_TanT_by_xv')
+
+        # dummy vector
+        xv=np.array([random.random(),random.random(),random.random()])
+
+        # linearisation point
+        fi0=2.0*np.pi*random.random()
+        nv0=np.array([random.random(),random.random(),random.random()])
+        nv0=nv0/np.linalg.norm(nv0)
+        fv0=fi0*nv0
+        T0_T=np.transpose(algebra.crv2tan(fv0))
+        T0_Txv=np.dot(T0_T,xv)
+
+        # Analytical solution
+        derT_T_an=algebra.der_TanT_by_xv(fv0,xv)
+
+        # End point
+        fi1=2.0*np.pi*random.random()
+        nv1=np.array([random.random(),random.random(),random.random()])
+        nv1=nv1/np.linalg.norm(nv1)
+        fv1=fi1*nv1
+
+        print('step\t\terror der_TanT_by_xv')
+        er=10.
+        A=np.array([1e-1,1e-2,1e-3,1e-4,1e-5,1e-6])
+        for a in A:
+            # perturbed
+            fv=a*fv1 + (1.-a)*fv0
+            dfv=fv-fv0
+            Tpert_T=np.transpose(algebra.crv2tan(fv))
+            Tpert_Txv=np.dot(Tpert_T,xv)
+            dT_T_num=Tpert_Txv-T0_Txv
+            dT_T_an=np.dot(derT_T_an,dfv)
+
+            # Error
+            er_new=np.max(np.abs(dT_T_num-dT_T_an))/np.max(np.abs(dT_T_an))
+            print('%.3e\t%.3e'%(a,er_new,) )
+            assert er_new<er, 'der_TanT_by_xv error not converging to 0'
+            er=er_new
+
+        assert er<A[-2], 'der_TanT_by_xv error too large'
+        print(50*'-'+' all good!\n')
 
 
     # def test_rotation_matrix_around_axis(self):
@@ -324,17 +371,4 @@ if __name__=='__main__':
     T.test_rotation_matrices_derivatives()
     T.test_crv_tangetial_operator()
     T.test_crv_tangetial_operator_derivative()
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+    T.test_crv_tangetial_operator_transpose_derivative()
