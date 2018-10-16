@@ -114,7 +114,6 @@ class FlexDynamic():
 
 
 
-
 	def assemble(self,Nmodes=None):
 		''' Assemble state-space model ''' 
 
@@ -250,7 +249,6 @@ class FlexDynamic():
 
 		if wv is None:
 			wv=self.wv
-		assert wv is not None, 'PFrequency range not provided.'
 		assert wv is not None, 'Frequency range not provided.'
 
 		if self.dlti:
@@ -388,7 +386,6 @@ def newmark_ss(Minv,C,K,dt,num_damp=1e-4):
 	Note that as the state-space representation only requires the input force
 	F to be evaluated at time-step n,the C and D matrices are, in general, 
 	fully populated.
-	 '''
 	'''
 
 	# weights
