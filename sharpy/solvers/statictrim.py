@@ -59,7 +59,7 @@ class StaticTrim(BaseSolver):
         ======================  =============  ===============================================  ==========
 
     See Also
-        .. py:class:: sharpy.utils.solver_interface_BaseSolver
+        .. py:class:: sharpy.utils.solver_interface.BaseSolver
     """
     solver_id = 'StaticTrim'
 
