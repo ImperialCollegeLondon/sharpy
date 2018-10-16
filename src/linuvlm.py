@@ -244,19 +244,20 @@ class Static():
 		self.Kftot=np.zeros( (3,3*self.Kzeta) )
 		self.Kmtot=np.zeros( (3,3*self.Kzeta) )		
 
+		Kzeta_start=0
 		for ss in range(self.MS.n_surf):
 
 			M,N=self.MS.Surfs[ss].maps.M,self.MS.Surfs[ss].maps.N
 
 			for nn in range(N+1):
 				for mm in range(M+1):
-
-					jjvec=[ np.ravel_multi_index( (ss,cc,mm,nn),
-								(self.MS.n_surf,3,M+1,N+1) ) for cc in range(3)]
+					jjvec=[ Kzeta_start + np.ravel_multi_index( (cc,mm,nn),
+											   (3,M+1,N+1) ) for cc in range(3)]
 
 					self.Kftot[[0,1,2],jjvec]=1.
 					self.Kmtot[np.ix_([0,1,2],jjvec)]=algebra.skew(
 									  self.MS.Surfs[ss].zeta[:,mm,nn]-zeta_pole)
+			Kzeta_start+=3*self.MS.KKzeta[ss]
 
 
 	def get_sect_forces_gain(self):
@@ -271,19 +272,20 @@ class Static():
 		self.Kfsec=np.zeros( (6*Ntot,3*self.Kzeta) )
 
 
+		Kzeta_start=0
 		for ss in range(self.MS.n_surf):
 			M,N=self.MS.MM[ss],self.MS.NN[ss]
 
 			for nn in range(N+1):	
 				zeta_sec=self.MS.Surfs[ss].zeta[:,:,nn]
 				# section indices
-				iivec=[ np.ravel_multi_index( (ss,cc,nn),
-					 			 	 (self.MS.n_surf,6,N+1)) for cc in range(6)]
+				iivec=[ Kzeta_start+np.ravel_multi_index( (cc,nn),
+					 			 	 				(6,N+1)) for cc in range(6)]
 
 				for mm in range(M+1):
 					# vertex indices
-					jjvec=[ np.ravel_multi_index( (ss,cc,mm,nn),
-								(self.MS.n_surf,3,M+1,N+1) ) for cc in range(3)]
+					jjvec=[ Kzeta_start+np.ravel_multi_index( (cc,mm,nn),
+											   (3,M+1,N+1) ) for cc in range(3)]
 
 					# sectional force
 					self.Kfsec[iivec[:3],jjvec]=1.0
@@ -293,7 +295,7 @@ class Static():
 					self.Kfsec[np.ix_(iivec[3:],jjvec)]=np.array([[  0,-dz, dy],
 																  [ dz,  0,-dx],
 																  [-dy, dx,  0]])
-
+			Kzeta_start+=3*self.MS.KKzeta[ss]
 
 
 	def get_rigid_motion_gains( self,zeta_rotation=np.zeros((3,)) ):
@@ -318,6 +320,7 @@ class Static():
 		self.Krot_dot=np.zeros( (3*self.Kzeta,3) )
 
 
+		Kzeta_start=0
 		for ss in range(self.MS.n_surf):
 			M,N=self.MS.MM[ss],self.MS.NN[ss]
 			zeta=self.MS.Surfs[ss].zeta
@@ -325,8 +328,8 @@ class Static():
 			for nn in range(N+1):	
 				for mm in range(M+1):
 					# vertex indices
-					iivec=[ np.ravel_multi_index( (ss,cc,mm,nn),
-								(self.MS.n_surf,3,M+1,N+1) ) for cc in range(3)]
+					iivec=[ Kzeta_start+np.ravel_multi_index( (cc,mm,nn),
+											   (3,M+1,N+1) ) for cc in range(3)]
 
 					self.Ktra    [iivec,[0,1,2]]+=1.
 					self.Ktra_dot[iivec,[0,1,2]]+=1.
@@ -336,7 +339,7 @@ class Static():
 					Dskew=np.array([[0,-dz, dy],[dz,0,-dx],[-dy,dx,0]])	
 					self.Krot[iivec,:]=Dskew
 					self.Krot_dot[iivec,:]=Dskew
-
+			Kzeta_start+=3*self.MS.KKzeta[ss]
 
 # ------------------------------------------------------------------------------
 

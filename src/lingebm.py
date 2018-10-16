@@ -11,6 +11,7 @@ import scipy.signal as scsig
 
 import libss
 from IPython import embed
+# import sharpy.solvers.modal as modal
 
 
 class FlexDynamic():
@@ -197,7 +198,6 @@ class FlexDynamic():
 					Bss[Nmodes+iivec,iivec]=1.
 					self.Kin=Phi.T
 					self.Kout=sc.linalg.block_diag(*(Phi,Phi))
-
 				else: # damped mode shapes
 					# The algorithm assumes that for each couple of complex conj
 					# eigenvalues, only one eigenvalue (and the eigenvectors
@@ -251,6 +251,7 @@ class FlexDynamic():
 		if wv is None:
 			wv=self.wv
 		assert wv is not None, 'PFrequency range not provided.'
+		assert wv is not None, 'Frequency range not provided.'
 
 		if self.dlti:
 			self.Ydisc=libss.freqresp(self.SSdisc,wv,dlti=self.dlti)
@@ -388,9 +389,11 @@ def newmark_ss(Minv,C,K,dt,num_damp=1e-4):
 	F to be evaluated at time-step n,the C and D matrices are, in general, 
 	fully populated.
 	 '''
+	'''
 
 	# weights
 	th1=0.5+num_damp
+	# th2=0.25*(th1+.5)**2
 	th2=0.0625+0.25*(th1+th1**2)
 
 	dt2=dt**2

@@ -100,15 +100,15 @@ def balreal_iter(A,B,C,lowrank=True,tolSmith=1e-10,tolSVD=1e-6,kmin=None,
 		rC=C.shape[0]
 
 		# initialise smith iteration
-		DeltaNorm=1e6
-		print('Iter\tMaxZhere')
+		DeltaNorm=1e6 					# error 
+		DeltaNormNext=DeltaNorm**2		# error expected at next iter
+		print('Iter\tMaxZ\t|\trank_c\trank_o')
 		kk=0
 		Apow=A
 		Qck=B
 		Qok=C.T
 
-		while DeltaNorm>tolSmith:
-
+		while DeltaNorm>tolSmith and DeltaNormNext>1e-3*tolSmith:
 
 			###### controllability
 			### compute Ak^2 * Qck
@@ -158,8 +158,10 @@ def balreal_iter(A,B,C,lowrank=True,tolSmith=1e-10,tolSVD=1e-6,kmin=None,
 
 
 			##### Prepare next time step
-			print('%.4d\t%.3e'%(kk,DeltaNorm))
-			if DeltaNorm>tolSmith:
+			print('%.3d\t%.2e\t%.5d\t%.5d'%(kk,DeltaNorm,Qck.shape[1],Qok.shape[1]))
+			DeltaNormNext=DeltaNorm**2
+
+			if DeltaNorm>tolSmith and DeltaNormNext>1e-3*tolSmith:
 				Apow=np.dot(Apow,Apow)
 
 			### update
