@@ -1,7 +1,6 @@
 name: sharpy_env
 channels:
 - menpo
-- anaconda
 - defaults
 dependencies:
 - ca-certificates=2017.08.26=h1d4fec5_0
