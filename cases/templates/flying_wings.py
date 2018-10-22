@@ -1,0 +1,706 @@
+'''
+Templates to build flying wing models
+S. Maraniello, Jul 2018
+
+classes:
+- FlyingWing: generate a flying wing model from a reduced set of input. The
+built in method 'update_mass_stiff' can be re-defined by the user to enter more
+complex inertial/stiffness properties
+- Smith(FlyingWing): generate HALE wing model 
+- Goland(FlyingWing): generate Goland wing model 
+'''
+
+import h5py as h5
+import numpy as np
+import configobj
+import os
+# from IPython import embed
+import sharpy.utils.algebra as algebra
+import geo_utils
+np.set_printoptions(linewidth=120)
+
+
+
+class FlyingWing():
+    ''' 
+    Flying wing template.
+    - discretisation, and basic geometry/flight conditions can be passed in input
+    - stiffness/mass properties must defined within the "update_mass_stiffness"
+    method.
+    - other aeroelastic params are attached as attributes to the class.
+    - the method update_config_dict provides default setting for solver. These
+    can be modified after an instance of the FlyingWing class is created.
+    '''
+
+    def __init__(self,
+                M,N,         # chord/span-wise discretisations
+                Mstar_fact,
+                u_inf,       # flight cond
+                alpha,  
+                rho,     
+                b_ref,       # geometry
+                main_chord,
+                aspect_ratio,
+                beta=0,		 
+                sweep=0,
+                n_surfaces=2,
+                route='.',      # saving
+                case_name='flying_wing'):
+
+        ### parametrisation
+        assert n_surfaces<3, "use 1 or 2 surfaces only!"
+        assert N%2 != 1,\
+                     'UVLM spanwise panels must be even when using 3-noded FEs!'
+        self.M=M                    # chord-wise panels
+        self.N=N                    # total spanwise panels (over all surfaces)
+        self.Mstar_fact=Mstar_fact  # wake chord-wise panel factor
+        self.n_surfaces=n_surfaces
+        self.num_node_elem=3
+
+        ### store input
+        self.u_inf=u_inf      # flight cond
+        self.rho=rho
+        self.alpha=alpha      # angles
+        self.beta=beta
+        self.sweep=sweep
+        self.b_ref=b_ref      # geometry
+        self.main_chord=main_chord
+        self.aspect_ratio=aspect_ratio  
+        self.route=route + '/'  
+        self.case_name=case_name
+
+        ### other params
+        # aeroelasticity
+        self.sigma=1
+        self.main_ea = 0.5
+        self.main_cg = 0.5
+
+        self.c_ref=1. # ref. chord
+
+        # Aerofoil shape: root and tip
+        self.root_airfoil_P = 0
+        self.root_airfoil_M = 0
+        self.tip_airfoil_P = 0
+        self.tip_airfoil_M = 0
+
+
+    def update_mass_stiff(self):
+        '''This method can be substituted to produce different wing configs'''
+        # uniform mass/stiffness
+
+        ea,ga=1e7,1e7
+        gj, eiy,eiz=1e6,2e5,5e6
+        base_stiffness=np.diag([ea, ga, ga, gj, eiy, eiz])
+
+        self.stiffness=np.zeros((1, 6, 6))
+        self.stiffness[0]=self.sigma*base_stiffness
+
+        self.mass=np.zeros((1, 6, 6))
+        self.mass[0, :, :]=np.diag([1., 1., 1., .1, .1, .1])
+
+        self.elem_stiffness=np.zeros((self.num_elem_tot,), dtype=int)
+        self.elem_mass=np.zeros((self.num_elem_tot,), dtype=int)  
+
+
+    def update_derived_params(self):
+        ### Derived
+
+        # time-step
+        self.dt=self.main_chord/self.M/self.u_inf
+
+        # angles
+        self.alpha_rad=self.alpha*np.pi/180.
+        self.beta_rad=self.beta*np.pi/180.
+        self.sweep_rad=self.sweep*np.pi/180.
+
+        # FoR A orientation
+        self.quat=algebra.euler2quat(np.array([0.0,self.alpha_rad,self.beta_rad]))
+
+        # geometry
+        self.wing_span=self.aspect_ratio*self.main_chord#/np.cos(self.sweep_rad)
+        self.S=self.wing_span*self.main_chord
+
+        # discretisation
+        assert self.n_surfaces<3, "use 1 or 2 surfaces only!"
+        assert self.N%2 != 1,\
+                     'UVLM spanwise panels must be even when using 3-noded FEs!'
+        self.num_elem_tot=self.N//2
+
+        assert self.num_elem_tot%self.n_surfaces != 1,\
+                          "Can't distribute equally FEM elements over surfaces"
+        self.num_elem_surf=self.num_elem_tot//self.n_surfaces
+        self.num_node_surf=self.N//self.n_surfaces+1
+        self.num_node_tot=self.N+1    
+
+        # FEM connectivity, coords definition and mapping
+        self.update_fem_prop()
+  
+        # Mass/stiffness properties
+        self.update_mass_stiff()
+
+        # Aero props
+        self.update_aero_prop()
+
+
+    def update_fem_prop(self):
+        ''' Produce FEM connectivity, coordinates, mapping and BCs'''
+
+        n_surfaces=self.n_surfaces
+        num_node_elem=self.num_node_elem
+        num_node_surf=self.num_node_surf
+        num_node_tot=self.num_node_tot
+        num_elem_surf=self.num_elem_surf
+        num_elem_tot=self.num_elem_tot
+        sweep_rad=self.sweep_rad
+        half_span=0.5*self.wing_span
+
+
+        #### Connectivity and nodal coordinates
+        # Warning: the elements direction determines the xB axis direction. 
+        # Hence, to avoid accidentally rotating aerofoil profiles, if a wing is 
+        # defined through  multiple surfaces, nodes should be oriented in the 
+        # same direction.
+
+        # generate connectivity. Mid node at the end of array.
+        conn_loc=np.array([0, 2, 1],dtype=int)
+        conn_surf=np.zeros((num_elem_surf,num_node_elem),dtype=int)
+        conn_glob=np.zeros((num_elem_tot,num_node_elem),dtype=int)
+
+        # connectivity surface 01
+        for ielem in range(num_elem_surf):
+            conn_surf[ielem,:]=conn_loc+ielem*(num_node_elem-1)
+        # global connectivity. Multiple surfaces merge at node 0.
+
+        conn_glob[:num_elem_surf,:]=conn_surf
+        for ss in range(1,n_surfaces):
+            conn_glob[ss*num_elem_surf:(ss+1)*num_elem_surf,:]=\
+                                                conn_surf+ss*(num_node_surf-1)+1
+            conn_glob[(ss+1)*num_elem_surf-1,1]=0
+
+
+        ### Nodal coordinates
+        z = np.zeros((num_node_tot, ))
+        if n_surfaces==1: 
+            ### Local coord from half surface
+            x01=np.sin(sweep_rad)*np.linspace(0.,half_span,(num_node_surf+1)//2)
+            y01=np.cos(sweep_rad)*np.linspace(0.,half_span,(num_node_surf+1)//2)
+            # and mirrow
+            x=np.concatenate([ x01[-1:0:-1],x01])
+            y=np.concatenate([-y01[-1:0:-1],y01])
+        if n_surfaces==2:
+            ### Local coord for surface 00
+            x01=np.sin(sweep_rad)*np.linspace(0.,half_span,num_node_surf)
+            y01=np.cos(sweep_rad)*np.linspace(0.,half_span,num_node_surf)
+            # and mirrow
+            x=np.concatenate([x01,x01[-1:0:-1]])
+            y=np.concatenate([y01,-y01[-1:0:-1]])
+        if n_surfaces>2:
+            raise NameError(
+                 'Geometry not implemented for multiple surfaces! Rotate them.')
+
+
+        ### surface/beam to element mapping
+        # beam_number and surface_distribution in fem/aero files
+        surface_number=np.zeros((num_elem_tot,), dtype=int)
+        for ss in range(n_surfaces):
+            surface_number[ss*num_elem_surf:(ss+1)*num_elem_surf]=ss
+
+
+        ##### boundary conditions
+        boundary_conditions=np.zeros((num_node_tot,), dtype=int)
+        if n_surfaces==1:
+            boundary_conditions[[0,-1]]=-1 # free-ends
+            boundary_conditions[(num_node_surf-1)//2]=1 # mid-clamp
+        if n_surfaces==2:
+            boundary_conditions[0]=1 # clamp at root (node 0)
+            boundary_conditions[num_node_surf-1]=-1 # free surf 00
+            boundary_conditions[num_node_surf]=-1 # free surf 01        
+        if n_surfaces>2:
+            raise NameError('BCs not implemented for more than 2 surfaces')
+
+
+        ### Define yB, where yB points to the LE.
+        frame_of_reference_delta = np.zeros((num_elem_tot, num_node_elem, 3))
+        for ielem in range(num_elem_tot):
+            for inode in range(num_node_elem):
+                frame_of_reference_delta[ielem, inode, :] = [-1, 0, 0]
+
+
+        self.frame_of_reference_delta=frame_of_reference_delta
+        self.boundary_conditions=boundary_conditions
+        self.conn_glob=conn_glob
+        self.conn_surf=conn_surf 
+        self.surface_number=surface_number
+        self.x=x
+        self.y=y
+        self.z=z
+
+
+
+    def update_aero_prop(self):
+        assert hasattr(self,'conn_glob'),\
+                           'Run "update_derived_params" before generating files'
+
+        n_surfaces=self.n_surfaces
+        num_node_surf=self.num_node_surf
+        num_node_tot=self.num_node_tot
+        num_elem_surf=self.num_elem_surf
+        num_elem_tot=self.num_elem_tot
+
+
+        ### Generate aerofoil profiles. Only on surf 0.
+        Airfoils_surf=[]
+        if n_surfaces==2:
+            for inode in range(num_node_surf):
+                eta=inode/num_node_surf
+                Airfoils_surf.append(
+                            np.column_stack(
+                                geo_utils.interpolate_naca_camber(
+                                        eta,
+                                        self.root_airfoil_M,self.root_airfoil_P,
+                                        self.tip_airfoil_M,self.tip_airfoil_P)))
+            airfoil_distribution_surf=self.conn_surf
+            airfoil_distribution=np.concatenate([airfoil_distribution_surf,
+                                       airfoil_distribution_surf[::-1,[1,0,2]]])
+        if n_surfaces==1:
+            num_node_half=(num_node_surf+1)//2
+            for inode in range(num_node_half):
+                eta=inode/num_node_half
+                Airfoils_surf.append(
+                            np.column_stack(
+                                geo_utils.interpolate_naca_camber(
+                                        eta,
+                                        self.root_airfoil_M,self.root_airfoil_P,
+                                        self.tip_airfoil_M,self.tip_airfoil_P)))
+            airfoil_distribution_surf=self.conn_surf[:num_elem_surf//2,:]
+            airfoil_distribution=np.concatenate([
+                                airfoil_distribution_surf[::-1,[1,0,2]],
+                                                     airfoil_distribution_surf])
+
+        self.Airfoils_surf=Airfoils_surf
+        self.airfoil_distribution=airfoil_distribution
+
+        ### others
+        self.aero_node=np.ones((num_node_tot,),dtype=bool) 
+        self.surface_m=self.M*np.ones((n_surfaces,),dtype=int)
+
+        self.twist=np.zeros((num_elem_tot, 3))
+        self.chord=self.main_chord*np.ones((num_elem_tot, 3))
+        self.elastic_axis=self.main_ea*np.ones((num_elem_tot, 3,))
+
+
+
+    def set_default_config_dict(self):
+        
+        config=configobj.ConfigObj()
+        config.filename=self.route+'/'+self.case_name+'.solver.txt'
+
+
+        config['SHARPy']={
+                'flow':['BeamLoader', 'AerogridLoader', 
+                        #'StaticUvlm',
+                        'StaticCoupled',
+                        'AerogridPlot', 'BeamPlot', 'SaveData'],
+                'case': self.case_name, 'route': self.route,          
+                'write_screen': 'off', 'write_log': 'on',
+                'log_folder': self.route+'/output/',
+                'log_file': self.case_name+'.log'}
+
+        config['BeamLoader']={'unsteady': 'off',
+                              'orientation': self.quat}
+
+        config['AerogridLoader']={'unsteady': 'off',
+                                  'aligned_grid': 'on',
+                                  'mstar': self.Mstar_fact*self.M,
+                                  'freestream_dir': ['1', '0', '0']}
+
+        config['StaticUvlm']={'rho': self.rho,
+                              'alpha': self.alpha_rad,
+                              'beta': self.beta_rad,
+                              'velocity_field_generator':'SteadyVelocityField',
+                              'velocity_field_input':{'u_inf': self.u_inf,
+                                                      'u_inf_direction':[1.,0,0]},
+                              'rollup_dt': self.dt,
+                              'print_info': 'on',
+                              'horseshoe': 'off',
+                              'num_cores': 4,
+                              'n_rollup' : 0,                    
+                              'rollup_aic_refresh': 0,
+                              'rollup_tolerance': 1e-4}
+
+        config['StaticCoupled']={'print_info': 'on',
+                               'max_iter': 50,
+                               'n_load_steps': 1,
+                               'tolerance': 1e-6,
+                               'relaxation_factor': 0.,
+                               #
+                               'aero_solver': 'StaticUvlm',
+                               'aero_solver_settings':{
+                                            'rho': self.rho,
+                                            'alpha': self.alpha_rad,
+                                            'beta': self.beta_rad,
+                                            'print_info': 'off',
+                                            'horseshoe': 'off',
+                                            'num_cores': 4,
+                                            'n_rollup': 0,
+                                            'rollup_dt': self.dt,
+                                            'rollup_aic_refresh': 1,
+                                            'rollup_tolerance': 1e-4,
+                                            'velocity_field_generator': 'SteadyVelocityField',
+                                            'velocity_field_input': {'u_inf': self.u_inf,
+                                                                     'u_inf_direction': [1., 0, 0]}},
+                                #
+                               'structural_solver': 'NonLinearStatic',
+                               'structural_solver_settings': {'print_info': 'off',
+                                                              'max_iterations': 150,
+                                                              'num_load_steps': 4,
+                                                              'delta_curved': 1e-5,
+                                                              'min_delta': 1e-5,
+                                                              'gravity_on': 'on',
+                                                              'gravity': 9.754,
+                                                              'orientation': self.quat},}
+
+        config['AerogridPlot']={'folder': self.route+'/output/',
+                                'include_rbm': 'off',
+                                'include_applied_forces': 'on',
+                                'minus_m_star': 0}
+
+        config['AeroForcesCalculator']={'folder': self.route+'/output/forces',
+                                        'write_text_file': 'on',
+                                        'text_file_name': self.case_name+'_aeroforces.csv',
+                                        'screen_output': 'on',
+                                        'unsteady': 'off'}
+
+        config['BeamPlot']={'folder':self.route+'/output/',
+                            'include_rbm': 'off',
+                            'include_applied_forces': 'on'}
+
+        config['BeamCsvOutput']={'folder': self.route+'/output/',
+                                 'output_pos': 'on',
+                                 'output_psi': 'on',
+                                 'screen_output': 'on'}
+
+        config['SaveData'] = {'folder': self.route+'/output/'}
+
+        config['Modal'] = {'folder': self.route+'/output/',
+                           'NumLambda': 100,
+                           'print_matrices': 'off',
+                           'keep_linear_matrices': 'on',
+                           'write_modes_vtk': True,
+                           'use_undamped_modes': True}
+
+
+
+        config.write()
+        self.config=config
+        # print('config dictionary set-up with flow:')
+        # print(config['SHARPy']['flow'])
+
+
+
+    def generate_aero_file(self):
+
+        with h5.File(self.route+'/'+self.case_name+'.aero.h5', 'a') as h5file:
+            airfoils_group = h5file.create_group('airfoils')
+            # add one airfoil
+            for aa in range(len(self.Airfoils_surf)):
+                airfoils_group.create_dataset('%d'%aa,data=self.Airfoils_surf[aa])
+
+            chord_input = h5file.create_dataset('chord', data=self.chord)
+            dim_attr = chord_input.attrs['units'] = 'm'
+
+            twist_input = h5file.create_dataset('twist', data=self.twist)
+            dim_attr=twist_input.attrs['units']='rad'
+
+            # airfoil distribution
+            airfoil_distribution_input = h5file.create_dataset(
+                'airfoil_distribution', data=self.airfoil_distribution)
+            surface_distribution_input = h5file.create_dataset(
+                'surface_distribution', data=self.surface_number)
+            surface_m_input = h5file.create_dataset(
+                'surface_m', data=self.surface_m)
+            m_distribution_input = h5file.create_dataset(
+                'm_distribution', data='uniform'.encode('ascii', 'ignore'))
+            aero_node_input = h5file.create_dataset(
+                'aero_node', data=self.aero_node)
+            elastic_axis_input = h5file.create_dataset(
+                'elastic_axis', data=self.elastic_axis)
+
+
+
+    def generate_fem_file(self):
+
+        assert hasattr(self,'conn_glob'),\
+                           'Run "update_derived_params" before generating files'
+
+        with h5.File(self.route+'/'+self.case_name+'.fem.h5','a') as h5file:
+
+            coordinates = h5file.create_dataset(
+                'coordinates',data=np.column_stack((self.x, self.y, self.z)))
+            conectivities = h5file.create_dataset(
+                'connectivities', data=self.conn_glob)
+            num_nodes_elem_handle = h5file.create_dataset(
+                'num_node_elem', data=self.num_node_elem)
+            num_nodes_handle = h5file.create_dataset(
+                'num_node', data=self.num_node_tot)
+            num_elem_handle = h5file.create_dataset(
+                'num_elem', data=self.num_elem_tot)
+            stiffness_db_handle = h5file.create_dataset(
+                'stiffness_db', data=self.stiffness)
+            stiffness_handle = h5file.create_dataset(
+                'elem_stiffness', data=self.elem_stiffness)
+            mass_db_handle = h5file.create_dataset(
+                'mass_db', data=self.mass)
+            mass_handle = h5file.create_dataset(
+                'elem_mass', data=self.elem_mass)
+            frame_of_reference_delta_handle = h5file.create_dataset(
+                'frame_of_reference_delta', data=self.frame_of_reference_delta)
+            structural_twist_handle = h5file.create_dataset(
+                'structural_twist', data=np.zeros((self.num_node_tot,)))
+            bocos_handle = h5file.create_dataset(
+                'boundary_conditions', data=self.boundary_conditions)
+            beam_handle = h5file.create_dataset(
+                'beam_number', data=self.surface_number)
+            app_forces_handle = h5file.create_dataset(
+                'app_forces', data=np.zeros((self.num_node_tot,6)))
+
+
+
+    def clean_test_files(self):
+        fem_file_name = self.route+'/'+self.case_name+'.fem.h5'
+        if os.path.isfile(fem_file_name):
+            os.remove(fem_file_name)
+
+        aero_file_name = self.route+'/'+self.case_name+'.aero.h5'
+        if os.path.isfile(aero_file_name):
+            os.remove(aero_file_name)
+
+        solver_file_name = self.route+'/'+self.case_name+'.solver.txt'
+        if os.path.isfile(solver_file_name):
+            os.remove(solver_file_name)
+
+        flightcon_file_name = self.route+'/'+self.case_name+'.flightcon.txt'
+        if os.path.isfile(flightcon_file_name):
+            os.remove(flightcon_file_name)
+
+
+
+
+class Smith(FlyingWing):
+    ''' 
+    Build Smith HALE wing.
+    This class is nothing but a FlyingWing with pre-defined geometry properties
+    and mass/stiffness data ("update_mass_stiffness" method)
+     '''
+
+
+    def __init__(self,
+    			M,N,         	# chord/span-wise discretisations
+    			Mstar_fact,
+    			u_inf,       	# flight cond
+    			alpha,   
+    			rho=0.08891,
+    			b_ref=32.,       # geometry
+    			main_chord=1.,
+    			aspect_ratio=32,
+    			beta=0.,		 
+    			sweep=0.,
+    			n_surfaces=2,
+    			route='.',       
+    			case_name='smith'):
+
+        super().__init__(	M=M,N=N,       
+        					Mstar_fact=Mstar_fact,
+        					u_inf=u_inf,      
+        					alpha=alpha,   
+        					rho=rho,
+        					b_ref=b_ref,       			
+        					main_chord=main_chord,
+        					aspect_ratio=aspect_ratio,
+        					beta=beta,		 
+        					sweep=sweep,
+        					n_surfaces=n_surfaces,
+        					route=route,      
+        					case_name=case_name)
+        self.c_ref=1.
+
+
+    def update_mass_stiff(self):
+        '''This method can be substituted to produce different wing configs'''
+        # uniform mass/stiffness
+
+        ea,ga=1e5,1e5
+        gj, eiy,eiz=1e4,2e4,5e6
+        base_stiffness=np.diag([ea, ga, ga, gj, eiy, eiz])
+
+        self.stiffness=np.zeros((1, 6, 6))
+        self.stiffness[0]=self.sigma*base_stiffness
+
+        self.mass=np.zeros((1, 6, 6))
+        self.mass[0, :, :]=np.diag([0.75, 0.75, 0.75, .1, .1, .1])
+
+        self.elem_stiffness=np.zeros((self.num_elem_tot,), dtype=int)
+        self.elem_mass=np.zeros((self.num_elem_tot,), dtype=int)
+
+
+
+
+
+	
+class Goland(FlyingWing):
+    ''' 
+    Build a Goland wing.
+    This class is nothing but a FlyingWing with pre-defined geometry properties
+    and mass/stiffness data ("update_mass_stiffness" method)
+     '''
+
+
+    def __init__(self,
+                M,N,            # chord/span-wise discretisations
+                Mstar_fact,
+                u_inf,          # flight cond
+                alpha,   
+                rho=1.02,
+                b_ref=2.*6.096,       # geometry
+                main_chord=1.8288,
+                aspect_ratio=(2.*6.096)/1.8288,
+                beta=0.,         
+                sweep=0.,
+                n_surfaces=2,
+                route='.',       
+                case_name='goland'):
+
+        super().__init__(   M=M,N=N,       
+                            Mstar_fact=Mstar_fact,
+                            u_inf=u_inf,      
+                            alpha=alpha,   
+                            rho=rho,
+                            b_ref=b_ref,                
+                            main_chord=main_chord,
+                            aspect_ratio=aspect_ratio,
+                            beta=beta,       
+                            sweep=sweep,
+                            n_surfaces=n_surfaces,
+                            route=route,      
+                            case_name=case_name)
+
+        # aeroelasticity parameters
+        self.main_ea = 0.33
+        self.main_cg = 0.43
+        self.sigma = 1
+
+        # other
+        self.c_ref=1.8288
+
+
+    def update_mass_stiff(self):
+        '''
+        This method can be substituted to produce different wing configs.
+
+        Forthis model, remind that the delta_frame_of_reference is chosen such 
+        that the B FoR axis are:
+        - xb: along the wing span
+        - yb: pointing towards the leading edge (i.e. roughly opposite than xa)
+        - zb: upward as za
+        '''
+        # uniform mass/stiffness
+
+        #ea,ga=1e7,1e6
+        ea,ga=1e9,1e9
+        gj = 0.987581e6
+        eiy = 9.77221e6
+        eiz = 1e2*eiy
+        base_stiffness=np.diag([ea, ga, ga, gj, eiy, eiz])
+
+        self.stiffness=np.zeros((1, 6, 6))
+        self.stiffness[0]=self.sigma*base_stiffness
+
+
+        m_unit = 35.71
+        j_tors = 8.64
+        pos_cg_b=np.array([0.,self.c_ref*(self.main_cg-self.main_ea), 0.])
+        m_chi_cg = algebra.skew(m_unit*pos_cg_b)
+        self.mass=np.zeros((1, 6, 6))
+        self.mass[0, :, :]=np.diag([ m_unit, m_unit, m_unit, 
+                                                  j_tors, .5*j_tors, .5*j_tors])
+
+        self.mass[0,:3,3:]= m_chi_cg
+        self.mass[0,3:,:3]=-m_chi_cg
+
+        self.elem_stiffness=np.zeros((self.num_elem_tot,), dtype=int)
+        self.elem_mass=np.zeros((self.num_elem_tot,), dtype=int)
+
+
+
+class QuasiInfinite(FlyingWing):
+    ''' 
+    Builds a very high aspect ratio wing, for simulating 2D aerodynamics
+    This class is nothing but a FlyingWing with pre-defined geometry properties
+    and mass/stiffness data ("update_mass_stiffness" method)
+     '''
+
+
+    def __init__(self,
+                M,N,            # chord/span-wise discretisations
+                Mstar_fact,
+                u_inf,          # flight cond
+                alpha,
+                aspect_ratio,
+                rho=0.08891,
+                b_ref=32.,       # geometry
+                main_chord=3.,
+                beta=0.,         
+                sweep=0.,
+                n_surfaces=1,
+                route='.',       
+                case_name='qsinf'):
+
+        super().__init__(   M=M,N=N,       
+                            Mstar_fact=Mstar_fact,
+                            u_inf=u_inf,      
+                            alpha=alpha,   
+                            rho=rho,
+                            b_ref=b_ref,                
+                            main_chord=main_chord,
+                            aspect_ratio=aspect_ratio,
+                            beta=beta,       
+                            sweep=sweep,
+                            n_surfaces=n_surfaces,
+                            route=route,      
+                            case_name=case_name)
+        self.c_ref=main_chord
+        self.main_ea = 0.5
+        self.main_cg = 0.5
+
+
+    def update_mass_stiff(self):
+        '''This method can be substituted to produce different wing configs'''
+        # uniform mass/stiffness
+
+        ea,ga=1e9,1e9
+        gj = 2e8
+        eiy = 1e8
+        eiz = 1e8
+        base_stiffness=np.diag([ea, ga, ga, gj, eiy, eiz])
+        self.stiffness=np.zeros((1, 6, 6))
+        self.stiffness[0]=self.sigma*base_stiffness
+
+        m_unit = 1.
+        self.mass=np.zeros((1, 6, 6))
+        self.mass[0, :, :]=np.diag([ m_unit, m_unit, m_unit, 1., .5, .5])
+        self.elem_stiffness=np.zeros((self.num_elem_tot,), dtype=int)
+        self.elem_mass=np.zeros((self.num_elem_tot,), dtype=int)
+
+
+
+
+if __name__=='__main__':
+
+    import os
+    os.system('mkdir -p %s' %'./test' )
+
+    ws=Goland(M=4,N=20,Mstar_fact=12,u_inf=25.,alpha=2.0,route='./test')
+    ws.clean_test_files()
+    ws.update_derived_params()
+    ws.generate_fem_file()
+    ws.generate_aero_file()
