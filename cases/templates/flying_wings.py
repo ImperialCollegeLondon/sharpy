@@ -16,7 +16,7 @@ import configobj
 import os
 # from IPython import embed
 import sharpy.utils.algebra as algebra
-import geo_utils
+import cases.templates.geo_utils as geo_utils
 np.set_printoptions(linewidth=120)
 
 
@@ -632,6 +632,61 @@ class Goland(FlyingWing):
 
 
 
+
+class GolandRolled(Goland):
+    ''' 
+    Build a rolled Goland wing at ZERO inclidence/side-slip.
+    
+    Note: this class is used for testing purposes. The FoR A in which the wing
+    is defined is alligned with the inertial frame, G. The geometry is instead 
+    rolled by modifying directly the wing nodal coordinates.
+    '''
+
+
+    def __init__(self,
+                M,N,            # chord/span-wise discretisations
+                Mstar_fact,
+                u_inf,          # flight cond   
+                roll=45.,       # roll angle [deg]
+                rho=1.02,
+                b_ref=2.*6.096,       # geometry
+                main_chord=1.8288,
+                aspect_ratio=(2.*6.096)/1.8288,
+                n_surfaces=2,
+                route='.',       
+                case_name='goland_rolled'):
+
+        super().__init__(   M=M,N=N,       
+                            Mstar_fact=Mstar_fact,
+                            u_inf=u_inf,      
+                            alpha=0.,   
+                            rho=rho,
+                            b_ref=b_ref,                
+                            main_chord=main_chord,
+                            aspect_ratio=aspect_ratio,
+                            beta=0.,       
+                            sweep=0.,
+                            n_surfaces=n_surfaces,
+                            route=route,      
+                            case_name=case_name)
+        self.roll=roll
+        # self.clean_test_files()
+        # self.update_derived_params()
+
+
+    def update_derived_params(self):
+        super().update_derived_params()
+
+        # define roll attitude by modifying the nodal coordinates
+        roll_rad=self.roll/180.*np.pi
+        sr,cr=np.sin(roll_rad),np.cos(roll_rad)
+
+        yold=self.y.copy()
+        self.y=cr*yold 
+        self.z=sr*yold
+
+
+
 class QuasiInfinite(FlyingWing):
     ''' 
     Builds a very high aspect ratio wing, for simulating 2D aerodynamics
@@ -704,3 +759,11 @@ if __name__=='__main__':
     ws.update_derived_params()
     ws.generate_fem_file()
     ws.generate_aero_file()
+
+
+    ws=GolandRolled(M=4,N=20,Mstar_fact=12,u_inf=100.,roll=30.,route='./test')
+    ws.clean_test_files()
+    ws.update_derived_params()
+    ws.generate_fem_file()
+    ws.generate_aero_file()
+
