@@ -1,7 +1,6 @@
 name: sharpy_env
 channels:
 - menpo
-- anaconda
 - defaults
 dependencies:
 - dbus=1.10.22
