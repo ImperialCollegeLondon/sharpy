@@ -20,6 +20,11 @@
 import os
 import sys
 sys.path.insert(0, os.path.abspath('../'))
+# import recommonmark
+# from recommonmark.transform import AutoStructify
+# # Markdown Source Parsers
+# from recommonmark.parser import CommonMarkParser
+
 # print(sys.path)
 # -- General configuration ------------------------------------------------
 
@@ -45,11 +50,14 @@ templates_path = ['_templates']
 # Mathjax path for equation rendering
 mathjax_path = "https://cdn.mathjax.org/mathjax/latest/MathJax.js?config=TeX-AMS-MML_HTMLorMML"
 
+# Markdown Source Parsers
+# source_parsers = {
+#    '.md': CommonMarkParser}
+
 # The suffix(es) of source filenames.
 # You can specify multiple suffix as a list of string:
 #
-# source_suffix = ['.rst', '.md']
-source_suffix = '.rst'
+source_suffix = ['.rst', '.md']
 
 # The encoding of source files.
 #
@@ -61,7 +69,7 @@ master_doc = 'index'
 # General information about the project.
 project = 'SHARPy'
 copyright = '2018, LoCA Lab ICL'
-author = 'LoCA Lab ICL'
+author = 'Aeroelastics Lab, Imperial College London'
 
 # The version info for the project you're documenting, acts as replacement for
 # |version| and |release|, also used in various other places throughout the
@@ -130,7 +138,7 @@ todo_include_todos = False
 # The theme to use for HTML and HTML Help pages.  See the documentation for
 # a list of builtin themes.
 #
-html_theme = 'alabaster'
+html_theme = 'sphinxdoc'
 
 # Theme options are theme-specific and customize the look and feel of a theme
 # further.  For a list of options available for each theme, see the
@@ -251,11 +259,11 @@ htmlhelp_basename = 'SHARPydoc'
 latex_elements = {
      # The paper size ('letterpaper' or 'a4paper').
      #
-     # 'papersize': 'letterpaper',
+     'papersize': 'a4paper',
 
      # The font size ('10pt', '11pt' or '12pt').
      #
-     # 'pointsize': '10pt',
+     'pointsize': '12pt',
 
      # Additional stuff for the LaTeX preamble.
      #
@@ -263,7 +271,7 @@ latex_elements = {
 
      # Latex figure (float) alignment
      #
-     # 'figure_align': 'htbp',
+     'figure_align': 'htbp',
 }
 
 # Grouping the document tree into LaTeX files. List of tuples
@@ -347,3 +355,11 @@ texinfo_documents = [
 # If true, do not generate a @detailmenu in the "Top" node's menu.
 #
 # texinfo_no_detailmenu = False
+
+# Recommonmark function
+#def setup(app):
+#    app.add_config_value('recommonmark_config', {
+#            'url_resolver': lambda url: github_doc_root + url,
+#            'auto_toc_tree_section': 'Contents',
+#            }, True)
+#    app.add_transform(AutoStructify)

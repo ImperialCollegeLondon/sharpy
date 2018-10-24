@@ -5,7 +5,6 @@ import sharpy.utils.exceptions as exceptions
 import sharpy.utils.cout_utils as cout
 import sharpy.utils.cout_utils as cout
 
-false_list = ['false', 'off', '0', 'no']
 
 
 class DictConfigParser(configparser.ConfigParser):
@@ -158,6 +157,7 @@ def load_config_file(file_name: str) -> dict:
 
 
 def str2bool(string):
+    false_list = ['false', 'off', '0', 'no']
     if isinstance(string, bool):
         return string
     if isinstance(string, ct.c_bool):
