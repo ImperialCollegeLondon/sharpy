@@ -13,6 +13,9 @@ import sharpy.structure.utils.xbeamlib as xbeam
 
 @solver
 class DynamicCoupled(BaseSolver):
+    """
+    Requires Static Solution as initial condition! TODO
+    """
     solver_id = 'DynamicCoupled'
 
     def __init__(self):
@@ -127,13 +130,6 @@ class DynamicCoupled(BaseSolver):
         self.aero_solver.initialise(self.structural_solver.data, self.settings['aero_solver_settings'])
         self.data = self.aero_solver.data
 
-        if self.print_info:
-            self.residual_table = cout.TablePrinter(7, 14, ['g', 'f', 'g', 'f', 'f', 'f', 'e'])
-            self.residual_table.field_length[0] = 6
-            self.residual_table.field_length[1] = 6
-            self.residual_table.field_length[1] = 6
-            self.residual_table.print_header(['ts', 't', 'iter', 'residual pos', 'residual vel', 'residual acc', 'FoR_vel(z)'])
-
         # initialise postprocessors
         self.postprocessors = dict()
         if len(self.settings['postprocessors']) > 0:
@@ -142,6 +138,15 @@ class DynamicCoupled(BaseSolver):
             self.postprocessors[postproc] = solver_interface.initialise_solver(postproc)
             self.postprocessors[postproc].initialise(
                 self.data, self.settings['postprocessors_settings'][postproc])
+
+        # print information header
+        if self.print_info:
+            self.residual_table = cout.TablePrinter(8, 14, ['g', 'f', 'g', 'f', 'f', 'f', 'e', 'e'])
+            self.residual_table.field_length[0] = 6
+            self.residual_table.field_length[1] = 6
+            self.residual_table.field_length[1] = 6
+            self.residual_table.print_header(['ts', 't', 'iter', 'residual pos', 'residual vel', 'residual acc',
+                                              'FoR_vel(x)', 'FoR_vel(z)'])
 
 
     def cleanup_timestep_info(self):
@@ -233,6 +238,7 @@ class DynamicCoupled(BaseSolver):
                                                 np.log10(self.res),
                                                 np.log10(self.res_dqdt),
                                                 np.log10(self.res_dqddt),
+                                                structural_kstep.for_vel[0],
                                                 structural_kstep.for_vel[2]])
             self.structural_solver.extract_resultants()
             # run postprocessors
