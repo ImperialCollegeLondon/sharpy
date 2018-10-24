@@ -101,7 +101,7 @@ git checkout develop origin/develop
 Likewise, skip the `git checkout` commands if you are running the `master` branch in `sharpy`.
 
 
-####Compiling the UVLM and xbeam libraries
+#### Compiling the UVLM and xbeam libraries
 
 Once the folder structure has been laid out, the aerodynamic and structural libraries can be compiled.
 
@@ -266,7 +266,7 @@ loaded in Paraview.
 
 ## Run a test case
 
-TODO get a test case that works as described
+*TODO* review geradin case and update sharpy calls
 
 
 This command generates the required files for running a static, clamped beam.
