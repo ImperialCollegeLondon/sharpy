@@ -205,7 +205,8 @@ conda env create -f environment_linux.yml
 cd ../..
 ```
 
-4. Anaconda will now install its required packages for the SHARPy environment
+4. Anaconda will now install its required packages for the SHARPy environment. This new environment will be created with
+the name `sharpy_env`.
 
 __Output and binary files__
 
@@ -319,4 +320,4 @@ If you try to open the `fem.h5` file, you'll get an error or something meaningle
 Congratulations, you've run your first case.
 
 If you want to know how to configure your own cases, check the iPython notebook
-[Geradin and Cardona Static Structural Case](https://github.com/fonsocarre/sharpy/blob/master/tests/beam/static/geradin_cardona/geradin_cardona.ipynb).
+[Geradin and Cardona Static Structural Case](https://github.com/ImperialCollegeLondon/sharpy/docs/source/_static/geradin_cardona.ipynb).
