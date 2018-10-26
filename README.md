@@ -2,6 +2,8 @@
 SHARPy is an aeroelastic analysis package currently under development at the Department of Aeronautics, Imperial College London. It can be used for the 
 structural, aerodynamic and aeroelastic analysis of flexible aircraft, flying wings and wind turbines.
 
+SHARPy is distributed under a [BSD 3-Clause License](license.txt).
+
 __WORK STILL IN PROGRESS__
 
 ## SHARPy Models
@@ -320,4 +322,4 @@ If you try to open the `fem.h5` file, you'll get an error or something meaningle
 Congratulations, you've run your first case.
 
 If you want to know how to configure your own cases, check the iPython notebook
-[Geradin and Cardona Static Structural Case](https://github.com/ImperialCollegeLondon/sharpy/docs/source/_static/geradin_cardona.ipynb).
+[Geradin and Cardona Static Structural Case](tests/xbeam/geradin/geradin_cardona.ipynb).
