@@ -2,6 +2,8 @@
 SHARPy is an aeroelastic analysis package currently under development at the Department of Aeronautics, Imperial College London. It can be used for the 
 structural, aerodynamic and aeroelastic analysis of flexible aircraft, flying wings and wind turbines.
 
+SHARPy is distributed under a [BSD 3-Clause License](license.txt).
+
 __WORK STILL IN PROGRESS__
 
 ## SHARPy Models
@@ -205,7 +207,8 @@ conda env create -f environment_linux.yml
 cd ../..
 ```
 
-4. Anaconda will now install its required packages for the SHARPy environment
+4. Anaconda will now install its required packages for the SHARPy environment. This new environment will be created with
+the name `sharpy_env`.
 
 __Output and binary files__
 
@@ -319,4 +322,4 @@ If you try to open the `fem.h5` file, you'll get an error or something meaningle
 Congratulations, you've run your first case.
 
 If you want to know how to configure your own cases, check the iPython notebook
-[Geradin and Cardona Static Structural Case](https://github.com/fonsocarre/sharpy/blob/master/tests/beam/static/geradin_cardona/geradin_cardona.ipynb).
+[Geradin and Cardona Static Structural Case](tests/xbeam/geradin/geradin_cardona.ipynb).
