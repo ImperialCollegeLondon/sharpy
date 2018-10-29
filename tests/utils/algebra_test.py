@@ -155,6 +155,8 @@ class TestAlgebra(unittest.TestCase):
         print(60*'-')
         print('Testing functions to build rotation matrices derivatives')
         print('der_Cquat_by_v\n' + 'der_CquatT_by_v')
+        print('der_Ccrv_by_v\n' + 'der_CcrvT_by_v')
+
 
         ### linearisation point
         fi0=np.pi/6
@@ -173,40 +175,69 @@ class TestAlgebra(unittest.TestCase):
         # linearsation point
         Cga0=algebra.quat2rotation(qv0)
         Cag0=Cga0.T
+        Cab0=algebra.crv2rotation(fv0)
+        Cba0=Cab0.T
 
         # derivatives
         xv=np.ones((3,)) # dummy vector
         derCga=algebra.der_Cquat_by_v(qv0,xv)
         derCag=algebra.der_CquatT_by_v(qv0,xv)
+        derCab=algebra.der_Ccrv_by_v(fv0,xv)
+        derCba=algebra.der_CcrvT_by_v(fv0,xv)
 
-        print('step\t\terror der_Cquat_by_v\terror der_CquatT_by_v')
+
+        print('step\t\terror der_Cquat_by_v\terror der_CquatT_by_v'+\
+                                  '\terror der_Ccrv_by_v\terror der_CcrvT_by_v')
         A=np.array([1e-1,1e-2,1e-3,1e-4,1e-5,1e-6])
         er_ag=10.
         er_ga=10.
+        er_ab=10.
+        er_ba=10.
+
         for a in A:
 
             # perturbed
             qv=a*qv1 + (1.-a)*qv0
+            fv=a*fv1 + (1.-a)*fv0
             dqv=qv-qv0
+            dfv=fv-fv0
             Cga=algebra.quat2rotation(qv)
             Cag=Cga.T
+            Cab=algebra.crv2rotation(fv)
+            Cba=Cab.T
 
             dCag_num=np.dot(Cag-Cag0,xv)
             dCga_num=np.dot(Cga-Cga0,xv)
             dCag_an=np.dot(derCag,dqv)
             dCga_an=np.dot(derCga,dqv)
-
             er_ag_new=np.max(np.abs(dCag_num-dCag_an))
             er_ga_new=np.max(np.abs(dCga_num-dCga_an))
 
-            print('%.3e\t%.3e\t\t%.3e'%(a,er_ag_new,er_ga_new) )
+            dCab_num=np.dot(Cab-Cab0,xv)
+            dCba_num=np.dot(Cba-Cba0,xv)
+            dCab_an=np.dot(derCab,dfv)
+            dCba_an=np.dot(derCba,dfv)
+            er_ab_new=np.max(np.abs(dCab_num-dCab_an))
+            er_ba_new=np.max(np.abs(dCba_num-dCba_an))
+
+            print('%.3e\t%.3e\t\t%.3e\t\t%.3e\t\t%.3e'\
+                                   %(a,er_ag_new,er_ga_new,er_ab_new,er_ba_new))
             assert er_ga_new<er_ga, 'der_Cquat_by_v error not converging to 0'
             assert er_ag_new<er_ag, 'der_CquatT_by_v error not converging to 0'
+            assert er_ab_new<er_ab, 'der_Ccrv_by_v error not converging to 0'
+            assert er_ba_new<er_ba, 'der_CcrvT_by_v error not converging to 0'
+
             er_ag=er_ag_new
             er_ga=er_ga_new
+            er_ab=er_ab_new
+            er_ba=er_ba_new
 
         assert er_ga<A[-2], 'der_Cquat_by_v error too large'
         assert er_ag<A[-2], 'der_CquatT_by_v error too large'
+        assert er_ab<A[-2], 'der_Ccrv_by_v error too large'
+        assert er_ba<A[-2], 'der_CcrvT_by_v error too large'
+
+
         print(50*'-'+' all good!\n')
 
 
@@ -224,6 +255,7 @@ class TestAlgebra(unittest.TestCase):
         nv0=np.array([1,0,0])
         nv0=nv0/np.linalg.norm(nv0)
         fv0=fi0*nv0
+        Cab=algebra.crv2rotation(fv0) # fv0 is rotation from A to B
 
         # dummy
         fi1=np.pi/3
@@ -241,9 +273,7 @@ class TestAlgebra(unittest.TestCase):
             dfv=fv-fv0
 
             ### Compute relevant quantities
-            Cab=algebra.crv2rotation(fv0) # fv0 is rotation from A to B
             dCab=algebra.crv2rotation(fv0+dfv)-Cab
-
             T=algebra.crv2tan(fv0)
             Tdfv=np.dot(T,dfv)
             Tdfv_skew=algebra.skew(Tdfv)
@@ -305,6 +335,7 @@ class TestAlgebra(unittest.TestCase):
         assert er<A[-2], 'der_Tan_by_xv error too large'
         print(50*'-'+' all good!\n')
 
+
     def test_crv_tangetial_operator_transpose_derivative(self):
         ''' Checks Cartesian rotation vector tangential operator transpose'''
 
@@ -313,11 +344,11 @@ class TestAlgebra(unittest.TestCase):
         print('der_TanT_by_xv')
 
         # dummy vector
-        xv=np.array([random.random(),random.random(),random.random()])
+        xv=np.random.rand(3)
 
         # linearisation point
-        fi0=2.0*np.pi*random.random()
-        nv0=np.array([random.random(),random.random(),random.random()])
+        fi0=2.0*np.pi*np.random.rand(1)
+        nv0=np.random.rand(3)
         nv0=nv0/np.linalg.norm(nv0)
         fv0=fi0*nv0
         T0_T=np.transpose(algebra.crv2tan(fv0))
@@ -327,8 +358,8 @@ class TestAlgebra(unittest.TestCase):
         derT_T_an=algebra.der_TanT_by_xv(fv0,xv)
 
         # End point
-        fi1=2.0*np.pi*random.random()
-        nv1=np.array([random.random(),random.random(),random.random()])
+        fi1=2.0*np.pi*np.random.rand()
+        nv1=np.random.rand(3)
         nv1=nv1/np.linalg.norm(nv1)
         fv1=fi1*nv1
 
