@@ -130,11 +130,11 @@ def merge_multibody(MB_tstep, MB_beam, beam, tstep, mb_data_dict, dt):
         # tstep.mb_FoR_acc[ibody,:] = MB_tstep[ibody].mb_FoR_acc[ibody,:].astype(dtype=ct.c_double, order='F', copy=True)
 
         # Update beam ini_info
-        MB_beam[ibody].ini_info.change_to_global_AFoR(ibody)
-        beam.ini_info.pos[first_node:last_node,:] = MB_beam[ibody].ini_info.pos.astype(dtype=ct.c_double, order='F', copy=True)
-        beam.ini_info.pos_dot[first_node:last_node,:] = MB_beam[ibody].ini_info.pos_dot.astype(dtype=ct.c_double, order='F', copy=True)
-        beam.ini_info.psi[first_elem:last_elem,:,:] = MB_beam[ibody].ini_info.psi.astype(dtype=ct.c_double, order='F', copy=True)
-        beam.ini_info.psi_dot[first_elem:last_elem,:,:] = MB_beam[ibody].ini_info.psi_dot.astype(dtype=ct.c_double, order='F', copy=True)
+        # MB_beam[ibody].ini_info.change_to_global_AFoR(ibody)
+        # beam.ini_info.pos[first_node:last_node,:] = MB_beam[ibody].ini_info.pos.astype(dtype=ct.c_double, order='F', copy=True)
+        # beam.ini_info.pos_dot[first_node:last_node,:] = MB_beam[ibody].ini_info.pos_dot.astype(dtype=ct.c_double, order='F', copy=True)
+        # beam.ini_info.psi[first_elem:last_elem,:,:] = MB_beam[ibody].ini_info.psi.astype(dtype=ct.c_double, order='F', copy=True)
+        # beam.ini_info.psi_dot[first_elem:last_elem,:,:] = MB_beam[ibody].ini_info.psi_dot.astype(dtype=ct.c_double, order='F', copy=True)
 
         # TODO: Do I really need to update the following?
         # MB_beam[ibody].timestep_info.change_to_global_AFoR(ibody)
@@ -199,7 +199,7 @@ def update_mb_dB_before_merge(tstep, MB_tstep):
         # delta_acc_ms[0:3] = self.mb_FoR_acc[0,0:3] - np.dot(np.transpose(Csm),self.for_acc[0:3])
         # delta_acc_ms[3:6] = self.mb_FoR_acc[0,3:6] - np.dot(np.transpose(Csm),self.for_acc[3:6])
 
-        tstep.mb_FoR_pos[ibody,:] += MB_tstep[ibody].for_pos
+        tstep.mb_FoR_pos[ibody,:] = MB_tstep[ibody].for_pos
         tstep.mb_FoR_vel[ibody,0:3] = np.dot(np.transpose(CAslaveG), MB_tstep[ibody].for_vel[0:3])
         tstep.mb_FoR_vel[ibody,3:6] = np.dot(np.transpose(CAslaveG), MB_tstep[ibody].for_vel[3:6])
         tstep.mb_FoR_acc[ibody,0:3] = np.dot(np.transpose(CAslaveG), MB_tstep[ibody].for_acc[0:3])

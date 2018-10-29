@@ -185,11 +185,11 @@ class NonLinearDynamicMultibody(BaseSolver):
         acc = np.zeros((6,),)
         for ibody in range(len(MB_tstep)):
             # I think this is the right way to do it, but to make it match the rest I change it temporally
-            if False:
-                MB_tstep[ibody].mb_quat[ibody,:] =  algebra.quaternion_product(MB_tstep[ibody].quat, MB_tstep[ibody].mb_quat[ibody,:])
+            if True:
+                # MB_tstep[ibody].mb_quat[ibody,:] =  algebra.quaternion_product(MB_tstep[ibody].quat, MB_tstep[ibody].mb_quat[ibody,:])
                 acc[0:3] = (0.5-self.beta)*np.dot(MB_beam[ibody].timestep_info.cga(),MB_beam[ibody].timestep_info.for_acc[0:3])+self.beta*np.dot(MB_tstep[ibody].cga(),MB_tstep[ibody].for_acc[0:3])
                 vel[0:3] = np.dot(MB_beam[ibody].timestep_info.cga(),MB_beam[ibody].timestep_info.for_vel[0:3])
-                MB_tstep[ibody].for_pos[0:3] = dt*(vel[0:3] + dt*acc[0:3])
+                MB_tstep[ibody].for_pos[0:3] += dt*(vel[0:3] + dt*acc[0:3])
             else:
                 # print("quat: ", MB_tstep[ibody].quat)
                 # print("cga: ", MB_tstep[ibody].cga())
@@ -213,93 +213,98 @@ class NonLinearDynamicMultibody(BaseSolver):
         Lambda = np.zeros((num_LM_eq,), dtype=ct.c_double, order='F')
         Lambda_dot = np.zeros((num_LM_eq,), dtype=ct.c_double, order='F')
 
-        for ts in range(self.settings['num_steps'].value):
-            # ipdb.set_trace()
-            # Initialize
-            q = np.zeros((self.sys_size + num_LM_eq,), dtype=ct.c_double, order='F')
-            dqdt = np.zeros((self.sys_size + num_LM_eq,), dtype=ct.c_double, order='F')
-            dqddt = np.zeros((self.sys_size + num_LM_eq,), dtype=ct.c_double, order='F')
+        # for ts in range(self.settings['num_steps'].value):
+        # comment time stepping
+        # ipdb.set_trace()
+        # Initialize
+        q = np.zeros((self.sys_size + num_LM_eq,), dtype=ct.c_double, order='F')
+        dqdt = np.zeros((self.sys_size + num_LM_eq,), dtype=ct.c_double, order='F')
+        dqddt = np.zeros((self.sys_size + num_LM_eq,), dtype=ct.c_double, order='F')
 
-            # Predictor step
-            mb.disp2state(MB_beam, MB_tstep, q, dqdt, dqddt)
+        # Predictor step
+        mb.disp2state(MB_beam, MB_tstep, q, dqdt, dqddt)
 
-            # dqddt = np.zeros_like(dqdt)
-            q = q + dt*dqdt + (0.5 - self.beta)*dt*dt*dqddt
-            dqdt = dqdt + (1.0 - self.gamma)*dt*dqddt
-            dqddt = np.zeros((self.sys_size + num_LM_eq,), dtype=ct.c_double, order='F')
-            Lambda = q[-num_LM_eq:].astype(dtype=ct.c_double, copy=True, order='F')
-            Lambda_dot = dqdt[-num_LM_eq:].astype(dtype=ct.c_double, copy=True, order='F')
-            # TODO: what to do with lambda
+        # dqddt = np.zeros_like(dqdt)
+        q = q + dt*dqdt + (0.5 - self.beta)*dt*dt*dqddt
+        dqdt = dqdt + (1.0 - self.gamma)*dt*dqddt
+        dqddt = np.zeros((self.sys_size + num_LM_eq,), dtype=ct.c_double, order='F')
+        Lambda = q[-num_LM_eq:].astype(dtype=ct.c_double, copy=True, order='F')
+        Lambda_dot = dqdt[-num_LM_eq:].astype(dtype=ct.c_double, copy=True, order='F')
+        # TODO: what to do with lambda
 
-            # Newmark-beta iterations
-            old_Dq = 1.0
-            LM_old_Dq = 1.0
+        # Newmark-beta iterations
+        old_Dq = 1.0
+        LM_old_Dq = 1.0
 
-            for iter in range(self.settings['max_iterations'].value):
+        for iter in range(self.settings['max_iterations'].value):
 
-                # Check if the maximum of iterations has been reached
-                if (iter == self.settings['max_iterations'].value):
-                    print('Solver did not converge in ', iter, ' iterations.')
+            # Check if the maximum of iterations has been reached
+            if (iter == self.settings['max_iterations'].value):
+                print('Solver did not converge in ', iter, ' iterations.')
+                break
+
+            # Update positions and velocities
+            mb.state2disp(q, dqdt, dqddt, MB_beam, MB_tstep)
+            # Define matrices
+            # if num_LM_eq == 0:
+            #     Lambda = np.zeros((num_LM_eq,),)
+            #     LambdaDot = np.zeros((num_LM_eq,),)
+            # else:
+            #     Lambda = np.zeros((num_LM_eq,),)
+            #     LambdaDot = q[-num_LM_eq:]
+
+            MB_Asys, MB_Q = self.assembly_MB_eq_system(MB_beam, MB_tstep, dt, Lambda, Lambda_dot)
+
+            # Compute the correction
+            Dq = np.zeros((self.sys_size+num_LM_eq,), dtype=ct.c_double, order='F')
+            if np.isnan(MB_Asys).any():
+                print("ERROR: Nan in Asys")
+                embed()
+            # print("cond: ", np.linalg.cond(MB_Asys))
+            Dq = scipy.linalg.solve(MB_Asys, -MB_Q)
+            if np.isnan(Dq).any():
+                print("ERROR: Nan in DX")
+
+
+
+            # Evaluate convergence
+            if (iter > 0):
+                res = np.max(np.abs(Dq[0:self.sys_size]))/old_Dq
+                if not num_LM_eq == 0:
+                    LM_res = np.max(np.abs(Dq[self.sys_size:self.sys_size+num_LM_eq]))/LM_old_Dq
+                else:
+                    LM_res = 0.0
+                if (res < self.settings['min_delta'].value) and (LM_res < self.settings['min_delta'].value):
+                    # print("res: ", res)
+                    # print("LMres: ", LM_res)
                     break
 
-                # Update positions and velocities
-                mb.state2disp(q, dqdt, dqddt, MB_beam, MB_tstep)
-                # Define matrices
-                # if num_LM_eq == 0:
-                #     Lambda = np.zeros((num_LM_eq,),)
-                #     LambdaDot = np.zeros((num_LM_eq,),)
-                # else:
-                #     Lambda = np.zeros((num_LM_eq,),)
-                #     LambdaDot = q[-num_LM_eq:]
+            # Compute variables from previous values and increments
+            # TODO:decide If I want other way of updating lambda
+            q = q + Dq
+            dqdt = dqdt + self.gamma/(self.beta*dt)*Dq
+            dqddt = dqddt + 1.0/(self.beta*dt*dt)*Dq
+            Lambda = q[-num_LM_eq:].astype(dtype=ct.c_double, copy=True, order='F')
+            Lambda_dot = dqdt[-num_LM_eq:].astype(dtype=ct.c_double, copy=True, order='F')
 
-                MB_Asys, MB_Q = self.assembly_MB_eq_system(MB_beam, MB_tstep, dt, Lambda, Lambda_dot)
+            # MB_tstep[1].for_pos = q[self.sys_size-10:self.sys_size-4].astype(dtype=ct.c_double, copy=True, order='F')
 
-                # Compute the correction
-                Dq = np.zeros((self.sys_size+num_LM_eq,), dtype=ct.c_double, order='F')
-                if np.isnan(MB_Asys).any():
-                    print("ERROR: Nan in Asys")
-                    embed()
-                # print("cond: ", np.linalg.cond(MB_Asys))
-                Dq = scipy.linalg.solve(MB_Asys, -MB_Q)
-                if np.isnan(Dq).any():
-                    print("ERROR: Nan in DX")
+            if iter == 0:
+                old_Dq = np.max(np.abs(Dq[0:self.sys_size]))
+                if old_Dq < 1.0:
+                    old_Dq = 1.0
+                if not num_LM_eq == 0:
+                    LM_old_Dq = np.max(np.abs(Dq[self.sys_size:self.sys_size+num_LM_eq]))
+                else:
+                    LM_old_Dq = np.abs(Dq[self.sys_size:self.sys_size+num_LM_eq])
+                if LM_old_Dq < 1.0:
+                    LM_old_Dq = 1.0
 
+            print("NB it: ", iter)
 
+        mb.state2disp(q, dqdt, dqddt, MB_beam, MB_tstep)
 
-                # Evaluate convergence
-                if (iter > 0):
-                    res = np.max(np.abs(Dq[0:self.sys_size]))/old_Dq
-                    if not num_LM_eq == 0:
-                        LM_res = np.max(np.abs(Dq[self.sys_size:self.sys_size+num_LM_eq]))/LM_old_Dq
-                    else:
-                        LM_res = 0.0
-                    if (res < self.settings['min_delta'].value) and (LM_res < self.settings['min_delta'].value):
-                        # print("res: ", res)
-                        # print("LMres: ", LM_res)
-                        break
-
-                # Compute variables from previous values and increments
-                # TODO:decide If I want other way of updating lambda
-                q = q + Dq
-                dqdt = dqdt + self.gamma/(self.beta*dt)*Dq
-                dqddt = dqddt + 1.0/(self.beta*dt*dt)*Dq
-                Lambda = q[-num_LM_eq:].astype(dtype=ct.c_double, copy=True, order='F')
-                Lambda_dot = dqdt[-num_LM_eq:].astype(dtype=ct.c_double, copy=True, order='F')
-
-                # MB_tstep[1].for_pos = q[self.sys_size-10:self.sys_size-4].astype(dtype=ct.c_double, copy=True, order='F')
-
-                if iter == 0:
-                    old_Dq = np.max(np.abs(Dq[0:self.sys_size]))
-                    if old_Dq < 1.0:
-                        old_Dq = 1.0
-                    if not num_LM_eq == 0:
-                        LM_old_Dq = np.max(np.abs(Dq[self.sys_size:self.sys_size+num_LM_eq]))
-                    else:
-                        LM_old_Dq = np.abs(Dq[self.sys_size:self.sys_size+num_LM_eq])
-                    if LM_old_Dq < 1.0:
-                        LM_old_Dq = 1.0
-
-            mb.state2disp(q, dqdt, dqddt, MB_beam, MB_tstep)
+        # end: comment time stepping
 
             # BC Check
             # print("last_point AFoR vel: ", MB_tstep[0].pos_dot[-1,:])
@@ -313,8 +318,11 @@ class NonLinearDynamicMultibody(BaseSolver):
         # End of Newmark-beta iterations
 
         self.integrate_position(MB_beam, MB_tstep, dt)
-
+        MB_tstep[1].for_pos[0:3] = MB_tstep[0].pos[-1,:] - np.zeros((3,),)
+        print("for vel: ", MB_tstep[1].for_vel)
         mb.merge_multibody(MB_tstep, MB_beam, self.data.structure, structural_step, MBdict, dt)
+        print("tip position: ", structural_step.pos[-1,:])
+
 
         # I do this to be able to write variables, but I want them to be in GFoR in the future
         # self.data.ts += 1
