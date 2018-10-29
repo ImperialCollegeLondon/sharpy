@@ -3,7 +3,7 @@ Python tools for model reduction
 S. Maraniello, 14 Feb 2018
 '''
 
-
+import warnings
 import numpy as np 
 import scipy as sc 
 import scipy.linalg as scalg
@@ -72,7 +72,6 @@ def balreal_direct_py(A,B,C,DLTI=True,Schur=False):
 	return S,T,Tinv
 
 
-
 def balreal_iter(A,B,C,lowrank=True,tolSmith=1e-10,tolSVD=1e-6,kmin=None,
 												                  tolAbs=False):
 	'''
@@ -102,7 +101,7 @@ def balreal_iter(A,B,C,lowrank=True,tolSmith=1e-10,tolSVD=1e-6,kmin=None,
 		# initialise smith iteration
 		DeltaNorm=1e6 					# error 
 		DeltaNormNext=DeltaNorm**2		# error expected at next iter
-		print('Iter\tMaxZ\t|\trank_c\trank_o')
+		print('Iter\tMaxZ\t|\trank_c\trank_o\tA size')
 		kk=0
 		Apow=A
 		Qck=B
@@ -131,7 +130,7 @@ def balreal_iter(A,B,C,lowrank=True,tolSmith=1e-10,tolSVD=1e-6,kmin=None,
 			else:
 				pmax=rcmax
 			Qck=Uc[:,:pmax]*svc[:pmax]
-			#del Uc, Qcright
+			# del Uc, Qcright
 
 
 			###### observability
@@ -158,7 +157,8 @@ def balreal_iter(A,B,C,lowrank=True,tolSmith=1e-10,tolSVD=1e-6,kmin=None,
 
 
 			##### Prepare next time step
-			print('%.3d\t%.2e\t%.5d\t%.5d'%(kk,DeltaNorm,Qck.shape[1],Qok.shape[1]))
+			print('%.3d\t%.2e\t%.5d\t%.5d\t%.5d'\
+									%(kk,DeltaNorm,Qck.shape[1],Qok.shape[1],N))
 			DeltaNormNext=DeltaNorm**2
 
 			if DeltaNorm>tolSmith and DeltaNormNext>1e-3*tolSmith:
@@ -628,7 +628,7 @@ def tune_rom(SSb,kv,tol,gv,method='realisation',convergence='all'):
 	Nb=SSb.A.shape[0]
 	Yb=libss.freqresp(SSb,kv,dlti=True)
 
-	Nmax=np.sum(gv>tol)
+	Nmax=min(np.sum(gv>tol)+1,Nb)
 
 
 
@@ -643,9 +643,12 @@ def tune_rom(SSb,kv,tol,gv,method='realisation',convergence='all'):
 			print('N=%.3d, er:%.2e (tol=%.2e)' %(N,er,tol) )
 
 			if N==Nmax and er>tol:
-				raise NameError('Hankel singluar values do not '\
-								'provide a bound for error! '\
-								'The balanced system may not be accurate')
+				warnings.warn(
+					'librom.tune_rom: error %.2e above tolerance %.2e and HSV bound %.2e'\
+																%(er,tol,gv[N-1]) )
+				# raise NameError('Hankel singluar values do not '\
+				# 				'provide a bound for error! '\
+				# 				'The balanced system may not be accurate')
 			if er<tol:
 				N-=1 
 			else:
