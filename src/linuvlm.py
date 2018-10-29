@@ -238,11 +238,19 @@ class Static():
 	def get_total_forces_gain(self,zeta_pole=np.zeros((3,))):
 		'''
 		Calculates gain matrices to calculate the total force (Kftot) and moment
-		(Kmtot) about the pole zeta_pole.
+		(Kmtot, Kmtot_disp) about the pole zeta_pole. 
+
+		Being f and zeta the force and position at the vertex (m,n) of the lattice
+		these are produced as:
+
+			ftot=sum(f) 					=> dftot += df
+			mtot-sum((zeta-zeta_pole) x f)	=> 
+					=> 	dmtot +=  cross(zeta0-zeta_pole) df - cross(f0) dzeta
 		'''
 
 		self.Kftot=np.zeros( (3,3*self.Kzeta) )
-		self.Kmtot=np.zeros( (3,3*self.Kzeta) )		
+		self.Kmtot=np.zeros( (3,3*self.Kzeta) )	
+		self.Kmtot_disp=np.zeros( (3,3*self.Kzeta) )		
 
 		Kzeta_start=0
 		for ss in range(self.MS.n_surf):
@@ -257,6 +265,9 @@ class Static():
 					self.Kftot[[0,1,2],jjvec]=1.
 					self.Kmtot[np.ix_([0,1,2],jjvec)]=algebra.skew(
 									  self.MS.Surfs[ss].zeta[:,mm,nn]-zeta_pole)
+					self.Kmtot_disp[np.ix_([0,1,2],jjvec)]=algebra.skew(
+										   		-self.MS.Surfs[ss].fqs[:,mm,nn])
+
 			Kzeta_start+=3*self.MS.KKzeta[ss]
 
 
@@ -522,8 +533,6 @@ class Dynamic(Static):
 			List_Wnv.append(
 				interp.get_Wnv_vector(MS.Surfs[ss],
 											   MS.Surfs[ss].aM,MS.Surfs[ss].aN))
-		#Ducdu_ext=scalg.block_diag(*List_Wnv)
-		#AinvWnv0=scalg.lu_solve((LU,P),Ducdu_ext)
 		AinvWnv0=scalg.lu_solve( (LU,P), scalg.block_diag(*List_Wnv))
 		del List_Wnv
 
@@ -747,6 +756,7 @@ class Dynamic(Static):
 		return xsta,ysta
 
 
+
 	def unpack_state(self,xvec):
 
 		K,K_star=self.K,self.K_star
@@ -758,7 +768,7 @@ class Dynamic(Static):
 
 
 
-
+################################################################################
 
 
 

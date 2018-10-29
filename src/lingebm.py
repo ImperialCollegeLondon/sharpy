@@ -41,7 +41,7 @@ class FlexDynamic():
 		 		- self.inout_coords={'modes','nodal'}
 		 	determines whether the modal state-space inputs/outputs are modal 
 		 	coords or nodal degrees-of-freedom. If 'modes' is selected, the
-		 	Kin and Kout gain matrices are generated to transform nddal to modal 
+		 	Kin and Kout gain matrices are generated to transform nodal to modal 
 		 	dofs 
 
 			b - self.dlti={True,False}: if true, generates discrete-time system. 

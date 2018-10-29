@@ -121,7 +121,7 @@ class LinAeroEla():
 		wa=tsdata.for_vel[3:]
 		self.dq[-10:-4]=tsdata.for_acc
 		self.dq[-4] =-0.5*np.dot(wa,tsdata.quat[1:]) 
-		self.dq[-3:]=-0.5*(wa*tsdata.quat[0]+np.cross(wa,tsdata.quat[1:]))
+		# self.dq[-3:]=-0.5*(wa*tsdata.quat[0]+np.cross(wa,tsdata.quat[1:]))
 
 
 
@@ -138,14 +138,15 @@ class LinAeroEla():
 		self.linuvlm.assemble_ss()
 		SSaero=self.linuvlm.SS 
 
-
+		### assemble gains and stiffening term due to non-zero forces
+		# only flexible dof accounted for
+		self.get_gebm2uvlm_gains()
 
 
 		### assemble linear gebm
 		# structural part only
 		self.lingebm_str.assemble()
 		SSstr_flex=self.lingebm_str.SSdisc
-
 		SSstr=SSstr_flex
 		# # rigid-body (fake)
 		# ZeroMat=np.zeros((self.num_dof_rig,self.num_dof_rig))
@@ -158,8 +159,6 @@ class LinAeroEla():
 		# SSstr_rig=scsig.dlti()
 
 
-		### assemble gains (for flex only)
-		self.get_gebm2uvlm_gains()
 
 		# str -> aero
 		Zblock=np.zeros((3*self.linuvlm.Kzeta,SSstr.outputs//2))
@@ -170,27 +169,32 @@ class LinAeroEla():
 		# aero -> str
 		Ksa=self.Kforces[:-10,:]									  # aero --> str
 
-
 		### feedback connection
 		self.SS=libss.couple(ss01=self.linuvlm.SS,ss02=SSstr,K12=Kas,K21=Ksa)
 
 
 
-
-
-
-
-
-
 	def get_gebm2uvlm_gains(self):
 		'''
-		Gain matrix to transfer GEBM dofs to UVLM lattice vertices. The function
+		Gain matrix to transfer GEBM dofs to UVLM lattice vertices and stiffening
+		term due to non-zero forces at the linearisation point.
+
+		. The function
 		produces the matrices:
 		- Kdisp: from GEBM to UVLM grid displacements 
 		- Kvel_disp: influence of GEBM dofs displacements to UVLM grid 
 			velocities.
 		- Kvel_vel: influence of GEBM dofs displacements to UVLM grid 
 		displacements.
+		- Kforces (UVLM->GEBM) dimensions are the transpose than the Kdisp and 
+		Kvel* matrices. Hence, when allocation this term, ii and jj indices
+		will unintuitively refer to columns and rows, respectively.
+
+		- Kss: stiffness factor accounting for non-zero forces at the 
+		linearisation point. (flexible dof -> flexible dof)
+		- Ksr: stiffness factor accounting for non-zero forces at the 
+		linearisation point. (rigid dof -> flexible dof)
+
 
 		Note:
 		- The following terms have been verified against SHARPy (to ensure same
@@ -199,9 +203,6 @@ class LinAeroEla():
 			- accuracy of Xb=Cab*Xb
 			- accuracy of Xg and Xa
 
-		- Kforces (UVLM->GEBM) dimensions are the transpose than the Kdisp and 
-		Kvel* matrices. Hence, when allocation this term, ii and jj indices
-		will unintuitively refer to columns and rows, respectively.
 		'''
 
 		data=self.data
@@ -215,6 +216,9 @@ class LinAeroEla():
 		Kvel_disp=np.zeros(( 3*self.linuvlm.Kzeta, self.num_dof_str))
 		Kvel_vel =np.zeros(( 3*self.linuvlm.Kzeta, self.num_dof_str))
 		Kforces  =np.zeros(( self.num_dof_str, 3*self.linuvlm.Kzeta))
+
+		Kss=np.zeros(( self.num_dof_flex, self.num_dof_flex))
+		Ksr=np.zeros(( self.num_dof_flex, self.num_dof_rig ))
 
 		# get projection matrix A->G
 		# (and other quantities indep. from nodal position)
@@ -231,8 +235,9 @@ class LinAeroEla():
 		jj_for_tra=range(self.num_dof_str-10,self.num_dof_str-7)
 		jj_for_rot=range(self.num_dof_str-7,self.num_dof_str-4)
 		jj_quat=range(self.num_dof_str-4,self.num_dof_str)
-		jj=0 # nodal dof index
 
+
+		jj=0 # nodal dof index
 		for node_glob in range(structure.num_node):
 
 			### detect bc at node (and no. of dofs)
@@ -245,14 +250,15 @@ class LinAeroEla():
 
 			elif bc_here==-1 or bc_here==0:	 # (rigid+flex body)
 				dofs_here=6
-				jj_tra=[jj  ,jj+1,jj+2]
-				jj_rot=[jj+3,jj+4,jj+5]
+				jj_tra=6*structure.vdof[node_glob]+np.array([0,1,2],dtype=int)
+				jj_rot=6*structure.vdof[node_glob]+np.array([3,4,5],dtype=int)
+				# jj_tra=[jj  ,jj+1,jj+2]
+				# jj_rot=[jj+3,jj+4,jj+5]
 			else:
 				raise NameError('Invalid boundary condition (%d) at node %d!'\
 														   %(bc_here,node_glob))
 
 			jj+=dofs_here
-
 
 			# retrieve element and local index
 			ee,node_loc=structure.node_master_elem[node_glob,:]
@@ -263,8 +269,8 @@ class LinAeroEla():
 			psi=tsstr.psi[ee,node_loc,:]
 			psi_dot=tsstr.psi_dot[ee,node_loc,:]
 			Cab=algebra.crv2rotation(psi)
+			Cba=Cab.T
 			Cbg=np.dot(Cab.T,Cag)
-
 
 			### str -> aero mapping
 			# some nodes may be linked to multiple surfaces...
@@ -277,14 +283,18 @@ class LinAeroEla():
 				# surface panelling
 				M=aero.aero_dimensions[ss][0]
 				N=aero.aero_dimensions[ss][1]
-				shape_zeta_glob=(aero.n_surf,3,M+1,N+1)
+
+				Kzeta_start=3*sum(self.linuvlm.MS.KKzeta[:ss])  
+				shape_zeta=(3,M+1,N+1)
 
 				for mm in range(M+1):
-
 					# get bound vertex index
-					ii_vert=[ np.ravel_multi_index( 
-									(ss,cc,mm,nn), shape_zeta_glob) 
-															for cc in range(3) ]
+					ii_vert=[ Kzeta_start+np.ravel_multi_index( 
+								 (cc,mm,nn), shape_zeta) for cc in range(3)]
+
+
+					# get aero force
+					faero=tsaero.forces[ss][:3,mm,nn]
 
 					# get position vectors
 					zetag=tsaero.zeta[ss][:,mm,nn]  # in G FoR, w.r.t. origin A-G
@@ -361,8 +371,6 @@ class LinAeroEla():
 					Kvel_vel[np.ix_(ii_vert,jj_for_tra)]+=Cga					
 					Kvel_vel[np.ix_(ii_vert,jj_for_rot)]-=\
 												 np.dot(Cga,algebra.skew(zetaa))
-					# Kvel_vel[np.ix_(ii_vert,jj_for_rot)]-=np.dot(Cga,
-					# 	algebra.skew(zetaa)+np.dot(Cab,np.dot(Xbskew,Cab.T)) )
 
 					# wrt rate of change of quaternion: not implemented!
 
@@ -384,47 +392,37 @@ class LinAeroEla():
 
 					# total moments										
 					Kforces[np.ix_(jj_for_rot,ii_vert)]+=\
-											 np.dot(Cag,algebra.skew(zetag))
+												 np.dot(Cag,algebra.skew(zetag))
 
 					# quaternion equation
 					# null, as not dep. on external forces
 
 
 
+					### --------------------------------------- allocate Kstiff
 
+					if bc_here!=1:
+						# forces
+						Dfdcrv=algebra.der_CcrvT_by_v(psi,np.dot(Cag,faero))
+						Dfdquat=np.dot(Cba,algebra.der_CquatT_by_v(tsstr.quat,faero))
+						Kss[np.ix_(jj_tra,jj_rot)]-=Dfdcrv								 
+						Ksr[jj_tra,-4:]-=Dfdquat
 
+						# moments
+						Kss[np.ix_(jj_rot,jj_rot)]-=np.dot(Xbskew,Dfdcrv)
+						Ksr[jj_rot,-4:]-=np.dot(Xbskew,Dfdquat)
 
+					# embed()
 
-
-
-
+		# transfer
 		self.Kdisp=Kdisp
 		self.Kvel_disp=Kvel_disp
 		self.Kvel_vel=Kvel_vel
 		self.Kforces=Kforces
 
-
-
-
-
-	
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+		# stiffening factors
+		self.Kss=Kss
+		self.Ksr=Ksr
 
 
 
