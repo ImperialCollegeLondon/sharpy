@@ -73,7 +73,7 @@ def balreal_direct_py(A,B,C,DLTI=True,Schur=False):
 
 
 def balreal_iter(A,B,C,lowrank=True,tolSmith=1e-10,tolSVD=1e-6,kmin=None,
-												                  tolAbs=False):
+													tolAbs=False,PrintAll=False):
 	'''
 	Find balanced realisation of DLTI system. 
 
@@ -95,15 +95,15 @@ def balreal_iter(A,B,C,lowrank=True,tolSmith=1e-10,tolSVD=1e-6,kmin=None,
 
 		# matrices size
 		N=A.shape[0]
-		rB=B.shape[1]
-		rC=C.shape[0]
+		rC=B.shape[1]
+		rO=C.shape[0]
 
 		# initialise smith iteration
 		DeltaNorm=1e6 					# error 
 		DeltaNormNext=DeltaNorm**2		# error expected at next iter
 		print('Iter\tMaxZ\t|\trank_c\trank_o\tA size')
 		kk=0
-		Apow=A
+
 		Qck=B
 		Qok=C.T
 
@@ -112,78 +112,88 @@ def balreal_iter(A,B,C,lowrank=True,tolSmith=1e-10,tolSVD=1e-6,kmin=None,
 			###### controllability
 			### compute Ak^2 * Qck
 			# (future: use block Arnoldi)
-			Qcright=np.dot(Apow,Qck)
+			Qcright=np.dot(A,Qck)
 			MaxZhere=np.max(np.abs(Qcright))
 
 			### enlarge Z matrices
 			Qck=np.concatenate((Qck,Qcright),axis=1)
-			#del Qcright
+			Qcright=None
+			rC=Qck.shape[1]
 
-			### "cheap" SVD truncation
-			Uc,svc=scalg.svd(Qck,full_matrices=False)[:2]
-			if tolAbs:
-				rcmax=np.sum(svc>tolSVD)
-			else:
-				rcmax=np.sum(svc>tolSVD*svc[0])
-			if kmin!=None:
-				pmax=max(rcmax,kmin)
-			else:
-				pmax=rcmax
-			Qck=Uc[:,:pmax]*svc[:pmax]
-			# del Uc, Qcright
+			if kmin==None or kmin<rC:
+				### "cheap" SVD truncation
+				Uc,svc=scalg.svd(Qck,full_matrices=False,overwrite_a=True,
+														  lapack_driver='gesdd')[:2]
+				# import scipy.linalg.interpolative as sli
+				# Ucnew,svcnew,temp=sli.svd(Qck,tolSVD)
+				if tolAbs:
+					rcmax=np.sum(svc>tolSVD)
+				else:
+					rcmax=np.sum(svc>tolSVD*svc[0])
+				if kmin!=None:
+					rC=max(rcmax,kmin)
+				else:
+					rC=rcmax
+				Qck=Uc[:,:rC]*svc[:rC]
+				# free memory
+				Uc=None
+				Qcright=None 
 
 
 			###### observability
 			### compute Ak^2 * Qok
 			# (future: use block Arnoldi)
-			Qoright=np.dot(Apow.T,Qok)
+			Qoright=np.transpose( np.dot(Qok.T,A) )
 			DeltaNorm=max(MaxZhere,np.max(np.abs(Qoright)))
 
 			### enlarge Z matrices
 			Qok=np.concatenate((Qok,Qoright),axis=1)
+			Qoright=None
+			rO=Qok.shape[1]
 
-			### "cheap" SVD truncation
-			Uo,svo=scalg.svd(Qok,full_matrices=False)[:2]
+			if kmin==None or kmin<rO:
+				### "cheap" SVD truncation
+				Uo,svo=scalg.svd(Qok,full_matrices=False)[:2]
 
-			if tolAbs:
-				romax=np.sum(svo>tolSVD)
-			else:
-				romax=np.sum(svo>tolSVD*svo[0])
-			if kmin!=None: 
-				pmax=max(romax,kmin)
-			else:
-				pmax=romax
-			Qok=Uo[:,:pmax]*svo[:pmax]
-
+				if tolAbs:
+					romax=np.sum(svo>tolSVD)
+				else:
+					romax=np.sum(svo>tolSVD*svo[0])
+				if kmin!=None: 
+					rO=max(romax,kmin)
+				else:
+					rO=romax
+				Qok=Uo[:,:rO]*svo[:rO]
+				Uo=None
 
 			##### Prepare next time step
-			print('%.3d\t%.2e\t%.5d\t%.5d\t%.5d'\
-									%(kk,DeltaNorm,Qck.shape[1],Qok.shape[1],N))
+			print('%.3d\t%.2e\t%.5d\t%.5d\t%.5d' %(kk,DeltaNorm,rC,rO,N))
 			DeltaNormNext=DeltaNorm**2
 
+
 			if DeltaNorm>tolSmith and DeltaNormNext>1e-3*tolSmith:
-				Apow=np.dot(Apow,Apow)
+				A=np.linalg.matrix_power(A,2)
 
 			### update
 			kk=kk+1
 
-		del Apow #,Qcright, Qoright
-		Qc,Qo=Qck,Qok
+		A=None
+
 
 	else: # full-rank squared smith iteration (with Cholevsky)
 
 		raise NameError('Use balreal_iter_old instead!')
 
 	# find min size (only if iter used)
-	cc,co=Qc.shape[1],Qo.shape[1]
+	cc,co=Qck.shape[1],Qok.shape[1]
 	print('cc=%.2d, co=%.2d'%(cc,co))
 	
 	# build M matrix and SVD
-	M=np.dot(Qo.T,Qc)
+	M=np.dot(Qok.T,Qck)
 	U,s,Vh=scalg.svd(M,full_matrices=False)
 	sinv=s**(-0.5)
-	T=np.dot(Qc,Vh.T*sinv)
-	Tinv=np.dot((U*sinv).T,Qo.T)
+	T=np.dot(Qck,Vh.T*sinv)
+	Tinv=np.dot((U*sinv).T,Qok.T)
 
 	print('rank(Zc)=%.4d\trank(Zo)=%.4d'%(rcmax,romax) )
 
