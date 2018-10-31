@@ -40,7 +40,7 @@ extensions = [
     'sphinx.ext.coverage',
     'sphinx.ext.mathjax',
     'sphinx.ext.viewcode',
-    'sphinx.ext.githubpages',
+    # 'sphinx.ext.githubpages',
     'sphinxcontrib.napoleon',
 ]
 
@@ -222,7 +222,7 @@ html_static_path = ['_static']
 
 # If true, "Created using Sphinx" is shown in the HTML footer. Default is True.
 #
-# html_show_sphinx = True
+html_show_sphinx = False
 
 # If true, "(C) Copyright ..." is shown in the HTML footer. Default is True.
 #
