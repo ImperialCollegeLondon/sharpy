@@ -1,0 +1,265 @@
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="X-UA-Compatible" content="IE=Edge" />
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    <title>The Algebra package &#8212; SHARPy 0.0 documentation</title>
+    <link rel="stylesheet" href="../../_static/sphinxdoc.css" type="text/css" />
+    <link rel="stylesheet" href="../../_static/pygments.css" type="text/css" />
+    <script type="text/javascript" id="documentation_options" data-url_root="../../" src="../../_static/documentation_options.js"></script>
+    <script type="text/javascript" src="../../_static/jquery.js"></script>
+    <script type="text/javascript" src="../../_static/underscore.js"></script>
+    <script type="text/javascript" src="../../_static/doctools.js"></script>
+    <script async="async" type="text/javascript" src="https://cdn.mathjax.org/mathjax/latest/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
+    <link rel="index" title="Index" href="../../genindex.html" />
+    <link rel="search" title="Search" href="../../search.html" />
+    <link rel="next" title="HDF5 Utilities Module" href="h5utils.html" />
+    <link rel="prev" title="Utilities" href="../utilities.html" /> 
+  </head><body>
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../genindex.html" title="General Index"
+             accesskey="I">index</a></li>
+        <li class="right" >
+          <a href="../../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="right" >
+          <a href="h5utils.html" title="HDF5 Utilities Module"
+             accesskey="N">next</a> |</li>
+        <li class="right" >
+          <a href="../utilities.html" title="Utilities"
+             accesskey="P">previous</a> |</li>
+        <li class="nav-item nav-item-0"><a href="../../index.html">SHARPy 0.0 documentation</a> &#187;</li>
+          <li class="nav-item nav-item-1"><a href="../utilities.html" accesskey="U">Utilities</a> &#187;</li> 
+      </ul>
+    </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+  <h3><a href="../../index.html">Table of Contents</a></h3>
+  <ul>
+<li><a class="reference internal" href="#">The <code class="docutils literal notranslate"><span class="pre">Algebra</span></code> package</a><ul>
+<li><a class="reference internal" href="#module-sharpy.utils.algebra">Tangent vector calculation</a></li>
+</ul>
+</li>
+</ul>
+
+  <h4>Previous topic</h4>
+  <p class="topless"><a href="../utilities.html"
+                        title="previous chapter">Utilities</a></p>
+  <h4>Next topic</h4>
+  <p class="topless"><a href="h5utils.html"
+                        title="next chapter">HDF5 Utilities Module</a></p>
+  <div role="note" aria-label="source link">
+    <h3>This Page</h3>
+    <ul class="this-page-menu">
+      <li><a href="../../_sources/content/utils/algebra_content.rst.txt"
+            rel="nofollow">Show Source</a></li>
+    </ul>
+   </div>
+<div id="searchbox" style="display: none" role="search">
+  <h3>Quick search</h3>
+    <div class="searchformwrapper">
+    <form class="search" action="../../search.html" method="get">
+      <input type="text" name="q" />
+      <input type="submit" value="Go" />
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+    </div>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <div class="section" id="the-algebra-package">
+<h1>The <code class="docutils literal notranslate"><span class="pre">Algebra</span></code> package<a class="headerlink" href="#the-algebra-package" title="Permalink to this headline">¶</a></h1>
+<p>This package includes routines used often during geometry generation.</p>
+<div class="section" id="module-sharpy.utils.algebra">
+<span id="tangent-vector-calculation"></span><h2>Tangent vector calculation<a class="headerlink" href="#module-sharpy.utils.algebra" title="Permalink to this headline">¶</a></h2>
+<dl class="function">
+<dt id="sharpy.utils.algebra.crv2rot">
+<code class="descclassname">sharpy.utils.algebra.</code><code class="descname">crv2rot</code><span class="sig-paren">(</span><em>psi</em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/sharpy/utils/algebra.html#crv2rot"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#sharpy.utils.algebra.crv2rot" title="Permalink to this definition">¶</a></dt>
+<dd><p>Given a Cartesian rotation vector psi, the function produces the rotation
+matrix required to rotate a vector according to psi.</p>
+<p>Note: this is psi2mat in the matlab version</p>
+</dd></dl>
+
+<dl class="function">
+<dt id="sharpy.utils.algebra.der_CquatT_by_v">
+<code class="descclassname">sharpy.utils.algebra.</code><code class="descname">der_CquatT_by_v</code><span class="sig-paren">(</span><em>q</em>, <em>v</em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/sharpy/utils/algebra.html#der_CquatT_by_v"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#sharpy.utils.algebra.der_CquatT_by_v" title="Permalink to this definition">¶</a></dt>
+<dd><p>Being C=C(quat) the rotational matrix depending on the quaternion q and
+defined as C=quat2rot(q).T, the function returns the derivative, w.r.t. the
+quanternion components, of the vector dot(C,v), where v is a constant
+vector.
+The elements of the resulting derivative matrix D are ordered such that:
+<code class="docutils literal notranslate"><span class="pre">d(C*v)</span> <span class="pre">=</span> <span class="pre">D*d(q)</span></code>
+where d(.) is a delta operator.</p>
+</dd></dl>
+
+<dl class="function">
+<dt id="sharpy.utils.algebra.der_Cquat_by_v">
+<code class="descclassname">sharpy.utils.algebra.</code><code class="descname">der_Cquat_by_v</code><span class="sig-paren">(</span><em>q</em>, <em>v</em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/sharpy/utils/algebra.html#der_Cquat_by_v"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#sharpy.utils.algebra.der_Cquat_by_v" title="Permalink to this definition">¶</a></dt>
+<dd><p>Being C=C(quat) the rotational matrix depending on the quaternion q and
+defined as C=quat2rot(q), the function returns the derivative, w.r.t. the
+quanternion components, of the vector dot(C,v), where v is a constant
+vector.
+The elements of the resulting derivative matrix D are ordered such that:
+<code class="docutils literal notranslate"><span class="pre">d(C*v)</span> <span class="pre">=</span> <span class="pre">D*d(q)</span></code>
+where d(.) is a delta operator.</p>
+</dd></dl>
+
+<dl class="function">
+<dt id="sharpy.utils.algebra.der_Tan_by_xv">
+<code class="descclassname">sharpy.utils.algebra.</code><code class="descname">der_Tan_by_xv</code><span class="sig-paren">(</span><em>fv0</em>, <em>xv</em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/sharpy/utils/algebra.html#der_Tan_by_xv"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#sharpy.utils.algebra.der_Tan_by_xv" title="Permalink to this definition">¶</a></dt>
+<dd><p>Being fv0 a cartesian rotation vector and Tan the corresponding tangential
+operator (computed through crv2tan(fv)), the function returns the derivative
+of dot(Tan,xv), where xv is a constant vector.</p>
+<p>The elements of the resulting derivative matrix D are ordered such that:
+<code class="docutils literal notranslate"><span class="pre">d(Tan*xv)</span> <span class="pre">=</span> <span class="pre">D*d(fv)</span></code>
+where d(.) is a delta operator.</p>
+<p>Note: the derivative expression has been derived symbolically and verified
+by FDs. A more compact expression may be possible.</p>
+</dd></dl>
+
+<dl class="function">
+<dt id="sharpy.utils.algebra.euler2rot">
+<code class="descclassname">sharpy.utils.algebra.</code><code class="descname">euler2rot</code><span class="sig-paren">(</span><em>euler</em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/sharpy/utils/algebra.html#euler2rot"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#sharpy.utils.algebra.euler2rot" title="Permalink to this definition">¶</a></dt>
+<dd><table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>euler</strong> – [roll, pitch, yaw]</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"></td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="function">
+<dt id="sharpy.utils.algebra.get_triad">
+<code class="descclassname">sharpy.utils.algebra.</code><code class="descname">get_triad</code><span class="sig-paren">(</span><em>coordinates_def</em>, <em>frame_of_reference_delta</em>, <em>twist=None</em>, <em>n_nodes=3</em>, <em>ordering=array([0</em>, <em>2</em>, <em>1])</em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/sharpy/utils/algebra.html#get_triad"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#sharpy.utils.algebra.get_triad" title="Permalink to this definition">¶</a></dt>
+<dd><p>Generates two unit vectors in body FoR that define the local FoR for
+a beam element. These vectors are calculated using <cite>frame_of_reference_delta</cite>
+:return:</p>
+</dd></dl>
+
+<dl class="function">
+<dt id="sharpy.utils.algebra.quat2rot">
+<code class="descclassname">sharpy.utils.algebra.</code><code class="descname">quat2rot</code><span class="sig-paren">(</span><em>q1</em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/sharpy/utils/algebra.html#quat2rot"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#sharpy.utils.algebra.quat2rot" title="Permalink to this definition">¶</a></dt>
+<dd><p>&#64;brief Calculate rotation matrix based on quaternions.
+See Aircraft Control and Simulation, pag. 31, by Stevens, Lewis.
+Copied from S. Maraniello’s SHARPy</p>
+<p>Remark: if A is a FoR obtained rotating a FoR G of angle fi about an axis n (remind n will be
+invariant during the rotation), and q is the related quaternion q(fi,n), the function will
+return the matrix Cag such that:
+- Cag rotates A to G
+- Cag transforms the coordinates of a vector defined in G component to A components.</p>
+</dd></dl>
+
+<dl class="function">
+<dt id="sharpy.utils.algebra.tangent_vector">
+<code class="descclassname">sharpy.utils.algebra.</code><code class="descname">tangent_vector</code><span class="sig-paren">(</span><em>in_coord</em>, <em>ordering=None</em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/sharpy/utils/algebra.html#tangent_vector"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#sharpy.utils.algebra.tangent_vector" title="Permalink to this definition">¶</a></dt>
+<dd><p>Tangent vector calculation for 2+ noded elements.</p>
+<p>Calculates the tangent vector interpolating every dimension separately. It uses a (<code class="docutils literal notranslate"><span class="pre">n_nodes</span> <span class="pre">-</span> <span class="pre">1</span></code>) degree polynomial,
+and the differentiation is analytical.</p>
+<p>Calculation method:</p>
+<blockquote>
+<div><ol class="arabic simple">
+<li>A n_nodes-1 polynomial is fitted through the nodes per dimension.</li>
+<li>Those polynomials are analytically differentiated with respect to the node index</li>
+<li>The tangent vector is given by:</li>
+</ol>
+<div class="math notranslate nohighlight">
+\[\vec{t} = \frac{s_x'\vec{i} + s_y'\vec{j} + s_z'\vec{k}}{\left| s_x'\vec{i} + s_y'\vec{j} + s_z'\vec{k}\right|}\]</div>
+<p>where <span class="math notranslate nohighlight">\('\)</span> notes the differentiation with respect to the index number</p>
+</div></blockquote>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>in_coord</strong> (<em>np.ndarray</em>) – array of coordinates of the nodes. Dimensions = <code class="docutils literal notranslate"><span class="pre">[n_nodes,</span> <span class="pre">ndim]</span></code></li>
+<li><strong>ordering</strong> (<em>None</em>) – ordering required?</li>
+</ul>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first">tangent vector</p>
+</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">Return type:</th><td class="field-body"><p class="first last">np.ndarray</p>
+</td>
+</tr>
+</tbody>
+</table>
+<p class="rubric">Examples</p>
+<p>example goes here</p>
+<p class="rubric">Notes</p>
+<p>Dimensions are treated independent from each other, interpolating polynomials are computed
+individually.</p>
+</dd></dl>
+
+<dl class="function">
+<dt id="sharpy.utils.algebra.triad2rot">
+<code class="descclassname">sharpy.utils.algebra.</code><code class="descname">triad2rot</code><span class="sig-paren">(</span><em>xb</em>, <em>yb</em>, <em>zb</em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/sharpy/utils/algebra.html#triad2rot"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#sharpy.utils.algebra.triad2rot" title="Permalink to this definition">¶</a></dt>
+<dd><p>If the input triad is the “b” coord system given in “a” frame,
+(the vectors of the triad are xb, yb, zb)
+this function returns Rab
+:param xb:
+:param yb:
+:param zb:
+:return: rotation matrix Rab</p>
+</dd></dl>
+
+<dl class="function">
+<dt id="sharpy.utils.algebra.unit_vector">
+<code class="descclassname">sharpy.utils.algebra.</code><code class="descname">unit_vector</code><span class="sig-paren">(</span><em>vector</em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/sharpy/utils/algebra.html#unit_vector"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#sharpy.utils.algebra.unit_vector" title="Permalink to this definition">¶</a></dt>
+<dd><p>Tested
+:param vector:
+:return:</p>
+</dd></dl>
+
+</div>
+</div>
+
+
+          </div>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../genindex.html" title="General Index"
+             >index</a></li>
+        <li class="right" >
+          <a href="../../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="right" >
+          <a href="h5utils.html" title="HDF5 Utilities Module"
+             >next</a> |</li>
+        <li class="right" >
+          <a href="../utilities.html" title="Utilities"
+             >previous</a> |</li>
+        <li class="nav-item nav-item-0"><a href="../../index.html">SHARPy 0.0 documentation</a> &#187;</li>
+          <li class="nav-item nav-item-1"><a href="../utilities.html" >Utilities</a> &#187;</li> 
+      </ul>
+    </div>
+    <div class="footer" role="contentinfo">
+        &#169; Copyright 2018, LoCA Lab ICL.
+      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 1.8.1.
+    </div>
+  </body>
+</html>

@@ -1,0 +1,185 @@
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="X-UA-Compatible" content="IE=Edge" />
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    <title>sharpy.solvers.aerogridloader &#8212; SHARPy 0.0 documentation</title>
+    <link rel="stylesheet" href="../../../_static/sphinxdoc.css" type="text/css" />
+    <link rel="stylesheet" href="../../../_static/pygments.css" type="text/css" />
+    <script type="text/javascript" id="documentation_options" data-url_root="../../../" src="../../../_static/documentation_options.js"></script>
+    <script type="text/javascript" src="../../../_static/jquery.js"></script>
+    <script type="text/javascript" src="../../../_static/underscore.js"></script>
+    <script type="text/javascript" src="../../../_static/doctools.js"></script>
+    <script async="async" type="text/javascript" src="https://cdn.mathjax.org/mathjax/latest/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
+    <link rel="index" title="Index" href="../../../genindex.html" />
+    <link rel="search" title="Search" href="../../../search.html" /> 
+  </head><body>
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../../genindex.html" title="General Index"
+             accesskey="I">index</a></li>
+        <li class="right" >
+          <a href="../../../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="nav-item nav-item-0"><a href="../../../index.html">SHARPy 0.0 documentation</a> &#187;</li>
+          <li class="nav-item nav-item-1"><a href="../../index.html" accesskey="U">Module code</a> &#187;</li> 
+      </ul>
+    </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+<div id="searchbox" style="display: none" role="search">
+  <h3>Quick search</h3>
+    <div class="searchformwrapper">
+    <form class="search" action="../../../search.html" method="get">
+      <input type="text" name="q" />
+      <input type="submit" value="Go" />
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+    </div>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <h1>Source code for sharpy.solvers.aerogridloader</h1><div class="highlight"><pre>
+<span></span><span class="kn">import</span> <span class="nn">h5py</span> <span class="k">as</span> <span class="nn">h5</span>
+<span class="kn">import</span> <span class="nn">numpy</span> <span class="k">as</span> <span class="nn">np</span>
+
+<span class="kn">from</span> <span class="nn">sharpy.utils.solver_interface</span> <span class="k">import</span> <span class="n">solver</span><span class="p">,</span> <span class="n">BaseSolver</span>
+<span class="kn">import</span> <span class="nn">sharpy.aero.models.aerogrid</span> <span class="k">as</span> <span class="nn">aerogrid</span>
+<span class="kn">import</span> <span class="nn">sharpy.utils.settings</span> <span class="k">as</span> <span class="nn">settings_utils</span>
+<span class="kn">import</span> <span class="nn">sharpy.utils.h5utils</span> <span class="k">as</span> <span class="nn">h5utils</span>
+
+
+<div class="viewcode-block" id="AerogridLoader"><a class="viewcode-back" href="../../../content/solvers.html#sharpy.solvers.aerogridloader.AerogridLoader">[docs]</a><span class="nd">@solver</span>
+<span class="k">class</span> <span class="nc">AerogridLoader</span><span class="p">(</span><span class="n">BaseSolver</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    ``AerogridLoader`` class, inherited from ``BaseSolver``</span>
+
+<span class="sd">    Generates aerodynamic grid based on the input data</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        data: ``ProblemData`` class structure</span>
+
+<span class="sd">    Attributes:</span>
+<span class="sd">        settings (dict): Name-value pair of the settings employed by the aerodynamic solver</span>
+<span class="sd">        settings_types (dict): Acceptable types for the values in ``settings``</span>
+<span class="sd">        settings_default (dict): Name-value pair of default values for the aerodynamic settings</span>
+<span class="sd">        data (ProblemData): class structure</span>
+<span class="sd">        aero_file_name (str): name of the ``.aero.h5`` HDF5 file</span>
+<span class="sd">        aero: empty attribute</span>
+<span class="sd">        aero_data_dict (dict): key-value pairs of aerodynamic data</span>
+
+<span class="sd">    Notes:</span>
+<span class="sd">        The following options are valid key-value pairs for the ``settings`` dictionary:</span>
+
+<span class="sd">        ==================  ===============  ===========================================  ===================</span>
+<span class="sd">        Name                Type             Description                                  Default</span>
+<span class="sd">        ==================  ===============  ===========================================  ===================</span>
+<span class="sd">        ``unsteady``        ``bool``         Unsteady aerodynamics                        ``False``</span>
+<span class="sd">        ``aligned_grid``    ``bool``         Aerodynamic grid aligned with oncoming flow  ``True``</span>
+<span class="sd">        ``freestream_dir``  ``list(float)``  Direction of the oncoming flow               ``[1.0, 0.0, 0.0]``</span>
+<span class="sd">        ``mstar``           ``int``          Number of wake panels in the flow direction  ``10``</span>
+<span class="sd">        ==================  ===============  ===========================================  ===================</span>
+
+<span class="sd">    See Also:</span>
+<span class="sd">        .. py:class:: sharpy.aero.models.aerogrid.Aerogrid</span>
+
+<span class="sd">        .. py:class:: sharpy.utils.solver_interface.BaseSolver</span>
+
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">solver_id</span> <span class="o">=</span> <span class="s1">&#39;AerogridLoader&#39;</span>
+
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="c1"># settings list</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">settings_types</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">settings_default</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">()</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">settings_types</span><span class="p">[</span><span class="s1">&#39;unsteady&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="s1">&#39;bool&#39;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">settings_default</span><span class="p">[</span><span class="s1">&#39;unsteady&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="kc">False</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">settings_types</span><span class="p">[</span><span class="s1">&#39;aligned_grid&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="s1">&#39;bool&#39;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">settings_default</span><span class="p">[</span><span class="s1">&#39;aligned_grid&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="kc">True</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">settings_types</span><span class="p">[</span><span class="s1">&#39;freestream_dir&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="s1">&#39;list(float)&#39;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">settings_default</span><span class="p">[</span><span class="s1">&#39;freestream_dir&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="mf">1.0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">])</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">settings_types</span><span class="p">[</span><span class="s1">&#39;mstar&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="s1">&#39;int&#39;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">settings_default</span><span class="p">[</span><span class="s1">&#39;mstar&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="mi">10</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">data</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">settings</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">aero_file_name</span> <span class="o">=</span> <span class="s1">&#39;&#39;</span>
+        <span class="c1"># storage of file contents</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">aero_data_dict</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">()</span>
+
+        <span class="c1"># aero storage</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">aero</span> <span class="o">=</span> <span class="kc">None</span>
+
+    <span class="k">def</span> <span class="nf">initialise</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">data</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">data</span> <span class="o">=</span> <span class="n">data</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">settings</span> <span class="o">=</span> <span class="n">data</span><span class="o">.</span><span class="n">settings</span><span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">solver_id</span><span class="p">]</span>
+
+        <span class="c1"># init settings</span>
+        <span class="n">settings_utils</span><span class="o">.</span><span class="n">to_custom_types</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">settings</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">settings_types</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">settings_default</span><span class="p">)</span>
+
+        <span class="c1"># read input file (aero)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">read_files</span><span class="p">()</span>
+
+    <span class="k">def</span> <span class="nf">read_files</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="c1"># open aero file</span>
+        <span class="c1"># first, file names</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">aero_file_name</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">data</span><span class="o">.</span><span class="n">case_route</span> <span class="o">+</span> <span class="s1">&#39;/&#39;</span> <span class="o">+</span> <span class="bp">self</span><span class="o">.</span><span class="n">data</span><span class="o">.</span><span class="n">case_name</span> <span class="o">+</span> <span class="s1">&#39;.aero.h5&#39;</span>
+        <span class="c1"># then check that the file exists</span>
+        <span class="n">h5utils</span><span class="o">.</span><span class="n">check_file_exists</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">aero_file_name</span><span class="p">)</span>
+        <span class="c1"># read and store the hdf5 file</span>
+        <span class="k">with</span> <span class="n">h5</span><span class="o">.</span><span class="n">File</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">aero_file_name</span><span class="p">,</span> <span class="s1">&#39;r&#39;</span><span class="p">)</span> <span class="k">as</span> <span class="n">aero_file_handle</span><span class="p">:</span>
+            <span class="c1"># store files in dictionary</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">aero_data_dict</span> <span class="o">=</span> <span class="n">h5utils</span><span class="o">.</span><span class="n">load_h5_in_dict</span><span class="p">(</span><span class="n">aero_file_handle</span><span class="p">)</span>
+            <span class="c1"># TODO implement aero file validation</span>
+            <span class="c1"># self.validate_aero_file()</span>
+
+    <span class="k">def</span> <span class="nf">validate_aero_file</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">raise</span> <span class="ne">NotImplementedError</span><span class="p">(</span><span class="s1">&#39;validation of the aerofile in beamloader is not yet implemented!&#39;</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">run</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">data</span><span class="o">.</span><span class="n">aero</span> <span class="o">=</span> <span class="n">aerogrid</span><span class="o">.</span><span class="n">Aerogrid</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">data</span><span class="o">.</span><span class="n">aero</span><span class="o">.</span><span class="n">generate</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">aero_data_dict</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">data</span><span class="o">.</span><span class="n">structure</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">settings</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">data</span><span class="o">.</span><span class="n">ts</span><span class="p">)</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">data</span></div>
+</pre></div>
+
+          </div>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../../genindex.html" title="General Index"
+             >index</a></li>
+        <li class="right" >
+          <a href="../../../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="nav-item nav-item-0"><a href="../../../index.html">SHARPy 0.0 documentation</a> &#187;</li>
+          <li class="nav-item nav-item-1"><a href="../../index.html" >Module code</a> &#187;</li> 
+      </ul>
+    </div>
+    <div class="footer" role="contentinfo">
+        &#169; Copyright 2018, LoCA Lab ICL.
+      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 1.8.1.
+    </div>
+  </body>
+</html>

@@ -1,0 +1,365 @@
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="X-UA-Compatible" content="IE=Edge" />
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    <title>sharpy.solvers.dynamicprescribedcoupled &#8212; SHARPy 0.0 documentation</title>
+    <link rel="stylesheet" href="../../../_static/sphinxdoc.css" type="text/css" />
+    <link rel="stylesheet" href="../../../_static/pygments.css" type="text/css" />
+    <script type="text/javascript" id="documentation_options" data-url_root="../../../" src="../../../_static/documentation_options.js"></script>
+    <script type="text/javascript" src="../../../_static/jquery.js"></script>
+    <script type="text/javascript" src="../../../_static/underscore.js"></script>
+    <script type="text/javascript" src="../../../_static/doctools.js"></script>
+    <script async="async" type="text/javascript" src="https://cdn.mathjax.org/mathjax/latest/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
+    <link rel="index" title="Index" href="../../../genindex.html" />
+    <link rel="search" title="Search" href="../../../search.html" /> 
+  </head><body>
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../../genindex.html" title="General Index"
+             accesskey="I">index</a></li>
+        <li class="right" >
+          <a href="../../../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="nav-item nav-item-0"><a href="../../../index.html">SHARPy 0.0 documentation</a> &#187;</li>
+          <li class="nav-item nav-item-1"><a href="../../index.html" accesskey="U">Module code</a> &#187;</li> 
+      </ul>
+    </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+<div id="searchbox" style="display: none" role="search">
+  <h3>Quick search</h3>
+    <div class="searchformwrapper">
+    <form class="search" action="../../../search.html" method="get">
+      <input type="text" name="q" />
+      <input type="submit" value="Go" />
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+    </div>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <h1>Source code for sharpy.solvers.dynamicprescribedcoupled</h1><div class="highlight"><pre>
+<span></span><span class="kn">import</span> <span class="nn">ctypes</span> <span class="k">as</span> <span class="nn">ct</span>
+
+<span class="kn">import</span> <span class="nn">numpy</span> <span class="k">as</span> <span class="nn">np</span>
+
+<span class="kn">import</span> <span class="nn">sharpy.aero.utils.mapping</span> <span class="k">as</span> <span class="nn">mapping</span>
+<span class="kn">import</span> <span class="nn">sharpy.utils.cout_utils</span> <span class="k">as</span> <span class="nn">cout</span>
+<span class="kn">import</span> <span class="nn">sharpy.utils.solver_interface</span> <span class="k">as</span> <span class="nn">solver_interface</span>
+<span class="kn">from</span> <span class="nn">sharpy.utils.solver_interface</span> <span class="k">import</span> <span class="n">solver</span><span class="p">,</span> <span class="n">BaseSolver</span>
+<span class="kn">import</span> <span class="nn">sharpy.utils.settings</span> <span class="k">as</span> <span class="nn">settings</span>
+<span class="kn">import</span> <span class="nn">sharpy.utils.algebra</span> <span class="k">as</span> <span class="nn">algebra</span>
+
+
+<div class="viewcode-block" id="DynamicPrescribedCoupled"><a class="viewcode-back" href="../../../content/solvers.html#sharpy.solvers.dynamicprescribedcoupled.DynamicPrescribedCoupled">[docs]</a><span class="nd">@solver</span>
+<span class="k">class</span> <span class="nc">DynamicPrescribedCoupled</span><span class="p">(</span><span class="n">BaseSolver</span><span class="p">):</span>
+    <span class="n">solver_id</span> <span class="o">=</span> <span class="s1">&#39;DynamicPrescribedCoupled&#39;</span>
+
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">settings_types</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">settings_default</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">()</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">settings_types</span><span class="p">[</span><span class="s1">&#39;print_info&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="s1">&#39;bool&#39;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">settings_default</span><span class="p">[</span><span class="s1">&#39;print_info&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="kc">True</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">settings_types</span><span class="p">[</span><span class="s1">&#39;structural_solver&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="s1">&#39;str&#39;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">settings_default</span><span class="p">[</span><span class="s1">&#39;structural_solver&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">settings_types</span><span class="p">[</span><span class="s1">&#39;structural_solver_settings&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="s1">&#39;dict&#39;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">settings_default</span><span class="p">[</span><span class="s1">&#39;structural_solver_settings&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">settings_types</span><span class="p">[</span><span class="s1">&#39;aero_solver&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="s1">&#39;str&#39;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">settings_default</span><span class="p">[</span><span class="s1">&#39;aero_solver&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">settings_types</span><span class="p">[</span><span class="s1">&#39;aero_solver_settings&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="s1">&#39;dict&#39;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">settings_default</span><span class="p">[</span><span class="s1">&#39;aero_solver_settings&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">settings_types</span><span class="p">[</span><span class="s1">&#39;n_time_steps&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="s1">&#39;int&#39;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">settings_default</span><span class="p">[</span><span class="s1">&#39;n_time_steps&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="mi">100</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">settings_types</span><span class="p">[</span><span class="s1">&#39;dt&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="s1">&#39;float&#39;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">settings_default</span><span class="p">[</span><span class="s1">&#39;dt&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="mf">0.05</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">settings_types</span><span class="p">[</span><span class="s1">&#39;structural_substeps&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="s1">&#39;int&#39;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">settings_default</span><span class="p">[</span><span class="s1">&#39;structural_substeps&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="mi">1</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">settings_types</span><span class="p">[</span><span class="s1">&#39;fsi_substeps&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="s1">&#39;int&#39;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">settings_default</span><span class="p">[</span><span class="s1">&#39;fsi_substeps&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="mi">70</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">settings_types</span><span class="p">[</span><span class="s1">&#39;fsi_tolerance&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="s1">&#39;float&#39;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">settings_default</span><span class="p">[</span><span class="s1">&#39;fsi_tolerance&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="mf">1e-5</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">settings_types</span><span class="p">[</span><span class="s1">&#39;relaxation_factor&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="s1">&#39;float&#39;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">settings_default</span><span class="p">[</span><span class="s1">&#39;relaxation_factor&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="mf">0.0</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">settings_types</span><span class="p">[</span><span class="s1">&#39;final_relaxation_factor&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="s1">&#39;float&#39;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">settings_default</span><span class="p">[</span><span class="s1">&#39;final_relaxation_factor&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="mf">0.7</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">settings_types</span><span class="p">[</span><span class="s1">&#39;minimum_steps&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="s1">&#39;int&#39;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">settings_default</span><span class="p">[</span><span class="s1">&#39;minimum_steps&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="mi">3</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">settings_types</span><span class="p">[</span><span class="s1">&#39;relaxation_steps&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="s1">&#39;int&#39;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">settings_default</span><span class="p">[</span><span class="s1">&#39;relaxation_steps&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="mi">60</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">settings_types</span><span class="p">[</span><span class="s1">&#39;dynamic_relaxation&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="s1">&#39;bool&#39;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">settings_default</span><span class="p">[</span><span class="s1">&#39;dynamic_relaxation&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="kc">True</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">settings_types</span><span class="p">[</span><span class="s1">&#39;postprocessors&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="s1">&#39;list(str)&#39;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">settings_default</span><span class="p">[</span><span class="s1">&#39;postprocessors&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="nb">list</span><span class="p">()</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">settings_types</span><span class="p">[</span><span class="s1">&#39;postprocessors_settings&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="s1">&#39;dict&#39;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">settings_default</span><span class="p">[</span><span class="s1">&#39;postprocessors_settings&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">()</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">data</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">settings</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">structural_solver</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">aero_solver</span> <span class="o">=</span> <span class="kc">None</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">previous_force</span> <span class="o">=</span> <span class="kc">None</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">dt</span> <span class="o">=</span> <span class="mf">0.</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">postprocessors</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">with_postprocessors</span> <span class="o">=</span> <span class="kc">False</span>
+
+    <span class="k">def</span> <span class="nf">initialise</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">data</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">data</span> <span class="o">=</span> <span class="n">data</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">settings</span> <span class="o">=</span> <span class="n">data</span><span class="o">.</span><span class="n">settings</span><span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">solver_id</span><span class="p">]</span>
+        <span class="n">settings</span><span class="o">.</span><span class="n">to_custom_types</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">settings</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">settings_types</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">settings_default</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">dt</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">settings</span><span class="p">[</span><span class="s1">&#39;dt&#39;</span><span class="p">]</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">structural_solver</span> <span class="o">=</span> <span class="n">solver_interface</span><span class="o">.</span><span class="n">initialise_solver</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">settings</span><span class="p">[</span><span class="s1">&#39;structural_solver&#39;</span><span class="p">])</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">structural_solver</span><span class="o">.</span><span class="n">initialise</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">data</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">settings</span><span class="p">[</span><span class="s1">&#39;structural_solver_settings&#39;</span><span class="p">])</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">aero_solver</span> <span class="o">=</span> <span class="n">solver_interface</span><span class="o">.</span><span class="n">initialise_solver</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">settings</span><span class="p">[</span><span class="s1">&#39;aero_solver&#39;</span><span class="p">])</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">aero_solver</span><span class="o">.</span><span class="n">initialise</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">structural_solver</span><span class="o">.</span><span class="n">data</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">settings</span><span class="p">[</span><span class="s1">&#39;aero_solver_settings&#39;</span><span class="p">])</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">data</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">aero_solver</span><span class="o">.</span><span class="n">data</span>
+
+        <span class="c1"># if there&#39;s data in timestep_info[&gt;0], copy the last one to</span>
+        <span class="c1"># timestep_info[0] and remove the rest</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">cleanup_timestep_info</span><span class="p">()</span>
+
+        <span class="c1"># initialise postprocessors</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">postprocessors</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">()</span>
+        <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">settings</span><span class="p">[</span><span class="s1">&#39;postprocessors&#39;</span><span class="p">])</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">with_postprocessors</span> <span class="o">=</span> <span class="kc">True</span>
+        <span class="k">for</span> <span class="n">postproc</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">settings</span><span class="p">[</span><span class="s1">&#39;postprocessors&#39;</span><span class="p">]:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">postprocessors</span><span class="p">[</span><span class="n">postproc</span><span class="p">]</span> <span class="o">=</span> <span class="n">solver_interface</span><span class="o">.</span><span class="n">initialise_solver</span><span class="p">(</span><span class="n">postproc</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">postprocessors</span><span class="p">[</span><span class="n">postproc</span><span class="p">]</span><span class="o">.</span><span class="n">initialise</span><span class="p">(</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">data</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">settings</span><span class="p">[</span><span class="s1">&#39;postprocessors_settings&#39;</span><span class="p">][</span><span class="n">postproc</span><span class="p">])</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">residual_table</span> <span class="o">=</span> <span class="n">cout</span><span class="o">.</span><span class="n">TablePrinter</span><span class="p">(</span><span class="mi">5</span><span class="p">,</span> <span class="mi">14</span><span class="p">,</span> <span class="p">[</span><span class="s1">&#39;g&#39;</span><span class="p">,</span> <span class="s1">&#39;f&#39;</span><span class="p">,</span> <span class="s1">&#39;g&#39;</span><span class="p">,</span> <span class="s1">&#39;f&#39;</span><span class="p">,</span> <span class="s1">&#39;g&#39;</span><span class="p">])</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">residual_table</span><span class="o">.</span><span class="n">field_length</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">=</span> <span class="mi">6</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">residual_table</span><span class="o">.</span><span class="n">field_length</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="o">=</span> <span class="mi">6</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">residual_table</span><span class="o">.</span><span class="n">field_length</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="o">=</span> <span class="mi">6</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">residual_table</span><span class="o">.</span><span class="n">print_header</span><span class="p">([</span><span class="s1">&#39;ts&#39;</span><span class="p">,</span> <span class="s1">&#39;t&#39;</span><span class="p">,</span> <span class="s1">&#39;iter&#39;</span><span class="p">,</span> <span class="s1">&#39;residual&#39;</span><span class="p">,</span> <span class="s1">&#39;z_pos[-1]&#39;</span><span class="p">])</span>
+
+    <span class="k">def</span> <span class="nf">cleanup_timestep_info</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">if</span> <span class="nb">max</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">data</span><span class="o">.</span><span class="n">aero</span><span class="o">.</span><span class="n">timestep_info</span><span class="p">),</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">data</span><span class="o">.</span><span class="n">structure</span><span class="o">.</span><span class="n">timestep_info</span><span class="p">))</span> <span class="o">&gt;</span> <span class="mi">1</span><span class="p">:</span>
+            <span class="c1"># copy last info to first</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">data</span><span class="o">.</span><span class="n">aero</span><span class="o">.</span><span class="n">timestep_info</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">data</span><span class="o">.</span><span class="n">aero</span><span class="o">.</span><span class="n">timestep_info</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">data</span><span class="o">.</span><span class="n">structure</span><span class="o">.</span><span class="n">timestep_info</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">data</span><span class="o">.</span><span class="n">structure</span><span class="o">.</span><span class="n">timestep_info</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span>
+            <span class="c1"># delete all the rest</span>
+            <span class="k">while</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">data</span><span class="o">.</span><span class="n">aero</span><span class="o">.</span><span class="n">timestep_info</span><span class="p">)</span> <span class="o">-</span> <span class="mi">1</span><span class="p">:</span>
+                <span class="k">del</span> <span class="bp">self</span><span class="o">.</span><span class="n">data</span><span class="o">.</span><span class="n">aero</span><span class="o">.</span><span class="n">timestep_info</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span>
+            <span class="k">while</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">data</span><span class="o">.</span><span class="n">structure</span><span class="o">.</span><span class="n">timestep_info</span><span class="p">)</span> <span class="o">-</span> <span class="mi">1</span><span class="p">:</span>
+                <span class="k">del</span> <span class="bp">self</span><span class="o">.</span><span class="n">data</span><span class="o">.</span><span class="n">structure</span><span class="o">.</span><span class="n">timestep_info</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">data</span><span class="o">.</span><span class="n">ts</span> <span class="o">=</span> <span class="mi">0</span>
+
+    <span class="k">def</span> <span class="nf">increase_ts</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">structural_solver</span><span class="o">.</span><span class="n">add_step</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">aero_solver</span><span class="o">.</span><span class="n">add_step</span><span class="p">()</span>
+
+    <span class="k">def</span> <span class="nf">run</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="c1"># TODO this solver could probably be included in dynamic coupled directly</span>
+        <span class="c1"># NOTE use only for non-coupled problems (structural or aero, but not both)</span>
+
+        <span class="n">structural_kstep</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">data</span><span class="o">.</span><span class="n">structure</span><span class="o">.</span><span class="n">timestep_info</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
+
+        <span class="c1"># dynamic simulations start at tstep == 1, 0 is reserved for the initial state</span>
+        <span class="k">for</span> <span class="bp">self</span><span class="o">.</span><span class="n">data</span><span class="o">.</span><span class="n">ts</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">settings</span><span class="p">[</span><span class="s1">&#39;n_time_steps&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">value</span> <span class="o">+</span> <span class="mi">1</span><span class="p">):</span>
+            <span class="n">aero_kstep</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">data</span><span class="o">.</span><span class="n">aero</span><span class="o">.</span><span class="n">timestep_info</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
+            <span class="n">previous_kstep</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">data</span><span class="o">.</span><span class="n">structure</span><span class="o">.</span><span class="n">timestep_info</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
+            <span class="n">ts</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">data</span><span class="o">.</span><span class="n">structure</span><span class="o">.</span><span class="n">timestep_info</span><span class="p">)</span> <span class="o">-</span> <span class="mi">1</span>
+            <span class="k">if</span> <span class="n">ts</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">data</span><span class="o">.</span><span class="n">structure</span><span class="o">.</span><span class="n">timestep_info</span><span class="p">[</span><span class="n">ts</span><span class="p">]</span><span class="o">.</span><span class="n">for_vel</span><span class="p">[:]</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">data</span><span class="o">.</span><span class="n">structure</span><span class="o">.</span><span class="n">dynamic_input</span><span class="p">[</span><span class="n">ts</span> <span class="o">-</span> <span class="mi">1</span><span class="p">][</span><span class="s1">&#39;for_vel&#39;</span><span class="p">]</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">data</span><span class="o">.</span><span class="n">structure</span><span class="o">.</span><span class="n">timestep_info</span><span class="p">[</span><span class="n">ts</span><span class="p">]</span><span class="o">.</span><span class="n">for_acc</span><span class="p">[:]</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">data</span><span class="o">.</span><span class="n">structure</span><span class="o">.</span><span class="n">dynamic_input</span><span class="p">[</span><span class="n">ts</span> <span class="o">-</span> <span class="mi">1</span><span class="p">][</span><span class="s1">&#39;for_acc&#39;</span><span class="p">]</span>
+            <span class="n">structural_kstep</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">data</span><span class="o">.</span><span class="n">structure</span><span class="o">.</span><span class="n">timestep_info</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
+
+            <span class="k">for</span> <span class="n">k</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">settings</span><span class="p">[</span><span class="s1">&#39;fsi_substeps&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">value</span> <span class="o">+</span> <span class="mi">1</span><span class="p">):</span>
+                <span class="k">if</span> <span class="n">k</span> <span class="o">==</span> <span class="bp">self</span><span class="o">.</span><span class="n">settings</span><span class="p">[</span><span class="s1">&#39;fsi_substeps&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">value</span> <span class="ow">and</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">settings</span><span class="p">[</span><span class="s1">&#39;fsi_substeps&#39;</span><span class="p">]</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+                    <span class="n">cout</span><span class="o">.</span><span class="n">cout_wrap</span><span class="p">(</span><span class="s1">&#39;The FSI solver did not converge!!!&#39;</span><span class="p">)</span>
+                    <span class="k">break</span>
+                    <span class="c1"># TODO Raise Exception</span>
+
+                <span class="c1"># # generate new grid (already rotated)</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">aero_solver</span><span class="o">.</span><span class="n">update_custom_grid</span><span class="p">(</span><span class="n">structural_kstep</span><span class="p">,</span> <span class="n">aero_kstep</span><span class="p">)</span>
+
+                <span class="c1"># run the solver</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">data</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">aero_solver</span><span class="o">.</span><span class="n">run</span><span class="p">(</span><span class="n">aero_kstep</span><span class="p">,</span>
+                                                 <span class="n">structural_kstep</span><span class="p">,</span>
+                                                 <span class="n">convect_wake</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
+
+                <span class="n">structural_kstep</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">data</span><span class="o">.</span><span class="n">structure</span><span class="o">.</span><span class="n">timestep_info</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
+
+                <span class="c1"># map forces</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">map_forces</span><span class="p">(</span><span class="n">aero_kstep</span><span class="p">,</span>
+                                <span class="n">structural_kstep</span><span class="p">,</span>
+                                <span class="mi">0</span><span class="o">*</span><span class="mf">1.0</span><span class="p">)</span>
+
+                <span class="c1"># relax</span>
+                <span class="n">relax</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">data</span><span class="o">.</span><span class="n">structure</span><span class="p">,</span>
+                      <span class="n">structural_kstep</span><span class="p">,</span>
+                      <span class="n">previous_kstep</span><span class="p">,</span>
+                      <span class="bp">self</span><span class="o">.</span><span class="n">relaxation_factor</span><span class="p">(</span><span class="n">k</span><span class="p">))</span>
+
+                <span class="c1"># run structural solver</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">data</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">structural_solver</span><span class="o">.</span><span class="n">run</span><span class="p">(</span><span class="n">structural_step</span><span class="o">=</span><span class="n">structural_kstep</span><span class="p">)</span>
+
+                <span class="c1"># check for non-convergence</span>
+                <span class="k">if</span> <span class="ow">not</span> <span class="nb">all</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">isfinite</span><span class="p">(</span><span class="n">structural_kstep</span><span class="o">.</span><span class="n">q</span><span class="p">)):</span>
+                    <span class="n">cout</span><span class="o">.</span><span class="n">cout_wrap</span><span class="p">(</span><span class="s1">&#39;***No converged!&#39;</span><span class="p">,</span> <span class="mi">3</span><span class="p">)</span>
+                    <span class="k">break</span>
+
+                <span class="k">if</span> <span class="n">k</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
+                    <span class="n">res</span> <span class="o">=</span> <span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">linalg</span><span class="o">.</span><span class="n">norm</span><span class="p">(</span><span class="n">structural_kstep</span><span class="o">.</span><span class="n">pos_dot</span> <span class="o">-</span>
+                                          <span class="n">previous_kstep</span><span class="o">.</span><span class="n">pos_dot</span><span class="p">)</span> <span class="o">/</span>
+                           <span class="n">np</span><span class="o">.</span><span class="n">linalg</span><span class="o">.</span><span class="n">norm</span><span class="p">(</span><span class="n">previous_kstep</span><span class="o">.</span><span class="n">pos_dot</span><span class="p">))</span>
+                <span class="k">else</span><span class="p">:</span>
+                    <span class="n">res</span> <span class="o">=</span> <span class="mf">0.0</span>
+
+                <span class="bp">self</span><span class="o">.</span><span class="n">residual_table</span><span class="o">.</span><span class="n">print_line</span><span class="p">([</span><span class="bp">self</span><span class="o">.</span><span class="n">data</span><span class="o">.</span><span class="n">ts</span><span class="p">,</span>
+                                                <span class="bp">self</span><span class="o">.</span><span class="n">data</span><span class="o">.</span><span class="n">ts</span><span class="o">*</span><span class="bp">self</span><span class="o">.</span><span class="n">dt</span><span class="o">.</span><span class="n">value</span><span class="p">,</span>
+                                                <span class="n">k</span><span class="p">,</span>
+                                                <span class="n">np</span><span class="o">.</span><span class="n">log10</span><span class="p">(</span><span class="n">res</span><span class="p">),</span>
+                                                <span class="n">structural_kstep</span><span class="o">.</span><span class="n">pos</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">]])</span>
+
+                <span class="c1"># convergence</span>
+                <span class="k">if</span> <span class="n">k</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
+                    <span class="k">if</span> <span class="p">(</span><span class="n">res</span> <span class="o">&lt;</span>
+                        <span class="bp">self</span><span class="o">.</span><span class="n">settings</span><span class="p">[</span><span class="s1">&#39;fsi_tolerance&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">value</span><span class="p">)</span> \
+                            <span class="ow">and</span> \
+                            <span class="n">k</span> <span class="o">&gt;</span> <span class="bp">self</span><span class="o">.</span><span class="n">settings</span><span class="p">[</span><span class="s1">&#39;minimum_steps&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">value</span> <span class="o">-</span> <span class="mi">1</span><span class="p">:</span>
+                        <span class="k">break</span>
+
+                <span class="c1"># copy for next iteration</span>
+                <span class="n">previous_kstep</span> <span class="o">=</span> <span class="n">structural_kstep</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
+
+            <span class="c1"># allocate and copy previous timestep, copying steady and unsteady forces from input</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">structural_solver</span><span class="o">.</span><span class="n">add_step</span><span class="p">()</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">data</span><span class="o">.</span><span class="n">structure</span><span class="o">.</span><span class="n">timestep_info</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span> <span class="o">=</span> <span class="n">structural_kstep</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">data</span><span class="o">.</span><span class="n">structure</span><span class="o">.</span><span class="n">integrate_position</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">data</span><span class="o">.</span><span class="n">ts</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">settings</span><span class="p">[</span><span class="s1">&#39;dt&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">value</span><span class="p">)</span>
+
+            <span class="bp">self</span><span class="o">.</span><span class="n">aero_solver</span><span class="o">.</span><span class="n">add_step</span><span class="p">()</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">data</span><span class="o">.</span><span class="n">aero</span><span class="o">.</span><span class="n">timestep_info</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">data</span><span class="o">.</span><span class="n">aero</span><span class="o">.</span><span class="n">timestep_info</span><span class="p">[</span><span class="o">-</span><span class="mi">2</span><span class="p">]</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">aero_solver</span><span class="o">.</span><span class="n">update_custom_grid</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">data</span><span class="o">.</span><span class="n">structure</span><span class="o">.</span><span class="n">timestep_info</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">],</span>
+                                                <span class="bp">self</span><span class="o">.</span><span class="n">data</span><span class="o">.</span><span class="n">aero</span><span class="o">.</span><span class="n">timestep_info</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">])</span>
+            <span class="c1"># run the solver</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">data</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">aero_solver</span><span class="o">.</span><span class="n">run</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">data</span><span class="o">.</span><span class="n">aero</span><span class="o">.</span><span class="n">timestep_info</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">],</span>
+                                             <span class="bp">self</span><span class="o">.</span><span class="n">data</span><span class="o">.</span><span class="n">structure</span><span class="o">.</span><span class="n">timestep_info</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">],</span>
+                                             <span class="n">convect_wake</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+
+            <span class="c1"># run postprocessors</span>
+            <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">with_postprocessors</span><span class="p">:</span>
+                <span class="k">for</span> <span class="n">postproc</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">postprocessors</span><span class="p">:</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">data</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">postprocessors</span><span class="p">[</span><span class="n">postproc</span><span class="p">]</span><span class="o">.</span><span class="n">run</span><span class="p">(</span><span class="n">online</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">data</span>
+
+    <span class="k">def</span> <span class="nf">map_forces</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">aero_kstep</span><span class="p">,</span> <span class="n">structural_kstep</span><span class="p">,</span> <span class="n">unsteady_forces_coeff</span><span class="o">=</span><span class="mf">1.0</span><span class="p">):</span>
+        <span class="c1"># set all forces to 0</span>
+        <span class="n">structural_kstep</span><span class="o">.</span><span class="n">steady_applied_forces</span><span class="o">.</span><span class="n">fill</span><span class="p">(</span><span class="mf">0.0</span><span class="p">)</span>
+        <span class="n">structural_kstep</span><span class="o">.</span><span class="n">unsteady_applied_forces</span><span class="o">.</span><span class="n">fill</span><span class="p">(</span><span class="mf">0.0</span><span class="p">)</span>
+
+        <span class="c1"># aero forces to structural forces</span>
+        <span class="n">struct_forces</span> <span class="o">=</span> <span class="n">mapping</span><span class="o">.</span><span class="n">aero2struct_force_mapping</span><span class="p">(</span>
+            <span class="n">aero_kstep</span><span class="o">.</span><span class="n">forces</span><span class="p">,</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">data</span><span class="o">.</span><span class="n">aero</span><span class="o">.</span><span class="n">struct2aero_mapping</span><span class="p">,</span>
+            <span class="n">aero_kstep</span><span class="o">.</span><span class="n">zeta</span><span class="p">,</span>
+            <span class="n">structural_kstep</span><span class="o">.</span><span class="n">pos</span><span class="p">,</span>
+            <span class="n">structural_kstep</span><span class="o">.</span><span class="n">psi</span><span class="p">,</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">data</span><span class="o">.</span><span class="n">structure</span><span class="o">.</span><span class="n">node_master_elem</span><span class="p">,</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">data</span><span class="o">.</span><span class="n">structure</span><span class="o">.</span><span class="n">master</span><span class="p">,</span>
+            <span class="n">structural_kstep</span><span class="o">.</span><span class="n">cag</span><span class="p">())</span>
+        <span class="n">dynamic_struct_forces</span> <span class="o">=</span> <span class="n">unsteady_forces_coeff</span><span class="o">*</span><span class="n">mapping</span><span class="o">.</span><span class="n">aero2struct_force_mapping</span><span class="p">(</span>
+            <span class="n">aero_kstep</span><span class="o">.</span><span class="n">dynamic_forces</span><span class="p">,</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">data</span><span class="o">.</span><span class="n">aero</span><span class="o">.</span><span class="n">struct2aero_mapping</span><span class="p">,</span>
+            <span class="n">aero_kstep</span><span class="o">.</span><span class="n">zeta</span><span class="p">,</span>
+            <span class="n">structural_kstep</span><span class="o">.</span><span class="n">pos</span><span class="p">,</span>
+            <span class="n">structural_kstep</span><span class="o">.</span><span class="n">psi</span><span class="p">,</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">data</span><span class="o">.</span><span class="n">structure</span><span class="o">.</span><span class="n">node_master_elem</span><span class="p">,</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">data</span><span class="o">.</span><span class="n">structure</span><span class="o">.</span><span class="n">master</span><span class="p">,</span>
+            <span class="n">structural_kstep</span><span class="o">.</span><span class="n">cag</span><span class="p">())</span>
+
+        <span class="c1"># prescribed forces + aero forces</span>
+        <span class="n">structural_kstep</span><span class="o">.</span><span class="n">steady_applied_forces</span> <span class="o">=</span> <span class="p">(</span>
+            <span class="p">(</span><span class="n">struct_forces</span> <span class="o">+</span> <span class="bp">self</span><span class="o">.</span><span class="n">data</span><span class="o">.</span><span class="n">structure</span><span class="o">.</span><span class="n">ini_info</span><span class="o">.</span><span class="n">steady_applied_forces</span><span class="p">)</span><span class="o">.</span>
+                <span class="n">astype</span><span class="p">(</span><span class="n">dtype</span><span class="o">=</span><span class="n">ct</span><span class="o">.</span><span class="n">c_double</span><span class="p">,</span> <span class="n">order</span><span class="o">=</span><span class="s1">&#39;F&#39;</span><span class="p">,</span> <span class="n">copy</span><span class="o">=</span><span class="kc">True</span><span class="p">))</span>
+        <span class="n">structural_kstep</span><span class="o">.</span><span class="n">unsteady_applied_forces</span> <span class="o">=</span> <span class="p">(</span>
+            <span class="p">(</span><span class="n">dynamic_struct_forces</span> <span class="o">+</span> <span class="bp">self</span><span class="o">.</span><span class="n">data</span><span class="o">.</span><span class="n">structure</span><span class="o">.</span><span class="n">dynamic_input</span><span class="p">[</span><span class="nb">max</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">data</span><span class="o">.</span><span class="n">ts</span> <span class="o">-</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">0</span><span class="p">)][</span><span class="s1">&#39;dynamic_forces&#39;</span><span class="p">])</span><span class="o">.</span>
+                <span class="n">astype</span><span class="p">(</span><span class="n">dtype</span><span class="o">=</span><span class="n">ct</span><span class="o">.</span><span class="n">c_double</span><span class="p">,</span> <span class="n">order</span><span class="o">=</span><span class="s1">&#39;F&#39;</span><span class="p">,</span> <span class="n">copy</span><span class="o">=</span><span class="kc">True</span><span class="p">))</span>
+
+    <span class="k">def</span> <span class="nf">relaxation_factor</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">k</span><span class="p">):</span>
+        <span class="n">initial</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">settings</span><span class="p">[</span><span class="s1">&#39;relaxation_factor&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">value</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">settings</span><span class="p">[</span><span class="s1">&#39;dynamic_relaxation&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">value</span><span class="p">:</span>
+            <span class="k">return</span> <span class="n">initial</span>
+
+        <span class="n">final</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">settings</span><span class="p">[</span><span class="s1">&#39;final_relaxation_factor&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">value</span>
+        <span class="k">if</span> <span class="n">k</span> <span class="o">&gt;=</span> <span class="bp">self</span><span class="o">.</span><span class="n">settings</span><span class="p">[</span><span class="s1">&#39;relaxation_steps&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">value</span><span class="p">:</span>
+            <span class="k">return</span> <span class="n">final</span>
+
+        <span class="n">value</span> <span class="o">=</span> <span class="n">initial</span> <span class="o">+</span> <span class="p">(</span><span class="n">final</span> <span class="o">-</span> <span class="n">initial</span><span class="p">)</span><span class="o">/</span><span class="bp">self</span><span class="o">.</span><span class="n">settings</span><span class="p">[</span><span class="s1">&#39;relaxation_steps&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">value</span><span class="o">*</span><span class="n">k</span>
+        <span class="k">return</span> <span class="n">value</span></div>
+
+
+<span class="k">def</span> <span class="nf">relax</span><span class="p">(</span><span class="n">beam</span><span class="p">,</span> <span class="n">timestep</span><span class="p">,</span> <span class="n">previous_timestep</span><span class="p">,</span> <span class="n">coeff</span><span class="p">):</span>
+    <span class="k">if</span> <span class="n">coeff</span> <span class="o">&gt;</span> <span class="mf">0.0</span><span class="p">:</span>
+        <span class="n">timestep</span><span class="o">.</span><span class="n">steady_applied_forces</span><span class="p">[:]</span> <span class="o">=</span> <span class="p">((</span><span class="mf">1.0</span> <span class="o">-</span> <span class="n">coeff</span><span class="p">)</span><span class="o">*</span><span class="n">timestep</span><span class="o">.</span><span class="n">steady_applied_forces</span>
+                                             <span class="o">+</span> <span class="n">coeff</span><span class="o">*</span><span class="n">previous_timestep</span><span class="o">.</span><span class="n">steady_applied_forces</span><span class="p">)</span>
+        <span class="n">timestep</span><span class="o">.</span><span class="n">unsteady_applied_forces</span><span class="p">[:]</span> <span class="o">=</span> <span class="p">((</span><span class="mf">1.0</span> <span class="o">-</span> <span class="n">coeff</span><span class="p">)</span><span class="o">*</span><span class="n">timestep</span><span class="o">.</span><span class="n">unsteady_applied_forces</span>
+                                               <span class="o">+</span> <span class="n">coeff</span><span class="o">*</span><span class="n">previous_timestep</span><span class="o">.</span><span class="n">unsteady_applied_forces</span><span class="p">)</span>
+        <span class="c1"># timestep.pos_dot[:] = (1.0 - coeff)*timestep.pos_dot + coeff*previous_timestep.pos_dot</span>
+        <span class="c1"># timestep.psi[:] = (1.0 - coeff)*timestep.psi + coeff*previous_timestep.psi</span>
+        <span class="c1"># timestep.psi_dot[:] = (1.0 - coeff)*timestep.psi_dot + coeff*previous_timestep.psi_dot</span>
+
+        <span class="c1"># normalise_quaternion(timestep)</span>
+        <span class="c1"># xbeam_solv_state2disp(beam, timestep)</span>
+</pre></div>
+
+          </div>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../../genindex.html" title="General Index"
+             >index</a></li>
+        <li class="right" >
+          <a href="../../../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="nav-item nav-item-0"><a href="../../../index.html">SHARPy 0.0 documentation</a> &#187;</li>
+          <li class="nav-item nav-item-1"><a href="../../index.html" >Module code</a> &#187;</li> 
+      </ul>
+    </div>
+    <div class="footer" role="contentinfo">
+        &#169; Copyright 2018, LoCA Lab ICL.
+      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 1.8.1.
+    </div>
+  </body>
+</html>
