@@ -1,28 +1,41 @@
-# Simulation of High Aspect Ratio Planes in Python
-SHARPy is an aeroelastic analysis package currently under development at the Department of Aeronautics, Imperial College London. It can be used for the 
-structural, aerodynamic and aeroelastic analysis of flexible aircraft, flying wings and wind turbines.
+# Simulation of High Aspect Ratio Planes in Python [SHARPy]
+SHARPy is an aeroelastic analysis package currently under development at the Department of Aeronautics, 
+Imperial College London. It can be used for the structural, aerodynamic and aeroelastic analysis of flexible aircraft, 
+flying wings and wind turbines.
 
-SHARPy is distributed under a [BSD 3-Clause License](license.txt).
+__UNDER DEVELOPMENT - WORK STILL IN PROGRESS__
 
-__WORK STILL IN PROGRESS__
+SHARPy is distributed under a [BSD 3-Clause License](LICENSE.txt).
 
-## SHARPy Models
+### Contact 
 
-As an aeroealastic analysis package, SHARPy requires an appropriate structural an aerodynamic model to 
-represent the physics of the problem.
+For more information on the research team developing SHARPy or to get in touch, [visit our homepage](http://www.imperial.ac.uk/aeroelastics).
 
-For the structural model, SHARPy employs a non linear, geometrically exact displacement and rotation-based beam formulation.
+## Physical Models
+
+SHARPy is an aeroelastic solver that uses two specific models for the structural and aerodynamic response of the system.
+
+For the structural model, SHARPy employs a nonlinear, geometrically-exact displacement and rotation-based beam formulation.
 This model has the advantage of providing the solution directly in the physical problem's degrees of freedom, making the 
 coupling with the aerodynamic solver simple and not requiring any post-processing. The 1D beam formulation used limits 
 the analyses that can be done by SHARPy to slender structures, such as high aspect ratio wings.
 
 The aerodynamic model utilises the Unsteady Vortex Lattice Method (UVLM). The aerodynamic surfaces are modelled as a thin
-vortex ring lattice and the boundary conditions are enforced at the collocation points. The Kutta condition is then 
-enforced at the trailing edge. The wake can be simulated by either additional vortex rings or by infinitely long horseshoe
-vortices, ideally suited for steady simulations only.
+vortex ring lattice with the boundary conditions enforced at the collocation points in the middle of the vortex rings.
+The Kutta condition is also enforced at the trailing edge. The wake can be simulated by either additional vortex rings 
+or by infinitely long horseshoe vortices, which ideally suited for steady simulations only.
 
-The coupling of the two models yields the aeroelastic system. SHARPy is then capable of producing nonlinear time domain
-simulations of the problem prescribed by the user.
+The input problems can be structural, aerodynamic or coupled, yielding an aeroelastic system.
+
+## Capabilities
+
+SHARPy offers the following solutions to the user:
+* Static aerodynamic, structural and aeroelastic solutions
+* Finding trim conditions
+* Nonlinear, dynamic time domain simulations under specific conditions such as:
+    + Prescribed trajectories
+    + Gusts
+    + Turbulence
 
 ## Installation  
 
@@ -30,7 +43,9 @@ __System Requirements__
 
 SHARPy is being developed and tested on the following operating systems: 
 + CentOS 7
++ Ubuntu 18.04 LTS
 + MacOS Sierra
+
 
 Note, SHARPy has also been found to work with other Linux flavours such as Ubuntu, yet the active development is 
 conducted on CentOS.
@@ -38,22 +53,8 @@ conducted on CentOS.
 __Required Distributions__
 
 + Anaconda Python 3.5.3
-+ GCC 4.8.5 or higher (recommended)
++ GCC 5.0 or higher (recommended)
 
-SHARPy also makes use of the following dependencies and are required separately:
-* [LAPACK](http://www.netlib.org/lapack/)
-* [Eigen](http://eigen.tuxfamily.org)
-
-__Notes__
-
-a. Ensure the `devel` version of LAPACK is used. This can be installed by using:
-
-```bash
-sudo yum install lapack-devel
-```
-
-b. The Eigen library must be contained in a parent directory named `Eigen`, such that the folder structure follows:
-`Eigen/Eigen/eigen_library_contents_here`
 
 __Aerodynamic and Structural Models__
 
@@ -102,10 +103,62 @@ git checkout develop origin/develop
 ```
 Likewise, skip the `git checkout` commands if you are running the `master` branch in `sharpy`.
 
+#### Set up the Python Environment
+
+SHARPy uses the Anaconda package manager to provide the necessary Python packages. 
+These are specified in an Anaconda environment that shall be activated prior to compiling the xbeam and UVLM libraries 
+or running any SHARPy cases.
+
+1. Install the [Anaconda](https://conda.io/docs/) Python distribution 
+
+2. Make sure your Python version is at least 3.5:
+```bash
+python --version
+# it returns:
+#>>> Python 3.5.3 :: Anaconda custom (64-bit)
+```
+
+    If it returns `Python 2.X.X` (where `X` does not matter), there are two possibilities:
+    1. You haven't installed the proper [Anaconda](https://www.continuum.io/Anaconda-Overview).
+        Make sure you install the python3 version.
+    2. You have the correct python installation, but the `python` command
+    points to the default python of the OS. In this case, try `python3`
+
+3. Create the conda environment that SHARPy will use. Change the `environment_linux.yml` for the `environment_mac.yml` 
+file if you are using Mac OS X
+```bash
+cd sharpy/utils
+conda env create -f environment_linux.yml
+cd ../..
+```
+
+4. Anaconda will now install its required packages for the SHARPy environment. This new environment will be created with
+the name `sharpy_env`.
+
+5. Activate the newly created SHARPy environment `sharpy_env`.
+```bash
+source activate sharpy_env
+```
+
+6. Install the [Eigen](http://eigen.tuxfamily.org/) and [Lapack](http://www.netlib.org/lapack) libraries
+```bash
+conda install eigen
+conda install -c conda-forge lapack
+```
 
 #### Compiling the UVLM and xbeam libraries
 
 Once the folder structure has been laid out, the aerodynamic and structural libraries can be compiled.
+Ensure that the SHARPy environment is active in the session. Your terminal prompt line should begin with 
+```bash
+(sharpy_env) [usr@host] 
+```
+
+If it is not the case, activate the environment. Otherwise xbeam and UVLM will not compile
+```bash
+source activate sharpy_env
+```
+
 
 __Compiling xbeam__
 
@@ -152,65 +205,23 @@ __Compiling UVLM__
 1. `cd` into the UVLM folder
 ```bash
 cd UVLM
+make clean
 ```
 
-2. The path to the `Eigen` library previously downloaded has to either be a) specified using an environment variable or b) explicitly
-hard coded in the `src/Makefile`.
-
-a. To use an environment variable:
-```bash
-EIGEN3_INCLUDE_DIR=/path/to/Eigen
-```
-
-b. To modify the `src/Makefile`, open it with your favourite text editor and replace in line `1`:
-```bash 
-FLAGS = -fPIC -O3 -march=native -std=c++14 -I$EIGEN3_INCLUDE_DIR -fomit-frame-pointer -ffast-math -fopenmp
-```
-to read:
-```bash 
-FLAGS = -fPIC -O3 -march=native -std=c++14 -I /path/to/Eigen -fomit-frame-pointer -ffast-math -fopenmp
-```
-
-3. Change the permissions of the `run_make.sh` file so that it can be executed
+2. Change the permissions of the `run_make.sh` file so that it can be executed
 ```bash
 chmod .x run_make.sh
 ```
 
-4. Compile UVLM
+3. Compile UVLM
 ```bash
 ./run_make.sh
 cd ..
 ```
 
-__Python and Conda Environment__
+You have now successfully installed SHARPy!
 
-1. Install the [Anaconda](https://conda.io/docs/) Python distribution 
-
-2. Make sure your Python version is at least 3.5:
-```bash
-python --version
-# it returns:
-#>>> Python 3.5.3 :: Anaconda custom (64-bit)
-```
-
-    If it returns `Python 2.X.X` (where `X` does not matter), there are two possibilities:
-    1. You haven't installed the proper [Anaconda](https://www.continuum.io/Anaconda-Overview).
-        Make sure you install the python3 version.
-    2. You have the correct python installation, but the `python` command
-    points to the default python of the OS. In this case, try `python3`
-
-3. Create the conda environment that SHARPy will use. Change the `environment_linux.yml` for the `environment_mac.yml` 
-file if you are using Mac OS X
-```bash
-cd sharpy/utils
-conda env create -f environment_linux.yml
-cd ../..
-```
-
-4. Anaconda will now install its required packages for the SHARPy environment. This new environment will be created with
-the name `sharpy_env`.
-
-__Output and binary files__
+## Output and binary files
 
 SHARPy produces its output in `.vtu` format that can be used with [Paraview](https://www.paraview.org/).
 
@@ -221,7 +232,7 @@ languages of the required libraries. To view these `.h5` files, a viewer like [H
 
 __Before you run any SHARPy cases__
 
-1. Activate the SHARPy environment we just created
+1. Activate the SHARPy conda environment
 ```bash
 source activate sharpy_env
 ```
@@ -269,8 +280,9 @@ loaded in Paraview.
 
 ## Run a test case
 
-*TODO* review geradin case and update sharpy calls
+*TODO* review Geradin case and update sharpy calls
 
+__TUTORIAL OUT OF DATE__
 
 This command generates the required files for running a static, clamped beam.
     
