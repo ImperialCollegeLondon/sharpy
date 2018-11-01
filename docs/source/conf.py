@@ -137,6 +137,17 @@ todo_include_todos = False
 # http://www.sphinx-doc.org/en/master/usage/extensions/autodoc.html#confval-autodoc_mock_imports
 autodoc_mock_imports = ["matplotlib", "numpy", "colorama", "h5py", "scipy"]
 
+# Exclude selected modules
+from unittest.mock import MagicMock
+
+class Mock(MagicMock):
+    @classmethod
+    def __getattr__(cls, name):
+        return MagicMock()
+
+MOCK_MODULES = ["matplotlib", "numpy", "colorama", "h5py", "scipy", "libxbeam"]
+sys.modules.update((mod_name, Mock()) for mod_name in MOCK_MODULES)
+
 
 # -- Options for HTML output ----------------------------------------------
 
