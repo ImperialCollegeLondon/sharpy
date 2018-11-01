@@ -100,7 +100,7 @@ language = None
 # List of patterns, relative to source directory, that match files and
 # directories to ignore when looking for source files.
 # This patterns also effect to html_static_path and html_extra_path
-exclude_patterns = ["**/.so", "../../lib/*", "../sharpy/utils/*"]
+exclude_patterns = ["**/.so", "../../lib/*", "../sharpy/utils/*", "../*", "/_static", "/content/"]
 
 # The reST default role (used for this markup: `text`) to use for all
 # documents.
@@ -135,7 +135,7 @@ todo_include_todos = False
 
 # Exclude matplotlib - avoids conflicts when running sphinx
 # http://www.sphinx-doc.org/en/master/usage/extensions/autodoc.html#confval-autodoc_mock_imports
-autodoc_mock_imports = ["matplotlib", "numpy", "colorama", "h5py", "scipy",
+autodoc_mock_imports = ["matplotlib", "numpy", "colorama", "h5py", "scipy", "ctypes",
                         "sharpy.lib", "sharpy.utils.ctypes_utils"]
 
 # # Exclude selected modules
