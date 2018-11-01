@@ -33,7 +33,26 @@ class Modal(BaseSolver):
         custom_settings (dict): custom settings that override the settings in the solver ``.txt`` file. None by default
 
     Attributes:
-        settings (dict): Name-value pair of settings employed by solver. See Notes for valid combinations
+        settings (dict): Name-value pair of settings employed by solver.
+
+            ==========================  =========  =======================================================================  ============
+            Name                        Type       Description                                                              Default
+            ==========================  =========  =======================================================================  ============
+            ``print_info``              ``bool``   Print modal calculations to terminal                                     ``True``
+            ``folder``                  ``str``    Output folder                                                            ``./output``
+            ``use_undamped_modes``      ``bool``   Basis for modal projection                                               ``True``
+            ``NumLambda``               ``int``    Number of modes to retain                                                ``20``
+            ``keep_linear_matrices``    ``bool``   Retain linear ``M``, ``K`` and ``C`` matrices at each time step          ``True``
+            ``write_modes_vtk``         ``bool``   Write displacement mode shapes in vtk file (for ParaView)                ``True``
+            ``print_matrices``          ``bool``   Output ``M``, ``K``, and ``C`` matrices to output directory              ``False``
+            ``write_dat``               ``bool``   Output mode shapes, frequencies and damping as .dat to output directory  ``True``
+            ``continuous_eigenvalues``  ``bool``   Use continuous eigenvalues                                               ``False``
+            ``dt``                      ``float``  Delta to calculate continuous eigenvalues                                ``0``
+            ``plot_eigenvalues``        ``bool``   Plot eigenvalues on Argand diagram                                       ``False``
+            ``max_rotation_deg``        ``float``  Maximum rotation allowed for vtk file (degrees)                          ``15``
+            ``max_displacement``        ``float``  Maximum displacement allowed for vtk file                                ``0.15``
+            ==========================  =========  =======================================================================  ============
+
         settings_types (dict): Acceptable data types for entries in ``settings``
         settings_default (dict): Default values for the available ``settings``
         data (ProblemData): object containing the information of the problem
@@ -41,27 +60,6 @@ class Modal(BaseSolver):
         filename_freq (str): Mode frequency output file name (.dat)
         filename_damp (str): Mode damping output file name (.dat)
         filename_shapes (str): Mode shapes output file name (.dat)
-
-    Notes:
-        The following are valid key-value pair arguments for the ``settings`` dictionary:
-
-        ==========================  =========  =======================================================================  ============
-        Name                        Type       Description                                                              Default
-        ==========================  =========  =======================================================================  ============
-        ``print_info``              ``bool``   Print modal calculations to terminal                                     ``True``
-        ``folder``                  ``str``    Output folder                                                            ``./output``
-        ``use_undamped_modes``      ``bool``   Basis for modal projection                                               ``True``
-        ``NumLambda``               ``int``    Number of modes to retain                                                ``20``
-        ``keep_linear_matrices``    ``bool``   Retain linear ``M``, ``K`` and ``C`` matrices at each time step          ``True``
-        ``write_modes_vtk``         ``bool``   Write displacement mode shapes in vtk file (for ParaView)                ``True``
-        ``print_matrices``          ``bool``   Output ``M``, ``K``, and ``C`` matrices to output directory              ``False``
-        ``write_dat``               ``bool``   Output mode shapes, frequencies and damping as .dat to output directory  ``True``
-        ``continuous_eigenvalues``  ``bool``   Use continuous eigenvalues                                               ``False``
-        ``dt``                      ``float``  Delta to calculate continuous eigenvalues                                ``0``
-        ``plot_eigenvalues``        ``bool``   Plot eigenvalues on Argand diagram                                       ``False``
-        ``max_rotation_deg``        ``float``  Maximum rotation allowed for vtk file (degrees)                          ``15``
-        ``max_displacement``        ``float``  Maximum displacement allowed for vtk file                                ``0.15``
-        ==========================  =========  =======================================================================  ============
 
     See Also:
         .. py:class:: sharpy.utils.solver_interface.BaseSolver

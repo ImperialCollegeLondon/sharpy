@@ -18,7 +18,15 @@ class BeamLoader(BaseSolver):
         data (ProblemData): class containing the problem information
 
     Attributes:
-        settings (dict): containins the specific settings for the solver
+        settings (dict): contains the specific settings for the solver
+
+            ===============  ===============  ==========================================================  ================
+            Key              Type             Description                                                 Default
+            ===============  ===============  ==========================================================  ================
+            ``unsteady``     ``bool``         Dynamic problem                                             ``False``
+            ``orientation``  ``list(float)``  Beam orientation with respect to flow in Quaternion format  ``[1, 0, 0, 0]``
+            ===============  ===============  ==========================================================  ================
+
         settings_types (dict): Key  value pairs of the accepted types for the settings values
         settings_default (dict): Dictionary containing the default solver settings, should none be provided.
         data (ProblemData): class containing the data for the problem
@@ -29,15 +37,6 @@ class BeamLoader(BaseSolver):
         structure (None): Empty attribute
 
     Notes:
-        The ``settings`` dictionary contains the following name-value pair arguments:
-
-        ===============  ===============  ==========================================================  ================
-        Key              Type             Description                                                 Default
-        ===============  ===============  ==========================================================  ================
-        ``unsteady``     ``bool``         Dynamic problem                                             ``False``
-        ``orientation``  ``list(float)``  Beam orientation with respect to flow in Quaternion format  ``[1, 0, 0, 0]``
-        ===============  ===============  ==========================================================  ================
-
         For further reference on Quaternions see:
         `https://en.wikipedia.org/wiki/Quaternion <https://en.wikipedia.org/wiki/Quaternion>`_
 
