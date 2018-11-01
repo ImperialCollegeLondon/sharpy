@@ -100,7 +100,7 @@ language = None
 # List of patterns, relative to source directory, that match files and
 # directories to ignore when looking for source files.
 # This patterns also effect to html_static_path and html_extra_path
-exclude_patterns = []
+exclude_patterns = ["**/.so", "../../lib/*", "../sharpy/utils/*"]
 
 # The reST default role (used for this markup: `text`) to use for all
 # documents.
@@ -136,21 +136,20 @@ todo_include_todos = False
 # Exclude matplotlib - avoids conflicts when running sphinx
 # http://www.sphinx-doc.org/en/master/usage/extensions/autodoc.html#confval-autodoc_mock_imports
 autodoc_mock_imports = ["matplotlib", "numpy", "colorama", "h5py", "scipy",
-                        "sharpy.lib.libxbeam.so", "sharpy.utils.ctypes_utils.import_ctypes_lib"]
+                        "sharpy.lib", "sharpy.utils.ctypes_utils"]
 
-# Exclude selected modules
-from unittest.mock import MagicMock
-
-class Mock(MagicMock):
-    @classmethod
-    def __getattr__(cls, name):
-        return MagicMock()
-
-MOCK_MODULES = ["matplotlib", "numpy", "colorama", "h5py", "scipy",
-                "sharpy.lib.libxbeam.so", "sharpy.utils.ctypes_utils.import_ctypes_lib"]
-sys.modules.update((mod_name, Mock()) for mod_name in MOCK_MODULES)
-
-exclude_patterns = ["**/.so", "lib", "sharpy/utils"]
+# # Exclude selected modules
+# from unittest.mock import MagicMock
+#
+# class Mock(MagicMock):
+#     @classmethod
+#     def __getattr__(cls, name):
+#         return MagicMock()
+#
+# MOCK_MODULES = ["matplotlib", "numpy", "colorama", "h5py", "scipy",
+#                 "sharpy.lib.libxbeam.so", "sharpy.utils.ctypes_utils.import_ctypes_lib"]
+# sys.modules.update((mod_name, Mock()) for mod_name in MOCK_MODULES)
+#
 
 
 
