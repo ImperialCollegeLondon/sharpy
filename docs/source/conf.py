@@ -135,7 +135,8 @@ todo_include_todos = False
 
 # Exclude matplotlib - avoids conflicts when running sphinx
 # http://www.sphinx-doc.org/en/master/usage/extensions/autodoc.html#confval-autodoc_mock_imports
-autodoc_mock_imports = ["matplotlib", "numpy", "colorama", "h5py", "scipy"]
+autodoc_mock_imports = ["matplotlib", "numpy", "colorama", "h5py", "scipy",
+                        "sharpy.lib.libxbeam.so", "sharpy.utils.ctypes_utils.import_ctypes_lib"]
 
 # Exclude selected modules
 from unittest.mock import MagicMock
@@ -145,7 +146,8 @@ class Mock(MagicMock):
     def __getattr__(cls, name):
         return MagicMock()
 
-MOCK_MODULES = ["matplotlib", "numpy", "colorama", "h5py", "scipy", "sharpy.lib"]
+MOCK_MODULES = ["matplotlib", "numpy", "colorama", "h5py", "scipy",
+                "sharpy.lib.libxbeam.so", "sharpy.utils.ctypes_utils.import_ctypes_lib"]
 sys.modules.update((mod_name, Mock()) for mod_name in MOCK_MODULES)
 
 
