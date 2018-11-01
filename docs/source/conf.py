@@ -150,6 +150,9 @@ MOCK_MODULES = ["matplotlib", "numpy", "colorama", "h5py", "scipy",
                 "sharpy.lib.libxbeam.so", "sharpy.utils.ctypes_utils.import_ctypes_lib"]
 sys.modules.update((mod_name, Mock()) for mod_name in MOCK_MODULES)
 
+exclude_patterns = ["**/.so", "lib", "sharpy/utils"]
+
+
 
 # -- Options for HTML output ----------------------------------------------
 
