@@ -465,6 +465,28 @@ class StructTimeStepInfo(object):
         return self.cga().T
 
     def get_body(self, beam, ibody):
+        """
+        get_body
+
+        Extract the body number 'ibody' from a multibody system
+
+        Given 'self' as a StructTimeStepInfo class of a multibody system, this
+        function returns another StructTimeStepInfo class (ibody_StructTimeStepInfo)
+        that only includes the body number 'ibody' of the original system
+
+        Args:
+            self(StructTimeStepInfo): timestep information of the multibody system
+            beam(Beam): beam information of the multibody system
+            ibody(int): body number to be extracted
+
+        Returns:
+        	ibody_StructTimeStepInfo(StructTimeStepInfo): timestep information of the isolated body
+
+        Examples:
+
+        Notes:
+
+        """
 
         # Define the first and last elements belonging to the body
         # It assumes that all the elements in a body are consecutive in the global fem description
@@ -490,25 +512,10 @@ class StructTimeStepInfo(object):
 
         ibody_last_node += 1
 
-        # Assign all the properties to the new StructTimeStepInfo
+        # Initialize the new StructTimeStepInfo
         ibody_StructTimeStepInfo = StructTimeStepInfo(ibody_num_node, ibody_num_elem, self.num_node_elem, num_bodies = beam.num_bodies)
 
-        # if not self.mb_quat is None:
-        #     ibody_StructTimeStepInfo.quat = self.mb_quat[ibody,:].copy()
-        #     ibody_StructTimeStepInfo.for_pos = self.mb_for_pos[ibody,:].copy()
-        #     ibody_StructTimeStepInfo.for_vel = self.mb_for_vel[ibody,:].copy()
-        #     ibody_StructTimeStepInfo.for_acc = self.mb_for_acc[ibody,:].copy()
-        #
-        # C = algebra.quat2rot(ibody_StructTimeStepInfo.quat).T
-        # for inode in range(ibody_num_node):
-        #     ibody_StructTimeStepInfo.pos[inode,:] = np.dot(C,self.pos[ibody_first_node+inode,:] - ibody_StructTimeStepInfo.for_pos[0:3])
-        #     ibody_StructTimeStepInfo.pos_dot[inode,:] = np.dot(C,self.pos_dot[ibody_first_node+inode,:] - ibody_StructTimeStepInfo.for_vel[0:3])
-        #
-        # for ielem in range(ibody_num_elem):
-        #     for inode in range(3):
-        #         ibody_StructTimeStepInfo.psi[ielem,inode,:] = np.dot(C,self.psi[ibody_first_element+ielem,inode,:])
-        #         ibody_StructTimeStepInfo.psi_dot[ielem,inode,:] = np.dot(C,self.psi_dot[ibody_first_element+ielem,inode,:])
-
+        # Assign all the variables
         ibody_StructTimeStepInfo.quat = self.quat.astype(dtype=ct.c_double, order='F', copy=True)
         ibody_StructTimeStepInfo.for_pos = self.for_pos.astype(dtype=ct.c_double, order='F', copy=True)
         ibody_StructTimeStepInfo.for_vel = self.for_vel.astype(dtype=ct.c_double, order='F', copy=True)
@@ -543,14 +550,30 @@ class StructTimeStepInfo(object):
         ibody_StructTimeStepInfo.mb_FoR_vel = self.mb_FoR_vel.astype(dtype=ct.c_double, order='F', copy=True)
         ibody_StructTimeStepInfo.mb_FoR_acc = self.mb_FoR_acc.astype(dtype=ct.c_double, order='F', copy=True)
 
-        # ibody_StructTimeStepInfo.change_AFoR(ibody, updateDB=updateDB)
-
         return ibody_StructTimeStepInfo
 
     def change_to_local_AFoR(self, global_ibody):
-        # NOTICE: this function only works for one body at a time to prevent errors
+        """
+        change_to_local_AFoR
 
-        # Cag = algebra.quat2rot(self.mb_quat[global_ibody,:])
+        Reference a StructTimeStepInfo to the local A frame of reference
+
+        Given 'self' as a StructTimeStepInfo class, this function references
+        it to the local A frame of reference
+
+        Args:
+            self(StructTimeStepInfo): timestep information
+            global_ibody(int): body number (as defined in the mutibody system) to be modified
+
+        Returns:
+
+        Examples:
+
+        Notes:
+
+        """
+
+        # Define the rotation matrices between the different FoR
         CAslaveG = algebra.quat2rotation(self.mb_quat[global_ibody,:]).T
         CGAmaster = algebra.quat2rotation(self.mb_quat[0,:])
         Csm = np.dot(CAslaveG, CGAmaster)
@@ -558,17 +581,13 @@ class StructTimeStepInfo(object):
         delta_pos_ms = self.mb_FoR_pos[global_ibody,:] - self.mb_FoR_pos[0,:]
         delta_vel_ms = self.mb_FoR_vel[global_ibody,:] - self.mb_FoR_vel[0,:]
 
-        # Modify variables
+        # Modify position
         for inode in range(self.pos.shape[0]):
             self.pos[inode,:] = np.dot(Csm,self.pos[inode,:]) - np.dot(CAslaveG,delta_pos_ms[0:3])
             self.pos_dot[inode,:] = np.dot(Csm,self.pos_dot[inode,:]) - np.dot(CAslaveG,delta_vel_ms[0:3])
+        # Modify local rotations
         for ielem in range(self.psi.shape[0]):
             for inode in range(3):
-                # self.psi[ielem,inode,:] = np.dot(Csm,self.psi[ielem,inode,:]) - np.dot(CAslaveG,delta_pos_ms[3:6])
-                # self.psi_dot[ielem,inode,:] = np.dot(Csm,self.psi_dot[ielem,inode,:]) - np.dot(CAslaveG,delta_vel_ms[3:6])
-                # self.psi[ielem,inode,:] = np.dot(Csm,self.psi[ielem,inode,:]) + delta_crv
-                # self.psi_dot[ielem,inode,:] = np.dot(Csm,self.psi_dot[ielem,inode,:])
-                # self.psi_dot[ielem,inode,:] = algebra.rotation2crv(np.dot(Csm,algebra.crv2rotation(self.psi_dot[ielem,inode,:])))
                 psi_previous = self.psi[ielem,inode,:] + np.zeros((3,),)
                 self.psi[ielem,inode,:] = algebra.rotation2crv(np.dot(Csm,algebra.crv2rotation(self.psi[ielem,inode,:])))
                 self.psi_dot[ielem, inode, :] = np.dot(np.dot(algebra.crv2tan(self.psi[ielem,inode,:]),Csm),
@@ -576,42 +595,48 @@ class StructTimeStepInfo(object):
 
         # Set the output FoR variables
         self.for_pos = self.mb_FoR_pos[global_ibody,:].astype(dtype=ct.c_double, order='F', copy=True)
-        # TODO: should I use the reletive velocity between the frame and Amaster?
         self.for_vel[0:3] = np.dot(CAslaveG,self.mb_FoR_vel[global_ibody,0:3])
         self.for_vel[3:6] = np.dot(CAslaveG,self.mb_FoR_vel[global_ibody,3:6])
         self.for_acc[0:3] = np.dot(CAslaveG,self.mb_FoR_acc[global_ibody,0:3])
         self.for_acc[3:6] = np.dot(CAslaveG,self.mb_FoR_acc[global_ibody,3:6])
-        #TODO: how should I modify quaternions?
         self.quat = self.mb_quat[global_ibody,:].astype(dtype=ct.c_double, order='F', copy=True)
         self.dqdt[-4:] = self.quat.astype(dtype=ct.c_double, order='F', copy=True)
 
-
     def change_to_global_AFoR(self, global_ibody):
+        """
+        change_to_global_AFoR
 
-        # Change the variables FROM the local AFoR to the global AFoR
+        Reference a StructTimeStepInfo to the global A frame of reference
 
+        Given 'self' as a StructTimeStepInfo class, this function references
+        it to the global A frame of reference
+
+        Args:
+            self(StructTimeStepInfo): timestep information
+            global_ibody(int): body number (as defined in the mutibody system) to be modified
+
+        Returns:
+
+        Examples:
+
+        Notes:
+
+        """
+
+        # Define the rotation matrices between the different FoR
         CAslaveG = algebra.quat2rotation(self.mb_quat[global_ibody,:]).T
         CGAmaster = algebra.quat2rotation(self.mb_quat[0,:])
         Csm = np.dot(CAslaveG, CGAmaster)
 
         delta_pos_ms = self.mb_FoR_pos[global_ibody,:] - self.mb_FoR_pos[0,:]
         delta_vel_ms = self.mb_FoR_vel[global_ibody,:] - self.mb_FoR_vel[0,:]
-        # delta_acc_ms = self.mb_FoR_acc[global_ibody,:] - self.mb_FoR_acc[0,:]
-        # delta_crv = algebra.quat2crv(self.mb_quat[global_ibody,:])
-
 
         for inode in range(self.pos.shape[0]):
-            # self.pos[inode,:] = np.dot(np.transpose(Csm),self.pos[inode,:] + 0.05*np.cross(self.for_vel[3:6],self.pos[inode,:])) + np.dot(np.transpose(CGAmaster),delta_pos_ms[0:3])
-            # self.pos_dot[inode,:] = np.dot(np.transpose(Csm),self.pos_dot[inode,:]+ np.cross(self.for_vel[3:6],self.pos_dot[inode,:])) + np.dot(np.transpose(CGAmaster),delta_vel_ms[0:3])
             self.pos[inode,:] = np.dot(np.transpose(Csm),self.pos[inode,:]) + np.dot(np.transpose(CGAmaster),delta_pos_ms[0:3])
             self.pos_dot[inode,:] = np.dot(np.transpose(Csm),self.pos_dot[inode,:]) + np.dot(np.transpose(CGAmaster),delta_vel_ms[0:3])
 
         for ielem in range(self.psi.shape[0]):
             for inode in range(3):
-                # self.psi[ielem,inode,:] = np.dot(np.transpose(Csm),self.psi[ielem,inode,:]) + np.dot(np.transpose(CGAmaster),delta_pos_ms[3:6])
-                # self.psi_dot[ielem,inode,:] = np.dot(np.transpose(Csm),self.psi_dot[ielem,inode,:]) + np.dot(np.transpose(CGAmaster),delta_vel_ms[3:6])
-                # self.psi[ielem,inode,:] = np.dot(np.transpose(Csm),self.psi[ielem,inode,:]) - delta_crv
-                # self.psi_dot[ielem,inode,:] = np.dot(np.transpose(Csm),self.psi_dot[ielem,inode,:])
                 psi_previous = self.psi[ielem,inode,:] + np.zeros((3,),)
                 self.psi[ielem,inode,:] = algebra.rotation2crv(np.dot(Csm.T, algebra.crv2rotation(self.psi[ielem,inode,:])))
                 self.psi_dot[ielem, inode, :] = np.dot(algebra.crv2tan(self.psi[ielem,inode,:]),
@@ -624,10 +649,4 @@ class StructTimeStepInfo(object):
         self.for_vel[3:6] = np.dot(np.transpose(CGAmaster),self.mb_FoR_vel[0,3:6])
         self.for_acc[0:3] = np.dot(np.transpose(CGAmaster),self.mb_FoR_acc[0,0:3])
         self.for_acc[3:6] = np.dot(np.transpose(CGAmaster),self.mb_FoR_acc[0,3:6])
-        # self.for_vel = self.mb_FoR_vel[0,:]
-        # self.for_acc = self.mb_FoR_acc[0,:]
         self.quat = self.mb_quat[0,:].astype(dtype=ct.c_double, order='F', copy=True)
-        #self.quat = self.mb_quat[0,:].astype(dtype=ct.c_double, order='F', copy=True)
-
-
-        # TODO: make sure whether I need q or not and set it to zero

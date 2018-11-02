@@ -789,6 +789,29 @@ def cbeam3_solv_disp2state(beam, tstep):
         tstep.dqdt.ctypes.data_as(doubleP))
 
 def cbeam3_solv_modal(beam, settings, ts, FullMglobal, FullCglobal, FullKglobal):
+    """
+    cbeam3_solv_modal
+
+    Generates the system matrices for modal analysis
+
+    Args:
+        beam(Beam): beam information
+        settings(settings):
+        ts(int): timestep
+        FullMglobal(numpy array): Mass matrix
+        FullCglobal(numpy array): Damping matrix
+        FullKglobal(numpy array): Stiffness matrix
+
+    Returns:
+    	FullMglobal(numpy array): Mass matrix
+        FullCglobal(numpy array): Damping matrix
+        FullKglobal(numpy array): Stiffness matrix
+
+    Examples:
+
+    Notes:
+
+    """
 
     f_cbeam3_solv_modal = xbeamlib.cbeam3_solv_modal_python
     f_cbeam3_solv_modal.restype = None
@@ -861,6 +884,28 @@ def cbeam3_solv_modal(beam, settings, ts, FullMglobal, FullCglobal, FullKglobal)
                         FullKglobal.ctypes.data_as(doubleP))
 
 def cbeam3_asbly_dynamic(beam, tstep, settings):
+    """
+    cbeam3_asbly_dynamic
+
+    Generates the system matrices for a nonlinear dynamic structure with
+    prescribed FoR motions
+
+    Args:
+        beam(Beam): beam information
+        tstep(StructTimeStepInfo): time step information
+        settings(settings):
+
+    Returns:
+    	Mglobal(numpy array): Mass matrix
+        Cglobal(numpy array): Damping matrix
+        Kglobal(numpy array): Stiffness matrix
+        Qglobal(numpy array): Vector of independent terms
+
+    Examples:
+
+    Notes:
+
+    """
 
     # library load
     xbeamlib = ct_utils.import_ctypes_lib(SharpyDir + '/lib/', 'libxbeam')
@@ -938,6 +983,28 @@ def cbeam3_asbly_dynamic(beam, tstep, settings):
     return Mglobal, Cglobal, Kglobal, Qglobal
 
 def xbeam3_asbly_dynamic(beam, tstep, settings):
+    """
+    xbeam3_asbly_dynamic
+
+    Generates the system matrices for a nonlinear dynamic structure with
+    free FoR motions
+
+    Args:
+        beam(Beam): beam information
+        tstep(StructTimeStepInfo): time step information
+        settings(settings):
+
+    Returns:
+    	Mglobal(numpy array): Mass matrix
+        Cglobal(numpy array): Damping matrix
+        Kglobal(numpy array): Stiffness matrix
+        Qglobal(numpy array): Vector of independent terms
+
+    Examples:
+
+    Notes:
+
+    """
 
     # library load
     xbeamlib = ct_utils.import_ctypes_lib(SharpyDir + '/lib/', 'libxbeam')
@@ -973,12 +1040,6 @@ def xbeam3_asbly_dynamic(beam, tstep, settings):
     Ctotal = np.zeros((num_dof+10, num_dof+10), dtype=ct.c_double, order='F')
     Ktotal = np.zeros((num_dof+10, num_dof+10), dtype=ct.c_double, order='F')
     Qtotal = np.zeros((num_dof+10, ), dtype=ct.c_double, order='F')
-    # if dQuatdt is None:
-    #     dQuatdt = np.zeros((4,),)
-    # if dQddt is None:
-    #     dQddt = np.zeros((num_dof+10,),)
-
-    # for_vel and for_acc should be updated in the Newmark-beta loop
 
     f_xbeam3_asbly_dynamic_python(ct.byref(ct.c_int(num_dof)),
                             ct.byref(n_nodes),

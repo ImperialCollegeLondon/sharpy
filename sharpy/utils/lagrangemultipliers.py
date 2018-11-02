@@ -1,7 +1,19 @@
-'''
-To use this library: import sharpy.utils.lagrangemultipliers as lagrangemultipliers
-'''
+"""
+LagrangeMultipliers library
 
+Library used to create the matrices associate to boundary conditions through
+the method of Lagrange Multipliers
+
+Args:
+
+Returns:
+
+Examples:
+    To use this library: import sharpy.utils.lagrangemultipliers as lagrangemultipliers
+
+Notes:
+
+"""
 import ctypes as ct
 import numpy as np
 import sharpy.utils.algebra as algebra
@@ -9,17 +21,27 @@ from IPython import embed
 
 
 def define_num_LM_eq(MBdict):
-    '''
-    This function defines the number of equations needed to impose the constraints
-    defined in the dictionary MBdict
+    """
+    define_num_LM_eq
 
-    num_LM_eq = lagrangemultipliers.define_num_LM_eq(MBdict)
-    '''
+    Define the number of equations needed to define the boundary boundary conditions
+
+    Args:
+        MBdict(MBdict): dictionary with the MultiBody and LagrangeMultipliers information
+    Returns:
+        num_LM_eq(int): number of new equations needed to define the boundary boundary conditions
+
+    Examples:
+        num_LM_eq = lagrangemultipliers.define_num_LM_eq(MBdict)
+
+    Notes:
+
+    """
 
     num_constraints = MBdict['num_constraints']
     num_LM_eq = 0
 
-    # Define the number of equations that I need
+    # Define the number of equations that we need
     for iconstraint in range(num_constraints):
 
         if MBdict["constraint_%02d" % iconstraint]['behaviour'] == 'hinge_node_FoR':
@@ -39,16 +61,34 @@ def define_num_LM_eq(MBdict):
 
 
 def generate_lagrange_matrix(MBdict, MB_beam, MB_tstep, num_LM_eq, sys_size, dt, Lambda, Lambda_dot):
-    '''
-    Generates the matrices associated to the Lagrange multipliers of a dictionary of "constraints"
+    """
+    generate_lagrange_matrix
 
-    LM_K: matrix associate to the terms in K. Usually holonomic constraints
-    LM_C: matrix associate to the terms in C. Usually non-holonomic constraints
-    LM_Q: vector associated to the independent terms
+    Generates the matrices associated to the Lagrange multipliers boundary conditions
 
-    LM_C, LM_K, LM_Q = lagrangemultipliers.generate_lagrange_matrix(MBdict, MB_beam, MB_tstep, num_LM_eq, sys_size, dt, Lambda, Lambda_dot)
-    '''
+    Args:
+        MBdict(MBdict): dictionary with the MultiBody and LagrangeMultipliers information
+        MB_beam(list): list of 'beams' of each of the bodies that form the system
+        MB_tstep(list): list of 'StructTimeStepInfo' of each of the bodies that form the system
+        num_LM_eq(int): number of new equations needed to define the boundary boundary conditions
+        sys_size(int): total number of degrees of freedom of the multibody system
+        dt(float): time step
+        Lambda(numpy array): list of Lagrange multipliers values
+        Lambda_dot(numpy array): list of the first derivative of the Lagrange multipliers values
+
+    Returns:
+        LM_C (numpy array): Damping matrix associated to the Lagrange Multipliers equations
+        LM_K (numpy array): Stiffness matrix associated to the Lagrange Multipliers equations
+        LM_Q (numpy array): Vector of independent terms associated to the Lagrange Multipliers equations
+
+    Examples:
+
+    Notes:
+
+    """
+
     # Lagrange multipliers parameters
+    # TODO: set them as an input variable (at this point they should not be changed)
     penaltyFactor = 0.0
     scalingFactor = 1.0
 
@@ -103,7 +143,6 @@ def generate_lagrange_matrix(MBdict, MB_beam, MB_tstep, num_LM_eq, sys_size, dt,
             #TODO: change this when the master AFoR is able to move
             quat = algebra.quat_bound(MB_tstep[body_FoR].quat)
             Bnh[ieq:ieq+3, FoR_dof:FoR_dof+3] = algebra.quat2rotation(quat)
-            # Bnh[ieq:ieq+3, FoR_dof:FoR_dof+3] = np.eye(3)
 
             Bnh[3,FoR_dof+3] = 1.0
 

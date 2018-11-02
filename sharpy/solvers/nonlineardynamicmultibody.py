@@ -1,3 +1,17 @@
+"""
+Nonlinear dynamic multibody
+
+Nonlinear dynamic step solver for multibody structures
+
+Args:
+
+Returns:
+
+Examples:
+
+Notes:
+
+"""
 import ctypes as ct
 import numpy as np
 

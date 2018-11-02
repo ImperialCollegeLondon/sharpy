@@ -478,6 +478,28 @@ class Beam(BaseStructure):
         return nodal_t
 
     def get_body(self, ibody):
+        """
+        get_body
+
+        Extract the body number 'ibody' from a multibody system
+
+        Given 'self' as a Beam class of a multibody system, this
+        function returns another Beam class (ibody_beam)
+        that only includes the body number 'ibody' of the original system
+
+        Args:
+            self(Beam): structural information of the multibody system
+            ibody(int): body number to be extracted
+
+        Returns:
+        	ibody_beam(Beam): structural information of the isolated body
+
+        Examples:
+
+        Notes:
+
+        """
+
         # Define the first and last elements belonging to the body
         # It assumes that all the elements in a body are consecutive in the global fem description
         is_first_element = True
@@ -550,20 +572,12 @@ class Beam(BaseStructure):
 
         ibody_beam.steady_app_forces = self.steady_app_forces[ibody_first_node:ibody_last_node,:].astype(dtype=ct.c_double, order='F', copy=True)
 
-        # ibody_beam.elements = self.elements[ibody_first_element:ibody_last_element].copy()
-        # for ielem in range(ibody_beam.num_elem):
-        #     ibody_beam.elements[ielem].connectivities -= ibody_first_node
-
-
-
         ibody_beam.num_bodies = 1
 
         ibody_beam.body_number = self.body_number[ibody_first_element:ibody_last_element].astype(dtype=ct.c_int, order='F', copy=True)
 
-        # TODO: maybe I should use always updateDB = False -> check
         ibody_beam.timestep_info = self.timestep_info[-1].get_body(self, ibody)
         ibody_beam.ini_info = self.ini_info.get_body(self, ibody)
-        #ibody_beam.dynamic_input = self.dynamic_input
 
         # generate the Element array
         for ielem in range(ibody_beam.num_elem):
