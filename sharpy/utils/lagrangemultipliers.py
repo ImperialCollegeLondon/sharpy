@@ -27,7 +27,7 @@ def define_num_LM_eq(MBdict):
         elif MBdict["constraint_%02d" % iconstraint]['behaviour'] == 'free':
             num_LM_eq += 0
         elif MBdict["constraint_%02d" % iconstraint]['behaviour'] == 'hinge_FoR':
-            num_LM_eq += 3
+            num_LM_eq += 5
         elif MBdict["constraint_%02d" % iconstraint]['behaviour'] == 'fully_constrained_node_FoR':
             num_LM_eq += 6
         elif MBdict["constraint_%02d" % iconstraint]['behaviour'] == 'hinge_node_FoR_constant_rotation':
@@ -126,6 +126,7 @@ def generate_lagrange_matrix(MBdict, MB_beam, MB_tstep, num_LM_eq, sys_size, dt,
 
             # Rename variables from dictionary
             body_FoR = MBdict["constraint_%02d" % iconstraint]['body_FoR']
+            rot_axis = MBdict["constraint_%02d" % iconstraint]['rot_axis_AFoR']
 
             # Define the position of the first degree of freedom associated to the FoR
             FoR_dof = 0
@@ -137,11 +138,32 @@ def generate_lagrange_matrix(MBdict, MB_beam, MB_tstep, num_LM_eq, sys_size, dt,
 
             Bnh[ieq:ieq+3, FoR_dof:FoR_dof+3] = 1.0*np.eye(3)
 
+            # Only two of these equations are linearly independent
+            skew_rot_axis = algebra.skew(rot_axis)
+            n0 = np.linalg.norm(skew_rot_axis[0,:])
+            n1 = np.linalg.norm(skew_rot_axis[1,:])
+            n2 = np.linalg.norm(skew_rot_axis[2,:])
+            if ((n0 < n1) and (n0 < n2)):
+                row0 = 1
+                row1 = 2
+            elif ((n1 < n0) and (n1 < n2)):
+                row0 = 0
+                row1 = 2
+            elif ((n2 < n0) and (n2 < n1)):
+                row0 = 0
+                row1 = 1
+
+            Bnh[ieq+3:ieq+5, FoR_dof+3:FoR_dof+6] = skew_rot_axis[[row0,row1],:]
+
             LM_C[sys_size:,:sys_size] = scalingFactor*Bnh
             LM_C[:sys_size,sys_size:] = scalingFactor*np.transpose(Bnh)
 
             LM_Q[:sys_size] = scalingFactor*np.dot(np.transpose(Bnh),Lambda_dot)
-            LM_Q[FoR_dof:FoR_dof+3] = MB_tstep[body_FoR].for_vel[0:3].astype(dtype=ct.c_double, copy=True, order='F')
+
+            LM_Q[sys_size:sys_size+3] = MB_tstep[body_FoR].for_vel[0:3].astype(dtype=ct.c_double, copy=True, order='F')
+            LM_Q[sys_size+3:sys_size+5] += np.dot(skew_rot_axis[[row0,row1],:], MB_tstep[body_FoR].for_vel[3:6])
+
+            ieq += 5
 
         ###################################################################
         #############  FULL CONSTRAINT BETWEEN NODE AND FOR  ##############

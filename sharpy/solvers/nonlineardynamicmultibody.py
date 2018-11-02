@@ -82,13 +82,13 @@ class NonLinearDynamicMultibody(BaseSolver):
         self.data.structure.add_unsteady_information(self.data.structure.dyn_dict, self.settings['num_steps'].value)
 
         # initialise postprocessors
-        self.postprocessors = dict()
-        if len(self.settings['postprocessors']) > 0:
-            self.with_postprocessors = True
-        for postproc in self.settings['postprocessors']:
-            self.postprocessors[postproc] = solver_interface.initialise_solver(postproc)
-            self.postprocessors[postproc].initialise(
-                self.data, self.settings['postprocessors_settings'][postproc])
+        # self.postprocessors = dict()
+        # if len(self.settings['postprocessors']) > 0:
+        #     self.with_postprocessors = True
+        # for postproc in self.settings['postprocessors']:
+        #     self.postprocessors[postproc] = solver_interface.initialise_solver(postproc)
+        #     self.postprocessors[postproc].initialise(
+        #         self.data, self.settings['postprocessors_settings'][postproc])
 
         # Define Newmark constants
         self.gamma = 0.5 + self.settings['newmark_damp'].value
@@ -146,6 +146,77 @@ class NonLinearDynamicMultibody(BaseSolver):
                 last_dof = first_dof + MB_beam[ibody].num_dof.value + 10
                 M, C, K, Q = xbeamlib.xbeam3_asbly_dynamic(MB_beam[ibody], MB_tstep[ibody], self.settings)
 
+                # TEST quaternion equations
+                CQR_solver = C[-4:,-10:-4]
+                CQQ_solver = C[-4:,-4:]
+                QQ_solver = Q[-4:]
+
+                # CQQ_han = np.zeros((4,4),)
+                # CQQ_han[0,1:4] = -1.0*MB_tstep[0].for_vel[3:6]
+                # CQQ_han[1:4,0] = 1.0*MB_tstep[0].for_vel[3:6]
+                # CQQ_han[1:4,1:4] = -1.0*algebra.skew(MB_tstep[0].for_vel[3:6])
+                # CQQ_han = -0.5*CQQ_han
+                #
+                # CQR_han = np.zeros((4,6),)
+                # CQR_han[0,3] = -1.0*MB_tstep[0].quat[1]
+                # CQR_han[0,4] = -1.0*MB_tstep[0].quat[2]
+                # CQR_han[0,5] = -1.0*MB_tstep[0].quat[3]
+                #
+                # CQR_han[1,3] = 1.0*MB_tstep[0].quat[0]
+                # CQR_han[1,4] = -1.0*MB_tstep[0].quat[3]
+                # CQR_han[1,5] = 1.0*MB_tstep[0].quat[2]
+                #
+                # CQR_han[2,3] = 1.0*MB_tstep[0].quat[3]
+                # CQR_han[2,4] = 1.0*MB_tstep[0].quat[0]
+                # CQR_han[2,5] = -1.0*MB_tstep[0].quat[1]
+                #
+                # CQR_han[3,3] = -1.0*MB_tstep[0].quat[2]
+                # CQR_han[3,4] = 1.0*MB_tstep[0].quat[1]
+                # CQR_han[3,5] = 1.0*MB_tstep[0].quat[0]
+
+                CQQ_han = np.zeros((4,4),)
+                CQQ_han[0,1:4] = -1.0*MB_tstep[0].dqdt[-7:-4]
+                CQQ_han[1:4,0] = 1.0*MB_tstep[0].dqdt[-7:-4]
+                CQQ_han[1:4,1:4] = -1.0*algebra.skew(MB_tstep[0].dqdt[-7:-4])
+                CQQ_han = 0.5*CQQ_han
+
+                CQR_han = np.zeros((4,6),)
+
+                aux_quat = MB_tstep[0].dqdt[-4:]
+                CQR_han[0,3] = -1.0*aux_quat[1]
+                CQR_han[0,4] = -1.0*aux_quat[2]
+                CQR_han[0,5] = -1.0*aux_quat[3]
+
+                CQR_han[1,3] = 1.0*aux_quat[0]
+                CQR_han[1,4] = -1.0*aux_quat[3]
+                CQR_han[1,5] = 1.0*aux_quat[2]
+
+                CQR_han[2,3] = 1.0*aux_quat[3]
+                CQR_han[2,4] = 1.0*aux_quat[0]
+                CQR_han[2,5] = -1.0*aux_quat[1]
+
+                CQR_han[3,3] = -1.0*aux_quat[2]
+                CQR_han[3,4] = 1.0*aux_quat[1]
+                CQR_han[3,5] = 1.0*aux_quat[0]
+
+                CQR_han = 0.5*CQR_han
+
+                QQ_han = -1.0*(np.dot(CQQ_han,MB_tstep[0].dqdt[-4:]) - MB_tstep[0].dqddt[-4:])
+
+                # np.dot(CQQ_han,MB_tstep[0].dqdt[-4:])
+
+
+                # print("CQQ solver: ", CQQ_solver)
+                # print("CQQ han: ", CQQ_han)
+                # print("CQR solver: ", CQR_solver)
+                # print("CQR han: ", CQR_han)
+                # print("QQ solver: ", QQ_solver)
+                # print("QQ han: ", QQ_han)
+                # embed()
+
+                # C[-4:,-10:-4] = -1.0*CQR_han.astype(dtype=ct.c_double, copy=True, order='F')
+                # C[-4:,-4:] = -1.0*CQQ_han.astype(dtype=ct.c_double, copy=True, order='F')
+                # Q[-4:] = QQ_han.astype(dtype=ct.c_double, copy=True, order='F')
 
             ############### Assembly into the global matrices
             # Flexible and RBM contribution to Asys
@@ -196,14 +267,19 @@ class NonLinearDynamicMultibody(BaseSolver):
                 # print("for_vel: ", MB_tstep[ibody].for_vel)
                 MB_tstep[ibody].for_pos[0:3] += dt*np.dot(MB_tstep[ibody].cga(),MB_tstep[ibody].for_vel[0:3])
 
-    def run(self, structural_step=None):
+    def extract_resultants(self):
+        # TODO: code
+        pass
 
+    def run(self, structural_step=None):
+        # ipdb.set_trace()
+        # embed()
         if structural_step is None:
             structural_step = self.data.structure.timestep_info[-1]
         # Initialize varaibles
         MBdict = self.data.structure.mb_dict
         dt = self.settings['dt'].value
-
+        # print("beg quat: ", structural_step.quat)
         # TODO: only working for constant forces
         # self.data.structure.timestep_info[-1].unsteady_applied_forces = self.data.structure.dynamic_input[1]['dynamic_forces'].astype(dtype=ct.c_double, order='F', copy=True)
         MB_beam, MB_tstep = mb.split_multibody(self.data.structure, structural_step, MBdict)
@@ -224,6 +300,10 @@ class NonLinearDynamicMultibody(BaseSolver):
         # Predictor step
         mb.disp2state(MB_beam, MB_tstep, q, dqdt, dqddt)
 
+        #print("q: ", q[-num_LM_eq-10:-num_LM_eq])
+        #print("dqdt: ", dqdt[-num_LM_eq-10:-num_LM_eq])
+        #print("dqddt: ", dqddt[-num_LM_eq-10:-num_LM_eq])
+
         # dqddt = np.zeros_like(dqdt)
         q = q + dt*dqdt + (0.5 - self.beta)*dt*dt*dqddt
         dqdt = dqdt + (1.0 - self.gamma)*dt*dqddt
@@ -236,6 +316,7 @@ class NonLinearDynamicMultibody(BaseSolver):
         old_Dq = 1.0
         LM_old_Dq = 1.0
 
+        converged = False
         for iter in range(self.settings['max_iterations'].value):
 
             # Check if the maximum of iterations has been reached
@@ -244,7 +325,7 @@ class NonLinearDynamicMultibody(BaseSolver):
                 break
 
             # Update positions and velocities
-            mb.state2disp(q, dqdt, dqddt, MB_beam, MB_tstep)
+            mb.state2disp(q, dqdt, dqddt, MB_beam, MB_tstep, onlyFlex=True)
             # Define matrices
             # if num_LM_eq == 0:
             #     Lambda = np.zeros((num_LM_eq,),)
@@ -277,17 +358,37 @@ class NonLinearDynamicMultibody(BaseSolver):
                 if (res < self.settings['min_delta'].value) and (LM_res < self.settings['min_delta'].value):
                     # print("res: ", res)
                     # print("LMres: ", LM_res)
-                    break
+                    # break
+                    converged = True
 
             # Compute variables from previous values and increments
             # TODO:decide If I want other way of updating lambda
+            # print("Dq vel and quat: ", Dq[-num_LM_eq-4-6:-num_LM_eq])
             q = q + Dq
             dqdt = dqdt + self.gamma/(self.beta*dt)*Dq
             dqddt = dqddt + 1.0/(self.beta*dt*dt)*Dq
+
+            # mat = np.zeros((4,4),)
+            # mat[0,1:4] = -1.0*dqdt[-num_LM_eq-7:-num_LM_eq-4]
+            # mat[1:4,0] = 1.0*dqdt[-num_LM_eq-7:-num_LM_eq-4]
+            # mat[1:4,1:4] = -1.0*algebra.skew(dqdt[-num_LM_eq-7:-num_LM_eq-4])
+            # print("check quat eq: ", dqddt[-num_LM_eq-4:-num_LM_eq] - 0.5*np.dot(mat, dqdt[-num_LM_eq-4:-num_LM_eq]))
+
+            #
+            # dqdt[:(-num_LM_eq-4)] = dqdt[:(-num_LM_eq-4)] + self.gamma/(self.beta*dt)*Dq[:(-num_LM_eq-4)]
+            # dqdt[(-num_LM_eq-4):-num_LM_eq] = algebra.rotate_quaternion(dqdt[(-num_LM_eq-4):-num_LM_eq], Dq[(-num_LM_eq-7):(-num_LM_eq-4)])
+            # dqdt[-num_LM_eq:] = dqdt[-num_LM_eq:] + self.gamma/(self.beta*dt)*Dq[-num_LM_eq:]
+            #
+            # dqddt[:(-num_LM_eq-4)] = dqddt[:(-num_LM_eq-4)] + 1.0/(self.beta*dt*dt)*Dq[:(-num_LM_eq-4)]
+            #
+            # dqddt[-num_LM_eq:] = dqddt[-num_LM_eq:] + 1.0/(self.beta*dt*dt)*Dq[-num_LM_eq:]
+
             Lambda = q[-num_LM_eq:].astype(dtype=ct.c_double, copy=True, order='F')
             Lambda_dot = dqdt[-num_LM_eq:].astype(dtype=ct.c_double, copy=True, order='F')
 
             # MB_tstep[1].for_pos = q[self.sys_size-10:self.sys_size-4].astype(dtype=ct.c_double, copy=True, order='F')
+            if converged:
+                break
 
             if iter == 0:
                 old_Dq = np.max(np.abs(Dq[0:self.sys_size]))
@@ -300,9 +401,13 @@ class NonLinearDynamicMultibody(BaseSolver):
                 if LM_old_Dq < 1.0:
                     LM_old_Dq = 1.0
 
-            print("NB it: ", iter)
+            # print("NB it: ", iter)
 
         mb.state2disp(q, dqdt, dqddt, MB_beam, MB_tstep)
+
+        # print("Dtheta from quat: ", 2.0*(np.arccos(MB_tstep[0].quat[0])-np.arccos(structural_step.quat[0])))
+        # print("Dtheta wrong?: ", self.gamma*MB_tstep[0].for_vel[4]*dt)
+        # print("Dtheta from velocities: ", structural_step.for_vel[4]*dt + (0.5-self.beta)*structural_step.for_acc[4]*dt**2.+self.beta*MB_tstep[0].for_acc[4]*dt**2.)
 
         # end: comment time stepping
 
@@ -318,11 +423,39 @@ class NonLinearDynamicMultibody(BaseSolver):
         # End of Newmark-beta iterations
 
         self.integrate_position(MB_beam, MB_tstep, dt)
-        MB_tstep[1].for_pos[0:3] = MB_tstep[0].pos[-1,:] - np.zeros((3,),)
-        print("for vel: ", MB_tstep[1].for_vel)
+        # Force position
+        # MB_tstep[1].for_pos[0:3] = MB_tstep[0].pos[-1,:] - np.zeros((3,),)
+        # print("for vel: ", MB_tstep[1].for_vel)
+        # print("for quat: ", MB_tstep[0].quat)
+        # print("for acc: ", MB_tstep[0].for_acc)
         mb.merge_multibody(MB_tstep, MB_beam, self.data.structure, structural_step, MBdict, dt)
-        print("tip position: ", structural_step.pos[-1,:])
 
+        tstep = len(self.data.structure.timestep_info)
+        # print("for quat MB: ", MB_tstep[0].quat)
+        # print("for quat structural: ", structural_step.quat)
+        # print("numerical angle: ", 2.*np.arccos(structural_step.quat[0])*180./np.pi)
+        # print("expected angle: ", 0.5*200*(tstep*dt)**2.*180/np.pi)
+        # print("angle from rot matrix from quat: ", np.arccos(algebra.quat2rotation(structural_step.quat)[0,0])*180./np.pi)
+
+        # print("numerical Dangle: ", 2.*(np.arccos(structural_step.quat[0])-np.arccos(self.data.structure.timestep_info[-1].quat[0]))*180./np.pi)
+        # print("expected Dangle: ", 0.5*200*((tstep*dt)**2.-((tstep-1)*dt)**2.)*180/np.pi)
+        # print("Dangle from integrated speed: ", (q[-6-num_LM_eq] - self.data.structure.timestep_info[-1].q[-6])*180/np.pi)
+
+        # mat = np.zeros((4,4),)
+        # mat[0,1:4] = -1.0*dqdt[-num_LM_eq-7:-num_LM_eq-4]
+        # mat[1:4,0] = 1.0*dqdt[-num_LM_eq-7:-num_LM_eq-4]
+        # mat[1:4,1:4] = -1.0*algebra.skew(dqdt[-num_LM_eq-7:-num_LM_eq-4])
+        # print("check quat eq2: ", dqddt[-num_LM_eq-4:-num_LM_eq] - 0.5*np.dot(mat, dqdt[-num_LM_eq-4:-num_LM_eq]))
+
+
+        # mat = np.zeros((4,4),)
+        # mat[0,1:4] = -1.0*MB_tstep[0].for_vel[3:6]
+        # mat[1:4,0] = 1.0*MB_tstep[0].for_vel[3:6]
+        # mat[1:4,1:4] = -1.0*algebra.skew(MB_tstep[0].for_vel[3:6])
+        # print("check quat eq3: ", dqddt[-num_LM_eq-4:-num_LM_eq] - 0.5*np.dot(mat, MB_tstep[0].quat))
+
+        # embed()
+        # print("end quat: ", structural_step.quat)
 
         # I do this to be able to write variables, but I want them to be in GFoR in the future
         # self.data.ts += 1
@@ -341,7 +474,7 @@ class NonLinearDynamicMultibody(BaseSolver):
         #
         # print("ts: ", ts, " finished")
         # if ts == 999:
-        #     embed()
+        #
         #
         #
         # self.data.ts -= 1

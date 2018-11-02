@@ -535,6 +535,7 @@ class StructTimeStepInfo(object):
 
         ibody_StructTimeStepInfo.q[-10:] = self.q[-10:].astype(dtype=ct.c_double, order='F', copy=True)
         ibody_StructTimeStepInfo.dqdt[-10:] = self.dqdt[-10:].astype(dtype=ct.c_double, order='F', copy=True)
+        ibody_StructTimeStepInfo.dqdt[-4:] = ibody_StructTimeStepInfo.quat.astype(dtype=ct.c_double, order='F', copy=True)
         ibody_StructTimeStepInfo.dqddt[-10:] = self.dqddt[-10:].astype(dtype=ct.c_double, order='F', copy=True)
 
         ibody_StructTimeStepInfo.mb_quat = self.mb_quat.astype(dtype=ct.c_double, order='F', copy=True)
@@ -582,6 +583,7 @@ class StructTimeStepInfo(object):
         self.for_acc[3:6] = np.dot(CAslaveG,self.mb_FoR_acc[global_ibody,3:6])
         #TODO: how should I modify quaternions?
         self.quat = self.mb_quat[global_ibody,:].astype(dtype=ct.c_double, order='F', copy=True)
+        self.dqdt[-4:] = self.quat.astype(dtype=ct.c_double, order='F', copy=True)
 
 
     def change_to_global_AFoR(self, global_ibody):

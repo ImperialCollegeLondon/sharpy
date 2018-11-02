@@ -531,7 +531,7 @@ class Beam(BaseStructure):
         if not self.lumped_mass_nodes is None:
             is_first = True
             ibody_beam.n_lumped_mass = 0
-            for inode in range(self.lumped_mass_nodes):
+            for inode in range(len(self.lumped_mass_nodes)):
                 if (self.lumped_mass_nodes[inode] >= ibody_first_node) and (self.lumped_mass_nodes[inode] < ibody_last_node):
                     if is_first:
                         is_first = False
@@ -588,6 +588,9 @@ class Beam(BaseStructure):
         ibody_beam.generate_master_structure()
 
         ibody_beam.generate_dof_arrays()
+
+        if ibody_beam.lumped_mass is not None:
+            ibody_beam.lump_masses()
 
         ibody_beam.generate_fortran()
 

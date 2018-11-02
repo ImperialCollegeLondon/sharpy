@@ -723,8 +723,9 @@ def xbeam_solv_state2disp(beam, tstep):
     cbeam3_solv_state2disp(beam, tstep)
     tstep.for_vel = tstep.dqdt[numdof:numdof+6].astype(dtype=ct.c_double, order='F', copy=True)
     tstep.for_acc = tstep.dqddt[numdof:numdof+6].astype(dtype=ct.c_double, order='F', copy=True)
-    tstep.quat = algebra.unit_vector(tstep.dqdt[numdof+6:]).astype(dtype=ct.c_double, order='F', copy=True)
-
+    # tstep.quat = algebra.unit_vector(tstep.dqdt[numdof+6:]).astype(dtype=ct.c_double, order='F', copy=True)
+    tstep.quat = tstep.dqdt[numdof+6:].astype(dtype=ct.c_double, order='F', copy=True)
+    # tstep.quat = algebra.unit_quat(tstep.dqdt[numdof+6:]).astype(dtype=ct.c_double, order='F', copy=True)
 
 def cbeam3_solv_state2disp(beam, tstep):
     # library load
@@ -759,7 +760,9 @@ def xbeam_solv_disp2state(beam, tstep):
     cbeam3_solv_disp2state(beam, tstep)
     tstep.dqdt[numdof:numdof+6] = tstep.for_vel
     tstep.dqddt[numdof:numdof+6] = tstep.for_acc
-    tstep.dqdt[numdof+6:] = algebra.unit_vector(tstep.quat)
+    # tstep.dqdt[numdof+6:] = algebra.unit_vector(tstep.quat)
+    # tstep.dqdt[numdof+6:] = tstep.quat
+    tstep.dqdt[numdof+6:] = algebra.unit_quat(tstep.quat)
 
 
 def cbeam3_solv_disp2state(beam, tstep):

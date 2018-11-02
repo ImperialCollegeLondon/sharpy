@@ -10,27 +10,27 @@ import ctypes as ct
 import traceback
 
 ####################  ALGEBRA  ####################
-def rotate_crv(crv_in, quat_in):
-
-    quat_in_copy = algebra.quat_bound(quat_in)
-    quat_from_crv_in = algebra.quat_bound(algebra.crv2quat(crv_in))
-    quat_out = algebra.quat_bound(algebra.quaternion_product(quat_from_crv_in,quat_in_copy))
-    crv_out = algebra.quat2crv(quat_out)
-
-    return crv_out
-
-def opposed_quat(quat_in):
-
-    theta_from_quat = -2.0*np.arccos(quat_in[0])
-    nv_from_quat = quat_in[1:4].copy()
-    if np.linalg.norm(nv_from_quat) > tol_norm:
-        nv_from_quat /= np.linalg.norm(nv_from_quat)
-    opposed_quat = np.zeros((4,),)
-    opposed_quat[0] = np.cos(theta_from_quat/2.0)
-    opposed_quat[1:4] = np.sin(theta_from_quat/2.0)*nv_from_quat
-    opposed_quat = algebra.quat_bound(opposed_quat)
-
-    return opposed_quat
+# def rotate_crv(crv_in, quat_in):
+#
+#     quat_in_copy = algebra.quat_bound(quat_in)
+#     quat_from_crv_in = algebra.quat_bound(algebra.crv2quat(crv_in))
+#     quat_out = algebra.quat_bound(algebra.quaternion_product(quat_from_crv_in,quat_in_copy))
+#     crv_out = algebra.quat2crv(quat_out)
+#
+#     return crv_out
+#
+# def opposed_quat(quat_in):
+#
+#     theta_from_quat = -2.0*np.arccos(quat_in[0])
+#     nv_from_quat = quat_in[1:4].copy()
+#     if np.linalg.norm(nv_from_quat) > tol_norm:
+#         nv_from_quat /= np.linalg.norm(nv_from_quat)
+#     opposed_quat = np.zeros((4,),)
+#     opposed_quat[0] = np.cos(theta_from_quat/2.0)
+#     opposed_quat[1:4] = np.sin(theta_from_quat/2.0)*nv_from_quat
+#     opposed_quat = algebra.quat_bound(opposed_quat)
+#
+#     return opposed_quat
 
 ####################  MULTIBODY  ####################
 def split_multibody(beam, tstep, mb_data_dict):
@@ -99,6 +99,7 @@ def merge_multibody(MB_tstep, MB_beam, beam, tstep, mb_data_dict, dt):
     # TODO: what should I do with FoR
     first_node = 0
     first_elem = 0
+    first_dof = 0
     #integrate_position(MB_tstep[1:], dt)
 
     for ibody in range(beam.num_bodies):
@@ -111,6 +112,12 @@ def merge_multibody(MB_tstep, MB_beam, beam, tstep, mb_data_dict, dt):
         tstep.pos_dot[first_node:last_node,:] = MB_tstep[ibody].pos_dot.astype(dtype=ct.c_double, order='F', copy=True)
         tstep.psi[first_elem:last_elem,:,:] = MB_tstep[ibody].psi.astype(dtype=ct.c_double, order='F', copy=True)
         tstep.psi_dot[first_elem:last_elem,:,:] = MB_tstep[ibody].psi_dot.astype(dtype=ct.c_double, order='F', copy=True)
+
+        ibody_num_dof = MB_beam[ibody].num_dof.value
+        tstep.q[first_dof:first_dof+ibody_num_dof] = MB_tstep[ibody].q[:-10].astype(dtype=ct.c_double, order='F', copy=True)
+        tstep.dqdt[first_dof:first_dof+ibody_num_dof] = MB_tstep[ibody].dqdt[:-10].astype(dtype=ct.c_double, order='F', copy=True)
+        tstep.dqddt[first_dof:first_dof+ibody_num_dof] = MB_tstep[ibody].dqddt[:-10].astype(dtype=ct.c_double, order='F', copy=True)
+        first_dof += ibody_num_dof
 
         # C = algebra.quat2rot(MB_tstep[ibody].quat)
         # for inode in range(len(MB_tstep[ibody].pos[:,0])):
@@ -146,7 +153,17 @@ def merge_multibody(MB_tstep, MB_beam, beam, tstep, mb_data_dict, dt):
         first_node += MB_beam[ibody].num_node
         first_elem += MB_beam[ibody].num_elem
 
+    tstep.q[-10:] = MB_tstep[0].q[-10:].astype(dtype=ct.c_double, order='F', copy=True)
+    tstep.dqdt[-10:] = MB_tstep[0].dqdt[-10:].astype(dtype=ct.c_double, order='F', copy=True)
+    tstep.dqddt[-10:] = MB_tstep[0].dqddt[-10:].astype(dtype=ct.c_double, order='F', copy=True)
 
+    CAG = algebra.quat2rot(tstep.quat)
+    tstep.for_pos = tstep.mb_FoR_pos[0,:].astype(dtype=ct.c_double, order='F', copy=True)
+    tstep.for_vel[0:3] = np.dot(CAG,tstep.mb_FoR_vel[0,0:3])
+    tstep.for_vel[3:6] = np.dot(CAG,tstep.mb_FoR_vel[0,3:6])
+    tstep.for_acc[0:3] = np.dot(CAG,tstep.mb_FoR_acc[0,0:3])
+    tstep.for_acc[3:6] = np.dot(CAG,tstep.mb_FoR_acc[0,3:6])
+    tstep.quat = tstep.mb_quat[0,:].astype(dtype=ct.c_double, order='F', copy=True)
 
 def update_mb_db_before_split(tstep):
 
@@ -154,14 +171,17 @@ def update_mb_db_before_split(tstep):
     # when it does, the rest of FoR positions should be updated accordingly
     # right now, this function should be useless (I check it below)
 
-    CGAmaster = np.transpose(algebra.quat2rot(tstep.quat))
+    if False:
+        CGAmaster = np.transpose(algebra.quat2rot(tstep.quat))
 
-    tstep.mb_FoR_pos[0,:] = tstep.for_pos.astype(dtype=ct.c_double, order='F', copy=True)
-    tstep.mb_FoR_vel[0,0:3] = np.dot(CGAmaster,tstep.for_vel[0:3])
-    tstep.mb_FoR_vel[0,3:6] = np.dot(CGAmaster,tstep.for_vel[3:6])
-    tstep.mb_FoR_acc[0,0:3] = np.dot(CGAmaster,tstep.for_acc[0:3])
-    tstep.mb_FoR_acc[0,3:6] = np.dot(CGAmaster,tstep.for_acc[3:6])
-    tstep.mb_quat[0,:] = tstep.quat.astype(dtype=ct.c_double, order='F', copy=True)
+        tstep.mb_FoR_pos[0,:] = tstep.for_pos.astype(dtype=ct.c_double, order='F', copy=True)
+        tstep.mb_FoR_vel[0,0:3] = np.dot(CGAmaster,tstep.for_vel[0:3])
+        tstep.mb_FoR_vel[0,3:6] = np.dot(CGAmaster,tstep.for_vel[3:6])
+        tstep.mb_FoR_acc[0,0:3] = np.dot(CGAmaster,tstep.for_acc[0:3])
+        tstep.mb_FoR_acc[0,3:6] = np.dot(CGAmaster,tstep.for_acc[3:6])
+        tstep.mb_quat[0,:] = tstep.quat.astype(dtype=ct.c_double, order='F', copy=True)
+    else:
+        pass
 
     # if not (tstep.mb_FoR_pos[0,:] == tstep.for_pos).all():
     #     print("multibody.py, mismatch in A FoR postion")
@@ -172,7 +192,7 @@ def update_mb_db_before_split(tstep):
     # if not (tstep.mb_quat[0,:] == tstep.quat).all():
     #     print("multibody.py, mismatch in A FoR quaternion")
         #traceback.print_stack()
-        #embed()
+        #
 
     # self.mb_FoR_pos[0,:] = self.for_pos.astype(dtype=ct.c_double, order='F', copy=True)
     # self.mb_FoR_vel[0,:] = self.for_vel.astype(dtype=ct.c_double, order='F', copy=True)
@@ -182,22 +202,15 @@ def update_mb_db_before_split(tstep):
 def update_mb_dB_before_merge(tstep, MB_tstep):
 
     for ibody in range(len(MB_tstep)):
-        # tstep.mb_quat[ibody,:] =  algebra.quaternion_product(MB_tstep[ibody].quat, tstep.mb_quat[ibody,:])
 
-        CAslaveG = algebra.quat2rot(tstep.mb_quat[ibody,:])
-        if ibody == 0:
-            CGAmaster = np.transpose(algebra.quat2rot(MB_tstep[0].quat))
-        else:
-            CGAmaster = np.transpose(algebra.quat2rot(MB_tstep[0].mb_quat[0,:]))
-        Csm = np.dot(CAslaveG, CGAmaster)
-
-        # delta_vel_ms = np.zeros((6,),)
-        # delta_acc_ms = np.zeros((6,),)
-        #delta_pos_ms = MB_tstep[0].for_pos - MB_tstep[ibody].for_pos
-        # delta_vel_ms[0:3] = self.mb_FoR_vel[0,0:3] - np.dot(np.transpose(Csm),self.for_vel[0:3])
-        # delta_vel_ms[3:6] = self.mb_FoR_vel[0,3:6] - np.dot(np.transpose(Csm),self.for_vel[3:6])
-        # delta_acc_ms[0:3] = self.mb_FoR_acc[0,0:3] - np.dot(np.transpose(Csm),self.for_acc[0:3])
-        # delta_acc_ms[3:6] = self.mb_FoR_acc[0,3:6] - np.dot(np.transpose(Csm),self.for_acc[3:6])
+        # Change, i think it is wrong
+        # CAslaveG = algebra.quat2rot(tstep.mb_quat[ibody,:])
+        CAslaveG = algebra.quat2rot(MB_tstep[ibody].quat)
+        # if ibody == 0:
+        #     CGAmaster = np.transpose(algebra.quat2rot(MB_tstep[0].quat))
+        # else:
+        #     CGAmaster = np.transpose(algebra.quat2rot(MB_tstep[0].mb_quat[0,:]))
+        # Csm = np.dot(CAslaveG, CGAmaster)
 
         tstep.mb_FoR_pos[ibody,:] = MB_tstep[ibody].for_pos
         tstep.mb_FoR_vel[ibody,0:3] = np.dot(np.transpose(CAslaveG), MB_tstep[ibody].for_vel[0:3])
@@ -236,7 +249,7 @@ def disp2state(MB_beam, MB_tstep, q, dqdt, dqddt):
 
         # MB_beam[ibody].timestep_info = MB_tstep[ibody].copy()
 
-def state2disp(q, dqdt, dqddt, MB_beam, MB_tstep):
+def state2disp(q, dqdt, dqddt, MB_beam, MB_tstep, onlyFlex=False):
 
     first_dof = 0
     for ibody in range(len(MB_beam)):
@@ -253,12 +266,31 @@ def state2disp(q, dqdt, dqddt, MB_beam, MB_tstep):
 
         elif (MB_beam[ibody].FoR_movement == 'free'):
             MB_tstep[ibody].q = q[first_dof:first_dof+ibody_num_dof+10].astype(dtype=ct.c_double, order='F', copy=True)
+            # dqdt[first_dof+ibody_num_dof+6:first_dof+ibody_num_dof+10] = algebra.unit_quat(dqdt[first_dof+ibody_num_dof+6:first_dof+ibody_num_dof+10])
             MB_tstep[ibody].dqdt = dqdt[first_dof:first_dof+ibody_num_dof+10].astype(dtype=ct.c_double, order='F', copy=True)
             MB_tstep[ibody].dqddt = dqddt[first_dof:first_dof+ibody_num_dof+10].astype(dtype=ct.c_double, order='F', copy=True)
-            xbeamlib.xbeam_solv_state2disp(MB_beam[ibody], MB_tstep[ibody])
+            if onlyFlex:
+                xbeamlib.cbeam3_solv_state2disp(MB_beam[ibody], MB_tstep[ibody])
+            else:
+                xbeamlib.xbeam_solv_state2disp(MB_beam[ibody], MB_tstep[ibody])
             #print("quat in dqdt: ",MB_tstep[1].dqdt[-4:], "quat: ", MB_tstep[1].quat, "quat in db: ", MB_tstep[1].mb_quat[1])
             first_dof += ibody_num_dof + 10
 
         # print("state2disp")
-        # embed()
+        #
         # MB_beam[ibody].timestep_info = MB_tstep[ibody].copy()
+
+    for ibody in range(len(MB_beam)):
+        CAslaveG = algebra.quat2rot(MB_tstep[ibody].quat)
+        MB_tstep[0].mb_FoR_pos[ibody,:] = MB_tstep[ibody].for_pos.astype(dtype=ct.c_double, order='F', copy=True)
+        MB_tstep[0].mb_FoR_vel[ibody,0:3] = np.dot(CAslaveG.T, MB_tstep[ibody].for_vel[0:3])
+        MB_tstep[0].mb_FoR_vel[ibody,3:6] = np.dot(CAslaveG.T, MB_tstep[ibody].for_vel[3:6])
+        MB_tstep[0].mb_FoR_acc[ibody,0:3] = np.dot(CAslaveG.T, MB_tstep[ibody].for_acc[0:3])
+        MB_tstep[0].mb_FoR_acc[ibody,3:6] = np.dot(CAslaveG.T, MB_tstep[ibody].for_acc[3:6])
+        MB_tstep[0].mb_quat[ibody,:] = MB_tstep[ibody].quat.astype(dtype=ct.c_double, order='F', copy=True)
+
+    for ibody in range(len(MB_beam)):
+        MB_tstep[ibody].mb_FoR_pos = MB_tstep[0].mb_FoR_pos.astype(dtype=ct.c_double, order='F', copy=True)
+        MB_tstep[ibody].mb_FoR_vel = MB_tstep[0].mb_FoR_vel.astype(dtype=ct.c_double, order='F', copy=True)
+        MB_tstep[ibody].mb_FoR_acc = MB_tstep[0].mb_FoR_acc.astype(dtype=ct.c_double, order='F', copy=True)
+        MB_tstep[ibody].mb_quat = MB_tstep[0].mb_quat.astype(dtype=ct.c_double, order='F', copy=True)
