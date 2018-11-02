@@ -183,10 +183,10 @@ class WriteVariablesTime(BaseSolver):
 
         fid.write("%d%s" % (ts,delimiter))
         for idim in range(np.shape(nparray)[0]):
-            fid.write("%f%s" % (nparray[idim],delimiter))
+            fid.write("%e%s" % (nparray[idim],delimiter))
 
         fid.write("\n")
 
     def write_value_to_file(self, fid, ts, value, delimiter):
 
-        fid.write("%d%s%f\n" % (ts,delimiter,value))
+        fid.write("%d%s%e\n" % (ts,delimiter,value))
