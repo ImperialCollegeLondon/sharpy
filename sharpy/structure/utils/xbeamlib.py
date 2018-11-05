@@ -760,9 +760,9 @@ def xbeam_solv_disp2state(beam, tstep):
     cbeam3_solv_disp2state(beam, tstep)
     tstep.dqdt[numdof:numdof+6] = tstep.for_vel
     tstep.dqddt[numdof:numdof+6] = tstep.for_acc
-    # tstep.dqdt[numdof+6:] = algebra.unit_vector(tstep.quat)
+    tstep.dqdt[numdof+6:] = algebra.unit_vector(tstep.quat)
     # tstep.dqdt[numdof+6:] = tstep.quat
-    tstep.dqdt[numdof+6:] = algebra.unit_quat(tstep.quat)
+    # tstep.dqdt[numdof+6:] = algebra.unit_quat(tstep.quat)
 
 
 def cbeam3_solv_disp2state(beam, tstep):

@@ -265,7 +265,7 @@ def disp2state(MB_beam, MB_tstep, q, dqdt, dqddt):
 
         # MB_beam[ibody].timestep_info = MB_tstep[ibody].copy()
 
-def state2disp(q, dqdt, dqddt, MB_beam, MB_tstep, onlyFlex=False):
+def state2disp(q, dqdt, dqddt, MB_beam, MB_tstep):
     """
     state2disp
 
@@ -279,8 +279,6 @@ def state2disp(q, dqdt, dqddt, MB_beam, MB_tstep, onlyFlex=False):
         q(numpy array): Vector of states
     	dqdt(numpy array): Time derivatives of states
         dqddt(numpy array): Second time derivatives of states
-        onlyFlex(bool): Defines if only the flexible degrees of freedom should be updated
-                        If it is set to True, it does not change the FoR variables
 
     Returns:
 
@@ -306,10 +304,11 @@ def state2disp(q, dqdt, dqddt, MB_beam, MB_tstep, onlyFlex=False):
             # dqdt[first_dof+ibody_num_dof+6:first_dof+ibody_num_dof+10] = algebra.unit_quat(dqdt[first_dof+ibody_num_dof+6:first_dof+ibody_num_dof+10])
             MB_tstep[ibody].dqdt = dqdt[first_dof:first_dof+ibody_num_dof+10].astype(dtype=ct.c_double, order='F', copy=True)
             MB_tstep[ibody].dqddt = dqddt[first_dof:first_dof+ibody_num_dof+10].astype(dtype=ct.c_double, order='F', copy=True)
-            if onlyFlex:
-                xbeamlib.cbeam3_solv_state2disp(MB_beam[ibody], MB_tstep[ibody])
-            else:
-                xbeamlib.xbeam_solv_state2disp(MB_beam[ibody], MB_tstep[ibody])
+            xbeamlib.xbeam_solv_state2disp(MB_beam[ibody], MB_tstep[ibody])
+            # if onlyFlex:
+            #     xbeamlib.cbeam3_solv_state2disp(MB_beam[ibody], MB_tstep[ibody])
+            # else:
+            #     xbeamlib.xbeam_solv_state2disp(MB_beam[ibody], MB_tstep[ibody])
             first_dof += ibody_num_dof + 10
 
 
