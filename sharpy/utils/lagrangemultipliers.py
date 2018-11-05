@@ -146,6 +146,8 @@ def generate_lagrange_matrix(MBdict, MB_beam, MB_tstep, num_LM_eq, sys_size, dt,
             #if True:
             # Bnh[ieq:ieq+3, node_dof:node_dof+3] = -1.0*np.eye(3)
             Bnh[:, node_dof:node_dof+3] = -1.0*algebra.quat2rotation(MB_tstep[node_body].quat)
+            Bnh[:, node_FoR_dof:node_FoR_dof+3] = -1.0*algebra.quat2rotation(MB_tstep[node_body].quat)
+            Bnh[:, node_FoR_dof+3:node_FoR_dof+6] = 1.0*np.dot(algebra.quat2rotation(MB_tstep[node_body].quat),algebra.skew(MB_tstep[node_body].pos[node_in_body,:]))
             Bnh[:, FoR_dof:FoR_dof+3] = algebra.quat2rotation(MB_tstep[FoR_body].quat)
 
             # Bnh[ieq+3,ieq+FoR_dof+3] = 1.0
@@ -155,12 +157,18 @@ def generate_lagrange_matrix(MBdict, MB_beam, MB_tstep, num_LM_eq, sys_size, dt,
 
             LM_Q[:sys_size] += scalingFactor*np.dot(np.transpose(Bnh),Lambda_dot[ieq:ieq+num_LM_eq_specific])
             # LM_Q[sys_size:sys_size+3] = -MB_tstep[0].pos_dot[-1,:] + np.dot(algebra.quat2rotation(quat),MB_tstep[1].for_vel[0:3])
-            LM_Q[sys_size+ieq:sys_size+ieq+num_LM_eq_specific] += -np.dot(algebra.quat2rotation(MB_tstep[node_body].quat),MB_tstep[node_body].pos_dot[node_in_body,:]) + np.dot(algebra.quat2rotation(MB_tstep[FoR_body].quat),MB_tstep[FoR_body].for_vel[0:3])
+            LM_Q[sys_size+ieq:sys_size+ieq+num_LM_eq_specific] += -np.dot(algebra.quat2rotation(MB_tstep[node_body].quat),MB_tstep[node_body].pos_dot[node_in_body,:] + MB_tstep[node_body].for_vel[0:3] - np.dot(algebra.skew(MB_tstep[node_body].pos[node_in_body,:]),MB_tstep[node_body].for_vel[3:6])) + np.dot(algebra.quat2rotation(MB_tstep[FoR_body].quat),MB_tstep[FoR_body].for_vel[0:3])
             # LM_Q[sys_size+3] = MB_tstep[1].for_vel[3]
 
             #LM_K[FoR_dof:FoR_dof+3,FoR_dof+6:FoR_dof+10] = algebra.der_CquatT_by_v(MB_tstep[FoR_body].quat,Lambda_dot)
-            LM_C[FoR_dof:FoR_dof+3,FoR_dof+6:FoR_dof+10] += algebra.der_CquatT_by_v(MB_tstep[FoR_body].quat,scalingFactor*Lambda_dot[ieq:ieq+num_LM_eq_specific])
-            LM_C[node_FoR_dof:node_FoR_dof+3,node_FoR_dof+6:node_FoR_dof+10] += algebra.der_CquatT_by_v(MB_tstep[node_body].quat,scalingFactor*Lambda_dot[ieq:ieq+num_LM_eq_specific])
+            LM_C[FoR_dof:FoR_dof+3,FoR_dof+6:FoR_dof+10] += algebra.der_Cquat_by_v(MB_tstep[node_body].quat,scalingFactor*Lambda_dot[ieq:ieq+num_LM_eq_specific])
+
+            LM_C[node_dof:node_dof+3,node_FoR_dof+6:node_FoR_dof+10] -= algebra.der_Cquat_by_v(MB_tstep[FoR_body].quat,scalingFactor*Lambda_dot[ieq:ieq+num_LM_eq_specific])
+            LM_C[node_FoR_dof:node_FoR_dof+3,node_FoR_dof+6:node_FoR_dof+10] -= algebra.der_Cquat_by_v(MB_tstep[FoR_body].quat,scalingFactor*Lambda_dot[ieq:ieq+num_LM_eq_specific])
+
+            LM_C[node_FoR_dof+3:node_FoR_dof+6,FoR_dof+6:FoR_dof+10] += algebra.der_Cquat_by_v(MB_tstep[FoR_body].quat,np.dot(algebra.skew(MB_tstep[node_body].pos[node_in_body,:]),scalingFactor*Lambda_dot[ieq:ieq+num_LM_eq_specific]))
+
+            LM_K[node_FoR_dof+3:node_FoR_dof+6,node_dof:node_dof+3] -= np.dot(algebra.quat2rotation(MB_tstep[FoR_body].quat), algebra.skew(Lambda_dot[ieq:ieq+num_LM_eq_specific]))
 
             # ieq += 4
             ieq += 3

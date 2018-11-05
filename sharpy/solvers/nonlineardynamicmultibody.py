@@ -287,7 +287,7 @@ class NonLinearDynamicMultibody(BaseSolver):
 
     def run(self, structural_step=None):
         # ipdb.set_trace()
-        # embed()
+
         if structural_step is None:
             structural_step = self.data.structure.timestep_info[-1]
         # Initialize varaibles
@@ -297,7 +297,6 @@ class NonLinearDynamicMultibody(BaseSolver):
         # TODO: only working for constant forces
         # self.data.structure.timestep_info[-1].unsteady_applied_forces = self.data.structure.dynamic_input[1]['dynamic_forces'].astype(dtype=ct.c_double, order='F', copy=True)
         MB_beam, MB_tstep = mb.split_multibody(self.data.structure, structural_step, MBdict)
-
         # Lagrange multipliers parameters
         num_LM_eq = self.num_LM_eq
         Lambda = np.zeros((num_LM_eq,), dtype=ct.c_double, order='F')
@@ -339,7 +338,7 @@ class NonLinearDynamicMultibody(BaseSolver):
                 break
 
             # Update positions and velocities
-            mb.state2disp(q, dqdt, dqddt, MB_beam, MB_tstep, onlyFlex=True)
+            mb.state2disp(q, dqdt, dqddt, MB_beam, MB_tstep)
             # Define matrices
             # if num_LM_eq == 0:
             #     Lambda = np.zeros((num_LM_eq,),)
@@ -419,6 +418,11 @@ class NonLinearDynamicMultibody(BaseSolver):
 
         mb.state2disp(q, dqdt, dqddt, MB_beam, MB_tstep)
 
+        # Check boundary conditions
+        # embed()
+        print("point vel: ", np.dot(algebra.quat2rotation(MB_tstep[0].quat),MB_tstep[0].pos_dot[-1,:] + MB_tstep[0].for_vel[0:3] + np.cross(MB_tstep[0].for_vel[3:6],MB_tstep[0].pos[-1,:])))
+        print("FoR vel: ", np.dot(algebra.quat2rotation(MB_tstep[1].quat),MB_tstep[1].for_vel[0:3]))
+
         # print("Dtheta from quat: ", 2.0*(np.arccos(MB_tstep[0].quat[0])-np.arccos(structural_step.quat[0])))
         # print("Dtheta wrong?: ", self.gamma*MB_tstep[0].for_vel[4]*dt)
         # print("Dtheta from velocities: ", structural_step.for_vel[4]*dt + (0.5-self.beta)*structural_step.for_acc[4]*dt**2.+self.beta*MB_tstep[0].for_acc[4]*dt**2.)
@@ -444,7 +448,11 @@ class NonLinearDynamicMultibody(BaseSolver):
         # print("for acc: ", MB_tstep[0].for_acc)
         mb.merge_multibody(MB_tstep, MB_beam, self.data.structure, structural_step, MBdict, dt)
 
-        tstep = len(self.data.structure.timestep_info)
+        # embed()
+        # print("for pos: ", MB_tstep[1].for_pos[0:3])
+        # print("db for pos: ", MB_tstep[1].mb_FoR_pos[1,0:3])
+        # print("position", structural_step.pos)
+        # tstep = len(self.data.structure.timestep_info)
         # print("for quat MB: ", MB_tstep[0].quat)
         # print("for quat structural: ", structural_step.quat)
         # print("numerical angle: ", 2.*np.arccos(structural_step.quat[0])*180./np.pi)
