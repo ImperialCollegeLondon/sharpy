@@ -158,6 +158,32 @@ comment out lines `8` and `9` (shown below):
     After a (hopefully) successful compilation of the xbeam library, the
     `run_make` script automatically copies the library to the required folder in
     `sharpy` (this is why you need to clone `sharpy` before compiling `xbeam`).
+    
+    
+__Common issues when compiling xbeam__
+
+* GFortran Version
+
+    It is often the case that even though the required version of GFortran is installed, it is not used during the compilation
+    and xbeam will return an error like the one below
+    ```bash
+        gfortran -fPIC -O3 -funroll-loops -ftree-parallelize-loops=4 -march=native -fopenmp  -c lib_lu.f90 lib_lu.f90:372.25:
+
+        use, intrinsic :: IEEE_ARITHMETIC
+                         1
+        Fatal Error: Can't find an intrinsic module named 'ieee_arithmetic' at (1)
+    ```
+            
+    The version of GFORTRAN that will be used can be checked beforehand
+    ```bash
+    gfortran --version
+    ```
+        
+    If the version shown is below 5.0 yet you have a newer version installed you can enable it using: 
+    ```bash
+    scl enable devtoolset-6 bash
+    ```
+    Check that the version is now as required and clean ```make clean``` and redo the installation ```sh runmake.sh```
 
 #### Compiling UVLM
 
