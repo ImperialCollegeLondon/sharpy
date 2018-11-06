@@ -286,7 +286,7 @@ class NonLinearDynamicMultibody(BaseSolver):
         pass
 
     def run(self, structural_step=None):
-        # ipdb.set_trace()
+        #ipdb.set_trace()
 
         if structural_step is None:
             structural_step = self.data.structure.timestep_info[-1]
@@ -317,6 +317,15 @@ class NonLinearDynamicMultibody(BaseSolver):
         #print("dqdt: ", dqdt[-num_LM_eq-10:-num_LM_eq])
         #print("dqddt: ", dqddt[-num_LM_eq-10:-num_LM_eq])
 
+        # print("-----  BEGINNING PREDICTOR STEP -----")
+        # print("dqddt FoR0: ", dqddt[60:70])
+        # print("MB_tstep[0].dqddt: ", MB_tstep[0].dqddt[60:70])
+        # print("MB_tstep[0].for_acc: ", MB_tstep[0].for_acc)
+        # print("dqddt FoR1: ", dqddt[130:140])
+        # print("MB_tstep[1].dqddt: ", MB_tstep[1].dqddt[60:70])
+        # print("MB_tstep[1].for_acc: ", MB_tstep[1].for_acc)
+        # print("-----  END PREDICTOR STEP -----")
+
         # dqddt = np.zeros_like(dqdt)
         q = q + dt*dqdt + (0.5 - self.beta)*dt*dt*dqddt
         dqdt = dqdt + (1.0 - self.gamma)*dt*dqddt
@@ -339,13 +348,13 @@ class NonLinearDynamicMultibody(BaseSolver):
 
             # Update positions and velocities
             mb.state2disp(q, dqdt, dqddt, MB_beam, MB_tstep)
-            # Define matrices
-            # if num_LM_eq == 0:
-            #     Lambda = np.zeros((num_LM_eq,),)
-            #     LambdaDot = np.zeros((num_LM_eq,),)
-            # else:
-            #     Lambda = np.zeros((num_LM_eq,),)
-            #     LambdaDot = q[-num_LM_eq:]
+
+            # print("dqddt FoR0: ", dqddt[60:70])
+            # print("MB_tstep[0].dqddt: ", MB_tstep[0].dqddt[60:70])
+            # print("MB_tstep[0].for_acc: ", MB_tstep[0].for_acc)
+            # print("dqddt FoR1: ", dqddt[130:140])
+            # print("MB_tstep[1].dqddt: ", MB_tstep[1].dqddt[60:70])
+            # print("MB_tstep[1].for_acc: ", MB_tstep[1].for_acc)
 
             MB_Asys, MB_Q = self.assembly_MB_eq_system(MB_beam, MB_tstep, dt, Lambda, Lambda_dot)
 
@@ -420,8 +429,8 @@ class NonLinearDynamicMultibody(BaseSolver):
 
         # Check boundary conditions
         # embed()
-        print("point vel: ", np.dot(algebra.quat2rotation(MB_tstep[0].quat),MB_tstep[0].pos_dot[-1,:] + MB_tstep[0].for_vel[0:3] + np.cross(MB_tstep[0].for_vel[3:6],MB_tstep[0].pos[-1,:])))
-        print("FoR vel: ", np.dot(algebra.quat2rotation(MB_tstep[1].quat),MB_tstep[1].for_vel[0:3]))
+        # print("point vel: ", np.dot(algebra.quat2rotation(MB_tstep[0].quat),MB_tstep[0].pos_dot[-1,:] + MB_tstep[0].for_vel[0:3] + np.cross(MB_tstep[0].for_vel[3:6],MB_tstep[0].pos[-1,:])))
+        # print("FoR vel: ", np.dot(algebra.quat2rotation(MB_tstep[1].quat),MB_tstep[1].for_vel[0:3]))
 
         # print("Dtheta from quat: ", 2.0*(np.arccos(MB_tstep[0].quat[0])-np.arccos(structural_step.quat[0])))
         # print("Dtheta wrong?: ", self.gamma*MB_tstep[0].for_vel[4]*dt)
