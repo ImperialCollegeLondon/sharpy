@@ -239,9 +239,7 @@ def couple_wrong(ss01,ss02,K12,K21):
 
 
 
-
-
-def freqresp(SS,wv,eng=None,method='standard',dlti=True):
+def freqresp(SS,wv,eng=None,method='standard',dlti=True,use_sparse=True):
 	''' In-house frequency response function '''
 
 	# matlab frequency response
@@ -264,10 +262,19 @@ def freqresp(SS,wv,eng=None,method='standard',dlti=True):
 		Nu=SS.B.shape[1]
 		Nw=len(wv)
 		Yfreq=np.empty((Ny,Nu,Nw,),dtype=np.complex_)
-		Eye=np.eye(Nx)
 
-		for ii in range(Nw):
-			Yfreq[:,:,ii]=np.dot(SS.C,
+		if use_sparse:
+			# csc format used for efficiency
+			Asparse=sparse.csc_matrix(SS.A)
+			Bsparse=sparse.csc_matrix(SS.B)
+			Eye=sparse.eye(Nx,format='csc')
+			for ii in range(Nw):
+				sol_cplx=sparse.linalg.spsolve(zv[ii]*Eye-Asparse,Bsparse)
+				Yfreq[:,:,ii]=np.dot(SS.C,sol_cplx.todense())+SS.D
+		else:
+			Eye=np.eye(Nx)
+			for ii in range(Nw):
+				Yfreq[:,:,ii]=np.dot(SS.C,
 				              		 np.linalg.solve(zv[ii]*Eye-SS.A,SS.B))+SS.D
 
 	return Yfreq

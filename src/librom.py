@@ -566,7 +566,7 @@ def low_rank_smith(A,Q,tol=1e-10,Square=True,tolSVD=1e-12,tolAbs=False,
 
 
 
-def modred(SSb,N,method='realisation'):
+def modred(SSb,N,method='residualisation'):
 	'''
 	Produces a reduced order model with N states from balanced system SSb.
 	Both "truncation" and "residualisation" methods are employed.
@@ -576,7 +576,7 @@ def modred(SSb,N,method='realisation'):
 	produced by default.
 	'''
 
-	assert method in ['realisation','truncation'],\
+	assert method in ['residualisation','realisation','truncation'],\
 						"method must be equal to 'realisation' or 'truncation'!"
 	assert SSb.dt is not None, 'SSb is not a DLTI!'
 
