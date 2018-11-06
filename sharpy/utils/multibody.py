@@ -213,6 +213,7 @@ def update_mb_dB_before_merge(tstep, MB_tstep):
         tstep.mb_FoR_acc[ibody,0:3] = np.dot(np.transpose(CAslaveG), MB_tstep[ibody].for_acc[0:3])
         tstep.mb_FoR_acc[ibody,3:6] = np.dot(np.transpose(CAslaveG), MB_tstep[ibody].for_acc[3:6])
         tstep.mb_quat[ibody,:] =  MB_tstep[ibody].quat.astype(dtype=ct.c_double, order='F', copy=True)
+        tstep.mb_dqddt_quat[ibody,:] =  MB_tstep[ibody].dqddt[-4:].astype(dtype=ct.c_double, order='F', copy=True)
 
 
     # TODO: Is it convenient to do this?
@@ -221,6 +222,7 @@ def update_mb_dB_before_merge(tstep, MB_tstep):
         MB_tstep[ibody].mb_FoR_vel = tstep.mb_FoR_vel.astype(dtype=ct.c_double, order='F', copy=True)
         MB_tstep[ibody].mb_FoR_acc = tstep.mb_FoR_acc.astype(dtype=ct.c_double, order='F', copy=True)
         MB_tstep[ibody].mb_quat = tstep.mb_quat.astype(dtype=ct.c_double, order='F', copy=True)
+        MB_tstep[ibody].mb_dqddt_quat = tstep.mb_dqddt_quat.astype(dtype=ct.c_double, order='F', copy=True)
 
 def disp2state(MB_beam, MB_tstep, q, dqdt, dqddt):
     """
@@ -260,7 +262,8 @@ def disp2state(MB_beam, MB_tstep, q, dqdt, dqddt):
             xbeamlib.xbeam_solv_disp2state(MB_beam[ibody], MB_tstep[ibody])
             q[first_dof:first_dof+ibody_num_dof+10]=MB_tstep[ibody].q.astype(dtype=ct.c_double, order='F', copy=True)
             dqdt[first_dof:first_dof+ibody_num_dof+10]=MB_tstep[ibody].dqdt.astype(dtype=ct.c_double, order='F', copy=True)
-            dqddt[first_dof:first_dof+ibody_num_dof+10]=MB_tstep[ibody].dqddt.astype(dtype=ct.c_double, order='F', copy=True)
+            dqddt[first_dof:first_dof+ibody_num_dof+6]=MB_tstep[ibody].dqddt[:-4].astype(dtype=ct.c_double, order='F', copy=True)
+            dqddt[first_dof+ibody_num_dof+6:first_dof+ibody_num_dof+10]=MB_tstep[ibody].mb_dqddt_quat[ibody,:].astype(dtype=ct.c_double, order='F', copy=True)
             first_dof += ibody_num_dof + 10
 
         # MB_beam[ibody].timestep_info = MB_tstep[ibody].copy()

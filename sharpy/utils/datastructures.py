@@ -403,6 +403,7 @@ class StructTimeStepInfo(object):
         self.mb_FoR_acc = np.zeros((num_bodies,6), dtype=ct.c_double, order='F')
         self.mb_quat = np.zeros((num_bodies,4), dtype=ct.c_double, order='F')
         self.mb_quat[:,0] = np.ones((num_bodies), dtype=ct.c_double, order='F')
+        self.mb_dqddt_quat = np.zeros((num_bodies,4), dtype=ct.c_double, order='F')
 
     def copy(self):
         copied = StructTimeStepInfo(self.num_node, self.num_elem, self.num_node_elem, self.mb_quat.shape[0])
@@ -446,6 +447,7 @@ class StructTimeStepInfo(object):
         copied.mb_FoR_vel = self.mb_FoR_vel.astype(dtype=ct.c_double, order='F', copy=True)
         copied.mb_FoR_acc = self.mb_FoR_acc.astype(dtype=ct.c_double, order='F', copy=True)
         copied.mb_quat = self.mb_quat.astype(dtype=ct.c_double, order='F', copy=True)
+        copied.mb_dqddt_quat = self.mb_dqddt_quat.astype(dtype=ct.c_double, order='F', copy=True)
 
         return copied
 
@@ -540,15 +542,16 @@ class StructTimeStepInfo(object):
         ibody_StructTimeStepInfo.dqdt[0:(ibody_num_node-1)*6] = self.dqdt[ibody_first_node*6:(ibody_last_node-1)*6].astype(dtype=ct.c_double, order='F', copy=True)
         ibody_StructTimeStepInfo.dqddt[0:(ibody_num_node-1)*6] = self.dqddt[ibody_first_node*6:(ibody_last_node-1)*6].astype(dtype=ct.c_double, order='F', copy=True)
 
-        ibody_StructTimeStepInfo.q[-10:] = self.q[-10:].astype(dtype=ct.c_double, order='F', copy=True)
-        ibody_StructTimeStepInfo.dqdt[-10:] = self.dqdt[-10:].astype(dtype=ct.c_double, order='F', copy=True)
+        # ibody_StructTimeStepInfo.q[-10:] = self.q[-10:].astype(dtype=ct.c_double, order='F', copy=True)
+        # ibody_StructTimeStepInfo.dqdt[-10:] = self.dqdt[-10:].astype(dtype=ct.c_double, order='F', copy=True)
         ibody_StructTimeStepInfo.dqdt[-4:] = ibody_StructTimeStepInfo.quat.astype(dtype=ct.c_double, order='F', copy=True)
-        ibody_StructTimeStepInfo.dqddt[-10:] = self.dqddt[-10:].astype(dtype=ct.c_double, order='F', copy=True)
+        # ibody_StructTimeStepInfo.dqddt[-10:] = self.dqddt[-10:].astype(dtype=ct.c_double, order='F', copy=True)
 
         ibody_StructTimeStepInfo.mb_quat = self.mb_quat.astype(dtype=ct.c_double, order='F', copy=True)
         ibody_StructTimeStepInfo.mb_FoR_pos = self.mb_FoR_pos.astype(dtype=ct.c_double, order='F', copy=True)
         ibody_StructTimeStepInfo.mb_FoR_vel = self.mb_FoR_vel.astype(dtype=ct.c_double, order='F', copy=True)
         ibody_StructTimeStepInfo.mb_FoR_acc = self.mb_FoR_acc.astype(dtype=ct.c_double, order='F', copy=True)
+        ibody_StructTimeStepInfo.mb_dqddt_quat = self.mb_dqddt_quat.astype(dtype=ct.c_double, order='F', copy=True)
 
         return ibody_StructTimeStepInfo
 
