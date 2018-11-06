@@ -18,6 +18,7 @@ import ctypes as ct
 import numpy as np
 import sharpy.utils.algebra as algebra
 from IPython import embed
+import ipdb
 
 
 def define_num_LM_eq(MBdict):
@@ -115,8 +116,18 @@ def generate_lagrange_matrix(MBdict, MB_beam, MB_tstep, num_LM_eq, sys_size, dt,
         ###################################################################
         if behaviour == 'hinge_node_FoR':
 
+            # Variables names. The naming of the variables can be quite confusing. The reader should think that
+            # the BC relates one "node" and one "FoR" (writen between quotes in these lines).
+            # If a variable is related to one of them starts with "node_" or "FoR_" respectively
+            # node_number: number of the "node" within its own body
+            # node_body: body number of the "node"
+            # node_FoR_dof: position of the first degree of freedom of the FoR to which the "node" belongs
+            # node_dof: position of the first degree of freedom associated to the "node"
+            # FoR_body: body number of the "FoR"
+            # FoR_dof: position of the first degree of freedom associated to the "FoR"
+
             # Rename variables from dictionary
-            node_in_body = MBdict["constraint_%02d" % iconstraint]['node_in_body']
+            node_number = MBdict["constraint_%02d" % iconstraint]['node_in_body']
             node_body = MBdict["constraint_%02d" % iconstraint]['body']
             FoR_body = MBdict["constraint_%02d" % iconstraint]['body_FoR']
 
@@ -130,9 +141,11 @@ def generate_lagrange_matrix(MBdict, MB_beam, MB_tstep, num_LM_eq, sys_size, dt,
                 node_dof += MB_beam[ibody].num_dof.value
                 if MB_beam[ibody].FoR_movement == 'free':
                     node_dof += 10
-            # TODO: this will NOT work for more than one clamped node
-            node_FoR_dof = node_dof + 6*(MB_beam[node_body].num_node - 1)
-            node_dof += 6*(node_in_body-1)
+            node_FoR_dof = node_dof + MB_beam[node_body].num_dof.value
+            node_dof += 6*(node_number-1)
+            if not (MB_beam[node_body].num_dof == 6*(MB_beam[node_body].num_node - 1)):
+                # TODO: the previous statement will NOT work for more than one clamped node
+                print("WARNING: hinge_node_FoR does not work for more than one clamped node")
 
             # Define the position of the first degree of freedom associated to the FoR
             FoR_dof = 0
@@ -141,14 +154,16 @@ def generate_lagrange_matrix(MBdict, MB_beam, MB_tstep, num_LM_eq, sys_size, dt,
                 if MB_beam[ibody].FoR_movement == 'free':
                     FoR_dof += 10
             FoR_dof += MB_beam[FoR_body].num_dof.value
-
+            # ipdb.set_trace()
             # Option with non holonomic constraints
             #if True:
             # Bnh[ieq:ieq+3, node_dof:node_dof+3] = -1.0*np.eye(3)
+            Bnh[:, FoR_dof:FoR_dof+3] = algebra.quat2rotation(MB_tstep[FoR_body].quat)
+
             Bnh[:, node_dof:node_dof+3] = -1.0*algebra.quat2rotation(MB_tstep[node_body].quat)
             Bnh[:, node_FoR_dof:node_FoR_dof+3] = -1.0*algebra.quat2rotation(MB_tstep[node_body].quat)
-            Bnh[:, node_FoR_dof+3:node_FoR_dof+6] = 1.0*np.dot(algebra.quat2rotation(MB_tstep[node_body].quat),algebra.skew(MB_tstep[node_body].pos[node_in_body,:]))
-            Bnh[:, FoR_dof:FoR_dof+3] = algebra.quat2rotation(MB_tstep[FoR_body].quat)
+            Bnh[:, node_FoR_dof+3:node_FoR_dof+6] = 1.0*np.dot(algebra.quat2rotation(MB_tstep[node_body].quat),algebra.skew(MB_tstep[node_body].pos[node_number,:]))
+
 
             # Bnh[ieq+3,ieq+FoR_dof+3] = 1.0
 
@@ -156,19 +171,24 @@ def generate_lagrange_matrix(MBdict, MB_beam, MB_tstep, num_LM_eq, sys_size, dt,
             LM_C[:sys_size,sys_size+ieq:sys_size+ieq+num_LM_eq_specific] += scalingFactor*np.transpose(Bnh)
 
             LM_Q[:sys_size] += scalingFactor*np.dot(np.transpose(Bnh),Lambda_dot[ieq:ieq+num_LM_eq_specific])
+            LM_Q[sys_size+ieq:sys_size+ieq+num_LM_eq_specific] += (np.dot(algebra.quat2rotation(MB_tstep[FoR_body].quat),MB_tstep[FoR_body].for_vel[0:3]) +
+                                                                  -1.0*np.dot(algebra.quat2rotation(MB_tstep[node_body].quat),
+                                                                    MB_tstep[node_body].pos_dot[node_number,:] +
+                                                                    MB_tstep[node_body].for_vel[0:3] +
+                                                                    -1.0*np.dot(algebra.skew(MB_tstep[node_body].pos[node_number,:]),MB_tstep[node_body].for_vel[3:6])))
+
             # LM_Q[sys_size:sys_size+3] = -MB_tstep[0].pos_dot[-1,:] + np.dot(algebra.quat2rotation(quat),MB_tstep[1].for_vel[0:3])
-            LM_Q[sys_size+ieq:sys_size+ieq+num_LM_eq_specific] += -np.dot(algebra.quat2rotation(MB_tstep[node_body].quat),MB_tstep[node_body].pos_dot[node_in_body,:] + MB_tstep[node_body].for_vel[0:3] - np.dot(algebra.skew(MB_tstep[node_body].pos[node_in_body,:]),MB_tstep[node_body].for_vel[3:6])) + np.dot(algebra.quat2rotation(MB_tstep[FoR_body].quat),MB_tstep[FoR_body].for_vel[0:3])
             # LM_Q[sys_size+3] = MB_tstep[1].for_vel[3]
 
             #LM_K[FoR_dof:FoR_dof+3,FoR_dof+6:FoR_dof+10] = algebra.der_CquatT_by_v(MB_tstep[FoR_body].quat,Lambda_dot)
-            LM_C[FoR_dof:FoR_dof+3,FoR_dof+6:FoR_dof+10] += algebra.der_Cquat_by_v(MB_tstep[node_body].quat,scalingFactor*Lambda_dot[ieq:ieq+num_LM_eq_specific])
+            LM_C[FoR_dof:FoR_dof+3,FoR_dof+6:FoR_dof+10] += algebra.der_Cquat_by_v(MB_tstep[FoR_body].quat,scalingFactor*Lambda_dot[ieq:ieq+num_LM_eq_specific])
 
-            LM_C[node_dof:node_dof+3,node_FoR_dof+6:node_FoR_dof+10] -= algebra.der_Cquat_by_v(MB_tstep[FoR_body].quat,scalingFactor*Lambda_dot[ieq:ieq+num_LM_eq_specific])
-            LM_C[node_FoR_dof:node_FoR_dof+3,node_FoR_dof+6:node_FoR_dof+10] -= algebra.der_Cquat_by_v(MB_tstep[FoR_body].quat,scalingFactor*Lambda_dot[ieq:ieq+num_LM_eq_specific])
+            LM_C[node_dof:node_dof+3,node_FoR_dof+6:node_FoR_dof+10] -= algebra.der_Cquat_by_v(MB_tstep[node_body].quat,scalingFactor*Lambda_dot[ieq:ieq+num_LM_eq_specific])
+            LM_C[node_FoR_dof:node_FoR_dof+3,node_FoR_dof+6:node_FoR_dof+10] -= algebra.der_Cquat_by_v(MB_tstep[node_body].quat,scalingFactor*Lambda_dot[ieq:ieq+num_LM_eq_specific])
 
-            LM_C[node_FoR_dof+3:node_FoR_dof+6,FoR_dof+6:FoR_dof+10] += algebra.der_Cquat_by_v(MB_tstep[FoR_body].quat,np.dot(algebra.skew(MB_tstep[node_body].pos[node_in_body,:]),scalingFactor*Lambda_dot[ieq:ieq+num_LM_eq_specific]))
+            LM_C[node_FoR_dof+3:node_FoR_dof+6,node_FoR_dof+6:node_FoR_dof+10] += algebra.der_Cquat_by_v(MB_tstep[node_body].quat,np.dot(algebra.skew(MB_tstep[node_body].pos[node_number,:]),scalingFactor*Lambda_dot[ieq:ieq+num_LM_eq_specific]))
 
-            LM_K[node_FoR_dof+3:node_FoR_dof+6,node_dof:node_dof+3] -= np.dot(algebra.quat2rotation(MB_tstep[FoR_body].quat), algebra.skew(Lambda_dot[ieq:ieq+num_LM_eq_specific]))
+            LM_K[node_FoR_dof+3:node_FoR_dof+6,node_dof:node_dof+3] += np.dot(algebra.quat2rotation(MB_tstep[node_body].quat), 1.0*algebra.skew(Lambda_dot[ieq:ieq+num_LM_eq_specific]))
 
             # ieq += 4
             ieq += 3
