@@ -15,6 +15,7 @@ import scipy.interpolate
 import sharpy.utils.algebra as algebra
 import sharpy.utils.cout_utils as cout
 from sharpy.utils.datastructures import AeroTimeStepInfo
+import sharpy.utils.generator_interface as gen_interface
 
 
 class Aerogrid(object):
@@ -38,6 +39,9 @@ class Aerogrid(object):
         self.n_elem = 0
         self.n_surf = 0
         self.n_aero_node = 0
+        self.n_control_surfaces = 0
+
+        self.cs_generators = []
 
     def generate(self, aero_dict, beam, aero_settings, ts):
         self.aero_dict = aero_dict
@@ -82,6 +86,19 @@ class Aerogrid(object):
                                                    kind='quadratic',
                                                    copy=False,
                                                    assume_sorted=True))
+
+        self.n_control_surfaces = np.sum(np.unique(self.aero_dict['control_surface']) >= 0)
+
+        # initialise generators
+        for i_cs in range(self.n_control_surfaces):
+            if aero_settings['control_surface_deflection'][i_cs] == '':
+                self.cs_generators.append(None)
+            else:
+                generator_type = gen_interface.generator_from_string(
+                    aero_settings['control_surface_deflection'][i_cs])
+                self.cs_generators.append(generator_type())
+                self.cs_generators[i_cs].initialise(aero_settings['control_surface_deflection_generator'][str(i_cs)])
+
         self.add_timestep()
         self.generate_mapping()
         self.generate_zeta(self.beam, self.aero_settings, ts)
@@ -140,7 +157,9 @@ class Aerogrid(object):
         except IndexError:
             self.timestep_info.append(self.ini_info.copy())
 
-    def generate_zeta_timestep_info(self, structure_tstep, aero_tstep, beam, aero_settings):
+    def generate_zeta_timestep_info(self, structure_tstep, aero_tstep, beam, aero_settings, it=None):
+        if it is None:
+            it = len(beam.timestep_info) - 1
         global_node_in_surface = []
         for i_surf in range(self.n_surf):
             global_node_in_surface.append([])
@@ -210,7 +229,17 @@ class Aerogrid(object):
                             except KeyError:
                                 control_surface_info['hinge_coords'] = None
                         elif self.aero_dict['control_surface_type'][i_control_surface] == 1:
-                            raise NotImplementedError('dynamic control surfaces are not yet implemented')
+                            control_surface_info['type'] = 'dynamic'
+                            control_surface_info['chord'] = self.aero_dict['control_surface_chord'][i_control_surface]
+                            try:
+                                control_surface_info['hinge_coords'] = self.aero_dict['control_surface_hinge_coords'][i_control_surface]
+                            except KeyError:
+                                control_surface_info['hinge_coords'] = None
+
+                            params = {'it': it}
+                            control_surface_info['deflection'], control_surface_info['deflection_dot'] = \
+                                self.cs_generators[i_control_surface](params)
+
                         elif self.aero_dict['control_surface_type'][i_control_surface] == 2:
                             raise NotImplementedError('control-type control surfaces are not yet implemented')
                         else:
@@ -309,13 +338,27 @@ class Aerogrid(object):
     @staticmethod
     def compute_gamma_dot(dt, tstep, previous_tsteps):
         """
-        Computes the temporal derivative of gamma using finite differences.
+        Computes the temporal derivative of circulation (gamma) using finite differences.
+
         It will use a first order approximation for the first evaluation
-        (when len(previous_tsteps) == 1), and then second order ones.
-        :param dt: delta time for the finite differences
-        :param tstep: tstep at time n (current)
-        :param previous_tsteps: previous tstep structure in order: [n-..., n-2, n-1]
-        :return:
+        (when ``len(previous_tsteps) == 1``), and then second order ones.
+
+        .. math:: \\left.\\frac{d\\Gamma}{dt}\\right|^n \\approx \\lim_{\Delta t \\rightarrow 0}\\frac{\\Gamma^n-\\Gamma^{n-1}}{\\Delta t}
+
+        For the second time step and onwards, the following second order approximation is used:
+
+        .. math:: \\left.\\frac{d\\Gamma}{dt}\\right|^n \\approx \\lim_{\Delta t \\rightarrow 0}\\frac{3\\Gamma^n -4\\Gamma^{n-1}+\\Gamma^{n-2}}{2\Delta t}
+
+        Args:
+            dt (float): delta time for the finite differences
+            tstep (AeroTimeStepInfo): tstep at time n (current)
+            previous_tsteps (list(AeroTimeStepInfo)): previous tstep structure in order: ``[n-N,..., n-2, n-1]``
+
+        Returns:
+            float: first derivative of circulation with respect to time
+
+        See Also:
+            .. py:class:: sharpy.utils.datastructures.AeroTimeStepInfo
         """
 
         if len(previous_tsteps) == 0:
@@ -353,6 +396,7 @@ def generate_strip(node_info, airfoil_db, aligned_grid, orientation_in=np.array(
     """
     strip_coordinates_a_frame = np.zeros((3, node_info['M'] + 1), dtype=ct.c_double)
     strip_coordinates_b_frame = np.zeros((3, node_info['M'] + 1), dtype=ct.c_double)
+    zeta_dot_a_frame = np.zeros((3, node_info['M'] + 1), dtype=ct.c_double)
 
     # airfoil coordinates
     # we are going to store everything in the x-z plane of the b
@@ -373,6 +417,7 @@ def generate_strip(node_info, airfoil_db, aligned_grid, orientation_in=np.array(
         strip_coordinates_b_frame[1, i_M] -= node_info['eaxis']
 
     chord_line_b_frame = strip_coordinates_b_frame[:, -1] - strip_coordinates_b_frame[:, 0]
+    cs_velocity = np.zeros_like(strip_coordinates_b_frame)
 
     # control surface deflection
     if node_info['control_surface'] is not None:
@@ -390,6 +435,18 @@ def generate_strip(node_info, airfoil_db, aligned_grid, orientation_in=np.array(
             # rotate the control surface
             relative_coords = np.dot(algebra.rotation3d_x(-node_info['control_surface']['deflection']),
                                      relative_coords)
+            # deflection velocity
+            try:
+                if node_info['control_surface']['deflection_dot']:
+                    print('deflection_dot = ', node_info['control_surface']['deflection_dot'])
+                    print('coords = ', relative_coords)
+                cs_velocity[:, i_M] += np.cross(np.array([-node_info['control_surface']['deflection_dot'], 0.0, 0.0]),
+                                                relative_coords)
+                if node_info['control_surface']['deflection_dot']:
+                    print('vel = ', cs_velocity[:, i_M])
+            except KeyError:
+                pass
+
             # restore coordinates
             relative_coords += b_frame_hinge_coords
 
@@ -421,10 +478,10 @@ def generate_strip(node_info, airfoil_db, aligned_grid, orientation_in=np.array(
                                                    np.dot(Ctwist, strip_coordinates_b_frame[:, i_M])))
         strip_coordinates_a_frame[:, i_M] = np.dot(Cab, strip_coordinates_b_frame[:, i_M])
 
+        cs_velocity[:, i_M] = np.dot(Cab, cs_velocity[:, i_M])
+
     # zeta_dot
     if calculate_zeta_dot:
-        zeta_dot_a_frame = np.zeros((3, node_info['M'] + 1), dtype=ct.c_double)
-
         # velocity due to pos_dot
         for i_M in range(node_info['M'] + 1):
             zeta_dot_a_frame[:, i_M] += node_info['pos_dot']
@@ -434,6 +491,15 @@ def generate_strip(node_info, airfoil_db, aligned_grid, orientation_in=np.array(
         for i_M in range(node_info['M'] + 1):
             zeta_dot_a_frame[:, i_M] += (
                 np.dot(algebra.skew(Omega_b), strip_coordinates_a_frame[:, i_M]))
+
+        # control surface deflection velocity contribution
+        try:
+            if node_info['control_surface'] is not None:
+                node_info['control_surface']['deflection_dot']
+                for i_M in range(node_info['M'] + 1):
+                    zeta_dot_a_frame[:, i_M] += cs_velocity[:, i_M]
+        except KeyError:
+            pass
 
     else:
         zeta_dot_a_frame = np.zeros((3, node_info['M'] + 1), dtype=ct.c_double)

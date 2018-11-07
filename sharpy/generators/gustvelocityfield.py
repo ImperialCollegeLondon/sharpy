@@ -19,23 +19,7 @@ class GustVelocityField(generator_interface.BaseGenerator):
     This is parsed as the value for the ``velocity_field_generator`` key in the desired aerodynamic solver's settings.
 
     Args:
-        in_dict (dict): Input data in the form of dictionary. See acceptable entries in the Notes below.
-
-    Attributes:
-        settings_types (dict): Acceptable data types of the input data
-        settings_default (dict): Default values for input data should the user not provide them
-        u_inf (float): Free stream velocity
-        u_inf_direction (list(float)): Free stream velocity relative components in ``x`, ``y`` and ``z``
-        gust_shape (str): Gust profile shape
-        gust_length (float): Length of gust
-        gust_intenstity (float): Intensity of the gust
-        offset (float): Spatial offset of the gust position with respect to origin
-        span (float): Wing span
-        implemented_gusts (list(str)): Currently supported gust profiles
-
-    Notes:
-        Acceptable key-value pairs for the input dictionary, which is parsed as the value to the
-        ``velocity_field_input`` key in the settings of the desired aerodynamic solver.
+        in_dict (dict): Input data in the form of dictionary. See acceptable entries below:
 
         ===================  ===============  ==================================================================  ===================
         Name                 Type             Description                                                         Default
@@ -48,6 +32,18 @@ class GustVelocityField(generator_interface.BaseGenerator):
         ``offset``           ``float``        Spatial offset of the gust with respect to origin                   ``0.0``
         ``span``             ``float``        Wing span                                                           ``0.0``
         ===================  ===============  ==================================================================  ===================
+
+    Attributes:
+        settings_types (dict): Acceptable data types of the input data
+        settings_default (dict): Default values for input data should the user not provide them
+        u_inf (float): Free stream velocity
+        u_inf_direction (list(float)): Free stream velocity relative components in ``x`, ``y`` and ``z``
+        gust_shape (str): Gust profile shape
+        gust_length (float): Length of gust
+        gust_intenstity (float): Intensity of the gust
+        offset (float): Spatial offset of the gust position with respect to origin
+        span (float): Wing span
+        implemented_gusts (list(str)): Currently supported gust profiles
 
     See Also:
         .. py:class:: sharpy.utils.generator_interface.BaseGenerator

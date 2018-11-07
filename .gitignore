@@ -111,4 +111,4 @@ tests/uvlm/\.DS_Store
 
 output/
 
-tests/coupled/dynamic/horten/
+tests/coupled/dynamic/horten*
