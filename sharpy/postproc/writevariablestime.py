@@ -8,7 +8,8 @@ from sharpy.utils.solver_interface import solver, BaseSolver
 import sharpy.utils.settings as settings
 import sharpy.utils.algebra as algebra
 import sharpy.structure.utils.xbeamlib as xbeamlib
-from IPython import embed
+#from IPython import embed
+
 
 @solver
 class WriteVariablesTime(BaseSolver):
@@ -72,7 +73,7 @@ class WriteVariablesTime(BaseSolver):
     def run(self, online=False):
 
     # settings['WriteVariablesTime'] = {'delimiter': ' ',
-    #                                   'FoR_varibles': ['GFoR_pos', 'GFoR_vel', 'GFoR_acc'],
+    #                                   'FoR_variables': ['GFoR_pos', 'GFoR_vel', 'GFoR_acc'],
     #                                   'FoR_number': [0,1],
     #                                   'structure_variables': ['AFoR_steady_forces', 'AFoR_unsteady_forces','AFoR_position'],
     #                                   'structure_nodes': [0,-1],
@@ -97,11 +98,21 @@ class WriteVariablesTime(BaseSolver):
                 fid = open(filename,"a")
 
                 if (self.settings['FoR_variables'][ivariable] == 'GFoR_pos'):
-                    self.write_nparray_to_file(fid, self.data.ts, self.data.structure.timestep_info[-1].for_pos, self.settings['delimiter'])
+                    self.write_nparray_to_file(fid, self.data.ts, self.data.structure.timestep_info[-1].mb_FoR_pos[ifor,:], self.settings['delimiter'])
                 elif (self.settings['FoR_variables'][ivariable] == 'GFoR_vel'):
-                    self.write_nparray_to_file(fid, self.data.ts, self.data.structure.timestep_info[-1].for_vel, self.settings['delimiter'])
+                    self.write_nparray_to_file(fid, self.data.ts, self.data.structure.timestep_info[-1].mb_FoR_vel[ifor,:], self.settings['delimiter'])
                 elif (self.settings['FoR_variables'][ivariable] == 'GFoR_acc'):
+                    self.write_nparray_to_file(fid, self.data.ts, self.data.structure.timestep_info[-1].mb_FoR_acc[ifor,:], self.settings['delimiter'])
+                elif (self.settings['FoR_variables'][ivariable] == 'GFoR_quat'):
+                    self.write_nparray_to_file(fid, self.data.ts, self.data.structure.timestep_info[-1].mb_quat[ifor,:], self.settings['delimiter'])
+                elif (self.settings['FoR_variables'][ivariable] == 'AFoR_pos'):
+                    self.write_nparray_to_file(fid, self.data.ts, self.data.structure.timestep_info[-1].for_pos, self.settings['delimiter'])
+                elif (self.settings['FoR_variables'][ivariable] == 'AFoR_vel'):
+                    self.write_nparray_to_file(fid, self.data.ts, self.data.structure.timestep_info[-1].for_vel, self.settings['delimiter'])
+                elif (self.settings['FoR_variables'][ivariable] == 'AFoR_acc'):
                     self.write_nparray_to_file(fid, self.data.ts, self.data.structure.timestep_info[-1].for_acc, self.settings['delimiter'])
+                elif (self.settings['FoR_variables'][ivariable] == 'AFoR_quat'):
+                    self.write_nparray_to_file(fid, self.data.ts, self.data.structure.timestep_info[-1].quat, self.settings['delimiter'])
                 else:
                     print("Unrecognized " + self.settings['FoR_variables'][ivariable] + " variable")
 
@@ -140,9 +151,9 @@ class WriteVariablesTime(BaseSolver):
                 if (self.settings['aero_panels_variables'][ivariable] == 'gamma'):
                     self.write_value_to_file(fid, self.data.ts, self.data.aero.timestep_info[-1].gamma[i_surf][i_m,i_n], self.settings['delimiter'])
                 elif (self.settings['aero_panels_variables'][ivariable] == 'norm_gamma'):
-                    self.write_value_to_file(fid, self.data.ts, np.linalg.norm(self.data.aero.timestep_info[-1].gamma), self.settings['delimiter'])
+                    self.write_value_to_file(fid, self.data.ts, np.linalg.norm(self.data.aero.timestep_info[-1].gamma[i_surf]), self.settings['delimiter'])
                 elif (self.settings['aero_panels_variables'][ivariable] == 'norm_gamma_star'):
-                    self.write_value_to_file(fid, self.data.ts, np.linalg.norm(self.data.aero.timestep_info[-1].gamma_star), self.settings['delimiter'])
+                    self.write_value_to_file(fid, self.data.ts, np.linalg.norm(self.data.aero.timestep_info[-1].gamma_star[i_surf]), self.settings['delimiter'])
                 else:
                     print("Unrecognized " + self.settings['aero_panels_variables'][ivariable] + " variable")
 
