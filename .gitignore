@@ -109,6 +109,9 @@ tests/uvlm/\.DS_Store
 
 */.DS_Store
 
-output/
+output*/
 
-tests/coupled/dynamic/horten*
+
+tests/coupled/dynamic/horten/BFF/
+
+tests/coupled/dynamic/horten/BFF2/
