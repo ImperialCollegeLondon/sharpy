@@ -225,30 +225,37 @@ class DynamicCoupled(BaseSolver):
             for k in range(self.settings['fsi_substeps'].value + 1):
                 if k == self.settings['fsi_substeps'].value and not self.settings['fsi_substeps'] == 0:
                     cout.cout_wrap('The FSI solver did not converge!!!')
-                    print('K step q:')
-                    print(structural_kstep.q)
-                    print('K step dq:')
-                    print(structural_kstep.dqdt)
-                    print('K step ddq:')
-                    print(structural_kstep.dqddt)
-                    a = 1
                     break
 
                 # generate new grid (already rotated)
                 aero_kstep = self.data.aero.timestep_info[-1].copy()
                 self.aero_solver.update_custom_grid(structural_kstep, aero_kstep)
 
-                # run the solver
-                self.data = self.aero_solver.run(aero_kstep,
-                                                 structural_kstep,
-                                                 convect_wake=True)
 
-                previous_kstep = structural_kstep.copy()
-                structural_kstep = self.data.structure.timestep_info[-1].copy()
                 # map forces
                 force_coeff = 0.0
                 if self.settings['include_unsteady_force_contribution']:
-                    force_coeff = -1.0
+                    try:
+                        force_coeff = np.linspace(0.0, 1.0, 5)[k]
+                    except IndexError:
+                        force_coeff = 1.0
+                if self.data.ts < 5:
+                    force_coeff = 0.0
+
+                # print('k = ', k, ' force_coeff = ', force_coeff)
+
+                # run the solver
+                if force_coeff == 0.:
+                    unsteady_contribution = False
+                else:
+                    unsteady_contribution = True
+                self.data = self.aero_solver.run(aero_kstep,
+                                                 structural_kstep,
+                                                 convect_wake=True,
+                                                 unsteady_contribution=unsteady_contribution)
+
+                previous_kstep = structural_kstep.copy()
+                structural_kstep = self.data.structure.timestep_info[-1].copy()
                 self.map_forces(aero_kstep,
                                 structural_kstep,
                                 force_coeff)
