@@ -448,7 +448,7 @@ def generate_strip(node_info, airfoil_db, aligned_grid, orientation_in=np.array(
         for i_M in range(node_info['M'] + 1):
             # zeta_dot_a_frame[:, i_M] += (
             #     np.dot(algebra.skew(Omega_b), strip_coordinates_a_frame[:, i_M]))
-            zeta_dot_a_frame[:, i_M] -= (
+            zeta_dot_a_frame[:, i_M] += (
                 np.dot(algebra.skew(Omega_b), strip_coordinates_a_frame[:, i_M]))
 
     else:
