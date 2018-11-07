@@ -7,7 +7,6 @@ import sharpy.utils.algebra as algebra
 case_name = 'hale'
 route = os.path.dirname(os.path.realpath(__file__)) + '/'
 
-
 # EXECUTION
 flow = ['BeamLoader',
         'AerogridLoader',
@@ -34,26 +33,11 @@ beta = 0
 roll = 0
 gravity = 'on'
 cs_deflection = 1.1488151722405628*np.pi/180
-rudder_deflection = 0.0
+rudder_static_deflection = 0.0
+rudder_step = 0.0*np.pi/180
 thrust =  5.328287491363996
 sigma = 1.5
 lambda_dihedral = 20*np.pi/180
-# trim sigma = 100
-# alpha = 8.17774068993*np.pi/180
-# beta = 0*np.pi/180
-# gravity = 'on'
-# cs_deflection = -7.07280072502*np.pi/180
-# thrust = 9.01249187
-# sigma = 100
-# lambda_dihedral = 20*np.pi/180
-# # trim sigma = 100 FLAT
-# alpha = 8.17774068993*np.pi/180
-# beta = 0*np.pi/180
-# gravity = 'on'
-# cs_deflection = -7.07280072502*np.pi/180
-# thrust = 9.01249187
-# sigma = 100
-# lambda_dihedral = 0*np.pi/180
 
 gust_intensity = 0.30
 gust_length = 1*u_inf
@@ -125,6 +109,18 @@ tstep_factor = 1.
 dt = 1.0/m/u_inf*tstep_factor
 n_tstep = round(physical_time/dt)
 n_tstep = int(12000)
+
+
+rudder_deflection = np.zeros((n_tstep,))
+for it in range(n_tstep):
+    if it > int(0.5/dt):
+        if it < int(5.5/dt):
+            rudder_deflection[it] = rudder_step
+    elif it > int(0.1/dt):
+        rudder_deflection[it] = (it - int(0.1/dt))/(0.4/dt)*rudder_step
+
+rudder_fname = 'rudder.txt'
+np.savetxt(rudder_fname, rudder_deflection)
 
 
 # END OF INPUT-----------------------------------------------------------------
@@ -439,10 +435,10 @@ def generate_aero_file():
     control_surface_chord[0] = m
     control_surface_hinge_coord[0] = -0.25 # nondimensional wrt elastic axis (+ towards the trailing edge)
 
-    control_surface_type[1] = 0
-    control_surface_deflection[1] = rudder_deflection
+    control_surface_type[1] = 1
+    control_surface_deflection[1] = rudder_static_deflection
     control_surface_chord[1] = m
-    control_surface_hinge_coord[1] = -0.25 # nondimensional wrt elastic axis (+ towards the trailing edge)
+    control_surface_hinge_coord[1] = -0. # nondimensional wrt elastic axis (+ towards the trailing edge)
 
     we = 0
     wn = 0
@@ -668,7 +664,7 @@ def generate_solver_file():
                         'initial_alpha': alpha,
                         'initial_beta': beta,
                         'cs_indices': [0, 1],
-                        'initial_cs_deflection': [cs_deflection, rudder_deflection],
+                        'initial_cs_deflection': [cs_deflection, rudder_static_deflection],
                         'initial_thrust': [thrust]}
 
     settings['NonLinearDynamicCoupledStep'] = {'print_info': 'off',
@@ -751,7 +747,12 @@ def generate_solver_file():
                                   'aligned_grid': 'on',
                                   # 'mstar': int(120/tstep_factor),
                                   'mstar': int(20/tstep_factor),
-                                  'freestream_dir': ['1', '0', '0']}
+                                  'freestream_dir': ['1', '0', '0'],
+                                  'control_surface_deflection': ['', 'DynamicControlSurface'],
+                                  'control_surface_deflection_generator':
+                                  {'0': {},
+                                   '1': {'dt': dt,
+                                         'deflection_file': rudder_fname}}}
 
     settings['AerogridPlot'] = {'folder': route + '/output/',
                                 'include_rbm': 'on',
