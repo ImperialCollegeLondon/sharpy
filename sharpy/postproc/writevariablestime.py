@@ -8,7 +8,6 @@ from sharpy.utils.solver_interface import solver, BaseSolver
 import sharpy.utils.settings as settings
 import sharpy.utils.algebra as algebra
 import sharpy.structure.utils.xbeamlib as xbeamlib
-from IPython import embed
 
 @solver
 class WriteVariablesTime(BaseSolver):
