@@ -381,7 +381,7 @@ def generate_strip(node_info, airfoil_db, aligned_grid, orientation_in=np.array(
         if node_info['control_surface']['hinge_coords'] is not None:
             # make sure the hinge coordinates are only applied when M == cs_chord
             if not node_info['M'] - node_info['control_surface']['chord'] == 0:
-                cout.cout_wrap('The hinge coordinates parameter is only supported when M == cs_chord')
+                # cout.cout_wrap('The hinge coordinates parameter is only supported when M == cs_chord')
                 node_info['control_surface']['hinge_coords'] = None
             else:
                 b_frame_hinge_coords =  node_info['control_surface']['hinge_coords']
