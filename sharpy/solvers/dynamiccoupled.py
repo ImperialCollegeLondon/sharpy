@@ -242,7 +242,7 @@ class DynamicCoupled(BaseSolver):
                 if self.data.ts < 5:
                     force_coeff = 0.0
 
-                print('k = ', k, ' force_coeff = ', force_coeff)
+                # print('k = ', k, ' force_coeff = ', force_coeff)
 
                 # run the solver
                 if force_coeff == 0.:
