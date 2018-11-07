@@ -309,13 +309,27 @@ class Aerogrid(object):
     @staticmethod
     def compute_gamma_dot(dt, tstep, previous_tsteps):
         """
-        Computes the temporal derivative of gamma using finite differences.
+        Computes the temporal derivative of circulation (gamma) using finite differences.
+
         It will use a first order approximation for the first evaluation
-        (when len(previous_tsteps) == 1), and then second order ones.
-        :param dt: delta time for the finite differences
-        :param tstep: tstep at time n (current)
-        :param previous_tsteps: previous tstep structure in order: [n-..., n-2, n-1]
-        :return:
+        (when ``len(previous_tsteps) == 1``), and then second order ones.
+
+        .. math:: \\left.\\frac{d\\Gamma}{dt}\\right|^n \\approx \\lim_{\Delta t \\rightarrow 0}\\frac{\\Gamma^n-\\Gamma^{n-1}}{\\Delta t}
+
+        For the second time step and onwards, the following second order approximation is used:
+
+        .. math:: \\left.\\frac{d\\Gamma}{dt}\\right|^n \\approx \\lim_{\Delta t \\rightarrow 0}\\frac{3\\Gamma^n -4\\Gamma^{n-1}+\\Gamma^{n-2}}{2\Delta t}
+
+        Args:
+            dt (float): delta time for the finite differences
+            tstep (AeroTimeStepInfo): tstep at time n (current)
+            previous_tsteps (list(AeroTimeStepInfo)): previous tstep structure in order: ``[n-N,..., n-2, n-1]``
+
+        Returns:
+            float: first derivative of circulation with respect to time
+
+        See Also:
+            .. py:class:: sharpy.utils.datastructures.AeroTimeStepInfo
         """
 
         if len(previous_tsteps) == 0:
