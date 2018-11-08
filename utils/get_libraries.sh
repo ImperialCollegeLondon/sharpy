@@ -4,7 +4,7 @@
 #
 # Alfonso del Carre, Nov 2018
 
-SCRIPTPATH="$( cd "$(dirname "$0")" ; pwd -P )"
+export SCRIPTPATH="$( cd "$(dirname "$0")" ; pwd -P )"
 
 cd $SCRIPTPATH
 
