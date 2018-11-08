@@ -15,15 +15,13 @@ echo "Cloning xbeam and uvlm " $BRANCH " branch"
 
 # xbeam first
 cd ../..
-git clone https://github.com/imperialcollegelondon/xbeam
+git clone --branch=$BRANCH https://github.com/imperialcollegelondon/xbeam
 cd xbeam
-git checkout $BRANCH
 sh run_make.sh
 cd ..
 
 # uvlm now
-git clone https://github.com/imperialcollegelondon/uvlm
+git clone --branch=$BRANCH https://github.com/imperialcollegelondon/uvlm
 cd uvlm
-git checkout $BRANCH
 sh run_make.sh
 
