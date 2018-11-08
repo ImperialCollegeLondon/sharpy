@@ -8,7 +8,7 @@ addons:
     packages:
       - gcc-6
       - g++-6
-install:
+before_install:
     # Link gcc-6 and g++-6 to their standard commands
   - sudo ln -s /usr/bin/gcc-6 /usr/local/bin/gcc
   - sudo ln -s /usr/bin/g++-6 /usr/local/bin/g++
@@ -20,6 +20,7 @@ install:
   - conda update -q conda
   - conda env create -f utils/environment_travis.yml
   - source activate sharpy_travis
+install:
   - echo $(pwd)
   - sh utils/get_libraries.sh
 script:
