@@ -17,7 +17,6 @@ Notes:
 import ctypes as ct
 import numpy as np
 import sharpy.utils.algebra as algebra
-from IPython import embed
 import ipdb
 
 

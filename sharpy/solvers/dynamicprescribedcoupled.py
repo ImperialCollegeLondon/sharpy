@@ -11,7 +11,6 @@ import sharpy.utils.algebra as algebra
 
 import h5py as h5
 import sharpy.utils.h5utils as h5utils
-from IPython import embed
 
 @solver
 class DynamicPrescribedCoupled(BaseSolver):

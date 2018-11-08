@@ -5,7 +5,6 @@ from sharpy.structure.basestructure import BaseStructure
 import sharpy.structure.models.beamstructures as beamstructures
 import sharpy.utils.algebra as algebra
 from sharpy.utils.datastructures import StructTimeStepInfo
-from IPython import embed
 
 
 class Beam(BaseStructure):

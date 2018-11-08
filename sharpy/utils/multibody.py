@@ -16,7 +16,6 @@ Notes:
 import numpy as np
 import sharpy.structure.utils.xbeamlib as xbeamlib
 import sharpy.utils.algebra as algebra
-from IPython import embed
 import ctypes as ct
 import traceback
 

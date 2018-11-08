@@ -5,7 +5,6 @@ from sharpy.utils.solver_interface import solver, BaseSolver
 import sharpy.structure.models.beam as beam
 import sharpy.utils.settings as settings_utils
 import sharpy.utils.h5utils as h5utils
-from IPython import embed
 import os
 
 
