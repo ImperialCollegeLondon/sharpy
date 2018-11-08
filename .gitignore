@@ -33,3 +33,8 @@ cpp/obj/*o
 cpp/obj/*d
 cpp/*so
 cpp/*exe
+
+*.idea
+
+cases*/
+figs/

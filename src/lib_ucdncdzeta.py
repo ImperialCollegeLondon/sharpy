@@ -3,7 +3,7 @@ Calculate derivative of Uc*dnc/dzeta w.r.t local panel coordinates
 '''
 
 import numpy as np 
-from IPython import embed
+# from IPython import embed
 import libalg
 
 # dR_dZeta.shape=(4,3,2,3)

@@ -15,7 +15,7 @@ References:
 
 import numpy as np
 import scipy.special as scsp
-from IPython import embed
+# from IPython import embed
 
 # imaginary variable
 j=1.0j

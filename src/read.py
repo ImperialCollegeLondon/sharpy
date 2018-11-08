@@ -6,7 +6,7 @@ Modified: 9 aug 2017
 
 import h5py
 from warnings import warn
-from IPython import embed
+# from IPython import embed
 
 
 

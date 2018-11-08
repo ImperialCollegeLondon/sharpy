@@ -10,7 +10,7 @@ import copy
 import numpy as np
 import scipy.sparse as sparse
 import scipy.signal as scsig
-from IPython import embed
+# # from IPython import embed
 
 
 def couple(ss01,ss02,K12,K21):

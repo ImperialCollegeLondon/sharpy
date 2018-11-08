@@ -10,7 +10,7 @@ import scipy.linalg as scalg
 import scipy.signal as scsig
 
 import libss
-from IPython import embed
+# from IPython import embed
 # import sharpy.solvers.modal as modal
 
 
