@@ -437,13 +437,8 @@ def generate_strip(node_info, airfoil_db, aligned_grid, orientation_in=np.array(
                                      relative_coords)
             # deflection velocity
             try:
-                if node_info['control_surface']['deflection_dot']:
-                    print('deflection_dot = ', node_info['control_surface']['deflection_dot'])
-                    print('coords = ', relative_coords)
                 cs_velocity[:, i_M] += np.cross(np.array([-node_info['control_surface']['deflection_dot'], 0.0, 0.0]),
                                                 relative_coords)
-                if node_info['control_surface']['deflection_dot']:
-                    print('vel = ', cs_velocity[:, i_M])
             except KeyError:
                 pass
 
