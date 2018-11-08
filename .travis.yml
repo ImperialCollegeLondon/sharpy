@@ -18,7 +18,7 @@ install:
   - hash -r
   - conda config --set always_yes yes --set changeps1 no
   - conda update -q conda
-  - conda create env -f sharpy/utils/environment_travis.yml
+  - conda env create -f sharpy/utils/environment_travis.yml
   - source activate sharpy_travis
   - sh sharpy/utils/get_libraries.sh
 script:
