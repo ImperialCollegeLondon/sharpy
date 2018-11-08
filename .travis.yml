@@ -10,8 +10,8 @@ addons:
       - g++-6
 install:
     # Link gcc-6 and g++-6 to their standard commands
-  - ln -s /usr/bin/gcc-6 /usr/local/bin/gcc
-  - ln -s /usr/bin/g++-6 /usr/local/bin/g++
+  - sudo ln -s /usr/bin/gcc-6 /usr/local/bin/gcc
+  - sudo ln -s /usr/bin/g++-6 /usr/local/bin/g++
   - wget https://repo.continuum.io/miniconda/Miniconda3-latest-Linux-x86_64.sh -O miniconda.sh;
   - bash miniconda.sh -b -p $HOME/miniconda
   - export PATH="$HOME/miniconda/bin:$PATH"
