@@ -13,7 +13,7 @@ __pycache__
 dev
 src/superceeded
 
-docs
+docs/build/
 *.ods
 *.ods#
 *.prof
