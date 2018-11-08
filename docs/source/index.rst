@@ -11,6 +11,7 @@ Welcome to Linearised UVLM's documentation!
    :caption: Contents:
 
    content/linuvlm
+   content/lingebm
 
 
 
