@@ -20,6 +20,7 @@ install:
   - conda update -q conda
   - conda env create -f utils/environment_travis.yml
   - source activate sharpy_travis
+  - echo $(pwd)
   - sh utils/get_libraries.sh
 script:
   - echo "TESTING"
