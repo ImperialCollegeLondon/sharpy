@@ -22,6 +22,18 @@ before_install:
   - source activate sharpy_travis
 install:
   - echo $(pwd)
-  - sh utils/get_libraries.sh
+  - export BRANCH=$(git rev-parse --abbrev-ref HEAD)
+  - cd ../../
+  - git clone --branch=$BRANCH https://github.com/imperialcollegelondon/xbeam
+  - cd xbeam
+  - export LAPACK_LIB_DIR=$(conda info --json | python -c "import sys, json; print(json.load(sys.stdin)['active_prefix'])")/lib
+  - make install
+  - cd ../
+  - git clone --branch=$BRANCH https://github.com/imperialcollegelondon/uvlm
+  - cd uvlm
+  - export EIGEN3_INCLUDE_DIR=$(conda info --json | python -c "import sys, json; print(json.load(sys.stdin)['active_prefix'])")/include/eigen3
+  - make
+  - cp lib* ../sharpy/lib
+
 script:
   - echo "TESTING"
