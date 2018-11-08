@@ -1,0 +1,16 @@
+language: python
+python:
+  - "3.6"
+install:
+  - wget https://repo.continuum.io/miniconda/Miniconda3-latest-Linux-x86_64.sh -O miniconda.sh;
+  - sudo apt-get install gfortran-6 g++-6
+  - bash miniconda.sh -b -p $HOME/miniconda
+  - export PATH="$HOME/miniconda/bin:$PATH"
+  - hash -r
+  - conda config --set always_yes yes --set changeps1 no
+  - conda update -q conda
+  - conda create env -f sharpy/utils/environment_travis.yml
+  - source activate sharpy_travis
+  - sh sharpy/utils/get_libraries.sh
+script:
+  - echo "TESTING"
