@@ -10,6 +10,7 @@ addons:
       - gcc-6
       - g++-6
       - gfortran-6
+
 before_install:
     # Link gcc-6 and g++-6 to their standard commands
   - sudo unlink /usr/bin/gcc && sudo ln -s /usr/bin/gcc-6 /usr/bin/gcc
@@ -24,6 +25,7 @@ before_install:
   - conda update -q conda
   - conda env create -f utils/environment_travis.yml
   - source activate sharpy_travis
+
 install:
   - echo $(pwd)
   - echo $TRAVIS_BRANCH
@@ -42,5 +44,4 @@ install:
   - source bin/sharpy_vars.sh
 
 script:
-  - cd tests/
-  - python runtests.py
+  - python -m unittest
