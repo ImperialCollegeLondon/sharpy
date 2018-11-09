@@ -10,11 +10,9 @@ addons:
       - g++-6
 before_install:
     # Link gcc-6 and g++-6 to their standard commands
-  #- sudo ln -s /usr/bin/gcc-6 /usr/bin/gcc
-  #- sudo ln -s /usr/bin/g++-6 /usr/bin/g++
-  #- sudo ln -s /usr/bin/gfortran-6 /usr/bin/gfortran
-  - sudo update-alternatives --install /usr/bin/g++ g++ /usr/local/bin/g++-6 90
-  - sudo update-alternatives --install /usr/bin/gfortran gfortran /usr/local/bin/gfortran-6 90
+  - sudo unlink /usr/bin/gcc && sudo ln -s /usr/bin/gcc-6 /usr/bin/gcc
+  - sudo unlink /usr/bin/g++ && sudo ln -s /usr/bin/g++-6 /usr/bin/g++
+  - sudo unlink /usr/bin/gfortran && sudo ln -s /usr/bin/gfortran-6 /usr/bin/gfortran
   - wget https://repo.continuum.io/miniconda/Miniconda3-latest-Linux-x86_64.sh -O miniconda.sh;
   - bash miniconda.sh -b -p $HOME/miniconda
   - export PATH="$HOME/miniconda/bin:$PATH"
