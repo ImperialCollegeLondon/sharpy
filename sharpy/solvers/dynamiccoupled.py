@@ -213,14 +213,11 @@ class DynamicCoupled(BaseSolver):
         self.data.ts = 0
 
     def run(self):
-        # previous_kstep = self.data.structure.timestep_info[-1].copy()
         # dynamic simulations start at tstep == 1, 0 is reserved for the initial state
         for self.data.ts in range(len(self.data.structure.timestep_info),
                                   self.settings['n_time_steps'].value + len(self.data.structure.timestep_info)):
-            # aero_kstep = self.data.aero.timestep_info[-1].copy()
             structural_kstep = self.data.structure.timestep_info[-1].copy()
 
-            # previous_kstep = self.data.structure.timestep_info[-1].copy()
             k = 0
             for k in range(self.settings['fsi_substeps'].value + 1):
                 if k == self.settings['fsi_substeps'].value and not self.settings['fsi_substeps'] == 0:
@@ -241,8 +238,6 @@ class DynamicCoupled(BaseSolver):
                         force_coeff = 1.0
                 if self.data.ts < 5:
                     force_coeff = 0.0
-
-                # print('k = ', k, ' force_coeff = ', force_coeff)
 
                 # run the solver
                 if force_coeff == 0.:
@@ -378,15 +373,6 @@ class DynamicCoupled(BaseSolver):
 
 
 def relax(beam, timestep, previous_timestep, coeff):
-    # from sharpy.structure.utils.xbeamlib import xbeam_solv_state2disp
-    # numdof = beam.num_dof.value
-    # timestep.q[:] = (1.0 - coeff)*timestep.q + coeff*previous_timestep.q
-    # timestep.dqdt[:] = (1.0 - coeff)*timestep.dqdt + coeff*previous_timestep.dqdt
-    # timestep.dqddt[:] = (1.0 - coeff)*timestep.dqddt + coeff*previous_timestep.dqddt
-
-    # normalise_quaternion(timestep)
-    # xbeam_solv_state2disp(beam, timestep)
-
     timestep.steady_applied_forces[:] = ((1.0 - coeff)*timestep.steady_applied_forces +
             coeff*previous_timestep.steady_applied_forces)
     timestep.unsteady_applied_forces[:] = ((1.0 - coeff)*timestep.unsteady_applied_forces +
