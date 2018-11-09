@@ -43,4 +43,4 @@ install:
 
 script:
   - cd tests/
-  - python run_tests.py
+  - python runtests.py
