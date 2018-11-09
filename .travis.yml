@@ -23,15 +23,19 @@ before_install:
   - source activate sharpy_travis
 install:
   - echo $(pwd)
+  - echo $TRAVIS_BRANCH
   - cd ../../
   - git clone --branch=$TRAVIS_BRANCH https://github.com/imperialcollegelondon/xbeam
   - cd xbeam
   #- export gfortran="gfortran-6"; export LAPACK_LIB_DIR=$(conda info --json | python -c "import sys, json; print(json.load(sys.stdin)['active_prefix'])")/lib ; make install
-  - export LAPACK_LIB_DIR=$(conda info --json | python -c "import sys, json; print(json.load(sys.stdin)['active_prefix'])")/lib make install
+  - export LAPACK_LIB_DIR=$(conda info --json | python -c "import sys, json; print(json.load(sys.stdin)['active_prefix'])")/lib
+  - echo $LAPACK_LIB_DIR
+  - make install
   - cd ../
   - git clone --branch=$TRAVIS_BRANCH https://github.com/imperialcollegelondon/uvlm
   - cd uvlm
-  - export EIGEN3_INCLUDE_DIR=$(conda info --json | python -c "import sys, json; print(json.load(sys.stdin)['active_prefix'])")/include/eigen3 make
+  - export EIGEN3_INCLUDE_DIR=$(conda info --json | python -c "import sys, json; print(json.load(sys.stdin)['active_prefix'])")/include/eigen3
+  - make
   - cp lib* ../sharpy/lib
 
 script:
