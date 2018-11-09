@@ -122,7 +122,7 @@ def define_node_dof(MB_beam, node_body, num_node):
     # if not (MB_beam[node_body].num_dof == 6*(MB_beam[node_body].num_node - 1)):
     #     #the previous statement will NOT work for more than one clamped node
     #     print("WARNING: hinge_node_FoR does not work for more than one clamped node")
-    node_dof += 6*MB_beam[node_body].vdof[node_number]
+    node_dof += 6*MB_beam[node_body].vdof[num_node]
     return node_dof
 
 def define_FoR_dof(MB_beam, FoR_body):
@@ -196,9 +196,10 @@ def equal_lin_vel_node_FoR(MB_tstep, FoR_body, node_body, node_number, node_FoR_
     LM_K[node_FoR_dof+3:node_FoR_dof+6,node_dof:node_dof+3] += algebra.skew(np.dot(algebra.quat2rotation(MB_tstep[node_body].quat).T,Lambda_dot[ieq:ieq+num_LM_eq_specific]))
 
     ieq += 3
+    return ieq
 
 
-def def_rot_axis_FoR_wrt_node(MB_tstep, FoR_body, node_body, node_number, node_FoR_dof, node_dof, FoR_dof, sys_size, Lambda_dot, rot_axisB, scalingFactor, penaltyFactor, ieq, LM_K, LM_C, LM_Q):
+def def_rot_axis_FoR_wrt_node(MB_tstep, MB_beam, FoR_body, node_body, node_number, node_FoR_dof, node_dof, FoR_dof, sys_size, Lambda_dot, rot_axisB, scalingFactor, penaltyFactor, ieq, LM_K, LM_C, LM_Q):
 
     # Variables names. The naming of the variables can be quite confusing. The reader should think that
     # the BC relates one "node" and one "FoR" (writen between quotes in these lines).
@@ -272,9 +273,10 @@ def def_rot_axis_FoR_wrt_node(MB_tstep, FoR_body, node_body, node_number, node_F
                                                                                                        new_Lambda_dot)))[indep,:]
 
     ieq += 2
+    return ieq
 
 
-def def_rot_vel_FoR_wrt_node(MB_tstep, FoR_body, node_body, node_number, node_FoR_dof, node_dof, FoR_dof, sys_size, Lambda_dot, rot_axisB, rot_vel, scalingFactor, penaltyFactor, ieq, LM_K, LM_C, LM_Q):
+def def_rot_vel_FoR_wrt_node(MB_tstep, MB_beam, FoR_body, node_body, node_number, node_FoR_dof, node_dof, FoR_dof, sys_size, Lambda_dot, rot_axisB, rot_vel, scalingFactor, penaltyFactor, ieq, LM_K, LM_C, LM_Q):
 
     # Variables names. The naming of the variables can be quite confusing. The reader should think that
     # the BC relates one "node" and one "FoR" (writen between quotes in these lines).
@@ -293,7 +295,7 @@ def def_rot_vel_FoR_wrt_node(MB_tstep, FoR_body, node_body, node_number, node_Fo
     # Lambda_dot[ieq:ieq+num_LM_eq_specific]
     # np.concatenate((Lambda_dot[ieq:ieq+num_LM_eq_specific], np.array([0.])))
 
-
+    ielem, inode_in_elem = MB_beam[node_body].node_master_elem[node_number]
     Bnh[:, FoR_dof+3:FoR_dof+6] = multiply_matrices(rot_axisB,
                                                   algebra.crv2rotation(MB_tstep[node_body].psi[ielem,inode_in_elem,:]),
                                                   algebra.quat2rotation(MB_tstep[node_body].quat).T,
@@ -327,6 +329,7 @@ def def_rot_vel_FoR_wrt_node(MB_tstep, FoR_body, node_body, node_number, node_Fo
                                                                                                 rot_axisB.T*Lambda_dot[ieq:ieq+num_LM_eq_specific]))
 
     ieq += 1
+    return ieq
 
 
 def generate_lagrange_matrix(MBdict, MB_beam, MB_tstep, num_LM_eq, sys_size, dt, Lambda, Lambda_dot):
@@ -386,12 +389,12 @@ def generate_lagrange_matrix(MBdict, MB_beam, MB_tstep, num_LM_eq, sys_size, dt,
             FoR_body = MBdict["constraint_%02d" % iconstraint]['body_FoR']
 
             # Define the position of the first degree of freedom associated to the node
-            node_dof = define_node_dof(MB_beam, node_body, num_node)
+            node_dof = define_node_dof(MB_beam, node_body, node_number)
             node_FoR_dof = define_FoR_dof(MB_beam, node_body)
             FoR_dof = define_FoR_dof(MB_beam, FoR_body)
 
             # Define the equations
-            equal_lin_vel_node_FoR(MB_tstep, FoR_body, node_body, node_number, node_FoR_dof, node_dof, FoR_dof, sys_size, Lambda_dot, scalingFactor, penaltyFactor, ieq, LM_K, LM_C, LM_Q)
+            ieq = equal_lin_vel_node_FoR(MB_tstep, FoR_body, node_body, node_number, node_FoR_dof, node_dof, FoR_dof, sys_size, Lambda_dot, scalingFactor, penaltyFactor, ieq, LM_K, LM_C, LM_Q)
 
         ###################################################################
         ###################  HINGE BETWEEN NODE AND FOR  ##################
@@ -405,13 +408,13 @@ def generate_lagrange_matrix(MBdict, MB_beam, MB_tstep, num_LM_eq, sys_size, dt,
             rot_axisB = MBdict["constraint_%02d" % iconstraint]['rot_axisB']
 
             # Define the position of the first degree of freedom associated to the node
-            node_dof = define_node_dof(MB_beam, node_body, num_node)
+            node_dof = define_node_dof(MB_beam, node_body, node_number)
             node_FoR_dof = define_FoR_dof(MB_beam, node_body)
             FoR_dof = define_FoR_dof(MB_beam, FoR_body)
 
             # Define the equations
-            equal_lin_vel_node_FoR(MB_tstep, FoR_body, node_body, node_number, node_FoR_dof, node_dof, FoR_dof, sys_size, Lambda_dot, scalingFactor, penaltyFactor, ieq, LM_K, LM_C, LM_Q)
-            def_rot_axis_FoR_wrt_node(MB_tstep, FoR_body, node_body, node_number, node_FoR_dof, node_dof, FoR_dof, sys_size, Lambda_dot, rot_axisB, scalingFactor, penaltyFactor, ieq, LM_K, LM_C, LM_Q)
+            ieq = equal_lin_vel_node_FoR(MB_tstep, FoR_body, node_body, node_number, node_FoR_dof, node_dof, FoR_dof, sys_size, Lambda_dot, scalingFactor, penaltyFactor, ieq, LM_K, LM_C, LM_Q)
+            ieq = def_rot_axis_FoR_wrt_node(MB_tstep, MB_beam, FoR_body, node_body, node_number, node_FoR_dof, node_dof, FoR_dof, sys_size, Lambda_dot, rot_axisB, scalingFactor, penaltyFactor, ieq, LM_K, LM_C, LM_Q)
 
         ###################################################################
         ##############  HINGE BETWEEN NODE AND FOR  CONSTANT VEL  #########
@@ -426,14 +429,14 @@ def generate_lagrange_matrix(MBdict, MB_beam, MB_tstep, num_LM_eq, sys_size, dt,
             rot_vel = MBdict["constraint_%02d" % iconstraint]['rot_vel']
 
             # Define the position of the first degree of freedom associated to the node
-            node_dof = define_node_dof(MB_beam, node_body, num_node)
+            node_dof = define_node_dof(MB_beam, node_body, node_number)
             node_FoR_dof = define_FoR_dof(MB_beam, node_body)
             FoR_dof = define_FoR_dof(MB_beam, FoR_body)
 
             # Define the equations
-            equal_lin_vel_node_FoR(MB_tstep, FoR_body, node_body, node_number, node_FoR_dof, node_dof, FoR_dof, sys_size, Lambda_dot, scalingFactor, penaltyFactor, ieq, LM_K, LM_C, LM_Q)
-            def_rot_axis_FoR_wrt_node(MB_tstep, FoR_body, node_body, node_number, node_FoR_dof, node_dof, FoR_dof, sys_size, Lambda_dot, rot_axisB, scalingFactor, penaltyFactor, ieq, LM_K, LM_C, LM_Q)
-            def_rot_vel_FoR_wrt_node(MB_tstep, FoR_body, node_body, node_number, node_FoR_dof, node_dof, FoR_dof, sys_size, Lambda_dot, rot_axisB, rot_vel, scalingFactor, penaltyFactor, ieq, LM_K, LM_C, LM_Q)
+            ieq = equal_lin_vel_node_FoR(MB_tstep, FoR_body, node_body, node_number, node_FoR_dof, node_dof, FoR_dof, sys_size, Lambda_dot, scalingFactor, penaltyFactor, ieq, LM_K, LM_C, LM_Q)
+            ieq = def_rot_axis_FoR_wrt_node(MB_tstep, MB_beam, FoR_body, node_body, node_number, node_FoR_dof, node_dof, FoR_dof, sys_size, Lambda_dot, rot_axisB, scalingFactor, penaltyFactor, ieq, LM_K, LM_C, LM_Q)
+            ieq = def_rot_vel_FoR_wrt_node(MB_tstep, MB_beam, FoR_body, node_body, node_number, node_FoR_dof, node_dof, FoR_dof, sys_size, Lambda_dot, rot_axisB, rot_vel, scalingFactor, penaltyFactor, ieq, LM_K, LM_C, LM_Q)
 
         ###################################################################
         ###############################  HINGE FOR  #######################
@@ -532,25 +535,25 @@ def generate_lagrange_matrix(MBdict, MB_beam, MB_tstep, num_LM_eq, sys_size, dt,
         ###################################################################
         elif behaviour == 'constant_rot_vel_FoR':
 
-                # Rename variables from dictionary
-                rot_vel = MBdict["constraint_%02d" % iconstraint]['rot_vel']
-                FoR_body = MBdict["constraint_%02d" % iconstraint]['FoR_body']
+            # Rename variables from dictionary
+            rot_vel = MBdict["constraint_%02d" % iconstraint]['rot_vel']
+            FoR_body = MBdict["constraint_%02d" % iconstraint]['FoR_body']
 
-                num_LM_eq_specific = 3
-                Bnh = np.zeros((num_LM_eq_specific, sys_size), dtype=ct.c_double, order = 'F')
-                B = np.zeros((num_LM_eq_specific, sys_size), dtype=ct.c_double, order = 'F')
+            num_LM_eq_specific = 3
+            Bnh = np.zeros((num_LM_eq_specific, sys_size), dtype=ct.c_double, order = 'F')
+            B = np.zeros((num_LM_eq_specific, sys_size), dtype=ct.c_double, order = 'F')
 
-                # Define the position of the first degree of freedom associated to the FoR
-                FoR_dof = define_FoR_dof(MB_beam, FoR_body)
+            # Define the position of the first degree of freedom associated to the FoR
+            FoR_dof = define_FoR_dof(MB_beam, FoR_body)
 
-                Bnh[:3,FoR_dof+3:FoR_dof+6] = np.eye(3)
+            Bnh[:3,FoR_dof+3:FoR_dof+6] = np.eye(3)
 
-                LM_C[sys_size+ieq:sys_size+ieq+num_LM_eq_specific,:sys_size] += scalingFactor*Bnh
-                LM_C[:sys_size,sys_size+ieq:sys_size+ieq+num_LM_eq_specific] += scalingFactor*np.transpose(Bnh)
+            LM_C[sys_size+ieq:sys_size+ieq+num_LM_eq_specific,:sys_size] += scalingFactor*Bnh
+            LM_C[:sys_size,sys_size+ieq:sys_size+ieq+num_LM_eq_specific] += scalingFactor*np.transpose(Bnh)
 
-                LM_Q[:sys_size] += scalingFactor*np.dot(np.transpose(Bnh),Lambda_dot[ieq:ieq+num_LM_eq_specific])
-                LM_Q[sys_size+ieq:sys_size+ieq+num_LM_eq_specific] += MB_tstep[FoR_body].for_vel[3:6] - rot_vel
+            LM_Q[:sys_size] += scalingFactor*np.dot(np.transpose(Bnh),Lambda_dot[ieq:ieq+num_LM_eq_specific])
+            LM_Q[sys_size+ieq:sys_size+ieq+num_LM_eq_specific] += MB_tstep[FoR_body].for_vel[3:6] - rot_vel
 
-                ieq += 3
+            ieq += 3
 
     return LM_C, LM_K, LM_Q
