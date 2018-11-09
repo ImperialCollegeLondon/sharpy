@@ -1,5 +1,7 @@
 Master branch: [![Build Status](https://travis-ci.org/ImperialCollegeLondon/sharpy.svg?branch=master)](https://travis-ci.org/ImperialCollegeLondon/sharpy)
 
+CI implementation branch: [![Build Status](https://travis-ci.org/ImperialCollegeLondon/sharpy.svg?branch=dev_travis)](https://travis-ci.org/ImperialCollegeLondon/sharpy)
+
 
 # Simulation of High Aspect Ratio Planes in Python [SHARPy]
 SHARPy is an aeroelastic analysis package currently under development at the Department of Aeronautics, 
