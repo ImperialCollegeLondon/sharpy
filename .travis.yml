@@ -41,6 +41,7 @@ install:
   - make
   - cp lib/* ../sharpy/lib
   - cd ../sharpy
+  - git fetch -t
   - source bin/sharpy_vars.sh
 
 script:
