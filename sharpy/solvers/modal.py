@@ -10,7 +10,6 @@ import itertools
 import warnings
 from tvtk.api import tvtk, write_data
 import scipy.linalg
-import matplotlib.pyplot as plt
 
 import sharpy.structure.utils.xbeamlib as xbeamlib
 from sharpy.utils.solver_interface import solver, BaseSolver
@@ -295,10 +294,11 @@ class Modal(BaseSolver):
 
         # Plot eigenvalues using matplotlib if specified in settings
         if self.settings['plot_eigenvalues']:
-             fig = plt.figure()
-             plt.scatter(eigenvalues.real, eigenvalues.imag)
-             plt.show()
-             plt.savefig(self.folder + 'eigenvalues.png', transparent=True, bbox_inches='tight')
+            import matplotlib.pyplot as plt
+            fig = plt.figure()
+            plt.scatter(eigenvalues.real, eigenvalues.imag)
+            plt.show()
+            plt.savefig(self.folder + 'eigenvalues.png', transparent=True, bbox_inches='tight')
 
 
         # Write dat files
@@ -334,7 +334,7 @@ class Modal(BaseSolver):
             if not zero_FullCglobal:
                 outdict['warning'] =\
                     'system with damping: mode shapes and natural frequencies do not account for damping!'
-        else: 
+        else:
             outdict['modes'] = 'damped'
             outdict['freq_damped'] = freq_damped
 
