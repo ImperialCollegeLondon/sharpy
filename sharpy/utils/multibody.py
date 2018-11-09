@@ -54,7 +54,7 @@ def split_multibody(beam, tstep, mb_data_dict):
         ibody_beam = beam.get_body(ibody = ibody)
         ibody_beam.ini_info.change_to_local_AFoR(ibody)
         ibody_beam.timestep_info.change_to_local_AFoR(ibody)
-        ibody_tstep = tstep.get_body(beam, ibody = ibody)
+        ibody_tstep = tstep.get_body(beam, ibody_beam.num_dof, ibody = ibody)
         ibody_tstep.change_to_local_AFoR(ibody)
 
         ibody_beam.FoR_movement = mb_data_dict['body_%02d' % ibody]['FoR_movement']

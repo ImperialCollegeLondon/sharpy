@@ -388,10 +388,11 @@ class StructTimeStepInfo(object):
         self.total_gravity_forces = np.zeros((6,), dtype=ct.c_double, order='F')
 
         if num_dof is None:
-            num_dof = (self.num_node - 1)*6
-        self.q = np.zeros((num_dof + 6 + 4,), dtype=ct.c_double, order='F')
-        self.dqdt = np.zeros((num_dof + 6 + 4,), dtype=ct.c_double, order='F')
-        self.dqddt = np.zeros((num_dof + 6 + 4,), dtype=ct.c_double, order='F')
+            # For backwards compatibility
+            num_dof = (self.num_node.value - 1)*6
+        self.q = np.zeros((num_dof.value + 6 + 4,), dtype=ct.c_double, order='F')
+        self.dqdt = np.zeros((num_dof.value + 6 + 4,), dtype=ct.c_double, order='F')
+        self.dqddt = np.zeros((num_dof.value + 6 + 4,), dtype=ct.c_double, order='F')
 
         self.postproc_cell = dict()
         self.postproc_node = dict()
@@ -405,7 +406,7 @@ class StructTimeStepInfo(object):
         self.mb_dqddt_quat = np.zeros((num_bodies,4), dtype=ct.c_double, order='F')
 
     def copy(self):
-        copied = StructTimeStepInfo(self.num_node, self.num_elem, self.num_node_elem, self.mb_quat.shape[0])
+        copied = StructTimeStepInfo(self.num_node, self.num_elem, self.num_node_elem, ct.c_int(len(self.q)-10), self.mb_quat.shape[0])
 
         copied.num_node = self.num_node
         copied.num_elem = self.num_elem
@@ -465,7 +466,7 @@ class StructTimeStepInfo(object):
     def cag(self):
         return self.cga().T
 
-    def get_body(self, beam, ibody):
+    def get_body(self, beam, num_dof_ibody, ibody):
         """
         get_body
 
@@ -510,11 +511,26 @@ class StructTimeStepInfo(object):
         ibody_num_node = ibody_num_elem*(self.num_node_elem - 1) + 1
         ibody_first_node = beam.connectivities[ibody_first_element,0]
         ibody_last_node = beam.connectivities[ibody_last_element-1,1]
+        if ibody_first_node == 0:
+            ibody_first_dof = 0
+        else:
+            prev_body_last_node_not_clamped = ibody_first_node-1
+            while beam.vdof[prev_body_last_node_not_clamped] == -1:
+                prev_body_last_node_not_clamped -= 1
+            ibody_first_dof = (beam.vdof[prev_body_last_node_not_clamped] + 1)*6
+
+        # # Define the number of degrees of freedom
+        # last_dof = (beam.vdof[ibody_last_node] + 1)*6
+        # if not ibody_first_node == 0:
+        #     first_dof = (beam.vdof[ibody_first_node] + 1)*6
+        # else:
+        #     last_dof = (beam.vdof[ibody_first_node-1] + 1)*6
+        # num_dof = last_dof - firts_dof
 
         ibody_last_node += 1
 
         # Initialize the new StructTimeStepInfo
-        ibody_StructTimeStepInfo = StructTimeStepInfo(ibody_num_node, ibody_num_elem, self.num_node_elem, num_bodies = beam.num_bodies)
+        ibody_StructTimeStepInfo = StructTimeStepInfo(ibody_num_node, ibody_num_elem, self.num_node_elem, num_dof = num_dof_ibody, num_bodies = beam.num_bodies)
 
         # Assign all the variables
         ibody_StructTimeStepInfo.quat = self.quat.astype(dtype=ct.c_double, order='F', copy=True)
@@ -536,10 +552,9 @@ class StructTimeStepInfo(object):
         ibody_StructTimeStepInfo.gravity_forces = self.gravity_forces[ibody_first_node:ibody_last_node,:].astype(dtype=ct.c_double, order='F', copy=True)
         ibody_StructTimeStepInfo.total_gravity_forces = self.total_gravity_forces.astype(dtype=ct.c_double, order='F', copy=True)
 
-        # TODO: if there is more (or less) than on clamped node, it will NOT work
-        ibody_StructTimeStepInfo.q[0:(ibody_num_node-1)*6] = self.q[ibody_first_node*6:(ibody_last_node-1)*6].astype(dtype=ct.c_double, order='F', copy=True)
-        ibody_StructTimeStepInfo.dqdt[0:(ibody_num_node-1)*6] = self.dqdt[ibody_first_node*6:(ibody_last_node-1)*6].astype(dtype=ct.c_double, order='F', copy=True)
-        ibody_StructTimeStepInfo.dqddt[0:(ibody_num_node-1)*6] = self.dqddt[ibody_first_node*6:(ibody_last_node-1)*6].astype(dtype=ct.c_double, order='F', copy=True)
+        ibody_StructTimeStepInfo.q[0:num_dof_ibody.value] = self.q[ibody_first_dof:ibody_first_dof+num_dof_ibody.value].astype(dtype=ct.c_double, order='F', copy=True)
+        ibody_StructTimeStepInfo.dqdt[0:num_dof_ibody.value] = self.dqdt[ibody_first_dof:ibody_first_dof+num_dof_ibody.value].astype(dtype=ct.c_double, order='F', copy=True)
+        ibody_StructTimeStepInfo.dqddt[0:num_dof_ibody.value] = self.dqddt[ibody_first_dof:ibody_first_dof+num_dof_ibody.value].astype(dtype=ct.c_double, order='F', copy=True)
 
         # ibody_StructTimeStepInfo.q[-10:] = self.q[-10:].astype(dtype=ct.c_double, order='F', copy=True)
         # ibody_StructTimeStepInfo.dqdt[-10:] = self.dqdt[-10:].astype(dtype=ct.c_double, order='F', copy=True)

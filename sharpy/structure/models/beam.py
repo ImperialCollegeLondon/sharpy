@@ -82,7 +82,7 @@ class Beam(BaseStructure):
         self.generate_dof_arrays()
 
         # ini info
-        self.ini_info = StructTimeStepInfo(self.num_node, self.num_elem, self.num_node_elem, num_dof = self.num_dof.value, num_bodies = self.num_bodies)
+        self.ini_info = StructTimeStepInfo(self.num_node, self.num_elem, self.num_node_elem, num_dof = self.num_dof, num_bodies = self.num_bodies)
 
         # mutibody: FoR information
         try:
@@ -517,9 +517,9 @@ class Beam(BaseStructure):
         ibody_last_element += 1
 
         # Define the size and location of the body
-        ibody_num_node = ibody_num_elem*(self.num_node_elem - 1) + 1
         ibody_first_node = self.connectivities[ibody_first_element,0]
         ibody_last_node = self.connectivities[ibody_last_element-1,1]
+        ibody_num_node = ibody_last_node - ibody_first_node +1
 
         ibody_last_node += 1
 
@@ -575,8 +575,10 @@ class Beam(BaseStructure):
 
         ibody_beam.body_number = self.body_number[ibody_first_element:ibody_last_element].astype(dtype=ct.c_int, order='F', copy=True)
 
-        ibody_beam.timestep_info = self.timestep_info[-1].get_body(self, ibody)
-        ibody_beam.ini_info = self.ini_info.get_body(self, ibody)
+        ibody_beam.generate_dof_arrays()
+
+        ibody_beam.ini_info = self.ini_info.get_body(self, ibody_beam.num_dof, ibody)
+        ibody_beam.timestep_info = self.timestep_info[-1].get_body(self, ibody_beam.num_dof, ibody)
 
         # generate the Element array
         for ielem in range(ibody_beam.num_elem):
@@ -599,8 +601,6 @@ class Beam(BaseStructure):
             ibody_beam.elements[ielem].add_attributes(dictionary)
 
         ibody_beam.generate_master_structure()
-
-        ibody_beam.generate_dof_arrays()
 
         if ibody_beam.lumped_mass is not None:
             ibody_beam.lump_masses()
