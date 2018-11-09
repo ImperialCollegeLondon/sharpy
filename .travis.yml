@@ -13,8 +13,8 @@ before_install:
   #- sudo ln -s /usr/bin/gcc-6 /usr/bin/gcc
   #- sudo ln -s /usr/bin/g++-6 /usr/bin/g++
   #- sudo ln -s /usr/bin/gfortran-6 /usr/bin/gfortran
-  - sudo update-alternatives --install /usr/bin/g++ g++ /usr/bin/g++-6 90
-  - sudo update-alternatives --install /usr/bin/gfortran gfortran /usr/bin/gfortran-6 90
+  - sudo update-alternatives --install /usr/bin/g++ g++ /usr/local/bin/g++-6 90
+  - sudo update-alternatives --install /usr/bin/gfortran gfortran /usr/local/bin/gfortran-6 90
   - wget https://repo.continuum.io/miniconda/Miniconda3-latest-Linux-x86_64.sh -O miniconda.sh;
   - bash miniconda.sh -b -p $HOME/miniconda
   - export PATH="$HOME/miniconda/bin:$PATH"
