@@ -10,7 +10,6 @@ import itertools
 import warnings
 from tvtk.api import tvtk, write_data
 import scipy.linalg
-import matplotlib.pyplot as plt
 
 import sharpy.structure.utils.xbeamlib as xbeamlib
 from sharpy.utils.solver_interface import solver, BaseSolver
@@ -21,6 +20,50 @@ import sharpy.utils.algebra as algebra
 
 @solver
 class Modal(BaseSolver):
+    """
+    ``Modal`` solver class, inherited from ``BaseSolver``
+
+    Extracts the ``M``, ``K`` and ``C`` matrices from the ``Fortran`` library for the beam. Depending on the choice of
+    modal projection, these may or may not be transformed to a state-space form to compute the eigenvalues and mode shapes
+    of the structure.
+
+    Args:
+        data (ProblemData): object with problem data
+        custom_settings (dict): custom settings that override the settings in the solver ``.txt`` file. None by default
+
+    Attributes:
+        settings (dict): Name-value pair of settings employed by solver.
+
+            ==========================  =========  =======================================================================  ============
+            Name                        Type       Description                                                              Default
+            ==========================  =========  =======================================================================  ============
+            ``print_info``              ``bool``   Print modal calculations to terminal                                     ``True``
+            ``folder``                  ``str``    Output folder                                                            ``./output``
+            ``use_undamped_modes``      ``bool``   Basis for modal projection                                               ``True``
+            ``NumLambda``               ``int``    Number of modes to retain                                                ``20``
+            ``keep_linear_matrices``    ``bool``   Retain linear ``M``, ``K`` and ``C`` matrices at each time step          ``True``
+            ``write_modes_vtk``         ``bool``   Write displacement mode shapes in vtk file (for ParaView)                ``True``
+            ``print_matrices``          ``bool``   Output ``M``, ``K``, and ``C`` matrices to output directory              ``False``
+            ``write_dat``               ``bool``   Output mode shapes, frequencies and damping as .dat to output directory  ``True``
+            ``continuous_eigenvalues``  ``bool``   Use continuous eigenvalues                                               ``False``
+            ``dt``                      ``float``  Delta to calculate continuous eigenvalues                                ``0``
+            ``plot_eigenvalues``        ``bool``   Plot eigenvalues on Argand diagram                                       ``False``
+            ``max_rotation_deg``        ``float``  Maximum rotation allowed for vtk file (degrees)                          ``15``
+            ``max_displacement``        ``float``  Maximum displacement allowed for vtk file                                ``0.15``
+            ==========================  =========  =======================================================================  ============
+
+        settings_types (dict): Acceptable data types for entries in ``settings``
+        settings_default (dict): Default values for the available ``settings``
+        data (ProblemData): object containing the information of the problem
+        folder (str): output folder name
+        filename_freq (str): Mode frequency output file name (.dat)
+        filename_damp (str): Mode damping output file name (.dat)
+        filename_shapes (str): Mode shapes output file name (.dat)
+
+    See Also:
+        .. py:class:: sharpy.utils.solver_interface.BaseSolver
+
+    """
     solver_id = 'Modal'
 
     def __init__(self):
@@ -249,11 +292,13 @@ class Modal(BaseSolver):
         else:
             Kin_damp = None
 
-        # # plot eigenvalues
-        # fig = plt.figure()
-        # plt.scatter(eigenvalues.real, eigenvalues.imag)
-        # plt.show()
-        # plt.savefig(self.folder + 'eigenvalues.png', transparent=True, bbox_inches='tight')
+        # Plot eigenvalues using matplotlib if specified in settings
+        if self.settings['plot_eigenvalues']:
+            import matplotlib.pyplot as plt
+            fig = plt.figure()
+            plt.scatter(eigenvalues.real, eigenvalues.imag)
+            plt.show()
+            plt.savefig(self.folder + 'eigenvalues.png', transparent=True, bbox_inches='tight')
 
 
         # Write dat files
@@ -289,7 +334,7 @@ class Modal(BaseSolver):
             if not zero_FullCglobal:
                 outdict['warning'] =\
                     'system with damping: mode shapes and natural frequencies do not account for damping!'
-        else: 
+        else:
             outdict['modes'] = 'damped'
             outdict['freq_damped'] = freq_damped
 
@@ -313,16 +358,17 @@ class Modal(BaseSolver):
 
 
 def scale_mode(data,eigenvector,rot_max_deg=15,perc_max=0.15):
-    '''
+    """
     Scales the eigenvector such that:
-    -  the maximum change in component of the beam cartesian rotation vector 
+        1) the maximum change in component of the beam cartesian rotation vector
     is equal to rot_max_deg degrees.
-    - the maximum translational displacement does not exceed perc_max the
+        2) the maximum translational displacement does not exceed perc_max the
     maximum nodal position.
 
-    Warning: if the eigenvector is in state-space form, only the first
-    half of the eigenvector is scanned for determining the scaling.
-    '''
+    Warning:
+        If the eigenvector is in state-space form, only the first
+        half of the eigenvector is scanned for determining the scaling.
+    """
 
     ### initialise
     struct=data.structure
@@ -374,10 +420,9 @@ def scale_mode(data,eigenvector,rot_max_deg=15,perc_max=0.15):
 
 
 def get_mode_zeta(data, eigvect):
-    ''' 
-    Retrieves the UVLM grid nodal displacements associated to the eigenvector 
-    eigvect
-    '''
+    """
+    Retrieves the UVLM grid nodal displacements associated to the eigenvector ``eigvect``
+    """
 
     ### initialise
     aero=data.aero
@@ -454,11 +499,11 @@ def get_mode_zeta(data, eigvect):
 
 def write_modes_vtk(data, eigenvectors, NumLambda, filename_root, 
                                                 rot_max_deg=15.,perc_max=0.15):
-    '''
-    Writes a vtk file for each of the first NumLambda eigenvectors. When these
+    """
+    Writes a vtk file for each of the first ``NumLambda`` eigenvectors. When these
     are associated to the state-space form of the structural equations, only
     the displacement field is saved.
-    '''
+    """
 
     ### initialise
     aero=data.aero

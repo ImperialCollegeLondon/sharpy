@@ -9,6 +9,39 @@ import sharpy.utils.h5utils as h5utils
 
 @solver
 class AerogridLoader(BaseSolver):
+    """
+    ``AerogridLoader`` class, inherited from ``BaseSolver``
+
+    Generates aerodynamic grid based on the input data
+
+    Args:
+        data: ``ProblemData`` class structure
+
+    Attributes:
+        settings (dict): Name-value pair of the settings employed by the aerodynamic solver
+
+            ==================  ===============  ===========================================  ===================
+            Name                Type             Description                                  Default
+            ==================  ===============  ===========================================  ===================
+            ``unsteady``        ``bool``         Unsteady aerodynamics                        ``False``
+            ``aligned_grid``    ``bool``         Aerodynamic grid aligned with oncoming flow  ``True``
+            ``freestream_dir``  ``list(float)``  Direction of the oncoming flow               ``[1.0, 0.0, 0.0]``
+            ``mstar``           ``int``          Number of wake panels in the flow direction  ``10``
+            ==================  ===============  ===========================================  ===================
+
+        settings_types (dict): Acceptable types for the values in ``settings``
+        settings_default (dict): Name-value pair of default values for the aerodynamic settings
+        data (ProblemData): class structure
+        aero_file_name (str): name of the ``.aero.h5`` HDF5 file
+        aero: empty attribute
+        aero_data_dict (dict): key-value pairs of aerodynamic data
+
+    See Also:
+        .. py:class:: sharpy.aero.models.aerogrid.Aerogrid
+
+        .. py:class:: sharpy.utils.solver_interface.BaseSolver
+
+    """
     solver_id = 'AerogridLoader'
 
     def __init__(self):

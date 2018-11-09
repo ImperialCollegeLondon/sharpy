@@ -104,6 +104,7 @@ class AerogridPlot(BaseSolver):
             panel_id = np.zeros((panel_data_dim,), dtype=int)
             panel_surf_id = np.zeros((panel_data_dim,), dtype=int)
             panel_gamma = np.zeros((panel_data_dim,))
+            panel_gamma_dot = np.zeros((panel_data_dim,))
             normal = np.zeros((panel_data_dim, 3))
             point_struct_id = np.zeros((point_data_dim,), dtype=int)
             point_cf = np.zeros((point_data_dim, 3))
@@ -165,6 +166,7 @@ class AerogridPlot(BaseSolver):
                     panel_id[counter] = counter
                     panel_surf_id[counter] = i_surf
                     panel_gamma[counter] = self.data.aero.timestep_info[self.ts].gamma[i_surf][i_m, i_n]
+                    panel_gamma_dot[counter] = self.data.aero.timestep_info[self.ts].gamma_dot[i_surf][i_m, i_n]
 
                     if with_incidence_angle:
                         incidence_angle[counter] = \
@@ -179,9 +181,11 @@ class AerogridPlot(BaseSolver):
             ug.cell_data.get_array(1).name = 'panel_surface_id'
             ug.cell_data.add_array(panel_gamma)
             ug.cell_data.get_array(2).name = 'panel_gamma'
+            ug.cell_data.add_array(panel_gamma_dot)
+            ug.cell_data.get_array(3).name = 'panel_gamma_dot'
             if with_incidence_angle:
                 ug.cell_data.add_array(incidence_angle)
-                ug.cell_data.get_array(3).name = 'incidence_angle'
+                ug.cell_data.get_array(4).name = 'incidence_angle'
             ug.cell_data.vectors = normal
             ug.cell_data.vectors.name = 'panel_normal'
             ug.point_data.scalars = np.arange(0, coords.shape[0])
