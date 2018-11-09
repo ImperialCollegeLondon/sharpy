@@ -27,12 +27,10 @@ before_install:
 install:
   - echo $(pwd)
   - echo $TRAVIS_BRANCH
-  - cd ../../
+  - cd ../
   - git clone --branch=$TRAVIS_BRANCH https://github.com/imperialcollegelondon/xbeam
   - cd xbeam
-  #- export gfortran="gfortran-6"; export LAPACK_LIB_DIR=$(conda info --json | python -c "import sys, json; print(json.load(sys.stdin)['active_prefix'])")/lib ; make install
   - export LAPACK_LIB_DIR=$(conda info --json | python -c "import sys, json; print(json.load(sys.stdin)['active_prefix'])")/lib
-  - echo $LAPACK_LIB_DIR
   - mkdir ../sharpy/lib/
   - make install
   - cd ../
