@@ -16,7 +16,6 @@ from pandas import ExcelFile
 import sys
 # Use .isnan
 import math
-from IPython import embed
 
 from copy import deepcopy
 

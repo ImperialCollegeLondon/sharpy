@@ -72,7 +72,7 @@ class WriteVariablesTime(BaseSolver):
     def run(self, online=False):
 
     # settings['WriteVariablesTime'] = {'delimiter': ' ',
-    #                                   'FoR_varibles': ['GFoR_pos', 'GFoR_vel', 'GFoR_acc'],
+    #                                   'FoR_variables': ['GFoR_pos', 'GFoR_vel', 'GFoR_acc'],
     #                                   'FoR_number': [0,1],
     #                                   'structure_variables': ['AFoR_steady_forces', 'AFoR_unsteady_forces','AFoR_position'],
     #                                   'structure_nodes': [0,-1],
@@ -150,9 +150,9 @@ class WriteVariablesTime(BaseSolver):
                 if (self.settings['aero_panels_variables'][ivariable] == 'gamma'):
                     self.write_value_to_file(fid, self.data.ts, self.data.aero.timestep_info[-1].gamma[i_surf][i_m,i_n], self.settings['delimiter'])
                 elif (self.settings['aero_panels_variables'][ivariable] == 'norm_gamma'):
-                    self.write_value_to_file(fid, self.data.ts, np.linalg.norm(self.data.aero.timestep_info[-1].gamma), self.settings['delimiter'])
+                    self.write_value_to_file(fid, self.data.ts, np.linalg.norm(self.data.aero.timestep_info[-1].gamma[i_surf]), self.settings['delimiter'])
                 elif (self.settings['aero_panels_variables'][ivariable] == 'norm_gamma_star'):
-                    self.write_value_to_file(fid, self.data.ts, np.linalg.norm(self.data.aero.timestep_info[-1].gamma_star), self.settings['delimiter'])
+                    self.write_value_to_file(fid, self.data.ts, np.linalg.norm(self.data.aero.timestep_info[-1].gamma_star[i_surf]), self.settings['delimiter'])
                 else:
                     print("Unrecognized " + self.settings['aero_panels_variables'][ivariable] + " variable")
 
