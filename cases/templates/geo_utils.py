@@ -1,15 +1,33 @@
-'''
+"""
 Utilities to define wing geometry
 S. Maraniello, Jul 2018
-'''
+"""
 
 import numpy as np
 
 
 def generate_naca_camber(M=0,P=0):
-    '''
-    Defines the x and y coordinates of a 4-digit NACA profile.
-    '''
+    """
+    Defines the x and y coordinates of a 4-digit NACA profile's camber line (i.e no thickness).
+
+    The NACA 4-series airfoils follow the nomenclature: NACA MPTT where:
+        * M indicates the maximum camber :math:`M = 100m`
+        * P indicates the position of the maximum camber :math:`P=10p`
+        * TT indicates the thickness to chord ratio :math:`TT=(t/c)*100`
+
+    Args:
+        M (float): maximum camber times 100 (i.e. the first of the 4 digits)
+        P (float): position of the maximum camber times 10 (i.e. the second of the 4 digits)
+
+    Returns:
+        (x_vec,y_vec): ``x`` and ``y`` coordinates of the chosen airfoil
+
+    Example:
+        To plot the camber line of a NACA2400 airfoil (infinitely thin airfoil with :math:`(t/c)=0`:
+
+        ``x_vec, y_vec = generate_naca_camber(M = 20, P = 4)``
+
+    """
     m = M*1e-2
     p = P*1e-1
 
@@ -27,14 +45,14 @@ def generate_naca_camber(M=0,P=0):
 
 
 def interpolate_naca_camber(eta,M00,P00,M01,P01):
-    '''
+    """
     Interpolate aerofoil camber at non-dimensional coordinate eta in (0,1), 
     where (M00,P00) and (M01,P01) define the camber properties at eta=0 and 
     eta=1 respectively.
 
     Ps: for two surfaces, eta can be in (-1,1). In this case, the root is eta=0
     and the tips are at eta=+-1.
-    '''
+    """
 
     # define domain
     eta=np.abs(eta)
