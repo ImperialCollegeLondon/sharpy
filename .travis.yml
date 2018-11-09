@@ -23,6 +23,7 @@ before_install:
   - conda env create -f utils/environment_travis.yml
   - source activate sharpy_travis
 install:
+  - gfortran --version
   - echo $(pwd)
   - echo $TRAVIS_BRANCH
   - cd ../../
