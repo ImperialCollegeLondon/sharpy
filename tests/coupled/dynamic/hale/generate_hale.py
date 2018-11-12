@@ -4,7 +4,7 @@ import numpy as np
 import os
 import sharpy.utils.algebra as algebra
 
-case_name = 'hale_filter6'
+case_name = 'hale_filter6_gust020'
 route = os.path.dirname(os.path.realpath(__file__)) + '/'
 
 # EXECUTION
@@ -28,18 +28,18 @@ u_inf = 10
 rho = 1.225
 
 # trim sigma = 1.5
-alpha = 3.4780523624849087*np.pi/180
+alpha =  3.657887411770869*np.pi/180
 beta = 0
 roll = 0
 gravity = 'on'
-cs_deflection = 1.1488151722405628*np.pi/180
+cs_deflection =  -1.1464185760719139*np.pi/180
 rudder_static_deflection = 0.0
 rudder_step = 0.0*np.pi/180
-thrust =  5.328287491363996
+thrust =   5.314413090708491
 sigma = 1.5
 lambda_dihedral = 20*np.pi/180
 
-gust_intensity = 0.30
+gust_intensity = 0.20
 gust_length = 1*u_inf
 gust_offset = 0.5*u_inf
 n_step = 1
