@@ -4,7 +4,7 @@ import numpy as np
 import os
 import sharpy.utils.algebra as algebra
 
-case_name = 'hale'
+case_name = 'hale_filter6'
 route = os.path.dirname(os.path.realpath(__file__)) + '/'
 
 # EXECUTION
@@ -15,11 +15,11 @@ flow = ['BeamLoader',
         # 'Trim',
         # 'StaticTrim',
         'StaticCoupled',
+        'Modal',
         'BeamLoads',
         'AerogridPlot',
         'BeamPlot',
         'DynamicCoupled',
-        # 'Modal'
         ]
 
 
@@ -28,7 +28,7 @@ u_inf = 10
 rho = 1.225
 
 # trim sigma = 1.5
-alpha = 2.380566669597751*np.pi/180
+alpha = 3.4780523624849087*np.pi/180
 beta = 0
 roll = 0
 gravity = 'on'
@@ -52,7 +52,7 @@ fsi_tolerance = 1e-6
 span_main = 16.0
 lambda_main = 0.25
 lambda_dihedral = 20*np.pi/180
-ea_main = 0.5
+ea_main = 0.3
 
 ea = 1e7
 ga = 1e7
@@ -65,8 +65,8 @@ j_bar_main = 0.075
 length_fuselage = 10
 offset_fuselage = 1.25*0
 sigma_fuselage = 100
-m_bar_fuselage = 0.08
-j_bar_fuselage = 0.008
+m_bar_fuselage = 0.2
+j_bar_fuselage = 0.08
 
 span_tail = 2.5
 ea_tail = 0.5
@@ -92,7 +92,7 @@ chord_fin = 0.5
 # DISCRETISATION
 # spatial discretisation
 # m = 8
-m = 4
+m = 3
 # n_elem_multiplier = 2.5
 n_elem_multiplier = 1
 n_elem_main = int(4*n_elem_multiplier)
@@ -712,10 +712,10 @@ def generate_solver_file():
                                   'relaxation_factor': relaxation_factor,
                                   'minimum_steps': 1,
                                   'relaxation_steps': 150,
-                                  'final_relaxation_factor': 0.0,
+                                  'final_relaxation_factor': 0.5,
                                   'n_time_steps': n_tstep,
                                   'dt': dt,
-                                  'include_unsteady_force_contribution': 'off',
+                                  'include_unsteady_force_contribution': 'on',
                                   'postprocessors': ['BeamLoads', 'StallCheck', 'BeamPlot', 'AerogridPlot'],
                                   'postprocessors_settings': {'BeamLoads': {'folder': route + '/output/',
                                                                             'csv_output': 'off'},
@@ -741,7 +741,7 @@ def generate_solver_file():
                          'write_data': 'on',
                          'continuous_eigenvalues': 'off',
                          'dt': dt,
-                         'plot_eigenvalues': 'on'}
+                         'plot_eigenvalues': 'off'}
 
     settings['AerogridLoader'] = {'unsteady': 'on',
                                   'aligned_grid': 'on',
