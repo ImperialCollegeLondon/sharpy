@@ -151,9 +151,9 @@ class StructuralInformation():
         """
         copied = StructuralInformation()
         # Variables to write in the h5 file
-        copied.num_node_elem = self.num_node_elem.astype(dtype=int, copy=True)
-        copied.num_node = self.num_node.astype(dtype=int, copy=True)
-        copied.num_elem = self.num_elem.astype(dtype=int, copy=True)
+        copied.num_node_elem = self.num_node_elem
+        copied.num_node = self.num_node
+        copied.num_elem = self.num_elem
         copied.coordinates = self.coordinates.astype(dtype=float, copy=True)
         copied.connectivities = self.connectivities.astype(dtype=int, copy=True)
         copied.elem_stiffness = self.elem_stiffness.astype(dtype=int, copy=True)
@@ -165,10 +165,11 @@ class StructuralInformation():
         copied.boundary_conditions = self.boundary_conditions.astype(dtype=int, copy=True)
         copied.beam_number = self.beam_number.astype(dtype=int, copy=True)
         copied.app_forces = self.app_forces.astype(dtype=float, copy=True)
-        copied.lumped_mass_nodes = self.lumped_mass_nodes.astype(dtype=int, copy=True)
-        copied.lumped_mass = self.lumped_mass.astype(dtype=float, copy=True)
-        copied.lumped_mass_inertia = self.lumped_mass_inertia.astype(dtype=float, copy=True)
-        copied.lumped_mass_position = self.lumped_mass_position.astype(dtype=float, copy=True)
+        if isinstance(self.lumped_mass_nodes, np.ndarray):
+            copied.lumped_mass_nodes = self.lumped_mass_nodes.astype(dtype=int, copy=True)
+            copied.lumped_mass = self.lumped_mass.astype(dtype=float, copy=True)
+            copied.lumped_mass_inertia = self.lumped_mass_inertia.astype(dtype=float, copy=True)
+            copied.lumped_mass_position = self.lumped_mass_position.astype(dtype=float, copy=True)
 
         return copied
 
@@ -210,11 +211,11 @@ class StructuralInformation():
         self.app_forces = np.zeros((num_node, 6), dtype=int)
         if not num_lumped_mass == 0:
             self.lumped_mass_nodes = np.zeros((num_lumped_mass,), dtype=int)
-            self.lumped_mass = np.zeros((num_lumped_mass,), dtype=int)
+            self.lumped_mass = np.zeros((num_lumped_mass,), dtype=float)
             self.lumped_mass_inertia = np.zeros((num_lumped_mass, 3, 3),
-                                                dtype=int)
+                                                dtype=float)
             self.lumped_mass_position = np.zeros((num_lumped_mass, 3),
-                                                 dtype=int)
+                                                 dtype=float)
 
     def generate_full_structure(self,
                                 num_node_elem,
@@ -275,7 +276,7 @@ class StructuralInformation():
         self.boundary_conditions = boundary_conditions
         self.beam_number = beam_number
         self.app_forces = app_forces
-        if not lumped_mass_nodes == None:
+        if isinstance(self.lumped_mass_nodes,np.ndarray):
             self.lumped_mass_nodes = lumped_mass_nodes
             self.lumped_mass = lumped_mass
             self.lumped_mass_inertia = lumped_mass_inertia
@@ -525,15 +526,15 @@ class StructuralInformation():
             self.beam_number = np.concatenate((self.beam_number, structure_to_add.beam_number + total_num_beam), axis=0)
             self.app_forces = np.concatenate((self.app_forces, structure_to_add.app_forces), axis=0)
             # self.body_number = np.concatenate((self.body_number, structure_to_add.body_number), axis=0)
-            if not self.lumped_mass_nodes == None:
+            if isinstance(self.lumped_mass_nodes, np.ndarray):
                 self.lumped_mass_nodes  = np.concatenate((self.lumped_mass_nodes, structure_to_add.lumped_mass_nodes + total_num_node), axis=0)
-                self.lumped_mass  = np.concatenate((self.lumped_mass, structure_to_add.lumped_mass + len(self.lumped_mass_position)), axis=0)
+                self.lumped_mass  = np.concatenate((self.lumped_mass, structure_to_add.lumped_mass), axis=0)
                 self.lumped_mass_inertia  = np.concatenate((self.lumped_mass_inertia, structure_to_add.lumped_mass_inertia), axis=0)
                 self.lumped_mass_position  = np.concatenate((self.lumped_mass_position, structure_to_add.lumped_mass_position ), axis=0)
 
             total_num_stiff += structure_to_add.stiffness_db.shape[0]
             total_num_mass += structure_to_add.mass_db.shape[0]
-            total_num_beam += max(structure_to_add.beam_number)
+            total_num_beam += max(structure_to_add.beam_number) + 1
             total_num_node += structure_to_add.num_node
             total_num_elem += structure_to_add.num_elem
 
@@ -602,7 +603,7 @@ class StructuralInformation():
             h5file.create_dataset('beam_number', data=self.beam_number)
             h5file.create_dataset('app_forces', data=self.app_forces)
             # h5file.create_dataset('body_number', data=self.body_number)
-            if not self.lumped_mass_nodes is None:
+            if isinstance(self.lumped_mass_nodes, np.ndarray):
                 h5file.create_dataset('lumped_mass_nodes', data=self.lumped_mass_nodes)
                 h5file.create_dataset('lumped_mass', data=self.lumped_mass)
                 h5file.create_dataset('lumped_mass_inertia', data=self.lumped_mass_inertia)
@@ -688,9 +689,9 @@ class AerodynamicInformation():
         self.twist = np.zeros((num_elem,num_node_elem), dtype = float)
         self.sweep = np.zeros((num_elem,num_node_elem), dtype = float)
         # TODO: SHARPy does not ignore the surface_m when the surface is not aerodynamic
-        #self.surface_m = np.array([0], dtype = int)
-        self.surface_m = np.array([], dtype=int)
-        self.surface_distribution = np.zeros((num_elem,), dtype=int) - 1
+        self.surface_m = np.array([0], dtype = int)
+        # self.surface_m = np.array([], dtype=int)
+        self.surface_distribution = np.zeros((num_elem,), dtype=int)
         self.m_distribution = 'uniform'
         self.elastic_axis = np.zeros((num_elem,num_node_elem), dtype = float)
         self.airfoil_distribution = np.zeros((num_elem,num_node_elem), dtype=int)
@@ -787,9 +788,10 @@ class AerodynamicInformation():
                                      chord,
                                      twist,
                                      sweep,
-                                     surface_m,
+                                     num_chord_panels,
                                      m_distribution,
                                      elastic_axis,
+                                     num_points_camber,
                                      airfoil):
         """
         create_one_uniform_aerodynamics
@@ -801,9 +803,10 @@ class AerodynamicInformation():
             chord (float): chord
             twist (float): twist
             sweep (float): sweep
-            surface_m (int): Number of panels in the chord direction
+            num_chord_panels (int): Number of panels in the chord direction
             m_distribution (str): distribution of the panels along the chord
             elastic_axis (float): position of the elastic axis in the chord
+            num_points_camber (int): Number of points to define the camber line
             airfoils (np.array): coordinates of the camber lines of the airfoils
         """
         num_node = StructuralInformation.num_node
@@ -816,13 +819,24 @@ class AerodynamicInformation():
         self.sweep = sweep*np.ones((num_elem,num_node_elem), dtype = float)
         # TODO: SHARPy does not ignore the surface_m when the surface is not aerodynamic
         #self.surface_m = np.array([0], dtype = int)
-        self.surface_m = np.array([0], dtype=int)
-        self.surface_distribution = np.zeros((num_elem,), dtype=int) - 1
+        self.surface_m = np.array([num_chord_panels], dtype=int)
+        self.surface_distribution = np.zeros((num_elem,), dtype=int)
         self.m_distribution = m_distribution
         self.elastic_axis = elastic_axis*np.ones((num_elem,num_node_elem), dtype = float)
-        self.airfoil_distribution = np.ones((num_elem,num_node_elem), dtype=int)
+        self.airfoil_distribution = np.zeros((num_elem,num_node_elem), dtype=int)
         self.airfoils = np.zeros((1,num_points_camber,2), dtype = float)
-        self.airfoil = airfoil
+        self.airfoils = airfoil
+
+    def change_airfoils_discretezation(self, airfoils, new_num_nodes):
+
+        nairfoils = airfoils.shape[0]
+        new_airfoils = np.zeros((nairfoils,new_num_nodes,2), dtype = float)
+
+        for iairfoil in range(nairfoils):
+            new_airfoils[iairfoil,:,0] = np.linspace(airfoils[iairfoil,0,0], airfoils[iairfoil,-1,0], new_num_nodes)
+            new_airfoils[iairfoil, :, 1] = np.interp(new_airfoils[iairfoil,:,0], airfoils[iairfoil,:,0], airfoils[iairfoil,:,1])
+
+        return new_airfoils
 
     def assembly_aerodynamics(self, *args):
         """
@@ -834,28 +848,38 @@ class AerodynamicInformation():
         	*args: list of AerodynamicInformation() to be meged into 'self'
         """
 
-        total_num_airfoils = self.num_airfoils
-        total_num_surfaces = self.num_surfaces
+        total_num_airfoils = len(self.airfoils[:,0,0])
+        total_num_surfaces = len(self.surface_m)
         # TODO: check why I only need one definition of m and not one per surface
 
         for aerodynamics_to_add in args:
             self.chord = np.concatenate((self.chord, aerodynamics_to_add.chord), axis=0)
-            self.aerodynamic_twist = np.concatenate((self.aerodynamic_twist, aerodynamics_to_add.aerodynamic_twist), axis=0)
+            self.twist = np.concatenate((self.twist, aerodynamics_to_add.twist), axis=0)
+            self.sweep = np.concatenate((self.sweep, aerodynamics_to_add.sweep), axis=0)
             self.surface_m = np.concatenate((self.surface_m, aerodynamics_to_add.surface_m), axis=0)
-            #self.m_distribution.append(aerodynamics_to_add.m_distribution)
+            # self.m_distribution = np.concatenate((self.m_distribution, aerodynamics_to_add.m_distribution), axis=0)
             assert self.m_distribution == aerodynamics_to_add.m_distribution, "m_distribution does not match"
             self.surface_distribution = np.concatenate((self.surface_distribution, aerodynamics_to_add.surface_distribution + total_num_surfaces), axis=0)
             self.aero_node = np.concatenate((self.aero_node, aerodynamics_to_add.aero_node), axis=0)
             self.elastic_axis = np.concatenate((self.elastic_axis, aerodynamics_to_add.elastic_axis), axis=0)
             # np.concatenate((self.airfoil_distribution, aerodynamics_to_add.airfoil_distribution), axis=0)
             self.airfoil_distribution = np.concatenate((self.airfoil_distribution, aerodynamics_to_add.airfoil_distribution + total_num_airfoils), axis=0)
-            self.airfoils = np.concatenate((self.airfoils, aerodynamics_to_add.airfoils), axis=0)
+            if (self.airfoils.shape[1] == aerodynamics_to_add.airfoils.shape[1]):
+                self.airfoils = np.concatenate((self.airfoils, aerodynamics_to_add.airfoils), axis=0)
+            elif (self.airfoils.shape[1] > aerodynamics_to_add.airfoils.shape[1]):
+                print("WARNING: redefining the discretization of airfoil camber line")
+                new_airfoils = self.change_airfoils_discretezation(aerodynamics_to_add.airfoils, self.airfoils.shape[1])
+                self.airfoils = np.concatenate((self.airfoils, new_airfoils), axis=0)
+            elif (self.airfoils.shape[1] < aerodynamics_to_add.airfoils.shape[1]):
+                print("WARNING: redefining the discretization of airfoil camber line")
+                new_airfoils = self.change_airfoils_discretezation(self.airfoils, aerodynamics_to_add.airfoils.shape[1])
+                self.airfoils = np.concatenate((new_airfoils, aerodynamics_to_add.airfoils), axis=0)
 
-            total_num_airfoils += aerodynamics_to_add.num_airfoils
-            total_num_surfaces += aerodynamics_to_add.num_surfaces
+            total_num_airfoils += len(aerodynamics_to_add.airfoils[:,0,0])
+            total_num_surfaces += len(aerodynamics_to_add.surface_m)
 
-        self.num_airfoils = total_num_airfoils
-        self.num_surfaces = total_num_surfaces
+        # self.num_airfoils = total_num_airfoils
+        # self.num_surfaces = total_num_surfaces
 
     def interpolate_airfoils_camber(self, pure_airfoils_camber, r_pure_airfoils, r):
         """
@@ -919,9 +943,9 @@ class AerodynamicInformation():
             sys.exit("ERROR: The second dimension of the elastic axis matrix does not match the number of nodes per element")
         if(self.surface_distribution.shape[0] != StructuralInformation.num_elem):
             sys.exit("ERROR: The surface distribution must be defined for each element")
-        if(self.aerodynamic_twist.shape[0] != StructuralInformation.num_elem):
+        if(self.twist.shape[0] != StructuralInformation.num_elem):
             sys.exit("ERROR: The first dimension of the aerodynamic twist does not match the number of elements")
-        if(self.aerodynamic_twist.shape[1] != StructuralInformation.num_node_elem):
+        if(self.twist.shape[1] != StructuralInformation.num_node_elem):
             sys.exit("ERROR: The second dimension of the aerodynamic twist does not match the number nodes per element")
 
     def generate_aero_file(self, route, case_name):
@@ -939,7 +963,7 @@ class AerodynamicInformation():
             h5file.create_dataset('aero_node', data=self.aero_node)
             chord_input = h5file.create_dataset('chord', data=self.chord)
             chord_input .attrs['units'] = 'm'
-            twist_input = h5file.create_dataset('twist', data=self.aerodynamic_twist)
+            twist_input = h5file.create_dataset('twist', data=self.twist)
             twist_input.attrs['units'] = 'rad'
             h5file.create_dataset('surface_m', data=self.surface_m)
             h5file.create_dataset('surface_distribution', data=self.surface_distribution)
@@ -1010,82 +1034,140 @@ class AeroelasticInformation():
 
     def remove_duplicated_points(self, tol):
         """
-        Algebra Function Title
+        remove_duplicated_points
 
-        Short description
-
-        Longer description
+        Removes the points that are closer than 'tol' and modifies the aeroelastic information accordingly
 
         Args:
-        	arg1 (float): arg1 description
-        	arg2 (float): arg2 description
-
-        Returns:
-        	float: function return descritpion
-
-        Examples:
+        	tol (float): tolerance. Maximum distance between nodes to be merged
 
         Notes:
-        	Here you can have specifics and math descriptions.
-        	To enter math mode simply write
-        	.. math:: e^{i\\pi} + 1 = 0
-        	Math mode supports TeX sintax but note that you should use two backslashes \\ instead of one.
-        	Sphinx supports reStructuredText should you want to format text...
+        	This function will not work if an element or an aerdoynamic surface is completely eliminated
+            This function only checks geometrical proximity, not aeroelastic properties as a merging criteria
 
         """
 
         def find_connectivities_index(connectivities, iprev_node):
-
+            icon = 0
+            jcon = 0
             found = False
-            for icon in range(connectivities.shape[0]):
-                for jcon in range(connectivities.shape[1]):
-                    if connectivities[icon2, jcon2] == iprev_node:
+            while ((icon < connectivities.shape[0]) and (not found)):
+                jcon = 0
+                while ((jcon < connectivities.shape[1]) and (not found)):
+                    if connectivities[icon, jcon] == iprev_node:
                         found = True
-                        break
-                if found:
-                    break
+                    jcon += 1
+                icon += 1
+            return icon-1, jcon-1
 
-            return icon, jcon
-
-        inode = 1
-        while inode < self.StructuralInformation.num_nodes:
-            # Check if the current node is close to any of the previous ones
-            replace = False
+        # Define the nodes that need to be changed
+        # replace_matrix:
+        # Each row represents a node in the original structure (inode)
+        # Each row gathers the information needed to replace that point
+        # if irow represents a node (inode) to be replaced:
+        #      replace_matrix [irow,0] -> Node (iprev_node) that will replace the 'irow' node  (inode)
+        #      replace_matrix [irow,1] -> row index of the connectivity matrix of the iprev_node
+        #      replace_matrix [irow,2] -> column index of the connectivity matrix of the iprev_node
+        #      replace_matrix [irow,3] -> -1
+        # if irow represents a node (inode) that will NOT be replaced:
+        #      replace_matrix [irow,0] -> -1
+        #      replace_matrix [irow,1] -> -1
+        #      replace_matrix [irow,2] -> -1
+        #      replace_matrix [irow,3] -> number of nodes replaced before the node
+        replace_matrix = (
+                np.zeros((self.StructuralInformation.num_node, 4), dtype = int) -
+                 np.array([1,1,1,0]))
+        # Fill the first three columns
+        for inode in range(self.StructuralInformation.num_node):
             for iprev_node in range(inode):
-                if np.linalg.norm(self.StructuralInformation.coordinates[inode,:]-self.StructuralInformation.coordinates[iprev_node,:]) < tol:
-                    replace = True
-                    break
+                if (np.linalg.norm(
+                    self.StructuralInformation.coordinates[inode, :] -
+                    self.StructuralInformation.coordinates[iprev_node, :]) < tol):
+                    print("WARNING: Replacing node ", inode, "by node ", iprev_node)
+                    replace_matrix[inode,0] = iprev_node
+                    replace_matrix[inode,1], replace_matrix[inode,2] = (
+                        find_connectivities_index(
+                                self.StructuralInformation.connectivities,
+                                                                    iprev_node))
+        # Fill the last column
+        for inode in range(self.StructuralInformation.num_node):
+            if not (replace_matrix[inode,0] == -1):
+                # 'inode' is a node to be replaced
+                replace_matrix[inode,3] = -1
+                for inode2 in range(inode+1,self.StructuralInformation.num_node):
+                    if not (replace_matrix[inode2,0] == -1):
+                        # 'inode2' is also a node to be replaced
+                        replace_matrix[inode2,3] = -1
+                    else:
+                        replace_matrix[inode2,3] += 1
 
-            if replace:
-                self.coordinates = np.delete(self.coordinates, (inode), axis=0)
-                self.elem_stiffness = np.delete(self.elem_stiffness, (inode), axis=0)
-                self.elem_mass = np.delete(self.elem_mass, (inode), axis=0)
-                self.structural_twist = np.delete(self.structural_twist, (inode), axis=0)
-                self.boundary_conditions = np.delete(self.boundary_conditions, (inode), axis=0)
-                self.beam_number = np.delete(self.beam_number, (inode), axis=0)
-                self.app_forces = np.delete(self.app_forces, (inode), axis=0)
-                self.frame_of_reference_delta = np.delete(self.frame_of_reference_delta, (inode), axis=0)
+        nodes_to_keep = replace_matrix[:,0] == -1
 
-                self.AerodynamicInformation.aero_node = np.delete(self.AerodynamicInformation.aero_node, (inode), axis=0)
+        # Delete the structural variables associated to the node
+        self.StructuralInformation.coordinates = (
+                self.StructuralInformation.coordinates[nodes_to_keep,:])
+        # self.StructuralInformation.elem_stiffness = (
+        #         self.StructuralInformation.elem_stiffness[nodes_to_keep])
+        # self.StructuralInformation.elem_mass = (
+        #         self.StructuralInformation.elem_mass[nodes_to_keep])
+        self.StructuralInformation.structural_twist = (
+                self.StructuralInformation.structural_twist[nodes_to_keep])
+        self.StructuralInformation.boundary_conditions = (
+                self.StructuralInformation.boundary_conditions[nodes_to_keep])
+        # self.StructuralInformation.beam_number = (
+        #         self.StructuralInformation.beam_number[nodes_to_keep])
+        self.StructuralInformation.app_forces = (
+                self.StructuralInformation.app_forces[nodes_to_keep,:])
+        # self.StructuralInformation.frame_of_reference_delta = (
+        # self.StructuralInformation.frame_of_reference_delta[nodes_to_keep,:,:])
+        self.AerodynamicInformation.aero_node = (
+                self.AerodynamicInformation.aero_node[nodes_to_keep])
 
-                if not self.lumped_mass_nodes is None:
-                    for ilumped in range(len(self.lumped_mass_nodes)):
-                        if self.lumped_mass_nodes[ilumped] == inode:
-                            self.lumped_mass_nodes = np.delete(self.lumped_mass_nodes, (inode), axis=0)
-                            self.lumped_mass = np.delete(self.lumped_mass, (inode), axis=0)
-                            self.lumped_mass_inertia = np.delete(self.lumped_mass_inertia, (inode), axis=0)
-                            self.lumped_mass_position = np.delete(self.lumped_mass_position, (inode), axis=0)
+        # Delete lumped masses
+        if isinstance(self.StructuralInformation.lumped_mass_nodes, np.ndarray):
+            lumped_to_keep = nodes_to_keep[self.StructuralInformation.lumped_mass_nodes]
+            self.StructuralInformation.lumped_mass_nodes = (
+                self.StructuralInformation.lumped_mass_nodes[lumped_to_keep])
+            self.StructuralInformation.lumped_mass = (
+                self.StructuralInformation.lumped_mass[lumped_to_keep])
+            self.StructuralInformation.lumped_mass_inertia = (
+                self.StructuralInformation.lumped_mass_inertia[lumped_to_keep])
+            self.StructuralInformation.lumped_mass_position = (
+                self.StructuralInformation.lumped_mass_position[lumped_to_keep, :])
 
-                for icon in range(connectivities.shape[0]):
-                    for jcon in range(connectivities.shape[1]):
-                        if connectivities[icon,jcon] == inode:
-                            icon_prev, jcon_prev = find_connectivities_index(connectivities, iprev_node):
-                            self.AerodynamicInformation.chord[icon, jcon] = self.AerodynamicInformation.chord[icon_prev, jcon_prev]
-                            connectivities[icon, jcon] = iprev_node
-            else:
-                inode += 1
+        # Modify connectivities and matrices in ielem,inode_in_elem shape
+        for icon in range(self.StructuralInformation.num_elem):
+            for jcon in range(self.StructuralInformation.num_node_elem):
+                inode = self.StructuralInformation.connectivities[icon, jcon]
+                if not replace_matrix[inode,0] == -1:
+                    # inode to be replaced
+                    self.StructuralInformation.connectivities[icon, jcon] = self.StructuralInformation.connectivities[replace_matrix[inode,1], replace_matrix[inode,2]]
+                    self.AerodynamicInformation.chord[icon, jcon] = (
+                        self.AerodynamicInformation.chord[replace_matrix[inode,1], replace_matrix[inode,2]])
+                    self.AerodynamicInformation.twist[icon, jcon] = (
+                        self.AerodynamicInformation.twist[replace_matrix[inode,1], replace_matrix[inode,2]])
+                    self.AerodynamicInformation.sweep[icon, jcon] = (
+                        self.AerodynamicInformation.sweep[replace_matrix[inode,1], replace_matrix[inode,2]])
+                    self.AerodynamicInformation.elastic_axis[icon, jcon] = (
+                        self.AerodynamicInformation.elastic_axis[replace_matrix[inode,1], replace_matrix[inode,2]])
+                    self.AerodynamicInformation.airfoil_distribution[icon, jcon] = (
+                        self.AerodynamicInformation.airfoil_distribution[replace_matrix[inode,1], replace_matrix[inode,2]])
 
-    # TODO: I need also to reduce the following values in connectivities, and change inode inode_prev accordingly for future loops
+                else:
+                    # inode NOT to be replace
+                    self.StructuralInformation.connectivities[icon, jcon] -= replace_matrix[inode,3]
+
+        if isinstance(self.StructuralInformation.lumped_mass_nodes, np.ndarray):
+            for ilumped in range(len(self.StructuralInformation.lumped_mass_nodes)):
+                inode = self.StructuralInformation.lumped_mass_nodes[ilumped]
+                if not replace_matrix[inode,0] == -1:
+                    self.StructuralInformation.lumped_mass_nodes[ilumped] = self.StructuralInformation.connectivities[replace_matrix[inode,1], replace_matrix[inode,2]]
+                else:
+                    self.StructuralInformation.lumped_mass_nodes[ilumped] -= replace_matrix[inode,3]
+
+        self.StructuralInformation.num_node = nodes_to_keep.sum()
+
+        # TODO: this function will not work if elements or aerodynamic surfaces are completely eliminated
 
     def copy(self):
         """
@@ -1103,14 +1185,14 @@ class AeroelasticInformation():
 
         return copied
 
-    def write_h5_files(self):
+    def generate_h5_files(self, route, case_name):
         """
         write_h5_files
 
         Writes the structural and aerodynamic h5 files
         """
-        self.StructuralInformation.generate_fem_file()
-        self.AerodynamicInformation.generate_aero_file()
+        self.StructuralInformation.generate_fem_file(route, case_name)
+        self.AerodynamicInformation.generate_aero_file(route, case_name)
 
 ######################################################################
 ######################  SOLVERS INFORMATION  #########################
