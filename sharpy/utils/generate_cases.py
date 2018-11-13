@@ -16,6 +16,7 @@ Notes:
 import numpy as np
 import sharpy.utils.algebra as algebra
 import h5py as h5
+import os
 
 
 ######################################################################
@@ -689,9 +690,9 @@ class AerodynamicInformation():
         self.twist = np.zeros((num_elem,num_node_elem), dtype = float)
         self.sweep = np.zeros((num_elem,num_node_elem), dtype = float)
         # TODO: SHARPy does not ignore the surface_m when the surface is not aerodynamic
-        self.surface_m = np.array([0], dtype = int)
+        self.surface_m = np.array([], dtype = int)
         # self.surface_m = np.array([], dtype=int)
-        self.surface_distribution = np.zeros((num_elem,), dtype=int)
+        self.surface_distribution = np.zeros((num_elem,), dtype=int) - 1
         self.m_distribution = 'uniform'
         self.elastic_axis = np.zeros((num_elem,num_node_elem), dtype = float)
         self.airfoil_distribution = np.zeros((num_elem,num_node_elem), dtype=int)
@@ -970,6 +971,7 @@ class AerodynamicInformation():
             h5file.create_dataset('m_distribution', data=self.m_distribution.encode('ascii', 'ignore'))
             h5file.create_dataset('elastic_axis', data=self.elastic_axis)
             h5file.create_dataset('airfoil_distribution', data=self.airfoil_distribution)
+            h5file.create_dataset('sweep', data=self.sweep)
 
             airfoils_group = h5file.create_group('airfoils')
             for iairfoil in range(len(self.airfoils)):
@@ -1210,7 +1212,6 @@ class SimulationInformation():
 
         Initialization
         """
-        self.main = dict()
         self.solvers = dict()
         # self.preprocessors = dict()
         self.postprocessors = dict()
@@ -1228,6 +1229,7 @@ class SimulationInformation():
         Set the default values for all the solvers
         """
 
+        self.solvers['SHARPy'] = dict()
         self.solvers['AerogridLoader'] = dict()
         self.solvers['BeamLoader'] = dict()
 
@@ -1243,12 +1245,12 @@ class SimulationInformation():
         self.solvers['DynamicCoupled'] = dict()
 
         # MAIN
-        self['main'] = {'flow': '',
+        self.solvers['SHARPy'] = {'flow': '',
                   'case': 'default_case_name',
                   'route': '',
                   'write_screen': 'on',
                   'write_log': 'off',
-                  'log_folder': '',
+                  'log_folder': './output',
                   'log_file': 'log'}
 
         # LOADERS
@@ -1422,7 +1424,7 @@ class SimulationInformation():
             if variable in self.solvers[solver]:
                 self.solvers[solver][variable] = value
 
-    def generate_solver_file(self, route, case_name):
+    def generate_solver_file(self):
         """
         generate_solver_file
 
@@ -1434,15 +1436,16 @@ class SimulationInformation():
         """
         import configobj
         config = configobj.ConfigObj()
-        config.filename = route + '/' + case_name + '.solver.txt'
-        for k, v in self.main.items():
-            config[k] = v
+        config.filename = self.solvers['SHARPy']['route'] + '/' + self.solvers['SHARPy']['case'] + '.solver.txt'
+        config['SHARPy'] = self.solvers['SHARPy']
+        # for k, v in self.solvers['SHARPy'].items():
+        #     config[k] = v
         # Loop through the solvers defined in "flow" and write them
-        for solver in self.main['flow']:
+        for solver in self.solvers['SHARPy']['flow']:
             config[solver] = self.solvers[solver]
         config.write()
 
-    def generate_dyn_file(self, route, case_name, num_steps):
+    def generate_dyn_file(self, num_steps):
         """
         generate_dyn_file
 
@@ -1453,7 +1456,8 @@ class SimulationInformation():
             case_name (string): name of the case
             num_steps (int): number of steps
         """
-        with h5.File(route + '/' + case_name + '.dyn.h5', 'a') as h5file:
+
+        with h5.File(self.solvers['SHARPy']['route'] + '/' + self.solvers['SHARPy']['case'] + '.dyn.h5', 'a') as h5file:
             if self.with_dynamic_forces:
                 h5file.create_dataset(
                     'dynamic_forces', data=self.dynamic_forces)

@@ -11,10 +11,6 @@ class TestGenerateCases(unittest.TestCase):
 
     def test_01(self):
 
-        if os.path.isfile('./test_generate_cases.fem.h5'):
-            os.remove('./test_generate_cases.fem.h5')
-        if os.path.isfile('./test_generate_cases.aero.h5'):
-            os.remove('./test_generate_cases.aero.h5')
         nodes_per_elem = 3
 
         # beam1: uniform and symmetric with aerodynamic properties equal to zero
@@ -83,17 +79,17 @@ class TestGenerateCases(unittest.TestCase):
         # Aerodynamic information
         airfoils = np.zeros((1, 20, 2), )
         airfoils[0, :, 0] = np.linspace(0., 1., 20)
-        beam3.AerodynamicInformation.create_aerodynamics_from_vec(beam3.StructuralInformation,
-                                     np.ones((nnodes3), dtype = bool),
-                                     np.linspace(0.1,0.3,nnodes3),
-                                     0.1*np.ones((nnodes3,),),
-                                     0.2*np.ones((nnodes3,), ),
-                                     4*np.ones((1,), dtype = int),
-                                     np.zeros((beam3.StructuralInformation.num_elem,), ),
-                                     np.array(['uniform']),
-                                     0.5*np.ones((nnodes3,), ),
-                                     np.zeros((nnodes3,), ),
-                                     airfoils)
+        beam3.AerodynamicInformation.create_aerodynamics_from_vec(StructuralInformation = beam3.StructuralInformation,
+                                     vec_aero_node = np.ones((nnodes3), dtype = bool),
+                                     vec_chord = np.linspace(1.,0.1,nnodes3),
+                                     vec_twist = 0.1*np.ones((nnodes3,),),
+                                     vec_sweep = 0.2*np.ones((nnodes3,), ),
+                                     vec_surface_m = 4*np.ones((1,), dtype = int),
+                                     vec_surface_distribution = np.zeros((beam3.StructuralInformation.num_elem,), dtype=int),
+                                     vec_m_distribution = np.array(['uniform']),
+                                     vec_elastic_axis = 0.5*np.ones((nnodes3,), ),
+                                     vec_airfoil_distribution = np.zeros((nnodes3,), dtype=int),
+                                     airfoils = airfoils)
 
         beam1.assembly(beam2, beam3)
         beam1.StructuralInformation.boundary_conditions[0] = 1
