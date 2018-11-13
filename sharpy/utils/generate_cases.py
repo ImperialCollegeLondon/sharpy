@@ -1385,6 +1385,29 @@ class SimulationInformation():
                                             'cleanup_previous_solution': 'on',
                                             'include_unsteady_force_contribution': 'off'}
 
+    def define_num_steps(self, num_steps):
+
+        self.solvers["DynamicCoupled"]['n_time_steps'] = num_steps
+        self.solvers["StepUvlm"]['n_time_steps'] = num_steps
+        self.solvers['NonLinearDynamicMultibody']['num_steps'] = num_steps
+        self.solvers['NonLinearDynamicCoupledStep']['num_steps'] = num_steps
+
+
+
+    def define_uinf(self, unit_vector, norm):
+
+        # Make sure
+        uinf = unit_vector*norm
+        norm = np.linalg.norm(uinf)
+        unit_vector = uinf / norm
+
+        self.solvers['AerogridLoader']['freestream_dir'] = unit_vector
+        self.solvers['AerogridPlot']['u_inf'] = norm
+        self.solvers['StaticUvlm']['velocity_field_input'] = {'u_inf': norm,
+                                                            'u_inf_direction': unit_vector}
+        self.solvers['StepUvlm']['velocity_field_input'] = {'u_inf': norm,
+                                                            'u_inf_direction': unit_vector}
+
     def set_variable_all_dicts(self, variable, value):
         """
         set_variable_all_dicts
