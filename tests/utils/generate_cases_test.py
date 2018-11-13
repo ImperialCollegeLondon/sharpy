@@ -98,7 +98,62 @@ class TestGenerateCases(unittest.TestCase):
 
         beam1.StructuralInformation.check_StructuralInformation()
         beam1.AerodynamicInformation.check_AerodynamicInformation(beam1.StructuralInformation)
-        beam1.generate_h5_files('/home/arturo/technical_work/05-test_generate_cases', 'test_01')
+        #beam1.generate_h5_files('/home/arturo/technical_work/05-test_generate_cases', 'test_01')
+
+        # SOLVER CONFIGURATION
+        SimInfo = gc.SimulationInformation()
+        SimInfo.set_default_values()
+
+        SimInfo.define_uinf(np.array([0.0,1.0,0.0]), 10.)
+
+        SimInfo.solvers['SHARPy']['flow'] = ['BeamLoader',
+                                'AerogridLoader',
+                                'StaticCoupled',
+                                'DynamicCoupled',
+                                'AerogridPlot',
+                                'BeamPlot'
+                                ]
+        SimInfo.solvers['SHARPy']['case'] = 'test_01'
+        SimInfo.solvers['SHARPy']['route'] = os.path.dirname(os.path.realpath(__file__)) + '/'
+        SimInfo.set_variable_all_dicts('dt', 0.05)
+
+        SimInfo.solvers['BeamLoader']['unsteady'] = 'on'
+
+        SimInfo.solvers['AerogridLoader']['unsteady'] = 'on'
+        SimInfo.solvers['AerogridLoader']['mstar'] = 13
+
+        # Default values for NonLinearStatic
+        # Default values for StaticUvlm
+        # Default values for NonLinearDynamicCoupledStep
+        # Default values for StepUvlm
+
+        SimInfo.solvers['StaticCoupled']['structural_solver'] = 'NonLinearStatic'
+        SimInfo.solvers['StaticCoupled']['structural_solver_settings'] = SimInfo.solvers['NonLinearStatic']
+        SimInfo.solvers['StaticCoupled']['aero_solver'] = 'StaticUvlm'
+        SimInfo.solvers['StaticCoupled']['aero_solver_settings'] = SimInfo.solvers['StaticUvlm']
+
+        SimInfo.solvers['DynamicCoupled']['structural_solver'] = 'NonLinearDynamicCoupledStep'
+        SimInfo.solvers['DynamicCoupled']['structural_solver_settings'] = SimInfo.solvers['NonLinearDynamicCoupledStep']
+        SimInfo.solvers['DynamicCoupled']['aero_solver'] = 'StepUvlm'
+        SimInfo.solvers['DynamicCoupled']['aero_solver_settings'] = SimInfo.solvers['StepUvlm']
+        SimInfo.solvers['DynamicCoupled']['post_processors'] = ['BeamPlot', 'AerogridPlot']
+        SimInfo.solvers['DynamicCoupled']['post_processor_settings'] = {'BeamPlot': SimInfo.solvers['BeamPlot'],
+                                                                     'AerogridPlot': SimInfo.solvers['AerogridPlot']}
+        SimInfo.define_num_steps(20)
+
+        # Define dynamic simulation
+        SimInfo.with_forced_vel = True
+        SimInfo.for_vel = np.zeros((20,6), dtype=float)
+        SimInfo.for_acc = np.zeros((20,6), dtype=float)
+        SimInfo.with_dynamic_forces = True
+        SimInfo.dynamic_forces = np.zeros((20,beam1.StructuralInformation.num_node,6), dtype=float)
+
+        gc.clean_test_files(SimInfo.solvers['SHARPy']['route'], SimInfo.solvers['SHARPy']['case'])
+        SimInfo.generate_solver_file()
+        SimInfo.generate_dyn_file(20)
+        beam1.generate_h5_files(SimInfo.solvers['SHARPy']['route'], SimInfo.solvers['SHARPy']['case'])
+
+
 
 if __name__=='__main__':
     # unittest.main()
