@@ -770,6 +770,7 @@ class StructuralInformation():
             h5file.create_dataset('structural_twist', data=self.structural_twist)
             h5file.create_dataset('boundary_conditions', data=self.boundary_conditions)
             h5file.create_dataset('beam_number', data=self.beam_number)
+            h5file.create_dataset('body_number', data=self.body_number)
             h5file.create_dataset('app_forces', data=self.app_forces)
             # h5file.create_dataset('body_number', data=self.body_number)
             if isinstance(self.lumped_mass_nodes, np.ndarray):
@@ -1272,6 +1273,8 @@ class AeroelasticInformation():
                         find_connectivities_index(
                                 self.StructuralInformation.connectivities,
                                                                     iprev_node))
+                    break
+
         # Fill the last column
         for inode in range(self.StructuralInformation.num_node):
             if not (replace_matrix[inode,0] == -1):
