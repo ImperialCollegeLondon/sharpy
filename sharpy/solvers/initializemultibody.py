@@ -132,7 +132,7 @@ class InitializeMultibody(BaseSolver):
                 temp1 = load_step_multiplier*(struct_forces + self.data.structure.ini_info.steady_applied_forces)
                 # self.data.structure.timestep_info[self.data.ts].steady_applied_forces[:] = temp1
                 # run beam
-                self.data = self.structural_solver.run()
+                # self.data = self.structural_solver.run()
                 self.structural_solver.settings['gravity'] = ct.c_double(old_g)
 
                 # update grid
