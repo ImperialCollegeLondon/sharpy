@@ -1,144 +1,177 @@
-import sharpy.utils.algebra as algebra
-import numpy as np
+import sharpy.utils.generate_cases as gc
 import unittest
-import random
-# from IPython import embed
-
-# Usual SHARPy
-import h5py as h5
+import numpy as np
 import os
-import sharpy.utils.algebra as algebra
-import sharpy.utils.cout_utils as cout  # to use color output
-# Read excel files
-import pandas as pd
-from pandas import ExcelFile
-# Generate errors during execution
-import sys
-# Use .isnan
-import math
-
-from copy import deepcopy
-
-
-"""
-Each one of the test cases can be use as a .py file to generate a case
-"""
+# import fnmatch
 
 class TestGenerateCases(unittest.TestCase):
     """
     Tests the generate_cases module
     """
 
+    def test_01(self):
 
-    def test_generate_cantilever_uniform_beam(self):
-        """
-        """
+        nodes_per_elem = 3
 
-        # DEFINE CASE
-        case_name = 'one_beam'
-        route = os.path.dirname(os.path.realpath(__file__)) + '/'
+        # beam1: uniform and symmetric with aerodynamic properties equal to zero
+        nnodes1 = 11
+        length1  = 10.
+        mass_per_unit_length = 1.
+        mass_iner = 1e-4
+        EA = 1e9
+        GA = 1e9
+        GJ = 1e9
+        EI = 1e9
 
-        flow = ['BeamLoader',
-                'AerogridLoader',
-                'StaticCoupled',
-                # 'SteadyHelicoidalWake',
-                'DynamicPrescribedCoupled',
-                # 'NonLinearDynamicMultibody',
-                'AerogridPlot',
-                'BeamPlot'
-                ]
+        # Create beam1
+        beam1 = gc.AeroelasticInformation()
+        # Structural information
+        beam1.StructuralInformation.num_node = nnodes1
+        beam1.StructuralInformation.num_node_elem = nodes_per_elem
+        beam1.StructuralInformation.compute_basic_num_elem()
+        beam1.StructuralInformation.set_to_zero(beam1.StructuralInformation.num_node_elem, beam1.StructuralInformation.num_node, beam1.StructuralInformation.num_elem)
+        node_pos = np.zeros((nnodes1, 3), )
+        node_pos[:, 2] = np.linspace(0.0, length1, nnodes1)
+        beam1.StructuralInformation.generate_uniform_sym_beam(node_pos, mass_per_unit_length, mass_iner, EA, GA, GJ, EI, num_node_elem = 3, y_BFoR = 'y_AFoR', num_lumped_mass=1)
+        beam1.StructuralInformation.lumped_mass_nodes[0] = 5
+        beam1.StructuralInformation.lumped_mass[0] = 0.5
+        beam1.StructuralInformation.lumped_mass_inertia[0] = np.eye(3)
+        beam1.StructuralInformation.lumped_mass_position[0,:] = np.zeros((3,),)
+        # Aerodynamic information
+        beam1.AerodynamicInformation.set_to_zero(beam1.StructuralInformation.num_node_elem, beam1.StructuralInformation.num_node, beam1.StructuralInformation.num_elem)
 
-        gravity = 'off'
-        # Number of panels on the blade (chordwise direction)
-        m = 1
-        # Number of panels on the wake (flow direction)
-        mstar = 10
+        # beam2
+        beam2 = beam1.copy()
+        beam2.StructuralInformation.rotate_around_origin(np.array([0.,1.,0.]), 90*np.pi/180.)
+        beam2.StructuralInformation.coordinates[:,2] += length1
+        beam2.StructuralInformation.lumped_mass_nodes[0] = 0
+        airfoil = np.zeros((1,20,2),)
+        airfoil[0,:,0] = np.linspace(0.,1.,20)
+        beam2.AerodynamicInformation.create_one_uniform_aerodynamics(
+                                            beam2.StructuralInformation,
+                                            chord = 1.,
+                                            twist = 0.,
+                                            sweep = 0.,
+                                            num_chord_panels = 4,
+                                            m_distribution = 'uniform',
+                                            elastic_axis = 0.5,
+                                            num_points_camber = 20,
+                                            airfoil = airfoil)
 
-        m_distribution = 'uniform'
+        # beam3
+        nnodes3 = 9
+        beam3 = gc.AeroelasticInformation()
+        # Structural information
+        beam3.StructuralInformation.num_node = nnodes3
+        beam3.StructuralInformation.num_node_elem = nodes_per_elem
+        beam3.StructuralInformation.compute_basic_num_elem()
+        beam3.StructuralInformation.set_to_zero(beam3.StructuralInformation.num_node_elem, beam3.StructuralInformation.num_node, beam3.StructuralInformation.num_elem)
+        node_pos = np.zeros((nnodes3, 3), )
+        node_pos[:,0] = length1
+        node_pos[:, 2] = np.linspace(length1, 0.0, nnodes3)
+
+        beam3.StructuralInformation.generate_uniform_beam(node_pos, mass_per_unit_length, mass_iner, 2.*mass_iner, 3.*mass_iner, np.zeros((3,),), EA, GA, 2.0*GA, GJ, EI, 4.*EI, num_node_elem = 3, y_BFoR = 'y_AFoR', num_lumped_mass=1)
+        beam3.StructuralInformation.lumped_mass_nodes[0] = nnodes3-1
+        beam3.StructuralInformation.lumped_mass[0] = 0.25
+        beam3.StructuralInformation.lumped_mass_inertia[0] = 2.*np.eye(3)
+        beam3.StructuralInformation.lumped_mass_position[0,:] = np.zeros((3,),)
+
+        # Aerodynamic information
+        airfoils = np.zeros((1, 20, 2), )
+        airfoils[0, :, 0] = np.linspace(0., 1., 20)
+        beam3.AerodynamicInformation.create_aerodynamics_from_vec(StructuralInformation = beam3.StructuralInformation,
+                                     vec_aero_node = np.ones((nnodes3), dtype = bool),
+                                     vec_chord = np.linspace(1.,0.1,nnodes3),
+                                     vec_twist = 0.1*np.ones((nnodes3,),),
+                                     vec_sweep = 0.2*np.ones((nnodes3,), ),
+                                     vec_surface_m = 4*np.ones((1,), dtype = int),
+                                     vec_surface_distribution = np.zeros((beam3.StructuralInformation.num_elem,), dtype=int),
+                                     vec_m_distribution = np.array(['uniform']),
+                                     vec_elastic_axis = 0.5*np.ones((nnodes3,), ),
+                                     vec_airfoil_distribution = np.zeros((nnodes3,), dtype=int),
+                                     airfoils = airfoils)
+
+        beam1.assembly(beam2, beam3)
+        beam1.StructuralInformation.boundary_conditions[0] = 1
+        beam1.StructuralInformation.boundary_conditions[-1] = -1
+        beam1.remove_duplicated_points(1e-3)
+
+        beam1.StructuralInformation.check_StructuralInformation()
+        beam1.AerodynamicInformation.check_AerodynamicInformation(beam1.StructuralInformation)
+        #beam1.generate_h5_files('/home/arturo/technical_work/05-test_generate_cases', 'test_01')
+
+        # SOLVER CONFIGURATION
+        SimInfo = gc.SimulationInformation()
+        SimInfo.set_default_values()
+
+        SimInfo.define_uinf(np.array([0.0,1.0,0.0]), 10.)
+
+        SimInfo.solvers['SHARPy']['flow'] = ['BeamLoader',
+                                'AerogridLoader',
+                                'StaticCoupled',
+                                'DynamicCoupled',
+                                'AerogridPlot',
+                                'BeamPlot'
+                                ]
+        SimInfo.solvers['SHARPy']['case'] = 'test_01'
+        SimInfo.solvers['SHARPy']['route'] = os.path.dirname(os.path.realpath(__file__)) + '/'
+        SimInfo.set_variable_all_dicts('dt', 0.05)
+
+        SimInfo.solvers['BeamLoader']['unsteady'] = 'on'
+
+        SimInfo.solvers['AerogridLoader']['unsteady'] = 'on'
+        SimInfo.solvers['AerogridLoader']['mstar'] = 13
+
+        # Default values for NonLinearStatic
+        # Default values for StaticUvlm
+        # Default values for NonLinearDynamicCoupledStep
+        # Default values for StepUvlm
+
+        SimInfo.solvers['StaticCoupled']['structural_solver'] = 'NonLinearStatic'
+        SimInfo.solvers['StaticCoupled']['structural_solver_settings'] = SimInfo.solvers['NonLinearStatic']
+        SimInfo.solvers['StaticCoupled']['aero_solver'] = 'StaticUvlm'
+        SimInfo.solvers['StaticCoupled']['aero_solver_settings'] = SimInfo.solvers['StaticUvlm']
+
+        SimInfo.solvers['DynamicCoupled']['structural_solver'] = 'NonLinearDynamicCoupledStep'
+        SimInfo.solvers['DynamicCoupled']['structural_solver_settings'] = SimInfo.solvers['NonLinearDynamicCoupledStep']
+        SimInfo.solvers['DynamicCoupled']['aero_solver'] = 'StepUvlm'
+        SimInfo.solvers['DynamicCoupled']['aero_solver_settings'] = SimInfo.solvers['StepUvlm']
+        SimInfo.solvers['DynamicCoupled']['post_processors'] = ['BeamPlot', 'AerogridPlot']
+        SimInfo.solvers['DynamicCoupled']['post_processor_settings'] = {'BeamPlot': SimInfo.solvers['BeamPlot'],
+                                                                     'AerogridPlot': SimInfo.solvers['AerogridPlot']}
+        SimInfo.define_num_steps(20)
+
+        # Define dynamic simulation
+        SimInfo.with_forced_vel = True
+        SimInfo.for_vel = np.zeros((20,6), dtype=float)
+        SimInfo.for_acc = np.zeros((20,6), dtype=float)
+        SimInfo.with_dynamic_forces = True
+        SimInfo.dynamic_forces = np.zeros((20,beam1.StructuralInformation.num_node,6), dtype=float)
+
+        gc.clean_test_files(SimInfo.solvers['SHARPy']['route'], SimInfo.solvers['SHARPy']['case'])
+        SimInfo.generate_solver_file()
+        SimInfo.generate_dyn_file(20)
+        beam1.generate_h5_files(SimInfo.solvers['SHARPy']['route'], SimInfo.solvers['SHARPy']['case'])
 
 
-
-        ######################################################################
-        ##############################  ASSEMBLY  ############################
-        ######################################################################
-
-        nnodes = 11
-        length = 1.0
-        mass_per_unit_length = 1.0
-        mass_iner = 1.0
-        EA = 1e6
-        GJ = 1e6
-        EI = 1e6
-        tip_force = 0.0*np.array([0.0,1.0,0.0,0.0,0.0,0.0])
-
-        # Create the structure
-        beam1 = AeroelasticInformation()
-        node_pos = np.zeros((nnodes,3),)
-        node_pos[:, 0] = np.linspace(0.0, length, nnodes)
-        beam1.StructuralInformation.generate_uniform_sym_beam(node_pos, mass_per_unit_length, mass_iner, EA, GJ, EI)
-        beam1.StructuralInformation.body_number = np.zeros((beam1.StructuralInformation.num_elem,), dtype = int)
-        beam1.define_basic_aerodynamics(beam1.StructuralInformation)
-        # beam1.AerodynamicInformation.aero_node[:] = np.ones((3,), dtype = bool)
-        # beam1.AerodynamicInformation.surface_distribution = np.array([0], dtype = int)
-
-        beam2 = AeroelasticInformation()
-        node_pos = node_pos + np.array([length, 0.0, 0.0])
-        beam2.StructuralInformation.generate_uniform_sym_beam(node_pos, mass_per_unit_length, mass_iner, EA, GJ, EI)
-        beam2.StructuralInformation.body_number = np.ones((beam1.StructuralInformation.num_elem,),dtype = int)
-        beam2.define_basic_aerodynamics(beam2.StructuralInformation)
-        #
-        beam1.assembly(beam2)
-        # # beam1.remove_clamping()
-
-        clean_test_files()
-        beam1.write_h5_files()
-
-        # Simulation details
-        SimulationInformation = SimulationInformation()
-        SimulationInformation.generate_basic(n_tstep=1000, dt=0.05)
-        SimulationInformation.with_dynamic_forces = True
-        SimulationInformation.dynamic_forces_time = np.zeros((SimulationInformation.n_tstep,2*nnodes,6),)
-        # SimulationInformation.dynamic_forces_time[:,0,:] -= tip_force
-        # SimulationInformation.dynamic_forces_time[:,nnodes-1,:] += tip_force
-        # SimulationInformation.dynamic_forces_time[:,nnodes,:] -= tip_force
-        # SimulationInformation.dynamic_forces_time[:,-1,:] += tip_force
-        SimulationInformation.generate_dyn_file()
-        SimulationInformation.generate_solver_file()
-
-        # Create the BC file
-        # LC = []
-        # LC1 = LagrangeConstraint()
-        # LC1.behaviour = 'hinge_node_FoR_constant_rotation'
-        # LC1.node_in_body = nnodes - 1
-        # LC1.body = 0
-        # LC1.body_FoR = 1
-        # LC1.rot_vel = 0.2
-        # LC.append(LC1)
-        #
-        # MB = []
-        # MB1 = BodyInformation()
-        # MB1.body_number = 0
-        # MB1.FoR_position = np.zeros((6,),)
-        # MB1.FoR_velocity = np.zeros((6,),)
-        # MB1.FoR_acceleration = np.zeros((6,),)
-        # MB1.FoR_movement = 'prescribed'
-        # MB1.quat = np.array([1.0,0.0,0.0,0.0])
-        # MB.append(MB1)
-        # MB2 = BodyInformation()
-        # MB2.body_number = 1
-        # MB2.FoR_position = np.array([length,0.0,0.0,0.0,0.0,0.0])
-        # MB2.FoR_velocity = np.zeros((6,),)
-        # MB2.FoR_acceleration = np.zeros((6,),)
-        # MB2.FoR_movement = 'free'
-        # MB2.quat = np.array([1.0,0.0,0.0,0.0])
-        # MB.append(MB2)
-        #
-        # generate_multibody_file(LC, MB)
-
-        # print("DONE")
 
 if __name__=='__main__':
+    # unittest.main()
+
+    # # Remove old cases
+    # if fnmatch.fnmatch(file, '*.fem.h5'):
+    #     os.remove(file)
+    # if fnmatch.fnmatch(file, '*.dyn.h5'):
+    #     os.remove(file)
+    # if fnmatch.fnmatch(file, '*.aero.h5'):
+    #     os.remove(file)
+    # if fnmatch.fnmatch(file, '*.mb.h5'):
+    #     os.remove(file)
+    # if fnmatch.fnmatch(file, '*.solver.txt'):
+    #     os.remove(file)
+    # if fnmatch.fnmatch(file, '*.flightcon.txt'):
+    #     os.remove(file)
 
     T=TestGenerateCases()
-
-    T.test_generate_cantilever_uniform_beam()
+    # T.setUp()
+    T.test_01()

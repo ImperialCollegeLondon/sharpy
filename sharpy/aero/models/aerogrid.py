@@ -86,8 +86,10 @@ class Aerogrid(object):
                                                    kind='quadratic',
                                                    copy=False,
                                                    assume_sorted=True))
-
-        self.n_control_surfaces = np.sum(np.unique(self.aero_dict['control_surface']) >= 0)
+        try:
+            self.n_control_surfaces = np.sum(np.unique(self.aero_dict['control_surface']) >= 0)
+        except KeyError:
+            pass
 
         # initialise generators
         for i_cs in range(self.n_control_surfaces):
