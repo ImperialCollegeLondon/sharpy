@@ -496,6 +496,26 @@ def rot_skew(vec):
 
 
 def rotation3d_x(angle):
+    """
+    Rotation matrix about the x axis by the input angle :math:`\\Phi`
+
+    .. math::
+
+        \\mathbf{\\tau}_x = \\begin{bmatrix}
+        1 & 0 & 0 \\
+        0 & \\cos(\\Phi) & -\\sin(\\Phi) \\
+        0 & \\sin(\\Phi) & \\cos(\\Phi) \\
+        \\end{bmatrix}
+
+
+    Args:
+        angle (float): angle of rotation in radians about the x axis
+
+    Returns:
+        np.array: 3x3 rotation matrix about the x axis
+
+    """
+
     c = np.cos(angle)
     s = np.sin(angle)
     mat = np.zeros((3, 3))
@@ -506,6 +526,25 @@ def rotation3d_x(angle):
 
 
 def rotation3d_y(angle):
+    """
+    Rotation matrix about the y axis by the input angle :math:`\\Theta`
+
+    .. math::
+
+        \\mathbf{\\tau}_y = \\begin{bmatrix}
+        \\cos(\\Theta) & 0 & -\\sin(\\Theta)\\
+        0 & 1 & 0 \\
+        \\sin(\\Theta) & 0 & \\cos(\\Theta)\\
+        \\end{bmatrix}
+
+
+    Args:
+        angle (float): angle of rotation in radians about the y axis
+
+    Returns:
+        np.array: 3x3 rotation matrix about the y axis
+
+    """
     c = np.cos(angle)
     s = np.sin(angle)
     mat = np.zeros((3, 3))
@@ -516,6 +555,25 @@ def rotation3d_y(angle):
 
 
 def rotation3d_z(angle):
+    """
+    Rotation matrix about the z axis by the input angle :math:`\\Psi`
+
+    .. math::
+
+        \\mathbf{\\tau}_z = \\begin{bmatrix}
+        \\cos(\\Psi) & -\\sin(\\Psi) & 0 \\
+        \\sin(\\Psi) & \\cos(\\Psi) & 0 \\
+        0 & 0 & 1
+        \\end{bmatrix}
+
+
+    Args:
+        angle (float): angle of rotation in radians about the z axis
+
+    Returns:
+        np.array: 3x3 rotation matrix about the z axis
+
+    """
     c = np.cos(angle)
     s = np.sin(angle)
     mat = np.zeros((3, 3))
@@ -536,8 +594,31 @@ def rotate_crv(crv_in, axis, angle):
 
 def euler2rot(euler):
     """
-    :param euler: [roll, pitch, yaw]
-    :return:
+    Transforms Euler angles (roll, pitch and yaw :math:`\\Phi, \\Theta, \\Psi`) into a 3x3 rotation matrix describing
+    the rotation between frame A and frame B.
+
+    The rotations are performed successively, first in yaw, then in pitch and finally in roll.
+
+    .. math::
+
+        \\mathbf{T}_{BE} = \\mathbf{tau}_x(\\Phi) \\mathbf{tau}_y(\\Theta) \\mathbf{tau}_z(\\Psi)
+
+
+    where :math:`\\mathbf{\\tau}` represents the rotation about the subscripted axis.
+
+    Args:
+        euler (np.array): 1x3 array with the Euler angles in the form ``[roll, pitch, yaw]``
+
+    Returns:
+        np.array: 3x3 transformation matrix describing the rotation by the input Euler angles.
+
+    See Also:
+        The individual transformations represented by the :math:`\\mathbf{\\tau}` matrices are described in:
+
+        .. py:module:: sharpy.utils.algebra.rotation3d_x
+        .. py:module:: sharpy.utils.algebra.rotation3d_y
+        .. py:module:: sharpy.utils.algebra.rotation3d_z
+
     """
     rot = rotation3d_z(euler[2])
     rot = np.dot(rotation3d_y(euler[1]), rot)
