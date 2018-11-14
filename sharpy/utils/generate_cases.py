@@ -17,6 +17,7 @@ import numpy as np
 import sharpy.utils.algebra as algebra
 import h5py as h5
 import os
+import pandas as pd
 
 
 ######################################################################
@@ -102,6 +103,64 @@ def from_node_list_to_elem_matrix(node_list, connectivities):
         elem_matrix[ielem, :] = node_list[connectivities[ielem, :]]
 
     return elem_matrix
+
+def read_excel_sheet_type01(excel_file_name, excel_sheet, column_names, *args):
+    """
+    read_excel_sheet_type01
+
+    Read a table in excel to a series of vectors
+
+    Args:
+    	excel_file_name (str): File name to be read
+    	excel_sheet (str): sheet in the excel file to be read
+        column_names (list(str)): list with the column headers
+        *args: variables associated with each column_name
+
+    Notes:
+        Excel sheet format:
+            1st row: column_names (names of the variables)
+            2nd row: units
+            3rd row: type of number to be read
+            Following rows: values
+
+            All the columns must have the same number of values
+            The information starts in cell A1 and has no blank cells
+    """
+
+    # Make sure that the number of column_names matches the given arguments
+    if not len(column_names) == len(args):
+        sys.exit("ERROR: The number of column names does not match the number of variables")
+
+    # Read the excel file as dictionary
+    excel_db=pd.read_excel(excel_file_name, sheet_name=excel_sheet)
+    num_elem = excel_db.index._stop-2
+
+    # Initialize variables
+    ivar = 0
+    for var in args:
+        if excel_db[column_names[ivar]][2] == 'one_int':
+            var = 0
+        elif excel_db[column_names[ivar]][2] == 'one_float':
+            var = 0.0
+        elif excel_db[column_names[ivar]][2] == 'one_str':
+            var = ''
+        elif excel_db[column_names[ivar]][2] == 'vec_int':
+            var = np.zeros((num_elem_blade, ), dtype=int)
+        elif excel_db[column_names[ivar]][2] == 'vec_float':
+            var = np.zeros((num_elem_blade, ), dtype=float)
+        elif excel_db[column_names[ivar]][2] == 'vec_str':
+            var = np.zeros((num_elem_blade, ), dtype=str)
+        else:
+            print("ERROR: not recognized number type")
+        ivar += 1
+
+    # Skip the second and third rows because they include the units and the type of number
+    # Translate the values into vectors
+    for i in range(2,excel_db.index._stop):
+        ivar = 0
+        for var in args:
+            var[i-2] = excel_db[column_names[ivar]][i]
+            ivar += 1
 
 
 ######################################################################
@@ -283,6 +342,37 @@ class StructuralInformation():
             self.lumped_mass_inertia = lumped_mass_inertia
             self.lumped_mass_position = lumped_mass_position
 
+    def generate_1to1_from_vectors(self,
+                                    num_node_elem,
+                                    num_node,
+                                    num_elem,
+                                    coordinates,
+                                    stiffness_db,
+                                    mass_db,
+                                    frame_of_reference_delta,
+                                    vec_node_structural_twist,
+                                    num_lumped_mass = 0):
+
+        self.num_node_elem = num_node_elem
+        self.num_node = num_node
+        self.num_elem = num_elem
+        self.coordinates = coordinates
+        self.create_simple_connectivities()
+        self.elem_stiffness = np.linspace(0,self.num_elem-1,self.num_elem, dtype=int)
+        self.stiffness_db = stiffness_db
+        self.elem_mass = np.linspace(0,self.num_elem-1,self.num_elem, dtype=int)
+        self.mass_db = mass_db
+        self.create_frame_of_reference_delta(y_BFoR = frame_of_reference_delta)
+        self.structural_twist = vec_node_structural_twist
+        self.beam_number = np.zeros((self.num_elem,), dtype=int)
+        self.body_number = np.zeros((self.num_elem,), dtype=int)
+        self.app_forces = np.zeros((self.num_node,6), dtype=float)
+        if not num_lumped_mass ==0:
+            self.lumped_mass_nodes = np.zeros((num_lumped_mass,), dtype=int)
+            self.lumped_mass = np.zeros((num_lumped_mass,), dtype=float)
+            self.lumped_mass_inertia = np.zeros((num_lumped_mass,), dtype=float)
+            self.lumped_mass_position = np.zeros((num_lumped_mass,), dtype=float)
+
     def create_frame_of_reference_delta(self, y_BFoR = 'y_AFoR'):
         """
         create_frame_of_reference_delta
@@ -414,7 +504,15 @@ class StructuralInformation():
         if ((self.num_node-1) % (self.num_node_elem-1)) == 0:
             self.num_elem = int((self.num_node-1)/(self.num_node_elem-1))
         else:
-            print("ERROR: number of nodes cannot be converted into 3-noded elements")
+            print("ERROR: number of nodes cannot be converted into ", self.num_node_elem, "-noded elements")
+
+    def compute_basic_num_node(self):
+        """
+        compute_basic_num_node
+
+        It computes the number of nodes when no nodes are shared between beams
+        """
+        self.num_node = self.num_elem*(self.num_node_elem-1) + 1
 
     def generate_uniform_sym_beam(self, node_pos, mass_per_unit_length, mass_iner, EA, GA, GJ, EI, num_node_elem = 3, y_BFoR = 'y_AFoR', num_lumped_mass=0):
         """
@@ -829,7 +927,19 @@ class AerodynamicInformation():
         self.airfoils = airfoil
 
     def change_airfoils_discretezation(self, airfoils, new_num_nodes):
+        """
+        change_airfoils_discretezation
 
+        Changes the discretization of the matrix of airfoil coordinates
+
+        Args:
+            airfoils (np.array): Matrix with the x-y coordinates of all the airfoils to be modified
+            new_num_nodes (int): Number of points that the output coordinates will have
+
+        Return:
+            new_airfoils (np.array): Matrix with the x-y coordinates of all the airfoils with the new discretization
+
+        """
         nairfoils = airfoils.shape[0]
         new_airfoils = np.zeros((nairfoils,new_num_nodes,2), dtype = float)
 
@@ -865,6 +975,7 @@ class AerodynamicInformation():
             self.elastic_axis = np.concatenate((self.elastic_axis, aerodynamics_to_add.elastic_axis), axis=0)
             # np.concatenate((self.airfoil_distribution, aerodynamics_to_add.airfoil_distribution), axis=0)
             self.airfoil_distribution = np.concatenate((self.airfoil_distribution, aerodynamics_to_add.airfoil_distribution + total_num_airfoils), axis=0)
+            # TODO: this should NOT be needed according to SHARPy input files. Modify at some point
             if (self.airfoils.shape[1] == aerodynamics_to_add.airfoils.shape[1]):
                 self.airfoils = np.concatenate((self.airfoils, aerodynamics_to_add.airfoils), axis=0)
             elif (self.airfoils.shape[1] > aerodynamics_to_add.airfoils.shape[1]):
@@ -1388,7 +1499,15 @@ class SimulationInformation():
                                             'include_unsteady_force_contribution': 'off'}
 
     def define_num_steps(self, num_steps):
+        """
+        define_num_steps
 
+        Set the number of steps in the simulation for all the solvers
+
+        Args:
+            num_steps (int): number of steps
+        """
+        # TODO:Maybe it would be convenient to use the same name for all the solvers
         self.solvers["DynamicCoupled"]['n_time_steps'] = num_steps
         self.solvers["StepUvlm"]['n_time_steps'] = num_steps
         self.solvers['NonLinearDynamicMultibody']['num_steps'] = num_steps
@@ -1397,7 +1516,15 @@ class SimulationInformation():
 
 
     def define_uinf(self, unit_vector, norm):
+        """
+        define_uinf
 
+        Set the inflow velocity in the simulation for all the solvers
+
+        Args:
+            unit_vector (np.array): direction of the inflow velocity
+            norm (float): Norm of the inflow velocity
+        """
         # Make sure
         uinf = unit_vector*norm
         norm = np.linalg.norm(uinf)
