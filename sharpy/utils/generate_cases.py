@@ -104,63 +104,121 @@ def from_node_list_to_elem_matrix(node_list, connectivities):
 
     return elem_matrix
 
-def read_excel_sheet_type01(excel_file_name, excel_sheet, column_names, *args):
-    """
-    read_excel_sheet_type01
+def read_column_sheet_type01(excel_file_name, excel_sheet, column_name):
 
-    Read a table in excel to a series of vectors
+    xls = pd.ExcelFile(excel_file_name)
+    excel_db = pd.read_excel(xls, sheetname=excel_sheet)
+    num_elem = excel_db.index._stop - 2
 
-    Args:
-    	excel_file_name (str): File name to be read
-    	excel_sheet (str): sheet in the excel file to be read
-        column_names (list(str)): list with the column headers
-        *args: variables associated with each column_name
+    if excel_db[column_name][1] == 'one_int':
+        var = excel_db[column_name][2]
+    elif excel_db[column_name][1] == 'one_float':
+        var = excel_db[column_name][2]
+    elif excel_db[column_name][1] == 'one_str':
+        var = excel_db[column_name][2]
+    elif excel_db[column_name][1] == 'vec_int':
+        var = np.zeros((num_elem,), dtype=int)
+    elif excel_db[column_name][1] == 'vec_float':
+        var = np.zeros((num_elem,), dtype=float)
+    elif excel_db[column_name][1] == 'vec_str':
+        var = np.zeros((num_elem,), dtype=object)
+    else:
+        print("ERROR: not recognized number type")
 
-    Notes:
-        Excel sheet format:
-            1st row: column_names (names of the variables)
-            2nd row: units
-            3rd row: type of number to be read
-            Following rows: values
+    if 'vec' in excel_db[column_name][1]:
+        for i in range(2, excel_db.index._stop):
+            var[i - 2] = excel_db[column_name][i]
 
-            All the columns must have the same number of values
-            The information starts in cell A1 and has no blank cells
-    """
+    return var
 
-    # Make sure that the number of column_names matches the given arguments
-    if not len(column_names) == len(args):
-        sys.exit("ERROR: The number of column names does not match the number of variables")
+# def read_excel_sheet_type01(excel_file_name, excel_sheet, column_names, *args):
+#     """
+#     read_excel_sheet_type01
+#
+#     Read a table in excel to a series of vectors
+#
+#     Args:
+#     	excel_file_name (str): File name to be read
+#     	excel_sheet (str): sheet in the excel file to be read
+#         column_names (list(str)): list with the column headers
+#         *args: variables associated with each column_name
+#
+#     Notes:
+#         Excel sheet format:
+#             1st row: column_names (names of the variables)
+#             2nd row: units
+#             3rd row: type of number to be read
+#             Following rows: values
+#
+#             All the columns must have the same number of values
+#             The information starts in cell A1 and has no blank cells
+#     """
+#
+#     # Make sure that the number of column_names matches the given arguments
+#     if not len(column_names) == len(args):
+#         sys.exit("ERROR: The number of column names does not match the number of variables")
+#
+#     # Read the excel file as dictionary
+#     xls = pd.ExcelFile(excel_file_name)
+#     excel_db=pd.read_excel(xls, sheetname=excel_sheet)
+#     num_elem = excel_db.index._stop-2
+#
+#     # Initialize variables
+#     ivar = 0
+#     for var in args:
+#         if excel_db[column_names[ivar]][1] == 'one_int':
+#             var = excel_db[column_names[ivar]][2]
+#         elif excel_db[column_names[ivar]][1] == 'one_float':
+#             var = excel_db[column_names[ivar]][2]
+#         elif excel_db[column_names[ivar]][1] == 'one_str':
+#             var = excel_db[column_names[ivar]][2]
+#         elif excel_db[column_names[ivar]][1] == 'vec_int':
+#             var = np.zeros((num_elem, ), dtype=int)
+#             for i in range(2, excel_db.index._stop):
+#                 var[i - 2] = excel_db[column_names[ivar]][i]
+#         elif excel_db[column_names[ivar]][1] == 'vec_float':
+#             var = np.zeros((num_elem, ), dtype=float)
+#             for i in range(2, excel_db.index._stop):
+#                 var[i - 2] = excel_db[column_names[ivar]][i]
+#         elif excel_db[column_names[ivar]][1] == 'vec_str':
+#             var = np.zeros((num_elem, ), dtype=str)
+#             for i in range(2, excel_db.index._stop):
+#                 var[i - 2] = excel_db[column_names[ivar]][i]
+#         else:
+#             print("ERROR: not recognized number type")
+#         ivar += 1
 
-    # Read the excel file as dictionary
-    excel_db=pd.read_excel(excel_file_name, sheet_name=excel_sheet)
-    num_elem = excel_db.index._stop-2
-
-    # Initialize variables
-    ivar = 0
-    for var in args:
-        if excel_db[column_names[ivar]][2] == 'one_int':
-            var = 0
-        elif excel_db[column_names[ivar]][2] == 'one_float':
-            var = 0.0
-        elif excel_db[column_names[ivar]][2] == 'one_str':
-            var = ''
-        elif excel_db[column_names[ivar]][2] == 'vec_int':
-            var = np.zeros((num_elem_blade, ), dtype=int)
-        elif excel_db[column_names[ivar]][2] == 'vec_float':
-            var = np.zeros((num_elem_blade, ), dtype=float)
-        elif excel_db[column_names[ivar]][2] == 'vec_str':
-            var = np.zeros((num_elem_blade, ), dtype=str)
-        else:
-            print("ERROR: not recognized number type")
-        ivar += 1
+    # ivar = 0
+    # for key, value in kwargs.items():
+    #     if excel_db[column_names[ivar]][1] == 'one_int':
+    #         value = excel_db[column_names[ivar]][2]
+    #     elif excel_db[column_names[ivar]][1] == 'one_float':
+    #         value = excel_db[column_names[ivar]][2]
+    #     elif excel_db[column_names[ivar]][1] == 'one_str':
+    #         value = excel_db[column_names[ivar]][2]
+    #     elif excel_db[column_names[ivar]][1] == 'vec_int':
+    #         value = np.zeros((num_elem, ), dtype=int)
+    #         for i in range(2, excel_db.index._stop):
+    #             value[i - 2] = excel_db[column_names[ivar]][i]
+    #     elif excel_db[column_names[ivar]][1] == 'vec_float':
+    #         value = np.zeros((num_elem, ), dtype=float)
+    #         for i in range(2, excel_db.index._stop):
+    #             value[i - 2] = excel_db[column_names[ivar]][i]
+    #     elif excel_db[column_names[ivar]][1] == 'vec_str':
+    #         value = np.zeros((num_elem, ), dtype=str)
+    #         for i in range(2, excel_db.index._stop):
+    #             value[i - 2] = excel_db[column_names[ivar]][i]
+    #     else:
+    #         print("ERROR: not recognized number type")
+    #     ivar += 1
 
     # Skip the second and third rows because they include the units and the type of number
     # Translate the values into vectors
-    for i in range(2,excel_db.index._stop):
-        ivar = 0
-        for var in args:
-            var[i-2] = excel_db[column_names[ivar]][i]
-            ivar += 1
+
+        # ivar = 0
+        # for var in args:
+        #
+        #     ivar += 1
 
 
 ######################################################################
@@ -374,8 +432,8 @@ class StructuralInformation():
         if not num_lumped_mass ==0:
             self.lumped_mass_nodes = np.zeros((num_lumped_mass,), dtype=int)
             self.lumped_mass = np.zeros((num_lumped_mass,), dtype=float)
-            self.lumped_mass_inertia = np.zeros((num_lumped_mass,), dtype=float)
-            self.lumped_mass_position = np.zeros((num_lumped_mass,), dtype=float)
+            self.lumped_mass_inertia = np.zeros((num_lumped_mass,3,3 ), dtype=float)
+            self.lumped_mass_position = np.zeros((num_lumped_mass,3 ), dtype=float)
 
     def create_frame_of_reference_delta(self, y_BFoR = 'y_AFoR'):
         """
@@ -610,7 +668,7 @@ class StructuralInformation():
         """
 
         total_num_beam = max(self.beam_number)+1
-        total_num_body = max(self.bodynumber)+1
+        total_num_body = max(self.body_number)+1
         total_num_node = self.num_node
         total_num_elem = self.num_elem
         total_num_stiff = self.stiffness_db.shape[0]
@@ -631,11 +689,16 @@ class StructuralInformation():
             self.body_number = np.concatenate((self.body_number, structure_to_add.body_number + total_num_body), axis=0)
             self.app_forces = np.concatenate((self.app_forces, structure_to_add.app_forces), axis=0)
             # self.body_number = np.concatenate((self.body_number, structure_to_add.body_number), axis=0)
-            if isinstance(self.lumped_mass_nodes, np.ndarray):
+            if isinstance(self.lumped_mass_nodes, np.ndarray) and isinstance(structure_to_add.lumped_mass_nodes, np.ndarray):
                 self.lumped_mass_nodes  = np.concatenate((self.lumped_mass_nodes, structure_to_add.lumped_mass_nodes + total_num_node), axis=0)
                 self.lumped_mass  = np.concatenate((self.lumped_mass, structure_to_add.lumped_mass), axis=0)
                 self.lumped_mass_inertia  = np.concatenate((self.lumped_mass_inertia, structure_to_add.lumped_mass_inertia), axis=0)
                 self.lumped_mass_position  = np.concatenate((self.lumped_mass_position, structure_to_add.lumped_mass_position ), axis=0)
+            elif isinstance(structure_to_add.lumped_mass_nodes, np.ndarray):
+                self.lumped_mass_nodes = structure_to_add.lumped_mass_nodes + total_num_node
+                self.lumped_mass = structure_to_add.lumped_mass
+                self.lumped_mass_inertia = structure_to_add.lumped_mass_inertia
+                self.lumped_mass_position = structure_to_add.lumped_mass_position
 
             total_num_stiff += structure_to_add.stiffness_db.shape[0]
             total_num_mass += structure_to_add.mass_db.shape[0]
@@ -1000,7 +1063,7 @@ class AerodynamicInformation():
         # self.num_airfoils = total_num_airfoils
         # self.num_surfaces = total_num_surfaces
 
-    def interpolate_airfoils_camber(self, pure_airfoils_camber, r_pure_airfoils, r):
+    def interpolate_airfoils_camber(self, pure_airfoils_camber, r_pure_airfoils, r, n_points_camber):
         """
         interpolate_airfoils_camber
 
@@ -1017,7 +1080,7 @@ class AerodynamicInformation():
 
         """
         num_node = len(r)
-        airfoils_camber = np.zeros((num_node,self.n_points_camber,2),)
+        airfoils_camber = np.zeros((num_node,n_points_camber,2),)
 
         for inode in range(num_node):
             # camber_x, camber_y = get_airfoil_camber(x,y)
@@ -1361,6 +1424,7 @@ class SimulationInformation():
         self.solvers['NonLinearDynamicMultibody'] = dict()
         self.solvers['StaticCoupled'] = dict()
         self.solvers['DynamicCoupled'] = dict()
+        self.solvers['InitializeMultibody'] = dict()
 
         # MAIN
         self.solvers['SHARPy'] = {'flow': '',
@@ -1476,6 +1540,16 @@ class SimulationInformation():
 
         # COUPLED
         self.solvers['StaticCoupled'] = {'print_info': 'on',
+                                     'structural_solver': 'TO BE DEFINED',
+                                     'structural_solver_settings': dict(),
+                                     'aero_solver':'TO BE DEFINED',
+                                     'aero_solver_settings': dict(),
+                                     'max_iter': 100,
+                                     'n_load_steps': 1,
+                                     'tolerance': 1e-5,
+                                     'relaxation_factor': 0}
+
+        self.solvers['InitializeMultibody'] = {'print_info': 'on',
                                      'structural_solver': 'TO BE DEFINED',
                                      'structural_solver_settings': dict(),
                                      'aero_solver':'TO BE DEFINED',
