@@ -23,9 +23,10 @@ def generate_naca_camber(M=0,P=0):
         (x_vec,y_vec): ``x`` and ``y`` coordinates of the chosen airfoil
 
     Example:
-        To plot the camber line of a NACA2400 airfoil (infinitely thin airfoil with :math:`(t/c)=0`:
+        The NACA2400 airfoil would have 2% camber with the maximum at 40% of the chord and 0 thickness. To plot the
+        camber line one would use this function as:
 
-        ``x_vec, y_vec = generate_naca_camber(M = 20, P = 4)``
+            ``x_vec, y_vec = generate_naca_camber(M = 2, P = 4)``
 
     """
     m = M*1e-2
