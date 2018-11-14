@@ -28,36 +28,14 @@ def mat2quat(rot):
 #######
 
 def tangent_vector(in_coord, ordering=None):
-    """
-    Tangent vector calculation for 2+ noded elements.
+    """ Tangent vector calculation for 2+ noded elements.
 
-    Calculates the tangent vector interpolating every dimension separately. It uses a (``n_nodes - 1``) degree polynomial,
-    and the differentiation is analytical.
-
-    Calculation method:
-
-        1. A n_nodes-1 polynomial is fitted through the nodes per dimension.
-        2. Those polynomials are analytically differentiated with respect to the node index
-        3. The tangent vector is given by:
-
-        .. math::
-
-            \\vec{t} = \\frac{s_x'\\vec{i} + s_y'\\vec{j} + s_z'\\vec{k}}{\\left| s_x'\\vec{i} + s_y'\\vec{j} + s_z'\\vec{k}\\right|}
-
-
-        where :math:`'` notes the differentiation with respect to the index number
-
+    Calculates the tangent vector interpolating every dimension
+    separately. It uses a (n_nodes - 1) degree polynomial, and the
+    differentiation is analytical.
 
     Args:
         in_coord (np.ndarray): array of coordinates of the nodes. Dimensions = ``[n_nodes, ndim]``
-        ordering (None): ordering required?
-
-    Returns:
-        np.ndarray: tangent vector
-
-
-    Examples:
-          example goes here
 
     Notes:
         Dimensions are treated independent from each other, interpolating polynomials are computed
@@ -482,11 +460,12 @@ def quat2rotation(q1):
     See Aircraft Control and Simulation, pag. 31, by Stevens, Lewis.
     Copied from S. Maraniello's SHARPy
 
-    Remark: if A is a FoR obtained rotating a FoR G of angle fi about an axis n (remind n will be
-    invariant during the rotation), and q is the related quaternion q(fi,n), the function will
-    return the matrix Cag such that:
-    - Cag rotates A to G
-    - Cag transforms the coordinates of a vector defined in G component to A components.
+    Remark: if B is a FoR obtained rotating a FoR A of angle fi about an axis n
+    (remind n will be invariant during the rotation), and q is the related
+    quaternion q(fi,n), the function will return the matrix Cab such that:
+        - Cab rotates A onto B
+        - Cab transforms the coordinates of a vector defined in B component to
+        A components.
     """
 
     q = q1.copy(order='F')
@@ -725,16 +704,16 @@ def get_triad(coordinates_def, frame_of_reference_delta, twist=None, n_nodes=3, 
     return tangent, binormal, normal
 
 
-def der_CquatT_by_v(q,v):
-    """
+def der_Cquat_by_v(q,v):
+    '''
     Being C=C(quat) the rotational matrix depending on the quaternion q and
-    defined as C=quat2rot(q).T, the function returns the derivative, w.r.t. the
+    defined as C=quat2rotation(q), the function returns the derivative, w.r.t. the
     quanternion components, of the vector dot(C,v), where v is a constant
     vector.
     The elements of the resulting derivative matrix D are ordered such that:
-    ``d(C*v) = D*d(q)``
+        d(C*v) = D*d(q)
     where d(.) is a delta operator.
-    """
+    '''
 
     vx,vy,vz=v
     q0,q1,q2,q3=q
@@ -748,16 +727,16 @@ def der_CquatT_by_v(q,v):
 
 
 
-def der_Cquat_by_v(q,v):
-    """
-    Being C=C(quat) the rotational matrix depending on the quaternion q and
-    defined as C=quat2rot(q), the function returns the derivative, w.r.t. the
+def der_CquatT_by_v(q,v):
+    '''
+    Being C=C(quat).T the projection matrix depending on the quaternion q and
+    defined as C=quat2rotation(q).T, the function returns the derivative, w.r.t. the
     quanternion components, of the vector dot(C,v), where v is a constant
     vector.
     The elements of the resulting derivative matrix D are ordered such that:
-    ``d(C*v) = D*d(q)``
+        d(C*v) = D*d(q)
     where d(.) is a delta operator.
-    """
+    '''
 
     vx,vy,vz=v
     q0,q1,q2,q3=q
@@ -770,18 +749,18 @@ def der_Cquat_by_v(q,v):
                                 q0*vx - q2*vz + q3*vy, q1*vx + q2*vy + q3*vz]])
 
 def der_Tan_by_xv(fv0,xv):
-    """
+    '''
     Being fv0 a cartesian rotation vector and Tan the corresponding tangential
     operator (computed through crv2tan(fv)), the function returns the derivative
     of dot(Tan,xv), where xv is a constant vector.
 
     The elements of the resulting derivative matrix D are ordered such that:
-    ``d(Tan*xv) = D*d(fv)``
+        d(Tan*xv) = D*d(fv)
     where d(.) is a delta operator.
 
     Note: the derivative expression has been derived symbolically and verified
     by FDs. A more compact expression may be possible.
-    """
+    '''
 
     f0=np.linalg.norm(fv0)
     sf0,cf0=np.sin(f0),np.cos(f0)
@@ -862,3 +841,105 @@ def der_Tan_by_xv(fv0,xv):
           xv_z*((-fv0_x**2 - fv0_y**2)*(-cf0*fv0_z/f0p2 + fv0_z*rs03)/f0p2 -
             2*fv0_z*(1 - rs01)*(-fv0_x**2 - fv0_y**2)/f0p4)]])
     # end der_Tan_by_xv
+
+def der_TanT_by_xv(fv0,xv):
+    '''
+    Being fv0 a cartesian rotation vector and Tan the corresponding tangential
+    operator (computed through crv2tan(fv)), the function returns the derivative
+    of dot(Tan^T,xv), where xv is a constant vector.
+
+    The elements of the resulting derivative matrix D are ordered such that:
+        d(Tan^T*xv) = D*d(fv)
+    where d(.) is a delta operator.
+
+    Note: the derivative expression has been derived symbolically and verified
+    by FDs. A more compact expression may be possible.
+    '''
+
+    # Renaming variabes for clarity
+    px = fv0[0]
+    py = fv0[1]
+    pz = fv0[2]
+
+    vx = xv[0]
+    vy = xv[1]
+    vz = xv[2]
+
+    # Defining useful functions
+    eps = 1e-15
+    f0=np.linalg.norm(fv0)
+    if f0 < eps:
+        f1 = -1.0/2.0
+        f2 = 1.0/6.0
+        g1 = -1.0/12.0
+        g2 = 0.0 # TODO: check this
+    else:
+        f1 = (np.cos(f0)-1.0)/f0**2.0
+        f2 = (1.0-np.sin(f0)/f0)/f0**2.0
+        g1 = (f0*np.sin(f0)+2.0*(np.cos(f0)-1.0))/f0**4.0
+        g2 = (2.0/f0**4 + np.cos(f0)/f0**4 - 3.0*np.sin(f0)/f0**5)
+
+    # Computing the derivatives of the functions
+    df1dpx = -1.0*px*g1
+    df1dpy = -1.0*py*g1
+    df1dpz = -1.0*pz*g1
+
+    df2dpx = -1.0*px*g2
+    df2dpy = -1.0*py*g2
+    df2dpz = -1.0*pz*g2
+
+    # Compute the output matrix
+    der_TanT_by_xv = np.zeros((3,3),)
+
+    # First column (derivatives with psi_x)
+    der_TanT_by_xv[0,0] = -1.0*df2dpx*(py**2+pz**2)*vx + df1dpx*pz*vy + df2dpx*px*py*vy + f2*py*vy - df1dpx*py*vz + df2dpx*px*pz*vz + f2*pz*vz
+    der_TanT_by_xv[1,0] = -1.0*df1dpx*pz*vx + df2dpx*px*py*vx + f2*py*vx - df2dpx*px**2*vy - 2.0*f2*px*vy - df2dpx*pz**2*vy + df1dpx*px*vz+f1*vz + df2dpx*py*pz*vz
+    der_TanT_by_xv[2,0] = df1dpx*py*vx + df2dpx*px*pz*vx + f2*pz*vx - df1dpx*px*vy -f1*vy + df2dpx*py*pz*vy - df2dpx*px**2*vz - 2.0*f2*px*vz - df2dpx*py**2*vz
+
+    # Second column (derivatives with psi_y)
+    der_TanT_by_xv[0,1] = -df2dpy*py**2*vx -f2*2*py*vx - df2dpy*pz**2*vx + df1dpy*pz*vy + df2dpy*px*py*vy +f2*px*vy - df1dpy*py*vz - f1*vz + df2dpy*px*pz*vz
+    der_TanT_by_xv[1,1] = -df1dpy*pz*vx + df2dpy*px*py*vx + f2*px*vx - df2dpy*px**2*vy - df2dpy*pz**2*vy + df1dpy*px*vz + df2dpy*py*pz*vz + f2*pz*vz
+    der_TanT_by_xv[2,1] = df1dpy*py*vx + f1*vx + df2dpy*px*pz*vx - df1dpy*px*vy + df2dpy*py*pz*vy + f2*pz*vy - df2dpy*px**2*vz - df2dpy*py**2*vz - 2.0*f2*py*vz
+
+    # Second column (derivatives with psi_z)
+    der_TanT_by_xv[0,2] = -df2dpz*py**2*vx - df2dpz*pz**2*vx - 2.0*f2*pz*vx + df1dpz*pz*vy + f1*vy + df2dpz*px*py*vy - df1dpz*py*vz + df2dpz*px*pz*vz + f2*px*vz
+    der_TanT_by_xv[1,2] = -df1dpz*pz*vx - f1*vx + df2dpz*px*py*vx - df2dpz*px**2*vy - df2dpz*pz**2*vy - 2.0*f2*pz*vy + df1dpz*px*vz + df2dpz*py*pz*vz + f2*py*vz
+    der_TanT_by_xv[2,2] = df1dpz*py*vx + df2dpz*px*pz*vx + f2*px*vx - df1dpz*px*vy + df2dpz*py*pz*vy + f2*py*vy - df2dpz*px**2*vz - df2dpz*py**2*vz
+
+    return der_TanT_by_xv
+
+
+
+def der_Ccrv_by_v(fv0,v):
+    '''
+    Being C=C(fv0) the rotational matrix depending on the Cartesian rotation
+    vector fv0 and defined as C=crv2rotation(fv0), the function returns the 
+    derivative, w.r.t. the CRV components, of the vector dot(C,v), where v is a 
+    constant vector.
+    The elements of the resulting derivative matrix D are ordered such that:
+        d(C*v) = D*d(fv0)
+    where d(.) is a delta operator.
+    '''
+
+    Cab0=crv2rotation(fv0)
+    T0=crv2tan(fv0)
+    vskew=skew(v)
+
+    return -np.dot(Cab0,np.dot(vskew,T0))
+
+
+def der_CcrvT_by_v(fv0,v):
+    '''
+    Being C=C(fv0) the rotation matrix depending on the Cartesian rotation
+    vector fv0 and defined as C=crv2rotation(fv0), the function returns the 
+    derivative, w.r.t. the CRV components, of the vector dot(C.T,v), where v is 
+    a constant vector.
+    The elements of the resulting derivative matrix D are ordered such that:
+        d(C.T*v) = D*d(fv0)
+    where d(.) is a delta operator.
+    '''
+
+    Cba0=crv2rotation(fv0).T
+    T0=crv2tan(fv0)
+
+    return np.dot( skew( np.dot(Cba0,v) ),T0)
