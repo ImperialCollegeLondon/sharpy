@@ -194,6 +194,7 @@ class StructuralInformation():
         self.structural_twist = None
         self.boundary_conditions = None
         self.beam_number = None
+        self.body_number = None
         self.app_forces = None
         self.lumped_mass_nodes = None
         self.lumped_mass = None
@@ -224,6 +225,7 @@ class StructuralInformation():
         copied.structural_twist = self.structural_twist.astype(dtype=float, copy=True)
         copied.boundary_conditions = self.boundary_conditions.astype(dtype=int, copy=True)
         copied.beam_number = self.beam_number.astype(dtype=int, copy=True)
+        copied.body_number = self.body_number.astype(dtype=int, copy=True)
         copied.app_forces = self.app_forces.astype(dtype=float, copy=True)
         if isinstance(self.lumped_mass_nodes, np.ndarray):
             copied.lumped_mass_nodes = self.lumped_mass_nodes.astype(dtype=int, copy=True)
@@ -268,6 +270,7 @@ class StructuralInformation():
         self.structural_twist = np.zeros((num_node,), dtype=float)
         self.boundary_conditions = np.zeros((num_node,), dtype=int)
         self.beam_number = np.zeros((num_elem,), dtype=int)
+        self.body_number = np.zeros((num_elem,), dtype=int)
         self.app_forces = np.zeros((num_node, 6), dtype=int)
         if not num_lumped_mass == 0:
             self.lumped_mass_nodes = np.zeros((num_lumped_mass,), dtype=int)
@@ -335,6 +338,7 @@ class StructuralInformation():
         self.structural_twist = structural_twist
         self.boundary_conditions = boundary_conditions
         self.beam_number = beam_number
+        self.body_number = np.zeros((num_elem,), dtype=int)
         self.app_forces = app_forces
         if isinstance(self.lumped_mass_nodes,np.ndarray):
             self.lumped_mass_nodes = lumped_mass_nodes
@@ -606,6 +610,7 @@ class StructuralInformation():
         """
 
         total_num_beam = max(self.beam_number)+1
+        total_num_body = max(self.bodynumber)+1
         total_num_node = self.num_node
         total_num_elem = self.num_elem
         total_num_stiff = self.stiffness_db.shape[0]
@@ -623,6 +628,7 @@ class StructuralInformation():
             self.structural_twist = np.concatenate((self.structural_twist, structure_to_add.structural_twist), axis=0)
             self.boundary_conditions = np.concatenate((self.boundary_conditions, structure_to_add.boundary_conditions), axis=0)
             self.beam_number = np.concatenate((self.beam_number, structure_to_add.beam_number + total_num_beam), axis=0)
+            self.body_number = np.concatenate((self.body_number, structure_to_add.body_number + total_num_body), axis=0)
             self.app_forces = np.concatenate((self.app_forces, structure_to_add.app_forces), axis=0)
             # self.body_number = np.concatenate((self.body_number, structure_to_add.body_number), axis=0)
             if isinstance(self.lumped_mass_nodes, np.ndarray):
@@ -634,6 +640,7 @@ class StructuralInformation():
             total_num_stiff += structure_to_add.stiffness_db.shape[0]
             total_num_mass += structure_to_add.mass_db.shape[0]
             total_num_beam += max(structure_to_add.beam_number) + 1
+            total_num_body += max(structure_to_add.body_number) + 1
             total_num_node += structure_to_add.num_node
             total_num_elem += structure_to_add.num_elem
 
@@ -1636,3 +1643,93 @@ def clean_test_files(route, case_name):
     flightcon_file_name = route + '/' + case_name + '.flightcon.txt'
     if os.path.isfile(flightcon_file_name):
         os.remove(flightcon_file_name)
+
+
+######################################################################
+#####################  MULTIBODY INFORMATION  ########################
+######################################################################
+class BodyInformation():
+
+    def __init__(self):
+
+        self.body_number = None
+        self.FoR_position = None
+        self.FoR_velocity = None
+        self.FoR_acceleration = None
+        self.FoR_movement = None
+        self.quat = None
+
+class LagrangeConstraint():
+
+    def __init__(self):
+
+        # Shared by all boundary conditions
+        self.behaviour = None
+        # Each BC will have its own variables
+
+def generate_multibody_file(list_LagrangeConstraints, list_Bodies, route, case_name):
+
+    with h5.File(route + '/' + case_name + '.mb.h5', 'a') as h5file:
+
+        # Write the constraints
+        h5file.create_dataset('num_constraints', data=len(list_LagrangeConstraints))
+
+        iconstraint = 0
+        for constraint in list_LagrangeConstraints:
+            # Create the group associated to the constraint
+            constraint_id = h5file.create_group('constraint_%02d' % iconstraint)
+
+            # Write general parameters
+            constraint_id.create_dataset("behaviour", data=constraint.behaviour.encode('ascii', 'ignore'))
+
+            # Write parameters associated to the specific type of boundary condition
+            if constraint.behaviour == 'spherical_node_FoR':
+                constraint_id.create_dataset("node_in_body", data=constraint.node_in_body)
+                constraint_id.create_dataset("body", data=constraint.body)
+                constraint_id.create_dataset("body_FoR", data=constraint.body_FoR)
+
+            if constraint.behaviour == 'hinge_node_FoR':
+                constraint_id.create_dataset("node_in_body", data=constraint.node_in_body)
+                constraint_id.create_dataset("body", data=constraint.body)
+                constraint_id.create_dataset("body_FoR", data=constraint.body_FoR)
+                constraint_id.create_dataset("rot_axisB", data=constraint.rot_axisB)
+
+            if constraint.behaviour == 'hinge_node_FoR_constant_rotation':
+                constraint_id.create_dataset("node_in_body", data=constraint.node_in_body)
+                constraint_id.create_dataset("body", data=constraint.body)
+                constraint_id.create_dataset("body_FoR", data=constraint.body_FoR)
+                constraint_id.create_dataset("rot_vel", data=constraint.rot_vel)
+
+            if constraint.behaviour == 'hinge_FoR':
+                constraint_id.create_dataset("body_FoR", data=constraint.body_FoR)
+                constraint_id.create_dataset("rot_axis_AFoR", data=constraint.rot_axis_AFoR)
+
+            if constraint.behaviour == 'constant_rot_vel_FoR':
+                constraint_id.create_dataset("FoR_body", data=constraint.FoR_body)
+                constraint_id.create_dataset("rot_vel", data=constraint.rot_vel)
+
+            if constraint.behaviour == 'hinge_node_FoR_constant_vel':
+                constraint_id.create_dataset("node_in_body", data=constraint.node_in_body)
+                constraint_id.create_dataset("body", data=constraint.body)
+                constraint_id.create_dataset("body_FoR", data=constraint.body_FoR)
+                constraint_id.create_dataset("rot_axisB", data=constraint.rot_axisB)
+                constraint_id.create_dataset("rot_vel", data=constraint.rot_vel)
+
+            iconstraint += 1
+
+        # Write the body information
+        h5file.create_dataset('num_bodies', data=len(list_Bodies))
+
+        ibody = 0
+        for body in list_Bodies:
+            # Create the group associated to the body
+            body_id = h5file.create_group('body_%02d' % ibody)
+
+            # Write general parameters
+            body_id.create_dataset("body_number", data=body.body_number)
+            body_id.create_dataset("FoR_position", data=body.FoR_position)
+            body_id.create_dataset("FoR_velocity", data=body.FoR_velocity)
+            body_id.create_dataset("FoR_acceleration", data=body.FoR_acceleration)
+            body_id.create_dataset("FoR_movement", data=body.FoR_movement)
+            body_id.create_dataset("quat", data=body.quat)
+            ibody += 1
