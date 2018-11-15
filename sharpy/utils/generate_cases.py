@@ -1562,7 +1562,7 @@ class SimulationInformation():
                                      'tolerance': 1e-5,
                                      'relaxation_factor': 0}
 
-        self.solvers["DynamicCoupled"] = {  'print_info': 'on',
+        self.solvers["DynamicCoupled"] = {'print_info': 'on',
                                             'structural_solver': 'TO BE DEFINED',
                                             'structural_solver_settings': dict(),
                                             'aero_solver': 'TO BE DEFINED',
@@ -1577,10 +1577,31 @@ class SimulationInformation():
                                             'minimum_steps': 3,
                                             'relaxation_steps': 100,
                                             'dynamic_relaxation': 'on',
-                                            'post_processors': list(),
-                                            'post_processor_settings': dict(),
+                                            'postprocessors': list(),
+                                            'postprocessors_settings': dict(),
                                             'cleanup_previous_solution': 'on',
                                             'include_unsteady_force_contribution': 'off'}
+
+        self.solvers["DynamicPrescribedCoupled"] = {'print_info': 'on',
+                                            'structural_solver': 'TO BE DEFINED',
+                                            'structural_solver_settings': dict(),
+                                            'aero_solver': 'TO BE DEFINED',
+                                            'aero_solver_settings': dict(),
+                                            'n_time_steps': 100,
+                                            'dt': 0.05,
+                                            'structural_substeps': 1,
+                                            'fsi_substeps': 70,
+                                            'fsi_tolerance': 1e-5,
+                                            'relaxation_factor': 0.2,
+                                            'final_relaxation_factor': 0.0,
+                                            'minimum_steps': 3,
+                                            'relaxation_steps': 100,
+                                            'dynamic_relaxation': 'on',
+                                            'postprocessors': list(),
+                                            'postprocessors_settings': dict(),
+                                            'cleanup_previous_solution': 'on',
+                                            'include_unsteady_force_contribution': 'off'}
+
 
     def define_num_steps(self, num_steps):
         """
