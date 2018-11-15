@@ -174,7 +174,7 @@ class BeamPlot(BaseSolver):
             v1 = np.array([1., 0, 0])
             v2 = np.array([0., 1, 0])
             v3 = np.array([0., 0, 1])
-            cab = algebra.crv2rot(
+            cab = algebra.crv2rotation(
                 self.data.structure.timestep_info[it].psi[i_elem, i_local_node, :])
             local_x[i_node, :] = np.dot(aero2inertial, np.dot(cab, v1))
             local_y[i_node, :] = np.dot(aero2inertial, np.dot(cab, v2))
@@ -185,7 +185,7 @@ class BeamPlot(BaseSolver):
             coords_a[i_node, :] = self.data.structure.timestep_info[it].pos[i_node, :]
 
             # applied forces
-            cab = algebra.crv2rot(self.data.structure.timestep_info[it].psi[i_elem, i_local_node, :])
+            cab = algebra.crv2rotation(self.data.structure.timestep_info[it].psi[i_elem, i_local_node, :])
             app_forces[i_node, :] = np.dot(aero2inertial,
                                            np.dot(cab,
                                                   self.data.structure.timestep_info[it].steady_applied_forces[i_node, 0:3]+
