@@ -23,7 +23,7 @@ from sharpy.utils.solver_interface import solver, BaseSolver
 import sharpy.utils.settings as settings
 import sharpy.utils.cout_utils as cout
 
-from IPython import embed
+# from IPython import embed
 import scipy.linalg
 import sharpy.structure.utils.xbeamlib as xbeamlib
 import sharpy.utils.algebra as algebra
@@ -161,9 +161,9 @@ class NonLinearDynamicMultibody(BaseSolver):
                 M, C, K, Q = xbeamlib.xbeam3_asbly_dynamic(MB_beam[ibody], MB_tstep[ibody], self.settings)
 
                 # TEST quaternion equations
-                CQR_solver = C[-4:,-10:-4]
-                CQQ_solver = C[-4:,-4:]
-                QQ_solver = Q[-4:]
+                # CQR_solver = C[-4:,-10:-4]
+                # CQQ_solver = C[-4:,-4:]
+                # QQ_solver = Q[-4:]
 
                 # CQQ_han = np.zeros((4,4),)
                 # CQQ_han[0,1:4] = -1.0*MB_tstep[0].for_vel[3:6]
@@ -188,34 +188,34 @@ class NonLinearDynamicMultibody(BaseSolver):
                 # CQR_han[3,4] = 1.0*MB_tstep[0].quat[1]
                 # CQR_han[3,5] = 1.0*MB_tstep[0].quat[0]
 
-                CQQ_han = np.zeros((4,4),)
-                CQQ_han[0,1:4] = -1.0*MB_tstep[0].dqdt[-7:-4]
-                CQQ_han[1:4,0] = 1.0*MB_tstep[0].dqdt[-7:-4]
-                CQQ_han[1:4,1:4] = -1.0*algebra.skew(MB_tstep[0].dqdt[-7:-4])
-                CQQ_han = 0.5*CQQ_han
-
-                CQR_han = np.zeros((4,6),)
-
-                aux_quat = MB_tstep[0].dqdt[-4:]
-                CQR_han[0,3] = -1.0*aux_quat[1]
-                CQR_han[0,4] = -1.0*aux_quat[2]
-                CQR_han[0,5] = -1.0*aux_quat[3]
-
-                CQR_han[1,3] = 1.0*aux_quat[0]
-                CQR_han[1,4] = -1.0*aux_quat[3]
-                CQR_han[1,5] = 1.0*aux_quat[2]
-
-                CQR_han[2,3] = 1.0*aux_quat[3]
-                CQR_han[2,4] = 1.0*aux_quat[0]
-                CQR_han[2,5] = -1.0*aux_quat[1]
-
-                CQR_han[3,3] = -1.0*aux_quat[2]
-                CQR_han[3,4] = 1.0*aux_quat[1]
-                CQR_han[3,5] = 1.0*aux_quat[0]
-
-                CQR_han = 0.5*CQR_han
-
-                QQ_han = -1.0*(np.dot(CQQ_han,MB_tstep[0].dqdt[-4:]) - MB_tstep[0].dqddt[-4:])
+                # CQQ_han = np.zeros((4,4),)
+                # CQQ_han[0,1:4] = -1.0*MB_tstep[0].dqdt[-7:-4]
+                # CQQ_han[1:4,0] = 1.0*MB_tstep[0].dqdt[-7:-4]
+                # CQQ_han[1:4,1:4] = -1.0*algebra.skew(MB_tstep[0].dqdt[-7:-4])
+                # CQQ_han = 0.5*CQQ_han
+                #
+                # CQR_han = np.zeros((4,6),)
+                #
+                # aux_quat = MB_tstep[0].dqdt[-4:]
+                # CQR_han[0,3] = -1.0*aux_quat[1]
+                # CQR_han[0,4] = -1.0*aux_quat[2]
+                # CQR_han[0,5] = -1.0*aux_quat[3]
+                #
+                # CQR_han[1,3] = 1.0*aux_quat[0]
+                # CQR_han[1,4] = -1.0*aux_quat[3]
+                # CQR_han[1,5] = 1.0*aux_quat[2]
+                #
+                # CQR_han[2,3] = 1.0*aux_quat[3]
+                # CQR_han[2,4] = 1.0*aux_quat[0]
+                # CQR_han[2,5] = -1.0*aux_quat[1]
+                #
+                # CQR_han[3,3] = -1.0*aux_quat[2]
+                # CQR_han[3,4] = 1.0*aux_quat[1]
+                # CQR_han[3,5] = 1.0*aux_quat[0]
+                #
+                # CQR_han = 0.5*CQR_han
+                #
+                # QQ_han = -1.0*(np.dot(CQQ_han,MB_tstep[0].dqdt[-4:]) - MB_tstep[0].dqddt[-4:])
 
                 # np.dot(CQQ_han,MB_tstep[0].dqdt[-4:])
 
@@ -360,13 +360,13 @@ class NonLinearDynamicMultibody(BaseSolver):
 
             # Compute the correction
             Dq = np.zeros((self.sys_size+num_LM_eq,), dtype=ct.c_double, order='F')
-            if np.isnan(MB_Asys).any():
-                print("ERROR: Nan in Asys")
-                embed()
+            # if np.isnan(MB_Asys).any():
+            #     print("ERROR: Nan in Asys")
+            #     embed()
             # print("cond: ", np.linalg.cond(MB_Asys))
             Dq = scipy.linalg.solve(MB_Asys, -MB_Q)
-            if np.isnan(Dq).any():
-                print("ERROR: Nan in DX")
+            # if np.isnan(Dq).any():
+            #     print("ERROR: Nan in DX")
 
 
 
