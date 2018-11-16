@@ -80,7 +80,11 @@ def define_num_LM_eq(MBdict):
             num_LM_eq += 3
         elif MBdict["constraint_%02d" % iconstraint]['behaviour'] == 'free':
             num_LM_eq += 0
+        elif MBdict["constraint_%02d" % iconstraint]['behaviour'] == 'spherical_FoR':
+            num_LM_eq += 3
         elif MBdict["constraint_%02d" % iconstraint]['behaviour'] == 'hinge_FoR':
+            num_LM_eq += 5
+        elif MBdict["constraint_%02d" % iconstraint]['behaviour'] == 'hinge_FoR_wrtG':
             num_LM_eq += 5
         elif MBdict["constraint_%02d" % iconstraint]['behaviour'] == 'fully_constrained_node_FoR':
             num_LM_eq += 6
@@ -446,6 +450,32 @@ def generate_lagrange_matrix(MBdict, MB_beam, MB_tstep, num_LM_eq, sys_size, dt,
         ###################################################################
         ###############################  HINGE FOR  #######################
         ###################################################################
+        elif behaviour == 'spherical_FoR':
+
+            # Rename variables from dictionary
+            body_FoR = MBdict["constraint_%02d" % iconstraint]['body_FoR']
+
+            num_LM_eq_specific = 3
+            Bnh = np.zeros((num_LM_eq_specific, sys_size), dtype=ct.c_double, order = 'F')
+            B = np.zeros((num_LM_eq_specific, sys_size), dtype=ct.c_double, order = 'F')
+
+            # Define the position of the first degree of freedom associated to the FoR
+            FoR_dof = define_FoR_dof(MB_beam, body_FoR)
+
+            Bnh[:3, FoR_dof:FoR_dof+3] = 1.0*np.eye(3)
+
+            LM_C[sys_size+ieq:sys_size+ieq+num_LM_eq_specific,:sys_size] += scalingFactor*Bnh
+            LM_C[:sys_size,sys_size+ieq:sys_size+ieq+num_LM_eq_specific] += scalingFactor*np.transpose(Bnh)
+
+            LM_Q[:sys_size] += scalingFactor*np.dot(np.transpose(Bnh),Lambda_dot[ieq:ieq+num_LM_eq_specific])
+
+            LM_Q[sys_size+ieq:sys_size+ieq+3] += MB_tstep[body_FoR].for_vel[0:3].astype(dtype=ct.c_double, copy=True, order='F')
+
+            ieq += 3
+
+        ###################################################################
+        ###############################  HINGE FOR  #######################
+        ###################################################################
         elif behaviour == 'hinge_FoR':
 
             # Rename variables from dictionary
@@ -484,6 +514,53 @@ def generate_lagrange_matrix(MBdict, MB_beam, MB_tstep, num_LM_eq, sys_size, dt,
             LM_Q[:sys_size] += scalingFactor*np.dot(np.transpose(Bnh),Lambda_dot[ieq:ieq+num_LM_eq_specific])
 
             LM_Q[sys_size+ieq:sys_size+ieq+3] += MB_tstep[body_FoR].for_vel[0:3].astype(dtype=ct.c_double, copy=True, order='F')
+            LM_Q[sys_size+ieq+3:sys_size+ieq+5] += np.dot(skew_rot_axis[[row0,row1],:], MB_tstep[body_FoR].for_vel[3:6])
+
+            ieq += 5
+
+        ###################################################################
+        ###########################  HINGE FOR wrtG #######################
+        ###################################################################
+        elif behaviour == 'hinge_FoR_wrtG':
+
+            # Rename variables from dictionary
+            body_FoR = MBdict["constraint_%02d" % iconstraint]['body_FoR']
+            rot_axis = MBdict["constraint_%02d" % iconstraint]['rot_axis_AFoR']
+
+            num_LM_eq_specific = 5
+            Bnh = np.zeros((num_LM_eq_specific, sys_size), dtype=ct.c_double, order = 'F')
+            B = np.zeros((num_LM_eq_specific, sys_size), dtype=ct.c_double, order = 'F')
+
+            # Define the position of the first degree of freedom associated to the FoR
+            FoR_dof = define_FoR_dof(MB_beam, body_FoR)
+
+            Bnh[:3, FoR_dof:FoR_dof+3] = algebra.quat2rotation(MB_tstep[body_FoR].quat)
+
+            # Only two of these equations are linearly independent
+            skew_rot_axis = algebra.skew(rot_axis)
+            n0 = np.linalg.norm(skew_rot_axis[0,:])
+            n1 = np.linalg.norm(skew_rot_axis[1,:])
+            n2 = np.linalg.norm(skew_rot_axis[2,:])
+            if ((n0 < n1) and (n0 < n2)):
+                row0 = 1
+                row1 = 2
+            elif ((n1 < n0) and (n1 < n2)):
+                row0 = 0
+                row1 = 2
+            elif ((n2 < n0) and (n2 < n1)):
+                row0 = 0
+                row1 = 1
+
+            Bnh[3:5, FoR_dof+3:FoR_dof+6] = skew_rot_axis[[row0,row1],:]
+
+            LM_C[sys_size+ieq:sys_size+ieq+num_LM_eq_specific,:sys_size] += scalingFactor*Bnh
+            LM_C[:sys_size,sys_size+ieq:sys_size+ieq+num_LM_eq_specific] += scalingFactor*np.transpose(Bnh)
+
+            LM_C[FoR_dof:FoR_dof+3,FoR_dof+6:FoR_dof+10] += algebra.der_CquatT_by_v(MB_tstep[body_FoR].quat,Lambda_dot[ieq:ieq+3])
+
+            LM_Q[:sys_size] += scalingFactor*np.dot(np.transpose(Bnh),Lambda_dot[ieq:ieq+num_LM_eq_specific])
+
+            LM_Q[sys_size+ieq:sys_size+ieq+3] += np.dot(algebra.quat2rotation(MB_tstep[body_FoR].quat),MB_tstep[body_FoR].for_vel[0:3])
             LM_Q[sys_size+ieq+3:sys_size+ieq+5] += np.dot(skew_rot_axis[[row0,row1],:], MB_tstep[body_FoR].for_vel[3:6])
 
             ieq += 5
