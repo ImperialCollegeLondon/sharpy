@@ -193,9 +193,9 @@ def equal_lin_vel_node_FoR(MB_tstep, MB_beam, FoR_body, node_body, node_number, 
 
     LM_C[FoR_dof:FoR_dof+3,FoR_dof+6:FoR_dof+10] += algebra.der_CquatT_by_v(MB_tstep[FoR_body].quat,scalingFactor*Lambda_dot[ieq:ieq+num_LM_eq_specific])
 
-    LM_C[node_dof:node_dof+3,node_FoR_dof+6:node_FoR_dof+10] -= algebra.der_CquatT_by_v(MB_tstep[node_body].quat,scalingFactor*Lambda_dot[ieq:ieq+num_LM_eq_specific])
-
     if MB_beam[node_body].FoR_movement == 'free':
+        LM_C[node_dof:node_dof+3,node_FoR_dof+6:node_FoR_dof+10] -= algebra.der_CquatT_by_v(MB_tstep[node_body].quat,scalingFactor*Lambda_dot[ieq:ieq+num_LM_eq_specific])
+
         LM_C[node_FoR_dof:node_FoR_dof+3,node_FoR_dof+6:node_FoR_dof+10] -= algebra.der_CquatT_by_v(MB_tstep[node_body].quat,scalingFactor*Lambda_dot[ieq:ieq+num_LM_eq_specific])
 
         LM_C[node_FoR_dof+3:node_FoR_dof+6,node_FoR_dof+6:node_FoR_dof+10] -= np.dot(algebra.skew(MB_tstep[node_body].pos[node_number,:]),
@@ -263,23 +263,24 @@ def def_rot_axis_FoR_wrt_node(MB_tstep, MB_beam, FoR_body, node_body, node_numbe
     LM_C[sys_size+ieq:sys_size+ieq+num_LM_eq_specific,:sys_size] += scalingFactor*Bnh
     LM_C[:sys_size,sys_size+ieq:sys_size+ieq+num_LM_eq_specific] += scalingFactor*np.transpose(Bnh)
 
-    LM_C[FoR_dof+3+indep,node_FoR_dof+6:node_FoR_dof+10] += np.dot(algebra.quat2rotation(MB_tstep[FoR_body].quat).T,
-                                                                       algebra.der_Cquat_by_v(MB_tstep[node_body].quat,
-                                                                                              multiply_matrices(algebra.crv2rotation(MB_tstep[node_body].psi[ielem,inode_in_elem,:]),
-                                                                                                                algebra.skew(rot_axisB).T,
-                                                                                                                new_Lambda_dot)))[indep,:]
+    if MB_beam[node_body].FoR_movement == 'free':
+        LM_C[FoR_dof+3:FoR_dof+6,node_FoR_dof+6:node_FoR_dof+10] += np.dot(algebra.quat2rotation(MB_tstep[FoR_body].quat).T,
+                                                                           algebra.der_Cquat_by_v(MB_tstep[node_body].quat,
+                                                                                                  multiply_matrices(algebra.crv2rotation(MB_tstep[node_body].psi[ielem,inode_in_elem,:]),
+                                                                                                                    algebra.skew(rot_axisB).T,
+                                                                                                                    new_Lambda_dot)))
 
-    LM_C[FoR_dof+3+indep,FoR_dof+6:FoR_dof+10] += algebra.der_CquatT_by_v(MB_tstep[FoR_body].quat,
+    LM_C[FoR_dof+3:FoR_dof+6,FoR_dof+6:FoR_dof+10] += algebra.der_CquatT_by_v(MB_tstep[FoR_body].quat,
                                                                               multiply_matrices(algebra.quat2rotation(MB_tstep[node_body].quat),
                                                                                                 algebra.crv2rotation(MB_tstep[node_body].psi[ielem,inode_in_elem,:]).T,
                                                                                                 algebra.skew(rot_axisB).T,
-                                                                                                new_Lambda_dot))[indep,:]
+                                                                                                new_Lambda_dot))
 
-    LM_K[FoR_dof+3+indep,node_dof+3:node_dof+6] += multiply_matrices(algebra.quat2rotation(MB_tstep[FoR_body].quat).T,
+    LM_K[FoR_dof+3:FoR_dof+6,node_dof+3:node_dof+6] += multiply_matrices(algebra.quat2rotation(MB_tstep[FoR_body].quat).T,
                                                                          algebra.quat2rotation(MB_tstep[node_body].quat),
                                                                          algebra.der_Ccrv_by_v(MB_tstep[node_body].psi[ielem,inode_in_elem,:],
                                                                                                 np.dot(algebra.skew(rot_axisB).T,
-                                                                                                       new_Lambda_dot)))[indep,:]
+                                                                                                       new_Lambda_dot)))
 
     ieq += 2
     return ieq
@@ -321,11 +322,12 @@ def def_rot_vel_FoR_wrt_node(MB_tstep, MB_beam, FoR_body, node_body, node_number
     LM_C[sys_size+ieq:sys_size+ieq+num_LM_eq_specific,:sys_size] += scalingFactor*Bnh
     LM_C[:sys_size,sys_size+ieq:sys_size+ieq+num_LM_eq_specific] += scalingFactor*np.transpose(Bnh)
 
-    LM_C[FoR_dof+3:FoR_dof+6,node_FoR_dof+6:node_FoR_dof+10] += np.dot(algebra.quat2rotation(MB_tstep[FoR_body].quat).T,
-                                                                       algebra.der_Cquat_by_v(MB_tstep[node_body].quat,
-                                                                                              multiply_matrices(algebra.crv2rotation(MB_tstep[node_body].psi[ielem,inode_in_elem,:]),
-                                                                                                                # rot_axisB.T,
-                                                                                                                rot_axisB.T*Lambda_dot[ieq:ieq+num_LM_eq_specific])))
+    if MB_beam[node_body].FoR_movement == 'free':
+        LM_C[FoR_dof+3:FoR_dof+6,node_FoR_dof+6:node_FoR_dof+10] += np.dot(algebra.quat2rotation(MB_tstep[FoR_body].quat).T,
+                                                                           algebra.der_Cquat_by_v(MB_tstep[node_body].quat,
+                                                                                                  multiply_matrices(algebra.crv2rotation(MB_tstep[node_body].psi[ielem,inode_in_elem,:]),
+                                                                                                                    # rot_axisB.T,
+                                                                                                                    rot_axisB.T*Lambda_dot[ieq:ieq+num_LM_eq_specific])))
 
     LM_C[FoR_dof+3:FoR_dof+6,FoR_dof+6:FoR_dof+10] += algebra.der_CquatT_by_v(MB_tstep[FoR_body].quat,
                                                                               multiply_matrices(algebra.quat2rotation(MB_tstep[node_body].quat),
