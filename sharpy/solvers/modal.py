@@ -10,7 +10,6 @@ import itertools
 import warnings
 from tvtk.api import tvtk, write_data
 import scipy.linalg
-import matplotlib.pyplot as plt
 
 import sharpy.structure.utils.xbeamlib as xbeamlib
 from sharpy.utils.solver_interface import solver, BaseSolver
@@ -295,10 +294,11 @@ class Modal(BaseSolver):
 
         # Plot eigenvalues using matplotlib if specified in settings
         if self.settings['plot_eigenvalues']:
-             fig = plt.figure()
-             plt.scatter(eigenvalues.real, eigenvalues.imag)
-             plt.show()
-             plt.savefig(self.folder + 'eigenvalues.png', transparent=True, bbox_inches='tight')
+            import matplotlib.pyplot as plt
+            fig = plt.figure()
+            plt.scatter(eigenvalues.real, eigenvalues.imag)
+            plt.show()
+            plt.savefig(self.folder + 'eigenvalues.png', transparent=True, bbox_inches='tight')
 
 
         # Write dat files
@@ -334,7 +334,7 @@ class Modal(BaseSolver):
             if not zero_FullCglobal:
                 outdict['warning'] =\
                     'system with damping: mode shapes and natural frequencies do not account for damping!'
-        else: 
+        else:
             outdict['modes'] = 'damped'
             outdict['freq_damped'] = freq_damped
 
@@ -439,8 +439,8 @@ def get_mode_zeta(data, eigvect):
 
 
     jj=0 # structural dofs index
-    Cag0=algebra.quat2rot(tsstr.quat)
-    Cga0=Cag0.T
+    Cga0=algebra.quat2rotation(tsstr.quat)
+    Cag0=Cga0.T
     for node_glob in range(struct.num_node):
 
         ### detect bc at node (and no. of dofs)
@@ -461,14 +461,14 @@ def get_mode_zeta(data, eigvect):
         Ra0=tsstr.pos[node_glob,:]
         psi0=tsstr.psi[ee,node_loc,:]
         Rg0=np.dot(Cga0,Ra0) 
-        Cab0=algebra.crv2rot(psi0)
+        Cab0=algebra.crv2rotation(psi0)
         Cbg0=np.dot(Cab0.T,Cag0)
 
         # update position and crv of mode
         Ra=tsstr.pos[node_glob,:]+eigvect[jj_tra]
         psi=tsstr.psi[ee,node_loc,:]+eigvect[jj_rot]
         Rg=np.dot(Cga0,Ra)
-        Cab=algebra.crv2rot(psi)
+        Cab=algebra.crv2rotation(psi)
         Cbg=np.dot(Cab.T,Cag0)
     
 
