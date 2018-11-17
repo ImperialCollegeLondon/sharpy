@@ -1798,6 +1798,9 @@ def generate_multibody_file(list_LagrangeConstraints, list_Bodies, route, case_n
                 constraint_id.create_dataset("body_FoR", data=constraint.body_FoR)
                 constraint_id.create_dataset("rot_vel", data=constraint.rot_vel)
 
+            if constraint.behaviour == 'spherical_FoR':
+                constraint_id.create_dataset("body_FoR", data=constraint.body_FoR)
+
             if constraint.behaviour == 'hinge_FoR':
                 constraint_id.create_dataset("body_FoR", data=constraint.body_FoR)
                 constraint_id.create_dataset("rot_axis_AFoR", data=constraint.rot_axis_AFoR)
