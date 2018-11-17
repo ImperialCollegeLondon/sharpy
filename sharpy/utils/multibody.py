@@ -43,7 +43,7 @@ def split_multibody(beam, tstep, mb_data_dict):
 
     """
 
-    update_mb_db_before_split(tstep)
+    update_mb_db_before_split(tstep, mb_data_dict)
 
     MB_beam = []
     MB_tstep = []
@@ -130,7 +130,7 @@ def merge_multibody(MB_tstep, MB_beam, beam, tstep, mb_data_dict, dt):
     tstep.for_acc[3:6] = np.dot(CAG,tstep.mb_FoR_acc[0,3:6])
     tstep.quat = tstep.mb_quat[0,:].astype(dtype=ct.c_double, order='F', copy=True)
 
-def update_mb_db_before_split(tstep):
+def update_mb_db_before_split(tstep, mb_data_dict):
     """
     update_mb_db_before_split
 
@@ -153,6 +153,13 @@ def update_mb_db_before_split(tstep):
     # TODO: Right now, the Amaster FoR is not expected to move
     # when it does, the rest of FoR positions should be updated accordingly
     # right now, this function should be useless (I check it below)
+
+    if mb_data_dict['body_%02d' % 0]['FoR_movement']:
+        CGAmaster = algebra.quat2rotation(tstep.quat)
+        tstep.mb_FoR_vel[0, 0:3] = np.dot(CGAmaster, tstep.for_vel[0:3])
+        tstep.mb_FoR_vel[0, 3:6] = np.dot(CGAmaster, tstep.for_vel[3:6])
+        tstep.mb_FoR_acc[0, 0:3] = np.dot(CGAmaster, tstep.for_acc[0:3])
+        tstep.mb_FoR_acc[0, 3:6] = np.dot(CGAmaster, tstep.for_acc[3:6])
 
     if False:
         CGAmaster = np.transpose(algebra.quat2rot(tstep.quat))
