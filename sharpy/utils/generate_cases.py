@@ -1516,6 +1516,17 @@ class SimulationInformation():
                                                    'initial_velocity_direction': np.array([-1.0, 0.0, 0.0]),
                                                    'initial_velocity': 0}
 
+        self.solvers['NonLinearDynamicPrescribedStep'] = {'print_info': 'on',
+                                                       'max_iterations': 100,
+                                                       'num_load_steps': 5,
+                                                       'delta_curved': 1e-5,
+                                                       'min_delta': 1e-5,
+                                                       'newmark_damp': 1e-4,
+                                                       'dt': 0.01,
+                                                       'num_steps': 500,
+                                                       'gravity_on': 'off',
+                                                       'gravity': 9.81}
+
         self.solvers['NonLinearDynamicMultibody'] = {'print_info': 'on',
                                                    'max_iterations': 100,
                                                    'num_load_steps': 5,
@@ -1617,6 +1628,8 @@ class SimulationInformation():
         self.solvers["StepUvlm"]['n_time_steps'] = num_steps
         self.solvers['NonLinearDynamicMultibody']['num_steps'] = num_steps
         self.solvers['NonLinearDynamicCoupledStep']['num_steps'] = num_steps
+        self.solvers['NonLinearDynamicPrescribedStep']['num_steps'] = num_steps
+
 
 
 
