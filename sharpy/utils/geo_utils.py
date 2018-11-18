@@ -51,8 +51,9 @@ def interpolate_naca_camber(eta, M00, P00, M01, P01):
     where (M00,P00) and (M01,P01) define the camber properties at eta=0 and 
     eta=1 respectively.
 
-    Ps: for two surfaces, eta can be in (-1,1). In this case, the root is eta=0
-    and the tips are at eta=+-1.
+    Notes:
+        For two surfaces, eta can be in (-1,1). In this case, the root is eta=0
+        and the tips are at eta=+-1.
     """
 
     # define domain
