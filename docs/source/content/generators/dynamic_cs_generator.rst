@@ -1,6 +1,6 @@
 Dynamic Control Surface Generator
 +++++++++++++++++++++++++++++++++
 
-.. automodule:: sharpy.generators.dynamiccontrolsurface
+.. autoclass:: sharpy.generators.dynamiccontrolsurface.DynamicControlSurface
     :members:
 
