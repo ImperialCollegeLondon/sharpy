@@ -92,6 +92,8 @@ def define_num_LM_eq(MBdict):
             num_LM_eq += 4
         elif MBdict["constraint_%02d" % iconstraint]['behaviour'] == 'constant_rot_vel_FoR':
             num_LM_eq += 3
+        elif MBdict["constraint_%02d" % iconstraint]['behaviour'] == 'constant_vel_FoR':
+            num_LM_eq += 6
         else:
             print("ERROR: not recognized constraint type")
 
@@ -639,5 +641,31 @@ def generate_lagrange_matrix(MBdict, MB_beam, MB_tstep, num_LM_eq, sys_size, dt,
             LM_Q[sys_size+ieq:sys_size+ieq+num_LM_eq_specific] += MB_tstep[FoR_body].for_vel[3:6] - rot_vel
 
             ieq += 3
+
+            ###################################################################
+            ###################  CONSTANT ANGULAR VEL FOR  ####################
+            ###################################################################
+        elif behaviour == 'constant_vel_FoR':
+
+            # Rename variables from dictionary
+            vel = MBdict["constraint_%02d" % iconstraint]['vel']
+            FoR_body = MBdict["constraint_%02d" % iconstraint]['FoR_body']
+
+            num_LM_eq_specific = 6
+            Bnh = np.zeros((num_LM_eq_specific, sys_size), dtype=ct.c_double, order='F')
+            B = np.zeros((num_LM_eq_specific, sys_size), dtype=ct.c_double, order='F')
+
+            # Define the position of the first degree of freedom associated to the FoR
+            FoR_dof = define_FoR_dof(MB_beam, FoR_body)
+
+            Bnh[:num_LM_eq_specific, FoR_dof:FoR_dof+6] = np.eye(6)
+
+            LM_C[sys_size + ieq:sys_size + ieq + num_LM_eq_specific, :sys_size] += scalingFactor * Bnh
+            LM_C[:sys_size, sys_size + ieq:sys_size + ieq + num_LM_eq_specific] += scalingFactor * np.transpose(Bnh)
+
+            LM_Q[:sys_size] += scalingFactor * np.dot(np.transpose(Bnh), Lambda_dot[ieq:ieq + num_LM_eq_specific])
+            LM_Q[sys_size + ieq:sys_size + ieq + num_LM_eq_specific] += MB_tstep[FoR_body].for_vel - vel
+
+            ieq += 6
 
     return LM_C, LM_K, LM_Q
