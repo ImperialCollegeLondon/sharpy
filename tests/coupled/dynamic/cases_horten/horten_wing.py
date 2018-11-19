@@ -867,8 +867,7 @@ class HortenWing:
                                   'velocity_field_generator': 'SteadyVelocityField',
                                   'velocity_field_input': {'u_inf': u_inf,
                                                            'u_inf_direction': [1., 0, 0]},
-                                  'rho': rho,
-                                  'control_surface_deflection': None} # @TODO verify how this setting works
+                                  'rho': rho}
 
         settings['StaticCoupled'] = {'print_info': 'on',
                                      'structural_solver': 'NonLinearStatic',
@@ -902,12 +901,14 @@ class HortenWing:
             settings['AerogridLoader'] = {'unsteady': 'off',
                                           'aligned_grid': 'on',
                                           'mstar': 1,
-                                          'freestream_dir': ['1', '0', '0']}
+                                          'freestream_dir': ['1', '0', '0'],
+                                          'control_surface_deflection': ['']}
         else:
             settings['AerogridLoader'] = {'unsteady': 'on',
                                           'aligned_grid': 'on',
                                           'mstar': int(self.M * self.Mstarfactor),
-                                          'freestream_dir': ['1', '0', '0']}
+                                          'freestream_dir': ['1', '0', '0'],
+                                          'control_surface_deflection': ['']}
 
         settings['NonLinearStatic'] = {'print_info': 'off',
                                        'max_iterations': 150,
@@ -1058,6 +1059,8 @@ class HortenWing:
 
         settings['BeamLoads'] = {'folder': route + '/output/',
                                  'csv_output': 'off'}
+
+        settings['SaveData'] = {'folder': route + '/output'}
 
         config = configobj.ConfigObj()
         config.filename = file_name
