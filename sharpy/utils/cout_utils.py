@@ -60,7 +60,10 @@ class Writer(object):
         self.__call__(self.sharpy_license)
         self.__call__('Running SHARPy from ' + cwd, 2)
         self.__call__('SHARPy being run is in ' + sharpydir.SharpyDir, 2)
-        self.__call__(print_git_status(), 2)
+        try:
+            self.__call__(print_git_status(), 2)
+        except subprocess.CalledProcessError:
+            pass
         import sharpy.utils.solver_interface as solver_interface
         solver_interface.print_available_solvers()
 
