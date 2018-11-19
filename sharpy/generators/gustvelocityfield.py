@@ -21,17 +21,17 @@ class GustVelocityField(generator_interface.BaseGenerator):
     Args:
         in_dict (dict): Input data in the form of dictionary. See acceptable entries below:
 
-        ===================  ===============  ==================================================================  ===================
-        Name                 Type             Description                                                         Default
-        ===================  ===============  ==================================================================  ===================
-        ``u_inf``            ``float``        Free stream velocity                                                ``0.0``
-        ``u_inf_direction``  ``list(float)``  Free stream velocity relative components                            ``[1.0, 0.0, 0.0]``
-        ``gust_shape``       ``str``          Gust profile shape. Supported profiles are ``1-cos`` and ``DARPA``  ``None``
-        ``gust_length``      ``float``        Length of gust                                                      ``0.0``
-        ``gust_intensity``   ``float``        Intensity of the gust                                               ``0.0``
-        ``offset``           ``float``        Spatial offset of the gust with respect to origin                   ``0.0``
-        ``span``             ``float``        Wing span                                                           ``0.0``
-        ===================  ===============  ==================================================================  ===================
+            ===================  ===============  ==================================================================  ===================
+            Name                 Type             Description                                                         Default
+            ===================  ===============  ==================================================================  ===================
+            ``u_inf``            ``float``        Free stream velocity                                                ``0.0``
+            ``u_inf_direction``  ``list(float)``  Free stream velocity relative components                            ``[1.0, 0.0, 0.0]``
+            ``gust_shape``       ``str``          Gust profile shape. Supported profiles are ``1-cos`` and ``DARPA``  ``None``
+            ``gust_length``      ``float``        Length of gust                                                      ``0.0``
+            ``gust_intensity``   ``float``        Intensity of the gust                                               ``0.0``
+            ``offset``           ``float``        Spatial offset of the gust with respect to origin                   ``0.0``
+            ``span``             ``float``        Wing span                                                           ``0.0``
+            ===================  ===============  ==================================================================  ===================
 
     Attributes:
         settings_types (dict): Acceptable data types of the input data

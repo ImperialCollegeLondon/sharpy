@@ -25,6 +25,7 @@ def generate_naca_camber(M=0, P=0):
     Example:
         The NACA2400 airfoil would have 2% camber with the maximum at 40% of the chord and 0 thickness. To plot the
         camber line one would use this function as:
+
             ``x_vec, y_vec = generate_naca_camber(M = 2, P = 4)``
 
     """
