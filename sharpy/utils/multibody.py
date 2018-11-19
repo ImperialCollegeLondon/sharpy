@@ -154,12 +154,12 @@ def update_mb_db_before_split(tstep, mb_data_dict):
     # when it does, the rest of FoR positions should be updated accordingly
     # right now, this function should be useless (I check it below)
 
-    if mb_data_dict['body_%02d' % 0]['FoR_movement']:
-        CGAmaster = algebra.quat2rotation(tstep.quat)
-        tstep.mb_FoR_vel[0, 0:3] = np.dot(CGAmaster, tstep.for_vel[0:3])
-        tstep.mb_FoR_vel[0, 3:6] = np.dot(CGAmaster, tstep.for_vel[3:6])
-        tstep.mb_FoR_acc[0, 0:3] = np.dot(CGAmaster, tstep.for_acc[0:3])
-        tstep.mb_FoR_acc[0, 3:6] = np.dot(CGAmaster, tstep.for_acc[3:6])
+    # if mb_data_dict['body_%02d' % 0]['FoR_movement']:
+    #     CGAmaster = algebra.quat2rotation(tstep.quat)
+    #     tstep.mb_FoR_vel[0, 0:3] = np.dot(CGAmaster, tstep.for_vel[0:3])
+    #     tstep.mb_FoR_vel[0, 3:6] = np.dot(CGAmaster, tstep.for_vel[3:6])
+    #     tstep.mb_FoR_acc[0, 0:3] = np.dot(CGAmaster, tstep.for_acc[0:3])
+    #     tstep.mb_FoR_acc[0, 3:6] = np.dot(CGAmaster, tstep.for_acc[3:6])
 
     if False:
         CGAmaster = np.transpose(algebra.quat2rot(tstep.quat))

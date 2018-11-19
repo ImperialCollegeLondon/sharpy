@@ -533,10 +533,18 @@ class StructTimeStepInfo(object):
         ibody_StructTimeStepInfo = StructTimeStepInfo(ibody_num_node, ibody_num_elem, self.num_node_elem, num_dof = num_dof_ibody, num_bodies = beam.num_bodies)
 
         # Assign all the variables
-        ibody_StructTimeStepInfo.quat = self.quat.astype(dtype=ct.c_double, order='F', copy=True)
-        ibody_StructTimeStepInfo.for_pos = self.for_pos.astype(dtype=ct.c_double, order='F', copy=True)
-        ibody_StructTimeStepInfo.for_vel = self.for_vel.astype(dtype=ct.c_double, order='F', copy=True)
-        ibody_StructTimeStepInfo.for_acc = self.for_acc.astype(dtype=ct.c_double, order='F', copy=True)
+        # ibody_StructTimeStepInfo.quat = self.quat.astype(dtype=ct.c_double, order='F', copy=True)
+        # ibody_StructTimeStepInfo.for_pos = self.for_pos.astype(dtype=ct.c_double, order='F', copy=True)
+        # ibody_StructTimeStepInfo.for_vel = self.for_vel.astype(dtype=ct.c_double, order='F', copy=True)
+        # ibody_StructTimeStepInfo.for_acc = self.for_acc.astype(dtype=ct.c_double, order='F', copy=True)
+
+        CAslaveG = algebra.quat2rotation(self.mb_quat[ibody, :]).T
+        ibody_StructTimeStepInfo.quat = self.mb_quat[ibody, :].astype(dtype=ct.c_double, order='F', copy=True)
+        ibody_StructTimeStepInfo.for_pos = self.mb_FoR_pos[ibody, :].astype(dtype=ct.c_double, order='F', copy=True)
+        ibody_StructTimeStepInfo.for_vel[0:3] = np.dot(CAslaveG, self.mb_FoR_vel[ibody, 0:3])
+        ibody_StructTimeStepInfo.for_vel[3:6] = np.dot(CAslaveG, self.mb_FoR_vel[ibody, 3:6])
+        ibody_StructTimeStepInfo.for_acc[0:3] = np.dot(CAslaveG, self.mb_FoR_acc[ibody, 0:3])
+        ibody_StructTimeStepInfo.for_acc[3:6] = np.dot(CAslaveG, self.mb_FoR_acc[ibody, 3:6])
 
         ibody_StructTimeStepInfo.pos = self.pos[ibody_first_node:ibody_last_node,:].astype(dtype=ct.c_double, order='F', copy=True)
         ibody_StructTimeStepInfo.pos_dot = self.pos_dot[ibody_first_node:ibody_last_node,:].astype(dtype=ct.c_double, order='F', copy=True)
