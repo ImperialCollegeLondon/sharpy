@@ -191,12 +191,12 @@ class DynamicCoupled(BaseSolver):
 
         # print information header
         if self.print_info:
-            self.residual_table = cout.TablePrinter(8, 14, ['g', 'f', 'g', 'f', 'f', 'f', 'e', 'e'])
+            self.residual_table = cout.TablePrinter(8, 14, ['g', 'f', 'g', 'f', 'e', 'e', 'f', 'f'])
             self.residual_table.field_length[0] = 6
             self.residual_table.field_length[1] = 6
             self.residual_table.field_length[1] = 6
-            self.residual_table.print_header(['ts', 't', 'iter', 'residual pos', 'residual vel', 'residual acc',
-                                              'FoR_vel(x)', 'FoR_vel(z)'])
+            self.residual_table.print_header(['ts', 't', 'iter', 'residual acc',
+                                              'FoR_vel(x)', 'FoR_vel(z)', 'x_b forces', 'z_b forces'])
 
 
     def cleanup_timestep_info(self):
@@ -287,11 +287,11 @@ class DynamicCoupled(BaseSolver):
                 self.residual_table.print_line([self.data.ts,
                                                 self.data.ts*self.dt.value,
                                                 k,
-                                                np.log10(self.res),
-                                                np.log10(self.res_dqdt),
                                                 np.log10(self.res_dqddt),
                                                 structural_kstep.for_vel[0],
-                                                structural_kstep.for_vel[2]])
+                                                structural_kstep.for_vel[2],
+                                                np.sum(structural_kstep.steady_applied_forces[:, 0]),
+                                                np.sum(structural_kstep.steady_applied_forces[:, 2])])
             self.structural_solver.extract_resultants()
             # run postprocessors
             if self.with_postprocessors:
@@ -307,15 +307,28 @@ class DynamicCoupled(BaseSolver):
         if not all(np.isfinite(tstep.q)):
             raise Exception('***Not converged! There is a NaN value in the forces!')
 
+        if not k:
+            # save the value of the vectors for normalising later
+            self.base_q = np.linalg.norm(tstep.q.copy())
+            self.base_dqdt = np.linalg.norm(tstep.dqdt.copy())
+            self.base_dqddt = np.linalg.norm(tstep.dqddt.copy())
+            return False
+
+        # we don't want this to converge before introducing the gamma_dot forces!
+        if self.settings['include_unsteady_force_contribution']:
+            if k < 5:
+                return False
+
+        # relative residuals
         self.res = (np.linalg.norm(tstep.q-
                                    previous_tstep.q)/
-                    np.linalg.norm(previous_tstep.q))
+                    self.base_q)
         self.res_dqdt = (np.linalg.norm(tstep.dqdt-
                                         previous_tstep.dqdt)/
-                         np.linalg.norm(previous_tstep.dqdt))
+                         self.base_dqdt)
         self.res_dqddt = (np.linalg.norm(tstep.dqddt-
                                          previous_tstep.dqddt)/
-                          np.linalg.norm(previous_tstep.dqddt))
+                          self.base_dqddt)
 
         # convergence
         if k > self.settings['minimum_steps'].value - 1:
@@ -377,7 +390,6 @@ def relax(beam, timestep, previous_timestep, coeff):
             coeff*previous_timestep.steady_applied_forces)
     timestep.unsteady_applied_forces[:] = ((1.0 - coeff)*timestep.unsteady_applied_forces +
             coeff*previous_timestep.unsteady_applied_forces)
-
 
 
 def normalise_quaternion(tstep):
