@@ -1614,6 +1614,7 @@ class SimulationInformation():
         """
         # TODO:Maybe it would be convenient to use the same name for all the solvers
         self.solvers["DynamicCoupled"]['n_time_steps'] = num_steps
+        self.solvers["DynamicPrescribedCoupled"]['n_time_steps'] = num_steps
         self.solvers["StepUvlm"]['n_time_steps'] = num_steps
         self.solvers['NonLinearDynamicMultibody']['num_steps'] = num_steps
         self.solvers['NonLinearDynamicCoupledStep']['num_steps'] = num_steps
@@ -1808,6 +1809,10 @@ def generate_multibody_file(list_LagrangeConstraints, list_Bodies, route, case_n
             if constraint.behaviour == 'constant_rot_vel_FoR':
                 constraint_id.create_dataset("FoR_body", data=constraint.FoR_body)
                 constraint_id.create_dataset("rot_vel", data=constraint.rot_vel)
+
+            if constraint.behaviour == 'constant_vel_FoR':
+                constraint_id.create_dataset("FoR_body", data=constraint.FoR_body)
+                constraint_id.create_dataset("vel", data=constraint.vel)
 
             if constraint.behaviour == 'hinge_node_FoR_constant_vel':
                 constraint_id.create_dataset("node_in_body", data=constraint.node_in_body)
