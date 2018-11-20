@@ -855,7 +855,7 @@ class AerodynamicInformation():
             num_points_camber (int): number of points to define the camber line of the airfoil
         """
         self.aero_node = np.zeros((num_node,), dtype = bool)
-        self.chord = np.zeros((num_elem,num_node_elem), dtype = float)
+        self.chord = np.ones((num_elem,num_node_elem), dtype = float)
         self.twist = np.zeros((num_elem,num_node_elem), dtype = float)
         self.sweep = np.zeros((num_elem,num_node_elem), dtype = float)
         # TODO: SHARPy does not ignore the surface_m when the surface is not aerodynamic
@@ -1031,17 +1031,24 @@ class AerodynamicInformation():
         """
 
         total_num_airfoils = len(self.airfoils[:,0,0])
-        total_num_surfaces = len(self.surface_m)
+        # total_num_surfaces = len(self.surface_m)
+        total_num_surfaces = np.sum(self.surface_m != -1)
         # TODO: check why I only need one definition of m and not one per surface
 
         for aerodynamics_to_add in args:
             self.chord = np.concatenate((self.chord, aerodynamics_to_add.chord), axis=0)
             self.twist = np.concatenate((self.twist, aerodynamics_to_add.twist), axis=0)
             self.sweep = np.concatenate((self.sweep, aerodynamics_to_add.sweep), axis=0)
-            self.surface_m = np.concatenate((self.surface_m, aerodynamics_to_add.surface_m), axis=0)
             # self.m_distribution = np.concatenate((self.m_distribution, aerodynamics_to_add.m_distribution), axis=0)
             assert self.m_distribution == aerodynamics_to_add.m_distribution, "m_distribution does not match"
-            self.surface_distribution = np.concatenate((self.surface_distribution, aerodynamics_to_add.surface_distribution + total_num_surfaces), axis=0)
+            for isurf in range(len(aerodynamics_to_add.surface_distribution)):
+                if aerodynamics_to_add.surface_distribution[isurf] != -1:
+                    # print(self.surface_distribution)
+                    # print(aerodynamics_to_add.surface_distribution[isurf])
+                    self.surface_distribution = np.concatenate((self.surface_distribution, np.array([aerodynamics_to_add.surface_distribution[isurf]], dtype=int) + total_num_surfaces), axis=0)
+                else:
+                    self.surface_distribution = np.concatenate((self.surface_distribution, np.array([aerodynamics_to_add.surface_distribution[isurf]], dtype=int)), axis=0)
+            self.surface_m = np.concatenate((self.surface_m, aerodynamics_to_add.surface_m) , axis=0)
             self.aero_node = np.concatenate((self.aero_node, aerodynamics_to_add.aero_node), axis=0)
             self.elastic_axis = np.concatenate((self.elastic_axis, aerodynamics_to_add.elastic_axis), axis=0)
             # np.concatenate((self.airfoil_distribution, aerodynamics_to_add.airfoil_distribution), axis=0)
@@ -1059,7 +1066,8 @@ class AerodynamicInformation():
                 self.airfoils = np.concatenate((new_airfoils, aerodynamics_to_add.airfoils), axis=0)
 
             total_num_airfoils += len(aerodynamics_to_add.airfoils[:,0,0])
-            total_num_surfaces += len(aerodynamics_to_add.surface_m)
+            # total_num_surfaces += len(aerodynamics_to_add.surface_m)
+            total_num_surfaces += np.sum(aerodynamics_to_add.surface_m != -1)
 
         # self.num_airfoils = total_num_airfoils
         # self.num_surfaces = total_num_surfaces
