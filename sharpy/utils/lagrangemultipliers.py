@@ -228,6 +228,7 @@ def def_rot_axis_FoR_wrt_node(MB_tstep, MB_beam, FoR_body, node_body, node_numbe
                               algebra.quat2rotation(MB_tstep[node_body].quat).T,
                               algebra.quat2rotation(MB_tstep[FoR_body].quat))
 
+    indep = None
     n0 = np.linalg.norm(aux_Bnh[0,:])
     n1 = np.linalg.norm(aux_Bnh[1,:])
     n2 = np.linalg.norm(aux_Bnh[2,:])

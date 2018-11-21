@@ -274,8 +274,8 @@ def quat_bound(quat):
     Note: as quaternions are defined as qv=[cos(a/2); sin(a/2)*nv], this is
     equivalent to enforce qv[0]>=0.
     '''
-    # if quat[0]<0:
-    #     quat*=-1.
+    if quat[0]<0:
+        quat*=-1.
     return quat
 
 
@@ -345,8 +345,8 @@ def crv_bounds(crv_ini):
             norm += 2.0*np.pi
         crv *= (norm/norm_ini)
 
-    # return crv
-    return crv_ini
+    return crv
+    # return crv_ini
 
 def triad2crv(xb, yb, zb):
     return rotation2crv(triad2rotation(xb, yb, zb))
