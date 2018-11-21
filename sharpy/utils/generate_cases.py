@@ -1487,6 +1487,10 @@ class SimulationInformation():
                                             'name_prefix': '',
                                             'output_rbm': 'on'}
 
+        self.solvers['Cleanup'] = {'clean_structure': True,
+                                   'clean_aero': True,
+                                   'remaining_steps': 10}
+
         # STEPS
         self.solvers['NonLinearStatic'] = {'print_info': 'on',
                                        'max_iterations': 100,
