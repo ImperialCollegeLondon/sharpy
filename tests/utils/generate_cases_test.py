@@ -1,4 +1,5 @@
 import sharpy.utils.generate_cases as gc
+import cases.templates.template_wt_excel_type01 as template_wt_excel_type01
 import unittest
 import numpy as np
 import os
@@ -153,7 +154,120 @@ class TestGenerateCases(unittest.TestCase):
         SimInfo.generate_dyn_file(20)
         beam1.generate_h5_files(SimInfo.solvers['SHARPy']['route'], SimInfo.solvers['SHARPy']['case'])
 
+    def test_generate_wt_excel_type01(self):
+        deg2rad = np.pi/180.
+        ######################################################################
+        ###########################  PARAMETERS  #############################
+        ######################################################################
+        """
+        generate_wt_excel_type01
 
+        Example of a file used to generate a wind turbine case
+        """
+        # Case
+        case = 'wt'
+        route = os.path.dirname(os.path.realpath(__file__)) + '/'
+
+        # Geometry discretization
+        chord_panels = np.array([4], dtype=int)
+        mstar = 13
+
+        # Operation
+        rotation_velocity = 1.27
+        pitch = 0. #degrees
+
+        # Wind
+        WSP = 11.4
+        air_density = 1.225
+
+        # Simulation
+        dt = 0.01
+        time_steps = 800
+
+        ######################################################################
+        ##########################  GENERATE WT  #############################
+        ######################################################################
+        wt, LC, MB = template_wt_excel_type01.generate_wt_from_excel_type01(
+                                          chord_panels,
+                                          rotation_velocity,
+                                          pitch,
+                                          excel_file_name= 'database_type01.xlsx',
+                                          excel_sheet_structural_blade = 'structural_blade',
+                                          excel_sheet_aero_blade = 'aero_blade',
+                                          excel_sheet_airfoil_coord = 'airfoil_coord',
+                                          excel_sheet_rotor = 'rotor_parameters',
+                                          excel_sheet_structural_tower = 'structural_tower',
+                                          excel_sheet_nacelle = 'structural_nacelle',
+                                          m_distribution = 'uniform',
+                                          n_points_camber = 100,
+                                          tol_remove_points = 1e-3)
+
+        ######################################################################
+        ######################  DEFINE SIMULATION  ###########################
+        ######################################################################
+        SimInfo = gc.SimulationInformation()
+        SimInfo.set_default_values()
+
+        SimInfo.define_uinf(np.array([0.0,0.0,1.0]), WSP)
+
+        SimInfo.solvers['SHARPy']['flow'] = ['BeamLoader',
+                                'AerogridLoader',
+                                'BeamPlot',
+                                'AerogridPlot',
+                                'InitializeMultibody',
+                                # 'StaticCoupled',
+                                'DynamicPrescribedCoupled',
+                                'AerogridPlot',
+                                'BeamPlot'
+                                ]
+        SimInfo.solvers['SHARPy']['case'] = case
+        SimInfo.solvers['SHARPy']['route'] = route
+        SimInfo.set_variable_all_dicts('dt', dt)
+        SimInfo.set_variable_all_dicts('rho', air_density)
+
+        SimInfo.solvers['BeamLoader']['unsteady'] = 'on'
+
+        SimInfo.solvers['AerogridLoader']['unsteady'] = 'on'
+        SimInfo.solvers['AerogridLoader']['mstar'] = mstar
+        SimInfo.solvers['AerogridLoader']['freestream_dir'] = np.array([0.,0.,0.])
+
+        SimInfo.solvers['StaticUvlm']['rho'] = 0.0
+        # Default values for NonLinearStatic
+        # Default values for NonLinearDynamicCoupledStep
+        SimInfo.solvers['StepUvlm']['convection_scheme'] = 2
+
+        SimInfo.solvers['InitializeMultibody']['structural_solver'] = 'NonLinearStatic'
+        SimInfo.solvers['InitializeMultibody']['structural_solver_settings'] = SimInfo.solvers['NonLinearStatic']
+        SimInfo.solvers['InitializeMultibody']['aero_solver'] = 'StaticUvlm'
+        SimInfo.solvers['InitializeMultibody']['aero_solver_settings'] = SimInfo.solvers['StaticUvlm']
+
+        SimInfo.solvers['DynamicPrescribedCoupled']['structural_solver'] = 'NonLinearDynamicMultibody'
+        SimInfo.solvers['DynamicPrescribedCoupled']['structural_solver_settings'] = SimInfo.solvers['NonLinearDynamicMultibody']
+        SimInfo.solvers['DynamicPrescribedCoupled']['aero_solver'] = 'StepUvlm'
+        SimInfo.solvers['DynamicPrescribedCoupled']['aero_solver_settings'] = SimInfo.solvers['StepUvlm']
+        SimInfo.solvers['DynamicPrescribedCoupled']['postprocessors'] = ['BeamPlot', 'AerogridPlot']
+        SimInfo.solvers['DynamicPrescribedCoupled']['postprocessors_settings'] = {'BeamPlot': SimInfo.solvers['BeamPlot'],
+                                                                     'AerogridPlot': SimInfo.solvers['AerogridPlot']}
+        SimInfo.solvers['DynamicPrescribedCoupled']['minimum_steps'] = 0
+
+        SimInfo.define_num_steps(time_steps)
+
+        # Define dynamic simulation
+        SimInfo.with_forced_vel = True
+        SimInfo.for_vel = np.zeros((time_steps,6), dtype=float)
+        SimInfo.for_acc = np.zeros((time_steps,6), dtype=float)
+        SimInfo.with_dynamic_forces = True
+        SimInfo.dynamic_forces = np.zeros((time_steps,wt.StructuralInformation.num_node,6), dtype=float)
+
+
+        ######################################################################
+        #######################  GENERATE FILES  #############################
+        ######################################################################
+        gc.clean_test_files(SimInfo.solvers['SHARPy']['route'], SimInfo.solvers['SHARPy']['case'])
+        wt.generate_h5_files(SimInfo.solvers['SHARPy']['route'], SimInfo.solvers['SHARPy']['case'])
+        SimInfo.generate_solver_file()
+        SimInfo.generate_dyn_file(time_steps)
+        gc.generate_multibody_file(LC, MB,SimInfo.solvers['SHARPy']['route'], SimInfo.solvers['SHARPy']['case'])
 
 if __name__=='__main__':
     # unittest.main()
@@ -175,3 +289,4 @@ if __name__=='__main__':
     T=TestGenerateCases()
     # T.setUp()
     T.test_01()
+    T.test_generate_wt_excel_type01()
