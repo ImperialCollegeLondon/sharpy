@@ -195,7 +195,7 @@ class DynamicCoupled(BaseSolver):
             self.residual_table.field_length[0] = 6
             self.residual_table.field_length[1] = 6
             self.residual_table.field_length[1] = 6
-            self.residual_table.print_header(['ts', 't', 'iter', 'residual acc',
+            self.residual_table.print_header(['ts', 't', 'iter', 'residual vel',
                                               'FoR_vel(x)', 'FoR_vel(z)', 'x_b forces', 'z_b forces'])
 
 
@@ -287,7 +287,7 @@ class DynamicCoupled(BaseSolver):
                 self.residual_table.print_line([self.data.ts,
                                                 self.data.ts*self.dt.value,
                                                 k,
-                                                np.log10(self.res_dqddt),
+                                                np.log10(self.res_dqdt),
                                                 structural_kstep.for_vel[0],
                                                 structural_kstep.for_vel[2],
                                                 np.sum(structural_kstep.steady_applied_forces[:, 0]),
@@ -334,8 +334,8 @@ class DynamicCoupled(BaseSolver):
         if k > self.settings['minimum_steps'].value - 1:
             if self.res < self.settings['fsi_tolerance'].value:
                 if self.res_dqdt < self.settings['fsi_tolerance'].value:
-                    if self.res_dqddt < self.settings['fsi_tolerance'].value:
-                        return True
+                    # if self.res_dqddt < self.settings['fsi_tolerance'].value:
+                    return True
 
         return False
 
