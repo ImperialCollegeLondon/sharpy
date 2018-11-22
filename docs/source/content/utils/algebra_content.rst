@@ -1,10 +1,6 @@
-The ``Algebra`` package
+The ``algebra`` package
 -----------------------
 This package includes routines used often during geometry generation.
-
-Tangent vector calculation
-++++++++++++++++++++++++++
-
 
 .. automodule:: sharpy.utils.algebra
     :members:

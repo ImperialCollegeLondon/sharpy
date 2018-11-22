@@ -19,12 +19,12 @@ class SteadyVelocityField(generator_interface.BaseGenerator):
     Args:
         in_dict (dict): Input data in the form of dictionary. See acceptable entries below:
 
-        ===================  ===============  ======================================================================  ===================
-        Name                 Type             Description                                                             Default
-        ===================  ===============  ======================================================================  ===================
-        ``u_inf``            ``float``        Free stream velocity magnitude                                          ``0``
-        ``u_inf_direction``  ``list(float)``  ``x``, ``y`` and ``z`` relative components of the free stream velocity  ``[1.0, 0.0, 0.0]``
-        ===================  ===============  ======================================================================  ===================
+            ===================  ===============  ======================================================================  ===================
+            Name                 Type             Description                                                             Default
+            ===================  ===============  ======================================================================  ===================
+            ``u_inf``            ``float``        Free stream velocity magnitude                                          ``0``
+            ``u_inf_direction``  ``list(float)``  ``x``, ``y`` and ``z`` relative components of the free stream velocity  ``[1.0, 0.0, 0.0]``
+            ===================  ===============  ======================================================================  ===================
 
     Attributes:
         settings_types (dict): Acceptable data types of the input data

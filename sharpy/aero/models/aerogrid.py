@@ -91,6 +91,13 @@ class Aerogrid(object):
         except KeyError:
             pass
 
+        # Backward compatibility: check whether control surface deflection settings have been specified. If not, create
+        # section with empty list, such that no cs generator is appended
+        try:
+            aero_settings['control_surface_deflection']
+        except KeyError:
+            aero_settings.update({'control_surface_deflection': ['']*self.n_control_surfaces})
+
         # initialise generators
         for i_cs in range(self.n_control_surfaces):
             if aero_settings['control_surface_deflection'][i_cs] == '':

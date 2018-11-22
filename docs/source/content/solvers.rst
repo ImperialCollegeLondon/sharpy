@@ -1,17 +1,15 @@
-``SHARPy`` Solvers
+SHARPy Solvers
 ------------------
 
 ``SHARPy`` has the following solvers available for use:
 
+
 IO of Models
 ++++++++++++
 
-.. autoclass:: sharpy.solvers.beamloader.BeamLoader
-    :members:
-
-.. autoclass:: sharpy.solvers.aerogridloader.AerogridLoader
-    :members:
-
+.. toctree::
+    solvers/aerogrid
+    solvers/beamloader
 
 
 Structural Solvers
