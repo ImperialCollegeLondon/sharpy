@@ -9,7 +9,7 @@ class DynamicControlSurface(generator_interface.BaseGenerator):
     """
     Dynamic Control Surface deflection Generator
 
-    `` DynamicControlSurface`` class inherited from ``BaseGenerator``
+    ``DynamicControlSurface`` class inherited from ``BaseGenerator``
 
     The object generates a deflection in radians based on the time series given as a vector in the input data
 
@@ -17,24 +17,20 @@ class DynamicControlSurface(generator_interface.BaseGenerator):
     This is parsed as the value for the ``control_surface_deflection_generator`` key in the aerogridloader solver's settings.
 
     Args:
-        in_dict (dict): Input data in the form of dictionary. See acceptable entries in the Notes below.
+        in_dict (dict): Input data in the form of dictionary. See acceptable entries below.
+
+            ======================   ===============  ======================================================================  ===================
+            Name                     Type             Description                                                             Default
+            ======================   ===============  ======================================================================  ===================
+            ``dt``                   ``float``        Timestep for the simulation                                             ``None``
+            ``deflection_file``      ``str``          Relative path to the file with the deflection information.              ``None``
+            ======================   ===============  ======================================================================  ===================
 
     Attributes:
         settings_types (dict): Acceptable data types of the input data
         settings_default (dict): Default values for input data should the user not provide them
         deflection (np.array): Array of deflection of the control surface
         deflection_dot (np.array): Array of the time derivative of the cs deflection. Calculated using 1st order finite differences.
-
-    Notes:
-        Acceptable key-value pairs for the input dictionary, which is parsed as the value to the
-        ``control_surface_deflection_generator_settings`` key in the settings of the desired aerodynamic solver.
-
-        ======================   ===============  ======================================================================  ===================
-        Name                     Type             Description                                                             Default
-        ======================   ===============  ======================================================================  ===================
-        ``dt``                   ``float``        Timestep for the simulation                                             ``None``
-        ``deflection_file``      ``str``          Relative path to the file with the deflection information.              ``None``
-        ======================   ===============  ======================================================================  ===================
 
     See Also:
         .. py:class:: sharpy.utils.generator_interface.BaseGenerator

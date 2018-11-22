@@ -243,14 +243,34 @@ def angle_between_vector_and_plane(vector, plane_normal):
 
 
 def rotation2quat(Cab):
-    """
-    Given a rotation matrix Cab rotating the frame a onto b, the function returns
-    the minimal "positive angle" quaternion representing this rotation.
+    r"""
+    Given a rotation matrix :math:`C^{AB}` rotating the frame A onto B, the function returns
+    the minimal "positive angle" quaternion representing this rotation, where the quaternion, :math:`\vec{\chi}` is
+    defined as:
 
-    Note: this is the inverse of quat2rotation for Cartesian rotation vectors
-    associated to rotations in the range [-pi,pi], i.e.:
-        fv == algebra.rotation2crv(algebra.crv2rotation(fv))
-    for each fv=a*nv such that nv is a unit vector and the scalar a in [-pi,pi].
+        .. math:: \vec{\chi}=
+            \left[\cos\left(\frac{\psi}{2}\right),\,
+            \sin\left(\frac{\psi}{2}\right)\mathbf{\hat{n}}\right]
+
+    Args:
+        Cab (np.array): rotation matrix :math:`C^{AB}` from frame A to B
+
+    Returns:
+        np.array: equivalent quaternion :math:`\vec{\chi}`
+
+    Notes:
+        This is the inverse of ``algebra.quat2rotation`` for Cartesian rotation vectors
+        associated to rotations in the range :math:`[-\pi,\pi]`, i.e.:
+
+            ``fv == algebra.rotation2crv(algebra.crv2rotation(fv))``
+
+        where ``fv`` represents the Cartesian Rotation Vector, :math:`\vec{\psi}` defined as:
+
+            .. math:: \vec{\psi} = \psi\,\mathbf{\hat{n}}
+
+        such that :math:`\mathbf{\hat{n}}` is a unit vector and the scalar :math:`psi` is in the range
+        :math:`[-\pi,\,\pi]`.
+
     """
 
     s = np.zeros((4, 4))
@@ -288,16 +308,30 @@ def rotation2quat(Cab):
 
 
 def quat_bound(quat):
-    """
-    Given a quaternion associated to a rotation of angle a about an axis nv, the
-    function "bounds" the quaternion, i.e. sets the rotation axis nv such that
-    a in [-pi,pi].
+    r"""
+    Given a quaternion, :math:`\vec{\chi}`, associated to a rotation of angle :math:`\psi`
+    about an axis :math:`\mathbf{\hat{n}}`, the function "bounds" the quaternion,
+    i.e. sets the rotation axis :math:`\mathbf{\hat{n}}` such that
+    :math:`\psi` in :math:`[-\pi,\pi]`.
 
-    Note: as quaternions are defined as qv=[cos(a/2); sin(a/2)*nv], this is
-    equivalent to enforce qv[0]>=0.
+    Notes:
+        As quaternions are defined as:
+
+            .. math:: \vec{\chi}=
+                \left[\cos\left(\frac{\psi}{2}\right),\,
+                \sin\left(\frac{\psi}{2}\right)\mathbf{\hat{n}}\right]
+
+        this is equivalent to enforcing :math:`\chi_0\ge0`.
+
+    Args:
+        quat (np.array): quaternion to bound
+
+    Returns:
+        np.array: bounded quaternion
+
     """
-    if quat[0]<0:
-        quat*=-1.
+    if quat[0] < 0:
+        quat *= -1.
     return quat
 
 
@@ -321,34 +355,57 @@ def quat2crv(quat):
 
 
 def crv2quat(psi):
-    """
-    Converts a Cartesian rotation vector into a "minimal rotation" quaternion,
-    ie, being the quaternion defined as:
-        qv= [cos(a/2); sin(a/2)*nv ]
-    the rotation axis is such that the rotation angle a is in [-pi,pi] or,
-    equivalently, qv[0]>=0.
+    r"""
+    Converts a Cartesian rotation vector,
+
+        .. math:: \vec{\psi} = \psi\,\mathbf{\hat{n}}
+
+    into a "minimal rotation" quaternion, i.e. being the quaternion, :math:`\vec{\chi}`, defined as:
+
+        .. math:: \vec{\chi}=
+            \left[\cos\left(\frac{\psi}{2}\right),\,
+            \sin\left(\frac{\psi}{2}\right)\mathbf{\hat{n}}\right]
+
+    the rotation axis, :math:`\mathbf{\hat{n}}` is such that the
+    rotation angle, :math:`\psi`, is in :math:`[-\pi,\,\pi]` or,
+    equivalently, :math:`\chi_0\ge0`.
+
+    Args:
+        psi (np.array): Cartesian Rotation Vector, CRV: :math:`\vec{\psi} = \psi\,\mathbf{\hat{n}}`.
+
+    Returns:
+        np.array: equivalent quaternion :math:`\vec{\chi}`
+
     """
 
     # minimise crv rotation
-    psi_new=crv_bounds(psi)
+    psi_new = crv_bounds(psi)
 
-    fi=np.linalg.norm(psi_new)
+    fi = np.linalg.norm(psi_new)
     if fi > 1e-15:
-        nv=psi_new/fi
+        nv = psi_new / fi
     else:
         nv = psi_new
 
-    quat=np.zeros((4,))
-    quat[0]=np.cos(.5*fi)
-    quat[1:]=np.sin(.5*fi)*nv
+    quat = np.zeros((4,))
+    quat[0] = np.cos(.5 * fi)
+    quat[1:] = np.sin(.5 * fi) * nv
 
     return quat
 
 
 def crv_bounds(crv_ini):
-    """
-    Forces the Cartesian rotation vector norm to be in [-pi,pi], i.e. determines
-    the rotation axis orientation so as to ensure "minimal rotation".
+    r"""
+    Forces the Cartesian rotation vector norm, :math:`\|\vec{\psi}\|`, to be in the range
+    :math:`[-\pi,\pi]`, i.e. determines the rotation axis orientation, :math:`\mathbf{\hat{n}}`,
+    so as to ensure "minimal rotation".
+
+    Args:
+        crv_ini (np.array): Cartesian rotation vector, :math:`\vec{\psi}`
+
+    Returns:
+        np.array: modified and bounded, equivalent Cartesian rotation vector
+
     """
 
     crv = crv_ini.copy()

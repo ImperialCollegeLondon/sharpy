@@ -20,14 +20,15 @@ class AerogridLoader(BaseSolver):
     Attributes:
         settings (dict): Name-value pair of the settings employed by the aerodynamic solver
 
-            ==================  ===============  ===========================================  ===================
-            Name                Type             Description                                  Default
-            ==================  ===============  ===========================================  ===================
-            ``unsteady``        ``bool``         Unsteady aerodynamics                        ``False``
-            ``aligned_grid``    ``bool``         Aerodynamic grid aligned with oncoming flow  ``True``
-            ``freestream_dir``  ``list(float)``  Direction of the oncoming flow               ``[1.0, 0.0, 0.0]``
-            ``mstar``           ``int``          Number of wake panels in the flow direction  ``10``
-            ==================  ===============  ===========================================  ===================
+            ==============================  ===============  ===========================================  ===================
+            Name                            Type             Description                                  Default
+            ==============================  ===============  ===========================================  ===================
+            ``unsteady``                    ``bool``         Unsteady aerodynamics                        ``False``
+            ``aligned_grid``                ``bool``         Aerodynamic grid aligned with oncoming flow  ``True``
+            ``freestream_dir``              ``list(float)``  Direction of the oncoming flow               ``[1.0, 0.0, 0.0]``
+            ``mstar``                       ``int``          Number of wake panels in the flow direction  ``10``
+            ``control_surface_deflection``  ``list(dict)``    Control surface specification. See Notes.     ``None``
+            ==============================  ===============  ===========================================  ===================
 
         settings_types (dict): Acceptable types for the values in ``settings``
         settings_default (dict): Name-value pair of default values for the aerodynamic settings
@@ -36,10 +37,21 @@ class AerogridLoader(BaseSolver):
         aero: empty attribute
         aero_data_dict (dict): key-value pairs of aerodynamic data
 
+    Notes:
+        The ``control_surface_deflection`` setting allows the user to use a time specific control surface deflection,
+        should the problem include them.
+
+        The value to the key in the settings dictionary is a list of dictionaries, one for each control surface.
+        The dictionaries specify the settings for the generator ``DynamicControlSurface``. If the relevant control
+        surface is simply static, an empty string should be parsed. See the documentation for ``DynamicControlSurface``
+        generators for accepted key-value pairs as settings.
+
     See Also:
         .. py:class:: sharpy.aero.models.aerogrid.Aerogrid
 
         .. py:class:: sharpy.utils.solver_interface.BaseSolver
+
+        .. py:class:: sharpy.generators.dynamiccontrolsurface.DynamicControlSurface
 
     """
     solver_id = 'AerogridLoader'
