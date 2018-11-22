@@ -110,3 +110,7 @@ tests/uvlm/\.DS_Store
 */.DS_Store
 
 output/
+
+tests/coupled/dynamic/horten*
+
+.DS_Store

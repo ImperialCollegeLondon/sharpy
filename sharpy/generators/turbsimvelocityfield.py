@@ -44,19 +44,21 @@ class TurbSimVelocityField(generator_interface.BaseGenerator):
         self.settings = self.in_dict
 
         # load the turbulent field
-        self.h5file = h5.File(self.settings['turbulent_field'])
-        # make time to increase from -t to 0 instead of 0 to t
-        self.turb_time = self.h5file['time'].value
-        self.turb_time = self.turb_time - np.max(self.turb_time)
-        self.turb_u_ref = self.h5file['u_inf'].value
-        # self.turb_x_initial = self.turb_u_ref*(self.turb_time[1] - self.turb_time[0]) - self.settings['offset'][0]
-        self.turb_x_initial = self.turb_time*self.turb_u_ref + self.settings['offset'][0]
-        self.turb_y_initial = self.h5file['y_grid'].value + self.settings['offset'][1]
-        self.turb_z_initial = self.h5file['z_grid'].value + self.settings['offset'][2]
+        with h5.File(self.settings['turbulent_field']) as self.h5file:
+            # make time to increase from -t to 0 instead of 0 to t
+            try:
+                self.turb_time = self.h5file['time'].value
+                self.turb_time = self.turb_time - np.max(self.turb_time)
+                self.turb_u_ref = self.h5file['u_inf'].value
+                self.turb_x_initial = self.turb_time*self.turb_u_ref + self.settings['offset'][0]
+            except KeyError:
+                self.turb_x_initial = self.h5file['x_grid'].value - np.max(self.h5file['x_grid'].value) + self.settings['offset'][0]
+            self.turb_y_initial = self.h5file['y_grid'].value + self.settings['offset'][1]
+            self.turb_z_initial = self.h5file['z_grid'].value + self.settings['offset'][2]
 
-        self.turb_data = self.h5file['data/velocity'].value
+            self.turb_data = self.h5file['data/velocity'].value
 
-        self.init_interpolator(self.turb_data, self.turb_x_initial, self.turb_y_initial, self.turb_z_initial)
+            self.init_interpolator(self.turb_data, self.turb_x_initial, self.turb_y_initial, self.turb_z_initial)
 
     def generate(self, params, uext):
         zeta = params['zeta']

@@ -1,5 +1,5 @@
-import ctypes as ct
 import numpy as np
+import os
 
 import sharpy.utils.cout_utils as cout
 import sharpy.utils.solver_interface as solver_interface
@@ -50,6 +50,12 @@ class PIDTrajectoryControl(BaseSolver):
         self.settings_types['nodes_trajectory'] = 'list(int)'
         self.settings_default['nodes_trajectory'] = None
 
+        self.settings_types['controller_scaling'] = 'list(float)'
+        self.settings_default['controller_scaling'] = []
+
+        self.settings_types['controller_axis_scaling'] = 'list(float)'
+        self.settings_default['controller_axis_scaling'] = np.array([1.0, 1.0, 1.0])
+
         self.settings_types['trajectory_generator'] = 'str'
         self.settings_default['trajectory_generator'] = None
 
@@ -58,6 +64,9 @@ class PIDTrajectoryControl(BaseSolver):
 
         self.settings_types['transient_nsteps'] = 'int'
         self.settings_default['transient_nsteps'] = 0
+
+        self.settings_types['write_trajectory_data'] = 'bool'
+        self.settings_default['write_trajectory_data'] = False
 
         self.data = None
         self.settings = None
@@ -84,6 +93,8 @@ class PIDTrajectoryControl(BaseSolver):
         self.trajectory_steps = None
 
         self.print_info = None
+        self.trajectory_data_folder = None
+        self.trajectory_data_filename = []
 
     def initialise(self, data):
         self.data = data
@@ -100,10 +111,14 @@ class PIDTrajectoryControl(BaseSolver):
         # there will be 3 controllers per node (one per dimension)
         for i_trajec in range(self.n_controlled_points):
             self.controllers.append(list())
+            try:
+                coeff = self.settings['controller_scaling'][i_trajec]
+            except IndexError:
+                coeff = 1.0
             for i_dim in range(3):
-                self.controllers[i_trajec].append(PID(self.settings['PID_P_gain'].value,
-                                                      self.settings['PID_I_gain'].value,
-                                                      self.settings['PID_D_gain'].value,
+                self.controllers[i_trajec].append(PID(self.settings['PID_P_gain'].value*coeff*self.settings['controller_axis_scaling'][i_dim],
+                                                      self.settings['PID_I_gain'].value*coeff*self.settings['controller_axis_scaling'][i_dim],
+                                                      self.settings['PID_D_gain'].value*coeff*self.settings['controller_axis_scaling'][i_dim],
                                                       self.dt))
 
         self.trajectory = np.zeros((self.settings['n_time_steps'].value, len(self.settings['nodes_trajectory']), 3))
@@ -120,6 +135,24 @@ class PIDTrajectoryControl(BaseSolver):
         # generate coordinates offset in order to be able to use only one
         # generator
         self.ini_coord_a = self.data.structure.ini_info.glob_pos(include_rbm=False)
+
+        if self.settings['write_trajectory_data']:
+            self.trajectory_data_folder = os.path.abspath(self.data.settings['SHARPy']['route'] +
+                                                          '/output/' +
+                                                          self.data.settings['SHARPy']['case'] +
+                                                          '/trajectory_data/')
+            if not os.path.exists(self.trajectory_data_folder):
+                os.makedirs(self.trajectory_data_folder)
+
+            self.trajectory_data_filename = []
+            for i, i_node in enumerate(self.settings['nodes_trajectory']):
+                self.trajectory_data_filename.append(self.trajectory_data_folder + '/node_%u' % i_node + '.csv')
+                if os.path.exists(self.trajectory_data_filename[i]):
+                    os.remove(self.trajectory_data_filename[i])
+
+            self.format = ('%i', )
+            for i in range(3 + 3 + 3 + 1):
+                self.format = self.format + ('%10.5f', )
 
         self.print_info = self.settings['print_info']
         if self.print_info:
@@ -188,6 +221,23 @@ class PIDTrajectoryControl(BaseSolver):
                 self.solver.set_g(old_g)
                 self.solver.set_rho(old_rho)
 
+            if self.settings['write_trajectory_data']:
+                for i, i_node in enumerate(self.settings['nodes_trajectory']):
+                    with open(self.trajectory_data_filename[i], 'ba') as f:
+                        line = np.array([self.data.ts,
+                                         self.data.ts*self.settings['dt'].value,
+                                         self.input_trajectory[local_it, i, 0],
+                                         self.input_trajectory[local_it, i, 1],
+                                         self.input_trajectory[local_it, i, 2],
+                                         self.trajectory[local_it, i, 0],
+                                         self.trajectory[local_it, i, 1],
+                                         self.trajectory[local_it, i, 2],
+                                         self.force_history[local_it, i, 0],
+                                         self.force_history[local_it, i, 1],
+                                         self.force_history[local_it, i, 2]])
+                        np.savetxt(f, np.atleast_2d(line), delimiter=',', fmt=self.format, newline="\n")
+
+
             if self.print_info:
                 res = np.linalg.norm(self.input_trajectory[local_it, :, :] - self.trajectory[local_it, :, :])
                 force = np.linalg.norm(self.force_history[local_it, ...])
@@ -230,7 +280,7 @@ class PIDTrajectoryControl(BaseSolver):
             force[idim] = self.controllers[i_trajectory_node][idim](trajectory[idim])
 
         master_elem, i_local_node_master_elem = self.data.structure.node_master_elem[i_global_node, :]
-        cba = algebra.crv2rot(
+        cba = algebra.crv2rotation(
             self.data.structure.timestep_info[self.data.ts].psi[master_elem, i_local_node_master_elem, :]).T
         cag = self.data.structure.timestep_info[self.data.ts].cag()
 
@@ -274,11 +324,11 @@ class PID(object):
         self._dt = dt
 
         self._accumulated_integral = 0.0
-        self._integral_limits = np.array([-1., 1.])*1
+        self._integral_limits = np.array([-1., 1.])*10000
         self._error_history = np.zeros((3,))
 
         self._derivator = second_order_fd
-        self._derivative_limits = np.array([-1, 1])*0.05
+        self._derivative_limits = np.array([-1, 1])*10000
 
         self._n_calls = 0
 

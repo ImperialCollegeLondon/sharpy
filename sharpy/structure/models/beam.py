@@ -416,7 +416,7 @@ class Beam(BaseStructure):
             # get master elem and i_local_node
             i_master_elem, i_local_node = self.node_master_elem[i_node, :]
             crv = tstep.psi[i_master_elem, i_local_node, :]
-            cab = algebra.crv2rot(crv)
+            cab = algebra.crv2rotation(crv)
             temp = np.zeros((6,))
             temp[0:3] = np.dot(cab, nodal[i_node, 0:3])
             temp[3:6] = np.dot(cab, nodal[i_node, 3:6])

@@ -23,7 +23,7 @@ def aero2struct_force_mapping(aero_forces,
             i_master_elem, master_elem_local_node = master[i_global_node, :]
 
             crv = psi_def[i_master_elem, master_elem_local_node, :]
-            cab = algebra.crv2rot(crv)
+            cab = algebra.crv2rotation(crv)
             cbg = np.dot(cab.T, cag)
 
             for i_m in range(n_m):
