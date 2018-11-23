@@ -195,7 +195,7 @@ __Common issues when compiling xbeam__
 
 2. Change the permissions of the `run_make.sh` file so that it can be executed
     ```bash
-    chmod .x run_make.sh
+    chmod +x run_make.sh
     ```
 
 3. Compile UVLM

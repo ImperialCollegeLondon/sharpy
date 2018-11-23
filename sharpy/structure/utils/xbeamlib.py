@@ -392,6 +392,7 @@ def cbeam3_step_nlndyn(beam, settings, ts, tstep=None, dt=None):
     n_nodes = ct.c_int(beam.num_node)
     n_mass = ct.c_int(beam.n_mass)
     n_stiff = ct.c_int(beam.n_stiff)
+    num_dof = ct.c_int(len(tstep.q) - 10)
 
     xbopts = Xbopts()
     xbopts.PrintInfo = ct.c_bool(settings['print_info'])
@@ -417,7 +418,8 @@ def cbeam3_step_nlndyn(beam, settings, ts, tstep=None, dt=None):
     else:
         in_dt = ct.c_double(dt)
 
-    f_cbeam3_solv_nlndyn_step(ct.byref(n_elem),
+    f_cbeam3_solv_nlndyn_step(ct.byref(num_dof),
+                              ct.byref(n_elem),
                               ct.byref(n_nodes),
                               ct.byref(in_dt),
                               beam.fortran['num_nodes'].ctypes.data_as(intP),
@@ -448,8 +450,12 @@ def cbeam3_step_nlndyn(beam, settings, ts, tstep=None, dt=None):
                               tstep.gravity_forces.ctypes.data_as(doubleP),
                               tstep.quat.ctypes.data_as(doubleP),
                               tstep.for_vel.ctypes.data_as(doubleP),
-                              tstep.for_acc.ctypes.data_as(doubleP)
+                              tstep.for_acc.ctypes.data_as(doubleP),
+                              tstep.q.ctypes.data_as(doubleP),
+                              tstep.dqdt.ctypes.data_as(doubleP)
                               )
+
+    xbeam_solv_state2disp(beam, tstep, cbeam3=True)
 
 
 f_xbeam_solv_couplednlndyn = xbeamlib.xbeam_solv_couplednlndyn_python
@@ -555,7 +561,7 @@ def xbeam_solv_couplednlndyn(beam, settings):
 
     glob_pos_def = np.zeros_like(pos_def_history)
     for it in range(n_tsteps.value):
-        rot = algebra.quat2rot(quat_history[it, :]).transpose()
+        rot = algebra.quat2rotation(quat_history[it, :])
         for inode in range(beam.num_node):
             glob_pos_def[it, inode, :] = np.dot(rot.T, pos_def_history[it, inode, :])
 
@@ -718,12 +724,13 @@ def xbeam_init_couplednlndyn(beam, settings, ts, dt=None):
                                     beam.timestep_info[ts].dqddt.ctypes.data_as(doubleP))
 
 
-def xbeam_solv_state2disp(beam, tstep):
+def xbeam_solv_state2disp(beam, tstep, cbeam3=False):
     numdof = beam.num_dof.value
     cbeam3_solv_state2disp(beam, tstep)
-    tstep.for_vel = tstep.dqdt[numdof:numdof+6].astype(dtype=ct.c_double, order='F', copy=True)
-    tstep.for_acc = tstep.dqddt[numdof:numdof+6].astype(dtype=ct.c_double, order='F', copy=True)
-    tstep.quat = algebra.unit_vector(tstep.dqdt[numdof+6:]).astype(dtype=ct.c_double, order='F', copy=True)
+    if not cbeam3:
+        tstep.for_vel = tstep.dqdt[numdof:numdof+6].astype(dtype=ct.c_double, order='F', copy=True)
+        tstep.for_acc = tstep.dqddt[numdof:numdof+6].astype(dtype=ct.c_double, order='F', copy=True)
+        tstep.quat = algebra.unit_vector(tstep.dqdt[numdof+6:]).astype(dtype=ct.c_double, order='F', copy=True)
 
 
 def cbeam3_solv_state2disp(beam, tstep):

@@ -439,8 +439,8 @@ def get_mode_zeta(data, eigvect):
 
 
     jj=0 # structural dofs index
-    Cag0=algebra.quat2rot(tsstr.quat)
-    Cga0=Cag0.T
+    Cga0=algebra.quat2rotation(tsstr.quat)
+    Cag0=Cga0.T
     for node_glob in range(struct.num_node):
 
         ### detect bc at node (and no. of dofs)
@@ -461,14 +461,14 @@ def get_mode_zeta(data, eigvect):
         Ra0=tsstr.pos[node_glob,:]
         psi0=tsstr.psi[ee,node_loc,:]
         Rg0=np.dot(Cga0,Ra0) 
-        Cab0=algebra.crv2rot(psi0)
+        Cab0=algebra.crv2rotation(psi0)
         Cbg0=np.dot(Cab0.T,Cag0)
 
         # update position and crv of mode
         Ra=tsstr.pos[node_glob,:]+eigvect[jj_tra]
         psi=tsstr.psi[ee,node_loc,:]+eigvect[jj_rot]
         Rg=np.dot(Cga0,Ra)
-        Cab=algebra.crv2rot(psi)
+        Cab=algebra.crv2rotation(psi)
         Cbg=np.dot(Cab.T,Cag0)
     
 
