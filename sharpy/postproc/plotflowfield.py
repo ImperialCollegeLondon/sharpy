@@ -30,10 +30,11 @@ class PlotFlowField(BaseSolver):
         self.settings_types = dict()
         self.settings_default = dict()
 
-        self.settings_types['grid_generation_method'] = 'str'
-        self.settings_default['grid_generation_method'] = 'box'
+        self.settings_types['postproc_grid_generator'] = 'str'
+        self.settings_default['postproc_grid_generator'] = 'box'
 
-        self.settings_types['options'] = dict()
+        self.settings_types['postproc_grid_input'] = 'dict'
+        self.settings_default['postproc_grid_input'] = dict()
 
         self.settings_types['velocity_field_generator'] = 'str'
         self.settings_default['velocity_field_generator'] = 'SteadyVelocityField'
@@ -66,64 +67,46 @@ class PlotFlowField(BaseSolver):
         self.velocity_generator = velocity_generator_type()
         self.velocity_generator.initialise(self.settings['velocity_field_input'])
 
+        # init postproc grid generator
+        postproc_grid_generator_type = gen_interface.generator_from_string(
+            self.settings['postproc_grid_generator'])
+        self.postproc_grid_generator = postproc_grid_generator_type()
+        self.postproc_grid_generator.initialise(self.settings['postproc_grid_input'])
+
     def run(self, online=False):
 
         # Notice that SHARPy utilities deal with several two-dimensional surfaces
         # To be able to build 3D volumes, I will make use of the surface index as
         # the third index in space
+        # It does not apply to the 'u' array because this way it is easier to
+        # write it in paraview
 
         # Generate the grid
-        if self.settings['grid_generation_method'] == 'box':
-
-            x0 = float(self.settings['options']['x0'])
-            y0 = float(self.settings['options']['y0'])
-            z0 = float(self.settings['options']['z0'])
-            x1 = float(self.settings['options']['x1'])
-            y1 = float(self.settings['options']['y1'])
-            z1 = float(self.settings['options']['z1'])
-            dx = float(self.settings['options']['dx'])
-            dy = float(self.settings['options']['dy'])
-            dz = float(self.settings['options']['dz'])
-
-            nx = int((x1-x0)/dx + 1)
-            ny = int((y1-y0)/dy + 1)
-            nz = int((z1-z0)/dz + 1)
-
-            xarray = np.linspace(x0,x1,nx)
-            yarray = np.linspace(y0,y1,ny)
-            zarray = np.linspace(z0,z1,nz)
-            grid = np.zeros((nx,ny,nz), dtype=(ct.c_double,3))
-            for ix in range(nx):
-                for iy in range(ny):
-                    for iz in range(nz):
-                        grid[ix, iy, iz, 0] = xarray[ix]
-                        grid[ix, iy, iz, 1] = yarray[iy]
-                        grid[ix, iy, iz, 2] = zarray[iz]
-
-
-            vtk_info = tvtk.RectilinearGrid()
-            vtk_info.dimensions = np.array([nx, ny, nz], dtype=int)
-            vtk_info.x_coordinates = xarray
-            vtk_info.y_coordinates = yarray
-            vtk_info.z_coordinates = zarray
+        vtk_info, grid = self.postproc_grid_generator.generate({})
 
         # Compute the induced velocities
-        u = np.zeros_like(grid, dtype=ct.c_double)
-        for ix in range(grid.shape[0]):
-            for iy in range(grid.shape[1]):
-                for iz in range(grid.shape[2]):
+        nx = grid[0].shape[1]
+        ny = grid[0].shape[2]
+        nz = len(grid)
+
+        u = np.zeros((nx,ny,nz,3), dtype=float)
+        # u = np.zeros_like(grid, dtype=ct.c_double)
+        for iz in range(nz):
+            # u.append(np.zeros((3,ny,nz), dtype=ct.c_double))
+            for ix in range(nx):
+                for iy in range(ny):
                     u[ix, iy, iz, :] = uvlmlib.uvlm_calculate_total_induced_velocity_at_point(self.data.aero.timestep_info[-1],
-                                                           grid[ix, iy, iz, :])
+                                                           grid[iz][:, ix, iy])
 
         # Add the external velocities
         zeta = []
         u_ext = []
-        for iz in range(grid.shape[2]):
-            zeta.append(np.zeros((3,grid.shape[0],grid.shape[1]), dtype=float))
-            u_ext.append(np.zeros((3,grid.shape[0],grid.shape[1]), dtype=float))
-            for ix in range(grid.shape[0]):
-                for iy in range(grid.shape[1]):
-                    zeta[iz][:,ix,iy] = grid[ix, iy, iz, :]
+        for iz in range(nz):
+            zeta.append(np.zeros((3,nx,ny), dtype=ct.c_double))
+            u_ext.append(np.zeros((3,nx,ny), dtype=ct.c_double))
+            for ix in range(nx):
+                for iy in range(ny):
+                    zeta[iz][:,ix,iy] = grid[iz][:, ix, iy]
                     u_ext[iz][:,ix,iy] = 0.0
 
         self.velocity_generator.generate({'zeta': zeta,
@@ -135,9 +118,9 @@ class PlotFlowField(BaseSolver):
                                       u_ext)
 
         # Add both velocities
-        for ix in range(grid.shape[0]):
-            for iy in range(grid.shape[1]):
-                for iz in range(grid.shape[2]):
+        for iz in range(nz):
+            for ix in range(nx):
+                for iy in range(ny):
                     u[ix, iy, iz, :] += u_ext[iz][:,ix,iy]
 
         # Write the data
