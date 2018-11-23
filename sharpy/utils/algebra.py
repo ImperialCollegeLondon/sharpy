@@ -1,8 +1,8 @@
-'''
+"""
 Rotation algebra library
 
 Note: testing in tests/utils/algebra_test
-'''
+"""
 
 import numpy as np
 import scipy.linalg
@@ -11,28 +11,43 @@ from warnings import warn
 #######
 # functions for back compatibility
 def quat2rot(quat):
-    warn('quat2rot(quat) is obsolite! Use quat2rotation(quat).T instead!')
+    warn('quat2rot(quat) is obsolete! Use quat2rotation(quat).T instead!', stacklevel=2)
     return quat2rotation(quat).T
 def crv2rot(psi):
-    warn('crv2rot(psi) is obsolite! Use crv2rotation(psi) instead!')
+    warn('crv2rot(psi) is obsolete! Use crv2rotation(psi) instead!', stacklevel=2)
     return crv2rotation(psi)
 def rot2crv(rot):
-    warn('rot2crv(rot) is obsolite! Use rotation2crv(rot.T) instead!')
+    warn('rot2crv(rot) is obsolete! Use rotation2crv(rot.T) instead!', stacklevel=2)
     return rotation2crv(rot.T)
 def triad2rot(xb,yb,zb):
-    warn('triad2rot(xb,yb,zb) is obsolite! Use triad2rotation(xb,yb,zb).T instead!')
+    warn('triad2rot(xb,yb,zb) is obsolete! Use triad2rotation(xb,yb,zb).T instead!', stacklevel=2)
     return triad2rotation(xb,yb,zb).T
 def mat2quat(rot):
-     warn('mat2quat(rot) is obsolite! Use rotation2quat(rot.T) instead!')
+     warn('mat2quat(rot) is obsolete! Use rotation2quat(rot.T) instead!', stacklevel=2)
      return rotation2quat(rot.T)
 #######
 
 def tangent_vector(in_coord, ordering=None):
-    """ Tangent vector calculation for 2+ noded elements.
+    r"""
+    Tangent vector calculation for 2+ noded elements.
 
     Calculates the tangent vector interpolating every dimension
     separately. It uses a (n_nodes - 1) degree polynomial, and the
     differentiation is analytical.
+
+    Calculation method:
+
+        1. A n_nodes-1 polynomial is fitted through the nodes per dimension.
+        2. Those polynomials are analytically differentiated with respect to the node index
+        3. The tangent vector is given by:
+
+        .. math::
+
+            \vec{t} = \frac{s_x'\vec{i} + s_y'\vec{j} + s_z'\vec{k}}{\left| s_x'\vec{i} + s_y'\vec{j} + s_z'\vec{k}\right|}
+
+
+        where :math:`'` notes the differentiation with respect to the index number
+
 
     Args:
         in_coord (np.ndarray): array of coordinates of the nodes. Dimensions = ``[n_nodes, ndim]``
@@ -221,15 +236,35 @@ def angle_between_vector_and_plane(vector, plane_normal):
 
 
 def rotation2quat(Cab):
-    '''
-    Given a rotation matrix Cab rotating the frame a onto b, the function returns
-    the minimal "positive angle" quaternion representing this rotation.
+    r"""
+    Given a rotation matrix :math:`C^{AB}` rotating the frame A onto B, the function returns
+    the minimal "positive angle" quaternion representing this rotation, where the quaternion, :math:`\vec{\chi}` is
+    defined as:
 
-    Note: this is the inverse of quat2rotation for Cartesian rotation vectors
-    associated to rotations in the range [-pi,pi], i.e.:
-        fv == algebra.rotation2crv(algebra.crv2rotation(fv))
-    for each fv=a*nv such that nv is a unit vector and the scalar a in [-pi,pi].
-    '''
+        .. math:: \vec{\chi}=
+            \left[\cos\left(\frac{\psi}{2}\right),\,
+            \sin\left(\frac{\psi}{2}\right)\mathbf{\hat{n}}\right]
+
+    Args:
+        Cab (np.array): rotation matrix :math:`C^{AB}` from frame A to B
+
+    Returns:
+        np.array: equivalent quaternion :math:`\vec{\chi}`
+
+    Notes:
+        This is the inverse of ``algebra.quat2rotation`` for Cartesian rotation vectors
+        associated to rotations in the range :math:`[-\pi,\pi]`, i.e.:
+
+            ``fv == algebra.rotation2crv(algebra.crv2rotation(fv))``
+
+        where ``fv`` represents the Cartesian Rotation Vector, :math:`\vec{\psi}` defined as:
+
+            .. math:: \vec{\psi} = \psi\,\mathbf{\hat{n}}
+
+        such that :math:`\mathbf{\hat{n}}` is a unit vector and the scalar :math:`psi` is in the range
+        :math:`[-\pi,\,\pi]`.
+
+    """
 
     s = np.zeros((4, 4))
 
@@ -266,16 +301,30 @@ def rotation2quat(Cab):
 
 
 def quat_bound(quat):
-    '''
-    Given a quaternion associated to a rotation of angle a about an axis nv, the
-    function "bounds" the quaternion, i.e. sets the rotation axis nv such that
-    a in [-pi,pi].
+    r"""
+    Given a quaternion, :math:`\vec{\chi}`, associated to a rotation of angle :math:`\psi`
+    about an axis :math:`\mathbf{\hat{n}}`, the function "bounds" the quaternion,
+    i.e. sets the rotation axis :math:`\mathbf{\hat{n}}` such that
+    :math:`\psi` in :math:`[-\pi,\pi]`.
 
-    Note: as quaternions are defined as qv=[cos(a/2); sin(a/2)*nv], this is
-    equivalent to enforce qv[0]>=0.
-    '''
-    if quat[0]<0:
-        quat*=-1.
+    Notes:
+        As quaternions are defined as:
+
+            .. math:: \vec{\chi}=
+                \left[\cos\left(\frac{\psi}{2}\right),\,
+                \sin\left(\frac{\psi}{2}\right)\mathbf{\hat{n}}\right]
+
+        this is equivalent to enforcing :math:`\chi_0\ge0`.
+
+    Args:
+        quat (np.array): quaternion to bound
+
+    Returns:
+        np.array: bounded quaternion
+
+    """
+    if quat[0] < 0:
+        quat *= -1.
     return quat
 
 
@@ -299,35 +348,58 @@ def quat2crv(quat):
 
 
 def crv2quat(psi):
-    '''
-    Converts a Cartesian rotation vector into a "minimal rotation" quaternion,
-    ie, being the quaternion defined as:
-        qv= [cos(a/2); sin(a/2)*nv ]
-    the rotation axis is such that the rotation angle a is in [-pi,pi] or,
-    equivalently, qv[0]>=0.
-    '''
+    r"""
+    Converts a Cartesian rotation vector,
+
+        .. math:: \vec{\psi} = \psi\,\mathbf{\hat{n}}
+
+    into a "minimal rotation" quaternion, i.e. being the quaternion, :math:`\vec{\chi}`, defined as:
+
+        .. math:: \vec{\chi}=
+            \left[\cos\left(\frac{\psi}{2}\right),\,
+            \sin\left(\frac{\psi}{2}\right)\mathbf{\hat{n}}\right]
+
+    the rotation axis, :math:`\mathbf{\hat{n}}` is such that the
+    rotation angle, :math:`\psi`, is in :math:`[-\pi,\,\pi]` or,
+    equivalently, :math:`\chi_0\ge0`.
+
+    Args:
+        psi (np.array): Cartesian Rotation Vector, CRV: :math:`\vec{\psi} = \psi\,\mathbf{\hat{n}}`.
+
+    Returns:
+        np.array: equivalent quaternion :math:`\vec{\chi}`
+
+    """
 
     # minimise crv rotation
-    psi_new=crv_bounds(psi)
+    psi_new = crv_bounds(psi)
 
-    fi=np.linalg.norm(psi_new)
+    fi = np.linalg.norm(psi_new)
     if fi > 1e-15:
-        nv=psi_new/fi
+        nv = psi_new / fi
     else:
         nv = psi_new
 
-    quat=np.zeros((4,))
-    quat[0]=np.cos(.5*fi)
-    quat[1:]=np.sin(.5*fi)*nv
+    quat = np.zeros((4,))
+    quat[0] = np.cos(.5 * fi)
+    quat[1:] = np.sin(.5 * fi) * nv
 
     return quat
 
 
 def crv_bounds(crv_ini):
-    '''
-    Forces the Cartesian rotation vector norm to be in [-pi,pi], i.e. determines
-    the rotation axis orientation so as to ensure "minimal rotation".
-    '''
+    r"""
+    Forces the Cartesian rotation vector norm, :math:`\|\vec{\psi}\|`, to be in the range
+    :math:`[-\pi,\pi]`, i.e. determines the rotation axis orientation, :math:`\mathbf{\hat{n}}`,
+    so as to ensure "minimal rotation".
+
+    Args:
+        crv_ini (np.array): Cartesian rotation vector, :math:`\vec{\psi}`
+
+    Returns:
+        np.array: modified and bounded, equivalent Cartesian rotation vector
+
+    """
 
     crv = crv_ini.copy()
     # original norm
@@ -358,12 +430,12 @@ def crv2triad(psi):
 
 
 def crv2rotation(psi):
-    '''
+    """
     Given a Cartesian rotation vector psi, the function produces the rotation
     matrix required to rotate a vector according to psi.
 
     Note: this is psi2mat in the matlab version
-    '''
+    """
 
     norm_psi = np.linalg.norm(psi)
 
@@ -382,7 +454,7 @@ def crv2rotation(psi):
 
 
 def rotation2crv(Cab):
-    '''
+    """
     Given a rotation matrix Cab rotating the frame a onto b, the function returns
     the minimal size Cartesian rotation vector representing this rotation.
 
@@ -390,7 +462,7 @@ def rotation2crv(Cab):
     associated to rotations in the range [-pi,pi], i.e.:
         fv == algebra.rotation2crv(algebra.crv2rotation(fv))
     for each fv=a*nv such that nv is a unit vector and the scalar a in [-pi,pi].
-    '''
+    """
 
     if np.linalg.norm(Cab) < 1e-6:
         raise AttributeError(\
@@ -496,16 +568,16 @@ def rot_skew(vec):
 
 
 def rotation3d_x(angle):
-    """
-    Rotation matrix about the x axis by the input angle :math:`\\Phi`
+    r"""
+    Rotation matrix about the x axis by the input angle :math:`\Phi`
 
     .. math::
 
-        \\mathbf{\\tau}_x = \\begin{bmatrix}
-        1 & 0 & 0 \\
-        0 & \\cos(\\Phi) & -\\sin(\\Phi) \\
-        0 & \\sin(\\Phi) & \\cos(\\Phi) \\
-        \\end{bmatrix}
+        \mathbf{\tau}_x = \begin{bmatrix}
+            1 & 0 & 0 \\
+            0 & \cos(\Phi) & -\sin(\Phi) \\
+            0 & \sin(\Phi) & \cos(\Phi)
+        \end{bmatrix}
 
 
     Args:
@@ -526,16 +598,16 @@ def rotation3d_x(angle):
 
 
 def rotation3d_y(angle):
-    """
-    Rotation matrix about the y axis by the input angle :math:`\\Theta`
+    r"""
+    Rotation matrix about the y axis by the input angle :math:`\Theta`
 
     .. math::
 
-        \\mathbf{\\tau}_y = \\begin{bmatrix}
-        \\cos(\\Theta) & 0 & -\\sin(\\Theta)\\
-        0 & 1 & 0 \\
-        \\sin(\\Theta) & 0 & \\cos(\\Theta)\\
-        \\end{bmatrix}
+        \mathbf{\tau}_y = \begin{bmatrix}
+            \cos(\Theta) & 0 & -\sin(\Theta) \\
+            0 & 1 & 0 \\
+            \sin(\Theta) & 0 & \cos(\Theta)
+        \end{bmatrix}
 
 
     Args:
@@ -555,17 +627,15 @@ def rotation3d_y(angle):
 
 
 def rotation3d_z(angle):
-    """
-    Rotation matrix about the z axis by the input angle :math:`\\Psi`
+    r"""
+    Rotation matrix about the z axis by the input angle :math:`\Psi`
 
     .. math::
-
-        \\mathbf{\\tau}_z = \\begin{bmatrix}
-        \\cos(\\Psi) & -\\sin(\\Psi) & 0 \\
-        \\sin(\\Psi) & \\cos(\\Psi) & 0 \\
-        0 & 0 & 1
-        \\end{bmatrix}
-
+        \mathbf{\tau}_z = \begin{bmatrix}
+            \cos(\Psi) & -\sin(\Psi) & 0 \\
+            \sin(\Psi) & \cos(\Psi) & 0 \\
+            0 & 0 & 1
+        \end{bmatrix}
 
     Args:
         angle (float): angle of rotation in radians about the z axis
@@ -601,7 +671,7 @@ def euler2rot(euler):
 
     .. math::
 
-        \\mathbf{T}_{BE} = \\mathbf{tau}_x(\\Phi) \\mathbf{tau}_y(\\Theta) \\mathbf{tau}_z(\\Psi)
+        \\mathbf{T}_{BE} = \\mathbf{\\tau}_x(\\Phi) \\mathbf{\\tau}_y(\\Theta) \\mathbf{\\tau}_z(\\Psi)
 
 
     where :math:`\\mathbf{\\tau}` represents the rotation about the subscripted axis.
@@ -616,7 +686,9 @@ def euler2rot(euler):
         The individual transformations represented by the :math:`\\mathbf{\\tau}` matrices are described in:
 
         .. py:module:: sharpy.utils.algebra.rotation3d_x
+
         .. py:module:: sharpy.utils.algebra.rotation3d_y
+
         .. py:module:: sharpy.utils.algebra.rotation3d_z
 
     """
@@ -628,7 +700,7 @@ def euler2rot(euler):
 
 def euler2quat(euler):
     euler_rot = euler2rot(euler)  # this is Cag
-    quat = mat2quat(euler_rot)
+    quat = rotation2quat(euler_rot.T)
     return quat
 
 
@@ -705,7 +777,7 @@ def get_triad(coordinates_def, frame_of_reference_delta, twist=None, n_nodes=3, 
 
 
 def der_Cquat_by_v(q,v):
-    '''
+    """
     Being C=C(quat) the rotational matrix depending on the quaternion q and
     defined as C=quat2rotation(q), the function returns the derivative, w.r.t. the
     quanternion components, of the vector dot(C,v), where v is a constant
@@ -728,7 +800,7 @@ def der_Cquat_by_v(q,v):
 
 
 def der_CquatT_by_v(q,v):
-    '''
+    """
     Being C=C(quat).T the projection matrix depending on the quaternion q and
     defined as C=quat2rotation(q).T, the function returns the derivative, w.r.t. the
     quanternion components, of the vector dot(C,v), where v is a constant
@@ -749,7 +821,7 @@ def der_CquatT_by_v(q,v):
                                 q0*vx - q2*vz + q3*vy, q1*vx + q2*vy + q3*vz]])
 
 def der_Tan_by_xv(fv0,xv):
-    '''
+    """
     Being fv0 a cartesian rotation vector and Tan the corresponding tangential
     operator (computed through crv2tan(fv)), the function returns the derivative
     of dot(Tan,xv), where xv is a constant vector.
@@ -843,7 +915,7 @@ def der_Tan_by_xv(fv0,xv):
     # end der_Tan_by_xv
 
 def der_TanT_by_xv(fv0,xv):
-    '''
+    """
     Being fv0 a cartesian rotation vector and Tan the corresponding tangential
     operator (computed through crv2tan(fv)), the function returns the derivative
     of dot(Tan^T,xv), where xv is a constant vector.
@@ -854,7 +926,7 @@ def der_TanT_by_xv(fv0,xv):
 
     Note: the derivative expression has been derived symbolically and verified
     by FDs. A more compact expression may be possible.
-    '''
+    """
 
     # Renaming variabes for clarity
     px = fv0[0]
@@ -911,7 +983,7 @@ def der_TanT_by_xv(fv0,xv):
 
 
 def der_Ccrv_by_v(fv0,v):
-    '''
+    """
     Being C=C(fv0) the rotational matrix depending on the Cartesian rotation
     vector fv0 and defined as C=crv2rotation(fv0), the function returns the 
     derivative, w.r.t. the CRV components, of the vector dot(C,v), where v is a 
@@ -919,7 +991,7 @@ def der_Ccrv_by_v(fv0,v):
     The elements of the resulting derivative matrix D are ordered such that:
         d(C*v) = D*d(fv0)
     where d(.) is a delta operator.
-    '''
+    """
 
     Cab0=crv2rotation(fv0)
     T0=crv2tan(fv0)
@@ -929,7 +1001,7 @@ def der_Ccrv_by_v(fv0,v):
 
 
 def der_CcrvT_by_v(fv0,v):
-    '''
+    """
     Being C=C(fv0) the rotation matrix depending on the Cartesian rotation
     vector fv0 and defined as C=crv2rotation(fv0), the function returns the 
     derivative, w.r.t. the CRV components, of the vector dot(C.T,v), where v is 
@@ -937,7 +1009,7 @@ def der_CcrvT_by_v(fv0,v):
     The elements of the resulting derivative matrix D are ordered such that:
         d(C.T*v) = D*d(fv0)
     where d(.) is a delta operator.
-    '''
+    """
 
     Cba0=crv2rotation(fv0).T
     T0=crv2tan(fv0)
