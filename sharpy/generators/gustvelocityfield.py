@@ -7,6 +7,48 @@ import sharpy.utils.exceptions as exc
 
 @generator_interface.generator
 class GustVelocityField(generator_interface.BaseGenerator):
+    """
+    Gust Velocity Field Generator
+
+    ``GustVelocityField`` is a class inherited from ``BaseGenerator``
+
+    The ``GustVelocityField`` class generates a gust profile velocity field, and the profile has the characteristics
+    specified by the user.
+
+    To call this generator, the ``generator_id = GustVelocityField`` shall be used.
+    This is parsed as the value for the ``velocity_field_generator`` key in the desired aerodynamic solver's settings.
+
+    Args:
+        in_dict (dict): Input data in the form of dictionary. See acceptable entries below:
+
+            ===================  ===============  ==================================================================  ===================
+            Name                 Type             Description                                                         Default
+            ===================  ===============  ==================================================================  ===================
+            ``u_inf``            ``float``        Free stream velocity                                                ``0.0``
+            ``u_inf_direction``  ``list(float)``  Free stream velocity relative components                            ``[1.0, 0.0, 0.0]``
+            ``gust_shape``       ``str``          Gust profile shape. Supported profiles are ``1-cos`` and ``DARPA``  ``None``
+            ``gust_length``      ``float``        Length of gust                                                      ``0.0``
+            ``gust_intensity``   ``float``        Intensity of the gust                                               ``0.0``
+            ``offset``           ``float``        Spatial offset of the gust with respect to origin                   ``0.0``
+            ``span``             ``float``        Wing span                                                           ``0.0``
+            ===================  ===============  ==================================================================  ===================
+
+    Attributes:
+        settings_types (dict): Acceptable data types of the input data
+        settings_default (dict): Default values for input data should the user not provide them
+        u_inf (float): Free stream velocity
+        u_inf_direction (list(float)): Free stream velocity relative components in ``x`, ``y`` and ``z``
+        gust_shape (str): Gust profile shape
+        gust_length (float): Length of gust
+        gust_intenstity (float): Intensity of the gust
+        offset (float): Spatial offset of the gust position with respect to origin
+        span (float): Wing span
+        implemented_gusts (list(str)): Currently supported gust profiles
+
+    See Also:
+        .. py:class:: sharpy.utils.generator_interface.BaseGenerator
+
+    """
     generator_id = 'GustVelocityField'
 
     def __init__(self):

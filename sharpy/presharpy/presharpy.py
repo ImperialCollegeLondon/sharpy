@@ -1,5 +1,4 @@
-"""The main class for preSHARPy.
-"""
+
 import configparser
 
 import sharpy.utils.cout_utils as cout
@@ -10,7 +9,42 @@ import sharpy.utils.exceptions as exceptions
 
 @solver
 class PreSharpy(object):
+    """
+    The main class for preSHARPy.
+
+    PreSharpy objects contain information on the output of the problem.
+    The ``PreSharpy`` ``settings`` attributes are obtained from the ``.solver.txt`` file, under ``[SHARPy]``.
+
+    Args:
+        in_settings: settings file, from which ``[SHARPy]`` values are extracted
+
+    Attributes:
+        settings (dict): name-value pairs of solution settings types.
+            See Notes for acceptable combinations.
+        settings_types (dict): accepted types for values in ``settings``
+        settings_default (dict): default values for ``settings``, should none be provided.
+        ts (int): solution time step
+        case_route (str): route to case folder
+        case_name (str): name of the case
+
+    Notes:
+
+        The following key-value pairs are acceptable ``settings`` for the ``PreSharpy`` class:
+
+        ================  =============  ===============================================  =====================
+        Key               Type           Description                                      Default
+        ================  =============  ===============================================  =====================
+        ``flow``          ``list(str)``  List of solvers to run in the appropriate order  ``None``
+        ``case``          ``str``        Case name                                        ``default_case_name``
+        ``route``         ``str``        Route to folder                                  ``None``
+        ``write_screen``  ``bool``       Write output to terminal screen                  ``True``
+        ``write_log``     ``bool``       Write log file to output folder                  ``False``
+        ``log_folder``    ``str``        Folder to write log file within ``/output``      ``None``
+        ``log_file``      ``str``        Log file name                                    ``log``
+        ================  =============  ===============================================  =====================
+    """
     solver_id = 'PreSharpy'
+
 
     def __init__(self, in_settings):
         self.ts = 0
@@ -61,14 +95,14 @@ class PreSharpy(object):
 
     @staticmethod
     def load_config_file(file_name):
-        """This function reads the flight condition and solver input files.
+        """Reads the flight condition and solver input files.
 
         Args:
             file_name (str): contains the path and file name of the file to be read by the ``configparser``
                 reader.
 
         Returns:
-            config (dict): a ``ConfigParser`` object that behaves like a dictionary
+            ``ConfigParser`` object that behaves like a dictionary
         """
         config = configparser.ConfigParser()
         config.read(file_name)

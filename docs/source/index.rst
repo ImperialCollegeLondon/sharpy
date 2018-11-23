@@ -6,22 +6,28 @@
 SHARPy documentation
 ====================
 
+
+
 Contents:
+---------
 
 .. toctree::
    :maxdepth: 2
 
-The ProblemData Class
-=====================
-.. automodule:: sharpy.presharpy
-   :members:
+   content/installation
+   content/presharpy
+   content/run_sharpy
+   content/aero
+   content/generators
+   content/structure
+   content/solvers
+   content/postproc
+   content/utilities
+   content/test_cases
 
-Utilities
-=========
-.. include:: content/algebra_content.rst
 
 Indices and tables
-==================
+------------------
 
 * :ref:`genindex`
 * :ref:`modindex`
