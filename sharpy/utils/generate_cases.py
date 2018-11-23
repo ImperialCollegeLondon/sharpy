@@ -1446,6 +1446,20 @@ class SimulationInformation():
                   'log_folder': './output',
                   'log_file': 'log'}
 
+        # GENERATORS
+        self.solvers['SteadyVelocityField_input'] = {'u_inf': 0.,
+                                                    'u_inf_direction': np.array([1.0, 0, 0])}
+
+        self.solvers['GridBox_input'] = {'x0': 0.,
+                                         'y0': 0.,
+                                         'z0': 0.,
+                                         'x1': 0.,
+                                        'y1': 0.,
+                                        'z1': 0.,
+                                        'dx': 0.,
+                                       'dy': 0.,
+                                       'dz': 0.}
+
         # LOADERS
         self.solvers['BeamLoader'] = {'unsteady': 'off',
                                     'orientation': np.array([1., 0, 0, 0])}
@@ -1491,10 +1505,11 @@ class SimulationInformation():
                                    'clean_aero': True,
                                    'remaining_steps': 10}
 
-        self.solvers['PlotFlowField'] = {'grid_generation_method': 'box',
-                                   'options': dict(),
-                                   'u_inf': 0.,
-                                   'u_inf_direction': np.array([0.0, 0., 1.])}
+        self.solvers['PlotFlowField'] = {'postproc_grid_generator': 'GridBox',
+                                   'postproc_grid_input': dict(),
+                                   'velocity_field_generator': 'SteadyVelocityField',
+                                   'velocity_field_input': dict(),
+                                   'dt': 0.1}
 
         # STEPS
         self.solvers['NonLinearStatic'] = {'print_info': 'on',
@@ -1668,10 +1683,12 @@ class SimulationInformation():
 
         self.solvers['AerogridLoader']['freestream_dir'] = unit_vector
         self.solvers['AerogridPlot']['u_inf'] = norm
-        self.solvers['StaticUvlm']['velocity_field_input'] = {'u_inf': norm,
-                                                            'u_inf_direction': unit_vector}
-        self.solvers['StepUvlm']['velocity_field_input'] = {'u_inf': norm,
-                                                            'u_inf_direction': unit_vector}
+        self.solvers['SteadyVelocityField_input']['u_inf'] = norm
+        self.solvers['SteadyVelocityField_input']['u_inf_direction'] = unit_vector
+        # self.solvers['StaticUvlm']['velocity_field_input'] = {'u_inf': norm,
+        #                                                     'u_inf_direction': unit_vector}
+        # self.solvers['StepUvlm']['velocity_field_input'] = {'u_inf': norm,
+        #                                                     'u_inf_direction': unit_vector}
 
     def set_variable_all_dicts(self, variable, value):
         """
