@@ -785,7 +785,7 @@ def der_Cquat_by_v(q,v):
     The elements of the resulting derivative matrix D are ordered such that:
         d(C*v) = D*d(q)
     where d(.) is a delta operator.
-    '''
+    """
 
     vx,vy,vz=v
     q0,q1,q2,q3=q
@@ -808,7 +808,7 @@ def der_CquatT_by_v(q,v):
     The elements of the resulting derivative matrix D are ordered such that:
         d(C*v) = D*d(q)
     where d(.) is a delta operator.
-    '''
+    """
 
     vx,vy,vz=v
     q0,q1,q2,q3=q
@@ -832,7 +832,7 @@ def der_Tan_by_xv(fv0,xv):
 
     Note: the derivative expression has been derived symbolically and verified
     by FDs. A more compact expression may be possible.
-    '''
+    """
 
     f0=np.linalg.norm(fv0)
     sf0,cf0=np.sin(f0),np.cos(f0)
@@ -985,8 +985,8 @@ def der_TanT_by_xv(fv0,xv):
 def der_Ccrv_by_v(fv0,v):
     """
     Being C=C(fv0) the rotational matrix depending on the Cartesian rotation
-    vector fv0 and defined as C=crv2rotation(fv0), the function returns the 
-    derivative, w.r.t. the CRV components, of the vector dot(C,v), where v is a 
+    vector fv0 and defined as C=crv2rotation(fv0), the function returns the
+    derivative, w.r.t. the CRV components, of the vector dot(C,v), where v is a
     constant vector.
     The elements of the resulting derivative matrix D are ordered such that:
         d(C*v) = D*d(fv0)
@@ -1003,8 +1003,8 @@ def der_Ccrv_by_v(fv0,v):
 def der_CcrvT_by_v(fv0,v):
     """
     Being C=C(fv0) the rotation matrix depending on the Cartesian rotation
-    vector fv0 and defined as C=crv2rotation(fv0), the function returns the 
-    derivative, w.r.t. the CRV components, of the vector dot(C.T,v), where v is 
+    vector fv0 and defined as C=crv2rotation(fv0), the function returns the
+    derivative, w.r.t. the CRV components, of the vector dot(C.T,v), where v is
     a constant vector.
     The elements of the resulting derivative matrix D are ordered such that:
         d(C.T*v) = D*d(fv0)
