@@ -161,7 +161,7 @@ def update_mb_db_before_split(tstep, mb_data_dict):
     #     tstep.mb_FoR_acc[0, 0:3] = np.dot(CGAmaster, tstep.for_acc[0:3])
     #     tstep.mb_FoR_acc[0, 3:6] = np.dot(CGAmaster, tstep.for_acc[3:6])
 
-    if False:
+    if True:
         CGAmaster = np.transpose(algebra.quat2rot(tstep.quat))
 
         tstep.mb_FoR_pos[0,:] = tstep.for_pos.astype(dtype=ct.c_double, order='F', copy=True)
