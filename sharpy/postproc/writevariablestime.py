@@ -21,6 +21,12 @@ class WriteVariablesTime(BaseSolver):
         self.settings_types['delimiter'] = 'str'
         self.settings_default['delimiter'] = ' '
 
+        self.settings_types['FoR_variables'] = 'list(str)'
+        self.settings_default['FoR_variables'] = ''
+
+        self.settings_types['FoR_number'] = 'list(int)'
+        self.settings_default['FoR_number'] = np.array([0], dtype=int)
+
         self.settings_types['structure_variables'] = 'list(str)'
         self.settings_default['structure_variables'] = ''
 
@@ -93,7 +99,7 @@ class WriteVariablesTime(BaseSolver):
 
         for ivariable in range(len(self.settings['FoR_variables'])):
             for ifor in range(len(self.settings['FoR_number'])):
-                filename = self.dir + "FoR_" + self.settings['FoR_number'][ifor] + "_" + self.settings['FoR_variables'][ivariable] + ".dat"
+                filename = self.dir + "FoR_" + '%02d' % self.settings['FoR_number'][ifor] + "_" + self.settings['FoR_variables'][ivariable] + ".dat"
                 fid = open(filename,"a")
 
                 if (self.settings['FoR_variables'][ivariable] == 'GFoR_pos'):
