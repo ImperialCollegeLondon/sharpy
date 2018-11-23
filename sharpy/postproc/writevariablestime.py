@@ -138,8 +138,9 @@ class WriteVariablesTime(BaseSolver):
                     self.write_nparray_to_file(fid, self.data.ts, self.data.structure.timestep_info[-1].pos[node,:], self.settings['delimiter'])
                 elif (self.settings['structure_variables'][ivariable] == 'AFoR_velocity'):
                     self.write_nparray_to_file(fid, self.data.ts, self.data.structure.timestep_info[-1].pos_dot[node,:], self.settings['delimiter'])
-                elif (self.settings['structure_variables'][ivariable] == 'all_crv'):
-                    self.write_nparray_to_file(fid, self.data.ts, self.data.structure.timestep_info[-1].psi.reshape(-1), self.settings['delimiter'])
+                elif (self.settings['structure_variables'][ivariable] == 'crv'):
+                    ielem, inode_in_elem = self.data.structure.node_master_elem[node]
+                    self.write_nparray_to_file(fid, self.data.ts, self.data.structure.timestep_info[-1].psi[ielem,inode_in_elem,:], self.settings['delimiter'])
                 else:
                     print("Unrecognized " + self.settings['structure_variables'][ivariable] + " variable")
 
