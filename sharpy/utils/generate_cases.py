@@ -1493,8 +1493,9 @@ class SimulationInformation():
 
         self.solvers['PlotFlowField'] = {'grid_generation_method': 'box',
                                    'options': dict(),
-                                   'u_inf': 0.,
-                                   'u_inf_direction': np.array([0.0, 0., 1.])}
+                                   'velocity_field_generator': 'SteadyVelocityField',
+                                   'velocity_field_input': dict(),
+                                   'dt': 0.1}
 
         # STEPS
         self.solvers['NonLinearStatic'] = {'print_info': 'on',

@@ -16,6 +16,7 @@ import os
 import numpy as np
 from tvtk.api import tvtk, write_data
 from sharpy.utils.solver_interface import solver, BaseSolver
+import sharpy.utils.generator_interface as gen_interface
 import sharpy.utils.settings as settings
 import sharpy.aero.utils.uvlmlib as uvlmlib
 import ctypes as ct
@@ -34,11 +35,14 @@ class PlotFlowField(BaseSolver):
 
         self.settings_types['options'] = dict()
 
-        self.settings_types['u_inf'] = 'float'
-        self.settings_default['u_inf'] = None
+        self.settings_types['velocity_field_generator'] = 'str'
+        self.settings_default['velocity_field_generator'] = 'SteadyVelocityField'
 
-        self.settings_types['u_inf_direction'] = 'list(float)'
-        self.settings_default['u_inf_direction'] = np.array([1.0, 0, 0])
+        self.settings_types['velocity_field_input'] = 'dict'
+        self.settings_default['velocity_field_input'] = dict()
+
+        self.settings_types['dt'] = 'float'
+        self.settings_default['dt'] = 0.1
 
         self.settings = None
         self.data = None
@@ -56,7 +60,17 @@ class PlotFlowField(BaseSolver):
         if not os.path.isdir(self.dir):
             os.makedirs(self.dir)
 
+        # init velocity generator
+        velocity_generator_type = gen_interface.generator_from_string(
+            self.settings['velocity_field_generator'])
+        self.velocity_generator = velocity_generator_type()
+        self.velocity_generator.initialise(self.settings['velocity_field_input'])
+
     def run(self, online=False):
+
+        # Notice that SHARPy utilities deal with several two-dimensional surfaces
+        # To be able to build 3D volumes, I will make use of the surface index as
+        # the third index in space
 
         # Generate the grid
         if self.settings['grid_generation_method'] == 'box':
@@ -102,11 +116,29 @@ class PlotFlowField(BaseSolver):
                                                            grid[ix, iy, iz, :])
 
         # Add the external velocities
-        # TODO: broad this to any kind of flow velocity generation
+        zeta = []
+        u_ext = []
+        for iz in range(grid.shape[2]):
+            zeta.append(np.zeros((3,grid.shape[0],grid.shape[1]), dtype=float))
+            u_ext.append(np.zeros((3,grid.shape[0],grid.shape[1]), dtype=float))
+            for ix in range(grid.shape[0]):
+                for iy in range(grid.shape[1]):
+                    zeta[iz][:,ix,iy] = grid[ix, iy, iz, :]
+                    u_ext[iz][:,ix,iy] = 0.0
+
+        self.velocity_generator.generate({'zeta': zeta,
+                                      'override': True,
+                                      't': self.data.ts*self.settings['dt'].value,
+                                      'ts': self.data.ts,
+                                      'dt': self.settings['dt'].value,
+                                      'for_pos': self.data.structure.timestep_info[-1].for_pos},
+                                      u_ext)
+
+        # Add both velocities
         for ix in range(grid.shape[0]):
             for iy in range(grid.shape[1]):
                 for iz in range(grid.shape[2]):
-                    u[ix, iy, iz, :] += self.settings['u_inf']*self.settings['u_inf_direction']
+                    u[ix, iy, iz, :] += u_ext[iz][:,ix,iy]
 
         # Write the data
         vtk_info.point_data.add_array(u.reshape((-1, u.shape[-1]), order='F')) # Reshape the array except from the last dimension
