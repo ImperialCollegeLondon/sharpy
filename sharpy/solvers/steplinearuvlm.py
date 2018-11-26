@@ -3,13 +3,18 @@ Temporary solver to integrate the linear UVLM aerodynamic solver
 N Goizueta
 Nov 18
 """
-
+import os
+import sys
 from sharpy.utils.solver_interface import BaseSolver, solver
+import numpy as np
+import sharpy.utils.settings as settings
 
 os.environ["DIRuvlm3d"] = "/home/ng213/linuvlm/uvlm3d/src/"
 sys.path.append(os.environ["DIRuvlm3d"])
 import save, linuvlm, lin_aeroelastic, libss, librom, lin_utils
 
+
+@solver
 class StepLinearUVLM(BaseSolver):
     """
     Temporary solver to integrate the linear UVLM aerodynamics in SHARPy
@@ -28,8 +33,8 @@ class StepLinearUVLM(BaseSolver):
         self.settings_types['dt'] = 'float'
         self.settings_default['dt'] = 0.1
 
-        self.settings_types['intgr_order'] = 'int'
-        self.settings_default['intgr_order'] = 2
+        self.settings_types['integr_order'] = 'int'
+        self.settings_default['integr_order'] = 2
 
         self.settings_types['density'] = 'float'
         self.settings_default['density'] = 1.225
@@ -67,15 +72,19 @@ class StepLinearUVLM(BaseSolver):
         except AttributeError:
             self.data.aero.linear = dict()
 
+            # TODO: verify of a better way to implement rho
+            self.data.aero.timestep_info[-1].rho = self.settings['density'].value
+
             # Generate instance of linuvlm.Dynamic()
             lin_uvlm_system = linuvlm.Dynamic(self.data.aero.timestep_info[-1],
-                dt=self.settings['dt'],
-                integr_order=self.settings['integr_order'],
+                dt=self.settings['dt'].value,
+                integr_order=self.settings['integr_order'].value,
                 ScalingDict=self.settings['ScalingDict'])
 
             # Assemble the state space system
             lin_uvlm_system.assemble_ss()
-            self.data.aero.linear['SS'] = self.lin_uvlm_system.SS
+            self.data.aero.linear['System'] = lin_uvlm_system
+            self.data.aero.linear['SS'] = lin_uvlm_system.SS
 
 
 
@@ -99,13 +108,36 @@ class StepLinearUVLM(BaseSolver):
 
         # Solve system given inputs. inputs to the linear UVLM is a column of zeta, zeta_dot and u_ext
         # Reshape zeta, zeta_dot and u_ext into a column vector
-        # usta = [zeta, zeta_dot, u_ext]
+        # zeta, zeta_dot and u_ext are originally (3, M + 1, N + 1) matrices and are reshaped into a
+        # (K,1) column vector following C ordering i.e. the last index changes the fastest
+        zeta = np.concatenate([aero_tstep.zeta[ss].reshape(-1, order='C')
+                               for ss in range(aero_tstep.n_surf)])
+        zeta_dot = np.concatenate([aero_tstep.zeta_dot[ss].reshape(-1, order='C')
+                                   for ss in range(aero_tstep.n_surf)])
+        u_ext = np.concatenate([aero_tstep.u_ext[ss].reshape(-1, order='C')
+                               for ss in range(aero_tstep.n_surf)])
+
+        # Column vector that will be the input to the linearised UVLM system
+        u_sta = np.concatenate((zeta, zeta_dot, u_ext))
 
         # Solve system
-        #y_sta = self.data.aero.linear['SS'].solve(u_sta)
+        x_sta, y_sta = self.data.aero.linear['System'].solve_steady(u_sta, method='direct')
 
+        forces = []
 
+        # Reshape output into forces[i_surface] where forces[i_surface] is a (6,M+1,N+1) matrix
+        worked_points = 0
+        for i_surf in range(aero_tstep.n_surf):
+            # Tuple with dimensions of the aerogrid zeta, which is the same for forces
+            dimensions = aero_tstep.zeta[i_surf].shape
+            points_in_surface = aero_tstep.zeta[i_surf].size
+            forces.append(y_sta[worked_points:worked_points+points_in_surface].reshape(dimensions, order='C'))
+            forces[i_surf] = np.concatenate((forces[i_surf], np.zeros(dimensions)))
+            worked_points += points_in_surface
 
+        aero_tstep.forces = forces
+
+        return self.data
 
     def add_step(self):
         self.data.aero.add_timestep()

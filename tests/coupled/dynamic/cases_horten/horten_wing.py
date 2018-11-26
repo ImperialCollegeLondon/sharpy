@@ -30,9 +30,10 @@ class HortenWing:
                  rho=1.225,
                  alpha_deg=0.,
                  beta_deg=0.,
-                 cs_deflection=0.,
-                 thrust=0,
+                 cs_deflection_deg=0.,
+                 thrust=5.,
                  physical_time=10,
+                 case_name_format = 0,
                  case_route='./',
                  case_name='horten'):
 
@@ -47,7 +48,11 @@ class HortenWing:
         self.n_surfaces = 4
 
         # Case admin
-        self.case_name = case_name + '_u_inf%.4d_a%.4d' %(int(u_inf),int(alpha_deg*100))
+        if case_name_format == 0:
+            self.case_name = case_name + '_u_inf%.4d_a%.4d' % (int(u_inf), int(alpha_deg * 100))
+        else:
+            self.case_name = case_name + '_u_inf%.4d' % int(u_inf)
+
         self.case_route = case_route + self.case_name + '/'
         self.config = None
 
@@ -57,7 +62,7 @@ class HortenWing:
         self.rho = rho
         self.alpha = alpha_deg * np.pi / 180
         self.beta = beta_deg * np.pi / 180
-        self.cs_deflection = cs_deflection
+        self.cs_deflection = cs_deflection_deg * np.pi / 180
         self.thrust = thrust
 
         # Compute number of nodes
@@ -269,7 +274,7 @@ class HortenWing:
 
         # Lumped masses nodal position
         lumped_mass_nodes[0] = 2
-        lumped_mass_nodes[1] = n_node_fuselage + n_node_wing
+        lumped_mass_nodes[1] = n_node_fuselage + n_node_wing + 1
         lumped_mass_nodes[2] = 0
 
         # Lumped mass value from Richards 2013
@@ -730,6 +735,10 @@ class HortenWing:
         chord[:, 1] = chord[:, 2]
         chord[:, 2] = mid_chord
 
+        mid_ea = np.array(elastic_axis[:, 1], copy=True)
+        elastic_axis[:, 1] = elastic_axis[:, 2]
+        elastic_axis[:, 2] = mid_ea
+
         # Update aerodynamic attributes of class
         self.chord = chord
         self.twist = twist
@@ -946,6 +955,8 @@ class HortenWing:
                                                    'dt': dt,
                                                    'initial_velocity': u_inf * 0}
 
+        settings['StepLinearUVLM'] = {'dt': self.dt}
+
         settings['StepUvlm'] = {'print_info': 'off',
                                 'horseshoe': self.horseshoe,
                                 'num_cores': 4,
@@ -990,7 +1001,7 @@ class HortenWing:
                                       'final_relaxation_factor': 0.0,
                                       'n_time_steps': n_tstep,
                                       'dt': dt,
-                                      'include_unsteady_force_contribution': 'on',
+                                      'include_unsteady_force_contribution': 'off',
                                       'postprocessors': ['BeamLoads', 'StallCheck', 'BeamPlot', 'AerogridPlot'],
                                       'postprocessors_settings': {'BeamLoads': {'folder': route + '/output/',
                                                                                 'csv_output': 'off'},
