@@ -12,7 +12,7 @@ Welcome to Linearised UVLM's documentation!
 
    content/linuvlm
    content/lingebm
-
+   content/lin_aeroelastic
 
 
 Indices and tables

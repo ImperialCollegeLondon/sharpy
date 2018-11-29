@@ -268,12 +268,12 @@ class FlexDynamic():
     def converge_modal(self, wv=None, tol=None, Yref=None, Print=False):
         """ 
         Determine number of modes required to achieve a certain convergence
-        of the modal solution in a prescribed frequency range wv. The H-infinity
-        norm of the error w.r.t. Yref is used for assessing convergence.
+        of the modal solution in a prescribed frequency range ``wv``. The H-infinity
+        norm of the error w.r.t. ``Yref`` is used for assessing convergence.
 
-        Warning: if a reference freq. response, Yref, is not provided, the full-
-        states continuous-time frequency response is used as reference. This 
-        requires the full-states matrices Mstr, Cstr, Kstr to be available.
+        .. Warning:: if a reference freq. response, Yref, is not provided, the full-
+            state continuous-time frequency response is used as reference. This
+            requires the full-states matrices ``Mstr``, ``Cstr``, ``Kstr`` to be available.
         """
 
         if wv is None:
@@ -331,17 +331,17 @@ class FlexDynamic():
         print('artificial viscosity: %.4e' % self.newmark_damp)
 
     def update_modal(self):
-        """
+        r"""
         Re-projects the full-states continuous-time structural dynamics equations
 
         .. math::
-            \\mathbf{M}\\,\\mathbf{\\ddot{x}} +\\mathbf{C}\\,\\mathbf{\\dot{x}} + \\mathbf{K\\,x} = \\mathbf{F}
+            \mathbf{M}\,\mathbf{\ddot{x}} +\mathbf{C}\,\mathbf{\dot{x}} + \mathbf{K\,x} = \mathbf{F}
 
         onto modal space. The modes used to project are controlled through the
         ``self.proj_modes={damped or undamped}`` attribute.
 
-        Warning: this method overrides SHARPy ``timestep_info`` results and requires
-        ``Mstr``, ``Cstr``, ``Kstr`` to be available.
+        .. Warning:: This method overrides SHARPy ``timestep_info`` results and requires
+            ``Mstr``, ``Cstr``, ``Kstr`` to be available.
 
         """
         pass
@@ -367,27 +367,24 @@ class FlexDynamic():
 
 
 def newmark_ss(Minv, C, K, dt, num_damp=1e-4):
-    """ 
+    r"""
     Produces a discrete-time state-space model of the structural equations
 
     .. math::
 
-        \\mathbf{\\ddot{x}} &= \\mathbf{M}^{-1}( -\\mathbf{C}\\,\\mathbf{\\dot{x}}-\\mathbf{K}\\,\\mathbf{x}+\\mathbf{F} ) \\
+        \mathbf{\ddot{x}} &= \mathbf{M}^{-1}( -\mathbf{C}\,\mathbf{\dot{x}}-\mathbf{K}\,\mathbf{x}+\mathbf{F} ) \\
+        \mathbf{y} &= \mathbf{x}
 
-        \ \\mathbf{y} &= \\mathbf{x}
 
-
-    based on the Newmark-:math:`\\beta` integration scheme. The output state-space model
+    based on the Newmark-:math:`\beta` integration scheme. The output state-space model
     has form:
 
     .. math:
 
-        \\mathbf{X}_{n+1} &= \\mathbf{A}\\,\\mathbf{X}_n + \\mathbf{B}\\,\\mathbf{F}_n \\
+        \mathbf{X}_{n+1} &= \mathbf{A}\,\mathbf{X}_n + \mathbf{B}\,\mathbf{F}_n \\
+        \mathbf{Y} &= \mathbf{C}\,\mathbf{X} + \mathbf{D}\,\mathbf{F}
 
-        \ \\mathbf{Y} &= \\mathbf{C}\\,\\mathbf{X} + \\mathbf{D}\\,\\mathbf{F}
-
-
-        with :math:`\\mathbf{X} = \\[\\mathbf{x}, \mathbf{\\dot{x}}]^T`
+        with :math:`\mathbf{X} = \[\mathbf{x}, \mathbf{\dot{x}}]^T`
 
     Note that as the state-space representation only requires the input force
     F to be evaluated at time-step n,the C and D matrices are, in general, 

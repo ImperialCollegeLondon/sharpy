@@ -9,12 +9,17 @@ import scipy.signal as scsig
 # # from IPython import embed
 import time
 import warnings
-
+import os
+import sys
+os.environ["DIRuvlm3d"] = "/home/ng213/linuvlm/uvlm3d/src/"
+sys.path.append(os.environ["DIRuvlm3d"])
 import interp
 import multisurfaces
 import assembly as ass  # :D
 import libss
 
+
+sys.path.append("/home/ng213/code/sharpy/")
 import sharpy.utils.algebra as algebra
 
 
@@ -367,9 +372,11 @@ class Dynamic(Static):
 
         if self.integr_order == 1:
             Nx = 2 * self.K + self.K_star
-        if self.integr_order == 2:
+        elif self.integr_order == 2:
             Nx = 3 * self.K + self.K_star
             b0, bm1, bp1 = -2., 0.5, 1.5
+        else:
+            raise NameError('Only integration orders 1 and 2 are supported')
         Ny = 3 * self.Kzeta
         Nu = 3 * Ny
         self.Nx = Nx
@@ -427,33 +434,52 @@ class Dynamic(Static):
         pass
 
     def assemble_ss(self):
-        """
+        r"""
         Produces state-space model of the form
 
             .. math::
 
-                \\mathbf{x}_{n+1} &= \\mathbf{A}\\,\\mathbf{x}_n + \\mathbf{B}_p \\mathbf{u}_{n+1} \\
-
-                \ \\mathbf{y} &= \\mathbf{C}\\,\\mathbf{x} + \\mathbf{D}_p \\mathbf{u}
+                \mathbf{x}_{n+1} &= \mathbf{A}\,\mathbf{x}_n + \mathbf{B} \mathbf{u}_{n+1} \\
+                \mathbf{y} &= \mathbf{C}\,\mathbf{x} + \mathbf{D} \mathbf{u}
 
 
         where the state, inputs and outputs are:
 
-            .. math:: \\mathbf{x}_n = \\{ \\delta \\Gamma_n, \\delta \Gamma_{w_n}, dt\\delta\\Gamma'_n, \\delta\\Gamma_{n-1} \\}
+            .. math:: \mathbf{x}_n = \{ \delta \mathbf{\Gamma}_n,\, \delta \mathbf{\Gamma_{w_n}},\,
+                \Delta t\,\delta\mathbf{\Gamma}'_n,\, \delta\mathbf{\Gamma}_{n-1} \}
 
-            .. math:: \\mathbf{u}_n = \\{ \\delta\\zeta_n, \\delta\\zeta'_n, \\delta u_{ext_n} \\}
+            .. math:: \mathbf{u}_n = \{ \delta\mathbf{\zeta}_n,\, \delta\mathbf{\zeta}'_n,\,
+                \delta\mathbf{u}_{ext,n} \}
 
-            .. math:: \\mathbf{y} = \\{\\mathsf{nodal\\,forces} \\}
+            .. math:: \mathbf{y} = \{\delta\mathbf{f}\}
 
-        By default (``self.remove_predictor``), the predictor term ``u_{n+1}`` is eliminated through
-        the change of variables
+        with :math:`\mathbf{\Gamma}` being the vector of vortex circulations,
+        :math:`\mathbf{\zeta}` the vector of vortex lattice coordinates and
+        :math:`\mathbf{f}` the vector of aerodynamic forces and moments. Note that :math:`(\bullet)'` denotes
+        a derivative with respect to time.
+
+        Note that the input is atyically defined at time ``n+1``, therefore by default
+        ``self.remove_predictor = True`` and the predictor term ``u_{n+1}`` is eliminated through
+        the change of state[1]:
 
             .. math::
-                \\mathbf{x}_n = \\mathbf{h}_n + \\mathbf{B}_p\\,\\mathbf{u}_n
+                \mathbf{h}_n &= \mathbf{x}_n - \mathbf{B}\,\mathbf{u}_n \\
 
-        which only modifies the :math:`\\mathbf{B}_p` and :math:`\\mathbf{D}_p` matrices.
+        such that:
 
-        Warning: all matrices are allocated as full!
+            .. math::
+                \mathbf{h}_{n+1} &= \mathbf{A}\,\mathbf{h}_n + \mathbf{A\,B}\,\mathbf{u}_n \\
+                \mathbf{y}_n &= \mathbf{C\,h}_n + (\mathbf{C\,B}+\mathbf{D})\,\mathbf{u}_n
+
+
+        which only modifies the equivalent :math:`\mathbf{B}` and :math:`\mathbf{D}` matrices.
+
+        Warnings:
+            All matrices are allocated as full!
+
+        References:
+            [1] Franklin, GF and Powell, JD. Digital Control of Dynamic Systems, Addison-Wesley Publishing Company, 1980
+
         """
 
         print('State-space realisation of UVLM equations started...')
