@@ -137,7 +137,8 @@ todo_include_todos = False
 # Exclude matplotlib - avoids conflicts when running sphinx
 # http://www.sphinx-doc.org/en/master/usage/extensions/autodoc.html#confval-autodoc_mock_imports
 autodoc_mock_imports = ["matplotlib", "numpy", "colorama", "h5py", "scipy", "ctypes", "tvtk",
-                        "sharpy.lib", "sharpy.utils.ctypes_utils"]
+                        "sharpy.lib", "sharpy.utils.ctypes_utils",
+                        "interp", "multisurfaces", "assembly", "libss",]
 
 # # Exclude selected modules
 # from unittest.mock import MagicMock

@@ -18,14 +18,15 @@ Structural Solvers
 Aerodynamic Solvers
 +++++++++++++++++++
 
+.. toctree::
+    solvers/steplinearUVLM
+
 
 Aeroelastic Solvers
 +++++++++++++++++++
 .. autoclass:: sharpy.solvers.dynamiccoupled.DynamicCoupled
     :members:
 
-.. autoclass:: sharpy.solvers.dynamicprescribedcoupled.DynamicPrescribedCoupled
-    :members:
 
 Modal Solvers
 +++++++++++++
