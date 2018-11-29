@@ -44,6 +44,7 @@ class FlyingWing():
                 beta=0,		 
                 sweep=0,
                 n_surfaces=2,
+                physical_time=2,
                 route='.',      # saving
                 case_name='flying_wing'):
 
@@ -83,6 +84,14 @@ class FlyingWing():
         self.tip_airfoil_P = 0
         self.tip_airfoil_M = 0
 
+        # Numerics for dynamic simulations
+        self.dt = 1 / self.M / self.u_inf
+        self.n_tstep = int(np.round(physical_time/self.dt))
+        self.horseshoe = False
+        self.fsi_tolerance = 1e-10
+        self.relaxation_factor = 0.3
+        self.gust_intensity = 0.01
+        self.tolerance = 1e-12
 
     def update_mass_stiff(self):
         '''This method can be substituted to produce different wing configs'''
@@ -294,7 +303,7 @@ class FlyingWing():
         
         config=configobj.ConfigObj()
         config.filename=self.route+'/'+self.case_name+'.solver.txt'
-
+        settings = dict()
 
         config['SHARPy']={
                 'flow':['BeamLoader', 'AerogridLoader', 
@@ -357,8 +366,93 @@ class FlyingWing():
                                                               'delta_curved': 1e-5,
                                                               'min_delta': 1e-5,
                                                               'gravity_on': 'on',
-                                                              'gravity': 9.754,
+                                                              'gravity': 9.81,
                                                               'orientation': self.quat},}
+
+
+        config['StepLinearUVLM'] = {'dt': self.dt,
+                                  'solution_method': 'direct',
+                                  'velocity_field_generator': 'SteadyVelocityField',
+                                  'velocity_field_input': {'u_inf': self.u_inf,
+                                                           'u_inf_direction': [1., 0, 0]}}
+
+
+        settings['NonLinearDynamicPrescribedStep'] = {'print_info': 'off',
+                                                   'initial_velocity_direction': [-1., 0., 0.],
+                                                   'max_iterations': 950,
+                                                   'delta_curved': 1e-6,
+                                                   'min_delta': self.tolerance,
+                                                   'newmark_damp': 5e-3,
+                                                   'gravity_on': True,
+                                                   'gravity': 9.81,
+                                                   'num_steps': self.n_tstep,
+                                                   'dt': self.dt}
+
+        settings['StepUvlm'] = {'print_info': 'off',
+                                'horseshoe': self.horseshoe,
+                                'num_cores': 4,
+                                'n_rollup': 100,
+                                'convection_scheme': 2,
+                                'rollup_dt': self.dt,
+                                'rollup_aic_refresh': 1,
+                                'rollup_tolerance': 1e-4,
+                                # 'velocity_field_generator': 'TurbSimVelocityField',
+                                # 'velocity_field_input': {'turbulent_field': '/2TB/turbsim_fields/TurbSim_wide_long_A_low.h5',
+                                #                          'offset': [30., 0., -10],
+                                #                          'u_inf': 0.},
+                                'velocity_field_generator': 'GustVelocityField',
+                                'velocity_field_input': {'u_inf': self.u_inf,
+                                                         'u_inf_direction': [1., 0, 0],
+                                                         'gust_shape': '1-cos',
+                                                         'gust_length': 1.,
+                                                         'gust_intensity': self.gust_intensity * self.u_inf,
+                                                         'offset': 30.0,
+                                                         'span': self.main_chord * self.aspect_ratio},
+                                # 'velocity_field_generator': 'SteadyVelocityField',
+                                # 'velocity_field_input': {'u_inf': self.u_inf*1,
+                                #                             'u_inf_direction': [1., 0., 0.]},
+                                'rho': self.rho,
+                                'n_time_steps': self.n_tstep,
+                                'dt': self.dt,
+                                'gamma_dot_filtering': 3}
+
+        config['DynamicCoupled'] = {'print_info': 'on',
+                                  'structural_substeps': 1,
+                                  'dynamic_relaxation': 'on',
+                                  'clean_up_previous_solution': 'on',
+                                  'structural_solver': 'NonLinearDynamicPrescribedStep',
+                                  'structural_solver_settings': settings['NonLinearDynamicPrescribedStep'],
+                                  'aero_solver': 'StepUvlm',
+                                  'aero_solver_settings': settings['StepUvlm'],
+                                  'fsi_substeps': 200,
+                                  'fsi_tolerance': self.fsi_tolerance,
+                                  'relaxation_factor': self.relaxation_factor,
+                                  'minimum_steps': 1,
+                                  'relaxation_steps': 150,
+                                  'final_relaxation_factor': 0.0,
+                                  'n_time_steps': self.n_tstep,
+                                  'dt': self.dt,
+                                  'include_unsteady_force_contribution': 'off',
+                                  'postprocessors': ['BeamLoads', 'StallCheck', 'BeamPlot', 'AerogridPlot'],
+                                  'postprocessors_settings': {'BeamLoads': {'folder': self.route + '/output/',
+                                                                            'csv_output': 'off'},
+                                                              'StallCheck': {'output_degrees': True,
+                                                                             'stall_angles': {
+                                                                                 '0': [-12 * np.pi / 180,
+                                                                                       6 * np.pi / 180],
+                                                                                 '1': [-12 * np.pi / 180,
+                                                                                       6 * np.pi / 180],
+                                                                                 '2': [-12 * np.pi / 180,
+                                                                                       6 * np.pi / 180]}},
+                                                              'BeamPlot': {'folder': self.route + '/output/',
+                                                                           'include_rbm': 'on',
+                                                                           'include_applied_forces': 'on'},
+                                                              'AerogridPlot': {
+                                                                  'u_inf': self.u_inf,
+                                                                  'folder': self.route + '/output/',
+                                                                  'include_rbm': 'on',
+                                                                  'include_applied_forces': 'on',
+                                                                  'minus_m_star': 0}}}
 
         config['AerogridPlot']={'folder': self.route+'/output/',
                                 'include_rbm': 'off',
@@ -566,7 +660,8 @@ class Goland(FlyingWing):
                 aspect_ratio=(2.*6.096)/1.8288,
                 beta=0.,         
                 sweep=0.,
-                n_surfaces=2,
+                n_surfaces=1,
+                physical_time=2,
                 route='.',       
                 case_name='goland'):
 
