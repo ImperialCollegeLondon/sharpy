@@ -25,7 +25,7 @@ class Static():
 
 
 	def __init__(self,tsdata):
-		
+
 		print('Initialising Static linear UVLM solver class...')
 		t0=time.time()
 
@@ -39,7 +39,7 @@ class Static():
 		self.K=sum(MS.KK)
 		self.K_star=sum(MS.KK_star)
 		self.Kzeta=sum(MS.KKzeta)
-		self.Kzeta_star=sum(MS.KKzeta_star)		
+		self.Kzeta_star=sum(MS.KKzeta_star)
 		self.MS=MS
 
 		# define input perturbation
@@ -73,6 +73,9 @@ class Static():
 										 ass.nc_dqcdzeta(MS.Surfs,MS.Surfs_star)
 		List_AICs,List_AICs_star=ass.AICs(MS.Surfs,MS.Surfs_star,
 											  target='collocation',Project=True)
+        # omega x zeta terms
+		List_nc_domegazetadzeta_col, List_nc_domegazetadzeta_vert = \
+		                          ass.nc_domegazetadzeta(MS.Surfs,MS.Surfs_star)
 		List_Wnv=[]
 		for ss in range(MS.n_surf):
 			List_Wnv.append(
@@ -86,6 +89,11 @@ class Static():
 		del List_nc_dqcdzeta_coll
 		self.Ducdzeta+=scalg.block_diag(*List_uc_dncdzeta)
 		del List_uc_dncdzeta
+        # omega x zeta terms
+		self.Ducdzeta+=np.block(List_nc_domegazetadzeta_vert)
+		del List_nc_domegazetadzeta_vert
+		self.Ducdzeta+=scalg.block_diag(*List_nc_domegazetadzeta_col)
+		del List_nc_domegazetadzeta_col
 		# assemble input velocity derivatives
 		self.Ducdu_ext=scalg.block_diag(*List_Wnv)
 		del List_Wnv
@@ -93,7 +101,7 @@ class Static():
 		### assemble global matrices
 		# Gamma derivatives (global AICs) # <--- keep for dynamic
 		# AIC=np.block(List_AICs)
-		#AIC_star=np.block(List_AICs_star) 
+		#AIC_star=np.block(List_AICs_star)
 
 		### Condense Gammaw terms
 		for ss_out in range(MS.n_surf):
@@ -115,7 +123,7 @@ class Static():
 		# ---------------------------------------------------------- output eq.
 
 		### Zeta derivatives
-		# ... at constant relative velocity		
+		# ... at constant relative velocity
 		self.Dfqsdzeta=scalg.block_diag(
 								   *ass.dfqsdzeta_vrel0(MS.Surfs,MS.Surfs_star))
 		# ... induced velocity contrib.
@@ -124,8 +132,9 @@ class Static():
 			List_vert[ss][ss]+=List_coll[ss]
 		self.Dfqsdzeta+=np.block(List_vert)
 		del List_vert, List_coll
-
-
+		# ... at constant rotation speed
+		self.Dfqsdzeta+=scalg.block_diag(
+								   *ass.dfqsdzeta_omega(MS.Surfs,MS.Surfs_star))
 		### Input velocities
 		self.Dfqsdu_ext=scalg.block_diag(
 									   *ass.dfqsduinput(MS.Surfs,MS.Surfs_star))
@@ -154,7 +163,7 @@ class Static():
 
 	def solve(self):
 		''' Solve for bound Gamma the equation
-				AIC Gamma^n = u^n 
+				AIC Gamma^n = u^n
 		'''
 
 		MS=self.MS
@@ -192,7 +201,7 @@ class Static():
 		MS=self.MS
 		if not hasattr(self,'gamma') or not hasattr(self,'fqs'):
 			raise NameError('State and output not found')
-		
+
 		self.Gamma=[]
 		self.Fqs=[]
 
@@ -204,7 +213,7 @@ class Static():
 
 			iivec=range(Ktot,Ktot+K)
 			self.Gamma.append( self.gamma[iivec].reshape((M,N)) )
-			
+
 			iivec=range(Kzeta_tot,Kzeta_tot+3*Kzeta)
 			self.Fqs.append( self.fqs[iivec].reshape((3,M+1,N+1)) )
 
@@ -217,7 +226,7 @@ class Static():
 		Calculates total force (Ftot) and moment (Mtot) (about pole zeta_pole). 
 		'''
 
-		if not hasattr(self,'Gamma') or not hasattr(self,'Fqs'):		
+		if not hasattr(self,'Gamma') or not hasattr(self,'Fqs'):
 			self.reshape()
 
 		self.Ftot=np.zeros((3,))
@@ -371,7 +380,7 @@ class Dynamic(Static):
 		# ### rename static methods
 		# self.assemble_static=self.assemble
 		# self.assemble_static_profiling=self.assemble_profiling
-		# self.solve_static=self.solve 
+		# self.solve_static=self.solve
 		# self.total_forces_static=self.total_forces
 
 		# print('Initialising Dynamic solver class...')
@@ -405,14 +414,14 @@ class Dynamic(Static):
 		'''
 
 		print('State-space realisation of UVLM equations started...')
-		t0=time.time()	
-		MS=self.MS	
+		t0=time.time()
+		MS=self.MS
 		K,K_star=self.K,self.K_star
 		Kzeta=self.Kzeta
 
 
 		# ------------------------------------------------------ determine size
-		
+
 		Nx=self.Nx
 		Nu=self.Nu
 		Ny=self.Ny
@@ -421,7 +430,7 @@ class Dynamic(Static):
 
 
 		# ----------------------------------------------------------- state eq.
-	
+
 		### state terms (A matrix)
 
 		# Aero influence coeffs
@@ -500,7 +509,7 @@ class Dynamic(Static):
 		# ---------------------------------------------------------- output eq.
 
 		### state terms (C matrix)
-		
+
 		# gamma (at constant relative velocity)
 		List_dfqsdgamma_vrel0,List_dfqsdgamma_star_vrel0=\
 							   		ass.dfqsdgamma_vrel0(MS.Surfs,MS.Surfs_star)
@@ -575,12 +584,12 @@ class Dynamic(Static):
 
 	def solve_steady(self,usta,method='direct'):
 		'''
-		Steady state solution from state-space model. 
+		Steady state solution from state-space model.
 
-		Warning: these methods are less efficient than the solver in Static 
-		class, Static.solve and should be used only for verification purposes. 
-		The "minsize" method, however, guarantees the inversion of a K x K 
-		matrix only, similarly to what is done in Static.solve. 
+		Warning: these methods are less efficient than the solver in Static
+		class, Static.solve and should be used only for verification purposes.
+		The "minsize" method, however, guarantees the inversion of a K x K
+		matrix only, similarly to what is done in Static.solve.
 		'''
 
 		if self.remove_predictor is True and method!='direct':
@@ -622,7 +631,7 @@ class Dynamic(Static):
 				for ss_in in range(MS.n_surf):
 					Kin=MS.KK[ss_in]
 					Kin_star=MS.KK_star[ss_in]
-					
+
 					# link to sub-matrices
 					aic     = AIC[K0out:K0out+Kout, K0in:K0in+Kin]
 					aic_star=PwCw[K0out:K0out+Kout, K0in_star:K0in_star+Kin_star]
@@ -634,10 +643,10 @@ class Dynamic(Static):
 						aic_star_fold[:,jj]+=np.sum(aic_star[:,jj::N_star],axis=1)
 					aic[:,-N_star:]-=aic_star_fold
 
-					K0in+=Kin 
+					K0in+=Kin
 					K0in_star+=Kin_star
-				K0out+=Kout 
-				K0out_star+=Kout_star	
+				K0out+=Kout
+				K0out_star+=Kout_star
 
 			### solve
 			# gamma
@@ -655,7 +664,7 @@ class Dynamic(Static):
 			if self.integr_order==1:
 				xsta=np.concatenate(( gamma, gamma_star, np.zeros_like(gamma) ))
 			if self.integr_order==2:
-				xsta=np.concatenate(( gamma, gamma_star, np.zeros_like(gamma), 
+				xsta=np.concatenate(( gamma, gamma_star, np.zeros_like(gamma),
 																		gamma ))
 
 			ysta=np.dot(Css,xsta)+np.dot(Dss,usta)
@@ -678,7 +687,7 @@ class Dynamic(Static):
 				xsta=np.dot(Ass,xsta)+np.dot(Bss,usta)
 				ysta=np.dot(Css,xsta)+np.dot(Dss,usta)
 				Ftot=np.array(
-						[ np.sum(ysta[cc*self.Kzeta:(cc+1)*self.Kzeta]) 
+						[ np.sum(ysta[cc*self.Kzeta:(cc+1)*self.Kzeta])
 															for cc in range(3)])
 				er=np.linalg.norm(Ftot-Ftot0)
 				Ftot0=Ftot.copy()
@@ -696,7 +705,7 @@ class Dynamic(Static):
 			Asub_steady=np.eye(Nxsub)-Ass[:Nxsub,:Nxsub]
 			xsub=np.linalg.solve( Asub_steady,np.dot(Bss[:Nxsub,:],usta))
 			if self.integr_order==1:
-				xsta=np.concatenate( (xsub,np.zeros((  self.K,))) ) 
+				xsta=np.concatenate( (xsub,np.zeros((  self.K,))) )
 			if self.integr_order==2:
 				xsta=np.concatenate( (xsub,np.zeros((2*self.K,))) ) 
 			ysta=np.dot(Css,xsta)+np.dot(Dss,usta)	
@@ -726,7 +735,7 @@ if __name__=='__main__':
 
 	import timeit
 	import read
-	import matplotlib.pyplot as plt 
+	import matplotlib.pyplot as plt
 
 	# # # select test case
 	fname='../test/h5input/goland_mod_Nsurf02_M003_N004_a040.aero_state.h5'
@@ -772,7 +781,7 @@ if __name__=='__main__':
 
 	# assert all solutions are matching
 	assert max(np.linalg.norm(xsta-xmin), np.linalg.norm(ysta-ymin)),\
-								  'Direct and min. size solutions not matching!'	
+								  'Direct and min. size solutions not matching!'
 	assert max(np.linalg.norm(xsta-xrec), np.linalg.norm(ysta-yrec)),\
 								  'Direct and recursive solutions not matching!'
 	assert max(np.linalg.norm(xsta-xsub), np.linalg.norm(ysta-ysub)),\
@@ -788,7 +797,7 @@ if __name__=='__main__':
 	print('Error bound circulation: %.3e' %er)
 	assert er<1e-13,'Steady-state gamma not matching!'
 
-	gammaw_ref=np.zeros((Dyn.K_star,))	
+	gammaw_ref=np.zeros((Dyn.K_star,))
 	kk=0
 	for ss in range(Dyn.MS.n_surf):
 		Mstar=Dyn.MS.MM_star[ss]
