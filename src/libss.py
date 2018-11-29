@@ -239,7 +239,7 @@ def couple_wrong(ss01,ss02,K12,K21):
 
 
 
-def freqresp(SS,wv,eng=None,method='standard',dlti=True,use_sparse=True):
+def freqresp(SS,wv,eng=None,method='standard',dlti=True,use_sparse=False):
 	''' In-house frequency response function '''
 
 	# matlab frequency response
@@ -719,6 +719,8 @@ def Hnorm_from_freq_resp(gv,method):
 
 	Note that if kv[-1]<np.pi/dt, the method assumed gv=0 for each frequency
 	kv[-1]<k<np.pi/dt.
+
+	Warning: only use for SISO systems! For MIMO definitions are different
 	'''
 
 	if method is 'H2':
@@ -783,6 +785,84 @@ def SSderivative(ds):
 	Aout,Bout,Cout,Dout=SSconv(A,B0,B1,C,D,Bm1)
 
 	return Aout,Bout,Cout,Dout
+
+
+def SSintegr(ds,method='trap'):
+	'''
+	Builds a state-space model of an integrator. 
+
+	- method: Numerical scheme. Available options are:
+		- 1tay: 1st order Taylor (fwd)
+				I[ii+1,:]=I[ii,:] + ds*F[ii,:] 
+		- trap: I[ii+1,:]=I[ii,:] + 0.5*dx*(F[ii,:]+F[ii+1,:])
+
+		Note: other option can be constructured if information on derivative of
+		F is available  (for e.g.)
+	'''
+
+	A=np.array([[1]])
+	C=np.array([[1.]])
+	D=np.array([[0.]])
+
+
+	if method=='1tay':       
+		Bm1=np.array([0.])
+		B0=np.array([[ds]])
+		B1=np.array([[0.]])
+		Aout,Bout,Cout,Dout=A,B0,C,D
+
+	elif method=='trap':
+		Bm1=np.array([0.])
+		B0=np.array([[.5*ds]])
+		B1=np.array([[.5*ds]])
+		Aout,Bout,Cout,Dout=SSconv(A,B0,B1,C,D,Bm1=None)
+
+	else:
+		raise NameError('Method %s not available!'%method )
+
+	# change state
+
+	return Aout,Bout,Cout,Dout
+
+
+
+def build_SS_poly(Acf,ds,negative=False):
+	'''
+	Builds a discrete-time state-space representation of a polynomial system 
+	whose frequency response has from:
+		Ypoly[oo,ii](k) = -A2[oo,ii] D2(k) - A1[oo,ii] D1(k) - A0[oo,ii]
+	where C1,D2 are discrete-time models of first and second derivatives, ds is
+	the time-step and the coefficient matrices are such that:
+		A{nn}=Acf[oo,ii,nn]	
+	'''
+
+	Nout,Nin,Ncf=Acf.shape
+	assert Ncf==3, 'Acf input last dimension must be equal to 3!'
+
+	Ader,Bder,Cder,Dder=SSderivative(ds)
+	SSder=scsig.dlti(Ader,Bder,Cder,Dder,dt=ds)
+	SSder02=series(SSder,join(np.array([[1]]),SSder))
+
+	SSder_all=copy.deepcopy(SSder02)
+	for ii in range(Nin-1):
+		SSder_all=join(SSder_all,SSder02)
+
+	# Build polynomial forcing terms
+	sign=1.0
+	if negative==True: sign=-1.0
+
+	A0=Acf[:,:,0]
+	A1=Acf[:,:,1]
+	A2=Acf[:,:,2]
+	Kforce=np.zeros((Nout,3*Nin))
+	for ii in range(Nin):
+		Kforce[:,3*ii  ]=sign*(A0[:,ii])
+		Kforce[:,3*ii+1]=sign*(A1[:,ii])
+		Kforce[:,3*ii+2]=sign*(A2[:,ii])
+	SSpoly_neg=addGain(SSder_all,Kforce,where='out')
+
+	return SSpoly_neg
+
 
 
 
@@ -854,9 +934,6 @@ if __name__=='__main__':
 
 	# MIMO butterworth filter
 	Af,Bf,C,Df=butter(4,.4,N=4)
-
-
-
 
 	#embed()
 

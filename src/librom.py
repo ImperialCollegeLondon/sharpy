@@ -568,7 +568,8 @@ def low_rank_smith(A,Q,tol=1e-10,Square=True,tolSVD=1e-12,tolAbs=False,
 
 def modred(SSb,N,method='residualisation'):
 	'''
-	Produces a reduced order model with N states from balanced system SSb.
+	Produces a reduced order model with N states from balanced or modal system 
+	SSb.
 	Both "truncation" and "residualisation" methods are employed.
 
 	Note: 
@@ -577,10 +578,14 @@ def modred(SSb,N,method='residualisation'):
 	'''
 
 	assert method in ['residualisation','realisation','truncation'],\
-						"method must be equal to 'realisation' or 'truncation'!"
+					"method must be equal to 'residualisation' or 'truncation'!"
 	assert SSb.dt is not None, 'SSb is not a DLTI!'
 
-
+	Nb=SSb.A.shape[0]
+	if Nb==N:
+		SSrom=scsig.dlti(SSb.A,SSb.B,SSb.C,SSb.D,dt=SSb.dt)
+		return SSrom
+			
 	A11=SSb.A[:N,:N]
 	B11=SSb.B[:N,:]
 	C11=SSb.C[:,:N]
@@ -684,6 +689,173 @@ def tune_rom(SSb,kv,tol,gv,method='realisation',convergence='all'):
 		raise NameError("'convergence' method not implemented")
 
 	return SSrom
+
+
+
+def eigen_dec(A,B,C,dlti=True,N=None,eigs=None,UR=None,URinv=None,
+									   order_by='damp',tol=1e-10,complex=False):
+	'''
+	Eigen decomposition of state-space model (either discrete or continuous time) 
+	defined by the A,B,C matrices. Eigen-states are organised in decreasing 
+	damping order or increased frequency order such that the truncation
+		A[:N,:N], B[:N,:], C[:,:N]
+	will retain the least N damped (or lower frequency) modes.
+	
+	If the eigenvalues of A, eigs, are complex, the state-space is automatically
+	convert into real by separating its real and imaginary part. This procedure
+	retains the minimal number of states as only 2 equations are added for each
+	pair of complex conj eigenvalues. Extra care is however required when 
+	truncating the system, so as to ensure that the chosen value of N does not
+	retain the real part, but not the imaginary part, of a complex pair. 
+
+	For this reason, the function also returns an optional output, Nlist, such
+	that, for each N in Nlist, the truncation
+		A[:N,:N], B[:N,:], C[:,:N]
+	does guarantee that both the real and imaginary part of a complex conj pair
+	is included in the truncated model. Note that if order_by == None, the eigs 
+	and UR must be given in input and must be such that complex pairs are stored
+	consecutivelly. 
+
+
+	Input:
+	A,B,C: matrices of state-space model
+	dlti: specifies whether discrete (True) or continuous-time. This information
+		is only required to order the eigenvalues in decreasing dmaping order
+	N: number of states to retain. If None, all states are retained
+	eigs,Ur: eigenvalues and right eigenvector of A matrix as given by:
+		eigs,Ur=scipy.linalg.eig(A,b=None,left=False,right=True)
+	Urinv: inverse of Ur
+	order_by={'damp','freq'}: order according to increasing damping or 
+		decreasing frequency. If None, the same order as eigs/UR is followed. 
+	tol: absolute tolerance used to identify complex conj pair of eigenvalues
+	complex: if true, the system is left in complex form
+
+
+	Output:
+	(Aproj,Bproj,Cproj): state-space matrices projected over the first N (or N+1 
+		if N removes the imaginary part equations of a complex conj pair of 
+		eigenvalues) related to the least damped modes
+	Nlist: list of acceptable truncation values
+	'''
+
+	if N==None: 
+		N=A.shape[0]
+
+	if order_by is None: 
+		assert ((eigs is not None) and (UR is not None)),\
+			'Specify criterion to order eigenvalues or provide both eigs and UR'
+
+	### compute eigevalues/eigenvectors
+	if eigs is None:
+		eigs,UR=scalg.eig(A, b=None, left=False, right=True)
+	if URinv is None:
+		try:
+			URinv=np.linalg.inv(UR)
+		except LinAlgError:
+			print('The A matrix can not be diagonalised as does not admit '\
+											'linearly independent eigenvectors')
+
+
+	### order eigenvalues/eigenvectors (or verify format)
+	if order_by is None:
+		# verify format
+		nn=0
+		while nn<N:
+			if np.abs(eigs[nn].imag)>tol:
+				if nn<N-1:
+					assert np.abs(eigs[nn].imag+eigs[nn+1].imag)<tol,\
+						'When order_by is None, eigs and UR much be organised such '\
+						'that complex conj pairs are consecutives'
+				else:
+					assert np.abs(eigs[nn].imag+eigs[nn-1].imag)<tol,\
+						'When order_by is None, eigs and UR much be organised such '\
+						'that complex conj pairs are consecutives'				
+				nn+=2
+			else:
+				nn+=1
+	else:
+		if order_by=='damp':
+			if dlti:
+				order=np.argsort(np.abs(eigs))[::-1]
+			else:
+				order=np.argsort(eigs.real)[::-1]
+		elif order_by=='freq':
+			if dlti:
+				order=np.argsort(np.abs(np.angle(eigs)))
+			else:
+				order=np.argsort(np.abs(eigs.imag))	
+		else:
+			raise NameError("order_by must be equal to 'damp' or 'freq'")
+		eigs=eigs[order]
+		UR=UR[:,order]
+		URinv=URinv[order,:]
+
+
+	### compute list of available truncation size, Nlist
+	Nlist=[]
+	nn=0
+	while nn<N:
+		# check if eig are complex conj
+		if nn<N-1 and np.abs(eigs[nn]-eigs[nn+1].conjugate())<tol:
+			nn+=2
+		else:
+			nn+=1
+		Nlist.append(nn)
+	assert Nlist[-1]>=N,\
+			 'Something failed when identifying the admissible truncation sizes'
+	if Nlist[-1]>N:
+		warnings.warn(
+			'Resizing the eigendecomposition from %.3d to %.3d states'\
+																 %(N,Nlist[-1]))
+		N=Nlist[-1]
+
+
+	### build complex form
+	if complex:
+		Aproj=np.diag(eigs[:N])
+		Bproj=np.dot(URinv[:N,:],B)
+		Cproj=np.dot(C,UR[:,:N])
+		return Aproj,Bproj,Cproj,Nlist
+
+
+	### build real values form
+	Aproj=np.zeros((N,N))
+	Bproj=np.zeros((N,B.shape[1]))
+	Cproj=np.zeros((C.shape[0],N))
+	nn=0
+	while nn<N:
+		# redundant check
+		if (nn+1 in Nlist) and np.abs(eigs[nn].imag)<tol:
+			Aproj[nn,nn]=eigs[nn].real
+			Bproj[nn,:]=np.dot(URinv[nn,:].real,B)
+			Cproj[:,nn]=np.dot(C,UR[:,nn].real)			
+			nn+=1
+		else:
+			Aproj[nn  ,nn  ]= eigs[nn].real
+			Aproj[nn  ,nn+1]=-eigs[nn].imag
+			Aproj[nn+1,nn  ]= eigs[nn].imag
+			Aproj[nn+1,nn+1]= eigs[nn].real
+			#
+			Bproj[nn  ,:]=np.dot(URinv[nn,:].real,B)
+			Bproj[nn+1,:]=np.dot(URinv[nn,:].imag,B)
+			#
+			Cproj[:,nn  ]= 2.*np.dot(C,UR[:,nn].real)
+			Cproj[:,nn+1]=-2.*np.dot(C,UR[:,nn].imag)
+			nn+=2
+
+
+	return Aproj,Bproj,Cproj,Nlist
+
+
+
+
+
+
+
+
+
+
+
 
 
 
