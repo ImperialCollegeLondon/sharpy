@@ -6,7 +6,7 @@ S. Maraniello, 20 May 2018
 import numpy as np
 import itertools
 import libuvlm
-from IPython import embed
+# from IPython import embed
 
 dmver=np.array([ 0, 1, 1, 0]) # delta to go from (m,n) panel to (m,n) vertices
 dnver=np.array([ 0, 0, 1, 1])

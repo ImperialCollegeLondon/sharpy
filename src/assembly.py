@@ -22,7 +22,7 @@ import itertools
 import lib_ucdncdzeta
 import lib_dbiot as dbiot
 
-from IPython import embed
+# from IPython import embed
 
 
 import ctypes as ct

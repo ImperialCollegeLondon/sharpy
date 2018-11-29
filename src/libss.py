@@ -1,21 +1,16 @@
 '''
-Discrete Linear Time Invariant systems
+Linear Time Invariant systems
 author: S. Maraniello
 date: 15 Sep 2017 (still basement...)
 
-Library of methods to manipulate DLTI systems
+Library of methods to manipulate state-space models
 '''
 
+import copy
 import numpy as np
 import scipy.sparse as sparse
 import scipy.signal as scsig
-
-from IPython import embed
-
-# debugging
-# try: import control
-# except: pass
-
+# # from IPython import embed
 
 
 def couple(ss01,ss02,K12,K21):
@@ -24,7 +19,7 @@ def couple(ss01,ss02,K12,K21):
 	K12 transforms the output of ss02 into an input of ss01.
 	'''
 
-	assert ss01.dt==ss02.dt, 'Time-steps not matching!'
+	assert np.abs(ss01.dt-ss02.dt)<1e-10*ss01.dt, 'Time-steps not matching!'
 	assert K12.shape == (ss01.inputs,ss02.outputs),\
 			 'Gain K12 shape not matching with systems number of inputs/outputs'
 	assert K21.shape == (ss02.inputs,ss01.outputs),\
@@ -244,9 +239,7 @@ def couple_wrong(ss01,ss02,K12,K21):
 
 
 
-
-
-def freqresp(SS,wv,eng=None,method='standard',dlti=True):
+def freqresp(SS,wv,eng=None,method='standard',dlti=True,use_sparse=False):
 	''' In-house frequency response function '''
 
 	# matlab frequency response
@@ -269,10 +262,19 @@ def freqresp(SS,wv,eng=None,method='standard',dlti=True):
 		Nu=SS.B.shape[1]
 		Nw=len(wv)
 		Yfreq=np.empty((Ny,Nu,Nw,),dtype=np.complex_)
-		Eye=np.eye(Nx)
 
-		for ii in range(Nw):
-			Yfreq[:,:,ii]=np.dot(SS.C,
+		if use_sparse:
+			# csc format used for efficiency
+			Asparse=sparse.csc_matrix(SS.A)
+			Bsparse=sparse.csc_matrix(SS.B)
+			Eye=sparse.eye(Nx,format='csc')
+			for ii in range(Nw):
+				sol_cplx=sparse.linalg.spsolve(zv[ii]*Eye-Asparse,Bsparse)
+				Yfreq[:,:,ii]=np.dot(SS.C,sol_cplx.todense())+SS.D
+		else:
+			Eye=np.eye(Nx)
+			for ii in range(Nw):
+				Yfreq[:,:,ii]=np.dot(SS.C,
 				              		 np.linalg.solve(zv[ii]*Eye-SS.A,SS.B))+SS.D
 
 	return Yfreq
@@ -609,11 +611,11 @@ def sum(SS1,SS2,negative=False):
 	return SStot
 
 
-def scale_SS(SS,input_scal=1.,output_scal=1.):
+def scale_SS(SSin,input_scal=1.,output_scal=1.,state_scal=1.,byref=True):
 	'''
 	Given a state-space system, scales the equations such that the original
 	input and output, u and y, are substituted by uad=u/uref and yad=y/yref.
-	The entries input_scal/output_scal can be:
+	The entries input_scal/output_scal/state_scal can be:
 		- floats: in this case all input/output are scaled by the same value
 		- lists/arrays of length Nin/Nout: in this case each dof will be scaled
 		by a different factor
@@ -622,35 +624,59 @@ def scale_SS(SS,input_scal=1.,output_scal=1.):
 		xnew=A*x+B*u
 		y=C*x+D*u
 	the transformation is such that:
-		xnew=A*x+(B*uref)*uad
-		yad=1/yref( C*x+D*uref*uad )
+		xnew=A*x+(B*uref/xref)*uad
+		yad=1/yref( C*xref*x+D*uref*uad )
+
+	By default, the state-space model is manipulated by reference (byref=True)
 	'''
 
 	# check input:
-	Nin,Nout=SS.inputs,SS.outputs
+	Nin,Nout=SSin.inputs,SSin.outputs
+	Nstates=SSin.A.shape[0]
 
 	if isinstance(input_scal,(list,np.ndarray)):
 		assert len(input_scal)==Nin,\
-			     'Length of input_scal must match number of state-space inputs!'
+			   'Length of input_scal not matching number of state-space inputs!'
 	else:
 		input_scal=Nin*[input_scal]
 
 	if isinstance(output_scal,(list,np.ndarray)):
 		assert len(output_scal)==Nout,\
-			   'Length of output_scal must match number of state-space outputs!'
+			 'Length of output_scal not matching number of state-space outputs!'
 	else:
 		output_scal=Nout*[output_scal]
+
+	if isinstance(state_scal,(list,np.ndarray)):
+		assert len(state_scal)==Nstates,\
+			   'Length of state_scal not matching number of state-space states!'
+	else:
+		state_scal=Nstates*[state_scal]
+
+
+	if byref:
+		SS=SSin
+	else:
+		print('deep-copying state-space model before scaling')
+		SS=copy.deepcopy(SSin)
 
 
 	# update input related matrices
 	for ii in range(Nin):
 		SS.B[:,ii]=SS.B[:,ii]*input_scal[ii]
 		SS.D[:,ii]=SS.D[:,ii]*input_scal[ii]
+	# SS.B*=input_scale
+	# SS.D*=input_scale
 
 	# update output related matrices
 	for ii in range(Nout):
 		SS.C[ii,:]=SS.C[ii,:]/output_scal[ii]
 		SS.D[ii,:]=SS.D[ii,:]/output_scal[ii]
+
+	# update state related matrices
+	for ii in range(Nstates):
+		SS.B[ii,:]=SS.B[ii,:]/state_scal[ii]
+		SS.C[:,ii]=SS.C[:,ii]*state_scal[ii]
+	# SS.B /= state_scal	
 
 	return SS
 
@@ -693,6 +719,8 @@ def Hnorm_from_freq_resp(gv,method):
 
 	Note that if kv[-1]<np.pi/dt, the method assumed gv=0 for each frequency
 	kv[-1]<k<np.pi/dt.
+
+	Warning: only use for SISO systems! For MIMO definitions are different
 	'''
 
 	if method is 'H2':
@@ -757,6 +785,84 @@ def SSderivative(ds):
 	Aout,Bout,Cout,Dout=SSconv(A,B0,B1,C,D,Bm1)
 
 	return Aout,Bout,Cout,Dout
+
+
+def SSintegr(ds,method='trap'):
+	'''
+	Builds a state-space model of an integrator. 
+
+	- method: Numerical scheme. Available options are:
+		- 1tay: 1st order Taylor (fwd)
+				I[ii+1,:]=I[ii,:] + ds*F[ii,:] 
+		- trap: I[ii+1,:]=I[ii,:] + 0.5*dx*(F[ii,:]+F[ii+1,:])
+
+		Note: other option can be constructured if information on derivative of
+		F is available  (for e.g.)
+	'''
+
+	A=np.array([[1]])
+	C=np.array([[1.]])
+	D=np.array([[0.]])
+
+
+	if method=='1tay':       
+		Bm1=np.array([0.])
+		B0=np.array([[ds]])
+		B1=np.array([[0.]])
+		Aout,Bout,Cout,Dout=A,B0,C,D
+
+	elif method=='trap':
+		Bm1=np.array([0.])
+		B0=np.array([[.5*ds]])
+		B1=np.array([[.5*ds]])
+		Aout,Bout,Cout,Dout=SSconv(A,B0,B1,C,D,Bm1=None)
+
+	else:
+		raise NameError('Method %s not available!'%method )
+
+	# change state
+
+	return Aout,Bout,Cout,Dout
+
+
+
+def build_SS_poly(Acf,ds,negative=False):
+	'''
+	Builds a discrete-time state-space representation of a polynomial system 
+	whose frequency response has from:
+		Ypoly[oo,ii](k) = -A2[oo,ii] D2(k) - A1[oo,ii] D1(k) - A0[oo,ii]
+	where C1,D2 are discrete-time models of first and second derivatives, ds is
+	the time-step and the coefficient matrices are such that:
+		A{nn}=Acf[oo,ii,nn]	
+	'''
+
+	Nout,Nin,Ncf=Acf.shape
+	assert Ncf==3, 'Acf input last dimension must be equal to 3!'
+
+	Ader,Bder,Cder,Dder=SSderivative(ds)
+	SSder=scsig.dlti(Ader,Bder,Cder,Dder,dt=ds)
+	SSder02=series(SSder,join(np.array([[1]]),SSder))
+
+	SSder_all=copy.deepcopy(SSder02)
+	for ii in range(Nin-1):
+		SSder_all=join(SSder_all,SSder02)
+
+	# Build polynomial forcing terms
+	sign=1.0
+	if negative==True: sign=-1.0
+
+	A0=Acf[:,:,0]
+	A1=Acf[:,:,1]
+	A2=Acf[:,:,2]
+	Kforce=np.zeros((Nout,3*Nin))
+	for ii in range(Nin):
+		Kforce[:,3*ii  ]=sign*(A0[:,ii])
+		Kforce[:,3*ii+1]=sign*(A1[:,ii])
+		Kforce[:,3*ii+2]=sign*(A2[:,ii])
+	SSpoly_neg=addGain(SSder_all,Kforce,where='out')
+
+	return SSpoly_neg
+
 
 
 
@@ -828,9 +934,6 @@ if __name__=='__main__':
 
 	# MIMO butterworth filter
 	Af,Bf,C,Df=butter(4,.4,N=4)
-
-
-
 
 	#embed()
 

@@ -16,7 +16,7 @@ Methods:
 
 
 import numpy as np 
-from IPython import embed
+# from IPython import embed
 import libalg
 
 import ctypes as ct
