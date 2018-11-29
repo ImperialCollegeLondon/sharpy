@@ -7,7 +7,7 @@ import numpy as np
 import libuvlm
 import gridmapping, surface
 import assembly
-from IPython import embed
+# from IPython import embed
 
 
 class MultiAeroGridSurfaces():
