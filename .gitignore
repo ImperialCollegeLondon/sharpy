@@ -10,7 +10,7 @@ __pycache__
 
 *_fast.py
 *_slow.py
-dev
+# dev
 src/superceeded
 
 docs/build/
