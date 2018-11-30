@@ -19,3 +19,6 @@ def plot_wireframe(x, y, z):
 def spy(M):
     plt.spy(M)
     plt.show()
+
+def plot_strip(strip):
+    plot_wireframe(strip[0][0,:,:], strip[0][1,:,:], strip[0][2,:,:])
