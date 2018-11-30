@@ -17,18 +17,16 @@ Includes:
 	points
 '''
 
+import ctypes as ct
 import numpy as np
 import itertools
-import lib_ucdncdzeta
-import lib_dbiot as dbiot
 
-# from IPython import embed
+from sharpy.utils.sharpydir import SharpyDir
+import sharpy.utils.ctypes_utils as ct_utils
+import sharpy.linear.src.lib_dbiot as dbiot 
+import sharpy.linear.src.lib_ucdncdzeta as lib_ucdncdzeta
 
-
-import ctypes as ct
-import os
-lib_path=os.environ["DIRuvlm3d"]+'/../cpp/cpplibs.so'
-libc = ct.CDLL(lib_path)
+libc=ct_utils.import_ctypes_lib(SharpyDir + '/lib/', 'libuvlm')
 
 
 # local indiced panel/vertices as per self.maps

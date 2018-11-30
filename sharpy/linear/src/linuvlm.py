@@ -9,17 +9,12 @@ import scipy.signal as scsig
 # # from IPython import embed
 import time
 import warnings
-import os
-import sys
-os.environ["DIRuvlm3d"] = "/home/ng213/linuvlm/uvlm3d/src/"
-sys.path.append(os.environ["DIRuvlm3d"])
-import interp
-import multisurfaces
-import assembly as ass  # :D
-import libss
 
+import sharpy.linear.src.interp as interp
+import sharpy.linear.src.multisurfaces as multisurfaces
+import sharpy.linear.src.assembly as ass  # :D
+import sharpy.linear.src.libss as libss 
 
-sys.path.append("/home/ng213/code/sharpy/")
 import sharpy.utils.algebra as algebra
 
 

@@ -3,19 +3,19 @@ Geometrical methods for bound surface
 S. Maraniello, 20 May 2018
 '''
 
+import ctypes as ct
 import numpy as np
 import itertools
-import libuvlm
-# from IPython import embed
 
+# from IPython import embed
 dmver=np.array([ 0, 1, 1, 0]) # delta to go from (m,n) panel to (m,n) vertices
 dnver=np.array([ 0, 0, 1, 1])
 
+from sharpy.utils.sharpydir import SharpyDir
+import sharpy.utils.ctypes_utils as ct_utils
+import sharpy.linear.src.libuvlm as libuvlm
 
-import ctypes as ct
-import os
-lib_path=os.environ["DIRuvlm3d"]+'/../cpp/cpplibs.so'
-libc = ct.CDLL(lib_path)
+libc=ct_utils.import_ctypes_lib(SharpyDir + '/lib/', 'libuvlm')
 
 
 class AeroGridGeo():

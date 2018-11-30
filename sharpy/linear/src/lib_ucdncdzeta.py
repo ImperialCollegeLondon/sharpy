@@ -3,10 +3,9 @@ Calculate derivative of Uc*dnc/dzeta w.r.t local panel coordinates
 '''
 
 import numpy as np 
-# from IPython import embed
-import libalg
+import sharpy.linear.src.libalg as libalg
 
-# dR_dZeta.shape=(4,3,2,3)
+
 dR_dZeta=np.array(
 	[[[[-1, 0, 0], [ 0, 0, 0]], [[0,-1, 0], [0, 0, 0]], [[0, 0,-1], [0, 0, 0]]],
 	 [[[ 0, 0, 0], [-1, 0, 0]], [[0, 0, 0], [0,-1, 0]], [[0, 0, 0], [0, 0,-1]]],

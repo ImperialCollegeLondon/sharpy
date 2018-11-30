@@ -4,17 +4,13 @@ S. Maraniello, Jul 2018
 """
 
 import warnings
-# from IPython import embed
-import os
-import sys
-os.environ["DIRuvlm3d"] = "/home/ng213/linuvlm/uvlm3d/src/"
-sys.path.append(os.environ["DIRuvlm3d"])
 import numpy as np
 import scipy.signal as scsig
-import linuvlm as linuvlm
-import lingebm as lingebm
-import libss as libss
 
+
+import sharpy.linear.src.linuvlm as linuvlm
+import sharpy.linear.src.lingebm as lingebm
+import sharpy.linear.src.libss as libss
 import sharpy.utils.algebra as algebra
 
 

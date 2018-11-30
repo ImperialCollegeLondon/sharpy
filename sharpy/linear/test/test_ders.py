@@ -7,14 +7,12 @@ import numpy as np
 import warnings
 import unittest
 
-import sys, os
-try:
-	sys.path.append(os.environ['DIRuvlm3d'])
-except KeyError:
-	sys.path.append(os.path.abspath('../src/'))
-import lib_dbiot as dbiot
-import libuvlm
-from IPython import embed
+from sharpy.utils.sharpydir import SharpyDir
+import sharpy.utils.ctypes_utils as ct_utils
+
+import sharpy.linear.src.lib_dbiot as dbiot 
+import sharpy.linear.src.libuvlm as libuvlm 
+# from IPython import embed
 
 
 class Test_ders(unittest.TestCase):

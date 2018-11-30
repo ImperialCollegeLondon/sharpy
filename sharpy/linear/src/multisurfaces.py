@@ -4,10 +4,10 @@ S. Maraniello, 25 May 2018
 '''
 
 import numpy as np
-import libuvlm
-import gridmapping, surface
-import assembly
-# from IPython import embed
+import sharpy.linear.src.libuvlm as libuvlm
+import sharpy.linear.src.gridmapping as gridmapping
+import sharpy.linear.src.surface as surface
+import sharpy.linear.src.assembly as assembly
 
 
 class MultiAeroGridSurfaces():

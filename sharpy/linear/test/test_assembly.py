@@ -10,14 +10,14 @@ import itertools
 import copy
 import matplotlib.pyplot as plt 
 
-import sys, os
-try:
-	sys.path.append(os.environ['DIRuvlm3d'])
-except KeyError:
-	sys.path.append(os.path.abspath('../src/'))
-import read, assembly, multisurfaces, surface, libuvlm
 
-from IPython import embed
+import sharpy.linear.src.read as read
+import sharpy.linear.src.assembly as assembly
+import sharpy.linear.src.multisurfaces as multisurfaces
+import sharpy.linear.src.surface as surface
+import sharpy.linear.src.libuvlm as libuvlm
+
+# from IPython import embed
 np.set_printoptions(linewidth=200,precision=3)
 
 
@@ -411,28 +411,6 @@ class Test_assembly(unittest.TestCase):
 				print('FD step: %.2e ---> Max error: %.2e'%(step,er_max) )
 				assert er_max<5e1*step, 'Error larger than 50 times step size'
 				Er_max.append(er_max)
-
-			# fig = plt.figure('Spy Der',figsize=(10,4))
-			# ax1 = fig.add_subplot(121)
-			# ax1.spy(Der_an,precision=step)
-			# ax2 = fig.add_subplot(122)
-			# ax2.spy(Der_num,precision=step)
-			# plt.show()
-
-			# fig = plt.figure('Spy Error',figsize=(10,4))
-			# ax = fig.add_subplot(111)
-			# ax.spy( np.abs(Der_an-Der_num),precision=1e2*step)
-			# plt.show()
-
-			### Warning: this test fails: the dependency on gamma is linear, hence
-			# great accuracy is obtained even with large steps. In fact, reducing
-			# the step quickly introduced round-off error.
-
-			# # assert error decreases with step size
-			# for ii in range(1,len(Steps)):
-			# 	assert Er_max[ii]<Er_max[ii-1],\
-			# 	                'Error not decreasing as FD step size is reduced'
-
 
 
 

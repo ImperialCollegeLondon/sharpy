@@ -7,27 +7,23 @@ import copy
 import numpy as np
 import scipy as sc
 import scipy.signal as scsig
-import sys
-import os
 import warnings
-# from IPython import embed
 import matplotlib.pyplot as plt
 
 # sharpy
-sys.path.append("/home/ng213/code/sharpy/")
 import sharpy.sharpy_main
 import sharpy.utils.solver_interface as solver_interface
 from sharpy.solvers.modal import Modal as modal
-# import sharpy.solvers.modal as modal
 import sharpy.utils.h5utils as h5
 import cases.templates.flying_wings as flying_wings
 
 
 # linear uvlm
-os.environ["DIRuvlm3d"] = "/home/ng213/linuvlm/uvlm3d/src/"
-sys.path.append(os.environ["DIRuvlm3d"])
-import save, linuvlm, lin_aeroelastic, libss, librom
-import pp_plot as pp
+import sharpy.linear.src.save as save
+import sharpy.linear.src.linuvlm as linuvlm
+import sharpy.linear.src.lin_aeroelastic as lin_aeroelastic
+import sharpy.linear.src.libss as libss 
+import sharpy.linear.src.librom as librom
 
 
 

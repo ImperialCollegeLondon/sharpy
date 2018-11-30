@@ -9,11 +9,8 @@ import scipy as sc
 import scipy.linalg as scalg
 import scipy.signal as scsig
 
-import libss
+import sharpy.linear.src.libss as libss 
 
-
-# from IPython import embed
-# import sharpy.solvers.modal as modal
 
 
 class FlexDynamic():

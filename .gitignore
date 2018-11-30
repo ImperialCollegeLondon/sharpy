@@ -117,3 +117,10 @@ output*/
 tests/coupled/dynamic/horten/BFF/
 
 tests/coupled/dynamic/horten/BFF2/
+
+
+# linear UVLM
+sharpy/linear/cpp
+sharpy/linear/cpp/*
+
+

@@ -3,7 +3,6 @@ Post-process aerodynamic force data
 '''
 
 import numpy as np
-import save
 
 
 

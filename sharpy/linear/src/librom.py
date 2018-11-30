@@ -10,7 +10,7 @@ import scipy.linalg as scalg
 import scipy.signal as scsig
 # from IPython import embed
 
-import libss # only for tune_rom
+import sharpy.linear.src.libss as libss
 
 
 def balreal_direct_py(A,B,C,DLTI=True,Schur=False):

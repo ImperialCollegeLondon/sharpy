@@ -14,15 +14,14 @@ Methods:
 '''
 
 
-
 import numpy as np 
-# from IPython import embed
-import libalg
-
 import ctypes as ct
-import os
-lib_path=os.environ["DIRuvlm3d"]+'/../cpp/cpplibs.so'
-libc = ct.CDLL(lib_path)
+
+from sharpy.utils.sharpydir import SharpyDir
+import sharpy.utils.ctypes_utils as ct_utils
+import sharpy.linear.src.libalg as libalg
+
+libc=ct_utils.import_ctypes_lib(SharpyDir + '/lib/', 'libuvlm')
 
 ### constants
 cfact_biot=0.25/np.pi
