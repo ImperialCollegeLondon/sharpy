@@ -8,7 +8,7 @@ import warnings
 import h5py
 from numpy import ndarray, float64, float32, array, int32, int64
 import ctypes as ct
-from IPython import embed
+# from IPython import embed
 
 
 # Define basic numerical types
@@ -291,6 +291,10 @@ def save_list_as_array(list_obj,grp_target,compress_float=False):
                 if type(list_obj[nn])!=type0:
                     SaveAsArray=False
                     break
+                if type(list_obj[nn])==ndarray:
+                    if list_obj[0].shape != list_obj[nn].shape:
+                        SaveAsArray=False
+                        break
             if SaveAsArray:
                 if '_as_array' in grp_target:
                     del grp_target['_as_array']

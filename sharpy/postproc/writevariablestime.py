@@ -8,7 +8,6 @@ from sharpy.utils.solver_interface import solver, BaseSolver
 import sharpy.utils.settings as settings
 import sharpy.utils.algebra as algebra
 import sharpy.structure.utils.xbeamlib as xbeamlib
-from IPython import embed
 
 @solver
 class WriteVariablesTime(BaseSolver):
@@ -59,7 +58,7 @@ class WriteVariablesTime(BaseSolver):
             self.settings = custom_settings
         settings.to_custom_types(self.settings, self.settings_types, self.settings_default)
 
-        self.dir =  'output/' + self.data.case_name + '/' + 'WriteVariablesTime/'
+        self.dir =   self.data.case_route + 'output/' + self.data.case_name + '/' + 'WriteVariablesTime/'
         if not os.path.isdir(self.dir):
             os.makedirs(self.dir)
 
@@ -72,6 +71,8 @@ class WriteVariablesTime(BaseSolver):
     def run(self, online=False):
 
     # settings['WriteVariablesTime'] = {'delimiter': ' ',
+    #                                   'FoR_varibles': ['GFoR_pos', 'GFoR_vel', 'GFoR_acc'],
+    #                                   'FoR_number': [0,1],
     #                                   'structure_variables': ['AFoR_steady_forces', 'AFoR_unsteady_forces','AFoR_position'],
     #                                   'structure_nodes': [0,-1],
     #                                   'aero_panels_variables': ['gamma', 'norm_gamma', 'norm_gamma_star'],
@@ -82,6 +83,28 @@ class WriteVariablesTime(BaseSolver):
     #                                   'aero_nodes_isurf': [0,1,2],
     #                                   'aero_nodes_im': [1,1,1],
     #                                   'aero_nodes_in': [-2,-2,-2]}
+
+        # FoR variables
+        if 'FoR_number' in self.settings:
+            pass
+        else:
+            self.settings['FoR_number'] = np.array([0], dtype=int)
+
+        for ivariable in range(len(self.settings['FoR_variables'])):
+            for ifor in range(len(self.settings['FoR_number'])):
+                filename = self.dir + "FoR_" + self.settings['FoR_number'][ifor] + "_" + self.settings['FoR_variables'][ivariable] + ".dat"
+                fid = open(filename,"a")
+
+                if (self.settings['FoR_variables'][ivariable] == 'GFoR_pos'):
+                    self.write_nparray_to_file(fid, self.data.ts, self.data.structure.timestep_info[-1].for_pos, self.settings['delimiter'])
+                elif (self.settings['FoR_variables'][ivariable] == 'GFoR_vel'):
+                    self.write_nparray_to_file(fid, self.data.ts, self.data.structure.timestep_info[-1].for_vel, self.settings['delimiter'])
+                elif (self.settings['FoR_variables'][ivariable] == 'GFoR_acc'):
+                    self.write_nparray_to_file(fid, self.data.ts, self.data.structure.timestep_info[-1].for_acc, self.settings['delimiter'])
+                else:
+                    print("Unrecognized " + self.settings['FoR_variables'][ivariable] + " variable")
+
+                fid.close()
 
         # Structure variables at nodes
         for ivariable in range(len(self.settings['structure_variables'])):
@@ -149,10 +172,10 @@ class WriteVariablesTime(BaseSolver):
 
         fid.write("%d%s" % (ts,delimiter))
         for idim in range(np.shape(nparray)[0]):
-            fid.write("%f%s" % (nparray[idim],delimiter))
+            fid.write("%e%s" % (nparray[idim],delimiter))
 
         fid.write("\n")
 
     def write_value_to_file(self, fid, ts, value, delimiter):
 
-        fid.write("%d%s%f\n" % (ts,delimiter,value))
+        fid.write("%d%s%e\n" % (ts,delimiter,value))

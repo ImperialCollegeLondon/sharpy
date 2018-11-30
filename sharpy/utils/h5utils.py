@@ -16,6 +16,12 @@ def check_file_exists(file_name):
     '''
     Checks if the file exists and throws a FileNotFoundError exception
     that includes the route to the non-existing file.
+
+    Args:
+        file_name (str): path to the HDF5 file
+
+    Returns:
+        FileNotFoundError : if the file does not exist, an error is raised with path to the non-existent file
     '''
     if not os.path.isfile(file_name):
         raise FileNotFoundError(

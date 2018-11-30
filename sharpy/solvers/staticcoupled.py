@@ -134,15 +134,20 @@ class StaticCoupled(BaseSolver):
                 # run beam
                 self.data = self.structural_solver.run()
                 self.structural_solver.settings['gravity'] = ct.c_double(old_g)
-                self.structural_solver.extract_resultants()
 
                 # update grid
                 self.aero_solver.update_step()
 
                 # convergence
                 if self.convergence(i_iter, i_step):
+                    # create q and dqdt vectors
+                    self.structural_solver.update(self.data.structure.timestep_info[self.data.ts])
+                    self.cleanup_timestep_info()
                     break
 
+        if self.settings['print_info']:
+            resultants = self.extract_resultants()
+            cout.cout_wrap('Resultant forces and moments: ' + str(resultants))
         return self.data
 
     def convergence(self, i_iter, i_step):
@@ -221,5 +226,5 @@ class StaticCoupled(BaseSolver):
         # update grid
         self.aero_solver.update_step()
 
-    def extract_resultants(self):
-        return self.structural_solver.extract_resultants()
+    def extract_resultants(self, tstep=None):
+        return self.structural_solver.extract_resultants(tstep)

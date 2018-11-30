@@ -13,6 +13,52 @@ import sharpy.utils.algebra as algebra
 
 @solver
 class StaticTrim(BaseSolver):
+    """
+    ``StaticTrim`` class solver, inherited from ``BaseSolver``
+
+    The ``StaticTrim`` solver determines the state of trim (equlibrium) for an aeroelastic system in static conditions.
+
+    Args:
+        data (ProblemData): object with problem data
+
+    Attributes:
+        settings (dict): Name-value pair of settings employed by solver.
+
+            ======================  =============  ===============================================  ==========
+            Name                    Type           Description                                      Default
+            ======================  =============  ===============================================  ==========
+            ``print_info``          ``bool``       Print solver information to terminal             ``True``
+            ``solver``              ``str``        Underlying solver for aeroelastic system choice  ``None``
+            ``max_iter``            ``int``        Maximum number of iterations                     ``100``
+            ``fz_tolerance``        ``float``      Force tolerance in the ``z`` direction           ``0.01``
+            ``fx_tolerance``        ``float``      Force tolerance in the ``x`` direction           ``0.01``
+            ``m_tolerance``         ``float``      Moment tolerance                                 ``0.01``
+            ``tail_cs_index``       ``int``        Control surface index                            ``0``
+            ``thrust_nodes``        ``list(int)``  Index of nodes that provide thrust               ``[0]``
+            ``initial_alpha``       ``float``      Initial angle of attack (radians)                ``0.0698``
+            ``initial_deflection``  ``float``      Initial control surface deflection (radians)     ``0.0174``
+            ``initial_thrust``      ``float``      Initial thrust per engine (N)                    ``0.0``
+            ``initial_angle_eps``   ``float``      Initial angular variation for algorithm          ``0.0034``
+            ``initial_thrust_eps``  ``float``      Initial thrust variation for algorithm           ``2.0``
+            ======================  =============  ===============================================  ==========
+
+        settings_types (dict): Acceptable data types for entries in ``settings``
+        settings_default (dict): Default values for the available ``settings``
+        data (ProblemData): object containing the information of the problem
+        solver (BaseSolver): solver object employed for the solution of the problem
+        n_input (int): number of inputs to vary to achieve trim
+        i_iter (int): iteration number
+        input_history (list): list of input history during iteration
+        output_history (list): list of output history during iteration
+        gradient_history (list): history of gradients during iteration
+        trimmed_values (np.array): trim configuration values
+
+    Methods:
+        trim_algorithm: algorithm to find equilibrium conditions
+
+    See Also
+        .. py:class:: sharpy.utils.solver_interface.BaseSolver
+    """
     solver_id = 'StaticTrim'
 
     def __init__(self):
@@ -124,6 +170,14 @@ class StaticTrim(BaseSolver):
         return return_value
 
     def trim_algorithm(self):
+        """
+        Trim algorithm method
+
+        The trim condition is found iteratively.
+
+        Returns:
+            np.array: array of trim values for angle of attack, control surface deflection and thrust.
+        """
         for self.i_iter in range(self.settings['max_iter'].value + 1):
             if self.i_iter == self.settings['max_iter'].value:
                 raise Exception('The Trim routine reached max iterations without convergence!')

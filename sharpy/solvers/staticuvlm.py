@@ -12,6 +12,45 @@ import sharpy.utils.generator_interface as gen_interface
 
 @solver
 class StaticUvlm(BaseSolver):
+    """
+    ``StaticUvlm`` solver class, inherited from ``BaseSolver``
+
+    Aerodynamic solver that runs a UVLM routine to solve the steady or unsteady aerodynamic problem.
+    The aerodynamic problem is posed in the form of an ``Aerogrid`` object.
+
+    Args:
+        data (ProblemData): object with problem data
+        custom_settings (dict): custom settings that override the settings in the solver ``.txt`` file. None by default
+
+    Attributes:
+        settings (dict): Name-value pair of settings employed by solver. See Notes for valid combinations
+        settings_types (dict): Acceptable data types for entries in ``settings``
+        settings_default (dict): Default values for the available ``settings``
+        data (ProblemData): object containing the information of the problem
+        velocity_generator(object): object containing the flow conditions information
+
+    Notes:
+        The following are valid key-value pair arguments for the ``settings`` dictionary:
+
+        Name Type Description Default
+
+        ``print_info``  ``bool``  Print solver information to terminal  ``True``
+        ``horseshoe``  ``bool``  Utilise a horseshoe model for wake  ``False``
+        ``num_cores``  ``int``  Number of cores  ``0``
+        ``n_rollup``  ``int``  Rollup  ``1``
+        ``rollup_dt``  ``float``  ??   ``0.1``
+        ``rollup_aic_refresh``  ``int``  ??  ``1``
+        ``rollup_tolerance``  ``float``  ??  ``1e-4``
+        ``iterative_solver``  ``bool``  ??  ``False``
+        ``iterative_tol``  ``float``  ??  ``1e-4``
+        ``iterative_precond``  ``bool``  ??  ``False``
+        ``velocity_field_generator``  ``str``  Selected velocity field  ``SteadyVelocityField``
+        ``velocity_field_input``  ``dict``  ??  ``None``
+        ``rho``  ``float``  Air density  ``1.225``
+
+    See Also:
+        Velocity field generator
+    """
     solver_id = 'StaticUvlm'
 
     def __init__(self):
@@ -108,9 +147,9 @@ class StaticUvlm(BaseSolver):
         self.data.aero.generate_zeta(self.data.structure,
                                      self.data.aero.aero_settings,
                                      self.data.ts)
-        for i_surf in range(self.data.aero.timestep_info[self.data.ts].n_surf):
-            self.data.aero.timestep_info[self.data.ts].forces[i_surf].fill(0.0)
-            self.data.aero.timestep_info[self.data.ts].dynamic_forces[i_surf].fill(0.0)
+        # for i_surf in range(self.data.aero.timestep_info[self.data.ts].n_surf):
+        #     self.data.aero.timestep_info[self.data.ts].forces[i_surf].fill(0.0)
+        #     self.data.aero.timestep_info[self.data.ts].dynamic_forces[i_surf].fill(0.0)
 
 
 

@@ -1,16 +1,63 @@
+"""
+Rotation algebra library
+
+Note: testing in tests/utils/algebra_test
+"""
+
 import numpy as np
 import scipy.linalg
+from warnings import warn
 
+#######
+# functions for back compatibility
+def quat2rot(quat):
+    warn('quat2rot(quat) is obsolete! Use quat2rotation(quat).T instead!', stacklevel=2)
+    return quat2rotation(quat).T
+def crv2rot(psi):
+    warn('crv2rot(psi) is obsolete! Use crv2rotation(psi) instead!', stacklevel=2)
+    return crv2rotation(psi)
+def rot2crv(rot):
+    warn('rot2crv(rot) is obsolete! Use rotation2crv(rot.T) instead!', stacklevel=2)
+    return rotation2crv(rot.T)
+def triad2rot(xb,yb,zb):
+    warn('triad2rot(xb,yb,zb) is obsolete! Use triad2rotation(xb,yb,zb).T instead!', stacklevel=2)
+    return triad2rotation(xb,yb,zb).T
+def mat2quat(rot):
+     warn('mat2quat(rot) is obsolete! Use rotation2quat(rot.T) instead!', stacklevel=2)
+     return rotation2quat(rot.T)
+#######
 
 def tangent_vector(in_coord, ordering=None):
-    """ Tangent vector calculation for 2+ noded elements.
+    r"""
+    Tangent vector calculation for 2+ noded elements.
 
-    Calculates the tangent vector interpolating every dimension
-    separately. It uses a (n_nodes - 1) degree polynomial, and the
-    differentiation is analytical.
+    Calculates the tangent vector interpolating every dimension separately. It uses a (``n_nodes - 1``) degree polynomial,
+    and the differentiation is analytical.
+
+    Calculation method:
+
+        1. A n_nodes-1 polynomial is fitted through the nodes per dimension.
+        2. Those polynomials are analytically differentiated with respect to the node index
+        3. The tangent vector is given by:
+
+        .. math::
+
+            \vec{t} = \frac{s_x'\vec{i} + s_y'\vec{j} + s_z'\vec{k}}{\left| s_x'\vec{i} + s_y'\vec{j} + s_z'\vec{k}\right|}
+
+
+        where :math:`'` notes the differentiation with respect to the index number
+
 
     Args:
         in_coord (np.ndarray): array of coordinates of the nodes. Dimensions = ``[n_nodes, ndim]``
+        ordering (None): ordering required?
+
+    Returns:
+        np.ndarray: tangent vector
+
+
+    Examples:
+          example goes here
 
     Notes:
         Dimensions are treated independent from each other, interpolating polynomials are computed
@@ -121,18 +168,19 @@ def skew(vector):
     return matrix
 
 
-def triad2rot(xb, yb, zb):
+def triad2rotation(xb, yb, zb):
     """
     If the input triad is the "b" coord system given in "a" frame,
-    (the vectors of the triad are xb, yb, zb)
-    this function returns Rab
+    (the vectors of the triad are xb, yb, zb), this function returns Rab, ie the
+    rotation matrix required to rotate the FoR A onto B.
     :param xb:
     :param yb:
     :param zb:
     :return: rotation matrix Rab
     """
-    rot = np.row_stack((xb, yb, zb))
-    return rot
+    return np.column_stack((xb, yb, zb))
+
+
 
 
 def rot_matrix_2d(angle):
@@ -157,44 +205,93 @@ def angle_between_vector_and_plane(vector, plane_normal):
     return angle
 
 
-def rot2crv(rot):
-    if np.linalg.norm(rot) < 1e-6:
-        raise AttributeError('Element Vector V is not orthogonal to reference line (51105)')
+# def mat2quat(mat):
+#     matT = mat.T
 
-    quat = mat2quat(rot)
-    crv = quat2crv(quat)
+#     s = np.zeros((4, 4))
 
-    if np.linalg.norm(crv) < 1.0e-15:
-        crv[0] = rot[1, 2]
-        crv[1] = rot[2, 0]
-        crv[2] = rot[0, 1]
+#     s[0, 0] = 1.0 + np.trace(matT)
+#     s[0, 1:] = matrix2skewvec(matT)
 
-    crv = crv_bounds(crv)
-    return crv
+#     s[1, 0] = matT[2, 1] - matT[1, 2]
+#     s[1, 1] = 1.0 + matT[0, 0] - matT[1, 1] - matT[2, 2]
+#     s[1, 2] = matT[0, 1] + matT[1, 0]
+#     s[1, 3] = matT[0, 2] + matT[2, 0]
+
+#     s[2, 0] = matT[0, 2] - matT[2, 0]
+#     s[2, 1] = matT[1, 0] + matT[0, 1]
+#     s[2, 2] = 1.0 - matT[0, 0] + matT[1, 1] - matT[2, 2]
+#     s[2, 3] = matT[1, 2] + matT[2, 1]
+
+#     s[3, 0] = matT[1, 0] - matT[0, 1]
+#     s[3, 1] = matT[0, 2] + matT[2, 0]
+#     s[3, 2] = matT[1, 2] + matT[2, 1]
+#     s[3, 3] = 1.0 - matT[0, 0] - matT[1, 1] + matT[2, 2]
+
+#     smax = np.max(np.diag(s))
+#     ismax = np.argmax(np.diag(s))
+
+#     # compute quaternion angles
+#     quat = np.zeros((4,))
+#     quat[ismax] = 0.5*np.sqrt(smax)
+#     for i in range(4):
+#         if i == ismax:
+#             continue
+#         quat[i] = 0.25*s[ismax, i]/quat[ismax]
+
+#     return quat
 
 
-def mat2quat(mat):
-    matT = mat.T
+def rotation2quat(Cab):
+    r"""
+    Given a rotation matrix :math:`C^{AB}` rotating the frame A onto B, the function returns
+    the minimal "positive angle" quaternion representing this rotation, where the quaternion, :math:`\vec{\chi}` is
+    defined as:
+
+        .. math:: \vec{\chi}=
+            \left[\cos\left(\frac{\psi}{2}\right),\,
+            \sin\left(\frac{\psi}{2}\right)\mathbf{\hat{n}}\right]
+
+    Args:
+        Cab (np.array): rotation matrix :math:`C^{AB}` from frame A to B
+
+    Returns:
+        np.array: equivalent quaternion :math:`\vec{\chi}`
+
+    Notes:
+        This is the inverse of ``algebra.quat2rotation`` for Cartesian rotation vectors
+        associated to rotations in the range :math:`[-\pi,\pi]`, i.e.:
+
+            ``fv == algebra.rotation2crv(algebra.crv2rotation(fv))``
+
+        where ``fv`` represents the Cartesian Rotation Vector, :math:`\vec{\psi}` defined as:
+
+            .. math:: \vec{\psi} = \psi\,\mathbf{\hat{n}}
+
+        such that :math:`\mathbf{\hat{n}}` is a unit vector and the scalar :math:`psi` is in the range
+        :math:`[-\pi,\,\pi]`.
+
+    """
 
     s = np.zeros((4, 4))
 
-    s[0, 0] = 1.0 + np.trace(matT)
-    s[0, 1:] = matrix2skewvec(matT)
+    s[0, 0] = 1.0 + np.trace(Cab)
+    s[0, 1:] = matrix2skewvec(Cab)
 
-    s[1, 0] = matT[2, 1] - matT[1, 2]
-    s[1, 1] = 1.0 + matT[0, 0] - matT[1, 1] - matT[2, 2]
-    s[1, 2] = matT[0, 1] + matT[1, 0]
-    s[1, 3] = matT[0, 2] + matT[2, 0]
+    s[1, 0] = Cab[2, 1] - Cab[1, 2]
+    s[1, 1] = 1.0 + Cab[0, 0] - Cab[1, 1] - Cab[2, 2]
+    s[1, 2] = Cab[0, 1] + Cab[1, 0]
+    s[1, 3] = Cab[0, 2] + Cab[2, 0]
 
-    s[2, 0] = matT[0, 2] - matT[2, 0]
-    s[2, 1] = matT[1, 0] + matT[0, 1]
-    s[2, 2] = 1.0 - matT[0, 0] + matT[1, 1] - matT[2, 2]
-    s[2, 3] = matT[1, 2] + matT[2, 1]
+    s[2, 0] = Cab[0, 2] - Cab[2, 0]
+    s[2, 1] = Cab[1, 0] + Cab[0, 1]
+    s[2, 2] = 1.0 - Cab[0, 0] + Cab[1, 1] - Cab[2, 2]
+    s[2, 3] = Cab[1, 2] + Cab[2, 1]
 
-    s[3, 0] = matT[1, 0] - matT[0, 1]
-    s[3, 1] = matT[0, 2] + matT[2, 0]
-    s[3, 2] = matT[1, 2] + matT[2, 1]
-    s[3, 3] = 1.0 - matT[0, 0] - matT[1, 1] + matT[2, 2]
+    s[3, 0] = Cab[1, 0] - Cab[0, 1]
+    s[3, 1] = Cab[0, 2] + Cab[2, 0]
+    s[3, 2] = Cab[1, 2] + Cab[2, 1]
+    s[3, 3] = 1.0 - Cab[0, 0] - Cab[1, 1] + Cab[2, 2]
 
     smax = np.max(np.diag(s))
     ismax = np.argmax(np.diag(s))
@@ -207,6 +304,34 @@ def mat2quat(mat):
             continue
         quat[i] = 0.25*s[ismax, i]/quat[ismax]
 
+    return quat_bound(quat)
+
+
+def quat_bound(quat):
+    r"""
+    Given a quaternion, :math:`\vec{\chi}`, associated to a rotation of angle :math:`\psi`
+    about an axis :math:`\mathbf{\hat{n}}`, the function "bounds" the quaternion,
+    i.e. sets the rotation axis :math:`\mathbf{\hat{n}}` such that
+    :math:`\psi` in :math:`[-\pi,\pi]`.
+
+    Notes:
+        As quaternions are defined as:
+
+            .. math:: \vec{\chi}=
+                \left[\cos\left(\frac{\psi}{2}\right),\,
+                \sin\left(\frac{\psi}{2}\right)\mathbf{\hat{n}}\right]
+
+        this is equivalent to enforcing :math:`\chi_0\ge0`.
+
+    Args:
+        quat (np.array): quaternion to bound
+
+    Returns:
+        np.array: bounded quaternion
+
+    """
+    if quat[0] < 0:
+        quat *= -1.
     return quat
 
 
@@ -229,7 +354,60 @@ def quat2crv(quat):
     return psi
 
 
+def crv2quat(psi):
+    r"""
+    Converts a Cartesian rotation vector,
+
+        .. math:: \vec{\psi} = \psi\,\mathbf{\hat{n}}
+
+    into a "minimal rotation" quaternion, i.e. being the quaternion, :math:`\vec{\chi}`, defined as:
+
+        .. math:: \vec{\chi}=
+            \left[\cos\left(\frac{\psi}{2}\right),\,
+            \sin\left(\frac{\psi}{2}\right)\mathbf{\hat{n}}\right]
+
+    the rotation axis, :math:`\mathbf{\hat{n}}` is such that the
+    rotation angle, :math:`\psi`, is in :math:`[-\pi,\,\pi]` or,
+    equivalently, :math:`\chi_0\ge0`.
+
+    Args:
+        psi (np.array): Cartesian Rotation Vector, CRV: :math:`\vec{\psi} = \psi\,\mathbf{\hat{n}}`.
+
+    Returns:
+        np.array: equivalent quaternion :math:`\vec{\chi}`
+
+    """
+
+    # minimise crv rotation
+    psi_new = crv_bounds(psi)
+
+    fi = np.linalg.norm(psi_new)
+    if fi > 1e-15:
+        nv = psi_new / fi
+    else:
+        nv = psi_new
+
+    quat = np.zeros((4,))
+    quat[0] = np.cos(.5 * fi)
+    quat[1:] = np.sin(.5 * fi) * nv
+
+    return quat
+
+
 def crv_bounds(crv_ini):
+    r"""
+    Forces the Cartesian rotation vector norm, :math:`\|\vec{\psi}\|`, to be in the range
+    :math:`[-\pi,\pi]`, i.e. determines the rotation axis orientation, :math:`\mathbf{\hat{n}}`,
+    so as to ensure "minimal rotation".
+
+    Args:
+        crv_ini (np.array): Cartesian rotation vector, :math:`\vec{\psi}`
+
+    Returns:
+        np.array: modified and bounded, equivalent Cartesian rotation vector
+
+    """
+
     crv = crv_ini.copy()
     # original norm
     norm_ini = np.linalg.norm(crv_ini)
@@ -250,32 +428,63 @@ def crv_bounds(crv_ini):
 
 
 def triad2crv(xb, yb, zb):
-    return rot2crv(triad2rot(xb, yb, zb))
+    return rotation2crv(triad2rotation(xb, yb, zb))
 
 
 def crv2triad(psi):
-    rot_matrix = crv2rot(psi)
+    rot_matrix = crv2rotation(psi)
     return rot_matrix[:, 0], rot_matrix[:, 1], rot_matrix[:, 2]
 
 
-def crv2rot(psi):
-    # this returns Cab
+def crv2rotation(psi):
+    """
+    Given a Cartesian rotation vector psi, the function produces the rotation
+    matrix required to rotate a vector according to psi.
 
-    # this is psi2mat in the matlab version
+    Note: this is psi2mat in the matlab version
+    """
+
     norm_psi = np.linalg.norm(psi)
 
     if norm_psi < 1e-15:
-        skew_psi = rot_skew(psi)
+        skew_psi = skew(psi)
         rot_matrix = np.eye(3) + skew_psi + 0.5*np.dot(skew_psi, skew_psi)
     else:
         normal = psi/norm_psi
-        skew_normal = rot_skew(normal)
+        skew_normal = skew(normal)
 
         rot_matrix = np.eye(3)
         rot_matrix += np.sin(norm_psi)*skew_normal
         rot_matrix += (1.0 - np.cos(norm_psi))*np.dot(skew_normal, skew_normal)
 
     return rot_matrix
+
+
+def rotation2crv(Cab):
+    """
+    Given a rotation matrix Cab rotating the frame a onto b, the function returns
+    the minimal size Cartesian rotation vector representing this rotation.
+
+    Note: this is the inverse of crv2rotation for Cartesian rotation vectors
+    associated to rotations in the range [-pi,pi], i.e.:
+        fv == algebra.rotation2crv(algebra.crv2rotation(fv))
+    for each fv=a*nv such that nv is a unit vector and the scalar a in [-pi,pi].
+    """
+
+    if np.linalg.norm(Cab) < 1e-6:
+        raise AttributeError(\
+                 'Element Vector V is not orthogonal to reference line (51105)')
+
+    quat = rotation2quat(Cab)
+    psi = quat2crv(quat)
+
+    if np.linalg.norm(Cab) < 1.0e-15:
+        psi[0] = Cab[1, 2]
+        psi[1] = Cab[2, 0]
+        psi[2] = Cab[0, 1]
+
+    return crv_bounds(psi)
+
 
 
 def crv2tan(psi):
@@ -325,16 +534,17 @@ def crv2triad_vec(crv_vec):
     return v1, v2, v3
 
 
-def quat2rot(q1):
+def quat2rotation(q1):
     """@brief Calculate rotation matrix based on quaternions.
     See Aircraft Control and Simulation, pag. 31, by Stevens, Lewis.
     Copied from S. Maraniello's SHARPy
 
-    Remark: if A is a FoR obtained rotating a FoR G of angle fi about an axis n (remind n will be
-    invariant during the rotation), and q is the related quaternion q(fi,n), the function will
-    return the matrix Cag such that:
-        - Cag rotates A to G
-        - Cag transforms the coordinates of a vector defined in G component to A components.
+    Remark: if B is a FoR obtained rotating a FoR A of angle fi about an axis n
+    (remind n will be invariant during the rotation), and q is the related
+    quaternion q(fi,n), the function will return the matrix Cab such that:
+        - Cab rotates A onto B
+        - Cab transforms the coordinates of a vector defined in B component to
+        A components.
     """
 
     q = q1.copy(order='F')
@@ -346,30 +556,45 @@ def quat2rot(q1):
     rot_mat[1, 1] = q[0]**2 - q[1]**2 + q[2]**2 - q[3]**2
     rot_mat[2, 2] = q[0]**2 - q[1]**2 - q[2]**2 + q[3]**2
 
-    rot_mat[0, 1] = 2.*(q[1]*q[2] + q[0]*q[3])
-    rot_mat[1, 0] = 2.*(q[1]*q[2] - q[0]*q[3])
+    rot_mat[1, 0] = 2.*(q[1]*q[2] + q[0]*q[3])
+    rot_mat[0, 1] = 2.*(q[1]*q[2] - q[0]*q[3])
 
-    rot_mat[0, 2] = 2.*(q[1]*q[3] - q[0]*q[2])
-    rot_mat[2, 0] = 2.*(q[1]*q[3] + q[0]*q[2])
+    rot_mat[2, 0] = 2.*(q[1]*q[3] - q[0]*q[2])
+    rot_mat[0, 2] = 2.*(q[1]*q[3] + q[0]*q[2])
 
-    rot_mat[1, 2] = 2.*(q[2]*q[3] + q[0]*q[1])
-    rot_mat[2, 1] = 2.*(q[2]*q[3] - q[0]*q[1])
+    rot_mat[2, 1] = 2.*(q[2]*q[3] + q[0]*q[1])
+    rot_mat[1, 2] = 2.*(q[2]*q[3] - q[0]*q[1])
 
     return rot_mat
 
 
 def rot_skew(vec):
-    matrix = np.zeros((3, 3))
-    matrix[0, 1] = -vec[2]
-    matrix[0, 2] = vec[1]
-    matrix[1, 0] = vec[2]
-    matrix[1, 2] = -vec[0]
-    matrix[2, 0] = -vec[1]
-    matrix[2, 1] = vec[0]
-    return matrix
+    from warnings import warn
+    warn("use 'skew' function instead of 'rot_skew'")
+    return skew(vec)
 
 
 def rotation3d_x(angle):
+    r"""
+    Rotation matrix about the x axis by the input angle :math:`\Phi`
+
+    .. math::
+
+        \mathbf{\tau}_x = \begin{bmatrix}
+            1 & 0 & 0 \\
+            0 & \cos(\Phi) & -\sin(\Phi) \\
+            0 & \sin(\Phi) & \cos(\Phi)
+        \end{bmatrix}
+
+
+    Args:
+        angle (float): angle of rotation in radians about the x axis
+
+    Returns:
+        np.array: 3x3 rotation matrix about the x axis
+
+    """
+
     c = np.cos(angle)
     s = np.sin(angle)
     mat = np.zeros((3, 3))
@@ -380,6 +605,25 @@ def rotation3d_x(angle):
 
 
 def rotation3d_y(angle):
+    r"""
+    Rotation matrix about the y axis by the input angle :math:`\Theta`
+
+    .. math::
+
+        \mathbf{\tau}_y = \begin{bmatrix}
+            \cos(\Theta) & 0 & -\sin(\Theta) \\
+            0 & 1 & 0 \\
+            \sin(\Theta) & 0 & \cos(\Theta)
+        \end{bmatrix}
+
+
+    Args:
+        angle (float): angle of rotation in radians about the y axis
+
+    Returns:
+        np.array: 3x3 rotation matrix about the y axis
+
+    """
     c = np.cos(angle)
     s = np.sin(angle)
     mat = np.zeros((3, 3))
@@ -390,6 +634,23 @@ def rotation3d_y(angle):
 
 
 def rotation3d_z(angle):
+    r"""
+    Rotation matrix about the z axis by the input angle :math:`\Psi`
+
+    .. math::
+        \mathbf{\tau}_z = \begin{bmatrix}
+            \cos(\Psi) & -\sin(\Psi) & 0 \\
+            \sin(\Psi) & \cos(\Psi) & 0 \\
+            0 & 0 & 1
+        \end{bmatrix}
+
+    Args:
+        angle (float): angle of rotation in radians about the z axis
+
+    Returns:
+        np.array: 3x3 rotation matrix about the z axis
+
+    """
     c = np.cos(angle)
     s = np.sin(angle)
     mat = np.zeros((3, 3))
@@ -401,7 +662,7 @@ def rotation3d_z(angle):
 
 def rotate_crv(crv_in, axis, angle):
     crv = np.zeros_like(crv_in)
-    C = crv2rot(crv_in).T
+    C = crv2rotation(crv_in).T
     rot = rotation_matrix_around_axis(axis, angle)
     C = np.dot(C, rot)
     crv = rot2crv(C)
@@ -410,8 +671,33 @@ def rotate_crv(crv_in, axis, angle):
 
 def euler2rot(euler):
     """
-    :param euler: [roll, pitch, yaw]
-    :return:
+    Transforms Euler angles (roll, pitch and yaw :math:`\\Phi, \\Theta, \\Psi`) into a 3x3 rotation matrix describing
+    the rotation between frame A and frame B.
+
+    The rotations are performed successively, first in yaw, then in pitch and finally in roll.
+
+    .. math::
+
+        \\mathbf{T}_{BE} = \\mathbf{\\tau}_x(\\Phi) \\mathbf{\\tau}_y(\\Theta) \\mathbf{\\tau}_z(\\Psi)
+
+
+    where :math:`\\mathbf{\\tau}` represents the rotation about the subscripted axis.
+
+    Args:
+        euler (np.array): 1x3 array with the Euler angles in the form ``[roll, pitch, yaw]``
+
+    Returns:
+        np.array: 3x3 transformation matrix describing the rotation by the input Euler angles.
+
+    See Also:
+        The individual transformations represented by the :math:`\\mathbf{\\tau}` matrices are described in:
+
+        .. py:module:: sharpy.utils.algebra.rotation3d_x
+
+        .. py:module:: sharpy.utils.algebra.rotation3d_y
+
+        .. py:module:: sharpy.utils.algebra.rotation3d_z
+
     """
     rot = rotation3d_z(euler[2])
     rot = np.dot(rotation3d_y(euler[1]), rot)
@@ -421,7 +707,7 @@ def euler2rot(euler):
 
 def euler2quat(euler):
     euler_rot = euler2rot(euler)  # this is Cag
-    quat = mat2quat(euler_rot)
+    quat = rotation2quat(euler_rot.T)
     return quat
 
 
@@ -454,3 +740,285 @@ def omegadt2quat(omegadt):
 def rotate_quaternion(quat, omegadt):
     return quaternion_product(omegadt2quat(omegadt), quat)
 
+
+def get_triad(coordinates_def, frame_of_reference_delta, twist=None, n_nodes=3, ordering=np.array([0, 2, 1])):
+    """
+    Generates two unit vectors in body FoR that define the local FoR for
+    a beam element. These vectors are calculated using `frame_of_reference_delta`
+    :return:
+    """
+    # now, calculate tangent vector (and coefficients of the polynomial
+    # fit just in case)
+    tangent, polyfit = tangent_vector(
+        coordinates_def,
+        ordering)
+    normal = np.zeros_like(tangent)
+    binormal = np.zeros_like(tangent)
+
+    # v_vector is the vector with origin the FoR node and delta
+    # equals frame_of_reference_delta
+    for inode in range(n_nodes):
+        v_vector = frame_of_reference_delta[inode, :]
+        normal[inode, :] = unit_vector(np.cross(
+                                                tangent[inode, :],
+                                                v_vector
+                                                )
+                                           )
+        binormal[inode, :] = -unit_vector(np.cross(
+                                                tangent[inode, :],
+                                                normal[inode, :]
+                                                        )
+                                              )
+
+    if twist is not None:
+        raise NotImplementedError('Structural twist is not yet supported in algebra.get_triad, but it is in beamstructures.py')
+    # # we apply twist now
+    # for inode in range(self.n_nodes):
+    #     if not self.structural_twist[inode] == 0.0:
+    #         rotation_mat = algebra.rotation_matrix_around_axis(tangent[inode, :],
+    #                                                            self.structural_twist[inode])
+    #         normal[inode, :] = np.dot(rotation_mat, normal[inode, :])
+    #         binormal[inode, :] = np.dot(rotation_mat, binormal[inode, :])
+
+    return tangent, binormal, normal
+
+
+def der_Cquat_by_v(q,v):
+    """
+    Being C=C(quat) the rotational matrix depending on the quaternion q and
+    defined as C=quat2rotation(q), the function returns the derivative, w.r.t. the
+    quanternion components, of the vector dot(C,v), where v is a constant
+    vector.
+    The elements of the resulting derivative matrix D are ordered such that:
+    ``d(C*v) = D*d(q)``
+    where d(.) is a delta operator.
+    """
+
+    vx,vy,vz=v
+    q0,q1,q2,q3=q
+
+    return 2.*np.array( [[ q0*vx + q2*vz - q3*vy, q1*vx + q2*vy + q3*vz,
+                                 q0*vz + q1*vy - q2*vx, -q0*vy + q1*vz - q3*vx],
+                         [ q0*vy - q1*vz + q3*vx, -q0*vz - q1*vy + q2*vx,
+                                 q1*vx + q2*vy + q3*vz,  q0*vx + q2*vz - q3*vy],
+                         [ q0*vz + q1*vy - q2*vx, q0*vy - q1*vz + q3*vx,
+                                -q0*vx - q2*vz + q3*vy, q1*vx + q2*vy + q3*vz]])
+
+
+
+def der_CquatT_by_v(q,v):
+    """
+    Being C=C(quat).T the projection matrix depending on the quaternion q and
+    defined as C=quat2rotation(q).T, the function returns the derivative, w.r.t. the
+    quanternion components, of the vector dot(C,v), where v is a constant
+    vector.
+    The elements of the resulting derivative matrix D are ordered such that:
+    ``d(C*v) = D*d(q)``
+    where d(.) is a delta operator.
+    """
+
+    vx,vy,vz=v
+    q0,q1,q2,q3=q
+
+    return 2.*np.array( [[ q0*vx - q2*vz + q3*vy, q1*vx + q2*vy + q3*vz,
+                                 - q0*vz + q1*vy - q2*vx, q0*vy + q1*vz - q3*vx],
+                         [q0*vy + q1*vz - q3*vx, q0*vz - q1*vy + q2*vx,
+                                   q1*vx + q2*vy + q3*vz,-q0*vx + q2*vz - q3*vy],
+                         [q0*vz - q1*vy + q2*vx, -q0*vy - q1*vz + q3*vx,
+                                q0*vx - q2*vz + q3*vy, q1*vx + q2*vy + q3*vz]])
+
+def der_Tan_by_xv(fv0,xv):
+    """
+    Being fv0 a cartesian rotation vector and Tan the corresponding tangential
+    operator (computed through crv2tan(fv)), the function returns the derivative
+    of dot(Tan,xv), where xv is a constant vector.
+
+    The elements of the resulting derivative matrix D are ordered such that:
+    ``d(Tan*xv) = D*d(fv)``
+    where d(.) is a delta operator.
+
+    Note: the derivative expression has been derived symbolically and verified
+    by FDs. A more compact expression may be possible.
+    """
+
+    f0=np.linalg.norm(fv0)
+    sf0,cf0=np.sin(f0),np.cos(f0)
+
+    fv0_x,fv0_y,fv0_z=fv0
+    xv_x,xv_y,xv_z=xv
+
+    f0p2=f0**2
+    f0p3=f0**3
+    f0p4=f0**4
+
+    rs01=sf0/f0
+    rs03=sf0/f0p3
+    rc02=(cf0 - 1)/f0p2
+    rc04=(cf0 - 1)/f0p4
+
+    Ts02=(1 - rs01)/f0p2
+    Ts04=(1 - rs01)/f0p4
+
+    # if f0<1e-8: rs01=1.0 # no need
+    return np.array(
+        [[xv_x*((-fv0_y**2 - fv0_z**2)*(-cf0*fv0_x/f0p2 + fv0_x*rs03)/f0p2 -
+            2*fv0_x*(1 - rs01)*(-fv0_y**2 - fv0_z**2)/f0p4) + xv_y*(fv0_x*fv0_y*(
+                -cf0*fv0_x/f0p2 + fv0_x*rs03)/f0p2 + fv0_y*Ts02 +
+            fv0_x*fv0_z*rs03 - 2*fv0_x**2*fv0_y*Ts04 + 2*fv0_x*fv0_z*
+            rc04) + xv_z*(fv0_x*fv0_z*(-cf0*fv0_x/f0p2 + fv0_x*rs03)/f0p2 +
+            fv0_z*Ts02 - fv0_x*fv0_y*rs03 - 2*fv0_x**2*fv0_z*Ts04
+            - 2*fv0_x*fv0_y*rc04),
+            #
+          xv_x*(-2*fv0_y*Ts02 + (-fv0_y**2 - fv0_z**2)*(-cf0*fv0_y/f0p2 +
+            fv0_y*rs03)/f0p2 - 2*fv0_y*(1 - rs01)*(-fv0_y**2 - fv0_z**2)/f0p4) +
+          xv_y*(fv0_x*fv0_y*(-cf0*fv0_y/f0p2 + fv0_y*rs03)/f0p2 + fv0_x*Ts02 +
+            fv0_y*fv0_z*rs03 - 2*fv0_x*fv0_y**2*Ts04 + 2*fv0_y*fv0_z*rc04)
+          + xv_z*(fv0_x*fv0_z*(-cf0*fv0_y/f0p2 + fv0_y*rs03)/f0p2 + rc02 -
+            fv0_y**2*rs03 - 2*fv0_x*fv0_y*fv0_z*Ts04 - 2*fv0_y**2*rc04),
+          #
+          xv_x*(-2*fv0_z*Ts02 + (-fv0_y**2 - fv0_z**2)*(-cf0*fv0_z/f0p2
+            + fv0_z*rs03)/f0p2 - 2*fv0_z*(1 - rs01)*(-fv0_y**2 - fv0_z**2)/f0p4) +
+          xv_y*(fv0_x*fv0_y*(-cf0*fv0_z/f0p2 + fv0_z*rs03)/f0p2 - rc02
+            + fv0_z**2*rs03 - 2*fv0_x*fv0_y*fv0_z*Ts04 + 2*fv0_z**2*rc04)
+          + xv_z*(fv0_x*fv0_z*(-cf0*fv0_z/f0p2 + fv0_z*rs03)/f0p2 + fv0_x*Ts02
+            - fv0_y*fv0_z*rs03 - 2*fv0_x*fv0_z**2*Ts04 - 2*fv0_y*fv0_z*rc04)],
+         [xv_x*(fv0_x*fv0_y*(-cf0*fv0_x/f0p2 + fv0_x*rs03)/f0p2 +
+            fv0_y*Ts02 - fv0_x*fv0_z*rs03 - 2*fv0_x**2*fv0_y*Ts04 -
+            2*fv0_x*fv0_z*rc04) + xv_y*(-2*fv0_x*Ts02 +
+            (-fv0_x**2 - fv0_z**2)*(-cf0*fv0_x/f0p2 + fv0_x*rs03)/f0p2
+            - 2*fv0_x*(1 - rs01)*(-fv0_x**2 - fv0_z**2)/f0p4) +
+            xv_z*(fv0_y*fv0_z*(-cf0*fv0_x/f0p2 + fv0_x*rs03)/f0p2 - rc02
+                + fv0_x**2*rs03 + 2*fv0_x**2*rc04 - 2*fv0_x*fv0_y*fv0_z*Ts04),
+          xv_x*(fv0_x*fv0_y*(-cf0*fv0_y/f0p2 + fv0_y*rs03)/f0p2 +
+            fv0_x*Ts02 - fv0_y*fv0_z*rs03 - 2*fv0_x*fv0_y**2*Ts04
+            - 2*fv0_y*fv0_z*rc04) + xv_y*((-fv0_x**2 - fv0_z**2)*(-cf0*fv0_y/f0p2
+                + fv0_y*rs03)/f0p2 - 2*fv0_y*(1 - rs01)*(-fv0_x**2 - fv0_z**2)/f0p4)
+            + xv_z*(fv0_y*fv0_z*(-cf0*fv0_y/f0p2 + fv0_y*rs03)/f0p2 + fv0_z*Ts02
+                + fv0_x*fv0_y*rs03 + 2*fv0_x*fv0_y*rc04 - 2*fv0_y**2*fv0_z*Ts04),
+          xv_x*(fv0_x*fv0_y*(-cf0*fv0_z/f0p2 + fv0_z*rs03)/f0p2 + rc02 - fv0_z**2*rs03
+            - 2*fv0_x*fv0_y*fv0_z*Ts04 - 2*fv0_z**2*rc04) + xv_y*(-2*fv0_z*Ts02
+            + (-fv0_x**2 - fv0_z**2)*(-cf0*fv0_z/f0p2 + fv0_z*rs03)/f0p2 -
+            2*fv0_z*(1 - rs01)*(-fv0_x**2 - fv0_z**2)/f0p4) + xv_z*(fv0_y*fv0_z*(-cf0*fv0_z/f0p2
+                + fv0_z*rs03)/f0p2 + fv0_y*Ts02 + fv0_x*fv0_z*rs03 + 2*fv0_x*fv0_z*rc04
+            - 2*fv0_y*fv0_z**2*Ts04)],
+         [xv_x*(fv0_x*fv0_z*(-cf0*fv0_x/f0p2 + fv0_x*rs03)/f0p2 + fv0_z*Ts02
+            + fv0_x*fv0_y*rs03 - 2*fv0_x**2*fv0_z*Ts04 + 2*fv0_x*fv0_y*rc04)
+         + xv_y*(fv0_y*fv0_z*(-cf0*fv0_x/f0p2 + fv0_x*rs03)/f0p2 + rc02 - fv0_x**2*rs03
+            - 2*fv0_x**2*rc04 - 2*fv0_x*fv0_y*fv0_z*Ts04) + xv_z*(-2*fv0_x*Ts02
+            + (-fv0_x**2 - fv0_y**2)*(-cf0*fv0_x/f0p2 + fv0_x*rs03)/f0p2 -
+            2*fv0_x*(1 - rs01)*(-fv0_x**2 - fv0_y**2)/f0p4),
+          xv_x*(fv0_x*fv0_z*(-cf0*fv0_y/f0p2 + fv0_y*rs03)/f0p2 - rc02 + fv0_y**2*rs03 -
+            2*fv0_x*fv0_y*fv0_z*Ts04 + 2*fv0_y**2*rc04) + xv_y*(fv0_y*fv0_z*(-cf0*fv0_y/f0p2
+                + fv0_y*rs03)/f0p2 + fv0_z*Ts02 - fv0_x*fv0_y*rs03 - 2*fv0_x*fv0_y*rc04
+            - 2*fv0_y**2*fv0_z*Ts04) + xv_z*(-2*fv0_y*Ts02 + (-fv0_x**2
+                - fv0_y**2)*(-cf0*fv0_y/f0p2 + fv0_y*rs03)/f0p2 - 2*fv0_y*(1 - rs01)*(-fv0_x**2
+                - fv0_y**2)/f0p4),
+          xv_x*(fv0_x*fv0_z*(-cf0*fv0_z/f0p2 + fv0_z*rs03)/f0p2 + fv0_x*Ts02 +
+            fv0_y*fv0_z*rs03 - 2*fv0_x*fv0_z**2*Ts04 + 2*fv0_y*fv0_z*rc04) +
+          xv_y*(fv0_y*fv0_z*(-cf0*fv0_z/f0p2 + fv0_z*rs03)/f0p2 + fv0_y*Ts02
+            - fv0_x*fv0_z*rs03 - 2*fv0_x*fv0_z*rc04 - 2*fv0_y*fv0_z**2*Ts04) +
+          xv_z*((-fv0_x**2 - fv0_y**2)*(-cf0*fv0_z/f0p2 + fv0_z*rs03)/f0p2 -
+            2*fv0_z*(1 - rs01)*(-fv0_x**2 - fv0_y**2)/f0p4)]])
+    # end der_Tan_by_xv
+
+def der_TanT_by_xv(fv0,xv):
+    """
+    Being fv0 a cartesian rotation vector and Tan the corresponding tangential
+    operator (computed through crv2tan(fv)), the function returns the derivative
+    of dot(Tan^T,xv), where xv is a constant vector.
+
+    The elements of the resulting derivative matrix D are ordered such that:
+        d(Tan^T*xv) = D*d(fv)
+    where d(.) is a delta operator.
+
+    Note: the derivative expression has been derived symbolically and verified
+    by FDs. A more compact expression may be possible.
+    """
+
+    # Renaming variabes for clarity
+    px = fv0[0]
+    py = fv0[1]
+    pz = fv0[2]
+
+    vx = xv[0]
+    vy = xv[1]
+    vz = xv[2]
+
+    # Defining useful functions
+    eps = 1e-15
+    f0=np.linalg.norm(fv0)
+    if f0 < eps:
+        f1 = -1.0/2.0
+        f2 = 1.0/6.0
+        g1 = -1.0/12.0
+        g2 = 0.0 # TODO: check this
+    else:
+        f1 = (np.cos(f0)-1.0)/f0**2.0
+        f2 = (1.0-np.sin(f0)/f0)/f0**2.0
+        g1 = (f0*np.sin(f0)+2.0*(np.cos(f0)-1.0))/f0**4.0
+        g2 = (2.0/f0**4 + np.cos(f0)/f0**4 - 3.0*np.sin(f0)/f0**5)
+
+    # Computing the derivatives of the functions
+    df1dpx = -1.0*px*g1
+    df1dpy = -1.0*py*g1
+    df1dpz = -1.0*pz*g1
+
+    df2dpx = -1.0*px*g2
+    df2dpy = -1.0*py*g2
+    df2dpz = -1.0*pz*g2
+
+    # Compute the output matrix
+    der_TanT_by_xv = np.zeros((3,3),)
+
+    # First column (derivatives with psi_x)
+    der_TanT_by_xv[0,0] = -1.0*df2dpx*(py**2+pz**2)*vx + df1dpx*pz*vy + df2dpx*px*py*vy + f2*py*vy - df1dpx*py*vz + df2dpx*px*pz*vz + f2*pz*vz
+    der_TanT_by_xv[1,0] = -1.0*df1dpx*pz*vx + df2dpx*px*py*vx + f2*py*vx - df2dpx*px**2*vy - 2.0*f2*px*vy - df2dpx*pz**2*vy + df1dpx*px*vz+f1*vz + df2dpx*py*pz*vz
+    der_TanT_by_xv[2,0] = df1dpx*py*vx + df2dpx*px*pz*vx + f2*pz*vx - df1dpx*px*vy -f1*vy + df2dpx*py*pz*vy - df2dpx*px**2*vz - 2.0*f2*px*vz - df2dpx*py**2*vz
+
+    # Second column (derivatives with psi_y)
+    der_TanT_by_xv[0,1] = -df2dpy*py**2*vx -f2*2*py*vx - df2dpy*pz**2*vx + df1dpy*pz*vy + df2dpy*px*py*vy +f2*px*vy - df1dpy*py*vz - f1*vz + df2dpy*px*pz*vz
+    der_TanT_by_xv[1,1] = -df1dpy*pz*vx + df2dpy*px*py*vx + f2*px*vx - df2dpy*px**2*vy - df2dpy*pz**2*vy + df1dpy*px*vz + df2dpy*py*pz*vz + f2*pz*vz
+    der_TanT_by_xv[2,1] = df1dpy*py*vx + f1*vx + df2dpy*px*pz*vx - df1dpy*px*vy + df2dpy*py*pz*vy + f2*pz*vy - df2dpy*px**2*vz - df2dpy*py**2*vz - 2.0*f2*py*vz
+
+    # Second column (derivatives with psi_z)
+    der_TanT_by_xv[0,2] = -df2dpz*py**2*vx - df2dpz*pz**2*vx - 2.0*f2*pz*vx + df1dpz*pz*vy + f1*vy + df2dpz*px*py*vy - df1dpz*py*vz + df2dpz*px*pz*vz + f2*px*vz
+    der_TanT_by_xv[1,2] = -df1dpz*pz*vx - f1*vx + df2dpz*px*py*vx - df2dpz*px**2*vy - df2dpz*pz**2*vy - 2.0*f2*pz*vy + df1dpz*px*vz + df2dpz*py*pz*vz + f2*py*vz
+    der_TanT_by_xv[2,2] = df1dpz*py*vx + df2dpz*px*pz*vx + f2*px*vx - df1dpz*px*vy + df2dpz*py*pz*vy + f2*py*vy - df2dpz*px**2*vz - df2dpz*py**2*vz
+
+    return der_TanT_by_xv
+
+
+
+def der_Ccrv_by_v(fv0,v):
+    """
+    Being C=C(fv0) the rotational matrix depending on the Cartesian rotation
+    vector fv0 and defined as C=crv2rotation(fv0), the function returns the 
+    derivative, w.r.t. the CRV components, of the vector dot(C,v), where v is a 
+    constant vector.
+    The elements of the resulting derivative matrix D are ordered such that:
+        d(C*v) = D*d(fv0)
+    where d(.) is a delta operator.
+    """
+
+    Cab0=crv2rotation(fv0)
+    T0=crv2tan(fv0)
+    vskew=skew(v)
+
+    return -np.dot(Cab0,np.dot(vskew,T0))
+
+
+def der_CcrvT_by_v(fv0,v):
+    """
+    Being C=C(fv0) the rotation matrix depending on the Cartesian rotation
+    vector fv0 and defined as C=crv2rotation(fv0), the function returns the 
+    derivative, w.r.t. the CRV components, of the vector dot(C.T,v), where v is 
+    a constant vector.
+    The elements of the resulting derivative matrix D are ordered such that:
+        d(C.T*v) = D*d(fv0)
+    where d(.) is a delta operator.
+    """
+
+    Cba0=crv2rotation(fv0).T
+    T0=crv2tan(fv0)
+
+    return np.dot( skew( np.dot(Cba0,v) ),T0)

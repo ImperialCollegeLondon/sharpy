@@ -1,0 +1,65 @@
+name: sharpy_env
+channels:
+- menpo
+- defaults
+dependencies:
+- dbus=1.10.22
+- fontconfig=2.12.4
+- freetype=2.8
+- glib=2.53.6
+- h5py=2.8.0
+- hdf5=1.10.2
+- icu=58.2
+- intel-openmp
+- kiwisolver=1.0.1
+- libedit=3.1
+- libgfortran-ng
+- libpng=1.6.34
+- matplotlib=2.2.2
+- mkl=2018.0.3=1
+- mkl_fft=1.0.4
+- mkl_random=1.0.1
+- ncurses=6.0
+- numpy=1.15.1
+- numpy-base=1.15.1
+- python=3.5
+- qt=5.6.2
+- scipy=1.1.0
+- sqlite
+- tk
+- blas=1.0=mkl
+- certifi=2016.2.28
+- colorama=0.3.9
+- cycler=0.10.0
+- expat=2.1.0=0
+- jpeg=9b=0
+- libffi=3.2.1=1
+- libiconv=1.14=0
+- libxml2=2.9.4=0
+- openssl=1.0.2l=0
+- pcre=8.39=1
+- pip=9.0.1
+- pyparsing=2.2.0
+- pyqt=5.6.0
+- python-dateutil=2.6.1
+- pytz=2017.2
+- setuptools=36.4.0
+- sip=4.18
+- six=1.10.0
+- tornado=4.5.2
+- wheel=0.29.0
+- xlrd=1.1.0
+- xz=5.2.3
+- zlib=1.2.11
+- vtk=7.0.0
+- pip:
+  - apptools==4.4.0
+  - configobj==5.0.6
+  - mayavi==4.5.0
+  - mkl-fft==1.0.4
+  - mkl-random==1.0.1
+  - pyface==5.1.0
+  - pygments==2.2.0
+  - traits==4.6.0
+  - traitsui==5.1.0
+
