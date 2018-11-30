@@ -20,7 +20,7 @@ import ctypes as ct
 import traceback
 
 
-def split_multibody(beam, tstep, mb_data_dict):
+def split_multibody(beam, tstep, mb_data_dict, ts):
     """
     split_multibody
 
@@ -43,7 +43,7 @@ def split_multibody(beam, tstep, mb_data_dict):
 
     """
 
-    update_mb_db_before_split(tstep, mb_data_dict)
+    update_mb_db_before_split(tstep, beam, mb_data_dict, ts)
 
     MB_beam = []
     MB_tstep = []
@@ -130,7 +130,7 @@ def merge_multibody(MB_tstep, MB_beam, beam, tstep, mb_data_dict, dt):
     tstep.for_acc[3:6] = np.dot(CAG,tstep.mb_FoR_acc[0,3:6])
     tstep.quat = tstep.mb_quat[0,:].astype(dtype=ct.c_double, order='F', copy=True)
 
-def update_mb_db_before_split(tstep, mb_data_dict):
+def update_mb_db_before_split(tstep, beam, mb_data_dict, ts):
     """
     update_mb_db_before_split
 
@@ -160,6 +160,10 @@ def update_mb_db_before_split(tstep, mb_data_dict):
     #     tstep.mb_FoR_vel[0, 3:6] = np.dot(CGAmaster, tstep.for_vel[3:6])
     #     tstep.mb_FoR_acc[0, 0:3] = np.dot(CGAmaster, tstep.for_acc[0:3])
     #     tstep.mb_FoR_acc[0, 3:6] = np.dot(CGAmaster, tstep.for_acc[3:6])
+
+    if ((mb_data_dict['body_00']['FoR_movement'] == 'prescribed') and (ts > 0)):
+        tstep.for_vel[:] = beam.dynamic_input[ts - 1]['for_vel'].astype(dtype=ct.c_double, order='F', copy=True)
+        tstep.for_acc[:] = beam.dynamic_input[ts - 1]['for_acc'].astype(dtype=ct.c_double, order='F', copy=True)
 
     if True:
         CGAmaster = np.transpose(algebra.quat2rot(tstep.quat))

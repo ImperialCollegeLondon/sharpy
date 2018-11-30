@@ -268,9 +268,9 @@ class NonLinearDynamicMultibody(BaseSolver):
 
         vel = np.zeros((6,),)
         acc = np.zeros((6,),)
-        for ibody in range(len(MB_tstep)):
+        for ibody in range(1, len(MB_tstep)):
             # I think this is the right way to do it, but to make it match the rest I change it temporally
-            if True:
+            if False:
                 # MB_tstep[ibody].mb_quat[ibody,:] =  algebra.quaternion_product(MB_tstep[ibody].quat, MB_tstep[ibody].mb_quat[ibody,:])
                 acc[0:3] = (0.5-self.beta)*np.dot(MB_beam[ibody].timestep_info.cga(),MB_beam[ibody].timestep_info.for_acc[0:3])+self.beta*np.dot(MB_tstep[ibody].cga(),MB_tstep[ibody].for_acc[0:3])
                 vel[0:3] = np.dot(MB_beam[ibody].timestep_info.cga(),MB_beam[ibody].timestep_info.for_vel[0:3])
@@ -280,6 +280,11 @@ class NonLinearDynamicMultibody(BaseSolver):
                 # print("cga: ", MB_tstep[ibody].cga())
                 # print("for_vel: ", MB_tstep[ibody].for_vel)
                 MB_tstep[ibody].for_pos[0:3] += dt*np.dot(MB_tstep[ibody].cga(),MB_tstep[ibody].for_vel[0:3])
+
+        MB_tstep[ibody].for_pos[0:3] = np.dot(algebra.quat2rotation(MB_tstep[0].quat), MB_tstep[0].pos[-1,:])
+        # print("tip final pos: ", np.dot(algebra.quat2rotation(MB_tstep[0].quat), MB_tstep[0].pos[-1,:]))
+        # print("FoR final pos: ", MB_tstep[ibody].for_pos[0:3])
+        # print("pause")
 
     def extract_resultants(self):
         # TODO: code
@@ -296,7 +301,7 @@ class NonLinearDynamicMultibody(BaseSolver):
         # print("beg quat: ", structural_step.quat)
         # TODO: only working for constant forces
         # self.data.structure.timestep_info[-1].unsteady_applied_forces = self.data.structure.dynamic_input[1]['dynamic_forces'].astype(dtype=ct.c_double, order='F', copy=True)
-        MB_beam, MB_tstep = mb.split_multibody(self.data.structure, structural_step, MBdict)
+        MB_beam, MB_tstep = mb.split_multibody(self.data.structure, structural_step, MBdict, self.data.ts)
         # Lagrange multipliers parameters
         num_LM_eq = self.num_LM_eq
         Lambda = np.zeros((num_LM_eq,), dtype=ct.c_double, order='F')
