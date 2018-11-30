@@ -87,6 +87,12 @@ class SteadyHelicoidalWake(BaseSolver):
         self.settings_types['rigid_structure'] = 'bool'
         self.settings_default['rigid_structure'] = False
 
+        self.settings_types['circulation_tolerance'] = 'float'
+        self.settings_default['circulation_tolerance'] = 1e-5
+
+        self.settings_types['circulation_substeps'] = 'int'
+        self.settings_default['circulation_substeps'] = 70
+
         self.data = None
         self.settings = None
         self.structural_solver = None
@@ -208,7 +214,7 @@ class SteadyHelicoidalWake(BaseSolver):
 
             # Iterations to converge the circuation in the aerodynamic solver
             k2 = 0
-            for k2 in range(self.settings['fsi_substeps'].value + 1):
+            for k2 in range(self.settings['circulation_substeps'].value + 1):
 
                 previous_aero_kstep = aero_kstep.copy()
                 self.data = self.aero_solver.run(aero_kstep,
@@ -227,7 +233,7 @@ class SteadyHelicoidalWake(BaseSolver):
                                                np.linalg.norm(previous_aero_kstep.gamma_star[isurf]))
 
                 # convergence
-                if self.res_gamma < self.settings['fsi_tolerance'].value:
+                if self.res_gamma < self.settings['circulation_tolerance'].value:
                     break
 
                 # END OF ITERATIONS TO CONVERGE CIRCULATION

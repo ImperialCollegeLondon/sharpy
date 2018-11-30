@@ -1511,6 +1511,12 @@ class SimulationInformation():
                                    'velocity_field_input': dict(),
                                    'dt': 0.1}
 
+        self.solvers['SaveData'] = {'folder': './output',
+                                   'save_aero': True,
+                                   'save_struct': True,
+                                   # 'skip_attr': dict(),
+                                   'compress_float': False}
+
         # STEPS
         self.solvers['NonLinearStatic'] = {'print_info': 'on',
                                        'max_iterations': 100,
@@ -1625,6 +1631,30 @@ class SimulationInformation():
                                             'cleanup_previous_solution': 'on',
                                             'include_unsteady_force_contribution': 'off'}
 
+        self.solvers["SteadyHelicoidalWake"] = {'print_info': 'on',
+                                            'structural_solver': 'TO BE DEFINED',
+                                            'structural_solver_settings': dict(),
+                                            'aero_solver': 'TO BE DEFINED',
+                                            'aero_solver_settings': dict(),
+                                            'n_time_steps': 100,
+                                            'dt': 0.05,
+                                            'structural_substeps': 1,
+                                            'fsi_substeps': 70,
+                                            'fsi_tolerance': 1e-5,
+                                            'fsi_vel_tolerance': 1e-5,
+                                            'relaxation_factor': 0.2,
+                                            'final_relaxation_factor': 0.0,
+                                            'minimum_steps': 3,
+                                            'relaxation_steps': 100,
+                                            'dynamic_relaxation': 'on',
+                                            'postprocessors': list(),
+                                            'postprocessors_settings': dict(),
+                                            'cleanup_previous_solution': 'on',
+                                            'include_unsteady_force_contribution': 'off',
+                                            'rigid_structure': False,
+                                            'circulation_tolerance': 1e-5,
+                                            'circulation_substeps': 70}
+
         self.solvers["DynamicPrescribedCoupled"] = {'print_info': 'on',
                                             'structural_solver': 'TO BE DEFINED',
                                             'structural_solver_settings': dict(),
@@ -1662,7 +1692,7 @@ class SimulationInformation():
         self.solvers['NonLinearDynamicMultibody']['num_steps'] = num_steps
         self.solvers['NonLinearDynamicCoupledStep']['num_steps'] = num_steps
         self.solvers['NonLinearDynamicPrescribedStep']['num_steps'] = num_steps
-
+        self.solvers['SteadyHelicoidalWake']['n_time_steps'] = num_steps
 
 
 
