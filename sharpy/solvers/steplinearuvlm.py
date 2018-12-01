@@ -1,5 +1,5 @@
 """
-Temporary solver to integrate the linear UVLM aerodynamic solver
+Time domain solver to integrate the linear UVLM aerodynamic system developed by S. Maraniello
 N Goizueta
 Nov 18
 """
@@ -18,7 +18,28 @@ import save, linuvlm, lin_aeroelastic, libss, librom, lin_utils
 @solver
 class StepLinearUVLM(BaseSolver):
     """
-    Temporary solver to integrate the linear UVLM aerodynamics in SHARPy
+    Warnings:
+        Currently under development. The directory location has to be updated once the linear UVLM modules
+        are included in SHARPy
+
+    Time domain aerodynamic solver that uses a linear UVLM formulation
+
+    To Do:
+        Link documentation with Linear UVLM module. Add velocity generator settings
+
+    Attributes:
+    settings (dict): Contains the solver's ``settings``. See below for acceptable values:
+
+        ====================  =========  ===============================================  ==========
+        Name                  Type       Description                                      Default
+        ====================  =========  ===============================================  ==========
+        ``dt``                ``float``  Time increment                                   ``0.1``
+        ``integr_order``      ``int``    Integration order for UVLM system (1 or 2).      ``2``
+        ``ScalingDict``       ``dict``   Dictionary with scaling gains. See Notes.
+        ``solution_method``   ``str``    UVLM linear system solution method. See Notes    ``direct``
+        ``remove_predictor``  ``bool``   Remove predictor term from UVLM system assembly  ``True``
+        ====================  =========  ===============================================  ==========
+
 
     """
     solver_id = 'StepLinearUVLM'
@@ -105,27 +126,37 @@ class StepLinearUVLM(BaseSolver):
 
             # Save reference values
             # System Inputs
-            zeta = np.concatenate([aero_tstep.zeta[ss].reshape(-1, order='C')
-                                   for ss in range(aero_tstep.n_surf)])
-            zeta_dot = np.concatenate([aero_tstep.zeta_dot[ss].reshape(-1, order='C')
-                                       for ss in range(aero_tstep.n_surf)])
-            u_ext = np.concatenate([aero_tstep.u_ext[ss].reshape(-1, order='C')
-                                    for ss in range(aero_tstep.n_surf)])
-
+            zeta = np.concatenate([aero_tstep.zeta[i_surf].reshape(-1, order='C')
+                                   for i_surf in range(aero_tstep.n_surf)])
+            zeta_dot = np.concatenate([aero_tstep.zeta_dot[i_surf].reshape(-1, order='C')
+                                       for i_surf in range(aero_tstep.n_surf)])
+            u_ext = np.concatenate([aero_tstep.u_ext[i_surf].reshape(-1, order='C')
+                                    for i_surf in range(aero_tstep.n_surf)])
             u_0 = np.concatenate((zeta, zeta_dot, u_ext))
+
+            # Linearised state
+            gamma = np.concatenate([aero_tstep.gamma[i_surf].reshape(-1, order='C')
+                                    for i_surf in range(aero_tstep.n_surf)])
+            gamma_star = np.concatenate([aero_tstep.gamma_star[i_surf].reshape(-1, order='C')
+                                         for i_surf in range(aero_tstep.n_surf)])
+            gamma_dot = np.concatenate([aero_tstep.gamma_dot[i_surf].reshape(-1, order='C')
+                                        for i_surf in range(aero_tstep.n_surf)])
+            x_0 = np.concatenate((gamma, gamma_star, gamma_dot))
 
             # Reference forces
             f_0 = np.concatenate([aero_tstep.forces[ss][0:3].reshape(-1, order='C')
                                   for ss in range(aero_tstep.n_surf)])
 
-
             # Assemble the state space system
             lin_uvlm_system.assemble_ss()
             self.data.aero.linear['System'] = lin_uvlm_system
             self.data.aero.linear['SS'] = lin_uvlm_system.SS
+            self.data.aero.linear['x_0'] = x_0
             self.data.aero.linear['u_0'] = u_0
             self.data.aero.linear['f_0'] = f_0
-
+            self.data.aero.linear['gamma_0'] = gamma
+            self.data.aero.linear['gamma_star_0'] = gamma_star
+            self.data.aero.linear['gamma_dot_0'] = gamma_dot
         # Initialise velocity generator
         velocity_generator_type = gen_interface.generator_from_string(self.settings['velocity_field_generator'])
         self.velocity_generator = velocity_generator_type()
@@ -144,7 +175,7 @@ class StepLinearUVLM(BaseSolver):
         system is of the form:
 
         .. math::
-            \mathbf{x} &= \mathbf{A\,x} + \mathbf{B\,u} \\
+            \mathbf{\dot{x}} &= \mathbf{A\,x} + \mathbf{B\,u} \\
             \mathbf{y} &= \mathbf{C\,x} + \mathbf{D\,u}
 
 
@@ -168,7 +199,8 @@ class StepLinearUVLM(BaseSolver):
             2. Find variations with respect to initial reference state. The input to the linear UVLM system is of the
             form:
 
-                .. math:: \mathbf{u} = [\delta\mathbf{\zeta}^T,\, \delta\dot{\mathbf{\zeta}}^T,\,\delta\mathbf{u}^T_{ext}]
+                .. math:: \mathbf{u} = [\delta\mathbf{\zeta}^T,\,
+                    \delta\dot{\mathbf{\zeta}}^T,\,\delta\mathbf{u}^T_{ext}]^T
 
                 Therefore, the values for panel coordinates and velocities at the reference are subtracted and
                 concatenated to form a single column vector.
@@ -181,8 +213,6 @@ class StepLinearUVLM(BaseSolver):
             ``forces`` consists of a ``(6, M+1, N+1)`` matrix for each surface but the bottom 3 rows are null.
 
         To Do:
-            Extract and update information about ``Gamma``
-
             Introduce unsteady effects
 
         Args:
@@ -219,11 +249,7 @@ class StepLinearUVLM(BaseSolver):
                                           'for_pos': structure_tstep.for_pos},
                                          aero_tstep.u_ext)
 
-
-        # Solve system given inputs. inputs to the linear UVLM is a column of zeta, zeta_dot and u_ext
         # Reshape zeta, zeta_dot and u_ext into a column vector
-        # zeta, zeta_dot and u_ext are originally (3, M + 1, N + 1) matrices and are reshaped into a
-        # (K,1) column vector following C ordering i.e. the last index changes the fastest
         zeta = np.concatenate([aero_tstep.zeta[ss].reshape(-1, order='C')
                                for ss in range(aero_tstep.n_surf)])
         zeta_dot = np.concatenate([aero_tstep.zeta_dot[ss].reshape(-1, order='C')
@@ -233,23 +259,41 @@ class StepLinearUVLM(BaseSolver):
 
         # Column vector that will be the input to the linearised UVLM system
         # Variation between linearised state and perturbed state
-        u_sta = np.concatenate((zeta, zeta_dot, u_ext)) - self.data.aero.linear['u_0']
+        du_sta = np.concatenate((zeta, zeta_dot, u_ext)) - self.data.aero.linear['u_0']
 
         # Solve system - output is the variation in force
-        x_sta, y_sta = self.data.aero.linear['System'].solve_steady(u_sta, method=self.settings['solution_method'])
+        dx_sta, dy_sta = self.data.aero.linear['System'].solve_steady(du_sta, method=self.settings['solution_method'])
 
-        # Nodal forces column vector
-        f_aero = self.data.aero.linear['f_0'] + y_sta
+        # Add reference value to obtain current state
+        # Unpack state vector to update circulation terms
+        dgamma_vec, dgamma_star_vec, dgamma_dot_vec = self.data.aero.linear['System'].unpack_state(dx_sta)
+        gamma_vec = self.data.aero.linear['gamma_0'] + dgamma_vec
+        gamma_star_vec = self.data.aero.linear['gamma_star_0'] + dgamma_star_vec
+        gamma_dot_vec = self.data.aero.linear['gamma_dot_0'] + dgamma_dot_vec
+
+        # Nodal forces column vector plus reference value
+        f_aero = self.data.aero.linear['f_0'] + dy_sta
 
         # Reshape output into forces[i_surface] where forces[i_surface] is a (6,M+1,N+1) matrix
         forces = []
+        gamma = []
+        gamma_star = []
+        gamma_dot = []
+
         worked_points = 0
+        worked_panels = 0
+        worked_wake_panels = 0
+
         for i_surf in range(aero_tstep.n_surf):
             # Tuple with dimensions of the aerogrid zeta, which is the same shape for forces
             dimensions = aero_tstep.zeta[i_surf].shape
+            dimensions_gamma = self.data.aero.aero_dimensions[i_surf]
+            dimensions_wake = self.data.aero.aero_dimensions_star[i_surf]
 
             # Number of entries in zeta
             points_in_surface = aero_tstep.zeta[i_surf].size
+            panels_in_surface = aero_tstep.gamma[i_surf].size
+            panels_in_wake = aero_tstep.gamma_star[i_surf].size
 
             # Append reshaped forces to each entry in list (one for each surface)
             forces.append(f_aero[worked_points:worked_points+points_in_surface].reshape(dimensions, order='C'))
@@ -257,9 +301,24 @@ class StepLinearUVLM(BaseSolver):
             # Add the null bottom 3 rows to to the forces entry
             forces[i_surf] = np.concatenate((forces[i_surf], np.zeros(dimensions)))
 
+            # Reshape bound circulation terms
+            gamma.append(gamma_vec[worked_panels:worked_panels+panels_in_surface].reshape(
+                dimensions_gamma, order='C'))
+            gamma_dot.append(gamma_dot_vec[worked_panels:worked_panels+panels_in_surface].reshape(
+                dimensions_gamma, order='C'))
+
+            # Reshape wake circulation terms
+            gamma_star.append(gamma_star_vec[worked_wake_panels:worked_wake_panels+panels_in_wake].reshape(
+                dimensions_wake, order='C'))
+
             worked_points += points_in_surface
+            worked_panels += panels_in_surface
+            worked_wake_panels += panels_in_wake
 
         aero_tstep.forces = forces
+        aero_tstep.gamma = gamma
+        aero_tstep.gamma_dot = gamma_dot
+        aero_tstep.gamma_star = gamma_star
 
         return self.data
 

@@ -85,11 +85,11 @@ class FlyingWing():
         self.tip_airfoil_M = 0
 
         # Numerics for dynamic simulations
-        self.dt = 1 / self.M / self.u_inf
+        self.dt = self.main_chord / self.M / self.u_inf
         self.n_tstep = int(np.round(physical_time/self.dt))
         self.horseshoe = False
         self.fsi_tolerance = 1e-10
-        self.relaxation_factor = 0.3
+        self.relaxation_factor = 0.2
         self.gust_intensity = 0.01
         self.tolerance = 1e-12
 
@@ -338,9 +338,9 @@ class FlyingWing():
                               'rollup_tolerance': 1e-4}
 
         config['StaticCoupled']={'print_info': 'on',
-                               'max_iter': 50,
+                               'max_iter': 200,
                                'n_load_steps': 1,
-                               'tolerance': 1e-6,
+                               'tolerance': 1e-10,
                                'relaxation_factor': 0.,
                                #
                                'aero_solver': 'StaticUvlm',
@@ -351,7 +351,7 @@ class FlyingWing():
                                             'print_info': 'off',
                                             'horseshoe': 'off',
                                             'num_cores': 4,
-                                            'n_rollup': 0,
+                                            'n_rollup': 1,
                                             'rollup_dt': self.dt,
                                             'rollup_aic_refresh': 1,
                                             'rollup_tolerance': 1e-4,
@@ -364,10 +364,10 @@ class FlyingWing():
                                                               'max_iterations': 150,
                                                               'num_load_steps': 4,
                                                               'delta_curved': 1e-5,
-                                                              'min_delta': 1e-5,
+                                                              'min_delta': 1e-8,
                                                               'gravity_on': 'on',
-                                                              'gravity': 9.81,
-                                                              'orientation': self.quat},}
+                                                              'gravity': 9.81}}
+                                                              # 'orientation': self.quat},}
 
 
         config['StepLinearUVLM'] = {'dt': self.dt,
@@ -675,6 +675,7 @@ class Goland(FlyingWing):
                             aspect_ratio=aspect_ratio,
                             beta=beta,       
                             sweep=sweep,
+                            physical_time=physical_time,
                             n_surfaces=n_surfaces,
                             route=route,      
                             case_name=case_name)
