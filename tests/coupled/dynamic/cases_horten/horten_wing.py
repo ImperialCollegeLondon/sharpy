@@ -33,6 +33,8 @@ class HortenWing:
                  cs_deflection=0.,
                  thrust=0,
                  physical_time=10,
+                 case_name_format=0,
+                 case_remarks=None,
                  case_route='./',
                  case_name='horten'):
 
@@ -47,7 +49,14 @@ class HortenWing:
         self.n_surfaces = 4
 
         # Case admin
-        self.case_name = case_name + '_u_inf%.4d_a%.4d' %(int(u_inf),int(alpha_deg*100))
+        if case_name_format == 0:
+            self.case_name = case_name + '_u_inf%.4d_a%.4d' % (int(u_inf), int(alpha_deg * 100))
+        elif case_name_format == 1:
+            self.case_name = case_name + '_u_inf%.4d' % int(u_inf)
+        else:
+
+            self.case_name = case_name + '_u_inf%.4d_%s' % (int(u_inf), case_remarks)
+
         self.case_route = case_route + self.case_name + '/'
         self.config = None
 
@@ -852,7 +861,7 @@ class HortenWing:
                               'log_folder': route + '/output/',
                               'log_file': case_name + '.log'}
 
-        settings['BeamLoader'] = {'unsteady': 'on',
+        settings['BeamLoader'] = {'unsteady': 'off',
                                   'orientation': algebra.euler2quat(np.array([0.0,
                                                                               self.alpha,
                                                                               self.beta]))}
@@ -872,7 +881,7 @@ class HortenWing:
         settings['StaticCoupled'] = {'print_info': 'on',
                                      'structural_solver': 'NonLinearStatic',
                                      'structural_solver_settings': {'print_info': 'off',
-                                                                    'max_iterations': 150,
+                                                                    'max_iterations': 200,
                                                                     'num_load_steps': 1,
                                                                     'delta_curved': 1e-5,
                                                                     'min_delta': tolerance,
@@ -882,7 +891,7 @@ class HortenWing:
                                      'aero_solver_settings': {'print_info': 'off',
                                                               'horseshoe': self.horseshoe,
                                                               'num_cores': 4,
-                                                              'n_rollup': int(0 * 100),
+                                                              'n_rollup': int(1),
                                                               'rollup_dt': self.c_root / self.M / self.u_inf,
                                                               'rollup_aic_refresh': 1,
                                                               'rollup_tolerance': 1e-4,
@@ -892,9 +901,9 @@ class HortenWing:
                                                               'rho': rho,
                                                               'alpha': alpha,
                                                               'beta': beta},
-                                     'max_iter': 100,
+                                     'max_iter': 200,
                                      'n_load_steps': 1,
-                                     'tolerance': fsi_tolerance,
+                                     'tolerance': tolerance,
                                      'relaxation_factor': 0.}
 
         if self.horseshoe is True:
@@ -904,7 +913,7 @@ class HortenWing:
                                           'freestream_dir': ['1', '0', '0'],
                                           'control_surface_deflection': ['']}
         else:
-            settings['AerogridLoader'] = {'unsteady': 'on',
+            settings['AerogridLoader'] = {'unsteady': 'off',
                                           'aligned_grid': 'on',
                                           'mstar': int(self.M * self.Mstarfactor),
                                           'freestream_dir': ['1', '0', '0'],
@@ -923,7 +932,11 @@ class HortenWing:
                                   'thrust_nodes': thrust_nodes,
                                   'initial_alpha': alpha,
                                   'initial_deflection': cs_deflection,
-                                  'initial_thrust': thrust}
+                                  'initial_thrust': thrust,
+                                  'max_iter': 200,
+                                  'fz_tolerance': 1e-4,
+                                  'fx_tolerance': 1e-4,
+                                  'm_tolerance': 1e-4}
 
         settings['Trim'] = {'solver': 'StaticCoupled',
                             'solver_settings': settings['StaticCoupled'],
@@ -932,7 +945,7 @@ class HortenWing:
                             'cs_indices': [0],
                             'initial_cs_deflection': [cs_deflection],
                             'thrust_nodes': thrust_nodes,
-                            'initial_thrust': [thrust, -thrust]}
+                            'initial_thrust': [thrust, thrust]}
 
         settings['NonLinearDynamicCoupledStep'] = {'print_info': 'off',
                                                    'initial_velocity_direction': [-1., 0., 0.],
@@ -945,6 +958,28 @@ class HortenWing:
                                                    'num_steps': n_tstep,
                                                    'dt': dt,
                                                    'initial_velocity': u_inf * 0}
+
+        settings['NonLinearDynamicPrescribedStep'] = {'print_info': 'off',
+                                                   'initial_velocity_direction': [-1., 0., 0.],
+                                                   'max_iterations': 950,
+                                                   'delta_curved': 1e-6,
+                                                   'min_delta': self.tolerance,
+                                                   'newmark_damp': 5e-3,
+                                                   'gravity_on': True,
+                                                   'gravity': 9.81,
+                                                   'num_steps': self.n_tstep,
+                                                   'dt': self.dt}
+
+        settings['StepLinearUVLM'] = {'dt': self.dt,
+                                      'solution_method': 'direct',
+                                      'velocity_field_generator': 'GustVelocityField',
+                                      'velocity_field_input': {'u_inf': u_inf,
+                                                               'u_inf_direction': [1., 0., 0.],
+                                                               'gust_shape': '1-cos',
+                                                               'gust_length': 1.,
+                                                               'gust_intensity': self.gust_intensity * u_inf,
+                                                               'offset': 30.,
+                                                               'span': self.span}}
 
         settings['StepUvlm'] = {'print_info': 'off',
                                 'horseshoe': self.horseshoe,
@@ -1003,7 +1038,7 @@ class HortenWing:
                                                                                      '2': [-12 * np.pi / 180,
                                                                                            6 * np.pi / 180]}},
                                                                   'BeamPlot': {'folder': route + '/output/',
-                                                                               'include_rbm': 'off',
+                                                                               'include_rbm': 'on',
                                                                                'include_applied_forces': 'on'},
                                                                   'AerogridPlot': {
                                                                       'u_inf': u_inf,
@@ -1048,13 +1083,13 @@ class HortenWing:
                                     'u_inf': u_inf
                                     }
         settings['AeroForcesCalculator'] = {'folder': route + '/output/',
-                                            'write_text_file': 'on',
+                                            'write_text_file': 'off',
                                             'text_file_name': case_name + '_aeroforces.csv',
                                             'screen_output': 'on',
-                                            'unsteady': 'on'
+                                            'unsteady': 'off'
                                             }
         settings['BeamPlot'] = {'folder': route + '/output/',
-                                'include_rbm': 'off',
+                                'include_rbm': 'on',
                                 'include_applied_forces': 'on'}
 
         settings['BeamLoads'] = {'folder': route + '/output/',
@@ -1067,5 +1102,6 @@ class HortenWing:
         for k, v in settings.items():
             config[k] = v
         config.write()
+        self.settings = settings
 
         self.config = config
