@@ -902,7 +902,7 @@ def generate_solver_file(horseshoe=False):
                                       'unsteady': 'on'
                                       }
     settings['BeamPlot'] = {'folder': route + '/output/',
-                          'include_rbm': 'off',
+                          'include_rbm': 'on',
                           'include_applied_forces': 'on'}
 
     settings['BeamLoads'] = {'folder': route + '/output/',

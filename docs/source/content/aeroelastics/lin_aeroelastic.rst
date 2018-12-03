@@ -1,5 +1,5 @@
 Linearised Aeroelastic Solver
 +++++++++++++++++++++++++++++
 
-.. autoclass:: src.lin_aeroelastic.LinAeroEla
+.. autoclass:: sharpy.linear.src.lin_aeroelastic.LinAeroEla
    :members:

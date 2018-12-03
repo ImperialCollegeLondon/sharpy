@@ -24,8 +24,9 @@ Aerodynamic Solvers
 
 Aeroelastic Solvers
 +++++++++++++++++++
-.. autoclass:: sharpy.solvers.dynamiccoupled.DynamicCoupled
-    :members:
+.. toctree::
+    aeroelastics/dyncoupled
+    aeroelastics/lin_aeroelastic
 
 
 Modal Solvers

@@ -149,14 +149,14 @@ class Static():
 
 
     def solve(self):
-        """
+        r"""
         Solve for bound :math:`\\Gamma` using the equation;
 
         .. math::
                 \\mathcal{A}(\\Gamma^n) = u^n
-		# ... at constant rotation speed
-		self.Dfqsdzeta+=scalg.block_diag(
-								   *ass.dfqsdzeta_omega(MS.Surfs,MS.Surfs_star))
+
+        # ... at constant rotation speed
+        ``self.Dfqsdzeta+=scalg.block_diag(*ass.dfqsdzeta_omega(MS.Surfs,MS.Surfs_star))``
 
         """
 
