@@ -9,10 +9,7 @@ from sharpy.utils.solver_interface import BaseSolver, solver
 import numpy as np
 import sharpy.utils.settings as settings
 import sharpy.utils.generator_interface as gen_interface
-
-os.environ["DIRuvlm3d"] = "/home/ng213/linuvlm/uvlm3d/src/"
-sys.path.append(os.environ["DIRuvlm3d"])
-import save, linuvlm, lin_aeroelastic, libss, librom, lin_utils
+import sharpy.linear.src.linuvlm as linuvlm  
 
 
 @solver

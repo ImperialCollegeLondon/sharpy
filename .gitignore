@@ -119,3 +119,9 @@ tests/coupled/dynamic/horten/BFF/
 tests/coupled/dynamic/horten/BFF2/
 
 tests/coupled/prescribed/goland_linear/model_diff/
+
+
+# linear tools
+*.prof
+sharpy/linear/test/test_cases/*
+

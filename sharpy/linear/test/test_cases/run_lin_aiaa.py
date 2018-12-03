@@ -9,21 +9,18 @@ import scipy as sc
 import scipy.signal as scsig
 import sys, os
 import warnings
-# from IPython import embed
 import matplotlib.pyplot as plt 
+
 # sharpy
-sys.path.append("/home/ng213/code/sharpy/")
 import sharpy.sharpy_main
 import sharpy.utils.solver_interface as solver_interface
 import sharpy.solvers.modal as modal
 import sharpy.utils.h5utils as h5
 import cases.templates.flying_wings as flying_wings
-# linear uvlm
-os.environ["DIRuvlm3d"] = "/home/ng213/linuvlm/uvlm3d/src/"
-sys.path.append( os.environ["DIRuvlm3d"] )
-import save, linuvlm, lin_aeroelastic, libss, librom
-import pp_plot as pp
-plt.rcParams.update(pp.std_params)
+
+import sharpy.linear.src.linuvlm as linuvlm
+import sharpy.linear.src.libss as libss 
+import sharpy.linear.src.lin_aeroelastic as lin_aeroelastic
 
 
 def comp_tot_force( forces,zeta,zeta_pole=np.zeros((3,)) ):
@@ -82,13 +79,12 @@ def solve_linear(Ref,Pert,solve_beam=True):
 
 	num_dof_str=len(dq)
 	dzeta_exp=np.dot(Ref.Kas[:len(dzeta),:num_dof_str] ,dq)
-
 	SSaero=Ref.SSaero 
-	SSbeam=Ref.SSbeam
 
 	# zeta in
 	usta=np.concatenate([dzeta,dzeta_dot,du_ext])
 	if hasattr(Ref,'Asteady_inv'):
+
 		xsta=np.dot( Ref.Asteady_inv, np.dot(SSaero.B,usta) )
 	else:
 		Asteady=np.eye(*SSaero.A.shape)-SSaero.A
@@ -97,9 +93,9 @@ def solve_linear(Ref,Pert,solve_beam=True):
 	ftot_aero=Ref.ftot+np.dot(Ref.Kftot,ysta)
 	mtot_aero=Ref.mtot+np.dot(Ref.Kmtot,ysta)+np.dot(Ref.Kmtot_disp,dzeta)	
 
-	
 	#### beam in
 	if solve_beam:
+		SSbeam=Ref.SSbeam
 		# warning: we need to add first the contribution due to velocity change!!!
 		usta_uinf=np.concatenate([0.*dzeta,0.*dzeta_dot,du_ext])
 		xsta_uinf=np.linalg.solve( Asteady, np.dot(SSaero.B,usta_uinf) )
@@ -120,8 +116,10 @@ def solve_linear(Ref,Pert,solve_beam=True):
 
 
 
-def extract_from_data(data,assemble=True,
-							 zeta_pole=np.zeros((3,)),build_Asteady_inv=False ):
+def extract_from_data(	data,
+						assemble=True,
+						zeta_pole=np.zeros((3,)),
+						build_Asteady_inv=False ):
 	'''
 	Extract relevant info from data structure. If assemble is True, it will 
 	also generate a linear UVLM and the displacements/velocities gain matrices
@@ -156,12 +154,24 @@ def extract_from_data(data,assemble=True,
 	if assemble is True:
 		uvlm=Sol.linuvlm
 		uvlm.assemble_ss()
+
+		# make sparse
+
+
+
+
 		uvlm.get_total_forces_gain(zeta_pole=zeta_pole)
 		Sol.get_gebm2uvlm_gains()
 		Kas=np.block([[Sol.Kdisp    , np.zeros((3*uvlm.Kzeta,gebm.num_dof+10))],
 					  [Sol.Kvel_disp, Sol.Kvel_vel 						   	  ],
 					  [np.zeros((3*uvlm.Kzeta,2*gebm.num_dof+20))             ]])
 		SSbeam=libss.addGain(uvlm.SS, Kas, where='in')
+
+
+
+
+
+
 
 		if build_Asteady_inv:
 			Asteady_inv=np.linalg.inv( np.eye(*uvlm.SS.A.shape)-uvlm.SS.A )
@@ -170,7 +180,6 @@ def extract_from_data(data,assemble=True,
 		Out=Info(zeta,zeta_dot,uext,ftot,mtot,q,qdot,
 		 			uvlm.SS,SSbeam,Kas,uvlm.Kftot,uvlm.Kmtot,uvlm.Kmtot_disp,
 		 															Asteady_inv)
-
 	else:
 		Out=Info(zeta,zeta_dot,uext,ftot,mtot,q,qdot)
 
@@ -181,14 +190,14 @@ def extract_from_data(data,assemble=True,
 
 
 # Define Parametrisation
-M,N,Mstar_fact= 20,40,20 # HF (flex/rig)
-# M,N,Mstar_fact=4, 40, 20 # LF (flex/rig)
+# M,N,Mstar_fact= 20,40,20 # HF (flex/rig)
+M,N,Mstar_fact=4, 40, 15 # LF (flex/rig)
+M,N,Mstar_fact=12, 40, 16 # LF (flex/rig)
+M,N,Mstar_fact= 4,40,20 # HF (flex/rig)
 
 Rigid=1#True
 # linearisation point
-PPlist=[2,8]
-#PPlist=[5,25]
-
+PPlist=[5,25]
 
 
 Nsurf=1
@@ -196,8 +205,7 @@ u_inf=150.
 ZetaPole=np.zeros((3,))
 
 # Flying properties
-pvec=np.linspace(-1,1,11)
-# pvec=np.linspace(-1,1,31)
+pvec=np.linspace(-1,1,31)
 
 
 AlphaFoRA=0.0
@@ -245,8 +253,10 @@ for ll in range(Nlin):
 	route_here=route_main
 
 	data0=h5.readh5(route_here+case_here+'.data.h5').data
-	Refs.append( extract_from_data(data0,assemble=True,
-								     zeta_pole=ZetaPole,build_Asteady_inv=True))
+	Refs.append( extract_from_data(	data0,
+									assemble=True,
+								    zeta_pole=ZetaPole,
+								    build_Asteady_inv=False))
 
 
 
@@ -288,7 +298,6 @@ for nn in range(Npoints):
 
 ### ----------------------------------------------------------------------------
 
-
 ### total forces
 rho=np.float(data0.settings['LinearUvlm']['density'])
 qinf=0.5*rho*u_inf**2
@@ -299,8 +308,26 @@ Fsc=qinf*Sref
 Msc=Fsc*chord
 
 
+### ----------------------------------------------------------------------------
+
+cdict={ 'dark-blue'   : '#003366',
+        'royal-blue'  : '#4169E1', 
+        'blue-violet' : '#6666FF', 
+        'clear-red'   : '#CC3333',  
+        'dark-green'  : '#336633',
+        'orange'      : '#FF6600'}
+fontlabel=22
+std_params={'legend.fontsize': 14,
+            'font.size':       fontlabel,
+            'xtick.labelsize': fontlabel-2,
+            'ytick.labelsize': fontlabel-2, 
+            'figure.autolayout': True,
+            'legend.numpoints': 1} 
+plt.rcParams.update(std_params)
+
+
 clab=['x','y','z']
-clist=[pp.cdict['royal-blue'],'k',pp.cdict['orange']]
+clist=[cdict['royal-blue'],'k',cdict['orange']]
 llist=['--',':','-.']
 wlist=[5,5,5]
 clab=['x','y','z']
@@ -323,7 +350,7 @@ for cc in range(3):
 	# geometrically-exact
 	labs.append( r'geometrically-exact' )
 	hleg.append(ax.plot( AlphaInfVecDeg,Fref[:,cc]/Fsc,
-						  lw=5,ls='-',alpha=0.7,color=pp.cdict['clear-red'])[0])
+						  lw=5,ls='-',alpha=0.7,color=cdict['clear-red'])[0])
 	# linear (aero dof)
 	for ll in range(Nlin):
 		PP=PPlist[ll]
@@ -354,18 +381,7 @@ figleg=plt.figure('Legend',(12,1))
 figleg.legend(hleg[:1+Nlin],labs[:1+Nlin],ncol=4,loc='center',frameon=False,columnspacing=2,labelspacing=.4)
 figleg.savefig(figsfold+'/legend.png')
 figleg.savefig(figsfold+'/legend.pdf')	
-
-
-figleg=plt.figure('Legend vert',(6,3))
-figleg.legend(hleg[:1+Nlin],labs[:1+Nlin],ncol=1,loc='center',frameon=False,columnspacing=2,labelspacing=.4)
-figleg.savefig(figsfold+'/legend_vert.png')
-figleg.savefig(figsfold+'/legend_vert.pdf')	
-
-
-
-
-
-plt.show()
+#plt.show()
 plt.close('all')
 
 ### save output
@@ -381,7 +397,7 @@ out.Fref=Fref
 out.Fref=Fref
 out.AlphaInfVecDeg=AlphaInfVecDeg
 out.SideVecDeg=SideVecDeg
-save.h5file(figsfold,savename+'.h5',*(out,))
+h5.saveh5(figsfold,savename+'.h5',*(out,),permission='w')
 
 
 

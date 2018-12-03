@@ -84,6 +84,7 @@ class Static():
         self.Ducdzeta += scalg.block_diag(*List_uc_dncdzeta)
         del List_uc_dncdzeta
         # omega x zeta terms
+        # # omega x zeta terms
         List_nc_domegazetadzeta_col, List_nc_domegazetadzeta_vert = \
                                   ass.nc_domegazetadzeta(MS.Surfs,MS.Surfs_star)
         self.Ducdzeta+=np.block(List_nc_domegazetadzeta_vert)
@@ -287,14 +288,16 @@ class Static():
         self.Kfsec = np.zeros((6 * Ntot, 3 * self.Kzeta))
 
         Kzeta_start = 0
+        II_start = 0
         for ss in range(self.MS.n_surf):
             M, N = self.MS.MM[ss], self.MS.NN[ss]
 
             for nn in range(N + 1):
                 zeta_sec = self.MS.Surfs[ss].zeta[:, :, nn]
+                
                 # section indices
-                iivec = [Kzeta_start + np.ravel_multi_index((cc, nn),
-                                                            (6, N + 1)) for cc in range(6)]
+                iivec = [II_start + np.ravel_multi_index((cc, nn),
+                                                            (6, N + 1)) for cc in range(6)] 
 
                 for mm in range(M + 1):
                     # vertex indices
@@ -310,6 +313,7 @@ class Static():
                                                                      [dz, 0, -dx],
                                                                      [-dy, dx, 0]])
             Kzeta_start += 3 * self.MS.KKzeta[ss]
+            II_start += 6*(N+1)
 
 
     def get_rigid_motion_gains(self, zeta_rotation=np.zeros((3,))):

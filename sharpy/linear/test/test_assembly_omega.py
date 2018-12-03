@@ -10,19 +10,19 @@ import itertools
 import copy
 import matplotlib.pyplot as plt
 
-import sys, os
-try:
-	sys.path.append(os.environ['DIRuvlm3d'])
-except KeyError:
-	sys.path.append(os.path.abspath('../src/'))
 
-sys.path.append(os.path.abspath('/home/arturo/code/sharpy/sharpy/utils'))
-import assembly, multisurfaces, surface, libuvlm, h5utils
+import sharpy.utils.h5utils as h5utils
+import sharpy.linear.src.assembly as assembly
+import sharpy.linear.src.multisurfaces as multisurfaces
+import sharpy.linear.src.surface as surface
+import sharpy.linear.src.libuvlm as libuvlm
 
-from IPython import embed
+
+# from IPython import embed
 np.set_printoptions(linewidth=200,precision=3)
-
 omega = np.array([1.6,0.0,0.0])
+
+
 
 def max_error_tensor(Pder_an,Pder_num):
 	'''
@@ -1001,23 +1001,3 @@ if __name__=='__main__':
 
 	unittest.main()
 
-	# T=Test_assembly()
-	# T.setUp()
-
-	# ### force equation (qs term)
-	# T.test_dvinddzeta()
-	# T.test_dfqsdvind_zeta() # run setUp after this test
-
-	# T.setUp()
-	# T.test_dfqsdvind_gamma()
-	# T.test_dfqsduinput()
-	# T.test_dfqsdzeta_vrel0()
-	# T.test_dfqsdgamma_vrel0()
-
-	# ### state equation terms
-	# T.test_uc_dncdzeta()
-	# T.test_nc_dqcdzeta()
-
-
-	### force equation (unsteady)
-	# T.test_dfunstdgamma_dot()

@@ -6,9 +6,7 @@ import copy
 import numpy as np
 import sys, os
 import warnings
-# from IPython import embed
-# sharpy
-sys.path.append("/home/ng213/code/sharpy/")
+
 import sharpy.sharpy_main
 import sharpy.utils.solver_interface as solver_interface
 from sharpy.postproc.aeroforcescalculator import AeroForcesCalculator
@@ -20,18 +18,20 @@ import cases.templates.flying_wings as flying_wings
 # ------------------------------------------------------------------------------
 
 # Define Parametrisation
-M,N,Mstar_fact= 20,40,20 # 
+M,N,Mstar_fact= 20,40,20
+# M,N,Mstar_fact= 12,40,16
+M,N,Mstar_fact= 4,40,20
 Nsurf=1
 u_inf=150.
 
 
 # Flying properties
-pvec=np.linspace(-1,1,61)
-#pvec=np.linspace(-1,1,31)
+#pvec=np.linspace(-1,1,61)
+pvec=np.linspace(-1,1,31)
 
-AlphaFoRA=0.0
+AlphaFoRA=0.
 SideMidDeg=0.
-SideMaxDeg=6.0
+SideMaxDeg=6.
 AlphaInfMid=0.
 AlphaInfMax=3.
 AlphaInfVecDeg=AlphaInfMid+AlphaInfMax*pvec
