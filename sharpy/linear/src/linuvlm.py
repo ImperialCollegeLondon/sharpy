@@ -6,6 +6,8 @@ S. Maraniello, 7 Jun 2018
 import numpy as np
 import scipy.linalg as scalg
 import scipy.signal as scsig
+import scipy.sparse as sparse
+
 # # from IPython import embed
 import time
 import warnings
@@ -83,7 +85,6 @@ class Static():
         del List_nc_dqcdzeta_coll
         self.Ducdzeta += scalg.block_diag(*List_uc_dncdzeta)
         del List_uc_dncdzeta
-        # omega x zeta terms
         # # omega x zeta terms
         List_nc_domegazetadzeta_col, List_nc_domegazetadzeta_vert = \
                                   ass.nc_domegazetadzeta(MS.Surfs,MS.Surfs_star)
@@ -364,7 +365,8 @@ class Static():
 
 class Dynamic(Static):
 
-    def __init__(self, tsdata, dt, integr_order=2, RemovePredictor=True, ScalingDict=None):
+    def __init__(self, tsdata, dt, integr_order=2, 
+                       RemovePredictor=True, ScalingDict=None, UseSparse=False):
 
         super().__init__(tsdata)
 
@@ -397,6 +399,7 @@ class Dynamic(Static):
 
         self.remove_predictor = RemovePredictor
         self.include_added_mass = True
+        self.use_sparse=UseSparse
 
         # create scaling quantities
         if ScalingDict is None:
@@ -638,8 +641,14 @@ class Dynamic(Static):
             print('state-space model produced in form:\n\t' \
                   'x_{n+1} = A x_{n} + Bp u_{n+1}')
 
-        ### Gain matrix for total forces
-        # self.get_total_forces_gain()
+        # convert to sparse A & B
+        if self.use_sparse:
+            # !!! warning: dodgy behaviour when assiging a sparse matrix to an 
+            # attribute of scipy.signal.ltisys.StateSpaceDiscrete. 
+            self.SS.Asp=sparse.csc_matrix(self.SS.A)
+            self.SS.A=None
+            self.SS.Bsp=sparse.csc_matrix(self.SS.B)
+            self.SS.B=[None]*self.SS.inputs
 
         self.time_ss = time.time() - t0
         print('\t\t\t...done in %.2f sec' % self.time_ss)
@@ -657,10 +666,17 @@ class Dynamic(Static):
         """
 
         if self.remove_predictor is True and method != 'direct':
-            raise NameError('Only direct solution is available if predictor' \
+            raise NameError('Only direct solution is available if predictor ' \
                             'term has been removed from the state-space equations (see assembly_ss)')
 
-        Ass, Bss, Css, Dss = self.SS.A, self.SS.B, self.SS.C, self.SS.D
+        if self.use_sparse is True and method!= 'direct':
+            raise NameError('Only direct solution is available if use_sparse is True. ' \
+                            '(see assembly_ss)')
+
+        if self.use_sparse:
+            Asp, Bsp, Css, Dss = self.SS.Asp, self.SS.Bsp, self.SS.C, self.SS.D
+        else:
+            Ass, Bss, Css, Dss = self.SS.A, self.SS.B, self.SS.C, self.SS.D
 
         if method == 'minsize':
             # as opposed to linuvlm.Static, this solves for the bound circulation
@@ -736,8 +752,12 @@ class Dynamic(Static):
 
         elif method == 'direct':
             """ Solves (I - A) x = B u with direct method"""
-            Ass_steady = np.eye(*Ass.shape) - Ass
-            xsta = np.linalg.solve(Ass_steady, np.dot(Bss, usta))
+            if self.use_sparse:
+                xsta=sparse.linalg.spsolve(
+                             sparse.eye(self.Nx,format='csc')-Asp,Bsp.dot(usta))
+            else:
+                Ass_steady = np.eye(*Ass.shape) - Ass
+                xsta = np.linalg.solve(Ass_steady, np.dot(Bss, usta))
             ysta = np.dot(Css, xsta) + np.dot(Dss, usta)
 
 
@@ -779,6 +799,33 @@ class Dynamic(Static):
 
         return xsta, ysta
 
+
+
+    def solve_step(self,xold,uvec):
+        """
+        Solve step:
+            xnew = A xold + B uvec
+            ynew = C xold + D uvec
+        where uvec is evaluated at t_old or t_new accoring to whether the 
+        predictor is removed or not.
+
+        Warning: to speed-up the solution and use minimal memory:
+            - solve for bound vorticity (and)
+            - propagate the wake
+            - compute the output
+        separately. 
+        """
+
+        if self.use_sparse:
+            xnew = self.SS.Asp.dot(xold) + self.SS.Bsp.dot(uvec)
+        else:
+            xnew = self.SS.A.dot(xold) + self.SS.B.dot(uvec)
+        ynew = np.dot(self.SS.C, xnew) + np.dot(self.SS.D,uvec)
+
+        return xnew,ynew
+
+
+
     def unpack_state(self, xvec):
 
         K, K_star = self.K, self.K_star
@@ -789,18 +836,21 @@ class Dynamic(Static):
         return gamma_vec, gamma_star_vec, gamma_dot_vec
 
 
+
+
+
 ################################################################################
 
 
 if __name__ == '__main__':
 
     import timeit
-    import read
+    import sharpy.utils.h5utils as h5
     import matplotlib.pyplot as plt
 
     # # # select test case
     fname = '../test/h5input/goland_mod_Nsurf02_M003_N004_a040.aero_state.h5'
-    haero = read.h5file(fname)
+    haero = h5.readh5(fname)
     tsdata = haero.ts00000
 
     # Static solver
@@ -894,14 +944,14 @@ if __name__ == '__main__':
 
     Fsect = np.dot(Dyn.Kfsec, ysub).reshape((n_surf, 6, N + 1))
     assert np.max(np.abs(Fsect - Fsect_ref)) < 1e-12, \
-        'Error in gains for cross-sectional forces'
+                                     'Error in gains for cross-sectional forces'
 
     # total forces
     Ftot_ref = np.zeros((3,))
     for cc in range(3):
         Ftot_ref[cc] = np.sum(Fsect_ref[:, cc, :])
     Ftot = np.dot(Dyn.Kftot, ysub)
-    assert np.max(np.abs(Ftot - Ftot_ref)) < 1e-12, 'Error in gains for total forces'
+    assert np.max(np.abs(Ftot - Ftot_ref)) < 1e-11, 'Error in gains for total forces'
 
     ### ------------------------------- Verify assembly without prediction term
 
@@ -917,3 +967,22 @@ if __name__ == '__main__':
     er = np.max(np.abs(ydir - Sta.fqs) / np.linalg.norm(Sta.Ftot))
     print('Error force distribution: %.3e' % er)
     assert er < 1e-12, 'Steady-state force not matching!'
+
+
+
+    ### -------------------------------------------------- test sparse solution
+
+    # Dynamic solver
+    Dyn = Dynamic(tsdata, dt=0.05, integr_order=2, 
+                                          RemovePredictor=False, UseSparse=True)
+    Dyn.assemble_ss()
+
+    # steady state solution
+    usta = np.concatenate((Sta.zeta, Sta.zeta_dot, Sta.u_ext))
+    xsta_spa, ysta_spa = Dyn.solve_steady(usta, method='direct')  
+    assert max(np.linalg.norm(xsta_spa - xsta), 
+               np.linalg.norm(ysta_spa - ysta)), \
+                                 'Direct and sub-system solutions not matching!'
+
+
+

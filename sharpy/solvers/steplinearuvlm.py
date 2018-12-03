@@ -22,7 +22,8 @@ class StepLinearUVLM(BaseSolver):
     Time domain aerodynamic solver that uses a linear UVLM formulation
 
     To Do:
-        Link documentation with Linear UVLM module. Add velocity generator settings
+        - Link documentation with Linear UVLM module. Add velocity generator settings
+        - Add option for impulsive/non impulsive start start?
 
     Attributes:
     settings (dict): Contains the solver's ``settings``. See below for acceptable values:
@@ -33,10 +34,9 @@ class StepLinearUVLM(BaseSolver):
         ``dt``                ``float``  Time increment                                   ``0.1``
         ``integr_order``      ``int``    Integration order for UVLM system (1 or 2).      ``2``
         ``ScalingDict``       ``dict``   Dictionary with scaling gains. See Notes.
-        ``solution_method``   ``str``    UVLM linear system solution method. See Notes    ``direct``
         ``remove_predictor``  ``bool``   Remove predictor term from UVLM system assembly  ``True``
+        ``use sparse``        ``bool``   use sparse form of A and B matrix.               ``True``        
         ====================  =========  ===============================================  ==========
-
 
     """
     solver_id = 'StepLinearUVLM'
@@ -63,11 +63,11 @@ class StepLinearUVLM(BaseSolver):
                                                 'speed': 1.0,
                                                 'density': 1.0}
 
-        self.settings_types['solution_method'] = 'str'
-        self.settings_default['solution_method'] = 'direct'
-
         self.settings_types['remove_predictor'] = 'bool'
         self.settings_default['remove_predictor'] = True
+
+        self.settings_types['use_sparse'] = 'bool'
+        self.settings_default['use_sparse'] = True
 
         self.data = None
         self.settings = None
@@ -119,7 +119,8 @@ class StepLinearUVLM(BaseSolver):
                                               dt=self.settings['dt'].value,
                                               integr_order=self.settings['integr_order'].value,
                                               ScalingDict=self.settings['ScalingDict'],
-                                              RemovePredictor=self.settings['remove_predictor'])
+                                              RemovePredictor=self.settings['remove_predictor'],
+                                              UseSparse=self.settings['use_sparse'])
 
             # Save reference values
             # System Inputs
@@ -210,7 +211,7 @@ class StepLinearUVLM(BaseSolver):
             ``forces`` consists of a ``(6, M+1, N+1)`` matrix for each surface but the bottom 3 rows are null.
 
         To Do:
-            Introduce unsteady effects
+            option for implulsive start?
 
         Args:
             aero_tstep (AeroTimeStepInfo): object containing the aerodynamic data at the current time step
@@ -237,6 +238,9 @@ class StepLinearUVLM(BaseSolver):
         if unsteady_contribution:
             raise NotImplementedError('Unsteady aerodynamic effects have not yet been implemented')
 
+
+        ### Define Input
+
         # Generate external velocity field u_ext
         self.velocity_generator.generate({'zeta': aero_tstep.zeta,
                                           'override': True,
@@ -255,21 +259,40 @@ class StepLinearUVLM(BaseSolver):
                                for ss in range(aero_tstep.n_surf)])
 
         # Column vector that will be the input to the linearised UVLM system
-        # Variation between linearised state and perturbed state
-        du_sta = np.concatenate((zeta, zeta_dot, u_ext)) - self.data.aero.linear['u_0']
+        du_here = np.concatenate((zeta, zeta_dot, u_ext)) - self.data.aero.linear['u_0']
 
-        # Solve system - output is the variation in force
-        dx_sta, dy_sta = self.data.aero.linear['System'].solve_steady(du_sta, method=self.settings['solution_method'])
+
+        ### Define State
+
+        # Extract current state...
+        gamma = np.concatenate([aero_tstep.gamma[ss].reshape(-1, order='C')
+                                for ss in range(aero_tstep.n_surf)])
+        gamma_star = np.concatenate([aero_tstep.gamma_star[ss].reshape(-1, order='C')
+                                    for ss in range(aero_tstep.n_surf)])
+        gamma_dot = dt*np.concatenate([aero_tstep.gamma_dot[ss].reshape(-1, order='C')
+                                    for ss in range(aero_tstep.n_surf)])
+
+        # ... and pack it
+        gamma_old=[]
+        if self.settings['integr_order']==2:
+            gamma_old = np.concatenate([
+                self.data.aero.timestep_info[-2].gamma[ss].reshape(-1,order='C') \
+                                            for ss in range(aero_tstep.n_surf)])
+        dx_here=np.concatenate([gamma, gamma_star, gamma_dot, gamma_old])
+
+
+        ### Solve system - output is the variation in force
+        dx_new, dy_new = self.data.aero.linear['System'].solve_step(dx_here,du_here)
 
         # Add reference value to obtain current state
         # Unpack state vector to update circulation terms
-        dgamma_vec, dgamma_star_vec, dgamma_dot_vec = self.data.aero.linear['System'].unpack_state(dx_sta)
+        dgamma_vec, dgamma_star_vec, dgamma_dot_vec = self.data.aero.linear['System'].unpack_state(dx_new)
         gamma_vec = self.data.aero.linear['gamma_0'] + dgamma_vec
         gamma_star_vec = self.data.aero.linear['gamma_star_0'] + dgamma_star_vec
         gamma_dot_vec = self.data.aero.linear['gamma_dot_0'] + dgamma_dot_vec
 
         # Nodal forces column vector plus reference value
-        f_aero = self.data.aero.linear['f_0'] + dy_sta
+        f_aero = self.data.aero.linear['f_0'] + dy_new
 
         # Reshape output into forces[i_surface] where forces[i_surface] is a (6,M+1,N+1) matrix
         forces = []
