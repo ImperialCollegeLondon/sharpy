@@ -16,8 +16,7 @@ import sharpy.linear.src.linuvlm as linuvlm
 class StepLinearUVLM(BaseSolver):
     """
     Warnings:
-        Currently under development. The directory location has to be updated once the linear UVLM modules
-        are included in SHARPy
+        Currently under development.
 
     Time domain aerodynamic solver that uses a linear UVLM formulation
 
@@ -26,7 +25,7 @@ class StepLinearUVLM(BaseSolver):
         - Add option for impulsive/non impulsive start start?
 
     Attributes:
-    settings (dict): Contains the solver's ``settings``. See below for acceptable values:
+        settings (dict): Contains the solver's ``settings``. See below for acceptable values:
 
         ====================  =========  ===============================================  ==========
         Name                  Type       Description                                      Default
@@ -37,6 +36,12 @@ class StepLinearUVLM(BaseSolver):
         ``remove_predictor``  ``bool``   Remove predictor term from UVLM system assembly  ``True``
         ``use sparse``        ``bool``   use sparse form of A and B matrix.               ``True``        
         ====================  =========  ===============================================  ==========
+
+    Notes:
+        Scaling gains etc
+
+    See Also:
+        :func:`sharpy.linear.src.linuvlm`
 
     """
     solver_id = 'StepLinearUVLM'

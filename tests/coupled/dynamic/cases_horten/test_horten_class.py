@@ -3,7 +3,7 @@
 import tests.coupled.dynamic.cases_horten.horten_wing as horten_wing
 import sharpy.sharpy_main
 
-aero_type = 'nlin'
+aero_type = 'lin'
 
 ws = horten_wing.HortenWing(M=4,
                             N=11,
@@ -32,7 +32,7 @@ ws.set_default_config_dict()
 
 ws.config['SHARPy']['flow'] = ['BeamLoader',
                                'AerogridLoader',
-                               'StaticTrim',
+                               # 'StaticTrim',
                                'StaticCoupled',
                                'AeroForcesCalculator',
                                'AerogridPlot',
