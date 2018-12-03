@@ -9,18 +9,14 @@ from sharpy.utils.solver_interface import BaseSolver, solver
 import numpy as np
 import sharpy.utils.settings as settings
 import sharpy.utils.generator_interface as gen_interface
-
-os.environ["DIRuvlm3d"] = "/home/ng213/linuvlm/uvlm3d/src/"
-sys.path.append(os.environ["DIRuvlm3d"])
-import save, linuvlm, lin_aeroelastic, libss, librom, lin_utils
+import sharpy.linear.src.linuvlm as linuvlm
 
 
 @solver
 class StepLinearUVLM(BaseSolver):
     """
     Warnings:
-        Currently under development. The directory location has to be updated once the linear UVLM modules
-        are included in SHARPy
+        Currently under development.
 
     Time domain aerodynamic solver that uses a linear UVLM formulation
 
@@ -28,18 +24,23 @@ class StepLinearUVLM(BaseSolver):
         Link documentation with Linear UVLM module. Add velocity generator settings
 
     Attributes:
-    settings (dict): Contains the solver's ``settings``. See below for acceptable values:
+        settings (dict): Contains the solver's ``settings``. See below for acceptable values:
 
-        ====================  =========  ===============================================  ==========
-        Name                  Type       Description                                      Default
-        ====================  =========  ===============================================  ==========
-        ``dt``                ``float``  Time increment                                   ``0.1``
-        ``integr_order``      ``int``    Integration order for UVLM system (1 or 2).      ``2``
-        ``ScalingDict``       ``dict``   Dictionary with scaling gains. See Notes.
-        ``solution_method``   ``str``    UVLM linear system solution method. See Notes    ``direct``
-        ``remove_predictor``  ``bool``   Remove predictor term from UVLM system assembly  ``True``
-        ====================  =========  ===============================================  ==========
+            ====================  =========  ===============================================  ==========
+            Name                  Type       Description                                      Default
+            ====================  =========  ===============================================  ==========
+            ``dt``                ``float``  Time increment                                   ``0.1``
+            ``integr_order``      ``int``    Integration order for UVLM system (1 or 2).      ``2``
+            ``ScalingDict``       ``dict``   Dictionary with scaling gains. See Notes.
+            ``solution_method``   ``str``    UVLM linear system solution method. See Notes    ``direct``
+            ``remove_predictor``  ``bool``   Remove predictor term from UVLM system assembly  ``True``
+            ====================  =========  ===============================================  ==========
 
+    Notes:
+        Scaling gains etc
+
+    See Also:
+        :func:`sharpy.linear.src.linuvlm`
 
     """
     solver_id = 'StepLinearUVLM'

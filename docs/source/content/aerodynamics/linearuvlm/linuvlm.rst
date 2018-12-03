@@ -1,5 +1,5 @@
-Linear UVLM Solver
-------------------
+Linear UVLM Aerodynamic Model
+-----------------------------
 
 .. automodule:: sharpy.linear.src.linuvlm
    :members:

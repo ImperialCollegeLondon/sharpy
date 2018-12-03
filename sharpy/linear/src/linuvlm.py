@@ -463,7 +463,7 @@ class Dynamic(Static):
         :math:`\mathbf{f}` the vector of aerodynamic forces and moments. Note that :math:`(\bullet)'` denotes
         a derivative with respect to time.
 
-        Note that the input is atyically defined at time ``n+1``, therefore by default
+        Note that the input is atypically defined at time ``n+1``, therefore by default
         ``self.remove_predictor = True`` and the predictor term ``u_{n+1}`` is eliminated through
         the change of state[1]:
 
