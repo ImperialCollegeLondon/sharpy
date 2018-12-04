@@ -95,8 +95,9 @@ class PlotFlowField(BaseSolver):
             # u.append(np.zeros((3,ny,nz), dtype=ct.c_double))
             for ix in range(nx):
                 for iy in range(ny):
+                    target_triad = grid[iz][:, ix, iy].astype(dtype=ct.c_double, order='F', copy=True)
                     u[ix, iy, iz, :] = uvlmlib.uvlm_calculate_total_induced_velocity_at_point(self.data.aero.timestep_info[-1],
-                                                           grid[iz][:, ix, iy])
+                                                           target_triad)
 
         # Add the external velocities
         zeta = []

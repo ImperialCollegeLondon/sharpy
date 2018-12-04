@@ -362,5 +362,7 @@ def uvlm_calculate_total_induced_velocity_at_point(ts_info,
                               p_target_triad,
                               p_uind)
     ts_info.remove_ctypes_pointers()
+    del p_uind
+    del p_target_triad
 
     return uind
