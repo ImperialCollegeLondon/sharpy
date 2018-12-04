@@ -282,7 +282,7 @@ class AeroGridSurface(AeroGridGeo):
 	def __init__(self,Map,zeta,gamma,
 							u_ext=None,zeta_dot=None,gamma_dot=None,
 														  rho=1.,aM=0.5,aN=0.5,
-														  omega=np.zeros((3),)):
+                                                          omega=np.zeros((3,),)):
 
 		super().__init__(Map,zeta,aM,aN)
 

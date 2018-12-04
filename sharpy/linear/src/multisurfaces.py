@@ -15,10 +15,9 @@ class MultiAeroGridSurfaces():
 	Creates and assembles multiple aerodynamic surfaces from data
 	'''
 
-	def __init__(self,tsdata,omega=np.zeros((3),)):
+	def __init__(self,tsdata):
 		'''
 		Initialise rom data structure at time step.
-		omega: rotation speed of the A FoR [rad/s]
 		'''
 
 		self.tsdata0=tsdata
@@ -45,6 +44,10 @@ class MultiAeroGridSurfaces():
 			### Allocate bound surfaces
 			M,N=tsdata.dimensions[ss]
 			Map=gridmapping.AeroGridMap(M,N)
+			try:
+				omega = tsdata.omega[ss]
+			except:
+				omega = np.zeros((3,),)
 			Surf=surface.AeroGridSurface(
 					Map,zeta=tsdata.zeta[ss],gamma=tsdata.gamma[ss],
 					u_ext=tsdata.u_ext[ss],zeta_dot=tsdata.zeta_dot[ss],
@@ -247,6 +250,9 @@ class MultiAeroGridSurfaces():
 
 			assert ErMax<1e-12*np.max(np.abs(self.Surfs[0].u_ext)),\
 			'Linearisation state does not verify the non-penetration condition!'
+            # For rotating cases:
+			# assert ErMax<1e-10*np.max(np.abs(self.Surfs[0].u_input_coll)),\
+			# 	'Linearisation state does not verify the non-penetration condition! %.3e > %.3e' % (ErMax, 1e-10*np.max(np.abs(self.Surfs[0].u_input_coll)))
 
 
 	def verify_aic_coll(self):
@@ -291,7 +297,9 @@ class MultiAeroGridSurfaces():
 
 			assert ErMax<1e-12*np.max(np.abs(self.Surfs[0].u_ext)),\
 			'Linearisation state does not verify the non-penetration condition!'
-
+            # For rotating cases:
+			# assert ErMax<1e-10*np.max(np.abs(self.Surfs[0].u_input_coll)),\
+			# 'Linearisation state does not verify the non-penetration condition! %.3e > %.3e' % (ErMax, 1e-10*np.max(np.abs(self.Surfs[0].u_input_coll)))
 
 
 	def verify_joukovski_qs(self):
@@ -314,6 +322,8 @@ class MultiAeroGridSurfaces():
 
 			print('Surface %.2d max abs error: %.3e' %(ss,ErMax) )
 			assert ErMax<1e-12 ,'Wrong quasi-steady force over surface %.2d!'%ss
+            # For rotating cases:
+			# assert ErMax<1e-8 ,'Wrong quasi-steady force over surface %.2d!'%ss
 
 
 

@@ -23,7 +23,7 @@ import itertools
 
 from sharpy.utils.sharpydir import SharpyDir
 import sharpy.utils.ctypes_utils as ct_utils
-import sharpy.linear.src.lib_dbiot as dbiot 
+import sharpy.linear.src.lib_dbiot as dbiot
 import sharpy.linear.src.lib_ucdncdzeta as lib_ucdncdzeta
 
 libc=ct_utils.import_ctypes_lib(SharpyDir + '/lib/', 'libuvlm')
@@ -233,9 +233,6 @@ def nc_dqcdzeta(Surfs,Surfs_star):
 
 	return 	DAICcoll, DAICvert
 
-
-################################################################################
-
 def nc_domegazetadzeta(Surfs,Surfs_star):
 	'''
 	Produces a list of derivative matrix d(omaga x zeta)/dzeta, where omega is
@@ -249,7 +246,7 @@ def nc_domegazetadzeta(Surfs,Surfs_star):
 		zeta d.o.f. of the j-th bound surface.
 	Hence, DAIC*[ii][jj] will have size K_ii x Kzeta_jj
 
-	call: ncDOmegaZetacoll, ncDOmegaZetavert = nc_domegazetadzeta(Surfs,Surfs_star)
+	call: ncDOmegaZetavert = nc_domegazetadzeta(Surfs,Surfs_star)
 	'''
 	n_surf=len(Surfs)
 
@@ -267,10 +264,8 @@ def nc_domegazetadzeta(Surfs,Surfs_star):
 		wcv=Surf.get_panel_wcv()
 		shape_zeta=Surf.maps.shape_vert_vect # (3,M,N)
 
-		# The derivatives only depend on the studied surface (Surf_out)
-		# ncDcoll=np.zeros((K,3))     # ? no colloc contrib.   
-		# ncDvert=np.zeros((Kzeta,3))   
-		ncDvert=np.zeros((K,3*Kzeta))  
+		# The derivatives only depend on the studied surface (Surf)
+		ncDvert=np.zeros((K,3*Kzeta))
 
         ##### loop collocation points
 		for cc in range(K):
@@ -279,28 +274,21 @@ def nc_domegazetadzeta(Surfs,Surfs_star):
 			mm=Surf.maps.ind_2d_pan_scal[0][cc]
 			nn=Surf.maps.ind_2d_pan_scal[1][cc]
 
-			zetac_here=Surf.zetac[:,mm,nn]
-
             # get normal
 			nc_here=Surf.normals[:,mm,nn]
 
-			# ncDcoll[cc,:] -= np.dot(nc_here,skew_omega)
-			nc_skew_omega = np.dot(nc_here,skew_omega)
-
+			nc_skew_omega = -1.*np.dot(nc_here,skew_omega)
 
 			# loop panel vertices
 			for vv,dm,dn in zip(range(4),dmver,dnver):
 				mm_v,nn_v=mm+dm,nn+dn
 				ii_v=[np.ravel_multi_index(
 								 (comp,mm_v,nn_v),shape_zeta) for comp in range(3)]
-				### BUG ???
-				# ncDvert[cc,ii_v]+=wcv[vv]*ncDcoll
-				ncDvert[cc,ii_v]+=wcv[vv]*nc_skew_omega
 
-		# ncDOmegaZetacoll.append(ncDcoll)
+				ncDvert[cc,ii_v] += nc_skew_omega
+
 		ncDOmegaZetavert.append(ncDvert)
 
-	# return 	ncDOmegaZetacoll, ncDOmegaZetavert
 	return ncDOmegaZetavert
 
 def uc_dncdzeta(Surf):
@@ -650,7 +638,6 @@ def dfqsduinput(Surfs,Surfs_star):
 
 	return Der_list
 
-#########################  ams start ##################################
 
 def dfqsdzeta_omega(Surfs,Surfs_star):
 	'''
@@ -736,7 +723,6 @@ def dfqsdzeta_omega(Surfs,Surfs_star):
 
 	return Der_list
 
-#########################  ams end ##################################
 
 def dfqsdvind_gamma(Surfs,Surfs_star):
 	'''
