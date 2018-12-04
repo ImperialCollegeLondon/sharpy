@@ -3,15 +3,211 @@ Linear Time Invariant systems
 author: S. Maraniello
 date: 15 Sep 2017 (still basement...)
 
-Library of methods to manipulate state-space models
+Library of methods to build/manipulate state-space models. The module is
+structured as follows: 
+
+Utilities for sparsity:
+- matmult: multiply dense/sparse matrices. Usefull for state-space manipulations
+	where some matrices are defined as dense, while others as full.
+- dense: return a dense array
+
+Classes:
+- ss: provides a class to build DLTI/LTI systems with full and/or sparse 
+	matrices and wraps many of the methods in these library. Methods include:
+	- freqresp: wraps the freqresp function
+	- addGain: adds gains in input/output. This is not a wrapper of addGain, as
+	the system matrices are overwritten
+
+Methods for state-space manipulation:
+- couple: feedback coupling. Does not support sparsity
+- freqresp: calculate frequency response. Supports sparsity.
+- series: series connection between systems
+- parallel: parallel connection between systems
+- SSconv: convert state-space model with predictions and delays
+- addGain: add gains to state-space model.
+- join: merge two state-space models into one.
+- sum state-space models and/or gains
+- scale_SS: scale state-space model
+- simulate: simulates discrete time solution
+- Hnorm_from_freq_resp: compute H norm of a frequency response
+- adjust_phase: remove discontinuities from a frequency response
+
+Special Models:
+- SSderivative: produces DLTI of a numerical derivative scheme
+- SSintegr: produces DLTI of an integration scheme
+- build_SS_poly: build state-space model with polynomial terms.
+
+Filtering:
+- butter
+
+
+to do: 
+	- remove unnecessary coupling routines
+	- extend support for sparse matrices: substitute all dot products with matmult
 '''
 
 import copy
+import warnings
 import numpy as np
 import scipy.sparse as sparse
 import scipy.signal as scsig
 # # from IPython import embed
 
+
+
+# ------------------------------------------------------ Utilities for sparsity
+
+def matmult(A,B,type_out=None):
+	'''
+	Method to compute
+		C = A*B ,
+	where * is the matrix product, with dense/sparse matrices.
+
+	The format (sparse or dense) of C is specified through 'type_out'. If
+	type_out==None, the format of the A matrix is used.
+
+	The following formats are supported:
+	- numpy.ndarray
+	- scipy.sparse.csc.csc_matrix
+	'''
+
+	# determine types:
+	tA=type(A)
+	tB=type(B)
+
+	assert tA in [np.ndarray,sparse.csc.csc_matrix], 'type of A matrix not supported'
+	assert tB in [np.ndarray,sparse.csc.csc_matrix], 'type of B matrix not supported'
+	if type_out == None:
+		type_out=tA
+
+	# multiply
+	if tA==np.ndarray and tB==sparse.csc.csc_matrix:
+		C=(B.transpose()).dot(A.transpose()).transpose()
+	else:
+		C=A.dot(B)
+
+	# format output 
+	if tA != type_out:
+		if type_out==sparse.csc.csc_matrix:
+			return sparse.csc_matrix(C)
+		else:
+			return C.todense()
+	return C
+
+
+def dense(M):
+	''' 
+	If required, converts sparse array to dense.
+	'''
+	if type(M) in [sparse.csc.csc_matrix]:
+		return M.todense()
+	return M
+
+
+
+# ------------------------------------------------------------- Dedicated class
+
+class ss():
+	'''
+	Wrap state-space models allocation into a single class and support both
+	full and sparse matrices. The class emulates 
+		scipy.signal.ltisys.StateSpaceContinuous
+		scipy.signal.ltisys.StateSpaceDiscrete
+	but supports sparse matrices and other functionalities. 
+
+	Methods:
+	- freqresp: calculate frequency response over range.
+	- addGain: project inputs/outputs
+	- scale: allows scaling a system
+
+
+	'''
+
+	def __init__(self,A, B, C, D, dt=None):
+		'''
+		Allocate state-space model (A,B,C,D). If dt is not passed, a 
+		continuous-time system is assumed.
+		'''
+
+		self.A=A
+		self.B=B
+		self.C=C 
+		self.D=D
+		self.dt=dt
+
+		# determine inputs/outputs/states
+		(self.states,self.inputs)=self.B.shape
+		self.outputs=self.C.shape[0]
+
+		# verify dimensions
+		assert self.A.shape==(self.states,self.states), 'A and B rows not matching'
+		assert self.C.shape[1]==self.states, 'A and C columns not matching'
+		assert self.D.shape==(self.outputs,self.inputs), 'B and D columns not matching'
+
+
+	def freqresp(self,wv):
+		'''
+		Calculate frequency response over frequencies wv
+
+		Note: this wraps frequency response function.
+		'''
+		dlti=True
+		if self.dt==None: dlti=False
+		return freqresp(self,wv,dlti=dlti)
+
+
+	def addGain(self,K,where):
+		'''
+		Projects input u or output y the state-space system through the gain 
+		matrix K. The input 'where' determines whether inputs or outputs are
+		projected as: 
+			- where='in': inputs are projected such that:
+				u_new -> u=K*u_new -> SS -> y  => u_new -> SSnew -> y
+			- where='out': outputs are projected such that:
+			 	u -> SS -> y -> y_new=K*y => u -> SSnew -> ynew 
+
+		Warning: this is not a wrapper of the addGain method in this module, as
+		the state-space matrices are directly overwritten.
+		'''
+
+		assert where in ['in', 'out'],\
+							'Specify whether gains are added to input or output'
+
+		if where=='in':
+			self.B=matmult(self.B,K)
+			self.D=matmult(self.D,K)
+			self.inputs=K.shape[1]
+
+		if where=='out':
+			self.C=matmult(K,self.C)
+			self.D=matmult(K,self.D)
+			self.outputs=K.shape[0]
+
+
+	def scale(self,input_scal=1.,output_scal=1.,state_scal=1.):
+		'''
+		Given a state-space system, scales the equations such that the original
+		state, input and output, (x, u and y), are substituted by 
+			xad=x/state_scal
+			uad=u/input_scal 
+			yad=y/output_scal
+		The entries input_scal/output_scal/state_scal can be:
+			- floats: in this case all input/output are scaled by the same value
+			- lists/arrays of length Nin/Nout: in this case each dof will be scaled
+			by a different factor
+
+		If the original system has form:
+			xnew=A*x+B*u
+			y=C*x+D*u
+		the transformation is such that:
+			xnew=A*x+(B*uref/xref)*uad
+			yad=1/yref( C*xref*x+D*uref*uad )
+		'''
+		scale_SS(self,input_scal,output_scal,state_scal,byref=True)
+
+
+
+# ---------------------------------------- Methods for state-space manipulation
 
 def couple(ss01,ss02,K12,K21):
 	'''
@@ -239,45 +435,55 @@ def couple_wrong(ss01,ss02,K12,K21):
 
 
 
-def freqresp(SS,wv,eng=None,method='standard',dlti=True,use_sparse=False):
-	''' In-house frequency response function '''
+def freqresp(SS,wv,dlti=True):
+	''' 
+	In-house frequency response function supporting dense/sparse types
 
-	# matlab frequency response
-	if method=='matlab':
-		raise NameError('Please use freqresp function in matwrapper module!')
+	Inputs:
+	- SS: instance of ss class, or scipy.signal.StateSpace*
+	- wv: frequency range
+	- dlti: True if discrete-time system is considered.
 
-	# in-house implementation	
-	elif method=='standard':
+	Outputs:
+	- Yfreq[outputs,inputs,len(wv)]: frequency response over wv
 
-		if hasattr(SS,'dt') and dlti:
-			Ts=SS.dt
-			wTs=Ts*wv
-			zv=np.cos(wTs)+1.j*np.sin(wTs)
-		else:
-			print('Assuming a continuous time system')
-			zv=1.j*wv
+	Warnings:
+	-  This function may not be very efficient for dense matrices (as A is not
+	reduced to upper Hessenberg form), but can exploit sparsity in the state-space
+	matrices.
+	'''
 
-		Nx=SS.A.shape[0]
-		Ny=SS.D.shape[0]
-		Nu=SS.B.shape[1]
-		Nw=len(wv)
-		Yfreq=np.empty((Ny,Nu,Nw,),dtype=np.complex_)
+	if hasattr(SS,'dt') and dlti:
+		Ts=SS.dt
+		wTs=Ts*wv
+		zv=np.cos(wTs)+1.j*np.sin(wTs)
+	else:
+		print('Assuming a continuous time system')
+		zv=1.j*wv
 
-		if use_sparse:
-			# csc format used for efficiency
-			Asparse=sparse.csc_matrix(SS.A)
-			Bsparse=sparse.csc_matrix(SS.B)
-			Eye=sparse.eye(Nx,format='csc')
-			for ii in range(Nw):
-				sol_cplx=sparse.linalg.spsolve(zv[ii]*Eye-Asparse,Bsparse)
-				Yfreq[:,:,ii]=np.dot(SS.C,sol_cplx.todense())+SS.D
-		else:
-			Eye=np.eye(Nx)
-			for ii in range(Nw):
-				Yfreq[:,:,ii]=np.dot(SS.C,
-				              		 np.linalg.solve(zv[ii]*Eye-SS.A,SS.B))+SS.D
+	Nx=SS.A.shape[0]
+	Ny=SS.D.shape[0]
+	Nu=SS.B.shape[1]
+	Nw=len(wv)
+	Yfreq=np.empty((Ny,Nu,Nw,),dtype=np.complex_)
+
+	if type(SS.A)==sparse.csc.csc_matrix:
+		Eye=sparse.eye(Nx,format='csc')
+		for ii in range(Nw):
+			sol_cplx=sparse.linalg.spsolve(zv[ii]*Eye-SS.A,SS.B)
+			Yfreq[:,:,ii]=matmult(SS.C,sol_cplx,type_out=np.ndarray)+SS.D
+
+	elif type(SS.A)==np.ndarray:
+		Eye=np.eye(Nx)
+		for ii in range(Nw):
+			sol_cplx=np.linalg.solve(zv[ii]*Eye-SS.A,dense(SS.B))
+			Yfreq[:,:,ii]=matmult(SS.C,sol_cplx,type_out=np.ndarray)+SS.D
+
+	else:
+		raise NameError('Type of A matrix not supported')
 
 	return Yfreq
+
 
 
 
@@ -392,19 +598,21 @@ def SSconv(A,B0,B1,C,D,Bm1=None):
 	where H=(x,g)
 
 	@ref: Franklin and Powell
+
+	Warnings:
+	- functions untested for delays (Bm1 != 0)
 	'''
 
 	# Account for u^{n+1} terms (prediction)
-	if type(A) is sparse.bsr.bsr_matrix: Bh=B0+A.dot(B1)
-	else: Bh=B0+np.dot(A,B1)
-
-	if type(C) is sparse.bsr.bsr_matrix: Dh=D+C.dot(B1)
-	else: Dh=D+np.dot(C,B1)
+	Bh=B0+matmult(A,B1)
+	Dh=D+matmult(C,B1)
 
 	# Account for u^{n-1} terms (delay)
 	if Bm1 is None:
 		outs=(A,Bh,C,Dh)
 	else:
+		warnings.warn('Function untested when Bm1!=None')
+
 		Nx,Nu,Ny=A.shape[0],B0.shape[1],C.shape[0]
 		AA=np.block( [[A, Bm1],
 			         [np.zeros((Nu,Nx)), np.zeros((Nu,Nu))]])
@@ -431,6 +639,8 @@ def addGain(SShere,Kmat,where):
 	   { u_2 -> y_2= Kmat*u_2    =>    u_new=(u_1,u_2) -> SSnew -> y=y_1+y_2
 		{y = y_1+y_2
 		 -
+
+	Warning: function not tested for Kmat stored in sparse format
 	'''
 
 	assert where in ['in', 'out', 'parallel-down', 'parallel-up'],\
@@ -438,15 +648,15 @@ def addGain(SShere,Kmat,where):
 
 	if where=='in':
 		A=SShere.A
-		B=np.dot(SShere.B,Kmat)
+		B=SShere.B.dot(Kmat)
 		C=SShere.C
-		D=np.dot(SShere.D,Kmat)
+		D=SShere.D.dot(Kmat)
 
 	if where=='out':
 		A=SShere.A
 		B=SShere.B
-		C=np.dot(Kmat,SShere.C)
-		D=np.dot(Kmat,SShere.D)
+		C=Kmat.dot(SShere.C)
+		D=Kmat.dot(SShere.D)
 
 	if where=='parallel-down':
 		A=SShere.A
@@ -461,9 +671,9 @@ def addGain(SShere,Kmat,where):
 		D=np.block([Kmat,SShere.D])	
 
 	if SShere.dt==None:
-		SSnew=scsig.lti(A,B,C,D)
+		SSnew=ss(A,B,C,D)
 	else:
-		SSnew=scsig.dlti(A,B,C,D,dt=SShere.dt)
+		SSnew=ss(A,B,C,D,dt=SShere.dt)
 
 	return SSnew
 
@@ -614,7 +824,10 @@ def sum(SS1,SS2,negative=False):
 def scale_SS(SSin,input_scal=1.,output_scal=1.,state_scal=1.,byref=True):
 	'''
 	Given a state-space system, scales the equations such that the original
-	input and output, u and y, are substituted by uad=u/uref and yad=y/yref.
+	state, input and output, (x, u and y), are substituted by 
+		xad=x/state_scal
+		uad=u/input_scal 
+		yad=y/output_scal
 	The entries input_scal/output_scal/state_scal can be:
 		- floats: in this case all input/output are scaled by the same value
 		- lists/arrays of length Nin/Nout: in this case each dof will be scaled
@@ -627,7 +840,8 @@ def scale_SS(SSin,input_scal=1.,output_scal=1.,state_scal=1.,byref=True):
 		xnew=A*x+(B*uref/xref)*uad
 		yad=1/yref( C*xref*x+D*uref*uad )
 
-	By default, the state-space model is manipulated by reference (byref=True)
+	By default, the state-space model is manipulated by reference (byref=True).
+	The method supports both dense and sparse state-space models.
 	'''
 
 	# check input:
@@ -652,20 +866,16 @@ def scale_SS(SSin,input_scal=1.,output_scal=1.,state_scal=1.,byref=True):
 	else:
 		state_scal=Nstates*[state_scal]
 
-
 	if byref:
 		SS=SSin
 	else:
 		print('deep-copying state-space model before scaling')
 		SS=copy.deepcopy(SSin)
 
-
 	# update input related matrices
 	for ii in range(Nin):
 		SS.B[:,ii]=SS.B[:,ii]*input_scal[ii]
 		SS.D[:,ii]=SS.D[:,ii]*input_scal[ii]
-	# SS.B*=input_scale
-	# SS.D*=input_scale
 
 	# update output related matrices
 	for ii in range(Nout):
@@ -676,8 +886,7 @@ def scale_SS(SSin,input_scal=1.,output_scal=1.,state_scal=1.,byref=True):
 	for ii in range(Nstates):
 		SS.B[ii,:]=SS.B[ii,:]/state_scal[ii]
 		SS.C[:,ii]=SS.C[:,ii]*state_scal[ii]
-	# SS.B /= state_scal	
-
+	
 	return SS
 
 
@@ -765,6 +974,8 @@ def adjust_phase(y,deg=True):
 	return y
 
 
+
+# -------------------------------------------------------------- Special Models
 
 
 def SSderivative(ds):
@@ -864,6 +1075,7 @@ def build_SS_poly(Acf,ds,negative=False):
 	return SSpoly_neg
 
 
+# ------------------------------------------------------------- Filtering tools
 
 
 def butter(order,Wn,N=1,btype='lowpass'):
@@ -891,8 +1103,108 @@ def butter(order,Wn,N=1,btype='lowpass'):
 
 
 
+# --------------------------------------------------------------------- Testing
+
+def compare_ss(SS1,SS2,tol=1e-10):
+	'''
+	Assert matrices of state-space models are identical
+	'''
+
+	er=np.max(np.abs(dense(SS1.A)-dense(SS2.A)))
+	assert er<tol, 'Error A matrix %.2e>%.2e'%(er,tol)
+
+	er=np.max(np.abs(dense(SS1.B)-dense(SS2.B)))
+	assert er<tol, 'Error B matrix %.2e>%.2e'%(er,tol)
+
+	er=np.max(np.abs(dense(SS1.C)-dense(SS2.C)))
+	assert er<tol, 'Error C matrix %.2e>%.2e'%(er,tol)
+
+	er=np.max(np.abs(dense(SS1.D)-dense(SS2.D)))
+	assert er<tol, 'Error D matrix %.2e>%.2e'%(er,tol)
+
+	print('System matrices identical within tolerance %.2e'%tol)
+
+
 
 if __name__=='__main__':
+
+
+	### check utils
+	A=np.random.rand(3,4)
+	B=np.random.rand(4,2)
+	C0=matmult(A,B)
+	C1=matmult(A,sparse.csc_matrix(B))
+	C2=matmult(sparse.csc_matrix(A),sparse.csc_matrix(B))
+	C3=matmult(sparse.csc_matrix(A),sparse.csc_matrix(B))
+	assert np.max(np.abs(C0-C1))<1e-12, 'Error in matmult'
+	assert np.max(np.abs(C0-C2))<1e-12, 'Error in matmult'
+	assert np.max(np.abs(C0-C3))<1e-12, 'Error in matmult'
+
+
+	### check state-space class and functions (dense vs sparse)
+
+	# allocate some state-space model (dense and sparse)
+	dt=0.3
+	Ny,Nx,Nu=4,3,2
+	A=np.random.rand(Nx,Nx)
+	B=np.random.rand(Nx,Nu)
+	C=np.random.rand(Ny,Nx)
+	D=np.random.rand(Ny,Nu)
+	SS=ss(A,B,C,D,dt=dt)
+	SSsp=ss( sparse.csc_matrix(A),sparse.csc_matrix(B),C,D,dt=dt)
+
+	# predictor: try different scenario
+	B1=np.random.rand(Nx,Nu)
+	SSpr0=ss(*SSconv(A,B,B1,C,D),dt=0.3)
+	SSpr1=ss(*SSconv(A,B,sparse.csc_matrix(B1),C,D),dt=0.3)
+	SSpr2=ss(*SSconv(
+		sparse.csc_matrix(A),B,sparse.csc_matrix(B1),C,D),dt=0.3)
+	SSpr3=ss(*SSconv(
+		sparse.csc_matrix(A),sparse.csc_matrix(B),B1,C,D),dt=0.3)
+	SSpr4=ss(*SSconv(
+		sparse.csc_matrix(A),sparse.csc_matrix(B),sparse.csc_matrix(B1),C,D),dt=0.3)
+	compare_ss(SSpr0,SSpr1)
+	compare_ss(SSpr0,SSpr2)
+	compare_ss(SSpr0,SSpr3)
+	compare_ss(SSpr0,SSpr4)
+
+	# scale (hard-copy)
+	insc=np.random.rand(Nu)
+	stsc=np.random.rand(Nx)
+	outsc=np.random.rand(Ny)
+	SSadim=scale_SS(SS,insc,outsc,stsc,byref=False)
+	SSadim_sp=scale_SS(SSsp,insc,outsc,stsc,byref=False)
+	compare_ss(SSadim,SSadim_sp)
+
+	# scale (by reference)
+	SS.scale(insc,outsc,stsc)
+	SSsp.scale(insc,outsc,stsc)
+	compare_ss(SS,SSsp)
+
+	# add gains
+	Kin=np.random.rand(Nu,5)
+	Kout=np.random.rand(4,Ny)
+	SS.addGain(Kin,'in')
+	SS.addGain(Kout,'out')
+	SSsp.addGain(Kin,'in')
+	SSsp.addGain(Kout,'out')
+	compare_ss(SS,SSsp)
+
+	# freq response: try different scenario
+	kv=np.linspace(0,1,8)
+	Y=SS.freqresp(kv)
+	Ysp=SSsp.freqresp(kv)
+	er=np.max(np.abs(Y-Ysp))
+	assert er<1e-10, 'Test on freqresp failed'
+
+	SS.D=sparse.csc_matrix(SS.D)
+	Y1=SS.freqresp(kv)
+	er=np.max(np.abs(Y-Y1))
+	assert er<1e-10, 'Test on freqresp failed'
+
+
+
+	1/0
 
 	# check parallel connector
 	Nout=2
@@ -905,6 +1217,7 @@ if __name__=='__main__':
 	B01,B02=np.random.rand(Nst01,Nin01),np.random.rand(Nst02,Nin02)
 	C01,C02=np.random.rand(Nout,Nst01),np.random.rand(Nout,Nst02)
 	D01,D02=np.random.rand(Nout,Nin01),np.random.rand(Nout,Nin02)
+
 
 	dt=0.1
 	SS01=scsig.StateSpace( A01,B01,C01,D01,dt=dt )
@@ -932,10 +1245,5 @@ if __name__=='__main__':
 	K2=np.array([[10,20,30],[40,50,60]]).T
 	Ktot=join(K,K2)
 
-	# MIMO butterworth filter
-	Af,Bf,C,Df=butter(4,.4,N=4)
-
-	#embed()
-
-
-
+	# # MIMO butterworth filter
+	# Af,Bf,C,Df=butter(4,.4,N=4)
