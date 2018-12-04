@@ -268,11 +268,9 @@ def nc_domegazetadzeta(Surfs,Surfs_star):
 		shape_zeta=Surf.maps.shape_vert_vect # (3,M,N)
 
 		# The derivatives only depend on the studied surface (Surf_out)
-		ncDcoll=np.zeros((K,3))
-		ncDvert=np.zeros((Kzeta,3))
-
-        # create mapping panels to vertices to loop
-        # Surf_out.maps.map_panels_to_vertices_1D_scalar()
+		# ncDcoll=np.zeros((K,3))     # ? no colloc contrib.   
+		# ncDvert=np.zeros((Kzeta,3))   
+		ncDvert=np.zeros((K,3*Kzeta))  
 
         ##### loop collocation points
 		for cc in range(K):
@@ -286,19 +284,24 @@ def nc_domegazetadzeta(Surfs,Surfs_star):
             # get normal
 			nc_here=Surf.normals[:,mm,nn]
 
-			ncDcoll[cc,:] -= np.dot(nc_here,skew_omega)
+			# ncDcoll[cc,:] -= np.dot(nc_here,skew_omega)
+			nc_skew_omega = np.dot(nc_here,skew_omega)
+
 
 			# loop panel vertices
 			for vv,dm,dn in zip(range(4),dmver,dnver):
 				mm_v,nn_v=mm+dm,nn+dn
 				ii_v=[np.ravel_multi_index(
-								 (cc,mm_v,nn_v),shape_zeta) for cc in range(3)]
-				ncDvert[cc,ii_v]+=wcv[vv]*ncDcoll
+								 (comp,mm_v,nn_v),shape_zeta) for comp in range(3)]
+				### BUG ???
+				# ncDvert[cc,ii_v]+=wcv[vv]*ncDcoll
+				ncDvert[cc,ii_v]+=wcv[vv]*nc_skew_omega
 
-		ncDOmegaZetacoll.append(ncDcoll)
+		# ncDOmegaZetacoll.append(ncDcoll)
 		ncDOmegaZetavert.append(ncDvert)
 
-	return 	ncDOmegaZetacoll, ncDOmegaZetavert
+	# return 	ncDOmegaZetacoll, ncDOmegaZetavert
+	return ncDOmegaZetavert
 
 def uc_dncdzeta(Surf):
 	'''

@@ -86,17 +86,19 @@ class Static():
         self.Ducdzeta += scalg.block_diag(*List_uc_dncdzeta)
         del List_uc_dncdzeta
         # # omega x zeta terms
-        List_nc_domegazetadzeta_col, List_nc_domegazetadzeta_vert = \
-                                  ass.nc_domegazetadzeta(MS.Surfs,MS.Surfs_star)
-        self.Ducdzeta+=np.block(List_nc_domegazetadzeta_vert)
+        List_nc_domegazetadzeta_vert = ass.nc_domegazetadzeta(MS.Surfs,MS.Surfs_star)
+        self.Ducdzeta+=scalg.block_diag(*List_nc_domegazetadzeta_vert)
         del List_nc_domegazetadzeta_vert
-        self.Ducdzeta+=scalg.block_diag(*List_nc_domegazetadzeta_col)
-        del List_nc_domegazetadzeta_col
+        # List_nc_domegazetadzeta_col, List_nc_domegazetadzeta_vert = \
+        #                           ass.nc_domegazetadzeta(MS.Surfs,MS.Surfs_star)
+        # self.Ducdzeta+=np.block(List_nc_domegazetadzeta_vert)
+        # del List_nc_domegazetadzeta_vert
+        # self.Ducdzeta+=scalg.block_diag(*List_nc_domegazetadzeta_col)
+        # del List_nc_domegazetadzeta_col
 
         ### input velocity derivatives
         self.Ducdu_ext = scalg.block_diag(*List_Wnv)
         del List_Wnv
-
 
         ### Condense Gammaw terms
         for ss_out in range(MS.n_surf):
@@ -560,6 +562,11 @@ class Dynamic(Static):
         del List_nc_dqcdzeta_coll
         Ducdzeta += scalg.block_diag(*List_uc_dncdzeta)
         del List_uc_dncdzeta
+        # omega x zeta terms
+        List_nc_domegazetadzeta_vert = ass.nc_domegazetadzeta(MS.Surfs,MS.Surfs_star)
+        Ducdzeta+=scalg.block_diag(*List_nc_domegazetadzeta_vert)
+        del List_nc_domegazetadzeta_vert
+
 
         # ext velocity derivs (Wnv0)
         List_Wnv = []
