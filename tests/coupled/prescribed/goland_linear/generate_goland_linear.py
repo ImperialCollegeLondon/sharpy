@@ -1,7 +1,7 @@
 import cases.templates.flying_wings as wings
 import sharpy.sharpy_main
 
-aero_type = 'nlin'
+aero_type = 'lin'
 ws = wings.Goland(M=6,
                   N=20,
                   Mstar_fact=10,
@@ -39,8 +39,9 @@ ws.config['DynamicCoupled']['aero_solver_settings']['velocity_field_input']['gus
 if aero_type == 'lin':
     ws.config['DynamicCoupled']['aero_solver'] = 'StepLinearUVLM'
     ws.config['DynamicCoupled']['aero_solver_settings'] = {'dt': ws.dt,
-                                                           'solution_method': 'minsize',
-                                                           'remove_predictor': False,
+                                                           'remove_predictor': True,
+                                                           'use_sparse': False,
+                                                           'integr_order': 1,
                                                            'velocity_field_generator': 'GustVelocityField',
                                                            'velocity_field_input': {'u_inf': ws.u_inf,
                                                                                     'u_inf_direction': [1., 0., 0.],

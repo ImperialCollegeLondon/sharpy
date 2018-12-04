@@ -488,9 +488,6 @@ class Dynamic(Static):
 
         which only modifies the equivalent :math:`\mathbf{B}` and :math:`\mathbf{D}` matrices.
 
-        Warnings:
-            All matrices are allocated as full!
-
         References:
             [1] Franklin, GF and Powell, JD. Digital Control of Dynamic Systems, Addison-Wesley Publishing Company, 1980
 
@@ -508,6 +505,7 @@ class Dynamic(Static):
         Nu = self.Nu
         Ny = self.Ny
         if self.integr_order == 2:
+            # Second order differencing scheme coefficients
             b0, bm1, bp1 = -2., 0.5, 1.5
 
         # ----------------------------------------------------------- state eq.
@@ -808,28 +806,47 @@ class Dynamic(Static):
 
 
 
-    def solve_step(self,xold,uvec):
-        """
-        Solve step:
-            xnew = A xold + B uvec
-            ynew = C xold + D uvec
-        where uvec is evaluated at t_old or t_new accoring to whether the 
-        predictor is removed or not.
+    def solve_step(self, xold, uvec):
+        r"""
+        Solve step.
 
-        Warning: to speed-up the solution and use minimal memory:
-            - solve for bound vorticity (and)
-            - propagate the wake
-            - compute the output
-        separately. 
+        If the predictor has been removed (``remove_predictor = True``) then the system is solved as:
+
+            .. math::
+                \mathbf{x}^{n+1} &= \mathbf{A\,x}^n + \mathbf{B\,u}^n \\
+                \mathbf{y}^{n+1} &= \mathbf{C\,x}^{n+1} + \mathbf{D\,u}^n
+
+        Else, if ``remove_predictor = False``:
+
+            .. math::
+                \mathbf{x}^{n+1} &= \mathbf{A\,x}^n + \mathbf{B\,u}^{n+1} \\
+                \mathbf{y}^{n+1} &= \mathbf{C\,x}^{n+1} + \mathbf{D\,u}^{n+1}
+
+        where the modifications to the :math:`\mathbf{B}` and :math:`\mathbf{D}` are detailed in
+        :func:`Dynamic.assemble_ss`
+
+        Args:
+            xold (np.array): State vector at the current timestep :math:`\mathbf{x}^n`
+            uvec (np.array): Input vector at timestep :math:`\mathbf{u}^n` or :math:`\mathbf{u}^{n+1}`, depending
+                on whether the predictor term is removed or not.
+
+        Returns:
+            (np.array, np.array): Updated state and output vector :math:`\{\mathbf{x}^{n+1},\,\mathbf{y}^{n+1}\}`
+
+        Notes:
+            To speed-up the solution and use minimal memory:
+                - solve for bound vorticity (and)
+                - propagate the wake
+                - compute the output separately.
         """
 
         if self.use_sparse:
             xnew = self.SS.Asp.dot(xold) + self.SS.Bsp.dot(uvec)
         else:
             xnew = self.SS.A.dot(xold) + self.SS.B.dot(uvec)
-        ynew = np.dot(self.SS.C, xnew) + np.dot(self.SS.D,uvec)
+        ynew = np.dot(self.SS.C, xnew) + np.dot(self.SS.D, uvec)
 
-        return xnew,ynew
+        return xnew, ynew
 
 
 
