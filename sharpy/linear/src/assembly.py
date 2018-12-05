@@ -19,6 +19,7 @@ Includes:
 
 import ctypes as ct
 import numpy as np
+import scipy.sparse as sparse
 import itertools
 
 from sharpy.utils.sharpydir import SharpyDir
@@ -1221,7 +1222,7 @@ def dfunstdgamma_dot(Surfs):
 
 
 
-def wake_prop(Surfs,Surfs_star):
+def wake_prop(Surfs,Surfs_star,use_sparse=False):
 	'''
 	Assembly of wake propagation matrices
 	'''
@@ -1255,5 +1256,84 @@ def wake_prop(Surfs,Surfs_star):
 		for mm in range(1,M_star):
 			C[mm*N+iivec, (mm-1)*N+iivec]=1.0
 
-
 	return C_list, Cstar_list
+
+
+def test_wake_prop_term(M,N,M_star,N_star,use_sparse,sparse_format='csc'):
+	'''
+	Test allocation of single term of wake propagation matrix
+	'''
+
+	K=M*N 
+	K_star=M_star*N_star
+
+	iivec=np.array( range(N), dtype=int )
+
+	if use_sparse:
+		if sparse_format=='csc':
+			C=sparse.csc_matrix((K_star,K))
+			C_star=sparse.csc_matrix((K_star,K_star))
+	else:
+		C=np.zeros((K_star,K))	
+		C_star=np.zeros((K_star,K_star))	
+
+	### Propagation from trailing edge
+	C[iivec, N*(M-1)+iivec]=1.0
+
+	### wake propagation
+	for mm in range(1,M_star):
+		C_star[mm*N+iivec, (mm-1)*N+iivec]=1.0	
+
+	return C,C_star
+
+
+
+
+
+if __name__=='__main__':
+
+	import time
+	import cProfile
+	
+	M,N=20,40
+	M_star,N_star=M*20,N
+
+	t0=time.time()
+	C,C_star=test_wake_prop_term(M,N,M_star,N_star,use_sparse=False)	
+	tf=time.time()-t0
+	print('Dense propagation matrix allocated in %.4f sec'%tf )
+
+	t0=time.time()
+	Csp,Csp_star=test_wake_prop_term(M,N,M_star,N_star,use_sparse=True)
+	tf=time.time()-t0
+	print('csc sparse propagation matrix allocated in %.4f sec'%tf )
+
+	# cProfile.runctx('self.assemble()', globals(), locals(), filename=self.prof_out)
+
+
+	### compare sparse types
+	Nx=4000
+	N1,N2=3000,Nx-2000
+
+	t0=time.time()
+	Z=sparse.csc_matrix((Nx,Nx))
+	Z[:N1,:N1]=2.
+	Z[:N1,N1:]=3.
+	tfin=time.time()-t0
+	print('csc allocated in %.6f sec'%tfin)
+
+	t0=time.time()
+	Z=sparse.lil_matrix((Nx,Nx))
+	Z[:N1,:N1]=2.
+	Z[:N1,N1:]=3.
+	Z=Z.tocsc()
+	tfin=time.time()-t0
+	print('lil->csc allocated in %.6f sec'%tfin)
+
+	# t0=time.time()
+	# Z=sparse.bsr_matrix((Nx,Nx))
+	# Z[:N1,:N1]=2.
+	# Z[:N1,N1:]=3.
+	# Z=Z.tocsc()
+	# tfin=time.time()-t0
+	# print('bsr->csc allocated in %.6f sec'%tfin)

@@ -16,6 +16,8 @@ import sharpy.linear.src.interp as interp
 import sharpy.linear.src.multisurfaces as multisurfaces
 import sharpy.linear.src.assembly as ass  # :D
 import sharpy.linear.src.libss as libss 
+import sharpy.linear.src.libsparse as libsp 
+
 
 import sharpy.utils.algebra as algebra
 
@@ -637,23 +639,19 @@ class Dynamic(Static):
         if self.remove_predictor:
             Ass, Bmod, Css, Dmod = \
                 libss.SSconv(Ass, np.zeros_like(Bss), Bss, Css, Dss, Bm1=None)
-            self.SS = scsig.dlti(Ass, Bmod, Css, Dmod, dt=self.dt)
+            self.SS = libss.ss(Ass, Bmod, Css, Dmod, dt=self.dt)
             print('state-space model produced in form:\n\t' \
                   'h_{n+1} = A h_{n} + B u_{n}\n\t' \
                   'with:\n\tx_n = h_n + Bp u_n')
         else:
-            self.SS = scsig.dlti(Ass, Bss, Css, Dss, dt=self.dt)
+            self.SS = libss.ss(Ass, Bss, Css, Dss, dt=self.dt)
             print('state-space model produced in form:\n\t' \
                   'x_{n+1} = A x_{n} + Bp u_{n+1}')
 
         # convert to sparse A & B
         if self.use_sparse:
-            # !!! warning: dodgy behaviour when assiging a sparse matrix to an 
-            # attribute of scipy.signal.ltisys.StateSpaceDiscrete. 
-            self.SS.Asp=sparse.csc_matrix(self.SS.A)
-            self.SS.A=None
-            self.SS.Bsp=sparse.csc_matrix(self.SS.B)
-            self.SS.B=[None]*self.SS.inputs
+            self.SS.A=libsp.csc_matrix(self.SS.A)
+            self.SS.B=libsp.csc_matrix(self.SS.B)
 
         self.time_ss = time.time() - t0
         print('\t\t\t...done in %.2f sec' % self.time_ss)
@@ -678,10 +676,7 @@ class Dynamic(Static):
             raise NameError('Only direct solution is available if use_sparse is True. ' \
                             '(see assembly_ss)')
 
-        if self.use_sparse:
-            Asp, Bsp, Css, Dss = self.SS.Asp, self.SS.Bsp, self.SS.C, self.SS.D
-        else:
-            Ass, Bss, Css, Dss = self.SS.A, self.SS.B, self.SS.C, self.SS.D
+        Ass, Bss, Css, Dss = self.SS.A, self.SS.B, self.SS.C, self.SS.D
 
         if method == 'minsize':
             # as opposed to linuvlm.Static, this solves for the bound circulation
@@ -759,7 +754,7 @@ class Dynamic(Static):
             """ Solves (I - A) x = B u with direct method"""
             if self.use_sparse:
                 xsta=sparse.linalg.spsolve(
-                             sparse.eye(self.Nx,format='csc')-Asp,Bsp.dot(usta))
+                             sparse.eye(self.Nx,format='csc')-Ass,Bss.dot(usta))
             else:
                 Ass_steady = np.eye(*Ass.shape) - Ass
                 xsta = np.linalg.solve(Ass_steady, np.dot(Bss, usta))
@@ -840,10 +835,7 @@ class Dynamic(Static):
                 - compute the output separately.
         """
 
-        if self.use_sparse:
-            xnew = self.SS.Asp.dot(xold) + self.SS.Bsp.dot(uvec)
-        else:
-            xnew = self.SS.A.dot(xold) + self.SS.B.dot(uvec)
+        xnew = self.SS.A.dot(xold) + self.SS.B.dot(uvec)
         ynew = np.dot(self.SS.C, xnew) + np.dot(self.SS.D, uvec)
 
         return xnew, ynew
@@ -1008,5 +1000,8 @@ if __name__ == '__main__':
                np.linalg.norm(ysta_spa - ysta)), \
                                  'Direct and sub-system solutions not matching!'
 
+
+
+    ### ----------------------------------------------- allocate large matrices
 
 
