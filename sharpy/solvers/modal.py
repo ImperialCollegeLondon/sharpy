@@ -153,6 +153,36 @@ class Modal(BaseSolver):
                                 '_ModalShape')
 
     def run(self):
+        r"""
+        Extracts the eigenvalues and eigenvectors of the clamped structure.
+
+        If ``use_undamped_modes == 1`` then the free vibration modes of the clamped structure are found solving:
+
+            .. math:: \mathbf{M\,\ddot{\eta}} + \mathbf{K\,\eta} = 0
+
+        that flows down to solving the non-trivial solutions to:
+
+            .. math:: (-\omega^2\,\mathbf{M} + \mathbf{K})\mathbf{\Phi} = 0
+
+        On the other hand, if the damped modes are chosen, the free vibration modes are found
+        solving the equation of motion of the form
+
+            .. math:: \mathbf{M\,\ddot{\eta}} + \mathbf{C\,\dot{\eta}} + \mathbf{K\,\eta} = 0
+
+        which can be written in state space form, with the state vector :math:`\mathbf{x} = [\eta^T,\,\dot{\eta}^T]^T`
+        as
+
+            .. math:: \mathbf{\dot{x}} = \begin{bmatrix} 0 & \mathbf{I} \\ -\mathbf{M^{-1}K} & -\mathbf{M^{-1}C}
+                \end{bmatrix} \mathbf{x}
+
+        and therefore the mode shapes and frequencies correspond to the solution of the eigenvalue problem
+
+            .. math:: \mathbf{A\,\Phi} = \mathbf{\Lambda\,\Phi}
+
+        Returns:
+            PreSharpy: updated data object with modal analysis
+
+        """
         self.data.ts = len(self.data.structure.timestep_info) - 1
         # Initialize matrices
         num_dof = self.data.structure.num_dof.value
