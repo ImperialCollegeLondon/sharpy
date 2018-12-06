@@ -66,11 +66,19 @@ class NonLinearDynamicPrescribedStep(BaseSolver):
 
 
     def run(self, structural_step=None, dt=None):
+        if self.data.ts > 0:
+            try:
+                structural_step.for_vel[:] = self.data.structure.dynamic_input[self.data.ts - 1]['for_vel']
+                structural_step.for_acc[:] = self.data.structure.dynamic_input[self.data.ts - 1]['for_acc']
+            except IndexError:
+                pass
+
         xbeamlib.cbeam3_step_nlndyn(self.data.structure,
                                     self.settings,
                                     self.data.ts,
                                     structural_step,
                                     dt=dt)
+        self.extract_resultants(structural_step)
         # if self.data.ts > 0:
         #     self.data.structure.integrate_position(self.data.ts, self.settings['dt'].value)
         return self.data
@@ -87,3 +95,19 @@ class NonLinearDynamicPrescribedStep(BaseSolver):
         #     self.data.structure.timestep_info[ts].for_acc[:] = self.data.structure.dynamic_input[ts - 1]['for_acc']
         #     self.data.structure.timestep_info[ts].unsteady_applied_forces[:] = self.data.structure.dynamic_input[ts - 1]['dynamic_forces']
 
+    def extract_resultants(self, step=None):
+        if step is None:
+            step = self.data.structure.timestep_info[-1]
+        applied_forces = self.data.structure.nodal_b_for_2_a_for(step.steady_applied_forces,
+                                                                 step)
+
+        applied_forces_copy = applied_forces.copy()
+        gravity_forces_copy = step.gravity_forces.copy()
+        for i_node in range(self.data.structure.num_node):
+            applied_forces_copy[i_node, 3:6] += np.cross(step.pos[i_node, :],
+                                                         applied_forces_copy[i_node, 0:3])
+            gravity_forces_copy[i_node, 3:6] += np.cross(step.pos[i_node, :],
+                                                         gravity_forces_copy[i_node, 0:3])
+
+        totals = np.sum(applied_forces_copy + gravity_forces_copy, axis=0)
+        return totals[0:3], totals[3:6]

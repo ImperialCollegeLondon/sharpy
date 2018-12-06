@@ -39,12 +39,25 @@ thrust =   5.314413090708491
 sigma = 1.5
 lambda_dihedral = 20*np.pi/180
 
+# trim sigma = 100
+# alpha = 3.870714593824674*np.pi/180
+# beta = 0
+# roll = 0
+# gravity = 'on'
+# cs_deflection = -1.03015915364484*np.pi/180
+# rudder_static_deflection = 0.0
+# rudder_step = 0.0*np.pi/180
+# thrust = 4.72416707654136
+# print('Careful, sigma 100')
+# sigma = 100
+# lambda_dihedral = 20*np.pi/180
+
 gust_intensity = 0.20
 gust_length = 1*u_inf
 gust_offset = 0.5*u_inf
 n_step = 1
-relaxation_factor = 0.6
-tolerance = 1e-9
+relaxation_factor = 0.5
+tolerance = 1e-7
 fsi_tolerance = 1e-6
 
 # MODEL GEOMETRY
@@ -119,7 +132,7 @@ for it in range(n_tstep):
     elif it > int(0.1/dt):
         rudder_deflection[it] = (it - int(0.1/dt))/(0.4/dt)*rudder_step
 
-rudder_fname = 'rudder.txt'
+rudder_fname = 'rudder' + case_name + '.txt'
 np.savetxt(rudder_fname, rudder_deflection)
 
 

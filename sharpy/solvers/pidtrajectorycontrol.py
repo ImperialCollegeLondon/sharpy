@@ -296,14 +296,15 @@ def second_order_fd(history, n_calls, dt):
         # no derivative, return 0
         pass
 
-    # elif n_calls == 2:
-    else:
+    elif n_calls == 2:
+    # else:
         # first order derivative
         coefficients[1:3] = [-1.0, 1.0]
 
-    # else:
-        # second order derivative
-        # coefficients[:] = [1.0, -4.0, 3.0]
+    else:
+        # # second order derivative
+        coefficients[:] = [1.0, -4.0, 3.0]
+        coefficients *= 0.5
 
     derivative = np.dot(coefficients, history)/dt
     return derivative

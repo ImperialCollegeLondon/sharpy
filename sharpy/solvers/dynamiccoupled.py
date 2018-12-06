@@ -47,8 +47,8 @@ class DynamicCoupled(BaseSolver):
             ``dynamic_relaxation``                   ``bool``       Desc                                                           ``True``
             ``post_processors``                      ``list(str)``  List of ``solver_id`` of desired post-processors to use        ``None``
             ``post_processor_settings``              ``dict``       Dictionary with post-processor settings                        ``None``
-            ``cleanup_previous_solution``            ``bool``       Desc                                                           ``True``
-            ``include_unsteady_force_contribution``  ``bool``       Desc                                                           ``False``
+            ``cleanup_previous_solution``            ``bool``       Remove all the previous timesteps except the last one          ``True``
+            ``include_unsteady_force_contribution``  ``bool``       Include forces that depend on ``gamma_dot``                    ``False``
             =======================================  =============  =============================================================  =========
 
         data (ProblemData): class containing solution information
@@ -191,12 +191,12 @@ class DynamicCoupled(BaseSolver):
 
         # print information header
         if self.print_info:
-            self.residual_table = cout.TablePrinter(8, 14, ['g', 'f', 'g', 'f', 'f', 'f', 'e', 'e'])
+            self.residual_table = cout.TablePrinter(8, 14, ['g', 'f', 'g', 'f', 'e', 'e', 'f', 'f'])
             self.residual_table.field_length[0] = 6
             self.residual_table.field_length[1] = 6
             self.residual_table.field_length[1] = 6
-            self.residual_table.print_header(['ts', 't', 'iter', 'residual pos', 'residual vel', 'residual acc',
-                                              'FoR_vel(x)', 'FoR_vel(z)'])
+            self.residual_table.print_header(['ts', 't', 'iter', 'residual vel',
+                                              'FoR_vel(x)', 'FoR_vel(z)', 'x_b forces', 'z_b forces'])
 
 
     def cleanup_timestep_info(self):
@@ -287,11 +287,11 @@ class DynamicCoupled(BaseSolver):
                 self.residual_table.print_line([self.data.ts,
                                                 self.data.ts*self.dt.value,
                                                 k,
-                                                np.log10(self.res),
                                                 np.log10(self.res_dqdt),
-                                                np.log10(self.res_dqddt),
                                                 structural_kstep.for_vel[0],
-                                                structural_kstep.for_vel[2]])
+                                                structural_kstep.for_vel[2],
+                                                np.sum(structural_kstep.steady_applied_forces[:, 0]),
+                                                np.sum(structural_kstep.steady_applied_forces[:, 2])])
             self.structural_solver.extract_resultants()
             # run postprocessors
             if self.with_postprocessors:
@@ -307,22 +307,30 @@ class DynamicCoupled(BaseSolver):
         if not all(np.isfinite(tstep.q)):
             raise Exception('***Not converged! There is a NaN value in the forces!')
 
+        if not k:
+            # save the value of the vectors for normalising later
+            self.base_q = np.linalg.norm(tstep.q.copy())
+            self.base_dqdt = np.linalg.norm(tstep.dqdt.copy())
+            return False
+
+        # we don't want this to converge before introducing the gamma_dot forces!
+        if self.settings['include_unsteady_force_contribution']:
+            if k < 5:
+                return False
+
+        # relative residuals
         self.res = (np.linalg.norm(tstep.q-
                                    previous_tstep.q)/
-                    np.linalg.norm(previous_tstep.q))
+                    self.base_q)
         self.res_dqdt = (np.linalg.norm(tstep.dqdt-
                                         previous_tstep.dqdt)/
-                         np.linalg.norm(previous_tstep.dqdt))
-        self.res_dqddt = (np.linalg.norm(tstep.dqddt-
-                                         previous_tstep.dqddt)/
-                          np.linalg.norm(previous_tstep.dqddt))
+                         self.base_dqdt)
 
         # convergence
         if k > self.settings['minimum_steps'].value - 1:
             if self.res < self.settings['fsi_tolerance'].value:
                 if self.res_dqdt < self.settings['fsi_tolerance'].value:
-                    if self.res_dqddt < self.settings['fsi_tolerance'].value:
-                        return True
+                    return True
 
         return False
 
@@ -379,7 +387,7 @@ def relax(beam, timestep, previous_timestep, coeff):
             coeff*previous_timestep.unsteady_applied_forces)
 
 
-
 def normalise_quaternion(tstep):
     tstep.dqdt[-4:] = algebra.unit_vector(tstep.dqdt[-4:])
     tstep.quat = tstep.dqdt[-4:].astype(dtype=ct.c_double, order='F', copy=True)
+
