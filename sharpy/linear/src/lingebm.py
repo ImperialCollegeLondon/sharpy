@@ -14,10 +14,10 @@ import sharpy.linear.src.libss as libss
 
 
 class FlexDynamic():
-    """
+    r"""
     Define class for linear state-space realisation of GEBM flexible-body
-    equations (without linearised rigid-body dynamics) from sharpy
-    timestep_info class.
+    equations (without linearised rigid-body dynamics) from Sharpy
+    ``timestep_info`` class.
 
     State-space models can be defined in continuous or discrete time (dt
     required). Modal projection, either on the damped or undamped modal shapes,
@@ -50,7 +50,7 @@ class FlexDynamic():
                                     'zoh',		# Zero-order hold
                                     'bilinear'} # Bilinear (Tustin) transformation
 
-            DLTIs can be obtained directly using the Newmark-beta method
+            DLTIs can be obtained directly using the Newmark-:math:`\beta` method
 
                 ``self.discr_method='newmark'``
                 ``self.newmark_damp=xx`` with ``xx<<1.0``
@@ -61,13 +61,14 @@ class FlexDynamic():
             descriptions, but require the continuous state-space equations.
 
 
-    2. Run ``self.assemble()``. The method accept an additional parameter, ``Nmodes``,
+    2. Run ``self.assemble()``. The method accepts an additional parameter, ``Nmodes``,
     which allows using a lower number of modes than specified in ``self.Nmodes``
 
 
     Notes:
 
-        * Modal projection will automatically select between damped/undamped modes shapes, based on the data available from tsinfo.
+        * Modal projection will automatically select between damped/undamped modes shapes, based on the data available
+        from tsinfo.
 
         * If the full system matrices are available, use the modal_sol methods to override mode-shapes and eigenvectors
 
@@ -75,6 +76,32 @@ class FlexDynamic():
 
     def __init__(self, tsinfo, dt=None, wv=None):
 
+        # Settings - WIP - maybe better to go into a new solver such as LinGEBMLoader or similar
+        # ----->
+        # self.settings_default['modal_projection'] = True
+        # self.settings_types['modal_projection'] = 'bool'
+        #
+        # self.settings_default['inout_coords'] = 'nodes' # or 'modes'
+        # self.settings_types['inout_coords'] = 'str'
+        #
+        # self.settings_default['proj_modes'] = 'damped'
+        # self.settings_types['proj_modes'] = 'str'
+        #
+        # self.settings_default['discrete_time'] = True
+        # self.settings_types['discrete_time'] = 'bool'
+        #
+        # self.settings_default['dt'] = 0.001
+        # self.settings_types['dt'] = 'float'
+        #
+        # self.settings_default['proj_modes'] = 'damped'
+        # self.settings_types['proj_modes'] = 'str'
+        #
+        # self.settings_default['discr_method'] = 'newmark'
+        # self.settings_types['discr_methods'] = 'str'
+        #
+        # self.settings_default['newmark_damp'] = 1e-4
+        # self.settings_types['newmark_damp'] = 'float'
+        # <-----
 
         ### extract timestep_info modal results
         # unavailable attrs will be None
@@ -95,15 +122,18 @@ class FlexDynamic():
 
         self.Nmodes = len(self.damping)
         self.num_dof = self.U.shape[0]
-        if self.V is not None: self.num_dof = self.num_dof // 2
+        if self.V is not None:
+            self.num_dof = self.num_dof // 2
 
         ### set other flags
         self.modal = True
         self.inout_coords = 'nodes'  # 'modes'
         self.dlti = True
-        if dt is None: self.dlti = False
+        if dt is None:
+            self.dlti = False
         self.proj_modes = 'damped'
-        if self.V is None: self.proj_modes = 'undamped'
+        if self.V is None:
+            self.proj_modes = 'undamped'
         self.discr_method = 'newmark'
         self.newmark_damp = 1e-3
 
@@ -116,7 +146,31 @@ class FlexDynamic():
         self.Kout = None
 
     def assemble(self, Nmodes=None):
-        """ Assemble state-space model """
+        r"""
+        Assemble state-space model
+
+        Several assembly options are available:
+
+        1. Discrete-time, Newmark-:math:`\beta`:
+            * Modal projection onto undamped modes. It uses the modal projection such
+            that the generalised coordinates :math:`\eta` are transformed into modal space by
+
+                    .. math:: \mathbf{\eta} = \mathbf{\Phi\,q}
+
+                where :math:`\mathbf{\Phi}` are the first ``Nmodes`` right eigenvectors.
+                Therefore, the equation of motion can be re-written such that the modes normalise the mass matrix to
+                become the identity matrix.
+
+                    .. math:: \mathbf{I_{Nmodes}}\mathbf{\ddot{q}} + \mathbf{\Lambda\,q} = 0
+
+                The system is then assembled in Newmark-:math:`\beta` form as detailed in :func:`newmark_ss`
+
+            * Full size system assembly. No modifications are made to the mass, damping or stiffness matrices and the
+            system is directly assembled by :func:`assemble_ss`.
+
+        Args:
+            Nmodes (int): number of modes to retain
+        """
 
         ### checks
         assert self.inout_coords in ['modes', 'nodes'], \
@@ -376,7 +430,7 @@ def newmark_ss(Minv, C, K, dt, num_damp=1e-4):
     based on the Newmark-:math:`\beta` integration scheme. The output state-space model
     has form:
 
-    .. math:
+    .. math::
 
         \mathbf{X}_{n+1} &= \mathbf{A}\,\mathbf{X}_n + \mathbf{B}\,\mathbf{F}_n \\
         \mathbf{Y} &= \mathbf{C}\,\mathbf{X} + \mathbf{D}\,\mathbf{F}
@@ -384,8 +438,18 @@ def newmark_ss(Minv, C, K, dt, num_damp=1e-4):
         with :math:`\mathbf{X} = \[\mathbf{x}, \mathbf{\dot{x}}]^T`
 
     Note that as the state-space representation only requires the input force
-    F to be evaluated at time-step n,the C and D matrices are, in general, 
-    fully populated.
+    :math:`\mathbf{F}` to be evaluated at time-step :math:`n`,the :math:`\mathbf{C}` and :math:`\mathbf{D}` matrices
+    are, in general, fully populated.
+
+    Args:
+        Minv (np.array): Inverse mass matrix :math:`\mathbf{M^{-1}}`
+        C (np.array): Damping matrix :math:`\mathbf{C}`
+        K (np.array): Stiffness matrix :math:`\mathbf{K}`
+        dt (float): Timestep increment
+        num_damp (float): Numerical damping. Default ``1e-4``
+
+    Returns:
+        tuple: the A, B, C, D matrices of the state space with the predictor and delay term removed.
     """
 
     # weights
