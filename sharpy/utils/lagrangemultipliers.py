@@ -72,28 +72,34 @@ def define_num_LM_eq(MBdict):
     # Define the number of equations that we need
     for iconstraint in range(num_constraints):
 
-        if MBdict["constraint_%02d" % iconstraint]['behaviour'] == 'hinge_node_FoR':
+        behaviour = MBdict["constraint_%02d" % iconstraint]['behaviour'].lower()
+
+        if behaviour == 'hinge_node_FoR'.lower():
             num_LM_eq += 5
-        elif MBdict["constraint_%02d" % iconstraint]['behaviour'] == 'hinge_node_FoR_constant_vel':
+        elif behaviour == 'hinge_node_FoR_constant_vel'.lower():
             num_LM_eq += 6
-        elif MBdict["constraint_%02d" % iconstraint]['behaviour'] == 'spherical_node_FoR':
+        elif behaviour == 'spherical_node_FoR'.lower():
             num_LM_eq += 3
-        elif MBdict["constraint_%02d" % iconstraint]['behaviour'] == 'free':
+        elif behaviour == 'free'.lower():
             num_LM_eq += 0
-        elif MBdict["constraint_%02d" % iconstraint]['behaviour'] == 'spherical_FoR':
+        elif behaviour == 'spherical_FoR'.lower():
             num_LM_eq += 3
-        elif MBdict["constraint_%02d" % iconstraint]['behaviour'] == 'hinge_FoR':
+        elif behaviour == 'hinge_FoR'.lower():
             num_LM_eq += 5
-        elif MBdict["constraint_%02d" % iconstraint]['behaviour'] == 'hinge_FoR_wrtG':
+        elif behaviour == 'hinge_FoR_wrtG'.lower():
             num_LM_eq += 5
-        elif MBdict["constraint_%02d" % iconstraint]['behaviour'] == 'fully_constrained_node_FoR':
+        elif behaviour == 'fully_constrained_node_FoR'.lower():
             num_LM_eq += 6
-        elif MBdict["constraint_%02d" % iconstraint]['behaviour'] == 'hinge_node_FoR_constant_rotation':
+        elif behaviour == 'hinge_node_FoR_constant_rotation'.lower():
             num_LM_eq += 4
-        elif MBdict["constraint_%02d" % iconstraint]['behaviour'] == 'constant_rot_vel_FoR':
+        elif behaviour == 'constant_rot_vel_FoR'.lower():
             num_LM_eq += 3
-        elif MBdict["constraint_%02d" % iconstraint]['behaviour'] == 'constant_vel_FoR':
+        elif behaviour == 'constant_vel_FoR'.lower():
             num_LM_eq += 6
+        elif behaviour == 'lin_vel_node_wrtA'.lower():
+            num_LM_eq += 3
+        elif behaviour == 'lin_vel_node_wrtG'.lower():
+            num_LM_eq += 3
         else:
             print("ERROR: not recognized constraint type")
 
@@ -346,7 +352,7 @@ def def_rot_vel_FoR_wrt_node(MB_tstep, MB_beam, FoR_body, node_body, node_number
     return ieq
 
 
-def generate_lagrange_matrix(MBdict, MB_beam, MB_tstep, num_LM_eq, sys_size, dt, Lambda, Lambda_dot):
+def generate_lagrange_matrix(MBdict, MB_beam, MB_tstep, ts, num_LM_eq, sys_size, dt, Lambda, Lambda_dot):
     """
     generate_lagrange_matrix
 
@@ -390,12 +396,12 @@ def generate_lagrange_matrix(MBdict, MB_beam, MB_tstep, num_LM_eq, sys_size, dt,
     for iconstraint in range(num_constraints):
 
         # Rename variables from dictionary
-        behaviour = MBdict["constraint_%02d" % iconstraint]['behaviour']
+        behaviour = MBdict["constraint_%02d" % iconstraint]['behaviour'].lower()
 
         ###################################################################
         ###################  SPHERICAL BETWEEN NODE AND FOR  ##################
         ###################################################################
-        if behaviour == 'spherical_node_FoR':
+        if behaviour == 'spherical_node_FoR'.lower():
 
             # Rename variables from dictionary
             node_number = MBdict["constraint_%02d" % iconstraint]['node_in_body']
@@ -413,7 +419,7 @@ def generate_lagrange_matrix(MBdict, MB_beam, MB_tstep, num_LM_eq, sys_size, dt,
         ###################################################################
         ###################  HINGE BETWEEN NODE AND FOR  ##################
         ###################################################################
-        elif behaviour == 'hinge_node_FoR':
+        elif behaviour == 'hinge_node_FoR'.lower():
 
             # Rename variables from dictionary
             node_number = MBdict["constraint_%02d" % iconstraint]['node_in_body']
@@ -433,7 +439,7 @@ def generate_lagrange_matrix(MBdict, MB_beam, MB_tstep, num_LM_eq, sys_size, dt,
         ###################################################################
         ##############  HINGE BETWEEN NODE AND FOR  CONSTANT VEL  #########
         ###################################################################
-        elif behaviour == 'hinge_node_FoR_constant_vel':
+        elif behaviour == 'hinge_node_FoR_constant_vel'.lower():
 
             # Rename variables from dictionary
             node_number = MBdict["constraint_%02d" % iconstraint]['node_in_body']
@@ -455,7 +461,7 @@ def generate_lagrange_matrix(MBdict, MB_beam, MB_tstep, num_LM_eq, sys_size, dt,
         ###################################################################
         ###############################  HINGE FOR  #######################
         ###################################################################
-        elif behaviour == 'spherical_FoR':
+        elif behaviour == 'spherical_FoR'.lower():
 
             # Rename variables from dictionary
             body_FoR = MBdict["constraint_%02d" % iconstraint]['body_FoR']
@@ -481,7 +487,7 @@ def generate_lagrange_matrix(MBdict, MB_beam, MB_tstep, num_LM_eq, sys_size, dt,
         ###################################################################
         ###############################  HINGE FOR  #######################
         ###################################################################
-        elif behaviour == 'hinge_FoR':
+        elif behaviour == 'hinge_FoR'.lower():
 
             # Rename variables from dictionary
             body_FoR = MBdict["constraint_%02d" % iconstraint]['body_FoR']
@@ -526,7 +532,7 @@ def generate_lagrange_matrix(MBdict, MB_beam, MB_tstep, num_LM_eq, sys_size, dt,
         ###################################################################
         ###########################  HINGE FOR wrtG #######################
         ###################################################################
-        elif behaviour == 'hinge_FoR_wrtG':
+        elif behaviour == 'hinge_FoR_wrtG'.lower():
 
             # Rename variables from dictionary
             body_FoR = MBdict["constraint_%02d" % iconstraint]['body_FoR']
@@ -573,7 +579,7 @@ def generate_lagrange_matrix(MBdict, MB_beam, MB_tstep, num_LM_eq, sys_size, dt,
         ###################################################################
         #############  FULL CONSTRAINT BETWEEN NODE AND FOR  ##############
         ###################################################################
-        elif MBdict["constraint_%02d" % iconstraint]['behaviour'] == 'fully_constrained_node_FoR':
+        elif behaviour == 'fully_constrained_node_FoR'.lower():
 
             print("WARNING: do not use fully_constrained_node_FoR. It is outdated")
 
@@ -620,7 +626,7 @@ def generate_lagrange_matrix(MBdict, MB_beam, MB_tstep, num_LM_eq, sys_size, dt,
         ###################################################################
         ###################  CONSTANT ANGULAR VEL FOR  ####################
         ###################################################################
-        elif behaviour == 'constant_rot_vel_FoR':
+        elif behaviour == 'constant_rot_vel_FoR'.lower():
 
             # Rename variables from dictionary
             rot_vel = MBdict["constraint_%02d" % iconstraint]['rot_vel']
@@ -643,10 +649,10 @@ def generate_lagrange_matrix(MBdict, MB_beam, MB_tstep, num_LM_eq, sys_size, dt,
 
             ieq += 3
 
-            ###################################################################
-            ###################  CONSTANT ANGULAR VEL FOR  ####################
-            ###################################################################
-        elif behaviour == 'constant_vel_FoR':
+        ###################################################################
+        ###################  CONSTANT ANGULAR VEL FOR  ####################
+        ###################################################################
+        elif behaviour == 'constant_vel_FoR'.lower():
 
             # Rename variables from dictionary
             vel = MBdict["constraint_%02d" % iconstraint]['vel']
@@ -669,4 +675,123 @@ def generate_lagrange_matrix(MBdict, MB_beam, MB_tstep, num_LM_eq, sys_size, dt,
 
             ieq += 6
 
+        ###################################################################
+        ###################  LINEAR VEL NODE  ###########################
+        ###################################################################
+        elif behaviour == 'lin_vel_node_wrtA'.lower():
+
+            # Rename variables from dictionary
+            vel = MBdict["constraint_%02d" % iconstraint]['velocity']
+            body_number = MBdict["constraint_%02d" % iconstraint]['body_number']
+            node_number = MBdict["constraint_%02d" % iconstraint]['node_number']
+
+            if len(vel.shape) > 1:
+                current_vel = vel[ts, :]
+            else:
+                current_vel = vel
+
+            num_LM_eq_specific = 3
+            Bnh = np.zeros((num_LM_eq_specific, sys_size), dtype=ct.c_double, order='F')
+            B = np.zeros((num_LM_eq_specific, sys_size), dtype=ct.c_double, order='F')
+
+            # Define the position of the first degree of freedom associated to the FoR
+            FoR_dof = define_FoR_dof(MB_beam, body_number)
+            node_dof = define_node_dof(MB_beam, body_number, node_number)
+
+            Bnh[:num_LM_eq_specific, node_dof:node_dof+3] = np.eye(3)
+
+            LM_C[sys_size + ieq:sys_size + ieq + num_LM_eq_specific, :sys_size] += scalingFactor * Bnh
+            LM_C[:sys_size, sys_size + ieq:sys_size + ieq + num_LM_eq_specific] += scalingFactor * np.transpose(Bnh)
+
+            LM_Q[:sys_size] += scalingFactor * np.dot(np.transpose(Bnh), Lambda_dot[ieq:ieq + num_LM_eq_specific])
+            LM_Q[sys_size + ieq:sys_size + ieq + num_LM_eq_specific] += MB_tstep[body_number].pos_dot[node_number,:] - current_vel
+
+            ieq += 3
+
+        ###################################################################
+        ###################  LINEAR VEL NODE  ###########################
+        ###################################################################
+        elif behaviour == 'lin_vel_node_wrtG'.lower():
+
+            # Rename variables from dictionary
+            vel = MBdict["constraint_%02d" % iconstraint]['velocity']
+            body_number = MBdict["constraint_%02d" % iconstraint]['body_number']
+            node_number = MBdict["constraint_%02d" % iconstraint]['node_number']
+
+            if len(vel.shape) > 1:
+                current_vel = vel[ts, :]
+            else:
+                current_vel = vel
+
+            num_LM_eq_specific = 3
+            Bnh = np.zeros((num_LM_eq_specific, sys_size), dtype=ct.c_double, order='F')
+            B = np.zeros((num_LM_eq_specific, sys_size), dtype=ct.c_double, order='F')
+
+            # Define the position of the first degree of freedom associated to the FoR
+            FoR_dof = define_FoR_dof(MB_beam, body_number)
+            node_dof = define_node_dof(MB_beam, body_number, node_number)
+
+            Bnh[:num_LM_eq_specific, FoR_dof:FoR_dof+3] = algebra.quat2rotation(MB_tstep[body_number].quat)
+            Bnh[:num_LM_eq_specific, FoR_dof+3:FoR_dof+6] = -np.dot(algebra.quat2rotation(MB_tstep[body_number].quat), algebra.skew(MB_tstep[body_number].pos[node_number,:]))
+            Bnh[:num_LM_eq_specific, node_dof:node_dof+3] = algebra.quat2rotation(MB_tstep[body_number].quat)
+
+            LM_C[sys_size + ieq:sys_size + ieq + num_LM_eq_specific, :sys_size] += scalingFactor * Bnh
+            LM_C[:sys_size, sys_size + ieq:sys_size + ieq + num_LM_eq_specific] += scalingFactor * np.transpose(Bnh)
+
+            LM_C[FoR_dof:FoR_dof+3, FoR_dof+6:FoR_dof+10] += algebra.der_CquatT_by_v(MB_tstep[body_number].quat,Lambda_dot[ieq:ieq + num_LM_eq_specific])
+            LM_C[node_dof:node_dof+3, FoR_dof+6:FoR_dof+10] += algebra.der_CquatT_by_v(MB_tstep[body_number].quat,Lambda_dot[ieq:ieq + num_LM_eq_specific])
+            LM_C[FoR_dof+3:FoR_dof+6, FoR_dof+6:FoR_dof+10] += np.dot(algebra.skew(MB_tstep[body_number].pos[node_number,:]), algebra.der_CquatT_by_v(MB_tstep[body_number].quat,Lambda_dot[ieq:ieq + num_LM_eq_specific]))
+
+            LM_K[FoR_dof+3:FoR_dof+6, node_dof:node_dof+3] += algebra.skew(np.dot(algebra.quat2rotation(MB_tstep[body_number].quat).T, Lambda_dot[ieq:ieq + num_LM_eq_specific]))
+
+            LM_Q[:sys_size] += scalingFactor * np.dot(np.transpose(Bnh), Lambda_dot[ieq:ieq + num_LM_eq_specific])
+            LM_Q[sys_size + ieq:sys_size + ieq + num_LM_eq_specific] += np.dot( algebra.quat2rotation(MB_tstep[body_number].quat), (
+                    MB_tstep[body_number].for_vel[0:3] +
+                    np.cross(MB_tstep[body_number].for_vel[3:6], MB_tstep[body_number].pos[node_number,:]) +
+                    MB_tstep[body_number].pos_dot[node_number,:] -
+                    current_vel))
+
+            ieq += 3
+
     return LM_C, LM_K, LM_Q
+
+def postprocess(MB_beam, MB_tstep, MBdict):
+    """
+    postprocess
+
+    Perform any operation needed at the end of the timestep
+
+    Args:
+        MB_beam(list): list of 'beams' of each of the bodies that form the system
+        MB_tstep(list): list of 'StructTimeStepInfo' of each of the bodies that form the system
+        MBdict(MBdict): dictionary with the MultiBody and LagrangeMultipliers information
+
+    Notes:
+
+    """
+
+    num_constraints = MBdict['num_constraints']
+
+    for iconstraint in range(num_constraints):
+
+        behaviour = MBdict["constraint_%02d" % iconstraint]['behaviour'].lower()
+
+        if behaviour == 'hinge_node_FoR'.lower():
+            node_number = MBdict["constraint_%02d" % iconstraint]['node_in_body']
+            node_body = MBdict["constraint_%02d" % iconstraint]['body']
+            FoR_body = MBdict["constraint_%02d" % iconstraint]['body_FoR']
+            rot_axisB = MBdict["constraint_%02d" % iconstraint]['rot_axisB']
+
+            MB_tstep[FoR_body].for_pos[0:3] = np.dot(algebra.quat2rotation(MB_tstep[node_body].quat), MB_tstep[node_body].pos[node_number,:]) + MB_tstep[node_body].for_pos[0:3]
+
+        elif behaviour == 'spherical_node_FoR'.lower():
+
+            node_number = MBdict["constraint_%02d" % iconstraint]['node_in_body']
+            node_body = MBdict["constraint_%02d" % iconstraint]['body']
+            FoR_body = MBdict["constraint_%02d" % iconstraint]['body_FoR']
+            rot_axisB = MBdict["constraint_%02d" % iconstraint]['rot_axisB']
+
+            MB_tstep[FoR_body].for_pos[0:3] = np.dot(algebra.quat2rotation(MB_tstep[node_body].quat), MB_tstep[node_body].pos[node_number,:]) + MB_tstep[node_body].for_pos[0:3]
+
+
+    return num_LM_eq

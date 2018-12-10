@@ -129,7 +129,7 @@ class NonLinearDynamicMultibody(BaseSolver):
             if (MBdict['body_%02d' % ibody]['FoR_movement'] == 'free'):
                 self.sys_size += 10
 
-    def assembly_MB_eq_system(self, MB_beam, MB_tstep, dt, Lambda, Lambda_dot):
+    def assembly_MB_eq_system(self, MB_beam, MB_tstep, ts, dt, Lambda, Lambda_dot):
 
         #print("Lambda: ", Lambda)
         #print("LambdaDot: ", Lambda_dot)
@@ -245,7 +245,7 @@ class NonLinearDynamicMultibody(BaseSolver):
 
 
         # Generate matrices associated to Lagrange multipliers
-        LM_C, LM_K, LM_Q = lagrangemultipliers.generate_lagrange_matrix(MBdict, MB_beam, MB_tstep, self.num_LM_eq, self.sys_size, dt, Lambda, Lambda_dot)
+        LM_C, LM_K, LM_Q = lagrangemultipliers.generate_lagrange_matrix(MBdict, MB_beam, MB_tstep, ts, self.num_LM_eq, self.sys_size, dt, Lambda, Lambda_dot)
 
         #LM_C, LM_K, LM_Q = self.generate_lagrange_matrix(MB_beam, MB_tstep, dt, Lambda, Lambda_dot)
 
@@ -281,7 +281,8 @@ class NonLinearDynamicMultibody(BaseSolver):
                 # print("for_vel: ", MB_tstep[ibody].for_vel)
                 MB_tstep[ibody].for_pos[0:3] += dt*np.dot(MB_tstep[ibody].cga(),MB_tstep[ibody].for_vel[0:3])
 
-        MB_tstep[ibody].for_pos[0:3] = np.dot(algebra.quat2rotation(MB_tstep[0].quat), MB_tstep[0].pos[-1,:])
+        # Use next line for double pendulum (fix position of the second FoR)
+        # MB_tstep[ibody].for_pos[0:3] = np.dot(algebra.quat2rotation(MB_tstep[0].quat), MB_tstep[0].pos[-1,:])
         # print("tip final pos: ", np.dot(algebra.quat2rotation(MB_tstep[0].quat), MB_tstep[0].pos[-1,:]))
         # print("FoR final pos: ", MB_tstep[ibody].for_pos[0:3])
         # print("pause")
@@ -361,7 +362,7 @@ class NonLinearDynamicMultibody(BaseSolver):
             # print("MB_tstep[1].dqddt: ", MB_tstep[1].dqddt[60:70])
             # print("MB_tstep[1].for_acc: ", MB_tstep[1].for_acc)
 
-            MB_Asys, MB_Q = self.assembly_MB_eq_system(MB_beam, MB_tstep, dt, Lambda, Lambda_dot)
+            MB_Asys, MB_Q = self.assembly_MB_eq_system(MB_beam, MB_tstep, self.data.ts, dt, Lambda, Lambda_dot)
 
             # Compute the correction
             Dq = np.zeros((self.sys_size+num_LM_eq,), dtype=ct.c_double, order='F')
@@ -455,6 +456,7 @@ class NonLinearDynamicMultibody(BaseSolver):
         # End of Newmark-beta iterations
 
         self.integrate_position(MB_beam, MB_tstep, dt)
+        lagrangemultipliers.postprocess(MB_beam, MB_tstep, MBdict)
         # Force position
         # MB_tstep[1].for_pos[0:3] = MB_tstep[0].pos[-1,:] - np.zeros((3,),)
         # print("for vel: ", MB_tstep[1].for_vel)
