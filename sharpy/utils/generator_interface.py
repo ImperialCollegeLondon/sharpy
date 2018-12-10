@@ -52,3 +52,13 @@ def initialise_generator(generator_name):
     cls_type = generator_from_string(generator_name)
     gen = cls_type()
     return gen
+
+def dictionary_of_generators():
+
+    import sharpy.generators
+    dictionary = dict()
+    for gen in dict_of_generators:
+        init_gen = initialise_generator(gen)
+        dictionary[gen] = init_gen.settings_default
+
+    return dictionary
