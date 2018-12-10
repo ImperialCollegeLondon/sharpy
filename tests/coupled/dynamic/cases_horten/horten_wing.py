@@ -97,7 +97,7 @@ class HortenWing:
         self.fuselage_width = 1.
 
         # WASH OUT
-        self.washout_root = -0.2 * np.pi / 180
+        self.washout_root = 0*np.pi/180
         self.washout_tip = -2 * np.pi / 180
 
         # Horseshoe wake
@@ -936,9 +936,9 @@ class HortenWing:
                                   'initial_deflection': cs_deflection,
                                   'initial_thrust': thrust,
                                   'max_iter': 200,
-                                  'fz_tolerance': 1e-4,
-                                  'fx_tolerance': 1e-4,
-                                  'm_tolerance': 1e-4}
+                                  'fz_tolerance': 1e-2,
+                                  'fx_tolerance': 1e-2,
+                                  'm_tolerance': 1e-2}
 
         settings['Trim'] = {'solver': 'StaticCoupled',
                             'solver_settings': settings['StaticCoupled'],
@@ -973,7 +973,9 @@ class HortenWing:
                                                    'dt': self.dt}
 
         settings['StepLinearUVLM'] = {'dt': self.dt,
-                                      'solution_method': 'direct',
+                                      'integr_order': 1,
+                                      'remove_predictor': True,
+                                      'use_sparse': True,
                                       'velocity_field_generator': 'GustVelocityField',
                                       'velocity_field_input': {'u_inf': u_inf,
                                                                'u_inf_direction': [1., 0., 0.],
@@ -995,17 +997,17 @@ class HortenWing:
                                 # 'velocity_field_input': {'turbulent_field': '/2TB/turbsim_fields/TurbSim_wide_long_A_low.h5',
                                 #                          'offset': [30., 0., -10],
                                 #                          'u_inf': 0.},
-                                # 'velocity_field_generator': 'GustVelocityField',
-                                # 'velocity_field_input': {'u_inf': u_inf,
-                                #                          'u_inf_direction': [1., 0, 0],
-                                #                          'gust_shape': '1-cos',
-                                #                          'gust_length': 1.,
-                                #                          'gust_intensity': gust_intensity * u_inf,
-                                #                          'offset': 30.0,
-                                #                          'span': self.span},
-                                'velocity_field_generator': 'SteadyVelocityField',
-                                'velocity_field_input': {'u_inf': u_inf*1,
-                                                            'u_inf_direction': [1., 0., 0.]},
+                                'velocity_field_generator': 'GustVelocityField',
+                                'velocity_field_input': {'u_inf': u_inf,
+                                                         'u_inf_direction': [1., 0, 0],
+                                                         'gust_shape': '1-cos',
+                                                         'gust_length': 1.,
+                                                         'gust_intensity': gust_intensity * u_inf,
+                                                         'offset': 30.0,
+                                                         'span': self.span},
+                                # 'velocity_field_generator': 'SteadyVelocityField',
+                                # 'velocity_field_input': {'u_inf': u_inf*1,
+                                #                             'u_inf_direction': [1., 0., 0.]},
                                 'rho': rho,
                                 'n_time_steps': n_tstep,
                                 'dt': dt,
@@ -1015,7 +1017,7 @@ class HortenWing:
                                       'structural_substeps': 1,
                                       'dynamic_relaxation': 'on',
                                       'clean_up_previous_solution': 'on',
-                                      'structural_solver': 'NonLinearDynamicCoupledStep',
+                                      'structural_solver': 'NonLinearDynamicPrescribedStep',
                                       'structural_solver_settings': settings['NonLinearDynamicCoupledStep'],
                                       'aero_solver': 'StepUvlm',
                                       'aero_solver_settings': settings['StepUvlm'],
