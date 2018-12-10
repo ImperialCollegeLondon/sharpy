@@ -13,6 +13,12 @@ Classes:
 scipy.sparse matrices are wrapped so as to ensure compatibility with numpy arrays
 upon conversion to dense.
 - csc_matrix: this is a wrapper of scipy.csc_matrix.
+- SupportedTypes: types supported for operations
+- WarningTypes: due to some bugs in scipy (v.1.1.0), sum (+) operations between 
+np.ndarray and scipy.sparse matrices can result in numpy.matrixlib.defmatrix.matrix 
+types. This list contains such undesired types that can result from dense/sparse 
+operations and raises a warning if required.
+(b) convert these types into numpy.ndarrays.
 
 Methods:
 - dot: handles matrix dot products across different types.
@@ -30,17 +36,17 @@ import warnings
 import numpy as np
 import scipy.sparse as sparse
 import scipy.sparse.linalg as spalg
-
-
+import scipy.sparse.sputils as sputils
 
 # --------------------------------------------------------------------- Classes
 
 class csc_matrix(sparse.csc_matrix):
 	'''
-	Wrapper of scipy.csc_matrix where the following methods has been 
-	overwritten to ensure best compatibility with numpy dense arrays.
-	- todense: 
-		returns numpy.ndarray intstead of numpy.matrixlib.defmatrix.matrix
+	Wrapper of scipy.csc_matrix that ensures best compatibility with numpy.ndarray.
+	The following methods have been overwritten to ensure that numpy.ndarray are 
+	returned intstead of numpy.matrixlib.defmatrix.matrix.
+		- todense
+		- _add_dense
 	'''
 
 	def __init__(self,arg1, shape=None, dtype=None, copy=False):
@@ -48,13 +54,25 @@ class csc_matrix(sparse.csc_matrix):
 
 	def todense(self):
 		''' As per scipy.spmatrix.todense but returns a numpy.ndarray. '''
-		return np.array(super().todense())
+		return super().toarray()
 
+	def _add_dense(self, other):
+		if other.shape != self.shape:
+		    raise ValueError('Incompatible shapes.')
+		dtype = sputils.upcast_char(self.dtype.char, other.dtype.char)
+		order = self._swap('CF')[0]
+		result = np.array(other, dtype=dtype, order=order, copy=True)
+		M, N = self._swap(self.shape)
+		y = result if result.flags.c_contiguous else result.T
+		sparse._sparsetools.csr_todense(M, N, self.indptr, self.indices, self.data, y)
+		return result #np.matrix(result, copy=False)
+
+
+SupportedTypes=[np.ndarray,csc_matrix]
+WarningTypes=[np.matrixlib.defmatrix.matrix]
 
 
 # --------------------------------------------------------------------- Methods
-
-SupportedTypes=[np.ndarray, csc_matrix]
 
 
 def dot(A,B,type_out=None):
@@ -94,7 +112,7 @@ def dot(A,B,type_out=None):
 		if type_out==csc_matrix:
 			return csc_matrix(C)
 		else:
-			return C.todense()
+			return C.toarray()
 	return C
 
 
@@ -119,7 +137,7 @@ def solve(A,b):
 	# multiply
 	if tA==np.ndarray:
 		if tB==csc_matrix:
-			x=np.linalg.solve(A,b.todense())
+			x=np.linalg.solve(A,b.toarray())
 		else:
 			x=np.linalg.solve(A,b)
 	else:
@@ -133,14 +151,14 @@ def solve(A,b):
 def dense(M):
 	''' If required, converts sparse array to dense. '''
 	if type(M) == csc_matrix:
-		return np.array(M.todense())
+		return np.array(M.toarray())
 	elif type(M) == csc_matrix:
-		return M.todense()
+		return M.toarray()
 	return M
 
 
 def eye_as(M):
-	''' Produces an identity matrix as per M '''
+	''' Produces an identity matrix as per M, in shape and type '''
 
 	tM=type(M)
 	assert tM in SupportedTypes, 'Type %s not supported!'%tM
@@ -156,22 +174,59 @@ def eye_as(M):
 	return D
 
 
+def zeros_as(M):
+	''' Produces an identity matrix as per M, in shape and type '''
+
+	tM=type(M)
+	assert tM in SupportedTypes, 'Type %s not supported!'%tM
+	nrows,ncols=M.shape
+
+	if tM==csc_matrix:
+		D=csc_matrix((nrows,ncols))
+	elif tM==np.ndarray:
+		D=np.zeros_like(M)
+
+	return D
+
+
+# -----------------------------------------------------------------------------
+
+
 if __name__=='__main__':
 	import unittest
 
-
 	class Test_module(unittest.TestCase):
 		''' Test methods into this module '''
-
 
 		def setUp(self):
 			self.A=np.random.rand(3,4)
 			self.B=np.random.rand(4,2)
 
-		def test_csc_matrix_class(self):
+		def test_dense_plus_csc_matrix_type(self):
 			A=self.A
 			Asp=csc_matrix(A)
-			assert type(A+Asp)==np.ndarray, 'Unexpected type with sum operator'
+
+			for aa in [A,Asp]:
+				for bb in [A,Asp]:
+					tsum=type(aa+bb)
+					tdiff=type(aa-bb)
+					for tout,strout in zip([tsum,tdiff],['(+)','(-)']):
+						if tout not in SupportedTypes:
+							if tout in WarningTypes:
+								warnings.warn(
+									'Undesired type (%s) resulting from %s operations between %s and %s types'\
+									%(tout,strout,type(aa),type(bb)))
+							else:
+								raise NameError(
+									'Unexpected type (%s) resulting from %s operations between %s and %s types'\
+									%(tout,strout,type(aa),type(bb)))
+
+		def test_zeros_as(self):
+			A=np.zeros((4,2))
+			A1=zeros_as(A)
+			A2=zeros_as(csc_matrix(A))
+			assert np.max(np.abs(A-A1))<1e-16, 'Error in libsparse.zeros_as'
+			assert np.max(np.abs(A-A2))<1e-16, 'Error in libsparse.zeros_as'
 
 		def test_eye_as(self):
 			A=np.random.rand(4,4)
@@ -215,7 +270,3 @@ if __name__=='__main__':
 	print((70-len(outprint))*' ' + outprint )
 	print(70*'-')
 	unittest.main()
-
-
-
-

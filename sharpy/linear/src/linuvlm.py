@@ -493,6 +493,9 @@ class Dynamic(Static):
         References:
             [1] Franklin, GF and Powell, JD. Digital Control of Dynamic Systems, Addison-Wesley Publishing Company, 1980
 
+        To do: 
+        - remove all calls to scipy.linalg.block_diag
+
         """
 
         print('State-space realisation of UVLM equations started...')
@@ -519,54 +522,58 @@ class Dynamic(Static):
                                              target='collocation', Project=True)
         A0 = np.block(List_AICs)
         A0W = np.block(List_AICs_star)
-        del List_AICs, List_AICs_star
+        List_AICs, List_AICs_star = None, None
         LU, P = scalg.lu_factor(A0)
         AinvAW = scalg.lu_solve((LU, P), A0W)
-        del A0, A0W
+        A0, A0W  = None, None
 
         # propagation of circ
-        List_C, List_Cstar = ass.wake_prop(MS.Surfs, MS.Surfs_star)
-        Cgamma = scalg.block_diag(*List_C)
-        CgammaW = scalg.block_diag(*List_Cstar)
-        del List_C, List_Cstar
+        List_C, List_Cstar = ass.wake_prop(MS.Surfs, MS.Surfs_star, 
+                                            self.use_sparse,sparse_format='csc')
+        if self.use_sparse:
+            Cgamma = libsp.csc_matrix(sparse.block_diag(List_C,format='csc'))
+            CgammaW = libsp.csc_matrix(sparse.block_diag(List_Cstar,format='csc'))
+        else:
+            Cgamma = scalg.block_diag(*List_C)
+            CgammaW = scalg.block_diag(*List_Cstar)
+        List_C, List_Cstar  = None, None
 
         # A matrix assembly
-        Ass = np.zeros((Nx, Nx))
-        Ass[:K, :K] = -np.dot(AinvAW, Cgamma)
-        Ass[:K, K:K + K_star] = -np.dot(AinvAW, CgammaW)
+        if self.use_sparse:
+            Ass=libsp.csc_matrix((Nx,Nx))
+            EyeK=sparse.eye(K,'csc')
+        else:
+            Ass = np.zeros((Nx, Nx))
+            EyeK=np.eye(K)
+        Ass[:K, :K] = -libsp.dot(AinvAW, Cgamma)
+        Ass[:K, K:K + K_star] = -libsp.dot(AinvAW, CgammaW)
         Ass[K:K + K_star, :K] = Cgamma
         Ass[K:K + K_star, K:K + K_star] = CgammaW
 
         if self.integr_order == 1:
             # delta eq.
-            Ass[K + K_star:2 * K + K_star, :K] = Ass[:K, :K] - np.eye(K)
+            Ass[K + K_star:2 * K + K_star, :K] = Ass[:K, :K] - EyeK
             Ass[K + K_star:2 * K + K_star, K:K + K_star] = Ass[:K, K:K + K_star]
         if self.integr_order == 2:
             # delta eq.
-            Ass[K + K_star:2 * K + K_star, :K] = bp1 * Ass[:K, :K] + b0 * np.eye(K)
+            Ass[K + K_star:2 * K + K_star, :K] = bp1 * Ass[:K, :K] + b0 * EyeK
             Ass[K + K_star:2 * K + K_star, K:K + K_star] = bp1 * Ass[:K, K:K + K_star]
             Ass[K + K_star:2 * K + K_star, K + K_star:2 * K + K_star] = 0.0
-            Ass[K + K_star:2 * K + K_star, 2 * K + K_star:3 * K + K_star] = bm1 * np.eye(K)
+            Ass[K + K_star:2 * K + K_star, 2 * K + K_star:3 * K + K_star] = bm1 * EyeK
             # identity eq.
-            Ass[2 * K + K_star:3 * K + K_star, :K] = np.eye(K)
-
-        ### input terms (B matrix)
+            Ass[2 * K + K_star:3 * K + K_star, :K] = EyeK
 
         # zeta derivs
+        List_nc_dqcdzeta=ass.nc_dqcdzeta(MS.Surfs, MS.Surfs_star,Merge=True)
         List_uc_dncdzeta = ass.uc_dncdzeta(MS.Surfs)
-        List_nc_dqcdzeta_coll, List_nc_dqcdzeta_vert = \
-            ass.nc_dqcdzeta(MS.Surfs, MS.Surfs_star)
-        Ducdzeta = np.block(List_nc_dqcdzeta_vert)
-        del List_nc_dqcdzeta_vert
-        Ducdzeta += scalg.block_diag(*List_nc_dqcdzeta_coll)
-        del List_nc_dqcdzeta_coll
-        Ducdzeta += scalg.block_diag(*List_uc_dncdzeta)
-        del List_uc_dncdzeta
-        # omega x zeta terms
         List_nc_domegazetadzeta_vert = ass.nc_domegazetadzeta(MS.Surfs,MS.Surfs_star)
-        Ducdzeta+=scalg.block_diag(*List_nc_domegazetadzeta_vert)
-        del List_nc_domegazetadzeta_vert
-
+        for ss in range(MS.n_surf):
+            List_nc_dqcdzeta[ss][ss]+=\
+                     ( List_uc_dncdzeta[ss] + List_nc_domegazetadzeta_vert[ss] )
+        Ducdzeta = np.block(List_nc_dqcdzeta)  # dense matrix
+        List_nc_dqcdzeta = None
+        List_uc_dncdzeta = None
+        List_nc_domegazetadzeta_vert = None
 
         # ext velocity derivs (Wnv0)
         List_Wnv = []
@@ -575,10 +582,13 @@ class Dynamic(Static):
                 interp.get_Wnv_vector(MS.Surfs[ss],
                                       MS.Surfs[ss].aM, MS.Surfs[ss].aN))
         AinvWnv0 = scalg.lu_solve((LU, P), scalg.block_diag(*List_Wnv))
-        del List_Wnv
+        List_Wnv = None
 
         # B matrix assembly
-        Bss = np.zeros((Nx, Nu))
+        if self.use_sparse:
+            Bss=libsp.csc_matrix((Nx,Nu))
+        else:
+            Bss = np.zeros((Nx, Nu))
         Bss[:K, :3 * Kzeta] = -scalg.lu_solve((LU, P), Ducdzeta)
         Bss[:K, 3 * Kzeta:6 * Kzeta] = AinvWnv0  # dzeta_dot
         Bss[:K, 6 * Kzeta:9 * Kzeta] = -AinvWnv0  # du_ext
@@ -587,22 +597,23 @@ class Dynamic(Static):
         if self.integr_order == 2:
             Bss[K + K_star:2 * K + K_star, :] = bp1 * Bss[:K, :]
 
+
         # ---------------------------------------------------------- output eq.
 
         ### state terms (C matrix)
-
-        # gamma (at constant relative velocity)
-        List_dfqsdgamma_vrel0, List_dfqsdgamma_star_vrel0 = \
-            ass.dfqsdgamma_vrel0(MS.Surfs, MS.Surfs_star)
-        Dfqsdgamma = scalg.block_diag(*List_dfqsdgamma_vrel0)
-        Dfqsdgamma_star = scalg.block_diag(*List_dfqsdgamma_star_vrel0)
-        del List_dfqsdgamma_vrel0, List_dfqsdgamma_star_vrel0
         # gamma (induced velocity contrib.)
         List_dfqsdvind_gamma, List_dfqsdvind_gamma_star = \
             ass.dfqsdvind_gamma(MS.Surfs, MS.Surfs_star)
-        Dfqsdgamma += np.block(List_dfqsdvind_gamma)
-        Dfqsdgamma_star += np.block(List_dfqsdvind_gamma_star)
-        del List_dfqsdvind_gamma, List_dfqsdvind_gamma_star
+        # gamma (at constant relative velocity)
+        List_dfqsdgamma_vrel0, List_dfqsdgamma_star_vrel0 = \
+            ass.dfqsdgamma_vrel0(MS.Surfs, MS.Surfs_star)
+        for ss in range(MS.n_surf):
+            List_dfqsdvind_gamma[ss][ss]+=List_dfqsdgamma_vrel0[ss]
+            List_dfqsdvind_gamma_star[ss][ss]+=List_dfqsdgamma_star_vrel0[ss]                
+        Dfqsdgamma = np.block(List_dfqsdvind_gamma)
+        Dfqsdgamma_star = np.block(List_dfqsdvind_gamma_star)
+        List_dfqsdvind_gamma, List_dfqsdvind_gamma_star = None, None
+        List_dfqsdgamma_vrel0, List_dfqsdgamma_star_vrel0 = None, None
 
         # gamma_dot
         Dfunstdgamma_dot = scalg.block_diag(*ass.dfunstdgamma_dot(MS.Surfs))
@@ -638,7 +649,7 @@ class Dynamic(Static):
 
         if self.remove_predictor:
             Ass, Bmod, Css, Dmod = \
-                libss.SSconv(Ass, np.zeros_like(Bss), Bss, Css, Dss, Bm1=None)
+                libss.SSconv(Ass, libsp.zeros_as(Bss), Bss, Css, Dss, Bm1=None)
             self.SS = libss.ss(Ass, Bmod, Css, Dmod, dt=self.dt)
             print('state-space model produced in form:\n\t' \
                   'h_{n+1} = A h_{n} + B u_{n}\n\t' \
@@ -647,11 +658,6 @@ class Dynamic(Static):
             self.SS = libss.ss(Ass, Bss, Css, Dss, dt=self.dt)
             print('state-space model produced in form:\n\t' \
                   'x_{n+1} = A x_{n} + Bp u_{n+1}')
-
-        # convert to sparse A & B
-        if self.use_sparse:
-            self.SS.A=libsp.csc_matrix(self.SS.A)
-            self.SS.B=libsp.csc_matrix(self.SS.B)
 
         self.time_ss = time.time() - t0
         print('\t\t\t...done in %.2f sec' % self.time_ss)

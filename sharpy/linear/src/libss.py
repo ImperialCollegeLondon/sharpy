@@ -224,32 +224,8 @@ def couple(ss01,ss02,K12,K21,out_sparse=False):
 	cpl_12=libsp.solve(L1,K12)
 	cpl_21=libsp.solve(L2,K21)	
 
-
-	# embed()
-	# ####
-	# # reference
-	# # left hand side terms
-	# L1=np.eye(Nu1)-np.dot(K11,D1)
-	# L2=np.eye(Nu2)-np.dot(K22,D2)
-
-	# # invert left hand side terms
-	# L1inv=np.linalg.inv(L1)
-	# L2inv=np.linalg.inv(L2)
-
-	# # coupling terms
-	# cpl_12=np.dot(L1inv,K12)
-	# cpl_21=np.dot(L2inv,K21)
-
-
-	#####
-
-
-
-
-
 	cpl_11=libsp.dot(cpl_12, libsp.dot(D2,K21) )
 	cpl_22=libsp.dot(cpl_21, libsp.dot(D1,K12) )
-
 
 	# Build coupled system
 	if out_sparse:
