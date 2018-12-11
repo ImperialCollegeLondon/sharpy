@@ -608,8 +608,20 @@ class StructTimeStepInfo(object):
 
         # Modify position
         for inode in range(self.pos.shape[0]):
+            pos_previous = self.pos[inode,:] + np.zeros((3,),)
             self.pos[inode,:] = np.dot(Csm,self.pos[inode,:]) - np.dot(CAslaveG,delta_pos_ms[0:3])
-            self.pos_dot[inode,:] = np.dot(Csm,self.pos_dot[inode,:]) - np.dot(CAslaveG,delta_vel_ms[0:3])
+            # self.pos_dot[inode,:] = np.dot(Csm,self.pos_dot[inode,:]) - np.dot(CAslaveG,delta_vel_ms[0:3])
+            self.pos_dot[inode,:] = (np.dot(Csm, self.pos_dot[inode,:]) -
+                                    np.dot(CAslaveG, delta_vel_ms[0:3]) -
+                                    np.cross( np.dot( CAslaveG, self.mb_FoR_vel[global_ibody,3:6]), self.pos[inode,:]) +
+                                    np.dot(Csm, np.cross(np.dot(CGAmaster.T, self.mb_FoR_vel[0,3:6]), pos_previous)))
+
+            # self.pos_dot[inode,:] = (np.dot(np.transpose(Csm),self.pos_dot[inode,:]) +
+            #                         np.dot(np.transpose(CGAmaster),delta_vel_ms[0:3]) +
+            #                         np.dot(Csm.T, np.cross( np.dot(CAslaveG, self.mb_FoR_vel[global_ibody,3:6]), pos_previous)) -
+            #                         np.cross(np.dot(CGAmaster.T, self.mb_FoR_vel[0,3:6]), self.pos[inode,:]))
+
+
         # Modify local rotations
         for ielem in range(self.psi.shape[0]):
             for inode in range(3):
@@ -657,8 +669,15 @@ class StructTimeStepInfo(object):
         delta_vel_ms = self.mb_FoR_vel[global_ibody,:] - self.mb_FoR_vel[0,:]
 
         for inode in range(self.pos.shape[0]):
-            self.pos[inode,:] = np.dot(np.transpose(Csm),self.pos[inode,:]) + np.dot(np.transpose(CGAmaster),delta_pos_ms[0:3])
-            self.pos_dot[inode,:] = np.dot(np.transpose(Csm),self.pos_dot[inode,:]) + np.dot(np.transpose(CGAmaster),delta_vel_ms[0:3])
+            pos_previous = self.pos[inode,:] + np.zeros((3,),)
+            self.pos[inode,:] = (np.dot(np.transpose(Csm),self.pos[inode,:]) +
+                                np.dot(np.transpose(CGAmaster),delta_pos_ms[0:3]))
+            self.pos_dot[inode,:] = (np.dot(np.transpose(Csm),self.pos_dot[inode,:]) +
+                                    np.dot(np.transpose(CGAmaster),delta_vel_ms[0:3]) +
+                                    np.dot(Csm.T, np.cross( np.dot(CAslaveG, self.mb_FoR_vel[global_ibody,3:6]), pos_previous)) -
+                                    np.cross(np.dot(CGAmaster.T, self.mb_FoR_vel[0,3:6]), self.pos[inode,:]))
+
+                                    # np.cross(np.dot(CGAmaster.T, delta_vel_ms[3:6]), pos_previous))
 
         for ielem in range(self.psi.shape[0]):
             for inode in range(3):
