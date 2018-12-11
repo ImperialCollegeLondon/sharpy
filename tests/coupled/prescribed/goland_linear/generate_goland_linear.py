@@ -1,7 +1,7 @@
 import cases.templates.flying_wings as wings
 import sharpy.sharpy_main
 
-aero_type = 'lin'
+aero_type = 'nlin'
 ws = wings.Goland(M=6,
                   N=20,
                   Mstar_fact=10,
@@ -15,7 +15,7 @@ ws = wings.Goland(M=6,
                   case_name='goland_'+aero_type)
 
 ws.gust_intensity = 0.1
-# ws.n_tstep = 2
+ws.n_tstep = 2
 ws.sigma = 1
 
 ws.clean_test_files()

@@ -27,17 +27,20 @@ class StepLinearUVLM(BaseSolver):
     Attributes:
         settings (dict): Contains the solver's ``settings``. See below for acceptable values:
 
-            ====================  =========  ===============================================    ==========
-            Name                  Type       Description                                        Default
-            ====================  =========  ===============================================    ==========
-            ``dt``                ``float``  Time increment                                     ``0.1``
-            ``integr_order``      ``int``    Finite difference order for bound circulation      ``2``
-            ``ScalingDict``       ``dict``   Dictionary with scaling gains. See Notes.
-            ``remove_predictor``  ``bool``   Remove predictor term from UVLM system assembly    ``True``
-            ``use_sparse``        ``bool``   use sparse form of A and B matrix.                 ``True``
-            ====================  =========  ===============================================    ==========
+            ============================  =========  ===============================================    ==========
+            Name                          Type       Description                                        Default
+            ============================  =========  ===============================================    ==========
+            ``dt``                        ``float``  Time increment                                     ``0.1``
+            ``integr_order``              ``int``    Finite difference order for bound circulation      ``2``
+            ``ScalingDict``               ``dict``   Dictionary with scaling gains. See Notes.
+            ``remove_predictor``          ``bool``   Remove predictor term from UVLM system assembly    ``True``
+            ``use_sparse``                ``bool``   Use sparse form of A and B state space matrices    ``True``
+            ``velocity_field_generator``  ``str``    Selected velocity generator                        ``None``
+            ``velocity_filed_input``      ``dict``   Settings for the velocity generator                ``None``
+            ============================  =========  ===============================================    ==========
 
         lin_uvlm_system (linuvlm.Dynamic): Linearised UVLM dynamic system
+        velocity_generator (utils.generator_interface.BaseGenerator): velocity field generator class of desired type
 
     Notes:
         The ``integr_order`` variable refers to the finite differencing scheme used to calculate the bound circulation
@@ -51,8 +54,8 @@ class StepLinearUVLM(BaseSolver):
         .. math:: \dot{\mathbf{\Gamma}}^{n+1} = \frac{3\mathbf{\Gamma}^{n+1}-4\mathbf{\Gamma}^n + \mathbf{\Gamma}^{n-1}}
             {2\Delta t}
 
-
-        Scaling gains etc
+        The ``ScalingDict`` dictionary contains the gains by which to scale the
+        linear system in ``length``, ``speed`` and ``density``.
 
     See Also:
         :func:`sharpy.linear.src.linuvlm`

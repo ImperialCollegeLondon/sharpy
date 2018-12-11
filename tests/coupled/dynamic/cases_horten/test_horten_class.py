@@ -9,15 +9,15 @@ ws = horten_wing.HortenWing(M=4,
                             N=11,
                             Mstarfactor=10,
                             u_inf=25,
-                            thrust=3.072420576589273,
-                            alpha_deg=0,#3.9720932241591,
-                            cs_deflection_deg=0,#-4.094765106430403,
+                            thrust=2.959985072701038,
+                            alpha_deg=3.8328492608310607,
+                            cs_deflection_deg=-3.042203421093528,
                             case_name_format=2,
                             physical_time=3,
-                            case_remarks=aero_type+'prescribed_test')
+                            case_remarks=aero_type+'prescribed')
 ws.horseshoe = False
 ws.gust_intensity = 0.01
-ws.n_tstep = 2
+# ws.n_tstep = 2
 
 # ws.main_ea_root = 0.33
 # ws.main_ea_tip = 0.33
@@ -38,7 +38,7 @@ ws.config['SHARPy']['flow'] = ['BeamLoader',
                                'AerogridPlot',
                                'BeamPlot',
                                'DynamicCoupled',
-                               'AeroForcesCalculator',
+                               # 'AeroForcesCalculator',
                                # 'Modal',
                                'SaveData']
 
@@ -49,7 +49,9 @@ if aero_type == 'lin':
     ws.config['StepLinearUVLM']['solution_method'] = 'minsize'
     ws.config['DynamicCoupled']['aero_solver'] = 'StepLinearUVLM'
     ws.config['DynamicCoupled']['aero_solver_settings'] = {'dt': ws.settings['StepLinearUVLM']['dt'],
-                                                           'solution_method': 'minsize',
+                                                           'remove_predictor': True,
+                                                           'use_sparse': False,
+                                                           'integr_order': 1,
                                                            'velocity_field_generator': 'GustVelocityField',
                                                            'velocity_field_input': {'u_inf': ws.u_inf,
                                                                                     'u_inf_direction': [1., 0., 0.],
