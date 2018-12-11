@@ -1719,7 +1719,7 @@ class SimulationInformation():
         """
         # TODO:Maybe it would be convenient to use the same name for all the solvers
         self.solvers["DynamicCoupled"]['n_time_steps'] = num_steps
-        self.solvers["DynamicPrescribedCoupled"]['n_time_steps'] = num_steps
+        # self.solvers["DynamicPrescribedCoupled"]['n_time_steps'] = num_steps
         self.solvers["StepUvlm"]['n_time_steps'] = num_steps
         self.solvers['NonLinearDynamicMultibody']['num_steps'] = num_steps
         self.solvers['NonLinearDynamicCoupledStep']['num_steps'] = num_steps
