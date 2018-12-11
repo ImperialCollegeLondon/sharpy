@@ -980,6 +980,7 @@ def cbeam3_asbly_dynamic(beam, tstep, settings):
                             ct.byref(xbopts),
                             tstep.dqddt.ctypes.data_as(doubleP),
                             tstep.quat.ctypes.data_as(doubleP),
+                            tstep.gravity_forces.ctypes.data_as(doubleP),
                             Mglobal.ctypes.data_as(doubleP),
                             Cglobal.ctypes.data_as(doubleP),
                             Kglobal.ctypes.data_as(doubleP),
@@ -1082,9 +1083,55 @@ def xbeam3_asbly_dynamic(beam, tstep, settings):
                             tstep.q.ctypes.data_as(doubleP),
                             tstep.dqdt.ctypes.data_as(doubleP),
                             tstep.dqddt.ctypes.data_as(doubleP),
+                            tstep.gravity_forces.ctypes.data_as(doubleP),
                             Mtotal.ctypes.data_as(doubleP),
                             Ctotal.ctypes.data_as(doubleP),
                             Ktotal.ctypes.data_as(doubleP),
                             Qtotal.ctypes.data_as(doubleP))
 
     return Mtotal, Ctotal, Ktotal, Qtotal
+
+def cbeam3_correct_gravity_forces(beam, tstep, settings):
+    """
+    cbeam3_correct_gravity_forces
+
+    Corrects the gravity forces orientation after a time step
+
+    Args:
+        beam(Beam): beam information
+        tstep(StructTimeStepInfo): time step information
+        settings(settings):
+    """
+
+    # library load
+    xbeamlib = ct_utils.import_ctypes_lib(SharpyDir + '/lib/', 'libxbeam')
+    f_cbeam3_correct_gravity_forces_python = xbeamlib.cbeam3_correct_gravity_forces_python
+    f_cbeam3_correct_gravity_forces_python.restype = None
+
+    # initialisation
+    n_elem = ct.c_int(beam.num_elem)
+    n_nodes = ct.c_int(beam.num_node)
+    n_mass = ct.c_int(beam.n_mass)
+    n_stiff = ct.c_int(beam.n_stiff)
+
+    f_cbeam3_correct_gravity_forces_python(ct.byref(n_nodes),
+                            ct.byref(n_elem),
+                            beam.ini_info.psi.ctypes.data_as(doubleP),
+                            tstep.psi.ctypes.data_as(doubleP),
+                            beam.fortran['num_nodes'].ctypes.data_as(intP),
+                            beam.fortran['num_mem'].ctypes.data_as(intP),
+                            beam.fortran['connectivities'].ctypes.data_as(intP),
+                            beam.fortran['master'].ctypes.data_as(intP),
+                            ct.byref(n_mass),
+                            beam.fortran['mass'].ctypes.data_as(doubleP),
+                            beam.fortran['mass_indices'].ctypes.data_as(intP),
+                            ct.byref(n_stiff),
+                            beam.fortran['stiffness'].ctypes.data_as(doubleP),
+                            beam.fortran['inv_stiffness'].ctypes.data_as(doubleP),
+                            beam.fortran['stiffness_indices'].ctypes.data_as(intP),
+                            beam.fortran['frame_of_reference_delta'].ctypes.data_as(doubleP),
+                            beam.fortran['rbmass'].ctypes.data_as(doubleP),
+                            beam.fortran['node_master_elem'].ctypes.data_as(intP),
+                            beam.fortran['vdof'].ctypes.data_as(intP),
+                            beam.fortran['fdof'].ctypes.data_as(intP),
+                            tstep.gravity_forces.ctypes.data_as(doubleP))

@@ -115,6 +115,7 @@ def merge_multibody(MB_tstep, MB_beam, beam, tstep, mb_data_dict, dt):
         tstep.pos_dot[first_node:last_node,:] = MB_tstep[ibody].pos_dot.astype(dtype=ct.c_double, order='F', copy=True)
         tstep.psi[first_elem:last_elem,:,:] = MB_tstep[ibody].psi.astype(dtype=ct.c_double, order='F', copy=True)
         tstep.psi_dot[first_elem:last_elem,:,:] = MB_tstep[ibody].psi_dot.astype(dtype=ct.c_double, order='F', copy=True)
+        tstep.gravity_forces[first_node:last_node,:] = MB_tstep[ibody].gravity_forces.astype(dtype=ct.c_double, order='F', copy=True)
 
         # Merge states
         ibody_num_dof = MB_beam[ibody].num_dof.value

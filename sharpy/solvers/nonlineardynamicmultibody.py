@@ -468,6 +468,9 @@ class NonLinearDynamicMultibody(BaseSolver):
         # print("for vel: ", MB_tstep[1].for_vel)
         # print("for quat: ", MB_tstep[0].quat)
         # print("for acc: ", MB_tstep[0].for_acc)
+        if self.settings['gravity_on']:
+            for ibody in range(len(MB_beam)):
+                xbeamlib.cbeam3_correct_gravity_forces(MB_beam[ibody], MB_tstep[ibody], self.settings)
         mb.merge_multibody(MB_tstep, MB_beam, self.data.structure, structural_step, MBdict, dt)
 
         # embed()
