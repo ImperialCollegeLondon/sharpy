@@ -299,6 +299,12 @@ class NonLinearDynamicMultibody(BaseSolver):
         # Initialize varaibles
         MBdict = self.data.structure.mb_dict
         dt = self.settings['dt'].value
+
+        # TODO: there should be a better way to do the following
+        if self.data.ts < 2:
+                structural_step.steady_applied_forces *= 0.
+                structural_step.unsteady_applied_forces *= 0.
+
         # print("beg quat: ", structural_step.quat)
         # TODO: only working for constant forces
         # self.data.structure.timestep_info[-1].unsteady_applied_forces = self.data.structure.dynamic_input[1]['dynamic_forces'].astype(dtype=ct.c_double, order='F', copy=True)
