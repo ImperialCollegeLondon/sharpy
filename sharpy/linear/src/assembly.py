@@ -1236,7 +1236,7 @@ def dfunstdgamma_dot(Surfs):
 	return DerList
 
 
-def wake_prop(Surfs,Surfs_star,use_sparse=False,sparse_format='csc'):
+def wake_prop(Surfs,Surfs_star,use_sparse=False,sparse_format='lil'):
 	'''
 	Assembly of wake propagation matrices, in sparse or dense matrices format
 
@@ -1265,8 +1265,11 @@ def wake_prop(Surfs,Surfs_star,use_sparse=False,sparse_format='csc'):
 		# allocate...
 		if use_sparse:
 			if sparse_format=='csc':
-				C=sparse.csc_matrix((K_star,K))
-				C_star=sparse.csc_matrix((K_star,K_star))
+				C=libsp.csc_matrix((K_star,K))
+				C_star=libsp.csc_matrix((K_star,K_star))
+			elif sparse_format=='lil':
+				C=sparse.lil_matrix((K_star,K))
+				C_star=sparse.lil_matrix((K_star,K_star))				
 		else:
 			C=np.zeros((K_star,K))	
 			C_star=np.zeros((K_star,K_star))

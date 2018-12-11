@@ -47,6 +47,12 @@ class csc_matrix(sparse.csc_matrix):
 	returned intstead of numpy.matrixlib.defmatrix.matrix.
 		- todense
 		- _add_dense
+
+	Warning: this format is memory inefficient to allocate new sparse matrices.
+	Consider using: 
+	- scipy.sparse.lil_matrix, which supports slicing, or 
+	- scipy.sparse.coo_matrix, though slicing is not supported :(
+
 	'''
 
 	def __init__(self,arg1, shape=None, dtype=None, copy=False):
@@ -104,6 +110,7 @@ def dot(A,B,type_out=None):
 	# multiply
 	if tA==np.ndarray and tB==csc_matrix:
 		C=(B.transpose()).dot(A.transpose()).transpose()
+		# C=A.dot(B.todense())
 	else:
 		C=A.dot(B)
 

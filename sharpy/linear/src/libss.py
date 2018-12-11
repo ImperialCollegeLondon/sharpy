@@ -556,12 +556,18 @@ def SSconv(A,B0,B1,C,D,Bm1=None):
 
 	@ref: Franklin and Powell
 
+	Note:
+	- B0=None is allowed to speed-up conversion
+
 	Warnings:
 	- functions untested for delays (Bm1 != 0)
 	'''
 
 	# Account for u^{n+1} terms (prediction)
-	Bh=B0+libsp.dot(A,B1)
+	if B0 is None: 
+		Bh=libsp.dot(A,B1)
+	else:
+		Bh=B0+libsp.dot(A,B1)
 	Dh=D+libsp.dot(C,B1)
 
 	# Account for u^{n-1} terms (delay)
@@ -570,7 +576,7 @@ def SSconv(A,B0,B1,C,D,Bm1=None):
 	else:
 		warnings.warn('Function untested when Bm1!=None')
 
-		Nx,Nu,Ny=A.shape[0],B0.shape[1],C.shape[0]
+		Nx,Nu,Ny=A.shape[0],Bh.shape[1],C.shape[0]
 		AA=np.block( [[A, Bm1],
 			         [np.zeros((Nu,Nx)), np.zeros((Nu,Nu))]])
 		BB=np.block( [[Bh],[np.eye(Nu)]] )
