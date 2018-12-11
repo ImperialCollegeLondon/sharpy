@@ -93,6 +93,15 @@ class SteadyHelicoidalWake(BaseSolver):
         self.settings_types['circulation_substeps'] = 'int'
         self.settings_default['circulation_substeps'] = 70
 
+        self.settings_types['rot_vel'] = 'float'
+        self.settings_default['rot_vel'] = 0.0
+
+        self.settings_types['rot_axis'] = 'list(float)'
+        self.settings_default['rot_axis'] = np.array([1.,0.,0.])
+
+        self.settings_types['rot_center'] = 'list(float)'
+        self.settings_default['rot_center'] = np.array([0.,0.,0.])
+
         self.data = None
         self.settings = None
         self.structural_solver = None
@@ -171,19 +180,25 @@ class SteadyHelicoidalWake(BaseSolver):
     def run(self):
 
         # Define simulation variables
-        self.data.structure.timestep_info[-1].for_vel[:] = self.data.structure.dynamic_input[0]['for_vel']
+        # self.data.structure.timestep_info[-1].for_vel[:] = self.data.structure.dynamic_input[0]['for_vel']
+        # self.data.structure.timestep_info[-1].for_acc[:] = [0.0,0.0,0.0,0.0,0.0,0.0]
+        # disp_vel = self.data.structure.timestep_info[-1].for_vel[0:3]
+        # rot_vel = np.linalg.norm(self.data.structure.timestep_info[-1].for_vel[3:6])
+        # if not rot_vel == 0:
+        #     rot_axis = self.data.structure.timestep_info[-1].for_vel[3:6] / rot_vel
+        # else:
+        #     rot_axis = np.zeros((3,),)
+        rot_vel = self.settings['rot_vel']
+        rot_axis = self.settings['rot_axis']
+        rot_center = self.settings['rot_center']
+        disp_vel = np.zeros((3,),)
+        self.data.structure.timestep_info[-1].for_vel[3:6] = rot_vel*rot_axis
         self.data.structure.timestep_info[-1].for_acc[:] = [0.0,0.0,0.0,0.0,0.0,0.0]
-        disp_vel = self.data.structure.timestep_info[-1].for_vel[0:3]
-        rot_vel = np.linalg.norm(self.data.structure.timestep_info[-1].for_vel[3:6])
-        if not rot_vel == 0:
-            rot_axis = self.data.structure.timestep_info[-1].for_vel[3:6] / rot_vel
-        else:
-            rot_axis = np.zeros((3,),)
         wsp = self.aero_solver.velocity_generator.u_inf * self.aero_solver.velocity_generator.u_inf_direction
 
         # Definition of the blade aero discretization and the helicoidal wake
         self.aero_solver.update_custom_grid(self.data.structure.timestep_info[-1], self.data.aero.timestep_info[-1])
-        self.define_helicoidal_wake(self.data.aero.timestep_info[-1], self.data.structure.timestep_info[-1], rot_vel, rot_axis, wsp-disp_vel)
+        self.define_helicoidal_wake(self.data.aero.timestep_info[-1], self.data.structure.timestep_info[-1], rot_vel.value, rot_axis, rot_center, wsp-disp_vel)
 
         # Information for the FSI iteration
         aero_kstep = self.data.aero.timestep_info[-1].copy()
@@ -210,7 +225,7 @@ class SteadyHelicoidalWake(BaseSolver):
 
             # Update aero discretization according to previous structural_kstep
             self.aero_solver.update_custom_grid(structural_kstep, aero_kstep)
-            self.define_helicoidal_wake(aero_kstep, structural_kstep, rot_vel, rot_axis, wsp-disp_vel)
+            self.define_helicoidal_wake(aero_kstep, structural_kstep, rot_vel.value, rot_axis, rot_center, wsp-disp_vel)
 
             # Iterations to converge the circuation in the aerodynamic solver
             k2 = 0
@@ -359,7 +374,7 @@ class SteadyHelicoidalWake(BaseSolver):
         value = initial + (final - initial)/self.settings['relaxation_steps'].value*k
         return value
 
-    def define_helicoidal_wake(self, aero_data, structure_data, rot_vel, rot_axis, wsp):
+    def define_helicoidal_wake(self, aero_data, structure_data, rot_vel, rot_axis, rot_center, wsp):
 
         def rotate_vector(vector,direction,angle):
             # This function rotates a "vector" around a "direction" a certain "angle"
@@ -380,8 +395,8 @@ class SteadyHelicoidalWake(BaseSolver):
                     # wake rotates in the opposite direction to the solid
                     dphi=-1.0*rot_vel*associated_t
 
-                    aero_data.zeta_star[i_surf][:, i_m, i_n] = rotate_vector(aero_data.zeta[i_surf][:, -1 , i_n],rot_axis,dphi)
-                    aero_data.zeta_star[i_surf][:, i_m, i_n] += ( wsp - structure_data.for_vel[0:3] )*associated_t
+                    aero_data.zeta_star[i_surf][:, i_m, i_n] = rotate_vector(aero_data.zeta[i_surf][:, -1 , i_n] - rot_center,rot_axis,dphi) + rot_center
+                    aero_data.zeta_star[i_surf][:, i_m, i_n] += wsp*associated_t
 
     def copy_gamma_star(self, aero_data):
 
