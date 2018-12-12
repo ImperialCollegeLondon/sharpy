@@ -400,6 +400,8 @@ class Dynamic(Static):
         self.Ny = Ny
 
         self.remove_predictor = RemovePredictor
+        # Stores original B matrix for state recovery later
+        self.B_predictor = None
         self.include_added_mass = True
         self.use_sparse=UseSparse
 
@@ -454,7 +456,7 @@ class Dynamic(Static):
             .. math::
 
                 \mathbf{x}_{n+1} &= \mathbf{A}\,\mathbf{x}_n + \mathbf{B} \mathbf{u}_{n+1} \\
-                \mathbf{y} &= \mathbf{C}\,\mathbf{x} + \mathbf{D} \mathbf{u}
+                \mathbf{y}_n &= \mathbf{C}\,\mathbf{x}_n + \mathbf{D} \mathbf{u}_n
 
 
         where the state, inputs and outputs are:
@@ -630,7 +632,7 @@ class Dynamic(Static):
         Dss[:, 6 * Kzeta:9 * Kzeta] = scalg.block_diag(
             *ass.dfqsduinput(MS.Surfs, MS.Surfs_star))
 
-        # input velocities (body moviment)
+        # input velocities (body movement)
         if self.include_added_mass:
             Dss[:, 3 * Kzeta:6 * Kzeta] = -Dss[:, 6 * Kzeta:9 * Kzeta]
 
@@ -638,6 +640,7 @@ class Dynamic(Static):
             Ass, Bmod, Css, Dmod = \
                 libss.SSconv(Ass, np.zeros_like(Bss), Bss, Css, Dss, Bm1=None)
             self.SS = scsig.dlti(Ass, Bmod, Css, Dmod, dt=self.dt)
+            self.B_predictor = Bss
             print('state-space model produced in form:\n\t' \
                   'h_{n+1} = A h_{n} + B u_{n}\n\t' \
                   'with:\n\tx_n = h_n + Bp u_n')
@@ -806,32 +809,36 @@ class Dynamic(Static):
 
 
 
-    def solve_step(self, xold, uvec):
+    def solve_step(self, x_n, u_n):
         r"""
         Solve step.
 
-        If the predictor has been removed (``remove_predictor = True``) then the system is solved as:
+        If the predictor term has not been removed (``remove_predictor = False``) then the system is solved as:
 
             .. math::
                 \mathbf{x}^{n+1} &= \mathbf{A\,x}^n + \mathbf{B\,u}^n \\
                 \mathbf{y}^{n+1} &= \mathbf{C\,x}^{n+1} + \mathbf{D\,u}^n
 
-        Else, if ``remove_predictor = False``:
+        Else, if ``remove_predictor = True``:
 
             .. math::
-                \mathbf{x}^{n+1} &= \mathbf{A\,x}^n + \mathbf{B\,u}^{n+1} \\
-                \mathbf{y}^{n+1} &= \mathbf{C\,x}^{n+1} + \mathbf{D\,u}^{n+1}
+                \mathbf{x}^{n+1} &= \mathbf{A\,x}^n + \mathbf{B_{mod}\,u}^{n} \\
+                \mathbf{y}^{n+1} &= \mathbf{C\,x}^{n+1} + \mathbf{D_{mod}\,u}^{n}
 
-        where the modifications to the :math:`\mathbf{B}` and :math:`\mathbf{D}` are detailed in
-        :func:`Dynamic.assemble_ss`
+        where the modifications to the :math:`\mathbf{B}_{mod}` and :math:`\mathbf{D}_{mod}` are detailed in
+        :func:`Dynamic.assemble_ss`.
+
+        Notes:
+            Although the original equations include the term :math:`\mathbf{u}_{n+1}`, it is a reasonable approximation
+            to take :math:`\mathbf{u}_{n+1}\approx\mathbf{u}_n` given a sufficiently small time step, hence why the
+            above equations all employ :math:`\mathbf{u}_n`.
 
         Args:
-            xold (np.array): State vector at the current timestep :math:`\mathbf{x}^n`
-            uvec (np.array): Input vector at timestep :math:`\mathbf{u}^n` or :math:`\mathbf{u}^{n+1}`, depending
-                on whether the predictor term is removed or not.
+            x_n (np.array): State vector at the current time step :math:`\mathbf{x}^n`
+            u_n (np.array): Input vector at time step :math:`\mathbf{u}^n`
 
         Returns:
-            (np.array, np.array): Updated state and output vector :math:`\{\mathbf{x}^{n+1},\,\mathbf{y}^{n+1}\}`
+            (np.array, np.array): Updated state and output vector packed in a tuple :math:`(\mathbf{x}^{n+1},\,\mathbf{y}^{n+1})`
 
         Notes:
             To speed-up the solution and use minimal memory:
@@ -840,13 +847,30 @@ class Dynamic(Static):
                 - compute the output separately.
         """
 
-        if self.use_sparse:
-            xnew = self.SS.Asp.dot(xold) + self.SS.Bsp.dot(uvec)
-        else:
-            xnew = self.SS.A.dot(xold) + self.SS.B.dot(uvec)
-        ynew = np.dot(self.SS.C, xnew) + np.dot(self.SS.D, uvec)
 
-        return xnew, ynew
+
+        if self.remove_predictor:
+            # Transform state
+            h_n = x_n - np.dot(self.B_predictor, u_n)
+
+            if self.use_sparse:
+                h_n1 = self.SS.Asp.dot(h_n) + self.SS.Bsp.dot(u_n)
+            else:
+                h_n1 = self.SS.A.dot(h_n) + self.SS.B.dot(u_n)
+
+            y_n1 = np.dot(self.SS.C, h_n1) + np.dot(self.SS.D, u_n)
+
+            # Recover state
+            x_n1 = h_n1 + np.dot(self.B_predictor, u_n)
+
+        else:
+            if self.use_sparse:
+                x_n1 = self.SS.Asp.dot(x_n) + self.SS.Bsp.dot(u_n)
+            else:
+                x_n1 = self.SS.A.dot(x_n) + self.SS.B.dot(u_n)
+            y_n1 = np.dot(self.SS.C, x_n1) + np.dot(self.SS.D, u_n)
+
+        return x_n1, y_n1
 
 
 
