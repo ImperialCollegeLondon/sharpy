@@ -22,13 +22,13 @@ class TurbSimVelocityField(generator_interface.BaseGenerator):
         self.settings_default['turbulent_field'] = None
 
         self.settings_types['u_inf'] = 'float'
-        self.settings_default['u_inf'] = None
+        self.settings_default['u_inf'] = 0.
 
         self.settings_types['offset'] = 'list(float)'
         self.settings_default['offset'] = np.zeros((3,))
 
         self.settings_types['centre_y'] = 'bool'
-        self.settings_default = True
+        self.settings_default['centre_y'] = True
 
         self.settings = dict()
 
@@ -58,7 +58,8 @@ class TurbSimVelocityField(generator_interface.BaseGenerator):
 
 
     # these functions need to define the interpolators
-    def read_btl(in_file):
+    def read_btl(self, in_file):
+        raise NotImplementedError('The BTL reader is not up to date!')
         # load the turbulent field HDF5
         with h5.File(self.settings['turbulent_field']) as self.file:
             # make time to increase from -t to 0 instead of 0 to t
@@ -76,13 +77,13 @@ class TurbSimVelocityField(generator_interface.BaseGenerator):
 
             self.init_interpolator(self.turb_data, self.turb_x_initial, self.turb_y_initial, self.turb_z_initial)
 
-    def read_xdmf(in_file):
+    def read_xdmf(self, in_file):
         # store route of file for the other files
         route = os.path.dirname(os.path.abspath(in_file))
 
         # file to string
         with open(in_file, 'r') as self.file:
-            data = myfile.read().replace('\n', '')
+            data = self.file.read().replace('\n', '')
 
         # parse data
         from lxml import objectify
@@ -102,6 +103,7 @@ class TurbSimVelocityField(generator_interface.BaseGenerator):
                                dtype=float)
 
         # dxdydz
+        # because of how XDMF does it, it is actually dzdydx
         dxdydz = np.fromstring(tree.Domain.Geometry.DataItem[1].text,
                                sep=' ',
                                count=int(tree.Domain.Geometry.DataItem[1].attrib['Dimensions']),
@@ -119,15 +121,15 @@ class TurbSimVelocityField(generator_interface.BaseGenerator):
 
         # get Attributes (upper case A is not a mistake)
         for i_attrib, attrib in enumerate(i_grid.Attribute):
-            grid[i][attrib.attrib['Name']] = dict()
-            grid[i][attrib.attrib['Name']]['file'] = attrib.DataItem.text.replace(' ', '')
+            grid[0][attrib.attrib['Name']] = dict()
+            grid[0][attrib.attrib['Name']]['file'] = attrib.DataItem.text.replace(' ', '')
 
         # now we have the file names and the dimensions
-        self.initial_x_grid = np.array(arange(0, dimensions[0])*dxdydz[0]
+        self.initial_x_grid = np.array(np.arange(0, dimensions[2]))*dxdydz[2]
         # z in the file is -y for us in sharpy (y_sharpy = right)
-        self.initial_y_grid = -np.array(arange(0, dimensions[2])*dxdydz[2]
+        self.initial_y_grid = -np.array(np.arange(0, dimensions[0]))*dxdydz[0]
         # y in the file is z for us in sharpy (up)
-        self.initial_z_grid = np.array(arange(0, dimensions[1])*dxdydz[1]
+        self.initial_z_grid = np.array(np.arange(0, dimensions[1]))*dxdydz[1]
 
         # the domain now goes:
         # x \in [0, dimensions[0]*dx]
@@ -136,11 +138,13 @@ class TurbSimVelocityField(generator_interface.BaseGenerator):
 
         centre_y_offset = 0.
         if self.settings['centre_y']:
-            centre_y_offset = -0.5*dimensions[2]*dxdydz[2]
+            centre_y_offset = -0.5*(self.initial_y_grid[-1] - self.initial_y_grid[0])
 
-        self.initial_x_grid += self.settings['offset'][0]
-        self.initial_y_grid += self.settings['offset'][1] - centre_y_offset
-        self.initial_z_grid += self.settings['offset'][2]
+        self.initial_x_grid += self.settings['offset'][0] + origin[0]
+        self.initial_x_grid -= np.max(self.initial_x_grid)
+        self.initial_y_grid += self.settings['offset'][1] + origin[1] + centre_y_offset
+        self.initial_y_grid = self.initial_y_grid[::-1]
+        self.initial_z_grid += self.settings['offset'][2] + origin[2]
 
         cout.cout_wrap('The domain bbox is:', 1)
         cout.cout_wrap(' x = [' + str(np.min(self.initial_x_grid)) + ', ' + str(np.max(self.initial_x_grid)) + ']', 1)
@@ -149,18 +153,23 @@ class TurbSimVelocityField(generator_interface.BaseGenerator):
 
         # now we load the velocities (one by one, so we don't store all the
         # info more than once at the same time)
-        velocities = ['ux', 'uz', 'uy']
+        velocities = ['ux', 'uy', 'uz']
         velocities_mult = np.array([1.0, -1.0, 1.0])
         for i_dim in range(3):
             file_name = grid[0][velocities[i_dim]]['file']
 
             # load file
             with open(route + '/' + file_name, "rb") as ufile:
-                vel = np.fromfile(ufile,dtype=np.float64)
+                vel = np.fromfile(ufile, dtype=np.float64)
 
-            vel = vel.reshape((dimensions[0], dimensions[1], dimensions[2]),order='F')
+            vel = np.swapaxes(vel.reshape((dimensions[2], dimensions[1], dimensions[0]),
+                                          order='F')*velocities_mult[i_dim], 1, 2)
 
-
+            self.init_interpolator(vel,
+                                   self.initial_x_grid,
+                                   self.initial_y_grid,
+                                   self.initial_z_grid,
+                                   i_dim=i_dim)
 
     def generate(self, params, uext):
         zeta = params['zeta']
@@ -169,27 +178,9 @@ class TurbSimVelocityField(generator_interface.BaseGenerator):
         # dt = params['dt']
         t = params['t']
 
-        # check that u_inf in the solver == u_inf in the generator
-        # if np.abs(self.settings['u_inf'].value - self.turb_u_ref) > 1e-3:
-        #     cout.cout_wrap('The freestream velocity in the solver does \
-        #         not match the mean velocity in the turbulent field', 3)
-
-        # get boundary box
-        # self.bbox = self.get_bbox(zeta)
-
-        # x_coordinates = self.turb_x_initial.copy()
-        # y_coordinates = self.turb_y_initial.copy()
-        # z_coordinates = self.turb_z_initial.copy()
-
-        # calculate relevant slices
-        # slices = (self.bbox[0, 0] + for_pos[0]) <= x_coordinates
-        # slices = np.logical_and(slices, x_coordinates <= (self.bbox[0, 1] + for_pos[0]))
-
-        # remember to remove the reference speed u_inf (turb) from the velocity field
         self.interpolate_zeta(zeta,
                               for_pos,
                               uext)
-        # a = 1
 
     @staticmethod
     def get_bbox(zeta):
@@ -214,11 +205,10 @@ class TurbSimVelocityField(generator_interface.BaseGenerator):
                                                                                bounds_error=False,
                                                                                fill_value=0.0)
         else:
-            self.interpolator[i_dim] = interpolate.RegularGridInterpolator((z_grid, y_grid, x_grid),
+            self.interpolator[i_dim] = interpolate.RegularGridInterpolator((x_grid, y_grid, z_grid),
                                                                            data,
                                                                            bounds_error=False,
                                                                            fill_value=0.0)
-
 
     def interpolate_zeta(self, zeta, for_pos, u_ext):
         for i_dim in range(3):
@@ -227,7 +217,7 @@ class TurbSimVelocityField(generator_interface.BaseGenerator):
                 for i_m in range(n_m):
                     for i_n in range(n_n):
                         coord = zeta[isurf][:, i_m, i_n] + for_pos[0:3]
-                        coord = coord[::-1]
+                        # coord = coord[::-1]
                         try:
                             u_ext[isurf][i_dim, i_m, i_n] = self.interpolator[i_dim](coord)
                         except ValueError:
