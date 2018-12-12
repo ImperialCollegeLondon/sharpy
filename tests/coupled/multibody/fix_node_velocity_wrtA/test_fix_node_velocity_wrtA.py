@@ -67,10 +67,7 @@ class TestFixNodeVelocitywrtA(unittest.TestCase):
         SimInfo.solvers['SHARPy']['flow'] = ['BeamLoader',
                                 'AerogridLoader',
                                 'StaticCoupled',
-                                'DynamicCoupled',
-                                'AerogridPlot',
-                                'BeamPlot'
-                                ]
+                                'DynamicCoupled']
         SimInfo.solvers['SHARPy']['case'] = 'fix_node_velocity_wrtA'
         SimInfo.solvers['SHARPy']['route'] = os.path.dirname(os.path.realpath(__file__)) + '/'
         SimInfo.set_variable_all_dicts('dt', 0.1)
