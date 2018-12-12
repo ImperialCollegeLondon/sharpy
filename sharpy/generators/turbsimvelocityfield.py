@@ -1,10 +1,12 @@
 import numpy as np
 import scipy.interpolate as interpolate
+import h5py as h5
+import os
+from xml.dom import minidom
 
 import sharpy.utils.generator_interface as generator_interface
 import sharpy.utils.settings as settings
 import sharpy.utils.cout_utils as cout
-import h5py as h5
 
 
 @generator_interface.generator
@@ -25,9 +27,13 @@ class TurbSimVelocityField(generator_interface.BaseGenerator):
         self.settings_types['offset'] = 'list(float)'
         self.settings_default['offset'] = np.zeros((3,))
 
+        self.settings_types['centre_y'] = 'bool'
+        self.settings_default = True
+
         self.settings = dict()
 
-        self.h5file = None
+        self.file = None
+        self.extension = None
         self.turb_time = None
         self.turb_x_initial = None
         self.turb_y_initial = None
@@ -43,29 +49,125 @@ class TurbSimVelocityField(generator_interface.BaseGenerator):
         settings.to_custom_types(self.in_dict, self.settings_types, self.settings_default)
         self.settings = self.in_dict
 
-        # load the turbulent field
-        with h5.File(self.settings['turbulent_field']) as self.h5file:
+        _, self.extension = os.path.splitext(self.settings['turbulent_field'])
+
+        if self.extension is '.h5':
+            self.read_btl(self.settings['turbulent_field'])
+        if self.extension in '.xdmf':
+            self.read_xdmf(self.settings['turbulent_field'])
+
+
+    # these functions need to define the interpolators
+    def read_btl(in_file):
+        # load the turbulent field HDF5
+        with h5.File(self.settings['turbulent_field']) as self.file:
             # make time to increase from -t to 0 instead of 0 to t
             try:
-                self.turb_time = self.h5file['time'].value
+                self.turb_time = self.file['time'].value
                 self.turb_time = self.turb_time - np.max(self.turb_time)
-                self.turb_u_ref = self.h5file['u_inf'].value
+                self.turb_u_ref = self.file['u_inf'].value
                 self.turb_x_initial = self.turb_time*self.turb_u_ref + self.settings['offset'][0]
             except KeyError:
-                self.turb_x_initial = self.h5file['x_grid'].value - np.max(self.h5file['x_grid'].value) + self.settings['offset'][0]
-            self.turb_y_initial = self.h5file['y_grid'].value + self.settings['offset'][1]
-            self.turb_z_initial = self.h5file['z_grid'].value + self.settings['offset'][2]
+                self.turb_x_initial = self.file['x_grid'].value - np.max(self.file['x_grid'].value) + self.settings['offset'][0]
+            self.turb_y_initial = self.file['y_grid'].value + self.settings['offset'][1]
+            self.turb_z_initial = self.file['z_grid'].value + self.settings['offset'][2]
 
             self.turb_data = self.h5file['data/velocity'].value
 
             self.init_interpolator(self.turb_data, self.turb_x_initial, self.turb_y_initial, self.turb_z_initial)
+
+    def read_xdmf(in_file):
+        # store route of file for the other files
+        route = os.path.dirname(os.path.abspath(in_file))
+
+        # file to string
+        with open(in_file, 'r') as self.file:
+            data = myfile.read().replace('\n', '')
+
+        # parse data
+        from lxml import objectify
+        tree = objectify.fromstring(data)
+
+        # mesh dimensions
+        dimensions = np.fromstring(tree.Domain.Topology.attrib['Dimensions'],
+                                   sep=' ',
+                                   count=3,
+                                   dtype=int)
+
+        # origin
+        # NOTE: we can count here the offset?
+        origin = np.fromstring(tree.Domain.Geometry.DataItem[0].text,
+                               sep=' ',
+                               count=int(tree.Domain.Geometry.DataItem[0].attrib['Dimensions']),
+                               dtype=float)
+
+        # dxdydz
+        dxdydz = np.fromstring(tree.Domain.Geometry.DataItem[1].text,
+                               sep=' ',
+                               count=int(tree.Domain.Geometry.DataItem[1].attrib['Dimensions']),
+                               dtype=float)
+        # now onto the grid
+        n_grid = len(tree.Domain.Grid.Grid)
+        grid = [dict()]*n_grid
+        for i, i_grid in enumerate(tree.Domain.Grid.Grid):
+            # cycle through attributes
+            for k_attrib, v_attrib in i_grid.attrib.items():
+                grid[i][k_attrib] = v_attrib
+
+        if n_grid > 1:
+            cout.cout_wrap('CAREFUL: n_grid > 1, but we don\' support time series yet')
+
+        # get Attributes (upper case A is not a mistake)
+        for i_attrib, attrib in enumerate(i_grid.Attribute):
+            grid[i][attrib.attrib['Name']] = dict()
+            grid[i][attrib.attrib['Name']]['file'] = attrib.DataItem.text.replace(' ', '')
+
+        # now we have the file names and the dimensions
+        self.initial_x_grid = np.array(arange(0, dimensions[0])*dxdydz[0]
+        # z in the file is -y for us in sharpy (y_sharpy = right)
+        self.initial_y_grid = -np.array(arange(0, dimensions[2])*dxdydz[2]
+        # y in the file is z for us in sharpy (up)
+        self.initial_z_grid = np.array(arange(0, dimensions[1])*dxdydz[1]
+
+        # the domain now goes:
+        # x \in [0, dimensions[0]*dx]
+        # y \in [-dimensions[2]*dz, 0]
+        # z \in [0, dimensions[1]*dy]
+
+        centre_y_offset = 0.
+        if self.settings['centre_y']:
+            centre_y_offset = -0.5*dimensions[2]*dxdydz[2]
+
+        self.initial_x_grid += self.settings['offset'][0]
+        self.initial_y_grid += self.settings['offset'][1] - centre_y_offset
+        self.initial_z_grid += self.settings['offset'][2]
+
+        cout.cout_wrap('The domain bbox is:', 1)
+        cout.cout_wrap(' x = [' + str(np.min(self.initial_x_grid)) + ', ' + str(np.max(self.initial_x_grid)) + ']', 1)
+        cout.cout_wrap(' y = [' + str(np.min(self.initial_y_grid)) + ', ' + str(np.max(self.initial_y_grid)) + ']', 1)
+        cout.cout_wrap(' z = [' + str(np.min(self.initial_z_grid)) + ', ' + str(np.max(self.initial_z_grid)) + ']', 1)
+
+        # now we load the velocities (one by one, so we don't store all the
+        # info more than once at the same time)
+        velocities = ['ux', 'uz', 'uy']
+        velocities_mult = np.array([1.0, -1.0, 1.0])
+        for i_dim in range(3):
+            file_name = grid[0][velocities[i_dim]]['file']
+
+            # load file
+            with open(route + '/' + file_name, "rb") as ufile:
+                vel = np.fromfile(ufile,dtype=np.float64)
+
+            vel = vel.reshape((dimensions[0], dimensions[1], dimensions[2]),order='F')
+
+
 
     def generate(self, params, uext):
         zeta = params['zeta']
         for_pos = params['for_pos']
         # ts = params['ts']
         # dt = params['dt']
-        # t = params['t']
+        t = params['t']
 
         # check that u_inf in the solver == u_inf in the generator
         # if np.abs(self.settings['u_inf'].value - self.turb_u_ref) > 1e-3:
@@ -104,12 +206,19 @@ class TurbSimVelocityField(generator_interface.BaseGenerator):
                                  max(bbox[idim, 1], np.max(zeta[i_surf][idim, :, :])))
         return bbox
 
-    def init_interpolator(self, data, x_grid, y_grid, z_grid):
-        for i_dim in range(3):
+    def init_interpolator(self, data, x_grid, y_grid, z_grid, i_dim=None):
+        if i_dim is None:
+            for i_dim in range(3):
+                self.interpolator[i_dim] = interpolate.RegularGridInterpolator((z_grid, y_grid, x_grid),
+                                                                               data[i_dim, :, :, :],
+                                                                               bounds_error=False,
+                                                                               fill_value=0.0)
+        else:
             self.interpolator[i_dim] = interpolate.RegularGridInterpolator((z_grid, y_grid, x_grid),
-                                                                           data[i_dim, :, :, :],
+                                                                           data,
                                                                            bounds_error=False,
                                                                            fill_value=0.0)
+
 
     def interpolate_zeta(self, zeta, for_pos, u_ext):
         for i_dim in range(3):
