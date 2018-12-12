@@ -1,8 +1,11 @@
 # Simulation of High Aspect Ratio Planes in Python [SHARPy]
 
+__Status__
+
 | Master  | Develop        |
 |---------|----------------|
 | [![Build Status](https://travis-ci.org/ImperialCollegeLondon/sharpy.svg?branch=master)](https://travis-ci.org/ImperialCollegeLondon/sharpy) | [![Build Status](https://travis-ci.org/ImperialCollegeLondon/sharpy.svg?branch=develop)](https://travis-ci.org/ImperialCollegeLondon/sharpy)|
+| [![DocStatus](https://readthedocs.org/projects/pip/badge/?badge=master)](https://ic-sharpy.readthedocs.io/en/master/) | [![DocStatus](https://readthedocs.org/projects/pip/badge/?badge=develop)](https://ic-sharpy.readthedocs.io/en/develop/) |
 
 
 SHARPy is an aeroelastic analysis package currently under development at the Department of Aeronautics, 
