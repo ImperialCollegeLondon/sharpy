@@ -11,7 +11,7 @@ class TestDoublePendulum(unittest.TestCase):
     Reference case: M. Geradin and A. Cardona, "Flexible multibody dynamics : a finite element approach"
     """
 
-    def setUp():
+    def setUp(self):
         import sharpy.utils.generate_cases as gc
 
         deg2rad = np.pi/180.
@@ -187,7 +187,7 @@ class TestDoublePendulum(unittest.TestCase):
     # def tearDown():
         # pass
 
-    def test_doublependulum():
+    def test_doublependulum(self):
         import sharpy.sharpy_main
 
         solver_path = os.path.abspath(os.path.dirname(os.path.realpath(__file__)) + '/double_pendulum_geradin.solver.txt')
@@ -198,11 +198,12 @@ class TestDoublePendulum(unittest.TestCase):
         output_path = os.path.dirname(solver_path) + '/output/double_pendulum_geradin/WriteVariablesTime/'
         # quat_data = np.matrix(np.genfromtxt(output_path + 'FoR_00_mb_quat.dat', delimiter=' '))
         pos_tip_data = np.matrix(np.genfromtxt(output_path + "struct_pos_node" + str(11+11-1) + ".dat", delimiter=' '))
-        self.assertAlmostEqual(pos_tip_data[-1, 1], 1.481168e+00, 4)
-        self.assertAlmostEqual(pos_tip_data[-1, 2], 0.000000e+00, 4)
-        self.assertAlmostEqual(pos_tip_data[-1, 3], 8.766285e-01, 4)
+        self.assertAlmostEqual(pos_tip_data[-1, 1], 1.481168, 4)
+        self.assertAlmostEqual(pos_tip_data[-1, 2], 0.000000, 4)
+        self.assertAlmostEqual(pos_tip_data[-1, 3], 0.8766285, 4)
 
 if __name__=='__main__':
 
-    TestDoublePendulum.setUp()
-    TestDoublePendulum.test_doublependulum()
+    T = TestDoublePendulum()
+    T.setUp()
+    T.test_doublependulum()
