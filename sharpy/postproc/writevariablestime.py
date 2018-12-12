@@ -122,10 +122,10 @@ class WriteVariablesTime(BaseSolver):
                 fid = open(filename,"a")
 
                 var = getattr(self.data.structure.timestep_info[-1], self.settings['structure_variables'][ivariable])
-                rows, cols = var.shape
-                if cols == 2:
+                num_indices = len(var.shape)
+                if num_indices == 2:
                     self.write_nparray_to_file(fid, self.data.ts, var[node,:], self.settings['delimiter'])
-                elif cols == 3:
+                elif num_indices == 3:
                     ielem, inode_in_elem = self.data.structure.node_master_elem[node]
                     self.write_nparray_to_file(fid, self.data.ts, var[ielem,inode_in_elem,:], self.settings['delimiter'])
 
@@ -142,7 +142,7 @@ class WriteVariablesTime(BaseSolver):
                 fid = open(filename,"a")
 
                 var = getattr(self.data.aero.timestep_info[-1], self.settings['aero_panels_variables'][ivariable])
-                    self.write_value_to_file(fid, self.data.ts, var.gamma[i_surf][i_m,i_n], self.settings['delimiter'])
+                self.write_value_to_file(fid, self.data.ts, var.gamma[i_surf][i_m,i_n], self.settings['delimiter'])
 
                 fid.close()
 
