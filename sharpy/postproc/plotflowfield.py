@@ -132,3 +132,4 @@ class PlotFlowField(BaseSolver):
         it = len(self.data.structure.timestep_info) - 1
         filename = self.dir + "VelocityField_" + '%06u' % it + ".vtk"
         write_data(vtk_info, filename)
+        return self.data
