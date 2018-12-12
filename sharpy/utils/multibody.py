@@ -132,7 +132,7 @@ def merge_multibody(MB_tstep, MB_beam, beam, tstep, mb_data_dict, dt):
     tstep.dqddt[-10:] = MB_tstep[0].dqddt[-10:].astype(dtype=ct.c_double, order='F', copy=True)
 
     # Define the new FoR information
-    CAG = algebra.quat2rot(tstep.quat)
+    CAG = algebra.quat2rotation(tstep.quat).T
     tstep.for_pos = tstep.mb_FoR_pos[0,:].astype(dtype=ct.c_double, order='F', copy=True)
     tstep.for_vel[0:3] = np.dot(CAG,tstep.mb_FoR_vel[0,0:3])
     tstep.for_vel[3:6] = np.dot(CAG,tstep.mb_FoR_vel[0,3:6])
@@ -176,7 +176,7 @@ def update_mb_db_before_split(tstep, beam, mb_data_dict, ts):
         tstep.for_acc[:] = beam.dynamic_input[ts - 1]['for_acc'].astype(dtype=ct.c_double, order='F', copy=True)
 
     if True:
-        CGAmaster = np.transpose(algebra.quat2rot(tstep.quat))
+        CGAmaster = algebra.quat2rotation(tstep.quat)
 
         tstep.mb_FoR_pos[0,:] = tstep.for_pos.astype(dtype=ct.c_double, order='F', copy=True)
         tstep.mb_FoR_vel[0,0:3] = np.dot(CGAmaster,tstep.for_vel[0:3])
@@ -225,7 +225,7 @@ def update_mb_dB_before_merge(tstep, MB_tstep):
 
     for ibody in range(len(MB_tstep)):
 
-        CAslaveG = algebra.quat2rot(MB_tstep[ibody].quat)
+        CAslaveG = algebra.quat2rotation(MB_tstep[ibody].quat).T
 
         tstep.mb_FoR_pos[ibody,:] = MB_tstep[ibody].for_pos
         tstep.mb_FoR_vel[ibody,0:3] = np.dot(np.transpose(CAslaveG), MB_tstep[ibody].for_vel[0:3])
@@ -336,7 +336,7 @@ def state2disp(q, dqdt, dqddt, MB_beam, MB_tstep):
 
 
     for ibody in range(len(MB_beam)):
-        CAslaveG = algebra.quat2rot(MB_tstep[ibody].quat)
+        CAslaveG = algebra.quat2rotation(MB_tstep[ibody].quat).T
         # MB_tstep[0].mb_FoR_pos[ibody,:] = MB_tstep[ibody].for_pos.astype(dtype=ct.c_double, order='F', copy=True)
         MB_tstep[0].mb_FoR_vel[ibody,0:3] = np.dot(CAslaveG.T, MB_tstep[ibody].for_vel[0:3])
         MB_tstep[0].mb_FoR_vel[ibody,3:6] = np.dot(CAslaveG.T, MB_tstep[ibody].for_vel[3:6])
