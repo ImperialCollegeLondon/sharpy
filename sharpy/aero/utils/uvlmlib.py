@@ -324,7 +324,8 @@ def uvlm_calculate_incidence_angle(ts_info,
     ts_info.remove_ctypes_pointers()
 
 def uvlm_calculate_total_induced_velocity_at_point(ts_info,
-                                                   target_triad):
+                                                   target_triad,
+                                                   for_pos):
     """
     uvlm_calculate_total_induced_velocity_at_point
 
@@ -351,17 +352,30 @@ def uvlm_calculate_total_induced_velocity_at_point(ts_info,
     p_uind = uind.ctypes.data_as(ct.POINTER(ct.c_double))
     p_target_triad = target_triad.ctypes.data_as(ct.POINTER(ct.c_double))
 
-    ts_info.generate_ctypes_pointers()
+    # make a copy of ts info and add for_pos to zeta and zeta_star
+    ts_info_copy = ts_info.copy()
+    for i_surf in range(ts_info_copy.n_surf):
+        for iN in range(ts_info_copy.zeta[i_surf].shape[1]):
+            # zeta
+            for iM in range(ts_info_copy.zeta[i_surf].shape[2]):
+                for i_dim in range(3):
+                    ts_info_copy.zeta[i_surf][i_dim, iN, iM] += for_pos[i_dim]
+            # zeta_star
+            for iM in range(ts_info_copy.zeta_star[i_surf].shape[2]):
+                for i_dim in range(3):
+                    ts_info_copy.zeta_star[i_surf][i_dim, iN, iM] += for_pos[i_dim]
+
+    ts_info_copy.generate_ctypes_pointers()
     calculate_uind_at_point(ct.byref(uvmopts),
-                              ts_info.ct_p_dimensions,
-                              ts_info.ct_p_dimensions_star,
-                              ts_info.ct_p_zeta,
-                              ts_info.ct_p_zeta_star,
-                              ts_info.ct_p_gamma,
-                              ts_info.ct_p_gamma_star,
+                              ts_info_copy.ct_p_dimensions,
+                              ts_info_copy.ct_p_dimensions_star,
+                              ts_info_copy.ct_p_zeta,
+                              ts_info_copy.ct_p_zeta_star,
+                              ts_info_copy.ct_p_gamma,
+                              ts_info_copy.ct_p_gamma_star,
                               p_target_triad,
                               p_uind)
-    ts_info.remove_ctypes_pointers()
+    ts_info_copy.remove_ctypes_pointers()
     del p_uind
     del p_target_triad
 
