@@ -135,9 +135,9 @@ class PlotFlowField(BaseSolver):
     def run(self, online=False):
         if online:
             if divmod(self.data.ts, self.settings['stride'].value)[1] == 0:
-                self.output_velocity_field(self.data.ts)
+                self.output_velocity_field(len(self.data.structure.timestep_info) - 1)
         else:
-            for ts in range(0, len(self.data.aero.timestep_info) - 1):
+            for ts in range(0, len(self.data.aero.timestep_info)):
                 self.output_velocity_field(ts)
         return self.data
 
