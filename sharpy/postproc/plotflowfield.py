@@ -106,17 +106,11 @@ class PlotFlowField(BaseSolver):
                                                                                                   self.data.structure.timestep_info[ts].for_pos[0:3])
 
         # Add the external velocities
-        zeta = []
         u_ext = []
         for iz in range(nz):
-            zeta.append(np.zeros((3,nx,ny), dtype=ct.c_double))
-            u_ext.append(np.zeros((3,nx,ny), dtype=ct.c_double))
-            for ix in range(nx):
-                for iy in range(ny):
-                    zeta[iz][:,ix,iy] = grid[iz][:, ix, iy]
-                    u_ext[iz][:,ix,iy] = 0.0
+            u_ext.append(np.zeros((3, nx, ny), dtype=ct.c_double))
 
-        self.velocity_generator.generate({'zeta': zeta,
+        self.velocity_generator.generate({'zeta': grid,
                                           'override': True,
                                           't': ts*self.settings['dt'].value,
                                           'ts': ts,
