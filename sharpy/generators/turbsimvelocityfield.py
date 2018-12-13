@@ -153,7 +153,7 @@ class TurbSimVelocityField(generator_interface.BaseGenerator):
 
         # now we load the velocities (one by one, so we don't store all the
         # info more than once at the same time)
-        velocities = ['ux', 'uy', 'uz']
+        velocities = ['ux', 'uz', 'uy']
         velocities_mult = np.array([1.0, -1.0, 1.0])
         for i_dim in range(3):
             file_name = grid[0][velocities[i_dim]]['file']
