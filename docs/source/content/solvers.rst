@@ -24,9 +24,6 @@ Aeroelastic Solvers
 .. autoclass:: sharpy.solvers.dynamiccoupled.DynamicCoupled
     :members:
 
-.. autoclass:: sharpy.solvers.dynamicprescribedcoupled.DynamicPrescribedCoupled
-    :members:
-
 Modal Solvers
 +++++++++++++
 
