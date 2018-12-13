@@ -208,7 +208,7 @@ class SteadyHelicoidalWake(BaseSolver):
         ref_vel_convergence = np.zeros((len(self.data.structure.timestep_info[-1].pos[:,0])),)
         for inode in range(len(self.data.structure.timestep_info[-1].pos[:,0])):
             ref_vel_convergence[inode] = np.linalg.norm(self.data.structure.timestep_info[-1].for_vel[0:3] +
-                                                        np.cross(self.data.structure.timestep_info[-1].pos[inode,:],
+                                                        np.dot(algebra.skew(self.data.structure.timestep_info[-1].pos[inode,:]),
                                                                   self.data.structure.timestep_info[-1].for_vel[3:6]))
 
         k=0
@@ -384,7 +384,7 @@ class SteadyHelicoidalWake(BaseSolver):
             if not np.linalg.norm(direction) == 0:
                 direction/=np.linalg.norm(direction)
 
-            rot_vector=vector*np.cos(angle)+np.cross(direction,vector)*np.sin(angle)+direction*np.dot(direction,vector)*(1.0-np.cos(angle))
+            rot_vector=vector*np.cos(angle)+np.dot(algebra.skew(direction),vector)*np.sin(angle)+direction*np.dot(direction,vector)*(1.0-np.cos(angle))
 
             return rot_vector
 
