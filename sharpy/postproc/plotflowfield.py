@@ -87,15 +87,15 @@ class PlotFlowField(BaseSolver):
         # write it in paraview
 
         # Generate the grid
-        vtk_info, grid = self.postproc_grid_generator.generate({'for_pos': self.data.structure.timestep_info[ts].for_pos[0:3]})
+        vtk_info, grid = self.postproc_grid_generator.generate({
+                'for_pos': self.data.structure.timestep_info[ts].for_pos[0:3]})
 
         # Compute the induced velocities
         nx = grid[0].shape[1]
         ny = grid[0].shape[2]
         nz = len(grid)
 
-        u = np.zeros((nx,ny,nz,3), dtype=float)
-        # u = np.zeros_like(grid, dtype=ct.c_double)
+        u = np.zeros((nx, ny, nz, 3), dtype=float)
         if not self.settings['only_external']:
             for iz in range(nz):
                 for ix in range(nx):
@@ -128,7 +128,7 @@ class PlotFlowField(BaseSolver):
         for iz in range(nz):
             for ix in range(nx):
                 for iy in range(ny):
-                    u[ix, iy, iz, :] += u_ext[iz][:,ix,iy]
+                    u[ix, iy, iz, :] += u_ext[iz][:, ix, iy]
 
         # Write the data
         vtk_info.point_data.add_array(u.reshape((-1, u.shape[-1]), order='F')) # Reshape the array except from the last dimension
