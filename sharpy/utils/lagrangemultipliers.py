@@ -791,6 +791,5 @@ def postprocess(MB_beam, MB_tstep, MBdict):
             node_number = MBdict["constraint_%02d" % iconstraint]['node_in_body']
             node_body = MBdict["constraint_%02d" % iconstraint]['body']
             FoR_body = MBdict["constraint_%02d" % iconstraint]['body_FoR']
-            rot_axisB = MBdict["constraint_%02d" % iconstraint]['rot_axisB']
 
             MB_tstep[FoR_body].for_pos[0:3] = np.dot(algebra.quat2rotation(MB_tstep[node_body].quat), MB_tstep[node_body].pos[node_number,:]) + MB_tstep[node_body].for_pos[0:3]
