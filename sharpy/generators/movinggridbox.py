@@ -71,21 +71,17 @@ class MovingGridBox(generator_interface.BaseGenerator):
         ny = np.abs(int((self.y1.value-self.y0.value)/self.dy.value + 1))
         nz = np.abs(int((self.z1.value-self.z0.value)/self.dz.value + 1))
 
-        xarray = np.linspace(self.x0.value,self.x1.value,nx) + for_pos[0]
-        yarray = np.linspace(self.y0.value,self.y1.value,ny) + for_pos[1]
-        zarray = np.linspace(self.z0.value,self.z1.value,nz) + for_pos[2]
+        xarray = np.linspace(self.x0.value, self.x1.value, nx) + for_pos[0]
+        yarray = np.linspace(self.y0.value, self.y1.value, ny) + for_pos[1]
+        zarray = np.linspace(self.z0.value, self.z1.value, nz) + for_pos[2]
         grid = []
         for iz in range(nz):
-            grid.append(np.zeros((3,nx,ny), dtype=ct.c_double))
+            grid.append(np.zeros((3, nx, ny), dtype=ct.c_double))
             for ix in range(nx):
                 for iy in range(ny):
-                    grid[iz][0,ix,iy] = xarray[ix]
-                    grid[iz][1,ix,iy] = yarray[iy]
-                    grid[iz][2,ix,iy] = zarray[iz]
-                    # grid[ix, iy, iz, 0] = xarray[ix]
-                    # grid[ix, iy, iz, 1] = yarray[iy]
-                    # grid[ix, iy, iz, 2] = zarray[iz]
-
+                    grid[iz][0, ix, iy] = xarray[ix]
+                    grid[iz][1, ix, iy] = yarray[iy]
+                    grid[iz][2, ix, iy] = zarray[iz]
 
         vtk_info = tvtk.RectilinearGrid()
         vtk_info.dimensions = np.array([nx, ny, nz], dtype=int)
