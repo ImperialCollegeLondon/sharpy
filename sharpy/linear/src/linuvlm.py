@@ -288,7 +288,8 @@ class Static():
         Ntot = 0
         for ss in range(self.MS.n_surf):
             Ntot += self.MS.NN[ss] + 1
-        self.Kfsec = np.zeros((6 * Ntot, 3 * self.Kzeta))
+        self.Kfsec = np.zeros((3 * Ntot, 3 * self.Kzeta))
+        self.Kmsec = np.zeros((3 * Ntot, 3 * self.Kzeta))
 
         Kzeta_start = 0
         II_start = 0
@@ -300,7 +301,9 @@ class Static():
                 
                 # section indices
                 iivec = [II_start + np.ravel_multi_index((cc, nn),
-                                                            (6, N + 1)) for cc in range(6)] 
+                                                 (3, N + 1)) for cc in range(3)] 
+                # iivec = [II_start + cc+6*nn for cc in range(6)] 
+                # iivec = [II_start + cc*(N+1) + nn for cc in range(6)]
 
                 for mm in range(M + 1):
                     # vertex indices
@@ -308,15 +311,15 @@ class Static():
                                                                 (3, M + 1, N + 1)) for cc in range(3)]
 
                     # sectional force
-                    self.Kfsec[iivec[:3], jjvec] = 1.0
+                    self.Kfsec[iivec, jjvec] = 1.0
 
                     # sectional moment
                     dx, dy, dz = zeta_sec[:, mm] - zeta_sec[:, M // 2]
-                    self.Kfsec[np.ix_(iivec[3:], jjvec)] = np.array([[0, -dz, dy],
+                    self.Kmsec[np.ix_(iivec, jjvec)] = np.array([[0, -dz, dy],
                                                                      [dz, 0, -dx],
                                                                      [-dy, dx, 0]])
             Kzeta_start += 3 * self.MS.KKzeta[ss]
-            II_start += 6*(N+1)
+            II_start += 3*(N+1)
 
 
     def get_rigid_motion_gains(self, zeta_rotation=np.zeros((3,))):
@@ -330,7 +333,7 @@ class Static():
         zeta_rotation point and about the x,y and z axes of the inertial frame.
         """
 
-        warnings.warn('Rigid rotation matrix not implemented!')
+        # warnings.warn('Rigid rotation matrix not implemented!')
 
         Ntot = 0
         for ss in range(self.MS.n_surf):
@@ -982,16 +985,21 @@ if __name__ == '__main__':
     n_surf = Dyn.MS.n_surf
     M, N = Dyn.MS.MM[0], Dyn.MS.NN[0]
     fnodes = ysub.reshape((n_surf, 3, M + 1, N + 1))
-    Fsect_ref = np.zeros((n_surf, 6, N + 1))
+    Fsect_ref = np.zeros((n_surf, 3, N + 1))
+    Msect_ref = np.zeros((n_surf, 3, N + 1))
+
     for ss in range(n_surf):
         for nn in range(N + 1):
             for mm in range(M + 1):
-                Fsect_ref[ss, :3, nn] += fnodes[ss, :, mm, nn]
+                Fsect_ref[ss, :, nn] += fnodes[ss, :, mm, nn]
                 arm = Dyn.MS.Surfs[ss].zeta[:, mm, nn] - Dyn.MS.Surfs[ss].zeta[:, M // 2, nn]
-                Fsect_ref[ss, 3:, nn] += np.cross(arm, fnodes[ss, :, mm, nn])
+                Msect_ref[ss, :, nn] += np.cross(arm, fnodes[ss, :, mm, nn])
 
-    Fsect = np.dot(Dyn.Kfsec, ysub).reshape((n_surf, 6, N + 1))
+    Fsect = np.dot(Dyn.Kfsec, ysub).reshape((n_surf, 3, N + 1))
     assert np.max(np.abs(Fsect - Fsect_ref)) < 1e-12, \
+                                     'Error in gains for cross-sectional forces'
+    Msect = np.dot(Dyn.Kmsec, ysub).reshape((n_surf, 3, N + 1))
+    assert np.max(np.abs(Msect - Msect_ref)) < 1e-12, \
                                      'Error in gains for cross-sectional forces'
 
     # total forces

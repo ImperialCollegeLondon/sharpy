@@ -16,7 +16,7 @@ import configobj
 import os
 # from IPython import embed
 import sharpy.utils.algebra as algebra
-import cases.templates.geo_utils as geo_utils
+import sharpy.utils.geo_utils as geo_utils
 np.set_printoptions(linewidth=120)
 
 

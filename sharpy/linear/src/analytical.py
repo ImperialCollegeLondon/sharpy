@@ -11,15 +11,11 @@ References:
 	Journal of Aircraft, 46(2), pp.465–473.
 '''
 
-
-
 import numpy as np
 import scipy.special as scsp
-# from IPython import embed
 
 # imaginary variable
 j=1.0j
-
 
 
 def theo_fun(k):
@@ -31,7 +27,6 @@ def theo_fun(k):
 	C=H1/(H1+j*H0)
 	
 	return C
-
 
 
 def qs_derivs(x_ea_perc,x_fh_perc):
@@ -123,7 +118,7 @@ def theo_CL_freq_resp(k,x_ea_perc,x_fh_perc):
 	# quasi-steady lift
 	CLqs=np.array([
 		CLa_qs + CLda_qs*df,
-		CLa_qs*df,					#ok
+		CLa_qs*df,
 		CLb_qs + CLdb_qs*df,
 		])
 
@@ -135,7 +130,7 @@ def theo_CL_freq_resp(k,x_ea_perc,x_fh_perc):
 	df,ddf=j*k,-k**2
 	CLun=np.array([
 		CLda_nc*df+CLdda_nc*ddf,
-		CLda_nc*ddf,				#ok
+		CLda_nc*ddf,
 		CLdb_nc*df+CLddb_nc*ddf
 		])
 
@@ -182,14 +177,11 @@ def theo_CM_freq_resp(k,x_ea_perc,x_fh_perc):
 
 	### Total response
 	Y=CMqs+CMun
-	#Y=np.array([CMqs[ii]+CMun[ii,:] for ii in range(3)])
 
 	# sign convention update
-	Y[1]=-Y[1] # plunge dof positive upward
+	Y[1]=-Y[1]
 
 	return Y
-
-
 
 
 def theo_lift(w,A,H,c,rhoinf,uinf,x12):
@@ -221,7 +213,6 @@ def theo_lift(w,A,H,c,rhoinf,uinf,x12):
 	Ltot=Lcirc+Lmass
 
 	return Ltot, Lcirc, Lmass
-
 
 
 def garrick_drag_plunge(w,H,c,rhoinf,uinf,time):
@@ -319,10 +310,8 @@ def sears_lift_sin_gust(w0,L,Uinf,chord,tv):
 	J0,J1=scsp.j0(kg),scsp.j1(kg)
 	S= (J0-1.0j*J1)*Ctheo + 1.0j*J1
 
-
 	phase=np.angle(S)
 	CL=2.*np.pi*w0/Uinf * np.abs(S) * np.sin(2.*np.pi*Uinf/L*tv + phase)
-	#CL=np.imag(2.*np.pi*w0/Uinf * np.abs(S) * np.exp(1.0j*2.*np.pi*Uinf/L*tv))
 
 	return CL
 
@@ -348,7 +337,6 @@ def sears_CL_freq_resp(k):
 
 
 
-
 def wagner_imp_start(aeff,Uinf,chord,tv):
 	'''
 	Lift coefficient resulting from impulsive start solution. 
@@ -362,27 +350,19 @@ def wagner_imp_start(aeff,Uinf,chord,tv):
 
 
 
-
 if __name__=='__main__':
 	
 
 	import matplotlib.pyplot as plt
-	kv=np.linspace(0.001,50,10001)
-
+	kv=np.linspace(0.001,50,1001)
 
 	### test Sear's function
 	sv=sears_fun(kv)
-	# plt.plot(kv,np.abs(sv),'-')
-	# plt.plot(kv,np.angle(sv,deg=True),'--')
 	plt.plot(kv,sv.real,'-')
 	plt.plot(kv,sv.imag,'--')
 	plt.show()
-	1/0
-
-
 
 	CL=theo_CL_freq_resp(kv,0.25,0.8)
-
 
 	kv=np.linspace(0.001,2.0,101)
 	# data for dimensional analysis
@@ -418,25 +398,9 @@ if __name__=='__main__':
 	ax.legend()
 	plt.show()
 
-	1/0
-
-
-
 	### pitching frequency response
-	Ltheo=-theo_lift(kv/tref,A,0,2.*b,rho,U,0.0)[0]
-	Fref=b*rho*U**2
-	CLfreq=Ltheo/Fref/(A/b)
-
 	Yfreq=theo_CL_freq_resp(kv,x_ea_perc=.5,x_fh_perc=0.9)
-	CLfreq02=Yfreq[1]
-	Er=np.max(np.abs(CLfreq-CLfreq02))
-	print('Max error for CL pitching freq response: %.2e' %Er)
-	if Er>1e-10: embed()
-
-
-
-
-
+	CLfreq02=Yfreq[0]
 
 	### geometry
 	c=3.#m
@@ -447,14 +411,12 @@ if __name__=='__main__':
 	H=0.02*b #m Ref.[1]
 	A=1.*np.pi/180.#rad - Ref.[1]
 	x12=-0.5*c
-
 	f0=5.#Hz
 	w0=2.*np.pi*f0 #rad/s
 
 	uinf=b*w0/ktarget
 	rhoinf=1.225 #kg/m3
 	qinf=0.5*c*rhoinf*uinf**2
-
 	#C=theo_fun(k=ktarget)
 	#L=theo_lift(w0,A,H,c,rhoinf,uinf,x12)
 
@@ -516,7 +478,6 @@ if __name__=='__main__':
 	plt.close('all')
 
 
-
 	##### Wagner impulsive start
 	uinf=20.0
 	chord=3.0
@@ -532,7 +493,7 @@ if __name__=='__main__':
 	ax.set_xlabel('time')
 	ax.legend()
 	plt.show()
-	embed()
+
 
 
 
