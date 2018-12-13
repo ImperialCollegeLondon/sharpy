@@ -749,7 +749,7 @@ def generate_lagrange_matrix(MBdict, MB_beam, MB_tstep, ts, num_LM_eq, sys_size,
             LM_Q[:sys_size] += scalingFactor * np.dot(np.transpose(Bnh), Lambda_dot[ieq:ieq + num_LM_eq_specific])
             LM_Q[sys_size + ieq:sys_size + ieq + num_LM_eq_specific] += (np.dot( algebra.quat2rotation(MB_tstep[body_number].quat), (
                     MB_tstep[body_number].for_vel[0:3] +
-                    np.cross(MB_tstep[body_number].for_vel[3:6], MB_tstep[body_number].pos[node_number,:]) +
+                    np.dot(algebra.skew(MB_tstep[body_number].for_vel[3:6]), MB_tstep[body_number].pos[node_number,:]) +
                     MB_tstep[body_number].pos_dot[node_number,:])) -
                     current_vel)
 
