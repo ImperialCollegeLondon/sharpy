@@ -1,5 +1,5 @@
 # SHARPy Installation Guide
-__Last revision 1 November 2018__
+__Last revision 13 December 2018__
 
 The following step by step tutorial will guide you through the installation process of SHARPy.
 
@@ -12,19 +12,18 @@ SHARPy is being developed and tested on the following operating systems:
 + Ubuntu 18.04 LTS
 + MacOS Sierra
 
-
-Note, SHARPy has also been found to work with other Linux flavours such as Ubuntu, yet the active development is
-conducted on CentOS.
-
 __Required Distributions__
 
 + Anaconda Python 3.5.3
 + GCC 5.0 or higher (recommended)
 
 
-__Aerodynamic and Structural Models__
+__GitHub Repositories__
 
-The repositories that contain the structural and aerodynamic models can be obtained from GitHub:
++ [SHARPy](http://github.com/imperialcollegelongon/sharpy)
+
+SHARPy depends on the UVLM and xbeam repositories that are also found on GitHub:
+
 + [xbeam](http://github.com/imperialcollegelondon/xbeam)
 + [UVLM](http://github.com/imperialcollegelondon/UVLM)
 
@@ -128,13 +127,10 @@ source activate sharpy_env
     cd xbeam
     make clean
     ```
-2. If you have the Intel compilers `ifort` and `icc` installed, proceed to step 3. Else, two lines must be commented out
-from the xbeam `Makefile` in order to use `gfortran` and `gcc`. Open the file `makefile` with your favourite text editor and
-comment out lines `8` and `9` (shown below):
-    ```bash
-      8 # export FCOMP = ifort
-      9 # export FCFLAGS = -fPIC -O3 -funroll-loops -march=native -fopenmp -heap-arrays -xHost -wrap-margin-
-    ```
+2. If you have the Intel Fortran compiler `ifort` installed and would like to use it, you need to specify some
+flags in the compiler. Else, if you prefer to use `gfortran`, proceed to step 3. To use `ifort`, open the file `makefile` 
+with your favourite text editor and comment out the `GFORTRAN SETTINGS` section, and uncomment the 
+`INTEL FORTRAN SETTINGS` section. If you have the Math Kernel Library MKL, it is advised that you use it as well.
 
 3. Change the permissions of the `run_make.sh` file so that it can be executed
 
@@ -192,13 +188,17 @@ __Common issues when compiling xbeam__
     cd UVLM
     make clean
     ```
+    
+2. Again, if you have the Intel C++ compiler `icc` you can use it. Else, if you use `gcc`, proceed to step 3. To use 
+`icc` open the `src/Makefile` and comment out the `G++` sections and uncomment the `INTEL C++` section. In addition, 
+set the flag in line `17` to `CPP = icc`.
 
-2. Change the permissions of the `run_make.sh` file so that it can be executed
+3. Change the permissions of the `run_make.sh` file so that it can be executed
     ```bash
     chmod +x run_make.sh
     ```
 
-3. Compile UVLM
+4. Compile UVLM
     ```bash
     ./run_make.sh
     cd ..
