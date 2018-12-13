@@ -72,45 +72,6 @@ def get_Wvc_vector(Wvc_scalar):
 	return Wvc 
 
 
-# def get_Wnv_vector(Map,SurfGeo,aM=0.5,aN=0.5):
-
-# 	# initialise
-# 	K,Kzeta=Map.K,Map.Kzeta
-
-# 	# retrieve scaling matrix
-# 	Wvc_scalar=get_Wvc_scalar(Map,aM,aN)
-# 	Wcv_scalar=Wvc_scalar.T
-# 	del Wvc_scalar
-	
-# 	# reshape normals as 3xK array such that Nmat=[nx.T;ny.T;nz.T]
-# 	Nmat=SurfGeo.normals.reshape((3,K))
-
-# 	# get mapping vertices to panels
-# 	if not hasattr(Map,'MpV1d_scalar'):
-# 		Map.map_vertices_to_panels_1D_scalar()
-
-# 	# loop through components
-# 	Wnv=[]
-# 	for cc in range(3):
-# 		Wnvhere=np.zeros((K,Kzeta))
-# 		# loop through vertices
-# 		for jj in range(Kzeta):
-# 			# loop through local vertex number
-# 			for vv in range(4):
-# 				# retrieve panel number (if exists)
-# 				ii=Map.Mvp1d_scalar[jj,vv]
-# 				if ii!=-1:
-# 					try:
-# 						norm_fact=Nmat[cc,ii]
-# 					except:
-# 						embed()
-# 				Wnvhere[ii,jj]=norm_fact*Wcv_scalar[ii,jj]
-# 		# store sub-matrix
-# 		Wnv.append(Wnvhere.copy())
-
-# 	return np.concatenate(Wnv,axis=1)
-
-
 def get_Wnv_vector(SurfGeo,aM=0.5,aN=0.5):
 	'''
 	Provide projection matrix from nodal velocities to normal velocity at 

@@ -1356,10 +1356,3 @@ if __name__=='__main__':
 	tfin=time.time()-t0
 	print('lil->csc allocated in %.6f sec'%tfin)
 
-	# t0=time.time()
-	# Z=sparse.bsr_matrix((Nx,Nx))
-	# Z[:N1,:N1]=2.
-	# Z[:N1,N1:]=3.
-	# Z=Z.tocsc()
-	# tfin=time.time()-t0
-	# print('bsr->csc allocated in %.6f sec'%tfin)
