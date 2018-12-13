@@ -12,10 +12,10 @@ ws = wings.Goland(M=6,
                   physical_time=2,
                   n_surfaces=2,
                   route='cases',
-                  case_name='goland_'+aero_type)
+                  case_name='goland_test'+aero_type)
 
 ws.gust_intensity = 0.1
-ws.n_tstep = 2
+ws.n_tstep = 1
 ws.sigma = 1
 
 ws.clean_test_files()
@@ -31,8 +31,9 @@ ws.config['SHARPy']['flow'] = ['BeamLoader', 'AerogridLoader',
                         #'StaticUvlm',
                         'StaticCoupled',
                         'AerogridPlot', 'BeamPlot',
-                        'DynamicCoupled',
-                        'SaveData']
+                        'DynamicCoupled','Modal',
+                        # 'SaveData']
+                               ]
 ws.config['SHARPy']['write_screen'] = 'on'
 
 ws.config['DynamicCoupled']['aero_solver_settings']['velocity_field_input']['gust_length'] = 5
