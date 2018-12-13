@@ -10,8 +10,8 @@ import sharpy.utils.cout_utils as cout
 
 
 @generator_interface.generator
-class TurbSimVelocityField(generator_interface.BaseGenerator):
-    generator_id = 'TurbSimVelocityField'
+class TurbVelocityField(generator_interface.BaseGenerator):
+    generator_id = 'TurbVelocityField'
 
     def __init__(self):
         self.in_dict = dict()
@@ -61,21 +61,21 @@ class TurbSimVelocityField(generator_interface.BaseGenerator):
     def read_btl(self, in_file):
         raise NotImplementedError('The BTL reader is not up to date!')
         # load the turbulent field HDF5
-        with h5.File(self.settings['turbulent_field']) as self.file:
-            # make time to increase from -t to 0 instead of 0 to t
-            try:
-                self.turb_time = self.file['time'].value
-                self.turb_time = self.turb_time - np.max(self.turb_time)
-                self.turb_u_ref = self.file['u_inf'].value
-                self.turb_x_initial = self.turb_time*self.turb_u_ref + self.settings['offset'][0]
-            except KeyError:
-                self.turb_x_initial = self.file['x_grid'].value - np.max(self.file['x_grid'].value) + self.settings['offset'][0]
-            self.turb_y_initial = self.file['y_grid'].value + self.settings['offset'][1]
-            self.turb_z_initial = self.file['z_grid'].value + self.settings['offset'][2]
-
-            self.turb_data = self.h5file['data/velocity'].value
-
-            self.init_interpolator(self.turb_data, self.turb_x_initial, self.turb_y_initial, self.turb_z_initial)
+        # with h5.File(self.settings['turbulent_field']) as self.file:
+        #     # make time to increase from -t to 0 instead of 0 to t
+        #     try:
+        #         self.turb_time = self.file['time'].value
+        #         self.turb_time = self.turb_time - np.max(self.turb_time)
+        #         self.turb_u_ref = self.file['u_inf'].value
+        #         self.turb_x_initial = self.turb_time*self.turb_u_ref + self.settings['offset'][0]
+        #     except KeyError:
+        #         self.turb_x_initial = self.file['x_grid'].value - np.max(self.file['x_grid'].value) + self.settings['offset'][0]
+        #     self.turb_y_initial = self.file['y_grid'].value + self.settings['offset'][1]
+        #     self.turb_z_initial = self.file['z_grid'].value + self.settings['offset'][2]
+        #
+        #     self.turb_data = self.h5file['data/velocity'].value
+        #
+        #     self.init_interpolator(self.turb_data, self.turb_x_initial, self.turb_y_initial, self.turb_z_initial)
 
     def read_xdmf(self, in_file):
         # store route of file for the other files
@@ -153,7 +153,7 @@ class TurbSimVelocityField(generator_interface.BaseGenerator):
 
         # now we load the velocities (one by one, so we don't store all the
         # info more than once at the same time)
-        velocities = ['ux', 'uy', 'uz']
+        velocities = ['ux', 'uz', 'uy']
         velocities_mult = np.array([1.0, -1.0, 1.0])
         for i_dim in range(3):
             file_name = grid[0][velocities[i_dim]]['file']

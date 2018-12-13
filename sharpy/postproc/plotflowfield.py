@@ -87,15 +87,15 @@ class PlotFlowField(BaseSolver):
         # write it in paraview
 
         # Generate the grid
-        vtk_info, grid = self.postproc_grid_generator.generate({'for_pos': self.data.structure.timestep_info[ts].for_pos[0:3]})
+        vtk_info, grid = self.postproc_grid_generator.generate({
+                'for_pos': self.data.structure.timestep_info[ts].for_pos[0:3]})
 
         # Compute the induced velocities
         nx = grid[0].shape[1]
         ny = grid[0].shape[2]
         nz = len(grid)
 
-        u = np.zeros((nx,ny,nz,3), dtype=float)
-        # u = np.zeros_like(grid, dtype=ct.c_double)
+        u = np.zeros((nx, ny, nz, 3), dtype=float)
         if not self.settings['only_external']:
             for iz in range(nz):
                 for ix in range(nx):
@@ -106,17 +106,11 @@ class PlotFlowField(BaseSolver):
                                                                                                   self.data.structure.timestep_info[ts].for_pos[0:3])
 
         # Add the external velocities
-        zeta = []
         u_ext = []
         for iz in range(nz):
-            zeta.append(np.zeros((3,nx,ny), dtype=ct.c_double))
-            u_ext.append(np.zeros((3,nx,ny), dtype=ct.c_double))
-            for ix in range(nx):
-                for iy in range(ny):
-                    zeta[iz][:,ix,iy] = grid[iz][:, ix, iy]
-                    u_ext[iz][:,ix,iy] = 0.0
+            u_ext.append(np.zeros((3, nx, ny), dtype=ct.c_double))
 
-        self.velocity_generator.generate({'zeta': zeta,
+        self.velocity_generator.generate({'zeta': grid,
                                           'override': True,
                                           't': ts*self.settings['dt'].value,
                                           'ts': ts,
@@ -128,7 +122,7 @@ class PlotFlowField(BaseSolver):
         for iz in range(nz):
             for ix in range(nx):
                 for iy in range(ny):
-                    u[ix, iy, iz, :] += u_ext[iz][:,ix,iy]
+                    u[ix, iy, iz, :] += u_ext[iz][:, ix, iy]
 
         # Write the data
         vtk_info.point_data.add_array(u.reshape((-1, u.shape[-1]), order='F')) # Reshape the array except from the last dimension
@@ -141,9 +135,9 @@ class PlotFlowField(BaseSolver):
     def run(self, online=False):
         if online:
             if divmod(self.data.ts, self.settings['stride'].value)[1] == 0:
-                self.output_velocity_field(self.data.ts)
+                self.output_velocity_field(len(self.data.structure.timestep_info) - 1)
         else:
-            for ts in range(0, len(self.data.aero.timestep_info) - 1):
+            for ts in range(0, len(self.data.aero.timestep_info)):
                 self.output_velocity_field(ts)
         return self.data
 
