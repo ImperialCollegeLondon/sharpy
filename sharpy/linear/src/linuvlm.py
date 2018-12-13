@@ -16,6 +16,8 @@ import sharpy.linear.src.interp as interp
 import sharpy.linear.src.multisurfaces as multisurfaces
 import sharpy.linear.src.assembly as ass  # :D
 import sharpy.linear.src.libss as libss 
+import sharpy.linear.src.libsparse as libsp 
+
 
 import sharpy.utils.algebra as algebra
 
@@ -54,6 +56,14 @@ class Static():
 
 
     def assemble_profiling(self):
+        '''
+        Generate profiling report for assembly and save it in self.prof_out.
+
+        To read the report:
+            import pstats
+            p=pstats.Stats(self.prof_out)
+        '''
+
         import cProfile
         cProfile.runctx('self.assemble()', globals(), locals(), filename=self.prof_out)
 
@@ -89,12 +99,6 @@ class Static():
         List_nc_domegazetadzeta_vert = ass.nc_domegazetadzeta(MS.Surfs,MS.Surfs_star)
         self.Ducdzeta+=scalg.block_diag(*List_nc_domegazetadzeta_vert)
         del List_nc_domegazetadzeta_vert
-        # List_nc_domegazetadzeta_col, List_nc_domegazetadzeta_vert = \
-        #                           ass.nc_domegazetadzeta(MS.Surfs,MS.Surfs_star)
-        # self.Ducdzeta+=np.block(List_nc_domegazetadzeta_vert)
-        # del List_nc_domegazetadzeta_vert
-        # self.Ducdzeta+=scalg.block_diag(*List_nc_domegazetadzeta_col)
-        # del List_nc_domegazetadzeta_col
 
         ### input velocity derivatives
         self.Ducdu_ext = scalg.block_diag(*List_Wnv)
@@ -496,6 +500,8 @@ class Dynamic(Static):
         References:
             [1] Franklin, GF and Powell, JD. Digital Control of Dynamic Systems, Addison-Wesley Publishing Company, 1980
 
+        To do: 
+        - remove all calls to scipy.linalg.block_diag
         """
 
         print('State-space realisation of UVLM equations started...')
@@ -516,60 +522,78 @@ class Dynamic(Static):
         # ----------------------------------------------------------- state eq.
 
         ### state terms (A matrix)
+        # - choice of sparse matrices format is optimised to reduce memory load
 
         # Aero influence coeffs
         List_AICs, List_AICs_star = ass.AICs(MS.Surfs, MS.Surfs_star,
                                              target='collocation', Project=True)
         A0 = np.block(List_AICs)
         A0W = np.block(List_AICs_star)
-        del List_AICs, List_AICs_star
+        List_AICs, List_AICs_star = None, None
         LU, P = scalg.lu_factor(A0)
         AinvAW = scalg.lu_solve((LU, P), A0W)
-        del A0, A0W
+        A0, A0W  = None, None
 
-        # propagation of circ
-        List_C, List_Cstar = ass.wake_prop(MS.Surfs, MS.Surfs_star)
-        Cgamma = scalg.block_diag(*List_C)
-        CgammaW = scalg.block_diag(*List_Cstar)
-        del List_C, List_Cstar
+        ### propagation of circ
+        # fast and memory efficient with both dense and sparse matrices
+        List_C, List_Cstar = ass.wake_prop(MS.Surfs, MS.Surfs_star, 
+                                            self.use_sparse,sparse_format='csc')
+        if self.use_sparse:
+            Cgamma = libsp.csc_matrix(sparse.block_diag(List_C,format='csc'))
+            CgammaW = libsp.csc_matrix(sparse.block_diag(List_Cstar,format='csc'))  
+        else:
+            Cgamma = scalg.block_diag(*List_C)
+            CgammaW = scalg.block_diag(*List_Cstar)
+        List_C, List_Cstar  = None, None
 
-        # A matrix assembly
-        Ass = np.zeros((Nx, Nx))
-        Ass[:K, :K] = -np.dot(AinvAW, Cgamma)
-        Ass[:K, K:K + K_star] = -np.dot(AinvAW, CgammaW)
+        # recurrent dense terms stored as numpy.ndarrays
+        AinvAWCgamma = -libsp.dot(AinvAW, Cgamma)
+        AinvAWCgammaW= -libsp.dot(AinvAW, CgammaW)
+
+        ### A matrix assembly
+        if self.use_sparse:
+            # lil format allows fast assembly
+            Ass = sparse.lil_matrix((Nx,Nx))
+        else:
+            Ass = np.zeros((Nx, Nx))
+        Ass[:K, :K] = AinvAWCgamma
+        Ass[:K, K:K + K_star] = AinvAWCgammaW
         Ass[K:K + K_star, :K] = Cgamma
         Ass[K:K + K_star, K:K + K_star] = CgammaW
+        Cgamma,CgammaW = None,None
 
+        # delta eq.
+        iivec=range(K + K_star,2 * K + K_star)
+        ones=np.ones((K,))
         if self.integr_order == 1:
-            # delta eq.
-            Ass[K + K_star:2 * K + K_star, :K] = Ass[:K, :K] - np.eye(K)
-            Ass[K + K_star:2 * K + K_star, K:K + K_star] = Ass[:K, K:K + K_star]
+            Ass[iivec, :K] = AinvAWCgamma
+            Ass[iivec, range(K)] -= ones
+            Ass[iivec, K:K+K_star] = AinvAWCgammaW
         if self.integr_order == 2:
-            # delta eq.
-            Ass[K + K_star:2 * K + K_star, :K] = bp1 * Ass[:K, :K] + b0 * np.eye(K)
-            Ass[K + K_star:2 * K + K_star, K:K + K_star] = bp1 * Ass[:K, K:K + K_star]
-            Ass[K + K_star:2 * K + K_star, K + K_star:2 * K + K_star] = 0.0
-            Ass[K + K_star:2 * K + K_star, 2 * K + K_star:3 * K + K_star] = bm1 * np.eye(K)
+            Ass[iivec, :K] = bp1 * AinvAWCgamma
+            AinvAWCgamma=None
+            Ass[iivec, range(K)] += b0*ones
+            Ass[iivec, K:K+K_star] = bp1 * AinvAWCgammaW
+            AinvAWCgammaW=None
+            Ass[iivec, range(2*K+K_star,3*K+K_star)] = bm1*ones
             # identity eq.
-            Ass[2 * K + K_star:3 * K + K_star, :K] = np.eye(K)
+            Ass[range(2*K+K_star,3*K+K_star), range(K)] = ones
 
-        ### input terms (B matrix)
+        if self.use_sparse:
+            # conversion to csc occupies less memory and allows fast algebra
+            Ass = libsp.csc_matrix(Ass)
 
         # zeta derivs
+        List_nc_dqcdzeta=ass.nc_dqcdzeta(MS.Surfs, MS.Surfs_star,Merge=True)
         List_uc_dncdzeta = ass.uc_dncdzeta(MS.Surfs)
-        List_nc_dqcdzeta_coll, List_nc_dqcdzeta_vert = \
-            ass.nc_dqcdzeta(MS.Surfs, MS.Surfs_star)
-        Ducdzeta = np.block(List_nc_dqcdzeta_vert)
-        del List_nc_dqcdzeta_vert
-        Ducdzeta += scalg.block_diag(*List_nc_dqcdzeta_coll)
-        del List_nc_dqcdzeta_coll
-        Ducdzeta += scalg.block_diag(*List_uc_dncdzeta)
-        del List_uc_dncdzeta
-        # omega x zeta terms
         List_nc_domegazetadzeta_vert = ass.nc_domegazetadzeta(MS.Surfs,MS.Surfs_star)
-        Ducdzeta+=scalg.block_diag(*List_nc_domegazetadzeta_vert)
-        del List_nc_domegazetadzeta_vert
-
+        for ss in range(MS.n_surf):
+            List_nc_dqcdzeta[ss][ss]+=\
+                     ( List_uc_dncdzeta[ss] + List_nc_domegazetadzeta_vert[ss] )
+        Ducdzeta = np.block(List_nc_dqcdzeta)  # dense matrix
+        List_nc_dqcdzeta = None
+        List_uc_dncdzeta = None
+        List_nc_domegazetadzeta_vert = None
 
         # ext velocity derivs (Wnv0)
         List_Wnv = []
@@ -578,34 +602,45 @@ class Dynamic(Static):
                 interp.get_Wnv_vector(MS.Surfs[ss],
                                       MS.Surfs[ss].aM, MS.Surfs[ss].aN))
         AinvWnv0 = scalg.lu_solve((LU, P), scalg.block_diag(*List_Wnv))
-        del List_Wnv
+        List_Wnv = None
 
-        # B matrix assembly
-        Bss = np.zeros((Nx, Nu))
-        Bss[:K, :3 * Kzeta] = -scalg.lu_solve((LU, P), Ducdzeta)
-        Bss[:K, 3 * Kzeta:6 * Kzeta] = AinvWnv0  # dzeta_dot
-        Bss[:K, 6 * Kzeta:9 * Kzeta] = -AinvWnv0  # du_ext
+        ### B matrix assembly
+        if self.use_sparse:
+            Bss=sparse.lil_matrix((Nx,Nu))
+        else:
+            Bss = np.zeros((Nx, Nu))
+
+        Bup=np.block([ -scalg.lu_solve((LU,P),Ducdzeta), AinvWnv0, -AinvWnv0 ])
+        AinvWnv0=None
+        Bss[:K,:] = Bup
         if self.integr_order == 1:
-            Bss[K + K_star:2 * K + K_star, :] = Bss[:K, :]
+            Bss[K + K_star:2 * K + K_star, :] = Bup
         if self.integr_order == 2:
-            Bss[K + K_star:2 * K + K_star, :] = bp1 * Bss[:K, :]
+            Bss[K + K_star:2 * K + K_star, :] = bp1 * Bup
+        Bup=None
+
+        if self.use_sparse:
+            Bss=libsp.csc_matrix(Bss)
+        LU,P=None,None
 
         # ---------------------------------------------------------- output eq.
 
         ### state terms (C matrix)
 
-        # gamma (at constant relative velocity)
-        List_dfqsdgamma_vrel0, List_dfqsdgamma_star_vrel0 = \
-            ass.dfqsdgamma_vrel0(MS.Surfs, MS.Surfs_star)
-        Dfqsdgamma = scalg.block_diag(*List_dfqsdgamma_vrel0)
-        Dfqsdgamma_star = scalg.block_diag(*List_dfqsdgamma_star_vrel0)
-        del List_dfqsdgamma_vrel0, List_dfqsdgamma_star_vrel0
         # gamma (induced velocity contrib.)
         List_dfqsdvind_gamma, List_dfqsdvind_gamma_star = \
             ass.dfqsdvind_gamma(MS.Surfs, MS.Surfs_star)
-        Dfqsdgamma += np.block(List_dfqsdvind_gamma)
-        Dfqsdgamma_star += np.block(List_dfqsdvind_gamma_star)
-        del List_dfqsdvind_gamma, List_dfqsdvind_gamma_star
+
+        # gamma (at constant relative velocity)
+        List_dfqsdgamma_vrel0, List_dfqsdgamma_star_vrel0 = \
+            ass.dfqsdgamma_vrel0(MS.Surfs, MS.Surfs_star)
+        for ss in range(MS.n_surf):
+            List_dfqsdvind_gamma[ss][ss]+=List_dfqsdgamma_vrel0[ss]
+            List_dfqsdvind_gamma_star[ss][ss]+=List_dfqsdgamma_star_vrel0[ss]                
+        Dfqsdgamma = np.block(List_dfqsdvind_gamma)
+        Dfqsdgamma_star = np.block(List_dfqsdvind_gamma_star)
+        List_dfqsdvind_gamma, List_dfqsdvind_gamma_star = None, None
+        List_dfqsdgamma_vrel0, List_dfqsdgamma_star_vrel0 = None, None
 
         # gamma_dot
         Dfunstdgamma_dot = scalg.block_diag(*ass.dfunstdgamma_dot(MS.Surfs))
@@ -616,7 +651,6 @@ class Dynamic(Static):
         Css[:, K:K + K_star] = Dfqsdgamma_star
         if self.include_added_mass:
             Css[:, K + K_star:2 * K + K_star] = Dfunstdgamma_dot / self.dt
-        # print('dt used: %.3e'%self.dt)
 
         ### input terms (D matrix)
         Dss = np.zeros((Ny, Nu))
@@ -641,29 +675,31 @@ class Dynamic(Static):
 
         if self.remove_predictor:
             Ass, Bmod, Css, Dmod = \
-                libss.SSconv(Ass, np.zeros_like(Bss), Bss, Css, Dss, Bm1=None)
-            self.SS = scsig.dlti(Ass, Bmod, Css, Dmod, dt=self.dt)
-            self.B_predictor = Bss
+                libss.SSconv(Ass, None, Bss, Css, Dss, Bm1=None)
+            self.SS = libss.ss(Ass, Bmod, Css, Dmod, dt=self.dt)
             print('state-space model produced in form:\n\t' \
                   'h_{n+1} = A h_{n} + B u_{n}\n\t' \
                   'with:\n\tx_n = h_n + Bp u_n')
         else:
-            self.SS = scsig.dlti(Ass, Bss, Css, Dss, dt=self.dt)
+            self.SS = libss.ss(Ass, Bss, Css, Dss, dt=self.dt)
             print('state-space model produced in form:\n\t' \
                   'x_{n+1} = A x_{n} + Bp u_{n+1}')
-
-        # convert to sparse A & B
-        if self.use_sparse:
-            # !!! warning: dodgy behaviour when assiging a sparse matrix to an 
-            # attribute of scipy.signal.ltisys.StateSpaceDiscrete. 
-            self.SS.Asp=sparse.csc_matrix(self.SS.A)
-            self.SS.A=None
-            self.SS.Bsp=sparse.csc_matrix(self.SS.B)
-            self.SS.B=[None]*self.SS.inputs
 
         self.time_ss = time.time() - t0
         print('\t\t\t...done in %.2f sec' % self.time_ss)
 
+
+    def assemble_ss_profiling(self):
+        '''
+        Generate profiling report for assembly and save it in self.prof_out.
+
+        To read the report:
+            import pstats
+            p=pstats.Stats(self.prof_out)
+        '''
+
+        import cProfile
+        cProfile.runctx('self.assemble_ss()', globals(), locals(), filename=self.prof_out)
 
 
     def solve_steady(self, usta, method='direct'):
@@ -684,10 +720,7 @@ class Dynamic(Static):
             raise NameError('Only direct solution is available if use_sparse is True. ' \
                             '(see assembly_ss)')
 
-        if self.use_sparse:
-            Asp, Bsp, Css, Dss = self.SS.Asp, self.SS.Bsp, self.SS.C, self.SS.D
-        else:
-            Ass, Bss, Css, Dss = self.SS.A, self.SS.B, self.SS.C, self.SS.D
+        Ass, Bss, Css, Dss = self.SS.A, self.SS.B, self.SS.C, self.SS.D
 
         if method == 'minsize':
             # as opposed to linuvlm.Static, this solves for the bound circulation
@@ -763,12 +796,12 @@ class Dynamic(Static):
 
         elif method == 'direct':
             """ Solves (I - A) x = B u with direct method"""
-            if self.use_sparse:
-                xsta=sparse.linalg.spsolve(
-                             sparse.eye(self.Nx,format='csc')-Asp,Bsp.dot(usta))
-            else:
-                Ass_steady = np.eye(*Ass.shape) - Ass
-                xsta = np.linalg.solve(Ass_steady, np.dot(Bss, usta))
+            # if self.use_sparse:
+            #     xsta=libsp.solve(libsp.eye_as(Ass)-Ass,Bss.dot(usta))
+            # else:
+            #     Ass_steady = np.eye(*Ass.shape) - Ass
+            #     xsta = np.linalg.solve(Ass_steady, np.dot(Bss, usta))
+            xsta=libsp.solve(libsp.eye_as(Ass)-Ass,Bss.dot(usta))
             ysta = np.dot(Css, xsta) + np.dot(Dss, usta)
 
 
@@ -850,30 +883,31 @@ class Dynamic(Static):
                 - compute the output separately.
         """
 
+        # if self.remove_predictor:
+        #     # Transform state
+        #     h_n = x_n - np.dot(self.B_predictor, u_n)
 
+        #     if self.use_sparse:
+        #         h_n1 = self.SS.Asp.dot(h_n) + self.SS.Bsp.dot(u_n)
+        #     else:
+        #         h_n1 = self.SS.A.dot(h_n) + self.SS.B.dot(u_n)
 
-        if self.remove_predictor:
-            # Transform state
-            h_n = x_n - np.dot(self.B_predictor, u_n)
+        #     y_n1 = np.dot(self.SS.C, h_n1) + np.dot(self.SS.D, u_n)
 
-            if self.use_sparse:
-                h_n1 = self.SS.Asp.dot(h_n) + self.SS.Bsp.dot(u_n)
-            else:
-                h_n1 = self.SS.A.dot(h_n) + self.SS.B.dot(u_n)
+        #     # Recover state
+        #     x_n1 = h_n1 + np.dot(self.B_predictor, u_n)
 
-            y_n1 = np.dot(self.SS.C, h_n1) + np.dot(self.SS.D, u_n)
+        # else:
+        #     if self.use_sparse:
+        #         x_n1 = self.SS.Asp.dot(x_n) + self.SS.Bsp.dot(u_n)
+        #     else:
+        #         x_n1 = self.SS.A.dot(x_n) + self.SS.B.dot(u_n)
+        #     y_n1 = np.dot(self.SS.C, x_n1) + np.dot(self.SS.D, u_n)
 
-            # Recover state
-            x_n1 = h_n1 + np.dot(self.B_predictor, u_n)
+        x_n1 = self.SS.A.dot(x_n) + self.SS.B.dot(u_n)
+        y_n1 = np.dot(self.SS.C, x_n1) + np.dot(self.SS.D, u_n)
 
-        else:
-            if self.use_sparse:
-                x_n1 = self.SS.Asp.dot(x_n) + self.SS.Bsp.dot(u_n)
-            else:
-                x_n1 = self.SS.A.dot(x_n) + self.SS.B.dot(u_n)
-            y_n1 = np.dot(self.SS.C, x_n1) + np.dot(self.SS.D, u_n)
-
-        return x_n1, y_n1
+        return x_n1,y_n1
 
 
 
@@ -889,156 +923,158 @@ class Dynamic(Static):
 
 
 
-
 ################################################################################
 
 
 if __name__ == '__main__':
 
-    import timeit
+    import unittest
+    from sharpy.utils.sharpydir import SharpyDir
     import sharpy.utils.h5utils as h5
     import matplotlib.pyplot as plt
 
-    # # # select test case
-    fname = '../test/h5input/goland_mod_Nsurf02_M003_N004_a040.aero_state.h5'
-    haero = h5.readh5(fname)
-    tsdata = haero.ts00000
+    class Test_linuvlm_Sta_vs_Dyn(unittest.TestCase):
+        ''' Test methods into this module '''
 
-    # Static solver
-    Sta = Static(tsdata)
-    Sta.assemble_profiling()
-    Sta.assemble()
-    Sta.get_total_forces_gain()
+        def setUp(self):
+            fname = SharpyDir+'/sharpy/linear/test/h5input/'+\
+                              'goland_mod_Nsurf02_M003_N004_a040.aero_state.h5'
+            haero = h5.readh5(fname)
+            tsdata = haero.ts00000
 
-    # random input
-    Sta.u_ext = 1.0 + 0.30 * np.random.rand(3 * Sta.Kzeta)
-    Sta.zeta_dot = 0.2 + 0.10 * np.random.rand(3 * Sta.Kzeta)
-    Sta.zeta = 0.05 * (np.random.rand(3 * Sta.Kzeta) - 1.0)
+            # Static solver
+            Sta = Static(tsdata)
+            Sta.assemble_profiling()
+            Sta.assemble()
+            Sta.get_total_forces_gain()
 
-    Sta.solve()
-    Sta.reshape()
-    Sta.total_forces()
-    print(Sta.Ftot)
+            # random input
+            Sta.u_ext = 1.0 + 0.30 * np.random.rand(3 * Sta.Kzeta)
+            Sta.zeta_dot = 0.2 + 0.10 * np.random.rand(3 * Sta.Kzeta)
+            Sta.zeta = 0.05 * (np.random.rand(3 * Sta.Kzeta) - 1.0)
 
-    # verify total force gains
-    Ftot02 = np.dot(Sta.Kftot, Sta.fqs)
-    assert np.max(np.abs(Ftot02 - Sta.Ftot)) <= 1e-10, 'Total force gain matrix wrong!'
-
-    ### ---------------------------------- Verify dynamic solver - steady state
-
-    # Dynamic solver
-    Dyn = Dynamic(tsdata, dt=0.05, integr_order=2, RemovePredictor=False)
-    Dyn.assemble_ss()
-
-    # steady state solution
-    usta = np.concatenate((Sta.zeta, Sta.zeta_dot, Sta.u_ext))
-    xsta, ysta = Dyn.solve_steady(usta, method='direct')
-    xmin, ymin = Dyn.solve_steady(usta, method='minsize')
-    xrec, yrec = Dyn.solve_steady(usta, method='recursive')
-    xsub, ysub = Dyn.solve_steady(usta, method='subsystem')
-
-    # assert all solutions are matching
-    assert max(np.linalg.norm(xsta - xmin), np.linalg.norm(ysta - ymin)), \
-        'Direct and min. size solutions not matching!'
-    assert max(np.linalg.norm(xsta - xrec), np.linalg.norm(ysta - yrec)), \
-        'Direct and recursive solutions not matching!'
-    assert max(np.linalg.norm(xsta - xsub), np.linalg.norm(ysta - ysub)), \
-        'Direct and sub-system solutions not matching!'
-
-    # compare against Static solver solution
-    er = np.max(np.abs(ysta - Sta.fqs) / np.linalg.norm(Sta.Ftot))
-    print('Error force distribution: %.3e' % er)
-    assert er < 1e-12, 'Steady-state force not matching!'
-
-    er = np.max(np.abs(xsta[:Dyn.K] - Sta.gamma))
-    print('Error bound circulation: %.3e' % er)
-    assert er < 1e-13, 'Steady-state gamma not matching!'
-
-    gammaw_ref = np.zeros((Dyn.K_star,))
-    kk = 0
-    for ss in range(Dyn.MS.n_surf):
-        Mstar = Dyn.MS.MM_star[ss]
-        Nstar = Dyn.MS.NN_star[ss]
-        for mm in range(Mstar):
-            gammaw_ref[kk:kk + Nstar] = Sta.Gamma[ss][-1, :]
-            kk += Nstar
-
-    er = np.max(np.abs(xsta[Dyn.K:Dyn.K + Dyn.K_star] - gammaw_ref))
-    print('Error wake circulation: %.3e' % er)
-    assert er < 1e-13, 'Steady-state gamma_star not matching!'
-
-    er = np.max(np.abs(xsta[Dyn.K + Dyn.K_star:2 * Dyn.K + Dyn.K_star]))
-    print('Error bound derivative: %.3e' % er)
-    assert er < 1e-13, 'Non-zero derivative of circulation at steady state!'
-
-    if Dyn.integr_order == 2:
-        er = np.max(np.abs(xsta[:Dyn.K] - xsta[-Dyn.K:]))
-        print('Error bound circulation previous vs current time-step: %.3e' % er)
-        assert er < 1e-13, \
-            'Circulation at previous and current time-step not matching'
-
-    ### ---------------------------------------------------------- Verify gains
-    Dyn.get_total_forces_gain()
-    Dyn.get_sect_forces_gain()
-
-    # sectional forces - algorithm for surfaces with equal M
-    n_surf = Dyn.MS.n_surf
-    M, N = Dyn.MS.MM[0], Dyn.MS.NN[0]
-    fnodes = ysub.reshape((n_surf, 3, M + 1, N + 1))
-    Fsect_ref = np.zeros((n_surf, 3, N + 1))
-    Msect_ref = np.zeros((n_surf, 3, N + 1))
-
-    for ss in range(n_surf):
-        for nn in range(N + 1):
-            for mm in range(M + 1):
-                Fsect_ref[ss, :, nn] += fnodes[ss, :, mm, nn]
-                arm = Dyn.MS.Surfs[ss].zeta[:, mm, nn] - Dyn.MS.Surfs[ss].zeta[:, M // 2, nn]
-                Msect_ref[ss, :, nn] += np.cross(arm, fnodes[ss, :, mm, nn])
-
-    Fsect = np.dot(Dyn.Kfsec, ysub).reshape((n_surf, 3, N + 1))
-    assert np.max(np.abs(Fsect - Fsect_ref)) < 1e-12, \
-                                     'Error in gains for cross-sectional forces'
-    Msect = np.dot(Dyn.Kmsec, ysub).reshape((n_surf, 3, N + 1))
-    assert np.max(np.abs(Msect - Msect_ref)) < 1e-12, \
-                                     'Error in gains for cross-sectional forces'
-
-    # total forces
-    Ftot_ref = np.zeros((3,))
-    for cc in range(3):
-        Ftot_ref[cc] = np.sum(Fsect_ref[:, cc, :])
-    Ftot = np.dot(Dyn.Kftot, ysub)
-    assert np.max(np.abs(Ftot - Ftot_ref)) < 1e-11, 'Error in gains for total forces'
-
-    ### ------------------------------- Verify assembly without prediction term
-
-    # Dynamic solver
-    Dyn = Dynamic(tsdata, dt=0.05, integr_order=2, RemovePredictor=True)
-    Dyn.assemble_ss()
-
-    # steady state solution
-    usta = np.concatenate((Sta.zeta, Sta.zeta_dot, Sta.u_ext))
-    xdir, ydir = Dyn.solve_steady(usta, method='direct')
-
-    # compare against Static solver solution
-    er = np.max(np.abs(ydir - Sta.fqs) / np.linalg.norm(Sta.Ftot))
-    print('Error force distribution: %.3e' % er)
-    assert er < 1e-12, 'Steady-state force not matching!'
+            Sta.solve()
+            Sta.reshape()
+            Sta.total_forces()
+            self.Sta=Sta
+            self.tsdata=tsdata
 
 
-
-    ### -------------------------------------------------- test sparse solution
-
-    # Dynamic solver
-    Dyn = Dynamic(tsdata, dt=0.05, integr_order=2, 
-                                          RemovePredictor=False, UseSparse=True)
-    Dyn.assemble_ss()
-
-    # steady state solution
-    usta = np.concatenate((Sta.zeta, Sta.zeta_dot, Sta.u_ext))
-    xsta_spa, ysta_spa = Dyn.solve_steady(usta, method='direct')  
-    assert max(np.linalg.norm(xsta_spa - xsta), 
-               np.linalg.norm(ysta_spa - ysta)), \
-                                 'Direct and sub-system solutions not matching!'
+        def test_force_gains(self):
+            '''
+            to do: add check on moments gain
+            '''
+            Sta=self.Sta
+            Ftot02 = libsp.dot(Sta.Kftot, Sta.fqs)
+            assert np.max(np.abs(Ftot02-Sta.Ftot)) < 1e-10, 'Total force gain matrix wrong!'
 
 
+        def test_Dyn_steady_state(self):
+            '''
+            Test steady state predicted by Dynamic and Static classes are the same.
+            '''
 
+            Sta=self.Sta
+            Order=[2,1]
+            RemPred=[True,False]
+            UseSparse=[True,False]
+
+            for order in Order:
+                for rem_pred in RemPred:
+                    for use_sparse in UseSparse:
+
+                        # Dynamic solver
+                        Dyn = Dynamic(  self.tsdata, 
+                                        dt=0.05, 
+                                        integr_order=order, 
+                                        RemovePredictor=rem_pred,
+                                        UseSparse=use_sparse)
+                        Dyn.assemble_ss()
+
+                        # steady state solution
+                        usta = np.concatenate((Sta.zeta, Sta.zeta_dot, Sta.u_ext))
+                        xsta, ysta = Dyn.solve_steady(usta, method='direct')
+
+                        if use_sparse is False and rem_pred is False:
+                            xmin, ymin = Dyn.solve_steady(usta, method='minsize')
+                            xrec, yrec = Dyn.solve_steady(usta, method='recursive')
+                            xsub, ysub = Dyn.solve_steady(usta, method='subsystem')
+
+                            # assert all solutions are matching
+                            assert max(np.linalg.norm(xsta - xmin), np.linalg.norm(ysta - ymin)), \
+                                'Direct and min. size solutions not matching!'
+                            assert max(np.linalg.norm(xsta - xrec), np.linalg.norm(ysta - yrec)), \
+                                'Direct and recursive solutions not matching!'
+                            assert max(np.linalg.norm(xsta - xsub), np.linalg.norm(ysta - ysub)), \
+                                'Direct and sub-system solutions not matching!'
+
+                        # compare against Static solver solution
+                        er = np.max(np.abs(ysta - Sta.fqs) / np.linalg.norm(Sta.Ftot))
+                        print('Error force distribution: %.3e' % er)
+                        assert er < 1e-12,\
+                             'Steady-state force not matching (error: %.2e)!'%er
+
+                        if rem_pred is False: # compare state
+
+                            er = np.max(np.abs(xsta[:Dyn.K] - Sta.gamma))
+                            print('Error bound circulation: %.3e' % er)
+                            assert er < 1e-13,\
+                                 'Steady-state gamma not matching (error: %.2e)!'%er
+
+                            gammaw_ref = np.zeros((Dyn.K_star,))
+                            kk = 0
+                            for ss in range(Dyn.MS.n_surf):
+                                Mstar = Dyn.MS.MM_star[ss]
+                                Nstar = Dyn.MS.NN_star[ss]
+                                for mm in range(Mstar):
+                                    gammaw_ref[kk:kk + Nstar] = Sta.Gamma[ss][-1, :]
+                                    kk += Nstar
+
+                            er = np.max(np.abs(xsta[Dyn.K:Dyn.K + Dyn.K_star] - gammaw_ref))
+                            print('Error wake circulation: %.3e' % er)
+                            assert er < 1e-13, 'Steady-state gamma_star not matching!'
+
+                            er = np.max(np.abs(xsta[Dyn.K + Dyn.K_star:2 * Dyn.K + Dyn.K_star]))
+                            print('Error bound derivative: %.3e' % er)
+                            assert er < 1e-13, 'Non-zero derivative of circulation at steady state!'
+
+                            if Dyn.integr_order == 2:
+                                er = np.max(np.abs(xsta[:Dyn.K] - xsta[-Dyn.K:]))
+                                print('Error bound circulation previous vs current time-step: %.3e' % er)
+                                assert er < 1e-13, \
+                                    'Circulation at previous and current time-step not matching'
+
+                        ### Verify gains
+                        Dyn.get_total_forces_gain()
+                        Dyn.get_sect_forces_gain()
+
+                        # sectional forces - algorithm for surfaces with equal M
+                        n_surf = Dyn.MS.n_surf
+                        M, N = Dyn.MS.MM[0], Dyn.MS.NN[0]
+                        fnodes = ysta.reshape((n_surf, 3, M + 1, N + 1))
+                        Fsect_ref = np.zeros((n_surf, 3, N + 1))
+                        Msect_ref = np.zeros((n_surf, 3, N + 1))
+
+                        for ss in range(n_surf):
+                            for nn in range(N + 1):
+                                for mm in range(M + 1):
+                                    Fsect_ref[ss, :, nn] += fnodes[ss, :, mm, nn]
+                                    arm = Dyn.MS.Surfs[ss].zeta[:, mm, nn] - Dyn.MS.Surfs[ss].zeta[:, M // 2, nn]
+                                    Msect_ref[ss, :, nn] += np.cross(arm, fnodes[ss, :, mm, nn])
+
+                        Fsect = np.dot(Dyn.Kfsec, ysta).reshape((n_surf, 3, N + 1))
+                        assert np.max(np.abs(Fsect - Fsect_ref)) < 1e-12, \
+                                                         'Error in gains for cross-sectional forces'
+                        Msect = np.dot(Dyn.Kmsec, ysta).reshape((n_surf, 3, N + 1))
+                        assert np.max(np.abs(Msect - Msect_ref)) < 1e-12, \
+                                                         'Error in gains for cross-sectional forces'
+
+                        # total forces
+                        Ftot_ref = np.zeros((3,))
+                        for cc in range(3):
+                            Ftot_ref[cc] = np.sum(Fsect_ref[:, cc, :])
+                        Ftot = np.dot(Dyn.Kftot, ysta)
+                        assert np.max(np.abs(Ftot - Ftot_ref)) < 1e-11,\
+                                                'Error in gains for total forces'
+
+    unittest.main()
