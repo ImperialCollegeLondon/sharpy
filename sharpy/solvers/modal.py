@@ -77,8 +77,8 @@ class Modal(BaseSolver):
         self.settings_default['folder'] = './output'
 
         # solution options
-        self.settings_default['rigid_body_modes'] = False
         self.settings_types['rigid_body_modes'] = 'bool'
+        self.settings_default['rigid_body_modes'] = False
 
         self.settings_types['use_undamped_modes'] = 'bool'  # basis for modal projection
         self.settings_default['use_undamped_modes'] = True
@@ -117,7 +117,8 @@ class Modal(BaseSolver):
         # Temporary settings for the FORTRAN routine that assemblies the full system matrices until we create a dedicated
         # solver
         # ------>
-        self.settings_x_beam_assbly = {'print_info': True,
+        self.settings_types['xbeam_asbly'] = 'dict'
+        self.settings_default['xbeam_asbly'] = {'print_info': True,
                                        'dt': 0.1,
                                        'max_iterations': 100,
                                        'num_load_steps': 1,
@@ -135,7 +136,7 @@ class Modal(BaseSolver):
         self.filename_freq = None
         self.filename_damp = None
         self.filename_shapes = None
-        self.rigid = None
+        self.rigid_body_motion = None
 
     def initialise(self, data, custom_settings=None):
         self.data = data
@@ -149,7 +150,7 @@ class Modal(BaseSolver):
 
         # Check that the FORTRAN library is updated with the required
         # TODO: assert that xbeam3_asbly_dynamic_python exists in FORTRAN file xbeam_interface
-        self.rigid = self.settings['rigid_body_modes']
+        self.rigid_body_motion = self.settings['rigid_body_modes']
 
         # load info from dyn dictionary
         self.data.structure.add_unsteady_information(
@@ -179,7 +180,7 @@ class Modal(BaseSolver):
 
         # Number of degrees of freedom
         num_str_dof = self.data.structure.num_dof.value
-        if self.rigid:
+        if self.rigid_body_motion:
             num_rigid_dof = 10
         else:
             num_rigid_dof = 0
@@ -195,7 +196,8 @@ class Modal(BaseSolver):
                                dtype=ct.c_double, order='F')
 
         # Obtain the matrices from the fortran library
-        if self.rigid:
+        # Todo: proper settings so as to not require using the dynamic coupled settings
+        if self.rigid_body_motion:
             FullMglobal, FullCglobal, FullKglobal, FullQ = xbeamlib.xbeam3_asbly_dynamic(self.data.structure,
                                           self.data.structure.timestep_info[self.data.ts],
                                           self.data.settings['DynamicCoupled']['structural_solver_settings'])
@@ -634,7 +636,14 @@ def write_modes_vtk(data, eigenvectors, NumLambda, filename_root,
     num_dof=struct.num_dof.value
     eigenvectors=eigenvectors[:num_dof,:]
 
-    for mode in range(NumLambda):
+    # Check whether rigid body motion is selected
+    # Skip rigid body modes
+    if data.settings['Modal']['rigid_body_modes'].value:
+        num_rigid_body = 10
+    else:
+        num_rigid_body = 0
+
+    for mode in range(num_rigid_body, NumLambda-num_rigid_body):
 
         # scale eigenvector
         eigvec=eigenvectors[:num_dof,mode]

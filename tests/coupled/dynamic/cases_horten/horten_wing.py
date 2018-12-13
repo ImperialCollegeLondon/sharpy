@@ -613,7 +613,7 @@ class HortenWing:
         # control surface type: 1 = dynamic
         control_surface_type[0] = 0
         control_surface_deflection[0] = cs_deflection
-        control_surface_chord[0] = 1  # m
+        control_surface_chord[0] = 3
         control_surface_hinge_coord[0] = 0.25
 
         # RIGHT FUSELAGE (Surface 0, Beam 0)
@@ -1017,7 +1017,7 @@ class HortenWing:
                                       'structural_substeps': 1,
                                       'dynamic_relaxation': 'on',
                                       'clean_up_previous_solution': 'on',
-                                      'structural_solver': 'NonLinearDynamicPrescribedStep',
+                                      'structural_solver': 'NonLinearDynamicCoupledStep',
                                       'structural_solver_settings': settings['NonLinearDynamicCoupledStep'],
                                       'aero_solver': 'StepUvlm',
                                       'aero_solver_settings': settings['StepUvlm'],
@@ -1071,8 +1071,9 @@ class HortenWing:
                                                                   }}
 
         settings['Modal'] = {'print_info': True,
-                             'use_undamped_modes': True,
-                             'NumLambda': 20,
+                             'use_undamped_modes': False,
+                             'NumLambda': 30,
+                             'rigid_body': False,
                              'write_modes_vtk': 'on',
                              'print_matrices': 'on',
                              'write_data': 'on',
