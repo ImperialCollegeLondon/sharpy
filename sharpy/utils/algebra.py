@@ -1059,3 +1059,16 @@ def der_CcrvT_by_v(fv0,v):
     T0=crv2tan(fv0)
 
     return np.dot( skew( np.dot(Cba0,v) ),T0)
+
+
+def cross3(v,w):
+    """
+    Computes the cross product of two vectors (v and w) with size 3
+    """
+
+    res = np.zeros((3,),)
+    res[0] = v[1]*w[2] - v[2]*w[1]
+    res[1] = -v[0]*w[2] + v[2]*w[0]
+    res[2] = v[0]*w[1] - v[1]*w[0]
+
+    return res
