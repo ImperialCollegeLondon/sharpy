@@ -8,14 +8,15 @@ import ctypes as ct
 
 
 @generator_interface.generator
-class GridBox(generator_interface.BaseGenerator):
+class MovingGridBox(generator_interface.BaseGenerator):
     """
-    GridBox
+    MovingGridBox
 
-    Generatex a grid within a box to be used to generate the flow field during the postprocessing
+    Generate a grid within a box to be used to generate the flow field during the postprocessing
+    MovingGridBox follows the for_pos of the aircraft
 
     """
-    generator_id = 'GridBox'
+    generator_id = 'MovingGridBox'
 
     def __init__(self):
         self.in_dict = dict()
@@ -65,26 +66,22 @@ class GridBox(generator_interface.BaseGenerator):
         self.dz = self.in_dict['dz']
 
     def generate(self, params):
-
+        for_pos = params['for_pos']
         nx = np.abs(int((self.x1.value-self.x0.value)/self.dx.value + 1))
         ny = np.abs(int((self.y1.value-self.y0.value)/self.dy.value + 1))
         nz = np.abs(int((self.z1.value-self.z0.value)/self.dz.value + 1))
 
-        xarray = np.linspace(self.x0.value,self.x1.value,nx)
-        yarray = np.linspace(self.y0.value,self.y1.value,ny)
-        zarray = np.linspace(self.z0.value,self.z1.value,nz)
+        xarray = np.linspace(self.x0.value, self.x1.value, nx) + for_pos[0]
+        yarray = np.linspace(self.y0.value, self.y1.value, ny) + for_pos[1]
+        zarray = np.linspace(self.z0.value, self.z1.value, nz) + for_pos[2]
         grid = []
         for iz in range(nz):
-            grid.append(np.zeros((3,nx,ny), dtype=ct.c_double))
+            grid.append(np.zeros((3, nx, ny), dtype=ct.c_double))
             for ix in range(nx):
                 for iy in range(ny):
-                    grid[iz][0,ix,iy] = xarray[ix]
-                    grid[iz][1,ix,iy] = yarray[iy]
-                    grid[iz][2,ix,iy] = zarray[iz]
-                    # grid[ix, iy, iz, 0] = xarray[ix]
-                    # grid[ix, iy, iz, 1] = yarray[iy]
-                    # grid[ix, iy, iz, 2] = zarray[iz]
-
+                    grid[iz][0, ix, iy] = xarray[ix]
+                    grid[iz][1, ix, iy] = yarray[iy]
+                    grid[iz][2, ix, iy] = zarray[iz]
 
         vtk_info = tvtk.RectilinearGrid()
         vtk_info.dimensions = np.array([nx, ny, nz], dtype=int)

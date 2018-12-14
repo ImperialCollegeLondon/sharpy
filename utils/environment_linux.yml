@@ -4,15 +4,10 @@ channels:
   - conda-forge
   - defaults
 dependencies:
-  - lapack=3.6.1=1
-  - openssl=1.0.2l=0
   - blas=1.0=mkl
-  - ca-certificates=2017.08.26=h1d4fec5_0
-  - certifi=2016.2.28=py36_0
   - colorama=0.3.9=py36_0
   - cycler=0.10.0=py36_0
   - dbus=1.10.22=h3b5a359_0
-  - eigen=3.3.5=hfd86e86_0
   - expat=2.1.0=0
   - fontconfig=2.12.4=h88586e7_1
   - freetype=2.8=hab7d2ae_1
@@ -35,7 +30,6 @@ dependencies:
   - libpng=1.6.34=hb9fc6fc_0
   - libstdcxx-ng=8.2.0=hdf63c60_1
   - libxcb=1.12=1
-  - libxml2=2.9.4=0
   - matplotlib=2.2.2=py36h0e671d2_0
   - mkl=2018.0.3=1
   - mkl_fft=1.0.4=py36h4414c95_1
@@ -64,13 +58,44 @@ dependencies:
   - xlrd=1.1.0=py36_0
   - xz=5.2.3=0
   - zlib=1.2.11=0
+  - ca-certificates=2018.11.29=ha4d7672_0
+  - certifi=2018.11.29=py36_1000
+  - lapack=3.6.1=1
+  - libxslt=1.1.32=h88dbc4e_2
+  - lxml=4.2.5=py36hc9114bc_0
+  - openssl=1.0.2p=h470a237_1
+  - alabaster=0.7.11=py36_0
+  - asn1crypto=0.24.0=py36_0
+  - babel=2.6.0=py36_0
+  - cffi=1.11.5=py36he75722e_1
+  - chardet=3.0.4=py36_1
+  - cryptography=2.3.1=py36hc365091_0
+  - docutils=0.14=py36_0
+  - eigen=3.3.5=hfd86e86_0
+  - idna=2.7=py36_0
+  - imagesize=1.1.0=py36_0
+  - jinja2=2.10=py36_0
+  - libxml2=2.9.8=hf84eae3_0
+  - markupsafe=1.0=py36h14c3975_1
+  - packaging=17.1=py36_0
+  - pycparser=2.19=py36_0
+  - pygments=2.2.0=py36_0
+  - pyopenssl=18.0.0=py36_0
+  - pysocks=1.6.8=py36_0
+  - requests=2.19.1=py36_0
+  - snowballstemmer=1.2.1=py36_0
+  - sphinx=1.8.1=py36_0
+  - sphinxcontrib=1.0=py36_1
+  - sphinxcontrib-websupport=1.1.0=py36_1
+  - urllib3=1.23=py36_0
   - vtk=7.0.0=py36_0
   - pip:
     - apptools==4.4.0
     - configobj==5.0.6
     - cython==0.28.5
     - mayavi==4.5.0
+    - pockets==0.7.1
     - pyface==5.1.0
-    - pygments==2.2.0
+    - sphinxcontrib-napoleon==0.7
     - traits==4.6.0
     - traitsui==5.1.0
