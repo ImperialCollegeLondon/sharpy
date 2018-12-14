@@ -1867,6 +1867,16 @@ class BodyInformation():
         self.FoR_movement = None
         self.quat = None
 
+    def copy(self):
+
+        copied = BodyInformation()
+        copied.body_number = self.body_number
+        copied.FoR_position = self.FoR_position.astype(dtype=float, copy=True)
+        copied.FoR_velocity = self.FoR_velocity.astype(dtype=float, copy=True)
+        copied.FoR_acceleration = self.FoR_acceleration.astype(dtype=float, copy=True)
+        copied.FoR_movement = self.FoR_movement
+        copied.quat = self.quat.astype(dtype=float, copy=True)
+
 class LagrangeConstraint():
 
     def __init__(self):
