@@ -19,10 +19,12 @@ Includes:
 
 import ctypes as ct
 import numpy as np
+import scipy.sparse as sparse
 import itertools
 
 from sharpy.utils.sharpydir import SharpyDir
 import sharpy.utils.ctypes_utils as ct_utils
+import sharpy.linear.src.libsparse as libsp
 import sharpy.linear.src.lib_dbiot as dbiot
 import sharpy.linear.src.lib_ucdncdzeta as lib_ucdncdzeta
 
@@ -174,18 +176,24 @@ def nc_dqcdzeta_Sin_to_Sout(Surf_in,Surf_out,Der_coll,Der_vert,Surf_in_bound):
 
 
 
-def nc_dqcdzeta(Surfs,Surfs_star):
+def nc_dqcdzeta(Surfs,Surfs_star,Merge=False):
 	'''
 	Produces a list of derivative matrix d(AIC*Gamma)/dzeta, where AIC are the
 	influence coefficient matrices at the bound surfaces collocation point,
 	ASSUMING constant panel norm.
 
-	Eeach list is such that:
+	Each list is such that:
 	- the ii-th element is associated to the ii-th bound surface collocation
 	point, and will contain a sub-list such that:
 		- the j-th element of the sub-list is the dAIC_dzeta matrices w.r.t. the
 		zeta d.o.f. of the j-th bound surface.
 	Hence, DAIC*[ii][jj] will have size K_ii x Kzeta_jj
+
+	If merge is true, the derivatives due to collocation points movement are added
+	to Dvert to minimise storage space.
+
+	To do:
+	- Dcoll is highly sparse, exploit?
 	'''
 
 	n_surf=len(Surfs)
@@ -228,10 +236,18 @@ def nc_dqcdzeta(Surfs,Surfs_star):
 							   Surf_in,Surf_out,Dcoll,Dvert,Surf_in_bound=False)
 			DAICvert_sub.append(Dvert)
 
-		DAICcoll.append(Dcoll)
-		DAICvert.append(DAICvert_sub)
-
-	return 	DAICcoll, DAICvert
+		if Merge:
+			DAICvert_sub[ss_out]+=Dcoll
+			DAICvert.append(DAICvert_sub)
+		else:
+			DAICcoll.append(Dcoll)
+			DAICvert.append(DAICvert_sub)
+	
+	if Merge:
+		return DAICvert
+	else:
+		return 	DAICcoll, DAICvert
+	# end 
 
 def nc_domegazetadzeta(Surfs,Surfs_star):
 	'''
@@ -1220,10 +1236,14 @@ def dfunstdgamma_dot(Surfs):
 	return DerList
 
 
-
-def wake_prop(Surfs,Surfs_star):
+def wake_prop(Surfs,Surfs_star,use_sparse=False,sparse_format='lil'):
 	'''
-	Assembly of wake propagation matrices
+	Assembly of wake propagation matrices, in sparse or dense matrices format
+
+	Note: wake propagation matrices are very sparse. Nonetheless, allocation
+	in dense format (from numpy.zeros) or sparse does not have important 
+	differences in terms of cpu time and memory used as numpy.zeros does 
+	not allocate memory until this is accessed.
 	'''
 
 	C_list=[]
@@ -1242,18 +1262,97 @@ def wake_prop(Surfs,Surfs_star):
 		assert Surf_star.maps.N==N,\
 			'Bound and wake surface do not have the same spanwise discretisation'
 
+		# allocate...
+		if use_sparse:
+			if sparse_format=='csc':
+				C=libsp.csc_matrix((K_star,K))
+				C_star=libsp.csc_matrix((K_star,K_star))
+			elif sparse_format=='lil':
+				C=sparse.lil_matrix((K_star,K))
+				C_star=sparse.lil_matrix((K_star,K_star))				
+		else:
+			C=np.zeros((K_star,K))	
+			C_star=np.zeros((K_star,K_star))
+
+		# ... and fill
 		iivec=np.array( range(N), dtype=int )
-
-		### Propagation from trailing edge
-		C_list.append( np.zeros((K_star,K)) )
-		C=C_list[-1]
+		# propagation from trailing edge
 		C[iivec, N*(M-1)+iivec]=1.0
-
-		### wake propagation
-		Cstar_list.append( np.zeros((K_star,K_star)) )
-		C=Cstar_list[-1]
+		# wake propagation
 		for mm in range(1,M_star):
-			C[mm*N+iivec, (mm-1)*N+iivec]=1.0
+			C_star[mm*N+iivec, (mm-1)*N+iivec]=1.0	
 
+		C_list.append(C)
+		Cstar_list.append(C_star)
 
 	return C_list, Cstar_list
+
+
+def test_wake_prop_term(M,N,M_star,N_star,use_sparse,sparse_format='csc'):
+	'''
+	Test allocation of single term of wake propagation matrix
+	'''
+
+	K=M*N 
+	K_star=M_star*N_star
+
+	iivec=np.array( range(N), dtype=int )
+
+	if use_sparse:
+		if sparse_format=='csc':
+			C=sparse.csc_matrix((K_star,K))
+			C_star=sparse.csc_matrix((K_star,K_star))
+	else:
+		C=np.zeros((K_star,K))	
+		C_star=np.zeros((K_star,K_star))	
+
+	### Propagation from trailing edge
+	C[iivec, N*(M-1)+iivec]=1.0
+
+	### wake propagation
+	for mm in range(1,M_star):
+		C_star[mm*N+iivec, (mm-1)*N+iivec]=1.0	
+
+	return C,C_star
+
+
+if __name__=='__main__':
+
+	import time
+	import cProfile
+	
+	M,N=20,30
+	M_star,N_star=M*20,N
+
+	t0=time.time()
+	C,C_star=test_wake_prop_term(M,N,M_star,N_star,use_sparse=False)	
+	tf=time.time()-t0
+	print('Dense propagation matrix allocated in %.4f sec'%tf )
+
+	t0=time.time()
+	Csp,Csp_star=test_wake_prop_term(M,N,M_star,N_star,use_sparse=True)
+	tf=time.time()-t0
+	print('csc sparse propagation matrix allocated in %.4f sec'%tf )
+
+	# cProfile.runctx('self.assemble()', globals(), locals(), filename=self.prof_out)
+	#1/0
+
+	### compare sparse types
+	Nx=3000
+	N1,N2=1000,Nx-2000
+
+	t0=time.time()
+	Z=sparse.csc_matrix((Nx,Nx))
+	Z[:N1,:N1]=2.
+	Z[:N1,N1:]=3.
+	tfin=time.time()-t0
+	print('csc allocated in %.6f sec'%tfin)
+
+	t0=time.time()
+	Z=sparse.lil_matrix((Nx,Nx))
+	Z[:N1,:N1]=2.
+	Z[:N1,N1:]=3.
+	Z=Z.tocsc()
+	tfin=time.time()-t0
+	print('lil->csc allocated in %.6f sec'%tfin)
+

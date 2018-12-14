@@ -6,7 +6,6 @@ import time
 import copy
 import numpy as np
 import scipy as sc
-import scipy.signal as scsig
 import sys, os
 import warnings
 import matplotlib.pyplot as plt 
@@ -20,7 +19,10 @@ import cases.templates.flying_wings as flying_wings
 
 import sharpy.linear.src.linuvlm as linuvlm
 import sharpy.linear.src.libss as libss 
+import sharpy.linear.src.libsparse as libsp
 import sharpy.linear.src.lin_aeroelastic as lin_aeroelastic
+
+# from IPython import embed
 
 
 def comp_tot_force( forces,zeta,zeta_pole=np.zeros((3,)) ):
@@ -78,37 +80,36 @@ def solve_linear(Ref,Pert,solve_beam=True):
 	du_ext=Pert.u_ext-Ref.u_ext
 
 	num_dof_str=len(dq)
-	dzeta_exp=np.dot(Ref.Kas[:len(dzeta),:num_dof_str] ,dq)
+	dzeta_exp=libsp.dot(Ref.Kas[:len(dzeta),:num_dof_str] ,dq)
 	SSaero=Ref.SSaero 
 
 	# zeta in
 	usta=np.concatenate([dzeta,dzeta_dot,du_ext])
-	if hasattr(Ref,'Asteady_inv'):
-
-		xsta=np.dot( Ref.Asteady_inv, np.dot(SSaero.B,usta) )
+	if Ref.Asteady_inv!=None:
+		xsta=libsp.dot( Ref.Asteady_inv, libsp.dot(SSaero.B,usta) )
 	else:
 		Asteady=np.eye(*SSaero.A.shape)-SSaero.A
-		xsta=np.linalg.solve( Asteady, np.dot(SSaero.B,usta) )
-	ysta=np.dot(SSaero.C,xsta)+np.dot(SSaero.D,usta)
-	ftot_aero=Ref.ftot+np.dot(Ref.Kftot,ysta)
-	mtot_aero=Ref.mtot+np.dot(Ref.Kmtot,ysta)+np.dot(Ref.Kmtot_disp,dzeta)	
+		xsta=libsp.solve( Asteady, libsp.dot(SSaero.B,usta) )
+	ysta=libsp.dot(SSaero.C,xsta)+libsp.dot(SSaero.D,usta)
+	ftot_aero=Ref.ftot+libsp.dot(Ref.Kftot,ysta)
+	mtot_aero=Ref.mtot+libsp.dot(Ref.Kmtot,ysta)+libsp.dot(Ref.Kmtot_disp,dzeta)	
 
 	#### beam in
 	if solve_beam:
 		SSbeam=Ref.SSbeam
 		# warning: we need to add first the contribution due to velocity change!!!
 		usta_uinf=np.concatenate([0.*dzeta,0.*dzeta_dot,du_ext])
-		xsta_uinf=np.linalg.solve( Asteady, np.dot(SSaero.B,usta_uinf) )
-		ysta_uinf=np.dot(SSaero.C,xsta_uinf)+np.dot(SSaero.D,usta_uinf)
+		xsta_uinf=libsp.solve( Asteady, libsp.dot(SSaero.B,usta_uinf) )
+		ysta_uinf=libsp.dot(SSaero.C,xsta_uinf)+libsp.dot(SSaero.D,usta_uinf)
 		usta=np.concatenate([dq,dqdot])
 		if hasattr(Ref,'Asteady_inv'):
-			xsta=np.dot( Ref.Asteady_inv, np.dot(SSbeam.B,usta) )
+			xsta=libsp.dot( Ref.Asteady_inv, libsp.dot(SSbeam.B,usta) )
 		else:
 			Asteady=np.eye(*SSbeam.A.shape)-SSbeam.A
-			xsta=np.linalg.solve( Asteady, np.dot(SSbeam.B,usta) )
-		ysta=ysta_uinf+np.dot(SSbeam.C,xsta)+np.dot(SSbeam.D,usta)
-		ftot_beam=Ref.ftot+np.dot(Ref.Kftot,ysta)
-		mtot_beam=Ref.mtot+np.dot(Ref.Kmtot,ysta)+np.dot(Ref.Kmtot_disp,dzeta_exp)	
+			xsta=libsp.solve( Asteady, libsp.dot(SSbeam.B,usta) )
+		ysta=ysta_uinf+libsp.dot(SSbeam.C,xsta)+libsp.dot(SSbeam.D,usta)
+		ftot_beam=Ref.ftot+libsp.dot(Ref.Kftot,ysta)
+		mtot_beam=Ref.mtot+libsp.dot(Ref.Kmtot,ysta)+libsp.dot(Ref.Kmtot_disp,dzeta_exp)	
 	else:
 		ftot_beam,mtot_beam=None,None
 
@@ -140,6 +141,7 @@ def extract_from_data(	data,
 	settings['LinearUvlm'] = {'dt': 0.1,
 							  'integr_order':2,
 							  'density': 1.225,
+							  'use_sparse': True,
 							  'ScalingDict':{'length': 1. ,
 											 'speed': 1. ,
 											 'density':1.}}
@@ -153,13 +155,10 @@ def extract_from_data(	data,
 	### assemble
 	if assemble is True:
 		uvlm=Sol.linuvlm
+
 		uvlm.assemble_ss()
 
 		# make sparse
-
-
-
-
 		uvlm.get_total_forces_gain(zeta_pole=zeta_pole)
 		Sol.get_gebm2uvlm_gains()
 		Kas=np.block([[Sol.Kdisp    , np.zeros((3*uvlm.Kzeta,gebm.num_dof+10))],
@@ -191,8 +190,8 @@ def extract_from_data(	data,
 
 # Define Parametrisation
 # M,N,Mstar_fact= 20,40,20 # HF (flex/rig)
-M,N,Mstar_fact=4, 40, 15 # LF (flex/rig)
-M,N,Mstar_fact=12, 40, 16 # LF (flex/rig)
+M,N,Mstar_fact=4, 40, 16 # LF (flex/rig)
+# M,N,Mstar_fact=12, 40, 16 # LF (flex/rig)
 M,N,Mstar_fact= 4,40,20 # HF (flex/rig)
 
 Rigid=1#True

@@ -16,7 +16,9 @@ import sharpy.utils.algebra as algebra
 
 class LinAeroEla():
     """
-    todo: settings are converted from string to type in __init__ method.
+    todo: 
+        - settings are converted from string to type in __init__ method.
+        - implement all settings of LinUVLM (e.g. support for sparse matrices)
 
     When integrating in SHARPy:
         * define:
@@ -49,8 +51,8 @@ class LinAeroEla():
         self.data = data
         if settings_linear is not None:
             data.settings['LinearUvlm'] = settings_linear['LinearUvlm']
-
         settings = data.settings
+
 
         ### modify settings
         settings['LinearUvlm']['dt'] = np.float(settings['LinearUvlm']['dt'])
@@ -94,6 +96,7 @@ class LinAeroEla():
         self.linuvlm = linuvlm.Dynamic(
             self.tsaero,
             dt=settings['LinearUvlm']['dt'],
+            UseSparse=settings['LinearUvlm']['use_sparse'],
             integr_order=settings['LinearUvlm']['integr_order'],
             ScalingDict=settings['LinearUvlm']['ScalingDict'])
 

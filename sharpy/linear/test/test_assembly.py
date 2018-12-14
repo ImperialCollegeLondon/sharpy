@@ -4,6 +4,7 @@ S. Maraniello, 29 May 2018
 '''
 
 import numpy as np
+import scipy.linalg as scalg
 import warnings
 import unittest
 import itertools
@@ -66,13 +67,12 @@ class Test_assembly(unittest.TestCase):
     def setUp(self):
 
         # select test case
-
         fname='./h5input/goland_mod_Nsurf02_M003_N004_a040.aero_state.h5'
         fname='./h5input/goland_mod_Nsurf01_M003_N004_a040.aero_state.h5'
         haero = h5utils.readh5(fname)
         tsdata = haero.ts00000
 
-        # Rotating cases
+        # # Rotating cases
         # fname = './basic_rotating_wing/basic_wing.data.h5'
         # haero = h5utils.readh5(fname)
         # tsdata = haero.data.aero.timestep_info[-1]
@@ -104,6 +104,18 @@ class Test_assembly(unittest.TestCase):
 
         # analytical
         Dercoll_list,Dervert_list=assembly.nc_dqcdzeta(MS.Surfs,MS.Surfs_star)
+
+        # check option
+        Der_all_exp=np.block(Dervert_list)+scalg.block_diag(*Dercoll_list)
+        Der_all=np.block( assembly.nc_dqcdzeta(MS.Surfs,MS.Surfs_star,Merge=True) )
+        _,ErAbs,ErRel=max_error_tensor(Der_all,Der_all_exp)
+        # max absolute error
+        ermax=np.max(ErAbs)
+        # relative error at max abs error point
+        iimax=np.unravel_index(np.argmax(ErAbs),ErAbs.shape)
+        ermax_rel=ErRel[iimax]
+        assert ermax_rel<1e-16,\
+            'option Merge=True not working correctly, relative error (%.3e) too high!' %ErRel
 
         # allocate numerical
         Derlist_num=[]
@@ -195,7 +207,7 @@ class Test_assembly(unittest.TestCase):
 
                 print('Bound%.2d->Bound%.2d\tFDstep\tErrAbs\tErrRel'%(ss_in,ss_out))
                 print('\t\t\t%.1e\t%.1e\t%.1e' %(step,ermax,ermax_rel))
-                #assert ermax<50*step and ermax_rel<50*step, embed()#'Test failed!'
+                assert ermax<50*step and ermax_rel<50*step, embed()#'Test failed!'
 
                 fig=plt.figure('Spy Er vs coll derivs',figsize=(12,4))
 

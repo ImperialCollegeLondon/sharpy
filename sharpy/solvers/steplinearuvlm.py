@@ -16,7 +16,7 @@ import sharpy.linear.src.linuvlm as linuvlm
 class StepLinearUVLM(BaseSolver):
     r"""
     Warnings:
-        Currently under development. Issues encountered when second order differencing scheme is used.
+        Under development.
 
     Time domain aerodynamic solver that uses a linear UVLM formulation
 
@@ -283,9 +283,6 @@ class StepLinearUVLM(BaseSolver):
             dt = self.settings['dt'].value
         if t is None:
             t = self.data.ts*dt
-
-        if unsteady_contribution:
-            raise NotImplementedError('Unsteady aerodynamic effects have not yet been implemented')
 
 
         ### Define Input

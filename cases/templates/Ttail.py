@@ -14,7 +14,7 @@ import configobj
 import os
 from IPython import embed
 import sharpy.utils.algebra as algebra
-import geo_utils
+import sharpy.utils.geo_utils as geo_utils
 
 
 class Ttail_3beams():
