@@ -18,6 +18,9 @@ class TurbVelocityField(generator_interface.BaseGenerator):
         self.settings_types = dict()
         self.settings_default = dict()
 
+        self.settings_types['print_info'] = 'bool'
+        self.settings_default['print_info'] = True
+
         self.settings_types['turbulent_field'] = 'str'
         self.settings_default['turbulent_field'] = None
 
@@ -29,6 +32,9 @@ class TurbVelocityField(generator_interface.BaseGenerator):
 
         self.settings_types['centre_y'] = 'bool'
         self.settings_default['centre_y'] = True
+
+        self.settings_types['periodicity'] = 'str'
+        self.settings_default['periodicity'] = 'xy'
 
         self.settings = dict()
 
@@ -43,6 +49,8 @@ class TurbVelocityField(generator_interface.BaseGenerator):
 
         self.bbox = None
         self.interpolator = 3*[None]
+        self.x_periodicity = False
+        self.y_periodicity = False
 
     def initialise(self, in_dict):
         self.in_dict = in_dict
@@ -56,6 +64,13 @@ class TurbVelocityField(generator_interface.BaseGenerator):
         if self.extension in '.xdmf':
             self.read_xdmf(self.settings['turbulent_field'])
 
+        if 'z' in self.settings['periodicity']:
+            raise ValueError('Periodicitiy setting in TurbVelocityField cannot be z.\n A turbulent boundary layer is not periodic in the z direction!')
+
+        if 'x' in self.settings['periodicity']:
+            self.x_periodicity = True
+        if 'y' in self.settings['periodicity']:
+            self.y_periodicity = True
 
     # these functions need to define the interpolators
     def read_btl(self, in_file):
@@ -135,7 +150,6 @@ class TurbVelocityField(generator_interface.BaseGenerator):
         # x \in [0, dimensions[0]*dx]
         # y \in [-dimensions[2]*dz, 0]
         # z \in [0, dimensions[1]*dy]
-
         centre_y_offset = 0.
         if self.settings['centre_y']:
             centre_y_offset = -0.5*(self.initial_y_grid[-1] - self.initial_y_grid[0])
@@ -146,10 +160,14 @@ class TurbVelocityField(generator_interface.BaseGenerator):
         self.initial_y_grid = self.initial_y_grid[::-1]
         self.initial_z_grid += self.settings['offset'][2] + origin[2]
 
-        cout.cout_wrap('The domain bbox is:', 1)
-        cout.cout_wrap(' x = [' + str(np.min(self.initial_x_grid)) + ', ' + str(np.max(self.initial_x_grid)) + ']', 1)
-        cout.cout_wrap(' y = [' + str(np.min(self.initial_y_grid)) + ', ' + str(np.max(self.initial_y_grid)) + ']', 1)
-        cout.cout_wrap(' z = [' + str(np.min(self.initial_z_grid)) + ', ' + str(np.max(self.initial_z_grid)) + ']', 1)
+        self.bbox = self.get_field_bbox(self.initial_x_grid,
+                                        self.initial_y_grid,
+                                        self.initial_z_grid)
+        if self.settings['print_info']:
+            cout.cout_wrap('The domain bbox is:', 1)
+            cout.cout_wrap(' x = [' + str(self.bbox[0, 0]) + ', ' + str(self.bbox[0, 1]) + ']', 1)
+            cout.cout_wrap(' y = [' + str(self.bbox[1, 0]) + ', ' + str(self.bbox[1, 1]) + ']', 1)
+            cout.cout_wrap(' z = [' + str(self.bbox[2, 0]) + ', ' + str(self.bbox[2, 1]) + ']', 1)
 
         # now we load the velocities (one by one, so we don't store all the
         # info more than once at the same time)
@@ -174,8 +192,6 @@ class TurbVelocityField(generator_interface.BaseGenerator):
     def generate(self, params, uext):
         zeta = params['zeta']
         for_pos = params['for_pos']
-        # ts = params['ts']
-        # dt = params['dt']
         t = params['t']
 
         self.interpolate_zeta(zeta,
@@ -183,18 +199,11 @@ class TurbVelocityField(generator_interface.BaseGenerator):
                               uext)
 
     @staticmethod
-    def get_bbox(zeta):
-        """
-        Calculates the bounding box of a given set of point coordinates
-        :param zeta:
-        :return:
-        """
+    def get_field_bbox(x_grid, y_grid, z_grid):
         bbox = np.zeros((3, 2))
-        for i_surf in range(len(zeta)):
-            ndim, nn, nm = zeta[i_surf].shape
-            for idim in range(ndim):
-                bbox[idim, :] = (min(bbox[idim, 0], np.min(zeta[i_surf][idim, :, :])),
-                                 max(bbox[idim, 1], np.max(zeta[i_surf][idim, :, :])))
+        bbox[0, :] = [np.min(x_grid), np.max(x_grid)]
+        bbox[1, :] = [np.min(y_grid), np.max(y_grid)]
+        bbox[2, :] = [np.min(z_grid), np.max(z_grid)]
         return bbox
 
     def init_interpolator(self, data, x_grid, y_grid, z_grid, i_dim=None):
@@ -216,13 +225,57 @@ class TurbVelocityField(generator_interface.BaseGenerator):
                 _, n_m, n_n = zeta[isurf].shape
                 for i_m in range(n_m):
                     for i_n in range(n_n):
-                        coord = zeta[isurf][:, i_m, i_n] + for_pos[0:3]
-                        # coord = coord[::-1]
+                        coord = self.apply_periodicity(zeta[isurf][:, i_m, i_n] + for_pos[0:3])
                         try:
                             u_ext[isurf][i_dim, i_m, i_n] = self.interpolator[i_dim](coord)
                         except ValueError:
                             print(coord)
                             raise ValueError()
-                        # next = u_ext[isurf][i_dim, i_m, i_n]
+
+    def apply_periodicity(self, coord):
+        new_coord = coord.copy()
+        if self.x_periodicity:
+            i = 0
+            # x in interval:
+            if self.bbox[i, 0] <= new_coord[i] <= self.bbox[i, 1]:
+                pass
+            # lower than min bbox
+            elif new_coord[i] < self.bbox[i, 0]:
+                temp = divmod(new_coord[i], self.bbox[i, 0])[1]
+                if np.isnan(temp):
+                    pass
+                else:
+                    new_coord[i] = temp
+
+            # greater than max bbox
+            elif new_coord[i] > self.bbox[i, 1]:
+                temp = divmod(new_coord[i], self.bbox[i, 1])[1]
+                if np.isnan(temp):
+                    pass
+                else:
+                    new_coord[i] = temp
+
+        if self.y_periodicity:
+            i = 1
+            # y in interval:
+            if self.bbox[i, 0] <= new_coord[i] <= self.bbox[i, 1]:
+                pass
+            # lower than min bbox
+            elif new_coord[i] < self.bbox[i, 0]:
+                temp = divmod(new_coord[i], self.bbox[i, 0])[1]
+                if np.isnan(temp):
+                    pass
+                else:
+                    new_coord[i] = temp
+            # greater than max bbox
+            elif new_coord[i] > self.bbox[i, 1]:
+                temp = divmod(new_coord[i], self.bbox[i, 1])[1]
+                if np.isnan(temp):
+                    pass
+                else:
+                    new_coord[i] = temp
+
+        return new_coord
+
 
 
