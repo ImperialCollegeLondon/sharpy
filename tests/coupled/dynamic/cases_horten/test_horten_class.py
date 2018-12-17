@@ -23,7 +23,7 @@ ws.gust_intensity = 0.01
 # ws.main_ea_tip = 0.33
 
 ws.clean_test_files()
-ws.update_mass_stiffness()
+ws.update_mass_stiffness(sigma=0.3)
 ws.update_aero_properties()
 ws.update_fem_prop()
 ws.generate_aero_file()

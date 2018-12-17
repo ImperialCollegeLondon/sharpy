@@ -54,10 +54,9 @@ class HortenWing:
         elif case_name_format == 1:
             self.case_name = case_name + '_u_inf%.4d' % int(u_inf)
         else:
-
             self.case_name = case_name + '_u_inf%.4d_%s' % (int(u_inf), case_remarks)
 
-        self.case_route = case_route + self.case_name + '/'
+        self.case_route = os.path.abspath(case_route + self.case_name + '/')
         self.config = None
 
 
@@ -102,6 +101,7 @@ class HortenWing:
 
         # Horseshoe wake
         self.horseshoe = False
+        self.wake_type = 2
         self.dt = 1 / self.M / self.u_inf
 
         # Dynamics
@@ -613,7 +613,7 @@ class HortenWing:
         # control surface type: 1 = dynamic
         control_surface_type[0] = 0
         control_surface_deflection[0] = cs_deflection
-        control_surface_chord[0] = 1  # m
+        control_surface_chord[0] = 2  # m
         control_surface_hinge_coord[0] = 0.25
 
         # RIGHT FUSELAGE (Surface 0, Beam 0)
@@ -896,6 +896,8 @@ class HortenWing:
                                                               'horseshoe': self.horseshoe,
                                                               'num_cores': 4,
                                                               'n_rollup': int(1),
+                                                              'rollup_dt': self.c_root / self.M / self.u_inf,
+                                                              'n_rollup': int(1),
                                                               'rollup_dt': dt, #self.c_root / self.M / self.u_inf,
                                                               'rollup_aic_refresh': 1,
                                                               'rollup_tolerance': 1e-4,
@@ -989,14 +991,10 @@ class HortenWing:
                                 'horseshoe': self.horseshoe,
                                 'num_cores': 4,
                                 'n_rollup': 100,
-                                'convection_scheme': 2,
+                                'convection_scheme': self.wake_type,
                                 'rollup_dt': dt,
                                 'rollup_aic_refresh': 1,
                                 'rollup_tolerance': 1e-4,
-                                # 'velocity_field_generator': 'TurbSimVelocityField',
-                                # 'velocity_field_input': {'turbulent_field': '/2TB/turbsim_fields/TurbSim_wide_long_A_low.h5',
-                                #                          'offset': [30., 0., -10],
-                                #                          'u_inf': 0.},
                                 'velocity_field_generator': 'GustVelocityField',
                                 'velocity_field_input': {'u_inf': u_inf,
                                                          'u_inf_direction': [1., 0, 0],
