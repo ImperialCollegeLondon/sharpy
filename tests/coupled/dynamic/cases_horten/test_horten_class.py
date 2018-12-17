@@ -5,22 +5,23 @@ import sharpy.sharpy_main
 
 aero_type = 'nlin'
 
-ws = horten_wing.HortenWing(M=6,
-                            N=11,
+ws = horten_wing.HortenWing(M=8,
+                            N=19,
                             Mstarfactor=10,
-                            u_inf=25,
-                            thrust=3.072420576589273,
-                            alpha_deg=0,#3.9720932241591,
-                            cs_deflection_deg=0,#-4.094765106430403,
+                            u_inf=35,
+                            thrust=2.959985072701038,
+                            alpha_deg=3.8328492608310607,
+                            cs_deflection_deg=-3.042203421093528,
                             case_name_format=2,
-                            physical_time=3,
-                            case_remarks=aero_type+'prescribed_test')
+                            physical_time=10,
+                            case_remarks=aero_type+'flutter',
+                            case_route='cases/')
 ws.horseshoe = False
-ws.gust_intensity = 0.01
-ws.n_tstep = 2
+ws.gust_intensity = 0.05
+# ws.n_tstep = 2
 
 ws.clean_test_files()
-ws.update_mass_stiffness()
+ws.update_mass_stiffness(sigma=0.3)
 ws.update_aero_properties()
 ws.update_fem_prop()
 ws.generate_aero_file()
@@ -29,7 +30,7 @@ ws.set_default_config_dict()
 
 ws.config['SHARPy']['flow'] = ['BeamLoader',
                                'AerogridLoader',
-                               # 'StaticTrim',
+                               'StaticTrim',
                                'StaticCoupled',
                                'AeroForcesCalculator',
                                'AerogridPlot',
@@ -59,9 +60,9 @@ if aero_type == 'lin':
 
 ws.config.write()
 
-data = sharpy.sharpy_main.main(['',ws.case_route+ws.case_name+'.solver.txt'])
-
-import numpy as np
-max_force = np.zeros(3)
-for n in range(3):
-    max_force[n] = np.max(data.aero.timestep_info[n].forces[3])
+# data = sharpy.sharpy_main.main(['',ws.case_route+ws.case_name+'.solver.txt'])
+#
+# import numpy as np
+# max_force = np.zeros(3)
+# for n in range(3):
+#     max_force[n] = np.max(data.aero.timestep_info[n].forces[3])
