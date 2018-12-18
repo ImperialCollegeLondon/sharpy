@@ -30,7 +30,6 @@ import sharpy.utils.algebra as algebra
 import h5py as h5
 import sharpy.utils.h5utils as h5utils
 import sharpy.utils.multibody as mb
-import ipdb
 import sharpy.utils.utils_ams as uams
 import sharpy.utils.lagrangemultipliers as lagrangemultipliers
 import matplotlib.pyplot as plt

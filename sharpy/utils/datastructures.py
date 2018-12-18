@@ -4,7 +4,6 @@ import copy
 
 import sharpy.utils.algebra as algebra
 import copy
-import ipdb
 
 
 class AeroTimeStepInfo(object):

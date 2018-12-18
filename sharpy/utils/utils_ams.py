@@ -3,7 +3,6 @@ ams: utilities
 '''
 from mpl_toolkits.mplot3d import axes3d
 import matplotlib.pyplot as plt
-import ipdb
 
 def plot_xy(x, y):
     plt.plot(x, y)
