@@ -13,9 +13,11 @@ import matplotlib.pyplot as plt
 import sharpy.sharpy_main
 import sharpy.utils.h5utils as h5
 import sharpy.utils.algebra as algebra
+import sharpy.utils.analytical as an
+
 import sharpy.linear.src.linuvlm as linuvlm
 import sharpy.linear.src.libss as libss
-import sharpy.linear.src.analytical as an
+
 import cases.templates.flying_wings as flying_wings
 
 
@@ -183,7 +185,7 @@ class Test_infinite_span(unittest.TestCase):
 		uvlm.Kmsec/=(Fref_span*ws.c_ref)
 
 
-		### ----- Step input
+		### ----- step input
 		# rotate incoming flow, wing lattice and wing lattice speed about 
 		# the (rolled) wing elastic axis to create an effective angle of attack. 
 		# Rotation is expressed through a CRV.

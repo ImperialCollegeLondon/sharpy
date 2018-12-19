@@ -1022,3 +1022,31 @@ def der_CcrvT_by_v(fv0,v):
     T0=crv2tan(fv0)
 
     return np.dot( skew( np.dot(Cba0,v) ),T0)
+
+
+def der_quat_wrt_crv(quat0):
+    '''
+    Provides change of quaternion, dquat, due to elementary rotation, dcrv, 
+    expressed as a 3 components Cartesian rotation vector such that 
+        C(quat + dquat) = C(quat0)C(dw)
+    where C are rotation matrices.
+
+    E.g.: assume 3 FoRs, G, A and B where:
+        - G is the initial FoR
+        - quat0 defines te rotation required to obtain A from G, namely:
+                Cga=quat2rotation(quat0)
+        - dcrv is an inifinitesimal Cartesian rotation vector, defined in A 
+        components, which describes an infinitesimal rotation A -> B, namely:
+                Cab=crv2rotation(dcrv)
+        - The total rotation G -> B is:
+            Cga = Cga * Cab
+        - As dcrv -> 0, Cga is equal to:
+            algebra.quat2rotation(quat0 + dquat), 
+        where dquat is the output of this function.
+    '''
+
+    Der=np.zeros((4,3))
+    Der[0,:]=-0.5*quat0[1:]
+    Der[1:,:]=-0.5*( -quat0[0]*np.eye(3) - skew(quat0[1:]) )
+    return Der
+

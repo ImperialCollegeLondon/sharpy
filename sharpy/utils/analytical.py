@@ -349,6 +349,62 @@ def wagner_imp_start(aeff,Uinf,chord,tv):
 	return CLv
 
 
+def flat_plate_analytical(kv,x_ea_perc,x_fh_perc,input_seq,output_seq,
+		                                     output_scal=None,plunge_deriv=True):
+	'''
+	Computes the analytical frequency response of a plat plate for the input
+	output sequences in input_seq and output_seq over the frequency points kv, 
+	if available.
+	The outpur complex values array Yan has shape (Nout,Nin,Nk); if an analytical
+	solution is not available, the response is assumed to be zero. 
+	If plunge_deriv is True, the plunge response is expressed in terms of first
+	derivative dh.
+	'''
+
+
+	Nout=len(output_seq)
+	Nin=len(input_seq)
+	Nk=len(kv)
+	Yfreq_an=np.zeros((Nout,Nin,Nk),dtype=np.complex)
+
+	# Get Theodorsen solutions
+	CLtheo=theo_CL_freq_resp(kv,x_ea_perc,x_fh_perc)
+	CMtheo=theo_CM_freq_resp(kv,x_ea_perc,x_fh_perc)
+
+	# scaling
+	if output_scal is None: output_scal=np.ones((Nout,))
+
+	for oo in range(Nout):
+		for ii in range(Nin):
+
+			### Sears
+			if input_seq[ii]=='gust_sears':
+				# Fx,Mz null
+				if output_seq[oo]=='Fy':
+					Yfreq_an[oo,ii,:]=an.sears_CL_freq_resp(kv)
+
+			### Theodorsen
+			if input_seq[ii]=='pitch':
+				if output_seq[oo]=='Fy':
+					Yfreq_an[oo,ii,:]=CLtheo[0]
+				if output_seq[oo]=='Mz':
+					Yfreq_an[oo,ii,:]=CMtheo[0]
+
+			if input_seq[ii]=='plunge':
+				Fact=1.0
+				if plunge_deriv: Fact=-1.j/kv
+				if output_seq[oo]=='Fy':
+					Yfreq_an[oo,ii,:]=Fact*CLtheo[1]
+				if output_seq[oo]=='Mz':
+					Yfreq_an[oo,ii,:]=Fact*CMtheo[1]	
+
+		# scale output
+		Yfreq_an[oo,:,:]=Yfreq_an[oo,:,:]/output_scal[oo]
+
+	return Yfreq_an
+
+
+
 
 if __name__=='__main__':
 	
