@@ -23,8 +23,21 @@ def triad2rot(xb,yb,zb):
     warn('triad2rot(xb,yb,zb) is obsolete! Use triad2rotation(xb,yb,zb).T instead!', stacklevel=2)
     return triad2rotation(xb,yb,zb).T
 def mat2quat(rot):
-     warn('mat2quat(rot) is obsolete! Use rotation2quat(rot.T) instead!', stacklevel=2)
-     return rotation2quat(rot.T)
+    """
+    Rotation matrix to quaternion function.
+
+    Warnings:
+        This function is deprecated and now longer supported. Please use ``algebra.rotation2quat(rot.T)`` instead.
+
+    Args:
+        rot: Rotation matrix
+
+    Returns:
+        np.array: equivalent quaternion
+    """
+    warn('mat2quat(rot) is obsolete! Use rotation2quat(rot.T) instead!', stacklevel=2)
+
+    return rotation2quat(rot.T)
 #######
 
 def tangent_vector(in_coord, ordering=None):
@@ -136,10 +149,17 @@ def get_polyfit(in_coord, ordering):
 
 
 def unit_vector(vector):
-    """
-    Tested
-    :param vector:
-    :return:
+    r"""
+    Transforms the input vector into a unit vector
+
+    .. math:: \mathbf{\hat{v}} = \frac{\mathbf{v}}{\|\mathbf{v}\|}
+
+    Args:
+        vector (np.array): vector to normalise
+
+    Returns:
+        np.array: unit vector
+
     """
     if np.linalg.norm(vector) < 1e-6:
         return np.zeros_like(vector)
@@ -268,7 +288,7 @@ def rotation2quat(Cab):
 
             .. math:: \vec{\psi} = \psi\,\mathbf{\hat{n}}
 
-        such that :math:`\mathbf{\hat{n}}` is a unit vector and the scalar :math:`psi` is in the range
+        such that :math:`\mathbf{\hat{n}}` is a unit vector and the scalar :math:`\psi` is in the range
         :math:`[-\pi,\,\pi]`.
 
     """
@@ -437,11 +457,16 @@ def crv2triad(psi):
 
 
 def crv2rotation(psi):
-    """
-    Given a Cartesian rotation vector psi, the function produces the rotation
-    matrix required to rotate a vector according to psi.
+    r"""
+    Given a Cartesian rotation vector :math:`\vec{\psi}`, the function produces the rotation
+    matrix required to rotate a vector according to :math:`\vec{\psi}`.
 
-    Note: this is psi2mat in the matlab version
+    Args:
+        psi (np.array): Cartesian rotation vector :math:`\vec{\psi}`.
+
+    Returns:
+        np.array: equivalent rotation matrix
+
     """
 
     norm_psi = np.linalg.norm(psi)
@@ -461,14 +486,26 @@ def crv2rotation(psi):
 
 
 def rotation2crv(Cab):
-    """
-    Given a rotation matrix Cab rotating the frame a onto b, the function returns
-    the minimal size Cartesian rotation vector representing this rotation.
+    r"""
+    Given a rotation matrix :math:`C^{AB}` rotating the frame A onto B, the function returns
+    the minimal size Cartesian rotation vector, :math:`\vec{\psi}` representing this rotation.
 
-    Note: this is the inverse of crv2rotation for Cartesian rotation vectors
-    associated to rotations in the range [-pi,pi], i.e.:
-        fv == algebra.rotation2crv(algebra.crv2rotation(fv))
-    for each fv=a*nv such that nv is a unit vector and the scalar a in [-pi,pi].
+    Args:
+        Cab (np.array): rotation matrix :math:`C^{AB}`
+
+    Returns:
+        np.array: equivalent Cartesian rotation vector, :math:`\vec{\psi}`.
+
+    Notes:
+        this is the inverse of ``algebra.crv2rotation`` for Cartesian rotation vectors
+        associated to rotations in the range :math:`[-\pi,\,\pi]`, i.e.:
+
+            ``fv == algebra.rotation2crv(algebra.crv2rotation(fv))``
+
+        for each Cartesian rotation vector of the form :math:`\vec{\psi} = \psi\,\mathbf{\hat{n}}`
+        represented as ``fv=a*nv`` such that ``nv`` is a unit vector and the scalar ``a`` is in the
+        range :math:`[-\pi,\,\pi]`.
+
     """
 
     if np.linalg.norm(Cab) < 1e-6:
@@ -1022,3 +1059,16 @@ def der_CcrvT_by_v(fv0,v):
     T0=crv2tan(fv0)
 
     return np.dot( skew( np.dot(Cba0,v) ),T0)
+
+
+def cross3(v,w):
+    """
+    Computes the cross product of two vectors (v and w) with size 3
+    """
+
+    res = np.zeros((3,),)
+    res[0] = v[1]*w[2] - v[2]*w[1]
+    res[1] = -v[0]*w[2] + v[2]*w[0]
+    res[2] = v[0]*w[1] - v[1]*w[0]
+
+    return res
