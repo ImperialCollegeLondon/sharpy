@@ -355,15 +355,14 @@ def uvlm_calculate_total_induced_velocity_at_point(ts_info,
     # make a copy of ts info and add for_pos to zeta and zeta_star
     ts_info_copy = ts_info.copy()
     for i_surf in range(ts_info_copy.n_surf):
+        # zeta
         for iM in range(ts_info_copy.zeta[i_surf].shape[1]):
-            # zeta
             for iN in range(ts_info_copy.zeta[i_surf].shape[2]):
-                for i_dim in range(3):
-                    ts_info_copy.zeta[i_surf][i_dim, iM, iN] += for_pos[i_dim]
-            # zeta_star
+                ts_info_copy.zeta[i_surf][:, iM, iN] += for_pos[0:3]
+        # zeta_star
+        for iM in range(ts_info_copy.zeta_star[i_surf].shape[1]):
             for iN in range(ts_info_copy.zeta_star[i_surf].shape[2]):
-                for i_dim in range(3):
-                    ts_info_copy.zeta_star[i_surf][i_dim, iM, iN] += for_pos[i_dim]
+                ts_info_copy.zeta_star[i_surf][:, iM, iN] += for_pos[0:3]
 
     ts_info_copy.generate_ctypes_pointers()
     calculate_uind_at_point(ct.byref(uvmopts),
