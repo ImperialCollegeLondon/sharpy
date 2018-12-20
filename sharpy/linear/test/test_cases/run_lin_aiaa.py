@@ -136,18 +136,8 @@ def extract_from_data(	data,
 											    for ss in range(tsaero.n_surf)])
 	ftot,mtot=comp_tot_force(tsaero.forces,tsaero.zeta,zeta_pole=zeta_pole)
 
-	## TEST WHETHER SETTINGS RUN
-	settings = dict()
-	settings['LinearUvlm'] = {'dt': 0.1,
-							  'integr_order':2,
-							  'density': 1.225,
-							  'use_sparse': True,
-							  'ScalingDict':{'length': 1. ,
-											 'speed': 1. ,
-											 'density':1.}}
-
 	### extract structural info
-	Sol=lin_aeroelastic.LinAeroEla(data, settings)
+	Sol=lin_aeroelastic.LinAeroEla(data)
 	gebm=Sol.lingebm_str
 	q=Sol.q
 	qdot=Sol.dq
@@ -166,12 +156,6 @@ def extract_from_data(	data,
 					  [np.zeros((3*uvlm.Kzeta,2*gebm.num_dof+20))             ]])
 		SSbeam=libss.addGain(uvlm.SS, Kas, where='in')
 
-
-
-
-
-
-
 		if build_Asteady_inv:
 			Asteady_inv=np.linalg.inv( np.eye(*uvlm.SS.A.shape)-uvlm.SS.A )
 		else:
@@ -189,9 +173,6 @@ def extract_from_data(	data,
 
 
 # Define Parametrisation
-# M,N,Mstar_fact= 20,40,20 # HF (flex/rig)
-M,N,Mstar_fact=4, 40, 16 # LF (flex/rig)
-# M,N,Mstar_fact=12, 40, 16 # LF (flex/rig)
 M,N,Mstar_fact= 4,40,20 # HF (flex/rig)
 
 Rigid=1#True
