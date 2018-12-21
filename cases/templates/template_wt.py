@@ -540,8 +540,8 @@ def generate_from_OpenFAST_db(chord_panels,
     BlFract = gc.read_column_sheet_type01(excel_file_name, excel_sheet_structural_blade, 'BlFract')
     PitchAxis = gc.read_column_sheet_type01(excel_file_name, excel_sheet_structural_blade, 'PitchAxis')
     # TODO: implement pitch axsi
-    print("WARNING: PitchAxis not implemented")
-    StrcTwst= gc.read_column_sheet_type01(excel_file_name, excel_sheet_structural_blade, 'StrcTwst')*deg2rad
+    # print("WARNING: PitchAxis not implemented")
+    # StrcTwst= gc.read_column_sheet_type01(excel_file_name, excel_sheet_structural_blade, 'StrcTwst')*deg2rad
     BMassDen= gc.read_column_sheet_type01(excel_file_name, excel_sheet_structural_blade, 'BMassDen')
     FlpStff= gc.read_column_sheet_type01(excel_file_name, excel_sheet_structural_blade, 'FlpStff')
     EdgStff = gc.read_column_sheet_type01(excel_file_name, excel_sheet_structural_blade, 'EdgStff')
@@ -566,19 +566,42 @@ def generate_from_OpenFAST_db(chord_panels,
     if not (BlCrvAng == 0.).all():
         # TODO: implement this angle
         print("ERROR: BlCrvAng not implemented, assumed to be zero")
+    BlTwist = gc.read_column_sheet_type01(excel_file_name, excel_sheet_aero_blade, 'BlTwist')*deg2rad
 
     # Blade parameters
     TipRad = gc.read_column_sheet_type01(excel_file_name, excel_sheet_parameters, 'TipRad')
     HubRad = gc.read_column_sheet_type01(excel_file_name, excel_sheet_parameters, 'HubRad')
 
-    # Base parameters
-    blade.StructuralInformation.num_elem = len(BlFract) - 2
-    blade.StructuralInformation.num_node_elem = 3
-    blade.StructuralInformation.compute_basic_num_node()
+
 
     # Interpolate excel variables into the correct locations
     # Geometry
     Radius = HubRad + BlFract*(TipRad - HubRad)
+    excel_aero_r +=  HubRad
+
+    include_hub_node = True
+    if include_hub_node:
+        Radius = np.concatenate((np.array([0.]), Radius),)
+        PitchAxis = np.concatenate((np.array([PitchAxis[0]]), PitchAxis),)
+        BMassDen  = np.concatenate((np.array([BMassDen[0]]), BMassDen),)
+        FlpStff = np.concatenate((np.array([FlpStff[0]]), FlpStff),)
+        EdgStff = np.concatenate((np.array([EdgStff[0]]), EdgStff),)
+        GJStff = np.concatenate((np.array([GJStff[0]]), GJStff),)
+        EAStff = np.concatenate((np.array([EAStff[0]]), EAStff),)
+        Alpha = np.concatenate((np.array([Alpha[0]]), Alpha),)
+        FlpIner = np.concatenate((np.array([FlpIner[0]]), FlpIner),)
+        EdgIner = np.concatenate((np.array([EdgIner[0]]), EdgIner),)
+        FlpcgOf = np.concatenate((np.array([FlpcgOf[0]]), FlpcgOf),)
+        EdgcgOf = np.concatenate((np.array([EdgcgOf[0]]), EdgcgOf),)
+        FlpEAOf = np.concatenate((np.array([FlpEAOf[0]]), FlpEAOf),)
+        EdgEAOf = np.concatenate((np.array([EdgEAOf[0]]), EdgEAOf),)
+
+
+    # Base parameters
+    blade.StructuralInformation.num_elem = len(Radius) - 2
+    blade.StructuralInformation.num_node_elem = 3
+    blade.StructuralInformation.compute_basic_num_node()
+
     node_r, elem_r = create_node_radial_pos_from_elem_centres(Radius,
                                         blade.StructuralInformation.num_node,
                                         blade.StructuralInformation.num_elem,
@@ -587,7 +610,9 @@ def generate_from_OpenFAST_db(chord_panels,
     node_prebending = np.interp(node_r,excel_aero_r,BlCrvAC)
     node_presweept = np.interp(node_r,excel_aero_r,BlSwpAC)
 
-    node_structural_twist = -1.0*np.interp(node_r,Radius,StrcTwst)
+    # node_structural_twist = -1.0*np.interp(node_r,Radius,StrcTwst)
+    node_structural_twist = -1.0*np.interp(node_r,excel_aero_r,BlTwist)
+    node_pitch_axis = np.interp(node_r,Radius,PitchAxis)
     # Stiffness
     elem_EA = np.interp(elem_r,Radius,EAStff)
     elem_EIy = np.interp(elem_r,Radius,FlpStff)
@@ -639,7 +664,7 @@ def generate_from_OpenFAST_db(chord_panels,
     ### AERODYNAMICS
     ######################################################################
     # Read blade aerodynamic information from excel file
-    excel_aerodynamic_twist = gc.read_column_sheet_type01(excel_file_name, excel_sheet_aero_blade, 'BlTwist')*deg2rad
+    # excel_aerodynamic_twist = gc.read_column_sheet_type01(excel_file_name, excel_sheet_aero_blade, 'BlTwist')*deg2rad
     excel_chord = gc.read_column_sheet_type01(excel_file_name, excel_sheet_aero_blade, 'BlChord')
     pure_airfoils_names = gc.read_column_sheet_type01(excel_file_name, excel_sheet_aero_blade, 'BlAFID')
 
@@ -667,9 +692,9 @@ def generate_from_OpenFAST_db(chord_panels,
 
     # Interpolate in the correct positions
     node_chord=np.interp(node_r, excel_aero_r, excel_chord)
-    node_aero_twist = -1.0*(np.interp(node_r, excel_aero_r, excel_aerodynamic_twist) + node_structural_twist)
+    # node_aero_twist = -1.0*(np.interp(node_r, excel_aero_r, excel_aerodynamic_twist) + node_structural_twist)
     node_sweep = np.ones((blade.StructuralInformation.num_node), )*np.pi
-    node_elastic_axis=np.ones((blade.StructuralInformation.num_node,))*0.25
+    # node_elastic_axis=np.ones((blade.StructuralInformation.num_node,))*0.25
 
     # Define the nodes with aerodynamic properties
     # Look for the first element that is goint to be aerodynamic
@@ -688,12 +713,12 @@ def generate_from_OpenFAST_db(chord_panels,
     blade.AerodynamicInformation.create_aerodynamics_from_vec(blade.StructuralInformation,
                                                             aero_node,
                                                             node_chord,
-                                                            node_aero_twist,
+                                                            np.zeros_like(node_chord),
                                                             node_sweep,
                                                             chord_panels,
                                                             surface_distribution,
                                                             m_distribution,
-                                                            node_elastic_axis,
+                                                            node_pitch_axis,
                                                             airfoil_distribution,
                                                             airfoils)
 
