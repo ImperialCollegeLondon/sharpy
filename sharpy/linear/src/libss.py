@@ -1161,25 +1161,29 @@ def random_ss(Nx,Nu,Ny,dt=None,use_sparse=False):
 	return SS
 
 
-def compare_ss(SS1,SS2,tol=1e-10):
-	'''
-	Assert matrices of state-space models are identical
-	'''
+def compare_ss(SS1,SS2,tol=1e-10,Print=False):
+    '''
+    Assert matrices of state-space models are identical
+    '''
 
-	er=np.max(np.abs(libsp.dense(SS1.A)-libsp.dense(SS2.A)))
-	assert er<tol, 'Error A matrix %.2e>%.2e'%(er,tol)
+    era=np.max(np.abs(libsp.dense(SS1.A)-libsp.dense(SS2.A)))
+    assert era<tol, 'Error A matrix %.2e>%.2e'%(era,tol)
+    if Print: print('Max. error A: %.3e' %era)
 
-	er=np.max(np.abs(libsp.dense(SS1.B)-libsp.dense(SS2.B)))
-	assert er<tol, 'Error B matrix %.2e>%.2e'%(er,tol)
+    erb=np.max(np.abs(libsp.dense(SS1.B)-libsp.dense(SS2.B)))
+    assert erb<tol, 'Error B matrix %.2e>%.2e'%(erb,tol)
+    if Print: print('Max. error B: %.3e' %erb)
 
-	er=np.max(np.abs(libsp.dense(SS1.C)-libsp.dense(SS2.C)))
-	assert er<tol, 'Error C matrix %.2e>%.2e'%(er,tol)
+    erc=np.max(np.abs(libsp.dense(SS1.C)-libsp.dense(SS2.C)))
+    assert erc<tol, 'Error C matrix %.2e>%.2e'%(erc,tol)
+    if Print: print('Max. error C: %.3e' %erc)
 
-	er=np.max(np.abs(libsp.dense(SS1.D)-libsp.dense(SS2.D)))
-	assert er<tol, 'Error D matrix %.2e>%.2e'%(er,tol)
+    erd=np.max(np.abs(libsp.dense(SS1.D)-libsp.dense(SS2.D)))
+    assert erd<tol, 'Error D matrix %.2e>%.2e'%(erd,tol)
+    if Print: print('Max. error D: %.3e' %erd)
 
-	# print('System matrices identical within tolerance %.2e'%tol)
-
+    # print('System matrices identical within tolerance %.2e'%tol)
+    return (era,erb,erc,erd)
 
 # -----------------------------------------------------------------------------
 

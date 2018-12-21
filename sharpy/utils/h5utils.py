@@ -175,28 +175,31 @@ def read_group(Grp):
 
 
 class ReadInto:
+    def __init__(self,name='ReadInto'):
+        self._name=name
     pass
 
 
 # ---------------------------------------------------------------- Saving tools
 
 
-def saveh5(savedir,h5filename,*class_inst,permission='a'):
+def saveh5(savedir,h5filename,*class_inst,permission='a',ClassesToSave=()):
     '''
-    Creates h5filename and saves all the classes specified after the
-    first input argument
+    Creates h5filename and saves all the classes specified in class_inst
     
     @param savedir: target directory
     @param h5filename: file name
     @param *class_inst: a number of classes to save
     @param permission=['a','w']: append or overwrite, according to h5py.File
+    @param ClassesToSave: if the classes in class_inst contain sub-classes, these 
+        will be saved only if instances of the classes in this list
     '''
 
     h5filename=os.path.join(savedir,h5filename)
     hdfile=h5.File(h5filename,permission)
 
     for cc in class_inst:
-        add_as_grp(cc,hdfile)
+        add_as_grp(cc,hdfile,ClassesToSave=ClassesToSave )
 
     hdfile.close()
     return None
@@ -248,7 +251,10 @@ def add_as_grp(obj,grpParent,
     ### determine sub-group name (only classes)
     if grpname is None:
         if ObjType=='class':
-            grpname=obj.__class__.__name__ 
+            if hasattr(obj,'_name'):
+                grpname=obj._name
+            else:
+                grpname=obj.__class__.__name__                 
         else:
             raise NameError('grpname must be specified for dict,list and tuples')
 

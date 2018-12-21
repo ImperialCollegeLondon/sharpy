@@ -7,9 +7,9 @@ import warnings
 import numpy as np 
 import scipy as sc 
 import scipy.linalg as scalg
-import scipy.signal as scsig
-# from IPython import embed
 
+# from IPython import embed
+import sharpy.linear.src.libsparse as libsp
 import sharpy.linear.src.libss as libss
 
 
@@ -73,15 +73,26 @@ def balreal_direct_py(A,B,C,DLTI=True,Schur=False):
 
 
 def balreal_iter(A,B,C,lowrank=True,tolSmith=1e-10,tolSVD=1e-6,kmin=None,
-													tolAbs=False,PrintAll=False):
+								   					  tolAbs=False,Print=False):
 	'''
 	Find balanced realisation of DLTI system. 
 
 	Notes: Lyapunov equations are solved using iterative squared Smith 
 	algorithm, in its low or full rank version. These implementations are
 	as per the low_rank_smith and smith_iter functions respectively but, 
-	for computational efficiency,, the iterations are rewritten here so as to 
+	for computational efficiency, the iterations are rewritten here so as to 
 	solve for the observability and controllability Gramians contemporary.
+
+	Input:
+
+	- Exploiting sparsity:
+	This algorithm is not ideal to exploit sparsity. However, the following
+	strategies are implemented:
+		- if the A matrix is provided in sparse format, the powers of A will be
+		calculated exploiting sparsity UNTIL the number of non-zero elements 
+		is below 15% the size of A. Upon this threshold, the cost of the matrix
+		multiplication rises dramatically, and A is hence converted to a dense
+		numpy array.
 	'''
 
 	### Solve Lyapunov equations
@@ -91,28 +102,30 @@ def balreal_iter(A,B,C,lowrank=True,tolSmith=1e-10,tolSVD=1e-6,kmin=None,
 	# obser: A.T W A - W = - C.T C	
 	# low-rank smith: A.T X A - X = -Q Q.T
 
-	if lowrank: # low-rank square-Smith iteration (with SVD)
+	# matrices size
+	N=A.shape[0]
+	rC=B.shape[1]
+	rO=C.shape[0]
 
-		# matrices size
-		N=A.shape[0]
-		rC=B.shape[1]
-		rO=C.shape[0]
+
+	if lowrank: # low-rank square-Smith iteration (with SVD)
 
 		# initialise smith iteration
 		DeltaNorm=1e6 					# error 
 		DeltaNormNext=DeltaNorm**2		# error expected at next iter
-		print('Iter\tMaxZ\t|\trank_c\trank_o\tA size')
-		kk=0
 
+		kk=0
 		Qck=B
 		Qok=C.T
 
+		if Print:
+			print('Iter\tMaxZ\t|\trank_c\trank_o\tA size')
 		while DeltaNorm>tolSmith and DeltaNormNext>1e-3*tolSmith:
 
 			###### controllability
 			### compute Ak^2 * Qck
 			# (future: use block Arnoldi)
-			Qcright=np.dot(A,Qck)
+			Qcright=libsp.dot(A,Qck)
 			MaxZhere=np.max(np.abs(Qcright))
 
 			### enlarge Z matrices
@@ -123,7 +136,7 @@ def balreal_iter(A,B,C,lowrank=True,tolSmith=1e-10,tolSVD=1e-6,kmin=None,
 			if kmin==None or kmin<rC:
 				### "cheap" SVD truncation
 				Uc,svc=scalg.svd(Qck,full_matrices=False,overwrite_a=True,
-														  lapack_driver='gesdd')[:2]
+													  lapack_driver='gesdd')[:2]
 				# import scipy.linalg.interpolative as sli
 				# Ucnew,svcnew,temp=sli.svd(Qck,tolSVD)
 				if tolAbs:
@@ -143,7 +156,7 @@ def balreal_iter(A,B,C,lowrank=True,tolSmith=1e-10,tolSVD=1e-6,kmin=None,
 			###### observability
 			### compute Ak^2 * Qok
 			# (future: use block Arnoldi)
-			Qoright=np.transpose( np.dot(Qok.T,A) )
+			Qoright=np.transpose( libsp.dot(Qok.T,A) )
 			DeltaNorm=max(MaxZhere,np.max(np.abs(Qoright)))
 
 			### enlarge Z matrices
@@ -167,12 +180,22 @@ def balreal_iter(A,B,C,lowrank=True,tolSmith=1e-10,tolSVD=1e-6,kmin=None,
 				Uo=None
 
 			##### Prepare next time step
-			print('%.3d\t%.2e\t%.5d\t%.5d\t%.5d' %(kk,DeltaNorm,rC,rO,N))
+			if Print:
+				print('%.3d\t%.2e\t%.5d\t%.5d\t%.5d' %(kk,DeltaNorm,rC,rO,N))
 			DeltaNormNext=DeltaNorm**2
 
+			if DeltaNorm>tolSmith and DeltaNormNext>1e-3*tolSmith:	
 
-			if DeltaNorm>tolSmith and DeltaNormNext>1e-3*tolSmith:
-				A=np.linalg.matrix_power(A,2)
+				# compute power
+				if type(A) is libsp.csc_matrix:
+					A=A.dot(A)
+					# check sparsity
+					if A.size>0.15*N**2:
+						A=A.toarray()
+				elif type(A) is np.ndarray:
+					A=np.linalg.matrix_power(A,2)
+				else:
+					raise NameError('Type of A not supported')
 
 			### update
 			kk=kk+1
@@ -186,16 +209,18 @@ def balreal_iter(A,B,C,lowrank=True,tolSmith=1e-10,tolSVD=1e-6,kmin=None,
 
 	# find min size (only if iter used)
 	cc,co=Qck.shape[1],Qok.shape[1]
-	print('cc=%.2d, co=%.2d'%(cc,co))
+	if Print:
+		print('cc=%.2d, co=%.2d'%(cc,co))
 	
 	# build M matrix and SVD
-	M=np.dot(Qok.T,Qck)
+	M=libsp.dot(Qok.T,Qck)
 	U,s,Vh=scalg.svd(M,full_matrices=False)
 	sinv=s**(-0.5)
-	T=np.dot(Qck,Vh.T*sinv)
+	T=libsp.dot(Qck,Vh.T*sinv)
 	Tinv=np.dot((U*sinv).T,Qok.T)
 
-	print('rank(Zc)=%.4d\trank(Zo)=%.4d'%(rcmax,romax) )
+	if Print:
+		print('rank(Zc)=%.4d\trank(Zo)=%.4d'%(rcmax,romax) )
 
 	return s,T,Tinv,rcmax,romax
 
@@ -583,7 +608,7 @@ def modred(SSb,N,method='residualisation'):
 
 	Nb=SSb.A.shape[0]
 	if Nb==N:
-		SSrom=scsig.dlti(SSb.A,SSb.B,SSb.C,SSb.D,dt=SSb.dt)
+		SSrom=libss.ss(SSb.A,SSb.B,SSb.C,SSb.D,dt=SSb.dt)
 		return SSrom
 			
 	A11=SSb.A[:N,:N]
@@ -592,7 +617,7 @@ def modred(SSb,N,method='residualisation'):
 	D=SSb.D
 
 	if method is 'truncation':
-		SSrom=scsig.dlti(A11,B11,C11,D,dt=SSb.dt)
+		SSrom=libss.ss(A11,B11,C11,D,dt=SSb.dt)
 	else:
 		Nb=SSb.A.shape[0]
 		IA22inv=-SSb.A[N:,N:].copy()
@@ -600,7 +625,7 @@ def modred(SSb,N,method='residualisation'):
 		IA22inv[eevec,eevec]+=1.
 		IA22inv=scalg.inv(IA22inv,overwrite_a=True)
 
-		SSrom=scsig.dlti(
+		SSrom=libss.ss(
 			A11+np.dot(SSb.A[:N,N:],np.dot(IA22inv,SSb.A[N:,:N])),
 			B11+np.dot(SSb.A[:N,N:],np.dot(IA22inv,SSb.B[N:,:] )),
 			C11+np.dot(SSb.C[:,N:] ,np.dot(IA22inv,SSb.A[N:,:N])),
@@ -611,7 +636,7 @@ def modred(SSb,N,method='residualisation'):
 
 
 
-def tune_rom(SSb,kv,tol,gv,method='realisation',convergence='all'):
+def tune_rom(SSb,kv,tol,gv,method='realisation',convergence='all',Print=False):
 	'''
 	Starting from a balanced DLTI, this function determines the number of states
 	N required in a ROM (obtained either through 'residualisation' or 
@@ -642,10 +667,7 @@ def tune_rom(SSb,kv,tol,gv,method='realisation',convergence='all'):
 	# reference frequency response
 	Nb=SSb.A.shape[0]
 	Yb=libss.freqresp(SSb,kv,dlti=True)
-
 	Nmax=min(np.sum(gv>tol)+1,Nb)
-
-
 
 	if convergence=='all':
 		# start from larger size and decrease untill the ROm accuracy is over tol
@@ -655,7 +677,8 @@ def tune_rom(SSb,kv,tol,gv,method='realisation',convergence='all'):
 			SSrom=modred(SSb,N,method)
 			Yrom=libss.freqresp(SSrom,kv,dlti=True)
 			er=np.max(np.abs(Yrom-Yb))
-			print('N=%.3d, er:%.2e (tol=%.2e)' %(N,er,tol) )
+			if Print:
+				print('N=%.3d, er:%.2e (tol=%.2e)' %(N,er,tol) )
 
 			if N==Nmax and er>tol:
 				warnings.warn(
@@ -678,7 +701,8 @@ def tune_rom(SSb,kv,tol,gv,method='realisation',convergence='all'):
 			SSrom=modred(SSb,N,method)
 			Yrom=libss.freqresp(SSrom,kv,dlti=True)
 			er=np.max(np.abs(Yrom-Yb))
-			print('N=%.3d, er:%.2e (tol=%.2e)' %(N,er,tol) )
+			if Print:
+				print('N=%.3d, er:%.2e (tol=%.2e)' %(N,er,tol) )
 			if er<tol:
 				Found=True
 

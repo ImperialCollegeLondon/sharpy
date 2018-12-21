@@ -96,6 +96,7 @@ class LinAeroEla():
         self.linuvlm = linuvlm.Dynamic(
             self.tsaero,
             dt=settings['LinearUvlm']['dt'],
+            RemovePredictor=settings['LinearUvlm']['remove_predictor'],
             UseSparse=settings['LinearUvlm']['use_sparse'],
             integr_order=settings['LinearUvlm']['integr_order'],
             ScalingDict=settings['LinearUvlm']['ScalingDict'])

@@ -8,9 +8,7 @@ import numpy as np
 import scipy as sc
 import scipy.linalg as scalg
 import scipy.signal as scsig
-
 import sharpy.linear.src.libss as libss 
-
 
 
 class FlexDynamic():
@@ -213,7 +211,7 @@ class FlexDynamic():
                             'for projection on damped eigenvectors')
 
                     # build state-space model
-                    self.SSdisc = scsig.dlti(Ass, Bss, Css, Dss, dt=self.dt)
+                    self.SSdisc = libss.ss(Ass, Bss, Css, Dss, dt=self.dt)
                     if self.inout_coords == 'nodes':
                         self.SSdisc = libss.addGain(self.SSdisc, self.Kin, 'in')
                         self.SSdisc = libss.addGain(self.SSdisc, self.Kout, 'out')
@@ -226,7 +224,7 @@ class FlexDynamic():
                         self.dt, self.newmark_damp)
                     self.Kin = None
                     self.Kout = None
-                    self.SSdisc = scsig.dlti(Ass, Bss, Css, Dss, dt=self.dt)
+                    self.SSdisc = libss.ss(Ass, Bss, Css, Dss, dt=self.dt)
 
             else:
                 raise NameError(
@@ -271,7 +269,7 @@ class FlexDynamic():
                     self.Kout = np.block([2. * U.real, (-2.) * U.imag])
 
                 # build state-space model
-                self.SScont = scsig.lti(Ass, Bss, Css, Dss)
+                self.SScont = libss.ss(Ass, Bss, Css, Dss)
                 if self.inout_coords == 'nodes':
                     self.SScont = libss.addGain(self.SScont, self.Kin, 'in')
                     self.SScont = libss.addGain(self.SScont, self.Kout, 'out')
@@ -293,7 +291,7 @@ class FlexDynamic():
                 Bss[num_dof:, :] = -Minv_neg
                 self.Kin = None
                 self.Kout = None
-                self.SScont = scsig.lti(Ass, Bss, Css, Dss)
+                self.SScont = libss.ss(Ass, Bss, Css, Dss)
 
     def freqresp(self, wv=None, bode=True):
         """
@@ -413,7 +411,7 @@ class FlexDynamic():
         tpl = scsig.cont2discrete(
             (SScont.A, SScont.B, SScont.C, SScont.D),
             dt=self.dt, method=self.discr_method)
-        self.SSdisc = scsig.dlti(*tpl[:-1], dt=tpl[-1])
+        self.SSdisc = libss.ss(*tpl[:-1], dt=tpl[-1])
         self.dlti = True
 
 
