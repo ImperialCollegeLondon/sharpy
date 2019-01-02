@@ -677,6 +677,10 @@ class Dynamic(Static):
             Ass, Bmod, Css, Dmod = \
                 libss.SSconv(Ass, None, Bss, Css, Dss, Bm1=None)
             self.SS = libss.ss(Ass, Bmod, Css, Dmod, dt=self.dt)
+
+            # Store original B matrix for state unpacking
+            self.B_predictor = Bss
+
             print('state-space model produced in form:\n\t' \
                   'h_{n+1} = A h_{n} + B u_{n}\n\t' \
                   'with:\n\tx_n = h_n + Bp u_n')
@@ -843,9 +847,7 @@ class Dynamic(Static):
 
         return xsta, ysta
 
-
-
-    def solve_step(self, x_n, u_n):
+    def solve_step(self, x_n, u_n, u_n1):
         r"""
         Solve step.
 
@@ -855,11 +857,19 @@ class Dynamic(Static):
                 \mathbf{x}^{n+1} &= \mathbf{A\,x}^n + \mathbf{B\,u}^n \\
                 \mathbf{y}^{n+1} &= \mathbf{C\,x}^{n+1} + \mathbf{D\,u}^n
 
-        Else, if ``remove_predictor = True``:
+        Else, if ``remove_predictor = True``, the state is modified as
+
+            ..  math:: \mathbf{h}^n = \mathbf{x}^n - \mathbf{B\,u}^n
+
+        And the system solved by:
 
             .. math::
-                \mathbf{x}^{n+1} &= \mathbf{A\,x}^n + \mathbf{B_{mod}\,u}^{n} \\
-                \mathbf{y}^{n+1} &= \mathbf{C\,x}^{n+1} + \mathbf{D_{mod}\,u}^{n}
+                \mathbf{h}^{n+1} &= \mathbf{A\,h}^n + \mathbf{B_{mod}\,u}^{n} \\
+                \mathbf{y}^{n+1} &= \mathbf{C\,h}^{n+1} + \mathbf{D_{mod}\,u}^{n+1}
+
+        Finally, the original state is recovered using the reverse transformation:
+
+            .. math:: \mathbf{x}^{n+1} = \mathbf{h}^{n+1} + \mathbf{B\,u}^{n+1}
 
         where the modifications to the :math:`\mathbf{B}_{mod}` and :math:`\mathbf{D}_{mod}` are detailed in
         :func:`Dynamic.assemble_ss`.
@@ -872,9 +882,10 @@ class Dynamic(Static):
         Args:
             x_n (np.array): State vector at the current time step :math:`\mathbf{x}^n`
             u_n (np.array): Input vector at time step :math:`\mathbf{u}^n`
+            u_n1 (np.array): Input vector at time step :math:`\mathbf{u}^{n+1}`
 
         Returns:
-            (np.array, np.array): Updated state and output vector packed in a tuple :math:`(\mathbf{x}^{n+1},\,\mathbf{y}^{n+1})`
+            Tuple: Updated state and output vector packed in a tuple :math:`(\mathbf{x}^{n+1},\,\mathbf{y}^{n+1})`
 
         Notes:
             To speed-up the solution and use minimal memory:
@@ -883,40 +894,50 @@ class Dynamic(Static):
                 - compute the output separately.
         """
 
-        # if self.remove_predictor:
-        #     # Transform state
-        #     h_n = x_n - np.dot(self.B_predictor, u_n)
+        if self.remove_predictor:
 
-        #     if self.use_sparse:
-        #         h_n1 = self.SS.Asp.dot(h_n) + self.SS.Bsp.dot(u_n)
-        #     else:
-        #         h_n1 = self.SS.A.dot(h_n) + self.SS.B.dot(u_n)
+            # Transform state vector
+            h_n = x_n - np.dot(self.B_predictor, u_n)
 
-        #     y_n1 = np.dot(self.SS.C, h_n1) + np.dot(self.SS.D, u_n)
+            h_n1 = self.SS.A.dot(h_n) + self.SS.B.dot(u_n)
+            y_n1 = np.dot(self.SS.C, h_n1) + np.dot(self.SS.D, u_n1)
 
-        #     # Recover state
-        #     x_n1 = h_n1 + np.dot(self.B_predictor, u_n)
+            # Recover state vector
+            x_n1 = h_n1 + np.dot(self.B_predictor, u_n1)
 
-        # else:
-        #     if self.use_sparse:
-        #         x_n1 = self.SS.Asp.dot(x_n) + self.SS.Bsp.dot(u_n)
-        #     else:
-        #         x_n1 = self.SS.A.dot(x_n) + self.SS.B.dot(u_n)
-        #     y_n1 = np.dot(self.SS.C, x_n1) + np.dot(self.SS.D, u_n)
+        else:
+            x_n1 = self.SS.A.dot(x_n) + self.SS.B.dot(u_n1)
+            y_n1 = np.dot(self.SS.C, x_n1) + np.dot(self.SS.D, u_n1)
 
-        x_n1 = self.SS.A.dot(x_n) + self.SS.B.dot(u_n)
-        y_n1 = np.dot(self.SS.C, x_n1) + np.dot(self.SS.D, u_n)
-
-        return x_n1,y_n1
+        return x_n1, y_n1
 
 
 
     def unpack_state(self, xvec):
+        """
+        Unpacks the state vector into physical constituents for full order models.
+
+        The state vector :math:`\mathbf{x}` of the form
+
+            .. math:: \mathbf{x}_n = \{ \delta \mathbf{\Gamma}_n,\, \delta \mathbf{\Gamma_{w_n}},\,
+                \Delta t\,\delta\mathbf{\Gamma}'_n,\, \delta\mathbf{\Gamma}_{n-1} \}
+
+        Is unpacked into:
+
+            .. math:: {\delta \mathbf{\Gamma}_n,\, \delta \mathbf{\Gamma_{w_n}},\,
+                \,\delta\mathbf{\Gamma}'_n}
+
+        Args:
+            xvec (np.ndarray): State vector
+
+        Returns:
+            tuple: Column vectors for bound circulation, wake circulation and circulation derivative packed in a tuple.
+        """
 
         K, K_star = self.K, self.K_star
         gamma_vec = xvec[:K]
         gamma_star_vec = xvec[K:K + K_star]
-        gamma_dot_vec = xvec[K + K_star:2 * K + K_star]
+        gamma_dot_vec = xvec[K + K_star:2 * K + K_star] / self.dt
 
         return gamma_vec, gamma_star_vec, gamma_dot_vec
 

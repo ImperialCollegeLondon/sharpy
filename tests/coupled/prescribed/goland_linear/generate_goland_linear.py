@@ -2,8 +2,8 @@ import cases.templates.flying_wings as wings
 import sharpy.sharpy_main
 
 aero_type = 'lin'
-ws = wings.Goland(M=8,
-                  N=20,
+ws = wings.Goland(M=4,
+                  N=12,
                   Mstar_fact=10,
                   u_inf=50,
                   alpha=1.,
@@ -12,7 +12,7 @@ ws = wings.Goland(M=8,
                   physical_time=2,
                   n_surfaces=2,
                   route='cases',
-                  case_name='goland_'+aero_type+'_wk12_pred_int2')
+                  case_name='goland_'+aero_type+'_newsolver_pred')
 
 ws.gust_intensity = 0.01
 # ws.n_tstep = 2
@@ -49,7 +49,7 @@ if aero_type == 'lin':
                                                                                     'gust_length': 5.,
                                                                                     'gust_intensity': ws.gust_intensity
                                                                                                       * ws.u_inf,
-                                                                                    'offset': 30.,
+                                                                                    'offset': 15.,
                                                                                     'span': ws.main_chord * ws.aspect_ratio}}
                                                            #  'velocity_field_generator': 'SteadyVelocityField',
                                                            #  'velocity_field_input': {'u_inf': ws.u_inf*1,
