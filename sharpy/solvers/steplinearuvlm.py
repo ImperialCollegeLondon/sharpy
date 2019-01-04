@@ -292,7 +292,7 @@ class StepLinearUVLM(BaseSolver):
         dx_m1 = x_m1 - self.data.aero.linear['x_0']
 
         ### Solve system - output is the variation in force
-        dx_n, dy_n = self.data.aero.linear['System'].solve_step(dx_m1, du_m1, du_n)
+        dx_n, dy_n = self.data.aero.linear['System'].solve_step(dx_m1, du_m1, du_n, transform_state=True)
 
         x_n = self.data.aero.linear['x_0'] + dx_n
         y_n = self.data.aero.linear['y_0'] + dy_n

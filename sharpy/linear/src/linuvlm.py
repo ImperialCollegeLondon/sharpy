@@ -847,7 +847,7 @@ class Dynamic(Static):
 
         return xsta, ysta
 
-    def solve_step(self, x_n, u_n, u_n1):
+    def solve_step(self, x_n, u_n, u_n1=None, transform_state=False):
         r"""
         Solve step.
 
@@ -876,13 +876,16 @@ class Dynamic(Static):
 
         Notes:
             Although the original equations include the term :math:`\mathbf{u}_{n+1}`, it is a reasonable approximation
-            to take :math:`\mathbf{u}_{n+1}\approx\mathbf{u}_n` given a sufficiently small time step, hence why the
-            above equations all employ :math:`\mathbf{u}_n`.
+            to take :math:`\mathbf{u}_{n+1}\approx\mathbf{u}_n` given a sufficiently small time step, hence if the input
+            at time ``n+1`` is not parsed, it is estimated from :math:`u^n`.
 
         Args:
             x_n (np.array): State vector at the current time step :math:`\mathbf{x}^n`
             u_n (np.array): Input vector at time step :math:`\mathbf{u}^n`
             u_n1 (np.array): Input vector at time step :math:`\mathbf{u}^{n+1}`
+            transform_state (bool): When the predictor term is removed, if true it will transform the state vector. If
+                false it will be assumed that the state vector that is parsed is already transformed i.e. it is
+                :math:`\mathbf{h}`.
 
         Returns:
             Tuple: Updated state and output vector packed in a tuple :math:`(\mathbf{x}^{n+1},\,\mathbf{y}^{n+1})`
@@ -894,16 +897,26 @@ class Dynamic(Static):
                 - compute the output separately.
         """
 
+        if u_n1 is None:
+            u_n1 = u_n.copy()
+
         if self.remove_predictor:
 
             # Transform state vector
-            h_n = x_n - np.dot(self.B_predictor, u_n)
+            # TODO: Agree on a way to do this. Either always transform here or transform prior to using the method.
+            if transform_state:
+                h_n = x_n - self.B_predictor.dot(u_n)
+            else:
+                h_n = x_n
 
             h_n1 = self.SS.A.dot(h_n) + self.SS.B.dot(u_n)
             y_n1 = np.dot(self.SS.C, h_n1) + np.dot(self.SS.D, u_n1)
 
             # Recover state vector
-            x_n1 = h_n1 + np.dot(self.B_predictor, u_n1)
+            if transform_state:
+                x_n1 = h_n1 + self.B_predictor.dot(u_n1)
+            else:
+                x_n1 = h_n1
 
         else:
             x_n1 = self.SS.A.dot(x_n) + self.SS.B.dot(u_n1)
