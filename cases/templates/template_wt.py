@@ -489,7 +489,7 @@ def generate_from_excel_type01(chord_panels,
 ######################################################################
 # FROM OpenFAST database
 ######################################################################
-def generate_from_OpenFAST_db(chord_panels,
+def rotor_from_OpenFAST_db(chord_panels,
                                   rotation_velocity,
                                   pitch_deg,
                                   excel_file_name= 'database_OpenFAST.xlsx',
@@ -497,7 +497,6 @@ def generate_from_OpenFAST_db(chord_panels,
                                   excel_sheet_structural_blade = 'structural_blade',
                                   excel_sheet_aero_blade = 'aero_blade',
                                   excel_sheet_airfoil_coord = 'airfoil_coord',
-                                  excel_sheet_structural_tower = 'structural_tower',
                                   m_distribution = 'uniform',
                                   n_points_camber = 100,
                                   tol_remove_points = 1e-3):
@@ -516,17 +515,13 @@ def generate_from_OpenFAST_db(chord_panels,
           excel_sheet_aero_blade (str):
           excel_sheet_airfoil_coord (str):
           excel_sheet_parameters (str):
-          excel_sheet_structural_tower (str):
           m_distribution (str):
           n_points_camber (int): number of points to define the camber of the airfoil,
           tol_remove_points (float): maximum distance to remove adjacent points
 
     Returns:
-        wt (sharpy.utils.generate_cases.AeroelasticInfromation): Aeroelastic infrmation of the wind turbine
-        LC (list): list of all the Lagrange constraints needed in the cases (sharpy.utils.generate_cases.LagrangeConstraint)
-        MB (list): list of the multibody information of each body (sharpy.utils.generate_cases.BodyInfrmation)
+        rotor (sharpy.utils.generate_cases.AeroelasticInfromation): Aeroelastic infrmation of the rotor
     """
-
     ######################################################################
     ## BLADE
     ######################################################################
@@ -598,14 +593,28 @@ def generate_from_OpenFAST_db(chord_panels,
 
 
     # Base parameters
-    blade.StructuralInformation.num_elem = len(Radius) - 2
-    blade.StructuralInformation.num_node_elem = 3
-    blade.StructuralInformation.compute_basic_num_node()
+    use_excel_struct_as_elem = False
+    if use_excel_struct_as_elem:
+        blade.StructuralInformation.num_node_elem = 3
+        blade.StructuralInformation.num_elem = len(Radius) - 2
+        blade.StructuralInformation.compute_basic_num_node()
 
-    node_r, elem_r = create_node_radial_pos_from_elem_centres(Radius,
-                                        blade.StructuralInformation.num_node,
-                                        blade.StructuralInformation.num_elem,
-                                        blade.StructuralInformation.num_node_elem)
+        node_r, elem_r = create_node_radial_pos_from_elem_centres(Radius,
+                                            blade.StructuralInformation.num_node,
+                                            blade.StructuralInformation.num_elem,
+                                            blade.StructuralInformation.num_node_elem)
+    else:
+        # Use excel struct as nodes
+        # Check the number of nodes
+        blade.StructuralInformation.num_node_elem = 3
+        blade.StructuralInformation.num_node = len(Radius)
+        if ((len(Radius) - 1) % (blade.StructuralInformation.num_node_elem - 1)) == 0:
+            blade.StructuralInformation.num_elem = int((len(Radius) - 1)/(blade.StructuralInformation.num_node_elem - 1))
+            node_r = Radius
+            elem_r = Radius[1::2] + 0.
+        else:
+            print("ERROR: Cannot build ", blade.StructuralInformation.num_node_elem, "-noded elements from ", blade.StructuralInformation.num_node, "nodes")
+
     # TODO: how is this defined now?
     node_prebending = np.interp(node_r,excel_aero_r,BlCrvAC)
     node_presweept = np.interp(node_r,excel_aero_r,BlSwpAC)
@@ -751,6 +760,59 @@ def generate_from_OpenFAST_db(chord_panels,
     # Apply tilt
     rotor.StructuralInformation.rotate_around_origin(np.array([0.,1.,0.]), tilt)
 
+    return rotor
+
+
+def generate_from_OpenFAST_db(chord_panels,
+                                  rotation_velocity,
+                                  pitch_deg,
+                                  excel_file_name= 'database_OpenFAST.xlsx',
+                                  excel_sheet_parameters = 'parameters',
+                                  excel_sheet_structural_blade = 'structural_blade',
+                                  excel_sheet_aero_blade = 'aero_blade',
+                                  excel_sheet_airfoil_coord = 'airfoil_coord',
+                                  excel_sheet_structural_tower = 'structural_tower',
+                                  m_distribution = 'uniform',
+                                  n_points_camber = 100,
+                                  tol_remove_points = 1e-3):
+
+    """
+    generate_from_OpenFAST_db
+
+    Function needed to generate a wind turbine from an excel database according to OpenFAST inputs
+
+    Args:
+    	  chord_panels (int): Number of panels on the blade surface in the chord direction
+          rotation_velocity (float): Rotation velocity of the rotor
+          pitch_deg (float): pitch angle in degrees
+          excel_file_name (str):
+          excel_sheet_structural_blade (str):
+          excel_sheet_aero_blade (str):
+          excel_sheet_airfoil_coord (str):
+          excel_sheet_parameters (str):
+          excel_sheet_structural_tower (str):
+          m_distribution (str):
+          n_points_camber (int): number of points to define the camber of the airfoil,
+          tol_remove_points (float): maximum distance to remove adjacent points
+
+    Returns:
+        wt (sharpy.utils.generate_cases.AeroelasticInfromation): Aeroelastic infrmation of the wind turbine
+        LC (list): list of all the Lagrange constraints needed in the cases (sharpy.utils.generate_cases.LagrangeConstraint)
+        MB (list): list of the multibody information of each body (sharpy.utils.generate_cases.BodyInfrmation)
+    """
+
+    rotor = rotor_from_OpenFAST_db(chord_panels,
+                                  rotation_velocity,
+                                  pitch_deg,
+                                  excel_file_name= excel_file_name,
+                                  excel_sheet_parameters = excel_sheet_parameters,
+                                  excel_sheet_structural_blade = excel_sheet_structural_blade,
+                                  excel_sheet_aero_blade = excel_sheet_aero_blade,
+                                  excel_sheet_airfoil_coord = excel_sheet_airfoil_coord,
+                                  m_distribution = m_distribution,
+                                  n_points_camber = n_points_camber,
+                                  tol_remove_points = tol_remove_points)
+
     ######################################################################
     ## TOWER
     ######################################################################
@@ -844,6 +906,10 @@ def generate_from_OpenFAST_db(chord_panels,
                                             tower.StructuralInformation.num_elem)
 
     # Assembly overhang with the tower
+    # numberOfBlades = gc.read_column_sheet_type01(excel_file_name, excel_sheet_parameters, 'NumBl')
+    tilt = gc.read_column_sheet_type01(excel_file_name, excel_sheet_parameters, 'ShftTilt')*deg2rad
+    # cone = gc.read_column_sheet_type01(excel_file_name, excel_sheet_parameters, 'Cone')*deg2rad
+
     overhang = gc.AeroelasticInformation()
     overhang.StructuralInformation.num_node = 3
     overhang.StructuralInformation.num_node_elem = 3

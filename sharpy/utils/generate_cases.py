@@ -1724,6 +1724,7 @@ class SimulationInformation():
         self.solvers['NonLinearDynamicMultibody']['num_steps'] = num_steps
         self.solvers['NonLinearDynamicCoupledStep']['num_steps'] = num_steps
         self.solvers['NonLinearDynamicPrescribedStep']['num_steps'] = num_steps
+        self.solvers['RigidDynamicPrescribedStep']['num_steps'] = num_steps
         self.solvers['SteadyHelicoidalWake']['n_time_steps'] = num_steps
 
 
