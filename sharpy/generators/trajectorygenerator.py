@@ -48,6 +48,9 @@ class TrajectoryGenerator(generator_interface.BaseGenerator):
         self.settings_types['time_offset'] = 'float'
         self.settings_default['time_offset'] = 0.0
 
+        self.settings_types['offset'] = 'list(float)'
+        self.settings_default['offset'] = np.zeros((3,))
+
         self.x_vec = None
         self.y_vec = None
         self.time = None
@@ -94,7 +97,7 @@ class TrajectoryGenerator(generator_interface.BaseGenerator):
         if self.n_steps is not None:
             if it >= self.n_steps:
                 return np.zeros((3,))
-        return np.array([self.x_vec[it], 0.0, self.y_vec[it]])
+        return np.array([self.x_vec[it], 0.0, self.y_vec[it]]) + self.in_dict['offset']
 
     def calculate_trajectory(self):
         in_dict = self.in_dict

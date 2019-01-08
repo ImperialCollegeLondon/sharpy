@@ -45,8 +45,11 @@ class PlotFlowField(BaseSolver):
         self.settings_types['dt'] = 'float'
         self.settings_default['dt'] = 0.1
 
-        self.settings_types['only_external'] = 'bool'
-        self.settings_default['only_external'] = False
+        self.settings_types['include_external'] = 'bool'
+        self.settings_default['include_external'] = True
+
+        self.settings_types['include_induced'] = 'bool'
+        self.settings_default['include_induced'] = True
 
         self.settings_types['stride'] = 'int'
         self.settings_default['stride'] = 1
@@ -96,7 +99,7 @@ class PlotFlowField(BaseSolver):
         nz = len(grid)
 
         u = np.zeros((nx, ny, nz, 3), dtype=float)
-        if not self.settings['only_external']:
+        if self.settings['include_induced']:
             for iz in range(nz):
                 for ix in range(nx):
                     for iy in range(ny):
@@ -110,13 +113,14 @@ class PlotFlowField(BaseSolver):
         for iz in range(nz):
             u_ext.append(np.zeros((3, nx, ny), dtype=ct.c_double))
 
-        self.velocity_generator.generate({'zeta': grid,
-                                          'override': True,
-                                          't': ts*self.settings['dt'].value,
-                                          'ts': ts,
-                                          'dt': self.settings['dt'].value,
-                                          'for_pos': 0*self.data.structure.timestep_info[ts].for_pos},
-                                         u_ext)
+        if self.settings['include_external']:
+            self.velocity_generator.generate({'zeta': grid,
+                                              'override': True,
+                                              't': ts*self.settings['dt'].value,
+                                              'ts': ts,
+                                              'dt': self.settings['dt'].value,
+                                              'for_pos': 0*self.data.structure.timestep_info[ts].for_pos},
+                                             u_ext)
 
         # Add both velocities
         for iz in range(nz):
