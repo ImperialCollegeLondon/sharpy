@@ -188,6 +188,34 @@ def skew(vector):
     return matrix
 
 
+def quadskew(vector):
+    """
+    Generates the matrix needed to obtain the quaternion in the following time step
+    through integration of the FoR angular velocity.
+
+
+    Args:
+        vector (np.array): FoR angular velocity
+
+    Notes:
+        The angular velocity is assumed to be constant in the time interval
+        Equivalent to lib_xbeam function
+        Quaternion ODE to compute orientation of body-fixed frame a
+        See Shearer and Cesnik (2007) for definition
+
+    Returns:
+        np.array: matrix
+    """
+    if not vector.size == 3:
+        raise ValueError('The input vector is not 3D')
+
+    matrix = np.zeros((4, 4))
+    matrix[0,1:4] = vector
+    matrix[1:4,0] = -vector
+    matrix[1:4,1:4] = skew(vector)
+    return matrix
+
+
 def triad2rotation(xb, yb, zb):
     """
     If the input triad is the "b" coord system given in "a" frame,
