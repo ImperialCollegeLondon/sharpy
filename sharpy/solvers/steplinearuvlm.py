@@ -172,9 +172,9 @@ class StepLinearUVLM(BaseSolver):
             self.data.aero.linear['x_0'] = x_0
             self.data.aero.linear['u_0'] = u_0
             self.data.aero.linear['y_0'] = f_0
-            self.data.aero.linear['gamma_0'] = gamma
-            self.data.aero.linear['gamma_star_0'] = gamma_star
-            self.data.aero.linear['gamma_dot_0'] = gamma_dot
+            # self.data.aero.linear['gamma_0'] = gamma
+            # self.data.aero.linear['gamma_star_0'] = gamma_star
+            # self.data.aero.linear['gamma_dot_0'] = gamma_dot
 
             # TODO: Implement in AeroTimeStepInfo a way to store the state vectors
             # aero_tstep.linear.x = x_0
@@ -360,7 +360,7 @@ class StepLinearUVLM(BaseSolver):
 
         f_aero = y_n
         
-        gamma_vec, gamma_star_vec, gamma_dot_vec = self.data.aero.linear['System'].unpack_state(x_n, u_n)
+        gamma_vec, gamma_star_vec, gamma_dot_vec = self.data.aero.linear['System'].unpack_state(x_n)
         # gamma_vec = self.data.aero.linear['gamma_0'] + dgamma_vec
         # gamma_star_vec = self.data.aero.linear['gamma_star_0'] + dgamma_star_vec
         # gamma_dot_vec = self.data.aero.linear['gamma_dot_0'] + dgamma_dot_vec
