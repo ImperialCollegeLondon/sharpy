@@ -617,7 +617,9 @@ def rotor_from_OpenFAST_db(chord_panels,
 
     # TODO: how is this defined now?
     node_prebending = np.interp(node_r,excel_aero_r,BlCrvAC)
-    node_presweept = np.interp(node_r,excel_aero_r,BlSwpAC)
+    # node_presweept = np.interp(node_r,excel_aero_r,BlSwpAC)
+    print("WARNING: Check the implementation for presweept blades")
+    node_presweept = np.zeros_like(node_r)
 
     # node_structural_twist = -1.0*np.interp(node_r,Radius,StrcTwst)
     node_structural_twist = -1.0*np.interp(node_r,excel_aero_r,BlTwist)
