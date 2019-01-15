@@ -49,6 +49,7 @@ def main(args):
     start_writer()
     # timing
     t = time.process_time()
+    t0_wall = time.perf_counter()
 
     settings = input_arg.read_settings(args)
 
@@ -60,7 +61,9 @@ def main(args):
         solver.initialise(data)
         data = solver.run()
 
-    elapsed_time = time.process_time() - t
-    cout.cout_wrap('FINISHED - Elapsed time = %f6 seconds' % elapsed_time, 2)
+    CPU_time = time.process_time() - t
+    wall_time = time.perf_counter() - t0_wall
+    cout.cout_wrap('FINISHED - Elapsed time = %f6 seconds' % wall_time, 2)
+    cout.cout_wrap('FINISHED - CPU process time = %f6 seconds' % CPU_time, 2)
     finish_writer()
     return data
