@@ -103,8 +103,15 @@ class FlyingWing():
         self.case_name=case_name
         self.RollNodes=RollNodes
 
+        # Verify that the route exists and create directory if necessary
+        try:
+            os.makedirs(self.route)
+        except FileExistsError:
+            pass
+
         ### other params
         self.u_inf_direction=np.array([1.,0.,0.])
+        self.gravity_on = True
 
         # aeroelasticity
         self.sigma=1
@@ -119,12 +126,13 @@ class FlyingWing():
         self.tip_airfoil_M = 0
 
         # Numerics for dynamic simulations
-        self.dt = self.main_chord / self.M / self.u_inf
-        self.n_tstep = int(np.round(physical_time/self.dt))
+        self.dt_factor = 1
+        self.physical_time = physical_time
         self.horseshoe = False
         self.fsi_tolerance = 1e-10
         self.relaxation_factor = 0.2
         self.gust_intensity = 0.01
+        self.gust_length = 5
         self.tolerance = 1e-12
 
     def update_mass_stiff(self):
@@ -149,7 +157,8 @@ class FlyingWing():
         ### Derived
 
         # time-step
-        self.dt=self.main_chord/self.M/self.u_inf
+        self.dt=self.main_chord/self.M/self.u_inf * self.dt_factor
+        self.n_tstep = int(np.round(self.physical_time/self.dt))
 
         # angles
         self.alpha_rad=self.alpha*np.pi/180.
@@ -369,7 +378,7 @@ class FlyingWing():
                 'orientation': self.quat}
 
         config['AerogridLoader']={
-                'unsteady': 'off',
+                'unsteady': 'on',
                 'aligned_grid': 'on',
                 'mstar': self.Mstar_fact*self.M,
                 'freestream_dir':str_u_inf_direction
@@ -415,7 +424,7 @@ class FlyingWing():
                                               'num_load_steps': 4,
                                               'delta_curved': 1e-5,
                                               'min_delta': 1e-5,
-                                              'gravity_on': 'on',
+                                              'gravity_on': self.gravity_on,
                                               'gravity': 9.754,
                                               'orientation': self.quat},}
 
@@ -428,7 +437,7 @@ class FlyingWing():
                                                            'speed':  1.,
                                                            'density':1.}}
 
-        config['StepLinearUVLM'] = {'dt': self.dt,
+        settings['StepLinearUVLM'] = {'dt': self.dt,
                                   'solution_method': 'direct',
                                   'velocity_field_generator': 'SteadyVelocityField',
                                   'velocity_field_input': {
@@ -442,7 +451,7 @@ class FlyingWing():
                                                    'delta_curved': 1e-6,
                                                    'min_delta': self.tolerance,
                                                    'newmark_damp': 5e-3,
-                                                   'gravity_on': True,
+                                                   'gravity_on': self.gravity_on,
                                                    'gravity': 9.81,
                                                    'num_steps': self.n_tstep,
                                                    'dt': self.dt}
@@ -451,7 +460,7 @@ class FlyingWing():
                                 'horseshoe': self.horseshoe,
                                 'num_cores': 4,
                                 'n_rollup': 100,
-                                'convection_scheme': 2,
+                                'convection_scheme': 0,
                                 'rollup_dt': self.dt,
                                 'rollup_aic_refresh': 1,
                                 'rollup_tolerance': 1e-4,
@@ -462,10 +471,10 @@ class FlyingWing():
                                 'velocity_field_generator': 'GustVelocityField',
                                 'velocity_field_input': {'u_inf': self.u_inf,
                                                          'u_inf_direction': self.u_inf_direction,
-                                                         'gust_shape': '1-cos',
-                                                         'gust_length': 1.,
+                                                         'gust_shape': 'continuous_sin',
+                                                         'gust_length': self.gust_length,
                                                          'gust_intensity': self.gust_intensity * self.u_inf,
-                                                         'offset': 15.0,
+                                                         'offset': 5.0,
                                                          'span': self.main_chord * self.aspect_ratio},
                                 # 'velocity_field_generator': 'SteadyVelocityField',
                                 # 'velocity_field_input': {'u_inf': self.u_inf*1,
@@ -512,6 +521,21 @@ class FlyingWing():
                                                                   'include_rbm': 'on',
                                                                   'include_applied_forces': 'on',
                                                                   'minus_m_star': 0}}}
+
+        config['DynamicUVLM'] = {'print_info': 'on',
+                                 'aero_solver': 'StepUvlm',
+                                 'aero_solver_settings': settings['StepUvlm'],
+                                 'n_time_steps': self.n_tstep,
+                                 'dt': self.dt,
+                                 'include_unsteady_force_contribution': 'on',
+                                 'postprocessors': ['AerogridPlot'],
+                                 'postprocessors_settings': {'AerogridPlot': {'u_inf': self.u_inf,
+                                                                  'folder': self.route + '/output/',
+                                                                  'include_rbm': 'off',
+                                                                  'include_applied_forces': 'on',
+                                                                  'minus_m_star': 0}}
+                                 }
+
 
         config['AerogridPlot']={'folder': self.route+'/output/',
                                 'include_rbm': 'off',
