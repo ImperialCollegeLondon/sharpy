@@ -345,18 +345,18 @@ class Aerogrid(object):
         self.timestep_info[ts].update_orientation(rot.T)
 
     @staticmethod
-    def compute_gamma_dot(dt, tstep, previous_tsteps):
-        """
+    def compute_gamma_dot(dt, tstep, previous_tsteps, part_of_fsi=True):
+        r"""
         Computes the temporal derivative of circulation (gamma) using finite differences.
 
         It will use a first order approximation for the first evaluation
         (when ``len(previous_tsteps) == 1``), and then second order ones.
 
-        .. math:: \\left.\\frac{d\\Gamma}{dt}\\right|^n \\approx \\lim_{\Delta t \\rightarrow 0}\\frac{\\Gamma^n-\\Gamma^{n-1}}{\\Delta t}
+        .. math:: \left.\frac{d\Gamma}{dt}\right|^n \approx \lim_{\Delta t \rightarrow 0}\frac{\Gamma^n-\Gamma^{n-1}}{\Delta t}
 
         For the second time step and onwards, the following second order approximation is used:
 
-        .. math:: \\left.\\frac{d\\Gamma}{dt}\\right|^n \\approx \\lim_{\Delta t \\rightarrow 0}\\frac{3\\Gamma^n -4\\Gamma^{n-1}+\\Gamma^{n-2}}{2\Delta t}
+        .. math:: \left.\frac{d\Gamma}{dt}\right|^n \approx \lim_{\Delta t \rightarrow 0}\frac{3\Gamma^n -4\Gamma^{n-1}+\Gamma^{n-2}}{2\Delta t}
 
         Args:
             dt (float): delta time for the finite differences
@@ -386,9 +386,14 @@ class Aerogrid(object):
                         (not np.isfinite(previous_tsteps[-2].gamma[i_surf]).any()):
                     raise ArithmeticError('NaN found in gamma')
 
-                tstep.gamma_dot[i_surf] = (3.0*tstep.gamma[i_surf]
-                                           - 4.0*previous_tsteps[-1].gamma[i_surf]
-                                           + previous_tsteps[-2].gamma[i_surf])/(2.0*dt)
+                if part_of_fsi:
+                    tstep.gamma_dot[i_surf] = (3.0*tstep.gamma[i_surf]
+                                               - 4.0*previous_tsteps[-1].gamma[i_surf]
+                                               + previous_tsteps[-2].gamma[i_surf])/(2.0*dt)
+                else:
+                    tstep.gamma_dot[i_surf] = (3.0*tstep.gamma[i_surf]
+                                               - 4.0*previous_tsteps[-2].gamma[i_surf]
+                                               + previous_tsteps[-3].gamma[i_surf])/(2.0*dt)
         # for i_surf in range(tstep.n_surf):
         #     tstep.gamma_dot[i_surf] = (tstep.gamma[i_surf] - previous_tsteps[-1].gamma[i_surf])/dt
 
@@ -511,6 +516,14 @@ def generate_strip(node_info, airfoil_db, aligned_grid, orientation_in=np.array(
     # add node coords
     for i_M in range(node_info['M'] + 1):
         strip_coordinates_a_frame[:, i_M] += node_info['beam_coord']
+
+    # add quarter-chord disp
+    delta_c = node_info['chord']/node_info['M']*(strip_coordinates_a_frame[:, -1] - strip_coordinates_a_frame[:, 0])
+    if node_info['M_distribution'] == 'uniform':
+        for i_M in range(node_info['M'] + 1):
+            strip_coordinates_a_frame[:, i_M] += 0.25*delta_c
+    else:
+        warnings.warn("No quarter chord disp of grid for non 1-cos grid distributions implemented", UserWarning)
 
     # rotation from a to g
     for i_M in range(node_info['M'] + 1):
