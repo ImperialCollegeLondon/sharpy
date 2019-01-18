@@ -56,6 +56,9 @@ class Test_gamma_dot(unittest.TestCase):
                                        'DynamicCoupled']
         ws.config['SHARPy']['write_screen'] = 'off'
 
+        # Remove newmark damping from structural solver settings
+        ws.config['DynamicCoupled']['structural_solver_settings']['newmark_damp'] = 0
+
         if aero_type == 'lin':
             ws.config['DynamicCoupled']['aero_solver'] = 'StepLinearUVLM'
             ws.config['DynamicCoupled']['aero_solver_settings'] = {'dt': ws.dt,
