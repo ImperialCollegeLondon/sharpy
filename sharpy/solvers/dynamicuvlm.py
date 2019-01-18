@@ -20,8 +20,12 @@ class DynamicUVLM(BaseSolver):
     Provides an aerodynamic only simulation in time by time stepping the solution. The type of aerodynamic solver is
     parsed as a setting.
 
+    To Do:
+        Clean timestep information for memory efficiency
+
     Warnings:
-        Under development
+        Under development. Issues encountered when using the linear UVLM as the aerodynamic solver with integration
+        order = 1.
 
     """
     solver_id = 'DynamicUVLM'
@@ -44,6 +48,9 @@ class DynamicUVLM(BaseSolver):
 
         self.settings_types['dt'] = 'float'
         self.settings_default['dt'] = 0.05
+
+        self.settings_types['include_unsteady_force_contribution'] = 'bool'
+        self.settings_default['include_unsteady_force_contribution'] = False
 
         self.settings_types['postprocessors'] = 'list(str)'
         self.settings_default['postprocessors'] = list()
@@ -95,16 +102,28 @@ class DynamicUVLM(BaseSolver):
         # struct info - only for orientation, no structural solution is performed
         struct_ini_step = self.data.structure.timestep_info[-1]
 
-
         for self.data.ts in range(len(self.data.aero.timestep_info),
                                   len(self.data.aero.timestep_info) + self.settings['n_time_steps'].value):
 
             aero_tstep = self.data.aero.timestep_info[-1]
+            self.aero_solver.update_custom_grid(struct_ini_step, aero_tstep)
 
-            self.data = self.aero_solver.run(aero_tstep,
-                                             struct_ini_step,
+            force_coeff = 0.0
+            if self.settings['include_unsteady_force_contribution']:
+                force_coeff = 1.0
+            if self.data.ts < 5:
+                force_coeff = 0.0
+
+            # run the solver
+            if force_coeff == 0.:
+                unsteady_contribution = False
+            else:
+                unsteady_contribution = True
+
+            self.data = self.aero_solver.run(aero_tstep=aero_tstep,
+                                             structure_tstep=struct_ini_step,
                                              convect_wake=True,
-                                             unsteady_contribution=True)
+                                             unsteady_contribution=unsteady_contribution)
 
             self.aero_solver.add_step()
             self.data.aero.timestep_info[-1] = aero_tstep.copy()
@@ -119,4 +138,5 @@ class DynamicUVLM(BaseSolver):
 
         if self.print_info:
             cout.cout_wrap('...Finished', 1)
+
         return self.data
