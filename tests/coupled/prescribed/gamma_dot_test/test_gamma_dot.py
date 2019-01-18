@@ -25,7 +25,7 @@ class Test_gamma_dot(unittest.TestCase):
     def set_up_test_case(self, aero_type, predictor, sparse, integration_order):
 
         # aero_type = 'lin'
-        ws = wings.Goland(M=8,
+        ws = wings.Goland(M=12,
                           N=4,
                           Mstar_fact=50,
                           u_inf=50,
@@ -35,11 +35,12 @@ class Test_gamma_dot(unittest.TestCase):
                           physical_time=0.1,
                           n_surfaces=2,
                           route='cases',
-                          case_name='goland_' + aero_type + 'test_gamma_dot')
+                          case_name='goland_' + aero_type + '_'+'P%g_S%g_I%g' %(predictor, sparse, integration_order))
 
         # Other test parameters
         ws.gust_intensity = 0.01
         ws.sigma = 1
+        ws.dt_factor = 1
 
         ws.clean_test_files()
         ws.update_derived_params()
@@ -55,6 +56,9 @@ class Test_gamma_dot(unittest.TestCase):
                                        'DynamicCoupled']
         ws.config['SHARPy']['write_screen'] = 'off'
 
+        # Remove newmark damping from structural solver settings
+        ws.config['DynamicCoupled']['structural_solver_settings']['newmark_damp'] = 0
+
         if aero_type == 'lin':
             ws.config['DynamicCoupled']['aero_solver'] = 'StepLinearUVLM'
             ws.config['DynamicCoupled']['aero_solver_settings'] = {'dt': ws.dt,
@@ -66,7 +70,7 @@ class Test_gamma_dot(unittest.TestCase):
                                                                                             'u_inf_direction': [1., 0.,
                                                                                                                 0.],
                                                                                             'gust_shape': 'continuous_sin',
-                                                                                            'gust_length': 5.,
+                                                                                            'gust_length': 2.,
                                                                                             'gust_intensity': ws.gust_intensity
                                                                                                               * ws.u_inf,
                                                                                             'offset': 2.,
@@ -93,7 +97,9 @@ class Test_gamma_dot(unittest.TestCase):
                 'rho': ws.rho,
                 'n_time_steps': ws.n_tstep,
                 'dt': ws.dt,
-                'gamma_dot_filtering': 3}
+                'gamma_dot_filtering': 0,
+                'part_of_fsi': True}
+            ws.config['DynamicCoupled']['include_unsteady_force_contribution'] = 'on'
         # Update settings file
         ws.config.write()
 
@@ -138,7 +144,7 @@ class Test_gamma_dot(unittest.TestCase):
 
         assert passed_test == True, \
             'Discrepancy between gamma_dot and that calculated using FD, relative difference is %.2f' % (
-                    error_derivative / gamma_dot_at_max)
+                    error_derivative / np.abs(gamma_dot_at_max))
 
     def test_case(self):
         for aero_type in ['lin', 'nlin']:
