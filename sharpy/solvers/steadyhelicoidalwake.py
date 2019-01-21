@@ -250,7 +250,6 @@ class SteadyHelicoidalWake(BaseSolver):
                                                 previous_aero_kstep.gamma[isurf][-1,:])/
                                                 np.linalg.norm(previous_aero_kstep.gamma[isurf][-1,:]))
 
-                print("circulation residual: ", np.log10(self.res_gamma))
                 # convergence
                 if self.res_gamma < self.settings['circulation_tolerance'].value:
                     break
