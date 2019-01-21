@@ -311,6 +311,8 @@ class DynamicCoupled(BaseSolver):
             # save the value of the vectors for normalising later
             self.base_q = np.linalg.norm(tstep.q.copy())
             self.base_dqdt = np.linalg.norm(tstep.dqdt.copy())
+            if self.base_dqdt == 0:
+                self.base_dqdt = 1.
             return False
 
         # we don't want this to converge before introducing the gamma_dot forces!

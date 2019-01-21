@@ -8,6 +8,7 @@
 # grid based on the input dictionaries.
 
 import ctypes as ct
+import warnings
 
 import numpy as np
 import scipy.interpolate
@@ -125,8 +126,8 @@ class Aerogrid(object):
                                                             self.aero_dimensions[:, 1])))
         cout.cout_wrap('  In total: %u wake panels' % (sum(self.aero_dimensions_star[:, 0]*
                                                            self.aero_dimensions_star[:, 1])))
-        cout.cout_wrap('  Total number of panels = %u' % (sum(self.aero_dimensions_star[:, 0]*
-                                                              self.aero_dimensions_star[:, 1]) +
+        cout.cout_wrap('  Total number of panels = %u' % (sum(self.aero_dimensions[:, 0]*
+                                                              self.aero_dimensions[:, 1]) +
                                                           sum(self.aero_dimensions_star[:, 0]*
                                                               self.aero_dimensions_star[:, 1])))
 
