@@ -240,13 +240,17 @@ class SteadyHelicoidalWake(BaseSolver):
                 # Compute the residual of gamma and gamma star
                 self.res_gamma = 0.0
                 for isurf in range(len(aero_kstep.gamma)):
-                    self.res_gamma += (np.linalg.norm(aero_kstep.gamma[isurf]-
-                                               previous_aero_kstep.gamma[isurf])/
-                                               np.linalg.norm(previous_aero_kstep.gamma[isurf]))
-                    self.res_gamma += (np.linalg.norm(aero_kstep.gamma_star[isurf]-
-                                               previous_aero_kstep.gamma_star[isurf])/
-                                               np.linalg.norm(previous_aero_kstep.gamma_star[isurf]))
+                    # self.res_gamma += (np.linalg.norm(aero_kstep.gamma[isurf]-
+                    #                            previous_aero_kstep.gamma[isurf])/
+                    #                            np.linalg.norm(previous_aero_kstep.gamma[isurf]))
+                    # self.res_gamma += (np.linalg.norm(aero_kstep.gamma_star[isurf]-
+                    #                            previous_aero_kstep.gamma_star[isurf])/
+                    #                            np.linalg.norm(previous_aero_kstep.gamma_star[isurf]))
+                    self.res_gamma += (np.linalg.norm(aero_kstep.gamma[isurf][-1,:]-
+                                                previous_aero_kstep.gamma[isurf][-1,:])/
+                                                np.linalg.norm(previous_aero_kstep.gamma[isurf][-1,:]))
 
+                print("circulation residual: ", np.log10(self.res_gamma))
                 # convergence
                 if self.res_gamma < self.settings['circulation_tolerance'].value:
                     break
@@ -262,11 +266,11 @@ class SteadyHelicoidalWake(BaseSolver):
                             force_coeff)
 
             # relaxation
-            relax_factor = self.relaxation_factor(k)
-            relax(self.data.structure,
-                  structural_kstep,
-                  previous_kstep,
-                  relax_factor)
+            # relax_factor = self.relaxation_factor(k)
+            # relax(self.data.structure,
+            #       structural_kstep,
+            #       previous_kstep,
+            #       relax_factor)
 
 
             if not self.settings['rigid_structure']:
