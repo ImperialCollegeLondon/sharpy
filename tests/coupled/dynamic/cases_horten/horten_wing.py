@@ -1015,7 +1015,7 @@ class HortenWing:
                                       'structural_substeps': 1,
                                       'dynamic_relaxation': 'on',
                                       'clean_up_previous_solution': 'on',
-                                      'structural_solver': 'NonLinearDynamicPrescribedStep',
+                                      'structural_solver': 'NonLinearDynamicCoupledStep',
                                       'structural_solver_settings': settings['NonLinearDynamicCoupledStep'],
                                       'aero_solver': 'StepUvlm',
                                       'aero_solver_settings': settings['StepUvlm'],
@@ -1069,8 +1069,9 @@ class HortenWing:
                                                                   }}
 
         settings['Modal'] = {'print_info': True,
-                             'use_undamped_modes': True,
-                             'NumLambda': 20,
+                             'use_undamped_modes': False,
+                             'NumLambda': 30,
+                             'rigid_body': False,
                              'write_modes_vtk': 'on',
                              'print_matrices': 'on',
                              'write_data': 'on',

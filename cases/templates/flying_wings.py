@@ -560,7 +560,8 @@ class FlyingWing():
         config['SaveData'] = {'folder': self.route+'/output/'}
 
         config['Modal'] = {'folder': self.route+'/output/',
-                           'NumLambda': 60,
+                           'NumLambda': 20,
+                           'rigid_body_modes': True,
                            'print_matrices': 'off',
                            'keep_linear_matrices': 'on',
                            'write_modes_vtk': True,
