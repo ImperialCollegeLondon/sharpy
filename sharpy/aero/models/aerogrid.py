@@ -512,25 +512,15 @@ def generate_strip(node_info, airfoil_db, aligned_grid, orientation_in=np.array(
     # add node coords
     for i_M in range(node_info['M'] + 1):
         strip_coordinates_a_frame[:, i_M] += node_info['beam_coord']
-<<<<<<< Updated upstream
 
-=======
-        
->>>>>>> Stashed changes
     # add quarter-chord disp
     delta_c = node_info['chord']/node_info['M']*(strip_coordinates_a_frame[:, -1] - strip_coordinates_a_frame[:, 0])
     if node_info['M_distribution'] == 'uniform':
         for i_M in range(node_info['M'] + 1):
                 strip_coordinates_a_frame[:, i_M] += 0.25*delta_c
     else:
-<<<<<<< Updated upstream
         warnings.warn("No quarter chord disp of grid for non 1-cos grid distributions implemented", UserWarning)
 
-=======
-        import warnings
-        warnings.warn("No quarter chord disp of grid for non 1-cos grid distributions implemented", UserWarning)
-        
->>>>>>> Stashed changes
     # rotation from a to g
     for i_M in range(node_info['M'] + 1):
         strip_coordinates_a_frame[:, i_M] = np.dot(node_info['cga'],
