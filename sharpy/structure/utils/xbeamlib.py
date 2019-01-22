@@ -386,7 +386,7 @@ def cbeam3_step_nlndyn(beam, settings, ts, tstep=None, dt=None):
     f_cbeam3_solv_nlndyn_step.restype = None
 
     if tstep is None:
-        tstep = beam.data.structure.timestep_info[-1]
+        tstep = beam.timestep_info[-1]
 
     n_elem = ct.c_int(beam.num_elem)
     n_nodes = ct.c_int(beam.num_node)

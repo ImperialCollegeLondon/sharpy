@@ -98,22 +98,27 @@ class PlotFlowField(BaseSolver):
         ny = grid[0].shape[2]
         nz = len(grid)
 
-        u = np.zeros((nx, ny, nz, 3), dtype=float)
+        u_ind = np.zeros((nx, ny, nz, 3), dtype=float)
         if self.settings['include_induced']:
             for iz in range(nz):
                 for ix in range(nx):
                     for iy in range(ny):
                         target_triad = grid[iz][:, ix, iy].astype(dtype=ct.c_double, order='F', copy=True)
-                        u[ix, iy, iz, :] = uvlmlib.uvlm_calculate_total_induced_velocity_at_point(self.data.aero.timestep_info[ts],
-                                                                                                  target_triad,
-                                                                                                  self.data.structure.timestep_info[ts].for_pos[0:3])
+                        u_ind[ix, iy, iz, :] = uvlmlib.uvlm_calculate_total_induced_velocity_at_point(self.data.aero.timestep_info[ts],
+                                                                                                      target_triad,
+                                                                                                      self.data.structure.timestep_info[ts].for_pos[0:3])
+            # Write the data
+            vtk_info.point_data.add_array(u_ind.reshape((-1, u_ind.shape[-1]), order='F')) # Reshape the array except from the last dimension
+            vtk_info.point_data.get_array(0).name = 'induced_velocity'
+            vtk_info.point_data.update()
 
         # Add the external velocities
-        u_ext = []
-        for iz in range(nz):
-            u_ext.append(np.zeros((3, nx, ny), dtype=ct.c_double))
+        u_ext_out = np.zeros((nx, ny, nz, 3), dtype=float)
 
         if self.settings['include_external']:
+            u_ext = []
+            for iz in range(nz):
+                u_ext.append(np.zeros((3, nx, ny), dtype=ct.c_double))
             self.velocity_generator.generate({'zeta': grid,
                                               'override': True,
                                               't': ts*self.settings['dt'].value,
@@ -121,16 +126,22 @@ class PlotFlowField(BaseSolver):
                                               'dt': self.settings['dt'].value,
                                               'for_pos': 0*self.data.structure.timestep_info[ts].for_pos},
                                              u_ext)
+            for iz in range(nz):
+                for ix in range(nx):
+                    for iy in range(ny):
+                        u_ext_out[ix, iy, iz, :] += u_ext[iz][:, ix, iy]
 
-        # Add both velocities
-        for iz in range(nz):
-            for ix in range(nx):
-                for iy in range(ny):
-                    u[ix, iy, iz, :] += u_ext[iz][:, ix, iy]
+            # Write the data
+            vtk_info.point_data.add_array(u_ext_out.reshape((-1, u_ext_out.shape[-1]), order='F')) # Reshape the array except from the last dimension
+            vtk_info.point_data.get_array(1).name = 'external_velocity'
+            vtk_info.point_data.update()
+
+        # add the data
+        u = u_ind + u_ext_out
 
         # Write the data
         vtk_info.point_data.add_array(u.reshape((-1, u.shape[-1]), order='F')) # Reshape the array except from the last dimension
-        vtk_info.point_data.get_array(0).name = 'Velocity'
+        vtk_info.point_data.get_array(2).name = 'velocity'
         vtk_info.point_data.update()
 
         filename = self.dir + "VelocityField_" + '%06u' % ts + ".vtk"
