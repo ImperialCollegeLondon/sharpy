@@ -179,6 +179,9 @@ class SteadyHelicoidalWake(BaseSolver):
 
     def run(self):
 
+        # TODO: Remove this solver. It is redundant after the implementation of shwuvlm and staticcoupledrbm
+        print("WARNING: SteadyHelicoidalWake is being kept for legacy, but it has been replaced by SHWUvlm and StaticCoupledRBM")
+
         # Define simulation variables
         # self.data.structure.timestep_info[-1].for_vel[:] = self.data.structure.dynamic_input[0]['for_vel']
         # self.data.structure.timestep_info[-1].for_acc[:] = [0.0,0.0,0.0,0.0,0.0,0.0]
