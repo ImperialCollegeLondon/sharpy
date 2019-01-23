@@ -244,6 +244,16 @@ class DynamicCoupled(BaseSolver):
                     unsteady_contribution = False
                 else:
                     unsteady_contribution = True
+
+                # check if nan anywhere.
+                # if yes, pdb.set_trace()
+                if np.isnan(structural_kstep.steady_applied_forces).any():
+                    print('NaN found in steady_applied_forces!')
+                    import pdb; pdb.set_trace()
+                if np.isnan(structural_kstep.unsteady_applied_forces).any():
+                    print('NaN found in unsteady_applied_forces!')
+                    import pdb; pdb.set_trace()
+
                 self.data = self.aero_solver.run(aero_kstep,
                                                  structural_kstep,
                                                  convect_wake=True,
