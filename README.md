@@ -1,5 +1,7 @@
 # Simulation of High Aspect Ratio Planes in Python [SHARPy]
 
+__Status__
+
 | Master  | Develop        |
 |---------|----------------|
 | [![Build Status](https://travis-ci.org/ImperialCollegeLondon/sharpy.svg?branch=master)](https://travis-ci.org/ImperialCollegeLondon/sharpy) | [![Build Status](https://travis-ci.org/ImperialCollegeLondon/sharpy.svg?branch=develop)](https://travis-ci.org/ImperialCollegeLondon/sharpy)|

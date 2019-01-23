@@ -88,7 +88,9 @@ class AerogridPlot(BaseSolver):
                 self.plot_wake()
             cout.cout_wrap('...Finished', 1)
         else:
-            self.ts = len(self.data.structure.timestep_info) - 1
+            aero_tsteps = len(self.data.aero.timestep_info) - 1
+            struct_tsteps = len(self.data.structure.timestep_info) - 1
+            self.ts = np.max((aero_tsteps, struct_tsteps))
             self.plot_body()
             self.plot_wake()
         return self.data

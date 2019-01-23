@@ -19,7 +19,7 @@ flow = ['BeamLoader',
         # 'NonLinearStatic',
         # 'StaticUvlm',
         # 'Trim',
-        # 'StaticTrim',
+        'StaticTrim',
         'StaticCoupled',
         'BeamLoads',
         'AerogridPlot',
@@ -36,7 +36,7 @@ in2m = 0.0254
 lbf2n = 4.448
 
 # FLIGHT CONDITIONS
-u_inf = 36.0  # [m/s] Flight velocity
+u_inf = 30.0  # [m/s] Flight velocity
 rho = 1.225   # [kg/m3] Air density
 
 # TRIM CONDITIONS
@@ -45,10 +45,12 @@ rho = 1.225   # [kg/m3] Air density
 # cs_deflection = -0.03837663034221173*np.pi/180
 # thrust = 1.524523442845407
 
-# 19 elements
-alpha_rad = 2.182626551732702*np.pi/180
-cs_deflection = -0.6353218885556821*np.pi/180
-thrust = 1.4699264687263889
+# 19 elementAlpha: 2.8772525256950394
+# CS deflection: -1.608005361404445
+# Thrust: 1.8471831510004861s
+alpha_rad = 2.8772525256950394*np.pi/180
+cs_deflection = -1.608005361404445*np.pi/180
+thrust = 1.8471831510004861
 
 # sigma_richards
 # alpha_rad = 2.051631197222328*np.pi/180
@@ -70,7 +72,7 @@ roll = 0.0
 gravity = 'on'
 
 sigma = 1.
-sigma_richards = 10.
+sigma_richards = 1.
 dihedral = 0*np.pi/180
 
 # GUST CONDITIONS
@@ -145,7 +147,7 @@ lumped_mass_position[2] = [0., 0., 0.]
 # NUMERICAL DISCRETISATION
 # SPATIAL
 wake_length = 12
-horseshoe_on = False
+horseshoe_on = True
 m = 4
 n_elem_fuselage = 1
 n_elem_wing = 11
@@ -624,6 +626,9 @@ def generate_aero_file():
     mid_chord = np.array(chord[:,1],copy=True)
     chord[:, 1] = chord[:, 2]
     chord[:, 2] = mid_chord
+    mid_ea = np.array(elastic_axis[:, 1], copy=True)
+    elastic_axis[:, 1] = elastic_axis[:, 2]
+    elastic_axis[:, 2] = mid_ea
 
     with h5.File(route + '/' + case_name + '.aero.h5', 'a') as h5file:
         airfoils_group = h5file.create_group('airfoils')
@@ -837,7 +842,7 @@ def generate_solver_file(horseshoe=False):
                                   'final_relaxation_factor': 0.0,
                                   'n_time_steps': n_tstep,
                                   'dt': dt,
-                                  'include_unsteady_force_contribution': 'on',
+                                  'include_unsteady_force_contribution': 'off',
                                   'postprocessors': ['BeamLoads', 'StallCheck', 'BeamPlot', 'AerogridPlot'],
                                   'postprocessors_settings': {'BeamLoads': {'folder': route + '/output/',
                                                                             'csv_output': 'off'},
@@ -897,7 +902,7 @@ def generate_solver_file(horseshoe=False):
                                       'unsteady': 'on'
                                       }
     settings['BeamPlot'] = {'folder': route + '/output/',
-                          'include_rbm': 'off',
+                          'include_rbm': 'on',
                           'include_applied_forces': 'on'}
 
     settings['BeamLoads'] = {'folder': route + '/output/',

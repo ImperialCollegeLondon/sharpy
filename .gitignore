@@ -117,3 +117,15 @@ output*/
 tests/coupled/dynamic/horten/BFF/
 
 tests/coupled/dynamic/horten/BFF2/
+
+tests/coupled/prescribed/goland_linear/model_diff/
+
+
+# linear tools / tests cases
+*.prof
+sharpy/linear/test/test_cases/*
+tests/linear/uvlm/figs/*
+tests/linear/uvlm/res/*
+cases/linear/coupled/figs/*
+cases/linear/coupled/res/*
+

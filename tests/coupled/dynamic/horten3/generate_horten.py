@@ -142,7 +142,7 @@ lumped_mass_position[2] = [0., 0., 0.]
 # NUMERICAL DISCRETISATION
 # SPATIAL
 wake_length = 12
-horseshoe_on = False
+horseshoe_on = True
 m = 6
 n_elem_fuselage = 1
 n_elem_wing = 19
