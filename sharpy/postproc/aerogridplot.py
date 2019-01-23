@@ -8,6 +8,7 @@ import sharpy.utils.cout_utils as cout
 from sharpy.utils.settings import str2bool
 from sharpy.utils.solver_interface import solver, BaseSolver
 import sharpy.utils.settings as settings
+import sharpy.aero.utils.uvlmlib as uvlmlib
 
 
 @solver
@@ -45,6 +46,9 @@ class AerogridPlot(BaseSolver):
         self.settings_types['dt'] = 'float'
         self.settings_default['dt'] = 0.
 
+        self.settings_types['include_velocities'] = 'bool'
+        self.settings_default['include_velocities'] = False
+
         self.settings = None
         self.data = None
 
@@ -77,6 +81,7 @@ class AerogridPlot(BaseSolver):
                               self.data.settings['SHARPy']['case'])
 
     def run(self, online=False):
+        # TODO: Create a dictionary to plot any variable as in beamplot
         if not online:
             for self.ts in range(self.ts_max):
                 self.plot_body()
@@ -113,6 +118,8 @@ class AerogridPlot(BaseSolver):
             point_unsteady_cf = np.zeros((point_data_dim, 3))
             zeta_dot = np.zeros((point_data_dim, 3))
             u_inf = np.zeros((point_data_dim, 3))
+            if self.settings['include_velocities']:
+                vel = np.zeros((point_data_dim, 3))
             counter = -1
 
             # coordinates of corners
@@ -154,6 +161,8 @@ class AerogridPlot(BaseSolver):
                         u_inf[node_counter, :] = self.data.aero.timestep_info[self.ts].u_ext[i_surf][0:3, i_m, i_n]
                     except AttributeError:
                         pass
+                    if self.settings['include_velocities']:
+                        vel[node_counter, :] = uvlmlib.uvlm_calculate_total_induced_velocity_at_point(self.data.aero.timestep_info[self.ts],coords[node_counter, :])
                     if i_n < dims[1] and i_m < dims[0]:
                         counter += 1
                     else:
@@ -202,6 +211,9 @@ class AerogridPlot(BaseSolver):
             ug.point_data.get_array(4).name = 'zeta_dot'
             ug.point_data.add_array(u_inf)
             ug.point_data.get_array(5).name = 'u_inf'
+            if self.settings['include_velocities']:
+                ug.point_data.add_array(vel)
+                ug.point_data.get_array(6).name = 'velocity'
             write_data(ug, filename)
 
     def plot_wake(self):

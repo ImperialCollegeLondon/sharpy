@@ -244,6 +244,16 @@ class DynamicCoupled(BaseSolver):
                     unsteady_contribution = False
                 else:
                     unsteady_contribution = True
+
+                # check if nan anywhere.
+                # if yes, pdb.set_trace()
+                if np.isnan(structural_kstep.steady_applied_forces).any():
+                    print('NaN found in steady_applied_forces!')
+                    import pdb; pdb.set_trace()
+                if np.isnan(structural_kstep.unsteady_applied_forces).any():
+                    print('NaN found in unsteady_applied_forces!')
+                    import pdb; pdb.set_trace()
+
                 self.data = self.aero_solver.run(aero_kstep,
                                                  structural_kstep,
                                                  convect_wake=True,
@@ -311,6 +321,8 @@ class DynamicCoupled(BaseSolver):
             # save the value of the vectors for normalising later
             self.base_q = np.linalg.norm(tstep.q.copy())
             self.base_dqdt = np.linalg.norm(tstep.dqdt.copy())
+            if self.base_dqdt == 0:
+                self.base_dqdt = 1.
             return False
 
         # we don't want this to converge before introducing the gamma_dot forces!

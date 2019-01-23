@@ -18,6 +18,8 @@ class StaticLinearUVLM(BaseSolver):
     def __init__(self):
 
         # TODO: add full settings
+        self.settings_types = dict()
+        self.settings_default = dict()
 
         self.settings_types['rho'] = 'float'
         self.settings_default['rho'] = 1.225
