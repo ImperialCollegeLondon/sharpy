@@ -6,8 +6,6 @@
 
 import numpy as np
 import scipy.optimize as scopt
-# from IPython import embed
-
 
 
 def fpoly(kv,B0,B1,B2,dyv,ddyv):
@@ -314,7 +312,7 @@ if __name__=='__main__':
 	fn=fs/2.
 	kn=2.*np.pi*fn
 	kv=np.linspace(0,kn,301)
-	SS=scsig.dlti(A,B,C,D,dt=ds)
+	SS=libss.ss(A,B,C,D,dt=ds)
 	Cv=libss.freqresp(SS,kv)
 	Cv=Cv[0,0,:]
 
