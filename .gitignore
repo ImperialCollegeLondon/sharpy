@@ -111,6 +111,8 @@ tests/uvlm/\.DS_Store
 
 output*/
 
+snapshots/
+
 
 .DS_Store
 

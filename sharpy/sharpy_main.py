@@ -15,6 +15,7 @@
 # # ------------
 import sharpy.utils.cout_utils as cout
 import sys
+import pickle
 
 
 def main(args):
@@ -34,6 +35,7 @@ def main(args):
 
     """
     import time
+    import argparse
 
     import sharpy.utils.input_arg as input_arg
     import sharpy.utils.solver_interface as solver_interface
@@ -50,11 +52,29 @@ def main(args):
     # timing
     t = time.process_time()
 
+    parser = argparse.ArgumentParser(prog='SHARPy', description=
+    """This is the executable for Simulation of High Aspect Ratio Planes.\n
+    Imperial College London 2018""")
+    parser.add_argument('input_filename', help='path to the *.solver.txt input file', type=str)
+    parser.add_argument('-r', '--restart', help='restart the solution with a given snapshot', type=str, default=None)
+    args = parser.parse_args()
+
     settings = input_arg.read_settings(args)
 
+    if args.restart is None:
+        # run preSHARPy
+        data = PreSharpy(settings)
+    else:
+        try:
+            with open(args.restart, 'rb') as f:
+                data = pickle.load(f)
+        except FileNotFoundError:
+            raise FileNotFoundError('The file specified for the snapshot restart (-r) does not exist. Please check.')
+
+        # update the settings
+        data.update_settings(settings)
+
     # Loop for the solvers specified in *.solver.txt['SHARPy']['flow']
-    # run preSHARPy
-    data = PreSharpy(settings)
     for solver_name in settings['SHARPy']['flow']:
         solver = solver_interface.initialise_solver(solver_name)
         solver.initialise(data)

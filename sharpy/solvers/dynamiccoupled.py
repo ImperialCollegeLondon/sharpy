@@ -124,7 +124,7 @@ class DynamicCoupled(BaseSolver):
         self.settings_default['postprocessors_settings'] = dict()
 
         self.settings_types['cleanup_previous_solution'] = 'bool'
-        self.settings_default['cleanup_previous_solution'] = True
+        self.settings_default['cleanup_previous_solution'] = False
 
         self.settings_types['include_unsteady_force_contribution'] = 'bool'
         self.settings_default['include_unsteady_force_contribution'] = False
