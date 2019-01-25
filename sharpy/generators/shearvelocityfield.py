@@ -13,6 +13,9 @@ class ShearVelocityField(generator_interface.BaseGenerator):
 
     The object creates a steady velocity field with shear
 
+    .. math:: \hat{u} = \hat{u}\_inf ( \frac{h - h\_{cor}}{h\_ref} ) ^shear\_exp
+    .. math:: h = zeta \cdot shear\_direction
+
     Args:
         in_dict (dict): Input data in the form of dictionary. See acceptable entries below:
 
@@ -24,6 +27,7 @@ class ShearVelocityField(generator_interface.BaseGenerator):
             ``shear_direction``  ``list(float)``  ``x``, ``y`` and ``z`` relative components of the direction along which shear applies  ``[0.0, 0.0, 1.0]``
             ``shear_exp``        ``float``        Exponent of the shear law                                               ``0``
             ``h_ref``            ``float``        Reference height at which ``u_inf``  is defined                         ``1.``
+            ``h_cor``            ``float``        Height to correct shear law                                             ``0.``
             ===================  ===============  ======================================================================  ===================
 
     Attributes:
@@ -61,11 +65,15 @@ class ShearVelocityField(generator_interface.BaseGenerator):
         self.settings_types['h_ref'] = 'float'
         self.settings_default['h_ref'] = 1.
 
+        self.settings_types['h_corr'] = 'float'
+        self.settings_default['h_corr'] = 0.
+
         self.u_inf = 0.
         self.u_inf_direction = None
         self.shear_direction = None
         self.shear_exp = None
         self.h_ref = None
+        self.h_corr = None
 
     def initialise(self, in_dict):
         self.in_dict = in_dict
@@ -76,6 +84,7 @@ class ShearVelocityField(generator_interface.BaseGenerator):
         self.shear_direction = self.in_dict['shear_direction']
         self.shear_exp = self.in_dict['shear_exp']
         self.h_ref = self.in_dict['h_ref']
+        self.h_corr = self.in_dict['h_corr']
 
     def generate(self, params, uext):
         zeta = params['zeta']
@@ -85,5 +94,5 @@ class ShearVelocityField(generator_interface.BaseGenerator):
                 uext[i_surf].fill(0.0)
             for i in range(zeta[i_surf].shape[1]):
                 for j in range(zeta[i_surf].shape[2]):
-                    h = np.dot(zeta[i_surf][:, i, j], self.shear_direction)
+                    h = np.dot(zeta[i_surf][:, i, j], self.shear_direction) + self.h_corr
                     uext[i_surf][:, i, j] += self.u_inf*self.u_inf_direction*(h/self.h_ref)**self.shear_exp
