@@ -13,7 +13,7 @@ class ShearVelocityField(generator_interface.BaseGenerator):
 
     The object creates a steady velocity field with shear
 
-    .. math:: \hat{u} = \hat{u}\_inf ( \frac{h - h\_{cor}}{h\_ref} ) ^shear\_exp
+    .. math:: \hat{u} = \hat{u}\_inf ( \frac{h - h\_{corr}}{h\_ref} ) ^shear\_exp
     .. math:: h = zeta \cdot shear\_direction
 
     Args:
@@ -27,7 +27,7 @@ class ShearVelocityField(generator_interface.BaseGenerator):
             ``shear_direction``  ``list(float)``  ``x``, ``y`` and ``z`` relative components of the direction along which shear applies  ``[0.0, 0.0, 1.0]``
             ``shear_exp``        ``float``        Exponent of the shear law                                               ``0``
             ``h_ref``            ``float``        Reference height at which ``u_inf``  is defined                         ``1.``
-            ``h_cor``            ``float``        Height to correct shear law                                             ``0.``
+            ``h_corr``            ``float``        Height to correct shear law                                             ``0.``
             ===================  ===============  ======================================================================  ===================
 
     Attributes:
