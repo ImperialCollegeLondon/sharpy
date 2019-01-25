@@ -3,6 +3,7 @@ import sys
 import sharpy.sharpy_main
 import warnings
 
+warnings.warn('run_sharpy will be deprecated soon! Please use ``sharpy`` instead!')
 data = None
 with warnings.catch_warnings():
     warnings.simplefilter('ignore')
