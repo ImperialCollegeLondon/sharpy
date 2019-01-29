@@ -1,6 +1,14 @@
 '''
-Modified Goland wing static analysis parametric study:
-- rigid structure with change in input speed
+Modified Goland wing static analysis parametric study.
+
+The script reads result from a geometrically-exact analysis (run_param_rigid) 
+and compares them against those obtained through linearisation of the UVLM 
+equations.
+
+Reference: this test case is as per Sec V.B.1 of:
+	S. Maraniello % R.Palacios, "State-space realizations and internal balancing in
+	potential-flow aerodynamics with arbitrary kinematics", AIAA J., 2018,
+but with less points and on a courser UVLM grid.
 '''
 import time
 import copy
@@ -173,11 +181,12 @@ def extract_from_data(	data,
 
 
 # Define Parametrisation
-M,N,Mstar_fact= 4,40,20 # HF (flex/rig)
+# M,N,Mstar_fact= 4,40,20 # HF (flex/rig)
+M,N,Mstar_fact= 4,32,18 # HF (flex/rig)
 
-Rigid=1#True
+Rigid=1
 # linearisation point
-PPlist=[5,25]
+PPlist=[3,16]
 
 
 Nsurf=1
@@ -185,7 +194,8 @@ u_inf=150.
 ZetaPole=np.zeros((3,))
 
 # Flying properties
-pvec=np.linspace(-1,1,31)
+# pvec=np.linspace(-1,1,31)
+pvec=np.linspace(-1,1,19)
 
 
 AlphaFoRA=0.0
@@ -364,20 +374,20 @@ figleg.savefig(figsfold+'/legend.pdf')
 #plt.show()
 plt.close('all')
 
-### save output
-class OutData():
-	name='plot'
-	pass
-out=OutData()
-out.Fsc=Fsc
-out.Msc=Msc
-out.Faero=Faero
-out.Maero=Maero
-out.Fref=Fref
-out.Fref=Fref
-out.AlphaInfVecDeg=AlphaInfVecDeg
-out.SideVecDeg=SideVecDeg
-h5.saveh5(figsfold,savename+'.h5',*(out,),permission='w')
+# ### save output
+# class OutData():
+# 	name='plot'
+# 	pass
+# out=OutData()
+# out.Fsc=Fsc
+# out.Msc=Msc
+# out.Faero=Faero
+# out.Maero=Maero
+# out.Fref=Fref
+# out.Fref=Fref
+# out.AlphaInfVecDeg=AlphaInfVecDeg
+# out.SideVecDeg=SideVecDeg
+# h5.saveh5(figsfold,savename+'.h5',*(out,),permission='w')
 
 
 

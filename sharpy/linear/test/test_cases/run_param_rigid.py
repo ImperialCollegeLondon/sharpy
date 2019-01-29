@@ -1,5 +1,14 @@
 '''
-Parametric study with angle of attack.
+Modified Goland wing static analysis parametric study.
+
+The script calculates the steady aerodynamic loads for a wing at different
+flying conditions. Output data are used in run_lin_aiaa for comparison against
+results provided by the linear UVLM.
+
+Reference: this test case is as per Sec V.B.1 of:
+	S. Maraniello % R.Palacios, "State-space realizations and internal balancing in
+	potential-flow aerodynamics with arbitrary kinematics", AIAA J., 2018,
+but with less points and on a courser UVLM grid.
 '''
 
 import copy
@@ -18,16 +27,14 @@ import cases.templates.flying_wings as flying_wings
 # ------------------------------------------------------------------------------
 
 # Define Parametrisation
-M,N,Mstar_fact= 20,40,20
-# M,N,Mstar_fact= 12,40,16
-M,N,Mstar_fact= 4,40,20
+# M,N,Mstar_fact= 20,40,20
+M,N,Mstar_fact= 4,32,18
 Nsurf=1
 u_inf=150.
 
-
 # Flying properties
-#pvec=np.linspace(-1,1,61)
-pvec=np.linspace(-1,1,31)
+# pvec=np.linspace(-1,1,31)
+pvec=np.linspace(-1,1,19)
 
 AlphaFoRA=0.
 SideMidDeg=0.
@@ -69,8 +76,8 @@ for ii in range(Npoints):
 	quat_wind=algebra.euler2quat(-np.pi/180.*np.array([0.,AlphaInfVecDeg[ii],0.]))
 	u_inf_dir=np.dot( algebra.quat2rotation(quat_wind),np.array([1.,0.,0.]))
 
-	ws.main_ea-=.25/M
-	ws.main_cg-=.25/M
+	# ws.main_ea-=.25/M
+	# ws.main_cg-=.25/M
 
 	ws.root_airfoil_P = 4
 	ws.root_airfoil_M = 2

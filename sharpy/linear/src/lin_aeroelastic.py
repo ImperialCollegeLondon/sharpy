@@ -216,8 +216,6 @@ class LinAeroEla():
                 - :math:`\\mathbf{C}^{AB}`
                 - accuracy of :math:`X^B=\\mathbf{C}^{AB}*X^A`
                 - accuracy of :math:`X^G` and :math:`X^A`
-
-
         """
 
         data = self.data
@@ -234,6 +232,9 @@ class LinAeroEla():
 
         Kss = np.zeros((self.num_dof_flex, self.num_dof_flex))
         Ksr = np.zeros((self.num_dof_flex, self.num_dof_rig))
+        Krs = np.zeros((self.num_dof_rig, self.num_dof_flex))
+        Krr = np.zeros((self.num_dof_rig, self.num_dof_rig))
+
 
         # get projection matrix A->G
         # (and other quantities indep. from nodal position)
@@ -285,6 +286,8 @@ class LinAeroEla():
             Cab = algebra.crv2rotation(psi)
             Cba = Cab.T
             Cbg = np.dot(Cab.T, Cag)
+            Tan = algebra.crv2tan(psi)
+
 
             ### str -> aero mapping
             # some nodes may be linked to multiple surfaces...
@@ -306,9 +309,6 @@ class LinAeroEla():
                     ii_vert = [Kzeta_start + np.ravel_multi_index(
                         (cc, mm, nn), shape_zeta) for cc in range(3)]
 
-                    # get aero force
-                    faero = tsaero.forces[ss][:3, mm, nn]
-
                     # get position vectors
                     zetag = tsaero.zeta[ss][:, mm, nn]  # in G FoR, w.r.t. origin A-G
                     zetaa = np.dot(Cag, zetag)  # in A FoR, w.r.t. origin A-G
@@ -317,12 +317,18 @@ class LinAeroEla():
 
                     # get rotation terms
                     Xbskew = algebra.skew(Xb)
-                    Tan = algebra.crv2tan(psi)
                     XbskewTan = np.dot(Xbskew, Tan)
 
                     # get velocity terms
                     zetag_dot = tsaero.zeta_dot[ss][:, mm, nn]  # in G FoR, w.r.t. origin A-G
                     zetaa_dot = np.dot(Cag, zetag_dot)  # in A FoR, w.r.t. origin A-G
+
+                    # get aero force
+                    faero = tsaero.forces[ss][:3, mm, nn]
+                    faero_a = np.dot(Cag,faero)
+                    maero_g = np.cross(Xg,faero)
+                    maero_b = np.dot(Cbg,maero_g)
+
 
                     ### ---------------------------------------- allocate Kdisp
 
@@ -339,6 +345,7 @@ class LinAeroEla():
                     # # ### w.r.t. quaternion (attitude changes)
                     Kdisp[np.ix_(ii_vert, jj_quat)] = \
                         algebra.der_Cquat_by_v(tsstr.quat, zetaa)
+
 
                     ### ------------------------------------ allocate Kvel_disp
 
@@ -368,6 +375,7 @@ class LinAeroEla():
                     Kvel_disp[np.ix_(ii_vert, jj_quat)] = \
                         algebra.der_Cquat_by_v(tsstr.quat, zetaa_dot)
 
+
                     ### ------------------------------------- allocate Kvel_vel
 
                     if bc_here != 1:
@@ -384,15 +392,16 @@ class LinAeroEla():
 
                     # wrt rate of change of quaternion: not implemented!
 
+
                     ### -------------------------------------- allocate Kforces
 
                     if bc_here != 1:
                         # nodal forces
-                        Kforces[np.ix_(jj_tra, ii_vert)] += Cbg
+                        Kforces[np.ix_(jj_tra, ii_vert)] += Cag
 
                         # nodal moments
                         Kforces[np.ix_(jj_rot, ii_vert)] += \
-                            np.dot(Cbg, algebra.skew(Xg))
+                                 np.dot( Tan.T, np.dot(Cbg, algebra.skew(Xg)) )
                     # or, equivalently, np.dot( algebra.skew(Xb),Cbg)
 
                     # total forces
@@ -405,20 +414,46 @@ class LinAeroEla():
                     # quaternion equation
                     # null, as not dep. on external forces
 
+
                     ### --------------------------------------- allocate Kstiff
 
+                    ### flexible dof equations (Kss and Ksr)
                     if bc_here != 1:
                         # forces
-                        Dfdcrv = algebra.der_CcrvT_by_v(psi, np.dot(Cag, faero))
-                        Dfdquat = np.dot(Cba, algebra.der_CquatT_by_v(tsstr.quat, faero))
-                        Kss[np.ix_(jj_tra, jj_rot)] -= Dfdcrv
-                        Ksr[jj_tra, -4:] -= Dfdquat
+                        Ksr[jj_tra, -4:] -= algebra.der_CquatT_by_v(tsstr.quat, faero)
 
-                        # moments
-                        Kss[np.ix_(jj_rot, jj_rot)] -= np.dot(Xbskew, Dfdcrv)
-                        Ksr[jj_rot, -4:] -= np.dot(Xbskew, Dfdquat)
+                        ### moments
+                        TanTXbskew=np.dot(Tan.T,Xbskew)
+                        # contrib. of TanT (dpsi)
+                        Kss[np.ix_(jj_rot, jj_rot)]-=algebra.der_TanT_by_xv(psi,maero_b)
+                        # contrib of delta aero moment (dpsi)
+                        Kss[np.ix_(jj_rot, jj_rot)]-=\
+                            np.dot( TanTXbskew, algebra.der_CcrvT_by_v(psi, np.dot(Cag,faero) ))
+                        # contribution of delta aero moment (dquat)
+                        Ksr[jj_rot, -4:] -=\
+                                np.dot( TanTXbskew,
+                                    np.dot( Cba, 
+                                        algebra.der_CquatT_by_v(tsstr.quat,faero)))
 
-                # embed()
+
+                    ### rigid body eqs (Krs and Krr)
+    
+                    if bc_here != 1:
+                        # moments contribution due to delta_Ra (+ sign intentional)
+                        Krs[3:6,jj_tra] += algebra.skew( faero_a ) 
+                        # moment contribution due to delta_psi (+ sign intentional)
+                        Krs[3:6,jj_rot] += np.dot(algebra.skew(faero_a),
+                                                  algebra.der_Ccrv_by_v(psi, Xb))
+
+                    # total force
+                    Krr[:3,-4:] -= algebra.der_CquatT_by_v(tsstr.quat,faero)
+
+                    # total moment contribution due to quaternion
+                    Krr[3:6,-4:] -= algebra.der_CquatT_by_v(tsstr.quat, np.cross(zetag,faero) )
+                    Krr[3:6,-4:] += np.dot( 
+                                        np.dot(Cag,algebra.skew(faero)), 
+                                        algebra.der_Cquat_by_v(tsstr.quat,np.dot(Cab,Xb))) 
+
 
         # transfer
         self.Kdisp = Kdisp
@@ -429,6 +464,8 @@ class LinAeroEla():
         # stiffening factors
         self.Kss = Kss
         self.Ksr = Ksr
+        self.Krs = Krs 
+        self.Krr = Krr
 
 
 if __name__ == '__main__':

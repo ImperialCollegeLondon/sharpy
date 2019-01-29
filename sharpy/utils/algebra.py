@@ -1128,3 +1128,16 @@ def der_quat_wrt_crv(quat0):
     Der[1:,:]=-0.5*( -quat0[0]*np.eye(3) - skew(quat0[1:]) )
     return Der
 
+
+
+def cross3(v,w):
+    """
+    Computes the cross product of two vectors (v and w) with size 3
+    """
+
+    res = np.zeros((3,),)
+    res[0] = v[1]*w[2] - v[2]*w[1]
+    res[1] = -v[0]*w[2] + v[2]*w[0]
+    res[2] = v[0]*w[1] - v[1]*w[0]
+
+    return res
