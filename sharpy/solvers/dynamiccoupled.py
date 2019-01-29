@@ -245,15 +245,6 @@ class DynamicCoupled(BaseSolver):
                 else:
                     unsteady_contribution = True
 
-                # check if nan anywhere.
-                # if yes, pdb.set_trace()
-                if np.isnan(structural_kstep.steady_applied_forces).any():
-                    print('NaN found in steady_applied_forces!')
-                    import pdb; pdb.set_trace()
-                if np.isnan(structural_kstep.unsteady_applied_forces).any():
-                    print('NaN found in unsteady_applied_forces!')
-                    import pdb; pdb.set_trace()
-
                 self.data = self.aero_solver.run(aero_kstep,
                                                  structural_kstep,
                                                  convect_wake=True,
@@ -264,6 +255,15 @@ class DynamicCoupled(BaseSolver):
                 self.map_forces(aero_kstep,
                                 structural_kstep,
                                 force_coeff)
+
+                # check if nan anywhere.
+                # if yes, pdb.set_trace()
+                if np.isnan(structural_kstep.steady_applied_forces).any():
+                    print('NaN found in steady_applied_forces!')
+                    import pdb; pdb.set_trace()
+                if np.isnan(structural_kstep.unsteady_applied_forces).any():
+                    print('NaN found in unsteady_applied_forces!')
+                    import pdb; pdb.set_trace()
 
                 # relaxation
                 relax_factor = self.relaxation_factor(k)
@@ -315,6 +315,7 @@ class DynamicCoupled(BaseSolver):
     def convergence(self, k, tstep, previous_tstep):
         # check for non-convergence
         if not all(np.isfinite(tstep.q)):
+            import pdb; pdb.set_trace()
             raise Exception('***Not converged! There is a NaN value in the forces!')
 
         if not k:
