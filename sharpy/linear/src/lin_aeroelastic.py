@@ -192,30 +192,36 @@ class LinAeroEla():
 
     def get_gebm2uvlm_gains(self):
         """
-        Gain matrix to transfer GEBM dofs to UVLM lattice vertices and stiffening
-        term due to non-zero forces at the linearisation point.
+        Provides:
+            - the gain matrices required to connect the linearised GEBM and UVLM
+             inputs/outputs
+            - the stiffening and damping factors to be added to the linearised 
+            GEBM equations in order to account for non-zero aerodynamic loads at
+            the linearisation point.
 
-        The function produces the matrices:
+        The function produces the gain matrices:
 
-            - ``Kdisp``: from GEBM to UVLM grid displacements
+            - ``Kdisp``: gains from GEBM to UVLM grid displacements
             - ``Kvel_disp``: influence of GEBM dofs displacements to UVLM grid
               velocities.
             - ``Kvel_vel``: influence of GEBM dofs displacements to UVLM grid
               displacements.
-            - ``Kforces`` (UVLM->GEBM) dimensions are the transpose than the Kdisp and
-              Kvel* matrices. Hence, when allocation this term, ``ii`` and ``jj`` indices
-              will unintuitively refer to columns and rows, respectively.
-            - ``Kss``: stiffness factor accounting for non-zero forces at the
-              linearisation point. (flexible dof -> flexible dof)
-            - ``Ksr``: stiffness factor accounting for non-zero forces at the
-              linearisation point. (rigid dof -> flexible dof)
+            - ``Kforces`` (UVLM->GEBM) dimensions are the transpose than the 
+            Kdisp and Kvel* matrices. Hence, when allocation this term, ``ii`` 
+            and ``jj`` indices will unintuitively refer to columns and rows, 
+            respectively.
 
+        And the stiffening/damping terms accounting for non-zero aerodynamic
+        forces at the linearisation point:
 
-        Notes:
-            - The following terms have been verified against SHARPy (to ensure same sign conventions and accuracy):
-                - :math:`\\mathbf{C}^{AB}`
-                - accuracy of :math:`X^B=\\mathbf{C}^{AB}*X^A`
-                - accuracy of :math:`X^G` and :math:`X^A`
+            - ``Kss``: stiffness factor (flexible dof -> flexible dof) accounting 
+            for non-zero forces at the linearisation point. 
+            - ``Csr``: damping factor  (rigid dof -> flexible dof)
+            - ``Crs``: damping factor (flexible dof -> rigid dof)
+            - ``Crr``: damping factor (rigid dof -> rigid dof)
+
+        Note that the stiffening/damping terms need to be added to the GEBM
+        stiffness and damping matrices.
         """
 
         data = self.data
@@ -231,9 +237,9 @@ class LinAeroEla():
         Kforces = np.zeros((self.num_dof_str, 3 * self.linuvlm.Kzeta))
 
         Kss = np.zeros((self.num_dof_flex, self.num_dof_flex))
-        Ksr = np.zeros((self.num_dof_flex, self.num_dof_rig))
-        Krs = np.zeros((self.num_dof_rig, self.num_dof_flex))
-        Krr = np.zeros((self.num_dof_rig, self.num_dof_rig))
+        Csr = np.zeros((self.num_dof_flex, self.num_dof_rig))
+        Crs = np.zeros((self.num_dof_rig, self.num_dof_flex))
+        Crr = np.zeros((self.num_dof_rig, self.num_dof_rig))
 
 
         # get projection matrix A->G
@@ -417,10 +423,10 @@ class LinAeroEla():
 
                     ### --------------------------------------- allocate Kstiff
 
-                    ### flexible dof equations (Kss and Ksr)
+                    ### flexible dof equations (Kss and Csr)
                     if bc_here != 1:
                         # forces
-                        Ksr[jj_tra, -4:] -= algebra.der_CquatT_by_v(tsstr.quat, faero)
+                        Csr[jj_tra, -4:] -= algebra.der_CquatT_by_v(tsstr.quat, faero)
 
                         ### moments
                         TanTXbskew=np.dot(Tan.T,Xbskew)
@@ -430,27 +436,27 @@ class LinAeroEla():
                         Kss[np.ix_(jj_rot, jj_rot)]-=\
                             np.dot( TanTXbskew, algebra.der_CcrvT_by_v(psi, np.dot(Cag,faero) ))
                         # contribution of delta aero moment (dquat)
-                        Ksr[jj_rot, -4:] -=\
+                        Csr[jj_rot, -4:] -=\
                                 np.dot( TanTXbskew,
                                     np.dot( Cba, 
                                         algebra.der_CquatT_by_v(tsstr.quat,faero)))
 
 
-                    ### rigid body eqs (Krs and Krr)
+                    ### rigid body eqs (Crs and Crr)
     
                     if bc_here != 1:
                         # moments contribution due to delta_Ra (+ sign intentional)
-                        Krs[3:6,jj_tra] += algebra.skew( faero_a ) 
+                        Crs[3:6,jj_tra] += algebra.skew( faero_a ) 
                         # moment contribution due to delta_psi (+ sign intentional)
-                        Krs[3:6,jj_rot] += np.dot(algebra.skew(faero_a),
+                        Crs[3:6,jj_rot] += np.dot(algebra.skew(faero_a),
                                                   algebra.der_Ccrv_by_v(psi, Xb))
 
                     # total force
-                    Krr[:3,-4:] -= algebra.der_CquatT_by_v(tsstr.quat,faero)
+                    Crr[:3,-4:] -= algebra.der_CquatT_by_v(tsstr.quat,faero)
 
                     # total moment contribution due to quaternion
-                    Krr[3:6,-4:] -= algebra.der_CquatT_by_v(tsstr.quat, np.cross(zetag,faero) )
-                    Krr[3:6,-4:] += np.dot( 
+                    Crr[3:6,-4:] -= algebra.der_CquatT_by_v(tsstr.quat, np.cross(zetag,faero) )
+                    Crr[3:6,-4:] += np.dot( 
                                         np.dot(Cag,algebra.skew(faero)), 
                                         algebra.der_Cquat_by_v(tsstr.quat,np.dot(Cab,Xb))) 
 
@@ -463,9 +469,9 @@ class LinAeroEla():
 
         # stiffening factors
         self.Kss = Kss
-        self.Ksr = Ksr
-        self.Krs = Krs 
-        self.Krr = Krr
+        self.Csr = Csr
+        self.Crs = Crs 
+        self.Crr = Crr
 
 
 if __name__ == '__main__':

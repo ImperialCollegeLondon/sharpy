@@ -1191,20 +1191,21 @@ def compare_ss(SS1,SS2,tol=1e-10,Print=False):
     '''
 
     era=np.max(np.abs(libsp.dense(SS1.A)-libsp.dense(SS2.A)))
-    assert era<tol, 'Error A matrix %.2e>%.2e'%(era,tol)
     if Print: print('Max. error A: %.3e' %era)
 
     erb=np.max(np.abs(libsp.dense(SS1.B)-libsp.dense(SS2.B)))
-    assert erb<tol, 'Error B matrix %.2e>%.2e'%(erb,tol)
     if Print: print('Max. error B: %.3e' %erb)
 
     erc=np.max(np.abs(libsp.dense(SS1.C)-libsp.dense(SS2.C)))
-    assert erc<tol, 'Error C matrix %.2e>%.2e'%(erc,tol)
     if Print: print('Max. error C: %.3e' %erc)
 
     erd=np.max(np.abs(libsp.dense(SS1.D)-libsp.dense(SS2.D)))
-    assert erd<tol, 'Error D matrix %.2e>%.2e'%(erd,tol)
     if Print: print('Max. error D: %.3e' %erd)
+
+    assert era<tol, 'Error A matrix %.2e>%.2e'%(era,tol)
+    assert erb<tol, 'Error B matrix %.2e>%.2e'%(erb,tol)
+    assert erc<tol, 'Error C matrix %.2e>%.2e'%(erc,tol)    
+    assert erd<tol, 'Error D matrix %.2e>%.2e'%(erd,tol)
 
     # print('System matrices identical within tolerance %.2e'%tol)
     return (era,erb,erc,erd)
