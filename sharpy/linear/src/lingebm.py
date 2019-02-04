@@ -181,7 +181,11 @@ class FlexDynamic():
         dlti = self.dlti
         modal = self.modal
         num_dof = self.num_dof
-        if Nmodes is None or Nmodes > self.Nmodes: Nmodes = self.Nmodes
+        if Nmodes is None or Nmodes >= self.Nmodes:
+            Nmodes = self.Nmodes
+        # else:
+        #     # Modal truncation
+        #     self.update_truncated_modes(Nmodes)
 
         if dlti:  # ---------------------------------- assemble discrete time
 
@@ -198,8 +202,11 @@ class FlexDynamic():
                 if modal:  # Modal projection
                     if self.proj_modes == 'undamped':
                         Phi = self.U[:, :Nmodes]
-                        Ccut = self.Ccut
-                        if self.Ccut is None: Ccut = np.zeros((Nmodes, Nmodes))
+
+                        if self.Ccut is None:
+                            Ccut = np.zeros((Nmodes, Nmodes))
+                        else:
+                            Ccut = np.dot(Phi.T, np.dot(self.Ccut, Phi))
 
                         Ass, Bss, Css, Dss = newmark_ss(
                             np.eye(Nmodes),
@@ -398,6 +405,32 @@ class FlexDynamic():
 
         """
         pass
+
+    def update_truncated_modes(self, nmodes):
+        r"""
+        Updates the system to the specified number of modes
+
+        Args:
+            nmodes:
+
+        Returns:
+
+        """
+
+        # Verify that the new number of modes is less than the current value
+        assert nmodes < self.Nmodes, 'Unable to truncate to %g modes since only %g are available' %(nmodes, self.Nmodes)
+
+        self.Nmodes = nmodes
+        self.eigs = self.eigs[:nmodes]
+        self.U = self.U[:,:nmodes]
+        self.freq_natural = self.freq_natural[:nmodes]
+        try:
+            self.freq_damp[:nmodes]
+        except TypeError:
+            pass
+
+        # Update Ccut matrix
+        self.Ccut = np.dot(self.U.T, np.dot(self.Cstr, self.U))
 
     def cont2disc(self, dt=None):
         """Convert continuous-time SS model into """
