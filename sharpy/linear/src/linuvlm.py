@@ -429,6 +429,13 @@ class Dynamic(Static):
         ScalingFacts['force'] = ScalingFacts['dyn_pressure'] * ScalingFacts['length'] ** 2
         self.ScalingFacts = ScalingFacts
 
+
+        ### collect statistics
+        self.cpu_summary={'nondim': 0., 
+                          'assemble': 0.}
+
+
+
     # print('Initialising Dynamic solver class...')
     # t0=time.time()
     # self.time_init_dyn=time.time()-t0
@@ -440,6 +447,8 @@ class Dynamic(Static):
         Scale state-space model based of self.SalingFacts
         """
 
+        t0=time.time()
+
         self.state_scal = self.ScalingFacts['circulation']
         self.output_scal = self.ScalingFacts['force']
 
@@ -450,6 +459,8 @@ class Dynamic(Static):
         self.SS = libss.scale_SS(
             self.SS, self.input_scal, self.output_scal, self.state_scal)
         self.SS.dt = self.SS.dt / self.ScalingFacts['time']
+
+        self.cpu_summary['nondim']=time.time() - t0
 
 
     def dimss(self):
@@ -689,8 +700,8 @@ class Dynamic(Static):
             print('state-space model produced in form:\n\t' \
                   'x_{n+1} = A x_{n} + Bp u_{n+1}')
 
-        self.time_ss = time.time() - t0
-        print('\t\t\t...done in %.2f sec' % self.time_ss)
+        self.cpu_summary['assemble']=time.time() - t0
+        print('\t\t\t...done in %.2f sec' % self.cpu_summary['assemble'])
 
 
     def assemble_ss_profiling(self):
