@@ -5,7 +5,7 @@ import os
 import sharpy.utils.settings as settings
 from sharpy.utils.solver_interface import solver, BaseSolver
 import sharpy.utils.h5utils as h5
-
+import sharpy.solvers.modal as modal
 from sharpy.linear.src.lin_aeroelastic import LinAeroEla
 
 @solver
@@ -93,6 +93,9 @@ class AsymptoticStabilityAnalysis(BaseSolver):
         except AttributeError:
             self.frequency_cutoff = float(self.settings['frequency_cutoff'])
 
+        if self.frequency_cutoff == 0:
+            self.frequency_cutoff = np.inf
+
         try:
             self.dt = self.settings['LinearUvlm']['dt'].value
         except AttributeError:
@@ -130,11 +133,9 @@ class AsymptoticStabilityAnalysis(BaseSolver):
         """
 
         # Title
-        predictor = self.settings['LinearUvlm']['remove_predictor']
-        integr_order = self.settings['LinearUvlm']['integr_order']
+        rem_predictor = self.settings['LinearUvlm']['remove_predictor']
+        integration_order = self.settings['LinearUvlm']['integr_order']
         sparse = self.settings['LinearUvlm']['use_sparse']
-
-
 
         fig, ax = plt.subplots()
 
@@ -143,14 +144,58 @@ class AsymptoticStabilityAnalysis(BaseSolver):
                    color='k',
                    marker='s')
         ax.set_xlim([-30, 10])
-        ax.set_title('Predictor Removed = %r, Int order = %g, Sparse = %r' %(predictor, integr_order, sparse))
+        ax.set_title('Predictor Removed = %r, Int order = %g, Sparse = %r' %(rem_predictor, integration_order, sparse))
         ax.set_xlabel('Real, $\mathbb{R}(\lambda_i)$ [rad/s]')
         ax.set_ylabel('Imag, $\mathbb{I}(\lambda_i)$ [rad/s]')
-        ax.set_ylim([0, self.frequency_cutoff])
+        # ax.set_ylim([0, self.frequency_cutoff])
         ax.grid(True)
         fig.show()
 
         return fig, ax
+
+    def plot_modes(self, n_modes_to_plot, start=0):
+        """
+        Plot the aeroelastic mode shapes for the first n_modes_to_plot
+
+        Todo:
+            Export to paraview format
+
+        Returns:
+
+        """
+
+        n_aero_states = self.aeroelastic.linuvlm.Nx
+        n_struct_states = self.aeroelastic.lingebm_str.U.shape[1]
+
+        from mpl_toolkits.mplot3d import Axes3D
+
+
+        for mode_plot in range(start, start + n_modes_to_plot):
+            fig = plt.figure()
+            ax = fig.add_subplot(111, projection='3d')
+
+            mode_shape = self.eigenvectors[n_aero_states:n_aero_states+n_struct_states, mode_plot]
+            mode_shape = modal.scale_mode(self.data, mode_shape)
+            zeta_mode = modal.get_mode_zeta(self.data, mode_shape)
+            mode_frequency = np.imag(self.eigenvalues[mode_plot])
+
+            for i_surf in range(len(zeta_mode)):
+                # Plot mode
+                ax.plot_wireframe(zeta_mode[i_surf][0], zeta_mode[i_surf][1], zeta_mode[i_surf][2])
+
+                # Plot original shape
+                ax.plot_wireframe(self.data.aero.timestep_info[-1].zeta[i_surf][0],
+                                  self.data.aero.timestep_info[-1].zeta[i_surf][1],
+                                  self.data.aero.timestep_info[-1].zeta[i_surf][2],
+                                  color='k',
+                                  alpha=0.5)
+
+            ax.set_title('Mode %g, Frequency %.2f' %(mode_plot+1, mode_frequency))
+            ax.set_xlabel('X')
+            ax.set_ylabel('Y')
+            ax.set_zlabel('Z')
+            fig.show()
+
 
     @staticmethod
     def sort_eigenvalues(eigenvalues, eigenvectors, frequency_cutoff=None):
@@ -169,7 +214,7 @@ class AsymptoticStabilityAnalysis(BaseSolver):
 
         """
 
-        if frequency_cutoff is None:
+        if frequency_cutoff == 0:
             frequency_cutoff = np.inf
 
         # Remove poles in the negative imaginary plane (Im(\lambda)<0)
@@ -178,7 +223,7 @@ class AsymptoticStabilityAnalysis(BaseSolver):
         eigenvalues_truncated = eigenvalues[criteria_a * criteria_b].copy()
         eigenvectors_truncated = eigenvectors[:, criteria_a * criteria_b].copy()
 
-        order = np.argsort(-np.real(eigenvalues_truncated))
+        order = np.argsort(np.abs(eigenvalues_truncated))
 
         return eigenvalues_truncated[order], eigenvectors_truncated[:, order]
 
@@ -203,13 +248,16 @@ if __name__ == '__main__':
         'ScalingDict': {'length': 1,
                         'speed': 1,
                         'density': 1},
-        'frequency_cutoff': 100,
-        'export_eigenvalues': True
-    }}
+        'rigid_body_motion': False},
+        'frequency_cutoff': 0,
+        'export_eigenvalues': True,
+    }
 
     analysis = AsymptoticStabilityAnalysis()
 
     analysis.initialise(data, aeroelastic_settings)
     eigenvalues, eigenvectors = analysis.run()
 
-    analysis.display_root_locus()
+    fig, ax = analysis.display_root_locus()
+
+    # analysis.plot_modes(10)

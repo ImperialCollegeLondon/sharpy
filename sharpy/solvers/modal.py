@@ -150,7 +150,7 @@ class Modal(BaseSolver):
 
         # Check that the FORTRAN library is updated with the required
         # TODO: assert that xbeam3_asbly_dynamic_python exists in FORTRAN file xbeam_interface
-        self.rigid_body_motion = self.settings['rigid_body_modes']
+        self.rigid_body_motion = self.settings['rigid_body_modes'].value
 
         # load info from dyn dictionary
         self.data.structure.add_unsteady_information(
@@ -227,6 +227,18 @@ class Modal(BaseSolver):
 
         # Obtain the matrices from the fortran library
         # Todo: proper settings so as to not require using the dynamic coupled settings
+        # Temporary settings
+        # temp_settings = {'print_info': 'off',
+        #                  'initial_velocity_direction': [-1., 0., 0.],
+        #                  'max_iterations': 950,
+        #                  'delta_curved': 1e-6,
+        #                  'min_delta': tolerance,
+        #                  'newmark_damp': 5e-3,
+        #                  'gravity_on': True,
+        #                  'gravity': 9.81,
+        #                  'num_steps': n_tstep,
+        #                  'dt': dt,
+        #                  'initial_velocity': u_inf * 0}
         if self.rigid_body_motion:
             FullMglobal, FullCglobal, FullKglobal, FullQ = xbeamlib.xbeam3_asbly_dynamic(self.data.structure,
                                           self.data.structure.timestep_info[self.data.ts],
@@ -263,8 +275,7 @@ class Modal(BaseSolver):
         #         elif(np.absolute(FullCglobal[i, j] + FullCglobal[j, i]) > np.finfo(float).eps):
         #             skewsymmetric_FullCglobal = False
 
-        NumLambda = min(self.data.structure.num_dof.value,
-                                               self.settings['NumLambda'].value)
+        NumLambda = min(num_dof, self.settings['NumLambda'].value)
 
         if self.settings['use_undamped_modes'].value:
 
@@ -498,7 +509,11 @@ def get_mode_zeta(data, eigvect):
     tsaero=data.aero.timestep_info[data.ts]
     tsstr=data.structure.timestep_info[data.ts]
 
-    num_dof=struct.num_dof.value
+    try:
+        num_dof=struct.num_dof.value
+    except AttributeError:
+        num_dof = struct.num_dof
+
     eigvect=eigvect[:num_dof]
 
     zeta_mode=[]
