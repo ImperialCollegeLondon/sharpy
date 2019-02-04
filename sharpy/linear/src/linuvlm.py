@@ -3,22 +3,18 @@ Linearise UVLM solver
 S. Maraniello, 7 Jun 2018
 """
 
+import time
+import warnings
 import numpy as np
 import scipy.linalg as scalg
 import scipy.signal as scsig
 import scipy.sparse as sparse
 
-# # from IPython import embed
-import time
-import warnings
-
 import sharpy.linear.src.interp as interp
 import sharpy.linear.src.multisurfaces as multisurfaces
-import sharpy.linear.src.assembly as ass  # :D
+import sharpy.linear.src.assembly as ass
 import sharpy.linear.src.libss as libss 
 import sharpy.linear.src.libsparse as libsp 
-
-
 import sharpy.utils.algebra as algebra
 
 
@@ -373,9 +369,53 @@ class Static():
 
 
 class Dynamic(Static):
+    '''
+    Class for dynamic linearised UVLM solution. Linearisation around steady-state
+    are only supported. The class is built upon Static, and inherits all the 
+    methods contained there.
+
+    Input:
+        - tsdata: aero timestep data from SHARPy solution
+        - dt: time-step
+        - integr_order=2: integration order for UVLM unsteady aerodynamic force
+        - RemovePredictor=True: if true, the state-space model is modified so as
+        to accept in input perturbations, u, evaluated at time-step n rather than
+        n+1.
+        - ScalingDict=None: disctionary containing fundamental reference units
+            {'length':  reference_length,  
+             'speed':   reference_speed, 
+             'density': reference density}
+        used to derive scaling quantities for the state-space model variables.
+        The scaling factors are stores in 
+            self.ScalingFact. 
+        Note that while time, circulation, angular speeds) are scaled  
+        accordingly, FORCES ARE NOT. These scale by qinf*b**2, where b is the 
+        reference length and qinf is the dinamic pressure. 
+        - UseSparse=False: builds the A and B matrices in sparse form. C and D
+        are dense, hence the sparce format is not used.
+
+    Methods: 
+        - nondimss: normalises a dimensional state-space model based on the 
+        scaling factors in self.ScalingFact. 
+        - dimss: inverse of nondimss.
+        - assemble_ss: builds state-space model. See function for more details.
+        - assemble_ss_profiling: generate profiling report of the assembly and 
+        saves it into self.prof_out. To read the report:
+            import pstats
+            p=pstats.Stats(self.prof_out)
+        - solve_steady: solves for the steady state. Several methods available.
+        - solve_step: solves one time-step
+        
+
+    To do:
+    - upgrade to linearise around unsteady snapshot (adjoint)
+
+
+
+    '''
 
     def __init__(self, tsdata, dt, integr_order=2, 
-                       RemovePredictor=True, ScalingDict=None, UseSparse=False):
+                       RemovePredictor=True, ScalingDict=None, UseSparse=True):
 
         super().__init__(tsdata)
 
@@ -429,42 +469,49 @@ class Dynamic(Static):
         ScalingFacts['force'] = ScalingFacts['dyn_pressure'] * ScalingFacts['length'] ** 2
         self.ScalingFacts = ScalingFacts
 
-
         ### collect statistics
-        self.cpu_summary={'nondim': 0., 
+        self.cpu_summary={'dim': 0.,
+                          'nondim': 0., 
                           'assemble': 0.}
-
-
-
-    # print('Initialising Dynamic solver class...')
-    # t0=time.time()
-    # self.time_init_dyn=time.time()-t0
-    # print('\t\t\t...done in %.2f sec' %self.time_init_dyn)
 
 
     def nondimss(self):
         """
-        Scale state-space model based of self.SalingFacts
+        Scale state-space model based of self.ScalingFacts
         """
 
         t0=time.time()
-
-        self.state_scal = self.ScalingFacts['circulation']
-        self.output_scal = self.ScalingFacts['force']
-
         Kzeta = self.Kzeta
-        self.input_scal = np.concatenate((
-            3 * Kzeta * [self.ScalingFacts['length']],
-            6 * Kzeta * [self.ScalingFacts['speed']]))
-        self.SS = libss.scale_SS(
-            self.SS, self.input_scal, self.output_scal, self.state_scal)
+
+        self.SS.B[:,:3*Kzeta] *= (self.ScalingFacts['length']/self.ScalingFacts['circulation'])
+        self.SS.B[:,3*Kzeta:] *= (self.ScalingFacts['speed']/self.ScalingFacts['circulation'])
+
+        self.SS.C *= (self.ScalingFacts['circulation']/self.ScalingFacts['force'])
+
+        self.SS.D[:,:3*Kzeta] *= (self.ScalingFacts['length']/self.ScalingFacts['force'])
+        self.SS.D[:,3*Kzeta:] *= (self.ScalingFacts['speed']/self.ScalingFacts['force'])
+
         self.SS.dt = self.SS.dt / self.ScalingFacts['time']
 
         self.cpu_summary['nondim']=time.time() - t0
 
 
     def dimss(self):
-        pass
+
+        t0=time.time()
+        Kzeta = self.Kzeta     
+
+        self.SS.B[:,:3*Kzeta] /= (self.ScalingFacts['length']/self.ScalingFacts['circulation'])
+        self.SS.B[:,3*Kzeta:] /= (self.ScalingFacts['speed']/self.ScalingFacts['circulation'])
+
+        self.SS.C /= (self.ScalingFacts['circulation']/self.ScalingFacts['force'])
+
+        self.SS.D[:,:3*Kzeta] /= (self.ScalingFacts['length']/self.ScalingFacts['force'])
+        self.SS.D[:,3*Kzeta:] /= (self.ScalingFacts['speed']/self.ScalingFacts['force'])
+
+        self.SS.dt = self.SS.dt * self.ScalingFacts['time']
+
+        self.cpu_summary['dim']=time.time() - t0
 
 
     def assemble_ss(self):
@@ -737,6 +784,7 @@ class Dynamic(Static):
 
         Ass, Bss, Css, Dss = self.SS.A, self.SS.B, self.SS.C, self.SS.D
 
+
         if method == 'minsize':
             # as opposed to linuvlm.Static, this solves for the bound circulation
             # starting from
@@ -857,6 +905,7 @@ class Dynamic(Static):
             raise NameError('Method %s not recognised!' % method)
 
         return xsta, ysta
+
 
     def solve_step(self, x_n, u_n, u_n1=None, transform_state=False):
         r"""
@@ -1121,5 +1170,42 @@ if __name__ == '__main__':
                         Ftot = np.dot(Dyn.Kftot, ysta)
                         assert np.max(np.abs(Ftot - Ftot_ref)) < 1e-11,\
                                                 'Error in gains for total forces'
+
+
+        def test_nondimss_dimss(self):
+            '''
+            Test scaling and unscaling of UVLM
+            '''
+
+            Sta=self.Sta
+            Order=[2,1]
+            RemPred=[True,False]
+            UseSparse=[True,False]
+
+            # estimate reference quantities
+            Uinf=np.linalg.norm(self.tsdata.u_ext[0][:,0,0]) 
+            chord=np.linalg.norm( self.tsdata.zeta[0][:,-1,0]-self.tsdata.zeta[0][:,0,0])
+            rho=self.tsdata.rho
+
+            ScalingDict={'length': .5*chord,
+                         'speed': Uinf,
+                         'density': rho}
+
+            # reference
+            Dyn0=Dynamic(self.tsdata, dt=0.05, 
+                        integr_order=2, RemovePredictor=True,
+                        UseSparse=True)
+            Dyn0.assemble_ss()
+
+            # scale/unscale
+            Dyn1=Dynamic(self.tsdata, dt=0.05, 
+                        integr_order=2, RemovePredictor=True,
+                        UseSparse=True, ScalingDict=ScalingDict)
+            Dyn1.assemble_ss()
+            Dyn1.nondimss()
+            Dyn1.dimss()
+            libss.compare_ss(Dyn0.SS,Dyn1.SS,tol=1e-10)
+            assert np.max(np.abs(Dyn0.SS.dt-Dyn1.SS.dt))<1e-12*Dyn0.SS.dt,\
+                                    'Scaling/unscaling of time-step not correct'
 
     unittest.main()
