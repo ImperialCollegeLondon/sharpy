@@ -127,6 +127,7 @@ class FlyingWing():
 
         # Numerics for dynamic simulations
         self.dt_factor = 1
+        self.n_tstep = None
         self.physical_time = physical_time
         self.horseshoe = False
         self.fsi_tolerance = 1e-10

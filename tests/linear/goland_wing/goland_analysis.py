@@ -7,7 +7,8 @@ import tests.linear.goland_wing.goland_wing as goland_wing
 import sharpy.solvers.modal as modal
 import sharpy.postproc.asymptotic_stability as asym_stability
 
-u_inf_range = np.linspace(140, 170, 4)
+# u_inf_range = np.linspace(140, 170, 4)
+u_inf_range = np.linspace(150, 180, 4)
 # u_inf_range = np.array([110,115,120,125,130,135,138,140,142,145,150,152,155,158,160,162,165,168,170])
 override = False
 # u_inf = 100
@@ -44,9 +45,11 @@ for u_inf in u_inf_range:
         'ScalingDict': {'length': 1,
                         'speed': 1,
                         'density': 1},
+        'rigid_body_motion': False},
         'frequency_cutoff': 100,
-        'export_eigenvalues': True
-    }}
+        'export_eigenvalues': True,
+        'print_info':False
+    }
 
 
     # # Assemble the linear system
@@ -72,7 +75,7 @@ for u_inf in u_inf_range:
 
     eigenvalues_list.append(eigenvalues)
     eigenvectors_list.append(eigenvectors)
-    max_eigenvalue[iter] = eigenvalues[0]
+    max_eigenvalue[iter] = eigenvalues[np.argmax(np.real(eigenvalues))]
 
 
 

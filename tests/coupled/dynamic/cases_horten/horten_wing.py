@@ -102,7 +102,8 @@ class HortenWing:
         # Horseshoe wake
         self.horseshoe = False
         self.wake_type = 2
-        self.dt = 1 / self.M / self.u_inf
+        self.dt_factor = 1
+        self.dt = 1 / self.M / self.u_inf * self.dt_factor
 
         # Dynamics
         self.n_tstep = int(physical_time/self.dt)
@@ -996,7 +997,7 @@ class HortenWing:
                                 'rollup_aic_refresh': 1,
                                 'rollup_tolerance': 1e-4,
                                 'velocity_field_generator': 'GustVelocityField',
-                                'velocity_field_input': {'u_inf': u_inf,
+                                'velocity_field_input': {'u_inf': u_inf * 1,
                                                          'u_inf_direction': [1., 0, 0],
                                                          'gust_shape': '1-cos',
                                                          'gust_length': 1.,
