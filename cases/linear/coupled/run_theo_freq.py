@@ -196,7 +196,8 @@ ws.config['LinearUvlm'] = {	'dt': ws.dt,
 							'use_sparse': UseSparse,
 							'ScalingDict':{'length': 1.,
 										   'speed':  1.,
-										   'density':1.}}
+										   'density':1.},
+							'physical_model': True}
 ws.config['Modal']['NumLambda']= 40
 ws.config['Modal']['keep_linear_matrices']='on'
 ws.config['Modal']['use_undamped_modes']=True
@@ -416,7 +417,6 @@ def adjust_freq_resp(Yfreq_dummy):
 	instead.
 	'''
 
-	Yfreq_dummy=Yfreq_dummy_all[:,:4,:]
 	Nin=4
 	assert Yfreq_dummy.shape[1]==Nin, 'Check number of input'		
 
