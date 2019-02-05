@@ -18,6 +18,49 @@ import sharpy.linear.src.libsparse as libsp
 import sharpy.utils.algebra as algebra
 
 
+'''
+ Dictionary for default settings.
+============================  =========  ===============================================    ==========
+Name                          Type       Description                                        Default
+============================  =========  ===============================================    ==========
+``dt``                        ``float``  Time increment                                     ``0.1``
+``integr_order``              ``int``    Finite difference order for bound circulation      ``2``
+``ScalingDict``               ``dict``   Dictionary with scaling gains. See Notes.
+``remove_predictor``          ``bool``   Remove predictor term from UVLM system assembly    ``True``
+``use_sparse``                ``bool``   Use sparse form of A and B state space matrices    ``True``
+``velocity_field_generator``  ``str``    Selected velocity generator                        ``None``
+``velocity_filed_input``      ``dict``   Settings for the velocity generator                ``None``
+============================  =========  ===============================================    ==========
+'''
+
+settings_types_dynamic = dict()
+settings_default_dynamic = dict()
+
+settings_types_dynamic['dt'] = 'float'
+settings_default_dynamic['dt'] = 0.1
+
+settings_types_dynamic['integr_order'] = 'int'
+settings_default_dynamic['integr_order'] = 2
+
+settings_types_dynamic['density'] = 'float'
+settings_default_dynamic['density'] = 1.225
+
+settings_types_dynamic['ScalingDict'] = 'dict'
+settings_default_dynamic['ScalingDict'] = {'length': 1.0,
+                                           'speed': 1.0,
+                                           'density': 1.0}
+
+settings_types_dynamic['remove_predictor'] = 'bool'
+settings_default_dynamic['remove_predictor'] = True
+
+settings_types_dynamic['use_sparse'] = 'bool'
+settings_default_dynamic['use_sparse'] = True
+
+settings_types_dynamic['physical_model'] = 'bool'
+settings_default_dynamic['physical_model'] = True
+
+
+
 class Static():
     """	Static linear solver """
 
@@ -418,17 +461,6 @@ class Dynamic(Static):
                        RemovePredictor=True, ScalingDict=None, UseSparse=True):
 
         super().__init__(tsdata)
-
-        # self.settings_types = dict()
-        # self.settings_default = dict()
-
-        # # dimensional time-step 
-        # self.settings_types['dt'] = 'float'
-        # self.settings_default['dt'] = 0.1
-
-        # # integration order for bound circulation first derivative (unsteady force)   
-        # self.settings_types['integr_order'] = 'int'
-        # self.settings_default['integr_order'] = 2
 
         self.dt = dt
         self.integr_order = integr_order

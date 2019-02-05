@@ -71,34 +71,10 @@ class StepLinearUVLM(BaseSolver):
 
     def __init__(self):
         """
-        Create default settings
+        Read default settings from linuvlm module
         """
-
-        self.settings_types = dict()
-        self.settings_default = dict()
-
-        self.settings_types['dt'] = 'float'
-        self.settings_default['dt'] = 0.1
-
-        self.settings_types['integr_order'] = 'int'
-        self.settings_default['integr_order'] = 2
-
-        self.settings_types['density'] = 'float'
-        self.settings_default['density'] = 1.225
-
-        self.settings_types['ScalingDict'] = 'dict'
-        self.settings_default['ScalingDict'] = {'length': 1.0,
-                                                'speed': 1.0,
-                                                'density': 1.0}
-
-        self.settings_types['remove_predictor'] = 'bool'
-        self.settings_default['remove_predictor'] = True
-
-        self.settings_types['use_sparse'] = 'bool'
-        self.settings_default['use_sparse'] = True
-
-        self.settings_types['physical_model'] = 'bool'
-        self.settings_default['physical_model'] = True
+        self.settings_types = linuvlm.settings_types_dynamic
+        self.settings_default =linuvlm.settings_default_dynamic
 
         self.data = None
         self.settings = None
@@ -150,7 +126,7 @@ class StepLinearUVLM(BaseSolver):
                                               dt=self.settings['dt'].value,
                                               integr_order=self.settings['integr_order'].value,
                                               ScalingDict=self.settings['ScalingDict'],
-                                              RemovePredictor=self.settings['remove_predictor'],
+                                              RemovePredictor=self.settings['remove_predictor'].value,
                                               UseSparse=self.settings['use_sparse'].value)
 
             # Save reference values
