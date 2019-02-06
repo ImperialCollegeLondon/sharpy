@@ -59,6 +59,10 @@ class BeamLoader(BaseSolver):
         self.settings_types['orientation'] = 'list(float)'
         self.settings_default['orientation'] = np.array([1., 0, 0, 0])
 
+        self.settings_types['initial_position'] = 'list(float)'
+        self.settings_default['initial_position'] = np.array([0., 0., 0.])
+
+
         self.data = None
         self.settings = None
         self.fem_file_name = ''

@@ -56,6 +56,9 @@ class StepUvlm(BaseSolver):
         self.settings_types['rho'] = 'float'
         self.settings_default['rho'] = 1.225
 
+        self.settings_types['ground_effect'] = 'bool'
+        self.settings_default['ground_effect'] = False
+
         self.settings_types['part_of_fsi'] = 'bool'
         self.settings_default['part_of_fsi'] = True
 
@@ -114,10 +117,6 @@ class StepUvlm(BaseSolver):
                                               'for_pos': structure_tstep.for_pos},
                                              aero_tstep.u_ext_star)
 
-        # previous_ts = max(len(self.data.aero.timestep_info) - 1, 0) - 1
-        # previous_ts = -1
-        # print('previous_step max circulation: %f' % previous_aero_tstep.gamma[0].min())
-        # print('current step max circulation: %f' % aero_tstep.gamma[0].min())
         uvlmlib.uvlm_solver(self.data.ts,
                             aero_tstep,
                             structure_tstep,

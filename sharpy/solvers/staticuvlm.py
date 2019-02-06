@@ -106,6 +106,9 @@ class StaticUvlm(BaseSolver):
         self.settings_types['rho'] = 'float'
         self.settings_default['rho'] = 1.225
 
+        self.settings_types['ground_effect'] = 'bool'
+        self.settings_default['ground_effect'] = False
+
         self.data = None
         self.settings = None
         self.velocity_generator = None

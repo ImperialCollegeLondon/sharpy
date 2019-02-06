@@ -36,8 +36,8 @@ class NonLinearStatic(BaseSolver):
         self.settings_types['min_delta'] = 'float'
         self.settings_default['min_delta'] = 1e-7
 
-        self.settings_types['initial_position'] = 'list(float)'
-        self.settings_default['initial_position'] = np.array([0.0, 0.0, 0.0])
+        # self.settings_types['initial_position'] = 'list(float)'
+        # self.settings_default['initial_position'] = np.array([0.0, 0.0, 0.0])
 
         self.data = None
         self.settings = None
@@ -51,7 +51,7 @@ class NonLinearStatic(BaseSolver):
         settings.to_custom_types(self.settings, self.settings_types, self.settings_default)
 
     def run(self):
-        self.data.structure.timestep_info[self.data.ts].for_pos[0:3] = self.settings['initial_position']
+        # self.data.structure.timestep_info[self.data.ts].for_pos[0:3] = self.settings['initial_position']
         xbeamlib.cbeam3_solv_nlnstatic(self.data.structure, self.settings, self.data.ts)
         self.extract_resultants()
         return self.data

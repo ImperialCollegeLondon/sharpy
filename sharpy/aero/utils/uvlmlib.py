@@ -39,7 +39,8 @@ class VMopts(ct.Structure):
                 ("rollup_aic_refresh", ct.c_uint),
                 ("iterative_solver", ct.c_bool),
                 ("iterative_tol", ct.c_double),
-                ("iterative_precond", ct.c_bool)]
+                ("iterative_precond", ct.c_bool),
+                ("ground_effect", ct.c_bool)]
 
     def __init__(self):
         ct.Structure.__init__(self)
@@ -59,6 +60,7 @@ class VMopts(ct.Structure):
         self.iterative_solver = ct.c_bool(False)
         self.iterative_tol = ct.c_double(0)
         self.iterative_precond = ct.c_bool(False)
+        self.ground_effect = ct.c_bool(False)
 
 
 class UVMopts(ct.Structure):
@@ -74,7 +76,8 @@ class UVMopts(ct.Structure):
                 ("iterative_solver", ct.c_bool),
                 ("iterative_tol", ct.c_double),
                 ("iterative_precond", ct.c_bool),
-                ("convect_wake", ct.c_bool)]
+                ("convect_wake", ct.c_bool),
+                ("ground_effect", ct.c_bool)]
 
     def __init__(self):
         ct.Structure.__init__(self)
@@ -88,6 +91,7 @@ class UVMopts(ct.Structure):
         self.iterative_tol = ct.c_double(0)
         self.iterative_precond = ct.c_bool(False)
         self.convect_wake = ct.c_bool(True)
+        self.ground_effect = ct.c_bool(False)
 
 
 class FlightConditions(ct.Structure):
@@ -130,6 +134,7 @@ def vlm_solver(ts_info, options):
     vmopts.iterative_solver = ct.c_bool(options['iterative_solver'].value)
     vmopts.iterative_tol = ct.c_double(options['iterative_tol'].value)
     vmopts.iterative_precond = ct.c_bool(options['iterative_precond'].value)
+    vmopts.ground_effect= ct.c_bool(options['ground_effect'].value)
 
     flightconditions = FlightConditions()
     flightconditions.rho = options['rho']
@@ -212,6 +217,7 @@ def uvlm_solver(i_iter, ts_info, struct_ts_info, options, convect_wake=True, dt=
     uvmopts.iterative_tol = ct.c_double(options['iterative_tol'].value)
     uvmopts.iterative_precond = ct.c_bool(options['iterative_precond'].value)
     uvmopts.convect_wake = ct.c_bool(convect_wake)
+    uvmopts.ground_effect= ct.c_bool(options['ground_effect'].value)
 
     flightconditions = FlightConditions()
     flightconditions.rho = options['rho']
@@ -270,6 +276,7 @@ def uvlm_calculate_unsteady_forces(ts_info,
     uvmopts.iterative_tol = ct.c_double(options['iterative_tol'].value)
     uvmopts.iterative_precond = ct.c_bool(options['iterative_precond'].value)
     uvmopts.convect_wake = ct.c_bool(convect_wake)
+    uvmopts.ground_effect= ct.c_bool(options['ground_effect'].value)
 
     flightconditions = FlightConditions()
     flightconditions.rho = options['rho']
@@ -347,6 +354,7 @@ def uvlm_calculate_total_induced_velocity_at_point(ts_info,
     uvmopts = UVMopts()
     uvmopts.NumSurfaces = ct.c_uint(ts_info.n_surf)
     uvmopts.ImageMethod = ct.c_bool(False)
+    uvmopts.ground_effect= ct.c_bool(options['ground_effect'].value)
 
     uind = np.zeros((3,), dtype=ct.c_double)
     p_uind = uind.ctypes.data_as(ct.POINTER(ct.c_double))
