@@ -1,4 +1,5 @@
 import ctypes as ct
+import time
 
 import numpy as np
 
@@ -148,6 +149,9 @@ class DynamicCoupled(BaseSolver):
         self.postprocessors = dict()
         self.with_postprocessors = False
 
+        self.time_aero = 0.
+        self.time_struc = 0.
+
     def get_g(self):
         return self.structural_solver.settings['gravity'].value
 
@@ -191,12 +195,12 @@ class DynamicCoupled(BaseSolver):
 
         # print information header
         if self.print_info:
-            self.residual_table = cout.TablePrinter(8, 14, ['g', 'f', 'g', 'f', 'e', 'e', 'f', 'f'])
-            self.residual_table.field_length[0] = 6
+            self.residual_table = cout.TablePrinter(8, 12, ['g', 'f', 'g', 'f', 'f', 'f', 'e', 'e'])
+            self.residual_table.field_length[0] = 5
             self.residual_table.field_length[1] = 6
-            self.residual_table.field_length[1] = 6
-            self.residual_table.print_header(['ts', 't', 'iter', 'residual vel',
-                                              'FoR_vel(x)', 'FoR_vel(z)', 'x_b forces', 'z_b forces'])
+            self.residual_table.field_length[2] = 4
+            self.residual_table.print_header(['ts', 't', 'iter', 'struc ratio', 'iter time', 'residual vel',
+                                              'FoR_vel(x)', 'FoR_vel(z)'])
 
 
     def cleanup_timestep_info(self):
@@ -216,13 +220,17 @@ class DynamicCoupled(BaseSolver):
         # dynamic simulations start at tstep == 1, 0 is reserved for the initial state
         for self.data.ts in range(len(self.data.structure.timestep_info),
                                   self.settings['n_time_steps'].value + len(self.data.structure.timestep_info)):
+            initial_time = time.perf_counter()
             structural_kstep = self.data.structure.timestep_info[-1].copy()
+            self.time_aero = 0.0
+            self.time_struc = 0.0
 
             k = 0
             for k in range(self.settings['fsi_substeps'].value + 1):
                 if k == self.settings['fsi_substeps'].value and not self.settings['fsi_substeps'] == 0:
                     cout.cout_wrap('The FSI solver did not converge!!!')
                     break
+                print(k)
 
                 # generate new grid (already rotated)
                 aero_kstep = self.data.aero.timestep_info[-1].copy()
@@ -233,10 +241,10 @@ class DynamicCoupled(BaseSolver):
                 force_coeff = 0.0
                 if self.settings['include_unsteady_force_contribution']:
                     try:
-                        force_coeff = np.linspace(0.0, 1.0, 5)[k]
+                        force_coeff = np.linspace(0.0, 1.0, 8)[k]
                     except IndexError:
                         force_coeff = 1.0
-                if self.data.ts < 5:
+                if self.data.ts < 8:
                     force_coeff = 0.0
 
                 # run the solver
@@ -245,10 +253,12 @@ class DynamicCoupled(BaseSolver):
                 else:
                     unsteady_contribution = True
 
+                ini_time_aero = time.perf_counter()
                 self.data = self.aero_solver.run(aero_kstep,
                                                  structural_kstep,
                                                  convect_wake=True,
                                                  unsteady_contribution=unsteady_contribution)
+                self.time_aero += time.perf_counter() - ini_time_aero
 
                 previous_kstep = structural_kstep.copy()
                 structural_kstep = self.data.structure.timestep_info[-1].copy()
@@ -278,7 +288,9 @@ class DynamicCoupled(BaseSolver):
                     relax_factor = 0.8
 
                 # run structural solver
+                ini_time_struc = time.perf_counter()
                 self.data = self.structural_solver.run(structural_step=structural_kstep)
+                self.time_struc += time.perf_counter() - ini_time_struc
 
                 # check convergence
                 if self.convergence(k,
@@ -293,10 +305,14 @@ class DynamicCoupled(BaseSolver):
             self.data.structure.timestep_info[-1] = structural_kstep.copy()
             self.data.structure.integrate_position(-1, self.settings['dt'].value)
 
+            final_time = time.perf_counter()
+
             if self.print_info:
                 self.residual_table.print_line([self.data.ts,
                                                 self.data.ts*self.dt.value,
                                                 k,
+                                                self.time_struc/(self.time_aero + self.time_struc),
+                                                final_time - initial_time,
                                                 np.log10(self.res_dqdt),
                                                 structural_kstep.for_vel[0],
                                                 structural_kstep.for_vel[2],
