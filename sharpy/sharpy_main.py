@@ -58,7 +58,7 @@ def main(args=None):
     parser.add_argument('input_filename', help='path to the *.solver.txt input file', type=str)
     parser.add_argument('-r', '--restart', help='restart the solution with a given snapshot', type=str, default=None)
     if args is not None:
-        args = parser.parse_args(args)
+        args = parser.parse_args(args[1:])
     else:
         args = parser.parse_args()
 
