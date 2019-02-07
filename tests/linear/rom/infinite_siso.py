@@ -106,8 +106,8 @@ the aerodynamic moments.
 import os
 import copy
 import time
-import numpy as np
 import warnings
+import numpy as np
 
 np.set_printoptions(linewidth=140)
 import matplotlib.pyplot as plt
@@ -117,6 +117,7 @@ import sharpy.sharpy_main
 import sharpy.utils.h5utils as h5
 import sharpy.utils.algebra as algebra
 import sharpy.utils.analytical as an
+import sharpy.utils.h5utils as h5
 
 import sharpy.linear.src.linuvlm as linuvlm
 import sharpy.linear.src.libss as libss
@@ -127,10 +128,11 @@ import cases.templates.flying_wings as flying_wings
 # ------------------------------------------------------------------------------
 
 # Define Parametrisation
-M = 32
-N, Mstar_fact = 12, 40
+# M = 32
+# N, Mstar_fact = 12, 40
+M = 8
+N, Mstar_fact = 12, 10
 
-CorrectEA = True
 integr_order = 2
 RemovePred = True
 UseSparse = True
@@ -160,11 +162,8 @@ Nout = len(outputs_seq)
 
 ### ----- sharpy reference solution
 
-route_main = os.path.abspath('.') + '/cases/theo_rolled/'
+route_main = os.path.abspath('.') + '/res/theo_rolled/'
 figfold = './figs/theo_rolled/'
-if CorrectEA:
-    route_main = route_main[:-1] + 'cea%s/' % CorrectEA
-    figfold = figfold[:-1] + 'cea%s/' % CorrectEA
 os.system('mkdir -p %s' % route_main)
 os.system('mkdir -p %s' % figfold)
 
@@ -183,8 +182,6 @@ ws = flying_wings.QuasiInfinite(M=M, N=N, Mstar_fact=Mstar_fact, n_surfaces=Nsur
                                 route=route_main,
                                 case_name=case_main)
 ws.main_ea = main_ea
-if CorrectEA:
-    ws.main_ea -= .25 / M
 ws.clean_test_files()
 ws.update_derived_params()
 ws.generate_fem_file()
@@ -252,11 +249,14 @@ Ksa = Sol.Kforces
 
 # ----------------------- project forces at nodes and total in rolled FoR R
 
+T0 = algebra.crv2tan(tsstr0.psi[0][0])
+T0Tinv = np.linalg.inv(T0.T)
+
 for nn in range(Sol.lingebm_str.num_dof // 6):
     iitra = [6 * nn + ii for ii in range(3)]
-    Ksa[iitra, :] = np.dot(Crb, Ksa[iitra, :])
+    Ksa[iitra, :] = np.dot(Cra, Ksa[iitra, :])
     iirot = [6 * nn + ii for ii in range(3, 6)]
-    Ksa[iirot, :] = np.dot(Crb, Ksa[iirot, :])
+    Ksa[iirot, :] = np.dot(Crb, np.dot(T0Tinv, Ksa[iirot, :]))
 iitra = [Sol.lingebm_str.num_dof + ii for ii in range(3)]
 Ksa[iitra, :] = np.dot(Cra, Ksa[iitra, :])
 iirot = [Sol.lingebm_str.num_dof + ii for ii in range(3, 6)]
@@ -357,18 +357,42 @@ iivec = range(Sol.num_dof_str + Sol.num_dof_flex + 3,
               Sol.num_dof_str + Sol.num_dof_flex + 6)
 Kpitch_rig[iivec, 1] = jA
 
+# Output total vertical force coefficient
+K_Fz = np.zeros((1,Ksa.shape[0]))
+# Output - Vertical force coefficient
+
+qS = 0.5 * ws.rho * Uinf0 ** 2 * ws.wing_span * ws.c_ref
+
+wdof = 0
+for node in range(data0.structure.num_node):
+
+    node_bc = data0.structure.boundary_conditions[node]
+    if node_bc != 1:
+        node_ndof = 6
+        vertical_force_index = np.array([0, 0, 1, 0, 0, 0]) / qS
+        K_Fz[:, wdof: wdof + node_ndof] = vertical_force_index
+    else:
+        node_ndof = 0
+
+    wdof += node_ndof
+# Vertical force at FoR A node
+# K_Fz[:, Sol.num_dof_flex + 2] = 1 / qS
+
+
 # ----- build coupled state-space model
 
-Kin = np.block([Kpl_flex, Kpitch_flex, Kpl_rig, Kpitch_rig])
+# Kin = np.block([Kpl_flex, Kpitch_flex, Kpl_rig, Kpitch_rig])
+Kin = Kpl_rig[:,1]
 SStot = libss.addGain(Sol.linuvlm.SS, Ksa, where='out')
 SStot.addGain(Kas, where='in')
 SStot.addGain(Kin, where='in')
+SStot.addGain(K_Fz, where='out')
 
-# verify inputs from rigid and flex are identical
-ErB = np.max(np.abs(SStot.B[:, :Nin] - SStot.B[:, :Nin]))
-ErD = np.max(np.abs(SStot.D[:, :Nin] - SStot.D[:, :Nin]))
-assert ErB < 1e-8, 'Difference in B matrix input (%.2e) too large!' % ErB
-assert ErD < 1e-8, 'Difference in D matrix input (%.2e) too large!' % ErD
+# # verify inputs from rigid and flex are identical
+# ErB = np.max(np.abs(SStot.B[:, :Nin] - SStot.B[:, :Nin]))
+# ErD = np.max(np.abs(SStot.D[:, :Nin] - SStot.D[:, :Nin]))
+# assert ErB < 1e-8, 'Difference in B matrix input (%.2e) too large!' % ErB
+# assert ErD < 1e-8, 'Difference in D matrix input (%.2e) too large!' % ErD
 
 # ----- frequency response
 
@@ -381,226 +405,306 @@ kn = 2. * np.pi * fn
 Nk = 51
 kv = np.linspace(1e-3, 1, Nk)
 wv = 2. * Uinf0 / ws.c_ref * kv
-
-# analytical
-Yfreq_an = np.zeros((6, Nin_real, Nk), dtype=np.complex)
-Yfreq_an[[0, 2, 4], :, :] = an.flat_plate_analytical(
-    kv, x_ea_perc=main_ea, x_fh_perc=.9, input_seq=['plunge', 'pitch'],
-    output_seq=['Fx', 'Fy', 'Mz'], output_scal=None, plunge_deriv=True)
-
-# numerical
-print('Full model frequency response started...')
-t0 = time.time()
+#
+# # analytical
+# Yfreq_an = np.zeros((6, Nin_real, Nk), dtype=np.complex)
+# Yfreq_an[[0, 2, 4], :, :] = an.flat_plate_analytical(
+#     kv, x_ea_perc=main_ea, x_fh_perc=.9, input_seq=['plunge', 'pitch'],
+#     output_seq=['Fx', 'Fy', 'Mz'], output_scal=None, plunge_deriv=True)
+#
+# # numerical
+# print('Full model frequency response started...')
+# t0 = time.time()
 Yfreq_dummy_all = libss.freqresp(SStot, wv)
-cputime = time.time() - t0
-print('\t\t... done in %.2f sec!' % cputime)
+# cputime = time.time() - t0
+# print('\t\t... done in %.2f sec!' % cputime)
 
 
-def adjust_freq_resp(Yfreq_dummy):
-    '''
-    Given the freq. response in the structural degrees of freedom, this
-    function scales the reponse and separates the output aerodynamic forces
-    into those acting at the wing sections and total forces.
+# fig.show()
 
-    The frequency response is always assumed to be in the input [h,dh,a,da].
-    The pitch response is finally expressed in terms of a only setting
-        da = jk a
-    where k is the reduced frequency. The plunge response is in terms of dh
-    instead.
-    '''
+# TESTING!!!!
+from sharpy.rom.reducedordermodel import ReducedOrderModel
+rom = ReducedOrderModel()
+rom.initialise(SStot)
+r = 20
+# frequency_rom = np.array([0.1,40.0])
+frequency_rom = -20 + 20j
 
-    Yfreq_dummy = Yfreq_dummy_all[:, :4, :]
-    Nin = 4
-    assert Yfreq_dummy.shape[1] == Nin, 'Check number of input'
+algorithm = 'arnoldi'
+# algorithm = 'dual_rational_arnoldi_single_frequency'
+rom.run(algorithm, r, frequency_rom)
 
-    # response in for G
-    Yfreq = np.zeros((6, N + 1, Nin, Nk), dtype=np.complex)
-    Yfreq_tot = np.zeros((6, Nin, Nk), dtype=np.complex)
-    # reshape freq resp by section & project
-    jj = 0
-    for node_glob in range(data0.structure.num_node):
-        bc_here = data0.structure.boundary_conditions[node_glob]
-        if bc_here == 1:  # clamp (only totid-body)
-            continue
-            dofs_here = 0
-        elif bc_here == -1 or bc_here == 0:  # (rigid+flex body)
-            dofs_here = 6
-            jj_tra = [jj, jj + 1, jj + 2]
-            jj_rot = [jj + 3, jj + 4, jj + 5]
-        else:
-            raise NameError(
-                'Invalid boundary condition (%d) at node %d!' % (bc_here, node_glob))
-        for ii in range(Nin):
-            for kk in range(Nk):
-                Yfreq[:3, node_glob, ii, kk] = Yfreq_dummy[jj_tra, ii, kk]
-                Yfreq[3:, node_glob, ii, kk] = Yfreq_dummy[jj_rot, ii, kk]
-        jj += dofs_here
-
-    # store total forces on rigid-body
-    jj_tra_tot = [Sol.lingebm_str.num_dof + jj_loc for jj_loc in range(0, 3)]
-    jj_rot_tot = [Sol.lingebm_str.num_dof + jj_loc for jj_loc in range(3, 6)]
-    for ii in range(Nin):
-        for kk in range(Nk):
-            Yfreq_tot[:3, ii, kk] = Yfreq_dummy[jj_tra_tot, ii, kk]
-            Yfreq_tot[3:, ii, kk] = Yfreq_dummy[jj_rot_tot, ii, kk]
-
-    ## normalise
-    span = np.linalg.norm(tsaero0.zeta[0][:, 0, 0] - tsaero0.zeta[0][:, 0, -1])
-    sec_span = np.linalg.norm(tsaero0.zeta[0][:, 0, 0] - tsaero0.zeta[0][:, 0, 1])
-    qinf = 0.5 * tsaero0.rho * Uinf0 ** 2
-    Fref_sec = qinf * ws.c_ref * sec_span
-    Fref_tot = qinf * ws.c_ref * span
-    Mref_sec = Fref_sec * ws.c_ref
-    Mref_tot = Fref_tot * ws.c_ref
-    time_ref = .5 * ws.c_ref / Uinf0  # avoids 2 factor when converting frm wv to kv!
-    RotSpeed_ref = 1. / time_ref
-
-    # output
-    Yfreq[:3, :, :, :] = Yfreq[:3, :, :, :] / Fref_sec
-    Yfreq[3:, :, :, :] = Yfreq[3:, :, :, :] / Mref_sec
-    Yfreq_tot[:3, :, :] = Yfreq_tot[:3, :, :] / Fref_tot
-    Yfreq_tot[3:, :, :] = Yfreq_tot[3:, :, :] / Mref_tot
-
-    # plunge input
-    Yfreq[:, :, 0, :] = Yfreq[:, :, 0, :] * ws.c_ref
-    Yfreq_tot[:, 0, :] = Yfreq_tot[:, 0, :] * ws.c_ref
-    Yfreq[:, :, 1, :] = Yfreq[:, :, 1, :] * Uinf0
-    Yfreq_tot[:, 1, :] = Yfreq_tot[:, 1, :] * Uinf0
-    # pitch speed
-    Yfreq[:, :, 3, :] = Yfreq[:, :, 3, :] * RotSpeed_ref
-    Yfreq_tot[:, 3, :] = Yfreq_tot[:, 3, :] * RotSpeed_ref
-
-    # Augment responses with derivatives
-    for oo in range(Nout):
-        for node_glob in range(data0.structure.num_node):
-            # plunge / pitch
-            Yfreq[oo, node_glob, 0, :] += (1.j * kv) * Yfreq[oo, node_glob, 1, :]
-            Yfreq[oo, node_glob, 2, :] += (1.j * kv) * Yfreq[oo, node_glob, 3, :]
-        # plunge / pitch
-        Yfreq_tot[oo, 0, :] += (1.j * kv) * Yfreq_tot[oo, 1, :]
-        Yfreq_tot[oo, 2, :] += (1.j * kv) * Yfreq_tot[oo, 3, :]
-
-    # scale plunge response by speed
-    for oo in range(Nout):
-        for node_glob in range(data0.structure.num_node):
-            Yfreq[oo, node_glob, 0, :] *= -1.j / kv
-        Yfreq_tot[oo, 0, :] *= -1.j / kv
-
-    return Yfreq[:, :, [0, 2], :], Yfreq_tot[:, [0, 2], :]
+if frequency_rom is None:  # for plotting purposes
+    k_rom = np.inf
+else:
+    k_rom = ws.c_ref * frequency_rom.real * 0.5 / Uinf0
 
 
-# # extract freq response due to rigid and flexible dof
-Yfreq_flex, Yfreq_tot_flex = adjust_freq_resp(Yfreq_dummy_all[:, :Nin, :])
-Yfreq_rig, Yfreq_tot_rig = adjust_freq_resp(Yfreq_dummy_all[:, Nin:, :])
 
-# ------------------------------------------------------------ post process
+Y_freq_rom = rom.ssrom.freqresp(wv)
 
-### errors w.r.t. analytical solution
-# normalised by 2 pi
 
-# flex input dof
-Einf3d_flex = np.zeros((Nout, Nin_real))  # of 3d uvlm at mid section
-Einf3dtot_flex = np.zeros((Nout, Nin_real))  # of 3d uvlm total force
-# rigid input dof
-Einf3d_rig = np.zeros((Nout, Nin_real))  # of 3d uvlm at mid section
-Einf3dtot_rig = np.zeros((Nout, Nin_real))  # of 3d uvlm total force
+fig, ax = plt.subplots()
 
-for ii in range(Nin_real):
-    for oo in range(Nout):
-        # flexible input dof
-        Einf3d_flex[oo, ii] = libss.Hnorm_from_freq_resp(
-            Yfreq_flex[oo, N // 4, ii, :] - Yfreq_an[oo, ii, :], 'Hinf') / 2 / np.pi
-        Einf3dtot_flex[oo, ii] = libss.Hnorm_from_freq_resp(
-            Yfreq_tot_flex[oo, ii, :] - Yfreq_an[oo, ii, :], 'Hinf') / 2 / np.pi
-        # rigid input dof
-        Einf3d_rig[oo, ii] = libss.Hnorm_from_freq_resp(
-            Yfreq_rig[oo, N // 4, ii, :] - Yfreq_an[oo, ii, :], 'Hinf') / 2 / np.pi
-        Einf3dtot_rig[oo, ii] = libss.Hnorm_from_freq_resp(
-            Yfreq_tot_rig[oo, ii, :] - Yfreq_an[oo, ii, :], 'Hinf') / 2 / np.pi
+ax.plot(kv, np.real(Yfreq_dummy_all[0,0,:])*Uinf0,
+        lw=4,
+        alpha=0.5,
+        color='b',
+        label='UVLM - real')
+ax.plot(kv, np.imag((Yfreq_dummy_all[0,0,:])*Uinf0), ls='-.',
+        lw=4,
+        alpha=0.5,
+        color='b',
+        label='UVLM - imag')
 
-print('Max. rel. error flex. dof -> mid-section force: %.2e' % np.max(Einf3d_flex))
-print('Max. rel. error flex. dof -> total force: %.2e' % np.max(Einf3dtot_flex))
-print('Max. rel. error rig.  dof -> mid-section force: %.2e' % np.max(Einf3d_rig))
-print('Max. rel. error rig.  dof -> total force: %.2e' % np.max(Einf3dtot_rig))
 
-# ---------------------------------------------------------------- plotting
+ax.set_xlim(0,kv[-1])
+ax.grid()
+ax.plot(kv, np.real(Y_freq_rom[0,0,:])*Uinf0,
+        lw=1.5,
+        color='k',
+        label='ROM - real')
+ax.plot(kv, np.imag((Y_freq_rom[0,0,:])*Uinf0), ls='-.',
+        lw=1.5,
+        color='k',
+        label='ROM - imag')
 
-# generate figure
-clist = ['#4169E1', '#003366', '#CC3333', '#336633', '#FF6600']
-fontlabel = 16
-std_params = {'legend.fontsize': 10,
-              'font.size': fontlabel,
-              'xtick.labelsize': fontlabel - 2,
-              'ytick.labelsize': fontlabel - 2,
-              'figure.autolayout': True,
-              'legend.numpoints': 1}
-plt.rcParams.update(std_params)
+ax.set_xlabel('Reduced Frequency, k')
+ax.set_ylabel('Normalised Response')
+ax.set_title('ROM - %s, r = %g, $\sigma_k$ = %.1f' %(algorithm, r, k_rom))
+ax.legend()
 
-### sections to plot
-# visualise at quarter-span, which is the furthest away point from the tip and
-# the wing clamp (which is not moving in the flex dof inputs case)
-node_plot = N // 4
-span_adim = np.linalg.norm(tsstr0.pos[node_plot]) / np.linalg.norm(tsstr0.pos[0])
+fig.show()
+# fig.savefig('%s/Full%g_PlungeSpeed_%s_rom%g_f%g.png' %(figfold, SStot.states, algorithm,r,k_rom))
+# fig.savefig('%s/Full%g_PlungeSpeed_%s_rom%g_f%g.eps' %(figfold, SStot.states, algorithm,r,k_rom))
 
-for ii in range(Nin_real):
-    for oo in range(Nout):
 
-        # extract
-        yan = Yfreq_an[oo, ii, :]
-        y3d_flex = Yfreq_flex[oo, node_plot, ii, :]
-        y3d_tot_flex = Yfreq_tot_flex[oo, ii, :]
-        y3d_rig = Yfreq_rig[oo, node_plot, ii, :]
-        y3d_tot_rig = Yfreq_tot_rig[oo, ii, :]
+# fig, ax = plt.subplots(nrows=2)
+#
+# ax[0].plot(kv, np.abs(Yfreq_dummy_all[0,0,:]))
+# ax[1].plot(kv, np.angle((Yfreq_dummy_all[0,0,:])), ls='-')
+#
+#
+# ax[1].set_xlim(0,kv[-1])
+# ax[0].grid()
+# ax[1].grid()
+# ax[0].plot(kv, np.abs(Y_freq_rom[0,0,:]), ls='-.')
+# ax[1].plot(kv, np.angle((Y_freq_rom[0,0,:])), ls='-.')
+#
+# ax[1].set_xlabel('Reduced Frequency, k')
+# # ax.set_ylabel('Normalised Response')
+# ax[0].set_title('ROM - %s, r = %g, $\sigma_k$ = %.1f' %(algorithm, r, k_rom))
+#
+# fig.show()
 
-        if oo in [0, 1, 3, 5]:
-            if np.max(np.abs(np.concatenate(
-                    [y3d_flex, y3d_rig, y3d_tot_flex, y3d_tot_rig]))) > 1e-5:
-                warnings.warn('%s response above 1e-5 tolerance!' % (outputs_labs,))
-            else:
-                continue
 
-        plt.close('all')
-        fig = plt.figure('%s -> %s vs reference' % (inputs_seq[ii], outputs_seq[oo]), (10, 6))
-        ax = fig.subplots(1, 1)
+#
+# def adjust_freq_resp(Yfreq_dummy):
+#     '''
+#     Given the freq. response in the structural degrees of freedom, this
+#     function scales the reponse and separates the output aerodynamic forces
+#     into those acting at the wing sections and total forces.
+#
+#     The frequency response is always assumed to be in the input [h,dh,a,da].
+#     The pitch response is finally expressed in terms of a only setting
+#         da = jk a
+#     where k is the reduced frequency. The plunge response is in terms of dh
+#     instead.
+#     '''
+#
+#     Yfreq_dummy = Yfreq_dummy_all[:, :4, :]
+#     Nin = 4
+#     assert Yfreq_dummy.shape[1] == Nin, 'Check number of input'
+#
+#     # response in for G
+#     Yfreq = np.zeros((6, N + 1, Nin, Nk), dtype=np.complex)
+#     Yfreq_tot = np.zeros((6, Nin, Nk), dtype=np.complex)
+#     # reshape freq resp by section & project
+#     jj = 0
+#     for node_glob in range(data0.structure.num_node):
+#         bc_here = data0.structure.boundary_conditions[node_glob]
+#         if bc_here == 1:  # clamp (only totid-body)
+#             continue
+#             dofs_here = 0
+#         elif bc_here == -1 or bc_here == 0:  # (rigid+flex body)
+#             dofs_here = 6
+#             jj_tra = [jj, jj + 1, jj + 2]
+#             jj_rot = [jj + 3, jj + 4, jj + 5]
+#         else:
+#             raise NameError(
+#                 'Invalid boundary condition (%d) at node %d!' % (bc_here, node_glob))
+#         for ii in range(Nin):
+#             for kk in range(Nk):
+#                 Yfreq[:3, node_glob, ii, kk] = Yfreq_dummy[jj_tra, ii, kk]
+#                 Yfreq[3:, node_glob, ii, kk] = Yfreq_dummy[jj_rot, ii, kk]
+#         jj += dofs_here
+#
+#     # store total forces on rigid-body
+#     jj_tra_tot = [Sol.lingebm_str.num_dof + jj_loc for jj_loc in range(0, 3)]
+#     jj_rot_tot = [Sol.lingebm_str.num_dof + jj_loc for jj_loc in range(3, 6)]
+#     for ii in range(Nin):
+#         for kk in range(Nk):
+#             Yfreq_tot[:3, ii, kk] = Yfreq_dummy[jj_tra_tot, ii, kk]
+#             Yfreq_tot[3:, ii, kk] = Yfreq_dummy[jj_rot_tot, ii, kk]
+#
+#     ## normalise
+#     span = np.linalg.norm(tsaero0.zeta[0][:, 0, 0] - tsaero0.zeta[0][:, 0, -1])
+#     sec_span = np.linalg.norm(tsaero0.zeta[0][:, 0, 0] - tsaero0.zeta[0][:, 0, 1])
+#     qinf = 0.5 * tsaero0.rho * Uinf0 ** 2
+#     Fref_sec = qinf * ws.c_ref * sec_span
+#     Fref_tot = qinf * ws.c_ref * span
+#     Mref_sec = Fref_sec * ws.c_ref
+#     Mref_tot = Fref_tot * ws.c_ref
+#     time_ref = .5 * ws.c_ref / Uinf0  # avoids 2 factor when converting frm wv to kv!
+#     RotSpeed_ref = 1. / time_ref
+#
+#     # output
+#     Yfreq[:3, :, :, :] = Yfreq[:3, :, :, :] / Fref_sec
+#     Yfreq[3:, :, :, :] = Yfreq[3:, :, :, :] / Mref_sec
+#     Yfreq_tot[:3, :, :] = Yfreq_tot[:3, :, :] / Fref_tot
+#     Yfreq_tot[3:, :, :] = Yfreq_tot[3:, :, :] / Mref_tot
+#
+#     # plunge input
+#     Yfreq[:, :, 0, :] = Yfreq[:, :, 0, :] * ws.c_ref
+#     Yfreq_tot[:, 0, :] = Yfreq_tot[:, 0, :] * ws.c_ref
+#     Yfreq[:, :, 1, :] = Yfreq[:, :, 1, :] * Uinf0
+#     Yfreq_tot[:, 1, :] = Yfreq_tot[:, 1, :] * Uinf0
+#     # pitch speed
+#     Yfreq[:, :, 3, :] = Yfreq[:, :, 3, :] * RotSpeed_ref
+#     Yfreq_tot[:, 3, :] = Yfreq_tot[:, 3, :] * RotSpeed_ref
+#
+#     # Augment responses with derivatives
+#     for oo in range(Nout):
+#         for node_glob in range(data0.structure.num_node):
+#             # plunge / pitch
+#             Yfreq[oo, node_glob, 0, :] += (1.j * kv) * Yfreq[oo, node_glob, 1, :]
+#             Yfreq[oo, node_glob, 2, :] += (1.j * kv) * Yfreq[oo, node_glob, 3, :]
+#         # plunge / pitch
+#         Yfreq_tot[oo, 0, :] += (1.j * kv) * Yfreq_tot[oo, 1, :]
+#         Yfreq_tot[oo, 2, :] += (1.j * kv) * Yfreq_tot[oo, 3, :]
+#
+#     # scale plunge response by speed
+#     for oo in range(Nout):
+#         for node_glob in range(data0.structure.num_node):
+#             Yfreq[oo, node_glob, 0, :] *= -1.j / kv
+#         Yfreq_tot[oo, 0, :] *= -1.j / kv
+#
+#     return Yfreq[:, :, [0, 2], :], Yfreq_tot[:, [0, 2], :]
+#
+#
+# # # extract freq response due to rigid and flexible dof
+# Yfreq_flex, Yfreq_tot_flex = adjust_freq_resp(Yfreq_dummy_all[:, :Nin, :])
+# Yfreq_rig, Yfreq_tot_rig = adjust_freq_resp(Yfreq_dummy_all[:, Nin:, :])
+#
+# # ------------------------------------------------------------ post process
+#
+# ### errors w.r.t. analytical solution
+# # normalised by 2 pi
+#
+# # flex input dof
+# Einf3d_flex = np.zeros((Nout, Nin_real))  # of 3d uvlm at mid section
+# Einf3dtot_flex = np.zeros((Nout, Nin_real))  # of 3d uvlm total force
+# # rigid input dof
+# Einf3d_rig = np.zeros((Nout, Nin_real))  # of 3d uvlm at mid section
+# Einf3dtot_rig = np.zeros((Nout, Nin_real))  # of 3d uvlm total force
+#
+# for ii in range(Nin_real):
+#     for oo in range(Nout):
+#         # flexible input dof
+#         Einf3d_flex[oo, ii] = libss.Hnorm_from_freq_resp(
+#             Yfreq_flex[oo, N // 4, ii, :] - Yfreq_an[oo, ii, :], 'Hinf') / 2 / np.pi
+#         Einf3dtot_flex[oo, ii] = libss.Hnorm_from_freq_resp(
+#             Yfreq_tot_flex[oo, ii, :] - Yfreq_an[oo, ii, :], 'Hinf') / 2 / np.pi
+#         # rigid input dof
+#         Einf3d_rig[oo, ii] = libss.Hnorm_from_freq_resp(
+#             Yfreq_rig[oo, N // 4, ii, :] - Yfreq_an[oo, ii, :], 'Hinf') / 2 / np.pi
+#         Einf3dtot_rig[oo, ii] = libss.Hnorm_from_freq_resp(
+#             Yfreq_tot_rig[oo, ii, :] - Yfreq_an[oo, ii, :], 'Hinf') / 2 / np.pi
+#
+# print('Max. rel. error flex. dof -> mid-section force: %.2e' % np.max(Einf3d_flex))
+# print('Max. rel. error flex. dof -> total force: %.2e' % np.max(Einf3dtot_flex))
+# print('Max. rel. error rig.  dof -> mid-section force: %.2e' % np.max(Einf3d_rig))
+# print('Max. rel. error rig.  dof -> total force: %.2e' % np.max(Einf3dtot_rig))
+#
+# # ---------------------------------------------------------------- plotting
+#
+# # generate figure
+# clist = ['#4169E1', '#003366', '#CC3333', '#336633', '#FF6600']
+# fontlabel = 16
+# std_params = {'legend.fontsize': 10,
+#               'font.size': fontlabel,
+#               'xtick.labelsize': fontlabel - 2,
+#               'ytick.labelsize': fontlabel - 2,
+#               'figure.autolayout': True,
+#               'legend.numpoints': 1}
+# plt.rcParams.update(std_params)
+#
+# ### sections to plot
+# # visualise at quarter-span, which is the furthest away point from the tip and
+# # the wing clamp (which is not moving in the flex dof inputs case)
+# node_plot = N // 4
+# span_adim = np.linalg.norm(tsstr0.pos[node_plot]) / np.linalg.norm(tsstr0.pos[0])
+#
+# for ii in range(Nin_real):
+#     for oo in range(Nout):
+#
+#         # extract
+#         yan = Yfreq_an[oo, ii, :]
+#         y3d_flex = Yfreq_flex[oo, node_plot, ii, :]
+#         y3d_tot_flex = Yfreq_tot_flex[oo, ii, :]
+#         y3d_rig = Yfreq_rig[oo, node_plot, ii, :]
+#         y3d_tot_rig = Yfreq_tot_rig[oo, ii, :]
+#
+#         if oo in [0, 1, 3, 5]:
+#             if np.max(np.abs(np.concatenate(
+#                     [y3d_flex, y3d_rig, y3d_tot_flex, y3d_tot_rig]))) > 1e-5:
+#                 warnings.warn('%s response above 1e-5 tolerance!' % (outputs_labs,))
+#             else:
+#                 continue
+#
+#         plt.close('all')
+#         fig = plt.figure('%s -> %s vs reference' % (inputs_seq[ii], outputs_seq[oo]), (10, 6))
+#         ax = fig.subplots(1, 1)
+#
+#         ### analytical
+#         ax.plot(kv, yan.real, color='0.6', lw=10, ls='-', alpha=.9,
+#                 label=r'Theodorsen - real')
+#         ax.plot(kv, yan.imag, color='0.6', lw=10, ls=':', alpha=.9,
+#                 label=r'Theodorsen - imag')
+#
+#         ### flexible dof in input
+#         # mid section
+#         ax.plot(kv, y3d_flex.real, color='#4169E1', lw=4, ls='-', alpha=.8,
+#                 label=r'UVLM (span: %.1f, flex dof) - real' % span_adim)
+#         ax.plot(kv, y3d_flex.imag, color='#4169E1', lw=4, ls=':', alpha=.8,
+#                 label=r'UVLM (span: %.1f, flex dof) - imag' % span_adim)
+#         # total
+#         ax.plot(kv, y3d_tot_flex.real, color='#003366', lw=3, ls='-', alpha=.8,
+#                 label=r'UVLM (total, flex dof) - real')
+#         ax.plot(kv, y3d_tot_flex.imag, color='#003366', lw=3, ls=':', alpha=.8,
+#                 label=r'UVLM (total, flex dof) - imag')
+#
+#         ### rigid dof in input
+#         # mid section
+#         ax.plot(kv, y3d_rig.real, color='#CC3333', lw=3, ls='-', alpha=.8,
+#                 label=r'UVLM (span: %.1f, rig dof) - real' % span_adim)
+#         ax.plot(kv, y3d_rig.imag, color='#CC3333', lw=3, ls=':', alpha=.8,
+#                 label=r'UVLM (span: %.1f, rig dof) - imag' % span_adim)
+#         # total
+#         ax.plot(kv, y3d_tot_rig.real, color='#FF6600', lw=2, ls='-', alpha=.8,
+#                 label=r'UVLM (total, rig dof) - real')
+#         ax.plot(kv, y3d_tot_rig.imag, color='#FF6600', lw=2, ls=':', alpha=.8,
+#                 label=r'UVLM (total, rig dof) - imag')
+#         ax.set_xlim(0, 1)
+#         ax.set_xlabel(r'reduced frequency, $k$')
+#         ax.set_ylabel(r'normalised response')
+#         ax.grid(color='0.85', linestyle='-')
+#         ax.legend(ncol=1, frameon=False, columnspacing=.5, labelspacing=.4)
+#         fig.savefig('%s/freq_%sto%s_%s.png' \
+#                     % (figfold, inputs_labs[ii], outputs_labs[oo], case_main))
+#         fig.savefig('%s/freq_%sto%s_%s.pdf' \
+#                     % (figfold, inputs_labs[ii], outputs_labs[oo], case_main))
+#
+#         plt.close('all')
+#     # plt.show()
 
-        ### analytical
-        ax.plot(kv, yan.real, color='0.6', lw=5, ls='-', alpha=.9,
-                label=r'Theodorsen - real')
-        ax.plot(kv, yan.imag, color='0.6', lw=5, ls=':', alpha=.9,
-                label=r'Theodorsen - imag')
-
-        ### flexible dof in input
-        # mid section
-        ax.plot(kv, y3d_flex.real, color='#4169E1', lw=4, ls='-', alpha=.8,
-                label=r'UVLM (span: %.1f, flex dof) - real' % span_adim)
-        ax.plot(kv, y3d_flex.imag, color='#4169E1', lw=4, ls=':', alpha=.8,
-                label=r'UVLM (span: %.1f, flex dof) - imag' % span_adim)
-        # total
-        ax.plot(kv, y3d_tot_flex.real, color='#003366', lw=3, ls='-', alpha=.8,
-                label=r'UVLM (total, flex dof) - real')
-        ax.plot(kv, y3d_tot_flex.imag, color='#003366', lw=3, ls=':', alpha=.8,
-                label=r'UVLM (total, flex dof) - imag')
-
-        ### rigid dof in input
-        # mid section
-        ax.plot(kv, y3d_rig.real, color='#CC3333', lw=3, ls='-', alpha=.8,
-                label=r'UVLM (span: %.1f, rig dof) - real' % span_adim)
-        ax.plot(kv, y3d_rig.imag, color='#CC3333', lw=3, ls=':', alpha=.8,
-                label=r'UVLM (span: %.1f, rig dof) - imag' % span_adim)
-        # total
-        ax.plot(kv, y3d_tot_rig.real, color='#FF6600', lw=2, ls='-', alpha=.8,
-                label=r'UVLM (total, rig dof) - real')
-        ax.plot(kv, y3d_tot_rig.imag, color='#FF6600', lw=2, ls=':', alpha=.8,
-                label=r'UVLM (total, rig dof) - imag')
-        ax.set_xlim(0, 1)
-        ax.set_xlabel(r'reduced frequency, $k$')
-        ax.set_ylabel(r'normalised response')
-        ax.grid(color='0.85', linestyle='-')
-        ax.legend(ncol=1, frameon=False, columnspacing=.5, labelspacing=.4)
-        fig.savefig('%s/freq_%sto%s_%s.png' \
-                    % (figfold, inputs_labs[ii], outputs_labs[oo], case_main))
-        fig.savefig('%s/freq_%sto%s_%s.pdf' \
-                    % (figfold, inputs_labs[ii], outputs_labs[oo], case_main))
-
-        plt.close('all')
-    # plt.show()

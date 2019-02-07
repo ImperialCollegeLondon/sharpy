@@ -97,6 +97,9 @@ lib/*
 output/*
 .idea
 
+# figure folders
+figs/
+
 *.csv
 
 *.vtu
