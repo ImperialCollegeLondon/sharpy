@@ -60,134 +60,146 @@ import scipy.signal as scsig
 import sharpy.linear.src.libsparse as libsp
 
 
-
 # ------------------------------------------------------------- Dedicated class
 
 class ss():
-	'''
-	Wrap state-space models allocation into a single class and support both
-	full and sparse matrices. The class emulates 
-		scipy.signal.ltisys.StateSpaceContinuous
-		scipy.signal.ltisys.StateSpaceDiscrete
-	but supports sparse matrices and other functionalities. 
+    """
+    Wrap state-space models allocation into a single class and support both
+    full and sparse matrices. The class emulates 
+        scipy.signal.ltisys.StateSpaceContinuous
+        scipy.signal.ltisys.StateSpaceDiscrete
+    but supports sparse matrices and other functionalities. 
 
-	Methods:
-	- get_mats: return matrices as tuple
-	- check_types: check matrices types are supported
-	- freqresp: calculate frequency response over range.
-	- addGain: project inputs/outputs
-	- scale: allows scaling a system
-	'''
+    Methods:
+    - get_mats: return matrices as tuple
+    - check_types: check matrices types are supported
+    - freqresp: calculate frequency response over range.
+    - addGain: project inputs/outputs
+    - scale: allows scaling a system
+    """
 
-	def __init__(self,A, B, C, D, dt=None):
-		'''
-		Allocate state-space model (A,B,C,D). If dt is not passed, a 
-		continuous-time system is assumed.
-		'''
+    def __init__(self, A, B, C, D, dt=None):
+        """
+        Allocate state-space model (A,B,C,D). If dt is not passed, a 
+        continuous-time system is assumed.
+        """
 
-		self.A=A
-		self.B=B
-		self.C=C 
-		self.D=D
-		self.dt=dt
-		self.check_types()
+        self.A = A
+        self.B = B
+        self.C = C
+        self.D = D
+        self.dt = dt
+        self.check_types()
 
-		# determine inputs/outputs/states
-		(self.states,self.inputs)=self.B.shape
-		self.outputs=self.C.shape[0]
+        # determine inputs/outputs/states
+        if self.B.shape.__len__() == 1:
+            # Allow for SISO systems
+            self.inputs = 1
+            self.states = self.B.shape[0]
+        else:
+            (self.states, self.inputs) = self.B.shape
 
-		# verify dimensions
-		assert self.A.shape==(self.states,self.states), 'A and B rows not matching'
-		assert self.C.shape[1]==self.states, 'A and C columns not matching'
-		assert self.D.shape==(self.outputs,self.inputs), 'B and D columns not matching'
+        self.outputs = self.C.shape[0]
 
-
-	def check_types(self):
-		assert type(self.A) in libsp.SupportedTypes,\
-							  'Type of A matrix (%s) not supported'%type(self.A)
-		assert type(self.B) in libsp.SupportedTypes,\
-							  'Type of A matrix (%s) not supported'%type(self.B)
-		assert type(self.C) in libsp.SupportedTypes,\
-							  'Type of A matrix (%s) not supported'%type(self.C)
-		assert type(self.D) in libsp.SupportedTypes,\
-							  'Type of A matrix (%s) not supported'%type(self.D)
-
-
-	def get_mats(self):
-		return self.A,self.B,self.C,self.D
+        # verify dimensions
+        assert self.A.shape == (self.states, self.states), 'A and B rows not matching'
+        assert self.C.shape[1] == self.states, 'A and C columns not matching'
+        assert self.D.shape[0] == self.outputs, 'C and D rows not matching'
+        if self.inputs == 1:
+            assert self.D.shape.__len__() == 1, 'B and D columns not matching'
+        else:
+            assert self.D.shape[1] == self.inputs, 'B and D columns not matching'
 
 
-	def freqresp(self,wv):
-		'''
-		Calculate frequency response over frequencies wv
-
-		Note: this wraps frequency response function.
-		'''
-		dlti=True
-		if self.dt==None: dlti=False
-		return freqresp(self,wv,dlti=dlti)
-
-
-	def addGain(self,K,where):
-		'''
-		Projects input u or output y the state-space system through the gain 
-		matrix K. The input 'where' determines whether inputs or outputs are
-		projected as: 
-			- where='in': inputs are projected such that:
-				u_new -> u=K*u_new -> SS -> y  => u_new -> SSnew -> y
-			- where='out': outputs are projected such that:
-			 	u -> SS -> y -> y_new=K*y => u -> SSnew -> ynew 
-
-		Warning: this is not a wrapper of the addGain method in this module, as
-		the state-space matrices are directly overwritten.
-		'''
-
-		assert where in ['in', 'out'],\
-							'Specify whether gains are added to input or output'
-
-		if where=='in':
-			self.B=libsp.dot(self.B,K)
-			self.D=libsp.dot(self.D,K)
-			self.inputs=K.shape[1]
-
-		if where=='out':
-			self.C=libsp.dot(K,self.C)
-			self.D=libsp.dot(K,self.D)
-			self.outputs=K.shape[0]
+    def check_types(self):
+        assert type(self.A) in libsp.SupportedTypes, \
+            'Type of A matrix (%s) not supported' % type(self.A)
+        assert type(self.B) in libsp.SupportedTypes, \
+            'Type of A matrix (%s) not supported' % type(self.B)
+        assert type(self.C) in libsp.SupportedTypes, \
+            'Type of A matrix (%s) not supported' % type(self.C)
+        assert type(self.D) in libsp.SupportedTypes, \
+            'Type of A matrix (%s) not supported' % type(self.D)
 
 
-	def scale(self,input_scal=1.,output_scal=1.,state_scal=1.):
-		'''
-		Given a state-space system, scales the equations such that the original
-		state, input and output, (x, u and y), are substituted by 
-			xad=x/state_scal
-			uad=u/input_scal 
-			yad=y/output_scal
-		The entries input_scal/output_scal/state_scal can be:
-			- floats: in this case all input/output are scaled by the same value
-			- lists/arrays of length Nin/Nout: in this case each dof will be scaled
-			by a different factor
+    def get_mats(self):
+        return self.A, self.B, self.C, self.D
 
-		If the original system has form:
-			xnew=A*x+B*u
-			y=C*x+D*u
-		the transformation is such that:
-			xnew=A*x+(B*uref/xref)*uad
-			yad=1/yref( C*xref*x+D*uref*uad )
-		'''
-		scale_SS(self,input_scal,output_scal,state_scal,byref=True)
+
+    def freqresp(self, wv):
+        """
+        Calculate frequency response over frequencies wv
+
+        Note: this wraps frequency response function.
+        """
+        dlti = True
+        if self.dt == None: dlti = False
+        return freqresp(self, wv, dlti=dlti)
+
+
+    def addGain(self, K, where):
+        """
+        Projects input u or output y the state-space system through the gain 
+        matrix K. The input 'where' determines whether inputs or outputs are
+        projected as: 
+            - where='in': inputs are projected such that:
+                u_new -> u=K*u_new -> SS -> y  => u_new -> SSnew -> y
+            - where='out': outputs are projected such that:
+                 u -> SS -> y -> y_new=K*y => u -> SSnew -> ynew 
+
+        Warning: this is not a wrapper of the addGain method in this module, as
+        the state-space matrices are directly overwritten.
+        """
+
+        assert where in ['in', 'out'], \
+            'Specify whether gains are added to input or output'
+
+        if where == 'in':
+            self.B = libsp.dot(self.B, K)
+            self.D = libsp.dot(self.D, K)
+            try:
+                self.inputs = K.shape[1]
+            except IndexError:
+                self.inputs = 1
+
+        if where == 'out':
+            self.C = libsp.dot(K, self.C)
+            self.D = libsp.dot(K, self.D)
+            self.outputs = K.shape[0]
+
+
+    def scale(self, input_scal=1., output_scal=1., state_scal=1.):
+        """
+        Given a state-space system, scales the equations such that the original
+        state, input and output, (x, u and y), are substituted by 
+            xad=x/state_scal
+            uad=u/input_scal 
+            yad=y/output_scal
+        The entries input_scal/output_scal/state_scal can be:
+            - floats: in this case all input/output are scaled by the same value
+            - lists/arrays of length Nin/Nout: in this case each dof will be scaled
+            by a different factor
+
+        If the original system has form:
+            xnew=A*x+B*u
+            y=C*x+D*u
+        the transformation is such that:
+            xnew=A*x+(B*uref/xref)*uad
+            yad=1/yref( C*xref*x+D*uref*uad )
+        """
+        scale_SS(self, input_scal, output_scal, state_scal, byref=True)
 
 
 # ---------------------------------------- Methods for state-space manipulation
 
 def couple(ss01,ss02,K12,K21,out_sparse=False):
-	'''
+	"""
 	Couples 2 dlti systems ss01 and ss02 through the gains K12 and K21, where
 	K12 transforms the output of ss02 into an input of ss01.
 
 	Other inputs:
 	- out_sparse: if True, the output system is stored as sparse (not recommended)
-	'''
+	"""
 
 	assert np.abs(ss01.dt-ss02.dt)<1e-10*ss01.dt, 'Time-steps not matching!'
 	assert K12.shape == (ss01.inputs,ss02.outputs),\
@@ -440,7 +452,7 @@ def parallel(SS01, SS02):
 
 
 def freqresp(SS,wv,dlti=True):
-	''' 
+	""" 
 	In-house frequency response function supporting dense/sparse types
 
 	Inputs:
@@ -455,7 +467,7 @@ def freqresp(SS,wv,dlti=True):
 	-  This function may not be very efficient for dense matrices (as A is not
 	reduced to upper Hessenberg form), but can exploit sparsity in the state-space
 	matrices.
-	'''
+	"""
 
 	assert type(SS)==ss,\
 	'Type %s of state-space model not supported. Use libss.ss instead!'%type(SS)
@@ -471,7 +483,11 @@ def freqresp(SS,wv,dlti=True):
 
 	Nx=SS.A.shape[0]
 	Ny=SS.D.shape[0]
-	Nu=SS.B.shape[1]
+	try:
+		Nu=SS.B.shape[1]
+	except IndexError:
+		Nu = 1
+
 	Nw=len(wv)
 
 	Yfreq=np.empty((Ny,Nu,Nw,),dtype=np.complex_)
@@ -485,13 +501,13 @@ def freqresp(SS,wv,dlti=True):
 
 
 def series(SS01,SS02):
-	'''
+	"""
 	Connects two state-space blocks in series. If these are instances of DLTI
 	state-space systems, they need to have the same type and time-step.
 
 	The connection is such that:
 		u --> SS01 --> SS02 --> y 		==>		u --> SStot --> y
-	'''
+	"""
 
 	if type(SS01) is not type(SS02):
 		raise NameError('The two input systems need to have the same size!')
@@ -515,20 +531,20 @@ def series(SS01,SS02):
 	C=np.concatenate( ( libsp.dot(SS02.D,SS01.C), SS02.C ), axis=1 )		
 	D=libsp.dot( SS02.D, SS01.D )
 
-	SStot=ss.dlti(A,B,C,D,dt=SS01.dt)
+	SStot=ss(A,B,C,D,dt=SS01.dt)
 
 	return SStot
 
 
 
 def parallel(SS01,SS02):
-	'''
+	"""
 	Returns the sum (or paralle connection of two systems). Given two state-space
 	models with the same output, but different input:
 		u1 --> SS01 --> y
 		u2 --> SS02 --> y
 
-	'''
+	"""
 
 	if type(SS01) is not type(SS02):
 		raise NameError('The two input systems need to have the same size!')
@@ -646,7 +662,7 @@ def SSconv(A,B0,B1,C,D,Bm1=None):
 
 
 def addGain(SShere,Kmat,where):
-	'''
+	"""
 	Convert input u or output y of a SS DLTI system through gain matrix K. We
 	have the following transformations:
 	- where='in': the input dof of the state-space are changed
@@ -660,7 +676,7 @@ def addGain(SShere,Kmat,where):
 		{y = y_1+y_2
 		 -
 	Warning: function not tested for Kmat stored in sparse format
-	'''
+	"""
 
 	assert where in ['in', 'out', 'parallel-down', 'parallel-up'],\
 							'Specify whether gains are added to input or output'
@@ -940,11 +956,11 @@ def scale_SS(SSin, input_scal=1., output_scal=1., state_scal=1., byref=True):
 
 
 def simulate(SShere,U,x0=None):
-	'''
+	"""
 	Routine to simulate response to generic input.
 	@warning: this routine is for testing and may lack of robustness. Use
 		scipy.signal instead.
-	'''
+	"""
 
 	A,B,C,D=SShere.A,SShere.B,SShere.C,SShere.D
 
@@ -1145,14 +1161,14 @@ def butter(order, Wn, N=1, btype='lowpass'):
 # ----------------------------------------------------------------------- Utils
 
 def get_freq_from_eigs(eigs,dlti=True):
-    '''
+    """
     Compute natural freq corresponding to eigenvalues, eigs, of a continuous or 
     discrete-time (dlti=True) systems.
 
     Note: if dlti=True, the frequency is normalised by (1./dt), where dt is the
     DLTI time-step - i.e. the frequency in Hertz is obtained by multiplying fn by
     (1./dt).
-    '''
+    """
     if dlti:
         fn=0.5*np.angle(eigs)/np.pi
     else:
@@ -1164,9 +1180,9 @@ def get_freq_from_eigs(eigs,dlti=True):
 
 
 def random_ss(Nx,Nu,Ny,dt=None,use_sparse=False):
-	'''
+	"""
 	Define random system from number of states (Nx), inputs (Nu) and output (Ny).
-	'''
+	"""
 
 	A=np.random.rand(Nx,Nx)
 	B=np.random.rand(Nx,Nu)
@@ -1186,9 +1202,9 @@ def random_ss(Nx,Nu,Ny,dt=None,use_sparse=False):
 
 
 def compare_ss(SS1,SS2,tol=1e-10,Print=False):
-    '''
+    """
     Assert matrices of state-space models are identical
-    '''
+    """
 
     era=np.max(np.abs(libsp.dense(SS1.A)-libsp.dense(SS2.A)))
     if Print: print('Max. error A: %.3e' %era)
@@ -1217,7 +1233,7 @@ if __name__=='__main__':
 	import unittest
 
 	class Test_dlti(unittest.TestCase):
-		''' Test methods into this module for DLTI systems '''
+		""" Test methods into this module for DLTI systems """
 
 		def setUp(self):
 			# allocate some state-space model (dense and sparse)
