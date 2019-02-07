@@ -448,13 +448,11 @@ class Dynamic(Static):
             p=pstats.Stats(self.prof_out)
         - solve_steady: solves for the steady state. Several methods available.
         - solve_step: solves one time-step
+        - freqresp: ad-hoc method for fast frequency response (only implemented)
+        for remove_predictor=False
         
-
     To do:
     - upgrade to linearise around unsteady snapshot (adjoint)
-
-
-
     '''
 
     def __init__(self, tsdata, dt, integr_order=2, 
@@ -783,6 +781,148 @@ class Dynamic(Static):
         print('\t\t\t...done in %.2f sec' % self.cpu_summary['assemble'])
 
 
+
+    def freqresp(self,kv):
+        '''
+        Ad-hoc method for fast UVLM frequency response over the frequencies
+        kv. The method, only requires inversion of a K x K matrix at each
+        frequency as the equation for propagation of wake circulation are solved
+        exactly.
+        The algorithm implemented here can be used also upon projection of
+        the state-space model. 
+
+        Warning: only implemented for self.remove_predictor = False !
+
+        Note:
+        This method is very similar to the "minsize" solution option is the 
+        steady_solve.
+        '''
+
+        assert self.remove_predictor is False,\
+            'Fast frequency response not implemented for remove_predictor - %s'\
+                                                          %self.remove_predictor
+
+        MS = self.MS
+        K = self.K
+        K_star = self.K_star
+
+        Eye=np.eye(K)
+        Bup=self.SS.B[:K,:]
+        if self.use_sparse:
+            # warning: behaviour may change in future numpy release. 
+            # Ensure P,Pw,Bup are np.ndarray
+            P = np.array( self.SS.A[:K, :K].todense() )
+            Pw = np.array( self.SS.A[:K, K:K + K_star].todense() )
+            if type(Bup) not in [np.ndarray,libsp.csc_matrix]:
+                Bup=Bup.toarray()
+        else:
+            P = self.SS.A[:K, :K]
+            Pw = self.SS.A[:K, K:K + K_star]
+
+        Nk=len(kv)
+        kvdt=kv*self.SS.dt
+        zv=np.cos(kvdt)+1.j*np.sin(kvdt)
+        Yfreq=np.empty((self.SS.outputs,self.SS.inputs,Nk,),dtype=np.complex_)
+
+
+        if self.remove_predictor:
+
+            for kk in range(Nk):
+
+                ###  build Cw complex
+                Cw_cpx=self.get_Cw_cpx(zv[kk])
+                Ygamma=libsp.solve( zv[kk]*Eye-P-
+                        libsp.dot(Pw, Cw_cpx, type_out=libsp.csc_matrix),
+                                libsp.csc_matrix(zv[kk]*self.B_predictor[:K,:]))
+                Ygamma_star=Cw_cpx.dot(Ygamma)
+
+                iivec=range(K+K_star,2*K+K_star)
+                Ydelta = self.SS.A[iivec,:K].dot(Ygamma) +\
+                         self.SS.A[iivec,K:K+K_star].dot(Ygamma_star) +\
+                         self.SS.B[iivec,:]
+
+                if self.integr_order==1:
+                    pass # all done
+                elif self.integr_order==2:
+                    Ygamma_old=(1./zv[kk])*Ygamma
+                    Ydelta+=self.SS.A[iivec,2*K+K_star:].dot(Ygamma_old)
+                else:
+                    raise NameError('Specify valid integration order') 
+                Ydelta/=zv[kk]                   
+
+                Yfreq[:,:,kk] = np.dot( self.SS.C[:,:K], Ygamma) +\
+                                np.dot( self.SS.C[:,K:K+K_star], Ygamma_star) +\
+                                np.dot( self.SS.C[:,K+K_star:2*K+K_star], Ydelta) +\
+                                self.SS.D
+
+        else:
+
+            for kk in range(Nk):
+
+                ###  build Cw complex
+                Cw_cpx=self.get_Cw_cpx(zv[kk])
+
+                Ygamma=libsp.solve( zv[kk]*Eye-P-
+                            libsp.dot( Pw, Cw_cpx, type_out=libsp.csc_matrix), 
+                                       Bup)  
+                Ygamma_star=Cw_cpx.dot(Ygamma)
+
+                if self.integr_order==1:
+                    dfact=(1.-1./zv[kk])
+                elif self.integr_order==2:
+                    dfact=.5*( 3. -4./zv[kk] + 1./zv[kk]**2 )
+                else:
+                    raise NameError('Specify valid integration order')
+
+                # calculate solution
+                Yfreq[:,:,kk] = np.dot( self.SS.C[:,:K], Ygamma) +\
+                                np.dot( self.SS.C[:,K:K+K_star], Ygamma_star) +\
+                                np.dot( self.SS.C[:,K+K_star:2*K+K_star], dfact*Ygamma) +\
+                                self.SS.D
+
+        return Yfreq
+
+
+
+    def get_Cw_cpx(self,zval):
+        '''
+        Produces a sparse matrix 
+
+            .. math:: \bar\mathbf{C}(z)
+
+        where 
+
+            .. math:: z = e^{k \Delta t}        
+            
+        such that the wake circulation frequency response at z is
+
+            .. math:: \bar\mathbf{\Gamma_w} = \bar\mathbf{C}(z)  \bar\mathbf{\Gamma}
+        '''
+
+        MS = self.MS
+        K = self.K
+        K_star = self.K_star
+    
+        Cw_cpx=libsp.csc_matrix((K_star,K),dtype=np.complex_)
+
+        K0tot, K0totstar = 0,0
+        for ss in range(MS.n_surf):
+
+            M,N=self.MS.dimensions[ss]                
+            Mstar,N=self.MS.dimensions_star[ss]
+
+            for mm in range(Mstar):
+                iivec = range( K0totstar+mm*N, K0totstar+(mm+1)*N )
+                jjvec = range( K0tot+N*(M-1),  K0tot+N*M )
+                Cw_cpx[ iivec, jjvec ]=zval**(-mm-1)
+
+            K0tot += MS.KK[ss]
+            K0totstar += MS.KK_star[ss]
+
+        return Cw_cpx
+
+
+
     def assemble_ss_profiling(self):
         '''
         Generate profiling report for assembly and save it in self.prof_out.
@@ -1048,6 +1188,393 @@ class Dynamic(Static):
 
 
 
+class Frequency(Static):
+    '''
+    Class for frequency description of linearised UVLM solution. Linearisation 
+    around steady-state are only supported. The class is built upon Static, and 
+    inherits all the methods contained there.
+
+    The class supports most of the features of Dynamics but has lower memory 
+    requirements of Dynamic, and should be preferred for:
+        a. producing  memory and computationally cheap frequency responses
+        b. building reduced order models using RFA/polynomial fitting
+
+    Usage:
+    Upon initialisation, the assemble method produces all the matrices required
+    for the frequency description of the UVLM (see assemble for details). A
+    state-space model is not allocated but:
+        - Time stepping is also possible (but not implemented yet) as all the 
+        fundamental terms describing the UVLM equations are still produced 
+        (except the proopagation of wake circulation)
+        - ad-hoc methods for scaling, unscaling and frequency response are 
+        provided.
+  
+    Input:
+        - tsdata: aero timestep data from SHARPy solution
+        - dt: time-step
+        - integr_order=0,1,2: integration order for UVLM unsteady aerodynamic 
+        force. If 0, the derivative is computed exactly.
+        - RemovePredictor=True: This flag is only used for the frequency response
+        calculation. The frequency description, in fact, naturally arises 
+        without the predictor, but lags can be included during the frequency
+        response calculation. See Dynamic documentation for more details.
+        - ScalingDict=None: disctionary containing fundamental reference units
+            {'length':  reference_length,  
+             'speed':   reference_speed, 
+             'density': reference density}
+        used to derive scaling quantities for the state-space model variables.
+        The scaling factors are stores in 
+            self.ScalingFact. 
+        Note that while time, circulation, angular speeds) are scaled  
+        accordingly, FORCES ARE NOT. These scale by qinf*b**2, where b is the 
+        reference length and qinf is the dinamic pressure. 
+        - UseSparse=False: builds the A and B matrices in sparse form. C and D
+        are dense, hence the sparce format is not used.
+
+    Methods: 
+        - nondimss: normalises matrices produced by the assemble method  based 
+        on the scaling factors in self.ScalingFact. 
+        - dimss: inverse of nondimss.
+        - assemble: builds matrices for UVLM minimal size description.
+        - assemble_profiling: generate profiling report of the assembly and 
+        saves it into self.prof_out. To read the report:
+            import pstats
+            p=pstats.Stats(self.prof_out)
+        - freqresp: fast algorithm for frequency response.
+
+    Methods to implement:
+        - solve_steady: runs freqresp at 0 frequency.
+        - solve_step: solves one time-step
+    '''
+
+    def __init__(self, tsdata, dt, integr_order=2, 
+                       RemovePredictor=True, ScalingDict=None, UseSparse=True):
+
+        super().__init__(tsdata)
+
+        self.dt = dt
+        self.integr_order = integr_order
+
+        assert self.integr_order in [1,2,0], 'integr_order must be in [0,1,2]' 
+
+        self.inputs = 9 * self.Kzeta
+        self.outputs = 3 * self.Kzeta
+
+        self.remove_predictor = RemovePredictor
+        self.use_sparse=UseSparse
+
+        # create scaling quantities
+        if ScalingDict is None:
+            ScalingFacts = {'length': 1.,
+                            'speed': 1.,
+                            'density': 1.}
+        else:
+            ScalingFacts = ScalingDict
+
+        for key in ScalingFacts:
+            ScalingFacts[key] = np.float(ScalingFacts[key])
+
+        ScalingFacts['time'] = ScalingFacts['length'] / ScalingFacts['speed']
+        ScalingFacts['circulation'] = ScalingFacts['speed'] * ScalingFacts['length']
+        ScalingFacts['dyn_pressure'] = 0.5 * ScalingFacts['density'] * ScalingFacts['speed'] ** 2
+        ScalingFacts['force'] = ScalingFacts['dyn_pressure'] * ScalingFacts['length'] ** 2
+        self.ScalingFacts = ScalingFacts
+
+        ### collect statistics
+        self.cpu_summary={'dim': 0.,
+                          'nondim': 0., 
+                          'assemble': 0.}
+
+
+    def nondimss(self):
+        """
+        Scale state-space model based of self.ScalingFacts
+        """
+
+        t0=time.time()
+        Kzeta = self.Kzeta
+
+        self.Bss[:,:3*Kzeta] *= (self.ScalingFacts['length']/self.ScalingFacts['circulation'])
+        self.Bss[:,3*Kzeta:] *= (self.ScalingFacts['speed']/self.ScalingFacts['circulation'])
+
+        self.Css *= (self.ScalingFacts['circulation']/self.ScalingFacts['force'])
+
+        self.Dss[:,:3*Kzeta] *= (self.ScalingFacts['length']/self.ScalingFacts['force'])
+        self.Dss[:,3*Kzeta:] *= (self.ScalingFacts['speed']/self.ScalingFacts['force'])
+
+        self.dt = self.dt / self.ScalingFacts['time']
+
+        self.cpu_summary['nondim']=time.time() - t0
+
+
+    def dimss(self):
+
+        t0=time.time()
+        Kzeta = self.Kzeta     
+
+        self.Bss[:,:3*Kzeta] /= (self.ScalingFacts['length']/self.ScalingFacts['circulation'])
+        self.Bss[:,3*Kzeta:] /= (self.ScalingFacts['speed']/self.ScalingFacts['circulation'])
+
+        self.Css /= (self.ScalingFacts['circulation']/self.ScalingFacts['force'])
+
+        self.Dss[:,:3*Kzeta] /= (self.ScalingFacts['length']/self.ScalingFacts['force'])
+        self.Dss[:,3*Kzeta:] /= (self.ScalingFacts['speed']/self.ScalingFacts['force'])
+
+        self.dt = self.dt * self.ScalingFacts['time']
+
+        self.cpu_summary['dim']=time.time() - t0
+
+
+    def assemble(self):
+        r"""
+        Assembles matrices for minumal size frequency description of UVLM. The
+        state equation is represented in the form:
+
+            .. math:: \mathbf{A_0} \mathbf{\Gamma} + 
+                            \mathbf{A_{w_0}} \mathbf{\Gamma_w} = 
+                                                \mathbf{B_0} \mathbf{u} 
+
+        While the output equation is as per the Dynamic class, namely:
+
+            .. math:: \mathbf{y} = 
+                            \mathbf{C} \mathbf{x} + \mathbf{D} \mathbf{u} 
+
+        where 
+
+            .. math:: \mathbf{x} =  
+                     [\mathbf{\Gamma}; \mathbf{\Gamma_w}; \Delta\mathbf(\Gamma)]
+        
+        The propagation of wake circulation matrices are not produced as these
+        are not required for frequency response analysis.
+        """
+
+        print('Assembly of frequency description of UVLM started...')
+        t0 = time.time()
+        MS = self.MS
+        K, K_star = self.K, self.K_star
+        Kzeta = self.Kzeta
+
+        Nu = self.inputs
+        Ny = self.outputs
+
+
+        # ----------------------------------------------------------- state eq.
+
+        # Aero influence coeffs
+        List_AICs, List_AICs_star = ass.AICs(MS.Surfs, MS.Surfs_star,
+                                             target='collocation', Project=True)
+        A0 = np.block(List_AICs)
+        A0W = np.block(List_AICs_star)
+        List_AICs, List_AICs_star = None, None
+
+        # zeta derivs
+        List_nc_dqcdzeta=ass.nc_dqcdzeta(MS.Surfs, MS.Surfs_star,Merge=True)
+        List_uc_dncdzeta = ass.uc_dncdzeta(MS.Surfs)
+        List_nc_domegazetadzeta_vert = ass.nc_domegazetadzeta(MS.Surfs,MS.Surfs_star)
+        for ss in range(MS.n_surf):
+            List_nc_dqcdzeta[ss][ss]+=\
+                     ( List_uc_dncdzeta[ss] + List_nc_domegazetadzeta_vert[ss] )
+        Ducdzeta = np.block(List_nc_dqcdzeta)  # dense matrix
+        List_nc_dqcdzeta = None
+        List_uc_dncdzeta = None
+        List_nc_domegazetadzeta_vert = None
+
+        # ext velocity derivs (Wnv0)
+        List_Wnv = []
+        for ss in range(MS.n_surf):
+            List_Wnv.append(
+                interp.get_Wnv_vector(MS.Surfs[ss],
+                                      MS.Surfs[ss].aM, MS.Surfs[ss].aN))
+        Wnv0 = scalg.block_diag(*List_Wnv)
+        List_Wnv = None
+
+        ### B matrix assembly
+        # this could be also sparse...
+        Bss=np.block([ -Ducdzeta, Wnv0, -Wnv0 ])
+
+
+        # ---------------------------------------------------------- output eq.
+
+        ### state terms (C matrix)
+
+        # gamma (induced velocity contrib.)
+        List_dfqsdvind_gamma, List_dfqsdvind_gamma_star = \
+            ass.dfqsdvind_gamma(MS.Surfs, MS.Surfs_star)
+
+        # gamma (at constant relative velocity)
+        List_dfqsdgamma_vrel0, List_dfqsdgamma_star_vrel0 = \
+            ass.dfqsdgamma_vrel0(MS.Surfs, MS.Surfs_star)
+        for ss in range(MS.n_surf):
+            List_dfqsdvind_gamma[ss][ss]+=List_dfqsdgamma_vrel0[ss]
+            List_dfqsdvind_gamma_star[ss][ss]+=List_dfqsdgamma_star_vrel0[ss]                
+        Dfqsdgamma = np.block(List_dfqsdvind_gamma)
+        Dfqsdgamma_star = np.block(List_dfqsdvind_gamma_star)
+        List_dfqsdvind_gamma, List_dfqsdvind_gamma_star = None, None
+        List_dfqsdgamma_vrel0, List_dfqsdgamma_star_vrel0 = None, None
+
+        # gamma_dot
+        Dfunstdgamma_dot = scalg.block_diag(*ass.dfunstdgamma_dot(MS.Surfs))
+
+        # C matrix assembly
+        Css = np.zeros((Ny, 2*K+K_star))
+        Css[:, :K] = Dfqsdgamma
+        Css[:, K:K + K_star] = Dfqsdgamma_star
+        # added mass
+        Css[:, K + K_star:2 * K + K_star] = Dfunstdgamma_dot / self.dt
+
+        ### input terms (D matrix)
+        Dss = np.zeros((Ny, Nu))
+
+        # zeta (at constant relative velocity)
+        Dss[:, :3 * Kzeta] = scalg.block_diag(
+            *ass.dfqsdzeta_vrel0(MS.Surfs, MS.Surfs_star))
+        # zeta (induced velocity contrib)
+        List_coll, List_vert = ass.dfqsdvind_zeta(MS.Surfs, MS.Surfs_star)
+        for ss in range(MS.n_surf):
+            List_vert[ss][ss] += List_coll[ss]
+        Dss[:, :3 * Kzeta] += np.block(List_vert)
+        del List_vert, List_coll
+
+        # input velocities (external)
+        Dss[:, 6 * Kzeta:9 * Kzeta] = scalg.block_diag(
+            *ass.dfqsduinput(MS.Surfs, MS.Surfs_star))
+
+        # input velocities (body movement)
+        Dss[:, 3 * Kzeta:6 * Kzeta] = -Dss[:, 6 * Kzeta:9 * Kzeta]
+
+        ### store matrices
+        self.A0=A0
+        self.A0W=A0W
+        self.Bss=Bss
+        self.Css=Css
+        self.Dss=Dss
+        self.inputs=9*Kzeta
+        self.outputs=3*Kzeta
+
+        self.cpu_summary['assemble']=time.time() - t0
+        print('\t\t\t...done in %.2f sec' % self.cpu_summary['assemble'])
+
+
+    def addGain(self,K,where):
+
+        assert where in ['in', 'out'],\
+                            'Specify whether gains are added to input or output'
+
+        if where=='in':
+            self.Bss=libsp.dot(self.Bss,K)
+            self.Dss=libsp.dot(self.Dss,K)
+            self.inputs=K.shape[1]
+
+        if where=='out':
+            self.Css=libsp.dot(K,self.Css)
+            self.Dss=libsp.dot(K,self.Dss)
+            self.outputs=K.shape[0]
+
+
+    def freqresp(self,kv):
+        '''
+        Ad-hoc method for fast UVLM frequency response over the frequencies
+        kv. The method, only requires inversion of a K x K matrix at each
+        frequency as the equation for propagation of wake circulation are solved
+        exactly.
+        '''
+
+        MS = self.MS
+        K = self.K
+        K_star = self.K_star
+
+        Nk=len(kv)
+        kvdt=kv*self.dt
+        zv=np.cos(kvdt)+1.j*np.sin(kvdt)
+        Yfreq=np.empty((self.outputs,self.inputs,Nk,),dtype=np.complex_)
+
+        ### loop frequencies
+        for kk in range(Nk):
+
+            ### build Cw complex
+            Cw_cpx=self.get_Cw_cpx(zv[kk])
+
+            # get bound state freq response
+            if self.remove_predictor:
+                Ygamma=np.linalg.solve(
+                        self.A0+libsp.dot(
+                            self.A0W, Cw_cpx, type_out=libsp.csc_matrix), self.Bss)
+            else:
+                Ygamma=zv[kk]**(-1)*\
+                    np.linalg.solve(
+                        self.A0+libsp.dot(
+                            self.A0W, Cw_cpx, type_out=libsp.csc_matrix), self.Bss)                
+            Ygamma_star=Cw_cpx.dot(Ygamma)
+
+            # determine factor for delta of bound circulation
+            if self.integr_order==0:
+                dfact=(1.j*kv[kk])  * self.dt
+            elif self.integr_order==1:
+                dfact=(1.-1./zv[kk])
+            elif self.integr_order==2:
+                dfact=.5*( 3. -4./zv[kk] + 1./zv[kk]**2 )
+            else:
+                raise NameError('Specify valid integration order')
+
+            Yfreq[:,:,kk] = np.dot( self.Css[:,:K], Ygamma) +\
+                            np.dot( self.Css[:,K:K+K_star], Ygamma_star) +\
+                            np.dot( self.Css[:,-K:], dfact*Ygamma) +\
+                            self.Dss
+                            
+        return Yfreq
+
+
+    def get_Cw_cpx(self,zval):
+        '''
+        Produces a sparse matrix 
+
+            .. math:: \bar\mathbf{C}(z)
+
+        where 
+
+            .. math:: z = e^{k \Delta t}        
+            
+        such that the wake circulation frequency response at z is
+
+            .. math:: \bar\mathbf{\Gamma_w} = \bar\mathbf{C}(z)  \bar\mathbf{\Gamma}
+        '''
+
+
+        MS = self.MS
+        K = self.K
+        K_star = self.K_star
+    
+        Cw_cpx=libsp.csc_matrix((K_star,K),dtype=np.complex_)
+
+        K0tot, K0totstar = 0,0
+        for ss in range(MS.n_surf):
+
+            M,N=self.MS.dimensions[ss]                
+            Mstar,N=self.MS.dimensions_star[ss]
+
+            for mm in range(Mstar):
+                iivec = range( K0totstar+mm*N, K0totstar+(mm+1)*N )
+                jjvec = range( K0tot+N*(M-1),  K0tot+N*M )
+                Cw_cpx[ iivec, jjvec ]=zval**(-mm-1)
+
+            K0tot += MS.KK[ss]
+            K0totstar += MS.KK_star[ss]
+
+        return Cw_cpx
+
+
+    def assemble_profiling(self):
+        '''
+        Generate profiling report for assembly and save it in self.prof_out.
+
+        To read the report:
+            import pstats
+            p=pstats.Stats(self.prof_out)
+        '''
+
+        import cProfile
+        cProfile.runctx('self.assemble()', globals(), locals(), filename=self.prof_out)
+
 
 ################################################################################
 
@@ -1057,7 +1584,6 @@ if __name__ == '__main__':
     import unittest
     from sharpy.utils.sharpydir import SharpyDir
     import sharpy.utils.h5utils as h5
-    import matplotlib.pyplot as plt
 
     class Test_linuvlm_Sta_vs_Dyn(unittest.TestCase):
         ''' Test methods into this module '''
@@ -1210,9 +1736,6 @@ if __name__ == '__main__':
             '''
 
             Sta=self.Sta
-            Order=[2,1]
-            RemPred=[True,False]
-            UseSparse=[True,False]
 
             # estimate reference quantities
             Uinf=np.linalg.norm(self.tsdata.u_ext[0][:,0,0]) 
@@ -1239,5 +1762,48 @@ if __name__ == '__main__':
             libss.compare_ss(Dyn0.SS,Dyn1.SS,tol=1e-10)
             assert np.max(np.abs(Dyn0.SS.dt-Dyn1.SS.dt))<1e-12*Dyn0.SS.dt,\
                                     'Scaling/unscaling of time-step not correct'
+
+
+        def test_freqresp(self):
+
+            Sta=self.Sta
+
+            # estimate reference quantities
+            Uinf=np.linalg.norm(self.tsdata.u_ext[0][:,0,0]) 
+            chord=np.linalg.norm(
+                         self.tsdata.zeta[0][:,-1,0]-self.tsdata.zeta[0][:,0,0])
+            rho=self.tsdata.rho
+
+            ScalingDict={'length': .5*chord,
+                         'speed': Uinf,
+                         'density': rho}
+
+            kv=np.linspace(0,.5,3)
+
+            for use_sparse in [False,True]:
+                for remove_predictor in [True,False]:
+
+                    Dyn=Dynamic(self.tsdata, dt=0.05, ScalingDict=ScalingDict,
+                                integr_order=2, RemovePredictor=remove_predictor,
+                                UseSparse=use_sparse)
+                    Dyn.assemble_ss()
+                    Dyn.nondimss()
+                    Yref=libss.freqresp(Dyn.SS,kv)
+
+                    if not remove_predictor:
+                        Ydyn=Dyn.freqresp(kv)
+                        ermax=np.max(np.abs(Ydyn-Yref))              
+                        assert ermax<1e-10,\
+                        'Dynamic.freqresp produces too large error (%.2e)!'%ermax
+
+                    Freq=Frequency(self.tsdata, dt=0.05, ScalingDict=ScalingDict,
+                                integr_order=2, RemovePredictor=remove_predictor,
+                                UseSparse=use_sparse)
+                    Freq.assemble()
+                    Freq.nondimss()
+                    Yfreq=Freq.freqresp(kv)
+                    ermax=np.max(np.abs(Yfreq-Yref))              
+                    assert ermax<1e-10,\
+                    'Frequency.freqresp produces too large error (%.2e)!' %ermax                
 
     unittest.main()
