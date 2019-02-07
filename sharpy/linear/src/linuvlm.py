@@ -883,7 +883,6 @@ class Dynamic(Static):
         return Yfreq
 
 
-
     def get_Cw_cpx(self,zval):
         '''
         Produces a sparse matrix 
@@ -903,7 +902,9 @@ class Dynamic(Static):
         K = self.K
         K_star = self.K_star
     
-        Cw_cpx=libsp.csc_matrix((K_star,K),dtype=np.complex_)
+        jjvec=[]
+        iivec=[]
+        valvec=[]
 
         K0tot, K0totstar = 0,0
         for ss in range(MS.n_surf):
@@ -912,15 +913,13 @@ class Dynamic(Static):
             Mstar,N=self.MS.dimensions_star[ss]
 
             for mm in range(Mstar):
-                iivec = range( K0totstar+mm*N, K0totstar+(mm+1)*N )
-                jjvec = range( K0tot+N*(M-1),  K0tot+N*M )
-                Cw_cpx[ iivec, jjvec ]=zval**(-mm-1)
-
+                jjvec+=range( K0tot+N*(M-1),  K0tot+N*M )
+                iivec+=range(K0totstar+mm*N, K0totstar+(mm+1)*N)
+                valvec+= N*[ zval**(-mm-1) ]
             K0tot += MS.KK[ss]
             K0totstar += MS.KK_star[ss]
 
-        return Cw_cpx
-
+        return libsp.csc_matrix( (valvec, (iivec,jjvec)), shape=(K_star,K), dtype=np.complex_)
 
 
     def assemble_ss_profiling(self):
@@ -1544,7 +1543,9 @@ class Frequency(Static):
         K = self.K
         K_star = self.K_star
     
-        Cw_cpx=libsp.csc_matrix((K_star,K),dtype=np.complex_)
+        jjvec=[]
+        iivec=[]
+        valvec=[]
 
         K0tot, K0totstar = 0,0
         for ss in range(MS.n_surf):
@@ -1553,14 +1554,13 @@ class Frequency(Static):
             Mstar,N=self.MS.dimensions_star[ss]
 
             for mm in range(Mstar):
-                iivec = range( K0totstar+mm*N, K0totstar+(mm+1)*N )
-                jjvec = range( K0tot+N*(M-1),  K0tot+N*M )
-                Cw_cpx[ iivec, jjvec ]=zval**(-mm-1)
-
+                jjvec+=range( K0tot+N*(M-1),  K0tot+N*M )
+                iivec+=range(K0totstar+mm*N, K0totstar+(mm+1)*N)
+                valvec+= N*[ zval**(-mm-1) ]
             K0tot += MS.KK[ss]
             K0totstar += MS.KK_star[ss]
 
-        return Cw_cpx
+        return libsp.csc_matrix( (valvec, (iivec,jjvec)), shape=(K_star,K), dtype=np.complex_)
 
 
     def assemble_profiling(self):
