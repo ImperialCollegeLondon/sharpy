@@ -98,7 +98,8 @@ output/*
 .idea
 
 *.csv
-
+*.png
+*.eps
 *.vtu
 
 utils/eigen_debug/__init__\.py
