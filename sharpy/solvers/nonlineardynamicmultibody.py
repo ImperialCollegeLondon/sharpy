@@ -47,7 +47,7 @@ class NonLinearDynamicMultibody(BaseSolver):
         self.settings_default['print_info'] = True
 
         self.settings_types['max_iterations'] = 'int'
-        self.settings_default['max_iterations'] = 100
+        self.settings_default['max_iterations'] = 500
 
         self.settings_types['num_load_steps'] = 'int'
         self.settings_default['num_load_steps'] = 1
@@ -59,7 +59,7 @@ class NonLinearDynamicMultibody(BaseSolver):
         self.settings_default['min_delta'] = 1e-5
 
         self.settings_types['newmark_damp'] = 'float'
-        self.settings_default['newmark_damp'] = 1e-4
+        self.settings_default['newmark_damp'] = 1e-2
 
         self.settings_types['dt'] = 'float'
         self.settings_default['dt'] = 0.01
@@ -72,6 +72,9 @@ class NonLinearDynamicMultibody(BaseSolver):
 
         self.settings_types['gravity'] = 'float'
         self.settings_default['gravity'] = 9.81
+
+        self.settings_types['relaxation_factor'] = 'float'
+        self.settings_default['relaxation_factor'] = 0.3
 
         self.data = None
         self.settings = None
@@ -377,11 +380,16 @@ class NonLinearDynamicMultibody(BaseSolver):
             #     print("ERROR: Nan in Asys")
             #     embed()
             # print("cond: ", np.linalg.cond(MB_Asys))
-            Dq = scipy.linalg.solve(MB_Asys, -MB_Q)
+            MB_Asys_balanced, T = scipy.linalg.matrix_balance(MB_Asys)
+            invT = np.matrix(T).I
+            MB_Q_balanced = np.dot(invT, MB_Q).T
+
+            # import pdb; pdb.set_trace()
+            Dq = scipy.linalg.solve(np.dot(MB_Asys_balanced, invT), -MB_Q_balanced)
+            # Dq = scipy.linalg.solve(MB_Asys, -MB_Q)
+            # Dq *= self.settings['relaxation_factor'].value
             # if np.isnan(Dq).any():
             #     print("ERROR: Nan in DX")
-
-
 
             # Evaluate convergence
             if (iter > 0):
@@ -390,7 +398,7 @@ class NonLinearDynamicMultibody(BaseSolver):
                     LM_res = np.max(np.abs(Dq[self.sys_size:self.sys_size+num_LM_eq]))/LM_old_Dq
                 else:
                     LM_res = 0.0
-                if (res < self.settings['min_delta'].value) and (LM_res < self.settings['min_delta'].value):
+                if (res < self.settings['min_delta'].value) and (LM_res < self.settings['min_delta'].value*1e-4):
                     # print("res: ", res)
                     # print("LMres: ", LM_res)
                     # break
@@ -399,9 +407,9 @@ class NonLinearDynamicMultibody(BaseSolver):
             # Compute variables from previous values and increments
             # TODO:decide If I want other way of updating lambda
             # print("Dq vel and quat: ", Dq[-num_LM_eq-4-6:-num_LM_eq])
-            q += Dq
-            dqdt += self.gamma/(self.beta*dt)*Dq
-            dqddt += 1.0/(self.beta*dt*dt)*Dq
+            q[:, np.newaxis] += Dq
+            dqdt[:, np.newaxis] += self.gamma/(self.beta*dt)*Dq
+            dqddt[:, np.newaxis] += 1.0/(self.beta*dt*dt)*Dq
 
             # mat = np.zeros((4,4),)
             # mat[0,1:4] = -1.0*dqdt[-num_LM_eq-7:-num_LM_eq-4]
@@ -473,6 +481,10 @@ class NonLinearDynamicMultibody(BaseSolver):
             for ibody in range(len(MB_beam)):
                 xbeamlib.cbeam3_correct_gravity_forces(MB_beam[ibody], MB_tstep[ibody], self.settings)
         mb.merge_multibody(MB_tstep, MB_beam, self.data.structure, structural_step, MBdict, dt)
+
+        structural_step.q[:] = q[:self.sys_size].copy()
+        structural_step.dqdt[:] = dqdt[:self.sys_size].copy()
+        structural_step.dqddt[:] = dqddt[:self.sys_size].copy()
 
         # embed()
         # print("for pos: ", MB_tstep[1].for_pos[0:3])
