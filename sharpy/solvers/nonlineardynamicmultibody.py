@@ -353,7 +353,7 @@ class NonLinearDynamicMultibody(BaseSolver):
         for iter in range(self.settings['max_iterations'].value):
 
             # Check if the maximum of iterations has been reached
-            if (iter == self.settings['max_iterations'].value):
+            if (iter == self.settings['max_iterations'].value - 1):
                 print('Solver did not converge in ', iter, ' iterations.')
                 break
 
