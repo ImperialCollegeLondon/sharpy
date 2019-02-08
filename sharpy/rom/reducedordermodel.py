@@ -3,6 +3,9 @@ import scipy.linalg as sclalg
 import sharpy.linear.src.libss as libss
 import sharpy.utils.h5utils as h5
 
+import matplotlib.pyplot as plt
+from mpl_toolkits.axes_grid.inset_locator import inset_axes
+
 class ReducedOrderModel(object):
     """
     Reduced Order Model
@@ -26,9 +29,11 @@ class ReducedOrderModel(object):
         self.V = None
         self.H = None
         self.ssrom = None
+        self.data = None
 
-    def initialise(self, ss):
+    def initialise(self, data, ss):
 
+        self.data = data
         self.ss = ss
 
     def run(self, algorithm, r, frequency=None):
@@ -101,12 +106,12 @@ class ReducedOrderModel(object):
             f = np.zeros((nx, r),
                          dtype=complex)
 
-            if frequency is not None:
+            if frequency != np.inf and frequency is not None:
                 # LU decomposiotion
-                lu_A = sclalg.lu_factor((frequency * np.eye(nx) - A))
-                v_1 = sclalg.lu_solve(lu_A, B)
-                v = sclalg.inv(frequency * np.eye(nx) - A).dot(B)
-                v = v_1 / np.linalg.norm(v_1)
+                lu_A = sclalg.lu_factor((A - frequency * np.eye(nx)))
+                v = sclalg.lu_solve(lu_A, B)
+                # v = sclalg.inv(frequency * np.eye(nx) - A).dot(B)
+                v = v / np.linalg.norm(v)
 
                 w = sclalg.lu_solve(lu_A, v)
                 # w = sclalg.inv((frequency * np.eye(nx) - A)).dot(v)
@@ -131,7 +136,7 @@ class ReducedOrderModel(object):
                 H_hat = np.block([[H[:j+1, :j+1]],
                                  [beta * evec(j)]])
 
-                if frequency is not None:
+                if frequency != np.inf and frequency is not None:
                     w = sclalg.lu_solve(lu_A, v)
                     # w_1 = sclalg.inv(frequency * np.eye(nx) - A).dot(v)
                 else:
@@ -142,7 +147,7 @@ class ReducedOrderModel(object):
 
                 # Finite precision
                 s = V[:, :j+2].T.dot(f[:, j+1])
-                f[:, 0] = f[:, j+1] - V[:, :j+2].dot(s)
+                f[:, j+1] = f[:, j+1] - V[:, :j+2].dot(s)  #Confusing line in Gugercin's thesis where it states f_{j=1}?
                 h += s
 
                 h.shape = (j+2, 1)  # Enforce shape for concatenation
@@ -182,8 +187,8 @@ class ReducedOrderModel(object):
         assert nfreq > 1, 'Dual Rational Arnoldi required more than one frequency to interpolate'
 
         # Allocate matrices
-        V = np.zeros((nx, nfreq * r), dtype=float)
-        Z = np.zeros((nx, nfreq * r), dtype=float)
+        V = np.zeros((nx, nfreq * r), dtype=complex)
+        Z = np.zeros((nx, nfreq * r), dtype=complex)
 
         # Is it better to store column vectors in matrix or in list?
         # for v_hat and _tilde, probably not required
@@ -264,6 +269,89 @@ class ReducedOrderModel(object):
         Br = V.T.dot(B)
         Cr = C.dot(V)
         return Ar, Br, Cr
+
+    def compare_frequency_response(self):
+        """
+        Computes the frequency response of the full and reduced models up to the Nyquist frequency
+        
+        Returns:
+
+        """
+        Uinf0 = self.data.aero.timestep_info[0].u_ext[0][0, 0, 0]
+        c_ref = self.data.aero.timestep_info[0].zeta[0][0, -1, 0] - self.data.aero.timestep_info[0].zeta[0][0, 0, 0]
+        ds = 2. / self.data.aero.aero_dimensions[0][0]  # Spatial discretisation
+        fs = 1. / ds
+        fn = fs / 2.
+        ks = 2. * np.pi * fs
+        kn = 2. * np.pi * fn  # Nyquist frequency
+        Nk = 151  # Number of frequencies to evaluate
+        kv = np.linspace(1e-3, kn, Nk)  # Reduced frequency range
+        wv = 2. * Uinf0 / c_ref * kv  # Angular frequency range
+
+        nstates = self.ss.states
+        rstates = self.r
+
+        # Compute the frequency response
+        Y_full_system = libss.freqresp(self.ss, wv)
+        Y_freq_rom = libss.freqresp(self.ssrom, wv)
+
+        fig, ax = plt.subplots(nrows=2)
+
+
+        if self.frequency is None:  # for plotting purposes
+            k_rom = np.inf
+        else:
+            k_rom = c_ref * self.frequency[0].real * 0.5 / Uinf0
+
+        ax[0].plot(kv, np.abs(Y_full_system[0, 0, :]),
+                   lw=4,
+                   alpha=0.5,
+                   color='b',
+                   label='UVLM - %g states' % nstates)
+        ax[1].plot(kv, np.angle((Y_full_system[0, 0, :])), ls='-',
+                   lw=4,
+                   alpha=0.5,
+                   color='b')
+
+        ax[1].set_xlim(0, kv[-1])
+        ax[0].grid()
+        ax[1].grid()
+        ax[0].plot(kv, np.abs(Y_freq_rom[0, 0, :]), ls='-.',
+                   lw=1.5,
+                   color='k',
+                   label='ROM - %g states' % rstates)
+        ax[1].plot(kv, np.angle((Y_freq_rom[0, 0, :])), ls='-.',
+                   lw=1.5,
+                   color='k')
+
+        axins0 = inset_axes(ax[0], 1, 1, loc=1)
+        axins0.plot(kv, np.abs(Y_full_system[0, 0, :]),
+                    lw=4,
+                    alpha=0.5,
+                    color='b')
+        axins0.plot(kv, np.abs(Y_freq_rom[0, 0, :]), ls='-.',
+                    lw=1.5,
+                    color='k')
+        axins0.set_xlim([0, 1])
+        axins0.set_ylim([0, 0.1])
+
+        axins1 = inset_axes(ax[1], 1, 1.25, loc=1)
+        axins1.plot(kv, np.angle((Y_full_system[0, 0, :])), ls='-',
+                    lw=4,
+                    alpha=0.5,
+                    color='b')
+        axins1.plot(kv, np.angle((Y_freq_rom[0, 0, :])), ls='-.',
+                    lw=1.5,
+                    color='k')
+        axins1.set_xlim([0, 1])
+        axins1.set_ylim([-np.pi, np.pi])
+
+        ax[1].set_xlabel('Reduced Frequency, k')
+        # ax.set_ylabel('Normalised Response')
+        ax[0].set_title('ROM - %s, r = %g, $\sigma_k$ = %.1f' % (self.algorithm, rstates, self.frequency[0]))
+        ax[0].legend()
+
+        fig.show()
 
 
 def evec(j):

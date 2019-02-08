@@ -402,8 +402,8 @@ fs = 1. / ds
 fn = fs / 2.
 ks = 2. * np.pi * fs
 kn = 2. * np.pi * fn
-Nk = 151
-kv = np.linspace(1e-3, kn, Nk)
+Nk = 51
+kv = np.linspace(1e-3, 1, Nk)
 wv = 2. * Uinf0 / ws.c_ref * kv
 #
 # # analytical
@@ -425,31 +425,67 @@ Yfreq_dummy_all = libss.freqresp(SStot, wv)
 # TESTING!!!!
 from sharpy.rom.reducedordermodel import ReducedOrderModel
 
+# freq_range = np.array([0.4, 10, 30, 40, 60, 80, 100])
+freq_range = np.array([np.inf,0.1, 10, 30, 40, 60, 80, 100])
+r_range = np.arange(10,50,2)
+H_infty_error_norm = [np.zeros(r_range.__len__(), dtype=complex)]*freq_range.__len__()
+i = 0
 
-rom = ReducedOrderModel()
-rom.initialise(data0, SStot)
-r = 2
-frequency_rom = np.array([1.5,40.0])
-# frequency_rom = 1.5
+for frequency_rom in freq_range:
 
-# algorithm = 'arnoldi'
-algorithm = 'dual_rational_arnoldi'
-rom.run(algorithm, r, frequency_rom)
+    j = 0
+    for r in r_range:
 
-if frequency_rom is None:  # for plotting purposes
-    k_rom = np.inf
-else:
-    k_rom = ws.c_ref * frequency_rom[0].real * 0.5 / Uinf0
+        rom = ReducedOrderModel()
+        rom.initialise(SStot)
+        # r = 40
+        # frequency_rom = np.array([0.1,40.0])
+        # frequency_rom = 100
+
+        algorithm = 'arnoldi'
+        # algorithm = 'dual_rational_arnoldi_single_frequency'
+        rom.run(algorithm, r, frequency_rom)
+
+        if frequency_rom is None:  # for plotting purposes
+            k_rom = np.inf
+        else:
+            k_rom = ws.c_ref * frequency_rom.real * 0.5 / Uinf0
 
 
 
-Y_freq_rom = rom.ssrom.freqresp(wv)
+        Y_freq_rom = rom.ssrom.freqresp(wv)
 
 
-# Error estimation
-H_infty_error_norm = np.max(np.sqrt((Yfreq_dummy_all[0,0,:]-Y_freq_rom[0,0,:])*
-                                          np.conj(Yfreq_dummy_all[0,0,:]-Y_freq_rom[0,0,:])))
+        # Error estimation
+        H_infty_error_norm[i][j] = np.max(np.sqrt((Yfreq_dummy_all[0,0,:]-Y_freq_rom[0,0,:])*
+                                                  np.conj(Yfreq_dummy_all[0,0,:]-Y_freq_rom[0,0,:])))
+        j += 1
+    i += 1
 
+fig, ax = plt.subplots(nrows=1)
+color1 = np.array([0,1,0])
+color2 = np.array([0,0,1])
+for i in range(freq_range.__len__()):
+    color = (color1*i/freq_range.__len__() +(1-i/freq_range.__len__())*color2)
+    if freq_range[i] == np.inf:
+        ls = '-.'
+    else:
+        ls = '-'
+
+    ax.semilogy(r_range, H_infty_error_norm[i],
+                label='$\sigma$ = %.1f' %freq_range[i],
+                lw=2,
+                color=color,
+                ls=ls)
+    ax.set_title('Error comparison - SISO, rational Arnoldi')
+    ax.set_xlabel('Reduced Order States, r')
+    ax.set_ylabel('Frequency Response $\mathcal{H}_\infty$ error')
+    ax.grid(True)
+    ax.legend()
+
+fig.show()
+# fig.savefig('%s/Full%g_H_infty_error_norm_r_10_50_2.png' % (figfold, SStot.states))
+# fig.savefig('%s/Full%g_H_infty_error_norm_r_10_50_2.eps' % (figfold, SStot.states))
 # fig, ax = plt.subplots()
 #
 # ax.plot(kv, np.real(Yfreq_dummy_all[0,0,:])*Uinf0,
@@ -484,62 +520,24 @@ H_infty_error_norm = np.max(np.sqrt((Yfreq_dummy_all[0,0,:]-Y_freq_rom[0,0,:])*
 # fig.savefig('%s/Full%g_PlungeSpeed_%s_rom%g_f%g.png' %(figfold, SStot.states, algorithm,r,k_rom))
 # fig.savefig('%s/Full%g_PlungeSpeed_%s_rom%g_f%g.eps' %(figfold, SStot.states, algorithm,r,k_rom))
 
-from mpl_toolkits.axes_grid.inset_locator import (inset_axes, InsetPosition,
-                                                  mark_inset)
-from mpl_toolkits.axes_grid1.inset_locator import zoomed_inset_axes
 
-fig, ax = plt.subplots(nrows=2)
-
-ax[0].plot(kv, np.abs(Yfreq_dummy_all[0,0,:]),
-        lw=4,
-        alpha=0.5,
-        color='b',
-        label='UVLM - %g states' % SStot.states)
-ax[1].plot(kv, np.angle((Yfreq_dummy_all[0,0,:])), ls='-',
-        lw=4,
-        alpha=0.5,
-        color='b')
-
-ax[1].set_xlim(0,kv[-1])
-ax[0].grid()
-ax[1].grid()
-ax[0].plot(kv, np.abs(Y_freq_rom[0,0,:]), ls='-.',
-        lw=1.5,
-        color='k',
-        label='ROM - %g states' % r)
-ax[1].plot(kv, np.angle((Y_freq_rom[0,0,:])), ls='-.',
-    lw=1.5,
-    color='k')
-
-axins0 = inset_axes(ax[0], 1, 1, loc=1)
-axins0.plot(kv, np.abs(Yfreq_dummy_all[0, 0, :]),
-        lw=4,
-        alpha=0.5,
-        color='b')
-axins0.plot(kv, np.abs(Y_freq_rom[0,0,:]), ls='-.',
-        lw=1.5,
-        color='k')
-axins0.set_xlim([0, 1])
-axins0.set_ylim([0, 0.1])
-
-axins1 = inset_axes(ax[1], 1, 1.25, loc=1)
-axins1.plot(kv, np.angle((Yfreq_dummy_all[0,0,:])), ls='-',
-        lw=4,
-        alpha=0.5,
-        color='b')
-axins1.plot(kv, np.angle((Y_freq_rom[0,0,:])), ls='-.',
-    lw=1.5,
-    color='k')
-axins1.set_xlim([0, 1])
-axins1.set_ylim([-np.pi, np.pi])
-
-
-ax[1].set_xlabel('Reduced Frequency, k')
-# ax.set_ylabel('Normalised Response')
-ax[0].set_title('ROM - %s, r = %g, $\sigma_k$ = %.1f' %(algorithm, r, k_rom))
-ax[0].legend()
-
-fig.show()
+# fig, ax = plt.subplots(nrows=2)
+#
+# ax[0].plot(kv, np.abs(Yfreq_dummy_all[0,0,:]))
+# ax[1].plot(kv, np.angle((Yfreq_dummy_all[0,0,:])), ls='-')
+#
+#
+# ax[1].set_xlim(0,kv[-1])
+# ax[0].grid()
+# ax[1].grid()
+# ax[0].plot(kv, np.abs(Y_freq_rom[0,0,:]), ls='-.')
+# ax[1].plot(kv, np.angle((Y_freq_rom[0,0,:])), ls='-.')
+#
+# ax[1].set_xlabel('Reduced Frequency, k')
+# # ax.set_ylabel('Normalised Response')
+# ax[0].set_title('ROM - %s, r = %g, $\sigma_k$ = %.1f' %(algorithm, r, k_rom))
+#
+# fig.show()
 
 
 #
