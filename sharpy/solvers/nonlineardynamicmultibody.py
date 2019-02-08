@@ -50,10 +50,10 @@ class NonLinearDynamicMultibody(BaseSolver):
         self.settings_default['max_iterations'] = 100
 
         self.settings_types['num_load_steps'] = 'int'
-        self.settings_default['num_load_steps'] = 5
+        self.settings_default['num_load_steps'] = 1
 
         self.settings_types['delta_curved'] = 'float'
-        self.settings_default['delta_curved'] = 1e-5
+        self.settings_default['delta_curved'] = 1e-2
 
         self.settings_types['min_delta'] = 'float'
         self.settings_default['min_delta'] = 1e-5
@@ -370,7 +370,9 @@ class NonLinearDynamicMultibody(BaseSolver):
             MB_Asys, MB_Q = self.assembly_MB_eq_system(MB_beam, MB_tstep, self.data.ts, dt, Lambda, Lambda_dot)
 
             # Compute the correction
-            Dq = np.zeros((self.sys_size+num_LM_eq,), dtype=ct.c_double, order='F')
+            # ADC next line not necessary
+            # Dq = np.zeros((self.sys_size+num_LM_eq,), dtype=ct.c_double, order='F')
+
             # if np.isnan(MB_Asys).any():
             #     print("ERROR: Nan in Asys")
             #     embed()
@@ -397,9 +399,9 @@ class NonLinearDynamicMultibody(BaseSolver):
             # Compute variables from previous values and increments
             # TODO:decide If I want other way of updating lambda
             # print("Dq vel and quat: ", Dq[-num_LM_eq-4-6:-num_LM_eq])
-            q = q + Dq
-            dqdt = dqdt + self.gamma/(self.beta*dt)*Dq
-            dqddt = dqddt + 1.0/(self.beta*dt*dt)*Dq
+            q += Dq
+            dqdt += self.gamma/(self.beta*dt)*Dq
+            dqddt += 1.0/(self.beta*dt*dt)*Dq
 
             # mat = np.zeros((4,4),)
             # mat[0,1:4] = -1.0*dqdt[-num_LM_eq-7:-num_LM_eq-4]
