@@ -18,7 +18,7 @@ import sys
 import pickle
 
 
-def main(args):
+def main(args=None):
     """
     Main ``SHARPy`` routine
 
@@ -57,7 +57,10 @@ def main(args):
     Imperial College London 2018""")
     parser.add_argument('input_filename', help='path to the *.solver.txt input file', type=str)
     parser.add_argument('-r', '--restart', help='restart the solution with a given snapshot', type=str, default=None)
-    args = parser.parse_args()
+    if args is not None:
+        args = parser.parse_args(args[1:])
+    else:
+        args = parser.parse_args()
 
     settings = input_arg.read_settings(args)
 
