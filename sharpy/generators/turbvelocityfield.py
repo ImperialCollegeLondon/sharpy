@@ -3,7 +3,7 @@ import scipy.interpolate as interpolate
 import h5py as h5
 import os
 from xml.dom import minidom
-from lxml import objectify
+from lxml import objectify, etree
 
 import sharpy.utils.generator_interface as generator_interface
 import sharpy.utils.settings as settings
@@ -124,7 +124,12 @@ class TurbVelocityField(generator_interface.BaseGenerator):
             data = self.file.read().replace('\n', '')
 
         # parse data
-        tree = objectify.fromstring(data)
+        # this next line is necessary to avoid problems with parsing in the Time part:
+        # <!--Start....
+        # 0.0, 1.0 ...
+        # see https://stackoverflow.com/a/18313932
+        parser = objectify.makeparser(remove_comments=True)
+        tree = objectify.fromstring(data, parser=parser)
 
         # mesh dimensions
         self.grid_data['dimensions'] = np.fromstring(tree.Domain.Topology.attrib['Dimensions'],
@@ -140,11 +145,20 @@ class TurbVelocityField(generator_interface.BaseGenerator):
 
         # dxdydz
         # because of how XDMF does it, it is actually dzdydx
-        self.grid_data['dxdydz'] = np.fromstring(tree.Domain.Geometry.DataItem[1].text,
-                                                 sep=' ',
-                                                 count=int(tree.Domain.Geometry.DataItem[1].attrib['Dimensions']),
-                                                 dtype=float)
+        self.grid_data['dxdydz'] = (
+            np.fromstring(tree.Domain.Geometry.DataItem[1].text,
+                          sep=' ',
+                          count=int(tree.Domain.Geometry.DataItem[1].attrib['Dimensions']),
+                          dtype=float))
+
         # now onto the grid
+        # time information
+        # [0] is start, [1] is stride
+        import pdb; pdb.set_trace()
+        self.grid_data['time'] = np.fromstring(tree.Domain.Grid.Time.DataItem.text,
+                                                     sep=' ',
+                                                     count=2,
+                                                     dtype=float)
         self.grid_data['n_grid'] = len(tree.Domain.Grid.Grid)
         self.grid_data['grid'] = [dict()]*self.grid_data['n_grid']
 # TODO make sure this read all the tsteps
