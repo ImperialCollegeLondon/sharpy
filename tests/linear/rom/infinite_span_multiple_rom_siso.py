@@ -426,41 +426,73 @@ Yfreq_dummy_all = libss.freqresp(SStot, wv)
 from sharpy.rom.reducedordermodel import ReducedOrderModel
 
 # freq_range = np.array([0.4, 10, 30, 40, 60, 80, 100])
-freq_range = np.array([np.inf,0.1, 10, 30, 40, 60, 80, 100])
-r_range = np.arange(10,50,2)
-H_infty_error_norm = [np.zeros(r_range.__len__(), dtype=complex)]*freq_range.__len__()
+# freq_range = np.array([np.inf,0.1, 10, 30, 40, 60, 80, 100])
+freq_range = np.array([np.inf, 0.1*1j, 10*1j, 30*1j, 40*1j, 60*1j, 80*1j, 100*1j])
+# r_range = np.arange(10,50,2)
+# H_infty_error_norm = [np.zeros(r_range.__len__(), dtype=complex)]*freq_range.__len__()
+k_rom = np.zeros_like(freq_range)
+
+relative_error = [None]*freq_range.__len__()
+
+r = 5
+algorithm = 'two_sided_arnoldi'
 i = 0
 
 for frequency_rom in freq_range:
 
     j = 0
-    for r in r_range:
+    # for r in r_range:
 
-        rom = ReducedOrderModel()
-        rom.initialise(SStot)
-        # r = 40
-        # frequency_rom = np.array([0.1,40.0])
-        # frequency_rom = 100
+    r = 5
 
-        algorithm = 'arnoldi'
-        # algorithm = 'dual_rational_arnoldi_single_frequency'
-        rom.run(algorithm, r, frequency_rom)
+    rom = ReducedOrderModel()
+    rom.initialise(data0, SStot)
+    # r = 40
+    # frequency_rom = np.array([0.1,40.0])
+    # frequency_rom = 100
 
-        if frequency_rom is None:  # for plotting purposes
-            k_rom = np.inf
-        else:
-            k_rom = ws.c_ref * frequency_rom.real * 0.5 / Uinf0
+    algorithm = 'two_sided_arnoldi'
+    # algorithm = 'dual_rational_arnoldi_single_frequency'
+    rom.run(algorithm, r, frequency_rom)
 
-
-
-        Y_freq_rom = rom.ssrom.freqresp(wv)
+    if frequency_rom is None:  # for plotting purposes
+        k_rom[i] = np.inf
+    else:
+        k_rom[i] = ws.c_ref * frequency_rom.real * 0.5 / Uinf0
 
 
-        # Error estimation
-        H_infty_error_norm[i][j] = np.max(np.sqrt((Yfreq_dummy_all[0,0,:]-Y_freq_rom[0,0,:])*
-                                                  np.conj(Yfreq_dummy_all[0,0,:]-Y_freq_rom[0,0,:])))
-        j += 1
+    kv, relative_error[i] = rom.compare_frequency_response(True, False)
+    # Y_freq_rom = rom.ssrom.freqresp(wv)
+
+
+    # Error estimation
+    # H_infty_error_norm[i][j] = np.max(np.sqrt((Yfreq_dummy_all[0,0,:]-Y_freq_rom[0,0,:])*
+    #                                           np.conj(Yfreq_dummy_all[0,0,:]-Y_freq_rom[0,0,:])))
+    # j += 1
     i += 1
+
+# fig, ax = plt.subplots(nrows=1)
+# color1 = np.array([0,1,0])
+# color2 = np.array([0,0,1])
+# for i in range(freq_range.__len__()):
+#     color = (color1*i/freq_range.__len__() +(1-i/freq_range.__len__())*color2)
+#     if freq_range[i] == np.inf:
+#         ls = '-.'
+#     else:
+#         ls = '-'
+#
+#     ax.semilogy(r_range, H_infty_error_norm[i],
+#                 label='$\sigma$ = %.1f' %freq_range[i],
+#                 lw=2,
+#                 color=color,
+#                 ls=ls)
+#     ax.set_title('Error comparison - SISO, rational Arnoldi')
+#     ax.set_xlabel('Reduced Order States, r')
+#     ax.set_ylabel('Frequency Response $\mathcal{H}_\infty$ error')
+#     ax.grid(True)
+#     ax.legend()
+#
+# fig.show()
 
 fig, ax = plt.subplots(nrows=1)
 color1 = np.array([0,1,0])
@@ -468,24 +500,29 @@ color2 = np.array([0,0,1])
 for i in range(freq_range.__len__()):
     color = (color1*i/freq_range.__len__() +(1-i/freq_range.__len__())*color2)
     if freq_range[i] == np.inf:
-        ls = '-.'
+        color = 'k'
     else:
-        ls = '-'
+        color = color
 
-    ax.semilogy(r_range, H_infty_error_norm[i],
-                label='$\sigma$ = %.1f' %freq_range[i],
+    ax.semilogy(kv, np.abs(relative_error[i].real),
+                label='$\sigma$ = %.1f' %k_rom[i],
                 lw=2,
                 color=color,
-                ls=ls)
-    ax.set_title('Error comparison - SISO, rational Arnoldi')
-    ax.set_xlabel('Reduced Order States, r')
-    ax.set_ylabel('Frequency Response $\mathcal{H}_\infty$ error')
+                ls='-')
+#    ax.semilogy(kv, np.abs(relative_error[i].imag),
+#                lw=2,
+#                color=color,
+#                ls='-.')
+    ax.set_title('Error comparison - SISO, %s' %algorithm)
+    ax.set_xlabel('Reduced Frequency, k')
+    ax.set_ylabel('Relative Error')
+    ax.set_ylim([10e-6, 1])
     ax.grid(True)
     ax.legend()
 
 fig.show()
-# fig.savefig('%s/Full%g_H_infty_error_norm_r_10_50_2.png' % (figfold, SStot.states))
-# fig.savefig('%s/Full%g_H_infty_error_norm_r_10_50_2.eps' % (figfold, SStot.states))
+# fig.savefig('%s/Full%s_Error_%g_r%g.eps' % (figfold, algorithm, SStot.states, r))
+# fig.savefig('%s/Full%s_Error_%g_r%g.png' % (figfold, algorithm, SStot.states, r))
 # fig, ax = plt.subplots()
 #
 # ax.plot(kv, np.real(Yfreq_dummy_all[0,0,:])*Uinf0,

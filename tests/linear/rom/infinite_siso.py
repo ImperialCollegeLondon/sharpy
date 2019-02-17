@@ -135,7 +135,7 @@ N, Mstar_fact = 12, 10
 
 integr_order = 2
 RemovePred = True
-UseSparse = True
+UseSparse = False
 
 Nsurf = 1
 main_ea = .25
@@ -428,18 +428,21 @@ from sharpy.rom.reducedordermodel import ReducedOrderModel
 
 rom = ReducedOrderModel()
 rom.initialise(data0, SStot)
+# r = np.array([5, 6], dtype=int)
+frequency_rom = np.array([1.5, 40.0])
+# frequency_rom = 10
 r = 2
-frequency_rom = np.array([1.5,40.0])
-# frequency_rom = 1.5
 
 # algorithm = 'arnoldi'
+# algorithm = 'two_sided_arnoldi'
 algorithm = 'dual_rational_arnoldi'
+# algorithm = 'real_rational_arnoldi'
 rom.run(algorithm, r, frequency_rom)
 
 if frequency_rom is None:  # for plotting purposes
     k_rom = np.inf
 else:
-    k_rom = ws.c_ref * frequency_rom[0].real * 0.5 / Uinf0
+    k_rom = ws.c_ref * frequency_rom.real * 0.5 / Uinf0
 
 
 
@@ -484,62 +487,62 @@ H_infty_error_norm = np.max(np.sqrt((Yfreq_dummy_all[0,0,:]-Y_freq_rom[0,0,:])*
 # fig.savefig('%s/Full%g_PlungeSpeed_%s_rom%g_f%g.png' %(figfold, SStot.states, algorithm,r,k_rom))
 # fig.savefig('%s/Full%g_PlungeSpeed_%s_rom%g_f%g.eps' %(figfold, SStot.states, algorithm,r,k_rom))
 
-from mpl_toolkits.axes_grid.inset_locator import (inset_axes, InsetPosition,
-                                                  mark_inset)
-from mpl_toolkits.axes_grid1.inset_locator import zoomed_inset_axes
-
-fig, ax = plt.subplots(nrows=2)
-
-ax[0].plot(kv, np.abs(Yfreq_dummy_all[0,0,:]),
-        lw=4,
-        alpha=0.5,
-        color='b',
-        label='UVLM - %g states' % SStot.states)
-ax[1].plot(kv, np.angle((Yfreq_dummy_all[0,0,:])), ls='-',
-        lw=4,
-        alpha=0.5,
-        color='b')
-
-ax[1].set_xlim(0,kv[-1])
-ax[0].grid()
-ax[1].grid()
-ax[0].plot(kv, np.abs(Y_freq_rom[0,0,:]), ls='-.',
-        lw=1.5,
-        color='k',
-        label='ROM - %g states' % r)
-ax[1].plot(kv, np.angle((Y_freq_rom[0,0,:])), ls='-.',
-    lw=1.5,
-    color='k')
-
-axins0 = inset_axes(ax[0], 1, 1, loc=1)
-axins0.plot(kv, np.abs(Yfreq_dummy_all[0, 0, :]),
-        lw=4,
-        alpha=0.5,
-        color='b')
-axins0.plot(kv, np.abs(Y_freq_rom[0,0,:]), ls='-.',
-        lw=1.5,
-        color='k')
-axins0.set_xlim([0, 1])
-axins0.set_ylim([0, 0.1])
-
-axins1 = inset_axes(ax[1], 1, 1.25, loc=1)
-axins1.plot(kv, np.angle((Yfreq_dummy_all[0,0,:])), ls='-',
-        lw=4,
-        alpha=0.5,
-        color='b')
-axins1.plot(kv, np.angle((Y_freq_rom[0,0,:])), ls='-.',
-    lw=1.5,
-    color='k')
-axins1.set_xlim([0, 1])
-axins1.set_ylim([-np.pi, np.pi])
-
-
-ax[1].set_xlabel('Reduced Frequency, k')
-# ax.set_ylabel('Normalised Response')
-ax[0].set_title('ROM - %s, r = %g, $\sigma_k$ = %.1f' %(algorithm, r, k_rom))
-ax[0].legend()
-
-fig.show()
+# from mpl_toolkits.axes_grid.inset_locator import (inset_axes, InsetPosition,
+#                                                   mark_inset)
+# from mpl_toolkits.axes_grid1.inset_locator import zoomed_inset_axes
+#
+# fig, ax = plt.subplots(nrows=2)
+#
+# ax[0].plot(kv, np.abs(Yfreq_dummy_all[0,0,:]),
+#         lw=4,
+#         alpha=0.5,
+#         color='b',
+#         label='UVLM - %g states' % SStot.states)
+# ax[1].plot(kv, np.angle((Yfreq_dummy_all[0,0,:])), ls='-',
+#         lw=4,
+#         alpha=0.5,
+#         color='b')
+#
+# ax[1].set_xlim(0,kv[-1])
+# ax[0].grid()
+# ax[1].grid()
+# ax[0].plot(kv, np.abs(Y_freq_rom[0,0,:]), ls='-.',
+#         lw=1.5,
+#         color='k',
+#         label='ROM - %g states' % r)
+# ax[1].plot(kv, np.angle((Y_freq_rom[0,0,:])), ls='-.',
+#     lw=1.5,
+#     color='k')
+#
+# axins0 = inset_axes(ax[0], 1, 1, loc=1)
+# axins0.plot(kv, np.abs(Yfreq_dummy_all[0, 0, :]),
+#         lw=4,
+#         alpha=0.5,
+#         color='b')
+# axins0.plot(kv, np.abs(Y_freq_rom[0,0,:]), ls='-.',
+#         lw=1.5,
+#         color='k')
+# axins0.set_xlim([0, 1])
+# axins0.set_ylim([0, 0.1])
+#
+# axins1 = inset_axes(ax[1], 1, 1.25, loc=1)
+# axins1.plot(kv, np.angle((Yfreq_dummy_all[0,0,:])), ls='-',
+#         lw=4,
+#         alpha=0.5,
+#         color='b')
+# axins1.plot(kv, np.angle((Y_freq_rom[0,0,:])), ls='-.',
+#     lw=1.5,
+#     color='k')
+# axins1.set_xlim([0, 1])
+# axins1.set_ylim([-np.pi, np.pi])
+#
+#
+# ax[1].set_xlabel('Reduced Frequency, k')
+# # ax.set_ylabel('Normalised Response')
+# ax[0].set_title('ROM - %s, r = %g, $\sigma_k$ = %.1f' %(algorithm, r, k_rom))
+# ax[0].legend()
+#
+# fig.show()
 
 
 #
