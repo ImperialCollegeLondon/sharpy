@@ -115,11 +115,11 @@ class ss():
         assert type(self.A) in libsp.SupportedTypes, \
             'Type of A matrix (%s) not supported' % type(self.A)
         assert type(self.B) in libsp.SupportedTypes, \
-            'Type of A matrix (%s) not supported' % type(self.B)
+            'Type of B matrix (%s) not supported' % type(self.B)
         assert type(self.C) in libsp.SupportedTypes, \
-            'Type of A matrix (%s) not supported' % type(self.C)
+            'Type of C matrix (%s) not supported' % type(self.C)
         assert type(self.D) in libsp.SupportedTypes, \
-            'Type of A matrix (%s) not supported' % type(self.D)
+            'Type of D matrix (%s) not supported' % type(self.D)
 
 
     def get_mats(self):
