@@ -621,6 +621,7 @@ class Dynamic(Static):
         LU, P = scalg.lu_factor(A0)
         AinvAW = scalg.lu_solve((LU, P), A0W)
         A0, A0W  = None, None
+        # self.A0,self.A0W=A0,A0W
 
         ### propagation of circ
         # fast and memory efficient with both dense and sparse matrices
@@ -920,6 +921,215 @@ class Dynamic(Static):
             K0totstar += MS.KK_star[ss]
 
         return libsp.csc_matrix( (valvec, (iivec,jjvec)), shape=(K_star,K), dtype=np.complex_)
+
+
+    def balfreq(self,kv_low,kv_high,wv_low=None,wv_high=None):#,method_integr='uniform'):
+        '''
+        Low-rank method for frequency limited balancing.
+        The Observability ad controllability Gramians over the frequencies kv 
+        are solved in factorised form. Balancd modes are then obtained with a 
+        square-root method.
+
+        Details:
+        Observability and controllability Gramians are solved in factorised form
+        through explicit integration. The number of integration points determines
+        both the accuracy and the maximum size of the balanced model.
+
+        Stability over all (Nb) balanced states is achieved if:
+            a. one of the Gramian is integrated through the full Nyquist range
+            b. the integration points are enough.
+        Note, however, that even when stability is not achieved over the full
+        balanced states, stability of the balanced truncated model with Ns<=Nb
+        states is normally observed even when a low number of integration points
+        is used.
+
+        Input: 
+        - kv_low: frequency points for Gramians solution in the low-frequencies
+        range. The size of kv_low normally determines the accuracy of the
+        balanced model.
+        - kv_high: frequency points for inegration of the controllability
+        Gramian in the high-frequency range. The size of kv_high normally
+        determines the number of stable states, Ns<=Nb.
+        -wv_low, wv_high: integration weights associated to kv_low and kv_high. 
+        '''
+
+        ### preliminary: build quadrature weights
+        if wv_low is None or wv_high is None:
+            raise NameError('Automatic weights under development')
+        if self.remove_predictor:
+            raise NameError('Case without predictor Not yet implemented!')
+
+        K = self.K
+        K_star = self.K_star
+
+        ### get useful terms
+        Eye=np.eye(K)
+        Bup=self.SS.B[:K,:]
+        if self.use_sparse:
+            # warning: behaviour may change in future numpy release. 
+            # Ensure P,Pw,Bup are np.ndarray
+            P = np.array( self.SS.A[:K, :K].todense() )
+            Pw = np.array( self.SS.A[:K, K:K + K_star].todense() )
+            if type(Bup) not in [np.ndarray,libsp.csc_matrix]:
+                Bup=Bup.toarray()
+        else:
+            P = self.SS.A[:K, :K]
+            Pw = self.SS.A[:K, K:K + K_star]
+
+        # indices to manipulate obs solution
+        ii00=range(0,self.K)
+        ii01=range(self.K,self.K+self.K_star)
+        ii02=range(self.K+self.K_star,2*self.K+self.K_star)
+        ii03=range(2*self.K+self.K_star,3*self.K+self.K_star)     
+
+        # integration factors
+        if self.integr_order == 2:
+            b0, bm1, bp1 = -2., 0.5, 1.5
+        else:
+            b0, bp1 = -1., 1.
+
+        ### -------------------------------------------------- loop frequencies
+        
+        ### merge vectors
+        Nk_low=len(kv_low)
+        kvdt = np.concatenate( (kv_low,kv_high) ) * self.SS.dt
+        wv = np.concatenate( (wv_low,wv_high) ) * self.SS.dt
+        zv = np.cos(kvdt)+1.j*np.sin(kvdt)
+
+        Qobs=np.zeros( (self.SS.states,self.SS.outputs), dtype=np.complex_)
+        Zc=np.zeros( (self.SS.states,2*self.SS.inputs*len(kvdt)), dtype=np.complex_)
+        Zo=np.zeros( (self.SS.states,2*self.SS.outputs*Nk_low), dtype=np.complex_)
+
+        for kk in range( len(kvdt) ):
+
+            zval=zv[kk]
+            Intfact=wv[kk]   # integration factor
+
+            #  build terms that will be recycled
+            Cw_cpx=self.get_Cw_cpx(zval)
+            PwCw_T = Cw_cpx.T.dot(Pw.T)
+            Kernel=np.linalg.inv (zval*Eye-P-PwCw_T.T)
+
+
+            ### ----- controllability
+            Ygamma=Intfact*np.dot(Kernel, Bup)  
+            Ygamma_star=Cw_cpx.dot(Ygamma)
+
+            if self.integr_order==1:
+                dfact=(bp1 + bp0/zval)
+                Qctrl = np.vstack( [Ygamma, Ygamma_star, dfact * Ygamma] )
+            elif self.integr_order==2:
+                dfact= bp1 + b0/zval + bm1/zval**2 
+                Qctrl = np.vstack( 
+                    [Ygamma, Ygamma_star, dfact*Ygamma, (1./zval)*Ygamma ])
+            else:
+                raise NameError('Specify valid integration order')
+
+            kkvec=range( 2*kk*self.SS.inputs, 2*(kk+1)*self.SS.inputs )
+            Zc[:,kkvec[:self.SS.inputs]]= Qctrl.real #*Intfact     
+            Zc[:,kkvec[self.SS.inputs:]]= Qctrl.imag #*Intfact      
+
+
+            ### ----- observability
+            # solve (1./zval*I - A.T)^{-1} C^T
+            if kk>=Nk_low:
+                continue
+
+            zinv=1./zval
+            Cw_cpx_H=Cw_cpx.conjugate().T
+
+            Qobs[ii02,:] = zval * self.SS.C[:,ii02].T
+            if self.integr_order==2:
+                Qobs[ii03,:] = bm1*zval**2 * self.SS.C[:,ii02].T
+
+            rhs=self.SS.C[:,ii00].T + \
+                Cw_cpx_H.dot(self.SS.C[:,ii01].T) + \
+                libsp.dot( 
+                    (bp1*zval)*PwCw_T.conj() + \
+                    (bp1*zval)*P.T + \
+                    (b0*zval+bm1*zval**2 )*Eye, self.SS.C[:,ii02].T)
+
+            Qobs[ii00,:] = np.dot(Kernel.conj().T, rhs)
+
+            Eye_star= libsp.csc_matrix( 
+                ( zinv*np.ones((K_star,)), (range(K_star),range(K_star))), 
+                                        shape=(K_star,K_star), dtype=np.complex_)
+            Qobs[ii01,:] = libsp.solve( 
+                            Eye_star-self.SS.A[K:K+K_star,K:K+K_star].T,
+                            np.dot(Pw.T,Qobs[ii00,:] + (bp1*zval)*self.SS.C[:,ii02].T) + self.SS.C[:,ii01].T)
+
+            kkvec=range( 2*kk*self.SS.outputs, 2*(kk+1)*self.SS.outputs )
+            Zo[:,kkvec[:self.SS.outputs]]= Intfact*Qobs.real        
+            Zo[:,kkvec[self.SS.outputs:]]= Intfact*Qobs.imag
+
+        # delete full matrices
+        Kernel=None
+        Qctrl=None
+        Qobs=None
+
+        # ### reduce size of square-roots
+        # tolSVD=1e-12
+        # U,sval=scalg.svd(Zc,full_matrices=False)[:2]
+        # rc=np.sum(sval>tolSVD)
+        # # Zc=U[:,:rc]*sval[:rc]
+        # U,sval=scalg.svd(Zo,full_matrices=False)[:2]
+        # ro=np.sum(sval>tolSVD)
+        # # Zo=U[:,:ro]*sval[:ro]
+        self.Zc=Zc
+        self.Zo=Zo
+        # print('Numerical rank of factors: rc: %.4d, ro: %.4d' %(rc,ro) )
+
+        # LRSQM
+        M=np.dot(Zo.T,Zc)
+
+        ### optimised
+        U,s,Vh=scalg.svd(M,full_matrices=False) # as M is square, full_matrices has no effect
+        sinv=s**(-0.5)
+        T=np.dot(Zc,Vh.T*sinv)
+        Ti=np.dot((U*sinv).T,Zo.T)
+        Zc,Zo=None,None
+
+        ### build frequency balanced model
+        Ab=libsp.dot(Ti,libsp.dot(self.SS.A,T))
+        Bb=libsp.dot(Ti,self.SS.B)
+        Cb=libsp.dot(self.SS.C,T)
+        SSb=libss.ss(Ab,Bb,Cb,self.SS.D,dt=self.SS.dt)
+
+        self.SSb=SSb 
+        self.T=T
+        self.gv=s
+
+
+    def balfreq_profiling(self):
+        '''
+        Generate profiling report for balfreq function and saves it into
+            self.prof_out.
+        The function also returns a pstats.Stats object.
+
+        To read the report:
+            import pstats  
+            p=pstats.Stats(self.prof_out).sort_stats('cumtime')   
+            p.print_stats(20)
+        
+        '''
+        import pstats
+        import cProfile
+        def wrap():
+            ds=self.SS.dt
+            fs=1./ds 
+            fn=fs/2.
+            ks=2.*np.pi*fs
+            kn=2.*np.pi*fn
+            kv_lf = np.linspace(0,.5,12)
+            kv_hf = np.linspace(.5,kn,12)
+
+            wv_lf=np.ones_like(kv_lf) # dummy weights
+            wv_hf=np.ones_like(kv_hf)
+
+            self.balfreq(kv_lf,kv_hf,wv_lf,wv_hf)
+        cProfile.runctx('wrap()', globals(), locals(), filename=self.prof_out) 
+
+        return pstats.Stats(self.prof_out).sort_stats('cumtime')
 
 
     def assemble_ss_profiling(self):
