@@ -60,13 +60,12 @@ def split_multibody(beam, tstep, mb_data_dict, ts):
         ibody_beam.FoR_movement = mb_data_dict['body_%02d' % ibody]['FoR_movement']
 
         if ts == 1:
-            ibody_beam.ini_info.pos_dot *=0
-            ibody_beam.timestep_info.pos_dot *=0
-            ibody_tstep.pos_dot *=0
-            ibody_beam.ini_info.psi_dot *=0
-            ibody_beam.timestep_info.psi_dot *=0
-            ibody_tstep.psi_dot *=0
-
+            ibody_beam.ini_info.pos_dot *= 0
+            ibody_beam.timestep_info.pos_dot *= 0
+            ibody_tstep.pos_dot *= 0
+            ibody_beam.ini_info.psi_dot *= 0
+            ibody_beam.timestep_info.psi_dot *= 0
+            ibody_tstep.psi_dot *= 0
 
         MB_beam.append(ibody_beam)
         MB_tstep.append(ibody_tstep)
