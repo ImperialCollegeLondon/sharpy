@@ -409,6 +409,72 @@ class Static():
 
 
 # ------------------------------------------------------------------------------
+# utilities for Dynamic.balfreq method
+
+def get_trapz_weights(k0,kend,Nk,knyq=False):
+    '''
+    Returns uniform frequency grid (kv of length Nk) and weights (wv) for 
+    Gramians integration using trapezoidal rule. If knyq is True, it is assumed 
+    that kend is also the Nyquist frequency.
+    '''
+
+    assert k0>=0. and kend>=0., 'Frequencies must be positive!'
+
+    dk=(kend-k0)/(Nk-1.)
+    kv=np.linspace(k0,kend,Nk)
+    wv=np.ones((Nk,))*dk*np.sqrt(2)
+
+    if k0/(kend-k0)<1e-10:
+        wv[0]=.5*dk
+    else:
+        wv[0]=dk/np.sqrt(2)
+
+    if knyq:
+        wv[-1]=.5*dk
+    else:
+        wv[-1]=dk/np.sqrt(2)
+
+    return kv,wv
+
+
+def get_gauss_weights(k0,kend,Npart,order):
+    '''
+    Returns gauss-legendre frequency grid (kv of length Npart*order) and 
+    weights (wv) for Gramians integration. 
+
+    The integration grid is divided into Npart partitions, and in each of
+    them integration is performed using a Gauss-Legendre quadrature of
+    order order.
+
+    Note: integration points are never located at k0 or kend, hence there
+    is no need for special treatment as in (for e.g.) a uniform grid case
+    (see get_unif_weights)
+    ''' 
+
+    if Npart==1:
+        # get gauss normalised coords and weights
+        xad,wad=np.polynomial.legendre.leggauss(order)
+        krange=kend-k0
+        kv=.5*(k0+kend) + .5*krange*xad
+        wv=wad*(.5*krange)*np.sqrt(2)
+        print('partitioning: %.3f to %.3f' %(k0,kend) )
+
+    else:
+        kv=np.zeros((Npart*order,))
+        wv=np.zeros((Npart*order,))
+
+        dk_part=(kend-k0)/Npart
+
+        for ii in range(Npart):
+            k0_part=k0+ii*dk_part
+            kend_part=k0_part+dk_part
+            iivec=range(order*ii, order*(ii+1))
+            kv[iivec],wv[iivec]=get_gauss_weights(k0_part,kend_part,Npart=1,order=order)
+
+    return kv,wv
+
+
+# ------------------------------------------------------------------------------
 
 
 class Dynamic(Static):
@@ -923,7 +989,7 @@ class Dynamic(Static):
         return libsp.csc_matrix( (valvec, (iivec,jjvec)), shape=(K_star,K), dtype=np.complex_)
 
 
-    def balfreq(self,kv_low,kv_high,wv_low=None,wv_high=None):#,method_integr='uniform'):
+    def balfreq(self,DictBalFreq):
         '''
         Low-rank method for frequency limited balancing.
         The Observability ad controllability Gramians over the frequencies kv 
@@ -941,28 +1007,134 @@ class Dynamic(Static):
         Note, however, that even when stability is not achieved over the full
         balanced states, stability of the balanced truncated model with Ns<=Nb
         states is normally observed even when a low number of integration points
-        is used.
+        is used. Two integration methods (trapezoidal rule on uniform grid and 
+        Gauss-Legendre quadrature) are provided.
 
         Input: 
-        - kv_low: frequency points for Gramians solution in the low-frequencies
-        range. The size of kv_low normally determines the accuracy of the
-        balanced model.
-        - kv_high: frequency points for inegration of the controllability
-        Gramian in the high-frequency range. The size of kv_high normally
-        determines the number of stable states, Ns<=Nb.
-        -wv_low, wv_high: integration weights associated to kv_low and kv_high. 
+
+        - DictBalFreq: dictionary specifying integration method with keys:
+
+            - 'frequency': defines limit frequencies for balancing. The balanced
+            model will be accurate in the range [0,F], where F is the value of 
+            this key. Note that F units must be consistent with the units specified
+            in the self.ScalingFacts dictionary.
+
+            - 'method_low': ['gauss','trapz'] specifies whether to use gauss 
+            quadrature or trapezoidal rule in the low-frequency range [0,F]
+
+            - 'options_low': options to use for integration in the low-frequencies.
+            These depend on the integration scheme (See below).
+
+            - 'method_high': method to use for integration in the range [F,F_N],
+            where F_N is the Nyquist frequency. See 'method_low'.
+
+            - 'options_high': options to use for integration in the high-frequencies.
+
+            - 'check_stability': if True, the balanced model is truncated to
+            eliminate unstable modes - if any is found. Note that very accurate 
+            balanced model can still be obtained, even if high order modes are 
+            unstable. Note that this option is overridden if ""
+
+        Future options:
+            - 'get_frequency_response': if True, the function also returns the
+            frequency response evaluated at the low-frequency range integration
+            points. If True, this option also allows to automatically tune the 
+            balanced model.
+
+            - 'truncation_tolerance': if 'get_frequency_response' is True, allows
+            to truncatethe balanced model so as to achieved a prescribed 
+            tolerance in the low-frequwncy range.
+
+            - Ncpu: for parallel run
+
+
+        The following integration schemes are available:
+            - 'trapz': performs integration over equally spaced points using 
+            trapezoidal rule. It accepts options dictionaries with keys:
+                - 'points': number of integration points to use (including 
+                domain boundary)
+            
+            - 'gauss' performs gauss-lobotto quadrature. The domain can be
+            partitioned in Npart sub-domain in which the gauss-lobotto quadrature
+            of order Ord can be applied. A total number of Npart*Ord points is
+            required. It accepts options dictionaries of the form:
+                - 'partitions': number of partitions
+                - 'order': quadrature order. 
+
+        Example: 
+        The following dictionary 
+
+            DictBalFreq={   'frequency': 1.2, 
+                            'method_low': 'trapz',
+                            'options_low': {'points': 12},
+                            'method_high': 'gauss',
+                            'options_high': {'partitions': 2, 'order': 8},
+                            'check_stability': True }
+
+        balances the state-space model self.SS in the frequency range [0, 1.2] 
+        using 
+            (a) 12 equally-spaced points integration of the Gramians in 
+        the low-frequency range [0,1.2] and 
+            (b) a 2 Gauss-Lobotto 8-th order quadratures of the controllability 
+            Gramian in the high-frequency range.
+
+        A total number of 28 integration points will be required, which will
+        result into a balanced model with number of states
+            min{ 2*28* number_inputs, 2*28* number_outputs }
+        The model is finally truncated so as to retain only the first Ns stable
+        modes. 
         '''
 
-        ### preliminary: build quadrature weights
-        if wv_low is None or wv_high is None:
-            raise NameError('Automatic weights under development')
-        if self.remove_predictor:
-            raise NameError('Case without predictor Not yet implemented!')
+        ### check input dictionary
+        if 'frequency' not in DictBalFreq:
+            raise NameError('Solution dictionary must include the "frequency" key')
 
+        if 'method_low' not in DictBalFreq:
+            warnings.warn('Setting default options for low-frequency integration')
+            DictBalFreq['method_low']='trapz'
+            DictBalFreq['options_low']={'points': 12}
+
+        if 'method_high' not in DictBalFreq:
+            warnings.warn('Setting default options for high-frequency integration')            
+            DictBalFreq['method_high']='gauss'
+            DictBalFreq['options_high']={'partitions': 2, 'order': 8}
+
+        if 'check_stability' not in DictBalFreq:
+            DictBalFreq['check_stability']=True
+
+
+        ### get integration points and weights
+
+        # Nyquist frequency
+        kn=np.pi/self.SS.dt 
+
+        Opt=DictBalFreq['options_low']
+        if DictBalFreq['method_low'] == 'trapz':
+            kv_low, wv_low=get_trapz_weights(0., DictBalFreq['frequency'], 
+                                                           Opt['points'], False)
+        elif DictBalFreq['method_low'] == 'gauss':
+            kv_low, wv_low=get_gauss_weights(0., DictBalFreq['frequency'],
+                                                 Opt['partitions'],Opt['order'])
+        else:
+            raise NameError(
+                'Invalid value %s for key "method_low"' %DictBalFreq['method_low'])
+
+        Opt=DictBalFreq['options_high']
+        if DictBalFreq['method_high'] == 'trapz':
+            kv_high, wv_high=get_trapz_weights(DictBalFreq['frequency'], kn,
+                                                            Opt['points'], True)
+        elif DictBalFreq['method_high'] == 'gauss':
+            kv_high, wv_high=get_gauss_weights(DictBalFreq['frequency'], kn,
+                                                 Opt['partitions'],Opt['order'])
+        else:
+            raise NameError(
+                'Invalid value %s for key "method_high"'%DictBalFreq['method_high'])
+
+
+        ### get useful terms
         K = self.K
         K_star = self.K_star
 
-        ### get useful terms
         Eye=np.eye(K)
         Bup=self.SS.B[:K,:]
         if self.use_sparse:
@@ -1010,7 +1182,6 @@ class Dynamic(Static):
             PwCw_T = Cw_cpx.T.dot(Pw.T)
             Kernel=np.linalg.inv (zval*Eye-P-PwCw_T.T)
 
-
             ### ----- controllability
             Ygamma=Intfact*np.dot(Kernel, Bup)  
             Ygamma_star=Cw_cpx.dot(Ygamma)
@@ -1031,7 +1202,7 @@ class Dynamic(Static):
 
 
             ### ----- observability
-            # solve (1./zval*I - A.T)^{-1} C^T
+            # solve (1./zval*I - A.T)^{-1} C^T (in low-frequency only)
             if kk>=Nk_low:
                 continue
 
@@ -1056,7 +1227,9 @@ class Dynamic(Static):
                                         shape=(K_star,K_star), dtype=np.complex_)
             Qobs[ii01,:] = libsp.solve( 
                             Eye_star-self.SS.A[K:K+K_star,K:K+K_star].T,
-                            np.dot(Pw.T,Qobs[ii00,:] + (bp1*zval)*self.SS.C[:,ii02].T) + self.SS.C[:,ii01].T)
+                            np.dot(Pw.T, Qobs[ii00,:] +\
+                                            (bp1*zval)*self.SS.C[:,ii02].T) +\
+                                                            self.SS.C[:,ii01].T)
 
             kkvec=range( 2*kk*self.SS.outputs, 2*(kk+1)*self.SS.outputs )
             Zo[:,kkvec[:self.SS.outputs]]= Intfact*Qobs.real        
@@ -1067,24 +1240,12 @@ class Dynamic(Static):
         Qctrl=None
         Qobs=None
 
-        # ### reduce size of square-roots
-        # tolSVD=1e-12
-        # U,sval=scalg.svd(Zc,full_matrices=False)[:2]
-        # rc=np.sum(sval>tolSVD)
-        # # Zc=U[:,:rc]*sval[:rc]
-        # U,sval=scalg.svd(Zo,full_matrices=False)[:2]
-        # ro=np.sum(sval>tolSVD)
-        # # Zo=U[:,:ro]*sval[:ro]
-        self.Zc=Zc
-        self.Zo=Zo
-        # print('Numerical rank of factors: rc: %.4d, ro: %.4d' %(rc,ro) )
+        # self.Zc=Zc
+        # self.Zo=Zo
 
-        # LRSQM
-        M=np.dot(Zo.T,Zc)
-
-        ### optimised
-        U,s,Vh=scalg.svd(M,full_matrices=False) # as M is square, full_matrices has no effect
-        sinv=s**(-0.5)
+        # LRSQM (optimised)
+        U,hsv,Vh=scalg.svd( np.dot(Zo.T,Zc), full_matrices=False)
+        sinv=hsv**(-0.5)
         T=np.dot(Zc,Vh.T*sinv)
         Ti=np.dot((U*sinv).T,Zo.T)
         Zc,Zo=None,None
@@ -1095,9 +1256,19 @@ class Dynamic(Static):
         Cb=libsp.dot(self.SS.C,T)
         SSb=libss.ss(Ab,Bb,Cb,self.SS.D,dt=self.SS.dt)
 
+        ### Eliminate unstable modes - if any:
+        if DictBalFreq['check_stability']:
+            for nn in range(1,len(hsv)+1):
+                eigs_trunc=scalg.eigvals(SSb.A[:nn,:nn] )
+                eigs_trunc_max=np.max(np.abs(eigs_trunc))
+                if eigs_trunc_max>1.-1e-16:
+                    SSb.truncate(nn-1)
+                    hsv=hsv[:nn-1]
+                    T=T[:,:nn-1]
+
         self.SSb=SSb 
         self.T=T
-        self.gv=s
+        self.hsv=hsv
 
 
     def balfreq_profiling(self):
@@ -1110,23 +1281,12 @@ class Dynamic(Static):
             import pstats  
             p=pstats.Stats(self.prof_out).sort_stats('cumtime')   
             p.print_stats(20)
-        
         '''
         import pstats
         import cProfile
         def wrap():
-            ds=self.SS.dt
-            fs=1./ds 
-            fn=fs/2.
-            ks=2.*np.pi*fs
-            kn=2.*np.pi*fn
-            kv_lf = np.linspace(0,.5,12)
-            kv_hf = np.linspace(.5,kn,12)
-
-            wv_lf=np.ones_like(kv_lf) # dummy weights
-            wv_hf=np.ones_like(kv_hf)
-
-            self.balfreq(kv_lf,kv_hf,wv_lf,wv_hf)
+            DictBalFreq={ 'frequency': 0.5, 'check_stability': False }
+            self.balfreq(DictBalFreq)
         cProfile.runctx('wrap()', globals(), locals(), filename=self.prof_out) 
 
         return pstats.Stats(self.prof_out).sort_stats('cumtime')
