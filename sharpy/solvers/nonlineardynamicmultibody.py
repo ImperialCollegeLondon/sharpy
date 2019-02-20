@@ -403,56 +403,19 @@ class NonLinearDynamicMultibody(BaseSolver):
         structural_step.dqdt[:] = dqdt[:self.sys_size].copy()
         structural_step.dqddt[:] = dqddt[:self.sys_size].copy()
 
-        # embed()
-        # print("for pos: ", MB_tstep[1].for_pos[0:3])
-        # print("db for pos: ", MB_tstep[1].mb_FoR_pos[1,0:3])
-        # print("position", structural_step.pos)
-        # tstep = len(self.data.structure.timestep_info)
-        # print("for quat MB: ", MB_tstep[0].quat)
-        # print("for quat structural: ", structural_step.quat)
-        # print("numerical angle: ", 2.*np.arccos(structural_step.quat[0])*180./np.pi)
-        # print("expected angle: ", 0.5*200*(tstep*dt)**2.*180/np.pi)
-        # print("angle from rot matrix from quat: ", np.arccos(algebra.quat2rotation(structural_step.quat)[0,0])*180./np.pi)
-
-        # print("numerical Dangle: ", 2.*(np.arccos(structural_step.quat[0])-np.arccos(self.data.structure.timestep_info[-1].quat[0]))*180./np.pi)
-        # print("expected Dangle: ", 0.5*200*((tstep*dt)**2.-((tstep-1)*dt)**2.)*180/np.pi)
-        # print("Dangle from integrated speed: ", (q[-6-num_LM_eq] - self.data.structure.timestep_info[-1].q[-6])*180/np.pi)
-
-        # mat = np.zeros((4,4),)
-        # mat[0,1:4] = -1.0*dqdt[-num_LM_eq-7:-num_LM_eq-4]
-        # mat[1:4,0] = 1.0*dqdt[-num_LM_eq-7:-num_LM_eq-4]
-        # mat[1:4,1:4] = -1.0*algebra.skew(dqdt[-num_LM_eq-7:-num_LM_eq-4])
-        # print("check quat eq2: ", dqddt[-num_LM_eq-4:-num_LM_eq] - 0.5*np.dot(mat, dqdt[-num_LM_eq-4:-num_LM_eq]))
-
-
-        # mat = np.zeros((4,4),)
-        # mat[0,1:4] = -1.0*MB_tstep[0].for_vel[3:6]
-        # mat[1:4,0] = 1.0*MB_tstep[0].for_vel[3:6]
-        # mat[1:4,1:4] = -1.0*algebra.skew(MB_tstep[0].for_vel[3:6])
-        # print("check quat eq3: ", dqddt[-num_LM_eq-4:-num_LM_eq] - 0.5*np.dot(mat, MB_tstep[0].quat))
-
-        # embed()
-        # print("end quat: ", structural_step.quat)
-
-        # I do this to be able to write variables, but I want them to be in GFoR in the future
-        # self.data.ts += 1
-        # for ibody in range(len(MB_tstep)):
-        #     self.data.structure.timestep_info[-1].mb_FoR_pos[ibody,:] = MB_tstep[ibody].for_pos.astype(dtype=ct.c_double, copy=True, order='F')
-        #     self.data.structure.timestep_info[-1].mb_FoR_vel[ibody,:] = MB_tstep[ibody].for_vel.astype(dtype=ct.c_double, copy=True, order='F')
-        #     self.data.structure.timestep_info[-1].mb_FoR_acc[ibody,:] = MB_tstep[ibody].for_acc.astype(dtype=ct.c_double, copy=True, order='F')
-        #     self.data.structure.timestep_info[-1].mb_quat[ibody,:] = MB_tstep[ibody].quat.astype(dtype=ct.c_double, copy=True, order='F')
-        #print("BC error: ", np.dot(np.transpose(algebra.crv2tan(MB_tstep[0].psi[-1,1,:])),MB_tstep[0].psi_dot[-1,1,:]) - np.dot(algebra.quat2rotation(MB_tstep[1].quat),MB_tstep[1].for_vel[3:6]))
-        # print("rotation error: ", MB_tstep[0].psi[-1,1,:] - algebra.quat2crv(MB_tstep[1].quat))
-        # print("tip pos: ", MB_tstep[1].pos[-1,1])
-        # run postprocessors
-        # if self.with_postprocessors:
-        #     for postproc in self.postprocessors:
-        #         self.data = self.postprocessors[postproc].run(online=True)
-        #
-        # print("ts: ", ts, " finished")
-        # if ts == 999:
-        #
-        #
-        #
-        # self.data.ts -= 1
         return self.data
+
+    def remove_constraints(self):
+        MBdict = self.data.structure.mb_dict
+
+        self.num_LM_eq = 0
+        keys_to_delete = []
+        for k, v in MBdict.items():
+            if 'constraint' in k:
+                keys_to_delete.append(k)
+
+        for k in keys_to_delete:
+            del(MBdict[k])
+
+        MBdict['num_constraints'] = 0
+        
