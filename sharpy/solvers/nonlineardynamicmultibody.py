@@ -294,31 +294,27 @@ class NonLinearDynamicMultibody(BaseSolver):
         pass
 
     def run(self, structural_step=None):
-        #ipdb.set_trace()
 
         if structural_step is None:
             structural_step = self.data.structure.timestep_info[-1]
-        # Initialize varaibles
+        # Initialize variables
         MBdict = self.data.structure.mb_dict
         dt = self.settings['dt'].value
 
         # TODO: there should be a better way to do the following
+        # NOTE ADC why is this necessary?
         if self.data.ts < 2:
                 structural_step.steady_applied_forces *= 0.
                 structural_step.unsteady_applied_forces *= 0.
 
         # print("beg quat: ", structural_step.quat)
         # TODO: only working for constant forces
-        # self.data.structure.timestep_info[-1].unsteady_applied_forces = self.data.structure.dynamic_input[1]['dynamic_forces'].astype(dtype=ct.c_double, order='F', copy=True)
         MB_beam, MB_tstep = mb.split_multibody(self.data.structure, structural_step, MBdict, self.data.ts)
         # Lagrange multipliers parameters
         num_LM_eq = self.num_LM_eq
         Lambda = np.zeros((num_LM_eq,), dtype=ct.c_double, order='F')
         Lambda_dot = np.zeros((num_LM_eq,), dtype=ct.c_double, order='F')
 
-        # for ts in range(self.settings['num_steps'].value):
-        # comment time stepping
-        # ipdb.set_trace()
         # Initialize
         q = np.zeros((self.sys_size + num_LM_eq,), dtype=ct.c_double, order='F')
         dqdt = np.zeros((self.sys_size + num_LM_eq,), dtype=ct.c_double, order='F')
@@ -327,20 +323,6 @@ class NonLinearDynamicMultibody(BaseSolver):
         # Predictor step
         mb.disp2state(MB_beam, MB_tstep, q, dqdt, dqddt)
 
-        #print("q: ", q[-num_LM_eq-10:-num_LM_eq])
-        #print("dqdt: ", dqdt[-num_LM_eq-10:-num_LM_eq])
-        #print("dqddt: ", dqddt[-num_LM_eq-10:-num_LM_eq])
-
-        # print("-----  BEGINNING PREDICTOR STEP -----")
-        # print("dqddt FoR0: ", dqddt[60:70])
-        # print("MB_tstep[0].dqddt: ", MB_tstep[0].dqddt[60:70])
-        # print("MB_tstep[0].for_acc: ", MB_tstep[0].for_acc)
-        # print("dqddt FoR1: ", dqddt[130:140])
-        # print("MB_tstep[1].dqddt: ", MB_tstep[1].dqddt[60:70])
-        # print("MB_tstep[1].for_acc: ", MB_tstep[1].for_acc)
-        # print("-----  END PREDICTOR STEP -----")
-
-        # dqddt = np.zeros_like(dqdt)
         q = q + dt*dqdt + (0.5 - self.beta)*dt*dt*dqddt
         dqdt = dqdt + (1.0 - self.gamma)*dt*dqddt
         dqddt = np.zeros((self.sys_size + num_LM_eq,), dtype=ct.c_double, order='F')
@@ -362,34 +344,16 @@ class NonLinearDynamicMultibody(BaseSolver):
 
             # Update positions and velocities
             mb.state2disp(q, dqdt, dqddt, MB_beam, MB_tstep)
-
-            # print("dqddt FoR0: ", dqddt[60:70])
-            # print("MB_tstep[0].dqddt: ", MB_tstep[0].dqddt[60:70])
-            # print("MB_tstep[0].for_acc: ", MB_tstep[0].for_acc)
-            # print("dqddt FoR1: ", dqddt[130:140])
-            # print("MB_tstep[1].dqddt: ", MB_tstep[1].dqddt[60:70])
-            # print("MB_tstep[1].for_acc: ", MB_tstep[1].for_acc)
-
             MB_Asys, MB_Q = self.assembly_MB_eq_system(MB_beam, MB_tstep, self.data.ts, dt, Lambda, Lambda_dot)
 
             # Compute the correction
             # ADC next line not necessary
             # Dq = np.zeros((self.sys_size+num_LM_eq,), dtype=ct.c_double, order='F')
-
-            # if np.isnan(MB_Asys).any():
-            #     print("ERROR: Nan in Asys")
-            #     embed()
-            # print("cond: ", np.linalg.cond(MB_Asys))
             MB_Asys_balanced, T = scipy.linalg.matrix_balance(MB_Asys)
             invT = np.matrix(T).I
             MB_Q_balanced = np.dot(invT, MB_Q).T
 
-            # import pdb; pdb.set_trace()
             Dq = scipy.linalg.solve(np.dot(MB_Asys_balanced, invT), -MB_Q_balanced)
-            # Dq = scipy.linalg.solve(MB_Asys, -MB_Q)
-            # Dq *= self.settings['relaxation_factor'].value
-            # if np.isnan(Dq).any():
-            #     print("ERROR: Nan in DX")
 
             # Evaluate convergence
             if (iter > 0):
@@ -399,37 +363,17 @@ class NonLinearDynamicMultibody(BaseSolver):
                 else:
                     LM_res = 0.0
                 if (res < self.settings['min_delta'].value) and (LM_res < self.settings['min_delta'].value*1e-4):
-                    # print("res: ", res)
-                    # print("LMres: ", LM_res)
-                    # break
                     converged = True
 
             # Compute variables from previous values and increments
             # TODO:decide If I want other way of updating lambda
-            # print("Dq vel and quat: ", Dq[-num_LM_eq-4-6:-num_LM_eq])
             q[:, np.newaxis] += Dq
             dqdt[:, np.newaxis] += self.gamma/(self.beta*dt)*Dq
             dqddt[:, np.newaxis] += 1.0/(self.beta*dt*dt)*Dq
 
-            # mat = np.zeros((4,4),)
-            # mat[0,1:4] = -1.0*dqdt[-num_LM_eq-7:-num_LM_eq-4]
-            # mat[1:4,0] = 1.0*dqdt[-num_LM_eq-7:-num_LM_eq-4]
-            # mat[1:4,1:4] = -1.0*algebra.skew(dqdt[-num_LM_eq-7:-num_LM_eq-4])
-            # print("check quat eq: ", dqddt[-num_LM_eq-4:-num_LM_eq] - 0.5*np.dot(mat, dqdt[-num_LM_eq-4:-num_LM_eq]))
-
-            #
-            # dqdt[:(-num_LM_eq-4)] = dqdt[:(-num_LM_eq-4)] + self.gamma/(self.beta*dt)*Dq[:(-num_LM_eq-4)]
-            # dqdt[(-num_LM_eq-4):-num_LM_eq] = algebra.rotate_quaternion(dqdt[(-num_LM_eq-4):-num_LM_eq], Dq[(-num_LM_eq-7):(-num_LM_eq-4)])
-            # dqdt[-num_LM_eq:] = dqdt[-num_LM_eq:] + self.gamma/(self.beta*dt)*Dq[-num_LM_eq:]
-            #
-            # dqddt[:(-num_LM_eq-4)] = dqddt[:(-num_LM_eq-4)] + 1.0/(self.beta*dt*dt)*Dq[:(-num_LM_eq-4)]
-            #
-            # dqddt[-num_LM_eq:] = dqddt[-num_LM_eq:] + 1.0/(self.beta*dt*dt)*Dq[-num_LM_eq:]
-
             Lambda = q[-num_LM_eq:].astype(dtype=ct.c_double, copy=True, order='F')
             Lambda_dot = dqdt[-num_LM_eq:].astype(dtype=ct.c_double, copy=True, order='F')
 
-            # MB_tstep[1].for_pos = q[self.sys_size-10:self.sys_size-4].astype(dtype=ct.c_double, copy=True, order='F')
             if converged:
                 break
 
@@ -444,39 +388,12 @@ class NonLinearDynamicMultibody(BaseSolver):
                 if LM_old_Dq < 1.0:
                     LM_old_Dq = 1.0
 
-            # print("NB it: ", iter)
-
         mb.state2disp(q, dqdt, dqddt, MB_beam, MB_tstep)
-
-        # Check boundary conditions
-        # embed()
-        # print("point vel: ", np.dot(algebra.quat2rotation(MB_tstep[0].quat),MB_tstep[0].pos_dot[-1,:] + MB_tstep[0].for_vel[0:3] + np.cross(MB_tstep[0].for_vel[3:6],MB_tstep[0].pos[-1,:])))
-        # print("FoR vel: ", np.dot(algebra.quat2rotation(MB_tstep[1].quat),MB_tstep[1].for_vel[0:3]))
-
-        # print("Dtheta from quat: ", 2.0*(np.arccos(MB_tstep[0].quat[0])-np.arccos(structural_step.quat[0])))
-        # print("Dtheta wrong?: ", self.gamma*MB_tstep[0].for_vel[4]*dt)
-        # print("Dtheta from velocities: ", structural_step.for_vel[4]*dt + (0.5-self.beta)*structural_step.for_acc[4]*dt**2.+self.beta*MB_tstep[0].for_acc[4]*dt**2.)
-
         # end: comment time stepping
 
-            # BC Check
-            # print("last_point AFoR vel: ", MB_tstep[0].pos_dot[-1,:])
-            # print("FoR AFoR vel       : ", np.dot(algebra.quat2rotation(MB_tstep[1].quat),MB_tstep[1].for_vel[0:3]))
-            # print("FoR acc theta_z:     ", np.dot(algebra.quat2rotation(MB_tstep[1].quat),MB_tstep[1].for_acc[0:3]))
-            # print("FoR AFoR rot vel xA: ", MB_tstep[1].for_vel[3])
-            # print("psi camping Aslave: ", MB_tstep[1].psi[0,0,:])
-            # print("psi camping G: ",np.dot(algebra.quat2rotation(MB_tstep[1].quat), MB_tstep[1].psi[0,0,:]))
-
-
         # End of Newmark-beta iterations
-
         self.integrate_position(MB_beam, MB_tstep, dt)
         lagrangemultipliers.postprocess(MB_beam, MB_tstep, MBdict)
-        # Force position
-        # MB_tstep[1].for_pos[0:3] = MB_tstep[0].pos[-1,:] - np.zeros((3,),)
-        # print("for vel: ", MB_tstep[1].for_vel)
-        # print("for quat: ", MB_tstep[0].quat)
-        # print("for acc: ", MB_tstep[0].for_acc)
         if self.settings['gravity_on']:
             for ibody in range(len(MB_beam)):
                 xbeamlib.cbeam3_correct_gravity_forces(MB_beam[ibody], MB_tstep[ibody], self.settings)
