@@ -42,21 +42,27 @@ class TrajectoryGenerator(generator_interface.BaseGenerator):
         self.settings_types['print_info'] = 'bool'
         self.settings_default['print_info'] = False
 
-        self.implemented_shapes = ["linear", "quadratic"]
-        self.implemented_accelerations = ["constant", "linear"]
-
         self.settings_types['time_offset'] = 'float'
         self.settings_default['time_offset'] = 0.0
 
         self.settings_types['offset'] = 'list(float)'
         self.settings_default['offset'] = np.zeros((3,))
 
+        self.settings_types['return_velocity'] = 'bool'
+        self.settings_default['return_velocity'] = False
+
         self.x_vec = None
         self.y_vec = None
+        self.x_dot_vec = None
+        self.y_dot_vec = None
         self.time = None
         self.n_steps = None
         self.travel_time = None
         self.curve_length = None
+
+        self.implemented_shapes = ["linear", "quadratic"]
+        self.implemented_accelerations = ["constant", "linear"]
+
 
     def initialise(self, in_dict):
         self.in_dict = in_dict
@@ -72,6 +78,9 @@ class TrajectoryGenerator(generator_interface.BaseGenerator):
 
         if self.in_dict['plot']:
             self.plot()
+
+        if self.in_dict['return_velocity']:
+            self.diff_trajectory()
 
     def print_info(self):
         cout.cout_wrap('Trajectory information:', 2)
@@ -96,8 +105,12 @@ class TrajectoryGenerator(generator_interface.BaseGenerator):
         it = params['it']
         if self.n_steps is not None:
             if it >= self.n_steps:
-                return np.zeros((3,))
-        return np.array([self.x_vec[it], 0.0, self.y_vec[it]]) + self.in_dict['offset']
+                return [None]*3
+
+        if self.in_dict['return_velocity']:
+            return np.array([self.x_dot_vec[it], 0.0, self.y_dot_vec[it]]) + self.in_dict['offset']
+        else:
+            return np.array([self.x_vec[it], 0.0, self.y_vec[it]]) + self.in_dict['offset']
 
     def calculate_trajectory(self):
         in_dict = self.in_dict
@@ -161,6 +174,12 @@ class TrajectoryGenerator(generator_interface.BaseGenerator):
         self.travel_time = travel_time
         self.curve_length = curve_length
 
+    def diff_trajectory(self):
+        dt = self.in_dict['dt'].value
+
+        self.x_dot_vec = np.gradient(self.x_vec, dt)
+        self.y_dot_vec = np.gradient(self.y_vec, dt)
+
 
 def linear_curve_length(shape_polynomial, coords_end):
     dzdx_end = shape_polynomial[1]
@@ -200,4 +219,6 @@ def constant_acceleration_travel_time(s_e, s_dot_e):
 
 def linear_acceleration_travel_time(s_e, s_dot_e):
     return 3.0*s_e/s_dot_e
+
+
 
