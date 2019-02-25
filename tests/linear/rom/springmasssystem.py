@@ -9,6 +9,7 @@ import matplotlib.pyplot as plt
 import sharpy.linear.src.libss as libss
 import sharpy.linear.src.lingebm as lingebm
 import sharpy.rom.reducedordermodel as ROM
+import sharpy.rom.frequencyresponseplot as freq_plots
 
 N = 5
 
@@ -72,21 +73,21 @@ evals_DT = np.linalg.eigvals(system_DT.A)
 
 evals_dt_conv = np.log(evals_DT) / dt
 #
-plt.scatter(evals_ss.real, evals_ss.imag, marker='s')
-plt.scatter(evals_dt_conv.real, evals_dt_conv.imag, marker='^')
-plt.show()
+# plt.scatter(evals_ss.real, evals_ss.imag, marker='s')
+# plt.scatter(evals_dt_conv.real, evals_dt_conv.imag, marker='^')
+# plt.show()
 
 wv = np.logspace(-1, 1, 1000)
 freqresp = system_DT.freqresp(wv)
 freqresp_ct = system_CT.freqresp(wv)
 
-fig, ax = plt.subplots(nrows=1)
-bode_mag_dt = (freqresp[0, 0, :].real)
-bode_mag_ct = (freqresp_ct[0, 0, :].real)
-ax.semilogx(wv, bode_mag_dt)
-ax.semilogx(wv, bode_mag_ct, ls='--')
-
-fig.show()
+# fig, ax = plt.subplots(nrows=1)
+# bode_mag_dt = (freqresp[0, 0, :].real)
+# bode_mag_ct = (freqresp_ct[0, 0, :].real)
+# ax.semilogx(wv, bode_mag_dt)
+# ax.semilogx(wv, bode_mag_ct, ls='--')
+#
+# fig.show()
 
 print('Routine Complete')
 
@@ -94,10 +95,22 @@ print('Routine Complete')
 rom = ROM.ReducedOrderModel()
 rom.initialise(data=None,ss=system_DT)
 
-algorithm = 'arnoldi'
-r = 5
-frequency = 2.
+algorithm = 'dual_rational_arnoldi'
+# algorithm = 'arnoldi'
+r = 1
+# frequency = np.array([1.0, 1.005j])
+# frequency = np.array([2.2, 1.])
+frequency = np.array([0.7j, 1.0j])
+z_interpolation = np.exp(frequency*dt)
 
-rom.run(algorithm,r, frequency=frequency)
+rom.run(algorithm,r, frequency=z_interpolation)
 
-rom.compare_frequency_response(wv)
+rom.compare_frequency_response(wv, plot_figures=False)
+
+plot_freq = freq_plots.FrequencyResponseComparison()
+plot_settings = {'frequency_type': 'w',
+                 'plot_type': 'bode'}
+
+plot_freq.initialise(None, system_DT, rom, plot_settings)
+plot_freq.plot_frequency_response(wv, freqresp, rom.ssrom.freqresp(wv), frequency)
+# plot_freq.save_figure('DT_07_1_r2.png')

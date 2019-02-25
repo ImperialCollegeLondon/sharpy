@@ -383,6 +383,7 @@ for node in range(data0.structure.num_node):
 
 # Kin = np.block([Kpl_flex, Kpitch_flex, Kpl_rig, Kpitch_rig])
 Kin = Kpl_rig[:,1]
+# Kin = Kpitch_rig[:,1]
 SStot = libss.addGain(Sol.linuvlm.SS, Ksa, where='out')
 SStot.addGain(Kas, where='in')
 SStot.addGain(Kin, where='in')
@@ -403,7 +404,7 @@ fn = fs / 2.
 ks = 2. * np.pi * fs
 kn = 2. * np.pi * fn
 Nk = 151
-kv = np.linspace(1e-3, kn, Nk)
+kv = np.logspace(-3, np.log10(kn), Nk)
 wv = 2. * Uinf0 / ws.c_ref * kv
 #
 # # analytical
@@ -424,14 +425,19 @@ Yfreq_dummy_all = libss.freqresp(SStot, wv)
 
 # TESTING!!!!
 from sharpy.rom.reducedordermodel import ReducedOrderModel
-
+import sharpy.rom.frequencyresponseplot as freqplot
 
 rom = ReducedOrderModel()
 rom.initialise(data0, SStot)
 # r = np.array([5, 6], dtype=int)
-frequency_rom = np.array([1.5, 40.0])
-# frequency_rom = 10
-r = 2
+frequency_continuous_k = np.array([0.1j, 0.3j, 0.6j])
+frequency_continuous_w = 2 * Uinf0 * frequency_continuous_k / ws.c_ref
+# frequency_rom = np.array([1.9, 2.5])
+# frequency_rom = 1.05
+
+frequency_rom = np.exp(frequency_continuous_w * SStot.dt)
+# frequency_rom = np.array([1.01, 1.1, 1.2])
+r = 1
 
 # algorithm = 'arnoldi'
 # algorithm = 'two_sided_arnoldi'
@@ -445,13 +451,25 @@ else:
     k_rom = ws.c_ref * frequency_rom.real * 0.5 / Uinf0
 
 
+# rom.compare_frequency_response(wv, plot_figures=False)
 
-Y_freq_rom = rom.ssrom.freqresp(wv)
+frequency_response_plot = freqplot.FrequencyResponseComparison()
+
+plot_settings = {'frequency_type': 'k',
+                 'plot_type': 'bode'}
+
+frequency_response_plot.initialise(data0,SStot, rom, plot_settings)
+frequency_response_plot.plot_frequency_response(kv, Yfreq_dummy_all, rom.ssrom.freqresp(wv), frequency_continuous_k)
+# frequency_response_plot.save_figure('./figs/theo_rolled/DRA_01_06_r3.png')
+# Y_freq_rom = rom.ssrom.freqresp(wv)
+
+# Plotting
 
 
-# Error estimation
-H_infty_error_norm = np.max(np.sqrt((Yfreq_dummy_all[0,0,:]-Y_freq_rom[0,0,:])*
-                                          np.conj(Yfreq_dummy_all[0,0,:]-Y_freq_rom[0,0,:])))
+
+# # Error estimation
+# H_infty_error_norm = np.max(np.sqrt((Yfreq_dummy_all[0,0,:]-Y_freq_rom[0,0,:])*
+#                                           np.conj(Yfreq_dummy_all[0,0,:]-Y_freq_rom[0,0,:])))
 
 # fig, ax = plt.subplots()
 #
