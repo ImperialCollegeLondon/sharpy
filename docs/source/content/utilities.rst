@@ -8,3 +8,4 @@ The following ``utilities`` modules are provided in ``SHARPy``
     utils/h5utils
     utils/geo_utils
     statespace/statespacelib
+    rom/rom
