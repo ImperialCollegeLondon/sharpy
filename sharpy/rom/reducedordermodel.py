@@ -6,19 +6,21 @@ import sharpy.utils.h5utils as h5
 
 class ReducedOrderModel(object):
     """
-    Reduced Order Model
+    Model Order Reduction Methods for Single Input Single Output (SISO) Linear Time-Invariant (LTI) Systems using
+    moment matching (Krylov Methods).
+
     """
 
     def __init__(self):
 
-        self.settings_types = dict()
-        self.settings_default = dict()
-
-        self.settings_types['algorithm'] = 'str'
-        self.settings_default['algorithm'] = None
-
-        self.settings_types['frequencies'] = 'list(complex)'
-        self.settings_default['frequencies'] = None
+        # self.settings_types = dict()
+        # self.settings_default = dict()
+        #
+        # self.settings_types['algorithm'] = 'str'
+        # self.settings_default['algorithm'] = None
+        #
+        # self.settings_types['frequencies'] = 'list(complex)'
+        # self.settings_default['frequencies'] = None
 
         self.frequency = None
         self.algorithm = None
@@ -108,9 +110,9 @@ class ReducedOrderModel(object):
 
         if frequency != np.inf and frequency is not None:
             lu_A = (frequency * np.eye(nx) - A)
-            V = self.construct_krylov(r, lu_A, B, 'Pade', 'b')
+            V = construct_krylov(r, lu_A, B, 'Pade', 'b')
         else:
-            V = self.construct_krylov(r, A, B, 'partial_realisation', 'b')
+            V = construct_krylov(r, A, B, 'partial_realisation', 'b')
 
         # Reduced state space model
         Ar = V.T.dot(A.dot(V))
@@ -120,6 +122,35 @@ class ReducedOrderModel(object):
         return Ar, Br, Cr
 
     def two_sided_arnoldi(self, frequency, r):
+        r"""
+        Two-sided projection with a single interpolation point following the Arnoldi procedure. Very similar to the
+        one-sided method available, but it adds the projection :math:`\mathbf{W}` built using the Krylov space for the
+        :math:`\mathbf{c}` vector:
+
+            .. math::
+                    \mathcal{K}_r((\sigma\mathbf{I}_n - \mathbf{A})^{-T},
+                    (\sigma\mathbf{I}_n - \mathbf{A})^{-T}\mathbf{c}^T)\subseteq\mathcal{W}=\text{range}(\mathbf{W})
+
+        The oblique projection :math:`\mathbf{VW}^T` matches twice as many moments as the single sided projection.
+
+        The resulting system takes the form:
+
+            .. math::
+                \hat{\Sigma} : \left(\begin{array}{c|c} \hat{A} & \hat{B} \\
+                \hline \hat{C} & {D}\end{array}\right)
+                \text{with } \begin{cases}\hat{A}=W^TAV\in\mathbb{R}^{k\times k},\,\\
+                \hat{B}=W^TB\in\mathbb{R}^{k\times m},\,\\
+                \hat{C}=CV\in\mathbb{R}^{p\times k},\,\\
+                \hat{D}=D\in\mathbb{R}^{p\times m}\end{cases}
+
+        Args:
+            frequency (complex): Interpolation point :math:`\sigma \in \mathbb{C}`
+            r (int): Number of moments to match on each side. The resulting ROM will be of order :math:`2r`.
+
+        Returns:
+            tuple: The reduced order model matrices: :math:`\mathbf{A}_r`, :math:`\mathbf{B}_r` and :math:`\mathbf{C}_r`.
+
+        """
         A = self.ss.A
         B = self.ss.B
         C = self.ss.C
@@ -128,11 +159,11 @@ class ReducedOrderModel(object):
 
         if frequency != np.inf and frequency is not None:
             lu_A = frequency * np.eye(nx) - A
-            V = self.construct_krylov(r, lu_A, B, 'Pade', 'b')
-            W = self.construct_krylov(r, lu_A, C.T, 'Pade', 'c')
+            V = construct_krylov(r, lu_A, B, 'Pade', 'b')
+            W = construct_krylov(r, lu_A, C.T, 'Pade', 'c')
         else:
-            V = self.construct_krylov(r, A, B, 'partial_realisation', 'b')
-            W = self.construct_krylov(r, A, C.T, 'partial_realisation', 'c')
+            V = construct_krylov(r, A, B, 'partial_realisation', 'b')
+            W = construct_krylov(r, A, C.T, 'partial_realisation', 'c')
 
         # Ensure oblique projection to ensure W^T V = I
         # lu_WW = sclalg.lu_factor(W.T.dot(V))
@@ -145,127 +176,6 @@ class ReducedOrderModel(object):
         Cr = C.dot(V)
 
         return Ar, Br, Cr
-
-    @staticmethod
-    def construct_krylov(r, lu_A, B, approx_type='Pade', side='b'):
-        r"""
-        Contructs a Krylov subspace in an iterative manner following the methods of Gugercin [1].
-
-        The construction of the Krylov space is focused on Pade and partial realisation cases for the purposes of model
-        reduction. I.e. the partial realisation form of the Krylov space is used if
-        ``approx_type = 'partial_realisation'``
-
-            .. math::
-                \text{range}(\textbf{V}) = \mathcal{K}_r(\mathbb{A}, \mathbf{b})
-
-        Else, it is replaced by the Pade approximation form:
-
-            .. math::
-                \text{range}(\textbf{V}) = \mathcal{K}_r((\sigma\mathbf{I}_n - \mathbf{A})^{-1},
-                (\sigma\mathbf{I}_n - \mathbf{A})^{-1}\mathbf{b})
-
-        Note that no inverses are actually computed but rather a single LU decomposition is performed at the beginning
-        of the algorithm. Forward and backward substitution is used thereinafter to calculate the required vectors.
-
-        The algorithm also builds the Krylov space for the :math:`\mathbf{C}^T` matrix. It should simply replace ``B``
-        and ``side`` should be ``side = 'c'``.
-
-        Examples:
-            Partial Realisation:
-
-            ``V = construct_krylov(r, A, B, 'partial_realisation', 'b')``
-            ``W = construct_krylov(r, A, C.T, 'partial_realisation', 'c')``
-
-            Pade Approximation:
-
-            ``V = construct_krylov(r, (sigma * np.eye(nx) - A), B, 'Pade', 'b')``
-            ``W = construct_krylov(r, (sigma * np.eye(nx) - A), C.T, 'Pade', 'c')``
-
-
-        References:
-            [1]. Gugercin, S. - Projection Methods for Model Reduction of Large-Scale Dynamical Systems. PhD Thesis.
-            Rice University. 2003.
-
-        Args:
-            r (int): Krylov space order
-            lu_A (np.ndarray): For Pade approximations it should be :math:`(\sigma I - \mathbf{A})`.
-                For partial realisations it is simply :math:`\mathbf{A}`.
-            B (np.ndarray): If doing the B side it should be :math:`\mathbf{B}`, else :math:`\mathbf{C}`.
-            approx_type (str): Type of approximation: ``partia_realisation`` or ``Pade``.
-            side: Side of the projection ``b`` or ``c``.
-
-        Returns:
-            np.ndarray: Projection matrix
-
-        """
-
-        nx = B.shape[0]
-
-        # Side indicates projection side. if using C then it needs to be transposed
-        if side=='c':
-            transpose_mode = 1
-            B.shape = (B.shape[0], )
-        else:
-            transpose_mode = 0
-
-        # Output projection matrices
-        V = np.zeros((nx, r),
-                     dtype=complex)
-        H = np.zeros((r, r),
-                     dtype=complex)
-
-        # Declare iterative variables
-        f = np.zeros((nx, r),
-                     dtype=complex)
-
-        if approx_type != 'partial_realisation':
-            # LU decomposiotion
-            lu_A = sclalg.lu_factor(lu_A)
-            v = sclalg.lu_solve(lu_A, B, trans=transpose_mode)
-            v = v / np.linalg.norm(v)
-
-            w = sclalg.lu_solve(lu_A, v)
-            # w = sclalg.inv((frequency * np.eye(nx) - A)).dot(v)
-        else:
-            A = lu_A
-            v_arb = B
-            v = v_arb / np.linalg.norm(v_arb)
-            w = A.dot(v)
-
-        alpha = v.T.dot(w)
-
-        # Initial assembly
-        f[:, 0] = w - v.dot(alpha)
-        V[:, 0] = v
-        H[0, 0] = alpha
-
-        for j in range(0, r-1):
-
-            beta = np.linalg.norm(f[:, j])
-            v = 1 / beta * f[:, j]
-
-            V[:, j+1] = v
-            H_hat = np.block([[H[:j+1, :j+1]],
-                             [beta * evec(j)]])
-
-            if approx_type != 'partial_realisation':
-                w = sclalg.lu_solve(lu_A, v, trans=transpose_mode)
-            else:
-                w = A.dot(v)
-
-            h = V[:, :j+2].T.dot(w)
-            f[:, j+1] = w - V[:, :j+2].dot(h)
-
-            # Finite precision
-            s = V[:, :j+2].T.dot(f[:, j+1])
-            f[:, j+1] = f[:, j+1] - V[:, :j+2].dot(s)  #Confusing line in Gugercin's thesis where it states f_{j=1}?
-            h += s
-
-            h.shape = (j+2, 1)  # Enforce shape for concatenation
-            H[:j+2, :j+2] = np.block([H_hat, h])
-
-        return V
-
 
     def real_rational_arnoldi(self, frequency, r):
         """
@@ -419,8 +329,8 @@ class ReducedOrderModel(object):
         for i in range(nfreq):
             sigma = frequency[i]
             lu_A = sigma * np.eye(nx) - A
-            V[:, we:we+r] = self.construct_krylov(r, lu_A, B, 'Pade', 'b')
-            W[:, we:we+r] = self.construct_krylov(r, lu_A, C.T, 'Pade', 'c')
+            V[:, we:we+r] = construct_krylov(r, lu_A, B, 'Pade', 'b')
+            W[:, we:we+r] = construct_krylov(r, lu_A, C.T, 'Pade', 'c')
 
             we += r
 
@@ -629,10 +539,142 @@ class ReducedOrderModel(object):
         #     return kv, rel_error
 
 
+def construct_krylov(r, lu_A, B, approx_type='Pade', side='b'):
+    r"""
+    Contructs a Krylov subspace in an iterative manner following the methods of Gugercin [1].
+
+    The construction of the Krylov space is focused on Pade and partial realisation cases for the purposes of model
+    reduction. I.e. the partial realisation form of the Krylov space is used if
+    ``approx_type = 'partial_realisation'``
+
+        .. math::
+            \text{range}(\textbf{V}) = \mathcal{K}_r(\mathbb{A}, \mathbf{b})
+
+    Else, it is replaced by the Pade approximation form:
+
+        .. math::
+            \text{range}(\textbf{V}) = \mathcal{K}_r((\sigma\mathbf{I}_n - \mathbf{A})^{-1},
+            (\sigma\mathbf{I}_n - \mathbf{A})^{-1}\mathbf{b})
+
+    Note that no inverses are actually computed but rather a single LU decomposition is performed at the beginning
+    of the algorithm. Forward and backward substitution is used thereinafter to calculate the required vectors.
+
+    The algorithm also builds the Krylov space for the :math:`\mathbf{C}^T` matrix. It should simply replace ``B``
+    and ``side`` should be ``side = 'c'``.
+
+    Examples:
+        Partial Realisation:
+
+        >>> V = construct_krylov(r, A, B, 'partial_realisation', 'b')
+        >>> W = construct_krylov(r, A, C.T, 'partial_realisation', 'c')
+
+        Pade Approximation:
+
+        >>> V = construct_krylov(r, (sigma * np.eye(nx) - A), B, 'Pade', 'b')
+        >>> W = construct_krylov(r, (sigma * np.eye(nx) - A), C.T, 'Pade', 'c')
+
+
+    References:
+        [1]. Gugercin, S. - Projection Methods for Model Reduction of Large-Scale Dynamical Systems. PhD Thesis.
+        Rice University. 2003.
+
+    Args:
+        r (int): Krylov space order
+        lu_A (np.ndarray): For Pade approximations it should be :math:`(\sigma I - \mathbf{A})`.
+            For partial realisations it is simply :math:`\mathbf{A}`.
+        B (np.ndarray): If doing the B side it should be :math:`\mathbf{B}`, else :math:`\mathbf{C}`.
+        approx_type (str): Type of approximation: ``partial_realisation`` or ``Pade``.
+        side: Side of the projection ``b`` or ``c``.
+
+    Returns:
+        np.ndarray: Projection matrix
+
+    """
+
+    nx = B.shape[0]
+
+    # Side indicates projection side. if using C then it needs to be transposed
+    if side=='c':
+        transpose_mode = 1
+        B.shape = (B.shape[0], )
+    else:
+        transpose_mode = 0
+
+    # Output projection matrices
+    V = np.zeros((nx, r),
+                 dtype=complex)
+    H = np.zeros((r, r),
+                 dtype=complex)
+
+    # Declare iterative variables
+    f = np.zeros((nx, r),
+                 dtype=complex)
+
+    if approx_type != 'partial_realisation':
+        # LU decomposiotion
+        lu_A = sclalg.lu_factor(lu_A)
+        v = sclalg.lu_solve(lu_A, B, trans=transpose_mode)
+        v = v / np.linalg.norm(v)
+
+        w = sclalg.lu_solve(lu_A, v)
+        # w = sclalg.inv((frequency * np.eye(nx) - A)).dot(v)
+    else:
+        A = lu_A
+        v_arb = B
+        v = v_arb / np.linalg.norm(v_arb)
+        w = A.dot(v)
+
+    alpha = v.T.dot(w)
+
+    # Initial assembly
+    f[:, 0] = w - v.dot(alpha)
+    V[:, 0] = v
+    H[0, 0] = alpha
+
+    for j in range(0, r-1):
+
+        beta = np.linalg.norm(f[:, j])
+        v = 1 / beta * f[:, j]
+
+        V[:, j+1] = v
+        H_hat = np.block([[H[:j+1, :j+1]],
+                         [beta * evec(j)]])
+
+        if approx_type != 'partial_realisation':
+            w = sclalg.lu_solve(lu_A, v, trans=transpose_mode)
+        else:
+            w = A.dot(v)
+
+        h = V[:, :j+2].T.dot(w)
+        f[:, j+1] = w - V[:, :j+2].dot(h)
+
+        # Finite precision
+        s = V[:, :j+2].T.dot(f[:, j+1])
+        f[:, j+1] = f[:, j+1] - V[:, :j+2].dot(s)  #Confusing line in Gugercin's thesis where it states f_{j=1}?
+        h += s
+
+        h.shape = (j+2, 1)  # Enforce shape for concatenation
+        H[:j+2, :j+2] = np.block([H_hat, h])
+
+    return V
 
 
 def evec(j):
-    """j-th unit vector (in row format)"""
+    """j-th unit vector (in row format)
+
+    Args:
+        j: Unit vector dimension
+
+    Returns:
+        np.ndarray: j-th unit vector
+
+    Examples:
+        >>> evec(2)
+        np.array([0, 1])
+        >>> evec(3)
+        np.array([0, 0, 1])
+
+    """
     e = np.zeros(j+1)
     e[j] = 1
     return e
