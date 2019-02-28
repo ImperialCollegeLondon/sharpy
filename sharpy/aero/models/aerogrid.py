@@ -346,7 +346,7 @@ class Aerogrid(object):
         self.timestep_info[ts].update_orientation(rot.T)
 
     @staticmethod
-    def compute_gamma_dot(dt, tstep, previous_tsteps, part_of_fsi=True):
+    def compute_gamma_dot(dt, tstep, previous_tsteps):
         r"""
         Computes the temporal derivative of circulation (gamma) using finite differences.
 
@@ -370,6 +370,11 @@ class Aerogrid(object):
         See Also:
             .. py:class:: sharpy.utils.datastructures.AeroTimeStepInfo
         """
+        # Check whether the iteration is part of FSI (ie the input is a k-step) or whether it is an only aerodynamic
+        # simulation
+        part_of_fsi = True
+        if tstep in previous_tsteps:
+            part_of_fsi = False
 
         if len(previous_tsteps) == 0:
             for i_surf in range(tstep.n_surf):

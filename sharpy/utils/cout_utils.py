@@ -138,7 +138,15 @@ class TablePrinter(object):
 
     def __init__(self, n_fields=3, field_length=12, field_types=[['g']]*100):
         self.n_fields = n_fields
-        self.field_length = np.full((self.n_fields, ), field_length, dtype=int)
+        try:
+            field_length[0]
+        except TypeError:
+            self.field_length = np.full((self.n_fields, ), field_length, dtype=int)
+        else:
+            if len(field_length) == n_fields:
+                self.field_length = field_length
+            else:
+                raise Exception('len(field_length /= n_fields')
         self.field_names = None
         self.field_types = field_types
 

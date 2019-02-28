@@ -101,7 +101,8 @@ output/*
 *figs/*
 
 *.csv
-
+*.png
+*.eps
 *.vtu
 
 utils/eigen_debug/__init__\.py
@@ -113,6 +114,8 @@ tests/uvlm/\.DS_Store
 */.DS_Store
 
 output*/
+
+snapshots/
 
 
 .DS_Store
