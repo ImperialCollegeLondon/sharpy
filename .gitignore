@@ -98,7 +98,7 @@ output/*
 .idea
 
 # figure folders
-figs/
+*figs/*
 
 *.csv
 

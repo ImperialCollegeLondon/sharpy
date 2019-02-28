@@ -109,9 +109,6 @@ import time
 import warnings
 import numpy as np
 
-import cProfile
-import re
-
 np.set_printoptions(linewidth=140)
 import matplotlib.pyplot as plt
 
@@ -131,10 +128,10 @@ import cases.templates.flying_wings as flying_wings
 # ------------------------------------------------------------------------------
 
 # Define Parametrisation
-M = 32
-N, Mstar_fact = 12, 40
-# M = 8
-# N, Mstar_fact = 12, 10
+# M = 32
+# N, Mstar_fact = 12, 40
+M = 8
+N, Mstar_fact = 12, 10
 
 integr_order = 2
 RemovePred = True
@@ -361,7 +358,7 @@ iivec = range(Sol.num_dof_str + Sol.num_dof_flex + 3,
 Kpitch_rig[iivec, 1] = jA
 
 # Output total vertical force coefficient
-K_Fz = np.zeros((1,Ksa.shape[0]))
+K_out = np.zeros((2, Ksa.shape[0]))
 # Output - Vertical force coefficient
 
 qS = 0.5 * ws.rho * Uinf0 ** 2 * ws.wing_span * ws.c_ref
@@ -372,8 +369,12 @@ for node in range(data0.structure.num_node):
     node_bc = data0.structure.boundary_conditions[node]
     if node_bc != 1:
         node_ndof = 6
+
         vertical_force_index = np.array([0, 0, 1, 0, 0, 0]) / qS
-        K_Fz[:, wdof: wdof + node_ndof] = vertical_force_index
+        K_out[0, wdof: wdof + node_ndof] = vertical_force_index
+
+        pitching_moment_index = np.array([0, 0, 0, 0, 1, 0]) / qS / ws.c_ref
+        K_out[1, wdof: wdof + node_ndof] = pitching_moment_index
     else:
         node_ndof = 0
 
@@ -385,12 +386,16 @@ for node in range(data0.structure.num_node):
 # ----- build coupled state-space model
 
 # Kin = np.block([Kpl_flex, Kpitch_flex, Kpl_rig, Kpitch_rig])
-Kin = Kpl_rig[:,1]
-# Kin = Kpitch_rig[:,1]
+# Kplunge = Kpl_rig[:, 1]
+# Kpitch = Kpitch_rig[:, 1]
+
+Kin = np.block([[Kpl_rig[:, 1]], [Kpitch_rig[:, 1]]]).T
+# Kin = Kin[:, 0]
+# K_out = K_out[0, :].T
 SStot = libss.addGain(Sol.linuvlm.SS, Ksa, where='out')
 SStot.addGain(Kas, where='in')
 SStot.addGain(Kin, where='in')
-SStot.addGain(K_Fz, where='out')
+SStot.addGain(K_out, where='out')
 
 # # verify inputs from rigid and flex are identical
 # ErB = np.max(np.abs(SStot.B[:, :Nin] - SStot.B[:, :Nin]))
@@ -408,6 +413,7 @@ ks = 2. * np.pi * fs
 kn = 2. * np.pi * fn
 Nk = 151
 kv = np.logspace(-3, np.log10(kn), Nk)
+# kv = np.linspace(1e-2, 1, Nk)
 wv = 2. * Uinf0 / ws.c_ref * kv
 #
 # # analytical
@@ -424,6 +430,7 @@ Yfreq_dummy_all = libss.freqresp(SStot, wv)
 # print('\t\t... done in %.2f sec!' % cputime)
 
 
+
 # fig.show()
 
 # TESTING!!!!
@@ -433,39 +440,52 @@ import sharpy.rom.frequencyresponseplot as freqplot
 rom = ReducedOrderModel()
 rom.initialise(data0, SStot)
 # r = np.array([5, 6], dtype=int)
-frequency_continuous_k = np.array([0.1j, 0.3j, 0.6j])
+# frequency_continuous_k = np.array([0.1j, 0.3j, 0.6j])
+frequency_continuous_k = np.array([np.inf])
 frequency_continuous_w = 2 * Uinf0 * frequency_continuous_k / ws.c_ref
 # frequency_rom = np.array([1.9, 2.5])
 # frequency_rom = 1.05
 
 frequency_rom = np.exp(frequency_continuous_w * SStot.dt)
 # frequency_rom = np.array([1.01, 1.1, 1.2])
-r = 1
+r = 4
 
 # algorithm = 'arnoldi'
 # algorithm = 'two_sided_arnoldi'
-algorithm = 'dual_rational_arnoldi'
-# algorithm = 'real_rational_arnoldi'
-
-# cProfile.run('rom.run("algorithm|r|frequency_rom")')
+# algorithm = 'dual_rational_arnoldi'
+algorithm = 'mimo_rational_arnoldi'
 rom.run(algorithm, r, frequency_rom)
 
-if frequency_rom is None:  # for plotting purposes
-    k_rom = np.inf
-else:
-    k_rom = ws.c_ref * frequency_rom.real * 0.5 / Uinf0
+Y_freq_rom = rom.ssrom.freqresp(wv)
 
-
-# rom.compare_frequency_response(wv, plot_figures=False)
-
+# wvfig, ax = plt.subplots(nrows=2, ncols=2)
+#
+# for i in range(2):
+#     for j in range(2):
+#         ax[i, j].plot(kv, Yfreq_dummy_all[i, j, :].real*Uinf0)
+#         ax[i, j].plot(kv, Yfreq_dummy_all[i, j, :].imag*Uinf0)
+#         ax[i, j].plot(kv, Y_freq_rom[i, j, :].real*Uinf0, ls='--')
+#         ax[i, j].plot(kv, Y_freq_rom[i, j, :].imag*Uinf0, ls='--')
+#         # ax[i, j].set_xlim([0,1])
+#
+# fig.show()
+#
+# if frequency_rom is None:  # for plotting purposes
+#     k_rom = np.inf
+# else:
+#     k_rom = ws.c_ref * frequency_rom.real * 0.5 / Uinf0
+#
+#
+# # rom.compare_frequency_response(wv, plot_figures=False)
+#
 frequency_response_plot = freqplot.FrequencyResponseComparison()
-
+#
 plot_settings = {'frequency_type': 'k',
-                 'plot_type': 'bode'}
-
+                 'plot_type': 'real_and_imaginary'}
+#
 frequency_response_plot.initialise(data0,SStot, rom, plot_settings)
 frequency_response_plot.plot_frequency_response(kv, Yfreq_dummy_all, rom.ssrom.freqresp(wv), frequency_continuous_k)
-# frequency_response_plot.save_figure('./figs/theo_rolled/DRA_01_06_r3.png')
+frequency_response_plot.save_figure('./figs/theo_rolled/MIMO_inf_01_06_r3.png')
 # Y_freq_rom = rom.ssrom.freqresp(wv)
 
 # Plotting

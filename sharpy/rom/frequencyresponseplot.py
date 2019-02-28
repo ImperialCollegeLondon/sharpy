@@ -50,6 +50,12 @@ class FrequencyResponseComparison(object):
 
         nstates = self.ss.states
         rstates = self.rom.ssrom.states
+        if self.settings['frequency_type'] == 'k':
+            freq_label = 'Reduced Frequency, k'
+        else:
+            freq_label = 'Angular Frequency, $\omega$ [rad/s]'
+
+        freqresp_title = 'ROM - %s' % self.rom.algorithm
 
         if self.settings['plot_type'] == 'bode':
             fig, ax = plt.subplots(nrows=2, sharex=True)
@@ -93,7 +99,6 @@ class FrequencyResponseComparison(object):
             ax[1].set_yticklabels(['-$\pi$','-$\pi/2$', '0', '$\pi/2$', '$\pi$'])
 
 
-            freqresp_title = 'ROM - %s' % self.rom.algorithm
 
             ax[0].set_title(freqresp_title)
             ax[0].legend()
@@ -150,6 +155,51 @@ class FrequencyResponseComparison(object):
                     label='ROM - %g states' % rstates)
 
             fig.show()
+
+        elif self.settings['plot_type'] == 'real_and_imaginary':
+
+            nu = Y_freq_rom.shape[0]
+            ny = Y_freq_rom.shape[1]
+
+            fig, ax = plt.subplots(nrows=nu, ncols=ny, sharex=True, squeeze=True)
+            # fig.suptitle(freqresp_title)
+
+            for i in range(nu):
+                for j in range(ny):
+                    ax[i, j].plot(kv, Y_freq_ss[i, j, :].real,
+                                  lw=4,
+                                  alpha=0.5,
+                                  color='b',
+                                  label='Real - %g states' % nstates)
+                    ax[i, j].plot(kv, Y_freq_ss[i, j, :].imag,
+                                  lw=4,
+                                  alpha=0.5,
+                                  color='b',
+                                  ls='-.',
+                                  label='Imag - %g states' % nstates)
+                    ax[i, j].plot(kv, Y_freq_ss[i, j, :].real, ls='-',
+                                  lw=1.5,
+                                  color='k',
+                                  label='Real - %g states' % rstates)
+                    ax[i, j].plot(kv, Y_freq_rom[i, j, :].imag, ls='-.',
+                                  lw=1.5,
+                                  color='k',
+                                  label='Imag - %g states' % rstates)
+
+                    if j == 0:
+                        ax[i, 0].set_ylabel('To Output [%d]' % (i+1))
+
+                    if i == 0:
+                        ax[0, j].set_title('From Input [%d]' % (j+1))
+
+                    if i == ny - 1:
+                        ax[ny-1, j].set_xlabel(freq_label)
+
+            ax[0, 0].legend()
+
+            fig.show()
+            self.fig = fig
+            self.ax = ax
 
         else:
             raise NotImplementedError('%s - Plot type not yet implemented')
