@@ -667,7 +667,10 @@ def tune_rom(SSb,kv,tol,gv,method='realisation',convergence='all',Print=False):
 	# reference frequency response
 	Nb=SSb.A.shape[0]
 	Yb=libss.freqresp(SSb,kv,dlti=True)
-	Nmax=min(np.sum(gv>tol)+1,Nb)
+	if gv is not None:
+		Nmax=min(np.sum(gv>tol)+1,Nb)
+	else:
+		Nmax=Nb
 
 	if convergence=='all':
 		# start from larger size and decrease untill the ROm accuracy is over tol
@@ -749,8 +752,9 @@ def eigen_dec(A,B,C,dlti=True,N=None,eigs=None,UR=None,URinv=None,
 	eigs,Ur: eigenvalues and right eigenvector of A matrix as given by:
 		eigs,Ur=scipy.linalg.eig(A,b=None,left=False,right=True)
 	Urinv: inverse of Ur
-	order_by={'damp','freq'}: order according to increasing damping or 
-		decreasing frequency. If None, the same order as eigs/UR is followed. 
+	order_by={'damp','freq','stab'}: order according to increasing damping (damp) 
+	or decreasing frequency (freq) or decreasing damping (stab). 
+		If None, the same order as eigs/UR is followed. 
 	tol: absolute tolerance used to identify complex conj pair of eigenvalues
 	complex: if true, the system is left in complex form
 
@@ -808,6 +812,11 @@ def eigen_dec(A,B,C,dlti=True,N=None,eigs=None,UR=None,URinv=None,
 				order=np.argsort(np.abs(np.angle(eigs)))
 			else:
 				order=np.argsort(np.abs(eigs.imag))	
+		if order_by=='stab':
+			if dlti:
+				order=np.argsort(np.abs(eigs))
+			else:
+				order=np.argsort(eigs.real)
 		else:
 			raise NameError("order_by must be equal to 'damp' or 'freq'")
 		eigs=eigs[order]
@@ -869,4 +878,5 @@ def eigen_dec(A,B,C,dlti=True,N=None,eigs=None,UR=None,URinv=None,
 
 
 	return Aproj,Bproj,Cproj,Nlist
+
 

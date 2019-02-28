@@ -55,6 +55,8 @@ import copy
 import warnings
 import numpy as np
 import scipy.signal as scsig
+import scipy.linalg as scalg
+import scipy.interpolate as scint
 
 # dependency
 import sharpy.linear.src.libsparse as libsp
@@ -178,6 +180,26 @@ class ss():
 		scale_SS(self,input_scal,output_scal,state_scal,byref=True)
 
 
+	def project(self,W,V):
+		'''
+		Given 2 transformation matrices, (W,V) of shape (Nk,self.states), this
+		routine projects the state space model states according to:
+
+			Anew = W^T A V
+			Bnew = W^T B
+			Cnew = C V
+			Dnew = D
+
+		The projected model has the same number of inputs/outputs as the original 
+		one, but Nk states.
+		'''
+
+		self.A = libsp.dot( W.T, libsp.dot(self.A, V) )
+		self.B = libsp.dot( W.T, self.B)
+		self.C = libsp.dot( self.C, V)
+		self.states=V.shape[1]
+
+
 	def truncate(self,N):
 		''' Retains only the first N states. '''
 		
@@ -187,6 +209,226 @@ class ss():
 		self.B=self.B[:N,:]
 		self.C=self.C[:,:N]	
 		self.states=N
+
+
+class Interp1d():
+	'''
+	State-space 1D interpolation class.
+
+	This class allows interpolating from a list of state-space models, SS, 
+	defined over the 1D parameter space zv. 
+
+	State-space models are required to have the same number of inputs and outputs 
+	and need to have the same number of states.
+
+	For state-space interpolation, state-space models also need to be defined
+	over the same set of generalised coordinates. If this is not the case, the
+	projection matrices W and T, such that
+
+		A_proj = W^T A V
+	
+	also need to be provided. This will allow projecting the state-space models
+	onto a common set of generalised coordinates before interpoling.
+
+	Inputs:
+	- method_interp: interpolation method as per scipy.interpolate.interp1d class
+
+	- method_proj: method for projection of state-space models over common
+	coordinates. Available:
+		- panzer: Panzer, J. Mohring, R. Eid, and B. Lohmann, Parametric model 
+		order reduction by matrix interpolation, at–Automatisierungstechnik, 58 
+		(2010), pp. 475–484.
+		- amsallem: D. Amsallem and C. Farhat, An online method for interpolating 
+		linear parametric reduced-order models, SIAM J. Sci. Comput., 33 (2011), 
+		pp. 2169–2198.
+
+	- Map: map A matrices over Riemannian manifold 
+
+	- IImap=if given, maps A matrices over manifold derived around A matrix 
+	of ii-th state-space in SSlist. 
+	'''
+
+
+	def __init__(self, zv, SS, VV=None, WW=None, method_interp='cubic', 
+				 method_proj='panzer', Map=True, IImap=None):
+
+		assert IImap is not None, 'Option IImap=None not developed yet'
+
+		self.SS=SS
+		self.zv=zv
+		self.VV=VV
+		self.WW=WW
+		self.method_interp=method_interp
+		self.method_proj=method_proj
+		self.Map=Map
+		self.IImap=IImap
+
+		### check state-space models
+		Nx,Nu,Ny = SS[0].states, SS[0].inputs, SS[0].outputs
+		for ss_here in SS:
+			assert ss_here.states == Nx,\
+					  'State-space models do not have the same number of states'
+			assert ss_here.inputs == Nu,\
+					  'State-space models do not have the same number of inputs'
+			assert ss_here.outputs == Ny,\
+					  'State-space models do not have the same number of outputs'
+
+		self.debug=False 	# debug mode flag
+
+
+	def __call__(self, zint):
+		'''
+		Evaluate at interpolation point zint. Returns a list of classes ss
+		'''
+
+		Nint=len(zint)
+
+		# interpolate A matrices, 
+		if self.Map is True:
+			IImap=self.IImap
+			if IImap is not None:
+				# get inverse,
+				AIIinv=np.linalg.inv(self.SS[IImap].A)
+				# map,
+				TT=[]
+				for ii in range( len(self.zv) ):
+					TT.append(scalg.logm( np.dot(self.SS[ii].A,AIIinv) ))
+				# interpolate
+				TTint=self._interp_mats(TT, zint)
+				# and map back
+				
+				Aint=np.zeros( (Nint,)+AIIinv.shape )
+				for ii in range(Nint):
+					Aint[ii,:,:]= np.dot( scalg.expm(TTint[ii,:,:]), self.SS[IImap].A)
+
+			else:
+				# get index of closest A for each element in zint and define mapping
+				pass
+
+		else:
+			Aint=self._interp_mats( 
+						[getattr(ss_here,'A') for ss_here in self.SS], zint)
+	
+		# and B, C, D...
+		Bint=self._interp_mats( 
+						[getattr(ss_here,'B') for ss_here in self.SS], zint)
+		Cint=self._interp_mats( 
+						[getattr(ss_here,'C') for ss_here in self.SS], zint)		
+		Dint=self._interp_mats( 
+						[getattr(ss_here,'D') for ss_here in self.SS], zint)
+
+		# and pack everything
+		SSint=[]
+		for ii in range(Nint):
+			SSint.append( ss( Aint[ii,:,:], Bint[ii,:,:], 
+				              Cint[ii,:,:], Dint[ii,:,:], dt=self.SS[0].dt))
+
+		return SSint
+
+
+	def _interp_mats(self,Mats,zint):
+		'''
+		Interpolate a list of equal-size arrays, Mats, defined over zv at the 
+		points zint. The Mats are assumed to be defined onto the same set of
+		generalised coordinates.
+		'''
+
+		# define interpolator class
+		# try:
+		IntA=scint.interp1d(self.zv,Mats,kind=self.method_interp,
+										   copy=False,assume_sorted=True,axis=0)	
+
+		return IntA(zint)
+
+
+	def project(self):
+		'''
+		Project the state-space models onto the generalised coordinates of 
+		state-space model IImap
+		'''
+
+		if self.method_proj=='amsallem':
+
+			# get reference basis
+			Vref=self.VV[self.IImap]
+			Wref=self.WW[self.IImap]
+
+			for ii in range(len(self.SS)):
+				
+				if ii == self.IImap:
+					continue 
+
+				# get rotations
+				U,sv,Z = scalg.svd( np.dot(self.VV[ii].T, Vref) ,
+									full_matrices=False,overwrite_a=False,
+									lapack_driver='gesdd')
+				RotV = np.dot(U,Z.T)
+				# print('ii=%d' %ii)
+				# ### a few checks:
+				# print('V')
+				# print('Determinant: %.8f' %np.linalg.det(RotV) )
+				# print('Max error R^T - R^{-1}: %.3e' %np.max(np.abs(RotV.T - np.linalg.inv(RotV))) )
+				# from IPython import embed
+				# embed()
+
+				U,sv,Z = scalg.svd( np.dot(self.WW[ii].T, Wref) ,
+									full_matrices=False,overwrite_a=False,
+									lapack_driver='gesdd')
+				RotW = np.dot(U,Z.T)
+				# print('W')
+				# print('Determinant: %.8f' %np.linalg.det(RotW) )
+				# print('Max error R^T - R^{-1}: %.3e' %np.max(np.abs(RotW.T - np.linalg.inv(RotW))) )
+
+
+				if self.debug:
+					kv=np.linspace(0.,0.5,30)
+					Yfreq_pre=self.SS[ii].freqresp(kv)
+					ymax=np.max(np.abs(Yfreq_pre))
+
+				# project state-space
+				self.SS[ii].project(RotW,RotV)
+
+				if self.debug:
+					Yfreq=self.SS[ii].freqresp(kv)
+					er_abs=np.max(np.abs(Yfreq-Yfreq_pre))
+					print('SS %.2d ermax (abs): %.3e | Ymax: %.3e | ermax (rel): %.3e' %(ii,er_abs,ymax,er_abs/ymax) )
+
+
+		elif self.method_proj=='panzer':
+
+			# generate basis
+			U,sv = scalg.svd( np.concatenate(self.VV,axis=1),
+							  full_matrices=False,overwrite_a=False,
+							  lapack_driver='gesdd')[:2]
+			# chop U
+			U=U[:,:self.SS[0].states]#*sv[:self.SS[0].states]
+			print('Panzer projection: neglecting singular values below %.2e (max: %.2e)'\
+			 %(sv[self.SS[0].states],sv[0]) )
+
+
+			for ii in range(len(self.SS)):
+				
+				# get projection matrices
+				M = np.linalg.inv( np.dot( self.WW[ii].T, U) )
+				N = np.linalg.inv( np.dot( self.VV[ii].T, U) )
+
+				if self.debug:
+					kv=np.linspace(0.,0.5,30)
+					Yfreq_pre=self.SS[ii].freqresp(kv)
+					ymax=np.max(np.abs(Yfreq_pre))
+
+				# project
+				self.SS[ii].project(M.T,N)
+
+				if self.debug:
+					Yfreq=self.SS[ii].freqresp(kv)
+					er_abs=np.max(np.abs(Yfreq-Yfreq_pre))
+					print('SS %.2d ermax (abs): %.3e | Ymax: %.3e | ermax (rel): %.3e' %(ii,er_abs,ymax,er_abs/ymax) )
+			
+				
+		else:
+			raise NameError('Projection method %s not implemented!' %self.method_proj)
+
 
 
 # ---------------------------------------- Methods for state-space manipulation
@@ -735,7 +977,7 @@ def join(SS1, SS2):
 	    scsig.StateSpace or np.ndarray: combined state space or gain matrix
 
 	"""
-	type_dlti=scsig.ltisys.StateSpaceDiscrete
+
 
 
 	if isinstance(SS1,np.ndarray) and isinstance(SS2,np.ndarray):
@@ -746,7 +988,7 @@ def join(SS1, SS2):
 			            [np.zeros((Nout02,Nin01)),SS2 ]])
 
 
-	elif isinstance(SS1,np.ndarray) and isinstance(SS2,type_dlti):
+	elif isinstance(SS1,np.ndarray) and isinstance(SS2,ss):
 
 		Nin01,Nout01=SS1.shape[1],SS1.shape[0]
 		Nin02,Nout02=SS2.inputs,SS2.outputs
@@ -759,10 +1001,10 @@ def join(SS1, SS2):
 		D=np.block([[SS1,np.zeros((Nout01,Nin02))],
 					[np.zeros((Nout02,Nin01)),SS2.D]])
 
-		SStot=scsig.StateSpace(A,B,C,D,dt=SS2.dt)		
+		SStot=ss(A,B,C,D,dt=SS2.dt)		
 
 
-	elif isinstance(SS1,type_dlti) and isinstance(SS2,np.ndarray):
+	elif isinstance(SS1,ss) and isinstance(SS2,np.ndarray):
 
 		Nin01,Nout01=SS1.inputs,SS1.outputs
 		Nin02,Nout02=SS2.shape[1],SS2.shape[0]
@@ -775,10 +1017,10 @@ def join(SS1, SS2):
 		D=np.block([[SS1.D,np.zeros((Nout01,Nin02))],
 			        [np.zeros((Nout02,Nin01)),SS2]])
 
-		SStot=scsig.StateSpace(A,B,C,D,dt=SS1.dt)	
+		SStot=ss(A,B,C,D,dt=SS1.dt)	
 
 
-	elif isinstance(SS1,type_dlti) and isinstance(SS2,type_dlti):
+	elif isinstance(SS1,ss) and isinstance(SS2,ss):
 
 		assert SS1.dt==SS2.dt, 'State-space models must have the same time-step'
 
@@ -794,13 +1036,45 @@ def join(SS1, SS2):
 					[ np.zeros((Nout02,Nx01)), SS2.C]])
 		D=np.block([[SS1.D, np.zeros((Nout01,Nin02))],
 					[np.zeros((Nout02,Nin01)), SS2.D]])
-		SStot=scsig.StateSpace(A,B,C,D,dt=SS1.dt)
-
+		SStot=ss(A,B,C,D,dt=SS1.dt)
 
 	else:
 		raise NameError('Input types not recognised in any implemented option!') 
 
 	return SStot
+
+
+
+def join_list(SSlist):
+    '''
+    Joins a list of independent state-space models into a single one
+    '''
+
+
+    N=len(SSlist)
+    dt=SSlist[0].dt
+
+    if dt is None:
+        for ii in range(1,N):
+            assert SSlist[ii].dt is None,\
+                        'Trying to join discrete and continuous-time LTI systems'
+    else:
+        for ii in range(1,N):
+
+            assert np.abs(SSlist[ii].dt-dt)<1e-8*dt,\
+                        'Trying to join DLTI systems with different time-steps'        
+
+    Alist=[SSlist[ii].A for ii in range(N)]
+    Blist=[SSlist[ii].B for ii in range(N)]
+    Clist=[SSlist[ii].C for ii in range(N)]
+    Dlist=[SSlist[ii].D for ii in range(N)]
+
+
+    return ss( scalg.block_diag(*Alist),
+               scalg.block_diag(*Blist),
+               scalg.block_diag(*Clist),
+               scalg.block_diag(*Dlist),
+               dt=dt)
 
 
 def sum(SS1, SS2, negative=False):
@@ -1196,7 +1470,7 @@ def random_ss(Nx,Nu,Ny,dt=None,use_sparse=False):
 	return SS
 
 
-def compare_ss(SS1,SS2,tol=1e-10,Print=False):
+def compare_ss(SS1,SS2,tol=1e-10,Print=False,RaiseError=True):
     '''
     Assert matrices of state-space models are identical
     '''
@@ -1213,10 +1487,11 @@ def compare_ss(SS1,SS2,tol=1e-10,Print=False):
     erd=np.max(np.abs(libsp.dense(SS1.D)-libsp.dense(SS2.D)))
     if Print: print('Max. error D: %.3e' %erd)
 
-    assert era<tol, 'Error A matrix %.2e>%.2e'%(era,tol)
-    assert erb<tol, 'Error B matrix %.2e>%.2e'%(erb,tol)
-    assert erc<tol, 'Error C matrix %.2e>%.2e'%(erc,tol)    
-    assert erd<tol, 'Error D matrix %.2e>%.2e'%(erd,tol)
+    if RaiseError:
+	    assert era<tol, 'Error A matrix %.2e>%.2e'%(era,tol)
+	    assert erb<tol, 'Error B matrix %.2e>%.2e'%(erb,tol)
+	    assert erc<tol, 'Error C matrix %.2e>%.2e'%(erc,tol)    
+	    assert erd<tol, 'Error D matrix %.2e>%.2e'%(erd,tol)
 
     # print('System matrices identical within tolerance %.2e'%tol)
     return (era,erb,erc,erd)
@@ -1349,6 +1624,11 @@ if __name__=='__main__':
 						for k21 in [K21,K21sp]:
 							SChere=couple(SSa,SSb,k12,k21)
 							compare_ss(SC0,SChere)
+
+
+
+
+
 
 	outprint='Testing libss'
 	print('\n' + 70*'-')
