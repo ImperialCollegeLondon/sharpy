@@ -1102,6 +1102,9 @@ class Dynamic(Static):
         if 'check_stability' not in DictBalFreq:
             DictBalFreq['check_stability']=True
 
+        if 'output_modes' not in DictBalFreq:
+            DictBalFreq['output_modes']=True
+
 
         ### get integration points and weights
 
@@ -1169,8 +1172,8 @@ class Dynamic(Static):
         zv = np.cos(kvdt)+1.j*np.sin(kvdt)
 
         Qobs=np.zeros( (self.SS.states,self.SS.outputs), dtype=np.complex_)
-        Zc=np.zeros( (self.SS.states,2*self.SS.inputs*len(kvdt)), dtype=np.complex_)
-        Zo=np.zeros( (self.SS.states,2*self.SS.outputs*Nk_low), dtype=np.complex_)
+        Zc=np.zeros( (self.SS.states,2*self.SS.inputs*len(kvdt)),)
+        Zo=np.zeros( (self.SS.states,2*self.SS.outputs*Nk_low),)
 
         for kk in range( len(kvdt) ):
 
@@ -1216,8 +1219,7 @@ class Dynamic(Static):
             rhs=self.SS.C[:,ii00].T + \
                 Cw_cpx_H.dot(self.SS.C[:,ii01].T) + \
                 libsp.dot( 
-                    (bp1*zval)*PwCw_T.conj() + \
-                    (bp1*zval)*P.T + \
+                    (bp1*zval)*(PwCw_T.conj() + P.T) + \
                     (b0*zval+bm1*zval**2 )*Eye, self.SS.C[:,ii02].T)
 
             Qobs[ii00,:] = np.dot(Kernel.conj().T, rhs)
@@ -1248,7 +1250,7 @@ class Dynamic(Static):
         sinv=hsv**(-0.5)
         T=np.dot(Zc,Vh.T*sinv)
         Ti=np.dot((U*sinv).T,Zo.T)
-        Zc,Zo=None,None
+        # Zc,Zo=None,None
 
         ### build frequency balanced model
         Ab=libsp.dot(Ti,libsp.dot(self.SS.A,T))
@@ -1265,10 +1267,16 @@ class Dynamic(Static):
                     SSb.truncate(nn-1)
                     hsv=hsv[:nn-1]
                     T=T[:,:nn-1]
+                    Ti=Ti[:nn-1,:]
+                    break
 
         self.SSb=SSb 
-        self.T=T
         self.hsv=hsv
+        if DictBalFreq['output_modes']:
+            self.T=T
+            self.Ti=Ti
+            self.Zc=Zc
+            self.Zo=Zo
 
 
     def balfreq_profiling(self):
