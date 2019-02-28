@@ -563,6 +563,12 @@ class FlyingWing():
                            'NumLambda': 60,
                            'print_matrices': 'off',
                            'keep_linear_matrices': 'on',
+                            'write_dat': 'off',
+                            'continuous_eigenvalues': 'off',
+                            'dt': 0,
+                            'plot_eigenvalues': False,
+                            'max_rotation_deg': 15.,
+                            'max_displacement': 0.15,
                            'write_modes_vtk': True,
                            'use_undamped_modes': True}
 

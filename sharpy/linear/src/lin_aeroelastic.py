@@ -7,7 +7,7 @@ import warnings
 import numpy as np
 import scipy.signal as scsig
 
-
+import sharpy.utils.settings
 import sharpy.linear.src.linuvlm as linuvlm
 import sharpy.linear.src.lingebm as lingebm
 import sharpy.linear.src.libss as libss
@@ -46,21 +46,20 @@ class LinAeroEla():
         SS (scipy.signal): state space formulation (discrete or continuous time), as selected by the user
     """
 
-    def __init__(self, data, settings_linear=None):
+    def __init__(self, data, custom_settings_linear=None):
 
         self.data = data
-        if settings_linear is not None:
-            data.settings['LinearUvlm'] = settings_linear['LinearUvlm']
-        settings = data.settings
+        if custom_settings_linear is None:
+            settings_here = data.settings['LinearUvlm']
+        else:
+            settings_here = custom_settings_linear
 
-
-        ### modify settings
-        settings['LinearUvlm']['dt'] = np.float(settings['LinearUvlm']['dt'])
-        settings['LinearUvlm']['integr_order'] = \
-            np.int(settings['LinearUvlm']['integr_order'])
+        sharpy.utils.settings.to_custom_types(settings_here, 
+                                              linuvlm.settings_types_dynamic, 
+                                              linuvlm.settings_default_dynamic)
 
         ### extract aeroelastic info
-        self.dt = settings['LinearUvlm']['dt']
+        self.dt = settings_here['dt'].value
 
         ### reference to timestep_info
         # aero
@@ -72,16 +71,16 @@ class LinAeroEla():
 
         # --- backward compatibility
         try:
-            rho = data.settings['LinearUvlm']['density']
+            rho = settings_here['density'].value
         except KeyError:
             warnings.warn(
                 "Key 'density' not found in 'LinearUvlm' solver settings. '\
                                       'Trying to read it from 'StaticCoupled'.")
             rho = data.settings['StaticCoupled']['aero_solver_settings']['rho']
-        if type(rho) == str:
-            rho = np.float(rho)
-        if hasattr(rho, 'value'):
-            rho = rho.value
+            if type(rho) == str:
+                rho = np.float(rho)
+            if hasattr(rho, 'value'):
+                rho = rho.value
         self.tsaero.rho = rho
         # --- backward compatibility
 
@@ -95,11 +94,11 @@ class LinAeroEla():
         ### uvlm
         self.linuvlm = linuvlm.Dynamic(
             self.tsaero,
-            dt=settings['LinearUvlm']['dt'],
-            RemovePredictor=settings['LinearUvlm']['remove_predictor'],
-            UseSparse=settings['LinearUvlm']['use_sparse'],
-            integr_order=settings['LinearUvlm']['integr_order'],
-            ScalingDict=settings['LinearUvlm']['ScalingDict'])
+            dt=settings_here['dt'].value,
+            RemovePredictor=settings_here['remove_predictor'].value,
+            UseSparse=settings_here['use_sparse'].value,
+            integr_order=settings_here['integr_order'].value,
+            ScalingDict=settings_here['ScalingDict'])
 
 
     def reshape_struct_input(self):

@@ -190,6 +190,17 @@ class ss():
         scale_SS(self, input_scal, output_scal, state_scal, byref=True)
 
 
+	def truncate(self,N):
+		''' Retains only the first N states. '''
+		
+		assert N>0 and N<=self.states, 'N must be in [1,self.states]'
+
+		self.A=self.A[:N,:N]
+		self.B=self.B[:N,:]
+		self.C=self.C[:,:N]	
+		self.states=N
+
+
 # ---------------------------------------- Methods for state-space manipulation
 
 def couple(ss01,ss02,K12,K21,out_sparse=False):
