@@ -37,6 +37,9 @@ Special Models:
 Filtering:
 - butter
 
+Utilities:
+- get_freq_from_eigs: clculate frequency corresponding to eigenvalues
+
 Comments: 
 - the module supports sparse matrices hence relies on libsparse.
 
@@ -175,6 +178,17 @@ class ss():
 		scale_SS(self,input_scal,output_scal,state_scal,byref=True)
 
 
+	def truncate(self,N):
+		''' Retains only the first N states. '''
+		
+		assert N>0 and N<=self.states, 'N must be in [1,self.states]'
+
+		self.A=self.A[:N,:N]
+		self.B=self.B[:N,:]
+		self.C=self.C[:,:N]	
+		self.states=N
+
+
 # ---------------------------------------- Methods for state-space manipulation
 
 def couple(ss01,ss02,K12,K21,out_sparse=False):
@@ -249,148 +263,145 @@ def couple(ss01,ss02,K12,K21,out_sparse=False):
 	return ss(A,B,C,D,dt=ss01.dt)
 
 
-def couple_wrong02(ss01, ss02, K12, K21):
-    """
-    Couples 2 dlti systems ss01 and ss02 through the gains K12 and K21, where
-    K12 transforms the output of ss02 into an input of ss01.
-    """
+# def couple_wrong02(ss01, ss02, K12, K21):
+#     """
+#     Couples 2 dlti systems ss01 and ss02 through the gains K12 and K21, where
+#     K12 transforms the output of ss02 into an input of ss01.
+#     """
 
-    assert ss01.dt == ss02.dt, 'Time-steps not matching!'
-    assert K12.shape == (ss01.inputs, ss02.outputs), \
-        'Gain K12 shape not matching with systems number of inputs/outputs'
-    assert K21.shape == (ss02.inputs, ss01.outputs), \
-        'Gain K21 shape not matching with systems number of inputs/outputs'
+#     assert ss01.dt == ss02.dt, 'Time-steps not matching!'
+#     assert K12.shape == (ss01.inputs, ss02.outputs), \
+#         'Gain K12 shape not matching with systems number of inputs/outputs'
+#     assert K21.shape == (ss02.inputs, ss01.outputs), \
+#         'Gain K21 shape not matching with systems number of inputs/outputs'
 
-    A1, B1, C1, D1 = ss01.A, ss01.B, ss01.C, ss01.D
-    A2, B2, C2, D2 = ss02.A, ss02.B, ss02.C, ss02.D
+#     A1, B1, C1, D1 = ss01.A, ss01.B, ss01.C, ss01.D
+#     A2, B2, C2, D2 = ss02.A, ss02.B, ss02.C, ss02.D
 
-    # extract size
-    Nx1, Nu1 = B1.shape
-    Ny1 = C1.shape[0]
-    Nx2, Nu2 = B2.shape
-    Ny2 = C2.shape[0]
+#     # extract size
+#     Nx1, Nu1 = B1.shape
+#     Ny1 = C1.shape[0]
+#     Nx2, Nu2 = B2.shape
+#     Ny2 = C2.shape[0]
 
-    #  terms to invert
-    maxD1 = np.max(np.abs(D1))
-    maxD2 = np.max(np.abs(D2))
-    if maxD1 < 1e-32:
-        pass
-    if maxD2 < 1e-32:
-        pass
+#     #  terms to invert
+#     maxD1 = np.max(np.abs(D1))
+#     maxD2 = np.max(np.abs(D2))
+#     if maxD1 < 1e-32:
+#         pass
+#     if maxD2 < 1e-32:
+#         pass
 
-    # terms solving for u21 (input of ss02 due to ss01)
-    K11 = np.dot(K12, np.dot(D2, K21))
-    # L1=np.eye(Nu1)-np.dot(K11,D1)
-    L1inv = np.linalg.inv(np.eye(Nu1) - np.dot(K11, D1))
+#     # terms solving for u21 (input of ss02 due to ss01)
+#     K11 = np.dot(K12, np.dot(D2, K21))
+#     # L1=np.eye(Nu1)-np.dot(K11,D1)
+#     L1inv = np.linalg.inv(np.eye(Nu1) - np.dot(K11, D1))
 
-    # coupling terms for u21
-    cpl_11 = np.dot(L1inv, K11)
-    cpl_12 = np.dot(L1inv, K12)
+#     # coupling terms for u21
+#     cpl_11 = np.dot(L1inv, K11)
+#     cpl_12 = np.dot(L1inv, K12)
 
-    # terms solving for u12 (input of ss01 due to ss02)
-    T = np.dot(np.dot(K21, D1), L1inv)
+#     # terms solving for u12 (input of ss01 due to ss02)
+#     T = np.dot(np.dot(K21, D1), L1inv)
 
-    # coupling terms for u21
-    cpl_21 = K21 + np.dot(T, K11)
-    cpl_22 = np.dot(T, K12)
+#     # coupling terms for u21
+#     cpl_21 = K21 + np.dot(T, K11)
+#     cpl_22 = np.dot(T, K12)
 
-    # Build coupled system
-    A = np.block([
-        [A1 + np.dot(np.dot(B1, cpl_11), C1), np.dot(np.dot(B1, cpl_12), C2)],
-        [np.dot(np.dot(B2, cpl_21), C1), A2 + np.dot(np.dot(B2, cpl_22), C2)]])
+#     # Build coupled system
+#     A = np.block([
+#         [A1 + np.dot(np.dot(B1, cpl_11), C1), np.dot(np.dot(B1, cpl_12), C2)],
+#         [np.dot(np.dot(B2, cpl_21), C1), A2 + np.dot(np.dot(B2, cpl_22), C2)]])
 
-    C = np.block([
-        [C1 + np.dot(np.dot(D1, cpl_11), C1), np.dot(np.dot(D1, cpl_12), C2)],
-        [np.dot(np.dot(D2, cpl_21), C1), C2 + np.dot(np.dot(D2, cpl_22), C2)]])
+#     C = np.block([
+#         [C1 + np.dot(np.dot(D1, cpl_11), C1), np.dot(np.dot(D1, cpl_12), C2)],
+#         [np.dot(np.dot(D2, cpl_21), C1), C2 + np.dot(np.dot(D2, cpl_22), C2)]])
 
-    B = np.block([
-        [B1 + np.dot(np.dot(B1, cpl_11), D1), np.dot(np.dot(B1, cpl_12), D2)],
-        [np.dot(np.dot(B2, cpl_21), D1), B2 + np.dot(np.dot(B2, cpl_22), D2)]])
+#     B = np.block([
+#         [B1 + np.dot(np.dot(B1, cpl_11), D1), np.dot(np.dot(B1, cpl_12), D2)],
+#         [np.dot(np.dot(B2, cpl_21), D1), B2 + np.dot(np.dot(B2, cpl_22), D2)]])
 
-    D = np.block([
-        [D1 + np.dot(np.dot(D1, cpl_11), D1), np.dot(np.dot(D1, cpl_12), D2)],
-        [np.dot(np.dot(D2, cpl_21), D1), D2 + np.dot(np.dot(D2, cpl_22), D2)]])
+#     D = np.block([
+#         [D1 + np.dot(np.dot(D1, cpl_11), D1), np.dot(np.dot(D1, cpl_12), D2)],
+#         [np.dot(np.dot(D2, cpl_21), D1), D2 + np.dot(np.dot(D2, cpl_22), D2)]])
 
-    if ss01.dt is None:
-        sstot = scsig.lti(A, B, C, D)
-    else:
-        sstot = scsig.dlti(A, B, C, D, dt=ss01.dt)
-    return sstot
-
-
-def couple_wrong(ss01, ss02, K12, K21):
-    """
-    Couples 2 dlti systems ss01 and ss02 through the gains K12 and K21, where
-    K12 transforms the output of ss02 into an input of ss01.
-    """
-
-    assert ss01.dt == ss02.dt, 'Time-steps not matching!'
-    assert K12.shape == (ss01.inputs, ss02.outputs), \
-        'Gain K12 shape not matching with systems number of inputs/outputs'
-    assert K21.shape == (ss02.inputs, ss01.outputs), \
-        'Gain K21 shape not matching with systems number of inputs/outputs'
-
-    A1, B1, C1, D1 = ss01.A, ss01.B, ss01.C, ss01.D
-    A2, B2, C2, D2 = ss02.A, ss02.B, ss02.C, ss02.D
-
-    # extract size
-    Nx1, Nu1 = B1.shape
-    Ny1 = C1.shape[0]
-    Nx2, Nu2 = B2.shape
-    Ny2 = C2.shape[0]
-
-    #  terms to invert
-    maxD1 = np.max(np.abs(D1))
-    maxD2 = np.max(np.abs(D2))
-    if maxD1 < 1e-32:
-        pass
-    if maxD2 < 1e-32:
-        pass
-
-    # compute self-coupling terms
-    S1 = np.dot(K12, np.dot(D2, K21))
-    S2 = np.dot(K21, np.dot(D1, K12))
-
-    # left hand side terms
-    L1 = np.eye(Nu1) - np.dot(S1, D1)
-    L2 = np.eye(Nu2) - np.dot(S2, D2)
-
-    # invert left hand side terms
-    L1inv = np.linalg.inv(L1)
-    L2inv = np.linalg.inv(L2)
-
-    # recurrent terms
-    L1invS1 = np.dot(L1inv, S1)
-    L2invS2 = np.dot(L2inv, S2)
-
-    L1invK12 = np.dot(L1inv, K12)
-    L2invK21 = np.dot(L2inv, K21)
-
-    # Build coupled system
-    A = np.block([
-        [A1 + np.dot(np.dot(B1, L1invS1), C1), np.dot(np.dot(B1, L1invK12), C2)],
-        [np.dot(np.dot(B2, L2invK21), C1), A2 + np.dot(np.dot(B2, L2invS2), C2)]])
-
-    C = np.block([
-        [C1 + np.dot(np.dot(D1, L1invS1), C1), np.dot(np.dot(D1, L1invK12), C2)],
-        [np.dot(np.dot(D2, L2invK21), C1), C2 + np.dot(np.dot(D2, L2invS2), C2)]])
-
-    B = np.block([
-        [B1 + np.dot(np.dot(B1, L1invS1), D1), np.dot(np.dot(B1, L1invK12), D2)],
-        [np.dot(np.dot(B2, L2invK21), D1), B2 + np.dot(np.dot(B2, L2invS2), D2)]])
-
-    D = np.block([
-        [D1 + np.dot(np.dot(D1, L1invS1), D1), np.dot(np.dot(D1, L1invK12), D2)],
-        [np.dot(np.dot(D2, L2invK21), D1), D2 + np.dot(np.dot(D2, L2invS2), D2)]])
-
-    if ss01.dt is None:
-        sstot = scsig.lti(A, B, C, D)
-    else:
-        sstot = scsig.dlti(A, B, C, D, dt=ss01.dt)
-    return sstot
+#     if ss01.dt is None:
+#         sstot = scsig.lti(A, B, C, D)
+#     else:
+#         sstot = scsig.dlti(A, B, C, D, dt=ss01.dt)
+#     return sstot
 
 
+# def couple_wrong(ss01, ss02, K12, K21):
+#     """
+#     Couples 2 dlti systems ss01 and ss02 through the gains K12 and K21, where
+#     K12 transforms the output of ss02 into an input of ss01.
+#     """
 
+#     assert ss01.dt == ss02.dt, 'Time-steps not matching!'
+#     assert K12.shape == (ss01.inputs, ss02.outputs), \
+#         'Gain K12 shape not matching with systems number of inputs/outputs'
+#     assert K21.shape == (ss02.inputs, ss01.outputs), \
+#         'Gain K21 shape not matching with systems number of inputs/outputs'
+
+#     A1, B1, C1, D1 = ss01.A, ss01.B, ss01.C, ss01.D
+#     A2, B2, C2, D2 = ss02.A, ss02.B, ss02.C, ss02.D
+
+#     # extract size
+#     Nx1, Nu1 = B1.shape
+#     Ny1 = C1.shape[0]
+#     Nx2, Nu2 = B2.shape
+#     Ny2 = C2.shape[0]
+
+#     #  terms to invert
+#     maxD1 = np.max(np.abs(D1))
+#     maxD2 = np.max(np.abs(D2))
+#     if maxD1 < 1e-32:
+#         pass
+#     if maxD2 < 1e-32:
+#         pass
+
+#     # compute self-coupling terms
+#     S1 = np.dot(K12, np.dot(D2, K21))
+#     S2 = np.dot(K21, np.dot(D1, K12))
+
+#     # left hand side terms
+#     L1 = np.eye(Nu1) - np.dot(S1, D1)
+#     L2 = np.eye(Nu2) - np.dot(S2, D2)
+
+#     # invert left hand side terms
+#     L1inv = np.linalg.inv(L1)
+#     L2inv = np.linalg.inv(L2)
+
+#     # recurrent terms
+#     L1invS1 = np.dot(L1inv, S1)
+#     L2invS2 = np.dot(L2inv, S2)
+
+#     L1invK12 = np.dot(L1inv, K12)
+#     L2invK21 = np.dot(L2inv, K21)
+
+#     # Build coupled system
+#     A = np.block([
+#         [A1 + np.dot(np.dot(B1, L1invS1), C1), np.dot(np.dot(B1, L1invK12), C2)],
+#         [np.dot(np.dot(B2, L2invK21), C1), A2 + np.dot(np.dot(B2, L2invS2), C2)]])
+
+#     C = np.block([
+#         [C1 + np.dot(np.dot(D1, L1invS1), C1), np.dot(np.dot(D1, L1invK12), C2)],
+#         [np.dot(np.dot(D2, L2invK21), C1), C2 + np.dot(np.dot(D2, L2invS2), C2)]])
+
+#     B = np.block([
+#         [B1 + np.dot(np.dot(B1, L1invS1), D1), np.dot(np.dot(B1, L1invK12), D2)],
+#         [np.dot(np.dot(B2, L2invK21), D1), B2 + np.dot(np.dot(B2, L2invS2), D2)]])
+
+#     D = np.block([
+#         [D1 + np.dot(np.dot(D1, L1invS1), D1), np.dot(np.dot(D1, L1invK12), D2)],
+#         [np.dot(np.dot(D2, L2invK21), D1), D2 + np.dot(np.dot(D2, L2invS2), D2)]])
+
+#     if ss01.dt is None:
+#         sstot = scsig.lti(A, B, C, D)
+#     else:
+#         sstot = scsig.dlti(A, B, C, D, dt=ss01.dt)
+#     return sstot
 
 
 
@@ -850,86 +861,92 @@ def sum(SS1, SS2, negative=False):
 
 
 def scale_SS(SSin, input_scal=1., output_scal=1., state_scal=1., byref=True):
-	r"""
-	Given a state-space system, scales the equations such that the original
-	input and output, :math:`u` and :math:`y`, are substituted by :math:`u_{AD}=\frac{u}{u_{ref}}`
-	and :math:`y_{AD}=\frac{y}{y_{ref}}`.
+    r"""
+    Given a state-space system, scales the equations such that the original
+    input and output, :math:`u` and :math:`y`, are substituted by :math:`u_{AD}=\frac{u}{u_{ref}}`
+    and :math:`y_{AD}=\frac{y}{y_{ref}}`.
 
-	If the original system has form:
+    If the original system has form:
 
-	    .. math::
-	            \mathbf{x}^{n+1} &= \mathbf{A\,x}^n + \mathbf{B\,u}^n \\
-	            \mathbf{y}^{n} &= \mathbf{C\,x}^{n} + \mathbf{D\,u}^n
+        .. math::
+                \mathbf{x}^{n+1} &= \mathbf{A\,x}^n + \mathbf{B\,u}^n \\
+                \mathbf{y}^{n} &= \mathbf{C\,x}^{n} + \mathbf{D\,u}^n
 
-	the transformation is such that:
+    the transformation is such that:
 
-	    .. math::
-	            \mathbf{x}^{n+1} &= \mathbf{A\,x}^n + \mathbf{B}\,\frac{u_{ref}}{x_{ref}}\mathbf{u_{AD}}^n \\
-	            \mathbf{y_{AD}}^{n+1} &= \frac{1}{y_{ref}}(\mathbf{C}\,x_{ref}\,\mathbf{x}^{n+1} + \mathbf{D}\,u_{ref}\,\mathbf{u_{AD}}^n)
+        .. math::
+                \mathbf{x}^{n+1} &= \mathbf{A\,x}^n + \mathbf{B}\,\frac{u_{ref}}{x_{ref}}\mathbf{u_{AD}}^n \\
+                \mathbf{y_{AD}}^{n+1} &= \frac{1}{y_{ref}}(\mathbf{C}\,x_{ref}\,\mathbf{x}^{n+1} + \mathbf{D}\,u_{ref}\,\mathbf{u_{AD}}^n)
 
-	By default, the state-space model is manipulated by reference (``byref=True``)
+    By default, the state-space model is manipulated by reference (``byref=True``)
 
-	Args:
-	    SSin (scsig.dlti): original state-space formulation
-	    input_scal (float or np.ndarray): input scaling factor :math:`u_{ref}`. It can be a float or an array, in which
-	                                      case the each element of the input vector will be scaled by a different
-	                                      factor.
-	    output_scal (float or np.ndarray): output scaling factor :math:`y_{ref}`. It can be a float or an array, in which
-	                                       case the each element of the output vector will be scaled by a different
-	                                       factor.
-	    state_scal (float or np.ndarray): state scaling factor :math:`x_{ref}`. It can be a float or an array, in which
-	                                      case the each element of the state vector will be scaled by a different
-	                                      factor.
-	    byref (bool): state space manipulation order
+    Args:
+        SSin (scsig.dlti): original state-space formulation
+        input_scal (float or np.ndarray): input scaling factor :math:`u_{ref}`. It can be a float or an array, in which
+                                          case the each element of the input vector will be scaled by a different
+                                          factor.
+        output_scal (float or np.ndarray): output scaling factor :math:`y_{ref}`. It can be a float or an array, in which
+                                           case the each element of the output vector will be scaled by a different
+                                           factor.
+        state_scal (float or np.ndarray): state scaling factor :math:`x_{ref}`. It can be a float or an array, in which
+                                          case the each element of the state vector will be scaled by a different
+                                          factor.
+        byref (bool): state space manipulation order
 
-	Returns:
-	      scsig.dlti: scaled state space formulation
-	"""
+    Returns:
+          scsig.dlti: scaled state space formulation
+    """
 
-	# check input:
-	Nin,Nout=SSin.inputs,SSin.outputs
-	Nstates=SSin.A.shape[0]
+    # check input:
+    Nin,Nout=SSin.inputs,SSin.outputs
+    Nstates=SSin.A.shape[0]
 
-	if isinstance(input_scal,(list,np.ndarray)):
-		assert len(input_scal)==Nin,\
-			   'Length of input_scal not matching number of state-space inputs!'
-	else:
-		input_scal=Nin*[input_scal]
+    if isinstance(input_scal,(list,np.ndarray)):
+    	assert len(input_scal)==Nin,\
+    		   'Length of input_scal not matching number of state-space inputs!'
+    else:
+    	input_scal=Nin*[input_scal]
 
-	if isinstance(output_scal,(list,np.ndarray)):
-		assert len(output_scal)==Nout,\
-			 'Length of output_scal not matching number of state-space outputs!'
-	else:
-		output_scal=Nout*[output_scal]
+    if isinstance(output_scal,(list,np.ndarray)):
+    	assert len(output_scal)==Nout,\
+    		 'Length of output_scal not matching number of state-space outputs!'
+    else:
+    	output_scal=Nout*[output_scal]
 
-	if isinstance(state_scal,(list,np.ndarray)):
-		assert len(state_scal)==Nstates,\
-			   'Length of state_scal not matching number of state-space states!'
-	else:
-		state_scal=Nstates*[state_scal]
+    if isinstance(state_scal,(list,np.ndarray)):
+    	assert len(state_scal)==Nstates,\
+    		   'Length of state_scal not matching number of state-space states!'
+    else:
+    	state_scal=Nstates*[state_scal]
 
-	if byref:
-		SS=SSin
-	else:
-		print('deep-copying state-space model before scaling')
-		SS=copy.deepcopy(SSin)
+    if byref:
+    	SS=SSin
+    else:
+    	print('deep-copying state-space model before scaling')
+    	SS=copy.deepcopy(SSin)
 
-	# update input related matrices
-	for ii in range(Nin):
-		SS.B[:,ii]=SS.B[:,ii]*input_scal[ii]
-		SS.D[:,ii]=SS.D[:,ii]*input_scal[ii]
+    # update input related matrices
+    for ii in range(Nin):
+        SS.B[:,ii]=SS.B[:,ii]*input_scal[ii]
+        SS.D[:,ii]=SS.D[:,ii]*input_scal[ii]
+        # SS.B[:,ii]*=input_scal[ii]
+        # SS.D[:,ii]*=input_scal[ii]
 
-	# update output related matrices
-	for ii in range(Nout):
-		SS.C[ii,:]=SS.C[ii,:]/output_scal[ii]
-		SS.D[ii,:]=SS.D[ii,:]/output_scal[ii]
+    # update output related matrices
+    for ii in range(Nout):
+        SS.C[ii,:]=SS.C[ii,:]/output_scal[ii]
+        SS.D[ii,:]=SS.D[ii,:]/output_scal[ii]
+        # SS.C[ii,:]/=output_scal[ii]
+        # SS.D[ii,:]/=output_scal[ii]
 
-	# update state related matrices
-	for ii in range(Nstates):
-		SS.B[ii,:]=SS.B[ii,:]/state_scal[ii]
-		SS.C[:,ii]=SS.C[:,ii]*state_scal[ii]
+    # update state related matrices
+    for ii in range(Nstates):
+        SS.B[ii,:]=SS.B[ii,:]/state_scal[ii]
+        SS.C[:,ii]=SS.C[:,ii]*state_scal[ii]
+        # SS.B[ii,:]/=state_scal[ii]
+        # SS.C[:,ii]*=state_scal[ii]
 
-	return SS
+    return SS
 
 
 
@@ -1136,6 +1153,24 @@ def butter(order, Wn, N=1, btype='lowpass'):
     return SStot.A, SStot.B, SStot.C, SStot.D
 
 
+# ----------------------------------------------------------------------- Utils
+
+def get_freq_from_eigs(eigs,dlti=True):
+    '''
+    Compute natural freq corresponding to eigenvalues, eigs, of a continuous or 
+    discrete-time (dlti=True) systems.
+
+    Note: if dlti=True, the frequency is normalised by (1./dt), where dt is the
+    DLTI time-step - i.e. the frequency in Hertz is obtained by multiplying fn by
+    (1./dt).
+    '''
+    if dlti:
+        fn=0.5*np.angle(eigs)/np.pi
+    else:
+        fn=np.abs(eigs.imag)
+    return fn
+
+
 # --------------------------------------------------------------------- Testing
 
 
@@ -1167,20 +1202,21 @@ def compare_ss(SS1,SS2,tol=1e-10,Print=False):
     '''
 
     era=np.max(np.abs(libsp.dense(SS1.A)-libsp.dense(SS2.A)))
-    assert era<tol, 'Error A matrix %.2e>%.2e'%(era,tol)
     if Print: print('Max. error A: %.3e' %era)
 
     erb=np.max(np.abs(libsp.dense(SS1.B)-libsp.dense(SS2.B)))
-    assert erb<tol, 'Error B matrix %.2e>%.2e'%(erb,tol)
     if Print: print('Max. error B: %.3e' %erb)
 
     erc=np.max(np.abs(libsp.dense(SS1.C)-libsp.dense(SS2.C)))
-    assert erc<tol, 'Error C matrix %.2e>%.2e'%(erc,tol)
     if Print: print('Max. error C: %.3e' %erc)
 
     erd=np.max(np.abs(libsp.dense(SS1.D)-libsp.dense(SS2.D)))
-    assert erd<tol, 'Error D matrix %.2e>%.2e'%(erd,tol)
     if Print: print('Max. error D: %.3e' %erd)
+
+    assert era<tol, 'Error A matrix %.2e>%.2e'%(era,tol)
+    assert erb<tol, 'Error B matrix %.2e>%.2e'%(erb,tol)
+    assert erc<tol, 'Error C matrix %.2e>%.2e'%(erc,tol)    
+    assert erd<tol, 'Error D matrix %.2e>%.2e'%(erd,tol)
 
     # print('System matrices identical within tolerance %.2e'%tol)
     return (era,erb,erc,erd)

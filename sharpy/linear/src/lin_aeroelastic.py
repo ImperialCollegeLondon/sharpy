@@ -7,7 +7,7 @@ import warnings
 import numpy as np
 import scipy.signal as scsig
 
-
+import sharpy.utils.settings
 import sharpy.linear.src.linuvlm as linuvlm
 import sharpy.linear.src.lingebm as lingebm
 import sharpy.linear.src.libss as libss
@@ -46,21 +46,20 @@ class LinAeroEla():
         SS (scipy.signal): state space formulation (discrete or continuous time), as selected by the user
     """
 
-    def __init__(self, data, settings_linear=None):
+    def __init__(self, data, custom_settings_linear=None):
 
         self.data = data
-        if settings_linear is not None:
-            data.settings['LinearUvlm'] = settings_linear['LinearUvlm']
-        settings = data.settings
+        if custom_settings_linear is None:
+            settings_here = data.settings['LinearUvlm']
+        else:
+            settings_here = custom_settings_linear
 
-
-        ### modify settings
-        settings['LinearUvlm']['dt'] = np.float(settings['LinearUvlm']['dt'])
-        settings['LinearUvlm']['integr_order'] = \
-            np.int(settings['LinearUvlm']['integr_order'])
+        sharpy.utils.settings.to_custom_types(settings_here, 
+                                              linuvlm.settings_types_dynamic, 
+                                              linuvlm.settings_default_dynamic)
 
         ### extract aeroelastic info
-        self.dt = settings['LinearUvlm']['dt']
+        self.dt = settings_here['dt'].value
 
         ### reference to timestep_info
         # aero
@@ -72,16 +71,16 @@ class LinAeroEla():
 
         # --- backward compatibility
         try:
-            rho = data.settings['LinearUvlm']['density']
+            rho = settings_here['density'].value
         except KeyError:
             warnings.warn(
                 "Key 'density' not found in 'LinearUvlm' solver settings. '\
                                       'Trying to read it from 'StaticCoupled'.")
             rho = data.settings['StaticCoupled']['aero_solver_settings']['rho']
-        if type(rho) == str:
-            rho = np.float(rho)
-        if hasattr(rho, 'value'):
-            rho = rho.value
+            if type(rho) == str:
+                rho = np.float(rho)
+            if hasattr(rho, 'value'):
+                rho = rho.value
         self.tsaero.rho = rho
         # --- backward compatibility
 
@@ -95,11 +94,11 @@ class LinAeroEla():
         ### uvlm
         self.linuvlm = linuvlm.Dynamic(
             self.tsaero,
-            dt=settings['LinearUvlm']['dt'],
-            RemovePredictor=settings['LinearUvlm']['remove_predictor'],
-            UseSparse=settings['LinearUvlm']['use_sparse'],
-            integr_order=settings['LinearUvlm']['integr_order'],
-            ScalingDict=settings['LinearUvlm']['ScalingDict'])
+            dt=settings_here['dt'].value,
+            RemovePredictor=settings_here['remove_predictor'].value,
+            UseSparse=settings_here['use_sparse'].value,
+            integr_order=settings_here['integr_order'].value,
+            ScalingDict=settings_here['ScalingDict'])
 
 
     def reshape_struct_input(self):
@@ -192,32 +191,36 @@ class LinAeroEla():
 
     def get_gebm2uvlm_gains(self):
         """
-        Gain matrix to transfer GEBM dofs to UVLM lattice vertices and stiffening
-        term due to non-zero forces at the linearisation point.
+        Provides:
+            - the gain matrices required to connect the linearised GEBM and UVLM
+             inputs/outputs
+            - the stiffening and damping factors to be added to the linearised 
+            GEBM equations in order to account for non-zero aerodynamic loads at
+            the linearisation point.
 
-        The function produces the matrices:
+        The function produces the gain matrices:
 
-            - ``Kdisp``: from GEBM to UVLM grid displacements
+            - ``Kdisp``: gains from GEBM to UVLM grid displacements
             - ``Kvel_disp``: influence of GEBM dofs displacements to UVLM grid
               velocities.
             - ``Kvel_vel``: influence of GEBM dofs displacements to UVLM grid
               displacements.
-            - ``Kforces`` (UVLM->GEBM) dimensions are the transpose than the Kdisp and
-              Kvel* matrices. Hence, when allocation this term, ``ii`` and ``jj`` indices
-              will unintuitively refer to columns and rows, respectively.
-            - ``Kss``: stiffness factor accounting for non-zero forces at the
-              linearisation point. (flexible dof -> flexible dof)
-            - ``Ksr``: stiffness factor accounting for non-zero forces at the
-              linearisation point. (rigid dof -> flexible dof)
+            - ``Kforces`` (UVLM->GEBM) dimensions are the transpose than the 
+            Kdisp and Kvel* matrices. Hence, when allocation this term, ``ii`` 
+            and ``jj`` indices will unintuitively refer to columns and rows, 
+            respectively.
 
+        And the stiffening/damping terms accounting for non-zero aerodynamic
+        forces at the linearisation point:
 
-        Notes:
-            - The following terms have been verified against SHARPy (to ensure same sign conventions and accuracy):
-                - :math:`\\mathbf{C}^{AB}`
-                - accuracy of :math:`X^B=\\mathbf{C}^{AB}*X^A`
-                - accuracy of :math:`X^G` and :math:`X^A`
+            - ``Kss``: stiffness factor (flexible dof -> flexible dof) accounting 
+            for non-zero forces at the linearisation point. 
+            - ``Csr``: damping factor  (rigid dof -> flexible dof)
+            - ``Crs``: damping factor (flexible dof -> rigid dof)
+            - ``Crr``: damping factor (rigid dof -> rigid dof)
 
-
+        Note that the stiffening/damping terms need to be added to the GEBM
+        stiffness and damping matrices.
         """
 
         data = self.data
@@ -233,7 +236,10 @@ class LinAeroEla():
         Kforces = np.zeros((self.num_dof_str, 3 * self.linuvlm.Kzeta))
 
         Kss = np.zeros((self.num_dof_flex, self.num_dof_flex))
-        Ksr = np.zeros((self.num_dof_flex, self.num_dof_rig))
+        Csr = np.zeros((self.num_dof_flex, self.num_dof_rig))
+        Crs = np.zeros((self.num_dof_rig, self.num_dof_flex))
+        Crr = np.zeros((self.num_dof_rig, self.num_dof_rig))
+
 
         # get projection matrix A->G
         # (and other quantities indep. from nodal position)
@@ -285,6 +291,8 @@ class LinAeroEla():
             Cab = algebra.crv2rotation(psi)
             Cba = Cab.T
             Cbg = np.dot(Cab.T, Cag)
+            Tan = algebra.crv2tan(psi)
+
 
             ### str -> aero mapping
             # some nodes may be linked to multiple surfaces...
@@ -306,9 +314,6 @@ class LinAeroEla():
                     ii_vert = [Kzeta_start + np.ravel_multi_index(
                         (cc, mm, nn), shape_zeta) for cc in range(3)]
 
-                    # get aero force
-                    faero = tsaero.forces[ss][:3, mm, nn]
-
                     # get position vectors
                     zetag = tsaero.zeta[ss][:, mm, nn]  # in G FoR, w.r.t. origin A-G
                     zetaa = np.dot(Cag, zetag)  # in A FoR, w.r.t. origin A-G
@@ -317,12 +322,18 @@ class LinAeroEla():
 
                     # get rotation terms
                     Xbskew = algebra.skew(Xb)
-                    Tan = algebra.crv2tan(psi)
                     XbskewTan = np.dot(Xbskew, Tan)
 
                     # get velocity terms
                     zetag_dot = tsaero.zeta_dot[ss][:, mm, nn]  # in G FoR, w.r.t. origin A-G
                     zetaa_dot = np.dot(Cag, zetag_dot)  # in A FoR, w.r.t. origin A-G
+
+                    # get aero force
+                    faero = tsaero.forces[ss][:3, mm, nn]
+                    faero_a = np.dot(Cag,faero)
+                    maero_g = np.cross(Xg,faero)
+                    maero_b = np.dot(Cbg,maero_g)
+
 
                     ### ---------------------------------------- allocate Kdisp
 
@@ -339,6 +350,7 @@ class LinAeroEla():
                     # # ### w.r.t. quaternion (attitude changes)
                     Kdisp[np.ix_(ii_vert, jj_quat)] = \
                         algebra.der_Cquat_by_v(tsstr.quat, zetaa)
+
 
                     ### ------------------------------------ allocate Kvel_disp
 
@@ -368,6 +380,7 @@ class LinAeroEla():
                     Kvel_disp[np.ix_(ii_vert, jj_quat)] = \
                         algebra.der_Cquat_by_v(tsstr.quat, zetaa_dot)
 
+
                     ### ------------------------------------- allocate Kvel_vel
 
                     if bc_here != 1:
@@ -384,15 +397,16 @@ class LinAeroEla():
 
                     # wrt rate of change of quaternion: not implemented!
 
+
                     ### -------------------------------------- allocate Kforces
 
                     if bc_here != 1:
                         # nodal forces
-                        Kforces[np.ix_(jj_tra, ii_vert)] += Cbg
+                        Kforces[np.ix_(jj_tra, ii_vert)] += Cag
 
                         # nodal moments
                         Kforces[np.ix_(jj_rot, ii_vert)] += \
-                            np.dot(Cbg, algebra.skew(Xg))
+                                 np.dot( Tan.T, np.dot(Cbg, algebra.skew(Xg)) )
                     # or, equivalently, np.dot( algebra.skew(Xb),Cbg)
 
                     # total forces
@@ -405,20 +419,46 @@ class LinAeroEla():
                     # quaternion equation
                     # null, as not dep. on external forces
 
+
                     ### --------------------------------------- allocate Kstiff
 
+                    ### flexible dof equations (Kss and Csr)
                     if bc_here != 1:
                         # forces
-                        Dfdcrv = algebra.der_CcrvT_by_v(psi, np.dot(Cag, faero))
-                        Dfdquat = np.dot(Cba, algebra.der_CquatT_by_v(tsstr.quat, faero))
-                        Kss[np.ix_(jj_tra, jj_rot)] -= Dfdcrv
-                        Ksr[jj_tra, -4:] -= Dfdquat
+                        Csr[jj_tra, -4:] -= algebra.der_CquatT_by_v(tsstr.quat, faero)
 
-                        # moments
-                        Kss[np.ix_(jj_rot, jj_rot)] -= np.dot(Xbskew, Dfdcrv)
-                        Ksr[jj_rot, -4:] -= np.dot(Xbskew, Dfdquat)
+                        ### moments
+                        TanTXbskew=np.dot(Tan.T,Xbskew)
+                        # contrib. of TanT (dpsi)
+                        Kss[np.ix_(jj_rot, jj_rot)]-=algebra.der_TanT_by_xv(psi,maero_b)
+                        # contrib of delta aero moment (dpsi)
+                        Kss[np.ix_(jj_rot, jj_rot)]-=\
+                            np.dot( TanTXbskew, algebra.der_CcrvT_by_v(psi, np.dot(Cag,faero) ))
+                        # contribution of delta aero moment (dquat)
+                        Csr[jj_rot, -4:] -=\
+                                np.dot( TanTXbskew,
+                                    np.dot( Cba, 
+                                        algebra.der_CquatT_by_v(tsstr.quat,faero)))
 
-                # embed()
+
+                    ### rigid body eqs (Crs and Crr)
+    
+                    if bc_here != 1:
+                        # moments contribution due to delta_Ra (+ sign intentional)
+                        Crs[3:6,jj_tra] += algebra.skew( faero_a ) 
+                        # moment contribution due to delta_psi (+ sign intentional)
+                        Crs[3:6,jj_rot] += np.dot(algebra.skew(faero_a),
+                                                  algebra.der_Ccrv_by_v(psi, Xb))
+
+                    # total force
+                    Crr[:3,-4:] -= algebra.der_CquatT_by_v(tsstr.quat,faero)
+
+                    # total moment contribution due to quaternion
+                    Crr[3:6,-4:] -= algebra.der_CquatT_by_v(tsstr.quat, np.cross(zetag,faero) )
+                    Crr[3:6,-4:] += np.dot( 
+                                        np.dot(Cag,algebra.skew(faero)), 
+                                        algebra.der_Cquat_by_v(tsstr.quat,np.dot(Cab,Xb))) 
+
 
         # transfer
         self.Kdisp = Kdisp
@@ -428,7 +468,9 @@ class LinAeroEla():
 
         # stiffening factors
         self.Kss = Kss
-        self.Ksr = Ksr
+        self.Csr = Csr
+        self.Crs = Crs 
+        self.Crr = Crr
 
 
 if __name__ == '__main__':
