@@ -1035,11 +1035,12 @@ class Dynamic(Static):
             balanced model can still be obtained, even if high order modes are 
             unstable. Note that this option is overridden if ""
 
-        Future options:
             - 'get_frequency_response': if True, the function also returns the
             frequency response evaluated at the low-frequency range integration
             points. If True, this option also allows to automatically tune the 
             balanced model.
+
+        Future options:
 
             - 'truncation_tolerance': if 'get_frequency_response' is True, allows
             to truncatethe balanced model so as to achieved a prescribed 
@@ -1105,6 +1106,9 @@ class Dynamic(Static):
         if 'output_modes' not in DictBalFreq:
             DictBalFreq['output_modes']=True
 
+        if 'get_frequency_response' not in DictBalFreq:
+            DictBalFreq['get_frequency_response'] = False
+
 
         ### get integration points and weights
 
@@ -1162,6 +1166,7 @@ class Dynamic(Static):
             b0, bm1, bp1 = -2., 0.5, 1.5
         else:
             b0, bp1 = -1., 1.
+            raise NameError('Method not implemented for integration order 1')
 
         ### -------------------------------------------------- loop frequencies
         
@@ -1174,6 +1179,10 @@ class Dynamic(Static):
         Qobs=np.zeros( (self.SS.states,self.SS.outputs), dtype=np.complex_)
         Zc=np.zeros( (self.SS.states,2*self.SS.inputs*len(kvdt)),)
         Zo=np.zeros( (self.SS.states,2*self.SS.outputs*Nk_low),)
+
+        if DictBalFreq['get_frequency_response']:
+            self.Yfreq=np.empty((self.SS.outputs,self.SS.inputs,Nk_low,),dtype=np.complex_)
+            self.kv=kv_low
 
         for kk in range( len(kvdt) ):
 
@@ -1201,8 +1210,12 @@ class Dynamic(Static):
 
             kkvec=range( 2*kk*self.SS.inputs, 2*(kk+1)*self.SS.inputs )
             Zc[:,kkvec[:self.SS.inputs]]= Qctrl.real #*Intfact     
-            Zc[:,kkvec[self.SS.inputs:]]= Qctrl.imag #*Intfact      
+            Zc[:,kkvec[self.SS.inputs:]]= Qctrl.imag #*Intfact    
 
+
+            ### ----- frequency response  
+            if DictBalFreq['get_frequency_response'] and kk<Nk_low:
+                self.Yfreq[:,:,kk]=np.dot( self.SS.C, Qctrl)/Intfact + self.SS.D
 
             ### ----- observability
             # solve (1./zval*I - A.T)^{-1} C^T (in low-frequency only)
