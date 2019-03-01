@@ -349,11 +349,15 @@ class NonLinearDynamicMultibody(BaseSolver):
             # Compute the correction
             # ADC next line not necessary
             # Dq = np.zeros((self.sys_size+num_LM_eq,), dtype=ct.c_double, order='F')
-            MB_Asys_balanced, T = scipy.linalg.matrix_balance(MB_Asys)
-            invT = np.matrix(T).I
-            MB_Q_balanced = np.dot(invT, MB_Q).T
+            # MB_Asys_balanced, T = scipy.linalg.matrix_balance(MB_Asys)
+            # invT = np.matrix(T).I
+            # MB_Q_balanced = np.dot(invT, MB_Q).T
 
-            Dq = scipy.linalg.solve(np.dot(MB_Asys_balanced, invT), -MB_Q_balanced)
+            Dq = np.linalg.solve(MB_Asys, -MB_Q)
+            # least squares solver
+            # Dq = np.linalg.lstsq(np.dot(MB_Asys_balanced, invT), -MB_Q_balanced, rcond=None)[0]
+            # if self.settings['relaxation_factor'].value:
+                # Dq *= self.settings['relaxation_factor'].value
 
             # Evaluate convergence
             if (iter > 0):
@@ -367,9 +371,15 @@ class NonLinearDynamicMultibody(BaseSolver):
 
             # Compute variables from previous values and increments
             # TODO:decide If I want other way of updating lambda
-            q[:, np.newaxis] += Dq
-            dqdt[:, np.newaxis] += self.gamma/(self.beta*dt)*Dq
-            dqddt[:, np.newaxis] += 1.0/(self.beta*dt*dt)*Dq
+            # this for least sq
+            # q[:, np.newaxis] += Dq
+            # dqdt[:, np.newaxis] += self.gamma/(self.beta*dt)*Dq
+            # dqddt[:, np.newaxis] += 1.0/(self.beta*dt*dt)*Dq
+
+            # this for direct solver
+            q += Dq
+            dqdt += self.gamma/(self.beta*dt)*Dq
+            dqddt += 1.0/(self.beta*dt*dt)*Dq
 
             Lambda = q[-num_LM_eq:].astype(dtype=ct.c_double, copy=True, order='F')
             Lambda_dot = dqdt[-num_LM_eq:].astype(dtype=ct.c_double, copy=True, order='F')
