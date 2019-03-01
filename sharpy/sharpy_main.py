@@ -51,6 +51,7 @@ def main(args=None):
     start_writer()
     # timing
     t = time.process_time()
+    t0_wall = time.perf_counter()
 
     parser = argparse.ArgumentParser(prog='SHARPy', description=
     """This is the executable for Simulation of High Aspect Ratio Planes.\n
@@ -83,7 +84,9 @@ def main(args=None):
         solver.initialise(data)
         data = solver.run()
 
-    elapsed_time = time.process_time() - t
-    cout.cout_wrap('FINISHED - Elapsed time = %f6 seconds' % elapsed_time, 2)
+    CPU_time = time.process_time() - t
+    wall_time = time.perf_counter() - t0_wall
+    cout.cout_wrap('FINISHED - Elapsed time = %f6 seconds' % wall_time, 2)
+    cout.cout_wrap('FINISHED - CPU process time = %f6 seconds' % CPU_time, 2)
     finish_writer()
     return data
