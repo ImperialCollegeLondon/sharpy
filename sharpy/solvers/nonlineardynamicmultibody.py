@@ -317,8 +317,8 @@ class NonLinearDynamicMultibody(BaseSolver):
         # Predictor step
         mb.disp2state(MB_beam, MB_tstep, q, dqdt, dqddt)
 
-        q = q + dt*dqdt + (0.5 - self.beta)*dt*dt*dqddt
-        dqdt = dqdt + (1.0 - self.gamma)*dt*dqddt
+        q += dt*dqdt + (0.5 - self.beta)*dt*dt*dqddt
+        dqdt += (1.0 - self.gamma)*dt*dqddt
         dqddt = np.zeros((self.sys_size + num_LM_eq,), dtype=ct.c_double, order='F')
         Lambda = q[-num_LM_eq:].astype(dtype=ct.c_double, copy=True, order='F')
         Lambda_dot = dqdt[-num_LM_eq:].astype(dtype=ct.c_double, copy=True, order='F')
