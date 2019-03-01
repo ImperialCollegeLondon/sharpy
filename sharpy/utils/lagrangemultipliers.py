@@ -792,3 +792,11 @@ def postprocess(MB_beam, MB_tstep, MBdict):
             FoR_body = MBdict["constraint_%02d" % iconstraint]['body_FoR']
 
             MB_tstep[FoR_body].for_pos[0:3] = np.dot(algebra.quat2rotation(MB_tstep[node_body].quat), MB_tstep[node_body].pos[node_number,:]) + MB_tstep[node_body].for_pos[0:3]
+
+        elif behaviour == 'hinge_node_FoR_constant_vel'.lower():
+
+            node_number = MBdict["constraint_%02d" % iconstraint]['node_in_body']
+            node_body = MBdict["constraint_%02d" % iconstraint]['body']
+            FoR_body = MBdict["constraint_%02d" % iconstraint]['body_FoR']
+
+            MB_tstep[FoR_body].for_pos[0:3] = np.dot(algebra.quat2rotation(MB_tstep[node_body].quat), MB_tstep[node_body].pos[node_number,:]) + MB_tstep[node_body].for_pos[0:3]
