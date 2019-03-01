@@ -98,6 +98,8 @@ class TurbVelocityField(generator_interface.BaseGenerator):
         self._interpolator1 = None
         self.coeff = 0.
         self.double_initialisation = True
+        self.vel_holder0 = 3*[None]
+        self.vel_holder1 = 3*[None]
 
     def initialise(self, in_dict):
         self.in_dict = in_dict
@@ -219,29 +221,30 @@ class TurbVelocityField(generator_interface.BaseGenerator):
         self.grid_data['initial_x_grid'] = np.array(np.arange(0,
             self.grid_data['dimensions'][2]))*self.grid_data['dxdydz'][2]
         # z in the file is -y for us in sharpy (y_sharpy = right)
-        self.grid_data['initial_y_grid'] = -np.array(np.arange(0,
-            self.grid_data['dimensions'][0]))*self.grid_data['dxdydz'][0]
+        self.grid_data['initial_y_grid'] = np.array(np.arange(0,
+            self.grid_data['dimensions'][1]))*self.grid_data['dxdydz'][1]
         # y in the file is z for us in sharpy (up)
         self.grid_data['initial_z_grid'] = np.array(np.arange(0,
-            self.grid_data['dimensions'][1]))*self.grid_data['dxdydz'][1]
+            self.grid_data['dimensions'][0]))*self.grid_data['dxdydz'][0]
 
         # the domain now goes:
         # x \in [0, dimensions[0]*dx]
         # y \in [-dimensions[2]*dz, 0]
         # z \in [0, dimensions[1]*dy]
-        centre_y_offset = 0.
+        centre_z_offset = 0.
         if self.settings['centre_y']:
-            centre_y_offset = -0.5*(self.grid_data['initial_y_grid'][-1] - self.grid_data['initial_y_grid'][0])
+            centre_z_offset = -0.5*(self.grid_data['initial_z_grid'][-1] - self.grid_data['initial_z_grid'][0])
 
         self.grid_data['initial_x_grid'] += self.settings['offset'][0] + self.grid_data['origin'][0]
         self.grid_data['initial_x_grid'] -= np.max(self.grid_data['initial_x_grid'])
-        self.grid_data['initial_y_grid'] += self.settings['offset'][1] + self.grid_data['origin'][1] + centre_y_offset
-        self.grid_data['initial_y_grid'] = self.grid_data['initial_y_grid'][::-1]
-        self.grid_data['initial_z_grid'] += self.settings['offset'][2] + self.grid_data['origin'][2]
+        self.grid_data['initial_y_grid'] += self.settings['offset'][1] + self.grid_data['origin'][1]
+        # self.grid_data['initial_y_grid'] = self.grid_data['initial_y_grid'][::-1]
+        self.grid_data['initial_z_grid'] += self.settings['offset'][2] + self.grid_data['origin'][2] + centre_z_offset
 
         self.bbox = self.get_field_bbox(self.grid_data['initial_x_grid'],
                                         self.grid_data['initial_y_grid'],
-                                        self.grid_data['initial_z_grid'])
+                                        self.grid_data['initial_z_grid'],
+                                        frame='G')
         if self.settings['print_info']:
             cout.cout_wrap('The domain bbox is:', 1)
             cout.cout_wrap(' x = [' + str(self.bbox[0, 0]) + ', ' + str(self.bbox[0, 1]) + ']', 1)
@@ -271,9 +274,9 @@ class TurbVelocityField(generator_interface.BaseGenerator):
     def update_cache(self, t):
         if self.settings['frozen']:
             if self._interpolator0 is None:
-                self._t0 = self.timestep_2_time(new_it)
-                self._it0 = new_it
-                self._interpolator0 = self.read_grid(self._it0)
+                self._t0 = self.timestep_2_time(0)
+                self._it0 = 0
+                self._interpolator0 = self.read_grid(self._it0, i_cache=0)
             return
 
         # most common case: t already in the [t0, t1] interval
@@ -301,18 +304,18 @@ class TurbVelocityField(generator_interface.BaseGenerator):
                 # t1 updates to the next (new_it + 1)
                 self._it1 = new_it + 1
                 self._t1 = self.timestep_2_time(self._it1)
-                self._interpolator1 = self.read_grid(self._it1)
+                self._interpolator1 = self.read_grid(self._it1, i_cache=1)
                 return
 
         # last case, both interp need to be initialised
         if (self._t0 is None or self.double_initialisation):
             self._t0 = self.timestep_2_time(new_it)
             self._it0 = new_it
-            self._interpolator0 = self.read_grid(self._it0)
+            self._interpolator0 = self.read_grid(self._it0, i_cache=0)
 
             self._it1 = new_it + 1
             self._t1 = self.timestep_2_time(self._it1)
-            self._interpolator1 = self.read_grid(self._it1)
+            self._interpolator1 = self.read_grid(self._it1, i_cache=1)
 
     def update_coeff(self, t):
         if self.settings['frozen']:
@@ -328,46 +331,48 @@ class TurbVelocityField(generator_interface.BaseGenerator):
     def timestep_2_time(self, it):
         return it*self.grid_data['time'][1] + self.grid_data['time'][0]
 
-    @staticmethod
-    def get_field_bbox(x_grid, y_grid, z_grid):
+    def get_field_bbox(self, x_grid, y_grid, z_grid, frame='G'):
         bbox = np.zeros((3, 2))
         bbox[0, :] = [np.min(x_grid), np.max(x_grid)]
         bbox[1, :] = [np.min(y_grid), np.max(y_grid)]
         bbox[2, :] = [np.min(z_grid), np.max(z_grid)]
+        if frame == 'G':
+            # bbox[:, 0] = self.gstar_2_g(bbox[:, 0])
+            # bbox[:, 1] = self.gstar_2_g(bbox[:, 1])
+            bbox[:, 0] = self.gstar_2_g(bbox[:, 0])
+            bbox[:, 1] = self.gstar_2_g(bbox[:, 1])
         return bbox
 
-    def create_interpolator(self, data, x_grid, y_grid, z_grid, i_dim=None):
-        if i_dim is None:
-            interpolator = []
-            for i_dim in range(3):
-                interpolator[i_dim] = interpolate.RegularGridInterpolator((z_grid, y_grid, x_grid),
-                                                                               data[i_dim, :, :, :],
-                                                                               bounds_error=False,
-                                                                               fill_value=0.0)
-        else:
-            interpolator = interpolate.RegularGridInterpolator((x_grid, y_grid, z_grid),
-                                                                data,
-                                                                bounds_error=False,
-                                                                fill_value=0.0)
+    def create_interpolator(self, data, x_grid, y_grid, z_grid, i_dim):
+        interpolator = interpolate.RegularGridInterpolator((x_grid, y_grid, z_grid),
+                                                            data,
+                                                            bounds_error=False,
+                                                            fill_value=0.0)
         return interpolator
 
 
     def interpolate_zeta(self, zeta, for_pos, u_ext, interpolator=None):
         if interpolator is None:
             interpolator = self.interpolator
-        for i_dim in range(3):
-            for isurf in range(len(zeta)):
-                _, n_m, n_n = zeta[isurf].shape
-                for i_m in range(n_m):
-                    for i_n in range(n_n):
-                        coord = self.apply_periodicity(zeta[isurf][:, i_m, i_n] + for_pos[0:3])
+
+        for isurf in range(len(zeta)):
+            _, n_m, n_n = zeta[isurf].shape
+            for i_m in range(n_m):
+                for i_n in range(n_n):
+                    coord = self.g_2_gstar(self.apply_periodicity(zeta[isurf][:, i_m, i_n] + for_pos[0:3]))
+                    # if not i_m and not i_n and isurf == 5:
+                        # print('zeta[5][:, 0, 0] = ', zeta[5][:, 0, 0])
+                        # print('coord = ', coord)
+                    for i_dim in range(3):
                         try:
                             u_ext[isurf][i_dim, i_m, i_n] = self.interpolator[i_dim](coord)
                         except ValueError:
                             print(coord)
                             raise ValueError()
+                    u_ext[isurf][:, i_m, i_n] = self.gstar_2_g(u_ext[isurf][:, i_m, i_n])
 
     def apply_periodicity(self, coord):
+        #TODO I think this does not work when bbox is not ordered (bbox[i, 0] is not < bbox[i, 1])
         new_coord = coord.copy()
         if self.x_periodicity:
             i = 0
@@ -418,29 +423,51 @@ class TurbVelocityField(generator_interface.BaseGenerator):
         # 1 when t == t_vec[1]
         return (t - t_vec[0])/(t_vec[1] - t_vec[0])
 
-    def read_grid(self, i_grid):
+    def read_grid(self, i_grid, i_cache=0):
         """
         This function returns an interpolator list of size 3 made of `scipy.interpolate.RegularGridInterpolator`
         objects.
         """
-        velocities = ['ux', 'uz', 'uy']
+        velocities = ['ux', 'uy', 'uz']
         interpolator = list()
-        print('igrid = ', i_grid)
         for i_dim in range(3):
             file_name = self.grid_data['grid'][i_grid][velocities[i_dim]]['file']
-            print('loading: ', file_name)
-            # load file
-            with open(self.route + '/' + file_name, "rb") as ufile:
-                vel = np.fromfile(ufile, dtype=np.float64)
+            if i_cache == 0:
+                # load file, but dont copy it
+                self.vel_holder0[i_dim] = np.memmap(self.route + '/' + file_name,
+                                               dtype='float64',
+                                               shape=(self.grid_data['dimensions'][2],
+                                                      self.grid_data['dimensions'][1],
+                                                      self.grid_data['dimensions'][0]),
+                                               order='F')
 
-            vel = np.swapaxes(vel.reshape((self.grid_data['dimensions'][2],
-                                           self.grid_data['dimensions'][1],
-                                           self.grid_data['dimensions'][0]),
-                                          order='F'), 1, 2)
+                interpolator.append(self.create_interpolator(self.vel_holder0[i_dim],
+                                                        self.grid_data['initial_x_grid'],
+                                                        self.grid_data['initial_y_grid'],
+                                                        self.grid_data['initial_z_grid'],
+                                                        i_dim=i_dim))
+            elif i_cache == 1:
+                # load file, but dont copy it
+                self.vel_holder1[i_dim] = np.memmap(self.route + '/' + file_name,
+                                               dtype='float64',
+                                               shape=(self.grid_data['dimensions'][2],
+                                                      self.grid_data['dimensions'][1],
+                                                      self.grid_data['dimensions'][0]),
+                                               order='F')
 
-            interpolator.append(self.create_interpolator(vel,
-                                                         self.grid_data['initial_x_grid'],
-                                                         self.grid_data['initial_y_grid'],
-                                                         self.grid_data['initial_z_grid'],
-                                                         i_dim=i_dim))
+                interpolator.append(self.create_interpolator(self.vel_holder1[i_dim],
+                                                        self.grid_data['initial_x_grid'],
+                                                        self.grid_data['initial_y_grid'],
+                                                        self.grid_data['initial_z_grid'],
+                                                        i_dim=i_dim))
+            else:
+                raise Error('i_cache has to be 0 or 1')
         return interpolator
+
+    @staticmethod
+    def g_2_gstar(coord_g):
+        return np.array([coord_g[0], coord_g[2], -coord_g[1]])
+
+    @staticmethod
+    def gstar_2_g(coord_star):
+        return np.array([coord_star[0], -coord_star[2], coord_star[1]])
