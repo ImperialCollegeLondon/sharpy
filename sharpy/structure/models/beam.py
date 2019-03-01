@@ -233,6 +233,7 @@ class Beam(BaseStructure):
         #     for it in range(num_steps):
         #         self.dynamic_input[it]['trayectories'] = None
 
+# TODO ADC: necessary? I don't think so
         try:
             for it in range(num_steps):
                 self.dynamic_input[it]['enforce_trajectory'] = dyn_dict['enforce_trayectory'][it, :, :]
