@@ -98,6 +98,7 @@ class PlotFlowField(BaseSolver):
         ny = grid[0].shape[2]
         nz = len(grid)
 
+        array_counter = 0
         u_ind = np.zeros((nx, ny, nz, 3), dtype=float)
         if self.settings['include_induced']:
             for iz in range(nz):
@@ -109,8 +110,9 @@ class PlotFlowField(BaseSolver):
                                                                                                       self.data.structure.timestep_info[ts].for_pos[0:3])
             # Write the data
             vtk_info.point_data.add_array(u_ind.reshape((-1, u_ind.shape[-1]), order='F')) # Reshape the array except from the last dimension
-            vtk_info.point_data.get_array(0).name = 'induced_velocity'
+            vtk_info.point_data.get_array(array_counter).name = 'induced_velocity'
             vtk_info.point_data.update()
+            array_counter += 1
 
         # Add the external velocities
         u_ext_out = np.zeros((nx, ny, nz, 3), dtype=float)
@@ -133,16 +135,18 @@ class PlotFlowField(BaseSolver):
 
             # Write the data
             vtk_info.point_data.add_array(u_ext_out.reshape((-1, u_ext_out.shape[-1]), order='F')) # Reshape the array except from the last dimension
-            vtk_info.point_data.get_array(1).name = 'external_velocity'
+            vtk_info.point_data.get_array(array_counter).name = 'external_velocity'
             vtk_info.point_data.update()
+            array_counter += 1
 
         # add the data
         u = u_ind + u_ext_out
 
         # Write the data
         vtk_info.point_data.add_array(u.reshape((-1, u.shape[-1]), order='F')) # Reshape the array except from the last dimension
-        vtk_info.point_data.get_array(2).name = 'velocity'
+        vtk_info.point_data.get_array(array_counter).name = 'velocity'
         vtk_info.point_data.update()
+        array_counter += 1
 
         filename = self.dir + "VelocityField_" + '%06u' % ts + ".vtk"
         write_data(vtk_info, filename)
