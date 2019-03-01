@@ -56,9 +56,6 @@ class StepUvlm(BaseSolver):
         self.settings_types['rho'] = 'float'
         self.settings_default['rho'] = 1.225
 
-        self.settings_types['part_of_fsi'] = 'bool'
-        self.settings_default['part_of_fsi'] = True
-
         self.data = None
         self.settings = None
         self.velocity_generator = None
@@ -128,7 +125,7 @@ class StepUvlm(BaseSolver):
 
         if unsteady_contribution:
             # calculate unsteady (added mass) forces:
-            self.data.aero.compute_gamma_dot(dt, aero_tstep, self.data.aero.timestep_info[-3:], self.settings['part_of_fsi'].value)
+            self.data.aero.compute_gamma_dot(dt, aero_tstep, self.data.aero.timestep_info[-3:])
             if self.settings['gamma_dot_filtering'].value > 0:
                 self.filter_gamma_dot(aero_tstep, self.data.aero.timestep_info, self.settings['gamma_dot_filtering'].value)
             uvlmlib.uvlm_calculate_unsteady_forces(aero_tstep,
