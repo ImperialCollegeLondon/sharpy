@@ -32,22 +32,22 @@ class GridBox(generator_interface.BaseGenerator):
         self.settings_default['z0'] = 0.
 
         self.settings_types['x1'] = 'float'
-        self.settings_default['x1'] = 0.
+        self.settings_default['x1'] = 10.
 
         self.settings_types['y1'] = 'float'
         self.settings_default['y1'] = 0.
 
         self.settings_types['z1'] = 'float'
-        self.settings_default['z1'] = 0.
+        self.settings_default['z1'] = 10.
 
         self.settings_types['dx'] = 'float'
-        self.settings_default['dx'] = 0.
+        self.settings_default['dx'] = 1.
 
         self.settings_types['dy'] = 'float'
-        self.settings_default['dy'] = 0.
+        self.settings_default['dy'] = 1.
 
         self.settings_types['dz'] = 'float'
-        self.settings_default['dz'] = 0.
+        self.settings_default['dz'] = 1.
 
 
     def initialise(self, in_dict):
@@ -66,9 +66,9 @@ class GridBox(generator_interface.BaseGenerator):
 
     def generate(self, params):
 
-        nx = int((self.x1.value-self.x0.value)/self.dx.value + 1)
-        ny = int((self.y1.value-self.y0.value)/self.dy.value + 1)
-        nz = int((self.z1.value-self.z0.value)/self.dz.value + 1)
+        nx = np.abs(int((self.x1.value-self.x0.value)/self.dx.value + 1))
+        ny = np.abs(int((self.y1.value-self.y0.value)/self.dy.value + 1))
+        nz = np.abs(int((self.z1.value-self.z0.value)/self.dz.value + 1))
 
         xarray = np.linspace(self.x0.value,self.x1.value,nx)
         yarray = np.linspace(self.y0.value,self.y1.value,ny)

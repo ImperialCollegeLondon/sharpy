@@ -111,10 +111,6 @@ class StepUvlm(BaseSolver):
                                               'for_pos': structure_tstep.for_pos},
                                              aero_tstep.u_ext_star)
 
-        # previous_ts = max(len(self.data.aero.timestep_info) - 1, 0) - 1
-        # previous_ts = -1
-        # print('previous_step max circulation: %f' % previous_aero_tstep.gamma[0].min())
-        # print('current step max circulation: %f' % aero_tstep.gamma[0].min())
         uvlmlib.uvlm_solver(self.data.ts,
                             aero_tstep,
                             structure_tstep,
@@ -150,14 +146,15 @@ class StepUvlm(BaseSolver):
 
     @staticmethod
     def filter_gamma_dot(tstep, history, filter_param):
-        series_length = len(history) + 1
+        clean_history = [x for x in history if x is not None]
+        series_length = len(clean_history) + 1
         for i_surf in range(len(tstep.zeta)):
             n_rows, n_cols = tstep.gamma[i_surf].shape
             for i in range(n_rows):
                 for j in range(n_cols):
                     series = np.zeros((series_length,))
                     for it in range(series_length - 1):
-                        series[it] = history[it].gamma_dot[i_surf][i, j]
+                        series[it] = clean_history[it].gamma_dot[i_surf][i, j]
                     series[-1] = tstep.gamma_dot[i_surf][i, j]
 
                     # filter

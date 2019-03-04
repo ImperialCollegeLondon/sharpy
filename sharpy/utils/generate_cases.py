@@ -1718,15 +1718,35 @@ class SimulationInformation():
             num_steps (int): number of steps
         """
         # TODO:Maybe it would be convenient to use the same name for all the solvers
-        self.solvers["DynamicCoupled"]['n_time_steps'] = num_steps
+        try:
+            self.solvers["DynamicCoupled"]['n_time_steps'] = num_steps
+        except KeyError:
+            pass
         # self.solvers["DynamicPrescribedCoupled"]['n_time_steps'] = num_steps
-        self.solvers["StepUvlm"]['n_time_steps'] = num_steps
-        self.solvers['NonLinearDynamicMultibody']['num_steps'] = num_steps
-        self.solvers['NonLinearDynamicCoupledStep']['num_steps'] = num_steps
-        self.solvers['NonLinearDynamicPrescribedStep']['num_steps'] = num_steps
-        self.solvers['RigidDynamicPrescribedStep']['num_steps'] = num_steps
-        self.solvers['SteadyHelicoidalWake']['n_time_steps'] = num_steps
-
+        try:
+            self.solvers["StepUvlm"]['n_time_steps'] = num_steps
+        except KeyError:
+            pass
+        try:
+            self.solvers['NonLinearDynamicMultibody']['num_steps'] = num_steps
+        except KeyError:
+            pass
+        try:
+            self.solvers['NonLinearDynamicCoupledStep']['num_steps'] = num_steps
+        except KeyError:
+            pass
+        try:
+            self.solvers['NonLinearDynamicPrescribedStep']['num_steps'] = num_steps
+        except KeyError:
+            pass
+        try:
+            self.solvers['RigidDynamicPrescribedStep']['num_steps'] = num_steps
+        except KeyError:
+            pass
+        try:
+            self.solvers['SteadyHelicoidalWake']['n_time_steps'] = num_steps
+        except KeyError:
+            pass
 
 
 

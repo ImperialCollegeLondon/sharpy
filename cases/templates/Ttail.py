@@ -14,7 +14,7 @@ import configobj
 import os
 from IPython import embed
 import sharpy.utils.algebra as algebra
-import geo_utils
+import sharpy.utils.geo_utils as geo_utils
 
 
 class Ttail_3beams():
@@ -488,11 +488,8 @@ class Ttail_3beams():
                 'mstar': self.Mstar_fact*self.M,
                 'freestream_dir':str_u_inf_direction
                                   }
-
         config['StaticUvlm']={
               'rho': self.rho,
-              'alpha': alpha_aero,
-              'beta': beta_aero,
               'velocity_field_generator':'SteadyVelocityField',
               'velocity_field_input':{
                     'u_inf': self.u_inf,
@@ -514,8 +511,6 @@ class Ttail_3beams():
                'aero_solver': 'StaticUvlm',
                'aero_solver_settings':{
                             'rho': self.rho,
-                            'alpha': alpha_aero,
-                            'beta': beta_aero,
                             'print_info': 'off',
                             'horseshoe': 'off',
                             'num_cores': 4,
@@ -537,6 +532,16 @@ class Ttail_3beams():
                                               'gravity_on': 'on',
                                               'gravity': 9.754,
                                               'orientation': self.quat},}
+
+
+        config['LinearUvlm'] = {    'dt': self.dt,
+                                            'integr_order': 2,
+                                            'density': self.rho,
+                                            'remove_predictor': True, 
+                                            'use_sparse': True,
+                                            'ScalingDict':{'length': 1.,
+                                                           'speed':  1.,
+                                                           'density':1.}}
 
         config['AerogridPlot']={'folder': self.route+'/output/',
                                 'include_rbm': 'off',

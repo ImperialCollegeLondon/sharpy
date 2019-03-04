@@ -45,6 +45,15 @@ class PlotFlowField(BaseSolver):
         self.settings_types['dt'] = 'float'
         self.settings_default['dt'] = 0.1
 
+        self.settings_types['include_external'] = 'bool'
+        self.settings_default['include_external'] = True
+
+        self.settings_types['include_induced'] = 'bool'
+        self.settings_default['include_induced'] = True
+
+        self.settings_types['stride'] = 'int'
+        self.settings_default['stride'] = 1
+
         self.settings = None
         self.data = None
         self.dir = 'output/'
@@ -73,8 +82,7 @@ class PlotFlowField(BaseSolver):
         self.postproc_grid_generator = postproc_grid_generator_type()
         self.postproc_grid_generator.initialise(self.settings['postproc_grid_input'])
 
-    def run(self, online=False):
-
+    def output_velocity_field(self, ts):
         # Notice that SHARPy utilities deal with several two-dimensional surfaces
         # To be able to build 3D volumes, I will make use of the surface index as
         # the third index in space
@@ -82,52 +90,75 @@ class PlotFlowField(BaseSolver):
         # write it in paraview
 
         # Generate the grid
-        vtk_info, grid = self.postproc_grid_generator.generate({})
+        vtk_info, grid = self.postproc_grid_generator.generate({
+                'for_pos': self.data.structure.timestep_info[ts].for_pos[0:3]})
 
         # Compute the induced velocities
         nx = grid[0].shape[1]
         ny = grid[0].shape[2]
         nz = len(grid)
 
-        u = np.zeros((nx,ny,nz,3), dtype=float)
-        # u = np.zeros_like(grid, dtype=ct.c_double)
-        for iz in range(nz):
-            # u.append(np.zeros((3,ny,nz), dtype=ct.c_double))
-            for ix in range(nx):
-                for iy in range(ny):
-                    u[ix, iy, iz, :] = uvlmlib.uvlm_calculate_total_induced_velocity_at_point(self.data.aero.timestep_info[-1],
-                                                           grid[iz][:, ix, iy])
+        array_counter = 0
+        u_ind = np.zeros((nx, ny, nz, 3), dtype=float)
+        if self.settings['include_induced']:
+            for iz in range(nz):
+                for ix in range(nx):
+                    for iy in range(ny):
+                        target_triad = grid[iz][:, ix, iy].astype(dtype=ct.c_double, order='F', copy=True)
+                        u_ind[ix, iy, iz, :] = uvlmlib.uvlm_calculate_total_induced_velocity_at_point(self.data.aero.timestep_info[ts],
+                                                                                                      target_triad,
+                                                                                                      self.data.structure.timestep_info[ts].for_pos[0:3])
+            # Write the data
+            vtk_info.point_data.add_array(u_ind.reshape((-1, u_ind.shape[-1]), order='F')) # Reshape the array except from the last dimension
+            vtk_info.point_data.get_array(array_counter).name = 'induced_velocity'
+            vtk_info.point_data.update()
+            array_counter += 1
 
         # Add the external velocities
-        zeta = []
-        u_ext = []
-        for iz in range(nz):
-            zeta.append(np.zeros((3,nx,ny), dtype=ct.c_double))
-            u_ext.append(np.zeros((3,nx,ny), dtype=ct.c_double))
-            for ix in range(nx):
-                for iy in range(ny):
-                    zeta[iz][:,ix,iy] = grid[iz][:, ix, iy]
-                    u_ext[iz][:,ix,iy] = 0.0
+        u_ext_out = np.zeros((nx, ny, nz, 3), dtype=float)
 
-        self.velocity_generator.generate({'zeta': zeta,
-                                      'override': True,
-                                      't': self.data.ts*self.settings['dt'].value,
-                                      'ts': self.data.ts,
-                                      'dt': self.settings['dt'].value,
-                                      'for_pos': self.data.structure.timestep_info[-1].for_pos},
-                                      u_ext)
+        if self.settings['include_external']:
+            u_ext = []
+            for iz in range(nz):
+                u_ext.append(np.zeros((3, nx, ny), dtype=ct.c_double))
+            self.velocity_generator.generate({'zeta': grid,
+                                              'override': True,
+                                              't': ts*self.settings['dt'].value,
+                                              'ts': ts,
+                                              'dt': self.settings['dt'].value,
+                                              'for_pos': 0*self.data.structure.timestep_info[ts].for_pos},
+                                             u_ext)
+            for iz in range(nz):
+                for ix in range(nx):
+                    for iy in range(ny):
+                        u_ext_out[ix, iy, iz, :] += u_ext[iz][:, ix, iy]
 
-        # Add both velocities
-        for iz in range(nz):
-            for ix in range(nx):
-                for iy in range(ny):
-                    u[ix, iy, iz, :] += u_ext[iz][:,ix,iy]
+            # Write the data
+            vtk_info.point_data.add_array(u_ext_out.reshape((-1, u_ext_out.shape[-1]), order='F')) # Reshape the array except from the last dimension
+            vtk_info.point_data.get_array(array_counter).name = 'external_velocity'
+            vtk_info.point_data.update()
+            array_counter += 1
+
+        # add the data
+        u = u_ind + u_ext_out
 
         # Write the data
         vtk_info.point_data.add_array(u.reshape((-1, u.shape[-1]), order='F')) # Reshape the array except from the last dimension
-        vtk_info.point_data.get_array(0).name = 'Velocity'
+        vtk_info.point_data.get_array(array_counter).name = 'velocity'
         vtk_info.point_data.update()
+        array_counter += 1
 
-        it = len(self.data.structure.timestep_info) - 1
-        filename = self.dir + "VelocityFied_" + '%06u' % it + ".vtk"
+        filename = self.dir + "VelocityField_" + '%06u' % ts + ".vtk"
         write_data(vtk_info, filename)
+
+    def run(self, online=False):
+        if online:
+            if divmod(self.data.ts, self.settings['stride'].value)[1] == 0:
+                self.output_velocity_field(len(self.data.structure.timestep_info) - 1)
+        else:
+            for ts in range(0, len(self.data.aero.timestep_info)):
+                self.output_velocity_field(ts)
+        return self.data
+
+
+

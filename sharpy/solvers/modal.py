@@ -153,6 +153,36 @@ class Modal(BaseSolver):
                                 '_ModalShape')
 
     def run(self):
+        r"""
+        Extracts the eigenvalues and eigenvectors of the clamped structure.
+
+        If ``use_undamped_modes == 1`` then the free vibration modes of the clamped structure are found solving:
+
+            .. math:: \mathbf{M\,\ddot{\eta}} + \mathbf{K\,\eta} = 0
+
+        that flows down to solving the non-trivial solutions to:
+
+            .. math:: (-\omega^2\,\mathbf{M} + \mathbf{K})\mathbf{\Phi} = 0
+
+        On the other hand, if the damped modes are chosen, the free vibration modes are found
+        solving the equation of motion of the form
+
+            .. math:: \mathbf{M\,\ddot{\eta}} + \mathbf{C\,\dot{\eta}} + \mathbf{K\,\eta} = 0
+
+        which can be written in state space form, with the state vector :math:`\mathbf{x} = [\eta^T,\,\dot{\eta}^T]^T`
+        as
+
+            .. math:: \mathbf{\dot{x}} = \begin{bmatrix} 0 & \mathbf{I} \\ -\mathbf{M^{-1}K} & -\mathbf{M^{-1}C}
+                \end{bmatrix} \mathbf{x}
+
+        and therefore the mode shapes and frequencies correspond to the solution of the eigenvalue problem
+
+            .. math:: \mathbf{A\,\Phi} = \mathbf{\Lambda\,\Phi}
+
+        Returns:
+            PreSharpy: updated data object with modal analysis
+
+        """
         self.data.ts = len(self.data.structure.timestep_info) - 1
         # Initialize matrices
         num_dof = self.data.structure.num_dof.value
@@ -497,6 +527,90 @@ def get_mode_zeta(data, eigvect):
 
 
 
+def write_zeta_vtk(zeta,zeta_ref,filename_root):
+    '''
+    Given a list of arrays representing the coordinates of a set of n_surf UVLM 
+    lattices and organised as:
+        zeta[n_surf][3,M+1,N=1]
+    this function writes a vtk for each of the n_surf surfaces. 
+
+    Input:
+        - zeta: lattice coordinates to plot
+        - zeta_ref: reference lattice used to compute the magnitude of displacements
+        - filename_root: initial part of filename (full path) without file 
+        extension (.vtk)
+    '''
+
+
+    # from IPython import embed
+    # embed()
+    for i_surf in range(len(zeta)):
+
+        filename=filename_root+"_%02u.vtu" %(i_surf,)
+        _,M,N=zeta[i_surf].shape
+
+        M-=1
+        N-=1
+        point_data_dim = (M+1)*(N+1)
+        panel_data_dim = M*N
+
+        coords = np.zeros((point_data_dim, 3))
+        conn = []
+        panel_id = np.zeros((panel_data_dim,), dtype=int)
+        panel_surf_id = np.zeros((panel_data_dim,), dtype=int)
+        point_struct_id = np.zeros((point_data_dim,), dtype=int)
+        point_struct_mag = np.zeros((point_data_dim,), dtype=float)
+
+        counter = -1
+        # coordinates of corners
+        for i_n in range(N+1):
+            for i_m in range(M+1):
+                counter += 1
+                coords[counter, :] = zeta[i_surf][:, i_m, i_n]
+
+        counter = -1
+        node_counter = -1
+        for i_n in range(N + 1):
+            # global_counter = aero.aero2struct_mapping[i_surf][i_n]
+            for i_m in range(M + 1):
+                node_counter += 1
+                # point data
+                # point_struct_id[node_counter]=global_counter
+                point_struct_mag[node_counter]=\
+                    np.linalg.norm(zeta[i_surf][:, i_m, i_n]\
+                                                   -zeta_ref[i_surf][:,i_m,i_n])
+
+                if i_n < N and i_m < M:
+                    counter += 1
+                else:
+                    continue
+
+                conn.append([node_counter + 0,
+                             node_counter + 1,
+                             node_counter + M+2,
+                             node_counter + M+1])
+                # cell data
+                panel_id[counter] = counter
+                panel_surf_id[counter] = i_surf
+
+        ug = tvtk.UnstructuredGrid(points=coords)
+        ug.set_cells(tvtk.Quad().cell_type, conn)
+        ug.cell_data.scalars = panel_id
+        ug.cell_data.scalars.name = 'panel_n_id'
+        ug.cell_data.add_array(panel_surf_id)
+        ug.cell_data.get_array(1).name = 'panel_surface_id'
+
+        ug.point_data.scalars = np.arange(0, coords.shape[0])
+        ug.point_data.scalars.name = 'n_id'
+        # ug.point_data.add_array(point_struct_id)
+        # ug.point_data.get_array(1).name = 'point_struct_id'
+        ug.point_data.add_array(point_struct_mag)
+        ug.point_data.get_array(1).name = 'point_displacement_magnitude'
+
+        write_data(ug, filename)
+
+
+
 def write_modes_vtk(data, eigenvectors, NumLambda, filename_root, 
                                                 rot_max_deg=15.,perc_max=0.15):
     """
@@ -520,68 +634,74 @@ def write_modes_vtk(data, eigenvectors, NumLambda, filename_root,
         eigvec=eigenvectors[:num_dof,mode]
         eigvec=scale_mode(data,eigvec,rot_max_deg,perc_max)
         zeta_mode=get_mode_zeta(data,eigvec)
+        write_zeta_vtk(zeta_mode,tsaero.zeta,filename_root+"_%06u" %(mode,))
 
-        for i_surf in range(tsaero.n_surf):
+        # for i_surf in range(tsaero.n_surf):
 
-            # filename=filename_root+"_%06u_%02u.vtu" %(mode,i_surf)
-            filename = filename_root + "_%02u_%06u.vtu" % (i_surf, mode)
+        #     # filename=filename_root+"_%06u_%02u.vtu" %(mode,i_surf)
+        #     filename = filename_root + "_%02u_%06u.vtu" % (i_surf, mode)
 
-            dims = tsaero.dimensions[i_surf, :]
-            point_data_dim = (dims[0]+1)*(dims[1]+1)  # + (dims_star[0]+1)*(dims_star[1]+1)
-            panel_data_dim = (dims[0])*(dims[1])  # + (dims_star[0])*(dims_star[1])
+        #     dims = tsaero.dimensions[i_surf, :]
+        #     point_data_dim = (dims[0]+1)*(dims[1]+1)  # + (dims_star[0]+1)*(dims_star[1]+1)
+        #     panel_data_dim = (dims[0])*(dims[1])  # + (dims_star[0])*(dims_star[1])
 
-            coords = np.zeros((point_data_dim, 3))
-            conn = []
-            panel_id = np.zeros((panel_data_dim,), dtype=int)
-            panel_surf_id = np.zeros((panel_data_dim,), dtype=int)
-            point_struct_id = np.zeros((point_data_dim,), dtype=int)
-            point_struct_mag = np.zeros((point_data_dim,), dtype=float)
+        #     coords = np.zeros((point_data_dim, 3))
+        #     conn = []
+        #     panel_id = np.zeros((panel_data_dim,), dtype=int)
+        #     panel_surf_id = np.zeros((panel_data_dim,), dtype=int)
+        #     point_struct_id = np.zeros((point_data_dim,), dtype=int)
+        #     point_struct_mag = np.zeros((point_data_dim,), dtype=float)
 
-            counter = -1
-            # coordinates of corners
-            for i_n in range(dims[1]+1):
-                for i_m in range(dims[0]+1):
-                    counter += 1
-                    coords[counter, :] = zeta_mode[i_surf][:, i_m, i_n]
+        #     counter = -1
+        #     # coordinates of corners
+        #     for i_n in range(dims[1]+1):
+        #         for i_m in range(dims[0]+1):
+        #             counter += 1
+        #             coords[counter, :] = zeta_mode[i_surf][:, i_m, i_n]
 
-            counter = -1
-            node_counter = -1
-            for i_n in range(dims[1] + 1):
-                global_counter = aero.aero2struct_mapping[i_surf][i_n]
-                for i_m in range(dims[0] + 1):
-                    node_counter += 1
-                    # point data
-                    point_struct_id[node_counter]=global_counter
-                    point_struct_mag[node_counter]=\
-                        np.linalg.norm(zeta_mode[i_surf][:, i_m, i_n]\
-                                            -tsaero.zeta[i_surf][:,i_m,i_n])
+        #     counter = -1
+        #     node_counter = -1
+        #     for i_n in range(dims[1] + 1):
+        #         global_counter = aero.aero2struct_mapping[i_surf][i_n]
+        #         for i_m in range(dims[0] + 1):
+        #             node_counter += 1
+        #             # point data
+        #             point_struct_id[node_counter]=global_counter
+        #             point_struct_mag[node_counter]=\
+        #                 np.linalg.norm(zeta_mode[i_surf][:, i_m, i_n]\
+        #                                     -tsaero.zeta[i_surf][:,i_m,i_n])
 
-                    if i_n < dims[1] and i_m < dims[0]:
-                        counter += 1
-                    else:
-                        continue
+        #             if i_n < dims[1] and i_m < dims[0]:
+        #                 counter += 1
+        #             else:
+        #                 continue
 
-                    conn.append([node_counter + 0,
-                                 node_counter + 1,
-                                 node_counter + dims[0]+2,
-                                 node_counter + dims[0]+1])
-                    # cell data
-                    panel_id[counter] = counter
-                    panel_surf_id[counter] = i_surf
+        #             conn.append([node_counter + 0,
+        #                          node_counter + 1,
+        #                          node_counter + dims[0]+2,
+        #                          node_counter + dims[0]+1])
+        #             # cell data
+        #             panel_id[counter] = counter
+        #             panel_surf_id[counter] = i_surf
 
-            ug = tvtk.UnstructuredGrid(points=coords)
-            ug.set_cells(tvtk.Quad().cell_type, conn)
-            ug.cell_data.scalars = panel_id
-            ug.cell_data.scalars.name = 'panel_n_id'
-            ug.cell_data.add_array(panel_surf_id)
-            ug.cell_data.get_array(1).name = 'panel_surface_id'
+        #     ug = tvtk.UnstructuredGrid(points=coords)
+        #     ug.set_cells(tvtk.Quad().cell_type, conn)
+        #     ug.cell_data.scalars = panel_id
+        #     ug.cell_data.scalars.name = 'panel_n_id'
+        #     ug.cell_data.add_array(panel_surf_id)
+        #     ug.cell_data.get_array(1).name = 'panel_surface_id'
 
-            ug.point_data.scalars = np.arange(0, coords.shape[0])
-            ug.point_data.scalars.name = 'n_id'
-            ug.point_data.add_array(point_struct_id)
-            ug.point_data.get_array(1).name = 'point_struct_id'
+        #     ug.point_data.scalars = np.arange(0, coords.shape[0])
+        #     ug.point_data.scalars.name = 'n_id'
+        #     ug.point_data.add_array(point_struct_id)
+        #     ug.point_data.get_array(1).name = 'point_struct_id'
 
-            ug.point_data.add_array(point_struct_mag)
-            ug.point_data.get_array(2).name = 'point_displacement_magnitude'
+        #     ug.point_data.add_array(point_struct_mag)
+        #     ug.point_data.get_array(2).name = 'point_displacement_magnitude'
 
-            write_data(ug, filename)
+        #     write_data(ug, filename)
+
+
+
+
+

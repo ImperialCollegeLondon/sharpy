@@ -1,5 +1,9 @@
 Aerodynamic Models
 ------------------
 
-.. autoclass:: sharpy.aero.models.aerogrid.Aerogrid
-    :members:
+.. toctree::
+    aerodynamics/meshes
+.. toctree::
+    aerodynamics/linearuvlm/linuvlm
+
+

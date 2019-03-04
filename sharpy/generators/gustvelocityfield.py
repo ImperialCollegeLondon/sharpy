@@ -7,7 +7,7 @@ import sharpy.utils.exceptions as exc
 
 @generator_interface.generator
 class GustVelocityField(generator_interface.BaseGenerator):
-    """
+    r"""
     Gust Velocity Field Generator
 
     ``GustVelocityField`` is a class inherited from ``BaseGenerator``
@@ -18,20 +18,33 @@ class GustVelocityField(generator_interface.BaseGenerator):
     To call this generator, the ``generator_id = GustVelocityField`` shall be used.
     This is parsed as the value for the ``velocity_field_generator`` key in the desired aerodynamic solver's settings.
 
+    Supported gusts:
+        - 1-cos: Discrte gust model
+            .. math:: U_z = \frac{u_{de}}{2}\left[1-\cos\left(\frac{2\pi x}{S}\right)\right]
+
+        - DARPA: Discrete, non-uniform span model
+            .. math:: U_z = \frac{u_{de}}{2}\left[1-\cos\left(\frac{2\pi x}{S}\right)\right]\cos\left(\frac{\pi y}{b}\right)
+
+        - continuous_sin: Continuous sinusoidal gust model
+            .. math:: U_z = \frac{u_{de}}{2}\sin\left(\frac{2\pi x}{S}\right)
+
+    where, :math:`u_{de}` is the gust intensity, :math:`S` is the gust length and :math:`b` is the wing span.
+    :math:`x` and :math:`y` refer to the chordwise and spanwise distance penetrated into the gust, respectively.
+
     Args:
         in_dict (dict): Input data in the form of dictionary. See acceptable entries below:
 
-            ===================  ===============  ==================================================================  ===================
-            Name                 Type             Description                                                         Default
-            ===================  ===============  ==================================================================  ===================
-            ``u_inf``            ``float``        Free stream velocity                                                ``0.0``
-            ``u_inf_direction``  ``list(float)``  Free stream velocity relative components                            ``[1.0, 0.0, 0.0]``
-            ``gust_shape``       ``str``          Gust profile shape. Supported profiles are ``1-cos`` and ``DARPA``  ``None``
-            ``gust_length``      ``float``        Length of gust                                                      ``0.0``
-            ``gust_intensity``   ``float``        Intensity of the gust                                               ``0.0``
-            ``offset``           ``float``        Spatial offset of the gust with respect to origin                   ``0.0``
-            ``span``             ``float``        Wing span                                                           ``0.0``
-            ===================  ===============  ==================================================================  ===================
+            ===================  ===============  =================================================  ===================
+            Name                 Type             Description                                        Default
+            ===================  ===============  =================================================  ===================
+            ``u_inf``            ``float``        Free stream velocity                               ``0.0``
+            ``u_inf_direction``  ``list(float)``  Free stream velocity relative component            ``[1.0, 0.0, 0.0]``
+            ``gust_shape``       ``str``          Gust profile shape.                                ``None``
+            ``gust_length``      ``float``        Length of gust                                     ``0.0``
+            ``gust_intensity``   ``float``        Intensity of the gust                              ``0.0``
+            ``offset``           ``float``        Spatial offset of the gust with respect to origin  ``0.0``
+            ``span``             ``float``        Wing span                                          ``0.0``
+            ===================  ===============  =================================================  ===================
 
     Attributes:
         settings_types (dict): Acceptable data types of the input data
@@ -83,6 +96,8 @@ class GustVelocityField(generator_interface.BaseGenerator):
         self.implemented_gusts = []
         self.implemented_gusts.append('1-cos')
         self.implemented_gusts.append('DARPA')
+        self.implemented_gusts.append('continuous_sin')
+        self.implemented_gusts.append('lateral 1-cos')
 
         self.settings = dict()
 
@@ -108,7 +123,7 @@ class GustVelocityField(generator_interface.BaseGenerator):
         if self.settings['gust_shape'] == '1-cos':
             def gust_shape(x, y, z, gust_length, gust_intensity, span=0):
                 vel = np.zeros((3,))
-                if (x > 0.0 or x < -gust_length):
+                if x > 0.0 or x < -gust_length:
                     return vel
 
                 vel[2] = (1.0 - np.cos(2.0*np.pi*x/gust_length))*gust_intensity*0.5
@@ -116,11 +131,28 @@ class GustVelocityField(generator_interface.BaseGenerator):
         elif self.settings['gust_shape'] == 'DARPA':
             def gust_shape(x, y, z, gust_length, gust_intensity, span=0):
                 vel = np.zeros((3,))
-                if (x > 0.0 or x < -gust_length):
+                if x > 0.0 or x < -gust_length:
                     return vel
 
                 vel[2] = (1.0 - np.cos(2.0*np.pi*x/gust_length))*gust_intensity*0.5
                 vel[2] *= -np.cos(y/span*np.pi)
+                return vel
+
+        elif self.settings['gust_shape'] == 'continuous_sin':
+            def gust_shape(x, y, z, gust_length, gust_intensity, span=0):
+                vel = np.zeros((3,))
+                if x > 0.0:
+                    return vel
+
+                vel[2] = 0.5 * gust_intensity * np.sin(2 * np.pi * x / gust_length)
+                return vel
+        elif self.settings['gust_shape'] == 'lateral 1-cos':
+            def gust_shape(x, y, z, gust_length, gust_intensity, span=0):
+                vel = np.zeros((3,))
+                if x > 0.0 or x < -gust_length:
+                    return vel
+
+                vel[1] = (1.0 - np.cos(2.0*np.pi*x/gust_length))*gust_intensity*0.5
                 return vel
 
         for i_surf in range(len(zeta)):
@@ -137,3 +169,4 @@ class GustVelocityField(generator_interface.BaseGenerator):
                                                         self.settings['gust_intensity'].value,
                                                         self.settings['span'].value
                                                         )
+

@@ -3,13 +3,28 @@
    You can adapt this file completely to your liking, but it should at least
    contain the root `toctree` directive.
 
-SHARPy documentation
+SHARPy Documentation
 ====================
 
+Welcome to SHARPy (Simulation of High Aspect Ratio Planes in Python)!
 
+.. warning:: SHARPy is currently under development
 
-Contents:
----------
+SHARPy is an aeroelastic analysis package currently under development at the Department of Aeronautics,
+Imperial College London. It can be used for the structural, aerodynamic, aeroelastic and flight dynamics
+analysis of flexible aircraft, flying wings and wind turbines.
+
+This site contains the available documentation of the software. The documentation project is still work in process and,
+at the time of writing, only includes documentation for the Python modules of SHARPy, which encompass the aeroelastic
+solvers and interfaces to the structural and aerodynamic modules.
+The UVLM and structural modules are written in C++ and Fortran, respectively, and do not have
+detailed documentation yet.
+
+The objective of this documentation package is to show the user how to run cases by defining the geometry, flow
+conditions and desired solution process.
+
+Contents
+--------
 
 .. toctree::
    :maxdepth: 2
@@ -33,3 +48,8 @@ Indices and tables
 * :ref:`modindex`
 * :ref:`search`
 
+Contact
+-------
+
+SHARPy is developed at the Department of Aeronautics, Imperial College London. To get in touch, visit the `Loads Control
+and Aeroelastics Lab <http://imperial.ac.uk/aeroelastics>`_ website.
