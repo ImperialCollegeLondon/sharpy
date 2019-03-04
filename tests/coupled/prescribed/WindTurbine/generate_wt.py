@@ -27,7 +27,7 @@ flow = ['BeamLoader',
         'AerogridLoader',
         # 'StaticCoupled',
         # 'SteadyHelicoidalWake',
-        # 'DynamicPrescribedCoupled',
+        'DynamicCoupled',
         'AerogridPlot',
         'BeamPlot'
         ]
@@ -1025,7 +1025,7 @@ class SimulationInformation():
                                 'n_time_steps': self.n_tstep,
                                 'dt': self.dt}
 
-        settings['DynamicPrescribedCoupled'] = {'structural_solver': 'NonLinearDynamicPrescribedStep',
+        settings['DynamicCoupled'] = {'structural_solver': 'NonLinearDynamicPrescribedStep',
                                                 'structural_solver_settings': settings['NonLinearDynamicPrescribedStep'],
                                                 'aero_solver': 'StepUvlm',
                                                 'aero_solver_settings': settings['StepUvlm'],
@@ -1050,7 +1050,7 @@ class SimulationInformation():
 
 
         # STEADY HELICOIDAL WAKE
-        settings['SteadyHelicoidalWake'] = settings['DynamicPrescribedCoupled']
+        settings['SteadyHelicoidalWake'] = settings['DynamicCoupled']
 
 
         import configobj
