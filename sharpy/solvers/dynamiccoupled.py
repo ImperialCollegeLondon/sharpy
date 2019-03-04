@@ -230,7 +230,6 @@ class DynamicCoupled(BaseSolver):
                 if k == self.settings['fsi_substeps'].value and not self.settings['fsi_substeps'] == 0:
                     cout.cout_wrap('The FSI solver did not converge!!!')
                     break
-                print(k)
 
                 # generate new grid (already rotated)
                 aero_kstep = self.data.aero.timestep_info[-1].copy()
