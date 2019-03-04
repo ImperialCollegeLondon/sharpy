@@ -2,6 +2,7 @@ import numpy as np
 import scipy.linalg as sclalg
 import sharpy.linear.src.libss as libss
 import sharpy.utils.h5utils as h5
+import time
 
 
 class ReducedOrderModel(object):
@@ -33,6 +34,7 @@ class ReducedOrderModel(object):
         self.data = None
         self.sstype = None
         self.nfreq = None
+        self.restart_arnoldi = False
 
     def initialise(self, data, ss):
 
@@ -44,7 +46,32 @@ class ReducedOrderModel(object):
         else:
             self.sstype = 'dt'
 
-    def run(self, algorithm, r, frequency=None):
+    def run(self, algorithm, r, frequency=None, right_tangent=None, left_tangent=None):
+        """
+        Performs Model Order Reduction employing Krylov space projection methods.
+
+        Supported methods include:
+
+        =========================  ====================  ==========================================================
+        Algorithm                  Interpolation Points  Systems
+        =========================  ====================  ==========================================================
+        ``one_sided_arnoldi``      1                     SISO Systems
+        ``two_sided_arnoldi``      1                     SISO Systems
+        ``dual_rational_arnoldi``  K                     SISO systems and Tangential interpolation for MIMO systems
+        ``mimo_rational_arnoldi``  K                     MIMO systems. Uses vector-wise construction (stable)
+        ``mimo_block_arnoldi``     K                     MIMO systems. Uses block Arnoldi methods (more efficient)
+        =========================  ====================  ==========================================================
+
+        Args:
+            algorithm (str): Selected algorithm
+            r (int): Desired Krylov space order. See the relevant algorithm for details.
+            frequency (np.ndarray): Array containing the interpolation points
+            right_tangent (np.ndarray): Right tangential direction vector assembled in matrix form.
+            left_tangent (np.ndarray): Left tangential direction vector assembled in matrix form.
+
+        Returns:
+
+        """
         self.algorithm = algorithm
         self.frequency = frequency
         self.r = r
@@ -53,14 +80,17 @@ class ReducedOrderModel(object):
         except AttributeError:
             self.nfreq = 1
 
-        if algorithm == 'arnoldi':
+        print('Model Order Reduction in progress...')
+        t0 = time.time()
+
+        if algorithm == 'one_sided_arnoldi':
             Ar, Br, Cr = self.one_sided_arnoldi(frequency, r)
 
         elif algorithm == 'two_sided_arnoldi':
             Ar, Br, Cr = self.two_sided_arnoldi(frequency, r)
 
         elif algorithm == 'dual_rational_arnoldi':
-            Ar, Br, Cr = self.dual_rational_arnoldi_siso(frequency, r)
+            Ar, Br, Cr = self.dual_rational_arnoldi_siso(frequency, r, right_tangent, left_tangent)
 
         elif algorithm == 'real_rational_arnoldi':
             Ar, Br, Cr = self.real_rational_arnoldi(frequency, r)
@@ -68,16 +98,24 @@ class ReducedOrderModel(object):
         elif algorithm == 'mimo_rational_arnoldi':
             Ar, Br, Cr = self.mimo_rational_arnoldi(frequency, r)
 
+        elif algorithm == 'mimo_block_arnoldi':
+            Ar, Br, Cr = self.mimo_block_arnoldi(frequency, r)
+
         else:
             raise NotImplementedError('Algorithm %s not recognised, check for spelling or it may not be implemented'
                                       %algorithm)
 
         self.ssrom = libss.ss(Ar, Br, Cr, self.ss.D, self.ss.dt)
 
+        self.check_stability(restart_arnoldi=self.restart_arnoldi)
+
+        t_rom = time.time() - t0
+        print('\t\t...Completed Model Order Reduction in %.2f s' % t_rom)
+
 
     def one_sided_arnoldi(self, frequency, r):
         r"""
-        One-sided Arnoldi method expansion about a single interpolation point, :math`\sigma`.
+        One-sided Arnoldi method expansion about a single interpolation point, :math:`\sigma`.
         The projection matrix :math:`\mathbf{V}` is constructed using an order :math:`r` Krylov space. The space for
         a single finite interpolation point known as a Pade approximation is described by:
 
@@ -89,7 +127,7 @@ class ReducedOrderModel(object):
         space is
 
             .. math::
-                    \text{range}(\textbf{V}) = \mathcal{K}_r(\mathbb{A}, \mathbf{b})
+                    \text{range}(\textbf{V}) = \mathcal{K}_r(\mathbf{A}, \mathbf{b})
 
         The resulting orthogonal projection leads to the following reduced order system:
 
@@ -307,28 +345,75 @@ class ReducedOrderModel(object):
 
         return Ar, Br, Cr
 
-    def dual_rational_arnoldi_siso(self, frequency, r):
-        """
-        Dual Rational Arnoli Interpolation for SISO sytems. Based on the methods of Grimme
+    def dual_rational_arnoldi_siso(self, frequency, r, right_tangent=None, left_tangent=None):
+        r"""
+        Dual Rational Arnoli Interpolation for SISO sytems [1] and MIMO systems through tangential interpolation [2].
+
+        Effectively the same as the two_sided_arnoldi and the resulting V matrices for each interpolation point are
+        concatenated
+
+        .. math::
+            \bigcup\limits_{k = 1}^K\mathcal{K}_{b_k}((\sigma_i\mathbf{I}_n - \mathbf{A})^{-1}, (\sigma_i\mathbf{I}_n
+            - \mathbf{A})^{-1}\mathbf{b})\subseteq\mathcal{V}&=\text{range}(\mathbf{V}) \\
+            \bigcup\limits_{k = 1}^K\mathcal{K}_{c_k}((\sigma_i\mathbf{I}_n - \mathbf{A})^{-T}, (\sigma_i\mathbf{I}_n
+            - \mathbf{A})^{-T}\mathbf{c}^T)\subseteq\mathcal{Z}&=\text{range}(\mathbf{Z})
+
+        For MIMO systems, tangential interpolation is used through the right and left tangential direction vectors
+        :math:`\mathbf{r}_i` and :math:`\mathbf{l}_i`.
+
+        .. math::
+            \bigcup\limits_{k = 1}^K\mathcal{K}_{b_k}((\sigma_i\mathbf{I}_n - \mathbf{A})^{-1}, (\sigma_i\mathbf{I}_n
+            - \mathbf{A})^{-1}\mathbf{Br}_i)\subseteq\mathcal{V}&=\text{range}(\mathbf{V}) \\
+            \bigcup\limits_{k = 1}^K\mathcal{K}_{c_k}((\sigma_i\mathbf{I}_n - \mathbf{A})^{-T}, (\sigma_i\mathbf{I}_n
+            - \mathbf{A})^{-T}\mathbf{C}^T\mathbf{l}_i)\subseteq\mathcal{Z}&=\text{range}(\mathbf{Z})
+
         Args:
-            frequency:
-            r:
+            frequency (np.ndarray): Array containing the interpolation points
+                :math:`\sigma = \{\sigma_1, \dots, \sigma_K\}\in\mathbb{C}`
+            r (int): Krylov space order :math:`b_k` and :math:`c_k`. At the moment, different orders for the
+                controllability and observability constructions are not supported.
+            right_tangent (np.ndarray): Matrix containing the right tangential direction interpolation vector for
+                each interpolation point in column form, i.e. :math:`\mathbf{r}\in\mathbb{R}^{m \times K}`.
+            left_tangent (np.ndarray): Matrix containing the left tangential direction interpolation vector for
+                each interpolation point in column form, i.e. :math:`\mathbf{l}\in\mathbb{R}^{p \times K}`.
 
         Returns:
+            tuple: The reduced order model matrices: :math:`\mathbf{A}_r`, :math:`\mathbf{B}_r` and :math:`\mathbf{C}_r`.
 
+        References:
+            [1] Grimme
+            [2] Gallivan
         """
         A = self.ss.A
         B = self.ss.B
         C = self.ss.C
 
-        nx = A.shape[0]
+        nx = self.ss.states
+        nu = self.ss.inputs
+        ny = self.ss.outputs
+
+        B.shape = (nx, nu)
 
         try:
             nfreq = frequency.shape[0]
         except AttributeError:
             nfreq = 1
 
-        assert nfreq > 1, 'Dual Rational Arnoldi requires more than one frequency to interpolate'
+        if nu != 1 or ny != 1:
+            assert right_tangent is not None and left_tangent is not None, 'Missing interpolation vectors for MIMO case'
+
+
+        # Tangential interpolation for MIMO systems
+        if right_tangent is None:
+            right_tangent = np.ones((nu, nfreq))
+        else:
+            assert right_tangent.shape == (nu, nfreq), 'Right Tangential Direction vector not the correct shape'
+
+        if left_tangent is None:
+            left_tangent = np.ones((ny, nfreq))
+        else:
+            assert left_tangent.shape == (ny, nfreq), 'Left Tangential Direction vector not the correct shape'
+
 
         V = np.zeros((nx, r*nfreq), dtype=complex)
         W = np.zeros((nx, r*nfreq), dtype=complex)
@@ -337,8 +422,8 @@ class ReducedOrderModel(object):
         for i in range(nfreq):
             sigma = frequency[i]
             lu_A = sclalg.lu_factor(sigma * np.eye(nx) - A)
-            V[:, we:we+r] = construct_krylov(r, lu_A, B, 'Pade', 'b')
-            W[:, we:we+r] = construct_krylov(r, lu_A, C.T, 'Pade', 'c')
+            V[:, we:we+r] = construct_krylov(r, lu_A, B.dot(right_tangent[:, i:i+1]), 'Pade', 'b')
+            W[:, we:we+r] = construct_krylov(r, lu_A, C.T.dot(left_tangent[:, i:i+1]), 'Pade', 'c')
 
             we += r
 
@@ -374,88 +459,197 @@ class ReducedOrderModel(object):
         last_column = 0
 
         B = self.ss.B
+        C = self.ss.C
 
         for i in range(self.nfreq):
 
-            if self.frequency[i] == np.inf:
+            if frequency[i] == np.inf:
                 lu_a = self.ss.A
                 approx_type = 'partial_realisation'
             else:
                 approx_type = 'Pade'
-                lu_a = frequency[i] * np.eye(n) - self.ss.A
+                lu_a = sclalg.lu_factor(frequency[i] * np.eye(n) - self.ss.A)
                 # G = sclalg.lu_solve(lu_a, self.ss.B)
             if i == 0:
                 V = construct_mimo_krylov(r, lu_a, B, approx_type=approx_type, side='controllability')
+                W = construct_mimo_krylov(r, lu_a, C.T, approx_type=approx_type, side='observability')
             else:
                 Vi = construct_mimo_krylov(r, lu_a, B, approx_type=approx_type, side='controllability')
+                Wi = construct_mimo_krylov(r, lu_a, C.T, approx_type=approx_type, side='observability')
                 V = np.block([V, Vi])
+                W = np.block([W, Wi])
                 V = mgs_ortho(V)
-        # self.W = W
+                W = mgs_ortho(W)
+
+        W = W.dot(sclalg.inv(W.T.dot(V)).T)
+        self.W = W
         self.V = V
 
         # Reduced state space model
-        Ar = V.T.dot(self.ss.A.dot(V))
-        Br = V.T.dot(self.ss.B)
+        Ar = W.T.dot(self.ss.A.dot(V))
+        Br = W.T.dot(self.ss.B)
         Cr = self.ss.C.dot(V)
 
         return Ar, Br, Cr
-            # # Pre-allocate w, V
-            # V = np.zeros((n, m * r), dtype=complex)
-            # w = np.zeros((n, m * r), dtype=complex)  # Initialise w, may be smaller than this due to deflation
-            #
-            # if self.frequency[i] == np.inf:
-            #     G = self.ss.B
-            #     F = self.ss.A
-            # else:
-            #     lu_a = sclalg.lu_factor(frequency[i] * np.eye(n) - self.ss.A)
-            #     G = sclalg.lu_solve(lu_a, self.ss.B)
-            #
-            # for k in range(m):
-            #     w[:, k] = G[:, k]
-            #
-            #     ## Orthogonalise w_k to preceding w_j for j < k
-            #     if k >= 1:
-            #         w[:, :k+1] = mgs_ortho(w[:, :k+1])[:, :k+1]
-            #
-            # V[:, :m+1] = w[:, :m+1]
-            # last_column += m
-            #
-            # mu = m  # Initialise controllability index
-            # mu_c = m  # Guess at controllability index with no deflation
-            # t = m   # worked column index
-            #
-            # for k in range(1, r-1):
-            #     for j in range(mu_c):
-            #         if self.frequency[i] == np.inf:
-            #             w[:, t] = F.dot(w[:, t-mu])
-            #         else:
-            #             w[:, t] = sclalg.lu_solve(lu_a, w[:, t-mu])
-            #
-            #         # Orthogonalise w[:,t] against V_i - - DOUBTS AS TO HOW THIS IS DONE
-            #         w[:, :t+1] = mgs_ortho(w[:, :t+1])[:, :t+1]
-            #
-            #         if np.linalg.norm(w[:, t]) < deflation_tolerance:
-            #             # Deflate w_k
-            #             w = [w[:, 0:t], w[:, t+1:-1]]  # TODO Figure if there is a better way to slice this
-            #             last_column -= 1
-            #             mu -= 1
-            #         else:
-            #             V[:, t] = w[:, t]
-            #             last_column += 1
-            #             t += 1
-            #     mu_c = mu
-            #
-            #     # Clean up w and V. Put in function and return V which can then be concatenated with the ones from
-            #     # other interpolation points
+
+    def mimo_block_arnoldi(self, frequency, r):
+
+        n = self.ss.states
+
+        A = self.ss.A
+        B = self.ss.B
+        C = self.ss.C
+
+        for i in range(self.nfreq):
+
+            if self.frequency[i] == np.inf:
+                F = A
+                G = B
+            else:
+                lu_a = sclalg.lu_factor(frequency[i] * np.eye(n) - A)
+                F = sclalg.lu_solve(lu_a, np.eye(n))
+                G = sclalg.lu_solve(lu_a, B)
+
+            if i == 0:
+                V = block_arnoldi_krylov(r, F, G)
+            else:
+                Vi = block_arnoldi_krylov(r, F, G)
+                V = np.block([V, Vi])
+
+        self.V = V
+
+        Ar = V.T.dot(A.dot(V))
+        Br = V.T.dot(B)
+        Cr = C.dot(V)
+
+        return Ar, Br, Cr
+
+    def check_stability(self, restart_arnoldi=False):
+        r"""
+        Checks the stability of the ROM by computing its eigenvalues.
+
+        If the resulting system is unstable, the Arnoldi procedure can be restarted to eliminate the eigenvalues
+        outside the stability boundary.
+
+        However, if this is the case, the ROM no longer matches the moments of the original system at the specific
+        frequencies since now the approximation is done with respect to a system of the form:
+
+            .. math::
+                \Sigma = \left(\begin{array}{c|c} \mathbf{A} & \mathbf{\bar{B}}
+                \\ \hline \mathbf{C} & \ \end{array}\right)
+
+        where :math:`\mathbf{\bar{B}} = (\mu \mathbf{I}_n - \mathbf{A})\mathbf{B}`
+
+        Args:
+            restart_arnoldi (bool): Restart the relevant Arnoldi algorithm with the unstable eigenvalues removed.
 
 
+        """
+        assert self.ssrom is not None, 'ROM not calculated yet'
 
+        eigs = sclalg.eigvals(self.ssrom.A)
+
+        eigs_abs = np.abs(eigs)
+
+        unstable = False
+        if self.sstype == 'dt':
+            if any(eigs_abs > 1.):
+                unstable = True
+                unstable_eigenvalues = eigs[eigs_abs > 1.]
+                print('Unstable ROM - %d Eigenvalues with |r| > 1' % len(unstable_eigenvalues))
+                for mu in unstable_eigenvalues:
+                    print('\tmu = %f + %fj' % (mu.real, mu.imag))
+            else:
+                print('ROM is stable')
+
+        else:
+            if any(eigs.real > 0):
+                unstable = True
+                print('Unstable ROM')
+                unstable_eigenvalues = eigs[eigs.real > 0]
+            else:
+                print('ROM is stable')
+
+        # Restarted Arnoldi
+        # Modify the B matrix in the full state system -> maybe better to have a copy
+        if unstable and restart_arnoldi:
+            print('Restarting the Arnoldi method - Reducing ROM order from r = %d to r = %d' % (self.r, self.r-1))
+            self.ss_original = self.ss
+
+            remove_unstable = np.eye(self.ss.states)
+            for mu in unstable_eigenvalues:
+                remove_unstable = np.matmul(remove_unstable, mu * np.eye(self.ss.states) - self.ss.A)
+
+            self.ss.B = remove_unstable.dot(self.ss.B)
+            # self.ss.C = self.ss.C.dot(remove_unstable.T)
+            self.r -= 1
+
+            if self.r > 1:
+                self.run(self.algorithm, self.r, self.frequency)
+            else:
+                print('Unable to reduce ROM any further - ROM still unstable...')
+
+def block_arnoldi_krylov(r, F, G, approx_type='Pade', side='controllability'):
+
+    n = G.shape[0]
+    m = G.shape[1]
+
+    Q0, R0, P0 = sclalg.qr(G, pivoting=True)
+    Q0 = Q0[:, :m]
+
+    Q = np.zeros((n,m*r), dtype=complex)
+    V = np.zeros((n,m*r), dtype=complex)
+
+    for k in range(r):
+
+        if k == 0:
+            Q[:, 0:m] = F.dot(Q0)
+        else:
+            Q[:, k*m: k*m + m] = F.dot(Q[:, (k-1)*m:(k-1)*m + m])
+
+        Q[:, :k*m + m] = mgs_ortho(Q[:, :k*m+m])
+
+        Qf, R, P = sclalg.qr(Q[:, k*m: k*m + m], pivoting=True)
+        Q[:, k*m: k*m + m ] = Qf[:, :m]
+        if R[0,0] >= 1e-6:
+            V[:, k*m:k*m + m] = Q[:, k*m: k*m + m ]
+        else:
+            print('Deflating')
+            k -= 1
+
+    V = mgs_ortho(V)
+
+    return V
 
 def mgs_ortho(X):
-    """ Modified Gram-Schmidt Orthogonalisation
+    r"""
+    Modified Gram-Schmidt Orthogonalisation
+
+    Orthogonalises input matrix :math:`\mathbf{X}` column by column.
+
+    Args:
+        X (np.ndarray): Input matrix of dimensions :math:`n` by :math:`m`.
+
+    Returns:
+        np.ndarray: Orthogonalised matrix of dimensions :math:`n` by :math:`m`.
+
+    Notes:
+        This method is faster than scipy's :func:`scipy.linalg.qr` method that returns an orthogonal matrix as part of
+        the QR decomposition, albeit at a higher number of function calls.
     """
 
-    Q, R = sclalg.qr(X)
+    # Q, R = sclalg.qr(X)
+    n = X.shape[1]
+    m = X.shape[0]
+
+    Q = np.zeros((m, n), dtype=complex)
+
+    for i in range(n):
+        w = X[:, i]
+        for j in range(i):
+            h = Q[:, j].T.dot(w)
+            w = w - h * Q[:, j]
+        Q[:, i] = w / sclalg.norm(w)
 
     return Q
 
@@ -469,7 +663,7 @@ def construct_krylov(r, lu_A, B, approx_type='Pade', side='b'):
     ``approx_type = 'partial_realisation'``
 
         .. math::
-            \text{range}(\textbf{V}) = \mathcal{K}_r(\mathbb{A}, \mathbf{b})
+            \text{range}(\textbf{V}) = \mathcal{K}_r(\mathbf{A}, \mathbf{b})
 
     Else, it is replaced by the Pade approximation form:
 
@@ -501,10 +695,10 @@ def construct_krylov(r, lu_A, B, approx_type='Pade', side='b'):
 
     Args:
         r (int): Krylov space order
-        lu_A (np.ndarray): For Pade approximations it should be the LU decomposition of :math:`(\sigma I - \mathbf{A})`.
-            in tuple form, as output from the :func:`scipy.linalg.lu_factor` For partial realisations it is
+        lu_A (np.ndarray): For Pade approximations it should be the LU decomposition of :math:`(\sigma I - \mathbf{A})`
+            in tuple form, as output from the :func:`scipy.linalg.lu_factor`. For partial realisations it is
             simply :math:`\mathbf{A}`.
-        B (np.ndarray): If doing the B side it should be :math:`\mathbf{B}`, else :math:`\mathbf{C}`.
+        B (np.ndarray): If doing the B side it should be :math:`\mathbf{B}`, else :math:`\mathbf{C}^T`.
         approx_type (str): Type of approximation: ``partial_realisation`` or ``Pade``.
         side: Side of the projection ``b`` or ``c``.
 
@@ -518,9 +712,10 @@ def construct_krylov(r, lu_A, B, approx_type='Pade', side='b'):
     # Side indicates projection side. if using C then it needs to be transposed
     if side=='c':
         transpose_mode = 1
-        B.shape = (B.shape[0], )
+        B.shape = (nx, 1)
     else:
         transpose_mode = 0
+        B.shape = (nx, 1)
 
     # Output projection matrices
     V = np.zeros((nx, r),
@@ -532,25 +727,22 @@ def construct_krylov(r, lu_A, B, approx_type='Pade', side='b'):
     f = np.zeros((nx, r),
                  dtype=complex)
 
-    if approx_type != 'partial_realisation':
-        # LU decomposiotion
-        # lu_A = sclalg.lu_factor(lu_A)
-        v = sclalg.lu_solve(lu_A, B, trans=transpose_mode)
-        v = v / np.linalg.norm(v)
-
-        w = sclalg.lu_solve(lu_A, v)
-        # w = sclalg.inv((frequency * np.eye(nx) - A)).dot(v)
-    else:
+    if approx_type == 'partial_realisation':
         A = lu_A
         v_arb = B
         v = v_arb / np.linalg.norm(v_arb)
         w = A.dot(v)
+    else:
+        # LU decomposition
+        v = sclalg.lu_solve(lu_A, B, trans=transpose_mode)
+        v = v / np.linalg.norm(v)
+        w = sclalg.lu_solve(lu_A, v)
 
     alpha = v.T.dot(w)
 
     # Initial assembly
-    f[:, 0] = w - v.dot(alpha)
-    V[:, 0] = v
+    f[:, :1] = w - v.dot(alpha)
+    V[:, :1] = v
     H[0, 0] = alpha
 
     for j in range(0, r-1):
@@ -562,17 +754,17 @@ def construct_krylov(r, lu_A, B, approx_type='Pade', side='b'):
         H_hat = np.block([[H[:j+1, :j+1]],
                          [beta * evec(j)]])
 
-        if approx_type != 'partial_realisation':
-            w = sclalg.lu_solve(lu_A, v, trans=transpose_mode)
-        else:
+        if approx_type == 'partial_realisation':
             w = A.dot(v)
+        else:
+            w = sclalg.lu_solve(lu_A, v, trans=transpose_mode)
 
         h = V[:, :j+2].T.dot(w)
         f[:, j+1] = w - V[:, :j+2].dot(h)
 
         # Finite precision
         s = V[:, :j+2].T.dot(f[:, j+1])
-        f[:, j+1] = f[:, j+1] - V[:, :j+2].dot(s)  #Confusing line in Gugercin's thesis where it states f_{j=1}?
+        f[:, j+1] = f[:, j+1] - V[:, :j+2].dot(s)
         h += s
 
         h.shape = (j+2, 1)  # Enforce shape for concatenation
@@ -582,14 +774,18 @@ def construct_krylov(r, lu_A, B, approx_type='Pade', side='b'):
 
 def construct_mimo_krylov(r, lu_A_input, B, approx_type='Pade',side='controllability'):
 
-    m = B.shape[1] # Full system number of inputs
-    n = lu_A_input.shape[0]  # Full system number of states
+    if side=='controllability':
+        transpose_mode = 0
+    else:
+        transpose_mode = 1
 
-    deflation_tolerance = 1e-4  # Inexact deflation tolerance to approximate norm(V)=0 in machine precision
+    m = B.shape[1]  # Full system number of inputs/outputs
+    n = B.shape[0]  # Full system number of states
+
+    deflation_tolerance = 1e-7  # Inexact deflation tolerance to approximate norm(V)=0 in machine precision
 
     # Preallocated size may be too large in case columns are deflated
     last_column = 0
-
 
     # Pre-allocate w, V
     V = np.zeros((n, m * r), dtype=complex)
@@ -599,10 +795,16 @@ def construct_mimo_krylov(r, lu_A_input, B, approx_type='Pade',side='controllabi
         G = B
         F = lu_A_input
     else:
-        lu_a = sclalg.lu_factor(lu_A_input)
-        G = sclalg.lu_solve(lu_a, B)
+        # lu_a = sclalg.lu_factor(lu_A_input)
+        G = sclalg.lu_solve(lu_A_input, B, trans=transpose_mode)
 
     for k in range(m):
+        # if approx_type == 'partial_realisation':
+        #     G = B
+        #     F = lu_A_input
+        # else:
+        #     lu_a = sclalg.lu_factor(lu_A_input)
+        #     G = sclalg.lu_solve(lu_A_input, B, trans=transpose_mode)
         w[:, k] = G[:, k]
 
         ## Orthogonalise w_k to preceding w_j for j < k
@@ -616,18 +818,19 @@ def construct_mimo_krylov(r, lu_A_input, B, approx_type='Pade',side='controllabi
     mu_c = m  # Guess at controllability index with no deflation
     t = m   # worked column index
 
-    for k in range(1, r-1):
+    for k in range(1, r):
         for j in range(mu_c):
             if approx_type == 'partial_realisation':
                 w[:, t] = F.dot(w[:, t-mu])
             else:
-                w[:, t] = sclalg.lu_solve(lu_a, w[:, t-mu])
+                w[:, t] = sclalg.lu_solve(lu_A_input, w[:, t-mu], trans=transpose_mode)
 
-            # Orthogonalise w[:,t] against V_i - - DOUBTS AS TO HOW THIS IS DONE
+            # Orthogonalise w[:,t] against V_i -
             w[:, :t+1] = mgs_ortho(w[:, :t+1])[:, :t+1]
 
             if np.linalg.norm(w[:, t]) < deflation_tolerance:
                 # Deflate w_k
+                print('Vector deflated')
                 w = [w[:, 0:t], w[:, t+1:]]  # TODO Figure if there is a better way to slice this
                 last_column -= 1
                 mu -= 1
@@ -658,198 +861,6 @@ def evec(j):
     e = np.zeros(j+1)
     e[j] = 1
     return e
-
-
-    # def compare_frequency_response(self, wv, return_error=False, plot_figures=False):
-    # Ported over to own function
-    #     """
-    #     Computes the frequency response of the full and reduced models up to the Nyquist frequency
-    #
-    #     Returns:
-    #
-    #     """
-        # if self.data is not None:
-        #     Uinf0 = self.data.aero.timestep_info[0].u_ext[0][0, 0, 0]
-        #     c_ref = self.data.aero.timestep_info[0].zeta[0][0, -1, 0] - self.data.aero.timestep_info[0].zeta[0][0, 0, 0]
-        #     ds = 2. / self.data.aero.aero_dimensions[0][0]  # Spatial discretisation
-        #     fs = 1. / ds
-        #     fn = fs / 2.
-        #     ks = 2. * np.pi * fs
-        #     kn = 2. * np.pi * fn  # Nyquist frequency
-        #     Nk = 151  # Number of frequencies to evaluate
-        #     kv = np.linspace(1e-3, kn, Nk)  # Reduced frequency range
-        #     wv = 2. * Uinf0 / c_ref * kv  # Angular frequency range
-        # else:
-        #     kv = wv
-        #     c_ref = 2
-        #     Uinf0 = 1
-        #
-        # frequency = self.frequency
-        # # TODO to be modified for plotting purposes when using multi rational interpolation
-        # try:
-        #     nfreqs = frequency.shape[0]
-        # except AttributeError:
-        #     nfreqs = 1
-        #
-        # if frequency is None:
-        #     k_rom = np.inf
-        # else:
-        #     if self.ss.dt is not None:
-        #         ct_frequency = np.log(frequency)/self.ss.dt
-        #         k_rom = c_ref * ct_frequency * 0.5 / Uinf0
-        #     else:
-        #         k_rom = c_ref * frequency * 0.5 / Uinf0
-        #
-        # display_frequency = '$\sigma$ ='
-        # if nfreqs > 1:
-        #     display_frequency += ' ['
-        #     for i in range(nfreqs):
-        #         if type(k_rom[i]) == complex:
-        #             display_frequency += ' %.1f + %.1fj' % (k_rom[i].real, k_rom[i].imag)
-        #         else:
-        #             display_frequency += ' %.1f' % k_rom[i]
-        #         display_frequency += ','
-        #     display_frequency += ']'
-        # else:
-        #     if type(k_rom) == complex:
-        #         display_frequency += ', %.1f + %.1fj' % (k_rom.real, k_rom.imag)
-        #     else:
-        #         display_frequency += ', %.1f' % k_rom
-        #
-        # nstates = self.ss.states
-        # rstates = self.ssrom.states
-        #
-        # # Compute the frequency response
-        # Y_full_system = self.ss.freqresp(wv)
-        # Y_freq_rom = self.ssrom.freqresp(wv)
-        #
-        # rel_error = (Y_freq_rom[0, 0, :] - Y_full_system[0, 0, :]) / Y_full_system[0, 0, :]
-        #
-        #
-        # if plot_figures:
-        #     pass
-        #     # In the process of getting it away from here.
-
-
-            # phase_ss = np.angle((Y_full_system[0, 0, :])) # - (np.angle((Y_full_system[0, 0, :])) // np.pi) * 2 * np.pi
-            # phase_ssrom = np.angle((Y_freq_rom[0, 0, :])) #- (np.angle((Y_freq_rom[0, 0, :])) // np.pi) * 2 * np.pi
-            #
-            # ax[0].semilogx(kv, np.abs(Y_full_system[0, 0, :]),
-            #            lw=4,
-            #            alpha=0.5,
-            #            color='b',
-            #            label='UVLM - %g states' % nstates)
-            # ax[1].semilogx(kv, phase_ss, ls='-',
-            #            lw=4,
-            #            alpha=0.5,
-            #            color='b')
-            #
-            # ax[1].set_xlim(0, kv[-1])
-            # ax[0].grid()
-            # ax[1].grid()
-            # ax[0].semilogx(kv, np.abs(Y_freq_rom[0, 0, :]), ls='-.',
-            #            lw=1.5,
-            #            color='k',
-            #            label='ROM - %g states' % rstates)
-            # ax[1].semilogx(kv, phase_ssrom, ls='-.',
-            #            lw=1.5,
-            #            color='k')
-            #
-            # # axins0 = inset_axes(ax[0], 1, 1, loc=1)
-            # # axins0.semilogx(kv, np.abs(Y_full_system[0, 0, :]),
-            # #             lw=4,
-            # #             alpha=0.5,
-            # #             color='b')
-            # # axins0.semilogx(kv, np.abs(Y_freq_rom[0, 0, :]), ls='-.',
-            # #             lw=1.5,
-            # #             color='k')
-            # # axins0.set_xlim([0, 1])
-            # # axins0.set_ylim([0, 0.1])
-            # #
-            # # axins1 = inset_axes(ax[1], 1, 1.25, loc=1)
-            # # axins1.semilogx(kv, np.angle((Y_full_system[0, 0, :])), ls='-',
-            # #             lw=4,
-            # #             alpha=0.5,
-            # #             color='b')
-            # # axins1.semilogx(kv, np.angle((Y_freq_rom[0, 0, :])), ls='-.',
-            # #             lw=1.5,
-            # #             color='k')
-            # # axins1.set_xlim([0, 1])
-            # # axins1.set_ylim([-3.5, 3.5])
-            #
-            # ax[1].set_xlabel('Reduced Frequency, k')
-            # ax[1].set_ylim([-3.3, 3.3])
-            # ax[1].set_yticks(np.linspace(-np.pi, np.pi, 5))
-            # ax[1].set_yticklabels(['-$\pi$','-$\pi/2$', '0', '$\pi/2$', '$\pi$'])
-            # # ax.set_ylabel('Normalised Response')
-            # freqresp_title = 'ROM - %s, r = %g, %s' % (self.algorithm, rstates, display_frequency)
-            # ax[0].set_title(freqresp_title)
-            # ax[0].legend()
-            #
-            #
-            #
-            # # Plot interpolation regions
-            # if nfreqs > 1:
-            #     for i in range(nfreqs):
-            #         if k_rom[i] != 0 and k_rom[i] != np.inf:
-            #             index_of_frequency = np.argwhere(kv >= k_rom[i])[0]
-            #             ax[0].plot(k_rom[i],
-            #                        np.max(np.abs(Y_full_system[0, 0, index_of_frequency])),
-            #                        lw=1,
-            #                        marker='o',
-            #                        color='r')
-            #             ax[1].plot(k_rom[i],
-            #                        np.max(np.angle(Y_full_system[0, 0, index_of_frequency])),
-            #                        lw=1,
-            #                        marker='o',
-            #                        color='r')
-            # else:
-            #     if k_rom != 0 and k_rom != np.inf:
-            #         index_of_frequency = np.argwhere(kv >= k_rom)[0]
-            #         ax[0].plot(k_rom,
-            #                    np.max(np.abs(Y_full_system[0, 0, index_of_frequency])),
-            #                    lw=1,
-            #                    marker='o',
-            #                    color='r')
-            #         ax[1].plot(k_rom,
-            #                    np.max(np.angle(Y_full_system[0, 0, index_of_frequency])),
-            #                    lw=1,
-            #                    marker='o',
-            #                    color='r')
-            # fig.show()
-            # # fig.savefig('./figs/theo_rolled/Freq_resp%s.eps' % freqresp_title)
-            # # fig.savefig('./figs/theo_rolled/Freq_resp%s.png' % freqresp_title)
-            #
-            # # Relative error
-            # fig, ax = plt.subplots()
-            #
-            # real_rel_error = np.abs(rel_error.real)
-            # imag_rel_error = np.abs(rel_error.imag)
-            #
-            # ax.loglog(kv, real_rel_error,
-            #             color='k',
-            #             lw=1.5,
-            #             label='Real')
-            #
-            # ax.loglog(kv, imag_rel_error,
-            #             ls='--',
-            #             color='k',
-            #             lw=1.5,
-            #             label='Imag')
-            #
-            # errresp_title = 'ROM - %s, r = %g, %s' % (self.algorithm, rstates, display_frequency)
-            # ax.set_title(errresp_title)
-            # ax.set_xlabel('Reduced Frequency, k')
-            # ax.set_ylabel('Relative Error')
-            # ax.set_ylim([1e-5, 1])
-            # ax.legend()
-            # fig.show()
-            #
-            # # fig.savefig('./figs/theo_rolled/Err_resp%s.eps' % errresp_title)
-            # # fig.savefig('./figs/theo_rolled/Err_resp%s.png' % errresp_title)
-        #
-        # if return_error:
-        #     return kv, rel_error
 
 if __name__ == "__main__":
     pass

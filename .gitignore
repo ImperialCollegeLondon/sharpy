@@ -135,3 +135,5 @@ tests/linear/uvlm/res/*
 cases/linear/coupled/figs/*
 cases/linear/coupled/res/*
 
+
+tests/linear/rom/figs/

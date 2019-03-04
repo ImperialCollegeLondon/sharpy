@@ -131,10 +131,10 @@ import cases.templates.flying_wings as flying_wings
 # ------------------------------------------------------------------------------
 
 # Define Parametrisation
-M = 32
-N, Mstar_fact = 12, 40
-# M = 8
-# N, Mstar_fact = 12, 10
+# M = 32
+# N, Mstar_fact = 12, 40
+M = 8
+N, Mstar_fact = 12, 10
 
 integr_order = 2
 RemovePred = True
@@ -434,6 +434,7 @@ rom = ReducedOrderModel()
 rom.initialise(data0, SStot)
 # r = np.array([5, 6], dtype=int)
 frequency_continuous_k = np.array([0.1j, 0.3j, 0.6j])
+# frequency_continuous_k = np.array([0.3j])
 frequency_continuous_w = 2 * Uinf0 * frequency_continuous_k / ws.c_ref
 # frequency_rom = np.array([1.9, 2.5])
 # frequency_rom = 1.05
@@ -464,7 +465,8 @@ plot_settings = {'frequency_type': 'k',
                  'plot_type': 'bode'}
 
 frequency_response_plot.initialise(data0,SStot, rom, plot_settings)
-frequency_response_plot.plot_frequency_response(kv, Yfreq_dummy_all, rom.ssrom.freqresp(wv), frequency_continuous_k)
+# frequency_response_plot.plot_frequency_response(kv, Yfreq_dummy_all, rom.ssrom.freqresp(wv), frequency_continuous_k)
+frequency_response_plot.plot_frequency_response(kv, Yfreq_dummy_all,rom.ssrom.freqresp(wv), frequency_continuous_k)
 # frequency_response_plot.save_figure('./figs/theo_rolled/DRA_01_06_r3.png')
 # Y_freq_rom = rom.ssrom.freqresp(wv)
 

@@ -61,7 +61,8 @@ class FrequencyResponseComparison(object):
             fig, ax = plt.subplots(nrows=2, sharex=True)
 
             phase_ss = np.angle((Y_freq_ss[0, 0, :]))  # - (np.angle((Y_full_system[0, 0, :])) // np.pi) * 2 * np.pi
-            phase_ssrom = np.angle((Y_freq_rom[0, 0, :]))  #- (np.angle((Y_freq_rom[0, 0, :])) // np.pi) * 2 * np.pi
+            if Y_freq_rom is not None:
+                phase_ssrom = np.angle((Y_freq_rom[0, 0, :]))  #- (np.angle((Y_freq_rom[0, 0, :])) // np.pi) * 2 * np.pi
 
             ax[0].semilogx(kv, np.abs(Y_freq_ss[0, 0, :]),
                            lw=4,
@@ -73,13 +74,14 @@ class FrequencyResponseComparison(object):
                            alpha=0.5,
                            color='b')
 
-            ax[0].semilogx(kv, np.abs(Y_freq_rom[0, 0, :]), ls='-.',
-                           lw=1.5,
-                           color='k',
-                           label='ROM - %g states' % rstates)
-            ax[1].semilogx(kv, phase_ssrom, ls='-.',
-                           lw=1.5,
-                           color='k')
+            if Y_freq_rom is not None:
+                ax[0].semilogx(kv, np.abs(Y_freq_rom[0, 0, :]), ls='-.',
+                               lw=1.5,
+                               color='k',
+                               label='ROM - %g states' % rstates)
+                ax[1].semilogx(kv, phase_ssrom, ls='-.',
+                               lw=1.5,
+                               color='k')
 
             ax[1].set_xlim(0, kv[-1])
 
@@ -166,22 +168,22 @@ class FrequencyResponseComparison(object):
 
             for i in range(nu):
                 for j in range(ny):
-                    ax[i, j].plot(kv, Y_freq_ss[i, j, :].real,
+                    ax[i, j].semilogx(kv, Y_freq_ss[i, j, :].real,
                                   lw=4,
                                   alpha=0.5,
                                   color='b',
                                   label='Real - %g states' % nstates)
-                    ax[i, j].plot(kv, Y_freq_ss[i, j, :].imag,
+                    ax[i, j].semilogx(kv, Y_freq_ss[i, j, :].imag,
                                   lw=4,
                                   alpha=0.5,
                                   color='b',
                                   ls='-.',
                                   label='Imag - %g states' % nstates)
-                    ax[i, j].plot(kv, Y_freq_ss[i, j, :].real, ls='-',
+                    ax[i, j].semilogx(kv, Y_freq_rom[i, j, :].real, ls='-',
                                   lw=1.5,
                                   color='k',
                                   label='Real - %g states' % rstates)
-                    ax[i, j].plot(kv, Y_freq_rom[i, j, :].imag, ls='-.',
+                    ax[i, j].semilogx(kv, Y_freq_rom[i, j, :].imag, ls='-.',
                                   lw=1.5,
                                   color='k',
                                   label='Imag - %g states' % rstates)

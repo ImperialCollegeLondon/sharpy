@@ -441,35 +441,43 @@ rom = ReducedOrderModel()
 rom.initialise(data0, SStot)
 # r = np.array([5, 6], dtype=int)
 # frequency_continuous_k = np.array([0.1j, 0.3j, 0.6j])
-frequency_continuous_k = np.array([np.inf])
+frequency_continuous_k = np.array([0, 1j])
 frequency_continuous_w = 2 * Uinf0 * frequency_continuous_k / ws.c_ref
 # frequency_rom = np.array([1.9, 2.5])
 # frequency_rom = 1.05
 
 frequency_rom = np.exp(frequency_continuous_w * SStot.dt)
 # frequency_rom = np.array([1.01, 1.1, 1.2])
-r = 4
+r = 5
 
 # algorithm = 'arnoldi'
 # algorithm = 'two_sided_arnoldi'
 # algorithm = 'dual_rational_arnoldi'
 algorithm = 'mimo_rational_arnoldi'
-rom.run(algorithm, r, frequency_rom)
+# right_vector = np.eye(2)
+right_vector = np.block([[1, 1], [0, 0]])
+# right_vector.shape = (2, 1)
+left_vector = np.block([[1, 1], [0, 0]])
+# left_vector.shape = (2, 1)
+rom.restart_arnoldi = True
+rom.run(algorithm, r, frequency_rom, right_vector, left_vector)
 
 Y_freq_rom = rom.ssrom.freqresp(wv)
 
-# wvfig, ax = plt.subplots(nrows=2, ncols=2)
-#
-# for i in range(2):
-#     for j in range(2):
-#         ax[i, j].plot(kv, Yfreq_dummy_all[i, j, :].real*Uinf0)
-#         ax[i, j].plot(kv, Yfreq_dummy_all[i, j, :].imag*Uinf0)
-#         ax[i, j].plot(kv, Y_freq_rom[i, j, :].real*Uinf0, ls='--')
-#         ax[i, j].plot(kv, Y_freq_rom[i, j, :].imag*Uinf0, ls='--')
-#         # ax[i, j].set_xlim([0,1])
-#
-# fig.show()
-#
+fig, ax = plt.subplots(nrows=2, ncols=2)
+
+for i in range(2):
+    for j in range(2):
+        # ax[i, j].plot(kv, Yfreq_dummy_all[i, j, :].real*Uinf0)
+        ax[i, j].plot(kv, Yfreq_dummy_all[i, j, :].real - Y_freq_rom[i, j, :].real)
+        ax[i, j].plot(kv, Yfreq_dummy_all[i, j, :].imag - Y_freq_rom[i, j, :].imag)
+        # ax[i, j].plot(kv, Yfreq_dummy_all[i, j, :].imag*Uinf0)
+        # ax[i, j].plot(kv, Y_freq_rom[i, j, :].real*Uinf0, ls='--')
+        # ax[i, j].plot(kv, Y_freq_rom[i, j, :].imag*Uinf0, ls='--')
+        # ax[i, j].set_xlim([0,1])
+
+fig.show()
+
 # if frequency_rom is None:  # for plotting purposes
 #     k_rom = np.inf
 # else:
@@ -479,13 +487,13 @@ Y_freq_rom = rom.ssrom.freqresp(wv)
 # # rom.compare_frequency_response(wv, plot_figures=False)
 #
 frequency_response_plot = freqplot.FrequencyResponseComparison()
-#
+# #
 plot_settings = {'frequency_type': 'k',
                  'plot_type': 'real_and_imaginary'}
-#
+# #
 frequency_response_plot.initialise(data0,SStot, rom, plot_settings)
-frequency_response_plot.plot_frequency_response(kv, Yfreq_dummy_all, rom.ssrom.freqresp(wv), frequency_continuous_k)
-frequency_response_plot.save_figure('./figs/theo_rolled/MIMO_inf_01_06_r3.png')
+frequency_response_plot.plot_frequency_response(kv, Yfreq_dummy_all, Y_freq_rom, frequency_continuous_k)
+# frequency_response_plot.save_figure('./figs/theo_rolled/MIMO_inf_01_06_r3.png')
 # Y_freq_rom = rom.ssrom.freqresp(wv)
 
 # Plotting

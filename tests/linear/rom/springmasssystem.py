@@ -12,6 +12,7 @@ import sharpy.rom.reducedordermodel as ROM
 import sharpy.rom.frequencyresponseplot as freq_plots
 
 N = 5
+system_type = 'SISO'
 
 k_db = np.linspace(1, 10, N)
 m_db = np.logspace(2, 0, N)
@@ -36,13 +37,19 @@ C[-1, -2:] = [-C_db[-1], C_db[-1]]
 
 # Continuous time SISO
 # Input Rn
-b = np.zeros((2*N, ))
-b[-1] = 1
-
-# Output rn
-c = np.zeros((1, 2*N))
-c[0, N-1] = 1
-d = np.zeros((1))
+if system_type == 'MIMO':
+    b = np.zeros((2*N, N))
+    b[N:, :] = np.eye(N)
+    # Output rn
+    c = np.zeros((N, 2*N))
+    c[:, :N] = np.eye(N)
+    d = np.zeros((N, N))
+else:
+    b = np.zeros((2*N,))
+    b[-1] = 1.
+    c = np.zeros((1, 2*N))
+    c[0, N-1] = 1
+    d = np.zeros(1)
 
 # Plant matrix
 Minv = np.linalg.inv(m)
@@ -62,18 +69,19 @@ Adt, Bdt, Cdt, Ddt = lingebm.newmark_ss(Minv, C, k, dt=dt, num_damp=0)
 
 system_DT = libss.ss(Adt, Bdt, Cdt, Ddt, dt=dt)
 
-# SISO Gains
-b_dt = np.zeros((N))
-b_dt[-1] = 1
-system_DT.addGain(b_dt, 'in')
+# SISO Gains for DT system
+if system_type == 'SISO':
+    b_dt = np.zeros((N))
+    b_dt[-1] = 1
+    system_DT.addGain(b_dt, 'in')
 
-system_DT.addGain(c, where='out')
+    system_DT.addGain(c, where='out')
 
 evals_DT = np.linalg.eigvals(system_DT.A)
 
 evals_dt_conv = np.log(evals_DT) / dt
 #
-# plt.scatter(evals_ss.real, evals_ss.imag, marker='s')
+plt.scatter(evals_ss.real, evals_ss.imag, marker='s')
 # plt.scatter(evals_dt_conv.real, evals_dt_conv.imag, marker='^')
 # plt.show()
 
@@ -99,18 +107,21 @@ algorithm = 'dual_rational_arnoldi'
 # algorithm = 'arnoldi'
 r = 1
 # frequency = np.array([1.0, 1.005j])
-# frequency = np.array([2.2, 1.])
+# frequency = np.array([np.inf])
 frequency = np.array([0.7j, 1.0j])
 z_interpolation = np.exp(frequency*dt)
 
 rom.run(algorithm,r, frequency=z_interpolation)
-
-rom.compare_frequency_response(wv, plot_figures=False)
 
 plot_freq = freq_plots.FrequencyResponseComparison()
 plot_settings = {'frequency_type': 'w',
                  'plot_type': 'bode'}
 
 plot_freq.initialise(None, system_DT, rom, plot_settings)
-plot_freq.plot_frequency_response(wv, freqresp, rom.ssrom.freqresp(wv), frequency)
+if system_type == 'MIMO':
+    plot_freq.plot_frequency_response(wv, freqresp[:3, :3, :], rom.ssrom.freqresp(wv)[:3, :3, :], frequency)
+else:
+    plot_freq.plot_frequency_response(wv, freqresp, rom.ssrom.freqresp(wv), frequency)
+
+# plot_freq.plot_frequency_response(wv, freqresp[4:, 4:, :], rom.ssrom.freqresp(wv), frequency)
 # plot_freq.save_figure('DT_07_1_r2.png')
