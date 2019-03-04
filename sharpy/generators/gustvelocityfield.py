@@ -97,6 +97,7 @@ class GustVelocityField(generator_interface.BaseGenerator):
         self.implemented_gusts.append('1-cos')
         self.implemented_gusts.append('DARPA')
         self.implemented_gusts.append('continuous_sin')
+        self.implemented_gusts.append('lateral 1-cos')
 
         self.settings = dict()
 
@@ -144,6 +145,14 @@ class GustVelocityField(generator_interface.BaseGenerator):
                     return vel
 
                 vel[2] = 0.5 * gust_intensity * np.sin(2 * np.pi * x / gust_length)
+                return vel
+        elif self.settings['gust_shape'] == 'lateral 1-cos':
+            def gust_shape(x, y, z, gust_length, gust_intensity, span=0):
+                vel = np.zeros((3,))
+                if x > 0.0 or x < -gust_length:
+                    return vel
+
+                vel[1] = (1.0 - np.cos(2.0*np.pi*x/gust_length))*gust_intensity*0.5
                 return vel
 
         for i_surf in range(len(zeta)):
