@@ -16,6 +16,7 @@ import os
 import sharpy.utils.algebra as algebra
 import sharpy.utils.h5utils as h5
 
+
 deg2rad = np.pi/180.
 
 ######################################################################
@@ -500,6 +501,7 @@ def rotor_from_OpenFAST_db(chord_panels,
                                   excel_sheet_aero_blade = 'aero_blade',
                                   excel_sheet_airfoil_coord = 'airfoil_coord',
                                   m_distribution = 'uniform',
+                                  h5_cross_sec_prop = None,
                                   n_points_camber = 100,
                                   tol_remove_points = 1e-3):
 
@@ -517,12 +519,22 @@ def rotor_from_OpenFAST_db(chord_panels,
           excel_sheet_aero_blade (str):
           excel_sheet_airfoil_coord (str):
           excel_sheet_parameters (str):
+          h5_cross_sec_prop (str): h5 containing mass and stiffness matrices along the blade.
           m_distribution (str):
           n_points_camber (int): number of points to define the camber of the airfoil,
           tol_remove_points (float): maximum distance to remove adjacent points
 
     Returns:
         rotor (sharpy.utils.generate_cases.AeroelasticInfromation): Aeroelastic infrmation of the rotor
+
+    Note:
+        - h5_cross_sec_prop is a path to a h5 containing the following groups:
+            - str_prop: with:
+                - K: list of 6x6 stiffness matrices
+                - M: list of 6x6 mass matrices
+                - radius: radial location (including hub) of K and M matrices
+        - when h5_cross_sec_prop is not None, mass and stiffness properties are
+        interpolated at BlFract location specified in "excel_sheet_structural_blade"
     """
     ######################################################################
     ## BLADE
@@ -533,6 +545,7 @@ def rotor_from_OpenFAST_db(chord_panels,
     ######################################################################
     ### STRUCTURE
     ######################################################################
+
     # Read blade structural information from excel file
     BlFract = gc.read_column_sheet_type01(excel_file_name, excel_sheet_structural_blade, 'BlFract')
     PitchAxis = gc.read_column_sheet_type01(excel_file_name, excel_sheet_structural_blade, 'PitchAxis')
@@ -626,36 +639,48 @@ def rotor_from_OpenFAST_db(chord_panels,
     # node_structural_twist = -1.0*np.interp(node_r,Radius,StrcTwst)
     node_structural_twist = -1.0*np.interp(node_r,excel_aero_r,BlTwist)
     node_pitch_axis = np.interp(node_r,Radius,PitchAxis)
-    # Stiffness
-    elem_EA = np.interp(elem_r,Radius,EAStff)
-    elem_EIy = np.interp(elem_r,Radius,FlpStff)
-    elem_EIz = np.interp(elem_r,Radius,EdgStff)
-    elem_GJ = np.interp(elem_r,Radius,GJStff)
-    # Stiffness: estimate unknown properties
-    print('WARNING: The poisson cofficient is supossed equal to 0.3')
-    print('WARNING: Cross-section area is used as shear area')
-    poisson_coef = 0.3
-    elem_GAy = elem_EA/2.0/(1.0+poisson_coef)
-    elem_GAz = elem_EA/2.0/(1.0+poisson_coef)
-    # Inertia
-    # TODO: check yz axis and Flap-edge
-    elem_pos_cg_B = np.zeros((blade.StructuralInformation.num_elem,3),)
-    elem_pos_cg_B[:,2]=np.interp(elem_r,Radius,FlpcgOf)
-    elem_pos_cg_B[:,1]=np.interp(elem_r,Radius,EdgcgOf)
-
-    elem_mass_per_unit_length = np.interp(elem_r,Radius,BMassDen)
-    elem_mass_iner_y = np.interp(elem_r,Radius,FlpIner)
-    elem_mass_iner_z = np.interp(elem_r,Radius,EdgIner)
-
-    # Inertia: estimate unknown properties
-    print('WARNING: Using perpendicular axis theorem to compute the inertia around xB')
-    elem_mass_iner_x = elem_mass_iner_y + elem_mass_iner_z
-
-    # Generate blade structural properties
-    blade.StructuralInformation.create_mass_db_from_vector(elem_mass_per_unit_length, elem_mass_iner_x, elem_mass_iner_y, elem_mass_iner_z, elem_pos_cg_B)
-    blade.StructuralInformation.create_stiff_db_from_vector(elem_EA, elem_GAy, elem_GAz, elem_GJ, elem_EIy, elem_EIz)
 
     coordinates = create_blade_coordinates(blade.StructuralInformation.num_node, node_r, node_prebending, node_presweept)
+
+
+    if h5_cross_sec_prop is None:
+        # Stiffness
+        elem_EA = np.interp(elem_r,Radius,EAStff)
+        elem_EIy = np.interp(elem_r,Radius,FlpStff)
+        elem_EIz = np.interp(elem_r,Radius,EdgStff)
+        elem_GJ = np.interp(elem_r,Radius,GJStff)
+        # Stiffness: estimate unknown properties
+        print('WARNING: The poisson cofficient is supossed equal to 0.3')
+        print('WARNING: Cross-section area is used as shear area')
+        poisson_coef = 0.3
+        elem_GAy = elem_EA/2.0/(1.0+poisson_coef)
+        elem_GAz = elem_EA/2.0/(1.0+poisson_coef)
+        # Inertia
+        # TODO: check yz axis and Flap-edge
+        elem_pos_cg_B = np.zeros((blade.StructuralInformation.num_elem,3),)
+        elem_pos_cg_B[:,2]=np.interp(elem_r,Radius,FlpcgOf)
+        elem_pos_cg_B[:,1]=np.interp(elem_r,Radius,EdgcgOf)
+
+        elem_mass_per_unit_length = np.interp(elem_r,Radius,BMassDen)
+        elem_mass_iner_y = np.interp(elem_r,Radius,FlpIner)
+        elem_mass_iner_z = np.interp(elem_r,Radius,EdgIner)
+
+        # Inertia: estimate unknown properties
+        print('WARNING: Using perpendicular axis theorem to compute the inertia around xB')
+        elem_mass_iner_x = elem_mass_iner_y + elem_mass_iner_z
+
+        # Generate blade structural properties
+        blade.StructuralInformation.create_mass_db_from_vector(elem_mass_per_unit_length, elem_mass_iner_x, elem_mass_iner_y, elem_mass_iner_z, elem_pos_cg_B)
+        blade.StructuralInformation.create_stiff_db_from_vector(elem_EA, elem_GAy, elem_GAz, elem_GJ, elem_EIy, elem_EIz)
+    
+    else: # read Mass/Stiffness from database
+        cross_prop=h5.readh5(h5_cross_sec_prop).str_prop
+
+        # create mass_db/stiffness_db (interpolate at mid-node of each element)
+        blade.StructuralInformation.mass_db = scint.interp1d(
+                    cross_prop.radius, cross_prop.M, kind='cubic', copy=False, assume_sorted=True, axis=0)(node_r[1::2])
+        blade.StructuralInformation.stiffness_db = scint.interp1d(
+                    cross_prop.radius, cross_prop.K, kind='cubic', copy=False, assume_sorted=True, axis=0)(node_r[1::2])
 
     blade.StructuralInformation.generate_1to1_from_vectors(
             num_node_elem = blade.StructuralInformation.num_node_elem,
