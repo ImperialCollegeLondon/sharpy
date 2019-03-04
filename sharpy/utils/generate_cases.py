@@ -471,7 +471,8 @@ class StructuralInformation():
                                    vec_mass_iner_x,
                                    vec_mass_iner_y,
                                    vec_mass_iner_z,
-                                   vec_pos_cg_B):
+                                   vec_pos_cg_B,
+                                   vec_mass_iner_yz = None):
 
         """
         create_mass_db_from_vector
@@ -482,9 +483,13 @@ class StructuralInformation():
         	vec_mass_per_unit_length (np.array): masses per unit length
             vec_mass_iner_x (np.array): inertias around the x axis
             vec_mass_iner_y (np.array): inertias around the y axis
-            vec_mass_iner_z (np.array): inertias around thez axis
+            vec_mass_iner_z (np.array): inertias around the z axis
             vec_pos_cg_B (np.array): position of the masses
+            vec_mass_iner_yz (np.array): inertias around the yz axis
         """
+
+        if vec_mass_iner_yz is None:
+            vec_mass_iner_yz = np.zeros_like(vec_mass_per_unit_length)
 
         self.mass_db = np.zeros((len(vec_mass_per_unit_length), 6, 6), dtype=float)
         mass = np.zeros((6, 6),)
@@ -495,7 +500,8 @@ class StructuralInformation():
             mass[3:6, 3:6] = np.diag([vec_mass_iner_x[i],
                                       vec_mass_iner_y[i],
                                       vec_mass_iner_z[i]])
-
+            mass[4, 5] = vec_mass_iner_yz[i]
+            mass[5, 4] = vec_mass_iner_yz[i]
             self.mass_db[i] = mass
 
     def create_stiff_db_from_vector(self,
@@ -504,7 +510,8 @@ class StructuralInformation():
                                     vec_GAz,
                                     vec_GJ,
                                     vec_EIy,
-                                    vec_EIz):
+                                    vec_EIz,
+                                    vec_EIyz = None):
         """
         create_stiff_db_from_vector
 
@@ -517,7 +524,11 @@ class StructuralInformation():
             vec_GJ (np.array): Torsional stiffness
             vec_EIy (np.array): Bending stiffness in the y direction
             vec_EIz (np.array): Bending stiffness in the z direction
+            vec_EIyz (np.array): Bending stiffness in the yz direction
         """
+
+        if vec_EIyz is None:
+            vec_EIyz = np.zeros_like(vec_EA)
 
         self.stiffness_db = np.zeros((len(vec_EA), 6, 6),)
         for i in range(len(vec_EA)):
@@ -527,6 +538,8 @@ class StructuralInformation():
                                             vec_GJ[i],
                                             vec_EIy[i],
                                             vec_EIz[i]])
+            self.stiffness_db[i][4, 5] = vec_EIyz[i]
+            self.stiffness_db[i][5, 4] = vec_EIyz[i]
 
     def create_simple_connectivities(self):
         """
@@ -1098,13 +1111,51 @@ class AerodynamicInformation():
             # camber_x, camber_y = get_airfoil_camber(x,y)
 
             iairfoil=0
-            while(r[inode]<r_pure_airfoils[iairfoil]):
+            while(r[inode]>r_pure_airfoils[iairfoil]):
                 iairfoil+=1
                 if(iairfoil==len(r_pure_airfoils)):
                     iairfoil-=1
                     break
 
+            # print("interpolating between: ", iairfoil-1, "and", iairfoil)
             beta=min((r[inode]-r_pure_airfoils[iairfoil-1])/(r_pure_airfoils[iairfoil]-r_pure_airfoils[iairfoil-1]),1.0)
+            beta=max(0.0,beta)
+
+            airfoils_camber[inode,:,0]=(1-beta)*pure_airfoils_camber[iairfoil-1,:,0]+beta*pure_airfoils_camber[iairfoil,:,0]
+            airfoils_camber[inode,:,1]=(1-beta)*pure_airfoils_camber[iairfoil-1,:,1]+beta*pure_airfoils_camber[iairfoil,:,1]
+
+        return airfoils_camber
+
+    def interpolate_airfoils_camber_thickness(self, pure_airfoils_camber, thickness_pure_airfoils, blade_thickness, n_points_camber):
+        """
+        interpolate_airfoils_camber_thickness
+
+        Create the camber of the airfoil at each node position from the camber of the
+        pure airfoils present in the blade based on the thickness
+
+        Args:
+            pure_airfoils_camber (np.array): xy coordinates of the camber lines of the pure airfoils
+            thicknesss_pure_airfoils (np.array): thickness of the pure airfoils
+            blade_thickness (np.array): thickness of the blade positions
+
+        Returns:
+        	airfoils_camber (np.array): camber lines at the new radial positions
+
+        """
+        num_node = len(blade_thickness)
+        airfoils_camber = np.zeros((num_node, n_points_camber, 2),)
+
+        for inode in range(num_node):
+            # camber_x, camber_y = get_airfoil_camber(x,y)
+
+            iairfoil=0
+            while(blade_thickness[inode]<thickness_pure_airfoils[iairfoil]):
+                iairfoil+=1
+                if(iairfoil==len(thickness_pure_airfoils)):
+                    iairfoil-=1
+                    break
+
+            beta=min((blade_thickness[inode]-thickness_pure_airfoils[iairfoil-1])/(thickness_pure_airfoils[iairfoil]-thickness_pure_airfoils[iairfoil-1]),1.0)
             beta=max(0.0,beta)
 
             airfoils_camber[inode,:,0]=(1-beta)*pure_airfoils_camber[iairfoil-1,:,0]+beta*pure_airfoils_camber[iairfoil,:,0]
