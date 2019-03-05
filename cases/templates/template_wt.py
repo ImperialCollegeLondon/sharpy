@@ -1207,9 +1207,11 @@ def rotor_from_excel_type02(chord_panels,
 
         # create mass_db/stiffness_db (interpolate at mid-node of each element)
         blade.StructuralInformation.mass_db = scint.interp1d(
-                    cross_prop.radius, cross_prop.M, kind='cubic', copy=False, assume_sorted=True, axis=0)(node_r[1::2])
+                    cross_prop.radius, cross_prop.M, kind='cubic', copy=False, assume_sorted=True, axis=0, 
+                                                    bounds_error = False, fill_value='extrapolate')(node_r[1::2])
         blade.StructuralInformation.stiffness_db = scint.interp1d(
-                    cross_prop.radius, cross_prop.K, kind='cubic', copy=False, assume_sorted=True, axis=0)(node_r[1::2])
+                    cross_prop.radius, cross_prop.K, kind='cubic', copy=False, assume_sorted=True, axis=0, 
+                                                    bounds_error = False, fill_value='extrapolate')(node_r[1::2])
 
     blade.StructuralInformation.generate_1to1_from_vectors(
             num_node_elem = blade.StructuralInformation.num_node_elem,
