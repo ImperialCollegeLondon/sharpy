@@ -545,6 +545,8 @@ class Dynamic(Static):
         self.remove_predictor = RemovePredictor
         # Stores original B matrix for state recovery later
         self.B_predictor = None
+        self.D_predictor = None
+
         self.include_added_mass = True
         self.use_sparse=UseSparse
 
@@ -581,11 +583,17 @@ class Dynamic(Static):
 
         self.SS.B[:,:3*Kzeta] *= (self.ScalingFacts['length']/self.ScalingFacts['circulation'])
         self.SS.B[:,3*Kzeta:] *= (self.ScalingFacts['speed']/self.ScalingFacts['circulation'])
+        if self.remove_predictor:
+            self.B_predictor[:,:3*Kzeta] *= (self.ScalingFacts['length']/self.ScalingFacts['circulation'])
+            self.B_predictor[:,3*Kzeta:] *= (self.ScalingFacts['speed']/self.ScalingFacts['circulation'])            
 
         self.SS.C *= (self.ScalingFacts['circulation']/self.ScalingFacts['force'])
 
         self.SS.D[:,:3*Kzeta] *= (self.ScalingFacts['length']/self.ScalingFacts['force'])
         self.SS.D[:,3*Kzeta:] *= (self.ScalingFacts['speed']/self.ScalingFacts['force'])
+        if self.remove_predictor:
+            self.D_predictor[:,:3*Kzeta] *= (self.ScalingFacts['length']/self.ScalingFacts['force'])
+            self.D_predictor[:,3*Kzeta:] *= (self.ScalingFacts['speed']/self.ScalingFacts['force'])            
 
         self.SS.dt = self.SS.dt / self.ScalingFacts['time']
 
@@ -599,11 +607,17 @@ class Dynamic(Static):
 
         self.SS.B[:,:3*Kzeta] /= (self.ScalingFacts['length']/self.ScalingFacts['circulation'])
         self.SS.B[:,3*Kzeta:] /= (self.ScalingFacts['speed']/self.ScalingFacts['circulation'])
+        if self.remove_predictor:
+            self.B_predictor[:,:3*Kzeta] /= (self.ScalingFacts['length']/self.ScalingFacts['circulation'])
+            self.B_predictor[:,3*Kzeta:] /= (self.ScalingFacts['speed']/self.ScalingFacts['circulation']) 
 
         self.SS.C /= (self.ScalingFacts['circulation']/self.ScalingFacts['force'])
 
         self.SS.D[:,:3*Kzeta] /= (self.ScalingFacts['length']/self.ScalingFacts['force'])
         self.SS.D[:,3*Kzeta:] /= (self.ScalingFacts['speed']/self.ScalingFacts['force'])
+        if self.remove_predictor:
+            self.D_predictor[:,:3*Kzeta] /= (self.ScalingFacts['length']/self.ScalingFacts['force'])
+            self.D_predictor[:,3*Kzeta:] /= (self.ScalingFacts['speed']/self.ScalingFacts['force']) 
 
         self.SS.dt = self.SS.dt * self.ScalingFacts['time']
 
@@ -835,6 +849,7 @@ class Dynamic(Static):
 
             # Store original B matrix for state unpacking
             self.B_predictor = Bss
+            self.D_predictor = Dss
 
             print('state-space model produced in form:\n\t' \
                   'h_{n+1} = A h_{n} + B u_{n}\n\t' \
@@ -858,16 +873,22 @@ class Dynamic(Static):
         The algorithm implemented here can be used also upon projection of
         the state-space model. 
 
-        Warning: only implemented for self.remove_predictor = False !
-
         Note:
         This method is very similar to the "minsize" solution option is the 
         steady_solve.
         '''
 
-        assert self.remove_predictor is False,\
-            'Fast frequency response not implemented for remove_predictor - %s'\
-                                                          %self.remove_predictor
+        if self.remove_predictor:
+
+            # raise NameError('Option "remove_predictor=True" not implemented yet. '+
+            #     'Refer to Frequency class implementation.')
+
+            assert self.B_predictor.shape == self.SS.B.shape, \
+            ('In order to use "freqresp" with "remove_predictor=True", project '+
+             '"self.B_predictor" as per "self.SS.B"!')
+            assert self.D_predictor.shape == self.SS.D.shape, \
+            ('In order to use "freqresp" with "remove_predictor=True", project '+
+             '"self.D_predictor" as per "self.SS.D"!')
 
         MS = self.MS
         K = self.K
@@ -891,57 +912,37 @@ class Dynamic(Static):
         zv=np.cos(kvdt)+1.j*np.sin(kvdt)
         Yfreq=np.empty((self.SS.outputs,self.SS.inputs,Nk,),dtype=np.complex_)
 
+        for kk in range(Nk):
 
-        if self.remove_predictor:
+            ###  build Cw complex
+            Cw_cpx=self.get_Cw_cpx(zv[kk])
 
-            for kk in range(Nk):
-
-                ###  build Cw complex
-                Cw_cpx=self.get_Cw_cpx(zv[kk])
-                Ygamma=libsp.solve( zv[kk]*Eye-P-
-                        libsp.dot(Pw, Cw_cpx, type_out=libsp.csc_matrix),
-                                libsp.csc_matrix(zv[kk]*self.B_predictor[:K,:]))
-                Ygamma_star=Cw_cpx.dot(Ygamma)
-
-                iivec=range(K+K_star,2*K+K_star)
-                Ydelta = self.SS.A[iivec,:K].dot(Ygamma) +\
-                         self.SS.A[iivec,K:K+K_star].dot(Ygamma_star) +\
-                         self.SS.B[iivec,:]
-
-                if self.integr_order==1:
-                    pass # all done
-                elif self.integr_order==2:
-                    Ygamma_old=(1./zv[kk])*Ygamma
-                    Ydelta+=self.SS.A[iivec,2*K+K_star:].dot(Ygamma_old)
-                else:
-                    raise NameError('Specify valid integration order') 
-                Ydelta/=zv[kk]                   
-
-                Yfreq[:,:,kk] = np.dot( self.SS.C[:,:K], Ygamma) +\
-                                np.dot( self.SS.C[:,K:K+K_star], Ygamma_star) +\
-                                np.dot( self.SS.C[:,K+K_star:2*K+K_star], Ydelta) +\
-                                self.SS.D
-
-        else:
-
-            for kk in range(Nk):
-
-                ###  build Cw complex
-                Cw_cpx=self.get_Cw_cpx(zv[kk])
-
+            if self.remove_predictor:
+                Ygamma=zv[kk]*\
+                        libsp.solve( zv[kk]*Eye-P-
+                            libsp.dot( Pw, Cw_cpx, type_out=libsp.csc_matrix), 
+                                       self.B_predictor[:K,:]) 
+            else:
                 Ygamma=libsp.solve( zv[kk]*Eye-P-
                             libsp.dot( Pw, Cw_cpx, type_out=libsp.csc_matrix), 
-                                       Bup)  
-                Ygamma_star=Cw_cpx.dot(Ygamma)
+                                       Bup)                
 
-                if self.integr_order==1:
-                    dfact=(1.-1./zv[kk])
-                elif self.integr_order==2:
-                    dfact=.5*( 3. -4./zv[kk] + 1./zv[kk]**2 )
-                else:
-                    raise NameError('Specify valid integration order')
+            Ygamma_star=Cw_cpx.dot(Ygamma)
 
-                # calculate solution
+            if self.integr_order==1:
+                dfact=(1.-1./zv[kk])
+            elif self.integr_order==2:
+                dfact=.5*( 3. -4./zv[kk] + 1./zv[kk]**2 )
+            else:
+                raise NameError('Specify valid integration order')
+
+            # calculate solution
+            if self.remove_predictor:
+                Yfreq[:,:,kk] = np.dot( self.SS.C[:,:K], Ygamma) +\
+                                np.dot( self.SS.C[:,K:K+K_star], Ygamma_star) +\
+                                np.dot( self.SS.C[:,K+K_star:2*K+K_star], dfact*Ygamma) +\
+                                self.D_predictor
+            else:
                 Yfreq[:,:,kk] = np.dot( self.SS.C[:,:K], Ygamma) +\
                                 np.dot( self.SS.C[:,K:K+K_star], Ygamma_star) +\
                                 np.dot( self.SS.C[:,K+K_star:2*K+K_star], dfact*Ygamma) +\
@@ -1143,7 +1144,12 @@ class Dynamic(Static):
         K_star = self.K_star
 
         Eye=np.eye(K)
-        Bup=self.SS.B[:K,:]
+
+        if self.remove_predictor:
+            Bup=self.B_predictor[:K,:]
+        else:
+            Bup=self.SS.B[:K,:]
+
         if self.use_sparse:
             # warning: behaviour may change in future numpy release. 
             # Ensure P,Pw,Bup are np.ndarray
@@ -1196,6 +1202,8 @@ class Dynamic(Static):
 
             ### ----- controllability
             Ygamma=Intfact*np.dot(Kernel, Bup)  
+            if self.remove_predictor:
+                Ygamma*=zval
             Ygamma_star=Cw_cpx.dot(Ygamma)
 
             if self.integr_order==1:
@@ -1576,6 +1584,749 @@ class Dynamic(Static):
 
         return gamma_vec, gamma_star_vec, gamma_dot_vec
 
+
+################################################################################
+
+################################################################################
+
+class DynamicBlock(Dynamic):
+    '''
+    Class for dynamic linearised UVLM solution. Linearisation around steady-state
+    are only supported. 
+
+    The class is a low-memory implementation of Dynamic, and inherits most of 
+    the methods contained there. State-space models are allocated in list-block
+    form (as per numpy.block) to minimise memory usage. This class provides
+    lower memory / computational time assembly, frequency response and frequency
+    limited balancing.
+
+    Input:
+        - tsdata: aero timestep data from SHARPy solution
+        - dt: time-step
+        - integr_order=2: integration order for UVLM unsteady aerodynamic force
+        - RemovePredictor=True: if true, the state-space model is modified so as
+        to accept in input perturbations, u, evaluated at time-step n rather than
+        n+1.
+        - ScalingDict=None: disctionary containing fundamental reference units
+            {'length':  reference_length,  
+             'speed':   reference_speed, 
+             'density': reference density}
+        used to derive scaling quantities for the state-space model variables.
+        The scaling factors are stores in 
+            self.ScalingFact. 
+        Note that while time, circulation, angular speeds) are scaled  
+        accordingly, FORCES ARE NOT. These scale by qinf*b**2, where b is the 
+        reference length and qinf is the dinamic pressure. 
+        - UseSparse=False: builds the A and B matrices in sparse form. C and D
+        are dense, hence the sparce format is not used.
+
+    Methods: 
+        - nondimss: normalises a dimensional state-space model based on the 
+        scaling factors in self.ScalingFact. 
+        - dimss: inverse of nondimss.
+        - assemble_ss: builds state-space model. See function for more details.
+        - assemble_ss_profiling: generate profiling report of the assembly and 
+        saves it into self.prof_out. To read the report:
+            import pstats
+            p=pstats.Stats(self.prof_out)
+        - freqresp: ad-hoc method for fast frequency response (only implemented)
+        for remove_predictor=False
+        
+    To do:
+
+    - upgrade to linearise around unsteady snapshot (adjoint)
+    '''
+
+
+    def __init__(self, tsdata, dt, integr_order=2, 
+                       RemovePredictor=True, ScalingDict=None, UseSparse=True):
+
+        super().__init__(tsdata, dt, 
+                         integr_order=integr_order, 
+                         RemovePredictor=RemovePredictor, 
+                         ScalingDict=ScalingDict, 
+                         UseSparse=UseSparse )
+
+        # number of blocks
+        self.nblock_x = self.integr_order+2
+        self.nblock_u = 3
+        self.nblock_y = 1
+
+        # sizes in blocks
+        self.S_x = [self.K, self.K_star, self.K]
+        if self.integr_order == 2: self.S_x += [self.K]
+        self.S_u = 3 * [3*self.Kzeta]
+        self.S_y = [3*self.Kzeta]
+
+
+    def nondimss(self):
+        """
+        Scale state-space model based of self.ScalingFacts.
+        """
+
+        t0=time.time()
+
+        B_facts = [ self.ScalingFacts['length']/self.ScalingFacts['circulation'] , 
+                    self.ScalingFacts['speed'] /self.ScalingFacts['circulation'] , 
+                    self.ScalingFacts['speed'] /self.ScalingFacts['circulation'] ]
+
+        D_facts = [ self.ScalingFacts['length']/self.ScalingFacts['force'] , 
+                    self.ScalingFacts['speed'] /self.ScalingFacts['force'] , 
+                    self.ScalingFacts['speed'] /self.ScalingFacts['force'] ]
+
+        C_facts = self.nblock_x *\
+                   [self.ScalingFacts['circulation']/self.ScalingFacts['force']]
+
+        for ii in range(self.nblock_x):
+            for jj in range(self.nblock_u):
+                if self.SS.B[ii][jj] is not None:
+                    self.SS.B[ii][jj] *= B_facts[jj]
+
+        for ii in range(self.nblock_y):
+            for jj in range(self.nblock_x):
+                if self.SS.C[ii][jj] is not None:
+                    self.SS.C[ii][jj] *= C_facts[jj]
+
+        for ii in range(self.nblock_y):
+            for jj in range(self.nblock_u):
+                if self.SS.D[ii][jj] is not None:
+                    self.SS.D[ii][jj] *= D_facts[jj]
+
+        self.SS.dt = self.SS.dt / self.ScalingFacts['time']
+        self.cpu_summary['nondim']=time.time() - t0
+
+
+    def dimss(self):
+
+        t0=time.time()
+   
+        B_facts = [ self.ScalingFacts['length']/self.ScalingFacts['circulation'] , 
+                    self.ScalingFacts['speed'] /self.ScalingFacts['circulation'] , 
+                    self.ScalingFacts['speed'] /self.ScalingFacts['circulation'] ]
+
+        D_facts = [ self.ScalingFacts['length']/self.ScalingFacts['force'] , 
+                    self.ScalingFacts['speed'] /self.ScalingFacts['force'] , 
+                    self.ScalingFacts['speed'] /self.ScalingFacts['force'] ]
+
+        C_facts = self.nblock_x *\
+                   [self.ScalingFacts['circulation']/self.ScalingFacts['force']]
+
+        for ii in range(self.nblock_x):
+            for jj in range(self.nblock_u):
+                if self.SS.B[ii][jj] is not None:
+                    self.SS.B[ii][jj] /= B_facts[jj]
+
+        for ii in range(self.nblock_y):
+            for jj in range(self.nblock_x):
+                if self.SS.C[ii][jj] is not None:
+                    self.SS.C[ii][jj] /= C_facts[jj]
+
+        for ii in range(self.nblock_y):
+            for jj in range(self.nblock_u):
+                if self.SS.D[ii][jj] is not None:
+                    self.SS.D[ii][jj] /= D_facts[jj]
+
+        self.SS.dt = self.SS.dt * self.ScalingFacts['time']
+        self.cpu_summary['dim']=time.time() - t0
+
+
+    def assemble_ss(self):
+        r"""
+        Produces block-form of state-space model
+
+            .. math::
+
+                \mathbf{x}_{n+1} &= \mathbf{A}\,\mathbf{x}_n + \mathbf{B} \mathbf{u}_{n+1} \\
+                \mathbf{y}_n &= \mathbf{C}\,\mathbf{x}_n + \mathbf{D} \mathbf{u}_n
+
+        where the state, inputs and outputs are:
+
+            .. math:: \mathbf{x}_n = \{ \delta \mathbf{\Gamma}_n,\, \delta \mathbf{\Gamma_{w_n}},\,
+                \Delta t\,\delta\mathbf{\Gamma}'_n,\, \delta\mathbf{\Gamma}_{n-1} \}
+
+            .. math:: \mathbf{u}_n = \{ \delta\mathbf{\zeta}_n,\, \delta\mathbf{\zeta}'_n,\,
+                \delta\mathbf{u}_{ext,n} \}
+
+            .. math:: \mathbf{y} = \{\delta\mathbf{f}\}
+
+        with :math:`\mathbf{\Gamma}` being the vector of vortex circulations,
+        :math:`\mathbf{\zeta}` the vector of vortex lattice coordinates and
+        :math:`\mathbf{f}` the vector of aerodynamic forces and moments. Note that :math:`(\bullet)'` denotes
+        a derivative with respect to time.
+
+        Note that the input is atypically defined at time ``n+1``, therefore by default
+        ``self.remove_predictor = True`` and the predictor term ``u_{n+1}`` is eliminated through
+        the change of state[1]:
+
+            .. math::
+                \mathbf{h}_n &= \mathbf{x}_n - \mathbf{B}\,\mathbf{u}_n \\
+
+        such that:
+
+            .. math::
+                \mathbf{h}_{n+1} &= \mathbf{A}\,\mathbf{h}_n + \mathbf{A\,B}\,\mathbf{u}_n \\
+                \mathbf{y}_n &= \mathbf{C\,h}_n + (\mathbf{C\,B}+\mathbf{D})\,\mathbf{u}_n
+
+
+        which only modifies the equivalent :math:`\mathbf{B}` and :math:`\mathbf{D}` matrices.
+
+        References:
+            [1] Franklin, GF and Powell, JD. Digital Control of Dynamic Systems, Addison-Wesley Publishing Company, 1980
+
+        To do: 
+        - remove all calls to scipy.linalg.block_diag
+        """
+
+        print('Block form state-space realisation of UVLM equations started...')
+        t0 = time.time()
+        MS = self.MS
+        K, K_star = self.K, self.K_star
+        Kzeta = self.Kzeta
+
+        # ------------------------------------------------------ determine size
+
+        Nx = self.Nx
+        Nu = self.Nu
+        Ny = self.Ny
+
+        nblock_x = self.nblock_x
+        nblock_u = self.nblock_u
+        nblock_y = self.nblock_y
+
+        if self.integr_order == 2:
+            # Second order differencing scheme coefficients
+            b0, bm1, bp1 = -2., 0.5, 1.5
+
+        # ----------------------------------------------------------- state eq.
+
+        ### state terms (A matrix)
+        # - choice of sparse matrices format is optimised to reduce memory load
+
+        # Aero influence coeffs
+        List_AICs, List_AICs_star = ass.AICs(MS.Surfs, MS.Surfs_star,
+                                             target='collocation', Project=True)
+        A0 = np.block(List_AICs)
+        A0W = np.block(List_AICs_star)
+        List_AICs, List_AICs_star = None, None
+        LU, P = scalg.lu_factor(A0)
+        AinvAW = scalg.lu_solve((LU, P), A0W)
+        A0, A0W  = None, None
+
+        ### propagation of circ
+        # fast and memory efficient with both dense and sparse matrices
+        List_C, List_Cstar = ass.wake_prop(MS.Surfs, MS.Surfs_star, 
+                                            self.use_sparse,sparse_format='csc')
+        if self.use_sparse:
+            Cgamma = libsp.csc_matrix(sparse.block_diag(List_C,format='csc'))
+            CgammaW = libsp.csc_matrix(sparse.block_diag(List_Cstar,format='csc'))  
+        else:
+            Cgamma = scalg.block_diag(*List_C)
+            CgammaW = scalg.block_diag(*List_Cstar)
+        List_C, List_Cstar  = None, None
+
+        # recurrent dense terms stored as numpy.ndarrays
+        AinvAWCgamma = -libsp.dot(AinvAW, Cgamma)
+        AinvAWCgammaW= -libsp.dot(AinvAW, CgammaW)
+
+
+        ### A matrix assembly
+        Ass = []
+
+        # non-penetration condition
+        Ass.append( [ AinvAWCgamma, AinvAWCgammaW, None, None ] )
+
+        # circ. proparagation
+        Ass.append( [       Cgamma,       CgammaW, None, None ] )
+        Cgamma = None
+        CgammaW = None
+
+        # delta eq.
+        if self.use_sparse:
+            ones = libsp.csc_matrix( 
+                           ( np.ones((K,)), (range(K),range(K)) ), shape=(K,K) )
+        else:
+            ones=np.eye(K)
+
+        if self.integr_order == 1:
+            Ass.append( [ AinvAWCgamma - ones, AinvAWCgammaW, None, None ] )
+
+        elif self.integr_order == 2:
+            Ass.append( [bp1*AinvAWCgamma + b0*ones, bp1*AinvAWCgammaW, None, bm1*ones ])
+            # identity eq.
+            Ass.append( [ ones, None, None, None ] )
+        AinvAWCgamma = None
+        AinvAWCgammaW = None
+
+
+        # zeta derivs
+        List_nc_dqcdzeta=ass.nc_dqcdzeta(MS.Surfs, MS.Surfs_star,Merge=True)
+        List_uc_dncdzeta = ass.uc_dncdzeta(MS.Surfs)
+        List_nc_domegazetadzeta_vert = ass.nc_domegazetadzeta(MS.Surfs,MS.Surfs_star)
+        for ss in range(MS.n_surf):
+            List_nc_dqcdzeta[ss][ss]+=\
+                     ( List_uc_dncdzeta[ss] + List_nc_domegazetadzeta_vert[ss] )
+        Ducdzeta = np.block(List_nc_dqcdzeta)  # dense matrix
+        List_nc_dqcdzeta = None
+        List_uc_dncdzeta = None
+        List_nc_domegazetadzeta_vert = None
+
+        # ext velocity derivs (Wnv0)
+        List_Wnv = []
+        for ss in range(MS.n_surf):
+            List_Wnv.append(
+                interp.get_Wnv_vector(MS.Surfs[ss],
+                                      MS.Surfs[ss].aM, MS.Surfs[ss].aN))
+        AinvWnv0 = scalg.lu_solve((LU, P), scalg.block_diag(*List_Wnv))
+        List_Wnv = None
+
+
+        ### B matrix assembly
+        Bss = []
+
+        # non-penetration condition
+        Bss.append( [ -scalg.lu_solve((LU,P),Ducdzeta), AinvWnv0, -AinvWnv0 ] )
+        AinvWnv0=None
+
+        # circulation eq.
+        Bss.append( [None, None, None] )
+
+        # delta eq.
+        if self.integr_order == 1:
+            Bss.append( [bb for bb in Bss[0]] )
+        if self.integr_order == 2:
+            Bss.append( [bp1*bb for bb in Bss[0]] )
+
+        # indentity eq
+        Bss.append( [None, None, None] )
+
+        LU,P=None,None
+
+
+        # ---------------------------------------------------------- output eq.
+
+        ### state terms (C matrix)
+
+        # gamma (induced velocity contrib.)
+        List_dfqsdvind_gamma, List_dfqsdvind_gamma_star = \
+            ass.dfqsdvind_gamma(MS.Surfs, MS.Surfs_star)
+
+        # gamma (at constant relative velocity)
+        List_dfqsdgamma_vrel0, List_dfqsdgamma_star_vrel0 = \
+            ass.dfqsdgamma_vrel0(MS.Surfs, MS.Surfs_star)
+        for ss in range(MS.n_surf):
+            List_dfqsdvind_gamma[ss][ss]+=List_dfqsdgamma_vrel0[ss]
+            List_dfqsdvind_gamma_star[ss][ss]+=List_dfqsdgamma_star_vrel0[ss]                
+        Dfqsdgamma = np.block(List_dfqsdvind_gamma)
+        Dfqsdgamma_star = np.block(List_dfqsdvind_gamma_star)
+        List_dfqsdvind_gamma, List_dfqsdvind_gamma_star = None, None
+        List_dfqsdgamma_vrel0, List_dfqsdgamma_star_vrel0 = None, None
+
+        # gamma_dot
+        Dfunstdgamma_dot = scalg.block_diag(*ass.dfunstdgamma_dot(MS.Surfs))
+
+
+        ### C matrix assembly
+        Css = []
+        Css.append([ Dfqsdgamma, Dfqsdgamma_star, Dfunstdgamma_dot/self.dt ])
+        if self.integr_order==2:
+            Css[0].append(None)
+
+        ### input terms (D matrix)
+        Dss = []
+        Dss.append( 
+            [ scalg.block_diag(*ass.dfqsdzeta_vrel0(MS.Surfs, MS.Surfs_star)) ])
+
+        # zeta (induced velocity contrib)
+        List_coll, List_vert = ass.dfqsdvind_zeta(MS.Surfs, MS.Surfs_star)
+        for ss in range(MS.n_surf):
+            List_vert[ss][ss] += List_coll[ss]
+        Dss[0][0] += np.block(List_vert)
+        del List_vert, List_coll
+
+        Dss[0].append( -scalg.block_diag(*ass.dfqsduinput(MS.Surfs, MS.Surfs_star)) )
+        Dss[0].append( -Dss[0][1])
+
+
+        if self.remove_predictor:
+            print("Predictor will not be removed! " + 
+                                         "(Though this can be done in balfreq)")
+
+        self.SS = libss.ss_block(Ass, Bss, Css, Dss, 
+                                       self.S_x, self.S_u, self.S_y, dt=self.dt)
+        print('state-space model produced in form:\n\t' \
+              'x_{n+1} = A x_{n} + Bp u_{n+1}')
+
+        self.cpu_summary['assemble']=time.time() - t0
+        print('\t\t\t...done in %.2f sec' % self.cpu_summary['assemble'])
+
+
+
+    def freqresp(self,kv):
+        '''
+        Ad-hoc method for fast UVLM frequency response over the frequencies
+        kv. The method, only requires inversion of a K x K matrix at each
+        frequency as the equation for propagation of wake circulation are solved
+        exactly.
+        The algorithm implemented here can be used also upon projection of
+        the state-space model. 
+
+        Note:
+        This method is very similar to the "minsize" solution option is the 
+        steady_solve.
+        '''
+
+        MS = self.MS
+        K = self.K
+        K_star = self.K_star
+
+        Eye=np.eye(K)
+        Bup = np.hstack(self.SS.B[0])
+        P = self.SS.A[0][0]
+        Pw = self.SS.A[0][1]
+
+        Nk=len(kv)
+        kvdt=kv*self.SS.dt
+        zv=np.cos(kvdt)+1.j*np.sin(kvdt)
+        Yfreq=np.empty((self.SS.outputs,self.SS.inputs,Nk,),dtype=np.complex_)
+
+        for kk in range(Nk):
+
+            ###  build Cw complex
+            Cw_cpx=self.get_Cw_cpx(zv[kk])
+
+            Ygamma=libsp.solve( zv[kk]*Eye-P-
+                        libsp.dot( Pw, Cw_cpx, type_out=libsp.csc_matrix), 
+                                   Bup)  
+            if self.remove_predictor:
+                Ygamma*=zv[kk]
+
+            Ygamma_star=Cw_cpx.dot(Ygamma)
+
+            if self.integr_order==1:
+                dfact=(1.-1./zv[kk])
+            elif self.integr_order==2:
+                dfact=.5*( 3. -4./zv[kk] + 1./zv[kk]**2 )
+            else:
+                raise NameError('Specify valid integration order')
+
+            # calculate solution
+            Yfreq[:,:,kk] = np.dot( self.SS.C[0][0], Ygamma) +\
+                            np.dot( self.SS.C[0][1], Ygamma_star) +\
+                            np.dot( self.SS.C[0][2], dfact*Ygamma) +\
+                            np.hstack(self.SS.D[0])
+
+        return Yfreq
+
+
+    def balfreq(self,DictBalFreq):
+        '''
+        Low-rank method for frequency limited balancing.
+        The Observability ad controllability Gramians over the frequencies kv 
+        are solved in factorised form. Balancd modes are then obtained with a 
+        square-root method.
+
+        Details:
+        Observability and controllability Gramians are solved in factorised form
+        through explicit integration. The number of integration points determines
+        both the accuracy and the maximum size of the balanced model.
+
+        Stability over all (Nb) balanced states is achieved if:
+            a. one of the Gramian is integrated through the full Nyquist range
+            b. the integration points are enough.
+        Note, however, that even when stability is not achieved over the full
+        balanced states, stability of the balanced truncated model with Ns<=Nb
+        states is normally observed even when a low number of integration points
+        is used. Two integration methods (trapezoidal rule on uniform grid and 
+        Gauss-Legendre quadrature) are provided.
+
+        Input: 
+
+        - DictBalFreq: dictionary specifying integration method with keys:
+
+            - 'frequency': defines limit frequencies for balancing. The balanced
+            model will be accurate in the range [0,F], where F is the value of 
+            this key. Note that F units must be consistent with the units specified
+            in the self.ScalingFacts dictionary.
+
+            - 'method_low': ['gauss','trapz'] specifies whether to use gauss 
+            quadrature or trapezoidal rule in the low-frequency range [0,F]
+
+            - 'options_low': options to use for integration in the low-frequencies.
+            These depend on the integration scheme (See below).
+
+            - 'method_high': method to use for integration in the range [F,F_N],
+            where F_N is the Nyquist frequency. See 'method_low'.
+
+            - 'options_high': options to use for integration in the high-frequencies.
+
+            - 'check_stability': if True, the balanced model is truncated to
+            eliminate unstable modes - if any is found. Note that very accurate 
+            balanced model can still be obtained, even if high order modes are 
+            unstable. Note that this option is overridden if ""
+
+            - 'get_frequency_response': if True, the function also returns the
+            frequency response evaluated at the low-frequency range integration
+            points. If True, this option also allows to automatically tune the 
+            balanced model.
+
+        Future options:
+
+            - 'truncation_tolerance': if 'get_frequency_response' is True, allows
+            to truncatethe balanced model so as to achieved a prescribed 
+            tolerance in the low-frequwncy range.
+
+            - Ncpu: for parallel run
+
+
+        The following integration schemes are available:
+            - 'trapz': performs integration over equally spaced points using 
+            trapezoidal rule. It accepts options dictionaries with keys:
+                - 'points': number of integration points to use (including 
+                domain boundary)
+            
+            - 'gauss' performs gauss-lobotto quadrature. The domain can be
+            partitioned in Npart sub-domain in which the gauss-lobotto quadrature
+            of order Ord can be applied. A total number of Npart*Ord points is
+            required. It accepts options dictionaries of the form:
+                - 'partitions': number of partitions
+                - 'order': quadrature order. 
+
+        Example: 
+        The following dictionary 
+
+            DictBalFreq={   'frequency': 1.2, 
+                            'method_low': 'trapz',
+                            'options_low': {'points': 12},
+                            'method_high': 'gauss',
+                            'options_high': {'partitions': 2, 'order': 8},
+                            'check_stability': True }
+
+        balances the state-space model self.SS in the frequency range [0, 1.2] 
+        using 
+            (a) 12 equally-spaced points integration of the Gramians in 
+        the low-frequency range [0,1.2] and 
+            (b) a 2 Gauss-Lobotto 8-th order quadratures of the controllability 
+            Gramian in the high-frequency range.
+
+        A total number of 28 integration points will be required, which will
+        result into a balanced model with number of states
+            min{ 2*28* number_inputs, 2*28* number_outputs }
+        The model is finally truncated so as to retain only the first Ns stable
+        modes. 
+        '''
+
+        ### check input dictionary
+        if 'frequency' not in DictBalFreq:
+            raise NameError('Solution dictionary must include the "frequency" key')
+
+        if 'method_low' not in DictBalFreq:
+            warnings.warn('Setting default options for low-frequency integration')
+            DictBalFreq['method_low']='trapz'
+            DictBalFreq['options_low']={'points': 12}
+
+        if 'method_high' not in DictBalFreq:
+            warnings.warn('Setting default options for high-frequency integration')            
+            DictBalFreq['method_high']='gauss'
+            DictBalFreq['options_high']={'partitions': 2, 'order': 8}
+
+        if 'check_stability' not in DictBalFreq:
+            DictBalFreq['check_stability']=True
+
+        if 'output_modes' not in DictBalFreq:
+            DictBalFreq['output_modes']=True
+
+        if 'get_frequency_response' not in DictBalFreq:
+            DictBalFreq['get_frequency_response'] = False
+
+
+        ### get integration points and weights
+
+        # Nyquist frequency
+        kn=np.pi/self.SS.dt 
+
+        Opt=DictBalFreq['options_low']
+        if DictBalFreq['method_low'] == 'trapz':
+            kv_low, wv_low=get_trapz_weights(0., DictBalFreq['frequency'], 
+                                                           Opt['points'], False)
+        elif DictBalFreq['method_low'] == 'gauss':
+            kv_low, wv_low=get_gauss_weights(0., DictBalFreq['frequency'],
+                                                 Opt['partitions'],Opt['order'])
+        else:
+            raise NameError(
+                'Invalid value %s for key "method_low"' %DictBalFreq['method_low'])
+
+        Opt=DictBalFreq['options_high']
+        if DictBalFreq['method_high'] == 'trapz':
+            kv_high, wv_high=get_trapz_weights(DictBalFreq['frequency'], kn,
+                                                            Opt['points'], True)
+        elif DictBalFreq['method_high'] == 'gauss':
+            kv_high, wv_high=get_gauss_weights(DictBalFreq['frequency'], kn,
+                                                 Opt['partitions'],Opt['order'])
+        else:
+            raise NameError(
+                'Invalid value %s for key "method_high"'%DictBalFreq['method_high'])
+
+
+        ### get useful terms
+        K = self.K
+        K_star = self.K_star
+
+        Eye=np.eye(K)
+        Bup = np.hstack(self.SS.B[0])
+
+        P = self.SS.A[0][0]
+        Pw = self.SS.A[0][1]
+  
+        # indices to manipulate obs solution
+        ii00=range(0,self.K)
+        ii01=range(self.K,self.K+self.K_star)
+        ii02=range(self.K+self.K_star,2*self.K+self.K_star)
+        ii03=range(2*self.K+self.K_star,3*self.K+self.K_star)
+
+        # integration factors
+        if self.integr_order == 2:
+            b0, bm1, bp1 = -2., 0.5, 1.5
+        else:
+            b0, bp1 = -1., 1.
+            raise NameError('Method not implemented for integration order 1')
+
+        ### -------------------------------------------------- loop frequencies
+        
+        ### merge vectors
+        Nk_low=len(kv_low)
+        kvdt = np.concatenate( (kv_low,kv_high) ) * self.SS.dt
+        wv = np.concatenate( (wv_low,wv_high) ) * self.SS.dt
+        zv = np.cos(kvdt)+1.j*np.sin(kvdt)
+
+        Qobs=np.zeros( (self.SS.states,self.SS.outputs), dtype=np.complex_)
+        Zc=np.zeros( (self.SS.states,2*self.SS.inputs*len(kvdt)),)
+        Zo=np.zeros( (self.SS.states,2*self.SS.outputs*Nk_low),)
+
+        if DictBalFreq['get_frequency_response']:
+            self.Yfreq=np.empty((self.SS.outputs,self.SS.inputs,Nk_low,),dtype=np.complex_)
+            self.kv=kv_low
+
+        for kk in range( len(kvdt) ):
+
+            zval=zv[kk]
+            Intfact=wv[kk]   # integration factor
+
+            #  build terms that will be recycled
+            Cw_cpx=self.get_Cw_cpx(zval)
+            PwCw_T = Cw_cpx.T.dot(Pw.T)
+            Kernel=np.linalg.inv (zval*Eye-P-PwCw_T.T)
+
+            ### ----- controllability
+            Ygamma=Intfact*np.dot(Kernel, Bup)  
+            if self.remove_predictor:
+                Ygamma*=zval
+            Ygamma_star=Cw_cpx.dot(Ygamma)
+
+            if self.integr_order==1:
+                dfact=(bp1 + bp0/zval)
+                Qctrl = np.vstack( [Ygamma, Ygamma_star, dfact * Ygamma] )
+            elif self.integr_order==2:
+                dfact= bp1 + b0/zval + bm1/zval**2 
+                Qctrl = np.vstack( 
+                    [Ygamma, Ygamma_star, dfact*Ygamma, (1./zval)*Ygamma ])
+            else:
+                raise NameError('Specify valid integration order')
+
+            kkvec=range( 2*kk*self.SS.inputs, 2*(kk+1)*self.SS.inputs )
+            Zc[:,kkvec[:self.SS.inputs]]= Qctrl.real #*Intfact     
+            Zc[:,kkvec[self.SS.inputs:]]= Qctrl.imag #*Intfact    
+
+
+            ### ----- frequency response  
+            if DictBalFreq['get_frequency_response'] and kk<Nk_low:
+                self.Yfreq[:,:,kk]= (1./Intfact)*\
+                                    (np.dot( self.SS.C[0][0], Ygamma) +\
+                                     np.dot( self.SS.C[0][1], Ygamma_star) +\
+                                     dfact*np.dot( self.SS.C[0][2], Ygamma)) +\
+                                     np.hstack(self.SS.D[0])
+
+            ### ----- observability
+            # solve (1./zval*I - A.T)^{-1} C^T (in low-frequency only)
+            if kk>=Nk_low:
+                continue
+
+            zinv=1./zval
+            Cw_cpx_H=Cw_cpx.conjugate().T
+
+            Qobs[ii02,:] = zval * self.SS.C[0][2].T
+            if self.integr_order==2:
+                Qobs[ii03,:] = (bm1*zval**2) * self.SS.C[0][2].T
+
+            rhs=self.SS.C[0][0].T + \
+                Cw_cpx_H.dot(self.SS.C[0][1].T) + \
+                libsp.dot( 
+                    (bp1*zval)*(PwCw_T.conj() + P.T) + \
+                    (b0*zval+bm1*zval**2)*Eye, self.SS.C[0][2].T)
+
+            Qobs[ii00,:] = np.dot(Kernel.conj().T, rhs)
+
+            Eye_star= libsp.csc_matrix( 
+                ( zinv*np.ones((K_star,)), (range(K_star),range(K_star))), 
+                                        shape=(K_star,K_star), dtype=np.complex_)
+            Qobs[ii01,:] = libsp.solve( 
+                            Eye_star-self.SS.A[1][1].T,
+                            np.dot(Pw.T, Qobs[ii00,:] +\
+                                            (bp1*zval)*self.SS.C[0][2].T) +\
+                                                            self.SS.C[0][1].T)
+
+            kkvec=range( 2*kk*self.SS.outputs, 2*(kk+1)*self.SS.outputs )
+            Zo[:,kkvec[:self.SS.outputs]]= Intfact*Qobs.real        
+            Zo[:,kkvec[self.SS.outputs:]]= Intfact*Qobs.imag
+
+        # delete full matrices
+        Kernel=None
+        Qctrl=None
+        Qobs=None
+
+        # LRSQM (optimised)
+        U,hsv,Vh=scalg.svd( np.dot(Zo.T,Zc), full_matrices=False)
+        sinv=hsv**(-0.5)
+        T=np.dot(Zc,Vh.T*sinv)
+        Ti=np.dot((U*sinv).T,Zo.T)
+        # Zc,Zo=None,None
+
+        ### build frequency balanced model
+        Ab,Bb,Cb = self.SS.project( Ti, T, by_arrays=True, overwrite=False )
+        
+
+        if self.remove_predictor:
+            Ab, Bb, Cb, Db = \
+                libss.SSconv(np.block(Ab), None, np.block(Bb), 
+                                    np.block(Cb), np.block(self.SS.D), Bm1=None)
+            SSb = libss.ss(Ab, Bb, Cb, Db, dt=self.dt)
+        else:
+            SSb = libss.ss( np.block(Ab), np.block(Bb), 
+                               np.block(Cb), np.block(self.SS.D) ,dt=self.SS.dt)
+
+        ### Eliminate unstable modes - if any:
+        if DictBalFreq['check_stability']:
+            for nn in range(1,len(hsv)+1):
+                eigs_trunc=scalg.eigvals(SSb.A[:nn,:nn] )
+                eigs_trunc_max=np.max(np.abs(eigs_trunc))
+                if eigs_trunc_max>1.-1e-16:
+                    SSb.truncate(nn-1)
+                    hsv=hsv[:nn-1]
+                    T=T[:,:nn-1]
+                    Ti=Ti[:nn-1,:]
+                    break
+
+        self.SSb=SSb 
+        self.hsv=hsv
+        if DictBalFreq['output_modes']:
+            self.T=T
+            self.Ti=Ti
+            self.Zc=Zc
+            self.Zo=Zo
+
+
+################################################################################
+
+################################################################################
 
 
 class Frequency(Static):
@@ -2174,19 +2925,32 @@ if __name__ == '__main__':
             for use_sparse in [False,True]:
                 for remove_predictor in [True,False]:
 
+                    ### ----- Dynamic class
                     Dyn=Dynamic(self.tsdata, dt=0.05, ScalingDict=ScalingDict,
                                 integr_order=2, RemovePredictor=remove_predictor,
                                 UseSparse=use_sparse)
                     Dyn.assemble_ss()
                     Dyn.nondimss()
                     Yref=libss.freqresp(Dyn.SS,kv)
+                    Ydyn=Dyn.freqresp(kv)
+                    ermax=np.max(np.abs(Ydyn-Yref))              
+                    assert ermax<1e-13,\
+                    'Dynamic.freqresp produces too large error (%.2e)!'%ermax
 
-                    if not remove_predictor:
-                        Ydyn=Dyn.freqresp(kv)
-                        ermax=np.max(np.abs(Ydyn-Yref))              
-                        assert ermax<1e-10,\
-                        'Dynamic.freqresp produces too large error (%.2e)!'%ermax
 
+                    ### ----- BlockDynamic class
+                    BlockDyn=DynamicBlock(self.tsdata, dt=0.05, ScalingDict=ScalingDict,
+                                integr_order=2, RemovePredictor=remove_predictor,
+                                UseSparse=use_sparse)
+                    BlockDyn.assemble_ss()
+                    BlockDyn.nondimss()
+                    Ydyn_block=BlockDyn.freqresp(kv)
+                    ermax=np.max(np.abs(Ydyn_block-Yref))              
+                    assert ermax<1e-13,\
+                    'Dynamic.freqresp produces too large error (%.2e)!'%ermax
+
+
+                    ### ----- Frequency class
                     Freq=Frequency(self.tsdata, dt=0.05, ScalingDict=ScalingDict,
                                 integr_order=2, RemovePredictor=remove_predictor,
                                 UseSparse=use_sparse)
@@ -2194,7 +2958,8 @@ if __name__ == '__main__':
                     Freq.nondimss()
                     Yfreq=Freq.freqresp(kv)
                     ermax=np.max(np.abs(Yfreq-Yref))              
-                    assert ermax<1e-10,\
-                    'Frequency.freqresp produces too large error (%.2e)!' %ermax                
+                    assert ermax<1e-13,\
+                    'Frequency.freqresp produces too large error (%.2e)!' %ermax  
+
 
     unittest.main()
