@@ -672,7 +672,7 @@ def rotor_from_OpenFAST_db(chord_panels,
         # Generate blade structural properties
         blade.StructuralInformation.create_mass_db_from_vector(elem_mass_per_unit_length, elem_mass_iner_x, elem_mass_iner_y, elem_mass_iner_z, elem_pos_cg_B)
         blade.StructuralInformation.create_stiff_db_from_vector(elem_EA, elem_GAy, elem_GAz, elem_GJ, elem_EIy, elem_EIz)
-    
+
     else: # read Mass/Stiffness from database
         cross_prop=h5.readh5(h5_cross_sec_prop).str_prop
 
@@ -1160,6 +1160,7 @@ def rotor_from_excel_type02(chord_panels,
         if ((len(rR) - 1) % (blade.StructuralInformation.num_node_elem - 1)) == 0:
             blade.StructuralInformation.num_elem = int((len(rR) - 1)/(blade.StructuralInformation.num_node_elem - 1))
             node_r = rR*TipRad
+            elem_rR = rR[1::2] + 0.
             elem_r = rR[1::2]*TipRad + 0.
         else:
             print("ERROR: Cannot build ", blade.StructuralInformation.num_node_elem, "-noded elements from ", blade.StructuralInformation.num_node, "nodes")
@@ -1172,11 +1173,11 @@ def rotor_from_excel_type02(chord_panels,
 
     if h5_cross_sec_prop is None:
         # Stiffness
-        elem_EA = np.interp(elem_r,rR_structural,EAStff)
-        elem_EIy = np.interp(elem_r,rR_structural,FlpStff)
-        elem_EIz = np.interp(elem_r,rR_structural,EdgStff)
-        elem_EIyz = np.interp(elem_r,rR_structural,FlapEdgeStiff)
-        elem_GJ = np.interp(elem_r,rR_structural,GJStff)
+        elem_EA = np.interp(elem_rR,rR_structural,EAStff)
+        elem_EIy = np.interp(elem_rR,rR_structural,FlpStff)
+        elem_EIz = np.interp(elem_rR,rR_structural,EdgStff)
+        elem_EIyz = np.interp(elem_rR,rR_structural,FlapEdgeStiff)
+        elem_GJ = np.interp(elem_rR,rR_structural,GJStff)
 
         # Stiffness: estimate unknown properties
         print('WARNING: The poisson cofficient is supossed equal to 0.3')
@@ -1186,13 +1187,13 @@ def rotor_from_excel_type02(chord_panels,
         elem_GAz = elem_EA/2.0/(1.0+poisson_coef)
         # Inertia
         elem_pos_cg_B = np.zeros((blade.StructuralInformation.num_elem,3),)
-        elem_pos_cg_B[:,1] = np.interp(elem_r,rR_structural,InPcg)
-        elem_pos_cg_B[:,2] = -np.interp(elem_r,rR_structural,OutPcg)
+        elem_pos_cg_B[:,1] = np.interp(elem_rR,rR_structural,InPcg)
+        elem_pos_cg_B[:,2] = -np.interp(elem_rR,rR_structural,OutPcg)
 
-        elem_mass_per_unit_length = np.interp(elem_r,rR_structural,BMassDen)
-        elem_mass_iner_y = np.interp(elem_r,rR_structural,FlpIner)
-        elem_mass_iner_z = np.interp(elem_r,rR_structural,EdgIner)
-        elem_mass_iner_yz = np.interp(elem_r,rR_structural,FlapEdgeIner)
+        elem_mass_per_unit_length = np.interp(elem_rR,rR_structural,BMassDen)
+        elem_mass_iner_y = np.interp(elem_rR,rR_structural,FlpIner)
+        elem_mass_iner_z = np.interp(elem_rR,rR_structural,EdgIner)
+        elem_mass_iner_yz = np.interp(elem_rR,rR_structural,FlapEdgeIner)
 
         # Inertia: estimate unknown properties
         print('WARNING: Using perpendicular axis theorem to compute the inertia around xB')
@@ -1238,7 +1239,7 @@ def rotor_from_excel_type02(chord_panels,
     pure_airfoils_names = gc.read_column_sheet_type01(excel_file_name, excel_sheet_airfoil_info, 'Name')
     pure_airfoils_thickness = gc.read_column_sheet_type01(excel_file_name, excel_sheet_airfoil_info, 'Thickness')
 
-    node_ElAxisAftLEc = np.interp(node_r,rR_structural,ElAxisAftLEc)
+    node_ElAxisAftLEc = np.interp(rR,rR_structural,ElAxisAftLEc)
 
     # Read coordinates of the pure airfoils
     n_pure_airfoils = len(pure_airfoils_names)
