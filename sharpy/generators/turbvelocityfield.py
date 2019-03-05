@@ -45,6 +45,7 @@ class TurbVelocityField(generator_interface.BaseGenerator):
             ``centre_y``         ``bool``         Flag for changing the domain to [-y_max/2, y_max/2].             ``True``
             ``periodicity``      ``str``          Axes in which periodicity is enforced                            ``xy``
             ``frozen``           ``bool``         If True, the turbulent field will not be updated in time.        ``True``
+            ``u_fed``            ``list(float)``  Velocity at which the turbulence field is fed into the solid     ``[0.0, 0.0, 0.0]``
             ===================  ===============  ===============================================================  ===================
 
     Attributes:
@@ -77,6 +78,9 @@ class TurbVelocityField(generator_interface.BaseGenerator):
 
         self.settings_types['frozen'] = 'bool'
         self.settings_default['frozen'] = True
+
+        self.settings_types['u_fed'] = 'list(float)'
+        self.settings_default['u_fed'] = np.zeros((3,))
 
         self.settings = dict()
 
@@ -216,6 +220,10 @@ class TurbVelocityField(generator_interface.BaseGenerator):
                 self.grid_data['grid'][i][attrib.attrib['Name']] = dict()
                 self.grid_data['grid'][i][attrib.attrib['Name']]['file'] = (
                     attrib.DataItem.text.replace(' ', ''))
+                if attrib.DataItem.attrib['Precision'].strip() == '4':
+                    self.grid_data['grid'][i][attrib.attrib['Name']]['Precision'] = np.float32
+                elif attrib.DataItem.attrib['Precision'].strip() == '8':
+                    self.grid_data['grid'][i][attrib.attrib['Name']]['Precision'] = np.float64
 
         # now we have the file names and the dimensions
         self.grid_data['initial_x_grid'] = np.array(np.arange(0,
@@ -238,7 +246,6 @@ class TurbVelocityField(generator_interface.BaseGenerator):
         self.grid_data['initial_x_grid'] += self.settings['offset'][0] + self.grid_data['origin'][0]
         self.grid_data['initial_x_grid'] -= np.max(self.grid_data['initial_x_grid'])
         self.grid_data['initial_y_grid'] += self.settings['offset'][1] + self.grid_data['origin'][1]
-        # self.grid_data['initial_y_grid'] = self.grid_data['initial_y_grid'][::-1]
         self.grid_data['initial_z_grid'] += self.settings['offset'][2] + self.grid_data['origin'][2] + centre_z_offset
 
         self.bbox = self.get_field_bbox(self.grid_data['initial_x_grid'],
@@ -260,16 +267,13 @@ class TurbVelocityField(generator_interface.BaseGenerator):
 
         self.update_coeff(t)
 
-        print('coeff = ', self.coeff)
-        print('t0 = ', self._t0)
-        print('t1 = ', self._t1)
-        print('id0 = ', id(self._interpolator0))
-        print('id1 = ', id(self._interpolator1))
-
         self.init_interpolator()
+        # Through "offstet" zeta can be modified to simulate the turbulence being fed to the solid
+        # Usual method for wind turbines
         self.interpolate_zeta(zeta,
                               for_pos,
-                              uext)
+                              uext,
+                              offset = -self.u_fed*t)
 
     def update_cache(self, t):
         if self.settings['frozen']:
@@ -351,7 +355,7 @@ class TurbVelocityField(generator_interface.BaseGenerator):
         return interpolator
 
 
-    def interpolate_zeta(self, zeta, for_pos, u_ext, interpolator=None):
+    def interpolate_zeta(self, zeta, for_pos, u_ext, interpolator=None, offset=np.zeros((3))):
         if interpolator is None:
             interpolator = self.interpolator
 
@@ -359,7 +363,7 @@ class TurbVelocityField(generator_interface.BaseGenerator):
             _, n_m, n_n = zeta[isurf].shape
             for i_m in range(n_m):
                 for i_n in range(n_n):
-                    coord = self.g_2_gstar(self.apply_periodicity(zeta[isurf][:, i_m, i_n] + for_pos[0:3]))
+                    coord = self.g_2_gstar(self.apply_periodicity(zeta[isurf][:, i_m, i_n] + for_pos[0:3] + offset))
                     # if not i_m and not i_n and isurf == 5:
                         # print('zeta[5][:, 0, 0] = ', zeta[5][:, 0, 0])
                         # print('coord = ', coord)
@@ -435,7 +439,8 @@ class TurbVelocityField(generator_interface.BaseGenerator):
             if i_cache == 0:
                 # load file, but dont copy it
                 self.vel_holder0[i_dim] = np.memmap(self.route + '/' + file_name,
-                                               dtype='float64',
+                                               # dtype='float64',
+                                               dtype=self.grid_data['grid'][i_grid][velocities[i_dim]]['Precision'],
                                                shape=(self.grid_data['dimensions'][2],
                                                       self.grid_data['dimensions'][1],
                                                       self.grid_data['dimensions'][0]),
@@ -449,7 +454,8 @@ class TurbVelocityField(generator_interface.BaseGenerator):
             elif i_cache == 1:
                 # load file, but dont copy it
                 self.vel_holder1[i_dim] = np.memmap(self.route + '/' + file_name,
-                                               dtype='float64',
+                                               # dtype='float64',
+                                               dtype=self.grid_data['grid'][i_grid][velocities[i_dim]]['Precision'],
                                                shape=(self.grid_data['dimensions'][2],
                                                       self.grid_data['dimensions'][1],
                                                       self.grid_data['dimensions'][0]),
