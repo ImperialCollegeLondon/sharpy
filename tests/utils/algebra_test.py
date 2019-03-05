@@ -1,6 +1,7 @@
 import sharpy.utils.algebra as algebra
 import numpy as np
 import unittest
+import random
 # from IPython import embed
 
 
@@ -178,15 +179,19 @@ class TestAlgebra(unittest.TestCase):
 
 
         ### linearisation point
-        fi0=np.pi/6
-        nv0=np.array([1,3,1])
+        # fi0=np.pi/6
+        # nv0=np.array([1,3,1])
+        fi0=2.0*np.pi*random.random()-np.pi
+        nv0=np.array([random.random(),random.random(),random.random()])
         nv0=nv0/np.linalg.norm(nv0)
         fv0=fi0*nv0
         qv0=algebra.crv2quat(fv0)
 
         # direction of perturbation
-        fi1=np.pi/3
-        nv1=np.array([-2,4,1])
+        # fi1=np.pi/3
+        # nv1=np.array([-2,4,1])
+        fi1=2.0*np.pi*random.random()-np.pi
+        nv1=np.array([random.random(),random.random(),random.random()])
         nv1=nv1/np.linalg.norm(nv1)
         fv1=fi1*nv1
         qv1=algebra.crv2quat(fv1)
@@ -198,7 +203,8 @@ class TestAlgebra(unittest.TestCase):
         Cba0=Cab0.T
 
         # derivatives
-        xv=np.ones((3,)) # dummy vector
+        # xv=np.ones((3,)) # dummy vector
+        xv=np.array([random.random(),random.random(),random.random()]) # dummy vector
         derCga=algebra.der_Cquat_by_v(qv0,xv)
         derCag=algebra.der_CquatT_by_v(qv0,xv)
         derCab=algebra.der_Ccrv_by_v(fv0,xv)
@@ -258,8 +264,6 @@ class TestAlgebra(unittest.TestCase):
 
 
         print(50*'-'+' all good!\n')
-
-
 
     def test_crv_tangetial_operator(self):
         ''' Checks Cartesian rotation vector tangential operator '''

@@ -4,6 +4,7 @@ channels:
   - defaults
 dependencies:
   - apptools=4.4.0=py36_2
+  - blas=1.0=mkl
   - ca-certificates=2018.10.15=ha4d7672_0
   - certifi=2018.10.15=py36_1000
   - colorama=0.4.0=py_0
@@ -45,8 +46,8 @@ dependencies:
   - libxcb=1.13=h470a237_2
   - libxml2=2.9.8=h422b904_5
   - lz4-c=1.8.1.2=0
-  - matplotlib=3.0.1=h8a2030e_1
-  - matplotlib-base=3.0.1=py36hc039c98_1
+  - matplotlib=3.0.2=py36h8a2030e_1001
+  - matplotlib-base=3.0.2=py36h167e16e_1001
   - mayavi=4.6.2=py36h18b3941_1
   - mkl_fft=1.0.6=py36_0
   - mkl_random=1.0.2=py36_0
@@ -78,19 +79,18 @@ dependencies:
   - xorg-libxdmcp=1.1.2=h470a237_7
   - xorg-libxt=1.1.5=h470a237_2
   - xorg-xproto=7.0.31=h470a237_7
-  - blas=1.0=mkl
   - intel-openmp=2019.0=118
   - libedit=3.1.20170329=h6b74fdf_2
   - libffi=3.2.1=hd88cf55_4
   - libgcc-ng=8.2.0=hdf63c60_1
   - libstdcxx-ng=8.2.0=hdf63c60_1
-  - mkl=2019.0=118
+  - mkl=2019.1=144
   - ncurses=6.1=hf484d3e_0
-  - numpy=1.15.4=py36h1d66e8a_0
-  - numpy-base=1.15.4=py36h81de0dd_0
+  - numpy=1.15.4=py36h7e9f1db_0
+  - numpy-base=1.15.4=py36hde5b4d6_0
   - pip=18.1=py36_0
   - readline=7.0=h7b6447c_5
-  - scipy=1.1.0=py36hfa4b5c9_1
+  - scipy=1.1.0=py36h7c811a0_2
   - sqlite=3.25.2=h7b6447c_0
   - tk=8.6.8=hbc83047_0
   - xz=5.2.4=h14c3975_4

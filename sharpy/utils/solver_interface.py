@@ -67,3 +67,17 @@ def initialise_solver(solver_name):
     cls_type = solver_from_string(solver_name)
     solver = cls_type()
     return solver
+
+def dictionary_of_solvers():
+
+    import sharpy.solvers
+    import sharpy.postproc
+    dictionary = dict()
+    for solver in dict_of_solvers:
+        if not solver.lower() == 'SaveData'.lower():
+            # TODO: why it does not work for savedata?
+            init_solver = initialise_solver(solver)
+            dictionary[solver] = init_solver.settings_default
+
+    return dictionary
+
