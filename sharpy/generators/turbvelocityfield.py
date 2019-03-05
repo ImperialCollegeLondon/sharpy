@@ -45,6 +45,7 @@ class TurbVelocityField(generator_interface.BaseGenerator):
             ``centre_y``         ``bool``         Flag for changing the domain to [-y_max/2, y_max/2].             ``True``
             ``periodicity``      ``str``          Axes in which periodicity is enforced                            ``xy``
             ``frozen``           ``bool``         If True, the turbulent field will not be updated in time.        ``True``
+            ``u_fed``            ``list(float)``  Velocity at which the turbulence field is fed into the solid     ``[0.0, 0.0, 0.0]``
             ===================  ===============  ===============================================================  ===================
 
     Attributes:
@@ -77,6 +78,9 @@ class TurbVelocityField(generator_interface.BaseGenerator):
 
         self.settings_types['frozen'] = 'bool'
         self.settings_default['frozen'] = True
+
+        self.settings_types['u_fed'] = 'list(float)'
+        self.settings_default['u_fed'] = np.zeros((3,))
 
         self.settings = dict()
 
@@ -264,9 +268,12 @@ class TurbVelocityField(generator_interface.BaseGenerator):
         self.update_coeff(t)
 
         self.init_interpolator()
+        # Through "offstet" zeta can be modified to simulate the turbulence being fed to the solid
+        # Usual method for wind turbines
         self.interpolate_zeta(zeta,
                               for_pos,
-                              uext)
+                              uext,
+                              offset = -self.u_fed*t)
 
     def update_cache(self, t):
         if self.settings['frozen']:
@@ -348,7 +355,7 @@ class TurbVelocityField(generator_interface.BaseGenerator):
         return interpolator
 
 
-    def interpolate_zeta(self, zeta, for_pos, u_ext, interpolator=None):
+    def interpolate_zeta(self, zeta, for_pos, u_ext, interpolator=None, offset=np.zeros((3))):
         if interpolator is None:
             interpolator = self.interpolator
 
@@ -356,7 +363,7 @@ class TurbVelocityField(generator_interface.BaseGenerator):
             _, n_m, n_n = zeta[isurf].shape
             for i_m in range(n_m):
                 for i_n in range(n_n):
-                    coord = self.g_2_gstar(self.apply_periodicity(zeta[isurf][:, i_m, i_n] + for_pos[0:3]))
+                    coord = self.g_2_gstar(self.apply_periodicity(zeta[isurf][:, i_m, i_n] + for_pos[0:3] + offset))
                     # if not i_m and not i_n and isurf == 5:
                         # print('zeta[5][:, 0, 0] = ', zeta[5][:, 0, 0])
                         # print('coord = ', coord)
