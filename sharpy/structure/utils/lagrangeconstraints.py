@@ -81,23 +81,31 @@ class BaseLagrangeConstraint(metaclass=ABCMeta):
         pass
 
     @abstractmethod
-    def initialise(self, **kwargs):
+    #  def initialise(self, **kwargs):
+    def initialise(self, MBdict_entry):
         pass
 
     @abstractmethod
-    def staticmat(self, **kwargs):
+    # def staticmat(self, **kwargs):
+    def staticmat(self, LM_C, LM_K, LM_Q, MB_beam, MB_tstep, ts, num_LM_eq,
+                  sys_size, dt, Lambda, Lambda_dot, ieq,
+                  scalingFactor, penaltyFactor):
         pass
 
     @abstractmethod
-    def dynamicmat(self, **kwargs):
+    # def dynamicmat(self, **kwargs):
+    def dynamicmat(self, LM_C, LM_K, LM_Q, MB_beam, MB_tstep, ts, num_LM_eq,
+                   sys_size, dt, Lambda, Lambda_dot):
         pass
 
     @abstractmethod
-    def staticpost(self, **kwargs):
+    # def staticpost(self, **kwargs):
+    def staticpost(self, lc_list, MB_beam, MB_tstep):
         pass
 
     @abstractmethod
-    def dynamicpost(self, **kwargs):
+    # def dynamicpost(self, **kwargs):
+    def dynamicpost(self, lc_list, MB_beam, MB_tstep):
         pass
 
 
@@ -361,24 +369,28 @@ class SampleLagrange(BaseLagrangeConstraint):
 
         return self._n_eq
 
-    def initialise(self, **kwargs):
+    def initialise(self, MBdict_entry):
         print('Type of LC: ', self._lc_id)
         print('Arguments and values:')
-        for k, v in kwargs.items():
+        for k, v in MBdict_entry.items():
             print(k, v)
 
         return
 
-    def staticmat(self, **kwargs):
+    def staticmat(self, LM_C, LM_K, LM_Q, MB_beam, MB_tstep, ts, num_LM_eq,
+                sys_size, dt, Lambda, Lambda_dot, ieq,
+                scalingFactor, penaltyFactor):
         return np.zeros((6, 6))
 
-    def dynamicmat(self, **kwargs):
+    def dynamicmat(self, LM_C, LM_K, LM_Q, MB_beam, MB_tstep, ts, num_LM_eq,
+                sys_size, dt, Lambda, Lambda_dot, ieq,
+                scalingFactor, penaltyFactor):
         return np.zeros((10, 10))
 
-    def staticpost(self, **kwargs):
+    def staticpost(self, lc_list, MB_beam, MB_tstep):
         return
 
-    def dynamicpost(self, **kwargs):
+    def dynamicpost(self, lc_list, MB_beam, MB_tstep):
         return
 
 
@@ -392,23 +404,27 @@ class hinge_node_FoR(BaseLagrangeConstraint):
     def get_n_eq(self):
         return self._n_eq
 
-    def initialise(self, **kwargs):
+    def initialise(self, MBdict_entry):
         print('Type of LC: ', self._lc_id)
         print('Arguments and values:')
-        for k, v in kwargs.items():
+        for k, v in MBdict_entry.items():
             print(k, v)
 
-        self.node_number = kwargs['MBdict_entry']['node_in_body']
-        self.node_body = kwargs['MBdict_entry']['body']
-        self.FoR_body = kwargs['MBdict_entry']['body_FoR']
-        self.rot_axisB = kwargs['MBdict_entry']['rot_axisB']
+        self.node_number = MBdict_entry['node_in_body']
+        self.node_body = MBdict_entry['body']
+        self.FoR_body = MBdict_entry['body_FoR']
+        self.rot_axisB = MBdict_entry['rot_axisB']
 
         return
 
-    def staticmat(self, **kwargs):
+    def staticmat(self, LM_C, LM_K, LM_Q, MB_beam, MB_tstep, ts, num_LM_eq,
+                sys_size, dt, Lambda, Lambda_dot, ieq,
+                scalingFactor, penaltyFactor):
         return
 
-    def dynamicmat(self, **kwargs):
+    def dynamicmat(self, LM_C, LM_K, LM_Q, MB_beam, MB_tstep, ts, num_LM_eq,
+                sys_size, dt, Lambda, Lambda_dot, ieq,
+                scalingFactor, penaltyFactor):
 
         # Define the position of the first degree of freedom associated to the node
         node_dof = define_node_dof(MB_beam, self.node_body, self.node_number)
@@ -421,16 +437,16 @@ class hinge_node_FoR(BaseLagrangeConstraint):
 
         return
 
-    def staticpost(self, **kwargs):
+    def staticpost(self, lc_list, MB_beam, MB_tstep):
         return
 
-    def dynamicpost(self, **kwargs):
+    def dynamicpost(self, lc_list, MB_beam, MB_tstep):
         MB_tstep[self.FoR_body].for_pos[0:3] = np.dot(algebra.quat2rotation(MB_tstep[self.node_body].quat), MB_tstep[self.node_body].pos[self.node_number,:]) + MB_tstep[self.node_body].for_pos[0:3]
         return
 
 
 @lagrangeconstraint
-class SampleLagrange(BaseLagrangeConstraint):
+class hinge_node_FoR_constant_vel(BaseLagrangeConstraint):
     _lc_id = 'hinge_node_FoR_constant_vel'
 
     def __init__(self):
@@ -439,24 +455,28 @@ class SampleLagrange(BaseLagrangeConstraint):
     def get_n_eq(self):
         return self._n_eq
 
-    def initialise(self, **kwargs):
+    def initialise(self, MBdict_entry):
         print('Type of LC: ', self._lc_id)
         print('Arguments and values:')
-        for k, v in kwargs.items():
+        for k, v in MBdict_entry.items():
             print(k, v)
 
-        self.node_number = kwargs['MBdict_entry']['node_in_body']
-        self.node_body = kwargs['MBdict_entry']['body']
-        self.FoR_body = kwargs['MBdict_entry']['body_FoR']
-        self.rot_axisB = kwargs['MBdict_entry']['rot_axisB']
-        self.rot_vel = kwargs['MBdict_entry']['rot_vel']
+        self.node_number = MBdict_entry['node_in_body']
+        self.node_body = MBdict_entry['body']
+        self.FoR_body = MBdict_entry['body_FoR']
+        self.rot_axisB = MBdict_entry['rot_axisB']
+        self.rot_vel = MBdict_entry['rot_vel']
 
         return
 
-    def staticmat(self, **kwargs):
+    def staticmat(self, LM_C, LM_K, LM_Q, MB_beam, MB_tstep, ts, num_LM_eq,
+                sys_size, dt, Lambda, Lambda_dot, ieq,
+                scalingFactor, penaltyFactor):
         return
 
-    def dynamicmat(self, **kwargs):
+    def dynamicmat(self, LM_C, LM_K, LM_Q, MB_beam, MB_tstep, ts, num_LM_eq,
+                sys_size, dt, Lambda, Lambda_dot, ieq,
+                scalingFactor, penaltyFactor):
 
         # Define the position of the first degree of freedom associated to the node
         node_dof = define_node_dof(MB_beam, self.node_body, self.node_number)
@@ -470,16 +490,16 @@ class SampleLagrange(BaseLagrangeConstraint):
 
         return
 
-    def staticpost(self, **kwargs):
+    def staticpost(self, lc_list, MB_beam, MB_tstep):
         return
 
-    def dynamicpost(self, **kwargs):
-        MB_tstep[FoR_body].for_pos[0:3] = np.dot(algebra.quat2rotation(MB_tstep[node_body].quat), MB_tstep[node_body].pos[node_number,:]) + MB_tstep[node_body].for_pos[0:3]
+    def dynamicpost(self, lc_list, MB_beam, MB_tstep):
+        MB_tstep[self.FoR_body].for_pos[0:3] = np.dot(algebra.quat2rotation(MB_tstep[self.node_body].quat), MB_tstep[self.node_body].pos[self.node_number,:]) + MB_tstep[self.node_body].for_pos[0:3]
         return
 
 
 @lagrangeconstraint
-class SampleLagrange(BaseLagrangeConstraint):
+class spherical_node_FoR(BaseLagrangeConstraint):
     _lc_id = 'spherical_node_FoR'
 
     def __init__(self):
@@ -488,22 +508,26 @@ class SampleLagrange(BaseLagrangeConstraint):
     def get_n_eq(self):
         return self._n_eq
 
-    def initialise(self, **kwargs):
+    def initialise(self, MBdict_entry):
         print('Type of LC: ', self._lc_id)
         print('Arguments and values:')
-        for k, v in kwargs.items():
+        for k, v in MBdict_entry.items():
             print(k, v)
 
-        self.node_number = kwargs['MBdict_entry']['node_in_body']
-        self.node_body = kwargs['MBdict_entry']['body']
-        self.FoR_body = kwargs['MBdict_entry']['body_FoR']
+        self.node_number = MBdict_entry['node_in_body']
+        self.node_body = MBdict_entry['body']
+        self.FoR_body = MBdict_entry['body_FoR']
 
         return
 
-    def staticmat(self, **kwargs):
+    def staticmat(self, LM_C, LM_K, LM_Q, MB_beam, MB_tstep, ts, num_LM_eq,
+                sys_size, dt, Lambda, Lambda_dot, ieq,
+                scalingFactor, penaltyFactor):
         return
 
-    def dynamicmat(self, **kwargs):
+    def dynamicmat(self, LM_C, LM_K, LM_Q, MB_beam, MB_tstep, ts, num_LM_eq,
+                sys_size, dt, Lambda, Lambda_dot, ieq,
+                scalingFactor, penaltyFactor):
 
         # Define the position of the first degree of freedom associated to the node
         node_dof = define_node_dof(MB_beam, self.node_body, self.node_number)
@@ -515,16 +539,16 @@ class SampleLagrange(BaseLagrangeConstraint):
 
         return
 
-    def staticpost(self, **kwargs):
+    def staticpost(self, lc_list, MB_beam, MB_tstep):
         return
 
-    def dynamicpost(self, **kwargs):
+    def dynamicpost(self, lc_list, MB_beam, MB_tstep):
         MB_tstep[self.FoR_body].for_pos[0:3] = np.dot(algebra.quat2rotation(MB_tstep[self.node_body].quat), MB_tstep[self.node_body].pos[self.node_number,:]) + MB_tstep[self.node_body].for_pos[0:3]
         return
 
 
 @lagrangeconstraint
-class SampleLagrange(BaseLagrangeConstraint):
+class free(BaseLagrangeConstraint):
     _lc_id = 'free'
 
     def __init__(self):
@@ -533,28 +557,32 @@ class SampleLagrange(BaseLagrangeConstraint):
     def get_n_eq(self):
         return self._n_eq
 
-    def initialise(self, **kwargs):
+    def initialise(self, MBdict_entry):
         print('Type of LC: ', self._lc_id)
         print('Arguments and values:')
-        for k, v in kwargs.items():
+        for k, v in MBdict_entry.items():
             print(k, v)
 
         return
 
-    def staticmat(self, **kwargs):
+    def staticmat(self, LM_C, LM_K, LM_Q, MB_beam, MB_tstep, ts, num_LM_eq,
+                sys_size, dt, Lambda, Lambda_dot, ieq,
+                scalingFactor, penaltyFactor):
         return
 
-    def dynamicmat(self, **kwargs):
+    def dynamicmat(self, LM_C, LM_K, LM_Q, MB_beam, MB_tstep, ts, num_LM_eq,
+                sys_size, dt, Lambda, Lambda_dot, ieq,
+                scalingFactor, penaltyFactor):
         return
 
-    def staticpost(self, **kwargs):
+    def staticpost(self, lc_list, MB_beam, MB_tstep):
         return
 
-    def dynamicpost(self, **kwargs):
+    def dynamicpost(self, lc_list, MB_beam, MB_tstep):
         return
 
 
-class SampleLagrange(BaseLagrangeConstraint):
+class spherical_FoR(BaseLagrangeConstraint):
     _lc_id = 'spherical_FoR'
 
     def __init__(self):
@@ -563,20 +591,24 @@ class SampleLagrange(BaseLagrangeConstraint):
     def get_n_eq(self):
         return self._n_eq
 
-    def initialise(self, **kwargs):
+    def initialise(self, MBdict_entry):
         print('Type of LC: ', self._lc_id)
         print('Arguments and values:')
-        for k, v in kwargs.items():
+        for k, v in MBdict_entry.items():
             print(k, v)
 
-        self.body_FoR = MBdict["constraint_%02d" % iconstraint]['body_FoR']
+        self.body_FoR = MBdict_entry['body_FoR']
 
         return
 
-    def staticmat(self, **kwargs):
+    def staticmat(self, LM_C, LM_K, LM_Q, MB_beam, MB_tstep, ts, num_LM_eq,
+                sys_size, dt, Lambda, Lambda_dot, ieq,
+                scalingFactor, penaltyFactor):
         return
 
-    def dynamicmat(self, **kwargs):
+    def dynamicmat(self, LM_C, LM_K, LM_Q, MB_beam, MB_tstep, ts, num_LM_eq,
+                sys_size, dt, Lambda, Lambda_dot, ieq,
+                scalingFactor, penaltyFactor):
         num_LM_eq_specific = 3
         Bnh = np.zeros((num_LM_eq_specific, sys_size), dtype=ct.c_double, order = 'F')
         B = np.zeros((num_LM_eq_specific, sys_size), dtype=ct.c_double, order = 'F')
@@ -596,14 +628,14 @@ class SampleLagrange(BaseLagrangeConstraint):
         ieq += 3
         return
 
-    def staticpost(self, **kwargs):
+    def staticpost(self, lc_list, MB_beam, MB_tstep):
         return
 
-    def dynamicpost(self, **kwargs):
+    def dynamicpost(self, lc_list, MB_beam, MB_tstep):
         return
 
 
-class SampleLagrange(BaseLagrangeConstraint):
+class hinge_FoR(BaseLagrangeConstraint):
     _lc_id = 'hinge_FoR'
 
     def __init__(self):
@@ -612,21 +644,25 @@ class SampleLagrange(BaseLagrangeConstraint):
     def get_n_eq(self):
         return self._n_eq
 
-    def initialise(self, **kwargs):
+    def initialise(self, MBdict_entry):
         print('Type of LC: ', self._lc_id)
         print('Arguments and values:')
-        for k, v in kwargs.items():
+        for k, v in MBdict_entry.items():
             print(k, v)
 
-        self.body_FoR = kwargs['MBdict_entry']['body_FoR']
-        self.rot_axis = kwargs['MBdict_entry']['rot_axis_AFoR']
+        self.body_FoR = MBdict_entry['body_FoR']
+        self.rot_axis = MBdict_entry['rot_axis_AFoR']
 
         return
 
-    def staticmat(self, **kwargs):
+    def staticmat(self, LM_C, LM_K, LM_Q, MB_beam, MB_tstep, ts, num_LM_eq,
+                sys_size, dt, Lambda, Lambda_dot, ieq,
+                scalingFactor, penaltyFactor):
         return
 
-    def dynamicmat(self, **kwargs):
+    def dynamicmat(self, LM_C, LM_K, LM_Q, MB_beam, MB_tstep, ts, num_LM_eq,
+                sys_size, dt, Lambda, Lambda_dot, ieq,
+                scalingFactor, penaltyFactor):
         num_LM_eq_specific = 5
         Bnh = np.zeros((num_LM_eq_specific, sys_size), dtype=ct.c_double, order = 'F')
         B = np.zeros((num_LM_eq_specific, sys_size), dtype=ct.c_double, order = 'F')
@@ -664,14 +700,14 @@ class SampleLagrange(BaseLagrangeConstraint):
         ieq += 5
         return
 
-    def staticpost(self, **kwargs):
+    def staticpost(self, lc_list, MB_beam, MB_tstep):
         return
 
-    def dynamicpost(self, **kwargs):
+    def dynamicpost(self, lc_list, MB_beam, MB_tstep):
         return
 
 
-class SampleLagrange(BaseLagrangeConstraint):
+class hinge_FoR_wrtG(BaseLagrangeConstraint):
     _lc_id = 'hinge_FoR_wrtG'
 
     def __init__(self):
@@ -680,21 +716,25 @@ class SampleLagrange(BaseLagrangeConstraint):
     def get_n_eq(self):
         return self._n_eq
 
-    def initialise(self, **kwargs):
+    def initialise(self, MBdict_entry):
         print('Type of LC: ', self._lc_id)
         print('Arguments and values:')
-        for k, v in kwargs.items():
+        for k, v in MBdict_entry.items():
             print(k, v)
 
-        self.body_FoR = kwargs['MBdict_entry']['body_FoR']
-        self.rot_axis = kwargs['MBdict_entry']['rot_axis_AFoR']
+        self.body_FoR = MBdict_entry['body_FoR']
+        self.rot_axis = MBdict_entry['rot_axis_AFoR']
 
         return
 
-    def staticmat(self, **kwargs):
+    def staticmat(self, LM_C, LM_K, LM_Q, MB_beam, MB_tstep, ts, num_LM_eq,
+                sys_size, dt, Lambda, Lambda_dot, ieq,
+                scalingFactor, penaltyFactor):
         return
 
-    def dynamicmat(self, **kwargs):
+    def dynamicmat(self, LM_C, LM_K, LM_Q, MB_beam, MB_tstep, ts, num_LM_eq,
+                sys_size, dt, Lambda, Lambda_dot, ieq,
+                scalingFactor, penaltyFactor):
         num_LM_eq_specific = 5
         Bnh = np.zeros((num_LM_eq_specific, sys_size), dtype=ct.c_double, order = 'F')
         B = np.zeros((num_LM_eq_specific, sys_size), dtype=ct.c_double, order = 'F')
@@ -734,14 +774,14 @@ class SampleLagrange(BaseLagrangeConstraint):
         ieq += 5
         return
 
-    def staticpost(self, **kwargs):
+    def staticpost(self, lc_list, MB_beam, MB_tstep):
         return
 
-    def dynamicpost(self, **kwargs):
+    def dynamicpost(self, lc_list, MB_beam, MB_tstep):
         return
 
 
-class SampleLagrange(BaseLagrangeConstraint):
+class fully_constrained_node_FoR(BaseLagrangeConstraint):
     _lc_id = 'fully_constrained_node_FoR'
 
     def __init__(self):
@@ -750,22 +790,26 @@ class SampleLagrange(BaseLagrangeConstraint):
     def get_n_eq(self):
         return self._n_eq
 
-    def initialise(self, **kwargs):
+    def initialise(self, MBdict_entry):
         print('Type of LC: ', self._lc_id)
         print('Arguments and values:')
-        for k, v in kwargs.items():
+        for k, v in MBdict_entry.items():
             print(k, v)
 
         print("WARNING: do not use fully_constrained_node_FoR. It is outdated")
-        self.node_in_body = kwargs['MBdict_entry']['node_in_body']
-        self.node_body = kwargs['MBdict_entry']['body']
-        self.body_FoR = kwargs['MBdict_entry']['body_FoR']
+        self.node_in_body = MBdict_entry['node_in_body']
+        self.node_body = MBdict_entry['body']
+        self.body_FoR = MBdict_entry['body_FoR']
         return
 
-    def staticmat(self, **kwargs):
+    def staticmat(self, LM_C, LM_K, LM_Q, MB_beam, MB_tstep, ts, num_LM_eq,
+                sys_size, dt, Lambda, Lambda_dot, ieq,
+                scalingFactor, penaltyFactor):
         return
 
-    def dynamicmat(self, **kwargs):
+    def dynamicmat(self, LM_C, LM_K, LM_Q, MB_beam, MB_tstep, ts, num_LM_eq,
+                sys_size, dt, Lambda, Lambda_dot, ieq,
+                scalingFactor, penaltyFactor):
         num_LM_eq_specific = 6
         Bnh = np.zeros((num_LM_eq_specific, sys_size), dtype=ct.c_double, order = 'F')
         B = np.zeros((num_LM_eq_specific, sys_size), dtype=ct.c_double, order = 'F')
@@ -801,14 +845,14 @@ class SampleLagrange(BaseLagrangeConstraint):
         ieq += 6
         return
 
-    def staticpost(self, **kwargs):
+    def staticpost(self, lc_list, MB_beam, MB_tstep):
         return
 
-    def dynamicpost(self, **kwargs):
+    def dynamicpost(self, lc_list, MB_beam, MB_tstep):
         return
 
 
-class SampleLagrange(BaseLagrangeConstraint):
+class hinge_node_FoR_constant_rotation(BaseLagrangeConstraint):
     _lc_id = 'hinge_node_FoR_constant_rotation'
 
     def __init__(self):
@@ -817,27 +861,31 @@ class SampleLagrange(BaseLagrangeConstraint):
     def get_n_eq(self):
         return self._n_eq
 
-    def initialise(self, **kwargs):
+    def initialise(self, MBdict_entry):
         print('Type of LC: ', self._lc_id)
         print('Arguments and values:')
-        for k, v in kwargs.items():
+        for k, v in MBdict_entry.items():
             print(k, v)
 
         return
 
-    def staticmat(self, **kwargs):
+    def staticmat(self, LM_C, LM_K, LM_Q, MB_beam, MB_tstep, ts, num_LM_eq,
+                sys_size, dt, Lambda, Lambda_dot, ieq,
+                scalingFactor, penaltyFactor):
         return
 
-    def dynamicmat(self, **kwargs):
+    def dynamicmat(self, LM_C, LM_K, LM_Q, MB_beam, MB_tstep, ts, num_LM_eq,
+                sys_size, dt, Lambda, Lambda_dot, ieq,
+                scalingFactor, penaltyFactor):
         return
 
-    def staticpost(self, **kwargs):
+    def staticpost(self, lc_list, MB_beam, MB_tstep):
         return
 
-    def dynamicpost(self, **kwargs):
+    def dynamicpost(self, lc_list, MB_beam, MB_tstep):
         return
 
-class SampleLagrange(BaseLagrangeConstraint):
+class constant_rot_vel_FoR(BaseLagrangeConstraint):
     _lc_id = 'constant_rot_vel_FoR'
 
     def __init__(self):
@@ -846,21 +894,25 @@ class SampleLagrange(BaseLagrangeConstraint):
     def get_n_eq(self):
         return self._n_eq
 
-    def initialise(self, **kwargs):
+    def initialise(self, MBdict_entry):
         print('Type of LC: ', self._lc_id)
         print('Arguments and values:')
-        for k, v in kwargs.items():
+        for k, v in MBdict_entry.items():
             print(k, v)
 
-        self.rot_vel = kwargs['MBdict_entry']['rot_vel']
-        self.FoR_body = kwargs['MBdict_entry']['FoR_body']
+        self.rot_vel = MBdict_entry['rot_vel']
+        self.FoR_body = MBdict_entry['FoR_body']
 
         return
 
-    def staticmat(self, **kwargs):
+    def staticmat(self, LM_C, LM_K, LM_Q, MB_beam, MB_tstep, ts, num_LM_eq,
+                sys_size, dt, Lambda, Lambda_dot, ieq,
+                scalingFactor, penaltyFactor):
         return
 
-    def dynamicmat(self, **kwargs):
+    def dynamicmat(self, LM_C, LM_K, LM_Q, MB_beam, MB_tstep, ts, num_LM_eq,
+                sys_size, dt, Lambda, Lambda_dot, ieq,
+                scalingFactor, penaltyFactor):
         num_LM_eq_specific = 3
         Bnh = np.zeros((num_LM_eq_specific, sys_size), dtype=ct.c_double, order = 'F')
         B = np.zeros((num_LM_eq_specific, sys_size), dtype=ct.c_double, order = 'F')
@@ -879,13 +931,13 @@ class SampleLagrange(BaseLagrangeConstraint):
         ieq += 3
         return
 
-    def staticpost(self, **kwargs):
+    def staticpost(self, lc_list, MB_beam, MB_tstep):
         return
 
-    def dynamicpost(self, **kwargs):
+    def dynamicpost(self, lc_list, MB_beam, MB_tstep):
         return
 
-class SampleLagrange(BaseLagrangeConstraint):
+class constant_vel_FoR(BaseLagrangeConstraint):
     _lc_id = 'constant_vel_FoR'
 
     def __init__(self):
@@ -894,21 +946,25 @@ class SampleLagrange(BaseLagrangeConstraint):
     def get_n_eq(self):
         return self._n_eq
 
-    def initialise(self, **kwargs):
+    def initialise(self, MBdict_entry):
         print('Type of LC: ', self._lc_id)
         print('Arguments and values:')
-        for k, v in kwargs.items():
+        for k, v in MBdict_entry.items():
             print(k, v)
 
-        self.vel = kwargs['MBdict_entry']['vel']
-        self.FoR_body = kwargs['MBdict_entry']['FoR_body']
+        self.vel = MBdict_entry['vel']
+        self.FoR_body = MBdict_entry['FoR_body']
 
         return
 
-    def staticmat(self, **kwargs):
+    def staticmat(self, LM_C, LM_K, LM_Q, MB_beam, MB_tstep, ts, num_LM_eq,
+                sys_size, dt, Lambda, Lambda_dot, ieq,
+                scalingFactor, penaltyFactor):
         return
 
-    def dynamicmat(self, **kwargs):
+    def dynamicmat(self, LM_C, LM_K, LM_Q, MB_beam, MB_tstep, ts, num_LM_eq,
+                sys_size, dt, Lambda, Lambda_dot, ieq,
+                scalingFactor, penaltyFactor):
         num_LM_eq_specific = 6
         Bnh = np.zeros((num_LM_eq_specific, sys_size), dtype=ct.c_double, order='F')
         B = np.zeros((num_LM_eq_specific, sys_size), dtype=ct.c_double, order='F')
@@ -927,13 +983,13 @@ class SampleLagrange(BaseLagrangeConstraint):
         ieq += 6
         return
 
-    def staticpost(self, **kwargs):
+    def staticpost(self, lc_list, MB_beam, MB_tstep):
         return
 
-    def dynamicpost(self, **kwargs):
+    def dynamicpost(self, lc_list, MB_beam, MB_tstep):
         return
 
-class SampleLagrange(BaseLagrangeConstraint):
+class lin_vel_node_wrtA(BaseLagrangeConstraint):
     _lc_id = 'lin_vel_node_wrtA'
 
     def __init__(self):
@@ -942,22 +998,27 @@ class SampleLagrange(BaseLagrangeConstraint):
     def get_n_eq(self):
         return self._n_eq
 
-    def initialise(self, **kwargs):
+    def initialise(self, MBdict_entry):
         print('Type of LC: ', self._lc_id)
         print('Arguments and values:')
-        for k, v in kwargs.items():
+        for k, v in MBdict_entry.items():
             print(k, v)
 
-        self.vel = kwargs['MBdict_entry']['velocity']
-        self.body_number = kwargs['MBdict_entry']['body_number']
-        self.node_number = kwargs['MBdict_entry']['node_number']
+        self.vel = MBdict_entry['velocity']
+        self.body_number = MBdict_entry['body_number']
+        self.node_number = MBdict_entry['node_number']
 
         return
 
-    def staticmat(self, **kwargs):
+    def staticmat(self, LM_C, LM_K, LM_Q, MB_beam, MB_tstep, ts, num_LM_eq,
+                sys_size, dt, Lambda, Lambda_dot, ieq,
+                scalingFactor, penaltyFactor):
         return
 
-    def dynamicmat(self, **kwargs):
+    def dynamicmat(self, LM_C, LM_K, LM_Q, MB_beam, MB_tstep, ts, num_LM_eq,
+                sys_size, dt, Lambda, Lambda_dot, ieq,
+                scalingFactor, penaltyFactor):
+
         if len(self.vel.shape) > 1:
             current_vel = self.vel[ts-1, :]
         else:
@@ -968,7 +1029,7 @@ class SampleLagrange(BaseLagrangeConstraint):
         B = np.zeros((num_LM_eq_specific, sys_size), dtype=ct.c_double, order='F')
 
         # Define the position of the first degree of freedom associated to the FoR
-        FoR_dof = define_FoR_dof(MB_beam, self.body_number)
+        # FoR_dof = define_FoR_dof(MB_beam, self.body_number)
         node_dof = define_node_dof(MB_beam, self.body_number, self.node_number)
 
         Bnh[:num_LM_eq_specific, node_dof:node_dof+3] = np.eye(3)
@@ -982,13 +1043,13 @@ class SampleLagrange(BaseLagrangeConstraint):
         ieq += 3
         return
 
-    def staticpost(self, **kwargs):
+    def staticpost(self, lc_list, MB_beam, MB_tstep):
         return
 
-    def dynamicpost(self, **kwargs):
+    def dynamicpost(self, lc_list, MB_beam, MB_tstep):
         return
 
-class SampleLagrange(BaseLagrangeConstraint):
+class lin_vel_node_wrtG(BaseLagrangeConstraint):
     _lc_id = 'lin_vel_node_wrtG'
 
     def __init__(self):
@@ -997,21 +1058,25 @@ class SampleLagrange(BaseLagrangeConstraint):
     def get_n_eq(self):
         return self._n_eq
 
-    def initialise(self, **kwargs):
+    def initialise(self, MBdict_entry):
         print('Type of LC: ', self._lc_id)
         print('Arguments and values:')
-        for k, v in kwargs.items():
+        for k, v in MBdict_entry.items():
             print(k, v)
 
-        self.vel = kwargs['MBdict_entry']['velocity']
-        self.body_number = kwargs['MBdict_entry']['body_number']
-        self.node_number = kwargs['MBdict_entry']['node_number']
+        self.vel = MBdict_entry['velocity']
+        self.body_number = MBdict_entry['body_number']
+        self.node_number = MBdict_entry['node_number']
         return
 
-    def staticmat(self, **kwargs):
+    def staticmat(self, LM_C, LM_K, LM_Q, MB_beam, MB_tstep, ts, num_LM_eq,
+                sys_size, dt, Lambda, Lambda_dot, ieq,
+                scalingFactor, penaltyFactor):
         return
 
-    def dynamicmat(self, **kwargs):
+    def dynamicmat(self, LM_C, LM_K, LM_Q, MB_beam, MB_tstep, ts, num_LM_eq,
+                sys_size, dt, Lambda, Lambda_dot, ieq,
+                scalingFactor, penaltyFactor):
         if len(self.vel.shape) > 1:
             current_vel = self.vel[ts-1, :]
         else:
@@ -1050,10 +1115,10 @@ class SampleLagrange(BaseLagrangeConstraint):
         ieq += 3
         return
 
-    def staticpost(self, **kwargs):
+    def staticpost(self, lc_list, MB_beam, MB_tstep):
         return
 
-    def dynamicpost(self, **kwargs):
+    def dynamicpost(self, lc_list, MB_beam, MB_tstep):
         return
 
 
@@ -1099,7 +1164,7 @@ def define_num_LM_eq(lc_list):
     return num_LM_eq
 
 
-def generate_lagrange_matrix(lc_list, MBdict, MB_beam, MB_tstep, ts, num_LM_eq, sys_size, dt, Lambda, Lambda_dot, dynamic_or_static):
+def generate_lagrange_matrix(lc_list, MB_beam, MB_tstep, ts, num_LM_eq, sys_size, dt, Lambda, Lambda_dot, dynamic_or_static):
     """
     generate_lagrange_matrix
 
@@ -1138,14 +1203,14 @@ def generate_lagrange_matrix(lc_list, MBdict, MB_beam, MB_tstep, ts, num_LM_eq, 
     LM_Q = np.zeros((sys_size + num_LM_eq,),dtype=ct.c_double, order = 'F')
 
     # Define the matrices associated to the constratints
-    # TODO: I probably do not need to pass MBdict any longer after initialization
+    # TODO: Is there a better way to deal with ieq?
     ieq = 0
     for lc in lc_list:
         if dynamic_or_static.lower() == "static":
             ieq = lc.staticmat(LM_C=LM_C,
                                 LM_K=LM_K,
                                 LM_Q=LM_Q,
-                                MBdict=MBdict,
+                                # MBdict=MBdict,
                                 MB_beam=MB_beam,
                                 MB_tstep=MB_tstep,
                                 ts=ts,
@@ -1153,13 +1218,16 @@ def generate_lagrange_matrix(lc_list, MBdict, MB_beam, MB_tstep, ts, num_LM_eq, 
                                 sys_size=sys_size,
                                 dt=dt,
                                 Lambda=Lambda,
-                                Lambda_dot=Lambda_dot)
+                                Lambda_dot=Lambda_dot,
+                                ieq=ieq,
+                                scalingFactor=scalingFactor,
+                                penaltyFactor=penaltyFactor)
 
         elif dynamic_or_static.lower() == "dynamic":
             ieq = lc.dynamicmat(LM_C=LM_C,
                                 LM_K=LM_K,
                                 LM_Q=LM_Q,
-                                MBdict=MBdict,
+                                # MBdict=MBdict,
                                 MB_beam=MB_beam,
                                 MB_tstep=MB_tstep,
                                 ts=ts,
@@ -1167,24 +1235,27 @@ def generate_lagrange_matrix(lc_list, MBdict, MB_beam, MB_tstep, ts, num_LM_eq, 
                                 sys_size=sys_size,
                                 dt=dt,
                                 Lambda=Lambda,
-                                Lambda_dot=Lambda_dot)
+                                Lambda_dot=Lambda_dot,
+                                ieq=ieq,
+                                scalingFactor=scalingFactor,
+                                penaltyFactor=penaltyFactor)
 
     return LM_C, LM_K, LM_Q
 
-def postprocess(lc_list, MB_beam, MB_tstep, MBdict, dynamic_or_static):
+def postprocess(lc_list, MB_beam, MB_tstep, dynamic_or_static):
 
     for lc in lc_list:
         if dynamic_or_static.lower() == "static":
             lc.staticpost(lc_list = lc_list,
                            MB_beam = MB_beam,
-                           MB_tstep = MB_tstep,
-                           MBdict = MBdict)
+                           MB_tstep = MB_tstep)
+                           # MBdict = MBdict)
 
         elif dynamic_or_static.lower() == "dynamic":
             lc.dynamicpost(lc_list = lc_list,
                            MB_beam = MB_beam,
-                           MB_tstep = MB_tstep,
-                           MBdict = MBdict)
+                           MB_tstep = MB_tstep)
+                           # MBdict = MBdict)
 
     return
 

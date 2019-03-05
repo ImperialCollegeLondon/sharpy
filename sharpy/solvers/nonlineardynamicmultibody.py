@@ -250,7 +250,7 @@ class NonLinearDynamicMultibody(BaseSolver):
 
 
         # Generate matrices associated to Lagrange multipliers
-        LM_C, LM_K, LM_Q = lagrangeconstraints.generate_lagrange_matrix(self.lc_list, MBdict, MB_beam, MB_tstep, ts, self.num_LM_eq, self.sys_size, dt, Lambda, Lambda_dot, "dynamic")
+        LM_C, LM_K, LM_Q = lagrangeconstraints.generate_lagrange_matrix(self.lc_list, MB_beam, MB_tstep, ts, self.num_LM_eq, self.sys_size, dt, Lambda, Lambda_dot, "dynamic")
 
         #LM_C, LM_K, LM_Q = self.generate_lagrange_matrix(MB_beam, MB_tstep, dt, Lambda, Lambda_dot)
 
@@ -400,7 +400,8 @@ class NonLinearDynamicMultibody(BaseSolver):
 
         # End of Newmark-beta iterations
         self.integrate_position(MB_beam, MB_tstep, dt)
-        lagrangeconstraints.postprocess(self.lc_list, MB_beam, MB_tstep, MBdict, "dynamic")
+        # lagrangeconstraints.postprocess(self.lc_list, MB_beam, MB_tstep, MBdict, "dynamic")
+        lagrangeconstraints.postprocess(self.lc_list, MB_beam, MB_tstep, "dynamic")
         if self.settings['gravity_on']:
             for ibody in range(len(MB_beam)):
                 xbeamlib.cbeam3_correct_gravity_forces(MB_beam[ibody], MB_tstep[ibody], self.settings)
