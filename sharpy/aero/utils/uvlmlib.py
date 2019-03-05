@@ -110,6 +110,15 @@ class FlightConditions(ct.Structure):
     #     self.c_ref = fc_dict['FlightCon']['c_ref']
 
 
+class SHWOptions(ct.Structure):
+    _fields_ = [("dt", ct.c_double),
+                ("rot_center", ct.c_double*3),
+                ("rot_vel", ct.c_double),
+                ("rot_axis", ct.c_double*3)]
+
+    def __init__(self):
+        ct.Structure.__init__(self)
+
 # type for 2d integer matrix
 t_2int = ct.POINTER(ct.c_int)*2
 
@@ -249,6 +258,66 @@ def uvlm_solver(i_iter, ts_info, struct_ts_info, options, convect_wake=True, dt=
     # previous_ts_info.remove_ctypes_pointers()
 
 
+def shw_solver(i_iter, ts_info, struct_ts_info, options, convect_wake=True, dt=None):
+    run_SHW = UvlmLib.run_SHW
+    run_SHW.restype = None
+
+    uvmopts = UVMopts()
+    if dt is None:
+        uvmopts.dt = ct.c_double(options["dt"].value)
+    else:
+        uvmopts.dt = ct.c_double(dt)
+    uvmopts.NumCores = ct.c_uint(options["num_cores"].value)
+    uvmopts.NumSurfaces = ct.c_uint(ts_info.n_surf)
+    uvmopts.ImageMethod = ct.c_bool(False)
+    uvmopts.convection_scheme = ct.c_uint(options["convection_scheme"].value)
+    uvmopts.iterative_solver = ct.c_bool(options['iterative_solver'].value)
+    uvmopts.iterative_tol = ct.c_double(options['iterative_tol'].value)
+    uvmopts.iterative_precond = ct.c_bool(options['iterative_precond'].value)
+    uvmopts.convect_wake = ct.c_bool(convect_wake)
+
+    shwopts = SHWOptions()
+    shwopts.dt = uvmopts.dt
+    shwopts.rot_center = np.ctypeslib.as_ctypes(options['rot_center'])
+    shwopts.rot_vel = options['rot_vel']
+    shwopts.rot_axis = np.ctypeslib.as_ctypes(options['rot_axis'])
+
+    flightconditions = FlightConditions()
+    flightconditions.rho = options['rho']
+    flightconditions.uinf = np.ctypeslib.as_ctypes(np.linalg.norm(ts_info.u_ext[0][:, 0, 0]))
+    # direction = np.array([1.0, 0, 0])
+    flightconditions.uinf_direction = np.ctypeslib.as_ctypes(ts_info.u_ext[0][:, 0, 0]/flightconditions.uinf)
+    # flightconditions.uinf_direction = np.ctypeslib.as_ctypes(direction)
+
+    rbm_vel = struct_ts_info.for_vel.copy()
+    rbm_vel[0:3] = np.dot(struct_ts_info.cga(), rbm_vel[0:3])
+    rbm_vel[3:6] = np.dot(struct_ts_info.cga(), rbm_vel[3:6])
+    p_rbm_vel = rbm_vel.ctypes.data_as(ct.POINTER(ct.c_double))
+
+    i = ct.c_uint(i_iter)
+    ts_info.generate_ctypes_pointers()
+    # previous_ts_info.generate_ctypes_pointers()
+    run_SHW(ct.byref(uvmopts),
+             ct.byref(flightconditions),
+             ct.byref(shwopts),
+             ts_info.ct_p_dimensions,
+             ts_info.ct_p_dimensions_star,
+             ct.byref(i),
+             ts_info.ct_p_u_ext,
+             ts_info.ct_p_u_ext_star,
+             ts_info.ct_p_zeta,
+             ts_info.ct_p_zeta_star,
+             ts_info.ct_p_zeta_dot,
+             p_rbm_vel,
+             ts_info.ct_p_gamma,
+             ts_info.ct_p_gamma_star,
+             # previous_ts_info.ct_p_gamma,
+             ts_info.ct_p_normals,
+             ts_info.ct_p_forces,
+             ts_info.ct_p_dynamic_forces)
+    ts_info.remove_ctypes_pointers()
+
+
 def uvlm_calculate_unsteady_forces(ts_info,
                                    struct_ts_info,
                                    options,
@@ -322,3 +391,60 @@ def uvlm_calculate_incidence_angle(ts_info,
                               p_rbm_vel,
                               ts_info.postproc_cell['incidence_angle_ct_pointer'])
     ts_info.remove_ctypes_pointers()
+
+def uvlm_calculate_total_induced_velocity_at_point(ts_info,
+                                                   target_triad,
+                                                   for_pos):
+    """
+    uvlm_calculate_total_induced_velocity_at_point
+
+    Caller to the UVLM library to compute the induced velocity of all the
+    surfaces and wakes at a point
+
+    Args:
+        ts_info (AeroTimeStepInfo): Time step information
+        target_triad (np.array): Point coordinates
+        uind (np.array): Induced velocity
+
+    Returns:
+    	uind (np.array): Induced velocity
+
+    """
+    calculate_uind_at_point = UvlmLib.total_induced_velocity_at_point
+    calculate_uind_at_point.restype = None
+
+    uvmopts = UVMopts()
+    uvmopts.NumSurfaces = ct.c_uint(ts_info.n_surf)
+    uvmopts.ImageMethod = ct.c_bool(False)
+
+    uind = np.zeros((3,), dtype=ct.c_double)
+    p_uind = uind.ctypes.data_as(ct.POINTER(ct.c_double))
+    p_target_triad = target_triad.ctypes.data_as(ct.POINTER(ct.c_double))
+
+    # make a copy of ts info and add for_pos to zeta and zeta_star
+    ts_info_copy = ts_info.copy()
+    for i_surf in range(ts_info_copy.n_surf):
+        # zeta
+        for iM in range(ts_info_copy.zeta[i_surf].shape[1]):
+            for iN in range(ts_info_copy.zeta[i_surf].shape[2]):
+                ts_info_copy.zeta[i_surf][:, iM, iN] += for_pos[0:3]
+        # zeta_star
+        for iM in range(ts_info_copy.zeta_star[i_surf].shape[1]):
+            for iN in range(ts_info_copy.zeta_star[i_surf].shape[2]):
+                ts_info_copy.zeta_star[i_surf][:, iM, iN] += for_pos[0:3]
+
+    ts_info_copy.generate_ctypes_pointers()
+    calculate_uind_at_point(ct.byref(uvmopts),
+                              ts_info_copy.ct_p_dimensions,
+                              ts_info_copy.ct_p_dimensions_star,
+                              ts_info_copy.ct_p_zeta,
+                              ts_info_copy.ct_p_zeta_star,
+                              ts_info_copy.ct_p_gamma,
+                              ts_info_copy.ct_p_gamma_star,
+                              p_target_triad,
+                              p_uind)
+    ts_info_copy.remove_ctypes_pointers()
+    del p_uind
+    del p_target_triad
+
+    return uind
