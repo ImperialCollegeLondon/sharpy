@@ -46,7 +46,7 @@ class LinAeroEla():
         SS (scipy.signal): state space formulation (discrete or continuous time), as selected by the user
     """
 
-    def __init__(self, data, custom_settings_linear=None):
+    def __init__(self, data, custom_settings_linear=None, uvlm_block=False):
 
         self.data = data
         if custom_settings_linear is None:
@@ -92,13 +92,22 @@ class LinAeroEla():
         self.lingebm_str = lingebm.FlexDynamic(self.tsstr, dt=self.dt)
 
         ### uvlm
-        self.linuvlm = linuvlm.Dynamic(
-            self.tsaero,
-            dt=settings_here['dt'].value,
-            RemovePredictor=settings_here['remove_predictor'].value,
-            UseSparse=settings_here['use_sparse'].value,
-            integr_order=settings_here['integr_order'].value,
-            ScalingDict=settings_here['ScalingDict'])
+        if uvlm_block:
+            self.linuvlm = linuvlm.DynamicBlock(
+                self.tsaero,
+                dt=settings_here['dt'].value,
+                RemovePredictor=settings_here['remove_predictor'].value,
+                UseSparse=settings_here['use_sparse'].value,
+                integr_order=settings_here['integr_order'].value,
+                ScalingDict=settings_here['ScalingDict'])
+        else:
+            self.linuvlm = linuvlm.Dynamic(
+                self.tsaero,
+                dt=settings_here['dt'].value,
+                RemovePredictor=settings_here['remove_predictor'].value,
+                UseSparse=settings_here['use_sparse'].value,
+                integr_order=settings_here['integr_order'].value,
+                ScalingDict=settings_here['ScalingDict'])
 
 
     def reshape_struct_input(self):

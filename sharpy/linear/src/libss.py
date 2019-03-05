@@ -189,6 +189,191 @@ class ss():
 		self.states=N
 
 
+class ss_block():
+	'''
+	State-space model in block form. This class has the same purpose as "ss", 
+	but the A, B, C, D are allocated in the form of nested lists. The format is
+	similar to the one used in numpy.block but:
+		1. Block matrices can contain both dense and sparse matrices
+		2. Empty blocks are defined through None type
+
+	Methods:
+	- remove_block: drop one of the blocks from the s-s model
+	- addGain: project inputs/outputs
+	- project: project state
+	'''
+
+	def __init__(self,A, B, C, D, S_states, S_inputs, S_outputs, dt=None):
+		'''
+		Allocate state-space model (A,B,C,D) in block form starting from nested
+		lists of full/sparse matrices (as per numpy.block). 
+
+		Input:
+		- A, B, C, D: lists of matrices defining the state-space model.
+		- S_states, S_inputs, S_outputs: lists with dimensions of of each block
+		representing the states, inputs and outputs of the model.
+		- dt: time-step. In None, a continuous-time system is assumed.
+		'''
+
+		self.A=A
+		self.B=B
+		self.C=C 
+		self.D=D
+		self.dt=dt
+
+		self.S_u = S_inputs
+		self.S_y = S_outputs 
+		self.S_x = S_states
+
+		# determine number of blocks
+		self.blocks_u = len(S_inputs)
+		self.blocks_y = len(S_outputs)
+		self.blocks_x = len(S_states)
+
+		# determine inputs/outputs/states
+		self.inputs = sum(S_inputs)
+		self.outputs = sum(S_outputs)
+		self.states = sum(S_states)
+
+		self.check_sizes()
+
+
+	def check_sizes(self):
+		pass
+
+
+	def remove_block(self,where,index):
+		'''
+		Remove a block from either inputs or outputs.
+
+		Inputs:
+		- where = {'in', 'out'}: determined whether to remove inputs or outputs
+		- index: index of block to remove
+		'''
+
+		assert where in ['in', 'out'], "'where' must be equal to {'in', 'out'}"
+
+		if where == 'in':
+			for ii in range(self.blocks_x):
+				del self.B[ii][index]
+			for ii in range(self.blocks_y):
+				del self.D[ii][index]
+
+		if where == 'out':
+			for ii in range(self.blocks_y):
+				del self.C[ii]
+				del self.D[ii]
+
+
+	def addGain(self,K,where):
+		'''
+		Projects input u or output y the state-space system through the gain 
+		block matrix K. The input 'where' determines whether inputs or outputs 
+		are projected as: 
+			- where='in': inputs are projected such that:
+				u_new -> u=K*u_new -> SS -> y  => u_new -> SSnew -> y
+			- where='out': outputs are projected such that:
+			 	u -> SS -> y -> y_new=K*y => u -> SSnew -> ynew
+
+		Input: K must be a list of list of matrices. The size of K must be 
+		compatible with either B or C for block matrix product.
+		'''
+
+		assert where in ['in', 'out'],\
+							'Specify whether gains are added to input or output'
+
+		rows, cols = self.get_sizes(K)
+
+		if where=='in':
+			self.B = libsp.block_dot( self.B, K)
+			self.D = libsp.block_dot( self.D, K)
+			self.S_u = cols
+			self.blocks_u = len(cols)
+			self.inputs = sum(cols)
+
+		if where=='out':
+			self.C = libsp.block_dot( K, self.C)
+			self.D = libsp.block_dot( K, self.D)
+			self.S_y = rows
+			self.blocks_y= len(rows)
+			self.outputs=sum(rows)
+
+
+	def get_sizes(self,M):
+		'''
+		Get the size of each block in M.
+		'''
+
+		rM, cM = len(M), len(M[0])
+		rows = rM*[None]
+		cols = cM*[None]
+
+		for ii in range(rM):
+			for jj in range(cM):
+				if M[ii][jj] is not None:
+					rhere,chere=M[ii][jj].shape
+
+					if rows[ii] is None: # allocate
+						rows[ii]=rhere
+					else: 				 # check
+						assert rows[ii]==rhere, \
+						'Block (%d,%d) has inconsistent size with other in same row!' %(ii,jj)
+
+					if cols[jj] is None: # allocate
+						cols[jj]=chere
+					else: 				 # check
+						assert cols[jj]==chere, \
+						'Block (%d,%d) has inconsistent size with other in same column!' %(ii,jj)					
+
+		return rows, cols
+
+
+	def project(self,WT,V,by_arrays=True, overwrite=False):
+		''' 
+		Given 2 transformation matrices, (W,V) of shape (Nk,self.states), this 
+		routine projects the state space model states according to: 
+
+		  Anew = W^T A V 
+		  Bnew = W^T B 
+		  Cnew = C V 
+		  Dnew = D 
+
+		The projected model has the same number of inputs/outputs as the original  
+		one, but Nk states.
+
+		Inputs:
+		- WT = W^T
+		- V = V
+		- by_arrays: if True, W, V are either numpy.array or sparse matrices. If
+		  False, they are block matrices.
+		- overwrite: if True, overwrites the A, B, C matrices
+		'''
+
+		if by_arrays: # transform to block structures
+
+			II0 = 0
+			Vblock=[]
+			WTblock=[[ ]]
+			for ii in range(self.blocks_x):
+				iivec = range(II0, II0+self.S_x[ii])
+				Vblock.append( [V[iivec,:]] )
+				WTblock[0].append( WT[:,iivec] )
+				II0+=self.S_x[ii]
+		else:
+			Vblock = V
+			WTblock = WT
+
+		if overwrite:
+			self.A = libsp.block_dot( WTblock, libsp.block_dot(self.A, Vblock) ) 
+			self.B = libsp.block_dot( WTblock, self.B) 
+			self.C = libsp.block_dot( self.C, Vblock)
+		else:
+			return (libsp.block_dot( WTblock, libsp.block_dot(self.A, Vblock)),
+					libsp.block_dot( WTblock, self.B),
+					libsp.block_dot( self.C, Vblock))
+
+
+
 # ---------------------------------------- Methods for state-space manipulation
 
 def couple(ss01,ss02,K12,K21,out_sparse=False):
@@ -803,7 +988,7 @@ def join(SS1, SS2):
 	return SStot
 
 
-def sum(SS1, SS2, negative=False):
+def sum_ss(SS1, SS2, negative=False):
     """
     Given 2 systems or gain matrices (or a combination of the two) having the
     same amount of input/output, the function returns a gain or state space
