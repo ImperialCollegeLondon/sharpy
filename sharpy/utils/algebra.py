@@ -1084,8 +1084,8 @@ def der_CcrvT_by_v(fv0,v):
 
 def der_quat_wrt_crv(quat0):
     '''
-    Provides change of quaternion, dquat, due to elementary rotation, dcrv, 
-    expressed as a 3 components Cartesian rotation vector such that 
+    Provides change of quaternion, dquat, due to elementary rotation, dcrv,
+    expressed as a 3 components Cartesian rotation vector such that
         C(quat + dquat) = C(quat0)C(dw)
     where C are rotation matrices.
 
@@ -1093,13 +1093,13 @@ def der_quat_wrt_crv(quat0):
         - G is the initial FoR
         - quat0 defines te rotation required to obtain A from G, namely:
                 Cga=quat2rotation(quat0)
-        - dcrv is an inifinitesimal Cartesian rotation vector, defined in A 
+        - dcrv is an inifinitesimal Cartesian rotation vector, defined in A
         components, which describes an infinitesimal rotation A -> B, namely:
                 Cab=crv2rotation(dcrv)
         - The total rotation G -> B is:
             Cga = Cga * Cab
         - As dcrv -> 0, Cga is equal to:
-            algebra.quat2rotation(quat0 + dquat), 
+            algebra.quat2rotation(quat0 + dquat),
         where dquat is the output of this function.
     '''
 
@@ -1121,3 +1121,27 @@ def cross3(v,w):
     res[2] = v[0]*w[1] - v[1]*w[0]
 
     return res
+
+
+def multiply_matrices(*argv):
+    """
+    multiply_matrices
+
+    Multiply a series of matrices from left to right
+
+    Args:
+        *argv: series of numpy arrays
+    Returns:
+        sol(numpy array): product of all the given matrices
+
+    Examples:
+        solution = multiply_matrices(A, B, C)
+    """
+
+    size = np.shape(argv[0])
+    nrow = size[0]
+
+    sol = np.eye(nrow)
+    for M in argv:
+        sol = np.dot(sol, M)
+    return sol
