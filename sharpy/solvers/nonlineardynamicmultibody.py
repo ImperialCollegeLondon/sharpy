@@ -322,7 +322,8 @@ class NonLinearDynamicMultibody(BaseSolver):
 
         q += dt*dqdt + (0.5 - self.beta)*dt*dt*dqddt
         dqdt += (1.0 - self.gamma)*dt*dqddt
-        dqddt = np.zeros((self.sys_size + num_LM_eq,), dtype=ct.c_double, order='F')
+        # dqddt = np.zeros((self.sys_size + num_LM_eq,), dtype=ct.c_double, order='F')
+        dqddt[:] = 0.0
         Lambda = q[-num_LM_eq:].astype(dtype=ct.c_double, copy=True, order='F')
         Lambda_dot = dqdt[-num_LM_eq:].astype(dtype=ct.c_double, copy=True, order='F')
         # TODO: what to do with lambda
