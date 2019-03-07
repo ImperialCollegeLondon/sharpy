@@ -1333,18 +1333,21 @@ def rotor_from_excel_type02(chord_panels,
 def generate_from_excel_type02(chord_panels,
                                   rotation_velocity,
                                   pitch_deg,
-                                  excel_file_name= 'database_OpenFAST.xlsx',
+                                  excel_file_name= 'database_excel_type02.xlsx',
                                   excel_sheet_parameters = 'parameters',
                                   excel_sheet_structural_blade = 'structural_blade',
+                                  excel_sheet_discretization_blade = 'discretization_blade',
                                   excel_sheet_aero_blade = 'aero_blade',
+                                  excel_sheet_airfoil_info = 'airfoil_info',
                                   excel_sheet_airfoil_coord = 'airfoil_coord',
                                   excel_sheet_structural_tower = 'structural_tower',
                                   m_distribution = 'uniform',
+                                  h5_cross_sec_prop = None,
                                   n_points_camber = 100,
                                   tol_remove_points = 1e-3):
 
     """
-    generate_from_OpenFAST_db
+    generate_from_excel_type02
 
     Function needed to generate a wind turbine from an excel database according to OpenFAST inputs
 
@@ -1368,15 +1371,18 @@ def generate_from_excel_type02(chord_panels,
         MB (list): list of the multibody information of each body (sharpy.utils.generate_cases.BodyInfrmation)
     """
 
-    rotor = rotor_from_OpenFAST_db(chord_panels,
+    rotor = rotor_from_excel_type02(chord_panels,
                                   rotation_velocity,
                                   pitch_deg,
                                   excel_file_name= excel_file_name,
                                   excel_sheet_parameters = excel_sheet_parameters,
                                   excel_sheet_structural_blade = excel_sheet_structural_blade,
+                                  excel_sheet_discretization_blade = excel_sheet_discretization_blade,
                                   excel_sheet_aero_blade = excel_sheet_aero_blade,
+                                  excel_sheet_airfoil_info = excel_sheet_airfoil_info,
                                   excel_sheet_airfoil_coord = excel_sheet_airfoil_coord,
                                   m_distribution = m_distribution,
+                                  h5_cross_sec_prop = h5_cross_sec_prop,
                                   n_points_camber = n_points_camber,
                                   tol_remove_points = tol_remove_points)
 
