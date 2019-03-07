@@ -672,7 +672,7 @@ def rotor_from_OpenFAST_db(chord_panels,
         # Generate blade structural properties
         blade.StructuralInformation.create_mass_db_from_vector(elem_mass_per_unit_length, elem_mass_iner_x, elem_mass_iner_y, elem_mass_iner_z, elem_pos_cg_B)
         blade.StructuralInformation.create_stiff_db_from_vector(elem_EA, elem_GAy, elem_GAz, elem_GJ, elem_EIy, elem_EIz)
-    
+
     else: # read Mass/Stiffness from database
         cross_prop=h5.readh5(h5_cross_sec_prop).str_prop
 
@@ -1148,7 +1148,7 @@ def rotor_from_excel_type02(chord_panels,
         blade.StructuralInformation.num_elem = len(rR) - 2
         blade.StructuralInformation.compute_basic_num_node()
 
-        node_r, elem_r = create_node_radial_pos_from_elem_centres(rR,
+        node_r, elem_r = create_node_radial_pos_from_elem_centres(rR*TipRad,
                                             blade.StructuralInformation.num_node,
                                             blade.StructuralInformation.num_elem,
                                             blade.StructuralInformation.num_node_elem)
@@ -1207,10 +1207,10 @@ def rotor_from_excel_type02(chord_panels,
 
         # create mass_db/stiffness_db (interpolate at mid-node of each element)
         blade.StructuralInformation.mass_db = scint.interp1d(
-                    cross_prop.radius, cross_prop.M, kind='cubic', copy=False, assume_sorted=True, axis=0, 
+                    cross_prop.radius, cross_prop.M, kind='cubic', copy=False, assume_sorted=True, axis=0,
                                                     bounds_error = False, fill_value='extrapolate')(node_r[1::2])
         blade.StructuralInformation.stiffness_db = scint.interp1d(
-                    cross_prop.radius, cross_prop.K, kind='cubic', copy=False, assume_sorted=True, axis=0, 
+                    cross_prop.radius, cross_prop.K, kind='cubic', copy=False, assume_sorted=True, axis=0,
                                                     bounds_error = False, fill_value='extrapolate')(node_r[1::2])
 
     blade.StructuralInformation.generate_1to1_from_vectors(
@@ -1234,8 +1234,8 @@ def rotor_from_excel_type02(chord_panels,
     ######################################################################
     # Read blade aerodynamic information from excel file
     rR_aero = gc.read_column_sheet_type01(excel_file_name, excel_sheet_aero_blade, 'rR')
-    blade_chord = gc.read_column_sheet_type01(excel_file_name, excel_sheet_aero_blade, 'BlChord')
-    blade_thickness = gc.read_column_sheet_type01(excel_file_name, excel_sheet_aero_blade, 'BlThickness')
+    chord_aero = gc.read_column_sheet_type01(excel_file_name, excel_sheet_aero_blade, 'BlChord')
+    thickness_aero = gc.read_column_sheet_type01(excel_file_name, excel_sheet_aero_blade, 'BlThickness')
 
     pure_airfoils_names = gc.read_column_sheet_type01(excel_file_name, excel_sheet_airfoil_info, 'Name')
     pure_airfoils_thickness = gc.read_column_sheet_type01(excel_file_name, excel_sheet_airfoil_info, 'Thickness')
@@ -1265,7 +1265,7 @@ def rotor_from_excel_type02(chord_panels,
     surface_distribution = np.zeros((blade.StructuralInformation.num_elem), dtype=int)
 
     # Interpolate in the correct positions
-    node_chord=np.interp(rR, rR_aero, blade_chord)
+    node_chord = np.interp(node_r, rR_aero, chord_aero)
 
     # Define the nodes with aerodynamic properties
     # Look for the first element that is goint to be aerodynamic
@@ -1279,7 +1279,9 @@ def rotor_from_excel_type02(chord_panels,
     # Define the airfoil at each stage
     # airfoils = blade.AerodynamicInformation.interpolate_airfoils_camber(pure_airfoils_camber,excel_aero_r, node_r, n_points_camber)
 
-    airfoils = blade.AerodynamicInformation.interpolate_airfoils_camber_thickness(pure_airfoils_camber, pure_airfoils_thickness, blade_thickness, n_points_camber)
+    node_thickness = np.interp(node_r, rR_aero, thickness_aero)
+
+    airfoils = blade.AerodynamicInformation.interpolate_airfoils_camber_thickness(pure_airfoils_camber, pure_airfoils_thickness, node_thickness, n_points_camber)
     airfoil_distribution = np.linspace(0,blade.StructuralInformation.num_node-1,blade.StructuralInformation.num_node, dtype=int)
 
     # Write SHARPy format
