@@ -56,10 +56,6 @@ settings_default_dynamic['remove_predictor'] = True
 settings_types_dynamic['use_sparse'] = 'bool'
 settings_default_dynamic['use_sparse'] = True
 
-settings_types_dynamic['physical_model'] = 'bool'
-settings_default_dynamic['physical_model'] = True
-
-
 
 class Static():
     """	Static linear solver """
@@ -1190,7 +1186,7 @@ class Dynamic(Static):
             Ygamma_star=Cw_cpx.dot(Ygamma)
 
             if self.integr_order==1:
-                dfact=(bp1 + bp0/zval)
+                dfact=(bp1 + b0/zval)
                 Qctrl = np.vstack( [Ygamma, Ygamma_star, dfact * Ygamma] )
             elif self.integr_order==2:
                 dfact= bp1 + b0/zval + bm1/zval**2 
