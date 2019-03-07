@@ -117,7 +117,62 @@ def block_dot(A, B):
 						prow[jj] += dot( A[ii][kk], B[kk][jj] )
 		P.append(prow)
 
-	return P				
+	return P
+
+
+def block_sum(A, B, factA = None, factB = None):
+	'''
+	dot product between block matrices. 
+
+	Inputs:
+	A, B: are nested lists of dense/sparse matrices of compatible shape for 
+	block matrices product. Empty blocks can be defined with None. (see numpy.block)
+	'''
+
+	rA, cA = len(A), len(A[0])
+	rB, cB = len(B), len(B[0])
+
+	assert cA==cB and rA==rB, 'Block matrices do not have same size'
+
+	for arow,brow in zip(A,B):
+		assert len(brow) == cB,\
+						'B rows do not contain the same number of column blocks'
+		assert len(arow) == cA,\
+						'A rows do not contain the same number of column blocks'
+
+	P=[]
+	for ii in range(rA):
+		prow = cA * [None]
+
+		for jj in range(cA):
+
+			if A[ii][jj] is None:
+				if B[ii][jj] is None:
+					prow[jj] = None
+				else:
+					if factB is None:
+						prow[jj] = B[ii][jj]
+					else:
+						prow[jj] = factB*B[ii][jj]
+			else:
+				if B[ii][jj] is None:
+					if factA is None:
+						prow[jj] = A[ii][jj]
+					else:
+						prow[jj] = factA*A[ii][jj]
+				else:
+					if factA is None and factA is None:
+						prow[jj] = A[ii][jj] + B[ii][jj]
+					elif factA is None:
+						prow[jj] = A[ii][jj] + factB*B[ii][jj]
+					elif factB is None:
+						prow[jj] = factA*A[ii][jj] + B[ii][jj]
+					else:
+						prow[jj] = factA*A[ii][jj] + factB*B[ii][jj]
+
+		P.append(prow)
+
+	return P
 
 
 def dot(A,B,type_out=None):

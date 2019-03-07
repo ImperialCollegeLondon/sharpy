@@ -895,7 +895,11 @@ class Dynamic(Static):
         K_star = self.K_star
 
         Eye=np.eye(K)
-        Bup=self.SS.B[:K,:]
+        if self.remove_predictor:
+            Bup=self.B_predictor[:K,:]
+        else:
+            Bup=self.SS.B[:K,:]
+            
         if self.use_sparse:
             # warning: behaviour may change in future numpy release. 
             # Ensure P,Pw,Bup are np.ndarray
@@ -921,7 +925,7 @@ class Dynamic(Static):
                 Ygamma=zv[kk]*\
                         libsp.solve( zv[kk]*Eye-P-
                             libsp.dot( Pw, Cw_cpx, type_out=libsp.csc_matrix), 
-                                       self.B_predictor[:K,:]) 
+                                       Bup) 
             else:
                 Ygamma=libsp.solve( zv[kk]*Eye-P-
                             libsp.dot( Pw, Cw_cpx, type_out=libsp.csc_matrix), 
@@ -1833,10 +1837,12 @@ class DynamicBlock(Dynamic):
         Ass = []
 
         # non-penetration condition
-        Ass.append( [ AinvAWCgamma, AinvAWCgammaW, None, None ] )
-
+        Ass.append( [ AinvAWCgamma, AinvAWCgammaW, None, ] )
+        if self.integr_order==2: Ass[0].append(None)
         # circ. proparagation
-        Ass.append( [       Cgamma,       CgammaW, None, None ] )
+        Ass.append( [       Cgamma,       CgammaW, None, ] )
+        if self.integr_order==2: Ass[1].append(None)
+
         Cgamma = None
         CgammaW = None
 
@@ -1848,7 +1854,7 @@ class DynamicBlock(Dynamic):
             ones=np.eye(K)
 
         if self.integr_order == 1:
-            Ass.append( [ AinvAWCgamma - ones, AinvAWCgammaW, None, None ] )
+            Ass.append( [ AinvAWCgamma - ones, AinvAWCgammaW.copy(), None ] )
 
         elif self.integr_order == 2:
             Ass.append( [bp1*AinvAWCgamma + b0*ones, bp1*AinvAWCgammaW, None, bm1*ones ])
@@ -1892,12 +1898,13 @@ class DynamicBlock(Dynamic):
 
         # delta eq.
         if self.integr_order == 1:
-            Bss.append( [bb for bb in Bss[0]] )
+            Bss.append( [bb.copy() for bb in Bss[0]] )
         if self.integr_order == 2:
             Bss.append( [bp1*bb for bb in Bss[0]] )
 
         # indentity eq
-        Bss.append( [None, None, None] )
+        if self.integr_order==2:
+            Bss.append( [None, None, None] )
 
         LU,P=None,None
 
@@ -2322,6 +2329,120 @@ class DynamicBlock(Dynamic):
             self.Ti=Ti
             self.Zc=Zc
             self.Zo=Zo
+
+
+    def solve_step(self, x_n, u_n, u_n1=None, transform_state=False):
+        r"""
+        Solve step.
+
+        If the predictor term has not been removed (``remove_predictor = False``) then the system is solved as:
+
+            .. math::
+                \mathbf{x}^{n+1} &= \mathbf{A\,x}^n + \mathbf{B\,u}^n \\
+                \mathbf{y}^{n+1} &= \mathbf{C\,x}^{n+1} + \mathbf{D\,u}^n
+
+        Else, if ``remove_predictor = True``, the state is modified as
+
+            ..  math:: \mathbf{h}^n = \mathbf{x}^n - \mathbf{B\,u}^n
+
+        And the system solved by:
+
+            .. math::
+                \mathbf{h}^{n+1} &= \mathbf{A\,h}^n + \mathbf{B_{mod}\,u}^{n} \\
+                \mathbf{y}^{n+1} &= \mathbf{C\,h}^{n+1} + \mathbf{D_{mod}\,u}^{n+1}
+
+        Finally, the original state is recovered using the reverse transformation:
+
+            .. math:: \mathbf{x}^{n+1} = \mathbf{h}^{n+1} + \mathbf{B\,u}^{n+1}
+
+        where the modifications to the :math:`\mathbf{B}_{mod}` and :math:`\mathbf{D}_{mod}` are detailed in
+        :func:`Dynamic.assemble_ss`.
+
+        Notes:
+            Although the original equations include the term :math:`\mathbf{u}_{n+1}`, it is a reasonable approximation
+            to take :math:`\mathbf{u}_{n+1}\approx\mathbf{u}_n` given a sufficiently small time step, hence if the input
+            at time ``n+1`` is not parsed, it is estimated from :math:`u^n`.
+
+        Args:
+            x_n (np.array): State vector at the current time step :math:`\mathbf{x}^n`
+            u_n (np.array): Input vector at time step :math:`\mathbf{u}^n`
+            u_n1 (np.array): Input vector at time step :math:`\mathbf{u}^{n+1}`
+            transform_state (bool): When the predictor term is removed, if true it will transform the state vector. If
+                false it will be assumed that the state vector that is parsed is already transformed i.e. it is
+                :math:`\mathbf{h}`.
+
+        Returns:
+            Tuple: Updated state and output vector packed in a tuple :math:`(\mathbf{x}^{n+1},\,\mathbf{y}^{n+1})`
+
+        Notes:
+            Because in BlockDynamics the predictor is never removed when building
+            'self.SS', the implementation change with respect to Dynamic. However,
+            formulas are consistent.
+        """
+
+        # from IPython import embed
+        # embed()
+
+
+        if u_n1 is None:
+            u_n1 = u_n.copy()
+
+        if self.remove_predictor and not hasattr(self, 'CBplusD'):
+            self.CBplusD = libsp.block_sum( libsp.block_dot(self.SS.C, self.SS.B), self.SS.D )
+
+        ### transform input in block matrices
+        X_n = [ ]
+        II0 = 0
+        for ii in range(self.SS.blocks_x):
+            IIend = II0 + self.SS.S_x[ii]
+            X_n.append([ x_n[II0:IIend] ])
+            II0 = IIend
+
+        U_n1 = []
+        II0 = 0
+        for ii in range(self.SS.blocks_u):
+            IIend = II0 + self.SS.S_u[ii]
+            U_n1.append([ u_n1[II0:IIend] ])
+            II0 = IIend
+
+        if u_n is not None:
+            U_n = []
+            for ii in range(self.SS.blocks_u):
+                IIend = II0 + self.SS.S_u[ii]
+                U_n.append([ u_n[II0:IIend] ])
+                II0 = IIend
+
+        if self.remove_predictor:
+
+            # Transform state vector
+            # TODO: Agree on a way to do this. Either always transform here or transform prior to using the method.
+            if transform_state:
+                H_n1 = libsp.block_dot( self.SS.A, X_n )
+            else:
+                H_n = X_n
+                H_n1 = libsp.block_dot( self.SS.A, 
+                        libsp.block_sum( H_n, libsp.block_dot(self.SS.B, U_n) ))
+
+
+            Y_n1 = libsp.block_sum( libsp.block_dot(self.SS.C, H_n1), 
+                                            libsp.block_dot(self.CBplusD, U_n1))
+
+            # Recover state vector
+            if transform_state:
+                X_n1 = libsp.block_sum( H_n1, libsp.block_dot(self.SS.B, U_n1))
+            else:
+                X_n1 = H_n1
+
+        else:
+            X_n1 = libsp.block_sum( libsp.block_dot( self.SS.A, X_n),
+                                             libsp.block_dot( self.SS.B, U_n1) )
+            Y_n1 = libsp.block_sum( libsp.block_dot( self.SS.C, X_n1), 
+                                             libsp.block_dot( self.SS.D, U_n1) )
+
+        x_n1 = np.concatenate([ X_n1[ii][0] for ii in range(self.SS.blocks_x) ])
+
+        return x_n1, np.block(Y_n1).reshape(-1)
+
 
 
 ################################################################################
@@ -2961,5 +3082,77 @@ if __name__ == '__main__':
                     assert ermax<1e-13,\
                     'Frequency.freqresp produces too large error (%.2e)!' %ermax  
 
+
+        def test_solve_step(self):
+
+            Sta=self.Sta
+
+            # estimate reference quantities
+            Uinf=np.linalg.norm(self.tsdata.u_ext[0][:,0,0]) 
+            chord=np.linalg.norm(
+                         self.tsdata.zeta[0][:,-1,0]-self.tsdata.zeta[0][:,0,0])
+            rho=self.tsdata.rho
+
+            ScalingDict={'length': .5*chord,
+                         'speed': Uinf,
+                         'density': rho}
+
+            ### build an input time history
+            NT = 5
+            Uin = np.random.rand( 9*Sta.Kzeta, NT )
+
+            ### get size of output
+            Ny = 3*Sta.Kzeta
+            Ydyn = np.zeros((Ny,NT))
+            Yblock = np.zeros((Ny,NT))
+
+            for integr_order in [1,2]:
+
+                Nx = (1+integr_order)*Sta.K + Sta.K_star
+                Xdyn = np.zeros((Nx,NT))
+                Xblock = np.zeros((Nx,NT))
+
+                for use_sparse in [True,False]:
+                    for remove_predictor in [True,False]:
+
+                        Xdyn*=0.
+                        Xblock*=0.
+                        Ydyn*=0.
+                        Yblock*=0.
+
+                        ### ----- Dynamic class
+                        Dyn=Dynamic(self.tsdata, dt=0.05, ScalingDict=ScalingDict,
+                                    integr_order=integr_order, RemovePredictor=remove_predictor,
+                                    UseSparse=use_sparse)
+                        Dyn.assemble_ss()
+                        Dyn.nondimss()
+
+                        for tt in range(1,NT):
+                            Xdyn[:,tt], Ydyn[:,tt] = \
+                                Dyn.solve_step( Xdyn[:,tt-1], Uin[:,tt-1], 
+                                                              transform_state=True )
+
+                        ### ----- BlockDynamic class
+                        BlockDyn=DynamicBlock(self.tsdata, dt=0.05, ScalingDict=ScalingDict,
+                                    integr_order=integr_order, RemovePredictor=remove_predictor,
+                                    UseSparse=use_sparse)
+                        BlockDyn.assemble_ss()
+                        BlockDyn.nondimss()
+
+                        for tt in range(1,NT):
+                            Xblock[:,tt], Yblock[:,tt] = \
+                                BlockDyn.solve_step( Xdyn[:,tt-1], Uin[:,tt-1], 
+                                                              transform_state=True )
+
+                        ermax = np.max(np.abs(Xdyn-Xblock))/np.max(np.abs(Xdyn))
+
+                        assert ermax<1e-14,\
+                            ( 'solve_step methods in Dynamic and BlockDynamic not matching '+
+                                                    ' (relative error %.2e)!' %ermax)
+
+                        ermax = np.max(np.abs(Ydyn-Yblock))/np.max(np.abs(Ydyn))
+                        assert ermax<1e-14,\
+                            ( 'solve_step methods in Dynamic and BlockDynamic not matching '+
+                                                    ' (relative error %.2e)!' %ermax)
 
     unittest.main()

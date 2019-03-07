@@ -122,7 +122,7 @@ class StepLinearUVLM(BaseSolver):
             self.data.aero.timestep_info[-1].rho = self.settings['density'].value
 
             # Generate instance of linuvlm.Dynamic()
-            lin_uvlm_system = linuvlm.Dynamic(aero_tstep,
+            lin_uvlm_system = linuvlm.DynamicBlock(aero_tstep,
                                               dt=self.settings['dt'].value,
                                               integr_order=self.settings['integr_order'].value,
                                               ScalingDict=self.settings['ScalingDict'],
