@@ -60,6 +60,8 @@ relaxation_factor = 0.5
 tolerance = 1e-7
 fsi_tolerance = 1e-6
 
+num_cores = 6
+
 # MODEL GEOMETRY
 # beam
 span_main = 16.0
@@ -646,7 +648,7 @@ def generate_solver_file():
 
     settings['StaticUvlm'] = {'print_info': 'on',
                               'horseshoe': 'off',
-                              'num_cores': 4,
+                              'num_cores': num_cores,
                               'n_rollup': 0,
                               'rollup_dt': dt,
                               'rollup_aic_refresh': 1,
@@ -693,7 +695,7 @@ def generate_solver_file():
 
     settings['StepUvlm'] = {'print_info': 'off',
                             'horseshoe': 'off',
-                            'num_cores': 4,
+                            'num_cores': num_cores,
                             'n_rollup': 0,
                             'convection_scheme': 2,
                             'rollup_dt': dt,

@@ -16,7 +16,7 @@ SkipAttr=[  'fortran',
             'settings_types',
             'beam',
             'ct_dynamic_forces_list',
-            'ct_forces_list',
+            #'ct_forces_list',
             'ct_gamma_dot_list',
             'ct_gamma_list',
             'ct_gamma_star_list',
@@ -25,7 +25,8 @@ SkipAttr=[  'fortran',
             'ct_u_ext_star_list',
             'ct_zeta_dot_list',
             'ct_zeta_list',
-            'ct_zeta_star_list',]
+            'ct_zeta_star_list',
+            'dynamic_input']
 
 
 @solver
@@ -96,6 +97,10 @@ class SaveData(BaseSolver):
 
 
     def run(self, online=False):
+
+        # Use the following statement in case the ct types are not defined and
+        # you need them on uvlm3d
+        # self.data.aero.timestep_info[-1].generate_ctypes_pointers()
 
         hdfile=h5py.File(self.filename,'a')
 
