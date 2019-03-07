@@ -414,16 +414,21 @@ class ReducedOrderModel(object):
         else:
             assert left_tangent.shape == (ny, nfreq), 'Left Tangential Direction vector not the correct shape'
 
-
         V = np.zeros((nx, r*nfreq), dtype=complex)
         W = np.zeros((nx, r*nfreq), dtype=complex)
 
         we = 0
         for i in range(nfreq):
             sigma = frequency[i]
-            lu_A = sclalg.lu_factor(sigma * np.eye(nx) - A)
-            V[:, we:we+r] = construct_krylov(r, lu_A, B.dot(right_tangent[:, i:i+1]), 'Pade', 'b')
-            W[:, we:we+r] = construct_krylov(r, lu_A, C.T.dot(left_tangent[:, i:i+1]), 'Pade', 'c')
+            if sigma == np.inf:
+                approx_type = 'partial_realisation'
+                lu_A = A
+            else:
+                approx_type = 'Pade'
+                lu_A = sclalg.lu_factor(sigma * np.eye(nx) - A)
+
+            V[:, we:we+r] = construct_krylov(r, lu_A, B.dot(right_tangent[:, i:i+1]), approx_type, 'b')
+            W[:, we:we+r] = construct_krylov(r, lu_A, C.T.dot(left_tangent[:, i:i+1]), approx_type, 'c')
 
             we += r
 
@@ -582,9 +587,9 @@ class ReducedOrderModel(object):
 
             self.ss.B = remove_unstable.dot(self.ss.B)
             # self.ss.C = self.ss.C.dot(remove_unstable.T)
-            self.r -= 1
 
             if self.r > 1:
+                self.r -= 1
                 self.run(self.algorithm, self.r, self.frequency)
             else:
                 print('Unable to reduce ROM any further - ROM still unstable...')

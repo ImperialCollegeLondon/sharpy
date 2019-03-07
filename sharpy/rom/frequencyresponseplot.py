@@ -163,7 +163,7 @@ class FrequencyResponseComparison(object):
             nu = Y_freq_rom.shape[0]
             ny = Y_freq_rom.shape[1]
 
-            fig, ax = plt.subplots(nrows=nu, ncols=ny, sharex=True, squeeze=True)
+            fig, ax = plt.subplots(nrows=nu, ncols=ny, sharex=True, squeeze=True, constrained_layout=True)
             # fig.suptitle(freqresp_title)
 
             for i in range(nu):
