@@ -15,15 +15,11 @@ Notes:
 
 """
 from abc import ABCMeta, abstractmethod
-# import sharpy.utils.cout_utils as cout
+import sharpy.utils.cout_utils as cout
 import os
 import ctypes as ct
 import numpy as np
 import sharpy.utils.algebra as algebra
-
-class cout(object):
-    def cout_wrap(arg, arg2):
-        print(arg)
 
 dict_of_lc = {}
 lc = {}  # for internal working
@@ -582,6 +578,7 @@ class free(BaseLagrangeConstraint):
         return
 
 
+@lagrangeconstraint
 class spherical_FoR(BaseLagrangeConstraint):
     _lc_id = 'spherical_FoR'
 
@@ -635,6 +632,7 @@ class spherical_FoR(BaseLagrangeConstraint):
         return
 
 
+@lagrangeconstraint
 class hinge_FoR(BaseLagrangeConstraint):
     _lc_id = 'hinge_FoR'
 
@@ -707,6 +705,7 @@ class hinge_FoR(BaseLagrangeConstraint):
         return
 
 
+@lagrangeconstraint
 class hinge_FoR_wrtG(BaseLagrangeConstraint):
     _lc_id = 'hinge_FoR_wrtG'
 
@@ -781,6 +780,7 @@ class hinge_FoR_wrtG(BaseLagrangeConstraint):
         return
 
 
+@lagrangeconstraint
 class fully_constrained_node_FoR(BaseLagrangeConstraint):
     _lc_id = 'fully_constrained_node_FoR'
 
@@ -852,6 +852,7 @@ class fully_constrained_node_FoR(BaseLagrangeConstraint):
         return
 
 
+@lagrangeconstraint
 class hinge_node_FoR_constant_rotation(BaseLagrangeConstraint):
     _lc_id = 'hinge_node_FoR_constant_rotation'
 
@@ -885,6 +886,7 @@ class hinge_node_FoR_constant_rotation(BaseLagrangeConstraint):
     def dynamicpost(self, lc_list, MB_beam, MB_tstep):
         return
 
+@lagrangeconstraint
 class constant_rot_vel_FoR(BaseLagrangeConstraint):
     _lc_id = 'constant_rot_vel_FoR'
 
@@ -937,6 +939,7 @@ class constant_rot_vel_FoR(BaseLagrangeConstraint):
     def dynamicpost(self, lc_list, MB_beam, MB_tstep):
         return
 
+@lagrangeconstraint
 class constant_vel_FoR(BaseLagrangeConstraint):
     _lc_id = 'constant_vel_FoR'
 
@@ -989,6 +992,7 @@ class constant_vel_FoR(BaseLagrangeConstraint):
     def dynamicpost(self, lc_list, MB_beam, MB_tstep):
         return
 
+@lagrangeconstraint
 class lin_vel_node_wrtA(BaseLagrangeConstraint):
     _lc_id = 'lin_vel_node_wrtA'
 
@@ -1067,6 +1071,7 @@ class lin_vel_node_wrtA(BaseLagrangeConstraint):
     def dynamicpost(self, lc_list, MB_beam, MB_tstep):
         return
 
+@lagrangeconstraint
 class lin_vel_node_wrtG(BaseLagrangeConstraint):
     _lc_id = 'lin_vel_node_wrtG'
 
@@ -1285,12 +1290,12 @@ def postprocess(lc_list, MB_beam, MB_tstep, dynamic_or_static):
 print_available_lc()
 
 # test
-if __name__ == '__main__':
-    lc_list = list()
-    lc_list.append(lc_from_string('SampleLagrange')())
-    lc_list.append(lc_from_string('SampleLagrange')())
+# if __name__ == '__main__':
+    # lc_list = list()
+    # lc_list.append(lc_from_string('SampleLagrange')())
+    # lc_list.append(lc_from_string('SampleLagrange')())
 
-    counter = -1
-    for lc in lc_list:
-        counter += 1
-        lc.initialise(counter=counter)
+    # counter = -1
+    # for lc in lc_list:
+        # counter += 1
+        # lc.initialise(counter=counter)
