@@ -1160,6 +1160,7 @@ def rotor_from_excel_type02(chord_panels,
         if ((len(rR) - 1) % (blade.StructuralInformation.num_node_elem - 1)) == 0:
             blade.StructuralInformation.num_elem = int((len(rR) - 1)/(blade.StructuralInformation.num_node_elem - 1))
             node_r = rR*TipRad
+            elem_rR = rR[1::2] + 0.
             elem_r = rR[1::2]*TipRad + 0.
         else:
             print("ERROR: Cannot build ", blade.StructuralInformation.num_node_elem, "-noded elements from ", blade.StructuralInformation.num_node, "nodes")
@@ -1172,11 +1173,11 @@ def rotor_from_excel_type02(chord_panels,
 
     if h5_cross_sec_prop is None:
         # Stiffness
-        elem_EA = np.interp(elem_r,rR_structural,EAStff)
-        elem_EIy = np.interp(elem_r,rR_structural,FlpStff)
-        elem_EIz = np.interp(elem_r,rR_structural,EdgStff)
-        elem_EIyz = np.interp(elem_r,rR_structural,FlapEdgeStiff)
-        elem_GJ = np.interp(elem_r,rR_structural,GJStff)
+        elem_EA = np.interp(elem_rR,rR_structural,EAStff)
+        elem_EIy = np.interp(elem_rR,rR_structural,FlpStff)
+        elem_EIz = np.interp(elem_rR,rR_structural,EdgStff)
+        elem_EIyz = np.interp(elem_rR,rR_structural,FlapEdgeStiff)
+        elem_GJ = np.interp(elem_rR,rR_structural,GJStff)
 
         # Stiffness: estimate unknown properties
         print('WARNING: The poisson cofficient is supossed equal to 0.3')
@@ -1186,13 +1187,13 @@ def rotor_from_excel_type02(chord_panels,
         elem_GAz = elem_EA/2.0/(1.0+poisson_coef)
         # Inertia
         elem_pos_cg_B = np.zeros((blade.StructuralInformation.num_elem,3),)
-        elem_pos_cg_B[:,1] = np.interp(elem_r,rR_structural,InPcg)
-        elem_pos_cg_B[:,2] = -np.interp(elem_r,rR_structural,OutPcg)
+        elem_pos_cg_B[:,1] = np.interp(elem_rR,rR_structural,InPcg)
+        elem_pos_cg_B[:,2] = -np.interp(elem_rR,rR_structural,OutPcg)
 
-        elem_mass_per_unit_length = np.interp(elem_r,rR_structural,BMassDen)
-        elem_mass_iner_y = np.interp(elem_r,rR_structural,FlpIner)
-        elem_mass_iner_z = np.interp(elem_r,rR_structural,EdgIner)
-        elem_mass_iner_yz = np.interp(elem_r,rR_structural,FlapEdgeIner)
+        elem_mass_per_unit_length = np.interp(elem_rR,rR_structural,BMassDen)
+        elem_mass_iner_y = np.interp(elem_rR,rR_structural,FlpIner)
+        elem_mass_iner_z = np.interp(elem_rR,rR_structural,EdgIner)
+        elem_mass_iner_yz = np.interp(elem_rR,rR_structural,FlapEdgeIner)
 
         # Inertia: estimate unknown properties
         print('WARNING: Using perpendicular axis theorem to compute the inertia around xB')
@@ -1240,7 +1241,7 @@ def rotor_from_excel_type02(chord_panels,
     pure_airfoils_names = gc.read_column_sheet_type01(excel_file_name, excel_sheet_airfoil_info, 'Name')
     pure_airfoils_thickness = gc.read_column_sheet_type01(excel_file_name, excel_sheet_airfoil_info, 'Thickness')
 
-    node_ElAxisAftLEc = np.interp(node_r,rR_structural,ElAxisAftLEc)
+    node_ElAxisAftLEc = np.interp(node_r,rR_structural*TipRad,ElAxisAftLEc)
 
     # Read coordinates of the pure airfoils
     n_pure_airfoils = len(pure_airfoils_names)
@@ -1265,7 +1266,7 @@ def rotor_from_excel_type02(chord_panels,
     surface_distribution = np.zeros((blade.StructuralInformation.num_elem), dtype=int)
 
     # Interpolate in the correct positions
-    node_chord = np.interp(node_r, rR_aero, chord_aero)
+    node_chord = np.interp(node_r, rR_aero*TipRad, chord_aero)
 
     # Define the nodes with aerodynamic properties
     # Look for the first element that is goint to be aerodynamic
@@ -1279,7 +1280,7 @@ def rotor_from_excel_type02(chord_panels,
     # Define the airfoil at each stage
     # airfoils = blade.AerodynamicInformation.interpolate_airfoils_camber(pure_airfoils_camber,excel_aero_r, node_r, n_points_camber)
 
-    node_thickness = np.interp(node_r, rR_aero, thickness_aero)
+    node_thickness = np.interp(node_r, rR_aero*TipRad, thickness_aero)
 
     airfoils = blade.AerodynamicInformation.interpolate_airfoils_camber_thickness(pure_airfoils_camber, pure_airfoils_thickness, node_thickness, n_points_camber)
     airfoil_distribution = np.linspace(0,blade.StructuralInformation.num_node-1,blade.StructuralInformation.num_node, dtype=int)
