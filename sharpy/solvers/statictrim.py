@@ -107,6 +107,9 @@ class StaticTrim(BaseSolver):
         self.settings_types['initial_thrust_eps'] = 'float'
         self.settings_default['initial_thrust_eps'] = 2.
 
+        self.settings_types['relaxation_factor'] = 'float'
+        self.settings_default['relaxation_factor'] = 0.2
+
         self.data = None
         self.settings = None
         self.solver = None
@@ -250,9 +253,6 @@ class StaticTrim(BaseSolver):
             if convergence[0]:
                 # fz is converged, don't change it
                 self.input_history[self.i_iter][0] = self.input_history[self.i_iter - 1][0]
-                # self.output_history[self.i_iter][0] = self.output_history[self.i_iter - 1][0]
-                # self.output_history[self.i_iter][1] = self.output_history[self.i_iter - 1][1]
-                # self.output_history[self.i_iter][2] = self.output_history[self.i_iter - 1][2]
                 self.gradient_history[self.i_iter][0] = self.gradient_history[self.i_iter - 1][0]
             else:
                 self.input_history[self.i_iter][0] = (self.input_history[self.i_iter - 1][0] -
@@ -262,9 +262,6 @@ class StaticTrim(BaseSolver):
             if convergence[1]:
                 # m is converged, don't change it
                 self.input_history[self.i_iter][1] = self.input_history[self.i_iter - 1][1]
-                # self.output_history[self.i_iter][0] = self.output_history[self.i_iter - 1][0]
-                # self.output_history[self.i_iter][1] = self.output_history[self.i_iter - 1][1]
-                # self.output_history[self.i_iter][2] = self.output_history[self.i_iter - 1][2]
                 self.gradient_history[self.i_iter][1] = self.gradient_history[self.i_iter - 1][1]
             else:
                 # compute next gamma with the previous gradient
@@ -275,15 +272,17 @@ class StaticTrim(BaseSolver):
             if convergence[2]:
                 # fx is converged, don't change it
                 self.input_history[self.i_iter][2] = self.input_history[self.i_iter - 1][2]
-                # self.output_history[self.i_iter][0] = self.output_history[self.i_iter - 1][0]
-                # self.output_history[self.i_iter][1] = self.output_history[self.i_iter - 1][1]
-                # self.output_history[self.i_iter][2] = self.output_history[self.i_iter - 1][2]
                 self.gradient_history[self.i_iter][2] = self.gradient_history[self.i_iter - 1][2]
             else:
                 # compute next gamma with the previous gradient
                 self.input_history[self.i_iter][2] = (self.input_history[self.i_iter - 1][2] -
                                                       (self.output_history[self.i_iter - 1][2] /
                                                        self.gradient_history[self.i_iter - 1][2]))
+
+            if self.settings['relaxation_factor'].value:
+                for i_dim in range(3):
+                    self.input_history[self.i_iter][i_dim] = (self.input_history[self.i_iter][i_dim]*(1 - self.settings['relaxation_factor'].value) +
+                                                              self.input_history[self.i_iter][i_dim]*self.settings['relaxation_factor'].value)
 
             # evaluate
             (self.output_history[self.i_iter][0],
@@ -317,88 +316,6 @@ class StaticTrim(BaseSolver):
             if all(convergence):
                 self.trimmed_values = self.input_history[self.i_iter]
                 return
-
-
-
-
-
-
-
-                # # evaluate
-                # (self.output_history[self.i_iter][0],
-                #  self.output_history[self.i_iter][1],
-                #  self.output_history[self.i_iter][2]) = self.evaluate(self.input_history[self.i_iter][0],
-                #                                                       self.input_history[self.i_iter - 1][1],
-                #                                                       self.input_history[self.i_iter - 1][2])
-                # self.gradient_history[self.i_iter][0] = ((self.output_history[self.i_iter][0] -
-                #                                            self.output_history[self.i_iter - 1][0]) /
-                #                                           (self.input_history[self.i_iter][0] -
-                #                                            self.input_history[self.i_iter - 1][0]))
-
-            # # check convergence
-            # convergence = self.convergence(self.output_history[self.i_iter][0],
-            #                                self.output_history[self.i_iter][1],
-            #                                self.output_history[self.i_iter][2])
-            # if all(convergence):
-            #     self.trimmed_values = self.input_history[self.i_iter]
-            #     return
-            #
-            # if convergence[1]:
-            #     # m is converged, don't change it
-            #     self.input_history[self.i_iter][1] = self.input_history[self.i_iter - 1][1]
-            #     self.output_history[self.i_iter][0] = self.output_history[self.i_iter - 1][0]
-            #     self.output_history[self.i_iter][1] = self.output_history[self.i_iter - 1][1]
-            #     self.output_history[self.i_iter][2] = self.output_history[self.i_iter - 1][2]
-            #     self.gradient_history[self.i_iter][1] = self.gradient_history[self.i_iter - 1][1]
-            # else:
-            #     # compute next gamma with the previous gradient
-            #     self.input_history[self.i_iter][1] = (self.input_history[self.i_iter - 1][1] -
-            #                                           (self.output_history[self.i_iter - 1][1] /
-            #                                            self.gradient_history[self.i_iter - 1][1]))
-            #     # evaluate
-            #     (self.output_history[self.i_iter][0],
-            #      self.output_history[self.i_iter][1],
-            #      self.output_history[self.i_iter][2]) = self.evaluate(self.input_history[self.i_iter][0],
-            #                                                           self.input_history[self.i_iter][1],
-            #                                                           self.input_history[self.i_iter - 1][2])
-            #     self.gradient_history[self.i_iter][1] = ((self.output_history[self.i_iter][1] -
-            #                                                self.output_history[self.i_iter - 1][1]) /
-            #                                               (self.input_history[self.i_iter][1] -
-            #                                                self.input_history[self.i_iter - 1][1]))
-
-            # check convergence
-            # convergence = self.convergence(self.output_history[self.i_iter][0],
-            #                                self.output_history[self.i_iter][1],
-            #                                self.output_history[self.i_iter][2])
-            # if all(convergence):
-            #     self.trimmed_values = self.input_history[self.i_iter]
-            #     return
-            #
-            # if convergence[2]:
-            #     # fx is converged, don't change it
-            #     self.input_history[self.i_iter][2] = self.input_history[self.i_iter - 1][2]
-            #     self.output_history[self.i_iter][0] = self.output_history[self.i_iter - 1][0]
-            #     self.output_history[self.i_iter][1] = self.output_history[self.i_iter - 1][1]
-            #     self.output_history[self.i_iter][2] = self.output_history[self.i_iter - 1][2]
-            #     self.gradient_history[self.i_iter][2] = self.gradient_history[self.i_iter - 1][2]
-            # else:
-            #     # compute next gamma with the previous gradient
-            #     self.input_history[self.i_iter][2] = (self.input_history[self.i_iter - 1][2] -
-            #                                           (self.output_history[self.i_iter - 1][2] /
-            #                                            self.gradient_history[self.i_iter - 1][2]))
-            #     # evaluate
-            #     (self.output_history[self.i_iter][0],
-            #      self.output_history[self.i_iter][1],
-            #      self.output_history[self.i_iter][2]) = self.evaluate(self.input_history[self.i_iter][0],
-            #                                                           self.input_history[self.i_iter][1],
-            #                                                           self.input_history[self.i_iter][2])
-            #     self.gradient_history[self.i_iter][2] = ((self.output_history[self.i_iter][2] -
-            #                                                self.output_history[self.i_iter - 1][2]) /
-            #                                               (self.input_history[self.i_iter][2] -
-            #                                                self.input_history[self.i_iter - 1][2]))
-
-
-
 
     def evaluate(self, alpha, deflection_gamma, thrust):
         if not np.isfinite(alpha):

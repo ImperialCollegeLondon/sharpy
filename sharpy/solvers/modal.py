@@ -106,7 +106,7 @@ class Modal(BaseSolver):
         self.settings_default['plot_eigenvalues'] = False
 
         self.settings_types['max_rotation_deg'] = 'float'
-        self.settings_default['max_rotation_deg'] = 15
+        self.settings_default['max_rotation_deg'] = 15.
 
         self.settings_types['max_displacement'] = 'float'
         self.settings_default['max_displacement'] = 0.15
@@ -151,6 +151,7 @@ class Modal(BaseSolver):
         self.filename_shapes = (self.folder +
                                 'tstep' + ("%06d" % self.data.ts) +
                                 '_ModalShape')
+
 
     def run(self):
         r"""

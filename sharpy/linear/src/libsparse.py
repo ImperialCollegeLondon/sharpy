@@ -44,7 +44,7 @@ class csc_matrix(sparse.csc_matrix):
 	'''
 	Wrapper of scipy.csc_matrix that ensures best compatibility with numpy.ndarray.
 	The following methods have been overwritten to ensure that numpy.ndarray are 
-	returned intstead of numpy.matrixlib.defmatrix.matrix.
+	returned instead of numpy.matrixlib.defmatrix.matrix.
 		- todense
 		- _add_dense
 

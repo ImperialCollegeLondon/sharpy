@@ -140,7 +140,6 @@ class TurbVelocityField(generator_interface.BaseGenerator):
         return self.coeff
 
     def init_interpolator(self):
-        print('init_interpo')
         if self.settings['frozen']:
             self.interpolator = self._interpolator0
             return

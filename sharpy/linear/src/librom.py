@@ -870,22 +870,3 @@ def eigen_dec(A,B,C,dlti=True,N=None,eigs=None,UR=None,URinv=None,
 
 	return Aproj,Bproj,Cproj,Nlist
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-if __name__=='__main__':
-	gv=np.array([5,4,3,2,1])
-
-
-
-
