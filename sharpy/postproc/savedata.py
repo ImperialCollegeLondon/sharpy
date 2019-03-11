@@ -113,7 +113,7 @@ class SaveData(BaseSolver):
             #                         ClassesToSave=self.ClassesToSave,ts=self.ts)
         else:
             h5utils.add_as_grp(self.data,hdfile,grpname='data',
-                               ClassesToSave=self.ClassesToSave,SkipAttr=SkipAttr,
+                               ClassesToSave=self.ClassesToSave,SkipAttr=self.settings['skip_attr'],
                                compress_float=self.settings['compress_float'])
         hdfile.close()
 
