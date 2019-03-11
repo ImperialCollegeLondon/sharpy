@@ -122,6 +122,7 @@ dependencies:
   - scipy=1.2.0=py37h7c811a0_0
   - send2trash=1.5.0=py37_0
   - setuptools=40.8.0=py37_0
+  - recommonmark=0.5.0=py_0
   - sip=4.19.8=py37hf484d3e_0
   - six=1.12.0=py37_0
   - snowballstemmer=1.2.1=py37_0
@@ -149,6 +150,7 @@ dependencies:
     - apptools==4.4.0
     - envisage==4.7.1
     - mayavi==4.6.2
+    - sphinx-rtd-theme==0.4.3
     - pyface==6.0.0
     - traits==5.0.0
     - traitsui==6.0.0
