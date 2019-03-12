@@ -147,6 +147,7 @@ dependencies:
   - wcwidth=0.1.7=py37_0
   - webencodings=0.5.1=py37_1
   - widgetsnbextension=3.4.2=py37_0
+  - xlrd=1.2.0=py37_0
   - xz=5.2.4=h14c3975_4
   - zeromq=4.3.1=he6710b0_3
   - zlib=1.2.11=h7b6447c_3
