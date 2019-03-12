@@ -61,6 +61,14 @@ class FlexDynamic():
 
     2. Run ``self.assemble()``. The method accepts an additional parameter, ``Nmodes``,
     which allows using a lower number of modes than specified in ``self.Nmodes``
+    
+    Examples:
+        >>> self.dlti = True
+        >>> self.newmark_damp = 5e-3
+        >>> self.modal = True
+        >>> self.proj_modes = 'undamped'
+        >>> self.Nmodes = num_modes
+        >>> self.discr_method = 'newmark'
 
 
     Notes:

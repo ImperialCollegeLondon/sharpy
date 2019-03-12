@@ -477,10 +477,10 @@ class ReducedOrderModel(object):
                 # G = sclalg.lu_solve(lu_a, self.ss.B)
             if i == 0:
                 V = construct_mimo_krylov(r, lu_a, B, approx_type=approx_type, side='controllability')
-                W = construct_mimo_krylov(r, lu_a, C.T, approx_type=approx_type, side='observability')
+                W = construct_mimo_krylov(2*r, lu_a, C.T, approx_type=approx_type, side='observability')
             else:
                 Vi = construct_mimo_krylov(r, lu_a, B, approx_type=approx_type, side='controllability')
-                Wi = construct_mimo_krylov(r, lu_a, C.T, approx_type=approx_type, side='observability')
+                Wi = construct_mimo_krylov(2*r, lu_a, C.T, approx_type=approx_type, side='observability')
                 V = np.block([V, Vi])
                 W = np.block([W, Wi])
                 V = mgs_ortho(V)
