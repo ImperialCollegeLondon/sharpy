@@ -209,7 +209,7 @@ class TurbVelocityFieldBts(generator_interface.BaseGenerator):
         height = dictionary['dz']*(dictionary['nz'] - 1)
         width = dictionary['dy']*(dictionary['ny'] - 1)
 
-        x_grid = np.linspace(-dictionary['ntime_steps'] + 1, 0, dictionary['ntime_steps'])*dictionary['dt']
+        x_grid = np.linspace(-dictionary['ntime_steps'] + 1, 0, dictionary['ntime_steps'])*dictionary['dt']*dictionary['u_mean']
         y_grid = np.linspace(-width/2, width/2, dictionary['ny'])
         if self.settings['case_with_tower']:
             z_grid = np.linspace(dictionary['Zbottom'], dictionary['Zbottom'] + height, dictionary['nz'])
