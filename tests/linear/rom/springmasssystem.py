@@ -8,120 +8,225 @@ import numpy as np
 import matplotlib.pyplot as plt
 import sharpy.linear.src.libss as libss
 import sharpy.linear.src.lingebm as lingebm
-import sharpy.rom.reducedordermodel as ROM
+import sharpy.rom.krylovreducedordermodel as krylov
 import sharpy.rom.frequencyresponseplot as freq_plots
-
-N = 5
-system_type = 'SISO'
-
-k_db = np.linspace(1, 10, N)
-m_db = np.logspace(2, 0, N)
-C_db = np.ones(N) * 1e-1
-
-# Build mass matrix
-m = np.zeros((N, N))
-k = np.zeros((N, N))
-C = np.zeros((N, N))
-m[0, 0] = m_db[0]
-
-k[0, 0:2] = [k_db[0]+k_db[1], -k_db[1]]
-C[0, 0:2] = [C_db[0] + C_db[1], -C_db[1]]
-for i in range(1, N-1):
-    k[i, i-1:i+2] = [-k_db[i-1], k_db[i]+k_db[i+1], -k_db[i+1]]
-    C[i, i-1:i+2] = [-C_db[i-1], C_db[i]+C_db[i+1], -C_db[i+1]]
-    m[i, i] = m_db[i]
-m[-1, -1] = m_db[-1]
-k[-1, -2:] = [-k_db[-1], k_db[-1]]
-C[-1, -2:] = [-C_db[-1], C_db[-1]]
+import unittest
 
 
-# Continuous time SISO
-# Input Rn
-if system_type == 'MIMO':
-    b = np.zeros((2*N, N))
-    b[N:, :] = np.eye(N)
-    # Output rn
-    c = np.zeros((N, 2*N))
-    c[:, :N] = np.eye(N)
-    d = np.zeros((N, N))
-else:
-    b = np.zeros((2*N,))
-    b[-1] = 1.
-    c = np.zeros((1, 2*N))
-    c[0, N-1] = 1
-    d = np.zeros(1)
+class TestKrylovRom(unittest.TestCase):
 
-# Plant matrix
-Minv = np.linalg.inv(m)
-MinvK = Minv.dot(k)
-A = np.zeros((2*N, 2*N))
-A[:N, N:] = np.eye(N)
-A[N:, :N] = -MinvK
-A[N:, N:] = -Minv.dot(C)
+    tolerance = 1e-3
 
-system_CT = libss.ss(A, b, c, d, dt=None)
+    def test_siso_ct(self):
+        system_inputs = 'SISO'
+        system_time = 'ct'
 
-evals_ss = np.linalg.eigvals(system_CT.A)
+        ss = self.build_system(system_inputs, system_time)
 
-# Discrete time system
-dt = 1e-2
-Adt, Bdt, Cdt, Ddt = lingebm.newmark_ss(Minv, C, k, dt=dt, num_damp=0)
+        algorithm = 'two_sided_arnoldi'
+        interpolation_point = np.array([1.0j])
+        r = 6
 
-system_DT = libss.ss(Adt, Bdt, Cdt, Ddt, dt=dt)
+        print('Testing CT, SISO rational Arnoldi...')
+        rom = self.run_rom(ss, algorithm, r, interpolation_point)
 
-# SISO Gains for DT system
-if system_type == 'SISO':
-    b_dt = np.zeros((N))
-    b_dt[-1] = 1
-    system_DT.addGain(b_dt, 'in')
+        wv = np.logspace(-1, 3, 100)
+        freq_error = self.compare_freq_resp(rom, wv, interpolation_point)
 
-    system_DT.addGain(c, where='out')
+        print('Frequency Response Error at %.2f rad/s: %.2f' % (interpolation_point.imag, freq_error))
 
-evals_DT = np.linalg.eigvals(system_DT.A)
+        self.assertTrue(freq_error < self.tolerance)
 
-evals_dt_conv = np.log(evals_DT) / dt
+    def test_siso_dt(self):
+        system_inputs = 'SISO'
+        system_time = 'dt'
+
+        ss = self.build_system(system_inputs, system_time)
+
+        algorithm = 'two_sided_arnoldi'
+        interpolation_point_ct = np.array([1.0j])
+        interpolation_point = np.exp(interpolation_point_ct * ss.dt)
+        r = 6
+
+        print('Testing DT, SISO rational Arnoldi...')
+        rom = self.run_rom(ss, algorithm, r, interpolation_point)
+
+        wv = np.logspace(-1, 3, 100)
+        freq_error = self.compare_freq_resp(rom, wv, interpolation_point_ct)
+
+        print('Frequency Response Error at %.2f rad/s: %.2f' % (interpolation_point.imag, freq_error))
+
+        self.assertTrue(freq_error < self.tolerance)
+
+    def test_siso_dt_multipoint(self):
+        system_inputs = 'SISO'
+        system_time = 'dt'
+
+        ss = self.build_system(system_inputs, system_time)
+
+        algorithm = 'dual_rational_arnoldi'
+        interpolation_point_ct = np.array([1.0j, 10.0j])
+        interpolation_point = np.exp(interpolation_point_ct * ss.dt)
+        r = 2
+
+        print('Testing DT, SISO rational Arnoldi...')
+        rom = self.run_rom(ss, algorithm, r, interpolation_point)
+
+        wv = np.logspace(-1, 3, 100)
+        freq_error0 = self.compare_freq_resp(rom, wv, interpolation_point_ct[0])
+        freq_error1 = self.compare_freq_resp(rom, wv, interpolation_point_ct[1])
+
+        print('Frequency Response Error at %.2f rad/s: %.2f' % (interpolation_point_ct[0].imag, freq_error0))
+        print('Frequency Response Error at %.2f rad/s: %.2f' % (interpolation_point_ct[1].imag, freq_error1))
+
+        self.assertTrue(freq_error0 < self.tolerance)
+        self.assertTrue(freq_error1 < self.tolerance)
+
+    def build_system(self, system_inputs, system_time):
+        N = 5  # Number of masses/springs/dampers
+
+        k_db = np.linspace(1, 10, N)  # Stiffness database
+        m_db = np.logspace(2, 0, N)  # Mass database
+        C_db = np.ones(N) * 1e-1  # Damping database
+
+        # Build mass matrix
+        m = np.zeros((N, N))
+        k = np.zeros((N, N))
+        C = np.zeros((N, N))
+        m[0, 0] = m_db[0]
+
+        k[0, 0:2] = [k_db[0]+k_db[1], -k_db[1]]
+        C[0, 0:2] = [C_db[0] + C_db[1], -C_db[1]]
+        for i in range(1, N-1):
+            k[i, i-1:i+2] = [-k_db[i-1], k_db[i]+k_db[i+1], -k_db[i+1]]
+            C[i, i-1:i+2] = [-C_db[i-1], C_db[i]+C_db[i+1], -C_db[i+1]]
+            m[i, i] = m_db[i]
+        m[-1, -1] = m_db[-1]
+        k[-1, -2:] = [-k_db[-1], k_db[-1]]
+        C[-1, -2:] = [-C_db[-1], C_db[-1]]
+
+        # Input: Forces, Output: Displacements
+        if system_inputs == 'MIMO':
+            b = np.zeros((2*N, N))
+            b[N:, :] = np.eye(N)
+            # Output rn
+            c = np.zeros((N, 2*N))
+            c[:, :N] = np.eye(N)
+            d = np.zeros((N, N))
+        else:
+            b = np.zeros((2*N,))
+            b[-1] = 1.
+            c = np.zeros((1, 2*N))
+            c[0, N-1] = 1
+            d = np.zeros(1)
+
+        # Plant matrix
+        Minv = np.linalg.inv(m)
+        MinvK = Minv.dot(k)
+        A = np.zeros((2*N, 2*N))
+        A[:N, N:] = np.eye(N)
+        A[N:, :N] = -MinvK
+        A[N:, N:] = -Minv.dot(C)
+
+        # Build State Space
+        if system_time == 'ct':
+            system = libss.ss(A, b, c, d, dt=None)
+
+        else:
+            # Discrete time system
+            dt = 1e-2
+            Adt, Bdt, Cdt, Ddt = lingebm.newmark_ss(Minv, C, k, dt=dt, num_damp=0)
+
+            system = libss.ss(Adt, Bdt, Cdt, Ddt, dt=dt)
+
+            # SISO Gains for DT system
+            if system_inputs == 'SISO':
+                b_dt = np.zeros((N))
+                b_dt[-1] = 1
+                system.addGain(b_dt, 'in')
+
+                system.addGain(c, where='out')
+
+        return system
+
+    def run_rom(self, system, algorithm, r, interpolation_point):
+        rom = krylov.KrylovReducedOrderModel()
+        rom.initialise(data=None, ss=system)
+
+        rom.run(algorithm, r, interpolation_point)
+
+        return rom
+
+    def compare_freq_resp(self, rom, wv, interpolation_frequency, show_plots=False):
+
+        Y_fom = rom.ss.freqresp(wv)
+        Y_rom = rom.ssrom.freqresp(wv)
+
+        interpol_index = np.argwhere(wv >= interpolation_frequency.imag)[0]
+
+        error = np.abs(Y_fom[0, 0, interpol_index] - Y_rom[0, 0, interpol_index])
+
+        # if show_plots:
+        #     plot_freq = freq_plots.FrequencyResponseComparison()
+        #     plot_settings = {'frequency_type': 'w',
+        #                      'plot_type': 'bode'}
+        #
+        #     plot_freq.initialise(None, rom.ss, rom, plot_settings)
+        #
+        #     plot_freq.plot_frequency_response(wv, Y_fom, Y_rom, interpolation_frequency)
+
+        return error
+
+
+
+# evals_DT = np.linalg.eigvals(system_DT.A)
 #
-plt.scatter(evals_ss.real, evals_ss.imag, marker='s')
-# plt.scatter(evals_dt_conv.real, evals_dt_conv.imag, marker='^')
-# plt.show()
-
-wv = np.logspace(-1, 1, 1000)
-freqresp = system_DT.freqresp(wv)
-freqresp_ct = system_CT.freqresp(wv)
-
-# fig, ax = plt.subplots(nrows=1)
-# bode_mag_dt = (freqresp[0, 0, :].real)
-# bode_mag_ct = (freqresp_ct[0, 0, :].real)
-# ax.semilogx(wv, bode_mag_dt)
-# ax.semilogx(wv, bode_mag_ct, ls='--')
+# evals_dt_conv = np.log(evals_DT) / dt
+# #
+# plt.scatter(evals_ss.real, evals_ss.imag, marker='s')
+# # plt.scatter(evals_dt_conv.real, evals_dt_conv.imag, marker='^')
+# # plt.show()
 #
-# fig.show()
-
-print('Routine Complete')
-
-# ROM
-rom = ROM.ReducedOrderModel()
-rom.initialise(data=None,ss=system_DT)
-
-algorithm = 'dual_rational_arnoldi'
-# algorithm = 'arnoldi'
-r = 1
-# frequency = np.array([1.0, 1.005j])
-# frequency = np.array([np.inf])
-frequency = np.array([0.7j, 1.0j])
-z_interpolation = np.exp(frequency*dt)
-
-rom.run(algorithm,r, frequency=z_interpolation)
-
-plot_freq = freq_plots.FrequencyResponseComparison()
-plot_settings = {'frequency_type': 'w',
-                 'plot_type': 'bode'}
-
-plot_freq.initialise(None, system_DT, rom, plot_settings)
-if system_type == 'MIMO':
-    plot_freq.plot_frequency_response(wv, freqresp[:3, :3, :], rom.ssrom.freqresp(wv)[:3, :3, :], frequency)
-else:
-    plot_freq.plot_frequency_response(wv, freqresp, rom.ssrom.freqresp(wv), frequency)
+# wv = np.logspace(-1, 1, 1000)
+# freqresp = system_DT.freqresp(wv)
+# freqresp_ct = system_CT.freqresp(wv)
+#
+# # fig, ax = plt.subplots(nrows=1)
+# # bode_mag_dt = (freqresp[0, 0, :].real)
+# # bode_mag_ct = (freqresp_ct[0, 0, :].real)
+# # ax.semilogx(wv, bode_mag_dt)
+# # ax.semilogx(wv, bode_mag_ct, ls='--')
+# #
+# # fig.show()
+#
+# print('Routine Complete')
+#
+# # ROM
+# rom = krylov.KrylovReducedOrderModel()
+# rom.initialise(data=None,ss=system_DT)
+#
+# algorithm = 'dual_rational_arnoldi'
+# # algorithm = 'arnoldi'
+# r = 1
+# # frequency = np.array([1.0, 1.005j])
+# # frequency = np.array([np.inf])
+# frequency = np.array([0.7j, 1.0j])
+# z_interpolation = np.exp(frequency*dt)
+#
+# rom.run(algorithm,r, frequency=z_interpolation)
+#
+# plot_freq = freq_plots.FrequencyResponseComparison()
+# plot_settings = {'frequency_type': 'w',
+#                  'plot_type': 'bode'}
+#
+# plot_freq.initialise(None, system_DT, rom, plot_settings)
+# if system_inputs == 'MIMO':
+#     plot_freq.plot_frequency_response(wv, freqresp[:3, :3, :], rom.ssrom.freqresp(wv)[:3, :3, :], frequency)
+# else:
+#     plot_freq.plot_frequency_response(wv, freqresp, rom.ssrom.freqresp(wv), frequency)
 
 # plot_freq.plot_frequency_response(wv, freqresp[4:, 4:, :], rom.ssrom.freqresp(wv), frequency)
 # plot_freq.save_figure('DT_07_1_r2.png')
+
+if __name__=='__main__':
+    unittest.main()
