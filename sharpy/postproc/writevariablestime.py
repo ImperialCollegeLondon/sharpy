@@ -53,6 +53,10 @@ class WriteVariablesTime(BaseSolver):
         self.settings_types['aero_nodes_in'] = 'list(int)'
         self.settings_default['aero_nodes_in'] = np.array([0])
 
+        self.settings_types['cleanup_old_solution'] = 'bool'
+        self.settings_default['cleanup_old_solution'] = 'false'
+
+
         self.settings = None
         self.data = None
         self.dir = 'output/'
@@ -74,6 +78,59 @@ class WriteVariablesTime(BaseSolver):
             print("ERROR: aero_panels should be defined as [i_surf,i_m,i_n]")
         if not ((len(self.settings['aero_nodes_isurf']) == len(self.settings['aero_nodes_im'])) and (len(self.settings['aero_nodes_isurf']) == len(self.settings['aero_nodes_in']))):
             print("ERROR: aero_nodes should be defined as [i_surf,i_m,i_n]")
+
+        if self.settings['cleanup_old_solution']:
+            for ivariable in range(len(self.settings['FoR_variables'])):
+                if self.settings['FoR_variables'][ivariable] == '':
+                    continue
+                for ifor in range(len(self.settings['FoR_number'])):
+                    filename = self.dir + "FoR_" + '%02d' % self.settings['FoR_number'][ifor] + "_" + self.settings['FoR_variables'][ivariable] + ".dat"
+                    try:
+                        os.remove(filename)
+                    except FileNotFoundError:
+                        pass
+
+            # Structure variables at nodes
+            for ivariable in range(len(self.settings['structure_variables'])):
+                if self.settings['structure_variables'][ivariable] == '':
+                    continue
+                for inode in range(len(self.settings['structure_nodes'])):
+                    node = self.settings['structure_nodes'][inode]
+                    filename = self.dir + "struct_" + self.settings['structure_variables'][ivariable] + "_node" + str(node) + ".dat"
+                    try:
+                        os.remove(filename)
+                    except FileNotFoundError:
+                        pass
+
+            # Aerodynamic variables at panels
+            for ivariable in range(len(self.settings['aero_panels_variables'])):
+                if self.settings['aero_panels_variables'][ivariable] == '':
+                    continue
+                for ipanel in range(len(self.settings['aero_panels_isurf'])):
+                    i_surf = self.settings['aero_panels_isurf'][ipanel]
+                    i_m = self.settings['aero_panels_im'][ipanel]
+                    i_n = self.settings['aero_panels_in'][ipanel]
+
+                    filename = self.dir + "aero_" + self.settings['aero_panels_variables'][ivariable] + "_panel" + "_isurf" + str(i_surf) + "_im"+ str(i_m) + "_in"+ str(i_n) + ".dat"
+                    try:
+                        os.remove(filename)
+                    except FileNotFoundError:
+                        pass
+
+            # Aerodynamic variables at nodes
+            for ivariable in range(len(self.settings['aero_nodes_variables'])):
+                if self.settings['aero_nodes_variables'][ivariable] == '':
+                    continue
+                for inode in range(len(self.settings['aero_nodes_isurf'])):
+                    i_surf = self.settings['aero_nodes_isurf'][inode]
+                    i_m = self.settings['aero_nodes_im'][inode]
+                    i_n = self.settings['aero_nodes_in'][inode]
+
+                    filename = self.dir + "aero_" + self.settings['aero_nodes_variables'][ivariable] + "_node" + "_isurf" + str(i_surf) + "_im"+ str(i_m) + "_in"+ str(i_n) + ".dat"
+                    try:
+                        os.remove(filename)
+                    except FileNotFoundError:
+                        pass
 
     def run(self, online=False):
 
