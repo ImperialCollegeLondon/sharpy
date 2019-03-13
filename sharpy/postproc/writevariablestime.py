@@ -22,19 +22,19 @@ class WriteVariablesTime(BaseSolver):
         self.settings_default['delimiter'] = ' '
 
         self.settings_types['FoR_variables'] = 'list(str)'
-        self.settings_default['FoR_variables'] = ''
+        self.settings_default['FoR_variables'] = ['']
 
         self.settings_types['FoR_number'] = 'list(int)'
         self.settings_default['FoR_number'] = np.array([0], dtype=int)
 
         self.settings_types['structure_variables'] = 'list(str)'
-        self.settings_default['structure_variables'] = ''
+        self.settings_default['structure_variables'] = ['']
 
         self.settings_types['structure_nodes'] = 'list(int)'
         self.settings_default['structure_nodes'] = np.array([-1])
 
         self.settings_types['aero_panels_variables'] = 'list(str)'
-        self.settings_default['aero_panels_variables'] = ''
+        self.settings_default['aero_panels_variables'] = ['']
 
         self.settings_types['aero_panels_isurf'] = 'list(int)'
         self.settings_default['aero_panels_isurf'] = np.array([0])
@@ -44,7 +44,7 @@ class WriteVariablesTime(BaseSolver):
         self.settings_default['aero_panels_in'] = np.array([0])
 
         self.settings_types['aero_nodes_variables'] = 'list(str)'
-        self.settings_default['aero_nodes_variables'] = ''
+        self.settings_default['aero_nodes_variables'] = ['']
 
         self.settings_types['aero_nodes_isurf'] = 'list(int)'
         self.settings_default['aero_nodes_isurf'] = np.array([0])
