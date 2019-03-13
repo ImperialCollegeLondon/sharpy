@@ -155,11 +155,13 @@ class WriteVariablesTime(BaseSolver):
             self.settings['FoR_number'] = np.array([0], dtype=int)
 
         for ivariable in range(len(self.settings['FoR_variables'])):
+            if self.settings['FoR_variables'][ivariable] == '':
+                continue
             for ifor in range(len(self.settings['FoR_number'])):
                 filename = self.dir + "FoR_" + '%02d' % self.settings['FoR_number'][ifor] + "_" + self.settings['FoR_variables'][ivariable] + ".dat"
                 fid = open(filename,"a")
 
-                var = getattr(self.data.structure.timestep_info[-1], self.settings['FoR_variables'][ivariable])
+                var = np.atleast_2d(getattr(self.data.structure.timestep_info[-1], self.settings['FoR_variables'][ivariable]))
                 rows, cols = var.shape
                 if ((cols == 1) and (rows == 1)):
                     self.write_value_to_file(fid, self.data.ts, var, self.settings['delimiter'])
@@ -173,13 +175,15 @@ class WriteVariablesTime(BaseSolver):
 
         # Structure variables at nodes
         for ivariable in range(len(self.settings['structure_variables'])):
+            if self.settings['structure_variables'][ivariable] == '':
+                continue
+            var = getattr(self.data.structure.timestep_info[-1], self.settings['structure_variables'][ivariable])
+            num_indices = len(var.shape)
             for inode in range(len(self.settings['structure_nodes'])):
                 node = self.settings['structure_nodes'][inode]
                 filename = self.dir + "struct_" + self.settings['structure_variables'][ivariable] + "_node" + str(node) + ".dat"
                 fid = open(filename,"a")
 
-                var = getattr(self.data.structure.timestep_info[-1], self.settings['structure_variables'][ivariable])
-                num_indices = len(var.shape)
                 if num_indices == 2:
                     self.write_nparray_to_file(fid, self.data.ts, var[node,:], self.settings['delimiter'])
                 elif num_indices == 3:
@@ -190,6 +194,8 @@ class WriteVariablesTime(BaseSolver):
 
         # Aerodynamic variables at panels
         for ivariable in range(len(self.settings['aero_panels_variables'])):
+            if self.settings['aero_panels_variables'][ivariable] == '':
+                continue
             for ipanel in range(len(self.settings['aero_panels_isurf'])):
                 i_surf = self.settings['aero_panels_isurf'][ipanel]
                 i_m = self.settings['aero_panels_im'][ipanel]
@@ -205,6 +211,8 @@ class WriteVariablesTime(BaseSolver):
 
         # Aerodynamic variables at nodes
         for ivariable in range(len(self.settings['aero_nodes_variables'])):
+            if self.settings['aero_nodes_variables'][ivariable] == '':
+                continue
             for inode in range(len(self.settings['aero_nodes_isurf'])):
                 i_surf = self.settings['aero_nodes_isurf'][inode]
                 i_m = self.settings['aero_nodes_im'][inode]
@@ -224,7 +232,8 @@ class WriteVariablesTime(BaseSolver):
 
         fid.write("%d%s" % (ts,delimiter))
         for idim in range(np.shape(nparray)[0]):
-            fid.write("%e%s" % (nparray[idim],delimiter))
+            for jdim in range(np.shape(nparray)[1]):
+                fid.write("%e%s" % (nparray[idim, jdim],delimiter))
 
         fid.write("\n")
 
