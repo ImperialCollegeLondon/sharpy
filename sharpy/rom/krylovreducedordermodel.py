@@ -5,11 +5,43 @@ import sharpy.utils.h5utils as h5
 import time
 
 
-class ReducedOrderModel(object):
+class KrylovReducedOrderModel(object):
     """
-    Model Order Reduction Methods for Single Input Single Output (SISO) Linear Time-Invariant (LTI) Systems using
+    Model Order Reduction Methods for Single Input Single Output (SISO) and MIMO
+    Linear Time-Invariant (LTI) Systems using
     moment matching (Krylov Methods).
 
+    Examples:
+        General calling sequences for different systems
+
+        SISO single point interpolation:
+            >>>algorithm = 'one_sided_arnoldi'
+            >>>interpolation_point = np.array([0.0])
+            >>>krylov_r = 4
+            >>>
+            >>>rom = KrylovReducedOrderModel()
+            >>>rom.initialise(sharpy_data, FullOrderModelSS)
+            >>>rom.run(algorithm, krylov_r, interpolation_point)
+
+        2 by 2 MIMO with tangential, multipoint interpolation:
+            >>>algorithm = 'dual_rational_arnoldi'
+            >>>interpolation_point = np.array([0.0, 1.0j])
+            >>>krylov_r = 4
+            >>>right_vector = np.block([[1, 0], [0, 1]])
+            >>>left_vector = right_vector
+            >>>
+            >>>rom = KrylovReducedOrderModel()
+            >>>rom.initialise(sharpy_data, FullOrderModelSS)
+            >>>rom.run(algorithm, krylov_r, interpolation_point, right_vector, left_vector)
+
+        2 by 2 MIMO multipoint interpolation:
+            >>>algorithm = 'mimo_rational_arnoldi'
+            >>>interpolation_point = np.array([0.0])
+            >>>krylov_r = 4
+            >>>
+            >>>rom = KrylovReducedOrderModel()
+            >>>rom.initialise(sharpy_data, FullOrderModelSS)
+            >>>rom.run(algorithm, krylov_r, interpolation_point)
     """
 
     def __init__(self):
@@ -38,13 +70,15 @@ class ReducedOrderModel(object):
 
     def initialise(self, data, ss):
 
-        self.data = data
+        self.data = data  # Optional
         self.ss = ss
 
         if self.ss.dt is None:
             self.sstype = 'ct'
         else:
             self.sstype = 'dt'
+
+
 
     def run(self, algorithm, r, frequency=None, right_tangent=None, left_tangent=None):
         """
@@ -90,7 +124,7 @@ class ReducedOrderModel(object):
             Ar, Br, Cr = self.two_sided_arnoldi(frequency, r)
 
         elif algorithm == 'dual_rational_arnoldi':
-            Ar, Br, Cr = self.dual_rational_arnoldi_siso(frequency, r, right_tangent, left_tangent)
+            Ar, Br, Cr = self.dual_rational_arnoldi(frequency, r, right_tangent, left_tangent)
 
         elif algorithm == 'real_rational_arnoldi':
             Ar, Br, Cr = self.real_rational_arnoldi(frequency, r)
@@ -345,7 +379,7 @@ class ReducedOrderModel(object):
 
         return Ar, Br, Cr
 
-    def dual_rational_arnoldi_siso(self, frequency, r, right_tangent=None, left_tangent=None):
+    def dual_rational_arnoldi(self, frequency, r, right_tangent=None, left_tangent=None):
         r"""
         Dual Rational Arnoli Interpolation for SISO sytems [1] and MIMO systems through tangential interpolation [2].
 
@@ -456,12 +490,23 @@ class ReducedOrderModel(object):
  
         m = self.ss.inputs  # Full system number of inputs
         n = self.ss.states  # Full system number of states
+        p = self.ss.outputs  # Full system number of outputs
 
-        deflation_tolerance = 1e-6  # Inexact deflation tolerance to approximate norm(V)=0 in machine precision
-
-        # Preallocated size may be too large in case columns are deflated
-        V = np.zeros((n, self.nfreq * m), dtype=complex)
-        last_column = 0
+        # If the number of inputs is not the same as the number of outputs, they have to be
+        # a factor of one another, such that the corresponding Krylov subspace can be constructed
+        # to a greater order and the resulting projection matrices are the same size
+        if m != p:
+            assert np.mod(np.max([p, m]), np.min([p, m])) == 0, 'Number of outputs is not a factor of number' \
+                                                                ' of inputs, currently not implemented'
+            if m < p:
+                r_o = r
+                r_c = r_o * p // m
+            else:
+                r_c = r
+                r_o = r_c * m // p
+        else:
+            r_c = r
+            r_o = r
 
         B = self.ss.B
         C = self.ss.C
@@ -474,13 +519,12 @@ class ReducedOrderModel(object):
             else:
                 approx_type = 'Pade'
                 lu_a = sclalg.lu_factor(frequency[i] * np.eye(n) - self.ss.A)
-                # G = sclalg.lu_solve(lu_a, self.ss.B)
             if i == 0:
-                V = construct_mimo_krylov(r, lu_a, B, approx_type=approx_type, side='controllability')
-                W = construct_mimo_krylov(2*r, lu_a, C.T, approx_type=approx_type, side='observability')
+                V = construct_mimo_krylov(r_c, lu_a, B, approx_type=approx_type, side='controllability')
+                W = construct_mimo_krylov(r_o, lu_a, C.T, approx_type=approx_type, side='observability')
             else:
-                Vi = construct_mimo_krylov(r, lu_a, B, approx_type=approx_type, side='controllability')
-                Wi = construct_mimo_krylov(2*r, lu_a, C.T, approx_type=approx_type, side='observability')
+                Vi = construct_mimo_krylov(r_c, lu_a, B, approx_type=approx_type, side='controllability')
+                Wi = construct_mimo_krylov(r_o, lu_a, C.T, approx_type=approx_type, side='observability')
                 V = np.block([V, Vi])
                 W = np.block([W, Wi])
                 V = mgs_ortho(V)
@@ -787,7 +831,7 @@ def construct_mimo_krylov(r, lu_A_input, B, approx_type='Pade',side='controllabi
     m = B.shape[1]  # Full system number of inputs/outputs
     n = B.shape[0]  # Full system number of states
 
-    deflation_tolerance = 1e-7  # Inexact deflation tolerance to approximate norm(V)=0 in machine precision
+    deflation_tolerance = 1e-10  # Inexact deflation tolerance to approximate norm(V)=0 in machine precision
 
     # Preallocated size may be too large in case columns are deflated
     last_column = 0
