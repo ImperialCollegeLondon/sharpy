@@ -232,8 +232,12 @@ class WriteVariablesTime(BaseSolver):
 
         fid.write("%d%s" % (ts,delimiter))
         for idim in range(np.shape(nparray)[0]):
-            for jdim in range(np.shape(nparray)[1]):
-                fid.write("%e%s" % (nparray[idim, jdim],delimiter))
+            try:
+                for jdim in range(np.shape(nparray)[1]):
+                    fid.write("%e%s" % (nparray[idim, jdim],delimiter))
+            except IndexError:
+                fid.write("%e%s" % (nparray[idim],delimiter))
+
 
         fid.write("\n")
 
