@@ -1,6 +1,6 @@
 language: python
 python:
-  - "3.6"
+  - "3.7"
 sudo: required
 addons:
   apt:
@@ -23,8 +23,8 @@ before_install:
   - hash -r
   - conda config --set always_yes yes --set changeps1 no
   - conda update -q conda
-  - conda env create -f utils/environment_travis.yml
-  - source activate sharpy_travis
+  - conda env create -f utils/environment_linux.yml
+  - source activate sharpy_env
 
 install:
   - echo $(pwd)
