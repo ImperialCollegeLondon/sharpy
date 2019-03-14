@@ -226,24 +226,14 @@ class Modal(BaseSolver):
         FullCglobal = np.zeros((num_dof, num_dof),
                                dtype=ct.c_double, order='F')
 
-        # Obtain the matrices from the fortran library
-        # Todo: proper settings so as to not require using the dynamic coupled settings
-        # Temporary settings
-        # temp_settings = {'print_info': 'off',
-        #                  'initial_velocity_direction': [-1., 0., 0.],
-        #                  'max_iterations': 950,
-        #                  'delta_curved': 1e-6,
-        #                  'min_delta': tolerance,
-        #                  'newmark_damp': 5e-3,
-        #                  'gravity_on': True,
-        #                  'gravity': 9.81,
-        #                  'num_steps': n_tstep,
-        #                  'dt': dt,
-        #                  'initial_velocity': u_inf * 0}
         if self.rigid_body_motion:
+            # Settings for the assembly of the matrices
+            full_matrix_settings = self.data.settings['StaticCoupled']['structural_solver_settings']
+            full_matrix_settings['dt'] = ct.c_double(0.01)  # Dummy: required but not used
+            full_matrix_settings['newmark_damp'] = ct.c_double(1e-2)  # Dummy: required but not used
             FullMglobal, FullCglobal, FullKglobal, FullQ = xbeamlib.xbeam3_asbly_dynamic(self.data.structure,
                                           self.data.structure.timestep_info[self.data.ts],
-                                          self.data.settings['DynamicCoupled']['structural_solver_settings'])
+                                          full_matrix_settings)
         else:
             xbeamlib.cbeam3_solv_modal(self.data.structure,
                                        self.settings, self.data.ts,

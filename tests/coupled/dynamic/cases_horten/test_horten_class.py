@@ -48,7 +48,7 @@ ws.config['SHARPy']['flow'] = ['BeamLoader',
                                 ]
 
 ws.config['SHARPy']['write_screen'] = True
-# ws.config['DynamicCoupled']['n_time_steps'] = 1
+ws.config['DynamicCoupled']['n_time_steps'] = 1
 ws.config['Modal']['rigid_body_modes'] = True
 ws.config['Modal'] = {'print_info': True,
                              'use_undamped_modes': True,
