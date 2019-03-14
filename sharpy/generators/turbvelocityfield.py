@@ -271,17 +271,18 @@ class TurbVelocityField(generator_interface.BaseGenerator):
         # Usual method for wind turbines
         self.interpolate_zeta(zeta,
                               for_pos,
-                              uext,
-                              offset = -self.u_fed*t)
+                              uext)
+# ADC: This would throw an error. it is self.settings['u_fed'].
+                              # offset = -self.u_fed*t)
 
     def update_cache(self, t):
+        self.double_initialisation = False
         if self.settings['frozen']:
             if self._interpolator0 is None:
                 self._t0 = self.timestep_2_time(0)
                 self._it0 = 0
                 self._interpolator0 = self.read_grid(self._it0, i_cache=0)
             return
-
         # most common case: t already in the [t0, t1] interval
         if self._t0 <= t <= self._t1:
             return
@@ -291,7 +292,6 @@ class TurbVelocityField(generator_interface.BaseGenerator):
             raise ValueError('Please make sure everything is ok. Your time is going backwards.')
 
         # t > t1, need initialisation
-        self.double_initialisation = False
         if t > self._t1:
             new_it = self.time_2_timestep(t)
             # new timestep requires initialising the two of them (not likely at all)
