@@ -1,40 +1,39 @@
 import os
+import h5py
+
 import sharpy
 import sharpy.utils.cout_utils as cout
 from sharpy.utils.solver_interface import solver, BaseSolver
 import sharpy.utils.settings as settings
-
-import warnings
-import h5py
-from numpy import ndarray, float64, float32, array, int32, int64
-import ctypes as ct
-# from IPython import embed
+import sharpy.utils.h5utils as h5utils
 
 
 # Define basic numerical types
-BasicNumTypes=(float,float32,float64,int,int32,int64,complex)
-SkipAttr=[  'fortran',
-            'airfoils',
-            'airfoil_db',
-            'settings_types',
-            'beam',
-            'ct_dynamic_forces_list',
-            'ct_forces_list',
-            'ct_gamma_dot_list',
-            'ct_gamma_list',
-            'ct_gamma_star_list',
-            'ct_normals_list',
-            'ct_u_ext_list',
-            'ct_u_ext_star_list',
-            'ct_zeta_dot_list',
-            'ct_zeta_list',
-            'ct_zeta_star_list',]
-
+# BasicNumTypes=(float,float32,float64,int,int32,int64,complex)
 
 @solver
 class SaveData(BaseSolver):
-    solver_id = 'SaveData'
+    """
+    The ``SaveData`` postprocessor writes the SHARPy variables into hdf5 files.
 
+    Args:
+        data(ProblemData): class containing the data of the problem
+        custom_settings (dict): dictionary containing custom settings for the solver to use
+
+    Attributes:
+        settings (dict): Contains the solver's ``settings``. See below for acceptable values:
+
+            =======================================  =============  =============================================================  =========
+            Name                                     Type           Description                                                    Default
+            =======================================  =============  =============================================================  =========
+            ``folder``                               ``str``        Target folder to write the file                                ``./output``
+            ``save_aero``                            ``bool``       Write aerodynamic information                                  ``True``
+            ``save_struct``                          ``bool``       Write structural information                                   ``True``
+            ``skip_attr``                            ``list(str)``  Attributes that will NOT be saved                              ``['fortran', 'airfoils', 'airfoil_db', 'settings_types', 'beam', 'ct_dynamic_forces_list', 'ct_gamma_dot_list', 'ct_gamma_list', 'ct_gamma_star_list', 'ct_normals_list', 'ct_u_ext_list', 'ct_u_ext_star_list', 'ct_zeta_dot_list', 'ct_zeta_list', 'ct_zeta_star_list', 'dynamic_input']``
+            ``compress_float``                       ``bool``       Save numpy arrays as single precission                         ``False``
+            =======================================  =============  =============================================================  =========
+    """
+    solver_id = 'SaveData'
 
     def __init__(self):
         import sharpy
@@ -52,7 +51,23 @@ class SaveData(BaseSolver):
         self.settings_default['save_struct'] = True
 
         self.settings_types['skip_attr'] = 'list(str)'
-        self.settings_default['skip_attr'] = SkipAttr
+        self.settings_default['skip_attr'] = ['fortran',
+                                              'airfoils',
+                                              'airfoil_db',
+                                              'settings_types',
+                                              'beam',
+                                              'ct_dynamic_forces_list',
+                                              #'ct_forces_list',
+                                              'ct_gamma_dot_list',
+                                              'ct_gamma_list',
+                                              'ct_gamma_star_list',
+                                              'ct_normals_list',
+                                              'ct_u_ext_list',
+                                              'ct_u_ext_star_list',
+                                              'ct_zeta_dot_list',
+                                              'ct_zeta_list',
+                                              'ct_zeta_star_list',
+                                              'dynamic_input']
 
         self.settings_types['compress_float'] = 'bool'
         self.settings_default['compress_float'] = False
@@ -100,223 +115,32 @@ class SaveData(BaseSolver):
 
     def run(self, online=False):
 
+        # Use the following statement in case the ct types are not defined and
+        # you need them on uvlm3d
+        # self.data.aero.timestep_info[-1].generate_ctypes_pointers()
+
+        file_exists = os.path.isfile(self.filename)
         hdfile=h5py.File(self.filename,'a')
 
         #from IPython import embed;embed()
 
-        if online:
-            raise NameError('online not implemented!')
-            # self.ts=len(self.data.structure.timestep_info)-1
-            # add_as_grp(self.data,hdfile,grpname='data',
-            #                         ClassesToSave=self.ClassesToSave,ts=self.ts)
+        if (online and file_exists):
+            if self.settings['save_aero']:
+                h5utils.add_as_grp(self.data.aero.timestep_info[self.data.ts], hdfile['data']['aero']['timestep_info'],
+                                   grpname=("%05d" % self.data.ts),
+                                   ClassesToSave=(sharpy.utils.datastructures.AeroTimeStepInfo,),
+                                   SkipAttr=self.settings['skip_attr'],
+                                   compress_float=self.settings['compress_float'])
+            if self.settings['save_struct']:
+                h5utils.add_as_grp(self.data.structure.timestep_info[self.data.ts], hdfile['data']['structure']['timestep_info'],
+                                   grpname=("%05d" % self.data.ts),
+                                   ClassesToSave=(sharpy.utils.datastructures.StructTimeStepInfo,),
+                                   SkipAttr=self.settings['skip_attr'],
+                                   compress_float=self.settings['compress_float'])
         else:
-            add_as_grp(self.data,hdfile,grpname='data',
-                                ClassesToSave=self.ClassesToSave,
-                                            compress_float=self.settings['compress_float'] )
+            h5utils.add_as_grp(self.data,hdfile,grpname='data',
+                               ClassesToSave=self.ClassesToSave,SkipAttr=self.settings['skip_attr'],
+                               compress_float=self.settings['compress_float'])
         hdfile.close()
 
         return self.data
-
-
-
-def add_as_grp(obj,grpParent,
-                    grpname=None, ClassesToSave=(), SkipAttr=SkipAttr,
-                                                compress_float=False,overwrite=False):
-
-    '''
-    Given a class, dictionary, list or tuples instance 'obj', the routine adds 
-    it as a sub-group of name grpname to the parent group grpParent. An attribute
-    _read_as, specifying the type of obj, is added to the group so as to allow
-    reading correctly the h5 file.
-
-    Usage and Remarks:
-    - if obj contains dictionaries, listes or tuples, these are automatically 
-    saved
-
-    - if list only contains scalars or arrays of the same dimension, this will
-    be saved as a numpy array
-
-    - if obj contains classes, only those that are instances of the classes
-    specified in ClassesToSave will be saved
-    - If grpParent already contains a sub-group with name grpname, this will not
-    be overwritten. However, pre-existing attributes of the sub-group will be 
-    overwritten if obj contains attrributes with the same names.
-
-    - attributes belonging to SkipAttr will not be saved - This functionality 
-    needs improving  
-    - if compress_float is True, numpy arrays will be saved in single precisions.
-    '''
-
-
-    ### determine if dict, list, tuple or class
-    if isinstance(obj,list):
-        ObjType='list'
-    elif isinstance(obj,tuple):
-        ObjType='tuple'
-    elif isinstance(obj,dict):
-        ObjType='dict'
-    elif hasattr(obj,'__class__'):
-        ObjType='class'
-    else:
-        raise NameError('object type not supported')
-
-
-    ### determine sub-group name (only classes)
-    if grpname is None:
-        if ObjType=='class':
-            grpname=obj.__class__.__name__ 
-        else:
-            raise NameError('grpname must be specified for dict,list and tuples')
-
-
-    ### Create group (if necessary)
-    if not(grpname in grpParent):
-        grp=grpParent.create_group(grpname)
-        grp['_read_as']=ObjType
-    else:
-        if overwrite:
-            del grpParent[grpname]
-            grp=grpParent.create_group(grpname) 
-            grp['_read_as']=ObjType
-        else:
-            grp=grpParent[grpname]
-            assert grp['_read_as'].value==ObjType,\
-                                     'Can not overwrite group of different type'
-
-
-    ### lists/tuples only: try to save as arrays
-    if ObjType in ('list','tuple'):
-        Success=save_list_as_array(
-                      list_obj=obj,grp_target=grp,compress_float=compress_float)
-        if Success: 
-            return grpParent
-
-
-
-
-    ### create/retrieve dictionary of attributes/elements to be saved
-    if ObjType=='dict':
-        dictname=obj
-    elif ObjType=='class':
-        dictname=obj.__dict__
-    else: 
-        N=len(obj)
-        dictname={}
-        for nn in range(N):
-            dictname['%.5d'%nn ]=obj[nn]
-
-
-    ### loop attributes and save
-    SaveAsGroups=ClassesToSave+(list,dict,tuple, )
-
-
-    for attr in dictname:
-        if attr in SkipAttr: continue
-
-        # ----- extract value & type
-        value=dictname[attr]
-        vtype=type(value)
-
-        # ----- classes/dict/lists
-        # ps: no need to delete if overwrite is True
-        if isinstance(value,SaveAsGroups):
-            add_as_grp(value,grp,attr,
-                                ClassesToSave,SkipAttr,compress_float,overwrite)
-            continue
-
-        # ----- if attr already in grp always overwrite
-        if attr in grp:
-            del grp[attr]
-
-        # ----- Basic types
-        if isinstance(value, BasicNumTypes+(str,bytes) ):
-            grp[attr]=value 
-            continue           
-
-        # c_types
-        if isinstance(value,(ct.c_bool,ct.c_double,ct.c_int)):
-            value=value.value
-            grp[attr]=value 
-            continue
-
-        # ndarrays
-        if isinstance(value,ndarray):
-            add_array_to_grp(value,attr,grp,compress_float)
-            continue
-
-        # ----- Special
-        if value==None:
-            grp[attr]='NoneType'
-            continue
-
-        grp[attr]='not saved'
-
-    return grpParent
-
-
-
-def add_array_to_grp(data,name,grp,compress_float=False):
-    ''' Add numpy array (data) as dataset 'name' to the group grp. If 
-    compress is True, 64-bit float arrays are converted to 32-bit '''
-
-
-    if compress_float and data.dtype==float64:
-        #embed()
-        grp.create_dataset(name,data=data,dtype='f4')
-    else:
-        grp[name]=data
-
-    return grp
-
-
-
-
-def save_list_as_array(list_obj,grp_target,compress_float=False):
-    ''' 
-    Works for both lists and tuples. Returns True if the saving was successful.
-    '''
-
-    N=len(list_obj)
-
-    if N>0:
-        type0=type(list_obj[0])
-        if type0 in (BasicNumTypes+(str,ndarray)):
-            SaveAsArray=True
-            for nn in range(N):
-                if type(list_obj[nn])!=type0:
-                    SaveAsArray=False
-                    break
-                if type(list_obj[nn])==ndarray:
-                    if list_obj[0].shape != list_obj[nn].shape:
-                        SaveAsArray=False
-                        break
-            if SaveAsArray:
-                if '_as_array' in grp_target: 
-                    del grp_target['_as_array']
-                if type0 in BasicNumTypes:                # list of scalars
-                    if type0 == float and compress_float:
-                        grp_target['_as_array']=float32(list_obj)
-                    else:
-                        grp_target['_as_array']=list_obj
-                elif type0 == str:                        # list of strings                       
-                    string_dt = h5py.special_dtype(vlen=str)
-                    grp_target.create_dataset('_as_array',
-                               data=array(list_obj,dtype=object),dtype=string_dt)
-
-                elif type0 == ndarray:                    # list of arrays
-                    if list_obj[0].dtype in BasicNumTypes:
-                        if list_obj[0].dtype==float64 and compress_float:
-                                grp_target['_as_array']=float32(list_obj)
-                        else:
-                            grp_target['_as_array']=list_obj
-                    else:
-                        string_dt = h5py.special_dtype(vlen=str)
-                        grp_target.create_dataset('_as_array',
-                               data=array(list_obj,dtype=object),dtype=string_dt)    
-                else:
-                    warnings.warn(
-                        '%s could not be saved as an array' %(grp_target.name,))
-                    return False
-
-                return True
-    return False

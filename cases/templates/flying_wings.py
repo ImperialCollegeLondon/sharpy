@@ -10,13 +10,14 @@ complex inertial/stiffness properties
 - Goland(FlyingWing): generate Goland wing model 
 '''
 
+import warnings
 import h5py as h5
 import numpy as np
 import configobj
 import os
 # from IPython import embed
 import sharpy.utils.algebra as algebra
-import cases.templates.geo_utils as geo_utils
+import sharpy.utils.geo_utils as geo_utils
 np.set_printoptions(linewidth=120)
 
 
@@ -30,22 +31,53 @@ class FlyingWing():
     - other aeroelastic params are attached as attributes to the class.
     - the method update_config_dict provides default setting for solver. These
     can be modified after an instance of the FlyingWing class is created.
+
+    Args:
+        M,N:            chord/span-wise discretisations
+        Mstar_fact:     wake 
+        u_inf:          flow speed
+        alpha:          FoR A pitch angle [deg]
+        rho:            density
+        b_ref:          geometry
+        main_chord:     main chord   
+        aspect_ratio:   
+        roll=0.:        FoR A roll  angle [deg] (see RollNodes flag)
+        beta=0@         FoR A side  angle [deg] 
+        sweep=0:        sweep angle [deg]
+        n_surfaces=2:   
+        physical_time=2:
+        route='.':       saving route
+        case_name='flying_wing':
+        RollNodes=False : If true, the wing nodes are rolled insted of the FoR A
+
+    Usage: 
+        ws=flying_wings.FltingWing(*args)
+        ws.clean_test_files()
+        ws.update_derived_params()
+        ws.generate_fem_file()
+        ws.generate_aero_file()
+        ws.set_default_config_dict()
+        ws.config['SHARPy']= bla bla bla
+        ws.config.write()
     '''
 
     def __init__(self,
-                M,N,         # chord/span-wise discretisations
+                M,N,         
                 Mstar_fact,
-                u_inf,       # flight cond
-                alpha,  
+                u_inf,       
+                alpha,       
                 rho,     
-                b_ref,       # geometry
+                b_ref,
                 main_chord,
                 aspect_ratio,
-                beta=0,		 
-                sweep=0,
+                roll=0.,
+                beta=0,
+                sweep=0,    
                 n_surfaces=2,
-                route='.',      # saving
-                case_name='flying_wing'):
+                physical_time=2,
+                route='.',
+                case_name='flying_wing',
+                RollNodes=False):
 
         ### parametrisation
         assert n_surfaces<3, "use 1 or 2 surfaces only!"
@@ -62,19 +94,29 @@ class FlyingWing():
         self.rho=rho
         self.alpha=alpha      # angles
         self.beta=beta
+        self.roll=roll
         self.sweep=sweep
         self.b_ref=b_ref      # geometry
         self.main_chord=main_chord
         self.aspect_ratio=aspect_ratio  
         self.route=route + '/'  
         self.case_name=case_name
+        self.RollNodes=RollNodes
+
+        # Verify that the route exists and create directory if necessary
+        try:
+            os.makedirs(self.route)
+        except FileExistsError:
+            pass
 
         ### other params
+        self.u_inf_direction=np.array([1.,0.,0.])
+        self.gravity_on = True
+
         # aeroelasticity
         self.sigma=1
         self.main_ea = 0.5
         self.main_cg = 0.5
-
         self.c_ref=1. # ref. chord
 
         # Aerofoil shape: root and tip
@@ -83,6 +125,15 @@ class FlyingWing():
         self.tip_airfoil_P = 0
         self.tip_airfoil_M = 0
 
+        # Numerics for dynamic simulations
+        self.dt_factor = 1
+        self.physical_time = physical_time
+        self.horseshoe = False
+        self.fsi_tolerance = 1e-10
+        self.relaxation_factor = 0.2
+        self.gust_intensity = 0.01
+        self.gust_length = 5
+        self.tolerance = 1e-12
 
     def update_mass_stiff(self):
         '''This method can be substituted to produce different wing configs'''
@@ -106,15 +157,24 @@ class FlyingWing():
         ### Derived
 
         # time-step
-        self.dt=self.main_chord/self.M/self.u_inf
+        self.dt=self.main_chord/self.M/self.u_inf * self.dt_factor
+        self.n_tstep = int(np.round(self.physical_time/self.dt))
 
         # angles
         self.alpha_rad=self.alpha*np.pi/180.
+        self.roll_rad=self.roll*np.pi/180. 
         self.beta_rad=self.beta*np.pi/180.
         self.sweep_rad=self.sweep*np.pi/180.
 
         # FoR A orientation
-        self.quat=algebra.euler2quat(np.array([0.0,self.alpha_rad,self.beta_rad]))
+        if self.RollNodes:
+            self.quat=algebra.euler2quat(np.array([0.,self.alpha_rad,self.beta_rad]))
+        else:
+            if np.abs(self.roll)>1e-3:
+                warnings.warn(
+                    'FoR A quaternion will be built with inverted '+\
+                    'roll angle sign to compensate bug in algebra.euler2quat')
+            self.quat=algebra.euler2quat(np.array([-self.roll_rad,self.alpha_rad,self.beta_rad])) 
 
         # geometry
         self.wing_span=self.aspect_ratio*self.main_chord#/np.cos(self.sweep_rad)
@@ -134,7 +194,7 @@ class FlyingWing():
 
         # FEM connectivity, coords definition and mapping
         self.update_fem_prop()
-  
+
         # Mass/stiffness properties
         self.update_mass_stiff()
 
@@ -198,6 +258,11 @@ class FlyingWing():
             raise NameError(
                  'Geometry not implemented for multiple surfaces! Rotate them.')
 
+        if self.RollNodes:
+            sr,cr=np.sin(self.roll_rad),np.cos(self.roll_rad)
+            yold=y.copy()
+            y=cr*yold 
+            z=sr*yold   
 
         ### surface/beam to element mapping
         # beam_number and surface_distribution in fem/aero files
@@ -292,9 +357,11 @@ class FlyingWing():
 
     def set_default_config_dict(self):
         
+        str_u_inf_direction=[str(self.u_inf_direction[cc]) for cc in range(3)]
+
         config=configobj.ConfigObj()
         config.filename=self.route+'/'+self.case_name+'.solver.txt'
-
+        settings = dict()
 
         config['SHARPy']={
                 'flow':['BeamLoader', 'AerogridLoader', 
@@ -306,59 +373,169 @@ class FlyingWing():
                 'log_folder': self.route+'/output/',
                 'log_file': self.case_name+'.log'}
 
-        config['BeamLoader']={'unsteady': 'off',
-                              'orientation': self.quat}
+        config['BeamLoader']={
+                'unsteady': 'off',
+                'orientation': self.quat}
 
-        config['AerogridLoader']={'unsteady': 'off',
-                                  'aligned_grid': 'on',
-                                  'mstar': self.Mstar_fact*self.M,
-                                  'freestream_dir': ['1', '0', '0']}
+        config['AerogridLoader']={
+                'unsteady': 'on',
+                'aligned_grid': 'on',
+                'mstar': self.Mstar_fact*self.M,
+                'freestream_dir':str_u_inf_direction
+                                  }
+        config['StaticUvlm']={
+              'rho': self.rho,
+              'velocity_field_generator':'SteadyVelocityField',
+              'velocity_field_input':{
+                    'u_inf': self.u_inf,
+                    'u_inf_direction':self.u_inf_direction},
+              'rollup_dt': self.dt,
+              'print_info': 'on',
+              'horseshoe': 'off',
+              'num_cores': 4,
+              'n_rollup' : 0,                    
+              'rollup_aic_refresh': 0,
+              'rollup_tolerance': 1e-4}
 
-        config['StaticUvlm']={'rho': self.rho,
-                              'alpha': self.alpha_rad,
-                              'beta': self.beta_rad,
-                              'velocity_field_generator':'SteadyVelocityField',
-                              'velocity_field_input':{'u_inf': self.u_inf,
-                                                      'u_inf_direction':[1.,0,0]},
-                              'rollup_dt': self.dt,
-                              'print_info': 'on',
-                              'horseshoe': 'off',
-                              'num_cores': 4,
-                              'n_rollup' : 0,                    
-                              'rollup_aic_refresh': 0,
-                              'rollup_tolerance': 1e-4}
+        config['StaticCoupled']={
+               'print_info': 'on',
+               'max_iter': 200,
+               'n_load_steps': 1,
+               'tolerance': 1e-10,
+               'relaxation_factor': 0.,
+               'aero_solver': 'StaticUvlm',
+               'aero_solver_settings':{
+                            'rho': self.rho,
+                            'print_info': 'off',
+                            'horseshoe': 'off',
+                            'num_cores': 4,
+                            'n_rollup': 0,
+                            'rollup_dt': self.dt,
+                            'rollup_aic_refresh': 1,
+                            'rollup_tolerance': 1e-4,
+                            'velocity_field_generator': 'SteadyVelocityField',
+                            'velocity_field_input': {
+                                    'u_inf': self.u_inf,
+                                    'u_inf_direction': str_u_inf_direction}},
+                #
+               'structural_solver': 'NonLinearStatic',
+               'structural_solver_settings': {'print_info': 'off',
+                                              'max_iterations': 150,
+                                              'num_load_steps': 4,
+                                              'delta_curved': 1e-5,
+                                              'min_delta': 1e-5,
+                                              'gravity_on': self.gravity_on,
+                                              'gravity': 9.754,
+                                              'orientation': self.quat},}
 
-        config['StaticCoupled']={'print_info': 'on',
-                               'max_iter': 50,
-                               'n_load_steps': 1,
-                               'tolerance': 1e-6,
-                               'relaxation_factor': 0.,
-                               #
-                               'aero_solver': 'StaticUvlm',
-                               'aero_solver_settings':{
-                                            'rho': self.rho,
-                                            'alpha': self.alpha_rad,
-                                            'beta': self.beta_rad,
-                                            'print_info': 'off',
-                                            'horseshoe': 'off',
-                                            'num_cores': 4,
-                                            'n_rollup': 0,
-                                            'rollup_dt': self.dt,
-                                            'rollup_aic_refresh': 1,
-                                            'rollup_tolerance': 1e-4,
-                                            'velocity_field_generator': 'SteadyVelocityField',
-                                            'velocity_field_input': {'u_inf': self.u_inf,
-                                                                     'u_inf_direction': [1., 0, 0]}},
-                                #
-                               'structural_solver': 'NonLinearStatic',
-                               'structural_solver_settings': {'print_info': 'off',
-                                                              'max_iterations': 150,
-                                                              'num_load_steps': 4,
-                                                              'delta_curved': 1e-5,
-                                                              'min_delta': 1e-5,
-                                                              'gravity_on': 'on',
-                                                              'gravity': 9.754,
-                                                              'orientation': self.quat},}
+        config['LinearUvlm'] = {    'dt': self.dt,
+                                            'integr_order': 2,
+                                            'density': self.rho,
+                                            'remove_predictor': True, 
+                                            'use_sparse': True,
+                                            'ScalingDict':{'length': 1.,
+                                                           'speed':  1.,
+                                                           'density':1.}}
+
+        settings['StepLinearUVLM'] = {'dt': self.dt,
+                                  'solution_method': 'direct',
+                                  'velocity_field_generator': 'SteadyVelocityField',
+                                  'velocity_field_input': {
+                                        'u_inf': self.u_inf,
+                                        'u_inf_direction': self.u_inf_direction}}
+
+
+        settings['NonLinearDynamicPrescribedStep'] = {'print_info': 'off',
+                                                   'initial_velocity_direction': [-1., 0., 0.],
+                                                   'max_iterations': 950,
+                                                   'delta_curved': 1e-6,
+                                                   'min_delta': self.tolerance,
+                                                   'newmark_damp': 5e-3,
+                                                   'gravity_on': self.gravity_on,
+                                                   'gravity': 9.81,
+                                                   'num_steps': self.n_tstep,
+                                                   'dt': self.dt}
+
+        settings['StepUvlm'] = {'print_info': 'off',
+                                'horseshoe': self.horseshoe,
+                                'num_cores': 4,
+                                'n_rollup': 100,
+                                'convection_scheme': 0,
+                                'rollup_dt': self.dt,
+                                'rollup_aic_refresh': 1,
+                                'rollup_tolerance': 1e-4,
+                                # 'velocity_field_generator': 'TurbSimVelocityField',
+                                # 'velocity_field_input': {'turbulent_field': '/2TB/turbsim_fields/TurbSim_wide_long_A_low.h5',
+                                #                          'offset': [30., 0., -10],
+                                #                          'u_inf': 0.},
+                                'velocity_field_generator': 'GustVelocityField',
+                                'velocity_field_input': {'u_inf': self.u_inf,
+                                                         'u_inf_direction': self.u_inf_direction,
+                                                         'gust_shape': 'continuous_sin',
+                                                         'gust_length': self.gust_length,
+                                                         'gust_intensity': self.gust_intensity * self.u_inf,
+                                                         'offset': 5.0,
+                                                         'span': self.main_chord * self.aspect_ratio},
+                                # 'velocity_field_generator': 'SteadyVelocityField',
+                                # 'velocity_field_input': {'u_inf': self.u_inf*1,
+                                #                             'u_inf_direction': [1., 0., 0.]},
+                                'rho': self.rho,
+                                'n_time_steps': self.n_tstep,
+                                'dt': self.dt,
+                                'gamma_dot_filtering': 3}
+
+        config['DynamicCoupled'] = {'print_info': 'on',
+                                  'structural_substeps': 1,
+                                  'dynamic_relaxation': 'on',
+                                  'clean_up_previous_solution': 'on',
+                                  'structural_solver': 'NonLinearDynamicPrescribedStep',
+                                  'structural_solver_settings': settings['NonLinearDynamicPrescribedStep'],
+                                  'aero_solver': 'StepUvlm',
+                                  'aero_solver_settings': settings['StepUvlm'],
+                                  'fsi_substeps': 200,
+                                  'fsi_tolerance': self.fsi_tolerance,
+                                  'relaxation_factor': self.relaxation_factor,
+                                  'minimum_steps': 1,
+                                  'relaxation_steps': 150,
+                                  'final_relaxation_factor': 0.0,
+                                  'n_time_steps': self.n_tstep,
+                                  'dt': self.dt,
+                                  'include_unsteady_force_contribution': 'on',
+                                  'postprocessors': ['BeamLoads', 'StallCheck', 'BeamPlot', 'AerogridPlot'],
+                                  'postprocessors_settings': {'BeamLoads': {'folder': self.route + '/output/',
+                                                                            'csv_output': 'off'},
+                                                              'StallCheck': {'output_degrees': True,
+                                                                             'stall_angles': {
+                                                                                 '0': [-12 * np.pi / 180,
+                                                                                       6 * np.pi / 180],
+                                                                                 '1': [-12 * np.pi / 180,
+                                                                                       6 * np.pi / 180],
+                                                                                 '2': [-12 * np.pi / 180,
+                                                                                       6 * np.pi / 180]}},
+                                                              'BeamPlot': {'folder': self.route + '/output/',
+                                                                           'include_rbm': 'on',
+                                                                           'include_applied_forces': 'on'},
+                                                              'AerogridPlot': {
+                                                                  'u_inf': self.u_inf,
+                                                                  'folder': self.route + '/output/',
+                                                                  'include_rbm': 'on',
+                                                                  'include_applied_forces': 'on',
+                                                                  'minus_m_star': 0}}}
+
+        config['DynamicUVLM'] = {'print_info': 'on',
+                                 'aero_solver': 'StepUvlm',
+                                 'aero_solver_settings': settings['StepUvlm'],
+                                 'n_time_steps': self.n_tstep,
+                                 'dt': self.dt,
+                                 'include_unsteady_force_contribution': 'on',
+                                 'postprocessors': ['AerogridPlot'],
+                                 'postprocessors_settings': {'AerogridPlot': {'u_inf': self.u_inf,
+                                                                  'folder': self.route + '/output/',
+                                                                  'include_rbm': 'off',
+                                                                  'include_applied_forces': 'on',
+                                                                  'minus_m_star': 0}}
+                                 }
+
 
         config['AerogridPlot']={'folder': self.route+'/output/',
                                 'include_rbm': 'off',
@@ -383,13 +560,17 @@ class FlyingWing():
         config['SaveData'] = {'folder': self.route+'/output/'}
 
         config['Modal'] = {'folder': self.route+'/output/',
-                           'NumLambda': 100,
+                           'NumLambda': 60,
                            'print_matrices': 'off',
                            'keep_linear_matrices': 'on',
+                            'write_dat': 'off',
+                            'continuous_eigenvalues': 'off',
+                            'dt': 0,
+                            'plot_eigenvalues': False,
+                            'max_rotation_deg': 15.,
+                            'max_displacement': 0.15,
                            'write_modes_vtk': True,
                            'use_undamped_modes': True}
-
-
 
         config.write()
         self.config=config
@@ -503,11 +684,13 @@ class Smith(FlyingWing):
     			b_ref=32.,       # geometry
     			main_chord=1.,
     			aspect_ratio=32,
+                roll=0.,
     			beta=0.,		 
     			sweep=0.,
     			n_surfaces=2,
     			route='.',       
-    			case_name='smith'):
+    			case_name='smith',
+                RollNodes=False):
 
         super().__init__(	M=M,N=N,       
         					Mstar_fact=Mstar_fact,
@@ -517,11 +700,13 @@ class Smith(FlyingWing):
         					b_ref=b_ref,       			
         					main_chord=main_chord,
         					aspect_ratio=aspect_ratio,
+                            roll=roll,
         					beta=beta,		 
         					sweep=sweep,
         					n_surfaces=n_surfaces,
         					route=route,      
-        					case_name=case_name)
+        					case_name=case_name,
+                            RollNodes=RollNodes)
         self.c_ref=1.
 
 
@@ -542,17 +727,13 @@ class Smith(FlyingWing):
         self.elem_stiffness=np.zeros((self.num_elem_tot,), dtype=int)
         self.elem_mass=np.zeros((self.num_elem_tot,), dtype=int)
 
-
-
-
-
 	
 class Goland(FlyingWing):
     ''' 
     Build a Goland wing.
     This class is nothing but a FlyingWing with pre-defined geometry properties
     and mass/stiffness data ("update_mass_stiffness" method)
-     '''
+    '''
 
 
     def __init__(self,
@@ -564,11 +745,14 @@ class Goland(FlyingWing):
                 b_ref=2.*6.096,       # geometry
                 main_chord=1.8288,
                 aspect_ratio=(2.*6.096)/1.8288,
+                roll=0.,
                 beta=0.,         
                 sweep=0.,
-                n_surfaces=2,
+                n_surfaces=1,
+                physical_time=2,
                 route='.',       
-                case_name='goland'):
+                case_name='goland',
+                RollNodes=False):
 
         super().__init__(   M=M,N=N,       
                             Mstar_fact=Mstar_fact,
@@ -578,11 +762,14 @@ class Goland(FlyingWing):
                             b_ref=b_ref,                
                             main_chord=main_chord,
                             aspect_ratio=aspect_ratio,
+                            roll=roll,
                             beta=beta,       
                             sweep=sweep,
+                            physical_time=physical_time,
                             n_surfaces=n_surfaces,
                             route=route,      
-                            case_name=case_name)
+                            case_name=case_name,
+                            RollNodes=RollNodes)
 
         # aeroelasticity parameters
         self.main_ea = 0.33
@@ -610,10 +797,10 @@ class Goland(FlyingWing):
         gj = 0.987581e6
         eiy = 9.77221e6
         eiz = 1e2*eiy
-        base_stiffness=np.diag([ea, ga, ga, gj, eiy, eiz])
+        base_stiffness=np.diag([ea, ga, ga, self.sigma*gj, self.sigma*eiy, eiz]) 
 
         self.stiffness=np.zeros((1, 6, 6))
-        self.stiffness[0]=self.sigma*base_stiffness
+        self.stiffness[0]=base_stiffness
 
 
         m_unit = 35.71
@@ -622,68 +809,13 @@ class Goland(FlyingWing):
         m_chi_cg = algebra.skew(m_unit*pos_cg_b)
         self.mass=np.zeros((1, 6, 6))
         self.mass[0, :, :]=np.diag([ m_unit, m_unit, m_unit, 
-                                                  j_tors, .5*j_tors, .5*j_tors])
+                                                  j_tors, .1*j_tors, .9*j_tors])
 
         self.mass[0,:3,3:]= m_chi_cg
         self.mass[0,3:,:3]=-m_chi_cg
 
         self.elem_stiffness=np.zeros((self.num_elem_tot,), dtype=int)
         self.elem_mass=np.zeros((self.num_elem_tot,), dtype=int)
-
-
-
-
-class GolandRolled(Goland):
-    ''' 
-    Build a rolled Goland wing at ZERO inclidence/side-slip.
-    
-    Note: this class is used for testing purposes. The FoR A in which the wing
-    is defined is alligned with the inertial frame, G. The geometry is instead 
-    rolled by modifying directly the wing nodal coordinates.
-    '''
-
-
-    def __init__(self,
-                M,N,            # chord/span-wise discretisations
-                Mstar_fact,
-                u_inf,          # flight cond   
-                roll=45.,       # roll angle [deg]
-                rho=1.02,
-                b_ref=2.*6.096,       # geometry
-                main_chord=1.8288,
-                aspect_ratio=(2.*6.096)/1.8288,
-                n_surfaces=2,
-                route='.',       
-                case_name='goland_rolled'):
-
-        super().__init__(   M=M,N=N,       
-                            Mstar_fact=Mstar_fact,
-                            u_inf=u_inf,      
-                            alpha=0.,   
-                            rho=rho,
-                            b_ref=b_ref,                
-                            main_chord=main_chord,
-                            aspect_ratio=aspect_ratio,
-                            beta=0.,       
-                            sweep=0.,
-                            n_surfaces=n_surfaces,
-                            route=route,      
-                            case_name=case_name)
-        self.roll=roll
-        # self.clean_test_files()
-        # self.update_derived_params()
-
-
-    def update_derived_params(self):
-        super().update_derived_params()
-
-        # define roll attitude by modifying the nodal coordinates
-        roll_rad=self.roll/180.*np.pi
-        sr,cr=np.sin(roll_rad),np.cos(roll_rad)
-
-        yold=self.y.copy()
-        self.y=cr*yold 
-        self.z=sr*yold
 
 
 
@@ -696,19 +828,21 @@ class QuasiInfinite(FlyingWing):
 
 
     def __init__(self,
-                M,N,            # chord/span-wise discretisations
+                M,N,            
                 Mstar_fact,
-                u_inf,          # flight cond
+                u_inf,          
                 alpha,
                 aspect_ratio,
                 rho=0.08891,
-                b_ref=32.,       # geometry
+                b_ref=32.,
                 main_chord=3.,
+                roll=0.,
                 beta=0.,         
                 sweep=0.,
                 n_surfaces=1,
                 route='.',       
-                case_name='qsinf'):
+                case_name='qsinf',
+                RollNodes=False):
 
         super().__init__(   M=M,N=N,       
                             Mstar_fact=Mstar_fact,
@@ -718,11 +852,13 @@ class QuasiInfinite(FlyingWing):
                             b_ref=b_ref,                
                             main_chord=main_chord,
                             aspect_ratio=aspect_ratio,
+                            roll=roll,
                             beta=beta,       
                             sweep=sweep,
                             n_surfaces=n_surfaces,
                             route=route,      
-                            case_name=case_name)
+                            case_name=case_name,
+                            RollNodes=RollNodes)
         self.c_ref=main_chord
         self.main_ea = 0.5
         self.main_cg = 0.5
@@ -755,13 +891,6 @@ if __name__=='__main__':
     os.system('mkdir -p %s' %'./test' )
 
     ws=Goland(M=4,N=20,Mstar_fact=12,u_inf=25.,alpha=2.0,route='./test')
-    ws.clean_test_files()
-    ws.update_derived_params()
-    ws.generate_fem_file()
-    ws.generate_aero_file()
-
-
-    ws=GolandRolled(M=4,N=20,Mstar_fact=12,u_inf=100.,roll=30.,route='./test')
     ws.clean_test_files()
     ws.update_derived_params()
     ws.generate_fem_file()

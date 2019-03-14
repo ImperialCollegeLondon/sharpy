@@ -23,16 +23,30 @@ def triad2rot(xb,yb,zb):
     warn('triad2rot(xb,yb,zb) is obsolete! Use triad2rotation(xb,yb,zb).T instead!', stacklevel=2)
     return triad2rotation(xb,yb,zb).T
 def mat2quat(rot):
-     warn('mat2quat(rot) is obsolete! Use rotation2quat(rot.T) instead!', stacklevel=2)
-     return rotation2quat(rot.T)
+    """
+    Rotation matrix to quaternion function.
+
+    Warnings:
+        This function is deprecated and now longer supported. Please use ``algebra.rotation2quat(rot.T)`` instead.
+
+    Args:
+        rot: Rotation matrix
+
+    Returns:
+        np.array: equivalent quaternion
+    """
+    warn('mat2quat(rot) is obsolete! Use rotation2quat(rot.T) instead!', stacklevel=2)
+
+    return rotation2quat(rot.T)
 #######
 
 def tangent_vector(in_coord, ordering=None):
     r"""
     Tangent vector calculation for 2+ noded elements.
 
-    Calculates the tangent vector interpolating every dimension separately. It uses a (``n_nodes - 1``) degree polynomial,
-    and the differentiation is analytical.
+    Calculates the tangent vector interpolating every dimension
+    separately. It uses a (n_nodes - 1) degree polynomial, and the
+    differentiation is analytical.
 
     Calculation method:
 
@@ -50,14 +64,6 @@ def tangent_vector(in_coord, ordering=None):
 
     Args:
         in_coord (np.ndarray): array of coordinates of the nodes. Dimensions = ``[n_nodes, ndim]``
-        ordering (None): ordering required?
-
-    Returns:
-        np.ndarray: tangent vector
-
-
-    Examples:
-          example goes here
 
     Notes:
         Dimensions are treated independent from each other, interpolating polynomials are computed
@@ -136,10 +142,17 @@ def get_polyfit(in_coord, ordering):
 
 
 def unit_vector(vector):
-    """
-    Tested
-    :param vector:
-    :return:
+    r"""
+    Transforms the input vector into a unit vector
+
+    .. math:: \mathbf{\hat{v}} = \frac{\mathbf{v}}{\|\mathbf{v}\|}
+
+    Args:
+        vector (np.array): vector to normalise
+
+    Returns:
+        np.array: unit vector
+
     """
     if np.linalg.norm(vector) < 1e-6:
         return np.zeros_like(vector)
@@ -165,6 +178,34 @@ def skew(vector):
     matrix[2, 1] = vector[0]
     matrix[0, 2] = vector[1]
     matrix[1, 0] = vector[2]
+    return matrix
+
+
+def quadskew(vector):
+    """
+    Generates the matrix needed to obtain the quaternion in the following time step
+    through integration of the FoR angular velocity.
+
+
+    Args:
+        vector (np.array): FoR angular velocity
+
+    Notes:
+        The angular velocity is assumed to be constant in the time interval
+        Equivalent to lib_xbeam function
+        Quaternion ODE to compute orientation of body-fixed frame a
+        See Shearer and Cesnik (2007) for definition
+
+    Returns:
+        np.array: matrix
+    """
+    if not vector.size == 3:
+        raise ValueError('The input vector is not 3D')
+
+    matrix = np.zeros((4, 4))
+    matrix[0,1:4] = vector
+    matrix[1:4,0] = -vector
+    matrix[1:4,1:4] = skew(vector)
     return matrix
 
 
@@ -268,7 +309,7 @@ def rotation2quat(Cab):
 
             .. math:: \vec{\psi} = \psi\,\mathbf{\hat{n}}
 
-        such that :math:`\mathbf{\hat{n}}` is a unit vector and the scalar :math:`psi` is in the range
+        such that :math:`\mathbf{\hat{n}}` is a unit vector and the scalar :math:`\psi` is in the range
         :math:`[-\pi,\,\pi]`.
 
     """
@@ -425,7 +466,7 @@ def crv_bounds(crv_ini):
         crv *= (norm/norm_ini)
 
     return crv
-
+    # return crv_ini
 
 def triad2crv(xb, yb, zb):
     return rotation2crv(triad2rotation(xb, yb, zb))
@@ -437,11 +478,16 @@ def crv2triad(psi):
 
 
 def crv2rotation(psi):
-    """
-    Given a Cartesian rotation vector psi, the function produces the rotation
-    matrix required to rotate a vector according to psi.
+    r"""
+    Given a Cartesian rotation vector :math:`\vec{\psi}`, the function produces the rotation
+    matrix required to rotate a vector according to :math:`\vec{\psi}`.
 
-    Note: this is psi2mat in the matlab version
+    Args:
+        psi (np.array): Cartesian rotation vector :math:`\vec{\psi}`.
+
+    Returns:
+        np.array: equivalent rotation matrix
+
     """
 
     norm_psi = np.linalg.norm(psi)
@@ -461,14 +507,26 @@ def crv2rotation(psi):
 
 
 def rotation2crv(Cab):
-    """
-    Given a rotation matrix Cab rotating the frame a onto b, the function returns
-    the minimal size Cartesian rotation vector representing this rotation.
+    r"""
+    Given a rotation matrix :math:`C^{AB}` rotating the frame A onto B, the function returns
+    the minimal size Cartesian rotation vector, :math:`\vec{\psi}` representing this rotation.
 
-    Note: this is the inverse of crv2rotation for Cartesian rotation vectors
-    associated to rotations in the range [-pi,pi], i.e.:
-        fv == algebra.rotation2crv(algebra.crv2rotation(fv))
-    for each fv=a*nv such that nv is a unit vector and the scalar a in [-pi,pi].
+    Args:
+        Cab (np.array): rotation matrix :math:`C^{AB}`
+
+    Returns:
+        np.array: equivalent Cartesian rotation vector, :math:`\vec{\psi}`.
+
+    Notes:
+        this is the inverse of ``algebra.crv2rotation`` for Cartesian rotation vectors
+        associated to rotations in the range :math:`[-\pi,\,\pi]`, i.e.:
+
+            ``fv == algebra.rotation2crv(algebra.crv2rotation(fv))``
+
+        for each Cartesian rotation vector of the form :math:`\vec{\psi} = \psi\,\mathbf{\hat{n}}`
+        represented as ``fv=a*nv`` such that ``nv`` is a unit vector and the scalar ``a`` is in the
+        range :math:`[-\pi,\,\pi]`.
+
     """
 
     if np.linalg.norm(Cab) < 1e-6:
@@ -790,7 +848,7 @@ def der_Cquat_by_v(q,v):
     quanternion components, of the vector dot(C,v), where v is a constant
     vector.
     The elements of the resulting derivative matrix D are ordered such that:
-    ``d(C*v) = D*d(q)``
+        d(C*v) = D*d(q)
     where d(.) is a delta operator.
     """
 
@@ -813,7 +871,7 @@ def der_CquatT_by_v(q,v):
     quanternion components, of the vector dot(C,v), where v is a constant
     vector.
     The elements of the resulting derivative matrix D are ordered such that:
-    ``d(C*v) = D*d(q)``
+        d(C*v) = D*d(q)
     where d(.) is a delta operator.
     """
 
@@ -834,7 +892,7 @@ def der_Tan_by_xv(fv0,xv):
     of dot(Tan,xv), where xv is a constant vector.
 
     The elements of the resulting derivative matrix D are ordered such that:
-    ``d(Tan*xv) = D*d(fv)``
+        d(Tan*xv) = D*d(fv)
     where d(.) is a delta operator.
 
     Note: the derivative expression has been derived symbolically and verified
@@ -992,8 +1050,8 @@ def der_TanT_by_xv(fv0,xv):
 def der_Ccrv_by_v(fv0,v):
     """
     Being C=C(fv0) the rotational matrix depending on the Cartesian rotation
-    vector fv0 and defined as C=crv2rotation(fv0), the function returns the 
-    derivative, w.r.t. the CRV components, of the vector dot(C,v), where v is a 
+    vector fv0 and defined as C=crv2rotation(fv0), the function returns the
+    derivative, w.r.t. the CRV components, of the vector dot(C,v), where v is a
     constant vector.
     The elements of the resulting derivative matrix D are ordered such that:
         d(C*v) = D*d(fv0)
@@ -1010,8 +1068,8 @@ def der_Ccrv_by_v(fv0,v):
 def der_CcrvT_by_v(fv0,v):
     """
     Being C=C(fv0) the rotation matrix depending on the Cartesian rotation
-    vector fv0 and defined as C=crv2rotation(fv0), the function returns the 
-    derivative, w.r.t. the CRV components, of the vector dot(C.T,v), where v is 
+    vector fv0 and defined as C=crv2rotation(fv0), the function returns the
+    derivative, w.r.t. the CRV components, of the vector dot(C.T,v), where v is
     a constant vector.
     The elements of the resulting derivative matrix D are ordered such that:
         d(C.T*v) = D*d(fv0)
@@ -1022,3 +1080,44 @@ def der_CcrvT_by_v(fv0,v):
     T0=crv2tan(fv0)
 
     return np.dot( skew( np.dot(Cba0,v) ),T0)
+
+
+def der_quat_wrt_crv(quat0):
+    '''
+    Provides change of quaternion, dquat, due to elementary rotation, dcrv, 
+    expressed as a 3 components Cartesian rotation vector such that 
+        C(quat + dquat) = C(quat0)C(dw)
+    where C are rotation matrices.
+
+    E.g.: assume 3 FoRs, G, A and B where:
+        - G is the initial FoR
+        - quat0 defines te rotation required to obtain A from G, namely:
+                Cga=quat2rotation(quat0)
+        - dcrv is an inifinitesimal Cartesian rotation vector, defined in A 
+        components, which describes an infinitesimal rotation A -> B, namely:
+                Cab=crv2rotation(dcrv)
+        - The total rotation G -> B is:
+            Cga = Cga * Cab
+        - As dcrv -> 0, Cga is equal to:
+            algebra.quat2rotation(quat0 + dquat), 
+        where dquat is the output of this function.
+    '''
+
+    Der=np.zeros((4,3))
+    Der[0,:]=-0.5*quat0[1:]
+    Der[1:,:]=-0.5*( -quat0[0]*np.eye(3) - skew(quat0[1:]) )
+    return Der
+
+
+
+def cross3(v,w):
+    """
+    Computes the cross product of two vectors (v and w) with size 3
+    """
+
+    res = np.zeros((3,),)
+    res[0] = v[1]*w[2] - v[2]*w[1]
+    res[1] = -v[0]*w[2] + v[2]*w[0]
+    res[2] = v[0]*w[1] - v[1]*w[0]
+
+    return res

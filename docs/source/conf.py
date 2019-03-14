@@ -137,7 +137,13 @@ todo_include_todos = False
 # Exclude matplotlib - avoids conflicts when running sphinx
 # http://www.sphinx-doc.org/en/master/usage/extensions/autodoc.html#confval-autodoc_mock_imports
 autodoc_mock_imports = ["matplotlib", "numpy", "colorama", "h5py", "scipy", "ctypes", "tvtk",
-                        "sharpy.lib", "sharpy.utils.ctypes_utils"]
+                        "sharpy.lib", "sharpy.utils.ctypes_utils", "sharpy.linear.src.libuvlm",
+                        "sharpy.linear.src.lib_dbiot"]
+                        # "interp", "multisurfaces", "assembly", "libss",]
+
+                        # Note: N. Goizueta 3/12/18: mocking imports from sharpy.linear.src that contain numpy
+                        # operators outside any function definition as these are causing problems. If numpy is not
+                        # mocked, it doesn't build on RTD. If it is mocked, it raises an error when compiling locally
 
 # # Exclude selected modules
 # from unittest.mock import MagicMock

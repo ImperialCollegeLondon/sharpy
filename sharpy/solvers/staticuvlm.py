@@ -129,7 +129,8 @@ class StaticUvlm(BaseSolver):
     def run(self):
         # generate uext
         self.velocity_generator.generate({'zeta': self.data.aero.timestep_info[self.data.ts].zeta,
-                                          'override': True},
+                                          'override': True,
+                                          'for_pos': self.data.structure.timestep_info[self.data.ts].for_pos[0:3]},
                                          self.data.aero.timestep_info[self.data.ts].u_ext)
         # grid orientation
         uvlmlib.vlm_solver(self.data.aero.timestep_info[self.data.ts],

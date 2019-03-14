@@ -1,6 +1,7 @@
 import sharpy.utils.algebra as algebra
 import numpy as np
 import unittest
+import random
 # from IPython import embed
 
 
@@ -140,6 +141,25 @@ class TestAlgebra(unittest.TestCase):
             assert np.linalg.norm(quat-quat0)<1e-12,\
                                   'rotation2quat not producing the right result'
 
+
+        ### combined rotation
+        # assume 3 FoR, G, A and B where:
+        #   - G is the initial FoR
+        #   - A derives from a 90 deg rotation about zG
+        #   - B derives from a 90 deg rotation about yA
+        crv_G_to_A=.5*np.pi*np.array([0,0,1])
+        crv_A_to_B=.5*np.pi*np.array([0,1,0])
+        Cga=algebra.crv2rotation(crv_G_to_A)
+        Cab=algebra.crv2rotation(crv_A_to_B)
+        
+        # rotation G to B (i.e. projection B onto G)
+        Cgb=np.dot(Cga,Cab)
+        Cgb_exp=np.array([ [ 0,-1, 0],
+                           [ 0, 0, 1],
+                           [-1, 0, 0]])
+        assert np.linalg.norm(Cgb-Cgb_exp)<1e-15,\
+                                            'combined rotation not as expected!'
+
         print(50*'-'+' all good!\n')
 
 
@@ -159,15 +179,19 @@ class TestAlgebra(unittest.TestCase):
 
 
         ### linearisation point
-        fi0=np.pi/6
-        nv0=np.array([1,3,1])
+        # fi0=np.pi/6
+        # nv0=np.array([1,3,1])
+        fi0=2.0*np.pi*random.random()-np.pi
+        nv0=np.array([random.random(),random.random(),random.random()])
         nv0=nv0/np.linalg.norm(nv0)
         fv0=fi0*nv0
         qv0=algebra.crv2quat(fv0)
 
         # direction of perturbation
-        fi1=np.pi/3
-        nv1=np.array([-2,4,1])
+        # fi1=np.pi/3
+        # nv1=np.array([-2,4,1])
+        fi1=2.0*np.pi*random.random()-np.pi
+        nv1=np.array([random.random(),random.random(),random.random()])
         nv1=nv1/np.linalg.norm(nv1)
         fv1=fi1*nv1
         qv1=algebra.crv2quat(fv1)
@@ -179,7 +203,8 @@ class TestAlgebra(unittest.TestCase):
         Cba0=Cab0.T
 
         # derivatives
-        xv=np.ones((3,)) # dummy vector
+        # xv=np.ones((3,)) # dummy vector
+        xv=np.array([random.random(),random.random(),random.random()]) # dummy vector
         derCga=algebra.der_Cquat_by_v(qv0,xv)
         derCag=algebra.der_CquatT_by_v(qv0,xv)
         derCab=algebra.der_Ccrv_by_v(fv0,xv)
@@ -239,8 +264,6 @@ class TestAlgebra(unittest.TestCase):
 
 
         print(50*'-'+' all good!\n')
-
-
 
     def test_crv_tangetial_operator(self):
         ''' Checks Cartesian rotation vector tangential operator '''
@@ -385,6 +408,139 @@ class TestAlgebra(unittest.TestCase):
         print(50*'-'+' all good!\n')
 
 
+    def test_quat_wrt_rot(self):
+        '''
+        We define:
+        - G: initial frame
+        - A: frame obtained upon rotation, Cga, defined by the quaternion q0
+        - B: frame obtained upon further rotation, Cab, of A defined by 
+        the "infinitesimal" Cartesian rotation vector dcrv
+        The test verifies that:
+        1. the total rotation matrix Cgb(q0+dq) is equal to
+            Cgb = Cga(q0) Cab(dcrv)
+        where 
+            dq = algebra.der_quat_wrt_crv(q0)
+        2. the difference between analytically computed delta quaternion, dq, 
+        and the numerical delta
+            dq_num = algebra.crv2quat(algebra.rotation2crv(Cgb_ref))-q0
+        is comparable to the step used to compute the delta dcrv
+        3. The equality:
+            d(Cga(q0)*v)*dq = Cga(q0) * d(Cab*dv)*dcrv
+        where d(Cga(q0)*v) and d(Cab*dv) are the derivatives computed through
+            algebra.der_Cquat_by_v and algebra.der_Ccrv_by_v
+        for a random vector v.
+
+        Warning:
+        - The relation dcrv->dquat is not uniquely defined. However, the 
+        resulting rotation matrix is, namely:
+            Cga(q0+dq)=Cga(q0)*Cab(dcrv) 
+        '''
+
+        print(60*'-')
+        print('Testing derivatives of quaternion w.r.t. elementary rotation')
+        print('der_quat_wrt_rot')
+
+        ### case 1: simple rotation about the same axis
+
+        # linearisation point
+        a0=30.*np.pi/180
+        n0=np.array([0,0,1])
+        n0=n0/np.linalg.norm(n0)
+        q0=algebra.crv2quat(a0*n0)
+        Cga=algebra.quat2rotation(q0)
+
+        # direction of perturbation
+        n2=n0
+    
+        print('step\t\terror quat_wrt_rot (relative)')
+        A=np.array([1e-2,1e-3,1e-4,1e-5,1e-6])
+        for a in A: 
+            drot=a*n2
+
+            # build rotation manually
+            atot=a0+a
+            Cgb_exp=algebra.crv2rotation(atot*n0) # ok
+
+            # build combined rotation
+            Cab=algebra.crv2rotation(drot)
+            Cgb_ref=np.dot(Cga,Cab)
+
+            # verify expected vs combined rotation matrices
+            assert np.linalg.norm(Cgb_exp-Cgb_ref)/a<1e-8, \
+                        'Verify test case - these matrices need to be identical'
+
+            # verify analytical rotation matrix
+            dq_an=np.dot( algebra.der_quat_wrt_crv(q0),drot) 
+            Cgb_an=algebra.quat2rotation(q0+dq_an)
+            erel_rot=np.linalg.norm(Cgb_an-Cgb_ref)/a
+            assert erel_rot<3e-3,\
+                  'Relative error of rotation matrix (%.2e) too large!'%erel_rot   
+
+            # verify delta quaternion
+            erel_dq=np.linalg.norm(Cgb_an-Cgb_ref)
+            dq_num=algebra.crv2quat(algebra.rotation2crv(Cgb_ref))-q0
+            erel_dq=np.linalg.norm(dq_num-dq_an)/np.linalg.norm(dq_an)/a
+            assert erel_dq<.3,\
+                     'Relative error delta quaternion (%.2e) too large!'%erel_dq
+            print('%.3e\t%.3e'%(a,erel_dq,) )
+
+            # verify algebraic relation
+            v=np.ones((3,))
+            D1=algebra.der_Cquat_by_v(q0,v)
+            D2=algebra.der_Ccrv_by_v(np.zeros((3,)),v)
+            res=np.dot(D1,dq_num)-np.dot( np.dot(Cga,D2), drot)
+            erel_res=np.linalg.norm(res)/a
+            assert erel_res<5e-1*a,\
+                         'Relative error of residual (%.2e) too large!'%erel_res
+
+
+        ### case 2: random rotation
+
+        # linearisation point
+        a0=30.*np.pi/180
+        n0=np.array([-2,-1,1])
+        n0=n0/np.linalg.norm(n0)
+        q0=algebra.crv2quat(a0*n0)
+        Cga=algebra.quat2rotation(q0)
+
+        # direction of perturbation
+        n2=np.array([0.5,1.,-2.])
+        n2=n2/np.linalg.norm(n2) 
+    
+        print('step\t\terror quat_wrt_rot (relative)')
+        A=np.array([1e-2,1e-3,1e-4,1e-5,1e-6])
+        for a in A: 
+            drot=a*n2
+
+            # build combined rotation
+            Cab=algebra.crv2rotation(drot)
+            Cgb_ref=np.dot(Cga,Cab)
+
+            # verify analytical rotation matrix
+            dq_an=np.dot( algebra.der_quat_wrt_crv(q0),drot) 
+            Cgb_an=algebra.quat2rotation(q0+dq_an)
+            erel_rot=np.linalg.norm(Cgb_an-Cgb_ref)/a
+            assert erel_rot<3e-3,\
+                  'Relative error of rotation matrix (%.2e) too large!'%erel_rot   
+
+            # verify delta quaternion
+            erel_dq=np.linalg.norm(Cgb_an-Cgb_ref)
+            dq_num=algebra.crv2quat(algebra.rotation2crv(Cgb_ref))-q0
+            erel_dq=np.linalg.norm(dq_num-dq_an)/np.linalg.norm(dq_an)/a
+            assert erel_dq<.3,\
+                     'Relative error delta quaternion (%.2e) too large!'%erel_dq
+            print('%.3e\t%.3e'%(a,erel_dq,) )
+
+            # verify algebraic relation
+            v=np.ones((3,))
+            D1=algebra.der_Cquat_by_v(q0,v)
+            D2=algebra.der_Ccrv_by_v(np.zeros((3,)),v)
+            res=np.dot(D1,dq_num)-np.dot( np.dot(Cga,D2), drot)
+            erel_res=np.linalg.norm(res)/a
+            assert erel_res<5e-1*a,\
+                         'Relative error of residual (%.2e) too large!'%erel_res
+
+
     # def test_rotation_matrix_around_axis(self):
     #     axis = np.array([1, 0, 0])
     #     angle = 90
@@ -393,13 +549,12 @@ class TestAlgebra(unittest.TestCase):
 
 
 if __name__=='__main__':
-    # unittest.main()
-
-    T=TestAlgebra()
-    # T.setUp()
-    T.test_rotation_vectors_conversions()
-    T.test_rotation_matrices()
-    T.test_rotation_matrices_derivatives()
-    T.test_crv_tangetial_operator()
-    T.test_crv_tangetial_operator_derivative()
-    T.test_crv_tangetial_operator_transpose_derivative()
+    unittest.main()
+    # T=TestAlgebra()
+    # # T.setUp()
+    # T.test_rotation_vectors_conversions()
+    # T.test_rotation_matrices()
+    # T.test_rotation_matrices_derivatives()
+    # T.test_crv_tangetial_operator()
+    # T.test_crv_tangetial_operator_derivative()
+    # T.test_crv_tangetial_operator_transpose_derivative()
