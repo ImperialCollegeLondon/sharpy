@@ -38,6 +38,7 @@ install:
   - git clone --branch=$TRAVIS_BRANCH https://github.com/imperialcollegelondon/uvlm
   - cd uvlm
   - export EIGEN3_INCLUDE_DIR=$(conda info --json | python -c "import sys, json; print(json.load(sys.stdin)['active_prefix'])")/include/eigen3
+  - export MKL_ROOT=$(conda info --json | python -c "import sys, json; print(json.load(sys.stdin)['active_prefix'])")/include/
   - make
   - cp lib/* ../sharpy/lib
   - cd ../sharpy
