@@ -15,7 +15,7 @@ import unittest
 
 class TestKrylovRom(unittest.TestCase):
 
-    tolerance = 1e-3
+    tolerance = 1e-6
 
     def test_siso_ct(self):
         system_inputs = 'SISO'
@@ -27,13 +27,13 @@ class TestKrylovRom(unittest.TestCase):
         interpolation_point = np.array([1.0j])
         r = 6
 
-        print('Testing CT, SISO rational Arnoldi...')
+        print('\nTesting CT, SISO rational Arnoldi...')
         rom = self.run_rom(ss, algorithm, r, interpolation_point)
 
         wv = np.logspace(-1, 3, 100)
         freq_error = self.compare_freq_resp(rom, wv, interpolation_point)
 
-        print('Frequency Response Error at %.2f rad/s: %.2f' % (interpolation_point.imag, freq_error))
+        print('Frequency Response Error at %.2f rad/s: %.2e' % (interpolation_point.imag, freq_error))
 
         self.assertTrue(freq_error < self.tolerance)
 
@@ -48,13 +48,13 @@ class TestKrylovRom(unittest.TestCase):
         interpolation_point = np.exp(interpolation_point_ct * ss.dt)
         r = 6
 
-        print('Testing DT, SISO rational Arnoldi...')
+        print('\nTesting DT, SISO rational Arnoldi...')
         rom = self.run_rom(ss, algorithm, r, interpolation_point)
 
         wv = np.logspace(-1, 3, 100)
         freq_error = self.compare_freq_resp(rom, wv, interpolation_point_ct)
 
-        print('Frequency Response Error at %.2f rad/s: %.2f' % (interpolation_point.imag, freq_error))
+        print('Frequency Response Error at %.2f rad/s: %.2e' % (interpolation_point.imag, freq_error))
 
         self.assertTrue(freq_error < self.tolerance)
 
@@ -69,15 +69,15 @@ class TestKrylovRom(unittest.TestCase):
         interpolation_point = np.exp(interpolation_point_ct * ss.dt)
         r = 2
 
-        print('Testing DT, SISO rational Arnoldi...')
+        print('\nTesting DT, SISO Multipoint rational Arnoldi...')
         rom = self.run_rom(ss, algorithm, r, interpolation_point)
 
         wv = np.logspace(-1, 3, 100)
         freq_error0 = self.compare_freq_resp(rom, wv, interpolation_point_ct[0])
         freq_error1 = self.compare_freq_resp(rom, wv, interpolation_point_ct[1])
 
-        print('Frequency Response Error at %.2f rad/s: %.2f' % (interpolation_point_ct[0].imag, freq_error0))
-        print('Frequency Response Error at %.2f rad/s: %.2f' % (interpolation_point_ct[1].imag, freq_error1))
+        print('Frequency Response Error at %.2f rad/s: %.2e' % (interpolation_point_ct[0].imag, freq_error0))
+        print('Frequency Response Error at %.2f rad/s: %.2e' % (interpolation_point_ct[1].imag, freq_error1))
 
         self.assertTrue(freq_error0 < self.tolerance)
         self.assertTrue(freq_error1 < self.tolerance)
