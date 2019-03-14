@@ -74,9 +74,10 @@ class FlexDynamic():
     Notes:
 
         * Modal projection will automatically select between damped/undamped modes shapes, based on the data available
-        from tsinfo.
+          from tsinfo.
 
         * If the full system matrices are available, use the modal_sol methods to override mode-shapes and eigenvectors
+
 
     """
 
@@ -159,7 +160,7 @@ class FlexDynamic():
 
         1. Discrete-time, Newmark-:math:`\beta`:
             * Modal projection onto undamped modes. It uses the modal projection such
-            that the generalised coordinates :math:`\eta` are transformed into modal space by
+              that the generalised coordinates :math:`\eta` are transformed into modal space by
 
                     .. math:: \mathbf{\eta} = \mathbf{\Phi\,q}
 
@@ -167,12 +168,15 @@ class FlexDynamic():
                 Therefore, the equation of motion can be re-written such that the modes normalise the mass matrix to
                 become the identity matrix.
 
-                    .. math:: \mathbf{I_{Nmodes}}\mathbf{\ddot{q}} + \mathbf{\Lambda\,q} = 0
+                    .. math:: \mathbf{I_{Nmodes}}\mathbf{\ddot{q}} + \mathbf{\Lambda_{Nmodes}\,q} = 0
 
                 The system is then assembled in Newmark-:math:`\beta` form as detailed in :func:`newmark_ss`
 
             * Full size system assembly. No modifications are made to the mass, damping or stiffness matrices and the
-            system is directly assembled by :func:`assemble_ss`.
+              system is directly assembled by :func:`newmark_ss`.
+
+        2. Continuous time state-space
+
 
         Args:
             Nmodes (int): number of modes to retain
@@ -185,7 +189,11 @@ class FlexDynamic():
         dlti = self.dlti
         modal = self.modal
         num_dof = self.num_dof
-        if Nmodes is None or Nmodes > self.Nmodes: Nmodes = self.Nmodes
+        if Nmodes is None or Nmodes >= self.Nmodes:
+            Nmodes = self.Nmodes
+        # else:
+        #     # Modal truncation
+        #     self.update_truncated_modes(Nmodes)
 
         if dlti:  # ---------------------------------- assemble discrete time
 
@@ -202,8 +210,11 @@ class FlexDynamic():
                 if modal:  # Modal projection
                     if self.proj_modes == 'undamped':
                         Phi = self.U[:, :Nmodes]
-                        Ccut = self.Ccut
-                        if self.Ccut is None: Ccut = np.zeros((Nmodes, Nmodes))
+
+                        if self.Ccut is None:
+                            Ccut = np.zeros((Nmodes, Nmodes))
+                        else:
+                            Ccut = np.dot(Phi.T, np.dot(self.Ccut, Phi))
 
                         Ass, Bss, Css, Dss = newmark_ss(
                             np.eye(Nmodes),
@@ -403,6 +414,32 @@ class FlexDynamic():
         """
         pass
 
+    def update_truncated_modes(self, nmodes):
+        r"""
+        Updates the system to the specified number of modes
+
+        Args:
+            nmodes:
+
+        Returns:
+
+        """
+
+        # Verify that the new number of modes is less than the current value
+        assert nmodes < self.Nmodes, 'Unable to truncate to %g modes since only %g are available' %(nmodes, self.Nmodes)
+
+        self.Nmodes = nmodes
+        self.eigs = self.eigs[:nmodes]
+        self.U = self.U[:,:nmodes]
+        self.freq_natural = self.freq_natural[:nmodes]
+        try:
+            self.freq_damp[:nmodes]
+        except TypeError:
+            pass
+
+        # Update Ccut matrix
+        self.Ccut = np.dot(self.U.T, np.dot(self.Cstr, self.U))
+
     def cont2disc(self, dt=None):
         """Convert continuous-time SS model into """
 
@@ -441,7 +478,8 @@ def newmark_ss(Minv, C, K, dt, num_damp=1e-4):
         \mathbf{X}_{n+1} &= \mathbf{A}\,\mathbf{X}_n + \mathbf{B}\,\mathbf{F}_n \\
         \mathbf{Y} &= \mathbf{C}\,\mathbf{X} + \mathbf{D}\,\mathbf{F}
 
-        with :math:`\mathbf{X} = \[\mathbf{x}, \mathbf{\dot{x}}]^T`
+
+    with :math:`\mathbf{X} = [\mathbf{x}, \mathbf{\dot{x}}]^T`
 
     Note that as the state-space representation only requires the input force
     :math:`\mathbf{F}` to be evaluated at time-step :math:`n`,the :math:`\mathbf{C}` and :math:`\mathbf{D}` matrices
@@ -455,7 +493,7 @@ def newmark_ss(Minv, C, K, dt, num_damp=1e-4):
         num_damp (float): Numerical damping. Default ``1e-4``
 
     Returns:
-        tuple: the A, B, C, D matrices of the state space with the predictor and delay term removed.
+        tuple: the A, B, C, D matrices of the state space packed in a tuple with the predictor and delay term removed.
     """
 
     # weights

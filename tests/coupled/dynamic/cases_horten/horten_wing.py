@@ -102,7 +102,8 @@ class HortenWing:
         # Horseshoe wake
         self.horseshoe = False
         self.wake_type = 2
-        self.dt = 1 / self.M / self.u_inf
+        self.dt_factor = 1
+        self.dt = 1 / self.M / self.u_inf * self.dt_factor
 
         # Dynamics
         self.n_tstep = int(physical_time/self.dt)
@@ -996,7 +997,7 @@ class HortenWing:
                                 'rollup_aic_refresh': 1,
                                 'rollup_tolerance': 1e-4,
                                 'velocity_field_generator': 'GustVelocityField',
-                                'velocity_field_input': {'u_inf': u_inf,
+                                'velocity_field_input': {'u_inf': u_inf * 1,
                                                          'u_inf_direction': [1., 0, 0],
                                                          'gust_shape': '1-cos',
                                                          'gust_length': 1.,
@@ -1015,7 +1016,7 @@ class HortenWing:
                                       'structural_substeps': 1,
                                       'dynamic_relaxation': 'on',
                                       'clean_up_previous_solution': 'on',
-                                      'structural_solver': 'NonLinearDynamicPrescribedStep',
+                                      'structural_solver': 'NonLinearDynamicCoupledStep',
                                       'structural_solver_settings': settings['NonLinearDynamicCoupledStep'],
                                       'aero_solver': 'StepUvlm',
                                       'aero_solver_settings': settings['StepUvlm'],
@@ -1069,8 +1070,9 @@ class HortenWing:
                                                                   }}
 
         settings['Modal'] = {'print_info': True,
-                             'use_undamped_modes': True,
-                             'NumLambda': 20,
+                             'use_undamped_modes': False,
+                             'NumLambda': 30,
+                             'rigid_body': False,
                              'write_modes_vtk': 'on',
                              'print_matrices': 'on',
                              'write_data': 'on',

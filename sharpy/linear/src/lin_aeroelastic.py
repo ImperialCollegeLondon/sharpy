@@ -15,7 +15,7 @@ import sharpy.utils.algebra as algebra
 
 
 class LinAeroEla():
-    """
+    r"""
     todo: 
         - settings are converted from string to type in __init__ method.
         - implement all settings of LinUVLM (e.g. support for sparse matrices)
@@ -41,12 +41,14 @@ class LinAeroEla():
         tsstr (sharpy.utils.datastructures.StructTimeStepInfo): structural state timestep info
         dt (float): time increment
         q (np.array): corresponding vector of displacements of dimensions ``[1, num_dof_str]``
-        dq (np.array): time derivative (:math:`\\dot{\\mathbf{q}}`) of the corresponding vector of displacements
+        dq (np.array): time derivative (:math:`\dot{\mathbf{q}}`) of the corresponding vector of displacements
             with dimensions ``[1, num_dof_str]``
         SS (scipy.signal): state space formulation (discrete or continuous time), as selected by the user
     """
 
     def __init__(self, data, custom_settings_linear=None, uvlm_block=False):
+
+
 
         self.data = data
         if custom_settings_linear is None:
@@ -57,6 +59,10 @@ class LinAeroEla():
         sharpy.utils.settings.to_custom_types(settings_here, 
                                               linuvlm.settings_types_dynamic, 
                                               linuvlm.settings_default_dynamic)
+
+        ## TEMPORARY - NEED TO INCLUDE PROPER INTEGRATION OF SETTINGS
+        self.rigid_body_motions = settings['LinearUvlm']['rigid_body_motion']
+        ## -------
 
         ### extract aeroelastic info
         self.dt = settings_here['dt'].value
@@ -153,7 +159,7 @@ class LinAeroEla():
     # self.dq[-3:]=-0.5*(wa*tsdata.quat[0]+np.cross(wa,tsdata.quat[1:]))
 
 
-    def assemble_ss(self):
+    def assemble_ss(self, beam_num_modes=None):
         """Assemble State Space formulation"""
         data = self.data
 
@@ -172,7 +178,7 @@ class LinAeroEla():
 
         ### assemble linear gebm
         # structural part only
-        self.lingebm_str.assemble()
+        self.lingebm_str.assemble(beam_num_modes)
         SSstr_flex = self.lingebm_str.SSdisc
         SSstr = SSstr_flex
         # # rigid-body (fake)
@@ -187,12 +193,30 @@ class LinAeroEla():
 
         # str -> aero
         Zblock = np.zeros((3 * self.linuvlm.Kzeta, SSstr.outputs // 2))
-        Kas = np.block([[self.Kdisp[:, :-10], Zblock],
-                        [self.Kvel_disp[:, :-10], self.Kvel_vel[:, :-10]],
-                        [Zblock, Zblock]])
+        if self.rigid_body_motions:
+            Kas = np.block([[self.Kdisp, Zblock],
+                            [self.Kvel_disp, self.Kvel_vel],
+                            [Zblock, Zblock]])
+        else:
+            Kas = np.block([[self.Kdisp[:, :-10], Zblock],
+                            [self.Kvel_disp[:, :-10], self.Kvel_vel[:, :-10]],
+                            [Zblock, Zblock]])
 
         # aero -> str
-        Ksa = self.Kforces[:-10, :]  # aero --> str
+        if self.rigid_body_motions:
+            Ksa = self.Kforces  # aero --> str
+
+            # Introduce stiffening effects
+            Kstiff = np.block([
+                [self.Kss, self.Ksr],
+                [self.Krs, self.Krr]
+            ])
+
+            # Ksa = np.dot(Kstiff, Ksa)
+
+        else:
+            Ksa = self.Kforces[:-10, :]  # aero --> str
+
 
         ### feedback connection
         self.SS = libss.couple(ss01=self.linuvlm.SS, ss02=SSstr, K12=Kas, K21=Ksa)

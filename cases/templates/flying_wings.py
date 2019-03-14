@@ -127,6 +127,7 @@ class FlyingWing():
 
         # Numerics for dynamic simulations
         self.dt_factor = 1
+        self.n_tstep = None
         self.physical_time = physical_time
         self.horseshoe = False
         self.fsi_tolerance = 1e-10
@@ -560,7 +561,8 @@ class FlyingWing():
         config['SaveData'] = {'folder': self.route+'/output/'}
 
         config['Modal'] = {'folder': self.route+'/output/',
-                           'NumLambda': 60,
+                           'NumLambda': 20,
+                           'rigid_body_modes': True,
                            'print_matrices': 'off',
                            'keep_linear_matrices': 'on',
                             'write_dat': 'off',
