@@ -5,6 +5,7 @@ Function needed to generate a wind turbine from an excel database of type 01 (FA
 
 Notes:
     To load this library: import cases.templates.template_wt_excel_type01 as template_wt_excel_type01
+    This routine has been kept for legacy. It will be substituted by template_wt
 """
 
 import sharpy.utils.generate_cases as gc
@@ -15,6 +16,8 @@ import os
 import sharpy.utils.algebra as algebra
 
 deg2rad = np.pi/180.
+
+# TODO: template_wt.py should replace this routine. This routine will be temporarily kept for legacy issues
 
 def generate_wt_from_excel_type01(chord_panels,
                                   rotation_velocity,

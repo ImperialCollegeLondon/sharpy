@@ -565,6 +565,12 @@ class FlyingWing():
                            'rigid_body_modes': True,
                            'print_matrices': 'off',
                            'keep_linear_matrices': 'on',
+                            'write_dat': 'off',
+                            'continuous_eigenvalues': 'off',
+                            'dt': 0,
+                            'plot_eigenvalues': False,
+                            'max_rotation_deg': 15.,
+                            'max_displacement': 0.15,
                            'write_modes_vtk': True,
                            'use_undamped_modes': True}
 
@@ -805,7 +811,7 @@ class Goland(FlyingWing):
         m_chi_cg = algebra.skew(m_unit*pos_cg_b)
         self.mass=np.zeros((1, 6, 6))
         self.mass[0, :, :]=np.diag([ m_unit, m_unit, m_unit, 
-                                                  j_tors, .5*j_tors, .5*j_tors])
+                                                  j_tors, .1*j_tors, .9*j_tors])
 
         self.mass[0,:3,3:]= m_chi_cg
         self.mass[0,3:,:3]=-m_chi_cg

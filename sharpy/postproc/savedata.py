@@ -10,28 +10,30 @@ import sharpy.utils.h5utils as h5utils
 
 # Define basic numerical types
 # BasicNumTypes=(float,float32,float64,int,int32,int64,complex)
-SkipAttr=[  'fortran',
-            'airfoils',
-            'airfoil_db',
-            'settings_types',
-            'beam',
-            'ct_dynamic_forces_list',
-            'ct_forces_list',
-            'ct_gamma_dot_list',
-            'ct_gamma_list',
-            'ct_gamma_star_list',
-            'ct_normals_list',
-            'ct_u_ext_list',
-            'ct_u_ext_star_list',
-            'ct_zeta_dot_list',
-            'ct_zeta_list',
-            'ct_zeta_star_list',]
-
 
 @solver
 class SaveData(BaseSolver):
-    solver_id = 'SaveData'
+    """
+    The ``SaveData`` postprocessor writes the SHARPy variables into hdf5 files.
 
+    Args:
+        data(ProblemData): class containing the data of the problem
+        custom_settings (dict): dictionary containing custom settings for the solver to use
+
+    Attributes:
+        settings (dict): Contains the solver's ``settings``. See below for acceptable values:
+
+            =======================================  =============  =============================================================  =========
+            Name                                     Type           Description                                                    Default
+            =======================================  =============  =============================================================  =========
+            ``folder``                               ``str``        Target folder to write the file                                ``./output``
+            ``save_aero``                            ``bool``       Write aerodynamic information                                  ``True``
+            ``save_struct``                          ``bool``       Write structural information                                   ``True``
+            ``skip_attr``                            ``list(str)``  Attributes that will NOT be saved                              ``['fortran', 'airfoils', 'airfoil_db', 'settings_types', 'beam', 'ct_dynamic_forces_list', 'ct_gamma_dot_list', 'ct_gamma_list', 'ct_gamma_star_list', 'ct_normals_list', 'ct_u_ext_list', 'ct_u_ext_star_list', 'ct_zeta_dot_list', 'ct_zeta_list', 'ct_zeta_star_list', 'dynamic_input']``
+            ``compress_float``                       ``bool``       Save numpy arrays as single precission                         ``False``
+            =======================================  =============  =============================================================  =========
+    """
+    solver_id = 'SaveData'
 
     def __init__(self):
         import sharpy
@@ -49,7 +51,23 @@ class SaveData(BaseSolver):
         self.settings_default['save_struct'] = True
 
         self.settings_types['skip_attr'] = 'list(str)'
-        self.settings_default['skip_attr'] = SkipAttr
+        self.settings_default['skip_attr'] = ['fortran',
+                                              'airfoils',
+                                              'airfoil_db',
+                                              'settings_types',
+                                              'beam',
+                                              'ct_dynamic_forces_list',
+                                              #'ct_forces_list',
+                                              'ct_gamma_dot_list',
+                                              'ct_gamma_list',
+                                              'ct_gamma_star_list',
+                                              'ct_normals_list',
+                                              'ct_u_ext_list',
+                                              'ct_u_ext_star_list',
+                                              'ct_zeta_dot_list',
+                                              'ct_zeta_list',
+                                              'ct_zeta_star_list',
+                                              'dynamic_input']
 
         self.settings_types['compress_float'] = 'bool'
         self.settings_default['compress_float'] = False
@@ -97,21 +115,32 @@ class SaveData(BaseSolver):
 
     def run(self, online=False):
 
+        # Use the following statement in case the ct types are not defined and
+        # you need them on uvlm3d
+        # self.data.aero.timestep_info[-1].generate_ctypes_pointers()
+
+        file_exists = os.path.isfile(self.filename)
         hdfile=h5py.File(self.filename,'a')
 
         #from IPython import embed;embed()
 
-        if online:
-            raise NameError('online not implemented!')
-            # self.ts=len(self.data.structure.timestep_info)-1
-            # add_as_grp(self.data,hdfile,grpname='data',
-            #                         ClassesToSave=self.ClassesToSave,ts=self.ts)
+        if (online and file_exists):
+            if self.settings['save_aero']:
+                h5utils.add_as_grp(self.data.aero.timestep_info[self.data.ts], hdfile['data']['aero']['timestep_info'],
+                                   grpname=("%05d" % self.data.ts),
+                                   ClassesToSave=(sharpy.utils.datastructures.AeroTimeStepInfo,),
+                                   SkipAttr=self.settings['skip_attr'],
+                                   compress_float=self.settings['compress_float'])
+            if self.settings['save_struct']:
+                h5utils.add_as_grp(self.data.structure.timestep_info[self.data.ts], hdfile['data']['structure']['timestep_info'],
+                                   grpname=("%05d" % self.data.ts),
+                                   ClassesToSave=(sharpy.utils.datastructures.StructTimeStepInfo,),
+                                   SkipAttr=self.settings['skip_attr'],
+                                   compress_float=self.settings['compress_float'])
         else:
             h5utils.add_as_grp(self.data,hdfile,grpname='data',
-                               ClassesToSave=self.ClassesToSave,SkipAttr=SkipAttr,
+                               ClassesToSave=self.ClassesToSave,SkipAttr=self.settings['skip_attr'],
                                compress_float=self.settings['compress_float'])
         hdfile.close()
 
         return self.data
-
-

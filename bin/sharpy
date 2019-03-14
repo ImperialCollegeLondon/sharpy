@@ -1,0 +1,9 @@
+#! /usr/bin/env python
+import sys
+import sharpy.sharpy_main
+import warnings
+
+data = None
+with warnings.catch_warnings():
+    warnings.simplefilter('ignore')
+    data = sharpy.sharpy_main.main(sys.argv)

@@ -44,8 +44,9 @@ def tangent_vector(in_coord, ordering=None):
     r"""
     Tangent vector calculation for 2+ noded elements.
 
-    Calculates the tangent vector interpolating every dimension separately. It uses a (``n_nodes - 1``) degree polynomial,
-    and the differentiation is analytical.
+    Calculates the tangent vector interpolating every dimension
+    separately. It uses a (n_nodes - 1) degree polynomial, and the
+    differentiation is analytical.
 
     Calculation method:
 
@@ -63,14 +64,6 @@ def tangent_vector(in_coord, ordering=None):
 
     Args:
         in_coord (np.ndarray): array of coordinates of the nodes. Dimensions = ``[n_nodes, ndim]``
-        ordering (None): ordering required?
-
-    Returns:
-        np.ndarray: tangent vector
-
-
-    Examples:
-          example goes here
 
     Notes:
         Dimensions are treated independent from each other, interpolating polynomials are computed
@@ -473,7 +466,7 @@ def crv_bounds(crv_ini):
         crv *= (norm/norm_ini)
 
     return crv
-
+    # return crv_ini
 
 def triad2crv(xb, yb, zb):
     return rotation2crv(triad2rotation(xb, yb, zb))
@@ -855,7 +848,7 @@ def der_Cquat_by_v(q,v):
     quanternion components, of the vector dot(C,v), where v is a constant
     vector.
     The elements of the resulting derivative matrix D are ordered such that:
-    ``d(C*v) = D*d(q)``
+        d(C*v) = D*d(q)
     where d(.) is a delta operator.
     """
 
@@ -878,7 +871,7 @@ def der_CquatT_by_v(q,v):
     quanternion components, of the vector dot(C,v), where v is a constant
     vector.
     The elements of the resulting derivative matrix D are ordered such that:
-    ``d(C*v) = D*d(q)``
+        d(C*v) = D*d(q)
     where d(.) is a delta operator.
     """
 
@@ -899,7 +892,7 @@ def der_Tan_by_xv(fv0,xv):
     of dot(Tan,xv), where xv is a constant vector.
 
     The elements of the resulting derivative matrix D are ordered such that:
-    ``d(Tan*xv) = D*d(fv)``
+        d(Tan*xv) = D*d(fv)
     where d(.) is a delta operator.
 
     Note: the derivative expression has been derived symbolically and verified
@@ -1057,8 +1050,8 @@ def der_TanT_by_xv(fv0,xv):
 def der_Ccrv_by_v(fv0,v):
     """
     Being C=C(fv0) the rotational matrix depending on the Cartesian rotation
-    vector fv0 and defined as C=crv2rotation(fv0), the function returns the 
-    derivative, w.r.t. the CRV components, of the vector dot(C,v), where v is a 
+    vector fv0 and defined as C=crv2rotation(fv0), the function returns the
+    derivative, w.r.t. the CRV components, of the vector dot(C,v), where v is a
     constant vector.
     The elements of the resulting derivative matrix D are ordered such that:
         d(C*v) = D*d(fv0)
@@ -1075,8 +1068,8 @@ def der_Ccrv_by_v(fv0,v):
 def der_CcrvT_by_v(fv0,v):
     """
     Being C=C(fv0) the rotation matrix depending on the Cartesian rotation
-    vector fv0 and defined as C=crv2rotation(fv0), the function returns the 
-    derivative, w.r.t. the CRV components, of the vector dot(C.T,v), where v is 
+    vector fv0 and defined as C=crv2rotation(fv0), the function returns the
+    derivative, w.r.t. the CRV components, of the vector dot(C.T,v), where v is
     a constant vector.
     The elements of the resulting derivative matrix D are ordered such that:
         d(C.T*v) = D*d(fv0)

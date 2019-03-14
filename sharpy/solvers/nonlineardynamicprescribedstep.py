@@ -111,3 +111,13 @@ class NonLinearDynamicPrescribedStep(BaseSolver):
 
         totals = np.sum(applied_forces_copy + gravity_forces_copy, axis=0)
         return totals[0:3], totals[3:6]
+
+    def update(self, tstep=None):
+        self.create_q_vector(tstep)
+
+    def create_q_vector(self, tstep=None):
+        import sharpy.structure.utils.xbeamlib as xb
+        if tstep is None:
+            tstep = self.data.structure.timestep_info[-1]
+
+        xb.xbeam_solv_disp2state(self.data.structure, tstep)

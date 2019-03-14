@@ -98,7 +98,8 @@ output/*
 .idea
 
 *.csv
-
+*.png
+*.eps
 *.vtu
 
 utils/eigen_debug/__init__\.py
@@ -110,6 +111,8 @@ tests/uvlm/\.DS_Store
 */.DS_Store
 
 output*/
+
+snapshots/
 
 
 .DS_Store
@@ -128,4 +131,6 @@ tests/linear/uvlm/figs/*
 tests/linear/uvlm/res/*
 cases/linear/coupled/figs/*
 cases/linear/coupled/res/*
+figs/*
 
+tests/linear/rom/figs/

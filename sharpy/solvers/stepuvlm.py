@@ -56,9 +56,6 @@ class StepUvlm(BaseSolver):
         self.settings_types['rho'] = 'float'
         self.settings_default['rho'] = 1.225
 
-        self.settings_types['part_of_fsi'] = 'bool'
-        self.settings_default['part_of_fsi'] = True
-
         self.data = None
         self.settings = None
         self.velocity_generator = None
@@ -114,10 +111,6 @@ class StepUvlm(BaseSolver):
                                               'for_pos': structure_tstep.for_pos},
                                              aero_tstep.u_ext_star)
 
-        # previous_ts = max(len(self.data.aero.timestep_info) - 1, 0) - 1
-        # previous_ts = -1
-        # print('previous_step max circulation: %f' % previous_aero_tstep.gamma[0].min())
-        # print('current step max circulation: %f' % aero_tstep.gamma[0].min())
         uvlmlib.uvlm_solver(self.data.ts,
                             aero_tstep,
                             structure_tstep,
@@ -128,7 +121,7 @@ class StepUvlm(BaseSolver):
 
         if unsteady_contribution:
             # calculate unsteady (added mass) forces:
-            self.data.aero.compute_gamma_dot(dt, aero_tstep, self.data.aero.timestep_info[-3:], self.settings['part_of_fsi'].value)
+            self.data.aero.compute_gamma_dot(dt, aero_tstep, self.data.aero.timestep_info[-3:])
             if self.settings['gamma_dot_filtering'].value > 0:
                 self.filter_gamma_dot(aero_tstep, self.data.aero.timestep_info, self.settings['gamma_dot_filtering'].value)
             uvlmlib.uvlm_calculate_unsteady_forces(aero_tstep,
@@ -153,14 +146,15 @@ class StepUvlm(BaseSolver):
 
     @staticmethod
     def filter_gamma_dot(tstep, history, filter_param):
-        series_length = len(history) + 1
+        clean_history = [x for x in history if x is not None]
+        series_length = len(clean_history) + 1
         for i_surf in range(len(tstep.zeta)):
             n_rows, n_cols = tstep.gamma[i_surf].shape
             for i in range(n_rows):
                 for j in range(n_cols):
                     series = np.zeros((series_length,))
                     for it in range(series_length - 1):
-                        series[it] = history[it].gamma_dot[i_surf][i, j]
+                        series[it] = clean_history[it].gamma_dot[i_surf][i, j]
                     series[-1] = tstep.gamma_dot[i_surf][i, j]
 
                     # filter
