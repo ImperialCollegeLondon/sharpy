@@ -15,33 +15,33 @@ class KrylovReducedOrderModel(object):
         General calling sequences for different systems
 
         SISO single point interpolation:
-            >>>algorithm = 'one_sided_arnoldi'
-            >>>interpolation_point = np.array([0.0])
-            >>>krylov_r = 4
+            >>> algorithm = 'one_sided_arnoldi'
+            >>> interpolation_point = np.array([0.0])
+            >>> krylov_r = 4
             >>>
-            >>>rom = KrylovReducedOrderModel()
-            >>>rom.initialise(sharpy_data, FullOrderModelSS)
-            >>>rom.run(algorithm, krylov_r, interpolation_point)
+            >>> rom = KrylovReducedOrderModel()
+            >>> rom.initialise(sharpy_data, FullOrderModelSS)
+            >>> rom.run(algorithm, krylov_r, interpolation_point)
 
         2 by 2 MIMO with tangential, multipoint interpolation:
-            >>>algorithm = 'dual_rational_arnoldi'
-            >>>interpolation_point = np.array([0.0, 1.0j])
-            >>>krylov_r = 4
-            >>>right_vector = np.block([[1, 0], [0, 1]])
-            >>>left_vector = right_vector
+            >>> algorithm = 'dual_rational_arnoldi'
+            >>> interpolation_point = np.array([0.0, 1.0j])
+            >>> krylov_r = 4
+            >>> right_vector = np.block([[1, 0], [0, 1]])
+            >>> left_vector = right_vector
             >>>
-            >>>rom = KrylovReducedOrderModel()
-            >>>rom.initialise(sharpy_data, FullOrderModelSS)
-            >>>rom.run(algorithm, krylov_r, interpolation_point, right_vector, left_vector)
+            >>> rom = KrylovReducedOrderModel()
+            >>> rom.initialise(sharpy_data, FullOrderModelSS)
+            >>> rom.run(algorithm, krylov_r, interpolation_point, right_vector, left_vector)
 
         2 by 2 MIMO multipoint interpolation:
-            >>>algorithm = 'mimo_rational_arnoldi'
-            >>>interpolation_point = np.array([0.0])
-            >>>krylov_r = 4
+            >>> algorithm = 'mimo_rational_arnoldi'
+            >>> interpolation_point = np.array([0.0])
+            >>> krylov_r = 4
             >>>
-            >>>rom = KrylovReducedOrderModel()
-            >>>rom.initialise(sharpy_data, FullOrderModelSS)
-            >>>rom.run(algorithm, krylov_r, interpolation_point)
+            >>> rom = KrylovReducedOrderModel()
+            >>> rom.initialise(sharpy_data, FullOrderModelSS)
+            >>> rom.run(algorithm, krylov_r, interpolation_point)
     """
 
     def __init__(self):
