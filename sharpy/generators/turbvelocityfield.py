@@ -340,8 +340,6 @@ class TurbVelocityField(generator_interface.BaseGenerator):
         bbox[1, :] = [np.min(y_grid), np.max(y_grid)]
         bbox[2, :] = [np.min(z_grid), np.max(z_grid)]
         if frame == 'G':
-            # bbox[:, 0] = self.gstar_2_g(bbox[:, 0])
-            # bbox[:, 1] = self.gstar_2_g(bbox[:, 1])
             bbox[:, 0] = self.gstar_2_g(bbox[:, 0])
             bbox[:, 1] = self.gstar_2_g(bbox[:, 1])
         return bbox
@@ -363,9 +361,6 @@ class TurbVelocityField(generator_interface.BaseGenerator):
             for i_m in range(n_m):
                 for i_n in range(n_n):
                     coord = self.g_2_gstar(self.apply_periodicity(zeta[isurf][:, i_m, i_n] + for_pos[0:3] + offset))
-                    # if not i_m and not i_n and isurf == 5:
-                        # print('zeta[5][:, 0, 0] = ', zeta[5][:, 0, 0])
-                        # print('coord = ', coord)
                     for i_dim in range(3):
                         try:
                             u_ext[isurf][i_dim, i_m, i_n] = self.interpolator[i_dim](coord)
