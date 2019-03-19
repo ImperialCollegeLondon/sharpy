@@ -369,49 +369,73 @@ class TurbVelocityField(generator_interface.BaseGenerator):
                             raise ValueError()
                     u_ext[isurf][:, i_m, i_n] = self.gstar_2_g(u_ext[isurf][:, i_m, i_n])
 
+
+    @staticmethod
+    def periodicity(x, bbox):
+        try:
+            new_x = bbox[0] + divmod(x - bbox[0], bbox[1] - bbox[0])[1]
+        except ZeroDivisionError:
+            new_x = x
+        return x
+
+
     def apply_periodicity(self, coord):
-        #TODO I think this does not work when bbox is not ordered (bbox[i, 0] is not < bbox[i, 1])
         new_coord = coord.copy()
         if self.x_periodicity:
             i = 0
-            # x in interval:
-            if self.bbox[i, 0] <= new_coord[i] <= self.bbox[i, 1]:
-                pass
-            # lower than min bbox
-            elif new_coord[i] < self.bbox[i, 0]:
-                temp = divmod(new_coord[i], self.bbox[i, 0])[1]
-                if np.isnan(temp):
-                    pass
-                else:
-                    new_coord[i] = temp
-
-            # greater than max bbox
-            elif new_coord[i] > self.bbox[i, 1]:
-                temp = divmod(new_coord[i], self.bbox[i, 1])[1]
-                if np.isnan(temp):
-                    pass
-                else:
-                    new_coord[i] = temp
-
+            new_coord[i] = self.periodicity(new_coord[i], self.bbox[i, :])
         if self.y_periodicity:
             i = 1
-            # y in interval:
-            if self.bbox[i, 0] <= new_coord[i] <= self.bbox[i, 1]:
-                pass
-            # lower than min bbox
-            elif new_coord[i] < self.bbox[i, 0]:
-                temp = divmod(new_coord[i], self.bbox[i, 0])[1]
-                if np.isnan(temp):
-                    pass
-                else:
-                    new_coord[i] = temp
-            # greater than max bbox
-            elif new_coord[i] > self.bbox[i, 1]:
-                temp = divmod(new_coord[i], self.bbox[i, 1])[1]
-                if np.isnan(temp):
-                    pass
-                else:
-                    new_coord[i] = temp
+            new_coord[i] = self.periodicity(new_coord[i], self.bbox[i, :])
+
+        # if self.x_periodicity:
+        #TODO I think this does not work when bbox is not ordered (bbox[i, 0] is not < bbox[i, 1])
+            # i = 0
+            # # x in interval:
+            # if self.bbox[i, 0] <= new_coord[i] <= self.bbox[i, 1]:
+                # pass
+            # # lower than min bbox
+            # elif new_coord[i] < self.bbox[i, 0]:
+                # temp = divmod(new_coord[i], self.bbox[i, 0])[1]
+                # if np.isnan(temp):
+                    # pass
+                # else:
+                    # new_coord[i] = temp
+
+            # # greater than max bbox
+            # elif new_coord[i] > self.bbox[i, 1]:
+                # temp = divmod(new_coord[i], self.bbox[i, 1])[1]
+                # if np.isnan(temp):
+                    # pass
+                # else:
+                    # new_coord[i] = temp
+
+        # if self.y_periodicity:
+            # i = 1
+            # # y in interval:
+            # if self.bbox[i, 0] <= new_coord[i] <= self.bbox[i, 1]:
+                # pass
+            # # lower than min bbox
+            # elif new_coord[i] < self.bbox[i, 0]:
+                # try:
+                    # temp = divmod(new_coord[i], self.bbox[i, 0])[1]
+                # except ZeroDivisionError:
+                    # temp = new_coord[i]
+                # if np.isnan(temp):
+                    # pass
+                # else:
+                    # new_coord[i] = temp
+                    # if new_coord[i] < 0.0:
+                        # new_coord[i] = self.bbox[i, 1] + new_coord[i]
+            # # greater than max bbox
+            # elif new_coord[i] > self.bbox[i, 1]:
+                # temp = divmod(new_coord[i], self.bbox[i, 1])[1]
+                # if np.isnan(temp):
+                    # pass
+                # else:
+                    # new_coord[i] = temp
+                    # if new_coord[i] < 0.0:
+                        # new_coord[i] = self.bbox[i, 1] + new_coord[i]
         return new_coord
 
 
