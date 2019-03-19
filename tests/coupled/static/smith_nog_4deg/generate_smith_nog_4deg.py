@@ -278,7 +278,7 @@ def generate_solver_file(horseshoe=False):
     config.filename = file_name
     config['SHARPy'] = {'case': case_name,
                         'route': route,
-                        'flow': ['BeamLoader', 'AerogridLoader', 'StaticCoupled', 'AerogridPlot', 'BeamPlot', 'AeroForcesCalculator'],
+                        'flow': ['BeamLoader', 'AerogridLoader', 'StaticCoupled', 'AerogridPlot', 'BeamPlot', 'AeroForcesCalculator', 'WriteVariablesTime'],
                         # 'flow': ['BeamLoader', 'NonLinearStatic', 'BeamPlot'],
                         'write_screen': 'off',
                         'write_log': 'on',
@@ -315,6 +315,9 @@ def generate_solver_file(horseshoe=False):
                                'n_load_steps': 5,
                                'tolerance': 1e-5,
                                'relaxation_factor': 0.}
+    config['WriteVariablesTime'] = {'cleanup_old_solution': 'on',
+                                    'structure_variables': ['pos'],
+                                    'structure_nodes': [num_node_main - 1]}
 
     if horseshoe is True:
         config['AerogridLoader'] = {'unsteady': 'off',
