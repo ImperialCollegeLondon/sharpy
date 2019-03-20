@@ -45,7 +45,6 @@ class TurbVelocityField(generator_interface.BaseGenerator):
             ``centre_y``         ``bool``         Flag for changing the domain to [-y_max/2, y_max/2].             ``True``
             ``periodicity``      ``str``          Axes in which periodicity is enforced                            ``xy``
             ``frozen``           ``bool``         If True, the turbulent field will not be updated in time.        ``True``
-            ``u_fed``            ``list(float)``  Velocity at which the turbulence field is fed into the solid     ``[0.0, 0.0, 0.0]``
             ===================  ===============  ===============================================================  ===================
 
     Attributes:
@@ -79,8 +78,8 @@ class TurbVelocityField(generator_interface.BaseGenerator):
         self.settings_types['frozen'] = 'bool'
         self.settings_default['frozen'] = True
 
-        self.settings_types['u_fed'] = 'list(float)'
-        self.settings_default['u_fed'] = np.zeros((3,))
+        self.settings_types['store_field'] = 'bool'
+        self.settings_default['store_field'] = False
 
         self.settings = dict()
 
@@ -267,13 +266,9 @@ class TurbVelocityField(generator_interface.BaseGenerator):
         self.update_coeff(t)
 
         self.init_interpolator()
-        # Through "offstet" zeta can be modified to simulate the turbulence being fed to the solid
-        # Usual method for wind turbines
         self.interpolate_zeta(zeta,
                               for_pos,
                               uext)
-# ADC: This would throw an error. it is self.settings['u_fed'].
-                              # offset = -self.u_fed*t)
 
     def update_cache(self, t):
         self.double_initialisation = False
@@ -455,14 +450,23 @@ class TurbVelocityField(generator_interface.BaseGenerator):
         for i_dim in range(3):
             file_name = self.grid_data['grid'][i_grid][velocities[i_dim]]['file']
             if i_cache == 0:
-                # load file, but dont copy it
-                self.vel_holder0[i_dim] = np.memmap(self.route + '/' + file_name,
-                                               # dtype='float64',
-                                               dtype=self.grid_data['grid'][i_grid][velocities[i_dim]]['Precision'],
-                                               shape=(self.grid_data['dimensions'][2],
-                                                      self.grid_data['dimensions'][1],
-                                                      self.grid_data['dimensions'][0]),
-                                               order='F')
+                if not self.settings['store_field']:
+                    # load file, but dont copy it
+                    self.vel_holder0[i_dim] = np.memmap(self.route + '/' + file_name,
+                                                   # dtype='float64',
+                                                   dtype=self.grid_data['grid'][i_grid][velocities[i_dim]]['Precision'],
+                                                   shape=(self.grid_data['dimensions'][2],
+                                                          self.grid_data['dimensions'][1],
+                                                          self.grid_data['dimensions'][0]),
+                                                   order='F')
+                else:
+                    # load and store file
+                    self.vel_holder0[i_dim] = (np.fromfile(open(self.route + '/' + file_name, 'rb'),
+                                                          dtype=self.grid_data['grid'][i_grid][velocities[i_dim]]['Precision']).\
+                                                          reshape((self.grid_data['dimensions'][2],
+                                                                   self.grid_data['dimensions'][1],
+                                                                   self.grid_data['dimensions'][0]),
+                                                                   order='F'))
 
                 interpolator.append(self.create_interpolator(self.vel_holder0[i_dim],
                                                         self.grid_data['initial_x_grid'],
@@ -470,14 +474,23 @@ class TurbVelocityField(generator_interface.BaseGenerator):
                                                         self.grid_data['initial_z_grid'],
                                                         i_dim=i_dim))
             elif i_cache == 1:
-                # load file, but dont copy it
-                self.vel_holder1[i_dim] = np.memmap(self.route + '/' + file_name,
-                                               # dtype='float64',
-                                               dtype=self.grid_data['grid'][i_grid][velocities[i_dim]]['Precision'],
-                                               shape=(self.grid_data['dimensions'][2],
-                                                      self.grid_data['dimensions'][1],
-                                                      self.grid_data['dimensions'][0]),
-                                               order='F')
+                if not self.settings['store_field']:
+                    # load file, but dont copy it
+                    self.vel_holder1[i_dim] = np.memmap(self.route + '/' + file_name,
+                                                   # dtype='float64',
+                                                   dtype=self.grid_data['grid'][i_grid][velocities[i_dim]]['Precision'],
+                                                   shape=(self.grid_data['dimensions'][2],
+                                                          self.grid_data['dimensions'][1],
+                                                          self.grid_data['dimensions'][0]),
+                                                   order='F')
+                else:
+                    # load and store file
+                    self.vel_holder1[i_dim] = (np.fromfile(open(self.route + '/' + file_name, 'rb'),
+                                                          dtype=self.grid_data['grid'][i_grid][velocities[i_dim]]['Precision']).\
+                                                          reshape((self.grid_data['dimensions'][2],
+                                                                   self.grid_data['dimensions'][1],
+                                                                   self.grid_data['dimensions'][0]),
+                                                                   order='F'))
 
                 interpolator.append(self.create_interpolator(self.vel_holder1[i_dim],
                                                         self.grid_data['initial_x_grid'],
