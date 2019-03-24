@@ -371,7 +371,7 @@ class TurbVelocityField(generator_interface.BaseGenerator):
             new_x = bbox[0] + divmod(x - bbox[0], bbox[1] - bbox[0])[1]
         except ZeroDivisionError:
             new_x = x
-        return x
+        return new_x
 
 
     def apply_periodicity(self, coord):
