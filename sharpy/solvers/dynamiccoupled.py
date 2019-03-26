@@ -260,6 +260,8 @@ class DynamicCoupled(BaseSolver):
 
                 previous_kstep = structural_kstep.copy()
                 structural_kstep = self.data.structure.timestep_info[-1].copy()
+                # move the aerodynamic surface according the the structural one
+                self.aero_solver.update_custom_grid(structural_kstep, aero_kstep)
                 self.map_forces(aero_kstep,
                                 structural_kstep,
                                 force_coeff)
@@ -294,6 +296,8 @@ class DynamicCoupled(BaseSolver):
                 if self.convergence(k,
                                     structural_kstep,
                                     previous_kstep):
+                    # move the aerodynamic surface according the the structural one
+                    self.aero_solver.update_custom_grid(structural_kstep, aero_kstep)
                     break
 
             self.aero_solver.add_step()
@@ -417,4 +421,3 @@ def relax(beam, timestep, previous_timestep, coeff):
 def normalise_quaternion(tstep):
     tstep.dqdt[-4:] = algebra.unit_vector(tstep.dqdt[-4:])
     tstep.quat = tstep.dqdt[-4:].astype(dtype=ct.c_double, order='F', copy=True)
-
