@@ -2183,10 +2183,18 @@ class DynamicBlock(Dynamic):
 
         Opt=DictBalFreq['options_high']
         if DictBalFreq['method_high'] == 'trapz':
-            kv_high, wv_high=get_trapz_weights(DictBalFreq['frequency'], kn,
+            if Opt['points']==0:
+                warnings.warn('You have chosen no points in high frequency range!')
+                kv_high, wv_high = [], []
+            else:
+                kv_high, wv_high=get_trapz_weights(DictBalFreq['frequency'], kn,
                                                             Opt['points'], True)
         elif DictBalFreq['method_high'] == 'gauss':
-            kv_high, wv_high=get_gauss_weights(DictBalFreq['frequency'], kn,
+            if Opt['order']*Opt['partitions']==0:
+                warnings.warn('You have chosen no points in high frequency range!')
+                kv_high, wv_high = [], []
+            else:
+                kv_high, wv_high=get_gauss_weights(DictBalFreq['frequency'], kn,
                                                  Opt['partitions'],Opt['order'])
         else:
             raise NameError(

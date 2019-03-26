@@ -667,7 +667,11 @@ def tune_rom(SSb,kv,tol,gv,method='realisation',convergence='all',Print=False):
 	# reference frequency response
 	Nb=SSb.A.shape[0]
 	Yb=libss.freqresp(SSb,kv,dlti=True)
-	Nmax=min(np.sum(gv>tol)+1,Nb)
+	if gv is None:
+		Nmax = Nb
+	else:
+		Nmax = min(np.sum(gv>tol)+1,Nb)
+
 
 	if convergence=='all':
 		# start from larger size and decrease untill the ROm accuracy is over tol
