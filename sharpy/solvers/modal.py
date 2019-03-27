@@ -39,6 +39,7 @@ class Modal(BaseSolver):
             ==========================  =========  =======================================================================  ============
             ``print_info``              ``bool``   Print modal calculations to terminal                                     ``True``
             ``folder``                  ``str``    Output folder                                                            ``./output``
+            ``rigid_body_modes``        ``bool``   Include zero-frequency rigid body modes                                  ``False``
             ``use_undamped_modes``      ``bool``   Basis for modal projection                                               ``True``
             ``NumLambda``               ``int``    Number of modes to retain                                                ``20``
             ``keep_linear_matrices``    ``bool``   Retain linear ``M``, ``K`` and ``C`` matrices at each time step          ``True``
@@ -114,21 +115,6 @@ class Modal(BaseSolver):
         self.settings_types['max_displacement'] = 'float'
         self.settings_default['max_displacement'] = 0.15
 
-        # Temporary settings for the FORTRAN routine that assemblies the full system matrices until we create a dedicated
-        # solver
-        # ------>
-        self.settings_types['xbeam_asbly'] = 'dict'
-        self.settings_default['xbeam_asbly'] = {'print_info': True,
-                                       'dt': 0.1,
-                                       'max_iterations': 100,
-                                       'num_load_steps': 1,
-                                       'delta_curved': 1e-6,
-                                       'min_delta': 1e-4,
-                                       'newmark_damp': 1e-4,
-                                       'gravity_on': True,
-                                       'gravity': 9.81}
-        # <------
-
         self.data = None
         self.settings = None
 
@@ -148,8 +134,6 @@ class Modal(BaseSolver):
                                  self.settings_types,
                                  self.settings_default)
 
-        # Check that the FORTRAN library is updated with the required
-        # TODO: assert that xbeam3_asbly_dynamic_python exists in FORTRAN file xbeam_interface
         self.rigid_body_motion = self.settings['rigid_body_modes'].value
 
         # load info from dyn dictionary
@@ -180,16 +164,16 @@ class Modal(BaseSolver):
         r"""
         Extracts the eigenvalues and eigenvectors of the clamped structure.
 
-        If ``use_undamped_modes == 1`` then the free vibration modes of the clamped structure are found solving:
+        If ``use_undamped_modes == True`` then the free vibration modes of the clamped structure are found solving:
 
             .. math:: \mathbf{M\,\ddot{\eta}} + \mathbf{K\,\eta} = 0
 
         that flows down to solving the non-trivial solutions to:
 
-            .. math:: (-\omega^2\,\mathbf{M} + \mathbf{K})\mathbf{\Phi} = 0
+            .. math:: (-\omega_n^2\,\mathbf{M} + \mathbf{K})\mathbf{\Phi} = 0
 
-        On the other hand, if the damped modes are chosen, the free vibration modes are found
-        solving the equation of motion of the form
+        On the other hand, if the damped modes are chosen because the system has damping, the free vibration
+        modes are found solving the equation of motion of the form:
 
             .. math:: \mathbf{M\,\ddot{\eta}} + \mathbf{C\,\dot{\eta}} + \mathbf{K\,\eta} = 0
 
@@ -201,10 +185,34 @@ class Modal(BaseSolver):
 
         and therefore the mode shapes and frequencies correspond to the solution of the eigenvalue problem
 
-            .. math:: \mathbf{A\,\Phi} = \mathbf{\Lambda\,\Phi}
+            .. math:: \mathbf{A\,\Phi} = \mathbf{\Lambda\,\Phi}.
+
+        From the eigenvalues, the following system characteristics are provided:
+
+            * Natural Frequency: :math:`\omega_n = |\lambda|`
+
+            * Damped natural frequency: :math:`\omega_d = \text{Im}(\lambda) = \omega_n \sqrt{1-\zeta^2}`
+
+            * Damping ratio: :math:`\zeta = -\frac{\text{Re}(\lambda)}{\omega_n}`
+
+        In addition to the above, the modal output dictionary includes the following:
+
+            * ``M``: Tangent mass matrix
+
+            * ``C``: Tangent damping matrix
+
+            * ``K``: Tangent stiffness matrix
+
+            * ``Ccut``: Modal damping matrix :math:`\mathbf{C}_m = \mathbf{\Phi}^T\mathbf{C}\mathbf{\Phi}`
+
+            * ``Kin_damp``: Forces gain matrix (when damped): :math:`K_{in} = \mathbf{\Phi}_L^T \mathbf{M}^{-1}`
+
+            *``eigenvectors``: Right eigenvectors
+
+            * ``eigenvectors_left``: Left eigenvectors given when the system is damped
 
         Returns:
-            PreSharpy: updated data object with modal analysis
+            PreSharpy: updated data object with modal analysis as part of the last structural time step.
 
         """
         self.data.ts = len(self.data.structure.timestep_info) - 1
@@ -231,6 +239,8 @@ class Modal(BaseSolver):
             full_matrix_settings = self.data.settings['StaticCoupled']['structural_solver_settings']
             full_matrix_settings['dt'] = ct.c_double(0.01)  # Dummy: required but not used
             full_matrix_settings['newmark_damp'] = ct.c_double(1e-2)  # Dummy: required but not used
+
+            # Obtain the tangent mass, damping and stiffness matrices
             FullMglobal, FullCglobal, FullKglobal, FullQ = xbeamlib.xbeam3_asbly_dynamic(self.data.structure,
                                           self.data.structure.timestep_info[self.data.ts],
                                           full_matrix_settings)
@@ -287,27 +297,29 @@ class Modal(BaseSolver):
             # State-space model
             Minv_neg = -np.linalg.inv(FullMglobal)
             A = np.zeros((2*num_dof, 2*num_dof), dtype=ct.c_double, order='F')
-            A[range(num_dof), range(num_dof,2*num_dof)] = 1.
+            A[:num_dof, num_dof:] = np.eye(num_dof)
             A[num_dof:, :num_dof] = np.dot(Minv_neg, FullKglobal)
             A[num_dof:, num_dof:] = np.dot(Minv_neg, FullCglobal)
 
             # Solve the eigenvalues problem
             eigenvalues, eigenvectors_left, eigenvectors = \
                 sc.linalg.eig(A,left=True,right=True)
-            freq_damped = np.abs(eigenvalues)
-            damping = np.zeros_like(freq_damped)
-            iiflex = freq_damped > 1e-16*np.mean(freq_damped)
-            damping[iiflex] = eigenvalues[iiflex].real/freq_damped[iiflex]
+            freq_natural = np.abs(eigenvalues)
+            damping = np.zeros_like(freq_natural)
+            iiflex = freq_natural > 1e-16*np.mean(freq_natural)  # Pick only structural modes
+            damping[iiflex] = -eigenvalues[iiflex].real/freq_natural[iiflex]
+            freq_damped = freq_natural * np.sqrt(1-damping**2)
 
             # Order & downselect complex conj:
             # this algorithm assumes that complex conj eigenvalues appear consecutively 
             # in eigenvalues. For symmetrical systems, this relies  on the fact that:
             # - complex conj eigenvalues have the same absolute value (to machine 
             # precision) 
-            # - couples of eigenvalues with moltiplicity higher than 1, show larger 
+            # - couples of eigenvalues with multiplicity higher than 1, show larger
             # numerical difference
             order = np.argsort(freq_damped)[:2*NumLambda]
             freq_damped = freq_damped[order]
+            freq_natural = freq_natural[order]
             eigenvalues = eigenvalues[order]
 
             include = np.ones((2*NumLambda,), dtype=np.bool)
@@ -344,17 +356,19 @@ class Modal(BaseSolver):
             eigenvectors = (1./np.sqrt(dfact))*eigenvectors
         else:
             # unit normalise (diagonalises A)
-            for ii in range(NumLambda):
-                fact = 1./np.sqrt(np.dot(eigenvectors_left[:, ii], eigenvectors[:, ii]))
-                eigenvectors_left[:, ii] = fact*eigenvectors_left[:, ii]
-                eigenvectors[:, ii] = fact*eigenvectors[:, ii]
+            if not self.rigid_body_motion:
+                for ii in range(NumLambda):  # Issue - dot product = 0 when you have arbitrary damping
+                    fact = 1./np.sqrt(np.dot(eigenvectors_left[:, ii], eigenvectors[:, ii]))
+                    eigenvectors_left[:, ii] = fact*eigenvectors_left[:, ii]
+                    eigenvectors[:, ii] = fact*eigenvectors[:, ii]
 
         # Other terms required for state-space realisation
         # non-zero damping matrix
+        # Modal damping matrix
         if self.settings['use_undamped_modes'] and not(zero_FullCglobal):
             Ccut = np.dot(eigenvectors.T, np.dot(FullCglobal, eigenvectors))
         else:
-            Ccut=None
+            Ccut = None
 
         # forces gain matrix (nodal -> modal)
         if not self.settings['use_undamped_modes']:
@@ -407,10 +421,12 @@ class Modal(BaseSolver):
         else:
             outdict['modes'] = 'damped'
             outdict['freq_damped'] = freq_damped
+            outdict['freq_natural'] = freq_natural
 
         outdict['damping'] = damping
         outdict['eigenvalues'] = eigenvalues
         outdict['eigenvectors'] = eigenvectors
+
         if Ccut is not None:
             outdict['Ccut'] = Ccut
         if Kin_damp is not None:
