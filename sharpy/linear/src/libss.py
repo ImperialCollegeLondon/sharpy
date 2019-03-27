@@ -110,6 +110,43 @@ class ss():
         else:
             assert self.D.shape[1] == self.inputs, 'B and D columns not matching'
 
+    @property
+    def inputs(self):
+        """Number of inputs :math:`m` to the system."""
+        # print('Getting number of inputs')
+        # return self._inputs
+        if self.B.shape.__len__() == 1:
+            self.inputs = 1
+        else:
+            self.inputs = self.B.shape[1]
+
+        return self._inputs
+
+    @inputs.setter
+    def inputs(self, value):
+        # print('Setting Number of inputs')
+        self._inputs = value
+
+    @property
+    def outputs(self):
+        """Number of outputs :math:`p` of the system."""
+        self.outputs = self.C.shape[0]
+        return self._outputs
+
+    @outputs.setter
+    def outputs(self, value):
+        self._outputs = value
+
+    @property
+    def states(self):
+        """Number of states :math:`n` of the system."""
+        self.states = self.A.shape[0]
+        return self._states
+
+    @states.setter
+    def states(self, value):
+        self._states = value
+
     def check_types(self):
         assert type(self.A) in libsp.SupportedTypes, \
             'Type of A matrix (%s) not supported' % type(self.A)
@@ -153,15 +190,15 @@ class ss():
         if where == 'in':
             self.B = libsp.dot(self.B, K)
             self.D = libsp.dot(self.D, K)
-            try:
-                self.inputs = K.shape[1]
-            except IndexError:
-                self.inputs = 1
+            # try:     # No need to update inputs/outputs as they are now properties accessed on demand NG 26/3/19
+            #     self._inputs = K.shape[1]
+            # except IndexError:
+            #     self._inputs = 1
 
         if where == 'out':
             self.C = libsp.dot(K, self.C)
             self.D = libsp.dot(K, self.D)
-            self.outputs = K.shape[0]
+            # self.outputs = K.shape[0]
 
     def scale(self, input_scal=1., output_scal=1., state_scal=1.):
         """
@@ -192,191 +229,186 @@ class ss():
         self.A = self.A[:N, :N]
         self.B = self.B[:N, :]
         self.C = self.C[:, :N]
-        self.states = N
+        # self.states = N  # No need to update, states is now a property. NG 26/3/19
 
 
 class ss_block():
-	'''
-	State-space model in block form. This class has the same purpose as "ss", 
-	but the A, B, C, D are allocated in the form of nested lists. The format is
-	similar to the one used in numpy.block but:
-		1. Block matrices can contain both dense and sparse matrices
-		2. Empty blocks are defined through None type
+    '''
+    State-space model in block form. This class has the same purpose as "ss",
+    but the A, B, C, D are allocated in the form of nested lists. The format is
+    similar to the one used in numpy.block but:
+        1. Block matrices can contain both dense and sparse matrices
+        2. Empty blocks are defined through None type
 
-	Methods:
-	- remove_block: drop one of the blocks from the s-s model
-	- addGain: project inputs/outputs
-	- project: project state
-	'''
+    Methods:
+    - remove_block: drop one of the blocks from the s-s model
+    - addGain: project inputs/outputs
+    - project: project state
+    '''
 
-	def __init__(self,A, B, C, D, S_states, S_inputs, S_outputs, dt=None):
-		'''
-		Allocate state-space model (A,B,C,D) in block form starting from nested
-		lists of full/sparse matrices (as per numpy.block). 
+    def __init__(self, A, B, C, D, S_states, S_inputs, S_outputs, dt=None):
+        '''
+        Allocate state-space model (A,B,C,D) in block form starting from nested
+        lists of full/sparse matrices (as per numpy.block).
 
-		Input:
-		- A, B, C, D: lists of matrices defining the state-space model.
-		- S_states, S_inputs, S_outputs: lists with dimensions of of each block
-		representing the states, inputs and outputs of the model.
-		- dt: time-step. In None, a continuous-time system is assumed.
-		'''
+        Input:
+        - A, B, C, D: lists of matrices defining the state-space model.
+        - S_states, S_inputs, S_outputs: lists with dimensions of of each block
+        representing the states, inputs and outputs of the model.
+        - dt: time-step. In None, a continuous-time system is assumed.
+        '''
 
-		self.A=A
-		self.B=B
-		self.C=C 
-		self.D=D
-		self.dt=dt
+        self.A = A
+        self.B = B
+        self.C = C
+        self.D = D
+        self.dt = dt
 
-		self.S_u = S_inputs
-		self.S_y = S_outputs 
-		self.S_x = S_states
+        self.S_u = S_inputs
+        self.S_y = S_outputs
+        self.S_x = S_states
 
-		# determine number of blocks
-		self.blocks_u = len(S_inputs)
-		self.blocks_y = len(S_outputs)
-		self.blocks_x = len(S_states)
+        # determine number of blocks
+        self.blocks_u = len(S_inputs)
+        self.blocks_y = len(S_outputs)
+        self.blocks_x = len(S_states)
 
-		# determine inputs/outputs/states
-		self.inputs = sum(S_inputs)
-		self.outputs = sum(S_outputs)
-		self.states = sum(S_states)
+        # determine inputs/outputs/states
+        self.inputs = sum(S_inputs)
+        self.outputs = sum(S_outputs)
+        self.states = sum(S_states)
 
-		self.check_sizes()
+        self.check_sizes()
 
+    def check_sizes(self):
+        pass
 
-	def check_sizes(self):
-		pass
+    def remove_block(self, where, index):
+        '''
+        Remove a block from either inputs or outputs.
 
+        Inputs:
+        - where = {'in', 'out'}: determined whether to remove inputs or outputs
+        - index: index of block to remove
+        '''
 
-	def remove_block(self,where,index):
-		'''
-		Remove a block from either inputs or outputs.
+        assert where in ['in', 'out'], "'where' must be equal to {'in', 'out'}"
 
-		Inputs:
-		- where = {'in', 'out'}: determined whether to remove inputs or outputs
-		- index: index of block to remove
-		'''
+        if where == 'in':
+            for ii in range(self.blocks_x):
+                del self.B[ii][index]
+            for ii in range(self.blocks_y):
+                del self.D[ii][index]
 
-		assert where in ['in', 'out'], "'where' must be equal to {'in', 'out'}"
+        if where == 'out':
+            for ii in range(self.blocks_y):
+                del self.C[ii]
+                del self.D[ii]
 
-		if where == 'in':
-			for ii in range(self.blocks_x):
-				del self.B[ii][index]
-			for ii in range(self.blocks_y):
-				del self.D[ii][index]
+    def addGain(self, K, where):
+        '''
+        Projects input u or output y the state-space system through the gain
+        block matrix K. The input 'where' determines whether inputs or outputs
+        are projected as:
+            - where='in': inputs are projected such that:
+                u_new -> u=K*u_new -> SS -> y  => u_new -> SSnew -> y
+            - where='out': outputs are projected such that:
+                 u -> SS -> y -> y_new=K*y => u -> SSnew -> ynew
 
-		if where == 'out':
-			for ii in range(self.blocks_y):
-				del self.C[ii]
-				del self.D[ii]
+        Input: K must be a list of list of matrices. The size of K must be
+        compatible with either B or C for block matrix product.
+        '''
 
+        assert where in ['in', 'out'], \
+            'Specify whether gains are added to input or output'
 
-	def addGain(self,K,where):
-		'''
-		Projects input u or output y the state-space system through the gain 
-		block matrix K. The input 'where' determines whether inputs or outputs 
-		are projected as: 
-			- where='in': inputs are projected such that:
-				u_new -> u=K*u_new -> SS -> y  => u_new -> SSnew -> y
-			- where='out': outputs are projected such that:
-			 	u -> SS -> y -> y_new=K*y => u -> SSnew -> ynew
+        rows, cols = self.get_sizes(K)
 
-		Input: K must be a list of list of matrices. The size of K must be 
-		compatible with either B or C for block matrix product.
-		'''
+        if where == 'in':
+            self.B = libsp.block_dot(self.B, K)
+            self.D = libsp.block_dot(self.D, K)
+            self.S_u = cols
+            self.blocks_u = len(cols)
+            self.inputs = sum(cols)
 
-		assert where in ['in', 'out'],\
-							'Specify whether gains are added to input or output'
+        if where == 'out':
+            self.C = libsp.block_dot(K, self.C)
+            self.D = libsp.block_dot(K, self.D)
+            self.S_y = rows
+            self.blocks_y = len(rows)
+            self.outputs = sum(rows)
 
-		rows, cols = self.get_sizes(K)
+    def get_sizes(self, M):
+        '''
+        Get the size of each block in M.
+        '''
 
-		if where=='in':
-			self.B = libsp.block_dot( self.B, K)
-			self.D = libsp.block_dot( self.D, K)
-			self.S_u = cols
-			self.blocks_u = len(cols)
-			self.inputs = sum(cols)
+        rM, cM = len(M), len(M[0])
+        rows = rM * [None]
+        cols = cM * [None]
 
-		if where=='out':
-			self.C = libsp.block_dot( K, self.C)
-			self.D = libsp.block_dot( K, self.D)
-			self.S_y = rows
-			self.blocks_y= len(rows)
-			self.outputs=sum(rows)
+        for ii in range(rM):
+            for jj in range(cM):
+                if M[ii][jj] is not None:
+                    rhere, chere = M[ii][jj].shape
 
+                    if rows[ii] is None:  # allocate
+                        rows[ii] = rhere
+                    else:  # check
+                        assert rows[ii] == rhere, \
+                            'Block (%d,%d) has inconsistent size with other in same row!' % (ii, jj)
 
-	def get_sizes(self,M):
-		'''
-		Get the size of each block in M.
-		'''
+                    if cols[jj] is None:  # allocate
+                        cols[jj] = chere
+                    else:  # check
+                        assert cols[jj] == chere, \
+                            'Block (%d,%d) has inconsistent size with other in same column!' % (ii, jj)
 
-		rM, cM = len(M), len(M[0])
-		rows = rM*[None]
-		cols = cM*[None]
+        return rows, cols
 
-		for ii in range(rM):
-			for jj in range(cM):
-				if M[ii][jj] is not None:
-					rhere,chere=M[ii][jj].shape
+    def project(self, WT, V, by_arrays=True, overwrite=False):
+        '''
+        Given 2 transformation matrices, (W,V) of shape (Nk,self.states), this
+        routine projects the state space model states according to:
 
-					if rows[ii] is None: # allocate
-						rows[ii]=rhere
-					else: 				 # check
-						assert rows[ii]==rhere, \
-						'Block (%d,%d) has inconsistent size with other in same row!' %(ii,jj)
+          Anew = W^T A V
+          Bnew = W^T B
+          Cnew = C V
+          Dnew = D
 
-					if cols[jj] is None: # allocate
-						cols[jj]=chere
-					else: 				 # check
-						assert cols[jj]==chere, \
-						'Block (%d,%d) has inconsistent size with other in same column!' %(ii,jj)					
+        The projected model has the same number of inputs/outputs as the original
+        one, but Nk states.
 
-		return rows, cols
+        Inputs:
+        - WT = W^T
+        - V = V
+        - by_arrays: if True, W, V are either numpy.array or sparse matrices. If
+          False, they are block matrices.
+        - overwrite: if True, overwrites the A, B, C matrices
+        '''
 
+        if by_arrays:  # transform to block structures
 
-	def project(self,WT,V,by_arrays=True, overwrite=False):
-		''' 
-		Given 2 transformation matrices, (W,V) of shape (Nk,self.states), this 
-		routine projects the state space model states according to: 
+            II0 = 0
+            Vblock = []
+            WTblock = [[]]
+            for ii in range(self.blocks_x):
+                iivec = range(II0, II0 + self.S_x[ii])
+                Vblock.append([V[iivec, :]])
+                WTblock[0].append(WT[:, iivec])
+                II0 += self.S_x[ii]
+        else:
+            Vblock = V
+            WTblock = WT
 
-		  Anew = W^T A V 
-		  Bnew = W^T B 
-		  Cnew = C V 
-		  Dnew = D 
-
-		The projected model has the same number of inputs/outputs as the original  
-		one, but Nk states.
-
-		Inputs:
-		- WT = W^T
-		- V = V
-		- by_arrays: if True, W, V are either numpy.array or sparse matrices. If
-		  False, they are block matrices.
-		- overwrite: if True, overwrites the A, B, C matrices
-		'''
-
-		if by_arrays: # transform to block structures
-
-			II0 = 0
-			Vblock=[]
-			WTblock=[[ ]]
-			for ii in range(self.blocks_x):
-				iivec = range(II0, II0+self.S_x[ii])
-				Vblock.append( [V[iivec,:]] )
-				WTblock[0].append( WT[:,iivec] )
-				II0+=self.S_x[ii]
-		else:
-			Vblock = V
-			WTblock = WT
-
-		if overwrite:
-			self.A = libsp.block_dot( WTblock, libsp.block_dot(self.A, Vblock) ) 
-			self.B = libsp.block_dot( WTblock, self.B) 
-			self.C = libsp.block_dot( self.C, Vblock)
-		else:
-			return (libsp.block_dot( WTblock, libsp.block_dot(self.A, Vblock)),
-					libsp.block_dot( WTblock, self.B),
-					libsp.block_dot( self.C, Vblock))
+        if overwrite:
+            self.A = libsp.block_dot(WTblock, libsp.block_dot(self.A, Vblock))
+            self.B = libsp.block_dot(WTblock, self.B)
+            self.C = libsp.block_dot(self.C, Vblock)
+        else:
+            return (libsp.block_dot(WTblock, libsp.block_dot(self.A, Vblock)),
+                    libsp.block_dot(WTblock, self.B),
+                    libsp.block_dot(self.C, Vblock))
 
 
 
@@ -729,7 +761,7 @@ def series(SS01, SS02):
 
 def parallel(SS01, SS02):
     """
-    Returns the sum (or paralle connection of two systems). Given two state-space
+    Returns the sum (or parallel connection of two systems). Given two state-space
     models with the same output, but different input:
         u1 --> SS01 --> y
         u2 --> SS02 --> y
@@ -749,7 +781,7 @@ def parallel(SS01, SS02):
     # else:
 
     # determine size of total system
-    Nst01, Nst02 = SS01.A.shape[0], SS02.A.shape[0]
+    Nst01, Nst02 = SS01.states, SS02.states
     Nst = Nst01 + Nst02
     Nin01, Nin02 = SS01.inputs, SS02.inputs
     Nin = Nin01 + Nin02
