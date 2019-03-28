@@ -214,7 +214,7 @@ class FlexDynamic():
                         if self.Ccut is None:
                             Ccut = np.zeros((Nmodes, Nmodes))
                         else:
-                            Ccut = np.dot(Phi.T, np.dot(self.Ccut, Phi))
+                            Ccut = np.dot(Phi.T, np.dot(self.Cstr, Phi))
 
                         Ass, Bss, Css, Dss = newmark_ss(
                             np.eye(Nmodes),

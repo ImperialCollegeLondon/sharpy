@@ -61,7 +61,10 @@ class LinAeroEla():
                                               linuvlm.settings_default_dynamic)
 
         ## TEMPORARY - NEED TO INCLUDE PROPER INTEGRATION OF SETTINGS
-        self.rigid_body_motions = settings['LinearUvlm']['rigid_body_motion']
+        try:
+            self.rigid_body_motions = settings_here['rigid_body_motion']
+        except KeyError:
+            self.rigid_body_motions = False
         ## -------
 
         ### extract aeroelastic info
@@ -206,14 +209,6 @@ class LinAeroEla():
         if self.rigid_body_motions:
             Ksa = self.Kforces  # aero --> str
 
-            # Introduce stiffening effects
-            Kstiff = np.block([
-                [self.Kss, self.Ksr],
-                [self.Krs, self.Krr]
-            ])
-
-            # Ksa = np.dot(Kstiff, Ksa)
-
         else:
             Ksa = self.Kforces[:-10, :]  # aero --> str
 
@@ -223,7 +218,7 @@ class LinAeroEla():
 
 
     def get_gebm2uvlm_gains(self):
-        """
+        r"""
         Provides:
             - the gain matrices required to connect the linearised GEBM and UVLM
              inputs/outputs
@@ -252,8 +247,57 @@ class LinAeroEla():
             - ``Crs``: damping factor (flexible dof -> rigid dof)
             - ``Crr``: damping factor (rigid dof -> rigid dof)
 
-        Note that the stiffening/damping terms need to be added to the GEBM
-        stiffness and damping matrices.
+
+        Stiffening and damping related terms due to the non-zero aerodynamic forces at the linearisation point:
+
+        .. math::
+            \mathbf{F}_{A,n} = C^{GA}(\mathbf{\chi})\sum_j \mathbf{f}_{G,j} \rightarrow
+            \delta\mathbf{F}_{A,n} = C^{GA}_0 \sum_j \delta\mathbf{f}_{G,j} + \frac{\partial}{\partial\chi}(C^{AG}\sum_j
+            \mathbf{f}_{G,j}^0)\delta\chi
+
+        The term multiplied by the variation in the quaternion, :math:`\delta\chi`, couples the forces with the rigid
+        body equations and becomes part of :math:`\mathbf{C}_{sr}`.
+
+        Similarly, the linearisation of the moments results in expression that contribute to the stiffness and
+        damping matrices.
+
+        .. math::
+            \mathbf{M}_{B,n} = \sum_j \tilde{X}_B C^{BA}(\Psi)C^{AG}(\chi)\mathbf{f}_{G,j}
+
+        .. math::
+            \delta\mathbf{M}_{B,n} = \sum_j \tilde{X}_B\left(C_0^{BG}\delta\mathbf{f}_{G,j}
+            + \frac{\partial}{\partial\Psi}(C^{BA}\mathbf{f}^0_{A,j})\delta\Psi
+            + \frac{\partial}{\partial\chi}(C^{BA}_0 C^{AG} \mathbf{f}_{G,j})\delta\chi\right)
+
+        The linearised equations of motion for the geometrically exact beam model take the input term :math:`\delta
+        \mathbf{Q}_n = \{\delta\mathbf{F}_{A,n},\, T_0^T\delta\mathbf{M}_{B,n}\}`, which means that the moments
+        should be provided as :math:`T^T(\Psi)\mathbf{M}_B` instead of :math:`\mathbf{M}_A = C^{AB}\mathbf{M}_B`,
+        where :math:`T(\Psi)` is the tangential operator.
+
+        .. math::
+            \delta(T^T\mathbf{M}_B) = T^T_0\delta\mathbf{M}_B
+            + \frac{\partial}{\partial\Psi}(T^T\delta\mathbf{M}_B^0)\delta\Psi
+
+        is the linearised expression for the moments, where the first term would correspond to the input terms to the
+        beam equations and the second arises due to the non-zero aerodynamic moment at the linearisation point and
+        must be subtracted (since it comes from the forces) to form part of :math:`\mathbf{K}_{ss}`. In addition, the
+        :math:`\delta\mathbf{M}_B` term depends on both :math:`\delta\Psi` and :math:`\delta\chi`, therefore those
+        terms would also contribute to :math:`\mathbf{K}_{ss}` and :math:`\mathbf{C}_{sr}`, respectively.
+
+        The contribution from the total forces and moments will be accounted for in :math:`C_{rr}` and :math:`C_{rs}`
+
+        .. math::
+            \delta\mathbf{F}_{tot,A} = \sum_n\left(C^{GA}_0 \sum_j \delta\mathbf{f}_{G,j}
+            + \frac{\partial}{\partial\chi}(C^{AG}\sum_j
+            \mathbf{f}_{G,j}^0)\delta\chi\right)
+
+        Therefore, after running this method, the beam matrices should be updated as:
+
+        >>> K_beam[:flex_dof, :flex_dof] += Kss
+        >>> C_beam[:flex_dof, -rigid_dof:] += Csr
+        >>> C_beam[-rigid_dof:, :flex_dof] += Crs
+        >>> C_beam[-rigid_dof:, -rigid_dof:] += Crr
+
         """
 
         data = self.data
