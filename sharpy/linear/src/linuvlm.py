@@ -14,6 +14,8 @@ import sharpy.linear.src.interp as interp
 import sharpy.linear.src.multisurfaces as multisurfaces
 import sharpy.linear.src.assembly as ass
 import sharpy.linear.src.libss as libss 
+import sharpy.linear.src.librom as librom 
+
 import sharpy.linear.src.libsparse as libsp 
 import sharpy.utils.algebra as algebra
 
@@ -427,70 +429,70 @@ class Static():
             Kzeta_start += 3 * self.MS.KKzeta[ss]
 
 
-# ------------------------------------------------------------------------------
-# utilities for Dynamic.balfreq method
+# # ------------------------------------------------------------------------------
+# # utilities for Dynamic.balfreq method
 
-def get_trapz_weights(k0,kend,Nk,knyq=False):
-    '''
-    Returns uniform frequency grid (kv of length Nk) and weights (wv) for 
-    Gramians integration using trapezoidal rule. If knyq is True, it is assumed 
-    that kend is also the Nyquist frequency.
-    '''
+# def get_trapz_weights(k0,kend,Nk,knyq=False):
+#     '''
+#     Returns uniform frequency grid (kv of length Nk) and weights (wv) for 
+#     Gramians integration using trapezoidal rule. If knyq is True, it is assumed 
+#     that kend is also the Nyquist frequency.
+#     '''
 
-    assert k0>=0. and kend>=0., 'Frequencies must be positive!'
+#     assert k0>=0. and kend>=0., 'Frequencies must be positive!'
 
-    dk=(kend-k0)/(Nk-1.)
-    kv=np.linspace(k0,kend,Nk)
-    wv=np.ones((Nk,))*dk*np.sqrt(2)
+#     dk=(kend-k0)/(Nk-1.)
+#     kv=np.linspace(k0,kend,Nk)
+#     wv=np.ones((Nk,))*dk*np.sqrt(2)
 
-    if k0/(kend-k0)<1e-10:
-        wv[0]=.5*dk
-    else:
-        wv[0]=dk/np.sqrt(2)
+#     if k0/(kend-k0)<1e-10:
+#         wv[0]=.5*dk
+#     else:
+#         wv[0]=dk/np.sqrt(2)
 
-    if knyq:
-        wv[-1]=.5*dk
-    else:
-        wv[-1]=dk/np.sqrt(2)
+#     if knyq:
+#         wv[-1]=.5*dk
+#     else:
+#         wv[-1]=dk/np.sqrt(2)
 
-    return kv,wv
+#     return kv,wv
 
 
-def get_gauss_weights(k0,kend,Npart,order):
-    '''
-    Returns gauss-legendre frequency grid (kv of length Npart*order) and 
-    weights (wv) for Gramians integration. 
+# def get_gauss_weights(k0,kend,Npart,order):
+#     '''
+#     Returns gauss-legendre frequency grid (kv of length Npart*order) and 
+#     weights (wv) for Gramians integration. 
 
-    The integration grid is divided into Npart partitions, and in each of
-    them integration is performed using a Gauss-Legendre quadrature of
-    order order.
+#     The integration grid is divided into Npart partitions, and in each of
+#     them integration is performed using a Gauss-Legendre quadrature of
+#     order order.
 
-    Note: integration points are never located at k0 or kend, hence there
-    is no need for special treatment as in (for e.g.) a uniform grid case
-    (see get_unif_weights)
-    ''' 
+#     Note: integration points are never located at k0 or kend, hence there
+#     is no need for special treatment as in (for e.g.) a uniform grid case
+#     (see get_unif_weights)
+#     ''' 
 
-    if Npart==1:
-        # get gauss normalised coords and weights
-        xad,wad=np.polynomial.legendre.leggauss(order)
-        krange=kend-k0
-        kv=.5*(k0+kend) + .5*krange*xad
-        wv=wad*(.5*krange)*np.sqrt(2)
-        print('partitioning: %.3f to %.3f' %(k0,kend) )
+#     if Npart==1:
+#         # get gauss normalised coords and weights
+#         xad,wad=np.polynomial.legendre.leggauss(order)
+#         krange=kend-k0
+#         kv=.5*(k0+kend) + .5*krange*xad
+#         wv=wad*(.5*krange)*np.sqrt(2)
+#         print('partitioning: %.3f to %.3f' %(k0,kend) )
 
-    else:
-        kv=np.zeros((Npart*order,))
-        wv=np.zeros((Npart*order,))
+#     else:
+#         kv=np.zeros((Npart*order,))
+#         wv=np.zeros((Npart*order,))
 
-        dk_part=(kend-k0)/Npart
+#         dk_part=(kend-k0)/Npart
 
-        for ii in range(Npart):
-            k0_part=k0+ii*dk_part
-            kend_part=k0_part+dk_part
-            iivec=range(order*ii, order*(ii+1))
-            kv[iivec],wv[iivec]=get_gauss_weights(k0_part,kend_part,Npart=1,order=order)
+#         for ii in range(Npart):
+#             k0_part=k0+ii*dk_part
+#             kend_part=k0_part+dk_part
+#             iivec=range(order*ii, order*(ii+1))
+#             kv[iivec],wv[iivec]=get_gauss_weights(k0_part,kend_part,Npart=1,order=order)
 
-    return kv,wv
+#     return kv,wv
 
 
 # ------------------------------------------------------------------------------
@@ -1141,10 +1143,10 @@ class Dynamic(Static):
 
         Opt=DictBalFreq['options_low']
         if DictBalFreq['method_low'] == 'trapz':
-            kv_low, wv_low=get_trapz_weights(0., DictBalFreq['frequency'], 
+            kv_low, wv_low=librom.get_trapz_weights(0., DictBalFreq['frequency'], 
                                                            Opt['points'], False)
         elif DictBalFreq['method_low'] == 'gauss':
-            kv_low, wv_low=get_gauss_weights(0., DictBalFreq['frequency'],
+            kv_low, wv_low=librom.get_gauss_weights(0., DictBalFreq['frequency'],
                                                  Opt['partitions'],Opt['order'])
         else:
             raise NameError(
@@ -1152,10 +1154,10 @@ class Dynamic(Static):
 
         Opt=DictBalFreq['options_high']
         if DictBalFreq['method_high'] == 'trapz':
-            kv_high, wv_high=get_trapz_weights(DictBalFreq['frequency'], kn,
+            kv_high, wv_high=librom.get_trapz_weights(DictBalFreq['frequency'], kn,
                                                             Opt['points'], True)
         elif DictBalFreq['method_high'] == 'gauss':
-            kv_high, wv_high=get_gauss_weights(DictBalFreq['frequency'], kn,
+            kv_high, wv_high=librom.get_gauss_weights(DictBalFreq['frequency'], kn,
                                                  Opt['partitions'],Opt['order'])
         else:
             raise NameError(
@@ -2172,10 +2174,10 @@ class DynamicBlock(Dynamic):
 
         Opt=DictBalFreq['options_low']
         if DictBalFreq['method_low'] == 'trapz':
-            kv_low, wv_low=get_trapz_weights(0., DictBalFreq['frequency'], 
+            kv_low, wv_low=librom.get_trapz_weights(0., DictBalFreq['frequency'], 
                                                            Opt['points'], False)
         elif DictBalFreq['method_low'] == 'gauss':
-            kv_low, wv_low=get_gauss_weights(0., DictBalFreq['frequency'],
+            kv_low, wv_low=librom.get_gauss_weights(0., DictBalFreq['frequency'],
                                                  Opt['partitions'],Opt['order'])
         else:
             raise NameError(
@@ -2187,14 +2189,14 @@ class DynamicBlock(Dynamic):
                 warnings.warn('You have chosen no points in high frequency range!')
                 kv_high, wv_high = [], []
             else:
-                kv_high, wv_high=get_trapz_weights(DictBalFreq['frequency'], kn,
+                kv_high, wv_high=librom.get_trapz_weights(DictBalFreq['frequency'], kn,
                                                             Opt['points'], True)
         elif DictBalFreq['method_high'] == 'gauss':
             if Opt['order']*Opt['partitions']==0:
                 warnings.warn('You have chosen no points in high frequency range!')
                 kv_high, wv_high = [], []
             else:
-                kv_high, wv_high=get_gauss_weights(DictBalFreq['frequency'], kn,
+                kv_high, wv_high=librom.get_gauss_weights(DictBalFreq['frequency'], kn,
                                                  Opt['partitions'],Opt['order'])
         else:
             raise NameError(

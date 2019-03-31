@@ -22,7 +22,7 @@ Methods for state-space manipulation:
 - parallel: parallel connection between systems
 - SSconv: convert state-space model with predictions and delays
 - addGain: add gains to state-space model.
-- join: merge two state-space models into one.
+- join: merge a list of state-space models into one.
 - sum state-space models and/or gains
 - scale_SS: scale state-space model
 - simulate: simulates discrete time solution
@@ -180,13 +180,14 @@ class ss():
 		scale_SS(self,input_scal,output_scal,state_scal,byref=True)
 
 
-	def project(self,W,V):
+	def project(self,WT,V):
 		'''
-		Given 2 transformation matrices, (W,V) of shape (Nk,self.states), this
-		routine projects the state space model states according to:
+		Given 2 transformation matrices, (WT,V) of shapes (Nk,self.states) and
+		 (self.states,Nk) respectively, this routine projects the state space 
+		 model states according to:
 
-			Anew = W^T A V
-			Bnew = W^T B
+			Anew = WT A V
+			Bnew = WT B
 			Cnew = C V
 			Dnew = D
 
@@ -194,8 +195,8 @@ class ss():
 		one, but Nk states.
 		'''
 
-		self.A = libsp.dot( W.T, libsp.dot(self.A, V) )
-		self.B = libsp.dot( W.T, self.B)
+		self.A = libsp.dot( WT, libsp.dot(self.A, V) )
+		self.B = libsp.dot( WT, self.B)
 		self.C = libsp.dot( self.C, V)
 		self.states=V.shape[1]
 
@@ -394,225 +395,6 @@ class ss_block():
 					libsp.block_dot( WTblock, self.B),
 					libsp.block_dot( self.C, Vblock))
 
-
-
-class Interp1d():
-	'''
-	State-space 1D interpolation class.
-
-	This class allows interpolating from a list of state-space models, SS, 
-	defined over the 1D parameter space zv. 
-
-	State-space models are required to have the same number of inputs and outputs 
-	and need to have the same number of states.
-
-	For state-space interpolation, state-space models also need to be defined
-	over the same set of generalised coordinates. If this is not the case, the
-	projection matrices W and T, such that
-
-		A_proj = W^T A V
-	
-	also need to be provided. This will allow projecting the state-space models
-	onto a common set of generalised coordinates before interpoling.
-
-	Inputs:
-	- method_interp: interpolation method as per scipy.interpolate.interp1d class
-
-	- method_proj: method for projection of state-space models over common
-	coordinates. Available:
-		- panzer: Panzer, J. Mohring, R. Eid, and B. Lohmann, Parametric model 
-		order reduction by matrix interpolation, at–Automatisierungstechnik, 58 
-		(2010), pp. 475–484.
-		- amsallem: D. Amsallem and C. Farhat, An online method for interpolating 
-		linear parametric reduced-order models, SIAM J. Sci. Comput., 33 (2011), 
-		pp. 2169–2198.
-
-	- Map: map A matrices over Riemannian manifold 
-
-	- IImap=if given, maps A matrices over manifold derived around A matrix 
-	of ii-th state-space in SSlist. 
-	'''
-
-
-	def __init__(self, zv, SS, VV=None, WW=None, method_interp='cubic', 
-				 method_proj='panzer', Map=True, IImap=None):
-
-		assert IImap is not None, 'Option IImap=None not developed yet'
-
-		self.SS=SS
-		self.zv=zv
-		self.VV=VV
-		self.WW=WW
-		self.method_interp=method_interp
-		self.method_proj=method_proj
-		self.Map=Map
-		self.IImap=IImap
-
-		### check state-space models
-		Nx,Nu,Ny = SS[0].states, SS[0].inputs, SS[0].outputs
-		for ss_here in SS:
-			assert ss_here.states == Nx,\
-					  'State-space models do not have the same number of states'
-			assert ss_here.inputs == Nu,\
-					  'State-space models do not have the same number of inputs'
-			assert ss_here.outputs == Ny,\
-					  'State-space models do not have the same number of outputs'
-
-		self.debug=False 	# debug mode flag
-
-
-	def __call__(self, zint):
-		'''
-		Evaluate at interpolation point zint. Returns a list of classes ss
-		'''
-
-		Nint=len(zint)
-
-		# interpolate A matrices, 
-		if self.Map is True:
-			IImap=self.IImap
-			if IImap is not None:
-				# get inverse,
-				AIIinv=np.linalg.inv(self.SS[IImap].A)
-				# map,
-				TT=[]
-				for ii in range( len(self.zv) ):
-					TT.append(scalg.logm( np.dot(self.SS[ii].A,AIIinv) ))
-				# interpolate
-				TTint=self._interp_mats(TT, zint)
-				# and map back
-				
-				Aint=np.zeros( (Nint,)+AIIinv.shape )
-				for ii in range(Nint):
-					Aint[ii,:,:]= np.dot( scalg.expm(TTint[ii,:,:]), self.SS[IImap].A)
-
-			else:
-				# get index of closest A for each element in zint and define mapping
-				pass
-
-		else:
-			Aint=self._interp_mats( 
-						[getattr(ss_here,'A') for ss_here in self.SS], zint)
-	
-		# and B, C, D...
-		Bint=self._interp_mats( 
-						[getattr(ss_here,'B') for ss_here in self.SS], zint)
-		Cint=self._interp_mats( 
-						[getattr(ss_here,'C') for ss_here in self.SS], zint)		
-		Dint=self._interp_mats( 
-						[getattr(ss_here,'D') for ss_here in self.SS], zint)
-
-		# and pack everything
-		SSint=[]
-		for ii in range(Nint):
-			SSint.append( ss( Aint[ii,:,:], Bint[ii,:,:], 
-				              Cint[ii,:,:], Dint[ii,:,:], dt=self.SS[0].dt))
-
-		return SSint
-
-
-	def _interp_mats(self,Mats,zint):
-		'''
-		Interpolate a list of equal-size arrays, Mats, defined over zv at the 
-		points zint. The Mats are assumed to be defined onto the same set of
-		generalised coordinates.
-		'''
-
-		# define interpolator class
-		# try:
-		IntA=scint.interp1d(self.zv,Mats,kind=self.method_interp,
-										   copy=False,assume_sorted=True,axis=0)	
-
-		return IntA(zint)
-
-
-	def project(self):
-		'''
-		Project the state-space models onto the generalised coordinates of 
-		state-space model IImap
-		'''
-
-		if self.method_proj=='amsallem':
-
-			# get reference basis
-			Vref=self.VV[self.IImap]
-			Wref=self.WW[self.IImap]
-
-			for ii in range(len(self.SS)):
-				
-				if ii == self.IImap:
-					continue 
-
-				# get rotations
-				U,sv,Z = scalg.svd( np.dot(self.VV[ii].T, Vref) ,
-									full_matrices=False,overwrite_a=False,
-									lapack_driver='gesdd')
-				RotV = np.dot(U,Z.T)
-				# print('ii=%d' %ii)
-				# ### a few checks:
-				# print('V')
-				# print('Determinant: %.8f' %np.linalg.det(RotV) )
-				# print('Max error R^T - R^{-1}: %.3e' %np.max(np.abs(RotV.T - np.linalg.inv(RotV))) )
-				# from IPython import embed
-				# embed()
-
-				U,sv,Z = scalg.svd( np.dot(self.WW[ii].T, Wref) ,
-									full_matrices=False,overwrite_a=False,
-									lapack_driver='gesdd')
-				RotW = np.dot(U,Z.T)
-				# print('W')
-				# print('Determinant: %.8f' %np.linalg.det(RotW) )
-				# print('Max error R^T - R^{-1}: %.3e' %np.max(np.abs(RotW.T - np.linalg.inv(RotW))) )
-
-
-				if self.debug:
-					kv=np.linspace(0.,0.5,30)
-					Yfreq_pre=self.SS[ii].freqresp(kv)
-					ymax=np.max(np.abs(Yfreq_pre))
-
-				# project state-space
-				self.SS[ii].project(RotW,RotV)
-
-				if self.debug:
-					Yfreq=self.SS[ii].freqresp(kv)
-					er_abs=np.max(np.abs(Yfreq-Yfreq_pre))
-					print('SS %.2d ermax (abs): %.3e | Ymax: %.3e | ermax (rel): %.3e' %(ii,er_abs,ymax,er_abs/ymax) )
-
-
-		elif self.method_proj=='panzer':
-
-			# generate basis
-			U,sv = scalg.svd( np.concatenate(self.VV,axis=1),
-							  full_matrices=False,overwrite_a=False,
-							  lapack_driver='gesdd')[:2]
-			# chop U
-			U=U[:,:self.SS[0].states]#*sv[:self.SS[0].states]
-			print('Panzer projection: neglecting singular values below %.2e (max: %.2e)'\
-			 %(sv[self.SS[0].states],sv[0]) )
-
-
-			for ii in range(len(self.SS)):
-				
-				# get projection matrices
-				M = np.linalg.inv( np.dot( self.WW[ii].T, U) )
-				N = np.linalg.inv( np.dot( self.VV[ii].T, U) )
-
-				if self.debug:
-					kv=np.linspace(0.,0.5,30)
-					Yfreq_pre=self.SS[ii].freqresp(kv)
-					ymax=np.max(np.abs(Yfreq_pre))
-
-				# project
-				self.SS[ii].project(M.T,N)
-
-				if self.debug:
-					Yfreq=self.SS[ii].freqresp(kv)
-					er_abs=np.max(np.abs(Yfreq-Yfreq_pre))
-					print('SS %.2d ermax (abs): %.3e | Ymax: %.3e | ermax (rel): %.3e' %(ii,er_abs,ymax,er_abs/ymax) )
-			
-				
-		else:
-			raise NameError('Projection method %s not implemented!' %self.method_proj)
 
 
 
@@ -959,51 +741,6 @@ def series(SS01,SS02):
 
 
 
-def parallel(SS01,SS02):
-	'''
-	Returns the sum (or paralle connection of two systems). Given two state-space
-	models with the same output, but different input:
-		u1 --> SS01 --> y
-		u2 --> SS02 --> y
-
-	'''
-
-	if type(SS01) is not type(SS02):
-		raise NameError('The two input systems need to have the same size!')
-	if SS01.dt != SS02.dt:
-		raise NameError('DLTI systems do not have the same time-step!')
-	Nout=SS02.outputs
-	if Nout != SS01.outputs: 
-		raise NameError('DLTI systems need to have the same number of output!')
-
-
-	# if type(SS01) is control.statesp.StateSpace:
-	# 	SStot=control.parallel(SS01,SS02)
-	# else:
-	
-	# determine size of total system
-	Nst01,Nst02=SS01.A.shape[0],SS02.A.shape[0]
-	Nst=Nst01+Nst02
-	Nin01,Nin02=SS01.inputs,SS02.inputs
-	Nin=Nin01+Nin02
-
-	# Build A,B matrix
-	A=np.zeros((Nst,Nst))
-	A[:Nst01,:Nst01]=SS01.A
-	A[Nst01:,Nst01:]=SS02.A
-	B=np.zeros((Nst,Nin))
-	B[:Nst01,:Nin01]=SS01.B
-	B[Nst01:,Nin01:]=SS02.B
-
-	# Build the rest
-	C=np.block([ SS01.C,SS02.C ])		
-	D=np.block([ SS01.D,SS02.D ])		
-
-	SStot=scsig.dlti(A,B,C,D,dt=SS01.dt)
-
-	return SStot
-
-
 def SSconv(A,B0,B1,C,D,Bm1=None):
 	r"""
 	Convert a DLTI system with prediction and delay of the form:
@@ -1136,97 +873,44 @@ def addGain(SShere,Kmat,where):
 
 
 
-def join(SS1, SS2):
-	r"""
-	Join two state-spaces or gain matrices such that, given:
+def join(SS_list,wv=None):
+	'''
+	Given a list of state-space models belonging to the ss class, creates a 
+	joined system whose output is the sum of the state-space outputs. If wv is 
+	not None, this is a list of weights, such that the output is:
 
-	    .. math::
-	        \mathbf{u}_1 \longrightarrow &\mathbf{SS}_1 \longrightarrow \mathbf{y}_1 \\
-	        \mathbf{u}_2 \longrightarrow &\mathbf{SS}_2 \longrightarrow \mathbf{y}_2
+		y = sum( wv[ii] y_ii )
 
-	we obtain:
+	Ref: equation (4.22) of
+	Benner, P., Gugercin, S. & Willcox, K., 2015. A Survey of Projection-Based 
+	Model Reduction Methods for Parametric Dynamical Systems. SIAM Review, 57(4), 
+	pp.483–531.
 
-	    .. math::
-	        \mathbf{u} \longrightarrow \mathbf{SS}_{TOT} \longrightarrow \mathbf{y}
+	Warning: 
+	- system matrices must be numpy arrays
+	- the function does not perform any check!
+	'''
 
-	with :math:`\mathbf{u}=(\mathbf{u}_1,\mathbf{u}_2)^T` and :math:`\mathbf{y}=(\mathbf{y}_1,\mathbf{y}_2)^T`.
+	N = len(SS_list)
+	if wv is not None:
+		assert N==len(wv), "'weights input should have'"
 
-	The output :math:`\mathbf{SS}_{TOT}` is either a gain matrix or a state-space system according
-	to the input :math:`\mathbf{SS}_1` and :math:`\mathbf{SS}_2`
+	A = scalg.block_diag(*[ getattr(ss,'A') for ss in SS_list ])
+	B = np.block([ [getattr(ss,'B')] for ss in SS_list ])
+	
+	if wv is None:
+		C = np.block( [ getattr(ss,'C') for ss in SS_list ] )
+	else: 
+		C = np.block( [ ww*getattr(ss,'C') for ww,ss in zip(wv,SS_list) ] )
 
-	Args:
-	    SS1 (scsig.StateSpace or np.ndarray): State space 1 or gain 1
-	    SS2 (scsig.StateSpace or np.ndarray): State space 2 or gain 2
+	D=np.zeros_like(SS_list[0].D)
+	for ii in range(N):
+		if wv is None:
+			D += SS_list[ii].D
+		else:
+			D += wv[ii]*SS_list[ii].D
 
-	Returns:
-	    scsig.StateSpace or np.ndarray: combined state space or gain matrix
-
-	"""
-
-
-
-	if isinstance(SS1,np.ndarray) and isinstance(SS2,np.ndarray):
-
-		Nin01,Nin02=SS1.shape[1],SS2.shape[1]
-		Nout01,Nout02=SS1.shape[0],SS2.shape[0]
-		SStot=np.block([[SS1, np.zeros((Nout01,Nin02))],
-			            [np.zeros((Nout02,Nin01)),SS2 ]])
-
-
-	elif isinstance(SS1,np.ndarray) and isinstance(SS2,ss):
-
-		Nin01,Nout01=SS1.shape[1],SS1.shape[0]
-		Nin02,Nout02=SS2.inputs,SS2.outputs
-		Nx02=SS2.A.shape[0]
-
-		A=SS2.A
-		B=np.block([np.zeros((Nx02,Nin01)),SS2.B])
-		C=np.block([[np.zeros((Nout01,Nx02))],
-					[SS2.C 				   ]])
-		D=np.block([[SS1,np.zeros((Nout01,Nin02))],
-					[np.zeros((Nout02,Nin01)),SS2.D]])
-
-		SStot=ss(A,B,C,D,dt=SS2.dt)		
-
-
-	elif isinstance(SS1,ss) and isinstance(SS2,np.ndarray):
-
-		Nin01,Nout01=SS1.inputs,SS1.outputs
-		Nin02,Nout02=SS2.shape[1],SS2.shape[0]
-		Nx01=SS1.A.shape[0]
-
-		A=SS1.A
-		B=np.block([SS1.B,np.zeros((Nx01,Nin02))])
-		C=np.block([[SS1.C 				   ],
-					[np.zeros((Nout02,Nx01))]])
-		D=np.block([[SS1.D,np.zeros((Nout01,Nin02))],
-			        [np.zeros((Nout02,Nin01)),SS2]])
-
-		SStot=ss(A,B,C,D,dt=SS1.dt)	
-
-
-	elif isinstance(SS1,ss) and isinstance(SS2,ss):
-
-		assert SS1.dt==SS2.dt, 'State-space models must have the same time-step'
-
-		Nin01,Nout01=SS1.inputs,SS1.outputs
-		Nin02,Nout02=SS2.inputs,SS2.outputs
-		Nx01,Nx02=SS1.A.shape[0],SS2.A.shape[0]
-
-		A=np.block([[ SS1.A, np.zeros((Nx01,Nx02)) ],
-					[ np.zeros((Nx02,Nx01)), SS2.A ]])
-		B=np.block([[ SS1.B, np.zeros((Nx01,Nin02)) ],
-					[ np.zeros((Nx02,Nin01)), SS2.B]])
-		C=np.block([[ SS1.C, np.zeros((Nout01,Nx02))],
-					[ np.zeros((Nout02,Nx01)), SS2.C]])
-		D=np.block([[SS1.D, np.zeros((Nout01,Nin02))],
-					[np.zeros((Nout02,Nin01)), SS2.D]])
-		SStot=ss(A,B,C,D,dt=SS1.dt)
-
-	else:
-		raise NameError('Input types not recognised in any implemented option!') 
-
-	return SStot
+	return ss(A,B,C,D,SS_list[0].dt)
 
 
 def sum_ss(SS1, SS2, negative=False):
@@ -1778,8 +1462,23 @@ if __name__=='__main__':
 							compare_ss(SC0,SChere)
 
 
+		def test_join(self):
 
+			Nx,Nu,Ny = 4, 3, 2
+			SS_list = [random_ss(Nx,Nu,Ny,dt=.2) for ii in range(3)]
 
+			wv = [.3, .5, .2]
+			SSjoin = join(SS_list,wv)
+
+			kv = np.array([0., 1., 3.])
+			Yjoin = SSjoin.freqresp(kv)
+
+			Yref = np.zeros_like(Yjoin)
+			for ii in range(3):
+				Yref += wv[ii]*SS_list[ii].freqresp(kv)
+
+			er = np.max(np.abs(Yjoin - Yref))
+			assert er<1e-14, 'test_join error %.3e too large' %er
 
 
 	outprint='Testing libss'
@@ -1789,9 +1488,7 @@ if __name__=='__main__':
 	unittest.main()
 
 
-
 	# 1/0
-
 	# # check parallel connector
 	# Nout=2
 	# Nin01,Nin02=2,3
