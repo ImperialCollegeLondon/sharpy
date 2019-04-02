@@ -11,12 +11,18 @@ class TestSettings(unittest.TestCase):
     Tests the settings utilities module
     """
 
+    def setUp(self):
+        cout.start_writer()
+
+    def tearDown(self):
+        cout.finish_writer()
+
     def test_settings_to_custom_types(self):
         in_dict = dict()
         default_dict = dict()
-
         types_dict = dict()
-        default_dict = dict()
+
+
         in_dict['integer_var'] = '1234'
         types_dict['integer_var'] = 'int'
         default_dict['integer_var'] = 0
