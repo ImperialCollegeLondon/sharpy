@@ -83,10 +83,10 @@ class GustVelocityField(generator_interface.BaseGenerator):
         self.settings_default['gust_shape'] = None
 
         self.settings_types['gust_length'] = 'float'
-        self.settings_default['gust_length'] = None
+        self.settings_default['gust_length'] = 0.0
 
         self.settings_types['gust_intensity'] = 'float'
-        self.settings_default['gust_intensity'] = None
+        self.settings_default['gust_intensity'] = 0.0
 
         self.settings_types['offset'] = 'float'
         self.settings_default['offset'] = 0.0
@@ -95,7 +95,7 @@ class GustVelocityField(generator_interface.BaseGenerator):
         self.settings_default['span'] = 0.
 
         self.settings_types['file'] = 'str'
-        self.settings_default['file'] = None
+        self.settings_default['file'] = ''
 
         self.u_inf = 0.
         self.u_inf_direction = None
