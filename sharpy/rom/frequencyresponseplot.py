@@ -49,13 +49,16 @@ class FrequencyResponseComparison(object):
     def plot_frequency_response(self, kv, Y_freq_ss, Y_freq_rom, interp_frequencies):
 
         nstates = self.ss.states
-        rstates = self.rom.ssrom.states
+        if self.rom is not None:
+            rstates = self.rom.ssrom.states
+            freqresp_title = 'ROM - %s' % self.rom.algorithm
+        else:
+            freqresp_title = ''
         if self.settings['frequency_type'] == 'k':
             freq_label = 'Reduced Frequency, k'
         else:
             freq_label = 'Angular Frequency, $\omega$ [rad/s]'
 
-        freqresp_title = 'ROM - %s' % self.rom.algorithm
 
         if self.settings['plot_type'] == 'bode':
             fig, ax = plt.subplots(nrows=2, sharex=True)
@@ -207,7 +210,7 @@ class FrequencyResponseComparison(object):
             raise NotImplementedError('%s - Plot type not yet implemented')
 
 
-    def save_figure(self, filename):
+    def savefig(self, filename):
         # Incorporate folder paths to save to output folder.
         self.fig.savefig(filename)
 

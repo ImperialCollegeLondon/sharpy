@@ -67,7 +67,7 @@ class TestKrylovRom(unittest.TestCase):
         algorithm = 'dual_rational_arnoldi'
         interpolation_point_ct = np.array([1.0j, 10.0j])
         interpolation_point = np.exp(interpolation_point_ct * ss.dt)
-        r = 2
+        r = 3
 
         print('\nTesting DT, SISO Multipoint rational Arnoldi...')
         rom = self.run_rom(ss, algorithm, r, interpolation_point)

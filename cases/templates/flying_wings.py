@@ -562,7 +562,7 @@ class FlyingWing():
 
         config['Modal'] = {'folder': self.route+'/output/',
                            'NumLambda': 20,
-                           'rigid_body_modes': True,
+                           'rigid_body_modes': 'off',
                            'print_matrices': 'off',
                            'keep_linear_matrices': 'on',
                             'write_dat': 'off',
