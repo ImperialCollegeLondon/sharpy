@@ -240,11 +240,11 @@ class DynamicCoupled(BaseSolver):
                 force_coeff = 0.0
                 if self.settings['include_unsteady_force_contribution']:
                     try:
-                        force_coeff = np.linspace(0.0, 1.0, 8)[k]
+                        force_coeff = np.linspace(0.0, 1.0, 4)[k]
                     except IndexError:
                         force_coeff = 1.0
-                if self.data.ts < 8:
-                    force_coeff = 0.0
+                # if self.data.ts < 8:
+                    # force_coeff = 0.0
 
                 # run the solver
                 if force_coeff == 0.:
