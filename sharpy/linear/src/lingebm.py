@@ -216,10 +216,16 @@ class FlexDynamic():
                         else:
                             Ccut = np.dot(Phi.T, np.dot(self.Cstr, Phi))
 
+                        # Ass, Bss, Css, Dss = newmark_ss(
+                        #     np.eye(Nmodes),
+                        #     Ccut,
+                        #     np.diag(self.freq_natural[:Nmodes] ** 2),
+                        #     self.dt,
+                        #     self.newmark_damp)
                         Ass, Bss, Css, Dss = newmark_ss(
-                            np.eye(Nmodes),
+                            Phi.T.dot(self.Mstr.dot(Phi)),
                             Ccut,
-                            np.diag(self.freq_natural[:Nmodes] ** 2),
+                            Phi.T.dot(self.Kstr.dot(Phi)),
                             self.dt,
                             self.newmark_damp)
                         self.Kin = Phi.T
@@ -412,7 +418,25 @@ class FlexDynamic():
             ``Mstr``, ``Cstr``, ``Kstr`` to be available.
 
         """
-        pass
+
+        if self.proj_modes == 'undamped':
+            if self.Cstr is not None:
+                print('Warning, projecting system with damping onto undamped modes')
+            eigenvalues, eigenvectors = np.linalg.eig(np.linalg.solve(self.Mstr, self.Kstr))
+
+            omega = np.sqrt(eigenvalues)
+            order = np.argsort(omega)[:self.Nmodes]
+            self.freq_natural = omega[order]
+
+            phi = eigenvectors[:, order]
+
+            # Scale modes to have an identity mass matrix
+            dfact = np.diag(np.dot(phi.T, np.dot(self.Mstr, phi)))
+            self.U = (1./np.sqrt(dfact))*phi
+
+            # To do: update SHARPy's timestep info modal results
+        else:
+            raise NotImplementedError('Projection update for damped systems not yet implemented ')
 
     def update_truncated_modes(self, nmodes):
         r"""

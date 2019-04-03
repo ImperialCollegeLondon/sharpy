@@ -266,7 +266,7 @@ class LinAeroEla():
 
         .. math::
             \delta\mathbf{M}_{B,n} = \sum_j \tilde{X}_B\left(C_0^{BG}\delta\mathbf{f}_{G,j}
-            + \frac{\partial}{\partial\Psi}(C^{BA}\mathbf{f}^0_{A,j})\delta\Psi
+            + \frac{\partial}{\partial\Psi}(C^{BA}\delta\mathbf{f}^0_{A,j})\delta\Psi
             + \frac{\partial}{\partial\chi}(C^{BA}_0 C^{AG} \mathbf{f}_{G,j})\delta\chi\right)
 
         The linearised equations of motion for the geometrically exact beam model take the input term :math:`\delta
@@ -284,7 +284,8 @@ class LinAeroEla():
         :math:`\delta\mathbf{M}_B` term depends on both :math:`\delta\Psi` and :math:`\delta\chi`, therefore those
         terms would also contribute to :math:`\mathbf{K}_{ss}` and :math:`\mathbf{C}_{sr}`, respectively.
 
-        The contribution from the total forces and moments will be accounted for in :math:`C_{rr}` and :math:`C_{rs}`
+        The contribution from the total forces and moments will be accounted for in :math:`\mathbf{C}_{rr}` and
+        :math:`\mathbf{C}_{rs}`.
 
         .. math::
             \delta\mathbf{F}_{tot,A} = \sum_n\left(C^{GA}_0 \sum_j \delta\mathbf{f}_{G,j}

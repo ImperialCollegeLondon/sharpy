@@ -9,7 +9,7 @@ the sparse arrays types defined in libsparse.
 The module includes:
 
 Classes:
-- ss: provides a class to build DLTI/LTI systems with full and/or sparse 
+- ss: provides a class to build DLTI/LTI systems with full and/or sparse
 	matrices and wraps many of the methods in these library. Methods include:
 	- freqresp: wraps the freqresp function
 	- addGain: adds gains in input/output. This is not a wrapper of addGain, as
@@ -40,15 +40,15 @@ Filtering:
 Utilities:
 - get_freq_from_eigs: clculate frequency corresponding to eigenvalues
 
-Comments: 
+Comments:
 - the module supports sparse matrices hence relies on libsparse.
 
-to do: 
+to do:
 	- remove unnecessary coupling routines
 	- couple function can handle sparse matrices but only outputs dense matrices
 		- verify if typical coupled systems are sparse
 		- update routine
-		- add method to automatically determine whether to use sparse or dense? 
+		- add method to automatically determine whether to use sparse or dense?
 """
 
 import copy
@@ -65,10 +65,10 @@ import sharpy.linear.src.libsparse as libsp
 class ss():
     """
     Wrap state-space models allocation into a single class and support both
-    full and sparse matrices. The class emulates 
+    full and sparse matrices. The class emulates
         scipy.signal.ltisys.StateSpaceContinuous
         scipy.signal.ltisys.StateSpaceDiscrete
-    but supports sparse matrices and other functionalities. 
+    but supports sparse matrices and other functionalities.
 
     Methods:
     - get_mats: return matrices as tuple
@@ -80,7 +80,7 @@ class ss():
 
     def __init__(self, A, B, C, D, dt=None):
         """
-        Allocate state-space model (A,B,C,D). If dt is not passed, a 
+        Allocate state-space model (A,B,C,D). If dt is not passed, a
         continuous-time system is assumed.
         """
 
@@ -172,13 +172,13 @@ class ss():
 
     def addGain(self, K, where):
         """
-        Projects input u or output y the state-space system through the gain 
+        Projects input u or output y the state-space system through the gain
         matrix K. The input 'where' determines whether inputs or outputs are
-        projected as: 
+        projected as:
             - where='in': inputs are projected such that:
                 u_new -> u=K*u_new -> SS -> y  => u_new -> SSnew -> y
             - where='out': outputs are projected such that:
-                 u -> SS -> y -> y_new=K*y => u -> SSnew -> ynew 
+                 u -> SS -> y -> y_new=K*y => u -> SSnew -> ynew
 
         Warning: this is not a wrapper of the addGain method in this module, as
         the state-space matrices are directly overwritten.
@@ -203,9 +203,9 @@ class ss():
     def scale(self, input_scal=1., output_scal=1., state_scal=1.):
         """
         Given a state-space system, scales the equations such that the original
-        state, input and output, (x, u and y), are substituted by 
+        state, input and output, (x, u and y), are substituted by
             xad=x/state_scal
-            uad=u/input_scal 
+            uad=u/input_scal
             yad=y/output_scal
         The entries input_scal/output_scal/state_scal can be:
             - floats: in this case all input/output are scaled by the same value
@@ -1380,7 +1380,7 @@ def butter(order, Wn, N=1, btype='lowpass'):
 
 def get_freq_from_eigs(eigs, dlti=True):
     """
-    Compute natural freq corresponding to eigenvalues, eigs, of a continuous or 
+    Compute natural freq corresponding to eigenvalues, eigs, of a continuous or
     discrete-time (dlti=True) systems.
 
     Note: if dlti=True, the frequency is normalised by (1./dt), where dt is the
