@@ -47,7 +47,7 @@ class GustVelocityField(generator_interface.BaseGenerator):
             ``gust_intensity``   ``float``        Intensity of the gust                              ``0.0``
             ``offset``           ``float``        Spatial offset of the gust with respect to origin  ``0.0``
             ``span``             ``float``        Wing span                                          ``0.0``
-            ``file``             ``str``          File with the information (only for time varying)  ``None``
+            ``file``             ``str``          File with the information (only for time varying)  ``Empty string``
             ===================  ===============  =================================================  ===================
 
     Attributes:
