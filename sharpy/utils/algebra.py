@@ -654,9 +654,40 @@ def rot_skew(vec):
     warn("use 'skew' function instead of 'rot_skew'")
     return skew(vec)
 
+def rotation3d_x_ag(angle):
+    r"""
+    Rotation matrix about the x axis by the input angle :math:`\Phi`
+
+    .. math::
+
+        \mathbf{\tau}_x = \begin{bmatrix}
+            1 & 0 & 0 \\
+            0 & \cos(\Phi) & \sin(\Phi) \\
+            0 & -\sin(\Phi) & \cos(\Phi)
+        \end{bmatrix}
+
+
+    Args:
+        angle (float): angle of rotation in radians about the x axis
+
+    Returns:
+        np.array: 3x3 rotation matrix about the x axis
+
+    """
+
+    c = np.cos(angle)
+    s = np.sin(angle)
+    mat = np.zeros((3, 3))
+    mat[0, :] = [1.0, 0.0, 0.0]
+    mat[1, :] = [0.0,   c,  s]
+    mat[2, :] = [0.0,   -s,   c]
+    return mat
 
 def rotation3d_x(angle):
     r"""
+    Warnings:
+        This function is transposed so it undoes the roll rotation. Use :func:`rotation3d_x_ag` instead.
+
     Rotation matrix about the x axis by the input angle :math:`\Phi`
 
     .. math::
@@ -675,6 +706,8 @@ def rotation3d_x(angle):
         np.array: 3x3 rotation matrix about the x axis
 
     """
+
+    warn('Function is performing the transpose operation. Use rotation3d_x_ag instead')
 
     c = np.cos(angle)
     s = np.sin(angle)
@@ -716,6 +749,9 @@ def rotation3d_y(angle):
 
 def rotation3d_z(angle):
     r"""
+    Warnings:
+        this function is transposed and undoes the yaw rotation. Use :func:`rotation3d_z_ag` instead.
+
     Rotation matrix about the z axis by the input angle :math:`\Psi`
 
     .. math::
@@ -732,11 +768,40 @@ def rotation3d_z(angle):
         np.array: 3x3 rotation matrix about the z axis
 
     """
+    warn('This function is transposed and undoes the yaw rotation. Use rotation3d_z_ag instead.')
+
     c = np.cos(angle)
     s = np.sin(angle)
     mat = np.zeros((3, 3))
     mat[0, :] = [  c,  -s, 0.0]
     mat[1, :] = [  s,   c, 0.0]
+    mat[2, :] = [0.0, 0.0, 1.0]
+    return mat
+
+
+def rotation3d_z_ag(angle):
+    r"""
+    Rotation matrix about the z axis by the input angle :math:`\Psi`
+
+    .. math::
+        \mathbf{\tau}_z = \begin{bmatrix}
+            \cos(\Psi) & \sin(\Psi) & 0 \\
+            -\sin(\Psi) & \cos(\Psi) & 0 \\
+            0 & 0 & 1
+        \end{bmatrix}
+
+    Args:
+        angle (float): angle of rotation in radians about the z axis
+
+    Returns:
+        np.array: 3x3 rotation matrix about the z axis
+
+    """
+    c = np.cos(angle)
+    s = np.sin(angle)
+    mat = np.zeros((3, 3))
+    mat[0, :] = [  c,  s, 0.0]
+    mat[1, :] = [ -s,   c, 0.0]
     mat[2, :] = [0.0, 0.0, 1.0]
     return mat
 
@@ -751,18 +816,21 @@ def rotate_crv(crv_in, axis, angle):
 
 
 def euler2rot(euler):
-    """
-    Transforms Euler angles (roll, pitch and yaw :math:`\\Phi, \\Theta, \\Psi`) into a 3x3 rotation matrix describing
-    the rotation between frame A and frame B.
+    r"""
+    Warnings:
+        With the function as present, two of the rotation matrices are transposed.
+
+    Transforms Euler angles (roll, pitch and yaw :math:`\Phi, \Theta, \Psi`) into a 3x3 rotation matrix describing
+    the rotation between frame G and frame A.
 
     The rotations are performed successively, first in yaw, then in pitch and finally in roll.
 
     .. math::
 
-        \\mathbf{T}_{BE} = \\mathbf{\\tau}_x(\\Phi) \\mathbf{\\tau}_y(\\Theta) \\mathbf{\\tau}_z(\\Psi)
+        \mathbf{T}_{AG} = \mathbf{\tau}_x(\Phi) \mathbf{\tau}_y(\Theta) \mathbf{\tau}_z(\Psi)
 
 
-    where :math:`\\mathbf{\\tau}` represents the rotation about the subscripted axis.
+    where :math:`\mathbf{\tau}` represents the rotation about the subscripted axis.
 
     Args:
         euler (np.array): 1x3 array with the Euler angles in the form ``[roll, pitch, yaw]``
@@ -771,7 +839,7 @@ def euler2rot(euler):
         np.array: 3x3 transformation matrix describing the rotation by the input Euler angles.
 
     See Also:
-        The individual transformations represented by the :math:`\\mathbf{\\tau}` matrices are described in:
+        The individual transformations represented by the :math:`\mathbf{\tau}` matrices are described in:
 
         .. py:module:: sharpy.utils.algebra.rotation3d_x
 
@@ -780,16 +848,116 @@ def euler2rot(euler):
         .. py:module:: sharpy.utils.algebra.rotation3d_z
 
     """
+
+    warn('Two of the rotation matrices are transposed, undoing the roll and yaw rotations. Use euler2rotation_ag '
+            'instead')
     rot = rotation3d_z(euler[2])
     rot = np.dot(rotation3d_y(euler[1]), rot)
     rot = np.dot(rotation3d_x(euler[0]), rot)
     return rot
 
+def euler2rotation_ag(euler):
+    r"""
+    Transforms Euler angles (roll, pitch and yaw :math:`\Phi, \Theta, \Psi`) into a 3x3 rotation matrix describing
+    the rotation between frame G and frame A.
+
+    The rotations are performed successively, first in yaw, then in pitch and finally in roll.
+
+    .. math::
+
+        \mathbf{T}_{AG} = \mathbf{\tau}_x(\Phi) \mathbf{\tau}_y(\Theta) \mathbf{\tau}_z(\Psi)
+
+
+    where :math:`\mathbf{\tau}` represents the rotation about the subscripted axis.
+
+    Args:
+        euler (np.array): 1x3 array with the Euler angles in the form ``[roll, pitch, yaw]``
+
+    Returns:
+        np.array: 3x3 transformation matrix describing the rotation by the input Euler angles.
+
+    See Also:
+        The individual transformations represented by the :math:`\mathbf{\tau}` matrices are described in:
+
+        .. py:module:: sharpy.utils.algebra.rotation3d_x
+
+        .. py:module:: sharpy.utils.algebra.rotation3d_y
+
+        .. py:module:: sharpy.utils.algebra.rotation3d_z
+    """
+    rot = rotation3d_z_ag(euler[2])
+    rot = np.dot(rotation3d_y(euler[1]), rot)
+    rot = np.dot(rotation3d_x_ag(euler[0]), rot)
+    return rot
 
 def euler2quat(euler):
+    """
+    Warnings:
+        This function uses :func:`euler2rot` which has two of the transformations transposed
+
+    Args:
+        euler: Euler angles
+
+    Returns:
+        np.ndarray: Equivalent quaternion.
+    """
     euler_rot = euler2rot(euler)  # this is Cag
     quat = rotation2quat(euler_rot.T)
     return quat
+
+def euler2quat_ag(euler):
+    C_ag_euler = euler2rotation_ag(euler)
+    quat = rotation2quat(C_ag_euler.T)
+    return quat
+
+def quat2euler(quat):
+    r"""
+    Quaternion to Euler angles transformation.
+
+    Transforms a normalised quaternion :math:`\chi\longrightarrow[\phi, \theta, \psi]` to roll, pitch and yaw angles
+    respectively.
+
+    The transformation is valid away from the singularity present at:
+
+    .. math:: \Delta = \frac{1}{2}
+
+    where :math:`\Delta = q_0 q_2 - q_1 q_3`.
+
+    The transformation is carried out as follows:
+
+    .. math::
+        \psi &= \arctan{\left(2\frac{q_0q_3+q_1q_2}{1-2(q_2^2+q_3^2)}\right)} \\
+        \theta &= \arcsin(2\Delta) \\
+        \phi &= \arctan\left(2\frac{q_0q_1 + q_2q_3}{1-2(q_1^2+q_2^2)}\right)
+
+    Args:
+        quat (np.ndarray): Normalised quaternion.
+
+    Returns:
+        np.ndarray: Array containing the Euler angles :math:`[\phi, \theta, \psi]` for roll, pitch and yaw, respectively.
+
+    References:
+        Blanco, J.L. - A tutorial on SE(3) transformation parameterizations and on-manifold optimization. Technical
+        Report 012010. ETS Ingenieria Informatica. Universidad de Malaga. 2013.
+    """
+
+    assert np.abs(np.linalg.norm(quat)-1.0) < 1.e6, 'Input quaternion is not normalised'
+
+    q0 = quat[0]
+    q1 = quat[1]
+    q2 = quat[2]
+    q3 = quat[3]
+
+    delta = quat[0]*quat[2] - quat[1]*quat[3]
+
+    if np.abs(delta) > 0.9 * 0.5:
+        warn('Warning, approaching singularity. Delta %.3f for singularity at Delta=0.5')
+
+    yaw = -np.arctan(2*(q0*q3+q1*q2)/(1-2*(q2**2+q3**2)))
+    pitch = np.arcsin(2*delta)
+    roll = -np.arctan(2*(q0*q1+q2*q3)/(1-2*(q1**2+q2**2)))
+
+    return np.array([roll, pitch, yaw])
 
 
 def crv_dot2omega(crv, crv_dot):
@@ -1145,6 +1313,96 @@ def der_quat_wrt_crv(quat0):
     return Der
 
 
+def der_Ceuler_by_v(euler, v):
+    r"""
+    Provides the derivative of the product between the rotation matrix :math:`C^{AG}(\mathbf{\Theta})` and a constant
+    vector, :math:`\mathbf{v}`, with respect to the Euler angles, :math:`\mathbf{\Theta}=[\phi,\theta,\psi]^T`:
+
+    .. math::
+        \frac{\partial}{\partial\Theta}(C^{AG}(\Theta)\mathbf{v}^G) = \frac{\partial \mathbf{f}}{\partial\mathbf{\Theta}}
+
+    where :math:`\frac{\partial \mathbf{f}}{\partial\mathbf{\Theta}}` is the resulting 3 by 3 matrix.
+
+    Being :math:`C^{AG}(\Theta)` the rotation matrix from the G frame to the A frame in terms of the Euler angles
+    :math:`\Theta` as:
+
+    .. math::
+        C^{AG}(\Theta) = \begin{bmatrix}
+        \cos\theta\cos\psi & \cos\theta\sin\psi & -\sin\theta \\
+        -\cos\phi\sin\psi + \sin\phi\sin\theta\cos\psi & \cos\phi\cos\psi + \sin\phi\sin\theta\sin\psi & \sin\phi\cos\theta \\
+        \sin\phi\sin\psi + \cos\phi\sin\theta\cos\psi & -\sin\phi\cos\psi + \cos\psi\sin\theta\sin\psi & \cos\phi\cos\theta
+        \end{bmatrix}
+
+    the components of the derivative at hand are the following, where
+    :math:`f_{1\theta} = \frac{\partial \mathbf{f}_1}{\partial\theta}`.
+
+    .. math::
+        f_{1\phi} =&0 \\
+        f_{1\theta} = &-v_1\sin\theta\cos\psi \\
+        &-v_2\sin\theta\sin\psi \\
+        &-v_3\cos\theta \\
+        f_{1\psi} = &-v_1\cos\theta\sin\psi + v_2\cos\theta\cos\psi
+
+    .. math::
+        f_{2\phi} = &+v_1(\sin\phi\sin\psi + \cos\phi\sin\theta\cos\psi) + \\
+        &+v_2(-\sin\phi\cos\psi + \cos\phi\sin\theta\sin\psi) + \\
+        &+v_3(\cos\phi\cos\theta) \\
+        f_{2\theta} = &+v_1(\sin\phi\cos\theta\cos\psi) + \\
+        &+v_2(\sin\phi\cos\theta\sin\psi) +\\
+        &-v_3(\sin\phi\sin\theta) \\
+        f_{2\psi} = &+v_1(-\cos\phi\cos\psi - \sin\phi\sin\theta\sin\psi) + \\
+        &+v_2(-\cos\phi\sin\psi + \sin\phi\sin\theta\cos\psi)
+
+    .. math::
+        f_{3\phi} = &+v_1(\cos\phi\sin\psi-\sin\phi\sin\theta\cos\psi) + \\
+        &+v_2(-\cos\phi\cos\psi - \sin\phi\sin\theta\sin\psi) + \\
+        &+v_3(-\sin\phi\cos\theta) \\
+        f_{3\theta} = &+v_1(\cos\phi\cos\theta\cos\psi)+\\
+        &+v_2(\cos\phi\cos\theta\sin\psi) + \\
+        &+v_3(-\cos\phi\sin\theta) \\
+        f_{3\psi} = &+v_1(\sin\phi\cos\psi-\cos\phi\sin\theta\sin\psi)  + \\
+        &+v_2(\sin\phi\sin\psi + \cos\phi\sin\theta\cos\psi)
+
+    Args:
+        euler (np.ndarray): Vector of Euler angles, :math:`\mathbf{\Theta} = [\phi, \theta, \psi]`, in radians.
+        v (np.ndarray): 3 dimensional vector in G frame.
+
+    Returns:
+        np.ndarray: Resulting 3 by 3 matrix :math:`\frac{\partial \mathbf{f}}{\partial\mathbf{\Theta}}`.
+
+    """
+
+    res = np.zeros((3, 3))
+
+    # Notation shorthand. sin and cos of psi (roll)
+    sp = np.sin(euler[0])
+    cp = np.cos(euler[0])
+
+    # Notation shorthand. sin and cos of theta (pitch)
+    st = np.sin(euler[1])
+    ct = np.cos(euler[1])
+
+    # Notation shorthand. sin and cos of psi (yaw)
+    ss = np.sin(euler[2])
+    cs = np.cos(euler[2])
+
+    v1 = v[0]
+    v2 = v[1]
+    v3 = v[2]
+
+    res[0, 0] = 0
+    res[0, 1] = - v1*st*cs - v2*st*ss - v3*ct
+    res[0, 2] = -v1*ct*ss + v2*ct*cs
+
+    res[1, 0] = v1*(sp*ss + cp*st*cs) + v2*(-sp*cs + cp*st*ss) + v3*cp*ct
+    res[1, 1] = v1*(sp*ct*cs) + v2*sp*ct*ss - v3*sp*st
+    res[1, 2] = v1*(-cp*cs - sp*st*ss) + v2*(-cp*ss + sp*st*cs)
+
+    res[2, 0] = v1*(cp*ss - sp*st*cs) + v2*(-cp*cs-sp*st*ss) + v3*(-sp*ct)
+    res[2, 1] = v1*cp*ct*cs + v2*cp*ct*ss - v3*cp*st
+    res[2, 2] = v1*(sp*cs - cp*st*ss) + v2*(sp*ss + cp*st*cs)
+
+    return res
 
 def cross3(v,w):
     """
