@@ -95,7 +95,7 @@ class GustVelocityField(generator_interface.BaseGenerator):
         self.settings_default['span'] = 0.
 
         self.settings_types['file'] = 'str'
-        self.settings_default['file'] = None
+        self.settings_default['file'] = ''
 
         self.u_inf = 0.
         self.u_inf_direction = None
