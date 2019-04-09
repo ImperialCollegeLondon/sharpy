@@ -25,11 +25,19 @@ Name                          Type       Description                            
 ============================  =========  ===============================================    ==========
 ``dt``                        ``float``  Time increment                                     ``0.1``
 ``integr_order``              ``int``    Finite difference order for bound circulation      ``2``
+``density``                   ``float``  Air density                                        ``1.225``
 ``ScalingDict``               ``dict``   Dictionary with scaling gains. See Notes.
 ``remove_predictor``          ``bool``   Remove predictor term from UVLM system assembly    ``True``
 ``use_sparse``                ``bool``   Use sparse form of A and B state space matrices    ``True``
 ``velocity_field_generator``  ``str``    Selected velocity generator                        ``None``
 ``velocity_filed_input``      ``dict``   Settings for the velocity generator                ``None``
+``track_body``                ``bool``   If True, the linearised grid will follow the       ``False``
+                                         A frame or a body (for multi-body solution)
+``track_body_number``         ``int``    If -1, the linearised grid will follow the         ``-1``
+                                         A frame. Otherwise, this is the number of the 
+                                         body to track in a multi-body solution. This 
+                                         option also specifies where to read the 
+                                         rotational speed at linearisation point
 ============================  =========  ===============================================    ==========
 '''
 
@@ -55,6 +63,21 @@ settings_default_dynamic['remove_predictor'] = True
 
 settings_types_dynamic['use_sparse'] = 'bool'
 settings_default_dynamic['use_sparse'] = True
+
+settings_types_dynamic['velocity_field_generator'] = 'str'
+settings_default_dynamic['velocity_field_generator'] = 'SteadyVelocityField'
+
+settings_types_dynamic['velocity_field_input'] = 'dict'
+settings_default_dynamic['velocity_field_input'] = {}
+
+settings_types_dynamic['physical_model'] = 'bool'
+settings_default_dynamic['physical_model'] = True
+
+settings_types_dynamic['track_body'] = 'bool'
+settings_default_dynamic['track_body'] = False
+
+settings_types_dynamic['track_body_number'] = 'int'
+settings_default_dynamic['track_body_number'] = -1
 
 
 class Static():
@@ -1989,8 +2012,8 @@ class DynamicBlock(Dynamic):
 
 
         if self.remove_predictor:
-            print("Predictor will not be removed! " + 
-                                         "(Though this can be done in balfreq)")
+            print( "Predictor not be removed! " + 
+                   "(Though this is accounted for in all methods)" )
 
         self.SS = libss.ss_block(Ass, Bss, Css, Dss, 
                                        self.S_x, self.S_u, self.S_y, dt=self.dt)
@@ -3156,7 +3179,7 @@ if __name__ == '__main__':
 
                         ### ----- Dynamic class
                         Dyn=Dynamic(self.tsdata, dt=0.05, ScalingDict=ScalingDict,
-                                    integr_order=integr_order, RemovePredictor=remove_predictor,
+                                    integr_order=integr_order, Remove=remove_predictor,
                                     UseSparse=use_sparse)
                         Dyn.assemble_ss()
                         Dyn.nondimss()
@@ -3188,5 +3211,6 @@ if __name__ == '__main__':
                         assert ermax<1e-14,\
                             ( 'solve_step methods in Dynamic and BlockDynamic not matching '+
                                                     ' (relative error %.2e)!' %ermax)
+
 
     unittest.main()

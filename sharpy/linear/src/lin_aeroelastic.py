@@ -118,6 +118,10 @@ class LinAeroEla():
                 integr_order=settings_here['integr_order'].value,
                 ScalingDict=settings_here['ScalingDict'])
 
+        # add rotational speed
+        for ii in range(self.linuvlm.MS.n_surf):
+            self.linuvlm.MS.Surfs[ii].omega = self.tsstr.for_vel[3:]
+
 
     def reshape_struct_input(self):
         """ Reshape structural input in a column vector """
