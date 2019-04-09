@@ -593,16 +593,39 @@ def crv2triad_vec(crv_vec):
 
 
 def quat2rotation(q1):
-    """@brief Calculate rotation matrix based on quaternions.
-    See Aircraft Control and Simulation, pag. 31, by Stevens, Lewis.
-    Copied from S. Maraniello's SHARPy
+    r"""Calculate rotation matrix based on quaternions.
 
-    Remark: if B is a FoR obtained rotating a FoR A of angle fi about an axis n
-    (remind n will be invariant during the rotation), and q is the related
-    quaternion q(fi,n), the function will return the matrix Cab such that:
-        - Cab rotates A onto B
-        - Cab transforms the coordinates of a vector defined in B component to
-        A components.
+    If B is a FoR obtained rotating a FoR A by an angle :math:`\phi` about an axis :math:`\mathbf{n}`
+    (recall :math:`\mathbf{n}` will be invariant during the rotation), and :math:`\mathbf{q}` is the related
+    quaternion, :math:`\mathbf{q}(\phi,\mathbf{n})`, the function will return the matrix :math:`C^{AB}` such that:
+        - :math:`C^{AB}` rotates FoR A onto FoR B.
+        - :math:`C^{AB}` transforms the coordinates of a vector defined in B component to
+          A components i.e. :math:`\mathbf{v}^A = C^{AB}(\mathbf{q})\mathbf{v}^B`.
+
+    .. math::
+        C^{AB}(\mathbf{q}) = \begin{pmatrix}
+            q_0^2 + q_1^2 - q_2^2 -q_3^2 & 2(q_1 q_2 - q_0 q_3) & 2(q_1 q_3 + q_0 q_2) \\
+            2(q_1 q_2 + q_0 q_3) & q_0^2 - q_1^2 + q_2^2 - q_3^2 & 2(q_2 q_3 - q_0 q_1) \\
+            2(q_1 q_3 - q_0 q_2) & 2(q_2 q_3 + q_0 q_1) & q_0^2 -q_1^2 -q_2^2 +q_3^2
+            \end{pmatrix}
+
+    Notes:
+        The inverse rotation is defined as the transpose of the matrix :math:`C^{BA} = C^{{AB}^T}`.
+
+        In typical SHARPy applications, the quaternion relation between the A and G frames is expressed
+        as :math:`C^{GA}(\mathbf{q})`, and in the context of this function it corresponds to:
+
+        >>> C_ga = quat2rotation(q1)
+        >>> C_ag = quat2rotation.T(q1)
+
+    Args:
+        q (np.ndarray): Quaternion :math:`\mathbf{q}(\phi, \mathbf{n})`.
+
+    Returns:
+        np.ndarray: :math:`C^{AB}` rotation matrix from FoR B to FoR A.
+
+    References:
+        Stevens, L. Aircraft Control and Simulation. 1985. pg 41
     """
 
     q = q1.copy(order='F')
@@ -868,7 +891,7 @@ def der_CquatT_by_v(q,v):
     """
     Being C=C(quat).T the projection matrix depending on the quaternion q and
     defined as C=quat2rotation(q).T, the function returns the derivative, w.r.t. the
-    quanternion components, of the vector dot(C,v), where v is a constant
+    quaternion components, of the vector dot(C,v), where v is a constant
     vector.
     The elements of the resulting derivative matrix D are ordered such that:
         d(C*v) = D*d(q)
@@ -1080,6 +1103,19 @@ def der_CcrvT_by_v(fv0,v):
     T0=crv2tan(fv0)
 
     return np.dot( skew( np.dot(Cba0,v) ),T0)
+
+
+def cross3(v,w):
+    """
+    Computes the cross product of two vectors (v and w) with size 3
+    """
+
+    res = np.zeros((3,),)
+    res[0] = v[1]*w[2] - v[2]*w[1]
+    res[1] = -v[0]*w[2] + v[2]*w[0]
+    res[2] = v[0]*w[1] - v[1]*w[0]
+
+    return res
 
 
 def der_quat_wrt_crv(quat0):

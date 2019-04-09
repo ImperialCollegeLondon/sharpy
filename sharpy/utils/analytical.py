@@ -381,7 +381,7 @@ def flat_plate_analytical(kv,x_ea_perc,x_fh_perc,input_seq,output_seq,
 			if input_seq[ii]=='gust_sears':
 				# Fx,Mz null
 				if output_seq[oo]=='Fy':
-					Yfreq_an[oo,ii,:]=an.sears_CL_freq_resp(kv)
+					Yfreq_an[oo,ii,:]=sears_CL_freq_resp(kv)
 
 			### Theodorsen
 			if input_seq[ii]=='pitch':

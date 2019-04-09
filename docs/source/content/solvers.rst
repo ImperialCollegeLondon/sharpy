@@ -32,8 +32,8 @@ Aeroelastic Solvers
 Modal Solvers
 +++++++++++++
 
-.. autoclass:: sharpy.solvers.modal.Modal
-    :members:
+.. toctree::
+        solvers/modal
 
 Flight Solvers
 ++++++++++++++

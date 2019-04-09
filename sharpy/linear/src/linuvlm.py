@@ -591,6 +591,44 @@ class Dynamic(Static):
                           'nondim': 0., 
                           'assemble': 0.}
 
+        # Initialise State Space
+        self.SS = None
+
+    @property
+    def Nu(self):
+        """Number of inputs :math:`m` to the system."""
+        if self.SS is not None:
+            if self.SS.B.shape.__len__() == 1:
+                self.Nu = 1
+            else:
+                self.Nu = self.SS.B.shape[1]
+        return self._Nu
+
+    @Nu.setter
+    def Nu(self, value):
+        self._Nu = value
+
+    @property
+    def Nx(self):
+        """Number of states :math:`n` of the system."""
+        if self.SS is not None:
+            self.Nx = self.SS.B.shape[0]
+        return self._Nx
+
+    @Nx.setter
+    def Nx(self, value):
+        self._Nx = value
+
+    @property
+    def Ny(self):
+        """Number of outputs :math:`p` of the system."""
+        if self.SS is not None:
+            self.Ny = self.SS.C.shape[0]
+        return self._Ny
+
+    @Ny.setter
+    def Ny(self, value):
+        self._Ny = value
 
     def nondimss(self):
         """
@@ -1230,7 +1268,7 @@ class Dynamic(Static):
             Ygamma_star=Cw_cpx.dot(Ygamma)
 
             if self.integr_order==1:
-                dfact=(bp1 + bp0/zval)
+                dfact=(bp1 + b0/zval)
                 Qctrl = np.vstack( [Ygamma, Ygamma_star, dfact * Ygamma] )
             elif self.integr_order==2:
                 dfact= bp1 + b0/zval + bm1/zval**2 
