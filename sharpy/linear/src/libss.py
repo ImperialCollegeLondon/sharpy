@@ -105,10 +105,10 @@ class ss():
         assert self.A.shape == (self.states, self.states), 'A and B rows not matching'
         assert self.C.shape[1] == self.states, 'A and C columns not matching'
         assert self.D.shape[0] == self.outputs, 'C and D rows not matching'
-        if self.inputs == 1:
-            assert self.D.shape.__len__() == 1, 'B and D columns not matching'
-        else:
+        try:
             assert self.D.shape[1] == self.inputs, 'B and D columns not matching'
+        except IndexError:
+            assert self.inputs == 1, 'D shape does not match number of inputs'
 
     @property
     def inputs(self):
