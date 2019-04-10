@@ -482,6 +482,10 @@ def generate_strip(node_info, airfoil_db, aligned_grid, orientation_in=np.array(
     Cab = algebra.crv2rotation(node_info['beam_psi'])
 
     rot_angle = algebra.angle_between_vectors_sign(orientation_in, Cab[:, 1], Cab[:, 2])
+    if np.sign(np.dot(orientation_in, Cab[:, 1])) > 0:
+        rot_angle = 0.0
+    else:
+        rot_angle = -np.pi
     Crot = algebra.rotation3d_z(-rot_angle)
 
     c_sweep = np.eye(3)
