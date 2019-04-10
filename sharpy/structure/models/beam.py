@@ -145,7 +145,7 @@ class Beam(BaseStructure):
                     self.connectivities[ielem, :],
                     self.ini_info.pos[self.connectivities[ielem, :], :],
                     self.frame_of_reference_delta[ielem, :, :],
-                    self.structural_twist[self.connectivities[ielem, :]],
+                    self.structural_twist[ielem, :],
                     self.beam_number[ielem],
                     self.elem_stiffness[ielem],
                     self.elem_mass[ielem]))
@@ -590,7 +590,7 @@ class Beam(BaseStructure):
                     ibody_beam.connectivities[ielem, :],
                     ibody_beam.ini_info.pos[ibody_beam.connectivities[ielem, :], :],
                     ibody_beam.frame_of_reference_delta[ielem, :, :],
-                    ibody_beam.structural_twist[ibody_beam.connectivities[ielem, :]],
+                    ibody_beam.structural_twist[ielem, :],
                     ibody_beam.beam_number[ielem],
                     ibody_beam.elem_stiffness[ielem],
                     ibody_beam.elem_mass[ielem]))
