@@ -86,6 +86,7 @@ class Aerogrid(object):
                                                    airfoil_coords[:, 1],
                                                    kind='quadratic',
                                                    copy=False,
+                                                   fill_value='extrapolate',
                                                    assume_sorted=True))
         try:
             self.n_control_surfaces = np.sum(np.unique(self.aero_dict['control_surface']) >= 0)
@@ -205,10 +206,10 @@ class Aerogrid(object):
                 else:
                     global_node_in_surface[i_surf].append(i_global_node)
 
-                master_elem, master_elem_node = beam.master[i_elem, i_local_node, :]
-                if master_elem < 0:
-                    master_elem = i_elem
-                    master_elem_node = i_local_node
+                # master_elem, master_elem_node = beam.master[i_elem, i_local_node, :]
+                # if master_elem < 0:
+                    # master_elem = i_elem
+                    # master_elem_node = i_local_node
 
                 # find the i_surf and i_n data from the mapping
                 i_n = -1
@@ -436,7 +437,7 @@ def generate_strip(node_info, airfoil_db, aligned_grid, orientation_in=np.array(
     for i_M in range(node_info['M'] + 1):
         strip_coordinates_b_frame[1, i_M] -= node_info['eaxis']
 
-    chord_line_b_frame = strip_coordinates_b_frame[:, -1] - strip_coordinates_b_frame[:, 0]
+    # chord_line_b_frame = strip_coordinates_b_frame[:, -1] - strip_coordinates_b_frame[:, 0]
     cs_velocity = np.zeros_like(strip_coordinates_b_frame)
 
     # control surface deflection
