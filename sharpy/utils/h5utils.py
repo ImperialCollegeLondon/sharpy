@@ -75,12 +75,16 @@ def check_aero_dict(aero_dict):
 # --------------------------------------------------------------- Reading tools
 
 
-def readh5(filename):
+def readh5(filename, GroupName = None):
     '''
     Read the HDF5 file 'filename' into a class. Groups within the hdf5 file are 
     by default loaded as sub classes, unless they include a _read_as attribute 
     (see sharpy.postproc.savedata). In this case, group can be loaded as classes, 
     dictionaries, lists or tuples. 
+
+    filename: string to file location
+    GroupName = string or list of strings. Default is None: if given, allows 
+    reading a specific group h5 file.
 
     Warning:
     - groups that need to be read as lists and tuples are assumed to conform to 
@@ -96,9 +100,15 @@ def readh5(filename):
     hdfile.visit(NamesList.append)
     
     ### Identify higher level groups / attributes
-    MainLev=[]
-    for name in NamesList:
-        if '/' not in name: MainLev.append(name)
+    if GroupName is None:
+        MainLev=[]
+        for name in NamesList:
+            if '/' not in name: MainLev.append(name)
+    else:
+        if type(GroupName) is list:
+            MainLev = GroupName
+        else:
+            MainLev = [GroupName]
 
     ### Loop through higher level
     for name in MainLev:
