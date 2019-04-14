@@ -212,6 +212,21 @@ class ss():
 		self.states=N
 
 
+	def max_eig(self):
+		'''
+		Returns most unstable eigenvalue
+		'''
+
+		ev = np.linalg.eigvals(self.A)
+
+		if self.dt is None:
+			return np.max(ev.real)
+		else:
+			return np.max(np.abs(ev))
+
+
+
+
 class ss_block():
 	'''
 	State-space model in block form. This class has the same purpose as "ss", 
@@ -399,6 +414,30 @@ class ss_block():
 
 
 # ---------------------------------------- Methods for state-space manipulation
+
+
+def project(ss_here,WT,V):
+	'''
+	Given 2 transformation matrices, (WT,V) of shapes (Nk,self.states) and
+	 (self.states,Nk) respectively, this routine returns a projection of the 
+	 state space ss_here according to:
+
+		Anew = WT A V
+		Bnew = WT B
+		Cnew = C V
+		Dnew = D
+
+	The projected model has the same number of inputs/outputs as the original 
+	one, but Nk states.
+	'''
+
+	Ap = libsp.dot( WT, libsp.dot(ss_here.A, V) )
+	Bp = libsp.dot( WT, ss_here.B)
+	Cp = libsp.dot( ss_here.C, V)
+	
+	return ss(Ap,Bp,Cp,ss_here.D,ss_here.dt)
+
+
 
 def couple(ss01,ss02,K12,K21,out_sparse=False):
 	'''
@@ -1284,12 +1323,21 @@ def get_freq_from_eigs(eigs,dlti=True):
 # --------------------------------------------------------------------- Testing
 
 
-def random_ss(Nx,Nu,Ny,dt=None,use_sparse=False):
+def random_ss(Nx,Nu,Ny,dt=None,use_sparse=False,stable=True):
 	'''
 	Define random system from number of states (Nx), inputs (Nu) and output (Ny).
 	'''
 
-	A=np.random.rand(Nx,Nx)
+	A=np.random.rand(Nx,Nx)-.5
+	if stable:
+		ev,U=np.linalg.eig(A)
+		evabs=np.abs(ev)
+
+		for ee in range(len(ev)):
+			if evabs[ee]>0.99:
+				ev[ee]/=1.1*evabs[ee]
+		A = np.dot(U*ev, np.linalg.inv(U) ).real
+
 	B=np.random.rand(Nx,Nu)
 	C=np.random.rand(Ny,Nx)
 	D=np.random.rand(Ny,Nu)

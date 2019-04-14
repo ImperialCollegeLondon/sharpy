@@ -2324,7 +2324,6 @@ class DynamicBlock(Dynamic):
         sinv=hsv**(-0.5)
         T=np.dot(Zc,Vh.T*sinv)
         Ti=np.dot((U*sinv).T,Zo.T)
-        # Zc,Zo=None,None
 
         ### build frequency balanced model
         Ab,Bb,Cb = self.SS.project( Ti, T, by_arrays=True, overwrite=False )
@@ -2358,6 +2357,8 @@ class DynamicBlock(Dynamic):
             self.Ti=Ti
             self.Zc=Zc
             self.Zo=Zo
+            self.svd_res={ 'U': U, 'hsv': hsv, 'Vh': Vh }
+
 
 
     def solve_step(self, x_n, u_n, u_n1=None, transform_state=False):

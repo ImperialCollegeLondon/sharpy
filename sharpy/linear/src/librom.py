@@ -13,17 +13,18 @@ import sharpy.linear.src.libsparse as libsp
 import sharpy.linear.src.libss as libss
 
 
-def balreal_direct_py(A,B,C,DLTI=True,Schur=False):
-	'''
-	Find balanced realisation of continuous (DLTI=False) and discrete (DLTI=True) 
-	time of LTI systems using  scipy libraries. 
 
-	Warning: this function may be less computationally efficient than the balreal
-	Matlab implementation and does not offer the option to bound the realisation
-	in frequency and time.
+def balreal_direct_py(A,B,C,DLTI=True,Schur=False,full_outputs=False):
+	'''
+	Find balanced realisation of continuous or discrete time LTI systems using  
+	direct method.
+
+	Warning: this function is omputationally inefficient.
 
 	Notes: Lyapunov equations are solved using Barlets-Stewart algorithm for
 	Sylvester equation, which is based on A matrix Schur decomposition.
+
+	Ref. Antoulas 2015, Approximation of Large-Scale Dynamical Systems
 	'''
 
 
@@ -54,26 +55,31 @@ def balreal_direct_py(A,B,C,DLTI=True,Schur=False):
 		Wo=sollyap(A.T,np.dot(C.T,C))
 
 
-	# Choleski factorisation: W=Q Q.T
-	Qc=scalg.cholesky(Wc).T
-	Qo=scalg.cholesky(Wo).T
+	### Find transformation matrices
+	# avoid Cholevski - unstable
+	hsv_sq, Tinv  = np.linalg.eig( np.dot(Wc,Wo) )
+	T = np.linalg.inv(Tinv)	
 
-	# build M matrix and SVD
-	M=np.dot(Qo.T,Qc)
-	U,s,Vh=scalg.svd(M)
-	S=np.diag(s)
-	Sinv=np.diag(1./s)
-	V=Vh.T
+	# sort
+	iisort = np.argsort(hsv_sq)[::-1]
+	hsv = np.sqrt(hsv_sq[iisort])
+	T = T[:,iisort]
+	Tinv = Tinv[iisort,:]
 
-	# Build transformation matrices
-	T=np.dot(Qc,np.dot(V,np.sqrt(Sinv)))
-	Tinv=np.dot(np.sqrt(Sinv),np.dot(U.T,Qo.T))
+	if full_outputs is False:
+		return hsv, T, Tinv
 
-	return S,T,Tinv
+	else:
+		# get square-root factors
+		UT,QoT = scalg.qr( np.dot(np.diag(np.sqrt(hsv)),Tinv), pivoting=False ) 
+		Vh, QcT = scalg.qr( np.dot(T,np.diag(np.sqrt(hsv))).T, pivoting=False )
+
+		return hsv, UT.T,Vh, QcT.T,QoT.T
+
 
 
 def balreal_iter(A,B,C,lowrank=True,tolSmith=1e-10,tolSVD=1e-6,kmin=None,
-								   					  tolAbs=False,Print=False):
+								   	  tolAbs=False,Print=False, outFacts=False):
 	'''
 	Find balanced realisation of DLTI system. 
 
@@ -211,18 +217,21 @@ def balreal_iter(A,B,C,lowrank=True,tolSmith=1e-10,tolSVD=1e-6,kmin=None,
 	cc,co=Qck.shape[1],Qok.shape[1]
 	if Print:
 		print('cc=%.2d, co=%.2d'%(cc,co))
-	
+		print('rank(Zc)=%.4d\trank(Zo)=%.4d'%(rcmax,romax) )	
+
 	# build M matrix and SVD
 	M=libsp.dot(Qok.T,Qck)
 	U,s,Vh=scalg.svd(M,full_matrices=False)
-	sinv=s**(-0.5)
-	T=libsp.dot(Qck,Vh.T*sinv)
-	Tinv=np.dot((U*sinv).T,Qok.T)
 
-	if Print:
-		print('rank(Zc)=%.4d\trank(Zo)=%.4d'%(rcmax,romax) )
+	if outFacts:
+		return s, Qck, Qok
 
-	return s,T,Tinv,rcmax,romax
+	else:
+		sinv=s**(-0.5)
+		T=libsp.dot(Qck,Vh.T*sinv)
+		Tinv=np.dot((U*sinv).T,Qok.T)
+
+		return s,T,Tinv,rcmax,romax
 
 
 def smith_iter(S,T,tol=1e-8,Square=True):
@@ -310,6 +319,10 @@ def res_discrete_lyap(A,Q,Z,Factorised=True):
 	If Factorised option is true, 
 		X=Z*Z.T
 	otherwise X=Z is chosen. 
+
+	Reminder:
+	contr: A W A.T - W = - B B.T
+	obser: A.T W A - W = - C.T C	
 	'''
 
 	if Factorised: 
@@ -723,7 +736,7 @@ def balfreq(SS,DictBalFreq):
 
 	outs=(SSb, hsv)
 	if DictBalFreq['output_modes']:
-		outs += (T,Ti,Zc,Zo)
+		outs += (T,Ti,Zc,Zo,U,Vh)
 	return outs
 
 
@@ -1016,5 +1029,56 @@ def eigen_dec(A,B,C,dlti=True,N=None,eigs=None,UR=None,URinv=None,
 
 
 	return Aproj,Bproj,Cproj,Nlist
+
+
+
+if __name__=='__main__':
+	import unittest
+	import copy
+
+	class Test_librom():
+
+
+		def test_balreal_direct_py(self):
+
+			Nx,Nu,Ny = 6, 4, 2
+			ss = libss.random_ss(Nx,Nu,Ny,dt=0.1,stable=True)
+
+			### direct balancing
+			hsv,T,Ti = balreal_direct_py( ss.A,ss.B,ss.C,
+										  DLTI=True,full_outputs=False)
+			ssb = copy.deepcopy(ss)
+			ssb.project(Ti,T)
+
+			# compare freq. resp.
+			kv = np.array([0., .5, 3., 5.67])
+			Y = ss.freqresp(kv)
+			Yb = ssb.freqresp(kv)
+			er_max = np.max(np.abs(Yb-Y))
+			assert er_max/np.max(np.abs(Y))<1e-10, 'error too large'
+
+			# test full_outputs option
+			hsv, U,Vh, Qc,Qo =  balreal_direct_py( ss.A,ss.B,ss.C,
+				                                   DLTI=True,full_outputs=True)
+
+			# build M matrix and SVD
+			sinv=hsv**(-0.5)
+			T2=libsp.dot(Qc,Vh.T*sinv)
+			Ti2=np.dot((U*sinv).T,Qo.T)
+			assert np.linalg.norm(T2-T)<1e-13, 'error too large'
+			assert np.linalg.norm(Ti2-Ti)<1e-13, 'error too large'
+
+			ssb2 = copy.deepcopy(ss)
+			ssb2.project(Ti2,T2)
+			Yb2 = ssb2.freqresp(kv)
+			er_max = np.max(np.abs(Yb2-Y))
+			assert er_max/np.max(np.abs(Y))<1e-10, 'error too large'
+
+
+
+	
+
+
+
 
 
