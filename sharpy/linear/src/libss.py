@@ -724,12 +724,23 @@ def freqresp(SS, wv, dlti=True):
 
 
 def series(SS01, SS02):
-    """
+    r"""
     Connects two state-space blocks in series. If these are instances of DLTI
-    state-space systems, they need to have the same type and time-step.
+    state-space systems, they need to have the same type and time-step. If the input systems are sparse, they are
+    converted to dense.
 
     The connection is such that:
-        u --> SS01 --> SS02 --> y 		==>		u --> SStot --> y
+
+    .. math::
+        u \rightarrow \mathsf{SS01} \rightarrow \mathsf{SS02} \rightarrow y \Longrightarrow
+        u \rightarrow \mathsf{SStot} \rightarrow y
+
+    Args:
+        SS01 (libss.ss): State Space 1 instance. Can be DLTI/CLTI, dense or sparse.
+        SS02 (libss.ss): State Space 2 instance. Can be DLTI/CLTI, dense or sparse.
+
+    Returns
+        libss.ss: Combined state space system in series in dense format.
     """
 
     if type(SS01) is not type(SS02):
@@ -738,21 +749,22 @@ def series(SS01, SS02):
         raise NameError('DLTI systems do not have the same time-step!')
 
     # determine size of total system
-    Nst01, Nst02 = SS01.A.shape[0], SS02.A.shape[0]
+    Nst01, Nst02 = SS01.states, SS02.states
     Nst = Nst01 + Nst02
     Nin = SS01.inputs
     Nout = SS02.outputs
 
     # Build A matrix
     A = np.zeros((Nst, Nst))
-    A[:Nst01, :Nst01] = SS01.A
-    A[Nst01:, Nst01:] = SS02.A
-    A[Nst01:, :Nst01] = libsp.dot(SS02.B, SS01.C)
+
+    A[:Nst01, :Nst01] = libsp.dense(SS01.A)
+    A[Nst01:, Nst01:] = libsp.dense(SS02.A)
+    A[Nst01:, :Nst01] = libsp.dense(libsp.dot(SS02.B, SS01.C))
 
     # Build the rest
-    B = np.concatenate((SS01.B, libsp.dot(SS02.B, SS01.D)), axis=0)
-    C = np.concatenate((libsp.dot(SS02.D, SS01.C), SS02.C), axis=1)
-    D = libsp.dot(SS02.D, SS01.D)
+    B = np.concatenate((libsp.dense(SS01.B), libsp.dense(libsp.dot(SS02.B, SS01.D))), axis=0)
+    C = np.concatenate((libsp.dense(libsp.dot(SS02.D, SS01.C)), libsp.dense(SS02.C)), axis=1)
+    D = libsp.dense(libsp.dot(SS02.D, SS01.D))
 
     SStot = ss(A, B, C, D, dt=SS01.dt)
 
