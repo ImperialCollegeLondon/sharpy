@@ -8,7 +8,7 @@ import numpy as np
 import scipy as sc
 import scipy.linalg as scalg
 import scipy.signal as scsig
-import sharpy.linear.src.libss as libss 
+import sharpy.linear.src.libss as libss
 
 
 class FlexDynamic():
@@ -61,7 +61,7 @@ class FlexDynamic():
 
     2. Run ``self.assemble()``. The method accepts an additional parameter, ``Nmodes``,
     which allows using a lower number of modes than specified in ``self.Nmodes``
-    
+
     Examples:
         >>> self.dlti = True
         >>> self.newmark_damp = 5e-3
@@ -152,6 +152,15 @@ class FlexDynamic():
         self.Kin = None
         self.Kout = None
 
+    @property
+    def num_dof(self):
+        self.num_dof = self.U.shape[0]
+        return self._num_dof
+
+    @num_dof.setter
+    def num_dof(self, value):
+        self._num_dof = value
+
     def assemble(self, Nmodes=None):
         r"""
         Assemble state-space model
@@ -212,7 +221,8 @@ class FlexDynamic():
                         Phi = self.U[:, :Nmodes]
 
                         if self.Ccut is None:
-                            Ccut = np.zeros((Nmodes, Nmodes))
+                            # Ccut = np.zeros((Nmodes, Nmodes))
+                            Ccut = np.dot(Phi.T, np.dot(self.Cstr, Phi))
                         else:
                             Ccut = np.dot(Phi.T, np.dot(self.Cstr, Phi))
 
@@ -223,9 +233,13 @@ class FlexDynamic():
                         #     self.dt,
                         #     self.newmark_damp)
                         Ass, Bss, Css, Dss = newmark_ss(
-                            Phi.T.dot(self.Mstr.dot(Phi)),
+                            # Phi.T.dot(self.Mstr.dot(Phi)),
+                            np.linalg.inv(np.dot(self.U[:, :Nmodes].T, np.dot(self.Mstr, self.U[:, :Nmodes]))),
+                            # np.eye(Nmodes),
                             Ccut,
-                            Phi.T.dot(self.Kstr.dot(Phi)),
+                            np.dot(self.U[:, :Nmodes].T, np.dot(self.Kstr, self.U[:, :Nmodes])),
+                            # Phi.T.dot(self.Kstr.dot(Phi)),
+                            # np.diag(self.freq_natural[:Nmodes]**2),
                             self.dt,
                             self.newmark_damp)
                         self.Kin = Phi.T
@@ -278,7 +292,7 @@ class FlexDynamic():
                 else:  # damped mode shapes
                     # The algorithm assumes that for each couple of complex conj
                     # eigenvalues, only one eigenvalue (and the eigenvectors
-                    # associated to it) is include in self.eigs.  
+                    # associated to it) is include in self.eigs.
                     eigs = self.eigs[:Nmodes]
                     U = self.U[:, :Nmodes]
                     V = self.V[:, :Nmodes]
@@ -340,7 +354,7 @@ class FlexDynamic():
                 self.Ycont_ph = np.angle(self.Ycont, deg=True)
 
     def converge_modal(self, wv=None, tol=None, Yref=None, Print=False):
-        """ 
+        """
         Determine number of modes required to achieve a certain convergence
         of the modal solution in a prescribed frequency range ``wv``. The H-infinity
         norm of the error w.r.t. ``Yref`` is used for assessing convergence.
@@ -383,7 +397,7 @@ class FlexDynamic():
 
     def tune_newmark_damp(self, amplification_factor=0.999):
         """
-        Tune artifical damping to achieve a percent reduction of the lower 
+        Tune artifical damping to achieve a percent reduction of the lower
         frequency (lower damped) mode
         """
 
@@ -509,6 +523,23 @@ def newmark_ss(Minv, C, K, dt, num_damp=1e-4):
     :math:`\mathbf{F}` to be evaluated at time-step :math:`n`,the :math:`\mathbf{C}` and :math:`\mathbf{D}` matrices
     are, in general, fully populated.
 
+    The Newmark-:math:`\beta` integration scheme is carried out following the modifications presented by
+    Geradin [1] that render it unconditionally stable. The displacement and velocities are estimated as:
+
+    .. math::
+        x_{n+1} &= x_n + \Delta t \dot{x}_n + \left(\frac{1}{2}-\theta_2\right)\Delta t^2 \ddot{x}_n + \theta_2\Delta t
+        \ddot{x}_{n+1}  \\
+        \dot{x}_{n+1} &= \dot{x}_n + (1-\theta_1)\Delta t \ddot{x}_n + \theta_1\Delta t \ddot{x}_{n+1}
+
+    The stencil is unconditionally stable if the tuning parameters :math:`\theta_1` and :math:`\theta_2` are chosen as:
+
+    .. math::
+        \theta_1 &= \frac{1}{2} + \alpha \\
+        \theta_2 &= \frac{1}{4} \left(\theta_1 + \frac{1}{2}\right)^2 \\
+        \theta_2 &= \frac{5}{80} + \frac{1}{4} (\theta_1 + \theta_1^2) \text{TBC SOURCE}
+
+    where :math:`\alpha>0` accounts for small positive algorithmic damping.
+
     Args:
         Minv (np.array): Inverse mass matrix :math:`\mathbf{M^{-1}}`
         C (np.array): Damping matrix :math:`\mathbf{C}`
@@ -518,6 +549,9 @@ def newmark_ss(Minv, C, K, dt, num_damp=1e-4):
 
     Returns:
         tuple: the A, B, C, D matrices of the state space packed in a tuple with the predictor and delay term removed.
+
+    References:
+        [1] - Geradin M., Rixen D. - Mechanical Vibrations: Theory and application to structural dynamics
     """
 
     # weights
