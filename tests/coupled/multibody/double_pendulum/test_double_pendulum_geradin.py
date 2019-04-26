@@ -103,7 +103,7 @@ class TestDoublePendulum(unittest.TestCase):
 
         SimInfo.solvers['SHARPy']['flow'] = ['BeamLoader',
                                 'AerogridLoader',
-                                'InitializeMultibody',
+                                # 'InitializeMultibody',
                                 'DynamicCoupled']
         SimInfo.solvers['SHARPy']['case'] = 'double_pendulum_geradin'
         SimInfo.solvers['SHARPy']['route'] = os.path.dirname(os.path.realpath(__file__)) + '/'
