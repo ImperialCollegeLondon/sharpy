@@ -151,8 +151,8 @@ class TestFixNodeVelocitywrtG(unittest.TestCase):
         # read output and compare
         output_path = os.path.dirname(solver_path) + '/output/fix_node_velocity_wrtG/WriteVariablesTime/'
         pos_tip_data = np.matrix(np.genfromtxt(output_path + "struct_pos_node-1" + ".dat", delimiter=' '))
-        self.assertAlmostEqual(pos_tip_data[-1, 1], 9.999737, 4)
-        self.assertAlmostEqual(pos_tip_data[-1, 2], -0.05957746, 4)
+        self.assertAlmostEqual(pos_tip_data[-1, 1], 9.999859, 4)
+        self.assertAlmostEqual(pos_tip_data[-1, 2], -0.04313129, 4)
         self.assertAlmostEqual(pos_tip_data[-1, 3], 0., 4)
 
 if __name__=='__main__':
