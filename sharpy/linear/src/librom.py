@@ -708,6 +708,10 @@ def tune_rom(SSb, kv, tol, gv, method='realisation', convergence='all', Print=Fa
     Nmax = min(np.sum(gv > tol) + 1, Nb)
 
     if convergence == 'all':
+        if not gv is None:
+            Nmax = min(np.sum(gv>tol)+1,Nb)
+        else:
+            Nmax = Nb
         # start from larger size and decrease untill the ROm accuracy is over tol
         Found = False
         N = Nmax
@@ -905,4 +909,3 @@ def eigen_dec(A, B, C, dlti=True, N=None, eigs=None, UR=None, URinv=None,
 
 if __name__ == '__main__':
     gv = np.array([5, 4, 3, 2, 1])
-
