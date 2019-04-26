@@ -322,11 +322,13 @@ class NonLinearDynamicMultibody(BaseSolver):
 
         q += dt*dqdt + (0.5 - self.beta)*dt*dt*dqddt
         dqdt += (1.0 - self.gamma)*dt*dqddt
-        # dqddt = np.zeros((self.sys_size + num_LM_eq,), dtype=ct.c_double, order='F')
-        dqddt[:] = 0.0
-        Lambda = q[-num_LM_eq:].astype(dtype=ct.c_double, copy=True, order='F')
-        Lambda_dot = dqdt[-num_LM_eq:].astype(dtype=ct.c_double, copy=True, order='F')
-        # TODO: what to do with lambda
+        dqddt = np.zeros((self.sys_size + num_LM_eq,), dtype=ct.c_double, order='F')
+        if not num_LM_eq == 0:
+            Lambda = q[-num_LM_eq:].astype(dtype=ct.c_double, copy=True, order='F')
+            Lambda_dot = dqdt[-num_LM_eq:].astype(dtype=ct.c_double, copy=True, order='F')
+        else:
+            Lambda = 0
+            Lambda_dot = 0
 
         # Newmark-beta iterations
         old_Dq = 1.0
@@ -379,8 +381,12 @@ class NonLinearDynamicMultibody(BaseSolver):
             dqdt += self.gamma/(self.beta*dt)*Dq
             dqddt += 1.0/(self.beta*dt*dt)*Dq
 
-            Lambda = q[-num_LM_eq:].astype(dtype=ct.c_double, copy=True, order='F')
-            Lambda_dot = dqdt[-num_LM_eq:].astype(dtype=ct.c_double, copy=True, order='F')
+            if not num_LM_eq == 0:
+                Lambda = q[-num_LM_eq:].astype(dtype=ct.c_double, copy=True, order='F')
+                Lambda_dot = dqdt[-num_LM_eq:].astype(dtype=ct.c_double, copy=True, order='F')
+            else:
+                Lambda = 0
+                Lambda_dot = 0
 
             if converged:
                 break
@@ -408,9 +414,9 @@ class NonLinearDynamicMultibody(BaseSolver):
                 xbeamlib.cbeam3_correct_gravity_forces(MB_beam[ibody], MB_tstep[ibody], self.settings)
         mb.merge_multibody(MB_tstep, MB_beam, self.data.structure, structural_step, MBdict, dt)
 
-        structural_step.q[:] = q[:self.sys_size].copy()
-        structural_step.dqdt[:] = dqdt[:self.sys_size].copy()
-        structural_step.dqddt[:] = dqddt[:self.sys_size].copy()
+        # structural_step.q[:] = q[:self.sys_size].copy()
+        # structural_step.dqdt[:] = dqdt[:self.sys_size].copy()
+        # structural_step.dqddt[:] = dqddt[:self.sys_size].copy()
 
         return self.data
 
