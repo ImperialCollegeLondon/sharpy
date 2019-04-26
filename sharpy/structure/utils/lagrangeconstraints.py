@@ -1056,7 +1056,7 @@ class lin_vel_node_wrtA(BaseLagrangeConstraint):
         LM_K[:sys_size, sys_size + ieq:sys_size + ieq + num_LM_eq_specific] += scalingFactor * np.transpose(B)
 
         LM_Q[:sys_size] += scalingFactor * np.dot(np.transpose(B), Lambda[ieq:ieq + num_LM_eq_specific])
-        LM_Q[sys_size + ieq:sys_size + ieq + num_LM_eq_specific] += MB_tstep[self.body_number].pos[self.node_number,:] - MB_beam[self.body_number].pos_ini[self.node_number,:]
+        LM_Q[sys_size + ieq:sys_size + ieq + num_LM_eq_specific] += MB_tstep[self.body_number].pos[self.node_number,:] - MB_beam[self.body_number].ini_info.pos[self.node_number,:]
 
         ieq += 3
 
@@ -1122,6 +1122,28 @@ class lin_vel_node_wrtG(BaseLagrangeConstraint):
     def staticmat(self, LM_C, LM_K, LM_Q, MB_beam, MB_tstep, ts, num_LM_eq,
                 sys_size, dt, Lambda, Lambda_dot,
                 scalingFactor, penaltyFactor):
+
+        num_LM_eq_specific = self._n_eq
+        B = np.zeros((num_LM_eq_specific, sys_size), dtype=ct.c_double, order='F')
+
+        # Define the position of the first degree of freedom associated to the FoR
+        # FoR_dof = define_FoR_dof(MB_beam, self.body_number)
+        node_dof = define_node_dof(MB_beam, self.body_number, self.node_number)
+        ieq = self._ieq
+
+        B[:num_LM_eq_specific, node_dof:node_dof+3] = algebra.quat2rotation(MB_tstep[self.body_number].quat)
+
+        LM_K[sys_size + ieq:sys_size + ieq + num_LM_eq_specific, :sys_size] += scalingFactor * B
+        LM_K[:sys_size, sys_size + ieq:sys_size + ieq + num_LM_eq_specific] += scalingFactor * np.transpose(B)
+
+        LM_Q[:sys_size] += scalingFactor * np.dot(np.transpose(B), Lambda[ieq:ieq + num_LM_eq_specific])
+        LM_Q[sys_size + ieq:sys_size + ieq + num_LM_eq_specific] += (np.dot(algebra.quat2rotation(MB_tstep[self.body_number].quat), MB_tstep[self.body_number].pos[self.node_number,:]) +
+                                                                     MB_tstep[self.body_number].for_pos)
+        LM_Q[sys_size + ieq:sys_size + ieq + num_LM_eq_specific] -= (np.dot(algebra.quat2rotation(MB_beam[self.body_number].ini_info.quat), MB_beam[self.body_number].ini_info.pos[self.node_number,:]) +
+                                                                     MB_beam[self.body_number].ini_info.for_pos)
+
+        ieq += 3
+
         return
 
     def dynamicmat(self, LM_C, LM_K, LM_Q, MB_beam, MB_tstep, ts, num_LM_eq,
