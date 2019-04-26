@@ -70,7 +70,8 @@ def initialise_lc(lc_name, print_info=True):
 
 class BaseLagrangeConstraint(metaclass=ABCMeta):
     def __init__(self):
-        pass
+        self._n_eq = None
+        self._ieq = None
 
     @abstractmethod
     def get_n_eq(self):
@@ -78,20 +79,21 @@ class BaseLagrangeConstraint(metaclass=ABCMeta):
 
     @abstractmethod
     #  def initialise(self, **kwargs):
-    def initialise(self, MBdict_entry):
+    def initialise(self, MBdict_entry, ieq):
         pass
 
     @abstractmethod
     # def staticmat(self, **kwargs):
     def staticmat(self, LM_C, LM_K, LM_Q, MB_beam, MB_tstep, ts, num_LM_eq,
-                  sys_size, dt, Lambda, Lambda_dot, ieq,
+                  sys_size, dt, Lambda, Lambda_dot,
                   scalingFactor, penaltyFactor):
         pass
 
     @abstractmethod
     # def dynamicmat(self, **kwargs):
     def dynamicmat(self, LM_C, LM_K, LM_Q, MB_beam, MB_tstep, ts, num_LM_eq,
-                   sys_size, dt, Lambda, Lambda_dot):
+                   sys_size, dt, Lambda, Lambda_dot,
+                  scalingFactor, penaltyFactor):
         pass
 
     @abstractmethod
@@ -365,21 +367,22 @@ class SampleLagrange(BaseLagrangeConstraint):
 
         return self._n_eq
 
-    def initialise(self, MBdict_entry):
+    def initialise(self, MBdict_entry, ieq):
         print('Type of LC: ', self._lc_id)
         print('Arguments and values:')
         for k, v in MBdict_entry.items():
             print(k, v)
+        self._ieq = ieq
 
-        return
+        return self._ieq + self._n_eq
 
     def staticmat(self, LM_C, LM_K, LM_Q, MB_beam, MB_tstep, ts, num_LM_eq,
-                sys_size, dt, Lambda, Lambda_dot, ieq,
+                sys_size, dt, Lambda, Lambda_dot,
                 scalingFactor, penaltyFactor):
         return np.zeros((6, 6))
 
     def dynamicmat(self, LM_C, LM_K, LM_Q, MB_beam, MB_tstep, ts, num_LM_eq,
-                sys_size, dt, Lambda, Lambda_dot, ieq,
+                sys_size, dt, Lambda, Lambda_dot,
                 scalingFactor, penaltyFactor):
         return np.zeros((10, 10))
 
@@ -400,7 +403,7 @@ class hinge_node_FoR(BaseLagrangeConstraint):
     def get_n_eq(self):
         return self._n_eq
 
-    def initialise(self, MBdict_entry):
+    def initialise(self, MBdict_entry, ieq):
         print('Type of LC: ', self._lc_id)
         print('Arguments and values:')
         for k, v in MBdict_entry.items():
@@ -410,22 +413,24 @@ class hinge_node_FoR(BaseLagrangeConstraint):
         self.node_body = MBdict_entry['body']
         self.FoR_body = MBdict_entry['body_FoR']
         self.rot_axisB = MBdict_entry['rot_axisB']
+        self._ieq = ieq
 
-        return
+        return self._ieq + self._n_eq
 
     def staticmat(self, LM_C, LM_K, LM_Q, MB_beam, MB_tstep, ts, num_LM_eq,
-                sys_size, dt, Lambda, Lambda_dot, ieq,
+                sys_size, dt, Lambda, Lambda_dot,
                 scalingFactor, penaltyFactor):
         return
 
     def dynamicmat(self, LM_C, LM_K, LM_Q, MB_beam, MB_tstep, ts, num_LM_eq,
-                sys_size, dt, Lambda, Lambda_dot, ieq,
+                sys_size, dt, Lambda, Lambda_dot,
                 scalingFactor, penaltyFactor):
 
         # Define the position of the first degree of freedom associated to the node
         node_dof = define_node_dof(MB_beam, self.node_body, self.node_number)
         node_FoR_dof = define_FoR_dof(MB_beam, self.node_body)
         FoR_dof = define_FoR_dof(MB_beam, self.FoR_body)
+        ieq = self._ieq
 
         # Define the equations
         ieq = equal_lin_vel_node_FoR(MB_tstep, MB_beam, self.FoR_body, self.node_body, self.node_number, node_FoR_dof, node_dof, FoR_dof, sys_size, Lambda_dot, scalingFactor, penaltyFactor, ieq, LM_K, LM_C, LM_Q)
@@ -451,7 +456,7 @@ class hinge_node_FoR_constant_vel(BaseLagrangeConstraint):
     def get_n_eq(self):
         return self._n_eq
 
-    def initialise(self, MBdict_entry):
+    def initialise(self, MBdict_entry, ieq):
         print('Type of LC: ', self._lc_id)
         print('Arguments and values:')
         for k, v in MBdict_entry.items():
@@ -462,22 +467,24 @@ class hinge_node_FoR_constant_vel(BaseLagrangeConstraint):
         self.FoR_body = MBdict_entry['body_FoR']
         self.rot_axisB = MBdict_entry['rot_axisB']
         self.rot_vel = MBdict_entry['rot_vel']
+        self._ieq = ieq
 
-        return
+        return self._ieq + self._n_eq
 
     def staticmat(self, LM_C, LM_K, LM_Q, MB_beam, MB_tstep, ts, num_LM_eq,
-                sys_size, dt, Lambda, Lambda_dot, ieq,
+                sys_size, dt, Lambda, Lambda_dot,
                 scalingFactor, penaltyFactor):
         return
 
     def dynamicmat(self, LM_C, LM_K, LM_Q, MB_beam, MB_tstep, ts, num_LM_eq,
-                sys_size, dt, Lambda, Lambda_dot, ieq,
+                sys_size, dt, Lambda, Lambda_dot,
                 scalingFactor, penaltyFactor):
 
         # Define the position of the first degree of freedom associated to the node
         node_dof = define_node_dof(MB_beam, self.node_body, self.node_number)
         node_FoR_dof = define_FoR_dof(MB_beam, self.node_body)
         FoR_dof = define_FoR_dof(MB_beam, self.FoR_body)
+        ieq = self._ieq
 
         # Define the equations
         ieq = equal_lin_vel_node_FoR(MB_tstep, MB_beam, self.FoR_body, self.node_body, self.node_number, node_FoR_dof, node_dof, FoR_dof, sys_size, Lambda_dot, scalingFactor, penaltyFactor, ieq, LM_K, LM_C, LM_Q)
@@ -504,7 +511,7 @@ class spherical_node_FoR(BaseLagrangeConstraint):
     def get_n_eq(self):
         return self._n_eq
 
-    def initialise(self, MBdict_entry):
+    def initialise(self, MBdict_entry, ieq):
         print('Type of LC: ', self._lc_id)
         print('Arguments and values:')
         for k, v in MBdict_entry.items():
@@ -513,22 +520,24 @@ class spherical_node_FoR(BaseLagrangeConstraint):
         self.node_number = MBdict_entry['node_in_body']
         self.node_body = MBdict_entry['body']
         self.FoR_body = MBdict_entry['body_FoR']
+        self._ieq = ieq
 
-        return
+        return self._ieq + self._n_eq
 
     def staticmat(self, LM_C, LM_K, LM_Q, MB_beam, MB_tstep, ts, num_LM_eq,
-                sys_size, dt, Lambda, Lambda_dot, ieq,
+                sys_size, dt, Lambda, Lambda_dot,
                 scalingFactor, penaltyFactor):
         return
 
     def dynamicmat(self, LM_C, LM_K, LM_Q, MB_beam, MB_tstep, ts, num_LM_eq,
-                sys_size, dt, Lambda, Lambda_dot, ieq,
+                sys_size, dt, Lambda, Lambda_dot,
                 scalingFactor, penaltyFactor):
 
         # Define the position of the first degree of freedom associated to the node
         node_dof = define_node_dof(MB_beam, self.node_body, self.node_number)
         node_FoR_dof = define_FoR_dof(MB_beam, self.node_body)
         FoR_dof = define_FoR_dof(MB_beam, self.FoR_body)
+        ieq = self._ieq
 
         # Define the equations
         ieq = equal_lin_vel_node_FoR(MB_tstep, MB_beam, self.FoR_body, self.node_body, self.node_number, node_FoR_dof, node_dof, FoR_dof, sys_size, Lambda_dot, scalingFactor, penaltyFactor, ieq, LM_K, LM_C, LM_Q)
@@ -553,21 +562,22 @@ class free(BaseLagrangeConstraint):
     def get_n_eq(self):
         return self._n_eq
 
-    def initialise(self, MBdict_entry):
+    def initialise(self, MBdict_entry, ieq):
         print('Type of LC: ', self._lc_id)
         print('Arguments and values:')
         for k, v in MBdict_entry.items():
             print(k, v)
 
-        return
+        self._ieq = ieq
+        return self._ieq + self._n_eq
 
     def staticmat(self, LM_C, LM_K, LM_Q, MB_beam, MB_tstep, ts, num_LM_eq,
-                sys_size, dt, Lambda, Lambda_dot, ieq,
+                sys_size, dt, Lambda, Lambda_dot,
                 scalingFactor, penaltyFactor):
         return
 
     def dynamicmat(self, LM_C, LM_K, LM_Q, MB_beam, MB_tstep, ts, num_LM_eq,
-                sys_size, dt, Lambda, Lambda_dot, ieq,
+                sys_size, dt, Lambda, Lambda_dot,
                 scalingFactor, penaltyFactor):
         return
 
@@ -588,23 +598,24 @@ class spherical_FoR(BaseLagrangeConstraint):
     def get_n_eq(self):
         return self._n_eq
 
-    def initialise(self, MBdict_entry):
+    def initialise(self, MBdict_entry, ieq):
         print('Type of LC: ', self._lc_id)
         print('Arguments and values:')
         for k, v in MBdict_entry.items():
             print(k, v)
 
         self.body_FoR = MBdict_entry['body_FoR']
+        self._ieq = ieq
 
-        return
+        return self._ieq + self._n_eq
 
     def staticmat(self, LM_C, LM_K, LM_Q, MB_beam, MB_tstep, ts, num_LM_eq,
-                sys_size, dt, Lambda, Lambda_dot, ieq,
+                sys_size, dt, Lambda, Lambda_dot,
                 scalingFactor, penaltyFactor):
         return
 
     def dynamicmat(self, LM_C, LM_K, LM_Q, MB_beam, MB_tstep, ts, num_LM_eq,
-                sys_size, dt, Lambda, Lambda_dot, ieq,
+                sys_size, dt, Lambda, Lambda_dot,
                 scalingFactor, penaltyFactor):
         num_LM_eq_specific = 3
         Bnh = np.zeros((num_LM_eq_specific, sys_size), dtype=ct.c_double, order = 'F')
@@ -612,6 +623,7 @@ class spherical_FoR(BaseLagrangeConstraint):
 
         # Define the position of the first degree of freedom associated to the FoR
         FoR_dof = define_FoR_dof(MB_beam, self.body_FoR)
+        ieq = self._ieq
 
         Bnh[:3, FoR_dof:FoR_dof+3] = 1.0*np.eye(3)
 
@@ -642,7 +654,7 @@ class hinge_FoR(BaseLagrangeConstraint):
     def get_n_eq(self):
         return self._n_eq
 
-    def initialise(self, MBdict_entry):
+    def initialise(self, MBdict_entry, ieq):
         print('Type of LC: ', self._lc_id)
         print('Arguments and values:')
         for k, v in MBdict_entry.items():
@@ -650,16 +662,17 @@ class hinge_FoR(BaseLagrangeConstraint):
 
         self.body_FoR = MBdict_entry['body_FoR']
         self.rot_axis = MBdict_entry['rot_axis_AFoR']
+        self._ieq = ieq
 
-        return
+        return self._ieq + self._n_eq
 
     def staticmat(self, LM_C, LM_K, LM_Q, MB_beam, MB_tstep, ts, num_LM_eq,
-                sys_size, dt, Lambda, Lambda_dot, ieq,
+                sys_size, dt, Lambda, Lambda_dot,
                 scalingFactor, penaltyFactor):
         return
 
     def dynamicmat(self, LM_C, LM_K, LM_Q, MB_beam, MB_tstep, ts, num_LM_eq,
-                sys_size, dt, Lambda, Lambda_dot, ieq,
+                sys_size, dt, Lambda, Lambda_dot,
                 scalingFactor, penaltyFactor):
         num_LM_eq_specific = 5
         Bnh = np.zeros((num_LM_eq_specific, sys_size), dtype=ct.c_double, order = 'F')
@@ -667,6 +680,7 @@ class hinge_FoR(BaseLagrangeConstraint):
 
         # Define the position of the first degree of freedom associated to the FoR
         FoR_dof = define_FoR_dof(MB_beam, self.body_FoR)
+        ieq = self._ieq
 
         Bnh[:3, FoR_dof:FoR_dof+3] = 1.0*np.eye(3)
 
@@ -715,7 +729,7 @@ class hinge_FoR_wrtG(BaseLagrangeConstraint):
     def get_n_eq(self):
         return self._n_eq
 
-    def initialise(self, MBdict_entry):
+    def initialise(self, MBdict_entry, ieq):
         print('Type of LC: ', self._lc_id)
         print('Arguments and values:')
         for k, v in MBdict_entry.items():
@@ -723,16 +737,17 @@ class hinge_FoR_wrtG(BaseLagrangeConstraint):
 
         self.body_FoR = MBdict_entry['body_FoR']
         self.rot_axis = MBdict_entry['rot_axis_AFoR']
+        self._ieq = ieq
 
-        return
+        return self._ieq + self._n_eq
 
     def staticmat(self, LM_C, LM_K, LM_Q, MB_beam, MB_tstep, ts, num_LM_eq,
-                sys_size, dt, Lambda, Lambda_dot, ieq,
+                sys_size, dt, Lambda, Lambda_dot,
                 scalingFactor, penaltyFactor):
         return
 
     def dynamicmat(self, LM_C, LM_K, LM_Q, MB_beam, MB_tstep, ts, num_LM_eq,
-                sys_size, dt, Lambda, Lambda_dot, ieq,
+                sys_size, dt, Lambda, Lambda_dot,
                 scalingFactor, penaltyFactor):
         num_LM_eq_specific = 5
         Bnh = np.zeros((num_LM_eq_specific, sys_size), dtype=ct.c_double, order = 'F')
@@ -740,6 +755,7 @@ class hinge_FoR_wrtG(BaseLagrangeConstraint):
 
         # Define the position of the first degree of freedom associated to the FoR
         FoR_dof = define_FoR_dof(MB_beam, self.body_FoR)
+        ieq = self._ieq
 
         Bnh[:3, FoR_dof:FoR_dof+3] = algebra.quat2rotation(MB_tstep[self.body_FoR].quat)
 
@@ -790,7 +806,7 @@ class fully_constrained_node_FoR(BaseLagrangeConstraint):
     def get_n_eq(self):
         return self._n_eq
 
-    def initialise(self, MBdict_entry):
+    def initialise(self, MBdict_entry, ieq):
         print('Type of LC: ', self._lc_id)
         print('Arguments and values:')
         for k, v in MBdict_entry.items():
@@ -800,15 +816,16 @@ class fully_constrained_node_FoR(BaseLagrangeConstraint):
         self.node_in_body = MBdict_entry['node_in_body']
         self.node_body = MBdict_entry['body']
         self.body_FoR = MBdict_entry['body_FoR']
-        return
+        self._ieq = ieq
+        return self._ieq + self._n_eq
 
     def staticmat(self, LM_C, LM_K, LM_Q, MB_beam, MB_tstep, ts, num_LM_eq,
-                sys_size, dt, Lambda, Lambda_dot, ieq,
+                sys_size, dt, Lambda, Lambda_dot,
                 scalingFactor, penaltyFactor):
         return
 
     def dynamicmat(self, LM_C, LM_K, LM_Q, MB_beam, MB_tstep, ts, num_LM_eq,
-                sys_size, dt, Lambda, Lambda_dot, ieq,
+                sys_size, dt, Lambda, Lambda_dot,
                 scalingFactor, penaltyFactor):
         num_LM_eq_specific = 6
         Bnh = np.zeros((num_LM_eq_specific, sys_size), dtype=ct.c_double, order = 'F')
@@ -816,6 +833,7 @@ class fully_constrained_node_FoR(BaseLagrangeConstraint):
 
         node_dof = define_node_dof(MB_beam, self.node_body, self.node_in_body)
         FoR_dof = define_FoR_dof(MB_beam, self.body_FoR)
+        ieq = self._ieq
 
         # Option with non holonomic constraints
         # BC for linear velocities
@@ -852,39 +870,40 @@ class fully_constrained_node_FoR(BaseLagrangeConstraint):
         return
 
 
-@lagrangeconstraint
-class hinge_node_FoR_constant_rotation(BaseLagrangeConstraint):
-    _lc_id = 'hinge_node_FoR_constant_rotation'
-
-    def __init__(self):
-        self._n_eq = 4
-
-    def get_n_eq(self):
-        return self._n_eq
-
-    def initialise(self, MBdict_entry):
-        print('Type of LC: ', self._lc_id)
-        print('Arguments and values:')
-        for k, v in MBdict_entry.items():
-            print(k, v)
-
-        return
-
-    def staticmat(self, LM_C, LM_K, LM_Q, MB_beam, MB_tstep, ts, num_LM_eq,
-                sys_size, dt, Lambda, Lambda_dot, ieq,
-                scalingFactor, penaltyFactor):
-        return
-
-    def dynamicmat(self, LM_C, LM_K, LM_Q, MB_beam, MB_tstep, ts, num_LM_eq,
-                sys_size, dt, Lambda, Lambda_dot, ieq,
-                scalingFactor, penaltyFactor):
-        return
-
-    def staticpost(self, lc_list, MB_beam, MB_tstep):
-        return
-
-    def dynamicpost(self, lc_list, MB_beam, MB_tstep):
-        return
+# @lagrangeconstraint
+# class hinge_node_FoR_constant_rotation(BaseLagrangeConstraint):
+#     _lc_id = 'hinge_node_FoR_constant_rotation'
+#
+#     def __init__(self):
+#         self._n_eq = 4
+#
+#     def get_n_eq(self):
+#         return self._n_eq
+#
+#     def initialise(self, MBdict_entry, ieq):
+#         print('Type of LC: ', self._lc_id)
+#         print('Arguments and values:')
+#         for k, v in MBdict_entry.items():
+#             print(k, v)
+#
+#         self._ieq = ieq
+#         return self._ieq + self._n_eq
+#
+#     def staticmat(self, LM_C, LM_K, LM_Q, MB_beam, MB_tstep, ts, num_LM_eq,
+#                 sys_size, dt, Lambda, Lambda_dot,
+#                 scalingFactor, penaltyFactor):
+#         return
+#
+#     def dynamicmat(self, LM_C, LM_K, LM_Q, MB_beam, MB_tstep, ts, num_LM_eq,
+#                 sys_size, dt, Lambda, Lambda_dot,
+#                 scalingFactor, penaltyFactor):
+#         return
+#
+#     def staticpost(self, lc_list, MB_beam, MB_tstep):
+#         return
+#
+#     def dynamicpost(self, lc_list, MB_beam, MB_tstep):
+#         return
 
 @lagrangeconstraint
 class constant_rot_vel_FoR(BaseLagrangeConstraint):
@@ -896,7 +915,7 @@ class constant_rot_vel_FoR(BaseLagrangeConstraint):
     def get_n_eq(self):
         return self._n_eq
 
-    def initialise(self, MBdict_entry):
+    def initialise(self, MBdict_entry, ieq):
         print('Type of LC: ', self._lc_id)
         print('Arguments and values:')
         for k, v in MBdict_entry.items():
@@ -904,16 +923,17 @@ class constant_rot_vel_FoR(BaseLagrangeConstraint):
 
         self.rot_vel = MBdict_entry['rot_vel']
         self.FoR_body = MBdict_entry['FoR_body']
+        self._ieq = ieq
 
-        return
+        return self._ieq + self._n_eq
 
     def staticmat(self, LM_C, LM_K, LM_Q, MB_beam, MB_tstep, ts, num_LM_eq,
-                sys_size, dt, Lambda, Lambda_dot, ieq,
+                sys_size, dt, Lambda, Lambda_dot,
                 scalingFactor, penaltyFactor):
         return
 
     def dynamicmat(self, LM_C, LM_K, LM_Q, MB_beam, MB_tstep, ts, num_LM_eq,
-                sys_size, dt, Lambda, Lambda_dot, ieq,
+                sys_size, dt, Lambda, Lambda_dot,
                 scalingFactor, penaltyFactor):
         num_LM_eq_specific = 3
         Bnh = np.zeros((num_LM_eq_specific, sys_size), dtype=ct.c_double, order = 'F')
@@ -921,6 +941,7 @@ class constant_rot_vel_FoR(BaseLagrangeConstraint):
 
         # Define the position of the first degree of freedom associated to the FoR
         FoR_dof = define_FoR_dof(MB_beam, self.FoR_body)
+        ieq = self._ieq
 
         Bnh[:3,FoR_dof+3:FoR_dof+6] = np.eye(3)
 
@@ -949,7 +970,7 @@ class constant_vel_FoR(BaseLagrangeConstraint):
     def get_n_eq(self):
         return self._n_eq
 
-    def initialise(self, MBdict_entry):
+    def initialise(self, MBdict_entry, ieq):
         print('Type of LC: ', self._lc_id)
         print('Arguments and values:')
         for k, v in MBdict_entry.items():
@@ -957,16 +978,17 @@ class constant_vel_FoR(BaseLagrangeConstraint):
 
         self.vel = MBdict_entry['vel']
         self.FoR_body = MBdict_entry['FoR_body']
+        self._ieq = ieq
 
-        return
+        return self._ieq + self._n_eq
 
     def staticmat(self, LM_C, LM_K, LM_Q, MB_beam, MB_tstep, ts, num_LM_eq,
-                sys_size, dt, Lambda, Lambda_dot, ieq,
+                sys_size, dt, Lambda, Lambda_dot,
                 scalingFactor, penaltyFactor):
         return
 
     def dynamicmat(self, LM_C, LM_K, LM_Q, MB_beam, MB_tstep, ts, num_LM_eq,
-                sys_size, dt, Lambda, Lambda_dot, ieq,
+                sys_size, dt, Lambda, Lambda_dot,
                 scalingFactor, penaltyFactor):
         num_LM_eq_specific = 6
         Bnh = np.zeros((num_LM_eq_specific, sys_size), dtype=ct.c_double, order='F')
@@ -974,6 +996,7 @@ class constant_vel_FoR(BaseLagrangeConstraint):
 
         # Define the position of the first degree of freedom associated to the FoR
         FoR_dof = define_FoR_dof(MB_beam, self.FoR_body)
+        ieq = self._ieq
 
         Bnh[:num_LM_eq_specific, FoR_dof:FoR_dof+6] = np.eye(6)
 
@@ -1002,7 +1025,7 @@ class lin_vel_node_wrtA(BaseLagrangeConstraint):
     def get_n_eq(self):
         return self._n_eq
 
-    def initialise(self, MBdict_entry):
+    def initialise(self, MBdict_entry, ieq):
         print('Type of LC: ', self._lc_id)
         print('Arguments and values:')
         for k, v in MBdict_entry.items():
@@ -1011,11 +1034,12 @@ class lin_vel_node_wrtA(BaseLagrangeConstraint):
         self.vel = MBdict_entry['velocity']
         self.body_number = MBdict_entry['body_number']
         self.node_number = MBdict_entry['node_number']
+        self._ieq = ieq
 
-        return
+        return self._ieq + self._n_eq
 
     def staticmat(self, LM_C, LM_K, LM_Q, MB_beam, MB_tstep, ts, num_LM_eq,
-                sys_size, dt, Lambda, Lambda_dot, ieq,
+                sys_size, dt, Lambda, Lambda_dot,
                 scalingFactor, penaltyFactor):
 
         num_LM_eq_specific = 3
@@ -1024,6 +1048,7 @@ class lin_vel_node_wrtA(BaseLagrangeConstraint):
         # Define the position of the first degree of freedom associated to the FoR
         # FoR_dof = define_FoR_dof(MB_beam, self.body_number)
         node_dof = define_node_dof(MB_beam, self.body_number, self.node_number)
+        ieq = self._ieq
 
         B[:num_LM_eq_specific, node_dof:node_dof+3] = np.eye(3)
 
@@ -1038,7 +1063,7 @@ class lin_vel_node_wrtA(BaseLagrangeConstraint):
         return
 
     def dynamicmat(self, LM_C, LM_K, LM_Q, MB_beam, MB_tstep, ts, num_LM_eq,
-                sys_size, dt, Lambda, Lambda_dot, ieq,
+                sys_size, dt, Lambda, Lambda_dot,
                 scalingFactor, penaltyFactor):
 
         if len(self.vel.shape) > 1:
@@ -1053,6 +1078,7 @@ class lin_vel_node_wrtA(BaseLagrangeConstraint):
         # Define the position of the first degree of freedom associated to the FoR
         # FoR_dof = define_FoR_dof(MB_beam, self.body_number)
         node_dof = define_node_dof(MB_beam, self.body_number, self.node_number)
+        ieq = self._ieq
 
         Bnh[:num_LM_eq_specific, node_dof:node_dof+3] = np.eye(3)
 
@@ -1081,7 +1107,7 @@ class lin_vel_node_wrtG(BaseLagrangeConstraint):
     def get_n_eq(self):
         return self._n_eq
 
-    def initialise(self, MBdict_entry):
+    def initialise(self, MBdict_entry, ieq):
         print('Type of LC: ', self._lc_id)
         print('Arguments and values:')
         for k, v in MBdict_entry.items():
@@ -1090,15 +1116,16 @@ class lin_vel_node_wrtG(BaseLagrangeConstraint):
         self.vel = MBdict_entry['velocity']
         self.body_number = MBdict_entry['body_number']
         self.node_number = MBdict_entry['node_number']
-        return
+        self._ieq = ieq
+        return self._ieq + self._n_eq
 
     def staticmat(self, LM_C, LM_K, LM_Q, MB_beam, MB_tstep, ts, num_LM_eq,
-                sys_size, dt, Lambda, Lambda_dot, ieq,
+                sys_size, dt, Lambda, Lambda_dot,
                 scalingFactor, penaltyFactor):
         return
 
     def dynamicmat(self, LM_C, LM_K, LM_Q, MB_beam, MB_tstep, ts, num_LM_eq,
-                sys_size, dt, Lambda, Lambda_dot, ieq,
+                sys_size, dt, Lambda, Lambda_dot,
                 scalingFactor, penaltyFactor):
         if len(self.vel.shape) > 1:
             current_vel = self.vel[ts-1, :]
@@ -1112,6 +1139,7 @@ class lin_vel_node_wrtG(BaseLagrangeConstraint):
         # Define the position of the first degree of freedom associated to the FoR
         FoR_dof = define_FoR_dof(MB_beam, self.body_number)
         node_dof = define_node_dof(MB_beam, self.body_number, self.node_number)
+        ieq = self._ieq
 
         if MB_beam[self.body_number].FoR_movement == 'free':
             Bnh[:num_LM_eq_specific, FoR_dof:FoR_dof+3] = algebra.quat2rotation(MB_tstep[self.body_number].quat)
@@ -1150,13 +1178,14 @@ class lin_vel_node_wrtG(BaseLagrangeConstraint):
 ################################################################################
 def initialize_constraints(MBdict):
 
+    index_eq = 0
     num_constraints = MBdict['num_constraints']
     lc_list = list()
 
     # Read the dictionary and create the constraints
     for iconstraint in range(num_constraints):
         lc_list.append(lc_from_string(MBdict["constraint_%02d" % iconstraint]['behaviour'])())
-        lc_list[-1].initialise(MBdict_entry=MBdict["constraint_%02d" % iconstraint])
+        index_eq = lc_list[-1].initialise(MBdict["constraint_%02d" % iconstraint], index_eq)
 
     return lc_list
 
@@ -1227,41 +1256,41 @@ def generate_lagrange_matrix(lc_list, MB_beam, MB_tstep, ts, num_LM_eq, sys_size
 
     # Define the matrices associated to the constratints
     # TODO: Is there a better way to deal with ieq?
-    ieq = 0
+    # ieq = 0
     for lc in lc_list:
         if dynamic_or_static.lower() == "static":
-            ieq = lc.staticmat(LM_C=LM_C,
-                                LM_K=LM_K,
-                                LM_Q=LM_Q,
-                                # MBdict=MBdict,
-                                MB_beam=MB_beam,
-                                MB_tstep=MB_tstep,
-                                ts=ts,
-                                num_LM_eq=num_LM_eq,
-                                sys_size=sys_size,
-                                dt=dt,
-                                Lambda=Lambda,
-                                Lambda_dot=Lambda_dot,
-                                ieq=ieq,
-                                scalingFactor=scalingFactor,
-                                penaltyFactor=penaltyFactor)
+            lc.staticmat(LM_C=LM_C,
+                        LM_K=LM_K,
+                        LM_Q=LM_Q,
+                        # MBdict=MBdict,
+                        MB_beam=MB_beam,
+                        MB_tstep=MB_tstep,
+                        ts=ts,
+                        num_LM_eq=num_LM_eq,
+                        sys_size=sys_size,
+                        dt=dt,
+                        Lambda=Lambda,
+                        Lambda_dot=Lambda_dot,
+                        # ieq=ieq,
+                        scalingFactor=scalingFactor,
+                        penaltyFactor=penaltyFactor)
 
         elif dynamic_or_static.lower() == "dynamic":
-            ieq = lc.dynamicmat(LM_C=LM_C,
-                                LM_K=LM_K,
-                                LM_Q=LM_Q,
-                                # MBdict=MBdict,
-                                MB_beam=MB_beam,
-                                MB_tstep=MB_tstep,
-                                ts=ts,
-                                num_LM_eq=num_LM_eq,
-                                sys_size=sys_size,
-                                dt=dt,
-                                Lambda=Lambda,
-                                Lambda_dot=Lambda_dot,
-                                ieq=ieq,
-                                scalingFactor=scalingFactor,
-                                penaltyFactor=penaltyFactor)
+            lc.dynamicmat(LM_C=LM_C,
+                        LM_K=LM_K,
+                        LM_Q=LM_Q,
+                        # MBdict=MBdict,
+                        MB_beam=MB_beam,
+                        MB_tstep=MB_tstep,
+                        ts=ts,
+                        num_LM_eq=num_LM_eq,
+                        sys_size=sys_size,
+                        dt=dt,
+                        Lambda=Lambda,
+                        Lambda_dot=Lambda_dot,
+                        # ieq=ieq,
+                        scalingFactor=scalingFactor,
+                        penaltyFactor=penaltyFactor)
 
     return LM_C, LM_K, LM_Q
 
