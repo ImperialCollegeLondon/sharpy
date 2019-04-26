@@ -617,7 +617,7 @@ class spherical_FoR(BaseLagrangeConstraint):
     def dynamicmat(self, LM_C, LM_K, LM_Q, MB_beam, MB_tstep, ts, num_LM_eq,
                 sys_size, dt, Lambda, Lambda_dot,
                 scalingFactor, penaltyFactor):
-        num_LM_eq_specific = 3
+        num_LM_eq_specific = self._n_eq
         Bnh = np.zeros((num_LM_eq_specific, sys_size), dtype=ct.c_double, order = 'F')
         B = np.zeros((num_LM_eq_specific, sys_size), dtype=ct.c_double, order = 'F')
 
@@ -674,7 +674,7 @@ class hinge_FoR(BaseLagrangeConstraint):
     def dynamicmat(self, LM_C, LM_K, LM_Q, MB_beam, MB_tstep, ts, num_LM_eq,
                 sys_size, dt, Lambda, Lambda_dot,
                 scalingFactor, penaltyFactor):
-        num_LM_eq_specific = 5
+        num_LM_eq_specific = self._n_eq
         Bnh = np.zeros((num_LM_eq_specific, sys_size), dtype=ct.c_double, order = 'F')
         B = np.zeros((num_LM_eq_specific, sys_size), dtype=ct.c_double, order = 'F')
 
@@ -749,7 +749,7 @@ class hinge_FoR_wrtG(BaseLagrangeConstraint):
     def dynamicmat(self, LM_C, LM_K, LM_Q, MB_beam, MB_tstep, ts, num_LM_eq,
                 sys_size, dt, Lambda, Lambda_dot,
                 scalingFactor, penaltyFactor):
-        num_LM_eq_specific = 5
+        num_LM_eq_specific = self._n_eq
         Bnh = np.zeros((num_LM_eq_specific, sys_size), dtype=ct.c_double, order = 'F')
         B = np.zeros((num_LM_eq_specific, sys_size), dtype=ct.c_double, order = 'F')
 
@@ -827,7 +827,7 @@ class fully_constrained_node_FoR(BaseLagrangeConstraint):
     def dynamicmat(self, LM_C, LM_K, LM_Q, MB_beam, MB_tstep, ts, num_LM_eq,
                 sys_size, dt, Lambda, Lambda_dot,
                 scalingFactor, penaltyFactor):
-        num_LM_eq_specific = 6
+        num_LM_eq_specific = self._n_eq
         Bnh = np.zeros((num_LM_eq_specific, sys_size), dtype=ct.c_double, order = 'F')
         B = np.zeros((num_LM_eq_specific, sys_size), dtype=ct.c_double, order = 'F')
 
@@ -935,7 +935,7 @@ class constant_rot_vel_FoR(BaseLagrangeConstraint):
     def dynamicmat(self, LM_C, LM_K, LM_Q, MB_beam, MB_tstep, ts, num_LM_eq,
                 sys_size, dt, Lambda, Lambda_dot,
                 scalingFactor, penaltyFactor):
-        num_LM_eq_specific = 3
+        num_LM_eq_specific = self._n_eq
         Bnh = np.zeros((num_LM_eq_specific, sys_size), dtype=ct.c_double, order = 'F')
         B = np.zeros((num_LM_eq_specific, sys_size), dtype=ct.c_double, order = 'F')
 
@@ -990,7 +990,7 @@ class constant_vel_FoR(BaseLagrangeConstraint):
     def dynamicmat(self, LM_C, LM_K, LM_Q, MB_beam, MB_tstep, ts, num_LM_eq,
                 sys_size, dt, Lambda, Lambda_dot,
                 scalingFactor, penaltyFactor):
-        num_LM_eq_specific = 6
+        num_LM_eq_specific = self._n_eq
         Bnh = np.zeros((num_LM_eq_specific, sys_size), dtype=ct.c_double, order='F')
         B = np.zeros((num_LM_eq_specific, sys_size), dtype=ct.c_double, order='F')
 
@@ -1042,7 +1042,7 @@ class lin_vel_node_wrtA(BaseLagrangeConstraint):
                 sys_size, dt, Lambda, Lambda_dot,
                 scalingFactor, penaltyFactor):
 
-        num_LM_eq_specific = 3
+        num_LM_eq_specific = self._n_eq
         B = np.zeros((num_LM_eq_specific, sys_size), dtype=ct.c_double, order='F')
 
         # Define the position of the first degree of freedom associated to the FoR
@@ -1071,7 +1071,7 @@ class lin_vel_node_wrtA(BaseLagrangeConstraint):
         else:
             current_vel = self.vel
 
-        num_LM_eq_specific = 3
+        num_LM_eq_specific = self._n_eq
         Bnh = np.zeros((num_LM_eq_specific, sys_size), dtype=ct.c_double, order='F')
         B = np.zeros((num_LM_eq_specific, sys_size), dtype=ct.c_double, order='F')
 
@@ -1132,7 +1132,7 @@ class lin_vel_node_wrtG(BaseLagrangeConstraint):
         else:
             current_vel = self.vel
 
-        num_LM_eq_specific = 3
+        num_LM_eq_specific = self._n_eq
         Bnh = np.zeros((num_LM_eq_specific, sys_size), dtype=ct.c_double, order='F')
         B = np.zeros((num_LM_eq_specific, sys_size), dtype=ct.c_double, order='F')
 
