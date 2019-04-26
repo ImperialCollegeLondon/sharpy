@@ -546,7 +546,7 @@ class Beam(BaseStructure):
         ibody_beam.n_mass = self.n_mass
 
         ibody_beam.frame_of_reference_delta = self.frame_of_reference_delta[ibody_first_element:ibody_last_element,:,:].astype(dtype=ct.c_double, order='F', copy=True)
-        ibody_beam.structural_twist = self.structural_twist[ibody_first_node:ibody_last_node].astype(dtype=ct.c_double, order='F', copy=True)
+        ibody_beam.structural_twist = self.structural_twist[ibody_first_element:ibody_last_element, :].astype(dtype=ct.c_double, order='F', copy=True)
         ibody_beam.boundary_conditions = self.boundary_conditions[ibody_first_node:ibody_last_node].astype(dtype=ct.c_int, order='F', copy=True)
         ibody_beam.beam_number = self.beam_number[ibody_first_element:ibody_last_element].astype(dtype=ct.c_int, order='F', copy=True)
 

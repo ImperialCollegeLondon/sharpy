@@ -328,7 +328,7 @@ class StructuralInformation():
         self.mass_db = np.zeros((num_mass_db, 6, 6), dtype=float)
         self.frame_of_reference_delta = np.zeros((num_elem, num_node_elem, 3),
                                                  dtype=float)
-        self.structural_twist = np.zeros((num_node,), dtype=float)
+        self.structural_twist = np.zeros((num_elem, num_node_elem), dtype=float)
         self.boundary_conditions = np.zeros((num_node,), dtype=int)
         self.beam_number = np.zeros((num_elem,), dtype=int)
         self.body_number = np.zeros((num_elem,), dtype=int)
@@ -376,7 +376,7 @@ class StructuralInformation():
             elem_mass (np.array): element mass index
             mass_db (np.array): Mass matrices
             frame_of_reference_delta (np.array): element direction of the y axis in the BFoR wrt the AFoR
-            structural_twist (np.array): node twist
+            structural_twist (np.array): element based twist
             boundary_conditions (np.array): node boundary condition
             beam_number (np.array): node beam number
             app_forces (np.array): steady applied follower forces at the nodes
@@ -428,7 +428,7 @@ class StructuralInformation():
         self.elem_mass = np.linspace(0,self.num_elem-1,self.num_elem, dtype=int)
         self.mass_db = mass_db
         self.create_frame_of_reference_delta(y_BFoR = frame_of_reference_delta)
-        self.structural_twist = vec_node_structural_twist
+        self.structural_twist = from_node_list_to_elem_matrix(vec_node_structural_twist, StructuralInformation.connectivities)
         self.beam_number = np.zeros((self.num_elem,), dtype=int)
         self.body_number = np.zeros((self.num_elem,), dtype=int)
         self.app_forces = np.zeros((self.num_node,6), dtype=float)
@@ -747,8 +747,8 @@ class StructuralInformation():
             sys.exit("ERROR: The second dimension of FoR does not match the number of nodes element")
         if(self.frame_of_reference_delta.shape[2]!=3):
             sys.exit("ERROR: The third dimension of FoR must be 3")
-        if(self.structural_twist.shape[0]!=self.num_node):
-            sys.exit("ERROR: The structural twist must be defined for each node")
+        if(self.structural_twist.shape[0]!=self.num_elem):
+            sys.exit("ERROR: The structural twist must be defined for each element")
         if(self.boundary_conditions.shape[0]!=self.num_node):
             sys.exit("ERROR: The boundary conditions must be defined for each node")
         if(self.beam_number.shape[0]!=self.num_elem):
@@ -1358,8 +1358,8 @@ class AeroelasticInformation():
         #         self.StructuralInformation.elem_stiffness[nodes_to_keep])
         # self.StructuralInformation.elem_mass = (
         #         self.StructuralInformation.elem_mass[nodes_to_keep])
-        self.StructuralInformation.structural_twist = (
-                self.StructuralInformation.structural_twist[nodes_to_keep])
+        # self.StructuralInformation.structural_twist = (
+        #         self.StructuralInformation.structural_twist[nodes_to_keep])
         self.StructuralInformation.boundary_conditions = (
                 self.StructuralInformation.boundary_conditions[nodes_to_keep])
         # self.StructuralInformation.beam_number = (
@@ -1390,6 +1390,8 @@ class AeroelasticInformation():
                 if not replace_matrix[inode,0] == -1:
                     # inode to be replaced
                     self.StructuralInformation.connectivities[icon, jcon] = self.StructuralInformation.connectivities[replace_matrix[inode,1], replace_matrix[inode,2]]
+                    self.StructuralInformation.structural_twist[icon, jcon] = (
+                        self.StructuralInformation.structural_twist[replace_matrix[inode,1], replace_matrix[inode,2]])
                     self.AerodynamicInformation.chord[icon, jcon] = (
                         self.AerodynamicInformation.chord[replace_matrix[inode,1], replace_matrix[inode,2]])
                     self.AerodynamicInformation.twist[icon, jcon] = (
