@@ -74,7 +74,9 @@ class StepUvlm(BaseSolver):
         if self.settings['gamma_dot_filtering'] == 1:
             cout.cout_wrap("gamma_dot_filtering cannot be one. Changing it to None", 2)
             self.settings['gamma_dot_filtering'] = None
-        elif (not self.settings['gamma_dot_filtering'].value == 0) and (self.settings['gamma_dot_filtering'].value % 2 == 0):
+        if not self.settings['gamma_dot_filtering'].value:
+            pass
+        elif not self.settings['gamma_dot_filtering'].value % 2:
             cout.cout_wrap("gamma_dot_filtering does not support even numbers. Changing " + str(self.settings['gamma_dot_filtering']) + " to " + str(self.settings['gamma_dot_filtering'] + 1), 2)
             self.settings['gamma_dot_filtering'] += 1
 
