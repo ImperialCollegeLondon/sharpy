@@ -2249,8 +2249,8 @@ class DynamicBlock(Dynamic):
 
             #  build terms that will be recycled
             Cw_cpx=self.get_Cw_cpx(zval)
-            PwCw_T = Cw_cpx.T.dot(Pw.T)
-            Kernel=np.linalg.inv (zval*Eye-P-PwCw_T.T)
+            P_PwCw = P + Cw_cpx.T.dot(Pw.T).T
+            Kernel = np.linalg.inv( zval*Eye - P_PwCw )
 
             ### ----- controllability
             Ygamma=Intfact*np.dot(Kernel, Bup)  
@@ -2287,32 +2287,29 @@ class DynamicBlock(Dynamic):
                 continue
 
             zinv=1./zval
-            Cw_cpx_H=Cw_cpx.conjugate().T
+            Qobs[ii02,:] = zinv*self.SS.C[0][2].T            
+            if self.integr_order==1:
+                raise NameError('Obs Gramian Integr not implemented')
+            elif self.integr_order==2:
+                Qobs[ii03,:] = (bm1*zinv) * Qobs[ii02,:]               
+              
+            # solve bound circulation
+            rhs = Cw_cpx.T.dot(self.SS.C[0][1].T) + self.SS.C[0][0].T + \
+                  Qobs[ii02,:]*( b0 + zinv*bm1 ) + \
+                  np.dot( P_PwCw.T, bp1*Qobs[ii02,:] ) 
+            Qobs[ii00,:] = np.dot( Kernel.T, rhs )
 
-            Qobs[ii02,:] = zval * self.SS.C[0][2].T
-            if self.integr_order==2:
-                Qobs[ii03,:] = (bm1*zval**2) * self.SS.C[0][2].T
-
-            rhs=self.SS.C[0][0].T + \
-                Cw_cpx_H.dot(self.SS.C[0][1].T) + \
-                libsp.dot( 
-                    (bp1*zval)*(PwCw_T.conj() + P.T) + \
-                    (b0*zval+bm1*zval**2)*Eye, self.SS.C[0][2].T)
-
-            Qobs[ii00,:] = np.dot(Kernel.conj().T, rhs)
-
+            # solve wake
             Eye_star= libsp.csc_matrix( 
-                ( zinv*np.ones((K_star,)), (range(K_star),range(K_star))), 
-                                        shape=(K_star,K_star), dtype=np.complex_)
+            ( zval*np.ones((K_star,)), (range(K_star),range(K_star))), 
+                                    shape=(K_star,K_star), dtype=np.complex_)
             Qobs[ii01,:] = libsp.solve( 
-                            Eye_star-self.SS.A[1][1].T,
-                            np.dot(Pw.T, Qobs[ii00,:] +\
-                                            (bp1*zval)*self.SS.C[0][2].T) +\
-                                                            self.SS.C[0][1].T)
+                        Eye_star-self.SS.A[1][1].T, 
+                        self.SS.C[0][1].T + np.dot(Pw.T, Qobs[ii00,:] + bp1*Qobs[ii02,:]) )
 
             kkvec=range( 2*kk*self.SS.outputs, 2*(kk+1)*self.SS.outputs )
-            Zo[:,kkvec[:self.SS.outputs]]= Intfact*Qobs.real        
-            Zo[:,kkvec[self.SS.outputs:]]= Intfact*Qobs.imag
+            Zo[:,kkvec[:self.SS.outputs]]= Intfact * Qobs.real        
+            Zo[:,kkvec[self.SS.outputs:]]= Intfact * Qobs.imag
 
         # delete full matrices
         Kernel=None
