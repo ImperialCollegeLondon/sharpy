@@ -70,6 +70,16 @@ class StepUvlm(BaseSolver):
 
         self.data.structure.add_unsteady_information(self.data.structure.dyn_dict, self.settings['n_time_steps'].value)
 
+        # Filtering
+        if self.settings['gamma_dot_filtering'] == 1:
+            cout.cout_wrap("gamma_dot_filtering cannot be one. Changing it to None", 2)
+            self.settings['gamma_dot_filtering'] = None
+        if self.settings['gamma_dot_filtering'] is not None:
+            if self.settings['gamma_dot_filtering'].value:
+                if not self.settings['gamma_dot_filtering'].value % 2:
+                    cout.cout_wrap("gamma_dot_filtering does not support even numbers. Changing " + str(self.settings['gamma_dot_filtering']) + " to " + str(self.settings['gamma_dot_filtering'] + 1), 2)
+                    self.settings['gamma_dot_filtering'] += 1
+
         # init velocity generator
         velocity_generator_type = gen_interface.generator_from_string(
             self.settings['velocity_field_generator'])

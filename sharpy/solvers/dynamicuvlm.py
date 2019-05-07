@@ -127,6 +127,7 @@ class DynamicUVLM(BaseSolver):
 
             self.aero_solver.add_step()
             self.data.aero.timestep_info[-1] = aero_tstep.copy()
+            self.data.structure.timestep_info.append(struct_ini_step.copy())
 
             if self.print_info:
                 self.residual_table.print_line([self.data.ts,
