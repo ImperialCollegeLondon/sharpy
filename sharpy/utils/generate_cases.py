@@ -110,7 +110,7 @@ def from_node_list_to_elem_matrix(node_list, connectivities):
 def read_column_sheet_type01(excel_file_name, excel_sheet, column_name):
 
     xls = pd.ExcelFile(excel_file_name)
-    excel_db = pd.read_excel(xls, sheetname=excel_sheet)
+    excel_db = pd.read_excel(xls, sheet_name=excel_sheet)
     num_elem = excel_db.index._stop - 2
 
     if excel_db[column_name][1] == 'one_int':
