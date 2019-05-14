@@ -107,6 +107,22 @@ def from_node_list_to_elem_matrix(node_list, connectivities):
 
     return elem_matrix
 
+def from_node_array_to_elem_matrix(node_array, connectivities):
+    """
+    from_node_array_to_elem_matrix
+
+    Same as the previous function but with an array as input
+    """
+    num_elem = len(connectivities)
+    prop_size = node_array.shape[1:]
+    # TODO: change the "3" for self.num_node_elem
+    elem_matrix = np.zeros(prop_size + (num_elem,3), dtype=node_array.dtype)
+    for ielem in range(num_elem):
+        for inode_in_elem in range(3):
+            elem_matrix[:, ielem, inode_in_elem] = node_array[connectivities[ielem, inode_in_elem], :]
+
+    return elem_matrix
+
 def read_column_sheet_type01(excel_file_name, excel_sheet, column_name):
 
     xls = pd.ExcelFile(excel_file_name)
@@ -224,6 +240,49 @@ def read_column_sheet_type01(excel_file_name, excel_sheet, column_name):
         #     ivar += 1
 
 
+def get_factor_geometric_progression(a0, Sn_target, n):
+    # Given an initial value,
+
+    tol = 1e-12
+    max_it = 1000
+
+    # Case of uniform distribution
+    if abs(a0*n - Sn_target) < tol:
+        return 1.
+
+    # First estimation for r
+    if a0*n < Sn_target:
+        r = 1.1
+    else:
+        r = 0.9
+
+    # Iterative computation
+    error = 2.*tol
+    Sn_temp = a0*(1-r**n)/(1-r)
+    it = 0
+    while ((error > tol) and (it < max_it)):
+        derivative = ((1-n*r**(n-1))*(1-r) + (1-r**n))/(1-r)**2
+        # print("der:", derivative)
+        # print("r:", r)
+        r += (Sn_target - Sn_temp)/a0/derivative
+        Sn_temp = a0*(1-r**n)/(1-r)
+        error = abs(Sn_temp - Sn_target)/Sn_target
+        it += 1
+
+    if it == max_it:
+        print("Maximum iterations reached. Sn target:", Sn_target, ". Sn obtained:", Sn_temp, ". Relative error:", error)
+
+    # sum = a0
+    # ai = a0
+    # print("ai: ", ai)
+    # for i in range(1, n):
+    #     ai *= r
+    #     sum += ai
+    #     print(ai)
+    #
+    # print("sum:", sum)
+
+    return r
 ######################################################################
 ###############  STRUCTURAL INFORMATION  #############################
 ######################################################################
@@ -1080,7 +1139,8 @@ class AerodynamicInformation():
                 print("WARNING: redefining the discretization of airfoil camber line")
                 new_airfoils = self.change_airfoils_discretezation(self.airfoils, aerodynamics_to_add.airfoils.shape[1])
                 self.airfoils = np.concatenate((new_airfoils, aerodynamics_to_add.airfoils), axis=0)
-
+            if self.m_distribution.lower() == 'user_defined':
+                self.user_defined_m_distribution = np.concatenate((self.user_defined_m_distribution, aerodynamics_to_add.user_defined_m_distribution), axis=0)
             total_num_airfoils += len(aerodynamics_to_add.airfoils[:,0,0])
             # total_num_surfaces += len(aerodynamics_to_add.surface_m)
             total_num_surfaces += np.sum(aerodynamics_to_add.surface_m != -1)
@@ -1216,6 +1276,8 @@ class AerodynamicInformation():
             h5file.create_dataset('elastic_axis', data=self.elastic_axis)
             h5file.create_dataset('airfoil_distribution', data=self.airfoil_distribution)
             h5file.create_dataset('sweep', data=self.sweep)
+            if self.m_distribution.lower() == 'user_defined':
+                h5file.create_dataset('user_defined_m_distribution', data=self.user_defined_m_distribution)
 
             airfoils_group = h5file.create_group('airfoils')
             for iairfoil in range(len(self.airfoils)):
