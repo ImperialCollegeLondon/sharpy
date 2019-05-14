@@ -178,9 +178,9 @@ class GustVelocityField(generator_interface.BaseGenerator):
                 if x > 0.0:
                     return vel
 
-                vel[0] = np.interp(x, -self.file_info[:,0]*self.u_inf, self.file_info[:,1])
-                vel[1] = np.interp(x, -self.file_info[:,0]*self.u_inf, self.file_info[:,2])
-                vel[2] = np.interp(x, -self.file_info[:,0]*self.u_inf, self.file_info[:,3])
+                vel[0] = np.interp(x, -self.file_info[::-1,0]*self.u_inf, self.file_info[::-1,1])
+                vel[1] = np.interp(x, -self.file_info[::-1,0]*self.u_inf, self.file_info[::-1,2])
+                vel[2] = np.interp(x, -self.file_info[::-1,0]*self.u_inf, self.file_info[::-1,3])
                 return vel
 
         for i_surf in range(len(zeta)):
