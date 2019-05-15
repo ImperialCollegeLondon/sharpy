@@ -9,67 +9,98 @@ import scipy as sc
 import scipy.linalg as scalg
 import scipy.signal as scsig
 import sharpy.linear.src.libss as libss
+import sharpy.utils.algebra as algebra
+import sharpy.utils.settings as settings
+import warnings
 
 
 class FlexDynamic():
     r"""
     Define class for linear state-space realisation of GEBM flexible-body
-    equations (without linearised rigid-body dynamics) from Sharpy
-    ``timestep_info`` class.
+    equations from SHARPy``timestep_info`` class and with the nonlinear structural information.
+
+    The linearised beam takes the following arguments:
+
+    Args:
+        tsinfo (sharpy.utils.datastructures.StructImeStepInfo): Structural timestep containing the modal information
+        structure (sharpy.solvers.beamloader.Beam): Beam class with the structural information
+        custom_settings (dict): settings for the linearised beam
+
+
+    Settings types, description and default values:
+
+    ============================  =========  ================================================   ============
+    Name                          Type       Description                                        Default
+    ============================  =========  ================================================   ============
+    ``modal_projection``          ``bool``   Change coordinates to modal projection             ``False``
+    ``num_modes``                 ``int``    Number of modes to retain from truncation          ``10``
+    ``inout_coords``              ``str``    Input/output coordinates: ``nodes`` or ``modes``   ``nodes``
+    ``proj_modes``                ``str``    ``damped`` or ``undamped`` modes used              ``undamped``
+    ``discrete_time``             ``bool``   Assemble a discrete or continuous time system      ``True``
+    ``discr_method``              ``str``    Time discretisation method. See below.             ``newmark``
+    ``newmark_damp``              ``float``  Newmark damping                                    ``1e-4``
+    ``dt``                        ``float``  Time increment                                     ``1e-3``
+    ``use_euler``                 ``bool``   Replace quaternion parametrisation for euler       ``False``
+    ============================  =========  ================================================   ============
+
 
     State-space models can be defined in continuous or discrete time (dt
     required). Modal projection, either on the damped or undamped modal shapes,
-    is also aviable. The rad/s array wv can be optionally passed for freq.
+    is also avaiable. The rad/s array wv can be optionally passed for freq.
     response analysis
 
     To produce the state-space equations:
 
-    1. Set the attributes
+    1. Set the settings
 
-        a. ``self.modal={True,False}``: determines whether to project the states
+        a. ``modal_projection={True,False}``: determines whether to project the states
             onto modal coordinates. Projection over damped or undamped modal
             shapes can be obtained selecting:
 
-                - ``self.proj_modes={'damped','undamped'}``
+                - ``proj_modes={'damped','undamped'}``
 
             while
 
-                 - ``self.inout_coords={'modes','nodal'}``
+                 - ``inout_coords={'modes','nodal'}``
 
              determines whether the modal state-space inputs/outputs are modal
-             coords or nodal degrees-of-freedom. If 'modes' is selected, the
-             Kin and Kout gain matrices are generated to transform nodal to modal
+             coords or nodal degrees-of-freedom. If ``modes`` is selected, the
+             ``Kin`` and ``Kout`` gain matrices are generated to transform nodal to modal
              dofs
 
-        b. ``self.dlti={True,False}``: if true, generates discrete-time system.
+        b. ``dlti={True,False}``: if true, generates discrete-time system.
             The continuous to discrete transformation method is determined by::
 
-                self.discr_method={ 'newmark',  # Newmark-beta
+                discr_method={ 'newmark',  # Newmark-beta
                                     'zoh',		# Zero-order hold
                                     'bilinear'} # Bilinear (Tustin) transformation
 
             DLTIs can be obtained directly using the Newmark-:math:`\beta` method
 
-                ``self.discr_method='newmark'``
-                ``self.newmark_damp=xx`` with ``xx<<1.0``
+                ``discr_method='newmark'``
+                ``newmark_damp=xx`` with ``xx<<1.0``
 
-            for full-states descriptions (``self.modal=False``) and modal projection
-            over the undamped structural modes (``self.modal=True`` and ``self.proj_modes``).
+            for full-states descriptions (``modal_projection=False``) and modal projection
+            over the undamped structural modes (``modal_projection=True`` and ``proj_modes``).
             The Zero-order holder and bilinear methods, instead, work in all
             descriptions, but require the continuous state-space equations.
 
+    2. Generate an instance of the beam
 
     2. Run ``self.assemble()``. The method accepts an additional parameter, ``Nmodes``,
     which allows using a lower number of modes than specified in ``self.Nmodes``
 
     Examples:
-        >>> self.dlti = True
-        >>> self.newmark_damp = 5e-3
-        >>> self.modal = True
-        >>> self.proj_modes = 'undamped'
-        >>> self.Nmodes = num_modes
-        >>> self.discr_method = 'newmark'
 
+        >>>beam_settings = {'modal_projection': True,
+        >>>             'inout_coords': 'modes',
+        >>>             'discrete_time': False,
+        >>>             'proj_modes': 'undamped',
+        >>>             'use_euler': True}
+        >>>
+        >>> beam = lingebm.FlexDynamic(tsstruct0, structure=data.structure, custom_settings=beam_settings)
+        >>>
+        >>> beam.assemble()
 
     Notes:
 
@@ -81,34 +112,43 @@ class FlexDynamic():
 
     """
 
-    def __init__(self, tsinfo, dt=None, wv=None):
+    def __init__(self, tsinfo, structure=None, custom_settings=dict()):
 
-        # Settings - WIP - maybe better to go into a new solver such as LinGEBMLoader or similar
         # ----->
-        # self.settings_default['modal_projection'] = True
-        # self.settings_types['modal_projection'] = 'bool'
-        #
-        # self.settings_default['inout_coords'] = 'nodes' # or 'modes'
-        # self.settings_types['inout_coords'] = 'str'
-        #
-        # self.settings_default['proj_modes'] = 'damped'
-        # self.settings_types['proj_modes'] = 'str'
-        #
-        # self.settings_default['discrete_time'] = True
-        # self.settings_types['discrete_time'] = 'bool'
-        #
-        # self.settings_default['dt'] = 0.001
-        # self.settings_types['dt'] = 'float'
-        #
-        # self.settings_default['proj_modes'] = 'damped'
-        # self.settings_types['proj_modes'] = 'str'
-        #
-        # self.settings_default['discr_method'] = 'newmark'
-        # self.settings_types['discr_methods'] = 'str'
-        #
-        # self.settings_default['newmark_damp'] = 1e-4
-        # self.settings_types['newmark_damp'] = 'float'
+        self.settings_default = dict()
+        self.settings_types = dict()
+
+        self.settings_default['modal_projection'] = True
+        self.settings_types['modal_projection'] = 'bool'
+
+        self.settings_types['num_modes'] = 'int'
+        self.settings_default['num_modes'] = 10
+
+        self.settings_default['inout_coords'] = 'nodes' # or 'modes'
+        self.settings_types['inout_coords'] = 'str'
+
+        self.settings_default['discrete_time'] = True
+        self.settings_types['discrete_time'] = 'bool'
+
+        self.settings_default['dt'] = 0.001
+        self.settings_types['dt'] = 'float'
+
+        self.settings_default['proj_modes'] = 'undamped'
+        self.settings_types['proj_modes'] = 'str'
+
+        self.settings_default['discr_method'] = 'newmark'
+        self.settings_types['discr_method'] = 'str'
+
+        self.settings_default['newmark_damp'] = 1e-4
+        self.settings_types['newmark_damp'] = 'float'
+
+        self.settings_default['use_euler'] = False
+        self.settings_types['use_euler'] = 'bool'
         # <-----
+
+        # Extract settings
+        self.settings = custom_settings
+        settings.to_custom_types(self.settings, self.settings_types, self.settings_default)
 
         ### extract timestep_info modal results
         # unavailable attrs will be None
@@ -127,39 +167,394 @@ class FlexDynamic():
         self.Cstr = tsinfo.modal.get('C')
         self.Kstr = tsinfo.modal.get('K')
 
-        self.Nmodes = len(self.damping)
+        self.Nmodes = self.settings['num_modes'].value
         self.num_dof = self.U.shape[0]
         if self.V is not None:
             self.num_dof = self.num_dof // 2
 
         ### set other flags
-        self.modal = True
-        self.inout_coords = 'nodes'  # 'modes'
-        self.dlti = True
-        if dt is None:
-            self.dlti = False
-        self.proj_modes = 'damped'
+        self.modal = self.settings['modal_projection'].value
+        self.inout_coords = self.settings['inout_coords']
+        self.dlti = self.settings['discrete_time'].value
+
+        if self.dlti:
+            dt = self.settings['dt'].value
+        else:
+            dt = None
+
+        self.proj_modes = self.settings['proj_modes']
         if self.V is None:
             self.proj_modes = 'undamped'
-        self.discr_method = 'newmark'
-        self.newmark_damp = 1e-3
+        self.discr_method = self.settings['discr_method']
+        self.newmark_damp = self.settings['newmark_damp'].value
+        self.use_euler = self.settings['use_euler'].value
 
         ### set state-space variables
         self.dt = dt
-        self.wv = wv
         self.SScont = None
         self.SSdisc = None
         self.Kin = None
         self.Kout = None
 
+        # Store structure at linearisation and linearisation conditions
+        self.structure = structure
+        self.tsstruct0 = tsinfo
+
+        if self.use_euler:
+            self.euler_propagation_equations(tsinfo)
+
+    def euler_propagation_equations(self, tsstr):
+        """
+        Introduce the linearised Euler propagation equations that relate the body fixed angular velocities to the Earth
+        fixed Euler angles.
+
+        This method will remove the quaternion propagation equations created by SHARPy; the resulting
+        system will have 9 rigid degrees of freedom.
+
+
+        Args:
+            tsstr:
+
+        Returns:
+
+        """
+
+        # Verify the rigid body modes are used
+        num_node = tsstr.num_node
+        num_flex_dof = 6*(num_node-1)
+
+        euler = algebra.quat2euler(tsstr.quat)
+        tsstr.euler = euler
+
+        if self.Mstr.shape[0] == num_flex_dof + 10:
+
+            # Erase quaternion equations
+            self.Cstr[-4:, :] = 0
+
+            self.Mstr = self.Mstr[:-1, :-1]
+            self.Cstr = self.Cstr[:-1, :-1]
+            self.Kstr = self.Kstr[:-1, :-1]
+
+            for_rot = tsstr.for_vel[3:]
+            Crr = np.zeros((9, 9))
+
+            # Euler angle propagation equations
+            Crr[-3:, -6:-3] = -algebra.deuler_dt(tsstr.euler)
+            Crr[-3:, -3:] = -algebra.der_Teuler_by_w(tsstr.euler, for_rot)
+
+            self.Cstr[-9:, -9:] = Crr
+
+        else:
+            warnings.warn('Euler parametrisation not implemented - Either rigid body modes are not being used or this '
+                          'method has already been called.')
+
+
     @property
     def num_dof(self):
-        self.num_dof = self.U.shape[0]
+        self.num_dof = self.Mstr.shape[0]
+        # Previously beam.U.shape[0]
         return self._num_dof
 
     @num_dof.setter
     def num_dof(self, value):
         self._num_dof = value
+
+
+    def linearise_gravity_forces(self, tsstr=None):
+        r"""
+        Linearises gravity forces and includes the resulting terms in the C and K matrices. The method takes the
+        linearisation condition (optional argument), linearises and updates:
+
+            * Stiffness matrix
+
+            * Damping matrix
+
+            * Modal damping matrix
+
+        The method works for both the quaternion and euler angle orientation parametrisation.
+
+        Args:
+            tsstr (sharpy.utils.datastructures.StructTimeStepInfo): Structural timestep at the linearisation point
+
+        Notes:
+
+            As part of a more detailed overview of the function, the gravity forces will be linearised to express them in terms
+            of the beam formulation input variables:
+
+                * Nodal forces: :math:`\delta \mathbf{f}_A`
+
+                * Nodal moments: :math:`\delta(T^T \mathbf{m}_B)`
+
+                * Total forces (rigid body equations): :math:`\delta \mathbf{F}_A`
+
+                * Total moments (rigid body equations): :math:`\delta \mathbf{M}_A`
+
+            The gravity forces are naturally expressed in G (inertial) frame
+
+            .. math:: \mathbf{f}_G = \mathbf{M\,g}
+
+            where the mass matrix is linearised at the linearisation condition.
+
+            To obtain the gravity forces expressed in A frame as required we make use of the transformation matrices
+
+            .. math:: \mathbf{f}_A = C^{AG}(\Phi) \mathbf{f}_G
+
+            Linearising the above
+
+            .. math:: \delta \mathbf{f}_A = C^{AG} \delta \mathbf{f}_G + \frac{\partial}{\partial \Phi}(C^{AG} \mathbf{f}_G) \delta\Phi
+
+            The gravity moments (these will be non zero only when there is an offset lumped mass)
+
+            .. math:: \mathbf{m}_B = \tilde{X}_{B,CG}C^{BA}C^{AG}\mathbf{f}_G
+
+            Linearising:
+
+            .. math:: \delta \mathbf{m}_B = \tilde{X}_{B,CG}\left(\frac{\partial}{\partial\Psi}(C^{BA}\mathbf{f}_A)\delta\Psi +
+                C^{BA}\frac{\partial}{\partial\Phi}(C^{AG}\mathbf{f}_G)\delta\Phi\right)
+
+            However, recall that the input moments are defined in tangential space, which needs to be linearised as well:
+
+            .. math:: \delta(T^T(\Psi) \mathbf{m}_B) = T_0^T \delta \mathbf{m}_B + \frac{\partial}{\partial \Psi}(T^T \mathbf{m}_B)\delta\Psi
+
+            where the :math:`\delta \mathbf{m}_B` term has been defined above.
+
+            The linearisation of the total gravity forces (contributing to the rigid body equations is done in a similar
+            manner.
+
+            .. math:: \mathbf{F}_A = \sum_n \mathbf{f}_A
+
+            which becomes
+
+            .. math:: \delta \mathbf{F}_A = \sum_n \delta \mathbf{f}_A
+
+            The total moments, as opposed to the nodal moments, are expressed in A frame:
+
+            .. math:: \mathbf{M}_A = \sum_n \tilde{X}_{A,n}^{CG} C^{AG} \mathbf{f}_G
+
+            where :math:`X_{A,n}^{CG} = R_{A,n} + C^{AB}(\Psi)X_{B,n}^{CG}`. Its linearised form is
+
+            .. math:: \delta X_{A,n}^{CG} = \delta R_{A,n} + \frac{\partial}{\partial \Psi}(C^{AB} X_{B,CG})\delta\Psi
+
+            Therefore, the overall linearisation of the total moment is defined as
+
+            .. math:: \delta \mathbf{M}_A = \sum_n\left[
+                \tilde{X}_{A,n}^{CG} C^{AG}\delta \mathbf{f}_G +
+                \tilde{X}_{A,n}^{CG} \frac{\partial}{\partial \Phi}(C^{AG}\mathbf{f}_G)\delta \Phi
+                - \tilde{C}^{AG}\mathbf{f}_G \delta X_{A,n}^{CG} \right]
+
+
+            As it can be noticed, the linearisation introduces damping and stiffening terms. These terms will form part of
+            the stiffness and damping matrices. The terms related to the orientation of the vehicle will contribute to the
+            damping matrix and those that are affected by the flexible degrees of freedom will form part of the stiffness
+            matrix.
+
+            This is constructed for all nodes bar the clamped one in the following way:
+
+                * Terms from the linearisation of the nodal moments will be assembled in the rows corresponding to moment
+                  equations and columns corresponding to the cartesian rotation vector
+
+                    .. math:: K_{ss}^{m,\Psi} \leftarrow -T_0^T \tilde{X}_{B,CG} \frac{\partial}{\partial\Psi}(C^{BA}\mathbf{f}_A)
+                        -\frac{\partial}{\partial \Psi}(T^T \mathbf{m}_B)
+
+                * Terms from the linearisation of the translation forces with respect to the orientation are assembled in the
+                  damping matrix, the rows corresponding to translational forces and columns to orientation degrees of freedom
+
+                    .. math:: C_{sr}^{f,\Phi} \leftarrow - \frac{\partial}{\partial \Phi}(C^{AG} \mathbf{f}_G)
+
+                * Terms from the linearisation of the moments with respect to the orientation are assembled in the damping
+                  matrix, with the rows correspondant to the moments and the columns to the orientation degrees of freedom
+
+                    .. math:: C_{sr}^{m,\Phi} \leftarrow - T_0^T\tilde{X}_{B,CG}C^{BA}\frac{\partial}{\partial\Phi}(C^{AG}\mathbf{f}_G)
+
+                * Terms from the linearisation of the total forces with respect to the orientation correspond to the
+                  rigid body equations in the damping matrix, the rows to the translational forces and columns to the orientation
+
+                    .. math:: C_{rr}^{F,\Phi} \leftarrow - \sum_n \frac{\partial}{\partial \Phi}(C^{AG} \mathbf{f}_G)
+
+                * Terms from the linearisation of the total moments with respect to the orientation correspond to the rigid
+                  body equations in the damping matrix, the rows to the moments and the columns to the orientation
+
+                    .. math:: C_{rr}^{M,\Phi} \leftarrow - \sum_n\tilde{X}_{A,n}^{CG} \frac{\partial}{\partial \Phi}(C^{AG}\mathbf{f}_G)
+
+                * Terms from the linearisation of the total moments with respect to the nodal position :math:`R_A` are
+                  included in the stiffness matrix, the rows corresponding to the moments in the rigid body
+                  equations and the columns to the nodal position
+
+                    .. math:: K_{rs}^{M,R} \leftarrow + \sum_n \tilde{\mathbf{f}_A}
+
+                * Terms from the linearisation of the total moments with respect to the cartesian rotation vector are included
+                  in the stiffness matrix, the rows corresponding to the moments in the rigid body equations and the columns
+                  to the cartesian rotation vector
+
+                    .. math:: K_{rs}^{M, \Psi} \leftarrow + \sum_n \tilde{\mathbf{f}_A}\frac{\partial}{\partial \Psi}(C^{AB} X_{B,CG})
+
+                
+
+
+
+        """
+        # Gravity forces
+        # TODO: Once gravity is verified, add to assembly method with setting whether gravity is on or off
+
+        if tsstr is None:
+            tsstr = self.tsstruct0
+
+        num_node = tsstr.num_node
+        flex_dof = 6 * (num_node-1)
+        if self.use_euler:
+            rig_dof = 9
+        else:
+            rig_dof = 10
+
+        # get projection matrix A->G
+        # (and other quantities indep. from nodal position)
+        Cga = algebra.quat2rotation(tsstr.quat)
+        Cag = Cga.T
+
+        Kss_grav = np.zeros((flex_dof, flex_dof))
+        Mss = self.Mstr[:flex_dof, :flex_dof]
+        Mrr = self.Mstr[-rig_dof:, -rig_dof:]
+        Crr_grav = np.zeros((rig_dof, rig_dof))
+        Csr_grav = np.zeros((flex_dof, rig_dof))
+        Krs_grav = np.zeros((rig_dof, flex_dof))
+
+        Xcg_A = np.array([Mrr[2, 4], Mrr[0, 5], Mrr[1, 3]]) / Mrr[0, 0]
+        Xcg_Askew = algebra.skew(Xcg_A)
+
+        # print('X_CG A -> %.2f %.2f %.2f' %(Xcg_A[0], Xcg_A[1], Xcg_A[2]))
+
+        FgravA = np.zeros(3)
+        FgravG = np.zeros(3)
+
+        for i_node in range(num_node):
+            fgravA = tsstr.gravity_forces[i_node, :3]
+            fgravG = Cga.dot(fgravA)
+
+            # Get nodal position - A frame
+            Ra = tsstr.pos[i_node, :]
+
+            # retrieve element and local index
+            ee, node_loc = self.structure.node_master_elem[i_node, :]
+            psi = tsstr.psi[ee, node_loc, :]
+            Cab = algebra.crv2rotation(psi)
+            Cba = Cab.T
+            Cbg = Cba.dot(Cag)
+
+            # Tangential operator for moments calculation
+            Tan = algebra.crv2tan(psi)
+
+            jj = 0  # nodal dof index
+            bc_at_node = self.structure.boundary_conditions[i_node]  # Boundary conditions at the node
+
+            if bc_at_node == 1:  # clamp (only rigid-body)
+                dofs_at_node = 0
+                jj_tra, jj_rot = [], []
+
+            elif bc_at_node == -1 or bc_at_node == 0:  # (rigid+flex body)
+                dofs_at_node = 6
+                jj_tra = 6 * self.structure.vdof[i_node] + np.array([0, 1, 2], dtype=int)  # Translations
+                jj_rot = 6 * self.structure.vdof[i_node] + np.array([3, 4, 5], dtype=int)  # Rotations
+            # jj_tra=[jj  ,jj+1,jj+2]
+            # jj_rot=[jj+3,jj+4,jj+5]
+            else:
+                raise NameError('Invalid boundary condition (%d) at node %d!' \
+                                % (bc_at_node, i_node))
+
+            jj += dofs_at_node
+
+            # Nodal centre of gravity (in the case of additional lumped masses, else should be zero)
+            if bc_at_node != 1:
+                Mss_indices = np.concatenate((jj_tra, jj_rot))
+                Mss_node = Mss[Mss_indices,:]
+                Mss_node = Mss_node[:, Mss_indices]
+                Xcg_B = np.array([Mss_node[2, 4], Mss_node[0, 5], Mss_node[1, 3]]) / Mss_node[0, 0]
+                Xcg_Bskew = algebra.skew(Xcg_B)
+                # print("Node %d -> %.3f %.3f %.3f" %(i_node, Xcg_B[0], Xcg_B[1], Xcg_B[2]))
+
+                # Nodal CG in A frame
+                Xcg_A_n = Ra + Cab.dot(Xcg_B)
+                Xcg_A_n_skew = algebra.skew(Xcg_A_n)
+
+                # Nodal CG in G frame - debug
+                Xcg_G_n = Cga.dot(Xcg_A_n)
+
+            if self.use_euler:
+                if bc_at_node != 1:
+                    # All terms dependent upon C^(AG) as a function of the Euler angle have a sign change due to transpose
+                    # in rotation_3dy
+                    # TODO: Verify rotation 3dy, euler derivative and remove minus signs
+                    # Nodal moments due to gravity -> linearisation terms wrt to delta_psi
+                    Kss_grav[np.ix_(jj_rot, jj_rot)] -= -1*Tan.dot(Xcg_Bskew.dot(algebra.der_Ceuler_by_v(tsstr.euler, fgravG)))
+                    Kss_grav[np.ix_(jj_rot, jj_rot)] -= -1*algebra.der_TanT_by_xv(psi, Xcg_Bskew.dot(Cbg.dot(fgravG)))
+
+                    # Nodal forces due to gravity -> linearisation terms wrt to delta_euler
+                    Csr_grav[jj_tra, -3:] -= -1*algebra.der_Ceuler_by_v(tsstr.euler, fgravG)
+
+                    # Nodal moments due to gravity -> linearisation terms wrt to delta_euler
+                    Csr_grav[jj_rot, -3:] -= -1*Tan.dot(Xcg_Bskew.dot(Cba.dot(algebra.der_Ceuler_by_v(tsstr.euler, fgravG))))
+
+                    # Rigid equations always in A frame
+                    # Total forces -> linearisation terms wrt to delta_euler
+                    Crr_grav[:3, -3:] -= -1*algebra.der_Ceuler_by_v(tsstr.euler, fgravG)
+
+                    # Total moments -> linearisation terms wrt to delta_euler
+                    Crr_grav[3:6, -3:] -= -1*Xcg_Askew.dot(algebra.der_Ceuler_by_v(tsstr.euler, fgravG))
+
+                    # Total moments -> linearisation terms wrt to delta_Ra
+                    # These terms are not affected by the Euler matrix. Sign is correct (+)
+                    Krs_grav[3:6, jj_tra] += algebra.skew(fgravA)
+
+                    # Total moments -> linearisation terms wrt to delta_Psi
+                    Krs_grav[3:6, jj_rot] += np.dot(algebra.skew(fgravA), algebra.der_Ccrv_by_v(psi, Xcg_B))
+
+            else:
+
+                    # Nodal moments due to gravity -> linearisation terms wrt to delta_psi
+                    Kss_grav[np.ix_(jj_rot, jj_rot)] -= Tan.dot(Xcg_Bskew.dot(algebra.der_Cquat_by_v(tsstr.quat, fgravG)))
+                    Kss_grav[np.ix_(jj_rot, jj_rot)] -= algebra.der_TanT_by_xv(psi, Xcg_Bskew.dot(Cbg.dot(fgravG)))
+
+                    # Nodal forces due to gravity -> linearisation terms wrt to delta_euler
+                    Csr_grav[jj_tra, -3:] -= algebra.der_Cquat_by_v(tsstr.quat, fgravG)
+
+                    # Nodal moments due to gravity -> linearisation terms wrt to delta_euler
+                    Csr_grav[jj_rot, -3:] -= Tan.dot(Xcg_Bskew.dot(Cba.dot(algebra.der_Cquat_by_v(tsstr.quat, fgravG))))
+
+                    # print("Node %d \t-> B %.3f %.3f %.3f" %(i_node, Xcg_B[0], Xcg_B[1], Xcg_B[2]))
+                    # print("\t\t\t-> A %.3f %.3f %.3f" %(Xcg_A_n[0], Xcg_A_n[1], Xcg_A_n[2]))
+                    # print("\t\t\t-> G %.3f %.3f %.3f" %(Xcg_G_n[0], Xcg_G_n[1], Xcg_G_n[2]))
+
+                    # Rigid equations always in A frame
+                    # Total forces -> linearisation terms wrt to delta_euler
+                    Crr_grav[:3, -3:] -= algebra.der_Cquat_by_v(tsstr.quat, fgravG)
+
+                    # Total moments -> linearisation terms wrt to delta_euler
+                    Crr_grav[3:6, -3:] -= Xcg_Askew.dot(algebra.der_Cquat_by_v(tsstr.quat, fgravG))
+
+                    # Total moments -> linearisation terms wrt to delta_Ra
+                    # Check sign (in theory it should be +=) but other change in sign may mean (-=)
+                    Krs_grav[3:6, jj_tra] += algebra.skew(fgravA)
+
+                    # Total moments -> linearisation terms wrt to delta_Psi
+                    Krs_grav[3:6, jj_rot] += np.dot(algebra.skew(fgravA), algebra.der_Ccrv_by_v(psi, Xcg_B))
+
+            # Debugging:
+            FgravA += fgravA
+            FgravG += fgravG
+
+
+        # Debugging
+        # Crr_eq = -algebra.der_Ceuler_by_v(tsstr.euler, fgravG)
+        # Crr_m_eq = -Xcg_Askew.dot(algebra.der_Ceuler_by_v(tsstr.euler, fgravG))
+
+        # Update matrices
+        self.Cstr[-rig_dof:, -rig_dof:] += Crr_grav
+        self.Cstr[:-rig_dof, -rig_dof:] += Csr_grav
+        self.Kstr[:flex_dof, :flex_dof] += Kss_grav
+        self.Kstr[flex_dof:, :flex_dof] += Krs_grav
+
+        if self.Ccut is not None:
+            self.Ccut = self.U.T.dot(self.Cstr.dot(self.U))
+
 
     def assemble(self, Nmodes=None):
         r"""
@@ -281,7 +676,8 @@ class FlexDynamic():
                 if self.proj_modes == 'undamped':
                     Phi = self.U[:, :Nmodes]
                     Ass[iivec, Nmodes + iivec] = 1.
-                    Ass[Nmodes:, :Nmodes] = -np.diag(self.freq_natural[:Nmodes] ** 2)
+                    # Ass[Nmodes:, :Nmodes] = -np.diag(self.freq_natural[:Nmodes] ** 2)
+                    Ass[Nmodes:, :Nmodes] = -self.U.T.dot(self.Kstr.dot(self.U))
                     if self.Ccut is not None:
                         Ass[Nmodes:, Nmodes:] = -self.Ccut[:Nmodes, :Nmodes]
                     Bss = np.zeros((2 * Nmodes, Nmodes))
@@ -338,8 +734,6 @@ class FlexDynamic():
         ``self.modal=True``, the in/out are determined according to ``self.inout_coords``
         """
 
-        if wv is None:
-            wv = self.wv
         assert wv is not None, 'Frequency range not provided.'
 
         if self.dlti:
@@ -436,6 +830,8 @@ class FlexDynamic():
         if self.proj_modes == 'undamped':
             if self.Cstr is not None:
                 print('Warning, projecting system with damping onto undamped modes')
+
+            # Eigenvalues are purely complex - only the complex part is calculated
             eigenvalues, eigenvectors = np.linalg.eig(np.linalg.solve(self.Mstr, self.Kstr))
 
             omega = np.sqrt(eigenvalues)
@@ -447,6 +843,9 @@ class FlexDynamic():
             # Scale modes to have an identity mass matrix
             dfact = np.diag(np.dot(phi.T, np.dot(self.Mstr, phi)))
             self.U = (1./np.sqrt(dfact))*phi
+
+            # Update
+            self.eigs = eigenvalues[order]
 
             # To do: update SHARPy's timestep info modal results
         else:
