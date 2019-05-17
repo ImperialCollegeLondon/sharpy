@@ -105,7 +105,7 @@ class LinAeroEla():
         self.num_dof_flex = 6*(self.tsstr.num_node-1)
         self.num_dof_str = self.num_dof_flex + self.num_dof_rig
         self.reshape_struct_input()
-        self.lingebm_str = lingebm.FlexDynamic(self.tsstr, dt=self.dt)
+        self.lingebm_str = lingebm.FlexDynamic(self.tsstr, structure, settings_here['beam_settings'])
 
         ### uvlm
         if uvlm_block:
@@ -163,7 +163,7 @@ class LinAeroEla():
 
             wa = tsdata.for_vel[3:]
             self.dq[-9:-3] = tsdata.for_acc
-            T = deuler_dt(self.q[-3:])
+            T = algebra.deuler_dt(self.q[-3:])
             self.dq[-3:] = T.dot(wa)
 
         else:
@@ -263,8 +263,8 @@ class LinAeroEla():
         Stiffening and damping related terms due to the non-zero aerodynamic forces at the linearisation point:
 
         .. math::
-            \mathbf{F}_{A,n} = C^{GA}(\mathbf{\chi})\sum_j \mathbf{f}_{G,j} \rightarrow
-            \delta\mathbf{F}_{A,n} = C^{GA}_0 \sum_j \delta\mathbf{f}_{G,j} + \frac{\partial}{\partial\chi}(C^{AG}\sum_j
+            \mathbf{F}_{A,n} = C^{AG}(\mathbf{\chi})\sum_j \mathbf{f}_{G,j} \rightarrow
+            \delta\mathbf{F}_{A,n} = C^{AG}_0 \sum_j \delta\mathbf{f}_{G,j} + \frac{\partial}{\partial\chi}(C^{AG}\sum_j
             \mathbf{f}_{G,j}^0)\delta\chi
 
         The term multiplied by the variation in the quaternion, :math:`\delta\chi`, couples the forces with the rigid
@@ -329,6 +329,7 @@ class LinAeroEla():
         Csr = np.zeros((self.num_dof_flex, self.num_dof_rig))
         Crs = np.zeros((self.num_dof_rig, self.num_dof_flex))
         Crr = np.zeros((self.num_dof_rig, self.num_dof_rig))
+        Krs = np.zeros((self.num_dof_rig, self.num_dof_flex))
 
         # get projection matrix A->G
         # (and other quantities indep. from nodal position)
@@ -428,7 +429,7 @@ class LinAeroEla():
                     maero_g = np.cross(Xg, faero)
                     maero_b = np.dot(Cbg, maero_g)
 
-                    # get gravity forces
+                    # get gravity forces - gravity forces are in A frame
                     fgrav = tsstr.gravity_forces[nn, :3]
 
                     ### ---------------------------------------- allocate Kdisp
@@ -526,20 +527,22 @@ class LinAeroEla():
                     if bc_here != 1:
                         # forces
                         if self.use_euler:
-                            Csr[jj_tra, -3:] -= algebra.der_Ceuler_by_v(tsstr.euler, faero)
+                            Csr[jj_tra, -3:] += algebra.der_Ceuler_by_v(tsstr.euler, faero)
                         else:
                             Csr[jj_tra, -4:] -= algebra.der_CquatT_by_v(tsstr.quat, faero)
 
                         ### moments
                         TanTXbskew = np.dot(Tan.T, Xbskew)
-                        # contrib. of TanT (dpsi)
+                        # contrib. of TanT (dpsi) - Eq 37 - Integration of UVLM and GEBM
                         Kss[np.ix_(jj_rot, jj_rot)] -= algebra.der_TanT_by_xv(psi, maero_b)
-                        # contrib of delta aero moment (dpsi)
+                        # contrib of delta aero moment (dpsi) - Eq 36
                         Kss[np.ix_(jj_rot, jj_rot)] -= \
                             np.dot(TanTXbskew, algebra.der_CcrvT_by_v(psi, np.dot(Cag, faero)))
                         # contribution of delta aero moment (dquat)
                         if self.use_euler:
-                            Csr[jj_rot, -3:] -= \
+                            # 14/5/19 NG changing the signs of the EULER equations (in theory they should be the same as
+                            # the quaternion case
+                            Csr[jj_rot, -3:] += \
                                 np.dot(TanTXbskew,
                                        np.dot(Cba,
                                               algebra.der_Ceuler_by_v(tsstr.euler, faero)))
@@ -552,26 +555,23 @@ class LinAeroEla():
                     ### rigid body eqs (Crs and Crr)
 
                     if bc_here != 1:
+                        # Changed Crs to Krs - NG 14/5/19
                         # moments contribution due to delta_Ra (+ sign intentional)
-                        Crs[3:6, jj_tra] += algebra.skew(faero_a)
+                        Krs[3:6, jj_tra] += algebra.skew(faero_a)
                         # moment contribution due to delta_psi (+ sign intentional)
-                        Crs[3:6, jj_rot] += np.dot(algebra.skew(faero_a),
+                        Krs[3:6, jj_rot] += np.dot(algebra.skew(faero_a),
                                                    algebra.der_Ccrv_by_v(psi, Xb))
 
                     if self.use_euler:
                         # total force
-                        Crr[:3, -3:] -= algebra.der_Ceuler_by_v(tsstr.euler, faero)
-                        Crr[:3, -3:] -= algebra.der_Ceuler_by_v(tsstr.euler, fgrav)
+                        Crr[:3, -3:] += algebra.der_Ceuler_by_v(tsstr.euler, faero)
 
                         # total moment contribution due to change in euler angles
-                        Crr[3:6, -3:] -= algebra.der_Ceuler_by_v(tsstr.euler, np.cross(zetag, faero))
-                        Crr[3:6, -3:] += np.dot(
+                        Crr[3:6, -3:] += algebra.der_Ceuler_by_v(tsstr.euler, np.cross(zetag, faero))
+                        Crr[3:6, -3:] -= np.dot(
                             np.dot(Cag, algebra.skew(faero)),
                             algebra.der_Ceuler_by_v(tsstr.euler, np.dot(Cab, Xb)))
 
-                        # Euler angle propagation equations - these are produced by NL SHARPy for the quaternion case only
-                        Csr[-3:, -6:-3] = deuler_dt(tsstr.euler)
-                        Crr[-3:, -3:] = der_Teuler_by_w(tsstr.euler, for_rot)
                     else:
                         # total force
                         Crr[:3, -4:] -= algebra.der_CquatT_by_v(tsstr.quat, faero)
@@ -582,6 +582,14 @@ class LinAeroEla():
                             np.dot(Cag, algebra.skew(faero)),
                             algebra.der_Cquat_by_v(tsstr.quat, np.dot(Cab, Xb)))
 
+
+        # if self.use_euler:
+        #     Euler angle propagation equations - these are produced by NL SHARPy for the quaternion case only
+            # Crr[-3:, -6:-3] = -deuler_dt(tsstr.euler)
+            # Crr[-3:, -3:] = -der_Teuler_by_w(tsstr.euler, for_rot)
+
+        # Crr_grav = self.linearise_gravity_forces(tsstr)
+
         # transfer
         self.Kdisp = Kdisp
         self.Kvel_disp = Kvel_disp
@@ -590,110 +598,33 @@ class LinAeroEla():
 
         # stiffening factors
         self.Kss = Kss
+        self.Krs = Krs
         self.Csr = Csr
         self.Crs = Crs
+        # self.Crr = Crr + Crr_grav
         self.Crr = Crr
 
 
-def deuler_dt(euler):
-    r"""
-    Rate of change of the Euler angles in time for a given angular velocity in A frame :math:`\omega^A=[p, q, r]`.
-
-    .. math::
-        \begin{bmatrix}\dot{\phi} \\ \dot{\theta} \\ \dot{\psi}\end{bmatrix} =
-        \begin{bmatrix}
-        1 & \sin\phi\tan\theta & \cos\phi\tan\theta \\
-        0 & \cos\phi & -\sin\phi \\
-        0 & \frac{\sin\phi}{\cos\theta} & \frac{\cos\phi}{\cos\theta}
-        \end{bmatrix}
-        \begin{bmatrix}
-        p \\ q \\ r
-        \end{bmatrix}
-
-    Args:
-        euler (np.ndarray): Euler angles :math:`[\phi, \theta, \psi]` for roll, pitch and yaw, respectively.
-
-    Returns:
-        np.ndarray: Propagation matrix relating the rotational velocities to the euler angles.
-    """
-    phi = euler[0]  # roll
-    theta = euler[1]  # pitch
-
-    A = np.zeros((3, 3))
-    A[0, 0] = 1
-    A[0, 1] = np.tan(theta) * np.sin(phi)
-    A[0, 2] = np.tan(theta) * np.cos(phi)
-
-    A[1, 1] = np.cos(phi)
-    A[1, 2] = -np.sin(phi)
-
-    A[2, 1] = np.sin(phi) / np.cos(theta)
-    A[2, 2] = np.cos(phi) / np.cos(theta)
-
-    return A
+    def euler_propagation_equations(self, tsstr):
+        """
+        Euler propagation equations that relate the body fixed angular velocities to the Earth fixed Euler angles
 
 
-def der_Teuler_by_w(euler, w):
-    r"""
-    Calculates the matrix
+        Args:
+            tsstr:
 
-    .. math::
-        \frac{\partial}{\partial\Theta}\left.\left(T^{GA}(\mathbf{\Theta})
-        \mathbf{\omega}^A\right)\right|_{\Theta_0,\omega^A_0}
+        Returns:
 
-    from the linearised euler propagation equations
+        """
 
-    .. math::
-       \delta\mathbf{\dot{\Theta}} = \frac{\partial}{\partial\Theta}\left.\left(T^{GA}(\mathbf{\Theta})
-       \mathbf{\omega}^A\right)\right|_{\Theta_0,\omega^A_0}\delta\mathbf{\Theta} +
-       T^{GA}(\mathbf{\Theta_0}) \delta\mathbf{\omega}^A
+        for_rot = tsstr.for_vel[3:]
+        Crr = np.zeros((9, 9))
 
-    where :math:`T^{GA}` is the nonlinear relation between the euler angle rates and the rotational velocities and is
-    provided by :func:`deuler_dt`.
+        # Euler angle propagation equations - these are produced by NL SHARPy for the quaternion case only
+        Crr[-3:, -6:-3] = -deuler_dt(tsstr.euler)
+        Crr[-3:, -3:] = -der_Teuler_by_w(tsstr.euler, for_rot)
 
-    The concerned matrix is calculated as follows:
-
-    .. math::
-        \frac{\partial}{\partial\Theta}\left.\left(T^{GA}(\mathbf{\Theta})
-        \mathbf{\omega}^A\right)\right|_{\Theta_0,\omega^A_0} = \\
-        \begin{bmatrix}
-        q\cos\phi\tan\theta-r\sin\phi\tan\theta & q\sin\phi\sec^2\theta + r\cos\phi\sec^2\theta & 0 \\
-        -q\sin\phi - r\cos\phi & 0 & 0 \\
-        q\frac{\cos\phi}{\cos\theta}-r\frac{\sin\phi}{\cos\theta} & q\sin\phi\tan\theta\sec\theta +
-        r\cos\phi\tan\theta\sec\theta & 0
-        \end{bmatrix}_{\Theta_0, \omega^A_0}
-
-    Args:
-        euler (np.ndarray): Euler angles at the linearisation point :math:`\mathbf{\Theta}_0 = [\phi,\theta,\psi]` or
-            roll, pitch and yaw angles, respectively.
-        w (np.ndarray): Rotational velocities at the linearisation point in A frame :math:`\omega^A_0`.
-
-    Returns:
-        np.ndarray: Computed :math:`\frac{\partial}{\partial\Theta}\left.\left(T^{GA}(\mathbf{\Theta})\mathbf{\omega}^A\right)\right|_{\Theta_0,\omega^A_0}`
-    """
-    p = w[0]
-    q = w[1]
-    r = w[2]
-
-    cp = np.cos(euler[0])
-    sp = np.sin(euler[0])
-
-    st = np.sin(euler[1])
-    ct = np.cos(euler[1])
-    tt = np.tan(euler[1])
-    tsec = ct ** -1
-
-    derT = np.zeros((3, 3))
-
-    derT[0, 0] = q * cp * tt - r * sp * tt
-    derT[0, 1] = q * sp * tsec ** 2 + r * cp * tsec ** 2
-
-    derT[1, 0] = -q * sp - r * cp
-
-    derT[2, 0] = q * cp / ct - r * sp / ct
-    derT[2, 1] = q * sp * tt * tsec + r * cp * tt * tsec
-
-    return derT
+        return Crr
 
 
 if __name__ == '__main__':
