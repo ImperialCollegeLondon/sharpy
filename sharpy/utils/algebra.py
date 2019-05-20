@@ -654,6 +654,7 @@ def rot_skew(vec):
     warn("use 'skew' function instead of 'rot_skew'")
     return skew(vec)
 
+
 def rotation3d_x_ag(angle):
     r"""
     Rotation matrix about the x axis by the input angle :math:`\Phi`
@@ -674,7 +675,7 @@ def rotation3d_x_ag(angle):
         np.array: 3x3 rotation matrix about the x axis
 
     """
-
+    warn('This function is incorrect for SHARPys SEU convention')
     c = np.cos(angle)
     s = np.sin(angle)
     mat = np.zeros((3, 3))
@@ -683,10 +684,9 @@ def rotation3d_x_ag(angle):
     mat[2, :] = [0.0,   -s,   c]
     return mat
 
+
 def rotation3d_x(angle):
     r"""
-    Warnings:
-        This function is transposed so it undoes the roll rotation. Use :func:`rotation3d_x_ag` instead.
 
     Rotation matrix about the x axis by the input angle :math:`\Phi`
 
@@ -707,7 +707,6 @@ def rotation3d_x(angle):
 
     """
 
-    warn('Function is performing the transpose operation. Use rotation3d_x_ag instead')
 
     c = np.cos(angle)
     s = np.sin(angle)
@@ -720,6 +719,9 @@ def rotation3d_x(angle):
 
 def rotation3d_y(angle):
     r"""
+    Warnings:
+        This function is transposed so it undoes the pitch rotation.
+
     Rotation matrix about the y axis by the input angle :math:`\Theta`
 
     .. math::
@@ -738,14 +740,46 @@ def rotation3d_y(angle):
         np.array: 3x3 rotation matrix about the y axis
 
     """
+
+    # warn('Incorrect for SHARPys convention of SEU')
+    # TODO: wrong for the SHARPy convention of SEU
     c = np.cos(angle)
     s = np.sin(angle)
     mat = np.zeros((3, 3))
     mat[0, :] = [c, 0.0, -s]
     mat[1, :] = [0.0, 1.0, 0.0]
     mat[2, :] = [s, 0.0,  c]
-    return mat
+    return rotation3d_y_ag(angle)
+    # return mat
 
+def rotation3d_y_ag(angle):
+    r"""
+    Rotation matrix about the y axis by the input angle :math:`\Theta`
+
+    .. math::
+
+        \mathbf{\tau}_y = \begin{bmatrix}
+            \cos(\Theta) & 0 & \sin(\Theta) \\
+            0 & 1 & 0 \\
+            -\sin(\Theta) & 0 & \cos(\Theta)
+        \end{bmatrix}
+
+
+    Args:
+        angle (float): angle of rotation in radians about the y axis
+
+    Returns:
+        np.array: 3x3 rotation matrix about the y axis
+
+    """
+
+    c = np.cos(angle)
+    s = np.sin(angle)
+    mat = np.zeros((3, 3))
+    mat[0, :] = [c, 0.0, s]
+    mat[1, :] = [0.0, 1.0, 0.0]
+    mat[2, :] = [-s, 0.0,  c]
+    return mat
 
 def rotation3d_z(angle):
     r"""
@@ -768,7 +802,6 @@ def rotation3d_z(angle):
         np.array: 3x3 rotation matrix about the z axis
 
     """
-    warn('This function is transposed and undoes the yaw rotation. Use rotation3d_z_ag instead.')
 
     c = np.cos(angle)
     s = np.sin(angle)
@@ -797,6 +830,8 @@ def rotation3d_z_ag(angle):
         np.array: 3x3 rotation matrix about the z axis
 
     """
+    warn('Incorrect for SHARPys convention of SEU')
+    # TODO: wrong for the SHARPy convention of SEU
     c = np.cos(angle)
     s = np.sin(angle)
     mat = np.zeros((3, 3))
@@ -818,7 +853,7 @@ def rotate_crv(crv_in, axis, angle):
 def euler2rot(euler):
     r"""
     Warnings:
-        With the function as present, two of the rotation matrices are transposed.
+        With the function as present, one of the rotation matrices is transposed.
 
     Transforms Euler angles (roll, pitch and yaw :math:`\Phi, \Theta, \Psi`) into a 3x3 rotation matrix describing
     the rotation between frame G and frame A.
@@ -849,12 +884,13 @@ def euler2rot(euler):
 
     """
 
-    warn('Two of the rotation matrices are transposed, undoing the roll and yaw rotations. Use euler2rotation_ag '
+    warn('The pitch rotation matrices is transposed, undoing the pitch rotation. Use euler2rotation_ag '
             'instead')
     rot = rotation3d_z(euler[2])
     rot = np.dot(rotation3d_y(euler[1]), rot)
     rot = np.dot(rotation3d_x(euler[0]), rot)
     return rot
+
 
 def euler2rotation_ag(euler):
     r"""
@@ -885,15 +921,16 @@ def euler2rotation_ag(euler):
 
         .. py:module:: sharpy.utils.algebra.rotation3d_z
     """
-    rot = rotation3d_z_ag(euler[2])
-    rot = np.dot(rotation3d_y(euler[1]), rot)
-    rot = np.dot(rotation3d_x_ag(euler[0]), rot)
+    rot = rotation3d_z(euler[2])
+    rot = np.dot(rotation3d_y_ag(euler[1]), rot)
+    rot = np.dot(rotation3d_x(euler[0]), rot)
     return rot
+
 
 def euler2quat(euler):
     """
     Warnings:
-        This function uses :func:`euler2rot` which has two of the transformations transposed
+        This function uses :func:`euler2rot` which has one of the transformations transposed
 
     Args:
         euler: Euler angles
@@ -1328,6 +1365,189 @@ def der_Ceuler_by_v(euler, v):
 
     .. math::
         C^{AG}(\Theta) = \begin{bmatrix}
+        \cos\theta\cos\psi & -\cos\theta\sin\psi & \sin\theta \\
+        \cos\phi\sin\psi + \sin\phi\sin\theta\cos\psi & \cos\phi\cos\psi - \sin\phi\sin\theta\sin\psi & -\sin\phi\cos\theta \\
+        \sin\phi\sin\psi - \cos\phi\sin\theta\cos\psi & \sin\phi\cos\psi + \cos\phi\sin\theta\sin\psi & \cos\phi\cos\theta
+        \end{bmatrix}
+
+    the components of the derivative at hand are the following, where
+    :math:`f_{1\theta} = \frac{\partial \mathbf{f}_1}{\partial\theta}`.
+
+    .. math::
+        f_{1\phi} =&0 \\
+        f_{1\theta} = &-v_1\sin\theta\cos\psi \\
+        &+v_2\sin\theta\sin\psi \\
+        &+v_3\cos\theta \\
+        f_{1\psi} = &-v_1\cos\theta\sin\psi \\
+        &- v_2\cos\theta\cos\psi
+
+    .. math::
+        f_{2\phi} = &+v_1(-\sin\phi\sin\psi + \cos\phi\sin\theta\cos\psi) + \\
+        &+v_2(-\sin\phi\cos\psi - \cos\phi\sin\theta\sin\psi) + \\
+        &+v_3(-\cos\phi\cos\theta)
+        f_{2\theta} = &+v_1(\sin\phi\cos\theta\cos\psi) + \\
+        &+v_2(-\sin\phi\cos\theta\sin\psi) +\\
+        &+v_3(\sin\phi\sin\theta)
+        f_{2\psi} = &+v_1(\cos\phi\cos\psi - \sin\phi\sin\theta\sin\psi) + \\
+        &+v_2(-\cos\phi\sin\psi - \sin\phi\sin\theta\cos\psi)
+
+    .. math::
+        f_{3\phi} = &+v_1(\cos\phi\sin\psi+\sin\phi\sin\theta\cos\psi) + \\
+        &+v_2(\cos\phi\cos\psi - \sin\phi\sin\theta\sin\psi) + \\
+        &+v_3(-\sin\phi\cos\theta)
+        f_{3\theta} = &+v_1(-\cos\phi\cos\theta\cos\psi)+\\
+        &+v_2(\cos\phi\cos\theta\sin\psi) + \\
+        &+v_3(-\cos\phi\sin\theta)
+        f_{3\psi} = &+v_1(\sin\phi\cos\psi+\cos\phi\sin\theta\sin\psi)  + \\
+        &+v_2(-\sin\phi\sin\psi + \cos\phi\sin\theta\cos\psi)
+
+    Args:
+        euler (np.ndarray): Vector of Euler angles, :math:`\mathbf{\Theta} = [\phi, \theta, \psi]`, in radians.
+        v (np.ndarray): 3 dimensional vector in G frame.
+
+    Returns:
+        np.ndarray: Resulting 3 by 3 matrix :math:`\frac{\partial \mathbf{f}}{\partial\mathbf{\Theta}}`.
+
+    """
+    res = np.zeros((3, 3))
+
+    # Notation shorthand. sin and cos of psi (roll)
+    sp = np.sin(euler[0])
+    cp = np.cos(euler[0])
+
+    # Notation shorthand. sin and cos of theta (pitch)
+    st = np.sin(euler[1])
+    ct = np.cos(euler[1])
+
+    # Notation shorthand. sin and cos of psi (yaw)
+    ss = np.sin(euler[2])
+    cs = np.cos(euler[2])
+
+    v1 = v[0]
+    v2 = v[1]
+    v3 = v[2]
+
+    res[0, 0] = 0
+    res[0, 1] = - v1*st*cs + v2*st*ss + v3*ct
+    res[0, 2] = -v1*ct*ss - v2*ct*cs
+
+    res[1, 0] = v1*(-sp*ss + cp*st*cs) + v2*(-sp*cs - cp*st*ss) - v3*cp*ct
+    res[1, 1] = v1*(sp*ct*cs) - v2*sp*ct*ss + v3*sp*st
+    res[1, 2] = v1*(cp*cs - sp*st*ss) + v2*(-cp*ss - sp*st*cs)
+
+    res[2, 0] = v1*(cp*ss + sp*st*cs) + v2*(cp*cs - sp*st*ss) + v3*(-sp*ct)
+    res[2, 1] = -v1*cp*ct*cs + v2*cp*ct*ss - v3*cp*st
+    res[2, 2] = v1*(sp*cs + cp*st*ss) + v2*(-sp*ss + cp*st*cs)
+
+    return res
+
+def der_Peuler_by_v(euler, v):
+    r"""
+    Provides the derivative of the product between the projection matrix :math:`P^{AG}(\mathbf{\Theta})` (that projects
+    a vector in G frame onto A frame) and a constant vector expressed in G frame of reference, :math:`\mathbf{v}_G`,
+    with respect to the Euler angles, :math:`\mathbf{\Theta}=[\phi,\theta,\psi]^T`:
+
+    .. math::
+        \frac{\partial}{\partial\Theta}(P^{AG}(\Theta)\mathbf{v}^G) = \frac{\partial \mathbf{f}}{\partial\mathbf{\Theta}}
+
+    where :math:`\frac{\partial \mathbf{f}}{\partial\mathbf{\Theta}}` is the resulting 3 by 3 matrix.
+
+    Being :math:`P^{AG}(\Theta)` the projection matrix from the G frame to the A frame in terms of the Euler angles
+    :math:`\Theta` as :math:`P^{AG}(\Theta) = C^{{AG}^T}(\Theta}`, where the rotation matrix is expressed as:
+
+    .. math::
+        C^{AG}(\Theta) = \begin{bmatrix}
+        \cos\theta\cos\psi & -\cos\theta\sin\psi & \sin\theta \\
+        \cos\phi\sin\psi + \sin\phi\sin\theta\cos\psi & \cos\phi\cos\psi - \sin\phi\sin\theta\sin\psi & -\sin\phi\cos\theta \\
+        \sin\phi\sin\psi - \cos\phi\sin\theta\cos\psi & \sin\phi\cos\psi + \cos\phi\sin\theta\sin\psi & \cos\phi\cos\theta
+        \end{bmatrix}
+
+    the components of the derivative at hand are the following, where
+    :math:`f_{1\theta} = \frac{\partial \mathbf{f}_1}{\partial\theta}`.
+
+    .. math::
+        f_{1\phi} =&0 \\
+        f_{1\theta} = &-v_1\sin\theta\cos\psi \\
+        &+v_2\sin\theta\sin\psi \\
+        &+v_3\cos\theta \\
+        f_{1\psi} = &-v_1\cos\theta\sin\psi \\
+        &- v_2\cos\theta\cos\psi
+
+    .. math::
+        f_{2\phi} = &+v_1(-\sin\phi\sin\psi + \cos\phi\sin\theta\cos\psi) + \\
+        &+v_2(-\sin\phi\cos\psi - \cos\phi\sin\theta\sin\psi) + \\
+        &+v_3(-\cos\phi\cos\theta)
+        f_{2\theta} = &+v_1(\sin\phi\cos\theta\cos\psi) + \\
+        &+v_2(-\sin\phi\cos\theta\sin\psi) +\\
+        &+v_3(\sin\phi\sin\theta)
+        f_{2\psi} = &+v_1(\cos\phi\cos\psi - \sin\phi\sin\theta\sin\psi) + \\
+        &+v_2(-\cos\phi\sin\psi - \sin\phi\sin\theta\cos\psi)
+
+    .. math::
+        f_{3\phi} = &+v_1(\cos\phi\sin\psi+\sin\phi\sin\theta\cos\psi) + \\
+        &+v_2(\cos\phi\cos\psi - \sin\phi\sin\theta\sin\psi) + \\
+        &+v_3(-\sin\phi\cos\theta)
+        f_{3\theta} = &+v_1(-\cos\phi\cos\theta\cos\psi)+\\
+        &+v_2(\cos\phi\cos\theta\sin\psi) + \\
+        &+v_3(-\cos\phi\sin\theta)
+        f_{3\psi} = &+v_1(\sin\phi\cos\psi+\cos\phi\sin\theta\sin\psi)  + \\
+        &+v_2(-\sin\phi\sin\psi + \cos\phi\sin\theta\cos\psi)
+
+    Args:
+        euler (np.ndarray): Vector of Euler angles, :math:`\mathbf{\Theta} = [\phi, \theta, \psi]`, in radians.
+        v (np.ndarray): 3 dimensional vector in G frame.
+
+    Returns:
+        np.ndarray: Resulting 3 by 3 matrix :math:`\frac{\partial \mathbf{f}}{\partial\mathbf{\Theta}}`.
+
+    """
+    res = np.zeros((3, 3))
+
+    # Notation shorthand. sin and cos of psi (roll)
+    sp = np.sin(euler[0])
+    cp = np.cos(euler[0])
+
+    # Notation shorthand. sin and cos of theta (pitch)
+    st = np.sin(euler[1])
+    ct = np.cos(euler[1])
+
+    # Notation shorthand. sin and cos of psi (yaw)
+    ss = np.sin(euler[2])
+    cs = np.cos(euler[2])
+
+    v1 = v[0]
+    v2 = v[1]
+    v3 = v[2]
+
+    res[0, 0] = v2*(-sp*ss + cp*st*cs) + v3*(cp*ss + sp*st*cs)
+    res[0, 1] = v1*(-st*cs) + v2*(sp*ct*cs) + v3*(-cp*ct*cs)
+    res[0, 2] = v1*(-ct*ss) + v2*(cp*cs - sp*st*ss) + v3*(sp*cs + cp*st*ss)
+
+    res[1, 0] = v1*0 + v2*(-sp*cs - cp*st*ss) + v3*(cp*cs - sp*st*ss)
+    res[1, 1] = v1*(st*ss) + v2*(-sp*ct*ss) + v3*(cp*ct*ss)
+    res[1, 2] = v1*(-ct*cs) + v2*(-cp*ss - sp*st*cs) + v3*(-sp*ss + cp*st*cs)
+
+    res[2, 0] = v1*0 + v2*(-cp*ct) + v3*(-sp*ct)
+    res[2, 1] = v1*ct + v2*(sp*st) + v3*(-cp*st)
+
+    return res
+
+
+def der_Ceuler_by_v_NED(euler, v):
+    r"""
+    Provides the derivative of the product between the rotation matrix :math:`C^{AG}(\mathbf{\Theta})` and a constant
+    vector, :math:`\mathbf{v}`, with respect to the Euler angles, :math:`\mathbf{\Theta}=[\phi,\theta,\psi]^T`:
+
+    .. math::
+        \frac{\partial}{\partial\Theta}(C^{AG}(\Theta)\mathbf{v}^G) = \frac{\partial \mathbf{f}}{\partial\mathbf{\Theta}}
+
+    where :math:`\frac{\partial \mathbf{f}}{\partial\mathbf{\Theta}}` is the resulting 3 by 3 matrix.
+
+    Being :math:`C^{AG}(\Theta)` the rotation matrix from the G frame to the A frame in terms of the Euler angles
+    :math:`\Theta` as:
+
+    .. math::
+        C^{AG}(\Theta) = \begin{bmatrix}
         \cos\theta\cos\psi & \cos\theta\sin\psi & -\sin\theta \\
         -\cos\phi\sin\psi + \sin\phi\sin\theta\cos\psi & \cos\phi\cos\psi + \sin\phi\sin\theta\sin\psi & \sin\phi\cos\theta \\
         \sin\phi\sin\psi + \cos\phi\sin\theta\cos\psi & -\sin\phi\cos\psi + \cos\psi\sin\theta\sin\psi & \cos\phi\cos\theta
@@ -1372,6 +1592,8 @@ def der_Ceuler_by_v(euler, v):
 
     """
 
+    # TODO: Verify with new euler rotation matrices
+
     res = np.zeros((3, 3))
 
     # Notation shorthand. sin and cos of psi (roll)
@@ -1415,3 +1637,222 @@ def cross3(v,w):
     res[2] = v[0]*w[1] - v[1]*w[0]
 
     return res
+
+
+def deuler_dt(euler):
+    r"""
+    Rate of change of the Euler angles in time for a given angular velocity in A frame :math:`\omega^A=[p, q, r]`.
+
+    .. math::
+        \begin{bmatrix}\dot{\phi} \\ \dot{\theta} \\ \dot{\psi}\end{bmatrix} =
+        \begin{bmatrix}
+        1 & \sin\phi\tan\theta & -\cos\phi\tan\theta \\
+        0 & \cos\phi & \sin\phi \\
+        0 & -\frac{\sin\phi}{\cos\theta} & \frac{\cos\phi}{\cos\theta}
+        \end{bmatrix}
+        \begin{bmatrix}
+        p \\ q \\ r
+        \end{bmatrix}
+
+    Args:
+        euler (np.ndarray): Euler angles :math:`[\phi, \theta, \psi]` for roll, pitch and yaw, respectively.
+
+    Returns:
+        np.ndarray: Propagation matrix relating the rotational velocities to the euler angles.
+    """
+
+    phi = euler[0]  # roll
+    theta = euler[1]  # pitch
+
+    A = np.zeros((3, 3))
+    A[0, 0] = 1
+    A[0, 1] = np.tan(theta) * np.sin(phi)
+    A[0, 2] = -np.tan(theta) * np.cos(phi)
+
+    A[1, 1] = np.cos(phi)
+    A[1, 2] = np.sin(phi)
+
+    A[2, 1] = -np.sin(phi) / np.cos(theta)
+    A[2, 2] = np.cos(phi) / np.cos(theta)
+
+    return A
+
+
+def deuler_dt_NED(euler):
+    r"""
+
+    Warnings:
+        Based on a NED frame
+
+    Rate of change of the Euler angles in time for a given angular velocity in A frame :math:`\omega^A=[p, q, r]`.
+
+    .. math::
+        \begin{bmatrix}\dot{\phi} \\ \dot{\theta} \\ \dot{\psi}\end{bmatrix} =
+        \begin{bmatrix}
+        1 & \sin\phi\tan\theta & \cos\phi\tan\theta \\
+        0 & \cos\phi & -\sin\phi \\
+        0 & \frac{\sin\phi}{\cos\theta} & \frac{\cos\phi}{\cos\theta}
+        \end{bmatrix}
+        \begin{bmatrix}
+        p \\ q \\ r
+        \end{bmatrix}
+
+    Args:
+        euler (np.ndarray): Euler angles :math:`[\phi, \theta, \psi]` for roll, pitch and yaw, respectively.
+
+    Returns:
+        np.ndarray: Propagation matrix relating the rotational velocities to the euler angles.
+    """
+
+    # TODO: Verify with the new euler rotation matrices
+    phi = euler[0]  # roll
+    theta = euler[1]  # pitch
+
+    A = np.zeros((3, 3))
+    A[0, 0] = 1
+    A[0, 1] = np.tan(theta) * np.sin(phi)
+    A[0, 2] = np.tan(theta) * np.cos(phi)
+
+    A[1, 1] = np.cos(phi)
+    A[1, 2] = -np.sin(phi)
+
+    A[2, 1] = np.sin(phi) / np.cos(theta)
+    A[2, 2] = np.cos(phi) / np.cos(theta)
+
+    return A
+
+
+def der_Teuler_by_w(euler, w):
+    r"""
+    Calculates the matrix
+
+    .. math::
+        \frac{\partial}{\partial\Theta}\left.\left(T^{GA}(\mathbf{\Theta})
+        \mathbf{\omega}^A\right)\right|_{\Theta_0,\omega^A_0}
+
+    from the linearised euler propagation equations
+
+    .. math::
+       \delta\mathbf{\dot{\Theta}} = \frac{\partial}{\partial\Theta}\left.\left(T^{GA}(\mathbf{\Theta})
+       \mathbf{\omega}^A\right)\right|_{\Theta_0,\omega^A_0}\delta\mathbf{\Theta} +
+       T^{GA}(\mathbf{\Theta_0}) \delta\mathbf{\omega}^A
+
+    where :math:`T^{GA}` is the nonlinear relation between the euler angle rates and the rotational velocities and is
+    provided by :func:`deuler_dt`.
+
+    The concerned matrix is calculated as follows:
+
+    .. math::
+        \frac{\partial}{\partial\Theta}\left.\left(T^{GA}(\mathbf{\Theta})
+        \mathbf{\omega}^A\right)\right|_{\Theta_0,\omega^A_0} = \\
+        \begin{bmatrix}
+        q\cos\phi\tan\theta-r\sin\phi\tan\theta & q\sin\phi\sec^2\theta + r\cos\phi\sec^2\theta & 0 \\
+        -q\sin\phi - r\cos\phi & 0 & 0 \\
+        q\frac{\cos\phi}{\cos\theta}-r\frac{\sin\phi}{\cos\theta} & q\sin\phi\tan\theta\sec\theta +
+        r\cos\phi\tan\theta\sec\theta & 0
+        \end{bmatrix}_{\Theta_0, \omega^A_0}
+
+    Args:
+        euler (np.ndarray): Euler angles at the linearisation point :math:`\mathbf{\Theta}_0 = [\phi,\theta,\psi]` or
+            roll, pitch and yaw angles, respectively.
+        w (np.ndarray): Rotational velocities at the linearisation point in A frame :math:`\omega^A_0`.
+
+    Returns:
+        np.ndarray: Computed :math:`\frac{\partial}{\partial\Theta}\left.\left(T^{GA}(\mathbf{\Theta})\mathbf{\omega}^A\right)\right|_{\Theta_0,\omega^A_0}`
+    """
+
+
+    p = w[0]
+    q = w[1]
+    r = w[2]
+
+    cp = np.cos(euler[0])
+    sp = np.sin(euler[0])
+
+    st = np.sin(euler[1])
+    ct = np.cos(euler[1])
+    tt = np.tan(euler[1])
+    tsec = ct ** -1
+
+    derT = np.zeros((3, 3))
+
+    derT[0, 0] = q * cp * tt + r * sp * tt
+    derT[0, 1] = q * sp * tsec ** 2 - r * cp * tsec ** 2
+
+    derT[1, 0] = -q * sp + r * cp
+
+    derT[2, 0] = - q * cp / ct - r * sp / ct
+    derT[2, 1] = - q * sp * tt * tsec + r * cp * tt * tsec
+
+    return derT
+
+
+def der_Teuler_by_w_NED(euler, w):
+    r"""
+
+    Warnings:
+        Based on a NED G frame
+
+
+    Calculates the matrix
+
+    .. math::
+        \frac{\partial}{\partial\Theta}\left.\left(T^{GA}(\mathbf{\Theta})
+        \mathbf{\omega}^A\right)\right|_{\Theta_0,\omega^A_0}
+
+    from the linearised euler propagation equations
+
+    .. math::
+       \delta\mathbf{\dot{\Theta}} = \frac{\partial}{\partial\Theta}\left.\left(T^{GA}(\mathbf{\Theta})
+       \mathbf{\omega}^A\right)\right|_{\Theta_0,\omega^A_0}\delta\mathbf{\Theta} +
+       T^{GA}(\mathbf{\Theta_0}) \delta\mathbf{\omega}^A
+
+    where :math:`T^{GA}` is the nonlinear relation between the euler angle rates and the rotational velocities and is
+    provided by :func:`deuler_dt`.
+
+    The concerned matrix is calculated as follows:
+
+    .. math::
+        \frac{\partial}{\partial\Theta}\left.\left(T^{GA}(\mathbf{\Theta})
+        \mathbf{\omega}^A\right)\right|_{\Theta_0,\omega^A_0} = \\
+        \begin{bmatrix}
+        q\cos\phi\tan\theta-r\sin\phi\tan\theta & q\sin\phi\sec^2\theta + r\cos\phi\sec^2\theta & 0 \\
+        -q\sin\phi - r\cos\phi & 0 & 0 \\
+        q\frac{\cos\phi}{\cos\theta}-r\frac{\sin\phi}{\cos\theta} & q\sin\phi\tan\theta\sec\theta +
+        r\cos\phi\tan\theta\sec\theta & 0
+        \end{bmatrix}_{\Theta_0, \omega^A_0}
+
+    Args:
+        euler (np.ndarray): Euler angles at the linearisation point :math:`\mathbf{\Theta}_0 = [\phi,\theta,\psi]` or
+            roll, pitch and yaw angles, respectively.
+        w (np.ndarray): Rotational velocities at the linearisation point in A frame :math:`\omega^A_0`.
+
+    Returns:
+        np.ndarray: Computed :math:`\frac{\partial}{\partial\Theta}\left.\left(T^{GA}(\mathbf{\Theta})\mathbf{\omega}^A\right)\right|_{\Theta_0,\omega^A_0}`
+    """
+
+    # TODO: Verify with new Euler rotation matrices
+
+    p = w[0]
+    q = w[1]
+    r = w[2]
+
+    cp = np.cos(euler[0])
+    sp = np.sin(euler[0])
+
+    st = np.sin(euler[1])
+    ct = np.cos(euler[1])
+    tt = np.tan(euler[1])
+    tsec = ct ** -1
+
+    derT = np.zeros((3, 3))
+
+    derT[0, 0] = q * cp * tt - r * sp * tt
+    derT[0, 1] = q * sp * tsec ** 2 + r * cp * tsec ** 2
+
+    derT[1, 0] = -q * sp - r * cp
+
+    derT[2, 0] = q * cp / ct - r * sp / ct
+    derT[2, 1] = q * sp * tt * tsec + r * cp * tt * tsec
+
+    return derT
