@@ -1589,6 +1589,25 @@ if __name__ == '__main__':
     print(70 * '-')
     unittest.main()
 
+
+def ss_to_scipy(ss):
+    """
+    Converts to a scipy.signal linear time invariant system
+
+    Args:
+        ss (libss.ss): SHARPy state space object
+
+    Returns:
+        scipy.signal.dlti
+    """
+
+    if ss.dt == None:
+        sys = scsig.lti(ss.A, ss.B, ss.C, ss.D)
+    else:
+        sys = scsig.dlti(ss.A, ss.B, ss.C, ss.D, ss.dt)
+
+    return sys
+
 # 1/0
 
 # # check parallel connector
