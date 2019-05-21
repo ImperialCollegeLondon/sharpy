@@ -540,13 +540,39 @@ class TestAlgebra(unittest.TestCase):
             assert erel_res<5e-1*a,\
                          'Relative error of residual (%.2e) too large!'%erel_res
 
+    def test_rotation_about_axis(self):
+        i = np.array([1, 0, 0])
+        j = np.array([0, 1, 0])
+        k = np.array([0, 0, 1])
 
-    # def test_rotation_matrix_around_axis(self):
-    #     axis = np.array([1, 0, 0])
-    #     angle = 90
-    #     self.assert
+        angle = 90 * np.pi / 180
 
+        print('Testing rotations about the x axis - rotation3d_x')
+        out = algebra.rotation3d_x(angle).dot(j)
+        for ax in range(3):
+            self.assertAlmostEqual(out[ax], k[ax])
 
+        out = algebra.rotation3d_x(angle).dot(k)
+        for ax in range(3):
+            self.assertAlmostEqual(out[ax], -j[ax])
+
+        print('Testing rotations about the y axis - rotation3d_y')
+        out = algebra.rotation3d_y(angle).dot(i)
+        for ax in range(3):
+            self.assertAlmostEqual(out[ax], -k[ax])
+
+        out = algebra.rotation3d_y(angle).dot(k)
+        for ax in range(3):
+            self.assertAlmostEqual(out[ax], i[ax])
+
+        print('Testing rotations about the z axis - rotation3d_z')
+        out = algebra.rotation3d_z(angle).dot(i)
+        for ax in range(3):
+            self.assertAlmostEqual(out[ax], j[ax])
+
+        out = algebra.rotation3d_z(angle).dot(j)
+        for ax in range(3):
+            self.assertAlmostEqual(out[ax], -i[ax])
 
 if __name__=='__main__':
     unittest.main()
