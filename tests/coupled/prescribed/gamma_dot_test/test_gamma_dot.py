@@ -97,7 +97,9 @@ class Test_gamma_dot(unittest.TestCase):
                 'rho': ws.rho,
                 'n_time_steps': ws.n_tstep,
                 'dt': ws.dt,
-                'gamma_dot_filtering': 0}
+                'gamma_dot_filtering': 0, 
+                'track_body': True,
+                'track_body_number': -1}
             ws.config['DynamicCoupled']['include_unsteady_force_contribution'] = 'on'
         # Update settings file
         ws.config.write()
