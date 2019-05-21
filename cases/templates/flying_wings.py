@@ -110,7 +110,7 @@ class FlyingWing():
             pass
 
         ### other params
-        self.u_inf_direction=np.array([1.,0.,0.])
+        self.u_inf_direction=np.array([1.,np.sin(beta*np.pi/180),0.])
         self.gravity_on = True
 
         # aeroelasticity
@@ -423,11 +423,10 @@ class FlyingWing():
                'structural_solver_settings': {'print_info': 'off',
                                               'max_iterations': 150,
                                               'num_load_steps': 4,
-                                              'delta_curved': 1e-5,
-                                              'min_delta': 1e-5,
+                                              'delta_curved': 1e-1,
+                                              'min_delta': 1e-10,
                                               'gravity_on': self.gravity_on,
-                                              'gravity': 9.754,
-                                              'orientation': self.quat},}
+                                              'gravity': 9.754}}
 
         config['LinearUvlm'] = {    'dt': self.dt,
                                             'integr_order': 2,
@@ -475,7 +474,7 @@ class FlyingWing():
                                                          'gust_shape': 'continuous_sin',
                                                          'gust_length': self.gust_length,
                                                          'gust_intensity': self.gust_intensity * self.u_inf,
-                                                         'offset': 5.0,
+                                                         'offset': 15.0,
                                                          'span': self.main_chord * self.aspect_ratio},
                                 # 'velocity_field_generator': 'SteadyVelocityField',
                                 # 'velocity_field_input': {'u_inf': self.u_inf*1,

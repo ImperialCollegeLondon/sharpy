@@ -107,10 +107,26 @@ def from_node_list_to_elem_matrix(node_list, connectivities):
 
     return elem_matrix
 
+def from_node_array_to_elem_matrix(node_array, connectivities):
+    """
+    from_node_array_to_elem_matrix
+
+    Same as the previous function but with an array as input
+    """
+    num_elem = len(connectivities)
+    prop_size = node_array.shape[1:]
+    # TODO: change the "3" for self.num_node_elem
+    elem_matrix = np.zeros(prop_size + (num_elem,3), dtype=node_array.dtype)
+    for ielem in range(num_elem):
+        for inode_in_elem in range(3):
+            elem_matrix[:, ielem, inode_in_elem] = node_array[connectivities[ielem, inode_in_elem], :]
+
+    return elem_matrix
+
 def read_column_sheet_type01(excel_file_name, excel_sheet, column_name):
 
     xls = pd.ExcelFile(excel_file_name)
-    excel_db = pd.read_excel(xls, sheetname=excel_sheet)
+    excel_db = pd.read_excel(xls, sheet_name=excel_sheet)
     num_elem = excel_db.index._stop - 2
 
     if excel_db[column_name][1] == 'one_int':
@@ -224,6 +240,49 @@ def read_column_sheet_type01(excel_file_name, excel_sheet, column_name):
         #     ivar += 1
 
 
+def get_factor_geometric_progression(a0, Sn_target, n):
+    # Given an initial value,
+
+    tol = 1e-12
+    max_it = 1000
+
+    # Case of uniform distribution
+    if abs(a0*n - Sn_target) < tol:
+        return 1.
+
+    # First estimation for r
+    if a0*n < Sn_target:
+        r = 1.1
+    else:
+        r = 0.9
+
+    # Iterative computation
+    error = 2.*tol
+    Sn_temp = a0*(1-r**n)/(1-r)
+    it = 0
+    while ((error > tol) and (it < max_it)):
+        derivative = ((1-n*r**(n-1))*(1-r) + (1-r**n))/(1-r)**2
+        # print("der:", derivative)
+        # print("r:", r)
+        r += (Sn_target - Sn_temp)/a0/derivative
+        Sn_temp = a0*(1-r**n)/(1-r)
+        error = abs(Sn_temp - Sn_target)/Sn_target
+        it += 1
+
+    if it == max_it:
+        print("Maximum iterations reached. Sn target:", Sn_target, ". Sn obtained:", Sn_temp, ". Relative error:", error)
+
+    # sum = a0
+    # ai = a0
+    # print("ai: ", ai)
+    # for i in range(1, n):
+    #     ai *= r
+    #     sum += ai
+    #     print(ai)
+    #
+    # print("sum:", sum)
+
+    return r
 ######################################################################
 ###############  STRUCTURAL INFORMATION  #############################
 ######################################################################
@@ -328,7 +387,7 @@ class StructuralInformation():
         self.mass_db = np.zeros((num_mass_db, 6, 6), dtype=float)
         self.frame_of_reference_delta = np.zeros((num_elem, num_node_elem, 3),
                                                  dtype=float)
-        self.structural_twist = np.zeros((num_node,), dtype=float)
+        self.structural_twist = np.zeros((num_elem, num_node_elem), dtype=float)
         self.boundary_conditions = np.zeros((num_node,), dtype=int)
         self.beam_number = np.zeros((num_elem,), dtype=int)
         self.body_number = np.zeros((num_elem,), dtype=int)
@@ -376,7 +435,7 @@ class StructuralInformation():
             elem_mass (np.array): element mass index
             mass_db (np.array): Mass matrices
             frame_of_reference_delta (np.array): element direction of the y axis in the BFoR wrt the AFoR
-            structural_twist (np.array): node twist
+            structural_twist (np.array): element based twist
             boundary_conditions (np.array): node boundary condition
             beam_number (np.array): node beam number
             app_forces (np.array): steady applied follower forces at the nodes
@@ -428,7 +487,7 @@ class StructuralInformation():
         self.elem_mass = np.linspace(0,self.num_elem-1,self.num_elem, dtype=int)
         self.mass_db = mass_db
         self.create_frame_of_reference_delta(y_BFoR = frame_of_reference_delta)
-        self.structural_twist = vec_node_structural_twist
+        self.structural_twist = from_node_list_to_elem_matrix(vec_node_structural_twist, self.connectivities)
         self.beam_number = np.zeros((self.num_elem,), dtype=int)
         self.body_number = np.zeros((self.num_elem,), dtype=int)
         self.app_forces = np.zeros((self.num_node,6), dtype=float)
@@ -747,8 +806,8 @@ class StructuralInformation():
             sys.exit("ERROR: The second dimension of FoR does not match the number of nodes element")
         if(self.frame_of_reference_delta.shape[2]!=3):
             sys.exit("ERROR: The third dimension of FoR must be 3")
-        if(self.structural_twist.shape[0]!=self.num_node):
-            sys.exit("ERROR: The structural twist must be defined for each node")
+        if(self.structural_twist.shape[0]!=self.num_elem):
+            sys.exit("ERROR: The structural twist must be defined for each element")
         if(self.boundary_conditions.shape[0]!=self.num_node):
             sys.exit("ERROR: The boundary conditions must be defined for each node")
         if(self.beam_number.shape[0]!=self.num_elem):
@@ -1080,7 +1139,8 @@ class AerodynamicInformation():
                 print("WARNING: redefining the discretization of airfoil camber line")
                 new_airfoils = self.change_airfoils_discretezation(self.airfoils, aerodynamics_to_add.airfoils.shape[1])
                 self.airfoils = np.concatenate((new_airfoils, aerodynamics_to_add.airfoils), axis=0)
-
+            if self.m_distribution.lower() == 'user_defined':
+                self.user_defined_m_distribution = np.concatenate((self.user_defined_m_distribution, aerodynamics_to_add.user_defined_m_distribution), axis=0)
             total_num_airfoils += len(aerodynamics_to_add.airfoils[:,0,0])
             # total_num_surfaces += len(aerodynamics_to_add.surface_m)
             total_num_surfaces += np.sum(aerodynamics_to_add.surface_m != -1)
@@ -1216,6 +1276,8 @@ class AerodynamicInformation():
             h5file.create_dataset('elastic_axis', data=self.elastic_axis)
             h5file.create_dataset('airfoil_distribution', data=self.airfoil_distribution)
             h5file.create_dataset('sweep', data=self.sweep)
+            if self.m_distribution.lower() == 'user_defined':
+                h5file.create_dataset('user_defined_m_distribution', data=self.user_defined_m_distribution)
 
             airfoils_group = h5file.create_group('airfoils')
             for iairfoil in range(len(self.airfoils)):
@@ -1358,8 +1420,8 @@ class AeroelasticInformation():
         #         self.StructuralInformation.elem_stiffness[nodes_to_keep])
         # self.StructuralInformation.elem_mass = (
         #         self.StructuralInformation.elem_mass[nodes_to_keep])
-        self.StructuralInformation.structural_twist = (
-                self.StructuralInformation.structural_twist[nodes_to_keep])
+        # self.StructuralInformation.structural_twist = (
+        #         self.StructuralInformation.structural_twist[nodes_to_keep])
         self.StructuralInformation.boundary_conditions = (
                 self.StructuralInformation.boundary_conditions[nodes_to_keep])
         # self.StructuralInformation.beam_number = (
@@ -1390,6 +1452,8 @@ class AeroelasticInformation():
                 if not replace_matrix[inode,0] == -1:
                     # inode to be replaced
                     self.StructuralInformation.connectivities[icon, jcon] = self.StructuralInformation.connectivities[replace_matrix[inode,1], replace_matrix[inode,2]]
+                    self.StructuralInformation.structural_twist[icon, jcon] = (
+                        self.StructuralInformation.structural_twist[replace_matrix[inode,1], replace_matrix[inode,2]])
                     self.AerodynamicInformation.chord[icon, jcon] = (
                         self.AerodynamicInformation.chord[replace_matrix[inode,1], replace_matrix[inode,2]])
                     self.AerodynamicInformation.twist[icon, jcon] = (

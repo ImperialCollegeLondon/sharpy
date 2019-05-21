@@ -230,7 +230,7 @@ def generate_from_excel_type01(chord_panels,
     # TODO: change this with a list of thickness and pure airfoils
     pure_airfoils_camber=np.zeros((n_elem_aero,n_points_camber,2),)
     xls = pd.ExcelFile(excel_file_name)
-    excel_db = pd.read_excel(xls, sheetname=excel_sheet_airfoil_coord)
+    excel_db = pd.read_excel(xls, sheet_name=excel_sheet_airfoil_coord)
     for iairfoil in range(len(pure_airfoils_names)):
         # Look for the NaN
         icoord=2
@@ -711,7 +711,7 @@ def rotor_from_OpenFAST_db(chord_panels,
     # TODO: change this with a list of thickness and pure airfoils
     pure_airfoils_camber=np.zeros((n_elem_aero,n_points_camber,2),)
     xls = pd.ExcelFile(excel_file_name)
-    excel_db = pd.read_excel(xls, sheetname=excel_sheet_airfoil_coord)
+    excel_db = pd.read_excel(xls, sheet_name=excel_sheet_airfoil_coord)
     for iairfoil in range(len(pure_airfoils_names)):
         # Look for the NaN
         icoord=2
@@ -1248,7 +1248,7 @@ def rotor_from_excel_type02(chord_panels,
 
     pure_airfoils_camber=np.zeros((n_pure_airfoils,n_points_camber,2),)
     xls = pd.ExcelFile(excel_file_name)
-    excel_db = pd.read_excel(xls, sheetname=excel_sheet_airfoil_coord)
+    excel_db = pd.read_excel(xls, sheet_name=excel_sheet_airfoil_coord)
     for iairfoil in range(n_pure_airfoils):
         # Look for the NaN
         icoord=2
