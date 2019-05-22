@@ -6,17 +6,13 @@ S. Maraniello, Dec 2018
 import unittest
 import numpy as np
 import os
-import copy
-import warnings
-import matplotlib.pyplot as plt 
+import matplotlib.pyplot as plt
 
 import sharpy.sharpy_main
-import sharpy.utils.h5utils as h5
 import sharpy.utils.algebra as algebra
 import sharpy.utils.analytical as an
 
 import sharpy.linear.src.linuvlm as linuvlm
-import sharpy.linear.src.libss as libss
 
 import cases.templates.flying_wings as flying_wings
 

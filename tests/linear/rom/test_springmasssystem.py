@@ -5,11 +5,9 @@ NGoizueta 16 Feb 2019
 """
 
 import numpy as np
-import matplotlib.pyplot as plt
 import sharpy.linear.src.libss as libss
 import sharpy.linear.src.lingebm as lingebm
 import sharpy.rom.krylovreducedordermodel as krylov
-import sharpy.rom.frequencyresponseplot as freq_plots
 import unittest
 
 

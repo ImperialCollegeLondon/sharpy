@@ -7,7 +7,6 @@ import time
 import warnings
 import numpy as np
 import scipy.linalg as scalg
-import scipy.signal as scsig
 import scipy.sparse as sparse
 
 import sharpy.linear.src.interp as interp

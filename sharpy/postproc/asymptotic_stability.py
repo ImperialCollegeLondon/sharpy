@@ -1,7 +1,5 @@
-import ctypes as ct
 import matplotlib.pyplot as plt
 import numpy as np
-import os
 import sharpy.utils.settings as settings
 from sharpy.utils.solver_interface import solver, BaseSolver
 import sharpy.utils.h5utils as h5
@@ -166,9 +164,6 @@ class AsymptoticStabilityAnalysis(BaseSolver):
 
         n_aero_states = self.aeroelastic.linuvlm.Nx
         n_struct_states = self.aeroelastic.lingebm_str.U.shape[1]
-
-        from mpl_toolkits.mplot3d import Axes3D
-
 
         for mode_plot in range(start, start + n_modes_to_plot):
             fig = plt.figure()

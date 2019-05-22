@@ -5,9 +5,7 @@ S. Maraniello, 29 May 2018
 
 import numpy as np
 import scipy.linalg as scalg
-import warnings
 import unittest
-import itertools
 import copy
 import matplotlib.pyplot as plt
 
@@ -16,7 +14,6 @@ import sharpy.utils.h5utils as h5utils
 import sharpy.linear.src.assembly as assembly
 import sharpy.linear.src.multisurfaces as multisurfaces
 import sharpy.linear.src.surface as surface
-import sharpy.linear.src.libuvlm as libuvlm
 import sharpy.utils.algebra as algebra
 
 

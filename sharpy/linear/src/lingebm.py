@@ -3,10 +3,8 @@ Class to store linear uvlm solver
 S. Maraniello, Aug 2018
 """
 
-import copy
 import numpy as np
 import scipy as sc
-import scipy.linalg as scalg
 import scipy.signal as scsig
 import sharpy.linear.src.libss as libss
 import sharpy.utils.algebra as algebra
@@ -603,10 +601,6 @@ class FlexDynamic():
         ### checks
         assert self.inout_coords in ['modes', 'nodes'], \
             'inout_coords=%s not implemented!' % self.inout_coords
-
-        #Include gravity terms
-        if self.settings['gravity'].value:
-            self.linearise_gravity_forces()
 
         dlti = self.dlti
         modal = self.modal
