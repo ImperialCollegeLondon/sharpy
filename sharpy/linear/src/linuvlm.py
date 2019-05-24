@@ -536,6 +536,15 @@ class Dynamic(Static):
         - freqresp: ad-hoc method for fast frequency response (only implemented)
         for remove_predictor=False
 
+    Attributes:
+        Nx (int): Number of states
+        Nu (int): Number of inputs
+        Ny (int): Number of outputs
+        K (int): Number of paneles :math:`K = MN`
+        K_star (int): Number of wake panels :math:`K^*=M^*N`
+        Kzeta (int): Number of panel vertices :math:`K_\zeta=(M+1)(N+1)`
+        Kzeta_star (int): Number of wake panel vertices :math:`K_{\zeta,w} = (M^*+1)(N+1)`
+        
     To do:
     - upgrade to linearise around unsteady snapshot (adjoint)
     '''
@@ -701,10 +710,10 @@ class Dynamic(Static):
 
             .. math:: \mathbf{y} = \{\delta\mathbf{f}\}
 
-        with :math:`\mathbf{\Gamma}` being the vector of vortex circulations,
-        :math:`\mathbf{\zeta}` the vector of vortex lattice coordinates and
-        :math:`\mathbf{f}` the vector of aerodynamic forces and moments. Note that :math:`(\bullet)'` denotes
-        a derivative with respect to time.
+        with :math:`\mathbf{\Gamma}\in\mathbb{R}^{MN}` being the vector of vortex circulations,
+        :math:`\mathbf{\zeta}\in\mathbb{R}^{3(M+1)(N+1)}` the vector of vortex lattice coordinates and
+        :math:`\mathbf{f}\in\mathbb{R}^{3(M+1)(N+1)}` the vector of aerodynamic forces and moments. Note
+        that :math:`(\bullet)'` denotes a derivative with respect to time.
 
         Note that the input is atypically defined at time ``n+1``, therefore by default
         ``self.remove_predictor = True`` and the predictor term ``u_{n+1}`` is eliminated through

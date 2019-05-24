@@ -236,9 +236,12 @@ class Modal(BaseSolver):
 
         if self.rigid_body_motion:
             # Settings for the assembly of the matrices
-            full_matrix_settings = self.data.settings['StaticCoupled']['structural_solver_settings']
-            full_matrix_settings['dt'] = ct.c_double(0.01)  # Dummy: required but not used
-            full_matrix_settings['newmark_damp'] = ct.c_double(1e-2)  # Dummy: required but not used
+            try:
+                full_matrix_settings = self.data.settings['StaticCoupled']['structural_solver_settings']
+                full_matrix_settings['dt'] = ct.c_double(0.01)  # Dummy: required but not used
+                full_matrix_settings['newmark_damp'] = ct.c_double(1e-2)  # Dummy: required but not used
+            except KeyError:
+                full_matrix_settings = self.data.settings['DynamicCoupled']['structural_solver_settings']
 
             # Obtain the tangent mass, damping and stiffness matrices
             FullMglobal, FullCglobal, FullKglobal, FullQ = xbeamlib.xbeam3_asbly_dynamic(self.data.structure,

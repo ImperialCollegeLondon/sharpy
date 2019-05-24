@@ -49,7 +49,7 @@ class FrequencyResponseComparison(object):
     def plot_frequency_response(self, kv, Y_freq_ss, Y_freq_rom, interp_frequencies):
 
         nstates = self.ss.states
-        if self.rom is not None:
+        if self.rom is not None and Y_freq_rom is not None:
             rstates = self.rom.ssrom.states
             freqresp_title = 'ROM - %s' % self.rom.algorithm
         else:
@@ -161,7 +161,7 @@ class FrequencyResponseComparison(object):
 
             fig.show()
 
-        elif self.settings['plot_type'] == 'real_and_imaginary':
+        elif self.settings['plot_type'] == 'real_and_imaginary_mimo':
 
             nu = Y_freq_rom.shape[0]
             ny = Y_freq_rom.shape[1]
@@ -201,6 +201,37 @@ class FrequencyResponseComparison(object):
                         ax[ny-1, j].set_xlabel(freq_label)
 
             ax[0, 0].legend()
+
+            fig.show()
+            self.fig = fig
+            self.ax = ax
+
+        elif self.settings['plot_type'] == 'real_and_imaginary_siso':
+            fig, ax = plt.subplots(nrows=1, ncols=1, sharex=True, squeeze=True, constrained_layout=True)
+            ax.plot(kv, Y_freq_ss[0, 0, :].real,
+                          lw=4,
+                          alpha=0.5,
+                          color='b',
+                          label='Real - %g states' % nstates)
+            ax.plot(kv, Y_freq_ss[0, 0, :].imag,
+                          lw=4,
+                          alpha=0.5,
+                          color='b',
+                          ls='-.',
+                          label='Imag - %g states' % nstates)
+            ax.plot(kv, Y_freq_rom[0, 0, :].real, ls='-',
+                          lw=1.5,
+                          color='k',
+                          label='Real - %g states' % rstates)
+            ax.plot(kv, Y_freq_rom[0, 0, :].imag, ls='-.',
+                          lw=1.5,
+                          color='k',
+                          label='Imag - %g states' % rstates)
+
+            ax.set_ylabel('Normalised Response')
+            ax.set_xlabel(freq_label)
+
+            ax.legend()
 
             fig.show()
             self.fig = fig
