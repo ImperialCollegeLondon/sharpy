@@ -22,7 +22,7 @@ Methods for state-space manipulation:
 - parallel: parallel connection between systems
 - SSconv: convert state-space model with predictions and delays
 - addGain: add gains to state-space model.
-- join: merge two state-space models into one.
+- join2: merge two state-space models into one.
 - sum state-space models and/or gains
 - scale_SS: scale state-space model
 - simulate: simulates discrete time solution
@@ -946,7 +946,7 @@ def addGain(SShere, Kmat, where):
     return SSnew
 
 
-def join(SS1, SS2):
+def join2(SS1, SS2):
     r"""
     Join two state-spaces or gain matrices such that, given:
 
@@ -1341,11 +1341,11 @@ def build_SS_poly(Acf, ds, negative=False):
 
     Ader, Bder, Cder, Dder = SSderivative(ds)
     SSder = scsig.dlti(Ader, Bder, Cder, Dder, dt=ds)
-    SSder02 = series(SSder, join(np.array([[1]]), SSder))
+    SSder02 = series(SSder, join2(np.array([[1]]), SSder))
 
     SSder_all = copy.deepcopy(SSder02)
     for ii in range(Nin - 1):
-        SSder_all = join(SSder_all, SSder02)
+        SSder_all = join2(SSder_all, SSder02)
 
     # Build polynomial forcing terms
     sign = 1.0
@@ -1383,7 +1383,7 @@ def butter(order, Wn, N=1, btype='lowpass'):
 
     SStot = SSf
     for ii in range(1, N):
-        SStot = join(SStot, SSf)
+        SStot = join2(SStot, SSf)
 
     return SStot.A, SStot.B, SStot.C, SStot.D
 
