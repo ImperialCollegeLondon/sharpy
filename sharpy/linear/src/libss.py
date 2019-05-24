@@ -56,6 +56,8 @@ import copy
 import warnings
 import numpy as np
 import scipy.signal as scsig
+import scipy.linalg as scalg
+import scipy.interpolate as scint
 
 # dependency
 import sharpy.linear.src.libsparse as libsp
