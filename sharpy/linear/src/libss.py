@@ -1656,7 +1656,7 @@ if __name__ == '__main__':
 
             Yref = np.zeros_like(Yjoin)
             for ii in range(3):
-            Yref += wv[ii]*SS_list[ii].freqresp(kv)
+            	Yref += wv[ii]*SS_list[ii].freqresp(kv)
 
             er = np.max(np.abs(Yjoin - Yref))
             assert er<1e-14, 'test_join error %.3e too large' %er

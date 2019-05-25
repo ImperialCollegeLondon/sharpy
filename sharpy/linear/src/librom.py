@@ -125,7 +125,7 @@ def balreal_direct_py(A, B, C, DLTI=True, Schur=False, full_outputs=False):
     ### Find transformation matrices
     # avoid Cholevski - unstable
     hsv_sq, Tinv  = np.linalg.eig( np.dot(Wc,Wo) )
-    T = np.linalg.inv(Tinv)	
+    T = np.linalg.inv(Tinv)
 
     # sort
     iisort = np.argsort(hsv_sq)[::-1]
@@ -138,7 +138,7 @@ def balreal_direct_py(A, B, C, DLTI=True, Schur=False, full_outputs=False):
 
     else:
         # get square-root factors
-        UT,QoT = scalg.qr( np.dot(np.diag(np.sqrt(hsv)),Tinv), pivoting=False ) 
+        UT,QoT = scalg.qr( np.dot(np.diag(np.sqrt(hsv)),Tinv), pivoting=False )
         Vh, QcT = scalg.qr( np.dot(T,np.diag(np.sqrt(hsv))).T, pivoting=False )
 
         return hsv, UT.T,Vh, QcT.T,QoT.T
@@ -280,24 +280,24 @@ def balreal_iter(A, B, C, lowrank=True, tolSmith=1e-10, tolSVD=1e-6, kmin=None,
     cc, co = Qck.shape[1], Qok.shape[1]
     if Print:
         print('cc=%.2d, co=%.2d' % (cc, co))
-	print('rank(Zc)=%.4d\trank(Zo)=%.4d'%(rcmax,romax) )	
+        print('rank(Zc)=%.4d\trank(Zo)=%.4d'%(rcmax,romax) )
 
     # build M matrix and SVD
     M = libsp.dot(Qok.T, Qck)
     U, s, Vh = scalg.svd(M, full_matrices=False)
 
-	if outFacts:
-		return s, Qck, Qok
+    if outFacts:
+        return s, Qck, Qok
 
-	else:
-		sinv = s ** (-0.5)
-		T = libsp.dot(Qck, Vh.T * sinv)
-		Tinv = np.dot((U * sinv).T, Qok.T)
+    else:
+        sinv = s ** (-0.5)
+        T = libsp.dot(Qck, Vh.T * sinv)
+        Tinv = np.dot((U * sinv).T, Qok.T)
 
-		if Print:
-		    print('rank(Zc)=%.4d\trank(Zo)=%.4d' % (rcmax, romax))
+    if Print:
+        print('rank(Zc)=%.4d\trank(Zo)=%.4d' % (rcmax, romax))
 
-		return s, T, Tinv, rcmax, romax
+    return s, T, Tinv, rcmax, romax
 
 
 def balreal_iter_old(A, B, C, lowrank=True, tolSmith=1e-10, tolSVD=1e-6, kmax=None,
@@ -536,7 +536,7 @@ def res_discrete_lyap(A, Q, Z, Factorised=True):
 
     Reminder:
     contr: A W A.T - W = - B B.T
-    obser: A.T W A - W = - C.T C	
+    obser: A.T W A - W = - C.T C
     """
 
     if Factorised:
@@ -665,8 +665,8 @@ def low_rank_smith(A, Q, tol=1e-10, Square=True, tolSVD=1e-12, tolAbs=False,
 
 def get_trapz_weights(k0,kend,Nk,knyq=False):
     '''
-    Returns uniform frequency grid (kv of length Nk) and weights (wv) for 
-    Gramians integration using trapezoidal rule. If knyq is True, it is assumed 
+    Returns uniform frequency grid (kv of length Nk) and weights (wv) for
+    Gramians integration using trapezoidal rule. If knyq is True, it is assumed
     that kend is also the Nyquist frequency.
     '''
 
@@ -691,8 +691,8 @@ def get_trapz_weights(k0,kend,Nk,knyq=False):
 
 def get_gauss_weights(k0,kend,Npart,order):
     '''
-    Returns gauss-legendre frequency grid (kv of length Npart*order) and 
-    weights (wv) for Gramians integration. 
+    Returns gauss-legendre frequency grid (kv of length Npart*order) and
+    weights (wv) for Gramians integration.
 
     The integration grid is divided into Npart partitions, and in each of
     them integration is performed using a Gauss-Legendre quadrature of
@@ -701,7 +701,7 @@ def get_gauss_weights(k0,kend,Npart,order):
     Note: integration points are never located at k0 or kend, hence there
     is no need for special treatment as in (for e.g.) a uniform grid case
     (see get_unif_weights)
-    ''' 
+    '''
 
     if Npart==1:
         # get gauss normalised coords and weights
@@ -727,229 +727,229 @@ def get_gauss_weights(k0,kend,Npart,order):
 
 
 def balfreq(SS,DictBalFreq):
-	'''
-	Method for frequency limited balancing.
-	The Observability ad controllability Gramians over the frequencies kv 
-	are solved in factorised form. Balancd modes are then obtained with a 
-	square-root method.
+    '''
+    Method for frequency limited balancing.
+    The Observability ad controllability Gramians over the frequencies kv
+    are solved in factorised form. Balancd modes are then obtained with a
+    square-root method.
 
-	Details:
-	Observability and controllability Gramians are solved in factorised form
-	through explicit integration. The number of integration points determines
-	both the accuracy and the maximum size of the balanced model.
+    Details:
+    Observability and controllability Gramians are solved in factorised form
+    through explicit integration. The number of integration points determines
+    both the accuracy and the maximum size of the balanced model.
 
-	Stability over all (Nb) balanced states is achieved if:
-	    a. one of the Gramian is integrated through the full Nyquist range
-	    b. the integration points are enough.
+    Stability over all (Nb) balanced states is achieved if:
+        a. one of the Gramian is integrated through the full Nyquist range
+        b. the integration points are enough.
 
-	Input: 
+    Input:
 
-	- DictBalFreq: dictionary specifying integration method with keys:
+    - DictBalFreq: dictionary specifying integration method with keys:
 
-	    - 'frequency': defines limit frequencies for balancing. The balanced
-	    model will be accurate in the range [0,F], where F is the value of 
-	    this key. Note that F units must be consistent with the units specified
-	    in the self.ScalingFacts dictionary.
+        - 'frequency': defines limit frequencies for balancing. The balanced
+        model will be accurate in the range [0,F], where F is the value of
+        this key. Note that F units must be consistent with the units specified
+        in the self.ScalingFacts dictionary.
 
-	    - 'method_low': ['gauss','trapz'] specifies whether to use gauss 
-	    quadrature or trapezoidal rule in the low-frequency range [0,F]
+        - 'method_low': ['gauss','trapz'] specifies whether to use gauss
+        quadrature or trapezoidal rule in the low-frequency range [0,F]
 
-	    - 'options_low': options to use for integration in the low-frequencies.
-	    These depend on the integration scheme (See below).
+        - 'options_low': options to use for integration in the low-frequencies.
+        These depend on the integration scheme (See below).
 
-	    - 'method_high': method to use for integration in the range [F,F_N],
-	    where F_N is the Nyquist frequency. See 'method_low'.
+        - 'method_high': method to use for integration in the range [F,F_N],
+        where F_N is the Nyquist frequency. See 'method_low'.
 
-	    - 'options_high': options to use for integration in the high-frequencies.
+        - 'options_high': options to use for integration in the high-frequencies.
 
-	    - 'check_stability': if True, the balanced model is truncated to
-	    eliminate unstable modes - if any is found. Note that very accurate 
-	    balanced model can still be obtained, even if high order modes are 
-	    unstable. Note that this option is overridden if ""
+        - 'check_stability': if True, the balanced model is truncated to
+        eliminate unstable modes - if any is found. Note that very accurate
+        balanced model can still be obtained, even if high order modes are
+        unstable. Note that this option is overridden if ""
 
-	    - 'get_frequency_response': if True, the function also returns the
-	    frequency response evaluated at the low-frequency range integration
-	    points. If True, this option also allows to automatically tune the 
-	    balanced model.
+        - 'get_frequency_response': if True, the function also returns the
+        frequency response evaluated at the low-frequency range integration
+        points. If True, this option also allows to automatically tune the
+        balanced model.
 
-	Future options:
-	    - Ncpu: for parallel run
-
-
-	The following integration schemes are available:
-	    - 'trapz': performs integration over equally spaced points using 
-	    trapezoidal rule. It accepts options dictionaries with keys:
-	        - 'points': number of integration points to use (including 
-	        domain boundary)
-	    
-	    - 'gauss' performs gauss-lobotto quadrature. The domain can be
-	    partitioned in Npart sub-domain in which the gauss-lobotto quadrature
-	    of order Ord can be applied. A total number of Npart*Ord points is
-	    required. It accepts options dictionaries of the form:
-	        - 'partitions': number of partitions
-	        - 'order': quadrature order. 
-
-	Example: 
-	The following dictionary 
-
-	    DictBalFreq={   'frequency': 1.2, 
-	                    'method_low': 'trapz',
-	                    'options_low': {'points': 12},
-	                    'method_high': 'gauss',
-	                    'options_high': {'partitions': 2, 'order': 8},
-	                    'check_stability': True }
-
-	balances the state-space model in the frequency range [0, 1.2] 
-	using 
-	    (a) 12 equally-spaced points integration of the Gramians in 
-	the low-frequency range [0,1.2] and 
-	    (b) a 2 Gauss-Lobotto 8-th order quadratures of the controllability 
-	    Gramian in the high-frequency range.
-
-	A total number of 28 integration points will be required, which will
-	result into a balanced model with number of states
-	    min{ 2*28* number_inputs, 2*28* number_outputs }
-	The model is finally truncated so as to retain only the first Ns stable
-	modes. 
-	'''
-
-	### check input dictionary
-	if 'frequency' not in DictBalFreq:
-	    raise NameError('Solution dictionary must include the "frequency" key')
-
-	if 'method_low' not in DictBalFreq:
-	    warnings.warn('Setting default options for low-frequency integration')
-	    DictBalFreq['method_low']='trapz'
-	    DictBalFreq['options_low']={'points': 12}
-
-	if 'method_high' not in DictBalFreq:
-	    warnings.warn('Setting default options for high-frequency integration')            
-	    DictBalFreq['method_high']='gauss'
-	    DictBalFreq['options_high']={'partitions': 2, 'order': 8}
-
-	if 'check_stability' not in DictBalFreq:
-	    DictBalFreq['check_stability']=True
-
-	if 'output_modes' not in DictBalFreq:
-	    DictBalFreq['output_modes']=True
-
-	if 'get_frequency_response' not in DictBalFreq:
-	    DictBalFreq['get_frequency_response'] = False
+    Future options:
+        - Ncpu: for parallel run
 
 
-	### get integration points and weights
+    The following integration schemes are available:
+        - 'trapz': performs integration over equally spaced points using
+        trapezoidal rule. It accepts options dictionaries with keys:
+            - 'points': number of integration points to use (including
+            domain boundary)
 
-	# Nyquist frequency
-	kn=np.pi/SS.dt 
+        - 'gauss' performs gauss-lobotto quadrature. The domain can be
+        partitioned in Npart sub-domain in which the gauss-lobotto quadrature
+        of order Ord can be applied. A total number of Npart*Ord points is
+        required. It accepts options dictionaries of the form:
+            - 'partitions': number of partitions
+            - 'order': quadrature order.
 
-	Opt=DictBalFreq['options_low']
-	if DictBalFreq['method_low'] == 'trapz':
-	    kv_low, wv_low=get_trapz_weights(0., DictBalFreq['frequency'], 
-	                                                   Opt['points'], False)
-	elif DictBalFreq['method_low'] == 'gauss':
-	    kv_low, wv_low=get_gauss_weights(0., DictBalFreq['frequency'],
-	                                         Opt['partitions'],Opt['order'])
-	else:
-	    raise NameError(
-	        'Invalid value %s for key "method_low"' %DictBalFreq['method_low'])
+    Example:
+    The following dictionary
 
-	Opt=DictBalFreq['options_high']
-	if DictBalFreq['method_high'] == 'trapz':
-	    if Opt['points']==0:
-	        warnings.warn('You have chosen no points in high frequency range!')
-	        kv_high, wv_high = [], []
-	    else:
-	        kv_high, wv_high=get_trapz_weights(DictBalFreq['frequency'], kn,
-	                                                    Opt['points'], True)
-	elif DictBalFreq['method_high'] == 'gauss':
-	    if Opt['order']*Opt['partitions']==0:
-	        warnings.warn('You have chosen no points in high frequency range!')
-	        kv_high, wv_high = [], []
-	    else:
-	        kv_high, wv_high=get_gauss_weights(DictBalFreq['frequency'], kn,
-	                                         Opt['partitions'],Opt['order'])
-	else:
-	    raise NameError(
-	        'Invalid value %s for key "method_high"'%DictBalFreq['method_high'])
+        DictBalFreq={   'frequency': 1.2,
+                        'method_low': 'trapz',
+                        'options_low': {'points': 12},
+                        'method_high': 'gauss',
+                        'options_high': {'partitions': 2, 'order': 8},
+                        'check_stability': True }
 
+    balances the state-space model in the frequency range [0, 1.2]
+    using
+        (a) 12 equally-spaced points integration of the Gramians in
+    the low-frequency range [0,1.2] and
+        (b) a 2 Gauss-Lobotto 8-th order quadratures of the controllability
+        Gramian in the high-frequency range.
 
+    A total number of 28 integration points will be required, which will
+    result into a balanced model with number of states
+        min{ 2*28* number_inputs, 2*28* number_outputs }
+    The model is finally truncated so as to retain only the first Ns stable
+    modes.
+    '''
 
-	### -------------------------------------------------- loop frequencies
+    ### check input dictionary
+    if 'frequency' not in DictBalFreq:
+        raise NameError('Solution dictionary must include the "frequency" key')
 
-	### merge vectors
-	Nk_low=len(kv_low)
-	kvdt = np.concatenate( (kv_low,kv_high) ) * SS.dt
-	wv = np.concatenate( (wv_low,wv_high) ) * SS.dt
-	zv = np.cos(kvdt)+1.j*np.sin(kvdt)
+    if 'method_low' not in DictBalFreq:
+        warnings.warn('Setting default options for low-frequency integration')
+        DictBalFreq['method_low']='trapz'
+        DictBalFreq['options_low']={'points': 12}
 
-	Eye=libsp.eye_as(SS.A)
-	Zc=np.zeros( (SS.states,2*SS.inputs*len(kvdt)),)
-	Zo=np.zeros( (SS.states,2*SS.outputs*Nk_low),)
+    if 'method_high' not in DictBalFreq:
+        warnings.warn('Setting default options for high-frequency integration')
+        DictBalFreq['method_high']='gauss'
+        DictBalFreq['options_high']={'partitions': 2, 'order': 8}
 
-	if DictBalFreq['get_frequency_response']:
-	    Yfreq=np.empty((SS.outputs,SS.inputs,Nk_low,),dtype=np.complex_)
-	    kv=kv_low
+    if 'check_stability' not in DictBalFreq:
+        DictBalFreq['check_stability']=True
 
-	for kk in range( len(kvdt) ):
+    if 'output_modes' not in DictBalFreq:
+        DictBalFreq['output_modes']=True
 
-	    zval=zv[kk]
-	    Intfact=wv[kk]   # integration factor
-
-	    Qctrl = Intfact * libsp.solve(zval*Eye-SS.A,SS.B)
-	    kkvec=range( 2*kk*SS.inputs, 2*(kk+1)*SS.inputs )
-	    Zc[:,kkvec[:SS.inputs]]= Qctrl.real    
-	    Zc[:,kkvec[SS.inputs:]]= Qctrl.imag   
+    if 'get_frequency_response' not in DictBalFreq:
+        DictBalFreq['get_frequency_response'] = False
 
 
-	    ### ----- frequency response  
-	    if DictBalFreq['get_frequency_response'] and kk<Nk_low:
-	        Yfreq[:,:,kk]= (1./Intfact)*\
-	        				 libsp.dot(SS.C,Qctrl,type_out=np.ndarray)+SS.D
+    ### get integration points and weights
 
-	    ### ----- observability
-	    if kk>=Nk_low:
-	        continue
+    # Nyquist frequency
+    kn=np.pi/SS.dt
 
-	    Qobs = Intfact * libsp.solve(np.conj(zval)*Eye-SS.A.T,SS.C.T)
+    Opt=DictBalFreq['options_low']
+    if DictBalFreq['method_low'] == 'trapz':
+        kv_low, wv_low=get_trapz_weights(0., DictBalFreq['frequency'],
+                                                       Opt['points'], False)
+    elif DictBalFreq['method_low'] == 'gauss':
+        kv_low, wv_low=get_gauss_weights(0., DictBalFreq['frequency'],
+                                             Opt['partitions'],Opt['order'])
+    else:
+        raise NameError(
+            'Invalid value %s for key "method_low"' %DictBalFreq['method_low'])
 
-	    kkvec=range( 2*kk*SS.outputs, 2*(kk+1)*SS.outputs )
-	    Zo[:,kkvec[:SS.outputs]]= Intfact*Qobs.real        
-	    Zo[:,kkvec[SS.outputs:]]= Intfact*Qobs.imag
+    Opt=DictBalFreq['options_high']
+    if DictBalFreq['method_high'] == 'trapz':
+        if Opt['points']==0:
+            warnings.warn('You have chosen no points in high frequency range!')
+            kv_high, wv_high = [], []
+        else:
+            kv_high, wv_high=get_trapz_weights(DictBalFreq['frequency'], kn,
+                                                        Opt['points'], True)
+    elif DictBalFreq['method_high'] == 'gauss':
+        if Opt['order']*Opt['partitions']==0:
+            warnings.warn('You have chosen no points in high frequency range!')
+            kv_high, wv_high = [], []
+        else:
+            kv_high, wv_high=get_gauss_weights(DictBalFreq['frequency'], kn,
+                                             Opt['partitions'],Opt['order'])
+    else:
+        raise NameError(
+            'Invalid value %s for key "method_high"'%DictBalFreq['method_high'])
 
-	# delete full matrices
-	Kernel=None
-	Qctrl=None
-	Qobs=None
 
-	# LRSQM (optimised)
-	U,hsv,Vh=scalg.svd( np.dot(Zo.T,Zc), full_matrices=False)
-	sinv=hsv**(-0.5)
-	T=np.dot(Zc,Vh.T*sinv)
-	Ti=np.dot((U*sinv).T,Zo.T)
-	# Zc,Zo=None,None
 
-	### build frequency balanced model
-	Ab = libsp.dot( Ti, libsp.dot(SS.A, T) )
-	Bb = libsp.dot( Ti, SS.B)
-	Cb = libsp.dot( SS.C, T)
-	SSb = libss.ss( Ab, Bb, Cb, SS.D, dt=SS.dt)
+    ### -------------------------------------------------- loop frequencies
 
-	### Eliminate unstable modes - if any:
-	if DictBalFreq['check_stability']:
-	    for nn in range(1,len(hsv)+1):
-	        eigs_trunc=scalg.eigvals(SSb.A[:nn,:nn] )
-	        eigs_trunc_max=np.max(np.abs(eigs_trunc))
-	        if eigs_trunc_max>1.-1e-16:
-	            SSb.truncate(nn-1)
-	            hsv=hsv[:nn-1]
-	            T=T[:,:nn-1]
-	            Ti=Ti[:nn-1,:]
-	            break
+    ### merge vectors
+    Nk_low=len(kv_low)
+    kvdt = np.concatenate( (kv_low,kv_high) ) * SS.dt
+    wv = np.concatenate( (wv_low,wv_high) ) * SS.dt
+    zv = np.cos(kvdt)+1.j*np.sin(kvdt)
 
-	outs=(SSb, hsv)
-	if DictBalFreq['output_modes']:
-		outs += (T,Ti,Zc,Zo,U,Vh)
-	return outs
+    Eye=libsp.eye_as(SS.A)
+    Zc=np.zeros( (SS.states,2*SS.inputs*len(kvdt)),)
+    Zo=np.zeros( (SS.states,2*SS.outputs*Nk_low),)
+
+    if DictBalFreq['get_frequency_response']:
+        Yfreq=np.empty((SS.outputs,SS.inputs,Nk_low,),dtype=np.complex_)
+        kv=kv_low
+
+    for kk in range( len(kvdt) ):
+
+        zval=zv[kk]
+        Intfact=wv[kk]   # integration factor
+
+        Qctrl = Intfact * libsp.solve(zval*Eye-SS.A,SS.B)
+        kkvec=range( 2*kk*SS.inputs, 2*(kk+1)*SS.inputs )
+        Zc[:,kkvec[:SS.inputs]]= Qctrl.real
+        Zc[:,kkvec[SS.inputs:]]= Qctrl.imag
+
+
+        ### ----- frequency response
+        if DictBalFreq['get_frequency_response'] and kk<Nk_low:
+            Yfreq[:,:,kk]= (1./Intfact)*\
+            				 libsp.dot(SS.C,Qctrl,type_out=np.ndarray)+SS.D
+
+        ### ----- observability
+        if kk>=Nk_low:
+            continue
+
+        Qobs = Intfact * libsp.solve(np.conj(zval)*Eye-SS.A.T,SS.C.T)
+
+        kkvec=range( 2*kk*SS.outputs, 2*(kk+1)*SS.outputs )
+        Zo[:,kkvec[:SS.outputs]]= Intfact*Qobs.real
+        Zo[:,kkvec[SS.outputs:]]= Intfact*Qobs.imag
+
+    # delete full matrices
+    Kernel=None
+    Qctrl=None
+    Qobs=None
+
+    # LRSQM (optimised)
+    U,hsv,Vh=scalg.svd( np.dot(Zo.T,Zc), full_matrices=False)
+    sinv=hsv**(-0.5)
+    T=np.dot(Zc,Vh.T*sinv)
+    Ti=np.dot((U*sinv).T,Zo.T)
+    # Zc,Zo=None,None
+
+    ### build frequency balanced model
+    Ab = libsp.dot( Ti, libsp.dot(SS.A, T) )
+    Bb = libsp.dot( Ti, SS.B)
+    Cb = libsp.dot( SS.C, T)
+    SSb = libss.ss( Ab, Bb, Cb, SS.D, dt=SS.dt)
+
+    ### Eliminate unstable modes - if any:
+    if DictBalFreq['check_stability']:
+        for nn in range(1,len(hsv)+1):
+            eigs_trunc=scalg.eigvals(SSb.A[:nn,:nn] )
+            eigs_trunc_max=np.max(np.abs(eigs_trunc))
+            if eigs_trunc_max>1.-1e-16:
+                SSb.truncate(nn-1)
+                hsv=hsv[:nn-1]
+                T=T[:,:nn-1]
+                Ti=Ti[:nn-1,:]
+                break
+
+    outs=(SSb, hsv)
+    if DictBalFreq['output_modes']:
+        outs += (T,Ti,Zc,Zo,U,Vh)
+    return outs
 
 
 
@@ -1112,9 +1112,9 @@ def eigen_dec(A, B, C, dlti=True, N=None, eigs=None, UR=None, URinv=None,
     eigs,Ur: eigenvalues and right eigenvector of A matrix as given by:
         eigs,Ur=scipy.linalg.eig(A,b=None,left=False,right=True)
     Urinv: inverse of Ur
-    order_by={'damp','freq','stab'}: order according to increasing damping (damp) 
-    or decreasing frequency (freq) or decreasing damping (stab). 
-        If None, the same order as eigs/UR is followed. 
+    order_by={'damp','freq','stab'}: order according to increasing damping (damp)
+    or decreasing frequency (freq) or decreasing damping (stab).
+        If None, the same order as eigs/UR is followed.
     tol: absolute tolerance used to identify complex conj pair of eigenvalues
     complex: if true, the system is left in complex form
 
@@ -1171,11 +1171,11 @@ def eigen_dec(A, B, C, dlti=True, N=None, eigs=None, UR=None, URinv=None,
                 order = np.argsort(np.abs(np.angle(eigs)))
             else:
                 order = np.argsort(np.abs(eigs.imag))
-	elif order_by=='stab':
-		if dlti:
-			order=np.argsort(np.abs(eigs))
-		else:
-			order=np.argsort(eigs.real)
+        elif order_by=='stab':
+            if dlti:
+                order=np.argsort(np.abs(eigs))
+            else:
+                order=np.argsort(eigs.real)
         else:
             raise NameError("order_by must be equal to 'damp' or 'freq'")
         eigs = eigs[order]
@@ -1243,37 +1243,37 @@ if __name__ == '__main__':
     class Test_librom():
 
 
-	def test_balreal_direct_py(self):
+        def test_balreal_direct_py(self):
 
-		Nx,Nu,Ny = 6, 4, 2
-		ss = libss.random_ss(Nx,Nu,Ny,dt=0.1,stable=True)
+            Nx,Nu,Ny = 6, 4, 2
+            ss = libss.random_ss(Nx,Nu,Ny,dt=0.1,stable=True)
 
-		### direct balancing
-		hsv,T,Ti = balreal_direct_py( ss.A,ss.B,ss.C,
-									  DLTI=True,full_outputs=False)
-		ssb = copy.deepcopy(ss)
-		ssb.project(Ti,T)
+            ### direct balancing
+            hsv,T,Ti = balreal_direct_py( ss.A,ss.B,ss.C,
+              DLTI=True,full_outputs=False)
+            ssb = copy.deepcopy(ss)
+            ssb.project(Ti,T)
 
-		# compare freq. resp.
-		kv = np.array([0., .5, 3., 5.67])
-		Y = ss.freqresp(kv)
-		Yb = ssb.freqresp(kv)
-		er_max = np.max(np.abs(Yb-Y))
-		assert er_max/np.max(np.abs(Y))<1e-10, 'error too large'
+            # compare freq. resp.
+            kv = np.array([0., .5, 3., 5.67])
+            Y = ss.freqresp(kv)
+            Yb = ssb.freqresp(kv)
+            er_max = np.max(np.abs(Yb-Y))
+            assert er_max/np.max(np.abs(Y))<1e-10, 'error too large'
 
-		# test full_outputs option
-		hsv, U,Vh, Qc,Qo =  balreal_direct_py( ss.A,ss.B,ss.C,
-				                           DLTI=True,full_outputs=True)
+            # test full_outputs option
+            hsv, U,Vh, Qc,Qo =  balreal_direct_py( ss.A,ss.B,ss.C,
+                                       DLTI=True,full_outputs=True)
 
-		# build M matrix and SVD
-		sinv=hsv**(-0.5)
-		T2=libsp.dot(Qc,Vh.T*sinv)
-		Ti2=np.dot((U*sinv).T,Qo.T)
-		assert np.linalg.norm(T2-T)<1e-13, 'error too large'
-		assert np.linalg.norm(Ti2-Ti)<1e-13, 'error too large'
+            # build M matrix and SVD
+            sinv=hsv**(-0.5)
+            T2=libsp.dot(Qc,Vh.T*sinv)
+            Ti2=np.dot((U*sinv).T,Qo.T)
+            assert np.linalg.norm(T2-T)<1e-13, 'error too large'
+            assert np.linalg.norm(Ti2-Ti)<1e-13, 'error too large'
 
-		ssb2 = copy.deepcopy(ss)
-		ssb2.project(Ti2,T2)
-		Yb2 = ssb2.freqresp(kv)
-		er_max = np.max(np.abs(Yb2-Y))
-		assert er_max/np.max(np.abs(Y))<1e-10, 'error too large'
+            ssb2 = copy.deepcopy(ss)
+            ssb2.project(Ti2,T2)
+            Yb2 = ssb2.freqresp(kv)
+            er_max = np.max(np.abs(Yb2-Y))
+            assert er_max/np.max(np.abs(Y))<1e-10, 'error too large'
