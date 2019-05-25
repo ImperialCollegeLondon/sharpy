@@ -1047,7 +1047,11 @@ def rotor_from_excel_type02(chord_panels,
                                   m_distribution = 'uniform',
                                   h5_cross_sec_prop = None,
                                   n_points_camber = 100,
-                                  tol_remove_points = 1e-3):
+                                  tol_remove_points = 1e-3,
+                                  user_defined_m_distribution_type = None,
+                                  camber_effect_on_twist = False,
+                                  wsp = 0.,
+                                  dt = 0.):
 
     """
     generate_from_excel_type02_db
@@ -1285,18 +1289,56 @@ def rotor_from_excel_type02(chord_panels,
     airfoils = blade.AerodynamicInformation.interpolate_airfoils_camber_thickness(pure_airfoils_camber, pure_airfoils_thickness, node_thickness, n_points_camber)
     airfoil_distribution = np.linspace(0,blade.StructuralInformation.num_node-1,blade.StructuralInformation.num_node, dtype=int)
 
+    # User defined m distribution
+    if (m_distribution == 'user_defined') and (user_defined_m_distribution_type == 'last_geometric'):
+        # WSP =10.5
+        # dt = 0.01846909261369661/2
+        blade_nodes = blade.StructuralInformation.num_node
+        udmd_by_nodes = np.zeros((blade_nodes, chord_panels[0] + 1))
+        for inode in range(blade_nodes):
+            r = np.linalg.norm(blade.StructuralInformation.coordinates[inode, :])
+            vrel = np.sqrt(rotation_velocity**2*r**2 + wsp**2)
+            # ielem, inode_in_elem = gc.get_ielem_inode(blade.StructuralInformation.connectivities, inode)
+            last_length = vrel*dt/node_chord[inode]
+            last_length = np.minimum(last_length, 0.5)
+            if last_length <= 0.5:
+                ratio = gc.get_factor_geometric_progression(last_length, 1., chord_panels)
+                udmd_by_nodes[inode, -1] = 1.
+                udmd_by_nodes[inode, 0] = 0.
+                for im in range(chord_panels[0] -1, 0, -1):
+                    udmd_by_nodes[inode, im] = udmd_by_nodes[inode, im + 1] - last_length
+                    last_length *= ratio
+                # Check
+                if (np.diff(udmd_by_nodes[inode, :]) < 0.).any():
+                    sys.error("ERROR in the panel discretization of the blade in node %d" % (inode))
+            else:
+                print("ERROR: cannot match the last panel size for node:", inode)
+                udmd_by_nodes[inode,:] = np.linspace(0, 1, chord_panels + 1)
+
+    else:
+        udmd_by_nodes = None
+    # udmd_by_elements = gc.from_node_array_to_elem_matrix(udmd_by_nodes, rotor.StructuralInformation.connectivities[0:int((blade_nodes-1)/2), :])
+    # rotor.user_defined_m_distribution = (udmd_by_elements, udmd_by_elements, udmd_by_elements)
+
+    node_twist = np.zeros_like(node_chord)
+    if camber_effect_on_twist:
+        for inode in range(blade.StructuralInformation.num_node):
+            node_twist[inode] = gc.get_aoacl0_from_camber(airfoils[inode, :, 0], airfoils[inode, :, 1])
+            airfoils[inode, :, 1] *= 0.
+
     # Write SHARPy format
     blade.AerodynamicInformation.create_aerodynamics_from_vec(blade.StructuralInformation,
                                                             aero_node,
                                                             node_chord,
-                                                            np.zeros_like(node_chord),
+                                                            node_twist,
                                                             np.pi*np.ones_like(node_chord),
                                                             chord_panels,
                                                             surface_distribution,
                                                             m_distribution,
                                                             node_ElAxisAftLEc,
                                                             airfoil_distribution,
-                                                            airfoils)
+                                                            airfoils,
+                                                            udmd_by_nodes)
 
     ######################################################################
     ## ROTOR
@@ -1344,7 +1386,10 @@ def generate_from_excel_type02(chord_panels,
                                   m_distribution = 'uniform',
                                   h5_cross_sec_prop = None,
                                   n_points_camber = 100,
-                                  tol_remove_points = 1e-3):
+                                  tol_remove_points = 1e-3,
+                                  user_defined_m_distribution_type = None,
+                                  wsp = 0.,
+                                  dt = 0.):
 
     """
     generate_from_excel_type02
@@ -1384,7 +1429,10 @@ def generate_from_excel_type02(chord_panels,
                                   m_distribution = m_distribution,
                                   h5_cross_sec_prop = h5_cross_sec_prop,
                                   n_points_camber = n_points_camber,
-                                  tol_remove_points = tol_remove_points)
+                                  tol_remove_points = tol_remove_points,
+                                  user_defined_m_distribution = user_defined_m_distribution,
+                                  wsp = 0.,
+                                  dt = 0.)
 
     ######################################################################
     ## TOWER
