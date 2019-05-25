@@ -279,7 +279,8 @@ class Aerogrid(object):
                 node_info['for_pos'] = structure_tstep.for_pos
                 node_info['cga'] = structure_tstep.cga()
                 if node_info['M_distribution'].lower() == 'user_defined':
-                    node_info['user_defined_m_distribution'] = self.aero_dict['user_defined_m_distribution'][:,i_elem, i_local_node]
+                    ielem_in_surf = i_elem - np.sum(self.surface_distribution < i_surf)
+                    node_info['user_defined_m_distribution'] = self.aero_dict['user_defined_m_distribution'][str(i_surf)][:, ielem_in_surf, i_local_node]
                 (aero_tstep.zeta[i_surf][:, :, i_n],
                  aero_tstep.zeta_dot[i_surf][:, :, i_n]) = (
                     generate_strip(node_info,
