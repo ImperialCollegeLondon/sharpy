@@ -77,8 +77,8 @@ class StepUvlm(BaseSolver):
         if self.settings['gamma_dot_filtering'] is not None:
             if self.settings['gamma_dot_filtering'].value:
                 if not self.settings['gamma_dot_filtering'].value % 2:
-                    cout.cout_wrap("gamma_dot_filtering does not support even numbers. Changing " + str(self.settings['gamma_dot_filtering']) + " to " + str(self.settings['gamma_dot_filtering'] + 1), 2)
-                    self.settings['gamma_dot_filtering'].value += 1
+                    cout.cout_wrap("gamma_dot_filtering does not support even numbers. Changing " + str(self.settings['gamma_dot_filtering']) + " to " + str(self.settings['gamma_dot_filtering'].value + 1), 2)
+                    self.settings['gamma_dot_filtering'] = ct.c_int(self.settings['gamma_dot_filtering'].value + 1)
 
         # init velocity generator
         velocity_generator_type = gen_interface.generator_from_string(
