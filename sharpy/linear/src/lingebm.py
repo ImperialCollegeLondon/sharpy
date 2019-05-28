@@ -328,7 +328,7 @@ class FlexDynamic():
             where the :math:`\delta \mathbf{m}_B` term has been defined above.
 
             The linearisation of the total gravity forces (contributing to the rigid body equations is done in a similar
-            manner.
+            manner).
 
             .. math:: \mathbf{F}_A = \sum_n \mathbf{f}_A
 
@@ -396,11 +396,6 @@ class FlexDynamic():
                   to the cartesian rotation vector
 
                     .. math:: K_{rs}^{M, \Psi} \leftarrow + \sum_n \tilde{\mathbf{f}_A}\frac{\partial}{\partial \Psi}(C^{AB} X_{B,CG})
-
-                
-
-
-
         """
 
         if tsstr is None:
