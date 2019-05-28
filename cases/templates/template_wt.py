@@ -1325,9 +1325,7 @@ def rotor_from_excel_type02(chord_panels,
         print("WARNING: The steady applied Mx should be manually multiplied by the density")
         for inode in range(blade.StructuralInformation.num_node):
             node_twist[inode] = gc.get_aoacl0_from_camber(airfoils[inode, :, 0], airfoils[inode, :, 1])
-            airfoils[inode, :, 1] *= 0.
-
-            mu0 = gc.get_aoacl0_from_camber(airfoils[inode, :, 0], airfoils[inode, :, 1])
+            mu0 = gc.get_mu0_from_camber(airfoils[inode, :, 0], airfoils[inode, :, 1])
             r = np.linalg.norm(blade.StructuralInformation.coordinates[inode, :])
             vrel = np.sqrt(rotation_velocity**2*r**2 + wsp**2)
             if inode == 0:
@@ -1337,7 +1335,9 @@ def rotor_from_excel_type02(chord_panels,
             else:
                 dr = 0.5*np.linalg.norm(blade.StructuralInformation.coordinates[inode + 1,:] - blade.StructuralInformation.coordinates[inode - 1,:])
             moment_factor = 0.5*vrel**2*node_chord[inode]**2*dr
+            # print("node", inode, "mu0", mu0, "CMc/4", 2.*mu0 + np.pi/2*node_twist[inode])
             blade.StructuralInformation.app_forces[inode, 3] = (2.*mu0 + np.pi/2*node_twist[inode])*moment_factor
+            airfoils[inode, :, 1] *= 0.
 
     # Write SHARPy format
     blade.AerodynamicInformation.create_aerodynamics_from_vec(blade.StructuralInformation,
