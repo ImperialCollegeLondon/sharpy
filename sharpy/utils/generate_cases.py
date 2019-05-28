@@ -297,7 +297,6 @@ def get_ielem_inode(connectivities, inode):
     print("ERROR: cannot find ielem and inode_in_elem")
 
 def get_aoacl0_from_camber(x, y):
-
     '''
     Check Theory of wing sections. Abbott. pg 69
     '''
@@ -315,6 +314,25 @@ def get_aoacl0_from_camber(x, y):
     int = yc*f1
 
     return -scipy.integrate.trapz(int, xc)
+
+def get_mu0_from_camber(x, y):
+
+    '''
+    Check Theory of wing sections. Abbott. pg 69
+    '''
+    # Scale
+    c = x[-1] - x[0]
+    xc = (x - x[0])/c
+    yc = (y - y[0])/c
+
+    # Remove the first and last points that may give rise to problems
+    xc = xc[1:-1]
+    yc = yc[1:-1]
+
+    f2 = (1. - 2*xc)/np.sqrt(xc*(1. - xc))
+    int = yc*f2
+
+    return scipy.integrate.trapz(int, xc)
 
 ######################################################################
 ###############  STRUCTURAL INFORMATION  #############################
