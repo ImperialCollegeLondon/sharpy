@@ -113,13 +113,18 @@ class StepUvlm(BaseSolver):
                                          aero_tstep.u_ext)
         if self.settings['convection_scheme'].value > 1 and convect_wake:
             # generate uext_star
-            self.velocity_generator.generate({'zeta': aero_tstep.zeta_star,
-                                              'override': True,
-                                              'ts': self.data.ts,
-                                              'dt': dt,
-                                              't': t,
-                                              'for_pos': structure_tstep.for_pos},
-                                             aero_tstep.u_ext_star)
+            # self.velocity_generator.generate({'zeta': aero_tstep.zeta_star,
+            #                                   'override': True,
+            #                                   'ts': self.data.ts,
+            #                                   'dt': dt,
+            #                                   't': t,
+            #                                   'for_pos': structure_tstep.for_pos},
+            #                                  aero_tstep.u_ext_star)
+
+            for isurf in range(len(aero_tstep.zeta)):
+                for i_m in range(aero_tstep.zeta[isurf].shape(1)):
+                    for i_n in range(aero_tstep.zeta[isurf].shape(2)):
+                        aero_tstep.u_ext_star[isurf][:, i_m, i_n] = self.settings['velocity_field_input']['u_inf']*self.settings['velocity_field_input']['u_inf_direction']
 
         uvlmlib.uvlm_solver(self.data.ts,
                             aero_tstep,
