@@ -18,6 +18,9 @@ class LinearAssembler(BaseSolver):
         self.settings_types = dict()
         self.settings_default = dict()
 
+        self.settings_types['flow'] = 'list'
+        self.settings_default['flow'] = []
+
         self.settings_types['linearisation_tstep'] = 'int'
         self.settings_default['linearisation_tstep'] = -1
 
@@ -59,7 +62,8 @@ class LinearAssembler(BaseSolver):
         # 22/5/19
         # Load available systems
         import sharpy.linear.assembler
-        flow = {'LinearBeam'}
+
+        flow = self.settings['flow']
 
         lsys = dict()
         for lin_sys in flow:
@@ -81,6 +85,12 @@ class LinearAssembler(BaseSolver):
                 self.data.linear.ss = libss.series(self.ss, self.linear.lsys[system].ss)
             sys_worked += 1
 
+        # or aeroelastic: create lin aero ela element and within that element assemble + couple uvlm + beam and make
+        # sure that the input/output is clear in terms of variables for further connections
+
+        # Keep track of state, output and input variables. Add to linear class a dictionary called variables with the
+        # respective info, as done for the beam
+
         return self.data
 
 
@@ -98,36 +108,60 @@ class Linear(object):
 
 if __name__ == "__main__":
     print('Testing the assembly of the pendulum system')
-    data = h5.readh5('/home/ng213/sharpy_cases/CC_DevTests/01_LinearAssembly/flexible_beam_static.data.h5').data
+    test = 'uvlm'
+    if test == 'beam':
+        data = h5.readh5('/home/ng213/sharpy_cases/CC_DevTests/01_LinearAssembly/flexible_beam_static.data.h5').data
 
-    beam_settings = {'modal_projection': False,
-                     'inout_coords': 'nodes',
-                     'discrete_time': True,
-                     'newmark_damp': 0.15*1,
-                     'discr_method': 'newmark',
-                     'dt': 0.001,
-                     'proj_modes': 'undamped',
-                     'use_euler': True,
-                     'num_modes': 13,
-                     'remove_dofs': ['V'],
-                     'gravity': 'on'}
-    custom_settings = {'linearisation_tstep': -1,
-                       'LinearBeam': beam_settings}
+        beam_settings = {'modal_projection': False,
+                         'inout_coords': 'nodes',
+                         'discrete_time': True,
+                         'newmark_damp': 0.15*1,
+                         'discr_method': 'newmark',
+                         'dt': 0.001,
+                         'proj_modes': 'undamped',
+                         'use_euler': True,
+                         'num_modes': 13,
+                         'remove_dofs': ['V'],
+                         'gravity': 'on'}
+        custom_settings = {'linearisation_tstep': -1,
+                           'flow': 'LinearBeam',
+                           'LinearBeam': beam_settings}
 
-    linear_space = LinearAssembler()
-    linear_space.initialise(data, custom_settings)
-    data = linear_space.run()
+        linear_space = LinearAssembler()
+        linear_space.initialise(data, custom_settings)
+        data = linear_space.run()
 
-    import sharpy.solvers.lindynamicsim as lindynsim
-    linear_sim = lindynsim.LinearDynamicSimulation()
-    linear_sim.initialise(data)
+        import sharpy.solvers.lindynamicsim as lindynsim
+        linear_sim = lindynsim.LinearDynamicSimulation()
+        linear_sim.initialise(data)
 
-    import numpy as np
+        import numpy as np
 
-    eigs = np.linalg.eig(data.linear.ss.A)
-    eigs_ct = np.log(eigs[0]) / data.linear.ss.dt
-    order = np.argsort(eigs_ct.real)[::-1]
-    eigs_ct = eigs_ct[order]
-    print('End')
+        eigs = np.linalg.eig(data.linear.ss.A)
+        eigs_ct = np.log(eigs[0]) / data.linear.ss.dt
+        order = np.argsort(eigs_ct.real)[::-1]
+        eigs_ct = eigs_ct[order]
+        print('End')
 
+    elif test == 'uvlm':
+        data = h5.readh5('/home/ng213/sharpy_cases/CC_DevTests/01_LinearAssembly/sears_uinf0050_AR100_M8N12Ms10_KR15_sp0.data.h5').data
+
+        uvlm_settings = {'dt': 0.001,
+                           'integr_order': 2,
+                           'density': 1.225,
+                           'remove_predictor': False,
+                           'use_sparse': False,
+                           'ScalingDict': {'length': 1.,
+                                           'speed': 1.,
+                                           'density': 1.},
+                         'remove_inputs': ['u_gust']}
+        custom_settings = {'linearisation_tstep': -1,
+                           'flow': ['LinearUVLM'],
+                           'LinearUVLM': uvlm_settings}
+        linear_space = LinearAssembler()
+        linear_space.initialise(data, custom_settings)
+        data = linear_space.run()
+
+    elif test=='aeroelastic':
+        pass
 

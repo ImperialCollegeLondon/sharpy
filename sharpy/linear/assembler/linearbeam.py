@@ -23,13 +23,16 @@ class LinearBeam(BaseElement):
         self.settings = dict()
         self.state_variables = None
 
-    def initialise(self, data):
-
+    def initialise(self, data, custom_settings=None):
         self.data = data
-        # The initialise method would get everything ready for the beam, instantiate the class etc
 
-        self.settings = self.data.settings['LinearSpace'][self.sys_id]  # Load settings, the settings should be stored in data.linear.settings
-        # data.linear.settings should be created in the class above containing the entire set up
+        if custom_settings:
+            self.settings = custom_settings
+        else:
+            try:
+                self.settings = self.data.settings['LinearSpace'][self.sys_id]  # Load settings, the settings should be stored in data.linear.settings
+            except KeyError:
+                self.settings = None
 
         beam = lingebm.FlexDynamic(self.data.linear.tsstruct0, self.data.structure, self.settings)
         self.sys = beam
@@ -48,6 +51,7 @@ class LinearBeam(BaseElement):
 
         self.sys.assemble()
 
+        # TODO: remove integrals of the rigid body modes (and change mode shapes to account for this in the coupling matrices)
         # Option to remove certain dofs via dict: i.e. dofs to remove
         # Map dofs to equations
         # Boundary conditions
@@ -94,13 +98,12 @@ class LinearBeam(BaseElement):
         # Update variables position
         for rem_item in removed_db:
             for item in used_vars_db:
-                if used_vars_db[item].order < removed_db[rem_item].order:
+                if used_vars_db[item].first_pos < removed_db[rem_item].first_pos:
                     pass
                 else:
                     # Update order and position
                     used_vars_db[item].first_pos -= removed_db[rem_item].size
                     used_vars_db[item].end_pos -= removed_db[rem_item].size
-                    used_vars_db[item].order -= 1
 
         self.state_variables = used_vars_db
         # TODO: input and output variables
@@ -130,7 +133,6 @@ class VectorVariable(object):
 
         self.first_pos = pos_list[0]
         self.end_pos = pos_list[1]
-        self.order = pos_list[2]
         self.rows_loc = np.arange(self.first_pos, self.end_pos, dtype=int) # Original location, should not update
 
 

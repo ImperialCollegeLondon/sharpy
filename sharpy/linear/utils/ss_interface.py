@@ -1,6 +1,7 @@
 import os
 import sharpy.utils.cout_utils as cout
 from abc import ABCMeta, abstractmethod
+import numpy as np
 
 dict_of_systems = dict()
 systems_dict_import = dict()
@@ -12,7 +13,7 @@ def linear_system(arg):
     try:
         arg.sys_id
     except AttributeError:
-        raise AttributeError('Class defined as linear_system as no sys_id')
+        raise AttributeError('Class defined as linear_system with no sys_id')
 
     dict_of_systems[arg.sys_id] = arg
     return arg
@@ -25,7 +26,7 @@ class BaseElement(metaclass=ABCMeta):
         raise NotImplementedError
 
     @abstractmethod
-    def initialise(self, data):
+    def initialise(self, data, custom_settings=None):
         pass
 
     @abstractmethod
@@ -81,3 +82,94 @@ def dictionary_of_systems():
         dictionary[linear_system] = init_sys.settins_default
 
     return dictionary
+
+
+class VectorVariable(object):
+
+    def __init__(self, name, pos_list, var_system):
+
+        self.name = name
+        self.var_system = var_system
+
+        self.first_pos = pos_list[0]
+        self.end_pos = pos_list[1]
+        self.rows_loc = np.arange(self.first_pos, self.end_pos, dtype=int) # Original location, should not update
+
+
+    # add methods to reorganise into SHARPy method?
+
+    @property
+    def cols_loc(self):
+        return np.arange(self.first_pos, self.end_pos, dtype=int)
+
+    @property
+    def size(self):
+        return self.end_pos - self.first_pos
+
+
+class LinearVector():
+
+    def __init__(self, dof_db, sys_id):
+        self.vector_vars = dict()
+
+        vec_db = dict()
+        for item in dof_db:
+            vector_var = VectorVariable(item, dof_db[item], sys_id)
+            vec_db[item] = vector_var
+
+        self.vector_vars = vec_db
+
+    def remove(self, trim_list):
+        vec_db = self.vector_vars
+        used_vars_db = self.vector_vars.copy()
+
+        # Variables to remove
+        removed_dofs = 0
+        removed_db = dict()
+        for item in trim_list:
+            removed_db[item] = vec_db[item]
+            removed_dofs += vec_db[item].size
+            del used_vars_db[item]
+
+        # Update variables position
+        for rem_item in removed_db:
+            for item in used_vars_db:
+                if used_vars_db[item].first_pos < removed_db[rem_item].first_pos:
+                    pass
+                else:
+                    # Update position
+                    used_vars_db[item].first_pos -= removed_db[rem_item].size
+                    used_vars_db[item].end_pos -= removed_db[rem_item].size
+
+        self.vector_vars = used_vars_db
+
+        return removed_dofs
+
+def remove_variables(trim_list, dof_db, sys_id):
+    # Remove should be a method of class
+    # Create class of variables
+    # All variables
+    vec_db = dict()
+    for item in dof_db:
+        vector_var = VectorVariable(item, dof_db[item], sys_id)
+        vec_db[item] = vector_var
+
+    used_vars_db = vec_db.copy()
+
+    # Variables to remove
+    removed_dofs = 0
+    removed_db = dict()
+    for item in trim_list:
+        removed_db[item] = vec_db[item]
+        removed_dofs += vec_db[item].size
+        del used_vars_db[item]
+
+    # Update variables position
+    for rem_item in removed_db:
+        for item in used_vars_db:
+            if used_vars_db[item].first_pos < removed_db[rem_item].first_pos:
+                pass
+            else:
+                # Update order and position
+                used_vars_db[item].first_pos -= removed_db[rem_item].size
+                used_vars_db[item].end_pos -= removed_db[rem_item].size
