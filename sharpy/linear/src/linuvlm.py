@@ -15,7 +15,7 @@ import sharpy.linear.src.assembly as ass
 import sharpy.linear.src.libss as libss 
 import sharpy.linear.src.libsparse as libsp 
 import sharpy.utils.algebra as algebra
-
+import sharpy.utils.settings as settings
 
 '''
  Dictionary for default settings.
@@ -62,6 +62,9 @@ settings_default_dynamic['remove_predictor'] = True
 
 settings_types_dynamic['use_sparse'] = 'bool'
 settings_default_dynamic['use_sparse'] = True
+
+settings_types_dynamic['density'] = 'float'
+settings_default_dynamic['density'] = 1.225
 
 settings_types_dynamic['velocity_field_generator'] = 'str'
 settings_default_dynamic['velocity_field_generator'] = 'SteadyVelocityField'
@@ -548,10 +551,21 @@ class Dynamic(Static):
     - upgrade to linearise around unsteady snapshot (adjoint)
     '''
 
-    def __init__(self, tsdata, dt, integr_order=2, 
+    def __init__(self, tsdata, dt=None, dynamic_settings=None, integr_order=2,
                        RemovePredictor=True, ScalingDict=None, UseSparse=True):
 
         super().__init__(tsdata)
+
+        # Transform settings dictionary - in the future remove remaining inputs
+        self.settings = dict()
+        if dynamic_settings:
+            self.settings = dynamic_settings
+            settings.to_custom_types(self.settings, settings_default_dynamic, settings_types_dynamic)
+            dt = self.settings['dt']
+            integr_order = self.settings['integr_order']
+            RemovePredictor = self.settings['remove_predictor']
+            UseSparse = self.settings['use_sparse']
+            ScalingDict = self.settings['ScalingDict']
 
         self.dt = dt
         self.integr_order = integr_order
