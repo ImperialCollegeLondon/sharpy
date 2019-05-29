@@ -5,7 +5,6 @@ S. Maraniello, Jul 2018
 
 import warnings
 import numpy as np
-import scipy.signal as scsig
 
 import sharpy.utils.settings
 import sharpy.linear.src.linuvlm as linuvlm
@@ -105,7 +104,12 @@ class LinAeroEla():
         self.num_dof_flex = 6*(self.tsstr.num_node-1)
         self.num_dof_str = self.num_dof_flex + self.num_dof_rig
         self.reshape_struct_input()
-        self.lingebm_str = lingebm.FlexDynamic(self.tsstr, structure, settings_here['beam_settings'])
+
+        try:
+            beam_settings = settings_here['beam_settings']
+        except KeyError:
+            beam_settings = dict()
+        self.lingebm_str = lingebm.FlexDynamic(self.tsstr, structure, beam_settings)
 
         ### uvlm
         if uvlm_block:
@@ -434,9 +438,6 @@ class LinAeroEla():
                     maero_g = np.cross(Xg, faero)
                     maero_b = np.dot(Cbg, maero_g)
 
-                    # get gravity forces - gravity forces are in A frame
-                    fgrav = tsstr.gravity_forces[nn, :3]
-
                     ### ---------------------------------------- allocate Kdisp
 
                     if bc_here != 1:
@@ -452,7 +453,7 @@ class LinAeroEla():
                     # # ### w.r.t. quaternion (attitude changes)
                     if self.use_euler:
                         Kdisp[np.ix_(ii_vert, jj_euler)] = \
-                            algebra.der_Ceuler_by_v(tsstr.euler, zetaa)
+                            algebra.der_Peuler_by_v(tsstr.euler, zetaa)
                     else:
                         Kdisp[np.ix_(ii_vert, jj_quat)] = \
                             algebra.der_Cquat_by_v(tsstr.quat, zetaa)
@@ -484,7 +485,7 @@ class LinAeroEla():
                     # # ### w.r.t. quaternion (attitude changes)
                     if self.use_euler:
                         Kvel_disp[np.ix_(ii_vert, jj_euler)] = \
-                            algebra.der_Ceuler_by_v(tsstr.euler, zetaa_dot)
+                            algebra.der_Peuler_by_v(tsstr.euler, zetaa_dot)
                     else:
                         Kvel_disp[np.ix_(ii_vert, jj_quat)] = \
                             algebra.der_Cquat_by_v(tsstr.quat, zetaa_dot)
@@ -532,7 +533,7 @@ class LinAeroEla():
                     if bc_here != 1:
                         # forces
                         if self.use_euler:
-                            Csr[jj_tra, -3:] += algebra.der_Ceuler_by_v(tsstr.euler, faero)
+                            Csr[jj_tra, -3:] -= algebra.der_Peuler_by_v(tsstr.euler, faero)
                         else:
                             Csr[jj_tra, -4:] -= algebra.der_CquatT_by_v(tsstr.quat, faero)
 
@@ -545,12 +546,10 @@ class LinAeroEla():
                             np.dot(TanTXbskew, algebra.der_CcrvT_by_v(psi, np.dot(Cag, faero)))
                         # contribution of delta aero moment (dquat)
                         if self.use_euler:
-                            # 14/5/19 NG changing the signs of the EULER equations (in theory they should be the same as
-                            # the quaternion case
-                            Csr[jj_rot, -3:] += \
+                            Csr[jj_rot, -3:] -= \
                                 np.dot(TanTXbskew,
                                        np.dot(Cba,
-                                              algebra.der_Ceuler_by_v(tsstr.euler, faero)))
+                                              algebra.der_Peuler_by_v(tsstr.euler, faero)))
                         else:
                             Csr[jj_rot, -4:] -= \
                                 np.dot(TanTXbskew,
@@ -569,13 +568,13 @@ class LinAeroEla():
 
                     if self.use_euler:
                         # total force
-                        Crr[:3, -3:] += algebra.der_Ceuler_by_v(tsstr.euler, faero)
+                        Crr[:3, -3:] -= algebra.der_Peuler_by_v(tsstr.euler, faero)
 
                         # total moment contribution due to change in euler angles
-                        Crr[3:6, -3:] += algebra.der_Ceuler_by_v(tsstr.euler, np.cross(zetag, faero))
-                        Crr[3:6, -3:] -= np.dot(
+                        Crr[3:6, -3:] -= algebra.der_Peuler_by_v(tsstr.euler, np.cross(zetag, faero))
+                        Crr[3:6, -3:] += np.dot(
                             np.dot(Cag, algebra.skew(faero)),
-                            algebra.der_Ceuler_by_v(tsstr.euler, np.dot(Cab, Xb)))
+                            algebra.der_Peuler_by_v(tsstr.euler, np.dot(Cab, Xb)))
 
                     else:
                         # total force
@@ -585,15 +584,8 @@ class LinAeroEla():
                         Crr[3:6, -4:] -= algebra.der_CquatT_by_v(tsstr.quat, np.cross(zetag, faero))
                         Crr[3:6, -4:] += np.dot(
                             np.dot(Cag, algebra.skew(faero)),
-                            algebra.der_Cquat_by_v(tsstr.quat, np.dot(Cab, Xb)))
+                            algebra.der_CquatT_by_v(tsstr.quat, np.dot(Cab, Xb)))
 
-
-        # if self.use_euler:
-        #     Euler angle propagation equations - these are produced by NL SHARPy for the quaternion case only
-            # Crr[-3:, -6:-3] = -deuler_dt(tsstr.euler)
-            # Crr[-3:, -3:] = -der_Teuler_by_w(tsstr.euler, for_rot)
-
-        # Crr_grav = self.linearise_gravity_forces(tsstr)
 
         # transfer
         self.Kdisp = Kdisp
@@ -606,30 +598,7 @@ class LinAeroEla():
         self.Krs = Krs
         self.Csr = Csr
         self.Crs = Crs
-        # self.Crr = Crr + Crr_grav
         self.Crr = Crr
-
-
-    def euler_propagation_equations(self, tsstr):
-        """
-        Euler propagation equations that relate the body fixed angular velocities to the Earth fixed Euler angles
-
-
-        Args:
-            tsstr:
-
-        Returns:
-
-        """
-
-        for_rot = tsstr.for_vel[3:]
-        Crr = np.zeros((9, 9))
-
-        # Euler angle propagation equations - these are produced by NL SHARPy for the quaternion case only
-        Crr[-3:, -6:-3] = -deuler_dt(tsstr.euler)
-        Crr[-3:, -3:] = -der_Teuler_by_w(tsstr.euler, for_rot)
-
-        return Crr
 
 
 if __name__ == '__main__':
