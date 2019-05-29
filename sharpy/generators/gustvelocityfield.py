@@ -129,6 +129,8 @@ class GustVelocityField(generator_interface.BaseGenerator):
 
         if self.settings['gust_shape'] == 'time varying':
             self.file_info = np.loadtxt(self.settings['file'])
+        elif self.settings['gust_shape'] == 'time varying global':
+            self.file_info = np.loadtxt(self.settings['file'])
 
         print(self.file_info)
 
