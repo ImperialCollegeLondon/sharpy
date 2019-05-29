@@ -121,6 +121,11 @@ class StepUvlm(BaseSolver):
                                               'for_pos': structure_tstep.for_pos},
                                              aero_tstep.u_ext_star)
 
+            for isurf in range(len(aero_tstep.zeta_star)):
+                for i_m in range(aero_tstep.zeta_star[isurf].shape[1]):
+                    for i_n in range(aero_tstep.zeta_star[isurf].shape[2]):
+                        aero_tstep.u_ext_star[isurf][:, i_m, i_n] = self.settings['velocity_field_input']['u_inf']*self.settings['velocity_field_input']['u_inf_direction']
+
         uvlmlib.uvlm_solver(self.data.ts,
                             aero_tstep,
                             structure_tstep,
