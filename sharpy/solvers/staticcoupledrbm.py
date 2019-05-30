@@ -66,6 +66,9 @@ class StaticCoupledRBM(BaseSolver):
         self.aero_solver.initialise(self.structural_solver.data, self.settings['aero_solver_settings'])
         self.data = self.aero_solver.data
 
+        # load info from dyn dictionary
+        self.data.structure.add_unsteady_information(self.data.structure.dyn_dict, 1)
+
     def increase_ts(self):
         self.data.ts += 1
         self.structural_solver.next_step()
@@ -87,7 +90,8 @@ class StaticCoupledRBM(BaseSolver):
     def run(self):
 
         # Include the rbm
-        self.data.structure.timestep_info[-1].for_vel = self.data.structure.dynamic_input[self.data.ts]['for_vel']
+         # print("ts", self.data.ts) 
+        self.data.structure.timestep_info[-1].for_vel = self.data.structure.dynamic_input[0]['for_vel']
 
         for i_step in range(self.settings['n_load_steps'].value + 1):
             if (i_step == self.settings['n_load_steps'].value and
