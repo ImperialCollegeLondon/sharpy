@@ -89,7 +89,7 @@ def generate_fem_file(route, case_name, num_elem, num_node_elem=3):
     n_lumped_mass = 1
     lumped_mass_nodes = np.array([num_node - 1], dtype=int)
     lumped_mass = np.zeros((n_lumped_mass, ))
-    lumped_mass[0] = 600e3/9.81
+    lumped_mass[0] = 600e3/9.81*0
     lumped_mass_inertia = np.zeros((n_lumped_mass, 3, 3))
     lumped_mass_position = np.zeros((n_lumped_mass, 3))
 
