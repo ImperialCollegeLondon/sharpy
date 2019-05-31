@@ -27,7 +27,7 @@ def generate_fem_file(route, case_name, num_elem, num_node_elem=3):
     y = (np.linspace(0, length, num_node))*np.sin(angle)
     z = np.zeros((num_node,))
 
-    structural_twist = np.zeros_like(x)
+    structural_twist = np.zeros((num_elem, num_node_elem))
 
     frame_of_reference_delta = np.zeros((num_elem, num_node_elem, 3))
     for ielem in range(num_elem):
@@ -64,7 +64,7 @@ def generate_fem_file(route, case_name, num_elem, num_node_elem=3):
 
     # mass array
     num_mass = 1
-    m_bar = 0*100
+    m_bar = 100
     j = 10
     base_mass = np.diag([m_bar, m_bar, m_bar, j, j, j])
     mass = np.zeros((num_mass, 6, 6))
@@ -89,7 +89,7 @@ def generate_fem_file(route, case_name, num_elem, num_node_elem=3):
     n_lumped_mass = 1
     lumped_mass_nodes = np.array([num_node - 1], dtype=int)
     lumped_mass = np.zeros((n_lumped_mass, ))
-    lumped_mass[0] = 600e3/9.81
+    lumped_mass[0] = 600e3/9.81*0
     lumped_mass_inertia = np.zeros((n_lumped_mass, 3, 3))
     lumped_mass_position = np.zeros((n_lumped_mass, 3))
 
