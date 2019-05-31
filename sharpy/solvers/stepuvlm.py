@@ -132,7 +132,9 @@ class StepUvlm(BaseSolver):
         if unsteady_contribution:
             # calculate unsteady (added mass) forces:
             self.data.aero.compute_gamma_dot(dt, aero_tstep, self.data.aero.timestep_info[-3:])
-            if self.settings['gamma_dot_filtering'].value > 0:
+            if self.settings['gamma_dot_filtering'] is None:
+                self.filter_gamma_dot(aero_tstep, self.data.aero.timestep_info, None)
+            elif self.settings['gamma_dot_filtering'].value > 0:
                 self.filter_gamma_dot(aero_tstep, self.data.aero.timestep_info, self.settings['gamma_dot_filtering'].value)
             uvlmlib.uvlm_calculate_unsteady_forces(aero_tstep,
                                                    structure_tstep,
@@ -169,17 +171,3 @@ class StepUvlm(BaseSolver):
 
                     # filter
                     tstep.gamma_dot[i_surf][i, j] = scipy.signal.wiener(series, filter_param)[-1]
-
-
-
-
-
-
-
-
-
-
-
-
-
-
