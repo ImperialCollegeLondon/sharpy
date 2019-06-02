@@ -133,6 +133,7 @@ class GustVelocityField(generator_interface.BaseGenerator):
 
     def generate(self, params, uext):
         zeta = params['zeta']
+        for_pos = params['for_pos']
         override = params['override']
         ts = params['ts']
         dt = params['dt']
@@ -199,9 +200,9 @@ class GustVelocityField(generator_interface.BaseGenerator):
                                                             self.settings['span'].value
                                                             )
                     else:
-                        uext[i_surf][:, i, j] += gust_shape(zeta[i_surf][0, i, j] + self.settings['offset'],
-                                                            zeta[i_surf][1, i, j],
-                                                            zeta[i_surf][2, i, j],
+                        uext[i_surf][:, i, j] += gust_shape(for_pos[0] + zeta[i_surf][0, i, j] + self.settings['offset'],
+                                                            for_pos[1] + zeta[i_surf][1, i, j],
+                                                            for_pos[2] + zeta[i_surf][2, i, j],
                                                             self.settings['gust_length'].value,
                                                             self.settings['gust_intensity'].value,
                                                             self.settings['span'].value
