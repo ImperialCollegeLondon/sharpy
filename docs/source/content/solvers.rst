@@ -20,6 +20,7 @@ Aerodynamic Solvers
 
 .. toctree::
     solvers/steplinearUVLM
+    solvers/stepUVLM
 
 
 Aeroelastic Solvers
