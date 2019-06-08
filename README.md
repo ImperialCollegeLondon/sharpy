@@ -12,8 +12,6 @@ SHARPy is an aeroelastic analysis package currently under development at the Dep
 Imperial College London. It can be used for the structural, aerodynamic and aeroelastic analysis of flexible aircraft, 
 flying wings and wind turbines.
 
-__UNDER DEVELOPMENT - WORK STILL IN PROGRESS__
-
 SHARPy is distributed under a [BSD 3-Clause License](LICENSE.txt).
 
 ### Contact 
@@ -85,7 +83,7 @@ For the latest documentation, see the [docs](http://ic-sharpy.rtfd.io)
     ```
     Check out the `develop` branch for the latest work under development
     ```bash
-    git checkout develop origin/develop
+    git checkout develop
     ```
     Likewise, skip the `git checkout` commands if you are running the `master` branch in `sharpy`.
 
@@ -118,15 +116,16 @@ file if you are installing SHARPy on Mac OS X
     cd ../..
     ```
 
-4. Anaconda will now install its required packages for the SHARPy environment. This new environment will be created with
+4. Anaconda will now install the required packages for the SHARPy environment. This new environment will be created with
 the name `sharpy_env`.
 
 5. Activate the newly created SHARPy environment `sharpy_env`.
     ```bash
-    source activate sharpy_env
+    conda activate sharpy_env
     ```
 
-6. Install the [Eigen](http://eigen.tuxfamily.org/) and [Lapack](http://www.netlib.org/lapack) libraries
+6. Anaconda sometimes fails to install some packages. Just in case: install the 
+[Eigen](http://eigen.tuxfamily.org/) and [Lapack](http://www.netlib.org/lapack) libraries
     ```bash
     conda install eigen
     conda install -c conda-forge lapack
@@ -140,9 +139,9 @@ Ensure that the SHARPy environment is active in the session. Your terminal promp
 (sharpy_env) [usr@host]
 ```
 
-If it is not the case, activate the environment. Otherwise xbeam and UVLM will not compile
+If it is not the case, activate the environment. Otherwise xbeam and UVLM will fail to compile
 ```bash
-source activate sharpy_env
+conda activate sharpy_env
 ```
 
 
@@ -157,16 +156,12 @@ source activate sharpy_env
 flags in the compiler. Else, if you prefer to use `gfortran`, proceed to step 3. To use `ifort`, open the file `makefile` 
 with your favourite text editor and comment out the `GFORTRAN SETTINGS` section, and uncomment the 
 `INTEL FORTRAN SETTINGS` section. If you have the Math Kernel Library MKL, it is advised that you use it as well.
+MacOS users need to modify the `makefile` file and uncomment the lines
+indicated in the file.
 
-3. Change the permissions of the `run_make.sh` file so that it can be executed
-
+3. Compile xbeam
     ```bash
-    chmod +x run_make.sh
-    ```
-
-4. Compile xbeam
-    ```bash
-    ./run_make.sh
+    sh run_make.sh
     cd ..
     ```
 
@@ -205,7 +200,7 @@ __Common issues when compiling xbeam__
     ```bash
     scl enable devtoolset-6 bash
     ```
-    Check that the version is now as required and clean ```make clean``` and redo the installation ```sh runmake.sh```
+    Check that the version is now as required and clean ```make clean``` and redo the installation ```sh run_make.sh```
 
 #### Compiling UVLM
 
@@ -219,14 +214,9 @@ __Common issues when compiling xbeam__
 `icc` open the `src/Makefile` and comment out the `G++` sections and uncomment the `INTEL C++` section. In addition, 
 set the flag in line `17` to `CPP = icc`.
 
-3. Change the permissions of the `run_make.sh` file so that it can be executed
+3. Compile UVLM
     ```bash
-    chmod +x run_make.sh
-    ```
-
-4. Compile UVLM
-    ```bash
-    ./run_make.sh
+    sh run_make.sh
     cd ..
     ```
 
@@ -237,7 +227,7 @@ You have now successfully installed SHARPy!
 SHARPy produces its output in `.vtu` format that can be used with [Paraview](https://www.paraview.org/).
 
 Data is exchanged in binary format by means of `.h5` files that make the transmission efficient between the different
-languages of the required libraries. To view these `.h5` files, a viewer like [HDF5](https://portal.hdfgroup.org/display/support) is recommended.
+languages of the required libraries. To view these `.h5` files, a viewer like [HDFView](https://portal.hdfgroup.org/display/support) is recommended.
 
 ## Running SHARPy cases
 
@@ -245,10 +235,10 @@ __Before you run any SHARPy cases__
 
 1. Activate the SHARPy conda environment
     ```bash
-    source activate sharpy_env
+    conda activate sharpy_env
     ```
 
-2. Load the SHARPy variables
+2. Load the necessary environment variables for SHARPy
     ```bash
     source sharpy/bin/sharpy_vars.sh
     ```
@@ -279,7 +269,7 @@ SHARPy cases are therefore usually ran in the following way:
 
 3. Run SHARPy (ensure the environment is activated)
     ```bash
-    run_sharpy case.solver.txt
+    sharpy case.solver.txt
     ```
 
 ### Output
@@ -315,34 +305,24 @@ If you try to open the `fem.h5` file, you'll get an error or something meaningle
 
     The usual `sharpy` call is something like:
     ```bash
-    # from the sharpy folder
-    python __main__.py "solver.txt file"
     # from outside the sharpy folder (make sure working_dir is in your path:)
-    python sharpy "solver.txt file"
+    sharpy "solver.txt file"
     ```
-    So if you are in the sharpy folder, just run:
+    So just run:
     ```bash
-    python __main__.py ./tests/beam/static/geradin_cardona/geradin_cardona.solver.txt
+    sharpy geradin_cardona.solver.txt
     ```
+    if you are in the `geradin` folder.
 
 6. Results
 
-    After a successful execution, you should get something similar to:
-    ```
-    Plotting the structure...
-    Tip:
-	    Pos_def:
-		      4.403530 0.000000 -2.159692
-	    Psi_def:
-		      0.000000 0.672006 0.000000
-    ...Finished
-    ```
-    And a 3D plot in a matplotlib screen.
+    After a successful execution, you should be back into the terminal.
+
+    If you open the file located in `output/geradin/WriteVariablesTime`, you
+    will see the coordinates of the tip of the beam.
 
     FYI, the correct solution for this test case by Geradin and Cardona is
-    Delta R_3 = -2.159m and Psi_2 = 0.6720rad.
+    $\Delta z = -2.159$ m and $\Psi = 0.6720$ rad.
 
-Congratulations, you've run your first case.
+Congratulations, you've run your first structural case.
 
-If you want to know how to configure your own cases, check the iPython notebook
-[Geradin and Cardona Static Structural Case](../../../tests/xbeam/geradin/geradin_cardona.ipynb).
