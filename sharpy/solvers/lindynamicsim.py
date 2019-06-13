@@ -86,7 +86,7 @@ class LinearDynamicSimulation(BaseSolver):
 
     def read_files(self):
 
-        self.input_file_name = self.data.case_root + '/' + self.data.case_name + '.lininput.h5'
+        self.input_file_name = self.data.settings['SHARPy']['route'] + '/' + self.data.settings['SHARPy']['case'] + '.lininput.h5'
 
         # Check that the file exists
         h5utils.check_file_exists(self.input_file_name)

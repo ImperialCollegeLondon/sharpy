@@ -4,10 +4,10 @@ import sharpy.utils.settings as settings
 from sharpy.utils.solver_interface import solver, BaseSolver
 import sharpy.utils.h5utils as h5
 import sharpy.solvers.modal as modal
-from sharpy.linear.src.lin_aeroelastic import LinAeroEla
+import sharpy.utils.cout_utils as cout
 
 @solver
-class AsymptoticStabilityAnalysis(BaseSolver):
+class AsymptoticStability(BaseSolver):
     """
     Calculates the asymptotic stability properties of aeroelastic systems by creating linearised systems and computing
     the corresponding eigenvalues
@@ -20,7 +20,7 @@ class AsymptoticStabilityAnalysis(BaseSolver):
         Currently under development. Support offered for clamped structures only.
 
     """
-    solver_id = 'AsymptoticStabilityAnalysis'
+    solver_id = 'AsymptoticStability'
 
     def __init__(self):
         self.settings_types = dict()
@@ -29,8 +29,8 @@ class AsymptoticStabilityAnalysis(BaseSolver):
         self.settings_types['print_info'] = 'bool'
         self.settings_default['print_info'] = False
 
-        self.settings_types['LinearUvlm'] = 'dict'
-        self.settings_default['LinearUvlm'] = None
+        self.settings_default['sys_id'] = ''
+        self.settings_types['sys_id'] = 'str'
 
         # self.settings_types['dt'] = 'float'
         # self.settings_default['dt'] = 0.05
@@ -60,9 +60,7 @@ class AsymptoticStabilityAnalysis(BaseSolver):
 
         self.settings = None
         self.data = None
-        self.dt = None
 
-        self.aeroelastic = None
         self.eigenvalues = None
         self.eigenvectors = None
         self.frequency_cutoff = np.inf
@@ -94,30 +92,53 @@ class AsymptoticStabilityAnalysis(BaseSolver):
         if self.frequency_cutoff == 0:
             self.frequency_cutoff = np.inf
 
-        try:
-            self.dt = self.settings['LinearUvlm']['dt'].value
-        except AttributeError:
-            self.dt = float(self.settings['LinearUvlm']['dt'])
+        # try:
+        #     self.dt = self.settings['LinearUvlm']['dt'].value
+        # except AttributeError:
+        #     self.dt = float(self.settings['LinearUvlm']['dt'])
+        #
+        # # Assemble linear system
+        # self.aeroelastic = LinAeroEla(self.data, self.settings)
+        # self.aeroelastic.assemble_ss()
 
-        # Assemble linear system
-        self.aeroelastic = LinAeroEla(self.data, self.settings)
-        self.aeroelastic.assemble_ss()
+        sys_id = self.settings.get('sys_id')
+        ss = self.data.linear.lsys[sys_id].ss
 
         # Calculate eigenvectors and eigenvalues of the full system
-        eigenvalues, eigenvectors = np.linalg.eig(self.aeroelastic.SS.A)
+        eigenvalues, eigenvectors = np.linalg.eig(ss.A)
 
         # Convert DT eigenvalues into CT
-        eigenvalues = np.log(eigenvalues) / self.dt
+        if ss.dt:
+            eigenvalues = np.log(eigenvalues) / ss.dt
 
         self.eigenvalues, self.eigenvectors = self.sort_eigenvalues(eigenvalues, eigenvectors, self.frequency_cutoff)
 
         if self.settings['export_eigenvalues'].value:
-            pass
+            if self.settings['print_info'].value:
+                self.print_eigenvalues()
 
-        return self.eigenvalues, self.eigenvectors
+        return self.data
 
     def export_eigenvalues(self):
         pass
+
+
+    def print_eigenvalues(self, keep_sys_id=''):
+        """
+
+        Returns:
+
+        """
+        cout.cout_wrap('Dynamical System Eigenvalues')
+        if keep_sys_id == 'LinearBeam':
+            uvlm_states = self.data.linear.lsys['LinearUVLM'].ss.states
+            cout.cout_wrap('Structural Eigenvalues only')
+        else:
+            uvlm_states = 0
+
+        for eval in range(len(self.eigenvalues)):
+            if np.argmax(np.abs(self.eigenvectors[:, eval])) >= uvlm_states:
+                cout.cout_wrap("\t%2d: %.3f + %.3fj" %(eval, self.eigenvalues[eval].real, self.eigenvalues[eval].imag))
 
     def display_root_locus(self):
         """
@@ -131,18 +152,12 @@ class AsymptoticStabilityAnalysis(BaseSolver):
         """
 
         # Title
-        rem_predictor = self.settings['LinearUvlm']['remove_predictor']
-        integration_order = self.settings['LinearUvlm']['integr_order']
-        sparse = self.settings['LinearUvlm']['use_sparse']
-
         fig, ax = plt.subplots()
 
         ax.scatter(np.real(self.eigenvalues), np.imag(self.eigenvalues),
                    s=6,
                    color='k',
                    marker='s')
-        ax.set_xlim([-30, 10])
-        ax.set_title('Predictor Removed = %r, Int order = %g, Sparse = %r' %(rem_predictor, integration_order, sparse))
         ax.set_xlabel('Real, $\mathbb{R}(\lambda_i)$ [rad/s]')
         ax.set_ylabel('Imag, $\mathbb{I}(\lambda_i)$ [rad/s]')
         # ax.set_ylim([0, self.frequency_cutoff])
@@ -214,11 +229,11 @@ class AsymptoticStabilityAnalysis(BaseSolver):
 
         # Remove poles in the negative imaginary plane (Im(\lambda)<0)
         criteria_a = np.imag(eigenvalues) <= frequency_cutoff
-        criteria_b = np.imag(eigenvalues) > -1e-2
-        eigenvalues_truncated = eigenvalues[criteria_a * criteria_b].copy()
-        eigenvectors_truncated = eigenvectors[:, criteria_a * criteria_b].copy()
+        # criteria_b = np.imag(eigenvalues) > -1e-2
+        eigenvalues_truncated = eigenvalues[criteria_a].copy()
+        eigenvectors_truncated = eigenvectors[:, criteria_a].copy()
 
-        order = np.argsort(np.abs(eigenvalues_truncated))
+        order = np.argsort(np.real(eigenvalues_truncated))[::-1]
 
         return eigenvalues_truncated[order], eigenvectors_truncated[:, order]
 

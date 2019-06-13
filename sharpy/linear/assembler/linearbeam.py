@@ -6,6 +6,7 @@ Linear State Beam Element Class
 from sharpy.linear.utils.ss_interface import BaseElement, linear_system
 import sharpy.linear.src.lingebm as lingebm
 import numpy as np
+import sharpy.utils.settings as settings
 
 @linear_system
 class LinearBeam(BaseElement):
@@ -16,25 +17,36 @@ class LinearBeam(BaseElement):
 
     def __init__(self):
 
-        self.data = None
+        self.settings_types = dict()
+        self.settings_default = dict()
+
+        self.settings_types['gravity'] = 'bool'
+        self.settings_default['gravity'] = False
+
+        self.settings_types['remove_dofs'] = 'list'
+        self.settings_default['remove_dofs'] = []
+
+
         self.sys = None  # The actual object
         self.ss = None  # The state space object
 
+        self.data = None
         self.settings = dict()
         self.state_variables = None
 
     def initialise(self, data, custom_settings=None):
-        self.data = data
 
+        self.data = data
         if custom_settings:
             self.settings = custom_settings
         else:
             try:
-                self.settings = self.data.settings['LinearSpace'][self.sys_id]  # Load settings, the settings should be stored in data.linear.settings
+                self.settings = data.settings['LinearSpace'][self.sys_id]  # Load settings, the settings should be stored in data.linear.settings
             except KeyError:
-                self.settings = None
+                pass
+        settings.to_custom_types(self.settings, self.settings_types, self.settings_default)
 
-        beam = lingebm.FlexDynamic(self.data.linear.tsstruct0, self.data.structure, self.settings)
+        beam = lingebm.FlexDynamic(data.linear.tsstruct0, data.structure, self.settings)
         self.sys = beam
 
 

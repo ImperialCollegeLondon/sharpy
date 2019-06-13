@@ -66,6 +66,7 @@ class KrylovReducedOrderModel(object):
         self.sstype = None
         self.nfreq = None
         self.restart_arnoldi = False
+        self.cpu_summary = dict()
 
     def initialise(self, data, ss):
 
@@ -143,6 +144,7 @@ class KrylovReducedOrderModel(object):
         self.check_stability(restart_arnoldi=self.restart_arnoldi)
 
         t_rom = time.time() - t0
+        self.cpu_summary['run'] = t_rom
         print('\t\t...Completed Model Order Reduction in %.2f s' % t_rom)
 
 
@@ -435,7 +437,7 @@ class KrylovReducedOrderModel(object):
         if nu != 1 or ny != 1:
             assert right_tangent is not None and left_tangent is not None, 'Missing interpolation vectors for MIMO case'
 
-
+        t0 = time.time()
         # Tangential interpolation for MIMO systems
         if right_tangent is None:
             right_tangent = np.ones((nu, nfreq))
@@ -473,6 +475,8 @@ class KrylovReducedOrderModel(object):
         Ar = W.T.dot(A.dot(V))
         Br = W.T.dot(B)
         Cr = C.dot(V)
+
+        self.cpu_summary['algorithm'] = time.time() - t0
 
         return Ar, Br, Cr
 

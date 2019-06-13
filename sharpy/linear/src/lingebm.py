@@ -197,7 +197,7 @@ class FlexDynamic():
         self.use_euler = self.settings['use_euler'].value
 
         ### set state-space variables
-        self.dt = dt
+        self.dt = float(dt)
         self.SScont = None
         self.SSdisc = None
         self.Kin = None
@@ -209,6 +209,7 @@ class FlexDynamic():
 
         if self.use_euler:
             self.euler_propagation_equations(tsinfo)
+            self.update_modal()
 
     def euler_propagation_equations(self, tsstr):
         """

@@ -24,6 +24,9 @@ class LinearAssembler(BaseSolver):
         self.settings_types['linearisation_tstep'] = 'int'
         self.settings_default['linearisation_tstep'] = -1
 
+        self.settings_default['join_series'] = False
+        self.settings_types['join_series'] = 'bool'
+
         self.settings = dict()
         self.data = None
 
@@ -34,9 +37,10 @@ class LinearAssembler(BaseSolver):
             self.data.settings[self.solver_id] = custom_settings
             self.settings = self.data.settings[self.solver_id]
         # else:custom_settings
-        #     pass
-        #     self.settings = data.settings[self.solver_id]
-        settings.to_custom_types(self.settings, self.settings_default, self.settings_types)
+
+        else:
+            self.settings = data.settings[self.solver_id]
+        settings.to_custom_types(self.settings, self.settings_types, self.settings_default)
 
         # Some ideas - NG 6/5/19
         #
@@ -53,6 +57,9 @@ class LinearAssembler(BaseSolver):
 
         # Get consistent linearisation timestep
         ii_step = self.settings['linearisation_tstep']
+        if type(ii_step) != int:
+            ii_step = self.settings['linearisation_tstep'].value
+
         tsstruct0 = data.structure.timestep_info[ii_step]
         tsaero0 = data.aero.timestep_info[ii_step]
 
@@ -70,20 +77,19 @@ class LinearAssembler(BaseSolver):
             lsys[lin_sys] = ss_interface.initialise_system(lin_sys)
             lsys[lin_sys].initialise(data)
             lsys[lin_sys].assemble()
-            print('Hi!')
-
-        self.data.linear.lsys = lsys
+            self.data.linear.lsys = lsys
 
     def run(self):
 
         # series connection
-        sys_worked = 0
-        for system in self.data.linear.lsys:
-            if sys_worked == 0:
-                self.data.linear.ss = self.data.linear.lsys[system].ss
-            else:
-                self.data.linear.ss = libss.series(self.ss, self.linear.lsys[system].ss)
-            sys_worked += 1
+        if self.settings['join_series']:
+            sys_worked = 0
+            for system in self.data.linear.lsys:
+                if sys_worked == 0:
+                    self.data.linear.ss = self.data.linear.lsys[system].ss
+                else:
+                    self.data.linear.ss = libss.series(self.ss, self.linear.lsys[system].ss)
+                sys_worked += 1
 
         # or aeroelastic: create lin aero ela element and within that element assemble + couple uvlm + beam and make
         # sure that the input/output is clear in terms of variables for further connections
@@ -108,7 +114,7 @@ class Linear(object):
 
 if __name__ == "__main__":
     print('Testing the assembly of the pendulum system')
-    test = 'uvlm'
+    test = 'beam'
     if test == 'beam':
         data = h5.readh5('/home/ng213/sharpy_cases/CC_DevTests/01_LinearAssembly/flexible_beam_static.data.h5').data
 
@@ -124,16 +130,16 @@ if __name__ == "__main__":
                          'remove_dofs': ['V'],
                          'gravity': 'on'}
         custom_settings = {'linearisation_tstep': -1,
-                           'flow': 'LinearBeam',
+                           'flow': ['LinearBeam'],
                            'LinearBeam': beam_settings}
 
         linear_space = LinearAssembler()
         linear_space.initialise(data, custom_settings)
         data = linear_space.run()
 
-        import sharpy.solvers.lindynamicsim as lindynsim
-        linear_sim = lindynsim.LinearDynamicSimulation()
-        linear_sim.initialise(data)
+        # import sharpy.solvers.lindynamicsim as lindynsim
+        # linear_sim = lindynsim.LinearDynamicSimulation()
+        # linear_sim.initialise(data)
 
         import numpy as np
 
