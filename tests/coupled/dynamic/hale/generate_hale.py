@@ -202,7 +202,7 @@ base_mass_tail = np.diag([m_bar_tail,
 x = np.zeros((n_node, ))
 y = np.zeros((n_node, ))
 z = np.zeros((n_node, ))
-structural_twist = np.zeros_like(x)
+structural_twist = np.zeros((n_elem, 3))
 beam_number = np.zeros((n_elem, ), dtype=int)
 frame_of_reference_delta = np.zeros((n_elem, n_node_elem, 3))
 conn = np.zeros((n_elem, n_node_elem), dtype=int)

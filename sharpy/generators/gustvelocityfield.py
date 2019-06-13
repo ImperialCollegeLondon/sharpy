@@ -111,6 +111,7 @@ class GustVelocityField(generator_interface.BaseGenerator):
         self.implemented_gusts.append('continuous_sin')
         self.implemented_gusts.append('lateral 1-cos')
         self.implemented_gusts.append('time varying')
+        self.implemented_gusts.append('time varying global')
 
         self.settings = dict()
 
@@ -128,6 +129,8 @@ class GustVelocityField(generator_interface.BaseGenerator):
 
         if self.settings['gust_shape'] == 'time varying':
             self.file_info = np.loadtxt(self.settings['file'])
+        elif self.settings['gust_shape'] == 'time varying global':
+            self.file_info = np.loadtxt(self.settings['file'])
 
         print(self.file_info)
 
@@ -139,7 +142,7 @@ class GustVelocityField(generator_interface.BaseGenerator):
         t = params['t']
         gust_shape = None
         if self.settings['gust_shape'] == '1-cos':
-            def gust_shape(x, y, z, gust_length, gust_intensity, span=0):
+            def gust_shape(x, y, z, gust_length, gust_intensity, span=0, time=0):
                 vel = np.zeros((3,))
                 if x > 0.0 or x < -gust_length:
                     return vel
@@ -147,7 +150,7 @@ class GustVelocityField(generator_interface.BaseGenerator):
                 vel[2] = (1.0 - np.cos(2.0*np.pi*x/gust_length))*gust_intensity*0.5
                 return vel
         elif self.settings['gust_shape'] == 'DARPA':
-            def gust_shape(x, y, z, gust_length, gust_intensity, span=0):
+            def gust_shape(x, y, z, gust_length, gust_intensity, span=0, time=0):
                 vel = np.zeros((3,))
                 if x > 0.0 or x < -gust_length:
                     return vel
@@ -157,7 +160,7 @@ class GustVelocityField(generator_interface.BaseGenerator):
                 return vel
 
         elif self.settings['gust_shape'] == 'continuous_sin':
-            def gust_shape(x, y, z, gust_length, gust_intensity, span=0):
+            def gust_shape(x, y, z, gust_length, gust_intensity, span=0, time=0):
                 vel = np.zeros((3,))
                 if x > 0.0:
                     return vel
@@ -165,7 +168,7 @@ class GustVelocityField(generator_interface.BaseGenerator):
                 vel[2] = 0.5 * gust_intensity * np.sin(2 * np.pi * x / gust_length)
                 return vel
         elif self.settings['gust_shape'] == 'lateral 1-cos':
-            def gust_shape(x, y, z, gust_length, gust_intensity, span=0):
+            def gust_shape(x, y, z, gust_length, gust_intensity, span=0, time=0):
                 vel = np.zeros((3,))
                 if x > 0.0 or x < -gust_length:
                     return vel
@@ -173,14 +176,24 @@ class GustVelocityField(generator_interface.BaseGenerator):
                 vel[1] = (1.0 - np.cos(2.0*np.pi*x/gust_length))*gust_intensity*0.5
                 return vel
         elif self.settings['gust_shape'] == 'time varying':
-            def gust_shape(x, y, z, gust_length, gust_intensity, span=0):
+            def gust_shape(x, y, z, gust_length, gust_intensity, span=0, time=0):
                 vel = np.zeros((3,))
-                if x > 0.0:
+                d = np.dot(np.array([x, y, z]), self.settings['u_inf_direction'])
+                if d > 0.0:
                     return vel
 
-                vel[0] = np.interp(x, -self.file_info[::-1,0]*self.u_inf, self.file_info[::-1,1])
-                vel[1] = np.interp(x, -self.file_info[::-1,0]*self.u_inf, self.file_info[::-1,2])
-                vel[2] = np.interp(x, -self.file_info[::-1,0]*self.u_inf, self.file_info[::-1,3])
+                vel[0] = np.interp(d, -self.file_info[::-1,0]*self.u_inf, self.file_info[::-1,1])
+                vel[1] = np.interp(d, -self.file_info[::-1,0]*self.u_inf, self.file_info[::-1,2])
+                vel[2] = np.interp(d, -self.file_info[::-1,0]*self.u_inf, self.file_info[::-1,3])
+                return vel
+
+        elif self.settings['gust_shape'] == 'time varying global':
+            def gust_shape(x, y, z, gust_length, gust_intensity, span=0, time=0):
+                vel = np.zeros((3,))
+
+                vel[0] = np.interp(time, self.file_info[:,0], self.file_info[:,1])
+                vel[1] = np.interp(time, self.file_info[:,0], self.file_info[:,2])
+                vel[2] = np.interp(time, self.file_info[:,0], self.file_info[:,3])
                 return vel
 
         for i_surf in range(len(zeta)):
@@ -191,18 +204,20 @@ class GustVelocityField(generator_interface.BaseGenerator):
                 for j in range(zeta[i_surf].shape[2]):
                     if self.settings['relative_motion']:
                         uext[i_surf][:, i, j] += self.u_inf*self.u_inf_direction
-                        uext[i_surf][:, i, j] += gust_shape(zeta[i_surf][0, i, j] - self.u_inf*t + self.settings['offset'],
-                                                            zeta[i_surf][1, i, j],
-                                                            zeta[i_surf][2, i, j],
+                        uext[i_surf][:, i, j] += gust_shape(zeta[i_surf][0, i, j] + (self.settings['offset'].value - self.u_inf*t)*self.settings['u_inf_direction'][0],
+                                                            zeta[i_surf][1, i, j] + (self.settings['offset'].value - self.u_inf*t)*self.settings['u_inf_direction'][1],
+                                                            zeta[i_surf][2, i, j] + (self.settings['offset'].value - self.u_inf*t)*self.settings['u_inf_direction'][2],
                                                             self.settings['gust_length'].value,
                                                             self.settings['gust_intensity'].value,
-                                                            self.settings['span'].value
+                                                            self.settings['span'].value,
+                                                            t
                                                             )
                     else:
-                        uext[i_surf][:, i, j] += gust_shape(zeta[i_surf][0, i, j] + self.settings['offset'],
-                                                            zeta[i_surf][1, i, j],
-                                                            zeta[i_surf][2, i, j],
+                        uext[i_surf][:, i, j] += gust_shape(zeta[i_surf][0, i, j] + self.settings['offset'].value*self.settings['u_inf_direction'][0],
+                                                            zeta[i_surf][1, i, j] + self.settings['offset'].value*self.settings['u_inf_direction'][1],
+                                                            zeta[i_surf][2, i, j] + self.settings['offset'].value*self.settings['u_inf_direction'][2],
                                                             self.settings['gust_length'].value,
                                                             self.settings['gust_intensity'].value,
-                                                            self.settings['span'].value
+                                                            self.settings['span'].value,
+                                                            t
                                                             )

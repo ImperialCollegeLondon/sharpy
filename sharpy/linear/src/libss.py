@@ -22,7 +22,8 @@ Methods for state-space manipulation:
 - parallel: parallel connection between systems
 - SSconv: convert state-space model with predictions and delays
 - addGain: add gains to state-space model.
-- join: merge two state-space models into one.
+- join2: merge two state-space models into one.
+- join: merge a list of state-space models into one.
 - sum state-space models and/or gains
 - scale_SS: scale state-space model
 - simulate: simulates discrete time solution
@@ -55,6 +56,8 @@ import copy
 import warnings
 import numpy as np
 import scipy.signal as scsig
+import scipy.linalg as scalg
+import scipy.interpolate as scint
 
 # dependency
 import sharpy.linear.src.libsparse as libsp
@@ -221,6 +224,28 @@ class ss():
         """
         scale_SS(self, input_scal, output_scal, state_scal, byref=True)
 
+
+    def project(self,WT,V):
+        '''
+        Given 2 transformation matrices, (WT,V) of shapes (Nk,self.states) and
+        (self.states,Nk) respectively, this routine projects the state space
+        model states according to:
+
+            Anew = WT A V
+            Bnew = WT B
+            Cnew = C V
+            Dnew = D
+
+        The projected model has the same number of inputs/outputs as the original
+        one, but Nk states.
+        '''
+
+        self.A = libsp.dot( WT, libsp.dot(self.A, V) )
+        self.B = libsp.dot( WT, self.B)
+        self.C = libsp.dot( self.C, V)
+        self.states=V.shape[1]
+
+
     def truncate(self, N):
         ''' Retains only the first N states. '''
 
@@ -231,6 +256,17 @@ class ss():
         self.C = self.C[:, :N]
         # self.states = N  # No need to update, states is now a property. NG 26/3/19
 
+    def max_eig(self):
+        '''
+        Returns most unstable eigenvalue
+        '''
+
+        ev = np.linalg.eigvals(self.A)
+
+        if self.dt is None:
+            return np.max(ev.real)
+        else:
+            return np.max(np.abs(ev))
 
 class ss_block():
     '''
@@ -413,6 +449,26 @@ class ss_block():
 
 
 # ---------------------------------------- Methods for state-space manipulation
+def project(ss_here,WT,V):
+    '''
+    Given 2 transformation matrices, (WT,V) of shapes (Nk,self.states) and
+    (self.states,Nk) respectively, this routine returns a projection of the
+    state space ss_here according to:
+
+        Anew = WT A V
+        Bnew = WT B
+        Cnew = C V
+        Dnew = D
+
+    The projected model has the same number of inputs/outputs as the original
+    one, but Nk states.
+    '''
+
+    Ap = libsp.dot( WT, libsp.dot(ss_here.A, V) )
+    Bp = libsp.dot( WT, ss_here.B)
+    Cp = libsp.dot( ss_here.C, V)
+
+    return ss(Ap,Bp,Cp,ss_here.D,ss_here.dt)
 
 def couple(ss01, ss02, K12, K21, out_sparse=False):
     """
@@ -631,48 +687,7 @@ def couple(ss01, ss02, K12, K21, out_sparse=False):
 #     return sstot
 
 
-def parallel(SS01, SS02):
-    """
-    Returns the sum (or paralle connection of two systems). Given two state-space
-    models with the same output, but different input:
-        u1 --> SS01 --> y
-        u2 --> SS02 --> y
 
-    """
-
-    if type(SS01) is not type(SS02):
-        raise NameError('The two input systems need to have the same size!')
-    if SS01.dt != SS02.dt:
-        raise NameError('DLTI systems do not have the same time-step!')
-    Nout = SS02.outputs
-    if Nout != SS01.outputs:
-        raise NameError('DLTI systems need to have the same number of output!')
-
-    # if type(SS01) is control.statesp.StateSpace:
-    # 	SStot=control.parallel(SS01,SS02)
-    # else:
-
-    # determine size of total system
-    Nst01, Nst02 = SS01.A.shape[0], SS02.A.shape[0]
-    Nst = Nst01 + Nst02
-    Nin01, Nin02 = SS01.inputs, SS02.inputs
-    Nin = Nin01 + Nin02
-
-    # Build A,B matrix
-    A = np.zeros((Nst, Nst))
-    A[:Nst01, :Nst01] = SS01.A
-    A[Nst01:, Nst01:] = SS02.A
-    B = np.zeros((Nst, Nin))
-    B[:Nst01, :Nin01] = SS01.B
-    B[Nst01:, Nin01:] = SS02.B
-
-    # Build the rest
-    C = np.block([SS01.C, SS02.C])
-    D = np.block([SS01.D, SS02.D])
-
-    SStot = scsig.dlti(A, B, C, D, dt=SS01.dt)
-
-    return SStot
 
 
 def freqresp(SS, wv, dlti=True):
@@ -946,7 +961,7 @@ def addGain(SShere, Kmat, where):
     return SSnew
 
 
-def join(SS1, SS2):
+def join2(SS1, SS2):
     r"""
     Join two state-spaces or gain matrices such that, given:
 
@@ -1038,6 +1053,44 @@ def join(SS1, SS2):
 
     return SStot
 
+def join(SS_list,wv=None):
+	'''
+	Given a list of state-space models belonging to the ss class, creates a
+	joined system whose output is the sum of the state-space outputs. If wv is
+	not None, this is a list of weights, such that the output is:
+
+		y = sum( wv[ii] y_ii )
+
+	Ref: equation (4.22) of
+	Benner, P., Gugercin, S. & Willcox, K., 2015. A Survey of Projection-Based
+	Model Reduction Methods for Parametric Dynamical Systems. SIAM Review, 57(4),
+	pp.483–531.
+
+	Warning:
+	- system matrices must be numpy arrays
+	- the function does not perform any check!
+	'''
+
+	N = len(SS_list)
+	if wv is not None:
+		assert N==len(wv), "'weights input should have'"
+
+	A = scalg.block_diag(*[ getattr(ss,'A') for ss in SS_list ])
+	B = np.block([ [getattr(ss,'B')] for ss in SS_list ])
+
+	if wv is None:
+		C = np.block( [ getattr(ss,'C') for ss in SS_list ] )
+	else:
+		C = np.block( [ ww*getattr(ss,'C') for ww,ss in zip(wv,SS_list) ] )
+
+	D=np.zeros_like(SS_list[0].D)
+	for ii in range(N):
+		if wv is None:
+			D += SS_list[ii].D
+		else:
+			D += wv[ii]*SS_list[ii].D
+
+	return ss(A,B,C,D,SS_list[0].dt)
 
 def sum_ss(SS1, SS2, negative=False):
     """
@@ -1341,11 +1394,11 @@ def build_SS_poly(Acf, ds, negative=False):
 
     Ader, Bder, Cder, Dder = SSderivative(ds)
     SSder = scsig.dlti(Ader, Bder, Cder, Dder, dt=ds)
-    SSder02 = series(SSder, join(np.array([[1]]), SSder))
+    SSder02 = series(SSder, join2(np.array([[1]]), SSder))
 
     SSder_all = copy.deepcopy(SSder02)
     for ii in range(Nin - 1):
-        SSder_all = join(SSder_all, SSder02)
+        SSder_all = join2(SSder_all, SSder02)
 
     # Build polynomial forcing terms
     sign = 1.0
@@ -1383,7 +1436,7 @@ def butter(order, Wn, N=1, btype='lowpass'):
 
     SStot = SSf
     for ii in range(1, N):
-        SStot = join(SStot, SSf)
+        SStot = join2(SStot, SSf)
 
     return SStot.A, SStot.B, SStot.C, SStot.D
 
@@ -1409,12 +1462,20 @@ def get_freq_from_eigs(eigs, dlti=True):
 # --------------------------------------------------------------------- Testing
 
 
-def random_ss(Nx, Nu, Ny, dt=None, use_sparse=False):
+def random_ss(Nx, Nu, Ny, dt=None, use_sparse=False, stable=True):
     """
     Define random system from number of states (Nx), inputs (Nu) and output (Ny).
     """
 
     A = np.random.rand(Nx, Nx)
+    if stable:
+        ev,U=np.linalg.eig(A)
+        evabs=np.abs(ev)
+
+        for ee in range(len(ev)):
+            if evabs[ee]>0.99:
+                ev[ee]/=1.1*evabs[ee]
+        A = np.dot(U*ev, np.linalg.inv(U) ).real
     B = np.random.rand(Nx, Nu)
     C = np.random.rand(Ny, Nx)
     D = np.random.rand(Ny, Nu)
@@ -1582,6 +1643,23 @@ if __name__ == '__main__':
                             SChere = couple(SSa, SSb, k12, k21)
                             compare_ss(SC0, SChere)
 
+        def test_join(self):
+
+            Nx,Nu,Ny = 4, 3, 2
+            SS_list = [random_ss(Nx,Nu,Ny,dt=.2) for ii in range(3)]
+
+            wv = [.3, .5, .2]
+            SSjoin = join(SS_list,wv)
+
+            kv = np.array([0., 1., 3.])
+            Yjoin = SSjoin.freqresp(kv)
+
+            Yref = np.zeros_like(Yjoin)
+            for ii in range(3):
+            	Yref += wv[ii]*SS_list[ii].freqresp(kv)
+
+            er = np.max(np.abs(Yjoin - Yref))
+            assert er<1e-14, 'test_join error %.3e too large' %er
 
     outprint = 'Testing libss'
     print('\n' + 70 * '-')

@@ -21,6 +21,7 @@ import sharpy.utils.generator_interface as generator_interface
 import h5py as h5
 import os
 import pandas as pd
+import scipy.integrate
 
 
 ######################################################################
@@ -283,6 +284,56 @@ def get_factor_geometric_progression(a0, Sn_target, n):
     # print("sum:", sum)
 
     return r
+
+def get_ielem_inode(connectivities, inode):
+
+    num_elem, num_node_in_elem = connectivities.shape
+
+    for ielem in range(num_elem):
+        for inode_in_elem in range(num_node_in_elem):
+            if connectivities[ielem, inode_in_elem] == inode:
+                return ielem, inode_in_elem
+
+    print("ERROR: cannot find ielem and inode_in_elem")
+
+def get_aoacl0_from_camber(x, y):
+    '''
+    Check Theory of wing sections. Abbott. pg 69
+    '''
+
+    # Scale
+    c = x[-1] - x[0]
+    xc = (x - x[0])/c
+    yc = (y - y[0])/c
+
+    # Remove the first and last points that may give rise to problems
+    xc = xc[1:-1]
+    yc = yc[1:-1]
+
+    f1 = 1./(np.pi*(1-xc)*np.sqrt(xc*(1-xc)))
+    int = yc*f1
+
+    return -scipy.integrate.trapz(int, xc)
+
+def get_mu0_from_camber(x, y):
+
+    '''
+    Check Theory of wing sections. Abbott. pg 69
+    '''
+    # Scale
+    c = x[-1] - x[0]
+    xc = (x - x[0])/c
+    yc = (y - y[0])/c
+
+    # Remove the first and last points that may give rise to problems
+    xc = xc[1:-1]
+    yc = yc[1:-1]
+
+    f2 = (1. - 2*xc)/np.sqrt(xc*(1. - xc))
+    int = yc*f2
+
+    return scipy.integrate.trapz(int, xc)
+
 ######################################################################
 ###############  STRUCTURAL INFORMATION  #############################
 ######################################################################
@@ -882,7 +933,9 @@ class AerodynamicInformation():
         self.m_distribution = None
         self.elastic_axis = None
         self.airfoil_distribution = None
+        # TODO: allow airfoils to be of different length (like user_defined_m_distribution)
         self.airfoils = None
+        self.user_defined_m_distribution = [None]
         # TODO: Define the following variables at some point
         # self.control_surface = None
         # self.control_surface_type = None
@@ -911,6 +964,7 @@ class AerodynamicInformation():
         copied.elastic_axis = self.elastic_axis.astype(dtype=float, copy=True)
         copied.airfoil_distribution = self.airfoil_distribution.astype(dtype=int, copy=True)
         copied.airfoils = self.airfoils.astype(dtype=float, copy=True)
+        copied.user_defined_m_distribution = self.user_defined_m_distribution.copy()
 
         return copied
 
@@ -995,7 +1049,8 @@ class AerodynamicInformation():
                                      vec_m_distribution,
                                      vec_elastic_axis,
                                      vec_airfoil_distribution,
-                                     airfoils):
+                                     airfoils,
+                                     user_defined_m_distribution = None):
         """
         create_aerodynamics_from_vec
 
@@ -1027,6 +1082,11 @@ class AerodynamicInformation():
         self.m_distribution = vec_m_distribution
 
         self.airfoils = airfoils
+
+        # TODO: this may not work for different surfaces
+        if vec_m_distribution == 'user_defined':
+            udmd_by_elements = from_node_array_to_elem_matrix(user_defined_m_distribution, StructuralInformation.connectivities)
+            self.user_defined_m_distribution = [udmd_by_elements]
 
     def create_one_uniform_aerodynamics(self,
                                      StructuralInformation,
@@ -1071,6 +1131,11 @@ class AerodynamicInformation():
         self.airfoil_distribution = np.zeros((num_elem,num_node_elem), dtype=int)
         self.airfoils = np.zeros((1,num_points_camber,2), dtype = float)
         self.airfoils = airfoil
+
+        if m_distribution == 'user_defined':
+            self.user_defined_m_distribution = []
+            for isurf in range(len(num_chord_panels)):
+                self.user_defined_m_distribution.append(np.zeros((num_chord_panels + 1, num_elem, num_node_elem)))
 
     def change_airfoils_discretezation(self, airfoils, new_num_nodes):
         """
@@ -1140,7 +1205,7 @@ class AerodynamicInformation():
                 new_airfoils = self.change_airfoils_discretezation(self.airfoils, aerodynamics_to_add.airfoils.shape[1])
                 self.airfoils = np.concatenate((new_airfoils, aerodynamics_to_add.airfoils), axis=0)
             if self.m_distribution.lower() == 'user_defined':
-                self.user_defined_m_distribution = np.concatenate((self.user_defined_m_distribution, aerodynamics_to_add.user_defined_m_distribution), axis=0)
+                self.user_defined_m_distribution = self.user_defined_m_distribution + aerodynamics_to_add.user_defined_m_distribution
             total_num_airfoils += len(aerodynamics_to_add.airfoils[:,0,0])
             # total_num_surfaces += len(aerodynamics_to_add.surface_m)
             total_num_surfaces += np.sum(aerodynamics_to_add.surface_m != -1)
@@ -1276,12 +1341,15 @@ class AerodynamicInformation():
             h5file.create_dataset('elastic_axis', data=self.elastic_axis)
             h5file.create_dataset('airfoil_distribution', data=self.airfoil_distribution)
             h5file.create_dataset('sweep', data=self.sweep)
-            if self.m_distribution.lower() == 'user_defined':
-                h5file.create_dataset('user_defined_m_distribution', data=self.user_defined_m_distribution)
 
             airfoils_group = h5file.create_group('airfoils')
             for iairfoil in range(len(self.airfoils)):
                 airfoils_group.create_dataset("%d" % iairfoil, data=self.airfoils[iairfoil,:,:])
+
+            if self.m_distribution.lower() == 'user_defined':
+                udmd_group = h5file.create_group('user_defined_m_distribution')
+                for isurf in range(len(self.user_defined_m_distribution)):
+                    udmd_group.create_dataset("%d" % isurf, data=self.user_defined_m_distribution[isurf])
 
             #control_surface_input = h5file.create_dataset('control_surface', data=control_surface)
             #control_surface_deflection_input = h5file.create_dataset('control_surface_deflection', data=control_surface_deflection)
@@ -1464,7 +1532,6 @@ class AeroelasticInformation():
                         self.AerodynamicInformation.elastic_axis[replace_matrix[inode,1], replace_matrix[inode,2]])
                     self.AerodynamicInformation.airfoil_distribution[icon, jcon] = (
                         self.AerodynamicInformation.airfoil_distribution[replace_matrix[inode,1], replace_matrix[inode,2]])
-
                 else:
                     # inode NOT to be replace
                     self.StructuralInformation.connectivities[icon, jcon] -= replace_matrix[inode,3]

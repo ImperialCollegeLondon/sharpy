@@ -77,8 +77,8 @@ class StepUvlm(BaseSolver):
         if self.settings['gamma_dot_filtering'] is not None:
             if self.settings['gamma_dot_filtering'].value:
                 if not self.settings['gamma_dot_filtering'].value % 2:
-                    cout.cout_wrap("gamma_dot_filtering does not support even numbers. Changing " + str(self.settings['gamma_dot_filtering']) + " to " + str(self.settings['gamma_dot_filtering'] + 1), 2)
-                    self.settings['gamma_dot_filtering'].value += 1
+                    cout.cout_wrap("gamma_dot_filtering does not support even numbers. Changing " + str(self.settings['gamma_dot_filtering']) + " to " + str(self.settings['gamma_dot_filtering'].value + 1), 2)
+                    self.settings['gamma_dot_filtering'] = ct.c_int(self.settings['gamma_dot_filtering'].value + 1)
 
         # init velocity generator
         velocity_generator_type = gen_interface.generator_from_string(
@@ -120,6 +120,11 @@ class StepUvlm(BaseSolver):
                                               't': t,
                                               'for_pos': structure_tstep.for_pos},
                                              aero_tstep.u_ext_star)
+
+            for isurf in range(len(aero_tstep.zeta_star)):
+                for i_m in range(aero_tstep.zeta_star[isurf].shape[1]):
+                    for i_n in range(aero_tstep.zeta_star[isurf].shape[2]):
+                        aero_tstep.u_ext_star[isurf][:, i_m, i_n] = self.settings['velocity_field_input']['u_inf']*self.settings['velocity_field_input']['u_inf_direction']
 
         uvlmlib.uvlm_solver(self.data.ts,
                             aero_tstep,

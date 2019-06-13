@@ -8,7 +8,7 @@ import numpy as np
 import sharpy.utils.settings as settings
 import sharpy.utils.generator_interface as gen_interface
 import sharpy.utils.algebra as algebra
-import sharpy.linear.src.linuvlm as linuvlm  
+import sharpy.linear.src.linuvlm as linuvlm
 
 
 @solver
@@ -42,9 +42,9 @@ class StepLinearUVLM(BaseSolver):
             ``track_body``                ``bool``   If True, the linearised grid will follow the       ``False``
                                                      A frame or a body (for multi-body solution)
             ``track_body_number``         ``int``    If -1, the linearised grid will follow the         ``-1``
-                                                     A frame. Otherwise, this is the number of the 
-                                                     body to track in a multi-body solution. This 
-                                                     option also specifies where to read the 
+                                                     A frame. Otherwise, this is the number of the
+                                                     body to track in a multi-body solution. This
+                                                     option also specifies where to read the
                                                      rotational speed at linearisation point
             ============================  =========  ===============================================    ==========
 
@@ -130,7 +130,7 @@ class StepLinearUVLM(BaseSolver):
             if self.settings['track_body'].value:
 
                 self.num_body_track = self.settings['track_body_number'].value
-                
+
                 # track A frame
                 if self.num_body_track  == -1:
                     self.quat0 = self.data.structure.timestep_info[0].quat.copy()
@@ -139,8 +139,8 @@ class StepLinearUVLM(BaseSolver):
                     self.quat0 = \
                         self.data.structure.timestep_info[0].mb_quat[self.num_body_track,:].copy()
                     self.for_vel0 = \
-                        self.data.structure.timestep_info[0].mb_FoR_vel[self.num_body_track ,:].copy()                    
-                
+                        self.data.structure.timestep_info[0].mb_FoR_vel[self.num_body_track ,:].copy()
+
                 # convert to G frame
                 self.Cga0 = algebra.quat2rotation(self.quat0)
                 self.Cga = self.Cga0.copy()
@@ -163,7 +163,8 @@ class StepLinearUVLM(BaseSolver):
                                               integr_order=self.settings['integr_order'].value,
                                               ScalingDict=self.settings['ScalingDict'],
                                               RemovePredictor=self.settings['remove_predictor'].value,
-                                              UseSparse=self.settings['use_sparse'].value)
+                                              UseSparse=self.settings['use_sparse'].value,
+                                              for_vel=self.for_vel0)
 
             # add rotational speed
             for ii in range(lin_uvlm_system.MS.n_surf):
@@ -293,7 +294,7 @@ class StepLinearUVLM(BaseSolver):
             if self.num_body_track  == -1:
                 self.Cga = algebra.quat2rotation( structure_tstep.quat )
             else: # track a specific body
-                self.Cga = algebra.quat2rotation( 
+                self.Cga = algebra.quat2rotation(
                                 structure_tstep.mb_quat[self.num_body_track,:] )
 
         # Column vector that will be the input to the linearised UVLM system
@@ -356,7 +357,7 @@ class StepLinearUVLM(BaseSolver):
             \mathbf{\dot{\Gamma}}_n
 
         If the ``track_body`` option is on, the output forces are projected from
-        the linearization frame, to the G frame. Note that the linearisation 
+        the linearization frame, to the G frame. Note that the linearisation
         frame is:
             a. equal to the FoR G at time 0 (linearisation point)
             b. rotates as the body frame specified in the ``track_body_number``
@@ -393,7 +394,7 @@ class StepLinearUVLM(BaseSolver):
         ### project forces from uvlm FoR to FoR G
         if self.settings['track_body'].value:
             Cg_uvlm = np.dot( self.Cga, self.Cga0.T )
-        
+
         f_aero = y_n
 
         gamma_vec, gamma_star_vec, gamma_dot_vec = self.data.aero.linear['System'].unpack_state(x_n)
@@ -427,9 +428,9 @@ class StepLinearUVLM(BaseSolver):
             forces.append(f_aero[worked_points:worked_points+points_in_surface].reshape(dimensions, order='C'))
 
             ### project forces.
-            # - forces are in UVLM linearisation frame. Hence, these  are projected 
+            # - forces are in UVLM linearisation frame. Hence, these  are projected
             # into FoR (using rotation matrix Cag0 time 0) A and back to FoR G
-            if self.settings['track_body'].value:              
+            if self.settings['track_body'].value:
                 for mm in range(dimensions[1]):
                     for nn in range(dimensions[2]):
                         forces[i_surf][:,mm,nn] = np.dot(Cg_uvlm, forces[i_surf][:,mm,nn])
@@ -459,7 +460,7 @@ class StepLinearUVLM(BaseSolver):
         Transform a SHARPy AeroTimestep instance into a column vector containing the input to the linear UVLM system.
 
         .. math:: [\zeta,\, \dot{\zeta}, u_{ext}] \longrightarrow \\mathbf{u}
-        
+
         If the ``track_body`` option is on, the function projects all the input
         into a frame that:
             a. is equal to the FoR G at time 0 (linearisation point)
@@ -471,9 +472,9 @@ class StepLinearUVLM(BaseSolver):
 
         aero_tstep = self.data.aero.timestep_info[-1]
 
-        ### re-compute projection in G frame as if A was not rotating 
+        ### re-compute projection in G frame as if A was not rotating
         # - u_n is in FoR G. Hence, this is project in FoR A and back to FoR G
-        # using rotation matrix aat time 0 (as if FoR A was not rotating). 
+        # using rotation matrix aat time 0 (as if FoR A was not rotating).
         if self.settings['track_body'].value:
 
             Cuvlm_g = np.dot( self.Cga0, self.Cga.T )
@@ -486,7 +487,7 @@ class StepLinearUVLM(BaseSolver):
                 zeta_uvlm.append( np.empty((3,Mp1,Np1)) )
                 zeta_dot_uvlm.append( np.empty((3,Mp1,Np1)) )
                 u_ext_uvlm.append( np.empty((3,Mp1,Np1)) )
-                
+
                 for mm in range(Mp1):
                     for nn in range(Np1):
                         zeta_uvlm[i_surf][:,mm,nn] = \
@@ -504,7 +505,7 @@ class StepLinearUVLM(BaseSolver):
                                     for i_surf in range(aero_tstep.n_surf)])
 
         else:
-    
+
             zeta = np.concatenate([aero_tstep.zeta[i_surf].reshape(-1, order='C')
                                    for i_surf in range(aero_tstep.n_surf)])
             zeta_dot = np.concatenate([aero_tstep.zeta_dot[i_surf].reshape(-1, order='C')
@@ -512,7 +513,7 @@ class StepLinearUVLM(BaseSolver):
             u_ext = np.concatenate([aero_tstep.u_ext[i_surf].reshape(-1, order='C')
                                    for i_surf in range(aero_tstep.n_surf)])
 
-        u = np.concatenate((zeta, zeta_dot, u_ext)) 
+        u = np.concatenate((zeta, zeta_dot, u_ext))
 
         return u
 

@@ -15,7 +15,7 @@ import sharpy.utils.algebra as algebra
 
 class LinAeroEla():
     r"""
-    todo: 
+    todo:
         - settings are converted from string to type in __init__ method.
         - implement all settings of LinUVLM (e.g. support for sparse matrices)
 
@@ -243,7 +243,7 @@ class LinAeroEla():
         Provides:
             - the gain matrices required to connect the linearised GEBM and UVLM
              inputs/outputs
-            - the stiffening and damping factors to be added to the linearised 
+            - the stiffening and damping factors to be added to the linearised
             GEBM equations in order to account for non-zero aerodynamic loads at
             the linearisation point.
 
@@ -254,16 +254,16 @@ class LinAeroEla():
               velocities.
             - ``Kvel_vel``: influence of GEBM dofs displacements to UVLM grid
               displacements.
-            - ``Kforces`` (UVLM->GEBM) dimensions are the transpose than the 
-            Kdisp and Kvel* matrices. Hence, when allocation this term, ``ii`` 
-            and ``jj`` indices will unintuitively refer to columns and rows, 
+            - ``Kforces`` (UVLM->GEBM) dimensions are the transpose than the
+            Kdisp and Kvel* matrices. Hence, when allocation this term, ``ii``
+            and ``jj`` indices will unintuitively refer to columns and rows,
             respectively.
 
         And the stiffening/damping terms accounting for non-zero aerodynamic
         forces at the linearisation point:
 
-            - ``Kss``: stiffness factor (flexible dof -> flexible dof) accounting 
-            for non-zero forces at the linearisation point. 
+            - ``Kss``: stiffness factor (flexible dof -> flexible dof) accounting
+            for non-zero forces at the linearisation point.
             - ``Csr``: damping factor  (rigid dof -> flexible dof)
             - ``Crs``: damping factor (flexible dof -> rigid dof)
             - ``Crr``: damping factor (rigid dof -> rigid dof)

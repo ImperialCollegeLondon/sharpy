@@ -14,7 +14,7 @@ class MultiAeroGridSurfaces():
 	Creates and assembles multiple aerodynamic surfaces from data
 	'''
 
-	def __init__(self,tsdata):
+	def __init__(self,tsdata, for_vel=np.zeros((6),)):
 		'''
 		Initialise rom data structure at time step.
 		'''
@@ -46,7 +46,7 @@ class MultiAeroGridSurfaces():
 			try:
 				omega = tsdata.omega[ss]
 			except:
-				omega = np.zeros((3,),)
+				omega = for_vel[3:]
 			Surf=surface.AeroGridSurface(
 					Map,zeta=tsdata.zeta[ss],gamma=tsdata.gamma[ss],
 					u_ext=tsdata.u_ext[ss],zeta_dot=tsdata.zeta_dot[ss],
