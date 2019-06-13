@@ -741,16 +741,13 @@ def rotation3d_y(angle):
 
     """
 
-    # warn('Incorrect for SHARPys convention of SEU')
-    # TODO: wrong for the SHARPy convention of SEU
     c = np.cos(angle)
     s = np.sin(angle)
     mat = np.zeros((3, 3))
-    mat[0, :] = [c, 0.0, -s]
+    mat[0, :] = [c, 0.0, s]
     mat[1, :] = [0.0, 1.0, 0.0]
-    mat[2, :] = [s, 0.0,  c]
-    return rotation3d_y_ag(angle)
-    # return mat
+    mat[2, :] = [-s, 0.0,  c]
+    return mat
 
 def rotation3d_y_ag(angle):
     r"""
@@ -783,9 +780,6 @@ def rotation3d_y_ag(angle):
 
 def rotation3d_z(angle):
     r"""
-    Warnings:
-        this function is transposed and undoes the yaw rotation. Use :func:`rotation3d_z_ag` instead.
-
     Rotation matrix about the z axis by the input angle :math:`\Psi`
 
     .. math::
@@ -830,8 +824,7 @@ def rotation3d_z_ag(angle):
         np.array: 3x3 rotation matrix about the z axis
 
     """
-    warn('Incorrect for SHARPys convention of SEU')
-    # TODO: wrong for the SHARPy convention of SEU
+
     c = np.cos(angle)
     s = np.sin(angle)
     mat = np.zeros((3, 3))
@@ -852,8 +845,6 @@ def rotate_crv(crv_in, axis, angle):
 
 def euler2rot(euler):
     r"""
-    Warnings:
-        With the function as present, one of the rotation matrices is transposed.
 
     Transforms Euler angles (roll, pitch and yaw :math:`\Phi, \Theta, \Psi`) into a 3x3 rotation matrix describing
     the rotation between frame G and frame A.
@@ -884,8 +875,6 @@ def euler2rot(euler):
 
     """
 
-    warn('The pitch rotation matrices is transposed, undoing the pitch rotation. Use euler2rotation_ag '
-            'instead')
     rot = rotation3d_z(euler[2])
     rot = np.dot(rotation3d_y(euler[1]), rot)
     rot = np.dot(rotation3d_x(euler[0]), rot)
@@ -929,8 +918,6 @@ def euler2rotation_ag(euler):
 
 def euler2quat(euler):
     """
-    Warnings:
-        This function uses :func:`euler2rot` which has one of the transformations transposed
 
     Args:
         euler: Euler angles
@@ -939,12 +926,12 @@ def euler2quat(euler):
         np.ndarray: Equivalent quaternion.
     """
     euler_rot = euler2rot(euler)  # this is Cag
-    quat = rotation2quat(euler_rot.T)
+    quat = rotation2quat(euler_rot)
     return quat
 
 def euler2quat_ag(euler):
     C_ag_euler = euler2rotation_ag(euler)
-    quat = rotation2quat(C_ag_euler.T)
+    quat = rotation2quat(C_ag_euler)
     return quat
 
 def quat2euler(quat):
