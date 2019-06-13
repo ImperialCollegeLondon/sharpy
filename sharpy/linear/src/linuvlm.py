@@ -554,7 +554,7 @@ class Dynamic(Static):
     '''
 
     def __init__(self, tsdata, dt=None, dynamic_settings=None, integr_order=2,
-                       RemovePredictor=True, ScalingDict=None, UseSparse=True):
+                       RemovePredictor=True, ScalingDict=None, UseSparse=True, for_vel=np.zeros((6), ):
 
         super().__init__(tsdata, for_vel=for_vel)
 
