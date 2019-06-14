@@ -102,7 +102,7 @@ class LinAeroEla():
         else:
             self.num_dof_rig = 10
 
-        self.num_dof_flex = 6*(self.tsstr.num_node-1)
+        self.num_dof_flex = np.sum(self.data.structure.vdof >= 0)*6
         self.num_dof_str = self.num_dof_flex + self.num_dof_rig
         self.reshape_struct_input()
         self.lingebm_str = lingebm.FlexDynamic(self.tsstr, structure, settings_here['beam_settings'])
