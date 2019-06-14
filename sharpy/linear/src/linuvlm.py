@@ -2385,15 +2385,15 @@ class DynamicBlock(Dynamic):
 
         ### Eliminate unstable modes - if any:
         if DictBalFreq['check_stability']:
-        for nn in range(1,len(hsv)+1):
-            eigs_trunc=scalg.eigvals(SSb.A[:nn,:nn] )
-            eigs_trunc_max=np.max(np.abs(eigs_trunc))
-            if eigs_trunc_max>1.-1e-16:
+            for nn in range(1,len(hsv)+1):
+                eigs_trunc=scalg.eigvals(SSb.A[:nn,:nn] )
+                eigs_trunc_max=np.max(np.abs(eigs_trunc))
+                if eigs_trunc_max>1.-1e-16:
                     SSb.truncate(nn-1)
                     hsv=hsv[:nn-1]
                     T=T[:,:nn-1]
                     Ti=Ti[:nn-1,:]
-                break
+                    break
 
         self.SSb=SSb
         self.hsv=hsv
