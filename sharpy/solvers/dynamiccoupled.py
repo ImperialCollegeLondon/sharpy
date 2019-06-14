@@ -379,7 +379,7 @@ class DynamicCoupled(BaseSolver):
             structural_kstep.pos,
             structural_kstep.psi,
             self.data.structure.node_master_elem,
-            self.data.structure.master,
+            self.data.structure.connectivities,
             structural_kstep.cag())
         dynamic_struct_forces = unsteady_forces_coeff*mapping.aero2struct_force_mapping(
             aero_kstep.dynamic_forces,
@@ -388,16 +388,23 @@ class DynamicCoupled(BaseSolver):
             structural_kstep.pos,
             structural_kstep.psi,
             self.data.structure.node_master_elem,
-            self.data.structure.master,
+            self.data.structure.connectivities,
             structural_kstep.cag())
 
         # prescribed forces + aero forces
-        structural_kstep.steady_applied_forces = (
-            (struct_forces + self.data.structure.ini_info.steady_applied_forces).
-            astype(dtype=ct.c_double, order='F', copy=True))
-        structural_kstep.unsteady_applied_forces = (
-            (dynamic_struct_forces + self.data.structure.dynamic_input[max(self.data.ts - 1, 0)]['dynamic_forces']).
-            astype(dtype=ct.c_double, order='F', copy=True))
+        try:
+            structural_kstep.steady_applied_forces = (
+                (struct_forces + self.data.structure.ini_info.steady_applied_forces).
+                astype(dtype=ct.c_double, order='F', copy=True))
+            structural_kstep.unsteady_applied_forces = (
+                (dynamic_struct_forces + self.data.structure.dynamic_input[max(self.data.ts - 1, 0)]['dynamic_forces']).
+                astype(dtype=ct.c_double, order='F', copy=True))
+        except KeyError:
+            structural_kstep.steady_applied_forces = (
+                (struct_forces + self.data.structure.ini_info.steady_applied_forces).
+                astype(dtype=ct.c_double, order='F', copy=True))
+            structural_kstep.unsteady_applied_forces = dynamic_struct_forces
+
 
     def relaxation_factor(self, k):
         initial = self.settings['relaxation_factor'].value
