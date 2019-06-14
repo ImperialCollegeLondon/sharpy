@@ -14,7 +14,7 @@ import sharpy.linear.src.interp as interp
 import sharpy.linear.src.multisurfaces as multisurfaces
 import sharpy.linear.src.assembly as ass
 import sharpy.linear.src.libss as libss
-import sharpy.linear.src.librom as librom 
+import sharpy.linear.src.librom as librom
 
 import sharpy.linear.src.libsparse as libsp
 import sharpy.utils.algebra as algebra
@@ -434,8 +434,8 @@ class Static():
 
 # def get_trapz_weights(k0,kend,Nk,knyq=False):
 #     '''
-#     Returns uniform frequency grid (kv of length Nk) and weights (wv) for 
-#     Gramians integration using trapezoidal rule. If knyq is True, it is assumed 
+#     Returns uniform frequency grid (kv of length Nk) and weights (wv) for
+#     Gramians integration using trapezoidal rule. If knyq is True, it is assumed
 #     that kend is also the Nyquist frequency.
 #     '''
 
@@ -460,8 +460,8 @@ class Static():
 
 # def get_gauss_weights(k0,kend,Npart,order):
 #     '''
-#     Returns gauss-legendre frequency grid (kv of length Npart*order) and 
-#     weights (wv) for Gramians integration. 
+#     Returns gauss-legendre frequency grid (kv of length Npart*order) and
+#     weights (wv) for Gramians integration.
 
 #     The integration grid is divided into Npart partitions, and in each of
 #     them integration is performed using a Gauss-Legendre quadrature of
@@ -470,7 +470,7 @@ class Static():
 #     Note: integration points are never located at k0 or kend, hence there
 #     is no need for special treatment as in (for e.g.) a uniform grid case
 #     (see get_unif_weights)
-#     ''' 
+#     '''
 
 #     if Npart==1:
 #         # get gauss normalised coords and weights
@@ -546,7 +546,7 @@ class Dynamic(Static):
         K_star (int): Number of wake panels :math:`K^*=M^*N`
         Kzeta (int): Number of panel vertices :math:`K_\zeta=(M+1)(N+1)`
         Kzeta_star (int): Number of wake panel vertices :math:`K_{\zeta,w} = (M^*+1)(N+1)`
-        
+
     To do:
     - upgrade to linearise around unsteady snapshot (adjoint)
     '''
@@ -1190,7 +1190,7 @@ class Dynamic(Static):
 
         Opt=DictBalFreq['options_low']
         if DictBalFreq['method_low'] == 'trapz':
-            kv_low, wv_low=librom.get_trapz_weights(0., DictBalFreq['frequency'], 
+            kv_low, wv_low=librom.get_trapz_weights(0., DictBalFreq['frequency'],
                                                            Opt['points'], False)
         elif DictBalFreq['method_low'] == 'gauss':
             kv_low, wv_low=librom.get_gauss_weights(0., DictBalFreq['frequency'],
@@ -2222,7 +2222,7 @@ class DynamicBlock(Dynamic):
 
         Opt=DictBalFreq['options_low']
         if DictBalFreq['method_low'] == 'trapz':
-            kv_low, wv_low=librom.get_trapz_weights(0., DictBalFreq['frequency'], 
+            kv_low, wv_low=librom.get_trapz_weights(0., DictBalFreq['frequency'],
                                                            Opt['points'], False)
         elif DictBalFreq['method_low'] == 'gauss':
             kv_low, wv_low=librom.get_gauss_weights(0., DictBalFreq['frequency'],
@@ -2335,28 +2335,28 @@ class DynamicBlock(Dynamic):
                 continue
 
             zinv=1./zval
-            Qobs[ii02,:] = zinv*self.SS.C[0][2].T            
+            Qobs[ii02,:] = zinv*self.SS.C[0][2].T
             if self.integr_order==1:
                 raise NameError('Obs Gramian Integr not implemented')
             elif self.integr_order==2:
-                Qobs[ii03,:] = (bm1*zinv) * Qobs[ii02,:]               
-              
+                Qobs[ii03,:] = (bm1*zinv) * Qobs[ii02,:]
+
             # solve bound circulation
             rhs = Cw_cpx.T.dot(self.SS.C[0][1].T) + self.SS.C[0][0].T + \
                   Qobs[ii02,:]*( b0 + zinv*bm1 ) + \
-                  np.dot( P_PwCw.T, bp1*Qobs[ii02,:] ) 
+                  np.dot( P_PwCw.T, bp1*Qobs[ii02,:] )
             Qobs[ii00,:] = np.dot( Kernel.T, rhs )
 
             # solve wake
-            Eye_star= libsp.csc_matrix( 
-            ( zval*np.ones((K_star,)), (range(K_star),range(K_star))), 
+            Eye_star= libsp.csc_matrix(
+            ( zval*np.ones((K_star,)), (range(K_star),range(K_star))),
                                     shape=(K_star,K_star), dtype=np.complex_)
-            Qobs[ii01,:] = libsp.solve( 
-                        Eye_star-self.SS.A[1][1].T, 
+            Qobs[ii01,:] = libsp.solve(
+                        Eye_star-self.SS.A[1][1].T,
                         self.SS.C[0][1].T + np.dot(Pw.T, Qobs[ii00,:] + bp1*Qobs[ii02,:]) )
 
             kkvec=range( 2*kk*self.SS.outputs, 2*(kk+1)*self.SS.outputs )
-            Zo[:,kkvec[:self.SS.outputs]]= Intfact * Qobs.real        
+            Zo[:,kkvec[:self.SS.outputs]]= Intfact * Qobs.real
             Zo[:,kkvec[self.SS.outputs:]]= Intfact * Qobs.imag
 
         # delete full matrices
@@ -2385,15 +2385,15 @@ class DynamicBlock(Dynamic):
 
         ### Eliminate unstable modes - if any:
         if DictBalFreq['check_stability']:
-            for nn in range(1,len(hsv)+1):
-                eigs_trunc=scalg.eigvals(SSb.A[:nn,:nn] )
-                eigs_trunc_max=np.max(np.abs(eigs_trunc))
-                if eigs_trunc_max>1.-1e-16:
+        for nn in range(1,len(hsv)+1):
+            eigs_trunc=scalg.eigvals(SSb.A[:nn,:nn] )
+            eigs_trunc_max=np.max(np.abs(eigs_trunc))
+            if eigs_trunc_max>1.-1e-16:
                     SSb.truncate(nn-1)
                     hsv=hsv[:nn-1]
                     T=T[:,:nn-1]
                     Ti=Ti[:nn-1,:]
-                    break
+                break
 
         self.SSb=SSb
         self.hsv=hsv
