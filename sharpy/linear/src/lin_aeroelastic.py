@@ -115,7 +115,8 @@ class LinAeroEla():
                 RemovePredictor=settings_here['remove_predictor'].value,
                 UseSparse=settings_here['use_sparse'].value,
                 integr_order=settings_here['integr_order'].value,
-                ScalingDict=settings_here['ScalingDict'])
+                ScalingDict=settings_here['ScalingDict'],
+                for_vel=self.tsstr.for_vel)
         else:
             self.linuvlm = linuvlm.Dynamic(
                 self.tsaero,
@@ -123,7 +124,8 @@ class LinAeroEla():
                 RemovePredictor=settings_here['remove_predictor'].value,
                 UseSparse=settings_here['use_sparse'].value,
                 integr_order=settings_here['integr_order'].value,
-                ScalingDict=settings_here['ScalingDict'])
+                ScalingDict=settings_here['ScalingDict'],
+                for_vel=self.tsstr.for_vel)
 
         # add rotational speed
         for ii in range(self.linuvlm.MS.n_surf):
