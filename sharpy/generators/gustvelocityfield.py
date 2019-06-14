@@ -139,10 +139,7 @@ class GustVelocityField(generator_interface.BaseGenerator):
         elif self.settings['gust_shape'] == 'time varying global':
             self.file_info = np.loadtxt(self.settings['file'])
 
-        # print(self.file_info)
-
         # Create the adequate gust interpolator
-        # gust_shape = None
         if self.settings['gust_shape'] == '1-cos':
             def gust_shape(x, y, z, time=0):
                 gust_length = self.settings['gust_length'].value
@@ -154,6 +151,7 @@ class GustVelocityField(generator_interface.BaseGenerator):
 
                 vel[2] = (1.0 - np.cos(2.0*np.pi*x/gust_length))*gust_intensity*0.5
                 return vel
+
         elif self.settings['gust_shape'] == 'DARPA':
             def gust_shape(x, y, z, time=0):
                 gust_length = self.settings['gust_length'].value
@@ -167,6 +165,7 @@ class GustVelocityField(generator_interface.BaseGenerator):
                 vel[2] = (1.0 - np.cos(2.0*np.pi*x/gust_length))*gust_intensity*0.5
                 vel[2] *= -np.cos(y/span*np.pi)
                 return vel
+
         elif self.settings['gust_shape'] == 'continuous_sin':
             def gust_shape(x, y, z, time=0):
                 gust_length = self.settings['gust_length'].value
@@ -178,6 +177,7 @@ class GustVelocityField(generator_interface.BaseGenerator):
 
                 vel[2] = 0.5 * gust_intensity * np.sin(2 * np.pi * x / gust_length)
                 return vel
+
         elif self.settings['gust_shape'] == 'lateral 1-cos':
             def gust_shape(x, y, z, time=0):
                 gust_length = self.settings['gust_length'].value
@@ -189,6 +189,7 @@ class GustVelocityField(generator_interface.BaseGenerator):
 
                 vel[1] = (1.0 - np.cos(2.0*np.pi*x/gust_length))*gust_intensity*0.5
                 return vel
+
         elif self.settings['gust_shape'] == 'time varying':
             def gust_shape(x, y, z, time=0):
                 vel = np.zeros((3,))
@@ -232,7 +233,9 @@ class GustVelocityField(generator_interface.BaseGenerator):
                         total_offset_val -= self.u_inf*t
 
                     total_offset = total_offset_val*self.settings['u_inf_direction'] + for_pos
-                    uext[i_surf][:, i, j] += self.gust_shape(zeta[i_surf][0, i, j] + total_offset[0],
-                                                        zeta[i_surf][1, i, j] + total_offset[1],
-                                                        zeta[i_surf][2, i, j] + total_offset[2],
-                                                        t)
+                    uext[i_surf][:, i, j] += self.gust_shape(
+                        zeta[i_surf][0, i, j] + total_offset[0],
+                        zeta[i_surf][1, i, j] + total_offset[1],
+                        zeta[i_surf][2, i, j] + total_offset[2],
+                        t
+                        )
