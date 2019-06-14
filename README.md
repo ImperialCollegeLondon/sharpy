@@ -13,8 +13,6 @@ SHARPy is an aeroelastic analysis package currently under development at the Dep
 Imperial College London. It can be used for the structural, aerodynamic and aeroelastic analysis of flexible aircraft, 
 flying wings and wind turbines.
 
-SHARPy is distributed under a [BSD 3-Clause License](LICENSE.txt).
-
 ### Contact 
 
 For more information on the research team developing SHARPy or to get in touch, [visit our homepage](http://www.imperial.ac.uk/aeroelastics).
@@ -42,8 +40,10 @@ SHARPy offers the following solutions to the user:
 * Finding trim conditions
 * Nonlinear, dynamic time domain simulations under specific conditions such as:
     + Prescribed trajectories
+    + Dynamic follower forces
+    + Control inputs
     + Gusts
-    + Turbulence
+    + Full 3D turbulent fields
     
 ## Documentation
 
@@ -51,7 +51,7 @@ The documentation for SHARPy can be found [here](http://ic-sharpy.readthedocs.io
 
 ## Installing SHARPy
 
-For the latest documentation, see the [docs](http://ic-sharpy.rtfd.io)
+For the latest documentation, see the [docs](http://ic-sharpy.readthedocs.io)
 
 ### Set up the folder structure
 
@@ -287,10 +287,6 @@ The contents of the folder will typically be a `beam` and `aero` folders, which 
 loaded in Paraview.
 
 #### Run a test case
-
-__*TODO* review Geradin case and update sharpy calls__
-
-__TUTORIAL OUT OF DATE__
 
 This command generates the required files for running a static, clamped beam.
 
