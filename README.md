@@ -175,6 +175,12 @@ indicated in the file.
     After a (hopefully) successful compilation of the xbeam library, the
     `run_make` script automatically copies the library to the required folder in
     `sharpy` (this is why you need to clone `sharpy` before compiling `xbeam`).
+
+    If you run into trouble when running SHARPy in MacOS and you have a newer
+    version of GCC (9 for example), the LAPACK version in Anaconda might be
+    outdated. Until they fix that, you can compile LAPACK manually and modify
+    `run_make.sh` in `xbeam` to point the `LAPACK_LIB_DIR` towards the
+    folder containing `liblapack.a`.
     
     
 __Common issues when compiling xbeam__
