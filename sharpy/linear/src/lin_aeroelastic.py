@@ -330,6 +330,7 @@ class LinAeroEla():
 
         # allocate output
         Kdisp = np.zeros((3 * self.linuvlm.Kzeta, self.num_dof_str))
+        Kdisp_vel = np.zeros((3 * self.linuvlm.Kzeta, self.num_dof_str))  # Orientation is in velocity DOFs
         Kvel_disp = np.zeros((3 * self.linuvlm.Kzeta, self.num_dof_str))
         Kvel_vel = np.zeros((3 * self.linuvlm.Kzeta, self.num_dof_str))
         Kforces = np.zeros((self.num_dof_str, 3 * self.linuvlm.Kzeta))
@@ -441,10 +442,10 @@ class LinAeroEla():
                     ### ---------------------------------------- allocate Kdisp
 
                     if bc_here != 1:
-                        # wrt pos
+                        # wrt pos - Eq 25 second term
                         Kdisp[np.ix_(ii_vert, jj_tra)] += Cga
 
-                        # wrt psi
+                        # wrt psi - Eq 26
                         Kdisp[np.ix_(ii_vert, jj_rot)] -= np.dot(Cbg.T, XbskewTan)
 
                     # w.r.t. position of FoR A (w.r.t. origin G)
@@ -452,10 +453,13 @@ class LinAeroEla():
 
                     # # ### w.r.t. quaternion (attitude changes)
                     if self.use_euler:
-                        Kdisp[np.ix_(ii_vert, jj_euler)] = \
-                            algebra.der_Peuler_by_v(tsstr.euler, zetaa)
+                        Kdisp_vel[np.ix_(ii_vert, jj_euler)] += \
+                            algebra.der_Ceuler_by_v(tsstr.euler, zetaa)
                     else:
-                        Kdisp[np.ix_(ii_vert, jj_quat)] = \
+                        # Equation 25
+                        # Kdisp[np.ix_(ii_vert, jj_quat)] += \
+                        #     algebra.der_Cquat_by_v(tsstr.quat, zetaa)
+                        Kdisp_vel[np.ix_(ii_vert, jj_quat)] += \
                             algebra.der_Cquat_by_v(tsstr.quat, zetaa)
 
                     ### ------------------------------------ allocate Kvel_disp
@@ -482,12 +486,12 @@ class LinAeroEla():
                     # # w.r.t. position of FoR A (w.r.t. origin G)
                     # # null as A and G have always same origin in SHARPy
 
-                    # # ### w.r.t. quaternion (attitude changes)
+                    # # ### w.r.t. quaternion (attitude changes) - Eq 30
                     if self.use_euler:
-                        Kvel_disp[np.ix_(ii_vert, jj_euler)] = \
-                            algebra.der_Peuler_by_v(tsstr.euler, zetaa_dot)
+                        Kvel_vel[np.ix_(ii_vert, jj_euler)] += \
+                            algebra.der_Ceuler_by_v(tsstr.euler, zetaa_dot)
                     else:
-                        Kvel_disp[np.ix_(ii_vert, jj_quat)] = \
+                        Kvel_vel[np.ix_(ii_vert, jj_quat)] += \
                             algebra.der_Cquat_by_v(tsstr.quat, zetaa_dot)
 
                     ### ------------------------------------- allocate Kvel_vel
@@ -590,6 +594,7 @@ class LinAeroEla():
         # transfer
         self.Kdisp = Kdisp
         self.Kvel_disp = Kvel_disp
+        self.Kdisp_vel = Kdisp_vel
         self.Kvel_vel = Kvel_vel
         self.Kforces = Kforces
 
