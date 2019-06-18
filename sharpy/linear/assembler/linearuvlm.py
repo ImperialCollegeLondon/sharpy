@@ -23,11 +23,13 @@ class LinearUVLM(ss_interface.BaseElement):
         self.data = None
         self.sys = None
         self.ss = None
+        self.tsaero0 = None
 
         self.settings = dict()
         self.state_variables = None
         self.input_variables = None
         self.output_variables = None
+        self.C_to_vertex_forces = None
 
     def initialise(self, data, custom_settings=None):
 
@@ -37,7 +39,7 @@ class LinearUVLM(ss_interface.BaseElement):
             self.settings = custom_settings
         else:
             try:
-                self.settings = self.data.settings['LinearSpace'][self.sys_id]  # Load settings, the settings should be stored in data.linear.settings
+                self.settings = self.data.settings['LinearAssembler'][self.sys_id]  # Load settings, the settings should be stored in data.linear.settings
             except KeyError:
                 pass
 
@@ -45,7 +47,7 @@ class LinearUVLM(ss_interface.BaseElement):
 
         self.data.linear.tsaero0.rho = float(self.settings['density'])
         uvlm = linuvlm.Dynamic(self.data.linear.tsaero0, dt=None, dynamic_settings=self.settings)
-
+        self.tsaero0 = self.data.linear.tsaero0
         self.sys = uvlm
 
         input_variables_database = {'zeta': [0, 3*self.sys.Kzeta],
@@ -63,6 +65,7 @@ class LinearUVLM(ss_interface.BaseElement):
 
         self.sys.assemble_ss()
         self.ss = self.sys.SS
+        self.C_to_vertex_forces = self.ss.C.copy()
 
         if self.settings['remove_inputs']:
             self.remove_inputs(self.settings['remove_inputs'])
@@ -83,7 +86,7 @@ class LinearUVLM(ss_interface.BaseElement):
         self.sys.SS.B = libsp.csc_matrix(self.sys.SS.B[:, trim_array])
         self.sys.SS.D = libsp.csc_matrix(self.sys.SS.D[:, trim_array])
 
-    def unpack_ss_vectors(self, y_n, x_n, u_n, aero_tstep):
+    def unpack_ss_vector(self, data, x_n, aero_tstep):
         r"""
         Transform column vectors used in the state space formulation into SHARPy format
 
@@ -133,13 +136,11 @@ class LinearUVLM(ss_interface.BaseElement):
         """
 
         # project forces from uvlm FoR to FoR G
-        if self.settings['track_body'].value:
-            Cg_uvlm = np.dot( self.Cga, self.Cga0.T )
-
-        if y_n:
-            f_aero = y_n
-        else:
-            f_aero = np.zeros(3*self.sys.Kzeta)
+        # if self.settings['track_body'].value:
+        #     Cg_uvlm = np.dot( self.Cga, self.Cga0.T )
+        # else:
+        Cg_uvlm = np.eye(3)
+        y_n = self.C_to_vertex_forces.dot(x_n)
 
         gamma_vec, gamma_star_vec, gamma_dot_vec = self.sys.unpack_state(x_n)
         # gamma_vec = self.data.aero.linear['gamma_0'] + dgamma_vec
@@ -160,8 +161,8 @@ class LinearUVLM(ss_interface.BaseElement):
         for i_surf in range(aero_tstep.n_surf):
             # Tuple with dimensions of the aerogrid zeta, which is the same shape for forces
             dimensions = aero_tstep.zeta[i_surf].shape
-            dimensions_gamma = self.data.aero.aero_dimensions[i_surf]
-            dimensions_wake = self.data.aero.aero_dimensions_star[i_surf]
+            dimensions_gamma = data.aero.aero_dimensions[i_surf]
+            dimensions_wake = data.aero.aero_dimensions_star[i_surf]
 
             # Number of entries in zeta
             points_in_surface = aero_tstep.zeta[i_surf].size
@@ -169,6 +170,7 @@ class LinearUVLM(ss_interface.BaseElement):
             panels_in_wake = aero_tstep.gamma_star[i_surf].size
 
             # Append reshaped forces to each entry in list (one for each surface)
+            f_aero = y_n
             forces.append(f_aero[worked_points:worked_points+points_in_surface].reshape(dimensions, order='C'))
 
             ### project forces.
@@ -197,3 +199,38 @@ class LinearUVLM(ss_interface.BaseElement):
             worked_wake_panels += panels_in_wake
 
         return forces, gamma, gamma_dot, gamma_star
+
+    def unpack_input_vector(self, u_n):
+
+        input_vars = self.input_variables.vector_vars
+        tsaero0 = self.tsaero0
+
+        input_vectors = dict()
+        for var in input_vars:
+            input_vectors[input_vars[var].name] = u_n[input_vars[var].cols_loc]
+
+        zeta = []
+        zeta_dot = []
+        u_ext = []
+        worked_vertices = 0
+
+        for i_surf in range(tsaero0.n_surf):
+            vertices_in_surface = tsaero0.zeta[i_surf].size
+            dimensions_zeta = tsaero0.zeta[i_surf].shape
+            zeta.append(input_vectors['zeta'][worked_vertices:worked_vertices+vertices_in_surface].reshape(
+                dimensions_zeta, order='C'))
+            zeta_dot.append(input_vectors['zeta_dot'][worked_vertices:worked_vertices+vertices_in_surface].reshape(
+                dimensions_zeta, order='C'))
+            try:
+                u_gust = input_vectors['u_gust']
+            except KeyError:
+                u_gust = np.zeros(3*vertices_in_surface*tsaero0.n_surf)
+            u_ext.append(u_gust[worked_vertices:worked_vertices+vertices_in_surface].reshape(
+                dimensions_zeta, order='C'))
+
+            zeta[i_surf] += tsaero0.zeta[i_surf]
+            zeta_dot[i_surf] += tsaero0.zeta_dot[i_surf]
+            u_ext[i_surf] += tsaero0.u_ext[i_surf]
+            worked_vertices += vertices_in_surface
+
+        return zeta, zeta_dot, u_ext

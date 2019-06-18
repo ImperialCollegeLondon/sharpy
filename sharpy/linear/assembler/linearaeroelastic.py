@@ -3,6 +3,7 @@ import numpy as np
 import sharpy.linear.src.lin_aeroelastic as lin_aeroelastic
 import sharpy.linear.assembler.linearuvlm as linearuvlm
 import sharpy.linear.assembler.linearbeam as linearbeam
+import sharpy.linear.src.libss as libss
 
 @linear_system
 class LinearAeroelastic(BaseElement):
@@ -13,15 +14,17 @@ class LinearAeroelastic(BaseElement):
         self.data = None
         self.sys = None  # The actual object
         self.ss = None  # The state space object
+        self.lsys = None
 
         self.settings = dict()
         self.state_variables = None
+        self.couplings = None
 
     def initialise(self, data):
         self.data = data
 
         try:
-            self.settings = self.data.settings['LinearSpace'][self.sys_id]
+            self.settings = self.data.settings['LinearAssembler'][self.sys_id]
         except KeyError:
             self.settings = None
 
@@ -56,23 +59,29 @@ class LinearAeroelastic(BaseElement):
         self.sys.get_gebm2uvlm_gains()
 
         stiff_aero = np.zeros_like(beam.sys.Kstr)
-        stiff_aero[:flex_nodes, :flex_nodes] = self.sys.Kss
-        stiff_aero[flex_nodes:, :flex_nodes] = self.sys.Krs
-        beam.sys.Kstr += stiff_aero
-
         damping_aero = np.zeros_like(beam.sys.Cstr)
-        damping_aero[:flex_nodes, flex_nodes:] = self.sys.Csr
-        damping_aero[flex_nodes:, flex_nodes:] = self.sys.Crr
-        damping_aero[flex_nodes:, :flex_nodes] = self.sys.Crr
-        beam.sys.Cstr += damping_aero
+        stiff_aero[:flex_nodes, :flex_nodes] = self.sys.Kss
 
-        beam.assemble()
+        # Add if motion is not clamped
+        rigid_dof = 0
+        if beam.sys.Kstr.shape != self.sys.Kss.shape:
+            rigid_dof = beam.sys.Kstr.shape[0]-self.sys.Kss.shape[0]
+            stiff_aero[flex_nodes:, :flex_nodes] = self.sys.Krs
 
-        Ksa = self.sys.Kforces  # maps aerodynamic grid forces to nodal forces
+            damping_aero[:flex_nodes, flex_nodes:] = self.sys.Csr
+            damping_aero[flex_nodes:, flex_nodes:] = self.sys.Crr
+            damping_aero[flex_nodes:, :flex_nodes] = self.sys.Crs
+
+
+        Ksa = self.sys.Kforces[:beam.sys.num_dof, :]  # maps aerodynamic grid forces to nodal forces
 
         # Map the nodal displacement and velocities onto the grid displacements and velocities
-        Kas = np.block([[self.sys.Kdisp, np.zeros((3*uvlm.sys.Kzeta, beam.sys.num_dof))],
-                        [self.sys.Kvel_disp, self.sys.Kvel_vel]])
+        Kas = np.block([[self.sys.Kdisp[:, :beam.sys.num_dof], self.sys.Kdisp_vel[:, :beam.sys.num_dof]],
+                        [self.sys.Kvel_disp[:, :beam.sys.num_dof], self.sys.Kvel_vel[:, :beam.sys.num_dof]]])
+        beam.sys.Cstr += damping_aero
+        beam.sys.Kstr += stiff_aero
+
+        beam.assemble()
         # TODO: gust inputs and how do these inputs play with the coupling
         # Idea: add gain only to certain inputs, because if we add zeros it will lose the inputs. The zeros matrix
         # for the gust inputs will appear in the coupling matrices
@@ -83,3 +92,16 @@ class LinearAeroelastic(BaseElement):
 
         # TODO: Modal projection
 
+        # Couple systems
+        Tas = np.eye(beam.ss.inputs, uvlm.ss.outputs)
+        Tsa = np.eye(uvlm.ss.inputs, beam.ss.outputs)
+
+        self.ss = libss.couple(ss01=uvlm.ss, ss02=beam.ss, K12=Tsa, K21=Tas)
+        self.aero_states = uvlm.ss.states
+        self.beam_states = beam.ss.states
+        self.lsys = {'LinearUVLM': uvlm,
+                     'LinearBeam': beam}
+        self.couplings = {'Ksa': Ksa,
+                          'Kas': Kas}
+
+        return self.data

@@ -12,7 +12,7 @@ import sharpy.linear.src.libss as libss
 
 @solver
 class LinearAssembler(BaseSolver):
-    solver_id = 'LinearSpace'
+    solver_id = 'LinearAssembler'
 
     def __init__(self):
         self.settings_types = dict()
@@ -90,7 +90,8 @@ class LinearAssembler(BaseSolver):
                 else:
                     self.data.linear.ss = libss.series(self.ss, self.linear.lsys[system].ss)
                 sys_worked += 1
-
+        else:
+            self.data.linear.ss = self.data.linear.lsys[self.settings['flow'][-1]].ss
         # or aeroelastic: create lin aero ela element and within that element assemble + couple uvlm + beam and make
         # sure that the input/output is clear in terms of variables for further connections
 

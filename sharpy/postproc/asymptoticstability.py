@@ -1,10 +1,11 @@
 import matplotlib.pyplot as plt
 import numpy as np
 import sharpy.utils.settings as settings
-from sharpy.utils.solver_interface import solver, BaseSolver
+from sharpy.utils.solver_interface import solver, BaseSolver, initialise_solver
 import sharpy.utils.h5utils as h5
 import sharpy.solvers.modal as modal
 import sharpy.utils.cout_utils as cout
+import pandas as pd
 
 @solver
 class AsymptoticStability(BaseSolver):
@@ -32,31 +33,20 @@ class AsymptoticStability(BaseSolver):
         self.settings_default['sys_id'] = ''
         self.settings_types['sys_id'] = 'str'
 
-        # self.settings_types['dt'] = 'float'
-        # self.settings_default['dt'] = 0.05
-        #
-        # self.settings_types['density'] = 'float'
-        # self.settings_default['density'] = 1.225
-        #
-        # self.settings_types['integr_order'] = 'int'
-        # self.settings_default['integr_order'] = 1
-        #
-        # self.settings_types['remove_predictor'] = 'bool'
-        # self.settings_default['remove_predictor'] = False
-        #
-        # self.settings_types['ScalingDict'] = 'dict'
-        # self.settings_default['ScalingDict'] = {'length': 1,
-        #                                         'speed': 1,
-        #                                         'density': 1}
-        #
-        # self.settings_types['use_sparse'] = 'bool'
-        # self.settings_default['use_sparse'] = False
-
         self.settings_types['frequency_cutoff'] = 'float'
         self.settings_default['frequency_cutoff'] = 100
 
         self.settings_types['export_eigenvalues'] = 'bool'
         self.settings_default['export_eigenvalues'] = True
+
+        self.settings_types['num_evals'] = 'int'
+        self.settings_default['num_evals'] = 200
+
+        self.settings_types['postprocessors'] = 'list(str)'
+        self.settings_default['postprocessors'] = list()
+
+        self.settings_types['postprocessors_settings'] = 'dict'
+        self.settings_default['postprocessors_settings'] = dict()
 
         self.settings = None
         self.data = None
@@ -64,6 +54,9 @@ class AsymptoticStability(BaseSolver):
         self.eigenvalues = None
         self.eigenvectors = None
         self.frequency_cutoff = np.inf
+
+        self.postprocessors = dict()
+        self.with_postprocessors = False
 
     def initialise(self, data, custom_settings=None):
         self.data = data
@@ -74,6 +67,16 @@ class AsymptoticStability(BaseSolver):
             self.settings = custom_settings
 
         settings.to_custom_types(self.settings, self.settings_types, self.settings_default)
+
+        # Initialise postproc
+        # initialise postprocessors
+        self.postprocessors = dict()
+        if len(self.settings['postprocessors']) > 0:
+            self.with_postprocessors = True
+        for postproc in self.settings['postprocessors']:
+            self.postprocessors[postproc] = initialise_solver(postproc)
+            self.postprocessors[postproc].initialise(
+                self.data, self.settings['postprocessors_settings'][postproc])
 
     def run(self):
         """
@@ -114,13 +117,47 @@ class AsymptoticStability(BaseSolver):
         self.eigenvalues, self.eigenvectors = self.sort_eigenvalues(eigenvalues, eigenvectors, self.frequency_cutoff)
 
         if self.settings['export_eigenvalues'].value:
-            if self.settings['print_info'].value:
-                self.print_eigenvalues()
+            self.export_eigenvalues(self.settings['num_evals'].value)
+        if self.settings['print_info'].value:
+            mode_shape_list = []
+            self.print_eigenvalues()
+            self.display_root_locus()
+
+
+
+        if self.with_postprocessors:
+            for mode in range(10):
+                gamma, gamma_dot, gamma_star, struct = self.reconstruct_mode(mode)
+                mode_shape = {'gamma': gamma,
+                              'gamma_star': gamma_star,
+                              'gamma_dot': gamma_dot,
+                              'struct': struct}
+                mode_shape_list.append(mode_shape)
+
+                modal_tstep = self.data.aero.timestep_info[-1].copy()
+                dummy_struct = self.data.structure.timestep_info[-1].copy()
+                modal_tstep.gamma = gamma
+                modal_tstep.gamma_star = gamma_star
+                modal_tstep.gamma_dot = gamma_dot
+                self.data.aero.timestep_info.append(modal_tstep)
+                self.data.structure.timestep_info.append(dummy_struct)
+                # run postprocessors
+                if self.with_postprocessors:
+                    for postproc in self.postprocessors:
+                        self.data = self.postprocessors[postproc].run(online=True)
+
+        self.data.linear.stability = dict()
+        self.data.linear.stability['eigenvectors'] = self.eigenvectors
+        self.data.linear.stability['eigenvalues'] = self.eigenvalues
+        # self.data.linear.stability.mode_shapes = mode_shape_list
 
         return self.data
 
-    def export_eigenvalues(self):
-        pass
+    def export_eigenvalues(self, num_evals):
+        evec_pd = pd.DataFrame(data=self.eigenvectors[:, :num_evals])
+        eval_pd = pd.DataFrame(data=self.eigenvalues)
+        evec_pd.to_csv(self.data.settings['SHARPy']['route'] + '/output/eigenvectors.csv')
+        eval_pd.to_csv(self.data.settings['SHARPy']['route'] + '/output/eigenvalues.csv')
 
 
     def print_eigenvalues(self, keep_sys_id=''):
@@ -131,7 +168,7 @@ class AsymptoticStability(BaseSolver):
         """
         cout.cout_wrap('Dynamical System Eigenvalues')
         if keep_sys_id == 'LinearBeam':
-            uvlm_states = self.data.linear.lsys['LinearUVLM'].ss.states
+            uvlm_states = self.data.linear.lsys['LinearCustom'].lsys['LinearUVLM'].ss.states
             cout.cout_wrap('Structural Eigenvalues only')
         else:
             uvlm_states = 0
@@ -162,6 +199,8 @@ class AsymptoticStability(BaseSolver):
         ax.set_ylabel('Imag, $\mathbb{I}(\lambda_i)$ [rad/s]')
         # ax.set_ylim([0, self.frequency_cutoff])
         ax.grid(True)
+        ax.set_ylim(-10,10)
+        ax.set_xlim(-10,1)
         fig.show()
 
         return fig, ax
@@ -206,6 +245,17 @@ class AsymptoticStability(BaseSolver):
             ax.set_zlabel('Z')
             fig.show()
 
+    def reconstruct_mode(self, eig):
+        sys_id = self.settings.get('sys_id')
+        uvlm = self.data.linear.lsys[sys_id].lsys['LinearUVLM']
+
+        # for eig in range(10):
+        x_n = self.eigenvectors[:uvlm.ss.states, eig]
+        forces, gamma, gamma_dot, gamma_star = uvlm.unpack_ss_vector(self.data, x_n, self.data.linear.tsaero0)
+        struct_vec = self.eigenvectors[uvlm.ss.states:, eig]
+            # df = pd.DataFrame(data=[gamma, gamma_star, gamma_m1]).T
+            # df.to_csv(self.data.settings['SHARPy']['route'] + '/output/aero_evecs_%04d.csv' % eig)
+        return gamma, gamma_dot, gamma_star, struct_vec
 
     @staticmethod
     def sort_eigenvalues(eigenvalues, eigenvectors, frequency_cutoff=None):
@@ -233,7 +283,7 @@ class AsymptoticStability(BaseSolver):
         eigenvalues_truncated = eigenvalues[criteria_a].copy()
         eigenvectors_truncated = eigenvectors[:, criteria_a].copy()
 
-        order = np.argsort(np.real(eigenvalues_truncated))[::-1]
+        order = np.argsort(np.abs(eigenvalues_truncated))
 
         return eigenvalues_truncated[order], eigenvectors_truncated[:, order]
 
@@ -263,7 +313,7 @@ if __name__ == '__main__':
         'export_eigenvalues': True,
     }
 
-    analysis = AsymptoticStabilityAnalysis()
+    analysis = AsymptoticStability()
 
     analysis.initialise(data, aeroelastic_settings)
     eigenvalues, eigenvectors = analysis.run()

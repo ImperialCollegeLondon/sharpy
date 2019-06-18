@@ -19,7 +19,7 @@ class LinearCustom(ssinterface.BaseElement):
         self.settings_types['solver_name'] = 'str'
 
         self.data = None
-        self.sys = None
+        self.lsys = dict()
         self.ss = None
 
         self.settings = dict()
@@ -35,7 +35,7 @@ class LinearCustom(ssinterface.BaseElement):
             self.settings = custom_settings
         else:
             try:
-                self.settings = self.data.settings['LinearSpace'][self.sys_id]  # Load settings, the settings should be stored in data.linear.settings
+                self.settings = self.data.settings['LinearAssembler'][self.sys_id]  # Load settings, the settings should be stored in data.linear.settings
             except KeyError:
                 pass
 
@@ -62,3 +62,4 @@ class LinearCustom(ssinterface.BaseElement):
         self.state_variables = custom_solver_output.get('state_variables', None)
         self.input_variables = custom_solver_output.get('input_variables', None)
         self.output_variables = custom_solver_output.get('output_variables', None)
+        self.lsys = custom_solver_output.get('lsys', dict())
