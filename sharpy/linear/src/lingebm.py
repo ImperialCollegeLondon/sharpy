@@ -185,9 +185,9 @@ class FlexDynamic():
         self.dlti = self.settings['discrete_time'].value
 
         if self.dlti:
-            dt = self.settings['dt'].value
+            self.dt = self.settings['dt'].value
         else:
-            dt = None
+            self.dt = None
 
         self.proj_modes = self.settings['proj_modes']
         if self.V is None:
@@ -197,7 +197,6 @@ class FlexDynamic():
         self.use_euler = self.settings['use_euler'].value
 
         ### set state-space variables
-        self.dt = float(dt)
         self.SScont = None
         self.SSdisc = None
         self.Kin = None
@@ -553,10 +552,11 @@ class FlexDynamic():
 
 
         # Update matrices
-        self.Cstr[-rig_dof:, -rig_dof:] += Crr_grav
-        self.Cstr[:-rig_dof, -rig_dof:] += Csr_grav
         self.Kstr[:flex_dof, :flex_dof] += Kss_grav
-        self.Kstr[flex_dof:, :flex_dof] += Krs_grav
+        if self.Kstr[:flex_dof, :flex_dof].shape != self.Kstr.shape:
+            self.Cstr[-rig_dof:, -rig_dof:] += Crr_grav
+            self.Cstr[:-rig_dof, -rig_dof:] += Csr_grav
+            self.Kstr[flex_dof:, :flex_dof] += Krs_grav
 
         if self.modal:
             self.Ccut = self.U.T.dot(self.Cstr.dot(self.U))
