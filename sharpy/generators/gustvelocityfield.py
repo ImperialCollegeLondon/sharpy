@@ -48,6 +48,7 @@ class GustVelocityField(generator_interface.BaseGenerator):
             ``offset``           ``float``        Spatial offset of the gust with respect to origin  ``0.0``
             ``span``             ``float``        Wing span                                          ``0.0``
             ``file``             ``str``          File with the information (only for time varying)  ``Empty string``
+            ``relative_motion``  ``bool``         True if the aircraft body vel is 0                 ``False``
             ===================  ===============  =================================================  ===================
 
     Attributes:
