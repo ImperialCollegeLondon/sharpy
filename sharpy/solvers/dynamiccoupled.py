@@ -28,9 +28,9 @@ class DynamicCoupled(BaseSolver):
     Attributes:
         settings (dict): Contains the solver's ``settings``. See below for acceptable values:
 
-            =======================================  =============  =========================================================================  =========
+            =======================================  =============  =========================================================================  ==========
             Name                                     Type           Description                                                                Default
-            =======================================  =============  =========================================================================  =========
+            =======================================  =============  =========================================================================  ==========
             ``print_info``                           ``bool``       Print modal calculations to terminal                                       ``True``
             ``structural_solver``                    ``str``        ``solver_id`` of desired structural solver                                 ``None``
             ``structural_solver_settings``           ``dict``       Dictionary containing the settings for the structural solver               ``None``
@@ -51,7 +51,7 @@ class DynamicCoupled(BaseSolver):
             ``include_unsteady_force_contribution``  ``bool``       Include forces that depend on ``gamma_dot``                                ``False``
             ``steps_without_unsteady_force``         ``int``        Time steps without the application of unsteady forces                      ``0``
             ``pseudosteps_ramp_unsteady_force``      ``int``        FSI iterations to progressively ramp the application of unsteady forces    ``0``
-            =======================================  =============  =========================================================================  ========
+            =======================================  =============  =========================================================================  ==========
 
         data (ProblemData): class containing solution information
         structuralsolver (BaseSolver): class of the structural solver
