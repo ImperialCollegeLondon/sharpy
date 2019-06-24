@@ -345,7 +345,7 @@ class LinAeroEla():
 
         # get projection matrix A->G
         # (and other quantities indep. from nodal position)
-        Cga = algebra.quat2rotation(tsstr.quat)
+        Cga = algebra.quat2rotation(tsstr.quat).T
         Cag = Cga.T
 
         # for_pos=tsstr.for_pos
