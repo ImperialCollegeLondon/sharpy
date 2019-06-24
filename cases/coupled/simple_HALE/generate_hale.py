@@ -1,111 +1,88 @@
+#! /usr/bin/env python3
 import h5py as h5
 import numpy as np
 import os
 import sharpy.utils.algebra as algebra
 
-case_name = 'wing_launched_sig100'
+case_name = 'simple_HALE'
 route = os.path.dirname(os.path.realpath(__file__)) + '/'
-
 
 # EXECUTION
 flow = ['BeamLoader',
         'AerogridLoader',
         # 'NonLinearStatic',
         # 'StaticUvlm',
-        # 'StaticTrim',
-        'StaticCoupled',
+        'StaticTrim',
+        # 'StaticCoupled',
         'BeamLoads',
         'AerogridPlot',
         'BeamPlot',
-        # 'BeamPlot',
-        # 'DynamicPrescribedCoupled',
-        # 'BeamLoads',
-        # 'DynamicCoupled',
-        'PIDTrajectoryControl'
-        # 'AerogridPlot',
-        # 'BeamPlot'
+        'DynamicCoupled',
         ]
 
+free_flight = False
+if not free_flight:
+    case_name += '_prescribed'
+    amplitude = 0*np.pi/180
+    period = 3
+    case_name += '_amp_' + str(amplitude).replace('.', '') + '_period_' + str(period)
 
 # FLIGHT CONDITIONS
-u_inf = 1
+u_inf = 10
 rho = 1.225
 
 # trim sigma = 1.5
-alpha = 2.67630048357*np.pi/180
-beta = 0*np.pi/180
+alpha = 4.2521231600122045*np.pi/180
+beta = 0
+roll = 0
 gravity = 'on'
-cs_deflection = -1.87363435871*np.pi/180
-thrust = 7.61027246996
-sigma = 1.5
-
-# trim sigma = 100
-alpha = 3.928069298*np.pi/180
-beta = 0*np.pi/180
-gravity = 'on'
-cs_deflection = -4.41665136916*np.pi/180
-thrust = 5.97767421167
+cs_deflection = -2.219632690157531*np.pi/180
+rudder_static_deflection = 0.0
+rudder_step = 0.0*np.pi/180
+thrust = 5.036931047647685
 sigma = 100
+lambda_dihedral = 20*np.pi/180
 
-trajectory_end_velocity = -(10/np.cos(alpha) - u_inf)
-trajectory_coords_end = np.array([1.*np.cos(alpha), -1.0*np.sin(alpha)])*-15
+# gust settings
+gust_intensity = 0.20
+gust_length = 1*u_inf
+gust_offset = 0.5*u_inf
 
-# trim sigma = 1.1
-# alpha = 7.887234946558482*np.pi/180
-# beta = 0*np.pi/180
-# gravity = 'on'
-# cs_deflection = -7.027540281892041*np.pi/180
-# thrust = 10.683301711048266
-# sigma = 1.1
-
-# trim sigma = 0.9
-# alpha = 8.536835483534349*np.pi/180
-# beta = 0*np.pi/180
-# gravity = 'on'
-# cs_deflection = -8.78558685925769*np.pi/180
-# thrust = 11.362447522189974
-# sigma = 0.95
-# trim sigma = 5
-# alpha = 7.753569188296049*np.pi/180
-# beta = 0*np.pi/180
-# gravity = 'on'
-# cs_deflection = -4.4074650492525915*np.pi/180
-# thrust = 9.08445558554907
-# sigma = 5
-
-gust_intensity = 0.00
+# numerics
 n_step = 1
-relaxation_factor = 0.
-tolerance = 1e-6
+relaxation_factor = 0.5
+tolerance = 1e-7
+fsi_tolerance = 1e-6
+
+num_cores = 2
 
 # MODEL GEOMETRY
 # beam
 span_main = 16.0
 lambda_main = 0.25
-lambda_dihedral = 20*np.pi/180
-ea_main = 0.5
+ea_main = 0.3
 
-ea = 1e6
-ga = 1e6
+ea = 1e7
+ga = 1e7
 gj = 1e4
 eiy = 2e4
 eiz = 4e6
 m_bar_main = 0.75
-j_bar_main = 0.1
+j_bar_main = 0.075
 
 length_fuselage = 10
 offset_fuselage = 0
 sigma_fuselage = 100
-m_bar_fuselage = 0.08
-j_bar_fuselage = 0.01
+m_bar_fuselage = 0.2
+j_bar_fuselage = 0.08
 
 span_tail = 2.5
 ea_tail = 0.5
 fin_height = 2.5
 ea_fin = 0.5
 sigma_tail = 100
-m_bar_tail = 0.08
-j_bar_tail = 0.01
+m_bar_tail = 0.3
+j_bar_tail = 0.08
 
 # lumped masses
 n_lumped_mass = 1
@@ -118,31 +95,25 @@ lumped_mass_position = np.zeros((n_lumped_mass, 3))
 # aero
 chord_main = 1.0
 chord_tail = 0.5
+chord_fin = 0.5
 
 # DISCRETISATION
 # spatial discretisation
-m = 8
-n_elem_multiplier = 1.5
-n_elem_main = int(6*n_elem_multiplier)
+# chordiwse panels
+m = 3
+# spanwise elements
+n_elem_multiplier = 1
+n_elem_main = int(4*n_elem_multiplier)
 n_elem_tail = int(2*n_elem_multiplier)
 n_elem_fin = int(2*n_elem_multiplier)
-n_elem_fuselage = int(3*n_elem_multiplier)
+n_elem_fuselage = int(2*n_elem_multiplier)
 n_surfaces = 5
 
 # temporal discretisation
 physical_time = 30
-# physical_time = 5.5
-# physical_time = 3
-tstep_factor = 0.4
+tstep_factor = 1.
 dt = 1.0/m/u_inf*tstep_factor
-dt = 1.0/8/10*tstep_factor
 n_tstep = round(physical_time/dt)
-n_tstep = 3*3200
-n_tstep = 12000
-
-# trajectory control
-start_traject_time = int(0.5/dt)
-
 
 # END OF INPUT-----------------------------------------------------------------
 
@@ -183,33 +154,34 @@ n_node += n_node_tail - 1
 n_stiffness = 3
 base_stiffness_main = sigma*np.diag([ea, ga, ga, gj, eiy, eiz])
 base_stiffness_fuselage = base_stiffness_main.copy()*sigma_fuselage
-base_stiffness_fuselage[5, 5] = base_stiffness_fuselage[4, 4]
+base_stiffness_fuselage[4, 4] = base_stiffness_fuselage[5, 5]
 base_stiffness_tail = base_stiffness_main.copy()*sigma_tail
-base_stiffness_tail[5, 5] = base_stiffness_tail[4, 4]
+base_stiffness_tail[4, 4] = base_stiffness_tail[5, 5]
 
 n_mass = 3
-base_mass_main = np.diag([m_bar_main, m_bar_main, m_bar_main, j_bar_main, j_bar_main, j_bar_main])
+base_mass_main = np.diag([m_bar_main, m_bar_main, m_bar_main, j_bar_main, 0.5*j_bar_main, 0.5*j_bar_main])
 base_mass_fuselage = np.diag([m_bar_fuselage,
                               m_bar_fuselage,
                               m_bar_fuselage,
                               j_bar_fuselage,
-                              j_bar_fuselage*0.1,
-                              j_bar_fuselage*0.1])
+                              j_bar_fuselage*0.5,
+                              j_bar_fuselage*0.5])
 base_mass_tail = np.diag([m_bar_tail,
                           m_bar_tail,
                           m_bar_tail,
                           j_bar_tail,
-                          j_bar_tail*0.1,
-                          j_bar_tail*0.1])
+                          j_bar_tail*0.5,
+                          j_bar_tail*0.5])
+
 
 # PLACEHOLDERS
 # beam
 x = np.zeros((n_node, ))
 y = np.zeros((n_node, ))
 z = np.zeros((n_node, ))
-structural_twist = np.zeros_like(x)
 beam_number = np.zeros((n_elem, ), dtype=int)
 frame_of_reference_delta = np.zeros((n_elem, n_node_elem, 3))
+structural_twist = np.zeros((n_elem, 3))
 conn = np.zeros((n_elem, n_node_elem), dtype=int)
 stiffness = np.zeros((n_stiffness, 6, 6))
 elem_stiffness = np.zeros((n_elem, ), dtype=int)
@@ -226,6 +198,7 @@ surface_m = np.zeros((n_surfaces, ), dtype=int)
 m_distribution = 'uniform'
 aero_node = np.zeros((n_node,), dtype=bool)
 twist = np.zeros((n_elem, n_node_elem))
+sweep = np.zeros((n_elem, n_node_elem))
 chord = np.zeros((n_elem, n_node_elem,))
 elastic_axis = np.zeros((n_elem, n_node_elem,))
 
@@ -252,7 +225,6 @@ def clean_test_files():
     if os.path.isfile(flightcon_file_name):
         os.remove(flightcon_file_name)
 
-
 def generate_dyn_file():
     global dt
     global n_tstep
@@ -263,17 +235,18 @@ def generate_dyn_file():
     global num_node
     global amplitude
     global period
-    global x, y, z, end_of_fuselage_node
-    global start_traject_time
+    global free_flight
 
     dynamic_forces_time = None
     with_dynamic_forces = False
     with_forced_vel = False
-    with_node_trayectories = True
+    if not free_flight:
+        with_forced_vel = True
+
     if with_dynamic_forces:
         f1 = 100
         dynamic_forces = np.zeros((num_node, 6))
-        app_node = []
+        app_node = [int(num_node_main - 1), int(num_node_main)]
         dynamic_forces[app_node, 2] = f1
         force_time = np.zeros((n_tstep, ))
         limit = round(0.05/dt)
@@ -288,39 +261,25 @@ def generate_dyn_file():
         forced_for_vel = np.zeros((n_tstep, 6))
         forced_for_acc = np.zeros((n_tstep, 6))
         for it in range(n_tstep):
-            if it <= initial_it:
-                forced_for_vel[it, 0:3] = initial_vel
-            elif it >= final_it:
-                forced_for_vel[it, 0:3] = final_vel
-            else:
-                forced_for_vel[it, 0:3] = initial_vel + (it - initial_it)*dt*acceleration
-                forced_for_acc[it, 0:3] = acceleration
-
+            # if dt*it < period:
             # forced_for_vel[it, 2] = 2*np.pi/period*amplitude*np.sin(2*np.pi*dt*it/period)
             # forced_for_acc[it, 2] = (2*np.pi/period)**2*amplitude*np.cos(2*np.pi*dt*it/period)
 
-    if with_node_trayectories:
-        enforce_trayectory = np.zeros((n_tstep, n_node, 3), dtype=bool)
-        for it in range(n_tstep):
-            if it <= start_traject_time:
-                enforce_trayectory[it, 0, :] = True
-                enforce_trayectory[it, end_of_fuselage_node, :] = True
+            forced_for_vel[it, 3] = 2*np.pi/period*amplitude*np.sin(2*np.pi*dt*it/period)
+            forced_for_acc[it, 3] = (2*np.pi/period)**2*amplitude*np.cos(2*np.pi*dt*it/period)
 
-    with h5.File(route + '/' + case_name + '.dyn.h5', 'a') as h5file:
-        if with_dynamic_forces:
+    if with_dynamic_forces or with_forced_vel:
+        with h5.File(route + '/' + case_name + '.dyn.h5', 'a') as h5file:
+            if with_dynamic_forces:
+                h5file.create_dataset(
+                    'dynamic_forces', data=dynamic_forces_time)
+            if with_forced_vel:
+                h5file.create_dataset(
+                    'for_vel', data=forced_for_vel)
+                h5file.create_dataset(
+                    'for_acc', data=forced_for_acc)
             h5file.create_dataset(
-                'dynamic_forces', data=dynamic_forces_time)
-        if with_forced_vel:
-            h5file.create_dataset(
-                'for_vel', data=forced_for_vel)
-            h5file.create_dataset(
-                'for_acc', data=forced_for_acc)
-        if with_node_trayectories:
-            h5file.create_dataset(
-                'enforce_trayectory', data=enforce_trayectory)
-        h5file.create_dataset(
-            'num_steps', data=n_tstep)
-
+                'num_steps', data=n_tstep)
 
 def generate_fem():
     stiffness[0, ...] = base_stiffness_main
@@ -336,17 +295,21 @@ def generate_fem():
     # inner right wing
     beam_number[we:we + n_elem_main1] = 0
     y[wn:wn + n_node_main1] = np.linspace(0.0, span_main1, n_node_main1)
+
     for ielem in range(n_elem_main1):
         conn[we + ielem, :] = ((np.ones((3, ))*(we + ielem)*(n_node_elem - 1)) +
                                [0, 2, 1])
         for inode in range(n_node_elem):
             frame_of_reference_delta[we + ielem, inode, :] = [-1.0, 0.0, 0.0]
+
     elem_stiffness[we:we + n_elem_main1] = 0
     elem_mass[we:we + n_elem_main1] = 0
     boundary_conditions[0] = 1
+    # remember this is in B FoR
     app_forces[0] = [0, thrust, 0, 0, 0, 0]
     we += n_elem_main1
     wn += n_node_main1
+
     # outer right wing
     beam_number[we:we + n_elem_main1] = 0
     y[wn:wn + n_node_main2 - 1] = y[wn - 1] + np.linspace(0.0, np.cos(lambda_dihedral)*span_main2, n_node_main2)[1:]
@@ -361,6 +324,7 @@ def generate_fem():
     boundary_conditions[wn + n_node_main2 - 2] = -1
     we += n_elem_main2
     wn += n_node_main2 - 1
+
     # inner left wing
     beam_number[we:we + n_elem_main1 - 1] = 1
     y[wn:wn + n_node_main1 - 1] = np.linspace(0.0, -span_main1, n_node_main1)[1:]
@@ -374,6 +338,7 @@ def generate_fem():
     elem_mass[we:we + n_elem_main1] = 0
     we += n_elem_main1
     wn += n_node_main1 - 1
+
     # outer left wing
     beam_number[we:we + n_elem_main2] = 1
     y[wn:wn + n_node_main2 - 1] = y[wn - 1] + np.linspace(0.0, -np.cos(lambda_dihedral)*span_main2, n_node_main2)[1:]
@@ -388,6 +353,7 @@ def generate_fem():
     boundary_conditions[wn + n_node_main2 - 2] = -1
     we += n_elem_main2
     wn += n_node_main2 - 1
+
     # fuselage
     beam_number[we:we + n_elem_fuselage] = 2
     x[wn:wn + n_node_fuselage - 1] = np.linspace(0.0, length_fuselage, n_node_fuselage)[1:]
@@ -400,11 +366,11 @@ def generate_fem():
     conn[we, 0] = 0
     elem_stiffness[we:we + n_elem_fuselage] = 1
     elem_mass[we:we + n_elem_fuselage] = 1
-    boundary_conditions[wn + n_node_fuselage - 1 - 1] = -1
     we += n_elem_fuselage
     wn += n_node_fuselage - 1
     global end_of_fuselage_node
     end_of_fuselage_node = wn - 1
+
     # fin
     beam_number[we:we + n_elem_fin] = 3
     x[wn:wn + n_node_fin - 1] = x[end_of_fuselage_node]
@@ -420,6 +386,7 @@ def generate_fem():
     we += n_elem_fin
     wn += n_node_fin - 1
     end_of_fin_node = wn - 1
+
     # right tail
     beam_number[we:we + n_elem_tail] = 4
     x[wn:wn + n_node_tail - 1] = x[end_of_fin_node]
@@ -436,6 +403,7 @@ def generate_fem():
     boundary_conditions[wn + n_node_tail - 2] = -1
     we += n_elem_tail
     wn += n_node_tail - 1
+
     # left tail
     beam_number[we:we + n_elem_tail] = 5
     x[wn:wn + n_node_tail - 1] = x[end_of_fin_node]
@@ -489,38 +457,27 @@ def generate_fem():
         lumped_mass_position_handle = h5file.create_dataset(
             'lumped_mass_position', data=lumped_mass_position)
 
-    if False:
-        import matplotlib.pyplot as plt
-        plt.figure()
-        plt.scatter(x, y)
-        plt.scatter(x[boundary_conditions == -1], y[boundary_conditions == -1], s=None)
-        plt.scatter(x[boundary_conditions == 1], y[boundary_conditions == 1], s=None)
-        plt.xlabel('x')
-        plt.ylabel('y')
-        plt.show()
-        plt.figure()
-        plt.scatter(y, z)
-        plt.scatter(y[boundary_conditions == -1], z[boundary_conditions == -1], s=None)
-        plt.scatter(y[boundary_conditions == 1], z[boundary_conditions == 1], s=None)
-        plt.xlabel('y')
-        plt.ylabel('z')
-        plt.show()
-
-
 def generate_aero_file():
     global x, y, z
     # control surfaces
-    n_control_surfaces = 1
+    n_control_surfaces = 2
     control_surface = np.zeros((n_elem, n_node_elem), dtype=int) - 1
     control_surface_type = np.zeros((n_control_surfaces, ), dtype=int)
     control_surface_deflection = np.zeros((n_control_surfaces, ))
     control_surface_chord = np.zeros((n_control_surfaces, ), dtype=int)
+    control_surface_hinge_coord = np.zeros((n_control_surfaces, ), dtype=float)
 
     # control surface type 0 = static
     # control surface type 1 = dynamic
     control_surface_type[0] = 0
     control_surface_deflection[0] = cs_deflection
-    control_surface_chord[0] = 1
+    control_surface_chord[0] = m
+    control_surface_hinge_coord[0] = -0.25 # nondimensional wrt elastic axis (+ towards the trailing edge)
+
+    control_surface_type[1] = 0
+    control_surface_deflection[1] = rudder_static_deflection
+    control_surface_chord[1] = 1
+    control_surface_hinge_coord[1] = -0. # nondimensional wrt elastic axis (+ towards the trailing edge)
 
     we = 0
     wn = 0
@@ -531,6 +488,7 @@ def generate_aero_file():
     surface_m[i_surf] = m
     aero_node[wn:wn + n_node_main] = True
     temp_chord = np.linspace(chord_main, chord_main, n_node_main)
+    temp_sweep = np.linspace(0.0, 0*np.pi/180, n_node_main)
     node_counter = 0
     for i_elem in range(we, we + n_elem_main):
         for i_local_node in range(n_node_elem):
@@ -538,6 +496,7 @@ def generate_aero_file():
                 node_counter += 1
             chord[i_elem, i_local_node] = temp_chord[node_counter]
             elastic_axis[i_elem, i_local_node] = ea_main
+            sweep[i_elem, i_local_node] = temp_sweep[node_counter]
 
     we += n_elem_main
     wn += n_node_main
@@ -545,6 +504,7 @@ def generate_aero_file():
     # left wing (surface 1, beam 1)
     i_surf = 1
     airfoil_distribution[we:we + n_elem_main, :] = 0
+    # airfoil_distribution[wn:wn + n_node_main - 1] = 0
     surface_distribution[we:we + n_elem_main] = i_surf
     surface_m[i_surf] = m
     aero_node[wn:wn + n_node_main - 1] = True
@@ -559,23 +519,27 @@ def generate_aero_file():
                 node_counter += 1
             chord[i_elem, i_local_node] = temp_chord[node_counter]
             elastic_axis[i_elem, i_local_node] = ea_main
+            sweep[i_elem, i_local_node] = -temp_sweep[node_counter]
+
     we += n_elem_main
     wn += n_node_main - 1
 
     we += n_elem_fuselage
     wn += n_node_fuselage - 1 - 1
-
+    #
     # # fin (surface 2, beam 3)
     i_surf = 2
-    airfoil_distribution[we:we + n_elem_fin, :] = 0
+    airfoil_distribution[we:we + n_elem_fin, :] = 1
+    # airfoil_distribution[wn:wn + n_node_fin] = 0
     surface_distribution[we:we + n_elem_fin] = i_surf
     surface_m[i_surf] = m
     aero_node[wn:wn + n_node_fin] = True
     # chord[wn:wn + num_node_fin] = fin_chord
     for i_elem in range(we, we + n_elem_fin):
         for i_local_node in range(n_node_elem):
-            chord[i_elem, i_local_node] = chord_tail
+            chord[i_elem, i_local_node] = chord_fin
             elastic_axis[i_elem, i_local_node] = ea_fin
+            control_surface[i_elem, i_local_node] = 1
     # twist[end_of_fuselage_node] = 0
     # twist[wn:] = 0
     # elastic_axis[wn:wn + num_node_main] = fin_ea
@@ -584,7 +548,8 @@ def generate_aero_file():
     #
     # # # right tail (surface 3, beam 4)
     i_surf = 3
-    airfoil_distribution[we:we + n_elem_tail, :] = 0
+    airfoil_distribution[we:we + n_elem_tail, :] = 2
+    # airfoil_distribution[wn:wn + n_node_tail] = 0
     surface_distribution[we:we + n_elem_tail] = i_surf
     surface_m[i_surf] = m
     # XXX not very elegant
@@ -605,7 +570,8 @@ def generate_aero_file():
     #
     # # left tail (surface 4, beam 5)
     i_surf = 4
-    airfoil_distribution[we:we + n_elem_tail, :] = 0
+    airfoil_distribution[we:we + n_elem_tail, :] = 2
+    # airfoil_distribution[wn:wn + n_node_tail - 1] = 0
     surface_distribution[we:we + n_elem_tail] = i_surf
     surface_m[i_surf] = m
     aero_node[wn:wn + n_node_tail - 1] = True
@@ -642,6 +608,10 @@ def generate_aero_file():
         twist_input = h5file.create_dataset('twist', data=twist)
         dim_attr = twist_input.attrs['units'] = 'rad'
 
+        # sweep
+        sweep_input = h5file.create_dataset('sweep', data=sweep)
+        dim_attr = sweep_input.attrs['units'] = 'rad'
+
         # airfoil distribution
         airfoil_distribution_input = h5file.create_dataset('airfoil_distribution', data=airfoil_distribution)
 
@@ -655,6 +625,7 @@ def generate_aero_file():
         control_surface_input = h5file.create_dataset('control_surface', data=control_surface)
         control_surface_deflection_input = h5file.create_dataset('control_surface_deflection', data=control_surface_deflection)
         control_surface_chord_input = h5file.create_dataset('control_surface_chord', data=control_surface_chord)
+        control_surface_hinge_coord_input = h5file.create_dataset('control_surface_hinge_coord', data=control_surface_hinge_coord)
         control_surface_types_input = h5file.create_dataset('control_surface_type', data=control_surface_type)
 
 
@@ -687,39 +658,46 @@ def generate_solver_file():
                           'log_file': case_name + '.log'}
 
     settings['BeamLoader'] = {'unsteady': 'on',
-                              'orientation': algebra.euler2quat(np.array([0.0,
+                              'orientation': algebra.euler2quat(np.array([roll,
                                                                           alpha,
                                                                           beta]))}
+    settings['AerogridLoader'] = {'unsteady': 'on',
+                                  'aligned_grid': 'on',
+                                  'mstar': int(20/tstep_factor),
+                                  'freestream_dir': ['1', '0', '0'],
+                                  'control_surface_deflection': ['', ''],
+                                  'control_surface_deflection_generator':
+                                  {'0': {},
+                                   '1': {}}}
 
     settings['NonLinearStatic'] = {'print_info': 'off',
                                    'max_iterations': 150,
                                    'num_load_steps': 1,
-                                   'delta_curved': 1e-15,
+                                   'delta_curved': 1e-1,
                                    'min_delta': tolerance,
                                    'gravity_on': gravity,
-                                   'gravity': 9.81*0}
+                                   'gravity': 9.81}
 
     settings['StaticUvlm'] = {'print_info': 'on',
                               'horseshoe': 'off',
-                              'num_cores': 4,
-                              'n_rollup': 1,
+                              'num_cores': num_cores,
+                              'n_rollup': 0,
                               'rollup_dt': dt,
                               'rollup_aic_refresh': 1,
                               'rollup_tolerance': 1e-4,
                               'velocity_field_generator': 'SteadyVelocityField',
                               'velocity_field_input': {'u_inf': u_inf,
                                                        'u_inf_direction': [1., 0, 0]},
-                              'rho': rho*0}
+                              'rho': rho}
 
-    settings['StaticCoupled'] = {'print_info': 'off',
+    settings['StaticCoupled'] = {'print_info': 'on',
                                  'structural_solver': 'NonLinearStatic',
                                  'structural_solver_settings': settings['NonLinearStatic'],
                                  'aero_solver': 'StaticUvlm',
                                  'aero_solver_settings': settings['StaticUvlm'],
                                  'max_iter': 100,
-                                 'structural_substeps': 1,
                                  'n_load_steps': n_step,
-                                 'tolerance': tolerance,
+                                 'tolerance': fsi_tolerance,
                                  'relaxation_factor': relaxation_factor}
 
     settings['StaticTrim'] = {'solver': 'StaticCoupled',
@@ -730,51 +708,71 @@ def generate_solver_file():
 
     settings['NonLinearDynamicCoupledStep'] = {'print_info': 'off',
                                                'max_iterations': 950,
-                                               'delta_curved': 1e-9,
-                                               'min_delta': 1e-5,
-                                               'newmark_damp': 1e-2,
+                                               'delta_curved': 1e-1,
+                                               'min_delta': tolerance,
+                                               'newmark_damp': 5e-3,
                                                'gravity_on': gravity,
                                                'gravity': 9.81,
                                                'num_steps': n_tstep,
-                                               'dt': dt}
+                                               'dt': dt,
+                                               'initial_velocity': u_inf}
 
-    # print('Convection scheme is 2')
+    settings['NonLinearDynamicPrescribedStep'] = {'print_info': 'off',
+                                           'max_iterations': 950,
+                                           'delta_curved': 1e-1,
+                                           'min_delta': tolerance,
+                                           'newmark_damp': 5e-3,
+                                           'gravity_on': gravity,
+                                           'gravity': 9.81,
+                                           'num_steps': n_tstep,
+                                           'dt': dt,
+                                           'initial_velocity': u_inf*int(free_flight)}
+
+    relative_motion = 'off'
+    if not free_flight:
+        relative_motion = 'on'
     settings['StepUvlm'] = {'print_info': 'off',
                             'horseshoe': 'off',
-                            'num_cores': 4,
-                            'n_rollup': 100,
+                            'num_cores': num_cores,
+                            'n_rollup': 0,
                             'convection_scheme': 2,
                             'rollup_dt': dt,
                             'rollup_aic_refresh': 1,
                             'rollup_tolerance': 1e-4,
+                            'gamma_dot_filtering': 6,
                             'velocity_field_generator': 'GustVelocityField',
-                            'velocity_field_input': {'u_inf': u_inf,
+                            'velocity_field_input': {'u_inf': int(not free_flight)*u_inf,
                                                      'u_inf_direction': [1., 0, 0],
                                                      'gust_shape': '1-cos',
-                                                     'gust_length': 60,
+                                                     'gust_length': gust_length,
                                                      'gust_intensity': gust_intensity*u_inf,
-                                                     'offset': 10.0,
-                                                     'span': span_main},
+                                                     'offset': gust_offset,
+                                                     'span': span_main,
+                                                     'relative_motion': relative_motion},
                             'rho': rho,
                             'n_time_steps': n_tstep,
                             'dt': dt}
 
-    settings['DynamicCoupled'] = {'print_info': 'off',
-                                  'structural_solver': 'NonLinearDynamicCoupledStep',
-                                  'structural_solver_settings': settings['NonLinearDynamicCoupledStep'],
+    if free_flight:
+        solver = 'NonLinearDynamicCoupledStep'
+    else:
+        solver = 'NonLinearDynamicPrescribedStep'
+    settings['DynamicCoupled'] = {'structural_solver': solver,
+                                  'structural_solver_settings': settings[solver],
                                   'aero_solver': 'StepUvlm',
                                   'aero_solver_settings': settings['StepUvlm'],
                                   'fsi_substeps': 200,
-                                  'fsi_tolerance': 1e-7,
+                                  'fsi_tolerance': fsi_tolerance,
                                   'relaxation_factor': relaxation_factor,
                                   'minimum_steps': 1,
                                   'relaxation_steps': 150,
-                                  'final_relaxation_factor': 0.0,
+                                  'final_relaxation_factor': 0.5,
                                   'n_time_steps': n_tstep,
                                   'dt': dt,
-                                  'include_unsteady_force_contribution': 'off',
+                                  'include_unsteady_force_contribution': 'on',
                                   'postprocessors': ['BeamLoads', 'BeamPlot', 'AerogridPlot'],
-                                  'postprocessors_settings': {'BeamLoads': {},
+                                  'postprocessors_settings': {'BeamLoads': {'folder': route + '/output/',
+                                                                            'csv_output': 'off'},
                                                               'BeamPlot': {'folder': route + '/output/',
                                                                            'include_rbm': 'on',
                                                                            'include_applied_forces': 'on'},
@@ -782,60 +780,16 @@ def generate_solver_file():
                                                                   'folder': route + '/output/',
                                                                   'include_rbm': 'on',
                                                                   'include_applied_forces': 'on',
-                                                                  'minus_m_star': 0}}}
+                                                                  'minus_m_star': 0},
+                                                              }}
 
-    settings['DynamicPrescribedCoupled'] = {'structural_solver': 'NonLinearDynamicPrescribedStep',
-                                            'structural_solver_settings': settings['NonLinearDynamicCoupledStep'],
-                                            'aero_solver': 'StepUvlm',
-                                            'aero_solver_settings': settings['StepUvlm'],
-                                            'fsi_substeps': 200,
-                                            'fsi_tolerance': 1e-9,
-                                            'relaxation_factor': relaxation_factor,
-                                            'minimum_steps': 1,
-                                            'relaxation_steps': 150,
-                                            'final_relaxation_factor': 0.0,
-                                            'n_time_steps': n_tstep,
-                                            'dt': dt,
-                                            # 'postprocessors': ['BeamPlot', 'AerogridPlot'],
-                                            'postprocessors_settings': {'BeamPlot': {'folder': route + '/output/',
-                                                                                     'include_rbm': 'on',
-                                                                                     'include_applied_forces': 'on'},
-                                                                        'AerogridPlot': {
-                                                                            'folder': route + '/output/',
-                                                                            'include_rbm': 'on',
-                                                                            'include_applied_forces': 'on',
-                                                                            'minus_m_star': 0}}}
-    settings['PIDTrajectoryControl'] = {'print_info': 'on',
-                                        'trajectory_solver': 'DynamicCoupled',
-                                        'trajectory_solver_settings': settings['DynamicCoupled'],
-                                        'trajectory_generator': 'TrajectoryGenerator',
-                                        'trajectory_generator_input': {'angle_end': alpha,
-                                                                       'veloc_end': trajectory_end_velocity,
-                                                                       'shape': 'linear',
-                                                                       'acceleration': 'linear',
-                                                                       'dt': dt,
-                                                                       'coords_end': trajectory_coords_end,
-                                                                       'time_offset': 280*dt,
-                                                                       'plot': 'on',
-                                                                       'print_info': 'on'},
-                                        'n_time_steps': n_tstep,
-                                        'dt': dt,
-                                        # 'PID_P_gain': 25*100,
-                                        # 'PID_I_gain': 50.*100,
-                                        # 'PID_D_gain': 20*10,
-                                        # 'PID_P_gain': 25*100,
-                                        'PID_P_gain': 30*100,
-                                        'PID_I_gain': 25.*100,
-                                        'PID_D_gain': 25*10,
-                                        'nodes_trajectory': [0, end_of_fuselage_node],
-                                        'transient_nsteps': 250}
-                                        # 'transient_nsteps': 200}
-    # print('Small mstar')
-    settings['AerogridLoader'] = {'unsteady': 'on',
-                                  'aligned_grid': 'on',
-                                  'mstar': 40,
-                                  # 'mstar': 20,
-                                  'freestream_dir': ['1', '0', '0']}
+    settings['BeamLoads'] = {'folder': route + '/output/',
+                             'csv_output': 'off'}
+
+    settings['BeamPlot'] = {'folder': route + '/output/',
+                            'include_rbm': 'on',
+                            'include_applied_forces': 'on',
+                            'include_forward_motion': 'on'}
 
     settings['AerogridPlot'] = {'folder': route + '/output/',
                                 'include_rbm': 'on',
@@ -845,23 +799,8 @@ def generate_solver_file():
                                 'u_inf': u_inf,
                                 'dt': dt}
 
-    settings['AeroForcesCalculator'] = {'folder': route + '/output/forces',
-                                        'write_text_file': 'on',
-                                        'text_file_name': case_name + '_aeroforces.csv',
-                                        'screen_output': 'on',
-                                        'unsteady': 'off'}
 
-    settings['BeamPlot'] = {'folder': route + '/output/',
-                            'include_rbm': 'on',
-                            'include_applied_forces': 'on',
-                            'include_forward_motion': 'on'}
 
-    settings['BeamCsvOutput'] = {'folder': route + '/output/',
-                                 'output_pos': 'on',
-                                 'output_psi': 'on',
-                                 'screen_output': 'off'}
-
-    settings['BeamLoads'] = {}
 
     import configobj
     config = configobj.ConfigObj()
@@ -874,6 +813,6 @@ def generate_solver_file():
 
 clean_test_files()
 generate_fem()
-generate_dyn_file()
 generate_aero_file()
 generate_solver_file()
+generate_dyn_file()

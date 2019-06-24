@@ -68,7 +68,7 @@ class TestCoupledStatic(unittest.TestCase):
         output_path = os.path.dirname(solver_path) + '/output/smith_g_2deg/WriteVariablesTime/'
         pos_data = np.genfromtxt(output_path + 'struct_pos_node20.dat')
         self.assertAlmostEqual((pos_data[2] - 15.983)/15.983, 0.00, 2)
-        self.assertAlmostEqual((pos_data[3] - 0.6816)/0.6816, 0.00, 2)
+        self.assertAlmostEqual((pos_data[3] - 0.6766)/0.6766, 0.00, 2)
 
     def test_smith4deg_g(self):
         """

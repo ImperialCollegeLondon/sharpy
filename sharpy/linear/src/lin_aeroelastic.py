@@ -101,7 +101,7 @@ class LinAeroEla():
         else:
             self.num_dof_rig = 10
 
-        self.num_dof_flex = 6*(self.tsstr.num_node-1)
+        self.num_dof_flex = np.sum(self.data.structure.vdof >= 0)*6
         self.num_dof_str = self.num_dof_flex + self.num_dof_rig
         self.reshape_struct_input()
 
@@ -119,7 +119,8 @@ class LinAeroEla():
                 RemovePredictor=settings_here['remove_predictor'].value,
                 UseSparse=settings_here['use_sparse'].value,
                 integr_order=settings_here['integr_order'].value,
-                ScalingDict=settings_here['ScalingDict'])
+                ScalingDict=settings_here['ScalingDict'],
+                for_vel=self.tsstr.for_vel)
         else:
             self.linuvlm = linuvlm.Dynamic(
                 self.tsaero,
@@ -127,7 +128,8 @@ class LinAeroEla():
                 RemovePredictor=settings_here['remove_predictor'].value,
                 UseSparse=settings_here['use_sparse'].value,
                 integr_order=settings_here['integr_order'].value,
-                ScalingDict=settings_here['ScalingDict'])
+                ScalingDict=settings_here['ScalingDict'],
+                for_vel=self.tsstr.for_vel)
 
         # add rotational speed
         for ii in range(self.linuvlm.MS.n_surf):
