@@ -30,18 +30,16 @@ class LinearBeam(BaseElement):
         self.ss = None  # The state space object
         self.tstruct0 = None
 
-        self.data = None
         self.settings = dict()
         self.state_variables = None
 
     def initialise(self, data, custom_settings=None):
 
-        self.data = data
         if custom_settings:
             self.settings = custom_settings
         else:
             try:
-                self.settings = data.settings['LinearAssembler'][self.sys_id]  # Load settings, the settings should be stored in data.linear.settings
+                self.settings = data.settings['LinearAssembler'][self.sys_id]
             except KeyError:
                 pass
         settings.to_custom_types(self.settings, self.settings_types, self.settings_default)
@@ -49,7 +47,6 @@ class LinearBeam(BaseElement):
         beam = lingebm.FlexDynamic(data.linear.tsstruct0, data.structure, self.settings)
         self.sys = beam
         self.tstruct0 = data.linear.tsstruct0
-
 
     def assemble(self):
         # Would assemble the system as per the settings
@@ -82,7 +79,7 @@ class LinearBeam(BaseElement):
 
     def trim_nodes(self, trim_list=list):
 
-        num_dof_flex = self.data.structure.num_dof
+        num_dof_flex = self.sys.structure.num_dof
         num_dof_rig = self.sys.Mstr.shape[0] - num_dof_flex
 
         # Dictionary containing DOFs and corresponding equations
@@ -174,8 +171,8 @@ class LinearBeam(BaseElement):
         dqdt[:num_dof + rig_dof] = x_n[num_dof + rig_dof:]
 
         for i_node in vdof[vdof >= 0]:
-            pos[i_node, :] = q[i_node + 0: i_node + 3]
-            pos_dot[i_node, :] = dqdt[i_node + 0: i_node + 3]
+            pos[i_node + 1, :] = q[6*i_node: 6*i_node + 3]
+            pos_dot[i_node+ 1, :] = dqdt[6*i_node + 0: 6*i_node + 3]
 
         # TODO: CRV
         # for i_elem in range(struct_tstep.num_elem):

@@ -4,6 +4,7 @@ import sharpy.linear.src.lin_aeroelastic as lin_aeroelastic
 import sharpy.linear.assembler.linearuvlm as linearuvlm
 import sharpy.linear.assembler.linearbeam as linearbeam
 import sharpy.linear.src.libss as libss
+import matplotlib.pyplot as plt
 
 @linear_system
 class LinearAeroelastic(BaseElement):
@@ -11,27 +12,24 @@ class LinearAeroelastic(BaseElement):
 
     def __init__(self):
 
-        self.data = None
         self.sys = None  # The actual object
         self.ss = None  # The state space object
-        self.lsys = None
+        self.lsys = dict()  # Contains the underlying objects
 
         self.settings = dict()
         self.state_variables = None
         self.couplings = None
 
     def initialise(self, data):
-        self.data = data
 
         try:
-            self.settings = self.data.settings['LinearAssembler'][self.sys_id]
+            self.settings = data.settings['LinearAssembler'][self.sys_id]
         except KeyError:
             self.settings = None
 
         self.sys = lin_aeroelastic.LinAeroEla(data, custom_settings_linear=self.settings)
 
-    def assemble(self):
-
+        # Initialise aerodynamic
         # Settings
         try:
             uvlm_settings = self.settings['aero_settings']
@@ -40,8 +38,9 @@ class LinearAeroelastic(BaseElement):
 
         # Create Linear UVLM
         uvlm = linearuvlm.LinearUVLM()
-        uvlm.initialise(self.data, custom_settings=uvlm_settings)
+        uvlm.initialise(data, custom_settings=uvlm_settings)
         uvlm.assemble()
+        self.lsys['LinearUVLM'] = uvlm
 
         # Beam settings
         try:
@@ -51,7 +50,13 @@ class LinearAeroelastic(BaseElement):
 
         # Create beam
         beam = linearbeam.LinearBeam()
-        beam.initialise(self.data, custom_settings=beam_settings)
+        beam.initialise(data, custom_settings=beam_settings)
+        self.lsys['LinearBeam'] = beam
+
+    def assemble(self):
+
+        uvlm = self.lsys['LinearUVLM']
+        beam = self.lsys['LinearBeam']
 
         # Linearisation of the aerodynamic forces introduces stiffenning and damping terms into the beam matrices
         flex_nodes = self.sys.num_dof_flex
@@ -81,14 +86,26 @@ class LinearAeroelastic(BaseElement):
         beam.sys.Cstr += damping_aero
         beam.sys.Kstr += stiff_aero
 
+        # beam.sys.Cstr *= 0
         beam.assemble()
+
+        # # Beam eigenvalues
+        # evals_beam_dt = np.linalg.eigvals(beam.ss.A)
+        # evals_beam_ct = np.log(evals_beam_dt) / beam.ss.dt
+        #
+        # plt.scatter(evals_beam_ct.real, evals_beam_ct.imag, marker='s')
+        # plt.scatter(beam.sys.eigs.imag, np.sqrt(beam.sys.eigs.real), marker='x')
+        # # plt.scatter(beam.sys.eigs.imag, np.sqrt(beam.sys.eigs.real), marker='x')
+        # plt.ylim(0, 100)
+        # plt.show()
+
+
         # TODO: gust inputs and how do these inputs play with the coupling
         # Idea: add gain only to certain inputs, because if we add zeros it will lose the inputs. The zeros matrix
         # for the gust inputs will appear in the coupling matrices
 
         uvlm.ss.addGain(Ksa, where='out')
         uvlm.ss.addGain(Kas, where='in')  # Won't work with the gusts.
-
 
         # TODO: Modal projection
 
@@ -97,11 +114,14 @@ class LinearAeroelastic(BaseElement):
         Tsa = np.eye(uvlm.ss.inputs, beam.ss.outputs)
 
         self.ss = libss.couple(ss01=uvlm.ss, ss02=beam.ss, K12=Tsa, K21=Tas)
-        self.aero_states = uvlm.ss.states
-        self.beam_states = beam.ss.states
-        self.lsys = {'LinearUVLM': uvlm,
-                     'LinearBeam': beam}
+        # self.aero_states = uvlm.ss.states
+        # self.beam_states = beam.ss.states
         self.couplings = {'Ksa': Ksa,
                           'Kas': Kas}
 
-        return self.data
+        # TODO
+        self.state_variables = {'aero': uvlm.ss.states,
+                                'beam': beam.ss.states}
+
+
+

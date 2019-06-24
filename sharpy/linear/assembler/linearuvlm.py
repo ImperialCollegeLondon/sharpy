@@ -20,7 +20,6 @@ class LinearUVLM(ss_interface.BaseElement):
         self.settings_types['remove_inputs'] = 'list'
         self.settings_default['remove_inputs'] = []
 
-        self.data = None
         self.sys = None
         self.ss = None
         self.tsaero0 = None
@@ -33,21 +32,19 @@ class LinearUVLM(ss_interface.BaseElement):
 
     def initialise(self, data, custom_settings=None):
 
-        self.data = data
-
         if custom_settings:
             self.settings = custom_settings
         else:
             try:
-                self.settings = self.data.settings['LinearAssembler'][self.sys_id]  # Load settings, the settings should be stored in data.linear.settings
+                self.settings = data.settings['LinearAssembler'][self.sys_id]  # Load settings, the settings should be stored in data.linear.settings
             except KeyError:
                 pass
 
         settings.to_custom_types(self.settings, self.settings_types, self.settings_default)
 
-        self.data.linear.tsaero0.rho = float(self.settings['density'])
-        uvlm = linuvlm.Dynamic(self.data.linear.tsaero0, dt=None, dynamic_settings=self.settings)
-        self.tsaero0 = self.data.linear.tsaero0
+        data.linear.tsaero0.rho = float(self.settings['density'])
+        uvlm = linuvlm.Dynamic(data.linear.tsaero0, dt=None, dynamic_settings=self.settings)
+        self.tsaero0 = data.linear.tsaero0
         self.sys = uvlm
 
         input_variables_database = {'zeta': [0, 3*self.sys.Kzeta],
@@ -86,7 +83,7 @@ class LinearUVLM(ss_interface.BaseElement):
         self.sys.SS.B = libsp.csc_matrix(self.sys.SS.B[:, trim_array])
         self.sys.SS.D = libsp.csc_matrix(self.sys.SS.D[:, trim_array])
 
-    def unpack_ss_vector(self, data, x_n, aero_tstep):
+    def unpack_ss_vector(self, data, x_n, aero_tstep, track_body=False):
         r"""
         Transform column vectors used in the state space formulation into SHARPy format
 
@@ -136,16 +133,17 @@ class LinearUVLM(ss_interface.BaseElement):
         """
 
         # project forces from uvlm FoR to FoR G
-        # if self.settings['track_body'].value:
-        #     Cg_uvlm = np.dot( self.Cga, self.Cga0.T )
-        # else:
-        Cg_uvlm = np.eye(3)
+        if track_body:
+            Cga = data.structure.timestep_info[-1].cga()
+            # print(data.structure.timestep_info[-1].quat)
+            Cga0 = data.structure.timestep_info[0].cga()
+            Cg_uvlm = np.dot(Cga, Cga0.T)
+
+        else:
+            Cg_uvlm = np.eye(3)
         y_n = self.C_to_vertex_forces.dot(x_n)
 
         gamma_vec, gamma_star_vec, gamma_dot_vec = self.sys.unpack_state(x_n)
-        # gamma_vec = self.data.aero.linear['gamma_0'] + dgamma_vec
-        # gamma_star_vec = self.data.aero.linear['gamma_star_0'] + dgamma_star_vec
-        # gamma_dot_vec = self.data.aero.linear['gamma_dot_0'] + dgamma_dot_vec
 
         # Reshape output into forces[i_surface] where forces[i_surface] is a (6,M+1,N+1) matrix and circulation terms
         # where gamma is a [i_surf](M+1, N+1) matrix
@@ -176,7 +174,7 @@ class LinearUVLM(ss_interface.BaseElement):
             ### project forces.
             # - forces are in UVLM linearisation frame. Hence, these  are projected
             # into FoR (using rotation matrix Cag0 time 0) A and back to FoR G
-            if self.settings['track_body'].value:
+            if track_body:
                 for mm in range(dimensions[1]):
                     for nn in range(dimensions[2]):
                         forces[i_surf][:,mm,nn] = np.dot(Cg_uvlm, forces[i_surf][:,mm,nn])
