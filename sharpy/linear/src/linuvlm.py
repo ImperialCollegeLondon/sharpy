@@ -1714,10 +1714,13 @@ class DynamicBlock(Dynamic):
     '''
 
 
-    def __init__(self, tsdata, dt, integr_order=2,
+    def __init__(self, tsdata, dt,
+                 dynamic_settings=None,
+                 integr_order=2,
                        RemovePredictor=True, ScalingDict=None, UseSparse=True, for_vel=np.zeros((6),)):
 
         super().__init__(tsdata, dt,
+                         dynamic_settings=dynamic_settings,
                          integr_order=integr_order,
                          RemovePredictor=RemovePredictor,
                          ScalingDict=ScalingDict,

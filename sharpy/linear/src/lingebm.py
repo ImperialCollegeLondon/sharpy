@@ -9,6 +9,7 @@ import scipy.signal as scsig
 import sharpy.linear.src.libss as libss
 import sharpy.utils.algebra as algebra
 import sharpy.utils.settings as settings
+import sharpy.utils.cout_utils as cout
 import warnings
 
 
@@ -399,11 +400,13 @@ class FlexDynamic():
         if tsstr is None:
             tsstr = self.tsstruct0
 
+        # TODO: Adapt to clamped cases
+
         if self.settings['print_info'].value:
-            print('\nLinearising gravity terms...')
+            cout.cout_wrap('\nLinearising gravity terms...')
 
         num_node = tsstr.num_node
-        flex_dof = 6 * (num_node-1)
+        flex_dof = 6 * sum(self.structure.vdof >= 0)
         if self.use_euler:
             rig_dof = 9
             # This is a rotation matrix that rotates a vector from G to A
@@ -434,7 +437,8 @@ class FlexDynamic():
         Xcg_Askew = algebra.skew(Xcg_A)
 
         if self.settings['print_info'].value:
-            print('X_CG A -> %.2f %.2f %.2f' %(Xcg_A[0], Xcg_A[1], Xcg_A[2]))
+            cout.cout_wrap('\tM = %.2f kg' % Mrr[0, 0], 1)
+            cout.cout_wrap('\tX_CG A -> %.2f %.2f %.2f' %(Xcg_A[0], Xcg_A[1], Xcg_A[2]), 1)
 
         FgravA = np.zeros(3)
         FgravG = np.zeros(3)
@@ -490,9 +494,9 @@ class FlexDynamic():
                 Xcg_G_n = Pga.dot(Xcg_A_n)
 
                 if self.settings['print_info'].value:
-                    print("Node %2d \t-> B %.3f %.3f %.3f" %(i_node, Xcg_B[0], Xcg_B[1], Xcg_B[2]))
-                    print("\t\t\t-> A %.3f %.3f %.3f" %(Xcg_A_n[0], Xcg_A_n[1], Xcg_A_n[2]))
-                    print("\t\t\t-> G %.3f %.3f %.3f" %(Xcg_G_n[0], Xcg_G_n[1], Xcg_G_n[2]))
+                    cout.cout_wrap("Node %2d \t-> B %.3f %.3f %.3f" %(i_node, Xcg_B[0], Xcg_B[1], Xcg_B[2]), 2)
+                    cout.cout_wrap("\t\t\t-> A %.3f %.3f %.3f" %(Xcg_A_n[0], Xcg_A_n[1], Xcg_A_n[2]), 2)
+                    cout.cout_wrap("\t\t\t-> G %.3f %.3f %.3f" %(Xcg_G_n[0], Xcg_G_n[1], Xcg_G_n[2]), 2)
 
             if self.use_euler:
                 if bc_at_node != 1:
@@ -562,7 +566,7 @@ class FlexDynamic():
             self.Ccut = self.U.T.dot(self.Cstr.dot(self.U))
 
         if self.settings['print_info'].value:
-            print('\tUpdated the beam C, modal C and K matrices with the terms from the gravity linearisation\n')
+            cout.cout_wrap('\tUpdated the beam C, modal C and K matrices with the terms from the gravity linearisation\n')
 
     def assemble(self, Nmodes=None):
         r"""
