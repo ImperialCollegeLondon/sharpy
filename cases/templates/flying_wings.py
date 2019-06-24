@@ -117,7 +117,7 @@ class FlyingWing():
 
         # aeroelasticity
         self.sigma = 1
-        self.main_ea = 0.5
+        self.main_ea = 0.2
         self.main_cg = 0.5
         self.c_ref = 1.  # ref. chord
 
@@ -138,6 +138,12 @@ class FlyingWing():
         self.gust_length = 5
         self.tolerance = 1e-12
 
+        n_lumped_mass = 1
+        self.lumped_mass = np.zeros((n_lumped_mass))
+        self.lumped_mass_position = np.zeros((n_lumped_mass, 3))
+        self.lumped_mass_inertia = np.zeros((n_lumped_mass, 3, 3))
+        self.lumped_mass_nodes = np.zeros((n_lumped_mass), dtype=int)
+
     def update_mass_stiff(self):
         '''This method can be substituted to produce different wing configs'''
         # uniform mass/stiffness
@@ -154,6 +160,15 @@ class FlyingWing():
 
         self.elem_stiffness = np.zeros((self.num_elem_tot,), dtype=int)
         self.elem_mass = np.zeros((self.num_elem_tot,), dtype=int)
+
+        n_lumped_mass = 1
+        self.lumped_mass = np.zeros((n_lumped_mass))
+        self.lumped_mass_position = np.zeros((n_lumped_mass, 3))
+        self.lumped_mass_inertia = np.zeros((n_lumped_mass, 3, 3))
+        self.lumped_mass_nodes = np.zeros((n_lumped_mass), dtype=int)
+
+        self.lumped_mass[0] = 5.
+        self.lumped_mass_position[0] = np.array([0, 0.25, 0])
 
     def update_derived_params(self):
         ### Derived
@@ -296,6 +311,7 @@ class FlyingWing():
         self.x = x
         self.y = y
         self.z = z
+
 
     def update_aero_prop(self):
         assert hasattr(self, 'conn_glob'), \
@@ -629,6 +645,14 @@ class FlyingWing():
                 'beam_number', data=self.surface_number)
             app_forces_handle = h5file.create_dataset(
                 'app_forces', data=np.zeros((self.num_node_tot, 6)))
+            lumped_mass_handle = h5file.create_dataset(
+                'lumped_mass', data=self.lumped_mass)
+            lumped_mass_inertia_handle = h5file.create_dataset(
+                'lumped_mass_inertia', data=self.lumped_mass_inertia)
+            lumped_mass_position_handle = h5file.create_dataset(
+                'lumped_mass_position', data=self.lumped_mass_position)
+            lumped_mass__nodes_handle = h5file.create_dataset(
+                'lumped_mass_nodes', data=self.lumped_mass_nodes)
 
     def clean_test_files(self):
         fem_file_name = self.route + '/' + self.case_name + '.fem.h5'
@@ -647,6 +671,9 @@ class FlyingWing():
         if os.path.isfile(flightcon_file_name):
             os.remove(flightcon_file_name)
 
+        lininput_file_name = self.route + '/' + self.case_name + '.lininput.h5'
+        if os.path.isfile(lininput_file_name):
+            os.remove(lininput_file_name)
 
 class Smith(FlyingWing):
     ''' 
