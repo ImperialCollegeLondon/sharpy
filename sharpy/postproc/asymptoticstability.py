@@ -6,6 +6,7 @@ import sharpy.utils.h5utils as h5
 import sharpy.solvers.modal as modal
 import sharpy.utils.cout_utils as cout
 import pandas as pd
+import os
 
 @solver
 class AsymptoticStability(BaseSolver):
@@ -47,6 +48,9 @@ class AsymptoticStability(BaseSolver):
 
         self.settings_types['postprocessors_settings'] = 'dict'
         self.settings_default['postprocessors_settings'] = dict()
+
+        self.settings_types['folder'] = 'str'
+        self.settings_default['folder'] = './output'
 
         self.settings = None
         self.data = None
@@ -118,14 +122,13 @@ class AsymptoticStability(BaseSolver):
 
         if self.settings['export_eigenvalues'].value:
             self.export_eigenvalues(self.settings['num_evals'].value)
+
         if self.settings['print_info'].value:
-            mode_shape_list = []
             self.print_eigenvalues()
             self.display_root_locus()
 
-
-
         if self.with_postprocessors:
+            mode_shape_list = []
             for mode in range(10):
                 gamma, gamma_dot, gamma_star, struct = self.reconstruct_mode(mode)
                 mode_shape = {'gamma': gamma,
@@ -154,10 +157,13 @@ class AsymptoticStability(BaseSolver):
         return self.data
 
     def export_eigenvalues(self, num_evals):
+        stability_folder_path = self.settings['folder'] + '/' + self.data.settings['SHARPy']['case'] + '/stability'
+        if not os.path.exists(stability_folder_path):
+            os.makedirs(stability_folder_path)
         evec_pd = pd.DataFrame(data=self.eigenvectors[:, :num_evals])
-        eval_pd = pd.DataFrame(data=self.eigenvalues)
-        evec_pd.to_csv(self.data.settings['SHARPy']['route'] + '/output/eigenvectors.csv')
-        eval_pd.to_csv(self.data.settings['SHARPy']['route'] + '/output/eigenvalues.csv')
+        eval_pd = pd.DataFrame(data=[self.eigenvalues.real, self.eigenvalues.imag]).T
+        evec_pd.to_csv(stability_folder_path + '/eigenvectors.csv')
+        eval_pd.to_csv(stability_folder_path + '/eigenvalues.csv')
 
 
     def print_eigenvalues(self, keep_sys_id=''):
@@ -199,8 +205,8 @@ class AsymptoticStability(BaseSolver):
         ax.set_ylabel('Imag, $\mathbb{I}(\lambda_i)$ [rad/s]')
         # ax.set_ylim([0, self.frequency_cutoff])
         ax.grid(True)
-        ax.set_ylim(-10,10)
-        ax.set_xlim(-10,1)
+        # ax.set_ylim(-90,90)
+        # ax.set_xlim(-10,1)
         fig.show()
 
         return fig, ax
@@ -248,19 +254,19 @@ class AsymptoticStability(BaseSolver):
     def reconstruct_mode(self, eig):
         sys_id = self.settings.get('sys_id')
         uvlm = self.data.linear.lsys[sys_id].lsys['LinearUVLM']
+        # beam = self.data.linear.lsys[sys_id].lsys['LinearBeam']
 
         # for eig in range(10):
-        x_n = self.eigenvectors[:uvlm.ss.states, eig]
-        forces, gamma, gamma_dot, gamma_star = uvlm.unpack_ss_vector(self.data, x_n, self.data.linear.tsaero0)
-        struct_vec = self.eigenvectors[uvlm.ss.states:, eig]
-            # df = pd.DataFrame(data=[gamma, gamma_star, gamma_m1]).T
-            # df.to_csv(self.data.settings['SHARPy']['route'] + '/output/aero_evecs_%04d.csv' % eig)
-        return gamma, gamma_dot, gamma_star, struct_vec
+        x_aero = self.eigenvectors[:uvlm.ss.states, eig]
+        forces, gamma, gamma_dot, gamma_star = uvlm.unpack_ss_vector(self.data, x_aero, self.data.linear.tsaero0)
+
+        x_struct = self.eigenvectors[uvlm.ss.states:, eig]
+        return gamma, gamma_dot, gamma_star, x_struct
 
     @staticmethod
-    def sort_eigenvalues(eigenvalues, eigenvectors, frequency_cutoff=None):
+    def sort_eigenvalues(eigenvalues, eigenvectors, frequency_cutoff=0):
         """
-        Sort continuous-time eigenvalues.
+        Sort continuous-time eigenvalues by order of magnitude.
 
         The conjugate of complex eigenvalues is removed, then if specified, high frequency modes are truncated.
         Finally, the eigenvalues are sorted by largest to smallest real part.

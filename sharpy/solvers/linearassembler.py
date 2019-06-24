@@ -12,13 +12,44 @@ import sharpy.linear.src.libss as libss
 
 @solver
 class LinearAssembler(BaseSolver):
+    """
+    Warnings:
+        Under development - please advise of new features and bugs!
+
+    Creates a workspace containing the different linear elements of the state-space.
+
+    The user specifies which elements to build sequentially via the ``flow`` setting. If building
+    more than one system, they can be joined in series.
+
+    The most common uses will be:
+
+        * Aerodynamic: ``LinearUVLM`` solver
+
+        * Structural: ``LinearBeam`` solver
+
+        * Aeroelastic: ``LinearAeroelastic`` solver
+
+    The solver enables to load a user specific assembly of a state-space by means of the ``LinearCustom`` block.
+
+    Attributes:
+        settings (dict): Settings dictionary
+
+            =======================  =============  =====================================================  =========
+            Name                     Type           Description                                            Default
+            =======================  =============  =====================================================  =========
+            ``flow``                 ``list(str)``  List of state-space elements to assemble sequentially  ``[]``
+            ``linearisation_tstep``  ``int``        Time step to perform linearisation                     ``-1``
+            ``join_series``          ``bool``       Join assembled state-space elements in series          ``False``
+            =======================  =============  =====================================================  =========
+
+    """
     solver_id = 'LinearAssembler'
 
     def __init__(self):
         self.settings_types = dict()
         self.settings_default = dict()
 
-        self.settings_types['flow'] = 'list'
+        self.settings_types['flow'] = 'list(str)'
         self.settings_default['flow'] = []
 
         self.settings_types['linearisation_tstep'] = 'int'
@@ -64,9 +95,8 @@ class LinearAssembler(BaseSolver):
         tsaero0 = data.aero.timestep_info[ii_step]
 
         # Create data.linear
-        self.data.linear = Linear(tsaero0, tsstruct0)  # TODO HOW TO DO THIS PROPERLY?
+        self.data.linear = Linear(tsaero0, tsstruct0)
 
-        # 22/5/19
         # Load available systems
         import sharpy.linear.assembler
 

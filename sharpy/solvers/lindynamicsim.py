@@ -127,7 +127,8 @@ class LinearDynamicSimulation(BaseSolver):
                     # Aero
                     forces, gamma, gamma_dot, gamma_star = self.data.linear.lsys[sys_id].lsys['LinearUVLM'].unpack_ss_vector(self.data,
                                                                                                                  x_n=x_aero,
-                                                                                                                 aero_tstep=self.data.linear.tsaero0)
+                                                                                                                 aero_tstep=self.data.linear.tsaero0,
+                                                                                                                             track_body=True)
                     current_aero_tstep = self.data.aero.timestep_info[-1].copy()
                     current_aero_tstep.forces = [forces[i_surf] + self.data.linear.tsaero0.forces[i_surf] for i_surf in range(len(gamma))]
                     current_aero_tstep.gamma = [gamma[i_surf] + self.data.linear.tsaero0.gamma[i_surf] for i_surf in range(len(gamma))]
