@@ -7,12 +7,11 @@ __Status__
 | [![Build Status](https://travis-ci.org/ImperialCollegeLondon/sharpy.svg?branch=master)](https://travis-ci.org/ImperialCollegeLondon/sharpy) | [![Build Status](https://travis-ci.org/ImperialCollegeLondon/sharpy.svg?branch=develop)](https://travis-ci.org/ImperialCollegeLondon/sharpy)|
 | [![DocStatus](https://readthedocs.org/projects/pip/badge/?badge=master)](https://ic-sharpy.readthedocs.io/en/master/) | [![DocStatus](https://readthedocs.org/projects/pip/badge/?badge=develop)](https://ic-sharpy.readthedocs.io/en/develop/) |
 
+[![License](https://img.shields.io/badge/License-BSD%203--Clause-blue.svg)](https://opensource.org/licenses/BSD-3-Clause)
 
 SHARPy is an aeroelastic analysis package currently under development at the Department of Aeronautics, 
 Imperial College London. It can be used for the structural, aerodynamic and aeroelastic analysis of flexible aircraft, 
 flying wings and wind turbines.
-
-SHARPy is distributed under a [BSD 3-Clause License](LICENSE.txt).
 
 ### Contact 
 
@@ -41,8 +40,10 @@ SHARPy offers the following solutions to the user:
 * Finding trim conditions
 * Nonlinear, dynamic time domain simulations under specific conditions such as:
     + Prescribed trajectories
+    + Dynamic follower forces
+    + Control inputs
     + Gusts
-    + Turbulence
+    + Full 3D turbulent fields
     
 ## Documentation
 
@@ -50,7 +51,7 @@ The documentation for SHARPy can be found [here](http://ic-sharpy.readthedocs.io
 
 ## Installing SHARPy
 
-For the latest documentation, see the [docs](http://ic-sharpy.rtfd.io)
+For the latest documentation, see the [docs](http://ic-sharpy.readthedocs.io)
 
 ### Set up the folder structure
 
@@ -175,6 +176,12 @@ indicated in the file.
     After a (hopefully) successful compilation of the xbeam library, the
     `run_make` script automatically copies the library to the required folder in
     `sharpy` (this is why you need to clone `sharpy` before compiling `xbeam`).
+
+    If you run into trouble when running SHARPy in MacOS and you have a newer
+    version of GCC (9 for example), the LAPACK version in Anaconda might be
+    outdated. Until they fix that, you can compile LAPACK manually and modify
+    `run_make.sh` in `xbeam` to point the `LAPACK_LIB_DIR` towards the
+    folder containing `liblapack.a`.
     
     
 __Common issues when compiling xbeam__
@@ -280,10 +287,6 @@ The contents of the folder will typically be a `beam` and `aero` folders, which 
 loaded in Paraview.
 
 #### Run a test case
-
-__*TODO* review Geradin case and update sharpy calls__
-
-__TUTORIAL OUT OF DATE__
 
 This command generates the required files for running a static, clamped beam.
 
