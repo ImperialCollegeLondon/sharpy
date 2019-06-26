@@ -4,8 +4,13 @@
 @brief: Fitting tools
 '''
 
+import warnings
 import numpy as np
+from scipy.signal import tf2ss
+import scipy.linalg as scalg
 import scipy.optimize as scopt
+import multiprocessing as mpr
+import itertools
 
 
 def fpoly(kv,B0,B1,B2,dyv,ddyv):
@@ -138,20 +143,35 @@ def get_rfa_res_norm(xv,kv,Yv,Nnum,Nden,ds=None,method='mix'):
 
 
 
-def rfa_fit_dev(kv,Yv,Nnum,Nden,ds=None,Ntrial=6,Cfbound=1e2,method='mix',
-	                                                 OutFull=False,Print=False):
+def rfa_fit_dev(kv,Yv,Nnum,Nden,TolAbs,ds=None,Stability=True,
+				NtrialMax=10,Cfbound=1e2,OutFull=False,Print=False):
 	'''
 	Find best fitting RFA approximation from frequency response Yv over the 
 	frequency range kv for both continuous (ds=None) and discrete (ds>0) LTI 
 	systems.
+
+	The RFA approximation is found through a 2-stage strategy:
+		a. an evolutionary algoryhtm is run to determine the optimal fitting
+		coefficients
+		b. the search is refined through a least squares algorithm.
+	and is stopped as soon as:
+		1. the maximum absolute error in frequency response of the RFA falls
+		below ``TolAbs``
+		2. the maximum number of iterations is reached.
+
 	
-	Other input:
+	Input:
+	- kv: frequency range for approximation
+	- Yv: frequency response vector over kv
+	- TolAbs: maximum admissible absolute difference in frequency response 
+	between RFA and original system.
 	- Nnum,Ndem: number of coefficients for Pade approximation.
 	- ds: sampling time for DLTI systems
-	- Ntrial: number of repetition of global and least square optimisations
+	- NtrialMax: maximum number of repetition of global and least square optimisations
 	- Cfbouds: maximum absolute values of coeffieicnts (only for evolutionary
 	algorithm)
-	- method: metric to compute error of RFA approximation
+	- OutFull: if False, only outputs optimal coefficients of RFA. Otherwise,
+	 outputs cost and RFA coefficients of each trial.
 
 	Output:
 	- cnopt: optimal coefficients (numerator)
@@ -163,52 +183,125 @@ def rfa_fit_dev(kv,Yv,Nnum,Nden,ds=None,Ntrial=6,Cfbound=1e2,method='mix',
 	results from fitfrd.
 	'''
 
-	Nx=Nnum+Nden
-	cost_best=1e32
+
+	def pen_max_eig(cdvec):
+		'''
+		Computes maximum eigenvalues from denominator coefficients of RFA and 
+		evaluates a log barrier that ensures 
+		'''
+		eigs=np.roots(cdvec)
+		eigmax=np.max(np.abs(eigs))
+
+		eiglim=0.999
+		pen=0.
+		Fact=1e3*TolAbs/np.log(2)
+		if eigmax>eiglim:
+			pen=Fact*np.log( (eigmax+1.-2.*eiglim)/(1.-eiglim) )
+		else:
+			pen=0.
+		return pen
+
+	if Stability:
+		def fcost_dev(xv,kv,Yv,Nnum,Nden,ds,method):
+			'''
+			xv is a vector such that the coeff:
+			cnum=xv[:Nnum]
+			cden=xv[Nnum:]
+			'''
+			xvpass=np.concatenate((xv,np.array([1,])))
+			error_fit=get_rfa_res_norm(xvpass,kv,Yv,Nnum,Nden,ds,method)
+			pen_stab=pen_max_eig( xvpass[Nnum:] )
+			return error_fit+pen_stab
+
+		def fcost_lsq(xv,kv,Yv,Nnum,Nden,ds):
+
+			xvpass=np.concatenate((xv,np.array([1,])))
+			res_fit=get_rfa_res(xvpass,kv,Yv,Nnum,Nden,ds)	
+			pen_stab=pen_max_eig( xvpass[Nnum:] )
+			return res_fit+pen_stab
+
+	else:
+		def fcost_dev(xv,kv,Yv,Nnum,Nden,ds,method):
+			'''
+			xv is a vector such that the coeff:
+			cnum=xv[:Nnum]
+			cden=xv[Nnum:]
+			'''
+			xvpass=np.concatenate((xv,np.array([1,])))
+			return get_rfa_res_norm(xvpass,kv,Yv,Nnum,Nden,ds,method)
+
+		def fcost_lsq(xv,kv,Yv,Nnum,Nden,ds):
+			xvpass=np.concatenate((xv,np.array([1,])))
+			return get_rfa_res(xvpass,kv,Yv,Nnum,Nden,ds)	
+
+	Nx=Nnum+Nden-1
+
+	# List of optimal solutions found by the evolutionary and least squares 
+	# algorithms
 	XvOptDev,XvOptLsq=[],[]
 	Cdev,Clsq=[],[]
 
-	Tol=1e-14
-	for tt in range(Ntrial):
+	tt=0
+	cost_best=1e32
 
-		# Evolutionary algorithm
-		res=scopt.differential_evolution(#popsize=100,
-			strategy='best1bin',func=get_rfa_res_norm,
-				args=(kv,Yv,Nnum,Nden,ds,method),bounds=Nx*((-Cfbound,Cfbound),))
+	while cost_best>TolAbs and tt<NtrialMax:
+		tt+=1
+
+		###  Evolutionary algorithm
+		res=scopt.differential_evolution(   #popsize=100,
+											strategy='best1bin', 
+											func=fcost_dev,
+											args=(kv,Yv,Nnum,Nden,ds,'Hinf'), 
+											bounds=Nx*((-Cfbound,Cfbound),))
 		xvdev=res.x
-		cost_dev=get_rfa_res_norm(xvdev,kv,Yv,Nnum,Nden,ds,'mix')
-		XvOptDev.append(xvdev)
-		Cdev.append(cost_dev)
+		cost_dev=fcost_dev(xvdev,kv,Yv,Nnum,Nden,ds,'Hinf')
+
+		# is this the best solution?
 		if cost_dev<cost_best:
 			cost_best=cost_dev				
 			xvopt=xvdev
 
-		# Least squares fitting - unbounded
+		# store this solution
+		if OutFull:
+			XvOptDev.append(xvdev)
+			Cdev.append(cost_dev)
+
+
+		### Least squares fitting - unbounded
 		#  method only local, but do not move to the end of global search: best 
 		# results can be found even when starting from a "worse" solution
-		xvlsq=scopt.leastsq(get_rfa_res,x0=xvdev, args=(kv,Yv,Nnum,Nden,ds))[0]
-		cost_lsq=get_rfa_res_norm(xvlsq,kv,Yv,Nnum,Nden,ds,method)
-		XvOptLsq.append(xvlsq)
-		Clsq.append(cost_lsq)
+		xvlsq=scopt.leastsq(fcost_lsq,x0=xvdev, args=(kv,Yv,Nnum,Nden,ds))[0]
+		cost_lsq=fcost_dev(xvlsq,kv,Yv,Nnum,Nden,ds,'Hinf')
+
+		# is this the best solution?
 		if cost_lsq<cost_best:
 			cost_best=cost_lsq				
 			xvopt=xvlsq
 
+		# store this solution 
+		if OutFull:
+			XvOptLsq.append(xvlsq)
+			Clsq.append(cost_lsq)
+
+		### Print and move on
 		if Print:
 			print('Trial %.2d: cost dev: %.3e, cost lsq: %.3e'\
-				                                      %(tt+1,cost_dev,cost_lsq))
-		if cost_best<Tol:
-			print('\tSearch terminated!')
-			Ntrial=tt+1
-			break
+				                                      %(tt,cost_dev,cost_lsq))
 
-	# rescale coefficients
+	if cost_best>TolAbs:
+		warnings.warn(
+			'RFA error (%.2e) greater than specified tolerance (%.2e)!'\
+														    %(cost_best,TolAbs))
+
+	### add 1 to denominator
 	cnopt=xvopt[:Nnum]
-	cdopt=xvopt[Nnum:]
-	if np.abs(cdopt[-1])>1e-2: cdscale=cdopt[-1]
-	else: cdscale=1.0
-	cnopt=cnopt/cdscale
-	cdopt=cdopt/cdscale
+	cdopt=np.hstack( [xvopt[Nnum:], 1.])
+	# if np.abs(cdopt[-1])>1e-2: 
+	# 	cdscale=cdopt[-1]
+	# else: 
+	# 	cdscale=1.0
+	# cnopt=cnopt/cdscale
+	# cdopt=cdopt/cdscale
 
 	# determine outputs
 	Outputs=(cnopt,cdopt)
@@ -242,7 +335,6 @@ def poly_fit(kv,Yv,dyv,ddyv,method='leastsq',Bup=None):
 	Important:
 	- this function attributes equal weight to each data-point!
 	'''
-
 
 
 	if method=='leastsq':
@@ -286,48 +378,111 @@ def poly_fit(kv,Yv,dyv,ddyv,method='leastsq',Bup=None):
 
 
 
+def rfa_mimo(Yfull,kv,ds,tolAbs,Nnum,Nden,Dmatrix=None,NtrialMax=6,Ncpu=4,method='independent'):
+	'''
+	Given the frequency response of a MIMO DLTI system, this function returns 
+	the A,B,C,D matrices associated to the rational function approximation of
+	the original system.
 
+	Input:
+	- Yfull: frequency response (as per libss.freqresp) of full size system over 
+	the frequencies kv. 
+	- kv: array of frequencies over which the RFA approximation is evaluated.
+	- tolAbs: absolute tolerance for the rfa fitting
+	- Nnum: number of numerator coefficients for RFA
+	- Nden: number of denominator coefficients for RFA
+	- NtrialMax: maximum number of attempts
+	- method=['intependent']. Method used to produce the system:
+		- intependent: each input-output combination is treated separately. The
+		resulting system is a collection of independent SISO DLTIs
+
+	'''
+
+	Nout,Nin,Nk=Yfull.shape
+	assert Nk==len(kv), 'Frequency response Yfull not compatible with frequency range kv'
+
+	iivec=range(Nin)
+	oovec=range(Nout)
+	plist=list(itertools.product(oovec,iivec))
+
+	args_const=(Nnum, Nden, tolAbs, ds, True, NtrialMax, 1e2, False, False)
+
+	with mpr.Pool(Ncpu) as pool:
+
+		if Dmatrix is None:
+			P=[ pool.apply_async( rfa_fit_dev, 
+				args=(kv,Yfull[oo,ii,:],)+args_const) for oo,ii in plist ]
+		else:
+			P=[ pool.apply_async( rfa_fit_dev, 
+				args=(kv,Yfull[oo,ii,:]-Dmatrix[oo,ii],)+args_const) for oo,ii in plist ]
+		R = [pp.get() for pp in P]		
+
+	Asub=[]
+	Bsub=[]
+	Csub=[]
+	Dsub=[]
+	for oo in range(Nout):
+		Ainner=[]
+		Binner=[]
+		Cinner=[]
+		Dinner=[]
+		for ii in range(Nin):
+
+			# get coeffs
+			pp = Nin*oo + ii 
+			cnopt,cdopt=R[pp]
+			# assert plist[pp]==(oo,ii), 'Something wrong in loop'
+
+			A,B,C,D=tf2ss(cnopt,cdopt)
+			Ainner.append(A)
+			Binner.append(B)
+			Cinner.append(C)
+			Dinner.append(D)
+
+		# build s-s for each output
+		Asub.append( scalg.block_diag( *Ainner) )
+		Bsub.append( scalg.block_diag( *Binner) )
+		Csub.append( np.block( Cinner ))
+		Dsub.append( np.block( Dinner ))
+
+	Arfa=scalg.block_diag(*Asub)
+	Brfa=np.vstack(Bsub)
+	Crfa=scalg.block_diag(*Csub)
+
+	if Dmatrix is not None:
+		Drfa=np.vstack(Dsub) + Dmatrix
+	else:
+		Drfa=np.vstack(Dsub)		
+
+	return Arfa,Brfa,Crfa,Drfa
 
 
 
 if __name__=='__main__':
 
 	import libss
-	import scipy.signal as scsig
 	import matplotlib.pyplot as plt
 
 
-	# build state-space
-	cfnum=np.array([4, 1.25, 1.5])
-	cfden=np.array([2, .5, 1])
-	A,B,C,D=scsig.tf2ss(cfnum,cfden)
-
-
-	# -------------------------------------------------------------- Test cases
-	# Comment/Uncomment as appropriate
-
-	### Test01: 2nd order DLTI system
+	### common params
 	ds=2./40.
 	fs=1./ds 
 	fn=fs/2.
 	kn=2.*np.pi*fn
 	kv=np.linspace(0,kn,301)
+
+	# build a state-space
+	cfnum=np.array([4, 1.25, 1.5])
+	cfden=np.array([2, .5, 1])
+	A,B,C,D=tf2ss(cfnum,cfden)
 	SS=libss.ss(A,B,C,D,dt=ds)
-	Cv=libss.freqresp(SS,kv)
-	Cv=Cv[0,0,:]
-
-	# ### Test02: 2nd order continuous-time LTI system
-	# ds=None
-	# kv=np.linspace(0,40,301)
-	# kvout,Cv=scsig.freqresp((A,B,C,D),kv)
-
-	# -------------------------------------------------------------------------
-
+	Cvref=libss.freqresp(SS,kv)
+	Cvref=Cvref[0,0,:]
 
 	# Find fitting
 	Nnum,Nden=3,3
-	cnopt,cdopt=rfa_fit_dev(kv,Cv,Nnum,Nden,ds=ds,Ntrial=6,Cfbound=1e2,
-										 method='mix', OutFull=False,Print=True)
+	cnopt,cdopt=rfa_fit_dev(kv,Cvref,Nnum,Nden,ds,True,3,Cfbound=1e3,
+										  OutFull=False,Print=True)
 
 	print('Error coefficients (DLTI):')
 	print('Numerator:   '+3*'%.2e  ' %tuple(np.abs(cnopt-cfnum)))
@@ -338,12 +493,15 @@ if __name__=='__main__':
 
 	fig=plt.figure('Transfer function',(10,4))
 	ax1=fig.add_subplot(111)
-	ax1.plot(kv,Cv.real,color='r',lw=2,ls='-',label=r'ref - real')
-	ax1.plot(kv,Cv.imag,color='r',lw=2,ls='--',label=r'ref - imag')
+	ax1.plot(kv,Cvref.real,color='r',lw=2,ls='-',label=r'ref - real')
+	ax1.plot(kv,Cvref.imag,color='r',lw=2,ls='--',label=r'ref - imag')
 	ax1.plot(kv,Cfit.real,color='k',lw=1,ls='-',label=r'RFA - real')
 	ax1.plot(kv,Cfit.imag,color='k',lw=1,ls='--',label=r'RFA - imag')
 	ax1.legend(ncol=1,frameon=True,columnspacing=.5,labelspacing=.4)
 	ax1.grid(color='0.85', linestyle='-')
 	plt.show()
+
+
+
 
 

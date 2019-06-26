@@ -60,6 +60,8 @@ relaxation_factor = 0.5
 tolerance = 1e-7
 fsi_tolerance = 1e-6
 
+num_cores = 6
+
 # MODEL GEOMETRY
 # beam
 span_main = 16.0
@@ -200,7 +202,7 @@ base_mass_tail = np.diag([m_bar_tail,
 x = np.zeros((n_node, ))
 y = np.zeros((n_node, ))
 z = np.zeros((n_node, ))
-structural_twist = np.zeros_like(x)
+structural_twist = np.zeros((n_elem, 3))
 beam_number = np.zeros((n_elem, ), dtype=int)
 frame_of_reference_delta = np.zeros((n_elem, n_node_elem, 3))
 conn = np.zeros((n_elem, n_node_elem), dtype=int)
@@ -646,7 +648,7 @@ def generate_solver_file():
 
     settings['StaticUvlm'] = {'print_info': 'on',
                               'horseshoe': 'off',
-                              'num_cores': 4,
+                              'num_cores': num_cores,
                               'n_rollup': 0,
                               'rollup_dt': dt,
                               'rollup_aic_refresh': 1,
@@ -693,7 +695,7 @@ def generate_solver_file():
 
     settings['StepUvlm'] = {'print_info': 'off',
                             'horseshoe': 'off',
-                            'num_cores': 4,
+                            'num_cores': num_cores,
                             'n_rollup': 0,
                             'convection_scheme': 2,
                             'rollup_dt': dt,

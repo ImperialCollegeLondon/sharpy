@@ -78,6 +78,9 @@ class TurbVelocityField(generator_interface.BaseGenerator):
         self.settings_types['frozen'] = 'bool'
         self.settings_default['frozen'] = True
 
+        self.settings_types['store_field'] = 'bool'
+        self.settings_default['store_field'] = False
+
         self.settings = dict()
 
         self.file = None
@@ -136,7 +139,6 @@ class TurbVelocityField(generator_interface.BaseGenerator):
         return self.coeff
 
     def init_interpolator(self):
-        print('init_interpo')
         if self.settings['frozen']:
             self.interpolator = self._interpolator0
             return
@@ -216,6 +218,10 @@ class TurbVelocityField(generator_interface.BaseGenerator):
                 self.grid_data['grid'][i][attrib.attrib['Name']] = dict()
                 self.grid_data['grid'][i][attrib.attrib['Name']]['file'] = (
                     attrib.DataItem.text.replace(' ', ''))
+                if attrib.DataItem.attrib['Precision'].strip() == '4':
+                    self.grid_data['grid'][i][attrib.attrib['Name']]['Precision'] = np.float32
+                elif attrib.DataItem.attrib['Precision'].strip() == '8':
+                    self.grid_data['grid'][i][attrib.attrib['Name']]['Precision'] = np.float64
 
         # now we have the file names and the dimensions
         self.grid_data['initial_x_grid'] = np.array(np.arange(0,
@@ -238,7 +244,6 @@ class TurbVelocityField(generator_interface.BaseGenerator):
         self.grid_data['initial_x_grid'] += self.settings['offset'][0] + self.grid_data['origin'][0]
         self.grid_data['initial_x_grid'] -= np.max(self.grid_data['initial_x_grid'])
         self.grid_data['initial_y_grid'] += self.settings['offset'][1] + self.grid_data['origin'][1]
-        # self.grid_data['initial_y_grid'] = self.grid_data['initial_y_grid'][::-1]
         self.grid_data['initial_z_grid'] += self.settings['offset'][2] + self.grid_data['origin'][2] + centre_z_offset
 
         self.bbox = self.get_field_bbox(self.grid_data['initial_x_grid'],
@@ -260,25 +265,19 @@ class TurbVelocityField(generator_interface.BaseGenerator):
 
         self.update_coeff(t)
 
-        print('coeff = ', self.coeff)
-        print('t0 = ', self._t0)
-        print('t1 = ', self._t1)
-        print('id0 = ', id(self._interpolator0))
-        print('id1 = ', id(self._interpolator1))
-
         self.init_interpolator()
         self.interpolate_zeta(zeta,
                               for_pos,
                               uext)
 
     def update_cache(self, t):
+        self.double_initialisation = False
         if self.settings['frozen']:
             if self._interpolator0 is None:
                 self._t0 = self.timestep_2_time(0)
                 self._it0 = 0
                 self._interpolator0 = self.read_grid(self._it0, i_cache=0)
             return
-
         # most common case: t already in the [t0, t1] interval
         if self._t0 <= t <= self._t1:
             return
@@ -288,7 +287,6 @@ class TurbVelocityField(generator_interface.BaseGenerator):
             raise ValueError('Please make sure everything is ok. Your time is going backwards.')
 
         # t > t1, need initialisation
-        self.double_initialisation = False
         if t > self._t1:
             new_it = self.time_2_timestep(t)
             # new timestep requires initialising the two of them (not likely at all)
@@ -337,8 +335,6 @@ class TurbVelocityField(generator_interface.BaseGenerator):
         bbox[1, :] = [np.min(y_grid), np.max(y_grid)]
         bbox[2, :] = [np.min(z_grid), np.max(z_grid)]
         if frame == 'G':
-            # bbox[:, 0] = self.gstar_2_g(bbox[:, 0])
-            # bbox[:, 1] = self.gstar_2_g(bbox[:, 1])
             bbox[:, 0] = self.gstar_2_g(bbox[:, 0])
             bbox[:, 1] = self.gstar_2_g(bbox[:, 1])
         return bbox
@@ -351,7 +347,7 @@ class TurbVelocityField(generator_interface.BaseGenerator):
         return interpolator
 
 
-    def interpolate_zeta(self, zeta, for_pos, u_ext, interpolator=None):
+    def interpolate_zeta(self, zeta, for_pos, u_ext, interpolator=None, offset=np.zeros((3))):
         if interpolator is None:
             interpolator = self.interpolator
 
@@ -359,10 +355,7 @@ class TurbVelocityField(generator_interface.BaseGenerator):
             _, n_m, n_n = zeta[isurf].shape
             for i_m in range(n_m):
                 for i_n in range(n_n):
-                    coord = self.g_2_gstar(self.apply_periodicity(zeta[isurf][:, i_m, i_n] + for_pos[0:3]))
-                    # if not i_m and not i_n and isurf == 5:
-                        # print('zeta[5][:, 0, 0] = ', zeta[5][:, 0, 0])
-                        # print('coord = ', coord)
+                    coord = self.g_2_gstar(self.apply_periodicity(zeta[isurf][:, i_m, i_n] + for_pos[0:3] + offset))
                     for i_dim in range(3):
                         try:
                             u_ext[isurf][i_dim, i_m, i_n] = self.interpolator[i_dim](coord)
@@ -371,49 +364,73 @@ class TurbVelocityField(generator_interface.BaseGenerator):
                             raise ValueError()
                     u_ext[isurf][:, i_m, i_n] = self.gstar_2_g(u_ext[isurf][:, i_m, i_n])
 
+
+    @staticmethod
+    def periodicity(x, bbox):
+        try:
+            new_x = bbox[0] + divmod(x - bbox[0], bbox[1] - bbox[0])[1]
+        except ZeroDivisionError:
+            new_x = x
+        return new_x
+
+
     def apply_periodicity(self, coord):
-        #TODO I think this does not work when bbox is not ordered (bbox[i, 0] is not < bbox[i, 1])
         new_coord = coord.copy()
         if self.x_periodicity:
             i = 0
-            # x in interval:
-            if self.bbox[i, 0] <= new_coord[i] <= self.bbox[i, 1]:
-                pass
-            # lower than min bbox
-            elif new_coord[i] < self.bbox[i, 0]:
-                temp = divmod(new_coord[i], self.bbox[i, 0])[1]
-                if np.isnan(temp):
-                    pass
-                else:
-                    new_coord[i] = temp
-
-            # greater than max bbox
-            elif new_coord[i] > self.bbox[i, 1]:
-                temp = divmod(new_coord[i], self.bbox[i, 1])[1]
-                if np.isnan(temp):
-                    pass
-                else:
-                    new_coord[i] = temp
-
+            new_coord[i] = self.periodicity(new_coord[i], self.bbox[i, :])
         if self.y_periodicity:
             i = 1
-            # y in interval:
-            if self.bbox[i, 0] <= new_coord[i] <= self.bbox[i, 1]:
-                pass
-            # lower than min bbox
-            elif new_coord[i] < self.bbox[i, 0]:
-                temp = divmod(new_coord[i], self.bbox[i, 0])[1]
-                if np.isnan(temp):
-                    pass
-                else:
-                    new_coord[i] = temp
-            # greater than max bbox
-            elif new_coord[i] > self.bbox[i, 1]:
-                temp = divmod(new_coord[i], self.bbox[i, 1])[1]
-                if np.isnan(temp):
-                    pass
-                else:
-                    new_coord[i] = temp
+            new_coord[i] = self.periodicity(new_coord[i], self.bbox[i, :])
+
+        # if self.x_periodicity:
+        #TODO I think this does not work when bbox is not ordered (bbox[i, 0] is not < bbox[i, 1])
+            # i = 0
+            # # x in interval:
+            # if self.bbox[i, 0] <= new_coord[i] <= self.bbox[i, 1]:
+                # pass
+            # # lower than min bbox
+            # elif new_coord[i] < self.bbox[i, 0]:
+                # temp = divmod(new_coord[i], self.bbox[i, 0])[1]
+                # if np.isnan(temp):
+                    # pass
+                # else:
+                    # new_coord[i] = temp
+
+            # # greater than max bbox
+            # elif new_coord[i] > self.bbox[i, 1]:
+                # temp = divmod(new_coord[i], self.bbox[i, 1])[1]
+                # if np.isnan(temp):
+                    # pass
+                # else:
+                    # new_coord[i] = temp
+
+        # if self.y_periodicity:
+            # i = 1
+            # # y in interval:
+            # if self.bbox[i, 0] <= new_coord[i] <= self.bbox[i, 1]:
+                # pass
+            # # lower than min bbox
+            # elif new_coord[i] < self.bbox[i, 0]:
+                # try:
+                    # temp = divmod(new_coord[i], self.bbox[i, 0])[1]
+                # except ZeroDivisionError:
+                    # temp = new_coord[i]
+                # if np.isnan(temp):
+                    # pass
+                # else:
+                    # new_coord[i] = temp
+                    # if new_coord[i] < 0.0:
+                        # new_coord[i] = self.bbox[i, 1] + new_coord[i]
+            # # greater than max bbox
+            # elif new_coord[i] > self.bbox[i, 1]:
+                # temp = divmod(new_coord[i], self.bbox[i, 1])[1]
+                # if np.isnan(temp):
+                    # pass
+                # else:
+                    # new_coord[i] = temp
+                    # if new_coord[i] < 0.0:
+                        # new_coord[i] = self.bbox[i, 1] + new_coord[i]
         return new_coord
 
 
@@ -433,13 +450,23 @@ class TurbVelocityField(generator_interface.BaseGenerator):
         for i_dim in range(3):
             file_name = self.grid_data['grid'][i_grid][velocities[i_dim]]['file']
             if i_cache == 0:
-                # load file, but dont copy it
-                self.vel_holder0[i_dim] = np.memmap(self.route + '/' + file_name,
-                                               dtype='float64',
-                                               shape=(self.grid_data['dimensions'][2],
-                                                      self.grid_data['dimensions'][1],
-                                                      self.grid_data['dimensions'][0]),
-                                               order='F')
+                if not self.settings['store_field']:
+                    # load file, but dont copy it
+                    self.vel_holder0[i_dim] = np.memmap(self.route + '/' + file_name,
+                                                   # dtype='float64',
+                                                   dtype=self.grid_data['grid'][i_grid][velocities[i_dim]]['Precision'],
+                                                   shape=(self.grid_data['dimensions'][2],
+                                                          self.grid_data['dimensions'][1],
+                                                          self.grid_data['dimensions'][0]),
+                                                   order='F')
+                else:
+                    # load and store file
+                    self.vel_holder0[i_dim] = (np.fromfile(open(self.route + '/' + file_name, 'rb'),
+                                                          dtype=self.grid_data['grid'][i_grid][velocities[i_dim]]['Precision']).\
+                                                          reshape((self.grid_data['dimensions'][2],
+                                                                   self.grid_data['dimensions'][1],
+                                                                   self.grid_data['dimensions'][0]),
+                                                                   order='F'))
 
                 interpolator.append(self.create_interpolator(self.vel_holder0[i_dim],
                                                         self.grid_data['initial_x_grid'],
@@ -447,13 +474,23 @@ class TurbVelocityField(generator_interface.BaseGenerator):
                                                         self.grid_data['initial_z_grid'],
                                                         i_dim=i_dim))
             elif i_cache == 1:
-                # load file, but dont copy it
-                self.vel_holder1[i_dim] = np.memmap(self.route + '/' + file_name,
-                                               dtype='float64',
-                                               shape=(self.grid_data['dimensions'][2],
-                                                      self.grid_data['dimensions'][1],
-                                                      self.grid_data['dimensions'][0]),
-                                               order='F')
+                if not self.settings['store_field']:
+                    # load file, but dont copy it
+                    self.vel_holder1[i_dim] = np.memmap(self.route + '/' + file_name,
+                                                   # dtype='float64',
+                                                   dtype=self.grid_data['grid'][i_grid][velocities[i_dim]]['Precision'],
+                                                   shape=(self.grid_data['dimensions'][2],
+                                                          self.grid_data['dimensions'][1],
+                                                          self.grid_data['dimensions'][0]),
+                                                   order='F')
+                else:
+                    # load and store file
+                    self.vel_holder1[i_dim] = (np.fromfile(open(self.route + '/' + file_name, 'rb'),
+                                                          dtype=self.grid_data['grid'][i_grid][velocities[i_dim]]['Precision']).\
+                                                          reshape((self.grid_data['dimensions'][2],
+                                                                   self.grid_data['dimensions'][1],
+                                                                   self.grid_data['dimensions'][0]),
+                                                                   order='F'))
 
                 interpolator.append(self.create_interpolator(self.vel_holder1[i_dim],
                                                         self.grid_data['initial_x_grid'],

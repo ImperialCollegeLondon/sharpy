@@ -12,6 +12,46 @@ import sharpy.structure.utils.xbeamlib as xbeamlib
 
 @solver
 class WriteVariablesTime(BaseSolver):
+    r"""
+    Write variables with time
+
+    ``WriteVariablesTime`` is a class inherited from ``BaseSolver``
+
+    It is a postprocessor that outputs the value of variables with time onto a text file.
+
+    Args:
+        in_dict (dict): Input data in the form of dictionary. See acceptable entries below:
+
+            ===================       ===============   =================================================                                                      ===================
+            Name                      Type              Description                                                                                            Default
+            ===================       ===============   =================================================                                                      ===================
+            ``delimiter``             ``str``           Delimiter to be used in the output file                                                                `` ``
+            ``FoR_variables``         ``list(str)``     Variables of ``StructTimeStepInfo`` associated to the frame of reference to be writen                  ``['']``
+            ``FoR_number``            ``np.array(int)`` Number of the A frame of reference to output (for multibody configurations)                            ``np.array([0], dtype=int)``
+            ``structure_variables``   ``list(str)``     Variables of ``StructTimeStepInfo`` associated to the frame of reference to be writen                  ``np.array([0], dtype=int)``
+            ``structure_nodes``       ``np.array(int)`` Number of the nodes to be writen                                                                       ``np.array([-1], dtype=int)``
+            ``aero_panels_variables`` ``list(str)``     Variables of ``AeroTimeStepInfo`` associated to panels to be writen                                    ``['']``
+            ``aero_panels_isurf``     ``np.array(int)`` Number of the panels' surface to be output                                                             ``np.array([0], dtype=int)``
+            ``aero_panels_im``        ``np.array(int)`` Chordwise index of the panels to be output                                                             ``np.array([0], dtype=int)``
+            ``aero_panels_in``        ``np.array(int)`` Spanwise index of the panels to be output                                                              ``np.array([0], dtype=int)``
+            ``aero_nodes_variables``  ``list(str)``     Variables of ``AeroTimeStepInfo`` associated to nodes to be writen                                     ``['']``
+            ``aero_nodes_isurf``      ``np.array(int)`` Number of the nodes' surface to be output                                                              ``np.array([0], dtype=int)``
+            ``aero_nodes_im``         ``np.array(int)`` Chordwise index of the nodes to be output                                                              ``np.array([0], dtype=int)``
+            ``aero_nodes_in``         ``np.array(int)`` Spanwise index of the nodes to be output                                                               ``np.array([0], dtype=int)``
+            ``cleanup_old_solution``  ``bool``          Remove the existing files                                                                              ``True``
+            ===================       ===============   =================================================                                                      ===================
+
+    Attributes:
+        settings_types (dict): Acceptable data types of the input data
+        settings_default (dict): Default values for input data should the user not provide them
+        See the list of arguments
+        dir (str): directory to output the information
+
+    See Also:
+        .. py:class:: sharpy.utils.solver_interface.BaseSolver
+        .. py:class:: sharpy.utils.datastructures
+
+    """
     solver_id = 'WriteVariablesTime'
 
     def __init__(self):
@@ -22,19 +62,19 @@ class WriteVariablesTime(BaseSolver):
         self.settings_default['delimiter'] = ' '
 
         self.settings_types['FoR_variables'] = 'list(str)'
-        self.settings_default['FoR_variables'] = ''
+        self.settings_default['FoR_variables'] = ['']
 
         self.settings_types['FoR_number'] = 'list(int)'
         self.settings_default['FoR_number'] = np.array([0], dtype=int)
 
         self.settings_types['structure_variables'] = 'list(str)'
-        self.settings_default['structure_variables'] = ''
+        self.settings_default['structure_variables'] = ['']
 
         self.settings_types['structure_nodes'] = 'list(int)'
         self.settings_default['structure_nodes'] = np.array([-1])
 
         self.settings_types['aero_panels_variables'] = 'list(str)'
-        self.settings_default['aero_panels_variables'] = ''
+        self.settings_default['aero_panels_variables'] = ['']
 
         self.settings_types['aero_panels_isurf'] = 'list(int)'
         self.settings_default['aero_panels_isurf'] = np.array([0])
@@ -44,7 +84,7 @@ class WriteVariablesTime(BaseSolver):
         self.settings_default['aero_panels_in'] = np.array([0])
 
         self.settings_types['aero_nodes_variables'] = 'list(str)'
-        self.settings_default['aero_nodes_variables'] = ''
+        self.settings_default['aero_nodes_variables'] = ['']
 
         self.settings_types['aero_nodes_isurf'] = 'list(int)'
         self.settings_default['aero_nodes_isurf'] = np.array([0])
@@ -52,6 +92,10 @@ class WriteVariablesTime(BaseSolver):
         self.settings_default['aero_nodes_im'] = np.array([0])
         self.settings_types['aero_nodes_in'] = 'list(int)'
         self.settings_default['aero_nodes_in'] = np.array([0])
+
+        self.settings_types['cleanup_old_solution'] = 'bool'
+        self.settings_default['cleanup_old_solution'] = 'false'
+
 
         self.settings = None
         self.data = None
@@ -75,21 +119,60 @@ class WriteVariablesTime(BaseSolver):
         if not ((len(self.settings['aero_nodes_isurf']) == len(self.settings['aero_nodes_im'])) and (len(self.settings['aero_nodes_isurf']) == len(self.settings['aero_nodes_in']))):
             print("ERROR: aero_nodes should be defined as [i_surf,i_m,i_n]")
 
-    def run(self, online=False):
+        if self.settings['cleanup_old_solution']:
+            for ivariable in range(len(self.settings['FoR_variables'])):
+                if self.settings['FoR_variables'][ivariable] == '':
+                    continue
+                for ifor in range(len(self.settings['FoR_number'])):
+                    filename = self.dir + "FoR_" + '%02d' % self.settings['FoR_number'][ifor] + "_" + self.settings['FoR_variables'][ivariable] + ".dat"
+                    try:
+                        os.remove(filename)
+                    except FileNotFoundError:
+                        pass
 
-    # settings['WriteVariablesTime'] = {'delimiter': ' ',
-    #                                   'FoR_variables': ['GFoR_pos', 'GFoR_vel', 'GFoR_acc'],
-    #                                   'FoR_number': [0,1],
-    #                                   'structure_variables': ['AFoR_steady_forces', 'AFoR_unsteady_forces','AFoR_position'],
-    #                                   'structure_nodes': [0,-1],
-    #                                   'aero_panels_variables': ['gamma', 'norm_gamma', 'norm_gamma_star'],
-    #                                   'aero_panels_isurf': [0,1,2],
-    #                                   'aero_panels_im': [1,1,1],
-    #                                   'aero_panels_in': [-2,-2,-2],
-    #                                   'aero_nodes_variables': ['GFoR_steady_force', 'GFoR_unsteady_force'],
-    #                                   'aero_nodes_isurf': [0,1,2],
-    #                                   'aero_nodes_im': [1,1,1],
-    #                                   'aero_nodes_in': [-2,-2,-2]}
+            # Structure variables at nodes
+            for ivariable in range(len(self.settings['structure_variables'])):
+                if self.settings['structure_variables'][ivariable] == '':
+                    continue
+                for inode in range(len(self.settings['structure_nodes'])):
+                    node = self.settings['structure_nodes'][inode]
+                    filename = self.dir + "struct_" + self.settings['structure_variables'][ivariable] + "_node" + str(node) + ".dat"
+                    try:
+                        os.remove(filename)
+                    except FileNotFoundError:
+                        pass
+
+            # Aerodynamic variables at panels
+            for ivariable in range(len(self.settings['aero_panels_variables'])):
+                if self.settings['aero_panels_variables'][ivariable] == '':
+                    continue
+                for ipanel in range(len(self.settings['aero_panels_isurf'])):
+                    i_surf = self.settings['aero_panels_isurf'][ipanel]
+                    i_m = self.settings['aero_panels_im'][ipanel]
+                    i_n = self.settings['aero_panels_in'][ipanel]
+
+                    filename = self.dir + "aero_" + self.settings['aero_panels_variables'][ivariable] + "_panel" + "_isurf" + str(i_surf) + "_im"+ str(i_m) + "_in"+ str(i_n) + ".dat"
+                    try:
+                        os.remove(filename)
+                    except FileNotFoundError:
+                        pass
+
+            # Aerodynamic variables at nodes
+            for ivariable in range(len(self.settings['aero_nodes_variables'])):
+                if self.settings['aero_nodes_variables'][ivariable] == '':
+                    continue
+                for inode in range(len(self.settings['aero_nodes_isurf'])):
+                    i_surf = self.settings['aero_nodes_isurf'][inode]
+                    i_m = self.settings['aero_nodes_im'][inode]
+                    i_n = self.settings['aero_nodes_in'][inode]
+
+                    filename = self.dir + "aero_" + self.settings['aero_nodes_variables'][ivariable] + "_node" + "_isurf" + str(i_surf) + "_im"+ str(i_m) + "_in"+ str(i_n) + ".dat"
+                    try:
+                        os.remove(filename)
+                    except FileNotFoundError:
+                        pass
+
+    def run(self, online=False):
 
         # FoR variables
         if 'FoR_number' in self.settings:
@@ -98,11 +181,13 @@ class WriteVariablesTime(BaseSolver):
             self.settings['FoR_number'] = np.array([0], dtype=int)
 
         for ivariable in range(len(self.settings['FoR_variables'])):
+            if self.settings['FoR_variables'][ivariable] == '':
+                continue
             for ifor in range(len(self.settings['FoR_number'])):
                 filename = self.dir + "FoR_" + '%02d' % self.settings['FoR_number'][ifor] + "_" + self.settings['FoR_variables'][ivariable] + ".dat"
                 fid = open(filename,"a")
 
-                var = getattr(self.data.structure.timestep_info[-1], self.settings['FoR_variables'][ivariable])
+                var = np.atleast_2d(getattr(self.data.structure.timestep_info[-1], self.settings['FoR_variables'][ivariable]))
                 rows, cols = var.shape
                 if ((cols == 1) and (rows == 1)):
                     self.write_value_to_file(fid, self.data.ts, var, self.settings['delimiter'])
@@ -116,13 +201,15 @@ class WriteVariablesTime(BaseSolver):
 
         # Structure variables at nodes
         for ivariable in range(len(self.settings['structure_variables'])):
+            if self.settings['structure_variables'][ivariable] == '':
+                continue
+            var = getattr(self.data.structure.timestep_info[-1], self.settings['structure_variables'][ivariable])
+            num_indices = len(var.shape)
             for inode in range(len(self.settings['structure_nodes'])):
                 node = self.settings['structure_nodes'][inode]
                 filename = self.dir + "struct_" + self.settings['structure_variables'][ivariable] + "_node" + str(node) + ".dat"
                 fid = open(filename,"a")
 
-                var = getattr(self.data.structure.timestep_info[-1], self.settings['structure_variables'][ivariable])
-                num_indices = len(var.shape)
                 if num_indices == 2:
                     self.write_nparray_to_file(fid, self.data.ts, var[node,:], self.settings['delimiter'])
                 elif num_indices == 3:
@@ -133,6 +220,8 @@ class WriteVariablesTime(BaseSolver):
 
         # Aerodynamic variables at panels
         for ivariable in range(len(self.settings['aero_panels_variables'])):
+            if self.settings['aero_panels_variables'][ivariable] == '':
+                continue
             for ipanel in range(len(self.settings['aero_panels_isurf'])):
                 i_surf = self.settings['aero_panels_isurf'][ipanel]
                 i_m = self.settings['aero_panels_im'][ipanel]
@@ -148,6 +237,8 @@ class WriteVariablesTime(BaseSolver):
 
         # Aerodynamic variables at nodes
         for ivariable in range(len(self.settings['aero_nodes_variables'])):
+            if self.settings['aero_nodes_variables'][ivariable] == '':
+                continue
             for inode in range(len(self.settings['aero_nodes_isurf'])):
                 i_surf = self.settings['aero_nodes_isurf'][inode]
                 i_m = self.settings['aero_nodes_im'][inode]
@@ -167,7 +258,12 @@ class WriteVariablesTime(BaseSolver):
 
         fid.write("%d%s" % (ts,delimiter))
         for idim in range(np.shape(nparray)[0]):
-            fid.write("%e%s" % (nparray[idim],delimiter))
+            try:
+                for jdim in range(np.shape(nparray)[1]):
+                    fid.write("%e%s" % (nparray[idim, jdim],delimiter))
+            except IndexError:
+                fid.write("%e%s" % (nparray[idim],delimiter))
+
 
         fid.write("\n")
 

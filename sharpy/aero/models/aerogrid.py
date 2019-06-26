@@ -86,6 +86,7 @@ class Aerogrid(object):
                                                    airfoil_coords[:, 1],
                                                    kind='quadratic',
                                                    copy=False,
+                                                   fill_value='extrapolate',
                                                    assume_sorted=True))
         try:
             self.n_control_surfaces = np.sum(np.unique(self.aero_dict['control_surface']) >= 0)
@@ -205,10 +206,10 @@ class Aerogrid(object):
                 else:
                     global_node_in_surface[i_surf].append(i_global_node)
 
-                master_elem, master_elem_node = beam.master[i_elem, i_local_node, :]
-                if master_elem < 0:
-                    master_elem = i_elem
-                    master_elem_node = i_local_node
+                # master_elem, master_elem_node = beam.master[i_elem, i_local_node, :]
+                # if master_elem < 0:
+                    # master_elem = i_elem
+                    # master_elem_node = i_local_node
 
                 # find the i_surf and i_n data from the mapping
                 i_n = -1
@@ -277,6 +278,9 @@ class Aerogrid(object):
                 node_info['elem'] = beam.elements[i_elem]
                 node_info['for_pos'] = structure_tstep.for_pos
                 node_info['cga'] = structure_tstep.cga()
+                if node_info['M_distribution'].lower() == 'user_defined':
+                    ielem_in_surf = i_elem - np.sum(self.surface_distribution < i_surf)
+                    node_info['user_defined_m_distribution'] = self.aero_dict['user_defined_m_distribution'][str(i_surf)][:, ielem_in_surf, i_local_node]
                 (aero_tstep.zeta[i_surf][:, :, i_n],
                  aero_tstep.zeta_dot[i_surf][:, :, i_n]) = (
                     generate_strip(node_info,
@@ -426,6 +430,10 @@ def generate_strip(node_info, airfoil_db, aligned_grid, orientation_in=np.array(
     elif node_info['M_distribution'] == '1-cos':
         domain = np.linspace(0, 1.0, node_info['M'] + 1)
         strip_coordinates_b_frame[1, :] = 0.5*(1.0 - np.cos(domain*np.pi))
+    elif node_info['M_distribution'].lower() == 'user_defined':
+        # strip_coordinates_b_frame[1, :-1] = np.linspace(0.0, 1.0 - node_info['last_panel_length'], node_info['M'])
+        # strip_coordinates_b_frame[1,-1] = 1.
+        strip_coordinates_b_frame[1,:] = node_info['user_defined_m_distribution']
     else:
         raise NotImplemented('M_distribution is ' + node_info['M_distribution'] +
                              ' and it is not yet supported')
@@ -436,7 +444,7 @@ def generate_strip(node_info, airfoil_db, aligned_grid, orientation_in=np.array(
     for i_M in range(node_info['M'] + 1):
         strip_coordinates_b_frame[1, i_M] -= node_info['eaxis']
 
-    chord_line_b_frame = strip_coordinates_b_frame[:, -1] - strip_coordinates_b_frame[:, 0]
+    # chord_line_b_frame = strip_coordinates_b_frame[:, -1] - strip_coordinates_b_frame[:, 0]
     cs_velocity = np.zeros_like(strip_coordinates_b_frame)
 
     # control surface deflection
@@ -481,6 +489,10 @@ def generate_strip(node_info, airfoil_db, aligned_grid, orientation_in=np.array(
     Cab = algebra.crv2rotation(node_info['beam_psi'])
 
     rot_angle = algebra.angle_between_vectors_sign(orientation_in, Cab[:, 1], Cab[:, 2])
+    if np.sign(np.dot(orientation_in, Cab[:, 1])) >= 0:
+        rot_angle = 0.0
+    else:
+        rot_angle = -np.pi
     Crot = algebra.rotation3d_z(-rot_angle)
 
     c_sweep = np.eye(3)
@@ -529,7 +541,7 @@ def generate_strip(node_info, airfoil_db, aligned_grid, orientation_in=np.array(
         for i_M in range(node_info['M'] + 1):
                 strip_coordinates_a_frame[:, i_M] += 0.25*delta_c
     else:
-        warnings.warn("No quarter chord disp of grid for non 1-cos grid distributions implemented", UserWarning)
+        warnings.warn("No quarter chord disp of grid for non-uniform grid distributions implemented", UserWarning)
 
     # rotation from a to g
     for i_M in range(node_info['M'] + 1):

@@ -20,6 +20,7 @@ Aerodynamic Solvers
 
 .. toctree::
     solvers/steplinearUVLM
+    solvers/stepUVLM
 
 
 Aeroelastic Solvers
@@ -32,8 +33,8 @@ Aeroelastic Solvers
 Modal Solvers
 +++++++++++++
 
-.. autoclass:: sharpy.solvers.modal.Modal
-    :members:
+.. toctree::
+        solvers/modal
 
 Flight Solvers
 ++++++++++++++

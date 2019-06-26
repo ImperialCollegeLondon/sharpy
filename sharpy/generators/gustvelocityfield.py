@@ -28,6 +28,11 @@ class GustVelocityField(generator_interface.BaseGenerator):
         - continuous_sin: Continuous sinusoidal gust model
             .. math:: U_z = \frac{u_{de}}{2}\sin\left(\frac{2\pi x}{S}\right)
 
+        - time varying: The inflow velocity changes with time but it is uniform in space. It is read from a 4 column file:
+            .. math:: time[s] \Delta U_x \Delta U_y \Delta U_z
+
+        - time varying global: Similar to the previous one but the velocity changes instanteneously in the whole flow field. It is not fed into the solid
+
     where, :math:`u_{de}` is the gust intensity, :math:`S` is the gust length and :math:`b` is the wing span.
     :math:`x` and :math:`y` refer to the chordwise and spanwise distance penetrated into the gust, respectively.
 
@@ -44,6 +49,8 @@ class GustVelocityField(generator_interface.BaseGenerator):
             ``gust_intensity``   ``float``        Intensity of the gust                              ``0.0``
             ``offset``           ``float``        Spatial offset of the gust with respect to origin  ``0.0``
             ``span``             ``float``        Wing span                                          ``0.0``
+            ``file``             ``str``          File with the information (only for time varying)  ``Empty string``
+            ``relative_motion``  ``bool``         If true, the gust is convected with u_inf          ``False``
             ===================  ===============  =================================================  ===================
 
     Attributes:
@@ -52,11 +59,13 @@ class GustVelocityField(generator_interface.BaseGenerator):
         u_inf (float): Free stream velocity
         u_inf_direction (list(float)): Free stream velocity relative components in ``x`, ``y`` and ``z``
         gust_shape (str): Gust profile shape
-        gust_length (float): Length of gust
-        gust_intenstity (float): Intensity of the gust
+        gust_length (float): Length of gust, usually noted as $2H$
+        gust_intensity (float): Intensity of the gust, in m/s
         offset (float): Spatial offset of the gust position with respect to origin
         span (float): Wing span
         implemented_gusts (list(str)): Currently supported gust profiles
+        file_info (np.array): gust information read from the text file
+        gust_shape (function): interpolates the velocity on a point according to the gust type
 
     See Also:
         .. py:class:: sharpy.utils.generator_interface.BaseGenerator
@@ -79,10 +88,10 @@ class GustVelocityField(generator_interface.BaseGenerator):
         self.settings_default['gust_shape'] = None
 
         self.settings_types['gust_length'] = 'float'
-        self.settings_default['gust_length'] = None
+        self.settings_default['gust_length'] = 0.0
 
         self.settings_types['gust_intensity'] = 'float'
-        self.settings_default['gust_intensity'] = None
+        self.settings_default['gust_intensity'] = 0.0
 
         self.settings_types['offset'] = 'float'
         self.settings_default['offset'] = 0.0
@@ -90,16 +99,28 @@ class GustVelocityField(generator_interface.BaseGenerator):
         self.settings_types['span'] = 'float'
         self.settings_default['span'] = 0.
 
+        self.settings_types['file'] = 'str'
+        self.settings_default['file'] = ''
+
+        self.settings_types['relative_motion'] = 'bool'
+        self.settings_default['relative_motion'] = False
+
         self.u_inf = 0.
         self.u_inf_direction = None
+
+        self.file_info = None
 
         self.implemented_gusts = []
         self.implemented_gusts.append('1-cos')
         self.implemented_gusts.append('DARPA')
         self.implemented_gusts.append('continuous_sin')
         self.implemented_gusts.append('lateral 1-cos')
+        self.implemented_gusts.append('time varying')
+        self.implemented_gusts.append('time varying global')
 
         self.settings = dict()
+
+        self.gust_shape = None
 
     def initialise(self, in_dict):
         self.in_dict = in_dict
@@ -113,23 +134,30 @@ class GustVelocityField(generator_interface.BaseGenerator):
         self.u_inf = self.in_dict['u_inf'].value
         self.u_inf_direction = self.in_dict['u_inf_direction']
 
-    def generate(self, params, uext):
-        zeta = params['zeta']
-        override = params['override']
-        ts = params['ts']
-        dt = params['dt']
-        t = params['t']
-        gust_shape = None
+        if self.settings['gust_shape'] == 'time varying':
+            self.file_info = np.loadtxt(self.settings['file'])
+        elif self.settings['gust_shape'] == 'time varying global':
+            self.file_info = np.loadtxt(self.settings['file'])
+
+        # Create the adequate gust interpolator
         if self.settings['gust_shape'] == '1-cos':
-            def gust_shape(x, y, z, gust_length, gust_intensity, span=0):
+            def gust_shape(x, y, z, time=0):
+                gust_length = self.settings['gust_length'].value
+                gust_intensity = self.settings['gust_intensity'].value
+
                 vel = np.zeros((3,))
                 if x > 0.0 or x < -gust_length:
                     return vel
 
                 vel[2] = (1.0 - np.cos(2.0*np.pi*x/gust_length))*gust_intensity*0.5
                 return vel
+
         elif self.settings['gust_shape'] == 'DARPA':
-            def gust_shape(x, y, z, gust_length, gust_intensity, span=0):
+            def gust_shape(x, y, z, time=0):
+                gust_length = self.settings['gust_length'].value
+                gust_intensity = self.settings['gust_intensity'].value
+                span = self.settings['span'].value
+
                 vel = np.zeros((3,))
                 if x > 0.0 or x < -gust_length:
                     return vel
@@ -139,15 +167,22 @@ class GustVelocityField(generator_interface.BaseGenerator):
                 return vel
 
         elif self.settings['gust_shape'] == 'continuous_sin':
-            def gust_shape(x, y, z, gust_length, gust_intensity, span=0):
+            def gust_shape(x, y, z, time=0):
+                gust_length = self.settings['gust_length'].value
+                gust_intensity = self.settings['gust_intensity'].value
+
                 vel = np.zeros((3,))
                 if x > 0.0:
                     return vel
 
                 vel[2] = 0.5 * gust_intensity * np.sin(2 * np.pi * x / gust_length)
                 return vel
+
         elif self.settings['gust_shape'] == 'lateral 1-cos':
-            def gust_shape(x, y, z, gust_length, gust_intensity, span=0):
+            def gust_shape(x, y, z, time=0):
+                gust_length = self.settings['gust_length'].value
+                gust_intensity = self.settings['gust_intensity'].value
+
                 vel = np.zeros((3,))
                 if x > 0.0 or x < -gust_length:
                     return vel
@@ -155,18 +190,52 @@ class GustVelocityField(generator_interface.BaseGenerator):
                 vel[1] = (1.0 - np.cos(2.0*np.pi*x/gust_length))*gust_intensity*0.5
                 return vel
 
+        elif self.settings['gust_shape'] == 'time varying':
+            def gust_shape(x, y, z, time=0):
+                vel = np.zeros((3,))
+                d = np.dot(np.array([x, y, z]), self.settings['u_inf_direction'])
+                if d > 0.0:
+                    return vel
+
+                vel[0] = np.interp(d, -self.file_info[::-1,0]*self.u_inf, self.file_info[::-1,1])
+                vel[1] = np.interp(d, -self.file_info[::-1,0]*self.u_inf, self.file_info[::-1,2])
+                vel[2] = np.interp(d, -self.file_info[::-1,0]*self.u_inf, self.file_info[::-1,3])
+                return vel
+
+        elif self.settings['gust_shape'] == 'time varying global':
+            def gust_shape(x, y, z, time=0):
+                vel = np.zeros((3,))
+
+                vel[0] = np.interp(time, self.file_info[:,0], self.file_info[:,1])
+                vel[1] = np.interp(time, self.file_info[:,0], self.file_info[:,2])
+                vel[2] = np.interp(time, self.file_info[:,0], self.file_info[:,3])
+                return vel
+
+        self.gust_shape = gust_shape
+
+    def generate(self, params, uext):
+        zeta = params['zeta']
+        override = params['override']
+        ts = params['ts']
+        dt = params['dt']
+        t = params['t']
+        for_pos = params['for_pos'][0:3]
+
         for i_surf in range(len(zeta)):
             if override:
                 uext[i_surf].fill(0.0)
 
             for i in range(zeta[i_surf].shape[1]):
                 for j in range(zeta[i_surf].shape[2]):
-                    uext[i_surf][:, i, j] += self.u_inf*self.u_inf_direction
-                    uext[i_surf][:, i, j] += gust_shape(zeta[i_surf][0, i, j] - self.u_inf*t + self.settings['offset'],
-                                                        zeta[i_surf][1, i, j],
-                                                        zeta[i_surf][2, i, j],
-                                                        self.settings['gust_length'].value,
-                                                        self.settings['gust_intensity'].value,
-                                                        self.settings['span'].value
-                                                        )
+                    total_offset_val = self.settings['offset'].value
+                    if self.settings['relative_motion']:
+                        uext[i_surf][:, i, j] += self.u_inf*self.u_inf_direction
+                        total_offset_val -= self.u_inf*t
 
+                    total_offset = total_offset_val*self.settings['u_inf_direction'] + for_pos
+                    uext[i_surf][:, i, j] += self.gust_shape(
+                        zeta[i_surf][0, i, j] + total_offset[0],
+                        zeta[i_surf][1, i, j] + total_offset[1],
+                        zeta[i_surf][2, i, j] + total_offset[2],
+                        t
+                        )

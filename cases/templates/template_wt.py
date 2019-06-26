@@ -230,7 +230,7 @@ def generate_from_excel_type01(chord_panels,
     # TODO: change this with a list of thickness and pure airfoils
     pure_airfoils_camber=np.zeros((n_elem_aero,n_points_camber,2),)
     xls = pd.ExcelFile(excel_file_name)
-    excel_db = pd.read_excel(xls, sheetname=excel_sheet_airfoil_coord)
+    excel_db = pd.read_excel(xls, sheet_name=excel_sheet_airfoil_coord)
     for iairfoil in range(len(pure_airfoils_names)):
         # Look for the NaN
         icoord=2
@@ -711,7 +711,7 @@ def rotor_from_OpenFAST_db(chord_panels,
     # TODO: change this with a list of thickness and pure airfoils
     pure_airfoils_camber=np.zeros((n_elem_aero,n_points_camber,2),)
     xls = pd.ExcelFile(excel_file_name)
-    excel_db = pd.read_excel(xls, sheetname=excel_sheet_airfoil_coord)
+    excel_db = pd.read_excel(xls, sheet_name=excel_sheet_airfoil_coord)
     for iairfoil in range(len(pure_airfoils_names)):
         # Look for the NaN
         icoord=2
@@ -1047,7 +1047,11 @@ def rotor_from_excel_type02(chord_panels,
                                   m_distribution = 'uniform',
                                   h5_cross_sec_prop = None,
                                   n_points_camber = 100,
-                                  tol_remove_points = 1e-3):
+                                  tol_remove_points = 1e-3,
+                                  user_defined_m_distribution_type = None,
+                                  camber_effect_on_twist = False,
+                                  wsp = 0.,
+                                  dt = 0.):
 
     """
     generate_from_excel_type02_db
@@ -1148,7 +1152,7 @@ def rotor_from_excel_type02(chord_panels,
         blade.StructuralInformation.num_elem = len(rR) - 2
         blade.StructuralInformation.compute_basic_num_node()
 
-        node_r, elem_r = create_node_radial_pos_from_elem_centres(rR,
+        node_r, elem_r = create_node_radial_pos_from_elem_centres(rR*TipRad,
                                             blade.StructuralInformation.num_node,
                                             blade.StructuralInformation.num_elem,
                                             blade.StructuralInformation.num_node_elem)
@@ -1208,9 +1212,11 @@ def rotor_from_excel_type02(chord_panels,
 
         # create mass_db/stiffness_db (interpolate at mid-node of each element)
         blade.StructuralInformation.mass_db = scint.interp1d(
-                    cross_prop.radius, cross_prop.M, kind='cubic', copy=False, assume_sorted=True, axis=0)(node_r[1::2])
+                    cross_prop.radius, cross_prop.M, kind='cubic', copy=False, assume_sorted=True, axis=0,
+                                                    bounds_error = False, fill_value='extrapolate')(node_r[1::2])
         blade.StructuralInformation.stiffness_db = scint.interp1d(
-                    cross_prop.radius, cross_prop.K, kind='cubic', copy=False, assume_sorted=True, axis=0)(node_r[1::2])
+                    cross_prop.radius, cross_prop.K, kind='cubic', copy=False, assume_sorted=True, axis=0,
+                                                    bounds_error = False, fill_value='extrapolate')(node_r[1::2])
 
     blade.StructuralInformation.generate_1to1_from_vectors(
             num_node_elem = blade.StructuralInformation.num_node_elem,
@@ -1233,20 +1239,20 @@ def rotor_from_excel_type02(chord_panels,
     ######################################################################
     # Read blade aerodynamic information from excel file
     rR_aero = gc.read_column_sheet_type01(excel_file_name, excel_sheet_aero_blade, 'rR')
-    blade_chord = gc.read_column_sheet_type01(excel_file_name, excel_sheet_aero_blade, 'BlChord')
-    blade_thickness = gc.read_column_sheet_type01(excel_file_name, excel_sheet_aero_blade, 'BlThickness')
+    chord_aero = gc.read_column_sheet_type01(excel_file_name, excel_sheet_aero_blade, 'BlChord')
+    thickness_aero = gc.read_column_sheet_type01(excel_file_name, excel_sheet_aero_blade, 'BlThickness')
 
     pure_airfoils_names = gc.read_column_sheet_type01(excel_file_name, excel_sheet_airfoil_info, 'Name')
     pure_airfoils_thickness = gc.read_column_sheet_type01(excel_file_name, excel_sheet_airfoil_info, 'Thickness')
 
-    node_ElAxisAftLEc = np.interp(rR,rR_structural,ElAxisAftLEc)
+    node_ElAxisAftLEc = np.interp(node_r,rR_structural*TipRad,ElAxisAftLEc)
 
     # Read coordinates of the pure airfoils
     n_pure_airfoils = len(pure_airfoils_names)
 
     pure_airfoils_camber=np.zeros((n_pure_airfoils,n_points_camber,2),)
     xls = pd.ExcelFile(excel_file_name)
-    excel_db = pd.read_excel(xls, sheetname=excel_sheet_airfoil_coord)
+    excel_db = pd.read_excel(xls, sheet_name=excel_sheet_airfoil_coord)
     for iairfoil in range(n_pure_airfoils):
         # Look for the NaN
         icoord=2
@@ -1264,7 +1270,7 @@ def rotor_from_excel_type02(chord_panels,
     surface_distribution = np.zeros((blade.StructuralInformation.num_elem), dtype=int)
 
     # Interpolate in the correct positions
-    node_chord=np.interp(rR, rR_aero, blade_chord)
+    node_chord = np.interp(node_r, rR_aero*TipRad, chord_aero)
 
     # Define the nodes with aerodynamic properties
     # Look for the first element that is goint to be aerodynamic
@@ -1278,21 +1284,74 @@ def rotor_from_excel_type02(chord_panels,
     # Define the airfoil at each stage
     # airfoils = blade.AerodynamicInformation.interpolate_airfoils_camber(pure_airfoils_camber,excel_aero_r, node_r, n_points_camber)
 
-    airfoils = blade.AerodynamicInformation.interpolate_airfoils_camber_thickness(pure_airfoils_camber, pure_airfoils_thickness, blade_thickness, n_points_camber)
+    node_thickness = np.interp(node_r, rR_aero*TipRad, thickness_aero)
+
+    airfoils = blade.AerodynamicInformation.interpolate_airfoils_camber_thickness(pure_airfoils_camber, pure_airfoils_thickness, node_thickness, n_points_camber)
     airfoil_distribution = np.linspace(0,blade.StructuralInformation.num_node-1,blade.StructuralInformation.num_node, dtype=int)
+
+    # User defined m distribution
+    if (m_distribution == 'user_defined') and (user_defined_m_distribution_type == 'last_geometric'):
+        # WSP =10.5
+        # dt = 0.01846909261369661/2
+        blade_nodes = blade.StructuralInformation.num_node
+        udmd_by_nodes = np.zeros((blade_nodes, chord_panels[0] + 1))
+        for inode in range(blade_nodes):
+            r = np.linalg.norm(blade.StructuralInformation.coordinates[inode, :])
+            vrel = np.sqrt(rotation_velocity**2*r**2 + wsp**2)
+            # ielem, inode_in_elem = gc.get_ielem_inode(blade.StructuralInformation.connectivities, inode)
+            last_length = vrel*dt/node_chord[inode]
+            last_length = np.minimum(last_length, 0.5)
+            if last_length <= 0.5:
+                ratio = gc.get_factor_geometric_progression(last_length, 1., chord_panels)
+                udmd_by_nodes[inode, -1] = 1.
+                udmd_by_nodes[inode, 0] = 0.
+                for im in range(chord_panels[0] -1, 0, -1):
+                    udmd_by_nodes[inode, im] = udmd_by_nodes[inode, im + 1] - last_length
+                    last_length *= ratio
+                # Check
+                if (np.diff(udmd_by_nodes[inode, :]) < 0.).any():
+                    sys.error("ERROR in the panel discretization of the blade in node %d" % (inode))
+            else:
+                print("ERROR: cannot match the last panel size for node:", inode)
+                udmd_by_nodes[inode,:] = np.linspace(0, 1, chord_panels + 1)
+
+    else:
+        udmd_by_nodes = None
+    # udmd_by_elements = gc.from_node_array_to_elem_matrix(udmd_by_nodes, rotor.StructuralInformation.connectivities[0:int((blade_nodes-1)/2), :])
+    # rotor.user_defined_m_distribution = (udmd_by_elements, udmd_by_elements, udmd_by_elements)
+
+    node_twist = np.zeros_like(node_chord)
+    if camber_effect_on_twist:
+        print("WARNING: The steady applied Mx should be manually multiplied by the density")
+        for inode in range(blade.StructuralInformation.num_node):
+            node_twist[inode] = gc.get_aoacl0_from_camber(airfoils[inode, :, 0], airfoils[inode, :, 1])
+            mu0 = gc.get_mu0_from_camber(airfoils[inode, :, 0], airfoils[inode, :, 1])
+            r = np.linalg.norm(blade.StructuralInformation.coordinates[inode, :])
+            vrel = np.sqrt(rotation_velocity**2*r**2 + wsp**2)
+            if inode == 0:
+                dr = 0.5*np.linalg.norm(blade.StructuralInformation.coordinates[1,:] - blade.StructuralInformation.coordinates[0,:])
+            elif inode == len(blade.StructuralInformation.coordinates[:,0]) - 1:
+                dr = 0.5*np.linalg.norm(blade.StructuralInformation.coordinates[-1,:] - blade.StructuralInformation.coordinates[-2,:])
+            else:
+                dr = 0.5*np.linalg.norm(blade.StructuralInformation.coordinates[inode + 1,:] - blade.StructuralInformation.coordinates[inode - 1,:])
+            moment_factor = 0.5*vrel**2*node_chord[inode]**2*dr
+            # print("node", inode, "mu0", mu0, "CMc/4", 2.*mu0 + np.pi/2*node_twist[inode])
+            blade.StructuralInformation.app_forces[inode, 3] = (2.*mu0 + np.pi/2*node_twist[inode])*moment_factor
+            airfoils[inode, :, 1] *= 0.
 
     # Write SHARPy format
     blade.AerodynamicInformation.create_aerodynamics_from_vec(blade.StructuralInformation,
                                                             aero_node,
                                                             node_chord,
-                                                            np.zeros_like(node_chord),
+                                                            node_twist,
                                                             np.pi*np.ones_like(node_chord),
                                                             chord_panels,
                                                             surface_distribution,
                                                             m_distribution,
                                                             node_ElAxisAftLEc,
                                                             airfoil_distribution,
-                                                            airfoils)
+                                                            airfoils,
+                                                            udmd_by_nodes)
 
     ######################################################################
     ## ROTOR
@@ -1329,18 +1388,24 @@ def rotor_from_excel_type02(chord_panels,
 def generate_from_excel_type02(chord_panels,
                                   rotation_velocity,
                                   pitch_deg,
-                                  excel_file_name= 'database_OpenFAST.xlsx',
+                                  excel_file_name= 'database_excel_type02.xlsx',
                                   excel_sheet_parameters = 'parameters',
                                   excel_sheet_structural_blade = 'structural_blade',
+                                  excel_sheet_discretization_blade = 'discretization_blade',
                                   excel_sheet_aero_blade = 'aero_blade',
+                                  excel_sheet_airfoil_info = 'airfoil_info',
                                   excel_sheet_airfoil_coord = 'airfoil_coord',
                                   excel_sheet_structural_tower = 'structural_tower',
                                   m_distribution = 'uniform',
+                                  h5_cross_sec_prop = None,
                                   n_points_camber = 100,
-                                  tol_remove_points = 1e-3):
+                                  tol_remove_points = 1e-3,
+                                  user_defined_m_distribution_type = None,
+                                  wsp = 0.,
+                                  dt = 0.):
 
     """
-    generate_from_OpenFAST_db
+    generate_from_excel_type02
 
     Function needed to generate a wind turbine from an excel database according to OpenFAST inputs
 
@@ -1364,17 +1429,23 @@ def generate_from_excel_type02(chord_panels,
         MB (list): list of the multibody information of each body (sharpy.utils.generate_cases.BodyInfrmation)
     """
 
-    rotor = rotor_from_OpenFAST_db(chord_panels,
+    rotor = rotor_from_excel_type02(chord_panels,
                                   rotation_velocity,
                                   pitch_deg,
                                   excel_file_name= excel_file_name,
                                   excel_sheet_parameters = excel_sheet_parameters,
                                   excel_sheet_structural_blade = excel_sheet_structural_blade,
+                                  excel_sheet_discretization_blade = excel_sheet_discretization_blade,
                                   excel_sheet_aero_blade = excel_sheet_aero_blade,
+                                  excel_sheet_airfoil_info = excel_sheet_airfoil_info,
                                   excel_sheet_airfoil_coord = excel_sheet_airfoil_coord,
                                   m_distribution = m_distribution,
+                                  h5_cross_sec_prop = h5_cross_sec_prop,
                                   n_points_camber = n_points_camber,
-                                  tol_remove_points = tol_remove_points)
+                                  tol_remove_points = tol_remove_points,
+                                  user_defined_m_distribution = user_defined_m_distribution,
+                                  wsp = 0.,
+                                  dt = 0.)
 
     ######################################################################
     ## TOWER

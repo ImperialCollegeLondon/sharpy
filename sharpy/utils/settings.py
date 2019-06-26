@@ -172,5 +172,10 @@ def str2bool(string):
 
 
 def notify_default_value(k, v):
-    cout.cout_wrap('Variable ' + k + ' has no assigned value in the settings file.')
-    cout.cout_wrap('    will default to the value: ' + str(v), 1)
+    # NG 9/4/19 - when using these methods after SHARPy it will raise an error since the log file would have been closed
+    # at the end of SHARPy
+    try:
+        cout.cout_wrap('Variable ' + k + ' has no assigned value in the settings file.')
+        cout.cout_wrap('    will default to the value: ' + str(v), 1)
+    except ValueError:
+        pass

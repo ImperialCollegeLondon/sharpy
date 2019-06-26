@@ -2,11 +2,11 @@
 Collect tools to manipulate sparse and/or mixed dense/sparse matrices.
 
 author: S. Maraniello
-date: Dec 2018 
+date: Dec 2018
 
 Comment: manipulating large linear system may require using both dense and sparse
 matrices. While numpy/scipy automatically handle most operations between mixed
-dense/sparse arrays, some (e.g. dot product) require more attention. This 
+dense/sparse arrays, some (e.g. dot product) require more attention. This
 library collects methods to handle these situations.
 
 Classes:
@@ -14,9 +14,9 @@ scipy.sparse matrices are wrapped so as to ensure compatibility with numpy array
 upon conversion to dense.
 - csc_matrix: this is a wrapper of scipy.csc_matrix.
 - SupportedTypes: types supported for operations
-- WarningTypes: due to some bugs in scipy (v.1.1.0), sum (+) operations between 
-np.ndarray and scipy.sparse matrices can result in numpy.matrixlib.defmatrix.matrix 
-types. This list contains such undesired types that can result from dense/sparse 
+- WarningTypes: due to some bugs in scipy (v.1.1.0), sum (+) operations between
+np.ndarray and scipy.sparse matrices can result in numpy.matrixlib.defmatrix.matrix
+types. This list contains such undesired types that can result from dense/sparse
 operations and raises a warning if required.
 (b) convert these types into numpy.ndarrays.
 
@@ -25,10 +25,10 @@ Methods:
 - solve: solves linear systems Ax=b with A and b dense, sparse or mixed.
 - dense: convert matrix to numpy array
 
-Warning: 
+Warning:
 - only sparse types into SupportedTypes are supported!
 
-To Do: 
+To Do:
 - move these methods into an algebra module?
 '''
 
@@ -43,14 +43,14 @@ import scipy.sparse.sputils as sputils
 class csc_matrix(sparse.csc_matrix):
 	'''
 	Wrapper of scipy.csc_matrix that ensures best compatibility with numpy.ndarray.
-	The following methods have been overwritten to ensure that numpy.ndarray are 
-	returned intstead of numpy.matrixlib.defmatrix.matrix.
+	The following methods have been overwritten to ensure that numpy.ndarray are
+	returned instead of numpy.matrixlib.defmatrix.matrix.
 		- todense
 		- _add_dense
 
 	Warning: this format is memory inefficient to allocate new sparse matrices.
-	Consider using: 
-	- scipy.sparse.lil_matrix, which supports slicing, or 
+	Consider using:
+	- scipy.sparse.lil_matrix, which supports slicing, or
 	- scipy.sparse.coo_matrix, though slicing is not supported :(
 
 	'''
@@ -81,6 +81,100 @@ WarningTypes=[np.matrixlib.defmatrix.matrix]
 # --------------------------------------------------------------------- Methods
 
 
+def block_dot(A, B):
+	'''
+	dot product between block matrices.
+
+	Inputs:
+	A, B: are nested lists of dense/sparse matrices of compatible shape for
+	block matrices product. Empty blocks can be defined with None. (see numpy.block)
+	'''
+
+	rA, cA = len(A), len(A[0])
+	rB, cB = len(B), len(B[0])
+
+	for arow,brow in zip(A,B):
+		assert len(brow) == cB,\
+						'B rows do not contain the same number of column blocks'
+		assert len(arow) == cA,\
+						'A rows do not contain the same number of column blocks'
+	assert cA==rB, 'Columns of A not equal to rows of B!'
+
+	P=[]
+	for ii in range(rA):
+		prow = cB * [None]
+		for jj in range(cB):
+			# check first that the result will not be None
+			Continue = False
+			for kk in range(cA):
+				if A[ii][kk] is not None and B[kk][jj] is not None:
+					Continue = True
+					break
+			if Continue:
+				prow[jj] = 0.
+				for kk in range(cA):
+					if A[ii][kk] is not None and B[kk][jj] is not None:
+						prow[jj] += dot( A[ii][kk], B[kk][jj] )
+		P.append(prow)
+
+	return P
+
+
+def block_sum(A, B, factA = None, factB = None):
+	'''
+	dot product between block matrices.
+
+	Inputs:
+	A, B: are nested lists of dense/sparse matrices of compatible shape for
+	block matrices product. Empty blocks can be defined with None. (see numpy.block)
+	'''
+
+	rA, cA = len(A), len(A[0])
+	rB, cB = len(B), len(B[0])
+
+	assert cA==cB and rA==rB, 'Block matrices do not have same size'
+
+	for arow,brow in zip(A,B):
+		assert len(brow) == cB,\
+						'B rows do not contain the same number of column blocks'
+		assert len(arow) == cA,\
+						'A rows do not contain the same number of column blocks'
+
+	P=[]
+	for ii in range(rA):
+		prow = cA * [None]
+
+		for jj in range(cA):
+
+			if A[ii][jj] is None:
+				if B[ii][jj] is None:
+					prow[jj] = None
+				else:
+					if factB is None:
+						prow[jj] = B[ii][jj]
+					else:
+						prow[jj] = factB*B[ii][jj]
+			else:
+				if B[ii][jj] is None:
+					if factA is None:
+						prow[jj] = A[ii][jj]
+					else:
+						prow[jj] = factA*A[ii][jj]
+				else:
+					if factA is None and factA is None:
+						prow[jj] = A[ii][jj] + B[ii][jj]
+					elif factA is None:
+						prow[jj] = A[ii][jj] + factB*B[ii][jj]
+					elif factB is None:
+						prow[jj] = factA*A[ii][jj] + B[ii][jj]
+					else:
+						prow[jj] = factA*A[ii][jj] + factB*B[ii][jj]
+
+		P.append(prow)
+
+	return P
+
+
 def dot(A,B,type_out=None):
 	'''
 	Method to compute
@@ -105,31 +199,35 @@ def dot(A,B,type_out=None):
 	if type_out == None:
 		type_out=tA
 	else:
-		assert type_out in SupportedTypes, 'type_out not supported'		
+		assert type_out in SupportedTypes, 'type_out not supported'
 
 	# multiply
+	# if tA==float or tb==float:
+	# 	C = A*B
+	# else:
 	if tA==np.ndarray and tB==csc_matrix:
 		C=(B.transpose()).dot(A.transpose()).transpose()
 		# C=A.dot(B.todense())
 	else:
 		C=A.dot(B)
 
-	# format output 
+	# format output
 	if tA != type_out:
 		if type_out==csc_matrix:
 			return csc_matrix(C)
 		else:
 			return C.toarray()
+
 	return C
 
 
 def solve(A,b):
 	'''
-	Wrapper of 
-		numpy.linalg.solve and scipy.sparse.linalg.spsolve 
+	Wrapper of
+		numpy.linalg.solve and scipy.sparse.linalg.spsolve
 	for solution of the linear system A x = b.
-	- if A is a dense numpy array np.linalg.solve is called for solution. Note 
-	that if B is sparse, this requires convertion to dense. In this case, 
+	- if A is a dense numpy array np.linalg.solve is called for solution. Note
+	that if B is sparse, this requires convertion to dense. In this case,
 	solution through LU factorisation of A should be considered to exploit the
 	sparsity of B.
 	- if A is sparse, scipy.sparse.linalg.spsolve is used.
@@ -264,7 +362,7 @@ if __name__=='__main__':
 			X1=solve(A,B)
 			X2=solve(A,Bsp)
 			X3=solve(Asp,B)
-			X4=solve(Asp,Bsp)			
+			X4=solve(Asp,Bsp)
 
 			assert np.max(np.abs(X0-X1))<1e-12, 'Error in libsparse.solve'
 			assert np.max(np.abs(X0-X2))<1e-12, 'Error in libsparse.solve'

@@ -14,10 +14,11 @@ class TestCoupledPrescribed(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
         # run all the cases generators
-        case = 'smith_2deg_prescribed'
-        mod = importlib.import_module('tests.coupled.prescribed.' + case + '.generate_' + case)
-        case = 'rotating_wing'
-        mod1 = importlib.import_module('tests.coupled.prescribed.' + case + '.generate_' + case)
+        # case = 'smith_2deg_prescribed'
+        # mod = importlib.import_module('tests.coupled.prescribed.' + case + '.generate_' + case)
+        # case = 'rotating_wing'
+        # mod1 = importlib.import_module('tests.coupled.prescribed.' + case + '.generate_' + case)
+        pass
 
     @classmethod
     def tearDownClass(cls):
@@ -35,9 +36,10 @@ class TestCoupledPrescribed(unittest.TestCase):
     #     self.assertAlmostEqual(forces_data[-1, 3], -3.728e1, 1)
 
     def test_rotating_wing(self):
-        import sharpy.sharpy_main
-        solver_path = os.path.abspath(os.path.dirname(os.path.realpath(__file__)) +
-                                      '/rotating_wing/rotating_wing.solver.txt')
-        sharpy.sharpy_main.main(['', solver_path])
-
+        # import sharpy.sharpy_main
+        # solver_path = os.path.abspath(os.path.dirname(os.path.realpath(__file__)) +
+                                      # '/rotating_wing/rotating_wing.solver.txt')
+        # sharpy.sharpy_main.main(['', solver_path])
+        print('No tests for prescribed dynamic configurations (yet)!')
+        pass
 

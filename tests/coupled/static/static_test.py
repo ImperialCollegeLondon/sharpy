@@ -1,6 +1,3 @@
-# import sharpy.utils.settings as settings
-# import sharpy.utils.exceptions as exceptions
-# import sharpy.utils.cout_utils as cout
 import numpy as np
 import importlib
 import unittest
@@ -43,10 +40,10 @@ class TestCoupledStatic(unittest.TestCase):
         sharpy.sharpy_main.main(['', solver_path])
 
         # read output and compare
-        output_path = os.path.dirname(solver_path) + '/output/smith_nog_2deg/beam/'
-        pos_data = np.genfromtxt(output_path + 'beam_smith_nog_2deg_000000.csv')
-        self.assertAlmostEqual((pos_data[20, 1] - 15.58954497)/15.58954497, 0.00, 2)
-        self.assertAlmostEqual((pos_data[20, 2] - 3.365882)/3.365882, 0.00, 2)
+        output_path = os.path.dirname(solver_path) + '/output/smith_nog_2deg/WriteVariablesTime/'
+        pos_data = np.genfromtxt(output_path + 'struct_pos_node20.dat')
+        self.assertAlmostEqual((pos_data[2] - 15.6135)/15.6135, 0.00, 2)
+        self.assertAlmostEqual((pos_data[3] - 3.267)/3.267, 0.00, 2)
 
         # results:
         # N = 10 elements
@@ -68,10 +65,10 @@ class TestCoupledStatic(unittest.TestCase):
         sharpy.sharpy_main.main(['', solver_path])
 
         # read output and compare
-        output_path = os.path.dirname(solver_path) + '/output/smith_g_2deg/beam/'
-        pos_data = np.genfromtxt(output_path + 'beam_smith_g_2deg_000000.csv')
-        self.assertAlmostEqual((pos_data[20, 1] - 15.9777)/15.9777, 0.00, 2)
-        self.assertAlmostEqual((pos_data[20, 2] - 0.781620)/0.781620, 0.00, 2)
+        output_path = os.path.dirname(solver_path) + '/output/smith_g_2deg/WriteVariablesTime/'
+        pos_data = np.genfromtxt(output_path + 'struct_pos_node20.dat')
+        self.assertAlmostEqual((pos_data[2] - 15.983)/15.983, 0.00, 2)
+        self.assertAlmostEqual((pos_data[3] - 0.6766)/0.6766, 0.00, 2)
 
     def test_smith4deg_g(self):
         """
@@ -87,10 +84,10 @@ class TestCoupledStatic(unittest.TestCase):
         sharpy.sharpy_main.main(['', solver_path])
 
         # read output and compare
-        output_path = os.path.dirname(solver_path) + '/output/smith_g_4deg/beam/'
-        pos_data = np.genfromtxt(output_path + 'beam_smith_g_4deg_000000.csv')
-        self.assertAlmostEqual((pos_data[20, 1] - 15.4634)/15.4634, 0.00, 2)
-        self.assertAlmostEqual((pos_data[20, 2] - 3.8275041)/3.8275041, 0.00, 2)
+        output_path = os.path.dirname(solver_path) + '/output/smith_g_4deg/WriteVariablesTime/'
+        pos_data = np.genfromtxt(output_path + 'struct_pos_node20.dat')
+        self.assertAlmostEqual((pos_data[2] - 15.55)/15.55, 0.00, 2)
+        self.assertAlmostEqual((pos_data[3] - 3.671)/3.671, 0.00, 2)
 
         # results:
         # N = 10 elements
@@ -117,10 +114,10 @@ class TestCoupledStatic(unittest.TestCase):
         sharpy.sharpy_main.main(['', solver_path])
 
         # read output and compare
-        output_path = os.path.dirname(solver_path) + '/output/smith_nog_4deg/beam/'
-        pos_data = np.genfromtxt(output_path + 'beam_smith_nog_4deg_000004.csv')
-        self.assertAlmostEqual((pos_data[20, 1] - 14.792655)/14.792655, 0.00, 2)
-        self.assertAlmostEqual((pos_data[20, 2] - 5.6854071)/5.6854071, 0.00, 2)
+        output_path = os.path.dirname(solver_path) + '/output/smith_nog_4deg/WriteVariablesTime/'
+        pos_data = np.genfromtxt(output_path + 'struct_pos_node20.dat')
+        self.assertAlmostEqual((pos_data[2] - 14.87)/14.87, 0.00, 2)
+        self.assertAlmostEqual((pos_data[3] - 5.5078)/5.5078, 0.00, 2)
 
         # results:
         # N = 10 elements

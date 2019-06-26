@@ -106,6 +106,7 @@ the aerodynamic moments.
 import os
 import copy
 import time
+import warnings
 import numpy as np
 np.set_printoptions(linewidth=140)
 import matplotlib.pyplot as plt 
@@ -129,7 +130,6 @@ import cases.templates.flying_wings as flying_wings
 M=32
 N,Mstar_fact=12,40
 
-CorrectEA=True
 integr_order=2
 RemovePred=True
 UseSparse=True
@@ -162,9 +162,6 @@ Nout=len(outputs_seq)
 
 route_main=os.path.abspath('.')+'/res/theo_rolled/'
 figfold='./figs/theo_rolled/'
-if CorrectEA:
-	route_main=route_main[:-1]+'cea%s/'%CorrectEA
-	figfold=figfold[:-1]+'cea%s/'%CorrectEA
 os.system('mkdir -p %s'%route_main)
 os.system('mkdir -p %s'%figfold)
 
@@ -183,8 +180,6 @@ ws=flying_wings.QuasiInfinite(  M=M,N=N,Mstar_fact=Mstar_fact,n_surfaces=Nsurf,
 								route=route_main,
 								case_name=case_main)
 ws.main_ea=main_ea
-if CorrectEA:
-	ws.main_ea-=.25/M
 ws.clean_test_files()
 ws.update_derived_params()
 ws.generate_fem_file()
@@ -201,7 +196,8 @@ ws.config['LinearUvlm'] = {	'dt': ws.dt,
 							'use_sparse': UseSparse,
 							'ScalingDict':{'length': 1.,
 										   'speed':  1.,
-										   'density':1.}}
+										   'density':1.}
+							   }
 ws.config['Modal']['NumLambda']= 40
 ws.config['Modal']['keep_linear_matrices']='on'
 ws.config['Modal']['use_undamped_modes']=True
@@ -255,11 +251,14 @@ Ksa=Sol.Kforces
 
 # ----------------------- project forces at nodes and total in rolled FoR R
 
+T0=algebra.crv2tan(tsstr0.psi[0][0])
+T0Tinv=np.linalg.inv(T0.T)
+
 for nn in range(Sol.lingebm_str.num_dof//6):
 	iitra=[6*nn+ii for ii in range(3)]
-	Ksa[iitra,:]=np.dot(Crb,Ksa[iitra,:])
+	Ksa[iitra,:]=np.dot(Cra,Ksa[iitra,:])
 	iirot=[6*nn+ii for ii in range(3,6)]
-	Ksa[iirot,:]=np.dot(Crb,Ksa[iirot,:])
+	Ksa[iirot,:]=np.dot(Crb, np.dot( T0Tinv,Ksa[iirot,:] )) 
 iitra=[Sol.lingebm_str.num_dof+ii for ii in range(3)]
 Ksa[iitra,:]=np.dot(Cra,Ksa[iitra,:])
 iirot=[Sol.lingebm_str.num_dof+ii for ii in range(3,6)]
@@ -418,7 +417,6 @@ def adjust_freq_resp(Yfreq_dummy):
 	instead.
 	'''
 
-	Yfreq_dummy=Yfreq_dummy_all[:,:4,:]
 	Nin=4
 	assert Yfreq_dummy.shape[1]==Nin, 'Check number of input'		
 
@@ -574,9 +572,9 @@ for ii in range(Nin_real):
 		ax=fig.subplots(1,1)
 
 		### analytical
-		ax.plot(kv,yan.real,color='0.6',lw=5,ls='-',alpha=.9,
+		ax.plot(kv,yan.real,color='0.6',lw=10,ls='-',alpha=.9,
 					label=r'Theodorsen - real')
-		ax.plot(kv,yan.imag,color='0.6',lw=5,ls=':',alpha=.9,
+		ax.plot(kv,yan.imag,color='0.6',lw=10,ls=':',alpha=.9,
 					label=r'Theodorsen - imag')
 
 		### flexible dof in input
