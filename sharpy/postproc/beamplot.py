@@ -103,6 +103,10 @@ class BeamPlot(BaseSolver):
         app_forces = np.zeros((num_nodes, 3))
         app_moment = np.zeros((num_nodes, 3))
 
+        forces_constraints_nodes = np.zeros((num_nodes, 3))
+        moments_constraints_nodes = np.zeros((num_nodes, 3))
+        # TODO: include FoR
+
         # aero2inertial rotation
         aero2inertial = self.data.structure.timestep_info[it].cga()
 
@@ -194,6 +198,12 @@ class BeamPlot(BaseSolver):
                                            np.dot(cab,
                                                   self.data.structure.timestep_info[it].steady_applied_forces[i_node, 3:6]+
                                                   self.data.structure.timestep_info[it].unsteady_applied_forces[i_node, 3:6]))
+            forces_constraints_nodes[i_node, :] = np.dot(aero2inertial,
+                                           np.dot(cab,
+                                                  self.data.structure.timestep_info[it].forces_constraints_nodes[i_node, 0:3]))
+            moments_constraints_nodes[i_node, :] = np.dot(aero2inertial,
+                                           np.dot(cab,
+                                                  self.data.structure.timestep_info[it].forces_constraints_nodes[i_node, 3:6]))
 
             if with_gravity:
                 gravity_forces[i_node, 0:3] = np.dot(aero2inertial,
@@ -242,6 +252,9 @@ class BeamPlot(BaseSolver):
             point_vector_counter += 1
             ug.point_data.add_array(app_forces, 'vector')
             ug.point_data.get_array(point_vector_counter).name = 'app_forces'
+            point_vector_counter += 1
+            ug.point_data.add_array(forces_constraints_nodes, 'vector')
+            ug.point_data.get_array(point_vector_counter).name = 'forces_constraints_nodes'
             if with_gravity:
                 point_vector_counter += 1
                 ug.point_data.add_array(gravity_forces[:, 0:3], 'vector')
@@ -251,6 +264,9 @@ class BeamPlot(BaseSolver):
             point_vector_counter += 1
             ug.point_data.add_array(app_moment, 'vector')
             ug.point_data.get_array(point_vector_counter).name = 'app_moments'
+            point_vector_counter += 1
+            ug.point_data.add_array(moments_constraints_nodes, 'vector')
+            ug.point_data.get_array(point_vector_counter).name = 'moments_constraints_nodes'
             if with_gravity:
                 point_vector_counter += 1
                 ug.point_data.add_array(gravity_forces[:, 3:6], 'vector')
@@ -267,4 +283,3 @@ class BeamPlot(BaseSolver):
                     ug.point_data.get_array(point_vector_counter).name = k + '_' + str(i) + '_point'
 
         write_data(ug, it_filename)
-

@@ -296,6 +296,30 @@ class NonLinearDynamicMultibody(BaseSolver):
         # TODO: code
         pass
 
+    def compute_forces_constraints(self, MB_beam, MB_tstep, ts, dt, Lambda, Lambda_dot):
+
+        LM_C, LM_K, LM_Q = lagrangeconstraints.generate_lagrange_matrix(self.lc_list, MB_beam, MB_tstep, ts, self.num_LM_eq, self.sys_size, dt, Lambda, Lambda_dot, "dynamic")
+        F = -np.dot(LM_C[:, -self.num_LM_eq:], Lambda_dot) - np.dot(LM_K[:, -self.num_LM_eq:], Lambda)
+
+        first_dof = 0
+        for ibody in range(len(MB_beam)):
+            # Forces associated to nodes
+            body_numdof = MB_beam[ibody].num_dof.value
+            body_freenodes = np.sum(MB_beam[ibody].vdof > -1)
+            last_dof = first_dof + body_numdof
+            MB_tstep[ibody].forces_constraints_nodes[(MB_beam[ibody].vdof > -1), :] = F[first_dof:last_dof].reshape(body_freenodes, 6, order='F')
+
+            # Forces associated to the frame of reference
+            if MB_beam[ibody].FoR_movement == 'free':
+                # TODO: How are the forces in the quaternion equation interpreted?
+                MB_tstep[ibody].forces_constraints_FoR = F[last_dof:last_dof+10]
+                last_dof += 10
+
+            first_dof = last_dof
+            # print(MB_tstep[ibody].forces_constraints_nodes)
+        # TODO: right now, these forces are only used as an output, they are not read when the multibody is splitted
+
+
     def run(self, structural_step=None):
 
         if structural_step is None:
@@ -409,6 +433,7 @@ class NonLinearDynamicMultibody(BaseSolver):
         self.integrate_position(MB_beam, MB_tstep, dt)
         # lagrangeconstraints.postprocess(self.lc_list, MB_beam, MB_tstep, MBdict, "dynamic")
         lagrangeconstraints.postprocess(self.lc_list, MB_beam, MB_tstep, "dynamic")
+        self.compute_forces_constraints(MB_beam, MB_tstep, self.data.ts, dt, Lambda, Lambda_dot)
         if self.settings['gravity_on']:
             for ibody in range(len(MB_beam)):
                 xbeamlib.cbeam3_correct_gravity_forces(MB_beam[ibody], MB_tstep[ibody], self.settings)
