@@ -233,6 +233,8 @@ class TestDoublePendulum(unittest.TestCase):
         SimInfo.solvers['NonLinearDynamicMultibody']['gravity_on'] = True
         SimInfo.solvers['NonLinearDynamicMultibody']['newmark_damp'] = 0.15
 
+        SimInfo.solvers['BeamPlot']['include_FoR'] = True
+
         SimInfo.solvers['DynamicCoupled']['structural_solver'] = 'NonLinearDynamicMultibody'
         SimInfo.solvers['DynamicCoupled']['structural_solver_settings'] = SimInfo.solvers['NonLinearDynamicMultibody']
         SimInfo.solvers['DynamicCoupled']['aero_solver'] = 'StepUvlm'

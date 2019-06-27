@@ -89,6 +89,8 @@ class TestFixNodeVelocitywrtA(unittest.TestCase):
         SimInfo.solvers['WriteVariablesTime']['structure_nodes'] = np.array([0,  int((nnodes1-1)/2), -1], dtype = int)
         SimInfo.solvers['WriteVariablesTime']['structure_variables'] = ['pos']
 
+        SimInfo.solvers['BeamPlot']['include_FoR'] = True
+
         SimInfo.solvers['DynamicCoupled']['structural_solver'] = 'NonLinearDynamicMultibody'
         SimInfo.solvers['DynamicCoupled']['structural_solver_settings'] = SimInfo.solvers['NonLinearDynamicMultibody']
         SimInfo.solvers['DynamicCoupled']['aero_solver'] = 'StepUvlm'
