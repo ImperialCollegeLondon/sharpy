@@ -10,10 +10,10 @@ The module includes:
 
 Classes:
 - ss: provides a class to build DLTI/LTI systems with full and/or sparse
-	matrices and wraps many of the methods in these library. Methods include:
-	- freqresp: wraps the freqresp function
-	- addGain: adds gains in input/output. This is not a wrapper of addGain, as
-	the system matrices are overwritten
+    matrices and wraps many of the methods in these library. Methods include:
+    - freqresp: wraps the freqresp function
+    - addGain: adds gains in input/output. This is not a wrapper of addGain, as
+    the system matrices are overwritten
 
 Methods for state-space manipulation:
 - couple: feedback coupling. Does not support sparsity
@@ -45,11 +45,11 @@ Comments:
 - the module supports sparse matrices hence relies on libsparse.
 
 to do:
-	- remove unnecessary coupling routines
-	- couple function can handle sparse matrices but only outputs dense matrices
-		- verify if typical coupled systems are sparse
-		- update routine
-		- add method to automatically determine whether to use sparse or dense?
+    - remove unnecessary coupling routines
+    - couple function can handle sparse matrices but only outputs dense matrices
+        - verify if typical coupled systems are sparse
+        - update routine
+        - add method to automatically determine whether to use sparse or dense?
 """
 
 import copy
@@ -804,7 +804,7 @@ def parallel(SS01, SS02):
         raise NameError('DLTI systems need to have the same number of output!')
 
     # if type(SS01) is control.statesp.StateSpace:
-    # 	SStot=control.parallel(SS01,SS02)
+    #     SStot=control.parallel(SS01,SS02)
     # else:
 
     # determine size of total system
@@ -1054,43 +1054,43 @@ def join2(SS1, SS2):
     return SStot
 
 def join(SS_list,wv=None):
-	'''
-	Given a list of state-space models belonging to the ss class, creates a
-	joined system whose output is the sum of the state-space outputs. If wv is
-	not None, this is a list of weights, such that the output is:
+    '''
+    Given a list of state-space models belonging to the ss class, creates a
+    joined system whose output is the sum of the state-space outputs. If wv is
+    not None, this is a list of weights, such that the output is:
 
-		y = sum( wv[ii] y_ii )
+        y = sum( wv[ii] y_ii )
 
-	Ref: equation (4.22) of
-	Benner, P., Gugercin, S. & Willcox, K., 2015. A Survey of Projection-Based
-	Model Reduction Methods for Parametric Dynamical Systems. SIAM Review, 57(4),
-	pp.483–531.
+    Ref: equation (4.22) of
+    Benner, P., Gugercin, S. & Willcox, K., 2015. A Survey of Projection-Based
+    Model Reduction Methods for Parametric Dynamical Systems. SIAM Review, 57(4),
+    pp.483–531.
 
-	Warning:
-	- system matrices must be numpy arrays
-	- the function does not perform any check!
-	'''
+    Warning:
+    - system matrices must be numpy arrays
+    - the function does not perform any check!
+    '''
 
-	N = len(SS_list)
-	if wv is not None:
-		assert N==len(wv), "'weights input should have'"
+    N = len(SS_list)
+    if wv is not None:
+        assert N==len(wv), "'weights input should have'"
 
-	A = scalg.block_diag(*[ getattr(ss,'A') for ss in SS_list ])
-	B = np.block([ [getattr(ss,'B')] for ss in SS_list ])
+    A = scalg.block_diag(*[ getattr(ss,'A') for ss in SS_list ])
+    B = np.block([ [getattr(ss,'B')] for ss in SS_list ])
 
-	if wv is None:
-		C = np.block( [ getattr(ss,'C') for ss in SS_list ] )
-	else:
-		C = np.block( [ ww*getattr(ss,'C') for ww,ss in zip(wv,SS_list) ] )
+    if wv is None:
+        C = np.block( [ getattr(ss,'C') for ss in SS_list ] )
+    else:
+        C = np.block( [ ww*getattr(ss,'C') for ww,ss in zip(wv,SS_list) ] )
 
-	D=np.zeros_like(SS_list[0].D)
-	for ii in range(N):
-		if wv is None:
-			D += SS_list[ii].D
-		else:
-			D += wv[ii]*SS_list[ii].D
+    D=np.zeros_like(SS_list[0].D)
+    for ii in range(N):
+        if wv is None:
+            D += SS_list[ii].D
+        else:
+            D += wv[ii]*SS_list[ii].D
 
-	return ss(A,B,C,D,SS_list[0].dt)
+    return ss(A,B,C,D,SS_list[0].dt)
 
 def sum_ss(SS1, SS2, negative=False):
     """
@@ -1100,7 +1100,7 @@ def sum_ss(SS1, SS2, negative=False):
         u -> SS1 -> y1
         u -> SS2 -> y2
     we obtain:
-        u -> SStot -> y1+y2 	if negative=False
+        u -> SStot -> y1+y2     if negative=False
     """
     type_dlti = scsig.ltisys.StateSpaceDiscrete
 
@@ -1656,7 +1656,7 @@ if __name__ == '__main__':
 
             Yref = np.zeros_like(Yjoin)
             for ii in range(3):
-            	Yref += wv[ii]*SS_list[ii].freqresp(kv)
+                Yref += wv[ii]*SS_list[ii].freqresp(kv)
 
             er = np.max(np.abs(Yjoin - Yref))
             assert er<1e-14, 'test_join error %.3e too large' %er
