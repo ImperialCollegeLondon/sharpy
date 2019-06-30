@@ -81,7 +81,22 @@ class ss():
     - scale: allows scaling a system
     """
 
-    def __init__(self, A, B, C, D, dt=None):
+    def __init__(self):
+
+        self.A = None
+        self.B = None
+        self.C = None
+        self.D = None
+        self.dt = None
+
+        self.inputs = None
+        self.outputs = None
+        self.states = None
+
+        self.time = None # 'discrete' or 'continuous'
+        self.with_predictor = None # True or False
+
+    def initialise(self, A, B, C, D, dt=None, with_predictor=False):
         """
         Allocate state-space model (A,B,C,D). If dt is not passed, a
         continuous-time system is assumed.
@@ -112,6 +127,16 @@ class ss():
             assert self.D.shape[1] == self.inputs, 'B and D columns not matching'
         except IndexError:
             assert self.inputs == 1, 'D shape does not match number of inputs'
+
+        if with_predictor:
+            self.with_predictor = True
+        else:
+            self.with_predictor = False
+
+        if self.dt == None:
+            self.time = 'continuous'
+        else:
+            self.time = 'discrete'
 
     @property
     def inputs(self):
@@ -243,7 +268,7 @@ class ss():
         self.A = libsp.dot( WT, libsp.dot(self.A, V) )
         self.B = libsp.dot( WT, self.B)
         self.C = libsp.dot( self.C, V)
-        self.states=V.shape[1]
+        self.states = V.shape[1]
 
 
     def truncate(self, N):
@@ -282,7 +307,30 @@ class ss_block():
     - project: project state
     '''
 
-    def __init__(self, A, B, C, D, S_states, S_inputs, S_outputs, dt=None):
+    def __init__(self):
+
+        self.A = None
+        self.B = None
+        self.C = None
+        self.D = None
+        self.dt = None
+
+        # determine number of blocks
+        self.blocks_u = None
+        self.blocks_y = None
+        self.blocks_x = None
+
+        # determine inputs/outputs/states per block
+        self.S_u = None
+        self.S_y = None
+        self.S_x = None
+
+        # determine total inputs/outputs/states
+        self.inputs = None
+        self.outputs = None
+        self.states = None
+
+    def initialise(self, A, B, C, D, dt=None):
         '''
         Allocate state-space model (A,B,C,D) in block form starting from nested
         lists of full/sparse matrices (as per numpy.block).
@@ -300,23 +348,50 @@ class ss_block():
         self.D = D
         self.dt = dt
 
-        self.S_u = S_inputs
-        self.S_y = S_outputs
-        self.S_x = S_states
-
         # determine number of blocks
-        self.blocks_u = len(S_inputs)
-        self.blocks_y = len(S_outputs)
-        self.blocks_x = len(S_states)
+        self.blocks_u = len(self.B[0])
+        self.blocks_y = len(self.C)
+        self.blocks_x = len(self.A)
+
+        # determine inputs/outputs/states per block
+        S_inputs = []
+        for i in range(self.blocks_u):
+            S_inputs.append(self.B[0][i].shape(1))
+        self.S_u = S_inputs
+        S_outputs = []
+        for i in range(self.blocks_y):
+            S_outputs.append(self.C[i][0].shape(0))
+        self.S_y = S_outputs
+        S_x = []
+        for i in range(self.blocks_x):
+            S_x.append(self.A[0][i].shape(1))
+        self.S_x = S_x
 
         # determine inputs/outputs/states
         self.inputs = sum(S_inputs)
         self.outputs = sum(S_outputs)
-        self.states = sum(S_states)
+        self.states = sum(S_x)
 
         self.check_sizes()
 
     def check_sizes(self):
+
+        # Check the number of blocks
+        assert len(A) == self.blocks_x, "error"
+        assert len(B) == self.blocks_x, "error"
+        assert len(C) == self.blocks_y, "error"
+        assert len(D) == self.blocks_y, "error"
+
+        for i in range(self.blocks_x):
+            assert len(A[i]) == self.blocks_x, "error"
+            assert len(B[i]) == self.blocks_u, "error"
+
+        for i in range(self.blocks_y):
+            assert len(C[i]) == self.blocks_x, "error"
+            assert len(D[i]) == self.blocks_u, "error"
+
+        # Check the size of each block
+
         pass
 
     def remove_block(self, where, index):
