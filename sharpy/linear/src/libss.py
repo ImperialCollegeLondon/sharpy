@@ -198,6 +198,53 @@ class ss():
         if self.dt == None: dlti = False
         return freqresp(self, wv, dlti=dlti)
 
+    def freqresp(SS, wv, dlti=True):
+        """
+        In-house frequency response function supporting dense/sparse types
+
+        Inputs:
+        - SS: instance of ss class, or scipy.signal.StateSpace*
+        - wv: frequency range
+        - dlti: True if discrete-time system is considered.
+
+        Outputs:
+        - Yfreq[outputs,inputs,len(wv)]: frequency response over wv
+
+        Warnings:
+        -  This function may not be very efficient for dense matrices (as A is not
+        reduced to upper Hessenberg form), but can exploit sparsity in the state-space
+        matrices.
+        """
+
+        assert type(SS) == ss, \
+            'Type %s of state-space model not supported. Use libss.ss instead!' % type(SS)
+        SS.check_types()
+
+        if hasattr(SS, 'dt') and dlti:
+            Ts = SS.dt
+            wTs = Ts * wv
+            zv = np.cos(wTs) + 1.j * np.sin(wTs)
+        else:
+            print('Assuming a continuous time system')
+            zv = 1.j * wv
+
+        Nx = SS.A.shape[0]
+        Ny = SS.D.shape[0]
+        try:
+            Nu = SS.B.shape[1]
+        except IndexError:
+            Nu = 1
+
+        Nw = len(wv)
+
+        Yfreq = np.empty((Ny, Nu, Nw,), dtype=np.complex_)
+        Eye = libsp.eye_as(SS.A)
+        for ii in range(Nw):
+            sol_cplx = libsp.solve(zv[ii] * Eye - SS.A, SS.B)
+            Yfreq[:, :, ii] = libsp.dot(SS.C, sol_cplx, type_out=np.ndarray) + SS.D
+
+        return Yfreq
+
     def addGain(self, K, where):
         """
         Projects input u or output y the state-space system through the gain
@@ -269,7 +316,6 @@ class ss():
         self.B = libsp.dot( WT, self.B)
         self.C = libsp.dot( self.C, V)
         self.states = V.shape[1]
-
 
     def truncate(self, N):
         ''' Retains only the first N states. '''
@@ -541,26 +587,6 @@ class ss_block():
 
 
 # ---------------------------------------- Methods for state-space manipulation
-def project(ss_here,WT,V):
-    '''
-    Given 2 transformation matrices, (WT,V) of shapes (Nk,self.states) and
-    (self.states,Nk) respectively, this routine returns a projection of the
-    state space ss_here according to:
-
-        Anew = WT A V
-        Bnew = WT B
-        Cnew = C V
-        Dnew = D
-
-    The projected model has the same number of inputs/outputs as the original
-    one, but Nk states.
-    '''
-
-    Ap = libsp.dot( WT, libsp.dot(ss_here.A, V) )
-    Bp = libsp.dot( WT, ss_here.B)
-    Cp = libsp.dot( ss_here.C, V)
-
-    return ss(Ap,Bp,Cp,ss_here.D,ss_here.dt)
 
 def couple(ss01, ss02, K12, K21, out_sparse=False):
     """
@@ -782,52 +808,6 @@ def couple(ss01, ss02, K12, K21, out_sparse=False):
 
 
 
-def freqresp(SS, wv, dlti=True):
-    """
-    In-house frequency response function supporting dense/sparse types
-
-    Inputs:
-    - SS: instance of ss class, or scipy.signal.StateSpace*
-    - wv: frequency range
-    - dlti: True if discrete-time system is considered.
-
-    Outputs:
-    - Yfreq[outputs,inputs,len(wv)]: frequency response over wv
-
-    Warnings:
-    -  This function may not be very efficient for dense matrices (as A is not
-    reduced to upper Hessenberg form), but can exploit sparsity in the state-space
-    matrices.
-    """
-
-    assert type(SS) == ss, \
-        'Type %s of state-space model not supported. Use libss.ss instead!' % type(SS)
-    SS.check_types()
-
-    if hasattr(SS, 'dt') and dlti:
-        Ts = SS.dt
-        wTs = Ts * wv
-        zv = np.cos(wTs) + 1.j * np.sin(wTs)
-    else:
-        print('Assuming a continuous time system')
-        zv = 1.j * wv
-
-    Nx = SS.A.shape[0]
-    Ny = SS.D.shape[0]
-    try:
-        Nu = SS.B.shape[1]
-    except IndexError:
-        Nu = 1
-
-    Nw = len(wv)
-
-    Yfreq = np.empty((Ny, Nu, Nw,), dtype=np.complex_)
-    Eye = libsp.eye_as(SS.A)
-    for ii in range(Nw):
-        sol_cplx = libsp.solve(zv[ii] * Eye - SS.A, SS.B)
-        Yfreq[:, :, ii] = libsp.dot(SS.C, sol_cplx, type_out=np.ndarray) + SS.D
-
-    return Yfreq
 
 
 def series(SS01, SS02):
