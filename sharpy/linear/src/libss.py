@@ -377,22 +377,39 @@ class ss_block():
     def check_sizes(self):
 
         # Check the number of blocks
-        assert len(A) == self.blocks_x, "error"
-        assert len(B) == self.blocks_x, "error"
-        assert len(C) == self.blocks_y, "error"
-        assert len(D) == self.blocks_y, "error"
+        assert len(A) == self.blocks_x, "error in number of row blocks in A"
+        assert len(B) == self.blocks_x, "error in number of row blocks in B"
+        assert len(C) == self.blocks_y, "error in number of row blocks in C"
+        assert len(D) == self.blocks_y, "error in number of row blocks in D"
 
         for i in range(self.blocks_x):
-            assert len(A[i]) == self.blocks_x, "error"
-            assert len(B[i]) == self.blocks_u, "error"
+            assert len(A[i]) == self.blocks_x, "error in number of column blocks in A[%d]" % i
+            assert len(B[i]) == self.blocks_u, "error in number of column blocks in B[%d]" % i
 
         for i in range(self.blocks_y):
-            assert len(C[i]) == self.blocks_x, "error"
-            assert len(D[i]) == self.blocks_u, "error"
+            assert len(C[i]) == self.blocks_x, "error in number of column blocks in C[%d]" % i
+            assert len(D[i]) == self.blocks_u, "error in number of column blocks in D[%d]" % i
 
         # Check the size of each block
+        for i in len(A):
+            for j in len(A[i]):
+                assert A[i][j].shape(0) == self.S_x[i], "error shape(0) in A[%d][%d]" % (i,j)
+                assert A[i][j].shape(1) == self.S_x[j], "error shape(1) in A[%d][%d]" % (i,j)
 
-        pass
+        for i in len(B):
+            for j in len(B[i]):
+                assert B[i][j].shape(0) == self.S_x[i], "error shape(0) in B[%d][%d]" % (i,j)
+                assert B[i][j].shape(1) == self.S_u[j], "error shape(1) in B[%d][%d]" % (i,j)
+
+        for i in len(C)):
+            for j in len(C[i]):
+                assert C[i][j].shape(0) == self.S_y[i], "error shape(0) in C[%d][%d]" % (i,j)
+                assert C[i][j].shape(1) == self.S_x[j], "error shape(1) in C[%d][%d]" % (i,j)
+
+        for i in len(D)):
+            for j in len(D[i]):
+                assert D[i][j].shape(0) == self.S_y[i], "error shape(0) in D[%d][%d]" % (i,j)
+                assert D[i][j].shape(1) == self.S_u[j], "error shape(1) in D[%d][%d]" % (i,j)
 
     def remove_block(self, where, index):
         '''
