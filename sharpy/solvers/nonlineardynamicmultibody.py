@@ -403,9 +403,9 @@ class NonLinearDynamicMultibody(BaseSolver):
                 xbeamlib.cbeam3_correct_gravity_forces(MB_beam[ibody], MB_tstep[ibody], self.settings)
         mb.merge_multibody(MB_tstep, MB_beam, self.data.structure, structural_step, MBdict, dt)
 
-        structural_step.q[:] = q[:self.sys_size].copy()
-        structural_step.dqdt[:] = dqdt[:self.sys_size].copy()
-        structural_step.dqddt[:] = dqddt[:self.sys_size].copy()
+        # structural_step.q[:] = q[:self.sys_size].copy()
+        # structural_step.dqdt[:] = dqdt[:self.sys_size].copy()
+        # structural_step.dqddt[:] = dqddt[:self.sys_size].copy()
 
         return self.data
 
@@ -422,4 +422,3 @@ class NonLinearDynamicMultibody(BaseSolver):
             del(MBdict[k])
 
         MBdict['num_constraints'] = 0
-        
