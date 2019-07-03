@@ -60,6 +60,9 @@ class NonLinearDynamicCoupledStep(BaseSolver):
         self.settings_types['initial_velocity'] = 'float'
         self.settings_default['initial_velocity'] = 0
 
+        self.settings_types['relaxation_factor'] = 'float'
+        self.settings_default['relaxation_factor'] = 0.3
+
         self.data = None
         self.settings = None
 

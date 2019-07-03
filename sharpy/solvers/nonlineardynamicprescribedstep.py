@@ -50,6 +50,9 @@ class NonLinearDynamicPrescribedStep(BaseSolver):
         self.settings_types['gravity'] = 'float'
         self.settings_default['gravity'] = 9.81
 
+        self.settings_types['relaxation_factor'] = 'float'
+        self.settings_default['relaxation_factor'] = 0.3
+
         self.data = None
         self.settings = None
 
