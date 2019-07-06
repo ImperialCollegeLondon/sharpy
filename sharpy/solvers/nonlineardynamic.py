@@ -56,6 +56,10 @@ class NonLinearDynamic(BaseSolver):
         self.settings_types['gravity_dir'] = 'list(float)'
         self.settings_default['gravity_dir'] = np.array([0, 0, 1])
 
+        # still not implemented in the structural solver.
+        self.settings_types['relaxation_factor'] = 'float'
+        self.settings_default['relaxation_factor'] = 0.3
+
         self.data = None
         self.settings = None
 
