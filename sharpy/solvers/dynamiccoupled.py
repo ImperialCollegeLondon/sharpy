@@ -282,11 +282,6 @@ class DynamicCoupled(BaseSolver):
                       previous_kstep,
                       relax_factor)
 
-                if k > 0.9*self.settings['fsi_substeps'].value:
-                    relax_factor = 0.3
-                elif k > 0.8*self.settings['fsi_substeps'].value:
-                    relax_factor = 0.8
-
                 # run structural solver
                 ini_time_struc = time.perf_counter()
                 self.data = self.structural_solver.run(structural_step=structural_kstep)
