@@ -20,6 +20,7 @@ flow = ['BeamLoader',
         'DynamicCoupled',
         ]
 
+# if free_flight is False, the motion of the centre of the wing is prescribed.
 free_flight = False
 if not free_flight:
     case_name += '_prescribed'
@@ -28,6 +29,8 @@ if not free_flight:
     case_name += '_amp_' + str(amplitude).replace('.', '') + '_period_' + str(period)
 
 # FLIGHT CONDITIONS
+# the simulation is set such that the aircraft flies at a u_inf velocity while
+# the air is calm.
 u_inf = 10
 rho = 1.225
 
