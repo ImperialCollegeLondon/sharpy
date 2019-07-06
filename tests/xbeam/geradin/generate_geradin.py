@@ -27,7 +27,7 @@ def generate_fem_file(route, case_name, num_elem, num_node_elem=3):
     y = (np.linspace(0, length, num_node))*np.sin(angle)
     z = np.zeros((num_node,))
 
-    structural_twist = np.zeros_like(x)
+    structural_twist = np.zeros((num_elem, num_node_elem))
 
     frame_of_reference_delta = np.zeros((num_elem, num_node_elem, 3))
     for ielem in range(num_elem):
@@ -64,7 +64,7 @@ def generate_fem_file(route, case_name, num_elem, num_node_elem=3):
 
     # mass array
     num_mass = 1
-    m_bar = 0*100
+    m_bar = 0.
     j = 10
     base_mass = np.diag([m_bar, m_bar, m_bar, j, j, j])
     mass = np.zeros((num_mass, 6, 6))
@@ -139,7 +139,7 @@ def generate_solver_file():
     config.filename = file_name
     config['SHARPy'] = {'case': case_name,
                         'route': route,
-                        'flow': ['BeamLoader', 'NonLinearStatic', 'BeamCsvOutput', 'BeamPlot'],
+                        'flow': ['BeamLoader', 'NonLinearStatic', 'BeamPlot', 'WriteVariablesTime'],
                         'write_screen': 'off',
                         'write_log': 'on',
                         'log_folder': route + '/output/',
@@ -154,10 +154,8 @@ def generate_solver_file():
                                  'gravity_on': 'on',
                                  'gravity': 9.81,
                                  'gravity_dir': ['0', '0', '1']}
-    config['BeamCsvOutput'] = {'folder': route + '/output',
-                               'output_pos': 'on',
-                               'output_psi': 'on',
-                               'screen_output': 'off'}
+    config['WriteVariablesTime'] = {'structure_variables': ['pos'],
+                                    'cleanup_old_solution': 'on'}
     config['BeamPlot'] = {'folder': route + '/output',
                           'include_rbm': 'off',
                           'include_applied_forces': 'on'}

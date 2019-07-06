@@ -122,7 +122,7 @@ def generate_fem_file():
     y = (np.linspace(0, length, num_node))*np.sin(angle)
     z = np.zeros((num_node,))
 
-    structural_twist = np.zeros_like(x)
+    structural_twist = np.zeros((num_elem, num_node_elem))
 
     frame_of_reference_delta = np.zeros((num_elem, num_node_elem, 3))
     for ielem in range(num_elem):
@@ -246,7 +246,7 @@ def generate_solver_file():
     config.filename = file_name
     config['SHARPy'] = {'case': case_name,
                         'route': route,
-                        'flow': ['BeamLoader', 'NonLinearDynamic', 'BeamCsvOutput'],
+                        'flow': ['BeamLoader', 'NonLinearDynamic', 'WriteVariablesTime'],
                         'write_screen': 'on',
                         'write_log': 'on',
                         'log_folder': route + '/output/',
@@ -265,11 +265,9 @@ def generate_solver_file():
                                   'gravity_on': 'off',
                                   'gravity': 9.81,
                                   'gravity_dir': ['0', '0', '1']}
-    config['BeamCsvOutput'] = {'folder': route + '/output',
-                               'output_pos': 'on',
-                               'output_psi': 'on',
-                               'output_glob_pos': 'on',
-                               'screen_output': 'off'}
+    config['WriteVariablesTime'] = {
+                                    'cleanup_old_solution': 'on',
+                                    'structure_variables': ['pos']}
     # not being run
     # config['BeamPlot'] = {'folder': os.path.dirname(__file__) + '/../',
     #                       'include_rbm': 'on',

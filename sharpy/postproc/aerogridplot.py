@@ -8,6 +8,7 @@ import sharpy.utils.cout_utils as cout
 from sharpy.utils.settings import str2bool
 from sharpy.utils.solver_interface import solver, BaseSolver
 import sharpy.utils.settings as settings
+import sharpy.aero.utils.uvlmlib as uvlmlib
 
 
 @solver
@@ -45,6 +46,9 @@ class AerogridPlot(BaseSolver):
         self.settings_types['dt'] = 'float'
         self.settings_default['dt'] = 0.
 
+        self.settings_types['include_velocities'] = 'bool'
+        self.settings_default['include_velocities'] = False
+
         self.settings = None
         self.data = None
 
@@ -77,13 +81,16 @@ class AerogridPlot(BaseSolver):
                               self.data.settings['SHARPy']['case'])
 
     def run(self, online=False):
+        # TODO: Create a dictionary to plot any variable as in beamplot
         if not online:
             for self.ts in range(self.ts_max):
                 self.plot_body()
                 self.plot_wake()
             cout.cout_wrap('...Finished', 1)
         else:
-            self.ts = len(self.data.structure.timestep_info) - 1
+            aero_tsteps = len(self.data.aero.timestep_info) - 1
+            struct_tsteps = len(self.data.structure.timestep_info) - 1
+            self.ts = np.max((aero_tsteps, struct_tsteps))
             self.plot_body()
             self.plot_wake()
         return self.data
@@ -96,7 +103,6 @@ class AerogridPlot(BaseSolver):
                         '%06u' % self.ts)
 
             dims = self.data.aero.timestep_info[self.ts].dimensions[i_surf, :]
-            # dims_star = self.data.aero.timestep_info[self.ts].dimensions_star[i_surf, :]
             point_data_dim = (dims[0]+1)*(dims[1]+1)  # + (dims_star[0]+1)*(dims_star[1]+1)
             panel_data_dim = (dims[0])*(dims[1])  # + (dims_star[0])*(dims_star[1])
 
@@ -105,25 +111,34 @@ class AerogridPlot(BaseSolver):
             panel_id = np.zeros((panel_data_dim,), dtype=int)
             panel_surf_id = np.zeros((panel_data_dim,), dtype=int)
             panel_gamma = np.zeros((panel_data_dim,))
+            panel_gamma_dot = np.zeros((panel_data_dim,))
             normal = np.zeros((panel_data_dim, 3))
             point_struct_id = np.zeros((point_data_dim,), dtype=int)
             point_cf = np.zeros((point_data_dim, 3))
             point_unsteady_cf = np.zeros((point_data_dim, 3))
             zeta_dot = np.zeros((point_data_dim, 3))
             u_inf = np.zeros((point_data_dim, 3))
+            if self.settings['include_velocities']:
+                vel = np.zeros((point_data_dim, 3))
             counter = -1
 
-            rotation_mat = algebra.quat2rot(self.data.structure.timestep_info[self.ts].quat).transpose()
             # coordinates of corners
             for i_n in range(dims[1]+1):
                 for i_m in range(dims[0]+1):
                     counter += 1
                     coords[counter, :] = self.data.aero.timestep_info[self.ts].zeta[i_surf][:, i_m, i_n]
                     if self.settings['include_rbm']:
-                        # coords[counter, :] = np.dot(rotation_mat, self.data.aero.timestep_info[self.ts].zeta[i_surf][:, i_m, i_n])
                         coords[counter, :] += self.data.structure.timestep_info[self.ts].for_pos[0:3]
                     if self.settings['include_forward_motion']:
                         coords[counter, 0] -= self.settings['dt'].value*self.ts*self.settings['u_inf'].value
+
+            with_incidence_angle = True
+            try:
+                self.data.aero.timestep_info[self.ts].postproc_cell['incidence_angle']
+            except KeyError:
+                with_incidence_angle = False
+            else:
+                incidence_angle = np.zeros_like(panel_gamma)
 
             counter = -1
             node_counter = -1
@@ -146,6 +161,8 @@ class AerogridPlot(BaseSolver):
                         u_inf[node_counter, :] = self.data.aero.timestep_info[self.ts].u_ext[i_surf][0:3, i_m, i_n]
                     except AttributeError:
                         pass
+                    if self.settings['include_velocities']:
+                        vel[node_counter, :] = uvlmlib.uvlm_calculate_total_induced_velocity_at_point(self.data.aero.timestep_info[self.ts],coords[node_counter, :])
                     if i_n < dims[1] and i_m < dims[0]:
                         counter += 1
                     else:
@@ -160,6 +177,12 @@ class AerogridPlot(BaseSolver):
                     panel_id[counter] = counter
                     panel_surf_id[counter] = i_surf
                     panel_gamma[counter] = self.data.aero.timestep_info[self.ts].gamma[i_surf][i_m, i_n]
+                    panel_gamma_dot[counter] = self.data.aero.timestep_info[self.ts].gamma_dot[i_surf][i_m, i_n]
+
+                    if with_incidence_angle:
+                        incidence_angle[counter] = \
+                            self.data.aero.timestep_info[self.ts].postproc_cell['incidence_angle'][i_surf][i_m, i_n]
+
 
             ug = tvtk.UnstructuredGrid(points=coords)
             ug.set_cells(tvtk.Quad().cell_type, conn)
@@ -169,6 +192,11 @@ class AerogridPlot(BaseSolver):
             ug.cell_data.get_array(1).name = 'panel_surface_id'
             ug.cell_data.add_array(panel_gamma)
             ug.cell_data.get_array(2).name = 'panel_gamma'
+            ug.cell_data.add_array(panel_gamma_dot)
+            ug.cell_data.get_array(3).name = 'panel_gamma_dot'
+            if with_incidence_angle:
+                ug.cell_data.add_array(incidence_angle)
+                ug.cell_data.get_array(4).name = 'incidence_angle'
             ug.cell_data.vectors = normal
             ug.cell_data.vectors.name = 'panel_normal'
             ug.point_data.scalars = np.arange(0, coords.shape[0])
@@ -183,6 +211,9 @@ class AerogridPlot(BaseSolver):
             ug.point_data.get_array(4).name = 'zeta_dot'
             ug.point_data.add_array(u_inf)
             ug.point_data.get_array(5).name = 'u_inf'
+            if self.settings['include_velocities']:
+                ug.point_data.add_array(vel)
+                ug.point_data.get_array(6).name = 'velocity'
             write_data(ug, filename)
 
     def plot_wake(self):

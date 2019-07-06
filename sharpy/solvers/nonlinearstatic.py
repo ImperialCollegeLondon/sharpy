@@ -36,6 +36,12 @@ class NonLinearStatic(BaseSolver):
         self.settings_types['min_delta'] = 'float'
         self.settings_default['min_delta'] = 1e-7
 
+        self.settings_types['initial_position'] = 'list(float)'
+        self.settings_default['initial_position'] = np.array([0.0, 0.0, 0.0])
+
+        self.settings_types['relaxation_factor'] = 'float'
+        self.settings_default['relaxation_factor'] = 0.3
+
         self.data = None
         self.settings = None
 
@@ -48,7 +54,7 @@ class NonLinearStatic(BaseSolver):
         settings.to_custom_types(self.settings, self.settings_types, self.settings_default)
 
     def run(self):
-        # cout.cout_wrap('Running non linear static solver...', 2)
+        self.data.structure.timestep_info[self.data.ts].for_pos[0:3] = self.settings['initial_position']
         xbeamlib.cbeam3_solv_nlnstatic(self.data.structure, self.settings, self.data.ts)
         self.extract_resultants()
         return self.data
@@ -56,19 +62,31 @@ class NonLinearStatic(BaseSolver):
     def next_step(self):
         self.data.structure.next_step()
 
-    def extract_resultants(self):
-        applied_forces = self.data.structure.nodal_b_for_2_a_for(self.data.structure.timestep_info[-1].steady_applied_forces,
-                                                                 self.data.structure.timestep_info[-1])
+    def extract_resultants(self, tstep=None):
+        if tstep is None:
+            tstep = self.data.structure.timestep_info[self.data.ts]
+        applied_forces = self.data.structure.nodal_b_for_2_a_for(tstep.steady_applied_forces,
+                                                                 tstep)
 
         applied_forces_copy = applied_forces.copy()
-        gravity_forces_copy = self.data.structure.timestep_info[-1].gravity_forces.copy()
+        gravity_forces_copy = tstep.gravity_forces.copy()
         for i_node in range(self.data.structure.num_node):
-            applied_forces_copy[i_node, 3:6] += np.cross(self.data.structure.timestep_info[-1].pos[i_node, :],
+            applied_forces_copy[i_node, 3:6] += np.cross(tstep.pos[i_node, :],
                                                          applied_forces_copy[i_node, 0:3])
-            gravity_forces_copy[i_node, 3:6] += np.cross(self.data.structure.timestep_info[-1].pos[i_node, :],
+            gravity_forces_copy[i_node, 3:6] += np.cross(tstep.pos[i_node, :],
                                                          gravity_forces_copy[i_node, 0:3])
 
         totals = np.sum(applied_forces_copy + gravity_forces_copy, axis=0)
-        # totals = np.sum(applied_forces_copy, axis=0) + self.data.structure.timestep_info[-1].total_gravity_forces
-        # print("steady totals = ", totals)
         return totals[0:3], totals[3:6]
+
+    def update(self, tstep=None):
+        self.create_q_vector(tstep)
+
+    def create_q_vector(self, tstep=None):
+        import sharpy.structure.utils.xbeamlib as xb
+        if tstep is None:
+            tstep = self.data.structure.timestep_info[-1]
+
+        xb.xbeam_solv_disp2state(self.data.structure, tstep)
+
+
