@@ -166,6 +166,3 @@ class Test_gamma_dot(unittest.TestCase):
 
                     self.run_test(aero_type, predictor, sparse, integration_order)
 
-
-if __name__ == '__main__':
-    unittest.main()
