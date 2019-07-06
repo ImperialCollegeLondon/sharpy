@@ -103,9 +103,9 @@ chord_fin = 0.5
 # DISCRETISATION
 # spatial discretisation
 # chordiwse panels
-m = 3
+m = 8
 # spanwise elements
-n_elem_multiplier = 1
+n_elem_multiplier = 2
 n_elem_main = int(4*n_elem_multiplier)
 n_elem_tail = int(2*n_elem_multiplier)
 n_elem_fin = int(2*n_elem_multiplier)
