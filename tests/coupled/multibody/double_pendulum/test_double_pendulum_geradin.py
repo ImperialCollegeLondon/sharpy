@@ -197,21 +197,17 @@ class TestDoublePendulum(unittest.TestCase):
         self.assertAlmostEqual(pos_tip_data[-1, 1], 1.051004, 4)
         self.assertAlmostEqual(pos_tip_data[-1, 2], 0.000000, 4)
         self.assertAlmostEqual(pos_tip_data[-1, 3], -0.9986984, 4)
+        self.tearDowns()
 
     def tearDowns(self):
-        solver_path = os.path.abspath(os.path.dirname(os.path.realpath(__file__)) + '/double_pendulum/')
-        files_to_delete = list()
-        extensions = ('*.txt', '*.h5')
-        for f in extensions:
-            files_to_delete.extend(glob.glob(solver_path +  f))
-
+        solver_path = os.path.dirname(os.path.realpath(__file__))
+        solver_path += '/'
+        files_to_delete = [name + '.aero.h5',
+                           name + '.dyn.h5',
+                           name + '.fem.h5',
+                           name + '.mb.h5',
+                           name + '.solver.txt']
         for f in files_to_delete:
-            try:
-                os.remove(f)
-            except FileNotFoundError:
-                pass
+            os.remove(solver_path + f)
 
-        try:
-            shutil.rmtree(solver_path + '/output/')
-        except FileNotFoundError:
-            pass
+        shutil.rmtree(solver_path + 'output/')
