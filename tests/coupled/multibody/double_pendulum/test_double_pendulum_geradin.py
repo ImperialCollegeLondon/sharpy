@@ -1,6 +1,7 @@
 import numpy as np
 import unittest
 import os
+import shutil
 
 
 class TestDoublePendulum(unittest.TestCase):
@@ -24,7 +25,8 @@ class TestDoublePendulum(unittest.TestCase):
         EI = 1e9
 
         # Beam1
-        nnodes1 = 11
+        global nnodes1
+        nnodes1 = 5
         l1 = 1.0
         m1 = 1.0
         theta_ini1 = 90.*deg2rad
@@ -40,7 +42,7 @@ class TestDoublePendulum(unittest.TestCase):
         airfoil[0,:,0] = np.linspace(0.,1.,20)
 
         # Simulation
-        numtimesteps = 100
+        numtimesteps = 10
         dt = 0.01
 
         # Create the structure
@@ -104,6 +106,8 @@ class TestDoublePendulum(unittest.TestCase):
                                 'AerogridLoader',
                                 'InitializeMultibody',
                                 'DynamicCoupled']
+        global name
+        name = 'double_pendulum_geradin'
         SimInfo.solvers['SHARPy']['case'] = 'double_pendulum_geradin'
         SimInfo.solvers['SHARPy']['write_screen'] = 'off'
         SimInfo.solvers['SHARPy']['route'] = os.path.dirname(os.path.realpath(__file__)) + '/'
@@ -189,8 +193,25 @@ class TestDoublePendulum(unittest.TestCase):
 
         # read output and compare
         output_path = os.path.dirname(solver_path) + '/output/double_pendulum_geradin/WriteVariablesTime/'
-        pos_tip_data = np.atleast_2d(np.genfromtxt(output_path + "struct_pos_node" + str(11+11-1) + ".dat", delimiter=' '))
-        self.assertAlmostEqual(pos_tip_data[-1, 1], 1.481168, 4)
+        pos_tip_data = np.atleast_2d(np.genfromtxt(output_path + "struct_pos_node" + str(nnodes1*2-1) + ".dat", delimiter=' '))
+        self.assertAlmostEqual(pos_tip_data[-1, 1], 1.051004, 4)
         self.assertAlmostEqual(pos_tip_data[-1, 2], 0.000000, 4)
-        self.assertAlmostEqual(pos_tip_data[-1, 3], 0.8766285, 4)
+        self.assertAlmostEqual(pos_tip_data[-1, 3], -0.9986984, 4)
 
+    def tearDowns(self):
+        solver_path = os.path.abspath(os.path.dirname(os.path.realpath(__file__)) + '/double_pendulum/')
+        files_to_delete = list()
+        extensions = ('*.txt', '*.h5')
+        for f in extensions:
+            files_to_delete.extend(glob.glob(solver_path +  f))
+
+        for f in files_to_delete:
+            try:
+                os.remove(f)
+            except FileNotFoundError:
+                pass
+
+        try:
+            shutil.rmtree(solver_path + '/output/')
+        except FileNotFoundError:
+            pass
