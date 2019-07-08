@@ -94,9 +94,14 @@ class LinearDynamicSimulation(BaseSolver):
         x_out = out[2]
         y_out = out[1]
 
-        process = True
-        if process:
+        # Under development
+        try:
+            modal = self.data.linear.lsys[sys_id].beam.settings['modal']
+        except KeyError:
+            modal = False
 
+        process = True  # Under development
+        if process:
             # Pack state variables into linear timestep info
             for n in range(len(t_out)-1):
                 tstep = LinearTimeStepInfo()
@@ -111,56 +116,16 @@ class LinearDynamicSimulation(BaseSolver):
                 # Need to obtain information from the variables in a similar fashion as done with the database
                 # for the beam case
 
-                if 'LinearUVLM' in self.data.linear.lsys:
-                    x_aero = tstep.x[:self.data.linear.lsys['LinearUVLM'].ss.states]
-                    # u_aero = TO DO
-                    phi = self.data.linear.lsys[sys_id].lsys['LinearBeam'].sys.U
-                    Kas = self.data.linear.lsys[sys_id].couplings['Kas']
-                    u_q = tstep.u[:self.data.linear.lsys['LinearUVLM'].ss.inputs] + tstep.y[-self.data.linear.lsys[sys_id].lsys['LinearUVLM'].ss.inputs:]
-                    u_aero = Kas.dot(sclalg.block_diag(phi, phi).dot(u_q))
+                aero_tstep, struct_tstep = state_to_timestep(self.data, sys_id, tstep.x, tstep.u, tstep.y, modal=modal)
 
-                    # Unpack input
-                    zeta, zeta_dot, u_ext = self.data.linear.lsys[sys_id].lsys['LinearUVLM'].unpack_input_vector(u_aero)
-
-
-                    # Also add the beam forces. I have a feeling there is a minus there as well....
-                    # Aero
-                    forces, gamma, gamma_dot, gamma_star = self.data.linear.lsys[sys_id].lsys['LinearUVLM'].unpack_ss_vector(self.data,
-                                                                                                                 x_n=x_aero,
-                                                                                                                 aero_tstep=self.data.linear.tsaero0,
-                                                                                                                             track_body=True)
-                    current_aero_tstep = self.data.aero.timestep_info[-1].copy()
-                    current_aero_tstep.forces = [forces[i_surf] + self.data.linear.tsaero0.forces[i_surf] for i_surf in range(len(gamma))]
-                    current_aero_tstep.gamma = [gamma[i_surf] + self.data.linear.tsaero0.gamma[i_surf] for i_surf in range(len(gamma))]
-                    current_aero_tstep.gamma_dot = [gamma_dot[i_surf] + self.data.linear.tsaero0.gamma_dot[i_surf] for i_surf in range(len(gamma))]
-                    current_aero_tstep.gamma_star = [gamma_star[i_surf] + self.data.linear.tsaero0.gamma_star[i_surf] for i_surf in range(len(gamma))]
-                    current_aero_tstep.zeta = zeta
-                    current_aero_tstep.zeta_dot = zeta_dot
-                    current_aero_tstep.u_ext = u_ext
-
-                    self.data.aero.timestep_info.append(current_aero_tstep)
-
-                # Structural states
-                if 'BeamPlot' in self.postprocessors:
-                    x_struct = tstep.x[-self.data.linear.lsys[sys_id].lsys['LinearBeam'].ss.states:]
-                    aero_forces = self.data.linear.lsys['LinearUVLM'].C_to_vertex_forces.dot(x_aero)
-                    beam_forces = self.data.linear.lsys[sys_id].couplings['Ksa'].dot(aero_forces)
-                    u_struct = tstep.u[-self.data.linear.lsys[sys_id].lsys['LinearBeam'].ss.inputs:]
-                    # y_struct = tstep.y[:self.data.linear.lsys[sys_id].lsys['LinearBeam'].ss.outputs]
-
-                    # Reconstruct the state if modal
-                    phi = self.data.linear.lsys['LinearBeam'].sys.U
-                    x_s = sclalg.block_diag(phi, phi).dot(x_struct)
-                    y_s = beam_forces #+ phi.dot(u_struct)
-                    # y_s = self.data.linear.lsys['LinearBeam'].sys.U.T.dot(y_struct)
-
-                    current_struct_step = self.data.linear.lsys[sys_id].lsys['LinearBeam'].unpack_ss_vector(x_s, y_s, self.data.linear.tsstruct0)
-                    self.data.structure.timestep_info.append(current_struct_step)
+                self.data.aero.timestep_info.append(aero_tstep)
+                self.data.structure.timestep_info.append(struct_tstep)
 
                 # run postprocessors
                 if self.with_postprocessors:
                     for postproc in self.postprocessors:
                         self.data = self.postprocessors[postproc].run(online=True)
+
 
         export = True
         if export:
@@ -173,6 +138,7 @@ class LinearDynamicSimulation(BaseSolver):
             t_pd.to_csv(self.data.settings['SHARPy']['route'] + '/output/t_out.csv')
             u_pd.to_csv(self.data.settings['SHARPy']['route'] + '/output/u_out.csv')
         return self.data
+
 
     def read_files(self):
 
@@ -216,4 +182,88 @@ class LinearDynamicSimulation(BaseSolver):
         else:
             quat = orient
 
+
+def state_to_timestep(data, sys_id, x, u=None, y=None, modal=False):
+    """
+    Writes a state-space vector to SHARPy timesteps
+
+    Args:
+        data:
+        sys_id:
+        x:
+        u:
+        y:
+        modal:
+
+    Returns:
+
+    """
+
+    # sys_id = self.settings.get('sys_id')
+
+    x_aero = x[:data.linear.lsys[sys_id].uvlm.ss.states]
+    x_struct = x[-data.linear.lsys[sys_id].beam.ss.states:]
+    # u_aero = TODO: external velocities
+    phi = data.linear.lsys[sys_id].beam.sys.U
+    Kas = data.linear.lsys[sys_id].couplings['Kas']
+
+    # Beam output
+    y_beam = x_struct
+
+    if u is not None:
+        u_q = u[:data.linear.lsys[sys_id].uvlm.ss.inputs] + y_beam
+    else:
+        u_q = y_beam
+
+    if modal:
+        u_aero = Kas.dot(sclalg.block_diag(phi, phi).dot(u_q))
+    else:
+        u_aero = Kas.dot(u_q)
+
+    # Unpack input
+    zeta, zeta_dot, u_ext = data.linear.lsys[sys_id].uvlm.unpack_input_vector(u_aero)
+
+    # Also add the beam forces. I have a feeling there is a minus there as well....
+    # Aero
+    forces, gamma, gamma_dot, gamma_star = data.linear.lsys[sys_id].uvlm.unpack_ss_vector(
+        data,
+        x_n=x_aero,
+        aero_tstep=data.linear.tsaero0,
+        track_body=True)
+
+    current_aero_tstep = data.aero.timestep_info[-1].copy()
+    current_aero_tstep.forces = [forces[i_surf] + data.linear.tsaero0.forces[i_surf] for i_surf in
+                                 range(len(gamma))]
+    current_aero_tstep.gamma = [gamma[i_surf] + data.linear.tsaero0.gamma[i_surf] for i_surf in
+                                range(len(gamma))]
+    current_aero_tstep.gamma_dot = [gamma_dot[i_surf] + data.linear.tsaero0.gamma_dot[i_surf] for i_surf in
+                                    range(len(gamma))]
+    current_aero_tstep.gamma_star = [gamma_star[i_surf] + data.linear.tsaero0.gamma_star[i_surf] for i_surf in
+                                     range(len(gamma))]
+    current_aero_tstep.zeta = zeta
+    current_aero_tstep.zeta_dot = zeta_dot
+    current_aero_tstep.u_ext = u_ext
+
+    # self.data.aero.timestep_info.append(current_aero_tstep)
+
+    aero_forces = data.linear.lsys[sys_id].uvlm.C_to_vertex_forces.dot(x_aero)
+    beam_forces = data.linear.lsys[sys_id].couplings['Ksa'].dot(aero_forces)
+
+    if u is not None:
+        u_struct = u[-data.linear.lsys[sys_id].beam.ss.inputs:]
+    # y_struct = y[:self.data.linear.lsys[sys_id].lsys['LinearBeam'].ss.outputs]
+
+    # Reconstruct the state if modal
+    if modal:
+        phi = data.linear.lsys[sys_id].beam.sys.U
+        x_s = sclalg.block_diag(phi, phi).dot(x_struct)
+    else:
+        x_s = x_struct
+    y_s = beam_forces #+ phi.dot(u_struct)
+    # y_s = self.data.linear.lsys['LinearBeam'].sys.U.T.dot(y_struct)
+
+    current_struct_step = data.linear.lsys[sys_id].beam.unpack_ss_vector(x_s, y_s, data.linear.tsstruct0)
+    # data.structure.timestep_info.append(current_struct_step)
+
+    return current_aero_tstep, current_struct_step
 

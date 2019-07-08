@@ -44,7 +44,7 @@ class LinearCustom(ssinterface.BaseElement):
         settings.to_custom_types(self.settings, self.settings_types, self.settings_default)
 
     def assemble(self):
-        
+
 
         if self.settings['solver_path']:
             custom_solver_path = self.settings['solver_path'] + '/'
