@@ -1,14 +1,10 @@
 import numpy as np
 import unittest
 import os
+import shutil
 
 
 class TestFixNodeVelocitywrtG(unittest.TestCase):
-    """
-    Validation of a double pendulum with a mass at each tip position
-
-    Reference case: M. Geradin and A. Cardona, "Flexible multibody dynamics : a finite element approach"
-    """
 
     def setUp(self):
         import sharpy.utils.generate_cases as gc
@@ -69,7 +65,10 @@ class TestFixNodeVelocitywrtG(unittest.TestCase):
                                 'AerogridLoader',
                                 'StaticCoupled',
                                 'DynamicCoupled']
-        SimInfo.solvers['SHARPy']['case'] = 'fix_node_velocity_wrtG'
+        global name
+        name = 'fix_node_velocity_wrtG'
+        SimInfo.solvers['SHARPy']['case'] = name
+        SimInfo.solvers['SHARPy']['write_screen'] = 'off'
         SimInfo.solvers['SHARPy']['route'] = os.path.dirname(os.path.realpath(__file__)) + '/'
         SimInfo.set_variable_all_dicts('dt', 0.1)
         SimInfo.set_variable_all_dicts('rho', 0.0)
@@ -97,7 +96,7 @@ class TestFixNodeVelocitywrtG(unittest.TestCase):
                                                                         'BeamPlot': SimInfo.solvers['BeamPlot'],
                                                                         'AerogridPlot': SimInfo.solvers['AerogridPlot']}
 
-        ntimesteps = 100
+        ntimesteps = 10
 
         SimInfo.define_num_steps(ntimesteps)
 
@@ -151,11 +150,25 @@ class TestFixNodeVelocitywrtG(unittest.TestCase):
         # read output and compare
         output_path = os.path.dirname(solver_path) + '/output/fix_node_velocity_wrtG/WriteVariablesTime/'
         pos_tip_data = np.matrix(np.genfromtxt(output_path + "struct_pos_node-1" + ".dat", delimiter=' '))
-        self.assertAlmostEqual(pos_tip_data[-1, 1], 9.999737, 4)
-        self.assertAlmostEqual(pos_tip_data[-1, 2], -0.05957746, 4)
+        self.assertAlmostEqual(pos_tip_data[-1, 1], 9.999386, 4)
+        self.assertAlmostEqual(pos_tip_data[-1, 2], -0.08967441, 4)
         self.assertAlmostEqual(pos_tip_data[-1, 3], 0., 4)
+        self.tearDowns()
 
-if __name__=='__main__':
+    def tearDowns(self):
+        solver_path = os.path.dirname(os.path.realpath(__file__))
+        solver_path += '/'
+        files_to_delete = [name + '.aero.h5',
+                           name + '.dyn.h5',
+                           name + '.fem.h5',
+                           name + '.mb.h5',
+                           name + '.solver.txt']
+        for f in files_to_delete:
+            os.remove(solver_path + f)
+
+        shutil.rmtree(solver_path + 'output/')
+
+if __name__== '__main__':
 
     T = TestFixNodeVelocitywrtG()
     T.setUp()
