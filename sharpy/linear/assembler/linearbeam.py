@@ -50,7 +50,7 @@ class LinearBeam(BaseElement):
         self.tstruct0 = data.linear.tsstruct0
 
         # State variables
-        num_dof_flex = self.sys.structure.num_dof
+        num_dof_flex = self.sys.structure.num_dof.value
         num_dof_rig = self.sys.Mstr.shape[0] - num_dof_flex
         state_db = {'eta': [0, num_dof_flex],
                   'V_bar': [num_dof_flex, num_dof_flex + 3],

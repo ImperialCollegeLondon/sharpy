@@ -5,6 +5,8 @@ from sharpy.utils.solver_interface import solver, BaseSolver, initialise_solver
 import sharpy.utils.h5utils as h5
 import sharpy.solvers.modal as modal
 import sharpy.utils.cout_utils as cout
+import sharpy.utils.algebra as algebra
+import sharpy.solvers.lindynamicsim as lindynamicsim
 import pandas as pd
 import os
 
@@ -19,7 +21,7 @@ class AsymptoticStability(BaseSolver):
         previously assembled.
 
     Warnings:
-        Currently under development. Support offered for clamped structures only.
+        Currently under development.
 
     """
     solver_id = 'AsymptoticStability'
@@ -38,7 +40,13 @@ class AsymptoticStability(BaseSolver):
         self.settings_default['frequency_cutoff'] = 100
 
         self.settings_types['export_eigenvalues'] = 'bool'
-        self.settings_default['export_eigenvalues'] = True
+        self.settings_default['export_eigenvalues'] = False
+
+        self.settings_types['display_root_locus'] = 'bool'
+        self.settings_default['display_root_locus'] = False
+
+        self.settings_types['modes_to_plot'] = 'list(int)'
+        self.settings_default['modes_to_plot'] = []
 
         self.settings_types['num_evals'] = 'int'
         self.settings_default['num_evals'] = 200
@@ -58,6 +66,7 @@ class AsymptoticStability(BaseSolver):
         self.eigenvalues = None
         self.eigenvectors = None
         self.frequency_cutoff = np.inf
+        self.eigenvalue_table = None
 
         self.postprocessors = dict()
         self.with_postprocessors = False
@@ -82,9 +91,19 @@ class AsymptoticStability(BaseSolver):
             self.postprocessors[postproc].initialise(
                 self.data, self.settings['postprocessors_settings'][postproc])
 
+
+        stability_folder_path = self.settings['folder'] + '/' + self.data.settings['SHARPy']['case'] + '/stability'
+        if not os.path.exists(stability_folder_path):
+            os.makedirs(stability_folder_path)
+
+        if self.settings['print_info']:
+            cout.cout_wrap('Dynamical System Eigenvalues')
+            self.eigenvalue_table = cout.TablePrinter(7, 12, ['d', 'f', 'f', 'f', 'f', 'f', 'f'])
+            self.eigenvalue_table.print_header(['mode', 'eval_real', 'eval_imag', 'freq_n (Hz)', 'freq_d (Hz)', 'damping', 'period (s)'])
+
     def run(self):
         """
-        Assembles a linearised system in discrete-time state-space form and computes the eigenvalues
+        Computes the eigenvalues and eigenvectors
 
         Returns:
             eigenvalues (np.ndarray): Eigenvalues sorted and frequency truncated
@@ -98,15 +117,6 @@ class AsymptoticStability(BaseSolver):
 
         if self.frequency_cutoff == 0:
             self.frequency_cutoff = np.inf
-
-        # try:
-        #     self.dt = self.settings['LinearUvlm']['dt'].value
-        # except AttributeError:
-        #     self.dt = float(self.settings['LinearUvlm']['dt'])
-        #
-        # # Assemble linear system
-        # self.aeroelastic = LinAeroEla(self.data, self.settings)
-        # self.aeroelastic.assemble_ss()
 
         sys_id = self.settings.get('sys_id')
         ss = self.data.linear.lsys[sys_id].ss
@@ -125,7 +135,13 @@ class AsymptoticStability(BaseSolver):
 
         if self.settings['print_info'].value:
             self.print_eigenvalues()
+
+        if self.settings['display_root_locus']:
             self.display_root_locus()
+
+        # Under development
+        if self.settings['modes_to_plot'] is not []:
+            self.plot_modes()
 
         if self.with_postprocessors:
             mode_shape_list = []
@@ -157,6 +173,12 @@ class AsymptoticStability(BaseSolver):
         return self.data
 
     def export_eigenvalues(self, num_evals):
+        """
+        Saves a certain number of eigenvalues and eigenvectors to file
+
+        Args:
+            num_evals: Number of eigenvalues to save
+        """
         stability_folder_path = self.settings['folder'] + '/' + self.data.settings['SHARPy']['case'] + '/stability'
         if not os.path.exists(stability_folder_path):
             os.makedirs(stability_folder_path)
@@ -165,23 +187,20 @@ class AsymptoticStability(BaseSolver):
         evec_pd.to_csv(stability_folder_path + '/eigenvectors.csv')
         eval_pd.to_csv(stability_folder_path + '/eigenvalues.csv')
 
-
-    def print_eigenvalues(self, keep_sys_id=''):
+    def print_eigenvalues(self):
         """
-
-        Returns:
+        Prints the eigenvalues to a table with the corresponding natural frequency, period and damping ratios
 
         """
-        cout.cout_wrap('Dynamical System Eigenvalues')
-        if keep_sys_id == 'LinearBeam':
-            uvlm_states = self.data.linear.lsys['LinearCustom'].lsys['LinearUVLM'].ss.states
-            cout.cout_wrap('Structural Eigenvalues only')
-        else:
-            uvlm_states = 0
-
-        for eval in range(len(self.eigenvalues)):
-            if np.argmax(np.abs(self.eigenvectors[:, eval])) >= uvlm_states:
-                cout.cout_wrap("\t%2d: %.3f + %.3fj" %(eval, self.eigenvalues[eval].real, self.eigenvalues[eval].imag))
+        for eval in range(self.settings['num_evals'].value):
+            eigenvalue = self.eigenvalues[eval]
+            omega_n = np.abs(eigenvalue)
+            omega_d = np.abs(eigenvalue.imag)
+            damping_ratio = -eigenvalue.real / omega_n
+            f_n = omega_n / 2 / np.pi
+            f_d = omega_d / 2 / np.pi
+            period = 1 / f_d
+            self.eigenvalue_table.print_line([eval, eigenvalue.real, eigenvalue.imag, f_n, f_d, damping_ratio, period])
 
     def display_root_locus(self):
         """
@@ -211,8 +230,11 @@ class AsymptoticStability(BaseSolver):
 
         return fig, ax
 
-    def plot_modes(self, n_modes_to_plot, start=0):
+    def plot_modes(self):
         """
+        Warnings:
+            under development
+
         Plot the aeroelastic mode shapes for the first n_modes_to_plot
 
         Todo:
@@ -221,39 +243,96 @@ class AsymptoticStability(BaseSolver):
         Returns:
 
         """
+        mode_shape_list = self.settings['modes_to_plot']
+        sys_id = self.settings['sys_id']
+        for mode in mode_shape_list:
+            # Scale mode
+            aero_states = self.data.linear.lsys[sys_id].uvlm.ss.states
+            displacement_states = self.data.linear.lsys[sys_id].beam.ss.states // 2
+            amplitude_factor = modal.scale_mode(self.data,
+                                                self.eigenvectors[aero_states:aero_states + displacement_states-10,
+                                                mode], rot_max_deg=10, perc_max=0.1)
 
-        n_aero_states = self.aeroelastic.linuvlm.Nx
-        n_struct_states = self.aeroelastic.lingebm_str.U.shape[1]
+            fact_rbm = self.scale_rigid_body_mode(self.eigenvectors[:, mode], self.eigenvalues[mode].imag)
+            print(fact_rbm)
 
-        for mode_plot in range(start, start + n_modes_to_plot):
-            fig = plt.figure()
-            ax = fig.add_subplot(111, projection='3d')
+            t, x = self.mode_time_domain(amplitude_factor, fact_rbm, mode)
 
-            mode_shape = self.eigenvectors[n_aero_states:n_aero_states+n_struct_states, mode_plot]
-            mode_shape = modal.scale_mode(self.data, mode_shape)
-            zeta_mode = modal.get_mode_zeta(self.data, mode_shape)
-            mode_frequency = np.imag(self.eigenvalues[mode_plot])
+            # Initialise postprocessors - new folder for each mode
+            # initialise postprocessors
+            route = self.settings['folder'] + '/stability/mode_%06d/' % mode
+            postprocessors = dict()
+            postprocessor_list = ['AerogridPlot', 'BeamPlot']
+            postprocessors_settings = dict()
+            postprocessors_settings['AerogridPlot'] = {'folder': route,
+                                    'include_rbm': 'on',
+                                    'include_applied_forces': 'on',
+                                    'minus_m_star': 0,
+                                    'u_inf': 1
+                                    }
+            postprocessors_settings['BeamPlot'] = {'folder': route + '/',
+                                    'include_rbm': 'on',
+                                    'include_applied_forces': 'on'}
 
-            for i_surf in range(len(zeta_mode)):
-                # Plot mode
-                ax.plot_wireframe(zeta_mode[i_surf][0], zeta_mode[i_surf][1], zeta_mode[i_surf][2])
+            for postproc in postprocessor_list:
+                postprocessors[postproc] = initialise_solver(postproc)
+                postprocessors[postproc].initialise(
+                    self.data, postprocessors_settings[postproc])
 
-                # Plot original shape
-                ax.plot_wireframe(self.data.aero.timestep_info[-1].zeta[i_surf][0],
-                                  self.data.aero.timestep_info[-1].zeta[i_surf][1],
-                                  self.data.aero.timestep_info[-1].zeta[i_surf][2],
-                                  color='k',
-                                  alpha=0.5)
+            # Plot reference
+            for postproc in postprocessor_list:
+                self.data = postprocessors[postproc].run(online=True)
+            for n in range(t.shape[1]):
+                aero_tstep, struct_tstep = lindynamicsim.state_to_timestep(self.data, sys_id, x[:, n])
+                self.data.aero.timestep_info.append(aero_tstep)
+                self.data.structure.timestep_info.append(struct_tstep)
 
-            ax.set_title('Mode %g, Frequency %.2f' %(mode_plot+1, mode_frequency))
-            ax.set_xlabel('X')
-            ax.set_ylabel('Y')
-            ax.set_zlabel('Z')
-            fig.show()
+                for postproc in postprocessor_list:
+                    self.data = postprocessors[postproc].run(online=True)
+
+            # Delete 'modal' timesteps ready for next mode
+            del self.data.structure.timestep_info[1:]
+            del self.data.aero.timestep_info[1:]
+
+
+    def mode_time_domain(self, fact, fact_rbm, mode_num, cycles=2):
+        """
+        Returns a single, scaled mode shape in time domain.
+
+        Args:
+            fact: Structural deformation scaling
+            fact_rbm: Rigid body motion scaling
+            mode_num: Number of mode to plot
+            cycles: Number of periods/cycles to plot
+
+        Returns:
+            tuple: Time domain array and scaled eigenvector in time.
+        """
+
+        sys_id = self.settings.get('sys_id')
+
+        # Time domain representation of the mode
+        eigenvalue = self.eigenvalues[mode_num]
+        natural_freq = np.abs(eigenvalue)
+        damping = eigenvalue.real / natural_freq
+        period = 2*np.pi / natural_freq
+        dt = period/100
+        t_dom = np.linspace(0, 2 * period, int(np.ceil(2 * cycles * period/dt)))
+        t_dom.shape = (1, len(t_dom))
+        eigenvector = self.eigenvectors[:, mode_num]
+        eigenvector.shape = (len(eigenvector), 1)
+
+        eigenvector[-10:] *= fact_rbm
+        eigenvector[-self.data.linear.lsys[sys_id].beam.ss.states // 2 - 10: -self.data.linear.lsys[sys_id].beam.ss.states] *= fact_rbm
+
+        # State simulation
+        x_sim = fact * eigenvector.real.dot(np.sin(natural_freq * t_dom) * np.exp(damping * t_dom))
+
+        return t_dom, x_sim
 
     def reconstruct_mode(self, eig):
         sys_id = self.settings.get('sys_id')
-        uvlm = self.data.linear.lsys[sys_id].lsys['LinearUVLM']
+        uvlm = self.data.linear.lsys[sys_id].uvlm
         # beam = self.data.linear.lsys[sys_id].lsys['LinearBeam']
 
         # for eig in range(10):
@@ -289,9 +368,34 @@ class AsymptoticStability(BaseSolver):
         eigenvalues_truncated = eigenvalues[criteria_a].copy()
         eigenvectors_truncated = eigenvectors[:, criteria_a].copy()
 
-        order = np.argsort(np.abs(eigenvalues_truncated))
+        order = np.argsort(eigenvalues_truncated.real)[::-1]
 
         return eigenvalues_truncated[order], eigenvectors_truncated[:, order]
+
+    @staticmethod
+    def scale_rigid_body_mode(eigenvector, freq_d):
+        rigid_body_mode = eigenvector[-10:]
+
+        max_angle = 10 * np.pi/180
+
+        v = rigid_body_mode[0:3].real
+        omega = rigid_body_mode[3:6].real
+        dquat = rigid_body_mode[-4:]
+        euler = algebra.quat2euler(dquat)
+        max_euler = np.max(np.abs(euler))
+
+        if max_euler >= max_angle:
+            fact = max_euler / max_angle
+        else:
+            fact = 1
+
+        if np.abs(freq_d) < 1e-3:
+            fact = 1 / np.max(np.abs(v))
+        else:
+            max_omega = max_angle * freq_d
+            fact = np.max(np.abs(omega)) / max_omega
+
+        return fact
 
 if __name__ == '__main__':
     u_inf = 140
