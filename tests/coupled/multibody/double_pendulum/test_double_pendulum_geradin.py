@@ -26,7 +26,7 @@ class TestDoublePendulum(unittest.TestCase):
 
         # Beam1
         global nnodes1
-        nnodes1 = 5
+        nnodes1 = 11
         l1 = 1.0
         m1 = 1.0
         theta_ini1 = 90.*deg2rad
