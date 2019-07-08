@@ -15,6 +15,7 @@ import sharpy.structure.utils.xbeamlib as xbeamlib
 from sharpy.utils.solver_interface import solver, BaseSolver
 import sharpy.utils.settings as settings
 import sharpy.utils.algebra as algebra
+import sharpy.utils.cout_utils as cout
 
 
 
@@ -119,6 +120,7 @@ class Modal(BaseSolver):
         self.settings = None
 
         self.folder = None
+        self.eigenvalue_table = None
         self.filename_freq = None
         self.filename_damp = None
         self.filename_shapes = None
@@ -158,6 +160,12 @@ class Modal(BaseSolver):
         self.filename_shapes = (self.folder +
                                 'tstep' + ("%06d" % self.data.ts) +
                                 '_ModalShape')
+
+        if self.settings['print_info']:
+            cout.cout_wrap('Structural eigenvalues')
+            self.eigenvalue_table = cout.TablePrinter(7, 12, ['d', 'f', 'f', 'f', 'f', 'f', 'f'])
+            self.eigenvalue_table.print_header(['mode', 'eval_real', 'eval_imag', 'freq_n (Hz)', 'freq_d (Hz)',
+                                                'damping', 'period (s)'])
 
 
     def run(self):
@@ -442,6 +450,21 @@ class Modal(BaseSolver):
             outdict['C'] = FullCglobal
             outdict['K'] = FullKglobal
         self.data.structure.timestep_info[self.data.ts].modal = outdict
+
+        if self.settings['print_info']:
+            for i in range(NumLambda):
+                eigenvalue = eigenvalues[i]
+                if self.settings['use_undamped_modes']:
+                    eigenvalue = np.sqrt(eigenvalue)*1j
+                omega_n = np.abs(eigenvalue)
+                omega_d = np.abs(eigenvalue.imag)
+                damping_ratio = -eigenvalue.real / omega_n
+                f_n = omega_n / 2 / np.pi
+                f_d = omega_d / 2 / np.pi
+                period = 1 / f_d
+                self.eigenvalue_table.print_line([i, eigenvalue.real, eigenvalue.imag, f_n, f_d,
+                                                  damping_ratio, period])
+
         return self.data
 
 
@@ -460,51 +483,51 @@ def scale_mode(data,eigenvector,rot_max_deg=15,perc_max=0.15):
     """
 
     ### initialise
-    struct=data.structure
-    tsstr=data.structure.timestep_info[data.ts]
+    struct = data.structure
+    tsstr = data.structure.timestep_info[data.ts]
 
-    jj=0 # structural dofs index
-    RotMax=0.0
-    RaMax=0.0
-    dRaMax=0.0
+    jj = 0  # structural dofs index
+    RotMax = 0.0
+    RaMax = 0.0
+    dRaMax = 0.0
 
     for node_glob in range(struct.num_node):
         ### detect bc at node (and no. of dofs)
-        bc_here=struct.boundary_conditions[node_glob]
-        if bc_here==1: # clamp
-            dofs_here=0
+        bc_here = struct.boundary_conditions[node_glob]
+        if bc_here == 1:  # clamp
+            dofs_here = 0
             continue
-        elif bc_here==-1 or bc_here==0: 
-            dofs_here=6
-            jj_tra=[jj  ,jj+1,jj+2]
-            jj_rot=[jj+3,jj+4,jj+5]
-        jj+=dofs_here
+        elif bc_here == -1 or bc_here == 0:
+            dofs_here = 6
+            jj_tra = [jj, jj + 1, jj + 2]
+            jj_rot = [jj + 3, jj + 4, jj + 5]
+        jj += dofs_here
 
         # check for max rotation
-        RotMaxHere=np.max(np.abs(eigenvector[jj_rot].real))
-        if RotMaxHere>RotMax:
-            RotMax=RotMaxHere
+        RotMaxHere = np.max(np.abs(eigenvector[jj_rot].real))
+        if RotMaxHere > RotMax:
+            RotMax = RotMaxHere
 
         # check for maximum position
-        RaNorm=np.linalg.norm(tsstr.pos[node_glob,:] )
-        if RaNorm>RaMax:
-            RaMax=RaNorm
+        RaNorm = np.linalg.norm(tsstr.pos[node_glob, :])
+        if RaNorm > RaMax:
+            RaMax = RaNorm
 
         # check for maximum displacement
-        dRaNorm=np.linalg.norm( eigenvector[jj_tra].real)  
-        if dRaNorm>dRaMax:
-            dRaMax=dRaNorm
+        dRaNorm = np.linalg.norm(eigenvector[jj_tra].real)
+        if dRaNorm > dRaMax:
+            dRaMax = dRaNorm
 
-    RotMaxDeg=RotMax*180/np.pi
+    RotMaxDeg = RotMax * 180 / np.pi
 
-    if RotMaxDeg>1e-4:
-        fact=rot_max_deg/RotMaxDeg
-        if dRaMax*fact>perc_max*RaMax:
-            fact=perc_max*RaMax/dRaMax
+    if RotMaxDeg > 1e-4:
+        fact = rot_max_deg / RotMaxDeg
+        if dRaMax * fact > perc_max * RaMax:
+            fact = perc_max * RaMax / dRaMax
     else:
-        fact=perc_max*RaMax/dRaMax
+        fact = perc_max * RaMax / dRaMax
     # correct factor to ensure max disp is perc
-    return eigenvector*fact
+    return fact
 
 
 
@@ -683,13 +706,13 @@ def write_modes_vtk(data, eigenvectors, NumLambda, filename_root,
     """
 
     ### initialise
-    aero=data.aero
-    struct=data.structure
-    tsaero=data.aero.timestep_info[data.ts]
-    tsstr=data.structure.timestep_info[data.ts]
+    aero = data.aero
+    struct = data.structure
+    tsaero = data.aero.timestep_info[data.ts]
+    tsstr = data.structure.timestep_info[data.ts]
 
-    num_dof=struct.num_dof.value
-    eigenvectors=eigenvectors[:num_dof,:]
+    num_dof = struct.num_dof.value
+    eigenvectors = eigenvectors[:num_dof, :]
 
     # Check whether rigid body motion is selected
     # Skip rigid body modes
@@ -698,13 +721,13 @@ def write_modes_vtk(data, eigenvectors, NumLambda, filename_root,
     else:
         num_rigid_body = 0
 
-    for mode in range(num_rigid_body, NumLambda-num_rigid_body):
-
+    for mode in range(num_rigid_body, NumLambda - num_rigid_body):
         # scale eigenvector
-        eigvec=eigenvectors[:num_dof,mode]
-        eigvec=scale_mode(data,eigvec,rot_max_deg,perc_max)
-        zeta_mode=get_mode_zeta(data,eigvec)
-        write_zeta_vtk(zeta_mode,tsaero.zeta,filename_root+"_%06u" %(mode,))
+        eigvec = eigenvectors[:num_dof, mode]
+        fact = scale_mode(data, eigvec, rot_max_deg, perc_max)
+        eigvec = eigvec * fact
+        zeta_mode = get_mode_zeta(data, eigvec)
+        write_zeta_vtk(zeta_mode, tsaero.zeta, filename_root + "_%06u" % (mode,))
 
         # for i_surf in range(tsaero.n_surf):
 
