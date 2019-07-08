@@ -3,10 +3,11 @@ Linear State Beam Element Class
 
 """
 
-from sharpy.linear.utils.ss_interface import BaseElement, linear_system
+from sharpy.linear.utils.ss_interface import BaseElement, linear_system, LinearVector
 import sharpy.linear.src.lingebm as lingebm
 import numpy as np
 import sharpy.utils.settings as settings
+
 
 @linear_system
 class LinearBeam(BaseElement):
@@ -48,6 +49,19 @@ class LinearBeam(BaseElement):
         self.sys = beam
         self.tstruct0 = data.linear.tsstruct0
 
+        # State variables
+        num_dof_flex = self.sys.structure.num_dof
+        num_dof_rig = self.sys.Mstr.shape[0] - num_dof_flex
+        state_db = {'eta': [0, num_dof_flex],
+                  'V_bar': [num_dof_flex, num_dof_flex + 3],
+                  'W_bar': [num_dof_flex + 3, num_dof_flex + 6],
+                  'orient_bar': [num_dof_flex + 6, num_dof_flex + num_dof_rig],
+                  'dot_eta': [num_dof_flex + num_dof_rig, 2 * num_dof_flex + num_dof_rig],
+                  'V': [2 * num_dof_flex + num_dof_rig, 2 * num_dof_flex + num_dof_rig + 3],
+                  'W': [2 * num_dof_flex + num_dof_rig + 3, 2 * num_dof_flex + num_dof_rig + 6],
+                  'orient': [2 * num_dof_flex + num_dof_rig + 6, 2 * num_dof_flex + 2 * num_dof_rig]}
+        self.state_variables = LinearVector(state_db, self.sys_id)
+
     def assemble(self):
         # Would assemble the system as per the settings
         # Here we would add further options such as discarding DOFs etc
@@ -76,7 +90,6 @@ class LinearBeam(BaseElement):
         x = np.concatenate((self.tstruct0.q, self.tstruct0.dqdt))
         return x
 
-
     def trim_nodes(self, trim_list=list):
 
         num_dof_flex = self.sys.structure.num_dof
@@ -89,7 +102,7 @@ class LinearBeam(BaseElement):
                   'orient': [num_dof_flex + 6, num_dof_flex + num_dof_rig, 4]}
 
         # -----------------------------------------------------------------------
-        # Better to place in a function avaibale to all elements since it will equally apply
+        # Better to place in a function available to all elements since it will equally apply
         # Therefore, the dof_db should be a class attribute
         # Take away alongside the vector variable class
 
@@ -133,10 +146,25 @@ class LinearBeam(BaseElement):
         self.sys.Cstr = trim_matrix.T.dot(self.sys.Cstr.dot(trim_matrix))
         self.sys.Kstr = trim_matrix.T.dot(self.sys.Kstr.dot(trim_matrix))
 
+    def unpack_ss_vector(self, x_n, u_n, struct_tstep):
+        """
+        Warnings:
+            Under development. Missing:
+                * Accelerations
+                * Double check the cartesian rotation vector
+                * Tangential operator for the moments
 
-        print('End')
+        Takes the state :math:`x = [\eta, \dot{\eta}]` and input vectors :math:`u = N` of a linearised beam and returns
+        a SHARPy timestep instance, including the reference values.
 
-    def unpack_ss_vector(self, x_n, y_n, struct_tstep):
+        Args:
+            x_n (np.ndarray): Structural beam state vector in nodal space
+            y_n (np.ndarray): Beam input vector (nodal forces)
+            struct_tstep (utils.datastructures.StructTimeStepInfo): Reference timestep used for linearisation
+
+        Returns:
+            utils.datastructures.StructTimeStepInfo: new timestep with linearised values added to the reference value
+        """
 
         # check if clamped
         vdof = self.sys.structure.vdof
@@ -158,6 +186,7 @@ class LinearBeam(BaseElement):
         psi = np.zeros_like(struct_tstep.psi)
         psi_dot = np.zeros_like(struct_tstep.psi_dot)
 
+        for_pos = np.zeros_like(struct_tstep.for_pos)
         for_vel = np.zeros_like(struct_tstep.for_vel)
         for_acc = np.zeros_like(struct_tstep.for_acc)
         quat = np.zeros_like(struct_tstep.quat)
@@ -169,26 +198,28 @@ class LinearBeam(BaseElement):
 
         q[:num_dof + rig_dof] = x_n[:num_dof + rig_dof]
         dqdt[:num_dof + rig_dof] = x_n[num_dof + rig_dof:]
+        # Missing the forces
+        # dqddt = self.sys.Minv.dot(-self.sys.Cstr.dot(dqdt) - self.sys.Kstr.dot(q))
 
         for i_node in vdof[vdof >= 0]:
             pos[i_node + 1, :] = q[6*i_node: 6*i_node + 3]
-            pos_dot[i_node+ 1, :] = dqdt[6*i_node + 0: 6*i_node + 3]
+            pos_dot[i_node + 1, :] = dqdt[6*i_node + 0: 6*i_node + 3]
 
-        # TODO: CRV
-        # for i_elem in range(struct_tstep.num_elem):
-        #     for i_node in range(struct_tstep.num_node_elem):
-        #         psi[i_elem, i_node, :] = q[i_node + 3: i_node + 6]
-        #         psi_dot[i_elem, i_node, :] = dqdt[i_node + 3: i_node + 6]
+        # TODO: CRV of clamped node and double check that the CRV takes this form
+        for i_elem in range(struct_tstep.num_elem):
+            for i_node in range(struct_tstep.num_node_elem):
+                psi[i_elem, i_node, :] = q[i_node + 3: i_node + 6]
+                psi_dot[i_elem, i_node, :] = dqdt[i_node + 3: i_node + 6]
 
-        if rig_dof > 0:
+        if not clamped:
             for_vel = dqdt[-rig_dof: -rig_dof + 6]
             quat = dqdt[-4:]
-        else:
-            quat = struct_tstep.quat.copy()
+            for_pos = q[-rig_dof:-rig_dof + 6]
+            for_acc = dqddt[-rig_dof:-rig_dof + 6]
 
-        if y_n is not None:
+        if u_n is not None:
             for i_node in vdof[vdof >= 0]:
-                steady_applied_forces[i_node+1] = y_n[6*i_node: 6*i_node + 6]
+                steady_applied_forces[i_node+1] = u_n[6*i_node: 6*i_node + 6]
 
         current_time_step = struct_tstep.copy()
         current_time_step.q = q + struct_tstep.q
@@ -200,6 +231,7 @@ class LinearBeam(BaseElement):
         current_time_step.psi_dot = psi_dot + struct_tstep.psi_dot
         current_time_step.for_vel = for_vel + struct_tstep.for_vel
         current_time_step.for_acc = for_acc + struct_tstep.for_acc
+        current_time_step.for_pos = for_pos + struct_tstep.for_pos
         current_time_step.gravity_forces = gravity_forces + struct_tstep.gravity_forces
         current_time_step.total_gravity_forces = total_gravity_forces + struct_tstep.total_gravity_forces
         current_time_step.unsteady_applied_forces = unsteady_applied_forces + struct_tstep.unsteady_applied_forces
@@ -208,10 +240,6 @@ class LinearBeam(BaseElement):
         current_time_step.steady_applied_forces = steady_applied_forces + struct_tstep.steady_applied_forces
 
         return current_time_step
-
-
-
-
 
 
 class VectorVariable(object):

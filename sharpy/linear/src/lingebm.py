@@ -206,6 +206,7 @@ class FlexDynamic():
         # Store structure at linearisation and linearisation conditions
         self.structure = structure
         self.tsstruct0 = tsinfo
+        self.Minv = None
 
         if self.use_euler:
             self.euler_propagation_equations(tsinfo)
@@ -665,8 +666,9 @@ class FlexDynamic():
 
 
                 else:  # Full system
+                    self.Minv = np.linalg.inv(self.Mstr)
                     Ass, Bss, Css, Dss = newmark_ss(
-                        np.linalg.inv(self.Mstr), self.Cstr, self.Kstr,
+                        self.Minv, self.Cstr, self.Kstr,
                         self.dt, self.newmark_damp)
                     self.Kin = None
                     self.Kout = None

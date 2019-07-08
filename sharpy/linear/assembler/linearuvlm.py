@@ -8,6 +8,7 @@ import sharpy.linear.src.linuvlm as linuvlm
 import sharpy.linear.src.libsparse as libsp
 import sharpy.utils.settings as settings
 
+
 @ss_interface.linear_system
 class LinearUVLM(ss_interface.BaseElement):
     sys_id = 'LinearUVLM'
@@ -68,7 +69,16 @@ class LinearUVLM(ss_interface.BaseElement):
             self.remove_inputs(self.settings['remove_inputs'])
 
 
-    def remove_inputs(self, remove_list):
+    def remove_inputs(self, remove_list=list):
+        """
+        Remove certain inputs from the input vector
+
+        To do:
+            * Support for block UVLM
+
+        Args:
+            remove_list (list): Inputs to remove
+        """
 
         self.input_variables.remove(remove_list)
 

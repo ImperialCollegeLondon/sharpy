@@ -20,6 +20,8 @@ class LinearCustom(ssinterface.BaseElement):
 
         self.data = None
         self.lsys = dict()
+        self.uvlm = None
+        self.beam = None
         self.ss = None
 
         self.settings = dict()
@@ -42,7 +44,7 @@ class LinearCustom(ssinterface.BaseElement):
         settings.to_custom_types(self.settings, self.settings_types, self.settings_default)
 
     def assemble(self):
-
+        
 
         if self.settings['solver_path']:
             custom_solver_path = self.settings['solver_path'] + '/'
@@ -63,3 +65,5 @@ class LinearCustom(ssinterface.BaseElement):
         self.input_variables = custom_solver_output.get('input_variables', None)
         self.output_variables = custom_solver_output.get('output_variables', None)
         self.lsys = custom_solver_output.get('lsys', dict())
+        self.uvlm = custom_solver_output.get('uvlm', None)
+        self.beam = custom_solver_output.get('beam', None)
