@@ -79,6 +79,8 @@ class TestFixNodeVelocitywrtG(unittest.TestCase):
         SimInfo.solvers['AerogridLoader']['unsteady'] = 'on'
         SimInfo.solvers['AerogridLoader']['mstar'] = 2
 
+        SimInfo.solvers['NonLinearStatic']['print_info'] = False
+
         SimInfo.solvers['StaticCoupled']['structural_solver'] = 'NonLinearStatic'
         SimInfo.solvers['StaticCoupled']['structural_solver_settings'] = SimInfo.solvers['NonLinearStatic']
         SimInfo.solvers['StaticCoupled']['aero_solver'] = 'StaticUvlm'
