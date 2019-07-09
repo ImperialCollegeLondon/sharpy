@@ -19,7 +19,7 @@ class TestGenerateCases(unittest.TestCase):
 
     def setUp(self):
 
-        remove_terminal_output = False
+        remove_terminal_output = True
         deg2rad = np.pi/180.
         ######################################################################
         ###########################  PARAMETERS  #############################
