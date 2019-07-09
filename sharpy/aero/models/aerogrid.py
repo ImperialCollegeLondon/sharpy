@@ -374,8 +374,12 @@ class Aerogrid(object):
         # Check whether the iteration is part of FSI (ie the input is a k-step) or whether it is an only aerodynamic
         # simulation
         part_of_fsi = True
-        if tstep in previous_tsteps:
-            part_of_fsi = False
+        try:
+            if tstep is previous_tsteps[-1]:
+                part_of_fsi = False
+        except IndexError:
+            for i_surf in range(tstep.n_surf):
+                tstep.gamma_dot[i_surf].fill(0.0)
 
         if len(previous_tsteps) == 0:
             for i_surf in range(tstep.n_surf):
