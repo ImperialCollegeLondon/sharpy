@@ -16,10 +16,11 @@ class StaticTrim(BaseSolver):
     """
     ``StaticTrim`` class solver, inherited from ``BaseSolver``
 
-    The ``StaticTrim`` solver determines the state of trim (equlibrium) for an aeroelastic system in static conditions.
+    The ``StaticTrim`` solver determines the state of trim (equilibrium) for an aeroelastic system in static conditions.
+    It wraps around the desired solver to yield the state of trim of the system.
 
     Args:
-        data (ProblemData): object with problem data
+        data (PreSharpy): object with problem data
 
     Attributes:
         settings (dict): Name-value pair of settings employed by solver.
@@ -28,7 +29,8 @@ class StaticTrim(BaseSolver):
             Name                    Type           Description                                      Default
             ======================  =============  ===============================================  ==========
             ``print_info``          ``bool``       Print solver information to terminal             ``True``
-            ``solver``              ``str``        Underlying solver for aeroelastic system choice  ``None``
+            ``solver``              ``str``        Underlying solver for aeroelastic system choice  ``''``
+            ``solver_settings``     ``str``        Settings for the desired ``solver``              ``{}``
             ``max_iter``            ``int``        Maximum number of iterations                     ``100``
             ``fz_tolerance``        ``float``      Force tolerance in the ``z`` direction           ``0.01``
             ``fx_tolerance``        ``float``      Force tolerance in the ``x`` direction           ``0.01``
@@ -56,8 +58,6 @@ class StaticTrim(BaseSolver):
     Methods:
         trim_algorithm: algorithm to find equilibrium conditions
 
-    See Also
-        .. py:class:: sharpy.utils.solver_interface.BaseSolver
     """
     solver_id = 'StaticTrim'
 
@@ -69,10 +69,10 @@ class StaticTrim(BaseSolver):
         self.settings_default['print_info'] = True
 
         self.settings_types['solver'] = 'str'
-        self.settings_default['solver'] = None
+        self.settings_default['solver'] = ''
 
         self.settings_types['solver_settings'] = 'dict'
-        self.settings_default['solver_settings'] = None
+        self.settings_default['solver_settings'] = dict()
 
         self.settings_types['max_iter'] = 'int'
         self.settings_default['max_iter'] = 100

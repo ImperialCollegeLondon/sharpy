@@ -18,7 +18,7 @@ import sharpy.linear.src.libsparse as libsp
 import sharpy.utils.algebra as algebra
 
 
-'''
+"""
  Dictionary for default settings.
 ============================  =========  ===============================================    ==========
 Name                          Type       Description                                        Default
@@ -31,7 +31,7 @@ Name                          Type       Description                            
 ``velocity_field_generator``  ``str``    Selected velocity generator                        ``None``
 ``velocity_filed_input``      ``dict``   Settings for the velocity generator                ``None``
 ============================  =========  ===============================================    ==========
-'''
+"""
 
 settings_types_dynamic = dict()
 settings_default_dynamic = dict()
@@ -95,13 +95,13 @@ class Static():
 
 
     def assemble_profiling(self):
-        '''
+        """
         Generate profiling report for assembly and save it in self.prof_out.
 
         To read the report:
             import pstats
             p=pstats.Stats(self.prof_out)
-        '''
+        """
 
         import cProfile
         cProfile.runctx('self.assemble()', globals(), locals(), filename=self.prof_out)
@@ -286,16 +286,15 @@ class Static():
 
 
     def get_total_forces_gain(self, zeta_pole=np.zeros((3,))):
-        """
-        Calculates gain matrices to calculate the total force (Kftot) and moment
-        (Kmtot, Kmtot_disp) about the pole zeta_pole.
+        r"""
+        Calculates gain matrices to calculate the total force (Kftot) and moment (Kmtot, Kmtot_disp) about the
+        pole zeta_pole.
 
-        Being :math:`f` and :math:`\\zeta` the force and position at the vertex (m,n) of the lattice
+        Being :math:`f` and :math:`\zeta` the force and position at the vertex (m,n) of the lattice
         these are produced as:
 
-            ftot=sum(f) 					=> dftot += df
-            mtot-sum((zeta-zeta_pole) x f)	=>
-                    => 	dmtot +=  cross(zeta0-zeta_pole) df - cross(f0) dzeta
+            * ``ftot=sum(f) -> dftot += df``
+            * ``mtot-sum((zeta-zeta_pole) x f) ->	dmtot +=  cross(zeta0-zeta_pole) df - cross(f0) dzeta``
 
         """
 
@@ -369,8 +368,9 @@ class Static():
         """
         Gains to reproduce rigid-body motion such that grid displacements and
         velocities are given by:
-            dzeta     = Ktra*u_tra         + Krot*u_rot
-            dzeta_dot = Ktra_vel*u_tra_dot + Krot*u_rot_dot
+
+            * ``dzeta     = Ktra*u_tra         + Krot*u_rot``
+            * ``dzeta_dot = Ktra_vel*u_tra_dot + Krot*u_rot_dot``
 
         Rotations are assumed to happen independently with respect to the
         zeta_rotation point and about the x,y and z axes of the inertial frame.
@@ -412,11 +412,11 @@ class Static():
 # utilities for Dynamic.balfreq method
 
 def get_trapz_weights(k0,kend,Nk,knyq=False):
-    '''
+    """
     Returns uniform frequency grid (kv of length Nk) and weights (wv) for
     Gramians integration using trapezoidal rule. If knyq is True, it is assumed
     that kend is also the Nyquist frequency.
-    '''
+    """
 
     assert k0>=0. and kend>=0., 'Frequencies must be positive!'
 
@@ -438,7 +438,7 @@ def get_trapz_weights(k0,kend,Nk,knyq=False):
 
 
 def get_gauss_weights(k0,kend,Npart,order):
-    '''
+    """
     Returns gauss-legendre frequency grid (kv of length Npart*order) and
     weights (wv) for Gramians integration.
 
@@ -449,7 +449,7 @@ def get_gauss_weights(k0,kend,Npart,order):
     Note: integration points are never located at k0 or kend, hence there
     is no need for special treatment as in (for e.g.) a uniform grid case
     (see get_unif_weights)
-    '''
+    """
 
     if Npart==1:
         # get gauss normalised coords and weights
@@ -478,7 +478,7 @@ def get_gauss_weights(k0,kend,Npart,order):
 
 
 class Dynamic(Static):
-    '''
+    """
     Class for dynamic linearised UVLM solution. Linearisation around steady-state
     are only supported. The class is built upon Static, and inherits all the
     methods contained there.
@@ -488,38 +488,46 @@ class Dynamic(Static):
         - dt: time-step
         - integr_order=2: integration order for UVLM unsteady aerodynamic force
         - RemovePredictor=True: if true, the state-space model is modified so as
-        to accept in input perturbations, u, evaluated at time-step n rather than
-        n+1.
-        - ScalingDict=None: disctionary containing fundamental reference units
-            {'length':  reference_length,
-             'speed':   reference_speed,
-             'density': reference density}
-        used to derive scaling quantities for the state-space model variables.
-        The scaling factors are stores in
-            self.ScalingFact.
-        Note that while time, circulation, angular speeds) are scaled
-        accordingly, FORCES ARE NOT. These scale by qinf*b**2, where b is the
-        reference length and qinf is the dinamic pressure.
+          to accept in input perturbations, u, evaluated at time-step n rather than
+          n+1.
+        - ScalingDict=None: disctionary containing fundamental reference units:
+
+            .. code-block:: python
+
+               {'length':  reference_length,
+               'speed':   reference_speed,
+               'density': reference density}
+
+          used to derive scaling quantities for the state-space model variables.
+          The scaling factors are stored in ``self.ScalingFact``.
+
+          Note that while time, circulation, angular speeds) are scaled
+          accordingly, FORCES ARE NOT. These scale by :math:`q_\infty b^2`, where :math:`b` is the
+          reference length and :math:`q_\infty` is the dynamic pressure.
+
         - UseSparse=False: builds the A and B matrices in sparse form. C and D
-        are dense, hence the sparce format is not used.
+          are dense anyway so the sparse format cannot be applied to them.
 
     Methods:
         - nondimss: normalises a dimensional state-space model based on the
-        scaling factors in self.ScalingFact.
+          scaling factors in self.ScalingFact.
         - dimss: inverse of nondimss.
         - assemble_ss: builds state-space model. See function for more details.
         - assemble_ss_profiling: generate profiling report of the assembly and
-        saves it into self.prof_out. To read the report:
-            import pstats
-            p=pstats.Stats(self.prof_out)
+          saves it into self.prof_out. To read the report:
+
+            .. code-block:: python
+
+                import pstats
+                p = pstats.Stats(self.prof_out)
+
         - solve_steady: solves for the steady state. Several methods available.
         - solve_step: solves one time-step
-        - freqresp: ad-hoc method for fast frequency response (only implemented)
-        for remove_predictor=False
+        - freqresp: ad-hoc method for fast frequency response (only implemented) for ``remove_predictor=False``
 
     To do:
-    - upgrade to linearise around unsteady snapshot (adjoint)
-    '''
+    Upgrade to linearise around unsteady snapshot (adjoint)
+    """
 
     def __init__(self, tsdata, dt, integr_order=2,
                        RemovePredictor=True, ScalingDict=None, UseSparse=True):
@@ -850,7 +858,7 @@ class Dynamic(Static):
 
 
     def freqresp(self,kv):
-        '''
+        """
         Ad-hoc method for fast UVLM frequency response over the frequencies
         kv. The method, only requires inversion of a K x K matrix at each
         frequency as the equation for propagation of wake circulation are solved
@@ -863,7 +871,7 @@ class Dynamic(Static):
         Note:
         This method is very similar to the "minsize" solution option is the
         steady_solve.
-        '''
+        """
 
         assert self.remove_predictor is False,\
             'Fast frequency response not implemented for remove_predictor - %s'\
@@ -951,7 +959,7 @@ class Dynamic(Static):
 
 
     def get_Cw_cpx(self,zval):
-        r'''
+        r"""
         Produces a sparse matrix
 
             .. math:: \bar\mathbf{C}(z)
@@ -963,7 +971,7 @@ class Dynamic(Static):
         such that the wake circulation frequency response at z is
 
             .. math:: \bar\mathbf{\Gamma_w} = \bar\mathbf{C}(z)  \bar\mathbf{\Gamma}
-        '''
+        """
 
         MS = self.MS
         K = self.K
@@ -990,20 +998,23 @@ class Dynamic(Static):
 
 
     def balfreq(self,DictBalFreq):
-        '''
+        """
         Low-rank method for frequency limited balancing.
         The Observability ad controllability Gramians over the frequencies kv
         are solved in factorised form. Balancd modes are then obtained with a
         square-root method.
 
         Details:
+
         Observability and controllability Gramians are solved in factorised form
         through explicit integration. The number of integration points determines
         both the accuracy and the maximum size of the balanced model.
 
         Stability over all (Nb) balanced states is achieved if:
+
             a. one of the Gramian is integrated through the full Nyquist range
             b. the integration points are enough.
+
         Note, however, that even when stability is not achieved over the full
         balanced states, stability of the balanced truncated model with Ns<=Nb
         states is normally observed even when a low number of integration points
@@ -1014,77 +1025,82 @@ class Dynamic(Static):
 
         - DictBalFreq: dictionary specifying integration method with keys:
 
-            - 'frequency': defines limit frequencies for balancing. The balanced
-            model will be accurate in the range [0,F], where F is the value of
-            this key. Note that F units must be consistent with the units specified
-            in the self.ScalingFacts dictionary.
+            - ``frequency``: defines limit frequencies for balancing. The balanced
+              model will be accurate in the range [0,F], where F is the value of
+              this key. Note that F units must be consistent with the units specified
+              in the self.ScalingFacts dictionary.
 
-            - 'method_low': ['gauss','trapz'] specifies whether to use gauss
-            quadrature or trapezoidal rule in the low-frequency range [0,F]
+            - ``method_low``: ['gauss','trapz'] specifies whether to use gauss
+              quadrature or trapezoidal rule in the low-frequency range [0,F]
 
-            - 'options_low': options to use for integration in the low-frequencies.
-            These depend on the integration scheme (See below).
+            - ``options_low``: options to use for integration in the low-frequencies.
+              These depend on the integration scheme (See below).
 
-            - 'method_high': method to use for integration in the range [F,F_N],
-            where F_N is the Nyquist frequency. See 'method_low'.
+            - ``method_high``: method to use for integration in the range [F,F_N],
+              where F_N is the Nyquist frequency. See 'method_low'.
 
-            - 'options_high': options to use for integration in the high-frequencies.
+            - ``options_high``: options to use for integration in the high-frequencies.
 
-            - 'check_stability': if True, the balanced model is truncated to
-            eliminate unstable modes - if any is found. Note that very accurate
-            balanced model can still be obtained, even if high order modes are
-            unstable. Note that this option is overridden if ""
+            - ``check_stability``: if True, the balanced model is truncated to
+              eliminate unstable modes - if any is found. Note that very accurate
+              balanced model can still be obtained, even if high order modes are
+              unstable. Note that this option is overridden if ""
 
-            - 'get_frequency_response': if True, the function also returns the
-            frequency response evaluated at the low-frequency range integration
-            points. If True, this option also allows to automatically tune the
-            balanced model.
+            - ``get_frequency_response``: if True, the function also returns the
+              frequency response evaluated at the low-frequency range integration
+              points. If True, this option also allows to automatically tune the
+              balanced model.
 
         Future options:
 
-            - 'truncation_tolerance': if 'get_frequency_response' is True, allows
-            to truncatethe balanced model so as to achieved a prescribed
-            tolerance in the low-frequwncy range.
+            - ``truncation_tolerance``: if ``get_frequency_response`` is True, allows
+              to truncate the balanced model so as to achieved a prescribed
+              tolerance in the low-frequwncy range.
 
-            - Ncpu: for parallel run
-
+            - ``Ncpu``: for parallel run
 
         The following integration schemes are available:
-            - 'trapz': performs integration over equally spaced points using
-            trapezoidal rule. It accepts options dictionaries with keys:
-                - 'points': number of integration points to use (including
-                domain boundary)
 
-            - 'gauss' performs gauss-lobotto quadrature. The domain can be
-            partitioned in Npart sub-domain in which the gauss-lobotto quadrature
-            of order Ord can be applied. A total number of Npart*Ord points is
-            required. It accepts options dictionaries of the form:
-                - 'partitions': number of partitions
-                - 'order': quadrature order.
+            - ``trapz``: performs integration over equally spaced points using
+              trapezoidal rule. It accepts options dictionaries with keys:
+
+                - ``points``: number of integration points to use (including
+                  domain boundary)
+
+            - ``gauss`` performs gauss-lobotto quadrature. The domain can be
+              partitioned in Npart sub-domain in which the gauss-lobotto quadrature
+              of order Ord can be applied. A total number of Npart*Ord points is
+              required. It accepts options dictionaries of the form:
+
+                - ``partitions``: number of partitions
+                - ``order``: quadrature order.
 
         Example:
+
         The following dictionary
 
-            DictBalFreq={   'frequency': 1.2,
-                            'method_low': 'trapz',
-                            'options_low': {'points': 12},
-                            'method_high': 'gauss',
-                            'options_high': {'partitions': 2, 'order': 8},
-                            'check_stability': True }
+            .. code-block:: python
+
+                DictBalFreq={   'frequency': 1.2,
+                                'method_low': 'trapz',
+                                'options_low': {'points': 12},
+                                'method_high': 'gauss',
+                                'options_high': {'partitions': 2, 'order': 8},
+                                'check_stability': True }
 
         balances the state-space model self.SS in the frequency range [0, 1.2]
         using
-            (a) 12 equally-spaced points integration of the Gramians in
-        the low-frequency range [0,1.2] and
+
+            (a) 12 equally-spaced points integration of the Gramians in the low-frequency range [0,1.2] and
             (b) a 2 Gauss-Lobotto 8-th order quadratures of the controllability
-            Gramian in the high-frequency range.
+                Gramian in the high-frequency range.
 
         A total number of 28 integration points will be required, which will
-        result into a balanced model with number of states
-            min{ 2*28* number_inputs, 2*28* number_outputs }
+        result into a balanced model with number of states ``min{2*28* number_inputs, 2*28* number_outputs}``
+
         The model is finally truncated so as to retain only the first Ns stable
         modes.
-        '''
+        """
 
         ### check input dictionary
         if 'frequency' not in DictBalFreq:
@@ -1293,16 +1309,17 @@ class Dynamic(Static):
 
 
     def balfreq_profiling(self):
-        '''
-        Generate profiling report for balfreq function and saves it into
-            self.prof_out.
-        The function also returns a pstats.Stats object.
+        """
+        Generate profiling report for balfreq function and saves it into ``self.prof_out.``
+        The function also returns a ``pstats.Stats`` object.
 
         To read the report:
-            import pstats
-            p=pstats.Stats(self.prof_out).sort_stats('cumtime')
-            p.print_stats(20)
-        '''
+            .. code-block:: python
+
+                import pstats
+                p=pstats.Stats(self.prof_out).sort_stats('cumtime')
+                p.print_stats(20)
+        """
         import pstats
         import cProfile
         def wrap():
@@ -1314,13 +1331,13 @@ class Dynamic(Static):
 
 
     def assemble_ss_profiling(self):
-        '''
+        """
         Generate profiling report for assembly and save it in self.prof_out.
 
         To read the report:
             import pstats
             p=pstats.Stats(self.prof_out)
-        '''
+        """
 
         import cProfile
         cProfile.runctx('self.assemble_ss()', globals(), locals(), filename=self.prof_out)
@@ -1579,13 +1596,14 @@ class Dynamic(Static):
 
 
 class Frequency(Static):
-    '''
+    """
     Class for frequency description of linearised UVLM solution. Linearisation
     around steady-state are only supported. The class is built upon Static, and
     inherits all the methods contained there.
 
     The class supports most of the features of Dynamics but has lower memory
     requirements of Dynamic, and should be preferred for:
+
         a. producing  memory and computationally cheap frequency responses
         b. building reduced order models using RFA/polynomial fitting
 
@@ -1593,49 +1611,60 @@ class Frequency(Static):
     Upon initialisation, the assemble method produces all the matrices required
     for the frequency description of the UVLM (see assemble for details). A
     state-space model is not allocated but:
+
         - Time stepping is also possible (but not implemented yet) as all the
-        fundamental terms describing the UVLM equations are still produced
-        (except the proopagation of wake circulation)
+          fundamental terms describing the UVLM equations are still produced
+          (except the propagation of wake circulation)
         - ad-hoc methods for scaling, unscaling and frequency response are
-        provided.
+          provided.
 
     Input:
+
         - tsdata: aero timestep data from SHARPy solution
         - dt: time-step
         - integr_order=0,1,2: integration order for UVLM unsteady aerodynamic
-        force. If 0, the derivative is computed exactly.
+          force. If 0, the derivative is computed exactly.
         - RemovePredictor=True: This flag is only used for the frequency response
-        calculation. The frequency description, in fact, naturally arises
-        without the predictor, but lags can be included during the frequency
-        response calculation. See Dynamic documentation for more details.
+          calculation. The frequency description, in fact, naturally arises
+          without the predictor, but lags can be included during the frequency
+          response calculation. See Dynamic documentation for more details.
         - ScalingDict=None: disctionary containing fundamental reference units
-            {'length':  reference_length,
-             'speed':   reference_speed,
-             'density': reference density}
-        used to derive scaling quantities for the state-space model variables.
-        The scaling factors are stores in
-            self.ScalingFact.
-        Note that while time, circulation, angular speeds) are scaled
-        accordingly, FORCES ARE NOT. These scale by qinf*b**2, where b is the
-        reference length and qinf is the dinamic pressure.
+
+            .. code-block:: python
+
+                {'length':  reference_length,
+                 'speed':   reference_speed,
+                 'density': reference density}
+
+          used to derive scaling quantities for the state-space model variables.
+          The scaling factors are stores in ``self.ScalingFact.``
+
+          Note that while time, circulation, angular speeds) are scaled
+          accordingly, FORCES ARE NOT. These scale by qinf*b**2, where b is the
+          reference length and qinf is the dinamic pressure.
         - UseSparse=False: builds the A and B matrices in sparse form. C and D
-        are dense, hence the sparce format is not used.
+          are dense, hence the sparce format is not used.
 
     Methods:
         - nondimss: normalises matrices produced by the assemble method  based
-        on the scaling factors in self.ScalingFact.
+          on the scaling factors in self.ScalingFact.
         - dimss: inverse of nondimss.
         - assemble: builds matrices for UVLM minimal size description.
         - assemble_profiling: generate profiling report of the assembly and
-        saves it into self.prof_out. To read the report:
-            import pstats
-            p=pstats.Stats(self.prof_out)
+          saves it into self.prof_out. To read the report:
+
+            .. code-block:: python
+
+                import pstats
+                p=pstats.Stats(self.prof_out)
+
         - freqresp: fast algorithm for frequency response.
 
     Methods to implement:
+
         - solve_steady: runs freqresp at 0 frequency.
         - solve_step: solves one time-step
-    '''
+    """
 
     def __init__(self, tsdata, dt, integr_order=2,
                        RemovePredictor=True, ScalingDict=None, UseSparse=True):
@@ -1862,12 +1891,12 @@ class Frequency(Static):
 
 
     def freqresp(self,kv):
-        '''
+        """
         Ad-hoc method for fast UVLM frequency response over the frequencies
         kv. The method, only requires inversion of a K x K matrix at each
         frequency as the equation for propagation of wake circulation are solved
         exactly.
-        '''
+        """
 
         MS = self.MS
         K = self.K
@@ -1915,7 +1944,7 @@ class Frequency(Static):
 
 
     def get_Cw_cpx(self,zval):
-        r'''
+        r"""
         Produces a sparse matrix
 
             .. math:: \bar\mathbf{C}(z)
@@ -1927,7 +1956,7 @@ class Frequency(Static):
         such that the wake circulation frequency response at z is
 
             .. math:: \bar\mathbf{\Gamma_w} = \bar\mathbf{C}(z)  \bar\mathbf{\Gamma}
-        '''
+        """
 
 
         MS = self.MS
@@ -1955,13 +1984,13 @@ class Frequency(Static):
 
 
     def assemble_profiling(self):
-        '''
+        """
         Generate profiling report for assembly and save it in self.prof_out.
 
         To read the report:
             import pstats
             p=pstats.Stats(self.prof_out)
-        '''
+        """
 
         import cProfile
         cProfile.runctx('self.assemble()', globals(), locals(), filename=self.prof_out)
@@ -1977,7 +2006,7 @@ if __name__ == '__main__':
     import sharpy.utils.h5utils as h5
 
     class Test_linuvlm_Sta_vs_Dyn(unittest.TestCase):
-        ''' Test methods into this module '''
+        """ Test methods into this module """
 
         def setUp(self):
             fname = SharpyDir+'/sharpy/linear/test/h5input/'+\
@@ -2004,18 +2033,18 @@ if __name__ == '__main__':
 
 
         def test_force_gains(self):
-            '''
+            """
             to do: add check on moments gain
-            '''
+            """
             Sta=self.Sta
             Ftot02 = libsp.dot(Sta.Kftot, Sta.fqs)
             assert np.max(np.abs(Ftot02-Sta.Ftot)) < 1e-10, 'Total force gain matrix wrong!'
 
 
         def test_Dyn_steady_state(self):
-            '''
+            """
             Test steady state predicted by Dynamic and Static classes are the same.
-            '''
+            """
 
             Sta=self.Sta
             Order=[2,1]
@@ -2122,9 +2151,9 @@ if __name__ == '__main__':
 
 
         def test_nondimss_dimss(self):
-            '''
+            """
             Test scaling and unscaling of UVLM
-            '''
+            """
 
             Sta=self.Sta
 

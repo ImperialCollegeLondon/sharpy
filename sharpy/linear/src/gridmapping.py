@@ -81,11 +81,11 @@ class AeroGridMap():
 		# vectors defined at vertices
 		self.ind_1d_vert_vert=range(3*self.Kzeta)
 		self.ind_3d_vert_vect=np.unravel_index(self.ind_1d_vert_vert,
-						       shape=self.shape_vert_vect,order='C')
+						       dims=self.shape_vert_vect,order='C')
 		# scalars defined at panels
 		self.ind_1d_pan_scal=range(self.K)
 		self.ind_2d_pan_scal=np.unravel_index(self.ind_1d_pan_scal,
-                                                      shape=self.shape_pan_scal,order='C')
+                                                      dims=self.shape_pan_scal,order='C')
 
 
 		# ### mapping to/from 1D arrays
@@ -122,7 +122,7 @@ class AeroGridMap():
 		if not hasattr(self,'Mpv'):
 			self.map_panels_to_vertices()
 		mn_panels=np.unravel_index(range(self.K),
-											 shape=self.shape_pan_scal,order='C')
+											 dims=self.shape_pan_scal,order='C')
 		#Mpv_new=self.Mpv[mn_panels] # from k to vertices
 
 		for kk in range(self.K):
