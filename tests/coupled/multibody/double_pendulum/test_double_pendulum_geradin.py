@@ -197,7 +197,6 @@ class TestDoublePendulum(unittest.TestCase):
         self.assertAlmostEqual(pos_tip_data[-1, 1], 1.051004, 4)
         self.assertAlmostEqual(pos_tip_data[-1, 2], 0.000000, 4)
         self.assertAlmostEqual(pos_tip_data[-1, 3], -0.9986984, 4)
-        self.tearDowns()
 
     def tearDowns(self):
         solver_path = os.path.dirname(os.path.realpath(__file__))
