@@ -122,7 +122,7 @@ class AeroGridMap():
 		if not hasattr(self,'Mpv'):
 			self.map_panels_to_vertices()
 		mn_panels=np.unravel_index(range(self.K),
-											 dims=self.shape_pan_scal,order='C')
+											 shape=self.shape_pan_scal,order='C')
 		#Mpv_new=self.Mpv[mn_panels] # from k to vertices
 
 		for kk in range(self.K):
