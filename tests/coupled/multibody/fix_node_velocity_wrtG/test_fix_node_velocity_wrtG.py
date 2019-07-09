@@ -155,7 +155,6 @@ class TestFixNodeVelocitywrtG(unittest.TestCase):
         self.assertAlmostEqual(pos_tip_data[-1, 1], 9.999386, 4)
         self.assertAlmostEqual(pos_tip_data[-1, 2], -0.08967441, 4)
         self.assertAlmostEqual(pos_tip_data[-1, 3], 0., 4)
-        self.tearDowns()
 
     def tearDowns(self):
         solver_path = os.path.dirname(os.path.realpath(__file__))
