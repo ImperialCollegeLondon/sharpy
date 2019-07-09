@@ -380,6 +380,7 @@ class Aerogrid(object):
         except IndexError:
             for i_surf in range(tstep.n_surf):
                 tstep.gamma_dot[i_surf].fill(0.0)
+            return
 
         if len(previous_tsteps) == 0:
             for i_surf in range(tstep.n_surf):
