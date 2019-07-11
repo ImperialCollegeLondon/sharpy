@@ -301,7 +301,6 @@ class DynamicWeaklyCoupled(BaseSolver):
                         (1.0 - coeff)*self.data.structure.timestep_info[-1].unsteady_applied_forces)
 
                     self.data = self.structural_solver.run(structural_step=structural_kstep, dt=self.substep_dt)
-                    structural_kstep = self.data.structural_step
                     self.time_struc += time.perf_counter() - ini_time_struc
 
                 # check convergence

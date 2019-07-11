@@ -101,6 +101,7 @@ class NonLinearDynamicCoupledStep(BaseSolver):
     def run(self, structural_step, previous_structural_step=None, dt=None):
         if dt is None:
             dt = self.settings['dt']
+
         if not self.with_substep:
             xbeamlib.xbeam_step_couplednlndyn(self.data.structure,
                                               self.settings,
@@ -109,11 +110,10 @@ class NonLinearDynamicCoupledStep(BaseSolver):
                                               dt=dt)
             self.extract_resultants(structural_step)
             self.data.structure.integrate_position(structural_step, dt)
-            self.data.structural_step = structural_step.copy()
+
         else:
             if previous_structural_step is None:
                 previous_structural_step = self.data.structure.timestep_info[-1]
-# todo: no sure it it should be -2 instead
 
             structural_substep = structural_step.copy()
             for i_substep in range(self.settings['structural_substeps'].value + 1):
@@ -132,8 +132,8 @@ class NonLinearDynamicCoupledStep(BaseSolver):
                                                   dt=self.substep_dt)
                 self.extract_resultants(structural_substep)
                 self.data.structure.integrate_position(structural_substep, self.substep_dt)
-                self.data.structural_step = structural_substep.copy()
 
+            structural_step = structural_substep
         return self.data
 
     def add_step(self):
