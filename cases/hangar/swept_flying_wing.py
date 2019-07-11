@@ -593,8 +593,8 @@ class SweptWing:
         if os.path.isfile(flightcon_file_name):
             os.remove(flightcon_file_name)
 
-        if os.path.isdir(route):
-            os.system('rm -r %s' %route)
+        # if os.path.isdir(route):
+        #     os.system('rm -r %s' %route)
 
     def update_aero_properties(self):
         """
@@ -1093,6 +1093,7 @@ class SweptWing:
                                                                   }}
 
         settings['Modal'] = {'print_info': True,
+                             'folder': route + '/',
                              'use_undamped_modes': True,
                              'NumLambda': 20,
                              'rigid_body_modes': True,
@@ -1108,7 +1109,7 @@ class SweptWing:
                                            'beam_settings': {'modal_projection': False,
                                                              'inout_coords': 'nodes',
                                                              'discrete_time': True,
-                                                             'newmark_damp': 5e-3,
+                                                             'newmark_damp': 0.015,
                                                              'discr_method': 'newmark',
                                                              'dt': dt,
                                                              'proj_modes': 'undamped',
@@ -1124,7 +1125,7 @@ class SweptWing:
                                                              'use_sparse': True,
                                                              'rigid_body_motion': True,
                                                              'use_euler': False,
-                                                             'remove_inputs': ['u_gust']},
+                                                             'remove_inputs': []},
                                            'rigid_body_motion': True}}
 
         settings['AsymptoticStability'] = {'sys_id': 'LinearAeroelastic',
@@ -1170,7 +1171,7 @@ if __name__=='__main__':
     ws = SweptWing(M=6,
                     N=11,
                     Mstarfactor=1,
-                    u_inf=25,
+                    u_inf=22,
                     rho=1.225,
                     alpha_deg=0,
                    cs_deflection_deg=-10,
@@ -1195,9 +1196,9 @@ if __name__=='__main__':
                                    'Modal',
                                    'LinearAssembler',
                                    'AsymptoticStability',
-                                   'BeamPlot',
-                                   'AerogridPlot']
-
+                                   # 'BeamPlot',
+                                   # 'AerogridPlot']
+]
     ws.config.write()
 
     sharpy.sharpy_main.main(['', ws.config['SHARPy']['route'] + '/' + ws.config['SHARPy']['case'] + '.solver.txt'])

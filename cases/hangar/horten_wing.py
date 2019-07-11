@@ -34,7 +34,7 @@ class HortenWing:
                  cs_deflection_deg=0.,
                  thrust=5.,
                  physical_time=10,
-                 case_name_format=0,
+                 case_name_format=2,
                  case_remarks=None,
                  case_route='./cases/',
                  case_name='horten'):
@@ -45,7 +45,7 @@ class HortenWing:
         self.Mstarfactor = Mstarfactor
 
         self.n_node_elem = 3
-        self.n_elem_wing = 11
+        self.n_elem_wing = N
         self.n_elem_fuselage = 1
         self.n_surfaces = 4
 
@@ -61,9 +61,7 @@ class HortenWing:
 
         self.case_route = os.path.abspath(case_route + self.case_name + '/')
 
-
         self.config = None
-
 
         # Flight conditions
         self.u_inf = u_inf
@@ -94,8 +92,6 @@ class HortenWing:
                              self.n_node_fuselage + self.n_node_wing + 1]
 
         self.loc_cg = 0.45  # CG position wrt to LE (from sectional analysis)
-        self.ea_offset_root = 0.13  # from Mardanpour
-        self.ea_offset_tip = -1.644 * 0.0254
         # EA is the reference in NATASHA - defined with respect to the midchord. SHARPy is wrt to LE and as a pct of
         # local chord
         self.main_ea_root = 0.5 + 0.15*0.0254 / self.c_root
@@ -117,8 +113,9 @@ class HortenWing:
         self.dt = 1 / self.M / self.u_inf * self.dt_factor
 
         # Dynamics
+        self.physical_time = physical_time
         self.n_tstep = int(physical_time/self.dt)
-        self.gust_intensity = 0.1
+        self.gust_intensity = 0.05
 
         # Numerics
         self.tolerance = 1e-12
@@ -141,7 +138,7 @@ class HortenWing:
         self.base_stiffness = np.zeros((self.n_stiffness, 6, 6))
         self.elem_stiffness = np.zeros((self.n_elem,), dtype=int)
         # mass
-        self.n_mass = self.n_elem_wing * 2
+        self.n_mass = self.n_elem_wing * 2 // 2
         self.base_mass = np.zeros((self.n_mass, 6, 6))
         self.elem_mass = np.zeros(self.n_elem, dtype=int)
         # boundary conditions
@@ -181,6 +178,81 @@ class HortenWing:
         self.control_surface_hinge_coord = np.zeros((self.n_control_surfaces,), dtype=float)
 
         self.settings = dict()
+
+    def initialise(self):
+
+        # Compute number of nodes
+        n_node = 0
+        self.n_node_wing = self.n_elem_wing * (self.n_node_elem - 1)
+        self.n_node_fuselage = self.n_elem_fuselage * self.n_node_elem
+        n_node += 2 * self.n_node_fuselage - 1 + 2 * self.n_node_wing
+        self.n_node = n_node
+
+        # Compute number of elements
+        self.n_elem = 2 * (self.n_elem_wing + self.n_elem_fuselage)
+
+        self.dt = 1 / self.M / self.u_inf * self.dt_factor
+
+        # H5 Variables initialisation as class attributes
+        # coordinates
+        self.x = np.zeros((n_node,))
+        self.y = np.zeros((n_node,))
+        self.z = np.zeros((n_node,))
+        # beam number
+        self.beam_number = np.zeros(self.n_elem, dtype=int)
+        # frame of reference delta
+        self.frame_of_reference_delta = np.zeros((self.n_elem, self.n_node_elem, 3))
+        # connectivity of beams
+        self.connectivities = np.zeros((self.n_elem, self.n_node_elem), dtype=int)
+        # stiffness
+        self.n_stiffness = self.n_elem_wing + self.n_elem_fuselage
+        self.base_stiffness = np.zeros((self.n_stiffness, 6, 6))
+        self.elem_stiffness = np.zeros((self.n_elem,), dtype=int)
+        # mass
+        self.base_mass = np.zeros((self.n_mass, 6, 6))
+        self.elem_mass = np.zeros(self.n_elem, dtype=int)
+        # boundary conditions
+        self.boundary_conditions = np.zeros((n_node,), dtype=int)
+        # applied forces
+        self.app_forces = np.zeros((n_node, 6))
+        self.n_lumped_mass = 3
+
+        self.lumped_mass_nodes = np.zeros((self.n_lumped_mass), dtype=int)
+        self.lumped_mass = np.zeros(self.n_lumped_mass)
+        self.lumped_mass_inertia = np.zeros((self.n_lumped_mass, 3, 3))
+        self.lumped_mass_position = np.zeros((self.n_lumped_mass, 3))
+
+        # Aerodynamic properties
+        # H5 AERO FILE VARIABLES INITIALISATION
+        # airfoil distribution
+        self.airfoil_distribution = np.zeros((self.n_elem, self.n_node_elem), dtype=int)
+        # surface distribution
+        self.surface_distribution = np.zeros((self.n_elem,), dtype=int) - 1
+        self.surface_m = np.zeros((self.n_surfaces,), dtype=int)
+        self.m_distribution = 'uniform'
+        # aerodynamic nodes boolean
+        self.aero_nodes = np.zeros((self.n_node,), dtype=bool)
+        # aero twist
+        self.twist = np.zeros((self.n_elem, self.n_node_elem))
+        # chord
+        self.chord = np.zeros((self.n_elem, self.n_node_elem))
+        # elastic axis
+        self.elastic_axis = np.zeros((self.n_elem, self.n_node_elem))
+
+        # control surfaces attributes initialisation
+        self.n_control_surfaces = 1
+        self.control_surface = np.zeros((self.n_elem, self.n_node_elem), dtype=int) - 1
+        self.control_surface_type = np.zeros((self.n_control_surfaces,), dtype=int)
+        self.control_surface_deflection = np.zeros((self.n_control_surfaces,))
+        self.control_surface_chord = np.zeros((self.n_control_surfaces,), dtype=int)
+        self.control_surface_hinge_coord = np.zeros((self.n_control_surfaces,), dtype=float)
+
+        self.settings = dict()
+
+    def planform_area(self):
+        S_fus = 0.5 * (self.c_fuselage + self.c_root) * self.fuselage_width
+        S_wing = 0.5 * (self.c_root + self.c_root*self.taper_ratio) * self.span / 2
+        return 2*S_fus + 2*S_wing
 
     def update_mass_stiffness(self, sigma=1.):
         r"""
@@ -278,6 +350,9 @@ class HortenWing:
                                    2.52782426e+04, -2.52913470e+04, 3.02592902e+05]]) * sigma
 
 
+        stiffness_root = np.diag(np.diag(stiffness_root))
+        stiffness_tip = np.diag(np.diag(stiffness_tip))
+
         # Rigid fuselage
         sigma_fuselage = 1000
         base_stiffness[0, :, :] = sigma_fuselage * stiffness_root
@@ -299,13 +374,14 @@ class HortenWing:
         base_mass = self.base_mass
 
         mu_root = 2.784472 * sigma_mass
-        chi_root_right = np.array([0, -5.29, 0.594]) * 0.0254
-        chi_root_left = np.array([0, +5.29, 0.594]) * 0.0254
+        chi_root_right = np.array([0, -5.29, 0.594]) * 0.0254 * 0
+        chi_root_left = np.array([0, +5.29, 0.594]) * 0.0254 * 0
         m_root = np.eye(3) * mu_root
         j_root = np.array([[0.30378797, 0., 0.],
                            [0., 0.0122422, 0.],
                            [0., 0., 0.30016065]])
 
+        j_root = np.diag([0.1, 0.1, 0.2])
         mass_root_right = sclalg.block_diag(np.diag([mu_root, mu_root, mu_root]), j_root)
         mass_root_left = sclalg.block_diag(np.diag([mu_root, mu_root, mu_root]), j_root)
 
@@ -316,11 +392,12 @@ class HortenWing:
         mass_root_left[-3:, :3] = mu_root * algebra.skew(chi_root_left)
 
         mu_tip = 0.284084 * sigma_mass
-        chi_tip_right = np.array([0, -1.644, +0.563]) * 0.0254
-        chi_tip_left = np.array([0, +1.644, +0.563]) * 0.0254
+        chi_tip_right = np.array([0, -1.644, +0.563]) * 0.0254 * 0
+        chi_tip_left = np.array([0, +1.644, +0.563]) * 0.0254 * 0
         j_tip = np.array([[9.06829766e-04, 0.00000000e+00, 0.00000000e+00],
                           [0.00000000e+00, 6.34780836e-05, 0.00000000e+00],
                           [0.00000000e+00, 0.00000000e+00, 8.16146789e-04]])
+        j_tip = np.diag([0.1, 0.1, 0.2])
         mass_tip_right = sclalg.block_diag(np.diag([mu_tip, mu_tip, mu_tip]), j_tip)
         mass_tip_left = sclalg.block_diag(np.diag([mu_tip, mu_tip, mu_tip]), j_tip)
         mass_tip_right[:3, -3:] += -algebra.skew(chi_tip_right) * mu_tip
@@ -329,11 +406,14 @@ class HortenWing:
         mass_tip_left[:3, -3:] += -algebra.skew(chi_tip_right) * mu_tip
         mass_tip_left[-3:, :3] += algebra.skew(chi_tip_right) * mu_tip
 
+        mass_tip_left = mass_tip_right
+        mass_root_left = mass_root_right
+
         for i_elem in range(self.n_elem_wing):
             base_mass[i_elem, :, :] = mass_root_right*(1-alpha[i_elem]) + mass_tip_right*alpha[i_elem]
 
-        for i_elem in range(self.n_elem_wing, 2*self.n_elem_wing):
-            base_mass[i_elem, :, :] = mass_root_left*(1-alpha[i_elem-self.n_elem_wing]) + mass_tip_left*alpha[i_elem-self.n_elem_wing]
+        # for i_elem in range(self.n_elem_wing, 2*self.n_elem_wing):
+        #     base_mass[i_elem, :, :] = mass_root_left*(1-alpha[i_elem-self.n_elem_wing]) + mass_tip_left*alpha[i_elem-self.n_elem_wing]
 
         # Quadratic variation in the mass per unit span - Richards
         # mu_temp = mu_0 * np.ones_like(c_bar_temp)
@@ -384,10 +464,10 @@ class HortenWing:
         # lumped_mass_inertia[2, :, :] = np.diag([0.5, 1, 1]) * lumped_mass[2]
 
         # Define class attributes
-        self.lumped_mass = lumped_mass
-        self.lumped_mass_nodes = lumped_mass_nodes
-        self.lumped_mass_inertia = lumped_mass_inertia
-        self.lumped_mass_position = lumped_mass_position
+        self.lumped_mass = lumped_mass * 0
+        self.lumped_mass_nodes = lumped_mass_nodes * 0
+        self.lumped_mass_inertia = lumped_mass_inertia * 0
+        self.lumped_mass_position = lumped_mass_position * 0
 
         self.base_stiffness = base_stiffness
         self.base_mass = base_mass
@@ -442,10 +522,6 @@ class HortenWing:
         boundary_conditions = np.zeros((n_node,), dtype=int)
         # applied forces
         app_forces = np.zeros((n_node, 6))
-
-        # Elastic axis @TODO move to aerodynamics
-        main_ea_root = self.loc_cg - self.ea_offset_root
-        main_ea_tip = self.loc_cg - self.ea_offset_tip
 
         # assemble connectivites
         # worked elements
@@ -628,6 +704,34 @@ class HortenWing:
             lumped_mass_position_handle = h5file.create_dataset(
                 'lumped_mass_position', data=self.lumped_mass_position)
 
+    def create_linear_simulation(self):
+
+        Kpanels = self.M * (self.n_node - 1)
+        Kvertices = (self.M + 1) * self.n_node
+        Kpanels_wake = Kpanels * self.Mstarfactor
+        n_states_aero = 3 * Kpanels + Kpanels_wake
+        # n_inputs_aero = 2 * 3 * Kvertices
+
+        n_states_struct = 2*(6 * (self.n_node - 1) + 10)
+        n_inputs_struct = n_states_struct // 2
+
+        x0 = np.zeros((n_states_aero + n_states_struct))
+        u = np.zeros((self.n_tstep, n_states_struct + n_inputs_struct))
+
+        # u[10:15, -8] = 100
+
+        self.generate_linear_sim_files(x0, u)
+
+    def generate_linear_sim_files(self, x0, input_vec):
+        if not os.path.exists(self.case_route):
+                os.makedirs(self.case_route)
+
+        with h5.File(self.case_route + '/' + self.case_name + '.lininput.h5', 'a') as h5file:
+            x0 = h5file.create_dataset(
+                'x0', data=x0)
+            u = h5file.create_dataset(
+                'u', data=input_vec)
+
     def clean_test_files(self):
         """
         Clears previously generated files
@@ -661,8 +765,8 @@ class HortenWing:
         if os.path.isfile(flightcon_file_name):
             os.remove(flightcon_file_name)
 
-        if os.path.isdir(route):
-            os.system('rm -r %s' %route)
+        # if os.path.isdir(route):
+        #     os.system('rm -r %s' %route)
 
     def update_aero_properties(self):
         """
@@ -1055,7 +1159,7 @@ class HortenWing:
                                                    'dt': dt,
                                                    'initial_velocity': u_inf * 0}
 
-        settings['NonLinearDynamicPrescribedStep'] = {'print_info': 'off',
+        settings['NonLinearDynamicPrescribedStep'] = {'print_info': 'on',
                                                    'initial_velocity_direction': [-1., 0., 0.],
                                                    'max_iterations': 950,
                                                    'delta_curved': 1e-6,
@@ -1079,7 +1183,7 @@ class HortenWing:
                                                                'offset': 30.,
                                                                'span': self.span}}
 
-        settings['StepUvlm'] = {'print_info': 'off',
+        settings['StepUvlm'] = {'print_info': 'on',
                                 'horseshoe': self.horseshoe,
                                 'num_cores': 4,
                                 'n_rollup': 100,
@@ -1091,10 +1195,11 @@ class HortenWing:
                                 'velocity_field_input': {'u_inf': u_inf * 1,
                                                          'u_inf_direction': [1., 0, 0],
                                                          'gust_shape': '1-cos',
-                                                         'gust_length': 1.,
+                                                         'gust_length': 5.,
                                                          'gust_intensity': gust_intensity * u_inf,
-                                                         'offset': 30.0,
-                                                         'span': self.span},
+                                                         'offset': 15.0,
+                                                         'span': self.span,
+                                                         'relative_motion': True},
                                 # 'velocity_field_generator': 'SteadyVelocityField',
                                 # 'velocity_field_input': {'u_inf': u_inf*1,
                                 #                             'u_inf_direction': [1., 0., 0.]},
@@ -1104,9 +1209,9 @@ class HortenWing:
                                 'gamma_dot_filtering': 3}
 
         settings['DynamicCoupled'] = {'print_info': 'on',
-                                      'structural_substeps': 1,
-                                      'dynamic_relaxation': 'on',
-                                      'clean_up_previous_solution': 'on',
+                                      # 'structural_substeps': 1,
+                                      # 'dynamic_relaxation': 'on',
+                                      # 'clean_up_previous_solution': 'on',
                                       'structural_solver': 'NonLinearDynamicCoupledStep',
                                       'structural_solver_settings': settings['NonLinearDynamicCoupledStep'],
                                       'aero_solver': 'StepUvlm',
@@ -1116,7 +1221,7 @@ class HortenWing:
                                       'relaxation_factor': relaxation_factor,
                                       'minimum_steps': 1,
                                       'relaxation_steps': 150,
-                                      'final_relaxation_factor': 0.0,
+                                      'final_relaxation_factor': 0.5,
                                       'n_time_steps': n_tstep,
                                       'dt': dt,
                                       'include_unsteady_force_contribution': 'off',
@@ -1176,7 +1281,7 @@ class HortenWing:
                                            'beam_settings': {'modal_projection': False,
                                                              'inout_coords': 'nodes',
                                                              'discrete_time': True,
-                                                             'newmark_damp': 1.5e-3,
+                                                             'newmark_damp': 0.5,
                                                              'discr_method': 'newmark',
                                                              'dt': dt,
                                                              'proj_modes': 'undamped',
@@ -1197,9 +1302,25 @@ class HortenWing:
 
         settings['AsymptoticStability'] = {'sys_id': 'LinearAeroelastic',
                                     'print_info': 'on',
+                                    'display_root_locus':'on',
                                     'frequency_cutoff': 0,
                                     'export_eigenvalues': 'on',
+                                    'num_evals':100,
                                     'folder': route}
+
+        settings['LinDynamicSim'] = {'dt': dt,
+                                      'n_tsteps': self.n_tstep,
+                                      'sys_id': 'LinearAeroelastic',
+                                      'postprocessors': ['BeamPlot', 'AerogridPlot'],
+                                      'postprocessors_settings': {'AerogridPlot': {
+                                          'u_inf': u_inf,
+                                          'folder': route + '/output/',
+                                          'include_rbm': 'on',
+                                          'include_applied_forces': 'on',
+                                          'minus_m_star': 0},
+                                          'BeamPlot': {'folder': route + '/output/',
+                                                       'include_rbm': 'on',
+                                                       'include_applied_forces': 'on'}}}
 
         settings['AerogridPlot'] = {'folder': route,
                                     'include_rbm': 'off',
@@ -1211,7 +1332,10 @@ class HortenWing:
                                             'write_text_file': 'off',
                                             'text_file_name': case_name + '_aeroforces.csv',
                                             'screen_output': 'on',
-                                            'unsteady': 'off'
+                                            'unsteady': 'off',
+                                            'coefficients': True,
+                                            'q_ref': 0.5 * rho * u_inf ** 2,
+                                            'S_ref': self.planform_area()
                                             }
         settings['BeamPlot'] = {'folder': route + '/',
                                 'include_rbm': 'on',
@@ -1220,7 +1344,10 @@ class HortenWing:
         settings['BeamLoads'] = {'folder': route + '/',
                                  'csv_output': 'off'}
 
-        settings['SaveData'] = {'folder': route + '/'}
+        settings['SaveData'] = {'folder': route + '/',
+                                'save_aero': 'on',
+                                'save_structure': 'on',
+                                'save_linear': 'off'}
 
         config = configobj.ConfigObj()
         config.filename = file_name

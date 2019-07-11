@@ -144,6 +144,12 @@ class FlyingWing():
         self.lumped_mass_inertia = np.zeros((n_lumped_mass, 3, 3))
         self.lumped_mass_nodes = np.zeros((n_lumped_mass), dtype=int)
 
+        # Control surface initialisation
+        self.control_surface = np.zeros((N + 1, 3), dtype=int) - 1
+        self.control_surface_type = np.zeros((1), dtype=int)
+        self.control_surface_deflection = np.zeros((1,))
+        self.control_surface_chord = np.array([M//2], dtype=int)
+
     def update_mass_stiff(self):
         '''This method can be substituted to produce different wing configs'''
         # uniform mass/stiffness
@@ -578,6 +584,31 @@ class FlyingWing():
                            'write_modes_vtk': True,
                            'use_undamped_modes': True}
 
+        config['LinearAssembler'] = {'flow': ['LinearAeroelastic'],
+                                'LinearAeroelastic': {
+                                    'beam_settings': {'modal_projection': False,
+                                                      'inout_coords': 'nodes',
+                                                      'discrete_time': True,
+                                                      'newmark_damp': 0.5,
+                                                      'discr_method': 'newmark',
+                                                      'dt': self.dt,
+                                                      'proj_modes': 'undamped',
+                                                      'use_euler': 'off',
+                                                      'num_modes': 40,
+                                                      'print_info': 'on',
+                                                      'gravity': 'on',
+                                                      'remove_dofs': []},
+                                    'aero_settings': {'dt': self.dt,
+                                                      'integr_order': 2,
+                                                      'density': self.rho,
+                                                      'remove_predictor': False,
+                                                      'use_sparse': True,
+                                                      'rigid_body_motion': True,
+                                                      'use_euler': False,
+                                                      'remove_inputs': ['u_gust']},
+                                    'rigid_body_motion': False}}
+
+
         config.write()
         self.config = config
         # print('config dictionary set-up with flow:')
@@ -610,6 +641,14 @@ class FlyingWing():
                 'aero_node', data=self.aero_node)
             elastic_axis_input = h5file.create_dataset(
                 'elastic_axis', data=self.elastic_axis)
+            control_surface_input = h5file.create_dataset(
+                'control_surface', data=self.control_surface)
+            control_surface_type_input = h5file.create_dataset(
+                'control_surface_type', data=self.control_surface_type)
+            control_surface_deflection_input = h5file.create_dataset(
+                'control_surface_deflection', data=self.control_surface_deflection)
+            control_surface_chord_input = h5file.create_dataset(
+                'control_surface_chord', data=self.control_surface_chord)
 
     def generate_fem_file(self):
 
@@ -819,6 +858,113 @@ class Goland(FlyingWing):
 
         self.elem_stiffness = np.zeros((self.num_elem_tot,), dtype=int)
         self.elem_mass = np.zeros((self.num_elem_tot,), dtype=int)
+
+class GolandControlSurface(Goland):
+
+    def __init__(self,
+                 M, N,  # chord/span-wise discretisations
+                 Mstar_fact,
+                 u_inf,  # flight cond
+                 alpha,
+                 cs_deflection=0,
+                 rho=1.02,
+                 b_ref=2. * 6.096,  # geometry
+                 main_chord=1.8288,
+                 aspect_ratio=(2. * 6.096) / 1.8288,
+                 roll=0.,
+                 yaw=0.,
+                 beta=0.,
+                 sweep=0.,
+                 n_surfaces=1,
+                 physical_time=2,
+                 route='.',
+                 case_name='goland',
+                 RollNodes=False):
+
+        super().__init__(M=M, N=N,
+                         Mstar_fact=Mstar_fact,
+                         u_inf=u_inf,
+                         alpha=alpha,
+                         rho=rho,
+                         b_ref=b_ref,
+                         main_chord=main_chord,
+                         aspect_ratio=aspect_ratio,
+                         roll=roll,
+                         beta=beta,
+                         yaw=yaw,
+                         sweep=sweep,
+                         physical_time=physical_time,
+                         n_surfaces=n_surfaces,
+                         route=route,
+                         case_name=case_name,
+                         RollNodes=RollNodes)
+
+        # aeroelasticity parameters
+        self.main_ea = 0.33
+        self.main_cg = 0.43
+        self.sigma = 1
+
+        self.control_surface_deflection = np.array([cs_deflection * np.pi/180])
+        # other
+        self.c_ref = 1.8288
+
+    def update_aero_prop(self):
+        assert hasattr(self, 'conn_glob'), \
+            'Run "update_derived_params" before generating files'
+
+        n_surfaces = self.n_surfaces
+        num_node_surf = self.num_node_surf
+        num_node_tot = self.num_node_tot
+        num_elem_surf = self.num_elem_surf
+        num_elem_tot = self.num_elem_tot
+
+        control_surface = self.control_surface
+
+        ### Generate aerofoil profiles. Only on surf 0.
+        Airfoils_surf = []
+        if n_surfaces == 2:
+            for inode in range(num_node_surf):
+                eta = inode / num_node_surf
+                Airfoils_surf.append(
+                    np.column_stack(
+                        geo_utils.interpolate_naca_camber(
+                            eta,
+                            self.root_airfoil_M, self.root_airfoil_P,
+                            self.tip_airfoil_M, self.tip_airfoil_P)))
+            for i_elem in range(num_elem_surf):
+                for i_local_node in range(self.num_node_elem):
+                    if i_elem >= num_elem_surf // 2:
+                        control_surface[i_elem, i_local_node] = 0
+
+            airfoil_distribution_surf = self.conn_surf
+            airfoil_distribution = np.concatenate([airfoil_distribution_surf,
+                                                   airfoil_distribution_surf[::-1, [1, 0, 2]]])
+        if n_surfaces == 1:
+            num_node_half = (num_node_surf + 1) // 2
+            for inode in range(num_node_half):
+                eta = inode / num_node_half
+                Airfoils_surf.append(
+                    np.column_stack(
+                        geo_utils.interpolate_naca_camber(
+                            eta,
+                            self.root_airfoil_M, self.root_airfoil_P,
+                            self.tip_airfoil_M, self.tip_airfoil_P)))
+            airfoil_distribution_surf = self.conn_surf[:num_elem_surf // 2, :]
+            airfoil_distribution = np.concatenate([
+                airfoil_distribution_surf[::-1, [1, 0, 2]],
+                airfoil_distribution_surf])
+
+        self.Airfoils_surf = Airfoils_surf
+        self.airfoil_distribution = airfoil_distribution
+
+        ### others
+        self.aero_node = np.ones((num_node_tot,), dtype=bool)
+        self.surface_m = self.M * np.ones((n_surfaces,), dtype=int)
+
+        self.twist = np.zeros((num_elem_tot, 3))
+        self.chord = self.main_chord * np.ones((num_elem_tot, 3))
+        self.elastic_axis = self.main_ea * np.ones((num_elem_tot, 3,))
+        self.control_surface = control_surface
 
 
 class QuasiInfinite(FlyingWing):
