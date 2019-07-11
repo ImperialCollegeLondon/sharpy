@@ -1,4 +1,5 @@
 # Simulation of High Aspect Ratio Planes in Python [SHARPy]
+![Version badge](https://img.shields.io/endpoint.svg?url=https%3A%2F%2Fraw.githubusercontent.com%2FImperialCollegeLondon%2Fsharpy%2Fmaster%2F.version.json)
 
 __Status__
 
