@@ -53,6 +53,9 @@ class NonLinearDynamicCoupledStep(BaseSolver):
         self.settings_types['gravity'] = 'float'
         self.settings_default['gravity'] = 9.81
 
+        self.settings_types['structural_substeps'] = 'int'
+        self.settings_default['structural_substeps'] = 0
+
         # initial speed direction is given in inertial FOR!!!
         self.settings_types['initial_velocity_direction'] = 'list(float)'
         self.settings_default['initial_velocity_direction'] = np.array([-1.0, 0.0, 0.0])
@@ -65,6 +68,9 @@ class NonLinearDynamicCoupledStep(BaseSolver):
 
         self.data = None
         self.settings = None
+
+        self.with_substep = False
+        self.substep_dt = None
 
     def initialise(self, data, custom_settings=None):
         self.data = data
@@ -86,13 +92,48 @@ class NonLinearDynamicCoupledStep(BaseSolver):
         # generate q, dqdt and dqddt
         xbeamlib.xbeam_solv_disp2state(self.data.structure, self.data.structure.timestep_info[-1])
 
-    def run(self, structural_step=None, dt=None):
-        xbeamlib.xbeam_step_couplednlndyn(self.data.structure,
-                                          self.settings,
-                                          self.data.ts,
-                                          structural_step,
-                                          dt=dt)
-        self.extract_resultants(structural_step)
+        if self.settings['structural_substeps'].value:
+            self.with_substep = True
+            self.substep_dt = self.settings['dt'].value/(self.settings['structural_substeps'].value + 1)
+        else:
+            self.substep_dt = self.settings['dt'].value
+
+    def run(self, structural_step, previous_structural_step=None, dt=None):
+        if dt is None:
+            dt = self.settings['dt']
+        if not self.with_substep:
+            xbeamlib.xbeam_step_couplednlndyn(self.data.structure,
+                                              self.settings,
+                                              self.data.ts,
+                                              structural_step,
+                                              dt=dt)
+            self.extract_resultants(structural_step)
+            self.data.structure.integrate_position(structural_step, dt)
+            self.data.structural_step = structural_step.copy()
+        else:
+            if previous_structural_step is None:
+                previous_structural_step = self.data.structure.timestep_info[-1]
+# todo: no sure it it should be -2 instead
+
+            structural_substep = structural_step.copy()
+            for i_substep in range(self.settings['structural_substeps'].value + 1):
+                coeff = (i_substep + 1)/(self.settings['structural_substeps'].value + 1)
+                structural_substep.steady_applied_forces = (
+                    coeff*structural_step.steady_applied_forces +
+                    (1.0 - coeff)*previous_structural_step.steady_applied_forces)
+                structural_substep.unsteady_applied_forces = (
+                    coeff*structural_step.unsteady_applied_forces +
+                    (1.0 - coeff)*previous_structural_step.unsteady_applied_forces)
+
+                xbeamlib.xbeam_step_couplednlndyn(self.data.structure,
+                                                  self.settings,
+                                                  self.data.ts,
+                                                  structural_substep,
+                                                  dt=self.substep_dt)
+                self.extract_resultants(structural_substep)
+                self.data.structure.integrate_position(structural_substep, self.substep_dt)
+                self.data.structural_step = structural_substep.copy()
+
         return self.data
 
     def add_step(self):

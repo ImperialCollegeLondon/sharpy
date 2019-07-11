@@ -482,9 +482,15 @@ def xbeam_step_couplednlndyn(beam, settings, ts, tstep=None, dt=None):
     xbopts.relaxation_factor = settings['relaxation_factor']
 
     if dt is None:
-        in_dt = settings['dt']
+        try:
+            in_dt = ct.c_double(settings['dt'])
+        except TypeError:
+            in_dt = settings['dt']
     else:
-        in_dt = ct.c_double(dt)
+        try:
+            in_dt = ct.c_double(dt)
+        except TypeError:
+            in_dt = dt
 
     ctypes_ts = ct.c_int(ts)
     numdof = ct.c_int(beam.num_dof.value)
