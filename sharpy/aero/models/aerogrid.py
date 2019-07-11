@@ -385,29 +385,34 @@ class Aerogrid(object):
         if len(previous_tsteps) == 0:
             for i_surf in range(tstep.n_surf):
                 tstep.gamma_dot[i_surf].fill(0.0)
-        elif len(previous_tsteps) == 1:
-            # first order
-            # f'(n) = (f(n) - f(n - 1))/dx
+        # elif len(previous_tsteps) == 1:
+            # # first order
+            # # f'(n) = (f(n) - f(n - 1))/dx
+            # for i_surf in range(tstep.n_surf):
+                # tstep.gamma_dot[i_surf] = (tstep.gamma[i_surf] - previous_tsteps[-1].gamma[i_surf])/dt
+        # else:
+            # # second order
+            # for i_surf in range(tstep.n_surf):
+                # if (not np.isfinite(tstep.gamma[i_surf]).any()) or \
+                    # (not np.isfinite(previous_tsteps[-1].gamma[i_surf]).any()) or \
+                        # (not np.isfinite(previous_tsteps[-2].gamma[i_surf]).any()):
+                    # raise ArithmeticError('NaN found in gamma')
+
+                # if part_of_fsi:
+                    # tstep.gamma_dot[i_surf] = (3.0*tstep.gamma[i_surf]
+                                               # - 4.0*previous_tsteps[-1].gamma[i_surf]
+                                               # + previous_tsteps[-2].gamma[i_surf])/(2.0*dt)
+                # else:
+                    # tstep.gamma_dot[i_surf] = (3.0*tstep.gamma[i_surf]
+                                               # - 4.0*previous_tsteps[-2].gamma[i_surf]
+                                               # + previous_tsteps[-3].gamma[i_surf])/(2.0*dt)
+        if part_of_fsi:
             for i_surf in range(tstep.n_surf):
                 tstep.gamma_dot[i_surf] = (tstep.gamma[i_surf] - previous_tsteps[-1].gamma[i_surf])/dt
         else:
-            # second order
             for i_surf in range(tstep.n_surf):
-                if (not np.isfinite(tstep.gamma[i_surf]).any()) or \
-                    (not np.isfinite(previous_tsteps[-1].gamma[i_surf]).any()) or \
-                        (not np.isfinite(previous_tsteps[-2].gamma[i_surf]).any()):
-                    raise ArithmeticError('NaN found in gamma')
+                tstep.gamma_dot[i_surf] = (tstep.gamma[i_surf] - previous_tsteps[-2].gamma[i_surf])/dt
 
-                if part_of_fsi:
-                    tstep.gamma_dot[i_surf] = (3.0*tstep.gamma[i_surf]
-                                               - 4.0*previous_tsteps[-1].gamma[i_surf]
-                                               + previous_tsteps[-2].gamma[i_surf])/(2.0*dt)
-                else:
-                    tstep.gamma_dot[i_surf] = (3.0*tstep.gamma[i_surf]
-                                               - 4.0*previous_tsteps[-2].gamma[i_surf]
-                                               + previous_tsteps[-3].gamma[i_surf])/(2.0*dt)
-        # for i_surf in range(tstep.n_surf):
-        #     tstep.gamma_dot[i_surf] = (tstep.gamma[i_surf] - previous_tsteps[-1].gamma[i_surf])/dt
 
 
 def generate_strip(node_info, airfoil_db, aligned_grid, orientation_in=np.array([1, 0, 0]), calculate_zeta_dot = False):
