@@ -546,9 +546,6 @@ class Dynamic(Static):
         - solve_step: solves one time-step
         - freqresp: ad-hoc method for fast frequency response (only implemented) for ``remove_predictor=False``
 
-        - freqresp: ad-hoc method for fast frequency response (only implemented)
-        for remove_predictor=False
-
     Attributes:
         Nx (int): Number of states
         Nu (int): Number of inputs
