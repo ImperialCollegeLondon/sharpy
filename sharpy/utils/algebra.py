@@ -222,6 +222,19 @@ def triad2rotation(xb, yb, zb):
     return np.column_stack((xb, yb, zb))
 
 
+def cart2cyl(coords_p):
+    """
+    cartesian to cylindrical coordinates
+    """
+    r = np.sqrt(coords_p[0]**2 + coords_p[2]**2)
+    y = coords_p[1]
+    try:
+        psi = np.arccos(coords_p[0]/r)
+    except ZeroDivisionEror:
+        psi = 0.0
+    if coords_p[2] < 0:
+        psi = 2.0*np.pi - psi
+    return np.array([r, y, psi])
 
 
 def rot_matrix_2d(angle):
