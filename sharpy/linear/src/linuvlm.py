@@ -1024,7 +1024,7 @@ class Dynamic(Static):
 
 
     def get_Cw_cpx(self,zval):
-        '''
+        r'''
         Produces a sparse matrix
 
             .. math:: \bar\mathbf{C}(z)
@@ -1629,7 +1629,7 @@ class Dynamic(Static):
 
 
     def unpack_state(self, xvec):
-        """
+        r"""
         Unpacks the state vector into physical constituents for full order models.
 
         The state vector :math:`\mathbf{x}` of the form
@@ -2862,7 +2862,7 @@ class Frequency(Static):
 
 
     def get_Cw_cpx(self,zval):
-        '''
+        r'''
         Produces a sparse matrix
 
             .. math:: \bar\mathbf{C}(z)
