@@ -367,10 +367,12 @@ class StructTimeStepInfo(object):
         # generate placeholder for node coordinates
         self.pos = np.zeros((self.num_node, 3), dtype=ct.c_double, order='F')
         self.pos_dot = np.zeros((self.num_node, 3), dtype=ct.c_double, order='F')
+        self.pos_ddot = np.zeros((self.num_node, 3), dtype=ct.c_double, order='F')
 
         # placeholder for CRV
         self.psi = np.zeros((self.num_elem, num_node_elem, 3), dtype=ct.c_double, order='F')
         self.psi_dot = np.zeros((self.num_elem, num_node_elem, 3), dtype=ct.c_double, order='F')
+        self.psi_ddot = np.zeros((self.num_elem, num_node_elem, 3), dtype=ct.c_double, order='F')
 
         # FoR data
         self.quat = np.array([1., 0, 0, 0], dtype=ct.c_double, order='F')
@@ -416,11 +418,13 @@ class StructTimeStepInfo(object):
         # generate placeholder for node coordinates
         copied.pos = self.pos.astype(dtype=ct.c_double, order='F', copy=True)
         copied.pos_dot = self.pos_dot.astype(dtype=ct.c_double, order='F', copy=True)
+        copied.pos_ddot = self.pos_ddot.astype(dtype=ct.c_double, order='F', copy=True)
         # self.pos_dot = np.zeros((self.num_node, 3), dtype=ct.c_double, order='F')
 
         # placeholder for CRV
         copied.psi = self.psi.astype(dtype=ct.c_double, order='F', copy=True)
         copied.psi_dot = self.psi_dot.astype(dtype=ct.c_double, order='F', copy=True)
+        copied.psi_ddot = self.psi_ddot.astype(dtype=ct.c_double, order='F', copy=True)
 
         # FoR data
         copied.quat = self.quat.astype(dtype=ct.c_double, order='F', copy=True)

@@ -103,6 +103,9 @@ class StepUvlm(BaseSolver):
         if t is None:
             t = self.data.ts*dt
 
+        if len(aero_tstep.zeta) == 0:
+            return self.data
+
         # generate uext
         self.velocity_generator.generate({'zeta': aero_tstep.zeta,
                                           'override': True,

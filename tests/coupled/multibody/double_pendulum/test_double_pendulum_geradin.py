@@ -1,7 +1,7 @@
 import numpy as np
-# import importlib
 import unittest
 import os
+import shutil
 
 # Data from Geradin
 # time[s] theta[rad]
@@ -133,6 +133,7 @@ class TestDoublePendulum(unittest.TestCase):
         EI = 1e9
 
         # Beam1
+        global nnodes1
         nnodes1 = 11
         l1 = 1.0
         m1 = 1.0
@@ -149,7 +150,7 @@ class TestDoublePendulum(unittest.TestCase):
         airfoil[0,:,0] = np.linspace(0.,1.,20)
 
         # Simulation
-        numtimesteps = 500
+        numtimesteps = 10
         dt = 0.01
 
         # Create the structure
@@ -213,7 +214,10 @@ class TestDoublePendulum(unittest.TestCase):
                                 'AerogridLoader',
                                 # 'InitializeMultibody',
                                 'DynamicCoupled']
+        global name
+        name = 'double_pendulum_geradin'
         SimInfo.solvers['SHARPy']['case'] = 'double_pendulum_geradin'
+        SimInfo.solvers['SHARPy']['write_screen'] = 'off'
         SimInfo.solvers['SHARPy']['route'] = os.path.dirname(os.path.realpath(__file__)) + '/'
         SimInfo.set_variable_all_dicts('dt', dt)
         SimInfo.define_num_steps(numtimesteps)
@@ -291,26 +295,28 @@ class TestDoublePendulum(unittest.TestCase):
         beam1.generate_h5_files(SimInfo.solvers['SHARPy']['route'], SimInfo.solvers['SHARPy']['case'])
         gc.generate_multibody_file(LC, MB,SimInfo.solvers['SHARPy']['route'], SimInfo.solvers['SHARPy']['case'])
 
-    # def tearDown():
-        # pass
-
     def test_doublependulum(self):
         import sharpy.sharpy_main
 
         solver_path = os.path.abspath(os.path.dirname(os.path.realpath(__file__)) + '/double_pendulum_geradin.solver.txt')
-        print(solver_path)
         sharpy.sharpy_main.main(['', solver_path])
 
         # read output and compare
         output_path = os.path.dirname(solver_path) + '/output/double_pendulum_geradin/WriteVariablesTime/'
-        # quat_data = np.matrix(np.genfromtxt(output_path + 'FoR_00_mb_quat.dat', delimiter=' '))
-        pos_tip_data = np.matrix(np.genfromtxt(output_path + "struct_pos_node" + str(11+11-1) + ".dat", delimiter=' '))
-        self.assertAlmostEqual(pos_tip_data[-1, 1], 1.481168, 4)
+        pos_tip_data = np.atleast_2d(np.genfromtxt(output_path + "struct_pos_node" + str(nnodes1*2-1) + ".dat", delimiter=' '))
+        self.assertAlmostEqual(pos_tip_data[-1, 1], 1.051004, 4)
         self.assertAlmostEqual(pos_tip_data[-1, 2], 0.000000, 4)
-        self.assertAlmostEqual(pos_tip_data[-1, 3], 0.8766285, 4)
+        self.assertAlmostEqual(pos_tip_data[-1, 3], -0.9986984, 4)
 
-if __name__=='__main__':
+    def tearDowns(self):
+        solver_path = os.path.dirname(os.path.realpath(__file__))
+        solver_path += '/'
+        files_to_delete = [name + '.aero.h5',
+                           name + '.dyn.h5',
+                           name + '.fem.h5',
+                           name + '.mb.h5',
+                           name + '.solver.txt']
+        for f in files_to_delete:
+            os.remove(solver_path + f)
 
-    T = TestDoublePendulum()
-    T.setUp()
-    T.test_doublependulum()
+        shutil.rmtree(solver_path + 'output/')
