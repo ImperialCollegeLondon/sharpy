@@ -1,4 +1,5 @@
 import numpy as np
+import sympy as sym
 
 import sharpy.utils.generator_interface as generator_interface
 import sharpy.utils.settings as settings
@@ -70,18 +71,18 @@ class SimplePropeller(generator_interface.BaseGenerator):
 
     # PROPELLER MODEL ONLY
     # IN: U0
-    # OUT: GAMMA_1, GAMMA_TOT, GAMMA_L
+    # OUT: GAMMA_T, GAMMA_TOT, GAMMA_L
     def propeller_model(self, u0):
         r = self.settings['radius'].value
         omega = self.settings['omega'].value
         a = self.propeller_a(r, u0)
         a_prime = self.propeller_a(r, u0)
 
-        gamma_1 = -2.0*a*u0
+        gamma_t = -2.0*a*u0
         gamma_tot = 4.0*np.pi*a_prime*omega*r*r
         gamma_l = gamma_tot*0.5/(np.pi*r)
 
-        return (gamma_1, gamma_tot, gamma_l)
+        return (gamma_t, gamma_tot, gamma_l)
 
     def propeller_a(self, r, u0=None):
         if u0 is not None:
@@ -99,9 +100,9 @@ class SimplePropeller(generator_interface.BaseGenerator):
         return a_prime
 
     # PROPELLER WAKE MODEL
-    # IN: GAMMA_1, GAMMA_TOT, GAMMA_L, ZETA, POS (G FoR), ORIENTATION(G FoR)
+    # IN: GAMMA_T, GAMMA_TOT, GAMMA_L, ZETA, POS (G FoR), ORIENTATION(G FoR)
     # OUT: U_EXT AT THE GRID POINTS ZETA
-    def propeller_wake(self, gamma_1, gamma_tot, gamma_l, zeta, pos_g, orientation_g):
+    def propeller_wake(self, gamma_t, gamma_tot, gamma_l, zeta, pos_g, orientation_g):
         # the propeller (P) FoR is given by x_p, y_p, z_p
         # y_p = orientation_g
         # z_p = [0, 0, 1]_g projected in the plane with normal y_p
@@ -117,6 +118,10 @@ class SimplePropeller(generator_interface.BaseGenerator):
         # rotation matrix from p to G
         rot_pg = triad_g.T
 
+        ex = np.array([1.0, 0.0, 0.0])
+        ey = np.array([0.0, 1.0, 0.0])
+        ez = np.array([0.0, 0.0, 1.0])
+
         for i_surf in range(len(zeta)):
             for i_M in range(zeta[i_surf].shape[0]):
                 for i_N in range(zeta[i_surf].shape[1]):
@@ -130,25 +135,135 @@ class SimplePropeller(generator_interface.BaseGenerator):
                     x_l = np.dot(rot_pg.T, x_g)
 
                     # cyl coordinates of grid point wrt to propeller
-                    cyl = algebra.cart2cyl(x_l)
+                    r, y, psi = algebra.cart2cyl(x_l)
 
-    @staticmethod
-    def propeller_wake_tangential(r, R, gamma_t, y):
-        K, E = (np.special.ellpk(np.sqrt(self.propeller_wake_k2_y(r, R, y))),
-                np.special.ellpe(np.sqrt(self.propeller_wake_k2_y(r, R, y))))
-        PI = 
+                    er = np.cos(psi)*ex + np.sin(psi)*ez
+                    ep =-np.sin(psi)*ex + np.cos(psi)*ez
+
+                    u_r = 0.0
+                    u_z = 0.0
+                    u_p = 0.0
+
+                    # tangential:
+                    uz_t, ur_t = self.propeller_wake_tangential(r, R, gamma_t, y)
+                    # bound
+                    up_b = self.propeller_wake_bound(r, R, gamma_tot, y)
+                    # wake root
+                    up_r = self.propeller_wake_root(r, R, gamma_tot, y)
+                    # longitudinal
+                    up_l = self.propeller_wake_longitudinal(r, R, gamma_l, y)
+
+                    u_r = ur_t
+                    u_z = uz_t
+                    u_p = up_b + up_r + up_l
+
+
+
 
     @staticmethod
     def propeller_wake_k2_y(r, R, y):
         return 4.0*np.pi*R/((R + r)**2 + y**2)
 
     @staticmethod
-    def propeller_wake_k0_y(r, R, y):
+    def propeller_wake_k2_0(r, R, y):
         return propeller_wake_k2_y(r, R, 0.0)
 
-    def propeller_wake_bound
-    def propeller_wake_root
-    def propeller_wake_longitudinal
+    @staticmethod
+    def propeller_wake_tangential(r, R, gamma_t, y, vortex_cutoff=0.01):
+	k2_y = self.propeller_wake_k2_y(r, R, y)
+	k_y = np.sqrt(k2_y)
+
+        K, E = (np.special.ellpk(np.sqrt(self.propeller_wake_k2_y(r, R, y))),
+                np.special.ellpe(np.sqrt(self.propeller_wake_k2_y(r, R, y))))
+        PI = sym.elliptic_pi(self.propeller_wake_k2_y(r, R, y),
+                             self.propeller_wake_k2_0(r, R, y))
+        ur_t = 0.0
+        uz_t1 = 0.0
+        uz_t2 = 0.0
+        uz_t3 = 0.0
+        uy_t = 0.0
+
+        if r < vortex_cutoff*R:
+            ur_t = 0.25*gamma_t*(r*R**2)/(R**2 + y**2)**1.5
+            uz_t1 = 0.0
+            uz_t2 = 0.0
+            uz_t3 = 0.0
+            uy_t = 0.5*gamma_t*(1 + y/np.sqrt(R**2 + r**2))
+        elif np.abs(r - R) < 1e-6:
+            if np.abs(y) < 1e-6:
+                ur_t = 0
+                uz_t1= gamma_t/4
+                uz_t2= 0
+                uz_t3= 0
+            else:
+                ur_t = 0
+                uz_t1= gamma_t/4
+                uz_t2= gamma_t/2*(y*k_y)/(2*np.pi*np.sqrt(r*R))*K
+                uz_t3= 0
+        else:
+            ur_t =-gamma_t/(2*pi)*np.sqrt(R/r)*((2.0 - k2_y)/k_y*K - 2./k_y*E)
+            uz_t1= gamma_t/2.*(R - r + np.abs(R - r))/(2*np.abs(R - r))
+            uz_t2= gamma_t/2.*(y*k_y)/(2*np.pi*np.sqrt(r*R))*K
+            uz_t3= gamma_t/2.*(y*k_y)/(2*np.pi*np.sqrt(r*R))*(R - r)/(R + r)*PI
+        uz_t = uz_t1 + uz_t2 + uz_t3
+
+        return uz_t, ur_t
+
+    @staticmethod
+    def propeller_wake_bound(r, R, gamma_tot, y, vortex_cutoff=0.01):
+        up_b = 0.0
+	if r < vortex_cutoff*R or np.abs(y) < 1e-6:
+	   up_b = 0
+	else:
+	   K, E = (np.special.ellpk(np.sqrt(self.propeller_wake_k2_y(r, R, y))),
+		    np.special.ellpe(np.sqrt(self.propeller_wake_k2_y(r, R, y))))
+	   n1  = 2*r/(r+np.sqrt(r**2+y**2))
+	   n2  = 2*r/(r-np.sqrt(r**2+y**2))
+
+	   pi1 = sym.elliptic_pi(n1, self.propeller_wake_k2_y(r, R, y))
+	   pi2 = sym.elliptic_pi(n2, self.propeller_wake_k2_y(r, R, y))
+
+	   T1  = ((np.sqrt(r**2+y**2)-r)*(r+R) - y**2)/(2*y**2)
+	   T2  = ((np.sqrt(r**2+y**2)+r)*(np.sqrt(r**2+y**2)+R))/(2*y**2)
+	   k2_y= 4*r*R/((R+r)**2 + y**2)
+	   k_y = np.sqrt(k2_y)
+	   up_b = gamma_tot/(4*np.pi)*(1/r*(y/np.sqrt(r**2+y**2) - np.sign(y) - 1/(np.pi*y)*np.sqrt(r/R)*y**2/r**2*k_y*(K+T1*np.pi1-T2*np.pi2))
+        return up_b
+
+
+    @staticmethod
+    def propeller_wake_root(r, R, gamma_tot, y, vortex_cutoff=0.01):
+        up_r = 0.0
+        if r < vortex_cutoff*R:
+            pass
+        else:
+            up_r = -0.25*gamma_tot/(np.pi*r)*(1.0 + y/np.sqrt(r**2 + y**2))
+        return up_r
+
+
+
+    @staticmethod
+    def propeller_wake_longitudinal(r, R, gamma_tot, y, vortex_cutoff=0.01):
+        up_l = 0.0
+        if r < R*vortex_cutoff:
+            up_l = 0
+        elif np.abs(r - R) < 1e-6:
+            if np.abs(y) < 1e-6:
+                return 0.0
+            k2_y = 4*r*R/((R+r)**2 + y**2)
+            k_y  = np.sqrt(k2_y)
+	    K = np.special.ellpk(np.sqrt(self.propeller_wake_k2_y(r, R, y)))
+            up_l = gamma_l/4*(R/r) + gamma_l/2*(R/r)*(y*k_y)/(2*np.pi*np.sqrt(r*R))*K
+        else
+            k2_y = 4*r*R/((R+r)**2 + y**2)
+            k_y  = np.sqrt(k2_y)
+	    K = np.special.ellpk(np.sqrt(self.propeller_wake_k2_y(r, R, y)))
+
+            up_l1= gamma_l/2*(R/r)*(r-R + np.abs(R-r))/(2*np.abs(R-r))
+            up_l2= gamma_l/2*(R/r)*(y*k_y)/(2*np.pi*np.sqrt(r*R))*K
+            up_l3=-gamma_l/2*(R/r)*(y*k_y)/(2*np.pi*np.sqrt(r*R))*(R-r)/(R+r)*PI
+            up_l = up_l1 + up_l2 + up_l3
+        return up_l
 
 
 
