@@ -102,7 +102,7 @@ class SimplePropeller(generator_interface.BaseGenerator):
     # PROPELLER WAKE MODEL
     # IN: GAMMA_T, GAMMA_TOT, GAMMA_L, ZETA, POS (G FoR), ORIENTATION(G FoR)
     # OUT: U_EXT AT THE GRID POINTS ZETA
-    def propeller_wake(self, gamma_t, gamma_tot, gamma_l, zeta, pos_g, orientation_g):
+    def propeller_wake(self, gamma_t, gamma_tot, gamma_l, zeta, pos_g, orientation_g, u_ext_g):
         # the propeller (P) FoR is given by x_p, y_p, z_p
         # y_p = orientation_g
         # z_p = [0, 0, 1]_g projected in the plane with normal y_p
@@ -128,36 +128,53 @@ class SimplePropeller(generator_interface.BaseGenerator):
                     # coordinates of the grid point in G for
                     grid_g = zeta[i_surf][:, i_M, i_N]
 
-                    # coords of the grid point in G wrt to propeller
-                    x_g = grid_g - pos_g
+                    u_vec_g = calculate_induced_velocities(grid_g, 
+                        pos_g, 
+                        rot_pg, 
+                        r, 
+                        R, 
+                        y, 
+                        gamma_t, 
+                        gamma_tot, 
+                        gamma_l)
 
-                    # coords of the grid point in P wrt to propeller
-                    x_l = np.dot(rot_pg.T, x_g)
+                    u_ext_g[i_surf][:, i_M, i_N] += u_vec_g
 
-                    # cyl coordinates of grid point wrt to propeller
-                    r, y, psi = algebra.cart2cyl(x_l)
+    @staticmethod
+    def calculate_induced_velocities(grid_g, pos_g, rot_pg, r, R, y, gamma_t, gamma_tot, gamma_l):
+        # coords of the grid point in G wrt to propeller
+        x_g = grid_g - pos_g
 
-                    er = np.cos(psi)*ex + np.sin(psi)*ez
-                    ep =-np.sin(psi)*ex + np.cos(psi)*ez
+        # coords of the grid point in P wrt to propeller
+        x_l = np.dot(rot_pg.T, x_g)
 
-                    u_r = 0.0
-                    u_z = 0.0
-                    u_p = 0.0
+        # cyl coordinates of grid point wrt to propeller
+        r, y, psi = algebra.cart2cyl(x_l)
 
-                    # tangential:
-                    uz_t, ur_t = self.propeller_wake_tangential(r, R, gamma_t, y)
-                    # bound
-                    up_b = self.propeller_wake_bound(r, R, gamma_tot, y)
-                    # wake root
-                    up_r = self.propeller_wake_root(r, R, gamma_tot, y)
-                    # longitudinal
-                    up_l = self.propeller_wake_longitudinal(r, R, gamma_l, y)
+        er = np.cos(psi)*ex + np.sin(psi)*ez
+        ep =-np.sin(psi)*ex + np.cos(psi)*ez
 
-                    u_r = ur_t
-                    u_z = uz_t
-                    u_p = up_b + up_r + up_l
+        u_r = 0.0
+        u_z = 0.0
+        u_p = 0.0
 
+        # tangential:
+        uz_t, ur_t = self.propeller_wake_tangential(r, R, gamma_t, y)
+        # bound
+        up_b = self.propeller_wake_bound(r, R, gamma_tot, y)
+        # wake root
+        up_r = self.propeller_wake_root(r, R, gamma_tot, y)
+        # longitudinal
+        up_l = self.propeller_wake_longitudinal(r, R, gamma_l, y)
 
+        u_r = ur_t
+        u_z = uz_t
+        u_p = up_b + up_r + up_l
+
+        u_vec_l = ur*er + uz*ey + up*ep
+        u_vec_g = np.dot(rot_pg, u_vec_l)
+
+        return u_vec_g
 
 
     @staticmethod
