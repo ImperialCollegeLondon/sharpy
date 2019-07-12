@@ -840,6 +840,11 @@ def get_triad(coordinates_def, frame_of_reference_delta, twist=None, n_nodes=3, 
 
     return tangent, binormal, normal
 
+def project_vect_on_plane(v, n):
+    n_hat = n/np.linalg.norm(n)
+    u = v - np.dot(v, n_hat)*n_hat
+    return u
+
 
 def der_Cquat_by_v(q,v):
     """
