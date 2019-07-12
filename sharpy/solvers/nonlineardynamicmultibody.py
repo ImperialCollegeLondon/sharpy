@@ -273,7 +273,7 @@ class NonLinearDynamicMultibody(BaseSolver):
 
         vel = np.zeros((6,),)
         acc = np.zeros((6,),)
-        for ibody in range(1, len(MB_tstep)):
+        for ibody in range(0, len(MB_tstep)):
             # I think this is the right way to do it, but to make it match the rest I change it temporally
             if False:
                 # MB_tstep[ibody].mb_quat[ibody,:] =  algebra.quaternion_product(MB_tstep[ibody].quat, MB_tstep[ibody].mb_quat[ibody,:])
