@@ -53,6 +53,9 @@ class NonLinearDynamicCoupledStep(BaseSolver):
         self.settings_types['gravity'] = 'float'
         self.settings_default['gravity'] = 9.81
 
+        self.settings_types['structural_substeps'] = 'int'
+        self.settings_default['structural_substeps'] = 0
+
         # initial speed direction is given in inertial FOR!!!
         self.settings_types['initial_velocity_direction'] = 'list(float)'
         self.settings_default['initial_velocity_direction'] = np.array([-1.0, 0.0, 0.0])
@@ -86,13 +89,18 @@ class NonLinearDynamicCoupledStep(BaseSolver):
         # generate q, dqdt and dqddt
         xbeamlib.xbeam_solv_disp2state(self.data.structure, self.data.structure.timestep_info[-1])
 
-    def run(self, structural_step=None, dt=None):
+    def run(self, structural_step, previous_structural_step=None, dt=None):
+        if dt is None:
+            dt = self.settings['dt']
+
         xbeamlib.xbeam_step_couplednlndyn(self.data.structure,
                                           self.settings,
                                           self.data.ts,
                                           structural_step,
                                           dt=dt)
         self.extract_resultants(structural_step)
+        self.data.structure.integrate_position(structural_step, dt)
+
         return self.data
 
     def add_step(self):

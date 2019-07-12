@@ -435,14 +435,15 @@ class Beam(BaseStructure):
     #     self.timestep_info[ts].update_orientation(quat)  # Cga going in here
 
     def integrate_position(self, ts, dt):
-        self.timestep_info[ts].for_pos[0:3] = (
-            self.timestep_info[ts - 1].for_pos[0:3] +
-            dt*np.dot(self.timestep_info[ts].cga(),
-                      self.timestep_info[ts].for_vel[0:3]))
-        # self.timestep_info[ts].for_pos[3:6] = (
-        #     self.timestep_info[ts - 1].for_pos[3:6] +
-        #     dt*np.dot(self.timestep_info[ts].cga(),
-        #               self.timestep_info[ts].for_vel[3:6]))
+        try:
+            self.timestep_info[ts].for_pos[0:3] += (
+                dt*np.dot(self.timestep_info[ts].cga(),
+                          self.timestep_info[ts].for_vel[0:3]))
+        except TypeError:
+            ts.for_pos[0:3] += (
+                dt*np.dot(ts.cga(),
+                          ts.for_vel[0:3]))
+
 
     def nodal_b_for_2_a_for(self, nodal, tstep, filter=np.array([True]*6)):
         nodal_a = nodal.copy(order='F')

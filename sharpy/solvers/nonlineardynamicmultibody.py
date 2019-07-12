@@ -19,11 +19,9 @@ import numpy as np
 from sharpy.utils.settings import str2bool
 import sharpy.utils.solver_interface as solver_interface
 from sharpy.utils.solver_interface import solver, BaseSolver
-#from sharpy.solvers.nonlineardynamicprescribedstep import NonLinearDynamicPrescribedStep
 import sharpy.utils.settings as settings
 import sharpy.utils.cout_utils as cout
 
-# from IPython import embed
 import scipy.linalg
 import sharpy.structure.utils.xbeamlib as xbeamlib
 import sharpy.utils.algebra as algebra
