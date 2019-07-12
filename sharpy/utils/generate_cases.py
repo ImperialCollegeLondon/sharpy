@@ -775,6 +775,7 @@ class StructuralInformation():
                                         np.array([EIy]),
                                         np.array([EIz]))
         self.create_frame_of_reference_delta(y_BFoR)
+        self.boundary_conditions = np.zeros((self.num_node), dtype=int)
         # self.boundary_conditions[-1] = -1
         # self.boundary_conditions[0] = 1
 
