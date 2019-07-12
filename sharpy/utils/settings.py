@@ -174,3 +174,109 @@ def str2bool(string):
 def notify_default_value(k, v):
     cout.cout_wrap('Variable ' + k + ' has no assigned value in the settings file.')
     cout.cout_wrap('    will default to the value: ' + str(v), 1)
+
+
+class SettingsTable:
+    """
+    Generates the documentation's setting table at runtime.
+
+    Sphinx is our chosen documentation manager and takes docstrings in reStructuredText format. Given that the SHARPy
+    solvers contain several settings, this class produces a table in reStructuredText format with the solver's settings
+    and adds it to the solver's docstring.
+
+    This table will then be printed alongside the remaining docstrings.
+
+    Note that the table is appended to the docstring.
+
+    To generate the table, parse the setting's description to a solver dictionary named ``settings_description``, in a
+    similar fashion to what is done with ``settings_types`` and ``settings_default``. If no description is given it will
+    be left blank.
+
+    Then, add at the end of the solver's ``__init__`` method an instance of the ``SettingsTable`` class and a call to
+    the ``SettingsTable.print(solver)`` method.
+
+    Examples:
+        The end of the solver's ``__init__`` method should contain
+
+        .. code-block:: python
+
+            # Generate documentation table
+            settings_table = settings.SettingsTable()
+            settings_table.print(self)
+
+        to generate the settings table.
+
+    """
+    def __init__(self):
+        self.n_fields = 4
+        self.n_settings = 0
+        self.field_length = [0] * self.n_fields
+        self.titles = ['Name', 'Type', 'Description', 'Default']
+
+        self.settings_types = dict()
+        self.settings_description = dict()
+        self.settings_default = dict()
+
+        self.line_format = ''
+
+    def print(self, solver):
+
+        self.settings_types = solver.settings_types
+        self.settings_default = solver.settings_default
+        self.n_settings = len(self.settings_types)
+
+        try:
+            self.settings_description = solver.settings_description
+        except AttributeError:
+            pass
+
+        self.set_field_length()
+        self.line_format = self.setting_line_format()
+
+        solver.__doc__ += '\n\t' + 'The settings that this solver accepts are given by a dictionary, with the following key-value pairs:\n'
+        solver.__doc__ += '\n\t' + self.print_divider_line()
+        solver.__doc__ += '\t' + self.print_header()
+        solver.__doc__ += '\t' + self.print_divider_line()
+        for setting in self.settings_types:
+            solver.__doc__ += '\t' + self.print_setting(setting)
+        solver.__doc__ += '\t' + self.print_divider_line()
+
+    def set_field_length(self):
+
+        field_lengths = [[], [], [], []]
+        for setting in self.settings_types:
+            stype = str(self.settings_types.get(setting, ''))
+            description = self.settings_description.get(setting, '')
+            default = str(self.settings_default.get(setting, ''))
+            field_lengths[0].append(len(setting) + 4)  # length of name
+            field_lengths[1].append(len(stype) + 4)  # length of type + 4 for the rst ``X``
+            field_lengths[2].append(len(description))  # length of type + 4 for the rst ``X``
+            field_lengths[3].append(len(default) + 4)  # length of type + 4 for the rst ``X``
+
+        for i_field in range(self.n_fields):
+            field_lengths[i_field].append(len(self.titles[i_field]))
+            self.field_length[i_field] = max(field_lengths[i_field]) + 2  # add the two spaces as column dividers
+
+    def print_divider_line(self):
+        divider = ''
+        for i_field in range(self.n_fields):
+            divider += '='*(self.field_length[i_field]-2) + '  '
+        divider += '\n'
+        return divider
+
+    def print_setting(self, setting):
+        type = '``' + str(self.settings_types.get(setting, '')) + '``'
+        description = self.settings_description.get(setting, '')
+        default = '``' + str(self.settings_default.get(setting, '')) + '``'
+        line = self.line_format.format(['``' + str(setting) + '``', type, description, default]) + '\n'
+        return line
+
+    def print_header(self):
+        header = self.line_format.format(self.titles) + '\n'
+        return header
+
+    def setting_line_format(self):
+        string = ''
+        for i_field in range(self.n_fields):
+            string += '{0[' + str(i_field) + ']:<' + str(self.field_length[i_field]) + '}'
+        return string

@@ -14,17 +14,30 @@ import sharpy.utils.cout_utils as cout
 
 @solver
 class NonLinearDynamicCoupledStep(BaseSolver):
+    """
+    Structural solver used for the dynamic simulation of free-flying structures.
+
+    This solver provides an interface to the structural library (``xbeam``) and updates the structural parameters
+    for every k-th step in the FSI iteration.
+
+    This solver can be called as part of a standalone structural simulation or as the structural solver of a coupled
+    aeroelastic simulation.
+
+    """
     solver_id = 'NonLinearDynamicCoupledStep'
 
     def __init__(self):
         self.settings_types = dict()
         self.settings_default = dict()
+        self.settings_description = dict()
 
         self.settings_types['print_info'] = 'bool'
         self.settings_default['print_info'] = True
+        self.settings_description['print_info'] = 'Print output to screen'
 
         self.settings_types['max_iterations'] = 'int'
         self.settings_default['max_iterations'] = 100
+        self.settings_description['max_iterations'] = 'Sets maximum number of iterations'
 
         self.settings_types['num_load_steps'] = 'int'
         self.settings_default['num_load_steps'] = 5
@@ -37,9 +50,11 @@ class NonLinearDynamicCoupledStep(BaseSolver):
 
         self.settings_types['newmark_damp'] = 'float'
         self.settings_default['newmark_damp'] = 1e-4
+        self.settings_description['newmark_damp'] = 'Sets the Newmark damping coefficient'
 
         self.settings_types['dt'] = 'float'
         self.settings_default['dt'] = 0.01
+        self.settings_description['dt'] = 'Time step increment'
 
         self.settings_types['num_steps'] = 'int'
         self.settings_default['num_steps'] = 500
@@ -65,6 +80,10 @@ class NonLinearDynamicCoupledStep(BaseSolver):
 
         self.data = None
         self.settings = None
+
+        # Generate documentation table
+        settings_table = settings.SettingsTable()
+        settings_table.print(self)
 
     def initialise(self, data, custom_settings=None):
         self.data = data
@@ -118,3 +137,5 @@ class NonLinearDynamicCoupledStep(BaseSolver):
         totals = np.sum(applied_forces_copy + gravity_forces_copy, axis=0)
         return totals[0:3], totals[3:6]
 
+if __name__=='__main__':
+    sol = NonLinearDynamicCoupledStep()
