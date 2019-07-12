@@ -117,32 +117,38 @@ class SimplePropeller(generator_interface.BaseGenerator):
         # rotation matrix from p to G
         rot_pg = triad_g.T
 
-        def p2cyl(coords_p):
-            r = np.sqrt(coords_p[0]**2 + coords_p[2]**2)
-            y = coords_p[1]
-            try:
-                psi = np.arccos(coords_p[0]/r)
-            except ZeroDivisionEror:
-                psi = 0.0
-            if coords_p[2] < 0:
-                psi = 2.0*np.pi - psi
-            return np.array([r, y, psi])
-
-
-
-
-
-
         for i_surf in range(len(zeta)):
             for i_M in range(zeta[i_surf].shape[0]):
                 for i_N in range(zeta[i_surf].shape[1]):
                     # coordinates of the grid point in G for
                     grid_g = zeta[i_surf][:, i_M, i_N]
 
+                    # coords of the grid point in G wrt to propeller
                     x_g = grid_g - pos_g
 
-                    
+                    # coords of the grid point in P wrt to propeller
+                    x_l = np.dot(rot_pg.T, x_g)
 
+                    # cyl coordinates of grid point wrt to propeller
+                    cyl = algebra.cart2cyl(x_l)
+
+    @staticmethod
+    def propeller_wake_tangential(r, R, gamma_t, y):
+        K, E = (np.special.ellpk(np.sqrt(self.propeller_wake_k2_y(r, R, y))),
+                np.special.ellpe(np.sqrt(self.propeller_wake_k2_y(r, R, y))))
+        PI = 
+
+    @staticmethod
+    def propeller_wake_k2_y(r, R, y):
+        return 4.0*np.pi*R/((R + r)**2 + y**2)
+
+    @staticmethod
+    def propeller_wake_k0_y(r, R, y):
+        return propeller_wake_k2_y(r, R, 0.0)
+
+    def propeller_wake_bound
+    def propeller_wake_root
+    def propeller_wake_longitudinal
 
 
 
