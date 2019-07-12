@@ -69,6 +69,9 @@ class NonLinearDynamicPrescribedStep(BaseSolver):
 
 
     def run(self, structural_step=None, dt=None):
+        if dt is None:
+            dt = self.settings['dt'].value
+
         if self.data.ts > 0:
             try:
                 structural_step.for_vel[:] = self.data.structure.dynamic_input[self.data.ts - 1]['for_vel']
@@ -81,9 +84,9 @@ class NonLinearDynamicPrescribedStep(BaseSolver):
                                     self.data.ts,
                                     structural_step,
                                     dt=dt)
-        self.extract_resultants(structural_step)
-        # if self.data.ts > 0:
-        #     self.data.structure.integrate_position(self.data.ts, self.settings['dt'].value)
+
+        # self.extract_resultants(structural_step)
+        self.data.structure.integrate_position(self.data.ts, dt)
         return self.data
 
     def add_step(self):
