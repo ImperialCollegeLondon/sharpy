@@ -23,10 +23,34 @@ class NonLinearDynamicCoupledStep(BaseSolver):
     This solver can be called as part of a standalone structural simulation or as the structural solver of a coupled
     aeroelastic simulation.
 
+    The settings that this solver accepts are given by a dictionary, with the following key-value pairs:
+
+    ==============================  ===============  ====================================  =================
+    Name                            Type             Description                           Default
+    ==============================  ===============  ====================================  =================
+    ``print_info``                  ``bool``         Print output to screen                ``True``
+    ``max_iterations``              ``int``          Sets maximum number of iterations     ``100``
+    ``num_load_steps``              ``int``                                                ``5``
+    ``delta_curved``                ``float``                                              ``1e-05``
+    ``min_delta``                   ``float``                                              ``1e-05``
+    ``newmark_damp``                ``float``        Sets the Newmark damping coefficient  ``0.0001``
+    ``dt``                          ``float``        Time step increment                   ``0.01``
+    ``num_steps``                   ``int``                                                ``500``
+    ``gravity_on``                  ``bool``                                               ``False``
+    ``balancing``                   ``bool``                                               ``False``
+    ``gravity``                     ``float``                                              ``9.81``
+    ``initial_velocity_direction``  ``list(float)``                                        ``[-1.  0.  0.]``
+    ``initial_velocity``            ``float``                                              ``0``
+    ``relaxation_factor``           ``float``                                              ``0.3``
+    ==============================  ===============  ====================================  =================
+
     """
     solver_id = 'NonLinearDynamicCoupledStep'
 
     def __init__(self):
+        """
+        Init test
+        """
         self.settings_types = dict()
         self.settings_default = dict()
         self.settings_description = dict()
@@ -136,6 +160,9 @@ class NonLinearDynamicCoupledStep(BaseSolver):
 
         totals = np.sum(applied_forces_copy + gravity_forces_copy, axis=0)
         return totals[0:3], totals[3:6]
+
+# st = settings.SettingsTable()
+# st.print(NonLinearDynamicCoupledStep())
 
 if __name__=='__main__':
     sol = NonLinearDynamicCoupledStep()

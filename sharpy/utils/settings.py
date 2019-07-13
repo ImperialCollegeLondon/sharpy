@@ -233,13 +233,13 @@ class SettingsTable:
         self.set_field_length()
         self.line_format = self.setting_line_format()
 
-        solver.__doc__ += '\n\t' + 'The settings that this solver accepts are given by a dictionary, with the following key-value pairs:\n'
-        solver.__doc__ += '\n\t' + self.print_divider_line()
-        solver.__doc__ += '\t' + self.print_header()
-        solver.__doc__ += '\t' + self.print_divider_line()
+        solver.__doc__ += '\n    ' + 'The settings that this solver accepts are given by a dictionary, with the following key-value pairs:\n'
+        solver.__doc__ += '\n    ' + self.print_divider_line()
+        solver.__doc__ += '    ' + self.print_header()
+        solver.__doc__ += '    ' + self.print_divider_line()
         for setting in self.settings_types:
-            solver.__doc__ += '\t' + self.print_setting(setting)
-        solver.__doc__ += '\t' + self.print_divider_line()
+            solver.__doc__ += '    ' + self.print_setting(setting)
+        solver.__doc__ += '    ' + self.print_divider_line()
 
     def set_field_length(self):
 
