@@ -9,7 +9,6 @@ import sharpy.utils.settings as settings
 import sharpy.utils.h5utils as h5
 import sharpy.linear.src.libss as libss
 
-
 @solver
 class LinearAssembler(BaseSolver):
     """
@@ -145,7 +144,7 @@ class Linear(object):
 
 if __name__ == "__main__":
     print('Testing the assembly of the pendulum system')
-    test = 'beam'
+    test = 'aeroelastic'
     if test == 'beam':
         data = h5.readh5('/home/ng213/sharpy_cases/CC_DevTests/01_LinearAssembly/flexible_beam_static.data.h5').data
 
@@ -200,5 +199,32 @@ if __name__ == "__main__":
         data = linear_space.run()
 
     elif test=='aeroelastic':
-        pass
+        data = h5.readh5('/home/ng213/sharpy_cases/ToSORT_FlyingWings/01_RichardsBFF/cases/horten/horten.data.h5').data
 
+        custom_settings = {'flow': ['LinearAeroelastic'],
+                                        'LinearAeroelastic': {
+                                            'beam_settings': {'modal_projection': False,
+                                                              'inout_coords': 'nodes',
+                                                              'discrete_time': True,
+                                                              'newmark_damp': 0.5,
+                                                              'discr_method': 'newmark',
+                                                              'dt': 0.001,
+                                                              'proj_modes': 'undamped',
+                                                              'use_euler': 'off',
+                                                              'num_modes': 40,
+                                                              'print_info': 'on',
+                                                              'gravity': 'on',
+                                                              'remove_dofs': []},
+                                            'aero_settings': {'dt': 0.001,
+                                                              'integr_order': 2,
+                                                              'density': 1.225*0.0000000001,
+                                                              'remove_predictor': False,
+                                                              'use_sparse': True,
+                                                              'rigid_body_motion': True,
+                                                              'use_euler': False,
+                                                              'remove_inputs': ['u_gust']},
+                                            'rigid_body_motion': True}}
+        linear_space = LinearAssembler()
+        linear_space.initialise(data, custom_settings)
+        data = linear_space.run()
+        print('End')

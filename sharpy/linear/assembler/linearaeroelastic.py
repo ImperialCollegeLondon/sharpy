@@ -77,30 +77,30 @@ class LinearAeroelastic(BaseElement):
             damping_aero[flex_nodes:, flex_nodes:] = self.sys.Crr
             damping_aero[flex_nodes:, :flex_nodes] = self.sys.Crs
 
-        Ksa = self.sys.Kforces[:beam.sys.num_dof, :]  # maps aerodynamic grid forces to nodal forces
-
-        # Map the nodal displacement and velocities onto the grid displacements and velocities
-        Kas = np.block([[self.sys.Kdisp[:, :beam.sys.num_dof], self.sys.Kdisp_vel[:, :beam.sys.num_dof]],
-                        [self.sys.Kvel_disp[:, :beam.sys.num_dof], self.sys.Kvel_vel[:, :beam.sys.num_dof]]])
         beam.sys.Cstr += damping_aero
         beam.sys.Kstr += stiff_aero
 
         beam.assemble()
 
-        if 'u_gust' in uvlm.input_variables.vector_vars:
-            gust_coupling = np.zeros((3*uvlm.sys.Kzeta, beam.ss.outputs))
-            Kas = np.vstack((Kas, gust_coupling))
+        # Coupling matrices
+        Ksa = self.sys.Kforces[:beam.sys.num_dof, :]  # maps aerodynamic grid forces to nodal forces
+
+        # Map the nodal displacement and velocities onto the grid displacements and velocities
+        Kas = np.zeros((uvlm.ss.inputs, beam.ss.outputs + (uvlm.ss.inputs - 2*self.sys.Kdisp.shape[0])))
+        Kas[:2*self.sys.Kdisp.shape[0], :beam.ss.outputs] = np.block([[self.sys.Kdisp[:, :beam.sys.num_dof], self.sys.Kdisp_vel[:, :beam.sys.num_dof]],
+                        [self.sys.Kvel_disp[:, :beam.sys.num_dof], self.sys.Kvel_vel[:, :beam.sys.num_dof]]])
+
+        # Retain other inputs
+        Kas[2*self.sys.Kdisp.shape[0]:, beam.ss.outputs:] = np.eye(uvlm.ss.inputs - 2 * self.sys.Kdisp.shape[0])
 
         uvlm.ss.addGain(Ksa, where='out')
         uvlm.ss.addGain(Kas, where='in')
 
-        # TODO: Modal projection
+        Tas = np.eye(uvlm.ss.inputs, beam.ss.outputs)
+        Tsa = np.eye(beam.ss.inputs, uvlm.ss.outputs)
 
-        # Couple systems
-        Tas = np.eye(beam.ss.inputs, uvlm.ss.outputs)
-        Tsa = np.eye(uvlm.ss.inputs, beam.ss.outputs)
-
-        self.ss = libss.couple(ss01=uvlm.ss, ss02=beam.ss, K12=Tsa, K21=Tas)
+        # TODO: Modal projection - try with ``in_out_coords= nodes``. Might work without further adjustments
+        self.ss = libss.couple(ss01=uvlm.ss, ss02=beam.ss, K12=Tas, K21=Tsa)
         # self.aero_states = uvlm.ss.states
         # self.beam_states = beam.ss.states
         self.couplings = {'Ksa': Ksa,
@@ -109,6 +109,9 @@ class LinearAeroelastic(BaseElement):
         # TODO
         self.state_variables = {'aero': uvlm.ss.states,
                                 'beam': beam.ss.states}
+
+
+
 
 
 

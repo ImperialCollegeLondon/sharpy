@@ -719,9 +719,6 @@ def rotation3d_x(angle):
 
 def rotation3d_y(angle):
     r"""
-    Warnings:
-        This function is transposed so it undoes the pitch rotation.
-
     Rotation matrix about the y axis by the input angle :math:`\Theta`
 
     .. math::

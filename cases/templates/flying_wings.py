@@ -145,9 +145,10 @@ class FlyingWing():
         self.lumped_mass_nodes = np.zeros((n_lumped_mass), dtype=int)
 
         # Control surface initialisation
+        self.n_control_surfaces = 0
         self.control_surface = np.zeros((N + 1, 3), dtype=int) - 1
-        self.control_surface_type = np.zeros((1), dtype=int)
-        self.control_surface_deflection = np.zeros((1,))
+        self.control_surface_type = np.zeros((self.n_control_surfaces), dtype=int)
+        self.control_surface_deflection = np.zeros((self.n_control_surfaces,))
         self.control_surface_chord = np.array([M//2], dtype=int)
 
     def update_mass_stiff(self):
@@ -215,6 +216,8 @@ class FlyingWing():
         self.num_elem_surf = self.num_elem_tot // self.n_surfaces
         self.num_node_surf = self.N // self.n_surfaces + 1
         self.num_node_tot = self.N + 1
+
+        self.control_surface = np.zeros((self.num_elem_tot, self.num_node_elem), dtype=int) - 1
 
         # FEM connectivity, coords definition and mapping
         self.update_fem_prop()
@@ -608,6 +611,20 @@ class FlyingWing():
                                                       'remove_inputs': ['u_gust']},
                                     'rigid_body_motion': False}}
 
+        config['LinDynamicSim'] = {'dt': self.dt,
+                                     'n_tsteps': self.n_tstep,
+                                     'sys_id': 'LinearAeroelastic',
+                                     'postprocessors': ['BeamPlot', 'AerogridPlot'],
+                                     'postprocessors_settings': {'AerogridPlot': {
+                                         'u_inf': self.u_inf,
+                                         'folder': self.route + '/output/',
+                                         'include_rbm': 'on',
+                                         'include_applied_forces': 'on',
+                                         'minus_m_star': 0},
+                                         'BeamPlot': {'folder': self.route + '/output/',
+                                                      'include_rbm': 'on',
+                                                      'include_applied_forces': 'on'}}}
+
 
         config.write()
         self.config = config
@@ -866,7 +883,7 @@ class GolandControlSurface(Goland):
                  Mstar_fact,
                  u_inf,  # flight cond
                  alpha,
-                 cs_deflection=0,
+                 cs_deflection=[0],
                  rho=1.02,
                  b_ref=2. * 6.096,  # geometry
                  main_chord=1.8288,
@@ -904,7 +921,11 @@ class GolandControlSurface(Goland):
         self.main_cg = 0.43
         self.sigma = 1
 
-        self.control_surface_deflection = np.array([cs_deflection * np.pi/180])
+        self.n_control_surfaces = len(cs_deflection)
+        self.control_surface_deflection = np.zeros(self.n_control_surfaces, dtype=float)
+        # self.control_surface_deflection += np.array([cs_deflection]) * np.pi/180
+        self.control_surface_chord = M // 2 * np.ones(self.n_control_surfaces, dtype=int)
+        self.control_surface_type = np.zeros(self.n_control_surfaces, dtype=int)
         # other
         self.c_ref = 1.8288
 
@@ -931,14 +952,25 @@ class GolandControlSurface(Goland):
                             eta,
                             self.root_airfoil_M, self.root_airfoil_P,
                             self.tip_airfoil_M, self.tip_airfoil_P)))
-            for i_elem in range(num_elem_surf):
-                for i_local_node in range(self.num_node_elem):
-                    if i_elem >= num_elem_surf // 2:
-                        control_surface[i_elem, i_local_node] = 0
+                # if inode >= num_node_surf // 2:
+            ws_elem = 0
+            for i_surf in range(2):
+                print('Surface' + str(i_surf))
+                for i_elem in range(num_elem_surf):
+                    for i_local_node in range(self.num_node_elem):
+                        if i_elem >= num_elem_surf // 2:
+                            if i_surf == 0:
+                                control_surface[ws_elem + i_elem, i_local_node] = 0  # Right flap
+                            else:
+                                control_surface[ws_elem + i_elem, i_local_node] = 1  # Left flap
+                ws_elem += num_elem_surf
+                        # control_surface[i_elem, i_local_node] = 0
 
             airfoil_distribution_surf = self.conn_surf
             airfoil_distribution = np.concatenate([airfoil_distribution_surf,
                                                    airfoil_distribution_surf[::-1, [1, 0, 2]]])
+            control_surface[-num_elem_surf:] = control_surface[-num_elem_surf:, :][::-1]
+
         if n_surfaces == 1:
             num_node_half = (num_node_surf + 1) // 2
             for inode in range(num_node_half):
@@ -966,6 +998,12 @@ class GolandControlSurface(Goland):
         self.elastic_axis = self.main_ea * np.ones((num_elem_tot, 3,))
         self.control_surface = control_surface
 
+    def create_linear_files(self, x0, input_vec):
+        with h5.File(self.route + '/' + self.case_name + '.lininput.h5', 'a') as h5file:
+            x0 = h5file.create_dataset(
+                'x0', data=x0)
+            u = h5file.create_dataset(
+                'u', data=input_vec)
 
 class QuasiInfinite(FlyingWing):
     ''' 

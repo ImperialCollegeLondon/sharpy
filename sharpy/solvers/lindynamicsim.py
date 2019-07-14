@@ -211,7 +211,8 @@ def state_to_timestep(data, sys_id, x, u=None, y=None, modal=False):
     y_beam = x_struct
 
     if u is not None:
-        u_q = u[:data.linear.lsys[sys_id].uvlm.ss.inputs] + y_beam
+        u_q = u[:data.linear.lsys[sys_id].uvlm.ss.inputs]
+        u_q[:y_beam.shape[0]] += y_beam
     else:
         u_q = y_beam
 

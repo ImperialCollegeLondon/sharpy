@@ -7,7 +7,7 @@ import numpy as np
 import sharpy.linear.src.linuvlm as linuvlm
 import sharpy.linear.src.libsparse as libsp
 import sharpy.utils.settings as settings
-
+import sharpy.linear.assembler.lincontrolsurfacedeflector as lincontrolsurfacedeflector
 
 @ss_interface.linear_system
 class LinearUVLM(ss_interface.BaseElement):
@@ -30,6 +30,9 @@ class LinearUVLM(ss_interface.BaseElement):
         self.input_variables = None
         self.output_variables = None
         self.C_to_vertex_forces = None
+
+        self.control_surface = None
+        self.gain_cs = None
 
     def initialise(self, data, custom_settings=None):
 
@@ -59,7 +62,20 @@ class LinearUVLM(ss_interface.BaseElement):
         self.input_variables = ss_interface.LinearVector(input_variables_database, self.sys_id)
         self.state_variables = ss_interface.LinearVector(state_variables_database, self.sys_id)
 
+        if data.aero.n_control_surfaces >= 1:
+            self.control_surface = lincontrolsurfacedeflector.ControlSurfaceDeflector()
+            self.control_surface.initialise(data, uvlm)
+
     def assemble(self):
+        r"""
+        Assembles the linearised UVLM system, removes the desired inputs and adds linearised control surfaces
+        (if present).
+
+        With all possible inputs present, these are ordered as
+
+        .. math:: \mathbf{u} = [\boldsymbol{\zeta},\,\dot{\boldsymbol{\zeta}},\,\mathbf{w},\,\delta]
+
+        """
 
         self.sys.assemble_ss()
         self.ss = self.sys.SS
@@ -67,6 +83,16 @@ class LinearUVLM(ss_interface.BaseElement):
 
         if self.settings['remove_inputs']:
             self.remove_inputs(self.settings['remove_inputs'])
+
+        if self.control_surface is not None:
+            Kzeta_delta = self.control_surface.generate()
+
+            # Modify the state space system with a gain at the input side
+            # such that the control surface deflections are last
+            gain_cs = np.eye(self.ss.inputs, self.ss.inputs + self.control_surface.n_control_surfaces)
+            gain_cs[:Kzeta_delta.shape[0], -self.control_surface.n_control_surfaces:] = Kzeta_delta
+            self.ss.addGain(gain_cs, where='in')
+            self.gain_cs = gain_cs
 
 
     def remove_inputs(self, remove_list=list):
@@ -209,7 +235,18 @@ class LinearUVLM(ss_interface.BaseElement):
         return forces, gamma, gamma_dot, gamma_star
 
     def unpack_input_vector(self, u_n):
+        """
+        Unpacks the input vector into the corresponding grid coordinates, velocities and external velocities.
 
+        Args:
+            u_n (np.ndarray): UVLM input vector. May contain control surface deflections and external velocities.
+
+        Returns:
+            tuple: Tuple containing ``zeta``, ``zeta_dot`` and ``u_ext``, accounting for the effect of control surfaces.
+        """
+
+        if self.control_surface is not None:
+            u_n = self.gain_cs.dot(u_n)
         input_vars = self.input_variables.vector_vars
         tsaero0 = self.tsaero0
 

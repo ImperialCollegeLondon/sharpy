@@ -143,9 +143,9 @@ assert np.abs(main_ea-.25)<1e-6, 'Only use main_ea=0.25'
 # Theodorsen
 
 # Flying properties
-Roll0Deg=60.0
+Roll0Deg=00.0
 Alpha0Deg=0.0
-RollNodes=True#False
+RollNodes=False
 Uinf0=150.
 
 Nin=4 		# h, dh, a, da
