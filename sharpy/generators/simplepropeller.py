@@ -128,14 +128,14 @@ class SimplePropeller(generator_interface.BaseGenerator):
                     # coordinates of the grid point in G for
                     grid_g = zeta[i_surf][:, i_M, i_N]
 
-                    u_vec_g = calculate_induced_velocities(grid_g, 
-                        pos_g, 
-                        rot_pg, 
-                        r, 
-                        R, 
-                        y, 
-                        gamma_t, 
-                        gamma_tot, 
+                    u_vec_g = calculate_induced_velocities(grid_g,
+                        pos_g,
+                        rot_pg,
+                        r,
+                        R,
+                        y,
+                        gamma_t,
+                        gamma_tot,
                         gamma_l)
 
                     u_ext_g[i_surf][:, i_M, i_N] += u_vec_g
@@ -187,8 +187,8 @@ class SimplePropeller(generator_interface.BaseGenerator):
 
     @staticmethod
     def propeller_wake_tangential(r, R, gamma_t, y, vortex_cutoff=0.01):
-	k2_y = self.propeller_wake_k2_y(r, R, y)
-	k_y = np.sqrt(k2_y)
+    k2_y = self.propeller_wake_k2_y(r, R, y)
+    k_y = np.sqrt(k2_y)
 
         K, E = (np.special.ellpk(np.sqrt(self.propeller_wake_k2_y(r, R, y))),
                 np.special.ellpe(np.sqrt(self.propeller_wake_k2_y(r, R, y))))
@@ -229,22 +229,22 @@ class SimplePropeller(generator_interface.BaseGenerator):
     @staticmethod
     def propeller_wake_bound(r, R, gamma_tot, y, vortex_cutoff=0.01):
         up_b = 0.0
-	if r < vortex_cutoff*R or np.abs(y) < 1e-6:
-	   up_b = 0
-	else:
-	   K, E = (np.special.ellpk(np.sqrt(self.propeller_wake_k2_y(r, R, y))),
-		    np.special.ellpe(np.sqrt(self.propeller_wake_k2_y(r, R, y))))
-	   n1  = 2*r/(r+np.sqrt(r**2+y**2))
-	   n2  = 2*r/(r-np.sqrt(r**2+y**2))
+    if r < vortex_cutoff*R or np.abs(y) < 1e-6:
+       up_b = 0
+    else:
+       K, E = (np.special.ellpk(np.sqrt(self.propeller_wake_k2_y(r, R, y))),
+            np.special.ellpe(np.sqrt(self.propeller_wake_k2_y(r, R, y))))
+       n1  = 2*r/(r+np.sqrt(r**2+y**2))
+       n2  = 2*r/(r-np.sqrt(r**2+y**2))
 
-	   pi1 = sym.elliptic_pi(n1, self.propeller_wake_k2_y(r, R, y))
-	   pi2 = sym.elliptic_pi(n2, self.propeller_wake_k2_y(r, R, y))
+       pi1 = sym.elliptic_pi(n1, self.propeller_wake_k2_y(r, R, y))
+       pi2 = sym.elliptic_pi(n2, self.propeller_wake_k2_y(r, R, y))
 
-	   T1  = ((np.sqrt(r**2+y**2)-r)*(r+R) - y**2)/(2*y**2)
-	   T2  = ((np.sqrt(r**2+y**2)+r)*(np.sqrt(r**2+y**2)+R))/(2*y**2)
-	   k2_y= 4*r*R/((R+r)**2 + y**2)
-	   k_y = np.sqrt(k2_y)
-	   up_b = gamma_tot/(4*np.pi)*(1/r*(y/np.sqrt(r**2+y**2) - np.sign(y) - 1/(np.pi*y)*np.sqrt(r/R)*y**2/r**2*k_y*(K+T1*np.pi1-T2*np.pi2))
+       T1  = ((np.sqrt(r**2+y**2)-r)*(r+R) - y**2)/(2*y**2)
+       T2  = ((np.sqrt(r**2+y**2)+r)*(np.sqrt(r**2+y**2)+R))/(2*y**2)
+       k2_y= 4*r*R/((R+r)**2 + y**2)
+       k_y = np.sqrt(k2_y)
+       up_b = gamma_tot/(4*np.pi)*(1/r*(y/np.sqrt(r**2+y**2) - np.sign(y) - 1/(np.pi*y)*np.sqrt(r/R)*y**2/r**2*k_y*(K+T1*np.pi1-T2*np.pi2))
         return up_b
 
 
@@ -269,12 +269,12 @@ class SimplePropeller(generator_interface.BaseGenerator):
                 return 0.0
             k2_y = 4*r*R/((R+r)**2 + y**2)
             k_y  = np.sqrt(k2_y)
-	    K = np.special.ellpk(np.sqrt(self.propeller_wake_k2_y(r, R, y)))
+        K = np.special.ellpk(np.sqrt(self.propeller_wake_k2_y(r, R, y)))
             up_l = gamma_l/4*(R/r) + gamma_l/2*(R/r)*(y*k_y)/(2*np.pi*np.sqrt(r*R))*K
         else
             k2_y = 4*r*R/((R+r)**2 + y**2)
             k_y  = np.sqrt(k2_y)
-	    K = np.special.ellpk(np.sqrt(self.propeller_wake_k2_y(r, R, y)))
+        K = np.special.ellpk(np.sqrt(self.propeller_wake_k2_y(r, R, y)))
 
             up_l1= gamma_l/2*(R/r)*(r-R + np.abs(R-r))/(2*np.abs(R-r))
             up_l2= gamma_l/2*(R/r)*(y*k_y)/(2*np.pi*np.sqrt(r*R))*K
