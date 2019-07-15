@@ -136,7 +136,7 @@ todo_include_todos = False
 
 # Exclude matplotlib - avoids conflicts when running sphinx
 # http://www.sphinx-doc.org/en/master/usage/extensions/autodoc.html#confval-autodoc_mock_imports
-autodoc_mock_imports = ["matplotlib", "numpy", "colorama", "h5py", "scipy", "ctypes", "tvtk",
+autodoc_mock_imports = ["matplotlib", "colorama", "h5py", "scipy", "ctypes", "tvtk",
                         "sharpy.lib", "sharpy.utils.ctypes_utils", "sharpy.linear.src.libuvlm",
                         "sharpy.linear.src.lib_dbiot"]
                         # "interp", "multisurfaces", "assembly", "libss",]
@@ -158,7 +158,9 @@ autodoc_mock_imports = ["matplotlib", "numpy", "colorama", "h5py", "scipy", "cty
 # sys.modules.update((mod_name, Mock()) for mod_name in MOCK_MODULES)
 #
 
-
+# Sphinx extension to execute code in the documentation
+# https://github.com/jpsenior/sphinx-execute-code
+# extensions.append('sphinx_execute_code')
 
 # -- Options for HTML output ----------------------------------------------
 

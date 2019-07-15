@@ -186,23 +186,21 @@ class SettingsTable:
 
     This table will then be printed alongside the remaining docstrings.
 
-    Note that the table is appended to the docstring.
-
     To generate the table, parse the setting's description to a solver dictionary named ``settings_description``, in a
     similar fashion to what is done with ``settings_types`` and ``settings_default``. If no description is given it will
     be left blank.
 
-    Then, add at the end of the solver's ``__init__`` method an instance of the ``SettingsTable`` class and a call to
-    the ``SettingsTable.print(solver)`` method.
+    Then, add at the end of the solver's class declaration method an instance of the ``SettingsTable`` class and a call
+    to the ``SettingsTable.generate()`` method.
 
     Examples:
-        The end of the solver's ``__init__`` method should contain
+        The end of the solver's class declaration should contain
 
         .. code-block:: python
 
             # Generate documentation table
             settings_table = settings.SettingsTable()
-            settings_table.print(self)
+            __doc__ += settings_table.generate(settings_types, settings_default, settings_description)
 
         to generate the settings table.
 
@@ -219,27 +217,43 @@ class SettingsTable:
 
         self.line_format = ''
 
-    def print(self, solver):
+        self.table_string = ''
 
-        self.settings_types = solver.settings_types
-        self.settings_default = solver.settings_default
+    def generate(self, settings_types, settings_default, settings_description):
+        """
+        Returns a rst-format table with the settings' names, types, description and default values
+
+        Args:
+            settings_types (dict): Setting types.
+            settings_default (dict): Settings default value.
+            settings_description (dict): Setting description.
+
+        Returns:
+            str: .rst formatted string with a table containing the settings' information.
+        """
+        self.settings_types = settings_types
+        self.settings_default = settings_default
         self.n_settings = len(self.settings_types)
-
+        #
         try:
-            self.settings_description = solver.settings_description
+            self.settings_description = settings_description
         except AttributeError:
             pass
 
         self.set_field_length()
         self.line_format = self.setting_line_format()
 
-        solver.__doc__ += '\n    ' + 'The settings that this solver accepts are given by a dictionary, with the following key-value pairs:\n'
-        solver.__doc__ += '\n    ' + self.print_divider_line()
-        solver.__doc__ += '    ' + self.print_header()
-        solver.__doc__ += '    ' + self.print_divider_line()
+        table_string = '\n    ' + 'The settings that this solver accepts are given by a dictionary, with the following key-value pairs:\n'
+        table_string += '\n    ' + self.print_divider_line()
+        table_string += '    ' + self.print_header()
+        table_string += '    ' + self.print_divider_line()
         for setting in self.settings_types:
-            solver.__doc__ += '    ' + self.print_setting(setting)
-        solver.__doc__ += '    ' + self.print_divider_line()
+            table_string += '    ' + self.print_setting(setting)
+        table_string += '    ' + self.print_divider_line()
+
+        self.table_string = table_string
+
+        return table_string
 
     def set_field_length(self):
 

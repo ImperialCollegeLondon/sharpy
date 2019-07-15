@@ -71,7 +71,7 @@ class StepLinearUVLM(BaseSolver):
         Read default settings from linuvlm module
         """
         self.settings_types = linuvlm.settings_types_dynamic
-        self.settings_default =linuvlm.settings_default_dynamic
+        self.settings_default = linuvlm.settings_default_dynamic
 
         self.data = None
         self.settings = None
