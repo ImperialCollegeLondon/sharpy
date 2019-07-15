@@ -312,7 +312,7 @@ class NonLinearDynamicMultibody(BaseSolver):
             # Forces associated to the frame of reference
             if MB_beam[ibody].FoR_movement == 'free':
                 # TODO: How are the forces in the quaternion equation interpreted?
-                MB_tstep[ibody].forces_constraints_FoR = F[last_dof:last_dof+10]
+                MB_tstep[ibody].forces_constraints_FoR[ibody, :] = F[last_dof:last_dof+10]
                 last_dof += 10
 
             first_dof = last_dof
