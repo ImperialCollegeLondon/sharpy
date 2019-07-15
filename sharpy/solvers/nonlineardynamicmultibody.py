@@ -318,13 +318,14 @@ class NonLinearDynamicMultibody(BaseSolver):
         # TODO: right now, these forces are only used as an output, they are not read when the multibody is splitted
 
 
-    def run(self, structural_step=None):
+    def run(self, structural_step=None, dt=None):
 
         if structural_step is None:
             structural_step = self.data.structure.timestep_info[-1]
         # Initialize variables
         MBdict = self.data.structure.mb_dict
-        dt = self.settings['dt'].value
+        if dt is None:
+            dt = self.settings['dt'].value
 
         # print("beg quat: ", structural_step.quat)
         # TODO: only working for constant forces
@@ -362,6 +363,8 @@ class NonLinearDynamicMultibody(BaseSolver):
             # Check if the maximum of iterations has been reached
             if (iter == self.settings['max_iterations'].value - 1):
                 print('Solver did not converge in ', iter, ' iterations.')
+                print('res = ', res)
+                print('LM_res = ', LM_res)
                 break
 
             # Update positions and velocities
@@ -388,7 +391,7 @@ class NonLinearDynamicMultibody(BaseSolver):
                     LM_res = np.max(np.abs(Dq[self.sys_size:self.sys_size+num_LM_eq]))/LM_old_Dq
                 else:
                     LM_res = 0.0
-                if (res < self.settings['min_delta'].value) and (LM_res < self.settings['min_delta'].value*1e-4):
+                if (res < self.settings['min_delta'].value) and (LM_res < self.settings['min_delta'].value*1e-2):
                     converged = True
 
             # Compute variables from previous values and increments
