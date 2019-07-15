@@ -311,6 +311,9 @@ class DynamicCoupled(BaseSolver):
                     self.aero_solver.update_custom_grid(structural_kstep, aero_kstep)
                     break
 
+            # move the aerodynamic surface according the the structural one
+            self.aero_solver.update_custom_grid(structural_kstep, aero_kstep)
+
             self.aero_solver.add_step()
             self.data.aero.timestep_info[-1] = aero_kstep.copy()
 

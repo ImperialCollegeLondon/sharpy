@@ -15,10 +15,16 @@ IO of Models
 Structural Solvers
 ++++++++++++++++++
 
+.. toctree::
+    solvers/nonlinearstatic
+    solvers/nonlineardynamiccoupledstep
+    solvers/nonlineardynamicprescribedstep
+
 Aerodynamic Solvers
 +++++++++++++++++++
 
 .. toctree::
+    solvers/staticUVLM
     solvers/steplinearUVLM
     solvers/stepUVLM
 
@@ -33,11 +39,11 @@ Aeroelastic Solvers
 Modal Solvers
 +++++++++++++
 
-.. autoclass:: sharpy.solvers.modal.Modal
-    :members:
+.. toctree::
+    solvers/modal
 
 Flight Solvers
 ++++++++++++++
-.. autoclass:: sharpy.solvers.statictrim.StaticTrim
-    :members:
 
+.. toctree::
+    solvers/statictrim

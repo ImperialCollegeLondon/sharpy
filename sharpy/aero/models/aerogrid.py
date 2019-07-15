@@ -278,6 +278,9 @@ class Aerogrid(object):
                 node_info['elem'] = beam.elements[i_elem]
                 node_info['for_pos'] = structure_tstep.for_pos
                 node_info['cga'] = structure_tstep.cga()
+                if node_info['M_distribution'].lower() == 'user_defined':
+                    ielem_in_surf = i_elem - np.sum(self.surface_distribution < i_surf)
+                    node_info['user_defined_m_distribution'] = self.aero_dict['user_defined_m_distribution'][str(i_surf)][:, ielem_in_surf, i_local_node]
                 (aero_tstep.zeta[i_surf][:, :, i_n],
                  aero_tstep.zeta_dot[i_surf][:, :, i_n]) = (
                     generate_strip(node_info,
@@ -437,6 +440,10 @@ def generate_strip(node_info, airfoil_db, aligned_grid, orientation_in=np.array(
     elif node_info['M_distribution'] == '1-cos':
         domain = np.linspace(0, 1.0, node_info['M'] + 1)
         strip_coordinates_b_frame[1, :] = 0.5*(1.0 - np.cos(domain*np.pi))
+    elif node_info['M_distribution'].lower() == 'user_defined':
+        # strip_coordinates_b_frame[1, :-1] = np.linspace(0.0, 1.0 - node_info['last_panel_length'], node_info['M'])
+        # strip_coordinates_b_frame[1,-1] = 1.
+        strip_coordinates_b_frame[1,:] = node_info['user_defined_m_distribution']
     else:
         raise NotImplemented('M_distribution is ' + node_info['M_distribution'] +
                              ' and it is not yet supported')
@@ -492,7 +499,7 @@ def generate_strip(node_info, airfoil_db, aligned_grid, orientation_in=np.array(
     Cab = algebra.crv2rotation(node_info['beam_psi'])
 
     rot_angle = algebra.angle_between_vectors_sign(orientation_in, Cab[:, 1], Cab[:, 2])
-    if np.sign(np.dot(orientation_in, Cab[:, 1])) > 0:
+    if np.sign(np.dot(orientation_in, Cab[:, 1])) >= 0:
         rot_angle = 0.0
     else:
         rot_angle = -np.pi
@@ -544,7 +551,7 @@ def generate_strip(node_info, airfoil_db, aligned_grid, orientation_in=np.array(
         for i_M in range(node_info['M'] + 1):
                 strip_coordinates_a_frame[:, i_M] += 0.25*delta_c
     else:
-        warnings.warn("No quarter chord disp of grid for non 1-cos grid distributions implemented", UserWarning)
+        warnings.warn("No quarter chord disp of grid for non-uniform grid distributions implemented", UserWarning)
 
     # rotation from a to g
     for i_M in range(node_info['M'] + 1):
