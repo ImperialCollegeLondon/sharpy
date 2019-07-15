@@ -2155,6 +2155,10 @@ def generate_multibody_file(list_LagrangeConstraints, list_Bodies, route, case_n
                 constraint_id.create_dataset("body_number", data=constraint.body_number)
                 constraint_id.create_dataset("node_number", data=constraint.node_number)
 
+            if constraint.behaviour == 'fully_constrained_node_FoR':
+                constraint_id.create_dataset("node_in_body", data=constraint.node_in_body)
+                constraint_id.create_dataset("node_body", data=constraint.node_body)
+                constraint_id.create_dataset("body_FoR", data=constraint.body_FoR)
             iconstraint += 1
 
         # Write the body information

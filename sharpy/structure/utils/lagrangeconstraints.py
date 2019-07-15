@@ -824,7 +824,7 @@ class fully_constrained_node_FoR(BaseLagrangeConstraint):
 
         print("WARNING: do not use fully_constrained_node_FoR. It is outdated")
         self.node_in_body = MBdict_entry['node_in_body']
-        self.node_body = MBdict_entry['body']
+        self.node_body = MBdict_entry['node_body']
         self.body_FoR = MBdict_entry['body_FoR']
         self._ieq = ieq
         return self._ieq + self._n_eq
