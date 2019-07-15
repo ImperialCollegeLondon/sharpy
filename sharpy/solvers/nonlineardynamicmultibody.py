@@ -307,7 +307,7 @@ class NonLinearDynamicMultibody(BaseSolver):
             body_numdof = MB_beam[ibody].num_dof.value
             body_freenodes = np.sum(MB_beam[ibody].vdof > -1)
             last_dof = first_dof + body_numdof
-            MB_tstep[ibody].forces_constraints_nodes[(MB_beam[ibody].vdof > -1), :] = F[first_dof:last_dof].reshape(body_freenodes, 6, order='F')
+            MB_tstep[ibody].forces_constraints_nodes[(MB_beam[ibody].vdof > -1), :] = F[first_dof:last_dof].reshape(body_freenodes, 6, order='C')
 
             # Forces associated to the frame of reference
             if MB_beam[ibody].FoR_movement == 'free':
