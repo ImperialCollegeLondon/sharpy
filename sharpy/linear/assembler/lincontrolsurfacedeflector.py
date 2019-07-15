@@ -35,7 +35,7 @@ class ControlSurfaceDeflector(object):
         self.tsaero0 = None
         self.tsstruct0 = None
 
-        self.under_delopment = True
+        self.under_development = True
 
     def initialise(self, data, linuvlm):
         # Tasks:
@@ -71,6 +71,8 @@ class ControlSurfaceDeflector(object):
 
         The parsing of arguments is temporary since this state space element will include a full actuator model.
 
+        The parsing of arguments is optional if the class has been previously initialised.
+
         Args:
             linuvlm:
             tsaero0:
@@ -89,13 +91,12 @@ class ControlSurfaceDeflector(object):
             tsaero0 = self.tsaero0
             tsstruct0 = self.tsstruct0
 
-
         # Find the vertices corresponding to a control surface from beam coordinates to aerogrid
         aero_dict = aero.aero_dict
         n_surf = aero.timestep_info[0].n_surf
         n_control_surfaces = len(aero_dict['control_surface_chord'])
 
-        if self.under_delopment:
+        if self.under_development:
             import matplotlib.pyplot as plt  # Part of the testing process
         Kdisp = np.zeros((3 * linuvlm.Kzeta, n_control_surfaces))
         Kdisp_n = Kdisp.copy()
@@ -123,7 +124,7 @@ class ControlSurfaceDeflector(object):
             Cgb = Cbg.T
 
             # print(global_node)
-            if self.under_delopment:
+            if self.under_development:
                 print('Node -- ' + str(global_node))
             # Map onto aerodynamic coordinates. Some nodes may be part of two aerodynamic surfaces. This will happen
             # at the surface boundary
@@ -191,7 +192,7 @@ class ControlSurfaceDeflector(object):
                                                                      0,
                                                                      -for_delta * Cbg.dot(chord_vec)))
                             # Testing progress
-                            if self.under_delopment:
+                            if self.under_development:
                                 plt.scatter(zeta_hingeB[1], zeta_hingeB[2], color='k')
                                 plt.scatter(zeta_nodeB[1], zeta_nodeB[2], color='b')
                                 # plt.scatter(zeta_hinge[1], zeta_hinge[2], color='k')
@@ -208,7 +209,7 @@ class ControlSurfaceDeflector(object):
                                 angle = np.arccos(new_vector.dot(old_vector) / (np.linalg.norm(new_vector) * np.linalg.norm(old_vector)))
                                 print(angle)
 
-                    if self.under_delopment:
+                    if self.under_development:
                         plt.axis('equal')
                         plt.show()
                 else:
