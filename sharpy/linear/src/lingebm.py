@@ -231,6 +231,14 @@ class FlexDynamic():
         self.update_truncated_modes(value)
         self._num_modes = value
 
+    @property
+    def num_flex_dof(self):
+        return np.sum(self.structure.vdof >= 0) * 6
+
+    @property
+    def num_rig_dof(self):
+        return self.Mstr.shape[0] - self.num_flex_dof
+
     def euler_propagation_equations(self, tsstr):
         """
         Introduce the linearised Euler propagation equations that relate the body fixed angular velocities to the Earth
@@ -420,7 +428,6 @@ class FlexDynamic():
         if tsstr is None:
             tsstr = self.tsstruct0
 
-        # TODO: Adapt to clamped cases
 
         if self.settings['print_info'].value:
             cout.cout_wrap('\nLinearising gravity terms...')
@@ -574,10 +581,9 @@ class FlexDynamic():
             FgravA += fgravA
             FgravG += fgravG
 
-
         # Update matrices
         self.Kstr[:flex_dof, :flex_dof] += Kss_grav
-        if self.Kstr[:flex_dof, :flex_dof].shape != self.Kstr.shape:
+        if self.Kstr[:flex_dof, :flex_dof].shape != self.Kstr.shape:  # If the beam is free, update rigid terms as well
             self.Cstr[-rig_dof:, -rig_dof:] += Crr_grav
             self.Cstr[:-rig_dof, -rig_dof:] += Csr_grav
             self.Kstr[flex_dof:, :flex_dof] += Krs_grav
@@ -909,6 +915,38 @@ class FlexDynamic():
 
         # Update Ccut matrix
         self.Ccut = np.dot(self.U.T, np.dot(self.Cstr, self.U))
+
+    def scale_system_normalised_time(self, time_ref):
+        r"""
+        Scale the system with a normalised time step. The resulting time step is
+        :math:`\Delta t = \Delta \bar{t}/t_{ref}`, where the over bar denotes dimensional time.
+        The structural equations of motion are rescaled as:
+
+        .. math::
+            \mathbf{M}\ddot{\boldsymbol{\eta}} + \mathbf{C} t_{ref} \dot{\boldsymbol{\eta}} + \mathbf{K} t_{ref}^2
+            \boldsymbol{\eta} = t_{ref}^2 \mathbf{N}
+
+        For aeroelastic applications, the reference time is usually defined using the semi-chord, :math:`b`, and the
+        free stream velocity, :math:`U_\infty`.
+
+        .. math:: t_{ref,ae} = \frac{b}{U_\infty}
+
+        Args:
+            time_ref (float): Normalisation factor such that :math:`t/\bar{t}` is non-dimensional.
+
+        """
+        if time_ref != 1.0:
+            if self.num_rig_dof == 0:
+                self.dt /= time_ref
+                if self.settings['print_info']:
+                    cout.cout_wrap('Scaling beam matrices according to reduced time...', 0)
+                    cout.cout_wrap('\tSetting the beam time step to (%.4f)' % self.dt, 1)
+
+                self.Kstr *= time_ref ** 2
+                self.Cstr *= time_ref
+            else:
+                warnings.warn('Time normalisation not yet implemented with rigid body motion.')
+
 
     def cont2disc(self, dt=None):
         """Convert continuous-time SS model into """

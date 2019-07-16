@@ -71,7 +71,16 @@ class LinearBeam(BaseElement):
         if num_dof_rig == 0:
             self.clamped = True
 
-    def assemble(self):
+    def assemble(self, t_ref=None):
+        """
+        Assemble the beam state-space system.
+
+        Args:
+            t_ref (float): Scaling factor to non-dimensionalise the beam's time step.
+
+        Returns:
+
+        """
         # Would assemble the system as per the settings
         # Here we would add further options such as discarding DOFs etc
 
@@ -84,6 +93,9 @@ class LinearBeam(BaseElement):
 
         if self.settings['modal_projection'].value and self.settings['remove_sym_modes'].value and self.clamped:
             self.remove_symmetric_modes()
+
+        if t_ref is not None:
+            self.sys.scale_system_normalised_time(t_ref)
 
         self.sys.assemble()
 

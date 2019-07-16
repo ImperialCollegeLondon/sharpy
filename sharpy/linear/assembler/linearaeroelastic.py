@@ -83,7 +83,7 @@ class LinearAeroelastic(BaseElement):
         beam.sys.Cstr += damping_aero
         beam.sys.Kstr += stiff_aero
 
-        beam.assemble()
+        beam.assemble(t_ref=uvlm.sys.ScalingFacts['time'])
 
         # Coupling matrices
         Ksa = self.sys.Kforces[:beam.sys.num_dof, :]  # maps aerodynamic grid forces to nodal forces
