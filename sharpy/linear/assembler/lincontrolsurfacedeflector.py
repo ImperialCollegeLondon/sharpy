@@ -6,7 +6,7 @@ import numpy as np
 import sharpy.utils.algebra as algebra
 
 @ss_interface.linear_system
-class ControlSurfaceDeflector(object):
+class LinControlSurfaceDeflector(object):
     """
     Subsystem that deflects control surfaces for use with linear state space systems
 
@@ -14,7 +14,7 @@ class ControlSurfaceDeflector(object):
     physical actuators.
 
     """
-    sys_id = 'ControlSurfaceDeflector'
+    sys_id = 'LinControlSurfaceDeflector'
 
     def __init__(self):
         # Has the back bone structure for a future actuator model

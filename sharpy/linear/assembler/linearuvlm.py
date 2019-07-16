@@ -7,7 +7,6 @@ import numpy as np
 import sharpy.linear.src.linuvlm as linuvlm
 import sharpy.linear.src.libsparse as libsp
 import sharpy.utils.settings as settings
-import sharpy.linear.assembler.lincontrolsurfacedeflector as lincontrolsurfacedeflector
 import scipy.sparse as sp
 
 @ss_interface.linear_system
@@ -64,7 +63,8 @@ class LinearUVLM(ss_interface.BaseElement):
         self.state_variables = ss_interface.LinearVector(state_variables_database, self.sys_id)
 
         if data.aero.n_control_surfaces >= 1:
-            self.control_surface = lincontrolsurfacedeflector.ControlSurfaceDeflector()
+            import sharpy.linear.assembler.lincontrolsurfacedeflector as lincontrolsurfacedeflector
+            self.control_surface = lincontrolsurfacedeflector.LinControlSurfaceDeflector()
             self.control_surface.initialise(data, uvlm)
 
     def assemble(self):

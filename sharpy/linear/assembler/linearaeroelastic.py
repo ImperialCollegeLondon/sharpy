@@ -1,8 +1,6 @@
 from sharpy.linear.utils.ss_interface import BaseElement, linear_system
 import numpy as np
 import sharpy.linear.src.lin_aeroelastic as lin_aeroelastic
-import sharpy.linear.assembler.linearuvlm as linearuvlm
-import sharpy.linear.assembler.linearbeam as linearbeam
 import sharpy.linear.src.libss as libss
 import matplotlib.pyplot as plt
 
@@ -30,6 +28,10 @@ class LinearAeroelastic(BaseElement):
             self.settings = None
 
         self.sys = lin_aeroelastic.LinAeroEla(data, custom_settings_linear=self.settings)
+
+        # Import underlying elements
+        import sharpy.linear.assembler.linearuvlm as linearuvlm
+        import sharpy.linear.assembler.linearbeam as linearbeam
 
         # Initialise aerodynamic
         # Settings
