@@ -13,12 +13,6 @@ class ControlSurfaceDeflector(object):
     The current version supports only deflections. Future work will include standalone state-space systems to model
     physical actuators.
 
-    Warnings:
-        Control surfaces on the left wing may be one node longer than those on the right wing. Under investigation.
-        NG - 14/7/19. This is to do with the node belonging to a master element. Those nodes at the boundary are part
-        of a single master when the elements get assigned. Therefore, if the construction of the wing is not symmetric,
-        i.e. the node number does not increase outboard, you will encounter this problem.
-
     """
     sys_id = 'ControlSurfaceDeflector'
 
@@ -99,7 +93,6 @@ class ControlSurfaceDeflector(object):
         if self.under_development:
             import matplotlib.pyplot as plt  # Part of the testing process
         Kdisp = np.zeros((3 * linuvlm.Kzeta, n_control_surfaces))
-        Kdisp_n = Kdisp.copy()
         zeta0 = np.concatenate([tsaero0.zeta[i_surf].reshape(-1, order='C') for i_surf in range(n_surf)])
 
         Cga = algebra.quat2rotation(tsstruct0.quat).T
@@ -111,110 +104,116 @@ class ControlSurfaceDeflector(object):
 
         for global_node in range(structure.num_node):
 
-            # Retrieve element index and local index
-            i_elem, i_local_node = structure.node_master_elem[global_node, :]
+            # Retrieve elements and local nodes to which a single node is attached
+            for i_elem in range(structure.num_elem):
+                if global_node in structure.connectivities[i_elem, :]:
+                    i_local_node = np.where(structure.connectivities[i_elem, :] == global_node)[0][0]
 
-            for_delta = structure.frame_of_reference_delta[i_elem, :, 0]
+                    for_delta = structure.frame_of_reference_delta[i_elem, :, 0]
 
-            # CRV to transform from G to B frame
-            psi = tsstruct0.psi[i_elem, i_local_node]
-            Cab = algebra.crv2rotation(psi)
-            Cba = Cab.T
-            Cbg = np.dot(Cab.T, Cag)
-            Cgb = Cbg.T
+                    # CRV to transform from G to B frame
+                    psi = tsstruct0.psi[i_elem, i_local_node]
+                    Cab = algebra.crv2rotation(psi)
+                    Cba = Cab.T
+                    Cbg = np.dot(Cab.T, Cag)
+                    Cgb = Cbg.T
 
-            # print(global_node)
-            if self.under_development:
-                print('Node -- ' + str(global_node))
-            # Map onto aerodynamic coordinates. Some nodes may be part of two aerodynamic surfaces. This will happen
-            # at the surface boundary
-            for structure2aero_node in aero.struct2aero_mapping[global_node]:
-                # Retrieve surface and span-wise coordinate
-                i_surf, i_node_span = structure2aero_node['i_surf'], structure2aero_node['i_n']
-
-                # Surface panelling
-                M = aero.aero_dimensions[i_surf][0]
-                N = aero.aero_dimensions[i_surf][1]
-
-                K_zeta_start = 3 * sum(linuvlm.MS.KKzeta[:i_surf])
-                shape_zeta = (3, M + 1, N + 1)
-
-                i_control_surface = aero_dict['control_surface'][i_elem, i_local_node]
-                if i_control_surface >= 0:
-                    if not with_control_surface:
-                        i_start_of_cs = i_node_span.copy()
-                        with_control_surface = True
-                    control_surface_chord = aero_dict['control_surface_chord'][i_control_surface]
-                    control_surface_deflection = aero_dict['control_surface_deflection'][i_control_surface]
-                    # print(i_start_of_cs)
-                    i_node_hinge = M - control_surface_chord
-                    i_vertex_hinge = [K_zeta_start + np.ravel_multi_index((i_axis, i_node_hinge, i_node_span), shape_zeta) for i_axis in range(3)]
-                    i_vertex_next_hinge = [K_zeta_start + np.ravel_multi_index((i_axis, i_node_hinge, i_start_of_cs + 1), shape_zeta) for i_axis in range(3)]
-                    zeta_hinge = zeta0[i_vertex_hinge]
-                    zeta_next_hinge = zeta0[i_vertex_next_hinge]
-
-                    if hinge_axis is None:
-                        # Hinge axis not yet set for current control surface
-                        # Hinge axis is in G frame
-                        hinge_axis = zeta_next_hinge - zeta_hinge
-                        hinge_axis = hinge_axis / np.linalg.norm(hinge_axis)
-                    for i_node_chord in range(M + 1):
-                        i_vertex = [K_zeta_start + np.ravel_multi_index((i_axis, i_node_chord, i_node_span), shape_zeta) for i_axis in range(3)]
-
-                        if i_node_chord > i_node_hinge:
-                            # Zeta in G frame
-                            zeta_node = zeta0[i_vertex]
-                            zeta_nodeA = Cag.dot(zeta_node)
-                            zeta_hingeA = Cag.dot(zeta_hinge)
-                            zeta_hingeB = Cbg.dot(zeta_hinge)
-                            zeta_nodeB = Cbg.dot(zeta_node)
-                            chord_vec = (zeta_node - zeta_hinge)
-                            if self.under_delopment:
-                                print('G Frame')
-                                print('Hinge axis = ' + str(hinge_axis))
-                                print('\tHinge = ' + str(zeta_hinge))
-                                print('\tNode = ' + str(zeta_node))
-                                print('A Frame')
-                                print('\tHinge = ' + str(zeta_hingeA))
-                                print('\tNode = ' + str(zeta_nodeA))
-                                print('B Frame')
-                                print('\tHinge axis = ' + str(Cbg.dot(hinge_axis)))
-                                print('\tHinge = ' + str(zeta_hingeB))
-                                print('\tNode = ' + str(zeta_nodeB))
-                                print('Chordwise Vector')
-                                print('GVec = ' + str(chord_vec/np.linalg.norm(chord_vec)))
-                                print('BVec = ' + str(Cbg.dot(chord_vec/np.linalg.norm(chord_vec))))
-                                # pass
-
-                            Kdisp_n[i_vertex, i_control_surface] = Cgb.dot(der_Cx_by_v(0, -for_delta * Cbg.dot(chord_vec)))
-                            Kdisp[i_vertex, i_control_surface] = \
-                                Cgb.dot(der_R_arbitrary_axis_times_v(Cbg.dot(hinge_axis),
-                                                                     0,
-                                                                     -for_delta * Cbg.dot(chord_vec)))
-                            # Testing progress
-                            if self.under_development:
-                                plt.scatter(zeta_hingeB[1], zeta_hingeB[2], color='k')
-                                plt.scatter(zeta_nodeB[1], zeta_nodeB[2], color='b')
-                                # plt.scatter(zeta_hinge[1], zeta_hinge[2], color='k')
-                                # plt.scatter(zeta_node[1], zeta_node[2], color='b')
-
-                                # Testing out
-                                delta = 5*np.pi/180
-                                zeta_newB = Cbg.dot(Kdisp[i_vertex, 1].dot(delta)) + zeta_nodeB
-                                plt.scatter(zeta_newB[1], zeta_newB[2], color='r')
-
-                                old_vector = zeta_nodeB - zeta_hingeB
-                                new_vector = zeta_newB - zeta_hingeB
-
-                                angle = np.arccos(new_vector.dot(old_vector) / (np.linalg.norm(new_vector) * np.linalg.norm(old_vector)))
-                                print(angle)
-
+                    # print(global_node)
                     if self.under_development:
-                        plt.axis('equal')
-                        plt.show()
-                else:
-                    with_control_surface = False
-                    hinge_axis = None  # Reset for next control surface
+                        print('Node -- ' + str(global_node))
+                    # Map onto aerodynamic coordinates. Some nodes may be part of two aerodynamic surfaces. This will happen
+                    # at the surface boundary
+                    for structure2aero_node in aero.struct2aero_mapping[global_node]:
+                        # Retrieve surface and span-wise coordinate
+                        i_surf, i_node_span = structure2aero_node['i_surf'], structure2aero_node['i_n']
+
+                        # Surface panelling
+                        M = aero.aero_dimensions[i_surf][0]
+                        N = aero.aero_dimensions[i_surf][1]
+
+                        K_zeta_start = 3 * sum(linuvlm.MS.KKzeta[:i_surf])
+                        shape_zeta = (3, M + 1, N + 1)
+
+                        i_control_surface = aero_dict['control_surface'][i_elem, i_local_node]
+                        if i_control_surface >= 0:
+                            if not with_control_surface:
+                                i_start_of_cs = i_node_span.copy()
+                                with_control_surface = True
+                            control_surface_chord = aero_dict['control_surface_chord'][i_control_surface]
+                            i_node_hinge = M - control_surface_chord
+                            i_vertex_hinge = [K_zeta_start +
+                                              np.ravel_multi_index((i_axis, i_node_hinge, i_node_span), shape_zeta)
+                                              for i_axis in range(3)]
+                            i_vertex_next_hinge = [K_zeta_start +
+                                                   np.ravel_multi_index((i_axis, i_node_hinge, i_start_of_cs + 1),
+                                                                        shape_zeta) for i_axis in range(3)]
+                            zeta_hinge = zeta0[i_vertex_hinge]
+                            zeta_next_hinge = zeta0[i_vertex_next_hinge]
+
+                            if hinge_axis is None:
+                                # Hinge axis not yet set for current control surface
+                                # Hinge axis is in G frame
+                                hinge_axis = zeta_next_hinge - zeta_hinge
+                                hinge_axis = hinge_axis / np.linalg.norm(hinge_axis)
+                            for i_node_chord in range(M + 1):
+                                i_vertex = [K_zeta_start +
+                                            np.ravel_multi_index((i_axis, i_node_chord, i_node_span), shape_zeta)
+                                            for i_axis in range(3)]
+
+                                if i_node_chord > i_node_hinge:
+                                    # Zeta in G frame
+                                    zeta_node = zeta0[i_vertex]
+                                    zeta_nodeA = Cag.dot(zeta_node)
+                                    zeta_hingeA = Cag.dot(zeta_hinge)
+                                    zeta_hingeB = Cbg.dot(zeta_hinge)
+                                    zeta_nodeB = Cbg.dot(zeta_node)
+                                    chord_vec = (zeta_node - zeta_hinge)
+                                    if self.under_development:
+                                        print('G Frame')
+                                        print('Hinge axis = ' + str(hinge_axis))
+                                        print('\tHinge = ' + str(zeta_hinge))
+                                        print('\tNode = ' + str(zeta_node))
+                                        print('A Frame')
+                                        print('\tHinge = ' + str(zeta_hingeA))
+                                        print('\tNode = ' + str(zeta_nodeA))
+                                        print('B Frame')
+                                        print('\tHinge axis = ' + str(Cbg.dot(hinge_axis)))
+                                        print('\tHinge = ' + str(zeta_hingeB))
+                                        print('\tNode = ' + str(zeta_nodeB))
+                                        print('Chordwise Vector')
+                                        print('GVec = ' + str(chord_vec/np.linalg.norm(chord_vec)))
+                                        print('BVec = ' + str(Cbg.dot(chord_vec/np.linalg.norm(chord_vec))))
+                                        # pass
+
+                                    Kdisp[i_vertex, i_control_surface] += \
+                                        Cgb.dot(der_R_arbitrary_axis_times_v(Cbg.dot(hinge_axis),
+                                                                             0,
+                                                                             -for_delta * Cbg.dot(chord_vec)))
+                                    # Testing progress
+                                    if self.under_development:
+                                        plt.scatter(zeta_hingeB[1], zeta_hingeB[2], color='k')
+                                        plt.scatter(zeta_nodeB[1], zeta_nodeB[2], color='b')
+                                        # plt.scatter(zeta_hinge[1], zeta_hinge[2], color='k')
+                                        # plt.scatter(zeta_node[1], zeta_node[2], color='b')
+
+                                        # Testing out
+                                        delta = 5*np.pi/180
+                                        zeta_newB = Cbg.dot(Kdisp[i_vertex, 1].dot(delta)) + zeta_nodeB
+                                        plt.scatter(zeta_newB[1], zeta_newB[2], color='r')
+
+                                        old_vector = zeta_nodeB - zeta_hingeB
+                                        new_vector = zeta_newB - zeta_hingeB
+
+                                        angle = np.arccos(new_vector.dot(old_vector) /
+                                                          (np.linalg.norm(new_vector) * np.linalg.norm(old_vector)))
+                                        print(angle)
+
+                            if self.under_development:
+                                plt.axis('equal')
+                                plt.show()
+                        else:
+                            with_control_surface = False
+                            hinge_axis = None  # Reset for next control surface
 
         self.Kzeta_delta = Kdisp
         return Kdisp
