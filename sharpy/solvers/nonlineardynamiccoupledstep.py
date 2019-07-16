@@ -47,6 +47,7 @@ class NonLinearDynamicCoupledStep(BaseSolver):
 
     settings_types['min_delta'] = 'float'
     settings_default['min_delta'] = 1e-5
+    settings_description['min_delta'] = 'Structural solver tolerance'
 
     settings_types['newmark_damp'] = 'float'
     settings_default['newmark_damp'] = 1e-4
@@ -61,22 +62,27 @@ class NonLinearDynamicCoupledStep(BaseSolver):
 
     settings_types['gravity_on'] = 'bool'
     settings_default['gravity_on'] = False
+    settings_description['gravity_on'] = 'Flag to include gravitational forces'
+
+    settings_types['gravity'] = 'float'
+    settings_default['gravity'] = 9.81
+    settings_description['gravity'] = 'Gravitational acceleration'
 
     settings_types['balancing'] = 'bool'
     settings_default['balancing'] = False
 
-    settings_types['gravity'] = 'float'
-    settings_default['gravity'] = 9.81
-
     # initial speed direction is given in inertial FOR!!!
     settings_types['initial_velocity_direction'] = 'list(float)'
     settings_default['initial_velocity_direction'] = np.array([-1.0, 0.0, 0.0])
+    settings_description['initial_velocity_direction'] = 'Initial velocity of the reference node given in the inertial FOR'
 
     settings_types['initial_velocity'] = 'float'
     settings_default['initial_velocity'] = 0
+    settings_description['initial_velocity'] = 'Initial velocity magnitude of the reference node'
 
     settings_types['relaxation_factor'] = 'float'
     settings_default['relaxation_factor'] = 0.3
+    settings_description['relaxation factor'] = 'Relaxation factor'
 
     settings_table = settings.SettingsTable()
     __doc__ += settings_table.generate(settings_types, settings_default, settings_description)
@@ -146,10 +152,3 @@ class NonLinearDynamicCoupledStep(BaseSolver):
 
         totals = np.sum(applied_forces_copy + gravity_forces_copy, axis=0)
         return totals[0:3], totals[3:6]
-
-# st = settings.SettingsTable()
-# st.print(NonLinearDynamicCoupledStep())
-
-if __name__=='__main__':
-    sol = NonLinearDynamicCoupledStep()
-    print(sol.__doc__)
