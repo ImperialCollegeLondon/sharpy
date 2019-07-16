@@ -17,6 +17,7 @@ class ControlSurfacePidController(controller_interface.BaseController):
 
     settings_types['time_history_input_file'] = 'str'
     settings_default['time_history_input_file'] = None
+    settings_description['time_history_input_file'] = 'Route and file name of the time history of desired state'
 
     settings_types['P'] = 'float'
     settings_default['P'] = None
@@ -35,6 +36,10 @@ class ControlSurfacePidController(controller_interface.BaseController):
     settings_description['input_type'] = ('Quantity used to define the' +
         ' reference state. Supported: `pitch`')
 
+    settings_types['dt'] = 'float'
+    settings_default['dt'] = 0.0
+    settings_description['dt'] = 'Time step of the simulation'
+
     supported_input_types = ['pitch']
 
     settings_table = settings.SettingsTable()
@@ -47,6 +52,18 @@ class ControlSurfacePidController(controller_interface.BaseController):
 
         self.data = None
         self.settings = None
+
+        self.input_time_history_file = None
+
+        # Time histories are ordered such that the [i]th element of each
+        # is the state of the controller at the time of returning.
+        # That means that for the timestep i,
+        # state_input_history[i] == input_time_history_file[i] + error[i]
+        self.p_error_history = list()
+        self.i_error_history = list()
+        self.d_error_history = list()
+        self.state_input_history = list()
+        self.control_history = list()
 
     def initialise(self, in_dict):
         self.in_dict = in_dict
@@ -64,28 +81,42 @@ class ControlSurfacePidController(controller_interface.BaseController):
                 cout.cout_wrap('    {}'.format(i), 3)
             raise NotImplementedError()
 
-    def control(self, data, current_state):
+        # save input time history
+        # TODO: Error handling for file not found
+        self.input_time_history_file = np.loadtxt(self.settings['time_history_input_file'], delimiter=',')
+
+
+    def control(self, data, controlled_state):
         r"""
         Main routine of the controller.
         Input is `data` (the self.data in the solver), and
         `currrent_state` which is a dictionary with ['structural', 'aero']
         time steps for the current iteration.
 
-        These states can be included in data.[aero, structural].timestep_info
-        and the controller will make sure it is not duplicating the data
-        by checking that
-        `current_state['structural'] is not data.structural.timestep_info[-1]`
-        and the same for aero.
+        :param data: problem data containing all the information.
+        :param controlled_state: `dict` with two vars: `structural` and `aero`
+            containing the `timestep_info` that will be returned with the
+            control variables.
+
+        :returns: A `dict` with `structural` and `aero` time steps and control
+            input included.
         """
 
         # get desired time history input
         
+
         # get current state input
         
         # calculate output of controller
         # (input is history, state, required state)
         
         # apply it where needed.
+
+
+    def extract_time_history(self, controlled_state):
+        if self.settings['input_type'] == 'pitch':
+
+
 
 
 
