@@ -79,6 +79,7 @@ class LinearUVLM(ss_interface.BaseElement):
         """
 
         self.sys.assemble_ss()
+        self.sys.nondimss()
         self.ss = self.sys.SS
         self.C_to_vertex_forces = self.ss.C.copy()
 

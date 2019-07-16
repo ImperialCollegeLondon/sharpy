@@ -3,6 +3,7 @@ import numpy as np
 import sharpy.linear.src.lin_aeroelastic as lin_aeroelastic
 import sharpy.linear.src.libss as libss
 import matplotlib.pyplot as plt
+import scipy.linalg as sclalg
 
 @linear_system
 class LinearAeroelastic(BaseElement):
@@ -64,7 +65,7 @@ class LinearAeroelastic(BaseElement):
 
         # Linearisation of the aerodynamic forces introduces stiffenning and damping terms into the beam matrices
         flex_nodes = self.sys.num_dof_flex
-        rig_nodes = self.sys.num_dof_rig
+        # rig_nodes = self.sys.num_dof_rig
         self.sys.get_gebm2uvlm_gains()
 
         stiff_aero = np.zeros_like(beam.sys.Kstr)
@@ -88,20 +89,30 @@ class LinearAeroelastic(BaseElement):
         Ksa = self.sys.Kforces[:beam.sys.num_dof, :]  # maps aerodynamic grid forces to nodal forces
 
         # Map the nodal displacement and velocities onto the grid displacements and velocities
-        Kas = np.zeros((uvlm.ss.inputs, beam.ss.outputs + (uvlm.ss.inputs - 2*self.sys.Kdisp.shape[0])))
-        Kas[:2*self.sys.Kdisp.shape[0], :beam.ss.outputs] = np.block([[self.sys.Kdisp[:, :beam.sys.num_dof], self.sys.Kdisp_vel[:, :beam.sys.num_dof]],
+        Kas = np.zeros((uvlm.ss.inputs, 2*beam.sys.num_dof + (uvlm.ss.inputs - 2*self.sys.Kdisp.shape[0])))
+        Kas[:2*self.sys.Kdisp.shape[0], :2*beam.sys.num_dof] = np.block([[self.sys.Kdisp[:, :beam.sys.num_dof], self.sys.Kdisp_vel[:, :beam.sys.num_dof]],
                         [self.sys.Kvel_disp[:, :beam.sys.num_dof], self.sys.Kvel_vel[:, :beam.sys.num_dof]]])
 
         # Retain other inputs
-        Kas[2*self.sys.Kdisp.shape[0]:, beam.ss.outputs:] = np.eye(uvlm.ss.inputs - 2 * self.sys.Kdisp.shape[0])
+        Kas[2*self.sys.Kdisp.shape[0]:, 2*beam.sys.num_dof:] = np.eye(uvlm.ss.inputs - 2 * self.sys.Kdisp.shape[0])
 
         uvlm.ss.addGain(Ksa, where='out')
         uvlm.ss.addGain(Kas, where='in')
 
+        if self.settings['beam_settings']['modal_projection'].value == True and \
+                self.settings['beam_settings']['inout_coords'] == 'modes':
+            # Project UVLM onto modal space
+            phi = beam.sys.U
+            in_mode_matrix = np.eye(uvlm.ss.inputs, beam.ss.outputs + (uvlm.ss.inputs - 2*beam.sys.num_dof))
+            in_mode_matrix[:2*beam.sys.num_dof, :2*beam.sys.num_modes] = sclalg.block_diag(phi, phi)
+            out_mode_matrix = phi.T
+
+            uvlm.ss.addGain(in_mode_matrix, where='in')
+            uvlm.ss.addGain(out_mode_matrix, where='out')
+
         Tas = np.eye(uvlm.ss.inputs, beam.ss.outputs)
         Tsa = np.eye(beam.ss.inputs, uvlm.ss.outputs)
 
-        # TODO: Modal projection - try with ``in_out_coords= nodes``. Might work without further adjustments
         self.ss = libss.couple(ss01=uvlm.ss, ss02=beam.ss, K12=Tas, K21=Tsa)
         # self.aero_states = uvlm.ss.states
         # self.beam_states = beam.ss.states

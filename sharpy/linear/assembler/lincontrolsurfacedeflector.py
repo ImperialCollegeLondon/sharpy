@@ -29,7 +29,7 @@ class LinControlSurfaceDeflector(object):
         self.tsaero0 = None
         self.tsstruct0 = None
 
-        self.under_development = True
+        self.under_development = False
 
     def initialise(self, data, linuvlm):
         # Tasks:

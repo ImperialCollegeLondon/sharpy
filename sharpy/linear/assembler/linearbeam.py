@@ -16,20 +16,26 @@ class LinearBeam(BaseElement):
     """
     sys_id = "LinearBeam"
 
+
+    settings_types = dict()
+    settings_default = dict()
+    settings_description = dict()
+
+    settings_types['gravity'] = 'bool'
+    settings_default['gravity'] = False
+
+    settings_types['remove_dofs'] = 'list'
+    settings_default['remove_dofs'] = []
+
+    settings_types['remove_sym_modes'] = 'bool'
+    settings_default['remove_sym_modes'] = False
+    settings_description['remove_sym_modes'] = 'Remove symmetric modes if wing is clamped'
+
     def __init__(self):
-
-        self.settings_types = dict()
-        self.settings_default = dict()
-
-        self.settings_types['gravity'] = 'bool'
-        self.settings_default['gravity'] = False
-
-        self.settings_types['remove_dofs'] = 'list'
-        self.settings_default['remove_dofs'] = []
-
         self.sys = None  # The actual object
         self.ss = None  # The state space object
-        self.tstruct0 = None
+        self.clamped = None
+        self.tsstruct0 = None
 
         self.settings = dict()
         self.state_variables = None
@@ -47,7 +53,7 @@ class LinearBeam(BaseElement):
 
         beam = lingebm.FlexDynamic(data.linear.tsstruct0, data.structure, self.settings)
         self.sys = beam
-        self.tstruct0 = data.linear.tsstruct0
+        self.tsstruct0 = data.linear.tsstruct0
 
         # State variables
         num_dof_flex = self.sys.structure.num_dof.value
@@ -62,6 +68,9 @@ class LinearBeam(BaseElement):
                   'orient': [2 * num_dof_flex + num_dof_rig + 6, 2 * num_dof_flex + 2 * num_dof_rig]}
         self.state_variables = LinearVector(state_db, self.sys_id)
 
+        if num_dof_rig == 0:
+            self.clamped = True
+
     def assemble(self):
         # Would assemble the system as per the settings
         # Here we would add further options such as discarding DOFs etc
@@ -72,6 +81,9 @@ class LinearBeam(BaseElement):
 
         if self.settings['remove_dofs']:
             self.trim_nodes(self.settings['remove_dofs'])
+
+        if self.settings['modal_projection'].value and self.settings['remove_sym_modes'].value and self.clamped:
+            self.remove_symmetric_modes()
 
         self.sys.assemble()
 
@@ -87,7 +99,7 @@ class LinearBeam(BaseElement):
             self.ss = self.sys.SScont
 
     def x0(self):
-        x = np.concatenate((self.tstruct0.q, self.tstruct0.dqdt))
+        x = np.concatenate((self.tsstruct0.q, self.tsstruct0.dqdt))
         return x
 
     def trim_nodes(self, trim_list=list):
@@ -145,6 +157,50 @@ class LinearBeam(BaseElement):
         self.sys.Mstr = trim_matrix.T.dot(self.sys.Mstr.dot(trim_matrix))
         self.sys.Cstr = trim_matrix.T.dot(self.sys.Cstr.dot(trim_matrix))
         self.sys.Kstr = trim_matrix.T.dot(self.sys.Kstr.dot(trim_matrix))
+
+    def remove_symmetric_modes(self):
+
+        # Group modes into symmetric and anti-symmetric modes
+        modes_sym = np.zeros_like(self.sys.U)  # grouped modes
+        total_modes = self.sys.num_modes
+
+        for i in range(total_modes//2):
+            je = 2*i
+            jo = 2*i + 1
+            modes_sym[:, je] = 1./np.sqrt(2)*(self.sys.U[:, je] + self.sys.U[:, jo])
+            modes_sym[:, jo] = 1./np.sqrt(2)*(self.sys.U[:, je] - self.sys.U[:, jo])
+
+        self.sys.U = modes_sym
+
+        # Remove anti-symmetric modes
+        # Wing 1 and 2 nodes
+        # z-displacement index
+        ind_w1 = [6*i + 2 for i in range(self.sys.structure.num_node // 2)]  # Wing 1 nodes are in the first half rows
+        ind_w2 = [6*i + 2 for i in range(self.sys.structure.num_node // 2, self.sys.structure.num_node - 1)]  # Wing 2 nodes are in the second half rows
+
+        sym_mode_index = []
+        for i in range(self.sys.num_modes//2):
+            found_symmetric = False
+
+            for j in range(2):
+                ind = 2*i + j
+
+                # Maximum z displacement for wings 1 and 2
+                ind_max_w1 = np.argmax(np.abs(modes_sym[ind_w1, ind]))
+                ind_max_w2 = np.argmax(np.abs(modes_sym[ind_w2, ind]))
+                z_max_w1 = modes_sym[ind_w1, ind][ind_max_w1]
+                z_max_w2 = modes_sym[ind_w2, ind][ind_max_w2]
+
+                z_max_diff = np.abs(z_max_w1 - z_max_w2)
+                if z_max_diff < np.abs(z_max_w1 + z_max_w2):
+                    sym_mode_index.append(ind)
+                    if found_symmetric:
+                        raise NameError('Symmetric Mode previously found')
+                    found_symmetric = True
+
+        self.sys.U = modes_sym[:, sym_mode_index]
+        self.sys.freq_natural = self.sys.freq_natural[sym_mode_index]
+        self.sys.num_modes = len(self.sys.freq_natural)
 
     def unpack_ss_vector(self, x_n, u_n, struct_tstep):
         """

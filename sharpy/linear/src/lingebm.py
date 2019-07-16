@@ -176,6 +176,8 @@ class FlexDynamic():
         self.Kstr = tsinfo.modal.get('K')
 
         self.Nmodes = self.settings['num_modes'].value
+        self._num_modes = None
+        self.num_modes = self.settings['num_modes'].value
         self.num_dof = self.U.shape[0]
         if self.V is not None:
             self.num_dof = self.num_dof // 2
@@ -208,9 +210,26 @@ class FlexDynamic():
         self.tsstruct0 = tsinfo
         self.Minv = None
 
+
         if self.use_euler:
             self.euler_propagation_equations(tsinfo)
-            self.update_modal()
+
+        self.update_modal()
+
+    @property
+    def num_modes(self):
+        return self._num_modes
+
+    @num_modes.setter
+    def num_modes(self, value):
+        # self.U = self.U[:, :value]
+        # self.freq_natural = self.freq_natural[:value]
+        # if self.freq_damp is not None:
+        #     self.freq_damp = self.freq_damp[:value]
+        # if self.V is not None:
+        #     self.V = self.V[:value, :]
+        self.update_truncated_modes(value)
+        self._num_modes = value
 
     def euler_propagation_equations(self, tsstr):
         """
@@ -606,8 +625,8 @@ class FlexDynamic():
         dlti = self.dlti
         modal = self.modal
         num_dof = self.num_dof
-        if Nmodes is None or Nmodes >= self.Nmodes:
-            Nmodes = self.Nmodes
+        if Nmodes is None or Nmodes >= self.num_modes:
+            Nmodes = self.num_modes
         # else:
         #     # Modal truncation
         #     self.update_truncated_modes(Nmodes)
@@ -877,7 +896,7 @@ class FlexDynamic():
         """
 
         # Verify that the new number of modes is less than the current value
-        assert nmodes < self.Nmodes, 'Unable to truncate to %g modes since only %g are available' %(nmodes, self.Nmodes)
+        assert nmodes <= self.Nmodes, 'Unable to truncate to %g modes since only %g are available' %(nmodes, self.Nmodes)
 
         self.Nmodes = nmodes
         self.eigs = self.eigs[:nmodes]
