@@ -1,18 +1,3 @@
-# import os
-# import time
-#
-# import sharpy.utils.cout_utils as cout
-# import sharpy.utils.input_arg as input_arg
-# import sharpy.utils.sharpydir as sharpydir
-# import sharpy.utils.solver_interface as solver_interface
-# from sharpy.presharpy.presharpy import PreSharpy
-#
-# from sharpy.presharpy.presharpy import PreSharpy
-# # Loading solvers and postprocessors
-# import sharpy.solvers
-# import sharpy.postproc
-# import sharpy.generators
-# # ------------
 import sharpy.utils.cout_utils as cout
 import sys
 import pickle
@@ -45,6 +30,7 @@ def main(args=None):
     import sharpy.solvers
     import sharpy.postproc
     import sharpy.generators
+    import sharpy.controllers
     # ------------
 
     # output writer
