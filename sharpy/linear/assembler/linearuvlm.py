@@ -8,6 +8,7 @@ import sharpy.linear.src.linuvlm as linuvlm
 import sharpy.linear.src.libsparse as libsp
 import sharpy.utils.settings as settings
 import sharpy.linear.assembler.lincontrolsurfacedeflector as lincontrolsurfacedeflector
+import scipy.sparse as sp
 
 @ss_interface.linear_system
 class LinearUVLM(ss_interface.BaseElement):
@@ -89,8 +90,14 @@ class LinearUVLM(ss_interface.BaseElement):
 
             # Modify the state space system with a gain at the input side
             # such that the control surface deflections are last
-            gain_cs = np.eye(self.ss.inputs, self.ss.inputs + self.control_surface.n_control_surfaces)
-            gain_cs[:Kzeta_delta.shape[0], -self.control_surface.n_control_surfaces:] = Kzeta_delta
+            if self.sys.use_sparse:
+                gain_cs = sp.eye(self.ss.inputs, self.ss.inputs + self.control_surface.n_control_surfaces,
+                                 format='lil')
+                gain_cs[:Kzeta_delta.shape[0], -self.control_surface.n_control_surfaces:] = Kzeta_delta
+                gain_cs = libsp.csc_matrix(gain_cs)
+            else:
+                gain_cs = np.eye(self.ss.inputs, self.ss.inputs + self.control_surface.n_control_surfaces)
+                gain_cs[:Kzeta_delta.shape[0], -self.control_surface.n_control_surfaces:] = Kzeta_delta
             self.ss.addGain(gain_cs, where='in')
             self.gain_cs = gain_cs
 
