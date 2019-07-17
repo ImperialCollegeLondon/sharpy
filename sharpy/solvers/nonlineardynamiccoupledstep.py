@@ -7,10 +7,12 @@ import numpy as np
 
 import sharpy.structure.utils.xbeamlib as xbeamlib
 from sharpy.utils.settings import str2bool
-from sharpy.utils.solver_interface import solver, BaseSolver
+from sharpy.utils.solver_interface import solver, BaseSolver, solver_from_string
 import sharpy.utils.settings as settings
 import sharpy.utils.cout_utils as cout
 
+
+_BaseStructural = solver_from_string('_BaseStructural')
 
 @solver
 class NonLinearDynamicCoupledStep(BaseSolver):
@@ -27,46 +29,9 @@ class NonLinearDynamicCoupledStep(BaseSolver):
     solver_id = 'NonLinearDynamicCoupledStep'
     solver_classification = 'structural'
 
-    settings_types = dict()
-    settings_default = dict()
-    settings_description = dict()
-
-    settings_types['print_info'] = 'bool'
-    settings_default['print_info'] = True
-    settings_description['print_info'] = 'Print output to screen'
-
-    settings_types['max_iterations'] = 'int'
-    settings_default['max_iterations'] = 100
-    settings_description['max_iterations'] = 'Sets maximum number of iterations'
-
-    settings_types['num_load_steps'] = 'int'
-    settings_default['num_load_steps'] = 5
-
-    settings_types['delta_curved'] = 'float'
-    settings_default['delta_curved'] = 1e-5
-
-    settings_types['min_delta'] = 'float'
-    settings_default['min_delta'] = 1e-5
-    settings_description['min_delta'] = 'Structural solver tolerance'
-
-    settings_types['newmark_damp'] = 'float'
-    settings_default['newmark_damp'] = 1e-4
-    settings_description['newmark_damp'] = 'Sets the Newmark damping coefficient'
-
-    settings_types['dt'] = 'float'
-    settings_default['dt'] = 0.01
-    settings_description['dt'] = 'Time step increment'
-
-    settings_types['num_steps'] = 'int'
-    settings_default['num_steps'] = 500
-
-    settings_types['gravity_on'] = 'bool'
-    settings_default['gravity_on'] = False
-    settings_description['gravity_on'] = 'Flag to include gravitational forces'
-
-    settings_types['gravity'] = 'float'
-    settings_default['gravity'] = 9.81
-    settings_description['gravity'] = 'Gravitational acceleration'
+    settings_types = _BaseStructural.settings_types.copy()
+    settings_default = _BaseStructural.settings_default.copy()
+    settings_description = _BaseStructural.settings_description.copy()
 
     settings_types['balancing'] = 'bool'
     settings_default['balancing'] = False
@@ -92,16 +57,6 @@ class NonLinearDynamicCoupledStep(BaseSolver):
         self.settings = None
 
     def initialise(self, data, custom_settings=None):
-        """
-        Tests
-
-        Args:
-            data:
-            custom_settings:
-
-        Returns:
-
-        """
         self.data = data
         if custom_settings is None:
             self.settings = data.settings[self.solver_id]

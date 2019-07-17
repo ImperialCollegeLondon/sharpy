@@ -2,11 +2,11 @@ Other Solvers
 +++++++++++++
 
 .. toctree::
-    ./other/DynamicUVLM
-    ./other/StaticUvlm
-    ./other/StaticTrim
-    ./other/StepLinearUVLM
-    ./other/BeamLoader
     ./other/AerogridLoader
+    ./other/BeamLoader
     ./other/DynamicCoupled
+    ./other/DynamicUVLM
+    ./other/StaticTrim
+    ./other/StaticUvlm
+    ./other/StepLinearUVLM
     ./other/SaveData

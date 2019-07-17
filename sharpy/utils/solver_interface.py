@@ -118,6 +118,8 @@ def output_documentation(route=None):
     created_solvers = dict()
 
     for k, v in dict_of_solvers.items():
+        if k[0] == '_':
+            continue
         solver = v()
         created_solvers[k] = solver
 
@@ -150,6 +152,8 @@ def output_documentation(route=None):
             out_file.write(title)
             out_file.write('.. toctree::' + '\n')
             for k in dict_of_solvers.keys():
+                if k[0] == '_':
+                    continue
                 try:
                     if created_solvers[k].solver_classification.lower() == solver_type and created_solvers[k].__doc__ is not None:
                         out_file.write('    ./' + solver_type + '/' + k + '\n')
