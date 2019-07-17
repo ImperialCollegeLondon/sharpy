@@ -436,13 +436,13 @@ class Beam(BaseStructure):
 
     def integrate_position(self, ts, dt):
         try:
-            self.timestep_info[ts].for_pos[0:3] += (
-                dt*np.dot(self.timestep_info[ts].cga(),
-                          self.timestep_info[ts].for_vel[0:3]))
-        except TypeError:
             ts.for_pos[0:3] += (
                 dt*np.dot(ts.cga(),
                           ts.for_vel[0:3]))
+        except AttributeError:
+            self.timestep_info[ts].for_pos[0:3] += (
+                dt*np.dot(self.timestep_info[ts].cga(),
+                          self.timestep_info[ts].for_vel[0:3]))
 
 
     def nodal_b_for_2_a_for(self, nodal, tstep, filter=np.array([True]*6)):
