@@ -1,5 +1,26 @@
 import numpy as np
 
+def second_order_fd(history, n_calls, dt):
+    # history is ordered such that the last element is the most recent one (t), and thus
+    # it goes [(t - 2), (t - 1), (t)]
+    coefficients = np.zeros((3,))
+    if n_calls <= 1:
+        # no derivative, return 0
+        pass
+
+    elif n_calls == 2:
+    # else:
+        # first order derivative
+        coefficients[1:3] = [-1.0, 1.0]
+
+    else:
+        # # second order derivative
+        coefficients[:] = [1.0, -4.0, 3.0]
+        coefficients *= 0.5
+
+    derivative = np.dot(coefficients, history)/dt
+    return derivative
+
 class PID(object):
     """
     Class implementing a classic PID controller
@@ -52,14 +73,17 @@ class PID(object):
         self._error_history = np.roll(self._error_history, -1)
         self._error_history[-1] = error
 
+        detailed = np.zeros((3,))
         # Proportional gain
         actuation += error*self._kp
+        detailed[0] = error*self._kp
 
         # Derivative gain
         derivative = self._derivator(self._error_history, self._n_calls, self._dt)
         derivative = max(derivative, self._derivative_limits[0])
         derivative = min(derivative, self._derivative_limits[1])
         actuation += derivative*self._kd
+        detailed[2] = derivative*self._kd
 
         # Integral gain
         self._accumulated_integral += error*self._dt
@@ -69,5 +93,6 @@ class PID(object):
             self._accumulated_integral = self._integral_limits[1]
 
         actuation += self._accumulated_integral*self._ki
+        detailed[1] = self._accumulated_integral*self._ki
 
-        return actuation
+        return actuation, detailed

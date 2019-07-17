@@ -9,12 +9,12 @@ controllers = {}  # for internal working
 # decorator
 def controller(arg):
     # global available_solvers
-    global dict_of_controller
+    global dict_of_controllers
     try:
         arg.controller_id
     except AttributeError:
         raise AttributeError('Class defined as controller has no controller_id attribute')
-    dict_of_controller[arg.controller_id] = arg
+    dict_of_controllers[arg.controller_id] = arg
     return arg
 
 

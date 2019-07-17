@@ -55,6 +55,17 @@ class ControlSurfacePidController(controller_interface.BaseController):
             'Control surface deflection coefficients. ' +
             'For example, for antisymmetric deflections => [1, -1].')
 
+    settings_types['write_controller_log'] = 'bool'
+    settings_default['write_controller_log'] = True
+    settings_description['write_controller_log'] = (
+            'Write a time history of input, required input, ' +
+            'and control')
+
+    settings_types['controller_log_route'] = 'str'
+    settings_default['controller_log_route'] = './output/'
+    settings_description['controller_log_route'] = (
+            'Directory where the log will be stored')
+
     supported_input_types = ['pitch']
 
     settings_table = settings.SettingsTable()
@@ -63,8 +74,7 @@ class ControlSurfacePidController(controller_interface.BaseController):
                                        settings_description)
 
     def __init__(self):
-        self.in_dict()
-
+        self.in_dict = None
         self.data = None
         self.settings = None
 
@@ -84,13 +94,16 @@ class ControlSurfacePidController(controller_interface.BaseController):
 
         self.n_control_surface = 0
 
-    def initialise(self, in_dict):
+        self.log = None
+
+    def initialise(self, in_dict, controller_id=None):
         self.in_dict = in_dict
         settings.to_custom_types(self.in_dict,
                                  self.settings_types,
                                  self.settings_default)
 
-        self.settings = self.in_dict()
+        self.settings = self.in_dict
+        self.controller_id = controller_id
 
         # validate that the input_type is in the supported ones
         if self.settings['input_type'] not in self.supported_input_types:
@@ -100,6 +113,10 @@ class ControlSurfacePidController(controller_interface.BaseController):
             for i in self.supported_input_types:
                 cout.cout_wrap('    {}'.format(i), 3)
             raise NotImplementedError()
+
+        if self.settings['write_controller_log']:
+            self.log = open(self.settings['controller_log_route'] + '/' + self.controller_id + '.log.csv', 'w+')
+            self.log.write(('#'+ 1*'{:>2},' + 6*'{:>12},' + '{:>12}\n').format('tstep', 'time', 'Ref. state', 'state', 'Pcontrol', 'Icontrol', 'Dcontrol', 'control'))
 
         # save input time history
         try:
@@ -125,10 +142,10 @@ class ControlSurfacePidController(controller_interface.BaseController):
         elif (len(self.settings['controlled_surfaces_coeff']) == 1 and
             self.settings['controlled_surfaces_coeff'][0] == 1.0):
             # default value, fill with 1.0
-            self.settings['controller_surfaces_coeff'] = np.ones(
-                    (self.n_controlled_surface,), dtype=float)
+            self.settings['controlled_surfaces_coeff'] = np.ones(
+                    (self.n_control_surface,), dtype=float)
         else:
-            raise ValueError('controller_surfaces_coeff does not have as many'
+            raise ValueError('controlled_surfaces_coeff does not have as many'
                     + ' elements as controller_surfaces')
 
     def control(self, data, controlled_state):
@@ -147,23 +164,32 @@ class ControlSurfacePidController(controller_interface.BaseController):
             input included.
         """
 
-        i_current = len(self.real_state_input_history)
-
         # get current state input
         self.real_state_input_history.append(self.extract_time_history(controlled_state))
 
-        # calculate output of controller
-        # (input is history, state, required state)
-        control_command = self.controller_wrapper(
-                                required_input=self.prescribed_input_time_history[:i_current],
-                                current_input=self.real_state_input_history,
-                                control_param={'P': self.settings['P'].value,
-                                               'I': self.settings['I'].value,
-                                               'D': self.settings['D'].value})
-
+        i_current = len(self.real_state_input_history)
         # apply it where needed.
+        control_command, detail = self.controller_wrapper(
+                required_input=self.prescribed_input_time_history,
+                current_input=self.real_state_input_history,
+                control_param={'P': self.settings['P'].value,
+                               'I': self.settings['I'].value,
+                               'D': self.settings['D'].value})
+
         controlled_state['aero'].control_surface_deflection = (
-            self.settings['controller_surfaces_coeff']*control_command)
+            np.array(self.settings['controlled_surfaces_coeff'])*control_command)
+
+        self.log.write(('{:>6d},'
+                        + 6*'{:>12.6f},'
+                        + '{:>12.6f}\n').format(i_current,
+                                                i_current*self.settings['dt'].value,
+                                                self.prescribed_input_time_history[i_current - 1],
+                                                self.real_state_input_history[i_current - 1],
+                                                detail[0],
+                                                detail[1],
+                                                detail[2],
+                                                control_command))
+        return controlled_state
 
     def extract_time_history(self, controlled_state):
         output = 0.0
@@ -183,10 +209,11 @@ class ControlSurfacePidController(controller_interface.BaseController):
                            current_input,
                            control_param):
         self.controller_implementation.set_point(required_input[-1])
-        control_param = self.controller_implementation(current_input[-1])
-        return control_param
+        control_param, detailed_control_param = self.controller_implementation(current_input[-1])
+        return (control_param, detailed_control_param)
 
-
+    def __exit__(self, *args):
+        self.log.close()
 
 
 

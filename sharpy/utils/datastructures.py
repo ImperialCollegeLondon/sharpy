@@ -107,6 +107,8 @@ class AeroTimeStepInfo(object):
         # Multibody variables
         self.in_global_AFoR = True
 
+        self.control_surface_deflection = np.array([])
+
     def copy(self):
         copied = AeroTimeStepInfo(self.dimensions, self.dimensions_star)
         # generate placeholder for aero grid zeta coordinates
@@ -159,6 +161,8 @@ class AeroTimeStepInfo(object):
 
         copied.postproc_cell = copy.deepcopy(self.postproc_cell)
         copied.postproc_node = copy.deepcopy(self.postproc_node)
+
+        copied.control_surface_deflection = self.control_surface_deflection.astype(dtype=ct.c_double, copy=True)
 
         return copied
 

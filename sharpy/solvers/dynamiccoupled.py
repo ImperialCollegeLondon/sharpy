@@ -223,7 +223,8 @@ class DynamicCoupled(BaseSolver):
         for controller_id in self.settings['controller_id']:
             self.controllers[controller_id] = controller_interface.initialise_controller(self.settings['controller_type'][controller_id])
             self.controllers[controller_id].initialise(
-                    self.settings['controller_settings'][controller_id])
+                    self.settings['controller_settings'][controller_id],
+                    controller_id)
 
         # print information header
         if self.print_info:
@@ -258,9 +259,13 @@ class DynamicCoupled(BaseSolver):
 
             # Add the controller here
             if self.with_controllers:
+                state = {'structural': structural_kstep,
+                         'aero': aero_kstep}
                 for k, v in self.controllers.items():
-                    v.control(self.data, {'structural': structural_kstep,
-                                          'aero': aero_kstep})
+                    state = v.control(self.data, state)
+
+                structural_kstep = state['structural']
+                aero_kstep = state['aero']
 
             self.time_aero = 0.0
             self.time_struc = 0.0
@@ -354,9 +359,6 @@ class DynamicCoupled(BaseSolver):
 
             self.structural_solver.add_step()
             self.data.structure.timestep_info[-1] = structural_kstep.copy()
-
-            # controller goes here
-
 
             final_time = time.perf_counter()
 

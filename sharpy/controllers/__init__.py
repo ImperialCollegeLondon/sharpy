@@ -12,4 +12,4 @@ if import_path[0] == "/": import_path = import_path[1:]
 import_path = import_path.replace("/", ".")
 
 for file in files:
-    controller_interface.solvers[file] = importlib.import_module(import_path + "." + file)
+    controller_interface.controllers[file] = importlib.import_module(import_path + "." + file)
