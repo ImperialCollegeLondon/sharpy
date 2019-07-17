@@ -216,6 +216,7 @@ class DynamicCoupled(BaseSolver):
 
         # initialise controllers
         self.controllers = dict()
+        self.with_controllers = False
         if len(self.settings['controller_id']) > 0:
             self.with_controllers = True
         for controller_id in self.settings['controller_id']:
