@@ -3,7 +3,7 @@ import numpy as np
 import sharpy.utils.controller_interface as controller_interface
 import sharpy.utils.settings as settings
 import sharpy.utils.control_utils as control_utils
-import sharpy.utils.cout as cout
+import sharpy.utils.cout_utils as cout
 
 
 @controller_interface.controller

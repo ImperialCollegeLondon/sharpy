@@ -6,6 +6,7 @@ import numpy as np
 import sharpy.aero.utils.mapping as mapping
 import sharpy.utils.cout_utils as cout
 import sharpy.utils.solver_interface as solver_interface
+import sharpy.utils.controller_interface as controller_interface
 from sharpy.utils.solver_interface import solver, BaseSolver
 import sharpy.utils.settings as settings
 import sharpy.utils.algebra as algebra
@@ -220,7 +221,7 @@ class DynamicCoupled(BaseSolver):
         if len(self.settings['controller_id']) > 0:
             self.with_controllers = True
         for controller_id in self.settings['controller_id']:
-            self.controllers[controller_id] = controller_interface.initialise_controller(controller)
+            self.controllers[controller_id] = controller_interface.initialise_controller(self.settings['controller_type'][controller_id])
             self.controllers[controller_id].initialise(
                     self.settings['controller_settings'][controller_id])
 
