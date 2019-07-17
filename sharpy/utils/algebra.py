@@ -1109,7 +1109,6 @@ def der_quat_wrt_crv(quat0):
     return Der
 
 
-
 def cross3(v,w):
     """
     Computes the cross product of two vectors (v and w) with size 3
@@ -1121,3 +1120,53 @@ def cross3(v,w):
     res[2] = v[0]*w[1] - v[1]*w[0]
 
     return res
+
+
+def quat2euler(quat):
+    r"""
+    Quaternion to Euler angles transformation.
+
+    Transforms a normalised quaternion :math:`\chi\longrightarrow[\phi, \theta, \psi]` to roll, pitch and yaw angles
+    respectively.
+
+    The transformation is valid away from the singularity present at:
+
+    .. math:: \Delta = \frac{1}{2}
+
+    where :math:`\Delta = q_0 q_2 - q_1 q_3`.
+
+    The transformation is carried out as follows:
+
+    .. math::
+        \psi &= \arctan{\left(2\frac{q_0q_3+q_1q_2}{1-2(q_2^2+q_3^2)}\right)} \\
+        \theta &= \arcsin(2\Delta) \\
+        \phi &= \arctan\left(2\frac{q_0q_1 + q_2q_3}{1-2(q_1^2+q_2^2)}\right)
+
+    Args:
+        quat (np.ndarray): Normalised quaternion.
+
+    Returns:
+        np.ndarray: Array containing the Euler angles :math:`[\phi, \theta, \psi]` for roll, pitch and yaw, respectively.
+
+    References:
+        Blanco, J.L. - A tutorial on SE(3) transformation parameterizations and on-manifold optimization. Technical
+        Report 012010. ETS Ingenieria Informatica. Universidad de Malaga. 2013.
+    """
+
+    assert np.abs(np.linalg.norm(quat)-1.0) < 1.e6, 'Input quaternion is not normalised'
+
+    q0 = quat[0]
+    q1 = quat[1]
+    q2 = quat[2]
+    q3 = quat[3]
+
+    delta = quat[0]*quat[2] - quat[1]*quat[3]
+
+    if np.abs(delta) > 0.9 * 0.5:
+        warn('Warning, approaching singularity. Delta %.3f for singularity at Delta=0.5'%np.abs(delta))
+
+    yaw = -np.arctan(2*(q0*q3+q1*q2)/(1-2*(q2**2+q3**2)))
+    pitch = np.arcsin(2*delta)
+    roll = -np.arctan(2*(q0*q1+q2*q3)/(1-2*(q1**2+q2**2)))
+
+    return np.array([roll, pitch, yaw])
