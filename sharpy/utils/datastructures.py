@@ -469,6 +469,16 @@ class StructTimeStepInfo(object):
     def cag(self):
         return self.cga().T
 
+    def euler_angles(self):
+        """
+        Returns the 3 Euler angles (roll, pitch, yaw) for a given time step.
+
+        :returns: `np.array` (roll, pitch, yaw) in radians.
+        """
+
+        return algebra.quat2euler(self.quat)
+
+
     def get_body(self, beam, num_dof_ibody, ibody):
         """
         get_body
