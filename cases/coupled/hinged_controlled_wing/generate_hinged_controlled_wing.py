@@ -11,46 +11,53 @@ route = os.path.dirname(os.path.realpath(__file__)) + '/'
 
 # m = 16 gives flutter with 165
 m_main = 4
-amplitude = 0
-period = 0
+amplitude = 5*np.pi/180
+period = 3
 dt_factor = 1.
+n_structural_substeps = 1
 
 # flight conditions
 u_inf = 10
 rho = 1.225
-alpha = 4
+alpha = 0.5
 beta = 0
 c_ref = 1
 b_ref = 16
 sweep = 0*np.pi/180.
-sigma = 0.1
+sigma = 1
 wake_length = 10 # chords
 
 alpha_rad = alpha*np.pi/180
 
+pitch_file = 'pitch.csv'
+
+gains = -np.array([0.9, 6.0, 0.75])
 
 # main geometry data
 main_span = 10
 main_chord = 2.
-main_ea = 0.5
+main_ea = 0.
 main_cg = 0.3
 main_sigma = 1
 main_airfoil_P = 0
 main_airfoil_M = 0
 
-n_surfaces = 2
+n_surfaces = 1
 
 dt = main_chord/m_main/u_inf*dt_factor
 num_steps = int(10./dt)
-print(num_steps)
+
+alpha_hist = np.linspace(0, num_steps*dt, num_steps)
+alpha_hist = amplitude*np.sin(2.0*np.pi*alpha_hist/period)
+np.savetxt(pitch_file, alpha_hist)
 
 # discretisation data
 num_elem_main = 5
 
 num_node_elem = 3
-num_elem = num_elem_main + num_elem_main
+num_elem = num_elem_main
 num_node_main = num_elem_main*(num_node_elem - 1) + 1
-num_node = num_node_main + (num_node_main - 1)
+num_node = num_node_main
 
 
 def clean_test_files():
@@ -206,33 +213,33 @@ def generate_fem_file():
     working_elem += num_elem_main
     working_node += num_node_main
 
-    # left wing (beam 1) --------------------------------------------------------------
-    beam_number[working_elem:working_elem + num_elem_main] = 1
-    domain = np.linspace(-1.0, 0.0, num_node_main)
-    tempy = np.linspace(-main_span, 0.0, num_node_main)
-    # x[working_node:working_node + num_node_main - 1] = -np.sin(sweep)*tempy[0:-1]
-    # y[working_node:working_node + num_node_main - 1] = np.cos(sweep)*tempy[0:-1]
-    x[working_node:working_node + num_node_main - 1] = -np.sin(sweep)*(main_span - (np.geomspace(0 + spacing_param,
-                                                                                            main_span + spacing_param,
-                                                                                            num_node_main)[:-1]
-                                                                               - spacing_param))
-    y[working_node:working_node + num_node_main - 1] = -np.abs(np.cos(sweep)*(main_span - (np.geomspace(0 + spacing_param,
-                                                                                                   main_span + spacing_param,
-                                                                                                   num_node_main)[:-1]
-                                                                                      - spacing_param)))
-    for ielem in range(num_elem_main):
-        for inode in range(num_node_elem):
-            frame_of_reference_delta[working_elem + ielem, inode, :] = [-1, 0, 0]
-    # connectivity
-    for ielem in range(num_elem_main):
-        conn[working_elem + ielem, :] = ((np.ones((3,))*(working_elem + ielem)*(num_node_elem - 1)) +
-                                         [0, 2, 1]) + 1
-    conn[working_elem + num_elem_main - 1, 1] = 0
-    elem_stiffness[working_elem:working_elem + num_elem_main] = 0
-    elem_mass[working_elem:working_elem + num_elem_main] = 0
-    boundary_conditions[working_node] = -1
-    working_elem += num_elem_main
-    working_node += num_node_main - 1
+    # # left wing (beam 1) --------------------------------------------------------------
+    # beam_number[working_elem:working_elem + num_elem_main] = 1
+    # domain = np.linspace(0.0, 1.0, num_node_main)
+    # tempy = np.linspace(0.0, main_span, num_node_main)
+    # # x[working_node:working_node + num_node_main - 1] = -np.sin(sweep)*tempy[0:-1]
+    # # y[working_node:working_node + num_node_main - 1] = np.cos(sweep)*tempy[0:-1]
+    # x[working_node:working_node + num_node_main - 1] = -np.sin(sweep)*(main_span - (np.geomspace(0 + spacing_param,
+                                                                                            # main_span + spacing_param,
+                                                                                            # num_node_main)[:-1]
+                                                                               # - spacing_param))
+    # y[working_node:working_node + num_node_main - 1] = -np.abs(np.cos(sweep)*(main_span - (np.geomspace(0 + spacing_param,
+                                                                                                   # main_span + spacing_param,
+                                                                                                   # num_node_main)[:-1]
+                                                                                      # - spacing_param)))
+    # for ielem in range(num_elem_main):
+        # for inode in range(num_node_elem):
+            # frame_of_reference_delta[working_elem + ielem, inode, :] = [1, 0, 0]
+    # # connectivity
+    # for ielem in range(num_elem_main):
+        # conn[working_elem + ielem, :] = ((np.ones((3,))*(working_elem + ielem)*(num_node_elem - 1)) +
+                                         # [0, 2, 1])
+    # conn[working_elem , 0] = 0
+    # elem_stiffness[working_elem:working_elem + num_elem_main] = 0
+    # elem_mass[working_elem:working_elem + num_elem_main] = 0
+    # boundary_conditions[working_node + num_node_main - 1 - 1] = -1
+    # working_elem += num_elem_main
+    # working_node += num_node_main - 1
 
     with h5.File(route + '/' + case_name + '.fem.h5', 'a') as h5file:
         coordinates = h5file.create_dataset('coordinates', data=np.column_stack((x, y, z)))
@@ -261,12 +268,26 @@ def generate_fem_file():
             'beam_number', data=beam_number)
         app_forces_handle = h5file.create_dataset(
             'app_forces', data=app_forces)
+        body_number_handle = h5file.create_dataset(
+            'body_number', data=np.zeros((num_elem, ), dtype=int))
         # node_app_forces_handle = h5file.create_dataset(
         #     'node_app_forces', data=node_app_forces)
 
 
 def generate_aero_file():
     global x, y, z
+
+    n_control_surfaces = 1
+    control_surface = np.zeros((num_elem, num_node_elem), dtype=int)
+    control_surface_type = np.zeros((n_control_surfaces,), dtype=int)
+    control_surface_deflection = np.zeros((n_control_surfaces,))
+    control_surface_chord = np.zeros((n_control_surfaces, ), dtype=int)
+    control_surface_hinge_coord = np.zeros((n_control_surfaces, ))
+
+    control_surface_type[0] = 2
+    control_surface_deflection[0] = 0.0
+    control_surface_chord[0] = 1
+
     airfoil_distribution = np.zeros((num_elem, num_node_elem), dtype=int)
     surface_distribution = np.zeros((num_elem,), dtype=int) - 1
     surface_m = np.zeros((n_surfaces, ), dtype=int)
@@ -292,16 +313,16 @@ def generate_aero_file():
     working_node += num_node_main
 
     # left wing (surface 1, beam 1)
-    i_surf = 1
-    airfoil_distribution[working_elem:working_elem + num_elem_main, :] = 0
-    # airfoil_distribution[working_node:working_node + num_node_main - 1] = 0
-    surface_distribution[working_elem:working_elem + num_elem_main] = i_surf
-    surface_m[i_surf] = m_main
-    aero_node[working_node:working_node + num_node_main - 1] = True
-    # chord[working_node:working_node + num_node_main - 1] = main_chord
-    # elastic_axis[working_node:working_node + num_node_main - 1] = main_ea
-    working_elem += num_elem_main
-    working_node += num_node_main - 1
+    # i_surf = 1
+    # airfoil_distribution[working_elem:working_elem + num_elem_main, :] = 0
+    # # airfoil_distribution[working_node:working_node + num_node_main - 1] = 0
+    # surface_distribution[working_elem:working_elem + num_elem_main] = i_surf
+    # surface_m[i_surf] = m_main
+    # aero_node[working_node:working_node + num_node_main - 1] = True
+    # # chord[working_node:working_node + num_node_main - 1] = main_chord
+    # # elastic_axis[working_node:working_node + num_node_main - 1] = main_ea
+    # working_elem += num_elem_main
+    # working_node += num_node_main - 1
 
     with h5.File(route + '/' + case_name + '.aero.h5', 'a') as h5file:
         airfoils_group = h5file.create_group('airfoils')
@@ -326,6 +347,12 @@ def generate_aero_file():
         aero_node_input = h5file.create_dataset('aero_node', data=aero_node)
         elastic_axis_input = h5file.create_dataset('elastic_axis', data=elastic_axis)
 
+        control_surface_input = h5file.create_dataset('control_surface', data = control_surface)
+        control_surface_input = h5file.create_dataset('control_surface_deflection', data = control_surface_deflection)
+        control_surface_input = h5file.create_dataset('control_surface_chord', data = control_surface_chord)
+        control_surface_input = h5file.create_dataset('control_surface_hinge_coord', data = control_surface_hinge_coord)
+        control_surface_input = h5file.create_dataset('control_surface_type', data = control_surface_type)
+
 
 def generate_naca_camber(M=0, P=0):
     m = M*1e-2
@@ -344,8 +371,27 @@ def generate_naca_camber(M=0, P=0):
     return x_vec, y_vec
 
 def generate_multibody_file():
-    
+    LC2 = gc.LagrangeConstraint()
+    LC2.behaviour = 'hinge_FoR'
+    LC2.rot_axis_AFoR = np.array([0.0, 1.0, 0.0])
+    LC2.body_FoR = 0
+    # LC2.node_number = int(0)
 
+    LC = []
+    LC.append(LC2)
+
+    MB1 = gc.BodyInformation()
+    MB1.body_number = 0
+    MB1.FoR_position = np.zeros((6,))
+    MB1.FoR_velocity = np.zeros((6,))
+    MB1.FoR_acceleration = np.zeros((6,))
+    MB1.FoR_movement = 'free'
+    MB1.quat = np.array([1.0, 0.0, 0.0, 0.0])
+
+    MB = []
+    MB.append(MB1)
+    gc.clean_test_files(route, case_name)
+    gc.generate_multibody_file(LC, MB, route, case_name)
 
 def generate_solver_file(horseshoe=False):
     file_name = route + '/' + case_name + '.solver.txt'
@@ -361,8 +407,7 @@ def generate_solver_file(horseshoe=False):
                                  'DynamicCoupled',
                                  # 'AerogridPlot',
                                  # 'BeamPlot',
-                                 'AeroForcesCalculator',
-                                 'BeamCsvOutput'],
+                                 ],
                         'write_screen': 'on',
                         'write_log': 'on',
                         'log_folder': route + '/output/',
@@ -379,7 +424,7 @@ def generate_solver_file(horseshoe=False):
                                                               'num_load_steps': 1,
                                                               'delta_curved': 1e-5,
                                                               'min_delta': 1e-13,
-                                                              'gravity_on': 'off',
+                                                              'gravity_on': 'on',
                                                               'gravity': 9.754,
                                                               'orientation': algebra.euler2quat(np.array([0.0,
                                                                                                           alpha_rad,
@@ -403,14 +448,14 @@ def generate_solver_file(horseshoe=False):
                                'tolerance': 1e-5,
                                'relaxation_factor': 0.0}
     config['DynamicCoupled'] = {'print_info': 'on',
-                                          'structural_solver': 'NonLinearDynamicPrescribedStep',
+                                          'structural_solver': 'NonLinearDynamicMultibody',
                                           'structural_solver_settings': {'print_info': 'off',
                                                                          'max_iterations': 550,
                                                                          'num_load_steps': 1,
                                                                          'delta_curved': 1e-1,
                                                                          'min_delta': 1e-4,
                                                                          'newmark_damp': 5e-3,
-                                                                         'gravity_on': 'off',
+                                                                         'gravity_on': 'on',
                                                                          'gravity': 9.754,
                                                                          'num_steps': num_steps,
                                                                          'dt': dt},
@@ -435,6 +480,15 @@ def generate_solver_file(horseshoe=False):
                                                                    'rho': rho,
                                                                    'n_time_steps': num_steps,
                                                                    'dt': dt},
+                                          'controller_id': ['controller_tip'],
+                                          'controller_type': {'controller_tip': 'ControlSurfacePidController'},
+                                          'controller_settings': {'controller_tip': {'P': gains[0],
+                                                                                     'I': gains[1],
+                                                                                     'D': gains[2],
+                                                                                     'dt': dt,
+                                                                                     'input_type': 'pitch',
+                                                                                     'controlled_surfaces': 0,
+                                                                                     'time_history_input_file': 'pitch.csv'}},
                                           'postprocessors': ['BeamPlot', 'AerogridPlot'],
                                           'postprocessors_settings': {'BeamPlot': {'folder': route + '/output/',
                                                                                    'include_rbm': 'on',
@@ -451,6 +505,7 @@ def generate_solver_file(horseshoe=False):
                                           'dynamic_relaxation': 'off',
                                           'minimum_steps': 1,
                                           'relaxation_steps': 25,
+                                          'structural_substeps': n_structural_substeps,
                                           'n_time_steps': num_steps,
                                           'dt': dt,
                                           'structural_substeps': 0}
@@ -488,6 +543,7 @@ def generate_solver_file(horseshoe=False):
 
 
 clean_test_files()
+generate_multibody_file()
 generate_fem_file()
 generate_dyn_file()
 generate_solver_file(horseshoe=False)
