@@ -174,7 +174,8 @@ class ControlSurfacePidController(controller_interface.BaseController):
                 current_input=self.real_state_input_history,
                 control_param={'P': self.settings['P'].value,
                                'I': self.settings['I'].value,
-                               'D': self.settings['D'].value})
+                               'D': self.settings['D'].value},
+                i_current=i_current)
 
         controlled_state['aero'].control_surface_deflection = (
             np.array(self.settings['controlled_surfaces_coeff'])*control_command)
@@ -207,8 +208,9 @@ class ControlSurfacePidController(controller_interface.BaseController):
     def controller_wrapper(self,
                            required_input,
                            current_input,
-                           control_param):
-        self.controller_implementation.set_point(required_input[-1])
+                           control_param,
+                           i_current):
+        self.controller_implementation.set_point(required_input[i_current - 1])
         control_param, detailed_control_param = self.controller_implementation(current_input[-1])
         return (control_param, detailed_control_param)
 
