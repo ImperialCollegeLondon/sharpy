@@ -66,7 +66,7 @@ class ControlSurfacePidController(controller_interface.BaseController):
     settings_description['controller_log_route'] = (
             'Directory where the log will be stored')
 
-    supported_input_types = ['pitch']
+    supported_input_types = ['pitch', 'roll', 'pos_']
 
     settings_table = settings.SettingsTable()
     __doc__ += settings_table.generate(settings_types,
@@ -106,7 +106,12 @@ class ControlSurfacePidController(controller_interface.BaseController):
         self.controller_id = controller_id
 
         # validate that the input_type is in the supported ones
-        if self.settings['input_type'] not in self.supported_input_types:
+        valid = False
+        for t in self.supported_input_types:
+            if t in self.settings['input_type']:
+                valid = True
+                break
+        if not valid:
             cout.cout_wrap('The input_type {} is not supported by {}'.format(
                 self.settings['input_type'], self.controller_id), 3)
             cout.cout_wrap('The supported ones are:', 3)
@@ -199,6 +204,20 @@ class ControlSurfacePidController(controller_interface.BaseController):
             euler = step.euler_angles()
 
             output = euler[1]
+        elif self.settings['input_type'] == 'roll':
+            step = controlled_state['structural']
+            euler = step.euler_angles()
+
+            output = euler[0]
+        elif 'pos_z(' in self.settings['input_type']:
+            node_str = self.settings['input_type']
+            node_str = node_str.replace('pos(', '')
+            node_str = node_str.replace(')', '')
+            node = int(node_str)
+            step = controlled_state['structural']
+            pos = step.pos[node, :]
+
+            output = pos[2]
         else:
             raise NotImplementedError(
                 "input_type {} is not yet implemented in extract_time_history()"
