@@ -53,7 +53,7 @@ class ControlSurfacePidController(controller_interface.BaseController):
         self.data = None
         self.settings = None
 
-        self.input_time_history_file = None
+        self.prescribed_input_time_history = None
 
         # Time histories are ordered such that the [i]th element of each
         # is the state of the controller at the time of returning.
@@ -62,7 +62,7 @@ class ControlSurfacePidController(controller_interface.BaseController):
         self.p_error_history = list()
         self.i_error_history = list()
         self.d_error_history = list()
-        self.state_input_history = list()
+        self.real_state_input_history = list()
         self.control_history = list()
 
     def initialise(self, in_dict):
@@ -83,7 +83,8 @@ class ControlSurfacePidController(controller_interface.BaseController):
 
         # save input time history
         # TODO: Error handling for file not found
-        self.input_time_history_file = np.loadtxt(self.settings['time_history_input_file'], delimiter=',')
+        self.prescribed_input_time_history = (
+            np.loadtxt(self.settings['time_history_input_file'], delimiter=','))
 
 
     def control(self, data, controlled_state):
@@ -103,18 +104,32 @@ class ControlSurfacePidController(controller_interface.BaseController):
         """
 
         # get desired time history input
-        
+        self.real_state_input_history.append(self.extract_time_history(controlled_state))
 
         # get current state input
-        
+
+
         # calculate output of controller
         # (input is history, state, required state)
-        
+
         # apply it where needed.
 
 
     def extract_time_history(self, controlled_state):
+        output = 0.0
         if self.settings['input_type'] == 'pitch':
+            step = controlled_state['structural']
+            euler = step.euler_angles()
+
+            output = euler[1]
+        else:
+            raise NotImplementedError(
+                "input_type {} is not yet implemented in extract_time_history()"
+                .format(self.settings['input_type'])
+
+        return output
+
+
 
 
 
