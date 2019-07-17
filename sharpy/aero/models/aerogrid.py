@@ -168,7 +168,7 @@ class Aerogrid(object):
         except IndexError:
             self.timestep_info.append(self.ini_info.copy())
 
-    def generate_zeta_timestep_info(self, structure_tstep, aero_tstep, beam, aero_settings, it=None):
+    def generate_zeta_timestep_info(self, structure_tstep, aero_tstep, beam, aero_settings, it=None, dt=None):
         if it is None:
             it = len(beam.timestep_info) - 1
         global_node_in_surface = []
@@ -252,7 +252,19 @@ class Aerogrid(object):
                                 self.cs_generators[i_control_surface](params)
 
                         elif self.aero_dict['control_surface_type'][i_control_surface] == 2:
-                            raise NotImplementedError('control-type control surfaces are not yet implemented')
+                            control_surface_info['type'] = 'controlled'
+                            try:
+                                old_deflection = self.data.aero.timestep_info[-1].control_surface_deflection[i_control_surface]
+                            except AttributeError:
+                                old_deflection = aero_tstep.control_surface_deflection[i_control_surface]
+                            control_surface_info['deflection'] = aero_tstep.control_surface_deflection[i_control_surface]
+                            control_surface_info['deflection_dot'] = (
+                                    (control_surface_info['deflection'] - old_deflection)/dt)
+                            control_surface_info['chord'] = self.aero_dict['control_surface_chord'][i_control_surface]
+                            try:
+                                control_surface_info['hinge_coords'] = self.aero_dict['control_surface_hinge_coords'][i_control_surface]
+                            except KeyError:
+                                control_surface_info['hinge_coords'] = None
                         else:
                             raise NotImplementedError(str(self.aero_dict['control_surface_type'][i_control_surface]) +
                                 ' control surfaces are not yet implemented')
