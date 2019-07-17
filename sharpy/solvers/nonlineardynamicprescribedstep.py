@@ -86,7 +86,7 @@ class NonLinearDynamicPrescribedStep(BaseSolver):
                                     dt=dt)
 
         # self.extract_resultants(structural_step)
-        self.data.structure.integrate_position(self.data.ts, dt)
+        self.data.structure.integrate_position(structural_step, dt)
         return self.data
 
     def add_step(self):
