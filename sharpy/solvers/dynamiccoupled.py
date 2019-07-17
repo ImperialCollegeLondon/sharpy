@@ -126,6 +126,18 @@ class DynamicCoupled(BaseSolver):
         self.settings_types['postprocessors_settings'] = 'dict'
         self.settings_default['postprocessors_settings'] = dict()
 
+        self.settings_types['controller_id'] = 'list(str)'
+        self.settings_default['controller_id'] = list()
+
+        self.settings_types['controller_types'] = 'list(str)'
+        self.settings_default['controller_types'] = list()
+
+        self.settings_types['controller_settings'] = 'dict'
+        self.settings_default['controller_settings'] = dict()
+
+        self.settings_types['postprocessors_settings'] = 'dict'
+        self.settings_default['postprocessors_settings'] = dict()
+
         self.settings_types['cleanup_previous_solution'] = 'bool'
         self.settings_default['cleanup_previous_solution'] = False
 
@@ -202,6 +214,15 @@ class DynamicCoupled(BaseSolver):
             self.postprocessors[postproc].initialise(
                 self.data, self.settings['postprocessors_settings'][postproc])
 
+        # initialise controllers
+        self.controllers = dict()
+        if len(self.settings['controller_id']) > 0:
+            self.with_controllers = True
+        for controller_id in self.settings['controller_id']:
+            self.controllers[controller_id] = controller_interface.initialise_controller(controller)
+            self.controllers[controller_id].initialise(
+                    self.settings['controller_settings'][controller_id])
+
         # print information header
         if self.print_info:
             self.residual_table = cout.TablePrinter(8, 12, ['g', 'f', 'g', 'f', 'f', 'f', 'e', 'e'])
@@ -231,9 +252,19 @@ class DynamicCoupled(BaseSolver):
                                   self.settings['n_time_steps'].value + len(self.data.structure.timestep_info)):
             initial_time = time.perf_counter()
             structural_kstep = self.data.structure.timestep_info[-1].copy()
+            aero_kstep = self.data.aero.timestep_info[-1].copy()
+
+            # Add the controller here
+            if self.with_controllers:
+                for k, v in self.controllers.items():
+                    v.control(self.data, {'structural': structural_kstep,
+                                          'aero': aero_kstep})
+
             self.time_aero = 0.0
             self.time_struc = 0.0
 
+            controlled_structural_kstep = structural_kstep.copy()
+            controlled_aero_kstep = aero_kstep.copy()
             k = 0
             for k in range(self.settings['fsi_substeps'].value + 1):
                 if k == self.settings['fsi_substeps'].value and not self.settings['fsi_substeps'] == 0:
@@ -241,7 +272,8 @@ class DynamicCoupled(BaseSolver):
                     break
 
                 # generate new grid (already rotated)
-                aero_kstep = self.data.aero.timestep_info[-1].copy()
+                # aero_kstep = self.data.aero.timestep_info[-1].copy()
+                aero_kstep = controlled_aero_kstep.copy()
                 self.aero_solver.update_custom_grid(structural_kstep, aero_kstep)
 
                 # compute unsteady contribution
@@ -264,7 +296,8 @@ class DynamicCoupled(BaseSolver):
                 self.time_aero += time.perf_counter() - ini_time_aero
 
                 previous_kstep = structural_kstep.copy()
-                structural_kstep = self.data.structure.timestep_info[-1].copy()
+                # structural_kstep = self.data.structure.timestep_info[-1].copy()
+                structural_kstep = controlled_structural_kstep.copy()
 
                 # move the aerodynamic surface according the the structural one
                 self.aero_solver.update_custom_grid(structural_kstep, aero_kstep)
@@ -316,6 +349,9 @@ class DynamicCoupled(BaseSolver):
 
             self.structural_solver.add_step()
             self.data.structure.timestep_info[-1] = structural_kstep.copy()
+
+            # controller goes here
+
 
             final_time = time.perf_counter()
 
