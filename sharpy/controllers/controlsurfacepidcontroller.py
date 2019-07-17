@@ -3,6 +3,7 @@ import numpy as np
 import sharpy.utils.controller_interface as controller_interface
 import sharpy.utils.settings as settings
 import sharpy.utils.exceptions as exc
+import sharpy.utils.control_utils as control_utils
 
 @controller_interface.controller
 class ControlSurfacePidController(controller_interface.BaseController):
@@ -37,7 +38,7 @@ class ControlSurfacePidController(controller_interface.BaseController):
         ' reference state. Supported: `pitch`')
 
     settings_types['dt'] = 'float'
-    settings_default['dt'] = 0.0
+    settings_default['dt'] = None
     settings_description['dt'] = 'Time step of the simulation'
 
     supported_input_types = ['pitch']
@@ -65,6 +66,8 @@ class ControlSurfacePidController(controller_interface.BaseController):
         self.real_state_input_history = list()
         self.control_history = list()
 
+        self.controller_implementation = None
+
     def initialise(self, in_dict):
         self.in_dict = in_dict
         settings.to_custom_types(self.in_dict,
@@ -82,10 +85,16 @@ class ControlSurfacePidController(controller_interface.BaseController):
             raise NotImplementedError()
 
         # save input time history
-        # TODO: Error handling for file not found
-        self.prescribed_input_time_history = (
-            np.loadtxt(self.settings['time_history_input_file'], delimiter=','))
+        try:
+            self.prescribed_input_time_history = (
+                np.loadtxt(self.settings['time_history_input_file'], delimiter=','))
+        except OSError:
+            raise OSError('File {} not found in Controller'.format(self.settings['time_history_input_file']))
 
+        self.controller_implementation = control_utils.PID(self.settings['P'].value,
+                                                           self.settings['I'].value,
+                                                           self.settings['D'].value,
+                                                           self.settings['dt'].value)
 
     def control(self, data, controlled_state):
         r"""
@@ -103,14 +112,19 @@ class ControlSurfacePidController(controller_interface.BaseController):
             input included.
         """
 
-        # get desired time history input
-        self.real_state_input_history.append(self.extract_time_history(controlled_state))
+        i_current = len(real_state_input_history)
 
         # get current state input
-
+        self.real_state_input_history.append(self.extract_time_history(controlled_state))
 
         # calculate output of controller
         # (input is history, state, required state)
+        control_command = self.controller_wrapper(
+                                required_input=self.prescribed_input_time_history[:i_current],
+                                current_input=self.real_state_input_history,
+                                control_param={'P': self.settings['P'].value,
+                                               'I': self.settings['I'].value,
+                                               'D': self.settings['D'].value})
 
         # apply it where needed.
 
@@ -128,6 +142,14 @@ class ControlSurfacePidController(controller_interface.BaseController):
                 .format(self.settings['input_type'])
 
         return output
+
+
+    def controller_wrapper(required_input,
+                           current_input,
+                           control_param):
+        self.controller_implementation.set_point(required_input[-1])
+        control_param = self.controller_implementation(current_input[-1])
+        return control_param
 
 
 
