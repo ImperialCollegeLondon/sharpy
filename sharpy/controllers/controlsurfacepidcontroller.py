@@ -2,8 +2,9 @@ import numpy as np
 
 import sharpy.utils.controller_interface as controller_interface
 import sharpy.utils.settings as settings
-import sharpy.utils.exceptions as exc
 import sharpy.utils.control_utils as control_utils
+import sharpy.utils.cout as cout
+
 
 @controller_interface.controller
 class ControlSurfacePidController(controller_interface.BaseController):
@@ -15,6 +16,7 @@ class ControlSurfacePidController(controller_interface.BaseController):
 
     settings_types = dict()
     settings_default = dict()
+    settings_description = dict()
 
     settings_types['time_history_input_file'] = 'str'
     settings_default['time_history_input_file'] = None
@@ -34,12 +36,24 @@ class ControlSurfacePidController(controller_interface.BaseController):
 
     settings_types['input_type'] = 'str'
     settings_default['input_type'] = None
-    settings_description['input_type'] = ('Quantity used to define the' +
-        ' reference state. Supported: `pitch`')
+    settings_description['input_type'] = (
+            'Quantity used to define the' +
+            ' reference state. Supported: `pitch`')
 
     settings_types['dt'] = 'float'
     settings_default['dt'] = None
     settings_description['dt'] = 'Time step of the simulation'
+
+    settings_types['controlled_surfaces'] = 'list(int)'
+    settings_default['controlled_surfaces'] = None
+    settings_description['controlled_surfaces'] = (
+            'Control surface indices to be actuated by this controller')
+
+    settings_types['controlled_surfaces_coeff'] = 'list(float)'
+    settings_default['controlled_surfaces_coeff'] = [1.]
+    settings_description['controlled_surfaces_coeff'] = (
+            'Control surface deflection coefficients. ' +
+            'For example, for antisymmetric deflections => [1, -1].')
 
     supported_input_types = ['pitch']
 
@@ -68,6 +82,8 @@ class ControlSurfacePidController(controller_interface.BaseController):
 
         self.controller_implementation = None
 
+        self.n_control_surface = 0
+
     def initialise(self, in_dict):
         self.in_dict = in_dict
         settings.to_custom_types(self.in_dict,
@@ -78,7 +94,8 @@ class ControlSurfacePidController(controller_interface.BaseController):
 
         # validate that the input_type is in the supported ones
         if self.settings['input_type'] not in self.supported_input_types:
-            cout.cout_wrap('The input_type {} is not supported by {}'.format(self.settings['input_type'], self.controller_id), 3)
+            cout.cout_wrap('The input_type {} is not supported by {}'.format(
+                self.settings['input_type'], self.controller_id), 3)
             cout.cout_wrap('The supported ones are:', 3)
             for i in self.supported_input_types:
                 cout.cout_wrap('    {}'.format(i), 3)
@@ -91,10 +108,28 @@ class ControlSurfacePidController(controller_interface.BaseController):
         except OSError:
             raise OSError('File {} not found in Controller'.format(self.settings['time_history_input_file']))
 
+        # Init PID controller
         self.controller_implementation = control_utils.PID(self.settings['P'].value,
                                                            self.settings['I'].value,
                                                            self.settings['D'].value,
                                                            self.settings['dt'].value)
+
+        # check that controlled_surfaces_coeff has the correct number of parameters
+        # if len() == 1 and == 1.0, then expand to number of surfaces.
+        # if len(coeff) /= n_surfaces, throw error
+        self.n_control_surface = len(self.settings['controlled_surfaces'])
+        if (len(self.settings['controlled_surfaces_coeff']) ==
+            self.n_control_surface):
+            # All good, pass checks
+            pass
+        elif (len(self.settings['controlled_surfaces_coeff']) == 1 and
+            self.settings['controlled_surfaces_coeff'][0] == 1.0):
+            # default value, fill with 1.0
+            self.settings['controller_surfaces_coeff'] = np.ones(
+                    (self.n_controlled_surface,), dtype=float)
+        else:
+            raise ValueError('controller_surfaces_coeff does not have as many'
+                    + ' elements as controller_surfaces')
 
     def control(self, data, controlled_state):
         r"""
@@ -112,7 +147,7 @@ class ControlSurfacePidController(controller_interface.BaseController):
             input included.
         """
 
-        i_current = len(real_state_input_history)
+        i_current = len(self.real_state_input_history)
 
         # get current state input
         self.real_state_input_history.append(self.extract_time_history(controlled_state))
@@ -127,7 +162,8 @@ class ControlSurfacePidController(controller_interface.BaseController):
                                                'D': self.settings['D'].value})
 
         # apply it where needed.
-
+        controlled_state['aero'].control_surface_deflection = (
+            self.settings['controller_surfaces_coeff']*control_command)
 
     def extract_time_history(self, controlled_state):
         output = 0.0
@@ -139,12 +175,11 @@ class ControlSurfacePidController(controller_interface.BaseController):
         else:
             raise NotImplementedError(
                 "input_type {} is not yet implemented in extract_time_history()"
-                .format(self.settings['input_type'])
-
+                .format(self.settings['input_type']))
         return output
 
-
-    def controller_wrapper(required_input,
+    def controller_wrapper(self,
+                           required_input,
                            current_input,
                            control_param):
         self.controller_implementation.set_point(required_input[-1])
