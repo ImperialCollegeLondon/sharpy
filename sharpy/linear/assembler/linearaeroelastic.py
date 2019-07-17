@@ -2,8 +2,8 @@ from sharpy.linear.utils.ss_interface import BaseElement, linear_system
 import numpy as np
 import sharpy.linear.src.lin_aeroelastic as lin_aeroelastic
 import sharpy.linear.src.libss as libss
-import matplotlib.pyplot as plt
 import scipy.linalg as sclalg
+import warnings
 
 @linear_system
 class LinearAeroelastic(BaseElement):
@@ -72,7 +72,9 @@ class LinearAeroelastic(BaseElement):
         damping_aero = np.zeros_like(beam.sys.Cstr)
         stiff_aero[:flex_nodes, :flex_nodes] = self.sys.Kss
 
-        if beam.sys.Kstr.shape != self.sys.Kss.shape:
+        rigid_dof = beam.sys.Kstr.shape[0] - flex_nodes
+
+        if rigid_dof > 0:
             rigid_dof = beam.sys.Kstr.shape[0]-self.sys.Kss.shape[0]
             stiff_aero[flex_nodes:, :flex_nodes] = self.sys.Krs
 
@@ -113,17 +115,47 @@ class LinearAeroelastic(BaseElement):
         Tas = np.eye(uvlm.ss.inputs, beam.ss.outputs)
         Tsa = np.eye(beam.ss.inputs, uvlm.ss.outputs)
 
+        # Scale coupling matrices
+        if uvlm.sys.ScalingFacts['time'] != 1.0:
+            Tas /= uvlm.sys.ScalingFacts['length']
+            Tsa *= uvlm.sys.ScalingFacts['force'] * uvlm.sys.ScalingFacts['time'] ** 2
+            if rigid_dof > 0:
+                warnings.warn('Time scaling for problems with rigid body motion not yet supported.')
+
         self.ss = libss.couple(ss01=uvlm.ss, ss02=beam.ss, K12=Tas, K21=Tsa)
         # self.aero_states = uvlm.ss.states
         # self.beam_states = beam.ss.states
         self.couplings = {'Ksa': Ksa,
-                          'Kas': Kas}
+                          'Kas': Kas,
+                          'Tsa': Tsa,
+                          'Tas': Tas}
 
         # TODO
         self.state_variables = {'aero': uvlm.ss.states,
                                 'beam': beam.ss.states}
 
+    def update(self, u_infty):
+        """
+        Updates the aeroelastic scaled system with the new reference velocity.
 
+        Only the beam equations need updating since the only dependency in the forward flight velocity resides there.
+
+        Args:
+              u_infty (float): New reference velocity
+
+        Returns:
+            libss.ss: Updated aeroelastic state-space system
+
+        """
+        t_ref = self.uvlm.sys.ScalingFacts['length'] / u_infty
+        print(t_ref)
+        self.beam.sys.update_matrices_time_scale(t_ref)
+        self.beam.sys.assemble()
+
+        self.ss = libss.couple(ss01=self.uvlm.ss, ss02=self.beam.ss,
+                               K12=self.couplings['Tas'], K21=self.couplings['Tsa'])
+
+        return self.ss
 
 
 
