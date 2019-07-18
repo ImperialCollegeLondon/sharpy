@@ -121,7 +121,9 @@ class ControlSurfacePidController(controller_interface.BaseController):
 
         if self.settings['write_controller_log']:
             self.log = open(self.settings['controller_log_route'] + '/' + self.controller_id + '.log.csv', 'w+')
-            self.log.write(('#'+ 1*'{:>2},' + 6*'{:>12},' + '{:>12}\n').format('tstep', 'time', 'Ref. state', 'state', 'Pcontrol', 'Icontrol', 'Dcontrol', 'control'))
+            self.log.write(('#'+ 1*'{:>2},' + 6*'{:>12},' + '{:>12}\n').
+                    format('tstep', 'time', 'Ref. state', 'state', 'Pcontrol', 'Icontrol', 'Dcontrol', 'control'))
+            self.log.flush()
 
         # save input time history
         try:
