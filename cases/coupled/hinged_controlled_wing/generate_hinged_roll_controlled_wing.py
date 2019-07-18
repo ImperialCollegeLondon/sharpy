@@ -6,37 +6,38 @@ import os
 import sharpy.utils.algebra as algebra
 import sharpy.utils.generate_cases as gc
 
-case_name = 'hinged_controlled_wing'
+case_name = 'hinged_roll_controlled_wing'
 route = os.path.dirname(os.path.realpath(__file__)) + '/'
 
 # m = 16 gives flutter with 165
-m_main = 4
-amplitude = 5*np.pi/180
-period = 3
+m_main = 6
+amplitude = 0*np.pi/180
+period = 5
 dt_factor = 1.
-n_structural_substeps = 1
+n_structural_substeps = 10
 
 # flight conditions
 u_inf = 10
 rho = 1.225
-alpha = 0.5
+alpha = 0
 beta = 0
 c_ref = 1
 b_ref = 16
 sweep = 0*np.pi/180.
 sigma = 1
 wake_length = 10 # chords
+lambda_control_surface = 0.5
 
 alpha_rad = alpha*np.pi/180
 
-pitch_file = 'pitch.csv'
+roll_file = 'roll.csv'
 
-gains = -np.array([0.9, 6.0, 0.75])
+gains = -np.array([45, 50.0, 1.5])
 
 # main geometry data
 main_span = 10
 main_chord = 2.
-main_ea = 0.
+main_ea = 0.4
 main_cg = 0.3
 main_sigma = 1
 main_airfoil_P = 0
@@ -45,14 +46,16 @@ main_airfoil_M = 0
 n_surfaces = 1
 
 dt = main_chord/m_main/u_inf*dt_factor
-num_steps = int(10./dt)
+num_steps = int(30./dt)
 
-alpha_hist = np.linspace(0, num_steps*dt, num_steps)
-alpha_hist = amplitude*np.sin(2.0*np.pi*alpha_hist/period)
-np.savetxt(pitch_file, alpha_hist)
+roll_hist = np.linspace(0, num_steps*dt, num_steps)
+roll_hist = amplitude*np.sin(2.0*np.pi*roll_hist/period)
+np.savetxt(roll_file, roll_hist)
 
 # discretisation data
 num_elem_main = 5
+
+num_elem_cs = round(lambda_control_surface*num_elem_main)
 
 num_node_elem = 3
 num_elem = num_elem_main
@@ -161,12 +164,12 @@ def generate_fem_file():
     elem_stiffness = np.zeros((num_elem,), dtype=int)
     # mass
     num_mass = 1
-    m_base = 35.71
-    j_base = 8.64
+    m_base = 1
+    j_base = 0.5
     import sharpy.utils.algebra as algebra
     # m_chi_cg = algebra.skew(m_base*np.array([0., -(main_ea - main_cg), 0.]))
     m_chi_cg = algebra.skew(m_base*np.array([0., (main_ea - main_cg), 0.]))
-    base_mass = np.diag([m_base, m_base, m_base, j_base, 0.1*j_base, 0.1*j_base])
+    base_mass = np.diag([m_base, m_base, m_base, j_base, 0.5*j_base, 0.5*j_base])
     base_mass[0:3, 3:6] = -m_chi_cg
     base_mass[3:6, 0:3] = m_chi_cg
     mass = np.zeros((num_mass, 6, 6))
@@ -180,7 +183,7 @@ def generate_fem_file():
     # node_app_forces = np.zeros((n_app_forces,), dtype=int)
     app_forces = np.zeros((num_node, 6))
 
-    spacing_param = 4
+    spacing_param = 10
 
     # right wing (beam 0) --------------------------------------------------------------
     working_elem = 0
@@ -278,15 +281,16 @@ def generate_aero_file():
     global x, y, z
 
     n_control_surfaces = 1
-    control_surface = np.zeros((num_elem, num_node_elem), dtype=int)
+    control_surface = np.zeros((num_elem, num_node_elem), dtype=int) - 1
     control_surface_type = np.zeros((n_control_surfaces,), dtype=int)
     control_surface_deflection = np.zeros((n_control_surfaces,))
     control_surface_chord = np.zeros((n_control_surfaces, ), dtype=int)
     control_surface_hinge_coord = np.zeros((n_control_surfaces, ))
 
+    control_surface[-num_elem_cs:, :] = 0
     control_surface_type[0] = 2
     control_surface_deflection[0] = 0.0
-    control_surface_chord[0] = 1
+    control_surface_chord[0] = int(0.35*m_main)
 
     airfoil_distribution = np.zeros((num_elem, num_node_elem), dtype=int)
     surface_distribution = np.zeros((num_elem,), dtype=int) - 1
@@ -373,7 +377,7 @@ def generate_naca_camber(M=0, P=0):
 def generate_multibody_file():
     LC2 = gc.LagrangeConstraint()
     LC2.behaviour = 'hinge_FoR'
-    LC2.rot_axis_AFoR = np.array([0.0, 1.0, 0.0])
+    LC2.rot_axis_AFoR = np.array([1.0, 0.0, 0.0])
     LC2.body_FoR = 0
     # LC2.node_number = int(0)
 
@@ -453,8 +457,8 @@ def generate_solver_file(horseshoe=False):
                                                                          'max_iterations': 550,
                                                                          'num_load_steps': 1,
                                                                          'delta_curved': 1e-1,
-                                                                         'min_delta': 1e-4,
-                                                                         'newmark_damp': 5e-3,
+                                                                         'min_delta': 1e-6,
+                                                                         'newmark_damp': 1e-2,
                                                                          'gravity_on': 'on',
                                                                          'gravity': 9.754,
                                                                          'num_steps': num_steps,
@@ -464,17 +468,18 @@ def generate_solver_file(horseshoe=False):
                                                                    'horseshoe': 'off',
                                                                    'num_cores': 4,
                                                                    'n_rollup': 1,
-                                                                   'convection_scheme': 2,
+                                                                   'convection_scheme': 3,
                                                                    'rollup_dt': main_chord/m_main/u_inf,
                                                                    'rollup_aic_refresh': 1,
                                                                    'rollup_tolerance': 1e-4,
+                                                                   'gamma_dot_filter': 9,
                                                                    'velocity_field_generator': 'GustVelocityField',
                                                                    'velocity_field_input': {'u_inf': u_inf,
                                                                                             'u_inf_direction': [1., 0, 0],
                                                                                             'gust_shape': '1-cos',
-                                                                                            'gust_length': 4.0*main_chord,
-                                                                                            'gust_intensity': 0.1*u_inf,
-                                                                                            'offset': 1.0,
+                                                                                            'gust_length': 10.0*main_chord,
+                                                                                            'gust_intensity': 0.15*u_inf,
+                                                                                            'offset': 20.0,
                                                                                             'span': main_span,
                                                                                             'relative_motion': 'on'},
                                                                    'rho': rho,
@@ -486,12 +491,13 @@ def generate_solver_file(horseshoe=False):
                                                                                      'I': gains[1],
                                                                                      'D': gains[2],
                                                                                      'dt': dt,
-                                                                                     'input_type': 'pitch',
+                                                                                     'input_type': 'roll',
                                                                                      'controller_log_route': './output/' + case_name + '/',
                                                                                      'controlled_surfaces': 0,
-                                                                                     'time_history_input_file': 'pitch.csv'}},
-                                          'postprocessors': ['BeamPlot', 'AerogridPlot'],
-                                          'postprocessors_settings': {'BeamPlot': {'folder': route + '/output/',
+                                                                                     'time_history_input_file': 'roll.csv'}},
+                                          'postprocessors': ['BeamLoads', 'BeamPlot', 'AerogridPlot'],
+                                          'postprocessors_settings': {'BeamLoads': {},
+                                                                      'BeamPlot': {'folder': route + '/output/',
                                                                                    'include_rbm': 'on',
                                                                                    'include_applied_forces': 'on'},
                                                                       'AerogridPlot': {
@@ -502,10 +508,13 @@ def generate_solver_file(horseshoe=False):
                                           'fsi_substeps': 100,
                                           # 'fsi_substeps': 1,
                                           'fsi_tolerance': 1e-5,
-                                          'relaxation_factor': 0.3,
+                                          'relaxation_factor': 0.2,
                                           'dynamic_relaxation': 'off',
                                           'minimum_steps': 1,
                                           'relaxation_steps': 25,
+                                          'include_unsteady_force_contribution': 'off',
+                                          'steps_without_unsteady_force': 10,
+                                          'pseudosteps_ramp_unsteady_force': 6,
                                           'structural_substeps': n_structural_substeps,
                                           'n_time_steps': num_steps,
                                           'dt': dt,
