@@ -941,7 +941,7 @@ class FlexDynamic():
         if self.scaled_reference_matrices:
             raise UserWarning('System already time scaled. System may just need an update. See update_matrices_time_scale')
 
-        if time_ref != 1.0:
+        if time_ref != 1.0 and time_ref is not None:
             if self.num_rig_dof == 0:
                 self.scaled_reference_matrices['dt'] = self.dt
                 self.dt /= time_ref
@@ -957,11 +957,15 @@ class FlexDynamic():
 
     def update_matrices_time_scale(self, time_ref):
 
-        cout.cout_wrap('Updating C and K matrices with new normalised time...', 1)
+        try:
+            cout.cout_wrap('Updating C and K matrices and natural frequencies with new normalised time...', 1)
+        except ValueError:
+            pass
 
         self.Kstr = self.scaled_reference_matrices['K'] * time_ref ** 2
         self.Cstr = self.scaled_reference_matrices['C'] * time_ref
 
+        self.freq_natural *= time_ref
 
     def cont2disc(self, dt=None):
         """Convert continuous-time SS model into """

@@ -148,9 +148,10 @@ class LinearAeroelastic(BaseElement):
 
         """
         t_ref = self.uvlm.sys.ScalingFacts['length'] / u_infty
-        print(t_ref)
+
         self.beam.sys.update_matrices_time_scale(t_ref)
         self.beam.sys.assemble()
+        self.beam.ss = self.beam.sys.SSdisc
 
         self.ss = libss.couple(ss01=self.uvlm.ss, ss02=self.beam.ss,
                                K12=self.couplings['Tas'], K21=self.couplings['Tsa'])
