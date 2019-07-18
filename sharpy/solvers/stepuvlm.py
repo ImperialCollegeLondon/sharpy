@@ -162,7 +162,11 @@ class StepUvlm(BaseSolver):
         self.data.aero.generate_zeta(beam, self.data.aero.aero_settings, -1, beam_ts=-1)
 
     def update_custom_grid(self, structure_tstep, aero_tstep):
-        self.data.aero.generate_zeta_timestep_info(structure_tstep, aero_tstep, self.data.structure, self.data.aero.aero_settings)
+        self.data.aero.generate_zeta_timestep_info(structure_tstep,
+                aero_tstep,
+                self.data.structure,
+                self.data.aero.aero_settings,
+                dt=self.settings['dt'].value)
 
     @staticmethod
     def filter_gamma_dot(tstep, history, filter_param):

@@ -1,5 +1,6 @@
 Nonlinear Dynamic Coupled Structural Solver
 -------------------------------------------
 
-.. autoclass:: sharpy.solvers.nonlineardynamiccoupledstep.NonLinearDynamicCoupledStep
+
+.. automodule:: sharpy.solvers.nonlineardynamiccoupledstep
     :members:

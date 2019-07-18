@@ -7,52 +7,36 @@ import numpy as np
 
 import sharpy.structure.utils.xbeamlib as xbeamlib
 from sharpy.utils.settings import str2bool
-from sharpy.utils.solver_interface import solver, BaseSolver
+from sharpy.utils.solver_interface import solver, BaseSolver, solver_from_string
 import sharpy.utils.settings as settings
 import sharpy.utils.cout_utils as cout
 
+_BaseStructural = solver_from_string('_BaseStructural')
 
 @solver
-class NonLinearDynamicPrescribedStep(BaseSolver):
+class NonLinearDynamicPrescribedStep(_BaseStructural):
+    """
+    Structural solver used for the dynamic simulation of clamped structures or those subject to a prescribed motion.
+
+    This solver provides an interface to the structural library (``xbeam``) and updates the structural parameters
+    for every k-th step in the FSI iteration.
+
+    This solver can be called as part of a standalone structural simulation or as the structural solver of a coupled
+    aeroelastic simulation.
+    
+    """
+
     solver_id = 'NonLinearDynamicPrescribedStep'
+    solver_classification = 'structural'
+
+    settings_types = _BaseStructural.settings_types.copy()
+    settings_default = _BaseStructural.settings_default.copy()
+    settings_description = _BaseStructural.settings_description.copy()
+
+    settings_table = settings.SettingsTable()
+    __doc__ += settings_table.generate(settings_types, settings_default, settings_description)
 
     def __init__(self):
-        self.settings_types = dict()
-        self.settings_default = dict()
-
-        self.settings_types['print_info'] = 'bool'
-        self.settings_default['print_info'] = True
-
-        self.settings_types['max_iterations'] = 'int'
-        self.settings_default['max_iterations'] = 100
-
-        self.settings_types['num_load_steps'] = 'int'
-        self.settings_default['num_load_steps'] = 5
-
-        self.settings_types['delta_curved'] = 'float'
-        self.settings_default['delta_curved'] = 1e-5
-
-        self.settings_types['min_delta'] = 'float'
-        self.settings_default['min_delta'] = 1e-5
-
-        self.settings_types['newmark_damp'] = 'float'
-        self.settings_default['newmark_damp'] = 1e-4
-
-        self.settings_types['dt'] = 'float'
-        self.settings_default['dt'] = 0.01
-
-        self.settings_types['num_steps'] = 'int'
-        self.settings_default['num_steps'] = 500
-
-        self.settings_types['gravity_on'] = 'bool'
-        self.settings_default['gravity_on'] = False
-
-        self.settings_types['gravity'] = 'float'
-        self.settings_default['gravity'] = 9.81
-
-        self.settings_types['relaxation_factor'] = 'float'
-        self.settings_default['relaxation_factor'] = 0.3
-
         self.data = None
         self.settings = None
 
@@ -86,7 +70,7 @@ class NonLinearDynamicPrescribedStep(BaseSolver):
                                     dt=dt)
 
         # self.extract_resultants(structural_step)
-        self.data.structure.integrate_position(self.data.ts, dt)
+        self.data.structure.integrate_position(structural_step, dt)
         return self.data
 
     def add_step(self):

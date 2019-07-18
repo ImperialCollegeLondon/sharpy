@@ -26,95 +26,72 @@ class Modal(BaseSolver):
     Extracts the ``M``, ``K`` and ``C`` matrices from the ``Fortran`` library for the beam. Depending on the choice of
     modal projection, these may or may not be transformed to a state-space form to compute the eigenvalues and mode shapes
     of the structure.
-
-    Args:
-        data (ProblemData): object with problem data
-        custom_settings (dict): custom settings that override the settings in the solver ``.txt`` file. None by default
-
-    Attributes:
-        settings (dict): Name-value pair of settings employed by solver.
-
-            ==========================  =========  =======================================================================  ============
-            Name                        Type       Description                                                              Default
-            ==========================  =========  =======================================================================  ============
-            ``print_info``              ``bool``   Print modal calculations to terminal                                     ``True``
-            ``folder``                  ``str``    Output folder                                                            ``./output``
-            ``rigid_body_modes``        ``bool``   Include zero-frequency rigid body modes                                  ``False``
-            ``use_undamped_modes``      ``bool``   Basis for modal projection                                               ``True``
-            ``NumLambda``               ``int``    Number of modes to retain                                                ``20``
-            ``keep_linear_matrices``    ``bool``   Retain linear ``M``, ``K`` and ``C`` matrices at each time step          ``True``
-            ``write_modes_vtk``         ``bool``   Write displacement mode shapes in vtk file (for ParaView)                ``True``
-            ``print_matrices``          ``bool``   Output ``M``, ``K``, and ``C`` matrices to output directory              ``False``
-            ``write_dat``               ``bool``   Output mode shapes, frequencies and damping as .dat to output directory  ``True``
-            ``continuous_eigenvalues``  ``bool``   Use continuous eigenvalues                                               ``False``
-            ``dt``                      ``float``  Delta to calculate continuous eigenvalues                                ``0``
-            ``plot_eigenvalues``        ``bool``   Plot eigenvalues on Argand diagram                                       ``False``
-            ``max_rotation_deg``        ``float``  Maximum rotation allowed for vtk file (degrees)                          ``15``
-            ``max_displacement``        ``float``  Maximum displacement allowed for vtk file                                ``0.15``
-            ==========================  =========  =======================================================================  ============
-
-        settings_types (dict): Acceptable data types for entries in ``settings``
-        settings_default (dict): Default values for the available ``settings``
-        data (ProblemData): object containing the information of the problem
-        folder (str): output folder name
-        filename_freq (str): Mode frequency output file name (.dat)
-        filename_damp (str): Mode damping output file name (.dat)
-        filename_shapes (str): Mode shapes output file name (.dat)
-
-    See Also:
-        .. py:class:: sharpy.utils.solver_interface.BaseSolver
-
     """
     solver_id = 'Modal'
+    solver_classification = 'modal'
+
+    settings_types = dict()
+    settings_default = dict()
+    settings_description = dict()
+
+    settings_types['print_info'] = 'bool'
+    settings_default['print_info'] = True
+    settings_description['print_info'] = 'Write status to screen'
+
+    settings_types['folder'] = 'str'
+    settings_default['folder'] = './output'
+    settings_description['folder'] = 'Output folder'
+
+    # solution options
+    settings_types['use_undamped_modes'] = 'bool'  # basis for modal projection
+    settings_default['use_undamped_modes'] = True
+    settings_description['use_undamped_modes'] = 'Project the modes onto undamped mode shapes'
+
+    settings_types['NumLambda'] = 'int'  # no. of different modes to retain
+    settings_default['NumLambda'] = 20  # doubles if use_undamped_modes is False
+    settings_description['NumLambda'] = 'Number of modes to retain'
+
+    settings_types['keep_linear_matrices'] = 'bool'  # attach linear M,C,K matrices to output dictionary
+    settings_default['keep_linear_matrices'] = True
+    settings_description['keep_linear_matrices'] = 'Save M, C and K matrices to output dictionary'
+
+    # output options
+    settings_types['write_modes_vtk'] = 'bool'  # write displacements mode shapes in vtk file
+    settings_default['write_modes_vtk'] = True
+    settings_description['write_modes_vtk'] = 'Write Paraview files with mode shapes'
+
+    settings_types['print_matrices'] = 'bool'  # print M,C,K matrices to dat file
+    settings_default['print_matrices'] = False
+    settings_description['print_matrices']  = 'Write M, C and K matrices to file'
+
+    settings_types['write_dat'] = 'bool'  # write modes shapes/freq./damp. to dat file
+    settings_default['write_dat'] = True
+    settings_description['write_dat'] = 'Write mode shapes, frequencies and damping to file'
+
+    settings_types['continuous_eigenvalues'] = 'bool'
+    settings_default['continuous_eigenvalues'] = False
+    settings_description['continuous_eigenvalues'] = 'Use continuous time eigenvalues'
+
+    settings_types['dt'] = 'float'
+    settings_default['dt'] = 0
+    settings_description['dt'] = 'Time step to compute discrete time eigenvalues'
+
+    settings_types['plot_eigenvalues'] = 'bool'
+    settings_default['plot_eigenvalues'] = False
+    settings_description['plot_eigenvalues'] = 'Plot to screen root locus diagram'
+
+    settings_types['max_rotation_deg'] = 'float'
+    settings_default['max_rotation_deg'] = 15.
+    settings_description['max_rotation_deg'] = 'Scale mode shape to have specified maximum rotation'
+
+    settings_types['max_displacement'] = 'float'
+    settings_default['max_displacement'] = 0.15
+    settings_description['max_displacement'] = 'Scale mode shape to have specified maximum displacement'
+
+    settings_table = settings.SettingsTable()
+    __doc__ += settings_table.generate(settings_types, settings_default, settings_description)
 
     def __init__(self):
-        self.settings_types = dict()
-        self.settings_default = dict()
-
-        self.settings_types['print_info'] = 'bool'
-        self.settings_default['print_info'] = True
-
-        self.settings_types['folder'] = 'str'
-        self.settings_default['folder'] = './output'
-
-        # solution options
-        self.settings_types['rigid_body_modes'] = 'bool'
-        self.settings_default['rigid_body_modes'] = False
-
-        self.settings_types['use_undamped_modes'] = 'bool'  # basis for modal projection
-        self.settings_default['use_undamped_modes'] = True
-
-        self.settings_types['NumLambda'] = 'int'  # no. of different modes to retain
-        self.settings_default['NumLambda'] = 20  # doubles if use_undamped_modes is False 
-
-        self.settings_types['keep_linear_matrices'] = 'bool'  # attach linear M,C,K matrices to output dictionary
-        self.settings_default['keep_linear_matrices'] = True
-
-        # output options
-        self.settings_types['write_modes_vtk'] = 'bool'  # write displacements mode shapes in vtk file
-        self.settings_default['write_modes_vtk'] = True        
-
-        self.settings_types['print_matrices'] = 'bool'  # print M,C,K matrices to dat file
-        self.settings_default['print_matrices'] = False
-
-        self.settings_types['write_dat'] = 'bool'  # write modes shapes/freq./damp. to dat file
-        self.settings_default['write_dat'] = True
-
-        self.settings_types['continuous_eigenvalues'] = 'bool'
-        self.settings_default['continuous_eigenvalues'] = False
-
-        self.settings_types['dt'] = 'float'
-        self.settings_default['dt'] = 0
-
-        self.settings_types['plot_eigenvalues'] = 'bool'
-        self.settings_default['plot_eigenvalues'] = False
-
-        self.settings_types['max_rotation_deg'] = 'float'
-        self.settings_default['max_rotation_deg'] = 15.
-
-        self.settings_types['max_displacement'] = 'float'
-        self.settings_default['max_displacement'] = 0.15
-
         self.data = None
         self.settings = None
 

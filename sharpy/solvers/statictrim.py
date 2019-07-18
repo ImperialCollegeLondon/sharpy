@@ -93,10 +93,10 @@ class StaticTrim(BaseSolver):
         self.settings_default['thrust_nodes'] = np.array([0])
 
         self.settings_types['initial_alpha'] = 'float'
-        self.settings_default['initial_alpha'] = 4*np.pi/180.
+        self.settings_default['initial_alpha'] = 4.*np.pi/180.
 
         self.settings_types['initial_deflection'] = 'float'
-        self.settings_default['initial_deflection'] = 1*np.pi/180.
+        self.settings_default['initial_deflection'] = 1.*np.pi/180.
 
         self.settings_types['initial_thrust'] = 'float'
         self.settings_default['initial_thrust'] = 0.0
