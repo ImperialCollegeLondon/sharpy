@@ -21,54 +21,9 @@ class DynamicCoupled(BaseSolver):
     Using the ``DynamicCoupled`` solver requires that an instance of the ``StaticCoupled`` solver is called in the
     SHARPy solution ``flow`` when defining the problem case.
 
-    Args:
-        data(ProblemData): class containing the data of the problem
-        custom_settings (dict): dictionary containing custom settings for the solver to use
-
-    Attributes:
-        settings (dict): Contains the solver's ``settings``. See below for acceptable values:
-
-            =======================================  =============  =========================================================================  ==========
-            Name                                     Type           Description                                                                Default
-            =======================================  =============  =========================================================================  ==========
-            ``print_info``                           ``bool``       Print modal calculations to terminal                                       ``True``
-            ``structural_solver``                    ``str``        ``solver_id`` of desired structural solver                                 ``None``
-            ``structural_solver_settings``           ``dict``       Dictionary containing the settings for the structural solver               ``None``
-            ``aero_solver``                          ``str``        ``solver_id`` of desired aerodynamics solver                               ``None``
-            ``aero_solver_settings``                 ``dict``       Dictionary containing the settings for the aerodynamic solver              ``None``
-            ``n_time_steps``                         ``int``        Number of timesteps                                                        ``100``
-            ``dt``                                   ``float``      Time increment between timesteps                                           ``0.05``
-            ``fsi_substeps``                         ``int``        Desc                                                                       ``70``
-            ``fsi_tolerance``                        ``float``      Fluid-structure interaction tolerance                                      ``1e-5``
-            ``relaxation_factor``                    ``float``      Desc                                                                       ``0.2``
-            ``final_relaxation_factor``              ``float``      Desc                                                                       ``0.0``
-            ``minimum_steps``                        ``int``        Desc                                                                       ``3``
-            ``relaxation_steps``                     ``int``        Desc                                                                       ``100``
-            ``dynamic_relaxation``                   ``bool``       Desc                                                                       ``True``
-            ``post_processors``                      ``list(str)``  List of ``solver_id`` of desired post-processors to use                    ``None``
-            ``post_processor_settings``              ``dict``       Dictionary with post-processor settings                                    ``None``
-            ``cleanup_previous_solution``            ``bool``       Remove all the previous timesteps except the last one                      ``True``
-            ``include_unsteady_force_contribution``  ``bool``       Include forces that depend on ``gamma_dot``                                ``False``
-            ``steps_without_unsteady_force``         ``int``        Time steps without the application of unsteady forces                      ``0``
-            ``pseudosteps_ramp_unsteady_force``      ``int``        FSI iterations to progressively ramp the application of unsteady forces    ``0``
-            =======================================  =============  =========================================================================  ==========
-
-        data (ProblemData): class containing solution information
-        structuralsolver (BaseSolver): class of the structural solver
-        aero_solver (BaseSolver): class of the aerodynamic solver
-        res (float):
-        res_dqdt (float):
-        res_dqddt (float):
-        previous_force:
-        dt (float):
-        predictor (bool):
-        residual_table:
-        postprocessors (dict):
-        with_postprocessors (bool):
-
-
     """
     solver_id = 'DynamicCoupled'
+    solver_classification = 'Aeroelastic'
 
     def __init__(self):
         self.settings_types = dict()
