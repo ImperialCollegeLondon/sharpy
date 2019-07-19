@@ -31,8 +31,9 @@ ws.config['SHARPy']['flow'] = ['BeamLoader', 'AerogridLoader',
                         #'StaticUvlm',
                         'StaticCoupled',
                         'AerogridPlot', 'BeamPlot',
-                        'DynamicCoupled',
-                        'SaveData']
+                        'DynamicCoupled','Modal',
+                        # 'SaveData']
+                               ]
 ws.config['SHARPy']['write_screen'] = 'on'
 
 ws.config['DynamicCoupled']['aero_solver_settings']['velocity_field_input']['gust_length'] = 5

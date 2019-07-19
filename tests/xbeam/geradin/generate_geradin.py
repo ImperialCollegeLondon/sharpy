@@ -139,7 +139,7 @@ def generate_solver_file():
     config.filename = file_name
     config['SHARPy'] = {'case': case_name,
                         'route': route,
-                        'flow': ['BeamLoader', 'NonLinearStatic', 'BeamPlot', 'WriteVariablesTime'],
+                        'flow': ['BeamLoader', 'NonLinearStatic', 'WriteVariablesTime'],
                         'write_screen': 'off',
                         'write_log': 'on',
                         'log_folder': route + '/output/',
@@ -154,7 +154,7 @@ def generate_solver_file():
                                  'gravity_on': 'on',
                                  'gravity': 9.81,
                                  'gravity_dir': ['0', '0', '1']}
-    config['WriteVariablesTime'] = {'structure_variables': ['pos'],
+    config['WriteVariablesTime'] = {'structure_variables': ['pos', 'psi'],
                                     'cleanup_old_solution': 'on'}
     config['BeamPlot'] = {'folder': route + '/output',
                           'include_rbm': 'off',
