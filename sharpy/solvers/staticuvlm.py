@@ -19,37 +19,37 @@ class StaticUvlm(BaseSolver):
     The aerodynamic problem is posed in the form of an ``Aerogrid`` object.
 
     Args:
-        data (ProblemData): object with problem data
+        data (PreSharpy): object with problem data
         custom_settings (dict): custom settings that override the settings in the solver ``.txt`` file. None by default
 
     Attributes:
         settings (dict): Name-value pair of settings employed by solver. See Notes for valid combinations
         settings_types (dict): Acceptable data types for entries in ``settings``
         settings_default (dict): Default values for the available ``settings``
-        data (ProblemData): object containing the information of the problem
+        data (PreSharpy): object containing the information of the problem
         velocity_generator(object): object containing the flow conditions information
 
     Notes:
         The following are valid key-value pair arguments for the ``settings`` dictionary:
 
-        Name Type Description Default
+        ============================  =========  =======================================  =======================
+        Name                          Type       Description                              Default
+        ============================  =========  =======================================  =======================
+        ``print_info``                ``bool``   Print solver information to terminal     ``True``
+        ``horseshoe``                 ``bool``   Utilise a horseshoe model for wake       ``False``
+        ``num_cores``                 ``int``    Number of cores                          ``0``
+        ``n_rollup``                  ``int``    Rollup                                   ``1``
+        ``rollup_dt``                 ``float``  ??                                       ``0.1``
+        ``rollup_aic_refresh``        ``int``    ??                                       ``1``
+        ``rollup_tolerance``          ``float``  ??                                       ``1e-4``
+        ``iterative_solver``          ``bool``   ??                                       ``False``
+        ``iterative_tol``             ``float``  ??                                       ``1e-4``
+        ``iterative_precond``         ``bool``   ??                                       ``False``
+        ``velocity_field_generator``  ``str``    Selected velocity field                  ``SteadyVelocityField``
+        ``velocity_field_input``      ``dict``   Settings for the desired velocity field  ``{}``
+        ``rho``                       ``float``  Air density                              ``1.225``
+        ============================  =========  =======================================  =======================
 
-        ``print_info``  ``bool``  Print solver information to terminal  ``True``
-        ``horseshoe``  ``bool``  Utilise a horseshoe model for wake  ``False``
-        ``num_cores``  ``int``  Number of cores  ``0``
-        ``n_rollup``  ``int``  Rollup  ``1``
-        ``rollup_dt``  ``float``  ??   ``0.1``
-        ``rollup_aic_refresh``  ``int``  ??  ``1``
-        ``rollup_tolerance``  ``float``  ??  ``1e-4``
-        ``iterative_solver``  ``bool``  ??  ``False``
-        ``iterative_tol``  ``float``  ??  ``1e-4``
-        ``iterative_precond``  ``bool``  ??  ``False``
-        ``velocity_field_generator``  ``str``  Selected velocity field  ``SteadyVelocityField``
-        ``velocity_field_input``  ``dict``  ??  ``None``
-        ``rho``  ``float``  Air density  ``1.225``
-
-    See Also:
-        Velocity field generator
     """
     solver_id = 'StaticUvlm'
 

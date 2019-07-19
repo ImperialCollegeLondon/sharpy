@@ -196,8 +196,8 @@ ws.config['LinearUvlm'] = {	'dt': ws.dt,
 							'use_sparse': UseSparse,
 							'ScalingDict':{'length': 1.,
 										   'speed':  1.,
-										   'density':1.},
-							'physical_model': True}
+										   'density':1.}
+							   }
 ws.config['Modal']['NumLambda']= 40
 ws.config['Modal']['keep_linear_matrices']='on'
 ws.config['Modal']['use_undamped_modes']=True

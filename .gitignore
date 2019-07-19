@@ -97,6 +97,9 @@ lib/*
 output/*
 .idea
 
+# figure folders
+*figs/*
+
 *.csv
 *.png
 *.eps
@@ -134,3 +137,5 @@ cases/linear/coupled/res/*
 figs/*
 
 tests/linear/rom/figs/
+
+\.spyproject/

@@ -12,51 +12,88 @@ import sharpy.structure.utils.xbeamlib as xbeamlib
 
 @solver
 class WriteVariablesTime(BaseSolver):
+    r"""
+    Write variables with time
+
+    ``WriteVariablesTime`` is a class inherited from ``BaseSolver``
+
+    It is a postprocessor that outputs the value of variables with time onto a text file.
+
+    Attributes:
+        settings_types (dict): Acceptable data types of the input data
+        settings_default (dict): Default values for input data should the user not provide them
+        See the list of arguments
+        dir (str): directory to output the information
+
+    See Also:
+        .. py:class:: sharpy.utils.solver_interface.BaseSolver
+        .. py:class:: sharpy.utils.datastructures
+
+    """
+
     solver_id = 'WriteVariablesTime'
+    solver_classification = 'post-processor'
+
+    settings_types = dict()
+    settings_default = dict()
+    settings_description = dict()
+
+    settings_types['delimiter'] = 'str'
+    settings_default['delimiter'] = ' '
+    settings_description['delimiter'] = 'Delimiter to be used in the output file'
+
+    settings_types['FoR_variables'] = 'list(str)'
+    settings_default['FoR_variables'] = ['']
+    settings_description['FoR_variables'] = 'Variables of ``StructTimeStepInfo`` associated to the frame of reference to be writen'
+
+    settings_types['FoR_number'] = 'list(int)'
+    settings_default['FoR_number'] = np.array([0], dtype=int)
+    settings_description['FoR_number'] = 'Number of the A frame of reference to output (for multibody configurations)'
+
+    settings_types['structure_variables'] = 'list(str)'
+    settings_default['structure_variables'] = ['']
+    settings_description['structure_variables'] = 'Variables of ``StructTimeStepInfo`` associated to the frame of reference to be writen'
+
+    settings_types['structure_nodes'] = 'list(int)'
+    settings_default['structure_nodes'] = np.array([-1])
+    settings_description['structure_nodes'] = 'Number of the nodes to be writen'
+
+    settings_types['aero_panels_variables'] = 'list(str)'
+    settings_default['aero_panels_variables'] = ['']
+    settings_description['aero_panels_variables'] = 'Variables of ``AeroTimeStepInfo`` associated to panels to be writen'
+
+    settings_types['aero_panels_isurf'] = 'list(int)'
+    settings_default['aero_panels_isurf'] = np.array([0])
+    settings_description['aero_panels_isurf'] = "Number of the panels' surface to be output"
+    settings_types['aero_panels_im'] = 'list(int)'
+    settings_default['aero_panels_im'] = np.array([0])
+    settings_description['aero_panels_im'] = 'Chordwise index of the panels to be output'
+    settings_types['aero_panels_in'] = 'list(int)'
+    settings_default['aero_panels_in'] = np.array([0])
+    settings_description['aero_panels_in'] = 'Spanwise index of the panels to be output'
+
+    settings_types['aero_nodes_variables'] = 'list(str)'
+    settings_default['aero_nodes_variables'] = ['']
+    settings_description['aero_nodes_variables'] = 'Variables of ``AeroTimeStepInfo`` associated to nodes to be writen'
+
+    settings_types['aero_nodes_isurf'] = 'list(int)'
+    settings_default['aero_nodes_isurf'] = np.array([0])
+    settings_description['aero_nodes_isurf'] = "Number of the nodes' surface to be output"
+    settings_types['aero_nodes_im'] = 'list(int)'
+    settings_default['aero_nodes_im'] = np.array([0])
+    settings_description['aero_nodes_im'] = 'Chordwise index of the nodes to be output'
+    settings_types['aero_nodes_in'] = 'list(int)'
+    settings_default['aero_nodes_in'] = np.array([0])
+    settings_description['aero_nodes_in'] = 'Spanwise index of the nodes to be output'
+
+    settings_types['cleanup_old_solution'] = 'bool'
+    settings_default['cleanup_old_solution'] = 'false'
+    settings_description['cleanup_old_solution'] = 'Remove the existing files'
+
+    settings_table = settings.SettingsTable()
+    __doc__ += settings_table.generate(settings_types, settings_default, settings_description)
 
     def __init__(self):
-        self.settings_types = dict()
-        self.settings_default = dict()
-
-        self.settings_types['delimiter'] = 'str'
-        self.settings_default['delimiter'] = ' '
-
-        self.settings_types['FoR_variables'] = 'list(str)'
-        self.settings_default['FoR_variables'] = ['']
-
-        self.settings_types['FoR_number'] = 'list(int)'
-        self.settings_default['FoR_number'] = np.array([0], dtype=int)
-
-        self.settings_types['structure_variables'] = 'list(str)'
-        self.settings_default['structure_variables'] = ['']
-
-        self.settings_types['structure_nodes'] = 'list(int)'
-        self.settings_default['structure_nodes'] = np.array([-1])
-
-        self.settings_types['aero_panels_variables'] = 'list(str)'
-        self.settings_default['aero_panels_variables'] = ['']
-
-        self.settings_types['aero_panels_isurf'] = 'list(int)'
-        self.settings_default['aero_panels_isurf'] = np.array([0])
-        self.settings_types['aero_panels_im'] = 'list(int)'
-        self.settings_default['aero_panels_im'] = np.array([0])
-        self.settings_types['aero_panels_in'] = 'list(int)'
-        self.settings_default['aero_panels_in'] = np.array([0])
-
-        self.settings_types['aero_nodes_variables'] = 'list(str)'
-        self.settings_default['aero_nodes_variables'] = ['']
-
-        self.settings_types['aero_nodes_isurf'] = 'list(int)'
-        self.settings_default['aero_nodes_isurf'] = np.array([0])
-        self.settings_types['aero_nodes_im'] = 'list(int)'
-        self.settings_default['aero_nodes_im'] = np.array([0])
-        self.settings_types['aero_nodes_in'] = 'list(int)'
-        self.settings_default['aero_nodes_in'] = np.array([0])
-
-        self.settings_types['cleanup_old_solution'] = 'bool'
-        self.settings_default['cleanup_old_solution'] = 'false'
-
-
         self.settings = None
         self.data = None
         self.dir = 'output/'
@@ -133,20 +170,6 @@ class WriteVariablesTime(BaseSolver):
                         pass
 
     def run(self, online=False):
-
-    # settings['WriteVariablesTime'] = {'delimiter': ' ',
-    #                                   'FoR_variables': ['GFoR_pos', 'GFoR_vel', 'GFoR_acc'],
-    #                                   'FoR_number': [0,1],
-    #                                   'structure_variables': ['AFoR_steady_forces', 'AFoR_unsteady_forces','AFoR_position'],
-    #                                   'structure_nodes': [0,-1],
-    #                                   'aero_panels_variables': ['gamma', 'norm_gamma', 'norm_gamma_star'],
-    #                                   'aero_panels_isurf': [0,1,2],
-    #                                   'aero_panels_im': [1,1,1],
-    #                                   'aero_panels_in': [-2,-2,-2],
-    #                                   'aero_nodes_variables': ['GFoR_steady_force', 'GFoR_unsteady_force'],
-    #                                   'aero_nodes_isurf': [0,1,2],
-    #                                   'aero_nodes_im': [1,1,1],
-    #                                   'aero_nodes_in': [-2,-2,-2]}
 
         # FoR variables
         if 'FoR_number' in self.settings:

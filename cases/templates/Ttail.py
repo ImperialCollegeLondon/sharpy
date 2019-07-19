@@ -445,7 +445,7 @@ class Ttail_3beams():
             frame_of_reference_delta_handle = h5file.create_dataset(
                 'frame_of_reference_delta', data=self.frame_of_reference_delta)
             structural_twist_handle = h5file.create_dataset(
-                'structural_twist', data=np.zeros((self.num_nodes_tot,)))
+                'structural_twist', data=np.zeros((self.num_elem_tot,3)))
             bocos_handle = h5file.create_dataset(
                 'boundary_conditions', data=self.boundary_conditions)
             beam_handle = h5file.create_dataset(
