@@ -38,7 +38,6 @@ class NonLinearDynamic(_BaseStructural):
     settings_types['gravity_dir'] = 'list(float)'
     settings_default['gravity_dir'] = np.array([0, 0, 1])
 
-
     settings_table = settings.SettingsTable()
     __doc__ += settings_table.generate(settings_types, settings_default, settings_description)
 

@@ -65,7 +65,9 @@ def main(args=None):
         args = parser.parse_args()
 
     if args.docs:
+        import sharpy.utils.generator_interface as generator_interface
         solver_interface.output_documentation()
+        generator_interface.output_documentation()
         return 0
 
     if args.input_filename == '':
