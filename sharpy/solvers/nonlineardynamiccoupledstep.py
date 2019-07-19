@@ -7,62 +7,52 @@ import numpy as np
 
 import sharpy.structure.utils.xbeamlib as xbeamlib
 from sharpy.utils.settings import str2bool
-from sharpy.utils.solver_interface import solver, BaseSolver
+from sharpy.utils.solver_interface import solver, BaseSolver, solver_from_string
 import sharpy.utils.settings as settings
 import sharpy.utils.cout_utils as cout
 
 
+_BaseStructural = solver_from_string('_BaseStructural')
+
 @solver
 class NonLinearDynamicCoupledStep(BaseSolver):
+    """
+    Structural solver used for the dynamic simulation of free-flying structures.
+
+    This solver provides an interface to the structural library (``xbeam``) and updates the structural parameters
+    for every k-th step in the FSI iteration.
+
+    This solver can be called as part of a standalone structural simulation or as the structural solver of a coupled
+    aeroelastic simulation.
+
+    """
     solver_id = 'NonLinearDynamicCoupledStep'
+    solver_classification = 'structural'
+
+    settings_types = _BaseStructural.settings_types.copy()
+    settings_default = _BaseStructural.settings_default.copy()
+    settings_description = _BaseStructural.settings_description.copy()
+
+    settings_types['balancing'] = 'bool'
+    settings_default['balancing'] = False
+
+    # initial speed direction is given in inertial FOR!!!
+    settings_types['initial_velocity_direction'] = 'list(float)'
+    settings_default['initial_velocity_direction'] = np.array([-1.0, 0.0, 0.0])
+    settings_description['initial_velocity_direction'] = 'Initial velocity of the reference node given in the inertial FOR'
+
+    settings_types['initial_velocity'] = 'float'
+    settings_default['initial_velocity'] = 0
+    settings_description['initial_velocity'] = 'Initial velocity magnitude of the reference node'
+
+    settings_types['relaxation_factor'] = 'float'
+    settings_default['relaxation_factor'] = 0.3
+    settings_description['relaxation factor'] = 'Relaxation factor'
+
+    settings_table = settings.SettingsTable()
+    __doc__ += settings_table.generate(settings_types, settings_default, settings_description)
 
     def __init__(self):
-        self.settings_types = dict()
-        self.settings_default = dict()
-
-        self.settings_types['print_info'] = 'bool'
-        self.settings_default['print_info'] = True
-
-        self.settings_types['max_iterations'] = 'int'
-        self.settings_default['max_iterations'] = 100
-
-        self.settings_types['num_load_steps'] = 'int'
-        self.settings_default['num_load_steps'] = 5
-
-        self.settings_types['delta_curved'] = 'float'
-        self.settings_default['delta_curved'] = 1e-5
-
-        self.settings_types['min_delta'] = 'float'
-        self.settings_default['min_delta'] = 1e-5
-
-        self.settings_types['newmark_damp'] = 'float'
-        self.settings_default['newmark_damp'] = 1e-4
-
-        self.settings_types['dt'] = 'float'
-        self.settings_default['dt'] = 0.01
-
-        self.settings_types['num_steps'] = 'int'
-        self.settings_default['num_steps'] = 500
-
-        self.settings_types['gravity_on'] = 'bool'
-        self.settings_default['gravity_on'] = False
-
-        self.settings_types['balancing'] = 'bool'
-        self.settings_default['balancing'] = False
-
-        self.settings_types['gravity'] = 'float'
-        self.settings_default['gravity'] = 9.81
-
-        # initial speed direction is given in inertial FOR!!!
-        self.settings_types['initial_velocity_direction'] = 'list(float)'
-        self.settings_default['initial_velocity_direction'] = np.array([-1.0, 0.0, 0.0])
-
-        self.settings_types['initial_velocity'] = 'float'
-        self.settings_default['initial_velocity'] = 0
-
-        self.settings_types['relaxation_factor'] = 'float'
-        self.settings_default['relaxation_factor'] = 0.3
-
         self.data = None
         self.settings = None
 
@@ -117,4 +107,3 @@ class NonLinearDynamicCoupledStep(BaseSolver):
 
         totals = np.sum(applied_forces_copy + gravity_forces_copy, axis=0)
         return totals[0:3], totals[3:6]
-
