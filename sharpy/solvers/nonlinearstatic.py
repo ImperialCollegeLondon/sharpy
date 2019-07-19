@@ -39,6 +39,9 @@ class NonLinearStatic(BaseSolver):
         self.settings_types['initial_position'] = 'list(float)'
         self.settings_default['initial_position'] = np.array([0.0, 0.0, 0.0])
 
+        self.settings_types['relaxation_factor'] = 'float'
+        self.settings_default['relaxation_factor'] = 0.3
+
         self.data = None
         self.settings = None
 
