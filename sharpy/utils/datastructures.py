@@ -4,6 +4,7 @@ import copy
 
 import sharpy.utils.algebra as algebra
 import copy
+import sharpy.utils.multibody as mb
 
 
 class AeroTimeStepInfo(object):
@@ -511,44 +512,16 @@ class StructTimeStepInfo(object):
 
         """
 
-        # Define the first and last elements belonging to the body
-        # It assumes that all the elements in a body are consecutive in the global fem description
-        is_first_element = True
-        ibody_first_element = 0
-        ibody_last_element = 0
-        ibody_num_elem = 0
+        # Define the nodes and elements belonging to the body
+        ibody_elems, ibody_nodes = mb.get_elems_nodes_list(beam, ibody)
 
-        for ielem in range(beam.num_elem):
-            if (beam.body_number[ielem] == ibody):
-                if is_first_element:
-                    is_first_element = False
-                    ibody_first_element = ielem
-                ibody_last_element = ielem
-                ibody_num_elem += 1
+        ibody_num_node = len(ibody_nodes)
+        ibody_num_elem = len(ibody_elems)
 
-        ibody_last_element += 1
-
-        # Define the size and location of the body
-        ibody_num_node = ibody_num_elem*(self.num_node_elem - 1) + 1
-        ibody_first_node = beam.connectivities[ibody_first_element,0]
-        ibody_last_node = beam.connectivities[ibody_last_element-1,1]
-        if ibody_first_node == 0:
-            ibody_first_dof = 0
-        else:
-            prev_body_last_node_not_clamped = ibody_first_node-1
-            while beam.vdof[prev_body_last_node_not_clamped] == -1:
-                prev_body_last_node_not_clamped -= 1
-            ibody_first_dof = (beam.vdof[prev_body_last_node_not_clamped] + 1)*6
-
-        # # Define the number of degrees of freedom
-        # last_dof = (beam.vdof[ibody_last_node] + 1)*6
-        # if not ibody_first_node == 0:
-        #     first_dof = (beam.vdof[ibody_first_node] + 1)*6
-        # else:
-        #     last_dof = (beam.vdof[ibody_first_node-1] + 1)*6
-        # num_dof = last_dof - firts_dof
-
-        ibody_last_node += 1
+        ibody_first_dof = 0
+        for index_body in range(ibody - 1):
+            aux_elems, aux_nodes = mb.get_elems_nodes_list(beam, index_body)
+            ibody_first_dof += np.sum(beam.vdof[aux_nodes] > -1)*6
 
         # Initialize the new StructTimeStepInfo
         ibody_StructTimeStepInfo = StructTimeStepInfo(ibody_num_node, ibody_num_elem, self.num_node_elem, num_dof = num_dof_ibody, num_bodies = beam.num_bodies)
@@ -567,18 +540,18 @@ class StructTimeStepInfo(object):
         ibody_StructTimeStepInfo.for_acc[0:3] = np.dot(CAslaveG, self.mb_FoR_acc[ibody, 0:3])
         ibody_StructTimeStepInfo.for_acc[3:6] = np.dot(CAslaveG, self.mb_FoR_acc[ibody, 3:6])
 
-        ibody_StructTimeStepInfo.pos = self.pos[ibody_first_node:ibody_last_node,:].astype(dtype=ct.c_double, order='F', copy=True)
-        ibody_StructTimeStepInfo.pos_dot = self.pos_dot[ibody_first_node:ibody_last_node,:].astype(dtype=ct.c_double, order='F', copy=True)
+        ibody_StructTimeStepInfo.pos = self.pos[ibody_nodes,:].astype(dtype=ct.c_double, order='F', copy=True)
+        ibody_StructTimeStepInfo.pos_dot = self.pos_dot[ibody_nodes,:].astype(dtype=ct.c_double, order='F', copy=True)
 
-        ibody_StructTimeStepInfo.psi = self.psi[ibody_first_element:ibody_last_element,:,:].astype(dtype=ct.c_double, order='F', copy=True)
-        ibody_StructTimeStepInfo.psi_dot = self.psi_dot[ibody_first_element:ibody_last_element,:,:].astype(dtype=ct.c_double, order='F', copy=True)
+        ibody_StructTimeStepInfo.psi = self.psi[ibody_elems,:,:].astype(dtype=ct.c_double, order='F', copy=True)
+        ibody_StructTimeStepInfo.psi_dot = self.psi_dot[ibody_elems,:,:].astype(dtype=ct.c_double, order='F', copy=True)
 
         ibody_StructTimeStepInfo.gravity_vector_inertial = self.gravity_vector_inertial.astype(dtype=ct.c_double, order='F', copy=True)
         ibody_StructTimeStepInfo.gravity_vector_body = self.gravity_vector_body.astype(dtype=ct.c_double, order='F', copy=True)
 
-        ibody_StructTimeStepInfo.steady_applied_forces = self.steady_applied_forces[ibody_first_node:ibody_last_node,:].astype(dtype=ct.c_double, order='F', copy=True)
-        ibody_StructTimeStepInfo.unsteady_applied_forces = self.unsteady_applied_forces[ibody_first_node:ibody_last_node,:].astype(dtype=ct.c_double, order='F', copy=True)
-        ibody_StructTimeStepInfo.gravity_forces = self.gravity_forces[ibody_first_node:ibody_last_node,:].astype(dtype=ct.c_double, order='F', copy=True)
+        ibody_StructTimeStepInfo.steady_applied_forces = self.steady_applied_forces[ibody_nodes,:].astype(dtype=ct.c_double, order='F', copy=True)
+        ibody_StructTimeStepInfo.unsteady_applied_forces = self.unsteady_applied_forces[ibody_nodes,:].astype(dtype=ct.c_double, order='F', copy=True)
+        ibody_StructTimeStepInfo.gravity_forces = self.gravity_forces[ibody_nodes,:].astype(dtype=ct.c_double, order='F', copy=True)
         ibody_StructTimeStepInfo.total_gravity_forces = self.total_gravity_forces.astype(dtype=ct.c_double, order='F', copy=True)
 
         ibody_StructTimeStepInfo.q[0:num_dof_ibody.value] = self.q[ibody_first_dof:ibody_first_dof+num_dof_ibody.value].astype(dtype=ct.c_double, order='F', copy=True)
