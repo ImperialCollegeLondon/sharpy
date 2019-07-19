@@ -90,6 +90,9 @@ class WriteVariablesTime(BaseSolver):
     settings_default['cleanup_old_solution'] = 'false'
     settings_description[''] = 'Remove the existing files'
 
+    settings_table = settings.SettingsTable()
+    __doc__ += settings_table.generate(settings_types, settings_default, settings_description)
+
     def __init__(self):
         self.settings = None
         self.data = None
