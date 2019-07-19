@@ -40,55 +40,55 @@ class WriteVariablesTime(BaseSolver):
 
     settings_types['delimiter'] = 'str'
     settings_default['delimiter'] = ' '
-    settings_description[''] = 'Delimiter to be used in the output file'
+    settings_description['delimiter'] = 'Delimiter to be used in the output file'
 
     settings_types['FoR_variables'] = 'list(str)'
     settings_default['FoR_variables'] = ['']
-    settings_description[''] = 'Variables of ``StructTimeStepInfo`` associated to the frame of reference to be writen'
+    settings_description['FoR_variables'] = 'Variables of ``StructTimeStepInfo`` associated to the frame of reference to be writen'
 
     settings_types['FoR_number'] = 'list(int)'
     settings_default['FoR_number'] = np.array([0], dtype=int)
-    settings_description[''] = 'Number of the A frame of reference to output (for multibody configurations)'
+    settings_description['FoR_number'] = 'Number of the A frame of reference to output (for multibody configurations)'
 
     settings_types['structure_variables'] = 'list(str)'
     settings_default['structure_variables'] = ['']
-    settings_description[''] = 'Variables of ``StructTimeStepInfo`` associated to the frame of reference to be writen'
+    settings_description['structure_variables'] = 'Variables of ``StructTimeStepInfo`` associated to the frame of reference to be writen'
 
     settings_types['structure_nodes'] = 'list(int)'
     settings_default['structure_nodes'] = np.array([-1])
-    settings_description[''] = 'Number of the nodes to be writen'
+    settings_description['structure_nodes'] = 'Number of the nodes to be writen'
 
     settings_types['aero_panels_variables'] = 'list(str)'
     settings_default['aero_panels_variables'] = ['']
-    settings_description[''] = 'Variables of ``AeroTimeStepInfo`` associated to panels to be writen'
+    settings_description['aero_panels_variables'] = 'Variables of ``AeroTimeStepInfo`` associated to panels to be writen'
 
     settings_types['aero_panels_isurf'] = 'list(int)'
     settings_default['aero_panels_isurf'] = np.array([0])
-    settings_description[''] = "Number of the panels' surface to be output"
+    settings_description['aero_panels_isurf'] = "Number of the panels' surface to be output"
     settings_types['aero_panels_im'] = 'list(int)'
     settings_default['aero_panels_im'] = np.array([0])
-    settings_description[''] = 'Chordwise index of the panels to be output'
+    settings_description['aero_panels_im'] = 'Chordwise index of the panels to be output'
     settings_types['aero_panels_in'] = 'list(int)'
     settings_default['aero_panels_in'] = np.array([0])
-    settings_description[''] = 'Spanwise index of the panels to be output'
+    settings_description['aero_panels_in'] = 'Spanwise index of the panels to be output'
 
     settings_types['aero_nodes_variables'] = 'list(str)'
     settings_default['aero_nodes_variables'] = ['']
-    settings_description[''] = 'Variables of ``AeroTimeStepInfo`` associated to nodes to be writen'
+    settings_description['aero_nodes_variables'] = 'Variables of ``AeroTimeStepInfo`` associated to nodes to be writen'
 
     settings_types['aero_nodes_isurf'] = 'list(int)'
     settings_default['aero_nodes_isurf'] = np.array([0])
-    settings_description[''] = "Number of the nodes' surface to be output"
+    settings_description['aero_nodes_isurf'] = "Number of the nodes' surface to be output"
     settings_types['aero_nodes_im'] = 'list(int)'
     settings_default['aero_nodes_im'] = np.array([0])
-    settings_description[''] = 'Chordwise index of the nodes to be output'
+    settings_description['aero_nodes_im'] = 'Chordwise index of the nodes to be output'
     settings_types['aero_nodes_in'] = 'list(int)'
     settings_default['aero_nodes_in'] = np.array([0])
-    settings_description[''] = 'Spanwise index of the nodes to be output'
+    settings_description['aero_nodes_in'] = 'Spanwise index of the nodes to be output'
 
     settings_types['cleanup_old_solution'] = 'bool'
     settings_default['cleanup_old_solution'] = 'false'
-    settings_description[''] = 'Remove the existing files'
+    settings_description['cleanup_old_solution'] = 'Remove the existing files'
 
     settings_table = settings.SettingsTable()
     __doc__ += settings_table.generate(settings_types, settings_default, settings_description)
