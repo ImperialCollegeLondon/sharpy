@@ -40,6 +40,7 @@ class SaveData(BaseSolver):
 
         self.settings_types = dict()
         self.settings_default = dict()
+        self.settings_description = dict()
 
         self.settings_types['folder'] = 'str'
         self.settings_default['folder'] = './output'
@@ -50,12 +51,16 @@ class SaveData(BaseSolver):
         self.settings_types['save_struct'] = 'bool'
         self.settings_default['save_struct'] = True
 
+        self.settings_types['save_linear'] = 'bool'
+        self.settings_default['save_linear'] = True
+        self.settings_description['save_linear'] = 'Save linear state space system'
+
         self.settings_types['skip_attr'] = 'list(str)'
         self.settings_default['skip_attr'] = ['fortran',
                                               'airfoils',
                                               'airfoil_db',
                                               'settings_types',
-                                              'beam',
+                                              # 'beam',
                                               'ct_dynamic_forces_list',
                                               #'ct_forces_list',
                                               'ct_gamma_dot_list',
@@ -83,7 +88,6 @@ class SaveData(BaseSolver):
         # see initialise and add_as_grp
         self.ClassesToSave=(sharpy.presharpy.presharpy.PreSharpy,)
 
-
     def initialise(self, data, custom_settings=None):
         self.data = data
         if custom_settings is None:
@@ -102,6 +106,9 @@ class SaveData(BaseSolver):
             os.makedirs(self.folder)
         self.filename=self.folder+self.data.settings['SHARPy']['case']+'.data.h5'
 
+        if os.path.isfile(self.filename):
+            os.remove(self.filename)
+
         # allocate list of classes to be saved
         if self.settings['save_aero']:
             self.ClassesToSave+=(sharpy.aero.models.aerogrid.Aerogrid,
@@ -112,6 +119,14 @@ class SaveData(BaseSolver):
                                 sharpy.structure.models.beam.Beam,
                                 sharpy.utils.datastructures.StructTimeStepInfo,)
 
+        if self.settings['save_linear']:
+            self.ClassesToSave += (sharpy.solvers.linearassembler.Linear,
+                                   sharpy.linear.assembler.linearaeroelastic.LinearAeroelastic,
+                                   sharpy.linear.assembler.linearbeam.LinearBeam,
+                                   sharpy.linear.assembler.linearuvlm.LinearUVLM,
+                                   sharpy.linear.src.libss.ss,
+                                   sharpy.linear.src.lingebm.FlexDynamic,)
+                                   # )
 
     def run(self, online=False):
 
