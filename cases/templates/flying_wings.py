@@ -386,8 +386,8 @@ class FlyingWing():
                      'StaticCoupled',
                      'AerogridPlot', 'BeamPlot', 'SaveData'],
             'case': self.case_name, 'route': self.route,
-            'write_screen': 'off', 'write_log': 'on',
-            'log_folder': self.route + '/output/',
+            'write_screen': 'on', 'write_log': 'on',
+            'log_folder': self.route + '/output/' + self.case_name + '/',
             'log_file': self.case_name + '.log'}
 
         config['BeamLoader'] = {
@@ -571,7 +571,7 @@ class FlyingWing():
                                    'output_psi': 'on',
                                    'screen_output': 'on'}
 
-        config['SaveData'] = {'folder': self.route + '/output/'}
+        config['SaveData'] = {'folder': self.route + '/output/' + self.case_name + '/'}
 
         config['Modal'] = {'folder': self.route + '/output/',
                            'NumLambda': 20,
@@ -587,29 +587,31 @@ class FlyingWing():
                            'write_modes_vtk': True,
                            'use_undamped_modes': True}
 
-        config['LinearAssembler'] = {'flow': ['LinearAeroelastic'],
-                                'LinearAeroelastic': {
-                                    'beam_settings': {'modal_projection': False,
-                                                      'inout_coords': 'nodes',
-                                                      'discrete_time': True,
-                                                      'newmark_damp': 0.5,
-                                                      'discr_method': 'newmark',
-                                                      'dt': self.dt,
-                                                      'proj_modes': 'undamped',
-                                                      'use_euler': 'off',
-                                                      'num_modes': 40,
-                                                      'print_info': 'on',
-                                                      'gravity': 'on',
-                                                      'remove_dofs': []},
-                                    'aero_settings': {'dt': self.dt,
-                                                      'integr_order': 2,
-                                                      'density': self.rho,
-                                                      'remove_predictor': False,
-                                                      'use_sparse': True,
-                                                      'rigid_body_motion': True,
-                                                      'use_euler': False,
-                                                      'remove_inputs': ['u_gust']},
-                                    'rigid_body_motion': False}}
+        config['LinearAssembler'] = {'linear_system': 'LinearAeroelastic',
+                                     'linear_system_settings': {
+                                         'beam_settings': {'modal_projection': False,
+                                                           'inout_coords': 'nodes',
+                                                           'discrete_time': True,
+                                                           'newmark_damp': 0.5,
+                                                           'discr_method': 'newmark',
+                                                           'dt': self.dt,
+                                                           'proj_modes': 'undamped',
+                                                           'use_euler': 'off',
+                                                           'num_modes': 40,
+                                                           'print_info': 'on',
+                                                           'gravity': 'on',
+                                                           'remove_dofs': []},
+                                         'aero_settings': {'dt': self.dt,
+                                                           'integr_order': 2,
+                                                           'density': self.rho,
+                                                           'remove_predictor': False,
+                                                           'use_sparse': True,
+                                                           'rigid_body_motion': False,
+                                                           'use_euler': False,
+                                                           'remove_inputs': ['u_gust']},
+                                         'rigid_body_motion': False}}
+
+        config['AsymptoticStability'] = {'print_info': True}
 
         config['LinDynamicSim'] = {'dt': self.dt,
                                      'n_tsteps': self.n_tstep,
@@ -962,7 +964,7 @@ class GolandControlSurface(Goland):
                             if i_surf == 0:
                                 control_surface[ws_elem + i_elem, i_local_node] = 0  # Right flap
                             else:
-                                control_surface[ws_elem + i_elem, i_local_node] = 1  # Left flap
+                                control_surface[ws_elem + i_elem, i_local_node] = 0  # Left flap
                 ws_elem += num_elem_surf
                         # control_surface[i_elem, i_local_node] = 0
 
