@@ -130,8 +130,6 @@ def finish_writer():
     global cout_wrap
     if cout_wrap is not None:
         cout_wrap.close()
-    # cout_wrap = None
-
 
 # table output for residuals
 class TablePrinter(object):
@@ -193,6 +191,8 @@ class TablePrinter(object):
                        str(i_field) +
                        ']:^' +
                        str(self.field_length[i_field] + 2) +
+                       '.' +
+                       str(max(int(self.field_length[i_field]/2), 4)) +
                        self.field_types[i_field] +
                        '}')
 
