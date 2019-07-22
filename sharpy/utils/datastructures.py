@@ -413,6 +413,7 @@ class StructTimeStepInfo(object):
         self.mb_dqddt_quat = np.zeros((num_bodies,4), dtype=ct.c_double, order='F')
         self.forces_constraints_nodes = np.zeros((self.num_node, 6), dtype=ct.c_double, order='F')
         self.forces_constraints_FoR = np.zeros((num_bodies, 10), dtype=ct.c_double, order='F')
+        self.mb_dict = None
 
     def copy(self):
         copied = StructTimeStepInfo(self.num_node, self.num_elem, self.num_node_elem, ct.c_int(len(self.q)-10), self.mb_quat.shape[0])
