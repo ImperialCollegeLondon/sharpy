@@ -89,6 +89,24 @@ class SaveData(BaseSolver):
         self.ClassesToSave=(sharpy.presharpy.presharpy.PreSharpy,)
 
     def initialise(self, data, custom_settings=None):
+
+        # Add these anyway - therefore if you add your own skip_attr you don't have to retype all of these
+        self.settings_default['skip_attr'] += ['fortran',
+                                              'airfoils',
+                                              'airfoil_db',
+                                              'settings_types',
+                                              'ct_dynamic_forces_list',
+                                              'ct_forces_list',
+                                              'ct_gamma_dot_list',
+                                              'ct_gamma_list',
+                                              'ct_gamma_star_list',
+                                              'ct_normals_list',
+                                              'ct_u_ext_list',
+                                              'ct_u_ext_star_list',
+                                              'ct_zeta_dot_list',
+                                              'ct_zeta_list',
+                                              'ct_zeta_star_list',
+                                              'dynamic_input']
         self.data = data
         if custom_settings is None:
             self.settings = data.settings[self.solver_id]

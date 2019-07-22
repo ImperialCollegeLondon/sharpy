@@ -37,7 +37,7 @@ class AsymptoticStability(BaseSolver):
         self.settings_types['sys_id'] = 'str'
 
         self.settings_types['frequency_cutoff'] = 'float'
-        self.settings_default['frequency_cutoff'] = 100
+        self.settings_default['frequency_cutoff'] = 0
 
         self.settings_types['export_eigenvalues'] = 'bool'
         self.settings_default['export_eigenvalues'] = False
@@ -126,7 +126,14 @@ class AsymptoticStability(BaseSolver):
 
         # Convert DT eigenvalues into CT
         if ss.dt:
-            eigenvalues = np.log(eigenvalues) / ss.dt
+            # Obtain dimensional time step
+            ScalingFacts = self.data.linear.lsys[sys_id].uvlm.sys.ScalingFacts
+            if ScalingFacts['length'] != 1.0:
+                dt = ScalingFacts['length'] * 2 / self.data.aero.surface_m[0] / ScalingFacts['speed']
+                assert np.abs(dt - ScalingFacts['time'] * ss.dt) < 1e-14, 'dimensional time-scaling not correct!'
+            else:
+                dt = ss.dt
+            eigenvalues = np.log(eigenvalues) / dt
 
         self.eigenvalues, self.eigenvectors = self.sort_eigenvalues(eigenvalues, eigenvectors, self.frequency_cutoff)
 
@@ -143,27 +150,27 @@ class AsymptoticStability(BaseSolver):
         if self.settings['modes_to_plot'] is not []:
             self.plot_modes()
 
-        if self.with_postprocessors:
-            mode_shape_list = []
-            for mode in range(10):
-                gamma, gamma_dot, gamma_star, struct = self.reconstruct_mode(mode)
-                mode_shape = {'gamma': gamma,
-                              'gamma_star': gamma_star,
-                              'gamma_dot': gamma_dot,
-                              'struct': struct}
-                mode_shape_list.append(mode_shape)
-
-                modal_tstep = self.data.aero.timestep_info[-1].copy()
-                dummy_struct = self.data.structure.timestep_info[-1].copy()
-                modal_tstep.gamma = gamma
-                modal_tstep.gamma_star = gamma_star
-                modal_tstep.gamma_dot = gamma_dot
-                self.data.aero.timestep_info.append(modal_tstep)
-                self.data.structure.timestep_info.append(dummy_struct)
-                # run postprocessors
-                if self.with_postprocessors:
-                    for postproc in self.postprocessors:
-                        self.data = self.postprocessors[postproc].run(online=True)
+        # if self.with_postprocessors:
+        #     mode_shape_list = []
+        #     for mode in range(10):
+        #         gamma, gamma_dot, gamma_star, struct = self.reconstruct_mode(mode)
+        #         mode_shape = {'gamma': gamma,
+        #                       'gamma_star': gamma_star,
+        #                       'gamma_dot': gamma_dot,
+        #                       'struct': struct}
+        #         mode_shape_list.append(mode_shape)
+        #
+        #         modal_tstep = self.data.aero.timestep_info[-1].copy()
+        #         dummy_struct = self.data.structure.timestep_info[-1].copy()
+        #         modal_tstep.gamma = gamma
+        #         modal_tstep.gamma_star = gamma_star
+        #         modal_tstep.gamma_dot = gamma_dot
+        #         self.data.aero.timestep_info.append(modal_tstep)
+        #         self.data.structure.timestep_info.append(dummy_struct)
+        #         # run postprocessors
+        #         if self.with_postprocessors:
+        #             for postproc in self.postprocessors:
+        #                 self.data = self.postprocessors[postproc].run(online=True)
 
         self.data.linear.stability = dict()
         self.data.linear.stability['eigenvectors'] = self.eigenvectors
@@ -176,6 +183,10 @@ class AsymptoticStability(BaseSolver):
         """
         Saves a certain number of eigenvalues and eigenvectors to file
 
+        References:
+            Loading and saving complex arrays:
+            https://stackoverflow.com/questions/6494102/how-to-save-and-load-an-array-of-complex-numbers-using-numpy-savetxt/6522396
+
         Args:
             num_evals: Number of eigenvalues to save
         """
@@ -183,9 +194,11 @@ class AsymptoticStability(BaseSolver):
         if not os.path.exists(stability_folder_path):
             os.makedirs(stability_folder_path)
         evec_pd = pd.DataFrame(data=self.eigenvectors[:, :num_evals])
-        eval_pd = pd.DataFrame(data=[self.eigenvalues.real, self.eigenvalues.imag]).T
+        # eval_pd = pd.DataFrame(data=[self.eigenvalues.real, self.eigenvalues.imag]).T
         evec_pd.to_csv(stability_folder_path + '/eigenvectors.csv')
-        eval_pd.to_csv(stability_folder_path + '/eigenvalues.csv')
+        # eval_pd.to_csv(stability_folder_path + '/eigenvalues.csv')
+        np.savetxt(stability_folder_path + '/eigenvalues.dat', self.eigenvalues[:num_evals].view(float).reshape(-1, 2))
+
 
     def print_eigenvalues(self):
         """
@@ -326,7 +339,8 @@ class AsymptoticStability(BaseSolver):
         eigenvector[-self.data.linear.lsys[sys_id].beam.ss.states // 2 - 10: -self.data.linear.lsys[sys_id].beam.ss.states] *= fact_rbm
 
         # State simulation
-        x_sim = fact * eigenvector.real.dot(np.sin(natural_freq * t_dom) * np.exp(damping * t_dom))
+        x_sim = np.real(fact * eigenvector.dot(np.exp(1j*eigenvalue*t_dom)))
+        # x_sim = fact * eigenvector.real.dot(np.sin(natural_freq * t_dom) * np.exp(damping * t_dom))
 
         return t_dom, x_sim
 
@@ -363,7 +377,7 @@ class AsymptoticStability(BaseSolver):
             frequency_cutoff = np.inf
 
         # Remove poles in the negative imaginary plane (Im(\lambda)<0)
-        criteria_a = np.imag(eigenvalues) <= frequency_cutoff
+        criteria_a = np.abs(np.imag(eigenvalues)) <= frequency_cutoff
         # criteria_b = np.imag(eigenvalues) > -1e-2
         eigenvalues_truncated = eigenvalues[criteria_a].copy()
         eigenvectors_truncated = eigenvectors[:, criteria_a].copy()
