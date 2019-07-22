@@ -28,7 +28,8 @@ class Writer(object):
     sharpy_license = \
         '''Aeroelastics Lab, Aeronautics Department.
     Copyright (c), Imperial College London.
-    All rights reserved. '''
+    All rights reserved. 
+    License available at https://github.com/imperialcollegelondon/sharpy'''
 
     wrapper = textwrap.TextWrapper(width=output_columns, break_long_words=False)
 
