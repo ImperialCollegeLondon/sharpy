@@ -81,11 +81,8 @@ class DynamicCoupled(BaseSolver):
         self.settings_types['postprocessors_settings'] = 'dict'
         self.settings_default['postprocessors_settings'] = dict()
 
-        self.settings_types['controller_id'] = 'list(str)'
+        self.settings_types['controller_id'] = 'dict'
         self.settings_default['controller_id'] = list()
-
-        self.settings_types['controller_types'] = 'list(str)'
-        self.settings_default['controller_types'] = list()
 
         self.settings_types['controller_settings'] = 'dict'
         self.settings_default['controller_settings'] = dict()
@@ -123,6 +120,7 @@ class DynamicCoupled(BaseSolver):
         self.residual_table = None
         self.postprocessors = dict()
         self.with_postprocessors = False
+        self.controllers = None
 
         self.time_aero = 0.
         self.time_struc = 0.
@@ -174,8 +172,8 @@ class DynamicCoupled(BaseSolver):
         self.with_controllers = False
         if len(self.settings['controller_id']) > 0:
             self.with_controllers = True
-        for controller_id in self.settings['controller_id']:
-            self.controllers[controller_id] = controller_interface.initialise_controller(self.settings['controller_type'][controller_id])
+        for controller_id, controller_type in self.settings['controller_id'].items():
+            self.controllers[controller_id] = controller_interface.initialise_controller(controller_type)
             self.controllers[controller_id].initialise(
                     self.settings['controller_settings'][controller_id],
                     controller_id)
