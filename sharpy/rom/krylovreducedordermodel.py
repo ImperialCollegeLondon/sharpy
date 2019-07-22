@@ -2,6 +2,8 @@ import numpy as np
 import scipy.linalg as sclalg
 import sharpy.linear.src.libss as libss
 import time
+import sharpy.utils.settings as settings
+import sharpy.utils.cout_utils as cout
 
 
 class KrylovReducedOrderModel(object):
@@ -42,45 +44,88 @@ class KrylovReducedOrderModel(object):
             >>> rom.initialise(sharpy_data, FullOrderModelSS)
             >>> rom.run(algorithm, krylov_r, interpolation_point)
     """
+    rom_id = 'krylov'
 
+    settings_types = dict()
+    settings_default = dict()
+    settings_description = dict()
+
+    settings_types['frequency'] = 'list(float)'
+    settings_default['frequency'] = np.array([0])
+    settings_description['frequency'] = 'Interpolation points in the complex plane [rad/s]'
+    
+    settings_types['algorithm'] = 'str'
+    settings_default['algorithm'] = ''
+    settings_description['algorithm'] = 'Krylov reduction method algorithm'
+    
+    settings_types['r'] = 'int'
+    settings_default['r'] = 1
+    settings_description['r'] = 'Moments to match at the interpolation points'
+    
+    settings_types['left_tangent'] = 'np.ndarray'
+    settings_default['left_tangent'] = None
+    settings_description['left_tangent'] = 'Left tangential interpolation vector'
+
+    settings_types['right_tangent'] = 'np.ndarray'
+    settings_default['right_tangent'] = None
+    settings_description['right_tangent'] = 'Left tangential interpolation vector'
+
+    settings_types['restart_arnoldi'] = 'bool'
+    settings_default['restart_arnoldi'] = False
+    settings_description['restart_arnoldi'] = 'Restart Arnoldi iteration with r-=1 if ROM is unstable'
+
+    # Not yet merged, uncomment when branches merged
+    # settings_table = settings.SettingsTable()
+    # __doc__ += settings_table.generate(settings_types, settings_default, settings_description)
+
+    supported_methods = ('one_sided_arnoldi',
+                         'two_sided_arnoldi',
+                         'dual_rational_arnoldi',
+                         'mimo_rational_arnoldi',
+                         'mimo_block_arnoldi')
+    
     def __init__(self):
-
-        # self.settings_types = dict()
-        # self.settings_default = dict()
-        #
-        # self.settings_types['algorithm'] = 'str'
-        # self.settings_default['algorithm'] = None
-        #
-        # self.settings_types['frequencies'] = 'list(complex)'
-        # self.settings_default['frequencies'] = None
+        self.settings = dict()
 
         self.frequency = None
         self.algorithm = None
         self.ss = None
-        self.r = 100
+        self.r = 1
         self.V = None
         self.H = None
         self.W = None
         self.ssrom = None
-        self.data = None
         self.sstype = None
         self.nfreq = None
-        self.restart_arnoldi = False
+        self.restart_arnoldi = None
         self.cpu_summary = dict()
 
-    def initialise(self, data, ss):
+    def initialise(self, in_settings=None):
 
-        self.data = data  # Optional
-        self.ss = ss
+        try:
+            cout.cout_wrap('Initialising Krylov Model Order Reduction')
+        except ValueError:
+            pass
 
-        if self.ss.dt is None:
-            self.sstype = 'ct'
-        else:
-            self.sstype = 'dt'
+        self.settings = in_settings
+        settings.to_custom_types(in_settings, self.settings_types, self.settings_default)
 
+        self.algorithm = self.settings['algorithm']
+        if self.algorithm not in self.supported_methods:
+            raise NotImplementedError('Algorithm %s not recognised, check for spelling or it'
+                                      'could be that is not yet implemented'
+                                      % self.algorithm)
 
+        self.frequency = self.settings['frequency']
+        self.r = self.settings['r'].value
+        self.restart_arnoldi = self.settings['restart_arnoldi'].value
 
-    def run(self, algorithm, r, frequency=None, right_tangent=None, left_tangent=None):
+        try:
+            self.nfreq = self.frequency.shape[0]
+        except AttributeError:
+            self.nfreq = 1
+
+    def run(self, ss):
         """
         Performs Model Order Reduction employing Krylov space projection methods.
 
@@ -92,11 +137,12 @@ class KrylovReducedOrderModel(object):
         ``one_sided_arnoldi``      1                     SISO Systems
         ``two_sided_arnoldi``      1                     SISO Systems
         ``dual_rational_arnoldi``  K                     SISO systems and Tangential interpolation for MIMO systems
-        ``mimo_rational_arnoldi``  K                     MIMO systems. Uses vector-wise construction (stable)
+        ``mimo_rational_arnoldi``  K                     MIMO systems. Uses vector-wise construction (more robust)
         ``mimo_block_arnoldi``     K                     MIMO systems. Uses block Arnoldi methods (more efficient)
         =========================  ====================  ==========================================================
 
         Args:
+            ss (sharpy.linear.src.libss.ss): State space to reduce
             algorithm (str): Selected algorithm
             r (int): Desired Krylov space order. See the relevant algorithm for details.
             frequency (np.ndarray): Array containing the interpolation points
@@ -106,15 +152,23 @@ class KrylovReducedOrderModel(object):
         Returns:
 
         """
-        self.algorithm = algorithm
-        self.frequency = frequency
-        self.r = r
-        try:
-            self.nfreq = frequency.shape[0]
-        except AttributeError:
-            self.nfreq = 1
+        self.ss = ss
 
-        print('Model Order Reduction in progress...')
+        try:
+            cout.cout_wrap('Model Order Reduction in progress...')
+        except ValueError:
+            pass
+
+        if self.ss.dt is None:
+            self.sstype = 'ct'
+        else:
+            self.sstype = 'dt'
+            self.frequency = np.exp(self.frequency * ss.dt)
+
+        algorithm = self.algorithm
+        frequency = self.frequency
+        r = self.r
+
         t0 = time.time()
 
         if algorithm == 'one_sided_arnoldi':
@@ -124,7 +178,9 @@ class KrylovReducedOrderModel(object):
             Ar, Br, Cr = self.two_sided_arnoldi(frequency, r)
 
         elif algorithm == 'dual_rational_arnoldi':
-            Ar, Br, Cr = self.dual_rational_arnoldi(frequency, r, right_tangent, left_tangent)
+            Ar, Br, Cr = self.dual_rational_arnoldi(frequency, r,
+                                                    self.settings['right_tangent'],
+                                                    self.settings['left_tangent'])
 
         elif algorithm == 'real_rational_arnoldi':
             Ar, Br, Cr = self.real_rational_arnoldi(frequency, r)
@@ -137,7 +193,8 @@ class KrylovReducedOrderModel(object):
 
         else:
             raise NotImplementedError('Algorithm %s not recognised, check for spelling or it may not be implemented'
-                                      %algorithm)
+                                      %self.algorithm)
+
 
         self.ssrom = libss.ss(Ar, Br, Cr, self.ss.D, self.ss.dt)
 
@@ -145,8 +202,12 @@ class KrylovReducedOrderModel(object):
 
         t_rom = time.time() - t0
         self.cpu_summary['run'] = t_rom
-        print('\t\t...Completed Model Order Reduction in %.2f s' % t_rom)
+        try:
+            cout.cout_wrap('\t\t...Completed Model Order Reduction in %.2f s' % t_rom)
+        except ValueError:
+            pass
 
+        return self.ssrom
 
     def one_sided_arnoldi(self, frequency, r):
         r"""
@@ -608,11 +669,20 @@ class KrylovReducedOrderModel(object):
             if any(eigs_abs > 1.):
                 unstable = True
                 unstable_eigenvalues = eigs[eigs_abs > 1.]
-                print('Unstable ROM - %d Eigenvalues with |r| > 1' % len(unstable_eigenvalues))
+                try:
+                    cout.cout_wrap('Unstable ROM - %d Eigenvalues with |r| > 1' % len(unstable_eigenvalues))
+                except ValueError:
+                    pass
                 for mu in unstable_eigenvalues:
-                    print('\tmu = %f + %fj' % (mu.real, mu.imag))
+                    try:
+                        cout.cout_wrap('\tmu = %f + %fj' % (mu.real, mu.imag))
+                    except ValueError:
+                        pass
             else:
-                print('ROM is stable')
+                try:
+                    cout.cout_wrap('ROM is stable')
+                except ValueError:
+                    pass
 
         else:
             if any(eigs.real > 0):

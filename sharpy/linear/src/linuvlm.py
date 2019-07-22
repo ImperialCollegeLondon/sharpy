@@ -19,6 +19,7 @@ import sharpy.linear.src.libsparse as libsp
 import sharpy.linear.src.librom as librom 
 import sharpy.utils.algebra as algebra
 import sharpy.utils.settings as settings
+import sharpy.utils.cout_utils as cout
 
 '''
  Dictionary for default settings.
@@ -661,6 +662,7 @@ class Dynamic(Static):
         Scale state-space model based of self.ScalingFacts
         """
 
+        cout.cout_wrap('Scaling UVLM system with reference time %fs' % self.ScalingFacts['time'])
         t0 = time.time()
         Kzeta = self.Kzeta
 
@@ -681,6 +683,8 @@ class Dynamic(Static):
         self.SS.dt = self.SS.dt / self.ScalingFacts['time']
 
         self.cpu_summary['nondim'] = time.time() - t0
+        cout.cout_wrap('Non-dimensional time step set (%f)' %self.SS.dt, 1)
+        cout.cout_wrap('System scaled in %fs' % self.cpu_summary['nondim'])
 
     def dimss(self):
 

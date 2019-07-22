@@ -17,13 +17,23 @@ class LinearUVLM(ss_interface.BaseElement):
 
         self.settings_types = dict()
         self.settings_default = dict()
+        self.settings_description = dict()
 
         self.settings_types['remove_inputs'] = 'list'
         self.settings_default['remove_inputs'] = []
 
+        self.settings_types['rom_method'] = 'str'
+        self.settings_default['rom_method'] = ''
+        self.settings_description['rom_method'] = 'Model reduction method to reduce UVLM'
+
+        self.settings_types['rom_method_settings'] = 'dict'
+        self.settings_default['rom_method_settings'] = dict()
+        self.settings_description['rom_method_settings'] = 'Settings for the desired ROM method'
+
         self.sys = None
         self.ss = None
         self.tsaero0 = None
+        self.rom = None
 
         self.settings = dict()
         self.state_variables = None
@@ -67,6 +77,14 @@ class LinearUVLM(ss_interface.BaseElement):
             self.control_surface = lincontrolsurfacedeflector.LinControlSurfaceDeflector()
             self.control_surface.initialise(data, uvlm)
 
+        if self.settings['rom_method'] != '':
+            # Initialise ROM
+            # Todo: initialise ROMs from string in a similar fashion as the solvers
+            # For now, just Krylov rom
+            import sharpy.rom.krylovreducedordermodel as krylov
+            self.rom = krylov.KrylovReducedOrderModel()
+            self.rom.initialise(self.settings['rom_method_settings'])
+
     def assemble(self):
         r"""
         Assembles the linearised UVLM system, removes the desired inputs and adds linearised control surfaces
@@ -101,7 +119,6 @@ class LinearUVLM(ss_interface.BaseElement):
                 gain_cs[:Kzeta_delta.shape[0], -self.control_surface.n_control_surfaces:] = Kzeta_delta
             self.ss.addGain(gain_cs, where='in')
             self.gain_cs = gain_cs
-
 
     def remove_inputs(self, remove_list=list):
         """
