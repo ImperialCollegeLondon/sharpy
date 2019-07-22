@@ -939,21 +939,22 @@ class FlexDynamic():
         """
 
         if self.scaled_reference_matrices:
-            raise UserWarning('System already time scaled. System may just need an update. See update_matrices_time_scale')
+            raise UserWarning('System already time scaled. System may just need an update.'
+                              ' See update_matrices_time_scale')
 
-        if time_ref != 1.0 and time_ref is not None:
-            if self.num_rig_dof == 0:
-                self.scaled_reference_matrices['dt'] = self.dt
-                self.dt /= time_ref
-                if self.settings['print_info']:
-                    cout.cout_wrap('Scaling beam according to reduced time...', 0)
-                    cout.cout_wrap('\tSetting the beam time step to (%.4f)' % self.dt, 1)
+        # if time_ref != 1.0 and time_ref is not None:
+        if self.num_rig_dof == 0:
+            self.scaled_reference_matrices['dt'] = self.dt
+            self.dt /= time_ref
+            if self.settings['print_info']:
+                cout.cout_wrap('Scaling beam according to reduced time...', 0)
+                cout.cout_wrap('\tSetting the beam time step to (%.4f)' % self.dt, 1)
 
-                self.scaled_reference_matrices['C'] = self.Cstr.copy()
-                self.scaled_reference_matrices['K'] = self.Kstr.copy()
-                self.update_matrices_time_scale(time_ref)
-            else:
-                warnings.warn('Time normalisation not yet implemented with rigid body motion.')
+            self.scaled_reference_matrices['C'] = self.Cstr.copy()
+            self.scaled_reference_matrices['K'] = self.Kstr.copy()
+            self.update_matrices_time_scale(time_ref)
+        else:
+            warnings.warn('Time normalisation not yet implemented with rigid body motion.')
 
     def update_matrices_time_scale(self, time_ref):
 

@@ -17,7 +17,7 @@ class LinearAssembler(BaseSolver):
 
     Creates a workspace containing the different linear elements of the state-space.
 
-    The user specifies which elements to build sequentially via the ``flow`` setting. If building
+    The user specifies which elements to build sequentially via the ``linear_system`` setting. If building
     more than one system, they can be joined in series.
 
     The most common uses will be:
@@ -30,33 +30,26 @@ class LinearAssembler(BaseSolver):
 
     The solver enables to load a user specific assembly of a state-space by means of the ``LinearCustom`` block.
 
-    Attributes:
-        settings (dict): Settings dictionary
-
-            =======================  =============  =====================================================  =========
-            Name                     Type           Description                                            Default
-            =======================  =============  =====================================================  =========
-            ``flow``                 ``list(str)``  List of state-space elements to assemble sequentially  ``[]``
-            ``linearisation_tstep``  ``int``        Time step to perform linearisation                     ``-1``
-            ``join_series``          ``bool``       Join assembled state-space elements in series          ``False``
-            =======================  =============  =====================================================  =========
-
     """
     solver_id = 'LinearAssembler'
 
+    settings_types = dict()
+    settings_default = dict()
+    settings_description = dict()
+
+    settings_types['linear_system'] = 'str'
+    settings_default['linear_system'] = None
+    settings_description['linear_system'] = 'Name of chosen state space assembly type'
+
+    settings_types['linear_system_settings'] = 'dict'
+    settings_default['linear_system_settings'] = dict()
+    settings_description['linear_system_settings'] = 'Settings for the desired state space assembler'
+
+    settings_types['linearisation_tstep'] = 'int'
+    settings_default['linearisation_tstep'] = -1
+    settings_description['linearisation_tstep'] = 'Chosen linearisation time step from ran time steps'
+
     def __init__(self):
-        self.settings_types = dict()
-        self.settings_default = dict()
-
-        self.settings_types['flow'] = 'list(str)'
-        self.settings_default['flow'] = []
-
-        self.settings_types['linearisation_tstep'] = 'int'
-        self.settings_default['linearisation_tstep'] = -1
-
-        self.settings_default['join_series'] = False
-        self.settings_types['join_series'] = 'bool'
-
         self.settings = dict()
         self.data = None
 
@@ -72,19 +65,6 @@ class LinearAssembler(BaseSolver):
             self.settings = data.settings[self.solver_id]
         settings.to_custom_types(self.settings, self.settings_types, self.settings_default)
 
-        # Some ideas - NG 6/5/19
-        #
-        # Create a state space element class that contains the individual subsystems with the following common methods:
-        #   - Assembly
-        #   - Connection
-        # Attributes:
-        #   - Specific class (linuvlm / lingebm)
-        #   - State Space Model
-        #   - Inputs / Outputs (which can be modified)
-        #
-        # Use this solver to assemble the wanted elements and connect them
-
-
         # Get consistent linearisation timestep
         ii_step = self.settings['linearisation_tstep']
         if type(ii_step) != int:
@@ -99,33 +79,16 @@ class LinearAssembler(BaseSolver):
         # Load available systems
         import sharpy.linear.assembler
 
-        flow = self.settings['flow']
+        # Load roms
+        import sharpy.rom
 
-        lsys = dict()
-        for lin_sys in flow:
-            lsys[lin_sys] = ss_interface.initialise_system(lin_sys)
-            lsys[lin_sys].initialise(data)
-            lsys[lin_sys].assemble()
-            self.data.linear.lsys = lsys
+        lsys = ss_interface.initialise_system(self.settings['linear_system'])
+        lsys.initialise(data)
+        self.data.linear.linear_system = lsys
 
     def run(self):
 
-        # series connection
-        if self.settings['join_series']:
-            sys_worked = 0
-            for system in self.data.linear.lsys:
-                if sys_worked == 0:
-                    self.data.linear.ss = self.data.linear.lsys[system].ss
-                else:
-                    self.data.linear.ss = libss.series(self.ss, self.linear.lsys[system].ss)
-                sys_worked += 1
-        else:
-            self.data.linear.ss = self.data.linear.lsys[self.settings['flow'][-1]].ss
-        # or aeroelastic: create lin aero ela element and within that element assemble + couple uvlm + beam and make
-        # sure that the input/output is clear in terms of variables for further connections
-
-        # Keep track of state, output and input variables. Add to linear class a dictionary called variables with the
-        # respective info, as done for the beam
+        self.data.linear.ss = self.data.linear.linear_system.assemble()
 
         return self.data
 
@@ -135,11 +98,13 @@ class Linear(object):
     This is the class responsible for the transfer of information and can be accessed as data.linear
     """
     def __init__(self, tsaero0, tsstruct0):
-        self.lsys = None
+        self.linear_system = None
         self.ss = None
         self.tsaero0 = tsaero0
         self.tsstruct0 = tsstruct0
         self.timestep_info = []
+        self.uvlm = None
+        self.beam = None
 
 
 if __name__ == "__main__":

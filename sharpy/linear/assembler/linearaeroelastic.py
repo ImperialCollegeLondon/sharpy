@@ -1,4 +1,4 @@
-from sharpy.linear.utils.ss_interface import BaseElement, linear_system
+import sharpy.linear.utils.ss_interface as ss_interface
 import numpy as np
 import sharpy.linear.src.lin_aeroelastic as lin_aeroelastic
 import sharpy.linear.src.libss as libss
@@ -7,8 +7,9 @@ import warnings
 import sharpy.utils.settings as settings
 import sharpy.utils.cout_utils as cout
 
-@linear_system
-class LinearAeroelastic(BaseElement):
+
+@ss_interface.linear_system
+class LinearAeroelastic(ss_interface.BaseElement):
     sys_id = 'LinearAeroelastic'
 
     settings_default = dict()
@@ -35,7 +36,7 @@ class LinearAeroelastic(BaseElement):
         self.uvlm = None
         self.beam = None
 
-        self.load_uvlm_from_file = False  # Todo
+        self.load_uvlm_from_file = False
 
         self.settings = dict()
         self.state_variables = None
@@ -44,43 +45,24 @@ class LinearAeroelastic(BaseElement):
     def initialise(self, data):
 
         try:
-            self.settings = data.settings['LinearAssembler'][self.sys_id]
+            self.settings = data.settings['LinearAssembler']['linear_system_settings']
         except KeyError:
             self.settings = None
         settings.to_custom_types(self.settings, self.settings_types, self.settings_default)
 
         self.sys = lin_aeroelastic.LinAeroEla(data, custom_settings_linear=self.settings)
 
-        # Import underlying elements
-        import sharpy.linear.assembler.linearuvlm as linearuvlm
-        import sharpy.linear.assembler.linearbeam as linearbeam
-
-        # Initialise aerodynamic
-        # Settings
-        try:
-            uvlm_settings = self.settings['aero_settings']
-        except KeyError:
-            uvlm_settings = None
-
         # Create Linear UVLM
-        uvlm = linearuvlm.LinearUVLM()
-        uvlm.initialise(data, custom_settings=uvlm_settings)
+        self.uvlm = ss_interface.initialise_system('LinearUVLM')
+        self.uvlm.initialise(data, custom_settings=self.settings['aero_settings'])
         if self.settings['uvlm_filename'] == '':
-            uvlm.assemble()
+            self.uvlm.assemble()
         else:
             self.load_uvlm_from_file = True
-        self.uvlm = uvlm
-
-        # Beam settings
-        try:
-            beam_settings = self.settings['beam_settings']
-        except KeyError:
-            beam_settings = None
 
         # Create beam
-        beam = linearbeam.LinearBeam()
-        beam.initialise(data, custom_settings=beam_settings)
-        self.beam = beam
+        self.beam = ss_interface.initialise_system('LinearBeam')
+        self.beam.initialise(data, custom_settings=self.settings['beam_settings'])
 
     def assemble(self):
         r"""
@@ -192,7 +174,7 @@ class LinearAeroelastic(BaseElement):
             if not self.settings['beam_settings']['modal_projection'].value:
                 Tas /= uvlm.sys.ScalingFacts['length']
 
-        self.ss = libss.couple(ss01=uvlm.ss, ss02=beam.ss, K12=Tas, K21=Tsa)
+        ss = libss.couple(ss01=uvlm.ss, ss02=beam.ss, K12=Tas, K21=Tsa)
         # self.aero_states = uvlm.ss.states
         # self.beam_states = beam.ss.states
         self.couplings['Tas'] = Tas
@@ -201,6 +183,8 @@ class LinearAeroelastic(BaseElement):
         # TODO
         self.state_variables = {'aero': uvlm.ss.states,
                                 'beam': beam.ss.states}
+
+        return ss
 
     def update(self, u_infty):
         """
@@ -226,11 +210,12 @@ class LinearAeroelastic(BaseElement):
 
         return self.ss
 
-    def load_uvlm(self, filename):
+    @staticmethod
+    def load_uvlm(filename):
         import sharpy.utils.h5utils as h5
         cout.cout_wrap('Loading UVLM state space system projected onto structural DOFs from file')
         read_data = h5.readh5(filename).data
-        uvlm_ss_read = read_data.linear.lsys[self.sys_id].uvlm.ss
+        uvlm_ss_read = read_data.linear.linear_system.uvlm.ss
         return libss.ss(uvlm_ss_read.A, uvlm_ss_read.B, uvlm_ss_read.C, uvlm_ss_read.D, dt=uvlm_ss_read.dt)
 
 

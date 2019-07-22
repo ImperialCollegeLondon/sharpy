@@ -119,7 +119,7 @@ class AsymptoticStability(BaseSolver):
             self.frequency_cutoff = np.inf
 
         sys_id = self.settings.get('sys_id')
-        ss = self.data.linear.lsys[sys_id].ss
+        ss = self.data.linear.ss
 
         # Calculate eigenvectors and eigenvalues of the full system
         eigenvalues, eigenvectors = np.linalg.eig(ss.A)
@@ -127,7 +127,7 @@ class AsymptoticStability(BaseSolver):
         # Convert DT eigenvalues into CT
         if ss.dt:
             # Obtain dimensional time step
-            ScalingFacts = self.data.linear.lsys[sys_id].uvlm.sys.ScalingFacts
+            ScalingFacts = self.data.linear.linear_system.uvlm.sys.ScalingFacts
             dt = ScalingFacts['length'] * 2 / self.data.aero.surface_m[0] / ScalingFacts['speed']
             assert np.abs(dt - ScalingFacts['time'] * ss.dt) < 1e-14, 'dimensional time-scaling not correct!'
             eigenvalues = np.log(eigenvalues) / dt
@@ -257,8 +257,8 @@ class AsymptoticStability(BaseSolver):
         sys_id = self.settings['sys_id']
         for mode in mode_shape_list:
             # Scale mode
-            aero_states = self.data.linear.lsys[sys_id].uvlm.ss.states
-            displacement_states = self.data.linear.lsys[sys_id].beam.ss.states // 2
+            aero_states = self.data.linear.linear_system.uvlm.ss.states
+            displacement_states = self.data.linear.linear_system.beam.ss.states // 2
             amplitude_factor = modal.scale_mode(self.data,
                                                 self.eigenvectors[aero_states:aero_states + displacement_states-10,
                                                 mode], rot_max_deg=10, perc_max=0.1)
@@ -319,7 +319,6 @@ class AsymptoticStability(BaseSolver):
             tuple: Time domain array and scaled eigenvector in time.
         """
 
-        sys_id = self.settings.get('sys_id')
 
         # Time domain representation of the mode
         eigenvalue = self.eigenvalues[mode_num]
@@ -333,7 +332,7 @@ class AsymptoticStability(BaseSolver):
         eigenvector.shape = (len(eigenvector), 1)
 
         eigenvector[-10:] *= fact_rbm
-        eigenvector[-self.data.linear.lsys[sys_id].beam.ss.states // 2 - 10: -self.data.linear.lsys[sys_id].beam.ss.states] *= fact_rbm
+        eigenvector[-self.data.linear.linear_system.beam.ss.states // 2 - 10: -self.data.linear.linear_system.beam.ss.states] *= fact_rbm
 
         # State simulation
         x_sim = np.real(fact * eigenvector.dot(np.exp(1j*eigenvalue*t_dom)))
@@ -342,8 +341,7 @@ class AsymptoticStability(BaseSolver):
         return t_dom, x_sim
 
     def reconstruct_mode(self, eig):
-        sys_id = self.settings.get('sys_id')
-        uvlm = self.data.linear.lsys[sys_id].uvlm
+        uvlm = self.data.linear.linear_system.uvlm
         # beam = self.data.linear.lsys[sys_id].lsys['LinearBeam']
 
         # for eig in range(10):

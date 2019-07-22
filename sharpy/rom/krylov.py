@@ -4,9 +4,10 @@ import sharpy.linear.src.libss as libss
 import time
 import sharpy.utils.settings as settings
 import sharpy.utils.cout_utils as cout
+import sharpy.utils.rom_interface as rom_interface
 
-
-class KrylovReducedOrderModel(object):
+@rom_interface.rom
+class Krylov(rom_interface.BaseRom):
     """
     Model Order Reduction Methods for Single Input Single Output (SISO) and MIMO
     Linear Time-Invariant (LTI) Systems using
@@ -20,7 +21,7 @@ class KrylovReducedOrderModel(object):
             >>> interpolation_point = np.array([0.0])
             >>> krylov_r = 4
             >>>
-            >>> rom = KrylovReducedOrderModel()
+            >>> rom = Krylov()
             >>> rom.initialise(sharpy_data, FullOrderModelSS)
             >>> rom.run(algorithm, krylov_r, interpolation_point)
 
@@ -31,7 +32,7 @@ class KrylovReducedOrderModel(object):
             >>> right_vector = np.block([[1, 0], [0, 1]])
             >>> left_vector = right_vector
             >>>
-            >>> rom = KrylovReducedOrderModel()
+            >>> rom = Krylov()
             >>> rom.initialise(sharpy_data, FullOrderModelSS)
             >>> rom.run(algorithm, krylov_r, interpolation_point, right_vector, left_vector)
 
@@ -40,11 +41,11 @@ class KrylovReducedOrderModel(object):
             >>> interpolation_point = np.array([0.0])
             >>> krylov_r = 4
             >>>
-            >>> rom = KrylovReducedOrderModel()
+            >>> rom = Krylov()
             >>> rom.initialise(sharpy_data, FullOrderModelSS)
             >>> rom.run(algorithm, krylov_r, interpolation_point)
     """
-    rom_id = 'krylov'
+    rom_id = 'Krylov'
 
     settings_types = dict()
     settings_default = dict()

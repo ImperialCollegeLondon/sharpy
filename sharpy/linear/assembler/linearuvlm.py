@@ -8,6 +8,7 @@ import sharpy.linear.src.linuvlm as linuvlm
 import sharpy.linear.src.libsparse as libsp
 import sharpy.utils.settings as settings
 import scipy.sparse as sp
+import sharpy.utils.rom_interface as rom_interface
 
 @ss_interface.linear_system
 class LinearUVLM(ss_interface.BaseElement):
@@ -79,10 +80,7 @@ class LinearUVLM(ss_interface.BaseElement):
 
         if self.settings['rom_method'] != '':
             # Initialise ROM
-            # Todo: initialise ROMs from string in a similar fashion as the solvers
-            # For now, just Krylov rom
-            import sharpy.rom.krylovreducedordermodel as krylov
-            self.rom = krylov.KrylovReducedOrderModel()
+            self.rom = rom_interface.initialise_rom(self.settings['rom_method'])
             self.rom.initialise(self.settings['rom_method_settings'])
 
     def assemble(self):
