@@ -91,7 +91,7 @@ class SaveData(BaseSolver):
     def initialise(self, data, custom_settings=None):
 
         # Add these anyway - therefore if you add your own skip_attr you don't have to retype all of these
-        self.settings_default['skip_attr'] += ['fortran',
+        self.settings_default['skip_attr'].append(['fortran',
                                               'airfoils',
                                               'airfoil_db',
                                               'settings_types',
@@ -106,7 +106,7 @@ class SaveData(BaseSolver):
                                               'ct_zeta_dot_list',
                                               'ct_zeta_list',
                                               'ct_zeta_star_list',
-                                              'dynamic_input']
+                                              'dynamic_input'])
         self.data = data
         if custom_settings is None:
             self.settings = data.settings[self.solver_id]

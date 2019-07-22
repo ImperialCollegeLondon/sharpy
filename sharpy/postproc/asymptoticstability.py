@@ -128,11 +128,8 @@ class AsymptoticStability(BaseSolver):
         if ss.dt:
             # Obtain dimensional time step
             ScalingFacts = self.data.linear.lsys[sys_id].uvlm.sys.ScalingFacts
-            if ScalingFacts['length'] != 1.0:
-                dt = ScalingFacts['length'] * 2 / self.data.aero.surface_m[0] / ScalingFacts['speed']
-                assert np.abs(dt - ScalingFacts['time'] * ss.dt) < 1e-14, 'dimensional time-scaling not correct!'
-            else:
-                dt = ss.dt
+            dt = ScalingFacts['length'] * 2 / self.data.aero.surface_m[0] / ScalingFacts['speed']
+            assert np.abs(dt - ScalingFacts['time'] * ss.dt) < 1e-14, 'dimensional time-scaling not correct!'
             eigenvalues = np.log(eigenvalues) / dt
 
         self.eigenvalues, self.eigenvectors = self.sort_eigenvalues(eigenvalues, eigenvectors, self.frequency_cutoff)
