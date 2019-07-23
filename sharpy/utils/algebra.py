@@ -1309,8 +1309,8 @@ def cross3(v,w):
 
 def der_quat_wrt_crv(quat0):
     '''
-    Provides change of quaternion, dquat, due to elementary rotation, dcrv, 
-    expressed as a 3 components Cartesian rotation vector such that 
+    Provides change of quaternion, dquat, due to elementary rotation, dcrv,
+    expressed as a 3 components Cartesian rotation vector such that
         C(quat + dquat) = C(quat0)C(dw)
     where C are rotation matrices.
 
@@ -1318,13 +1318,13 @@ def der_quat_wrt_crv(quat0):
         - G is the initial FoR
         - quat0 defines te rotation required to obtain A from G, namely:
                 Cga=quat2rotation(quat0)
-        - dcrv is an inifinitesimal Cartesian rotation vector, defined in A 
+        - dcrv is an inifinitesimal Cartesian rotation vector, defined in A
         components, which describes an infinitesimal rotation A -> B, namely:
                 Cab=crv2rotation(dcrv)
         - The total rotation G -> B is:
             Cga = Cga * Cab
         - As dcrv -> 0, Cga is equal to:
-            algebra.quat2rotation(quat0 + dquat), 
+            algebra.quat2rotation(quat0 + dquat),
         where dquat is the output of this function.
     '''
 
@@ -1623,6 +1623,56 @@ def cross3(v,w):
     return res
 
 
+def quat2euler(quat):
+    r"""
+    Quaternion to Euler angles transformation.
+
+    Transforms a normalised quaternion :math:`\chi\longrightarrow[\phi, \theta, \psi]` to roll, pitch and yaw angles
+    respectively.
+
+    The transformation is valid away from the singularity present at:
+
+    .. math:: \Delta = \frac{1}{2}
+
+    where :math:`\Delta = q_0 q_2 - q_1 q_3`.
+
+    The transformation is carried out as follows:
+
+    .. math::
+        \psi &= \arctan{\left(2\frac{q_0q_3+q_1q_2}{1-2(q_2^2+q_3^2)}\right)} \\
+        \theta &= \arcsin(2\Delta) \\
+        \phi &= \arctan\left(2\frac{q_0q_1 + q_2q_3}{1-2(q_1^2+q_2^2)}\right)
+
+    Args:
+        quat (np.ndarray): Normalised quaternion.
+
+    Returns:
+        np.ndarray: Array containing the Euler angles :math:`[\phi, \theta, \psi]` for roll, pitch and yaw, respectively.
+
+    References:
+        Blanco, J.L. - A tutorial on SE(3) transformation parameterizations and on-manifold optimization. Technical
+        Report 012010. ETS Ingenieria Informatica. Universidad de Malaga. 2013.
+    """
+
+    assert np.abs(np.linalg.norm(quat)-1.0) < 1.e6, 'Input quaternion is not normalised'
+
+    q0 = quat[0]
+    q1 = quat[1]
+    q2 = quat[2]
+    q3 = quat[3]
+
+    delta = quat[0]*quat[2] - quat[1]*quat[3]
+
+    if np.abs(delta) > 0.9 * 0.5:
+        warn('Warning, approaching singularity. Delta %.3f for singularity at Delta=0.5'%np.abs(delta))
+
+    yaw = -np.arctan(2*(q0*q3+q1*q2)/(1-2*(q2**2+q3**2)))
+    pitch = np.arcsin(2*delta)
+    roll = -np.arctan(2*(q0*q1+q2*q3)/(1-2*(q1**2+q2**2)))
+
+    return np.array([roll, pitch, yaw])
+
+
 def deuler_dt(euler):
     r"""
     Rate of change of the Euler angles in time for a given angular velocity in A frame :math:`\omega^A=[p, q, r]`.
@@ -1840,3 +1890,27 @@ def der_Teuler_by_w_NED(euler, w):
     derT[2, 1] = q * sp * tt * tsec + r * cp * tt * tsec
 
     return derT
+
+
+def multiply_matrices(*argv):
+    """
+    multiply_matrices
+
+    Multiply a series of matrices from left to right
+
+    Args:
+        *argv: series of numpy arrays
+    Returns:
+        sol(numpy array): product of all the given matrices
+
+    Examples:
+        solution = multiply_matrices(A, B, C)
+    """
+
+    size = np.shape(argv[0])
+    nrow = size[0]
+
+    sol = np.eye(nrow)
+    for M in argv:
+        sol = np.dot(sol, M)
+    return sol

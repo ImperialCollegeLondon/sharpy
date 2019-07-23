@@ -1,29 +1,14 @@
-"""
-Nonlinear dynamic multibody
-
-Nonlinear dynamic step solver for multibody structures
-
-Args:
-
-Returns:
-
-Examples:
-
-Notes:
-
-"""
 import ctypes as ct
 import numpy as np
 
 
 from sharpy.utils.settings import str2bool
 import sharpy.utils.solver_interface as solver_interface
-from sharpy.utils.solver_interface import solver, BaseSolver
+from sharpy.utils.solver_interface import solver, BaseSolver, solver_from_string
 #from sharpy.solvers.nonlineardynamicprescribedstep import NonLinearDynamicPrescribedStep
 import sharpy.utils.settings as settings
 import sharpy.utils.cout_utils as cout
 
-# from IPython import embed
 import scipy.linalg
 import sharpy.structure.utils.xbeamlib as xbeamlib
 import sharpy.utils.algebra as algebra
@@ -31,51 +16,31 @@ import h5py as h5
 import sharpy.utils.h5utils as h5utils
 import sharpy.utils.multibody as mb
 import sharpy.utils.utils_ams as uams
-import sharpy.utils.lagrangemultipliers as lagrangemultipliers
+import sharpy.structure.utils.lagrangeconstraints as lagrangeconstraints
 import matplotlib.pyplot as plt
 
+
+_BaseStructural = solver_from_string('_BaseStructural')
+
 @solver
-class NonLinearDynamicMultibody(BaseSolver):
+class NonLinearDynamicMultibody(_BaseStructural):
+    """
+    Nonlinear dynamic multibody
+
+    Nonlinear dynamic step solver for multibody structures.
+
+    """
     solver_id = 'NonLinearDynamicMultibody'
+    solver_classification = 'structural'
+
+    settings_types = _BaseStructural.settings_types.copy()
+    settings_default = _BaseStructural.settings_default.copy()
+    settings_description = _BaseStructural.settings_description.copy()
+
+    settings_table = settings.SettingsTable()
+    __doc__ += settings_table.generate(settings_types, settings_default, settings_description)
 
     def __init__(self):
-
-        self.settings_types = dict()
-        self.settings_default = dict()
-
-        self.settings_types['print_info'] = 'bool'
-        self.settings_default['print_info'] = True
-
-        self.settings_types['max_iterations'] = 'int'
-        self.settings_default['max_iterations'] = 500
-
-        self.settings_types['num_load_steps'] = 'int'
-        self.settings_default['num_load_steps'] = 1
-
-        self.settings_types['delta_curved'] = 'float'
-        self.settings_default['delta_curved'] = 1e-2
-
-        self.settings_types['min_delta'] = 'float'
-        self.settings_default['min_delta'] = 1e-5
-
-        self.settings_types['newmark_damp'] = 'float'
-        self.settings_default['newmark_damp'] = 1e-2
-
-        self.settings_types['dt'] = 'float'
-        self.settings_default['dt'] = 0.01
-
-        self.settings_types['num_steps'] = 'int'
-        self.settings_default['num_steps'] = 500
-
-        self.settings_types['gravity_on'] = 'bool'
-        self.settings_default['gravity_on'] = False
-
-        self.settings_types['gravity'] = 'float'
-        self.settings_default['gravity'] = 9.81
-
-        self.settings_types['relaxation_factor'] = 'float'
-        self.settings_default['relaxation_factor'] = 0.3
-
         self.data = None
         self.settings = None
 
@@ -83,6 +48,7 @@ class NonLinearDynamicMultibody(BaseSolver):
         self.sys_size = None
 
         # Total number of equations associated to the Lagrange multipliers
+        self.lc_list = None
         self.num_LM_eq = None
 
     def initialise(self, data, custom_settings=None):
@@ -111,7 +77,9 @@ class NonLinearDynamicMultibody(BaseSolver):
         self.beta = 0.25*(self.gamma + 0.5)*(self.gamma + 0.5)
 
         # Define the number of equations
-        self.num_LM_eq = lagrangemultipliers.define_num_LM_eq(self.data.structure.mb_dict)
+        self.lc_list = lagrangeconstraints.initialize_constraints(self.data.structure.mb_dict)
+        self.num_LM_eq = lagrangeconstraints.define_num_LM_eq(self.lc_list)
+
 
         # Define the number of dofs
         self.define_sys_size()
@@ -247,7 +215,7 @@ class NonLinearDynamicMultibody(BaseSolver):
 
 
         # Generate matrices associated to Lagrange multipliers
-        LM_C, LM_K, LM_Q = lagrangemultipliers.generate_lagrange_matrix(MBdict, MB_beam, MB_tstep, ts, self.num_LM_eq, self.sys_size, dt, Lambda, Lambda_dot)
+        LM_C, LM_K, LM_Q = lagrangeconstraints.generate_lagrange_matrix(self.lc_list, MB_beam, MB_tstep, ts, self.num_LM_eq, self.sys_size, dt, Lambda, Lambda_dot, "dynamic")
 
         #LM_C, LM_K, LM_Q = self.generate_lagrange_matrix(MB_beam, MB_tstep, dt, Lambda, Lambda_dot)
 
@@ -270,7 +238,7 @@ class NonLinearDynamicMultibody(BaseSolver):
 
         vel = np.zeros((6,),)
         acc = np.zeros((6,),)
-        for ibody in range(1, len(MB_tstep)):
+        for ibody in range(0, len(MB_tstep)):
             # I think this is the right way to do it, but to make it match the rest I change it temporally
             if False:
                 # MB_tstep[ibody].mb_quat[ibody,:] =  algebra.quaternion_product(MB_tstep[ibody].quat, MB_tstep[ibody].mb_quat[ibody,:])
@@ -293,13 +261,38 @@ class NonLinearDynamicMultibody(BaseSolver):
         # TODO: code
         pass
 
-    def run(self, structural_step=None):
+    def compute_forces_constraints(self, MB_beam, MB_tstep, ts, dt, Lambda, Lambda_dot):
+
+        LM_C, LM_K, LM_Q = lagrangeconstraints.generate_lagrange_matrix(self.lc_list, MB_beam, MB_tstep, ts, self.num_LM_eq, self.sys_size, dt, Lambda, Lambda_dot, "dynamic")
+        F = -np.dot(LM_C[:, -self.num_LM_eq:], Lambda_dot) - np.dot(LM_K[:, -self.num_LM_eq:], Lambda)
+
+        first_dof = 0
+        for ibody in range(len(MB_beam)):
+            # Forces associated to nodes
+            body_numdof = MB_beam[ibody].num_dof.value
+            body_freenodes = np.sum(MB_beam[ibody].vdof > -1)
+            last_dof = first_dof + body_numdof
+            MB_tstep[ibody].forces_constraints_nodes[(MB_beam[ibody].vdof > -1), :] = F[first_dof:last_dof].reshape(body_freenodes, 6, order='C')
+
+            # Forces associated to the frame of reference
+            if MB_beam[ibody].FoR_movement == 'free':
+                # TODO: How are the forces in the quaternion equation interpreted?
+                MB_tstep[ibody].forces_constraints_FoR[ibody, :] = F[last_dof:last_dof+10]
+                last_dof += 10
+
+            first_dof = last_dof
+            # print(MB_tstep[ibody].forces_constraints_nodes)
+        # TODO: right now, these forces are only used as an output, they are not read when the multibody is splitted
+
+
+    def run(self, structural_step=None, dt=None):
 
         if structural_step is None:
             structural_step = self.data.structure.timestep_info[-1]
         # Initialize variables
         MBdict = self.data.structure.mb_dict
-        dt = self.settings['dt'].value
+        if dt is None:
+            dt = self.settings['dt'].value
 
         # print("beg quat: ", structural_step.quat)
         # TODO: only working for constant forces
@@ -320,9 +313,12 @@ class NonLinearDynamicMultibody(BaseSolver):
         q += dt*dqdt + (0.5 - self.beta)*dt*dt*dqddt
         dqdt += (1.0 - self.gamma)*dt*dqddt
         dqddt = np.zeros((self.sys_size + num_LM_eq,), dtype=ct.c_double, order='F')
-        Lambda = q[-num_LM_eq:].astype(dtype=ct.c_double, copy=True, order='F')
-        Lambda_dot = dqdt[-num_LM_eq:].astype(dtype=ct.c_double, copy=True, order='F')
-        # TODO: what to do with lambda
+        if not num_LM_eq == 0:
+            Lambda = q[-num_LM_eq:].astype(dtype=ct.c_double, copy=True, order='F')
+            Lambda_dot = dqdt[-num_LM_eq:].astype(dtype=ct.c_double, copy=True, order='F')
+        else:
+            Lambda = 0
+            Lambda_dot = 0
 
         # Newmark-beta iterations
         old_Dq = 1.0
@@ -334,6 +330,8 @@ class NonLinearDynamicMultibody(BaseSolver):
             # Check if the maximum of iterations has been reached
             if (iter == self.settings['max_iterations'].value - 1):
                 print('Solver did not converge in ', iter, ' iterations.')
+                print('res = ', res)
+                print('LM_res = ', LM_res)
                 break
 
             # Update positions and velocities
@@ -360,7 +358,7 @@ class NonLinearDynamicMultibody(BaseSolver):
                     LM_res = np.max(np.abs(Dq[self.sys_size:self.sys_size+num_LM_eq]))/LM_old_Dq
                 else:
                     LM_res = 0.0
-                if (res < self.settings['min_delta'].value) and (LM_res < self.settings['min_delta'].value*1e-4):
+                if (res < self.settings['min_delta'].value) and (LM_res < self.settings['min_delta'].value*1e-2):
                     converged = True
 
             # Compute variables from previous values and increments
@@ -375,8 +373,12 @@ class NonLinearDynamicMultibody(BaseSolver):
             dqdt += self.gamma/(self.beta*dt)*Dq
             dqddt += 1.0/(self.beta*dt*dt)*Dq
 
-            Lambda = q[-num_LM_eq:].astype(dtype=ct.c_double, copy=True, order='F')
-            Lambda_dot = dqdt[-num_LM_eq:].astype(dtype=ct.c_double, copy=True, order='F')
+            if not num_LM_eq == 0:
+                Lambda = q[-num_LM_eq:].astype(dtype=ct.c_double, copy=True, order='F')
+                Lambda_dot = dqdt[-num_LM_eq:].astype(dtype=ct.c_double, copy=True, order='F')
+            else:
+                Lambda = 0
+                Lambda_dot = 0
 
             if converged:
                 break
@@ -397,7 +399,9 @@ class NonLinearDynamicMultibody(BaseSolver):
 
         # End of Newmark-beta iterations
         self.integrate_position(MB_beam, MB_tstep, dt)
-        lagrangemultipliers.postprocess(MB_beam, MB_tstep, MBdict)
+        # lagrangeconstraints.postprocess(self.lc_list, MB_beam, MB_tstep, MBdict, "dynamic")
+        lagrangeconstraints.postprocess(self.lc_list, MB_beam, MB_tstep, "dynamic")
+        self.compute_forces_constraints(MB_beam, MB_tstep, self.data.ts, dt, Lambda, Lambda_dot)
         if self.settings['gravity_on']:
             for ibody in range(len(MB_beam)):
                 xbeamlib.cbeam3_correct_gravity_forces(MB_beam[ibody], MB_tstep[ibody], self.settings)

@@ -6,6 +6,7 @@ import numpy as np
 import sharpy.aero.utils.mapping as mapping
 import sharpy.utils.cout_utils as cout
 import sharpy.utils.solver_interface as solver_interface
+import sharpy.utils.controller_interface as controller_interface
 from sharpy.utils.solver_interface import solver, BaseSolver
 import sharpy.utils.settings as settings
 import sharpy.utils.algebra as algebra
@@ -40,6 +41,7 @@ class DynamicCoupled(BaseSolver):
             ``dt``                                   ``float``      Time increment between timesteps                                           ``0.05``
             ``fsi_substeps``                         ``int``        Desc                                                                       ``70``
             ``fsi_tolerance``                        ``float``      Fluid-structure interaction tolerance                                      ``1e-5``
+            ``structural_substeps``                  ``int``        Number of structural steps per aero step (0 for fully coupled simulation)  ``0``
             ``relaxation_factor``                    ``float``      Desc                                                                       ``0.2``
             ``final_relaxation_factor``              ``float``      Desc                                                                       ``0.0``
             ``minimum_steps``                        ``int``        Desc                                                                       ``3``
@@ -90,16 +92,19 @@ class DynamicCoupled(BaseSolver):
         self.settings_default['aero_solver_settings'] = None
 
         self.settings_types['n_time_steps'] = 'int'
-        self.settings_default['n_time_steps'] = 100
+        self.settings_default['n_time_steps'] = None
 
         self.settings_types['dt'] = 'float'
-        self.settings_default['dt'] = 0.05
+        self.settings_default['dt'] = None
 
         self.settings_types['fsi_substeps'] = 'int'
         self.settings_default['fsi_substeps'] = 70
 
         self.settings_types['fsi_tolerance'] = 'float'
         self.settings_default['fsi_tolerance'] = 1e-5
+
+        self.settings_types['structural_substeps'] = 'int'
+        self.settings_default['structural_substeps'] = 0 # 0 is normal coupled sim.
 
         self.settings_types['relaxation_factor'] = 'float'
         self.settings_default['relaxation_factor'] = 0.2
@@ -114,10 +119,22 @@ class DynamicCoupled(BaseSolver):
         self.settings_default['relaxation_steps'] = 100
 
         self.settings_types['dynamic_relaxation'] = 'bool'
-        self.settings_default['dynamic_relaxation'] = True
+        self.settings_default['dynamic_relaxation'] = False
 
         self.settings_types['postprocessors'] = 'list(str)'
         self.settings_default['postprocessors'] = list()
+
+        self.settings_types['postprocessors_settings'] = 'dict'
+        self.settings_default['postprocessors_settings'] = dict()
+
+        self.settings_types['controller_id'] = 'list(str)'
+        self.settings_default['controller_id'] = list()
+
+        self.settings_types['controller_types'] = 'list(str)'
+        self.settings_default['controller_types'] = list()
+
+        self.settings_types['controller_settings'] = 'dict'
+        self.settings_default['controller_settings'] = dict()
 
         self.settings_types['postprocessors_settings'] = 'dict'
         self.settings_default['postprocessors_settings'] = dict()
@@ -176,6 +193,7 @@ class DynamicCoupled(BaseSolver):
             self.settings = custom_settings
         settings.to_custom_types(self.settings, self.settings_types, self.settings_default)
         self.dt = self.settings['dt']
+        self.substep_dt = self.dt.value/(self.settings['structural_substeps'].value + 1)
         self.print_info = self.settings['print_info']
         if self.settings['cleanup_previous_solution']:
             # if there's data in timestep_info[>0], copy the last one to
@@ -196,6 +214,17 @@ class DynamicCoupled(BaseSolver):
             self.postprocessors[postproc] = solver_interface.initialise_solver(postproc)
             self.postprocessors[postproc].initialise(
                 self.data, self.settings['postprocessors_settings'][postproc])
+
+        # initialise controllers
+        self.controllers = dict()
+        self.with_controllers = False
+        if len(self.settings['controller_id']) > 0:
+            self.with_controllers = True
+        for controller_id in self.settings['controller_id']:
+            self.controllers[controller_id] = controller_interface.initialise_controller(self.settings['controller_type'][controller_id])
+            self.controllers[controller_id].initialise(
+                    self.settings['controller_settings'][controller_id],
+                    controller_id)
 
         # print information header
         if self.print_info:
@@ -226,9 +255,23 @@ class DynamicCoupled(BaseSolver):
                                   self.settings['n_time_steps'].value + len(self.data.structure.timestep_info)):
             initial_time = time.perf_counter()
             structural_kstep = self.data.structure.timestep_info[-1].copy()
+            aero_kstep = self.data.aero.timestep_info[-1].copy()
+
+            # Add the controller here
+            if self.with_controllers:
+                state = {'structural': structural_kstep,
+                         'aero': aero_kstep}
+                for k, v in self.controllers.items():
+                    state = v.control(self.data, state)
+
+                structural_kstep = state['structural']
+                aero_kstep = state['aero']
+
             self.time_aero = 0.0
             self.time_struc = 0.0
 
+            controlled_structural_kstep = structural_kstep.copy()
+            controlled_aero_kstep = aero_kstep.copy()
             k = 0
             for k in range(self.settings['fsi_substeps'].value + 1):
                 if k == self.settings['fsi_substeps'].value and not self.settings['fsi_substeps'] == 0:
@@ -236,7 +279,8 @@ class DynamicCoupled(BaseSolver):
                     break
 
                 # generate new grid (already rotated)
-                aero_kstep = self.data.aero.timestep_info[-1].copy()
+                # aero_kstep = self.data.aero.timestep_info[-1].copy()
+                aero_kstep = controlled_aero_kstep.copy()
                 self.aero_solver.update_custom_grid(structural_kstep, aero_kstep)
 
                 # compute unsteady contribution
@@ -259,12 +303,21 @@ class DynamicCoupled(BaseSolver):
                 self.time_aero += time.perf_counter() - ini_time_aero
 
                 previous_kstep = structural_kstep.copy()
-                structural_kstep = self.data.structure.timestep_info[-1].copy()
+                # structural_kstep = self.data.structure.timestep_info[-1].copy()
+                structural_kstep = controlled_structural_kstep.copy()
+
                 # move the aerodynamic surface according the the structural one
                 self.aero_solver.update_custom_grid(structural_kstep, aero_kstep)
                 self.map_forces(aero_kstep,
                                 structural_kstep,
                                 force_coeff)
+
+                # relaxation
+                relax_factor = self.relaxation_factor(k)
+                relax(self.data.structure,
+                      structural_kstep,
+                      previous_kstep,
+                      relax_factor)
 
                 # check if nan anywhere.
                 # if yes, pdb.set_trace()
@@ -275,27 +328,27 @@ class DynamicCoupled(BaseSolver):
                     print('NaN found in unsteady_applied_forces!')
                     import pdb; pdb.set_trace()
 
-                # relaxation
-                relax_factor = self.relaxation_factor(k)
-                relax(self.data.structure,
-                      structural_kstep,
-                      previous_kstep,
-                      relax_factor)
+                steady_applied_forces = structural_kstep.steady_applied_forces.copy()
+                unsteady_applied_forces = structural_kstep.unsteady_applied_forces.copy()
+                for i_substep in range(self.settings['structural_substeps'].value + 1):
+                    # run structural solver
+                    ini_time_struc = time.perf_counter()
+                    coeff = (i_substep + 1)/(self.settings['structural_substeps'].value + 1)
+                    if coeff < 1.0:
+                        structural_kstep.steady_applied_forces[:] = ((coeff)*(steady_applied_forces) +
+                            (1.0 - coeff)*self.data.structure.timestep_info[-1].steady_applied_forces)
+                        structural_kstep.unsteady_applied_forces[:] = ((coeff)*(unsteady_applied_forces) +
+                            (1.0 - coeff)*self.data.structure.timestep_info[-1].unsteady_applied_forces)
 
-                if k > 0.9*self.settings['fsi_substeps'].value:
-                    relax_factor = 0.3
-                elif k > 0.8*self.settings['fsi_substeps'].value:
-                    relax_factor = 0.8
-
-                # run structural solver
-                ini_time_struc = time.perf_counter()
-                self.data = self.structural_solver.run(structural_step=structural_kstep)
-                self.time_struc += time.perf_counter() - ini_time_struc
+                    self.data = self.structural_solver.run(structural_step=structural_kstep, dt=self.substep_dt)
+                    self.time_struc += time.perf_counter() - ini_time_struc
 
                 # check convergence
                 if self.convergence(k,
                                     structural_kstep,
                                     previous_kstep):
+                    # move the aerodynamic surface according to the structural one
+                    self.aero_solver.update_custom_grid(structural_kstep, aero_kstep)
                     break
 
             # move the aerodynamic surface according the the structural one
@@ -306,7 +359,6 @@ class DynamicCoupled(BaseSolver):
 
             self.structural_solver.add_step()
             self.data.structure.timestep_info[-1] = structural_kstep.copy()
-            self.data.structure.integrate_position(-1, self.settings['dt'].value)
 
             final_time = time.perf_counter()
 
@@ -345,11 +397,6 @@ class DynamicCoupled(BaseSolver):
                 self.base_dqdt = 1.
             return False
 
-        # we don't want this to converge before introducing the gamma_dot forces!
-        if self.settings['include_unsteady_force_contribution'].value:
-            if k < self.settings['pseudosteps_ramp_unsteady_force'].value:
-                return False
-
         # relative residuals
         self.res = (np.linalg.norm(tstep.q-
                                    previous_tstep.q)/
@@ -357,6 +404,11 @@ class DynamicCoupled(BaseSolver):
         self.res_dqdt = (np.linalg.norm(tstep.dqdt-
                                         previous_tstep.dqdt)/
                          self.base_dqdt)
+
+        # we don't want this to converge before introducing the gamma_dot forces!
+        if self.settings['include_unsteady_force_contribution'].value:
+            if k < self.settings['pseudosteps_ramp_unsteady_force'].value:
+                return False
 
         # convergence
         if k > self.settings['minimum_steps'].value - 1:

@@ -103,6 +103,9 @@ class StepUvlm(BaseSolver):
         if t is None:
             t = self.data.ts*dt
 
+        if len(aero_tstep.zeta) == 0:
+            return self.data
+
         # generate uext
         self.velocity_generator.generate({'zeta': aero_tstep.zeta,
                                           'override': True,
@@ -159,7 +162,11 @@ class StepUvlm(BaseSolver):
         self.data.aero.generate_zeta(beam, self.data.aero.aero_settings, -1, beam_ts=-1)
 
     def update_custom_grid(self, structure_tstep, aero_tstep):
-        self.data.aero.generate_zeta_timestep_info(structure_tstep, aero_tstep, self.data.structure, self.data.aero.aero_settings)
+        self.data.aero.generate_zeta_timestep_info(structure_tstep,
+                aero_tstep,
+                self.data.structure,
+                self.data.aero.aero_settings,
+                dt=self.settings['dt'].value)
 
     @staticmethod
     def filter_gamma_dot(tstep, history, filter_param):

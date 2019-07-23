@@ -168,7 +168,7 @@ class Aerogrid(object):
         except IndexError:
             self.timestep_info.append(self.ini_info.copy())
 
-    def generate_zeta_timestep_info(self, structure_tstep, aero_tstep, beam, aero_settings, it=None):
+    def generate_zeta_timestep_info(self, structure_tstep, aero_tstep, beam, aero_settings, it=None, dt=None):
         if it is None:
             it = len(beam.timestep_info) - 1
         global_node_in_surface = []
@@ -252,7 +252,33 @@ class Aerogrid(object):
                                 self.cs_generators[i_control_surface](params)
 
                         elif self.aero_dict['control_surface_type'][i_control_surface] == 2:
-                            raise NotImplementedError('control-type control surfaces are not yet implemented')
+                            control_surface_info['type'] = 'controlled'
+
+                            try:
+                                old_deflection = self.data.aero.timestep_info[-1].control_surface_deflection[i_control_surface]
+                            except AttributeError:
+                                try:
+                                    old_deflection = aero_tstep.control_surface_deflection[i_control_surface]
+                                except IndexError:
+                                    old_deflection = self.aero_dict['control_surface_deflection'][i_control_surface]
+
+                            try:
+                                control_surface_info['deflection'] = aero_tstep.control_surface_deflection[i_control_surface]
+                            except IndexError:
+                                control_surface_info['deflection'] = self.aero_dict['control_surface_deflection'][i_control_surface]
+
+                            if dt is not None:
+                                control_surface_info['deflection_dot'] = (
+                                        (control_surface_info['deflection'] - old_deflection)/dt)
+                            else:
+                                control_surface_info['deflection_dot'] = 0.0
+
+                            control_surface_info['chord'] = self.aero_dict['control_surface_chord'][i_control_surface]
+
+                            try:
+                                control_surface_info['hinge_coords'] = self.aero_dict['control_surface_hinge_coords'][i_control_surface]
+                            except KeyError:
+                                control_surface_info['hinge_coords'] = None
                         else:
                             raise NotImplementedError(str(self.aero_dict['control_surface_type'][i_control_surface]) +
                                 ' control surfaces are not yet implemented')
@@ -377,35 +403,45 @@ class Aerogrid(object):
         # Check whether the iteration is part of FSI (ie the input is a k-step) or whether it is an only aerodynamic
         # simulation
         part_of_fsi = True
-        if tstep in previous_tsteps:
-            part_of_fsi = False
+        try:
+            if tstep is previous_tsteps[-1]:
+                part_of_fsi = False
+        except IndexError:
+            for i_surf in range(tstep.n_surf):
+                tstep.gamma_dot[i_surf].fill(0.0)
+            return
 
         if len(previous_tsteps) == 0:
             for i_surf in range(tstep.n_surf):
                 tstep.gamma_dot[i_surf].fill(0.0)
-        elif len(previous_tsteps) == 1:
-            # first order
-            # f'(n) = (f(n) - f(n - 1))/dx
+        # elif len(previous_tsteps) == 1:
+            # # first order
+            # # f'(n) = (f(n) - f(n - 1))/dx
+            # for i_surf in range(tstep.n_surf):
+                # tstep.gamma_dot[i_surf] = (tstep.gamma[i_surf] - previous_tsteps[-1].gamma[i_surf])/dt
+        # else:
+            # # second order
+            # for i_surf in range(tstep.n_surf):
+                # if (not np.isfinite(tstep.gamma[i_surf]).any()) or \
+                    # (not np.isfinite(previous_tsteps[-1].gamma[i_surf]).any()) or \
+                        # (not np.isfinite(previous_tsteps[-2].gamma[i_surf]).any()):
+                    # raise ArithmeticError('NaN found in gamma')
+
+                # if part_of_fsi:
+                    # tstep.gamma_dot[i_surf] = (3.0*tstep.gamma[i_surf]
+                                               # - 4.0*previous_tsteps[-1].gamma[i_surf]
+                                               # + previous_tsteps[-2].gamma[i_surf])/(2.0*dt)
+                # else:
+                    # tstep.gamma_dot[i_surf] = (3.0*tstep.gamma[i_surf]
+                                               # - 4.0*previous_tsteps[-2].gamma[i_surf]
+                                               # + previous_tsteps[-3].gamma[i_surf])/(2.0*dt)
+        if part_of_fsi:
             for i_surf in range(tstep.n_surf):
                 tstep.gamma_dot[i_surf] = (tstep.gamma[i_surf] - previous_tsteps[-1].gamma[i_surf])/dt
         else:
-            # second order
             for i_surf in range(tstep.n_surf):
-                if (not np.isfinite(tstep.gamma[i_surf]).any()) or \
-                    (not np.isfinite(previous_tsteps[-1].gamma[i_surf]).any()) or \
-                        (not np.isfinite(previous_tsteps[-2].gamma[i_surf]).any()):
-                    raise ArithmeticError('NaN found in gamma')
+                tstep.gamma_dot[i_surf] = (tstep.gamma[i_surf] - previous_tsteps[-2].gamma[i_surf])/dt
 
-                if part_of_fsi:
-                    tstep.gamma_dot[i_surf] = (3.0*tstep.gamma[i_surf]
-                                               - 4.0*previous_tsteps[-1].gamma[i_surf]
-                                               + previous_tsteps[-2].gamma[i_surf])/(2.0*dt)
-                else:
-                    tstep.gamma_dot[i_surf] = (3.0*tstep.gamma[i_surf]
-                                               - 4.0*previous_tsteps[-2].gamma[i_surf]
-                                               + previous_tsteps[-3].gamma[i_surf])/(2.0*dt)
-        # for i_surf in range(tstep.n_surf):
-        #     tstep.gamma_dot[i_surf] = (tstep.gamma[i_surf] - previous_tsteps[-1].gamma[i_surf])/dt
 
 
 def generate_strip(node_info, airfoil_db, aligned_grid, orientation_in=np.array([1, 0, 0]), calculate_zeta_dot = False):

@@ -1030,6 +1030,47 @@ def newmark_ss(Minv, C, K, dt, num_damp=1e-4):
 
     where :math:`\alpha>0` accounts for small positive algorithmic damping.
 
+    The following steps describe how to apply the Newmark-beta scheme to a state-space formulation. The original idea is based on [1].
+
+    The equation of a second order system dynamics reads:
+    .. math::
+        M\bm{\ddot q} + C\bm{\dot q} + K\bm{q} = F
+
+    Applying that equation to the time steps ``$n$'' and  ``$n+1$'', rearranging terms and multiplying by $M^{-1}$:
+    .. math::
+        \bm{\ddot q}_{n} = - M^{-1}C\bm{\dot q}_{n} - M^{-1}K\bm{q}_{n} + M^{-1}F_{n} \\
+        \bm{\ddot q}_{n+1} = - M^{-1}C\bm{\dot q}_{n+1} - M^{-1}K\bm{q}_{n+1} + M^{-1}F_{n+1}
+
+    The relations of the Newmark-beta scheme are:
+    .. math::
+        \bm{q}_{n+1} &= \bm{q}_n + \bm{\dot q}_n\Delta t + (\frac{1}{2}-\beta)\bm{\ddot q}_n \Delta t^2 + \beta \bm{\ddot q}_{n+1} \Delta t^2 + O(\Delta t^3) \\
+        \bm{\dot q}_{n+1} &= \bm{\dot q}_n + (1-\gamma)\bm{\ddot q}_n \Delta t + \gamma \bm{\ddot q}_{n+1} \Delta t + O(\Delta t^3)
+
+    Substituting the former relation onto the later ones, rearranging terms, and writing it in state-space form:
+    .. math::
+        \begin{bmatrix} I + M^{-1}K \Delta t^2\beta \quad \Delta t^2\beta M^{-1}C \\ (\gamma \Delta t M^{-1}K) \quad (I + \gamma \Delta t M^{-1}C) \end{bmatrix} \begin{Bmatrix} \bm{\dot q}_{n+1} \\ \bm{\ddot q}_{n+1} \end{Bmatrix} =
+        \begin{bmatrix} (I - \Delta t^2(1/2-\beta)M^{-1}K \quad (\Delta t - \Delta t^2(1/2-\beta)M^{-1}C \\ (-(1-\gamma)\Delta t M^{-1}K \quad (I - (1-\gamma)\Delta tM^{-1}C \end{bmatrix} \begin{Bmatrix}  \bm{q}_{n} \\ \bm{\dot q}_{n} \end{Bmatrix}	+
+        \begin{Bmatrix} (\Delta t^2(1/2-\beta) \\ (1-\gamma)\Delta t \end{Bmatrix} M^{-1}F_n+
+        \begin{Bmatrix} (\Delta t^2\beta) \\ (\gamma \Delta t) \end{Bmatrix}M^{-1}F_{n+1}
+
+    To understand SHARPy code, it is convenient to apply the following change of notation:
+    .. math::
+        \textrm{th1} = \gamma \\
+        \textrm{th2} = \beta \\
+        \textrm{a0} = \Delta t^2 (1/2 -\beta) \\
+        \textrm{b0} = \Delta t (1 -\gamma) \\
+        \textrm{a1} = \Delta t^2 \beta \\
+        \textrm{b1} = \Delta t \gamma \\
+
+    Finally:
+    .. math::
+        A_{ss1} \begin{Bmatrix} \bm{\dot q}_{n+1} \\ \bm{\ddot q}_{n+1} \end{Bmatrix} =
+        A_{ss0} \begin{Bmatrix} \bm{\dot q}_{n} \\ \bm{\ddot q}_{n} \end{Bmatrix} +
+        \begin{Bmatrix} (\Delta t^2(1/2-\beta) \\ (1-\gamma)\Delta t \end{Bmatrix} M^{-1}F_n+
+        \begin{Bmatrix} (\Delta t^2\beta) \\ (\gamma \Delta t) \end{Bmatrix}M^{-1}F_{n+1}
+
+    To finally isolate the vector at $n+1$, instead of inverting the $A_{ss1}$ matrix, several systems are solved. Moreover, the output equation is simply $y=x$.
+
     Args:
         Minv (np.array): Inverse mass matrix :math:`\mathbf{M^{-1}}`
         C (np.array): Damping matrix :math:`\mathbf{C}`

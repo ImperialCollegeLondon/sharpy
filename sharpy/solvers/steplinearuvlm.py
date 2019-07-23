@@ -14,9 +14,6 @@ import sharpy.linear.src.linuvlm as linuvlm
 @solver
 class StepLinearUVLM(BaseSolver):
     r"""
-    Warnings:
-        Under development.
-
     Time domain aerodynamic solver that uses a linear UVLM formulation to be used with the :func:`DynamicCoupled`
     solver.
 
