@@ -48,24 +48,25 @@ class BumpVelocityField(generator_interface.BaseGenerator):
     settings_description['y0'] = 'y location of the centre of the bump'
 
     settings_types['hx'] = 'float'
-    settings_default['hx'] = 0.
+    settings_default['hx'] = 1.
     settings_description['hx'] = 'Gust gradient in the x direction'
 
     settings_types['hy'] = 'float'
-    settings_default['hy'] = 0.
+    settings_default['hy'] = 1.
     settings_description['hy'] = 'Gust gradient in the y direction'
 
     settings_types['relative_motion'] = 'bool'
     settings_default['relative_motion'] = False
     settings_description['relative_motion'] = 'When true the gust will move at the prescribed velocity'
+
     settings_types['u_inf'] = 'float'
+    settings_default['u_inf'] = None
     settings_description['u_inf'] = 'Free stream velocity'
 
-    settings_default['u_inf'] = None
     settings_types['u_inf_direction'] = 'list(float)'
-
     settings_default['u_inf_direction'] = np.array([1.0, 0, 0])
     settings_description['u_inf_direction'] = 'Free stream velocity direction'
+
     table = settings.SettingsTable()
     __doc__ += table.generate(settings_types, settings_default, settings_description)
 
