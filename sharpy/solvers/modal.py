@@ -43,6 +43,10 @@ class Modal(BaseSolver):
     settings_description['folder'] = 'Output folder'
 
     # solution options
+    settings_types['rigid_body_modes'] = 'bool'
+    settings_default['rigid_body_modes'] = False
+    settings_description['rigid_body_modes'] = 'Write modes with rigid body mode shapes'
+
     settings_types['use_undamped_modes'] = 'bool'  # basis for modal projection
     settings_default['use_undamped_modes'] = True
     settings_description['use_undamped_modes'] = 'Project the modes onto undamped mode shapes'
