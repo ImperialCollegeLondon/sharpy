@@ -136,7 +136,7 @@ todo_include_todos = False
 
 # Exclude matplotlib - avoids conflicts when running sphinx
 # http://www.sphinx-doc.org/en/master/usage/extensions/autodoc.html#confval-autodoc_mock_imports
-autodoc_mock_imports = ["matplotlib", "colorama", "h5py", "scipy", "ctypes", "tvtk",
+autodoc_mock_imports = ["matplotlib", "numpy", "colorama", "h5py", "scipy", "ctypes", "tvtk",
                         "sharpy.lib", "sharpy.utils.ctypes_utils", "sharpy.linear.src.libuvlm",
                         "sharpy.linear.src.lib_dbiot"]
                         # "interp", "multisurfaces", "assembly", "libss",]
