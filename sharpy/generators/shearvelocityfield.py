@@ -6,7 +6,7 @@ import sharpy.utils.settings as settings
 
 @generator_interface.generator
 class ShearVelocityField(generator_interface.BaseGenerator):
-    """
+    r"""
     Shear Velocity Field Generator
 
     ``ShearVelocityField`` class inherited from ``BaseGenerator``
@@ -16,57 +16,42 @@ class ShearVelocityField(generator_interface.BaseGenerator):
     .. math:: \hat{u} = \hat{u}\_inf ( \frac{h - h\_{corr}}{h\_ref} ) ^shear\_exp
     .. math:: h = zeta \cdot shear\_direction
 
-    Args:
-        in_dict (dict): Input data in the form of dictionary. See acceptable entries below:
-
-            ===================  ===============  ======================================================================  ===================
-            Name                 Type             Description                                                             Default
-            ===================  ===============  ======================================================================  ===================
-            ``u_inf``            ``float``        Free stream velocity magnitude                                          ``0``
-            ``u_inf_direction``  ``list(float)``  ``x``, ``y`` and ``z`` relative components of the free stream velocity  ``[1.0, 0.0, 0.0]``
-            ``shear_direction``  ``list(float)``  ``x``, ``y`` and ``z`` relative components of the direction along which shear applies  ``[0.0, 0.0, 1.0]``
-            ``shear_exp``        ``float``        Exponent of the shear law                                               ``0``
-            ``h_ref``            ``float``        Reference height at which ``u_inf``  is defined                         ``1.``
-            ``h_corr``            ``float``        Height to correct shear law                                             ``0.``
-            ===================  ===============  ======================================================================  ===================
-
-    Attributes:
-        settings_types (dict): Acceptable data types of the input data
-        settings_default (dict): Default values for input data should the user not provide them
-        u_inf (float): Free stream velocity selection
-        u_inf_direction (list(float)): ``x``, ``y`` and ``z`` relative contributions to the free stream velocity
-        shear_direction (list(float)): ``x``, ``y`` and ``z`` relative components of the direction along which shear applies
-        shear_exp (float): Exponent of the shear law
-        h_ref (float): Reference height at which ``u_inf``  is defined
-
-    See Also:
-        .. py:class:: sharpy.utils.generator_interface.BaseGenerator
-
     """
     generator_id = 'ShearVelocityField'
 
+    settings_types = dict()
+    settings_default = dict()
+    settings_description = dict()
+
+    settings_types['u_inf'] = 'float'
+    settings_default['u_inf'] = None
+    settings_description['u_inf'] = 'Free stream velocity magnitude'
+
+    settings_types['u_inf_direction'] = 'list(float)'
+    settings_default['u_inf_direction'] = np.array([1.0, 0, 0])
+    settings_description['u_inf_direction'] = '``x``, ``y`` and ``z`` relative components of the free stream velocity'
+
+    settings_types['shear_direction'] = 'list(float)'
+    settings_default['shear_direction'] = np.array([.0, 0, 1.0])
+    settings_description['shear_direction'] = '``x``, ``y`` and ``z`` relative components of the direction along which shear applies'
+
+    settings_types['shear_exp'] = 'float'
+    settings_default['shear_exp'] = 0.
+    settings_description['shear_exp'] = 'Exponent of the shear law'
+
+    settings_types['h_ref'] = 'float'
+    settings_default['h_ref'] = 1.
+    settings_description['h_ref'] = 'Reference height at which ``u_inf`` is defined'
+
+    settings_types['h_corr'] = 'float'
+    settings_default['h_corr'] = 0.
+    settings_description['h_corr'] = 'Height to correct shear law'
+
+    setting_table = settings.SettingsTable()
+    __doc__ += setting_table.generate(settings_types, settings_default, settings_description)
+
     def __init__(self):
         self.in_dict = dict()
-        self.settings_types = dict()
-        self.settings_default = dict()
-
-        self.settings_types['u_inf'] = 'float'
-        self.settings_default['u_inf'] = None
-
-        self.settings_types['u_inf_direction'] = 'list(float)'
-        self.settings_default['u_inf_direction'] = np.array([1.0, 0, 0])
-
-        self.settings_types['shear_direction'] = 'list(float)'
-        self.settings_default['shear_direction'] = np.array([.0, 0, 1.0])
-
-        self.settings_types['shear_exp'] = 'float'
-        self.settings_default['shear_exp'] = 0.
-
-        self.settings_types['h_ref'] = 'float'
-        self.settings_default['h_ref'] = 1.
-
-        self.settings_types['h_corr'] = 'float'
-        self.settings_default['h_corr'] = 0.
 
         self.u_inf = 0.
         self.u_inf_direction = None

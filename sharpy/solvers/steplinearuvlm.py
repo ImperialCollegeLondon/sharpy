@@ -45,8 +45,6 @@ class StepLinearUVLM(BaseSolver):
                                                      rotational speed at linearisation point
             ============================  =========  ===============================================    ==========
 
-        lin_uvlm_system (linuvlm.Dynamic): Linearised UVLM dynamic system
-        velocity_generator (utils.generator_interface.BaseGenerator): velocity field generator class of desired type
 
     Notes:
         The ``integr_order`` variable refers to the finite differencing scheme used to calculate the bound circulation
@@ -356,6 +354,7 @@ class StepLinearUVLM(BaseSolver):
         If the ``track_body`` option is on, the output forces are projected from
         the linearization frame, to the G frame. Note that the linearisation
         frame is:
+
             a. equal to the FoR G at time 0 (linearisation point)
             b. rotates as the body frame specified in the ``track_body_number``
 
@@ -460,6 +459,7 @@ class StepLinearUVLM(BaseSolver):
 
         If the ``track_body`` option is on, the function projects all the input
         into a frame that:
+
             a. is equal to the FoR G at time 0 (linearisation point)
             b. rotates as the body frame specified in the ``track_body_number``
 

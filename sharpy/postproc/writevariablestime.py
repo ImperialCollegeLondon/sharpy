@@ -25,10 +25,6 @@ class WriteVariablesTime(BaseSolver):
         See the list of arguments
         dir (str): directory to output the information
 
-    See Also:
-        .. py:class:: sharpy.utils.solver_interface.BaseSolver
-        .. py:class:: sharpy.utils.datastructures
-
     """
 
     solver_id = 'WriteVariablesTime'

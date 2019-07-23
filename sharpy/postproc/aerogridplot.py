@@ -45,6 +45,7 @@ class AerogridPlot(BaseSolver):
 
     settings_types['name_prefix'] = 'str'
     settings_default['name_prefix'] = ''
+    settings_description['name_prefix'] = 'Prefix to add to file name'
 
     settings_types['u_inf'] = 'float'
     settings_default['u_inf'] = 0.
