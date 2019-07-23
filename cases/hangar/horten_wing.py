@@ -704,7 +704,7 @@ class HortenWing:
             lumped_mass_position_handle = h5file.create_dataset(
                 'lumped_mass_position', data=self.lumped_mass_position)
 
-    def create_linear_simulation(self):
+    def create_linear_simulation(self, delta_e=None):
 
         Kpanels = self.M * (self.n_node - 1)
         Kvertices = (self.M + 1) * self.n_node
@@ -716,7 +716,10 @@ class HortenWing:
         n_inputs_struct = n_states_struct // 2
 
         x0 = np.zeros((n_states_aero + n_states_struct))
-        u = np.zeros((self.n_tstep, n_states_struct + n_inputs_struct))
+        u = np.zeros((self.n_tstep, n_states_struct + n_inputs_struct + self.n_control_surfaces))
+
+        if delta_e is not None:
+            u[:, n_states_struct:n_states_struct+self.n_control_surfaces] = delta_e
 
         # u[10:15, -8] = 100
 
@@ -764,6 +767,11 @@ class HortenWing:
         flightcon_file_name = route + '/' + case_name + '.flightcon.txt'
         if os.path.isfile(flightcon_file_name):
             os.remove(flightcon_file_name)
+
+        # Linear inputs file
+        lin_file_name  = self.case_route + '/' + self.case_name + '.lininput.h5'
+        if os.path.isfile(lin_file_name):
+            os.remove(lin_file_name)
 
         # if os.path.isdir(route):
         #     os.system('rm -r %s' %route)
@@ -1093,7 +1101,7 @@ class HortenWing:
                                      'aero_solver_settings': {'print_info': 'on',
                                                               'horseshoe': self.horseshoe,
                                                               'num_cores': 4,
-                                                              'n_rollup': int(1),
+                                                              'n_rollup': int(0),
                                                               'rollup_dt': dt, #self.c_root / self.M / self.u_inf,
                                                               'rollup_aic_refresh': 1,
                                                               'rollup_tolerance': 1e-4,
@@ -1186,7 +1194,7 @@ class HortenWing:
         settings['StepUvlm'] = {'print_info': 'on',
                                 'horseshoe': self.horseshoe,
                                 'num_cores': 4,
-                                'n_rollup': 100,
+                                'n_rollup': 1,
                                 'convection_scheme': self.wake_type,
                                 'rollup_dt': dt,
                                 'rollup_aic_refresh': 1,
