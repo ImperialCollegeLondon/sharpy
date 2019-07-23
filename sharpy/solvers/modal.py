@@ -184,7 +184,7 @@ class Modal(BaseSolver):
 
             * ``Kin_damp``: Forces gain matrix (when damped): :math:`K_{in} = \mathbf{\Phi}_L^T \mathbf{M}^{-1}`
 
-            *``eigenvectors``: Right eigenvectors
+            * ``eigenvectors``: Right eigenvectors
 
             * ``eigenvectors_left``: Left eigenvectors given when the system is damped
 

@@ -55,20 +55,6 @@ class DynamicCoupled(BaseSolver):
             ``pseudosteps_ramp_unsteady_force``      ``int``        FSI iterations to progressively ramp the application of unsteady forces    ``0``
             =======================================  =============  =========================================================================  ==========
 
-        data (ProblemData): class containing solution information
-        structuralsolver (BaseSolver): class of the structural solver
-        aero_solver (BaseSolver): class of the aerodynamic solver
-        res (float):
-        res_dqdt (float):
-        res_dqddt (float):
-        previous_force:
-        dt (float):
-        predictor (bool):
-        residual_table:
-        postprocessors (dict):
-        with_postprocessors (bool):
-
-
     """
     solver_id = 'DynamicCoupled'
 

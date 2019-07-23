@@ -44,19 +44,6 @@ class StaticTrim(BaseSolver):
             ``initial_thrust_eps``  ``float``      Initial thrust variation for algorithm           ``2.0``
             ======================  =============  ===============================================  ==========
 
-        settings_types (dict): Acceptable data types for entries in ``settings``
-        settings_default (dict): Default values for the available ``settings``
-        data (ProblemData): object containing the information of the problem
-        solver (BaseSolver): solver object employed for the solution of the problem
-        n_input (int): number of inputs to vary to achieve trim
-        i_iter (int): iteration number
-        input_history (list): list of input history during iteration
-        output_history (list): list of output history during iteration
-        gradient_history (list): history of gradients during iteration
-        trimmed_values (np.array): trim configuration values
-
-    Methods:
-        trim_algorithm: algorithm to find equilibrium conditions
 
     """
     solver_id = 'StaticTrim'

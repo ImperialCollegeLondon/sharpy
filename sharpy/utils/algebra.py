@@ -598,7 +598,9 @@ def quat2rotation(q1):
     If B is a FoR obtained rotating a FoR A by an angle :math:`\phi` about an axis :math:`\mathbf{n}`
     (recall :math:`\mathbf{n}` will be invariant during the rotation), and :math:`\mathbf{q}` is the related
     quaternion, :math:`\mathbf{q}(\phi,\mathbf{n})`, the function will return the matrix :math:`C^{AB}` such that:
+
         - :math:`C^{AB}` rotates FoR A onto FoR B.
+
         - :math:`C^{AB}` transforms the coordinates of a vector defined in B component to
           A components i.e. :math:`\mathbf{v}^A = C^{AB}(\mathbf{q})\mathbf{v}^B`.
 
@@ -864,15 +866,6 @@ def euler2rot(euler):
     Returns:
         np.array: 3x3 transformation matrix describing the rotation by the input Euler angles.
 
-    See Also:
-        The individual transformations represented by the :math:`\mathbf{\tau}` matrices are described in:
-
-        .. py:module:: sharpy.utils.algebra.rotation3d_x
-
-        .. py:module:: sharpy.utils.algebra.rotation3d_y
-
-        .. py:module:: sharpy.utils.algebra.rotation3d_z
-
     """
 
     rot = rotation3d_z(euler[2])
@@ -901,14 +894,6 @@ def euler2rotation_ag(euler):
     Returns:
         np.array: 3x3 transformation matrix describing the rotation by the input Euler angles.
 
-    See Also:
-        The individual transformations represented by the :math:`\mathbf{\tau}` matrices are described in:
-
-        .. py:module:: sharpy.utils.algebra.rotation3d_x
-
-        .. py:module:: sharpy.utils.algebra.rotation3d_y
-
-        .. py:module:: sharpy.utils.algebra.rotation3d_z
     """
     rot = rotation3d_z(euler[2])
     rot = np.dot(rotation3d_y_ag(euler[1]), rot)
@@ -1062,9 +1047,12 @@ def der_Cquat_by_v(q,v):
     defined as C=quat2rotation(q), the function returns the derivative, w.r.t. the
     quanternion components, of the vector dot(C,v), where v is a constant
     vector.
+
     The elements of the resulting derivative matrix D are ordered such that:
-        d(C*v) = D*d(q)
-    where d(.) is a delta operator.
+
+    .. math::   d(C*v) = D*d(q)
+
+    where :math:`d(.)` is a delta operator.
     """
 
     vx,vy,vz=v
@@ -1085,9 +1073,12 @@ def der_CquatT_by_v(q,v):
     defined as C=quat2rotation(q).T, the function returns the derivative, w.r.t. the
     quaternion components, of the vector dot(C,v), where v is a constant
     vector.
+
     The elements of the resulting derivative matrix D are ordered such that:
-        d(C*v) = D*d(q)
-    where d(.) is a delta operator.
+
+    .. math::  d(C*v) = D*d(q)
+
+    where :math:`d(.)` is a delta operator.
     """
 
     vx,vy,vz=v
@@ -1107,11 +1098,14 @@ def der_Tan_by_xv(fv0,xv):
     of dot(Tan,xv), where xv is a constant vector.
 
     The elements of the resulting derivative matrix D are ordered such that:
-        d(Tan*xv) = D*d(fv)
-    where d(.) is a delta operator.
 
-    Note: the derivative expression has been derived symbolically and verified
-    by FDs. A more compact expression may be possible.
+    .. math::    d(Tan*xv) = D*d(fv)
+
+    where :math:`d(.)` is a delta operator.
+
+    Note:
+        The derivative expression has been derived symbolically and verified
+        by FDs. A more compact expression may be possible.
     """
 
     f0=np.linalg.norm(fv0)
@@ -1201,11 +1195,14 @@ def der_TanT_by_xv(fv0,xv):
     of dot(Tan^T,xv), where xv is a constant vector.
 
     The elements of the resulting derivative matrix D are ordered such that:
-        d(Tan^T*xv) = D*d(fv)
-    where d(.) is a delta operator.
 
-    Note: the derivative expression has been derived symbolically and verified
-    by FDs. A more compact expression may be possible.
+    .. math::     d(Tan^T*xv) = D*d(fv)
+
+    where :math:`d(.)` is a delta operator.
+
+    Note:
+        The derivative expression has been derived symbolically and verified
+        by FDs. A more compact expression may be possible.
     """
 
     # Renaming variabes for clarity
@@ -1263,14 +1260,17 @@ def der_TanT_by_xv(fv0,xv):
 
 
 def der_Ccrv_by_v(fv0,v):
-    """
+    r"""
     Being C=C(fv0) the rotational matrix depending on the Cartesian rotation
     vector fv0 and defined as C=crv2rotation(fv0), the function returns the
     derivative, w.r.t. the CRV components, of the vector dot(C,v), where v is a
     constant vector.
+
     The elements of the resulting derivative matrix D are ordered such that:
-        d(C*v) = D*d(fv0)
-    where d(.) is a delta operator.
+
+    .. math:: d(C*v) = D*d(fv0)
+
+    where :math:`d(.)` is a delta operator.
     """
 
     Cab0=crv2rotation(fv0)
@@ -1286,9 +1286,12 @@ def der_CcrvT_by_v(fv0,v):
     vector fv0 and defined as C=crv2rotation(fv0), the function returns the
     derivative, w.r.t. the CRV components, of the vector dot(C.T,v), where v is
     a constant vector.
+
     The elements of the resulting derivative matrix D are ordered such that:
-        d(C.T*v) = D*d(fv0)
-    where d(.) is a delta operator.
+
+    .. math::    d(C.T*v) = D*d(fv0)
+
+    where :math:`d(.)` is a delta operator.
     """
 
     Cba0=crv2rotation(fv0).T
@@ -1314,21 +1317,28 @@ def der_quat_wrt_crv(quat0):
     '''
     Provides change of quaternion, dquat, due to elementary rotation, dcrv,
     expressed as a 3 components Cartesian rotation vector such that
-        C(quat + dquat) = C(quat0)C(dw)
+
+    .. math::    C(quat + dquat) = C(quat0)C(dw)
+
     where C are rotation matrices.
 
-    E.g.: assume 3 FoRs, G, A and B where:
-        - G is the initial FoR
-        - quat0 defines te rotation required to obtain A from G, namely:
-                Cga=quat2rotation(quat0)
-        - dcrv is an inifinitesimal Cartesian rotation vector, defined in A
-        components, which describes an infinitesimal rotation A -> B, namely:
-                Cab=crv2rotation(dcrv)
-        - The total rotation G -> B is:
-            Cga = Cga * Cab
-        - As dcrv -> 0, Cga is equal to:
-            algebra.quat2rotation(quat0 + dquat),
-        where dquat is the output of this function.
+    Examples:
+        Assume 3 FoRs, G, A and B where:
+            - G is the initial FoR
+            - quat0 defines te rotation required to obtain A from G, namely:
+              Cga=quat2rotation(quat0)
+            - dcrv is an inifinitesimal Cartesian rotation vector, defined in A
+              components, which describes an infinitesimal rotation A -> B, namely:
+
+              ..math ::      Cab=crv2rotation(dcrv)
+
+            - The total rotation G -> B is:
+                Cga = Cga * Cab
+            - As dcrv -> 0, Cga is equal to:
+
+              .. math::  algebra.quat2rotation(quat0 + dquat),
+
+              where dquat is the output of this function.
     '''
 
     Der=np.zeros((4,3))

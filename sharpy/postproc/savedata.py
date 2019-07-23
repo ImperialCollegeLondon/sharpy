@@ -34,6 +34,7 @@ class SaveData(BaseSolver):
             =======================================  =============  =============================================================  =========
     """
     solver_id = 'SaveData'
+    solver_classification = 'post-processor'
 
     def __init__(self):
         import sharpy

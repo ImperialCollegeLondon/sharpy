@@ -9,4 +9,3 @@ Other Solvers
     ./other/StaticTrim
     ./other/StaticUvlm
     ./other/StepLinearUVLM
-    ./other/SaveData
