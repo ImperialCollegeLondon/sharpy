@@ -46,7 +46,12 @@ class PreSharpy(object):
     solver_id = 'PreSharpy'
 
 
-    def __init__(self, in_settings):
+    def __init__(self, in_settings=None):
+        self._settings = True
+        if in_settings is None:
+            # call for documentation only
+            self._settings = False
+
         self.ts = 0
 
         self.settings_types = dict()
@@ -73,22 +78,24 @@ class PreSharpy(object):
         self.settings_types['log_file'] = 'str'
         self.settings_default['log_file'] = 'log'
 
-        self.settings = in_settings
-        self.settings['SHARPy']['flow'] = self.settings['SHARPy']['flow']
-        settings.to_custom_types(self.settings['SHARPy'], self.settings_types, self.settings_default)
+        if self._settings:
+            self.settings = in_settings
+            self.settings['SHARPy']['flow'] = self.settings['SHARPy']['flow']
 
-        cout.cout_wrap.initialise(self.settings['SHARPy']['write_screen'],
-                                  self.settings['SHARPy']['write_log'],
-                                  self.settings['SHARPy']['log_folder'],
-                                  self.settings['SHARPy']['log_file'])
+            settings.to_custom_types(self.settings['SHARPy'], self.settings_types, self.settings_default)
 
-        self.case_route = in_settings['SHARPy']['route'] + '/'
-        self.case_name = in_settings['SHARPy']['case']
-        for solver_name in in_settings['SHARPy']['flow']:
-            try:
-                dict_of_solvers[solver_name]
-            except KeyError:
-                exceptions.NotImplementedSolver(solver_name)
+            cout.cout_wrap.initialise(self.settings['SHARPy']['write_screen'],
+                                      self.settings['SHARPy']['write_log'],
+                                      self.settings['SHARPy']['log_folder'],
+                                      self.settings['SHARPy']['log_file'])
+
+            self.case_route = in_settings['SHARPy']['route'] + '/'
+            self.case_name = in_settings['SHARPy']['case']
+            for solver_name in in_settings['SHARPy']['flow']:
+                try:
+                    dict_of_solvers[solver_name]
+                except KeyError:
+                    exceptions.NotImplementedSolver(solver_name)
 
     def initialise(self):
         pass

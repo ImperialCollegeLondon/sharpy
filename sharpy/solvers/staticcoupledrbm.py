@@ -12,38 +12,57 @@ import sharpy.utils.algebra as algebra
 
 @solver
 class StaticCoupledRBM(BaseSolver):
+    """
+    Steady coupled solver including rigid body motions
+    """
+
     solver_id = 'StaticCoupledRBM'
+    solver_classification = 'coupled'
+
+    settings_types = dict()
+    settings_default = dict()
+    settings_description = dict()
+
+    settings_types['print_info'] = 'bool'
+    settings_default['print_info'] = True
+    settings_description['print_info'] = 'Output run-time information'
+
+    settings_types['structural_solver'] = 'str'
+    settings_default['structural_solver'] = None
+    settings_description['structural_solver'] = 'Name of the structural solver used in the computation'
+
+    settings_types['structural_solver_settings'] = 'dict'
+    settings_default['structural_solver_settings'] = None
+    settings_description['structural_solver_settings'] = 'Dictionary os settings needed by the structural solver'
+
+    settings_types['aero_solver'] = 'str'
+    settings_default['aero_solver'] = None
+    settings_description['aero_solver'] = 'Name of the aerodynamic solver used in the computation'
+
+    settings_types['aero_solver_settings'] = 'dict'
+    settings_default['aero_solver_settings'] = None
+    settings_description['aero_solver_settings'] = 'Dictionary os settings needed by the aerodynamic solver'
+
+    settings_types['max_iter'] = 'int'
+    settings_default['max_iter'] = 100
+    settings_description['max_iter'] = 'Maximum numeber of FSI iterations'
+
+    settings_types['n_load_steps'] = 'int'
+    settings_default['n_load_steps'] = 1
+    settings_description['n_load_steps'] = 'Number of steps to ramp up the application of loads'
+
+    settings_types['tolerance'] = 'float'
+    settings_default['tolerance'] = 1e-5
+    settings_description['tolerance'] = 'FSI tolerance'
+
+    settings_types['relaxation_factor'] = 'float'
+    settings_default['relaxation_factor'] = 0.
+    settings_description['relaxation_factor'] = 'Relaxation factor'
+
+    settings_table = settings.SettingsTable()
+    __doc__ += settings_table.generate(settings_types, settings_default, settings_description)
 
     def __init__(self):
-        self.settings_types = dict()
-        self.settings_default = dict()
-
-        self.settings_types['print_info'] = 'bool'
-        self.settings_default['print_info'] = True
-
-        self.settings_types['structural_solver'] = 'str'
-        self.settings_default['structural_solver'] = None
-
-        self.settings_types['structural_solver_settings'] = 'dict'
-        self.settings_default['structural_solver_settings'] = None
-
-        self.settings_types['aero_solver'] = 'str'
-        self.settings_default['aero_solver'] = None
-
-        self.settings_types['aero_solver_settings'] = 'dict'
-        self.settings_default['aero_solver_settings'] = None
-
-        self.settings_types['max_iter'] = 'int'
-        self.settings_default['max_iter'] = 100
-
-        self.settings_types['n_load_steps'] = 'int'
-        self.settings_default['n_load_steps'] = 1
-
-        self.settings_types['tolerance'] = 'float'
-        self.settings_default['tolerance'] = 1e-5
-
-        self.settings_types['relaxation_factor'] = 'float'
-        self.settings_default['relaxation_factor'] = 0.
 
         self.data = None
         self.settings = None
@@ -66,6 +85,9 @@ class StaticCoupledRBM(BaseSolver):
         self.aero_solver.initialise(self.structural_solver.data, self.settings['aero_solver_settings'])
         self.data = self.aero_solver.data
 
+        # load info from dyn dictionary
+        self.data.structure.add_unsteady_information(self.data.structure.dyn_dict, 1)
+
     def increase_ts(self):
         self.data.ts += 1
         self.structural_solver.next_step()
@@ -87,7 +109,8 @@ class StaticCoupledRBM(BaseSolver):
     def run(self):
 
         # Include the rbm
-        self.data.structure.timestep_info[-1].for_vel = self.data.structure.dynamic_input[self.data.ts]['for_vel']
+         # print("ts", self.data.ts) 
+        self.data.structure.timestep_info[-1].for_vel = self.data.structure.dynamic_input[0]['for_vel']
 
         for i_step in range(self.settings['n_load_steps'].value + 1):
             if (i_step == self.settings['n_load_steps'].value and

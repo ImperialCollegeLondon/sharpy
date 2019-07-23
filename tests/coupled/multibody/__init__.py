@@ -1,0 +1,3 @@
+import tests.coupled.multibody.double_pendulum
+import tests.coupled.multibody.fix_node_velocity_wrtA
+import tests.coupled.multibody.fix_node_velocity_wrtG

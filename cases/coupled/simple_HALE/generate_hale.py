@@ -20,6 +20,7 @@ flow = ['BeamLoader',
         'DynamicCoupled',
         ]
 
+# if free_flight is False, the motion of the centre of the wing is prescribed.
 free_flight = False
 if not free_flight:
     case_name += '_prescribed'
@@ -28,6 +29,8 @@ if not free_flight:
     case_name += '_amp_' + str(amplitude).replace('.', '') + '_period_' + str(period)
 
 # FLIGHT CONDITIONS
+# the simulation is set such that the aircraft flies at a u_inf velocity while
+# the air is calm.
 u_inf = 10
 rho = 1.225
 
@@ -100,9 +103,9 @@ chord_fin = 0.5
 # DISCRETISATION
 # spatial discretisation
 # chordiwse panels
-m = 3
+m = 8
 # spanwise elements
-n_elem_multiplier = 1
+n_elem_multiplier = 2
 n_elem_main = int(4*n_elem_multiplier)
 n_elem_tail = int(2*n_elem_multiplier)
 n_elem_fin = int(2*n_elem_multiplier)

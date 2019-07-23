@@ -19,54 +19,47 @@ class BumpVelocityField(generator_interface.BaseGenerator):
     This is parsed as the value for the ``velocity_field_generator`` key in the desired aerodynamic solver's settings.
 
     The resultant velocity, $w_g$, is calculated as follows:
-    $$
-    w_g = \frac{w_0}{4}\left( 1 + \cos(\frac{(x - x_0)}{H_x} \right)\left( 1 + \cos(\frac{(y - y_0)}{H_y} \right)
-    $$
+    
+    .. math::
+    
+        w_g = \frac{w_0}{4}\left( 1 + \cos(\frac{(x - x_0)}{H_x} \right)\left( 1 + \cos(\frac{(y - y_0)}{H_y} \right)
+    
 
     Notes:
         For now, only simulations where the inertial FoR is fixed are supported.
 
-    Args:
-        in_dict (dict): Input data in the form of dictionary. See acceptable entries below:
-
-        ===================  ===============  ==================================================================  ===================
-        Name                 Type             Description                                                         Default
-        ===================  ===============  ==================================================================  ===================
-        ``gust_intensity``   ``float``        Intensity of the gust                                               ``None``
-        ``x0``               ``float``        x location of the center of the bump                                ``0.0``
-        ``y0``               ``float``        x location of the center of the bump                                ``0.0``
-        ``hx``               ``float``        Gust gradient in the X direction                                    ``1.0``
-        ``hy``               ``float``        Gust gradient in the Y direction                                    ``1.0``
-        ===================  ===============  ==================================================================  ===================
-
-    Attributes:
-
-    See Also:
-        .. py:class:: sharpy.utils.generator_interface.BaseGenerator
-
     """
     generator_id = 'BumpVelocityField'
 
+    settings_types = dict()
+    settings_default = dict()
+    settings_description = dict()
+
+    settings_types['gust_intensity'] = 'float'
+    settings_default['gust_intensity'] = None
+    settings_description['gust_intensity'] = 'Intensity of the gust'
+
+    settings_types['x0'] = 'float'
+    settings_default['x0'] = 0.0
+    settings_description['x0'] = 'x location of the centre of the bump'
+
+    settings_types['y0'] = 'float'
+    settings_default['y0'] = 0.0
+    settings_description['y0'] = 'y location of the centre of the bump'
+
+    settings_types['hx'] = 'float'
+    settings_default['hx'] = 1.
+    settings_description['hx'] = 'Gust gradient in the x direction'
+
+    settings_types['hy'] = 'float'
+    settings_default['hy'] = 1.
+    settings_description['hy'] = 'Gust gradient in the y direction'
+
+    table = settings.SettingsTable()
+    __doc__ += table.generate(settings_types, settings_default, settings_description)
+
     def __init__(self):
         self.in_dict = dict()
-        self.settings_types = dict()
-        self.settings_default = dict()
-
-        self.settings_types['gust_intensity'] = 'float'
-        self.settings_default['gust_intensity'] = None
-
-        self.settings_types['x0'] = 'float'
-        self.settings_default['x0'] = 0.0
-
-        self.settings_types['y0'] = 'float'
-        self.settings_default['y0'] = 0.0
-
-        self.settings_types['hx'] = 'float'
-        self.settings_default['hx'] = 0.
-
-        self.settings_types['hy'] = 'float'
-        self.settings_default['hy'] = 0.
-
         self.settings = dict()
 
     def initialise(self, in_dict):
