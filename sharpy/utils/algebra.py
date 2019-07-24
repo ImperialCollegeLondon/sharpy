@@ -479,14 +479,28 @@ def crv2triad(psi):
 
 def crv2rotation(psi):
     r"""
-    Given a Cartesian rotation vector :math:`\vec{\psi}`, the function produces the rotation
-    matrix required to rotate a vector according to :math:`\vec{\psi}`.
+    Given a Cartesian rotation vector, :math:`\boldsymbol{\Psi}`, the function produces the rotation
+    matrix required to rotate a vector according to :math:`\boldsymbol{\Psi}`.
+
+    The rotation matrix is given by
+
+    .. math::
+        \mathbf{R} = \mathbf{I} + \frac{\sin||\boldsymbol{\Psi}||}{||\boldsymbol{\Psi}||} \tilde{\boldsymbol{\Psi}} +
+        \frac{1-\cos{||\boldsymbol{\Psi}||}}{||\boldsymbol{\Psi}||^2}\tilde{\boldsymbol{\Psi}} \tilde{\boldsymbol{\Psi}}
+
+    To avoid the singularity when :math:`||\boldsymbol{\Psi}||=0`, the series expansion is used
+
+    .. math:: \mathbf{R} = \mathbf{I} + \tilde{\boldsymbol{\Psi}} + \frac{1}{2!}\tilde{\boldsymbol{\Psi}}^2.
+
 
     Args:
-        psi (np.array): Cartesian rotation vector :math:`\vec{\psi}`.
+        psi (np.array): Cartesian rotation vector :math:`\boldsymbol{\Psi}`.
 
     Returns:
         np.array: equivalent rotation matrix
+
+    References:
+        Geradin and Cardona, Flexible Multibody Dynamics: A finite element approach. Chapter 4
 
     """
 
