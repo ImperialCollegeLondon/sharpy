@@ -671,36 +671,6 @@ def rot_skew(vec):
     return skew(vec)
 
 
-def rotation3d_x_ag(angle):
-    r"""
-    Rotation matrix about the x axis by the input angle :math:`\Phi`
-
-    .. math::
-
-        \mathbf{\tau}_x = \begin{bmatrix}
-            1 & 0 & 0 \\
-            0 & \cos(\Phi) & \sin(\Phi) \\
-            0 & -\sin(\Phi) & \cos(\Phi)
-        \end{bmatrix}
-
-
-    Args:
-        angle (float): angle of rotation in radians about the x axis
-
-    Returns:
-        np.array: 3x3 rotation matrix about the x axis
-
-    """
-    warn('This function is incorrect for SHARPys SEU convention')
-    c = np.cos(angle)
-    s = np.sin(angle)
-    mat = np.zeros((3, 3))
-    mat[0, :] = [1.0, 0.0, 0.0]
-    mat[1, :] = [0.0,   c,  s]
-    mat[2, :] = [0.0,   -s,   c]
-    return mat
-
-
 def rotation3d_x(angle):
     r"""
 
@@ -765,35 +735,6 @@ def rotation3d_y(angle):
     mat[2, :] = [-s, 0.0,  c]
     return mat
 
-def rotation3d_y_ag(angle):
-    r"""
-    Rotation matrix about the y axis by the input angle :math:`\Theta`
-
-    .. math::
-
-        \mathbf{\tau}_y = \begin{bmatrix}
-            \cos(\Theta) & 0 & \sin(\Theta) \\
-            0 & 1 & 0 \\
-            -\sin(\Theta) & 0 & \cos(\Theta)
-        \end{bmatrix}
-
-
-    Args:
-        angle (float): angle of rotation in radians about the y axis
-
-    Returns:
-        np.array: 3x3 rotation matrix about the y axis
-
-    """
-
-    c = np.cos(angle)
-    s = np.sin(angle)
-    mat = np.zeros((3, 3))
-    mat[0, :] = [c, 0.0, s]
-    mat[1, :] = [0.0, 1.0, 0.0]
-    mat[2, :] = [-s, 0.0,  c]
-    return mat
-
 def rotation3d_z(angle):
     r"""
     Rotation matrix about the z axis by the input angle :math:`\Psi`
@@ -818,34 +759,6 @@ def rotation3d_z(angle):
     mat = np.zeros((3, 3))
     mat[0, :] = [  c,  -s, 0.0]
     mat[1, :] = [  s,   c, 0.0]
-    mat[2, :] = [0.0, 0.0, 1.0]
-    return mat
-
-
-def rotation3d_z_ag(angle):
-    r"""
-    Rotation matrix about the z axis by the input angle :math:`\Psi`
-
-    .. math::
-        \mathbf{\tau}_z = \begin{bmatrix}
-            \cos(\Psi) & \sin(\Psi) & 0 \\
-            -\sin(\Psi) & \cos(\Psi) & 0 \\
-            0 & 0 & 1
-        \end{bmatrix}
-
-    Args:
-        angle (float): angle of rotation in radians about the z axis
-
-    Returns:
-        np.array: 3x3 rotation matrix about the z axis
-
-    """
-
-    c = np.cos(angle)
-    s = np.sin(angle)
-    mat = np.zeros((3, 3))
-    mat[0, :] = [  c,  s, 0.0]
-    mat[1, :] = [ -s,   c, 0.0]
     mat[2, :] = [0.0, 0.0, 1.0]
     return mat
 
@@ -888,33 +801,6 @@ def euler2rot(euler):
     return rot
 
 
-def euler2rotation_ag(euler):
-    r"""
-    Transforms Euler angles (roll, pitch and yaw :math:`\Phi, \Theta, \Psi`) into a 3x3 rotation matrix describing
-    the rotation between frame G and frame A.
-
-    The rotations are performed successively, first in yaw, then in pitch and finally in roll.
-
-    .. math::
-
-        \mathbf{T}_{AG} = \mathbf{\tau}_x(\Phi) \mathbf{\tau}_y(\Theta) \mathbf{\tau}_z(\Psi)
-
-
-    where :math:`\mathbf{\tau}` represents the rotation about the subscripted axis.
-
-    Args:
-        euler (np.array): 1x3 array with the Euler angles in the form ``[roll, pitch, yaw]``
-
-    Returns:
-        np.array: 3x3 transformation matrix describing the rotation by the input Euler angles.
-
-    """
-    rot = rotation3d_z(euler[2])
-    rot = np.dot(rotation3d_y_ag(euler[1]), rot)
-    rot = np.dot(rotation3d_x(euler[0]), rot)
-    return rot
-
-
 def euler2quat(euler):
     """
 
@@ -928,10 +814,6 @@ def euler2quat(euler):
     quat = rotation2quat(euler_rot)
     return quat
 
-def euler2quat_ag(euler):
-    C_ag_euler = euler2rotation_ag(euler)
-    quat = rotation2quat(C_ag_euler)
-    return quat
 
 def quat2euler(quat):
     r"""
@@ -1395,20 +1277,20 @@ def der_Ceuler_by_v(euler, v):
     .. math::
         f_{2\phi} = &+v_1(-\sin\phi\sin\psi + \cos\phi\sin\theta\cos\psi) + \\
         &+v_2(-\sin\phi\cos\psi - \cos\phi\sin\theta\sin\psi) + \\
-        &+v_3(-\cos\phi\cos\theta)
+        &+v_3(-\cos\phi\cos\theta)\\
         f_{2\theta} = &+v_1(\sin\phi\cos\theta\cos\psi) + \\
         &+v_2(-\sin\phi\cos\theta\sin\psi) +\\
-        &+v_3(\sin\phi\sin\theta)
+        &+v_3(\sin\phi\sin\theta) \\
         f_{2\psi} = &+v_1(\cos\phi\cos\psi - \sin\phi\sin\theta\sin\psi) + \\
         &+v_2(-\cos\phi\sin\psi - \sin\phi\sin\theta\cos\psi)
 
     .. math::
         f_{3\phi} = &+v_1(\cos\phi\sin\psi+\sin\phi\sin\theta\cos\psi) + \\
         &+v_2(\cos\phi\cos\psi - \sin\phi\sin\theta\sin\psi) + \\
-        &+v_3(-\sin\phi\cos\theta)
+        &+v_3(-\sin\phi\cos\theta)\\
         f_{3\theta} = &+v_1(-\cos\phi\cos\theta\cos\psi)+\\
         &+v_2(\cos\phi\cos\theta\sin\psi) + \\
-        &+v_3(-\cos\phi\sin\theta)
+        &+v_3(-\cos\phi\sin\theta)\\
         f_{3\psi} = &+v_1(\sin\phi\cos\psi+\cos\phi\sin\theta\sin\psi)  + \\
         &+v_2(-\sin\phi\sin\psi + \cos\phi\sin\theta\cos\psi)
 
@@ -1594,6 +1476,9 @@ def der_Ceuler_by_v_NED(euler, v):
         f_{3\psi} = &+v_1(\sin\phi\cos\psi-\cos\phi\sin\theta\sin\psi)  + \\
         &+v_2(\sin\phi\sin\psi + \cos\phi\sin\theta\cos\psi)
 
+    Note:
+        This function is defined in a North East Down frame which is not the typically used one in SHARPy.
+
     Args:
         euler (np.ndarray): Vector of Euler angles, :math:`\mathbf{\Theta} = [\phi, \theta, \psi]`, in radians.
         v (np.ndarray): 3 dimensional vector in G frame.
@@ -1758,6 +1643,9 @@ def deuler_dt_NED(euler):
         p \\ q \\ r
         \end{bmatrix}
 
+    Note:
+        This function is defined in a North East Down frame which is not the typically used one in SHARPy.
+
     Args:
         euler (np.ndarray): Euler angles :math:`[\phi, \theta, \psi]` for roll, pitch and yaw, respectively.
 
@@ -1812,6 +1700,9 @@ def der_Teuler_by_w(euler, w):
         q\frac{\cos\phi}{\cos\theta}-r\frac{\sin\phi}{\cos\theta} & q\sin\phi\tan\theta\sec\theta +
         r\cos\phi\tan\theta\sec\theta & 0
         \end{bmatrix}_{\Theta_0, \omega^A_0}
+
+    Note:
+        This function is defined in a North East Down frame which is not the typically used one in SHARPy.
 
     Args:
         euler (np.ndarray): Euler angles at the linearisation point :math:`\mathbf{\Theta}_0 = [\phi,\theta,\psi]` or
