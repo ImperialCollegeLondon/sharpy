@@ -12,6 +12,46 @@ import sharpy.structure.utils.xbeamlib as xbeamlib
 
 @solver
 class WriteVariablesTime(BaseSolver):
+    r"""
+    Write variables with time
+
+    ``WriteVariablesTime`` is a class inherited from ``BaseSolver``
+
+    It is a postprocessor that outputs the value of variables with time onto a text file.
+
+    Args:
+        in_dict (dict): Input data in the form of dictionary. See acceptable entries below:
+
+            ===================       ===============   =================================================                                                      ===================
+            Name                      Type              Description                                                                                            Default
+            ===================       ===============   =================================================                                                      ===================
+            ``delimiter``             ``str``           Delimiter to be used in the output file                                                                `` ``
+            ``FoR_variables``         ``list(str)``     Variables of ``StructTimeStepInfo`` associated to the frame of reference to be writen                  ``['']``
+            ``FoR_number``            ``np.array(int)`` Number of the A frame of reference to output (for multibody configurations)                            ``np.array([0], dtype=int)``
+            ``structure_variables``   ``list(str)``     Variables of ``StructTimeStepInfo`` associated to the frame of reference to be writen                  ``np.array([0], dtype=int)``
+            ``structure_nodes``       ``np.array(int)`` Number of the nodes to be writen                                                                       ``np.array([-1], dtype=int)``
+            ``aero_panels_variables`` ``list(str)``     Variables of ``AeroTimeStepInfo`` associated to panels to be writen                                    ``['']``
+            ``aero_panels_isurf``     ``np.array(int)`` Number of the panels' surface to be output                                                             ``np.array([0], dtype=int)``
+            ``aero_panels_im``        ``np.array(int)`` Chordwise index of the panels to be output                                                             ``np.array([0], dtype=int)``
+            ``aero_panels_in``        ``np.array(int)`` Spanwise index of the panels to be output                                                              ``np.array([0], dtype=int)``
+            ``aero_nodes_variables``  ``list(str)``     Variables of ``AeroTimeStepInfo`` associated to nodes to be writen                                     ``['']``
+            ``aero_nodes_isurf``      ``np.array(int)`` Number of the nodes' surface to be output                                                              ``np.array([0], dtype=int)``
+            ``aero_nodes_im``         ``np.array(int)`` Chordwise index of the nodes to be output                                                              ``np.array([0], dtype=int)``
+            ``aero_nodes_in``         ``np.array(int)`` Spanwise index of the nodes to be output                                                               ``np.array([0], dtype=int)``
+            ``cleanup_old_solution``  ``bool``          Remove the existing files                                                                              ``True``
+            ===================       ===============   =================================================                                                      ===================
+
+    Attributes:
+        settings_types (dict): Acceptable data types of the input data
+        settings_default (dict): Default values for input data should the user not provide them
+        See the list of arguments
+        dir (str): directory to output the information
+
+    See Also:
+        .. py:class:: sharpy.utils.solver_interface.BaseSolver
+        .. py:class:: sharpy.utils.datastructures
+
+    """
     solver_id = 'WriteVariablesTime'
 
     def __init__(self):
@@ -133,20 +173,6 @@ class WriteVariablesTime(BaseSolver):
                         pass
 
     def run(self, online=False):
-
-    # settings['WriteVariablesTime'] = {'delimiter': ' ',
-    #                                   'FoR_variables': ['GFoR_pos', 'GFoR_vel', 'GFoR_acc'],
-    #                                   'FoR_number': [0,1],
-    #                                   'structure_variables': ['AFoR_steady_forces', 'AFoR_unsteady_forces','AFoR_position'],
-    #                                   'structure_nodes': [0,-1],
-    #                                   'aero_panels_variables': ['gamma', 'norm_gamma', 'norm_gamma_star'],
-    #                                   'aero_panels_isurf': [0,1,2],
-    #                                   'aero_panels_im': [1,1,1],
-    #                                   'aero_panels_in': [-2,-2,-2],
-    #                                   'aero_nodes_variables': ['GFoR_steady_force', 'GFoR_unsteady_force'],
-    #                                   'aero_nodes_isurf': [0,1,2],
-    #                                   'aero_nodes_im': [1,1,1],
-    #                                   'aero_nodes_in': [-2,-2,-2]}
 
         # FoR variables
         if 'FoR_number' in self.settings:

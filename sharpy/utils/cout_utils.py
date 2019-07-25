@@ -163,13 +163,13 @@ class TablePrinter(object):
                 name = name[0:self.field_length[i_name]]
 
         string = ''
+        divider_line = '|'
         for i_field in range(self.n_fields):
             string += '|{0[' + str(i_field) + ']:^' + str(self.field_length[i_field]) + '}'
-
+            divider_line += '-'*(self.field_length[i_field]) + '|'
         string += '|'
         cout_wrap(string.format(self.field_names))
-        string = '-'*(sum(self.field_length) + self.n_fields + 1)
-        cout_wrap(string)
+        cout_wrap(divider_line)
 
     def print_line(self, line_data):
         string = ''

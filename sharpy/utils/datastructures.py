@@ -107,6 +107,8 @@ class AeroTimeStepInfo(object):
         # Multibody variables
         self.in_global_AFoR = True
 
+        self.control_surface_deflection = np.array([])
+
     def copy(self):
         copied = AeroTimeStepInfo(self.dimensions, self.dimensions_star)
         # generate placeholder for aero grid zeta coordinates
@@ -159,6 +161,8 @@ class AeroTimeStepInfo(object):
 
         copied.postproc_cell = copy.deepcopy(self.postproc_cell)
         copied.postproc_node = copy.deepcopy(self.postproc_node)
+
+        copied.control_surface_deflection = self.control_surface_deflection.astype(dtype=ct.c_double, copy=True)
 
         return copied
 
@@ -405,6 +409,8 @@ class StructTimeStepInfo(object):
         self.mb_quat = np.zeros((num_bodies,4), dtype=ct.c_double, order='F')
         self.mb_quat[:,0] = np.ones((num_bodies), dtype=ct.c_double, order='F')
         self.mb_dqddt_quat = np.zeros((num_bodies,4), dtype=ct.c_double, order='F')
+        self.forces_constraints_nodes = np.zeros((self.num_node, 6), dtype=ct.c_double, order='F')
+        self.forces_constraints_FoR = np.zeros((num_bodies, 10), dtype=ct.c_double, order='F')
 
     def copy(self):
         copied = StructTimeStepInfo(self.num_node, self.num_elem, self.num_node_elem, ct.c_int(len(self.q)-10), self.mb_quat.shape[0])
@@ -451,6 +457,8 @@ class StructTimeStepInfo(object):
         copied.mb_FoR_acc = self.mb_FoR_acc.astype(dtype=ct.c_double, order='F', copy=True)
         copied.mb_quat = self.mb_quat.astype(dtype=ct.c_double, order='F', copy=True)
         copied.mb_dqddt_quat = self.mb_dqddt_quat.astype(dtype=ct.c_double, order='F', copy=True)
+        copied.forces_constraints_nodes = self.forces_constraints_nodes.astype(dtype=ct.c_double, order='F', copy=True)
+        copied.forces_constraints_FoR = self.forces_constraints_FoR.astype(dtype=ct.c_double, order='F', copy=True)
 
         return copied
 
@@ -468,6 +476,16 @@ class StructTimeStepInfo(object):
 
     def cag(self):
         return self.cga().T
+
+    def euler_angles(self):
+        """
+        Returns the 3 Euler angles (roll, pitch, yaw) for a given time step.
+
+        :returns: `np.array` (roll, pitch, yaw) in radians.
+        """
+
+        return algebra.quat2euler(self.quat)
+
 
     def get_body(self, beam, num_dof_ibody, ibody):
         """

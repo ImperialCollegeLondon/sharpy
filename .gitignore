@@ -97,6 +97,9 @@ lib/*
 output/*
 .idea
 
+# figure folders
+*figs/*
+
 *.csv
 *.png
 *.eps
@@ -132,5 +135,7 @@ tests/linear/uvlm/res/*
 cases/linear/coupled/figs/*
 cases/linear/coupled/res/*
 figs/*
+
+tests/linear/rom/figs/
 
 tests/linear/rom/figs/

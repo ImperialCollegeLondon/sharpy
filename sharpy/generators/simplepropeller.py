@@ -180,7 +180,10 @@ class SimplePropeller(generator_interface.BaseGenerator):
                     # TODO only for now
                     uext[i_surf][:, i_M, i_N] = 0.0
                     # coordinates of the grid point in G for
-                    grid_g = zeta[i_surf][:, i_M, i_N]
+                    grid_g = np.zeros((3, 1))
+                    grid_g[0, 0] = zeta[i_surf][0, i_M, i_N]
+                    grid_g[1, 0] = zeta[i_surf][1, i_M, i_N]
+                    grid_g[2, 0] = zeta[i_surf][2, i_M, i_N]
 
                     grid_p = self.inertial_2_propeller(grid_g)
 

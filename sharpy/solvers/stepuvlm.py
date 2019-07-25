@@ -130,6 +130,11 @@ class StepUvlm(BaseSolver):
                                               'for_pos': structure_tstep.for_pos},
                                              aero_tstep.u_ext_star)
 
+            for isurf in range(len(aero_tstep.zeta_star)):
+                for i_m in range(aero_tstep.zeta_star[isurf].shape[1]):
+                    for i_n in range(aero_tstep.zeta_star[isurf].shape[2]):
+                        aero_tstep.u_ext_star[isurf][:, i_m, i_n] = self.settings['velocity_field_input']['u_inf']*self.settings['velocity_field_input']['u_inf_direction']
+
         uvlmlib.uvlm_solver(self.data.ts,
                             aero_tstep,
                             structure_tstep,
@@ -163,7 +168,11 @@ class StepUvlm(BaseSolver):
         self.data.aero.generate_zeta(beam, self.data.aero.aero_settings, -1, beam_ts=-1)
 
     def update_custom_grid(self, structure_tstep, aero_tstep):
-        self.data.aero.generate_zeta_timestep_info(structure_tstep, aero_tstep, self.data.structure, self.data.aero.aero_settings)
+        self.data.aero.generate_zeta_timestep_info(structure_tstep,
+                aero_tstep,
+                self.data.structure,
+                self.data.aero.aero_settings,
+                dt=self.settings['dt'].value)
 
     @staticmethod
     def filter_gamma_dot(tstep, history, filter_param):
