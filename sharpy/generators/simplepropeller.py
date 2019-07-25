@@ -201,7 +201,7 @@ class SimplePropeller(generator_interface.BaseGenerator):
         # zeta in G to zeta in A
         zeta_A = np.dot(self.rotation_GA.T, inertial_coord)
         # zeta in A to zeta in B
-        zeta_B = np.dot(self.rotation_AB.T, zeta_A)
+        zeta_B = np.squeeze(np.dot(self.rotation_AB.T, zeta_A))
         # offset
         zeta_P = np.dot(self.rotation_BP.T, zeta_B - self.settings['offset'])
         return zeta_P
@@ -335,6 +335,7 @@ class SimplePropeller(generator_interface.BaseGenerator):
         #
         # uz_t = uz_t1 + uz_t2 + uz_t3
 
+        # vortex cutoff in action
         if r < vortex_cutoff * R:
             ur_t = - 0.25 * gamma_t * (r * R ** 2) / (R ** 2 + y ** 2) ** 1.5
 
@@ -342,6 +343,23 @@ class SimplePropeller(generator_interface.BaseGenerator):
             uz_t2 = 0.0
             uz_t3 = 0.0
             uz_t = 0.5 * gamma_t * (1 + y / np.sqrt(R ** 2 + r ** 2))
+        # edge of wake cylinder
+        elif np.abs(r - R) < 1e-6:
+            # edge of propeller
+            if np.abs(y) < 1e-6:
+                ur_t = 0
+                uz_t1 = gamma_t / 4
+                uz_t2 = 0
+                uz_t3 = 0
+                uz_t = uz_t1 + uz_t2 + uz_t3
+            else:
+                K = sp.ellipk(k2_y)
+
+                uz_t1 = gamma_t / 4
+                uz_t2 = gamma_t / 2 * (y * k_y) / (2 * np.pi * np.sqrt(r * R)) * K
+                uz_t3 = 0
+                uz_t = uz_t1 + uz_t2 + uz_t3
+        # standard case
         else:
             K = sp.ellipk(k2_y)
             E = sp.ellipe(k2_y)
@@ -353,19 +371,7 @@ class SimplePropeller(generator_interface.BaseGenerator):
             uz_t2 = gamma_t / 2. * (y * k_y) / (2 * np.pi * np.sqrt(r * R)) * K
             uz_t3 = gamma_t / 2. * (y * k_y) / (2 * np.pi * np.sqrt(r * R)) * (R - r) / (R + r) * PI
             uz_t = uz_t1 + uz_t2 + uz_t3
-        if r == R:
-            K = sp.ellipk(k2_y)
 
-            uz_t1 = gamma_t / 4
-            uz_t2 = gamma_t / 2 * (y * k_y) / (2 * np.pi * np.sqrt(r * R)) * K
-            uz_t3 = 0
-            uz_t = uz_t1 + uz_t2 + uz_t3
-        if (r == R) and (y == 0):
-            ur_t = 0
-            uz_t1 = gamma_t / 4
-            uz_t2 = 0
-            uz_t3 = 0
-            uz_t = uz_t1 + uz_t2 + uz_t3
 
         return uz_t, ur_t
 
@@ -385,15 +391,9 @@ class SimplePropeller(generator_interface.BaseGenerator):
             K = sp.ellipk(k2_y)
             n1 = 2 * r / (r + np.sqrt(r ** 2 + y ** 2))
             n2 = 2 * r / (r - np.sqrt(r ** 2 + y ** 2))
-            try:
-                n1 = 0.8
-                PI1 = float(sym.elliptic_pi(float(n1), float(k2_y)))
-            except TypeError:
-                import pdb; pdb.set_trace()
-            try:
-                PI2 = float(sym.elliptic_pi(float(n2), float(k2_y)))
-            except TypeError:
-                import pdb; pdb.set_trace()
+
+            PI1 = float(sym.elliptic_pi(float(n1), float(k2_y)))
+            PI2 = float(sym.elliptic_pi(float(n2), float(k2_y)))
             up_b = gamma_tot / (4 * np.pi) * (
                         1 / r * (y / np.sqrt(r ** 2 + y ** 2) - np.sign(y)) - 1 / (np.pi * y) * np.sqrt(
                     r / R) * y ** 2 / r ** 2 * k_y * (K + T1 * PI1 - T2 * PI2))
@@ -420,13 +420,15 @@ class SimplePropeller(generator_interface.BaseGenerator):
         if r < R * vortex_cutoff:
         # if r < 0.01:
             up_l = 0
-        # elif np.abs(r - R) < 1e-6:
-        elif r == R:
-            # k2_y = propeller_wake_k2_y(r, R, y)
-            k2_y = self.propeller_wake_k2_y(r, R, y)
-            k_y = np.sqrt(k2_y)
-            K = sp.ellipk(k2_y)
-            up_l = gamma_l / 4 * (R / r) + gamma_l / 2 * (R / r) * (y * k_y) / (2 * np.pi * np.sqrt(r * R)) * K
+        elif np.abs(r - R) < 1e-6:
+            if np.abs(y) < 1e-6:
+                up_l = 0
+            else:
+                # k2_y = propeller_wake_k2_y(r, R, y)
+                k2_y = self.propeller_wake_k2_y(r, R, y)
+                k_y = np.sqrt(k2_y)
+                K = sp.ellipk(k2_y)
+                up_l = gamma_l / 4 * (R / r) + gamma_l / 2 * (R / r) * (y * k_y) / (2 * np.pi * np.sqrt(r * R)) * K
         else:
             k2_y = self.propeller_wake_k2_y(r, R, y)
             k2_0 = self.propeller_wake_k2_y(r, R, 0)
@@ -439,6 +441,4 @@ class SimplePropeller(generator_interface.BaseGenerator):
             up_l2 = gamma_l / 2 * (R / r) * (y * k_y) / (2 * np.pi * np.sqrt(r * R)) * K
             up_l3 = -gamma_l / 2 * (R / r) * (y * k_y) / (2 * np.pi * np.sqrt(r * R)) * (R - r) / (R + r) * PI
             up_l = up_l1 + up_l2 + up_l3
-        if (r == R) and (y == 0):
-            up_l = 0
         return up_l
