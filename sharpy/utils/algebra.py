@@ -560,20 +560,40 @@ def rotation2crv(Cab):
 
 
 def crv2tan(psi):
+    r"""
+    Returns the tangential operator, :math:`\mathbf{T}(\boldsymbol{\Psi})`, that is a function of
+    the Cartesian Rotation Vector, :math:`\boldsymbol{\Psi}`.
+
+    .. math::
+
+        \boldsymbol{T}(\boldsymbol{\Psi}) =
+        \mathbf{I} +
+        \left(\frac{\cos ||\boldsymbol{\Psi}|| - 1}{||\boldsymbol{\Psi}||^2}\right)\tilde{\boldsymbol{\Psi}}
+        + \left(1 - \frac{\sin||\boldsymbol{\Psi}||}{||\boldsymbol{\Psi}||}\right)
+        \frac{\tilde{\boldsymbol{\Psi}}\tilde{\boldsymbol{\Psi}}}{||\boldsymbol{\Psi}||^2}
+
+    When the norm of the CRV approaches 0, the series expansion expression is used in-lieu of the above expression
+
+    .. math::
+
+        \boldsymbol{T}(\boldsymbol{\Psi}) =
+        \mathbf{I}
+        -\frac{1}{2!}\tilde{\boldsymbol{\Psi}} + \frac{1}{3!}\tilde{\boldsymbol{\Psi}}^2
+
+    Args:
+        psi (np.array): Cartesian Rotation Vector, :math:`\boldsymbol{\Psi}`.
+
+    Returns:
+        np.array: Tangential operator
+
+    References:
+        Geradin and Cardona. Flexible Multibody Dynamics: A Finite Element Approach. Chapter 4.
+    """
+
     norm_psi = np.linalg.norm(psi)
     psi_skew = skew(psi)
 
     eps = 1e-8
-    # if norm_psi < eps:
-    #     k1 = 1.0
-    #     k2 = 1.0/6.0
-    # else:
-    #     k1 = np.sin(norm_psi*0.5)/(norm_psi*0.5)
-    #     k2 = (1.0 - np.sin(norm_psi)/norm_psi)/(norm_psi*norm_psi)
-    #
-    # T = np.eye(3) - (0.5*k1*k1)*psi_skew + k2*np.dot(psi_skew, psi_skew)
-
-    # new expression for tangent operator (equation 4.11 in Geradin and Cardona)
     if norm_psi < eps:
         return np.eye(3) - 0.5*psi_skew + 1.0/6.0*np.dot(psi_skew, psi_skew)
     else:
