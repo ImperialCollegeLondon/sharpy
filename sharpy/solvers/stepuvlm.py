@@ -112,7 +112,10 @@ class StepUvlm(BaseSolver):
                                           't': t,
                                           'ts': self.data.ts,
                                           'dt': dt,
-                                          'for_pos': structure_tstep.for_pos},
+                                          'for_pos': structure_tstep.for_pos,
+                                          'pos': structure_tstep.pos,
+                                          'psi': structure_tstep.psi,
+                                          'quat': structure_tstep.quat},
                                          aero_tstep.u_ext)
         if self.settings['convection_scheme'].value > 1 and convect_wake:
             # generate uext_star
@@ -121,6 +124,9 @@ class StepUvlm(BaseSolver):
                                               'ts': self.data.ts,
                                               'dt': dt,
                                               't': t,
+                                              'pos': structure_tstep.pos,
+                                              'psi': structure_tstep.psi,
+                                              'quat': structure_tstep.quat,
                                               'for_pos': structure_tstep.for_pos},
                                              aero_tstep.u_ext_star)
 
