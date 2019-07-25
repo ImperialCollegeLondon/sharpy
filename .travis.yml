@@ -23,8 +23,8 @@ before_install:
   - hash -r
   - conda config --set always_yes yes --set changeps1 no
   - conda update -q conda
-  - conda env create -f utils/environment_travis.yml
-  - source activate sharpy_travis
+  - conda env create -f utils/environment_linux.yml
+  - source activate sharpy_env
 
 install:
   - echo $(pwd)
@@ -38,6 +38,7 @@ install:
   - git clone --branch=$TRAVIS_BRANCH https://github.com/imperialcollegelondon/uvlm
   - cd uvlm
   - export EIGEN3_INCLUDE_DIR=$(conda info --json | python -c "import sys, json; print(json.load(sys.stdin)['active_prefix'])")/include/eigen3
+  - export MKL_ROOT=$(conda info --json | python -c "import sys, json; print(json.load(sys.stdin)['active_prefix'])")
   - make
   - cp lib/* ../sharpy/lib
   - cd ../sharpy

@@ -2,6 +2,8 @@ import numpy as np
 import importlib
 import unittest
 import os
+import glob
+import shutil
 
 
 class TestGeradinXbeam(unittest.TestCase):
@@ -19,9 +21,6 @@ class TestGeradinXbeam(unittest.TestCase):
         case = 'geradin'
         mod = importlib.import_module('tests.xbeam.' + case + '.generate_' + case)
 
-    @classmethod
-    def tearDownClass(cls):
-        pass
 
     def test_geradin(self):
         import sharpy.sharpy_main
@@ -30,45 +29,29 @@ class TestGeradinXbeam(unittest.TestCase):
         sharpy.sharpy_main.main(['', solver_path])
 
         # read output and compare
-        output_path = os.path.dirname(solver_path) + '/beam/'
+        output_path = os.path.dirname(solver_path) + '/output/geradin/WriteVariablesTime/'
         # pos_def
-        pos_data = np.genfromtxt(output_path + 'beam_geradin_000000.csv')
-        self.assertAlmostEqual(pos_data[-1, 2], -2.159, 2)
-        self.assertAlmostEqual(5.0 - pos_data[-1, 0], 0.596, 3)
+        pos_data = np.atleast_2d(np.genfromtxt(output_path + 'struct_pos_node-1.dat'))
+        self.assertAlmostEqual(pos_data[0, 3], -2.159, 2)
+        self.assertAlmostEqual(5.0 - pos_data[0, 1], 0.596, 3)
         # psi_def
-        psi_data = np.genfromtxt(output_path + 'beam_geradin_crv_000000.csv')
-        self.assertAlmostEqual(psi_data[-1, 1], 0.6720, 3)
+        psi_data = np.atleast_2d(np.genfromtxt(output_path + 'struct_psi_node-1.dat'))
+        self.assertAlmostEqual(psi_data[-1, 2], 0.6720, 3)
 
+    def tearDowns(self):
+        solver_path = os.path.abspath(os.path.dirname(os.path.realpath(__file__)) + '/geradin/')
+        files_to_delete = list()
+        extensions = ('*.txt', '*.h5')
+        for f in extensions:
+            files_to_delete.extend(glob.glob(solver_path + '/' + f))
 
-class TestDynamic2dXbeam(unittest.TestCase):
-    """
-    Tests the xbeam library for the dynamic 2d beam
-    Validation values taken from...
-    """
+        for f in files_to_delete:
+            try:
+                os.remove(f)
+            except FileNotFoundError:
+                pass
 
-    @classmethod
-    def setUpClass(cls):
-        # run all the cases generators
-        case = 'dynamic2d'
-        mod = importlib.import_module('tests.xbeam.' + case + '.generate_' + case)
-
-    @classmethod
-    def tearDownClass(cls):
-        pass
-
-    def test_dynamic2d(self):
-        import sharpy.sharpy_main
-        # suppress screen output
-        # sharpy.sharpy_main.cout.cout_quiet()
-        solver_path = os.path.abspath(os.path.dirname(os.path.realpath(__file__)) +
-                                      '/dynamic2d/dynamic2d.solver.txt')
-        sharpy.sharpy_main.main(['', solver_path])
-        # sharpy.sharpy_main.cout.cout_talk()
-
-        # read output and compare
-        output_path = os.path.dirname(solver_path) + '/output/dynamic2d/beam/'
-        pos_data = np.genfromtxt(output_path + 'beam_dynamic2d_glob_000999.csv')
-        self.assertAlmostEqual((pos_data[-1, 0] - -3.7350), 0.0, 2)
-        self.assertAlmostEqual((pos_data[-1, 1] - 13.9267), 0.0, 2)
-
-
+        try:
+            shutil.rmtree(solver_path + '/output')
+        except FileNotFoundError:
+            pass

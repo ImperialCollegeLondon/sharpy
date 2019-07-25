@@ -70,6 +70,16 @@ class StepUvlm(BaseSolver):
 
         self.data.structure.add_unsteady_information(self.data.structure.dyn_dict, self.settings['n_time_steps'].value)
 
+        # Filtering
+        if self.settings['gamma_dot_filtering'].value == 1:
+            cout.cout_wrap("gamma_dot_filtering cannot be one. Changing it to None", 2)
+            self.settings['gamma_dot_filtering'] = None
+        if self.settings['gamma_dot_filtering'] is not None:
+            if self.settings['gamma_dot_filtering'].value:
+                if not self.settings['gamma_dot_filtering'].value % 2:
+                    cout.cout_wrap("gamma_dot_filtering does not support even numbers. Changing " + str(self.settings['gamma_dot_filtering'].value) + " to " + str(self.settings['gamma_dot_filtering'].value + 1), 2)
+                    self.settings['gamma_dot_filtering'] = ct.c_int(self.settings['gamma_dot_filtering'].value + 1)
+
         # init velocity generator
         velocity_generator_type = gen_interface.generator_from_string(
             self.settings['velocity_field_generator'])
@@ -93,6 +103,9 @@ class StepUvlm(BaseSolver):
         if t is None:
             t = self.data.ts*dt
 
+        if len(aero_tstep.zeta) == 0:
+            return self.data
+
         # generate uext
         self.velocity_generator.generate({'zeta': aero_tstep.zeta,
                                           'override': True,
@@ -111,6 +124,11 @@ class StepUvlm(BaseSolver):
                                               'for_pos': structure_tstep.for_pos},
                                              aero_tstep.u_ext_star)
 
+            for isurf in range(len(aero_tstep.zeta_star)):
+                for i_m in range(aero_tstep.zeta_star[isurf].shape[1]):
+                    for i_n in range(aero_tstep.zeta_star[isurf].shape[2]):
+                        aero_tstep.u_ext_star[isurf][:, i_m, i_n] = self.settings['velocity_field_input']['u_inf']*self.settings['velocity_field_input']['u_inf_direction']
+
         uvlmlib.uvlm_solver(self.data.ts,
                             aero_tstep,
                             structure_tstep,
@@ -122,7 +140,9 @@ class StepUvlm(BaseSolver):
         if unsteady_contribution:
             # calculate unsteady (added mass) forces:
             self.data.aero.compute_gamma_dot(dt, aero_tstep, self.data.aero.timestep_info[-3:])
-            if self.settings['gamma_dot_filtering'].value > 0:
+            if self.settings['gamma_dot_filtering'] is None:
+                self.filter_gamma_dot(aero_tstep, self.data.aero.timestep_info, None)
+            elif self.settings['gamma_dot_filtering'].value > 0:
                 self.filter_gamma_dot(aero_tstep, self.data.aero.timestep_info, self.settings['gamma_dot_filtering'].value)
             uvlmlib.uvlm_calculate_unsteady_forces(aero_tstep,
                                                    structure_tstep,
@@ -142,7 +162,11 @@ class StepUvlm(BaseSolver):
         self.data.aero.generate_zeta(beam, self.data.aero.aero_settings, -1, beam_ts=-1)
 
     def update_custom_grid(self, structure_tstep, aero_tstep):
-        self.data.aero.generate_zeta_timestep_info(structure_tstep, aero_tstep, self.data.structure, self.data.aero.aero_settings)
+        self.data.aero.generate_zeta_timestep_info(structure_tstep,
+                aero_tstep,
+                self.data.structure,
+                self.data.aero.aero_settings,
+                dt=self.settings['dt'].value)
 
     @staticmethod
     def filter_gamma_dot(tstep, history, filter_param):
@@ -159,17 +183,3 @@ class StepUvlm(BaseSolver):
 
                     # filter
                     tstep.gamma_dot[i_surf][i, j] = scipy.signal.wiener(series, filter_param)[-1]
-
-
-
-
-
-
-
-
-
-
-
-
-
-

@@ -21,6 +21,7 @@ import sharpy.utils.generator_interface as generator_interface
 import h5py as h5
 import os
 import pandas as pd
+import scipy.integrate
 
 
 ######################################################################
@@ -107,10 +108,26 @@ def from_node_list_to_elem_matrix(node_list, connectivities):
 
     return elem_matrix
 
+def from_node_array_to_elem_matrix(node_array, connectivities):
+    """
+    from_node_array_to_elem_matrix
+
+    Same as the previous function but with an array as input
+    """
+    num_elem = len(connectivities)
+    prop_size = node_array.shape[1:]
+    # TODO: change the "3" for self.num_node_elem
+    elem_matrix = np.zeros(prop_size + (num_elem,3), dtype=node_array.dtype)
+    for ielem in range(num_elem):
+        for inode_in_elem in range(3):
+            elem_matrix[:, ielem, inode_in_elem] = node_array[connectivities[ielem, inode_in_elem], :]
+
+    return elem_matrix
+
 def read_column_sheet_type01(excel_file_name, excel_sheet, column_name):
 
     xls = pd.ExcelFile(excel_file_name)
-    excel_db = pd.read_excel(xls, sheetname=excel_sheet)
+    excel_db = pd.read_excel(xls, sheet_name=excel_sheet)
     num_elem = excel_db.index._stop - 2
 
     if excel_db[column_name][1] == 'one_int':
@@ -224,6 +241,99 @@ def read_column_sheet_type01(excel_file_name, excel_sheet, column_name):
         #     ivar += 1
 
 
+def get_factor_geometric_progression(a0, Sn_target, n):
+    # Given an initial value,
+
+    tol = 1e-12
+    max_it = 1000
+
+    # Case of uniform distribution
+    if abs(a0*n - Sn_target) < tol:
+        return 1.
+
+    # First estimation for r
+    if a0*n < Sn_target:
+        r = 1.1
+    else:
+        r = 0.9
+
+    # Iterative computation
+    error = 2.*tol
+    Sn_temp = a0*(1-r**n)/(1-r)
+    it = 0
+    while ((error > tol) and (it < max_it)):
+        derivative = ((1-n*r**(n-1))*(1-r) + (1-r**n))/(1-r)**2
+        # print("der:", derivative)
+        # print("r:", r)
+        r += (Sn_target - Sn_temp)/a0/derivative
+        Sn_temp = a0*(1-r**n)/(1-r)
+        error = abs(Sn_temp - Sn_target)/Sn_target
+        it += 1
+
+    if it == max_it:
+        print("Maximum iterations reached. Sn target:", Sn_target, ". Sn obtained:", Sn_temp, ". Relative error:", error)
+
+    # sum = a0
+    # ai = a0
+    # print("ai: ", ai)
+    # for i in range(1, n):
+    #     ai *= r
+    #     sum += ai
+    #     print(ai)
+    #
+    # print("sum:", sum)
+
+    return r
+
+def get_ielem_inode(connectivities, inode):
+
+    num_elem, num_node_in_elem = connectivities.shape
+
+    for ielem in range(num_elem):
+        for inode_in_elem in range(num_node_in_elem):
+            if connectivities[ielem, inode_in_elem] == inode:
+                return ielem, inode_in_elem
+
+    print("ERROR: cannot find ielem and inode_in_elem")
+
+def get_aoacl0_from_camber(x, y):
+    '''
+    Check Theory of wing sections. Abbott. pg 69
+    '''
+
+    # Scale
+    c = x[-1] - x[0]
+    xc = (x - x[0])/c
+    yc = (y - y[0])/c
+
+    # Remove the first and last points that may give rise to problems
+    xc = xc[1:-1]
+    yc = yc[1:-1]
+
+    f1 = 1./(np.pi*(1-xc)*np.sqrt(xc*(1-xc)))
+    int = yc*f1
+
+    return -scipy.integrate.trapz(int, xc)
+
+def get_mu0_from_camber(x, y):
+
+    '''
+    Check Theory of wing sections. Abbott. pg 69
+    '''
+    # Scale
+    c = x[-1] - x[0]
+    xc = (x - x[0])/c
+    yc = (y - y[0])/c
+
+    # Remove the first and last points that may give rise to problems
+    xc = xc[1:-1]
+    yc = yc[1:-1]
+
+    f2 = (1. - 2*xc)/np.sqrt(xc*(1. - xc))
+    int = yc*f2
+
+    return scipy.integrate.trapz(int, xc)
+
 ######################################################################
 ###############  STRUCTURAL INFORMATION  #############################
 ######################################################################
@@ -328,7 +438,7 @@ class StructuralInformation():
         self.mass_db = np.zeros((num_mass_db, 6, 6), dtype=float)
         self.frame_of_reference_delta = np.zeros((num_elem, num_node_elem, 3),
                                                  dtype=float)
-        self.structural_twist = np.zeros((num_node,), dtype=float)
+        self.structural_twist = np.zeros((num_elem, num_node_elem), dtype=float)
         self.boundary_conditions = np.zeros((num_node,), dtype=int)
         self.beam_number = np.zeros((num_elem,), dtype=int)
         self.body_number = np.zeros((num_elem,), dtype=int)
@@ -376,7 +486,7 @@ class StructuralInformation():
             elem_mass (np.array): element mass index
             mass_db (np.array): Mass matrices
             frame_of_reference_delta (np.array): element direction of the y axis in the BFoR wrt the AFoR
-            structural_twist (np.array): node twist
+            structural_twist (np.array): element based twist
             boundary_conditions (np.array): node boundary condition
             beam_number (np.array): node beam number
             app_forces (np.array): steady applied follower forces at the nodes
@@ -428,7 +538,7 @@ class StructuralInformation():
         self.elem_mass = np.linspace(0,self.num_elem-1,self.num_elem, dtype=int)
         self.mass_db = mass_db
         self.create_frame_of_reference_delta(y_BFoR = frame_of_reference_delta)
-        self.structural_twist = vec_node_structural_twist
+        self.structural_twist = from_node_list_to_elem_matrix(vec_node_structural_twist, self.connectivities)
         self.beam_number = np.zeros((self.num_elem,), dtype=int)
         self.body_number = np.zeros((self.num_elem,), dtype=int)
         self.app_forces = np.zeros((self.num_node,6), dtype=float)
@@ -665,6 +775,7 @@ class StructuralInformation():
                                         np.array([EIy]),
                                         np.array([EIz]))
         self.create_frame_of_reference_delta(y_BFoR)
+        self.boundary_conditions = np.zeros((self.num_node), dtype=int)
         # self.boundary_conditions[-1] = -1
         # self.boundary_conditions[0] = 1
 
@@ -747,8 +858,8 @@ class StructuralInformation():
             sys.exit("ERROR: The second dimension of FoR does not match the number of nodes element")
         if(self.frame_of_reference_delta.shape[2]!=3):
             sys.exit("ERROR: The third dimension of FoR must be 3")
-        if(self.structural_twist.shape[0]!=self.num_node):
-            sys.exit("ERROR: The structural twist must be defined for each node")
+        if(self.structural_twist.shape[0]!=self.num_elem):
+            sys.exit("ERROR: The structural twist must be defined for each element")
         if(self.boundary_conditions.shape[0]!=self.num_node):
             sys.exit("ERROR: The boundary conditions must be defined for each node")
         if(self.beam_number.shape[0]!=self.num_elem):
@@ -823,7 +934,9 @@ class AerodynamicInformation():
         self.m_distribution = None
         self.elastic_axis = None
         self.airfoil_distribution = None
+        # TODO: allow airfoils to be of different length (like user_defined_m_distribution)
         self.airfoils = None
+        self.user_defined_m_distribution = [None]
         # TODO: Define the following variables at some point
         # self.control_surface = None
         # self.control_surface_type = None
@@ -852,6 +965,7 @@ class AerodynamicInformation():
         copied.elastic_axis = self.elastic_axis.astype(dtype=float, copy=True)
         copied.airfoil_distribution = self.airfoil_distribution.astype(dtype=int, copy=True)
         copied.airfoils = self.airfoils.astype(dtype=float, copy=True)
+        copied.user_defined_m_distribution = self.user_defined_m_distribution.copy()
 
         return copied
 
@@ -936,7 +1050,8 @@ class AerodynamicInformation():
                                      vec_m_distribution,
                                      vec_elastic_axis,
                                      vec_airfoil_distribution,
-                                     airfoils):
+                                     airfoils,
+                                     user_defined_m_distribution = None):
         """
         create_aerodynamics_from_vec
 
@@ -968,6 +1083,11 @@ class AerodynamicInformation():
         self.m_distribution = vec_m_distribution
 
         self.airfoils = airfoils
+
+        # TODO: this may not work for different surfaces
+        if vec_m_distribution == 'user_defined':
+            udmd_by_elements = from_node_array_to_elem_matrix(user_defined_m_distribution, StructuralInformation.connectivities)
+            self.user_defined_m_distribution = [udmd_by_elements]
 
     def create_one_uniform_aerodynamics(self,
                                      StructuralInformation,
@@ -1012,6 +1132,11 @@ class AerodynamicInformation():
         self.airfoil_distribution = np.zeros((num_elem,num_node_elem), dtype=int)
         self.airfoils = np.zeros((1,num_points_camber,2), dtype = float)
         self.airfoils = airfoil
+
+        if m_distribution == 'user_defined':
+            self.user_defined_m_distribution = []
+            for isurf in range(len(num_chord_panels)):
+                self.user_defined_m_distribution.append(np.zeros((num_chord_panels + 1, num_elem, num_node_elem)))
 
     def change_airfoils_discretezation(self, airfoils, new_num_nodes):
         """
@@ -1080,7 +1205,8 @@ class AerodynamicInformation():
                 print("WARNING: redefining the discretization of airfoil camber line")
                 new_airfoils = self.change_airfoils_discretezation(self.airfoils, aerodynamics_to_add.airfoils.shape[1])
                 self.airfoils = np.concatenate((new_airfoils, aerodynamics_to_add.airfoils), axis=0)
-
+            if self.m_distribution.lower() == 'user_defined':
+                self.user_defined_m_distribution = self.user_defined_m_distribution + aerodynamics_to_add.user_defined_m_distribution
             total_num_airfoils += len(aerodynamics_to_add.airfoils[:,0,0])
             # total_num_surfaces += len(aerodynamics_to_add.surface_m)
             total_num_surfaces += np.sum(aerodynamics_to_add.surface_m != -1)
@@ -1221,6 +1347,11 @@ class AerodynamicInformation():
             for iairfoil in range(len(self.airfoils)):
                 airfoils_group.create_dataset("%d" % iairfoil, data=self.airfoils[iairfoil,:,:])
 
+            if self.m_distribution.lower() == 'user_defined':
+                udmd_group = h5file.create_group('user_defined_m_distribution')
+                for isurf in range(len(self.user_defined_m_distribution)):
+                    udmd_group.create_dataset("%d" % isurf, data=self.user_defined_m_distribution[isurf])
+
             #control_surface_input = h5file.create_dataset('control_surface', data=control_surface)
             #control_surface_deflection_input = h5file.create_dataset('control_surface_deflection', data=control_surface_deflection)
             #control_surface_chord_input = h5file.create_dataset('control_surface_chord', data=control_surface_chord)
@@ -1358,8 +1489,8 @@ class AeroelasticInformation():
         #         self.StructuralInformation.elem_stiffness[nodes_to_keep])
         # self.StructuralInformation.elem_mass = (
         #         self.StructuralInformation.elem_mass[nodes_to_keep])
-        self.StructuralInformation.structural_twist = (
-                self.StructuralInformation.structural_twist[nodes_to_keep])
+        # self.StructuralInformation.structural_twist = (
+        #         self.StructuralInformation.structural_twist[nodes_to_keep])
         self.StructuralInformation.boundary_conditions = (
                 self.StructuralInformation.boundary_conditions[nodes_to_keep])
         # self.StructuralInformation.beam_number = (
@@ -1390,6 +1521,8 @@ class AeroelasticInformation():
                 if not replace_matrix[inode,0] == -1:
                     # inode to be replaced
                     self.StructuralInformation.connectivities[icon, jcon] = self.StructuralInformation.connectivities[replace_matrix[inode,1], replace_matrix[inode,2]]
+                    self.StructuralInformation.structural_twist[icon, jcon] = (
+                        self.StructuralInformation.structural_twist[replace_matrix[inode,1], replace_matrix[inode,2]])
                     self.AerodynamicInformation.chord[icon, jcon] = (
                         self.AerodynamicInformation.chord[replace_matrix[inode,1], replace_matrix[inode,2]])
                     self.AerodynamicInformation.twist[icon, jcon] = (
@@ -1400,7 +1533,6 @@ class AeroelasticInformation():
                         self.AerodynamicInformation.elastic_axis[replace_matrix[inode,1], replace_matrix[inode,2]])
                     self.AerodynamicInformation.airfoil_distribution[icon, jcon] = (
                         self.AerodynamicInformation.airfoil_distribution[replace_matrix[inode,1], replace_matrix[inode,2]])
-
                 else:
                     # inode NOT to be replace
                     self.StructuralInformation.connectivities[icon, jcon] -= replace_matrix[inode,3]
@@ -2023,6 +2155,10 @@ def generate_multibody_file(list_LagrangeConstraints, list_Bodies, route, case_n
                 constraint_id.create_dataset("body_number", data=constraint.body_number)
                 constraint_id.create_dataset("node_number", data=constraint.node_number)
 
+            if constraint.behaviour == 'fully_constrained_node_FoR':
+                constraint_id.create_dataset("node_in_body", data=constraint.node_in_body)
+                constraint_id.create_dataset("node_body", data=constraint.node_body)
+                constraint_id.create_dataset("body_FoR", data=constraint.body_FoR)
             iconstraint += 1
 
         # Write the body information

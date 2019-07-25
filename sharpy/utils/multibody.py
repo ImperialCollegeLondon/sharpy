@@ -100,21 +100,22 @@ def merge_multibody(MB_tstep, MB_beam, beam, tstep, mb_data_dict, dt):
 
     update_mb_dB_before_merge(tstep, MB_tstep)
 
-    first_node = 0
-    first_elem = 0
     first_dof = 0
-
     for ibody in range(beam.num_bodies):
-        last_node = first_node + MB_beam[ibody].num_node
-        last_elem = first_elem + MB_beam[ibody].num_elem
+        # Renaming for clarity
+        ibody_elems = MB_beam[ibody].global_elems_num
+        ibody_nodes = MB_beam[ibody].global_nodes_num
 
         # Merge tstep
         MB_tstep[ibody].change_to_global_AFoR(ibody)
-        tstep.pos[first_node:last_node,:] = MB_tstep[ibody].pos.astype(dtype=ct.c_double, order='F', copy=True)
-        tstep.pos_dot[first_node:last_node,:] = MB_tstep[ibody].pos_dot.astype(dtype=ct.c_double, order='F', copy=True)
-        tstep.psi[first_elem:last_elem,:,:] = MB_tstep[ibody].psi.astype(dtype=ct.c_double, order='F', copy=True)
-        tstep.psi_dot[first_elem:last_elem,:,:] = MB_tstep[ibody].psi_dot.astype(dtype=ct.c_double, order='F', copy=True)
-        tstep.gravity_forces[first_node:last_node,:] = MB_tstep[ibody].gravity_forces.astype(dtype=ct.c_double, order='F', copy=True)
+        tstep.pos[ibody_nodes,:] = MB_tstep[ibody].pos.astype(dtype=ct.c_double, order='F', copy=True)
+        tstep.pos_dot[ibody_nodes,:] = MB_tstep[ibody].pos_dot.astype(dtype=ct.c_double, order='F', copy=True)
+        tstep.psi[ibody_elems,:,:] = MB_tstep[ibody].psi.astype(dtype=ct.c_double, order='F', copy=True)
+        tstep.psi_dot[ibody_elems,:,:] = MB_tstep[ibody].psi_dot.astype(dtype=ct.c_double, order='F', copy=True)
+        tstep.gravity_forces[ibody_nodes,:] = MB_tstep[ibody].gravity_forces.astype(dtype=ct.c_double, order='F', copy=True)
+        # TODO: Do I need a change in FoR for the following variables? Maybe for the FoR ones.
+        tstep.forces_constraints_nodes[ibody_nodes,:] = MB_tstep[ibody].forces_constraints_nodes.astype(dtype=ct.c_double, order='F', copy=True)
+        tstep.forces_constraints_FoR[ibody, :] = MB_tstep[ibody].forces_constraints_FoR[ibody, :].astype(dtype=ct.c_double, order='F', copy=True)
 
         # Merge states
         ibody_num_dof = MB_beam[ibody].num_dof.value
@@ -122,9 +123,6 @@ def merge_multibody(MB_tstep, MB_beam, beam, tstep, mb_data_dict, dt):
         tstep.dqdt[first_dof:first_dof+ibody_num_dof] = MB_tstep[ibody].dqdt[:-10].astype(dtype=ct.c_double, order='F', copy=True)
         tstep.dqddt[first_dof:first_dof+ibody_num_dof] = MB_tstep[ibody].dqddt[:-10].astype(dtype=ct.c_double, order='F', copy=True)
         first_dof += ibody_num_dof
-
-        first_node += MB_beam[ibody].num_node
-        first_elem += MB_beam[ibody].num_elem
 
     tstep.q[-10:] = MB_tstep[0].q[-10:].astype(dtype=ct.c_double, order='F', copy=True)
     tstep.dqdt[-10:] = MB_tstep[0].dqdt[-10:].astype(dtype=ct.c_double, order='F', copy=True)
@@ -348,3 +346,12 @@ def state2disp(q, dqdt, dqddt, MB_beam, MB_tstep):
         MB_tstep[ibody].mb_FoR_vel = MB_tstep[0].mb_FoR_vel.astype(dtype=ct.c_double, order='F', copy=True)
         MB_tstep[ibody].mb_FoR_acc = MB_tstep[0].mb_FoR_acc.astype(dtype=ct.c_double, order='F', copy=True)
         MB_tstep[ibody].mb_quat = MB_tstep[0].mb_quat.astype(dtype=ct.c_double, order='F', copy=True)
+
+
+def get_elems_nodes_list(beam, ibody):
+
+    int_list = np.arange(0, beam.num_elem, 1)
+    ibody_elements = int_list[beam.body_number == ibody]
+    ibody_nodes = list(set(beam.connectivities[ibody_elements, :].reshape(-1)))
+
+    return ibody_elements, ibody_nodes

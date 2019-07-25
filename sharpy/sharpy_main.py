@@ -1,18 +1,3 @@
-# import os
-# import time
-#
-# import sharpy.utils.cout_utils as cout
-# import sharpy.utils.input_arg as input_arg
-# import sharpy.utils.sharpydir as sharpydir
-# import sharpy.utils.solver_interface as solver_interface
-# from sharpy.presharpy.presharpy import PreSharpy
-#
-# from sharpy.presharpy.presharpy import PreSharpy
-# # Loading solvers and postprocessors
-# import sharpy.solvers
-# import sharpy.postproc
-# import sharpy.generators
-# # ------------
 import sharpy.utils.cout_utils as cout
 import sys
 import pickle
@@ -45,6 +30,7 @@ def main(args=None):
     import sharpy.solvers
     import sharpy.postproc
     import sharpy.generators
+    import sharpy.controllers
     # ------------
 
     # output writer
@@ -56,15 +42,23 @@ def main(args=None):
     parser = argparse.ArgumentParser(prog='SHARPy', description=
     """This is the executable for Simulation of High Aspect Ratio Planes.\n
     Imperial College London 2018""")
-    parser.add_argument('input_filename', help='path to the *.solver.txt input file', type=str)
+    parser.add_argument('input_filename', help='path to the *.solver.txt input file', type=str, default='')
     parser.add_argument('-r', '--restart', help='restart the solution with a given snapshot', type=str, default=None)
+    parser.add_argument('-d', '--docs', help='generates the solver documentation in the specified location. Code does not execute if running this flag', action='store_true')
     if args is not None:
         args = parser.parse_args(args[1:])
     else:
         args = parser.parse_args()
 
-    settings = input_arg.read_settings(args)
+    if args.docs:
+        import sharpy.utils.generator_interface as generator_interface
+        solver_interface.output_documentation()
+        generator_interface.output_documentation()
+        return 0
 
+    if args.input_filename == '':
+        parser.error('input_filename is a required argument of sharpy.')
+    settings = input_arg.read_settings(args)
     if args.restart is None:
         # run preSHARPy
         data = PreSharpy(settings)
