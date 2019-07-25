@@ -26,7 +26,6 @@ def output_documentation_algebra():
     algebra_content = inspect.getmembers(algebra)
 
     for item in algebra_content:
-        func_name = item[0]
         if not inspect.isfunction(item[1]):
             continue
 
