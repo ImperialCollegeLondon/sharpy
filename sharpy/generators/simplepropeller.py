@@ -410,9 +410,7 @@ class SimplePropeller(generator_interface.BaseGenerator):
             up_r = -0.25 * gamma_tot / (np.pi * r) * (1.0 + y / np.sqrt(r ** 2 + y ** 2))
         return up_r
 
-    # @staticmethod
     def propeller_wake_longitudinal(self, r, R, gamma_l, y, vortex_cutoff=0.01):
-    # def propeller_wake_longitudinal(r, R, gamma_l, y, vortex_cutoff=0.01):
         up_l = 0.0
         up_l1 = 0.0
         up_l2 = 0.0
