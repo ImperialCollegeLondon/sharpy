@@ -227,7 +227,6 @@ class SimplePropeller(generator_interface.BaseGenerator):
         self.rotation_BP = np.column_stack((x_p_B, y_p_B, z_p_B))
 
 
-    # @staticmethod
     def propeller_coordinate(self, rp0, rx0, ry0, rz0, yp, zp, angle_rx, angle_rz):
         # # Propeller-coordinate origin on yz plane of B frame
         # rp = rp0 + yp * ry0 + zp * rz0
