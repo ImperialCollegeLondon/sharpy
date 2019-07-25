@@ -22,41 +22,9 @@ class DynamicCoupled(BaseSolver):
     Using the ``DynamicCoupled`` solver requires that an instance of the ``StaticCoupled`` solver is called in the
     SHARPy solution ``flow`` when defining the problem case.
 
-    Args:
-        data(ProblemData): class containing the data of the problem
-        custom_settings (dict): dictionary containing custom settings for the solver to use
-
-    Attributes:
-        settings (dict): Contains the solver's ``settings``. See below for acceptable values:
-
-            =======================================  =============  =========================================================================  ==========
-            Name                                     Type           Description                                                                Default
-            =======================================  =============  =========================================================================  ==========
-            ``print_info``                           ``bool``       Print modal calculations to terminal                                       ``True``
-            ``structural_solver``                    ``str``        ``solver_id`` of desired structural solver                                 ``None``
-            ``structural_solver_settings``           ``dict``       Dictionary containing the settings for the structural solver               ``None``
-            ``aero_solver``                          ``str``        ``solver_id`` of desired aerodynamics solver                               ``None``
-            ``aero_solver_settings``                 ``dict``       Dictionary containing the settings for the aerodynamic solver              ``None``
-            ``n_time_steps``                         ``int``        Number of timesteps                                                        ``100``
-            ``dt``                                   ``float``      Time increment between timesteps                                           ``0.05``
-            ``fsi_substeps``                         ``int``        Desc                                                                       ``70``
-            ``fsi_tolerance``                        ``float``      Fluid-structure interaction tolerance                                      ``1e-5``
-            ``structural_substeps``                  ``int``        Number of structural steps per aero step (0 for fully coupled simulation)  ``0``
-            ``relaxation_factor``                    ``float``      Desc                                                                       ``0.2``
-            ``final_relaxation_factor``              ``float``      Desc                                                                       ``0.0``
-            ``minimum_steps``                        ``int``        Desc                                                                       ``3``
-            ``relaxation_steps``                     ``int``        Desc                                                                       ``100``
-            ``dynamic_relaxation``                   ``bool``       Desc                                                                       ``True``
-            ``post_processors``                      ``list(str)``  List of ``solver_id`` of desired post-processors to use                    ``None``
-            ``post_processor_settings``              ``dict``       Dictionary with post-processor settings                                    ``None``
-            ``cleanup_previous_solution``            ``bool``       Remove all the previous timesteps except the last one                      ``True``
-            ``include_unsteady_force_contribution``  ``bool``       Include forces that depend on ``gamma_dot``                                ``False``
-            ``steps_without_unsteady_force``         ``int``        Time steps without the application of unsteady forces                      ``0``
-            ``pseudosteps_ramp_unsteady_force``      ``int``        FSI iterations to progressively ramp the application of unsteady forces    ``0``
-            =======================================  =============  =========================================================================  ==========
-
     """
     solver_id = 'DynamicCoupled'
+    solver_classification = 'Aeroelastic'
 
     def __init__(self):
         self.settings_types = dict()
@@ -113,11 +81,8 @@ class DynamicCoupled(BaseSolver):
         self.settings_types['postprocessors_settings'] = 'dict'
         self.settings_default['postprocessors_settings'] = dict()
 
-        self.settings_types['controller_id'] = 'list(str)'
+        self.settings_types['controller_id'] = 'dict'
         self.settings_default['controller_id'] = list()
-
-        self.settings_types['controller_types'] = 'list(str)'
-        self.settings_default['controller_types'] = list()
 
         self.settings_types['controller_settings'] = 'dict'
         self.settings_default['controller_settings'] = dict()
@@ -155,6 +120,7 @@ class DynamicCoupled(BaseSolver):
         self.residual_table = None
         self.postprocessors = dict()
         self.with_postprocessors = False
+        self.controllers = None
 
         self.time_aero = 0.
         self.time_struc = 0.
@@ -206,8 +172,8 @@ class DynamicCoupled(BaseSolver):
         self.with_controllers = False
         if len(self.settings['controller_id']) > 0:
             self.with_controllers = True
-        for controller_id in self.settings['controller_id']:
-            self.controllers[controller_id] = controller_interface.initialise_controller(self.settings['controller_type'][controller_id])
+        for controller_id, controller_type in self.settings['controller_id'].items():
+            self.controllers[controller_id] = controller_interface.initialise_controller(controller_type)
             self.controllers[controller_id].initialise(
                     self.settings['controller_settings'][controller_id],
                     controller_id)

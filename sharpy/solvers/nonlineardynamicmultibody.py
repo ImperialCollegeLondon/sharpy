@@ -5,7 +5,6 @@ import numpy as np
 from sharpy.utils.settings import str2bool
 import sharpy.utils.solver_interface as solver_interface
 from sharpy.utils.solver_interface import solver, BaseSolver, solver_from_string
-#from sharpy.solvers.nonlineardynamicprescribedstep import NonLinearDynamicPrescribedStep
 import sharpy.utils.settings as settings
 import sharpy.utils.cout_utils as cout
 
@@ -77,7 +76,7 @@ class NonLinearDynamicMultibody(_BaseStructural):
         self.beta = 0.25*(self.gamma + 0.5)*(self.gamma + 0.5)
 
         # Define the number of equations
-        self.lc_list = lagrangeconstraints.initialize_constraints(self.data.structure.mb_dict)
+        self.lc_list = lagrangeconstraints.initialize_constraints(self.data.structure.ini_mb_dict)
         self.num_LM_eq = lagrangeconstraints.define_num_LM_eq(self.lc_list)
 
 
@@ -92,18 +91,18 @@ class NonLinearDynamicMultibody(_BaseStructural):
 
     def define_sys_size(self):
 
-        MBdict = self.data.structure.mb_dict
+        MBdict = self.data.structure.ini_mb_dict
         self.sys_size = self.data.structure.num_dof.value
 
         for ibody in range(self.data.structure.num_bodies):
             if (MBdict['body_%02d' % ibody]['FoR_movement'] == 'free'):
                 self.sys_size += 10
 
-    def assembly_MB_eq_system(self, MB_beam, MB_tstep, ts, dt, Lambda, Lambda_dot):
+    def assembly_MB_eq_system(self, MB_beam, MB_tstep, ts, dt, Lambda, Lambda_dot, MBdict):
 
         #print("Lambda: ", Lambda)
         #print("LambdaDot: ", Lambda_dot)
-        MBdict = self.data.structure.mb_dict
+        # MBdict = self.data.structure.mb_dict
         MB_M = np.zeros((self.sys_size+self.num_LM_eq, self.sys_size+self.num_LM_eq), dtype=ct.c_double, order='F')
         MB_C = np.zeros((self.sys_size+self.num_LM_eq, self.sys_size+self.num_LM_eq), dtype=ct.c_double, order='F')
         MB_K = np.zeros((self.sys_size+self.num_LM_eq, self.sys_size+self.num_LM_eq), dtype=ct.c_double, order='F')
@@ -235,7 +234,6 @@ class NonLinearDynamicMultibody(_BaseStructural):
         return MB_Asys, MB_Q
 
     def integrate_position(self, MB_beam, MB_tstep, dt):
-
         vel = np.zeros((6,),)
         acc = np.zeros((6,),)
         for ibody in range(0, len(MB_tstep)):
@@ -284,13 +282,14 @@ class NonLinearDynamicMultibody(_BaseStructural):
             # print(MB_tstep[ibody].forces_constraints_nodes)
         # TODO: right now, these forces are only used as an output, they are not read when the multibody is splitted
 
-
     def run(self, structural_step=None, dt=None):
-
         if structural_step is None:
             structural_step = self.data.structure.timestep_info[-1]
         # Initialize variables
-        MBdict = self.data.structure.mb_dict
+        if structural_step.mb_dict is not None:
+            MBdict = structural_step.mbdict
+        else:
+            MBdict = self.data.structure.ini_mb_dict
         if dt is None:
             dt = self.settings['dt'].value
 
@@ -326,7 +325,6 @@ class NonLinearDynamicMultibody(_BaseStructural):
 
         converged = False
         for iter in range(self.settings['max_iterations'].value):
-
             # Check if the maximum of iterations has been reached
             if (iter == self.settings['max_iterations'].value - 1):
                 print('Solver did not converge in ', iter, ' iterations.')
@@ -336,7 +334,7 @@ class NonLinearDynamicMultibody(_BaseStructural):
 
             # Update positions and velocities
             mb.state2disp(q, dqdt, dqddt, MB_beam, MB_tstep)
-            MB_Asys, MB_Q = self.assembly_MB_eq_system(MB_beam, MB_tstep, self.data.ts, dt, Lambda, Lambda_dot)
+            MB_Asys, MB_Q = self.assembly_MB_eq_system(MB_beam, MB_tstep, self.data.ts, dt, Lambda, Lambda_dot, MBdict)
 
             # Compute the correction
             # ADC next line not necessary
@@ -413,8 +411,8 @@ class NonLinearDynamicMultibody(_BaseStructural):
 
         return self.data
 
-    def remove_constraints(self):
-        MBdict = self.data.structure.mb_dict
+    def remove_constraints(self, MBdict):
+        # MBdict = self.data.structure.mb_dict
 
         self.num_LM_eq = 0
         keys_to_delete = []
