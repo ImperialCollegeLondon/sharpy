@@ -257,8 +257,9 @@ class SimplePropeller(generator_interface.BaseGenerator):
         y = x_l[1]
         z = x_l[2]
         r = np.sqrt(x ** 2 + z ** 2)
-        if r > self.settings['sigma_cutoff'].value*R:
-            return np.zeros((3,))
+        # if r > self.settings['sigma_cutoff'].value*R:
+        #     return np.zeros((3,))
+
         if x == 0 and z == 0:
             psi = 0
         elif z >= 0:
