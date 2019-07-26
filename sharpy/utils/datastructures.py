@@ -464,6 +464,8 @@ class StructTimeStepInfo(object):
         copied.forces_constraints_nodes = self.forces_constraints_nodes.astype(dtype=ct.c_double, order='F', copy=True)
         copied.forces_constraints_FoR = self.forces_constraints_FoR.astype(dtype=ct.c_double, order='F', copy=True)
 
+        copied.mb_dict = copy.deepcopy(self.mb_dict)
+
         return copied
 
     def glob_pos(self, include_rbm=True):

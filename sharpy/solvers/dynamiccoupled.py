@@ -82,7 +82,7 @@ class DynamicCoupled(BaseSolver):
         self.settings_default['postprocessors_settings'] = dict()
 
         self.settings_types['controller_id'] = 'dict'
-        self.settings_default['controller_id'] = list()
+        self.settings_default['controller_id'] = dict()
 
         self.settings_types['controller_settings'] = 'dict'
         self.settings_default['controller_settings'] = dict()
@@ -280,17 +280,13 @@ class DynamicCoupled(BaseSolver):
                     print('NaN found in unsteady_applied_forces!')
                     import pdb; pdb.set_trace()
 
-                steady_applied_forces = structural_kstep.steady_applied_forces.copy()
-                unsteady_applied_forces = structural_kstep.unsteady_applied_forces.copy()
+                copy_structural_kstep = structural_kstep.copy()
                 for i_substep in range(self.settings['structural_substeps'].value + 1):
                     # run structural solver
                     ini_time_struc = time.perf_counter()
                     coeff = (i_substep + 1)/(self.settings['structural_substeps'].value + 1)
-                    if coeff < 1.0:
-                        structural_kstep.steady_applied_forces[:] = ((coeff)*(steady_applied_forces) +
-                            (1.0 - coeff)*self.data.structure.timestep_info[-1].steady_applied_forces)
-                        structural_kstep.unsteady_applied_forces[:] = ((coeff)*(unsteady_applied_forces) +
-                            (1.0 - coeff)*self.data.structure.timestep_info[-1].unsteady_applied_forces)
+
+                    structural_kstep = self.interpolate_timesteps(copy_structural_kstep, self.data.structure.timestep_info[-1], coeff)
 
                     self.data = self.structural_solver.run(structural_step=structural_kstep, dt=self.substep_dt)
                     self.time_struc += time.perf_counter() - ini_time_struc
@@ -308,7 +304,6 @@ class DynamicCoupled(BaseSolver):
 
             self.aero_solver.add_step()
             self.data.aero.timestep_info[-1] = aero_kstep.copy()
-
             self.structural_solver.add_step()
             self.data.structure.timestep_info[-1] = structural_kstep.copy()
 
@@ -422,6 +417,27 @@ class DynamicCoupled(BaseSolver):
         value = initial + (final - initial)/self.settings['relaxation_steps'].value*k
         return value
 
+    @staticmethod
+    def interpolate_timesteps(kstep, previous_step, coeff):
+        if not 0.0 <= coeff <= 1.0:
+            return
+
+        out_kstep = kstep.copy()
+        # forces
+        out_kstep.steady_applied_forces[:] = ((coeff)*(kstep.steady_applied_forces) +
+                (1.0 - coeff)*previous_step.steady_applied_forces)
+        out_kstep.unsteady_applied_forces[:] = ((coeff)*(kstep.unsteady_applied_forces) +
+                (1.0 - coeff)*previous_step.unsteady_applied_forces)
+
+        # multibody if necessary
+        if kstep.mb_dict is not None:
+            for k, v in kstep.mb_dict.items():
+                if 'constraint_' in k:
+                    for kk, vv in v.items():
+                        if 'vel' in kk:
+                            out_kstep.mb_dict[k][kk] = coeff*vv + (1.0 - coeff)*previous_step.mb_dict[k][kk]
+        return out_kstep
+
 
 def relax(beam, timestep, previous_timestep, coeff):
     timestep.steady_applied_forces[:] = ((1.0 - coeff)*timestep.steady_applied_forces +
@@ -433,3 +449,4 @@ def relax(beam, timestep, previous_timestep, coeff):
 def normalise_quaternion(tstep):
     tstep.dqdt[-4:] = algebra.unit_vector(tstep.dqdt[-4:])
     tstep.quat = tstep.dqdt[-4:].astype(dtype=ct.c_double, order='F', copy=True)
+

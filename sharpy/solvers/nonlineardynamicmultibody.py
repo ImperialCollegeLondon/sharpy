@@ -1,7 +1,6 @@
 import ctypes as ct
 import numpy as np
 
-
 from sharpy.utils.settings import str2bool
 import sharpy.utils.solver_interface as solver_interface
 from sharpy.utils.solver_interface import solver, BaseSolver, solver_from_string
@@ -62,15 +61,6 @@ class NonLinearDynamicMultibody(_BaseStructural):
         # load info from dyn dictionary
         self.data.structure.add_unsteady_information(self.data.structure.dyn_dict, self.settings['num_steps'].value)
 
-        # initialise postprocessors
-        # self.postprocessors = dict()
-        # if len(self.settings['postprocessors']) > 0:
-        #     self.with_postprocessors = True
-        # for postproc in self.settings['postprocessors']:
-        #     self.postprocessors[postproc] = solver_interface.initialise_solver(postproc)
-        #     self.postprocessors[postproc].initialise(
-        #         self.data, self.settings['postprocessors_settings'][postproc])
-
         # Define Newmark constants
         self.gamma = 0.5 + self.settings['newmark_damp'].value
         self.beta = 0.25*(self.gamma + 0.5)*(self.gamma + 0.5)
@@ -99,10 +89,9 @@ class NonLinearDynamicMultibody(_BaseStructural):
                 self.sys_size += 10
 
     def assembly_MB_eq_system(self, MB_beam, MB_tstep, ts, dt, Lambda, Lambda_dot, MBdict):
+        self.lc_list = lagrangeconstraints.initialize_constraints(MBdict)
+        self.num_LM_eq = lagrangeconstraints.define_num_LM_eq(self.lc_list)
 
-        #print("Lambda: ", Lambda)
-        #print("LambdaDot: ", Lambda_dot)
-        # MBdict = self.data.structure.mb_dict
         MB_M = np.zeros((self.sys_size+self.num_LM_eq, self.sys_size+self.num_LM_eq), dtype=ct.c_double, order='F')
         MB_C = np.zeros((self.sys_size+self.num_LM_eq, self.sys_size+self.num_LM_eq), dtype=ct.c_double, order='F')
         MB_K = np.zeros((self.sys_size+self.num_LM_eq, self.sys_size+self.num_LM_eq), dtype=ct.c_double, order='F')
@@ -129,77 +118,6 @@ class NonLinearDynamicMultibody(_BaseStructural):
                 last_dof = first_dof + MB_beam[ibody].num_dof.value + 10
                 M, C, K, Q = xbeamlib.xbeam3_asbly_dynamic(MB_beam[ibody], MB_tstep[ibody], self.settings)
 
-                # TEST quaternion equations
-                # CQR_solver = C[-4:,-10:-4]
-                # CQQ_solver = C[-4:,-4:]
-                # QQ_solver = Q[-4:]
-
-                # CQQ_han = np.zeros((4,4),)
-                # CQQ_han[0,1:4] = -1.0*MB_tstep[0].for_vel[3:6]
-                # CQQ_han[1:4,0] = 1.0*MB_tstep[0].for_vel[3:6]
-                # CQQ_han[1:4,1:4] = -1.0*algebra.skew(MB_tstep[0].for_vel[3:6])
-                # CQQ_han = -0.5*CQQ_han
-                #
-                # CQR_han = np.zeros((4,6),)
-                # CQR_han[0,3] = -1.0*MB_tstep[0].quat[1]
-                # CQR_han[0,4] = -1.0*MB_tstep[0].quat[2]
-                # CQR_han[0,5] = -1.0*MB_tstep[0].quat[3]
-                #
-                # CQR_han[1,3] = 1.0*MB_tstep[0].quat[0]
-                # CQR_han[1,4] = -1.0*MB_tstep[0].quat[3]
-                # CQR_han[1,5] = 1.0*MB_tstep[0].quat[2]
-                #
-                # CQR_han[2,3] = 1.0*MB_tstep[0].quat[3]
-                # CQR_han[2,4] = 1.0*MB_tstep[0].quat[0]
-                # CQR_han[2,5] = -1.0*MB_tstep[0].quat[1]
-                #
-                # CQR_han[3,3] = -1.0*MB_tstep[0].quat[2]
-                # CQR_han[3,4] = 1.0*MB_tstep[0].quat[1]
-                # CQR_han[3,5] = 1.0*MB_tstep[0].quat[0]
-
-                # CQQ_han = np.zeros((4,4),)
-                # CQQ_han[0,1:4] = -1.0*MB_tstep[0].dqdt[-7:-4]
-                # CQQ_han[1:4,0] = 1.0*MB_tstep[0].dqdt[-7:-4]
-                # CQQ_han[1:4,1:4] = -1.0*algebra.skew(MB_tstep[0].dqdt[-7:-4])
-                # CQQ_han = 0.5*CQQ_han
-                #
-                # CQR_han = np.zeros((4,6),)
-                #
-                # aux_quat = MB_tstep[0].dqdt[-4:]
-                # CQR_han[0,3] = -1.0*aux_quat[1]
-                # CQR_han[0,4] = -1.0*aux_quat[2]
-                # CQR_han[0,5] = -1.0*aux_quat[3]
-                #
-                # CQR_han[1,3] = 1.0*aux_quat[0]
-                # CQR_han[1,4] = -1.0*aux_quat[3]
-                # CQR_han[1,5] = 1.0*aux_quat[2]
-                #
-                # CQR_han[2,3] = 1.0*aux_quat[3]
-                # CQR_han[2,4] = 1.0*aux_quat[0]
-                # CQR_han[2,5] = -1.0*aux_quat[1]
-                #
-                # CQR_han[3,3] = -1.0*aux_quat[2]
-                # CQR_han[3,4] = 1.0*aux_quat[1]
-                # CQR_han[3,5] = 1.0*aux_quat[0]
-                #
-                # CQR_han = 0.5*CQR_han
-                #
-                # QQ_han = -1.0*(np.dot(CQQ_han,MB_tstep[0].dqdt[-4:]) - MB_tstep[0].dqddt[-4:])
-
-                # np.dot(CQQ_han,MB_tstep[0].dqdt[-4:])
-
-
-                # print("CQQ solver: ", CQQ_solver)
-                # print("CQQ han: ", CQQ_han)
-                # print("CQR solver: ", CQR_solver)
-                # print("CQR han: ", CQR_han)
-                # print("QQ solver: ", QQ_solver)
-                # print("QQ han: ", QQ_han)
-                # embed()
-
-                # C[-4:,-10:-4] = -1.0*CQR_han.astype(dtype=ct.c_double, copy=True, order='F')
-                # C[-4:,-4:] = -1.0*CQQ_han.astype(dtype=ct.c_double, copy=True, order='F')
-                # Q[-4:] = QQ_han.astype(dtype=ct.c_double, copy=True, order='F')
 
             ############### Assembly into the global matrices
             # Flexible and RBM contribution to Asys
@@ -212,11 +130,19 @@ class NonLinearDynamicMultibody(_BaseStructural):
 
             first_dof = last_dof
 
-
+        # Define the number of equations
         # Generate matrices associated to Lagrange multipliers
-        LM_C, LM_K, LM_Q = lagrangeconstraints.generate_lagrange_matrix(self.lc_list, MB_beam, MB_tstep, ts, self.num_LM_eq, self.sys_size, dt, Lambda, Lambda_dot, "dynamic")
-
-        #LM_C, LM_K, LM_Q = self.generate_lagrange_matrix(MB_beam, MB_tstep, dt, Lambda, Lambda_dot)
+        LM_C, LM_K, LM_Q = lagrangeconstraints.generate_lagrange_matrix(
+            self.lc_list,
+            MB_beam,
+            MB_tstep,
+            ts,
+            self.num_LM_eq,
+            self.sys_size,
+            dt,
+            Lambda,
+            Lambda_dot,
+            "dynamic")
 
         # Include the matrices associated to Lagrange Multipliers
         MB_C += LM_C
@@ -224,12 +150,6 @@ class NonLinearDynamicMultibody(_BaseStructural):
         MB_Q += LM_Q
 
         MB_Asys = MB_K + MB_C*self.gamma/(self.beta*dt) + MB_M/(self.beta*dt*dt)
-        # sys_size = self.sys_size
-        # MB_Asys[:sys_size,:sys_size] = MB_K[:sys_size,:sys_size] + MB_C[:sys_size,:sys_size]*self.gamma/(self.beta*dt) + MB_M[:sys_size,:sys_size]/(self.beta*dt*dt)
-        # # MB_Asys[sys_size:,:] = MB_K[sys_size:,:] + MB_C[sys_size:,:] + MB_M[sys_size:,:]
-        # # MB_Asys[:,sys_size:] = MB_K[:,sys_size:] + MB_C[:,sys_size:] + MB_M[:,sys_size:]
-        # MB_Asys[sys_size:,:] = MB_C[sys_size:,:]
-        # MB_Asys[:,sys_size:] = MB_C[:,sys_size:]
 
         return MB_Asys, MB_Q
 
@@ -244,9 +164,6 @@ class NonLinearDynamicMultibody(_BaseStructural):
                 vel[0:3] = np.dot(MB_beam[ibody].timestep_info.cga(),MB_beam[ibody].timestep_info.for_vel[0:3])
                 MB_tstep[ibody].for_pos[0:3] += dt*(vel[0:3] + dt*acc[0:3])
             else:
-                # print("quat: ", MB_tstep[ibody].quat)
-                # print("cga: ", MB_tstep[ibody].cga())
-                # print("for_vel: ", MB_tstep[ibody].for_vel)
                 MB_tstep[ibody].for_pos[0:3] += dt*np.dot(MB_tstep[ibody].cga(),MB_tstep[ibody].for_vel[0:3])
 
         # Use next line for double pendulum (fix position of the second FoR)
@@ -260,7 +177,12 @@ class NonLinearDynamicMultibody(_BaseStructural):
         pass
 
     def compute_forces_constraints(self, MB_beam, MB_tstep, ts, dt, Lambda, Lambda_dot):
+        try:
+            self.lc_list[0]
+        except IndexError:
+            return
 
+        # TODO the output of this routine is wrong. check at some point.
         LM_C, LM_K, LM_Q = lagrangeconstraints.generate_lagrange_matrix(self.lc_list, MB_beam, MB_tstep, ts, self.num_LM_eq, self.sys_size, dt, Lambda, Lambda_dot, "dynamic")
         F = -np.dot(LM_C[:, -self.num_LM_eq:], Lambda_dot) - np.dot(LM_K[:, -self.num_LM_eq:], Lambda)
 
@@ -285,15 +207,18 @@ class NonLinearDynamicMultibody(_BaseStructural):
     def run(self, structural_step=None, dt=None):
         if structural_step is None:
             structural_step = self.data.structure.timestep_info[-1]
-        # Initialize variables
+
         if structural_step.mb_dict is not None:
-            MBdict = structural_step.mbdict
+            MBdict = structural_step.mb_dict
         else:
             MBdict = self.data.structure.ini_mb_dict
+
         if dt is None:
             dt = self.settings['dt'].value
 
-        # print("beg quat: ", structural_step.quat)
+        self.lc_list = lagrangeconstraints.initialize_constraints(MBdict)
+        self.num_LM_eq = lagrangeconstraints.define_num_LM_eq(self.lc_list)
+
         # TODO: only working for constant forces
         MB_beam, MB_tstep = mb.split_multibody(self.data.structure, structural_step, MBdict, self.data.ts)
         # Lagrange multipliers parameters
@@ -330,6 +255,7 @@ class NonLinearDynamicMultibody(_BaseStructural):
                 print('Solver did not converge in ', iter, ' iterations.')
                 print('res = ', res)
                 print('LM_res = ', LM_res)
+                import pdb; pdb.set_trace()
                 break
 
             # Update positions and velocities
@@ -346,8 +272,8 @@ class NonLinearDynamicMultibody(_BaseStructural):
             Dq = np.linalg.solve(MB_Asys, -MB_Q)
             # least squares solver
             # Dq = np.linalg.lstsq(np.dot(MB_Asys_balanced, invT), -MB_Q_balanced, rcond=None)[0]
-            # if self.settings['relaxation_factor'].value:
-                # Dq *= self.settings['relaxation_factor'].value
+            if self.settings['relaxation_factor'].value:
+                Dq *= self.settings['relaxation_factor'].value
 
             # Evaluate convergence
             if (iter > 0):
@@ -385,11 +311,9 @@ class NonLinearDynamicMultibody(_BaseStructural):
                 old_Dq = np.max(np.abs(Dq[0:self.sys_size]))
                 if old_Dq < 1.0:
                     old_Dq = 1.0
-                if not num_LM_eq == 0:
-                    LM_old_Dq = np.max(np.abs(Dq[self.sys_size:self.sys_size+num_LM_eq]))
+                if num_LM_eq:
+                    LM_old_Dq = max(1.0, np.max(np.abs(Dq[self.sys_size:self.sys_size+num_LM_eq])))
                 else:
-                    LM_old_Dq = np.abs(Dq[self.sys_size:self.sys_size+num_LM_eq])
-                if LM_old_Dq < 1.0:
                     LM_old_Dq = 1.0
 
         mb.state2disp(q, dqdt, dqddt, MB_beam, MB_tstep)
@@ -411,16 +335,3 @@ class NonLinearDynamicMultibody(_BaseStructural):
 
         return self.data
 
-    def remove_constraints(self, MBdict):
-        # MBdict = self.data.structure.mb_dict
-
-        self.num_LM_eq = 0
-        keys_to_delete = []
-        for k, v in MBdict.items():
-            if 'constraint' in k:
-                keys_to_delete.append(k)
-
-        for k in keys_to_delete:
-            del(MBdict[k])
-
-        MBdict['num_constraints'] = 0
