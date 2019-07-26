@@ -4,10 +4,10 @@ S. Maraniello, Dec 2018
 """
 
 import unittest
-import numpy as np
 import os
 import copy
 import warnings
+import numpy as np
 
 import sharpy.sharpy_main
 import sharpy.utils.h5utils as h5
@@ -20,6 +20,7 @@ import sharpy.linear.src.libss as libss
 import cases.templates.flying_wings as flying_wings
 
 
+@unittest.skip
 class Test_infinite_span(unittest.TestCase):
     """
     Test infitite-span flat wing at zero incidence against analytical solutions

@@ -392,6 +392,7 @@ class StructTimeStepInfo(object):
         self.unsteady_applied_forces = np.zeros((self.num_node, 6), dtype=ct.c_double, order='F')
         self.gravity_forces = np.zeros((self.num_node, 6), dtype=ct.c_double, order='F')
         self.total_gravity_forces = np.zeros((6,), dtype=ct.c_double, order='F')
+        self.total_forces = np.zeros((6,), dtype=ct.c_double, order='F')
 
         if num_dof is None:
             # For backwards compatibility
@@ -412,6 +413,7 @@ class StructTimeStepInfo(object):
         self.mb_dqddt_quat = np.zeros((num_bodies,4), dtype=ct.c_double, order='F')
         self.forces_constraints_nodes = np.zeros((self.num_node, 6), dtype=ct.c_double, order='F')
         self.forces_constraints_FoR = np.zeros((num_bodies, 10), dtype=ct.c_double, order='F')
+        self.mb_dict = None
 
     def copy(self):
         copied = StructTimeStepInfo(self.num_node, self.num_elem, self.num_node_elem, ct.c_int(len(self.q)-10), self.mb_quat.shape[0])
@@ -444,6 +446,7 @@ class StructTimeStepInfo(object):
         copied.unsteady_applied_forces = self.unsteady_applied_forces.astype(dtype=ct.c_double, order='F', copy=True)
         copied.gravity_forces = self.gravity_forces.astype(dtype=ct.c_double, order='F', copy=True)
         copied.total_gravity_forces = self.total_gravity_forces.astype(dtype=ct.c_double, order='F', copy=True)
+        copied.total_forces = self.total_forces.astype(dtype=ct.c_double, order='F', copy=True)
 
         copied.q = self.q.astype(dtype=ct.c_double, order='F', copy=True)
         copied.dqdt = self.dqdt.astype(dtype=ct.c_double, order='F', copy=True)
@@ -460,6 +463,8 @@ class StructTimeStepInfo(object):
         copied.mb_dqddt_quat = self.mb_dqddt_quat.astype(dtype=ct.c_double, order='F', copy=True)
         copied.forces_constraints_nodes = self.forces_constraints_nodes.astype(dtype=ct.c_double, order='F', copy=True)
         copied.forces_constraints_FoR = self.forces_constraints_FoR.astype(dtype=ct.c_double, order='F', copy=True)
+
+        copied.mb_dict = copy.deepcopy(self.mb_dict)
 
         return copied
 

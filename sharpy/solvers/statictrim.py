@@ -24,29 +24,20 @@ class StaticTrim(BaseSolver):
 
     Attributes:
         settings (dict): Name-value pair of settings employed by solver.
-
-            ======================  =============  ===============================================  ==========
-            Name                    Type           Description                                      Default
-            ======================  =============  ===============================================  ==========
-            ``print_info``          ``bool``       Print solver information to terminal             ``True``
-            ``solver``              ``str``        Underlying solver for aeroelastic system choice  ``''``
-            ``solver_settings``     ``str``        Settings for the desired ``solver``              ``{}``
-            ``max_iter``            ``int``        Maximum number of iterations                     ``100``
-            ``fz_tolerance``        ``float``      Force tolerance in the ``z`` direction           ``0.01``
-            ``fx_tolerance``        ``float``      Force tolerance in the ``x`` direction           ``0.01``
-            ``m_tolerance``         ``float``      Moment tolerance                                 ``0.01``
-            ``tail_cs_index``       ``int``        Control surface index                            ``0``
-            ``thrust_nodes``        ``list(int)``  Index of nodes that provide thrust               ``[0]``
-            ``initial_alpha``       ``float``      Initial angle of attack (radians)                ``0.0698``
-            ``initial_deflection``  ``float``      Initial control surface deflection (radians)     ``0.0174``
-            ``initial_thrust``      ``float``      Initial thrust per engine (N)                    ``0.0``
-            ``initial_angle_eps``   ``float``      Initial angular variation for algorithm          ``0.0034``
-            ``initial_thrust_eps``  ``float``      Initial thrust variation for algorithm           ``2.0``
-            ======================  =============  ===============================================  ==========
-
+        settings_types (dict): Acceptable data types for entries in ``settings``
+        settings_default (dict): Default values for the available ``settings``
+        data (ProblemData): object containing the information of the problem
+        solver (BaseSolver): solver object employed for the solution of the problem
+        n_input (int): number of inputs to vary to achieve trim
+        i_iter (int): iteration number
+        input_history (list): list of input history during iteration
+        output_history (list): list of output history during iteration
+        gradient_history (list): history of gradients during iteration
+        trimmed_values (np.array): trim configuration values
 
     """
     solver_id = 'StaticTrim'
+    solver_classification = 'Flight'
 
     def __init__(self):
         self.settings_types = dict()
@@ -121,6 +112,9 @@ class StaticTrim(BaseSolver):
 
         self.solver = solver_interface.initialise_solver(self.settings['solver'])
         self.solver.initialise(self.data, self.settings['solver_settings'])
+
+        self.table = cout.TablePrinter(10, 8, ['g', 'f', 'f', 'f', 'f', 'f', 'f', 'f', 'f', 'f'])
+        self.table.print_header(['iter', 'alpha', 'elev', 'thrust', 'Fx', 'Fy', 'Fz', 'Mx', 'My', 'Mz'])
 
     def increase_ts(self):
         self.data.ts += 1
@@ -306,17 +300,17 @@ class StaticTrim(BaseSolver):
 
     def evaluate(self, alpha, deflection_gamma, thrust):
         if not np.isfinite(alpha):
-            1
+            import pdb; pdb.set_trace()
         if not np.isfinite(deflection_gamma):
-            1
+            import pdb; pdb.set_trace()
         if not np.isfinite(thrust):
-            1
+            import pdb; pdb.set_trace()
 
-        cout.cout_wrap('--', 2)
-        cout.cout_wrap('Trying trim: ', 2)
-        cout.cout_wrap('Alpha: ' + str(alpha*180/np.pi), 2)
-        cout.cout_wrap('CS deflection: ' + str((deflection_gamma - alpha)*180/np.pi), 2)
-        cout.cout_wrap('Thrust: ' + str(thrust), 2)
+        # cout.cout_wrap('--', 2)
+        # cout.cout_wrap('Trying trim: ', 2)
+        # cout.cout_wrap('Alpha: ' + str(alpha*180/np.pi), 2)
+        # cout.cout_wrap('CS deflection: ' + str((deflection_gamma - alpha)*180/np.pi), 2)
+        # cout.cout_wrap('Thrust: ' + str(thrust), 2)
         # modify the trim in the static_coupled solver
         self.solver.change_trim(alpha,
                                 thrust,
@@ -331,10 +325,24 @@ class StaticTrim(BaseSolver):
         forcez = forces[2]
         forcex = forces[0]
         moment = moments[1]
-        cout.cout_wrap('Forces and moments:', 2)
-        cout.cout_wrap('fx = ' + str(forces[0]) + ' mx = ' + str(moments[0]), 2)
-        cout.cout_wrap('fy = ' + str(forces[1]) + ' my = ' + str(moments[1]), 2)
-        cout.cout_wrap('fz = ' + str(forces[2]) + ' mz = ' + str(moments[2]), 2)
+        # cout.cout_wrap('Forces and moments:', 2)
+        # cout.cout_wrap('fx = ' + str(forces[0]) + ' mx = ' + str(moments[0]), 2)
+        # cout.cout_wrap('fy = ' + str(forces[1]) + ' my = ' + str(moments[1]), 2)
+        # cout.cout_wrap('fz = ' + str(forces[2]) + ' mz = ' + str(moments[2]), 2)
+
+        self.table.print_line([self.i_iter,
+                               alpha*180/np.pi,
+                               (deflection_gamma - alpha)*180/np.pi,
+                               thrust,
+                               forces[0],
+                               forces[1],
+                               forces[2],
+                               moments[0],
+                               moments[1],
+                               moments[2]])
+
+
+
 
         return forcez, moment, forcex
 
