@@ -108,6 +108,9 @@ class StepUvlm(BaseSolver):
             dt=None,
             t=None,
             unsteady_contribution=False):
+        """
+        Runs a step of the aerodynamics as implemented in UVLM.
+        """
 
         if aero_tstep is None:
             aero_tstep = self.data.aero.timestep_info[-1]
@@ -118,7 +121,7 @@ class StepUvlm(BaseSolver):
         if t is None:
             t = self.data.ts*dt
 
-        if len(aero_tstep.zeta) == 0:
+        if not aero_tstep.zeta:
             return self.data
 
         # generate uext
@@ -139,26 +142,27 @@ class StepUvlm(BaseSolver):
                                               'for_pos': structure_tstep.for_pos},
                                              aero_tstep.u_ext_star)
 
-            for isurf in range(len(aero_tstep.zeta_star)):
-                for i_m in range(aero_tstep.zeta_star[isurf].shape[1]):
-                    for i_n in range(aero_tstep.zeta_star[isurf].shape[2]):
-                        aero_tstep.u_ext_star[isurf][:, i_m, i_n] = self.settings['velocity_field_input']['u_inf']*self.settings['velocity_field_input']['u_inf_direction']
-
         uvlmlib.uvlm_solver(self.data.ts,
                             aero_tstep,
                             structure_tstep,
                             self.settings,
                             convect_wake=convect_wake,
                             dt=dt)
-        # print('current step max unsforce: %f' % aero_tstep.dynamic_forces[0].max())
 
         if unsteady_contribution:
             # calculate unsteady (added mass) forces:
-            self.data.aero.compute_gamma_dot(dt, aero_tstep, self.data.aero.timestep_info[-3:])
+            self.data.aero.compute_gamma_dot(dt,
+                                             aero_tstep,
+                                             self.data.aero.timestep_info[-3:])
             if self.settings['gamma_dot_filtering'] is None:
-                self.filter_gamma_dot(aero_tstep, self.data.aero.timestep_info, None)
+                self.filter_gamma_dot(aero_tstep,
+                                      self.data.aero.timestep_info,
+                                      None)
             elif self.settings['gamma_dot_filtering'].value > 0:
-                self.filter_gamma_dot(aero_tstep, self.data.aero.timestep_info, self.settings['gamma_dot_filtering'].value)
+                self.filter_gamma_dot(
+                    aero_tstep,
+                    self.data.aero.timestep_info,
+                    self.settings['gamma_dot_filtering'].value)
             uvlmlib.uvlm_calculate_unsteady_forces(aero_tstep,
                                                    structure_tstep,
                                                    self.settings,
@@ -174,14 +178,17 @@ class StepUvlm(BaseSolver):
         self.data.aero.add_timestep()
 
     def update_grid(self, beam):
-        self.data.aero.generate_zeta(beam, self.data.aero.aero_settings, -1, beam_ts=-1)
+        self.data.aero.generate_zeta(beam,
+                                     self.data.aero.aero_settings,
+                                     -1,
+                                     beam_ts=-1)
 
     def update_custom_grid(self, structure_tstep, aero_tstep):
         self.data.aero.generate_zeta_timestep_info(structure_tstep,
-                aero_tstep,
-                self.data.structure,
-                self.data.aero.aero_settings,
-                dt=self.settings['dt'].value)
+                                                   aero_tstep,
+                                                   self.data.structure,
+                                                   self.data.aero.aero_settings,
+                                                   dt=self.settings['dt'].value)
 
     @staticmethod
     def filter_gamma_dot(tstep, history, filter_param):
@@ -197,4 +204,5 @@ class StepUvlm(BaseSolver):
                     series[-1] = tstep.gamma_dot[i_surf][i, j]
 
                     # filter
-                    tstep.gamma_dot[i_surf][i, j] = scipy.signal.wiener(series, filter_param)[-1]
+                    tstep.gamma_dot[i_surf][i, j] = scipy.signal.wiener(
+                        series, filter_param)[-1]
