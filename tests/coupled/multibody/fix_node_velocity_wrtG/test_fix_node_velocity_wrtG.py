@@ -91,6 +91,8 @@ class TestFixNodeVelocitywrtG(unittest.TestCase):
 
         SimInfo.solvers['BeamPlot']['include_FoR'] = True
 
+        SimInfo.solvers['NonLinearDynamicMultibody']['relaxation_factor'] = 0.0
+
         SimInfo.solvers['DynamicCoupled']['structural_solver'] = 'NonLinearDynamicMultibody'
         SimInfo.solvers['DynamicCoupled']['structural_solver_settings'] = SimInfo.solvers['NonLinearDynamicMultibody']
         SimInfo.solvers['DynamicCoupled']['aero_solver'] = 'StepUvlm'
@@ -155,7 +157,7 @@ class TestFixNodeVelocitywrtG(unittest.TestCase):
         output_path = os.path.dirname(solver_path) + '/output/fix_node_velocity_wrtG/WriteVariablesTime/'
         pos_tip_data = np.matrix(np.genfromtxt(output_path + "struct_pos_node-1" + ".dat", delimiter=' '))
         self.assertAlmostEqual(pos_tip_data[-1, 1], 9.999386, 4)
-        self.assertAlmostEqual(pos_tip_data[-1, 2], -0.08967441, 4)
+        self.assertAlmostEqual(pos_tip_data[-1, 2], -0.089333, 4)
         self.assertAlmostEqual(pos_tip_data[-1, 3], 0., 4)
 
     def tearDowns(self):
