@@ -81,20 +81,21 @@ def solver_list_from_path(cwd):
     return files
 
 
-def initialise_solver(solver_name):
-    cout.cout_wrap('Generating an instance of %s' % solver_name, 2)
+def initialise_solver(solver_name, print_info=True):
+    if print_info:
+        cout.cout_wrap('Generating an instance of %s' % solver_name, 2)
     cls_type = solver_from_string(solver_name)
     solver = cls_type()
     return solver
 
-def dictionary_of_solvers():
+def dictionary_of_solvers(print_info=True):
     import sharpy.solvers
     import sharpy.postproc
     dictionary = dict()
     for solver in dict_of_solvers:
         if not solver.lower() == 'SaveData'.lower():
             # TODO: why it does not work for savedata?
-            init_solver = initialise_solver(solver)
+            init_solver = initialise_solver(solver, print_info)
             dictionary[solver] = init_solver.settings_default
 
     return dictionary
@@ -139,9 +140,14 @@ def output_documentation(route=None):
         if solver_folder == 'post-processor':
             route_to_solver_python = 'sharpy.postproc.'
             folder = 'postprocs'
+            solver_folder = '' # post-procs do not have sub classification unlike solvers
         else:
             route_to_solver_python = 'sharpy.solvers.'
             folder = 'solvers'
+
+        if solver.solver_id == 'PreSharpy':
+            continue
+            # route_to_solver_python = 'sharpy.presharpy.'
 
         os.makedirs(base_route + '/' + folder + '/' + solver_folder, exist_ok=True)
         title = k + '\n'

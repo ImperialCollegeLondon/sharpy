@@ -129,7 +129,7 @@ class BeamLoader(BaseSolver):
 
     def run(self):
         self.data.structure = beam.Beam()
-        self.data.structure.mb_dict = self.mb_data_dict
+        self.data.structure.ini_mb_dict = self.mb_data_dict
         self.data.structure.generate(self.fem_data_dict, self.settings)
         self.data.structure.dyn_dict = self.dyn_data_dict
         return self.data
