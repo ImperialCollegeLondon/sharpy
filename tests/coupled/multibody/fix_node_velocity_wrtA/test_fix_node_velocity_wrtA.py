@@ -92,6 +92,9 @@ class TestFixNodeVelocitywrtA(unittest.TestCase):
 
         SimInfo.solvers['BeamPlot']['include_FoR'] = True
         SimInfo.solvers['NonLinearDynamicMultibody']['relaxation_factor'] = 0.0
+        SimInfo.solvers['NonLinearDynamicMultibody']['min_delta'] = 1e-5
+        SimInfo.solvers['NonLinearDynamicMultibody']['max_iterations'] = 200
+        SimInfo.solvers['NonLinearDynamicMultibody']['newmark_damp'] = 1e-3
 
         SimInfo.solvers['DynamicCoupled']['structural_solver'] = 'NonLinearDynamicMultibody'
         SimInfo.solvers['DynamicCoupled']['structural_solver_settings'] = SimInfo.solvers['NonLinearDynamicMultibody']
