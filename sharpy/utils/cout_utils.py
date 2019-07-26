@@ -9,7 +9,7 @@ cwd = os.getcwd()
 
 
 class Writer(object):
-    fore_colours = ['', colorama.Fore.BLUE, colorama.Fore.CYAN, colorama.Fore.RED]
+    fore_colours = ['', colorama.Fore.BLUE, colorama.Fore.CYAN, colorama.Fore.YELLOW, colorama.Fore.RED]
     reset = colorama.Style.RESET_ALL
 
     output_columns = 80
