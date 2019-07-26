@@ -15,7 +15,7 @@ import sharpy.utils.cout_utils as cout
 _BaseStructural = solver_from_string('_BaseStructural')
 
 @solver
-class NonLinearDynamicCoupledStep(BaseSolver):
+class NonLinearDynamicCoupledStep(_BaseStructural):
     """
     Structural solver used for the dynamic simulation of free-flying structures.
 
