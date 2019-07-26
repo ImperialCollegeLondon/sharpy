@@ -400,6 +400,14 @@ class FlyingWing():
             'mstar': self.Mstar_fact * self.M,
             'freestream_dir': str_u_inf_direction
         }
+        config['NonLinearStatic'] = {'print_info': 'off',
+                                     'max_iterations': 150,
+                                     'num_load_steps': 4,
+                                     'delta_curved': 1e-5,
+                                     'min_delta': 1e-5,
+                                     'gravity_on': self.gravity_on,
+                                     'gravity': 9.754,
+                                     'orientation': self.quat}
         config['StaticUvlm'] = {
             'rho': self.rho,
             'velocity_field_generator': 'SteadyVelocityField',

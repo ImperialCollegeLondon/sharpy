@@ -16,6 +16,7 @@ from sharpy.utils.solver_interface import solver, BaseSolver
 import sharpy.utils.settings as settings
 import sharpy.utils.algebra as algebra
 import sharpy.utils.cout_utils as cout
+import sharpy.utils.algebra as algebra
 
 
 
@@ -92,6 +93,10 @@ class Modal(BaseSolver):
     settings_types['max_displacement'] = 'float'
     settings_default['max_displacement'] = 0.15
     settings_description['max_displacement'] = 'Scale mode shape to have specified maximum displacement'
+
+    settings_types['rigid_modes_cg'] = 'bool'
+    settings_default['rigid_modes_cg'] = False
+    settings_description['rigid_modes_cg'] = 'Modify the ridid body modes such that they are defined wrt to the CG'
 
     settings_table = settings.SettingsTable()
     __doc__ += settings_table.generate(settings_types, settings_default, settings_description)
@@ -215,6 +220,8 @@ class Modal(BaseSolver):
 
         num_dof = num_str_dof + num_rigid_dof
 
+        # if NumLambda
+
         # Initialize matrices
         FullMglobal = np.zeros((num_dof, num_dof),
                                dtype=ct.c_double, order='F')
@@ -225,12 +232,16 @@ class Modal(BaseSolver):
 
         if self.rigid_body_motion:
             # Settings for the assembly of the matrices
-            try:
-                full_matrix_settings = self.data.settings['StaticCoupled']['structural_solver_settings']
-                full_matrix_settings['dt'] = ct.c_double(0.01)  # Dummy: required but not used
-                full_matrix_settings['newmark_damp'] = ct.c_double(1e-2)  # Dummy: required but not used
-            except KeyError:
-                full_matrix_settings = self.data.settings['DynamicCoupled']['structural_solver_settings']
+            # try:
+            #     full_matrix_settings = self.data.settings['StaticCoupled']['structural_solver_settings']
+            #     full_matrix_settings['dt'] = ct.c_double(0.01)  # Dummy: required but not used
+            #     full_matrix_settings['newmark_damp'] = ct.c_double(1e-2)  # Dummy: required but not used
+            # except KeyError:
+                # full_matrix_settings = self.data.settings['DynamicCoupled']['structural_solver_settings']
+            import sharpy.solvers._basestructural as basestructuralsolver
+            full_matrix_settings = basestructuralsolver._BaseStructural().settings_default
+            settings.to_custom_types(full_matrix_settings, basestructuralsolver._BaseStructural().settings_types, full_matrix_settings)
+
 
             # Obtain the tangent mass, damping and stiffness matrices
             FullMglobal, FullCglobal, FullKglobal, FullQ = xbeamlib.xbeam3_asbly_dynamic(self.data.structure,
@@ -341,18 +352,13 @@ class Modal(BaseSolver):
             eigenvectors = eigenvectors[:, order]
             eigenvectors_left = eigenvectors_left[:, order].conj()
 
+        # Modify rigid body modes for them to be defined wrt the CG
+        if self.settings['rigid_modes_cg']:
+            if not eigenvectors_left:
+                eigenvectors = self.free_free_modes(eigenvectors, FullMglobal)
+
         # Scaling
-        if self.settings['use_undamped_modes']:
-            # mass normalise (diagonalises M and K)
-            dfact = np.diag(np.dot(eigenvectors.T, np.dot(FullMglobal, eigenvectors)))
-            eigenvectors = (1./np.sqrt(dfact))*eigenvectors
-        else:
-            # unit normalise (diagonalises A)
-            if not self.rigid_body_motion:
-                for ii in range(NumLambda):  # Issue - dot product = 0 when you have arbitrary damping
-                    fact = 1./np.sqrt(np.dot(eigenvectors_left[:, ii], eigenvectors[:, ii]))
-                    eigenvectors_left[:, ii] = fact*eigenvectors_left[:, ii]
-                    eigenvectors[:, ii] = fact*eigenvectors[:, ii]
+        eigenvectors, eigenvectors_left = self.scale_modes_unit_mass_matrix(eigenvectors, FullMglobal, eigenvectors_left)
 
         # Other terms required for state-space realisation
         # non-zero damping matrix
@@ -379,8 +385,12 @@ class Modal(BaseSolver):
 
         # Write dat files
         if self.settings['write_dat'].value:
-            np.savetxt(self.folder + "eigenvalues.dat", eigenvalues, fmt='%.12f',
-                       delimiter='\t', newline='\n')
+            if type(eigenvalues) == complex:
+                np.savetxt(self.folder + "eigenvalues.dat", eigenvalues.view(float).reshape(-1, 2), fmt='%.12f',
+                           delimiter='\t', newline='\n')
+            else:
+                np.savetxt(self.folder + "eigenvalues.dat", eigenvalues.view(float), fmt='%.12f',
+                           delimiter='\t', newline='\n')
             np.savetxt(self.folder + "eigenvectors.dat", eigenvectors[:num_dof].real,
                        fmt='%.12f', delimiter='\t', newline='\n')
             try:
@@ -394,13 +404,21 @@ class Modal(BaseSolver):
 
         # Write vtk
         if self.settings['write_modes_vtk'].value:
-            write_modes_vtk(
-                self.data,
-                eigenvectors[:num_dof],
-                NumLambda,
-                self.filename_shapes,
-                self.settings['max_rotation_deg'],
-                self.settings['max_displacement'])
+            try:
+                self.data.aero
+                aero_model = True
+            except AttributeError:
+                warnings.warn('No aerodynamic model found - unable to project the mode onto aerodynamic grid')
+                aero_model = False
+
+            if aero_model:
+                write_modes_vtk(
+                    self.data,
+                    eigenvectors[:num_dof],
+                    NumLambda,
+                    self.filename_shapes,
+                    self.settings['max_rotation_deg'],
+                    self.settings['max_displacement'])
 
         outdict = dict()
 
@@ -448,6 +466,107 @@ class Modal(BaseSolver):
 
         return self.data
 
+    def scale_modes_unit_mass_matrix(self, eigenvectors, FullMglobal, eigenvectors_left=None):
+        if self.settings['use_undamped_modes']:
+            # mass normalise (diagonalises M and K)
+            dfact = np.diag(np.dot(eigenvectors.T, np.dot(FullMglobal, eigenvectors)))
+            eigenvectors = (1./np.sqrt(dfact))*eigenvectors
+        else:
+            # unit normalise (diagonalises A)
+            if not self.rigid_body_motion:
+                for ii in range(NumLambda):  # Issue - dot product = 0 when you have arbitrary damping
+                    fact = 1./np.sqrt(np.dot(eigenvectors_left[:, ii], eigenvectors[:, ii]))
+                    eigenvectors_left[:, ii] = fact*eigenvectors_left[:, ii]
+                    eigenvectors[:, ii] = fact*eigenvectors[:, ii]
+
+        return eigenvectors, eigenvectors_left
+
+    def free_free_modes(self, phi, M):
+        r"""
+        Returns the rigid body modes defined with respect to the centre of gravity
+
+        The transformation from the modes defined at the FoR A origin, :math:`\boldsymbol{\Phi}`, to the modes defined
+        using the centre of gravity as a reference is
+
+
+        .. math:: \boldsymbol{\Phi}_{rr,CG}|_{TRA} = \boldsymbol{\Phi}_{RR}|_{TRA} + \tilde{\mathbf{r}}_{CG}
+            \boldsymbol{\Phi}_{RR}|_{ROT}
+
+        .. math:: \boldsymbol{\Phi}_{rr,CG}|_{ROT} = \boldsymbol{\Phi}_{RR}|_{ROT}
+
+        Returns:
+            (np.array): Transformed eigenvectors
+        """
+
+        # NG - 26/7/19 This is the transformation being performed by K_vec
+        # Leaving this here for now in case it becomes necessary
+        # .. math:: \boldsymbol{\Phi}_{ss,CG}|_{TRA} = \boldsymbol{\Phi}_{SS}|_{TRA} +\boldsymbol{\Phi}_{RS}|_{TRA}  -
+        # \tilde{\mathbf{r}}_{A}\boldsymbol{\Phi}_{RS}|_{ROT}
+        #
+        # .. math:: \boldsymbol{\Phi}_{ss,CG}|_{ROT} = \boldsymbol{\Phi}_{SS}|_{ROT}
+        # + (\mathbf{T}(\boldsymbol{\Psi})^\top)^{-1}\boldsymbol{\Phi}_{RS}|_{ROT}
+
+        pos = self.data.structure.timestep_info[self.data.ts].pos
+        r_cg = cg(M)
+
+        jj = 0
+        K_vec = np.zeros((phi.shape[0], phi.shape[0]))
+
+        jj_for_vel = range(self.data.structure.num_dof.value, self.data.structure.num_dof.value + 3)
+        jj_for_rot = range(self.data.structure.num_dof.value + 3, self.data.structure.num_dof.value + 6)
+
+        for node_glob in range(self.data.structure.num_node):
+            ### detect bc at node (and no. of dofs)
+            bc_here = self.data.structure.boundary_conditions[node_glob]
+
+            if bc_here == 1:  # clamp (only rigid-body)
+                dofs_here = 0
+                jj_tra, jj_rot = [], []
+                continue
+
+            elif bc_here == -1 or bc_here == 0:  # (rigid+flex body)
+                dofs_here = 6
+                jj_tra = 6 * self.data.structure.vdof[node_glob] + np.array([0, 1, 2], dtype=int)
+                jj_rot = 6 * self.data.structure.vdof[node_glob] + np.array([3, 4, 5], dtype=int)
+            # jj_tra=[jj  ,jj+1,jj+2]
+            # jj_rot=[jj+3,jj+4,jj+5]
+            else:
+                raise NameError('Invalid boundary condition (%d) at node %d!' \
+                                % (bc_here, node_glob))
+
+            jj += dofs_here
+
+            ee, node_loc = self.data.structure.node_master_elem[node_glob, :]
+            psi = self.data.structure.timestep_info[self.data.ts].psi[ee, node_loc, :]
+
+            Ra = pos[node_glob, :]  # in A FoR with respect to G
+
+            K_vec[np.ix_(jj_tra, jj_tra)] += np.eye(3)
+            K_vec[np.ix_(jj_tra, jj_for_vel)] += np.eye(3)
+            K_vec[np.ix_(jj_tra, jj_for_rot)] -= algebra.skew(Ra)
+
+            K_vec[np.ix_(jj_rot, jj_rot)] += np.eye(3)
+            K_vec[np.ix_(jj_rot, jj_for_rot)] += np.linalg.inv(algebra.crv2tan(psi).T)
+
+        # Rigid-Rigid modes transform
+        Krr = np.eye(10)
+        Krr[np.ix_([0, 1, 2], [3, 4, 5])] += algebra.skew(r_cg)
+
+        # Assemble transformed modes
+        phirr = Krr.dot(phi[-10:, :10])
+        phiss = K_vec.dot(phi[:, 10:])
+
+        # NG - 26/7/19 - Transformation of the rigid part of the elastic modes ended up not being necessary but leaving
+        # here in case it becomes useful in the future
+        phit = np.block([np.zeros((phi.shape[0], 10)), phi[:, 10:]])
+        phit[-10:, :10] = phirr
+
+        return phit
+
+
+def cg(M):
+    Mrr = M[-10:, -10:]
+    return -np.array([Mrr[2, 4], Mrr[0, 5], Mrr[1, 3]]) / Mrr[0, 0]
 
 
 def scale_mode(data,eigenvector,rot_max_deg=15,perc_max=0.15):

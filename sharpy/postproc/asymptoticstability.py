@@ -25,41 +25,45 @@ class AsymptoticStability(BaseSolver):
 
     """
     solver_id = 'AsymptoticStability'
+    solver_classification = 'post-processor'
 
+    settings_types = dict()
+    settings_default = dict()
+    settings_description = dict()
+
+    settings_types['print_info'] = 'bool'
+    settings_default['print_info'] = False
+
+    settings_default['sys_id'] = ''
+    settings_types['sys_id'] = 'str'
+
+    settings_types['frequency_cutoff'] = 'float'
+    settings_default['frequency_cutoff'] = 0
+
+    settings_types['export_eigenvalues'] = 'bool'
+    settings_default['export_eigenvalues'] = False
+
+    settings_types['display_root_locus'] = 'bool'
+    settings_default['display_root_locus'] = False
+
+    settings_types['modes_to_plot'] = 'list(int)'
+    settings_default['modes_to_plot'] = []
+
+    settings_types['num_evals'] = 'int'
+    settings_default['num_evals'] = 200
+
+    settings_types['postprocessors'] = 'list(str)'
+    settings_default['postprocessors'] = list()
+
+    settings_types['postprocessors_settings'] = 'dict'
+    settings_default['postprocessors_settings'] = dict()
+
+    settings_types['folder'] = 'str'
+    settings_default['folder'] = './output'
+
+    settings_table = settings.SettingsTable()
+    __doc__ += settings_table.generate(settings_types, settings_default, settings_description)
     def __init__(self):
-        self.settings_types = dict()
-        self.settings_default = dict()
-
-        self.settings_types['print_info'] = 'bool'
-        self.settings_default['print_info'] = False
-
-        self.settings_default['sys_id'] = ''
-        self.settings_types['sys_id'] = 'str'
-
-        self.settings_types['frequency_cutoff'] = 'float'
-        self.settings_default['frequency_cutoff'] = 0
-
-        self.settings_types['export_eigenvalues'] = 'bool'
-        self.settings_default['export_eigenvalues'] = False
-
-        self.settings_types['display_root_locus'] = 'bool'
-        self.settings_default['display_root_locus'] = False
-
-        self.settings_types['modes_to_plot'] = 'list(int)'
-        self.settings_default['modes_to_plot'] = []
-
-        self.settings_types['num_evals'] = 'int'
-        self.settings_default['num_evals'] = 200
-
-        self.settings_types['postprocessors'] = 'list(str)'
-        self.settings_default['postprocessors'] = list()
-
-        self.settings_types['postprocessors_settings'] = 'dict'
-        self.settings_default['postprocessors_settings'] = dict()
-
-        self.settings_types['folder'] = 'str'
-        self.settings_default['folder'] = './output'
-
         self.settings = None
         self.data = None
 
@@ -128,8 +132,11 @@ class AsymptoticStability(BaseSolver):
         if ss.dt:
             # Obtain dimensional time step
             ScalingFacts = self.data.linear.linear_system.uvlm.sys.ScalingFacts
-            dt = ScalingFacts['length'] * 2 / self.data.aero.surface_m[0] / ScalingFacts['speed']
-            assert np.abs(dt - ScalingFacts['time'] * ss.dt) < 1e-14, 'dimensional time-scaling not correct!'
+            if ScalingFacts['lenght'] != 1.0 and ScalingFacts['time'] != 1.0:
+                dt = ScalingFacts['length'] * 2 / self.data.aero.surface_m[0] / ScalingFacts['speed']
+                assert np.abs(dt - ScalingFacts['time'] * ss.dt) < 1e-14, 'dimensional time-scaling not correct!'
+            else:
+                dt = ss.dt
             eigenvalues = np.log(eigenvalues) / dt
 
         self.eigenvalues, self.eigenvectors = self.sort_eigenvalues(eigenvalues, eigenvectors, self.frequency_cutoff)
