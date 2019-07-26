@@ -35,9 +35,6 @@ class StaticTrim(BaseSolver):
         gradient_history (list): history of gradients during iteration
         trimmed_values (np.array): trim configuration values
 
-    Methods:
-        trim_algorithm: algorithm to find equilibrium conditions
-
     """
     solver_id = 'StaticTrim'
     solver_classification = 'Flight'

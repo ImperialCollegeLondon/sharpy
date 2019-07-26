@@ -52,8 +52,11 @@ def main(args=None):
 
     if args.docs:
         import sharpy.utils.generator_interface as generator_interface
+        import sharpy.utils.docutils as docutils
+
         solver_interface.output_documentation()
         generator_interface.output_documentation()
+        docutils.output_documentation_algebra()
         return 0
 
     if args.input_filename == '':
