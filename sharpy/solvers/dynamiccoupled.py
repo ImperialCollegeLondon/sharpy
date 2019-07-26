@@ -82,7 +82,7 @@ class DynamicCoupled(BaseSolver):
         self.settings_default['postprocessors_settings'] = dict()
 
         self.settings_types['controller_id'] = 'dict'
-        self.settings_default['controller_id'] = list()
+        self.settings_default['controller_id'] = dict()
 
         self.settings_types['controller_settings'] = 'dict'
         self.settings_default['controller_settings'] = dict()
