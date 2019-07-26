@@ -56,7 +56,7 @@ def main(args=None):
 
         solver_interface.output_documentation()
         generator_interface.output_documentation()
-        docutils.output_documentation_algebra()
+        # docutils.output_documentation_module_page()
         return 0
 
     if args.input_filename == '':
