@@ -9,6 +9,7 @@ import sharpy.utils.algebra as algebra
 import sharpy.solvers.lindynamicsim as lindynamicsim
 import pandas as pd
 import os
+import sharpy.structure.utils.modalutils as modalutils
 
 @solver
 class AsymptoticStability(BaseSolver):
@@ -102,8 +103,8 @@ class AsymptoticStability(BaseSolver):
 
         if self.settings['print_info']:
             cout.cout_wrap('Dynamical System Eigenvalues')
-            self.eigenvalue_table = cout.TablePrinter(7, 12, ['d', 'f', 'f', 'f', 'f', 'f', 'f'])
-            self.eigenvalue_table.print_header(['mode', 'eval_real', 'eval_imag', 'freq_n (Hz)', 'freq_d (Hz)', 'damping', 'period (s)'])
+            self.eigenvalue_table = modalutils.EigenvalueTable()
+            self.eigenvalue_table.print_header(self.eigenvalue_table.headers)
 
     def run(self):
         """
@@ -145,7 +146,7 @@ class AsymptoticStability(BaseSolver):
             self.export_eigenvalues(self.settings['num_evals'].value)
 
         if self.settings['print_info'].value:
-            self.print_eigenvalues()
+            self.eigenvalue_table.print_evals(eigenvalues[:self.settings['num_evals'].value])
 
         if self.settings['display_root_locus']:
             self.display_root_locus()
