@@ -24,6 +24,7 @@ import os
 import sys
 import pandas as pd
 import scipy.integrate
+from copy import deepcopy
 
 
 ######################################################################
@@ -1633,13 +1634,29 @@ class SimulationInformation():
 
         Set the default values for all the solvers
         """
-        import sharpy.utils.cout_utils as cout
+        # import sharpy.utils.cout_utils as cout
 
         self.solvers = dict()
-        cout.start_writer()
-        self.solvers = solver_interface.dictionary_of_solvers().copy()
-        cout.finish_writer()
-        self.solvers.update(generator_interface.dictionary_of_generators())
+        # cout.start_writer()
+        aux_names = solver_interface.dictionary_of_solvers()
+        # cout.finish_writer()
+        aux_names.update(generator_interface.dictionary_of_generators())
+
+        for solver in aux_names:
+            self.solvers[solver] = {}
+            if not solver == 'PreSharpy':
+                try:
+                    aux_solver = solver_interface.solver_from_string(solver)
+                except:
+                    aux_solver = generator_interface.generator_from_string(solver)
+                    # TODO: remove this try/except when generators are rewriten as solvers with class attributes instead of instance attributes
+                    aux_solver.__init__(aux_solver)
+
+                if aux_solver.settings_default == {}:
+                    aux_solver.__init__(aux_solver)
+
+                for key, value in aux_solver.settings_default.items():
+                    self.solvers[solver][key] = deepcopy(value)
 
         # # MAIN
         self.solvers['SHARPy'] = {'flow': '',
