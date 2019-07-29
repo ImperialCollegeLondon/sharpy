@@ -1634,12 +1634,12 @@ class SimulationInformation():
 
         Set the default values for all the solvers
         """
-        # import sharpy.utils.cout_utils as cout
+        import sharpy.utils.cout_utils as cout
 
         self.solvers = dict()
-        # cout.start_writer()
+        cout.start_writer()
         aux_names = solver_interface.dictionary_of_solvers()
-        # cout.finish_writer()
+        cout.finish_writer()
         aux_names.update(generator_interface.dictionary_of_generators())
 
         # TODO: I am sure this can be done in a better way
