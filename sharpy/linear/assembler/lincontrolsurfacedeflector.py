@@ -88,7 +88,7 @@ class LinControlSurfaceDeflector(object):
         # Find the vertices corresponding to a control surface from beam coordinates to aerogrid
         aero_dict = aero.aero_dict
         n_surf = aero.timestep_info[0].n_surf
-        n_control_surfaces = len(aero_dict['control_surface_chord'])
+        n_control_surfaces = self.n_control_surfaces
 
         if self.under_development:
             import matplotlib.pyplot as plt  # Part of the testing process

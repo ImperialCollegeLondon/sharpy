@@ -933,7 +933,8 @@ class GolandControlSurface(Goland):
 
         self.n_control_surfaces = len(cs_deflection)
         self.control_surface_deflection = np.zeros(self.n_control_surfaces, dtype=float)
-        # self.control_surface_deflection += np.array([cs_deflection]) * np.pi/180
+        for i in range(len(cs_deflection)):
+            self.control_surface_deflection[i] = cs_deflection[i] * np.pi/180
         self.control_surface_chord = M // 2 * np.ones(self.n_control_surfaces, dtype=int)
         self.control_surface_type = np.zeros(self.n_control_surfaces, dtype=int)
         # other
@@ -972,7 +973,7 @@ class GolandControlSurface(Goland):
                             if i_surf == 0:
                                 control_surface[ws_elem + i_elem, i_local_node] = 0  # Right flap
                             else:
-                                control_surface[ws_elem + i_elem, i_local_node] = 0  # Left flap
+                                control_surface[ws_elem + i_elem, i_local_node] = 1  # Left flap
                 ws_elem += num_elem_surf
                         # control_surface[i_elem, i_local_node] = 0
 
