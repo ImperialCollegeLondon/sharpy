@@ -115,6 +115,7 @@ class DynamicCoupled(BaseSolver):
         self.previous_force = None
 
         self.dt = 0.
+        self.substep_dt = 0.
 
         self.predictor = False
         self.residual_table = None
@@ -143,37 +144,46 @@ class DynamicCoupled(BaseSolver):
             self.settings = data.settings[self.solver_id]
         else:
             self.settings = custom_settings
-        settings.to_custom_types(self.settings, self.settings_types, self.settings_default)
+        settings.to_custom_types(self.settings,
+                                 self.settings_types,
+                                 self.settings_default)
         self.dt = self.settings['dt']
-        self.substep_dt = self.dt.value/(self.settings['structural_substeps'].value + 1)
+        self.substep_dt = (
+            self.dt.value/(self.settings['structural_substeps'].value + 1))
         self.print_info = self.settings['print_info']
         if self.settings['cleanup_previous_solution']:
             # if there's data in timestep_info[>0], copy the last one to
             # timestep_info[0] and remove the rest
             self.cleanup_timestep_info()
 
-        self.structural_solver = solver_interface.initialise_solver(self.settings['structural_solver'])
-        self.structural_solver.initialise(self.data, self.settings['structural_solver_settings'])
-        self.aero_solver = solver_interface.initialise_solver(self.settings['aero_solver'])
-        self.aero_solver.initialise(self.structural_solver.data, self.settings['aero_solver_settings'])
+        self.structural_solver = solver_interface.initialise_solver(
+            self.settings['structural_solver'])
+        self.structural_solver.initialise(
+            self.data, self.settings['structural_solver_settings'])
+        self.aero_solver = solver_interface.initialise_solver(
+            self.settings['aero_solver'])
+        self.aero_solver.initialise(self.structural_solver.data,
+                                    self.settings['aero_solver_settings'])
         self.data = self.aero_solver.data
 
         # initialise postprocessors
         self.postprocessors = dict()
-        if len(self.settings['postprocessors']) > 0:
+        if self.settings['postprocessors']:
             self.with_postprocessors = True
         for postproc in self.settings['postprocessors']:
-            self.postprocessors[postproc] = solver_interface.initialise_solver(postproc)
+            self.postprocessors[postproc] = solver_interface.initialise_solver(
+                postproc)
             self.postprocessors[postproc].initialise(
                 self.data, self.settings['postprocessors_settings'][postproc])
 
         # initialise controllers
         self.controllers = dict()
         self.with_controllers = False
-        if len(self.settings['controller_id']) > 0:
+        if self.settings['controller_id']:
             self.with_controllers = True
         for controller_id, controller_type in self.settings['controller_id'].items():
-            self.controllers[controller_id] = controller_interface.initialise_controller(controller_type)
+            self.controllers[controller_id] = (
+                controller_interface.initialise_controller(controller_type))
             self.controllers[controller_id].initialise(
                     self.settings['controller_settings'][controller_id],
                     controller_id)
@@ -202,9 +212,13 @@ class DynamicCoupled(BaseSolver):
         self.data.ts = 0
 
     def run(self):
+        """
+
+        """
         # dynamic simulations start at tstep == 1, 0 is reserved for the initial state
-        for self.data.ts in range(len(self.data.structure.timestep_info),
-                                  self.settings['n_time_steps'].value + len(self.data.structure.timestep_info)):
+        for self.data.ts in range(
+                len(self.data.structure.timestep_info),
+                self.settings['n_time_steps'].value + len(self.data.structure.timestep_info)):
             initial_time = time.perf_counter()
             structural_kstep = self.data.structure.timestep_info[-1].copy()
             aero_kstep = self.data.aero.timestep_info[-1].copy()
@@ -218,22 +232,43 @@ class DynamicCoupled(BaseSolver):
 
                 structural_kstep = state['structural']
                 aero_kstep = state['aero']
+                reset_substeps = False
+                try:
+                    if state['info']['reset_substeps']:
+                        self.settings['structural_substeps'] = ct.c_int(0)
+                        self.substep_dt = self.settings['dt'].value
+                except KeyError:
+                    pass
+
+                try:
+                    if state['info']['new_structural_solver']:
+                        self.structural_solver = solver_interface.initialise_solver(
+                            state['info']['new_structural_solver'])
+                        self.structural_solver.initialise(
+                            self.data, self.settings['structural_solver_settings'])
+                except KeyError:
+                    pass
 
             self.time_aero = 0.0
             self.time_struc = 0.0
 
+            # Copy the controlled states so that the interpolation does not
+            # destroy the previous information
             controlled_structural_kstep = structural_kstep.copy()
             controlled_aero_kstep = aero_kstep.copy()
+
             k = 0
             for k in range(self.settings['fsi_substeps'].value + 1):
-                if k == self.settings['fsi_substeps'].value and not self.settings['fsi_substeps'] == 0:
+                if (k == self.settings['fsi_substeps'].value and
+                        self.settings['fsi_substeps']):
                     cout.cout_wrap('The FSI solver did not converge!!!')
                     break
 
                 # generate new grid (already rotated)
-                # aero_kstep = self.data.aero.timestep_info[-1].copy()
                 aero_kstep = controlled_aero_kstep.copy()
-                self.aero_solver.update_custom_grid(structural_kstep, aero_kstep)
+                self.aero_solver.update_custom_grid(
+                    structural_kstep,
+                    aero_kstep)
 
                 # compute unsteady contribution
                 force_coeff = 0.0
@@ -255,11 +290,11 @@ class DynamicCoupled(BaseSolver):
                 self.time_aero += time.perf_counter() - ini_time_aero
 
                 previous_kstep = structural_kstep.copy()
-                # structural_kstep = self.data.structure.timestep_info[-1].copy()
                 structural_kstep = controlled_structural_kstep.copy()
 
                 # move the aerodynamic surface according the the structural one
-                self.aero_solver.update_custom_grid(structural_kstep, aero_kstep)
+                self.aero_solver.update_custom_grid(structural_kstep,
+                                                    aero_kstep)
                 self.map_forces(aero_kstep,
                                 structural_kstep,
                                 force_coeff)
@@ -275,28 +310,41 @@ class DynamicCoupled(BaseSolver):
                 # if yes, pdb.set_trace()
                 if np.isnan(structural_kstep.steady_applied_forces).any():
                     print('NaN found in steady_applied_forces!')
-                    import pdb; pdb.set_trace()
+                    import pdb
+                    pdb.set_trace()
                 if np.isnan(structural_kstep.unsteady_applied_forces).any():
                     print('NaN found in unsteady_applied_forces!')
-                    import pdb; pdb.set_trace()
+                    import pdb
+                    pdb.set_trace()
 
                 copy_structural_kstep = structural_kstep.copy()
-                for i_substep in range(self.settings['structural_substeps'].value + 1):
+                ini_time_struc = time.perf_counter()
+                for i_substep in range(
+                        self.settings['structural_substeps'].value + 1):
                     # run structural solver
-                    ini_time_struc = time.perf_counter()
-                    coeff = (i_substep + 1)/(self.settings['structural_substeps'].value + 1)
+                    coeff = ((i_substep + 1)/
+                             (self.settings['structural_substeps'].value + 1))
 
-                    structural_kstep = self.interpolate_timesteps(copy_structural_kstep, self.data.structure.timestep_info[-1], coeff)
+                    structural_kstep = self.interpolate_timesteps(
+                        step0=self.data.structure.timestep_info[-1],
+                        step1=copy_structural_kstep,
+                        out_step=structural_kstep,
+                        coeff=coeff)
 
-                    self.data = self.structural_solver.run(structural_step=structural_kstep, dt=self.substep_dt)
-                    self.time_struc += time.perf_counter() - ini_time_struc
+                    self.data = self.structural_solver.run(
+                        structural_step=structural_kstep,
+                        dt=self.substep_dt)
+
+                self.time_struc += time.perf_counter() - ini_time_struc
 
                 # check convergence
                 if self.convergence(k,
                                     structural_kstep,
                                     previous_kstep):
                     # move the aerodynamic surface according to the structural one
-                    self.aero_solver.update_custom_grid(structural_kstep, aero_kstep)
+                    self.aero_solver.update_custom_grid(
+                        structural_kstep,
+                        aero_kstep)
                     break
 
             # move the aerodynamic surface according the the structural one
@@ -333,8 +381,10 @@ class DynamicCoupled(BaseSolver):
     def convergence(self, k, tstep, previous_tstep):
         # check for non-convergence
         if not all(np.isfinite(tstep.q)):
-            import pdb; pdb.set_trace()
-            raise Exception('***Not converged! There is a NaN value in the forces!')
+            import pdb
+            pdb.set_trace()
+            raise Exception(
+                '***Not converged! There is a NaN value in the forces!')
 
         if not k:
             # save the value of the vectors for normalising later
@@ -404,7 +454,6 @@ class DynamicCoupled(BaseSolver):
                 astype(dtype=ct.c_double, order='F', copy=True))
             structural_kstep.unsteady_applied_forces = dynamic_struct_forces
 
-
     def relaxation_factor(self, k):
         initial = self.settings['relaxation_factor'].value
         if not self.settings['dynamic_relaxation'].value:
@@ -418,25 +467,39 @@ class DynamicCoupled(BaseSolver):
         return value
 
     @staticmethod
-    def interpolate_timesteps(kstep, previous_step, coeff):
-        if not 0.0 <= coeff <= 1.0:
-            return
+    def interpolate_timesteps(step0, step1, out_step, coeff):
+        """
+        Performs a linear interpolation between step0 and step1 based on coeff
+        in [0, 1]. 0 means info in out_step == step0 and 1 out_step == step1.
 
-        out_kstep = kstep.copy()
+        Quantities interpolated:
+        * `steady_applied_forces`
+        * `unsteady_applied_forces`
+        * `velocity` input in Lagrange constraints
+
+        """
+        if not 0.0 <= coeff <= 1.0:
+            return out_step
+
         # forces
-        out_kstep.steady_applied_forces[:] = ((coeff)*(kstep.steady_applied_forces) +
-                (1.0 - coeff)*previous_step.steady_applied_forces)
-        out_kstep.unsteady_applied_forces[:] = ((coeff)*(kstep.unsteady_applied_forces) +
-                (1.0 - coeff)*previous_step.unsteady_applied_forces)
+        out_step.steady_applied_forces[:] = (
+            (1.0 - coeff)*step0.steady_applied_forces +
+            (coeff)*(step1.steady_applied_forces))
+
+        out_step.unsteady_applied_forces[:] = (
+            (1.0 - coeff)*step0.unsteady_applied_forces +
+            (coeff)*(step1.unsteady_applied_forces))
 
         # multibody if necessary
-        if kstep.mb_dict is not None:
-            for k, v in kstep.mb_dict.items():
-                if 'constraint_' in k:
-                    for kk, vv in v.items():
+        if step1.mb_dict is not None:
+            for key, val in step1.mb_dict.items():
+                if 'constraint_' in key:
+                    for kk, vv in val.items():
                         if 'vel' in kk:
-                            out_kstep.mb_dict[k][kk] = coeff*vv + (1.0 - coeff)*previous_step.mb_dict[k][kk]
-        return out_kstep
+                            out_step.mb_dict[key][kk] = (
+                                coeff*vv +
+                                (1.0 - coeff)*step0.mb_dict[key][kk])
+        return out_step
 
 
 def relax(beam, timestep, previous_timestep, coeff):
