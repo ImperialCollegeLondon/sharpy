@@ -171,9 +171,9 @@ class TestFixNodeVelocitywrtA(unittest.TestCase):
                            name + '.mb.h5',
                            name + '.solver.txt']
         for f in files_to_delete:
-            os.remove(folder + f)
+            os.remove(folder + '/' + f)
 
-        shutil.rmtree(folder + 'output/')
+        shutil.rmtree(folder + '/output/')
 
 if __name__=='__main__':
 

@@ -178,9 +178,6 @@ class TestFixNodeVelocitywrtG(unittest.TestCase):
                            self.name + '.mb.h5',
                            self.name + '.solver.txt']
         for f in files_to_delete:
-            os.remove(folder + f)
+            os.remove(folder + '/' + f)
 
-        try:
-            shutil.rmtree(folder + 'output/')
-        except FileNotFoundError:
-            pass
+        shutil.rmtree(folder + '/output/')
