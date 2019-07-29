@@ -20,6 +20,7 @@ import sharpy.utils.generator_interface as generator_interface
 # from sharpy.utils.solver_interface import solver, dict_of_solvers
 import h5py as h5
 import os
+import sys
 import pandas as pd
 import scipy.integrate
 
@@ -848,26 +849,33 @@ class StructuralInformation():
 
         """
         # CHECKING
-        if(self.elem_stiffness.shape[0]!=self.num_elem):
+        if(self.elem_stiffness.shape[0] != self.num_elem):
             sys.exit("ERROR: Element stiffness must be defined for each element")
-        if(self.elem_mass.shape[0]!=self.num_elem):
+        if(self.elem_mass.shape[0] != self.num_elem):
             sys.exit("ERROR: Element mass must be defined for each element")
-        if(self.frame_of_reference_delta.shape[0]!=self.num_elem):
+        if(self.frame_of_reference_delta.shape[0] != self.num_elem):
             sys.exit("ERROR: The first dimension of FoR does not match the number of elements")
-        if(self.frame_of_reference_delta.shape[1]!=self.num_node_elem):
+        if(self.frame_of_reference_delta.shape[1] != self.num_node_elem):
             sys.exit("ERROR: The second dimension of FoR does not match the number of nodes element")
-        if(self.frame_of_reference_delta.shape[2]!=3):
+        if(self.frame_of_reference_delta.shape[2] != 3):
             sys.exit("ERROR: The third dimension of FoR must be 3")
-        if(self.structural_twist.shape[0]!=self.num_elem):
+        if(self.structural_twist.shape[0] != self.num_elem):
             sys.exit("ERROR: The structural twist must be defined for each element")
-        if(self.boundary_conditions.shape[0]!=self.num_node):
+        if(self.boundary_conditions.shape[0] != self.num_node):
             sys.exit("ERROR: The boundary conditions must be defined for each node")
-        if(self.beam_number.shape[0]!=self.num_elem):
+        if(self.beam_number.shape[0] != self.num_elem):
             sys.exit("ERROR: The beam number must be defined for each element")
-        if(self.app_forces.shape[0]!=self.num_node):
+        if(self.app_forces.shape[0] != self.num_node):
             sys.exit("ERROR: The first dimension of the applied forces matrix does not match the number of nodes")
-        if(self.app_forces.shape[1]!=6):
+        if(self.app_forces.shape[1] != 6):
             sys.exit("ERROR: The second dimension of the applied forces matrix must be 6")
+
+        default = StructuralInformation()
+
+        for attr, value in self.__dict__.items():
+            if not hasattr(default, attr):
+                sys.exit("StructuralInformation has no attribute named '%s'" % attr)
+
 
     def generate_fem_file(self, route, case_name):
         """
@@ -880,7 +888,7 @@ class StructuralInformation():
         	case_name (string): name of the case
         """
     	# TODO: check variables that are not defined
-
+        self.check_StructuralInformation()
         # Writting the file
         with h5.File(route + '/' + case_name + '.fem.h5', 'a') as h5file:
     		# TODO: include something to write only exsisting variables
@@ -1319,7 +1327,13 @@ class AerodynamicInformation():
         if(self.twist.shape[1] != StructuralInformation.num_node_elem):
             sys.exit("ERROR: The second dimension of the aerodynamic twist does not match the number nodes per element")
 
-    def generate_aero_file(self, route, case_name):
+        default = AerodynamicInformation()
+
+        for attr, value in self.__dict__.items():
+            if not hasattr(default, attr):
+                sys.exit("AerodynamicInformation has no attribute named '%s'" % attr)
+
+    def generate_aero_file(self, route, case_name, StructuralInformation):
         """
         generate_aero_file
 
@@ -1329,6 +1343,8 @@ class AerodynamicInformation():
             route (string): path of the case
             case_name (string): name of the case
         """
+        self.check_AerodynamicInformation(StructuralInformation)
+
         with h5.File(route + '/' + case_name + '.aero.h5', 'a') as h5file:
 
             h5file.create_dataset('aero_node', data=self.aero_node)
@@ -1565,14 +1581,24 @@ class AeroelasticInformation():
 
         return copied
 
+    def check(self):
+
+        default = AeroelasticInformation()
+
+        for attr, value in self.__dict__.items():
+            if not hasattr(default, attr):
+                sys.exit("AeroelasticInformation has no attribute named '%s'" % attr)
+
+
     def generate_h5_files(self, route, case_name):
         """
         write_h5_files
 
         Writes the structural and aerodynamic h5 files
         """
+        self.check()
         self.StructuralInformation.generate_fem_file(route, case_name)
-        self.AerodynamicInformation.generate_aero_file(route, case_name)
+        self.AerodynamicInformation.generate_aero_file(route, case_name, self.StructuralInformation)
 
 ######################################################################
 ######################  SOLVERS INFORMATION  #########################
@@ -1613,6 +1639,7 @@ class SimulationInformation():
         self.solvers = solver_interface.dictionary_of_solvers().copy()
         cout.finish_writer()
         self.solvers.update(generator_interface.dictionary_of_generators())
+
         # # MAIN
         self.solvers['SHARPy'] = {'flow': '',
                                   'case': 'default_case_name',
@@ -1629,7 +1656,15 @@ class SimulationInformation():
                                    'compress_float': False}
 
 
+    def check(self):
 
+        default = SimulationInformation()
+        default.set_default_values()
+
+        for solver in self.solvers['SHARPy']['flow']:
+            for key in self.solvers[solver]:
+                if not key in default.solvers[solver]:
+                    sys.exit("solver '%s' has no key named '%s'" % (solver, key))
 
 
     def define_num_steps(self, num_steps):
@@ -1723,6 +1758,9 @@ class SimulationInformation():
         	case_name (string): name of the case
         """
         import configobj
+
+        self.check()
+
         config = configobj.ConfigObj()
         config.filename = self.solvers['SHARPy']['route'] + '/' + self.solvers['SHARPy']['case'] + '.solver.txt'
         config['SHARPy'] = self.solvers['SHARPy']
