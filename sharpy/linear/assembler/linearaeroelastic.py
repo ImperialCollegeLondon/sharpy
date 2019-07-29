@@ -166,8 +166,8 @@ class LinearAeroelastic(ss_interface.BaseElement):
         # Scale coupling matrices
         # if uvlm.sys.ScalingFacts['time'] != 1.0:
         Tsa *= uvlm.sys.ScalingFacts['force'] * uvlm.sys.ScalingFacts['time'] ** 2
-        # if rigid_dof > 0:
-        #     warnings.warn('Time scaling for problems with rigid body motion not yet supported.')
+        if rigid_dof > 0:
+            warnings.warn('Time scaling for problems with rigid body motion under development.')
             # Tas[:flex_nodes + 3, :flex_nodes + 3] /= uvlm.sys.ScalingFacts['length']
             # Tas[total_dof: total_dof + flex_nodes + 3] /= uvlm.sys.ScalingFacts['length']
         # else:
