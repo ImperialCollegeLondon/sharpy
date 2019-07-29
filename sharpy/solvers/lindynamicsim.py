@@ -193,8 +193,8 @@ def state_to_timestep(data, sys_id, x, u=None, y=None):
 
     """
 
-    if data.settings['LinearAssembler'][sys_id]['beam_settings']['modal_projection'].value and \
-            data.settings['LinearAssembler'][sys_id]['beam_settings']['inout_coords'] == 'modes':
+    if data.settings['LinearAssembler']['linear_system_settings']['beam_settings']['modal_projection'].value and \
+            data.settings['LinearAssembler']['linear_system_settings']['beam_settings']['inout_coords'] == 'modes':
         modal = True
     else:
         modal = False
@@ -209,7 +209,7 @@ def state_to_timestep(data, sys_id, x, u=None, y=None):
     y_beam = x_struct
 
     if u is not None:
-        u_q = u[:data.linear.lsys[sys_id].uvlm.ss.inputs]
+        u_q = u[:data.linear.linear_system.uvlm.ss.inputs]
         u_q[:y_beam.shape[0]] += y_beam
     else:
         u_q = y_beam
@@ -248,8 +248,8 @@ def state_to_timestep(data, sys_id, x, u=None, y=None):
 
     # self.data.aero.timestep_info.append(current_aero_tstep)
 
-    aero_forces = data.linear.lsys[sys_id].uvlm.C_to_vertex_forces.dot(x_aero)
-    beam_forces = data.linear.lsys[sys_id].couplings['Ksa'].dot(aero_forces)
+    aero_forces = data.linear.linear_system.uvlm.C_to_vertex_forces.dot(x_aero)
+    beam_forces = data.linear.linear_system.couplings['Ksa'].dot(aero_forces)
 
     if u is not None:
         u_struct = u[-data.linear.linear_system.beam.ss.inputs:]
