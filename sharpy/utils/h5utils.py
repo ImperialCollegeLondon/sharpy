@@ -39,7 +39,7 @@ def load_h5_in_dict(handle, path='/'):
     dictionary = {}
     for k, i in handle[path].items():
         if isinstance(i, h5._hl.dataset.Dataset):
-            dictionary[k] = i.value
+            dictionary[k] = i[()]
         elif isinstance(i, h5._hl.group.Group):
             dictionary[k] = load_h5_in_dict(handle, path + k + '/')
 
@@ -85,7 +85,7 @@ def readh5(filename, GroupName=None):
 
     filename: string to file location
 
-    GroupName = string or list of strings. Default is None: if given, allows 
+    GroupName = string or list of strings. Default is None: if given, allows
     reading a specific group h5 file.
 
     Warning:
@@ -123,7 +123,7 @@ def readh5(filename, GroupName=None):
                 pass
             setattr(Hinst, name, Ginst)
         else:
-            setattr(Hinst, name, hdfile[name].value)
+            setattr(Hinst, name, hdfile[name][()])
 
     # close and return
     hdfile.close()
@@ -145,7 +145,7 @@ def read_group(Grp):
     ### determine output format
     read_as = 'class'
     if '_read_as' in MainLev:
-        read_as = Grp['_read_as'].value
+        read_as = Grp['_read_as'][()]
 
     ### initialise output
     if read_as == 'class':
@@ -158,7 +158,7 @@ def read_group(Grp):
     ### Loop through higher level
     if read_as == 'list' or read_as == 'tuple':
         if '_as_array' in MainLev:
-            Hinst = list(Grp['_as_array'].value)
+            Hinst = list(Grp['_as_array'][()])
         else:
             N = len(MainLev) - 1
             for nn in range(N):
@@ -167,7 +167,7 @@ def read_group(Grp):
                 if type(Grp[name]) is h5._hl.group.Group:
                     value = read_group(Grp[name])
                 else:
-                    value = Grp[name].value
+                    value = Grp[name][()]
                 Hinst.append(value)
         if read_as == 'tuple': tuple(Hinst)
     else:
@@ -178,7 +178,7 @@ def read_group(Grp):
             if type(Grp[name]) is h5._hl.group.Group:
                 value = read_group(Grp[name])
             else:
-                value = Grp[name].value
+                value = Grp[name][()]
 
             ### allocate
             if read_as == 'class':
@@ -239,14 +239,14 @@ def add_as_grp(obj, grpParent,
 
         - if obj contains classes, only those that are instances of the classes
           specified in ClassesToSave will be saved
-    
+
         - If grpParent already contains a sub-group with name grpname, this will not
           be overwritten. However, pre-existing attributes of the sub-group will be
           overwritten if obj contains attrributes with the same names.
 
         - attributes belonging to SkipAttr will not be saved - This functionality
           needs improving
-        
+
         - if compress_float is True, numpy arrays will be saved in single precisions.
     """
 
@@ -283,7 +283,7 @@ def add_as_grp(obj, grpParent,
             grp['_read_as'] = ObjType
         else:
             grp = grpParent[grpname]
-            assert grp['_read_as'].value == ObjType, \
+            assert grp['_read_as'][()] == ObjType, \
                 'Can not overwrite group of different type'
 
     ### lists/tuples only: try to save as arrays
