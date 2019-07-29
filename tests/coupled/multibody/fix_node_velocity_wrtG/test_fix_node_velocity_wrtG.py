@@ -6,6 +6,9 @@ import numpy as np
 import sharpy.utils.generate_cases as gc
 import sharpy.sharpy_main
 
+folder = os.path.abspath(os.path.dirname(os.path.realpath(__file__)))
+
+
 class TestFixNodeVelocitywrtG(unittest.TestCase):
     """
 
@@ -69,10 +72,11 @@ class TestFixNodeVelocitywrtG(unittest.TestCase):
         self.name = 'fix_node_velocity_wrtG'
         SimInfo.solvers['SHARPy']['case'] = self.name
         SimInfo.solvers['SHARPy']['write_screen'] = 'off'
-        SimInfo.solvers['SHARPy']['route'] = os.path.dirname(os.path.realpath(__file__)) + '/'
+        SimInfo.solvers['SHARPy']['route'] = folder + '/'
         SimInfo.set_variable_all_dicts('dt', 0.1)
         SimInfo.set_variable_all_dicts('rho', 0.0)
         SimInfo.set_variable_all_dicts('velocity_field_input', SimInfo.solvers['SteadyVelocityField'])
+        SimInfo.set_variable_all_dicts('folder', folder + '/output/')
 
         SimInfo.solvers['BeamLoader']['unsteady'] = 'on'
 
@@ -157,30 +161,26 @@ class TestFixNodeVelocitywrtG(unittest.TestCase):
         """
 
         """
-        solver_path = os.path.abspath(
-            os.path.dirname(os.path.realpath(__file__)) +
-                '/fix_node_velocity_wrtG.solver.txt')
+        solver_path = folder + '/fix_node_velocity_wrtG.solver.txt'
         sharpy.sharpy_main.main(['', solver_path])
 
         # read output and compare
-        output_path = os.path.dirname(solver_path) + '/output/fix_node_velocity_wrtG/WriteVariablesTime/'
+        output_path = folder + '/output/fix_node_velocity_wrtG/WriteVariablesTime/'
         pos_tip_data = np.matrix(np.genfromtxt(output_path + "struct_pos_node-1" + ".dat", delimiter=' '))
         self.assertAlmostEqual(pos_tip_data[-1, 1], 9.999386, 4)
         self.assertAlmostEqual(pos_tip_data[-1, 2], -0.089333, 4)
         self.assertAlmostEqual(pos_tip_data[-1, 3], 0., 4)
 
     def tearDown(self):
-        solver_path = os.path.dirname(os.path.realpath(__file__))
-        solver_path += '/'
         files_to_delete = [self.name + '.aero.h5',
                            self.name + '.dyn.h5',
                            self.name + '.fem.h5',
                            self.name + '.mb.h5',
                            self.name + '.solver.txt']
         for f in files_to_delete:
-            os.remove(solver_path + f)
+            os.remove(folder + f)
 
         try:
-            shutil.rmtree(solver_path + 'output/')
+            shutil.rmtree(folder + 'output/')
         except FileNotFoundError:
             pass
