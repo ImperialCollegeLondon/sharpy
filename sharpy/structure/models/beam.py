@@ -1,5 +1,6 @@
 import ctypes as ct
 import numpy as np
+import copy
 
 from sharpy.structure.basestructure import BaseStructure
 import sharpy.structure.models.beamstructures as beamstructures
@@ -56,7 +57,7 @@ class Beam(BaseStructure):
         self.fortran = dict()
 
         # Multibody variabes
-        self.mb_dict = dict()
+        self.ini_mb_dict = dict()
         self.body_number = None
         self.num_bodies = None
         self.FoR_movement = None
@@ -91,10 +92,11 @@ class Beam(BaseStructure):
         # mutibody: FoR information
         try:
             for ibody in range(self.num_bodies):
-                self.ini_info.mb_FoR_pos[ibody,:] = self.mb_dict["body_%02d" % ibody]["FoR_position"].copy()
-                self.ini_info.mb_FoR_vel[ibody,:] = self.mb_dict["body_%02d" % ibody]["FoR_velocity"].copy()
-                self.ini_info.mb_FoR_acc[ibody,:] = self.mb_dict["body_%02d" % ibody]["FoR_acceleration"].copy()
-                self.ini_info.mb_quat[ibody,:] = self.mb_dict["body_%02d" % ibody]["quat"].copy()
+                self.ini_info.mb_FoR_pos[ibody,:] = self.ini_mb_dict["body_%02d" % ibody]["FoR_position"].copy()
+                self.ini_info.mb_FoR_vel[ibody,:] = self.ini_mb_dict["body_%02d" % ibody]["FoR_velocity"].copy()
+                self.ini_info.mb_FoR_acc[ibody,:] = self.ini_mb_dict["body_%02d" % ibody]["FoR_acceleration"].copy()
+                self.ini_info.mb_quat[ibody,:] = self.ini_mb_dict["body_%02d" % ibody]["quat"].copy()
+                self.ini_info.mb_dict = copy.deepcopy(self.ini_mb_dict)
         except KeyError:
             self.ini_info.mb_FoR_pos[0,:] = self.ini_info.for_pos
             self.ini_info.mb_FoR_vel[0,:] = self.ini_info.for_vel
@@ -241,12 +243,12 @@ class Beam(BaseStructure):
         #         self.dynamic_input[it]['trayectories'] = None
 
 # TODO ADC: necessary? I don't think so
-        try:
-            for it in range(num_steps):
-                self.dynamic_input[it]['enforce_trajectory'] = dyn_dict['enforce_trayectory'][it, :, :]
-        except KeyError:
-            for it in range(num_steps):
-                self.dynamic_input[it]['enforce_trajectory'] = np.zeros((self.num_node, 3), dtype=bool)
+        # try:
+            # for it in range(num_steps):
+                # self.dynamic_input[it]['enforce_trajectory'] = dyn_dict['enforce_trayectory'][it, :, :]
+        # except KeyError:
+            # for it in range(num_steps):
+                # self.dynamic_input[it]['enforce_trajectory'] = np.zeros((self.num_node, 3), dtype=bool)
 
     def generate_dof_arrays(self):
         self.vdof = np.zeros((self.num_node,), dtype=ct.c_int, order='F') - 1
@@ -442,14 +444,15 @@ class Beam(BaseStructure):
     #     self.timestep_info[ts].update_orientation(quat)  # Cga going in here
 
     def integrate_position(self, ts, dt):
-        self.timestep_info[ts].for_pos[0:3] = (
-            self.timestep_info[ts - 1].for_pos[0:3] +
-            dt*np.dot(self.timestep_info[ts].cga(),
-                      self.timestep_info[ts].for_vel[0:3]))
-        # self.timestep_info[ts].for_pos[3:6] = (
-        #     self.timestep_info[ts - 1].for_pos[3:6] +
-        #     dt*np.dot(self.timestep_info[ts].cga(),
-        #               self.timestep_info[ts].for_vel[3:6]))
+        try:
+            ts.for_pos[0:3] += (
+                dt*np.dot(ts.cga(),
+                          ts.for_vel[0:3]))
+        except AttributeError:
+            self.timestep_info[ts].for_pos[0:3] += (
+                dt*np.dot(self.timestep_info[ts].cga(),
+                          self.timestep_info[ts].for_vel[0:3]))
+
 
     def nodal_b_for_2_a_for(self, nodal, tstep, filter=np.array([True]*6)):
         nodal_a = nodal.copy(order='F')

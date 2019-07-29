@@ -15,7 +15,7 @@ import sharpy.utils.cout_utils as cout
 _BaseStructural = solver_from_string('_BaseStructural')
 
 @solver
-class NonLinearDynamicCoupledStep(BaseSolver):
+class NonLinearDynamicCoupledStep(_BaseStructural):
     """
     Structural solver used for the dynamic simulation of free-flying structures.
 
@@ -76,13 +76,18 @@ class NonLinearDynamicCoupledStep(BaseSolver):
         # generate q, dqdt and dqddt
         xbeamlib.xbeam_solv_disp2state(self.data.structure, self.data.structure.timestep_info[-1])
 
-    def run(self, structural_step=None, dt=None):
+    def run(self, structural_step, previous_structural_step=None, dt=None):
+        if dt is None:
+            dt = self.settings['dt']
+
         xbeamlib.xbeam_step_couplednlndyn(self.data.structure,
                                           self.settings,
                                           self.data.ts,
                                           structural_step,
                                           dt=dt)
         self.extract_resultants(structural_step)
+        self.data.structure.integrate_position(structural_step, dt)
+
         return self.data
 
     def add_step(self):

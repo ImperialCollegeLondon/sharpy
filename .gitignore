@@ -90,7 +90,11 @@ ENV/
 *.*~
 *.swp
 *.txt
+
+# SHARPy stuff
 *.h5
+*.sharpy
+
 
 # project dependant stuff
 lib/*
@@ -138,4 +142,4 @@ figs/*
 
 tests/linear/rom/figs/
 
-tests/linear/rom/figs/
+\.spyproject/
