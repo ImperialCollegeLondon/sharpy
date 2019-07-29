@@ -90,7 +90,11 @@ ENV/
 *.*~
 *.swp
 *.txt
+
+# SHARPy stuff
 *.h5
+*.sharpy
+
 
 # project dependant stuff
 lib/*
