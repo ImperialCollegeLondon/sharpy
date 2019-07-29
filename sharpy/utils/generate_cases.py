@@ -1642,6 +1642,7 @@ class SimulationInformation():
         # cout.finish_writer()
         aux_names.update(generator_interface.dictionary_of_generators())
 
+        # TODO: I am sure this can be done in a better way
         for solver in aux_names:
             self.solvers[solver] = {}
             if not solver == 'PreSharpy':
