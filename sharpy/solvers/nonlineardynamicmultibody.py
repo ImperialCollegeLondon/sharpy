@@ -20,6 +20,7 @@ import matplotlib.pyplot as plt
 
 _BaseStructural = solver_from_string('_BaseStructural')
 
+
 @solver
 class NonLinearDynamicMultibody(_BaseStructural):
     """
@@ -49,6 +50,9 @@ class NonLinearDynamicMultibody(_BaseStructural):
         self.lc_list = None
         self.num_LM_eq = None
 
+        self.gamma = None
+        self.beta = None
+
     def initialise(self, data, custom_settings=None):
 
         self.data = data
@@ -59,7 +63,8 @@ class NonLinearDynamicMultibody(_BaseStructural):
         settings.to_custom_types(self.settings, self.settings_types, self.settings_default)
 
         # load info from dyn dictionary
-        self.data.structure.add_unsteady_information(self.data.structure.dyn_dict, self.settings['num_steps'].value)
+        self.data.structure.add_unsteady_information(
+            self.data.structure.dyn_dict, self.settings['num_steps'].value)
 
         # Define Newmark constants
         self.gamma = 0.5 + self.settings['newmark_damp'].value
@@ -68,7 +73,6 @@ class NonLinearDynamicMultibody(_BaseStructural):
         # Define the number of equations
         self.lc_list = lagrangeconstraints.initialize_constraints(self.data.structure.ini_mb_dict)
         self.num_LM_eq = lagrangeconstraints.define_num_LM_eq(self.lc_list)
-
 
         # Define the number of dofs
         self.define_sys_size()
@@ -158,7 +162,7 @@ class NonLinearDynamicMultibody(_BaseStructural):
         acc = np.zeros((6,),)
         for ibody in range(0, len(MB_tstep)):
             # I think this is the right way to do it, but to make it match the rest I change it temporally
-            if False:
+            if True:
                 # MB_tstep[ibody].mb_quat[ibody,:] =  algebra.quaternion_product(MB_tstep[ibody].quat, MB_tstep[ibody].mb_quat[ibody,:])
                 acc[0:3] = (0.5-self.beta)*np.dot(MB_beam[ibody].timestep_info.cga(),MB_beam[ibody].timestep_info.for_acc[0:3])+self.beta*np.dot(MB_tstep[ibody].cga(),MB_tstep[ibody].for_acc[0:3])
                 vel[0:3] = np.dot(MB_beam[ibody].timestep_info.cga(),MB_beam[ibody].timestep_info.for_vel[0:3])
@@ -215,6 +219,8 @@ class NonLinearDynamicMultibody(_BaseStructural):
 
         if dt is None:
             dt = self.settings['dt'].value
+        else:
+            self.settings['dt'] = ct.c_float(dt)
 
         self.lc_list = lagrangeconstraints.initialize_constraints(MBdict)
         self.num_LM_eq = lagrangeconstraints.define_num_LM_eq(self.lc_list)
@@ -272,8 +278,6 @@ class NonLinearDynamicMultibody(_BaseStructural):
             Dq = np.linalg.solve(MB_Asys, -MB_Q)
             # least squares solver
             # Dq = np.linalg.lstsq(np.dot(MB_Asys_balanced, invT), -MB_Q_balanced, rcond=None)[0]
-            if self.settings['relaxation_factor'].value:
-                Dq *= self.settings['relaxation_factor'].value
 
             # Evaluate convergence
             if (iter > 0):
@@ -312,7 +316,7 @@ class NonLinearDynamicMultibody(_BaseStructural):
                 if old_Dq < 1.0:
                     old_Dq = 1.0
                 if num_LM_eq:
-                    LM_old_Dq = max(1.0, np.max(np.abs(Dq[self.sys_size:self.sys_size+num_LM_eq])))
+                    LM_old_Dq = np.max(np.abs(Dq[self.sys_size:self.sys_size+num_LM_eq]))
                 else:
                     LM_old_Dq = 1.0
 
