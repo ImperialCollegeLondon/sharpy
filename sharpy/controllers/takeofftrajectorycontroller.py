@@ -41,7 +41,7 @@ class TakeOffTrajectoryController(controller_interface.BaseController):
     settings_types['controller_log_route'] = 'str'
     settings_default['controller_log_route'] = './output/'
     settings_description['controller_log_route'] = (
-            'Directory where the log will be stored')
+        'Directory where the log will be stored')
 
     settings_types['write_controller_log'] = 'bool'
     settings_default['write_controller_log'] = True
@@ -119,8 +119,8 @@ class TakeOffTrajectoryController(controller_interface.BaseController):
         try:
             constraint = controlled_state['structural'].mb_dict[self.settings['controlled_constraint']]
         except KeyError:
-            cout.cout_wrap('''Could not find the controlled constraint. This can be because the constraint
-has been removed during execution, or a mistake has been made.''', 3)
+            # cout.cout_wrap('''Could not find the controlled constraint. This can be because the constraint
+            # has been removed during execution, or a mistake has been made.''', 3)
             return controlled_state
         except TypeError:
             import pdb; pdb.set_trace()
