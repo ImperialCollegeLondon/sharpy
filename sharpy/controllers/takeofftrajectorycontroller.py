@@ -134,6 +134,8 @@ class TakeOffTrajectoryController(controller_interface.BaseController):
         if end_of_traj:
             lc.remove_constraint(controlled_state['structural'].mb_dict,
                                  self.settings['controlled_constraint'])
+            controlled_state['new_structural_solver'] = 'NonLinearDynamicCoupledSteps'
+            controlled_state['reset_substeps'] = True
             return controlled_state
 
         constraint['velocity'][:] = traj_command
@@ -153,31 +155,34 @@ class TakeOffTrajectoryController(controller_interface.BaseController):
         """
         self.trajectory_interp = []
         # Make sure s = 0.5 is ok.
-        self.t_limits[:] = np.min(self.input_history[:, 0]), np.max(self.input_history[:, 0])
+        self.t_limits[:] = (np.min(self.input_history[:, 0]),
+                            np.max(self.input_history[:, 0]))
         for i_dim in range(3):
             self.trajectory_interp.append(
                 interpolate.UnivariateSpline(self.input_history[:, 0],
                                              self.input_history[:, i_dim + 1],
-                                             k=3,
-                                             s=0.5))
+                                             k=1,
+                                             s=0.,
+                                             ext='raise'))
         if dxdt:
             self.trajectory_vel_interp = []
             for i_dim in range(3):
-                self.trajectory_vel_interp.append(self.trajectory_interp[i_dim].derivative())
+                self.trajectory_vel_interp.append(
+                    self.trajectory_interp[i_dim].derivative())
 
     def controller_wrapper(self, t):
         output_traj = np.zeros((3,))
         end_of_traj = False
         if self.settings['trajectory_method'] == 'lagrange':
             # check that t is in input limits
-            if not self.t_limits[0] <= t <= self.t_limits[1]:
-                for i_dim in range(3):
-                    output_traj[i_dim] = np.nan
-                    end_of_traj = True
-            else:
+            if self.t_limits[0] <= t <= self.t_limits[1]:
                 # return velocities
                 for i_dim in range(3):
                     output_traj[i_dim] = self.trajectory_vel_interp[i_dim](t)
+            else:
+                for i_dim in range(3):
+                    output_traj[i_dim] = np.nan
+                    end_of_traj = True
         else:
             raise NotImplementedError('The trajectory_method ' +
                                       self.settings['trajectory_method'] +
