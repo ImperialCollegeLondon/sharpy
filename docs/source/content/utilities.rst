@@ -6,9 +6,6 @@ The following ``utilities`` modules are provided in ``SHARPy``
 .. toctree::
     :maxdepth: 1
 
-    utils/algebra_content
-    utils/h5utils
-    utils/geo_utils
-    statespace/statespacelib
-    statespace/librom
-    rom/rom
+    ../includes/utils/algebra/index
+    ../includes/utils/h5utils/index
+    ../includes/utils/geo_utils/index

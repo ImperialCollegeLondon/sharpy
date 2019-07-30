@@ -76,6 +76,7 @@ def output_documentation(route=None):
     if route is None:
         route = sharpydir.SharpyDir + '/docs/source/includes/generators/'
         if os.path.exists(route):
+            print('Cleaning %s' %route)
             shutil.rmtree(route)
     print('Creating documentation files for generators in %s' % route)
 

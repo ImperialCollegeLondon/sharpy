@@ -32,8 +32,10 @@ Contents
    content/installation
    content/sharpy_intro
    content/aero
-   content/generators
    content/structure
+   content/generators
+   content/controllers
+   content/rom
    content/solvers
    content/postproc
    content/utilities
