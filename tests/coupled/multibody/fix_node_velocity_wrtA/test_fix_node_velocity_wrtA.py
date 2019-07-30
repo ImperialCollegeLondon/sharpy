@@ -40,7 +40,8 @@ class TestFixNodeVelocitywrtA(unittest.TestCase):
         beam1.StructuralInformation.lumped_mass = np.array([1.])
         beam1.StructuralInformation.lumped_mass_inertia = np.zeros((1, 3, 3),)
         beam1.StructuralInformation.lumped_mass_position = np.zeros((1, 3),)
-
+        # beam1.StructuralInformation.structural_twist += 2.*deg2rad
+        beam1.StructuralInformation.app_forces[-1, 2] = -10.
 
         # Aerodynamic information
         airfoil = np.zeros((1,20,2),)
@@ -81,10 +82,10 @@ class TestFixNodeVelocitywrtA(unittest.TestCase):
         SimInfo.solvers['AerogridLoader']['unsteady'] = 'on'
         SimInfo.solvers['AerogridLoader']['mstar'] = 2
 
-        SimInfo.solvers['NonLinearStatic']['print_info'] = False
+        SimInfo.solvers['NonLinearStaticMultibody']['print_info'] = False
 
-        SimInfo.solvers['StaticCoupled']['structural_solver'] = 'NonLinearStatic'
-        SimInfo.solvers['StaticCoupled']['structural_solver_settings'] = SimInfo.solvers['NonLinearStatic']
+        SimInfo.solvers['StaticCoupled']['structural_solver'] = 'NonLinearStaticMultibody'
+        SimInfo.solvers['StaticCoupled']['structural_solver_settings'] = SimInfo.solvers['NonLinearStaticMultibody']
         SimInfo.solvers['StaticCoupled']['aero_solver'] = 'StaticUvlm'
         SimInfo.solvers['StaticCoupled']['aero_solver_settings'] = SimInfo.solvers['StaticUvlm']
 
@@ -159,9 +160,13 @@ class TestFixNodeVelocitywrtA(unittest.TestCase):
         output_path = folder + '/output/fix_node_velocity_wrtA/WriteVariablesTime/'
         # quat_data = np.matrix(np.genfromtxt(output_path + 'FoR_00_mb_quat.dat', delimiter=' '))
         pos_tip_data = np.matrix(np.genfromtxt(output_path + "struct_pos_node" + str(-1) + ".dat", delimiter=' '))
-        self.assertAlmostEqual(pos_tip_data[-1, 1], 9.996557, 2)
-        self.assertAlmostEqual(pos_tip_data[-1, 2], 0.000000, 2)
-        self.assertAlmostEqual(pos_tip_data[-1, 3], -0.1795935, 2)
+        self.assertAlmostEqual(pos_tip_data[0, 1], 9.999863, 2)
+        self.assertAlmostEqual(pos_tip_data[0, 2], 0., 2)
+        self.assertAlmostEqual(pos_tip_data[0, 3], -3.587865e-02, 2)
+
+        self.assertAlmostEqual(pos_tip_data[-1, 1], 9.992430, 2)
+        self.assertAlmostEqual(pos_tip_data[-1, 2], 0., 2)
+        self.assertAlmostEqual(pos_tip_data[-1, 3], -2.646091e-01, 2)
 
     def tearDowns(self):
         # pass
