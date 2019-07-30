@@ -1017,3 +1017,91 @@ def cbeam3_correct_gravity_forces(beam, tstep, settings):
                             beam.fortran['vdof'].ctypes.data_as(intP),
                             beam.fortran['fdof'].ctypes.data_as(intP),
                             tstep.gravity_forces.ctypes.data_as(doubleP))
+
+def cbeam3_asbly_static(beam, tstep, settings, iLoadStep):
+    """
+    cbeam3_asbly_static
+
+    Generates the system matrices for a nonlinear static structure
+
+    Args:
+        beam(Beam): beam information
+        tstep(StructTimeStepInfo): time step information
+        settings(settings):
+
+    Returns:
+        Kglobal(numpy array): Stiffness matrix
+        Qglobal(numpy array): Vector of independent terms
+
+    Examples:
+
+    Notes:
+
+    """
+
+    # library load
+    xbeamlib = ct_utils.import_ctypes_lib(SharpyDir + '/lib/', 'libxbeam')
+    f_cbeam3_asbly_static_python = xbeamlib.cbeam3_asbly_static_python
+    f_cbeam3_asbly_static_python.restype = None
+
+    # initialisation
+    n_elem = ct.c_int(beam.num_elem)
+    n_nodes = ct.c_int(beam.num_node)
+    num_dof = beam.num_dof.value
+    n_mass = ct.c_int(beam.n_mass)
+    n_stiff = ct.c_int(beam.n_stiff)
+    # dt = settings['dt']
+
+    # Options
+    xbopts = Xbopts()
+    xbopts.PrintInfo = ct.c_bool(settings['print_info'])
+    # xbopts.Solution = ct.c_int(312)
+    # xbopts.MaxIterations = settings['max_iterations']
+    xbopts.NumLoadSteps = settings['num_load_steps']
+    # xbopts.NumGauss = ct.c_int(0)
+    # xbopts.DeltaCurved = settings['delta_curved']
+    # xbopts.MinDelta = settings['min_delta']
+    # xbopts.NewmarkDamp = settings['newmark_damp']
+    xbopts.gravity_on = settings['gravity_on']
+    xbopts.gravity = settings['gravity']
+    xbopts.gravity_dir_x = ct.c_double(tstep.gravity_vector_inertial[0])
+    xbopts.gravity_dir_y = ct.c_double(tstep.gravity_vector_inertial[1])
+    xbopts.gravity_dir_z = ct.c_double(tstep.gravity_vector_inertial[2])
+
+    # Initialize matrices
+    # Mglobal = np.zeros((num_dof, num_dof), dtype=ct.c_double, order='F')
+    # Cglobal = np.zeros((num_dof, num_dof), dtype=ct.c_double, order='F')
+    Kglobal = np.zeros((num_dof, num_dof), dtype=ct.c_double, order='F')
+    Qglobal = np.zeros((num_dof, ), dtype=ct.c_double, order='F')
+
+    f_cbeam3_asbly_static_python(ct.byref(ct.c_int(num_dof)),
+                            ct.byref(n_nodes),
+                            ct.byref(n_elem),
+                            beam.ini_info.pos.ctypes.data_as(doubleP),
+                            beam.ini_info.psi.ctypes.data_as(doubleP),
+                            tstep.pos.ctypes.data_as(doubleP),
+                            tstep.psi.ctypes.data_as(doubleP),
+                            tstep.steady_applied_forces.ctypes.data_as(doubleP),
+                            beam.fortran['num_nodes'].ctypes.data_as(intP),
+                            beam.fortran['num_mem'].ctypes.data_as(intP),
+                            beam.fortran['connectivities'].ctypes.data_as(intP),
+                            beam.fortran['master'].ctypes.data_as(intP),
+                            ct.byref(n_mass),
+                            beam.fortran['mass'].ctypes.data_as(doubleP),
+                            beam.fortran['mass_indices'].ctypes.data_as(intP),
+                            ct.byref(n_stiff),
+                            beam.fortran['stiffness'].ctypes.data_as(doubleP),
+                            beam.fortran['inv_stiffness'].ctypes.data_as(doubleP),
+                            beam.fortran['stiffness_indices'].ctypes.data_as(intP),
+                            beam.fortran['frame_of_reference_delta'].ctypes.data_as(doubleP),
+                            beam.fortran['rbmass'].ctypes.data_as(doubleP),
+                            beam.fortran['node_master_elem'].ctypes.data_as(intP),
+                            beam.fortran['vdof'].ctypes.data_as(intP),
+                            beam.fortran['fdof'].ctypes.data_as(intP),
+                            ct.byref(xbopts),
+                            tstep.gravity_forces.ctypes.data_as(doubleP),
+                            Kglobal.ctypes.data_as(doubleP),
+                            Qglobal.ctypes.data_as(doubleP),
+                            ct.byref(ct.c_int(iLoadStep)))
+
+    return Kglobal, Qglobal
