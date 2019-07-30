@@ -21,6 +21,7 @@ class LinControlSurfaceDeflector(object):
         # As of now, it simply maps a deflection onto the aerodynamic grid by means of Kzeta_delta
         self.n_control_surfaces = 0
         self.Kzeta_delta = None
+        self.Kmom = None
 
         self.linuvlm = None
         self.aero = None
@@ -93,6 +94,7 @@ class LinControlSurfaceDeflector(object):
         if self.under_development:
             import matplotlib.pyplot as plt  # Part of the testing process
         Kdisp = np.zeros((3 * linuvlm.Kzeta, n_control_surfaces))
+        Kmom = np.zeros((3 * linuvlm.Kzeta, n_control_surfaces))
         zeta0 = np.concatenate([tsaero0.zeta[i_surf].reshape(-1, order='C') for i_surf in range(n_surf)])
 
         Cga = algebra.quat2rotation(tsstruct0.quat).T
@@ -162,7 +164,7 @@ class LinControlSurfaceDeflector(object):
 
                                 if i_node_chord > i_node_hinge:
                                     # Zeta in G frame
-                                    zeta_node = zeta0[i_vertex]
+                                    zeta_node = zeta0[i_vertex]  # Gframe
                                     zeta_nodeA = Cag.dot(zeta_node)
                                     zeta_hingeA = Cag.dot(zeta_hinge)
                                     zeta_hingeB = Cbg.dot(zeta_hinge)
@@ -189,6 +191,9 @@ class LinControlSurfaceDeflector(object):
                                         Cgb.dot(der_R_arbitrary_axis_times_v(Cbg.dot(hinge_axis),
                                                                              0,
                                                                              -for_delta * Cbg.dot(chord_vec)))
+                                    # Flap hinge moment
+                                    # Kmom[i_vertex, i_control_surface] += algebra.skew(chord_vec)
+
                                     # Testing progress
                                     if self.under_development:
                                         plt.scatter(zeta_hingeB[1], zeta_hingeB[2], color='k')
@@ -216,6 +221,7 @@ class LinControlSurfaceDeflector(object):
                             hinge_axis = None  # Reset for next control surface
 
         self.Kzeta_delta = Kdisp
+        # self.Kmom = Kmom
         return Kdisp
 
 

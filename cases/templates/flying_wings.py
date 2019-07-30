@@ -635,6 +635,11 @@ class FlyingWing():
                                                       'include_rbm': 'on',
                                                       'include_applied_forces': 'on'}}}
 
+        config['FrequencyResponse'] = {'folder': self.route + '/output/',
+                                       'compute_fom': 'on',
+                                       'frequency_unit': 'k',
+                                       'frequency_bounds': [0.0001, 1.0]}
+
 
         config.write()
         self.config = config
@@ -900,6 +905,7 @@ class Goland(FlyingWing):
 
         self.elem_stiffness = np.zeros((self.num_elem_tot,), dtype=int)
         self.elem_mass = np.zeros((self.num_elem_tot,), dtype=int)
+
 
 class GolandControlSurface(Goland):
 
