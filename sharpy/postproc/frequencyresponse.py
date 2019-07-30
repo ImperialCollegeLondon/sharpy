@@ -44,6 +44,9 @@ class FrequencyResponse(solver_interface.BaseSolver):
     settings_default['quick_plot'] = False
     settings_description['quick_plot'] = 'Produce array of plots showing response'
 
+    settings_table = settings_utils.SettingsTable()
+    __doc__ += settings_table.generate(settings_types, settings_default, settings_description)
+
     # settings_types['plot_type'] = 'str'
     # settings_default['plot_type'] = 'bode'
     #
@@ -152,8 +155,8 @@ class FrequencyResponse(solver_interface.BaseSolver):
                            freq_2_cols)
 
     def quick_plot(self, Y_freq_fom=None, Y_freq_rom=None):
-        fig1, ax1 = plt.subplots(nrows=self.ss.inputs, ncols=self.ss.outputs, sharex=True, sharey=True)
-        fig2, ax2 = plt.subplots(nrows=self.ss.inputs, ncols=self.ss.outputs, sharex=True, sharey=True)
+        fig1, ax1 = plt.subplots(nrows=self.ss.inputs, ncols=self.ss.outputs, sharex=True)
+        fig2, ax2 = plt.subplots(nrows=self.ss.inputs, ncols=self.ss.outputs, sharex=True)
         for mj in range(self.ss.inputs):
             for pj in range(self.ss.outputs):
                 if Y_freq_fom is not None:
