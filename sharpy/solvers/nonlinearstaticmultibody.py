@@ -241,7 +241,7 @@ class NonLinearStaticMultibody(_BaseStructural):
         Dq_old = 0.
         Dq = np.zeros((self.sys_size,))
 
-        for iLoadStep in range(0, self.settings['num_load_steps'].value):
+        for iLoadStep in range(0, self.settings['num_load_steps'].value + 1):
             iter = -1
             # delta = settings.min_delta + 1.
             converged = False
