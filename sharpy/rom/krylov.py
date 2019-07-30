@@ -1,10 +1,14 @@
 import numpy as np
+import scipy.sparse as scsp
+import sharpy.linear.src.libsparse as libsp
 import scipy.linalg as sclalg
 import sharpy.linear.src.libss as libss
 import time
 import sharpy.utils.settings as settings
 import sharpy.utils.cout_utils as cout
 import sharpy.utils.rom_interface as rom_interface
+import sharpy.utils.h5utils as h5
+import sharpy.rom.utils.krylovutils as krylovutils
 
 @rom_interface.rom
 class Krylov(rom_interface.BaseRom):
@@ -62,22 +66,17 @@ class Krylov(rom_interface.BaseRom):
     settings_types['r'] = 'int'
     settings_default['r'] = 1
     settings_description['r'] = 'Moments to match at the interpolation points'
+
+    settings_types['tangent_input_file'] = 'str'
+    settings_default['tangent_input_file'] = ''
+    settings_description['tangent_input_file'] = 'Filepath to .h5 file containing tangent interpolation vectors'
     
-    settings_types['left_tangent'] = 'np.ndarray'
-    settings_default['left_tangent'] = None
-    settings_description['left_tangent'] = 'Left tangential interpolation vector'
-
-    settings_types['right_tangent'] = 'np.ndarray'
-    settings_default['right_tangent'] = None
-    settings_description['right_tangent'] = 'Left tangential interpolation vector'
-
     settings_types['restart_arnoldi'] = 'bool'
     settings_default['restart_arnoldi'] = False
     settings_description['restart_arnoldi'] = 'Restart Arnoldi iteration with r-=1 if ROM is unstable'
 
-    # Not yet merged, uncomment when branches merged
-    # settings_table = settings.SettingsTable()
-    # __doc__ += settings_table.generate(settings_types, settings_default, settings_description)
+    settings_table = settings.SettingsTable()
+    __doc__ += settings_table.generate(settings_types, settings_default, settings_description)
 
     supported_methods = ('one_sided_arnoldi',
                          'two_sided_arnoldi',
@@ -144,14 +143,9 @@ class Krylov(rom_interface.BaseRom):
 
         Args:
             ss (sharpy.linear.src.libss.ss): State space to reduce
-            algorithm (str): Selected algorithm
-            r (int): Desired Krylov space order. See the relevant algorithm for details.
-            frequency (np.ndarray): Array containing the interpolation points
-            right_tangent (np.ndarray): Right tangential direction vector assembled in matrix form.
-            left_tangent (np.ndarray): Left tangential direction vector assembled in matrix form.
 
         Returns:
-
+            (libss.ss): Reduced state space system
         """
         self.ss = ss
 
@@ -166,36 +160,9 @@ class Krylov(rom_interface.BaseRom):
             self.sstype = 'dt'
             self.frequency = np.exp(self.frequency * ss.dt)
 
-        algorithm = self.algorithm
-        frequency = self.frequency
-        r = self.r
-
         t0 = time.time()
 
-        if algorithm == 'one_sided_arnoldi':
-            Ar, Br, Cr = self.one_sided_arnoldi(frequency, r)
-
-        elif algorithm == 'two_sided_arnoldi':
-            Ar, Br, Cr = self.two_sided_arnoldi(frequency, r)
-
-        elif algorithm == 'dual_rational_arnoldi':
-            Ar, Br, Cr = self.dual_rational_arnoldi(frequency, r,
-                                                    self.settings['right_tangent'],
-                                                    self.settings['left_tangent'])
-
-        elif algorithm == 'real_rational_arnoldi':
-            Ar, Br, Cr = self.real_rational_arnoldi(frequency, r)
-
-        elif algorithm == 'mimo_rational_arnoldi':
-            Ar, Br, Cr = self.mimo_rational_arnoldi(frequency, r)
-
-        elif algorithm == 'mimo_block_arnoldi':
-            Ar, Br, Cr = self.mimo_block_arnoldi(frequency, r)
-
-        else:
-            raise NotImplementedError('Algorithm %s not recognised, check for spelling or it may not be implemented'
-                                      %self.algorithm)
-
+        Ar, Br, Cr = self.__getattribute__(self.algorithm)(self.frequency, self.r)
 
         self.ssrom = libss.ss(Ar, Br, Cr, self.ss.D, self.ss.dt)
 
@@ -204,7 +171,7 @@ class Krylov(rom_interface.BaseRom):
         t_rom = time.time() - t0
         self.cpu_summary['run'] = t_rom
         try:
-            cout.cout_wrap('\t\t...Completed Model Order Reduction in %.2f s' % t_rom)
+            cout.cout_wrap('...Completed Model Order Reduction in %.2f s' % t_rom)
         except ValueError:
             pass
 
@@ -252,10 +219,10 @@ class Krylov(rom_interface.BaseRom):
         nx = A.shape[0]
 
         if frequency != np.inf and frequency is not None:
-            lu_A = sclalg.lu_factor(frequency * np.eye(nx) - A)
-            V = construct_krylov(r, lu_A, B, 'Pade', 'b')
+            lu_A = krylovutils.lu_factor(frequency, A)
+            V = krylovutils.construct_krylov(r, lu_A, B, 'Pade', 'b')
         else:
-            V = construct_krylov(r, A, B, 'partial_realisation', 'b')
+            V = krylovutils.construct_krylov(r, A, B, 'partial_realisation', 'b')
 
         # Reduced state space model
         Ar = V.T.dot(A.dot(V))
@@ -301,15 +268,15 @@ class Krylov(rom_interface.BaseRom):
         nx = A.shape[0]
 
         if frequency != np.inf and frequency is not None:
-            lu_A = sclalg.lu_factor(frequency * np.eye(nx) - A)
-            V = construct_krylov(r, lu_A, B, 'Pade', 'b')
-            W = construct_krylov(r, lu_A, C.T, 'Pade', 'c')
+            lu_A = krylovutils.lu_factor(frequency, A)
+            V = krylovutils.construct_krylov(r, lu_A, B, 'Pade', 'b')
+            W = krylovutils.construct_krylov(r, lu_A, C.T, 'Pade', 'c')
         else:
-            V = construct_krylov(r, A, B, 'partial_realisation', 'b')
-            W = construct_krylov(r, A, C.T, 'partial_realisation', 'c')
+            V = krylovutils.construct_krylov(r, A, B, 'partial_realisation', 'b')
+            W = krylovutils.construct_krylov(r, A, C.T, 'partial_realisation', 'c')
 
         # Ensure oblique projection to ensure W^T V = I
-        # lu_WW = sclalg.lu_factor(W.T.dot(V))
+        # lu_WW = krylovutils.lu_factor(W.T.dot(V))
         # W1 = sclalg.lu_solve(lu_WW, W.T, trans=1).T # Verify
         W = W.dot(sclalg.inv(W.T.dot(V)).T)
 
@@ -354,7 +321,7 @@ class Krylov(rom_interface.BaseRom):
         res = np.zeros((nx,v_ncols+2),
                        dtype=float)
 
-        # lu_A = sclalg.lu_factor(frequency[0] * np.eye(nx) - A)
+        # lu_A = krylovutils.lu_factor(frequency[0] * np.eye(nx) - A)
         v_res = sclalg.lu_solve(lu_A, B)
 
         H[0, 0] = np.linalg.norm(v_res)
@@ -389,7 +356,7 @@ class Krylov(rom_interface.BaseRom):
                 # V[:, k + 1] = res[:, k] / np.linalg.norm(res[:, k])
                 #
                 # if j == r[i] - 1 and i < nfreq - 1:
-                #     lu_A = sclalg.lu_factor(frequency[i+1] * np.eye(nx) - A)
+                #     lu_A = krylovutils.lu_factor(frequency[i+1] * np.eye(nx) - A)
                 #     v_res = sclalg.lu_solve(lu_A, B)
                 # else:
                 #     v_res = - sclalg.lu_solve(lu_A, V[:, k+1])
@@ -419,7 +386,7 @@ class Krylov(rom_interface.BaseRom):
                 V[:, k+1] = res[:, k] / H[k+1, k]
 
                 if j == r[i] - 1 and i < nfreq - 1:
-                    lu_A = sclalg.lu_factor(frequency[i+1]*np.eye(nx) - A)
+                    lu_A = krylovutils.lu_factor(frequency[i+1], A)
                     v_res = sclalg.lu_solve(lu_A, B)
                 else:
                     v_res = - sclalg.lu_solve(lu_A, V[:, k+1])
@@ -492,6 +459,12 @@ class Krylov(rom_interface.BaseRom):
         B.shape = (nx, nu)
 
         try:
+            left_tangent, right_tangent, rc, ro, fc, fo = self.load_tangent_vectors()
+        except FileNotFoundError:
+            left_tangent = None
+            right_tangent = None
+
+        try:
             nfreq = frequency.shape[0]
         except AttributeError:
             nfreq = 1
@@ -500,38 +473,62 @@ class Krylov(rom_interface.BaseRom):
             assert right_tangent is not None and left_tangent is not None, 'Missing interpolation vectors for MIMO case'
 
         t0 = time.time()
-        # Tangential interpolation for MIMO systems
-        if right_tangent is None:
-            right_tangent = np.ones((nu, nfreq))
-        else:
-            assert right_tangent.shape == (nu, nfreq), 'Right Tangential Direction vector not the correct shape'
+        # # Tangential interpolation for MIMO systems
+        # if right_tangent is None:
+        #     right_tangent = np.eye((nu, nfreq))
+        # # else:
+        # #     assert right_tangent.shape == (nu, nfreq), 'Right Tangential Direction vector not the correct shape'
+        #
+        # if left_tangent is None:
+        #     left_tangent = np.eye((ny, nfreq))
+        # # else:
+        # #     assert left_tangent.shape == (ny, nfreq), 'Left Tangential Direction vector not the correct shape'
 
-        if left_tangent is None:
-            left_tangent = np.ones((ny, nfreq))
-        else:
-            assert left_tangent.shape == (ny, nfreq), 'Left Tangential Direction vector not the correct shape'
-
-        V = np.zeros((nx, r*nfreq), dtype=complex)
-        W = np.zeros((nx, r*nfreq), dtype=complex)
+        rom_dim = max(np.sum(rc), np.sum(ro))
+        V = np.zeros((nx, rom_dim), dtype=complex)
+        W = np.zeros((nx, rom_dim), dtype=complex)
 
         we = 0
-        for i in range(nfreq):
-            sigma = frequency[i]
+        dict_of_luas = dict()
+        for i in range(len(fc)):
+            sigma = fc[i]
             if sigma == np.inf:
                 approx_type = 'partial_realisation'
                 lu_A = A
             else:
                 approx_type = 'Pade'
-                lu_A = sclalg.lu_factor(sigma * np.eye(nx) - A)
+                try:
+                    lu_A = dict_of_luas[sigma]
+                except KeyError:
+                    lu_A = krylovutils.lu_factor(sigma, A)
+                    dict_of_luas[sigma] = lu_A
 
-            V[:, we:we+r] = construct_krylov(r, lu_A, B.dot(right_tangent[:, i:i+1]), approx_type, 'b')
-            W[:, we:we+r] = construct_krylov(r, lu_A, C.T.dot(left_tangent[:, i:i+1]), approx_type, 'c')
+            V[:, we:we+rc[i]] = krylovutils.construct_krylov(rc[i], lu_A, B.dot(right_tangent[:, i:i+1]), approx_type, 'b')
 
-            we += r
+            we += rc[i]
+
+        we = 0
+        for i in range(len(fo)):
+            sigma = fo[i]
+            if sigma == np.inf:
+                approx_type = 'partial_realisation'
+                lu_A = A
+            else:
+                approx_type = 'Pade'
+                try:
+                    lu_A = dict_of_luas[sigma]
+                except KeyError:
+                    lu_A = krylovutils.lu_factor(sigma, A)
+                    dict_of_luas[sigma] = lu_A
+            W[:, we:we+ro[i]] = krylovutils.construct_krylov(ro[i], lu_A, C.T.dot(left_tangent[:, i:i+1]), approx_type, 'c')
+
+            we += ro[i]
 
         W = W.dot(sclalg.inv(W.T.dot(V)).T)
         self.W = W
         self.V = V
+
+        del dict_of_luas
 
         # Reduced state space model
         Ar = W.T.dot(A.dot(V))
@@ -583,17 +580,17 @@ class Krylov(rom_interface.BaseRom):
                 approx_type = 'partial_realisation'
             else:
                 approx_type = 'Pade'
-                lu_a = sclalg.lu_factor(frequency[i] * np.eye(n) - self.ss.A)
+                lu_a = krylovutils.lu_factor(frequency[i], self.ss.A)
             if i == 0:
-                V = construct_mimo_krylov(r_c, lu_a, B, approx_type=approx_type, side='controllability')
-                W = construct_mimo_krylov(r_o, lu_a, C.T, approx_type=approx_type, side='observability')
+                V = krylovutils.construct_mimo_krylov(r_c, lu_a, B, approx_type=approx_type, side='controllability')
+                W = krylovutils.construct_mimo_krylov(r_o, lu_a, C.T, approx_type=approx_type, side='observability')
             else:
-                Vi = construct_mimo_krylov(r_c, lu_a, B, approx_type=approx_type, side='controllability')
-                Wi = construct_mimo_krylov(r_o, lu_a, C.T, approx_type=approx_type, side='observability')
+                Vi = krylovutils.construct_mimo_krylov(r_c, lu_a, B, approx_type=approx_type, side='controllability')
+                Wi = krylovutils.construct_mimo_krylov(r_o, lu_a, C.T, approx_type=approx_type, side='observability')
                 V = np.block([V, Vi])
                 W = np.block([W, Wi])
-                V = mgs_ortho(V)
-                W = mgs_ortho(W)
+                V = krylovutils.mgs_ortho(V)
+                W = krylovutils.mgs_ortho(W)
 
         W = W.dot(sclalg.inv(W.T.dot(V)).T)
         self.W = W
@@ -620,14 +617,14 @@ class Krylov(rom_interface.BaseRom):
                 F = A
                 G = B
             else:
-                lu_a = sclalg.lu_factor(frequency[i] * np.eye(n) - A)
-                F = sclalg.lu_solve(lu_a, np.eye(n))
-                G = sclalg.lu_solve(lu_a, B)
+                lu_a = krylovutils.lu_factor(frequency[i], A)
+                F = krylovutils.lu_solve(lu_a, np.eye(n))
+                G = krylovutils.lu_solve(lu_a, B)
 
             if i == 0:
-                V = block_arnoldi_krylov(r, F, G)
+                V = krylovutils.block_arnoldi_krylov(r, F, G)
             else:
-                Vi = block_arnoldi_krylov(r, F, G)
+                Vi = krylovutils.block_arnoldi_krylov(r, F, G)
                 V = np.block([V, Vi])
 
         self.V = V
@@ -712,278 +709,14 @@ class Krylov(rom_interface.BaseRom):
             else:
                 print('Unable to reduce ROM any further - ROM still unstable...')
 
-def block_arnoldi_krylov(r, F, G, approx_type='Pade', side='controllability'):
+    def load_tangent_vectors(self):
+        tangent_file = self.settings['tangent_input_file']
+        tangents = h5.readh5(tangent_file)
+        right_tangent = tangents.right_tangent
+        left_tangent = tangents.left_tangent
+        rc = tangents.rc
+        ro = tangents.ro
+        fc = tangents.fc
+        fo = tangents.fo
+        return left_tangent, right_tangent, rc, ro, fc, fo
 
-    n = G.shape[0]
-    m = G.shape[1]
-
-    Q0, R0, P0 = sclalg.qr(G, pivoting=True)
-    Q0 = Q0[:, :m]
-
-    Q = np.zeros((n,m*r), dtype=complex)
-    V = np.zeros((n,m*r), dtype=complex)
-
-    for k in range(r):
-
-        if k == 0:
-            Q[:, 0:m] = F.dot(Q0)
-        else:
-            Q[:, k*m: k*m + m] = F.dot(Q[:, (k-1)*m:(k-1)*m + m])
-
-        Q[:, :k*m + m] = mgs_ortho(Q[:, :k*m+m])
-
-        Qf, R, P = sclalg.qr(Q[:, k*m: k*m + m], pivoting=True)
-        Q[:, k*m: k*m + m ] = Qf[:, :m]
-        if R[0,0] >= 1e-6:
-            V[:, k*m:k*m + m] = Q[:, k*m: k*m + m ]
-        else:
-            print('Deflating')
-            k -= 1
-
-    V = mgs_ortho(V)
-
-    return V
-
-def mgs_ortho(X):
-    r"""
-    Modified Gram-Schmidt Orthogonalisation
-
-    Orthogonalises input matrix :math:`\mathbf{X}` column by column.
-
-    Args:
-        X (np.ndarray): Input matrix of dimensions :math:`n` by :math:`m`.
-
-    Returns:
-        np.ndarray: Orthogonalised matrix of dimensions :math:`n` by :math:`m`.
-
-    Notes:
-        This method is faster than scipy's :func:`scipy.linalg.qr` method that returns an orthogonal matrix as part of
-        the QR decomposition, albeit at a higher number of function calls.
-    """
-
-    # Q, R = sclalg.qr(X)
-    n = X.shape[1]
-    m = X.shape[0]
-
-    Q = np.zeros((m, n), dtype=complex)
-
-    for i in range(n):
-        w = X[:, i]
-        for j in range(i):
-            h = Q[:, j].T.dot(w)
-            w = w - h * Q[:, j]
-        Q[:, i] = w / sclalg.norm(w)
-
-    return Q
-
-
-def construct_krylov(r, lu_A, B, approx_type='Pade', side='b'):
-    r"""
-    Contructs a Krylov subspace in an iterative manner following the methods of Gugercin [1].
-
-    The construction of the Krylov space is focused on Pade and partial realisation cases for the purposes of model
-    reduction. I.e. the partial realisation form of the Krylov space is used if
-    ``approx_type = 'partial_realisation'``
-
-        .. math::
-            \text{range}(\textbf{V}) = \mathcal{K}_r(\mathbf{A}, \mathbf{b})
-
-    Else, it is replaced by the Pade approximation form:
-
-        .. math::
-            \text{range}(\textbf{V}) = \mathcal{K}_r((\sigma\mathbf{I}_n - \mathbf{A})^{-1},
-            (\sigma\mathbf{I}_n - \mathbf{A})^{-1}\mathbf{b})
-
-    Note that no inverses are actually computed but rather a single LU decomposition is performed at the beginning
-    of the algorithm. Forward and backward substitution is used thereinafter to calculate the required vectors.
-
-    The algorithm also builds the Krylov space for the :math:`\mathbf{C}^T` matrix. It should simply replace ``B``
-    and ``side`` should be ``side = 'c'``.
-
-    Examples:
-        Partial Realisation:
-
-        >>> V = construct_krylov(r, A, B, 'partial_realisation', 'b')
-        >>> W = construct_krylov(r, A, C.T, 'partial_realisation', 'c')
-
-        Pade Approximation:
-
-        >>> V = construct_krylov(r, (sigma * np.eye(nx) - A), B, 'Pade', 'b')
-        >>> W = construct_krylov(r, (sigma * np.eye(nx) - A), C.T, 'Pade', 'c')
-
-
-    References:
-        [1]. Gugercin, S. - Projection Methods for Model Reduction of Large-Scale Dynamical Systems. PhD Thesis.
-        Rice University. 2003.
-
-    Args:
-        r (int): Krylov space order
-        lu_A (np.ndarray): For Pade approximations it should be the LU decomposition of :math:`(\sigma I - \mathbf{A})`
-            in tuple form, as output from the :func:`scipy.linalg.lu_factor`. For partial realisations it is
-            simply :math:`\mathbf{A}`.
-        B (np.ndarray): If doing the B side it should be :math:`\mathbf{B}`, else :math:`\mathbf{C}^T`.
-        approx_type (str): Type of approximation: ``partial_realisation`` or ``Pade``.
-        side: Side of the projection ``b`` or ``c``.
-
-    Returns:
-        np.ndarray: Projection matrix
-
-    """
-
-    nx = B.shape[0]
-
-    # Side indicates projection side. if using C then it needs to be transposed
-    if side=='c':
-        transpose_mode = 1
-        B.shape = (nx, 1)
-    else:
-        transpose_mode = 0
-        B.shape = (nx, 1)
-
-    # Output projection matrices
-    V = np.zeros((nx, r),
-                 dtype=complex)
-    H = np.zeros((r, r),
-                 dtype=complex)
-
-    # Declare iterative variables
-    f = np.zeros((nx, r),
-                 dtype=complex)
-
-    if approx_type == 'partial_realisation':
-        A = lu_A
-        v_arb = B
-        v = v_arb / np.linalg.norm(v_arb)
-        w = A.dot(v)
-    else:
-        # LU decomposition
-        v = sclalg.lu_solve(lu_A, B, trans=transpose_mode)
-        v = v / np.linalg.norm(v)
-        w = sclalg.lu_solve(lu_A, v)
-
-    alpha = v.T.dot(w)
-
-    # Initial assembly
-    f[:, :1] = w - v.dot(alpha)
-    V[:, :1] = v
-    H[0, 0] = alpha
-
-    for j in range(0, r-1):
-
-        beta = np.linalg.norm(f[:, j])
-        v = 1 / beta * f[:, j]
-
-        V[:, j+1] = v
-        H_hat = np.block([[H[:j+1, :j+1]],
-                         [beta * evec(j)]])
-
-        if approx_type == 'partial_realisation':
-            w = A.dot(v)
-        else:
-            w = sclalg.lu_solve(lu_A, v, trans=transpose_mode)
-
-        h = V[:, :j+2].T.dot(w)
-        f[:, j+1] = w - V[:, :j+2].dot(h)
-
-        # Finite precision
-        s = V[:, :j+2].T.dot(f[:, j+1])
-        f[:, j+1] = f[:, j+1] - V[:, :j+2].dot(s)
-        h += s
-
-        h.shape = (j+2, 1)  # Enforce shape for concatenation
-        H[:j+2, :j+2] = np.block([H_hat, h])
-
-    return V
-
-def construct_mimo_krylov(r, lu_A_input, B, approx_type='Pade',side='controllability'):
-
-    if side=='controllability':
-        transpose_mode = 0
-    else:
-        transpose_mode = 1
-
-    m = B.shape[1]  # Full system number of inputs/outputs
-    n = B.shape[0]  # Full system number of states
-
-    deflation_tolerance = 1e-10  # Inexact deflation tolerance to approximate norm(V)=0 in machine precision
-
-    # Preallocated size may be too large in case columns are deflated
-    last_column = 0
-
-    # Pre-allocate w, V
-    V = np.zeros((n, m * r), dtype=complex)
-    w = np.zeros((n, m * r), dtype=complex)  # Initialise w, may be smaller than this due to deflation
-
-    if approx_type == 'partial_realisation':
-        G = B
-        F = lu_A_input
-    else:
-        # lu_a = sclalg.lu_factor(lu_A_input)
-        G = sclalg.lu_solve(lu_A_input, B, trans=transpose_mode)
-
-    for k in range(m):
-        # if approx_type == 'partial_realisation':
-        #     G = B
-        #     F = lu_A_input
-        # else:
-        #     lu_a = sclalg.lu_factor(lu_A_input)
-        #     G = sclalg.lu_solve(lu_A_input, B, trans=transpose_mode)
-        w[:, k] = G[:, k]
-
-        ## Orthogonalise w_k to preceding w_j for j < k
-        if k >= 1:
-            w[:, :k+1] = mgs_ortho(w[:, :k+1])[:, :k+1]
-
-    V[:, :m+1] = w[:, :m+1]
-    last_column += m
-
-    mu = m  # Initialise controllability index
-    mu_c = m  # Guess at controllability index with no deflation
-    t = m   # worked column index
-
-    for k in range(1, r):
-        for j in range(mu_c):
-            if approx_type == 'partial_realisation':
-                w[:, t] = F.dot(w[:, t-mu])
-            else:
-                w[:, t] = sclalg.lu_solve(lu_A_input, w[:, t-mu], trans=transpose_mode)
-
-            # Orthogonalise w[:,t] against V_i -
-            w[:, :t+1] = mgs_ortho(w[:, :t+1])[:, :t+1]
-
-            if np.linalg.norm(w[:, t]) < deflation_tolerance:
-                # Deflate w_k
-                print('Vector deflated')
-                w = [w[:, 0:t], w[:, t+1:]]  # TODO Figure if there is a better way to slice this
-                last_column -= 1
-                mu -= 1
-            else:
-                V[:, t] = w[:, t]
-                last_column += 1
-                t += 1
-        mu_c = mu
-
-    return V[:, :t]
-
-def evec(j):
-    """j-th unit vector (in row format)
-
-    Args:
-        j: Unit vector dimension
-
-    Returns:
-        np.ndarray: j-th unit vector
-
-    Examples:
-        >>> evec(2)
-        np.array([0, 1])
-        >>> evec(3)
-        np.array([0, 0, 1])
-
-    """
-    e = np.zeros(j+1)
-    e[j] = 1
-    return e
-
-if __name__ == "__main__":
-    pass
