@@ -635,6 +635,11 @@ class FlyingWing():
                                                       'include_rbm': 'on',
                                                       'include_applied_forces': 'on'}}}
 
+        config['FrequencyResponse'] = {'folder': self.route + '/output/',
+                                       'compute_fom': 'on',
+                                       'frequency_unit': 'k',
+                                       'frequency_bounds': [0.0001, 1.0]}
+
 
         config.write()
         self.config = config
@@ -720,6 +725,17 @@ class FlyingWing():
             lumped_mass__nodes_handle = h5file.create_dataset(
                 'lumped_mass_nodes', data=self.lumped_mass_nodes)
 
+    def generate_rom_files(self, left_tangent, right_tangent, ro, rc, fo, fc):
+        with h5.File(self.route + '/' + self.case_name + '.rom.h5', 'a') as h5file:
+            lt_handle = h5file.create_dataset('left_tangent',
+                                              data=left_tangent)
+            rt_handle = h5file.create_dataset('right_tangent',
+                                              data=right_tangent)
+            ro_h = h5file.create_dataset('ro', data=ro)
+            fo_h = h5file.create_dataset('fo', data=fo)
+            fc_h = h5file.create_dataset('fc', data=fc)
+            rc_h = h5file.create_dataset('rc', data=rc)
+
     def clean_test_files(self):
         fem_file_name = self.route + '/' + self.case_name + '.fem.h5'
         if os.path.isfile(fem_file_name):
@@ -740,6 +756,10 @@ class FlyingWing():
         lininput_file_name = self.route + '/' + self.case_name + '.lininput.h5'
         if os.path.isfile(lininput_file_name):
             os.remove(lininput_file_name)
+
+        rom_file = self.route + '/' + self.case_name + '.rom.h5'
+        if os.path.isfile(rom_file):
+            os.remove(rom_file)
 
 class Smith(FlyingWing):
     ''' 
@@ -885,6 +905,7 @@ class Goland(FlyingWing):
 
         self.elem_stiffness = np.zeros((self.num_elem_tot,), dtype=int)
         self.elem_mass = np.zeros((self.num_elem_tot,), dtype=int)
+
 
 class GolandControlSurface(Goland):
 
