@@ -10,6 +10,7 @@ import sharpy.solvers.lindynamicsim as lindynamicsim
 import pandas as pd
 import os
 import sharpy.structure.utils.modalutils as modalutils
+import scipy.linalg as sclalg
 
 @solver
 class AsymptoticStability(BaseSolver):
@@ -32,26 +33,38 @@ class AsymptoticStability(BaseSolver):
     settings_default = dict()
     settings_description = dict()
 
+    settings_types['folder'] = 'str'
+    settings_default['folder'] = './output'
+    settings_description['folder'] = 'Output folder'
+
     settings_types['print_info'] = 'bool'
     settings_default['print_info'] = False
-
-    settings_default['sys_id'] = ''
-    settings_types['sys_id'] = 'str'
+    settings_description['print_info'] = 'Print information and table of eigenvalues'
 
     settings_types['frequency_cutoff'] = 'float'
     settings_default['frequency_cutoff'] = 0
+    settings_description['frequency_cutoff'] = 'Truncate higher frequency modes. If zero none are truncated'
 
     settings_types['export_eigenvalues'] = 'bool'
     settings_default['export_eigenvalues'] = False
+    settings_description['export_eigenvalues'] = 'Save eigenvalues and eigenvectors to file'
 
     settings_types['display_root_locus'] = 'bool'
     settings_default['display_root_locus'] = False
+    settings_description['display_root_locus'] = 'Show plot with eigenvalues on Argand diagram'
+
+    settings_types['velocity_analysis'] = 'list(float)'
+    settings_default['velocity_analysis'] = []
+    settings_description['velocity_analysis'] = 'List containing min, max and number ' \
+                                                'of velocities to analyse the system'
 
     settings_types['modes_to_plot'] = 'list(int)'
     settings_default['modes_to_plot'] = []
+    settings_description['modes_to_plot'] = 'List of mode numbers to simulate and plot'
 
     settings_types['num_evals'] = 'int'
     settings_default['num_evals'] = 200
+    settings_description['num_evals'] = 'Number of eigenvalues to retain.'
 
     settings_types['postprocessors'] = 'list(str)'
     settings_default['postprocessors'] = list()
@@ -59,14 +72,14 @@ class AsymptoticStability(BaseSolver):
     settings_types['postprocessors_settings'] = 'dict'
     settings_default['postprocessors_settings'] = dict()
 
-    settings_types['folder'] = 'str'
-    settings_default['folder'] = './output'
 
     settings_table = settings.SettingsTable()
     __doc__ += settings_table.generate(settings_types, settings_default, settings_description)
+
     def __init__(self):
         self.settings = None
         self.data = None
+        self.folder = None
 
         self.eigenvalues = None
         self.eigenvectors = None
@@ -86,18 +99,21 @@ class AsymptoticStability(BaseSolver):
 
         settings.to_custom_types(self.settings, self.settings_types, self.settings_default)
 
-        # Initialise postproc
-        # initialise postprocessors
-        self.postprocessors = dict()
-        if len(self.settings['postprocessors']) > 0:
-            self.with_postprocessors = True
-        for postproc in self.settings['postprocessors']:
-            self.postprocessors[postproc] = initialise_solver(postproc)
-            self.postprocessors[postproc].initialise(
-                self.data, self.settings['postprocessors_settings'][postproc])
-
+        # # Initialise postproc
+        # # initialise postprocessors
+        # # self.postprocessors = dict()
+        # if len(self.settings['postprocessors']) > 0:
+        #     self.with_postprocessors = True
+        # for postproc in self.settings['postprocessors']:
+        #     self.postprocessors[postproc] = initialise_solver(postproc)
+        #     self.postprocessors[postproc].initialise(
+        #         self.data, self.settings['postprocessors_settings'][postproc])
 
         stability_folder_path = self.settings['folder'] + '/' + self.data.settings['SHARPy']['case'] + '/stability'
+        if not os.path.exists(stability_folder_path):
+            os.makedirs(stability_folder_path)
+        self.folder = stability_folder_path
+
         if not os.path.exists(stability_folder_path):
             os.makedirs(stability_folder_path)
 
@@ -123,7 +139,6 @@ class AsymptoticStability(BaseSolver):
         if self.frequency_cutoff == 0:
             self.frequency_cutoff = np.inf
 
-        sys_id = self.settings.get('sys_id')
         ss = self.data.linear.ss
 
         # Calculate eigenvectors and eigenvalues of the full system
@@ -133,7 +148,7 @@ class AsymptoticStability(BaseSolver):
         if ss.dt:
             # Obtain dimensional time step
             ScalingFacts = self.data.linear.linear_system.uvlm.sys.ScalingFacts
-            if ScalingFacts['lenght'] != 1.0 and ScalingFacts['time'] != 1.0:
+            if ScalingFacts['length'] != 1.0 and ScalingFacts['time'] != 1.0:
                 dt = ScalingFacts['length'] * 2 / self.data.aero.surface_m[0] / ScalingFacts['speed']
                 assert np.abs(dt - ScalingFacts['time'] * ss.dt) < 1e-14, 'dimensional time-scaling not correct!'
             else:
@@ -152,30 +167,11 @@ class AsymptoticStability(BaseSolver):
             self.display_root_locus()
 
         # Under development
-        if self.settings['modes_to_plot'] is not []:
+        if self.settings['modes_to_plot']:
             self.plot_modes()
 
-        # if self.with_postprocessors:
-        #     mode_shape_list = []
-        #     for mode in range(10):
-        #         gamma, gamma_dot, gamma_star, struct = self.reconstruct_mode(mode)
-        #         mode_shape = {'gamma': gamma,
-        #                       'gamma_star': gamma_star,
-        #                       'gamma_dot': gamma_dot,
-        #                       'struct': struct}
-        #         mode_shape_list.append(mode_shape)
-        #
-        #         modal_tstep = self.data.aero.timestep_info[-1].copy()
-        #         dummy_struct = self.data.structure.timestep_info[-1].copy()
-        #         modal_tstep.gamma = gamma
-        #         modal_tstep.gamma_star = gamma_star
-        #         modal_tstep.gamma_dot = gamma_dot
-        #         self.data.aero.timestep_info.append(modal_tstep)
-        #         self.data.structure.timestep_info.append(dummy_struct)
-        #         # run postprocessors
-        #         if self.with_postprocessors:
-        #             for postproc in self.postprocessors:
-        #                 self.data = self.postprocessors[postproc].run(online=True)
+        if self.settings['velocity_analysis']:
+            self.velocity_analysis()
 
         self.data.linear.stability = dict()
         self.data.linear.stability['eigenvectors'] = self.eigenvectors
@@ -195,30 +191,78 @@ class AsymptoticStability(BaseSolver):
         Args:
             num_evals: Number of eigenvalues to save
         """
-        stability_folder_path = self.settings['folder'] + '/' + self.data.settings['SHARPy']['case'] + '/stability'
-        if not os.path.exists(stability_folder_path):
-            os.makedirs(stability_folder_path)
+
+        stability_folder_path = self.folder
+
         evec_pd = pd.DataFrame(data=self.eigenvectors[:, :num_evals])
         # eval_pd = pd.DataFrame(data=[self.eigenvalues.real, self.eigenvalues.imag]).T
         evec_pd.to_csv(stability_folder_path + '/eigenvectors.csv')
         # eval_pd.to_csv(stability_folder_path + '/eigenvalues.csv')
         np.savetxt(stability_folder_path + '/eigenvalues.dat', self.eigenvalues[:num_evals].view(float).reshape(-1, 2))
 
-
     def print_eigenvalues(self):
         """
         Prints the eigenvalues to a table with the corresponding natural frequency, period and damping ratios
 
         """
-        for eval in range(self.settings['num_evals'].value):
-            eigenvalue = self.eigenvalues[eval]
-            omega_n = np.abs(eigenvalue)
-            omega_d = np.abs(eigenvalue.imag)
-            damping_ratio = -eigenvalue.real / omega_n
-            f_n = omega_n / 2 / np.pi
-            f_d = omega_d / 2 / np.pi
-            period = 1 / f_d
-            self.eigenvalue_table.print_line([eval, eigenvalue.real, eigenvalue.imag, f_n, f_d, damping_ratio, period])
+        # for eval in range(self.settings['num_evals'].value):
+        #     eigenvalue = self.eigenvalues[eval]
+        #     omega_n = np.abs(eigenvalue)
+        #     omega_d = np.abs(eigenvalue.imag)
+        #     damping_ratio = -eigenvalue.real / omega_n
+        #     f_n = omega_n / 2 / np.pi
+        #     f_d = omega_d / 2 / np.pi
+        #     period = 1 / f_d
+        #     self.eigenvalue_table.print_line([eval, eigenvalue.real, eigenvalue.imag, f_n, f_d, damping_ratio, period])
+
+        self.eigenvalue_table.print_evals(self.eigenvalues[:self.settings['num_evals'].value])
+
+    def velocity_analysis(self):
+
+        cout.cout_wrap('Velocity Asymptotic Stability Analysis')
+
+        ulb, uub, num_u = self.settings['velocity_analysis']
+
+        u_inf_vec = np.linspace(ulb, uub, int(num_u))
+
+        real_part_plot = []
+        imag_part_plot = []
+        uinf_part_plot = []
+
+        for i in range(len(u_inf_vec)):
+            ss_aeroelastic = self.data.linear.linear_system.update(u_inf_vec[i])
+
+            eigs, eigenvectors = sclalg.eig(ss_aeroelastic.A)
+
+            eigs, eigenvectors = self.sort_eigenvalues(eigs, eigenvectors)
+
+            # Obtain dimensional time
+            dt_dimensional = self.data.linear.linear_system.uvlm.sys.ScalingFacts['length'] / u_inf_vec[i] \
+                             * ss_aeroelastic.dt
+
+            eigs_cont = np.log(eigs) / dt_dimensional
+            Nunst = np.sum(eigs_cont.real > 0)
+            fn = np.abs(eigs_cont)
+
+            cout.cout_wrap('CLTI\tu: %.2f m/2\tmax.eig. real: %.6f\t' \
+                           % (u_inf_vec[i], np.max(eigs_cont.real)))
+            cout.cout_wrap('\tN unstab.: %.3d' % (Nunst,))
+            print('\tUnstable aeroelastic natural frequency CT(rad/s):' + Nunst * '\t%.2f' % tuple(fn[:Nunst]))
+
+            # Store eigenvalues for plot
+            real_part_plot.append(eigs_cont.real)
+            imag_part_plot.append(eigs_cont.imag)
+            uinf_part_plot.append(np.ones_like(eigs_cont.real)*u_inf_vec[i])
+
+
+        real_part_plot = np.hstack(real_part_plot)
+        imag_part_plot = np.hstack(imag_part_plot)
+        uinf_part_plot = np.hstack(uinf_part_plot)
+
+        cout.cout_wrap('Saving velocity analysis results...')
+        np.savetxt(self.folder + '/velocity_analysis_min%04d_max%04d_nvel%04d.dat' %(ulb*10, uub*10, num_u),
+                   np.concatenate((uinf_part_plot, real_part_plot, imag_part_plot)).reshape((-1, 3), order='F'))
+        cout.cout_wrap('\tSuccessful', 1)
 
     def display_root_locus(self):
         """
@@ -262,7 +306,6 @@ class AsymptoticStability(BaseSolver):
 
         """
         mode_shape_list = self.settings['modes_to_plot']
-        sys_id = self.settings['sys_id']
         for mode in mode_shape_list:
             # Scale mode
             aero_states = self.data.linear.linear_system.uvlm.ss.states
@@ -301,7 +344,7 @@ class AsymptoticStability(BaseSolver):
             for postproc in postprocessor_list:
                 self.data = postprocessors[postproc].run(online=True)
             for n in range(t.shape[1]):
-                aero_tstep, struct_tstep = lindynamicsim.state_to_timestep(self.data, sys_id, x[:, n])
+                aero_tstep, struct_tstep = lindynamicsim.state_to_timestep(self.data, None, x[:, n])
                 self.data.aero.timestep_info.append(aero_tstep)
                 self.data.structure.timestep_info.append(struct_tstep)
 

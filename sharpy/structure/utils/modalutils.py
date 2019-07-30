@@ -9,7 +9,7 @@ def frequency_damping(eigenvalue):
     omega_d = np.abs(eigenvalue.imag)
     f_n = omega_n / 2 / np.pi
     f_d = omega_d / 2 / np.pi
-    if omega_n < 1e-15:
+    if f_d < 1e-8:
         damping_ratio = 1.
         period = np.inf
     else:
