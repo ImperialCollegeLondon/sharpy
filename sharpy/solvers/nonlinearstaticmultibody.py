@@ -252,7 +252,7 @@ class NonLinearStaticMultibody(_BaseStructural):
             while converged == False:
                 iter += 1
                 if (iter == self.settings['max_iterations'].value - 1):
-                    print("Residual is:", np.max(np.abs(Dq)))
+                    print("Residual is:", np.amax(np.abs(Dq)))
                     print("Static equations did not converge")
                     break
 
@@ -264,11 +264,11 @@ class NonLinearStaticMultibody(_BaseStructural):
                 mb.state2disp(q, dqdt, dqddt, MB_beam, MB_tstep)
 
                 if (iter > 0):
-                    if (np.max(np.abs(Dq)) < Dq_old):
+                    if (np.amax(np.abs(Dq)) < Dq_old):
                         converged = True
 
                 if iter == 0:
-                    Dq_old = np.max(1., np.max(np.abs(Dq)))*self.settings['min_delta'].value
+                    Dq_old = np.amax(np.array([1., np.amax(np.abs(Dq))]))*self.settings['min_delta'].value
 
                 lagrangeconstraints.postprocess(self.lc_list, MB_beam, MB_tstep, "static")
 
