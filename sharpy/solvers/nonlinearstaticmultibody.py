@@ -119,7 +119,7 @@ class NonLinearStaticMultibody(_BaseStructural):
             elif MB_beam[ibody].FoR_movement == 'free':
                 last_dof = first_dof + MB_beam[ibody].num_dof.value + 10
 
-            K, Q = xbeamlib.xbeam3_asbly_dynamic(MB_beam[ibody], MB_tstep[ibody], self.settings, iLoadStep)
+            K, Q = xbeamlib.cbeam3_asbly_static(MB_beam[ibody], MB_tstep[ibody], self.settings, iLoadStep)
 
             ############### Assembly into the global matrices
             # Flexible and RBM contribution to Asys
