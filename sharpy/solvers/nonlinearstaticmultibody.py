@@ -233,44 +233,45 @@ class NonLinearStaticMultibody(_BaseStructural):
         self.num_LM_eq = lagrangeconstraints.define_num_LM_eq(self.lc_list)
 
         # TODO: only working for constant forces
-        MB_beam, MB_tstep = mb.split_multibody(self.data.structure, structural_step, MBdict, self.data.ts)
+        MB_beam, MB_tstep = mb.split_multibody(self.data.structure, structural_step, MBdict, 0)
         # Lagrange multipliers parameters
         num_LM_eq = self.num_LM_eq
         Lambda = np.zeros((num_LM_eq,), dtype=ct.c_double, order='F')
         # Lambda_dot = np.zeros((num_LM_eq,), dtype=ct.c_double, order='F')
         Dq_old = 0.
-        Dq = np.zeros((self.sys_size))
+        Dq = np.zeros((self.sys_size,))
 
-        for iLoadStep in range(0, settings.num_load_steps):
+        for iLoadStep in range(0, self.settings['num_load_steps'].value):
             iter = -1
             # delta = settings.min_delta + 1.
             converged = False
             while converged == False:
                 iter += 1
-                if (iter == settings.max_iterations - 1):
+                if (iter == self.settings['max_iterations'].value - 1):
                     print("Residual is:", np.max(np.abs(Dq)))
                     print("Static equations did not converge")
                     break
 
-            MB_K, MB_Q = self.assembly_MB_eq_system(MB_beam, MB_tstep, Lambda, MBdict, iLoadStep)
-            Dq = np.linalg.solve(MB_K, -MB_Q)
+                MB_K, MB_Q = self.assembly_MB_eq_system(MB_beam, MB_tstep, Lambda, MBdict, iLoadStep)
+                Dq = np.linalg.solve(MB_K, -MB_Q)
 
-            # Dq *= 0.7
-            mb.state2disp(q, dqdt, dqddt, MB_beam, MB_tstep)
+                # Dq *= 0.7
+                mb.state2disp(Dq, np.zeros_like(Dq), np.zeros_like(Dq), MB_beam, MB_tstep)
 
-            if (iter > 0):
-                if (np.max(np.abs(Dq)) < Dq_old):
-                    converged = True
+                if (iter > 0):
+                    if (np.max(np.abs(Dq)) < Dq_old):
+                        converged = True
 
-            if iter == 0:
-                Dq_old = np.max(1., np.max(np.abs(Dq)))*self.settings['min_delta']
+                if iter == 0:
+                    Dq_old = np.max(1., np.max(np.abs(Dq)))*self.settings['min_delta'].value
 
-        lagrangeconstraints.postprocess(self.lc_list, MB_beam, MB_tstep, "static")
+                lagrangeconstraints.postprocess(self.lc_list, MB_beam, MB_tstep, "static")
+
         self.compute_forces_constraints(MB_beam, MB_tstep, Lambda)
         if self.settings['gravity_on']:
             for ibody in range(len(MB_beam)):
                 xbeamlib.cbeam3_correct_gravity_forces(MB_beam[ibody], MB_tstep[ibody], self.settings)
-        mb.merge_multibody(MB_tstep, MB_beam, self.data.structure, structural_step, MBdict, dt)
+        mb.merge_multibody(MB_tstep, MB_beam, self.data.structure, structural_step, MBdict, 0.)
 
         # # Initialize
         # q = np.zeros((self.sys_size + num_LM_eq,), dtype=ct.c_double, order='F')
