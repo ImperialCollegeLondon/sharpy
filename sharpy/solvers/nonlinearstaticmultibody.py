@@ -234,6 +234,10 @@ class NonLinearStaticMultibody(_BaseStructural):
 
         # TODO: only working for constant forces
         MB_beam, MB_tstep = mb.split_multibody(self.data.structure, structural_step, MBdict, 0)
+        q = np.zeros((self.sys_size + self.num_LM_eq,), dtype=ct.c_double, order='F')
+        dqdt = np.zeros((self.sys_size + self.num_LM_eq,), dtype=ct.c_double, order='F')
+        dqddt = np.zeros((self.sys_size + self.num_LM_eq,), dtype=ct.c_double, order='F')
+        mb.disp2state(MB_beam, MB_tstep, q, dqdt, dqddt)
         # Lagrange multipliers parameters
         num_LM_eq = self.num_LM_eq
         Lambda = np.zeros((num_LM_eq,), dtype=ct.c_double, order='F')
@@ -256,7 +260,8 @@ class NonLinearStaticMultibody(_BaseStructural):
                 Dq = np.linalg.solve(MB_K, -MB_Q)
 
                 # Dq *= 0.7
-                mb.state2disp(Dq, np.zeros_like(Dq), np.zeros_like(Dq), MB_beam, MB_tstep)
+                q += Dq
+                mb.state2disp(q, dqdt, dqddt, MB_beam, MB_tstep)
 
                 if (iter > 0):
                     if (np.max(np.abs(Dq)) < Dq_old):
