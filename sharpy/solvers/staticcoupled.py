@@ -189,7 +189,7 @@ class StaticCoupled(BaseSolver):
             res_print = np.NINF
             if (np.abs(self.current_residual - self.previous_residual) >
                 sys.float_info.epsilon*10):
-                res_print = np.log10(np.abs(self.current_residual - self.previous_residual)/self.initial_residual),
+                res_print = np.log10(np.abs(self.current_residual - self.previous_residual)/self.initial_residual)
 
             self.residual_table.print_line([i_iter,
                     i_step,
