@@ -556,32 +556,45 @@ class Krylov(rom_interface.BaseRom):
         return Ar, Br, Cr
 
     def mimo_rational_arnoldi(self, frequency, r):
-        """
-        Following the method for vector-wise construction in Gugercin
+        r"""
+        Construct full rank orthonormal projection basis :math:`\mathbf{V}` and :math:`\mathbf{W}`.
 
-        Warnings:
-            Under Development
+        The main issue that one normally encounters with MIMO systems is that the minimality assumption of the system
+        does not guarantee the resulting Krylov space to be full rank, unlike in the SISO case. Therefore,
+        the construction is performed vector by vector, where linearly dependent vectors are eliminated or deflated
+        from the Krylov subspace.
+
+        If the number of inputs differs the number of outputs, both Krylov spaces will be built such that both
+        are the same size, therefore one Krylov space may be of higher order than the other one.
+
+        Following the method for vector-wise construction in Gugercin [1].
+
+        Args:
+            frequency (np.ndarray): Array containing interpolation frequencies
+            r (int): Krylov space order
 
         Returns:
+            tuple: Tuple of reduced system matrices ``A``, ``B`` and ``C``.
 
+        References:
+            [1] Gugercin, S. Projection Methods for Model Reduction of Large-Scale Dynamical
+             Systems PhD Thesis. Rice University 2003.
         """
  
         m = self.ss.inputs  # Full system number of inputs
         n = self.ss.states  # Full system number of states
         p = self.ss.outputs  # Full system number of outputs
 
-        # If the number of inputs is not the same as the number of outputs, they have to be
-        # a factor of one another, such that the corresponding Krylov subspace can be constructed
-        # to a greater order and the resulting projection matrices are the same size
+        # If the number of inputs is not the same as the number of outputs, a larger than necessary projection matrix
+        # is built for the one with fewer inputs/outputs. Thence, the larger matrix is truncated to have the same number
+        # of columns as the smaller matrix
         if m != p:
-            assert np.mod(np.max([p, m]), np.min([p, m])) == 0, 'Number of outputs is not a factor of number' \
-                                                                ' of inputs, currently not implemented'
             if m < p:
                 r_o = r
-                r_c = r_o * p // m
+                r_c = r_o * int(np.ceil(p / m))
             else:
                 r_c = r
-                r_o = r_c * m // p
+                r_o = r_c * int(np.ceil(m / p))
         else:
             r_c = r
             r_o = r
@@ -607,6 +620,11 @@ class Krylov(rom_interface.BaseRom):
                 W = np.block([W, Wi])
                 V = krylovutils.mgs_ortho(V)
                 W = krylovutils.mgs_ortho(W)
+
+        # Match number of columns in each matrix
+        min_cols = min(V.shape[1], W.shape[1])
+        V = V[:, :min_cols]
+        W = W[:, :min_cols]
 
         W = W.dot(sclalg.inv(W.T.dot(V)).T)
         self.W = W
@@ -680,6 +698,7 @@ class Krylov(rom_interface.BaseRom):
 
         order = np.argsort(eigs_abs)[::-1]
         eigs = eigs[order]
+        eigs_abs = eigs_abs[order]
 
         unstable = False
         if self.sstype == 'dt':

@@ -273,20 +273,9 @@ def construct_mimo_krylov(r, lu_A_input, B, approx_type='Pade',side='controllabi
         G = B
         F = lu_A_input
     else:
-        # lu_a = sclalg.lu_factor(lu_A_input)
-        # if sparse:
-        #     G = lu_A_input.solve(B, trans=transpose_mode_sp)
-        # else:
-        #     G = sclalg.lu_solve(lu_A_input, B, trans=transpose_mode)
         G = lu_solve(lu_A_input, B, transpose_mode)
 
     for k in range(m):
-        # if approx_type == 'partial_realisation':
-        #     G = B
-        #     F = lu_A_input
-        # else:
-        #     lu_a = sclalg.lu_factor(lu_A_input)
-        #     G = sclalg.lu_solve(lu_A_input, B, trans=transpose_mode)
         w[:, k] = G[:, k]
 
         ## Orthogonalise w_k to preceding w_j for j < k
@@ -305,10 +294,6 @@ def construct_mimo_krylov(r, lu_A_input, B, approx_type='Pade',side='controllabi
             if approx_type == 'partial_realisation':
                 w[:, t] = F.dot(w[:, t-mu])
             else:
-
-                # if type(lu_A_input) == scsp.linalg.SuperLU:
-                #     w[:, t] = lu_A_input.solve(w[:, t-mu], trans=transpose_mode_sp)
-                # else:
                 w[:, t] = lu_solve(lu_A_input, w[:, t-mu], transpose_mode)
 
             # Orthogonalise w[:,t] against V_i -
@@ -317,7 +302,7 @@ def construct_mimo_krylov(r, lu_A_input, B, approx_type='Pade',side='controllabi
             if np.linalg.norm(w[:, t]) < deflation_tolerance:
                 # Deflate w_k
                 print('Vector deflated')
-                w = [w[:, 0:t], w[:, t+1:]]  # TODO Figure if there is a better way to slice this
+                w = [w[:, 0:t], w[:, t+1:]]
                 last_column -= 1
                 mu -= 1
             else:
