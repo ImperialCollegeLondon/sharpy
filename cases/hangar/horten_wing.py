@@ -181,6 +181,9 @@ class HortenWing:
 
     def initialise(self):
 
+        if not os.path.exists(self.case_route):
+            os.makedirs(self.case_route)
+
         # Compute number of nodes
         n_node = 0
         self.n_node_wing = self.n_elem_wing * (self.n_node_elem - 1)
@@ -248,6 +251,23 @@ class HortenWing:
         self.control_surface_hinge_coord = np.zeros((self.n_control_surfaces,), dtype=float)
 
         self.settings = dict()
+
+    def dynamic_control_surface(self, *delta):
+        """
+        Generate dynamic control surface input files
+
+        Args:
+            delta (list): list of numpy arrays containing deflection time history
+
+        Returns:
+
+        """
+        i = 0
+        for cs in delta:
+            self.control_surface_type[i] = 1
+            np.savetxt(self.case_route + '/' + self.case_name + '.input.txt', cs)
+            i += 1
+
 
     def planform_area(self):
         S_fus = 0.5 * (self.c_fuselage + self.c_root) * self.fuselage_width
@@ -664,8 +684,6 @@ class HortenWing:
 
         """
 
-        if not os.path.exists(self.case_route):
-                os.makedirs(self.case_route)
 
         with h5.File(self.case_route + '/' + self.case_name + '.fem.h5', 'a') as h5file:
             coordinates = h5file.create_dataset('coordinates',
@@ -816,7 +834,7 @@ class HortenWing:
 
         # control surface type: 0 = static
         # control surface type: 1 = dynamic
-        control_surface_type[0] = 0
+        control_surface_type[0] = self.control_surface_type[0]
         control_surface_deflection[0] = cs_deflection
         control_surface_chord[0] = 2  # m
         control_surface_hinge_coord[0] = 0.25
