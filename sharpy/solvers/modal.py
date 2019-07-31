@@ -554,6 +554,11 @@ class Modal(BaseSolver):
             phirr = Krr.dot(phi[-10:, :10])
             phiss = K_vec.dot(phi[:, 10:])
 
+            # Get rigid body modes to be positive in translation and rotation
+            for i in range(10):
+                ind = np.argmax(np.abs(phirr[:, i]))
+                phirr[:, i] = np.sign(phirr[ind, i]) * phirr[:, i]
+
             # NG - 26/7/19 - Transformation of the rigid part of the elastic modes ended up not being necessary but leaving
             # here in case it becomes useful in the future
             phit = np.block([np.zeros((phi.shape[0], 10)), phi[:, 10:]])

@@ -171,6 +171,13 @@ class LinearBeam(BaseElement):
         self.sys.Kstr = trim_matrix.T.dot(self.sys.Kstr.dot(trim_matrix))
 
     def remove_symmetric_modes(self):
+        """
+        Removes symmetric modes when the wing is clamped at the midpoint.
+
+        It will force the wing tip displacements in ``z`` to be postive for all modes.
+
+        Updates the mode shapes matrix, the natural frequencies and the number of modes.
+        """
 
         # Group modes into symmetric and anti-symmetric modes
         modes_sym = np.zeros_like(self.sys.U)  # grouped modes
@@ -211,6 +218,10 @@ class LinearBeam(BaseElement):
                     found_symmetric = True
 
         self.sys.U = modes_sym[:, sym_mode_index]
+
+        # make all elastic modes have a positive z component at the wingtip
+        for i in range(self.sys.U.shape[1]):
+            self.sys.U[:, i] = np.sign(self.sys.U[ind_w1[-1], i]) * self.sys.U[:, i]
         self.sys.freq_natural = self.sys.freq_natural[sym_mode_index]
         self.sys.num_modes = len(self.sys.freq_natural)
 
