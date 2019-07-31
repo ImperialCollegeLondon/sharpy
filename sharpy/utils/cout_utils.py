@@ -9,7 +9,7 @@ cwd = os.getcwd()
 
 
 class Writer(object):
-    fore_colours = ['', colorama.Fore.BLUE, colorama.Fore.CYAN, colorama.Fore.RED]
+    fore_colours = ['', colorama.Fore.BLUE, colorama.Fore.CYAN, colorama.Fore.YELLOW, colorama.Fore.RED]
     reset = colorama.Style.RESET_ALL
 
     output_columns = 80
@@ -28,7 +28,8 @@ class Writer(object):
     sharpy_license = \
         '''Aeroelastics Lab, Aeronautics Department.
     Copyright (c), Imperial College London.
-    All rights reserved. '''
+    All rights reserved. 
+    License available at https://github.com/imperialcollegelondon/sharpy'''
 
     wrapper = textwrap.TextWrapper(width=output_columns, break_long_words=False)
 
@@ -129,8 +130,6 @@ def finish_writer():
     global cout_wrap
     if cout_wrap is not None:
         cout_wrap.close()
-    # cout_wrap = None
-
 
 # table output for residuals
 class TablePrinter(object):
@@ -192,6 +191,8 @@ class TablePrinter(object):
                        str(i_field) +
                        ']:^' +
                        str(self.field_length[i_field] + 2) +
+                       '.' +
+                       str(max(int(self.field_length[i_field]/2), 4)) +
                        self.field_types[i_field] +
                        '}')
 

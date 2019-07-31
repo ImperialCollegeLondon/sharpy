@@ -108,7 +108,8 @@ class Aerogrid(object):
                 generator_type = gen_interface.generator_from_string(
                     aero_settings['control_surface_deflection'][i_cs])
                 self.cs_generators.append(generator_type())
-                self.cs_generators[i_cs].initialise(aero_settings['control_surface_deflection_generator'][str(i_cs)])
+                self.cs_generators[i_cs].initialise(
+                    aero_settings['control_surface_deflection_generator_settings'][i_cs])
 
         self.add_timestep()
         self.generate_mapping()

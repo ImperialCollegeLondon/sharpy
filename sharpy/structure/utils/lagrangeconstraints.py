@@ -376,11 +376,12 @@ class SampleLagrange(BaseLagrangeConstraint):
 
         return self._n_eq
 
-    def initialise(self, MBdict_entry, ieq):
-        print('Type of LC: ', self._lc_id)
-        print('Arguments and values:')
-        for k, v in MBdict_entry.items():
-            print(k, v)
+    def initialise(self, MBdict_entry, ieq, print_info=True):
+        # if print_info:
+            # cout.cout_wrap('Type of LC: ', self._lc_id)
+            # cout.cout_wrap('Arguments and values:')
+            # for k, v in MBdict_entry.items():
+                # cout.cout_wrap(k, v)
         self._ieq = ieq
 
         return self._ieq + self._n_eq
@@ -412,11 +413,12 @@ class hinge_node_FoR(BaseLagrangeConstraint):
     def get_n_eq(self):
         return self._n_eq
 
-    def initialise(self, MBdict_entry, ieq):
-        print('Type of LC: ', self._lc_id)
-        print('Arguments and values:')
-        for k, v in MBdict_entry.items():
-            print(k, v)
+    def initialise(self, MBdict_entry, ieq, print_info=True):
+        # if print_info:
+            # cout.cout_wrap('Type of LC: ', self._lc_id)
+            # cout.cout_wrap('Arguments and values:')
+            # for k, v in MBdict_entry.items():
+                # cout.cout_wrap(k, v)
 
         self.node_number = MBdict_entry['node_in_body']
         self.node_body = MBdict_entry['body']
@@ -466,11 +468,12 @@ class hinge_node_FoR_constant_vel(BaseLagrangeConstraint):
     def get_n_eq(self):
         return self._n_eq
 
-    def initialise(self, MBdict_entry, ieq):
-        print('Type of LC: ', self._lc_id)
-        print('Arguments and values:')
-        for k, v in MBdict_entry.items():
-            print(k, v)
+    def initialise(self, MBdict_entry, ieq, print_info=True):
+        # if print_info:
+            # cout.cout_wrap('Type of LC: ', self._lc_id)
+            # cout.cout_wrap('Arguments and values:')
+            # for k, v in MBdict_entry.items():
+                # cout.cout_wrap(k, v)
 
         self.node_number = MBdict_entry['node_in_body']
         self.node_body = MBdict_entry['body']
@@ -521,11 +524,12 @@ class spherical_node_FoR(BaseLagrangeConstraint):
     def get_n_eq(self):
         return self._n_eq
 
-    def initialise(self, MBdict_entry, ieq):
-        print('Type of LC: ', self._lc_id)
-        print('Arguments and values:')
-        for k, v in MBdict_entry.items():
-            print(k, v)
+    def initialise(self, MBdict_entry, ieq, print_info=True):
+        # if print_info:
+            # cout.cout_wrap('Type of LC: ', self._lc_id)
+            # cout.cout_wrap('Arguments and values:')
+            # for k, v in MBdict_entry.items():
+                # cout.cout_wrap(k, v)
 
         self.node_number = MBdict_entry['node_in_body']
         self.node_body = MBdict_entry['body']
@@ -572,11 +576,12 @@ class free(BaseLagrangeConstraint):
     def get_n_eq(self):
         return self._n_eq
 
-    def initialise(self, MBdict_entry, ieq):
-        print('Type of LC: ', self._lc_id)
-        print('Arguments and values:')
-        for k, v in MBdict_entry.items():
-            print(k, v)
+    def initialise(self, MBdict_entry, ieq, print_info=True):
+        # if print_info:
+            # cout.cout_wrap('Type of LC: ', self._lc_id)
+            # cout.cout_wrap('Arguments and values:')
+            # for k, v in MBdict_entry.items():
+                # cout.cout_wrap(k, v)
 
         self._ieq = ieq
         return self._ieq + self._n_eq
@@ -608,11 +613,12 @@ class spherical_FoR(BaseLagrangeConstraint):
     def get_n_eq(self):
         return self._n_eq
 
-    def initialise(self, MBdict_entry, ieq):
-        print('Type of LC: ', self._lc_id)
-        print('Arguments and values:')
-        for k, v in MBdict_entry.items():
-            print(k, v)
+    def initialise(self, MBdict_entry, ieq, print_info=True):
+        # if print_info:
+            # cout.cout_wrap('Type of LC: ', self._lc_id)
+            # cout.cout_wrap('Arguments and values:')
+            # for k, v in MBdict_entry.items():
+                # cout.cout_wrap(k, v)
 
         self.body_FoR = MBdict_entry['body_FoR']
         self._ieq = ieq
@@ -664,11 +670,12 @@ class hinge_FoR(BaseLagrangeConstraint):
     def get_n_eq(self):
         return self._n_eq
 
-    def initialise(self, MBdict_entry, ieq):
-        print('Type of LC: ', self._lc_id)
-        print('Arguments and values:')
-        for k, v in MBdict_entry.items():
-            print(k, v)
+    def initialise(self, MBdict_entry, ieq, print_info=True):
+        # if print_info:
+            # cout.cout_wrap('Type of LC: ', self._lc_id)
+            # cout.cout_wrap('Arguments and values:')
+            # for k, v in MBdict_entry.items():
+                # cout.cout_wrap(k, v)
 
         self.body_FoR = MBdict_entry['body_FoR']
         self.rot_axis = MBdict_entry['rot_axis_AFoR']
@@ -739,11 +746,12 @@ class hinge_FoR_wrtG(BaseLagrangeConstraint):
     def get_n_eq(self):
         return self._n_eq
 
-    def initialise(self, MBdict_entry, ieq):
-        print('Type of LC: ', self._lc_id)
-        print('Arguments and values:')
-        for k, v in MBdict_entry.items():
-            print(k, v)
+    def initialise(self, MBdict_entry, ieq, print_info=True):
+        # if print_info:
+            # cout.cout_wrap('Type of LC: ', self._lc_id)
+            # cout.cout_wrap('Arguments and values:')
+            # for k, v in MBdict_entry.items():
+                # cout.cout_wrap(k, v)
 
         self.body_FoR = MBdict_entry['body_FoR']
         self.rot_axis = MBdict_entry['rot_axis_AFoR']
@@ -816,13 +824,14 @@ class fully_constrained_node_FoR(BaseLagrangeConstraint):
     def get_n_eq(self):
         return self._n_eq
 
-    def initialise(self, MBdict_entry, ieq):
-        print('Type of LC: ', self._lc_id)
-        print('Arguments and values:')
-        for k, v in MBdict_entry.items():
-            print(k, v)
+    def initialise(self, MBdict_entry, ieq, print_info=True):
+        # if print_info:
+            # cout.cout_wrap('Type of LC: ', self._lc_id)
+            # cout.cout_wrap('Arguments and values:')
+            # for k, v in MBdict_entry.items():
+                # cout.cout_wrap(k, v)
 
-        print("WARNING: do not use fully_constrained_node_FoR. It is outdated")
+        cout.cout_wrap("WARNING: do not use fully_constrained_node_FoR. It is outdated", 3)
         self.node_in_body = MBdict_entry['node_in_body']
         self.node_body = MBdict_entry['node_body']
         self.body_FoR = MBdict_entry['body_FoR']
@@ -925,11 +934,12 @@ class constant_rot_vel_FoR(BaseLagrangeConstraint):
     def get_n_eq(self):
         return self._n_eq
 
-    def initialise(self, MBdict_entry, ieq):
-        print('Type of LC: ', self._lc_id)
-        print('Arguments and values:')
-        for k, v in MBdict_entry.items():
-            print(k, v)
+    def initialise(self, MBdict_entry, ieq, print_info=True):
+        # if print_info:
+            # cout.cout_wrap('Type of LC: ', self._lc_id)
+            # cout.cout_wrap('Arguments and values:')
+            # for k, v in MBdict_entry.items():
+                # cout.cout_wrap(k, v)
 
         self.rot_vel = MBdict_entry['rot_vel']
         self.FoR_body = MBdict_entry['FoR_body']
@@ -980,11 +990,12 @@ class constant_vel_FoR(BaseLagrangeConstraint):
     def get_n_eq(self):
         return self._n_eq
 
-    def initialise(self, MBdict_entry, ieq):
-        print('Type of LC: ', self._lc_id)
-        print('Arguments and values:')
-        for k, v in MBdict_entry.items():
-            print(k, v)
+    def initialise(self, MBdict_entry, ieq, print_info=True):
+        # if print_info:
+            # cout.cout_wrap('Type of LC: ', self._lc_id)
+            # cout.cout_wrap('Arguments and values:')
+            # for k, v in MBdict_entry.items():
+                # cout.cout_wrap(k, v)
 
         self.vel = MBdict_entry['vel']
         self.FoR_body = MBdict_entry['FoR_body']
@@ -1035,11 +1046,12 @@ class lin_vel_node_wrtA(BaseLagrangeConstraint):
     def get_n_eq(self):
         return self._n_eq
 
-    def initialise(self, MBdict_entry, ieq):
-        print('Type of LC: ', self._lc_id)
-        print('Arguments and values:')
-        for k, v in MBdict_entry.items():
-            print(k, v)
+    def initialise(self, MBdict_entry, ieq, print_info=True):
+        # if print_info:
+            # cout.cout_wrap('Type of LC: ', self._lc_id)
+            # cout.cout_wrap('Arguments and values:')
+            # for k, v in MBdict_entry.items():
+                # cout.cout_wrap(k, v)
 
         self.vel = MBdict_entry['velocity']
         self.body_number = MBdict_entry['body_number']
@@ -1117,11 +1129,12 @@ class lin_vel_node_wrtG(BaseLagrangeConstraint):
     def get_n_eq(self):
         return self._n_eq
 
-    def initialise(self, MBdict_entry, ieq):
-        print('Type of LC: ', self._lc_id)
-        print('Arguments and values:')
-        for k, v in MBdict_entry.items():
-            print(k, v)
+    def initialise(self, MBdict_entry, ieq, print_info=True):
+        # if print_info:
+            # cout.cout_wrap('Type of LC: ' + str(self._lc_id))
+            # cout.cout_wrap('Arguments and values:')
+            # for k, v in MBdict_entry.items():
+                # cout.cout_wrap(str(k) + str(v))
 
         self.vel = MBdict_entry['velocity']
         self.body_number = MBdict_entry['body_number']
@@ -1326,6 +1339,7 @@ def generate_lagrange_matrix(lc_list, MB_beam, MB_tstep, ts, num_LM_eq, sys_size
 
     return LM_C, LM_K, LM_Q
 
+
 def postprocess(lc_list, MB_beam, MB_tstep, dynamic_or_static):
 
     for lc in lc_list:
@@ -1342,6 +1356,16 @@ def postprocess(lc_list, MB_beam, MB_tstep, dynamic_or_static):
                            # MBdict = MBdict)
 
     return
+
+
+def remove_constraint(MBdict, constraint):
+    try:
+        del(MBdict[constraint])
+        MBdict['num_constraints'] -= 1
+    except KeyError:
+        # The entry did not exist in the dict, pass without substracting 1 to
+        # num_constraints
+        pass
 
 
 ################################################################################
