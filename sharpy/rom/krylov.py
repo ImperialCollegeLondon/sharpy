@@ -55,8 +55,8 @@ class Krylov(rom_interface.BaseRom):
     settings_default = dict()
     settings_description = dict()
 
-    settings_types['frequency'] = 'list(float)'
-    settings_default['frequency'] = np.array([0])
+    settings_types['frequency'] = 'list(complex)'
+    settings_default['frequency'] = [0]
     settings_description['frequency'] = 'Interpolation points in the complex plane [rad/s]'
     
     settings_types['algorithm'] = 'str'
@@ -99,6 +99,7 @@ class Krylov(rom_interface.BaseRom):
         self.nfreq = None
         self.restart_arnoldi = None
         self.cpu_summary = dict()
+        self.eigenvalue_table = None
 
     def initialise(self, in_settings=None):
 
@@ -107,8 +108,10 @@ class Krylov(rom_interface.BaseRom):
         except ValueError:
             pass
 
-        self.settings = in_settings
-        settings.to_custom_types(in_settings, self.settings_types, self.settings_default)
+        if in_settings is not None:
+            self.settings = in_settings
+
+        settings.to_custom_types(self.settings, self.settings_types, self.settings_default)
 
         self.algorithm = self.settings['algorithm']
         if self.algorithm not in self.supported_methods:
@@ -124,6 +127,7 @@ class Krylov(rom_interface.BaseRom):
             self.nfreq = self.frequency.shape[0]
         except AttributeError:
             self.nfreq = 1
+
 
     def run(self, ss):
         """
@@ -151,6 +155,7 @@ class Krylov(rom_interface.BaseRom):
 
         try:
             cout.cout_wrap('Model Order Reduction in progress...')
+            self.print_header()
         except ValueError:
             pass
 
@@ -171,11 +176,22 @@ class Krylov(rom_interface.BaseRom):
         t_rom = time.time() - t0
         self.cpu_summary['run'] = t_rom
         try:
+            cout.cout_wrap('System reduced from order %d to ' % self.ss.states)
+            cout.cout_wrap('\tn = %d states' % self.ssrom.states, 1)
             cout.cout_wrap('...Completed Model Order Reduction in %.2f s' % t_rom)
         except ValueError:
             pass
 
         return self.ssrom
+
+    def print_header(self):
+        cout.cout_wrap('Moment Matching Krylov Model Reduction')
+        cout.cout_wrap('\tConstruction Algorithm:')
+        cout.cout_wrap('\t\t%s' % self.algorithm, 1)
+        cout.cout_wrap('\tInterpolation points:')
+        cout.cout_wrap(self.nfreq * '\t\tsigma = %4f + %4fj [rad/s]\n' %tuple(self.frequency.view(float)), 1)
+        cout.cout_wrap('\tKrylov order:')
+        cout.cout_wrap('\t\tr = %d' % self.r, 1)
 
     def one_sided_arnoldi(self, frequency, r):
         r"""
@@ -662,6 +678,9 @@ class Krylov(rom_interface.BaseRom):
 
         eigs_abs = np.abs(eigs)
 
+        order = np.argsort(eigs_abs)[::-1]
+        eigs = eigs[order]
+
         unstable = False
         if self.sstype == 'dt':
             if any(eigs_abs > 1.):
@@ -679,6 +698,8 @@ class Krylov(rom_interface.BaseRom):
             else:
                 try:
                     cout.cout_wrap('ROM is stable')
+                    cout.cout_wrap('\tDT Eigenvalues:')
+                    cout.cout_wrap(len(eigs_abs) * '\t\tmu = %4f + %4fj\n' % tuple(eigs.view(float)))
                 except ValueError:
                     pass
 
