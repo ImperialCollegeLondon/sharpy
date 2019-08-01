@@ -4,8 +4,9 @@
 .. toctree::
 	:maxdepth: 1
 
-	./controllers/index
-	./rom/index
 	./structure/index
 	./utils/index
 	./aero/index
+	./linear/index
+	./controllers/index
+	./rom/index

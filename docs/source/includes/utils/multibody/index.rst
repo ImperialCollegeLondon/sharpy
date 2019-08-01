@@ -1,8 +1,7 @@
 Multibody library
 +++++++++++++++++
 
-
-
+Multibody library
 
 Library used to manipulate multibody systems
 

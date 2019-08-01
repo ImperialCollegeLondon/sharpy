@@ -18,11 +18,11 @@ def generate_documentation():
     generator_interface.output_documentation()
 
     # changing below here
-    # data_file = yaml.load(open(sharpydir.SharpyDir + '/docs/docinclude.yml', 'r'), Loader=yaml.Loader)
+    data_file = yaml.load(open(sharpydir.SharpyDir + '/docs/docinclude.yml', 'r'), Loader=yaml.Loader)
     #
-    # for item in data_file['packages']:
-    #     output_documentation(sharpydir.SharpyDir + '/' + item['folder'], item['docs_folder'])
-    #
+    for item in data_file['packages']:
+        output_documentation(sharpydir.SharpyDir + '/' + item['folder'], item['docs_folder'])
+
     # for item in data_file['modules']:
     #     try:
     #         output_documentation_module_page(sharpydir.SharpyDir + item['folder'], item['docs_folder'],
@@ -128,7 +128,7 @@ def output_documentation_module_page(path_to_module, docs_folder_name, docs_titl
             print('\tCreated %s' % path_to_folder + '/' + filename)
 
     # create index file
-    if index_file_content:
+    if index_file_content != []:
         with open(path_to_folder + '/index.rst', 'w') as outfile:
             # if docs_title is None:
             #     index_title = docs_folder_name.capitalize()
@@ -249,7 +249,7 @@ def get_module_title_and_body(module):
                                                     'lines of its docstring'
                                                     % module.__name__)
 
-        body = module.__doc__.replace(title, '')
+        body = '\n'.join(docstring[1:])
     else:
         raise exceptions.DocumentationError('Module %s has been given no title in neither the 1st or 2nd lines of '
                                             'its docstring'

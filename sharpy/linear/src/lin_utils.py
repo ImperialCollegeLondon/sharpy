@@ -19,8 +19,6 @@ import cases.templates.flying_wings as flying_wings
 
 
 # linear uvlm
-import sharpy.linear.src.save as save
-import sharpy.linear.src.linuvlm as linuvlm
 import sharpy.linear.src.lin_aeroelastic as lin_aeroelastic
 import sharpy.linear.src.libss as libss 
 import sharpy.linear.src.librom as librom

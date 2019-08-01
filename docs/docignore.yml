@@ -9,11 +9,12 @@ packages:
 
 modules:
   - 'sharpy/controllers'
-  - 'sharpy/linear'
+  - 'sharpy/rom'
   - 'sharpy/postproc'
   - 'sharpy/solvers'
+  - 'sharpy/linear/dev'
+  - 'sharpy/linear/test'
   - 'sharpy/generators'
-  - 'sharpy/rom'
   - 'sharpy/utils/controller_interface.py'
   - 'sharpy/presharpy'
   - 'sharpy/lib'

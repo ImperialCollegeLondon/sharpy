@@ -1,8 +1,7 @@
 Generate cases
 ++++++++++++++
 
-
-
+Generate cases
 
 This library provides functions and classes to help in the definition of SHARPy cases
 

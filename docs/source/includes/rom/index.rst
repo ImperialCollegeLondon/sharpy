@@ -1,7 +1,7 @@
 Rom
-+++
+---
 
 .. toctree::
-	:glob:
+	:maxdepth: 1
 
-	./krylovreducedordermodel
+	./krylovreducedordermodel/index

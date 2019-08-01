@@ -1,8 +1,7 @@
 LagrangeConstraints library
 +++++++++++++++++++++++++++
 
-
-
+LagrangeConstraints library
 
 Library used to create the matrices associate to boundary conditions through
 the method of Lagrange Multipliers

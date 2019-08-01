@@ -1,8 +1,7 @@
 @author: salvatore maraniello
 +++++++++++++++++++++++++++++
 
-
-
+@author: salvatore maraniello
 @date: 23 May 2017
 @brief: Analytical solutions for 2D aerofoil based on thin plates theory
 

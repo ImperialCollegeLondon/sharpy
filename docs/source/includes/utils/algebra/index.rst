@@ -1,8 +1,7 @@
 Rotation algebra library
 ++++++++++++++++++++++++
 
-
-
+Rotation algebra library
 
 Note: testing in tests/utils/algebra_test
 
