@@ -1,9 +1,8 @@
 Geometry Utilities
 ++++++++++++++++++
 
+Geo_Utils Module.
 
-Utilities to define wing geometry
-S. Maraniello, Jul 2018
 
 
 .. toctree::

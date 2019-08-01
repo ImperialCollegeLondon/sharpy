@@ -1,6 +1,5 @@
-"""
-Utilities to define wing geometry
-S. Maraniello, Jul 2018
+"""Geo_Utils Module.
+
 """
 
 import numpy as np
@@ -70,3 +69,6 @@ def interpolate_naca_camber(eta, M00, P00, M01, P01):
     y_vec = y00 * (1. - eta) + y01 * eta
 
     return x_vec, y_vec
+
+if __name__ == '__main__':
+    a = 1
