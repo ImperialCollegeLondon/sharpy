@@ -13,20 +13,47 @@ import warnings
 
 
 def generate_documentation():
-    solver_interface.output_documentation()
-    generator_interface.output_documentation()
+    # solver_interface.output_documentation()
+    # generator_interface.output_documentation()
 
-    data_file = yaml.load(open(sharpydir.SharpyDir + '/docs/docinclude.yml', 'r'), Loader=yaml.Loader)
+    # changing below here
+    # data_file = yaml.load(open(sharpydir.SharpyDir + '/docs/docinclude.yml', 'r'), Loader=yaml.Loader)
+    #
+    # for item in data_file['packages']:
+    #     output_documentation(sharpydir.SharpyDir + '/' + item['folder'], item['docs_folder'])
+    #
+    # for item in data_file['modules']:
+    #     try:
+    #         output_documentation_module_page(sharpydir.SharpyDir + item['folder'], item['docs_folder'],
+    #                                          item.get('docs_title', None))
+    #     except ModuleNotFoundError:
+    #         warnings.warn('Unable to load %s to create %s' % (item['folder'], item['docs_folder']))
 
-    for item in data_file['packages']:
-        output_documentation(sharpydir.SharpyDir + '/' + item['folder'], item['docs_folder'])
-
-    for item in data_file['modules']:
-        try:
-            output_documentation_module_page(sharpydir.SharpyDir + item['folder'], item['docs_folder'],
-                                             item.get('docs_title', None))
-        except ModuleNotFoundError:
-            warnings.warn('Unable to load %s to create %s' % (item['folder'], item['docs_folder']))
+    sharpy_folders = get_sharpy_folders()
+    ignore_modules = yaml.load(open(sharpydir.SharpyDir + '/docs/docignore.yml', 'r'), Loader=yaml.Loader)
+    print(ignore_modules)
+    for folder in sharpy_folders:
+        folder_name = folder.replace(sharpydir.SharpyDir, '')
+        folder_name = folder_name[1:]
+        if folder_name in ignore_modules['modules']:
+            continue
+        files = get_files(folder)
+        for file in files:
+            file_name_check = file.replace(sharpydir.SharpyDir, '')
+            file_name_check = file_name_check[1:]
+            if file_name_check in ignore_modules['modules']:
+                continue
+            print()
+            print(file_name_check.replace('.py', ''))
+            print(file_name_check.replace('sharpy/', ''))
+            source = file_name_check.replace('.py', '')
+            outfile = file_name_check.replace('sharpy/', '')
+            try:
+                output_documentation_module_page(source,
+                                                 outfile,
+                                                 None)
+            except Exception:
+                print('Module %s not written' %source)
 
 
 
@@ -81,14 +108,15 @@ def output_documentation_module_page(path_to_module, docs_folder_name, docs_titl
 
     # create index file
     with open(path_to_folder + '/index.rst', 'w') as outfile:
-        if docs_title is None:
-            index_title = docs_folder_name.capitalize()
-        else:
-            index_title = docs_title
+        # if docs_title is None:
+        #     index_title = docs_folder_name.capitalize()
+        # else:
+        #     index_title = docs_title
+        index_title, body = get_module_title_and_body(module)
         outfile.write(index_title + '\n' + len(index_title)*'+' + '\n\n')
 
         if module.__doc__ is not None:
-            outfile.write(module.__doc__ + '\n\n')
+            outfile.write(body + '\n\n')
 
         outfile.write('.. toctree::\n\t:glob:\n\n')
 
@@ -174,9 +202,42 @@ def create_index_files():
             index_file = index_file.replace('.rst', '')
             outfile.write('\t./' + index_file + '\n')
 
-    print('End')
 
+def get_module_title_and_body(module):
+    docstring = module.__doc__
+    if docstring is not None:
+        docstring = docstring.split('\n')
+        title = docstring[0]
+        if title == '':
+            try:
+                title = docstring[1]
+            except IndexError:
+                raise Exception('Module %s has been given no title in neither the 1st or 2nd lines of its docstring'
+                                % module.__name__)
 
+        body = module.__doc__.replace(title, '')
+    else:
+        raise Exception('Module %s has been given no title in neither the 1st or 2nd lines of its docstring'
+                        % module.__name__)
+    return title, body
+
+def get_sharpy_folders():
+    sharpy_directory = sharpydir.SharpyDir + '/sharpy/'
+    files = glob.glob('%s/*' % sharpy_directory)
+    for item in files:
+        if not os.path.isdir(item):
+            files.remove(item)
+        elif item.replace(sharpy_directory, '')[0] == '_':
+            files.remove(item)
+    return files
+
+def get_files(folder_path):
+    files = glob.glob(folder_path + '/*')
+    outfiles = []
+    for file in files:
+        if os.path.isfile(file) and file.replace(folder_path, '')[1] != '_':
+            outfiles.append(file)
+    return outfiles
 
 if __name__ == '__main__':
 
@@ -190,5 +251,7 @@ if __name__ == '__main__':
     # mod1 = sharpydir.SharpyDir + '/sharpy/aero/models'
     # output_documentation(mod1, 'aero')
     generate_documentation()
-
+    # a = get_sharpy_folders()
+    # aa = get_files(a[1])
+    # print(aa)
     # create_index_files()

@@ -1,7 +1,6 @@
 Utilities to define wing geometry
 +++++++++++++++++++++++++++++++++
 
-Geo_Utils Module.
 
 
 S. Maraniello, Jul 2018
