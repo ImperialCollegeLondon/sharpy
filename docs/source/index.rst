@@ -31,7 +31,6 @@ Contents
 
    content/installation
    content/sharpy_intro
-   content/presharpy
    content/aero
    content/generators
    content/structure

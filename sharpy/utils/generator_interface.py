@@ -1,6 +1,7 @@
 from abc import ABCMeta, abstractmethod
 import sharpy.utils.cout_utils as cout
 import os
+import shutil
 
 dict_of_generators = {}
 generators = {}  # for internal working
@@ -62,3 +63,57 @@ def dictionary_of_generators():
         dictionary[gen] = init_gen.settings_default
 
     return dictionary
+
+def output_documentation(route=None):
+    """
+    Creates the ``.rst`` files for the generators that have a docstring such that they can be parsed to Sphinx
+
+    Args:
+        route (str): Path to folder where generator files are to be created.
+
+    """
+    import sharpy.utils.sharpydir as sharpydir
+    if route is None:
+        route = sharpydir.SharpyDir + '/docs/source/includes/generators/'
+        if os.path.exists(route):
+            shutil.rmtree(route)
+    print('Creating documentation files for generators in %s' %route)
+
+    created_generators = dict()
+
+    for k, v in dict_of_generators.items():
+        if k[0] == '_':
+            continue
+        generator_class = v()
+        created_generators[k] = generator_class
+
+        filename = k + '.rst'
+        # try:
+        #     solver_folder = solver.solver_classification.lower()
+        # except AttributeError:
+        #     solver_folder = 'other'
+        #
+        # if solver_folder not in solver_types:
+        #     solver_types.append(solver_folder)
+
+        os.makedirs(route + '/', exist_ok=True)
+        title = k + '\n'
+        title += len(k)*'-' + 2*'\n'
+        if generator_class.__doc__ is not None:
+
+            print('\tCreating %s' %(route + '/' + filename))
+            autodoc_string = '\n\n.. autoclass:: sharpy.generators.' + k.lower() + '.'+ k + '\n\t:members:'
+            with open(route + '/' + filename, "w") as out_file:
+                out_file.write(title + autodoc_string)
+
+    # # Creates index files depending on the type of solver
+    # filename = 'generators.rst'
+    # title = 'Velocity Field Generators'
+    # title += '\n' + len(title)*'+' + 2*'\n'
+    # with open(route + '/' + filename, "w") as out_file:
+    #     out_file.write(title)
+    #     out_file.write('.. toctree::' + '\n')
+    #     for k in dict_of_generators.keys():
+    #         if k[0] == '_':
+    #             continue
+    #         out_file.write('    ./' + k + '\n')

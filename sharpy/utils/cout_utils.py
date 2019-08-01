@@ -9,26 +9,27 @@ cwd = os.getcwd()
 
 
 class Writer(object):
-    fore_colours = ['', colorama.Fore.BLUE, colorama.Fore.CYAN, colorama.Fore.RED]
+    fore_colours = ['', colorama.Fore.BLUE, colorama.Fore.CYAN, colorama.Fore.YELLOW, colorama.Fore.RED]
     reset = colorama.Style.RESET_ALL
 
     output_columns = 80
     separator = '-'*output_columns
     sharpy_ascii = \
 """--------------------------------------------------------------------------------
-            ######  ##     ##    ###    ########  ########  ##    ## 
-           ##    ## ##     ##   ## ##   ##     ## ##     ##  ##  ##  
-           ##       ##     ##  ##   ##  ##     ## ##     ##   ####   
-            ######  ######### ##     ## ########  ########     ##    
-                 ## ##     ## ######### ##   ##   ##           ##    
-           ##    ## ##     ## ##     ## ##    ##  ##           ##    
-            ######  ##     ## ##     ## ##     ## ##           ##    
+            ######  ##     ##    ###    ########  ########  ##    ##
+           ##    ## ##     ##   ## ##   ##     ## ##     ##  ##  ##
+           ##       ##     ##  ##   ##  ##     ## ##     ##   ####
+            ######  ######### ##     ## ########  ########     ##
+                 ## ##     ## ######### ##   ##   ##           ##
+           ##    ## ##     ## ##     ## ##    ##  ##           ##
+            ######  ##     ## ##     ## ##     ## ##           ##
 --------------------------------------------------------------------------------"""
 
     sharpy_license = \
         '''Aeroelastics Lab, Aeronautics Department.
     Copyright (c), Imperial College London.
-    All rights reserved. '''
+    All rights reserved. 
+    License available at https://github.com/imperialcollegelondon/sharpy'''
 
     wrapper = textwrap.TextWrapper(width=output_columns, break_long_words=False)
 
@@ -129,12 +130,13 @@ def finish_writer():
     global cout_wrap
     if cout_wrap is not None:
         cout_wrap.close()
-    # cout_wrap = None
-
 
 # table output for residuals
 class TablePrinter(object):
     global cout_wrap
+
+    divider_char = '|'
+    line_char = '='
 
     def __init__(self, n_fields=3, field_length=12, field_types=[['g']]*100):
         self.n_fields = n_fields
@@ -163,20 +165,38 @@ class TablePrinter(object):
                 name = name[0:self.field_length[i_name]]
 
         string = ''
-        divider_line = '|'
+        divider_line = ''
+        # for i_field in range(self.n_fields):
+            # string += '|{0[' + str(i_field) + ']:^' + str(self.field_length[i_field]) + '}'
+            # divider_line += '-'*(self.field_length[i_field]) + '|'
+
         for i_field in range(self.n_fields):
-            string += '|{0[' + str(i_field) + ']:^' + str(self.field_length[i_field]) + '}'
-            divider_line += '-'*(self.field_length[i_field]) + '|'
-        string += '|'
-        cout_wrap(string.format(self.field_names))
+            field_length = self.field_length[i_field]
+            string += self.divider_char + '{' + str(i_field) + ':^' + str(field_length + 2) + '}'
+            # string += '|{0[' + str(i_field) + ']:^' + str(self.field_length[i_field]) + '}'
+            divider_line += self.divider_char + (field_length + 2)*self.line_char
+
+        string += self.divider_char
+        divider_line += self.divider_char
+        cout_wrap('\n\n')
+        cout_wrap(divider_line)
+        cout_wrap(string.format(*(self.field_names)))
         cout_wrap(divider_line)
 
     def print_line(self, line_data):
         string = ''
         for i_field in range(self.n_fields):
-            string += '|{0[' + str(i_field) + ']:<' + str(self.field_length[i_field]) + self.field_types[i_field] + '}'
+            string += (self.divider_char +
+                       '{0[' +
+                       str(i_field) +
+                       ']:^' +
+                       str(self.field_length[i_field] + 2) +
+                       '.' +
+                       str(max(int(self.field_length[i_field]/2), 4)) +
+                       self.field_types[i_field] +
+                       '}')
 
-        string += '|'
+        string += self.divider_char
         cout_wrap(string.format(line_data))
 
 

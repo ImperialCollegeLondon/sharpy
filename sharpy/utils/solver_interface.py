@@ -81,20 +81,21 @@ def solver_list_from_path(cwd):
     return files
 
 
-def initialise_solver(solver_name):
-    cout.cout_wrap('Generating an instance of %s' % solver_name, 2)
+def initialise_solver(solver_name, print_info=True):
+    if print_info:
+        cout.cout_wrap('Generating an instance of %s' % solver_name, 2)
     cls_type = solver_from_string(solver_name)
     solver = cls_type()
     return solver
 
-def dictionary_of_solvers():
+def dictionary_of_solvers(print_info=True):
     import sharpy.solvers
     import sharpy.postproc
     dictionary = dict()
     for solver in dict_of_solvers:
         if not solver.lower() == 'SaveData'.lower():
             # TODO: why it does not work for savedata?
-            init_solver = initialise_solver(solver)
+            init_solver = initialise_solver(solver, print_info)
             dictionary[solver] = init_solver.settings_default
 
     return dictionary
@@ -110,10 +111,14 @@ def output_documentation(route=None):
     import sharpy.utils.sharpydir as sharpydir
     solver_types = []
     if route is None:
-        route = sharpydir.SharpyDir + '/docs/source/includes/'
-        if os.path.exists(route):
-            shutil.rmtree(route)
+        base_route = sharpydir.SharpyDir + '/docs/source/includes/'
+        route_solvers = base_route + 'solvers/'
+        route_postprocs = base_route + 'postprocs/'
+        if os.path.exists(base_route):
+            shutil.rmtree(base_route)
+
     print('Creating documentation files for solvers in %s' %route)
+    print('Creating documentation files for post processors in %s' %route_postprocs)
 
     created_solvers = dict()
 
@@ -132,23 +137,36 @@ def output_documentation(route=None):
         if solver_folder not in solver_types:
             solver_types.append(solver_folder)
 
-        os.makedirs(route + '/' + solver_folder, exist_ok=True)
+        if solver_folder == 'post-processor':
+            route_to_solver_python = 'sharpy.postproc.'
+            folder = 'postprocs'
+            solver_folder = '' # post-procs do not have sub classification unlike solvers
+        else:
+            route_to_solver_python = 'sharpy.solvers.'
+            folder = 'solvers'
+
+        if solver.solver_id == 'PreSharpy':
+            continue
+            # route_to_solver_python = 'sharpy.presharpy.'
+
+        os.makedirs(base_route + '/' + folder + '/' + solver_folder, exist_ok=True)
         title = k + '\n'
         title += len(k)*'-' + 2*'\n'
         if solver.__doc__ is not None:
-
-            print('\tCreating %s' %(route + '/' + solver_folder + '/' + filename))
+            print('\tCreating %s' %(base_route + '/' + folder + '/' + solver_folder + '/' + filename))
             autodoc_string = ''
-            autodoc_string = '\n\n.. autoclass:: sharpy.solvers.' + k.lower() + '.'+ k + '\n\t:members:'
-            with open(route + '/' + solver_folder + '/' + filename, "w") as out_file:
+            autodoc_string = '\n\n.. autoclass:: ' + route_to_solver_python + k.lower() + '.' + k + '\n\t:members:'
+            with open(base_route + '/' + folder + '/' + solver_folder + '/' + filename, "w") as out_file:
                 out_file.write(title + autodoc_string)
 
     # Creates index files depending on the type of solver
     for solver_type in solver_types:
+        if solver_type == 'post-processor':
+            continue
         filename = solver_type + '_solvers.rst'
         title = solver_type.capitalize() + ' Solvers'
         title += '\n' + len(title)*'+' + 2*'\n'
-        with open(route + '/' + filename, "w") as out_file:
+        with open(route_solvers + '/' + filename, "w") as out_file:
             out_file.write(title)
             out_file.write('.. toctree::' + '\n')
             for k in dict_of_solvers.keys():

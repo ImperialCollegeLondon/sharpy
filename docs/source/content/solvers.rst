@@ -6,5 +6,5 @@ SHARPy Solvers
 .. toctree::
     :glob:
 
-    ../includes/*
+    ../includes/solvers/*
 
