@@ -100,6 +100,11 @@ class Aerogrid(object):
         except KeyError:
             aero_settings.update({'control_surface_deflection': ['']*self.n_control_surfaces})
 
+        # pad ctrl surfaces dict with empty strings if not defined
+        if len(aero_settings['control_surface_deflection']) != self.n_control_surfaces:
+            undef_ctrl_sfcs = ['']*(self.n_control_surfaces - len(aero_settings['control_surface_deflection']))
+            aero_settings['control_surface_deflection'].extend(undef_ctrl_sfcs)
+
         # initialise generators
         for i_cs in range(self.n_control_surfaces):
             if aero_settings['control_surface_deflection'][i_cs] == '':
