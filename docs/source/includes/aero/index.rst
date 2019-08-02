@@ -5,4 +5,3 @@ Aerodynamics Module
 	:maxdepth: 1
 
 	./models/index
-	./utils/index

@@ -138,7 +138,7 @@ todo_include_todos = False
 # http://www.sphinx-doc.org/en/master/usage/extensions/autodoc.html#confval-autodoc_mock_imports
 autodoc_mock_imports = ["matplotlib", "numpy", "colorama", "h5py", "scipy", "ctypes", "tvtk",
                         "sharpy.lib", "sharpy.utils.ctypes_utils", "sharpy.linear.src.libuvlm",
-                        "sharpy.linear.src.lib_dbiot", "pandas", "lxml"]
+                        "sharpy.linear.src.lib_dbiot", "pandas", "lxml", 'mpl_toolkits']
                         # "interp", "multisurfaces", "assembly", "libss",]
 
                         # Note: N. Goizueta 3/12/18: mocking imports from sharpy.linear.src that contain numpy

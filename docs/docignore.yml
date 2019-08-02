@@ -16,7 +16,8 @@ modules:
 #  - 'sharpy/linear
 #  - 'sharpy/rom'
 #  - 'sharpy/utils/analytical.py'
-#  - 'sharpy/utils/plot_utils.py'
+  - 'sharpy/aero/utils'
+  - 'sharpy/utils/plot_utils.py'
 #  - 'sharpy/utils/algebra.py'
 #  - 'sharpy/utils/control_utils.py'
 #  - 'sharpy/utils/generator_cases.py'
