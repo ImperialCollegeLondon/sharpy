@@ -45,6 +45,9 @@ That said, the recipe for a successfully documented class, function, module is t
     - If you are writing a whole package with an `__init__.py` file, even if it's empty, give it a human readable
     docstring. This will then be imported into the documentation
     
+    - For modules with several functions, the module docstring has to be at the very top of the file, prior to the 
+    `import` statements.
+    
 2. We use the Google documentation style. See [description](https://google.github.io/styleguide/pyguide.html#38-comments-and-docstrings).
         
 3. Function arguments and returns:

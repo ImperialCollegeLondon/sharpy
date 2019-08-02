@@ -6,7 +6,6 @@
 """H5 File Management Utilities
 Set of utilities for opening/reading files
 """
-
 import h5py as h5
 import os
 import errno

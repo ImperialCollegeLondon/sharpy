@@ -1,7 +1,10 @@
 '''
+Analytical Functions
+
+Analytical solutions for 2D aerofoil based on thin plates theory
+
 @author: salvatore maraniello
 @date: 23 May 2017
-@brief: Analytical solutions for 2D aerofoil based on thin plates theory
 
 References:
 [1] Simpson, R.J.S., Palacios, R. & Murua, J., 2013. Induced-Drag 

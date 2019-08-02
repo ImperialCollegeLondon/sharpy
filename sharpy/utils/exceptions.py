@@ -1,3 +1,5 @@
+"""SHARPy Exception Classes
+"""
 import sharpy.utils.cout_utils as cout
 
 

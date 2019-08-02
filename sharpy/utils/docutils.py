@@ -1,3 +1,7 @@
+"""Documentation Generator
+
+Functions to automatically document the code
+"""
 import sharpy.utils.sharpydir as sharpydir
 import sharpy.utils.exceptions as exceptions
 # import sharpy.utils.algebra as algebra
@@ -14,7 +18,11 @@ import warnings
 
 
 def generate_documentation():
-    print('cleaning includes')
+    """
+    Main routine that generates the documentation in ``./docs/source/includes``
+
+    """
+    print('Cleaning docs/source/includes')
     shutil.rmtree(sharpydir.SharpyDir + '/docs/source/includes/')
     solver_interface.output_documentation()
     generator_interface.output_documentation()

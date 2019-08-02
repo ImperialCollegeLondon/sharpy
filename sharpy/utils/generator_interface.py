@@ -1,3 +1,5 @@
+"""Generator Interface
+"""
 from abc import ABCMeta, abstractmethod
 import sharpy.utils.cout_utils as cout
 import os

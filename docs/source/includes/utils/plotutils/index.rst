@@ -1,3 +1,8 @@
+Plotting utilities
+++++++++++++++++++
+
+
+
 .. toctree::
 	:glob:
 

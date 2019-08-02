@@ -1,5 +1,5 @@
-Aerodynamics Module
--------------------
+Aerodynamic Packages
+--------------------
 
 .. toctree::
 	:maxdepth: 1

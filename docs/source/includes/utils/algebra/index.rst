@@ -1,9 +1,12 @@
-Rotation algebra library
-++++++++++++++++++++++++
+Algebra package
++++++++++++++++
 
-Rotation algebra library
+Algebra package
 
-Note: testing in tests/utils/algebra_test
+Extensive library with geometrical and algebraic operations
+
+Note:
+    Tests can be found in ``tests/utils/algebra_test``
 
 
 .. toctree::

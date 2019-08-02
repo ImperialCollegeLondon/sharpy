@@ -1,4 +1,4 @@
-"""Geo_Utils Module.
+"""Airfoil Geometry Utils
 
 """
 

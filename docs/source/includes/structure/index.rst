@@ -1,5 +1,5 @@
-Structure
----------
+Structural Packages
+-------------------
 
 .. toctree::
 	:maxdepth: 1
