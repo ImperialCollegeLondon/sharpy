@@ -39,6 +39,7 @@ To Do:
 
 	./block_dot
 	./block_sum
+	./csc_matrix
 	./dense
 	./dot
 	./eye_as

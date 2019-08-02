@@ -14,21 +14,24 @@ import warnings
 
 
 def generate_documentation():
+    print('cleaning includes')
+    shutil.rmtree(sharpydir.SharpyDir + '/docs/source/includes/')
     solver_interface.output_documentation()
     generator_interface.output_documentation()
 
     # changing below here
     data_file = yaml.load(open(sharpydir.SharpyDir + '/docs/docinclude.yml', 'r'), Loader=yaml.Loader)
     #
-    for item in data_file['packages']:
-        output_documentation(sharpydir.SharpyDir + '/' + item['folder'], item['docs_folder'])
+    # for item in data_file['packages']:
+    #     output_documentation(sharpydir.SharpyDir + '/' + item['folder'], item['docs_folder'])
 
-    # for item in data_file['modules']:
+  # for item in data_file['modules']:
     #     try:
     #         output_documentation_module_page(sharpydir.SharpyDir + item['folder'], item['docs_folder'],
     #                                          item.get('docs_title', None))
     #     except ModuleNotFoundError:
     #         warnings.warn('Unable to load %s to create %s' % (item['folder'], item['docs_folder']))
+
 
     sharpy_folders = get_sharpy_folders()
     ignore_modules = yaml.load(open(sharpydir.SharpyDir + '/docs/docignore.yml', 'r'), Loader=yaml.Loader)
@@ -38,8 +41,9 @@ def generate_documentation():
         folder_name = folder_name[1:]
         if check_folder_in_ignore(folder, ignore_modules['modules']):
             continue
-        write_folder(folder, ignore_modules['modules'])
-        create_index_files(folder)
+        mtitle, mbody = write_folder(folder, ignore_modules['modules'])
+        # mtitle, mbody = module_title(folder)
+        create_index_files(folder, mtitle, mbody)
         # files = open_folder(folder)
         # for file in files:
         #     if os.path.isfile(file) and not check_folder_in_ignore(file, ignore_modules['modules']):
@@ -47,13 +51,14 @@ def generate_documentation():
     create_index_files('./')
 
 def write_folder(folder, ignore_list):
-    files = open_folder(folder)
+    files, mtitle, mbody = open_folder(folder)
     for file in files:
         if os.path.isfile(file) and not check_folder_in_ignore(file, ignore_list):
             write_file(file)
         elif os.path.isdir(file) and not check_folder_in_ignore(file, ignore_list):
-            write_folder(file, ignore_list)
-            create_index_files(file)
+            mtitlesub, mbodysub = write_folder(file, ignore_list)
+            create_index_files(file, mtitlesub, mbodysub)
+    return mtitle, mbody
 
 def write_file(file):
     file_name = file.replace(sharpydir.SharpyDir, '')
@@ -103,8 +108,17 @@ def output_documentation_module_page(path_to_module, docs_folder_name, docs_titl
     index_file_content = []
 
     for item in module_content:
-        if not inspect.isfunction(item[1]):
+
+        if not inspect.isfunction(item[1]) and not inspect.isclass(item[1]):
             continue
+
+        md_path = item[1].__module__.split('.')
+        if md_path[0] != 'sharpy':
+            continue
+
+        isclass = False
+        if inspect.isclass(item[1]):
+            isclass = True
 
         if not item[1].__doc__:
             continue
@@ -122,7 +136,11 @@ def output_documentation_module_page(path_to_module, docs_folder_name, docs_titl
             python_method_path = import_path + '.' + title
 
             docs += title + '\n' + len(title)*'-' + '\n\n'
-            docs += '.. automodule:: ' + python_method_path
+            if isclass:
+                docs += '.. autoclass:: ' + python_method_path
+                docs += '\n\t:members:'
+            else:
+                docs += '.. automodule:: ' + python_method_path
 
             outfile.write(docs)
             print('\tCreated %s' % path_to_folder + '/' + filename)
@@ -135,9 +153,9 @@ def output_documentation_module_page(path_to_module, docs_folder_name, docs_titl
             # else:
             #     index_title = docs_title
             index_title, body = get_module_title_and_body(module)
-            outfile.write(index_title + '\n' + len(index_title)*'+' + '\n\n')
 
             if module.__doc__ is not None:
+                outfile.write(index_title + '\n' + len(index_title)*'+' + '\n\n')
                 outfile.write(body + '\n\n')
 
             outfile.write('.. toctree::\n\t:glob:\n\n')
@@ -195,19 +213,27 @@ def output_documentation(package_path, docs_folder_name):
 
 
 def module_from_path(package_path, filename):
-    name = inspect.getmodulename(package_path + '/' + filename + '.py')
+    if filename is None:
+        name = inspect.getmodulename(package_path)
+    else:
+        name = inspect.getmodulename(package_path + '/' + filename + '.py')
     python_path = package_path.replace(sharpydir.SharpyDir, "")
     if python_path[0] == '/':
         python_path = python_path[1:]
     python_path = python_path.replace("/", ".")
+    python_path = python_path.replace('.__init__.py', '')
 
-    module_path = python_path + '.' + name
+    if name == '__init__':
+        module_path = python_path
+        # module_path = module_path.replace('..py', '')
+    else:
+        module_path = python_path + '.' + name
     module = importlib.import_module(module_path)
 
     return module, module_path
 
 
-def create_index_files(docs_folder, folder_title=None):
+def create_index_files(docs_folder, folder_title=None, folder_body=None):
 
     file_name = docs_folder.replace(sharpydir.SharpyDir, '')
     source = file_name.replace('.py', '')
@@ -238,6 +264,8 @@ def create_index_files(docs_folder, folder_title=None):
 
 def get_module_title_and_body(module):
     docstring = module.__doc__
+    title = None
+    body = None
     if docstring is not None:
         docstring = docstring.split('\n')
         title = docstring[0]
@@ -251,9 +279,10 @@ def get_module_title_and_body(module):
 
         body = '\n'.join(docstring[1:])
     else:
-        raise exceptions.DocumentationError('Module %s has been given no title in neither the 1st or 2nd lines of '
-                                            'its docstring'
-                        % module.__name__)
+        # raise exceptions.DocumentationError('Module %s has been given no title in neither the 1st or 2nd lines of '
+        #                                     'its docstring'
+        #                 % module.__name__)
+        pass
     return title, body
 
 def get_sharpy_folders():
@@ -269,10 +298,21 @@ def get_sharpy_folders():
 def open_folder(folder_path):
     files = glob.glob(folder_path + '/*')
     outfiles = []
+    mtitle = None
+    mbody = None
     for file in files:
-        if file.replace(folder_path, '')[1] != '_':
+        if file.replace(folder_path, '')[1:] == '__init__.py':
+            mtitle, mbody = module_title(file)
+        elif file.replace(folder_path, '')[1] != '_':
             outfiles.append(file)
-    return outfiles
+    return outfiles, mtitle, mbody
+
+def module_title(file):
+    module, module_path = module_from_path(file, None)
+
+    title, body = get_module_title_and_body(module)
+
+    return title, body
 
 if __name__ == '__main__':
 

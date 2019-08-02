@@ -77,5 +77,7 @@ to do:
 	./scale_SS
 	./series
 	./simulate
+	./ss
+	./ss_block
 	./ss_to_scipy
 	./sum_ss

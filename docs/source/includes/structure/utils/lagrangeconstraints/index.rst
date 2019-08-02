@@ -20,7 +20,6 @@ Notes:
 .. toctree::
 	:glob:
 
-	./abstractmethod
 	./define_FoR_dof
 	./define_node_dof
 	./define_num_LM_eq

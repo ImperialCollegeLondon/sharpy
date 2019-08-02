@@ -8,5 +8,6 @@ S. Maraniello, Aug 2018
 .. toctree::
 	:glob:
 
+	./FlexDynamic
 	./newmark_ss
 	./sort_eigvals

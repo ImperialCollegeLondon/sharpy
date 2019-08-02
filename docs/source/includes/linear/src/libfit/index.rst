@@ -17,4 +17,3 @@
 	./rfa_fit_dev
 	./rfa_mimo
 	./rfader
-	./tf2ss

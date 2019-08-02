@@ -35,4 +35,5 @@ pp.483–531.
 	:glob:
 
 	./FLB_transfer_function
+	./InterpROM
 	./transfer_function

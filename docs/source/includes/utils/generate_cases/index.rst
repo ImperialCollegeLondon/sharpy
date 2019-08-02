@@ -18,6 +18,10 @@ Notes:
 .. toctree::
 	:glob:
 
+	./AerodynamicInformation
+	./AeroelasticInformation
+	./SimulationInformation
+	./StructuralInformation
 	./clean_test_files
 	./from_node_array_to_elem_matrix
 	./from_node_list_to_elem_matrix
