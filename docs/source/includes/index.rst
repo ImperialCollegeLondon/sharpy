@@ -7,5 +7,5 @@
 	./aero/index
 	./structure/index
 	./utils/index
-	./linear/index
 	./rom/index
+	./controllers/index

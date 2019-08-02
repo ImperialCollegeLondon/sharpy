@@ -8,12 +8,12 @@ packages:
     docs_folder: 'rom'
 
 modules:
-  - 'sharpy/controllers'
+#  - 'sharpy/controllers'
   - 'sharpy/postproc'
   - 'sharpy/solvers'
   - 'sharpy/linear/dev'
 #  - 'sharpy/linear/src'
-#  - 'sharpy/linear
+  - 'sharpy/linear'
 #  - 'sharpy/rom'
 #  - 'sharpy/utils/analytical.py'
   - 'sharpy/aero/utils'
