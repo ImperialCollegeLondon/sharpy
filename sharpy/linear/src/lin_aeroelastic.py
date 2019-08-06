@@ -67,6 +67,11 @@ class LinAeroEla():
             self.use_euler = settings_here['use_euler']
         except KeyError:
             self.use_euler = False
+
+        if self.rigid_body_motions and settings_here['track_body']:
+            self.track_body = True
+        else:
+            self.track_body = False
         ## -------
 
         ### extract aeroelastic info
@@ -345,7 +350,7 @@ class LinAeroEla():
 
         # get projection matrix A->G
         # (and other quantities indep. from nodal position)
-        Cga = algebra.quat2rotation(tsstr.quat).T
+        Cga = algebra.quat2rotation(tsstr.quat)  # NG 6-8-19 removing .T
         Cag = Cga.T
 
         # for_pos=tsstr.for_pos
@@ -353,6 +358,9 @@ class LinAeroEla():
         for_rot = tsstr.for_vel[3:]
         skew_for_rot = algebra.skew(for_rot)
         Der_vel_Ra = np.dot(Cga, skew_for_rot)
+
+        Faero = np.zeros(3)
+        FaeroA = np.zeros(3)
 
         # GEBM degrees of freedom
         jj_for_tra = range(self.num_dof_str - self.num_dof_rig, self.num_dof_str - self.num_dof_rig + 3)
@@ -401,6 +409,8 @@ class LinAeroEla():
             Cbg = np.dot(Cab.T, Cag)
             Tan = algebra.crv2tan(psi)
 
+            track_body = self.track_body
+
             ### str -> aero mapping
             # some nodes may be linked to multiple surfaces...
             for str2aero_here in aero.struct2aero_mapping[node_glob]:
@@ -437,7 +447,9 @@ class LinAeroEla():
 
                     # get aero force
                     faero = tsaero.forces[ss][:3, mm, nn]
+                    Faero += faero
                     faero_a = np.dot(Cag, faero)
+                    FaeroA += faero_a
                     maero_g = np.cross(Xg, faero)
                     maero_b = np.dot(Cbg, maero_g)
 
@@ -463,6 +475,11 @@ class LinAeroEla():
                         #     algebra.der_Cquat_by_v(tsstr.quat, zetaa)
                         Kdisp_vel[np.ix_(ii_vert, jj_quat)] += \
                             algebra.der_Cquat_by_v(tsstr.quat, zetaa)
+
+                        # Track body - project inputs as for A not moving
+                        if track_body:
+                            Kdisp_vel[np.ix_(ii_vert, jj_quat)] += \
+                                Cga.dot(algebra.der_CquatT_by_v(tsstr.quat, zetag))
 
                     ### ------------------------------------ allocate Kvel_disp
 
@@ -495,6 +512,11 @@ class LinAeroEla():
                     else:
                         Kvel_vel[np.ix_(ii_vert, jj_quat)] += \
                             algebra.der_Cquat_by_v(tsstr.quat, zetaa_dot)
+
+                        # Track body if ForA is rotating
+                        if track_body:
+                            Kvel_vel[np.ix_(ii_vert, jj_quat)] += \
+                                Cga.dot(algebra.der_CquatT_by_v(tsstr.quat, zetag_dot))
 
                     ### ------------------------------------- allocate Kvel_vel
 
@@ -543,6 +565,10 @@ class LinAeroEla():
                         else:
                             Csr[jj_tra, -4:] -= algebra.der_CquatT_by_v(tsstr.quat, faero)
 
+                            # Track body
+                            if track_body:
+                                Csr[jj_tra, -4:] -= algebra.der_Cquat_by_v(tsstr.quat, Cga.T.dot(faero))
+
                         ### moments
                         TanTXbskew = np.dot(Tan.T, Xbskew)
                         # contrib. of TanT (dpsi) - Eq 37 - Integration of UVLM and GEBM
@@ -561,6 +587,14 @@ class LinAeroEla():
                                 np.dot(TanTXbskew,
                                        np.dot(Cba,
                                               algebra.der_CquatT_by_v(tsstr.quat, faero)))
+
+                            # Track body
+                            if track_body:
+                                # pass
+                                Csr[jj_rot, -4:] -= \
+                                    np.dot(TanTXbskew,
+                                           np.dot(Cbg,
+                                                  algebra.der_CquatT_by_v(tsstr.quat, Cga.T.dot(faero))))
 
                     ### rigid body eqs (Crs and Crr)
 
@@ -591,6 +625,11 @@ class LinAeroEla():
                         Crr[3:6, -4:] += np.dot(
                             np.dot(Cag, algebra.skew(faero)),
                             algebra.der_CquatT_by_v(tsstr.quat, np.dot(Cab, Xb)))
+
+                        # Track body
+                        if track_body:
+                            Crr[:3, -4:] -= algebra.der_Cquat_by_v(tsstr.quat, Cga.T.dot(faero))
+                            Crr[3:6, -4:] -= Cag.dot(algebra.skew(zetag).dot(algebra.der_Cquat_by_v(tsstr.quat, Cga.T.dot(faero))))
 
 
         # transfer
