@@ -1,5 +1,6 @@
 import ctypes as ct
 import time
+import copy
 
 import numpy as np
 
@@ -116,6 +117,7 @@ class DynamicCoupled(BaseSolver):
 
         self.dt = 0.
         self.substep_dt = 0.
+        self.initial_n_substeps = None
 
         self.predictor = False
         self.residual_table = None
@@ -147,9 +149,14 @@ class DynamicCoupled(BaseSolver):
         settings.to_custom_types(self.settings,
                                  self.settings_types,
                                  self.settings_default)
+
+        self.original_settings = copy.deepcopy(self.settings)
+
         self.dt = self.settings['dt']
         self.substep_dt = (
             self.dt.value/(self.settings['structural_substeps'].value + 1))
+        self.initial_n_substeps = self.settings['structural_substeps'].value
+
         self.print_info = self.settings['print_info']
         if self.settings['cleanup_previous_solution']:
             # if there's data in timestep_info[>0], copy the last one to
@@ -211,6 +218,59 @@ class DynamicCoupled(BaseSolver):
 
         self.data.ts = 0
 
+    def process_controller_output(self, controlled_state):
+        """
+        This function modified the solver properties and parameters as
+        requested from the controller.
+
+        This keeps the main loop much cleaner, while allowing for flexibility
+
+        Please, if you add options in here, always code the possibility of
+        that specific option not being there without the code complaining to
+        the user.
+
+        If it possible, use the same Key for the new setting as for the
+        setting in the solver. For example, if you want to modify the
+        `structural_substeps` variable in settings, use that Key in the
+        `info` dictionary.
+
+        As a convention: a value of None returns the value to the initial
+        one specified in settings, while the key not being in the dict
+        is ignored, so if any change was made before, it will stay there.
+        """
+        try:
+            info = controlled_state['info']
+        except KeyError:
+            return controlled_state['structural'], controlled_state['aero']
+
+        # general copy-if-exists, restore if == None
+        for info_k, info_v in info.items():
+            if info_k in self.settings:
+                if info_v is not None:
+                    self.settings[info_k] = info_v
+                else:
+                    self.settings[info_k] = self.original_settings[info_k]
+
+        # specifics of every option
+        for info_k, info_v in info.items():
+            if info_k in self.settings:
+
+                if info_k == 'structural_substeps':
+                    if info_v is not None:
+                        self.substep_dt = (
+                            self.settings['dt'].value/(
+                                self.settings['structural_substeps'].value + 1))
+
+                if info_k == 'structural_solver':
+                    if info_v is not None:
+                        self.structural_solver = solver_interface.initialise_solver(
+                            info['structural_solver'])
+                        self.structural_solver.initialise(
+                            self.data, self.settings['structural_solver_settings'])
+
+        return controlled_state['structural'], controlled_state['aero']
+
+
     def run(self):
         """
 
@@ -229,25 +289,9 @@ class DynamicCoupled(BaseSolver):
                          'aero': aero_kstep}
                 for k, v in self.controllers.items():
                     state = v.control(self.data, state)
-
-                structural_kstep = state['structural']
-                aero_kstep = state['aero']
-                reset_substeps = False
-                try:
-                    if state['info']['reset_substeps']:
-                        self.settings['structural_substeps'] = ct.c_int(0)
-                        self.substep_dt = self.settings['dt'].value
-                except KeyError:
-                    pass
-
-                try:
-                    if state['info']['new_structural_solver']:
-                        self.structural_solver = solver_interface.initialise_solver(
-                            state['info']['new_structural_solver'])
-                        self.structural_solver.initialise(
-                            self.data, self.settings['structural_solver_settings'])
-                except KeyError:
-                    pass
+                    # this takes care of the changes in options for the solver
+                    structural_kstep, aero_kstep = self.process_controller_output(
+                        state)
 
             self.time_aero = 0.0
             self.time_struc = 0.0
@@ -491,14 +535,16 @@ class DynamicCoupled(BaseSolver):
             (coeff)*(step1.unsteady_applied_forces))
 
         # multibody if necessary
-        if step1.mb_dict is not None:
-            for key, val in step1.mb_dict.items():
+        if out_step.mb_dict is not None:
+            for key in step1.mb_dict.keys():
                 if 'constraint_' in key:
-                    for kk, vv in val.items():
-                        if 'vel' in kk:
-                            out_step.mb_dict[key][kk] = (
-                                coeff*vv +
-                                (1.0 - coeff)*step0.mb_dict[key][kk])
+                    try:
+                        out_step.mb_dict[key]['velocity'][:] = (
+                            (1.0 - coeff)*step0.mb_dict[key]['velocity'] +
+                            (coeff)*step1.mb_dict[key]['velocity'])
+                    except KeyError:
+                        pass
+
         return out_step
 
 

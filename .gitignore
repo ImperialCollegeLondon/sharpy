@@ -139,3 +139,5 @@ figs/*
 tests/linear/rom/figs/
 
 \.spyproject/
+
+*.sharpy

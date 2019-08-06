@@ -1,5 +1,5 @@
 import ctypes as ct
-
+import sys
 import numpy as np
 
 import sharpy.aero.utils.mapping as mapping
@@ -186,9 +186,14 @@ class StaticCoupled(BaseSolver):
         self.current_residual = np.linalg.norm(self.data.structure.timestep_info[self.data.ts].pos)
         if self.print_info:
             forces = self.data.structure.timestep_info[self.data.ts].total_forces
+            res_print = np.NINF
+            if (np.abs(self.current_residual - self.previous_residual) >
+                sys.float_info.epsilon*10):
+                res_print = np.log10(np.abs(self.current_residual - self.previous_residual)/self.initial_residual)
+
             self.residual_table.print_line([i_iter,
                     i_step,
-                    np.log10(np.abs(self.current_residual - self.previous_residual)/self.initial_residual),
+                    res_print,
                     forces[0],
                     forces[1],
                     forces[2],
