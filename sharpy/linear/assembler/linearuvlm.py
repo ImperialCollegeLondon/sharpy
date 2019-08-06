@@ -14,23 +14,46 @@ import sharpy.utils.rom_interface as rom_interface
 class LinearUVLM(ss_interface.BaseElement):
     sys_id = 'LinearUVLM'
 
+    settings_types = dict()
+    settings_default = dict()
+    settings_description = dict()
+    
+    settings_types['dt'] = 'float'
+    settings_default['dt'] = 0.1
+
+    settings_types['integr_order'] = 'int'
+    settings_default['integr_order'] = 2
+
+    settings_types['density'] = 'float'
+    settings_default['density'] = 1.225
+
+    settings_types['ScalingDict'] = 'dict'
+    settings_default['ScalingDict'] = {'length': 1.0,
+                                               'speed': 1.0,
+                                               'density': 1.0}
+
+    settings_types['remove_predictor'] = 'bool'
+    settings_default['remove_predictor'] = True
+
+    settings_types['use_sparse'] = 'bool'
+    settings_default['use_sparse'] = True
+
+    settings_types['density'] = 'float'
+    settings_default['density'] = 1.225
+
+    settings_types['remove_inputs'] = 'list'
+    settings_default['remove_inputs'] = []
+
+    settings_types['rom_method'] = 'str'
+    settings_default['rom_method'] = ''
+    settings_description['rom_method'] = 'Model reduction method to reduce UVLM'
+
+    settings_types['rom_method_settings'] = 'dict'
+    settings_default['rom_method_settings'] = dict()
+    settings_description['rom_method_settings'] = 'Settings for the desired ROM method'
+    
     def __init__(self):
-
-        self.settings_types = dict()
-        self.settings_default = dict()
-        self.settings_description = dict()
-
-        self.settings_types['remove_inputs'] = 'list'
-        self.settings_default['remove_inputs'] = []
-
-        self.settings_types['rom_method'] = 'str'
-        self.settings_default['rom_method'] = ''
-        self.settings_description['rom_method'] = 'Model reduction method to reduce UVLM'
-
-        self.settings_types['rom_method_settings'] = 'dict'
-        self.settings_default['rom_method_settings'] = dict()
-        self.settings_description['rom_method_settings'] = 'Settings for the desired ROM method'
-
+        
         self.sys = None
         self.ss = None
         self.tsaero0 = None
@@ -44,6 +67,7 @@ class LinearUVLM(ss_interface.BaseElement):
 
         self.control_surface = None
         self.gain_cs = None
+        self.scaled = None
 
     def initialise(self, data, custom_settings=None):
 
@@ -57,7 +81,10 @@ class LinearUVLM(ss_interface.BaseElement):
 
         settings.to_custom_types(self.settings, self.settings_types, self.settings_default)
 
-        data.linear.tsaero0.rho = float(self.settings['density'])
+        data.linear.tsaero0.rho = float(self.settings['density'].value)
+
+        self.scaled = not all(scale == 1.0 for scale in self.settings['ScalingDict'].values())
+
         uvlm = linuvlm.Dynamic(data.linear.tsaero0, dt=None, dynamic_settings=self.settings)
         self.tsaero0 = data.linear.tsaero0
         self.sys = uvlm
@@ -95,7 +122,9 @@ class LinearUVLM(ss_interface.BaseElement):
         """
 
         self.sys.assemble_ss()
-        self.sys.nondimss()
+
+        if self.scaled:
+            self.sys.nondimss()
         self.ss = self.sys.SS
         self.C_to_vertex_forces = self.ss.C.copy()
 
