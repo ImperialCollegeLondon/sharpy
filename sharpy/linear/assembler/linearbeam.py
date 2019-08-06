@@ -7,6 +7,7 @@ from sharpy.linear.utils.ss_interface import BaseElement, linear_system, LinearV
 import sharpy.linear.src.lingebm as lingebm
 import numpy as np
 import sharpy.utils.settings as settings
+import sharpy.utils.algebra as algebra
 
 
 @linear_system
@@ -116,7 +117,7 @@ class LinearBeam(BaseElement):
 
     def trim_nodes(self, trim_list=list):
 
-        num_dof_flex = self.sys.structure.num_dof
+        num_dof_flex = self.sys.structure.num_dof.value
         num_dof_rig = self.sys.Mstr.shape[0] - num_dof_flex
 
         # Dictionary containing DOFs and corresponding equations
@@ -287,7 +288,7 @@ class LinearBeam(BaseElement):
         # TODO: CRV of clamped node and double check that the CRV takes this form
         for i_elem in range(struct_tstep.num_elem):
             for i_node in range(struct_tstep.num_node_elem):
-                psi[i_elem, i_node, :] = q[i_node + 3: i_node + 6]
+                psi[i_elem, i_node, :] = np.linalg.inv(algebra.crv2tan(struct_tstep.psi[i_elem, i_node]).T).dot(q[i_node + 3: i_node + 6])
                 psi_dot[i_elem, i_node, :] = dqdt[i_node + 3: i_node + 6]
 
         if not clamped:
@@ -299,6 +300,19 @@ class LinearBeam(BaseElement):
         if u_n is not None:
             for i_node in vdof[vdof >= 0]:
                 steady_applied_forces[i_node+1] = u_n[6*i_node: 6*i_node + 6]
+
+
+        # gravity forces - careful - debug
+        C_grav = np.zeros((q.shape[0], q.shape[0]))
+        Crr = self.sys.Crr_grav
+        Csr = self.sys.Csr_grav
+        C_grav[:-rig_dof, -rig_dof:] = Csr
+        C_grav[-rig_dof:, -rig_dof:] = Crr
+        fgrav = -C_grav.dot(dqdt)
+        for i in range(gravity_forces.shape[0]-1):
+            #add bc at node - doing it manually here
+            gravity_forces[i+1, :] = fgrav[6*i:6*(i+1)]
+        gravity_forces[0, :] = fgrav[-10:-4]
 
         current_time_step = struct_tstep.copy()
         current_time_step.q = q + struct_tstep.q

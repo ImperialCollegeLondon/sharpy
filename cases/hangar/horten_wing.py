@@ -734,8 +734,10 @@ class HortenWing:
         n_inputs_struct = n_states_struct // 2
 
         x0 = np.zeros((n_states_aero + n_states_struct))
+        x0[-7] = 1
+        # x0[-4:] = algebra.euler2quat([0, -5*np.pi/180, 0])
         u = np.zeros((self.n_tstep, n_states_struct + n_inputs_struct + self.n_control_surfaces))
-
+        # u[0:3, -7] = -1000
         if delta_e is not None:
             u[:, n_states_struct:n_states_struct+self.n_control_surfaces] = delta_e
 
@@ -1183,7 +1185,7 @@ class HortenWing:
                                                    'gravity': 9.81,
                                                    'num_steps': n_tstep,
                                                    'dt': dt,
-                                                   'initial_velocity': u_inf * 0}
+                                                   'initial_velocity': u_inf * 1}
 
         settings['NonLinearDynamicPrescribedStep'] = {'print_info': 'on',
                                                    'initial_velocity_direction': [-1., 0., 0.],
@@ -1218,7 +1220,7 @@ class HortenWing:
                                 'rollup_aic_refresh': 1,
                                 'rollup_tolerance': 1e-4,
                                 'velocity_field_generator': 'GustVelocityField',
-                                'velocity_field_input': {'u_inf': u_inf * 1,
+                                'velocity_field_input': {'u_inf': u_inf * 0,
                                                          'u_inf_direction': [1., 0, 0],
                                                          'gust_shape': '1-cos',
                                                          'gust_length': 5.,
