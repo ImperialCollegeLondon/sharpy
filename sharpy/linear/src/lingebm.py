@@ -212,7 +212,6 @@ class FlexDynamic():
 
         self.scaled_reference_matrices = dict()  # keep reference values prior to time scaling
 
-
         if self.use_euler:
             self.euler_propagation_equations(tsinfo)
 
@@ -432,14 +431,17 @@ class FlexDynamic():
 
 
         if self.settings['print_info'].value:
-            cout.cout_wrap('\nLinearising gravity terms...')
+            try:
+                cout.cout_wrap('\nLinearising gravity terms...')
+            except ValueError:
+                pass
 
         num_node = tsstr.num_node
         flex_dof = 6 * sum(self.structure.vdof >= 0)
         if self.use_euler:
             rig_dof = 9
             # This is a rotation matrix that rotates a vector from G to A
-            Cag = algebra.euler2rotation_ag(tsstr.euler)
+            Cag = algebra.euler2rot(tsstr.euler)
             Cga = Cag.T
 
             # Projection matrices - this projects the vector in G t to A
@@ -448,8 +450,12 @@ class FlexDynamic():
         else:
             rig_dof = 10
             # get projection matrix A->G
-            Pga = algebra.quat2rotation(tsstr.quat)
-            Pag = Pga.T
+            # Cga = algebra.quat2rotation(tsstr.quat)
+            # Pga = Cga.T
+            # Pag = Pga.T
+            Cag = algebra.quat2rotation(tsstr.quat)
+            Pag = Cag.T
+            Pga = Pag.T
 
         # Mass matrix partitions for CG calculations
         Mss = self.Mstr[:flex_dof, :flex_dof]
@@ -474,8 +480,10 @@ class FlexDynamic():
 
         for i_node in range(num_node):
             # Gravity forces at the linearisation condition (from NL SHARPy in A frame)
-            fgravA = tsstr.gravity_forces[i_node, :3]
-            fgravG = Pga.dot(fgravA)
+            # fgravA = tsstr.gravity_forces[i_node, :3]
+            # fgravG = Pga.dot(fgravA)
+            fgravG = tsstr.gravity_forces[i_node, :3]
+            fgravA = Pag.dot(fgravG)
 
             # Get nodal position - A frame
             Ra = tsstr.pos[i_node, :]
@@ -512,7 +520,7 @@ class FlexDynamic():
                 Mss_indices = np.concatenate((jj_tra, jj_rot))
                 Mss_node = Mss[Mss_indices,:]
                 Mss_node = Mss_node[:, Mss_indices]
-                Xcg_B = -np.array([Mss_node[2, 4], Mss_node[0, 5], Mss_node[1, 3]]) / Mss_node[0, 0]
+                Xcg_B = Cba.dot(-np.array([Mss_node[2, 4], Mss_node[0, 5], Mss_node[1, 3]]) / Mss_node[0, 0])
                 Xcg_Bskew = algebra.skew(Xcg_B)
 
                 # Nodal CG in A frame
@@ -539,13 +547,6 @@ class FlexDynamic():
                     # Nodal moments due to gravity -> linearisation terms wrt to delta_euler
                     Csr_grav[jj_rot, -3:] -= Tan.dot(Xcg_Bskew.dot(Cba.dot(algebra.der_Peuler_by_v(tsstr.euler, fgravG))))
 
-                    # Rigid equations always in A frame
-                    # Total forces -> linearisation terms wrt to delta_euler
-                    Crr_grav[:3, -3:] -= algebra.der_Peuler_by_v(tsstr.euler, fgravG)
-
-                    # Total moments -> linearisation terms wrt to delta_euler
-                    Crr_grav[3:6, -3:] -= Xcg_Askew.dot(algebra.der_Peuler_by_v(tsstr.euler, fgravG))
-
                     # Total moments -> linearisation terms wrt to delta_Ra
                     # These terms are not affected by the Euler matrix. Sign is correct (+)
                     Krs_grav[3:6, jj_tra] += algebra.skew(fgravA)
@@ -553,11 +554,26 @@ class FlexDynamic():
                     # Total moments -> linearisation terms wrt to delta_Psi
                     Krs_grav[3:6, jj_rot] += np.dot(algebra.skew(fgravA), algebra.der_Ccrv_by_v(psi, Xcg_B))
 
+                # Rigid equations always in A frame
+                # Total forces -> linearisation terms wrt to delta_euler
+                Crr_grav[:3, -3:] -= algebra.der_Peuler_by_v(tsstr.euler, fgravG)
+
+                # Total moments -> linearisation terms wrt to delta_euler
+                Crr_grav[3:6, -3:] -= Xcg_Askew.dot(algebra.der_Peuler_by_v(tsstr.euler, fgravG))
+
             else:
                 if bc_at_node != 1:
+                    # pass
                     # Nodal moments due to gravity -> linearisation terms wrt to delta_psi
                     Kss_grav[np.ix_(jj_rot, jj_rot)] -= Tan.dot(Xcg_Bskew.dot(algebra.der_Ccrv_by_v(psi, fgravA)))
                     Kss_grav[np.ix_(jj_rot, jj_rot)] -= algebra.der_TanT_by_xv(psi, Xcg_Bskew.dot(Cbg.dot(fgravG)))
+
+                    # Total moments -> linearisation terms wrt to delta_Ra
+                    # Check sign (in theory it should be +=)
+                    Krs_grav[3:6, jj_tra] += algebra.skew(fgravA)
+
+                    # Total moments -> linearisation terms wrt to delta_Psi
+                    Krs_grav[3:6, jj_rot] += np.dot(algebra.skew(fgravA), algebra.der_Ccrv_by_v(psi, Xcg_B))
 
                     # Nodal forces due to gravity -> linearisation terms wrt to delta_euler
                     Csr_grav[jj_tra, -4:] -= algebra.der_CquatT_by_v(tsstr.quat, fgravG)
@@ -567,17 +583,18 @@ class FlexDynamic():
 
                     # Rigid equations always in A frame
                     # Total forces -> linearisation terms wrt to delta_euler
-                    Crr_grav[:3, -4:] -= algebra.der_CquatT_by_v(tsstr.quat, fgravG)
+                    Crr_grav[:3, -4:] += algebra.der_CquatT_by_v(tsstr.quat, fgravG)
 
                     # Total moments -> linearisation terms wrt to delta_euler
-                    Crr_grav[3:6, -4:] -= Xcg_Askew.dot(algebra.der_CquatT_by_v(tsstr.quat, fgravG))
+                    Crr_grav[3:6, -4:] += Xcg_Askew.dot(algebra.der_CquatT_by_v(tsstr.quat, fgravG))
 
-                    # Total moments -> linearisation terms wrt to delta_Ra
-                    # Check sign (in theory it should be +=) but other change in sign may mean (-=)
-                    Krs_grav[3:6, jj_tra] += algebra.skew(fgravA)
+                # Rigid equations always in A frame
+                # Total forces -> linearisation terms wrt to delta_euler
+                Crr_grav[:3, -4:] -= algebra.der_CquatT_by_v(tsstr.quat, fgravG)
 
-                    # Total moments -> linearisation terms wrt to delta_Psi
-                    Krs_grav[3:6, jj_rot] += np.dot(algebra.skew(fgravA), algebra.der_Ccrv_by_v(psi, Xcg_B))
+                # Total moments -> linearisation terms wrt to delta_euler
+                Crr_grav[3:6, -4:] -= Xcg_Askew.dot(algebra.der_CquatT_by_v(tsstr.quat, fgravG))
+
 
             # Debugging:
             FgravA += fgravA
@@ -589,6 +606,15 @@ class FlexDynamic():
             self.Cstr[-rig_dof:, -rig_dof:] += Crr_grav
             self.Cstr[:-rig_dof, -rig_dof:] += Csr_grav
             self.Kstr[flex_dof:, :flex_dof] += Krs_grav
+
+            # for debugging
+            self.Crr_grav = Crr_grav
+            self.Csr_grav = Csr_grav
+
+        # Debug - update propagation equations
+        # if not self.use_euler:
+        #     q0, q1, q2, q3 = list(tsstr.quat)
+        #     self.Cstr[-4:, -7:-4] = 0.5*np.block([[-q1, -q2, -q3], [q0, -q3, q2], [q3, q0, -q1], [-q2, q1, q0]])
 
         if self.modal:
             self.Ccut = self.U.T.dot(self.Cstr.dot(self.U))
