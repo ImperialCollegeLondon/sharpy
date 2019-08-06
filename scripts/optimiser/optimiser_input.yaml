@@ -1,0 +1,36 @@
+base:
+    name: base
+    route: ./base_case/
+    generate_file: generate.py
+
+settings:
+    delete_case_folders: false
+    cases_folder: ./cases/
+
+optimiser:
+    numerics:
+        solver: BFGS
+        tolerance: 0.01 
+    parameters:
+        0: acceleration
+        1: dAoA
+        2: ramp_angle
+        3: release_velocity
+    parameters_initial:
+        0: 2.0
+        1: 0.1
+        2: 0.0
+        3: 9.5
+    parameters_bounds:
+        0: [0.5, 5]
+        1: [0.0, 5]
+        2: [0.0, 5]
+        3: [8.5, 13]
+    cost:
+        ground_clearance:
+            z_min: -1
+            z_0: 2
+            scale: 1
+        #loads:
+            #IP
+
