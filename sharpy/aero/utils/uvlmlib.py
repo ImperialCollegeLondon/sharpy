@@ -5,6 +5,7 @@ import ctypes as ct
 import numpy as np
 import platform
 import os
+from sharpy.utils.constants import NDIM
 
 UvlmLib = ct_utils.import_ctypes_lib(SharpyDir + '/lib/', 'libuvlm')
 
@@ -392,34 +393,43 @@ def uvlm_calculate_incidence_angle(ts_info,
                               ts_info.postproc_cell['incidence_angle_ct_pointer'])
     ts_info.remove_ctypes_pointers()
 
-def uvlm_calculate_total_induced_velocity_at_point(ts_info,
-                                                   target_triad,
-                                                   for_pos):
+def uvlm_calculate_total_induced_velocity_at_points(ts_info,
+                                                   target_triads,
+                                                   for_pos=np.zeros((6)),
+                                                   ncores=1):
     """
-    uvlm_calculate_total_induced_velocity_at_point
+    uvlm_calculate_total_induced_velocity_at_points
 
     Caller to the UVLM library to compute the induced velocity of all the
-    surfaces and wakes at a point
+    surfaces and wakes at a list of points
 
     Args:
         ts_info (AeroTimeStepInfo): Time step information
-        target_triad (np.array): Point coordinates
+        target_triads (np.array): Point coordinates, size=(npoints, 3)
         uind (np.array): Induced velocity
 
     Returns:
-    	uind (np.array): Induced velocity
+    	uind (np.array): Induced velocity, size=(npoints, 3)
 
     """
-    calculate_uind_at_point = UvlmLib.total_induced_velocity_at_point
-    calculate_uind_at_point.restype = None
+    calculate_uind_at_points = UvlmLib.total_induced_velocity_at_points
+    calculate_uind_at_points.restype = None
 
     uvmopts = UVMopts()
     uvmopts.NumSurfaces = ct.c_uint(ts_info.n_surf)
     uvmopts.ImageMethod = ct.c_bool(False)
+    uvmopts.NumCores = ct.c_uint(ncores)
 
-    uind = np.zeros((3,), dtype=ct.c_double)
-    p_uind = uind.ctypes.data_as(ct.POINTER(ct.c_double))
-    p_target_triad = target_triad.ctypes.data_as(ct.POINTER(ct.c_double))
+    npoints = target_triads.shape[0]
+    uind = np.zeros((npoints, 3), dtype=ct.c_double)
+
+    if type(target_triads[0,0]) == ct.c_double:
+        aux_target_triads = target_triads
+    else:
+        aux_target_triads = target_triads.astype(dtype=ct.c_double)
+
+    p_target_triads = ((ct.POINTER(ct.c_double))(* [np.ctypeslib.as_ctypes(aux_target_triads.reshape(-1))]))
+    p_uind = ((ct.POINTER(ct.c_double))(* [np.ctypeslib.as_ctypes(uind.reshape(-1))]))
 
     # make a copy of ts info and add for_pos to zeta and zeta_star
     ts_info_copy = ts_info.copy()
@@ -434,17 +444,18 @@ def uvlm_calculate_total_induced_velocity_at_point(ts_info,
                 ts_info_copy.zeta_star[i_surf][:, iM, iN] += for_pos[0:3]
 
     ts_info_copy.generate_ctypes_pointers()
-    calculate_uind_at_point(ct.byref(uvmopts),
+    calculate_uind_at_points(ct.byref(uvmopts),
                               ts_info_copy.ct_p_dimensions,
                               ts_info_copy.ct_p_dimensions_star,
                               ts_info_copy.ct_p_zeta,
                               ts_info_copy.ct_p_zeta_star,
                               ts_info_copy.ct_p_gamma,
                               ts_info_copy.ct_p_gamma_star,
-                              p_target_triad,
-                              p_uind)
+                              p_target_triads,
+                              p_uind,
+                              ct.c_uint(npoints))
     ts_info_copy.remove_ctypes_pointers()
     del p_uind
-    del p_target_triad
+    del p_target_triads
 
     return uind
