@@ -117,9 +117,9 @@ class PlotFlowField(BaseSolver):
                                                                                                       self.data.structure.timestep_info[ts].for_pos[0:3],
                                                                                                       self.settings['num_cores'])
             ipoint = -1
-            for iy in range(ny):
+            for iz in range(nz):
                 for ix in range(nx):
-                    for iz in range(nz):
+                    for iy in range(ny):
                         ipoint += 1
                         u_ind[ix, iy, iz, :] = u_ind_points[ipoint, :]
 
