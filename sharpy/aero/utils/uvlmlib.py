@@ -396,7 +396,7 @@ def uvlm_calculate_incidence_angle(ts_info,
 def uvlm_calculate_total_induced_velocity_at_points(ts_info,
                                                    target_triads,
                                                    for_pos=np.zeros((6)),
-                                                   ncores=1):
+                                                   ncores=ct.c_uint(1)):
     """
     uvlm_calculate_total_induced_velocity_at_points
 
@@ -418,7 +418,7 @@ def uvlm_calculate_total_induced_velocity_at_points(ts_info,
     uvmopts = UVMopts()
     uvmopts.NumSurfaces = ct.c_uint(ts_info.n_surf)
     uvmopts.ImageMethod = ct.c_bool(False)
-    uvmopts.NumCores = ct.c_uint(ncores)
+    uvmopts.NumCores = ct.c_uint(ncores.value)
 
     npoints = target_triads.shape[0]
     uind = np.zeros((npoints, 3), dtype=ct.c_double)
