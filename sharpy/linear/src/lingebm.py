@@ -464,6 +464,7 @@ class FlexDynamic():
         # Initialise damping and stiffness gravity terms
         Crr_grav = np.zeros((rig_dof, rig_dof))
         Csr_grav = np.zeros((flex_dof, rig_dof))
+        Crr_debug = np.zeros((rig_dof, rig_dof))
         Krs_grav = np.zeros((rig_dof, flex_dof))
         Kss_grav = np.zeros((flex_dof, flex_dof))
 
@@ -483,7 +484,9 @@ class FlexDynamic():
             # fgravA = tsstr.gravity_forces[i_node, :3]
             # fgravG = Pga.dot(fgravA)
             fgravG = tsstr.gravity_forces[i_node, :3]
+            mgravG = tsstr.gravity_forces[i_node, :3]
             fgravA = Pag.dot(fgravG)
+            mgravA = Pag.dot(mgravG)
 
             # Get nodal position - A frame
             Ra = tsstr.pos[i_node, :]
@@ -563,7 +566,6 @@ class FlexDynamic():
 
             else:
                 if bc_at_node != 1:
-                    # pass
                     # Nodal moments due to gravity -> linearisation terms wrt to delta_psi
                     Kss_grav[np.ix_(jj_rot, jj_rot)] -= Tan.dot(Xcg_Bskew.dot(algebra.der_Ccrv_by_v(psi, fgravA)))
                     Kss_grav[np.ix_(jj_rot, jj_rot)] -= algebra.der_TanT_by_xv(psi, Xcg_Bskew.dot(Cbg.dot(fgravG)))
@@ -576,29 +578,36 @@ class FlexDynamic():
                     Krs_grav[3:6, jj_rot] += np.dot(algebra.skew(fgravA), algebra.der_Ccrv_by_v(psi, Xcg_B))
 
                     # Nodal forces due to gravity -> linearisation terms wrt to delta_euler
-                    Csr_grav[jj_tra, -4:] -= algebra.der_CquatT_by_v(tsstr.quat, fgravG)
+                    Csr_grav[jj_tra, -4:] -= algebra.der_CquatT_by_v(tsstr.quat, fgravG) # ok
+                    # Crr_grav[:3, -4:] -= algebra.der_CquatT_by_v(tsstr.quat, fgravG)  # not ok - see below
 
                     # Nodal moments due to gravity -> linearisation terms wrt to delta_euler
                     Csr_grav[jj_rot, -4:] -= Tan.dot(Xcg_Bskew.dot(Cba.dot(algebra.der_CquatT_by_v(tsstr.quat, fgravG))))
 
-                    # Rigid equations always in A frame
-                    # Total forces -> linearisation terms wrt to delta_euler
-                    Crr_grav[:3, -4:] += algebra.der_CquatT_by_v(tsstr.quat, fgravG)
-
-                    # Total moments -> linearisation terms wrt to delta_euler
-                    Crr_grav[3:6, -4:] += Xcg_Askew.dot(algebra.der_CquatT_by_v(tsstr.quat, fgravG))
+                    # Crr_grav[3:6, -4:] -= Xcg_A_n_skew.dot(algebra.der_CquatT_by_v(tsstr.quat, fgravG))
+                    # Crr_grav[3:6, -4:] += algebra.skew(fgravG).dot(algebra.der_Cquat_by_v(tsstr.quat, Xcg_A_n))
 
                 # Rigid equations always in A frame
                 # Total forces -> linearisation terms wrt to delta_euler
-                Crr_grav[:3, -4:] -= algebra.der_CquatT_by_v(tsstr.quat, fgravG)
+                # Having issues when including the total forces at the A frame.... system appears to work well without
+                # except when post processing the forces. If this term is included the post process plotting of the
+                # forces improves but there is no longer a restoring moment
+                # Crr_grav[:3, -4:] -= algebra.der_CquatT_by_v(tsstr.quat, fgravG)
 
                 # Total moments -> linearisation terms wrt to delta_euler
-                Crr_grav[3:6, -4:] -= Xcg_Askew.dot(algebra.der_CquatT_by_v(tsstr.quat, fgravG))
-
+                # Disregard - better to use total force and overall CG to include effect of A frame CG on moments
+                # Crr_grav[3:6, -4:] -= Xcg_Askew.dot(algebra.der_CquatT_by_v(tsstr.quat, fgravG))
+                # Crr_grav[3:6, -4:] -= Xcg_A_n_skew.dot(algebra.der_CquatT_by_v(tsstr.quat, fgravG))
+                # Crr_grav[3:6, -4:] -= algebra.der_CquatT_by_v(tsstr.quat, mgravG) - produces instability
 
             # Debugging:
             FgravA += fgravA
             FgravG += fgravG
+
+        # Crr_grav[:3, -4:] -= algebra.der_CquatT_by_v(tsstr.quat, FgravG)  # not ok - destroys restoring moment effect
+        
+        # Total moments due to gravity in A frame
+        Crr_grav[3:6, -4:] -= algebra.skew(Xcg_A).dot(algebra.der_CquatT_by_v(tsstr.quat, FgravG))
 
         # Update matrices
         self.Kstr[:flex_dof, :flex_dof] += Kss_grav
@@ -610,6 +619,8 @@ class FlexDynamic():
             # for debugging
             self.Crr_grav = Crr_grav
             self.Csr_grav = Csr_grav
+            self.Krs_grav = Krs_grav
+            self.Kss_grav = Kss_grav
 
         # Debug - update propagation equations
         # if not self.use_euler:

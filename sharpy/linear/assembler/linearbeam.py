@@ -304,15 +304,21 @@ class LinearBeam(BaseElement):
 
         # gravity forces - careful - debug
         C_grav = np.zeros((q.shape[0], q.shape[0]))
-        Crr = self.sys.Crr_grav
-        Csr = self.sys.Csr_grav
-        C_grav[:-rig_dof, -rig_dof:] = Csr
-        C_grav[-rig_dof:, -rig_dof:] = Crr
-        fgrav = -C_grav.dot(dqdt)
-        for i in range(gravity_forces.shape[0]-1):
-            #add bc at node - doing it manually here
-            gravity_forces[i+1, :] = fgrav[6*i:6*(i+1)]
-        gravity_forces[0, :] = fgrav[-10:-4]
+        K_grav = np.zeros_like(C_grav)
+        try:
+            Crr = self.sys.Crr_grav
+            Csr = self.sys.Csr_grav
+            C_grav[:-rig_dof, -rig_dof:] = Csr
+            C_grav[-rig_dof:, -rig_dof:] = Crr
+            K_grav[-rig_dof:, :-rig_dof] = self.sys.Krs_grav
+            K_grav[:-rig_dof, :-rig_dof] = self.sys.Kss_grav
+            fgrav = -C_grav.dot(dqdt) - K_grav.dot(q)
+            for i in range(gravity_forces.shape[0]-1):
+                #add bc at node - doing it manually here
+                gravity_forces[i+1, :] = fgrav[6*i:6*(i+1)]
+            gravity_forces[0, :] = fgrav[-10:-4] - np.sum(gravity_forces[1:], 0)
+        except AttributeError:
+            pass
 
         current_time_step = struct_tstep.copy()
         current_time_step.q = q + struct_tstep.q
