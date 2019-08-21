@@ -7,6 +7,8 @@ import sharpy.utils.algebra as algebra
 import scipy.linalg as sclalg
 import sharpy.utils.h5utils as h5utils
 from sharpy.utils.datastructures import LinearTimeStepInfo
+import sharpy.utils.cout_utils as cout
+import time
 import pandas as pd
 
 
@@ -88,7 +90,11 @@ class LinearDynamicSimulation(BaseSolver):
 
         # Use the scipy linear solver
         sys = libss.ss_to_scipy(ss)
+        cout.cout_wrap('Solving linear system using scipy...')
+        t0 = time.time()
         out = sys.output(u, t=t_dom, x0=x0)
+        ts = time.time() - t0
+        cout.cout_wrap('\tSolved in %.2fs' % ts, 1)
 
         t_out = out[0]
         x_out = out[2]
@@ -97,6 +103,7 @@ class LinearDynamicSimulation(BaseSolver):
         process = True  # Under development
         if process:
             # Pack state variables into linear timestep info
+            cout.cout_wrap('Plotting results...')
             for n in range(len(t_out)-1):
                 tstep = LinearTimeStepInfo()
                 tstep.x = x_out[n, :]

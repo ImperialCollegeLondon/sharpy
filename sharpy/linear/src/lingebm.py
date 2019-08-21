@@ -1,6 +1,8 @@
 """
-Class to store linear uvlm solver
+Linear beam model class
+
 S. Maraniello, Aug 2018
+N. Goizueta
 """
 
 import numpy as np
@@ -315,8 +317,7 @@ class FlexDynamic():
 
         Notes:
 
-            As part of a more detailed overview of the function, the gravity forces will be linearised to express them in terms
-            of the beam formulation input variables:
+            The gravity forces are linearised to express them in terms of the beam formulation input variables:
 
                 * Nodal forces: :math:`\delta \mathbf{f}_A`
 
@@ -326,109 +327,150 @@ class FlexDynamic():
 
                 * Total moments (rigid body equations): :math:`\delta \mathbf{M}_A`
 
-            The gravity forces are naturally expressed in G (inertial) frame
+            Gravity forces are naturally expressed in ``G`` (inertial) frame
 
-            .. math:: \mathbf{f}_G = \mathbf{M\,g}
+            .. math:: \mathbf{f}_{G,0} = \mathbf{M\,g}
 
-            where the mass matrix is linearised at the linearisation condition.
+            where the :math:`\mathbf{M}` is the tangent mass matrix obtained at the linearisation reference.
 
-            To obtain the gravity forces expressed in A frame as required we make use of the transformation matrices
+            To obtain the gravity forces expressed in A frame we make use of the projection matrices
 
-            .. math:: \mathbf{f}_A = C^{AG}(\Phi) \mathbf{f}_G
+            .. math:: \mathbf{f}_A = C^{AG}(\boldsymbol{\chi}) \mathbf{f}_{G,0}
 
-            Linearising the above
+            that projects a vector in the inertial frame ``G`` onto the body attached frame ``A``.
 
-            .. math:: \delta \mathbf{f}_A = C^{AG} \delta \mathbf{f}_G + \frac{\partial}{\partial \Phi}(C^{AG} \mathbf{f}_G) \delta\Phi
+            The projection of a vector can then be linearised as
 
-            The gravity moments (these will be non zero only when there is an offset lumped mass)
+            .. math::
+                \delta \mathbf{f}_A = C^{AG} \delta \mathbf{f}_{G,0}
+                + \frac{\partial}{\partial \boldsymbol{\chi}}(C^{AG} \mathbf{f}_{G,0}) \delta\boldsymbol{\chi}.
 
-            .. math:: \mathbf{m}_B = \tilde{X}_{B,CG}C^{BA}C^{AG}\mathbf{f}_G
+            * Nodal forces:
 
-            Linearising:
+                The linearisation of the gravity forces acting at each node is simply
 
-            .. math:: \delta \mathbf{m}_B = \tilde{X}_{B,CG}\left(\frac{\partial}{\partial\Psi}(C^{BA}\mathbf{f}_A)\delta\Psi +
-                C^{BA}\frac{\partial}{\partial\Phi}(C^{AG}\mathbf{f}_G)\delta\Phi\right)
+                .. math::
+                    \delta \mathbf{f}_A =
+                    + \frac{\partial}{\partial \boldsymbol{\chi}}(C^{AG} \mathbf{f}_{G,0}) \delta\boldsymbol{\chi}
 
-            However, recall that the input moments are defined in tangential space, which needs to be linearised as well:
+                where it is assumed that :math:`\delta\mathbf{f}_G = 0`.
 
-            .. math:: \delta(T^T(\Psi) \mathbf{m}_B) = T_0^T \delta \mathbf{m}_B + \frac{\partial}{\partial \Psi}(T^T \mathbf{m}_B)\delta\Psi
+            * Nodal moments:
 
-            where the :math:`\delta \mathbf{m}_B` term has been defined above.
+                The gravity moments can be expressed in the local node frame of reference ``B`` by
 
-            The linearisation of the total gravity forces (contributing to the rigid body equations is done in a similar
-            manner).
+                .. math:: \mathbf{m}_B = \tilde{X}_{B,CG}C^{BA}(\Psi)C^{AG}(\boldsymbol{\chi})\mathbf{f}_{G,0}
 
-            .. math:: \mathbf{F}_A = \sum_n \mathbf{f}_A
+                The linearisation is given by:
 
-            which becomes
+                .. math::
+                    \delta \mathbf{m}_B = \tilde{X}_{B,CG}
+                    \left(\frac{\partial}{\partial\Psi}(C^{BA}\mathbf{f}_{A,0})\delta\Psi +
+                    C^{BA}\frac{\partial}{\partial\boldsymbol{\chi}}(C^{AG}\mathbf{f}_{G,0})\delta\boldsymbol{\chi}\right)
 
-            .. math:: \delta \mathbf{F}_A = \sum_n \delta \mathbf{f}_A
+                However, recall that the input moments are defined in tangential space
+                :math:`\delta(T^\top\mathbf{m}_B)` whose linearised expression is
 
-            The total moments, as opposed to the nodal moments, are expressed in A frame:
+                .. math:: \delta(T^T(\Psi) \mathbf{m}_B) = T_0^T \delta \mathbf{m}_B +
+                    \frac{\partial}{\partial \Psi}(T^T \mathbf{m}_{B,0})\delta\Psi
 
-            .. math:: \mathbf{M}_A = \sum_n \tilde{X}_{A,n}^{CG} C^{AG} \mathbf{f}_G
+                where the :math:`\delta \mathbf{m}_B` term has been defined above.
 
-            where :math:`X_{A,n}^{CG} = R_{A,n} + C^{AB}(\Psi)X_{B,n}^{CG}`. Its linearised form is
+            * Total forces:
 
-            .. math:: \delta X_{A,n}^{CG} = \delta R_{A,n} + \frac{\partial}{\partial \Psi}(C^{AB} X_{B,CG})\delta\Psi
+                The total forces include the contribution from all flexible degrees of freedom as well as the gravity
+                forces arising from the mass at the clamped node
 
-            Therefore, the overall linearisation of the total moment is defined as
+                .. math:: \mathbf{F}_A = \sum_n \mathbf{f}_A + \mathbf{f}_{A,clamped}
 
-            .. math:: \delta \mathbf{M}_A = \sum_n\left[
-                \tilde{X}_{A,n}^{CG} C^{AG}\delta \mathbf{f}_G +
-                \tilde{X}_{A,n}^{CG} \frac{\partial}{\partial \Phi}(C^{AG}\mathbf{f}_G)\delta \Phi
-                - \tilde{C}^{AG}\mathbf{f}_G \delta X_{A,n}^{CG} \right]
+                which becomes
+
+                .. math:: \delta \mathbf{F}_A = \sum_n \delta \mathbf{f}_A +
+                    \frac{\partial}{\partial\boldsymbol{\chi}}\left(C^{AG}\mathbf{f}_{G,clamped}\right)
+                    \delta\boldsymbol{\chi}.
+
+            * Total moments:
+
+                The total moments, as opposed to the nodal moments, are expressed in A frame and again require the
+                addition of the moments from the flexible structural nodes as well as the ones from the clamped node
+                itself.
+
+                .. math:: \mathbf{M}_A = \sum_n \tilde{X}_{A,n}^{CG} C^{AG} \mathbf{f}_{n,G}
+                    + \tilde{X}_{A,clamped}C^{AG}\mathbf{f}_{G, clamped}
+
+                where :math:`X_{A,n}^{CG} = R_{A,n} + C^{AB}(\Psi)X_{B,n}^{CG}`. Its linearised form is
+
+                .. math:: \delta X_{A,n}^{CG} = \delta R_{A,n}
+                    + \frac{\partial}{\partial \Psi}(C^{AB} X_{B,CG})\delta\Psi
+
+                Therefore, the overall linearisation of the total moment is defined as
+
+                .. math:: \delta \mathbf{M}_A =
+                    \tilde{X}_{A,total}^{CG} \frac{\partial}{\partial \boldsymbol{\chi}}(C^{AG}\mathbf{F}_{G, total})
+                    \delta \boldsymbol{\chi}
+                    -\sum_n \tilde{C}^{AG}\mathbf{f}_{G,0} \delta X_{A,n}^{CG}
+
+                where :math:`X_{A, total}` is the centre of gravity of the entire system expressed in ``A`` frame and
+                :math:`\mathbf{F}_{G, total}` are the gravity forces of the overall system in ``G`` frame, including the
+                contributions from the clamped node.
 
 
-            As it can be noticed, the linearisation introduces damping and stiffening terms. These terms will form part of
-            the stiffness and damping matrices. The terms related to the orientation of the vehicle will contribute to the
-            damping matrix and those that are affected by the flexible degrees of freedom will form part of the stiffness
-            matrix.
+            The linearisation introduces damping and stiffening terms since the :math:`\delta\boldsymbol{\chi}` and
+            :math:`\delta\boldsymbol{\Psi}` terms are found in the damping and stiffness matrices respectively.
 
-            This is constructed for all nodes bar the clamped one in the following way:
+            Therefore, the beam matrices need updating to account for these terms:
 
-                * Terms from the linearisation of the nodal moments will be assembled in the rows corresponding to moment
-                  equations and columns corresponding to the cartesian rotation vector
+                * Terms from the linearisation of the nodal moments will be assembled in the rows corresponding to
+                  moment equations and columns corresponding to the cartesian rotation vector
 
-                    .. math:: K_{ss}^{m,\Psi} \leftarrow -T_0^T \tilde{X}_{B,CG} \frac{\partial}{\partial\Psi}(C^{BA}\mathbf{f}_A)
-                        -\frac{\partial}{\partial \Psi}(T^T \mathbf{m}_B)
+                    .. math:: K_{ss}^{m,\Psi} \leftarrow -T_0^T \tilde{X}_{B,CG}
+                        \frac{\partial}{\partial\Psi}(C^{BA}\mathbf{f}_{A,0})
+                        -\frac{\partial}{\partial \Psi}(T^T \mathbf{m}_{B,0})
 
-                * Terms from the linearisation of the translation forces with respect to the orientation are assembled in the
-                  damping matrix, the rows corresponding to translational forces and columns to orientation degrees of freedom
+                * Terms from the linearisation of the translation forces with respect to the orientation are assembled
+                  in the damping matrix, the rows corresponding to translational forces and columns to orientation
+                  degrees of freedom
 
-                    .. math:: C_{sr}^{f,\Phi} \leftarrow - \frac{\partial}{\partial \Phi}(C^{AG} \mathbf{f}_G)
+                    .. math:: C_{sr}^{f,\boldsymbol{\chi}} \leftarrow -
+                        \frac{\partial}{\partial \boldsymbol{\chi}}(C^{AG} \mathbf{f}_{G,0})
 
-                * Terms from the linearisation of the moments with respect to the orientation are assembled in the damping
-                  matrix, with the rows correspondant to the moments and the columns to the orientation degrees of freedom
+                * Terms from the linearisation of the moments with respect to the orientation are assembled in the
+                  damping matrix, with the rows correspondant to the moments and the columns to the orientation degrees
+                  of freedom
 
-                    .. math:: C_{sr}^{m,\Phi} \leftarrow - T_0^T\tilde{X}_{B,CG}C^{BA}\frac{\partial}{\partial\Phi}(C^{AG}\mathbf{f}_G)
+                    .. math:: C_{sr}^{m,\boldsymbol{\chi}} \leftarrow -
+                        T_0^T\tilde{X}_{B,CG}C^{BA}\frac{\partial}{\partial\boldsymbol{\chi}}(C^{AG}\mathbf{f}_{G,0})
 
                 * Terms from the linearisation of the total forces with respect to the orientation correspond to the
-                  rigid body equations in the damping matrix, the rows to the translational forces and columns to the orientation
+                  rigid body equations in the damping matrix, the rows to the translational forces and columns to the
+                  orientation
 
-                    .. math:: C_{rr}^{F,\Phi} \leftarrow - \sum_n \frac{\partial}{\partial \Phi}(C^{AG} \mathbf{f}_G)
+                    .. math:: C_{rr}^{F,\boldsymbol{\chi}} \leftarrow
+                        - \sum_n \frac{\partial}{\partial \boldsymbol{\chi}}(C^{AG} \mathbf{f}_{G,0})
 
-                * Terms from the linearisation of the total moments with respect to the orientation correspond to the rigid
-                  body equations in the damping matrix, the rows to the moments and the columns to the orientation
+                * Terms from the linearisation of the total moments with respect to the orientation correspond to the
+                  rigid body equations in the damping matrix, the rows to the moments and the columns to the orientation
 
-                    .. math:: C_{rr}^{M,\Phi} \leftarrow - \sum_n\tilde{X}_{A,n}^{CG} \frac{\partial}{\partial \Phi}(C^{AG}\mathbf{f}_G)
+                    .. math:: C_{rr}^{M,\boldsymbol{\chi}} \leftarrow
+                        - \sum_n\tilde{X}_{A,n}^{CG} \frac{\partial}{\partial \boldsymbol{\chi}}(C^{AG}\mathbf{f}_{G,0})
 
                 * Terms from the linearisation of the total moments with respect to the nodal position :math:`R_A` are
                   included in the stiffness matrix, the rows corresponding to the moments in the rigid body
                   equations and the columns to the nodal position
 
-                    .. math:: K_{rs}^{M,R} \leftarrow + \sum_n \tilde{\mathbf{f}_A}
+                    .. math:: K_{rs}^{M,R} \leftarrow + \sum_n \tilde{\mathbf{f}_{A,0}}
 
-                * Terms from the linearisation of the total moments with respect to the cartesian rotation vector are included
-                  in the stiffness matrix, the rows corresponding to the moments in the rigid body equations and the columns
-                  to the cartesian rotation vector
+                * Terms from the linearisation of the total moments with respect to the cartesian rotation vector are
+                  included in the stiffness matrix, the rows corresponding to the moments in the rigid body equations
+                  and the columns to the cartesian rotation vector
 
-                    .. math:: K_{rs}^{M, \Psi} \leftarrow + \sum_n \tilde{\mathbf{f}_A}\frac{\partial}{\partial \Psi}(C^{AB} X_{B,CG})
+                    .. math:: K_{rs}^{M, \Psi} \leftarrow
+                        + \sum_n \tilde{\mathbf{f}_{A,0}}\frac{\partial}{\partial \Psi}(C^{AB} X_{B,CG})
+                    
         """
 
         if tsstr is None:
             tsstr = self.tsstruct0
-
 
         if self.settings['print_info'].value:
             try:
@@ -453,7 +495,7 @@ class FlexDynamic():
             # Cga = algebra.quat2rotation(tsstr.quat)
             # Pga = Cga.T
             # Pag = Pga.T
-            Cag = algebra.quat2rotation(tsstr.quat)
+            Cag = algebra.quat2rotation(tsstr.quat)  # Rotation matrix FoR G rotated by quat
             Pag = Cag.T
             Pga = Pag.T
 
@@ -481,12 +523,12 @@ class FlexDynamic():
 
         for i_node in range(num_node):
             # Gravity forces at the linearisation condition (from NL SHARPy in A frame)
-            # fgravA = tsstr.gravity_forces[i_node, :3]
-            # fgravG = Pga.dot(fgravA)
-            fgravG = tsstr.gravity_forces[i_node, :3]
-            mgravG = tsstr.gravity_forces[i_node, :3]
+            fgravA = tsstr.gravity_forces[i_node, :3]
+            fgravG = Pga.dot(fgravA)
+            # fgravG = tsstr.gravity_forces[i_node, :3]
+            mgravA = tsstr.gravity_forces[i_node, 3:]
             fgravA = Pag.dot(fgravG)
-            mgravA = Pag.dot(mgravG)
+            mgravG = Pag.dot(mgravA)
 
             # Get nodal position - A frame
             Ra = tsstr.pos[i_node, :]
@@ -537,6 +579,9 @@ class FlexDynamic():
                     cout.cout_wrap("Node %2d \t-> B %.3f %.3f %.3f" %(i_node, Xcg_B[0], Xcg_B[1], Xcg_B[2]), 2)
                     cout.cout_wrap("\t\t\t-> A %.3f %.3f %.3f" %(Xcg_A_n[0], Xcg_A_n[1], Xcg_A_n[2]), 2)
                     cout.cout_wrap("\t\t\t-> G %.3f %.3f %.3f" %(Xcg_G_n[0], Xcg_G_n[1], Xcg_G_n[2]), 2)
+                    cout.cout_wrap("\tNode mass:", 2)
+                    cout.cout_wrap("\t\tMatrix: %.4f" % Mss_node[0, 0], 2)
+                    cout.cout_wrap("\t\tGrav: %.4f" % (np.linalg.norm(fgravG)/9.81), 2)
 
             if self.use_euler:
                 if bc_at_node != 1:
@@ -578,13 +623,13 @@ class FlexDynamic():
                     Krs_grav[3:6, jj_rot] += np.dot(algebra.skew(fgravA), algebra.der_Ccrv_by_v(psi, Xcg_B))
 
                     # Nodal forces due to gravity -> linearisation terms wrt to delta_euler
-                    Csr_grav[jj_tra, -4:] -= algebra.der_CquatT_by_v(tsstr.quat, fgravG) # ok
-                    # Crr_grav[:3, -4:] -= algebra.der_CquatT_by_v(tsstr.quat, fgravG)  # not ok - see below
+                    # Csr_grav[jj_tra, -4:] -= algebra.der_CquatT_by_v(tsstr.quat, fgravG) # ok
+                    # Crr_grav[:3, -4:] += algebra.der_CquatT_by_v(tsstr.quat, fgravG)  # not ok - see below
 
                     # Nodal moments due to gravity -> linearisation terms wrt to delta_euler
                     Csr_grav[jj_rot, -4:] -= Tan.dot(Xcg_Bskew.dot(Cba.dot(algebra.der_CquatT_by_v(tsstr.quat, fgravG))))
 
-                    # Crr_grav[3:6, -4:] -= Xcg_A_n_skew.dot(algebra.der_CquatT_by_v(tsstr.quat, fgravG))
+                    # Crr_debug[3:6, -4:] -= Xcg_A_n_skew.dot(algebra.der_CquatT_by_v(tsstr.quat, fgravG))
                     # Crr_grav[3:6, -4:] += algebra.skew(fgravG).dot(algebra.der_Cquat_by_v(tsstr.quat, Xcg_A_n))
 
                 # Rigid equations always in A frame
@@ -605,7 +650,7 @@ class FlexDynamic():
             FgravG += fgravG
 
         # Crr_grav[:3, -4:] -= algebra.der_CquatT_by_v(tsstr.quat, FgravG)  # not ok - destroys restoring moment effect
-        
+
         # Total moments due to gravity in A frame
         Crr_grav[3:6, -4:] -= algebra.skew(Xcg_A).dot(algebra.der_CquatT_by_v(tsstr.quat, FgravG))
 
