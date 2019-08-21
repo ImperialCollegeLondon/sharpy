@@ -604,10 +604,10 @@ class FlexDynamic():
 
                 # Rigid equations always in A frame
                 # Total forces -> linearisation terms wrt to delta_euler
-                Crr_grav[:3, -3:] -= algebra.der_Peuler_by_v(tsstr.euler, fgravG)
+                # Crr_grav[:3, -3:] -= algebra.der_Peuler_by_v(tsstr.euler, fgravG)
 
                 # Total moments -> linearisation terms wrt to delta_euler
-                Crr_grav[3:6, -3:] -= Xcg_Askew.dot(algebra.der_Peuler_by_v(tsstr.euler, fgravG))
+                # Crr_grav[3:6, -3:] -= Xcg_Askew.dot(algebra.der_Peuler_by_v(tsstr.euler, fgravG))
 
             else:
                 if bc_at_node != 1:
@@ -623,8 +623,8 @@ class FlexDynamic():
                     Krs_grav[3:6, jj_rot] += np.dot(algebra.skew(fgravA), algebra.der_Ccrv_by_v(psi, Xcg_B))
 
                     # Nodal forces due to gravity -> linearisation terms wrt to delta_euler
-                    # Csr_grav[jj_tra, -4:] -= algebra.der_CquatT_by_v(tsstr.quat, fgravG) # ok
-                    # Crr_grav[:3, -4:] += algebra.der_CquatT_by_v(tsstr.quat, fgravG)  # not ok - see below
+                    Csr_grav[jj_tra, -4:] -= algebra.der_CquatT_by_v(tsstr.quat, fgravG) # ok
+                    # Crr_grav[:3, -4:] -= algebra.der_CquatT_by_v(tsstr.quat, fgravG)  # not ok - see below
 
                     # Nodal moments due to gravity -> linearisation terms wrt to delta_euler
                     Csr_grav[jj_rot, -4:] -= Tan.dot(Xcg_Bskew.dot(Cba.dot(algebra.der_CquatT_by_v(tsstr.quat, fgravG))))
@@ -649,10 +649,16 @@ class FlexDynamic():
             FgravA += fgravA
             FgravG += fgravG
 
-        # Crr_grav[:3, -4:] -= algebra.der_CquatT_by_v(tsstr.quat, FgravG)  # not ok - destroys restoring moment effect
+        if self.use_euler:
+            Crr_grav[:3, -3:] -= algebra.der_Peuler_by_v(tsstr.euler, FgravG)  # not ok - destroys restoring moment effect
 
-        # Total moments due to gravity in A frame
-        Crr_grav[3:6, -4:] -= algebra.skew(Xcg_A).dot(algebra.der_CquatT_by_v(tsstr.quat, FgravG))
+            # Total moments due to gravity in A frame
+            Crr_grav[3:6, -3:] -= algebra.skew(Xcg_A).dot(algebra.der_Peuler_by_v(tsstr.euler, FgravG))
+        else:
+            Crr_grav[:3, -4:] -= algebra.der_CquatT_by_v(tsstr.quat, FgravG)  # not ok - destroys restoring moment effect
+
+            # Total moments due to gravity in A frame
+            Crr_grav[3:6, -4:] -= algebra.skew(Xcg_A).dot(algebra.der_CquatT_by_v(tsstr.quat, FgravG))
 
         # Update matrices
         self.Kstr[:flex_dof, :flex_dof] += Kss_grav

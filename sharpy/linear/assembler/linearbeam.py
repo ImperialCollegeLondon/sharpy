@@ -47,7 +47,7 @@ class LinearBeam(BaseElement):
             self.settings = custom_settings
         else:
             try:
-                self.settings = data.settings['LinearAssembler'][self.sys_id]
+                self.settings = data.settings['LinearAssembler']['linear_system_settings']
             except KeyError:
                 pass
         settings.to_custom_types(self.settings, self.settings_types, self.settings_default)
@@ -111,6 +111,8 @@ class LinearBeam(BaseElement):
         elif self.sys.SScont:
             self.ss = self.sys.SScont
 
+        return self.ss
+
     def x0(self):
         x = np.concatenate((self.tsstruct0.q, self.tsstruct0.dqdt))
         return x
@@ -150,8 +152,8 @@ class LinearBeam(BaseElement):
         # Update variables position
         for rem_item in removed_db:
             for item in used_vars_db:
-                if used_vars_db[item].first_pos < removed_db[rem_item].first_pos:
-                    pass
+                if used_vars_db[item].rows_loc[0] < removed_db[rem_item].first_pos:
+                    continue
                 else:
                     # Update order and position
                     used_vars_db[item].first_pos -= removed_db[rem_item].size
