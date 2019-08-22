@@ -1,5 +1,5 @@
 import ctypes as ct
-
+import sys
 import numpy as np
 
 import sharpy.aero.utils.mapping as mapping
@@ -52,6 +52,8 @@ class StaticCoupled(BaseSolver):
 
         self.previous_force = None
 
+        self.residual_table = None
+
     def initialise(self, data, input_dict=None):
         self.data = data
         if input_dict is None:
@@ -60,11 +62,20 @@ class StaticCoupled(BaseSolver):
             self.settings = input_dict
         settings.to_custom_types(self.settings, self.settings_types, self.settings_default)
 
+        self.print_info = self.settings['print_info']
+
         self.structural_solver = solver_interface.initialise_solver(self.settings['structural_solver'])
         self.structural_solver.initialise(self.data, self.settings['structural_solver_settings'])
         self.aero_solver = solver_interface.initialise_solver(self.settings['aero_solver'])
         self.aero_solver.initialise(self.structural_solver.data, self.settings['aero_solver_settings'])
         self.data = self.aero_solver.data
+
+        if self.print_info:
+            self.residual_table = cout.TablePrinter(9, 8, ['g', 'g', 'f', 'f', 'f', 'f', 'f', 'f', 'f'])
+            self.residual_table.field_length[0] = 3
+            self.residual_table.field_length[1] = 3
+            self.residual_table.field_length[2] = 10
+            self.residual_table.print_header(['iter', 'step', 'log10(res)', 'Fx', 'Fy', 'Fz', 'Mx', 'My', 'Mz'])
 
     def increase_ts(self):
         self.data.ts += 1
@@ -100,9 +111,6 @@ class StaticCoupled(BaseSolver):
                 self.increase_ts()
 
             for i_iter in range(self.settings['max_iter'].value):
-                if self.settings['print_info'].value:
-                    cout.cout_wrap('i_step: %u, i_iter: %u' % (i_step, i_iter))
-
                 # run aero
                 self.data = self.aero_solver.run()
 
@@ -114,7 +122,7 @@ class StaticCoupled(BaseSolver):
                     self.data.structure.timestep_info[self.data.ts].pos,
                     self.data.structure.timestep_info[self.data.ts].psi,
                     self.data.structure.node_master_elem,
-                    self.data.structure.master,
+                    self.data.structure.connectivities,
                     self.data.structure.timestep_info[self.data.ts].cag())
 
                 if not self.settings['relaxation_factor'].value == 0.:
@@ -134,6 +142,9 @@ class StaticCoupled(BaseSolver):
                 # run beam
                 self.data = self.structural_solver.run()
                 self.structural_solver.settings['gravity'] = ct.c_double(old_g)
+                (self.data.structure.timestep_info[self.data.ts].total_forces[0:3],
+                 self.data.structure.timestep_info[self.data.ts].total_forces[3:6]) = (
+                        self.extract_resultants(self.data.structure.timestep_info[self.data.ts]))
 
                 # update grid
                 self.aero_solver.update_step()
@@ -145,9 +156,6 @@ class StaticCoupled(BaseSolver):
                     self.cleanup_timestep_info()
                     break
 
-        if self.settings['print_info']:
-            resultants = self.extract_resultants()
-            cout.cout_wrap('Resultant forces and moments: ' + str(resultants))
         return self.data
 
     def convergence(self, i_iter, i_step):
@@ -155,16 +163,44 @@ class StaticCoupled(BaseSolver):
             cout.cout_wrap('StaticCoupled did not converge!', 0)
             # quit(-1)
 
+
         return_value = None
         if i_iter == 0:
             self.initial_residual = np.linalg.norm(self.data.structure.timestep_info[self.data.ts].pos)
             self.previous_residual = self.initial_residual
             self.current_residual = self.initial_residual
+            if self.print_info:
+                forces = self.data.structure.timestep_info[self.data.ts].total_forces
+                self.residual_table.print_line([i_iter,
+                        i_step,
+                        0.0,
+                        forces[0],
+                        forces[1],
+                        forces[2],
+                        forces[3],
+                        forces[4],
+                        forces[5],
+                        ])
             return False
 
         self.current_residual = np.linalg.norm(self.data.structure.timestep_info[self.data.ts].pos)
-        if self.settings['print_info'].value:
-            cout.cout_wrap('Res = %8e' % (np.abs(self.current_residual - self.previous_residual)/self.previous_residual), 2)
+        if self.print_info:
+            forces = self.data.structure.timestep_info[self.data.ts].total_forces
+            res_print = np.NINF
+            if (np.abs(self.current_residual - self.previous_residual) >
+                sys.float_info.epsilon*10):
+                res_print = np.log10(np.abs(self.current_residual - self.previous_residual)/self.initial_residual)
+
+            self.residual_table.print_line([i_iter,
+                    i_step,
+                    res_print,
+                    forces[0],
+                    forces[1],
+                    forces[2],
+                    forces[3],
+                    forces[4],
+                    forces[5],
+                    ])
 
         if return_value is None:
             if np.abs(self.current_residual - self.previous_residual)/self.initial_residual < self.settings['tolerance'].value:

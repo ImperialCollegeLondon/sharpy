@@ -30,8 +30,7 @@ Contents
    :maxdepth: 2
 
    content/installation
-   content/presharpy
-   content/run_sharpy
+   content/sharpy_intro
    content/aero
    content/generators
    content/structure

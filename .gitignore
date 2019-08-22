@@ -90,12 +90,19 @@ ENV/
 *.*~
 *.swp
 *.txt
+
+# SHARPy stuff
 *.h5
+*.sharpy
+
 
 # project dependant stuff
 lib/*
 output/*
 .idea
+
+# figure folders
+*figs/*
 
 *.csv
 *.png
@@ -134,3 +141,10 @@ cases/linear/coupled/res/*
 figs/*
 
 tests/linear/rom/figs/
+
+\.spyproject/
+
+*.sharpy
+
+scripts/optimiser/cases
+

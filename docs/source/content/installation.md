@@ -110,14 +110,16 @@ the name `sharpy_env`.
 
 Once the folder structure has been laid out, the aerodynamic and structural libraries can be compiled.
 Ensure that the SHARPy environment is active in the session. Your terminal prompt line should begin with
-```bash
-(sharpy_env) [usr@host]
-```
+1. 
+    ```bash
+    (sharpy_env) [usr@host]
+    ```
 
 If it is not the case, activate the environment. Otherwise xbeam and UVLM will not compile
-```bash
-source activate sharpy_env
-```
+2. 
+    ```bash
+    source activate sharpy_env
+    ```
 
 
 #### Compiling xbeam
@@ -179,7 +181,7 @@ __Common issues when compiling xbeam__
     ```bash
     scl enable devtoolset-6 bash
     ```
-    Check that the version is now as required and clean ```make clean``` and redo the installation ```sh runmake.sh```
+    Check that the version is now as required and clean `make clean` and redo the installation `sh runmake.sh`
 
 #### Compiling UVLM
 
@@ -269,12 +271,14 @@ __*TODO* review Geradin case and update sharpy calls__
 
 __TUTORIAL OUT OF DATE__
 
-This command generates the required files for running a static, clamped beam.
 
-```bash
-cd ../sharpy
-python ./tests/beam/static/geradin_cardona/generate_geradin_data.py
-```
+
+1.  This command generates the required files for running a static, clamped beam: 
+    ```sh
+    cd ../sharpy
+    python ./tests/beam/static/geradin_cardona/generate_geradin.py
+    ```
+    
 Now you should see a success message, and if you check the
 `./tests/beam/static/geradin_cardona/` folder, you should see two new files:
 + geradin_cardona.solver.txt
@@ -318,5 +322,5 @@ If you try to open the `fem.h5` file, you'll get an error or something meaningle
 
 Congratulations, you've run your first case.
 
-If you want to know how to configure your own cases, check the iPython notebook
-[Geradin and Cardona Static Structural Case](../../../tests/xbeam/geradin/geradin_cardona.ipynb).
+If you want to know how to configure your own cases, check 
+[Geradin and Cardona Static Structural Case](../../../tests/xbeam/geradin/generate_geradin.py).

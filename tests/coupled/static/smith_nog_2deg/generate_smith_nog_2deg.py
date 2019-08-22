@@ -65,7 +65,7 @@ def generate_fem_file():
     y = np.zeros((num_node, ))
     z = np.zeros((num_node, ))
     # struct twist
-    structural_twist = np.zeros_like(x)
+    structural_twist = np.zeros((num_elem, num_node_elem))
     # beam number
     beam_number = np.zeros((num_elem, ), dtype=int)
     # frame of reference delta

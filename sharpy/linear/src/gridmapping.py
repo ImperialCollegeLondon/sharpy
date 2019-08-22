@@ -81,11 +81,11 @@ class AeroGridMap():
 		# vectors defined at vertices
 		self.ind_1d_vert_vert=range(3*self.Kzeta)
 		self.ind_3d_vert_vect=np.unravel_index(self.ind_1d_vert_vert,
-							   				dims=self.shape_vert_vect,order='C')
+						       dims=self.shape_vert_vect,order='C')
 		# scalars defined at panels
 		self.ind_1d_pan_scal=range(self.K)
 		self.ind_2d_pan_scal=np.unravel_index(self.ind_1d_pan_scal,
-							   				 dims=self.shape_pan_scal,order='C')
+                                                      dims=self.shape_pan_scal,order='C')
 
 
 		# ### mapping to/from 1D arrays

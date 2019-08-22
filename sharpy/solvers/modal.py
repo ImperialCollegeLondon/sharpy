@@ -26,91 +26,76 @@ class Modal(BaseSolver):
     Extracts the ``M``, ``K`` and ``C`` matrices from the ``Fortran`` library for the beam. Depending on the choice of
     modal projection, these may or may not be transformed to a state-space form to compute the eigenvalues and mode shapes
     of the structure.
-
-    Args:
-        data (ProblemData): object with problem data
-        custom_settings (dict): custom settings that override the settings in the solver ``.txt`` file. None by default
-
-    Attributes:
-        settings (dict): Name-value pair of settings employed by solver.
-
-            ==========================  =========  =======================================================================  ============
-            Name                        Type       Description                                                              Default
-            ==========================  =========  =======================================================================  ============
-            ``print_info``              ``bool``   Print modal calculations to terminal                                     ``True``
-            ``folder``                  ``str``    Output folder                                                            ``./output``
-            ``use_undamped_modes``      ``bool``   Basis for modal projection                                               ``True``
-            ``NumLambda``               ``int``    Number of modes to retain                                                ``20``
-            ``keep_linear_matrices``    ``bool``   Retain linear ``M``, ``K`` and ``C`` matrices at each time step          ``True``
-            ``write_modes_vtk``         ``bool``   Write displacement mode shapes in vtk file (for ParaView)                ``True``
-            ``print_matrices``          ``bool``   Output ``M``, ``K``, and ``C`` matrices to output directory              ``False``
-            ``write_dat``               ``bool``   Output mode shapes, frequencies and damping as .dat to output directory  ``True``
-            ``continuous_eigenvalues``  ``bool``   Use continuous eigenvalues                                               ``False``
-            ``dt``                      ``float``  Delta to calculate continuous eigenvalues                                ``0``
-            ``plot_eigenvalues``        ``bool``   Plot eigenvalues on Argand diagram                                       ``False``
-            ``max_rotation_deg``        ``float``  Maximum rotation allowed for vtk file (degrees)                          ``15``
-            ``max_displacement``        ``float``  Maximum displacement allowed for vtk file                                ``0.15``
-            ==========================  =========  =======================================================================  ============
-
-        settings_types (dict): Acceptable data types for entries in ``settings``
-        settings_default (dict): Default values for the available ``settings``
-        data (ProblemData): object containing the information of the problem
-        folder (str): output folder name
-        filename_freq (str): Mode frequency output file name (.dat)
-        filename_damp (str): Mode damping output file name (.dat)
-        filename_shapes (str): Mode shapes output file name (.dat)
-
-    See Also:
-        .. py:class:: sharpy.utils.solver_interface.BaseSolver
-
     """
     solver_id = 'Modal'
+    solver_classification = 'modal'
+
+    settings_types = dict()
+    settings_default = dict()
+    settings_description = dict()
+
+    settings_types['print_info'] = 'bool'
+    settings_default['print_info'] = True
+    settings_description['print_info'] = 'Write status to screen'
+
+    settings_types['folder'] = 'str'
+    settings_default['folder'] = './output'
+    settings_description['folder'] = 'Output folder'
+
+    # solution options
+    settings_types['rigid_body_modes'] = 'bool'
+    settings_default['rigid_body_modes'] = False
+    settings_description['rigid_body_modes'] = 'Write modes with rigid body mode shapes'
+
+    settings_types['use_undamped_modes'] = 'bool'  # basis for modal projection
+    settings_default['use_undamped_modes'] = True
+    settings_description['use_undamped_modes'] = 'Project the modes onto undamped mode shapes'
+
+    settings_types['NumLambda'] = 'int'  # no. of different modes to retain
+    settings_default['NumLambda'] = 20  # doubles if use_undamped_modes is False
+    settings_description['NumLambda'] = 'Number of modes to retain'
+
+    settings_types['keep_linear_matrices'] = 'bool'  # attach linear M,C,K matrices to output dictionary
+    settings_default['keep_linear_matrices'] = True
+    settings_description['keep_linear_matrices'] = 'Save M, C and K matrices to output dictionary'
+
+    # output options
+    settings_types['write_modes_vtk'] = 'bool'  # write displacements mode shapes in vtk file
+    settings_default['write_modes_vtk'] = True
+    settings_description['write_modes_vtk'] = 'Write Paraview files with mode shapes'
+
+    settings_types['print_matrices'] = 'bool'  # print M,C,K matrices to dat file
+    settings_default['print_matrices'] = False
+    settings_description['print_matrices']  = 'Write M, C and K matrices to file'
+
+    settings_types['write_dat'] = 'bool'  # write modes shapes/freq./damp. to dat file
+    settings_default['write_dat'] = True
+    settings_description['write_dat'] = 'Write mode shapes, frequencies and damping to file'
+
+    settings_types['continuous_eigenvalues'] = 'bool'
+    settings_default['continuous_eigenvalues'] = False
+    settings_description['continuous_eigenvalues'] = 'Use continuous time eigenvalues'
+
+    settings_types['dt'] = 'float'
+    settings_default['dt'] = 0
+    settings_description['dt'] = 'Time step to compute discrete time eigenvalues'
+
+    settings_types['plot_eigenvalues'] = 'bool'
+    settings_default['plot_eigenvalues'] = False
+    settings_description['plot_eigenvalues'] = 'Plot to screen root locus diagram'
+
+    settings_types['max_rotation_deg'] = 'float'
+    settings_default['max_rotation_deg'] = 15.
+    settings_description['max_rotation_deg'] = 'Scale mode shape to have specified maximum rotation'
+
+    settings_types['max_displacement'] = 'float'
+    settings_default['max_displacement'] = 0.15
+    settings_description['max_displacement'] = 'Scale mode shape to have specified maximum displacement'
+
+    settings_table = settings.SettingsTable()
+    __doc__ += settings_table.generate(settings_types, settings_default, settings_description)
 
     def __init__(self):
-        self.settings_types = dict()
-        self.settings_default = dict()
-
-        self.settings_types['print_info'] = 'bool'
-        self.settings_default['print_info'] = True
-
-        self.settings_types['folder'] = 'str'
-        self.settings_default['folder'] = './output'
-
-        # solution options
-        self.settings_types['use_undamped_modes'] = 'bool'  # basis for modal projection
-        self.settings_default['use_undamped_modes'] = True
-
-        self.settings_types['NumLambda'] = 'int'  # no. of different modes to retain
-        self.settings_default['NumLambda'] = 20  # doubles if use_undamped_modes is False 
-
-        self.settings_types['keep_linear_matrices'] = 'bool'  # attach linear M,C,K matrices to output dictionary
-        self.settings_default['keep_linear_matrices'] = True
-
-        # output options
-        self.settings_types['write_modes_vtk'] = 'bool'  # write displacements mode shapes in vtk file
-        self.settings_default['write_modes_vtk'] = True        
-
-        self.settings_types['print_matrices'] = 'bool'  # print M,C,K matrices to dat file
-        self.settings_default['print_matrices'] = False
-
-        self.settings_types['write_dat'] = 'bool'  # write modes shapes/freq./damp. to dat file
-        self.settings_default['write_dat'] = True
-
-        self.settings_types['continuous_eigenvalues'] = 'bool'
-        self.settings_default['continuous_eigenvalues'] = False
-
-        self.settings_types['dt'] = 'float'
-        self.settings_default['dt'] = 0
-
-        self.settings_types['plot_eigenvalues'] = 'bool'
-        self.settings_default['plot_eigenvalues'] = False
-
-        self.settings_types['max_rotation_deg'] = 'float'
-        self.settings_default['max_rotation_deg'] = 15.
-
-        self.settings_types['max_displacement'] = 'float'
-        self.settings_default['max_displacement'] = 0.15
-
         self.data = None
         self.settings = None
 
@@ -118,6 +103,7 @@ class Modal(BaseSolver):
         self.filename_freq = None
         self.filename_damp = None
         self.filename_shapes = None
+        self.rigid_body_motion = None
 
     def initialise(self, data, custom_settings=None):
         self.data = data
@@ -128,6 +114,8 @@ class Modal(BaseSolver):
         settings.to_custom_types(self.settings,
                                  self.settings_types,
                                  self.settings_default)
+
+        self.rigid_body_motion = self.settings['rigid_body_modes'].value
 
         # load info from dyn dictionary
         self.data.structure.add_unsteady_information(
@@ -157,16 +145,16 @@ class Modal(BaseSolver):
         r"""
         Extracts the eigenvalues and eigenvectors of the clamped structure.
 
-        If ``use_undamped_modes == 1`` then the free vibration modes of the clamped structure are found solving:
+        If ``use_undamped_modes == True`` then the free vibration modes of the clamped structure are found solving:
 
             .. math:: \mathbf{M\,\ddot{\eta}} + \mathbf{K\,\eta} = 0
 
         that flows down to solving the non-trivial solutions to:
 
-            .. math:: (-\omega^2\,\mathbf{M} + \mathbf{K})\mathbf{\Phi} = 0
+            .. math:: (-\omega_n^2\,\mathbf{M} + \mathbf{K})\mathbf{\Phi} = 0
 
-        On the other hand, if the damped modes are chosen, the free vibration modes are found
-        solving the equation of motion of the form
+        On the other hand, if the damped modes are chosen because the system has damping, the free vibration
+        modes are found solving the equation of motion of the form:
 
             .. math:: \mathbf{M\,\ddot{\eta}} + \mathbf{C\,\dot{\eta}} + \mathbf{K\,\eta} = 0
 
@@ -178,15 +166,48 @@ class Modal(BaseSolver):
 
         and therefore the mode shapes and frequencies correspond to the solution of the eigenvalue problem
 
-            .. math:: \mathbf{A\,\Phi} = \mathbf{\Lambda\,\Phi}
+            .. math:: \mathbf{A\,\Phi} = \mathbf{\Lambda\,\Phi}.
+
+        From the eigenvalues, the following system characteristics are provided:
+
+            * Natural Frequency: :math:`\omega_n = |\lambda|`
+
+            * Damped natural frequency: :math:`\omega_d = \text{Im}(\lambda) = \omega_n \sqrt{1-\zeta^2}`
+
+            * Damping ratio: :math:`\zeta = -\frac{\text{Re}(\lambda)}{\omega_n}`
+
+        In addition to the above, the modal output dictionary includes the following:
+
+            * ``M``: Tangent mass matrix
+
+            * ``C``: Tangent damping matrix
+
+            * ``K``: Tangent stiffness matrix
+
+            * ``Ccut``: Modal damping matrix :math:`\mathbf{C}_m = \mathbf{\Phi}^T\mathbf{C}\mathbf{\Phi}`
+
+            * ``Kin_damp``: Forces gain matrix (when damped): :math:`K_{in} = \mathbf{\Phi}_L^T \mathbf{M}^{-1}`
+
+            * ``eigenvectors``: Right eigenvectors
+
+            * ``eigenvectors_left``: Left eigenvectors given when the system is damped
 
         Returns:
-            PreSharpy: updated data object with modal analysis
+            PreSharpy: updated data object with modal analysis as part of the last structural time step.
 
         """
         self.data.ts = len(self.data.structure.timestep_info) - 1
+
+        # Number of degrees of freedom
+        num_str_dof = self.data.structure.num_dof.value
+        if self.rigid_body_motion:
+            num_rigid_dof = 10
+        else:
+            num_rigid_dof = 0
+
+        num_dof = num_str_dof + num_rigid_dof
+
         # Initialize matrices
-        num_dof = self.data.structure.num_dof.value
         FullMglobal = np.zeros((num_dof, num_dof),
                                dtype=ct.c_double, order='F')
         FullKglobal = np.zeros((num_dof, num_dof),
@@ -194,10 +215,23 @@ class Modal(BaseSolver):
         FullCglobal = np.zeros((num_dof, num_dof),
                                dtype=ct.c_double, order='F')
 
-        # Obtain the matrices from the fortran library
-        xbeamlib.cbeam3_solv_modal(self.data.structure,
-                                   self.settings, self.data.ts,
-                                   FullMglobal, FullCglobal, FullKglobal)
+        if self.rigid_body_motion:
+            # Settings for the assembly of the matrices
+            try:
+                full_matrix_settings = self.data.settings['StaticCoupled']['structural_solver_settings']
+                full_matrix_settings['dt'] = ct.c_double(0.01)  # Dummy: required but not used
+                full_matrix_settings['newmark_damp'] = ct.c_double(1e-2)  # Dummy: required but not used
+            except KeyError:
+                full_matrix_settings = self.data.settings['DynamicCoupled']['structural_solver_settings']
+
+            # Obtain the tangent mass, damping and stiffness matrices
+            FullMglobal, FullCglobal, FullKglobal, FullQ = xbeamlib.xbeam3_asbly_dynamic(self.data.structure,
+                                          self.data.structure.timestep_info[self.data.ts],
+                                          full_matrix_settings)
+        else:
+            xbeamlib.cbeam3_solv_modal(self.data.structure,
+                                       self.settings, self.data.ts,
+                                       FullMglobal, FullCglobal, FullKglobal)
 
         # Print matrices
         if self.settings['print_matrices'].value:
@@ -226,8 +260,7 @@ class Modal(BaseSolver):
         #         elif(np.absolute(FullCglobal[i, j] + FullCglobal[j, i]) > np.finfo(float).eps):
         #             skewsymmetric_FullCglobal = False
 
-        NumLambda = min(self.data.structure.num_dof.value,
-                                               self.settings['NumLambda'].value)
+        NumLambda = min(num_dof, self.settings['NumLambda'].value)
 
         if self.settings['use_undamped_modes'].value:
 
@@ -248,27 +281,29 @@ class Modal(BaseSolver):
             # State-space model
             Minv_neg = -np.linalg.inv(FullMglobal)
             A = np.zeros((2*num_dof, 2*num_dof), dtype=ct.c_double, order='F')
-            A[range(num_dof), range(num_dof,2*num_dof)] = 1.
+            A[:num_dof, num_dof:] = np.eye(num_dof)
             A[num_dof:, :num_dof] = np.dot(Minv_neg, FullKglobal)
             A[num_dof:, num_dof:] = np.dot(Minv_neg, FullCglobal)
 
             # Solve the eigenvalues problem
             eigenvalues, eigenvectors_left, eigenvectors = \
                 sc.linalg.eig(A,left=True,right=True)
-            freq_damped = np.abs(eigenvalues)
-            damping = np.zeros_like(freq_damped)
-            iiflex = freq_damped > 1e-16*np.mean(freq_damped)
-            damping[iiflex] = eigenvalues[iiflex].real/freq_damped[iiflex]
+            freq_natural = np.abs(eigenvalues)
+            damping = np.zeros_like(freq_natural)
+            iiflex = freq_natural > 1e-16*np.mean(freq_natural)  # Pick only structural modes
+            damping[iiflex] = -eigenvalues[iiflex].real/freq_natural[iiflex]
+            freq_damped = freq_natural * np.sqrt(1-damping**2)
 
             # Order & downselect complex conj:
             # this algorithm assumes that complex conj eigenvalues appear consecutively 
             # in eigenvalues. For symmetrical systems, this relies  on the fact that:
             # - complex conj eigenvalues have the same absolute value (to machine 
             # precision) 
-            # - couples of eigenvalues with moltiplicity higher than 1, show larger 
+            # - couples of eigenvalues with multiplicity higher than 1, show larger
             # numerical difference
             order = np.argsort(freq_damped)[:2*NumLambda]
             freq_damped = freq_damped[order]
+            freq_natural = freq_natural[order]
             eigenvalues = eigenvalues[order]
 
             include = np.ones((2*NumLambda,), dtype=np.bool)
@@ -305,17 +340,19 @@ class Modal(BaseSolver):
             eigenvectors = (1./np.sqrt(dfact))*eigenvectors
         else:
             # unit normalise (diagonalises A)
-            for ii in range(NumLambda):
-                fact = 1./np.sqrt(np.dot(eigenvectors_left[:, ii], eigenvectors[:, ii]))
-                eigenvectors_left[:, ii] = fact*eigenvectors_left[:, ii]
-                eigenvectors[:, ii] = fact*eigenvectors[:, ii]
+            if not self.rigid_body_motion:
+                for ii in range(NumLambda):  # Issue - dot product = 0 when you have arbitrary damping
+                    fact = 1./np.sqrt(np.dot(eigenvectors_left[:, ii], eigenvectors[:, ii]))
+                    eigenvectors_left[:, ii] = fact*eigenvectors_left[:, ii]
+                    eigenvectors[:, ii] = fact*eigenvectors[:, ii]
 
         # Other terms required for state-space realisation
         # non-zero damping matrix
+        # Modal damping matrix
         if self.settings['use_undamped_modes'] and not(zero_FullCglobal):
             Ccut = np.dot(eigenvectors.T, np.dot(FullCglobal, eigenvectors))
         else:
-            Ccut=None
+            Ccut = None
 
         # forces gain matrix (nodal -> modal)
         if not self.settings['use_undamped_modes']:
@@ -368,10 +405,12 @@ class Modal(BaseSolver):
         else:
             outdict['modes'] = 'damped'
             outdict['freq_damped'] = freq_damped
+            outdict['freq_natural'] = freq_natural
 
         outdict['damping'] = damping
         outdict['eigenvalues'] = eigenvalues
         outdict['eigenvectors'] = eigenvectors
+
         if Ccut is not None:
             outdict['Ccut'] = Ccut
         if Kin_damp is not None:
@@ -461,7 +500,11 @@ def get_mode_zeta(data, eigvect):
     tsaero=data.aero.timestep_info[data.ts]
     tsstr=data.structure.timestep_info[data.ts]
 
-    num_dof=struct.num_dof.value
+    try:
+        num_dof=struct.num_dof.value
+    except AttributeError:
+        num_dof = struct.num_dof
+
     eigvect=eigvect[:num_dof]
 
     zeta_mode=[]
@@ -629,7 +672,14 @@ def write_modes_vtk(data, eigenvectors, NumLambda, filename_root,
     num_dof=struct.num_dof.value
     eigenvectors=eigenvectors[:num_dof,:]
 
-    for mode in range(NumLambda):
+    # Check whether rigid body motion is selected
+    # Skip rigid body modes
+    if data.settings['Modal']['rigid_body_modes'].value:
+        num_rigid_body = 10
+    else:
+        num_rigid_body = 0
+
+    for mode in range(num_rigid_body, NumLambda-num_rigid_body):
 
         # scale eigenvector
         eigvec=eigenvectors[:num_dof,mode]

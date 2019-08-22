@@ -1,10 +1,12 @@
 import ctypes as ct
 import numpy as np
+import copy
 
 from sharpy.structure.basestructure import BaseStructure
 import sharpy.structure.models.beamstructures as beamstructures
 import sharpy.utils.algebra as algebra
 from sharpy.utils.datastructures import StructTimeStepInfo
+import sharpy.utils.multibody as mb
 
 
 class Beam(BaseStructure):
@@ -55,10 +57,13 @@ class Beam(BaseStructure):
         self.fortran = dict()
 
         # Multibody variabes
-        self.mb_dict = dict()
+        self.ini_mb_dict = dict()
         self.body_number = None
         self.num_bodies = None
         self.FoR_movement = None
+
+        self.global_nodes_num = None
+        self.global_elems_num = None
 
 
     def generate(self, in_data, settings):
@@ -87,10 +92,11 @@ class Beam(BaseStructure):
         # mutibody: FoR information
         try:
             for ibody in range(self.num_bodies):
-                self.ini_info.mb_FoR_pos[ibody,:] = self.mb_dict["body_%02d" % ibody]["FoR_position"].copy()
-                self.ini_info.mb_FoR_vel[ibody,:] = self.mb_dict["body_%02d" % ibody]["FoR_velocity"].copy()
-                self.ini_info.mb_FoR_acc[ibody,:] = self.mb_dict["body_%02d" % ibody]["FoR_acceleration"].copy()
-                self.ini_info.mb_quat[ibody,:] = self.mb_dict["body_%02d" % ibody]["quat"].copy()
+                self.ini_info.mb_FoR_pos[ibody,:] = self.ini_mb_dict["body_%02d" % ibody]["FoR_position"].copy()
+                self.ini_info.mb_FoR_vel[ibody,:] = self.ini_mb_dict["body_%02d" % ibody]["FoR_velocity"].copy()
+                self.ini_info.mb_FoR_acc[ibody,:] = self.ini_mb_dict["body_%02d" % ibody]["FoR_acceleration"].copy()
+                self.ini_info.mb_quat[ibody,:] = self.ini_mb_dict["body_%02d" % ibody]["quat"].copy()
+                self.ini_info.mb_dict = copy.deepcopy(self.ini_mb_dict)
         except KeyError:
             self.ini_info.mb_FoR_pos[0,:] = self.ini_info.for_pos
             self.ini_info.mb_FoR_vel[0,:] = self.ini_info.for_vel
@@ -102,6 +108,9 @@ class Beam(BaseStructure):
 
         # connectivity information
         self.connectivities = in_data['connectivities'].astype(dtype=ct.c_int, order='F')
+
+        self.global_nodes_num = list(set(self.connectivities.reshape(-1)))
+        self.global_elems_num = np.arange(0, self.num_elem, 1)
 
         # stiffness data
         self.elem_stiffness = in_data['elem_stiffness'].copy()
@@ -145,7 +154,7 @@ class Beam(BaseStructure):
                     self.connectivities[ielem, :],
                     self.ini_info.pos[self.connectivities[ielem, :], :],
                     self.frame_of_reference_delta[ielem, :, :],
-                    self.structural_twist[self.connectivities[ielem, :]],
+                    self.structural_twist[ielem, :],
                     self.beam_number[ielem],
                     self.elem_stiffness[ielem],
                     self.elem_mass[ielem]))
@@ -234,12 +243,12 @@ class Beam(BaseStructure):
         #         self.dynamic_input[it]['trayectories'] = None
 
 # TODO ADC: necessary? I don't think so
-        try:
-            for it in range(num_steps):
-                self.dynamic_input[it]['enforce_trajectory'] = dyn_dict['enforce_trayectory'][it, :, :]
-        except KeyError:
-            for it in range(num_steps):
-                self.dynamic_input[it]['enforce_trajectory'] = np.zeros((self.num_node, 3), dtype=bool)
+        # try:
+            # for it in range(num_steps):
+                # self.dynamic_input[it]['enforce_trajectory'] = dyn_dict['enforce_trayectory'][it, :, :]
+        # except KeyError:
+            # for it in range(num_steps):
+                # self.dynamic_input[it]['enforce_trajectory'] = np.zeros((self.num_node, 3), dtype=bool)
 
     def generate_dof_arrays(self):
         self.vdof = np.zeros((self.num_node,), dtype=ct.c_int, order='F') - 1
@@ -435,14 +444,15 @@ class Beam(BaseStructure):
     #     self.timestep_info[ts].update_orientation(quat)  # Cga going in here
 
     def integrate_position(self, ts, dt):
-        self.timestep_info[ts].for_pos[0:3] = (
-            self.timestep_info[ts - 1].for_pos[0:3] +
-            dt*np.dot(self.timestep_info[ts].cga(),
-                      self.timestep_info[ts].for_vel[0:3]))
-        # self.timestep_info[ts].for_pos[3:6] = (
-        #     self.timestep_info[ts - 1].for_pos[3:6] +
-        #     dt*np.dot(self.timestep_info[ts].cga(),
-        #               self.timestep_info[ts].for_vel[3:6]))
+        try:
+            ts.for_pos[0:3] += (
+                dt*np.dot(ts.cga(),
+                          ts.for_vel[0:3]))
+        except AttributeError:
+            self.timestep_info[ts].for_pos[0:3] += (
+                dt*np.dot(self.timestep_info[ts].cga(),
+                          self.timestep_info[ts].for_vel[0:3]))
+
 
     def nodal_b_for_2_a_for(self, nodal, tstep, filter=np.array([True]*6)):
         nodal_a = nodal.copy(order='F')
@@ -500,81 +510,68 @@ class Beam(BaseStructure):
 
         """
 
-        # Define the first and last elements belonging to the body
-        # It assumes that all the elements in a body are consecutive in the global fem description
-        is_first_element = True
-        ibody_first_element = 0
-        ibody_last_element = 0
-        ibody_num_elem = 0
-
-        for ielem in range(self.num_elem):
-            if (self.body_number[ielem] == ibody):
-                if is_first_element:
-                    is_first_element = False
-                    ibody_first_element = ielem
-                ibody_last_element = ielem
-                ibody_num_elem += 1
-
-        ibody_last_element += 1
-
-        # Define the size and location of the body
-        ibody_first_node = self.connectivities[ibody_first_element,0]
-        ibody_last_node = self.connectivities[ibody_last_element-1,1]
-        ibody_num_node = ibody_last_node - ibody_first_node +1
-
-        ibody_last_node += 1
-
-        # Assign all the properties to the new StructTimeStepInfo
         ibody_beam = Beam()
 
+        # Define the nodes and elements belonging to the body
+        ibody_beam.global_elems_num, ibody_beam.global_nodes_num = mb.get_elems_nodes_list(self, ibody)
+
+        # Renaming for clarity
+        ibody_elements = ibody_beam.global_elems_num
+        ibody_nodes = ibody_beam.global_nodes_num
+
+        # Assign all the properties to the new StructTimeStepInfo
         ibody_beam.settings = self.settings.copy()
 
         ibody_beam.num_node_elem = self.num_node_elem.astype(dtype=ct.c_int, order='F', copy=True)
-        ibody_beam.num_node = ibody_num_node
-        ibody_beam.num_elem = ibody_num_elem
+        ibody_beam.num_node = len(ibody_beam.global_nodes_num)
+        ibody_beam.num_elem = len(ibody_beam.global_elems_num)
 
-        ibody_beam.connectivities = self.connectivities[ibody_first_element:ibody_last_element,:] - ibody_first_node
+        ibody_beam.connectivities = self.connectivities[ibody_elements,:]
+        # Renumber the connectivities
+        int_list_nodes = np.arange(0, ibody_beam.num_node, 1)
+        for ielem in range(ibody_beam.num_elem):
+            for inode_in_elem in range(ibody_beam.num_node_elem):
+                ibody_beam.connectivities[ielem, inode_in_elem] = int_list_nodes[ibody_nodes == ibody_beam.connectivities[ielem, inode_in_elem]]
 
         # TODO: I could copy only the needed stiffness and masses to save storage
-        ibody_beam.elem_stiffness = self.elem_stiffness[ibody_first_element:ibody_last_element].astype(dtype=ct.c_int, order='F', copy=True)
+        ibody_beam.elem_stiffness = self.elem_stiffness[ibody_elements].astype(dtype=ct.c_int, order='F', copy=True)
         ibody_beam.stiffness_db = self.stiffness_db.astype(dtype=ct.c_double, order='F', copy=True)
         ibody_beam.inv_stiffness_db = self.inv_stiffness_db.astype(dtype=ct.c_double, order='F', copy=True)
         ibody_beam.n_stiff = self.n_stiff
 
-        ibody_beam.elem_mass = self.elem_mass[ibody_first_element:ibody_last_element].astype(dtype=ct.c_int, order='F', copy=True)
+        ibody_beam.elem_mass = self.elem_mass[ibody_elements].astype(dtype=ct.c_int, order='F', copy=True)
         ibody_beam.mass_db = self.mass_db.astype(dtype=ct.c_double, order='F', copy=True)
         ibody_beam.n_mass = self.n_mass
 
-        ibody_beam.frame_of_reference_delta = self.frame_of_reference_delta[ibody_first_element:ibody_last_element,:,:].astype(dtype=ct.c_double, order='F', copy=True)
-        ibody_beam.structural_twist = self.structural_twist[ibody_first_node:ibody_last_node].astype(dtype=ct.c_double, order='F', copy=True)
-        ibody_beam.boundary_conditions = self.boundary_conditions[ibody_first_node:ibody_last_node].astype(dtype=ct.c_int, order='F', copy=True)
-        ibody_beam.beam_number = self.beam_number[ibody_first_element:ibody_last_element].astype(dtype=ct.c_int, order='F', copy=True)
+        ibody_beam.frame_of_reference_delta = self.frame_of_reference_delta[ibody_elements,:,:].astype(dtype=ct.c_double, order='F', copy=True)
+        ibody_beam.structural_twist = self.structural_twist[ibody_elements, :].astype(dtype=ct.c_double, order='F', copy=True)
+        ibody_beam.boundary_conditions = self.boundary_conditions[ibody_nodes].astype(dtype=ct.c_int, order='F', copy=True)
+        ibody_beam.beam_number = self.beam_number[ibody_elements].astype(dtype=ct.c_int, order='F', copy=True)
 
         if not self.lumped_mass_nodes is None:
             is_first = True
             ibody_beam.n_lumped_mass = 0
             for inode in range(len(self.lumped_mass_nodes)):
-                if (self.lumped_mass_nodes[inode] >= ibody_first_node) and (self.lumped_mass_nodes[inode] < ibody_last_node):
+                if self.lumped_mass_nodes[inode] in ibody_nodes:
                     if is_first:
                         is_first = False
-                        ibody_beam.lumped_mass_nodes = np.array([self.lumped_mass_nodes[inode]]) - ibody_first_node
+                        ibody_beam.lumped_mass_nodes = int_list_nodes[ibody_nodes == self.lumped_mass_nodes[inode]]
                         ibody_beam.lumped_mass = np.array([self.lumped_mass[inode]])
                         ibody_beam.lumped_mass_inertia = np.array([self.lumped_mass_inertia[inode]])
                         ibody_beam.lumped_mass_position = np.array([self.lumped_mass_position[inode]])
                         ibody_beam.n_lumped_mass += 1
                     else:
-                        ibody_beam.lumped_mass_nodes = np.concatenate((ibody_beam.lumped_mass_nodes ,np.array([self.lumped_mass_nodes[inode]]) - ibody_first_node), axis=0)
+                        ibody_beam.lumped_mass_nodes = np.concatenate((ibody_beam.lumped_mass_nodes ,int_list_nodes[ibody_nodes == self.lumped_mass_nodes[inode]]), axis=0)
                         ibody_beam.lumped_mass = np.concatenate((ibody_beam.lumped_mass ,np.array([self.lumped_mass[inode]])), axis=0)
                         ibody_beam.lumped_mass_inertia = np.concatenate((ibody_beam.lumped_mass_inertia ,np.array([self.lumped_mass_inertia[inode]])), axis=0)
                         ibody_beam.lumped_mass_position = np.concatenate((ibody_beam.lumped_mass_position ,np.array([self.lumped_mass_position[inode]])), axis=0)
                         ibody_beam.n_lumped_mass += 1
 
-
-        ibody_beam.steady_app_forces = self.steady_app_forces[ibody_first_node:ibody_last_node,:].astype(dtype=ct.c_double, order='F', copy=True)
+        ibody_beam.steady_app_forces = self.steady_app_forces[ibody_nodes,:].astype(dtype=ct.c_double, order='F', copy=True)
 
         ibody_beam.num_bodies = 1
 
-        ibody_beam.body_number = self.body_number[ibody_first_element:ibody_last_element].astype(dtype=ct.c_int, order='F', copy=True)
+        ibody_beam.body_number = self.body_number[ibody_elements].astype(dtype=ct.c_int, order='F', copy=True)
 
         ibody_beam.generate_dof_arrays()
 
@@ -590,7 +587,7 @@ class Beam(BaseStructure):
                     ibody_beam.connectivities[ielem, :],
                     ibody_beam.ini_info.pos[ibody_beam.connectivities[ielem, :], :],
                     ibody_beam.frame_of_reference_delta[ielem, :, :],
-                    ibody_beam.structural_twist[ibody_beam.connectivities[ielem, :]],
+                    ibody_beam.structural_twist[ielem, :],
                     ibody_beam.beam_number[ielem],
                     ibody_beam.elem_stiffness[ielem],
                     ibody_beam.elem_mass[ielem]))
