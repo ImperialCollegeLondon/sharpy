@@ -12,6 +12,7 @@ from sharpy.utils.solver_interface import solver, BaseSolver
 import sharpy.utils.settings as settings
 import sharpy.utils.algebra as algebra
 import sharpy.structure.utils.xbeamlib as xbeam
+import sharpy.utils.exceptions as exc
 
 
 @solver
@@ -351,15 +352,11 @@ class DynamicCoupled(BaseSolver):
                       relax_factor)
 
                 # check if nan anywhere.
-                # if yes, pdb.set_trace()
+                # if yes, raise exception
                 if np.isnan(structural_kstep.steady_applied_forces).any():
-                    print('NaN found in steady_applied_forces!')
-                    import pdb
-                    pdb.set_trace()
+                    raise exc.NotConvergedSolver('NaN found in steady_applied_forces!')
                 if np.isnan(structural_kstep.unsteady_applied_forces).any():
-                    print('NaN found in unsteady_applied_forces!')
-                    import pdb
-                    pdb.set_trace()
+                    raise exc.NotConvergedSolver('NaN found in unsteady_applied_forces!')
 
                 copy_structural_kstep = structural_kstep.copy()
                 ini_time_struc = time.perf_counter()
