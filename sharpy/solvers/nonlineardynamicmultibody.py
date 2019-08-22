@@ -7,15 +7,14 @@ from sharpy.utils.solver_interface import solver, BaseSolver, solver_from_string
 import sharpy.utils.settings as settings
 import sharpy.utils.cout_utils as cout
 
-import scipy.linalg
 import sharpy.structure.utils.xbeamlib as xbeamlib
 import sharpy.utils.algebra as algebra
-import h5py as h5
 import sharpy.utils.h5utils as h5utils
 import sharpy.utils.multibody as mb
 import sharpy.utils.utils_ams as uams
 import sharpy.structure.utils.lagrangeconstraints as lagrangeconstraints
 import matplotlib.pyplot as plt
+import sharpy.utils.exceptions as exc
 
 
 _BaseStructural = solver_from_string('_BaseStructural')
@@ -226,7 +225,12 @@ class NonLinearDynamicMultibody(_BaseStructural):
         self.num_LM_eq = lagrangeconstraints.define_num_LM_eq(self.lc_list)
 
         # TODO: only working for constant forces
-        MB_beam, MB_tstep = mb.split_multibody(self.data.structure, structural_step, MBdict, self.data.ts)
+        MB_beam, MB_tstep = mb.split_multibody(
+            self.data.structure,
+            structural_step,
+            MBdict,
+            self.data.ts)
+
         # Lagrange multipliers parameters
         num_LM_eq = self.num_LM_eq
         Lambda = np.zeros((num_LM_eq,), dtype=ct.c_double, order='F')
@@ -255,18 +259,23 @@ class NonLinearDynamicMultibody(_BaseStructural):
         LM_old_Dq = 1.0
 
         converged = False
-        for iter in range(self.settings['max_iterations'].value):
+        for iteration in range(self.settings['max_iterations'].value):
             # Check if the maximum of iterations has been reached
-            if (iter == self.settings['max_iterations'].value - 1):
-                print('Solver did not converge in ', iter, ' iterations.')
-                print('res = ', res)
-                print('LM_res = ', LM_res)
-                import pdb; pdb.set_trace()
-                break
+            if iteration == self.settings['max_iterations'].value - 1:
+                error = ('Solver did not converge in ', iteration, ' iterations.\n' +
+                         'res = ', res  + '\n'+
+                         'LM_res = ', LM_res)
+                raise exc.NotConvergedSolver(error)
 
             # Update positions and velocities
             mb.state2disp(q, dqdt, dqddt, MB_beam, MB_tstep)
-            MB_Asys, MB_Q = self.assembly_MB_eq_system(MB_beam, MB_tstep, self.data.ts, dt, Lambda, Lambda_dot, MBdict)
+            MB_Asys, MB_Q = self.assembly_MB_eq_system(MB_beam,
+                                                       MB_tstep,
+                                                       self.data.ts,
+                                                       dt,
+                                                       Lambda,
+                                                       Lambda_dot,
+                                                       MBdict)
 
             # Compute the correction
             # ADC next line not necessary
@@ -280,13 +289,15 @@ class NonLinearDynamicMultibody(_BaseStructural):
             # Dq = np.linalg.lstsq(np.dot(MB_Asys_balanced, invT), -MB_Q_balanced, rcond=None)[0]
 
             # Evaluate convergence
-            if (iter > 0):
+            if iteration:
                 res = np.max(np.abs(Dq[0:self.sys_size]))/old_Dq
-                if not num_LM_eq == 0:
+                if np.isnan(res):
+                    raise exc.NotConvergedSolver('Multibody res = NaN')
+                if num_LM_eq:
                     LM_res = np.max(np.abs(Dq[self.sys_size:self.sys_size+num_LM_eq]))/LM_old_Dq
                 else:
                     LM_res = 0.0
-                if (res < self.settings['min_delta'].value) and (LM_res < self.settings['min_delta'].value*1e-2):
+                if (res < self.settings['min_delta'].value) and (LM_res < self.settings['min_delta'].value):
                     converged = True
 
             # Compute variables from previous values and increments
@@ -311,7 +322,7 @@ class NonLinearDynamicMultibody(_BaseStructural):
             if converged:
                 break
 
-            if iter == 0:
+            if not iteration:
                 old_Dq = np.max(np.abs(Dq[0:self.sys_size]))
                 if old_Dq < 1.0:
                     old_Dq = 1.0

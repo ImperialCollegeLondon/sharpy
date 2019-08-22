@@ -1,19 +1,21 @@
-import sharpy.utils.cout_utils as cout
-import sys
 import pickle
+import sharpy.utils.cout_utils as cout
 
 
-def main(args=None):
+def main(args=None, sharpy_input_dict=None):
     """
     Main ``SHARPy`` routine
 
     This is the main ``SHARPy`` routine.
-    It starts the solution process by reading the settings that are included in the ``.solver.txt`` file that is parsed
-    as an argument.
+    It starts the solution process by reading the settings that are
+    included in the ``.solver.txt`` file that is parsed
+    as an argument, or an equivalent dictionary given as ``sharpy_input_dict``.
     It reads the solvers specific settings and runs them in order
 
     Args:
         args (str): ``.solver.txt`` file with the problem information and settings
+        sharpy_input_dict (dict): ``dict`` with the same contents as the
+            ``solver.txt`` file would have.
 
     Returns:
         ``PreSharpy`` class object
@@ -39,41 +41,48 @@ def main(args=None):
     t = time.process_time()
     t0_wall = time.perf_counter()
 
-    parser = argparse.ArgumentParser(prog='SHARPy', description=
-    """This is the executable for Simulation of High Aspect Ratio Planes.\n
-    Imperial College London 2018""")
-    parser.add_argument('input_filename', help='path to the *.solver.txt input file', type=str, default='')
-    parser.add_argument('-r', '--restart', help='restart the solution with a given snapshot', type=str, default=None)
-    parser.add_argument('-d', '--docs', help='generates the solver documentation in the specified location. Code does not execute if running this flag', action='store_true')
-    if args is not None:
-        args = parser.parse_args(args[1:])
+    if sharpy_input_dict is None:
+        parser = argparse.ArgumentParser(prog='SHARPy', description=
+        """This is the executable for Simulation of High Aspect Ratio Planes.\n
+        Imperial College London 2019""")
+        parser.add_argument('input_filename', help='path to the *.solver.txt input file', type=str, default='')
+        parser.add_argument('-r', '--restart', help='restart the solution with a given snapshot', type=str, default=None)
+        parser.add_argument('-d', '--docs', help='generates the solver documentation in the specified location. Code does not execute if running this flag', action='store_true')
+        if args is not None:
+            args = parser.parse_args(args[1:])
+        else:
+            args = parser.parse_args()
+
+        if args.docs:
+            import sharpy.utils.generator_interface as generator_interface
+            import sharpy.utils.docutils as docutils
+
+            solver_interface.output_documentation()
+            generator_interface.output_documentation()
+            docutils.output_documentation_algebra()
+            return 0
+
+        if args.input_filename == '':
+            parser.error('input_filename is a required argument of sharpy.')
+        settings = input_arg.read_settings(args)
+        if args.restart is None:
+            # run preSHARPy
+            data = PreSharpy(settings)
+        else:
+            try:
+                with open(args.restart, 'rb') as restart_file:
+                    data = pickle.load(restart_file)
+            except FileNotFoundError:
+                raise FileNotFoundError('The file specified for the snapshot \
+                    restart (-r) does not exist. Please check.')
+
+            # update the settings
+            data.update_settings(settings)
     else:
-        args = parser.parse_args()
-
-    if args.docs:
-        import sharpy.utils.generator_interface as generator_interface
-        import sharpy.utils.docutils as docutils
-
-        solver_interface.output_documentation()
-        generator_interface.output_documentation()
-        docutils.output_documentation_algebra()
-        return 0
-
-    if args.input_filename == '':
-        parser.error('input_filename is a required argument of sharpy.')
-    settings = input_arg.read_settings(args)
-    if args.restart is None:
+        # Case for input from dictionary
+        settings = input_arg.read_settings(args)
         # run preSHARPy
         data = PreSharpy(settings)
-    else:
-        try:
-            with open(args.restart, 'rb') as f:
-                data = pickle.load(f)
-        except FileNotFoundError:
-            raise FileNotFoundError('The file specified for the snapshot restart (-r) does not exist. Please check.')
-
-        # update the settings
-        data.update_settings(settings)
 
     # Loop for the solvers specified in *.solver.txt['SHARPy']['flow']
     for solver_name in settings['SHARPy']['flow']:
@@ -81,9 +90,9 @@ def main(args=None):
         solver.initialise(data)
         data = solver.run()
 
-    CPU_time = time.process_time() - t
+    cpu_time = time.process_time() - t
     wall_time = time.perf_counter() - t0_wall
     cout.cout_wrap('FINISHED - Elapsed time = %f6 seconds' % wall_time, 2)
-    cout.cout_wrap('FINISHED - CPU process time = %f6 seconds' % CPU_time, 2)
+    cout.cout_wrap('FINISHED - CPU process time = %f6 seconds' % cpu_time, 2)
     finish_writer()
     return data

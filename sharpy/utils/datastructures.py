@@ -1,9 +1,8 @@
+import copy
 import ctypes as ct
 import numpy as np
-import copy
 
 import sharpy.utils.algebra as algebra
-import copy
 import sharpy.utils.multibody as mb
 
 

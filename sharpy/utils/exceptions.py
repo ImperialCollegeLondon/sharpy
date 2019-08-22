@@ -17,7 +17,6 @@ class NoDefaultValueException(DefaultValueBaseException):
             cout.cout_wrap.print_separator(3)
 
 
-
 class NotValidInputFile(Exception):
     def __init__(self, message):
         super().__init__(message)
@@ -36,4 +35,13 @@ class NotConvergedStructuralSolver(Exception):
     def __init__(self, solver_name, n_iter=None, message=''):
         super().__init__(message)
         cout.cout_wrap("The solver " + solver_name + " did not converge in " + str(n_iter) + " iterations.", 3)
+
+
+class NotConvergedSolver(Exception):
+    """
+    To be raised when the solver does not converge. Before this, SHARPy
+    would add a pdb trace, but this causes problems when using SHARPy
+    as a black box.
+    """
+    pass
 
