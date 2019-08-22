@@ -14,21 +14,15 @@ def generate(x_dict={}, case_name=None):
     if case_name is None:
         case_name = 'base'
     route = os.path.dirname(os.path.realpath(__file__)) + '/'
-    print('In generate')
-    print('x_dict = ', str(x_dict))
 
     case_notes = str(x_dict)
 
 # EXECUTION
     flow = ['BeamLoader',
             'AerogridLoader',
-            # 'NonLinearStatic',
-            # 'StaticUvlm',
             # 'StaticTrim',
             'StaticCoupled',
             'BeamLoads',
-            'AerogridPlot',
-            'BeamPlot',
             'DynamicCoupled',
             ]
 
@@ -56,20 +50,20 @@ def generate(x_dict={}, case_name=None):
     except KeyError:
         ramp_angle = 0.0
 
-    alpha = 4.0911*np.pi/180 + alpha_cato_delta
+    alpha = 4.0879*np.pi/180 + alpha_cato_delta
     beta = 0
     roll = 0
     gravity = 'on'
-    cs_deflection = -1.2741*np.pi/180
+    cs_deflection = -1.2346*np.pi/180
     rudder_static_deflection = 0.0
     # rudder_step = 0.0*np.pi/180
-    thrust = 3.9982
+    thrust = 4.0105
     sigma = 1.5
     lambda_dihedral = 20*np.pi/180
 
 
 # trajectory
-    t_start = 3
+    t_start = 1.
 
     try:
         acceleration = x_dict['acceleration']
@@ -78,15 +72,15 @@ def generate(x_dict={}, case_name=None):
 
     t_ramp = u_inf/acceleration
     t_finish = t_start + t_ramp
-    t_free = 3
+    t_free = 10
     controller_ramp = -1
 
 # numerics
     n_step = 1
-    relaxation_factor = 0.3
-    tolerance = 1e-8
+    relaxation_factor = 0.4
+    tolerance = 1e-6
     fsi_tolerance = 1e-5
-    structural_substeps = 0
+    structural_substeps = 1
 
     num_cores = 4
 
@@ -134,9 +128,9 @@ def generate(x_dict={}, case_name=None):
 # DISCRETISATION
 # spatial discretisation
 # chordiwse panels
-    m = 8
+    m = 4
 # spanwise elements
-    n_elem_multiplier = 1.5
+    n_elem_multiplier = 2
     n_elem_main = int(4*n_elem_multiplier)
     n_elem_tail = int(2*n_elem_multiplier)
     n_elem_fin = int(2*n_elem_multiplier)
@@ -147,7 +141,7 @@ def generate(x_dict={}, case_name=None):
     physical_time = t_finish + t_free
     tstep_factor = 1.
     dt = 1.0/m/u_inf_cruise*tstep_factor
-    n_tstep = round(physical_time/dt)
+    n_tstep = int(round(physical_time/dt))
 
 # END OF INPUT-----------------------------------------------------------------
 
@@ -227,7 +221,7 @@ def generate(x_dict={}, case_name=None):
     boundary_conditions = np.zeros((n_node, ), dtype=int)
     app_forces = np.zeros((n_node, 6))
 
-    trajectory_file = case_name + '.traj.csv'
+    trajectory_file = route + '/' + case_name + '.traj.csv'
     LC = None
     first_node_centre = np.zeros((2, ), dtype=int)
 
@@ -371,7 +365,7 @@ def generate(x_dict={}, case_name=None):
         elem_stiffness[we:we + n_elem_main1] = 0
         elem_mass[we:we + n_elem_main1] = 0
         flat_end_node[0] = n_node_main1 - 1
-        first_node_centre[0] = wn + 1
+        first_node_centre[0] = wn + 1 + 1
         boundary_conditions[0] = 1
         # remember this is in B FoR
         app_forces[0] = [0, thrust, 0, 0, 0, 0]
@@ -718,17 +712,17 @@ def generate(x_dict={}, case_name=None):
     def generate_multibody_file():
         global end_of_fuselage_node
         global LC
-        LCR = gc.LagrangeConstraint()
-        LCR.behaviour = 'lin_vel_node_wrtG'
-        LCR.velocity = np.zeros((3,))
-        LCR.body_number = 0
-        LCR.node_number = flat_end_node[0]
+        # LCR = gc.LagrangeConstraint()
+        # LCR.behaviour = 'lin_vel_node_wrtG'
+        # LCR.velocity = np.zeros((3,))
+        # LCR.body_number = 0
+        # LCR.node_number = flat_end_node[0]
 
-        LCL = gc.LagrangeConstraint()
-        LCL.behaviour = 'lin_vel_node_wrtG'
-        LCL.velocity = np.zeros((3,))
-        LCL.body_number = 0
-        LCL.node_number = flat_end_node[1]
+        # LCL = gc.LagrangeConstraint()
+        # LCL.behaviour = 'lin_vel_node_wrtG'
+        # LCL.velocity = np.zeros((3,))
+        # LCL.body_number = 0
+        # LCL.node_number = flat_end_node[1]
 
         LCF = gc.LagrangeConstraint()
         LCF.behaviour = 'lin_vel_node_wrtG'
@@ -748,7 +742,8 @@ def generate(x_dict={}, case_name=None):
         LCCL.body_number = 0
         LCCL.node_number = first_node_centre[1]
 
-        LC = [LCR, LCL, LCF, LCCR, LCCL]
+        # LC = [LCR, LCL, LCF, LCCR, LCCL]
+        LC = [LCF, LCCR, LCCL]
 
         MB1 = gc.BodyInformation()
         MB1.body_number = 0
@@ -780,7 +775,8 @@ def generate(x_dict={}, case_name=None):
                                                                    beta]))}
         settings['AerogridLoader'] = {'unsteady': 'on',
                                       'aligned_grid': 'on',
-                                      'mstar': int(160/tstep_factor),
+                                      # 'mstar': int(160/tstep_factor),
+                                      'mstar': int(80/tstep_factor),
                                       'freestream_dir': ['1', '0', '0'],
                                       'control_surface_deflection': ['', ''],
                                       'control_surface_deflection_generator':
@@ -828,7 +824,7 @@ def generate(x_dict={}, case_name=None):
                                                    'max_iterations': 950,
                                                    'delta_curved': 1e-1,
                                                    'min_delta': tolerance,
-                                                   'newmark_damp': 5e-3,
+                                                   'newmark_damp': 1e-2,
                                                    'gravity_on': gravity,
                                                    'gravity': 9.81,
                                                    'num_steps': n_tstep,
@@ -839,13 +835,11 @@ def generate(x_dict={}, case_name=None):
                                                  'max_iterations': 950,
                                                  'delta_curved': 1e-1,
                                                  'min_delta': tolerance,
-                                                 'newmark_damp': 5e-3,
-                                                 'relaxation_factor': 0.0,
+                                                 'newmark_damp': 1e-2,
                                                  'gravity_on': gravity,
                                                  'gravity': 9.81,
                                                  'num_steps': n_tstep,
-                                                 'dt': dt,
-                                                 'initial_velocity': 0}
+                                                 'dt': dt}
 
         relative_motion = 'off'
         settings['StepUvlm'] = {'print_info': 'off',
@@ -865,6 +859,7 @@ def generate(x_dict={}, case_name=None):
                                 'dt': dt}
 
         solver = 'NonLinearDynamicMultibody'
+        settings['PickleData'] = {}
         settings['DynamicCoupled'] = {'structural_solver': solver,
                                       'structural_solver_settings': settings[solver],
                                       'aero_solver': 'StepUvlm',
@@ -872,57 +867,66 @@ def generate(x_dict={}, case_name=None):
                                       'fsi_substeps': 200,
                                       'fsi_tolerance': fsi_tolerance,
                                       'relaxation_factor': relaxation_factor,
-                                      'minimum_steps': 5,
+                                      'minimum_steps': 2,
                                       'relaxation_steps': 150,
                                       'dynamic_relaxation': 'off',
                                       'final_relaxation_factor': 0.5,
                                       'n_time_steps': n_tstep,
                                       'dt': dt,
                                       'structural_substeps': structural_substeps,
-                                      'include_unsteady_force_contribution': 'off',
-                                      'controller_id': {'controller_right': 'TakeOffTrajectoryController',
-                                                        'controller_left': 'TakeOffTrajectoryController',
+                                      'include_unsteady_force_contribution': 'on',
+                                      'steps_without_unsteady_force': 9,
+                                      'controller_id': {#'controller_right': 'TakeOffTrajectoryController',
+                                                        # 'controller_left': 'TakeOffTrajectoryController',
                                                         'controller_tail': 'TakeOffTrajectoryController',
                                                         'controller_cright': 'TakeOffTrajectoryController',
                                                         'controller_cleft': 'TakeOffTrajectoryController',
                                                         },
-                                      'controller_settings': {'controller_right':
+                                      'controller_settings': {
+                                          # 'controller_right':
+                                      # {
+                                          # 'trajectory_input_file': trajectory_file,
+                                          # 'dt': dt,
+                                          # 'trajectory_method': 'lagrange',
+                                          # 'controlled_constraint': 'constraint_00',
+                                          # 'initial_ramp_length_structural_substeps': controller_ramp,
+                                          # 'write_controller_log': 'off',
+                                      # },
+                                          # 'controller_left':
+                                      # {
+                                          # 'trajectory_input_file': trajectory_file,
+                                          # 'dt': dt,
+                                          # 'trajectory_method': 'lagrange',
+                                          # 'controlled_constraint': 'constraint_01',
+                                          # 'initial_ramp_length_structural_substeps': controller_ramp,
+                                          # 'write_controller_log': 'off',
+                                      # },
+                                      'controller_tail':
                                       {
                                           'trajectory_input_file': trajectory_file,
                                           'dt': dt,
                                           'trajectory_method': 'lagrange',
                                           'controlled_constraint': 'constraint_00',
                                           'initial_ramp_length_structural_substeps': controller_ramp,
-                                      }, 'controller_left':
+                                          'write_controller_log': 'off',
+                                      }, 'controller_cright':
                                       {
                                           'trajectory_input_file': trajectory_file,
                                           'dt': dt,
                                           'trajectory_method': 'lagrange',
                                           'controlled_constraint': 'constraint_01',
                                           'initial_ramp_length_structural_substeps': controller_ramp,
-                                      }, 'controller_tail':
+                                          'write_controller_log': 'off',
+                                      }, 'controller_cleft':
                                       {
                                           'trajectory_input_file': trajectory_file,
                                           'dt': dt,
                                           'trajectory_method': 'lagrange',
                                           'controlled_constraint': 'constraint_02',
                                           'initial_ramp_length_structural_substeps': controller_ramp,
-                                      }, 'controller_cright':
-                                      {
-                                          'trajectory_input_file': trajectory_file,
-                                          'dt': dt,
-                                          'trajectory_method': 'lagrange',
-                                          'controlled_constraint': 'constraint_03',
-                                          'initial_ramp_length_structural_substeps': controller_ramp,
-                                      }, 'controller_cleft':
-                                      {
-                                          'trajectory_input_file': trajectory_file,
-                                          'dt': dt,
-                                          'trajectory_method': 'lagrange',
-                                          'controlled_constraint': 'constraint_04',
-                                          'initial_ramp_length_structural_substeps': controller_ramp,
+                                          'write_controller_log': 'off',
                                       }},
-                                      'postprocessors': ['BeamLoads', 'BeamPlot', 'AerogridPlot'],
+                                      'postprocessors': ['BeamLoads'],
                                       'postprocessors_settings': {'BeamLoads': {'folder': route + '/output/',
                                                                                 'csv_output': 'off'},
                                                                   'BeamPlot': {'folder': route + '/output/',
@@ -969,6 +973,8 @@ def generate(x_dict={}, case_name=None):
     generate_dyn_file()
     if 'StaticTrim' not in flow:
         generate_trajectory_file()
+
+    return {'sharpy': route + '/' + case_name + '.sharpy'}
 
 
 if __name__ == "__main__":

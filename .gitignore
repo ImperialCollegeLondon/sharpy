@@ -141,3 +141,6 @@ tests/linear/rom/figs/
 \.spyproject/
 
 *.sharpy
+
+scripts/optimiser/cases
+

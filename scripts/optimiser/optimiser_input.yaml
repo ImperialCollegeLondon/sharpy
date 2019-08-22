@@ -1,3 +1,6 @@
+case:
+    name: optimiser1
+    output_folder: ./output/
 base:
     name: base
     route: ./base_case/
@@ -6,6 +9,7 @@ base:
 settings:
     delete_case_folders: false
     cases_folder: ./cases/
+    save_data: true
 
 optimiser:
     numerics:
@@ -22,15 +26,23 @@ optimiser:
         2: 0.0
         3: 9.5
     parameters_bounds:
-        0: [0.5, 5]
-        1: [0.0, 5]
-        2: [0.0, 5]
-        3: [8.5, 13]
+        0: [1.5, 5.0]
+        1: [-3.0, 3.0]
+        2: [-5.0, 5.0]
+        3: [8.0, 12.0]
     cost:
         ground_clearance:
             z_min: -1
-            z_0: 2
-            scale: 1
-        #loads:
-            #IP
+            z_0: 1
+            scale: 5
+        loads:
+            25g_loads: 'input/25g_loads.csv'
+            Torsion:
+                scale: 0.05
+            OOP:
+                scale: 0.05
+            IP:
+                scale: 0.05
+    constraints:
+        ramp_length: 20.0
 
