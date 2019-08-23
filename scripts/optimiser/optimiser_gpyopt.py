@@ -158,11 +158,11 @@ def optimiser(in_dict):
                                           ' - ' + str(length)})
     except KeyError:
         pass
-    
+
     try:
         limit = in_dict['optimiser']['constraints']['incidence_angle']['limit']
         base_aoa = in_dict['optimiser']['constraints']['incidence_angle']['base_aoa']
-        
+
         dAoA_var_i = None
         ramp_angle_var_i = None
         for k, v in in_dict['optimiser']['parameters'].items():
@@ -170,36 +170,34 @@ def optimiser(in_dict):
                 dAoA_var_i = k
             if v == 'ramp_angle':
                 ramp_angle_var_i = k
-        
-        
+
         # base_aoa + dAoA - ramp_angle < limit
         constraint_string = ''
         constraint_string += str(base_aoa) + ' + '
-        constraint_string += 'x[:, ' + str(ramp_angle_var_i) + '] - '
-        constraint_string += 'x[:, ' + str(ramp_angle) + '] -'
+        constraint_string += 'x[:, ' + str(dAoA_var_i) + '] - '
+        constraint_string += 'x[:, ' + str(ramp_angle_var_i) + '] -'
         constraint_string += str(limit)
     except KeyError:
         pass
-        
-    
+
     print(constraints)
 
     gpyopt_wrapper = lambda x: wrapper(x, in_dict)
     batch_size = 5
     num_cores = 20
-    opt =GPyOpt.methods.BayesianOptimization(
-        f=gpyopt_wrapper,
-        domain=bounds,
-        exact_feval=True,
-        acquisition_type='EI',
-        normalize_y=True,
-        initial_design_numdata=10,
-        evaluator_type='local_penalization',
-        batch_size=batch_size,
-        num_cores=num_cores,
-        acquisition_jitter=0,
-        de_duplication=True,
-        constraints=constraints)
+    opt = GPyOpt.methods.BayesianOptimization(
+            f=gpyopt_wrapper,
+            domain=bounds,
+            exact_feval=True,
+            acquisition_type='EI',
+            normalize_y=True,
+            initial_design_numdata=10,
+            evaluator_type='local_penalization',
+            batch_size=batch_size,
+            num_cores=num_cores,
+            acquisition_jitter=0,
+            de_duplication=True,
+            constraints=constraints)
 
     #TODO add to dict
     in_dict['optimiser']['n_iter'] = 10
