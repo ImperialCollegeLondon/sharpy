@@ -156,9 +156,33 @@ def optimiser(in_dict):
                             'constraint': 'x[:, ' + str(release_vel_var_i) + ']**2' +
                                           '/x[:, ' + str(acc_var_i) + ']' +
                                           ' - ' + str(length)})
-        print(constraints)
     except KeyError:
         pass
+    
+    try:
+        limit = in_dict['optimiser']['constraints']['incidence_angle']['limit']
+        base_aoa = in_dict['optimiser']['constraints']['incidence_angle']['base_aoa']
+        
+        dAoA_var_i = None
+        ramp_angle_var_i = None
+        for k, v in in_dict['optimiser']['parameters'].items():
+            if v == 'dAoA':
+                dAoA_var_i = k
+            if v == 'ramp_angle':
+                ramp_angle_var_i = k
+        
+        
+        # base_aoa + dAoA - ramp_angle < limit
+        constraint_string = ''
+        constraint_string += str(base_aoa) + ' + '
+        constraint_string += 'x[:, ' + str(ramp_angle_var_i) + '] - '
+        constraint_string += 'x[:, ' + str(ramp_angle) + '] -'
+        constraint_string += str(limit)
+    except KeyError:
+        pass
+        
+    
+    print(constraints)
 
     gpyopt_wrapper = lambda x: wrapper(x, in_dict)
     batch_size = 5
@@ -241,12 +265,14 @@ def case_id():
 def evaluate(x_dict, yaml_dict):
     case_name = case_id()
 
+    print('Running ' + case_name)
     files, case_name = set_case(case_name,
                                 yaml_dict['base'],
                                 x_dict,
                                 yaml_dict['settings'])
     data = run_case(files)
     cost = cost_function(data, x_dict, yaml_dict['optimiser']['cost'])
+    print('   Case: ' + str(case_name) + '; cost = ', cost)
 
     if yaml_dict['settings']['delete_case_folders']:
         raise NotImplementedError('delete_case_folders not supported yet')
@@ -367,7 +393,7 @@ def cost_function(data,
         return cost
 
 
-def loads_cost(data, cost_loads_dict):
+def loads_cost_2(data, cost_loads_dict):
     """
 
     """
@@ -390,43 +416,59 @@ def loads_cost(data, cost_loads_dict):
                 delimiter=',')
         except OSError:
             warnings.warn('Not found 2.5g file, anywhere. Filling up with ones instead')
-            loads_array_25g = np.ones((data.structure.ini_info.psi.shape[0],))
+            loads_array_25g = np.ones((data.structure.ini_info.psi.shape[0], 4))
 
     loads_array_25g[np.abs(loads_array_25g) < 1.0] = 1.0
-#     loads_array_25g *= 2.5
-    
+    loads_array_25g = np.abs(loads_array_25g)*1.5
     separate_cost = np.zeros((3,))
 
-#     for idim in range(3):
-#         max_load = np.NINF
-#         for it, tstep in enumerate(data.structure.timestep_info):
-# #             import pdb; pdb.set_trace()
-
-#             for ielem in range(tstep.psi.shape[0]):
-#                 temp = np.abs(
-#                     tstep.postproc_cell['loads'][ielem, idim + 3]/
-#                     loads_array_25g[ielem, idim + 1])
-# #                 print(ielem, temp)
-
-#                 if temp > 1.0:
-#                     pass
-#                 else:
-#                     temp = 0.0
-#                 if temp > max_load:
-#                     max_load = min(temp - 1.0, 1.0)
-#         max_loads[idim] = max_load
-    max_cost = np.zeros((3,)) - np.Inf
+    max_cost = np.zeros((3,))
     for it, tstep in enumerate(data.structure.timestep_info):
         temp = np.abs(
-                      tstep.postproc_cell['loads'][:, 3:]/
-                      loads_array_25g[:, 1:])
+            tstep.postproc_cell['loads'][:, 3:]/
+            loads_array_25g[:, 1:])
         max_vals = np.max(temp, axis=0)
         max_vals = (max_vals >= 1.0)*max_vals
-#         print(it, max_vals)
         for i_dim in range(3):
-            max_cost[i_dim] = max(max_cost[i_dim], max_vals[i_dim] - 1.0)
-
+            max_cost[i_dim] = max(max_cost[i_dim], max(max_vals[i_dim] - 1., 0.0))
     separate_cost[:] = max_cost
+
+    for k, v in index2load.items():
+        separate_cost[k] *= cost_loads_dict[v]['scale']
+#     print('loads cost = ', separate_cost)
+    return np.sum(separate_cost)
+
+
+def loads_cost(data, cost_loads_dict):
+    index2load = {0: 'Torsion',
+                  1: 'OOP',
+                  2: 'IP'}
+    try:
+        loads_array_25g = np.loadtxt(
+            cost_loads_dict['25g_loads'],
+            skiprows=1,
+            delimiter=',')
+    except OSError:
+        try:
+            warnings.warn('Not found 2.5g file, trying parent folder')
+            loads_array_25g = np.loadtxt(
+                '../' + cost_loads_dict['25g_loads'],
+                skiprows=1,
+                delimiter=',')
+        except OSError:
+            warnings.warn('Not found 2.5g file, anywhere. Filling up with ones instead')
+            loads_array_25g = np.ones((data.structure.ini_info.psi.shape[0], 4))
+
+    separate_cost = np.zeros((3,))
+
+    max_cost = np.zeros((3,))
+    for it, tstep in enumerate(data.structure.timestep_info):
+        temp = np.abs(tstep.postproc_cell['loads'][:, 3:])
+        max_vals = np.max(temp, axis=0)/loads_array_25g[0, 1:]
+        max_vals = max_vals**2
+        for i_dim in range(3):
+            max_cost[i_dim] = max(max_cost[i_dim], max_vals[i_dim])
+    separate_cost = max_cost
 
     for k, v in index2load.items():
         separate_cost[k] *= cost_loads_dict[v]['scale']

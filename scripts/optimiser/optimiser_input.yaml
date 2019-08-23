@@ -34,15 +34,18 @@ optimiser:
         ground_clearance:
             z_min: -1
             z_0: 1
-            scale: 5
+            scale: 1
         loads:
-            25g_loads: 'input/25g_loads.csv'
+            25g_loads: 'input/envelope.csv'
             Torsion:
-                scale: 0.05
+                scale: 0.5
             OOP:
-                scale: 0.05
+                scale: 0.5
             IP:
-                scale: 0.05
+                scale: 0.5
     constraints:
         ramp_length: 20.0
+        incidence_angle:
+            limit: 9.0
+            base_aoa: 4.09
 

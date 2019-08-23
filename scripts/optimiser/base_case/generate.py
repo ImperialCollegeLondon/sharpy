@@ -50,6 +50,7 @@ def generate(x_dict={}, case_name=None):
     except KeyError:
         ramp_angle = 0.0
 
+<<<<<<< Updated upstream
     alpha = 4.0879*np.pi/180 + alpha_cato_delta
     beta = 0
     roll = 0
@@ -58,12 +59,27 @@ def generate(x_dict={}, case_name=None):
     rudder_static_deflection = 0.0
     # rudder_step = 0.0*np.pi/180
     thrust = 4.0105
+=======
+    alpha = 4.4565*np.pi/180 + alpha_cato_delta
+    beta = 0
+    roll = 0
+    gravity = 'on'
+    cs_deflection = -2.1342*np.pi/180
+    rudder_static_deflection = 0.0
+    # rudder_step = 0.0*np.pi/180
+    thrust = 7.7327
+>>>>>>> Stashed changes
     sigma = 1.5
     lambda_dihedral = 20*np.pi/180
 
 
 # trajectory
+<<<<<<< Updated upstream
     t_start = 1.
+=======
+    t_start = 3
+    t_start = 0.1
+>>>>>>> Stashed changes
 
     try:
         acceleration = x_dict['acceleration']
@@ -776,7 +792,11 @@ def generate(x_dict={}, case_name=None):
         settings['AerogridLoader'] = {'unsteady': 'on',
                                       'aligned_grid': 'on',
                                       # 'mstar': int(160/tstep_factor),
+<<<<<<< Updated upstream
                                       'mstar': int(80/tstep_factor),
+=======
+                                      'mstar': int(20/tstep_factor),
+>>>>>>> Stashed changes
                                       'freestream_dir': ['1', '0', '0'],
                                       'control_surface_deflection': ['', ''],
                                       'control_surface_deflection_generator':
@@ -874,7 +894,11 @@ def generate(x_dict={}, case_name=None):
                                       'n_time_steps': n_tstep,
                                       'dt': dt,
                                       'structural_substeps': structural_substeps,
+<<<<<<< Updated upstream
                                       'include_unsteady_force_contribution': 'on',
+=======
+                                      'include_unsteady_force_contribution': 'off',
+>>>>>>> Stashed changes
                                       'steps_without_unsteady_force': 9,
                                       'controller_id': {#'controller_right': 'TakeOffTrajectoryController',
                                                         # 'controller_left': 'TakeOffTrajectoryController',
