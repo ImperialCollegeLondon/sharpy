@@ -8,8 +8,6 @@ SHARPy Documentation
 
 Welcome to SHARPy (Simulation of High Aspect Ratio Planes in Python)!
 
-.. warning:: SHARPy is currently under development
-
 SHARPy is an aeroelastic analysis package currently under development at the Department of Aeronautics,
 Imperial College London. It can be used for the structural, aerodynamic, aeroelastic and flight dynamics
 analysis of flexible aircraft, flying wings and wind turbines.

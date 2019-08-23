@@ -1,19 +1,20 @@
 Analytical Functions
 ++++++++++++++++++++
 
-Analytical Functions
 
 Analytical solutions for 2D aerofoil based on thin plates theory
 
-@author: salvatore maraniello
-@date: 23 May 2017
+Author: Salvatore Maraniello
+
+Date: 23 May 2017
 
 References:
-[1] Simpson, R.J.S., Palacios, R. & Murua, J., 2013. Induced-Drag 
-	Calculations in the Unsteady Vortex Lattice Method. AIAA Journal, 51(7), 
-	pp.1775–1779.
-[2] Gulcat, U., 2009. Propulsive Force of a Flexible Flapping Thin Airfoil. 
-	Journal of Aircraft, 46(2), pp.465–473.
+
+1. Simpson, R.J.S., Palacios, R. & Murua, J., 2013. Induced-Drag Calculations in the Unsteady Vortex Lattice Method.
+   AIAA Journal, 51(7), pp.1775–1779.
+
+2. Gulcat, U., 2009. Propulsive Force of a Flexible Flapping Thin Airfoil. Journal of Aircraft, 46(2), pp.465–473.
+
 
 
 .. toctree::

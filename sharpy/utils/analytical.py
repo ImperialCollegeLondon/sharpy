@@ -1,18 +1,19 @@
-'''
-Analytical Functions
+"""Analytical Functions
 
 Analytical solutions for 2D aerofoil based on thin plates theory
 
-@author: salvatore maraniello
-@date: 23 May 2017
+Author: Salvatore Maraniello
+
+Date: 23 May 2017
 
 References:
-[1] Simpson, R.J.S., Palacios, R. & Murua, J., 2013. Induced-Drag 
-	Calculations in the Unsteady Vortex Lattice Method. AIAA Journal, 51(7), 
-	pp.1775–1779.
-[2] Gulcat, U., 2009. Propulsive Force of a Flexible Flapping Thin Airfoil. 
-	Journal of Aircraft, 46(2), pp.465–473.
-'''
+
+1. Simpson, R.J.S., Palacios, R. & Murua, J., 2013. Induced-Drag Calculations in the Unsteady Vortex Lattice Method.
+   AIAA Journal, 51(7), pp.1775–1779.
+
+2. Gulcat, U., 2009. Propulsive Force of a Flexible Flapping Thin Airfoil. Journal of Aircraft, 46(2), pp.465–473.
+
+"""
 
 import numpy as np
 import scipy.special as scsp
@@ -22,7 +23,7 @@ j = 1.0j
 
 
 def theo_fun(k):
-    '''Returns Theodorsen function at a reduced frequency k'''
+    """Returns Theodorsen function at a reduced frequency k"""
 
     H1 = scsp.hankel2(1, k)
     H0 = scsp.hankel2(0, k)
@@ -33,15 +34,16 @@ def theo_fun(k):
 
 
 def qs_derivs(x_ea_perc, x_fh_perc):
-    '''
+    """
     Provides quasi-steady aerodynamic lift and moment coefficients derivatives
     Ref. Palacios and Cesnik, Chap 3.
 
-    x_ea_perc: position of axis of rotation in percentage of chord (measured
-    from LE)
-    x_fc_perc: position of flap axis of rotation in percentage of chord
-    (measured from LE)
-    '''
+    Args:
+        x_ea_perc: position of axis of rotation in percentage of chord (measured
+          from LE)
+        x_fc_perc: position of flap axis of rotation in percentage of chord
+          (measured from LE)
+    """
 
     # parameters
     nu_ea = 2.0 * x_ea_perc - 1.0
@@ -63,15 +65,16 @@ def qs_derivs(x_ea_perc, x_fh_perc):
 
 
 def nc_derivs(x_ea_perc, x_fh_perc):
-    '''
+    """
     Provides non-circulatory aerodynamic lift and moment coefficients derivatives
     Ref. Palacios and Cesnik, Chap 3.
 
-    x_ea_perc: position of axis of rotation in percentage of chord (measured
-    from LE)
-    x_fc_perc: position of flap axis of rotation in percentage of chord
-    (measured from LE)
-    '''
+    Args:
+        x_ea_perc: position of axis of rotation in percentage of chord (measured
+          from LE)
+        x_fc_perc: position of flap axis of rotation in percentage of chord
+          (measured from LE)
+    """
 
     # parameters
     nu_ea = 2.0 * x_ea_perc - 1.0
@@ -95,22 +98,24 @@ def nc_derivs(x_ea_perc, x_fh_perc):
 
 
 def theo_CL_freq_resp(k, x_ea_perc, x_fh_perc):
-    '''
+    """
     Frequency response of lift coefficient according Theodorsen's theory.
 
     The output is a 3 elements array containing the CL frequency response w.r.t.
     to pitch, plunge and flap motion, respectively. Sign conventions are as
     follows:
-    plunge: positive when moving upward
+    
+        * plunge: positive when moving upward
 
-    x_ea_perc: position of axis of rotation in percentage of chord (measured
-    from LE)
-    x_fc_perc: position of flap axis of rotation in percentage of chord
-    (measured from LE)
+        * x_ea_perc: position of axis of rotation in percentage of chord (measured
+          from LE)
+    
+        * x_fc_perc: position of flap axis of rotation in percentage of chord
+          (measured from LE)
 
     Warning:
         this function uses different input/output w.r.t. theo_lift
-    '''
+    """
 
     df, ddf = j * k, -k ** 2
 
@@ -146,12 +151,12 @@ def theo_CL_freq_resp(k, x_ea_perc, x_fh_perc):
 
 
 def theo_CM_freq_resp(k, x_ea_perc, x_fh_perc):
-    '''
+    """
     Frequency response of moment coefficient according Theodorsen's theory.
 
     The output is a 3 elements array containing the CL frequency response w.r.t.
     to pitch, plunge and flap motion, respectively.
-    '''
+    """
 
     df, ddf = j * k, -k ** 2
 
@@ -186,8 +191,16 @@ def theo_CM_freq_resp(k, x_ea_perc, x_fh_perc):
 
 
 def theo_lift(w, A, H, c, rhoinf, uinf, x12):
-    '''
-    Theodorsen's solution for lift of aerofoil undergoing sinusoidal motion:
+    r"""
+    Theodorsen's solution for lift of aerofoil undergoing sinusoidal motion.
+
+    Time histories are built assuming:
+
+        * ``a(t)=+/- A cos(w t) ??? not verified``
+
+        * :math:`h(t)=-H\cos(w t)`
+
+    Args:
         w: frequency (rad/sec) of oscillation
         A: amplitude of angle of attack change
         H: amplitude of plunge motion
@@ -197,10 +210,7 @@ def theo_lift(w, A, H, c, rhoinf, uinf, x12):
         x12: distance of elastic axis from mid-point of aerofoil (positive if
             the elastic axis is ahead)
 
-    Time histories are built assuming
-        ``a(t)=+/- A cos(w t) ??? not verified``
-        ``h(t)=-H cos(w t)``
-    '''
+    """
 
     # reduced frequency
     k = 0.5 * w * c / uinf
@@ -217,15 +227,21 @@ def theo_lift(w, A, H, c, rhoinf, uinf, x12):
 
 
 def garrick_drag_plunge(w, H, c, rhoinf, uinf, time):
-    '''
+    r"""
     Returns Garrick solution for drag coefficient at a specific time.
     Ref.[1], eq.(8) (see also eq.(1) and (2)) or Ref[2], eq.(2)
+
     The aerofoil vertical motion is assumed to be:
-        h(t)=-H*cos(wt)
-    The Cd is such that:
-        Cd>0: drag
-        Cd<0: suction
-    '''
+
+    .. math:: h(t)=-H\cos(wt)
+
+
+    The :math:`C_d` is such that:
+
+        * :math:`C_d>0`: drag
+
+        * :math:`C_d<0`: suction
+    """
 
     b = 0.5 * c
     k = b * w / uinf
@@ -242,15 +258,20 @@ def garrick_drag_plunge(w, H, c, rhoinf, uinf, time):
 
 
 def garrick_drag_pitch(w, A, c, rhoinf, uinf, x12, time):
-    '''
+    r"""
     Returns Garrick solution for drag coefficient at a specific time.
     Ref.[1], eq.(9), (10) and (11)
+
     The aerofoil pitching motion is assumed to be:
-        a(t)=A*sin(wt)=A*sin(ks)
-    The Cd is such that:
-        Cd>0: drag
-        Cd<0: suction
-    '''
+
+        .. math:: a(t)=A\sin(\omegat)=A\sin(ks)
+
+    The :math:`C_d` is such that:
+
+        * :math:`C_d>0`: drag
+
+        * :math:`C_d<0`: suction
+    """
 
     x12 = x12 / c
     b = 0.5 * c
@@ -282,9 +303,9 @@ def garrick_drag_pitch(w, A, c, rhoinf, uinf, x12, time):
 
 
 def sears_fun(kg):
-    '''
+    """
     Produces Sears function
-    '''
+    """
 
     S12 = 2. / np.pi / kg / (scsp.hankel1(0, kg) + 1.j * scsp.hankel1(1, kg))
     S = np.exp(-1.j * kg) * S12.conj()
@@ -293,15 +314,19 @@ def sears_fun(kg):
 
 
 def sears_lift_sin_gust(w0, L, Uinf, chord, tv):
-    '''
+    """
     Returns the lift coefficient for a sinusoidal gust (see set_gust.sin) as
     the imaginary part of the CL complex function defined below. The input gust
     must be the imaginary part of
-        wgust = w0*np.exp(1.0j*C*(Ux*S.time[tt] - xcoord) )
+
+    .. math::    wgust = w0*\exp(1.0j*C*(Ux*S.time[tt] - xcoord) )
+
     with:
-        C=2.*np.pi/L
-    and xcoord=0 at the aerofoil half-chord.
-    '''
+
+    .. math:: C=2\pi/L
+
+    and ``xcoord=0`` at the aerofoil half-chord.
+    """
 
     # reduced frequency
     kg = np.pi * chord / L
@@ -318,10 +343,10 @@ def sears_lift_sin_gust(w0, L, Uinf, chord, tv):
 
 
 def sears_CL_freq_resp(k):
-    '''
+    """
     Frequency response of lift coefficient according Sear's solution.
     Ref. Palacios and Cesnik, Chap.3
-    '''
+    """
 
     # hanckel functions
     H1 = scsp.hankel1(1, k)
@@ -338,9 +363,9 @@ def sears_CL_freq_resp(k):
 
 
 def wagner_imp_start(aeff, Uinf, chord, tv):
-    '''
+    """
     Lift coefficient resulting from impulsive start solution.
-    '''
+    """
 
     sv = 2.0 * Uinf / chord * tv
     fiv = 1.0 - 0.165 * np.exp(-0.0455 * sv) - 0.335 * np.exp(-0.3 * sv)
@@ -351,15 +376,17 @@ def wagner_imp_start(aeff, Uinf, chord, tv):
 
 def flat_plate_analytical(kv, x_ea_perc, x_fh_perc, input_seq, output_seq,
                           output_scal=None, plunge_deriv=True):
-    '''
+    """
     Computes the analytical frequency response of a plat plate for the input
     output sequences in input_seq and output_seq over the frequency points kv,
     if available.
-    The outpur complex values array Yan has shape (Nout,Nin,Nk); if an analytical
+
+    The output complex values array ``Yan`` has shape ``(Nout,Nin,Nk)``; if an analytical
     solution is not available, the response is assumed to be zero.
-    If plunge_deriv is True, the plunge response is expressed in terms of first
+
+    If ``plunge_deriv`` is ``True``, the plunge response is expressed in terms of first
     derivative dh.
-    '''
+    """
 
     Nout = len(output_seq)
     Nin = len(input_seq)

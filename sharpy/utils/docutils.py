@@ -1,13 +1,13 @@
 """Documentation Generator
 
-Functions to automatically document the code
+Functions to automatically document the code.
+
+Comments and complaints: N. Goizueta
 """
 import sharpy.utils.sharpydir as sharpydir
 import sharpy.utils.exceptions as exceptions
-# import sharpy.utils.algebra as algebra
 import os
 import shutil
-import sharpy.utils.cout_utils as cout
 import inspect
 import importlib.util
 import sharpy.utils.solver_interface as solver_interface
@@ -24,41 +24,38 @@ def generate_documentation():
     """
     print('Cleaning docs/source/includes')
     shutil.rmtree(sharpydir.SharpyDir + '/docs/source/includes/')
-    solver_interface.output_documentation()
+    solver_interface.output_documentation()  # Solvers and generators have a slightly different generation method
     generator_interface.output_documentation()
 
-    # changing below here
-    data_file = yaml.load(open(sharpydir.SharpyDir + '/docs/docinclude.yml', 'r'), Loader=yaml.Loader)
-    #
-    # for item in data_file['packages']:
-    #     output_documentation(sharpydir.SharpyDir + '/' + item['folder'], item['docs_folder'])
-
-  # for item in data_file['modules']:
-    #     try:
-    #         output_documentation_module_page(sharpydir.SharpyDir + item['folder'], item['docs_folder'],
-    #                                          item.get('docs_title', None))
-    #     except ModuleNotFoundError:
-    #         warnings.warn('Unable to load %s to create %s' % (item['folder'], item['docs_folder']))
-
-
+    # Main sharpy source code
     sharpy_folders = get_sharpy_folders()
     ignore_modules = yaml.load(open(sharpydir.SharpyDir + '/docs/docignore.yml', 'r'), Loader=yaml.Loader)
-    # print(ignore_modules)
+
     for folder in sharpy_folders:
         folder_name = folder.replace(sharpydir.SharpyDir, '')
         folder_name = folder_name[1:]
         if check_folder_in_ignore(folder, ignore_modules['modules']):
             continue
         mtitle, mbody = write_folder(folder, ignore_modules['modules'])
-        # mtitle, mbody = module_title(folder)
         create_index_files(folder, mtitle, mbody)
-        # files = open_folder(folder)
-        # for file in files:
-        #     if os.path.isfile(file) and not check_folder_in_ignore(file, ignore_modules['modules']):
-        #         write_file(file)
-    create_index_files('./')
+    create_index_files('./', 'SHARPy Source Code')
+
 
 def write_folder(folder, ignore_list):
+    """
+    Creates the documentation for the contents in a folder.
+
+    It checks that the file folder is not in the ``ignore_list``. If there is a subfolder in the folder, this gets
+    opened, written and an index file is created.
+
+    Args:
+        folder (str): Absolute path to folder
+        ignore_list (list): List with filenames and folders to ignore and skip
+
+    Returns:
+        tuple: Tuple containing the title and body of the docstring found for it to be added to the index of the
+          current folder.
+    """
     files, mtitle, mbody = open_folder(folder)
     for file in files:
         if os.path.isfile(file) and not check_folder_in_ignore(file, ignore_list):
@@ -68,21 +65,40 @@ def write_folder(folder, ignore_list):
             create_index_files(file, mtitlesub, mbodysub)
     return mtitle, mbody
 
+
 def write_file(file):
+    """
+    Writes the contents of a python file with one module per page.
+
+    Warnings:
+        If the function to be written does not have a docstring no output will be produced and a warning will be given.
+
+    Args:
+        file (str): Absolute path to file
+
+    """
     file_name = file.replace(sharpydir.SharpyDir, '')
     source = file_name.replace('.py', '')
     outfile = source.replace('sharpy/', '')
-    # print(source)
-    # print(outfile)
     try:
         output_documentation_module_page(source,
-                                         outfile,
-                                         None)
+                                         outfile)
     except exceptions.DocumentationError:
-        # Future - remove try except so it raises the error that no title has been given
+        # Future feature- remove try except so it raises the error that no title has been given
         warnings.warn('Module %s not written - no title given' %source)
 
+
 def check_folder_in_ignore(folder, ignore_list):
+    """
+    Checks whether a folder is in the ``ignore_list``.
+
+    Args:
+        folder (str): Absolute path to folder
+        ignore_list (list): Ignore list
+
+    Returns:
+        bool: Bool whether file/folder is in ignore list.
+    """
     file_name_check = folder.replace(sharpydir.SharpyDir, '')
     file_name_check = file_name_check[1:]
     if file_name_check in ignore_list:
@@ -90,14 +106,14 @@ def check_folder_in_ignore(folder, ignore_list):
     else:
         return False
 
-def output_documentation_module_page(path_to_module, docs_folder_name, docs_title=None):
+
+def output_documentation_module_page(path_to_module, docs_folder_name):
     """
     Generates the documentation for a package with a single page per module in the desired folder
     Returns:
 
     """
 
-    # import_path = os.path.dirname(path_to_module)
     import_path = path_to_module
     import_path = import_path.replace(sharpydir.SharpyDir, "")
     if import_path[0] == "/": import_path = import_path[1:]
@@ -156,10 +172,6 @@ def output_documentation_module_page(path_to_module, docs_folder_name, docs_titl
     # create index file
     if index_file_content != []:
         with open(path_to_folder + '/index.rst', 'w') as outfile:
-            # if docs_title is None:
-            #     index_title = docs_folder_name.capitalize()
-            # else:
-            #     index_title = docs_title
             index_title, body = get_module_title_and_body(module)
 
             if module.__doc__ is not None:
@@ -252,11 +264,14 @@ def create_index_files(docs_folder, folder_title=None, folder_body=None):
     autodocindexfilename = docs_path + '/index.rst'
 
     rst_files = glob.glob('%s/*/*index.rst' % docs_path)
+    # Sort files alphabetically
+    rst_files.sort(key=lambda x: x.replace(docs_path, ''))
 
     if folder_title is None:
         folder_title = docs_path.split('/')[-1].capitalize()
 
     if rst_files:
+        ordered_list = []
         with open(autodocindexfilename, 'w') as outfile:
             outfile.write(folder_title + '\n' + len(folder_title)*'-' + '\n\n')
             outfile.write('.. toctree::\n\t:maxdepth: 1\n\n')
@@ -287,6 +302,7 @@ def get_module_title_and_body(module):
 
         body = '\n'.join(docstring[1:])
     else:
+        # Had some issues with complete folders not being written if no docs present... need to verify
         # raise exceptions.DocumentationError('Module %s has been given no title in neither the 1st or 2nd lines of '
         #                                     'its docstring'
         #                 % module.__name__)
@@ -322,19 +338,6 @@ def module_title(file):
 
     return title, body
 
+
 if __name__ == '__main__':
-
-    # mod1 = sharpydir.SharpyDir + '/utils/algebra'
-    # output_documentation_algebra(mod1, 'algebra')
-
-    # mod1 = sharpydir.SharpyDir + 'utils/algebra'
-    # solver_interface.solver_list_from_path(mod1)
-    # output_documentation(mod1)
-    # output_documentation_module_page(mod1, 'algebra')
-    # mod1 = sharpydir.SharpyDir + '/sharpy/aero/models'
-    # output_documentation(mod1, 'aero')
     generate_documentation()
-    # a = get_sharpy_folders()
-    # aa = get_files(a[1])
-    # print(aa)
-    # create_index_files()
