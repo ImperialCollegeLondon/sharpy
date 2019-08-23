@@ -302,7 +302,7 @@ class LinearBeam(BaseElement):
         if u_n is not None:
             for i_node in vdof[vdof >= 0]:
                 steady_applied_forces[i_node+1] = u_n[6*i_node: 6*i_node + 6]
-
+            steady_applied_forces[0] = u_n[-10:-4] - np.sum(steady_applied_forces[1:, :], 0)
 
         # gravity forces - careful - debug
         C_grav = np.zeros((q.shape[0], q.shape[0]))
