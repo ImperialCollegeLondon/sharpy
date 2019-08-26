@@ -1,11 +1,15 @@
+"""Aerogrid
+
+Aerogrid contains all the necessary routines to generate an aerodynamic
+grid based on the input dictionaries.
+"""
 # Alfonso del Carre
+
 # alfonso.del-carre14@imperial.ac.uk
 # Imperial College London
 # LoCA lab
 # 29 Sept 2016
 
-# Aerogrid contains all the necessary routines to generate an aerodynamic
-# grid based on the input dictionaries.
 
 import ctypes as ct
 import warnings

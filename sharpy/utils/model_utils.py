@@ -1,3 +1,6 @@
+"""
+Modelling Utilities
+"""
 import numpy as np
 import sharpy.utils.algebra as algebra
 
