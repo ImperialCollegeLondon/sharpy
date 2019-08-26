@@ -19,17 +19,6 @@ class AerogridLoader(BaseSolver):
 
     Attributes:
         settings (dict): Name-value pair of the settings employed by the aerodynamic solver
-
-            ==============================  ===============  ===========================================  ===================
-            Name                            Type             Description                                  Default
-            ==============================  ===============  ===========================================  ===================
-            ``unsteady``                    ``bool``         Unsteady aerodynamics                        ``False``
-            ``aligned_grid``                ``bool``         Aerodynamic grid aligned with oncoming flow  ``True``
-            ``freestream_dir``              ``list(float)``  Direction of the oncoming flow               ``[1.0, 0.0, 0.0]``
-            ``mstar``                       ``int``          Number of wake panels in the flow direction  ``10``
-            ``control_surface_deflection``  ``list(dict)``    Control surface specification. See Notes.     ``None``
-            ==============================  ===============  ===========================================  ===================
-
         settings_types (dict): Acceptable types for the values in ``settings``
         settings_default (dict): Name-value pair of default values for the aerodynamic settings
         data (ProblemData): class structure
@@ -55,24 +44,22 @@ class AerogridLoader(BaseSolver):
 
     """
     solver_id = 'AerogridLoader'
+    settings_types = dict()
+    settings_default = dict()
+
+    settings_types['unsteady'] = 'bool'
+    settings_default['unsteady'] = False
+
+    settings_types['aligned_grid'] = 'bool'
+    settings_default['aligned_grid'] = True
+
+    settings_types['freestream_dir'] = 'list(float)'
+    settings_default['freestream_dir'] = np.array([1.0, 0, 0])
+
+    settings_types['mstar'] = 'int'
+    settings_default['mstar'] = 10
 
     def __init__(self):
-        # settings list
-        self.settings_types = dict()
-        self.settings_default = dict()
-
-        self.settings_types['unsteady'] = 'bool'
-        self.settings_default['unsteady'] = False
-
-        self.settings_types['aligned_grid'] = 'bool'
-        self.settings_default['aligned_grid'] = True
-
-        self.settings_types['freestream_dir'] = 'list(float)'
-        self.settings_default['freestream_dir'] = np.array([1.0, 0, 0])
-
-        self.settings_types['mstar'] = 'int'
-        self.settings_default['mstar'] = 10
-
         self.data = None
         self.settings = None
         self.aero_file_name = ''
@@ -87,7 +74,9 @@ class AerogridLoader(BaseSolver):
         self.settings = data.settings[self.solver_id]
 
         # init settings
-        settings_utils.to_custom_types(self.settings, self.settings_types, self.settings_default)
+        settings_utils.to_custom_types(self.settings,
+                                       self.settings_types,
+                                       self.settings_default)
 
         # read input file (aero)
         self.read_files()
@@ -95,20 +84,23 @@ class AerogridLoader(BaseSolver):
     def read_files(self):
         # open aero file
         # first, file names
-        self.aero_file_name = self.data.case_route + '/' + self.data.case_name + '.aero.h5'
-        # then check that the file exists
+        self.aero_file_name = (self.data.case_route +
+                               '/' +
+                               self.data.case_name +
+                               '.aero.h5')
+
+        #  then check that the file exists
         h5utils.check_file_exists(self.aero_file_name)
-        # read and store the hdf5 file
+
+        #  read and store the hdf5 file
         with h5.File(self.aero_file_name, 'r') as aero_file_handle:
             # store files in dictionary
             self.aero_data_dict = h5utils.load_h5_in_dict(aero_file_handle)
-            # TODO implement aero file validation
-            # self.validate_aero_file()
-
-    def validate_aero_file(self):
-        raise NotImplementedError('validation of the aerofile in beamloader is not yet implemented!')
 
     def run(self):
         self.data.aero = aerogrid.Aerogrid()
-        self.data.aero.generate(self.aero_data_dict, self.data.structure, self.settings, self.data.ts)
+        self.data.aero.generate(self.aero_data_dict,
+                                self.data.structure,
+                                self.settings,
+                                self.data.ts)
         return self.data

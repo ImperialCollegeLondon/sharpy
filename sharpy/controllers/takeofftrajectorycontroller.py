@@ -1,3 +1,4 @@
+import ctypes as ct
 import numpy as np
 import scipy.interpolate as interpolate
 
@@ -41,12 +42,30 @@ class TakeOffTrajectoryController(controller_interface.BaseController):
     settings_types['controller_log_route'] = 'str'
     settings_default['controller_log_route'] = './output/'
     settings_description['controller_log_route'] = (
-            'Directory where the log will be stored')
+        'Directory where the log will be stored')
 
     settings_types['write_controller_log'] = 'bool'
     settings_default['write_controller_log'] = True
     settings_description['write_controller_log'] = (
         'Controls if the log from the controller is written or not.')
+
+    settings_types['free_trajectory_structural_solver'] = 'str'
+    settings_default['free_trajectory_structural_solver'] = ''
+    settings_description['free_trajectory_structural_solver'] = (
+        'If different than and empty string, the structural solver' +
+        ' will be changed after the end of the trajectory has been reached')
+
+    settings_types['free_trajectory_structural_substeps'] = 'int'
+    settings_default['free_trajectory_structural_substeps'] = 0
+    settings_description['free_trajectory_structural_substeps'] = (
+        'Controls the structural solver' +
+        ' structural substeps once the end of the trajectory has been reached')
+
+    settings_types['initial_ramp_length_structural_substeps'] = 'int'
+    settings_default['initial_ramp_length_structural_substeps'] = 10
+    settings_description['initial_ramp_length_structural_substeps'] = (
+        'Controls the number of timesteps that are used to increase the' +
+        ' structural substeps from 0')
 
     settings_table = settings.SettingsTable()
     __doc__ += settings_table.generate(settings_types,
@@ -117,34 +136,56 @@ class TakeOffTrajectoryController(controller_interface.BaseController):
         i_current = data.ts
 
         try:
-            constraint = controlled_state['structural'].mb_dict[self.settings['controlled_constraint']]
+            constraint = controlled_state['structural'].\
+                    mb_dict[self.settings['controlled_constraint']]
         except KeyError:
-            cout.cout_wrap('''Could not find the controlled constraint. This can be because the constraint
-has been removed during execution, or a mistake has been made.''', 3)
             return controlled_state
         except TypeError:
-            import pdb; pdb.set_trace()
+            import pdb
+            pdb.set_trace()
 
         if self.controlled_body is None or self.controlled_node is None:
             self.controlled_body = constraint['body_number']
             self.controlled_node = constraint['node_number']
+
+        # reset info to include only fresh info
+        controlled_state['info'] = dict()
 
         # apply it where needed.
         traj_command, end_of_traj = self.controller_wrapper(time)
         if end_of_traj:
             lc.remove_constraint(controlled_state['structural'].mb_dict,
                                  self.settings['controlled_constraint'])
+
+            if not self.settings['free_trajectory_structural_solver'] == '':
+                controlled_state['info']['structural_solver'] = (
+                    self.settings['free_trajectory_structural_solver'])
+
+            controlled_state['info']['structural_substeps'] = (
+                self.settings['free_trajectory_structural_substeps'])
+
             return controlled_state
 
         constraint['velocity'][:] = traj_command
 
-        self.log.write(('{:>6d},'
-                        + 3*'{:>12.6f},'
-                        + '{:>12.6f}\n').format(i_current,
-                                                time,
-                                                traj_command[0],
-                                                traj_command[1],
-                                                traj_command[2]))
+        if self.settings['write_controller_log']:
+            self.log.write(('{:>6d},'
+                            + 3*'{:>12.6f},'
+                            + '{:>12.6f}\n').format(i_current,
+                                                    time,
+                                                    traj_command[0],
+                                                    traj_command[1],
+                                                    traj_command[2]))
+
+        if self.settings['initial_ramp_length_structural_substeps'].value >= 0:
+            if (i_current <
+                    self.settings['initial_ramp_length_structural_substeps'].value):
+                controlled_state['info']['structural_substeps'] = \
+                        ct.c_int(i_current - 1)
+            elif (i_current ==
+                  self.settings['initial_ramp_length_structural_substeps'].value):
+                controlled_state['info']['structural_substeps'] = None
+
         return controlled_state
 
     def process_trajectory(self, dxdt=True):
@@ -153,31 +194,34 @@ has been removed during execution, or a mistake has been made.''', 3)
         """
         self.trajectory_interp = []
         # Make sure s = 0.5 is ok.
-        self.t_limits[:] = np.min(self.input_history[:, 0]), np.max(self.input_history[:, 0])
+        self.t_limits[:] = (np.min(self.input_history[:, 0]),
+                            np.max(self.input_history[:, 0]))
         for i_dim in range(3):
             self.trajectory_interp.append(
                 interpolate.UnivariateSpline(self.input_history[:, 0],
                                              self.input_history[:, i_dim + 1],
-                                             k=3,
-                                             s=0.5))
+                                             k=1,
+                                             s=0.,
+                                             ext='raise'))
         if dxdt:
             self.trajectory_vel_interp = []
             for i_dim in range(3):
-                self.trajectory_vel_interp.append(self.trajectory_interp[i_dim].derivative())
+                self.trajectory_vel_interp.append(
+                    self.trajectory_interp[i_dim].derivative())
 
     def controller_wrapper(self, t):
         output_traj = np.zeros((3,))
         end_of_traj = False
         if self.settings['trajectory_method'] == 'lagrange':
             # check that t is in input limits
-            if not self.t_limits[0] <= t <= self.t_limits[1]:
-                for i_dim in range(3):
-                    output_traj[i_dim] = np.nan
-                    end_of_traj = True
-            else:
+            if self.t_limits[0] <= t <= self.t_limits[1]:
                 # return velocities
                 for i_dim in range(3):
                     output_traj[i_dim] = self.trajectory_vel_interp[i_dim](t)
+            else:
+                for i_dim in range(3):
+                    output_traj[i_dim] = np.nan
+                    end_of_traj = True
         else:
             raise NotImplementedError('The trajectory_method ' +
                                       self.settings['trajectory_method'] +

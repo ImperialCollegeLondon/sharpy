@@ -19,7 +19,6 @@ class NoDefaultValueException(DefaultValueBaseException):
             cout.cout_wrap.print_separator(3)
 
 
-
 class NotValidInputFile(Exception):
     def __init__(self, message):
         super().__init__(message)
@@ -48,4 +47,13 @@ class DocumentationError(Exception):
         cout.cout_wrap('Documentation for module has been given no title')
     except ValueError:
         pass
+
+
+class NotConvergedSolver(Exception):
+    """
+    To be raised when the solver does not converge. Before this, SHARPy
+    would add a pdb trace, but this causes problems when using SHARPy
+    as a black box.
+    """
+    pass
 
