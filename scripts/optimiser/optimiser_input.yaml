@@ -36,7 +36,7 @@ optimiser:
             z_0: 1
             scale: 1
         loads:
-            25g_loads: 'input/envelope.csv'
+            reference_loads: 'input/cruise_loads.csv'
             Torsion:
                 scale: 0.5
             OOP:
