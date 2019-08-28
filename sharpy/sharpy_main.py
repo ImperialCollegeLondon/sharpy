@@ -1,4 +1,4 @@
-import pickle
+import dill as pickle
 import sharpy.utils.cout_utils as cout
 
 

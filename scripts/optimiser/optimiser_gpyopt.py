@@ -175,8 +175,10 @@ def optimiser(in_dict):
         constraint_string = ''
         constraint_string += str(base_aoa) + ' + '
         constraint_string += 'x[:, ' + str(dAoA_var_i) + '] - '
-        constraint_string += 'x[:, ' + str(ramp_angle_var_i) + '] -'
+        constraint_string += 'x[:, ' + str(ramp_angle_var_i) + '] - '
         constraint_string += str(limit)
+        constraints.append({'name': 'angle',
+                            'constraint': constraint_string})
     except KeyError:
         pass
 
@@ -186,30 +188,34 @@ def optimiser(in_dict):
     batch_size = 5
     num_cores = 20
     opt = GPyOpt.methods.BayesianOptimization(
-            f=gpyopt_wrapper,
-            domain=bounds,
-            exact_feval=True,
-            acquisition_type='EI',
-            normalize_y=True,
-            initial_design_numdata=10,
-            evaluator_type='local_penalization',
-            batch_size=batch_size,
-            num_cores=num_cores,
-            acquisition_jitter=0,
-            de_duplication=True,
-            constraints=constraints)
+        f=gpyopt_wrapper,
+        domain=bounds,
+        exact_feval=True,
+        model_type='GP',
+        acquisition_type='EI',
+        normalize_y=True,
+        initial_design_numdata=10,
+        evaluator_type='local_penalization',
+        batch_size=batch_size,
+        num_cores=num_cores,
+        acquisition_jitter=0,
+        de_duplication=True,
+        constraints=constraints)
 
     #TODO add to dict
-    in_dict['optimiser']['n_iter'] = 10
+    in_dict['optimiser']['n_iter'] = 30
 
     opt.run_optimization(in_dict['optimiser']['n_iter'],
                          report_file=output_route + 'report.log',
                          evaluations_file=output_route + 'evaluations.log',
                          models_file=output_route + 'models.log',
-                         eps=in_dict['optimiser']['numerics']['tolerance'],
                          verbosity=True
                         )
 
+    print('*'*60)
+    print('Best one cost: ', opt.fx_opt)
+    print('\tParameters: ', opt.x_opt)
+    print('*'*60)
     with open(output_route + 'optimiser.pkl', 'wb') as f:
         pickle.dump(opt, f, protocol=pickle.HIGHEST_PROTOCOL)
 
@@ -241,20 +247,6 @@ def optimiser(in_dict):
                             # n_jobs=4)
 
 
-def convergence(result, yaml_dict):
-    global prev_result
-    global pprev_result
-    if prev_result is None:
-        prev_result = 0.0
-        pprev_result = 0.0
-    if (np.abs(result.fun - prev_result) < yaml_dict['optimiser']['numerics']['tolerance'] and
-        np.abs(result.fun - pprev_result) < yaml_dict['optimiser']['numerics']['tolerance']):
-        return True
-    else:
-        pprev_result = prev_result
-        prev_result = result.fun
-        return False
-
 def case_id():
     case_name = '{0:04d}'.format(random.randint(0, 9999+1))
     return case_name
@@ -267,9 +259,11 @@ def evaluate(x_dict, yaml_dict):
     files, case_name = set_case(case_name,
                                 yaml_dict['base'],
                                 x_dict,
-                                yaml_dict['settings'])
+                                yaml_dict['settings'],
+                                yaml_dict['case'])
     data = run_case(files)
     cost = cost_function(data, x_dict, yaml_dict['optimiser']['cost'])
+    data.cost = cost
     print('   Case: ' + str(case_name) + '; cost = ', cost)
 
     if yaml_dict['settings']['delete_case_folders']:
@@ -290,7 +284,7 @@ def wrapper(x, yaml_dict):
     return cost
 
 
-def set_case(case_name, base_dict, x_dict, settings_dict):
+def set_case(case_name, base_dict, x_dict, settings_dict, case_dict):
     """set_case: takes care of the setup of the case
 
     This function copies the original case, given by route_base, then
@@ -307,10 +301,15 @@ def set_case(case_name, base_dict, x_dict, settings_dict):
         os.mkdir(settings_dict['cases_folder'])
     except FileExistsError:
         pass
+    # create folder for cases if it doesn't exist
+    try:
+        os.mkdir(settings_dict['cases_folder'] + '/' + case_dict['name'] + '/')
+    except FileExistsError:
+        pass
         # print('cases_folder already exists')
 
     # clean folder for the new case to be run
-    case_route = settings_dict['cases_folder'] + '/' + case_name + '/'
+    case_route = settings_dict['cases_folder'] + '/' + case_dict['name'] + '/' + '/' + case_name + '/'
     if os.path.exists(case_route):
         # cleanup folder
         try:
