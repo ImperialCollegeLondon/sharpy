@@ -154,11 +154,24 @@ relatively long history (CITE SOME OLD PAPER FROM RAFA AND JOSEBA) and
 flexibility. The same code is being used on Very Flexible Aircraft
 catapult take off studies and High Aspect Ratio Wind Turbines turbulence response.
 
+## Very Flexible Aircraft aeroelastic response in low-altitude turbulence
+``SHARPy`` has been used to simulate the response of a very flexible aircraft
+subject to low altitude atmospheric turbulence. Synthetic turbulence generation
+methods such as the 1-D von K\'{a}rm\'{a}n and the 2-D Kaimal spectra have been
+applied in order to obtain velocity fields with similar PSDs to high-fidelity
+LES computations. Aeroelastic simulations of aircraft inmersed in the different
+turbulent fields showed how synthetic turbulence methods do not capture the larger flow
+structures present in the LES simulations. This results in strong discrepancies
+in wing root bending loads of up to 58% between different turbulent field generation methods.
+Results showed that one-dimensional models, which are the de facto standard for
+conventional aircraft provide fairly non-conservative load estimations for typical
+very flexible configurations. CITE
+
 ## Catapult Take Off analysis and optimisation
+
 
 ## Wind Turbine aeroelastic response to turbulence
 
-## Very Flexible Aircraft aeroelastic response in low-altitude turbulence
 
 
 
