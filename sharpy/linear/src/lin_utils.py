@@ -2,28 +2,13 @@
 Utilities functions for linear analysis
 """
 
-import time
-import copy
 import numpy as np
-import scipy as sc
-import scipy.signal as scsig
-import warnings
-import matplotlib.pyplot as plt
 
-# sharpy
-import sharpy.sharpy_main
-import sharpy.utils.solver_interface as solver_interface
-from sharpy.solvers.modal import Modal as modal
-import sharpy.utils.h5utils as h5
-import cases.templates.flying_wings as flying_wings
 
 
 # linear uvlm
-import sharpy.linear.src.save as save
-import sharpy.linear.src.linuvlm as linuvlm
 import sharpy.linear.src.lin_aeroelastic as lin_aeroelastic
 import sharpy.linear.src.libss as libss 
-import sharpy.linear.src.librom as librom
 
 
 
