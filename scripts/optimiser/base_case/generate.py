@@ -24,7 +24,7 @@ def generate(x_dict={}, case_name=None):
             'StaticCoupled',
             'BeamLoads',
             'DynamicCoupled',
-            'PickleData'
+            # 'PickleData'
             ]
 
 # FLIGHT CONDITIONS

@@ -221,7 +221,7 @@ def optimiser(in_dict):
 
     print('FINISHED')
 
-    import pdb; pdb.set_trace()
+    breakpoint()
     # skopt_wrapper = lambda x: wrapper(x, in_dict)
     # res = skopt.gp_minimize(func=skopt_wrapper,
                             # dimensions=bounds,
@@ -263,17 +263,19 @@ def evaluate(x_dict, yaml_dict):
                                 yaml_dict['case'])
     data = run_case(files)
     cost = cost_function(data, x_dict, yaml_dict['optimiser']['cost'])
-    data.cost = cost
     print('   Case: ' + str(case_name) + '; cost = ', cost)
 
-    if yaml_dict['settings']['delete_case_folders']:
-        raise NotImplementedError('delete_case_folders not supported yet')
-    if yaml_dict['settings']['save_data']:
-        with open(yaml_dict['settings']['cases_folder'] +
-                  '/' +
-                  case_name +
-                  'data.pkl', 'wb') as data_file:
-            pickle.dump(data, data_file, -1)
+    if data is not None:
+        data.cost = cost
+
+        if yaml_dict['settings']['delete_case_folders']:
+            raise NotImplementedError('delete_case_folders not supported yet')
+        if yaml_dict['settings']['save_data']:
+            with open(yaml_dict['settings']['cases_folder'] +
+                      '/' +
+                      case_name +
+                      'data.pkl', 'wb') as data_file:
+                pickle.dump(data, data_file, -1)
 
     return cost
 
