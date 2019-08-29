@@ -38,6 +38,7 @@ dependencies:
   - cython=0.29.5=py37he6710b0_0
   - dbus=1.13.6=h746ee38_0
   - decorator=4.3.2=py37_0
+  - dill=0.3.0=py37_0
   - docutils=0.14=py37_0
   - eigen=3.3.7=hfd86e86_0
   - entrypoints=0.3=py37_0
