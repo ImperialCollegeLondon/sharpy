@@ -114,6 +114,34 @@ def read_yaml(file_name):
 
 
 def optimiser(in_dict):
+    settings_dict = in_dict['settings']
+    case_dict = in_dict['case']
+    base_dict = in_dict['base']
+    # create folder for cases if it doesn't exist
+    try:
+        os.mkdir(settings_dict['cases_folder'])
+    except FileExistsError:
+        pass
+    # create folder for cases if it doesn't exist
+    try:
+        os.mkdir((settings_dict['cases_folder'] + '/' + case_dict['name'] + '/').replace('//', '/'))
+        print('Folder made')
+    except FileExistsError:
+        print('cases_folder already exists')
+
+    # clean folder for the new case to be run
+    case_route = (settings_dict['cases_folder'] + '/' + case_dict['name'] + '/').replace('//', '/')
+
+    # copy case
+    try:
+        print(base_dict['route'] + '/generate.py', case_route + 'generate.py')
+        shutil.copyfile(base_dict['route'] + '/generate.py', case_route + 'generate.py')
+    except IOError as error:
+        print('Problem copying the case')
+        print('Original error was: {}'.format(error))
+
+    # add the case folder to the python path to run generate with it
+    sys.path.append(case_route)
     # create folder for output if doesnt exist
     try:
         os.mkdir(in_dict['case']['output_folder'])
@@ -295,38 +323,6 @@ def set_case(case_name, base_dict, x_dict, settings_dict, case_dict):
         base_dict(dict): dictionary with the base case info
         x_dict(dict): dictionary of state variables
     """
-    # create folder for cases if it doesn't exist
-    try:
-        os.mkdir(settings_dict['cases_folder'])
-    except FileExistsError:
-        pass
-    # create folder for cases if it doesn't exist
-    try:
-        os.mkdir(settings_dict['cases_folder'] + '/' + case_dict['name'] + '/')
-    except FileExistsError:
-        pass
-        # print('cases_folder already exists')
-
-    # clean folder for the new case to be run
-    case_route = settings_dict['cases_folder'] + '/' + case_dict['name'] + '/' + '/' + case_name + '/'
-    if os.path.exists(case_route):
-        # cleanup folder
-        try:
-            shutil.rmtree(case_route)
-        except:
-            pass
-
-    # copy case
-    try:
-        shutil.copytree(base_dict['route'], case_route)
-    except IOError as error:
-        print('Problem copying the case')
-        print('Original error was: {}'.format(error))
-        case_name = case_id()
-        return -1
-
-    # add the case folder to the python path to run generate with it
-    sys.path.append(case_route)
 
     # runs the generate.py
     import generate

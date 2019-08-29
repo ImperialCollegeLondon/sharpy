@@ -1,5 +1,5 @@
 case:
-    name: optimiser_newloads_scale0p5
+    name: optimiser_0
     output_folder: ./output/
 base:
     name: base
@@ -15,8 +15,8 @@ optimiser:
     numerics:
         tolerance: 0.01 
         n_iter: 30
-        batch_size: 4
-        n_cores: 8
+        batch_size: 5
+        n_cores: 20
         initial_design_numdata: 10
     parameters:
         0: acceleration
