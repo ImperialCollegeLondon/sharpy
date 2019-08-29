@@ -185,8 +185,8 @@ def optimiser(in_dict):
     print(constraints)
 
     gpyopt_wrapper = lambda x: wrapper(x, in_dict)
-    batch_size = 5
-    num_cores = 20
+    batch_size = in_dict['optimiser']['numerics']['batch_size']
+    num_cores = in_dict['optimiser']['numerics']['n_cores']
     opt = GPyOpt.methods.BayesianOptimization(
         f=gpyopt_wrapper,
         domain=bounds,
@@ -194,7 +194,7 @@ def optimiser(in_dict):
         model_type='GP',
         acquisition_type='EI',
         normalize_y=True,
-        initial_design_numdata=10,
+        initial_design_numdata=in_dict['optimiser']['numerics']['initial_design_numdata'],
         evaluator_type='local_penalization',
         batch_size=batch_size,
         num_cores=num_cores,
@@ -202,10 +202,7 @@ def optimiser(in_dict):
         de_duplication=True,
         constraints=constraints)
 
-    #TODO add to dict
-    in_dict['optimiser']['n_iter'] = 30
-
-    opt.run_optimization(in_dict['optimiser']['n_iter'],
+    opt.run_optimization(in_dict['optimiser']['numerics']['n_iter'],
                          report_file=output_route + 'report.log',
                          evaluations_file=output_route + 'evaluations.log',
                          models_file=output_route + 'models.log',
