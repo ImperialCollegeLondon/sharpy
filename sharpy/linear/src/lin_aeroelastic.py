@@ -5,7 +5,6 @@ S. Maraniello, Jul 2018
 
 import warnings
 import numpy as np
-import scipy.signal as scsig
 
 import sharpy.utils.settings
 import sharpy.linear.src.linuvlm as linuvlm
@@ -16,7 +15,8 @@ import sharpy.utils.algebra as algebra
 
 class LinAeroEla():
     r"""
-    todo:
+
+    Future work:
         - settings are converted from string to type in __init__ method.
         - implement all settings of LinUVLM (e.g. support for sparse matrices)
 

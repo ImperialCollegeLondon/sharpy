@@ -53,14 +53,10 @@ def main(args=None, sharpy_input_dict=None):
         else:
             args = parser.parse_args()
 
-        if args.docs:
-            import sharpy.utils.generator_interface as generator_interface
-            import sharpy.utils.docutils as docutils
-
-            solver_interface.output_documentation()
-            generator_interface.output_documentation()
-            docutils.output_documentation_algebra()
-            return 0
+    if args.docs:
+        import sharpy.utils.docutils as docutils
+        docutils.generate_documentation()
+        return 0
 
         if args.input_filename == '':
             parser.error('input_filename is a required argument of sharpy.')

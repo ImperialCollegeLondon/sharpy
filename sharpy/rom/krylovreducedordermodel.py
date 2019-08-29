@@ -3,6 +3,8 @@ import scipy.linalg as sclalg
 import sharpy.linear.src.libss as libss
 import sharpy.utils.h5utils as h5
 import time
+"""Krylov subspace model order reduction
+"""
 
 
 class KrylovReducedOrderModel(object):
