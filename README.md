@@ -18,7 +18,7 @@ wings and wind turbines.
 
 ### Contact 
 
-For more information on the research team developing SHARPy or to get in touch, [visit our homepage](http://www.imperial.ac.uk/aeroelastics).
+For more information on the [research team](http://www.imperial.ac.uk/aeroelastics/people/) developing SHARPy or to get in touch, [visit our homepage](http://www.imperial.ac.uk/aeroelastics).
 
 ## Physical Models
 
