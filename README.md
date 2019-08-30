@@ -10,9 +10,11 @@ __Status__
 | [![Build Status](https://travis-ci.org/ImperialCollegeLondon/sharpy.svg?branch=master)](https://travis-ci.org/ImperialCollegeLondon/sharpy) | [![Build Status](https://travis-ci.org/ImperialCollegeLondon/sharpy.svg?branch=develop)](https://travis-ci.org/ImperialCollegeLondon/sharpy)|
 
 
-SHARPy is an aeroelastic analysis package currently under development at the Department of Aeronautics, 
-Imperial College London. It can be used for the structural, aerodynamic and aeroelastic analysis of flexible aircraft, 
-flying wings and wind turbines.
+SHARPy is an aeroelastic analysis package currently under development at the Department of Aeronautics, Imperial
+College London. It can be used for the structural, aerodynamic and aeroelastic analysis of flexible aircraft, flying
+wings and wind turbines.
+
+![XHALE render](https://github.com/ImperialCollegeLondon/sharpy/tree/master/docs/source/media/XHALE-render.jpg)
 
 ### Contact 
 
@@ -36,15 +38,17 @@ The input problems can be structural, aerodynamic or coupled, yielding an aeroel
 
 ## Capabilities
 
-SHARPy offers the following solutions to the user:
+SHARPy offers (amongst others) the following solutions to the user:
 * Static aerodynamic, structural and aeroelastic solutions
-* Finding trim conditions
-* Nonlinear, dynamic time domain simulations under specific conditions such as:
+* Finding trim conditions for aeroelastic configurations
+* Nonlinear, dynamic time domain simulations under a large number of conditions such as:
     + Prescribed trajectories
+    + Free flight
     + Dynamic follower forces
-    + Control inputs
-    + Gusts
+    + Control inputs in thrust, control surface deflection...
+    + Arbitrary time-domain gusts, including non span-constant ones
     + Full 3D turbulent fields
+    + Multibody dynamics with hinges, articulations and prescribed nodal motions
     
 ## Documentation
 
@@ -52,281 +56,10 @@ The documentation for SHARPy can be found [here](http://ic-sharpy.readthedocs.io
 
 ## Installing SHARPy
 
-For the latest documentation, see the [docs](http://ic-sharpy.readthedocs.io)
+For the latest documentation, see the [installation docs]l(https://ic-sharpy.readthedocs.io/en/latest/content/installation.html)
 
-### Set up the folder structure
+## Contributing
 
-0. Create the folder that will contain SHARPy and the underlying aerodynamic and structural libraries and `cd` into it.
-
-    ```bash
-    mkdir ~/code
-    cd !$
-    ```
-1. Clone `sharpy` in the working folder, if you agree with the license in `license.txt`
-    ```bash
-    git clone http://github.com/ImperialCollegeLondon/sharpy
-    ```
-    To keep up with the latest development work, check out the `develop` branch:
-    ```bash
-    git checkout develop
-    ```
-    To run the release version of SHARPy, skip this last step.
-2. Clone `xbeam` inside the working folder
-    ```bash
-    git clone http://github.com/ImperialCollegeLondon/xbeam
-    ```
-    Similarly, check out the `develop` branch for the latest work under development
-    ```bash
-    git checkout develop
-    ```
-3. Clone the `UVLM` repository to the working directory
-    ```bash
-    git clone http://github.com/ImperialCollegeLondon/UVLM
-    ```
-    Check out the `develop` branch for the latest work under development
-    ```bash
-    git checkout develop
-    ```
-    Likewise, skip the `git checkout` commands if you are running the `master` branch in `sharpy`.
-
-### Set up the Python Environment
-
-SHARPy uses the Anaconda package manager to provide the necessary Python packages.
-These are specified in an Anaconda environment that shall be activated prior to compiling the xbeam and UVLM libraries
-or running any SHARPy cases.
-
-1. Install the [Anaconda](https://conda.io/docs/) Python distribution
-
-2. Make sure your Python version is at least 3.5:
-    ```bash
-    python --version
-    # it returns:
-    #>>> Python 3.5.3 :: Anaconda custom (64-bit)
-    ```
-
-        If it returns `Python 2.X.X` (where `X` does not matter), there are two possibilities:
-        1. You haven't installed the proper [Anaconda](https://www.continuum.io/Anaconda-Overview).
-            Make sure you install the python3 version.
-        2. You have the correct python installation, but the `python` command
-        points to the default python of the OS. In this case, try `python3`
-
-3. Create the conda environment that SHARPy will use. Change `environment_linux.yml` to read `environment_mac.yml`
-file if you are installing SHARPy on Mac OS X
-    ```bash
-    cd sharpy/utils
-    conda env create -f environment_linux.yml
-    cd ../..
-    ```
-
-4. Anaconda will now install the required packages for the SHARPy environment. This new environment will be created with
-the name `sharpy_env`.
-
-5. Activate the newly created SHARPy environment `sharpy_env`.
-    ```bash
-    conda activate sharpy_env
-    ```
-
-6. Anaconda sometimes fails to install some packages. Just in case: install the 
-[Eigen](http://eigen.tuxfamily.org/) and [Lapack](http://www.netlib.org/lapack) libraries
-    ```bash
-    conda install eigen
-    conda install -c conda-forge lapack
-    ```
-
-### Compiling the UVLM and xbeam libraries
-
-Once the folder structure has been laid out, the aerodynamic and structural libraries can be compiled.
-Ensure that the SHARPy environment is active in the session. Your terminal prompt line should begin with
-```bash
-(sharpy_env) [usr@host]
-```
-
-If it is not the case, activate the environment. Otherwise xbeam and UVLM will fail to compile
-```bash
-conda activate sharpy_env
-```
-
-
-#### Compiling xbeam
-
-1. `cd` into the xbeam folder and clean any previous files
-    ```bash
-    cd xbeam
-    make clean
-    ```
-2. If you have the Intel Fortran compiler `ifort` installed and would like to use it, you need to specify some
-flags in the compiler. Else, if you prefer to use `gfortran`, proceed to step 3. To use `ifort`, open the file `makefile` 
-with your favourite text editor and comment out the `GFORTRAN SETTINGS` section, and uncomment the 
-`INTEL FORTRAN SETTINGS` section. If you have the Math Kernel Library MKL, it is advised that you use it as well.
-MacOS users need to modify the `makefile` file and uncomment the lines
-indicated in the file.
-
-3. Compile xbeam
-    ```bash
-    sh run_make.sh
-    cd ..
-    ```
-
-    This compiles a release version of xbeam calling to `gfortran`. If you
-    have several versions of `gcc` compiled, you might have to modify
-    the `FC` flag in `xbeam/makefile` in order
-    to account for this. For example, I have `gfortran-5.4.0` for a newer
-    version of `gcc` not included with CentOS, so I need to modify the makefile
-    if I want to take advantage of the improved features.
-
-    After a (hopefully) successful compilation of the xbeam library, the
-    `run_make` script automatically copies the library to the required folder in
-    `sharpy` (this is why you need to clone `sharpy` before compiling `xbeam`).
-
-    If you run into trouble when running SHARPy in MacOS and you have a newer
-    version of GCC (9 for example), the LAPACK version in Anaconda might be
-    outdated. Until they fix that, you can compile LAPACK manually and modify
-    `run_make.sh` in `xbeam` to point the `LAPACK_LIB_DIR` towards the
-    folder containing `liblapack.a`.
-    
-    
-__Common issues when compiling xbeam__
-
-* GFortran Version
-
-    It is often the case that even though the required version of GFortran is installed, it is not used during the compilation
-    and xbeam will return an error like the one below
-    ```bash
-        gfortran -fPIC -O3 -funroll-loops -ftree-parallelize-loops=4 -march=native -fopenmp  -c lib_lu.f90 lib_lu.f90:372.25:
-
-        use, intrinsic :: IEEE_ARITHMETIC
-                         1
-        Fatal Error: Can't find an intrinsic module named 'ieee_arithmetic' at (1)
-    ```
-            
-    The version of GFORTRAN that will be used can be checked beforehand
-    ```bash
-    gfortran --version
-    ```
-        
-    If the version shown is below 5.0 yet you have a newer version installed you can enable it using: 
-    ```bash
-    scl enable devtoolset-6 bash
-    ```
-    Check that the version is now as required and clean ```make clean``` and redo the installation ```sh run_make.sh```
-
-#### Compiling UVLM
-
-1. `cd` into the UVLM folder
-    ```bash
-    cd UVLM
-    make clean
-    ```
-    
-2. Again, if you have the Intel C++ compiler `icc` you can use it. Else, if you use `gcc`, proceed to step 3. To use 
-`icc` open the `src/Makefile` and comment out the `G++` sections and uncomment the `INTEL C++` section. In addition, 
-set the flag in line `17` to `CPP = icc`.
-
-3. Compile UVLM
-    ```bash
-    sh run_make.sh
-    cd ..
-    ```
-
-You have now successfully installed SHARPy!
-
-## Output and binary files
-
-SHARPy produces its output in `.vtu` format that can be used with [Paraview](https://www.paraview.org/).
-
-Data is exchanged in binary format by means of `.h5` files that make the transmission efficient between the different
-languages of the required libraries. To view these `.h5` files, a viewer like [HDFView](https://portal.hdfgroup.org/display/support) is recommended.
-
-## Running SHARPy cases
-
-__Before you run any SHARPy cases__
-
-1. Activate the SHARPy conda environment
-    ```bash
-    conda activate sharpy_env
-    ```
-
-2. Load the necessary environment variables for SHARPy
-    ```bash
-    source sharpy/bin/sharpy_vars.sh
-    ```
-
-You are now ready to run SHARPy cases from the terminal.
-
-### The SHARPy Case Structure
-
-SHARPy cases are usually structured in the following way:
-
-1. The `generate_case.py` file: contains the setup of the problem, like the geometry, flight conditions etc.
-This script creates two output files that will then be used by SHARPy, `.fem.h5` and the `.solver.txt` file.
-
-2. The `h5` files contain data of the FEM, aerodynamics, dynamic conditions. They are later read by SHARPy.
-
-3. The `.solver.txt` file contains the settings for SHARPy and is the file that is parsed to SHARPy.
-
-__To run a SHARPy case__
-
-SHARPy cases are therefore usually ran in the following way:
-
-1. Create a `generate_case.py` file following the provided templates
-
-2. Run it to produce the `.h5` files and the `.solver.txt` files
-    ```bash
-    python generate_case.py
-    ```
-
-3. Run SHARPy (ensure the environment is activated)
-    ```bash
-    sharpy case.solver.txt
-    ```
-
-### Output
-
-By default, the output is located in the `output` folder.
-
-The contents of the folder will typically be a `beam` and `aero` folders, which contain the output data that can then be
-loaded in Paraview.
-
-#### Run a test case
-
-This command generates the required files for running a static, clamped beam.
-
-```bash
-cd ../sharpy
-python ./tests/beam/static/geradin_cardona/generate_geradin_data.py
-```
-Now you should see a success message, and if you check the
-`./tests/beam/static/geradin_cardona/` folder, you should see two new files:
-+ geradin_cardona.solver.txt
-+ geradin_cardona.fem.h5
-
-Try to open the `solver.txt` file and have a quick look. The `solver` file is
-the main settings file. We'll get deeper into this later.
-
-If you try to open the `fem.h5` file, you'll get an error or something meaningless. This is because the structural data is stored in [HDF5](https://support.hdfgroup.org/HDF5/) format, which is compressed binary.
-
-5. Now run it
-
-    The usual `sharpy` call is something like:
-    ```bash
-    # from outside the sharpy folder (make sure working_dir is in your path:)
-    sharpy "solver.txt file"
-    ```
-    So just run:
-    ```bash
-    sharpy geradin_cardona.solver.txt
-    ```
-    if you are in the `geradin` folder.
-
-6. Results
-
-    After a successful execution, you should be back into the terminal.
-
-    If you open the file located in `output/geradin/WriteVariablesTime`, you
-    will see the coordinates of the tip of the beam.
-
-    FYI, the correct solution for this test case by Geradin and Cardona is
-    $\Delta z = -2.159$ m and $\Psi = 0.6720$ rad.
-
-Congratulations, you've run your first structural case.
+If you think you can add some useful feature to SHARPy, by all means, check out
+the [collaboration guide](https://ic-sharpy.readthedocs.io/en/latest/content/contributing.html).
 
