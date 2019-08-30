@@ -14,7 +14,7 @@ SHARPy is an aeroelastic analysis package currently under development at the Dep
 College London. It can be used for the structural, aerodynamic and aeroelastic analysis of flexible aircraft, flying
 wings and wind turbines.
 
-![XHALE render](https://github.com/ImperialCollegeLondon/sharpy/tree/master/docs/source/media/XHALE-render.jpg)
+<img src="https://github.com/ImperialCollegeLondon/sharpy/raw/dev_doc/docs/source/media/XHALE-render.jpg" width=300>
 
 ### Contact 
 
