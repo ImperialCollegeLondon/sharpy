@@ -56,7 +56,7 @@ The documentation for SHARPy can be found [here](http://ic-sharpy.readthedocs.io
 
 ## Installing SHARPy
 
-For the latest documentation, see the [installation docs]l(https://ic-sharpy.readthedocs.io/en/latest/content/installation.html)
+For the latest documentation, see the [installation docs](https://ic-sharpy.readthedocs.io/en/latest/content/installation.html)
 
 ## Contributing
 
