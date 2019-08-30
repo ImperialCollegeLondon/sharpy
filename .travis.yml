@@ -25,7 +25,6 @@ before_install:
   - conda update -q conda
   - conda env create -f utils/environment_linux.yml
   - source activate sharpy_env
-  - export CODECOV_TOKEN="1eb2add9-1ee3-4ed5-8ea1-19f3200d8ef5"
 
 install:
   - echo $(pwd)
@@ -52,3 +51,6 @@ install:
 
 script:
   - coverage run -m unittest discover
+
+after_success:
+  - bash <(curl -s https://codecov.io/bash)
