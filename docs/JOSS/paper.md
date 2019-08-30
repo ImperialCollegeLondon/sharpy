@@ -78,18 +78,57 @@ Interaction (FSI) problems in mind, this resulting in minimal overhead between
 function calls.
 
 The code is automatically documented ([https://ic-sharpy.readthedocs.io/](https://ic-sharpy.readthedocs.io/))
-and has Continuous Integration enabled for all user contributions. 
+and has Continuous Integration and Code Coverage enabled for all user contributions. 
 
+## Features
+
+While ``SHARPy`` is the latest iteration of the in-house aeroelastic solver
+at the Loads Control and Aeroelasticity Lab at Imperial College, its theory
+is based on previous work on the ``SHARP`` framework. Previously published works
+on numerical methods for nonlinear aeroelasticity such as [Palacios2010, Hesse2014a] 
+and its applications [@Hesse2016; @del2019efficient; @del2019ifasd; @arxiv2019Deskos] give a good
+idea of the possibilities.
+
+The structural model included in ``SHARPy`` supports multibody features
+such as hinges, joints and absolute and relative nodal velocity constraints.
+Rigid body motion can be prescribed or simulated. The structural solver supports
+distributed and lumped mass formulation (or a combination of both). Time-integration
+is carried out using a Newmark-$\beta$ scheme.
+
+The aerodynamic solver can simulate an arbitrary number of surfaces together
+with their interactions. A different force evaluation scheme is used [CITE] in
+order to support large sideslip angles and obtain an induced drag estimation.
+In addition to this, added mass effects can be obtained and introduced in the
+FSI problem. This can be especially important in the case of very light flexible
+aircraft flying at low altitude.
+
+The coupling algorithm included in the code is designed to allow fully coupled
+nonlinear simulations, although weakly coupled solutions can be obtained. Independent
+structural or aerodynamic simulation are supported natively.
+
+The code distributed in the repository includes modules to directly simulate:
+
+* Static linear and nonlinear structural solutions
+* Dynamic linear and nonlinear structural solutions
+* Dynamic nonlinear multibody solutions
+* Static aerodynamic solutions with horseshoe, prescribed or free wake
+* Dynamic aerodynamic solutions with fixed, background-flow convected or free wake
+* Static aeroelastic solutions and flexible aircraft longitudinal trimming
+* Control surface controller in the loop
+* Unsteady fully-3D turbulent field input, working in-memory or in-disk, including time-domain interpolation between snapshots
 
 
 # The ``SHARPy`` aeroelastic framework
 
-``SHARPY``'s main solver is a time-domain geometrically nonlinear coupled solver
+![Static simulation of the XHALE nonlinear aeroelasticity
+testbed.](https://github.com/ImperialCollegeLondon/sharpy/raw/master/docs/source/media/XHALE-render.jpg)
+
+``SHARPY``'s main solver is a time-domain geometrically nonlinear coupled solver [@Palacios2010]
 with a Block Gauss-Seidel iteration scheme between the structural and aerodynamic
 solutions.
 
 The structural and free-body dynamics are based on the Geometrically Exact Composite
-Beam (GECB) [@Geradin2001]. The resulting model is a finite element beam
+Beam (GECB) [@Geradin2001; @Simpson2013]. The resulting model is a finite element beam
 fomulation based on nodal displacements and rotations with quadratic 1-D elements.
 The GECB formulation based on displacements and rotations presents several
 advantages for FSI problems. First, this model allows for geometrically
@@ -100,7 +139,8 @@ is easily coupled with the aerodynamic solver and boundary conditions can
 simply be imposed.
 
 The aerodynamic solver is a in-house implementation of the classic Unsteady
-Vortex Lattice Method (UVLM) with added mass effects. The code is distributed as a C++ library with
+Vortex Lattice Method (UVLM) [@Katz2001; @Murua2012a] with added mass effects.
+The code is distributed as a C++ library with
 seamless interface with Python. The solver is designed so that no data
 needs to be copied or transformed when passing from Python to C+ and vice-versa.
 Furthermore, the C++ routines use the same memory allocated by the Numpy arrays
@@ -110,7 +150,7 @@ The code supports several wake convection schemes, including free wake.
 Any velocity field is supported using a modular architecture, where
 a ``Generator`` prototype is provided. Included custom ``Generators`` cover from
 steady velocity fields to high resolution LES turbulent boundary layer simulation
-results [CITE YA1]. Force and displacements interpolation is not necessary as
+results [@arxiv2019Deskos]. Force and displacements interpolation is not necessary as
 the beam and aerodynamic discretisation are set to be matching, so that a
 chordwise grid vertex is always uniquely attached to a beam node.
 
@@ -126,6 +166,7 @@ ranging from incidence angle or beam loads calculation to output in Paraview for
 can be created and run with no need to modify the original source code.
 
 ## Input and user interface
+
 The main simulation parameters are input through a ``.sharpy`` file, which
 is formatted following the ``ConfigObj`` (CITE) convention. This file is
 organised in sections, one of which is mandatory and contains basic parameters
@@ -147,55 +188,12 @@ then in put into the UVLM code. On the other hand, ``Controllers`` can have a br
 scope. They can be used to control lifting surfaces in open and closed loop, or
 modify numerical parameters on the loop.
 
-# Capabilities and test cases
-
-``SHARPy`` excels in the nonlinear aeroelasticity domain due to its
-relatively long history (CITE SOME OLD PAPER FROM RAFA AND JOSEBA) and
-flexibility. The same code is being used on Very Flexible Aircraft
-catapult take off studies and High Aspect Ratio Wind Turbines turbulence response.
-
-## Very Flexible Aircraft aeroelastic response in low-altitude turbulence
-``SHARPy`` has been used to simulate the response of a very flexible aircraft
-subject to low altitude atmospheric turbulence. Synthetic turbulence generation
-methods such as the 1-D von K\'{a}rm\'{a}n and the 2-D Kaimal spectra have been
-applied in order to obtain velocity fields with similar PSDs to high-fidelity
-LES computations. Aeroelastic simulations of aircraft inmersed in the different
-turbulent fields showed how synthetic turbulence methods do not capture the larger flow
-structures present in the LES simulations. This results in strong discrepancies
-in wing root bending loads of up to 58% between different turbulent field generation methods.
-Results showed that one-dimensional models, which are the de facto standard for
-conventional aircraft provide fairly non-conservative load estimations for typical
-very flexible configurations. CITE
-
-## Catapult Take Off analysis and optimisation
 
 
-## Wind Turbine aeroelastic response to turbulence
-
-
-
-
-
-
-# Citations
-
-Citations to entries in paper.bib should be in
-[rMarkdown](http://rmarkdown.rstudio.com/authoring_bibliographies_and_citations.html)
-format.
-
-For a quick reference, the following citation commands can be used:
-- `@author:2001`  ->  "Author et al. (2001)"
-- `[@author:2001]` -> "(Author et al., 2001)"
-- `[@author1:2001; @author2:2001]` -> "(Author1 et al., 2001; Author2 et al., 2002)"
-
-# Figures
-
-Figures can be included like this: ![Example figure.](figure.png)
 
 # Acknowledgements
 
-We acknowledge contributions from Brigitta Sipocz, Syrtis Major, and Semyeong
-Oh, and support from Kathryn Johnston during the genesis of this project.
+A. Carre gratefully acknowledges the support provided by Airbus Defence and Space.
 
 # References
 
