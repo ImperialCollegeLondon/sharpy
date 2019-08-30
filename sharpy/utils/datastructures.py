@@ -1,3 +1,7 @@
+"""Data Management Structures
+
+Classes for the Aerotimestep and Structuraltimestep, amongst others
+"""
 import copy
 import ctypes as ct
 import numpy as np

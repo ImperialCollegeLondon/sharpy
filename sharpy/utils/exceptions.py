@@ -1,3 +1,5 @@
+"""SHARPy Exception Classes
+"""
 import sharpy.utils.cout_utils as cout
 
 
@@ -35,6 +37,16 @@ class NotConvergedStructuralSolver(Exception):
     def __init__(self, solver_name, n_iter=None, message=''):
         super().__init__(message)
         cout.cout_wrap("The solver " + solver_name + " did not converge in " + str(n_iter) + " iterations.", 3)
+
+
+class DocumentationError(Exception):
+    """
+    Error in documentation
+    """
+    try:
+        cout.cout_wrap('Documentation for module has been given no title')
+    except ValueError:
+        pass
 
 
 class NotConvergedSolver(Exception):

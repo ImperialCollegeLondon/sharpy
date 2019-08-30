@@ -24,6 +24,7 @@ def generate(x_dict={}, case_name=None):
             'StaticCoupled',
             'BeamLoads',
             'DynamicCoupled',
+            # 'PickleData'
             ]
 
 # FLIGHT CONDITIONS
@@ -50,20 +51,20 @@ def generate(x_dict={}, case_name=None):
     except KeyError:
         ramp_angle = 0.0
 
-    alpha = 4.0879*np.pi/180 + alpha_cato_delta
+    alpha = 4.2999*np.pi/180 + alpha_cato_delta
     beta = 0
     roll = 0
     gravity = 'on'
-    cs_deflection = -1.2346*np.pi/180
+    cs_deflection = -2.0550*np.pi/180
     rudder_static_deflection = 0.0
     # rudder_step = 0.0*np.pi/180
-    thrust = 4.0105
+    thrust = 6.0695
     sigma = 1.5
     lambda_dihedral = 20*np.pi/180
 
 
 # trajectory
-    t_start = 1.
+    t_start = 1.5
 
     try:
         acceleration = x_dict['acceleration']
@@ -72,7 +73,7 @@ def generate(x_dict={}, case_name=None):
 
     t_ramp = u_inf/acceleration
     t_finish = t_start + t_ramp
-    t_free = 10
+    t_free = 8
     controller_ramp = -1
 
 # numerics
@@ -776,7 +777,7 @@ def generate(x_dict={}, case_name=None):
         settings['AerogridLoader'] = {'unsteady': 'on',
                                       'aligned_grid': 'on',
                                       # 'mstar': int(160/tstep_factor),
-                                      'mstar': int(80/tstep_factor),
+                                      'mstar': int(20/tstep_factor),
                                       'freestream_dir': ['1', '0', '0'],
                                       'control_surface_deflection': ['', ''],
                                       'control_surface_deflection_generator':

@@ -1,0 +1,19 @@
+Utilities
+---------
+
+.. toctree::
+	:maxdepth: 1
+
+	./algebra/index
+	./analytical/index
+	./control_utils/index
+	./docutils/index
+	./exceptions/index
+	./generate_cases/index
+	./generator_interface/index
+	./geo_utils/index
+	./h5utils/index
+	./model_utils/index
+	./multibody/index
+	./plotutils/index
+	./settings/index

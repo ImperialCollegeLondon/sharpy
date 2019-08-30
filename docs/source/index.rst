@@ -25,16 +25,15 @@ Contents
 --------
 
 .. toctree::
-   :maxdepth: 2
+   :maxdepth: 1
 
    content/installation
    content/sharpy_intro
-   content/aero
+   content/contributing
    content/generators
-   content/structure
    content/solvers
    content/postproc
-   content/utilities
+   includes/index
    content/test_cases
 
 

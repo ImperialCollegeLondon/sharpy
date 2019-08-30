@@ -34,7 +34,7 @@ install:
   - cd xbeam
   - export exists=`git show-ref refs/remotes/origin/$TRAVIS_BRANCH`
   - if [ -n "$exists" ]; then export LIBS_BRANCH=$TRAVIS_BRANCH; else export LIBS_BRANCH=master; fi
-  - echo "Cloning the libs from the branch: " $LIBS_BRANCH
+  - echo $LIBS_BRANCH
   - git checkout $LIBS_BRANCH
   - export LAPACK_LIB_DIR=$(conda info --json | python -c "import sys, json; print(json.load(sys.stdin)['active_prefix'])")/lib
   - make install
@@ -50,4 +50,7 @@ install:
   - source bin/sharpy_vars.sh
 
 script:
-  - python -m unittest
+  - coverage run -m unittest discover
+
+after_success:
+  - bash <(curl -s https://codecov.io/bash)

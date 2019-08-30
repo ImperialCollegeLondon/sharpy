@@ -1,4 +1,7 @@
-import pickle
+"""sharpy_main: Where it all starts
+
+"""
+import dill as pickle
 import sharpy.utils.cout_utils as cout
 
 
@@ -53,36 +56,32 @@ def main(args=None, sharpy_input_dict=None):
         else:
             args = parser.parse_args()
 
-        if args.docs:
-            import sharpy.utils.generator_interface as generator_interface
-            import sharpy.utils.docutils as docutils
+    if args.docs:
+        import sharpy.utils.docutils as docutils
+        docutils.generate_documentation()
+        return 0
 
-            solver_interface.output_documentation()
-            generator_interface.output_documentation()
-            docutils.output_documentation_algebra()
-            return 0
-
-        if args.input_filename == '':
-            parser.error('input_filename is a required argument of sharpy.')
-        settings = input_arg.read_settings(args)
-        if args.restart is None:
-            # run preSHARPy
-            data = PreSharpy(settings)
-        else:
-            try:
-                with open(args.restart, 'rb') as restart_file:
-                    data = pickle.load(restart_file)
-            except FileNotFoundError:
-                raise FileNotFoundError('The file specified for the snapshot \
-                    restart (-r) does not exist. Please check.')
-
-            # update the settings
-            data.update_settings(settings)
-    else:
-        # Case for input from dictionary
-        settings = input_arg.read_settings(args)
+    if args.input_filename == '':
+        parser.error('input_filename is a required argument of sharpy.')
+    settings = input_arg.read_settings(args)
+    if args.restart is None:
         # run preSHARPy
         data = PreSharpy(settings)
+    else:
+        try:
+            with open(args.restart, 'rb') as restart_file:
+                data = pickle.load(restart_file)
+        except FileNotFoundError:
+            raise FileNotFoundError('The file specified for the snapshot \
+                restart (-r) does not exist. Please check.')
+
+        # update the settings
+        data.update_settings(settings)
+    # else:
+        # # Case for input from dictionary
+        # settings = input_arg.read_settings(args)
+        # # run preSHARPy
+        # data = PreSharpy(settings)
 
     # Loop for the solvers specified in *.solver.txt['SHARPy']['flow']
     for solver_name in settings['SHARPy']['flow']:
