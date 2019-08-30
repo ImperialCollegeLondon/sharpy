@@ -23,7 +23,7 @@ bibliography: paper.bib
 
 # Summary
 
-Aeroelasticity is the study the interaction of the aerodynamics 
+Aeroelasticity is the study the interaction between the aerodynamics 
 and the structural dynamics of a body, potentially including flight dynamics. 
 In aeronautics and wind energy, the industry standard methods rely on tried and
 tested assumptions and simplifications, leading to linear or quasi-linear expressions.
@@ -37,14 +37,15 @@ structures.
 
 
 In the last few years, solar-powered High-Altitude Long-Endurance (HALE) aircraft
-have shown very significant progress in their development. New configurations are able
+have shown very significant progress in their development. New configurations
+such as Airbus Defence and Space Zephyr are able
 to stay airborne for longer than three weeks at a time. As HALE platforms become
 more reliable, the payload mass and energy requirements increase. The mission
 of these aircraft imposes very strict efficiency constraints on the design.
 Extreme efficiency is achieved by reducing the total weight of the aircraft while
 increasing the lifting surfaces aspect ratio in order to minimise the induced drag
 contribution. The wind energy industry is also trending towards longer and more
-slender blades, specially for the incresingly common off-shore wind farms, in
+slender blades, specially for the increasingly common off-shore wind farms, in
 search of more efficient turbines.
 
 
