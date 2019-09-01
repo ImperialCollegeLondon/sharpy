@@ -23,20 +23,15 @@ bibliography: paper.bib
 
 # Summary
 
-Aeroelasticity is the study the interaction between the aerodynamics 
-and the structural dynamics of a body, potentially including flight dynamics. 
-In aeronautics and wind energy, the industry standard methods rely on tried and
-tested assumptions and simplifications, leading to linear or quasi-linear expressions.
-The usual configurations studied in aeroelasticity are relatively rigid, presenting
-small structural deflections for the typical load cases, as well as showing a
-substantial degree of decoupling between the structural and the rigid body modes.
-In these cases, the conventional aeroelastic tools efficiently provide accurate
-solutions. However, advances in areas such as energy storage and generation,
+Aeroelasticity is the study the dynamic interaction between unsteady aerodynamics 
+and structural dynamics on flexible streamlined bodies, potentially also including 
+rigid-body dynamics.  Industry standard solutions in aeronautics and wind energy 
+are built on the assumption of small structural displacements, which lead to linear 
+or quasi-linear theories. However, advances in areas such as energy storage and generation,
 and composite material manufacturing have fostered a new kind of aeroelastic
-structures.
+structures that may undergo large displacements under aerodynamic forces.
 
-
-In the last few years, solar-powered High-Altitude Long-Endurance (HALE) aircraft
+In particular, solar-powered High-Altitude Long-Endurance (HALE) aircraft
 have shown very significant progress in their development. New configurations
 such as Airbus Defence and Space Zephyr are able
 to stay airborne for longer than three weeks at a time. As HALE platforms become
@@ -58,8 +53,8 @@ conventional quasi-linear methods may not accurately capture the relevant
 phenomena present in the aeroelastic response of these new configurations.
 
 
-``SHARPy`` (Simulation of High-Aspect Ratio Planes in Python) is a linear and
-nonlinear aeroelasticity toolbox. It features a versatile interface and core
+``SHARPy`` (Simulation of High-Aspect Ratio Planes in Python) is a dynamic aeroelasticity
+simulation toolbox for aircraft and wind turbines. It features a versatile interface and core
 code written in Python3, while computationally expensive routines are coded in
 C++ and Modern Fortran and distributed as shared libraries. SHARPy is easily extended
 through a modular object-oriented design, and already includes tools for
@@ -70,8 +65,8 @@ state-space models can be obtained for control design and model reduction.
 
 
 This code is actively developed at the Loads Control and Aeroelasticity Lab at
-Imperial College London, and it is used by academic researchers and students, as well as industry members of
-the community. ``SHARPy`` relies only on Open-Source dependencies
+Imperial College London, and it is used by academic researchers and students, as well as
+industrial partners. ``SHARPy`` relies only on Open-Source dependencies
 such as Paraview for post-processing, while supporting custom extension modules
 without having to modify a line of the distributed code. The computationally
 expensive routines written in C++ and Fortran have been designed with Fluid-Structure
