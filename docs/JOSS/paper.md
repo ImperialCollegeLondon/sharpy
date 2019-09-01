@@ -32,23 +32,21 @@ and composite material manufacturing have fostered a new kind of aeroelastic
 structures that may undergo large displacements under aerodynamic forces.
 
 In particular, solar-powered High-Altitude Long-Endurance (HALE) aircraft
-have shown very significant progress in their development. New configurations
-such as Airbus Defence and Space Zephyr are able
+have recently seen very significant progress. New configurations 
+such as the latest generation Airbus D&S Zephyr are now able
 to stay airborne for longer than three weeks at a time. As HALE platforms become
 more reliable, the payload mass and energy requirements increase. The mission
 of these aircraft imposes very strict efficiency constraints on the design.
 Extreme efficiency is achieved by reducing the total weight of the aircraft while
 increasing the lifting surfaces aspect ratio in order to minimise the induced drag
-contribution. The wind energy industry is also trending towards longer and more
-slender blades, specially for the increasingly common off-shore wind farms, in
-search of more efficient turbines.
+contribution. In a similar quest for extreme efficiency, the wind energy industry
+is also trending towards longer and more slender blades, specially for off-shore
+applications, where the largest blades are now well over 100-m long.
 
 
-These light, slender structures naturally present lower stiffness than the
-conventional aircraft and wind turbines. The need for nonlinear aeroelastic tools
-is mainly driven by this fact. The long, slender structures can potentially
-present large ($+10%$) deflections and have relatively low frequency structural modes which
-can interact with the flight dynamics modes of the aircraft. Due to this, the
+These longer and much slender structures can potentially present large ($+10%$) deflections
+and have relatively low frequency structural modes which can interact with the flight 
+dynamics modes of the aircraft. Due to this, the
 conventional quasi-linear methods may not accurately capture the relevant
 phenomena present in the aeroelastic response of these new configurations.
 
