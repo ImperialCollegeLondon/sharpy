@@ -78,7 +78,7 @@ and has Continuous Integration and Code Coverage enabled for all user contributi
 
 While ``SHARPy`` is the latest iteration of the in-house aeroelastic solver
 at the Loads Control and Aeroelasticity Lab at Imperial College, its theory
-is based on previous work on the ``SHARP`` framework. Previously published works
+is based on the lab's previous ``SHARP`` framework, a prototype tool coded in Matlab. Previously published works
 on numerical methods for nonlinear aeroelasticity such as [Palacios2010, Hesse2014a] 
 and its applications [@Hesse2016; @del2019efficient; @del2019ifasd; @arxiv2019Deskos] give a good
 idea of the possibilities.
@@ -117,7 +117,7 @@ The code distributed in the repository includes modules to directly simulate:
 ![Static simulation of the XHALE nonlinear aeroelasticity
 testbed.](https://github.com/ImperialCollegeLondon/sharpy/raw/master/docs/source/media/XHALE-render.jpg)
 
-``SHARPY``'s main solver is a time-domain geometrically nonlinear coupled solver [@Palacios2010]
+The main solver in ``SHARPY`` is a time-domain geometrically nonlinear coupled solver [@Palacios2010]
 with a Block Gauss-Seidel iteration scheme between the structural and aerodynamic
 solutions.
 
