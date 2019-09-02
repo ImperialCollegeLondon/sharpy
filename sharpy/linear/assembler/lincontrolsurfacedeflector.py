@@ -186,8 +186,8 @@ class LinControlSurfaceDeflector(object):
                                         print('GVec = ' + str(chord_vec/np.linalg.norm(chord_vec)))
                                         print('BVec = ' + str(Cbg.dot(chord_vec/np.linalg.norm(chord_vec))))
                                         # pass
-
-                                    Kdisp[i_vertex, i_control_surface] += \
+                                    # Removing the += because cs where being added twice
+                                    Kdisp[i_vertex, i_control_surface] = \
                                         Cgb.dot(der_R_arbitrary_axis_times_v(Cbg.dot(hinge_axis),
                                                                              0,
                                                                              -for_delta * Cbg.dot(chord_vec)))

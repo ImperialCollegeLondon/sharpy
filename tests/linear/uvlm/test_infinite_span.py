@@ -20,7 +20,7 @@ import sharpy.linear.src.libss as libss
 import cases.templates.flying_wings as flying_wings
 
 
-@unittest.skip
+@unittest
 class Test_infinite_span(unittest.TestCase):
     """
     Test infitite-span flat wing at zero incidence against analytical solutions

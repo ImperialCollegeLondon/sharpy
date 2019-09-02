@@ -28,6 +28,10 @@ class LinearAeroelastic(ss_interface.BaseElement):
     settings_default['uvlm_filename'] = ''
     settings_description['uvlm_filename'] = 'Path to .data.h5 file containing UVLM/ROM state space to load'
 
+    settings_types['track_body'] = 'bool'
+    settings_default['track_body'] = True
+    settings_description['track_body'] = 'UVLM inputs and outputs projected to coincide with lattice at linearisation'
+
     def __init__(self):
 
         self.sys = None  # The actual object
@@ -119,7 +123,8 @@ class LinearAeroelastic(ss_interface.BaseElement):
         beam.sys.Cstr += damping_aero
         beam.sys.Kstr += stiff_aero
 
-        beam.assemble(t_ref=uvlm.sys.ScalingFacts['time'])
+        # beam.assemble(t_ref=uvlm.sys.ScalingFacts['time'])
+        beam.assemble()
 
         if not self.load_uvlm_from_file:
 
@@ -156,6 +161,18 @@ class LinearAeroelastic(ss_interface.BaseElement):
             if uvlm.rom is not None:
                 uvlm.ss = uvlm.rom.run(uvlm.ss)
 
+            # D matrix plotting
+            # indz = [6*i + 2 for i in range(flex_nodes//6)]
+            # import matplotlib.pyplot as plt
+            # plt.plot(uvlm.ss.D[indz, -2])
+            # plt.plot(uvlm.ss.D[indz, -1])
+            # plt.show()
+
+            # plt.figure()
+            # plt.plot(range(ss.outputs//6), uvlm.ss.D[indz, -1])
+            # plt.plot(range(ss.outputs//6), uvlm.ss.D[indz, -2])
+            # plt.show()
+
         else:
             uvlm.ss = self.load_uvlm(self.settings['uvlm_filename'])
 
@@ -165,14 +182,14 @@ class LinearAeroelastic(ss_interface.BaseElement):
 
         # Scale coupling matrices
         # if uvlm.sys.ScalingFacts['time'] != 1.0:
-        Tsa *= uvlm.sys.ScalingFacts['force'] * uvlm.sys.ScalingFacts['time'] ** 2
-        if rigid_dof > 0:
-            warnings.warn('Time scaling for problems with rigid body motion under development.')
-            # Tas[:flex_nodes + 3, :flex_nodes + 3] /= uvlm.sys.ScalingFacts['length']
-            # Tas[total_dof: total_dof + flex_nodes + 3] /= uvlm.sys.ScalingFacts['length']
+        # Tsa *= uvlm.sys.ScalingFacts['force'] * uvlm.sys.ScalingFacts['time'] ** 2
+        # if rigid_dof > 0:
+        #     warnings.warn('Time scaling for problems with rigid body motion under development.')
+        #     Tas[:flex_nodes + 3, :flex_nodes + 3] /= uvlm.sys.ScalingFacts['length']
+        #     Tas[total_dof: total_dof + flex_nodes + 3] /= uvlm.sys.ScalingFacts['length']
         # else:
-        if not self.settings['beam_settings']['modal_projection'].value:
-            Tas /= uvlm.sys.ScalingFacts['length']
+        # if not self.settings['beam_settings']['modal_projection'].value:
+        #     Tas /= uvlm.sys.ScalingFacts['length']
 
         ss = libss.couple(ss01=uvlm.ss, ss02=beam.ss, K12=Tas, K21=Tsa)
         # self.aero_states = uvlm.ss.states

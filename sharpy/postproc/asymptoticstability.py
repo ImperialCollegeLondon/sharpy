@@ -142,16 +142,19 @@ class AsymptoticStability(BaseSolver):
         ss = self.data.linear.ss
 
         # Calculate eigenvectors and eigenvalues of the full system
-        eigenvalues, eigenvectors = np.linalg.eig(ss.A)
-
+        eigenvalues, eigenvectors = sclalg.eig(ss.A)
+        # np.savetxt('./Amatrix', ss.A)
         # Convert DT eigenvalues into CT
         if ss.dt:
             # Obtain dimensional time step
-            ScalingFacts = self.data.linear.linear_system.uvlm.sys.ScalingFacts
-            if ScalingFacts['length'] != 1.0 and ScalingFacts['time'] != 1.0:
-                dt = ScalingFacts['length'] * 2 / self.data.aero.surface_m[0] / ScalingFacts['speed']
-                assert np.abs(dt - ScalingFacts['time'] * ss.dt) < 1e-14, 'dimensional time-scaling not correct!'
-            else:
+            try:
+                ScalingFacts = self.data.linear.linear_system.uvlm.sys.ScalingFacts
+                if ScalingFacts['length'] != 1.0 and ScalingFacts['time'] != 1.0:
+                    dt = ScalingFacts['length'] * 2 / self.data.aero.surface_m[0] / ScalingFacts['speed']
+                    assert np.abs(dt - ScalingFacts['time'] * ss.dt) < 1e-14, 'dimensional time-scaling not correct!'
+                else:
+                    dt = ss.dt
+            except AttributeError:
                 dt = ss.dt
             eigenvalues = np.log(eigenvalues) / dt
 
@@ -161,16 +164,16 @@ class AsymptoticStability(BaseSolver):
             self.export_eigenvalues(self.settings['num_evals'].value)
 
         if self.settings['print_info'].value:
-            self.eigenvalue_table.print_evals(eigenvalues[:self.settings['num_evals'].value])
+            self.eigenvalue_table.print_evals(self.eigenvalues[:self.settings['num_evals'].value])
 
         if self.settings['display_root_locus']:
             self.display_root_locus()
 
         # Under development
-        if self.settings['modes_to_plot']:
+        if self.settings['modes_to_plot'] is not []:
             self.plot_modes()
 
-        if self.settings['velocity_analysis']:
+        if len(self.settings['velocity_analysis']) == 3:
             self.velocity_analysis()
 
         self.data.linear.stability = dict()
@@ -196,9 +199,10 @@ class AsymptoticStability(BaseSolver):
 
         evec_pd = pd.DataFrame(data=self.eigenvectors[:, :num_evals])
         # eval_pd = pd.DataFrame(data=[self.eigenvalues.real, self.eigenvalues.imag]).T
-        evec_pd.to_csv(stability_folder_path + '/eigenvectors.csv')
+        # evec_pd.to_csv(stability_folder_path + '/eigenvectors.csv')
         # eval_pd.to_csv(stability_folder_path + '/eigenvalues.csv')
         np.savetxt(stability_folder_path + '/eigenvalues.dat', self.eigenvalues[:num_evals].view(float).reshape(-1, 2))
+        np.savetxt(stability_folder_path + '/eigenvectors.dat', self.eigenvectors[:, :num_evals].view(float).reshape(-1, 2*num_evals))
 
     def print_eigenvalues(self):
         """
@@ -310,7 +314,7 @@ class AsymptoticStability(BaseSolver):
             # Scale mode
             aero_states = self.data.linear.linear_system.uvlm.ss.states
             displacement_states = self.data.linear.linear_system.beam.ss.states // 2
-            amplitude_factor = modal.scale_mode(self.data,
+            amplitude_factor = modalutils.scale_mode(self.data,
                                                 self.eigenvectors[aero_states:aero_states + displacement_states-10,
                                                 mode], rot_max_deg=10, perc_max=0.1)
 
@@ -382,12 +386,12 @@ class AsymptoticStability(BaseSolver):
         eigenvector = self.eigenvectors[:, mode_num]
         eigenvector.shape = (len(eigenvector), 1)
 
-        eigenvector[-10:] *= fact_rbm
-        eigenvector[-self.data.linear.linear_system.beam.ss.states // 2 - 10: -self.data.linear.linear_system.beam.ss.states] *= fact_rbm
+        # eigenvector[-10:] *= fact_rbm
+        # eigenvector[-self.data.linear.linear_system.beam.ss.states // 2 - 10: -self.data.linear.linear_system.beam.ss.states] *= fact_rbm
 
         # State simulation
-        x_sim = np.real(fact * eigenvector.dot(np.exp(1j*eigenvalue*t_dom)))
-        # x_sim = fact * eigenvector.real.dot(np.sin(natural_freq * t_dom) * np.exp(damping * t_dom))
+        # x_sim = np.real(fact_rbm * eigenvector.dot(np.exp(1j*eigenvalue*t_dom)))
+        x_sim = fact_rbm * eigenvector.real.dot(np.cos(natural_freq * t_dom) * np.exp(damping * t_dom))
 
         return t_dom, x_sim
 
