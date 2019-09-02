@@ -6,13 +6,34 @@ import sharpy.utils.cout_utils as cout
 
 @solver_interface.solver
 class StabilityDerivatives(solver_interface.BaseSolver):
+    """
+    Outputs the stability derivatives of a free-flying aircraft
+
+    Warnings:
+        Under Development
+
+    To Do:
+        * Coefficient of stability derivatives
+        * Option to output in NED frame
+
+    """
     solver_id = 'StabilityDerivatives'
 
     def __init__(self):
         self.data = None
 
+        self.inputs = 0
+
     def initialise(self, data):
         self.data = data
+
+        # Get rigid body + control surface inputs
+        try:
+            n_ctrl_sfc = self.data.linear.linear_system.uvlm.control_surface.n_control_surfaces
+        except AttributeError:
+            n_ctrl_sfc = 0
+
+        self.inputs = 10 + n_ctrl_sfc
 
     def run(self):
 
@@ -23,7 +44,7 @@ class StabilityDerivatives(solver_interface.BaseSolver):
 
     def uvlm_steady_state_transfer_function(self):
         """
-        Stability derivatives calculated using the transfer function of the UVLm projected onto the structural
+        Stability derivatives calculated using the transfer function of the UVLM projected onto the structural
         degrees of freedom at zero frequency (steady state).
 
         Returns:
@@ -32,15 +53,8 @@ class StabilityDerivatives(solver_interface.BaseSolver):
         """
         ssuvlm = self.data.linear.linear_system.uvlm.ss
 
-        # Get rigid body + control surface inputs
-        try:
-            n_ctrl_sfc = self.data.linear.linear_system.uvlm.control_surface.n_control_surfaces
-        except AttributeError:
-            n_ctrl_sfc = 0
-
-        nin = 10 + n_ctrl_sfc
-        in_matrix = np.zeros((ssuvlm.inputs, nin))
-        in_matrix[-nin:, :] = np.eye(nin)
+        in_matrix = np.zeros((ssuvlm.inputs, self.inputs))
+        in_matrix[-self.inputs:, :] = np.eye(self.inputs)
 
         nout = 6
         out_matrix = np.zeros((nout, ssuvlm.outputs))
@@ -60,11 +74,11 @@ class StabilityDerivatives(solver_interface.BaseSolver):
 
     def derivatives(self, Y_freq):
 
-        Cng = np.array([[-1, 0, 0], [0, 1, 0], [0, 0, -1]])  # Project SEU on NED
+        Cng = np.array([[-1, 0, 0], [0, 1, 0], [0, 0, -1]])  # Project SEU on NED - TODO implementation
 
-        der_matrix = np.zeros((6, nin-4))
+        der_matrix = np.zeros((6, self.inputs - 4))
         der_col = 0
-        for i in list(range(6))+list(range(10, nin)):
+        for i in list(range(6))+list(range(10, self.inputs)):
             der_matrix[:3, der_col] = Y_freq[:3, i]
             der_matrix[3:6, der_col] = Y_freq[3:6, i]
             der_col += 1
