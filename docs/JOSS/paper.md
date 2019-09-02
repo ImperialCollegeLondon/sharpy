@@ -10,7 +10,13 @@ tags:
 authors:
     - name: Alfonso del Carre
         orcid: 0000-0002-8133-9481
-        affiliation: "1" # (Multiple affiliations must be quoted)
+        affiliation: 1
+    - name: Arturo Muñoz-Simón
+        orcid: 0000-0003-4840-5392
+        affiliation: 1
+    - name: Norberto Goizueta
+        orcid: 0000-0001-7445-5970
+        affiliation: 1
     - name: Rafael Palacios
         orcid: 0000-0002-6706-3220
         affiliation: 1
