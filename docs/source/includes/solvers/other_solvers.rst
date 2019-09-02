@@ -4,6 +4,6 @@ Other Solvers
 .. toctree::
     ./other/BeamLoader
     ./other/DynamicUVLM
-    ./other/LinearAssembler
+    ./other/StaticTrim
     ./other/StaticUvlm
     ./other/StepLinearUVLM
