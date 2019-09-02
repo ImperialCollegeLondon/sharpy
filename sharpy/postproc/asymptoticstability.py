@@ -147,11 +147,14 @@ class AsymptoticStability(BaseSolver):
         # Convert DT eigenvalues into CT
         if ss.dt:
             # Obtain dimensional time step
-            ScalingFacts = self.data.linear.linear_system.uvlm.sys.ScalingFacts
-            if ScalingFacts['length'] != 1.0 and ScalingFacts['time'] != 1.0:
-                dt = ScalingFacts['length'] * 2 / self.data.aero.surface_m[0] / ScalingFacts['speed']
-                assert np.abs(dt - ScalingFacts['time'] * ss.dt) < 1e-14, 'dimensional time-scaling not correct!'
-            else:
+            try:
+                ScalingFacts = self.data.linear.linear_system.uvlm.sys.ScalingFacts
+                if ScalingFacts['length'] != 1.0 and ScalingFacts['time'] != 1.0:
+                    dt = ScalingFacts['length'] * 2 / self.data.aero.surface_m[0] / ScalingFacts['speed']
+                    assert np.abs(dt - ScalingFacts['time'] * ss.dt) < 1e-14, 'dimensional time-scaling not correct!'
+                else:
+                    dt = ss.dt
+            except AttributeError:
                 dt = ss.dt
             eigenvalues = np.log(eigenvalues) / dt
 

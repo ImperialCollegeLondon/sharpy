@@ -327,6 +327,68 @@ class LinAeroEla():
         >>> C_beam[-rigid_dof:, :flex_dof] += Crs
         >>> C_beam[-rigid_dof:, -rigid_dof:] += Crr
 
+        Track body option
+
+        The ``track_body`` setting restricts the UVLM grid to linear translation motions and therefore should be used to
+        ensure that the forces are computed using the reference linearisation frame.
+
+        The UVLM and beam are linearised about a reference equilibrium condition. The UVLM is defined in the inertial
+        reference frame while the beam employs the body attached frame and therefore a projection from one frame onto
+        another is required during the coupling process.
+
+        However, the inputs to the UVLM (i.e. the lattice grid coordinates) are obtained from the beam deformation which
+        is expressed in A frame and therefore the grid coordinates need to be projected onto the inertial frame ``G``.
+        As the beam rotates, the projection onto the ``G`` frame of the lattice grid coordinates will result in a grid
+        that is not coincident with that at the linearisation reference and therefore the grid coordinates must be
+        projected onto the original frame, which will be referred to as ``U``. The transformation between the inertial
+        frame ``G`` and the ``U`` frame is a function of the rotation of the ``A`` frame and the original position:
+
+        .. math:: C^{UG}(\chi) = C^{GA}(\chi_0)C^{AG}(\chi)
+
+        Therefore, the grid coordinates obtained in ``A`` frame and projected onto the ``G`` frame can be transformed
+        to the ``U`` frame using
+
+        .. math:: \zeta_U = C^{UG}(\chi) \zeta_G
+
+        which allows the grid lattice coordinates to be projected onto the original linearisation frame.
+
+        In a similar fashion, the output lattice vertex forces of the UVLM are defined in the original linearisation
+        frame ``U`` and need to be transformed onto the inertial frame ``G`` prior to projecting them onto the ``A``
+        frame to use them as the input forces to the beam system.
+
+        .. math:: \boldsymbol{f}_G = C^{GU}(\chi)\boldsymbol{f}_U
+
+        The linearisation of the above relations lead to the following expressions that have to be added to the
+        coupling matrices:
+
+            * ``Kdisp_vel`` terms:
+
+                .. math::
+                    \delta\boldsymbol{\zeta}_U= C^{GA}_0 \frac{\partial}{\partial \boldsymbol{\chi}}
+                    \left(C^{AG}\boldsymbol{\zeta}_{G,0}\right)\delta\boldsymbol{\chi} + \delta\boldsymbol{\zeta}_G
+
+            * ``Kvel_vel`` terms:
+
+                .. math::
+                    \delta\dot{\boldsymbol{\zeta}}_U= C^{GA}_0 \frac{\partial}{\partial \boldsymbol{\chi}}
+                    \left(C^{AG}\dot{\boldsymbol{\zeta}}_{G,0}\right)\delta\boldsymbol{\chi}
+                    + \delta\dot{\boldsymbol{\zeta}}_G
+
+        The transformation of the forces and moments introduces terms that are functions of the orientation and
+        are included as stiffening and damping terms in the beam's matrices:
+
+            * ``Csr`` damping terms relating to translation forces:
+
+                .. math::
+                    C_{sr}^{tra} -= \frac{\partial}{\partial\boldsymbol{\chi}}
+                    \left(C^{GA} C^{AG}_0 \boldsymbol{f}_{G,0}\right)\delta\boldsymbol{\chi}
+
+            * ``Csr`` damping terms related to moments:
+
+                .. math::
+                    C_{sr}^{rot} -= T^\top\widetilde{\mathbf{X}}_B C^{BG}
+                    \frac{\partial}{\partial\boldsymbol{\chi}}
+                    \left(C^{GA} C^{AG}_0 \boldsymbol{f}_{G,0}\right)\delta\boldsymbol{\chi}
         """
 
         data = self.data
@@ -341,6 +403,7 @@ class LinAeroEla():
         Kvel_disp = np.zeros((3 * self.linuvlm.Kzeta, self.num_dof_str))
         Kvel_vel = np.zeros((3 * self.linuvlm.Kzeta, self.num_dof_str))
         Kforces = np.zeros((self.num_dof_str, 3 * self.linuvlm.Kzeta))
+        Kforces2 = np.zeros((self.num_dof_str, 3 * self.linuvlm.Kzeta))
 
         Kss = np.zeros((self.num_dof_flex, self.num_dof_flex))
         Csr = np.zeros((self.num_dof_flex, self.num_dof_rig))
@@ -547,6 +610,7 @@ class LinAeroEla():
 
                     # total forces
                     Kforces[np.ix_(jj_for_tra, ii_vert)] += Cag
+                    Kforces2[-10:-7, ii_vert] += Cag
 
                     # total moments
                     Kforces[np.ix_(jj_for_rot, ii_vert)] += \
@@ -590,7 +654,6 @@ class LinAeroEla():
 
                             # Track body
                             if track_body:
-                                # pass
                                 Csr[jj_rot, -4:] -= \
                                     np.dot(TanTXbskew,
                                            np.dot(Cbg,
@@ -628,8 +691,11 @@ class LinAeroEla():
 
                         # Track body
                         if track_body:
-                            Crr[:3, -4:] -= algebra.der_Cquat_by_v(tsstr.quat, Cga.T.dot(faero))
+                            # NG 20/8/19 - is the Cag needed here? Verify
+                            Crr[:3, -4:] -= Cag.dot(algebra.der_Cquat_by_v(tsstr.quat, Cga.T.dot(faero)))
+
                             Crr[3:6, -4:] -= Cag.dot(algebra.skew(zetag).dot(algebra.der_Cquat_by_v(tsstr.quat, Cga.T.dot(faero))))
+                            Crr[3:6, -4:] += Cag.dot(algebra.skew(faero)).dot(algebra.der_Cquat_by_v(tsstr.quat, Cga.T.dot(zetag)))
 
 
         # transfer

@@ -31,6 +31,7 @@ class HortenWing:
                  rho=1.225,
                  alpha_deg=0.,
                  beta_deg=0.,
+                 roll_deg=0.,
                  cs_deflection_deg=0.,
                  thrust=5.,
                  physical_time=10,
@@ -67,6 +68,7 @@ class HortenWing:
         self.u_inf = u_inf
         self.rho = rho
         self.alpha = alpha_deg * np.pi / 180
+        self.roll = roll_deg * np.pi / 180
         self.beta = beta_deg * np.pi / 180
         self.cs_deflection = cs_deflection_deg * np.pi / 180
         self.thrust = thrust
@@ -734,8 +736,8 @@ class HortenWing:
         n_inputs_struct = n_states_struct // 2
 
         x0 = np.zeros((n_states_aero + n_states_struct))
-        x0[-7] = 1
-        # x0[-4:] = algebra.euler2quat([0, -5*np.pi/180, 0])
+        # x0[-7] = 0.05
+        # x0[-4:] = (algebra.euler2quat([ -5*np.pi/180, 0, 0]))
         u = np.zeros((self.n_tstep, n_states_struct + n_inputs_struct + self.n_control_surfaces))
         # u[0:3, -7] = -1000
         if delta_e is not None:
@@ -1092,7 +1094,7 @@ class HortenWing:
                               'log_file': case_name + '.log'}
 
         settings['BeamLoader'] = {'unsteady': 'off',
-                                  'orientation': algebra.euler2quat(np.array([0.0,
+                                  'orientation': algebra.euler2quat(np.array([self.roll,
                                                                               self.alpha,
                                                                               self.beta]))}
 
@@ -1367,7 +1369,8 @@ class HortenWing:
                                             }
         settings['BeamPlot'] = {'folder': route + '/',
                                 'include_rbm': 'on',
-                                'include_applied_forces': 'on'}
+                                'include_applied_forces': 'on',
+                                'include_FoR': 'on'}
 
         settings['BeamLoads'] = {'folder': route + '/',
                                  'csv_output': 'off'}
