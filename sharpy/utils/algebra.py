@@ -1,7 +1,10 @@
 """
-Rotation algebra library
+Algebra package
 
-Note: testing in tests/utils/algebra_test
+Extensive library with geometrical and algebraic operations
+
+Note:
+    Tests can be found in ``tests/utils/algebra_test``
 """
 
 import numpy as np
@@ -168,6 +171,25 @@ def rotation_matrix_around_axis(axis, angle):
 
 
 def skew(vector):
+    r"""
+    Returns a skew symmetric matrix such that
+
+    .. math:: \boldsymbol{v} \times \boldsymbol{u} = \tilde{\boldsymbol{v}}{\boldsymbol{u}
+
+    where
+
+    .. math:: \tilde{\boldsymbol{v}} = \begin{bmatrix}
+        0 & -v_z & v_y \\
+        v_z & 0 & -v_x \\
+        -v_y & v_x & 0 \end{bmatrix}.
+
+    Args:
+        vector (np.ndarray): 3-dimensional vector
+
+    Returns:
+        np.array: Skew-symmetric matrix.
+
+    """
     if not vector.size == 3:
         raise ValueError('The input vector is not 3D')
 

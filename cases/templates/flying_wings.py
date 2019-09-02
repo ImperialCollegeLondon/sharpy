@@ -619,7 +619,8 @@ class FlyingWing():
                                                            'remove_inputs': ['u_gust']},
                                          'rigid_body_motion': False}}
 
-        config['AsymptoticStability'] = {'print_info': True}
+        config['AsymptoticStability'] = {'print_info': True,
+                                        'velocity_analysis': [30, 180, 151]}
 
         config['LinDynamicSim'] = {'dt': self.dt,
                                      'n_tsteps': self.n_tstep,
