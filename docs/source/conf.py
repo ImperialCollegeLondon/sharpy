@@ -138,12 +138,14 @@ todo_include_todos = False
 # http://www.sphinx-doc.org/en/master/usage/extensions/autodoc.html#confval-autodoc_mock_imports
 autodoc_mock_imports = ["matplotlib", "numpy", "colorama", "h5py", "scipy", "ctypes", "tvtk",
                         "sharpy.lib", "sharpy.utils.ctypes_utils", "sharpy.linear.src.libuvlm",
-                        "sharpy.linear.src.lib_dbiot"]
+                        "sharpy.linear.src.lib_dbiot", "lxml", "pandas"]
                         # "interp", "multisurfaces", "assembly", "libss",]
 
                         # Note: N. Goizueta 3/12/18: mocking imports from sharpy.linear.src that contain numpy
                         # operators outside any function definition as these are causing problems. If numpy is not
                         # mocked, it doesn't build on RTD. If it is mocked, it raises an error when compiling locally
+                        # N. Goizueta 23/7/19 - Removing sharpy.linear until its ready to be merged. Too many errors are
+                        # causing a build failure on RTD.
 
 # # Exclude selected modules
 # from unittest.mock import MagicMock
@@ -158,7 +160,9 @@ autodoc_mock_imports = ["matplotlib", "numpy", "colorama", "h5py", "scipy", "cty
 # sys.modules.update((mod_name, Mock()) for mod_name in MOCK_MODULES)
 #
 
-
+# Sphinx extension to execute code in the documentation
+# https://github.com/jpsenior/sphinx-execute-code
+# extensions.append('sphinx_execute_code')
 
 # -- Options for HTML output ----------------------------------------------
 

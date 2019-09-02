@@ -5,7 +5,6 @@ S. Maraniello, Jul 2018
 
 import warnings
 import numpy as np
-import scipy.signal as scsig
 
 import sharpy.utils.settings
 import sharpy.linear.src.linuvlm as linuvlm
@@ -68,6 +67,11 @@ class LinAeroEla():
             self.use_euler = settings_here['use_euler']
         except KeyError:
             self.use_euler = False
+
+        if self.rigid_body_motions and settings_here['track_body']:
+            self.track_body = True
+        else:
+            self.track_body = False
         ## -------
 
         ### extract aeroelastic info
@@ -105,7 +109,12 @@ class LinAeroEla():
         self.num_dof_flex = np.sum(self.data.structure.vdof >= 0)*6
         self.num_dof_str = self.num_dof_flex + self.num_dof_rig
         self.reshape_struct_input()
-        self.lingebm_str = lingebm.FlexDynamic(self.tsstr, structure, settings_here['beam_settings'])
+
+        try:
+            beam_settings = settings_here['beam_settings']
+        except KeyError:
+            beam_settings = dict()
+        self.lingebm_str = lingebm.FlexDynamic(self.tsstr, structure, beam_settings)
 
         ### uvlm
         if uvlm_block:
@@ -318,6 +327,68 @@ class LinAeroEla():
         >>> C_beam[-rigid_dof:, :flex_dof] += Crs
         >>> C_beam[-rigid_dof:, -rigid_dof:] += Crr
 
+        Track body option
+
+        The ``track_body`` setting restricts the UVLM grid to linear translation motions and therefore should be used to
+        ensure that the forces are computed using the reference linearisation frame.
+
+        The UVLM and beam are linearised about a reference equilibrium condition. The UVLM is defined in the inertial
+        reference frame while the beam employs the body attached frame and therefore a projection from one frame onto
+        another is required during the coupling process.
+
+        However, the inputs to the UVLM (i.e. the lattice grid coordinates) are obtained from the beam deformation which
+        is expressed in A frame and therefore the grid coordinates need to be projected onto the inertial frame ``G``.
+        As the beam rotates, the projection onto the ``G`` frame of the lattice grid coordinates will result in a grid
+        that is not coincident with that at the linearisation reference and therefore the grid coordinates must be
+        projected onto the original frame, which will be referred to as ``U``. The transformation between the inertial
+        frame ``G`` and the ``U`` frame is a function of the rotation of the ``A`` frame and the original position:
+
+        .. math:: C^{UG}(\chi) = C^{GA}(\chi_0)C^{AG}(\chi)
+
+        Therefore, the grid coordinates obtained in ``A`` frame and projected onto the ``G`` frame can be transformed
+        to the ``U`` frame using
+
+        .. math:: \zeta_U = C^{UG}(\chi) \zeta_G
+
+        which allows the grid lattice coordinates to be projected onto the original linearisation frame.
+
+        In a similar fashion, the output lattice vertex forces of the UVLM are defined in the original linearisation
+        frame ``U`` and need to be transformed onto the inertial frame ``G`` prior to projecting them onto the ``A``
+        frame to use them as the input forces to the beam system.
+
+        .. math:: \boldsymbol{f}_G = C^{GU}(\chi)\boldsymbol{f}_U
+
+        The linearisation of the above relations lead to the following expressions that have to be added to the
+        coupling matrices:
+
+            * ``Kdisp_vel`` terms:
+
+                .. math::
+                    \delta\boldsymbol{\zeta}_U= C^{GA}_0 \frac{\partial}{\partial \boldsymbol{\chi}}
+                    \left(C^{AG}\boldsymbol{\zeta}_{G,0}\right)\delta\boldsymbol{\chi} + \delta\boldsymbol{\zeta}_G
+
+            * ``Kvel_vel`` terms:
+
+                .. math::
+                    \delta\dot{\boldsymbol{\zeta}}_U= C^{GA}_0 \frac{\partial}{\partial \boldsymbol{\chi}}
+                    \left(C^{AG}\dot{\boldsymbol{\zeta}}_{G,0}\right)\delta\boldsymbol{\chi}
+                    + \delta\dot{\boldsymbol{\zeta}}_G
+
+        The transformation of the forces and moments introduces terms that are functions of the orientation and
+        are included as stiffening and damping terms in the beam's matrices:
+
+            * ``Csr`` damping terms relating to translation forces:
+
+                .. math::
+                    C_{sr}^{tra} -= \frac{\partial}{\partial\boldsymbol{\chi}}
+                    \left(C^{GA} C^{AG}_0 \boldsymbol{f}_{G,0}\right)\delta\boldsymbol{\chi}
+
+            * ``Csr`` damping terms related to moments:
+
+                .. math::
+                    C_{sr}^{rot} -= T^\top\widetilde{\mathbf{X}}_B C^{BG}
+                    \frac{\partial}{\partial\boldsymbol{\chi}}
+                    \left(C^{GA} C^{AG}_0 \boldsymbol{f}_{G,0}\right)\delta\boldsymbol{\chi}
         """
 
         data = self.data
@@ -328,9 +399,11 @@ class LinAeroEla():
 
         # allocate output
         Kdisp = np.zeros((3 * self.linuvlm.Kzeta, self.num_dof_str))
+        Kdisp_vel = np.zeros((3 * self.linuvlm.Kzeta, self.num_dof_str))  # Orientation is in velocity DOFs
         Kvel_disp = np.zeros((3 * self.linuvlm.Kzeta, self.num_dof_str))
         Kvel_vel = np.zeros((3 * self.linuvlm.Kzeta, self.num_dof_str))
         Kforces = np.zeros((self.num_dof_str, 3 * self.linuvlm.Kzeta))
+        Kforces2 = np.zeros((self.num_dof_str, 3 * self.linuvlm.Kzeta))
 
         Kss = np.zeros((self.num_dof_flex, self.num_dof_flex))
         Csr = np.zeros((self.num_dof_flex, self.num_dof_rig))
@@ -340,7 +413,7 @@ class LinAeroEla():
 
         # get projection matrix A->G
         # (and other quantities indep. from nodal position)
-        Cga = algebra.quat2rotation(tsstr.quat)
+        Cga = algebra.quat2rotation(tsstr.quat)  # NG 6-8-19 removing .T
         Cag = Cga.T
 
         # for_pos=tsstr.for_pos
@@ -348,6 +421,9 @@ class LinAeroEla():
         for_rot = tsstr.for_vel[3:]
         skew_for_rot = algebra.skew(for_rot)
         Der_vel_Ra = np.dot(Cga, skew_for_rot)
+
+        Faero = np.zeros(3)
+        FaeroA = np.zeros(3)
 
         # GEBM degrees of freedom
         jj_for_tra = range(self.num_dof_str - self.num_dof_rig, self.num_dof_str - self.num_dof_rig + 3)
@@ -396,6 +472,8 @@ class LinAeroEla():
             Cbg = np.dot(Cab.T, Cag)
             Tan = algebra.crv2tan(psi)
 
+            track_body = self.track_body
+
             ### str -> aero mapping
             # some nodes may be linked to multiple surfaces...
             for str2aero_here in aero.struct2aero_mapping[node_glob]:
@@ -432,20 +510,19 @@ class LinAeroEla():
 
                     # get aero force
                     faero = tsaero.forces[ss][:3, mm, nn]
+                    Faero += faero
                     faero_a = np.dot(Cag, faero)
+                    FaeroA += faero_a
                     maero_g = np.cross(Xg, faero)
                     maero_b = np.dot(Cbg, maero_g)
-
-                    # get gravity forces - gravity forces are in A frame
-                    fgrav = tsstr.gravity_forces[nn, :3]
 
                     ### ---------------------------------------- allocate Kdisp
 
                     if bc_here != 1:
-                        # wrt pos
+                        # wrt pos - Eq 25 second term
                         Kdisp[np.ix_(ii_vert, jj_tra)] += Cga
 
-                        # wrt psi
+                        # wrt psi - Eq 26
                         Kdisp[np.ix_(ii_vert, jj_rot)] -= np.dot(Cbg.T, XbskewTan)
 
                     # w.r.t. position of FoR A (w.r.t. origin G)
@@ -453,11 +530,19 @@ class LinAeroEla():
 
                     # # ### w.r.t. quaternion (attitude changes)
                     if self.use_euler:
-                        Kdisp[np.ix_(ii_vert, jj_euler)] = \
+                        Kdisp_vel[np.ix_(ii_vert, jj_euler)] += \
                             algebra.der_Ceuler_by_v(tsstr.euler, zetaa)
                     else:
-                        Kdisp[np.ix_(ii_vert, jj_quat)] = \
+                        # Equation 25
+                        # Kdisp[np.ix_(ii_vert, jj_quat)] += \
+                        #     algebra.der_Cquat_by_v(tsstr.quat, zetaa)
+                        Kdisp_vel[np.ix_(ii_vert, jj_quat)] += \
                             algebra.der_Cquat_by_v(tsstr.quat, zetaa)
+
+                        # Track body - project inputs as for A not moving
+                        if track_body:
+                            Kdisp_vel[np.ix_(ii_vert, jj_quat)] += \
+                                Cga.dot(algebra.der_CquatT_by_v(tsstr.quat, zetag))
 
                     ### ------------------------------------ allocate Kvel_disp
 
@@ -483,13 +568,18 @@ class LinAeroEla():
                     # # w.r.t. position of FoR A (w.r.t. origin G)
                     # # null as A and G have always same origin in SHARPy
 
-                    # # ### w.r.t. quaternion (attitude changes)
+                    # # ### w.r.t. quaternion (attitude changes) - Eq 30
                     if self.use_euler:
-                        Kvel_disp[np.ix_(ii_vert, jj_euler)] = \
+                        Kvel_vel[np.ix_(ii_vert, jj_euler)] += \
                             algebra.der_Ceuler_by_v(tsstr.euler, zetaa_dot)
                     else:
-                        Kvel_disp[np.ix_(ii_vert, jj_quat)] = \
+                        Kvel_vel[np.ix_(ii_vert, jj_quat)] += \
                             algebra.der_Cquat_by_v(tsstr.quat, zetaa_dot)
+
+                        # Track body if ForA is rotating
+                        if track_body:
+                            Kvel_vel[np.ix_(ii_vert, jj_quat)] += \
+                                Cga.dot(algebra.der_CquatT_by_v(tsstr.quat, zetag_dot))
 
                     ### ------------------------------------- allocate Kvel_vel
 
@@ -520,6 +610,7 @@ class LinAeroEla():
 
                     # total forces
                     Kforces[np.ix_(jj_for_tra, ii_vert)] += Cag
+                    Kforces2[-10:-7, ii_vert] += Cag
 
                     # total moments
                     Kforces[np.ix_(jj_for_rot, ii_vert)] += \
@@ -534,9 +625,13 @@ class LinAeroEla():
                     if bc_here != 1:
                         # forces
                         if self.use_euler:
-                            Csr[jj_tra, -3:] += algebra.der_Ceuler_by_v(tsstr.euler, faero)
+                            Csr[jj_tra, -3:] -= algebra.der_Peuler_by_v(tsstr.euler, faero)
                         else:
                             Csr[jj_tra, -4:] -= algebra.der_CquatT_by_v(tsstr.quat, faero)
+
+                            # Track body
+                            if track_body:
+                                Csr[jj_tra, -4:] -= algebra.der_Cquat_by_v(tsstr.quat, Cga.T.dot(faero))
 
                         ### moments
                         TanTXbskew = np.dot(Tan.T, Xbskew)
@@ -547,17 +642,22 @@ class LinAeroEla():
                             np.dot(TanTXbskew, algebra.der_CcrvT_by_v(psi, np.dot(Cag, faero)))
                         # contribution of delta aero moment (dquat)
                         if self.use_euler:
-                            # 14/5/19 NG changing the signs of the EULER equations (in theory they should be the same as
-                            # the quaternion case
-                            Csr[jj_rot, -3:] += \
+                            Csr[jj_rot, -3:] -= \
                                 np.dot(TanTXbskew,
                                        np.dot(Cba,
-                                              algebra.der_Ceuler_by_v(tsstr.euler, faero)))
+                                              algebra.der_Peuler_by_v(tsstr.euler, faero)))
                         else:
                             Csr[jj_rot, -4:] -= \
                                 np.dot(TanTXbskew,
                                        np.dot(Cba,
                                               algebra.der_CquatT_by_v(tsstr.quat, faero)))
+
+                            # Track body
+                            if track_body:
+                                Csr[jj_rot, -4:] -= \
+                                    np.dot(TanTXbskew,
+                                           np.dot(Cbg,
+                                                  algebra.der_CquatT_by_v(tsstr.quat, Cga.T.dot(faero))))
 
                     ### rigid body eqs (Crs and Crr)
 
@@ -571,13 +671,13 @@ class LinAeroEla():
 
                     if self.use_euler:
                         # total force
-                        Crr[:3, -3:] += algebra.der_Ceuler_by_v(tsstr.euler, faero)
+                        Crr[:3, -3:] -= algebra.der_Peuler_by_v(tsstr.euler, faero)
 
                         # total moment contribution due to change in euler angles
-                        Crr[3:6, -3:] += algebra.der_Ceuler_by_v(tsstr.euler, np.cross(zetag, faero))
-                        Crr[3:6, -3:] -= np.dot(
+                        Crr[3:6, -3:] -= algebra.der_Peuler_by_v(tsstr.euler, np.cross(zetag, faero))
+                        Crr[3:6, -3:] += np.dot(
                             np.dot(Cag, algebra.skew(faero)),
-                            algebra.der_Ceuler_by_v(tsstr.euler, np.dot(Cab, Xb)))
+                            algebra.der_Peuler_by_v(tsstr.euler, np.dot(Cab, Xb)))
 
                     else:
                         # total force
@@ -587,19 +687,21 @@ class LinAeroEla():
                         Crr[3:6, -4:] -= algebra.der_CquatT_by_v(tsstr.quat, np.cross(zetag, faero))
                         Crr[3:6, -4:] += np.dot(
                             np.dot(Cag, algebra.skew(faero)),
-                            algebra.der_Cquat_by_v(tsstr.quat, np.dot(Cab, Xb)))
+                            algebra.der_CquatT_by_v(tsstr.quat, np.dot(Cab, Xb)))
 
+                        # Track body
+                        if track_body:
+                            # NG 20/8/19 - is the Cag needed here? Verify
+                            Crr[:3, -4:] -= Cag.dot(algebra.der_Cquat_by_v(tsstr.quat, Cga.T.dot(faero)))
 
-        # if self.use_euler:
-        #     Euler angle propagation equations - these are produced by NL SHARPy for the quaternion case only
-            # Crr[-3:, -6:-3] = -deuler_dt(tsstr.euler)
-            # Crr[-3:, -3:] = -der_Teuler_by_w(tsstr.euler, for_rot)
+                            Crr[3:6, -4:] -= Cag.dot(algebra.skew(zetag).dot(algebra.der_Cquat_by_v(tsstr.quat, Cga.T.dot(faero))))
+                            Crr[3:6, -4:] += Cag.dot(algebra.skew(faero)).dot(algebra.der_Cquat_by_v(tsstr.quat, Cga.T.dot(zetag)))
 
-        # Crr_grav = self.linearise_gravity_forces(tsstr)
 
         # transfer
         self.Kdisp = Kdisp
         self.Kvel_disp = Kvel_disp
+        self.Kdisp_vel = Kdisp_vel
         self.Kvel_vel = Kvel_vel
         self.Kforces = Kforces
 
@@ -608,30 +710,7 @@ class LinAeroEla():
         self.Krs = Krs
         self.Csr = Csr
         self.Crs = Crs
-        # self.Crr = Crr + Crr_grav
         self.Crr = Crr
-
-
-    def euler_propagation_equations(self, tsstr):
-        """
-        Euler propagation equations that relate the body fixed angular velocities to the Earth fixed Euler angles
-
-
-        Args:
-            tsstr:
-
-        Returns:
-
-        """
-
-        for_rot = tsstr.for_vel[3:]
-        Crr = np.zeros((9, 9))
-
-        # Euler angle propagation equations - these are produced by NL SHARPy for the quaternion case only
-        Crr[-3:, -6:-3] = -deuler_dt(tsstr.euler)
-        Crr[-3:, -3:] = -der_Teuler_by_w(tsstr.euler, for_rot)
-
-        return Crr
 
 
 if __name__ == '__main__':

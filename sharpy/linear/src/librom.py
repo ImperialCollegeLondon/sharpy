@@ -5,7 +5,6 @@ S. Maraniello, 14 Feb 2018
 
 import warnings
 import numpy as np
-import scipy as sc
 import scipy.linalg as scalg
 
 # from IPython import embed

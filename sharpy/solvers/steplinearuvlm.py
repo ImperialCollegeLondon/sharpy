@@ -3,8 +3,6 @@ Time domain solver to integrate the linear UVLM aerodynamic system developed by 
 N Goizueta
 Nov 18
 """
-import os
-import sys
 from sharpy.utils.solver_interface import BaseSolver, solver
 import numpy as np
 import sharpy.utils.settings as settings
@@ -16,9 +14,6 @@ import sharpy.linear.src.linuvlm as linuvlm
 @solver
 class StepLinearUVLM(BaseSolver):
     r"""
-    Warnings:
-        Under development.
-
     Time domain aerodynamic solver that uses a linear UVLM formulation to be used with the :func:`DynamicCoupled`
     solver.
 
@@ -50,8 +45,6 @@ class StepLinearUVLM(BaseSolver):
                                                      rotational speed at linearisation point
             ============================  =========  ===============================================    ==========
 
-        lin_uvlm_system (linuvlm.Dynamic): Linearised UVLM dynamic system
-        velocity_generator (utils.generator_interface.BaseGenerator): velocity field generator class of desired type
 
     Notes:
         The ``integr_order`` variable refers to the finite differencing scheme used to calculate the bound circulation
@@ -361,6 +354,7 @@ class StepLinearUVLM(BaseSolver):
         If the ``track_body`` option is on, the output forces are projected from
         the linearization frame, to the G frame. Note that the linearisation
         frame is:
+
             a. equal to the FoR G at time 0 (linearisation point)
             b. rotates as the body frame specified in the ``track_body_number``
 
@@ -465,6 +459,7 @@ class StepLinearUVLM(BaseSolver):
 
         If the ``track_body`` option is on, the function projects all the input
         into a frame that:
+
             a. is equal to the FoR G at time 0 (linearisation point)
             b. rotates as the body frame specified in the ``track_body_number``
 

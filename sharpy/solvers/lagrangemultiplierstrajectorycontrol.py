@@ -30,7 +30,7 @@ class LagrangeMultipliersTrajectoryControl(BaseSolver):
         self.settings_default['n_time_steps'] = 100
 
         self.settings_types['dt'] = 'float'
-        self.settings_default['dt'] = 0.05
+        self.settings_default['dt'] = None
 
         self.settings_types['postprocessors'] = 'list(str)'
         self.settings_default['postprocessors'] = list()

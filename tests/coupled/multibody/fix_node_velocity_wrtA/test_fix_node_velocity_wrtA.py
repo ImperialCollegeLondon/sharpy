@@ -1,14 +1,10 @@
 import numpy as np
 import unittest
 import os
+import shutil
 
 
 class TestFixNodeVelocitywrtA(unittest.TestCase):
-    """
-    Validation of a double pendulum with a mass at each tip position
-
-    Reference case: M. Geradin and A. Cardona, "Flexible multibody dynamics : a finite element approach"
-    """
 
     def setUp(self):
         import sharpy.utils.generate_cases as gc
@@ -68,7 +64,10 @@ class TestFixNodeVelocitywrtA(unittest.TestCase):
                                 'AerogridLoader',
                                 'StaticCoupled',
                                 'DynamicCoupled']
-        SimInfo.solvers['SHARPy']['case'] = 'fix_node_velocity_wrtA'
+        global name
+        name = 'fix_node_velocity_wrtA'
+        SimInfo.solvers['SHARPy']['case'] = name
+        SimInfo.solvers['SHARPy']['write_screen'] = 'off'
         SimInfo.solvers['SHARPy']['route'] = os.path.dirname(os.path.realpath(__file__)) + '/'
         SimInfo.set_variable_all_dicts('dt', 0.1)
         SimInfo.set_variable_all_dicts('rho', 0.0)
@@ -78,6 +77,8 @@ class TestFixNodeVelocitywrtA(unittest.TestCase):
 
         SimInfo.solvers['AerogridLoader']['unsteady'] = 'on'
         SimInfo.solvers['AerogridLoader']['mstar'] = 2
+
+        SimInfo.solvers['NonLinearStatic']['print_info'] = False
 
         SimInfo.solvers['StaticCoupled']['structural_solver'] = 'NonLinearStatic'
         SimInfo.solvers['StaticCoupled']['structural_solver_settings'] = SimInfo.solvers['NonLinearStatic']
@@ -89,6 +90,12 @@ class TestFixNodeVelocitywrtA(unittest.TestCase):
         SimInfo.solvers['WriteVariablesTime']['structure_nodes'] = np.array([0,  int((nnodes1-1)/2), -1], dtype = int)
         SimInfo.solvers['WriteVariablesTime']['structure_variables'] = ['pos']
 
+        SimInfo.solvers['BeamPlot']['include_FoR'] = True
+        SimInfo.solvers['NonLinearDynamicMultibody']['relaxation_factor'] = 0.0
+        SimInfo.solvers['NonLinearDynamicMultibody']['min_delta'] = 1e-5
+        SimInfo.solvers['NonLinearDynamicMultibody']['max_iterations'] = 200
+        SimInfo.solvers['NonLinearDynamicMultibody']['newmark_damp'] = 1e-3
+
         SimInfo.solvers['DynamicCoupled']['structural_solver'] = 'NonLinearDynamicMultibody'
         SimInfo.solvers['DynamicCoupled']['structural_solver_settings'] = SimInfo.solvers['NonLinearDynamicMultibody']
         SimInfo.solvers['DynamicCoupled']['aero_solver'] = 'StepUvlm'
@@ -98,7 +105,7 @@ class TestFixNodeVelocitywrtA(unittest.TestCase):
                                                                         'BeamPlot': SimInfo.solvers['BeamPlot'],
                                                                         'AerogridPlot': SimInfo.solvers['AerogridPlot']}
 
-        ntimesteps = 100
+        ntimesteps = 10
 
         SimInfo.define_num_steps(ntimesteps)
 
@@ -150,9 +157,22 @@ class TestFixNodeVelocitywrtA(unittest.TestCase):
         output_path = os.path.dirname(solver_path) + '/output/fix_node_velocity_wrtA/WriteVariablesTime/'
         # quat_data = np.matrix(np.genfromtxt(output_path + 'FoR_00_mb_quat.dat', delimiter=' '))
         pos_tip_data = np.matrix(np.genfromtxt(output_path + "struct_pos_node" + str(-1) + ".dat", delimiter=' '))
-        self.assertAlmostEqual(pos_tip_data[-1, 1], 9.998792, 4)
-        self.assertAlmostEqual(pos_tip_data[-1, 2], 0.000000, 4)
-        self.assertAlmostEqual(pos_tip_data[-1, 3], -0.1073816, 4)
+        self.assertAlmostEqual(pos_tip_data[-1, 1], 9.996557, 2)
+        self.assertAlmostEqual(pos_tip_data[-1, 2], 0.000000, 2)
+        self.assertAlmostEqual(pos_tip_data[-1, 3], -0.1795935, 2)
+
+    def tearDowns(self):
+        solver_path = os.path.dirname(os.path.realpath(__file__))
+        solver_path += '/'
+        files_to_delete = [name + '.aero.h5',
+                           name + '.dyn.h5',
+                           name + '.fem.h5',
+                           name + '.mb.h5',
+                           name + '.solver.txt']
+        for f in files_to_delete:
+            os.remove(solver_path + f)
+
+        shutil.rmtree(solver_path + 'output/')
 
 if __name__=='__main__':
 

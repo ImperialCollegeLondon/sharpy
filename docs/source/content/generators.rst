@@ -8,6 +8,7 @@ aircraft in a static velocity field.
 Dynamic Control Surface generators enable the user to prescribe a certain control surface deflection in time.
 
 .. toctree::
-    generators/steady_velocity_field
-    generators/gust_velocity_field
-    generators/dynamic_cs_generator
+    :glob:
+
+    ../includes/generators/*
+

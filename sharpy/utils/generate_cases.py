@@ -775,6 +775,7 @@ class StructuralInformation():
                                         np.array([EIy]),
                                         np.array([EIz]))
         self.create_frame_of_reference_delta(y_BFoR)
+        self.boundary_conditions = np.zeros((self.num_node), dtype=int)
         # self.boundary_conditions[-1] = -1
         # self.boundary_conditions[0] = 1
 
@@ -1605,286 +1606,27 @@ class SimulationInformation():
 
         Set the default values for all the solvers
         """
+        import sharpy.utils.cout_utils as cout
 
         self.solvers = dict()
-        self.solvers = solver_interface.dictionary_of_solvers()
+        cout.start_writer()
+        self.solvers = solver_interface.dictionary_of_solvers().copy()
+        cout.finish_writer()
         self.solvers.update(generator_interface.dictionary_of_generators())
         # # MAIN
         self.solvers['SHARPy'] = {'flow': '',
-                  'case': 'default_case_name',
-                  'route': '',
-                  'write_screen': 'on',
-                  'write_log': 'off',
-                  'log_folder': './output',
-                  'log_file': 'log'}
+                                  'case': 'default_case_name',
+                                  'route': '',
+                                  'write_screen': 'on',
+                                  'write_log': 'off',
+                                  'log_folder': './output',
+                                  'log_file': 'log'}
 
-        # GENERATORS
-        # self.solvers['SteadyVelocityField_input'] = {'u_inf': 0.,
-        #                                             'u_inf_direction': np.array([1.0, 0, 0])}
-        #
-        # self.solvers['GridBox_input'] = {'x0': 0.,
-        #                                  'y0': 0.,
-        #                                  'z0': 0.,
-        #                                  'x1': 0.,
-        #                                 'y1': 0.,
-        #                                 'z1': 0.,
-        #                                 'dx': 0.,
-        #                                'dy': 0.,
-        #                                'dz': 0.}
-
-        # self.solvers['SHARPy'] = dict()
-        # self.solvers['AerogridLoader'] = dict()
-        # self.solvers['BeamLoader'] = dict()
-        #
-        # self.solvers['AerogridPlot'] = dict()
-        # self.solvers['WriteVariablesTime'] = dict()
-        # self.solvers['BeamPlot'] = dict()
-        #
-        # self.solvers['NonLinearStatic'] = dict()
-        # self.solvers['StaticUvlm'] = dict()
-        # self.solvers['NonLinearDynamicCoupledStep'] = dict()
-        # self.solvers['NonLinearDynamicMultibody'] = dict()
-        # self.solvers['StaticCoupled'] = dict()
-        # self.solvers['DynamicCoupled'] = dict()
-        # self.solvers['InitializeMultibody'] = dict()
-        #
-        # # MAIN
-        # self.solvers['SHARPy'] = {'flow': '',
-        #           'case': 'default_case_name',
-        #           'route': '',
-        #           'write_screen': 'on',
-        #           'write_log': 'off',
-        #           'log_folder': './output',
-        #           'log_file': 'log'}
-        #
-        # # GENERATORS
-        # self.solvers['SteadyVelocityField_input'] = {'u_inf': 0.,
-        #                                             'u_inf_direction': np.array([1.0, 0, 0])}
-        #
-        # self.solvers['GridBox_input'] = {'x0': 0.,
-        #                                  'y0': 0.,
-        #                                  'z0': 0.,
-        #                                  'x1': 0.,
-        #                                 'y1': 0.,
-        #                                 'z1': 0.,
-        #                                 'dx': 0.,
-        #                                'dy': 0.,
-        #                                'dz': 0.}
-        #
-        # # LOADERS
-        # self.solvers['BeamLoader'] = {'unsteady': 'off',
-        #                             'orientation': np.array([1., 0, 0, 0])}
-        #
-        # self.solvers['AerogridLoader'] = {'unsteady': 'off',
-        #                               'aligned_grid': 'on',
-        #                               'freestream_dir': ['0.0', '1.0', '0.0'],
-        #                               'mstar': 10}
-        #
-        # # POSTPROCESSORS
-        # self.solvers['AerogridPlot'] = {'folder': './output',
-        #                     'include_rbm': 'on',
-        #                     'include_forward_motion': 'off',
-        #                     'include_applied_forces': 'on',
-        #                     'include_unsteady_applied_forces': 'off',
-        #                     'minus_m_star': 0,
-        #                     'name_prefix': '',
-        #                     'u_inf': 0.0,
-        #                     'dt': 0.0}
-        #
-        # self.solvers['WriteVariablesTime'] = {'delimiter': ' ',
-        #                                   'FoR_variables': '',
-        #                                   'FoR_number': np.array([0]),
-        #                                   'structure_variables': '',
-        #                                   'structure_nodes': np.array([-1]),
-        #                                   'aero_panels_variables': '',
-        #                                   'aero_panels_isurf': np.array([0]),
-        #                                   'aero_panels_im': np.array([0]),
-        #                                   'aero_panels_in': np.array([0]),
-        #                                   'aero_nodes_variables': '',
-        #                                   'aero_nodes_isurf': np.array([0]),
-        #                                   'aero_nodes_im': np.array([0]),
-        #                                   'aero_nodes_in': np.array([0])}
-        #
-        # self.solvers['BeamPlot'] = {'folder': './output',
-        #                                     'include_rbm': 'on',
-        #                                     'include_applied_forces': 'on',
-        #                                     'include_applied_moments': 'on',
-        #                                     'name_prefix': '',
-        #                                     'output_rbm': 'on'}
-        #
-        # self.solvers['Cleanup'] = {'clean_structure': True,
-        #                            'clean_aero': True,
-        #                            'remaining_steps': 10}
-        #
-        # self.solvers['PlotFlowField'] = {'postproc_grid_generator': 'GridBox',
-        #                            'postproc_grid_input': dict(),
-        #                            'velocity_field_generator': 'SteadyVelocityField',
-        #                            'velocity_field_input': dict(),
-        #                            'dt': 0.1}
-        #
         self.solvers['SaveData'] = {'folder': './output',
                                    'save_aero': True,
                                    'save_struct': True,
                                    # 'skip_attr': dict(),
                                    'compress_float': False}
-        #
-        # # STEPS
-        # self.solvers['NonLinearStatic'] = {'print_info': 'on',
-        #                                'max_iterations': 100,
-        #                                'num_load_steps': 5,
-        #                                'delta_curved': 1e-5,
-        #                                'gravity_on': 'off',
-        #                                'gravity': 9.81,
-        #                                'min_delta': 1e-7}
-        #
-        #
-        # self.solvers['StaticUvlm'] = {'print_info': 'on',
-        #                               'horseshoe': 'off',
-        #                               'num_cores': 0,
-        #                               'n_rollup': 1,
-        #                               'rollup_dt': 0.1,
-        #                               'rollup_aic_refresh': 1,
-        #                               'rollup_tolerance': 1e-4,
-        #                               'iterative_solver': 'off',
-        #                               'iterative_tol': 1e-4,
-        #                               'iterative_precond': 'off',
-        #                               'velocity_field_generator': 'SteadyVelocityField',
-        #                               'velocity_field_input': dict(),
-        #                               'rho': 1.225}
-        #
-        # self.solvers['NonLinearDynamicCoupledStep'] = {'print_info': 'on',
-        #                                            'max_iterations': 100,
-        #                                            'num_load_steps': 5,
-        #                                            'delta_curved': 1e-5,
-        #                                            'min_delta': 1e-5,
-        #                                            'newmark_damp': 1e-4,
-        #                                            'dt': 0.01,
-        #                                            'num_steps': 500,
-        #                                            'gravity_on': 'off',
-        #                                            'gravity': 9.81,
-        #                                            'initial_velocity_direction': np.array([-1.0, 0.0, 0.0]),
-        #                                            'initial_velocity': 0}
-        #
-        # self.solvers['NonLinearDynamicPrescribedStep'] = {'print_info': 'on',
-        #                                                'max_iterations': 100,
-        #                                                'num_load_steps': 5,
-        #                                                'delta_curved': 1e-5,
-        #                                                'min_delta': 1e-5,
-        #                                                'newmark_damp': 1e-4,
-        #                                                'dt': 0.01,
-        #                                                'num_steps': 500,
-        #                                                'gravity_on': 'off',
-        #                                                'gravity': 9.81}
-        #
-        # self.solvers['NonLinearDynamicMultibody'] = {'print_info': 'on',
-        #                                            'max_iterations': 100,
-        #                                            'num_load_steps': 5,
-        #                                            'delta_curved': 1e-5,
-        #                                            'min_delta': 1e-5,
-        #                                            'newmark_damp': 1e-4,
-        #                                            'dt': 0.01,
-        #                                            'num_steps': 500,
-        #                                            'gravity_on': 'off',
-        #                                            'gravity': 9.81,
-        #                                            'initial_velocity_direction': np.array([-1.0, 0.0, 0.0]),
-        #                                            'initial_velocity': 0}
-        #
-        # self.solvers['StepUvlm'] = {'print_info': 'on',
-        #                             'num_cores': 0,
-        #                             'n_time_steps': 100,
-        #                             'convection_scheme': 3,
-        #                             'dt': 0.1,
-        #                             'iterative_solver': 'off',
-        #                             'iterative_tol': 1e-4,
-        #                             'iterative_precond': 'off',
-        #                             'velocity_field_generator': 'SteadyVelocityField',
-        #                             'velocity_field_input': dict(),
-        #                             'rho': 1.225}
-        #
-        # # COUPLED
-        # self.solvers['StaticCoupled'] = {'print_info': 'on',
-        #                              'structural_solver': 'TO BE DEFINED',
-        #                              'structural_solver_settings': dict(),
-        #                              'aero_solver':'TO BE DEFINED',
-        #                              'aero_solver_settings': dict(),
-        #                              'max_iter': 100,
-        #                              'n_load_steps': 1,
-        #                              'tolerance': 1e-5,
-        #                              'relaxation_factor': 0}
-        #
-        # self.solvers['InitializeMultibody'] = {'print_info': 'on',
-        #                              'structural_solver': 'TO BE DEFINED',
-        #                              'structural_solver_settings': dict(),
-        #                              'aero_solver':'TO BE DEFINED',
-        #                              'aero_solver_settings': dict(),
-        #                              'max_iter': 100,
-        #                              'n_load_steps': 1,
-        #                              'tolerance': 1e-5,
-        #                              'relaxation_factor': 0}
-        #
-        # self.solvers["DynamicCoupled"] = {'print_info': 'on',
-        #                                     'structural_solver': 'TO BE DEFINED',
-        #                                     'structural_solver_settings': dict(),
-        #                                     'aero_solver': 'TO BE DEFINED',
-        #                                     'aero_solver_settings': dict(),
-        #                                     'n_time_steps': 100,
-        #                                     'dt': 0.05,
-        #                                     'structural_substeps': 1,
-        #                                     'fsi_substeps': 70,
-        #                                     'fsi_tolerance': 1e-5,
-        #                                     'relaxation_factor': 0.2,
-        #                                     'final_relaxation_factor': 0.0,
-        #                                     'minimum_steps': 3,
-        #                                     'relaxation_steps': 100,
-        #                                     'dynamic_relaxation': 'on',
-        #                                     'postprocessors': list(),
-        #                                     'postprocessors_settings': dict(),
-        #                                     'cleanup_previous_solution': 'on',
-        #                                     'include_unsteady_force_contribution': 'off'}
-        #
-        # self.solvers["SteadyHelicoidalWake"] = {'print_info': 'on',
-        #                                     'structural_solver': 'TO BE DEFINED',
-        #                                     'structural_solver_settings': dict(),
-        #                                     'aero_solver': 'TO BE DEFINED',
-        #                                     'aero_solver_settings': dict(),
-        #                                     'n_time_steps': 100,
-        #                                     'dt': 0.05,
-        #                                     'structural_substeps': 1,
-        #                                     'fsi_substeps': 70,
-        #                                     'fsi_tolerance': 1e-5,
-        #                                     'fsi_vel_tolerance': 1e-5,
-        #                                     'relaxation_factor': 0.2,
-        #                                     'final_relaxation_factor': 0.0,
-        #                                     'minimum_steps': 3,
-        #                                     'relaxation_steps': 100,
-        #                                     'dynamic_relaxation': 'on',
-        #                                     'postprocessors': list(),
-        #                                     'postprocessors_settings': dict(),
-        #                                     'cleanup_previous_solution': 'on',
-        #                                     'include_unsteady_force_contribution': 'off',
-        #                                     'rigid_structure': False,
-        #                                     'circulation_tolerance': 1e-5,
-        #                                     'circulation_substeps': 70}
-        #
-        # self.solvers["DynamicPrescribedCoupled"] = {'print_info': 'on',
-        #                                     'structural_solver': 'TO BE DEFINED',
-        #                                     'structural_solver_settings': dict(),
-        #                                     'aero_solver': 'TO BE DEFINED',
-        #                                     'aero_solver_settings': dict(),
-        #                                     'n_time_steps': 100,
-        #                                     'dt': 0.05,
-        #                                     'structural_substeps': 1,
-        #                                     'fsi_substeps': 70,
-        #                                     'fsi_tolerance': 1e-5,
-        #                                     'relaxation_factor': 0.2,
-        #                                     'final_relaxation_factor': 0.0,
-        #                                     'minimum_steps': 3,
-        #                                     'relaxation_steps': 100,
-        #                                     'dynamic_relaxation': 'on',
-        #                                     'postprocessors': list(),
-        #                                     'postprocessors_settings': dict(),
-        #                                     'cleanup_previous_solution': 'on',
-        #                                     'include_unsteady_force_contribution': 'off'}
 
 
 
@@ -2154,6 +1896,10 @@ def generate_multibody_file(list_LagrangeConstraints, list_Bodies, route, case_n
                 constraint_id.create_dataset("body_number", data=constraint.body_number)
                 constraint_id.create_dataset("node_number", data=constraint.node_number)
 
+            if constraint.behaviour == 'fully_constrained_node_FoR':
+                constraint_id.create_dataset("node_in_body", data=constraint.node_in_body)
+                constraint_id.create_dataset("node_body", data=constraint.node_body)
+                constraint_id.create_dataset("body_FoR", data=constraint.body_FoR)
             iconstraint += 1
 
         # Write the body information

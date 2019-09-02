@@ -4,7 +4,6 @@ S. Maraniello, 25 May 2018
 '''
 
 import numpy as np
-import sharpy.linear.src.libuvlm as libuvlm
 import sharpy.linear.src.gridmapping as gridmapping
 import sharpy.linear.src.surface as surface
 import sharpy.linear.src.assembly as assembly
@@ -332,9 +331,8 @@ class MultiAeroGridSurfaces():
 if __name__=='__main__':
 
 	import read
-	import matplotlib.pyplot as plt
 
-	# select test case
+    # select test case
 	fname='../test/h5input/goland_mod_Nsurf01_M003_N004_a040.aero_state.h5'
 	#fname='../test/h5input/goland_mod_Nsurf02_M003_N004_a040.aero_state.h5'
 	haero=read.h5file(fname)

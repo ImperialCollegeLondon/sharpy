@@ -3,42 +3,37 @@ import numpy as np
 import sharpy.structure.utils.xbeamlib as xbeamlib
 import sharpy.utils.cout_utils as cout
 import sharpy.utils.settings as settings
-from sharpy.utils.solver_interface import solver, BaseSolver
+from sharpy.utils.solver_interface import solver, BaseSolver, solver_from_string
 
+_BaseStructural = solver_from_string('_BaseStructural')
 
 @solver
-class NonLinearStatic(BaseSolver):
+class NonLinearStatic(_BaseStructural):
+    """
+    Structural solver used for the static simulation of free-flying structures.
+
+    This solver provides an interface to the structural library (``xbeam``) and updates the structural parameters
+    for every k-th step of the FSI iteration.
+
+    This solver can be called as part of a standalone structural simulation or as the structural solver of a coupled
+    static aeroelastic simulation.
+
+    """
     solver_id = 'NonLinearStatic'
+    solver_classification = 'structural'
+
+    # settings list
+    settings_types = _BaseStructural.settings_types.copy()
+    settings_default = _BaseStructural.settings_default.copy()
+    settings_description = _BaseStructural.settings_description.copy()
+
+    settings_types['initial_position'] = 'list(float)'
+    settings_default['initial_position'] = np.array([0.0, 0.0, 0.0])
+
+    settings_table = settings.SettingsTable()
+    __doc__ += settings_table.generate(settings_types, settings_default, settings_description)
 
     def __init__(self):
-        # settings list
-        self.settings_types = dict()
-        self.settings_default = dict()
-
-        self.settings_types['print_info'] = 'bool'
-        self.settings_default['print_info'] = True
-
-        self.settings_types['max_iterations'] = 'int'
-        self.settings_default['max_iterations'] = 100
-
-        self.settings_types['num_load_steps'] = 'int'
-        self.settings_default['num_load_steps'] = 5
-
-        self.settings_types['delta_curved'] = 'float'
-        self.settings_default['delta_curved'] = 1e-5
-
-        self.settings_types['gravity_on'] = 'bool'
-        self.settings_default['gravity_on'] = False
-
-        self.settings_types['gravity'] = 'float'
-        self.settings_default['gravity'] = 9.81
-
-        self.settings_types['min_delta'] = 'float'
-        self.settings_default['min_delta'] = 1e-7
-
-        self.settings_types['initial_position'] = 'list(float)'
-        self.settings_default['initial_position'] = np.array([0.0, 0.0, 0.0])
-
         self.data = None
         self.settings = None
 

@@ -1,10 +1,8 @@
 import sharpy.utils.h5utils as h5
-from sharpy.linear.src.lin_aeroelastic import LinAeroEla
 import numpy as np
 import matplotlib.pyplot as plt
 import os
 import tests.linear.goland_wing.goland_wing as goland_wing
-import sharpy.solvers.modal as modal
 import sharpy.postproc.asymptotic_stability as asym_stability
 
 # u_inf_range = np.linspace(140, 170, 4)

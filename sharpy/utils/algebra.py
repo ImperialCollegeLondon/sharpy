@@ -479,14 +479,28 @@ def crv2triad(psi):
 
 def crv2rotation(psi):
     r"""
-    Given a Cartesian rotation vector :math:`\vec{\psi}`, the function produces the rotation
-    matrix required to rotate a vector according to :math:`\vec{\psi}`.
+    Given a Cartesian rotation vector, :math:`\boldsymbol{\Psi}`, the function produces the rotation
+    matrix required to rotate a vector according to :math:`\boldsymbol{\Psi}`.
+
+    The rotation matrix is given by
+
+    .. math::
+        \mathbf{R} = \mathbf{I} + \frac{\sin||\boldsymbol{\Psi}||}{||\boldsymbol{\Psi}||} \tilde{\boldsymbol{\Psi}} +
+        \frac{1-\cos{||\boldsymbol{\Psi}||}}{||\boldsymbol{\Psi}||^2}\tilde{\boldsymbol{\Psi}} \tilde{\boldsymbol{\Psi}}
+
+    To avoid the singularity when :math:`||\boldsymbol{\Psi}||=0`, the series expansion is used
+
+    .. math:: \mathbf{R} = \mathbf{I} + \tilde{\boldsymbol{\Psi}} + \frac{1}{2!}\tilde{\boldsymbol{\Psi}}^2.
+
 
     Args:
-        psi (np.array): Cartesian rotation vector :math:`\vec{\psi}`.
+        psi (np.array): Cartesian rotation vector :math:`\boldsymbol{\Psi}`.
 
     Returns:
         np.array: equivalent rotation matrix
+
+    References:
+        Geradin and Cardona, Flexible Multibody Dynamics: A finite element approach. Chapter 4
 
     """
 
@@ -546,20 +560,40 @@ def rotation2crv(Cab):
 
 
 def crv2tan(psi):
+    r"""
+    Returns the tangential operator, :math:`\mathbf{T}(\boldsymbol{\Psi})`, that is a function of
+    the Cartesian Rotation Vector, :math:`\boldsymbol{\Psi}`.
+
+    .. math::
+
+        \boldsymbol{T}(\boldsymbol{\Psi}) =
+        \mathbf{I} +
+        \left(\frac{\cos ||\boldsymbol{\Psi}|| - 1}{||\boldsymbol{\Psi}||^2}\right)\tilde{\boldsymbol{\Psi}}
+        + \left(1 - \frac{\sin||\boldsymbol{\Psi}||}{||\boldsymbol{\Psi}||}\right)
+        \frac{\tilde{\boldsymbol{\Psi}}\tilde{\boldsymbol{\Psi}}}{||\boldsymbol{\Psi}||^2}
+
+    When the norm of the CRV approaches 0, the series expansion expression is used in-lieu of the above expression
+
+    .. math::
+
+        \boldsymbol{T}(\boldsymbol{\Psi}) =
+        \mathbf{I}
+        -\frac{1}{2!}\tilde{\boldsymbol{\Psi}} + \frac{1}{3!}\tilde{\boldsymbol{\Psi}}^2
+
+    Args:
+        psi (np.array): Cartesian Rotation Vector, :math:`\boldsymbol{\Psi}`.
+
+    Returns:
+        np.array: Tangential operator
+
+    References:
+        Geradin and Cardona. Flexible Multibody Dynamics: A Finite Element Approach. Chapter 4.
+    """
+
     norm_psi = np.linalg.norm(psi)
     psi_skew = skew(psi)
 
     eps = 1e-8
-    # if norm_psi < eps:
-    #     k1 = 1.0
-    #     k2 = 1.0/6.0
-    # else:
-    #     k1 = np.sin(norm_psi*0.5)/(norm_psi*0.5)
-    #     k2 = (1.0 - np.sin(norm_psi)/norm_psi)/(norm_psi*norm_psi)
-    #
-    # T = np.eye(3) - (0.5*k1*k1)*psi_skew + k2*np.dot(psi_skew, psi_skew)
-
-    # new expression for tangent operator (equation 4.11 in Geradin and Cardona)
     if norm_psi < eps:
         return np.eye(3) - 0.5*psi_skew + 1.0/6.0*np.dot(psi_skew, psi_skew)
     else:
@@ -598,7 +632,9 @@ def quat2rotation(q1):
     If B is a FoR obtained rotating a FoR A by an angle :math:`\phi` about an axis :math:`\mathbf{n}`
     (recall :math:`\mathbf{n}` will be invariant during the rotation), and :math:`\mathbf{q}` is the related
     quaternion, :math:`\mathbf{q}(\phi,\mathbf{n})`, the function will return the matrix :math:`C^{AB}` such that:
+
         - :math:`C^{AB}` rotates FoR A onto FoR B.
+
         - :math:`C^{AB}` transforms the coordinates of a vector defined in B component to
           A components i.e. :math:`\mathbf{v}^A = C^{AB}(\mathbf{q})\mathbf{v}^B`.
 
@@ -655,36 +691,6 @@ def rot_skew(vec):
     return skew(vec)
 
 
-def rotation3d_x_ag(angle):
-    r"""
-    Rotation matrix about the x axis by the input angle :math:`\Phi`
-
-    .. math::
-
-        \mathbf{\tau}_x = \begin{bmatrix}
-            1 & 0 & 0 \\
-            0 & \cos(\Phi) & \sin(\Phi) \\
-            0 & -\sin(\Phi) & \cos(\Phi)
-        \end{bmatrix}
-
-
-    Args:
-        angle (float): angle of rotation in radians about the x axis
-
-    Returns:
-        np.array: 3x3 rotation matrix about the x axis
-
-    """
-    warn('This function is incorrect for SHARPys SEU convention')
-    c = np.cos(angle)
-    s = np.sin(angle)
-    mat = np.zeros((3, 3))
-    mat[0, :] = [1.0, 0.0, 0.0]
-    mat[1, :] = [0.0,   c,  s]
-    mat[2, :] = [0.0,   -s,   c]
-    return mat
-
-
 def rotation3d_x(angle):
     r"""
 
@@ -719,9 +725,6 @@ def rotation3d_x(angle):
 
 def rotation3d_y(angle):
     r"""
-    Warnings:
-        This function is transposed so it undoes the pitch rotation.
-
     Rotation matrix about the y axis by the input angle :math:`\Theta`
 
     .. math::
@@ -730,35 +733,6 @@ def rotation3d_y(angle):
             \cos(\Theta) & 0 & -\sin(\Theta) \\
             0 & 1 & 0 \\
             \sin(\Theta) & 0 & \cos(\Theta)
-        \end{bmatrix}
-
-
-    Args:
-        angle (float): angle of rotation in radians about the y axis
-
-    Returns:
-        np.array: 3x3 rotation matrix about the y axis
-
-    """
-
-    c = np.cos(angle)
-    s = np.sin(angle)
-    mat = np.zeros((3, 3))
-    mat[0, :] = [c, 0.0, s]
-    mat[1, :] = [0.0, 1.0, 0.0]
-    mat[2, :] = [-s, 0.0,  c]
-    return mat
-
-def rotation3d_y_ag(angle):
-    r"""
-    Rotation matrix about the y axis by the input angle :math:`\Theta`
-
-    .. math::
-
-        \mathbf{\tau}_y = \begin{bmatrix}
-            \cos(\Theta) & 0 & \sin(\Theta) \\
-            0 & 1 & 0 \\
-            -\sin(\Theta) & 0 & \cos(\Theta)
         \end{bmatrix}
 
 
@@ -806,34 +780,6 @@ def rotation3d_z(angle):
     return mat
 
 
-def rotation3d_z_ag(angle):
-    r"""
-    Rotation matrix about the z axis by the input angle :math:`\Psi`
-
-    .. math::
-        \mathbf{\tau}_z = \begin{bmatrix}
-            \cos(\Psi) & \sin(\Psi) & 0 \\
-            -\sin(\Psi) & \cos(\Psi) & 0 \\
-            0 & 0 & 1
-        \end{bmatrix}
-
-    Args:
-        angle (float): angle of rotation in radians about the z axis
-
-    Returns:
-        np.array: 3x3 rotation matrix about the z axis
-
-    """
-
-    c = np.cos(angle)
-    s = np.sin(angle)
-    mat = np.zeros((3, 3))
-    mat[0, :] = [  c,  s, 0.0]
-    mat[1, :] = [ -s,   c, 0.0]
-    mat[2, :] = [0.0, 0.0, 1.0]
-    return mat
-
-
 def rotate_crv(crv_in, axis, angle):
     crv = np.zeros_like(crv_in)
     C = crv2rotation(crv_in).T
@@ -864,54 +810,10 @@ def euler2rot(euler):
     Returns:
         np.array: 3x3 transformation matrix describing the rotation by the input Euler angles.
 
-    See Also:
-        The individual transformations represented by the :math:`\mathbf{\tau}` matrices are described in:
-
-        .. py:module:: sharpy.utils.algebra.rotation3d_x
-
-        .. py:module:: sharpy.utils.algebra.rotation3d_y
-
-        .. py:module:: sharpy.utils.algebra.rotation3d_z
-
     """
 
     rot = rotation3d_z(euler[2])
     rot = np.dot(rotation3d_y(euler[1]), rot)
-    rot = np.dot(rotation3d_x(euler[0]), rot)
-    return rot
-
-
-def euler2rotation_ag(euler):
-    r"""
-    Transforms Euler angles (roll, pitch and yaw :math:`\Phi, \Theta, \Psi`) into a 3x3 rotation matrix describing
-    the rotation between frame G and frame A.
-
-    The rotations are performed successively, first in yaw, then in pitch and finally in roll.
-
-    .. math::
-
-        \mathbf{T}_{AG} = \mathbf{\tau}_x(\Phi) \mathbf{\tau}_y(\Theta) \mathbf{\tau}_z(\Psi)
-
-
-    where :math:`\mathbf{\tau}` represents the rotation about the subscripted axis.
-
-    Args:
-        euler (np.array): 1x3 array with the Euler angles in the form ``[roll, pitch, yaw]``
-
-    Returns:
-        np.array: 3x3 transformation matrix describing the rotation by the input Euler angles.
-
-    See Also:
-        The individual transformations represented by the :math:`\mathbf{\tau}` matrices are described in:
-
-        .. py:module:: sharpy.utils.algebra.rotation3d_x
-
-        .. py:module:: sharpy.utils.algebra.rotation3d_y
-
-        .. py:module:: sharpy.utils.algebra.rotation3d_z
-    """
-    rot = rotation3d_z(euler[2])
-    rot = np.dot(rotation3d_y_ag(euler[1]), rot)
     rot = np.dot(rotation3d_x(euler[0]), rot)
     return rot
 
@@ -929,10 +831,6 @@ def euler2quat(euler):
     quat = rotation2quat(euler_rot)
     return quat
 
-def euler2quat_ag(euler):
-    C_ag_euler = euler2rotation_ag(euler)
-    quat = rotation2quat(C_ag_euler)
-    return quat
 
 def quat2euler(quat):
     r"""
@@ -1062,9 +960,12 @@ def der_Cquat_by_v(q,v):
     defined as C=quat2rotation(q), the function returns the derivative, w.r.t. the
     quanternion components, of the vector dot(C,v), where v is a constant
     vector.
+
     The elements of the resulting derivative matrix D are ordered such that:
-        d(C*v) = D*d(q)
-    where d(.) is a delta operator.
+
+    .. math::   d(C*v) = D*d(q)
+
+    where :math:`d(.)` is a delta operator.
     """
 
     vx,vy,vz=v
@@ -1080,14 +981,49 @@ def der_Cquat_by_v(q,v):
 
 
 def der_CquatT_by_v(q,v):
-    """
-    Being C=C(quat).T the projection matrix depending on the quaternion q and
-    defined as C=quat2rotation(q).T, the function returns the derivative, w.r.t. the
-    quaternion components, of the vector dot(C,v), where v is a constant
+    r"""
+    Returns the derivative with respect to quaternion components of a projection matrix times a constant vector.
+
+    Being :math:`\mathbf{C}=\mathbf{R}(\boldsymbol{\chi})^\top` the projection matrix depending on the quaternion
+    :math:`\boldsymbol{\chi}` and obtained through the function
+    defined as ``C=quat2rotation(q).T``, this function returns the derivative with respect to the
+    quaternion components, of the vector :math:`(\mathbf{C\cdot v})`, where :math:`\mathbf{v}` is a constant
     vector.
-    The elements of the resulting derivative matrix D are ordered such that:
-        d(C*v) = D*d(q)
-    where d(.) is a delta operator.
+
+    The derivative operation is defined as:
+
+    .. math::  \delta(\mathbf{C}\cdot \mathbf{v}) =
+        \frac{\partial}{\partial\boldsymbol{\chi}}\left(\mathbf{C\cdot v}\right)\delta\boldsymbol{\chi}
+
+    where, for simplicity, we define
+
+    .. math:: \mathbf{D} =
+        \frac{\partial}{\partial\boldsymbol{\chi}}\left(\mathbf{C\cdot v}\right) \in \mathbb{R}^{3\times4}
+
+    and :math:`\delta(\bullet)` is a delta operator.
+
+    The members of :math:`\mathbf{D}` are the following:
+
+    .. math::
+        \mathbf{D}_{11} &= 2 (q_0 v_x - q_2 v_z + q_3 v_y)\\
+        \mathbf{D}_{12} &= 2 (q_1 v_x - q_2 v_y + q_3 v_z)\\
+        \mathbf{D}_{13} &= 2 (-q_0 v_z + q_1 v_y - q_2 v_x)\\
+        \mathbf{D}_{14} &= 2 (q_0 v_y + q_1 v_z - q_3 v_x)
+
+    .. math::
+        \mathbf{D}_{21} &= 2 (q_0 v_y + q_1 v_z - q_3 v_x)\\
+        \mathbf{D}_{22} &= 2 (q_0 v_z - q_1 v_y + q_2 v_x)\\
+        \mathbf{D}_{23} &= 2 (q_1 v_x + q_2 v_y + q_3 v_z)\\
+        \mathbf{D}_{24} &= 2 (-q_0 v_x + q_2 v_z - q_3 v_y)
+
+    .. math::
+        \mathbf{D}_{31} &= 2 (q_0 v_z - q_1 v_y + q_2 v_x)\\
+        \mathbf{D}_{32} &= 2 (-q_0 v_y - q_1 v_z + q_3 v_x)\\
+        \mathbf{D}_{33} &= 2 (q_0 v_x - q_2 v_z + q_3 v_y)\\
+        \mathbf{D}_{34} &= 2 (q_1 v_x + q_2 v_y + q_3 v_z)\\
+
+    Returns:
+        np.array: :math:`\mathbf{D}` matrix.
     """
 
     vx,vy,vz=v
@@ -1107,11 +1043,14 @@ def der_Tan_by_xv(fv0,xv):
     of dot(Tan,xv), where xv is a constant vector.
 
     The elements of the resulting derivative matrix D are ordered such that:
-        d(Tan*xv) = D*d(fv)
-    where d(.) is a delta operator.
 
-    Note: the derivative expression has been derived symbolically and verified
-    by FDs. A more compact expression may be possible.
+    .. math::    d(Tan*xv) = D*d(fv)
+
+    where :math:`d(.)` is a delta operator.
+
+    Note:
+        The derivative expression has been derived symbolically and verified
+        by FDs. A more compact expression may be possible.
     """
 
     f0=np.linalg.norm(fv0)
@@ -1201,11 +1140,14 @@ def der_TanT_by_xv(fv0,xv):
     of dot(Tan^T,xv), where xv is a constant vector.
 
     The elements of the resulting derivative matrix D are ordered such that:
-        d(Tan^T*xv) = D*d(fv)
-    where d(.) is a delta operator.
 
-    Note: the derivative expression has been derived symbolically and verified
-    by FDs. A more compact expression may be possible.
+    .. math::     d(Tan^T*xv) = D*d(fv)
+
+    where :math:`d(.)` is a delta operator.
+
+    Note:
+        The derivative expression has been derived symbolically and verified
+        by FDs. A more compact expression may be possible.
     """
 
     # Renaming variabes for clarity
@@ -1263,14 +1205,17 @@ def der_TanT_by_xv(fv0,xv):
 
 
 def der_Ccrv_by_v(fv0,v):
-    """
+    r"""
     Being C=C(fv0) the rotational matrix depending on the Cartesian rotation
     vector fv0 and defined as C=crv2rotation(fv0), the function returns the
     derivative, w.r.t. the CRV components, of the vector dot(C,v), where v is a
     constant vector.
+
     The elements of the resulting derivative matrix D are ordered such that:
-        d(C*v) = D*d(fv0)
-    where d(.) is a delta operator.
+
+    .. math:: d(C*v) = D*d(fv0)
+
+    where :math:`d(.)` is a delta operator.
     """
 
     Cab0=crv2rotation(fv0)
@@ -1286,9 +1231,12 @@ def der_CcrvT_by_v(fv0,v):
     vector fv0 and defined as C=crv2rotation(fv0), the function returns the
     derivative, w.r.t. the CRV components, of the vector dot(C.T,v), where v is
     a constant vector.
+
     The elements of the resulting derivative matrix D are ordered such that:
-        d(C.T*v) = D*d(fv0)
-    where d(.) is a delta operator.
+
+    .. math::    d(C.T*v) = D*d(fv0)
+
+    where :math:`d(.)` is a delta operator.
     """
 
     Cba0=crv2rotation(fv0).T
@@ -1312,23 +1260,30 @@ def cross3(v,w):
 
 def der_quat_wrt_crv(quat0):
     '''
-    Provides change of quaternion, dquat, due to elementary rotation, dcrv, 
-    expressed as a 3 components Cartesian rotation vector such that 
-        C(quat + dquat) = C(quat0)C(dw)
+    Provides change of quaternion, dquat, due to elementary rotation, dcrv,
+    expressed as a 3 components Cartesian rotation vector such that
+
+    .. math::    C(quat + dquat) = C(quat0)C(dw)
+
     where C are rotation matrices.
 
-    E.g.: assume 3 FoRs, G, A and B where:
-        - G is the initial FoR
-        - quat0 defines te rotation required to obtain A from G, namely:
-                Cga=quat2rotation(quat0)
-        - dcrv is an inifinitesimal Cartesian rotation vector, defined in A 
-        components, which describes an infinitesimal rotation A -> B, namely:
-                Cab=crv2rotation(dcrv)
-        - The total rotation G -> B is:
-            Cga = Cga * Cab
-        - As dcrv -> 0, Cga is equal to:
-            algebra.quat2rotation(quat0 + dquat), 
-        where dquat is the output of this function.
+    Examples:
+        Assume 3 FoRs, G, A and B where:
+            - G is the initial FoR
+            - quat0 defines te rotation required to obtain A from G, namely:
+              Cga=quat2rotation(quat0)
+            - dcrv is an inifinitesimal Cartesian rotation vector, defined in A
+              components, which describes an infinitesimal rotation A -> B, namely:
+
+              ..math ::      Cab=crv2rotation(dcrv)
+
+            - The total rotation G -> B is:
+                Cga = Cga * Cab
+            - As dcrv -> 0, Cga is equal to:
+
+              .. math::  algebra.quat2rotation(quat0 + dquat),
+
+              where dquat is the output of this function.
     '''
 
     Der=np.zeros((4,3))
@@ -1371,20 +1326,20 @@ def der_Ceuler_by_v(euler, v):
     .. math::
         f_{2\phi} = &+v_1(-\sin\phi\sin\psi + \cos\phi\sin\theta\cos\psi) + \\
         &+v_2(-\sin\phi\cos\psi - \cos\phi\sin\theta\sin\psi) + \\
-        &+v_3(-\cos\phi\cos\theta)
+        &+v_3(-\cos\phi\cos\theta)\\
         f_{2\theta} = &+v_1(\sin\phi\cos\theta\cos\psi) + \\
         &+v_2(-\sin\phi\cos\theta\sin\psi) +\\
-        &+v_3(\sin\phi\sin\theta)
+        &+v_3(\sin\phi\sin\theta) \\
         f_{2\psi} = &+v_1(\cos\phi\cos\psi - \sin\phi\sin\theta\sin\psi) + \\
         &+v_2(-\cos\phi\sin\psi - \sin\phi\sin\theta\cos\psi)
 
     .. math::
         f_{3\phi} = &+v_1(\cos\phi\sin\psi+\sin\phi\sin\theta\cos\psi) + \\
         &+v_2(\cos\phi\cos\psi - \sin\phi\sin\theta\sin\psi) + \\
-        &+v_3(-\sin\phi\cos\theta)
+        &+v_3(-\sin\phi\cos\theta)\\
         f_{3\theta} = &+v_1(-\cos\phi\cos\theta\cos\psi)+\\
         &+v_2(\cos\phi\cos\theta\sin\psi) + \\
-        &+v_3(-\cos\phi\sin\theta)
+        &+v_3(-\cos\phi\sin\theta)\\
         f_{3\psi} = &+v_1(\sin\phi\cos\psi+\cos\phi\sin\theta\sin\psi)  + \\
         &+v_2(-\sin\phi\sin\psi + \cos\phi\sin\theta\cos\psi)
 
@@ -1570,6 +1525,9 @@ def der_Ceuler_by_v_NED(euler, v):
         f_{3\psi} = &+v_1(\sin\phi\cos\psi-\cos\phi\sin\theta\sin\psi)  + \\
         &+v_2(\sin\phi\sin\psi + \cos\phi\sin\theta\cos\psi)
 
+    Note:
+        This function is defined in a North East Down frame which is not the typically used one in SHARPy.
+
     Args:
         euler (np.ndarray): Vector of Euler angles, :math:`\mathbf{\Theta} = [\phi, \theta, \psi]`, in radians.
         v (np.ndarray): 3 dimensional vector in G frame.
@@ -1624,6 +1582,56 @@ def cross3(v,w):
     res[2] = v[0]*w[1] - v[1]*w[0]
 
     return res
+
+
+def quat2euler(quat):
+    r"""
+    Quaternion to Euler angles transformation.
+
+    Transforms a normalised quaternion :math:`\chi\longrightarrow[\phi, \theta, \psi]` to roll, pitch and yaw angles
+    respectively.
+
+    The transformation is valid away from the singularity present at:
+
+    .. math:: \Delta = \frac{1}{2}
+
+    where :math:`\Delta = q_0 q_2 - q_1 q_3`.
+
+    The transformation is carried out as follows:
+
+    .. math::
+        \psi &= \arctan{\left(2\frac{q_0q_3+q_1q_2}{1-2(q_2^2+q_3^2)}\right)} \\
+        \theta &= \arcsin(2\Delta) \\
+        \phi &= \arctan\left(2\frac{q_0q_1 + q_2q_3}{1-2(q_1^2+q_2^2)}\right)
+
+    Args:
+        quat (np.ndarray): Normalised quaternion.
+
+    Returns:
+        np.ndarray: Array containing the Euler angles :math:`[\phi, \theta, \psi]` for roll, pitch and yaw, respectively.
+
+    References:
+        Blanco, J.L. - A tutorial on SE(3) transformation parameterizations and on-manifold optimization. Technical
+        Report 012010. ETS Ingenieria Informatica. Universidad de Malaga. 2013.
+    """
+
+    assert np.abs(np.linalg.norm(quat)-1.0) < 1.e6, 'Input quaternion is not normalised'
+
+    q0 = quat[0]
+    q1 = quat[1]
+    q2 = quat[2]
+    q3 = quat[3]
+
+    delta = quat[0]*quat[2] - quat[1]*quat[3]
+
+    if np.abs(delta) > 0.9 * 0.5:
+        warn('Warning, approaching singularity. Delta %.3f for singularity at Delta=0.5'%np.abs(delta))
+
+    yaw = -np.arctan(2*(q0*q3+q1*q2)/(1-2*(q2**2+q3**2)))
+    pitch = np.arcsin(2*delta)
+    roll = -np.arctan(2*(q0*q1+q2*q3)/(1-2*(q1**2+q2**2)))
+
+    return np.array([roll, pitch, yaw])
 
 
 def deuler_dt(euler):
@@ -1684,6 +1692,9 @@ def deuler_dt_NED(euler):
         p \\ q \\ r
         \end{bmatrix}
 
+    Note:
+        This function is defined in a North East Down frame which is not the typically used one in SHARPy.
+
     Args:
         euler (np.ndarray): Euler angles :math:`[\phi, \theta, \psi]` for roll, pitch and yaw, respectively.
 
@@ -1738,6 +1749,9 @@ def der_Teuler_by_w(euler, w):
         q\frac{\cos\phi}{\cos\theta}-r\frac{\sin\phi}{\cos\theta} & q\sin\phi\tan\theta\sec\theta +
         r\cos\phi\tan\theta\sec\theta & 0
         \end{bmatrix}_{\Theta_0, \omega^A_0}
+
+    Note:
+        This function is defined in a North East Down frame which is not the typically used one in SHARPy.
 
     Args:
         euler (np.ndarray): Euler angles at the linearisation point :math:`\mathbf{\Theta}_0 = [\phi,\theta,\psi]` or
@@ -1843,3 +1857,27 @@ def der_Teuler_by_w_NED(euler, w):
     derT[2, 1] = q * sp * tt * tsec + r * cp * tt * tsec
 
     return derT
+
+
+def multiply_matrices(*argv):
+    """
+    multiply_matrices
+
+    Multiply a series of matrices from left to right
+
+    Args:
+        *argv: series of numpy arrays
+    Returns:
+        sol(numpy array): product of all the given matrices
+
+    Examples:
+        solution = multiply_matrices(A, B, C)
+    """
+
+    size = np.shape(argv[0])
+    nrow = size[0]
+
+    sol = np.eye(nrow)
+    for M in argv:
+        sol = np.dot(sol, M)
+    return sol
