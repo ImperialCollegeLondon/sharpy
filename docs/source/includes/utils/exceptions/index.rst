@@ -7,3 +7,4 @@ SHARPy Exception Classes
 	:glob:
 
 	./DocumentationError
+	./NotConvergedSolver

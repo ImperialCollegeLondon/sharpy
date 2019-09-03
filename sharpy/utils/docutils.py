@@ -4,17 +4,17 @@ Functions to automatically document the code.
 
 Comments and complaints: N. Goizueta
 """
-import sharpy.utils.sharpydir as sharpydir
-import sharpy.utils.exceptions as exceptions
 import os
 import shutil
 import inspect
+import glob
+import warnings
 import importlib.util
+import yaml
+import sharpy.utils.sharpydir as sharpydir
+import sharpy.utils.exceptions as exceptions
 import sharpy.utils.solver_interface as solver_interface
 import sharpy.utils.generator_interface as generator_interface
-import glob
-import yaml
-import warnings
 
 
 def generate_documentation():
