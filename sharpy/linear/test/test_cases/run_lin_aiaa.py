@@ -8,7 +8,7 @@ equations.
 Reference: this test case is as per Sec V.B.1 of:
 	S. Maraniello % R.Palacios, "State-space realizations and internal balancing in
 	potential-flow aerodynamics with arbitrary kinematics", AIAA J., 2018,
-but with less points and on a courser UVLM grid.
+but with less points and on a coarser UVLM grid.
 '''
 import time
 import copy
