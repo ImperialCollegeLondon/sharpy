@@ -127,6 +127,9 @@ class StaticUvlm(BaseSolver):
         self.velocity_generator.initialise(self.settings['velocity_field_input'])
 
     def run(self):
+        if not self.data.aero.timestep_info[self.data.ts].zeta:
+            return self.data
+
         # generate uext
         self.velocity_generator.generate({'zeta': self.data.aero.timestep_info[self.data.ts].zeta,
                                           'override': True,

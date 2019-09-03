@@ -1052,15 +1052,16 @@ class Dynamic(Static):
         r"""
         Produces a sparse matrix
 
-            .. math:: \bar\mathbf{C}(z)
+            .. math:: \bar{\mathbf{C}}(z)
 
         where
 
             .. math:: z = e^{k \Delta t}
 
-        such that the wake circulation frequency response at z is
+        such that the wake circulation frequency response at :math:`z` is
 
-            .. math:: \bar\mathbf{\Gamma_w} = \bar\mathbf{C}(z)  \bar\mathbf{\Gamma}
+            .. math:: \bar{\boldsymbol{\Gamma}}_w = \bar{\mathbf{C}}(z)  \bar{\mathbf{\Gamma}}
+
         """
 
         MS = self.MS
@@ -2906,15 +2907,16 @@ class Frequency(Static):
         r"""
         Produces a sparse matrix
 
-            .. math:: \bar\mathbf{C}(z)
+            .. math:: \bar{\mathbf{C}}(z)
 
         where
 
             .. math:: z = e^{k \Delta t}
 
-        such that the wake circulation frequency response at z is
+        such that the wake circulation frequency response at :math:`z` is
 
-            .. math:: \bar\mathbf{\Gamma_w} = \bar\mathbf{C}(z)  \bar\mathbf{\Gamma}
+            .. math:: \bar{\goldsymbol{\Gamma}}_w = \bar{\mathbf{C}}(z)  \bar{\boldsymbol{\Gamma}}
+
         """
 
         MS = self.MS

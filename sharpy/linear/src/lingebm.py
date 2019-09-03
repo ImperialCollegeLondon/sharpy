@@ -54,8 +54,7 @@ class FlexDynamic():
 
     To produce the state-space equations:
 
-    1. Set the settings
-
+    1. Set the settings:
         a. ``modal_projection={True,False}``: determines whether to project the states
             onto modal coordinates. Projection over damped or undamped modal
             shapes can be obtained selecting:
@@ -95,7 +94,7 @@ class FlexDynamic():
 
     Examples:
 
-        >>>beam_settings = {'modal_projection': True,
+        >>> beam_settings = {'modal_projection': True,
         >>>             'inout_coords': 'modes',
         >>>             'discrete_time': False,
         >>>             'proj_modes': 'undamped',

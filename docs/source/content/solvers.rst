@@ -7,12 +7,3 @@ SHARPy Solvers
     :glob:
 
     ../includes/solvers/*
-
-
-Linear Aeroelastic
-------------------
-
-.. toctree::
-
-    linaeroela
-

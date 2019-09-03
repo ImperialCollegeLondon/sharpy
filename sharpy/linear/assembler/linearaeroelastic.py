@@ -123,11 +123,9 @@ class LinearAeroelastic(ss_interface.BaseElement):
         beam.sys.Cstr += damping_aero
         beam.sys.Kstr += stiff_aero
 
-        # beam.assemble(t_ref=uvlm.sys.ScalingFacts['time'])
-        beam.assemble()
+        beam.assemble(t_ref=uvlm.sys.ScalingFacts['time'])
 
         if not self.load_uvlm_from_file:
-
             # Projecting the UVLM inputs and outputs onto the structural degrees of freedom
             Ksa = self.sys.Kforces[:beam.sys.num_dof, :]  # maps aerodynamic grid forces to nodal forces
 
@@ -149,8 +147,10 @@ class LinearAeroelastic(ss_interface.BaseElement):
                     self.settings['beam_settings']['inout_coords'] == 'modes':
                 # Project UVLM onto modal space and scale length
                 phi = beam.sys.U
-                in_mode_matrix = np.eye(uvlm.ss.inputs, beam.ss.outputs + (uvlm.ss.inputs - 2*beam.sys.num_dof))
+                in_mode_matrix = np.zeros((uvlm.ss.inputs, beam.ss.outputs + (uvlm.ss.inputs - 2*beam.sys.num_dof)))
                 in_mode_matrix[:2*beam.sys.num_dof, :2*beam.sys.num_modes] = sclalg.block_diag(phi, phi)
+                # Control surface inputs TODO: gust inputs that need length scaling
+                in_mode_matrix[2*beam.sys.num_dof:, 2*beam.sys.num_modes:] = np.eye(uvlm.ss.inputs - 2*beam.sys.num_dof)
                 in_mode_matrix /= uvlm.sys.ScalingFacts['length']
                 out_mode_matrix = phi.T
 
@@ -161,18 +161,6 @@ class LinearAeroelastic(ss_interface.BaseElement):
             if uvlm.rom is not None:
                 uvlm.ss = uvlm.rom.run(uvlm.ss)
 
-            # D matrix plotting
-            # indz = [6*i + 2 for i in range(flex_nodes//6)]
-            # import matplotlib.pyplot as plt
-            # plt.plot(uvlm.ss.D[indz, -2])
-            # plt.plot(uvlm.ss.D[indz, -1])
-            # plt.show()
-
-            # plt.figure()
-            # plt.plot(range(ss.outputs//6), uvlm.ss.D[indz, -1])
-            # plt.plot(range(ss.outputs//6), uvlm.ss.D[indz, -2])
-            # plt.show()
-
         else:
             uvlm.ss = self.load_uvlm(self.settings['uvlm_filename'])
 
@@ -181,23 +169,21 @@ class LinearAeroelastic(ss_interface.BaseElement):
         Tsa = np.eye(beam.ss.inputs, uvlm.ss.outputs)
 
         # Scale coupling matrices
-        # if uvlm.sys.ScalingFacts['time'] != 1.0:
-        # Tsa *= uvlm.sys.ScalingFacts['force'] * uvlm.sys.ScalingFacts['time'] ** 2
-        # if rigid_dof > 0:
-        #     warnings.warn('Time scaling for problems with rigid body motion under development.')
-        #     Tas[:flex_nodes + 3, :flex_nodes + 3] /= uvlm.sys.ScalingFacts['length']
-        #     Tas[total_dof: total_dof + flex_nodes + 3] /= uvlm.sys.ScalingFacts['length']
-        # else:
-        # if not self.settings['beam_settings']['modal_projection'].value:
-        #     Tas /= uvlm.sys.ScalingFacts['length']
+        if uvlm.scaled:
+            Tsa *= uvlm.sys.ScalingFacts['force'] * uvlm.sys.ScalingFacts['time'] ** 2
+        if rigid_dof > 0:
+            raise NotImplementedError('Linearisation of problems with rigid body dynamics not yet implemented')
+            warnings.warn('Time scaling for problems with rigid body motion under development.')
+            Tas[:flex_nodes + 3, :flex_nodes + 3] /= uvlm.sys.ScalingFacts['length']
+            Tas[total_dof: total_dof + flex_nodes + 3] /= uvlm.sys.ScalingFacts['length']
+        else:
+            if not self.settings['beam_settings']['modal_projection'].value:
+                Tas /= uvlm.sys.ScalingFacts['length']
 
         ss = libss.couple(ss01=uvlm.ss, ss02=beam.ss, K12=Tas, K21=Tsa)
-        # self.aero_states = uvlm.ss.states
-        # self.beam_states = beam.ss.states
         self.couplings['Tas'] = Tas
         self.couplings['Tsa'] = Tsa
 
-        # TODO
         self.state_variables = {'aero': uvlm.ss.states,
                                 'beam': beam.ss.states}
 
