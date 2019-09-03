@@ -15,7 +15,8 @@ import sharpy.utils.algebra as algebra
 
 class LinAeroEla():
     r"""
-    todo:
+
+    Future work:
         - settings are converted from string to type in __init__ method.
         - implement all settings of LinUVLM (e.g. support for sparse matrices)
 

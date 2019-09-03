@@ -114,10 +114,14 @@ def output_documentation(route=None):
         base_route = sharpydir.SharpyDir + '/docs/source/includes/'
         route_solvers = base_route + 'solvers/'
         route_postprocs = base_route + 'postprocs/'
-        if os.path.exists(base_route):
-            shutil.rmtree(base_route)
+        if os.path.exists(route_solvers):
+            print('Cleaning %s' % route_solvers)
+            shutil.rmtree(route_solvers)
+        if os.path.exists(route_postprocs):
+            print('Cleaning %s', route_postprocs)
+            shutil.rmtree(route_postprocs)
 
-    print('Creating documentation files for solvers in %s' %route)
+    print('Creating documentation files for solvers in %s' %route_solvers)
     print('Creating documentation files for post processors in %s' %route_postprocs)
 
     created_solvers = dict()

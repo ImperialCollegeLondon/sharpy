@@ -4,11 +4,9 @@ Utilities functions for linear analysis
 
 import numpy as np
 
-# sharpy
 
 
 # linear uvlm
-# import sharpy.linear.src.save as save
 import sharpy.linear.src.lin_aeroelastic as lin_aeroelastic
 import sharpy.linear.src.libss as libss
 
