@@ -29,16 +29,16 @@ bibliography: paper.bib
 
 # Summary
 
-Aeroelasticity is the study the dynamic interaction between unsteady aerodynamics 
-and structural dynamics on flexible streamlined bodies, potentially also including 
-rigid-body dynamics.  Industry standard solutions in aeronautics and wind energy 
-are built on the assumption of small structural displacements, which lead to linear 
+Aeroelasticity is the study the dynamic interaction between unsteady aerodynamics
+and structural dynamics on flexible streamlined bodies, potentially also including
+rigid-body dynamics.  Industry standard solutions in aeronautics and wind energy
+are built on the assumption of small structural displacements, which lead to linear
 or quasi-linear theories. However, advances in areas such as energy storage and generation,
 and composite material manufacturing have fostered a new kind of aeroelastic
 structures that may undergo large displacements under aerodynamic forces.
 
 In particular, solar-powered High-Altitude Long-Endurance (HALE) aircraft
-have recently seen very significant progress. New configurations 
+have recently seen very significant progress. New configurations
 such as the latest generation Airbus D&S Zephyr are now able
 to stay airborne for longer than three weeks at a time. As HALE platforms become
 more reliable, the payload mass and energy requirements increase. The mission
@@ -51,8 +51,8 @@ applications, where the largest blades are now well over 100-m long.
 
 
 These longer and much slender structures can potentially present large ($+10%$) deflections
-and have relatively low frequency structural modes which can interact with the flight 
-dynamics modes of the aircraft. Due to this, the
+and have relatively low frequency structural modes which, in the case of aircraft, can interact with the flight
+dynamics modes with potentially unstable couplings. Due to this, the
 conventional quasi-linear methods may not accurately capture the relevant
 phenomena present in the aeroelastic response of these new configurations.
 
@@ -63,9 +63,9 @@ code written in Python3, while computationally expensive routines are coded in
 C++ and Modern Fortran and distributed as shared libraries. SHARPy is easily extended
 through a modular object-oriented design, and already includes tools for
 linear and nonlinear analysis of the time-domain aeroelastic response of flexible bodies
-in a large number of cases, such as 3-D discrete gust [@IFASD] and turbulent field input [@YA1], 
+in a large number of cases, such as 3-D discrete gust [@IFASD] and turbulent field input [@YA1],
 control surface deflection and prescribed motion [@Scitech]. In addition, linearised
-state-space models can be obtained for control design and model reduction.
+state-space models can be obtained for frequency domain analysis, controller design and model reduction.
 
 
 This code is actively developed at the Loads Control and Aeroelasticity Lab at
@@ -78,14 +78,14 @@ Interaction (FSI) problems in mind, this resulting in minimal overhead between
 function calls.
 
 The code is automatically documented ([https://ic-sharpy.readthedocs.io/](https://ic-sharpy.readthedocs.io/))
-and has Continuous Integration and Code Coverage enabled for all user contributions. 
+and has Continuous Integration and Code Coverage enabled for all user contributions.
 
 ## Features
 
 While ``SHARPy`` is the latest iteration of the in-house aeroelastic solver
 at the Loads Control and Aeroelasticity Lab at Imperial College, its theory
 is based on the lab's previous ``SHARP`` framework, a prototype tool coded in Matlab. Previously published works
-on numerical methods for nonlinear aeroelasticity such as [Palacios2010, Hesse2014a] 
+on numerical methods for nonlinear aeroelasticity such as [Palacios2010, Hesse2014a]
 and its applications [@Hesse2016; @del2019efficient; @del2019ifasd; @arxiv2019Deskos] give a good
 idea of the possibilities.
 
@@ -106,6 +106,8 @@ The coupling algorithm included in the code is designed to allow fully coupled
 nonlinear simulations, although weakly coupled solutions can be obtained. Independent
 structural or aerodynamic simulation are supported natively.
 
+The nonlinear system can also be linearised taking an arbitrary reference condition. The linearised system can be used for frequency domain analysis and linear model order reduction methods and controller design.
+
 The code distributed in the repository includes modules to directly simulate:
 
 * Static linear and nonlinear structural solutions
@@ -116,6 +118,9 @@ The code distributed in the repository includes modules to directly simulate:
 * Static aeroelastic solutions and flexible aircraft longitudinal trimming
 * Control surface controller in the loop
 * Unsteady fully-3D turbulent field input, working in-memory or in-disk, including time-domain interpolation between snapshots
+* Linearisation of the nonlinear system at an arbitrary reference
+* Stability analysis and frequency response
+* Model order reduction using moment matching methods, modal reduction or balanced truncation
 
 
 # The ``SHARPy`` aeroelastic framework
@@ -123,7 +128,7 @@ The code distributed in the repository includes modules to directly simulate:
 ![Static simulation of the XHALE nonlinear aeroelasticity
 testbed.](https://github.com/ImperialCollegeLondon/sharpy/raw/master/docs/source/media/XHALE-render.jpg)
 
-The main solver in ``SHARPY`` is a time-domain geometrically nonlinear coupled solver [@Palacios2010]
+The main solver in ``SHARPy`` is a time-domain geometrically nonlinear coupled solver [@Palacios2010]
 with a Block Gauss-Seidel iteration scheme between the structural and aerodynamic
 solutions.
 
@@ -135,7 +140,7 @@ advantages for FSI problems. First, this model allows for geometrically
 nonlinear deformations with linear constitutive equations. Second, the
 formulation supports cross-terms in the stiffness matrix for the 6 degrees of
 freedom. Last, the GECB model formulated in displacements and rotations
-is easily coupled with the aerodynamic solver and boundary conditions can 
+is easily coupled with the aerodynamic solver and boundary conditions can
 simply be imposed.
 
 The aerodynamic solver is a in-house implementation of the classic Unsteady
@@ -193,31 +198,6 @@ modify numerical parameters on the loop.
 
 # Acknowledgements
 
-A. Carre gratefully acknowledges the support provided by Airbus Defence and Space.
+A. Carre gratefully acknowledges the support provided by Airbus Defence and Space. Norberto Goizueta's research is kindly sponsored by the Department of Aeronautics at Imperial College for which the author is truly grateful.
 
 # References
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
