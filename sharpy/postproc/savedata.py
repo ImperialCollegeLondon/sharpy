@@ -56,6 +56,10 @@ class SaveData(BaseSolver):
         self.settings_default['save_linear'] = True
         self.settings_description['save_linear'] = 'Save linear state space system'
 
+        self.settings_types['save_linear_uvlm'] = 'bool'
+        self.settings_default['save_linear_uvlm'] = False
+        self.settings_description['save_linear_uvlm'] = 'Save linear UVLM state space system'
+
         self.settings_types['skip_attr'] = 'list(str)'
         self.settings_default['skip_attr'] = ['fortran',
                                               'airfoils',
@@ -123,7 +127,7 @@ class SaveData(BaseSolver):
         self.folder = self.settings['folder'] + '/'
         if not os.path.exists(self.folder):
             os.makedirs(self.folder)
-        self.filename=self.folder+self.data.settings['SHARPy']['case']+'.data.h5'
+        self.filename = self.folder+self.data.settings['SHARPy']['case']+'.data.h5'
 
         if os.path.isfile(self.filename):
             os.remove(self.filename)
@@ -145,7 +149,9 @@ class SaveData(BaseSolver):
                                    sharpy.linear.assembler.linearuvlm.LinearUVLM,
                                    sharpy.linear.src.libss.ss,
                                    sharpy.linear.src.lingebm.FlexDynamic,)
-                                   # )
+
+        if self.settings['save_linear_uvlm']:
+            self.ClassesToSave += (sharpy.solvers.linearassembler.Linear, sharpy.linear.src.libss.ss)
 
     def run(self, online=False):
 
@@ -175,6 +181,14 @@ class SaveData(BaseSolver):
             h5utils.add_as_grp(self.data,hdfile,grpname='data',
                                ClassesToSave=self.ClassesToSave,SkipAttr=self.settings['skip_attr'],
                                compress_float=self.settings['compress_float'])
+
         hdfile.close()
+
+        if self.settings['save_linear_uvlm']:
+            linhdffile = h5py.File(self.filename.replace('.data.h5', '.uvlmss.h5'), 'a')
+            h5utils.add_as_grp(self.data.linear.linear_system.uvlm.ss, linhdffile, grpname='ss',
+                               ClassesToSave=self.ClassesToSave, SkipAttr=self.settings['skip_attr'],
+                               compress_float=self.settings['compress_float'])
+            linhdffile.close()
 
         return self.data

@@ -244,8 +244,8 @@ def der_R_arbitrary_axis_times_v(u, theta, v):
     r"""
     Linearised rotation vector of the vector ``v`` by angle ``theta`` about an arbitrary axis ``u``.
 
-    The rotation of a vector :math:`\mathbf{v}` about the axis :math:`\mathbf{r}` by an angle :mathbf:`\theta` can be
-    expressed as
+    The rotation of a vector :math:`\mathbf{v}` about the axis :math:`\mathbf{u}` by an
+    angle :math:`\boldsymbol{\theta}` can be expressed as
 
     .. math:: \mathbf{w} = \mathbf{R}(\mathbf{u}, \theta) \mathbf{v},
 
@@ -274,17 +274,17 @@ def der_R_arbitrary_axis_times_v(u, theta, v):
 
     .. math::
 
-        \frac{\partial}{\partial\theta}\left(\mathbf{R}(\mathbf{u}, \theta_0\right) =
+        \frac{\partial}{\partial\theta}\left(\mathbf{R}(\mathbf{u}, \theta_0)\right) =
         \begin{bmatrix}
         -\sin \theta +u_{x}^{2}\sin \theta \mathbf{v}_1 +
         u_{x}u_{y}\sin \theta-u_{z} \cos \theta \mathbf{v}_2 +
         u_{x}u_{z}\sin \theta +u_{y}\cos \theta \mathbf{v}_3 \\
         u_{y}u_{x}\sin \theta+u_{z}\cos \theta\mathbf{v}_1
-        -\sin \theta +u_{y}^{2}\sin \theta\mathbf{v}_2 &
+        -\sin \theta +u_{y}^{2}\sin \theta\mathbf{v}_2 +
         u_{y}u_{z}\sin \theta-u_{x}\cos \theta\mathbf{v}_3 \\
         u_{z}u_{x}\sin \theta-u_{y}\cos \theta\mathbf{v}_1 +
         u_{z}u_{y}\sin \theta+u_{x}\cos \theta\mathbf{v}_2
-        -\sin \theta +u_{z}^{2}\sin\theta\mathbf{v}_3\end{bmatrix}
+        -\sin \theta +u_{z}^{2}\sin\theta\mathbf{v}_3\end{bmatrix}_{\theta=\theta_0}
 
     and is of dimension :math:`\mathbb{R}^{3\times 1}`.
 
@@ -294,7 +294,7 @@ def der_R_arbitrary_axis_times_v(u, theta, v):
         v (numpy.ndarray): Vector to rotate
 
     Returns:
-        numpy.ndarray: Linearised rotation vector of dimensions :math:\mathbb{R}^{3\times 1}.
+        numpy.ndarray: Linearised rotation vector of dimensions :math:`\mathbb{R}^{3\times 1}`.
     """
 
     u = u / np.linalg.norm(u)
