@@ -25,16 +25,16 @@ class DocTest(unittest.TestCase):
         app.build(force_all=self.all_files)
         # TODO: additional checks here if needed
 
-    def test_text_documentation(self):
-        # The same, but with different buildername
-        app = Sphinx(self.source_dir,
-                     self.config_dir,
-                     self.output_dir,
-                     self.doctree_dir,
-                     buildername='latex',
-                     warningiserror=False,
-                     )
-        app.build(force_all=self.all_files)
+    # def test_text_documentation(self):
+    #     The same, but with different buildername
+        # app = Sphinx(self.source_dir,
+        #              self.config_dir,
+        #              self.output_dir,
+        #              self.doctree_dir,
+        #              buildername='latex',
+        #              warningiserror=False,
+        #              )
+        # app.build(force_all=self.all_files)
         # TODO:  additional checks if needed
 
     def tearDown(self):
