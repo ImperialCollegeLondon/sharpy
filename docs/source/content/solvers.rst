@@ -8,3 +8,11 @@ SHARPy Solvers
 
     ../includes/solvers/*
 
+
+Linear Aeroelastic
+------------------
+
+.. toctree::
+
+    linaeroela
+

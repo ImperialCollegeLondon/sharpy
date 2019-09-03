@@ -19,7 +19,7 @@ class Baseline(HortenWing):
         self.thrust_nodes = [self.n_node_fuselage - 1,
                              self.n_node_fuselage + self.n_node_wing + 1]
 
-        self.loc_cg = 0.45  # CG position wrt to LE (from sectional analysis)
+        self.loc_cg = 0.45 # CG position wrt to LE (from sectional analysis)
         # EA is the reference in NATASHA - defined with respect to the midchord. SHARPy is wrt to LE and as a pct of
         # local chord
         self.main_ea_root = 0.33
@@ -188,6 +188,7 @@ class Baseline(HortenWing):
         # Lumped mass value from Richards 2013
         lumped_mass[0:2] = 51.445 / 9.81
         lumped_mass[2] = 150 / 9.81
+        # lumped_mass_position[2] = [0, 0, -10.]
 
         # Lumped mass inertia
         lumped_mass_inertia[0, :, :] = np.diag([0.29547, 0.29322, 0.29547])

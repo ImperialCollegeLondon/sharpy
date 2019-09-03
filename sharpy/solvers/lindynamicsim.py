@@ -7,6 +7,8 @@ import sharpy.utils.algebra as algebra
 import scipy.linalg as sclalg
 import sharpy.utils.h5utils as h5utils
 from sharpy.utils.datastructures import LinearTimeStepInfo
+import sharpy.utils.cout_utils as cout
+import time
 import pandas as pd
 
 
@@ -88,7 +90,11 @@ class LinearDynamicSimulation(BaseSolver):
 
         # Use the scipy linear solver
         sys = libss.ss_to_scipy(ss)
+        cout.cout_wrap('Solving linear system using scipy...')
+        t0 = time.time()
         out = sys.output(u, t=t_dom, x0=x0)
+        ts = time.time() - t0
+        cout.cout_wrap('\tSolved in %.2fs' % ts, 1)
 
         t_out = out[0]
         x_out = out[2]
@@ -97,6 +103,7 @@ class LinearDynamicSimulation(BaseSolver):
         process = True  # Under development
         if process:
             # Pack state variables into linear timestep info
+            cout.cout_wrap('Plotting results...')
             for n in range(len(t_out)-1):
                 tstep = LinearTimeStepInfo()
                 tstep.x = x_out[n, :]
@@ -198,7 +205,7 @@ def state_to_timestep(data, sys_id, x, u=None, y=None):
         modal = True
     else:
         modal = False
-
+    # modal = True
     x_aero = x[:data.linear.linear_system.uvlm.ss.states]
     x_struct = x[-data.linear.linear_system.beam.ss.states:]
     # u_aero = TODO: external velocities
@@ -208,11 +215,12 @@ def state_to_timestep(data, sys_id, x, u=None, y=None):
     # Beam output
     y_beam = x_struct
 
+    u_q = np.zeros(data.linear.linear_system.uvlm.ss.inputs)
     if u is not None:
-        u_q = u[:data.linear.linear_system.uvlm.ss.inputs]
+        u_q += u[:data.linear.linear_system.uvlm.ss.inputs]
         u_q[:y_beam.shape[0]] += y_beam
     else:
-        u_q = y_beam
+        u_q[:y_beam.shape[0]] += y_beam
 
     if modal:
         # add eye matrix for extra inputs
@@ -220,6 +228,8 @@ def state_to_timestep(data, sys_id, x, u=None, y=None):
         n_inputs_aero_only = len(u_q) - 2*n_modes  # Inputs to the UVLM other than structural inputs
         u_aero = Kas.dot(sclalg.block_diag(phi, phi, np.eye(n_inputs_aero_only)).dot(u_q))
     else:
+        # if u_q.shape[0] !=
+        # u_aero_zero = data.linear.tsaero0
         u_aero = Kas.dot(u_q)
 
     # Unpack input
@@ -234,7 +244,7 @@ def state_to_timestep(data, sys_id, x, u=None, y=None):
         track_body=True)
 
     current_aero_tstep = data.aero.timestep_info[-1].copy()
-    current_aero_tstep.forces = [forces[i_surf] + data.linear.tsaero0.forces[i_surf] for i_surf in
+    current_aero_tstep.forces = [forces[i_surf] + 0 * data.linear.tsaero0.forces[i_surf] for i_surf in
                                  range(len(gamma))]
     current_aero_tstep.gamma = [gamma[i_surf] + data.linear.tsaero0.gamma[i_surf] for i_surf in
                                 range(len(gamma))]

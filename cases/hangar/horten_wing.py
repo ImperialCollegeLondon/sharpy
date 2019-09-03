@@ -31,6 +31,7 @@ class HortenWing:
                  rho=1.225,
                  alpha_deg=0.,
                  beta_deg=0.,
+                 roll_deg=0.,
                  cs_deflection_deg=0.,
                  thrust=5.,
                  physical_time=10,
@@ -67,6 +68,7 @@ class HortenWing:
         self.u_inf = u_inf
         self.rho = rho
         self.alpha = alpha_deg * np.pi / 180
+        self.roll = roll_deg * np.pi / 180
         self.beta = beta_deg * np.pi / 180
         self.cs_deflection = cs_deflection_deg * np.pi / 180
         self.thrust = thrust
@@ -734,8 +736,10 @@ class HortenWing:
         n_inputs_struct = n_states_struct // 2
 
         x0 = np.zeros((n_states_aero + n_states_struct))
+        # x0[-7] = 0.05
+        # x0[-4:] = (algebra.euler2quat([ -5*np.pi/180, 0, 0]))
         u = np.zeros((self.n_tstep, n_states_struct + n_inputs_struct + self.n_control_surfaces))
-
+        # u[0:3, -7] = -1000
         if delta_e is not None:
             u[:, n_states_struct:n_states_struct+self.n_control_surfaces] = delta_e
 
@@ -1090,7 +1094,7 @@ class HortenWing:
                               'log_file': case_name + '.log'}
 
         settings['BeamLoader'] = {'unsteady': 'off',
-                                  'orientation': algebra.euler2quat(np.array([0.0,
+                                  'orientation': algebra.euler2quat(np.array([self.roll,
                                                                               self.alpha,
                                                                               self.beta]))}
 
@@ -1183,7 +1187,7 @@ class HortenWing:
                                                    'gravity': 9.81,
                                                    'num_steps': n_tstep,
                                                    'dt': dt,
-                                                   'initial_velocity': u_inf * 0}
+                                                   'initial_velocity': u_inf * 1}
 
         settings['NonLinearDynamicPrescribedStep'] = {'print_info': 'on',
                                                    'initial_velocity_direction': [-1., 0., 0.],
@@ -1218,7 +1222,7 @@ class HortenWing:
                                 'rollup_aic_refresh': 1,
                                 'rollup_tolerance': 1e-4,
                                 'velocity_field_generator': 'GustVelocityField',
-                                'velocity_field_input': {'u_inf': u_inf * 1,
+                                'velocity_field_input': {'u_inf': u_inf * 0,
                                                          'u_inf_direction': [1., 0, 0],
                                                          'gust_shape': '1-cos',
                                                          'gust_length': 5.,
@@ -1365,7 +1369,8 @@ class HortenWing:
                                             }
         settings['BeamPlot'] = {'folder': route + '/',
                                 'include_rbm': 'on',
-                                'include_applied_forces': 'on'}
+                                'include_applied_forces': 'on',
+                                'include_FoR': 'on'}
 
         settings['BeamLoads'] = {'folder': route + '/',
                                  'csv_output': 'off'}
