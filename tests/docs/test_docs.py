@@ -31,7 +31,7 @@ class DocTest(unittest.TestCase):
                      self.config_dir,
                      self.output_dir,
                      self.doctree_dir,
-                     buildername='text',
+                     buildername='latex',
                      warningiserror=False,
                      )
         app.build(force_all=self.all_files)
