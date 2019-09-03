@@ -172,7 +172,6 @@ class LinearAeroelastic(ss_interface.BaseElement):
         if uvlm.scaled:
             Tsa *= uvlm.sys.ScalingFacts['force'] * uvlm.sys.ScalingFacts['time'] ** 2
         if rigid_dof > 0:
-            raise NotImplementedError('Linearisation of problems with rigid body dynamics not yet implemented')
             warnings.warn('Time scaling for problems with rigid body motion under development.')
             Tas[:flex_nodes + 3, :flex_nodes + 3] /= uvlm.sys.ScalingFacts['length']
             Tas[total_dof: total_dof + flex_nodes + 3] /= uvlm.sys.ScalingFacts['length']
@@ -186,6 +185,13 @@ class LinearAeroelastic(ss_interface.BaseElement):
 
         self.state_variables = {'aero': uvlm.ss.states,
                                 'beam': beam.ss.states}
+
+        cout.cout_wrap('Aeroelastic system assembled:')
+        cout.cout_wrap('\tAerodynamic states: %g' % uvlm.ss.states, 1)
+        cout.cout_wrap('\tStructural states: %g' % beam.ss.states, 1)
+        cout.cout_wrap('\tTotal states: %g' % ss.states, 1)
+        cout.cout_wrap('\tInputs: %g' % ss.inputs, 1)
+        cout.cout_wrap('\tOutputs: %g' % ss.outputs, 1)
 
         return ss
 
