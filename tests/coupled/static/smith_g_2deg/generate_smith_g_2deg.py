@@ -38,7 +38,7 @@ num_elem = num_elem_main + num_elem_main
 num_node_main = num_elem_main*(num_node_elem - 1) + 1
 num_node = num_node_main + (num_node_main - 1)
 
-m_main = 20
+m_main = 10
 
 
 def clean_test_files():
@@ -293,9 +293,9 @@ def generate_solver_file(horseshoe=False):
                                'structural_solver': 'NonLinearStatic',
                                'structural_solver_settings': {'print_info': 'off',
                                                               'max_iterations': 150,
-                                                              'num_load_steps': 20,
-                                                              'delta_curved': 1e-5,
-                                                              'min_delta': 1e-5,
+                                                              'num_load_steps': 1,
+                                                              'delta_curved': 1e-1,
+                                                              'min_delta': 1e-6,
                                                               'gravity_on': 'on',
                                                               'gravity': 9.754,
                                                               'orientation': algebra.euler2quat(np.array([0.0,
@@ -316,9 +316,9 @@ def generate_solver_file(horseshoe=False):
                                                         'alpha': alpha_rad,
                                                         'beta': beta},
                                'max_iter': 50,
-                               'n_load_steps': 1,
+                               # 'n_load_steps': 1,
                                # 'n_load_steps': 5,
-                               'tolerance': 1e-6,
+                               'tolerance': 1e-9,
                                'relaxation_factor': 0.0}
     config['WriteVariablesTime'] = {'cleanup_old_solution': 'on',
                                     'structure_variables': ['pos'],
