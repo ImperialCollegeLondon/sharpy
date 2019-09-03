@@ -181,8 +181,8 @@ def optimiser(in_dict, previous_x, previous_y):
 
         # ramp_length = release_vel**2 / acceleration
         constraints.append({'name': 'length',
-                            'constraint': 'x[:, ' + str(release_vel_var_i) + ']**2' +
-                                          '/x[:, ' + str(acc_var_i) + ']' +
+                            'constraint': '0.5*(x[:, ' + str(release_vel_var_i) + ']**2' +
+                                          '/x[:, ' + str(acc_var_i) + '])' +
                                           ' - ' + str(length)})
     except KeyError:
         pass
