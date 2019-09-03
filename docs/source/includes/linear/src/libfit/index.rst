@@ -1,9 +1,10 @@
-@author: salvatore maraniello
-+++++++++++++++++++++++++++++
+Fitting Tools Library
++++++++++++++++++++++
 
-@author: salvatore maraniello
+
+@author: Salvatore Maraniello
+
 @date: 15 Jan 2018
-@brief: Fitting tools
 
 
 .. toctree::

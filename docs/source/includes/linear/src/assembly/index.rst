@@ -1,22 +1,20 @@
-Linearise UVLM assembly
-+++++++++++++++++++++++
+Assembly of linearised UVLM system
+++++++++++++++++++++++++++++++++++
 
-Linearise UVLM assembly
+
 S. Maraniello, 25 May 2018
 
 Includes:
-
-- Boundary conditions methods:
-	- AICs: allocate aero influence coefficient matrices of multi-surfaces
-	configurations
-	- nc_dqcdzeta_Sin_to_Sout: derivative matrix of
-		nc*dQ/dzeta
-	where Q is the induced velocity at the bound colllocation points of one
-	surface to another
-	- nc_dqcdzeta_coll: assembles "nc_dqcdzeta_coll_Sin_to_Sout" matrices in
-	multi-surfaces configurations
-	- uc_dncdzeta: assemble derivative matrix dnc/dzeta*Uc at bound collocation
-	points
+    - Boundary conditions methods:
+        - AICs: allocate aero influence coefficient matrices of multi-surfaces
+          configurations
+        - ``nc_dqcdzeta_Sin_to_Sout``: derivative matrix of ``nc*dQ/dzeta``
+          where Q is the induced velocity at the bound collocation points of one
+          surface to another.
+        - ``nc_dqcdzeta_coll``: assembles ``nc_dqcdzeta_coll_Sin_to_Sout`` matrices in
+          multi-surfaces configurations
+        - ``uc_dncdzeta``: assemble derivative matrix dnc/dzeta*Uc at bound collocation
+          points
 
 
 .. toctree::

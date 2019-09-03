@@ -1,7 +1,7 @@
-Linearise UVLM
-++++++++++++++
+Generation of multiple aerodynamic surfaces
++++++++++++++++++++++++++++++++++++++++++++
 
-Linearise UVLM
+
 S. Maraniello, 25 May 2018
 
 
