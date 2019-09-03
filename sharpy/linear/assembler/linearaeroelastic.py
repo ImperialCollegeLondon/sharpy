@@ -147,8 +147,10 @@ class LinearAeroelastic(ss_interface.BaseElement):
                     self.settings['beam_settings']['inout_coords'] == 'modes':
                 # Project UVLM onto modal space and scale length
                 phi = beam.sys.U
-                in_mode_matrix = np.eye(uvlm.ss.inputs, beam.ss.outputs + (uvlm.ss.inputs - 2*beam.sys.num_dof))
+                in_mode_matrix = np.zeros((uvlm.ss.inputs, beam.ss.outputs + (uvlm.ss.inputs - 2*beam.sys.num_dof)))
                 in_mode_matrix[:2*beam.sys.num_dof, :2*beam.sys.num_modes] = sclalg.block_diag(phi, phi)
+                # Control surface inputs TODO: gust inputs that need length scaling
+                in_mode_matrix[2*beam.sys.num_dof:, 2*beam.sys.num_modes:] = np.eye(uvlm.ss.inputs - 2*beam.sys.num_dof)
                 in_mode_matrix /= uvlm.sys.ScalingFacts['length']
                 out_mode_matrix = phi.T
 
