@@ -57,7 +57,7 @@ class Krylov(rom_interface.BaseRom):
 
     settings_types['frequency'] = 'list(complex)'
     settings_default['frequency'] = [0]
-    settings_description['frequency'] = 'Interpolation points in the complex plane [rad/s]'
+    settings_description['frequency'] = 'Interpolation points in the continuous time complex plane [rad/s]'
     
     settings_types['algorithm'] = 'str'
     settings_default['algorithm'] = ''
@@ -315,7 +315,7 @@ class Krylov(rom_interface.BaseRom):
 
         """
 
-        raise NotImplementedError('Real valued rational Arnoldi Method in progress')
+        raise NotImplementedError('Real valued rational Arnoldi Method Work in progress - use mimo_rational_arnoldi')
 
         ### Not working, having trouble with the last column of H. need to investigate the background behind the creation of H and see hwat can be done
 
