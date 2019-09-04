@@ -1306,8 +1306,8 @@ class HortenWing:
                              'dt': dt,
                              'plot_eigenvalues': False}
 
-        settings['LinearAssembler'] = {'flow': ['LinearAeroelastic'],
-                                       'LinearAeroelastic': {
+        settings['LinearAssembler'] = {'linear_system': 'LinearAeroelastic',
+                                       'linear_system_settings': {
                                            'beam_settings': {'modal_projection': False,
                                                              'inout_coords': 'nodes',
                                                              'discrete_time': True,
@@ -1332,7 +1332,7 @@ class HortenWing:
 
         settings['AsymptoticStability'] = {'sys_id': 'LinearAeroelastic',
                                     'print_info': 'on',
-                                    'display_root_locus':'on',
+                                    'display_root_locus':'off',
                                     'frequency_cutoff': 0,
                                     'export_eigenvalues': 'on',
                                     'num_evals':100,

@@ -425,7 +425,7 @@ class Krylov(rom_interface.BaseRom):
 
         return Ar, Br, Cr
 
-    def dual_rational_arnoldi(self, frequency, r, right_tangent=None, left_tangent=None):
+    def dual_rational_arnoldi(self, frequency, r):
         r"""
         Dual Rational Arnoli Interpolation for SISO sytems [1] and MIMO systems through tangential interpolation [2].
 
@@ -474,19 +474,24 @@ class Krylov(rom_interface.BaseRom):
 
         B.shape = (nx, nu)
 
-        try:
+        if nu != 1:
             left_tangent, right_tangent, rc, ro, fc, fo = self.load_tangent_vectors()
-        except FileNotFoundError:
-            left_tangent = None
-            right_tangent = None
+            assert right_tangent is not None and left_tangent is not None, 'Missing interpolation vectors for MIMO case'
+        else:
+            fc = np.array(frequency)
+            fo = np.array(frequency)
+            left_tangent = np.zeros((1, len(fo)))
+            right_tangent = np.zeros((1, len(fc)))
+            rc = np.array([r]*len(fc))
+            ro = np.array([r]*len(fc))
+            right_tangent[0, :] = 1
+            left_tangent[0, :] = 1
 
         try:
             nfreq = frequency.shape[0]
         except AttributeError:
             nfreq = 1
 
-        if nu != 1 or ny != 1:
-            assert right_tangent is not None and left_tangent is not None, 'Missing interpolation vectors for MIMO case'
 
         t0 = time.time()
         # # Tangential interpolation for MIMO systems
@@ -518,7 +523,6 @@ class Krylov(rom_interface.BaseRom):
                 except KeyError:
                     lu_A = krylovutils.lu_factor(sigma, A)
                     dict_of_luas[sigma] = lu_A
-
             V[:, we:we+rc[i]] = krylovutils.construct_krylov(rc[i], lu_A, B.dot(right_tangent[:, i:i+1]), approx_type, 'b')
 
             we += rc[i]
@@ -750,13 +754,19 @@ class Krylov(rom_interface.BaseRom):
                 print('Unable to reduce ROM any further - ROM still unstable...')
 
     def load_tangent_vectors(self):
+
         tangent_file = self.settings['tangent_input_file']
-        tangents = h5.readh5(tangent_file)
-        right_tangent = tangents.right_tangent
-        left_tangent = tangents.left_tangent
-        rc = tangents.rc
-        ro = tangents.ro
-        fc = tangents.fc
-        fo = tangents.fo
+        if tangent_file:
+            tangents = h5.readh5(tangent_file)
+            right_tangent = tangents.right_tangent
+            left_tangent = tangents.left_tangent
+            rc = tangents.rc
+            ro = tangents.ro
+            fc = tangents.fc
+            fo = tangents.fo
+        else:
+            left_tangent = None
+            right_tangent = None
+
         return left_tangent, right_tangent, rc, ro, fc, fo
 
