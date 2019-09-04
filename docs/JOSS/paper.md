@@ -106,7 +106,8 @@ The coupling algorithm included in the code is designed to allow fully coupled
 nonlinear simulations, although weakly coupled solutions can be obtained. Independent
 structural or aerodynamic simulation are supported natively.
 
-The nonlinear system can also be linearised taking an arbitrary reference condition. The linearised system can be used for frequency domain analysis and linear model order reduction methods and controller design.
+The nonlinear system can also be linearised taking an arbitrary reference condition. The linearised system can be used 
+for frequency domain analysis and linear model order reduction methods and controller design.
 
 The code distributed in the repository includes modules to directly simulate:
 
@@ -117,7 +118,8 @@ The code distributed in the repository includes modules to directly simulate:
 * Dynamic aerodynamic solutions with fixed, background-flow convected or free wake
 * Static aeroelastic solutions and flexible aircraft longitudinal trimming
 * Control surface controller in the loop
-* Unsteady fully-3D turbulent field input, working in-memory or in-disk, including time-domain interpolation between snapshots
+* Unsteady fully-3D turbulent field input, working in-memory or in-disk, including time-domain interpolation 
+between snapshots
 * Linearisation of the nonlinear system at an arbitrary reference
 * Stability analysis and frequency response
 * Model order reduction using moment matching methods, modal reduction or balanced truncation
@@ -134,7 +136,7 @@ solutions.
 
 The structural and free-body dynamics are based on the Geometrically Exact Composite
 Beam (GECB) [@Geradin2001; @Simpson2013]. The resulting model is a finite element beam
-fomulation based on nodal displacements and rotations with quadratic 1-D elements.
+formulation based on nodal displacements and rotations with quadratic 1-D elements.
 The GECB formulation based on displacements and rotations presents several
 advantages for FSI problems. First, this model allows for geometrically
 nonlinear deformations with linear constitutive equations. Second, the
@@ -170,6 +172,17 @@ flight dynamics quantities. In a similar way, custom postprocessors with functio
 ranging from incidence angle or beam loads calculation to output in Paraview format
 can be created and run with no need to modify the original source code.
 
+Nonlinear systems can be linearised applying small perturbations about an 
+arbitrary reference condition (CITE - Salvatore, AIAA March 19). Since the UVLM boundary conditions are more
+naturally expressed in discrete-time and the linearised structural system needs to be 
+in the same form as the aerodynamic one for coupling purposes, a Newmark-$\beta$ integration scheme is used to 
+assemble the linearised GECB system. The resulting discrete-time aeroelastic state-space can be reduced using 
+moment matching methods based on Krylov subspaces or frequency-balanced reduction methods, which are particularly well
+suited for large-scale dynamical systems (CITE - Salvatore Parametric MOR 2019). The linearised formulation permits the 
+use of eigenvalue stability analyses that can be used, for instance, for flutter onset predictions or 
+the design of linear controllers.
+
+
 ## Input and user interface
 
 The main simulation parameters are input through a ``.sharpy`` file, which
@@ -193,11 +206,15 @@ then in put into the UVLM code. On the other hand, ``Controllers`` can have a br
 scope. They can be used to control lifting surfaces in open and closed loop, or
 modify numerical parameters on the loop.
 
-
-
+Linearised problems require first the solution of a nonlinear case that is used as the
+linearisation reference. Thence, the system is linearised and the state-space assembled attending to
+user-specific settings, including model reduction methods. The resulting system is given in 
+a discrete-time formulation with several post-processors available or it can be saved for the user
+to manipulate externally.
 
 # Acknowledgements
 
-A. Carre gratefully acknowledges the support provided by Airbus Defence and Space. Norberto Goizueta's research is kindly sponsored by the Department of Aeronautics at Imperial College for which the author is truly grateful.
+A. Carre gratefully acknowledges the support provided by Airbus Defence and Space. Norberto Goizueta's research is 
+sponsored by the Department of Aeronautics at Imperial College for which the author is truly grateful.
 
 # References
