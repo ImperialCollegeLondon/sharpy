@@ -114,6 +114,34 @@ def read_yaml(file_name):
 
 
 def optimiser(in_dict):
+    settings_dict = in_dict['settings']
+    case_dict = in_dict['case']
+    base_dict = in_dict['base']
+    # create folder for cases if it doesn't exist
+    try:
+        os.mkdir(settings_dict['cases_folder'])
+    except FileExistsError:
+        pass
+    # create folder for cases if it doesn't exist
+    try:
+        os.mkdir((settings_dict['cases_folder'] + '/' + case_dict['name'] + '/').replace('//', '/'))
+        print('Folder made')
+    except FileExistsError:
+        print('cases_folder already exists')
+
+    # clean folder for the new case to be run
+    case_route = (settings_dict['cases_folder'] + '/' + case_dict['name'] + '/').replace('//', '/')
+
+    # copy case
+    try:
+        print(base_dict['route'] + '/generate.py', case_route + 'generate.py')
+        shutil.copyfile(base_dict['route'] + '/generate.py', case_route + 'generate.py')
+    except IOError as error:
+        print('Problem copying the case')
+        print('Original error was: {}'.format(error))
+
+    # add the case folder to the python path to run generate with it
+    sys.path.append(case_route)
     # create folder for output if doesnt exist
     try:
         os.mkdir(in_dict['case']['output_folder'])
@@ -156,20 +184,45 @@ def optimiser(in_dict):
                             'constraint': 'x[:, ' + str(release_vel_var_i) + ']**2' +
                                           '/x[:, ' + str(acc_var_i) + ']' +
                                           ' - ' + str(length)})
-        print(constraints)
     except KeyError:
         pass
 
+    try:
+        limit = in_dict['optimiser']['constraints']['incidence_angle']['limit']
+        base_aoa = in_dict['optimiser']['constraints']['incidence_angle']['base_aoa']
+
+        dAoA_var_i = None
+        ramp_angle_var_i = None
+        for k, v in in_dict['optimiser']['parameters'].items():
+            if v == 'dAoA':
+                dAoA_var_i = k
+            if v == 'ramp_angle':
+                ramp_angle_var_i = k
+
+        # base_aoa + dAoA - ramp_angle < limit
+        constraint_string = ''
+        constraint_string += str(base_aoa) + ' + '
+        constraint_string += 'x[:, ' + str(dAoA_var_i) + '] - '
+        constraint_string += 'x[:, ' + str(ramp_angle_var_i) + '] - '
+        constraint_string += str(limit)
+        constraints.append({'name': 'angle',
+                            'constraint': constraint_string})
+    except KeyError:
+        pass
+
+    print(constraints)
+
     gpyopt_wrapper = lambda x: wrapper(x, in_dict)
-    batch_size = 5
-    num_cores = 20
-    opt =GPyOpt.methods.BayesianOptimization(
+    batch_size = in_dict['optimiser']['numerics']['batch_size']
+    num_cores = in_dict['optimiser']['numerics']['n_cores']
+    opt = GPyOpt.methods.BayesianOptimization(
         f=gpyopt_wrapper,
         domain=bounds,
         exact_feval=True,
+        model_type='GP',
         acquisition_type='EI',
         normalize_y=True,
-        initial_design_numdata=10,
+        initial_design_numdata=in_dict['optimiser']['numerics']['initial_design_numdata'],
         evaluator_type='local_penalization',
         batch_size=batch_size,
         num_cores=num_cores,
@@ -177,23 +230,23 @@ def optimiser(in_dict):
         de_duplication=True,
         constraints=constraints)
 
-    #TODO add to dict
-    in_dict['optimiser']['n_iter'] = 10
-
-    opt.run_optimization(in_dict['optimiser']['n_iter'],
+    opt.run_optimization(in_dict['optimiser']['numerics']['n_iter'],
                          report_file=output_route + 'report.log',
                          evaluations_file=output_route + 'evaluations.log',
                          models_file=output_route + 'models.log',
-                         eps=in_dict['optimiser']['numerics']['tolerance'],
                          verbosity=True
                         )
 
+    print('*'*60)
+    print('Best one cost: ', opt.fx_opt)
+    print('\tParameters: ', opt.x_opt)
+    print('*'*60)
     with open(output_route + 'optimiser.pkl', 'wb') as f:
         pickle.dump(opt, f, protocol=pickle.HIGHEST_PROTOCOL)
 
     print('FINISHED')
 
-    import pdb; pdb.set_trace()
+    breakpoint()
     # skopt_wrapper = lambda x: wrapper(x, in_dict)
     # res = skopt.gp_minimize(func=skopt_wrapper,
                             # dimensions=bounds,
@@ -219,20 +272,6 @@ def optimiser(in_dict):
                             # n_jobs=4)
 
 
-def convergence(result, yaml_dict):
-    global prev_result
-    global pprev_result
-    if prev_result is None:
-        prev_result = 0.0
-        pprev_result = 0.0
-    if (np.abs(result.fun - prev_result) < yaml_dict['optimiser']['numerics']['tolerance'] and
-        np.abs(result.fun - pprev_result) < yaml_dict['optimiser']['numerics']['tolerance']):
-        return True
-    else:
-        pprev_result = prev_result
-        prev_result = result.fun
-        return False
-
 def case_id():
     case_name = '{0:04d}'.format(random.randint(0, 9999+1))
     return case_name
@@ -241,21 +280,27 @@ def case_id():
 def evaluate(x_dict, yaml_dict):
     case_name = case_id()
 
+    print('Running ' + case_name)
     files, case_name = set_case(case_name,
                                 yaml_dict['base'],
                                 x_dict,
-                                yaml_dict['settings'])
+                                yaml_dict['settings'],
+                                yaml_dict['case'])
     data = run_case(files)
     cost = cost_function(data, x_dict, yaml_dict['optimiser']['cost'])
+    print('   Case: ' + str(case_name) + '; cost = ', cost)
 
-    if yaml_dict['settings']['delete_case_folders']:
-        raise NotImplementedError('delete_case_folders not supported yet')
-    if yaml_dict['settings']['save_data']:
-        with open(yaml_dict['settings']['cases_folder'] +
-                  '/' +
-                  case_name +
-                  'data.pkl', 'wb') as data_file:
-            pickle.dump(data, data_file, -1)
+    if data is not None:
+        data.cost = cost
+
+        if yaml_dict['settings']['delete_case_folders']:
+            raise NotImplementedError('delete_case_folders not supported yet')
+        if yaml_dict['settings']['save_data']:
+            with open(yaml_dict['settings']['cases_folder'] +
+                      '/' +
+                      case_name +
+                      'data.pkl', 'wb') as data_file:
+                pickle.dump(data, data_file, -1)
 
     return cost
 
@@ -266,7 +311,7 @@ def wrapper(x, yaml_dict):
     return cost
 
 
-def set_case(case_name, base_dict, x_dict, settings_dict):
+def set_case(case_name, base_dict, x_dict, settings_dict, case_dict):
     """set_case: takes care of the setup of the case
 
     This function copies the original case, given by route_base, then
@@ -278,33 +323,6 @@ def set_case(case_name, base_dict, x_dict, settings_dict):
         base_dict(dict): dictionary with the base case info
         x_dict(dict): dictionary of state variables
     """
-    # create folder for cases if it doesn't exist
-    try:
-        os.mkdir(settings_dict['cases_folder'])
-    except FileExistsError:
-        pass
-        # print('cases_folder already exists')
-
-    # clean folder for the new case to be run
-    case_route = settings_dict['cases_folder'] + '/' + case_name + '/'
-    if os.path.exists(case_route):
-        # cleanup folder
-        try:
-            shutil.rmtree(case_route)
-        except:
-            pass
-
-    # copy case
-    try:
-        shutil.copytree(base_dict['route'], case_route)
-    except IOError as error:
-        print('Problem copying the case')
-        print('Original error was: {}'.format(error))
-        case_name = case_id()
-        return -1
-
-    # add the case folder to the python path to run generate with it
-    sys.path.append(case_route)
 
     # runs the generate.py
     import generate
@@ -337,7 +355,7 @@ def cost_function(data,
     output_dict = dict()
     # check for data == None:
     if data is None:
-        cost = 10.  # need a better way
+        cost = 15.  # need a better way
         return cost
     # ground clearance cost contribution
     try:
@@ -367,7 +385,7 @@ def cost_function(data,
         return cost
 
 
-def loads_cost(data, cost_loads_dict):
+def loads_cost_2(data, cost_loads_dict):
     """
 
     """
@@ -390,47 +408,69 @@ def loads_cost(data, cost_loads_dict):
                 delimiter=',')
         except OSError:
             warnings.warn('Not found 2.5g file, anywhere. Filling up with ones instead')
-            loads_array_25g = np.ones((data.structure.ini_info.psi.shape[0],))
+            loads_array_25g = np.ones((data.structure.ini_info.psi.shape[0], 4))
 
     loads_array_25g[np.abs(loads_array_25g) < 1.0] = 1.0
-#     loads_array_25g *= 2.5
-    
+    loads_array_25g = np.abs(loads_array_25g)*1.5
     separate_cost = np.zeros((3,))
 
-#     for idim in range(3):
-#         max_load = np.NINF
-#         for it, tstep in enumerate(data.structure.timestep_info):
-# #             import pdb; pdb.set_trace()
-
-#             for ielem in range(tstep.psi.shape[0]):
-#                 temp = np.abs(
-#                     tstep.postproc_cell['loads'][ielem, idim + 3]/
-#                     loads_array_25g[ielem, idim + 1])
-# #                 print(ielem, temp)
-
-#                 if temp > 1.0:
-#                     pass
-#                 else:
-#                     temp = 0.0
-#                 if temp > max_load:
-#                     max_load = min(temp - 1.0, 1.0)
-#         max_loads[idim] = max_load
-    max_cost = np.zeros((3,)) - np.Inf
+    max_cost = np.zeros((3,))
     for it, tstep in enumerate(data.structure.timestep_info):
         temp = np.abs(
-                      tstep.postproc_cell['loads'][:, 3:]/
-                      loads_array_25g[:, 1:])
+            tstep.postproc_cell['loads'][:, 3:]/
+            loads_array_25g[:, 1:])
         max_vals = np.max(temp, axis=0)
         max_vals = (max_vals >= 1.0)*max_vals
-#         print(it, max_vals)
         for i_dim in range(3):
-            max_cost[i_dim] = max(max_cost[i_dim], max_vals[i_dim] - 1.0)
-
+            max_cost[i_dim] = max(max_cost[i_dim], max(max_vals[i_dim] - 1., 0.0))
     separate_cost[:] = max_cost
 
     for k, v in index2load.items():
         separate_cost[k] *= cost_loads_dict[v]['scale']
 #     print('loads cost = ', separate_cost)
+    return np.sum(separate_cost)
+
+
+def loads_cost(data, cost_loads_dict):
+    index2load = {0: 'Torsion',
+                  1: 'OOP',
+                  2: 'IP'}
+    try:
+        loads_array = np.loadtxt(
+            cost_loads_dict['reference_loads'],
+            skiprows=1,
+            delimiter=',')
+    except OSError:
+        try:
+            warnings.warn('Not found reference_loads file, trying parent folder')
+            loads_array = np.loadtxt(
+                '../' + cost_loads_dict['reference_loads'],
+                skiprows=1,
+                delimiter=',')
+        except OSError:
+            warnings.warn('Not found reference_loads file, anywhere. Filling up with ones instead')
+            loads_array = np.ones((data.structure.ini_info.psi.shape[0], 4))
+
+    separate_cost = np.zeros((3,))
+
+    loads_array = np.abs(loads_array)
+    loads_array_norm = np.linalg.norm(loads_array, axis=0)
+    for row in range(loads_array.shape[0]):
+        for col in range(loads_array.shape[1]):
+            if loads_array[row, col] < loads_array_norm[col]:
+                loads_array[row, col] = loads_array_norm[col]
+    
+    
+    max_cost = np.zeros((3,))
+    for it, tstep in enumerate(data.structure.timestep_info):
+        temp = np.abs(tstep.postproc_cell['loads'][:, 3:])
+        max_vals = np.max(temp/loads_array[:, 1:] - 1.0, axis=0)
+        for i_dim in range(3):
+            max_cost[i_dim] = max(max_cost[i_dim], max_vals[i_dim])
+    separate_cost = max_cost
+
+    for k, v in index2load.items():
+        separate_cost[k] *= cost_loads_dict[v]['scale']
     return np.sum(separate_cost)
 
 
