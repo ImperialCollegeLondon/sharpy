@@ -1,4 +1,5 @@
 import sharpy.linear.utils.ss_interface as ss_interface
+import scipy.sparse as scsp
 import numpy as np
 import sharpy.linear.src.lin_aeroelastic as lin_aeroelastic
 import sharpy.linear.src.libss as libss
@@ -123,7 +124,10 @@ class LinearAeroelastic(ss_interface.BaseElement):
         beam.sys.Cstr += damping_aero
         beam.sys.Kstr += stiff_aero
 
-        beam.assemble(t_ref=uvlm.sys.ScalingFacts['time'])
+        if uvlm.scaled:
+            beam.assemble(t_ref=uvlm.sys.ScalingFacts['time'])
+        else:
+            beam.assemble()
 
         if not self.load_uvlm_from_file:
             # Projecting the UVLM inputs and outputs onto the structural degrees of freedom
@@ -159,7 +163,10 @@ class LinearAeroelastic(ss_interface.BaseElement):
 
             # Reduce uvlm projected onto structural coordinates
             if uvlm.rom is not None:
-                uvlm.ss = uvlm.rom.run(uvlm.ss)
+                if rigid_dof != 0:
+                    self.runrom_rbm(uvlm)
+                else:
+                    uvlm.ss = uvlm.rom.run(uvlm.ss)
 
         else:
             uvlm.ss = self.load_uvlm(self.settings['uvlm_filename'])
@@ -171,13 +178,13 @@ class LinearAeroelastic(ss_interface.BaseElement):
         # Scale coupling matrices
         if uvlm.scaled:
             Tsa *= uvlm.sys.ScalingFacts['force'] * uvlm.sys.ScalingFacts['time'] ** 2
-        if rigid_dof > 0:
-            warnings.warn('Time scaling for problems with rigid body motion under development.')
-            Tas[:flex_nodes + 3, :flex_nodes + 3] /= uvlm.sys.ScalingFacts['length']
-            Tas[total_dof: total_dof + flex_nodes + 3] /= uvlm.sys.ScalingFacts['length']
-        else:
-            if not self.settings['beam_settings']['modal_projection'].value:
-                Tas /= uvlm.sys.ScalingFacts['length']
+            if rigid_dof > 0:
+                warnings.warn('Time scaling for problems with rigid body motion under development.')
+                Tas[:flex_nodes + 3, :flex_nodes + 3] /= uvlm.sys.ScalingFacts['length']
+                Tas[total_dof: total_dof + flex_nodes + 3] /= uvlm.sys.ScalingFacts['length']
+            else:
+                if not self.settings['beam_settings']['modal_projection'].value:
+                    Tas /= uvlm.sys.ScalingFacts['length']
 
         ss = libss.couple(ss01=uvlm.ss, ss02=beam.ss, K12=Tas, K21=Tsa)
         self.couplings['Tas'] = Tas
@@ -218,6 +225,43 @@ class LinearAeroelastic(ss_interface.BaseElement):
                                K12=self.couplings['Tas'], K21=self.couplings['Tsa'])
 
         return self.ss
+
+    def runrom_rbm(self, uvlm):
+        ss = uvlm.ss
+        # Input side
+        if self.settings['beam_settings']['modal_projection'].value == True and \
+                self.settings['beam_settings']['inout_coords'] == 'modes':
+            rem_int_modes = np.zeros((ss.inputs, ss.inputs - 10))
+            rem_int_modes[10:, :] = np.eye(ss.inputs - 10)
+
+            # Output side - remove quaternion equations output
+            rem_quat_out = np.zeros((ss.outputs-4, ss.outputs))
+            # find quaternion indices
+            U = self.beam.sys.U
+            indices = np.where(U[-4:, :] == 1.)[1]
+            j = 0
+            for i in range(ss.outputs):
+                if i in indices:
+                    continue
+                rem_quat_out[j, i] = 1
+                j += 1
+
+        else:
+            rem_int_modes = np.zeros((ss.inputs, ss.inputs - 10))
+            rem_int_modes[:self.sys.num_dof_flex, :self.sys.num_dof_flex] = np.eye(self.sys.num_dof_flex)
+            rem_int_modes[self.sys.num_dof_flex+10:, self.sys.num_dof_flex:] = np.eye(ss.inputs - self.sys.num_dof_flex - 10)
+
+            rem_quat_out = np.zeros((ss.outputs-4, ss.outputs))
+            rem_quat_out[:, :-4] = np.eye(ss.outputs-4)
+
+        ss.addGain(rem_int_modes, where='in')
+        ss.addGain(rem_quat_out, where='out')
+
+        uvlm.ss = uvlm.rom.run(uvlm.ss)
+
+        uvlm.ss.addGain(rem_int_modes.T, where='in')
+        uvlm.ss.addGain(rem_quat_out.T, where='out')
+        print('End')
 
     @staticmethod
     def load_uvlm(filename):
