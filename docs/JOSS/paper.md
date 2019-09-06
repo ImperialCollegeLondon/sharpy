@@ -173,12 +173,12 @@ ranging from incidence angle or beam loads calculation to output in Paraview for
 can be created and run with no need to modify the original source code.
 
 Nonlinear systems can be linearised applying small perturbations about an 
-arbitrary reference condition (CITE - Salvatore, AIAA March 19). Since the UVLM boundary conditions are more
+arbitrary reference condition [@Maraniello2019]. Since the UVLM boundary conditions are more
 naturally expressed in discrete-time and the linearised structural system needs to be 
 in the same form as the aerodynamic one for coupling purposes, a Newmark-$\beta$ integration scheme is used to 
 assemble the linearised GECB system. The resulting discrete-time aeroelastic state-space can be reduced using 
 moment matching methods based on Krylov subspaces or frequency-balanced reduction methods, which are particularly well
-suited for large-scale dynamical systems (CITE - Salvatore Parametric MOR 2019). The linearised formulation permits the 
+suited for large-scale dynamical systems. The linearised formulation permits the 
 use of eigenvalue stability analyses that can be used, for instance, for flutter onset predictions or 
 the design of linear controllers.
 
