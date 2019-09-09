@@ -31,8 +31,9 @@ def generate(x_dict={}, case_name=None):
 # the simulation is set such that the aircraft flies at a u_inf velocity while
 # the air is calm.
     try:
-        u_inf = x_dict['release_vel']
+        u_inf = x_dict['release_velocity']
     except KeyError:
+        print('Using default value of 10 for u_inf')
         u_inf = 10
 
     u_inf_cruise = 10
@@ -44,11 +45,13 @@ def generate(x_dict={}, case_name=None):
     try:
         alpha_cato_delta = x_dict['dAoA']*np.pi/180
     except KeyError:
+        print('Using default value of 0 for dAoA')
         alpha_cato_delta = 0*np.pi/180
 
     try:
         ramp_angle = x_dict['ramp_angle']*np.pi/180
     except KeyError:
+        print('Using default value of 0 for ramp_angle')
         ramp_angle = 0.0
 
     alpha = 4.0782*np.pi/180 + alpha_cato_delta
@@ -69,6 +72,7 @@ def generate(x_dict={}, case_name=None):
     try:
         acceleration = x_dict['acceleration']
     except KeyError:
+        print('Using default value of 3 for acceleration')
         acceleration = 3.
 
     t_ramp = u_inf/acceleration
