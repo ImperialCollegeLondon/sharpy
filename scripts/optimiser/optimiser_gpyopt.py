@@ -298,9 +298,13 @@ def evaluate(x_dict, yaml_dict):
         if yaml_dict['settings']['delete_case_folders']:
             raise NotImplementedError('delete_case_folders not supported yet')
         if yaml_dict['settings']['save_data']:
+            try:
+                os.mkdir(yaml_dict['settings']['cases_folder'] +
+                          '/' + yaml_dict['case']['name'] + '/')
+            except FileExistsError:
+                pass
             with open(yaml_dict['settings']['cases_folder'] +
-                      '/' +
-                      case_name +
+                      '/' + yaml_dict['case']['name'] + '/' +
                       'data.pkl', 'wb') as data_file:
                 pickle.dump(data, data_file, -1)
 
