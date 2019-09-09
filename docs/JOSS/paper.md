@@ -47,12 +47,13 @@ Extreme efficiency is achieved by reducing the total weight of the aircraft whil
 increasing the lifting surfaces aspect ratio in order to minimise the induced drag
 contribution. In a similar quest for extreme efficiency, the wind energy industry
 is also trending towards longer and more slender blades, specially for off-shore
-applications, where the largest blades are now well over 100-m long.
+applications, where the largest blades are now close to 100-m long.
 
 
 These longer and much slender structures can potentially present large ($+10%$) deflections
 and have relatively low frequency structural modes which, in the case of aircraft, can interact with the flight
-dynamics modes with potentially unstable couplings. Due to this, the
+dynamics modes with potentially unstable couplings. In the case of offshore wind energy,
+the platform movement is generating important rotor excursions. Due to this, the
 conventional quasi-linear methods may not accurately capture the relevant
 phenomena present in the aeroelastic response of these new configurations.
 
@@ -96,7 +97,7 @@ distributed and lumped mass formulation (or a combination of both). Time-integra
 is carried out using a Newmark-$\beta$ scheme.
 
 The aerodynamic solver can simulate an arbitrary number of surfaces together
-with their interactions. A different force evaluation scheme is used [CITE] in
+with their interactions. A different force evaluation scheme is used [@Simpson2013-2] in
 order to support large sideslip angles and obtain an induced drag estimation.
 In addition to this, added mass effects can be obtained and introduced in the
 FSI problem. This can be especially important in the case of very light flexible
@@ -216,5 +217,6 @@ to manipulate externally.
 
 A. Carre gratefully acknowledges the support provided by Airbus Defence and Space. Norberto Goizueta's research is 
 sponsored by the Department of Aeronautics at Imperial College for which the author is truly grateful.
-
+Arturo Muñoz-Simón's research has received funding from the EU's H2020 research and innovation programme
+under the Marie Sklodowska-Curie grant agreement 765579.
 # References
