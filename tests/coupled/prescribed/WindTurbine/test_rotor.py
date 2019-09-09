@@ -101,7 +101,7 @@ class TestRotor(unittest.TestCase):
         SimInfo.generate_solver_file()
         # SimInfo.generate_dyn_file(time_steps)
 
-    def test_doublependulum(self):
+    def test_rotor(self):
         import sharpy.sharpy_main
 
         solver_path = folder + '/' + case + '.solver.txt'
