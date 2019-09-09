@@ -6,7 +6,7 @@ import ctypes as ct
 import numpy as np
 import sharpy.utils.exceptions as exceptions
 import sharpy.utils.cout_utils as cout
-import sharpy.utils.cout_utils as cout
+import ast
 
 
 
@@ -79,6 +79,20 @@ def to_custom_types(dictionary, types, default):
                 # dictionary[k] = dictionary[k].split(',')
                 # getting rid of leading and trailing spaces
                 dictionary[k] = list(map(lambda x: x.strip(), dictionary[k]))
+            except KeyError:
+                if default[k] is None:
+                    raise exceptions.NoDefaultValueException(k)
+                dictionary[k] = default[k].copy()
+                notify_default_value(k, dictionary[k])
+
+        elif v == 'list(dict)':
+            try:
+                # if isinstance(dictionary[k], list):
+                #     continue
+                # dictionary[k] = dictionary[k].split(',')
+                # getting rid of leading and trailing spaces
+                for i in range(len(dictionary[k])):
+                    dictionary[k][i] = ast.literal_eval(dictionary[k][i])
             except KeyError:
                 if default[k] is None:
                     raise exceptions.NoDefaultValueException(k)

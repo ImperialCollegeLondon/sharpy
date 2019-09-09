@@ -3,6 +3,8 @@ import unittest
 import os
 import shutil
 
+folder = os.path.abspath(os.path.dirname(os.path.realpath(__file__)))
+
 
 class TestFixNodeVelocitywrtA(unittest.TestCase):
 
@@ -38,7 +40,8 @@ class TestFixNodeVelocitywrtA(unittest.TestCase):
         beam1.StructuralInformation.lumped_mass = np.array([1.])
         beam1.StructuralInformation.lumped_mass_inertia = np.zeros((1, 3, 3),)
         beam1.StructuralInformation.lumped_mass_position = np.zeros((1, 3),)
-
+        # beam1.StructuralInformation.structural_twist += 2.*deg2rad
+        beam1.StructuralInformation.app_forces[-1, 2] = -10.
 
         # Aerodynamic information
         airfoil = np.zeros((1,20,2),)
@@ -68,20 +71,21 @@ class TestFixNodeVelocitywrtA(unittest.TestCase):
         name = 'fix_node_velocity_wrtA'
         SimInfo.solvers['SHARPy']['case'] = name
         SimInfo.solvers['SHARPy']['write_screen'] = 'off'
-        SimInfo.solvers['SHARPy']['route'] = os.path.dirname(os.path.realpath(__file__)) + '/'
+        SimInfo.solvers['SHARPy']['route'] = folder + '/'
         SimInfo.set_variable_all_dicts('dt', 0.1)
         SimInfo.set_variable_all_dicts('rho', 0.0)
         SimInfo.set_variable_all_dicts('velocity_field_input', SimInfo.solvers['SteadyVelocityField'])
+        SimInfo.set_variable_all_dicts('folder', folder + '/output/')
 
         SimInfo.solvers['BeamLoader']['unsteady'] = 'on'
 
         SimInfo.solvers['AerogridLoader']['unsteady'] = 'on'
         SimInfo.solvers['AerogridLoader']['mstar'] = 2
 
-        SimInfo.solvers['NonLinearStatic']['print_info'] = False
+        SimInfo.solvers['NonLinearStaticMultibody']['print_info'] = False
 
-        SimInfo.solvers['StaticCoupled']['structural_solver'] = 'NonLinearStatic'
-        SimInfo.solvers['StaticCoupled']['structural_solver_settings'] = SimInfo.solvers['NonLinearStatic']
+        SimInfo.solvers['StaticCoupled']['structural_solver'] = 'NonLinearStaticMultibody'
+        SimInfo.solvers['StaticCoupled']['structural_solver_settings'] = SimInfo.solvers['NonLinearStaticMultibody']
         SimInfo.solvers['StaticCoupled']['aero_solver'] = 'StaticUvlm'
         SimInfo.solvers['StaticCoupled']['aero_solver_settings'] = SimInfo.solvers['StaticUvlm']
 
@@ -149,30 +153,32 @@ class TestFixNodeVelocitywrtA(unittest.TestCase):
     def test_testfixnodevelocitywrta(self):
         import sharpy.sharpy_main
 
-        solver_path = os.path.abspath(os.path.dirname(os.path.realpath(__file__)) + '/fix_node_velocity_wrtA.solver.txt')
-        print(solver_path)
+        solver_path = folder + '/fix_node_velocity_wrtA.solver.txt'
         sharpy.sharpy_main.main(['', solver_path])
 
         # read output and compare
-        output_path = os.path.dirname(solver_path) + '/output/fix_node_velocity_wrtA/WriteVariablesTime/'
+        output_path = folder + '/output/fix_node_velocity_wrtA/WriteVariablesTime/'
         # quat_data = np.matrix(np.genfromtxt(output_path + 'FoR_00_mb_quat.dat', delimiter=' '))
         pos_tip_data = np.matrix(np.genfromtxt(output_path + "struct_pos_node" + str(-1) + ".dat", delimiter=' '))
-        self.assertAlmostEqual(pos_tip_data[-1, 1], 9.996557, 2)
-        self.assertAlmostEqual(pos_tip_data[-1, 2], 0.000000, 2)
-        self.assertAlmostEqual(pos_tip_data[-1, 3], -0.1795935, 2)
+        self.assertAlmostEqual(pos_tip_data[0, 1], 9.999863, 2)
+        self.assertAlmostEqual(pos_tip_data[0, 2], 0., 2)
+        self.assertAlmostEqual(pos_tip_data[0, 3], -3.587865e-02, 2)
+
+        self.assertAlmostEqual(pos_tip_data[-1, 1], 9.992430, 2)
+        self.assertAlmostEqual(pos_tip_data[-1, 2], 0., 2)
+        self.assertAlmostEqual(pos_tip_data[-1, 3], -2.646091e-01, 2)
 
     def tearDowns(self):
-        solver_path = os.path.dirname(os.path.realpath(__file__))
-        solver_path += '/'
+        # pass
         files_to_delete = [name + '.aero.h5',
                            name + '.dyn.h5',
                            name + '.fem.h5',
                            name + '.mb.h5',
                            name + '.solver.txt']
         for f in files_to_delete:
-            os.remove(solver_path + f)
+            os.remove(folder + '/' + f)
 
-        shutil.rmtree(solver_path + 'output/')
+        shutil.rmtree(folder + '/output/')
 
 if __name__=='__main__':
 
