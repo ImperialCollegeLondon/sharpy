@@ -121,9 +121,7 @@ class TestRotor(unittest.TestCase):
 
     def tearDowns(self):
         files_to_delete = [case + '.aero.h5',
-                           case + '.dyn.h5',
                            case + '.fem.h5',
-                           case + '.mb.h5',
                            case + '.solver.txt']
         for f in files_to_delete:
             os.remove(folder +'/' + f)
