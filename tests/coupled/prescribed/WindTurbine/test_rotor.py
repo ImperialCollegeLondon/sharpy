@@ -58,7 +58,7 @@ class TestRotor(unittest.TestCase):
                                           chord_panels,
                                           rotation_velocity,
                                           pitch_deg,
-                                          excel_file_name= 'type02_db_NREL_5MW.xlsx',
+                                          excel_file_name= folder + '/type02_db_NREL_5MW.xlsx',
                                           excel_sheet_parameters = 'parameters',
                                           excel_sheet_structural_blade = 'structural_blade',
                                           excel_sheet_discretization_blade = 'discretization_blade',
@@ -81,6 +81,7 @@ class TestRotor(unittest.TestCase):
         SimInfo.solvers['SHARPy']['case'] = case
         SimInfo.solvers['SHARPy']['route'] = route
         SimInfo.solvers['SHARPy']['write_log'] = True
+        SimInfo.solvers['SHARPy']['write_screen'] = 'off'
         SimInfo.set_variable_all_dicts('dt', dt)
         SimInfo.set_variable_all_dicts('rho', air_density)
 
