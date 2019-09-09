@@ -107,7 +107,7 @@ The coupling algorithm included in the code is designed to allow fully coupled
 nonlinear simulations, although weakly coupled solutions can be obtained. Independent
 structural or aerodynamic simulation are supported natively.
 
-The nonlinear system can also be linearised taking an arbitrary reference condition. The linearised system can be used 
+The nonlinear system can also be linearised taking an arbitrary reference condition. The linearised system can be used
 for frequency domain analysis and linear model order reduction methods and controller design.
 
 The code distributed in the repository includes modules to directly simulate:
@@ -119,7 +119,7 @@ The code distributed in the repository includes modules to directly simulate:
 * Dynamic aerodynamic solutions with fixed, background-flow convected or free wake
 * Static aeroelastic solutions and flexible aircraft longitudinal trimming
 * Control surface controller in the loop
-* Unsteady fully-3D turbulent field input, working in-memory or in-disk, including time-domain interpolation 
+* Unsteady fully-3D turbulent field input, working in-memory or in-disk, including time-domain interpolation
 between snapshots
 * Linearisation of the nonlinear system at an arbitrary reference
 * Stability analysis and frequency response
@@ -173,14 +173,14 @@ flight dynamics quantities. In a similar way, custom postprocessors with functio
 ranging from incidence angle or beam loads calculation to output in Paraview format
 can be created and run with no need to modify the original source code.
 
-Nonlinear systems can be linearised applying small perturbations about an 
+Nonlinear systems can be linearised applying small perturbations about an
 arbitrary reference condition [@Maraniello2019]. Since the UVLM boundary conditions are more
-naturally expressed in discrete-time and the linearised structural system needs to be 
-in the same form as the aerodynamic one for coupling purposes, a Newmark-$\beta$ integration scheme is used to 
-assemble the linearised GECB system. The resulting discrete-time aeroelastic state-space can be reduced using 
+naturally expressed in discrete-time and the linearised structural system needs to be
+in the same form as the aerodynamic one for coupling purposes, a Newmark-$\beta$ integration scheme is used to
+assemble the linearised GECB system. The resulting discrete-time aeroelastic state-space can be reduced using
 moment matching methods based on Krylov subspaces or frequency-balanced reduction methods, which are particularly well
-suited for large-scale dynamical systems. The linearised formulation permits the 
-use of eigenvalue stability analyses that can be used, for instance, for flutter onset predictions or 
+suited for large-scale dynamical systems. The linearised formulation permits the
+use of eigenvalue stability analyses that can be used, for instance, for flutter onset predictions or
 the design of linear controllers.
 
 
@@ -193,29 +193,30 @@ such as the name and location of the case, the log file route, and most importan
 the ordered list of solvers to run during the simulation. A typical case of
 nonlinear aeroelastic response would include two solvers for generating the structural and
 aerodynamic models, a static coupled solver to initialise the solution, and a dynamic coupled solver.
-Every one of these solvers requires its own section in the ``.sharpy`` file containing
-its settings.
+``Postprocessors`` are treated as a special type of solvers that can be run during or after the simulation
+to extract meaningful information from the simulation data. Every one of these solvers requires its
+own section in the ``.sharpy`` file containing its settings.
 
 The structural and aerodynamic models are given in HDF5 (CITE) format. To
 avoid redundancy and precision errors, the aerodynamic grid for the UVLM is built upon
 the structural model. Aerodynamic-related information such as twist angle, airfoil shape
 and elastic axis location is given with respect to the structural elements and nodes.
 
-Time-dependant input can be included through ``Generators`` and ``Controllers``.
+Time-dependent input can be included through ``Generators`` and ``Controllers``.
 ``Generators`` are intended to be used mainly to create velocity fields that are
-then in put into the UVLM code. On the other hand, ``Controllers`` can have a broader
+then input into the UVLM code. On the other hand, ``Controllers`` can have a broader
 scope. They can be used to control lifting surfaces in open and closed loop, or
 modify numerical parameters on the loop.
 
 Linearised problems require first the solution of a nonlinear case that is used as the
 linearisation reference. Thence, the system is linearised and the state-space assembled attending to
-user-specific settings, including model reduction methods. The resulting system is given in 
+user-specific settings, including model reduction methods. The resulting system is given in
 a discrete-time formulation with several post-processors available or it can be saved for the user
 to manipulate externally.
 
 # Acknowledgements
 
-A. Carre gratefully acknowledges the support provided by Airbus Defence and Space. Norberto Goizueta's research is 
+A. Carre gratefully acknowledges the support provided by Airbus Defence and Space. Norberto Goizueta's research is
 sponsored by the Department of Aeronautics at Imperial College for which the author is truly grateful.
 Arturo Muñoz-Simón's research has received funding from the EU's H2020 research and innovation programme
 under the Marie Sklodowska-Curie grant agreement 765579.
