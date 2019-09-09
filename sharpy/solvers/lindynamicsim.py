@@ -10,7 +10,7 @@ from sharpy.utils.datastructures import LinearTimeStepInfo
 import sharpy.utils.cout_utils as cout
 import time
 import pandas as pd
-
+import warnings
 
 @solver
 class LinearDynamicSimulation(BaseSolver):
@@ -52,6 +52,8 @@ class LinearDynamicSimulation(BaseSolver):
 
         self.input_data_dict = dict()
         self.input_file_name = ""
+
+        warnings.warn('LinDynamicSim solver under development')
 
 
     def initialise(self, data, custom_settings=None):

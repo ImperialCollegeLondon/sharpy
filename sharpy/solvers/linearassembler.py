@@ -7,7 +7,8 @@ from sharpy.utils.solver_interface import solver, BaseSolver
 import sharpy.linear.utils.ss_interface as ss_interface
 import sharpy.utils.settings as settings
 import sharpy.utils.h5utils as h5
-import sharpy.linear.src.libss as libss
+import warnings
+
 
 @solver
 class LinearAssembler(BaseSolver):
@@ -30,6 +31,8 @@ class LinearAssembler(BaseSolver):
 
     The solver enables to load a user specific assembly of a state-space by means of the ``LinearCustom`` block.
 
+    See ``sharpy.linear.assembler`` for a detailed description of each of the state-space assemblies.
+
     """
     solver_id = 'LinearAssembler'
 
@@ -50,6 +53,8 @@ class LinearAssembler(BaseSolver):
     settings_description['linearisation_tstep'] = 'Chosen linearisation time step from ran time steps'
 
     def __init__(self):
+
+        warnings.warn('LinearAssembler solver under development')
         self.settings = dict()
         self.data = None
 
