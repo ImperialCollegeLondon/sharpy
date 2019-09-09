@@ -1,3 +1,6 @@
+"""
+Settings Generator Utilities
+"""
 import configparser
 import ctypes as ct
 import numpy as np

@@ -1,3 +1,5 @@
+"""Generator Interface
+"""
 from abc import ABCMeta, abstractmethod
 import sharpy.utils.cout_utils as cout
 import os
@@ -76,8 +78,9 @@ def output_documentation(route=None):
     if route is None:
         route = sharpydir.SharpyDir + '/docs/source/includes/generators/'
         if os.path.exists(route):
+            print('Cleaning %s' %route)
             shutil.rmtree(route)
-    print('Creating documentation files for generators in %s' %route)
+    print('Creating documentation files for generators in %s' % route)
 
     created_generators = dict()
 
@@ -101,7 +104,7 @@ def output_documentation(route=None):
         title += len(k)*'-' + 2*'\n'
         if generator_class.__doc__ is not None:
 
-            print('\tCreating %s' %(route + '/' + filename))
+            print('\tCreating %s' % (route + '/' + filename))
             autodoc_string = '\n\n.. autoclass:: sharpy.generators.' + k.lower() + '.'+ k + '\n\t:members:'
             with open(route + '/' + filename, "w") as out_file:
                 out_file.write(title + autodoc_string)
