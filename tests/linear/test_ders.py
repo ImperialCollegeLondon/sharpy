@@ -273,18 +273,6 @@ class Test_ders(unittest.TestCase):
 
 		
 
-if __name__=='__main__':
-
-	# unittest.main()
-
-	T=Test_ders()
-	T.setUp()
-	T.test_dbiot_segment()
-	T.test_dbiot_segment_mid()
-	T.test_dbiot_panel()
-	T.test_dbiot_panel_mid_segment()
-
-
 
 
 

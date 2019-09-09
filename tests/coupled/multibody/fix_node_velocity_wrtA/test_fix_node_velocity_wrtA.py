@@ -88,6 +88,7 @@ class TestFixNodeVelocitywrtA(unittest.TestCase):
         SimInfo.solvers['StaticCoupled']['structural_solver_settings'] = SimInfo.solvers['NonLinearStaticMultibody']
         SimInfo.solvers['StaticCoupled']['aero_solver'] = 'StaticUvlm'
         SimInfo.solvers['StaticCoupled']['aero_solver_settings'] = SimInfo.solvers['StaticUvlm']
+        SimInfo.solvers['StaticCoupled']['relaxation_factor'] = 0.0
 
         SimInfo.solvers['NonLinearDynamicMultibody']['gravity_on'] = True
 
@@ -180,8 +181,3 @@ class TestFixNodeVelocitywrtA(unittest.TestCase):
 
         shutil.rmtree(folder + '/output/')
 
-if __name__=='__main__':
-
-    T = TestFixNodeVelocitywrtA()
-    T.setUp()
-    T.test_testfixnodevelocitywrta()

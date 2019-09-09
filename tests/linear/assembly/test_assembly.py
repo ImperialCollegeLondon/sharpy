@@ -3,12 +3,13 @@ Test assembly
 S. Maraniello, 29 May 2018
 '''
 
-import numpy as np
-import scipy.linalg as scalg
+import os
+import copy
 import warnings
 import unittest
 import itertools
-import copy
+import numpy as np
+import scipy.linalg as scalg
 import matplotlib.pyplot as plt
 
 
@@ -68,7 +69,7 @@ class Test_assembly(unittest.TestCase):
 
         # select test case
         fname='./h5input/goland_mod_Nsurf02_M003_N004_a040.aero_state.h5'
-        fname='./h5input/goland_mod_Nsurf01_M003_N004_a040.aero_state.h5'
+        fname = os.path.dirname(os.path.abspath(__file__)) + '/h5input/goland_mod_Nsurf01_M003_N004_a040.aero_state.h5'
         haero = h5utils.readh5(fname)
         tsdata = haero.ts00000
 
