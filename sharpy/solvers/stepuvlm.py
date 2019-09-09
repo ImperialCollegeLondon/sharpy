@@ -37,8 +37,7 @@ class StepUvlm(BaseSolver):
 
     settings_types['convection_scheme'] = 'int'
     settings_default['convection_scheme'] = 3
-    settings_description['convection_scheme'] = '0 for fixed wake, 2 for convected with background flow and 3 for full
-    force-free wake'
+    settings_description['convection_scheme'] = '0 for fixed wake, 2 for convected with background flow and 3 for full force-free wake'
 
     settings_types['dt'] = 'float'
     settings_default['dt'] = 0.1
@@ -58,8 +57,7 @@ class StepUvlm(BaseSolver):
 
     settings_types['velocity_field_generator'] = 'str'
     settings_default['velocity_field_generator'] = 'SteadyVelocityField'
-    settings_description['velocity_field_generator'] = 'Name of the velocity field generator to be used in the
-    simulation'
+    settings_description['velocity_field_generator'] = 'Name of the velocity field generator to be used in the simulation'
 
     settings_types['velocity_field_input'] = 'dict'
     settings_default['velocity_field_input'] = {}
@@ -67,8 +65,7 @@ class StepUvlm(BaseSolver):
 
     settings_types['gamma_dot_filtering'] = 'int'
     settings_default['gamma_dot_filtering'] = 0
-    settings_description['gamma_dot_filtering'] = 'Filtering parameter for the Welch filter for the Gamma_dot
-    estimation. Used when ``unsteady_force_contribution`` is ``on``.'
+    settings_description['gamma_dot_filtering'] = 'Filtering parameter for the Welch filter for the Gamma_dot estimation. Used when ``unsteady_force_contribution`` is ``on``.'
 
     settings_types['rho'] = 'float'
     settings_default['rho'] = 2.225
