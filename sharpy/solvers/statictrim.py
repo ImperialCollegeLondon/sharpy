@@ -55,7 +55,7 @@ class StaticTrim(BaseSolver):
     settings_description['tail_cs_index'] = 'Index of control surfaces that move to achieve trim'
 
     settings_types['thrust_nodes'] = 'list(int)'
-    settings_default['thrust_nodes'] = np.array([0])
+    settings_default['thrust_nodes'] = [0]
     settings_description['thrust_nodes'] = 'Nodes at which thrust is applied'
 
     settings_types['initial_alpha'] = 'float'
