@@ -238,5 +238,3 @@ class LinearAeroelastic(ss_interface.BaseElement):
         read_data = h5.readh5(filename).data
         uvlm_ss_read = read_data.linear.linear_system.uvlm.ss
         return libss.ss(uvlm_ss_read.A, uvlm_ss_read.B, uvlm_ss_read.C, uvlm_ss_read.D, dt=uvlm_ss_read.dt)
-
-
