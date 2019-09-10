@@ -332,3 +332,68 @@ def evec(j):
     e = np.zeros(j+1)
     e[j] = 1
     return e
+
+
+def schur_ordered(A):
+    r"""Returns block ordered real Schur form of matrix :math:`\mathbf{A}`
+
+    .. math:: \mathbf{TAT}^\top = \mathbf{A}_s = \begin{bmatrix} A_{11} & A_{12} \\ 0 & A_{22} \end{bmatrix}
+
+    where :math:`A_{11}` contains the stable eigenvalues of :math:`\mathbf{A}`
+
+    Args:
+        A (np.ndarray): Matrix to decompose.
+
+    Returns:
+        tuple: Tuple containing the Schur decomposition of :math:`\mathbf{A}`, :math:`\mathbf{A}_s`; the transformation
+        :math:`\mathbf{T}`; and the number of stable eigenvalues of :math:`\mathbf{A}`.
+
+    Notes:
+        This function is a wrapper of ``scipy.linalg.schur`` imposing the settings required for this application.
+
+    """
+    As, Tt, n_stable = sclalg.schur(A, output='real', sort='iuc')
+
+    return As, Tt.T, n_stable
+
+
+def remove_a12(As, n_stable):
+    r"""Basis change to remove the (1, 2) block of the block-ordered real Schur matrix :math:`\mathbf{A}`
+
+    Being :math:`\mathbf{A}_s` a matrix of the form
+
+    .. math:: \mathbf{A}_s = \begin{bmatrix} A_{11} & A_{12} \\ 0 & A_{22} \end{bmatrix}
+
+    the (1,2) block is removed by solving the Sylvester equation
+
+    .. math:: \mathbf{A}_{11}\mathbf{X} - \mathbf{X}\mathbf{A}_{22} + \mathbf{A}_{12} = 0
+
+    used to build the change of basis
+
+    .. math:: \mathbf{T} = \begin{bmatrix} \mathbf{I} & -\mathbf{X} \\ \mathbf{0} & \mathbf{I} \end{bmatrix}
+
+    such that
+
+    .. math:: \mathbf{TA}_s\mathbf{T}^\top = \begin{bmatrix} A_{11} & \mathbf{0} \\ 0 & A_{22} \end{bmatrix}.
+
+    Args:
+        As (np.ndarray): Block-ordered real Schur matrix (can be built using :func:`krylovutils.schur_ordered`).
+        n_stable (int): Number of stable eigenvalues in ``As``.
+
+    Returns:
+        np.ndarray: Basis transformation :math:`\mathbf{T}`.
+
+    References:
+        Jaimoukha, I. M., Kasenally, E. D.. Implicitly Restarted Krylov Subspace Methods for Stable Partial Realizations
+        SIAM Journal of Matrix Analysis and Applications, 1997.
+    """
+    A11 = As[:n_stable, :n_stable]
+    A12 = As[:n_stable, n_stable:]
+    A22 = As[n_stable:, n_stable:]
+    n = As.shape[0]
+
+    X = sclalg.solve_sylvester(A11, -A22, -A12)
+
+    T = np.block([[np.eye(n_stable), -X], [np.zeros((n-n_stable, n_stable)), np.eye(n-n_stable)]])
+
+    return T
