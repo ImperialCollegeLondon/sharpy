@@ -53,9 +53,13 @@ import warnings
 import random
 import pprint
 import numpy as np
+import scipy
+import scipy.optimize as optimize
+from scipy.interpolate import Rbf
 import yaml
 import dill as pickle
 import GPyOpt
+
 
 import sharpy.sharpy_main
 import sharpy.utils.exceptions as exc
@@ -246,32 +250,83 @@ def optimiser(in_dict, previous_x, previous_y):
     with open(output_route + 'optimiser.pkl', 'wb') as f:
         pickle.dump(opt, f, protocol=pickle.HIGHEST_PROTOCOL)
 
+    print('Running local optimisation step')
+    local_x, fun = local_optimisation(opt, in_dict)
+
+    if np.linalg.norm(opt.x_opt - local_x) < 1e-1:
+        print('Results are very close, no need to dig deeper')
+    else:
+        new_cost = gpyopt_wrapper(x)
+        print('New cost: ', new_cost)
+        print('Improvement over the previous solution with the local min.: ',
+              (local_cost - opt.fx_opt)/opt.fx_opt*100, '%')
+        print('The RBF estimation of the cost was off by: ',
+              (fun - new_cost)/new_cost)
+
     print('FINISHED')
 
     import pdb; pdb.set_trace()
-    # skopt_wrapper = lambda x: wrapper(x, in_dict)
-    # res = skopt.gp_minimize(func=skopt_wrapper,
-                            # dimensions=bounds,
-                            # base_estimator=None,
-                            # n_calls=100,
-                            # n_random_starts=10,
-                            # acq_func='gp_hedge',
-                            # acq_optimizer='auto',
-                            # base_estimator=None,
-                            # n_calls=100,
-                            # n_random_starts=10,
-                            # acq_func='gp_hedge',
-                            # acq_optimizer='auto',
-                            # x0=None,
-                            # y0=None,
-                            # random_state=None,
-                            # verbose=True,
-                            # callback=None,
-                            # n_points=10000,
-                            # xi=0.01,
-                            # kappa=1.96,
-                            # noise=1e-8,
-                            # n_jobs=4)
+
+def local_optimisation(opt, yaml_dict=None):
+    x_in = opt.X
+    y_in = opt.Y
+
+    rbf = create_rbf_surrogate(x_in, y_in)
+
+    points = x_in
+    values = y_in
+    method = 'linear'
+    options = {'eps': 0.5}
+    # scipy.optimize
+    local_opt = optimize.minimize(
+                                  lambda x: rbf_constrained(x, rbf, yaml_dict, opt),
+                                  x0=opt.x_opt,
+                                  method='Nelder-Mead',
+                                  options=options,
+                                  jac='2-point')
+
+    print('Local optimisation result: ')
+    print('X = ', local_opt.x)
+    print('sucess = ', local_opt.success)
+    print('n_inter = ', local_opt.nit)
+    print('message = ', local_opt.message)
+    return local_opt.x, local_opt.fun
+
+def rbf_constrained(x_in, rbf, yaml_dict, opt):
+    parameters = yaml_dict['optimiser']['parameters']
+    bounds = np.zeros((len(parameters), 2))
+    for k, v in parameters.items():
+        bounds[k, :] = yaml_dict['optimiser']['parameters_bounds'][k]
+
+    constraints_list = opt.constraints
+    constraints = list()
+    for v in constraints_list:
+        constraints.append(v['constraint'])
+        constraints[-1] = constraints[-1].replace(':,', '') + ' <= 0'
+
+    values = rbf(*x_in)
+
+    multidim = True
+    if len(x_in.shape) == 1:
+        multidim = False
+
+    if multidim:
+        for i in range(x_in.shape[0]):
+            for i_cons in range(len(constraints)):
+                x = x_in[i, :]
+                if not eval(constraints[i_cons]):
+                    values[i] += 15
+    else:
+        for i_cons in range(len(constraints)):
+            x = x_in
+            if not eval(constraints[i_cons]):
+                values += 15
+
+    return values
+
+def create_rbf_surrogate(X, Y):
+    rbf = Rbf(*(X.T), Y)
+    return rbf
 
 
 def case_id(case):
