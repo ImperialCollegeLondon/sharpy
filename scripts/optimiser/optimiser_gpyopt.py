@@ -274,13 +274,13 @@ def optimiser(in_dict, previous_x, previous_y):
                             # n_jobs=4)
 
 
-def case_id():
-    case_name = '{0:04d}'.format(random.randint(0, 9999+1))
+def case_id(case):
+    case_name = case + '_{0:06d}'.format(random.randint(0, 999999+1))
     return case_name
 
 
 def evaluate(x_dict, yaml_dict):
-    case_name = case_id()
+    case_name = case_id(yaml_dict['case']['name'])
 
     print('Running ' + case_name)
     files, case_name = set_case(case_name,
