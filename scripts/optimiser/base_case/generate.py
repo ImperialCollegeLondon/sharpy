@@ -24,7 +24,7 @@ def generate(x_dict={}, case_name=None):
             'StaticCoupled',
             'BeamLoads',
             'DynamicCoupled',
-            # 'PickleData'
+            'PickleData'
             ]
 
 # FLIGHT CONDITIONS
@@ -864,7 +864,7 @@ def generate(x_dict={}, case_name=None):
                                 'dt': dt}
 
         solver = 'NonLinearDynamicMultibody'
-        settings['PickleData'] = {'folder': './' + case_name + '/'}
+        settings['PickleData'] = {'folder': route + '/'}
         settings['DynamicCoupled'] = {'structural_solver': solver,
                                       'structural_solver_settings': settings[solver],
                                       'aero_solver': 'StepUvlm',
