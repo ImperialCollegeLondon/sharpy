@@ -39,7 +39,7 @@ class TestGolandFlutter(unittest.TestCase):
 
         case_name += case_nlin_info + case_rom_info
 
-        fig_folder = sharpydir.SharpyDir + 'tests/linear/goland_wing/figures/'
+        fig_folder = sharpydir.SharpyDir + '/tests/linear/goland_wing/figures/'
         os.system('mkdir -p %s' % fig_folder)
 
         # SHARPy nonlinear reference solution
@@ -53,7 +53,7 @@ class TestGolandFlutter(unittest.TestCase):
                                         sweep=0,
                                         physical_time=2,
                                         n_surfaces=2,
-                                        route=sharpydir.SharpyDir + 'tests/linear/goland_wing/cases',
+                                        route=sharpydir.SharpyDir + '/tests/linear/goland_wing/cases',
                                         case_name=case_name)
 
         ws.gust_intensity = 0.01
