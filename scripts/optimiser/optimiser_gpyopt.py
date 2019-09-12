@@ -256,10 +256,10 @@ def optimiser(in_dict, previous_x, previous_y):
     if np.linalg.norm(opt.x_opt - local_x) < 1e-1:
         print('Results are very close, no need to dig deeper')
     else:
-        new_cost = gpyopt_wrapper(x)
+        new_cost = gpyopt_wrapper(local_x)
         print('New cost: ', new_cost)
         print('Improvement over the previous solution with the local min.: ',
-              (local_cost - opt.fx_opt)/opt.fx_opt*100, '%')
+              -(local_cost - opt.fx_opt)/opt.fx_opt*100, '%')
         print('The RBF estimation of the cost was off by: ',
               (fun - new_cost)/new_cost)
 
@@ -267,7 +267,7 @@ def optimiser(in_dict, previous_x, previous_y):
 
     import pdb; pdb.set_trace()
 
-def local_optimisation(opt, yaml_dict=None):
+def local_optimisation(opt, yaml_dict=None, min_method='Nelder-Mead'):
     x_in = opt.X
     y_in = opt.Y
 
@@ -276,12 +276,13 @@ def local_optimisation(opt, yaml_dict=None):
     points = x_in
     values = y_in
     method = 'linear'
-    options = {'eps': 0.5}
+    options = {'eps': 0.1,
+               'gtol': 1e-3}
     # scipy.optimize
     local_opt = optimize.minimize(
                                   lambda x: rbf_constrained(x, rbf, yaml_dict, opt),
                                   x0=opt.x_opt,
-                                  method='Nelder-Mead',
+                                  method=min_method,
                                   options=options,
                                   jac='2-point')
 
@@ -325,7 +326,7 @@ def rbf_constrained(x_in, rbf, yaml_dict, opt):
     return values
 
 def create_rbf_surrogate(X, Y):
-    rbf = Rbf(*(X.T), Y)
+    rbf = Rbf(*(X.T), Y, function='multiquadric', epsilon=0.1)
     return rbf
 
 
