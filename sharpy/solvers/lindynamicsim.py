@@ -1,49 +1,51 @@
 import numpy as np
+import os
 import h5py as h5
 from sharpy.utils.solver_interface import solver, BaseSolver, initialise_solver
 import sharpy.utils.settings as settings
 import sharpy.linear.src.libss as libss
-import sharpy.utils.algebra as algebra
 import scipy.linalg as sclalg
 import sharpy.utils.h5utils as h5utils
 from sharpy.utils.datastructures import LinearTimeStepInfo
 import sharpy.utils.cout_utils as cout
 import time
-import pandas as pd
 
 
 @solver
 class LinearDynamicSimulation(BaseSolver):
+    """Time-domain solution of Linear Time Invariant Systems
+
+    """
     solver_id = 'LinDynamicSim'
 
+    settings_types = dict()
+    settings_default = dict()
+    settings_description = dict()
+
+    settings_types['folder'] = 'str'
+    settings_default['folder'] = './output/'
+    settings_description['folder'] = 'Output directory'
+
+    settings_types['write_dat'] = 'bool'
+    settings_default['write_dat'] = True
+    settings_description['write_dat'] = 'Write output dat files'
+
+    settings_default['n_tsteps'] = 10
+    settings_types['n_tsteps'] = 'int'
+
+    settings_default['dt'] = 0.001
+    settings_types['dt'] = 'float'
+
+    settings_types['postprocessors'] = 'list(str)'
+    settings_default['postprocessors'] = list()
+
+    settings_types['postprocessors_settings'] = 'dict'
+    settings_default['postprocessors_settings'] = dict()
+
+    settings_table = settings.SettingsTable()
+    __doc__ += settings_table.generate(settings_types, settings_default, settings_description)
+
     def __init__(self):
-
-        self.settings_types = dict()
-        self.settings_default = dict()
-
-        self.settings_default['struct_states'] = 0
-        self.settings_types['struct_states'] = 'int'
-
-        self.settings_types['modal'] = 'bool'
-        self.settings_default['modal'] = False
-
-        self.settings_default['n_tsteps'] = 10
-        self.settings_types['n_tsteps'] = 'int'
-
-        self.settings_default['dt'] = 0.001
-        self.settings_types['dt'] = 'float'
-        
-        self.settings_default['sys_id'] = ''
-        self.settings_types['sys_id'] = 'str'
-
-        self.settings_types['postprocessors'] = 'list(str)'
-        self.settings_default['postprocessors'] = list()
-
-        self.settings_types['postprocessors_settings'] = 'dict'
-        self.settings_default['postprocessors_settings'] = dict()
-
-        self.settings_types['output'] = 'str'
-        self.settings_default['output'] = './cases/output/'
 
         self.data = None
         self.settings = dict()
@@ -52,6 +54,8 @@ class LinearDynamicSimulation(BaseSolver):
 
         self.input_data_dict = dict()
         self.input_file_name = ""
+
+        self.folder = None
 
 
     def initialise(self, data, custom_settings=None):
@@ -66,6 +70,11 @@ class LinearDynamicSimulation(BaseSolver):
         # Read initial state and input data and store in dictionary
         self.read_files()
 
+        # Output folder
+        self.folder = self.settings['folder'] + '/' + self.data.settings['SHARPy']['case'] + '/lindynamicsim/'
+        if not os.path.exists(self.folder):
+            os.makedirs(self.folder)
+
         # initialise postprocessors
         self.postprocessors = dict()
         if len(self.settings['postprocessors']) > 0:
@@ -77,16 +86,17 @@ class LinearDynamicSimulation(BaseSolver):
 
     def run(self):
 
-        dt = self.settings['dt'].value
         n_steps = self.settings['n_tsteps'].value
-        T = n_steps*dt
-        t_dom = np.linspace(0, T, n_steps)
-        sys_id = self.settings['sys_id']
-
         x0 = self.input_data_dict['x0']
         u = self.input_data_dict['u']
 
         ss = self.data.linear.ss
+        try:
+            dt = ss.dt
+        except AttributeError:
+            dt = self.settings['dt'].value
+        T = n_steps*dt
+        t_dom = np.linspace(0, T, n_steps)
 
         # Use the scipy linear solver
         sys = libss.ss_to_scipy(ss)
@@ -99,6 +109,14 @@ class LinearDynamicSimulation(BaseSolver):
         t_out = out[0]
         x_out = out[2]
         y_out = out[1]
+
+        if self.settings['write_dat']:
+            cout.cout_wrap('Writing linear simulation output .dat files to %s' % self.folder)
+            np.savetxt(self.folder + '/y_out.dat', y_out)
+            np.savetxt(self.folder + '/x_out.dat', x_out)
+            np.savetxt(self.folder + '/u_out.dat', u)
+            np.savetxt(self.folder + '/t_out.dat', t_out)
+            cout.cout_wrap('Success', 1)
 
         process = True  # Under development
         if process:
@@ -117,7 +135,7 @@ class LinearDynamicSimulation(BaseSolver):
                 # Need to obtain information from the variables in a similar fashion as done with the database
                 # for the beam case
 
-                aero_tstep, struct_tstep = state_to_timestep(self.data, sys_id, tstep.x, tstep.u, tstep.y)
+                aero_tstep, struct_tstep = state_to_timestep(self.data, tstep.x, tstep.u, tstep.y)
 
                 self.data.aero.timestep_info.append(aero_tstep)
                 self.data.structure.timestep_info.append(struct_tstep)
@@ -127,19 +145,7 @@ class LinearDynamicSimulation(BaseSolver):
                     for postproc in self.postprocessors:
                         self.data = self.postprocessors[postproc].run(online=True)
 
-
-        export = True
-        if export:
-            y_pd = pd.DataFrame(data=y_out)
-            x_pd = pd.DataFrame(data=x_out)
-            t_pd = pd.DataFrame(data=t_out)
-            u_pd = pd.DataFrame(data=u)
-            y_pd.to_csv(self.data.settings['SHARPy']['route'] + '/output/y_out.csv')
-            x_pd.to_csv(self.data.settings['SHARPy']['route'] + '/output/x_out.csv')
-            t_pd.to_csv(self.data.settings['SHARPy']['route'] + '/output/t_out.csv')
-            u_pd.to_csv(self.data.settings['SHARPy']['route'] + '/output/u_out.csv')
         return self.data
-
 
     def read_files(self):
 
@@ -155,46 +161,18 @@ class LinearDynamicSimulation(BaseSolver):
             pass
 
 
-    def structural_state_to_timestep(self, x):
-        """
-        Convert SHARPy beam state to original beam structure for plotting purposes.
-
-        Args:
-            x:
-
-        Returns:
-
-        """
-
-        tstep = self.data.structure.timestep_info[0].copy()
-
-        num_node = tstep.num_node
-
-        q = x[:len(x)//2]
-        dq = x[len(x)//2:]
-
-        coords_a = np.array([q[6*i_node + [0, 1, 2]] for i_node in range(num_node-1)])
-        crv = np.array([q[6*i_node + [3, 4, 5]] for i_node in range(num_node-1)])
-        for_vel = dq[6*num_node:6*num_node+6]
-
-        orient = dq[6*num_node:6*num_node+6:]
-        if len(orient) == 3:
-            quat = algebra.euler2quat(orient)
-        else:
-            quat = orient
-
-
-def state_to_timestep(data, sys_id, x, u=None, y=None):
+def state_to_timestep(data, x, u=None, y=None):
     """
+    Warnings:
+        Under development
+
     Writes a state-space vector to SHARPy timesteps
 
     Args:
         data:
-        sys_id:
         x:
         u:
         y:
-        modal:
 
     Returns:
 
