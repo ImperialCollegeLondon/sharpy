@@ -779,7 +779,33 @@ class Krylov(rom_interface.BaseRom):
         return left_tangent, right_tangent, rc, ro, fc, fo
 
     def stable_realisation(self, *args):
+        r"""Remove unstable poles left after reduction
 
+        Using a Schur decomposition of the reduced plant matrix :math:`\mathbf{A}_m\in\mathbb{C}^{m\times m}`,
+        the method removes the unstable eigenvalues that could have appeared after the moment-matching reduction.
+
+        The oblique projection matrices :math:`\mathbf{T}_L\in\mathbb{C}^{m \times p}` and
+        :math:`\mathbf{T}_R\in\mathbb{C}^{m \times p}`` result in a stable realisation
+
+        .. math:: \mathbf{A}_s = \mathbf{T}_L^\top\mathbf{AT}_R \in \mathbb{C}^{p\times p}.
+
+        Args:
+            A (np.ndarray): plant matrix (if not provided ``self.ssrom.A`` will be used.
+
+        Returns:
+            tuple: Left and right projection matrices :math:`\mathbf{T}_L\in\mathbb{C}^{m \times p}` and
+                :math:`\mathbf{T}_R\in\mathbb{C}^{m \times p}`
+
+        References:
+            Jaimoukha, I. M., Kasenally, E. D.. Implicitly Restarted Krylov Subspace Methods for Stable Partial
+            Realizations. SIAM Journal of Matrix Analysis and Applications, 1997.
+
+        See Also:
+            The method employs :func:`sharpy.rom.utils.krylovutils.schur_ordered()` and
+            :func:`sharpy.rom.utils.krylovutils.remove_a12`.
+        """
+
+        cout.cout_wrap('Stabilising system by removing unstable eigenvalues using a Schur decomposition', 1)
         if self.ssrom is None:
             A = args[0]
         else:
@@ -788,13 +814,15 @@ class Krylov(rom_interface.BaseRom):
         m = A.shape[0]
         As, T1, n_stable = krylovutils.schur_ordered(A)
 
+        # Remove the (1,2) block of the Schur ordered matrix
         T2, X = krylovutils.remove_a12(As, n_stable)
-        negX = -X
 
         T3 = np.eye(m, n_stable)
 
         TL = T3.T.dot(T2.dot(np.conj(T1)))
         TR = T1.T.dot(np.linalg.inv(T2).dot(T3))
+
+        cout.cout_wrap('System reduced to %g states' %n_stable, 1)
 
         return TL.T, TR
 

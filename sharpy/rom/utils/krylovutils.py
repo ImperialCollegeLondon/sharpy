@@ -1,3 +1,4 @@
+"""Krylov Model Reduction Methods Utilities"""
 import scipy.sparse as scsp
 import numpy as np
 import scipy.linalg as sclalg
@@ -387,7 +388,8 @@ def remove_a12(As, n_stable):
     .. math:: \mathbf{TA}_s\mathbf{T}^\top = \begin{bmatrix} A_{11} & \mathbf{0} \\ 0 & A_{22} \end{bmatrix}.
 
     Args:
-        As (np.ndarray): Block-ordered real Schur matrix (can be built using :func:`krylovutils.schur_ordered`).
+        As (np.ndarray): Block-ordered real Schur matrix (can be built using
+            :func:`sharpy.rom.utils.krylovutils.schur_ordered`).
         n_stable (int): Number of stable eigenvalues in ``As``.
 
     Returns:
