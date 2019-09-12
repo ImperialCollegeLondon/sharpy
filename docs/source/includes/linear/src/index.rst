@@ -12,8 +12,6 @@ Linearised System Source Code
 	./lib_ucdncdzeta/index
 	./libalg/index
 	./libfit/index
-	./librom/index
-	./librom_interp/index
 	./libsparse/index
 	./libss/index
 	./libuvlm/index

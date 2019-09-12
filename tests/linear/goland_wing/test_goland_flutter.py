@@ -123,6 +123,7 @@ class TestGolandFlutter(unittest.TestCase):
 
         # Flutter onset
         ind_zero_real = np.where(eval_real >= 0)[0][0]
+        assert ind_zero_real != 0, 'Flutter should not occur below 165m/s'
         flutter_speed = 0.5 * (u_inf[ind_zero_real] + u_inf[ind_zero_real - 1])
         flutter_frequency = np.sqrt(eval_real[ind_zero_real] ** 2 + eval_imag[ind_zero_real] ** 2)
 
