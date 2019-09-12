@@ -1,5 +1,5 @@
-"""
-Python tools for model reduction
+"""General ROM utilities
+
 S. Maraniello, 14 Feb 2018
 """
 

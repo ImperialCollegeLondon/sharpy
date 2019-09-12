@@ -363,7 +363,7 @@ def schur_ordered(A, ct=False):
     As, Tt, n_stable1 = sclalg.schur(A, output='complex', sort=sort_eigvals)
     n_stable = np.sum(np.abs(np.linalg.eigvals(A))<=1.)
 
-    assert (np.abs(As-np.conj(Tt.T).dot(A.dot(Tt))) < 1e-10).all(), 'Schur breakdown'
+    assert (np.abs(As-np.conj(Tt.T).dot(A.dot(Tt))) < 1e-6).all(), 'Schur breakdown - A_schur != T^H A T'
     return As, Tt.T, n_stable
 
 
