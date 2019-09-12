@@ -691,7 +691,7 @@ def cbeam3_solv_modal(beam, settings, ts, FullMglobal, FullCglobal, FullKglobal)
         FullKglobal(numpy array): Stiffness matrix
 
     Returns:
-    	FullMglobal(numpy array): Mass matrix
+        FullMglobal(numpy array): Mass matrix
         FullCglobal(numpy array): Damping matrix
         FullKglobal(numpy array): Stiffness matrix
 
@@ -719,7 +719,7 @@ def cbeam3_solv_modal(beam, settings, ts, FullMglobal, FullCglobal, FullKglobal)
     # xbopts.MaxIterations = settings['max_iterations']
     # xbopts.NumLoadSteps = settings['num_load_steps']
     xbopts.NumGauss = ct.c_int(0)
-    # xbopts.DeltaCurved = settings['delta_curved']
+    xbopts.DeltaCurved = settings['delta_curved']
     # xbopts.MinDelta = settings['min_delta']
     # xbopts.NewmarkDamp = settings['newmark_damp']
     # xbopts.gravity_on = settings['gravity_on']
@@ -765,11 +765,11 @@ def cbeam3_solv_modal(beam, settings, ts, FullMglobal, FullCglobal, FullKglobal)
                         beam.ini_info.psi.ctypes.data_as(doubleP),
                         beam.timestep_info[ts].pos.ctypes.data_as(doubleP),
                         beam.timestep_info[ts].psi.ctypes.data_as(doubleP),
-                        ct.byref(ctypes_ts),
                         beam.timestep_info[ts].for_vel.ctypes.data_as(doubleP),
                         FullMglobal.ctypes.data_as(doubleP),
                         FullCglobal.ctypes.data_as(doubleP),
                         FullKglobal.ctypes.data_as(doubleP))
+
 
 def cbeam3_asbly_dynamic(beam, tstep, settings):
     """
