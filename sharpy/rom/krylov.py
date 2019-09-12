@@ -98,6 +98,7 @@ class Krylov(rom_interface.BaseRom):
         self.sstype = None
         self.nfreq = None
         self.restart_arnoldi = None
+        self.stable = None
         self.cpu_summary = dict()
         self.eigenvalue_table = None
 
@@ -171,7 +172,12 @@ class Krylov(rom_interface.BaseRom):
 
         self.ssrom = libss.ss(Ar, Br, Cr, self.ss.D, self.ss.dt)
 
-        self.check_stability(restart_arnoldi=self.restart_arnoldi)
+        self.stable = self.check_stability(restart_arnoldi=self.restart_arnoldi)
+
+        if not self.stable:
+            TL, TR = self.stable_realisation()
+            self.ssrom = libss.ss(TL.T.dot(Ar.dot(TR)), TL.T.dot(Br), Cr.dot(TR), self.ss.D, self.ss.dt)
+            self.stable = self.check_stability(restart_arnoldi=self.restart_arnoldi)
 
         t_rom = time.time() - t0
         self.cpu_summary['run'] = t_rom
@@ -608,7 +614,7 @@ class Krylov(rom_interface.BaseRom):
 
         for i in range(self.nfreq):
 
-            if frequency[i] == np.inf:
+            if frequency[i] == np.inf or frequency[i].real == np.inf:
                 lu_a = self.ss.A
                 approx_type = 'partial_realisation'
             else:
@@ -753,6 +759,8 @@ class Krylov(rom_interface.BaseRom):
             else:
                 print('Unable to reduce ROM any further - ROM still unstable...')
 
+        return not unstable
+
     def load_tangent_vectors(self):
 
         tangent_file = self.settings['tangent_input_file']
@@ -769,4 +777,42 @@ class Krylov(rom_interface.BaseRom):
             right_tangent = None
 
         return left_tangent, right_tangent, rc, ro, fc, fo
+
+    def stable_realisation(self, *args):
+
+        if self.ssrom is None:
+            A = args[0]
+        else:
+            A = self.ssrom.A
+
+        m = A.shape[0]
+        As, T1, n_stable = krylovutils.schur_ordered(A)
+
+        T2, X = krylovutils.remove_a12(As, n_stable)
+        negX = -X
+
+        T3 = np.eye(m, n_stable)
+
+        TL = T3.T.dot(T2.dot(np.conj(T1)))
+        TR = T1.T.dot(np.linalg.inv(T2).dot(T3))
+
+        return TL.T, TR
+
+
+if __name__=="__main__":
+    import numpy as np
+
+    A = np.random.rand(20, 20)
+    eigsA = np.sort(np.abs(np.linalg.eigvals(A)))
+    print(eigsA)
+    print("Number of stable eigvals = %g" %np.sum(np.abs(eigsA)<=1) )
+    rom = Krylov()
+    TL, TR = rom.stable_realisation(A)
+
+    Ap = TL.T.dot(A.dot(TR))
+
+    eigsA = np.sort(np.abs(np.linalg.eigvals(Ap)))
+    print("\nNew matrix size %g" % Ap.shape[0])
+    print('Stable eigvals = %g' % np.sum(np.abs(eigsA)<=1))
+    print(eigsA)
 

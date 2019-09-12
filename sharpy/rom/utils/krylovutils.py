@@ -334,33 +334,42 @@ def evec(j):
     return e
 
 
-def schur_ordered(A):
-    r"""Returns block ordered real Schur form of matrix :math:`\mathbf{A}`
+def schur_ordered(A, ct=False):
+    r"""Returns block ordered complex Schur form of matrix :math:`\mathbf{A}`
 
-    .. math:: \mathbf{TAT}^\top = \mathbf{A}_s = \begin{bmatrix} A_{11} & A_{12} \\ 0 & A_{22} \end{bmatrix}
+    .. math:: \mathbf{TAT}^H = \mathbf{A}_s = \begin{bmatrix} A_{11} & A_{12} \\ 0 & A_{22} \end{bmatrix}
 
-    where :math:`A_{11}` contains the stable eigenvalues of :math:`\mathbf{A}`
+    where :math:`A_{11}\in\mathbb{C}^{s\times s}` contains the :math:`s` stable
+    eigenvalues of :math:`\mathbf{A}\in\mathbb{R}^{m\times m}`.
 
     Args:
         A (np.ndarray): Matrix to decompose.
+        ct (bool): Continuous time system.
 
     Returns:
         tuple: Tuple containing the Schur decomposition of :math:`\mathbf{A}`, :math:`\mathbf{A}_s`; the transformation
-        :math:`\mathbf{T}`; and the number of stable eigenvalues of :math:`\mathbf{A}`.
+        :math:`\mathbf{T}\in\mathbb{C}^{m\times m}`; and the number of stable eigenvalues of :math:`\mathbf{A}`.
 
     Notes:
         This function is a wrapper of ``scipy.linalg.schur`` imposing the settings required for this application.
 
     """
-    As, Tt, n_stable = sclalg.schur(A, output='real', sort='iuc')
+    if ct:
+        sort_eigvals = 'lhp'
+    else:
+        sort_eigvals = 'iuc'
 
+    As, Tt, n_stable1 = sclalg.schur(A, output='complex', sort=sort_eigvals)
+    n_stable = np.sum(np.abs(np.linalg.eigvals(A))<=1.)
+
+    assert (np.abs(As-np.conj(Tt.T).dot(A.dot(Tt))) < 1e-10).all(), 'Schur breakdown'
     return As, Tt.T, n_stable
 
 
 def remove_a12(As, n_stable):
     r"""Basis change to remove the (1, 2) block of the block-ordered real Schur matrix :math:`\mathbf{A}`
 
-    Being :math:`\mathbf{A}_s` a matrix of the form
+    Being :math:`\mathbf{A}_s\in\mathbb{R}^{m\times m}` a matrix of the form
 
     .. math:: \mathbf{A}_s = \begin{bmatrix} A_{11} & A_{12} \\ 0 & A_{22} \end{bmatrix}
 
@@ -370,9 +379,10 @@ def remove_a12(As, n_stable):
 
     used to build the change of basis
 
-    .. math:: \mathbf{T} = \begin{bmatrix} \mathbf{I} & -\mathbf{X} \\ \mathbf{0} & \mathbf{I} \end{bmatrix}
+    .. math:: \mathbf{T} = \begin{bmatrix} \mathbf{I}_{s,s} & -\mathbf{X}_{s,u} \\ \mathbf{0}_{u, s}
+        & \mathbf{I}_{u,u} \end{bmatrix}
 
-    such that
+    where :math:`s` and :math:`u` are the respective number of stable and unstable eigenvalues, such that
 
     .. math:: \mathbf{TA}_s\mathbf{T}^\top = \begin{bmatrix} A_{11} & \mathbf{0} \\ 0 & A_{22} \end{bmatrix}.
 
@@ -381,7 +391,7 @@ def remove_a12(As, n_stable):
         n_stable (int): Number of stable eigenvalues in ``As``.
 
     Returns:
-        np.ndarray: Basis transformation :math:`\mathbf{T}`.
+        np.ndarray: Basis transformation :math:`\mathbf{T}\in\mathbb{R}^{m\times m}`.
 
     References:
         Jaimoukha, I. M., Kasenally, E. D.. Implicitly Restarted Krylov Subspace Methods for Stable Partial Realizations
@@ -396,4 +406,6 @@ def remove_a12(As, n_stable):
 
     T = np.block([[np.eye(n_stable), -X], [np.zeros((n-n_stable, n_stable)), np.eye(n-n_stable)]])
 
-    return T
+    T2 = np.eye(n, n_stable)
+    # App = T2.T.dot(T.dot(As.dot(np.linalg.inv(T).dot(T2))))
+    return T, X
