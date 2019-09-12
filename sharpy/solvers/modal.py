@@ -82,6 +82,10 @@ class Modal(BaseSolver):
     settings_default['dt'] = 0
     settings_description['dt'] = 'Time step to compute discrete time eigenvalues'
 
+    settings_types['delta_curved'] = 'float'
+    settings_default['delta_curved'] = 1e-2
+    settings_description['delta_curved'] = 'Threshold for linear expressions in rotation formulas'
+
     settings_types['plot_eigenvalues'] = 'bool'
     settings_default['plot_eigenvalues'] = False
     settings_description['plot_eigenvalues'] = 'Plot to screen root locus diagram'
