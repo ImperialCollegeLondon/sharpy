@@ -128,7 +128,6 @@ class Krylov(rom_interface.BaseRom):
         except AttributeError:
             self.nfreq = 1
 
-
     def run(self, ss):
         """
         Performs Model Order Reduction employing Krylov space projection methods.
@@ -291,15 +290,17 @@ class Krylov(rom_interface.BaseRom):
             V = krylovutils.construct_krylov(r, A, B, 'partial_realisation', 'b')
             W = krylovutils.construct_krylov(r, A, C.T, 'partial_realisation', 'c')
 
-        # Ensure oblique projection to ensure W^T V = I
-        # lu_WW = krylovutils.lu_factor(W.T.dot(V))
-        # W1 = sclalg.lu_solve(lu_WW, W.T, trans=1).T # Verify
-        W = W.dot(sclalg.inv(W.T.dot(V)).T)
+        T = W.T.dot(V)
+        Tinv = sclalg.inv(T)
+        self.W = W
+        self.V = V
 
         # Reduced state space model
-        Ar = W.T.dot(A.dot(V))
-        Br = W.T.dot(B)
-        Cr = C.dot(V)
+        Ar = W.T.dot(self.ss.A.dot(V.dot(Tinv)))
+        Br = W.T.dot(self.ss.B)
+        Cr = self.ss.C.dot(V.dot(Tinv))
+
+
 
         return Ar, Br, Cr
 
@@ -544,16 +545,17 @@ class Krylov(rom_interface.BaseRom):
 
             we += ro[i]
 
-        W = W.dot(sclalg.inv(W.T.dot(V)).T)
+        T = W.T.dot(V)
+        Tinv = sclalg.inv(T)
         self.W = W
         self.V = V
 
-        del dict_of_luas
-
         # Reduced state space model
-        Ar = W.T.dot(A.dot(V))
-        Br = W.T.dot(B)
-        Cr = C.dot(V)
+        Ar = W.T.dot(self.ss.A.dot(V.dot(Tinv)))
+        Br = W.T.dot(self.ss.B)
+        Cr = self.ss.C.dot(V.dot(Tinv))
+
+        del dict_of_luas
 
         self.cpu_summary['algorithm'] = time.time() - t0
 
@@ -630,14 +632,15 @@ class Krylov(rom_interface.BaseRom):
         V = V[:, :min_cols]
         W = W[:, :min_cols]
 
-        W = W.dot(sclalg.inv(W.T.dot(V)).T)
+        T = W.T.dot(V)
+        Tinv = sclalg.inv(T)
         self.W = W
         self.V = V
 
         # Reduced state space model
-        Ar = W.T.dot(self.ss.A.dot(V))
+        Ar = W.T.dot(self.ss.A.dot(V.dot(Tinv)))
         Br = W.T.dot(self.ss.B)
-        Cr = self.ss.C.dot(V)
+        Cr = self.ss.C.dot(V.dot(Tinv))
 
         return Ar, Br, Cr
 
