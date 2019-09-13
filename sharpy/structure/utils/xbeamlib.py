@@ -728,7 +728,6 @@ def cbeam3_solv_modal(beam, settings, ts, FullMglobal, FullCglobal, FullKglobal)
     # xbopts.gravity_dir_y = ct.c_double(settings['gravity_dir'][1])
     # xbopts.gravity_dir_z = ct.c_double(settings['gravity_dir'][2])
 
-    ctypes_ts = ct.c_int(ts)
 
     # print("ts: ",ts)
     # print("FoR vel: ", beam.timestep_info[ts].for_vel)
@@ -765,7 +764,6 @@ def cbeam3_solv_modal(beam, settings, ts, FullMglobal, FullCglobal, FullKglobal)
                         beam.ini_info.psi.ctypes.data_as(doubleP),
                         beam.timestep_info[ts].pos.ctypes.data_as(doubleP),
                         beam.timestep_info[ts].psi.ctypes.data_as(doubleP),
-                        ct.byref(ctypes_ts),
                         beam.timestep_info[ts].for_vel.ctypes.data_as(doubleP),
                         FullMglobal.ctypes.data_as(doubleP),
                         FullCglobal.ctypes.data_as(doubleP),
