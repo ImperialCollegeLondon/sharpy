@@ -250,10 +250,10 @@ class AsymptoticStability(BaseSolver):
             Nunst = np.sum(eigs_cont.real > 0)
             fn = np.abs(eigs_cont)
 
-            cout.cout_wrap('CLTI\tu: %.2f m/2\tmax.eig. real: %.6f\t' \
+            cout.cout_wrap('LTI\tu: %.2f m/2\tmax. CT eig. real: %.6f\t' \
                            % (u_inf_vec[i], np.max(eigs_cont.real)))
             cout.cout_wrap('\tN unstab.: %.3d' % (Nunst,))
-            print('\tUnstable aeroelastic natural frequency CT(rad/s):' + Nunst * '\t%.2f' % tuple(fn[:Nunst]))
+            cout.cout_wrap('\tUnstable aeroelastic natural frequency CT(rad/s):' + Nunst * '\t%.2f' % tuple(fn[:Nunst]))
 
             # Store eigenvalues for plot
             real_part_plot.append(eigs_cont.real)

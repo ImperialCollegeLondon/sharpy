@@ -781,7 +781,7 @@ class Krylov(rom_interface.BaseRom):
 
         return left_tangent, right_tangent, rc, ro, fc, fo
 
-    def stable_realisation(self, *args):
+    def stable_realisation(self, *args, **kwargs):
         r"""Remove unstable poles left after reduction
 
         Using a Schur decomposition of the reduced plant matrix :math:`\mathbf{A}_m\in\mathbb{C}^{m\times m}`,
@@ -811,11 +811,18 @@ class Krylov(rom_interface.BaseRom):
         cout.cout_wrap('Stabilising system by removing unstable eigenvalues using a Schur decomposition', 1)
         if self.ssrom is None:
             A = args[0]
+            ct = kwargs['ct']
+            assert type(ct) == bool, 'CT system flag should be a bool'
         else:
             A = self.ssrom.A
 
+            if self.sstype == 'ct':
+                ct = True
+            else:
+                ct = False
+
         m = A.shape[0]
-        As, T1, n_stable = krylovutils.schur_ordered(A)
+        As, T1, n_stable = krylovutils.schur_ordered(A, ct=ct)
 
         # Remove the (1,2) block of the Schur ordered matrix
         T2, X = krylovutils.remove_a12(As, n_stable)

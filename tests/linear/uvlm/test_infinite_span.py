@@ -83,6 +83,7 @@ class Test_infinite_span(unittest.TestCase):
         # solution flow
         ws.set_default_config_dict()
         ws.config['SHARPy']['flow'] = ['BeamLoader', 'AerogridLoader', 'StaticUvlm']
+        ws.config['SHARPy']['write_screen'] = 'off'
         ws.config['LinearUvlm'] = {'dt': ws.dt,
                                    'integr_order': integr_ord,
                                    'density': ws.rho,
@@ -280,6 +281,7 @@ class Test_infinite_span(unittest.TestCase):
         # solution flow
         ws_pert.set_default_config_dict()
         ws_pert.config['SHARPy']['flow'] = ws.config['SHARPy']['flow']
+        ws_pert.config['SHARPy']['write_screen'] = 'off'
         ws_pert.config.write()
 
         # solve at perturbed point

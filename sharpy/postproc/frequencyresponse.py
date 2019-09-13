@@ -159,7 +159,6 @@ class FrequencyResponse(solver_interface.BaseSolver):
 
     def save_freq_resp(self, wv, Yfreq, filename):
 
-
         with open(self.folder + '/freqdata_readme.txt', 'w') as outfile:
             outfile.write('Frequency Response Data Output\n\n')
             outfile.write('Frequency range found in _wv.txt file in rad/s\n')
@@ -195,6 +194,8 @@ class FrequencyResponse(solver_interface.BaseSolver):
 
                 ax1.set_ylabel('Y')
                 fig1.savefig(self.folder + '/' + fig_title + '.png')
+
+        cout.cout_wrap('\tPlots saved to %s' % self.folder, 1)
 
     def load_frequency_data(self):
         cout.cout_wrap('Loading frequency response')
