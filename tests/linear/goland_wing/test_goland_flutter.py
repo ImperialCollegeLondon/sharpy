@@ -13,10 +13,15 @@ class TestGolandFlutter(unittest.TestCase):
         u_inf = 1.
         alpha_deg = 0.
         rho = 1.02
-        num_modes = 8
+        num_modes = 4
 
         # Lattice Discretisation
-        M = 14
+        # N = 52
+        # Runs - no cs
+        # M = 32
+        # N = 32
+        # M_star_fact = 10
+        M = 16
         N = 32
         M_star_fact = 10
 
@@ -28,8 +33,8 @@ class TestGolandFlutter(unittest.TestCase):
         # ROM Properties
         rom_settings = dict()
         rom_settings['algorithm'] = 'mimo_rational_arnoldi'
-        rom_settings['r'] = 2
-        frequency_continuous_k = np.array([0.1])
+        rom_settings['r'] = 4
+        frequency_continuous_k = np.array([0.])
 
         # Case Admin - Create results folders
         case_name = 'goland_cs'
@@ -73,7 +78,9 @@ class TestGolandFlutter(unittest.TestCase):
                                        'BeamPlot',
                                        'Modal',
                                        'LinearAssembler',
+                                       'FrequencyResponse',
                                        'AsymptoticStability',
+
                                        ]
         ws.config['LinearAssembler']['linear_system_settings']['aero_settings']['use_sparse'] = use_sparse
         ws.config['LinearAssembler']['linear_system_settings']['aero_settings']['ScalingDict'] = {
@@ -93,7 +100,7 @@ class TestGolandFlutter(unittest.TestCase):
         ws.config['LinearAssembler']['linear_system_settings']['beam_settings']['num_modes'] = num_modes
         ws.config['LinearAssembler']['linear_system_settings']['beam_settings']['remove_sym_modes'] = 'on'
         ws.config['LinearAssembler']['linear_system_settings']['beam_settings']['newmark_damp'] = 0.5e-4
-        ws.config['SHARPy']['write_screen'] = 'off'
+        ws.config['SHARPy']['write_screen'] = 'on'
         ws.config['Modal']['NumLambda'] = 20
         ws.config['Modal']['rigid_body_modes'] = False
         ws.config['Modal']['write_dat'] = True
@@ -102,6 +109,15 @@ class TestGolandFlutter(unittest.TestCase):
         ws.config['NonLinearStatic']['gravity_on'] = 'off'
         ws.config['StaticCoupled']['structural_solver_settings']['gravity_on'] = 'on'
         ws.config['AsymptoticStability']['velocity_analysis'] = [165, 175, 20]
+
+        ws.config['FrequencyResponse'] = {'compute_fom': 'on',
+                                          'load_fom': './output/' + case_name,
+                                          'quick_plot': 'on',
+                                          'folder': './output/',
+                                          'frequency_unit': 'k',
+                                          'frequency_bounds': [0.0001, 1.0],
+                                          }
+
         ws.config.write()
 
         self.data = sharpy.sharpy_main.main(['', ws.route + ws.case_name + '.solver.txt'])
@@ -115,7 +131,7 @@ class TestGolandFlutter(unittest.TestCase):
         print('ROM is stable')
 
     def run_flutter(self):
-        flutter_ref_speed = 169
+        flutter_ref_speed = 166
 
         u_inf = self.data.linear.stability['velocity_results']['u_inf']
         eval_real = self.data.linear.stability['velocity_results']['evals_real']
@@ -123,6 +139,7 @@ class TestGolandFlutter(unittest.TestCase):
 
         # Flutter onset
         ind_zero_real = np.where(eval_real >= 0)[0][0]
+        assert ind_zero_real > 0, 'Flutter speed not below 165.00 m/s'
         flutter_speed = 0.5 * (u_inf[ind_zero_real] + u_inf[ind_zero_real - 1])
         flutter_frequency = np.sqrt(eval_real[ind_zero_real] ** 2 + eval_imag[ind_zero_real] ** 2)
 

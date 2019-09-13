@@ -387,7 +387,7 @@ class FlyingWing():
                      'AerogridPlot', 'BeamPlot', 'SaveData'],
             'case': self.case_name, 'route': self.route,
             'write_screen': 'on', 'write_log': 'on',
-            'log_folder': self.route + '/output/' + self.case_name + '/',
+            'log_folder': './output/' + self.case_name + '/',
             'log_file': self.case_name + '.log'}
 
         config['BeamLoader'] = {
@@ -395,7 +395,7 @@ class FlyingWing():
             'orientation': self.quat}
 
         config['AerogridLoader'] = {
-            'unsteady': 'on',
+            'unsteady': 'off',
             'aligned_grid': 'on',
             'mstar': self.Mstar_fact * self.M,
             'freestream_dir': str_u_inf_direction
@@ -469,17 +469,16 @@ class FlyingWing():
                                           'u_inf_direction': self.u_inf_direction}}
 
         settings['NonLinearDynamicPrescribedStep'] = {'print_info': 'off',
-                                                      'initial_velocity_direction': [-1., 0., 0.],
                                                       'max_iterations': 950,
                                                       'delta_curved': 1e-6,
-                                                      'min_delta': self.tolerance,
+                                                      'min_delta': self.tolerance*1e3,
                                                       'newmark_damp': 5e-3,
                                                       'gravity_on': self.gravity_on,
                                                       'gravity': 9.81,
                                                       'num_steps': self.n_tstep,
                                                       'dt': self.dt}
 
-        settings['StepUvlm'] = {'print_info': 'off',
+        settings['StepUvlm'] = {'print_info': 'on',
                                 'horseshoe': self.horseshoe,
                                 'num_cores': 4,
                                 'n_rollup': 100,
@@ -491,24 +490,24 @@ class FlyingWing():
                                 # 'velocity_field_input': {'turbulent_field': '/2TB/turbsim_fields/TurbSim_wide_long_A_low.h5',
                                 #                          'offset': [30., 0., -10],
                                 #                          'u_inf': 0.},
-                                'velocity_field_generator': 'GustVelocityField',
-                                'velocity_field_input': {'u_inf': self.u_inf,
-                                                         'u_inf_direction': self.u_inf_direction,
-                                                         'gust_shape': 'continuous_sin',
-                                                         'gust_length': self.gust_length,
-                                                         'gust_intensity': self.gust_intensity * self.u_inf,
-                                                         'offset': 15.0,
-                                                         'span': self.main_chord * self.aspect_ratio},
-                                # 'velocity_field_generator': 'SteadyVelocityField',
-                                # 'velocity_field_input': {'u_inf': self.u_inf*1,
-                                #                             'u_inf_direction': [1., 0., 0.]},
+                                # 'velocity_field_generator': 'GustVelocityField',
+                                # 'velocity_field_input': {'u_inf': self.u_inf,
+                                #                          'u_inf_direction': self.u_inf_direction,
+                                #                          'gust_shape': 'continuous_sin',
+                                #                          'gust_length': self.gust_length,
+                                #                          'gust_intensity': self.gust_intensity * self.u_inf,
+                                #                          'offset': 15.0,
+                                #                          'span': self.main_chord * self.aspect_ratio},
+                                'velocity_field_generator': 'SteadyVelocityField',
+                                'velocity_field_input': {'u_inf': self.u_inf*1,
+                                                            'u_inf_direction': [1., 0., 0.]},
                                 'rho': self.rho,
                                 'n_time_steps': self.n_tstep,
                                 'dt': self.dt,
                                 'gamma_dot_filtering': 3}
 
         config['DynamicCoupled'] = {'print_info': 'on',
-                                    'structural_substeps': 1,
+                                    'structural_substeps': 0,
                                     'dynamic_relaxation': 'on',
                                     'clean_up_previous_solution': 'on',
                                     'structural_solver': 'NonLinearDynamicPrescribedStep',
@@ -523,9 +522,9 @@ class FlyingWing():
                                     'final_relaxation_factor': 0.0,
                                     'n_time_steps': self.n_tstep,
                                     'dt': self.dt,
-                                    'include_unsteady_force_contribution': 'on',
+                                    'include_unsteady_force_contribution': 'off',
                                     'postprocessors': ['BeamLoads', 'StallCheck', 'BeamPlot', 'AerogridPlot'],
-                                    'postprocessors_settings': {'BeamLoads': {'folder': self.route + '/output/',
+                                    'postprocessors_settings': {'BeamLoads': {'folder': './output/',
                                                                               'csv_output': 'off'},
                                                                 'StallCheck': {'output_degrees': True,
                                                                                'stall_angles': {
@@ -535,12 +534,12 @@ class FlyingWing():
                                                                                          6 * np.pi / 180],
                                                                                    '2': [-12 * np.pi / 180,
                                                                                          6 * np.pi / 180]}},
-                                                                'BeamPlot': {'folder': self.route + '/output/',
+                                                                'BeamPlot': {'folder': './output/',
                                                                              'include_rbm': 'on',
                                                                              'include_applied_forces': 'on'},
                                                                 'AerogridPlot': {
                                                                     'u_inf': self.u_inf,
-                                                                    'folder': self.route + '/output/',
+                                                                    'folder': './output/',
                                                                     'include_rbm': 'on',
                                                                     'include_applied_forces': 'on',
                                                                     'minus_m_star': 0}}}
@@ -553,35 +552,35 @@ class FlyingWing():
                                  'include_unsteady_force_contribution': 'on',
                                  'postprocessors': ['AerogridPlot'],
                                  'postprocessors_settings': {'AerogridPlot': {'u_inf': self.u_inf,
-                                                                              'folder': self.route + '/output/',
+                                                                              'folder': './output/',
                                                                               'include_rbm': 'off',
                                                                               'include_applied_forces': 'on',
                                                                               'minus_m_star': 0}}
                                  }
 
-        config['AerogridPlot'] = {'folder': self.route + '/output/',
+        config['AerogridPlot'] = {'folder': './output/',
                                   'include_rbm': 'off',
                                   'include_applied_forces': 'on',
                                   'minus_m_star': 0}
 
-        config['AeroForcesCalculator'] = {'folder': self.route + '/output/forces',
+        config['AeroForcesCalculator'] = {'folder': './output/forces',
                                           'write_text_file': 'on',
                                           'text_file_name': self.case_name + '_aeroforces.csv',
                                           'screen_output': 'on',
                                           'unsteady': 'off'}
 
-        config['BeamPlot'] = {'folder': self.route + '/output/',
+        config['BeamPlot'] = {'folder': './output/',
                               'include_rbm': 'off',
                               'include_applied_forces': 'on'}
 
-        config['BeamCsvOutput'] = {'folder': self.route + '/output/',
+        config['BeamCsvOutput'] = {'folder': './output/',
                                    'output_pos': 'on',
                                    'output_psi': 'on',
                                    'screen_output': 'on'}
 
         config['SaveData'] = {'folder': self.route + '/output/' + self.case_name + '/'}
 
-        config['Modal'] = {'folder': self.route + '/output/',
+        config['Modal'] = {'folder': './output/',
                            'NumLambda': 20,
                            'rigid_body_modes': 'off',
                            'print_matrices': 'off',
@@ -628,7 +627,7 @@ class FlyingWing():
                                      'postprocessors': ['BeamPlot', 'AerogridPlot'],
                                      'postprocessors_settings': {'AerogridPlot': {
                                          'u_inf': self.u_inf,
-                                         'folder': self.route + '/output/',
+                                         'folder': './output/',
                                          'include_rbm': 'on',
                                          'include_applied_forces': 'on',
                                          'minus_m_star': 0},
@@ -636,10 +635,11 @@ class FlyingWing():
                                                       'include_rbm': 'on',
                                                       'include_applied_forces': 'on'}}}
 
-        config['FrequencyResponse'] = {'folder': self.route + '/output/',
+        config['FrequencyResponse'] = {'folder': './output/',
                                        'compute_fom': 'on',
                                        'frequency_unit': 'k',
-                                       'frequency_bounds': [0.0001, 1.0]}
+                                       'frequency_bounds': [0.0001, 1.0],
+                                       'quick_plot': 'on'}
 
 
         config.write()
