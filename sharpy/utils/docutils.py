@@ -274,6 +274,8 @@ def create_index_files(docs_folder, folder_title=None, folder_body=None):
         ordered_list = []
         with open(autodocindexfilename, 'w') as outfile:
             outfile.write(folder_title + '\n' + len(folder_title)*'-' + '\n\n')
+            if folder_body is not None:
+                outfile.write(folder_body + '\n')
             outfile.write('.. toctree::\n\t:maxdepth: 1\n\n')
             for item in rst_files:
                 # index_file = item.replace(sharpydir.SharpyDir, '')

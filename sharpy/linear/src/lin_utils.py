@@ -8,8 +8,7 @@ import numpy as np
 
 # linear uvlm
 import sharpy.linear.src.lin_aeroelastic as lin_aeroelastic
-import sharpy.linear.src.libss as libss 
-
+import sharpy.linear.src.libss as libss
 
 
 def comp_tot_force(forces, zeta, zeta_pole=np.zeros((3,))):

@@ -117,7 +117,7 @@ class FlyingWing():
 
         # aeroelasticity
         self.sigma = 1
-        self.main_ea = 0.5
+        self.main_ea = 0.2
         self.main_cg = 0.5
         self.c_ref = 1.  # ref. chord
 
@@ -138,6 +138,19 @@ class FlyingWing():
         self.gust_length = 5
         self.tolerance = 1e-12
 
+        n_lumped_mass = 1
+        self.lumped_mass = np.zeros((n_lumped_mass))
+        self.lumped_mass_position = np.zeros((n_lumped_mass, 3))
+        self.lumped_mass_inertia = np.zeros((n_lumped_mass, 3, 3))
+        self.lumped_mass_nodes = np.zeros((n_lumped_mass), dtype=int)
+
+        # Control surface initialisation
+        self.n_control_surfaces = 0
+        self.control_surface = np.zeros((N + 1, 3), dtype=int) - 1
+        self.control_surface_type = np.zeros((self.n_control_surfaces), dtype=int)
+        self.control_surface_deflection = np.zeros((self.n_control_surfaces,))
+        self.control_surface_chord = np.array([M//2], dtype=int)
+
     def update_mass_stiff(self):
         '''This method can be substituted to produce different wing configs'''
         # uniform mass/stiffness
@@ -154,6 +167,15 @@ class FlyingWing():
 
         self.elem_stiffness = np.zeros((self.num_elem_tot,), dtype=int)
         self.elem_mass = np.zeros((self.num_elem_tot,), dtype=int)
+
+        n_lumped_mass = 1
+        self.lumped_mass = np.zeros((n_lumped_mass))
+        self.lumped_mass_position = np.zeros((n_lumped_mass, 3))
+        self.lumped_mass_inertia = np.zeros((n_lumped_mass, 3, 3))
+        self.lumped_mass_nodes = np.zeros((n_lumped_mass), dtype=int)
+
+        self.lumped_mass[0] = 5.
+        self.lumped_mass_position[0] = np.array([0, 0.25, 0])
 
     def update_derived_params(self):
         ### Derived
@@ -194,6 +216,8 @@ class FlyingWing():
         self.num_elem_surf = self.num_elem_tot // self.n_surfaces
         self.num_node_surf = self.N // self.n_surfaces + 1
         self.num_node_tot = self.N + 1
+
+        self.control_surface = np.zeros((self.num_elem_tot, self.num_node_elem), dtype=int) - 1
 
         # FEM connectivity, coords definition and mapping
         self.update_fem_prop()
@@ -297,6 +321,7 @@ class FlyingWing():
         self.y = y
         self.z = z
 
+
     def update_aero_prop(self):
         assert hasattr(self, 'conn_glob'), \
             'Run "update_derived_params" before generating files'
@@ -361,8 +386,8 @@ class FlyingWing():
                      'StaticCoupled',
                      'AerogridPlot', 'BeamPlot', 'SaveData'],
             'case': self.case_name, 'route': self.route,
-            'write_screen': 'off', 'write_log': 'on',
-            'log_folder': self.route + '/output/',
+            'write_screen': 'on', 'write_log': 'on',
+            'log_folder': './output/' + self.case_name + '/',
             'log_file': self.case_name + '.log'}
 
         config['BeamLoader'] = {
@@ -370,11 +395,19 @@ class FlyingWing():
             'orientation': self.quat}
 
         config['AerogridLoader'] = {
-            'unsteady': 'on',
+            'unsteady': 'off',
             'aligned_grid': 'on',
             'mstar': self.Mstar_fact * self.M,
             'freestream_dir': str_u_inf_direction
         }
+        config['NonLinearStatic'] = {'print_info': 'off',
+                                     'max_iterations': 150,
+                                     'num_load_steps': 4,
+                                     'delta_curved': 1e-5,
+                                     'min_delta': 1e-5,
+                                     'gravity_on': self.gravity_on,
+                                     'gravity': 9.754,
+                                     'orientation': self.quat}
         config['StaticUvlm'] = {
             'rho': self.rho,
             'velocity_field_generator': 'SteadyVelocityField',
@@ -436,17 +469,16 @@ class FlyingWing():
                                           'u_inf_direction': self.u_inf_direction}}
 
         settings['NonLinearDynamicPrescribedStep'] = {'print_info': 'off',
-                                                      'initial_velocity_direction': [-1., 0., 0.],
                                                       'max_iterations': 950,
                                                       'delta_curved': 1e-6,
-                                                      'min_delta': self.tolerance,
+                                                      'min_delta': self.tolerance*1e3,
                                                       'newmark_damp': 5e-3,
                                                       'gravity_on': self.gravity_on,
                                                       'gravity': 9.81,
                                                       'num_steps': self.n_tstep,
                                                       'dt': self.dt}
 
-        settings['StepUvlm'] = {'print_info': 'off',
+        settings['StepUvlm'] = {'print_info': 'on',
                                 'horseshoe': self.horseshoe,
                                 'num_cores': 4,
                                 'n_rollup': 100,
@@ -458,24 +490,24 @@ class FlyingWing():
                                 # 'velocity_field_input': {'turbulent_field': '/2TB/turbsim_fields/TurbSim_wide_long_A_low.h5',
                                 #                          'offset': [30., 0., -10],
                                 #                          'u_inf': 0.},
-                                'velocity_field_generator': 'GustVelocityField',
-                                'velocity_field_input': {'u_inf': self.u_inf,
-                                                         'u_inf_direction': self.u_inf_direction,
-                                                         'gust_shape': 'continuous_sin',
-                                                         'gust_length': self.gust_length,
-                                                         'gust_intensity': self.gust_intensity * self.u_inf,
-                                                         'offset': 15.0,
-                                                         'span': self.main_chord * self.aspect_ratio},
-                                # 'velocity_field_generator': 'SteadyVelocityField',
-                                # 'velocity_field_input': {'u_inf': self.u_inf*1,
-                                #                             'u_inf_direction': [1., 0., 0.]},
+                                # 'velocity_field_generator': 'GustVelocityField',
+                                # 'velocity_field_input': {'u_inf': self.u_inf,
+                                #                          'u_inf_direction': self.u_inf_direction,
+                                #                          'gust_shape': 'continuous_sin',
+                                #                          'gust_length': self.gust_length,
+                                #                          'gust_intensity': self.gust_intensity * self.u_inf,
+                                #                          'offset': 15.0,
+                                #                          'span': self.main_chord * self.aspect_ratio},
+                                'velocity_field_generator': 'SteadyVelocityField',
+                                'velocity_field_input': {'u_inf': self.u_inf*1,
+                                                            'u_inf_direction': [1., 0., 0.]},
                                 'rho': self.rho,
                                 'n_time_steps': self.n_tstep,
                                 'dt': self.dt,
                                 'gamma_dot_filtering': 3}
 
         config['DynamicCoupled'] = {'print_info': 'on',
-                                    'structural_substeps': 1,
+                                    'structural_substeps': 0,
                                     'dynamic_relaxation': 'on',
                                     'clean_up_previous_solution': 'on',
                                     'structural_solver': 'NonLinearDynamicPrescribedStep',
@@ -490,9 +522,9 @@ class FlyingWing():
                                     'final_relaxation_factor': 0.0,
                                     'n_time_steps': self.n_tstep,
                                     'dt': self.dt,
-                                    'include_unsteady_force_contribution': 'on',
+                                    'include_unsteady_force_contribution': 'off',
                                     'postprocessors': ['BeamLoads', 'StallCheck', 'BeamPlot', 'AerogridPlot'],
-                                    'postprocessors_settings': {'BeamLoads': {'folder': self.route + '/output/',
+                                    'postprocessors_settings': {'BeamLoads': {'folder': './output/',
                                                                               'csv_output': 'off'},
                                                                 'StallCheck': {'output_degrees': True,
                                                                                'stall_angles': {
@@ -502,12 +534,12 @@ class FlyingWing():
                                                                                          6 * np.pi / 180],
                                                                                    '2': [-12 * np.pi / 180,
                                                                                          6 * np.pi / 180]}},
-                                                                'BeamPlot': {'folder': self.route + '/output/',
+                                                                'BeamPlot': {'folder': './output/',
                                                                              'include_rbm': 'on',
                                                                              'include_applied_forces': 'on'},
                                                                 'AerogridPlot': {
                                                                     'u_inf': self.u_inf,
-                                                                    'folder': self.route + '/output/',
+                                                                    'folder': './output/',
                                                                     'include_rbm': 'on',
                                                                     'include_applied_forces': 'on',
                                                                     'minus_m_star': 0}}}
@@ -520,35 +552,35 @@ class FlyingWing():
                                  'include_unsteady_force_contribution': 'on',
                                  'postprocessors': ['AerogridPlot'],
                                  'postprocessors_settings': {'AerogridPlot': {'u_inf': self.u_inf,
-                                                                              'folder': self.route + '/output/',
+                                                                              'folder': './output/',
                                                                               'include_rbm': 'off',
                                                                               'include_applied_forces': 'on',
                                                                               'minus_m_star': 0}}
                                  }
 
-        config['AerogridPlot'] = {'folder': self.route + '/output/',
+        config['AerogridPlot'] = {'folder': './output/',
                                   'include_rbm': 'off',
                                   'include_applied_forces': 'on',
                                   'minus_m_star': 0}
 
-        config['AeroForcesCalculator'] = {'folder': self.route + '/output/forces',
+        config['AeroForcesCalculator'] = {'folder': './output/forces',
                                           'write_text_file': 'on',
                                           'text_file_name': self.case_name + '_aeroforces.csv',
                                           'screen_output': 'on',
                                           'unsteady': 'off'}
 
-        config['BeamPlot'] = {'folder': self.route + '/output/',
+        config['BeamPlot'] = {'folder': './output/',
                               'include_rbm': 'off',
                               'include_applied_forces': 'on'}
 
-        config['BeamCsvOutput'] = {'folder': self.route + '/output/',
+        config['BeamCsvOutput'] = {'folder': './output/',
                                    'output_pos': 'on',
                                    'output_psi': 'on',
                                    'screen_output': 'on'}
 
-        config['SaveData'] = {'folder': self.route + '/output/'}
+        config['SaveData'] = {'folder': self.route + '/output/' + self.case_name + '/'}
 
-        config['Modal'] = {'folder': self.route + '/output/',
+        config['Modal'] = {'folder': './output/',
                            'NumLambda': 20,
                            'rigid_body_modes': 'off',
                            'print_matrices': 'off',
@@ -561,6 +593,54 @@ class FlyingWing():
                            'max_displacement': 0.15,
                            'write_modes_vtk': True,
                            'use_undamped_modes': True}
+
+        config['LinearAssembler'] = {'linear_system': 'LinearAeroelastic',
+                                     'linear_system_settings': {
+                                         'beam_settings': {'modal_projection': False,
+                                                           'inout_coords': 'nodes',
+                                                           'discrete_time': True,
+                                                           'newmark_damp': 0.5,
+                                                           'discr_method': 'newmark',
+                                                           'dt': self.dt,
+                                                           'proj_modes': 'undamped',
+                                                           'use_euler': 'off',
+                                                           'num_modes': 40,
+                                                           'print_info': 'on',
+                                                           'gravity': 'on',
+                                                           'remove_dofs': []},
+                                         'aero_settings': {'dt': self.dt,
+                                                           'integr_order': 2,
+                                                           'density': self.rho,
+                                                           'remove_predictor': False,
+                                                           'use_sparse': True,
+                                                           'rigid_body_motion': False,
+                                                           'use_euler': False,
+                                                           'remove_inputs': ['u_gust']},
+                                         'rigid_body_motion': False}}
+
+        config['AsymptoticStability'] = {'print_info': True,
+                                        'velocity_analysis': [30, 180, 151]}
+
+        config['LinDynamicSim'] = {'dt': self.dt,
+                                     'n_tsteps': self.n_tstep,
+                                     'sys_id': 'LinearAeroelastic',
+                                     'postprocessors': ['BeamPlot', 'AerogridPlot'],
+                                     'postprocessors_settings': {'AerogridPlot': {
+                                         'u_inf': self.u_inf,
+                                         'folder': './output/',
+                                         'include_rbm': 'on',
+                                         'include_applied_forces': 'on',
+                                         'minus_m_star': 0},
+                                         'BeamPlot': {'folder': self.route + '/output/',
+                                                      'include_rbm': 'on',
+                                                      'include_applied_forces': 'on'}}}
+
+        config['FrequencyResponse'] = {'folder': './output/',
+                                       'compute_fom': 'on',
+                                       'frequency_unit': 'k',
+                                       'frequency_bounds': [0.0001, 1.0],
+                                       'quick_plot': 'on'}
+
 
         config.write()
         self.config = config
@@ -594,6 +674,14 @@ class FlyingWing():
                 'aero_node', data=self.aero_node)
             elastic_axis_input = h5file.create_dataset(
                 'elastic_axis', data=self.elastic_axis)
+            control_surface_input = h5file.create_dataset(
+                'control_surface', data=self.control_surface)
+            control_surface_type_input = h5file.create_dataset(
+                'control_surface_type', data=self.control_surface_type)
+            control_surface_deflection_input = h5file.create_dataset(
+                'control_surface_deflection', data=self.control_surface_deflection)
+            control_surface_chord_input = h5file.create_dataset(
+                'control_surface_chord', data=self.control_surface_chord)
 
     def generate_fem_file(self):
 
@@ -629,6 +717,25 @@ class FlyingWing():
                 'beam_number', data=self.surface_number)
             app_forces_handle = h5file.create_dataset(
                 'app_forces', data=np.zeros((self.num_node_tot, 6)))
+            lumped_mass_handle = h5file.create_dataset(
+                'lumped_mass', data=self.lumped_mass)
+            lumped_mass_inertia_handle = h5file.create_dataset(
+                'lumped_mass_inertia', data=self.lumped_mass_inertia)
+            lumped_mass_position_handle = h5file.create_dataset(
+                'lumped_mass_position', data=self.lumped_mass_position)
+            lumped_mass__nodes_handle = h5file.create_dataset(
+                'lumped_mass_nodes', data=self.lumped_mass_nodes)
+
+    def generate_rom_files(self, left_tangent, right_tangent, ro, rc, fo, fc):
+        with h5.File(self.route + '/' + self.case_name + '.rom.h5', 'a') as h5file:
+            lt_handle = h5file.create_dataset('left_tangent',
+                                              data=left_tangent)
+            rt_handle = h5file.create_dataset('right_tangent',
+                                              data=right_tangent)
+            ro_h = h5file.create_dataset('ro', data=ro)
+            fo_h = h5file.create_dataset('fo', data=fo)
+            fc_h = h5file.create_dataset('fc', data=fc)
+            rc_h = h5file.create_dataset('rc', data=rc)
 
     def clean_test_files(self):
         fem_file_name = self.route + '/' + self.case_name + '.fem.h5'
@@ -647,6 +754,13 @@ class FlyingWing():
         if os.path.isfile(flightcon_file_name):
             os.remove(flightcon_file_name)
 
+        lininput_file_name = self.route + '/' + self.case_name + '.lininput.h5'
+        if os.path.isfile(lininput_file_name):
+            os.remove(lininput_file_name)
+
+        rom_file = self.route + '/' + self.case_name + '.rom.h5'
+        if os.path.isfile(rom_file):
+            os.remove(rom_file)
 
 class Smith(FlyingWing):
     ''' 
@@ -793,6 +907,136 @@ class Goland(FlyingWing):
         self.elem_stiffness = np.zeros((self.num_elem_tot,), dtype=int)
         self.elem_mass = np.zeros((self.num_elem_tot,), dtype=int)
 
+
+class GolandControlSurface(Goland):
+
+    def __init__(self,
+                 M, N,  # chord/span-wise discretisations
+                 Mstar_fact,
+                 u_inf,  # flight cond
+                 alpha,
+                 cs_deflection=[0],
+                 rho=1.02,
+                 b_ref=2. * 6.096,  # geometry
+                 main_chord=1.8288,
+                 aspect_ratio=(2. * 6.096) / 1.8288,
+                 roll=0.,
+                 yaw=0.,
+                 beta=0.,
+                 sweep=0.,
+                 n_surfaces=1,
+                 physical_time=2,
+                 route='.',
+                 case_name='goland',
+                 RollNodes=False):
+
+        super().__init__(M=M, N=N,
+                         Mstar_fact=Mstar_fact,
+                         u_inf=u_inf,
+                         alpha=alpha,
+                         rho=rho,
+                         b_ref=b_ref,
+                         main_chord=main_chord,
+                         aspect_ratio=aspect_ratio,
+                         roll=roll,
+                         beta=beta,
+                         yaw=yaw,
+                         sweep=sweep,
+                         physical_time=physical_time,
+                         n_surfaces=n_surfaces,
+                         route=route,
+                         case_name=case_name,
+                         RollNodes=RollNodes)
+
+        # aeroelasticity parameters
+        self.main_ea = 0.33
+        self.main_cg = 0.43
+        self.sigma = 1
+
+        self.n_control_surfaces = len(cs_deflection)
+        self.control_surface_deflection = np.zeros(self.n_control_surfaces, dtype=float)
+        for i in range(len(cs_deflection)):
+            self.control_surface_deflection[i] = cs_deflection[i] * np.pi/180
+        self.control_surface_chord = M // 2 * np.ones(self.n_control_surfaces, dtype=int)
+        self.control_surface_type = np.zeros(self.n_control_surfaces, dtype=int)
+        # other
+        self.c_ref = 1.8288
+
+    def update_aero_prop(self):
+        assert hasattr(self, 'conn_glob'), \
+            'Run "update_derived_params" before generating files'
+
+        n_surfaces = self.n_surfaces
+        num_node_surf = self.num_node_surf
+        num_node_tot = self.num_node_tot
+        num_elem_surf = self.num_elem_surf
+        num_elem_tot = self.num_elem_tot
+
+        control_surface = self.control_surface
+
+        ### Generate aerofoil profiles. Only on surf 0.
+        Airfoils_surf = []
+        if n_surfaces == 2:
+            for inode in range(num_node_surf):
+                eta = inode / num_node_surf
+                Airfoils_surf.append(
+                    np.column_stack(
+                        geo_utils.interpolate_naca_camber(
+                            eta,
+                            self.root_airfoil_M, self.root_airfoil_P,
+                            self.tip_airfoil_M, self.tip_airfoil_P)))
+                # if inode >= num_node_surf // 2:
+            ws_elem = 0
+            for i_surf in range(2):
+                print('Surface' + str(i_surf))
+                for i_elem in range(num_elem_surf):
+                    for i_local_node in range(self.num_node_elem):
+                        if i_elem >= num_elem_surf // 2:
+                            if i_surf == 0:
+                                control_surface[ws_elem + i_elem, i_local_node] = 0  # Right flap
+                            else:
+                                control_surface[ws_elem + i_elem, i_local_node] = 1  # Left flap
+                ws_elem += num_elem_surf
+                        # control_surface[i_elem, i_local_node] = 0
+
+            airfoil_distribution_surf = self.conn_surf
+            airfoil_distribution = np.concatenate([airfoil_distribution_surf,
+                                                   airfoil_distribution_surf[::-1, [1, 0, 2]]])
+            control_surface[-num_elem_surf:] = control_surface[-num_elem_surf:, :][::-1]
+
+        if n_surfaces == 1:
+            num_node_half = (num_node_surf + 1) // 2
+            for inode in range(num_node_half):
+                eta = inode / num_node_half
+                Airfoils_surf.append(
+                    np.column_stack(
+                        geo_utils.interpolate_naca_camber(
+                            eta,
+                            self.root_airfoil_M, self.root_airfoil_P,
+                            self.tip_airfoil_M, self.tip_airfoil_P)))
+            airfoil_distribution_surf = self.conn_surf[:num_elem_surf // 2, :]
+            airfoil_distribution = np.concatenate([
+                airfoil_distribution_surf[::-1, [1, 0, 2]],
+                airfoil_distribution_surf])
+
+        self.Airfoils_surf = Airfoils_surf
+        self.airfoil_distribution = airfoil_distribution
+
+        ### others
+        self.aero_node = np.ones((num_node_tot,), dtype=bool)
+        self.surface_m = self.M * np.ones((n_surfaces,), dtype=int)
+
+        self.twist = np.zeros((num_elem_tot, 3))
+        self.chord = self.main_chord * np.ones((num_elem_tot, 3))
+        self.elastic_axis = self.main_ea * np.ones((num_elem_tot, 3,))
+        self.control_surface = control_surface
+
+    def create_linear_files(self, x0, input_vec):
+        with h5.File(self.route + '/' + self.case_name + '.lininput.h5', 'a') as h5file:
+            x0 = h5file.create_dataset(
+                'x0', data=x0)
+            u = h5file.create_dataset(
+                'u', data=input_vec)
 
 class QuasiInfinite(FlyingWing):
     ''' 

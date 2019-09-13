@@ -4,7 +4,7 @@ import numpy as np
 import os
 import sharpy.utils.algebra as algebra
 
-case_name = 'simple_HALE'
+case_name = 'simple_HALE_phugoid'
 route = os.path.dirname(os.path.realpath(__file__)) + '/'
 
 # EXECUTION
@@ -50,6 +50,7 @@ lambda_dihedral = 20*np.pi/180
 gust_intensity = 0.20
 gust_length = 1*u_inf
 gust_offset = 0.5*u_inf
+
 
 # numerics
 n_step = 1
@@ -113,10 +114,18 @@ n_elem_fuselage = int(2*n_elem_multiplier)
 n_surfaces = 5
 
 # temporal discretisation
-physical_time = 30
+physical_time = 100
 tstep_factor = 1.
 dt = 1.0/m/u_inf*tstep_factor
 n_tstep = round(physical_time/dt)
+
+
+# elevator deflection
+dynamic_elevator = 1
+delta_e = np.zeros(n_tstep) + cs_deflection
+delta_e[10:150] += 2 * np.pi / 180
+elev_file = route + '/' + case_name + '.input.txt'
+np.savetxt(elev_file, delta_e)
 
 # END OF INPUT-----------------------------------------------------------------
 
@@ -472,7 +481,7 @@ def generate_aero_file():
 
     # control surface type 0 = static
     # control surface type 1 = dynamic
-    control_surface_type[0] = 0
+    control_surface_type[0] = dynamic_elevator
     control_surface_deflection[0] = cs_deflection
     control_surface_chord[0] = m
     control_surface_hinge_coord[0] = -0.25 # nondimensional wrt elastic axis (+ towards the trailing edge)
@@ -668,10 +677,11 @@ def generate_solver_file():
                                   'aligned_grid': 'on',
                                   'mstar': int(20/tstep_factor),
                                   'freestream_dir': ['1', '0', '0'],
-                                  'control_surface_deflection': ['', ''],
+                                  'control_surface_deflection': ['DynamicControlSurface', ''],
                                   'control_surface_deflection_generator':
-                                  {'0': {},
-                                   '1': {}}}
+                                  [{'dt': dt,
+                                    'deflection_file': elev_file},
+                                   {}]}
 
     settings['NonLinearStatic'] = {'print_info': 'off',
                                    'max_iterations': 150,
@@ -802,7 +812,38 @@ def generate_solver_file():
                                 'u_inf': u_inf,
                                 'dt': dt}
 
+    settings['LinearAssembler'] = {'linear_system': 'LinearAeroelastic',
+                                    'linear_system_settings': {
+                                        'beam_settings': {'modal_projection': False,
+                                                          'inout_coords': 'nodes',
+                                                          'discrete_time': True,
+                                                          'newmark_damp': 0.5,
+                                                          'discr_method': 'newmark',
+                                                          'dt': dt,
+                                                          'proj_modes': 'undamped',
+                                                          'use_euler': 'off',
+                                                          'num_modes': 40,
+                                                          'print_info': 'on',
+                                                          'gravity': 'on',
+                                                          'remove_dofs': []},
+                                        'aero_settings': {'dt': dt,
+                                                          'integr_order': 2,
+                                                          'density': rho * 1,
+                                                          'remove_predictor': False,
+                                                          'use_sparse': True,
+                                                          'rigid_body_motion': True,
+                                                          'use_euler': False,
+                                                          'remove_inputs': ['u_gust']},
+                                        'rigid_body_motion': True}}
 
+    settings['AsymptoticStability'] = {'sys_id': 'LinearAeroelastic',
+                                        'print_info': 'on',
+                                        'modes_to_plot': [],  # [0, 13, 15, 17, 19, 21, 23, 33],
+                                        'display_root_locus': 'off',
+                                        'frequency_cutoff': 0,
+                                        'export_eigenvalues': 'off',
+                                        'num_evals': 40,
+                                        'folder': route + '/output/'}
 
 
     import configobj

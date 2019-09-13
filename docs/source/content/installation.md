@@ -1,5 +1,5 @@
 # SHARPy Installation Guide
-__Last revision 13 December 2018__
+__Last revision 30 August 2019__
 
 The following step by step tutorial will guide you through the installation process of SHARPy.
 
