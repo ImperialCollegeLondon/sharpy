@@ -5,6 +5,7 @@ import matplotlib.pyplot as plt
 import sharpy.utils.solver_interface as solver_interface
 import sharpy.utils.settings as settings_utils
 import sharpy.utils.cout_utils as cout
+import warnings
 
 
 @solver_interface.solver
@@ -27,6 +28,10 @@ class FrequencyResponse(solver_interface.BaseSolver):
     settings_types['compute_fom'] = 'bool'
     settings_default['compute_fom'] = False
     settings_description['compute_fom'] = 'Compute frequency response of full order model (use caution if large)'
+
+    settings_types['load_fom'] = 'str'
+    settings_default['load_fom'] = ''
+    settings_description['load_fom'] = 'Folder to locate full order model frequency response data'
 
     settings_types['frequency_unit'] = 'str'
     settings_default['frequency_unit'] = 'k'
@@ -102,6 +107,12 @@ class FrequencyResponse(solver_interface.BaseSolver):
         nfreqs = self.settings['num_freqs'].value
         self.wv = np.linspace(lb, ub, nfreqs)
 
+        if not os.path.exists(self.settings['folder']):
+            os.makedirs(self.settings['folder'])
+        self.folder = self.settings['folder'] + '/' + self.data.settings['SHARPy']['case'] + '/frequencyresponse/'
+        if not os.path.exists(self.folder):
+            os.makedirs(self.folder)
+
     def run(self):
         """
         Get the frequency response of the linear state-space
@@ -111,14 +122,26 @@ class FrequencyResponse(solver_interface.BaseSolver):
         Y_freq_rom = None
         Y_freq_fom = None
 
+        compute_fom = False
+
+        if self.settings['load_fom'] != '':
+            if os.path.exists(self.settings['load_fom'] + '/frequencyresponse/'):
+                try:
+                    Y_freq_fom = self.load_frequency_data()
+                except OSError:
+                    compute_fom = True
+            else:
+                compute_fom = True
+
         cout.cout_wrap('Computing frequency response...')
-        if self.settings['compute_fom'].value:
+        if (self.settings['compute_fom'].value and self.settings['load_fom'] == '') or compute_fom:
             cout.cout_wrap('Full order system:', 1)
             t0fom = time.time()
             Y_freq_fom = self.ss.freqresp(self.wv)
             tfom = time.time() - t0fom
             self.save_freq_resp(self.wv, Y_freq_fom, 'fom')
             cout.cout_wrap('\tComputed the frequency response of the full order system in %f s' %tfom, 2)
+
         if self.ssrom is not None:
             cout.cout_wrap('Reduced order system:', 1)
             t0rom = time.time()
@@ -127,6 +150,8 @@ class FrequencyResponse(solver_interface.BaseSolver):
             cout.cout_wrap('\tComputed the frequency response of the reduced order system in %f s' %trom, 2)
             self.save_freq_resp(self.wv, Y_freq_rom, 'rom')
 
+            self.frequency_error(Y_freq_fom, Y_freq_rom)
+
         if self.settings['quick_plot'].value:
             self.quick_plot(Y_freq_fom, Y_freq_rom)
 
@@ -134,11 +159,6 @@ class FrequencyResponse(solver_interface.BaseSolver):
 
     def save_freq_resp(self, wv, Yfreq, filename):
 
-        if not os.path.exists(self.settings['folder']):
-            os.makedirs(self.settings['folder'])
-        self.folder = self.settings['folder'] + '/' + self.data.settings['SHARPy']['case'] + '/frequencyresponse/'
-        if not os.path.exists(self.folder):
-            os.makedirs(self.folder)
 
         with open(self.folder + '/freqdata_readme.txt', 'w') as outfile:
             outfile.write('Frequency Response Data Output\n\n')
@@ -155,29 +175,74 @@ class FrequencyResponse(solver_interface.BaseSolver):
                            freq_2_cols)
 
     def quick_plot(self, Y_freq_fom=None, Y_freq_rom=None):
-        fig1, ax1 = plt.subplots(nrows=self.ss.inputs, ncols=self.ss.outputs, sharex=True)
-        fig2, ax2 = plt.subplots(nrows=self.ss.inputs, ncols=self.ss.outputs, sharex=True)
+        cout.cout_wrap('Creating Quick plots of the frequency response')
         for mj in range(self.ss.inputs):
             for pj in range(self.ss.outputs):
+                fig1, ax1 = plt.subplots()
+                fig_title = 'in%02g_out%02g' % (mj, pj)
+                ax1.set_title(fig_title)
                 if Y_freq_fom is not None:
-                    ax1[mj, pj].plot(self.wv * self.w_to_k, Y_freq_fom[pj, mj, :].real, color='C0')
-                    ax2[mj, pj].plot(self.wv * self.w_to_k, Y_freq_fom[pj, mj, :].imag, '--', color='C0')
+                    ax1.plot(self.wv * self.w_to_k, Y_freq_fom[pj, mj, :].real, color='C0', label='Real FOM')
+                    ax1.plot(self.wv * self.w_to_k, Y_freq_fom[pj, mj, :].imag, '--', color='C0', label='Imag FOM')
                 if Y_freq_rom is not None:
-                    ax1[mj, pj].plot(self.wv * self.w_to_k, Y_freq_rom[pj, mj, :].real, color='C1')
-                    ax2[mj, pj].plot(self.wv * self.w_to_k, Y_freq_rom[pj, mj, :].imag, '--', color='C1')
+                    ax1.plot(self.wv * self.w_to_k, Y_freq_rom[pj, mj, :].real, color='C1', label='Real ROM')
+                    ax1.plot(self.wv * self.w_to_k, Y_freq_rom[pj, mj, :].imag, '--', color='C1', label='Imag FOM')
+                ax1.legend()
+                if self.settings['frequency_unit'] == 'k':
+                    ax1.set_xlabel('Reduced Frequency, k [-]')
+                else:
+                    ax1.set_xlabel('Frequency, $\omega$ [rad/s]')
 
-        if self.settings['frequency_unit'] == 'k':
-            [ax1[-1, p].set_xlabel('Reduced Frequency, k [-]') for p in range(self.ss.outputs)]
-            [ax2[-1, p].set_xlabel('Reduced Frequency, k [-]') for p in range(self.ss.outputs)]
-        else:
-            [ax1[-1, p].set_xlabel('Reduced Frequency, $\omega$ [rad/s]') for p in range(self.ss.outputs)]
-            [ax2[-1, p].set_xlabel('Reduced Frequency, $\omega$ [rad/s]') for p in range(self.ss.outputs)]
+                ax1.set_ylabel('Y')
+                fig1.savefig(self.folder + '/' + fig_title + '.png')
 
-        [ax1[m, 0].set_ylabel('Real Y') for m in range(self.ss.inputs)]
-        [ax2[m, 0].set_ylabel('Imag Y') for m in range(self.ss.inputs)]
+    def load_frequency_data(self):
+        cout.cout_wrap('Loading frequency response')
+        Y_freq_fom = np.zeros((self.ss.outputs, self.ss.inputs, len(self.wv)), dtype=complex)
+        for m in range(self.ss.inputs):
+            for p in range(self.ss.outputs):
+                y_load = np.loadtxt(self.settings['load_fom'] +
+                                    '/frequencyresponse/Y_freq_fom_m%02g_p%02g.dat' %(m,p)).view(complex)
+                y_load.shape = (y_load.shape[0], )
+                Y_freq_fom[p, m, :] = y_load
 
-        fig1.show()
-        fig2.show()
+        return Y_freq_fom
+
+    def frequency_error(self, Y_fom, Y_rom):
+
+        cout.cout_wrap('Computing error in frequency response')
+        max_error = np.zeros((self.ss.outputs, self.ss.inputs, 2))
+        for m in range(self.ss.inputs):
+            for p in range(self.ss.outputs):
+                cout.cout_wrap('m = %g, p = %g' %(m, p))
+                max_error[p, m, 0] = error_between_signals(Y_fom[p, m, :].real,
+                                                                Y_rom[p, m, :].real,
+                                                                self.wv, 'real')
+                max_error[p, m, 1] = error_between_signals(Y_fom[p, m, :].imag,
+                                                                Y_rom[p, m, :].imag,
+                                                                self.wv, 'imag')
+
+        if np.max(np.log10(max_error)) >= 0:
+            warnings.warn('Significant mismatch in the frequency response of the ROM and FOM')
+
+
+def error_between_signals(sig1, sig2, wv, sig_title=''):
+    abs_error = np.abs(sig1 - sig2)
+    max_error = np.max(abs_error)
+    max_error_index = np.argmax(abs_error)
+    pct_error = max_error/sig1[max_error_index]
+
+    max_err_freq = wv[max_error_index]
+    if 1e-1 > max_error > 1e-3:
+        c = 3
+    elif max_error >= 1e-1:
+        c = 4
+    else:
+        c = 1
+    cout.cout_wrap('\tError Magnitude -%s-: log10(error) = %.2f (%.2f pct) at %.2f rad/s'
+                   % (sig_title, np.log10(max_error), pct_error, max_err_freq), c)
+
+    return max_error
 
     # def plot_frequency_response(self, kv, Y_freq_ss, Y_freq_rom, interp_frequencies):
     #

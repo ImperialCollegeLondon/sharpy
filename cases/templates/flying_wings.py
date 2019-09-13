@@ -387,7 +387,7 @@ class FlyingWing():
                      'AerogridPlot', 'BeamPlot', 'SaveData'],
             'case': self.case_name, 'route': self.route,
             'write_screen': 'on', 'write_log': 'on',
-            'log_folder': self.route + '/output/' + self.case_name + '/',
+            'log_folder': './output/' + self.case_name + '/',
             'log_file': self.case_name + '.log'}
 
         config['BeamLoader'] = {
@@ -525,7 +525,7 @@ class FlyingWing():
                                     'dt': self.dt,
                                     'include_unsteady_force_contribution': 'on',
                                     'postprocessors': ['BeamLoads', 'StallCheck', 'BeamPlot', 'AerogridPlot'],
-                                    'postprocessors_settings': {'BeamLoads': {'folder': self.route + '/output/',
+                                    'postprocessors_settings': {'BeamLoads': {'folder': './output/',
                                                                               'csv_output': 'off'},
                                                                 'StallCheck': {'output_degrees': True,
                                                                                'stall_angles': {
@@ -535,12 +535,12 @@ class FlyingWing():
                                                                                          6 * np.pi / 180],
                                                                                    '2': [-12 * np.pi / 180,
                                                                                          6 * np.pi / 180]}},
-                                                                'BeamPlot': {'folder': self.route + '/output/',
+                                                                'BeamPlot': {'folder': './output/',
                                                                              'include_rbm': 'on',
                                                                              'include_applied_forces': 'on'},
                                                                 'AerogridPlot': {
                                                                     'u_inf': self.u_inf,
-                                                                    'folder': self.route + '/output/',
+                                                                    'folder': './output/',
                                                                     'include_rbm': 'on',
                                                                     'include_applied_forces': 'on',
                                                                     'minus_m_star': 0}}}
@@ -553,35 +553,35 @@ class FlyingWing():
                                  'include_unsteady_force_contribution': 'on',
                                  'postprocessors': ['AerogridPlot'],
                                  'postprocessors_settings': {'AerogridPlot': {'u_inf': self.u_inf,
-                                                                              'folder': self.route + '/output/',
+                                                                              'folder': './output/',
                                                                               'include_rbm': 'off',
                                                                               'include_applied_forces': 'on',
                                                                               'minus_m_star': 0}}
                                  }
 
-        config['AerogridPlot'] = {'folder': self.route + '/output/',
+        config['AerogridPlot'] = {'folder': './output/',
                                   'include_rbm': 'off',
                                   'include_applied_forces': 'on',
                                   'minus_m_star': 0}
 
-        config['AeroForcesCalculator'] = {'folder': self.route + '/output/forces',
+        config['AeroForcesCalculator'] = {'folder': './output/forces',
                                           'write_text_file': 'on',
                                           'text_file_name': self.case_name + '_aeroforces.csv',
                                           'screen_output': 'on',
                                           'unsteady': 'off'}
 
-        config['BeamPlot'] = {'folder': self.route + '/output/',
+        config['BeamPlot'] = {'folder': './output/',
                               'include_rbm': 'off',
                               'include_applied_forces': 'on'}
 
-        config['BeamCsvOutput'] = {'folder': self.route + '/output/',
+        config['BeamCsvOutput'] = {'folder': './output/',
                                    'output_pos': 'on',
                                    'output_psi': 'on',
                                    'screen_output': 'on'}
 
         config['SaveData'] = {'folder': self.route + '/output/' + self.case_name + '/'}
 
-        config['Modal'] = {'folder': self.route + '/output/',
+        config['Modal'] = {'folder': './output/',
                            'NumLambda': 20,
                            'rigid_body_modes': 'off',
                            'print_matrices': 'off',
@@ -628,7 +628,7 @@ class FlyingWing():
                                      'postprocessors': ['BeamPlot', 'AerogridPlot'],
                                      'postprocessors_settings': {'AerogridPlot': {
                                          'u_inf': self.u_inf,
-                                         'folder': self.route + '/output/',
+                                         'folder': './output/',
                                          'include_rbm': 'on',
                                          'include_applied_forces': 'on',
                                          'minus_m_star': 0},
@@ -636,10 +636,11 @@ class FlyingWing():
                                                       'include_rbm': 'on',
                                                       'include_applied_forces': 'on'}}}
 
-        config['FrequencyResponse'] = {'folder': self.route + '/output/',
+        config['FrequencyResponse'] = {'folder': './output/',
                                        'compute_fom': 'on',
                                        'frequency_unit': 'k',
-                                       'frequency_bounds': [0.0001, 1.0]}
+                                       'frequency_bounds': [0.0001, 1.0],
+                                       'quick_plot': 'on'}
 
 
         config.write()
