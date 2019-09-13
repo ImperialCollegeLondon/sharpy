@@ -100,7 +100,7 @@ class TestGolandFlutter(unittest.TestCase):
         ws.config['LinearAssembler']['linear_system_settings']['beam_settings']['num_modes'] = num_modes
         ws.config['LinearAssembler']['linear_system_settings']['beam_settings']['remove_sym_modes'] = 'on'
         ws.config['LinearAssembler']['linear_system_settings']['beam_settings']['newmark_damp'] = 0.5e-4
-        ws.config['SHARPy']['write_screen'] = 'on'
+        ws.config['SHARPy']['write_screen'] = 'off'
         ws.config['Modal']['NumLambda'] = 20
         ws.config['Modal']['rigid_body_modes'] = False
         ws.config['Modal']['write_dat'] = True
