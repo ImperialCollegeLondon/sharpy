@@ -13,10 +13,9 @@ import sharpy.linear.src.interp as interp
 import sharpy.linear.src.multisurfaces as multisurfaces
 import sharpy.linear.src.assembly as ass
 import sharpy.linear.src.libss as libss
-import sharpy.linear.src.librom as librom
 
 import sharpy.linear.src.libsparse as libsp
-import sharpy.linear.src.librom as librom 
+import sharpy.rom.utils.librom as librom
 import sharpy.utils.algebra as algebra
 import sharpy.utils.settings as settings
 import sharpy.utils.cout_utils as cout
@@ -1223,22 +1222,22 @@ class Dynamic(Static):
 
         Opt = DictBalFreq['options_low']
         if DictBalFreq['method_low'] == 'trapz':
-            kv_low, wv_low=librom.get_trapz_weights(0., DictBalFreq['frequency'],
-                                                           Opt['points'], False)
+            kv_low, wv_low= librom.get_trapz_weights(0., DictBalFreq['frequency'],
+                                                     Opt['points'], False)
         elif DictBalFreq['method_low'] == 'gauss':
-            kv_low, wv_low=librom.get_gauss_weights(0., DictBalFreq['frequency'],
-                                                 Opt['partitions'],Opt['order'])
+            kv_low, wv_low= librom.get_gauss_weights(0., DictBalFreq['frequency'],
+                                                     Opt['partitions'], Opt['order'])
         else:
             raise NameError(
                 'Invalid value %s for key "method_low"' % DictBalFreq['method_low'])
 
         Opt = DictBalFreq['options_high']
         if DictBalFreq['method_high'] == 'trapz':
-            kv_high, wv_high=librom.get_trapz_weights(DictBalFreq['frequency'], kn,
-                                                            Opt['points'], True)
+            kv_high, wv_high= librom.get_trapz_weights(DictBalFreq['frequency'], kn,
+                                                       Opt['points'], True)
         elif DictBalFreq['method_high'] == 'gauss':
-            kv_high, wv_high=librom.get_gauss_weights(DictBalFreq['frequency'], kn,
-                                                 Opt['partitions'],Opt['order'])
+            kv_high, wv_high= librom.get_gauss_weights(DictBalFreq['frequency'], kn,
+                                                       Opt['partitions'], Opt['order'])
         else:
             raise NameError(
                 'Invalid value %s for key "method_high"' % DictBalFreq['method_high'])
@@ -2247,11 +2246,11 @@ class DynamicBlock(Dynamic):
 
         Opt = DictBalFreq['options_low']
         if DictBalFreq['method_low'] == 'trapz':
-            kv_low, wv_low=librom.get_trapz_weights(0., DictBalFreq['frequency'],
-                                                           Opt['points'], False)
+            kv_low, wv_low= librom.get_trapz_weights(0., DictBalFreq['frequency'],
+                                                     Opt['points'], False)
         elif DictBalFreq['method_low'] == 'gauss':
-            kv_low, wv_low=librom.get_gauss_weights(0., DictBalFreq['frequency'],
-                                                 Opt['partitions'],Opt['order'])
+            kv_low, wv_low= librom.get_gauss_weights(0., DictBalFreq['frequency'],
+                                                     Opt['partitions'], Opt['order'])
         else:
             raise NameError(
                 'Invalid value %s for key "method_low"' % DictBalFreq['method_low'])
@@ -2262,15 +2261,15 @@ class DynamicBlock(Dynamic):
                 warnings.warn('You have chosen no points in high frequency range!')
                 kv_high, wv_high = [], []
             else:
-                kv_high, wv_high=librom.get_trapz_weights(DictBalFreq['frequency'], kn,
-                                                            Opt['points'], True)
+                kv_high, wv_high= librom.get_trapz_weights(DictBalFreq['frequency'], kn,
+                                                           Opt['points'], True)
         elif DictBalFreq['method_high'] == 'gauss':
             if Opt['order']*Opt['partitions']==0:
                 warnings.warn('You have chosen no points in high frequency range!')
                 kv_high, wv_high = [], []
             else:
-                kv_high, wv_high=librom.get_gauss_weights(DictBalFreq['frequency'], kn,
-                                                 Opt['partitions'],Opt['order'])
+                kv_high, wv_high= librom.get_gauss_weights(DictBalFreq['frequency'], kn,
+                                                           Opt['partitions'], Opt['order'])
         else:
             raise NameError(
                 'Invalid value %s for key "method_high"' % DictBalFreq['method_high'])

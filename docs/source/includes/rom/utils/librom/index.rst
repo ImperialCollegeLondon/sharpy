@@ -1,7 +1,7 @@
-Python tools for model reduction
-++++++++++++++++++++++++++++++++
+General ROM utilities
++++++++++++++++++++++
 
-Python tools for model reduction
+
 S. Maraniello, 14 Feb 2018
 
 
