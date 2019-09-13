@@ -138,7 +138,9 @@ todo_include_todos = False
 # http://www.sphinx-doc.org/en/master/usage/extensions/autodoc.html#confval-autodoc_mock_imports
 autodoc_mock_imports = ["matplotlib", "numpy", "colorama", "h5py", "scipy", "ctypes", "tvtk",
                         "sharpy.lib", "sharpy.utils.ctypes_utils", "sharpy.linear.src.libuvlm",
-                        "sharpy.linear.src.lib_dbiot", "sharpy.linear", "lxml"]
+                        "sharpy.linear.src.lib_dbiot", "pandas", "lxml", 'mpl_toolkits', 'sharpy.linear',
+                                                                         ' sharpy.aero.utils', 'yaml',
+                        'sharpy.aero.utils.uvlmlib', 'sharpy.structure.utils.xbeamlib']
                         # "interp", "multisurfaces", "assembly", "libss",]
 
                         # Note: N. Goizueta 3/12/18: mocking imports from sharpy.linear.src that contain numpy
@@ -310,7 +312,7 @@ latex_elements = {
 
      # Additional stuff for the LaTeX preamble.
      #
-     # 'preamble': '',
+     'preamble': '\setcounter{tocdepth}{2}',
 
      # Latex figure (float) alignment
      #

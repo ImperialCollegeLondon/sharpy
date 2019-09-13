@@ -1,3 +1,5 @@
+"""SHARPy Exception Classes
+"""
 import sharpy.utils.cout_utils as cout
 
 
@@ -15,7 +17,6 @@ class NoDefaultValueException(DefaultValueBaseException):
             cout.cout_wrap.print_separator(3)
             cout.cout_wrap("The variable " + variable + " has no default value, please indicate one", 3)
             cout.cout_wrap.print_separator(3)
-
 
 
 class NotValidInputFile(Exception):
@@ -36,4 +37,23 @@ class NotConvergedStructuralSolver(Exception):
     def __init__(self, solver_name, n_iter=None, message=''):
         super().__init__(message)
         cout.cout_wrap("The solver " + solver_name + " did not converge in " + str(n_iter) + " iterations.", 3)
+
+
+class DocumentationError(Exception):
+    """
+    Error in documentation
+    """
+    try:
+        cout.cout_wrap('Documentation for module has been given no title')
+    except ValueError:
+        pass
+
+
+class NotConvergedSolver(Exception):
+    """
+    To be raised when the solver does not converge. Before this, SHARPy
+    would add a pdb trace, but this causes problems when using SHARPy
+    as a black box.
+    """
+    pass
 

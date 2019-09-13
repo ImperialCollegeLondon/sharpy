@@ -1,3 +1,4 @@
+import os
 import sys
 import argparse
 import sharpy.utils.exceptions as exceptions
@@ -13,7 +14,6 @@ def read_settings(args):
 
 
 def parse_settings(file):
-    import os
     from sharpy.utils.settings import load_config_file
     settings = load_config_file(os.path.realpath(file))
     try:

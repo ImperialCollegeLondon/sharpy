@@ -1,5 +1,6 @@
 import ctypes as ct
 import time
+import copy
 
 import numpy as np
 
@@ -11,6 +12,7 @@ from sharpy.utils.solver_interface import solver, BaseSolver
 import sharpy.utils.settings as settings
 import sharpy.utils.algebra as algebra
 import sharpy.structure.utils.xbeamlib as xbeam
+import sharpy.utils.exceptions as exc
 
 
 @solver
@@ -26,82 +28,106 @@ class DynamicCoupled(BaseSolver):
     solver_id = 'DynamicCoupled'
     solver_classification = 'Aeroelastic'
 
+    settings_types = dict()
+    settings_default = dict()
+    settings_description = dict()
+
+    settings_types['print_info'] = 'bool'
+    settings_default['print_info'] = True
+    settings_description['print_info'] = 'Write status to screen'
+
+    settings_types['structural_solver'] = 'str'
+    settings_default['structural_solver'] = None
+    settings_description['structural_solver'] = 'Structural solver to use in the coupled simulation'
+
+    settings_types['structural_solver_settings'] = 'dict'
+    settings_default['structural_solver_settings'] = None
+    settings_description['structural_solver_settings'] = 'Dictionary of settings for the structural solver'
+
+    settings_types['aero_solver'] = 'str'
+    settings_default['aero_solver'] = None
+    settings_description['aero_solver'] = 'Aerodynamic solver to use in the coupled simulation'
+
+    settings_types['aero_solver_settings'] = 'dict'
+    settings_default['aero_solver_settings'] = None
+    settings_description['aero_solver_settings'] = 'Dictionary of settings for the aerodynamic solver'
+
+    settings_types['n_time_steps'] = 'int'
+    settings_default['n_time_steps'] = None
+    settings_description['n_time_steps'] = 'Number of time steps for the simulation'
+
+    settings_types['dt'] = 'float'
+    settings_default['dt'] = None
+    settings_description['dt'] = 'Time step'
+
+    settings_types['fsi_substeps'] = 'int'
+    settings_default['fsi_substeps'] = 70
+    settings_description['fsi_substeps'] = 'Max iterations in the FSI loop'
+
+    settings_types['fsi_tolerance'] = 'float'
+    settings_default['fsi_tolerance'] = 1e-5
+    settings_description['fsi_tolerance'] = 'Convergence threshold for the FSI loop'
+
+    settings_types['structural_substeps'] = 'int'
+    settings_default['structural_substeps'] = 0 # 0 is normal coupled sim.
+    settings_description['structural_substeps'] = 'Number of extra structural time steps per aero time step. 0 is a fully coupled simulation.'
+
+    settings_types['relaxation_factor'] = 'float'
+    settings_default['relaxation_factor'] = 0.2
+    settings_description['relaxation_factor'] = 'Relaxation parameter in the FSI iteration. 0 is no relaxation and -> 1 is very relaxed'
+
+    settings_types['final_relaxation_factor'] = 'float'
+    settings_default['final_relaxation_factor'] = 0.0
+    settings_description['final_relaxation_factor'] = 'Relaxation factor reached in ``relaxation_steps`` with ``dynamic_relaxation`` on'
+
+    settings_types['minimum_steps'] = 'int'
+    settings_default['minimum_steps'] = 3
+    settings_description['minimum_steps'] = 'Number of minimum FSI iterations before convergence'
+
+    settings_types['relaxation_steps'] = 'int'
+    settings_default['relaxation_steps'] = 100
+    settings_description['relaxation_steps'] = 'Length of the relaxation factor ramp between ``relaxation_factor`` and ``final_relaxation_factor`` with ``dynamic_relaxation`` on'
+
+    settings_types['dynamic_relaxation'] = 'bool'
+    settings_default['dynamic_relaxation'] = False
+    settings_description['dynamic_relaxation'] = 'Controls if relaxation factor is modified during the FSI iteration process'
+
+    settings_types['postprocessors'] = 'list(str)'
+    settings_default['postprocessors'] = list()
+    settings_description['postprocessors'] = 'List of the postprocessors to run at the end of every time step'
+
+    settings_types['postprocessors_settings'] = 'dict'
+    settings_default['postprocessors_settings'] = dict()
+    settings_description['postprocessors_settings'] = 'Dictionary with the applicable settings for every ``psotprocessor``. Every ``postprocessor`` needs its entry, even if empty'
+
+    settings_types['controller_id'] = 'dict'
+    settings_default['controller_id'] = dict()
+    settings_description['controller_id'] = 'Dictionary of id of every controller (key) and its type (value)'
+
+    settings_types['controller_settings'] = 'dict'
+    settings_default['controller_settings'] = dict()
+    settings_description['controller_settings'] = 'Dictionary with settings (value) of every controller id (key)'
+
+    settings_types['cleanup_previous_solution'] = 'bool'
+    settings_default['cleanup_previous_solution'] = False
+    settings_description['cleanup_previous_solution'] = 'Controls if previous ``timestep_info`` arrays are reset before running the solver'
+
+    settings_types['include_unsteady_force_contribution'] = 'bool'
+    settings_default['include_unsteady_force_contribution'] = False
+    settings_description['include_unsteady_force_contribution'] = 'If on, added mass contribution is added to the forces. This depends on the time derivative of the bound circulation. Check ``filter_gamma_dot`` in the aero solver'
+
+    settings_types['steps_without_unsteady_force'] = 'int'
+    settings_default['steps_without_unsteady_force'] = 0
+    settings_description['steps_without_unsteady_force'] = 'Number of initial timesteps that don\'t include unsteady forces contributions. This avoids oscillations due to no perfectly trimmed initial conditions'
+
+    settings_types['pseudosteps_ramp_unsteady_force'] = 'int'
+    settings_default['pseudosteps_ramp_unsteady_force'] = 0
+    settings_description['pseudosteps_ramp_unsteady_force'] = 'Length of the ramp with which unsteady force contribution is introduced every time step during the FSI iteration process'
+
+    settings_table = settings.SettingsTable()
+    __doc__ += settings_table.generate(settings_types, settings_default, settings_description)
+
     def __init__(self):
-        self.settings_types = dict()
-        self.settings_default = dict()
-
-        self.settings_types['print_info'] = 'bool'
-        self.settings_default['print_info'] = True
-
-        self.settings_types['structural_solver'] = 'str'
-        self.settings_default['structural_solver'] = None
-
-        self.settings_types['structural_solver_settings'] = 'dict'
-        self.settings_default['structural_solver_settings'] = None
-
-        self.settings_types['aero_solver'] = 'str'
-        self.settings_default['aero_solver'] = None
-
-        self.settings_types['aero_solver_settings'] = 'dict'
-        self.settings_default['aero_solver_settings'] = None
-
-        self.settings_types['n_time_steps'] = 'int'
-        self.settings_default['n_time_steps'] = None
-
-        self.settings_types['dt'] = 'float'
-        self.settings_default['dt'] = None
-
-        self.settings_types['fsi_substeps'] = 'int'
-        self.settings_default['fsi_substeps'] = 70
-
-        self.settings_types['fsi_tolerance'] = 'float'
-        self.settings_default['fsi_tolerance'] = 1e-5
-
-        self.settings_types['structural_substeps'] = 'int'
-        self.settings_default['structural_substeps'] = 0 # 0 is normal coupled sim.
-
-        self.settings_types['relaxation_factor'] = 'float'
-        self.settings_default['relaxation_factor'] = 0.2
-
-        self.settings_types['final_relaxation_factor'] = 'float'
-        self.settings_default['final_relaxation_factor'] = 0.0
-
-        self.settings_types['minimum_steps'] = 'int'
-        self.settings_default['minimum_steps'] = 3
-
-        self.settings_types['relaxation_steps'] = 'int'
-        self.settings_default['relaxation_steps'] = 100
-
-        self.settings_types['dynamic_relaxation'] = 'bool'
-        self.settings_default['dynamic_relaxation'] = False
-
-        self.settings_types['postprocessors'] = 'list(str)'
-        self.settings_default['postprocessors'] = list()
-
-        self.settings_types['postprocessors_settings'] = 'dict'
-        self.settings_default['postprocessors_settings'] = dict()
-
-        self.settings_types['controller_id'] = 'dict'
-        self.settings_default['controller_id'] = dict()
-
-        self.settings_types['controller_settings'] = 'dict'
-        self.settings_default['controller_settings'] = dict()
-
-        self.settings_types['postprocessors_settings'] = 'dict'
-        self.settings_default['postprocessors_settings'] = dict()
-
-        self.settings_types['cleanup_previous_solution'] = 'bool'
-        self.settings_default['cleanup_previous_solution'] = False
-
-        self.settings_types['include_unsteady_force_contribution'] = 'bool'
-        self.settings_default['include_unsteady_force_contribution'] = False
-
-        self.settings_types['steps_without_unsteady_force'] = 'int'
-        self.settings_default['steps_without_unsteady_force'] = 0
-
-        self.settings_types['pseudosteps_ramp_unsteady_force'] = 'int'
-        self.settings_default['pseudosteps_ramp_unsteady_force'] = 0
-
         self.data = None
         self.settings = None
         self.structural_solver = None
@@ -116,6 +142,7 @@ class DynamicCoupled(BaseSolver):
 
         self.dt = 0.
         self.substep_dt = 0.
+        self.initial_n_substeps = None
 
         self.predictor = False
         self.residual_table = None
@@ -127,18 +154,35 @@ class DynamicCoupled(BaseSolver):
         self.time_struc = 0.
 
     def get_g(self):
+        """
+        Getter for ``g``, the gravity value
+        """
         return self.structural_solver.settings['gravity'].value
 
     def set_g(self, new_g):
+        """
+        Setter for ``g``, the gravity value
+        """
         self.structural_solver.settings['gravity'] = ct.c_double(new_g)
 
     def get_rho(self):
+        """
+        Getter for ``rho``, the density value
+        """
         return self.aero_solver.settings['rho'].value
 
     def set_rho(self, new_rho):
+        """
+        Setter for ``rho``, the density value
+        """
         self.aero_solver.settings['rho'] = ct.c_double(new_rho)
 
     def initialise(self, data, custom_settings=None):
+        """
+        Controls the initialisation process of the solver, including processing
+        the settings and initialising the aero and structural solvers, postprocessors
+        and controllers.
+        """
         self.data = data
         if custom_settings is None:
             self.settings = data.settings[self.solver_id]
@@ -147,9 +191,14 @@ class DynamicCoupled(BaseSolver):
         settings.to_custom_types(self.settings,
                                  self.settings_types,
                                  self.settings_default)
+
+        self.original_settings = copy.deepcopy(self.settings)
+
         self.dt = self.settings['dt']
         self.substep_dt = (
             self.dt.value/(self.settings['structural_substeps'].value + 1))
+        self.initial_n_substeps = self.settings['structural_substeps'].value
+
         self.print_info = self.settings['print_info']
         if self.settings['cleanup_previous_solution']:
             # if there's data in timestep_info[>0], copy the last one to
@@ -211,9 +260,63 @@ class DynamicCoupled(BaseSolver):
 
         self.data.ts = 0
 
+    def process_controller_output(self, controlled_state):
+        """
+        This function modified the solver properties and parameters as
+        requested from the controller.
+
+        This keeps the main loop much cleaner, while allowing for flexibility
+
+        Please, if you add options in here, always code the possibility of
+        that specific option not being there without the code complaining to
+        the user.
+
+        If it possible, use the same Key for the new setting as for the
+        setting in the solver. For example, if you want to modify the
+        `structural_substeps` variable in settings, use that Key in the
+        `info` dictionary.
+
+        As a convention: a value of None returns the value to the initial
+        one specified in settings, while the key not being in the dict
+        is ignored, so if any change was made before, it will stay there.
+        """
+        try:
+            info = controlled_state['info']
+        except KeyError:
+            return controlled_state['structural'], controlled_state['aero']
+
+        # general copy-if-exists, restore if == None
+        for info_k, info_v in info.items():
+            if info_k in self.settings:
+                if info_v is not None:
+                    self.settings[info_k] = info_v
+                else:
+                    self.settings[info_k] = self.original_settings[info_k]
+
+        # specifics of every option
+        for info_k, info_v in info.items():
+            if info_k in self.settings:
+
+                if info_k == 'structural_substeps':
+                    if info_v is not None:
+                        self.substep_dt = (
+                            self.settings['dt'].value/(
+                                self.settings['structural_substeps'].value + 1))
+
+                if info_k == 'structural_solver':
+                    if info_v is not None:
+                        self.structural_solver = solver_interface.initialise_solver(
+                            info['structural_solver'])
+                        self.structural_solver.initialise(
+                            self.data, self.settings['structural_solver_settings'])
+
+        return controlled_state['structural'], controlled_state['aero']
+
+
     def run(self):
         """
-
+        Run the time stepping procedure with controllers and postprocessors
+        included.
         """
         # dynamic simulations start at tstep == 1, 0 is reserved for the initial state
         for self.data.ts in range(
@@ -229,25 +332,9 @@ class DynamicCoupled(BaseSolver):
                          'aero': aero_kstep}
                 for k, v in self.controllers.items():
                     state = v.control(self.data, state)
-
-                structural_kstep = state['structural']
-                aero_kstep = state['aero']
-                reset_substeps = False
-                try:
-                    if state['info']['reset_substeps']:
-                        self.settings['structural_substeps'] = ct.c_int(0)
-                        self.substep_dt = self.settings['dt'].value
-                except KeyError:
-                    pass
-
-                try:
-                    if state['info']['new_structural_solver']:
-                        self.structural_solver = solver_interface.initialise_solver(
-                            state['info']['new_structural_solver'])
-                        self.structural_solver.initialise(
-                            self.data, self.settings['structural_solver_settings'])
-                except KeyError:
-                    pass
+                    # this takes care of the changes in options for the solver
+                    structural_kstep, aero_kstep = self.process_controller_output(
+                        state)
 
             self.time_aero = 0.0
             self.time_struc = 0.0
@@ -307,15 +394,11 @@ class DynamicCoupled(BaseSolver):
                       relax_factor)
 
                 # check if nan anywhere.
-                # if yes, pdb.set_trace()
+                # if yes, raise exception
                 if np.isnan(structural_kstep.steady_applied_forces).any():
-                    print('NaN found in steady_applied_forces!')
-                    import pdb
-                    pdb.set_trace()
+                    raise exc.NotConvergedSolver('NaN found in steady_applied_forces!')
                 if np.isnan(structural_kstep.unsteady_applied_forces).any():
-                    print('NaN found in unsteady_applied_forces!')
-                    import pdb
-                    pdb.set_trace()
+                    raise exc.NotConvergedSolver('NaN found in unsteady_applied_forces!')
 
                 copy_structural_kstep = structural_kstep.copy()
                 ini_time_struc = time.perf_counter()
@@ -379,6 +462,17 @@ class DynamicCoupled(BaseSolver):
         return self.data
 
     def convergence(self, k, tstep, previous_tstep):
+        r"""
+        Check convergence in the FSI loop.
+
+        Convergence is determined as:
+
+        .. math:: \epsilon_q^k = \frac{|| q^k - q^{k - 1} ||}{q^0}
+        .. math:: \epsilon_\dot{q}^k = \frac{|| \dot{q}^k - \dot{q}^{k - 1} ||}{\dot{q}^0}
+
+        FSI converged if :math:`\epsilon_q^k < \mathrm{FSI\ tolerance}` and :math:`\epsilon_\dot{q}^k < \mathrm{FSI\ tolerance}`
+
+        """
         # check for non-convergence
         if not all(np.isfinite(tstep.q)):
             import pdb
@@ -491,14 +585,16 @@ class DynamicCoupled(BaseSolver):
             (coeff)*(step1.unsteady_applied_forces))
 
         # multibody if necessary
-        if step1.mb_dict is not None:
-            for key, val in step1.mb_dict.items():
+        if out_step.mb_dict is not None:
+            for key in step1.mb_dict.keys():
                 if 'constraint_' in key:
-                    for kk, vv in val.items():
-                        if 'vel' in kk:
-                            out_step.mb_dict[key][kk] = (
-                                coeff*vv +
-                                (1.0 - coeff)*step0.mb_dict[key][kk])
+                    try:
+                        out_step.mb_dict[key]['velocity'][:] = (
+                            (1.0 - coeff)*step0.mb_dict[key]['velocity'] +
+                            (coeff)*step1.mb_dict[key]['velocity'])
+                    except KeyError:
+                        pass
+
         return out_step
 
 

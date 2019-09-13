@@ -1,5 +1,5 @@
 import ctypes as ct
-
+import sys
 import numpy as np
 
 import sharpy.aero.utils.mapping as mapping
@@ -37,7 +37,7 @@ class StaticCoupled(BaseSolver):
         self.settings_default['max_iter'] = 100
 
         self.settings_types['n_load_steps'] = 'int'
-        self.settings_default['n_load_steps'] = 1
+        self.settings_default['n_load_steps'] = 0
 
         self.settings_types['tolerance'] = 'float'
         self.settings_default['tolerance'] = 1e-5
@@ -163,7 +163,6 @@ class StaticCoupled(BaseSolver):
             cout.cout_wrap('StaticCoupled did not converge!', 0)
             # quit(-1)
 
-
         return_value = None
         if i_iter == 0:
             self.initial_residual = np.linalg.norm(self.data.structure.timestep_info[self.data.ts].pos)
@@ -186,9 +185,14 @@ class StaticCoupled(BaseSolver):
         self.current_residual = np.linalg.norm(self.data.structure.timestep_info[self.data.ts].pos)
         if self.print_info:
             forces = self.data.structure.timestep_info[self.data.ts].total_forces
+            res_print = np.NINF
+            if (np.abs(self.current_residual - self.previous_residual) >
+                sys.float_info.epsilon*10):
+                res_print = np.log10(np.abs(self.current_residual - self.previous_residual)/self.initial_residual)
+
             self.residual_table.print_line([i_iter,
                     i_step,
-                    np.log10(np.abs(self.current_residual - self.previous_residual)/self.initial_residual),
+                    res_print,
                     forces[0],
                     forces[1],
                     forces[2],

@@ -1,9 +1,12 @@
+"""Data Management Structures
+
+Classes for the Aerotimestep and Structuraltimestep, amongst others
+"""
+import copy
 import ctypes as ct
 import numpy as np
-import copy
 
 import sharpy.utils.algebra as algebra
-import copy
 import sharpy.utils.multibody as mb
 
 
@@ -697,3 +700,23 @@ class StructTimeStepInfo(object):
         self.for_acc[0:3] = np.dot(np.transpose(CGAmaster),self.mb_FoR_acc[0,0:3])
         self.for_acc[3:6] = np.dot(np.transpose(CGAmaster),self.mb_FoR_acc[0,3:6])
         self.quat = self.mb_quat[0,:].astype(dtype=ct.c_double, order='F', copy=True)
+
+
+class LinearTimeStepInfo(object):
+    """
+    Linear timestep info containing the state, input and output variables for a given timestep
+
+    """
+    def __init__(self):
+        self.x = None
+        self.y = None
+        self.u = None
+        self.t = None
+
+    def copy(self):
+        copied = LinearTimeStepInfo()
+        copied.x = self.x.copy()
+        copied.y = self.y.copy()
+        copied.u = self.u.copy()
+        copied.t = self.t.copy()
+

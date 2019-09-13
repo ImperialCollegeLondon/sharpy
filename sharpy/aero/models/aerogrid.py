@@ -1,11 +1,15 @@
+"""Aerogrid
+
+Aerogrid contains all the necessary routines to generate an aerodynamic
+grid based on the input dictionaries.
+"""
 # Alfonso del Carre
+
 # alfonso.del-carre14@imperial.ac.uk
 # Imperial College London
 # LoCA lab
 # 29 Sept 2016
 
-# Aerogrid contains all the necessary routines to generate an aerodynamic
-# grid based on the input dictionaries.
 
 import ctypes as ct
 import warnings
@@ -99,6 +103,11 @@ class Aerogrid(object):
             aero_settings['control_surface_deflection']
         except KeyError:
             aero_settings.update({'control_surface_deflection': ['']*self.n_control_surfaces})
+
+        # pad ctrl surfaces dict with empty strings if not defined
+        if len(aero_settings['control_surface_deflection']) != self.n_control_surfaces:
+            undef_ctrl_sfcs = ['']*(self.n_control_surfaces - len(aero_settings['control_surface_deflection']))
+            aero_settings['control_surface_deflection'].extend(undef_ctrl_sfcs)
 
         # initialise generators
         for i_cs in range(self.n_control_surfaces):
@@ -527,9 +536,9 @@ def generate_strip(node_info, airfoil_db, aligned_grid, orientation_in=np.array(
 
     rot_angle = algebra.angle_between_vectors_sign(orientation_in, Cab[:, 1], Cab[:, 2])
     if np.sign(np.dot(orientation_in, Cab[:, 1])) >= 0:
-        rot_angle = 0.0
+        rot_angle += 0.0
     else:
-        rot_angle = -np.pi
+        rot_angle += -2*np.pi
     Crot = algebra.rotation3d_z(-rot_angle)
 
     c_sweep = np.eye(3)

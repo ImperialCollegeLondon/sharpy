@@ -55,6 +55,18 @@ class BumpVelocityField(generator_interface.BaseGenerator):
     settings_default['hy'] = 1.
     settings_description['hy'] = 'Gust gradient in the y direction'
 
+    settings_types['relative_motion'] = 'bool'
+    settings_default['relative_motion'] = False
+    settings_description['relative_motion'] = 'When true the gust will move at the prescribed velocity'
+
+    settings_types['u_inf'] = 'float'
+    settings_default['u_inf'] = None
+    settings_description['u_inf'] = 'Free stream velocity'
+
+    settings_types['u_inf_direction'] = 'list(float)'
+    settings_default['u_inf_direction'] = np.array([1.0, 0, 0])
+    settings_description['u_inf_direction'] = 'Free stream velocity direction'
+
     table = settings.SettingsTable()
     __doc__ += table.generate(settings_types, settings_default, settings_description)
 
@@ -62,16 +74,23 @@ class BumpVelocityField(generator_interface.BaseGenerator):
         self.in_dict = dict()
         self.settings = dict()
 
+        self.u_inf = 0.
+        self.u_inf_direction = None
+
     def initialise(self, in_dict):
         self.in_dict = in_dict
-        settings.to_custom_types(self.in_dict, self.settings_types, self.settings_default)
+        settings.to_custom_types(self.in_dict, BumpVelocityField.settings_types, BumpVelocityField.settings_default)
         self.settings = self.in_dict
+
+        self.u_inf = self.settings['u_inf'].value
+        self.u_inf_direction = self.in_dict['u_inf_direction']
 
     def generate(self, params, uext):
         zeta = params['zeta']
         override = params['override']
         for_pos = params['for_pos']
-        gust_shape = None
+        t = params['t']
+
         def gust_shape(x, y, z, hx, hy, x0, y0, w0):
             vel = np.zeros((3,))
             if np.abs(x - x0) > hx or np.abs(y - y0) > hy:
@@ -94,3 +113,6 @@ class BumpVelocityField(generator_interface.BaseGenerator):
                                                         self.settings['x0'].value,
                                                         self.settings['y0'].value,
                                                         self.settings['gust_intensity'].value)
+                    
+                    if self.settings['relative_motion']:
+                        uext[i_surf][:, i, j] += self.u_inf*t
