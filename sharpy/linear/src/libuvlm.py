@@ -1,5 +1,4 @@
-'''
-Methods for UVLM solution.
+'''Methods for UVLM solution
 
 S. Maraniello, 1 Jun 2018
 '''

@@ -57,8 +57,17 @@ def main(args=None, sharpy_input_dict=None):
             args = parser.parse_args()
 
     if args.docs:
+        import subprocess
         import sharpy.utils.docutils as docutils
+        import sharpy.utils.sharpydir as sharpydir
         docutils.generate_documentation()
+
+        # run make
+        cout.cout_wrap('Running make html in sharpy/docs')
+        subprocess.Popen(['make', 'html'],
+                         stdout=None,
+                         cwd=sharpydir.SharpyDir + '/docs')
+
         return 0
 
     if args.input_filename == '':

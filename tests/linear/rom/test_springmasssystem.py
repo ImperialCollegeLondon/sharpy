@@ -5,17 +5,17 @@ NGoizueta 16 Feb 2019
 """
 
 import numpy as np
-import matplotlib.pyplot as plt
 import sharpy.linear.src.libss as libss
 import sharpy.linear.src.lingebm as lingebm
-import sharpy.rom.krylovreducedordermodel as krylov
-import sharpy.rom.frequencyresponseplot as freq_plots
+import sharpy.rom.krylov as krylov
 import unittest
+import matplotlib.pyplot as plt
 
 
 class TestKrylovRom(unittest.TestCase):
 
-    tolerance = 1e-6
+    tolerance = 1e-3
+    display_output = False
 
     def test_siso_ct(self):
         system_inputs = 'SISO'
@@ -30,7 +30,7 @@ class TestKrylovRom(unittest.TestCase):
         print('\nTesting CT, SISO rational Arnoldi...')
         rom = self.run_rom(ss, algorithm, r, interpolation_point)
 
-        wv = np.logspace(-1, 3, 100)
+        wv = np.logspace(-1, 3, 1000)
         freq_error = self.compare_freq_resp(rom, wv, interpolation_point)
 
         print('Frequency Response Error at %.2f rad/s: %.2e' % (interpolation_point.imag, freq_error))
@@ -44,17 +44,16 @@ class TestKrylovRom(unittest.TestCase):
         ss = self.build_system(system_inputs, system_time)
 
         algorithm = 'two_sided_arnoldi'
-        interpolation_point_ct = np.array([1.0j])
-        interpolation_point = np.exp(interpolation_point_ct * ss.dt)
-        r = 6
+        interpolation_point_ct = np.array([0.8j])
+        r = 2
 
         print('\nTesting DT, SISO rational Arnoldi...')
-        rom = self.run_rom(ss, algorithm, r, interpolation_point)
+        rom = self.run_rom(ss, algorithm, r, interpolation_point_ct)
 
-        wv = np.logspace(-1, 3, 100)
+        wv = np.logspace(-1, 3, 1000)
         freq_error = self.compare_freq_resp(rom, wv, interpolation_point_ct)
 
-        print('Frequency Response Error at %.2f rad/s: %.2e' % (interpolation_point.imag, freq_error))
+        print('Frequency Response Error at %.2f rad/s: %.2e' % (interpolation_point_ct.imag, freq_error))
 
         self.assertTrue(freq_error < self.tolerance)
 
@@ -65,22 +64,18 @@ class TestKrylovRom(unittest.TestCase):
         ss = self.build_system(system_inputs, system_time)
 
         algorithm = 'dual_rational_arnoldi'
-        interpolation_point_ct = np.array([1.0j, 10.0j])
-        interpolation_point = np.exp(interpolation_point_ct * ss.dt)
-        r = 3
+        interpolation_point_ct = np.array([0.0, 2.0j, 11.0j])
+        r = 2
 
         print('\nTesting DT, SISO Multipoint rational Arnoldi...')
-        rom = self.run_rom(ss, algorithm, r, interpolation_point)
+        rom = self.run_rom(ss, algorithm, r, interpolation_point_ct)
 
-        wv = np.logspace(-1, 3, 100)
-        freq_error0 = self.compare_freq_resp(rom, wv, interpolation_point_ct[0])
-        freq_error1 = self.compare_freq_resp(rom, wv, interpolation_point_ct[1])
+        wv = np.logspace(-1, 3, 1000)
+        for i in range(len(interpolation_point_ct)):
+            freq_error = self.compare_freq_resp(rom, wv, interpolation_point_ct[i])
+            print('Frequency Response Error at %.2f rad/s: %.2e' % (interpolation_point_ct[i].imag, freq_error))
+            self.assertTrue(freq_error < self.tolerance)
 
-        print('Frequency Response Error at %.2f rad/s: %.2e' % (interpolation_point_ct[0].imag, freq_error0))
-        print('Frequency Response Error at %.2f rad/s: %.2e' % (interpolation_point_ct[1].imag, freq_error1))
-
-        self.assertTrue(freq_error0 < self.tolerance)
-        self.assertTrue(freq_error1 < self.tolerance)
 
     def build_system(self, system_inputs, system_time):
         N = 5  # Number of masses/springs/dampers
@@ -150,10 +145,14 @@ class TestKrylovRom(unittest.TestCase):
         return system
 
     def run_rom(self, system, algorithm, r, interpolation_point):
-        rom = krylov.KrylovReducedOrderModel()
-        rom.initialise(data=None, ss=system)
+        rom = krylov.Krylov()
+        rom_settings = {'algorithm': algorithm,
+                        'r': r,
+                        'frequency': interpolation_point}
 
-        rom.run(algorithm, r, interpolation_point)
+        rom.initialise(in_settings=rom_settings)
+
+        rom.run(system)
 
         return rom
 
@@ -166,15 +165,14 @@ class TestKrylovRom(unittest.TestCase):
 
         error = np.abs(Y_fom[0, 0, interpol_index] - Y_rom[0, 0, interpol_index])
 
-        # if show_plots:
-        #     plot_freq = freq_plots.FrequencyResponseComparison()
-        #     plot_settings = {'frequency_type': 'w',
-        #                      'plot_type': 'bode'}
-        #
-        #     plot_freq.initialise(None, rom.ss, rom, plot_settings)
-        #
-        #     plot_freq.plot_frequency_response(wv, Y_fom, Y_rom, interpolation_frequency)
+        if TestKrylovRom.display_output:
+            fig, ax = plt.subplots(nrows=2)
+            ax[0].semilogx(wv, np.abs(Y_fom[0, 0, :]), 'k-')
+            ax[0].semilogx(wv, np.abs(Y_rom[0, 0, :]), '--', color='0.2')
 
+            ax[1].semilogx(wv, np.angle(Y_fom[0, 0, :]), 'k-')
+            ax[1].semilogx(wv, np.angle(Y_rom[0, 0, :]), '--', color='0.2')
+            fig.show()
         return error
 
 

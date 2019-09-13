@@ -15,7 +15,7 @@ class AerogridLoader(BaseSolver):
     Generates aerodynamic grid based on the input data
 
     Args:
-        data: ``ProblemData`` class structure
+        data (PreSharpy): ``ProblemData`` class structure
 
     Attributes:
         settings (dict): Name-value pair of the settings employed by the aerodynamic solver
@@ -28,36 +28,49 @@ class AerogridLoader(BaseSolver):
 
     Notes:
         The ``control_surface_deflection`` setting allows the user to use a time specific control surface deflection,
-        should the problem include them.
+        should the problem include them. This setting takes a list of strings, each for the required control
+        surface generator.
 
-        The value to the key in the settings dictionary is a list of dictionaries, one for each control surface.
-        The dictionaries specify the settings for the generator ``DynamicControlSurface``. If the relevant control
+        The ``control_surface_deflection_generator_settings`` setting is a list of dictionaries, one for each control
+        surface. The dictionaries specify the settings for the generator ``DynamicControlSurface``. If the relevant control
         surface is simply static, an empty string should be parsed. See the documentation for ``DynamicControlSurface``
         generators for accepted key-value pairs as settings.
 
-    See Also:
-        .. py:class:: sharpy.aero.models.aerogrid.Aerogrid
-
-        .. py:class:: sharpy.utils.solver_interface.BaseSolver
-
-        .. py:class:: sharpy.generators.dynamiccontrolsurface.DynamicControlSurface
-
     """
     solver_id = 'AerogridLoader'
+    solver_classification = 'aero'
+
     settings_types = dict()
     settings_default = dict()
+    settings_description = dict()
 
     settings_types['unsteady'] = 'bool'
     settings_default['unsteady'] = False
+    settings_description['unsteady'] = 'Unsteady effects'
 
     settings_types['aligned_grid'] = 'bool'
     settings_default['aligned_grid'] = True
+    settings_description['aligned_grid'] = 'Align grid'
 
     settings_types['freestream_dir'] = 'list(float)'
-    settings_default['freestream_dir'] = np.array([1.0, 0, 0])
+    settings_default['freestream_dir'] = [1.0, 0.0, 0.0]
+    settings_description['freestream_dir'] = 'Free stream flow direction'
 
     settings_types['mstar'] = 'int'
     settings_default['mstar'] = 10
+    settings_description['mstar'] = 'Number of chordwise wake panels'
+
+    settings_types['control_surface_deflection'] = 'list(str)'
+    settings_default['control_surface_deflection'] = []
+    settings_description['control_surface_deflection'] = 'List of control surface generators for each control surface'
+
+    settings_types['control_surface_deflection_generator_settings'] = 'list(dict)'
+    settings_default['control_surface_deflection_generator_settings'] = list(dict())
+    settings_description['control_surface_deflection_generator_settings'] = 'List of dictionaries with the settings ' \
+                                                                            'for each generator'
+
+    settings_table = settings_utils.SettingsTable()
+    __doc__ += settings_table.generate(settings_types, settings_default, settings_description)
 
     def __init__(self):
         self.data = None
