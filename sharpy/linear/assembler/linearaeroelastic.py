@@ -10,7 +10,7 @@ import sharpy.utils.cout_utils as cout
 
 @ss_interface.linear_system
 class LinearAeroelastic(ss_interface.BaseElement):
-    """
+    r"""
     Assemble a linearised aeroelastic system
 
     The aeroelastic system can be seen as the coupling between a linearised aerodynamic system (System 1) and

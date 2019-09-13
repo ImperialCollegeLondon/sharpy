@@ -578,7 +578,7 @@ class FlyingWing():
                                    'output_psi': 'on',
                                    'screen_output': 'on'}
 
-        config['SaveData'] = {'folder': self.route + '/output/' + self.case_name + '/'}
+        config['SaveData'] = {'folder': './output/' + self.case_name + '/'}
 
         config['Modal'] = {'folder': './output/',
                            'NumLambda': 20,
