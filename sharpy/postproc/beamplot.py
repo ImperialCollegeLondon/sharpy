@@ -127,6 +127,7 @@ class BeamPlot(BaseSolver):
         with_gravity = False
         try:
             gravity_forces = self.data.structure.timestep_info[it].gravity_forces[:]
+            gravity_forces_g = np.zeros_like(gravity_forces)
             with_gravity = True
         except AttributeError:
             pass
@@ -216,9 +217,9 @@ class BeamPlot(BaseSolver):
                                                   self.data.structure.timestep_info[it].forces_constraints_nodes[i_node, 3:6]))
 
             if with_gravity:
-                gravity_forces[i_node, 0:3] = np.dot(aero2inertial,
+                gravity_forces_g[i_node, 0:3] = np.dot(aero2inertial,
                                                      gravity_forces[i_node, 0:3])
-                gravity_forces[i_node, 3:6] = np.dot(aero2inertial,
+                gravity_forces_g[i_node, 3:6] = np.dot(aero2inertial,
                                                      gravity_forces[i_node, 3:6])
 
         for i_elem in range(num_elem):
@@ -267,7 +268,7 @@ class BeamPlot(BaseSolver):
             ug.point_data.get_array(point_vector_counter).name = 'forces_constraints_nodes'
             if with_gravity:
                 point_vector_counter += 1
-                ug.point_data.add_array(gravity_forces[:, 0:3], 'vector')
+                ug.point_data.add_array(gravity_forces_g[:, 0:3], 'vector')
                 ug.point_data.get_array(point_vector_counter).name = 'gravity_forces'
 
         if self.settings['include_applied_moments']:
@@ -279,7 +280,7 @@ class BeamPlot(BaseSolver):
             ug.point_data.get_array(point_vector_counter).name = 'moments_constraints_nodes'
             if with_gravity:
                 point_vector_counter += 1
-                ug.point_data.add_array(gravity_forces[:, 3:6], 'vector')
+                ug.point_data.add_array(gravity_forces_g[:, 3:6], 'vector')
                 ug.point_data.get_array(point_vector_counter).name = 'gravity_moments'
         if with_postproc_node:
             for k in postproc_node_vector:

@@ -78,7 +78,7 @@ That said, the recipe for a successfully documented class, function, module is t
     
     - Inline code is written using two backticks ` `` `
     
-    - Inline math is written as ``:math: `1+\exp^{i\pi} = 0` ``. Don't forget the backticks!
+    - Inline math is written as ``:math:`1+\exp^{i\pi} = 0` ``. Don't forget the backticks!
         
     - Math in a single or multiple lines is simple:
         

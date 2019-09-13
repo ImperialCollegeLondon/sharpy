@@ -1,12 +1,14 @@
 Utilities
 ---------
 
+
 .. toctree::
 	:maxdepth: 1
 
 	./algebra/index
 	./analytical/index
 	./control_utils/index
+	./datastructures/index
 	./docutils/index
 	./exceptions/index
 	./generate_cases/index

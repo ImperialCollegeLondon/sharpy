@@ -40,6 +40,15 @@ class AeroForcesCalculator(BaseSolver):
         self.settings_types['unsteady'] = 'bool'
         self.settings_default['unsteady'] = False
 
+        self.settings_default['coefficients'] = False
+        self.settings_types['coefficients'] = 'bool'
+
+        self.settings_types['q_ref'] = 'float'
+        self.settings_default['q_ref'] = 1
+
+        self.settings_types['S_ref'] = 'float'
+        self.settings_default['S_ref'] = 1
+
         self.settings = None
         self.data = None
         self.ts_max = 0
@@ -95,23 +104,50 @@ class AeroForcesCalculator(BaseSolver):
                 self.data.aero.timestep_info[self.ts].body_steady_forces[i_surf, 0:3] = np.dot(rot.T, total_steady_force)
                 self.data.aero.timestep_info[self.ts].body_unsteady_forces[i_surf, 0:3] = np.dot(rot.T, total_unsteady_force)
 
+    def calculate_coefficients(self, fx, fy, fz):
+        qS = self.settings['q_ref'].value * self.settings['S_ref'].value
+        return fx/qS, fy/qS, fz/qS
+
     def screen_output(self):
         line = ''
         cout.cout_wrap.print_separator()
         # output header
-        line = "{0:5s} | {1:10s} | {2:10s} | {3:10s}".format(
-            'tstep', '  fx_g', '  fy_g', '  fz_g')
-        cout.cout_wrap(line, 1)
-        for self.ts in range(self.ts_max):
-            line = "{0:5d} | {1: 8.3e} | {2: 8.3e} | {3: 8.3e}".format(
-                self.ts,
-                (np.sum(self.data.aero.timestep_info[self.ts].inertial_steady_forces[:, 0], 0) +
-                 np.sum(self.data.aero.timestep_info[self.ts].inertial_unsteady_forces[:, 0], 0)),
-                (np.sum(self.data.aero.timestep_info[self.ts].inertial_steady_forces[:, 1], 0) +
-                 np.sum(self.data.aero.timestep_info[self.ts].inertial_unsteady_forces[:, 1], 0)),
-                (np.sum(self.data.aero.timestep_info[self.ts].inertial_steady_forces[:, 2], 0) +
-                 np.sum(self.data.aero.timestep_info[self.ts].inertial_unsteady_forces[:, 2], 0)))
+        if self.settings['coefficients']:
+            line = "{0:5s} | {1:10s} | {2:10s} | {3:10s} | {4:10s} | {5:10s} | {6:10s}".format(
+                'tstep', '  fx_g', '  fy_g', '  fz_g', '  Cfx_g', '  Cfy_g', '  Cfz_g')
             cout.cout_wrap(line, 1)
+            for self.ts in range(self.ts_max):
+                fx = np.sum(self.data.aero.timestep_info[self.ts].inertial_steady_forces[:, 0], 0) + \
+                     np.sum(self.data.aero.timestep_info[self.ts].inertial_unsteady_forces[:, 0], 0)
+
+                fy = np.sum(self.data.aero.timestep_info[self.ts].inertial_steady_forces[:, 1], 0) + \
+                     np.sum(self.data.aero.timestep_info[self.ts].inertial_unsteady_forces[:, 1], 0)
+
+                fz = np.sum(self.data.aero.timestep_info[self.ts].inertial_steady_forces[:, 2], 0) + \
+                     np.sum(self.data.aero.timestep_info[self.ts].inertial_unsteady_forces[:, 2], 0)
+
+                Cfx, Cfy, Cfz = self.calculate_coefficients(fx, fy, fz)
+
+                line = "{0:5d} | {1: 8.3e} | {2: 8.3e} | {3: 8.3e} | {4: 8.3e} | {5: 8.3e} | {6: 8.3e}".format(
+                    self.ts, fx, fy, fz, Cfx, Cfy, Cfz)
+                cout.cout_wrap(line, 1)
+        else:
+            line = "{0:5s} | {1:10s} | {2:10s} | {3:10s}".format(
+                'tstep', '  fx_g', '  fy_g', '  fz_g')
+            cout.cout_wrap(line, 1)
+            for self.ts in range(self.ts_max):
+                fx = np.sum(self.data.aero.timestep_info[self.ts].inertial_steady_forces[:, 0], 0) + \
+                     np.sum(self.data.aero.timestep_info[self.ts].inertial_unsteady_forces[:, 0], 0)
+
+                fy = np.sum(self.data.aero.timestep_info[self.ts].inertial_steady_forces[:, 1], 0) + \
+                     np.sum(self.data.aero.timestep_info[self.ts].inertial_unsteady_forces[:, 1], 0)
+
+                fz = np.sum(self.data.aero.timestep_info[self.ts].inertial_steady_forces[:, 2], 0) + \
+                     np.sum(self.data.aero.timestep_info[self.ts].inertial_unsteady_forces[:, 2], 0)
+
+                line = "{0:5d} | {1: 8.3e} | {2: 8.3e} | {3: 8.3e}".format(
+                    self.ts, fx, fy, fz)
+                cout.cout_wrap(line, 1)
 
     def file_output(self):
         # assemble forces matrix

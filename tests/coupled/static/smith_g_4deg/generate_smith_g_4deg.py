@@ -38,7 +38,7 @@ num_elem = num_elem_main + num_elem_main
 num_node_main = num_elem_main*(num_node_elem - 1) + 1
 num_node = num_node_main + (num_node_main - 1)
 
-m_main = 15
+m_main = 10
 
 
 def clean_test_files():
@@ -81,7 +81,7 @@ def generate_fem_file():
     gj = 1e4
     eiy = 2e4
     eiz = 5e6
-    sigma = 1
+    sigma = 1.
     base_stiffness = sigma*np.diag([ea, ga, ga, gj, eiy, eiz])
     stiffness = np.zeros((num_stiffness, 6, 6))
     stiffness[0, :, :] = main_sigma*base_stiffness
@@ -220,7 +220,6 @@ def generate_aero_file():
 
     # left wing (surface 1, beam 1)
     i_surf = 1
-    # airfoil_distribution[working_node:working_node + num_node_main - 1] = 0
     airfoil_distribution[working_elem:working_elem + num_elem_main, :] = 0
     surface_distribution[working_elem:working_elem + num_elem_main] = i_surf
     surface_m[i_surf] = m_main
@@ -293,9 +292,9 @@ def generate_solver_file(horseshoe=False):
                                'structural_solver': 'NonLinearStatic',
                                'structural_solver_settings': {'print_info': 'off',
                                                               'max_iterations': 150,
-                                                              'num_load_steps': 20,
+                                                              'num_load_steps': 1,
                                                               'delta_curved': 1e-5,
-                                                              'min_delta': 1e-5,
+                                                              'min_delta': 1e-8,
                                                               'gravity_on': 'on',
                                                               'gravity': 9.754},
                                'aero_solver': 'StaticUvlm',
@@ -313,8 +312,8 @@ def generate_solver_file(horseshoe=False):
                                                         'alpha': alpha_rad,
                                                         'beta': beta},
                                'max_iter': 100,
-                               'n_load_steps': 1,
-                               'tolerance': 1e-6,
+                               'n_load_steps': 5,
+                               'tolerance': 1e-5,
                                'relaxation_factor': 0.}
     config['WriteVariablesTime'] = {'cleanup_old_solution': 'on',
                                     'structure_variables': ['pos'],
@@ -328,7 +327,7 @@ def generate_solver_file(horseshoe=False):
     else:
         config['AerogridLoader'] = {'unsteady': 'off',
                                     'aligned_grid': 'on',
-                                    'mstar': 1,
+                                    'mstar': 80,
                                     'freestream_dir': ['1', '0', '0']}
     config['AerogridPlot'] = {'folder': route + '/output/',
                               'include_rbm': 'off',

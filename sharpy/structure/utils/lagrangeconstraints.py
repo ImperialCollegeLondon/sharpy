@@ -408,6 +408,7 @@ class hinge_node_FoR(BaseLagrangeConstraint):
     _lc_id = 'hinge_node_FoR'
 
     def __init__(self):
+        self.required_parameters = ['node_in_body', 'body', 'body_FoR', 'rot_axisB']
         self._n_eq = 5
 
     def get_n_eq(self):
@@ -463,6 +464,7 @@ class hinge_node_FoR_constant_vel(BaseLagrangeConstraint):
     _lc_id = 'hinge_node_FoR_constant_vel'
 
     def __init__(self):
+        self.required_parameters = ['node_in_body', 'body', 'body_FoR', 'rot_axisB', 'rot_vel']
         self._n_eq = 6
 
     def get_n_eq(self):
@@ -519,6 +521,7 @@ class spherical_node_FoR(BaseLagrangeConstraint):
     _lc_id = 'spherical_node_FoR'
 
     def __init__(self):
+        self.required_parameters = ['node_in_body', 'body', 'body_FoR']
         self._n_eq = 3
 
     def get_n_eq(self):
@@ -571,6 +574,7 @@ class free(BaseLagrangeConstraint):
     _lc_id = 'free'
 
     def __init__(self):
+        self.required_parameters = []
         self._n_eq = 0
 
     def get_n_eq(self):
@@ -608,6 +612,7 @@ class spherical_FoR(BaseLagrangeConstraint):
     _lc_id = 'spherical_FoR'
 
     def __init__(self):
+        self.required_parameters = ['body_FoR']
         self._n_eq = 3
 
     def get_n_eq(self):
@@ -665,6 +670,7 @@ class hinge_FoR(BaseLagrangeConstraint):
     _lc_id = 'hinge_FoR'
 
     def __init__(self):
+        self.required_parameters = ['body_FoR', 'rot_axis_AFoR']
         self._n_eq = 5
 
     def get_n_eq(self):
@@ -741,6 +747,7 @@ class hinge_FoR_wrtG(BaseLagrangeConstraint):
     _lc_id = 'hinge_FoR_wrtG'
 
     def __init__(self):
+        self.required_parameters = ['body_FoR', 'rot_axis_AFoR']
         self._n_eq = 5
 
     def get_n_eq(self):
@@ -819,6 +826,7 @@ class fully_constrained_node_FoR(BaseLagrangeConstraint):
     _lc_id = 'fully_constrained_node_FoR'
 
     def __init__(self):
+        self.required_parameters = ['node_in_body', 'node_body', 'body_FoR']
         self._n_eq = 6
 
     def get_n_eq(self):
@@ -929,6 +937,7 @@ class constant_rot_vel_FoR(BaseLagrangeConstraint):
     _lc_id = 'constant_rot_vel_FoR'
 
     def __init__(self):
+        self.required_parameters = ['FoR_body', 'rot_vel']
         self._n_eq = 3
 
     def get_n_eq(self):
@@ -985,6 +994,7 @@ class constant_vel_FoR(BaseLagrangeConstraint):
     _lc_id = 'constant_vel_FoR'
 
     def __init__(self):
+        self.required_parameters = ['FoR_body', 'vel']
         self._n_eq = 6
 
     def get_n_eq(self):
@@ -1041,6 +1051,7 @@ class lin_vel_node_wrtA(BaseLagrangeConstraint):
     _lc_id = 'lin_vel_node_wrtA'
 
     def __init__(self):
+        self.required_parameters = ['velocity', 'body_number', 'node_number']
         self._n_eq = 3
 
     def get_n_eq(self):
@@ -1124,6 +1135,7 @@ class lin_vel_node_wrtG(BaseLagrangeConstraint):
     _lc_id = 'lin_vel_node_wrtG'
 
     def __init__(self):
+        self.required_parameters = ['velocity', 'body_number', 'node_number']
         self._n_eq = 3
 
     def get_n_eq(self):

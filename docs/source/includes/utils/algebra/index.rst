@@ -45,6 +45,7 @@ Note:
 	./rotation3d_x
 	./rotation3d_y
 	./rotation3d_z
+	./skew
 	./tangent_vector
 	./triad2rotation
 	./unit_vector
