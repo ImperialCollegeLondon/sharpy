@@ -16,7 +16,7 @@ class FrequencyResponse(solver_interface.BaseSolver):
     """
     solver_id = 'FrequencyResponse'
     solver_classification = 'post-processor'
-    
+
     settings_types = dict()
     settings_default = dict()
     settings_description = dict()
@@ -150,7 +150,7 @@ class FrequencyResponse(solver_interface.BaseSolver):
             cout.cout_wrap('\tComputed the frequency response of the reduced order system in %f s' %trom, 2)
             self.save_freq_resp(self.wv, Y_freq_rom, 'rom')
 
-            self.frequency_error(Y_freq_fom, Y_freq_rom)
+            frequency_error(Y_freq_fom, Y_freq_rom, self.wv)
 
         if self.settings['quick_plot'].value:
             self.quick_plot(Y_freq_fom, Y_freq_rom)
@@ -209,22 +209,25 @@ class FrequencyResponse(solver_interface.BaseSolver):
 
         return Y_freq_fom
 
-    def frequency_error(self, Y_fom, Y_rom):
+def frequency_error(Y_fom, Y_rom, wv):
+    n_in = Y_fom.shape[1]
+    n_out = Y_fom.shape[0]
+    cout.cout_wrap('Computing error in frequency response')
+    max_error = np.zeros((n_out, n_in, 2))
+    for m in range(n_in):
+        for p in range(n_out):
+            cout.cout_wrap('m = %g, p = %g' %(m, p))
+            max_error[p, m, 0] = error_between_signals(Y_fom[p, m, :].real,
+                                                            Y_rom[p, m, :].real,
+                                                            wv, 'real')
+            max_error[p, m, 1] = error_between_signals(Y_fom[p, m, :].imag,
+                                                            Y_rom[p, m, :].imag,
+                                                            wv, 'imag')
 
-        cout.cout_wrap('Computing error in frequency response')
-        max_error = np.zeros((self.ss.outputs, self.ss.inputs, 2))
-        for m in range(self.ss.inputs):
-            for p in range(self.ss.outputs):
-                cout.cout_wrap('m = %g, p = %g' %(m, p))
-                max_error[p, m, 0] = error_between_signals(Y_fom[p, m, :].real,
-                                                                Y_rom[p, m, :].real,
-                                                                self.wv, 'real')
-                max_error[p, m, 1] = error_between_signals(Y_fom[p, m, :].imag,
-                                                                Y_rom[p, m, :].imag,
-                                                                self.wv, 'imag')
+    if np.max(np.log10(max_error)) >= 0:
+        warnings.warn('Significant mismatch in the frequency response of the ROM and FOM')
 
-        if np.max(np.log10(max_error)) >= 0:
-            warnings.warn('Significant mismatch in the frequency response of the ROM and FOM')
+    return np.max(max_error)
 
 
 def error_between_signals(sig1, sig2, wv, sig_title=''):

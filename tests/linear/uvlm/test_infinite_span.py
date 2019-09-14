@@ -18,12 +18,15 @@ import sharpy.utils.algebra as algebra
 import sharpy.utils.analytical as an
 import sharpy.linear.src.linuvlm as linuvlm
 import cases.templates.flying_wings as flying_wings
+import sharpy.utils.sharpydir as sharpydir
 
 
 class Test_infinite_span(unittest.TestCase):
     """
     Test infinite-span flat wing at zero incidence against analytical solutions
     """
+
+    test_dir = sharpydir.SharpyDir + '/tests/linear/uvlm/'
 
     def setUp_from_params(self, Nsurf, integr_ord, RemovePred, UseSparse, RollNodes):
         """
@@ -432,6 +435,12 @@ class Test_infinite_span(unittest.TestCase):
         if self.DeleteOutput:
             os.system('rm %s*' % (self.route_main + self.case_code))
             os.system('rm %s/output/%s*' % (self.route_main, self.case_code))
+
+    def tearDown(self):
+
+        shutil.rmtree(Test_infinite_span.test_dir + '/figs/')
+        shutil.rmtree(Test_infinite_span.test_dir + '/output/')
+        shutil.rmtree(Test_infinite_span.test_dir + '/res/')
 
 
 if __name__ == '__main__':
