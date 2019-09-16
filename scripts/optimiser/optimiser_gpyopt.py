@@ -251,7 +251,7 @@ def optimiser(in_dict, previous_x, previous_y):
         pickle.dump(opt, f, protocol=pickle.HIGHEST_PROTOCOL)
 
     print('Running local optimisation step')
-    local_x, fun = local_optimisation(opt, in_dict)
+    local_x, local_cost = local_optimisation(opt, in_dict)
 
     if np.linalg.norm(opt.x_opt - local_x) < 1e-1:
         print('Results are very close, no need to dig deeper')
@@ -261,7 +261,7 @@ def optimiser(in_dict, previous_x, previous_y):
         print('Improvement over the previous solution with the local min.: ',
               -(local_cost - opt.fx_opt)/opt.fx_opt*100, '%')
         print('The RBF estimation of the cost was off by: ',
-              (fun - new_cost)/new_cost)
+              (local_cost - new_cost)/new_cost)
 
     print('FINISHED')
 
