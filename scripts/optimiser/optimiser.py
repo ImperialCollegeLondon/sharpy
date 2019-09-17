@@ -288,6 +288,7 @@ def local_optimisation(opt, yaml_dict=None, min_method='Nelder-Mead'):
 
     print('Local optimisation result: ')
     print('X = ', local_opt.x)
+    print('f(X) = ', local_opt.fun)
     print('sucess = ', local_opt.success)
     print('n_inter = ', local_opt.nit)
     print('message = ', local_opt.message)
@@ -326,17 +327,21 @@ def rbf_constrained(x_in, rbf, yaml_dict, opt):
     return values
 
 def create_rbf_surrogate(X, Y):
-    rbf = Rbf(*(X.T), Y, function='multiquadric', epsilon=0.1)
+    rbf = Rbf(*(X.T), Y, function='multiquadric')
     return rbf
 
 
-def case_id(case):
-    case_name = case + '_{0:06d}'.format(random.randint(0, 999999+1))
+def case_id(case, x_dict):
+    case_name = case
+    for k, v in x_dict.items():
+        case_name += f'_{k}_{v:7.5f}'
+    case_name = case_name.replace('.', 'p')
+
     return case_name
 
 
 def evaluate(x_dict, yaml_dict):
-    case_name = case_id(yaml_dict['case']['name'])
+    case_name = case_id(yaml_dict['case']['name'], x_dict)
 
     print('Running ' + case_name)
     files, case_name = set_case(case_name,
