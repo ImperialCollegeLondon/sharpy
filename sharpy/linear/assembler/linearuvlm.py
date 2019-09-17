@@ -75,7 +75,7 @@ class LinearUVLM(ss_interface.BaseElement):
             self.settings = custom_settings
         else:
             try:
-                self.settings = data.settings['LinearAssembler'][self.sys_id]  # Load settings, the settings should be stored in data.linear.settings
+                self.settings = data.settings['LinearAssembler']['linear_system_settings']  # Load settings, the settings should be stored in data.linear.settings
             except KeyError:
                 pass
 

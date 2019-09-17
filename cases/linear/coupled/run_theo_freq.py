@@ -128,7 +128,7 @@ import cases.templates.flying_wings as flying_wings
 
 # Define Parametrisation
 M = 32
-N, Mstar_fact = 12, 40
+N, Mstar_fact = 4, 100
 
 integr_order = 2
 RemovePred = True
@@ -599,6 +599,6 @@ for ii in range(Nin_real):
                     % (figfold, inputs_labs[ii], outputs_labs[oo], case_main))
         fig.savefig('%s/freq_%sto%s_%s.pdf' \
                     % (figfold, inputs_labs[ii], outputs_labs[oo], case_main))
-
-        plt.close('all')
+        fig.show()
+        # plt.close('all')
     # plt.show()
