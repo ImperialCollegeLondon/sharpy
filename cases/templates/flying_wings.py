@@ -132,11 +132,11 @@ class FlyingWing():
         self.n_tstep = None
         self.physical_time = physical_time
         self.horseshoe = False
-        self.fsi_tolerance = 1e-10
+        self.fsi_tolerance = 1e-8
         self.relaxation_factor = 0.2
         self.gust_intensity = 0.01
         self.gust_length = 5
-        self.tolerance = 1e-12
+        self.tolerance = 1e-8
 
         n_lumped_mass = 1
         self.lumped_mass = np.zeros((n_lumped_mass))
@@ -491,17 +491,17 @@ class FlyingWing():
                                 # 'velocity_field_input': {'turbulent_field': '/2TB/turbsim_fields/TurbSim_wide_long_A_low.h5',
                                 #                          'offset': [30., 0., -10],
                                 #                          'u_inf': 0.},
-                                'velocity_field_generator': 'GustVelocityField',
-                                'velocity_field_input': {'u_inf': self.u_inf,
-                                                         'u_inf_direction': self.u_inf_direction,
-                                                         'gust_shape': 'continuous_sin',
-                                                         'gust_length': self.gust_length,
-                                                         'gust_intensity': self.gust_intensity * self.u_inf,
-                                                         'offset': 15.0,
-                                                         'span': self.main_chord * self.aspect_ratio},
-                                # 'velocity_field_generator': 'SteadyVelocityField',
-                                # 'velocity_field_input': {'u_inf': self.u_inf*1,
-                                #                             'u_inf_direction': [1., 0., 0.]},
+                                # 'velocity_field_generator': 'GustVelocityField',
+                                # 'velocity_field_input': {'u_inf': self.u_inf,
+                                #                          'u_inf_direction': self.u_inf_direction,
+                                #                          'gust_shape': 'continuous_sin',
+                                #                          'gust_length': self.gust_length,
+                                #                          'gust_intensity': self.gust_intensity * self.u_inf,
+                                #                          'offset': 15.0,
+                                #                          'span': self.main_chord * self.aspect_ratio},
+                                'velocity_field_generator': 'SteadyVelocityField',
+                                'velocity_field_input': {'u_inf': self.u_inf*1,
+                                                            'u_inf_direction': [1., 0., 0.]},
                                 'rho': self.rho,
                                 'n_time_steps': self.n_tstep,
                                 'dt': self.dt,

@@ -98,6 +98,14 @@ class LinearBeam(BaseElement):
         if t_ref is not None:
             self.sys.scale_system_normalised_time(t_ref)
 
+        import sharpy.linear.assembler.linearthrust as linearthrust
+        engine = linearthrust.LinearThrust()
+        engine.initialise()
+
+        K_thrust = engine.generate(self.tsstruct0, self.sys)
+        #
+        self.sys.Kstr += K_thrust
+
         self.sys.assemble()
 
         # TODO: remove integrals of the rigid body modes (and change mode shapes to account for this in the coupling matrices)

@@ -103,7 +103,6 @@ class LinearAeroelastic(ss_interface.BaseElement):
 
         # Linearisation of the aerodynamic forces introduces stiffenning and damping terms into the beam matrices
         flex_nodes = self.sys.num_dof_flex
-        # rig_nodes = self.sys.num_dof_rig
         self.sys.get_gebm2uvlm_gains()
 
         stiff_aero = np.zeros_like(beam.sys.Kstr)
@@ -228,17 +227,22 @@ class LinearAeroelastic(ss_interface.BaseElement):
 
     def runrom_rbm(self, uvlm):
         ss = uvlm.ss
+        rig_nodes = self.sys.num_dof_rig
+        if rig_nodes == 9:
+            orient_dof = 3
+        else:
+            orient_dof = 4
         # Input side
         if self.settings['beam_settings']['modal_projection'].value == True and \
                 self.settings['beam_settings']['inout_coords'] == 'modes':
-            rem_int_modes = np.zeros((ss.inputs, ss.inputs - 10))
-            rem_int_modes[10:, :] = np.eye(ss.inputs - 10)
+            rem_int_modes = np.zeros((ss.inputs, ss.inputs - rig_nodes))
+            rem_int_modes[rig_nodes:, :] = np.eye(ss.inputs - rig_nodes)
 
             # Output side - remove quaternion equations output
-            rem_quat_out = np.zeros((ss.outputs-4, ss.outputs))
+            rem_quat_out = np.zeros((ss.outputs-orient_dof, ss.outputs))
             # find quaternion indices
             U = self.beam.sys.U
-            indices = np.where(U[-4:, :] == 1.)[1]
+            indices = np.where(U[-orient_dof:, :] == 1.)[1]
             j = 0
             for i in range(ss.outputs):
                 if i in indices:
@@ -247,21 +251,19 @@ class LinearAeroelastic(ss_interface.BaseElement):
                 j += 1
 
         else:
-            rem_int_modes = np.zeros((ss.inputs, ss.inputs - 10))
+            rem_int_modes = np.zeros((ss.inputs, ss.inputs - rig_nodes))
             rem_int_modes[:self.sys.num_dof_flex, :self.sys.num_dof_flex] = np.eye(self.sys.num_dof_flex)
-            rem_int_modes[self.sys.num_dof_flex+10:, self.sys.num_dof_flex:] = np.eye(ss.inputs - self.sys.num_dof_flex - 10)
+            rem_int_modes[self.sys.num_dof_flex+rig_nodes:, self.sys.num_dof_flex:] = np.eye(ss.inputs - self.sys.num_dof_flex - rig_nodes)
 
-            rem_quat_out = np.zeros((ss.outputs-4, ss.outputs))
-            rem_quat_out[:, :-4] = np.eye(ss.outputs-4)
+            rem_quat_out = np.zeros((ss.outputs-orient_dof, ss.outputs))
+            rem_quat_out[:, :-orient_dof] = np.eye(ss.outputs-orient_dof)
 
         ss.addGain(rem_int_modes, where='in')
         ss.addGain(rem_quat_out, where='out')
-
         uvlm.ss = uvlm.rom.run(uvlm.ss)
 
         uvlm.ss.addGain(rem_int_modes.T, where='in')
         uvlm.ss.addGain(rem_quat_out.T, where='out')
-        print('End')
 
     @staticmethod
     def load_uvlm(filename):
