@@ -136,7 +136,7 @@ class FlyingWing():
         self.relaxation_factor = 0.2
         self.gust_intensity = 0.01
         self.gust_length = 5
-        self.tolerance = 1e-12
+        self.tolerance = 1e-6
 
         n_lumped_mass = 1
         self.lumped_mass = np.zeros((n_lumped_mass))
@@ -470,7 +470,7 @@ class FlyingWing():
 
         settings['NonLinearDynamicPrescribedStep'] = {'print_info': 'off',
                                                       'max_iterations': 950,
-                                                      'delta_curved': 1e-6,
+                                                      'delta_curved': 1e-1,
                                                       'min_delta': self.tolerance*1e3,
                                                       'newmark_damp': 5e-3,
                                                       'gravity_on': self.gravity_on,
