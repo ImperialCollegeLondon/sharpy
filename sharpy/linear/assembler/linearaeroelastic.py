@@ -156,6 +156,10 @@ class LinearAeroelastic(ss_interface.BaseElement):
             # Retain other inputs
             Kas[2*self.sys.Kdisp.shape[0]:, 2*beam.sys.num_dof:] = np.eye(uvlm.ss.inputs - 2 * self.sys.Kdisp.shape[0])
 
+            # Scaling
+            if uvlm.scaled:
+                Kas /= uvlm.sys.ScalingFacts['length']
+
             uvlm.ss.addGain(Ksa, where='out')
             uvlm.ss.addGain(Kas, where='in')
 
@@ -164,12 +168,11 @@ class LinearAeroelastic(ss_interface.BaseElement):
 
             if self.settings['beam_settings']['modal_projection'].value == True and \
                     self.settings['beam_settings']['inout_coords'] == 'modes':
-                # Project UVLM onto modal space and scale length
+                # Project UVLM onto modal space
                 phi = beam.sys.U
                 in_mode_matrix = np.zeros((uvlm.ss.inputs, beam.ss.outputs + (uvlm.ss.inputs - 2*beam.sys.num_dof)))
                 in_mode_matrix[:2*beam.sys.num_dof, :2*beam.sys.num_modes] = sclalg.block_diag(phi, phi)
                 in_mode_matrix[2*beam.sys.num_dof:, 2*beam.sys.num_modes:] = np.eye(uvlm.ss.inputs - 2*beam.sys.num_dof)
-                in_mode_matrix /= uvlm.sys.ScalingFacts['length']
                 out_mode_matrix = phi.T
 
                 uvlm.ss.addGain(in_mode_matrix, where='in')

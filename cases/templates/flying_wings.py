@@ -402,7 +402,7 @@ class FlyingWing():
         }
         config['NonLinearStatic'] = {'print_info': 'off',
                                      'max_iterations': 150,
-                                     'num_load_steps': 4,
+                                     'num_load_steps': 0,
                                      'delta_curved': 1e-5,
                                      'min_delta': 1e-5,
                                      'gravity_on': self.gravity_on,
@@ -446,11 +446,11 @@ class FlyingWing():
             'structural_solver': 'NonLinearStatic',
             'structural_solver_settings': {'print_info': 'off',
                                            'max_iterations': 150,
-                                           'num_load_steps': 4,
+                                           'num_load_steps': 0,
                                            'delta_curved': 1e-1,
                                            'min_delta': 1e-10,
                                            'gravity_on': self.gravity_on,
-                                           'gravity': 9.754}}
+                                           'gravity': 9.81}}
 
         config['LinearUvlm'] = {'dt': self.dt,
                                 'integr_order': 2,
