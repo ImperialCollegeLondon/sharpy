@@ -451,6 +451,47 @@ def cost_function(data,
     else:
         return cost
 
+# def loads_cost(data, cost_loads_dict):
+    # index2load = {0: 'Torsion',
+                  # 1: 'OOP',
+                  # 2: 'IP'}
+    # try:
+        # loads_array = np.loadtxt(
+            # cost_loads_dict['reference_loads'],
+            # skiprows=1,
+            # delimiter=',')
+    # except OSError:
+        # try:
+            # warnings.warn(
+                # 'Not found reference_loads file, trying parent folder')
+            # loads_array = np.loadtxt(
+                # '../' + cost_loads_dict['reference_loads'],
+                # skiprows=1,
+                # delimiter=',')
+        # except OSError:
+            # warnings.warn('Not found reference_loads file, anywhere. Filling up with ones instead')
+            # loads_array = np.ones((data.structure.ini_info.psi.shape[0], 4))
+
+    # separate_cost = np.zeros((3,))
+
+    # loads_array = np.abs(loads_array)
+    # loads_array_norm = np.linalg.norm(loads_array, axis=0)
+    # for row in range(loads_array.shape[0]):
+        # for col in range(loads_array.shape[1]):
+            # if loads_array[row, col] < loads_array_norm[col]:
+                # loads_array[row, col] = loads_array_norm[col]
+
+    # max_cost = np.zeros((3,))
+    # for it, tstep in enumerate(data.structure.timestep_info):
+        # temp = np.abs(tstep.postproc_cell['loads'][:, 3:])
+        # max_vals = np.max(temp/loads_array[:, 1:] - 1.0, axis=0)
+        # for i_dim in range(3):
+            # max_cost[i_dim] = max(max_cost[i_dim], max_vals[i_dim])
+    # separate_cost = max_cost
+
+    # for k, v in index2load.items():
+        # separate_cost[k] *= cost_loads_dict[v]['scale']
+    # return np.sum(separate_cost)
 
 def loads_cost(data, cost_loads_dict):
     index2load = {0: 'Torsion',
@@ -463,7 +504,8 @@ def loads_cost(data, cost_loads_dict):
             delimiter=',')
     except OSError:
         try:
-            warnings.warn('Not found reference_loads file, trying parent folder')
+            warnings.warn(
+                'Not found reference_loads file, trying parent folder')
             loads_array = np.loadtxt(
                 '../' + cost_loads_dict['reference_loads'],
                 skiprows=1,
@@ -474,20 +516,21 @@ def loads_cost(data, cost_loads_dict):
 
     separate_cost = np.zeros((3,))
 
-    loads_array = np.abs(loads_array)
-    loads_array_norm = np.linalg.norm(loads_array, axis=0)
-    for row in range(loads_array.shape[0]):
-        for col in range(loads_array.shape[1]):
-            if loads_array[row, col] < loads_array_norm[col]:
-                loads_array[row, col] = loads_array_norm[col]
+    loads_array_root = np.abs(loads_array[0, 1:])
 
-    max_cost = np.zeros((3,))
+    # max_cost = np.zeros((3,))
+    # for it, tstep in enumerate(data.structure.timestep_info):
+        # temp = np.abs(tstep.postproc_cell['loads'][:, 3:])
+        # max_vals = np.max(temp/loads_array[:, 1:] - 1.0, axis=0)
+        # for i_dim in range(3):
+            # max_cost[i_dim] = max(max_cost[i_dim], max_vals[i_dim])
+    # separate_cost = max_cost
+    loads_history = np.zeros((len(data.structure.timestep_info), 3))
     for it, tstep in enumerate(data.structure.timestep_info):
-        temp = np.abs(tstep.postproc_cell['loads'][:, 3:])
-        max_vals = np.max(temp/loads_array[:, 1:] - 1.0, axis=0)
-        for i_dim in range(3):
-            max_cost[i_dim] = max(max_cost[i_dim], max_vals[i_dim])
-    separate_cost = max_cost
+        loads_history[it, :] = tstep.postproc_cell['loads'][0, 3:]/loads_array_root
+
+    separate_cost = np.max(loads_history, axis=0) - 1.
+    separate_cost = separate_cost*(separate_cost > 0)
 
     for k, v in index2load.items():
         separate_cost[k] *= cost_loads_dict[v]['scale']
