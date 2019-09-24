@@ -50,7 +50,10 @@ class Writer(object):
             self.file_name = file_name
             # create folder if necessary
             if not os.path.exists(self.file_route):
-                os.makedirs(self.file_route)
+                try:
+                    os.makedirs(self.file_route)
+                except FileExistsError:
+                    pass
 
             self.file = open(self.file_route + '/' + self.file_name, 'w')
 
@@ -81,8 +84,8 @@ class Writer(object):
         if self.print_screen:
             line = in_line
             lines = line.split("\n")
-            if level > 3:
-                raise AttributeError('Output level cannot be > 3')
+            if level > 4:
+                raise AttributeError('Output level cannot be > 4')
             if len(lines) == 1:
                 print(self.fore_colours[level] + line + self.reset)
             else:

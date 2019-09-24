@@ -11,6 +11,22 @@ import sharpy.utils.cout_utils as cout
 
 @ss_interface.linear_system
 class LinearAeroelastic(ss_interface.BaseElement):
+    """
+    Assemble a linearised aeroelastic system
+
+    The aeroelastic system can be seen as the coupling between a linearised aerodynamic system (System 1) and
+    a linearised beam system (System 2).
+
+    The coupled system retains inputs and outputs from both systems such that
+
+    .. math:: \mathbf{u} = [\mathbf{u}_1;\, \mathbf{u}_2]
+
+    and the outputs are also ordered in a similar fashion
+
+    .. math:: \mathbf{y} = [\mathbf{y}_1;\, \mathbf{y}_2]
+
+    Reference the individual systems for the particular ordering of the respective input and output variables.
+    """
     sys_id = 'LinearAeroelastic'
 
     settings_default = dict()
@@ -32,6 +48,9 @@ class LinearAeroelastic(ss_interface.BaseElement):
     settings_types['track_body'] = 'bool'
     settings_default['track_body'] = True
     settings_description['track_body'] = 'UVLM inputs and outputs projected to coincide with lattice at linearisation'
+
+    settings_table = settings.SettingsTable()
+    __doc__ += settings_table.generate(settings_types, settings_default, settings_description)
 
     def __init__(self):
 
@@ -152,7 +171,6 @@ class LinearAeroelastic(ss_interface.BaseElement):
                 phi = beam.sys.U
                 in_mode_matrix = np.zeros((uvlm.ss.inputs, beam.ss.outputs + (uvlm.ss.inputs - 2*beam.sys.num_dof)))
                 in_mode_matrix[:2*beam.sys.num_dof, :2*beam.sys.num_modes] = sclalg.block_diag(phi, phi)
-                # Control surface inputs TODO: gust inputs that need length scaling
                 in_mode_matrix[2*beam.sys.num_dof:, 2*beam.sys.num_modes:] = np.eye(uvlm.ss.inputs - 2*beam.sys.num_dof)
                 in_mode_matrix /= uvlm.sys.ScalingFacts['length']
                 out_mode_matrix = phi.T
@@ -211,7 +229,7 @@ class LinearAeroelastic(ss_interface.BaseElement):
               u_infty (float): New reference velocity
 
         Returns:
-            libss.ss: Updated aeroelastic state-space system
+            sharpy.linear.src.libss.ss: Updated aeroelastic state-space system
 
         """
         t_ref = self.uvlm.sys.ScalingFacts['length'] / u_infty
@@ -272,5 +290,3 @@ class LinearAeroelastic(ss_interface.BaseElement):
         read_data = h5.readh5(filename).data
         uvlm_ss_read = read_data.linear.linear_system.uvlm.ss
         return libss.ss(uvlm_ss_read.A, uvlm_ss_read.B, uvlm_ss_read.C, uvlm_ss_read.D, dt=uvlm_ss_read.dt)
-
-

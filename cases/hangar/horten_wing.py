@@ -1334,7 +1334,7 @@ class HortenWing:
 
         settings['AsymptoticStability'] = {'sys_id': 'LinearAeroelastic',
                                     'print_info': 'on',
-                                    'display_root_locus':'on',
+                                    'display_root_locus':'off',
                                     'frequency_cutoff': 0,
                                     'export_eigenvalues': 'on',
                                     'num_evals':100,

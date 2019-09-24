@@ -7,7 +7,8 @@ from sharpy.utils.solver_interface import solver, BaseSolver
 import sharpy.linear.utils.ss_interface as ss_interface
 import sharpy.utils.settings as settings
 import sharpy.utils.h5utils as h5
-import sharpy.linear.src.libss as libss
+import warnings
+
 
 @solver
 class LinearAssembler(BaseSolver):
@@ -30,6 +31,11 @@ class LinearAssembler(BaseSolver):
 
     The solver enables to load a user specific assembly of a state-space by means of the ``LinearCustom`` block.
 
+    See ``sharpy.linear.assembler`` for a detailed description of each of the state-space assemblies.
+
+    Upon assembly of the linear system, the data structure ``data.linear`` will be created. The :class:`.Linear`
+    contains the state-space as an attribute. This state space will be the one employed by postprocessors.
+
     """
     solver_id = 'LinearAssembler'
 
@@ -50,6 +56,8 @@ class LinearAssembler(BaseSolver):
     settings_description['linearisation_tstep'] = 'Chosen linearisation time step from ran time steps'
 
     def __init__(self):
+
+        warnings.warn('LinearAssembler solver under development')
         self.settings = dict()
         self.data = None
 
@@ -95,8 +103,17 @@ class LinearAssembler(BaseSolver):
 
 class Linear(object):
     """
-    This is the class responsible for the transfer of information and can be accessed as data.linear
+    This is the class responsible for the transfer of information and can be accessed as ``data.linear``. It stores
+    as class attributes the following classes that describe the linearised problem.
+
+    Attributes:
+        ss (sharpy.linear.src.libss.ss): State-space system
+        linear_system (sharpy.linear.utils.ss_interface.BaseElement): Assemble system properties
+        tsaero0 (sharpy.utils.datastructures.AeroTimeStepInfo): Linearisation aerodynamic timestep
+        tsstruct0 (sharpy.utils.datastructures.StructTimeStepInfo): Linearisation structural timestep
+        timestep_info (list): Linear time steps
     """
+
     def __init__(self, tsaero0, tsstruct0):
         self.linear_system = None
         self.ss = None

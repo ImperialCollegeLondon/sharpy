@@ -122,6 +122,9 @@ class AsymptoticStability(BaseSolver):
             self.eigenvalue_table = modalutils.EigenvalueTable()
             self.eigenvalue_table.print_header(self.eigenvalue_table.headers)
 
+        # Output dict
+        self.data.linear.stability = dict()
+
     def run(self):
         """
         Computes the eigenvalues and eigenvectors
@@ -176,7 +179,6 @@ class AsymptoticStability(BaseSolver):
         if len(self.settings['velocity_analysis']) == 3:
             self.velocity_analysis()
 
-        self.data.linear.stability = dict()
         self.data.linear.stability['eigenvectors'] = self.eigenvectors
         self.data.linear.stability['eigenvalues'] = self.eigenvalues
         # self.data.linear.stability.mode_shapes = mode_shape_list
@@ -267,6 +269,12 @@ class AsymptoticStability(BaseSolver):
         np.savetxt(self.folder + '/velocity_analysis_min%04d_max%04d_nvel%04d.dat' %(ulb*10, uub*10, num_u),
                    np.concatenate((uinf_part_plot, real_part_plot, imag_part_plot)).reshape((-1, 3), order='F'))
         cout.cout_wrap('\tSuccessful', 1)
+
+        self.velocity_results = dict()
+        self.data.linear.stability['velocity_results'] = dict()
+        self.data.linear.stability['velocity_results']['u_inf'] = uinf_part_plot
+        self.data.linear.stability['velocity_results']['evals_real'] = real_part_plot
+        self.data.linear.stability['velocity_results']['evals_imag'] = imag_part_plot
 
     def display_root_locus(self):
         """

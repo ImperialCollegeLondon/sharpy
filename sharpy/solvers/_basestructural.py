@@ -29,7 +29,7 @@ class _BaseStructural(BaseSolver):
     settings_description['max_iterations'] = 'Sets maximum number of iterations'
 
     settings_types['num_load_steps'] = 'int'
-    settings_default['num_load_steps'] = 0
+    settings_default['num_load_steps'] = 1
 
     settings_types['delta_curved'] = 'float'
     settings_default['delta_curved'] = 1e-2

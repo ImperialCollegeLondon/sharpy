@@ -7,6 +7,7 @@ Author: S. Maraniello, Dec 2018
 Modified: N. Goizueta, Sep 2019
 """
 
+import sharpy.utils.sharpydir as sharpydir
 import unittest
 import os
 import matplotlib.pyplot as plt
@@ -54,8 +55,8 @@ class Test_infinite_span(unittest.TestCase):
                             int(np.round(100 * self.Alpha0Deg)),
                             RollNodes, Nsurf, M, N, Mstar_fact)
         self.case_main += 'ord%.1d_rp%s_sp%s' % (integr_ord, RemovePred, UseSparse)
-        route_main = os.path.abspath('.') + '/res/infinite_span/'
-        self.figfold = './figs/infinite_span/'
+        route_main = sharpydir.SharpyDir + '/tests/linear/uvlm/res/'
+        self.figfold = sharpydir.SharpyDir + '/tests/linear/uvlm/figs/'
 
         if os.path.exists(route_main):
             shutil.rmtree(route_main)
@@ -305,7 +306,7 @@ class Test_infinite_span(unittest.TestCase):
 
         # and check non-linear uvlm against analytical solution
         er_f = np.abs(np.linalg.norm(Ftot_ste_pert - Cfvec_inf) / Cl_inf)
-        assert (er_f < 1e-2), \
+        assert (er_f <= 1.5e-2), \
             'Error of total aero force components (%.2e) too large!' % (er_f,) + \
             'Verify StaticUvlm'
 

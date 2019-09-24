@@ -10,7 +10,6 @@ from sharpy.utils.datastructures import LinearTimeStepInfo
 import sharpy.utils.cout_utils as cout
 import time
 
-
 @solver
 class LinearDynamicSimulation(BaseSolver):
     """Time-domain solution of Linear Time Invariant Systems
