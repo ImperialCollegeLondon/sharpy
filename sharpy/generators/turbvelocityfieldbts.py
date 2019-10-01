@@ -1,8 +1,5 @@
 import numpy as np
 import scipy.interpolate as interpolate
-import h5py as h5
-import os
-from lxml import objectify, etree
 
 import sharpy.utils.generator_interface as generator_interface
 import sharpy.utils.settings as settings
@@ -22,53 +19,41 @@ class TurbVelocityFieldBts(generator_interface.BaseGenerator):
     To call this generator, the ``generator_id = TurbVelocityField`` shall be used.
     This is parsed as the value for the ``velocity_field_generator`` key in the desired aerodynamic solver's settings.
 
-    Args:
-        in_dict (dict): Input data in the form of dictionary. See acceptable entries below:
-
-            ===================  ===============  ===============================================================  ===================
-            Name                 Type             Description                                                      Default
-            ===================  ===============  ===============================================================  ===================
-            ``print_info``       ``bool``         Output solver-specific information in runtime.                   ``True``
-            ``turbulent_field``  ``str``          XDMF file path of the velocity file.                             ``None``
-            ``u_fed``            ``list(float)``  Velocity at which the turbulence field is fed into the solid     ``[0.0, 0.0, 0.0]``
-            ``new_orientation``  ``str``          New orientation of the axes                                      ``xyz``
-            ``u_out``            ``list(float)``  Velocity to set for points outside the interpolating box         ``[0.0, 0.0, 0.0]``
-            ``case_with_tower``  ``bool``         Does the SHARPy case will include the tower in the simulation?   ``False``
-            ===================  ===============  ===============================================================  ===================
-
-    Attributes:
-
-    See Also:
-        .. py:class:: sharpy.utils.generator_interface.BaseGenerator
-
     """
     generator_id = 'TurbVelocityFieldBts'
 
+    settings_types = dict()
+    settings_default = dict()
+    settings_description = dict()
+
+    settings_types['print_info'] = 'bool'
+    settings_default['print_info'] = True
+    settings_description['print_info'] = 'Output solver-specific information in runtime'
+
+    settings_types['turbulent_field'] = 'str'
+    settings_default['turbulent_field'] = None
+    settings_description['turbulent_field'] = 'BTS file path of the velocity file'
+
+    settings_types['new_orientation'] = 'str'
+    settings_default['new_orientation'] = 'xyz'
+    settings_description['new_orientation'] = 'New orientation of the axes'
+
+    settings_types['u_fed'] = 'list(float)'
+    settings_default['u_fed'] = np.zeros((3,))
+    settings_description['u_fed'] = 'Velocity at which the turbulence field is fed into the solid'
+
+    settings_types['u_out'] = 'list(float)'
+    settings_default['u_out'] = np.zeros((3,))
+    settings_description['u_out'] = 'Velocity to set for points outside the interpolating box'
+
+    settings_types['case_with_tower'] = 'bool'
+    settings_default['case_with_tower'] = False
+    settings_description['case_with_tower'] = 'Does the SHARPy case will include the tower in the simulation?'
+
+    setting_table = settings.SettingsTable()
+    __doc__ += setting_table.generate(settings_types, settings_default, settings_description)
+
     def __init__(self):
-        self.in_dict = dict()
-        self.settings_types = dict()
-        self.settings_default = dict()
-
-        self.settings_types['print_info'] = 'bool'
-        self.settings_default['print_info'] = True
-
-        self.settings_types['turbulent_field'] = 'str'
-        self.settings_default['turbulent_field'] = None
-
-        self.settings_types['new_orientation'] = 'str'
-        self.settings_default['new_orientation'] = 'xyz'
-
-        self.settings_types['u_fed'] = 'list(float)'
-        self.settings_default['u_fed'] = np.zeros((3,))
-
-        self.settings_types['u_out'] = 'list(float)'
-        self.settings_default['u_out'] = np.zeros((3,))
-
-        self.settings_types['case_with_tower'] = 'bool'
-        self.settings_default['case_with_tower'] = False
-
-        self.settings = dict()
-
         self.interpolator = []
         self.bbox = None
 
