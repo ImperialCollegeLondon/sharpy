@@ -53,7 +53,7 @@ class SaveData(BaseSolver):
         self.settings_default['save_struct'] = True
 
         self.settings_types['save_linear'] = 'bool'
-        self.settings_default['save_linear'] = True
+        self.settings_default['save_linear'] = False
         self.settings_description['save_linear'] = 'Save linear state space system'
 
         self.settings_types['save_linear_uvlm'] = 'bool'
