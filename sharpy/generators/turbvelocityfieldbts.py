@@ -287,16 +287,6 @@ class TurbVelocityFieldBts(generator_interface.BaseGenerator):
         # print("old_vel.shape:", old_vel.shape)
         # print("new_vel.shape:", new_vel.shape)
 
-        # for ivel in range(3):
-        #     # These loops will index variables associated with the old grid
-        #     for ix in range(old_dim[0]):
-        #         for iy in range(old_dim[1]):
-        #             for iz in range(old_dim[2]):
-        #                 aux = np.array([ix, iy, iz])
-        #                 new_i = np.array([aux[position_in_old[0]]*sign[0], aux[position_in_old[1]]*sign[1], aux[position_in_old[2]]*sign[2]])
-        #                 # print("moving: ", position_in_old[ivel], ix, iy, iz, "to: ", ivel,new_i[0],new_i[1],new_i[2])
-        #                 new_vel[ivel,new_i[0],new_i[1],new_i[2]] = old_vel[position_in_old[ivel], ix, iy, iz]*sign[ivel]
-
         # These loops will index variables associated with the new grid
         for ix in range(new_dim[0]):
             for iy in range(new_dim[1]):
