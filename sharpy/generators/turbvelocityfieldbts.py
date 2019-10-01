@@ -79,6 +79,7 @@ class TurbVelocityFieldBts(generator_interface.BaseGenerator):
 
         x_grid, y_grid, z_grid, vel = self.read_turbsim_bts(self.settings['turbulent_field'])
         if not self.settings['new_orientation'] == 'xyz':
+            # self.settings['new_orientation'] = 'zyx'
             x_grid, y_grid, z_grid, vel = self.change_orientation(x_grid, y_grid, z_grid, vel, self.settings['new_orientation'])
 
         self.bbox = self.get_field_bbox(x_grid, y_grid, z_grid)
@@ -127,6 +128,9 @@ class TurbVelocityFieldBts(generator_interface.BaseGenerator):
                             raise ValueError()
 
     def read_turbsim_bts(self, fname):
+
+        # This post may be useful to understand the function:
+        # https://wind.nrel.gov/forum/wind/viewtopic.php?t=1384
 
         dtype = np.dtype([
             ("id", np.int16),
@@ -277,20 +281,35 @@ class TurbVelocityFieldBts(generator_interface.BaseGenerator):
             if sign[ivel] == -1:
                 new_grid[ivel] = new_grid[ivel][::-1]
 
-        new_vel = np.zeros((3,old_dim[position_in_old[0]],old_dim[position_in_old[1]],old_dim[position_in_old[2]]))
+        new_vel = np.zeros((3,new_dim[0],new_dim[1],new_dim[2]))
         # print("old_dim:", old_dim)
         # print("new_dim:", new_dim)
         # print("old_vel.shape:", old_vel.shape)
         # print("new_vel.shape:", new_vel.shape)
 
-        for ivel in range(3):
-            for ix in range(old_dim[0]):
-                for iy in range(old_dim[1]):
-                    for iz in range(old_dim[2]):
-                        aux = np.array([ix, iy, iz])
-                        new_i = np.array([aux[position_in_old[0]]*sign[0], aux[position_in_old[1]]*sign[1], aux[position_in_old[2]]*sign[2]])
+        # for ivel in range(3):
+        #     # These loops will index variables associated with the old grid
+        #     for ix in range(old_dim[0]):
+        #         for iy in range(old_dim[1]):
+        #             for iz in range(old_dim[2]):
+        #                 aux = np.array([ix, iy, iz])
+        #                 new_i = np.array([aux[position_in_old[0]]*sign[0], aux[position_in_old[1]]*sign[1], aux[position_in_old[2]]*sign[2]])
+        #                 # print("moving: ", position_in_old[ivel], ix, iy, iz, "to: ", ivel,new_i[0],new_i[1],new_i[2])
+        #                 new_vel[ivel,new_i[0],new_i[1],new_i[2]] = old_vel[position_in_old[ivel], ix, iy, iz]*sign[ivel]
+
+        # These loops will index variables associated with the new grid
+        for ix in range(new_dim[0]):
+            for iy in range(new_dim[1]):
+                for iz in range(new_dim[2]):
+                    new_i = np.array([ix, iy, iz])
+                    # old_i = np.array([new_i[position_in_old[0]]*sign[0], new_i[position_in_old[1]]*sign[1], new_i[position_in_old[2]]*sign[2]])
+                    old_i = np.array([new_i[position_in_old[0]], new_i[position_in_old[1]], new_i[position_in_old[2]]])
+                    for icoord in range(3):
+                        if sign[icoord] == -1:
+                            old_i[icoord] = -1*old_i[icoord] - 1
+                    for ivel in range(3):
                         # print("moving: ", position_in_old[ivel], ix, iy, iz, "to: ", ivel,new_i[0],new_i[1],new_i[2])
-                        new_vel[ivel,new_i[0],new_i[1],new_i[2]] = old_vel[position_in_old[ivel], ix, iy, iz]
+                        new_vel[ivel,new_i[0],new_i[1],new_i[2]] = old_vel[position_in_old[ivel], old_i[0], old_i[1], old_i[2]]*sign[ivel]
 
         return new_grid[0], new_grid[1], new_grid[2], new_vel
 
