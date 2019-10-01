@@ -171,6 +171,25 @@ def rotation_matrix_around_axis(axis, angle):
 
 
 def skew(vector):
+    r"""
+    Returns a skew symmetric matrix such that
+
+    .. math:: \boldsymbol{v} \times \boldsymbol{u} = \tilde{\boldsymbol{v}}{\boldsymbol{u}
+
+    where
+
+    .. math:: \tilde{\boldsymbol{v}} = \begin{bmatrix}
+        0 & -v_z & v_y \\
+        v_z & 0 & -v_x \\
+        -v_y & v_x & 0 \end{bmatrix}.
+
+    Args:
+        vector (np.ndarray): 3-dimensional vector
+
+    Returns:
+        np.array: Skew-symmetric matrix.
+
+    """
     if not vector.size == 3:
         raise ValueError('The input vector is not 3D')
 
@@ -728,9 +747,6 @@ def rotation3d_x(angle):
 
 def rotation3d_y(angle):
     r"""
-    Warnings:
-        This function is transposed so it undoes the pitch rotation.
-
     Rotation matrix about the y axis by the input angle :math:`\Theta`
 
     .. math::
@@ -987,17 +1003,49 @@ def der_Cquat_by_v(q,v):
 
 
 def der_CquatT_by_v(q,v):
-    """
-    Being C=C(quat).T the projection matrix depending on the quaternion q and
-    defined as C=quat2rotation(q).T, the function returns the derivative, w.r.t. the
-    quaternion components, of the vector dot(C,v), where v is a constant
+    r"""
+    Returns the derivative with respect to quaternion components of a projection matrix times a constant vector.
+
+    Being :math:`\mathbf{C}=\mathbf{R}(\boldsymbol{\chi})^\top` the projection matrix depending on the quaternion
+    :math:`\boldsymbol{\chi}` and obtained through the function
+    defined as ``C=quat2rotation(q).T``, this function returns the derivative with respect to the
+    quaternion components, of the vector :math:`(\mathbf{C\cdot v})`, where :math:`\mathbf{v}` is a constant
     vector.
 
-    The elements of the resulting derivative matrix D are ordered such that:
+    The derivative operation is defined as:
 
-    .. math::  d(C*v) = D*d(q)
+    .. math::  \delta(\mathbf{C}\cdot \mathbf{v}) =
+        \frac{\partial}{\partial\boldsymbol{\chi}}\left(\mathbf{C\cdot v}\right)\delta\boldsymbol{\chi}
 
-    where :math:`d(.)` is a delta operator.
+    where, for simplicity, we define
+
+    .. math:: \mathbf{D} =
+        \frac{\partial}{\partial\boldsymbol{\chi}}\left(\mathbf{C\cdot v}\right) \in \mathbb{R}^{3\times4}
+
+    and :math:`\delta(\bullet)` is a delta operator.
+
+    The members of :math:`\mathbf{D}` are the following:
+
+    .. math::
+        \mathbf{D}_{11} &= 2 (q_0 v_x - q_2 v_z + q_3 v_y)\\
+        \mathbf{D}_{12} &= 2 (q_1 v_x - q_2 v_y + q_3 v_z)\\
+        \mathbf{D}_{13} &= 2 (-q_0 v_z + q_1 v_y - q_2 v_x)\\
+        \mathbf{D}_{14} &= 2 (q_0 v_y + q_1 v_z - q_3 v_x)
+
+    .. math::
+        \mathbf{D}_{21} &= 2 (q_0 v_y + q_1 v_z - q_3 v_x)\\
+        \mathbf{D}_{22} &= 2 (q_0 v_z - q_1 v_y + q_2 v_x)\\
+        \mathbf{D}_{23} &= 2 (q_1 v_x + q_2 v_y + q_3 v_z)\\
+        \mathbf{D}_{24} &= 2 (-q_0 v_x + q_2 v_z - q_3 v_y)
+
+    .. math::
+        \mathbf{D}_{31} &= 2 (q_0 v_z - q_1 v_y + q_2 v_x)\\
+        \mathbf{D}_{32} &= 2 (-q_0 v_y - q_1 v_z + q_3 v_x)\\
+        \mathbf{D}_{33} &= 2 (q_0 v_x - q_2 v_z + q_3 v_y)\\
+        \mathbf{D}_{34} &= 2 (q_1 v_x + q_2 v_y + q_3 v_z)\\
+
+    Returns:
+        np.array: :math:`\mathbf{D}` matrix.
     """
 
     vx,vy,vz=v

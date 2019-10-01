@@ -143,6 +143,28 @@ def to_custom_types(dictionary, types, default):
                 dictionary[k] = default[k].copy()
                 notify_default_value(k, dictionary[k])
 
+        elif v == 'list(complex)':
+            try:
+                if isinstance(dictionary[k], np.ndarray):
+                    continue
+                if isinstance(dictionary[k], list):
+                    for i in range(len(dictionary[k])):
+                        dictionary[k][i] = float(dictionary[k][i])
+                    dictionary[k] = np.array(dictionary[k])
+                    continue
+                # dictionary[k] = dictionary[k].split(',')
+                # # getting rid of leading and trailing spaces
+                # dictionary[k] = list(map(lambda x: x.strip(), dictionary[k]))
+                if dictionary[k].find(',') < 0:
+                    dictionary[k] = np.fromstring(dictionary[k].strip('[]'), sep=' ').astype(complex)
+                else:
+                    dictionary[k] = np.fromstring(dictionary[k].strip('[]'), sep=',').astype(complex)
+            except KeyError:
+                if default[k] is None:
+                    raise exceptions.NoDefaultValueException(k)
+                dictionary[k] = default[k].copy()
+                notify_default_value(k, dictionary[k])
+
         elif v == 'dict':
             try:
                 if not isinstance(dictionary[k], dict):

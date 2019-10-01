@@ -3,8 +3,6 @@ Time domain solver to integrate the linear UVLM aerodynamic system developed by 
 N Goizueta
 Nov 18
 """
-import os
-import sys
 from sharpy.utils.solver_interface import BaseSolver, solver
 import numpy as np
 import sharpy.utils.settings as settings
