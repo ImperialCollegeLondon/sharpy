@@ -6,6 +6,82 @@ import sharpy.utils.settings as settings
 import sharpy.utils.cout_utils as cout
 
 
+def interp_rectgrid_vectorfield(points, grid, vector_field, out_value, regularGrid=False, num_cores=1):
+
+    npoints = points.shape[0]
+    output = np.zeros((npoints, 3))
+    if regularGrid:
+        length = np.zeros((3))
+        npoints_grid = np.zeros((3), dtype=int)
+        delta = np.zeros((3))
+        for idim in range(3):
+            length[idim] = grid[idim][-1] - grid[idim][0]
+            npoints_grid[idim] = len(grid[idim])
+            delta[idim] = length[idim]/(npoints_grid[idim] - 1)
+
+    for ipoint in range(npoints):
+        # Check if the point is outside the box
+        isout = False
+        for idim in range(3):
+            if (points[ipoint, idim] > grid[idim][-1]) or (points[ipoint, idim] < grid[idim][0]):
+                isout = True
+                output[ipoint, :] = out_value
+                break
+
+        # If the point is in the grid
+        if not isout:
+            # Compute the position
+            igrid = np.zeros((3,), dtype=int)
+            if regularGrid:
+                for idim in range(3):
+                    igrid[idim] = int(np.ceil((points[ipoint, idim] - grid[idim][0])/delta[idim]))
+            else:
+                for idim in range(3):
+                    while points[ipoint, idim] >= grid[idim][igrid[idim]]:
+                        igrid[idim] += 1
+
+            xvec = np.array([grid[0][igrid[0] - 1],
+                             grid[0][igrid[0]    ]])
+            xvec = np.concatenate((xvec, xvec, xvec, xvec))
+            yvec = np.array([grid[1][igrid[1] - 1],
+                             grid[1][igrid[1] - 1],
+                             grid[1][igrid[1]    ],
+                             grid[1][igrid[1]    ]])
+            yvec = np.concatenate((yvec, yvec))
+            zvec = np.ones((8))
+            zvec[0:4] *= grid[2][igrid[2] - 1]
+            zvec[4:8] *= grid[2][igrid[2]    ]
+
+            A = np.zeros((8,8))
+            A[:, 0] = np.ones((8,))
+            A[:, 1] = xvec
+            A[:, 2] = yvec
+            A[:, 3] = zvec
+            A[:, 4] = xvec*yvec
+            A[:, 5] = xvec*zvec
+            A[:, 6] = yvec*zvec
+            A[:, 7] = xvec*yvec*zvec
+
+            Ainv = np.linalg.inv(A)
+            x = points[ipoint, 0]
+            y = points[ipoint, 1]
+            z = points[ipoint, 2]
+            for idim in range(3):
+                b = np.array([vector_field[idim, igrid[0] - 1, igrid[1] - 1, igrid[2] - 1],
+                              vector_field[idim, igrid[0]    , igrid[1] - 1, igrid[2] - 1],
+                              vector_field[idim, igrid[0] - 1, igrid[1]    , igrid[2] - 1],
+                              vector_field[idim, igrid[0]    , igrid[1]    , igrid[2] - 1],
+                              vector_field[idim, igrid[0] - 1, igrid[1] - 1, igrid[2]    ],
+                              vector_field[idim, igrid[0]    , igrid[1] - 1, igrid[2]    ],
+                              vector_field[idim, igrid[0] - 1, igrid[1]    , igrid[2]    ],
+                              vector_field[idim, igrid[0]    , igrid[1]    , igrid[2]    ]
+                             ])
+                f = np.dot(Ainv, b)
+                output[ipoint, idim] = f[0] + f[1]*x + f[2]*y + f[3]*z + f[4]*x*y + f[5]*x*z + f[6]*y*z + f[7]*x*y*z
+
+    return output
+
+
 @generator_interface.generator
 class TurbVelocityFieldBts(generator_interface.BaseGenerator):
     r"""
@@ -57,32 +133,39 @@ class TurbVelocityFieldBts(generator_interface.BaseGenerator):
         self.interpolator = []
         self.bbox = None
 
+        self.x_grid = None
+        self.y_grid = None
+        self.z_grid = None
+
+        self.vel = None
+
     def initialise(self, in_dict):
         self.in_dict = in_dict
         settings.to_custom_types(self.in_dict, self.settings_types, self.settings_default)
         self.settings = self.in_dict
 
-        x_grid, y_grid, z_grid, vel = self.read_turbsim_bts(self.settings['turbulent_field'])
+        self.x_grid, self.y_grid, self.z_grid, self.vel = self.read_turbsim_bts(self.settings['turbulent_field'])
         if not self.settings['new_orientation'] == 'xyz':
             # self.settings['new_orientation'] = 'zyx'
-            x_grid, y_grid, z_grid, vel = self.change_orientation(x_grid, y_grid, z_grid, vel, self.settings['new_orientation'])
+            self.x_grid, self.y_grid, self.z_grid, self.vel = self.change_orientation(self.x_grid, self.y_grid, self.z_grid, self.vel, self.settings['new_orientation'])
 
-        self.bbox = self.get_field_bbox(x_grid, y_grid, z_grid)
+        self.bbox = self.get_field_bbox(self.x_grid, self.y_grid, self.z_grid)
         if self.settings['print_info']:
             cout.cout_wrap('The domain bbox is:', 1)
             cout.cout_wrap(' x = [' + str(self.bbox[0, 0]) + ', ' + str(self.bbox[0, 1]) + ']', 1)
             cout.cout_wrap(' y = [' + str(self.bbox[1, 0]) + ', ' + str(self.bbox[1, 1]) + ']', 1)
             cout.cout_wrap(' z = [' + str(self.bbox[2, 0]) + ', ' + str(self.bbox[2, 1]) + ']', 1)
 
-        self.init_interpolator(x_grid, y_grid, z_grid, vel)
+        # self.init_interpolator(x_grid, y_grid, z_grid, vel)
 
     def init_interpolator(self, x_grid, y_grid, z_grid, vel):
 
-        for ivel in range(3):
-            self.interpolator.append(interpolate.RegularGridInterpolator((x_grid, y_grid, z_grid),
-                                                                vel[ivel,:,:,:],
-                                                                bounds_error=False,
-                                                                fill_value=self.settings['u_out'][ivel]))
+        pass
+        # for ivel in range(3):
+        #     self.interpolator.append(interpolate.RegularGridInterpolator((x_grid, y_grid, z_grid),
+        #                                                         vel[ivel,:,:,:],
+        #                                                         bounds_error=False,
+        #                                                         fill_value=self.settings['u_out'][ivel]))
 
     def generate(self, params, uext):
         zeta = params['zeta']
@@ -97,20 +180,29 @@ class TurbVelocityFieldBts(generator_interface.BaseGenerator):
                               offset = -self.settings['u_fed']*t)
 
     def interpolate_zeta(self, zeta, for_pos, u_ext, interpolator=None, offset=np.zeros((3))):
-        if interpolator is None:
-            interpolator = self.interpolator
+        # if interpolator is None:
+        #     interpolator = self.interpolator
 
         for isurf in range(len(zeta)):
             _, n_m, n_n = zeta[isurf].shape
+
+            # Reorder the coordinates
+            points_list = np.zeros((n_m*n_n, 3))
+            ipoint = 0
             for i_m in range(n_m):
                 for i_n in range(n_n):
-                    coord = zeta[isurf][:, i_m, i_n] + for_pos[0:3] + offset
-                    for i_dim in range(3):
-                        try:
-                            u_ext[isurf][i_dim, i_m, i_n] = self.interpolator[i_dim](coord)
-                        except ValueError:
-                            print(coord)
-                            raise ValueError()
+                    points_list[ipoint, :] = zeta[isurf][:, i_m, i_n] + for_pos[0:3] + offset
+                    ipoint += 1
+
+            # Interpolate
+            list_uext = interp_rectgrid_vectorfield(points_list, (self.x_grid, self.y_grid, self.z_grid), self.vel, self.settings['u_out'], regularGrid=True, num_cores=1)
+
+            # Reorder the values
+            ipoint = 0
+            for i_m in range(n_m):
+                for i_n in range(n_n):
+                    u_ext[isurf][:, i_m, i_n] = list_uext[ipoint, :]
+                    ipoint += 1
 
     def read_turbsim_bts(self, fname):
 
