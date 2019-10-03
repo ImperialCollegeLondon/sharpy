@@ -148,6 +148,14 @@ class AsymptoticStability(BaseSolver):
         ss = self.data.linear.ss
 
         # Calculate eigenvectors and eigenvalues of the full system
+
+        #remove yaw
+        rem_yaw = np.zeros((ss.A.shape[0], ss.A.shape[0]-2))
+        rem_yaw[:1536+296, :1536+296] = np.eye(1536+296)
+        rem_yaw[-297:-1, -296:] = np.eye(296)
+
+        ss.A = rem_yaw.T.dot(ss.A.dot(rem_yaw))
+
         eigenvalues, eigenvectors = sclalg.eig(ss.A)
         # np.savetxt('./Amatrix', ss.A)
         # Convert DT eigenvalues into CT

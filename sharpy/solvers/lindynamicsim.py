@@ -117,7 +117,7 @@ class LinearDynamicSimulation(BaseSolver):
             np.savetxt(self.folder + '/t_out.dat', t_out)
             cout.cout_wrap('Success', 1)
 
-        process = True # Under development
+        process = False # Under development
         if process:
             # Pack state variables into linear timestep info
             cout.cout_wrap('Plotting results...')

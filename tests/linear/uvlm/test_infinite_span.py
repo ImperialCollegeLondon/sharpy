@@ -1,33 +1,33 @@
-"""Linearised UVLM 2D tests
-
-
+"""
 Test linear UVLM solver against analytical results for 2D wing
-
-Author: S. Maraniello, Dec 2018
-Modified: N. Goizueta, Sep 2019
+S. Maraniello, Dec 2018
 """
 
-import sharpy.utils.sharpydir as sharpydir
 import unittest
-import os
-import matplotlib.pyplot as plt
 import numpy as np
-import shutil
+import os
+import copy
+import warnings
+
 import sharpy.sharpy_main
+import sharpy.utils.h5utils as h5
 import sharpy.utils.algebra as algebra
 import sharpy.utils.analytical as an
+
 import sharpy.linear.src.linuvlm as linuvlm
+import sharpy.linear.src.libss as libss
+
 import cases.templates.flying_wings as flying_wings
 
 
 class Test_infinite_span(unittest.TestCase):
     """
-    Test infinite-span flat wing at zero incidence against analytical solutions
+    Test infitite-span flat wing at zero incidence against analytical solutions
     """
 
     def setUp_from_params(self, Nsurf, integr_ord, RemovePred, UseSparse, RollNodes):
         """
-        Builds SHARPy solution for a rolled infinite span flat wing at zero
+        Builds sharpy solution for a rolled infinite span flat wing at zero
         incidence. Rolling can be obtained both by rotating the FoR A or
         modifying the nodes of the wing.
         """
@@ -37,13 +37,10 @@ class Test_infinite_span(unittest.TestCase):
         self.DeleteOutput = True
 
         # Define Parametrisation
-        M, N, Mstar_fact = 8, 8, 50
+        M, N, Mstar_fact = 16, 4, 50
 
         # Flying properties
-        if RollNodes:
-            self.Roll0Deg = 0.
-        else:
-            self.Roll0Deg = 0.
+        self.Roll0Deg = 60.
         self.Alpha0Deg = 0.0
         Uinf0 = 50.
 
@@ -55,14 +52,8 @@ class Test_infinite_span(unittest.TestCase):
                             int(np.round(100 * self.Alpha0Deg)),
                             RollNodes, Nsurf, M, N, Mstar_fact)
         self.case_main += 'ord%.1d_rp%s_sp%s' % (integr_ord, RemovePred, UseSparse)
-        route_main = sharpydir.SharpyDir + '/tests/linear/uvlm/res/'
-        self.figfold = sharpydir.SharpyDir + '/tests/linear/uvlm/figs/'
-
-        if os.path.exists(route_main):
-            shutil.rmtree(route_main)
-        if os.path.exists(self.figfold):
-            shutil.rmtree(self.figfold)
-
+        route_main = os.path.abspath('.') + '/res/infinite_span/'
+        self.figfold = './figs/infinite_span/'
         os.system('mkdir -p %s' % route_main)
         os.system('mkdir -p %s' % self.figfold)
 
@@ -73,7 +64,6 @@ class Test_infinite_span(unittest.TestCase):
             u_inf=Uinf0, alpha=self.Alpha0Deg, roll=self.Roll0Deg,
             aspect_ratio=1e5, RollNodes=RollNodes,
             route=route_main, case_name=self.case_main)
-
         ws.main_ea = .4
         ws.clean_test_files()
         ws.update_derived_params()
@@ -128,20 +118,19 @@ class Test_infinite_span(unittest.TestCase):
 
     def test_wagner(self):
         """
-        Step response (Wagner):
-            - set linearisation point at 0 effective incidence but non-zero roll
-                  attitude. This can be obtained either by rotating the FoR A or
-                  by explicitely modifying the position of the wing nodes.
-            - perturb. state so as to produce a small effective angle of attack.
-                This is achieved combining changes of:
-                        - wing lattice orientation
-                        - wing lattice speed
-                        - incoming flow orientation
-            - compare aerodynamic force time history to Wagner's analytical solution
-            - compare steady state to analytical solution and ``StaticUvlm`` solver
+        Step response (Wagner)
+        - set linearsation point at 0 effective incidence but non-zero roll
+              attitude. This can be obtained either by rotating the FoR A or
+              by explicitely modifying the position of the wing nodes.
+        - perturb. state so as to produce a small effective angle of attack.
+            This is achieved combining changes of:
+                    - wing lattice orientation
+                    - wing lattice speed
+                    - incoming flow orientation
+        - compare aerodynamic force time history to Wagner's analytical solution
+        - compare steady state to analytical solution and StaticUvlm solver
 
-        Notes:
-            The function uses ``subTests`` to call ``run_wagner``.
+        Note: the function uses subTests to call run_wagner
         """
 
         for Nsurf in [1, 2]:
@@ -237,7 +226,7 @@ class Test_infinite_span(unittest.TestCase):
         Fmag = np.linalg.norm(Ftot_ste_ref)
         er_f = np.max(np.abs(Ftot_ste - Ftot_ste_ref)) / Fmag
         er_m = np.max(np.abs(Mtot_ste - Mtot_ste_ref)) / Fmag / ws.c_ref
-        assert (er_f < 1e-8 and er_m < 1e-8), \
+        assert (er_f < 1e-8 and er_m < 1e-5), \
             'Error of total forces (%.2e) and moment (%.2e) too large!' % (er_f, er_m) + \
             'Verify gains produced by linuvlm.Dynamic.get_total_forces_gain.'
 
@@ -306,7 +295,7 @@ class Test_infinite_span(unittest.TestCase):
 
         # and check non-linear uvlm against analytical solution
         er_f = np.abs(np.linalg.norm(Ftot_ste_pert - Cfvec_inf) / Cl_inf)
-        assert (er_f <= 1.5e-2), \
+        assert (er_f < 1e-2), \
             'Error of total aero force components (%.2e) too large!' % (er_f,) + \
             'Verify StaticUvlm'
 
@@ -364,9 +353,13 @@ class Test_infinite_span(unittest.TestCase):
             ts2perc, ts1perc = 16, 36
         er_th_2perc = np.max(Er_f_tot[ts2perc:])
         er_th_1perc = np.max(Er_f_tot[ts1perc:])
+        assert er_th_2perc < 2e-2 and er_th_1perc < 1e-2, \
+            'Error of dynamic step response at time-steps 16 and 36 ' + \
+            '(%.2e and %.2e) too large. Verify Linear UVLM.' % (er_th_2perc, er_th_1perc)
 
         ### ----- generate plot
         if self.ProducePlots:
+            import matplotlib.pyplot as plt
 
             # sections to plot
             if Nsurf == 1:
@@ -422,10 +415,6 @@ class Test_infinite_span(unittest.TestCase):
             fig.savefig(self.figfold + self.case_main + '.pdf')
             plt.close()
 
-        assert er_th_2perc < 2e-2 and er_th_1perc < 1e-2, \
-            'Error of dynamic step response at time-steps 16 and 36 ' + \
-            '(%.2e and %.2e) too large. Verify Linear UVLM.' % (er_th_2perc, er_th_1perc)
-
         # clean-up
         if self.DeleteOutput:
             os.system('rm %s*' % (self.route_main + self.case_code))
@@ -433,6 +422,4 @@ class Test_infinite_span(unittest.TestCase):
 
 
 if __name__ == '__main__':
-    if os.path.exists('./figs/infinite_span'):
-        shutil.rmtree('./figs/infinite_span')
     unittest.main()

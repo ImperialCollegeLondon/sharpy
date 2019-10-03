@@ -634,18 +634,19 @@ class LinAeroEla():
 
                     ### flexible dof equations (Kss and Csr)
                     if bc_here != 1:
-                        # forces
+                        # nodal forces
                         if self.use_euler:
-                            Csr[jj_tra, -3:] -= algebra.der_Peuler_by_v(tsstr.euler, faero)
+                            if not track_body:
+                                Csr[jj_tra, -3:] -= algebra.der_Peuler_by_v(tsstr.euler, faero)
+                                # Csr[jj_tra, -3:] -= algebra.der_Ceuler_by_v(tsstr.euler, Cga.T.dot(faero))
 
-                            if track_body:
-                                Csr[jj_tra, -3:] -= algebra.der_Ceuler_by_v(tsstr.euler, Cga.T.dot(faero))
                         else:
-                            Csr[jj_tra, -4:] -= algebra.der_CquatT_by_v(tsstr.quat, faero)
+                            if not track_body:
+                                Csr[jj_tra, -4:] -= algebra.der_CquatT_by_v(tsstr.quat, faero)
 
                             # Track body
-                            if track_body:
-                                Csr[jj_tra, -4:] -= algebra.der_Cquat_by_v(tsstr.quat, Cga.T.dot(faero))
+                            # if track_body:
+                            #     Csr[jj_tra, -4:] -= algebra.der_Cquat_by_v(tsstr.quat, Cga.T.dot(faero))
 
                         ### moments
                         TanTXbskew = np.dot(Tan.T, Xbskew)
@@ -656,28 +657,30 @@ class LinAeroEla():
                             np.dot(TanTXbskew, algebra.der_CcrvT_by_v(psi, np.dot(Cag, faero)))
                         # contribution of delta aero moment (dquat)
                         if self.use_euler:
-                            Csr[jj_rot, -3:] -= \
-                                np.dot(TanTXbskew,
-                                       np.dot(Cba,
-                                              algebra.der_Peuler_by_v(tsstr.euler, faero)))
-
-                            if track_body:
+                            if not track_body:
                                 Csr[jj_rot, -3:] -= \
                                     np.dot(TanTXbskew,
-                                           np.dot(Cbg,
-                                                  algebra.der_Peuler_by_v(tsstr.euler, Cga.T.dot(faero))))
-                        else:
-                            Csr[jj_rot, -4:] -= \
-                                np.dot(TanTXbskew,
-                                       np.dot(Cba,
-                                              algebra.der_CquatT_by_v(tsstr.quat, faero)))
+                                           np.dot(Cba,
+                                                  algebra.der_Peuler_by_v(tsstr.euler, faero)))
 
-                            # Track body
-                            if track_body:
+                            # if track_body:
+                            #     Csr[jj_rot, -3:] -= \
+                            #         np.dot(TanTXbskew,
+                            #                np.dot(Cbg,
+                            #                       algebra.der_Peuler_by_v(tsstr.euler, Cga.T.dot(faero))))
+                        else:
+                            if not track_body:
                                 Csr[jj_rot, -4:] -= \
                                     np.dot(TanTXbskew,
-                                           np.dot(Cbg,
-                                                  algebra.der_CquatT_by_v(tsstr.quat, Cga.T.dot(faero))))
+                                           np.dot(Cba,
+                                                  algebra.der_CquatT_by_v(tsstr.quat, faero)))
+
+                            # Track body
+                            # if track_body:
+                            #     Csr[jj_rot, -4:] -= \
+                            #         np.dot(TanTXbskew,
+                            #                np.dot(Cbg,
+                            #                       algebra.der_CquatT_by_v(tsstr.quat, Cga.T.dot(faero))))
 
                     ### rigid body eqs (Crs and Crr)
 
@@ -691,38 +694,39 @@ class LinAeroEla():
 
                     if self.use_euler:
                         # total force
-                        Crr[:3, -3:] -= algebra.der_Peuler_by_v(tsstr.euler, faero)
+                        if not track_body:
+                            Crr[:3, -3:] -= algebra.der_Peuler_by_v(tsstr.euler, faero)
 
-                        # total moment contribution due to change in euler angles
-                        Crr[3:6, -3:] -= algebra.der_Peuler_by_v(tsstr.euler, np.cross(zetag, faero))
-                        Crr[3:6, -3:] += np.dot(
-                            np.dot(Cag, algebra.skew(faero)),
-                            algebra.der_Peuler_by_v(tsstr.euler, np.dot(Cab, Xb)))
+                            # total moment contribution due to change in euler angles
+                            Crr[3:6, -3:] -= algebra.der_Peuler_by_v(tsstr.euler, np.cross(zetag, faero))
+                            Crr[3:6, -3:] += np.dot(
+                                np.dot(Cag, algebra.skew(faero)),
+                                algebra.der_Peuler_by_v(tsstr.euler, np.dot(Cab, Xb)))
 
-                        if track_body:
-                            # NG 20/8/19 - is the Cag needed here? Verify
-                            Crr[:3, -3:] -= Cag.dot(algebra.der_Ceuler_by_v(tsstr.euler, Cga.T.dot(faero)))
-
-                            Crr[3:6, -3:] -= Cag.dot(algebra.skew(zetag).dot(algebra.der_Ceuler_by_v(tsstr.euler, Cga.T.dot(faero))))
-                            Crr[3:6, -3:] += Cag.dot(algebra.skew(faero)).dot(algebra.der_Ceuler_by_v(tsstr.euler, Cga.T.dot(zetag)))
+                            # if track_body:
+                            #     # NG 20/8/19 - is the Cag needed here? Verify
+                            #     Crr[:3, -3:] -= Cag.dot(algebra.der_Ceuler_by_v(tsstr.euler, Cga.T.dot(faero)))
+                            #
+                            #     Crr[3:6, -3:] -= Cag.dot(algebra.skew(zetag).dot(algebra.der_Ceuler_by_v(tsstr.euler, Cga.T.dot(faero))))
+                            #     Crr[3:6, -3:] += Cag.dot(algebra.skew(faero)).dot(algebra.der_Ceuler_by_v(tsstr.euler, Cga.T.dot(zetag)))
 
                     else:
-                        # total force
-                        Crr[:3, -4:] -= algebra.der_CquatT_by_v(tsstr.quat, faero)
+                        if not track_body:
+                            # total force
+                            Crr[:3, -4:] -= algebra.der_CquatT_by_v(tsstr.quat, faero)
 
-                        # total moment contribution due to quaternion
-                        Crr[3:6, -4:] -= algebra.der_CquatT_by_v(tsstr.quat, np.cross(zetag, faero))
-                        Crr[3:6, -4:] += np.dot(
-                            np.dot(Cag, algebra.skew(faero)),
-                            algebra.der_CquatT_by_v(tsstr.quat, np.dot(Cab, Xb)))
+                            # total moment contribution due to quaternion
+                            Crr[3:6, -4:] -= algebra.der_CquatT_by_v(tsstr.quat, np.cross(zetag, faero))
+                            Crr[3:6, -4:] += np.dot(
+                                np.dot(Cag, algebra.skew(faero)),
+                                algebra.der_CquatT_by_v(tsstr.quat, np.dot(Cab, Xb)))
 
                         # Track body
-                        if track_body:
-                            # NG 20/8/19 - is the Cag needed here? Verify
-                            Crr[:3, -4:] -= Cag.dot(algebra.der_Cquat_by_v(tsstr.quat, Cga.T.dot(faero)))
-
-                            Crr[3:6, -4:] -= Cag.dot(algebra.skew(zetag).dot(algebra.der_Cquat_by_v(tsstr.quat, Cga.T.dot(faero))))
-                            Crr[3:6, -4:] += Cag.dot(algebra.skew(faero)).dot(algebra.der_Cquat_by_v(tsstr.quat, Cga.T.dot(zetag)))
+                        # if track_body:
+                        #     Crr[:3, -4:] -= Cag.dot(algebra.der_Cquat_by_v(tsstr.quat, Cga.T.dot(faero)))
+                        #
+                        #     Crr[3:6, -4:] -= Cag.dot(algebra.skew(zetag).dot(algebra.der_Cquat_by_v(tsstr.quat, Cga.T.dot(faero))))
+                        #     Crr[3:6, -4:] += Cag.dot(algebra.skew(faero)).dot(algebra.der_Cquat_by_v(tsstr.quat, Cga.T.dot(zetag)))
 
 
         # transfer

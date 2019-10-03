@@ -3,6 +3,9 @@ import numpy as np
 import scipy.sparse as scsp
 import sharpy.linear.src.libsparse as libsp
 import sharpy.utils.cout_utils as cout
+import sharpy.utils.algebra as algebra
+import sharpy.utils.settings as settings
+
 
 @solver_interface.solver
 class StabilityDerivatives(solver_interface.BaseSolver):
@@ -19,21 +22,46 @@ class StabilityDerivatives(solver_interface.BaseSolver):
     """
     solver_id = 'StabilityDerivatives'
 
+    settings_default = dict()
+    settings_description = dict()
+    settings_types = dict()
+
+    settings_types['print_info'] = 'bool'
+    settings_default['print_info'] = True
+    settings_description['print_info'] = 'Display info to screen'
+
+    settings_types['u_inf'] = 'float'
+    settings_default['u_inf'] = 1.
+    settings_description['u_inf'] = 'Free stream reference velocity'
+
+    settings_types['S_ref'] = 'float'
+    settings_default['S_ref'] = 1.
+    settings_description['S_ref'] = 'Reference planform area'
+
+    settings_types['b_ref'] = 'float'
+    settings_default['b_ref'] = 1.
+    settings_description['b_ref'] = 'Reference span'
+
+    settings_types['c_ref'] = 'float'
+    settings_default['c_ref'] = 1.
+    settings_description['c_ref'] = 'Reference chord'
+
     def __init__(self):
         self.data = None
+        self.settings = dict()
 
+        self.u_inf = 1
         self.inputs = 0
 
-    def initialise(self, data):
+    def initialise(self, data, custom_settings=None):
         self.data = data
 
-        # Get rigid body + control surface inputs
-        try:
-            n_ctrl_sfc = self.data.linear.linear_system.uvlm.control_surface.n_control_surfaces
-        except AttributeError:
-            n_ctrl_sfc = 0
+        if custom_settings:
+            self.settings = custom_settings
+        else:
+            self.settings = self.data.settings[self.solver_id]
 
-        self.inputs = 10 + n_ctrl_sfc
+        settings.to_custom_types(self.settings, self.settings_types, self.settings_default)
 
     def run(self):
 
@@ -52,13 +80,32 @@ class StabilityDerivatives(solver_interface.BaseSolver):
               (columns) and the velocity / control surface inputs (rows).
         """
         ssuvlm = self.data.linear.linear_system.uvlm.ss
-
-        in_matrix = np.zeros((ssuvlm.inputs, self.inputs))
-        in_matrix[-self.inputs:, :] = np.eye(self.inputs)
+        modal = self.data.linear.linear_system.beam.sys.modal
+        use_euler = self.data.linear.linear_system.beam.sys.use_euler
 
         nout = 6
+        if use_euler:
+            rig_dof = 9
+        else:
+            rig_dof = 10
+
+        # Get rigid body + control surface inputs
+        try:
+            n_ctrl_sfc = self.data.linear.linear_system.uvlm.control_surface.n_control_surfaces
+        except AttributeError:
+            n_ctrl_sfc = 0
+
+        self.inputs = rig_dof + n_ctrl_sfc
+
+        in_matrix = np.zeros((ssuvlm.inputs, self.inputs))
         out_matrix = np.zeros((nout, ssuvlm.outputs))
-        out_matrix[:, -10:-4] = np.eye(nout)
+
+        if modal:
+            # Modal scaling
+            raise NotImplementedError('Not yet implemented in modal space')
+        else:
+            in_matrix[-self.inputs:, :] = np.eye(self.inputs)
+            out_matrix[:, -rig_dof:-rig_dof+6] = np.eye(nout)
 
         ssuvlm.addGain(in_matrix, where='in')
         ssuvlm.addGain(out_matrix, where='out')
@@ -68,13 +115,44 @@ class StabilityDerivatives(solver_interface.BaseSolver):
             Y_freq = C.dot(scsp.linalg.inv(scsp.eye(ssuvlm.states, format='csc') - A).dot(B)) + D
         else:
             Y_freq = C.dot(np.linalg.inv(np.eye(ssuvlm.states) - A).dot(B)) + D
-
+        Yf = ssuvlm.freqresp(np.array([0]))
 
         return Y_freq
 
     def derivatives(self, Y_freq):
 
         Cng = np.array([[-1, 0, 0], [0, 1, 0], [0, 0, -1]])  # Project SEU on NED - TODO implementation
+        u_inf = self.settings['u_inf'].value
+        s_ref = self.settings['S_ref'].value
+        b_ref = self.settings['b_ref'].value
+        c_ref = self.settings['c_ref'].value
+        rho = self.data.linear.tsaero0.rho
+
+        # Inertial frame
+        try:
+            euler = self.data.linear.tsstruct0.euler
+            Pga = algebra.euler2rot(euler)
+            rig_dof = 9
+        except AttributeError:
+            quat = self.data.linear.tsstruct0.quat
+            Pga = algebra.quat2rotation(quat)
+            rig_dof = 10
+
+        derivatives_g = np.zeros((6, Y_freq.shape[1] + 2))
+        coefficients = {'force': 0.5*rho*u_inf**2*s_ref,
+                        'moment_lon': 0.5*rho*u_inf**2*s_ref*c_ref,
+                        'moment_lat': 0.5*rho*u_inf**2*s_ref*b_ref} # missing rates
+
+        for in_channel in range(Y_freq.shape[1]):
+            derivatives_g[:3, in_channel] = Pga.dot(Y_freq[:3, in_channel])
+            derivatives_g[3:, in_channel] = Pga.dot(Y_freq[3:, in_channel])
+
+        derivatives_g[:, -2] = derivatives_g[:, 2] * u_inf  # ders wrt alpha
+        derivatives_g[:, -1] = derivatives_g[:, 1] * u_inf  # ders wrt beta
+
+        derivatives_g[:3, :] /= coefficients['force']
+        derivatives_g[4, :] /= coefficients['moment_lon']
+        derivatives_g[[3, 5], :] /= coefficients['moment_lat']
 
         der_matrix = np.zeros((6, self.inputs - 4))
         der_col = 0
