@@ -533,6 +533,11 @@ class LinAeroEla():
                     if self.use_euler:
                         Kdisp_vel[np.ix_(ii_vert, jj_euler)] += \
                             algebra.der_Ceuler_by_v(tsstr.euler, zetaa)
+
+                        # Track body - project inputs as for A not moving
+                        if track_body:
+                            Kdisp_vel[np.ix_(ii_vert, jj_euler)] += \
+                                Cga.dot(algebra.der_Peuler_by_v(tsstr.euler, zetag))
                     else:
                         # Equation 25
                         # Kdisp[np.ix_(ii_vert, jj_quat)] += \
@@ -573,6 +578,11 @@ class LinAeroEla():
                     if self.use_euler:
                         Kvel_vel[np.ix_(ii_vert, jj_euler)] += \
                             algebra.der_Ceuler_by_v(tsstr.euler, zetaa_dot)
+
+                        # Track body if ForA is rotating
+                        if track_body:
+                            Kvel_vel[np.ix_(ii_vert, jj_euler)] += \
+                                Cga.dot(algebra.der_Peuler_by_v(tsstr.euler, zetag_dot))
                     else:
                         Kvel_vel[np.ix_(ii_vert, jj_quat)] += \
                             algebra.der_Cquat_by_v(tsstr.quat, zetaa_dot)
@@ -627,6 +637,9 @@ class LinAeroEla():
                         # forces
                         if self.use_euler:
                             Csr[jj_tra, -3:] -= algebra.der_Peuler_by_v(tsstr.euler, faero)
+
+                            if track_body:
+                                Csr[jj_tra, -3:] -= algebra.der_Ceuler_by_v(tsstr.euler, Cga.T.dot(faero))
                         else:
                             Csr[jj_tra, -4:] -= algebra.der_CquatT_by_v(tsstr.quat, faero)
 
@@ -647,6 +660,12 @@ class LinAeroEla():
                                 np.dot(TanTXbskew,
                                        np.dot(Cba,
                                               algebra.der_Peuler_by_v(tsstr.euler, faero)))
+
+                            if track_body:
+                                Csr[jj_rot, -3:] -= \
+                                    np.dot(TanTXbskew,
+                                           np.dot(Cbg,
+                                                  algebra.der_Peuler_by_v(tsstr.euler, Cga.T.dot(faero))))
                         else:
                             Csr[jj_rot, -4:] -= \
                                 np.dot(TanTXbskew,
@@ -679,6 +698,13 @@ class LinAeroEla():
                         Crr[3:6, -3:] += np.dot(
                             np.dot(Cag, algebra.skew(faero)),
                             algebra.der_Peuler_by_v(tsstr.euler, np.dot(Cab, Xb)))
+
+                        if track_body:
+                            # NG 20/8/19 - is the Cag needed here? Verify
+                            Crr[:3, -3:] -= Cag.dot(algebra.der_Ceuler_by_v(tsstr.euler, Cga.T.dot(faero)))
+
+                            Crr[3:6, -3:] -= Cag.dot(algebra.skew(zetag).dot(algebra.der_Ceuler_by_v(tsstr.euler, Cga.T.dot(faero))))
+                            Crr[3:6, -3:] += Cag.dot(algebra.skew(faero)).dot(algebra.der_Ceuler_by_v(tsstr.euler, Cga.T.dot(zetag)))
 
                     else:
                         # total force

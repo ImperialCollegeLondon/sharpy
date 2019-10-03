@@ -120,9 +120,9 @@ class HortenWing:
         self.gust_intensity = 0.05
 
         # Numerics
-        self.tolerance = 1e-6
-        self.fsi_tolerance = 1e-3
-        self.relaxation_factor = 0.4
+        self.tolerance = 1e-12
+        self.fsi_tolerance = 1e-10
+        self.relaxation_factor = 0.2
 
         # H5 Variables initialisation as class attributes
         # coordinates
@@ -736,15 +736,13 @@ class HortenWing:
         n_inputs_struct = n_states_struct // 2
 
         x0 = np.zeros((n_states_aero + n_states_struct))
-        x0 = np.zeros(1576)
         # x0[-7] = 0.05
         # x0[-4:] = (algebra.euler2quat([ -5*np.pi/180, 0, 0]))
-        # u = np.zeros((self.n_tstep, n_states_struct + n_inputs_struct + self.n_control_surfaces))
+        u = np.zeros((self.n_tstep, n_states_struct + n_inputs_struct + self.n_control_surfaces))
         # u[0:3, -7] = -1000
-        u = np.zeros((self.n_tstep, 61))
         if delta_e is not None:
-            # u[:, n_states_struct:n_states_struct+self.n_control_surfaces] = delta_e
-            u[:, 40:41] = delta_e
+            u[:, n_states_struct:n_states_struct+self.n_control_surfaces] = delta_e
+
         # u[10:15, -8] = 100
 
         self.generate_linear_sim_files(x0, u)
@@ -1189,7 +1187,7 @@ class HortenWing:
                                                    'gravity': 9.81,
                                                    'num_steps': n_tstep,
                                                    'dt': dt,
-                                                   'initial_velocity': u_inf * 0}
+                                                   'initial_velocity': u_inf * 1}
 
         settings['NonLinearDynamicPrescribedStep'] = {'print_info': 'on',
                                                    'initial_velocity_direction': [-1., 0., 0.],
@@ -1223,18 +1221,18 @@ class HortenWing:
                                 'rollup_dt': dt,
                                 'rollup_aic_refresh': 1,
                                 'rollup_tolerance': 1e-4,
-                                # 'velocity_field_generator': 'GustVelocityField',
-                                # 'velocity_field_input': {'u_inf': u_inf * 0,
-                                #                          'u_inf_direction': [1., 0, 0],
-                                #                          'gust_shape': '1-cos',
-                                #                          'gust_length': 5.,
-                                #                          'gust_intensity': gust_intensity * u_inf,
-                                #                          'offset': 15.0,
-                                #                          'span': self.span,
-                                #                          'relative_motion': True},
-                                'velocity_field_generator': 'SteadyVelocityField',
-                                'velocity_field_input': {'u_inf': u_inf*1,
-                                                            'u_inf_direction': [1., 0., 0.]},
+                                'velocity_field_generator': 'GustVelocityField',
+                                'velocity_field_input': {'u_inf': u_inf * 0,
+                                                         'u_inf_direction': [1., 0, 0],
+                                                         'gust_shape': '1-cos',
+                                                         'gust_length': 5.,
+                                                         'gust_intensity': gust_intensity * u_inf,
+                                                         'offset': 15.0,
+                                                         'span': self.span,
+                                                         'relative_motion': True},
+                                # 'velocity_field_generator': 'SteadyVelocityField',
+                                # 'velocity_field_input': {'u_inf': u_inf*1,
+                                #                             'u_inf_direction': [1., 0., 0.]},
                                 'rho': rho,
                                 'n_time_steps': n_tstep,
                                 'dt': dt,

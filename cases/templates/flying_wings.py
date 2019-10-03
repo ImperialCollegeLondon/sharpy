@@ -132,11 +132,11 @@ class FlyingWing():
         self.n_tstep = None
         self.physical_time = physical_time
         self.horseshoe = False
-        self.fsi_tolerance = 1e-8
+        self.fsi_tolerance = 1e-10
         self.relaxation_factor = 0.2
         self.gust_intensity = 0.01
         self.gust_length = 5
-        self.tolerance = 1e-8
+        self.tolerance = 1e-12
 
         n_lumped_mass = 1
         self.lumped_mass = np.zeros((n_lumped_mass))
@@ -578,7 +578,7 @@ class FlyingWing():
                                    'output_psi': 'on',
                                    'screen_output': 'on'}
 
-        config['SaveData'] = {'folder': self.route + '/output/' + self.case_name + '/'}
+        config['SaveData'] = {'folder': './output/' + self.case_name + '/'}
 
         config['Modal'] = {'folder': './output/',
                            'NumLambda': 20,

@@ -102,9 +102,9 @@ class LinearBeam(BaseElement):
         engine = linearthrust.LinearThrust()
         engine.initialise()
 
-        K_thrust = engine.generate(self.tsstruct0, self.sys)
+        # K_thrust = engine.generate(self.tsstruct0, self.sys)
         #
-        self.sys.Kstr += K_thrust
+        # self.sys.Kstr += K_thrust
 
         self.sys.assemble()
 
@@ -260,12 +260,15 @@ class LinearBeam(BaseElement):
         vdof = self.sys.structure.vdof
         num_node = struct_tstep.num_node
         num_dof = 6*sum(vdof >= 0)
-        if len(x_n) == 2 * num_dof:
+        if self.sys.clamped:
             clamped = True
             rig_dof = 0
         else:
             clamped = False
-            rig_dof = 10
+            if self.settings['use_euler']:
+                rig_dof = 9
+            else:
+                rig_dof = 10
 
         q = np.zeros_like(struct_tstep.q)
         dqdt = np.zeros_like(struct_tstep.dqdt)
@@ -303,7 +306,11 @@ class LinearBeam(BaseElement):
 
         if not clamped:
             for_vel = dqdt[-rig_dof: -rig_dof + 6]
-            quat = dqdt[-4:]
+            if self.settings['use_euler']:
+                euler = dqdt[-4:-1]
+                quat = algebra.euler2quat(euler)
+            else:
+                quat = dqdt[-4:]
             for_pos = q[-rig_dof:-rig_dof + 6]
             for_acc = dqddt[-rig_dof:-rig_dof + 6]
 
@@ -318,7 +325,7 @@ class LinearBeam(BaseElement):
         try:
             Crr = self.sys.Crr_grav
             Csr = self.sys.Csr_grav
-            C_grav[:-rig_dof, -rig_dof:] = Csr
+            C_grav[:-rig_dof, -rig_dof:] = Csr # TODO: sort out changing q vector with euler
             C_grav[-rig_dof:, -rig_dof:] = Crr
             K_grav[-rig_dof:, :-rig_dof] = self.sys.Krs_grav
             K_grav[:-rig_dof, :-rig_dof] = self.sys.Kss_grav
@@ -326,7 +333,7 @@ class LinearBeam(BaseElement):
             for i in range(gravity_forces.shape[0]-1):
                 #add bc at node - doing it manually here
                 gravity_forces[i+1, :] = fgrav[6*i:6*(i+1)]
-            gravity_forces[0, :] = fgrav[-10:-4] - np.sum(gravity_forces[1:], 0)
+            gravity_forces[0, :] = fgrav[-rig_dof:-rig_dof+6] - np.sum(gravity_forces[1:], 0)
         except AttributeError:
             pass
 

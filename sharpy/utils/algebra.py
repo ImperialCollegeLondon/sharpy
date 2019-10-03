@@ -827,16 +827,17 @@ def euler2rot(euler):
     where :math:`\mathbf{\tau}` represents the rotation about the subscripted axis.
 
     Args:
-        euler (np.array): 1x3 array with the Euler angles in the form ``[roll, pitch, yaw]``
+        euler (np.array): 1x3 array with the Euler angles in the form ``[roll, pitch, yaw]`` in radians
 
     Returns:
         np.array: 3x3 transformation matrix describing the rotation by the input Euler angles.
 
     """
 
-    rot = rotation3d_z(euler[2])
-    rot = np.dot(rotation3d_y(euler[1]), rot)
-    rot = np.dot(rotation3d_x(euler[0]), rot)
+    # rot = rotation3d_z(euler[2])
+    # rot = np.dot(rotation3d_y(euler[1]), rot)
+    # rot = np.dot(rotation3d_x(euler[0]), rot)
+    rot = rotation3d_z(euler[2]).dot(rotation3d_y(euler[1]).dot(rotation3d_x(euler[0])))
     return rot
 
 
@@ -1391,17 +1392,28 @@ def der_Ceuler_by_v(euler, v):
     v2 = v[1]
     v3 = v[2]
 
-    res[0, 0] = 0
-    res[0, 1] = - v1*st*cs + v2*st*ss + v3*ct
-    res[0, 2] = -v1*ct*ss - v2*ct*cs
+    # res[0, 0] = 0
+    # res[0, 1] = - v1*st*cs + v2*st*ss + v3*ct
+    # res[0, 2] = -v1*ct*ss - v2*ct*cs
 
-    res[1, 0] = v1*(-sp*ss + cp*st*cs) + v2*(-sp*cs - cp*st*ss) - v3*cp*ct
-    res[1, 1] = v1*(sp*ct*cs) - v2*sp*ct*ss + v3*sp*st
-    res[1, 2] = v1*(cp*cs - sp*st*ss) + v2*(-cp*ss - sp*st*cs)
+    res[0, 0] = v2*(sp*ss + cp*st*cp) + v3*(cp*ss - sp*st*cs)
+    res[0, 1] = v1*(-st*cs) + v2*(sp*ct*cs) + v3*(cp*ct*cs)
+    res[0, 2] = v1*(ct*ss) + v2*(-cp*cs - sp*st*ss) + v3*(sp*cs-cp*st*ss)
 
-    res[2, 0] = v1*(cp*ss + sp*st*cs) + v2*(cp*cs - sp*st*ss) + v3*(-sp*ct)
-    res[2, 1] = -v1*cp*ct*cs + v2*cp*ct*ss - v3*cp*st
-    res[2, 2] = v1*(sp*cs + cp*st*ss) + v2*(-sp*ss + cp*st*cs)
+    res[1, 0] = v2*(-sp*cs+cp*st*ss) + v3*(-cp*cs + sp*st*ss)
+    res[1, 1] = v1*(-st*ss) + v2*(sp*ct*ss) + v3*(-cp*ct*ss)
+    res[1, 2] = v1*(ct*cs) + v2*(-cp*ss + sp*st*cs) + v3*(sp*ss + cp*st*cs)
+
+    res[2, 0] = v2*(cp*ct) + v3*(-sp*ct)
+    res[2, 1] = v1*(-ct) + v2*(-sp*st) + v3*(-cp*st)
+
+    # res[1, 0] = v1*(-sp*ss + cp*st*cs) + v2*(-sp*cs - cp*st*ss) - v3*cp*ct
+    # res[1, 1] = v1*(sp*ct*cs) - v2*sp*ct*ss + v3*sp*st
+    # res[1, 2] = v1*(cp*cs - sp*st*ss) + v2*(-cp*ss - sp*st*cs)
+    #
+    # res[2, 0] = v1*(cp*ss + sp*st*cs) + v2*(cp*cs - sp*st*ss) + v3*(-sp*ct)
+    # res[2, 1] = -v1*cp*ct*cs + v2*cp*ct*ss - v3*cp*st
+    # res[2, 2] = v1*(sp*cs + cp*st*ss) + v2*(-sp*ss + cp*st*cs)
 
     return res
 
@@ -1417,13 +1429,23 @@ def der_Peuler_by_v(euler, v):
     where :math:`\frac{\partial \mathbf{f}}{\partial\mathbf{\Theta}}` is the resulting 3 by 3 matrix.
 
     Being :math:`P^{AG}(\Theta)` the projection matrix from the G frame to the A frame in terms of the Euler angles
-    :math:`\Theta` as :math:`P^{AG}(\Theta) = C^{{AG}^T}(\Theta}`, where the rotation matrix is expressed as:
+    :math:`\Theta` as :math:`P^{AG}(\Theta) = \tau_x(-\Phi)\tau_y(-\Theta)\tau_z(-\Psi)`, where
+    the rotation matrix is expressed as:
 
     .. math::
         C^{AG}(\Theta) = \begin{bmatrix}
         \cos\theta\cos\psi & -\cos\theta\sin\psi & \sin\theta \\
         \cos\phi\sin\psi + \sin\phi\sin\theta\cos\psi & \cos\phi\cos\psi - \sin\phi\sin\theta\sin\psi & -\sin\phi\cos\theta \\
         \sin\phi\sin\psi - \cos\phi\sin\theta\cos\psi & \sin\phi\cos\psi + \cos\phi\sin\theta\sin\psi & \cos\phi\cos\theta
+        \end{bmatrix}
+
+    and the projection matrix as:
+
+    .. math::
+        P^{AG}(\Theta) = \begin{bmatrix}
+        \cos\theta\cos\psi & \cos\theta\sin\psi & -\sin\theta \\
+        -\cos\phi\sin\psi + \sin\phi\sin\theta\cos\psi & \cos\phi\cos\psi + \sin\phi\sin\theta\sin\psi & \sin\phi\cos\theta \\
+        \sin\phi\sin\psi + \cos\phi\sin\theta\cos\psi & -\sin\phi\cos\psi + \cos\phi\sin\theta\sin\psi & \cos\phi\cos\theta
         \end{bmatrix}
 
     the components of the derivative at hand are the following, where
@@ -1440,20 +1462,20 @@ def der_Peuler_by_v(euler, v):
     .. math::
         f_{2\phi} = &+v_1(-\sin\phi\sin\psi + \cos\phi\sin\theta\cos\psi) + \\
         &+v_2(-\sin\phi\cos\psi - \cos\phi\sin\theta\sin\psi) + \\
-        &+v_3(-\cos\phi\cos\theta)
+        &+v_3(-\cos\phi\cos\theta)\\
         f_{2\theta} = &+v_1(\sin\phi\cos\theta\cos\psi) + \\
         &+v_2(-\sin\phi\cos\theta\sin\psi) +\\
-        &+v_3(\sin\phi\sin\theta)
+        &+v_3(\sin\phi\sin\theta)\\
         f_{2\psi} = &+v_1(\cos\phi\cos\psi - \sin\phi\sin\theta\sin\psi) + \\
         &+v_2(-\cos\phi\sin\psi - \sin\phi\sin\theta\cos\psi)
 
     .. math::
         f_{3\phi} = &+v_1(\cos\phi\sin\psi+\sin\phi\sin\theta\cos\psi) + \\
         &+v_2(\cos\phi\cos\psi - \sin\phi\sin\theta\sin\psi) + \\
-        &+v_3(-\sin\phi\cos\theta)
+        &+v_3(-\sin\phi\cos\theta)\\
         f_{3\theta} = &+v_1(-\cos\phi\cos\theta\cos\psi)+\\
         &+v_2(\cos\phi\cos\theta\sin\psi) + \\
-        &+v_3(-\cos\phi\sin\theta)
+        &+v_3(-\cos\phi\sin\theta)\\
         f_{3\psi} = &+v_1(\sin\phi\cos\psi+\cos\phi\sin\theta\sin\psi)  + \\
         &+v_2(-\sin\phi\sin\psi + \cos\phi\sin\theta\cos\psi)
 
@@ -1483,16 +1505,27 @@ def der_Peuler_by_v(euler, v):
     v2 = v[1]
     v3 = v[2]
 
-    res[0, 0] = v2*(-sp*ss + cp*st*cs) + v3*(cp*ss + sp*st*cs)
-    res[0, 1] = v1*(-st*cs) + v2*(sp*ct*cs) + v3*(-cp*ct*cs)
-    res[0, 2] = v1*(-ct*ss) + v2*(cp*cs - sp*st*ss) + v3*(sp*cs + cp*st*ss)
+    # res[0, 0] = v2*(-sp*ss + cp*st*cs) + v3*(cp*ss + sp*st*cs)
+    # res[0, 1] = v1*(-st*cs) + v2*(sp*ct*cs) + v3*(-cp*ct*cs)
+    # res[0, 2] = v1*(-ct*ss) + v2*(cp*cs - sp*st*ss) + v3*(sp*cs + cp*st*ss)
 
-    res[1, 0] = v1*0 + v2*(-sp*cs - cp*st*ss) + v3*(cp*cs - sp*st*ss)
-    res[1, 1] = v1*(st*ss) + v2*(-sp*ct*ss) + v3*(cp*ct*ss)
-    res[1, 2] = v1*(-ct*cs) + v2*(-cp*ss - sp*st*cs) + v3*(-sp*ss + cp*st*cs)
+    res[0, 1] = v1*(-st*cs) + v2*(-st*ss) - v3*ct
+    res[0, 2] = -v1*(ct*ss) + v2*ct*cs
 
-    res[2, 0] = v1*0 + v2*(-cp*ct) + v3*(-sp*ct)
-    res[2, 1] = v1*ct + v2*(sp*st) + v3*(-cp*st)
+    # res[1, 0] = v1*0 + v2*(-sp*cs - cp*st*ss) + v3*(cp*cs - sp*st*ss)
+    # res[1, 1] = v1*(st*ss) + v2*(-sp*ct*ss) + v3*(cp*ct*ss)
+    # res[1, 2] = v1*(-ct*cs) + v2*(-cp*ss - sp*st*cs) + v3*(-sp*ss + cp*st*cs)
+
+    res[1, 0] = v1*(sp*ss + cp*st*cs) + v2*(-sp*cs + cp*st*ss) + v3 * (cp*ct)
+    res[1, 1] = v1*(sp*ct*cs) + v2*(sp*ct*ss) + v3*(-sp*st)
+    res[1, 2] = v1*(-cp*cs - sp*st*ss) + v2*(-cp*ss + sp*st*cs)
+
+    # res[2, 0] = v1*0 + v2*(-cp*ct) + v3*(-sp*ct)
+    # res[2, 1] = v1*ct + v2*(sp*st) + v3*(-cp*st)
+
+    res[2, 0] = v1*(cp*ss-sp*st*cs) + v2*(-cp*cs-sp*st*ss) + v3*(-sp*ct)
+    res[2, 1] = v1*(cp*ct*cs) + v2*(cp*ct*ss) + v3*(-cp*st)
+    res[2, 2] = v1*(sp*ss + -cp*st*ss) + v2*(sp*ss+cp*st*cs)
 
     return res
 
