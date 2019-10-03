@@ -1,7 +1,4 @@
 # Makefile for Sphinx documentation
-    # print()
-    # print(file_name_check.replace('.py', ''))
-    # print(file_name_check.replace('sharpy/', ''))
 #
 
 # You can set these variables from the command line.

@@ -1,4 +1,5 @@
 import sharpy.linear.utils.ss_interface as ss_interface
+import scipy.sparse as scsp
 import numpy as np
 import sharpy.linear.src.lin_aeroelastic as lin_aeroelastic
 import sharpy.linear.src.libss as libss
@@ -48,6 +49,10 @@ class LinearAeroelastic(ss_interface.BaseElement):
     settings_default['track_body'] = True
     settings_description['track_body'] = 'UVLM inputs and outputs projected to coincide with lattice at linearisation'
 
+    settings_types['use_euler'] = 'bool'
+    settings_default['use_euler'] = False
+    settings_description['use_euler'] = 'Parametrise orientations in terms of Euler angles'
+
     settings_table = settings.SettingsTable()
     __doc__ += settings_table.generate(settings_types, settings_default, settings_description)
 
@@ -72,6 +77,10 @@ class LinearAeroelastic(ss_interface.BaseElement):
         except KeyError:
             self.settings = None
         settings.to_custom_types(self.settings, self.settings_types, self.settings_default)
+
+        if self.settings['use_euler']:
+            self.settings['aero_settings']['use_euler'] = True
+            self.settings['beam_settings']['use_euler'] = True
 
         self.sys = lin_aeroelastic.LinAeroEla(data, custom_settings_linear=self.settings)
 
@@ -121,7 +130,6 @@ class LinearAeroelastic(ss_interface.BaseElement):
 
         # Linearisation of the aerodynamic forces introduces stiffenning and damping terms into the beam matrices
         flex_nodes = self.sys.num_dof_flex
-        # rig_nodes = self.sys.num_dof_rig
         self.sys.get_gebm2uvlm_gains()
 
         stiff_aero = np.zeros_like(beam.sys.Kstr)
@@ -142,7 +150,21 @@ class LinearAeroelastic(ss_interface.BaseElement):
         beam.sys.Cstr += damping_aero
         beam.sys.Kstr += stiff_aero
 
-        beam.assemble(t_ref=uvlm.sys.ScalingFacts['time'])
+        if uvlm.scaled:
+            beam.assemble(t_ref=uvlm.sys.ScalingFacts['time'])
+        else:
+            beam.assemble()
+
+        # Eigenvector of stiffenning terms
+        eigvals, eigvecs = np.linalg.eig(beam.ss.A)
+        eigvals = np.log(eigvals)/beam.ss.dt
+        order = np.argsort(eigvals.real)[::-1]
+        eigvals = eigvals[order]
+        eigvecs = eigvecs[:, order]
+        # np.savetxt('./beam_grav_euler.dat', eigvals.reshape(-1, 2).view(float))
+        # np.savetxt('./vecs_r_beam_grav_euler.dat', eigvecs.real)
+        # np.savetxt('./vecs_i_beam_grav_euler.dat', eigvecs.imag)
+
 
         if not self.load_uvlm_from_file:
             # Projecting the UVLM inputs and outputs onto the structural degrees of freedom
@@ -155,6 +177,9 @@ class LinearAeroelastic(ss_interface.BaseElement):
 
             # Retain other inputs
             Kas[2*self.sys.Kdisp.shape[0]:, 2*beam.sys.num_dof:] = np.eye(uvlm.ss.inputs - 2 * self.sys.Kdisp.shape[0])
+
+            if uvlm.scaled:
+                Kas /= uvlm.sys.ScalingFacts['length']
 
             uvlm.ss.addGain(Ksa, where='out')
             uvlm.ss.addGain(Kas, where='in')
@@ -169,7 +194,6 @@ class LinearAeroelastic(ss_interface.BaseElement):
                 in_mode_matrix = np.zeros((uvlm.ss.inputs, beam.ss.outputs + (uvlm.ss.inputs - 2*beam.sys.num_dof)))
                 in_mode_matrix[:2*beam.sys.num_dof, :2*beam.sys.num_modes] = sclalg.block_diag(phi, phi)
                 in_mode_matrix[2*beam.sys.num_dof:, 2*beam.sys.num_modes:] = np.eye(uvlm.ss.inputs - 2*beam.sys.num_dof)
-                in_mode_matrix /= uvlm.sys.ScalingFacts['length']
                 out_mode_matrix = phi.T
 
                 uvlm.ss.addGain(in_mode_matrix, where='in')
@@ -177,7 +201,10 @@ class LinearAeroelastic(ss_interface.BaseElement):
 
             # Reduce uvlm projected onto structural coordinates
             if uvlm.rom is not None:
-                uvlm.ss = uvlm.rom.run(uvlm.ss)
+                if rigid_dof != 0:
+                    self.runrom_rbm(uvlm)
+                else:
+                    uvlm.ss = uvlm.rom.run(uvlm.ss)
 
         else:
             uvlm.ss = self.load_uvlm(self.settings['uvlm_filename'])
@@ -189,14 +216,15 @@ class LinearAeroelastic(ss_interface.BaseElement):
         # Scale coupling matrices
         if uvlm.scaled:
             Tsa *= uvlm.sys.ScalingFacts['force'] * uvlm.sys.ScalingFacts['time'] ** 2
-        if rigid_dof > 0:
-            raise NotImplementedError('Linearisation of problems with rigid body dynamics not yet implemented')
-            warnings.warn('Time scaling for problems with rigid body motion under development.')
-            Tas[:flex_nodes + 3, :flex_nodes + 3] /= uvlm.sys.ScalingFacts['length']
-            Tas[total_dof: total_dof + flex_nodes + 3] /= uvlm.sys.ScalingFacts['length']
-        else:
-            if not self.settings['beam_settings']['modal_projection'].value:
-                Tas /= uvlm.sys.ScalingFacts['length']
+            if rigid_dof > 0:
+                warnings.warn('Time scaling for problems with rigid body motion under development.')
+                Tas[:flex_nodes + 6, :flex_nodes + 6] /= uvlm.sys.ScalingFacts['length']
+                Tas[total_dof: total_dof + flex_nodes + 6] /= uvlm.sys.ScalingFacts['length']
+            else:
+                if not self.settings['beam_settings']['modal_projection'].value:
+                    Tas /= uvlm.sys.ScalingFacts['length']
+
+        # Tas[:, -rigid_dof+6:] = 0
 
         ss = libss.couple(ss01=uvlm.ss, ss02=beam.ss, K12=Tas, K21=Tsa)
         self.couplings['Tas'] = Tas
@@ -205,6 +233,13 @@ class LinearAeroelastic(ss_interface.BaseElement):
         self.state_variables = {'aero': uvlm.ss.states,
                                 'beam': beam.ss.states}
 
+        cout.cout_wrap('Aeroelastic system assembled:')
+        cout.cout_wrap('\tAerodynamic states: %g' % uvlm.ss.states, 1)
+        cout.cout_wrap('\tStructural states: %g' % beam.ss.states, 1)
+        cout.cout_wrap('\tTotal states: %g' % ss.states, 1)
+        cout.cout_wrap('\tInputs: %g' % ss.inputs, 1)
+        cout.cout_wrap('\tOutputs: %g' % ss.outputs, 1)
+        Y_freq = uvlm.ss.freqresp(np.array([0]))[:, :, 0].__abs__()
         return ss
 
     def update(self, u_infty):
@@ -230,6 +265,46 @@ class LinearAeroelastic(ss_interface.BaseElement):
                                K12=self.couplings['Tas'], K21=self.couplings['Tsa'])
 
         return self.ss
+
+    def runrom_rbm(self, uvlm):
+        ss = uvlm.ss
+        rig_nodes = self.sys.num_dof_rig
+        if rig_nodes == 9:
+            orient_dof = 3
+        else:
+            orient_dof = 4
+        # Input side
+        if self.settings['beam_settings']['modal_projection'].value == True and \
+                self.settings['beam_settings']['inout_coords'] == 'modes':
+            rem_int_modes = np.zeros((ss.inputs, ss.inputs - rig_nodes))
+            rem_int_modes[rig_nodes:, :] = np.eye(ss.inputs - rig_nodes)
+
+            # Output side - remove quaternion equations output
+            rem_quat_out = np.zeros((ss.outputs-orient_dof, ss.outputs))
+            # find quaternion indices
+            U = self.beam.sys.U
+            indices = np.where(U[-orient_dof:, :] == 1.)[1]
+            j = 0
+            for i in range(ss.outputs):
+                if i in indices:
+                    continue
+                rem_quat_out[j, i] = 1
+                j += 1
+
+        else:
+            rem_int_modes = np.zeros((ss.inputs, ss.inputs - rig_nodes))
+            rem_int_modes[:self.sys.num_dof_flex, :self.sys.num_dof_flex] = np.eye(self.sys.num_dof_flex)
+            rem_int_modes[self.sys.num_dof_flex+rig_nodes:, self.sys.num_dof_flex:] = np.eye(ss.inputs - self.sys.num_dof_flex - rig_nodes)
+
+            rem_quat_out = np.zeros((ss.outputs-orient_dof, ss.outputs))
+            rem_quat_out[:, :-orient_dof] = np.eye(ss.outputs-orient_dof)
+
+        ss.addGain(rem_int_modes, where='in')
+        ss.addGain(rem_quat_out, where='out')
+        uvlm.ss = uvlm.rom.run(uvlm.ss)
+
+        uvlm.ss.addGain(rem_int_modes.T, where='in')
+        uvlm.ss.addGain(rem_quat_out.T, where='out')
 
     @staticmethod
     def load_uvlm(filename):

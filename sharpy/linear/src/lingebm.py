@@ -218,6 +218,8 @@ class FlexDynamic():
 
         self.update_modal()
 
+        self.U = self.sort_repeated_evecs(self.U, self.eigs)
+
     @property
     def num_modes(self):
         return self._num_modes
@@ -240,6 +242,19 @@ class FlexDynamic():
     @property
     def num_rig_dof(self):
         return self.Mstr.shape[0] - self.num_flex_dof
+
+    def sort_repeated_evecs(self, evecs, evals):
+        num_rbm = np.sum(evals.__abs__() == 0.)
+        num_dof = evecs.shape[0]
+
+        evecs_sorted = evecs.copy()
+
+        if num_rbm != 0:
+            for i in range(num_rbm):
+                index_mode = np.argmax(evecs[:, i].__abs__()) - num_dof + num_rbm
+                evecs_sorted[:, index_mode] = evecs[:, i]
+
+        return evecs_sorted
 
     def euler_propagation_equations(self, tsstr):
         """
@@ -580,7 +595,7 @@ class FlexDynamic():
                     cout.cout_wrap("\t\t\t-> G %.3f %.3f %.3f" %(Xcg_G_n[0], Xcg_G_n[1], Xcg_G_n[2]), 2)
                     cout.cout_wrap("\tNode mass:", 2)
                     cout.cout_wrap("\t\tMatrix: %.4f" % Mss_node[0, 0], 2)
-                    cout.cout_wrap("\t\tGrav: %.4f" % (np.linalg.norm(fgravG)/9.81), 2)
+                    # cout.cout_wrap("\t\tGrav: %.4f" % (np.linalg.norm(fgravG)/9.81), 2)
 
             if self.use_euler:
                 if bc_at_node != 1:
@@ -600,13 +615,6 @@ class FlexDynamic():
 
                     # Total moments -> linearisation terms wrt to delta_Psi
                     Krs_grav[3:6, jj_rot] += np.dot(algebra.skew(fgravA), algebra.der_Ccrv_by_v(psi, Xcg_B))
-
-                # Rigid equations always in A frame
-                # Total forces -> linearisation terms wrt to delta_euler
-                # Crr_grav[:3, -3:] -= algebra.der_Peuler_by_v(tsstr.euler, fgravG)
-
-                # Total moments -> linearisation terms wrt to delta_euler
-                # Crr_grav[3:6, -3:] -= Xcg_Askew.dot(algebra.der_Peuler_by_v(tsstr.euler, fgravG))
 
             else:
                 if bc_at_node != 1:
@@ -628,33 +636,20 @@ class FlexDynamic():
                     # Nodal moments due to gravity -> linearisation terms wrt to delta_euler
                     Csr_grav[jj_rot, -4:] -= Tan.dot(Xcg_Bskew.dot(Cba.dot(algebra.der_CquatT_by_v(tsstr.quat, fgravG))))
 
-                    # Crr_debug[3:6, -4:] -= Xcg_A_n_skew.dot(algebra.der_CquatT_by_v(tsstr.quat, fgravG))
-                    # Crr_grav[3:6, -4:] += algebra.skew(fgravG).dot(algebra.der_Cquat_by_v(tsstr.quat, Xcg_A_n))
-
-                # Rigid equations always in A frame
-                # Total forces -> linearisation terms wrt to delta_euler
-                # Having issues when including the total forces at the A frame.... system appears to work well without
-                # except when post processing the forces. If this term is included the post process plotting of the
-                # forces improves but there is no longer a restoring moment
-                # Crr_grav[:3, -4:] -= algebra.der_CquatT_by_v(tsstr.quat, fgravG)
-
-                # Total moments -> linearisation terms wrt to delta_euler
-                # Disregard - better to use total force and overall CG to include effect of A frame CG on moments
-                # Crr_grav[3:6, -4:] -= Xcg_Askew.dot(algebra.der_CquatT_by_v(tsstr.quat, fgravG))
-                # Crr_grav[3:6, -4:] -= Xcg_A_n_skew.dot(algebra.der_CquatT_by_v(tsstr.quat, fgravG))
-                # Crr_grav[3:6, -4:] -= algebra.der_CquatT_by_v(tsstr.quat, mgravG) - produces instability
 
             # Debugging:
             FgravA += fgravA
             FgravG += fgravG
 
         if self.use_euler:
-            Crr_grav[:3, -3:] -= algebra.der_Peuler_by_v(tsstr.euler, FgravG)  # not ok - destroys restoring moment effect
+            # Total gravity forces acting at the A frame
+            Crr_grav[:3, -3:] -= algebra.der_Peuler_by_v(tsstr.euler, FgravG)
 
             # Total moments due to gravity in A frame
             Crr_grav[3:6, -3:] -= algebra.skew(Xcg_A).dot(algebra.der_Peuler_by_v(tsstr.euler, FgravG))
         else:
-            Crr_grav[:3, -4:] -= algebra.der_CquatT_by_v(tsstr.quat, FgravG)  # not ok - destroys restoring moment effect
+            # Total gravity forces acting at the A frame
+            Crr_grav[:3, -4:] -= algebra.der_CquatT_by_v(tsstr.quat, FgravG)
 
             # Total moments due to gravity in A frame
             Crr_grav[3:6, -4:] -= algebra.skew(Xcg_A).dot(algebra.der_CquatT_by_v(tsstr.quat, FgravG))
@@ -1030,18 +1025,17 @@ class FlexDynamic():
                               ' See update_matrices_time_scale')
 
         # if time_ref != 1.0 and time_ref is not None:
-        if self.num_rig_dof == 0:
-            self.scaled_reference_matrices['dt'] = self.dt
-            self.dt /= time_ref
-            if self.settings['print_info']:
-                cout.cout_wrap('Scaling beam according to reduced time...', 0)
-                cout.cout_wrap('\tSetting the beam time step to (%.4f)' % self.dt, 1)
-
-            self.scaled_reference_matrices['C'] = self.Cstr.copy()
-            self.scaled_reference_matrices['K'] = self.Kstr.copy()
-            self.update_matrices_time_scale(time_ref)
-        else:
+        if self.num_rig_dof != 0:
             warnings.warn('Time normalisation not yet implemented with rigid body motion.')
+        self.scaled_reference_matrices['dt'] = self.dt
+        self.dt /= time_ref
+        if self.settings['print_info']:
+            cout.cout_wrap('Scaling beam according to reduced time...', 0)
+            cout.cout_wrap('\tSetting the beam time step to (%.4f)' % self.dt, 1)
+
+        self.scaled_reference_matrices['C'] = self.Cstr.copy()
+        self.scaled_reference_matrices['K'] = self.Kstr.copy()
+        self.update_matrices_time_scale(time_ref)
 
     def update_matrices_time_scale(self, time_ref):
 

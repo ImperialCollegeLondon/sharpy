@@ -98,7 +98,18 @@ class LinearBeam(BaseElement):
         if t_ref is not None:
             self.sys.scale_system_normalised_time(t_ref)
 
+        import sharpy.linear.assembler.linearthrust as linearthrust
+        engine = linearthrust.LinearThrust()
+        engine.initialise()
+
+        # K_thrust = engine.generate(self.tsstruct0, self.sys)
+        #
+        # self.sys.Kstr += K_thrust
+
         self.sys.assemble()
+
+        # remove yaw dof
+        rem_yaw = np.eye(self.sys.Mstr.shape[0], self.sys.Mstr.shape[0]-1)
 
         # TODO: remove integrals of the rigid body modes (and change mode shapes to account for this in the coupling matrices)
         # Option to remove certain dofs via dict: i.e. dofs to remove
@@ -126,7 +137,8 @@ class LinearBeam(BaseElement):
         dof_db = {'eta': [0, num_dof_flex, 1],
                   'V': [num_dof_flex, num_dof_flex + 3, 2],
                   'W': [num_dof_flex + 3, num_dof_flex + 6, 3],
-                  'orient': [num_dof_flex + 6, num_dof_flex + num_dof_rig, 4]}
+                  'orient': [num_dof_flex + 6, num_dof_flex + num_dof_rig, 4],
+                  'yaw': [num_dof_flex + 8, num_dof_flex + num_dof_rig, 1]}
 
         # -----------------------------------------------------------------------
         # Better to place in a function available to all elements since it will equally apply
