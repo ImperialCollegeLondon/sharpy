@@ -815,7 +815,7 @@ def euler2rot(euler):
     r"""
 
     Transforms Euler angles (roll, pitch and yaw :math:`\Phi, \Theta, \Psi`) into a 3x3 rotation matrix describing
-    the rotation between frame G and frame A.
+    that rotates a vector in yaw pitch, and roll.
 
     The rotations are performed successively, first in yaw, then in pitch and finally in roll.
 
