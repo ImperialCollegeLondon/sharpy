@@ -218,6 +218,13 @@ class FlexDynamic():
 
         self.update_modal()
 
+        self.U = self.sort_repeated_evecs(self.U, self.eigs)
+
+        if self.Mstr.shape[0] == 6*(self.tsstruct0.num_node - 1):
+            self.clamped = True
+        else:
+            self.clamped = False
+
     @property
     def num_modes(self):
         return self._num_modes
@@ -240,6 +247,19 @@ class FlexDynamic():
     @property
     def num_rig_dof(self):
         return self.Mstr.shape[0] - self.num_flex_dof
+
+    def sort_repeated_evecs(self, evecs, evals):
+        num_rbm = np.sum(evals.__abs__() == 0.)
+        num_dof = evecs.shape[0]
+
+        evecs_sorted = evecs.copy()
+
+        if num_rbm != 0:
+            for i in range(num_rbm):
+                index_mode = np.argmax(evecs[:, i].__abs__()) - num_dof + num_rbm
+                evecs_sorted[:, index_mode] = evecs[:, i]
+
+        return evecs_sorted
 
     def euler_propagation_equations(self, tsstr):
         """

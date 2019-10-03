@@ -10,7 +10,6 @@ from sharpy.utils.datastructures import LinearTimeStepInfo
 import sharpy.utils.cout_utils as cout
 import time
 
-
 @solver
 class LinearDynamicSimulation(BaseSolver):
     """Time-domain solution of Linear Time Invariant Systems
@@ -118,7 +117,7 @@ class LinearDynamicSimulation(BaseSolver):
             np.savetxt(self.folder + '/t_out.dat', t_out)
             cout.cout_wrap('Success', 1)
 
-        process = True  # Under development
+        process = False # Under development
         if process:
             # Pack state variables into linear timestep info
             cout.cout_wrap('Plotting results...')
@@ -222,7 +221,7 @@ def state_to_timestep(data, x, u=None, y=None):
         track_body=True)
 
     current_aero_tstep = data.aero.timestep_info[-1].copy()
-    current_aero_tstep.forces = [forces[i_surf] + 0 * data.linear.tsaero0.forces[i_surf] for i_surf in
+    current_aero_tstep.forces = [forces[i_surf] + 1 * data.linear.tsaero0.forces[i_surf] for i_surf in
                                  range(len(gamma))]
     current_aero_tstep.gamma = [gamma[i_surf] + data.linear.tsaero0.gamma[i_surf] for i_surf in
                                 range(len(gamma))]

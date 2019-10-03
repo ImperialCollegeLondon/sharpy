@@ -98,7 +98,18 @@ class LinearBeam(BaseElement):
         if t_ref is not None:
             self.sys.scale_system_normalised_time(t_ref)
 
+        import sharpy.linear.assembler.linearthrust as linearthrust
+        engine = linearthrust.LinearThrust()
+        engine.initialise()
+
+        # K_thrust = engine.generate(self.tsstruct0, self.sys)
+        #
+        # self.sys.Kstr += K_thrust
+
         self.sys.assemble()
+
+        # remove yaw dof
+        rem_yaw = np.eye(self.sys.Mstr.shape[0], self.sys.Mstr.shape[0]-1)
 
         # TODO: remove integrals of the rigid body modes (and change mode shapes to account for this in the coupling matrices)
         # Option to remove certain dofs via dict: i.e. dofs to remove
@@ -126,7 +137,8 @@ class LinearBeam(BaseElement):
         dof_db = {'eta': [0, num_dof_flex, 1],
                   'V': [num_dof_flex, num_dof_flex + 3, 2],
                   'W': [num_dof_flex + 3, num_dof_flex + 6, 3],
-                  'orient': [num_dof_flex + 6, num_dof_flex + num_dof_rig, 4]}
+                  'orient': [num_dof_flex + 6, num_dof_flex + num_dof_rig, 4],
+                  'yaw': [num_dof_flex + 8, num_dof_flex + num_dof_rig, 1]}
 
         # -----------------------------------------------------------------------
         # Better to place in a function available to all elements since it will equally apply
@@ -252,12 +264,15 @@ class LinearBeam(BaseElement):
         vdof = self.sys.structure.vdof
         num_node = struct_tstep.num_node
         num_dof = 6*sum(vdof >= 0)
-        if len(x_n) == 2 * num_dof:
+        if self.sys.clamped:
             clamped = True
             rig_dof = 0
         else:
             clamped = False
-            rig_dof = 10
+            if self.settings['use_euler']:
+                rig_dof = 9
+            else:
+                rig_dof = 10
 
         q = np.zeros_like(struct_tstep.q)
         dqdt = np.zeros_like(struct_tstep.dqdt)
@@ -295,7 +310,11 @@ class LinearBeam(BaseElement):
 
         if not clamped:
             for_vel = dqdt[-rig_dof: -rig_dof + 6]
-            quat = dqdt[-4:]
+            if self.settings['use_euler']:
+                euler = dqdt[-4:-1]
+                quat = algebra.euler2quat(euler)
+            else:
+                quat = dqdt[-4:]
             for_pos = q[-rig_dof:-rig_dof + 6]
             for_acc = dqddt[-rig_dof:-rig_dof + 6]
 
@@ -310,7 +329,7 @@ class LinearBeam(BaseElement):
         try:
             Crr = self.sys.Crr_grav
             Csr = self.sys.Csr_grav
-            C_grav[:-rig_dof, -rig_dof:] = Csr
+            C_grav[:-rig_dof, -rig_dof:] = Csr # TODO: sort out changing q vector with euler
             C_grav[-rig_dof:, -rig_dof:] = Crr
             K_grav[-rig_dof:, :-rig_dof] = self.sys.Krs_grav
             K_grav[:-rig_dof, :-rig_dof] = self.sys.Kss_grav
@@ -318,7 +337,7 @@ class LinearBeam(BaseElement):
             for i in range(gravity_forces.shape[0]-1):
                 #add bc at node - doing it manually here
                 gravity_forces[i+1, :] = fgrav[6*i:6*(i+1)]
-            gravity_forces[0, :] = fgrav[-10:-4] - np.sum(gravity_forces[1:], 0)
+            gravity_forces[0, :] = fgrav[-rig_dof:-rig_dof+6] - np.sum(gravity_forces[1:], 0)
         except AttributeError:
             pass
 

@@ -85,6 +85,7 @@ class AsymptoticStability(BaseSolver):
         self.eigenvectors = None
         self.frequency_cutoff = np.inf
         self.eigenvalue_table = None
+        self.num_evals = None
 
         self.postprocessors = dict()
         self.with_postprocessors = False
@@ -109,6 +110,8 @@ class AsymptoticStability(BaseSolver):
         #     self.postprocessors[postproc].initialise(
         #         self.data, self.settings['postprocessors_settings'][postproc])
 
+        self.num_evals = self.settings['num_evals'].value
+
         stability_folder_path = self.settings['folder'] + '/' + self.data.settings['SHARPy']['case'] + '/stability'
         if not os.path.exists(stability_folder_path):
             os.makedirs(stability_folder_path)
@@ -121,6 +124,9 @@ class AsymptoticStability(BaseSolver):
             cout.cout_wrap('Dynamical System Eigenvalues')
             self.eigenvalue_table = modalutils.EigenvalueTable()
             self.eigenvalue_table.print_header(self.eigenvalue_table.headers)
+
+        # Output dict
+        self.data.linear.stability = dict()
 
     def run(self):
         """
@@ -142,6 +148,14 @@ class AsymptoticStability(BaseSolver):
         ss = self.data.linear.ss
 
         # Calculate eigenvectors and eigenvalues of the full system
+
+        #remove yaw
+        rem_yaw = np.zeros((ss.A.shape[0], ss.A.shape[0]-2))
+        rem_yaw[:1536+296, :1536+296] = np.eye(1536+296)
+        rem_yaw[-297:-1, -296:] = np.eye(296)
+
+        ss.A = rem_yaw.T.dot(ss.A.dot(rem_yaw))
+
         eigenvalues, eigenvectors = sclalg.eig(ss.A)
         # np.savetxt('./Amatrix', ss.A)
         # Convert DT eigenvalues into CT
@@ -158,13 +172,15 @@ class AsymptoticStability(BaseSolver):
                 dt = ss.dt
             eigenvalues = np.log(eigenvalues) / dt
 
+        self.num_evals = min(self.num_evals, len(eigenvalues))
+
         self.eigenvalues, self.eigenvectors = self.sort_eigenvalues(eigenvalues, eigenvectors, self.frequency_cutoff)
 
         if self.settings['export_eigenvalues'].value:
-            self.export_eigenvalues(self.settings['num_evals'].value)
+            self.export_eigenvalues(self.num_evals)
 
         if self.settings['print_info'].value:
-            self.eigenvalue_table.print_evals(self.eigenvalues[:self.settings['num_evals'].value])
+            self.eigenvalue_table.print_evals(self.eigenvalues[:self.num_evals])
 
         if self.settings['display_root_locus']:
             self.display_root_locus()
@@ -176,7 +192,6 @@ class AsymptoticStability(BaseSolver):
         if len(self.settings['velocity_analysis']) == 3:
             self.velocity_analysis()
 
-        self.data.linear.stability = dict()
         self.data.linear.stability['eigenvectors'] = self.eigenvectors
         self.data.linear.stability['eigenvalues'] = self.eigenvalues
         # self.data.linear.stability.mode_shapes = mode_shape_list
@@ -202,7 +217,8 @@ class AsymptoticStability(BaseSolver):
         # evec_pd.to_csv(stability_folder_path + '/eigenvectors.csv')
         # eval_pd.to_csv(stability_folder_path + '/eigenvalues.csv')
         np.savetxt(stability_folder_path + '/eigenvalues.dat', self.eigenvalues[:num_evals].view(float).reshape(-1, 2))
-        np.savetxt(stability_folder_path + '/eigenvectors.dat', self.eigenvectors[:, :num_evals].view(float).reshape(-1, 2*num_evals))
+        np.savetxt(stability_folder_path + '/eigenvectors_real.dat', self.eigenvectors[:, :num_evals].real.view(float))
+        np.savetxt(stability_folder_path + '/eigenvectors_imag.dat', self.eigenvectors[:, :num_evals].imag.view(float))
 
     def print_eigenvalues(self):
         """
@@ -263,10 +279,18 @@ class AsymptoticStability(BaseSolver):
         imag_part_plot = np.hstack(imag_part_plot)
         uinf_part_plot = np.hstack(uinf_part_plot)
 
+        plt.scatter(real_part_plot, imag_part_plot, c=uinf_part_plot)
+
         cout.cout_wrap('Saving velocity analysis results...')
         np.savetxt(self.folder + '/velocity_analysis_min%04d_max%04d_nvel%04d.dat' %(ulb*10, uub*10, num_u),
                    np.concatenate((uinf_part_plot, real_part_plot, imag_part_plot)).reshape((-1, 3), order='F'))
         cout.cout_wrap('\tSuccessful', 1)
+
+        self.velocity_results = dict()
+        self.data.linear.stability['velocity_results'] = dict()
+        self.data.linear.stability['velocity_results']['u_inf'] = uinf_part_plot
+        self.data.linear.stability['velocity_results']['evals_real'] = real_part_plot
+        self.data.linear.stability['velocity_results']['evals_imag'] = imag_part_plot
 
     def display_root_locus(self):
         """

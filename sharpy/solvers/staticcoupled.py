@@ -37,7 +37,7 @@ class StaticCoupled(BaseSolver):
         self.settings_default['max_iter'] = 100
 
         self.settings_types['n_load_steps'] = 'int'
-        self.settings_default['n_load_steps'] = 1
+        self.settings_default['n_load_steps'] = 0
 
         self.settings_types['tolerance'] = 'float'
         self.settings_default['tolerance'] = 1e-5
@@ -162,7 +162,6 @@ class StaticCoupled(BaseSolver):
         if i_iter == self.settings['max_iter'].value - 1:
             cout.cout_wrap('StaticCoupled did not converge!', 0)
             # quit(-1)
-
 
         return_value = None
         if i_iter == 0:

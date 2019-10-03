@@ -91,10 +91,6 @@ class TestFixNodeVelocitywrtA(unittest.TestCase):
         SimInfo.solvers['WriteVariablesTime']['structure_variables'] = ['pos']
 
         SimInfo.solvers['BeamPlot']['include_FoR'] = True
-        SimInfo.solvers['NonLinearDynamicMultibody']['relaxation_factor'] = 0.0
-        SimInfo.solvers['NonLinearDynamicMultibody']['min_delta'] = 1e-5
-        SimInfo.solvers['NonLinearDynamicMultibody']['max_iterations'] = 200
-        SimInfo.solvers['NonLinearDynamicMultibody']['newmark_damp'] = 1e-3
 
         SimInfo.solvers['DynamicCoupled']['structural_solver'] = 'NonLinearDynamicMultibody'
         SimInfo.solvers['DynamicCoupled']['structural_solver_settings'] = SimInfo.solvers['NonLinearDynamicMultibody']
@@ -157,9 +153,9 @@ class TestFixNodeVelocitywrtA(unittest.TestCase):
         output_path = os.path.dirname(solver_path) + '/output/fix_node_velocity_wrtA/WriteVariablesTime/'
         # quat_data = np.matrix(np.genfromtxt(output_path + 'FoR_00_mb_quat.dat', delimiter=' '))
         pos_tip_data = np.matrix(np.genfromtxt(output_path + "struct_pos_node" + str(-1) + ".dat", delimiter=' '))
-        self.assertAlmostEqual(pos_tip_data[-1, 1], 9.996557, 2)
-        self.assertAlmostEqual(pos_tip_data[-1, 2], 0.000000, 2)
-        self.assertAlmostEqual(pos_tip_data[-1, 3], -0.1795935, 2)
+        self.assertAlmostEqual(pos_tip_data[-1, 1], 9.996557, 4)
+        self.assertAlmostEqual(pos_tip_data[-1, 2], 0.000000, 4)
+        self.assertAlmostEqual(pos_tip_data[-1, 3], -0.1795935, 4)
 
     def tearDowns(self):
         solver_path = os.path.dirname(os.path.realpath(__file__))
