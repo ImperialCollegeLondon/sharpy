@@ -47,11 +47,11 @@ if aero_type == 'lin':
                                                            'velocity_field_input': {'u_inf': ws.u_inf,
                                                                                     'u_inf_direction': [1., 0., 0.],
                                                                                     'gust_shape': '1-cos',
-                                                                                    'gust_length': 5.,
-                                                                                    'gust_intensity': ws.gust_intensity
-                                                                                                      * ws.u_inf,
                                                                                     'offset': 15.,
-                                                                                    'span': ws.main_chord * ws.aspect_ratio}}
+                                                                                    'gust_parameters': {'gust_length': 5.,
+                                                                                                        'gust_intensity': ws.gust_intensity
+                                                                                                                          * ws.u_inf,
+                                                                                                        'span': ws.main_chord * ws.aspect_ratio}}}
                                                            #  'velocity_field_generator': 'SteadyVelocityField',
                                                            #  'velocity_field_input': {'u_inf': ws.u_inf*1,
                                                            #                          'u_inf_direction': [1., 0., 0.]}}
