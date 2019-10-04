@@ -4,7 +4,7 @@ import numpy as np
 import os
 import sharpy.utils.algebra as algebra
 
-case_name = 'simple_HALE_phugoid'
+case_name = 'simple_HALE'
 route = os.path.dirname(os.path.realpath(__file__)) + '/'
 
 # EXECUTION
@@ -481,7 +481,7 @@ def generate_aero_file():
 
     # control surface type 0 = static
     # control surface type 1 = dynamic
-    control_surface_type[0] = dynamic_elevator
+    control_surface_type[0] = 0
     control_surface_deflection[0] = cs_deflection
     control_surface_chord[0] = m
     control_surface_hinge_coord[0] = -0.25 # nondimensional wrt elastic axis (+ towards the trailing edge)
@@ -677,11 +677,9 @@ def generate_solver_file():
                                   'aligned_grid': 'on',
                                   'mstar': int(20/tstep_factor),
                                   'freestream_dir': ['1', '0', '0'],
-                                  'control_surface_deflection': ['DynamicControlSurface', ''],
+                                  'control_surface_deflection': ['', ''],
                                   'control_surface_deflection_generator':
-                                  [{'dt': dt,
-                                    'deflection_file': elev_file},
-                                   {}]}
+                                  [{}, {}]}
 
     settings['NonLinearStatic'] = {'print_info': 'off',
                                    'max_iterations': 150,
