@@ -1,7 +1,6 @@
 SHARPy Source Code
 ------------------
 
-
 .. toctree::
 	:maxdepth: 1
 
