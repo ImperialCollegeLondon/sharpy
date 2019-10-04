@@ -129,7 +129,7 @@ class continuous_sin(BaseGust):
     Continuous sinusoidal gust model
     .. math:: U_z = \frac{u_{de}}{2}\sin\left(\frac{2\pi x}{S}\right)
     """
-    _gust_id = 'continuous sin'
+    _gust_id = 'continuous_sin'
 
     settings_types = dict()
     settings_default = dict()
