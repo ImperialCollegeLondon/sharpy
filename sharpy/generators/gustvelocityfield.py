@@ -36,79 +36,74 @@ class GustVelocityField(generator_interface.BaseGenerator):
     where, :math:`u_{de}` is the gust intensity, :math:`S` is the gust length and :math:`b` is the wing span.
     :math:`x` and :math:`y` refer to the chordwise and spanwise distance penetrated into the gust, respectively.
 
-    Args:
-        in_dict (dict): Input data in the form of dictionary. See acceptable entries below:
-
-            ===================  ===============  =================================================  ===================
-            Name                 Type             Description                                        Default
-            ===================  ===============  =================================================  ===================
-            ``u_inf``            ``float``        Free stream velocity                               ``0.0``
-            ``u_inf_direction``  ``list(float)``  Free stream velocity relative component            ``[1.0, 0.0, 0.0]``
-            ``gust_shape``       ``str``          Gust profile shape.                                ``None``
-            ``gust_length``      ``float``        Length of gust                                     ``0.0``
-            ``gust_intensity``   ``float``        Intensity of the gust                              ``0.0``
-            ``offset``           ``float``        Spatial offset of the gust with respect to origin  ``0.0``
-            ``span``             ``float``        Wing span                                          ``0.0``
-            ``file``             ``str``          File with the information (only for time varying)  ``Empty string``
-            ``relative_motion``  ``bool``         If true, the gust is convected with u_inf          ``False``
-            ===================  ===============  =================================================  ===================
-
-    Attributes:
-        settings_types (dict): Acceptable data types of the input data
-        settings_default (dict): Default values for input data should the user not provide them
-        u_inf (float): Free stream velocity
-        u_inf_direction (list(float)): Free stream velocity relative components in ``x`, ``y`` and ``z``
-        gust_shape (str): Gust profile shape
-        gust_length (float): Length of gust, usually noted as $2H$
-        gust_intensity (float): Intensity of the gust, in m/s
-        offset (float): Spatial offset of the gust position with respect to origin
-        span (float): Wing span
-        implemented_gusts (list(str)): Currently supported gust profiles
-        file_info (np.array): gust information read from the text file
-        gust_shape (function): interpolates the velocity on a point according to the gust type
-
     See Also:
         .. py:class:: sharpy.utils.generator_interface.BaseGenerator
 
     """
     generator_id = 'GustVelocityField'
 
+    settings_types = dict()
+    settings_default = dict()
+    settings_description = dict()
+
+    settings_types['u_inf'] = 'float'
+    settings_default['u_inf'] = None
+    settings_description['u_inf'] = 'Free stream velocity'
+
+    settings_types['u_inf_direction'] = 'list(float)'
+    settings_default['u_inf_direction'] = np.array([1.0, 0, 0])
+    settings_description['u_inf_direction'] = 'Free stream velocity relative component'
+
+    settings_types['gust_shape'] = 'str'
+    settings_default['gust_shape'] = None
+    settings_description['gust_shape'] = 'Gust profile shape'
+
+    settings_types['gust_length'] = 'float'
+    settings_default['gust_length'] = 0.0
+    settings_description['gust_length'] = 'Length of gust'
+
+    settings_types['gust_intensity'] = 'float'
+    settings_default['gust_intensity'] = 0.0
+    settings_description['gust_intensity'] = 'Intensity of the gust'
+
+    settings_types['offset'] = 'float'
+    settings_default['offset'] = 0.0
+    settings_description['offset'] = 'Spatial offset of the gust with respect to origin'
+
+    settings_types['span'] = 'float'
+    settings_default['span'] = 0.
+    settings_description['span'] = 'Wing span'
+
+    settings_types['file'] = 'str'
+    settings_default['file'] = ''
+    settings_description['file'] = 'File with the information (only for time varying)'
+
+    settings_types['periods_per_span'] = 'int'
+    settings_default['periods_per_span'] = 1
+    settings_description['periods_per_span'] = 'Number of times that the sine is repeated in the span of the wing (only for "span sine")'
+
+    settings_types['perturbation_dir'] = 'list(float)'
+    settings_default['perturbation_dir'] = np.array([0, 0, 1.])
+    settings_description['perturbation_dir'] = 'Direction in which the perturbation will be applied in A FoR (only for "span sine")'
+
+    settings_types['span_dir'] = 'list(float)'
+    settings_default['span_dir'] = np.array([0, 1., 0])
+    settings_description['span_dir'] = 'Direction of the span of the wing (only for "span sine")'
+
+    settings_types['relative_motion'] = 'bool'
+    settings_default['relative_motion'] = False
+    settings_description['relative_motion'] = 'If true, the gust is convected with u_inf'
+
+    setting_table = settings.SettingsTable()
+    __doc__ += setting_table.generate(settings_types, settings_default, settings_description)
+
     def __init__(self):
-        self.in_dict = dict()
-        self.settings_types = dict()
-        self.settings_default = dict()
-
-        self.settings_types['u_inf'] = 'float'
-        self.settings_default['u_inf'] = None
-
-        self.settings_types['u_inf_direction'] = 'list(float)'
-        self.settings_default['u_inf_direction'] = np.array([1.0, 0, 0])
-
-        self.settings_types['gust_shape'] = 'str'
-        self.settings_default['gust_shape'] = None
-
-        self.settings_types['gust_length'] = 'float'
-        self.settings_default['gust_length'] = 0.0
-
-        self.settings_types['gust_intensity'] = 'float'
-        self.settings_default['gust_intensity'] = 0.0
-
-        self.settings_types['offset'] = 'float'
-        self.settings_default['offset'] = 0.0
-
-        self.settings_types['span'] = 'float'
-        self.settings_default['span'] = 0.
-
-        self.settings_types['file'] = 'str'
-        self.settings_default['file'] = ''
-
-        self.settings_types['relative_motion'] = 'bool'
-        self.settings_default['relative_motion'] = False
 
         self.u_inf = 0.
         self.u_inf_direction = None
-
         self.file_info = None
+        self.settings = dict()
+        self.gust_shape = None
 
         self.implemented_gusts = []
         self.implemented_gusts.append('1-cos')
@@ -117,10 +112,7 @@ class GustVelocityField(generator_interface.BaseGenerator):
         self.implemented_gusts.append('lateral 1-cos')
         self.implemented_gusts.append('time varying')
         self.implemented_gusts.append('time varying global')
-
-        self.settings = dict()
-
-        self.gust_shape = None
+        self.implemented_gusts.append('span sine')
 
     def initialise(self, in_dict):
         self.in_dict = in_dict
@@ -211,14 +203,28 @@ class GustVelocityField(generator_interface.BaseGenerator):
                 vel[2] = np.interp(time, self.file_info[:,0], self.file_info[:,3])
                 return vel
 
+        elif self.settings['gust_shape'] == 'span sine':
+            def gust_shape(x, y, z, time=0):
+
+                d = np.dot(np.array([x, y, z]), self.settings['span_dir'])
+                vel = 0.5*self.settings['gust_intensity'].value*np.sin(d*2.*np.pi/(self.settings['span'].value/self.settings['periods_per_span'].value))
+
+                return vel*self.settings['perturbation_dir']
+
         self.gust_shape = gust_shape
 
     def generate(self, params, uext):
         zeta = params['zeta']
         override = params['override']
-        ts = params['ts']
-        dt = params['dt']
-        t = params['t']
+        if self.settings['gust_shape'] == 'span sine':
+            ts = 0
+            t = 0
+            dt = 0
+        else:
+            ts = params['ts']
+            t = params['t']
+            dt = params['dt']
+            
         for_pos = params['for_pos'][0:3]
 
         for i_surf in range(len(zeta)):
