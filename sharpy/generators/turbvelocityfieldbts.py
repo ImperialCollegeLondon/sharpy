@@ -7,7 +7,7 @@ import sharpy.utils.cout_utils as cout
 
 
 def interp_rectgrid_vectorfield(points, grid, vector_field, out_value, regularGrid=False, num_cores=1):
-
+    # check: https://en.wikipedia.org/wiki/Trilinear_interpolation
     npoints = points.shape[0]
     output = np.zeros((npoints, 3))
     if regularGrid:
