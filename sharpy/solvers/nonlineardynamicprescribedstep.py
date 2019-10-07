@@ -100,6 +100,8 @@ class NonLinearDynamicPrescribedStep(_BaseStructural):
                                                          gravity_forces_copy[i_node, 0:3])
 
         totals = np.sum(applied_forces_copy + gravity_forces_copy, axis=0)
+        step.total_forces = np.sum(applied_forces_copy, axis=0)
+        step.total_gravity_forces = np.sum(gravity_forces_copy, axis=0)
         return totals[0:3], totals[3:6]
 
     def update(self, tstep=None):

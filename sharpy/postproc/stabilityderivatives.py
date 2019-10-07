@@ -5,6 +5,7 @@ import scipy.sparse as scsp
 import sharpy.linear.src.libsparse as libsp
 import sharpy.utils.cout_utils as cout
 import sharpy.utils.algebra as algebra
+import sharpy.utils.settings as settings
 
 
 @solver_interface.solver
@@ -50,6 +51,9 @@ class StabilityDerivatives(solver_interface.BaseSolver):
     settings_default['c_ref'] = 1.
     settings_description['c_ref'] = 'Reference chord'
 
+    settings_table = settings.SettingsTable()
+    __doc__ += settings_table.generate(settings_types, settings_default, settings_description)
+
     def __init__(self):
         self.data = None
         self.settings = dict()
@@ -89,28 +93,31 @@ class StabilityDerivatives(solver_interface.BaseSolver):
         modal = self.data.linear.linear_system.beam.sys.modal
         use_euler = self.data.linear.linear_system.beam.sys.use_euler
 
-        struct_num_dof = self.data.linear.linear_system.beam.sys.num_dof
+        nout = 6
+        if use_euler:
+            rig_dof = 9
+        else:
+            rig_dof = 10
 
+        # Get rigid body + control surface inputs
         try:
             n_ctrl_sfc = self.data.linear.linear_system.uvlm.control_surface.n_control_surfaces
         except AttributeError:
             n_ctrl_sfc = 0
 
-        if self.data.linear.linear_system.settings['beam_settings']['modal_projection'].value == True and \
-                self.data.linear.linear_system.settings['beam_settings']['inout_coords'] == 'modes':
+        self.inputs = rig_dof + n_ctrl_sfc
 
-            raise NotImplementedError('Modal stability derivatives not yet implemented')
+        in_matrix = np.zeros((ssuvlm.inputs, self.inputs))
+        out_matrix = np.zeros((nout, ssuvlm.outputs))
 
+        if modal:
+            # Modal scaling
+            raise NotImplementedError('Not yet implemented in modal space')
         else:
-            rbm_in = np.zeros((ssuvlm.inputs, ssuvlm.inputs - 2*struct_num_dof + 6))
-            rbm_in[2*struct_num_dof-10:2*struct_num_dof-4, :6] = np.eye(6)
-            rbm_in[-n_ctrl_sfc:, -n_ctrl_sfc:] = np.eye(n_ctrl_sfc)
+            in_matrix[-self.inputs:, :] = np.eye(self.inputs)
+            out_matrix[:, -rig_dof:-rig_dof+6] = np.eye(nout)
 
-            nout = 6
-            out_matrix = np.zeros((nout, ssuvlm.outputs))
-            out_matrix[:, -10:-4] = np.eye(nout)
-
-        ssuvlm.addGain(rbm_in, where='in')
+        ssuvlm.addGain(in_matrix, where='in')
         ssuvlm.addGain(out_matrix, where='out')
 
         A, B, C, D = ssuvlm.get_mats()
@@ -163,11 +170,10 @@ class StabilityDerivatives(solver_interface.BaseSolver):
 
         der_matrix = np.zeros((6, self.inputs - 4))
         der_col = 0
-        der_matrix = Y_freq
-        # for i in list(range(6))+list(range(10, self.inputs)):
-        #     der_matrix[:3, der_col] = Y_freq[:3, i]
-        #     der_matrix[3:6, der_col] = Y_freq[3:6, i]
-        #     der_col += 1
+        for i in list(range(6))+list(range(10, self.inputs)):
+            der_matrix[:3, der_col] = Y_freq[:3, i]
+            der_matrix[3:6, der_col] = Y_freq[3:6, i]
+            der_col += 1
 
         labels_force = {0: 'X',
                         1: 'Y',
