@@ -34,6 +34,10 @@ class WriteVariablesTime(BaseSolver):
     settings_default = dict()
     settings_description = dict()
 
+    settings_types['folder'] = 'str'
+    settings_default['folder'] = './output/'
+    settings_description['folder'] = 'Output folder directory'
+
     settings_types['delimiter'] = 'str'
     settings_default['delimiter'] = ' '
     settings_description['delimiter'] = 'Delimiter to be used in the output file'
@@ -61,9 +65,11 @@ class WriteVariablesTime(BaseSolver):
     settings_types['aero_panels_isurf'] = 'list(int)'
     settings_default['aero_panels_isurf'] = np.array([0])
     settings_description['aero_panels_isurf'] = "Number of the panels' surface to be output"
+
     settings_types['aero_panels_im'] = 'list(int)'
     settings_default['aero_panels_im'] = np.array([0])
     settings_description['aero_panels_im'] = 'Chordwise index of the panels to be output'
+
     settings_types['aero_panels_in'] = 'list(int)'
     settings_default['aero_panels_in'] = np.array([0])
     settings_description['aero_panels_in'] = 'Spanwise index of the panels to be output'
@@ -75,9 +81,11 @@ class WriteVariablesTime(BaseSolver):
     settings_types['aero_nodes_isurf'] = 'list(int)'
     settings_default['aero_nodes_isurf'] = np.array([0])
     settings_description['aero_nodes_isurf'] = "Number of the nodes' surface to be output"
+
     settings_types['aero_nodes_im'] = 'list(int)'
     settings_default['aero_nodes_im'] = np.array([0])
     settings_description['aero_nodes_im'] = 'Chordwise index of the nodes to be output'
+
     settings_types['aero_nodes_in'] = 'list(int)'
     settings_default['aero_nodes_in'] = np.array([0])
     settings_description['aero_nodes_in'] = 'Spanwise index of the nodes to be output'
@@ -102,7 +110,7 @@ class WriteVariablesTime(BaseSolver):
             self.settings = custom_settings
         settings.to_custom_types(self.settings, self.settings_types, self.settings_default)
 
-        self.dir =   self.data.case_route + 'output/' + self.data.case_name + '/' + 'WriteVariablesTime/'
+        self.dir = self.settings['folder'] + '/' + self.data.settings['SHARPy']['case'] + '/WriteVariablesTime/'
         if not os.path.isdir(self.dir):
             os.makedirs(self.dir)
 
@@ -198,16 +206,24 @@ class WriteVariablesTime(BaseSolver):
                 continue
             var = getattr(self.data.structure.timestep_info[-1], self.settings['structure_variables'][ivariable])
             num_indices = len(var.shape)
-            for inode in range(len(self.settings['structure_nodes'])):
-                node = self.settings['structure_nodes'][inode]
-                filename = self.dir + "struct_" + self.settings['structure_variables'][ivariable] + "_node" + str(node) + ".dat"
-                fid = open(filename,"a")
+            if num_indices == 1:
+                # Beam global variables (i.e. not node dependant)
+                filename = self.dir + "struct_" + self.settings['structure_variables'][ivariable] + ".dat"
+                fid = open(filename, "a")
+                self.write_nparray_to_file(fid, self.data.ts, var, self.settings['delimiter'])
+                fid.close()
 
-                if num_indices == 2:
-                    self.write_nparray_to_file(fid, self.data.ts, var[node,:], self.settings['delimiter'])
-                elif num_indices == 3:
-                    ielem, inode_in_elem = self.data.structure.node_master_elem[node]
-                    self.write_nparray_to_file(fid, self.data.ts, var[ielem,inode_in_elem,:], self.settings['delimiter'])
+            else:  # These variables have nodal values (i.e the number of indices is either 2 or 3)
+                for inode in range(len(self.settings['structure_nodes'])):
+                    node = self.settings['structure_nodes'][inode]
+                    filename = self.dir + "struct_" + self.settings['structure_variables'][ivariable] + "_node" + str(node) + ".dat"
+                    fid = open(filename,"a")
+
+                    if num_indices == 2:
+                        self.write_nparray_to_file(fid, self.data.ts, var[node,:], self.settings['delimiter'])
+                    elif num_indices == 3:
+                        ielem, inode_in_elem = self.data.structure.node_master_elem[node]
+                        self.write_nparray_to_file(fid, self.data.ts, var[ielem,inode_in_elem,:], self.settings['delimiter'])
 
                 fid.close()
 
