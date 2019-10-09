@@ -390,6 +390,39 @@ class LinAeroEla():
                     C_{sr}^{rot} -= T^\top\widetilde{\mathbf{X}}_B C^{BG}
                     \frac{\partial}{\partial\boldsymbol{\chi}}
                     \left(C^{GA} C^{AG}_0 \boldsymbol{f}_{G,0}\right)\delta\boldsymbol{\chi}
+
+
+        The ``track_body`` setting.
+
+        When ``track_body`` is enabled, the UVLM grid is no longer coincident with the inertial reference frame
+        throughout the simulation but rather it is able to rotate as the ``A`` frame rotates. This is to simulate a free
+        flying vehicle, where, for instance, the orientation does not affect the aerodynamics. The UVLM defined in this
+        frame of reference, named ``U``, satisfies the following convention:
+
+            * The ``U`` frame is coincident with the ``G`` frame at the time of linearisation.
+
+            * The ``U`` frame rotates as the ``A`` frame rotates.
+
+        Transformations related to the ``U`` frame of reference:
+
+            * The angle between the ``U`` frame and the ``A`` frame is always constant and equal
+              to :math:`\boldsymbol{\Theta}_0`.
+
+            * The angle between the ``A`` frame and the ``G`` frame is :math:`\boldsymbol{\Theta}=\boldsymbol{\Theta}_0
+              + \delta\boldsymbol{\Theta}`
+
+            * The projection of a vector expressed in the ``G`` frame onto the ``U`` frame is expressed by:
+
+                .. math:: \boldsymbol{v}^U = C^{GA}_0 C^{AG} \boldsymbol{v}^G
+
+            * The reverse, a projection of a vector expressed in the ``U`` frame onto the ``G`` frame, is expressed by
+
+                .. math:: \boldsymbol{v}^U = C^{GA} C^{AG}_0 \boldsymbol{v}^U
+
+        The effect this has on the aeroelastic coupling between the UVLM and the structural dynamics is that the
+        orientation and change of orientation of the vehicle has no effect on the aerodynamics. The aerodynamics are
+        solely affected by the contribution of the 6-rigid body velocities (as well as the flexible DOFs velocities).
+
         """
 
         data = self.data

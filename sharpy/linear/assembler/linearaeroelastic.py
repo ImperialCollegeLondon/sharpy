@@ -88,7 +88,7 @@ class LinearAeroelastic(ss_interface.BaseElement):
         self.uvlm = ss_interface.initialise_system('LinearUVLM')
         self.uvlm.initialise(data, custom_settings=self.settings['aero_settings'])
         if self.settings['uvlm_filename'] == '':
-            self.uvlm.assemble()
+            self.uvlm.assemble(track_body=self.settings['track_body'].value)
         else:
             self.load_uvlm_from_file = True
 
@@ -147,8 +147,8 @@ class LinearAeroelastic(ss_interface.BaseElement):
             damping_aero[flex_nodes:, flex_nodes:] = self.sys.Crr
             damping_aero[flex_nodes:, :flex_nodes] = self.sys.Crs
 
-        # beam.sys.Cstr += damping_aero
-        # beam.sys.Kstr += stiff_aero
+        beam.sys.Cstr += damping_aero
+        beam.sys.Kstr += stiff_aero
 
         if uvlm.scaled:
             beam.assemble(t_ref=uvlm.sys.ScalingFacts['time'])
@@ -239,7 +239,7 @@ class LinearAeroelastic(ss_interface.BaseElement):
         cout.cout_wrap('\tTotal states: %g' % ss.states, 1)
         cout.cout_wrap('\tInputs: %g' % ss.inputs, 1)
         cout.cout_wrap('\tOutputs: %g' % ss.outputs, 1)
-        Y_freq = uvlm.ss.freqresp(np.array([0]))[:, :, 0].__abs__()
+        Y_freq = uvlm.ss.freqresp(np.array([0]))[:, :, 0]
         return ss
 
     def update(self, u_infty):

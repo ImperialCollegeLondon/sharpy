@@ -661,6 +661,10 @@ class FlexDynamic():
 
         # Update matrices
         self.Kstr[:flex_dof, :flex_dof] += Kss_grav
+
+        # debug:
+        Cgrav = self.Cstr.copy()
+
         if self.Kstr[:flex_dof, :flex_dof].shape != self.Kstr.shape:  # If the beam is free, update rigid terms as well
             self.Cstr[-rig_dof:, -rig_dof:] += Crr_grav
             self.Cstr[:-rig_dof, -rig_dof:] += Csr_grav
@@ -677,6 +681,14 @@ class FlexDynamic():
         #     q0, q1, q2, q3 = list(tsstr.quat)
         #     self.Cstr[-4:, -7:-4] = 0.5*np.block([[-q1, -q2, -q3], [q0, -q3, q2], [q3, q0, -q1], [-q2, q1, q0]])
 
+        Kgrav = np.zeros_like(self.Kstr)
+        Kgrav[flex_dof:, :flex_dof] += Krs_grav
+        Kgrav[:flex_dof, :flex_dof] += Kss_grav
+        Cgrav[-rig_dof:, -rig_dof:] += Crr_grav
+        Cgrav[:-rig_dof, -rig_dof:] += Csr_grav
+        Cgrav[flex_dof:, :flex_dof] += Krs_grav
+        np.savetxt('./output/' + '/Kgrav.dat', Kgrav)
+        np.savetxt('./output/' + '/Cgrav.dat', Cgrav)
         if self.modal:
             self.Ccut = self.U.T.dot(self.Cstr.dot(self.U))
 

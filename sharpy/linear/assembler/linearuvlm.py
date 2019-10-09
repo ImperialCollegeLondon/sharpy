@@ -110,7 +110,7 @@ class LinearUVLM(ss_interface.BaseElement):
             self.rom = rom_interface.initialise_rom(self.settings['rom_method'])
             self.rom.initialise(self.settings['rom_method_settings'])
 
-    def assemble(self):
+    def assemble(self, track_body=False):
         r"""
         Assembles the linearised UVLM system, removes the desired inputs and adds linearised control surfaces
         (if present).
@@ -128,17 +128,20 @@ class LinearUVLM(ss_interface.BaseElement):
         self.ss = self.sys.SS
         self.C_to_vertex_forces = self.ss.C.copy()
 
+        nzeta = 3 * self.sys.Kzeta
+
         if self.settings['remove_inputs']:
             self.remove_inputs(self.settings['remove_inputs'])
 
         if self.control_surface is not None:
-            Kzeta_delta = self.control_surface.generate()
-
+            Kzeta_delta = self.control_surface.generate(track_body=track_body)
             # Modify the state space system with a gain at the input side
             # such that the control surface deflections are last
             if self.sys.use_sparse:
                 gain_cs = sp.eye(self.ss.inputs, self.ss.inputs + self.control_surface.n_control_surfaces,
                                  format='lil')
+                # gain_cs[:nzeta, :nzeta] = Kzeta_delta[:nzeta, :nzeta]
+                # gain_cs[:Kzeta_delta.shape[0], -self.control_surface.n_control_surfaces:] = Kzeta_delta[:, nzeta:]
                 gain_cs[:Kzeta_delta.shape[0], -self.control_surface.n_control_surfaces:] = Kzeta_delta
                 gain_cs = libsp.csc_matrix(gain_cs)
             else:
