@@ -275,8 +275,9 @@ class LinearBeam(BaseElement):
                 rig_dof = 10
 
         q = np.zeros_like(struct_tstep.q)
-        dqdt = np.zeros_like(struct_tstep.dqdt)
-        dqddt = np.zeros_like(struct_tstep.dqddt)
+        q = np.zeros((num_dof + rig_dof))
+        dqdt = np.zeros_like(q)
+        dqddt = np.zeros_like(q)
 
         pos = np.zeros_like(struct_tstep.pos)
         pos_dot = np.zeros_like(struct_tstep.pos_dot)
@@ -342,9 +343,9 @@ class LinearBeam(BaseElement):
             pass
 
         current_time_step = struct_tstep.copy()
-        current_time_step.q = q + struct_tstep.q
-        current_time_step.dqdt = dqdt + struct_tstep.dqdt
-        current_time_step.dqddt = dqddt + struct_tstep.dqddt
+        current_time_step.q[:len(q)] = q + struct_tstep.q[:len(q)]
+        current_time_step.dqdt[:len(q)] = dqdt + struct_tstep.dqdt[:len(q)]
+        current_time_step.dqddt[:len(q)] = dqddt + struct_tstep.dqddt[:len(q)]
         current_time_step.pos = pos + struct_tstep.pos
         current_time_step.pos_dot = pos + struct_tstep.pos_dot
         current_time_step.psi = psi + struct_tstep.psi
@@ -360,6 +361,26 @@ class LinearBeam(BaseElement):
         current_time_step.steady_applied_forces = steady_applied_forces + struct_tstep.steady_applied_forces
 
         return current_time_step
+
+    def rigid_aero_forces(self):
+
+        # Debug adding rigid forces from tornado
+        derivatives_alpha = np.zeros((6, 5))
+        derivatives_alpha[0, :] = np.array([0.0511, 0, 0, 0.08758, 0])  # drag derivatives
+        derivatives_alpha[1, :] = np.array([0, 0, -0.05569, 0, 0])  # Y derivatives
+        derivatives_alpha[2, :] = np.array([5.53, 0, 0, 11.35, 0])  # lift derivatives
+        derivatives_alpha[3, :] = np.array([0, 0, -0.609, 0, 0])  # roll derivatives
+        derivatives_alpha[4, :] = np.array([-9.9988, 0, 0, -37.61, 0]) # pitch derivatives
+        derivatives_alpha[5, :] = np.array([0, 0, -0.047, 0, 0])  # yaw derivatives
+
+        Cx0 = -0.0324
+        Cz0 = 0.436
+        Cm0 = -0.78966
+
+
+        quat = self.tsstruct0.quat
+        Cga = algebra.quat2rotation(quat)
+
 
 
 class VectorVariable(object):

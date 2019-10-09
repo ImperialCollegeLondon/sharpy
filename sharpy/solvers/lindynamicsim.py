@@ -29,6 +29,10 @@ class LinearDynamicSimulation(BaseSolver):
     settings_default['write_dat'] = True
     settings_description['write_dat'] = 'Write output dat files'
 
+    settings_types['write_vtu'] = 'bool'
+    settings_default['write_vtu'] = True
+    settings_description['write_vtu'] = 'Write output to paraview format'
+
     settings_default['n_tsteps'] = 10
     settings_types['n_tsteps'] = 'int'
 
@@ -55,7 +59,6 @@ class LinearDynamicSimulation(BaseSolver):
         self.input_file_name = ""
 
         self.folder = None
-
 
     def initialise(self, data, custom_settings=None):
 
@@ -117,8 +120,7 @@ class LinearDynamicSimulation(BaseSolver):
             np.savetxt(self.folder + '/t_out.dat', t_out)
             cout.cout_wrap('Success', 1)
 
-        process = False # Under development
-        if process:
+        if self.settings['write_vtu']:
             # Pack state variables into linear timestep info
             cout.cout_wrap('Plotting results...')
             for n in range(len(t_out)-1):
@@ -221,7 +223,7 @@ def state_to_timestep(data, x, u=None, y=None):
         track_body=True)
 
     current_aero_tstep = data.aero.timestep_info[-1].copy()
-    current_aero_tstep.forces = [forces[i_surf] + 1 * data.linear.tsaero0.forces[i_surf] for i_surf in
+    current_aero_tstep.forces = [forces[i_surf] + data.linear.tsaero0.forces[i_surf] for i_surf in
                                  range(len(gamma))]
     current_aero_tstep.gamma = [gamma[i_surf] + data.linear.tsaero0.gamma[i_surf] for i_surf in
                                 range(len(gamma))]
