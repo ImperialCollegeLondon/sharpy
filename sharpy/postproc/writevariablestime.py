@@ -34,6 +34,10 @@ class WriteVariablesTime(BaseSolver):
     settings_default = dict()
     settings_description = dict()
 
+    settings_types['folder'] = 'str'
+    settings_default['folder'] = './output/'
+    settings_description['folder'] = 'Output folder directory'
+
     settings_types['delimiter'] = 'str'
     settings_default['delimiter'] = ' '
     settings_description['delimiter'] = 'Delimiter to be used in the output file'
@@ -61,9 +65,11 @@ class WriteVariablesTime(BaseSolver):
     settings_types['aero_panels_isurf'] = 'list(int)'
     settings_default['aero_panels_isurf'] = np.array([0])
     settings_description['aero_panels_isurf'] = "Number of the panels' surface to be output"
+
     settings_types['aero_panels_im'] = 'list(int)'
     settings_default['aero_panels_im'] = np.array([0])
     settings_description['aero_panels_im'] = 'Chordwise index of the panels to be output'
+
     settings_types['aero_panels_in'] = 'list(int)'
     settings_default['aero_panels_in'] = np.array([0])
     settings_description['aero_panels_in'] = 'Spanwise index of the panels to be output'
@@ -75,9 +81,11 @@ class WriteVariablesTime(BaseSolver):
     settings_types['aero_nodes_isurf'] = 'list(int)'
     settings_default['aero_nodes_isurf'] = np.array([0])
     settings_description['aero_nodes_isurf'] = "Number of the nodes' surface to be output"
+
     settings_types['aero_nodes_im'] = 'list(int)'
     settings_default['aero_nodes_im'] = np.array([0])
     settings_description['aero_nodes_im'] = 'Chordwise index of the nodes to be output'
+
     settings_types['aero_nodes_in'] = 'list(int)'
     settings_default['aero_nodes_in'] = np.array([0])
     settings_description['aero_nodes_in'] = 'Spanwise index of the nodes to be output'
@@ -102,7 +110,7 @@ class WriteVariablesTime(BaseSolver):
             self.settings = custom_settings
         settings.to_custom_types(self.settings, self.settings_types, self.settings_default)
 
-        self.dir =   self.data.case_route + 'output/' + self.data.case_name + '/' + 'WriteVariablesTime/'
+        self.dir = self.settings['folder'] + '/' + self.data.settings['SHARPy']['case'] + '/WriteVariablesTime/'
         if not os.path.isdir(self.dir):
             os.makedirs(self.dir)
 
