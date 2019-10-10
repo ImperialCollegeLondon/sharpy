@@ -294,12 +294,9 @@ class AsymptoticStability(BaseSolver):
                    s=6,
                    color='k',
                    marker='s')
-        ax.set_xlabel('Real, $\mathbb{R}(\lambda_i)$ [rad/s]')
-        ax.set_ylabel('Imag, $\mathbb{I}(\lambda_i)$ [rad/s]')
-        # ax.set_ylim([0, self.frequency_cutoff])
+        ax.set_xlabel(r'Real, $\mathbb{R}(\lambda_i)$ [rad/s]')
+        ax.set_ylabel(r'Imag, $\mathbb{I}(\lambda_i)$ [rad/s]')
         ax.grid(True)
-        # ax.set_ylim(-90,90)
-        # ax.set_xlim(-10,1)
         fig.show()
 
         return fig, ax
