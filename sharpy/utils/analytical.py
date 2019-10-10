@@ -23,7 +23,19 @@ j = 1.0j
 
 
 def theo_fun(k):
-    """Returns Theodorsen function at a reduced frequency k"""
+    r"""Returns the value of Theodorsen's function at a reduced frequency :math:`k`.
+
+    .. math:: \mathcal{C}(jk) = \frac{H_1^{(2)}(k)}{H_1^{(2)}(k) + jH_0^{(2)}(k)}
+
+    where :math:`H_0^{(2)}(k)` and :math:`H_1^{(2)}(k)` are Hankel functions of the second kind.
+
+    Args:
+        k (np.array): Reduced frequency/frequencies at which to evaluate the function.
+
+    Returns:
+        np.array: Value of Theodorsen's function evaluated at the desired reduced frequencies.
+
+    """
 
     H1 = scsp.hankel2(1, k)
     H0 = scsp.hankel2(0, k)
@@ -376,16 +388,46 @@ def wagner_imp_start(aeff, Uinf, chord, tv):
 
 def flat_plate_analytical(kv, x_ea_perc, x_fh_perc, input_seq, output_seq,
                           output_scal=None, plunge_deriv=True):
-    """
+    r"""
     Computes the analytical frequency response of a plat plate for the input
-    output sequences in input_seq and output_seq over the frequency points kv,
+    output sequences in ``input_seq`` and ``output_seq`` over the frequency points ``kv``,
     if available.
 
-    The output complex values array ``Yan`` has shape ``(Nout,Nin,Nk)``; if an analytical
+    The output complex values array ``Yan`` has shape ``(Nout, Nin, Nk)``; if an analytical
     solution is not available, the response is assumed to be zero.
 
     If ``plunge_deriv`` is ``True``, the plunge response is expressed in terms of first
     derivative dh.
+
+    Args:
+        kv (np.array): Frequency range of length ``Nk``.
+        x_ea_perc (float): Elastic axis location along the chord as chord length percentage.
+        x_fh_perc (float): Flap hinge location along the chord as chord length percentage.
+        input_seq (list(str)): List of ``Nin`` number of inputs.
+            Supported inputs include:
+                * ``gust_sears``: Response to a continuous sinusoidal gust.
+                * ``pitch``: Response to an oscillatory pitching motion.
+                * ``plunge``: Response to an oscillatory plunging motion.
+        output_seq (list(str)): List of ``Nout`` number of outputs.
+            Supported outputs include:
+                * ``Fy``: Vertical force.
+                * ``Mz``: Pitching moment.
+        output_scal (np.array): Array of factors by which to divide the desired outputs. Dimensions of ``Nout``.
+        plunge_deriv (bool): If ``True`` expresses the plunge response in terms of the first derivative, i.e. the
+        rate of change of plunge :math:`d\dot{h}`.
+
+    Returns:
+        np.array: A ``(Nout, Nin, Nk)`` array containing the scaled frequency response for the inputs and outputs
+        specified.
+
+    See Also:
+        The lift coefficient due to pitch and plunging motions is calculated
+        using :func:`sharpy.utils.analytical.theo_CL_freq_resp`. In turn, the pitching moment is found using
+        :func:`sharpy.utils.analytical.theo_CM_freq_resp`.
+
+        The response to the continuous sinusoidal gust is calculated using
+        :func:`sharpy.utils.analytical.sears_CL_freq_resp`.
+
     """
 
     Nout = len(output_seq)

@@ -94,12 +94,13 @@ That said, the recipe for a successfully documented class, function, module is t
 
 5. See how your docs looks like!
     
-    - Once you are done, run the following sharpy command:
+    - Once you are done, run the following ``SHARPy`` command:
     ```bash
     sharpy any_string -d
     ```
     
-    - Then go to `sharpy/docs` and run 
+    - If you are making minor updates to docstrings (i.e. you are not documenting a previously undocumented
+    function/class/module) you can simply change directory to  `sharpy/docs` and run 
     ```bash
     make html
     ```
@@ -108,6 +109,12 @@ That said, the recipe for a successfully documented class, function, module is t
     ```bash
     docs/build/index.html
     ```
-    and navigating to tour recently created page.
-            
+    and navigating to your recently created page.
+    
+    - Make sure that **before committing** any changes in the documentation you update the entire ``docs`` directory
+    by running
+    ```bash
+    sharpy any_string -d
+    ```
+    
 Thank you for reading through this and contributing to make SHARPy a better documented, more user friendly code!
