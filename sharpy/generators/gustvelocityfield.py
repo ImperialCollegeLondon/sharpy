@@ -336,7 +336,7 @@ class span_sine(BaseGust):
 
     def gust_shape(self, x, y, z, time=0):
         d = np.dot(np.array([x, y, z]), self.settings['span_dir'])
-        if d <= self.settings['span_with_gust'].value/2:
+        if np.abs(d) <= self.settings['span_with_gust'].value/2:
             vel = 0.5*self.settings['gust_intensity'].value*np.sin(d*2.*np.pi/(self.settings['span'].value/self.settings['periods_per_span'].value))
         else:
             vel = np.zeros((3,))
