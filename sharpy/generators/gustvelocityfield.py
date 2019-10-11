@@ -299,10 +299,6 @@ class span_sine(BaseGust):
     settings_default = dict()
     settings_description = dict()
 
-    settings_types['gust_length'] = 'float'
-    settings_default['gust_length'] = 0.0
-    settings_description['gust_length'] = 'Length of gust'
-
     settings_types['gust_intensity'] = 'float'
     settings_default['gust_intensity'] = 0.0
     settings_description['gust_intensity'] = 'Intensity of the gust'
@@ -323,6 +319,10 @@ class span_sine(BaseGust):
     settings_default['span_dir'] = np.array([0, 1., 0])
     settings_description['span_dir'] = 'Direction of the span of the wing (only for "span sine")'
 
+    settings_types['span_with_gust'] = 'float'
+    settings_default['span_with_gust'] = 0.
+    settings_description['span_with_gust'] = 'Extension of the span to which the gust will be applied'
+
     setting_table = settings.SettingsTable()
     __doc__ += setting_table.generate(settings_types, settings_default, settings_description)
 
@@ -331,9 +331,15 @@ class span_sine(BaseGust):
         settings.to_custom_types(self.in_dict, self.settings_types, self.settings_default)
         self.settings = self.in_dict
 
+        if self.settings['span_with_gust'].value == 0.
+            self.settings['span_with_gust'] = self.settings['span']
+
     def gust_shape(self, x, y, z, time=0):
         d = np.dot(np.array([x, y, z]), self.settings['span_dir'])
-        vel = 0.5*self.settings['gust_intensity'].value*np.sin(d*2.*np.pi/(self.settings['span'].value/self.settings['periods_per_span'].value))
+        if d <= self.settings['span_with_gust'].value/2:
+            vel = 0.5*self.settings['gust_intensity'].value*np.sin(d*2.*np.pi/(self.settings['span'].value/self.settings['periods_per_span'].value))
+        else:
+            vel = np.zeros((3,))
 
         return vel*self.settings['perturbation_dir']
 
