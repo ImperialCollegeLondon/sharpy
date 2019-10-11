@@ -331,7 +331,7 @@ class span_sine(BaseGust):
         settings.to_custom_types(self.in_dict, self.settings_types, self.settings_default)
         self.settings = self.in_dict
 
-        if self.settings['span_with_gust'].value == 0.
+        if self.settings['span_with_gust'].value == 0:
             self.settings['span_with_gust'] = self.settings['span']
 
     def gust_shape(self, x, y, z, time=0):
