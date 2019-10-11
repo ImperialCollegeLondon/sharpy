@@ -125,7 +125,7 @@ class FrequencyResponse(solver_interface.BaseSolver):
         compute_fom = False
 
         if self.settings['load_fom'] != '':
-            if os.path.exists(self.settings['load_fom'] + '/frequencyresponse/'):
+            if os.path.exists(self.settings['load_fom']):
                 try:
                     Y_freq_fom = self.load_frequency_data()
                 except OSError:
@@ -150,7 +150,8 @@ class FrequencyResponse(solver_interface.BaseSolver):
             cout.cout_wrap('\tComputed the frequency response of the reduced order system in %f s' %trom, 2)
             self.save_freq_resp(self.wv, Y_freq_rom, 'rom')
 
-            frequency_error(Y_freq_fom, Y_freq_rom, self.wv)
+            if Y_freq_fom is not None:
+                frequency_error(Y_freq_fom, Y_freq_rom, self.wv)
 
         if self.settings['quick_plot'].value:
             self.quick_plot(Y_freq_fom, Y_freq_rom)
@@ -203,7 +204,7 @@ class FrequencyResponse(solver_interface.BaseSolver):
         for m in range(self.ss.inputs):
             for p in range(self.ss.outputs):
                 y_load = np.loadtxt(self.settings['load_fom'] +
-                                    '/frequencyresponse/Y_freq_fom_m%02g_p%02g.dat' %(m,p)).view(complex)
+                                    '/Y_freq_fom_m%02g_p%02g.dat' %(m,p)).view(complex)
                 y_load.shape = (y_load.shape[0], )
                 Y_freq_fom[p, m, :] = y_load
 
