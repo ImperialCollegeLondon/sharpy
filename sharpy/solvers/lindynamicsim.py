@@ -9,6 +9,7 @@ import sharpy.utils.h5utils as h5utils
 from sharpy.utils.datastructures import LinearTimeStepInfo
 import sharpy.utils.cout_utils as cout
 import time
+import warnings
 
 @solver
 class LinearDynamicSimulation(BaseSolver):
@@ -25,15 +26,25 @@ class LinearDynamicSimulation(BaseSolver):
     settings_default['folder'] = './output/'
     settings_description['folder'] = 'Output directory'
 
-    settings_types['write_dat'] = 'bool'
-    settings_default['write_dat'] = True
-    settings_description['write_dat'] = 'Write output dat files'
+    settings_types['write_dat'] = 'list(str)'
+    settings_default['write_dat'] = []
+    settings_description['write_dat'] = 'List of vectors to write: ``x``, ``y``, ``u`` and/or ``t``'
+
+    settings_types['reference_velocity'] = 'float'
+    settings_default['reference_velocity'] = 1.
+    settings_description['reference_velocity'] = 'Velocity to scale the structural equations when using a non-dimensional system'
 
     settings_default['n_tsteps'] = 10
     settings_types['n_tsteps'] = 'int'
+    settings_description['n_tsteps'] = 'Number of time steps to run'
+
+    settings_types['physical_time'] = 'float'
+    settings_default['physical_time'] = 2.
+    settings_description['physical_time'] = 'Time to run'
 
     settings_default['dt'] = 0.001
     settings_types['dt'] = 'float'
+    settings_description['dt'] = 'Time increment for the solution of systems without a specified dt'
 
     settings_types['postprocessors'] = 'list(str)'
     settings_default['postprocessors'] = list()
@@ -55,7 +66,6 @@ class LinearDynamicSimulation(BaseSolver):
         self.input_file_name = ""
 
         self.folder = None
-
 
     def initialise(self, data, custom_settings=None):
 
@@ -90,11 +100,35 @@ class LinearDynamicSimulation(BaseSolver):
         u = self.input_data_dict['u']
 
         ss = self.data.linear.ss
+
+        if len(x0) != ss.states:
+            warnings.warn('Number of states in the initial state vector not equal to the number of states')
+            x0 = np.zeros(ss.states)
+
+        if u.shape[1] != ss.inputs:
+            warnings.warn('Dimensions of the input vector not equal to the number of inputs')
+            cout.cout_wrap('Number of inputs: %g' % ss.inputs, 3)
+            cout.cout_wrap('Number of timesteps: %g' % n_steps, 3)
+            cout.cout_wrap('Number of UVLM inputs: %g' % self.data.linear.linear_system.uvlm.ss.inputs, 3)
+            cout.cout_wrap('Number of beam inputs: %g' % self.data.linear.linear_system.beam.ss.inputs, 3)
+            breakpoint()
+
         try:
             dt = ss.dt
         except AttributeError:
             dt = self.settings['dt'].value
+
+        # Total time to run
         T = n_steps*dt
+
+        u_ref = self.settings['reference_velocity'].value
+        # If the system is scaled:
+        if u_ref != 1.:
+            scaling_factors = self.data.linear.linear_system.uvlm.sys.ScalingFacts
+            dt_dimensional = scaling_factors['length'] / u_ref
+            T_dimensional = n_steps * dt_dimensional
+            T = T_dimensional / scaling_factors['time']
+            ss = self.data.linear.linear_system.update(self.settings['reference_velocity'].value)
         t_dom = np.linspace(0, T, n_steps)
 
         # Use the scipy linear solver
@@ -111,38 +145,44 @@ class LinearDynamicSimulation(BaseSolver):
 
         if self.settings['write_dat']:
             cout.cout_wrap('Writing linear simulation output .dat files to %s' % self.folder)
-            np.savetxt(self.folder + '/y_out.dat', y_out)
-            np.savetxt(self.folder + '/x_out.dat', x_out)
-            np.savetxt(self.folder + '/u_out.dat', u)
-            np.savetxt(self.folder + '/t_out.dat', t_out)
+            if 'y' in self.settings['write_dat']:
+                np.savetxt(self.folder + '/y_out.dat', y_out)
+                cout.cout_wrap('Output vector written', 2)
+            if 'x' in self.settings['write_dat']:
+                np.savetxt(self.folder + '/x_out.dat', x_out)
+                cout.cout_wrap('State vector written', 2)
+            if 'u' in self.settings['write_dat']:
+                np.savetxt(self.folder + '/u_out.dat', u)
+                cout.cout_wrap('Input vector written', 2)
+            if 't' in self.settings['write_dat']:
+                np.savetxt(self.folder + '/t_out.dat', t_out)
+                cout.cout_wrap('Time domain written', 2)
             cout.cout_wrap('Success', 1)
 
-        process = True  # Under development
-        if process:
-            # Pack state variables into linear timestep info
-            cout.cout_wrap('Plotting results...')
-            for n in range(len(t_out)-1):
-                tstep = LinearTimeStepInfo()
-                tstep.x = x_out[n, :]
-                tstep.y = y_out[n, :]
-                tstep.t = t_out[n]
-                tstep.u = u[n, :]
-                self.data.linear.timestep_info.append(tstep)
-                # TODO: option to save to h5
+        # Pack state variables into linear timestep info
+        cout.cout_wrap('Plotting results...')
+        for n in range(len(t_out)-1):
+            tstep = LinearTimeStepInfo()
+            tstep.x = x_out[n, :]
+            tstep.y = y_out[n, :]
+            tstep.t = t_out[n]
+            tstep.u = u[n, :]
+            self.data.linear.timestep_info.append(tstep)
+            # TODO: option to save to h5
 
-                # Pack variables into respective aero or structural time step infos (with the + f0 from lin)
-                # Need to obtain information from the variables in a similar fashion as done with the database
-                # for the beam case
+            # Pack variables into respective aero or structural time step infos (with the + f0 from lin)
+            # Need to obtain information from the variables in a similar fashion as done with the database
+            # for the beam case
 
-                aero_tstep, struct_tstep = state_to_timestep(self.data, tstep.x, tstep.u, tstep.y)
+            aero_tstep, struct_tstep = state_to_timestep(self.data, tstep.x, tstep.u, tstep.y)
 
-                self.data.aero.timestep_info.append(aero_tstep)
-                self.data.structure.timestep_info.append(struct_tstep)
+            self.data.aero.timestep_info.append(aero_tstep)
+            self.data.structure.timestep_info.append(struct_tstep)
 
-                # run postprocessors
-                if self.with_postprocessors:
-                    for postproc in self.postprocessors:
-                        self.data = self.postprocessors[postproc].run(online=True)
+            # run postprocessors
+            if self.with_postprocessors:
+                for postproc in self.postprocessors:
+                    self.data = self.postprocessors[postproc].run(online=True)
 
         return self.data
 
