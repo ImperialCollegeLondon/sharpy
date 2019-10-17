@@ -53,7 +53,7 @@ class SaveData(BaseSolver):
         self.settings_default['save_struct'] = True
 
         self.settings_types['save_linear'] = 'bool'
-        self.settings_default['save_linear'] = True
+        self.settings_default['save_linear'] = False
         self.settings_description['save_linear'] = 'Save linear state space system'
 
         self.settings_types['save_linear_uvlm'] = 'bool'
@@ -124,7 +124,7 @@ class SaveData(BaseSolver):
         # create folder for containing files if necessary
         if not os.path.exists(self.settings['folder']):
             os.makedirs(self.settings['folder'])
-        self.folder = self.settings['folder'] + '/'
+        self.folder = self.settings['folder'] + '/' + self.data.settings['SHARPy']['case'] + '/'
         if not os.path.exists(self.folder):
             os.makedirs(self.folder)
         self.filename = self.folder+self.data.settings['SHARPy']['case']+'.data.h5'
