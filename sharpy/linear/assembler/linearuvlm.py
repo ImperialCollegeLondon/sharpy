@@ -9,6 +9,7 @@ import sharpy.linear.src.libsparse as libsp
 import sharpy.utils.settings as settings
 import scipy.sparse as sp
 import sharpy.utils.rom_interface as rom_interface
+import sharpy.linear.src.libss as libss
 
 @ss_interface.linear_system
 class LinearUVLM(ss_interface.BaseElement):
@@ -66,6 +67,7 @@ class LinearUVLM(ss_interface.BaseElement):
         self.C_to_vertex_forces = None
 
         self.control_surface = None
+        self.gust_assembler = None
         self.gain_cs = None
         self.scaled = None
 
@@ -110,6 +112,11 @@ class LinearUVLM(ss_interface.BaseElement):
             self.rom = rom_interface.initialise_rom(self.settings['rom_method'])
             self.rom.initialise(self.settings['rom_method_settings'])
 
+        if 'u_gust' not in self.settings['remove_inputs']:
+            import sharpy.linear.assembler.lineargustassembler as lineargust
+            self.gust_assembler = lineargust.LinearGustGenerator()
+            self.gust_assembler.initialise(data.aero)
+
     def assemble(self):
         r"""
         Assembles the linearised UVLM system, removes the desired inputs and adds linearised control surfaces
@@ -119,6 +126,9 @@ class LinearUVLM(ss_interface.BaseElement):
 
         .. math:: \mathbf{u} = [\boldsymbol{\zeta},\,\dot{\boldsymbol{\zeta}},\,\mathbf{w},\,\delta]
 
+        Control surface inputs are ordered last as:
+
+        .. math:: [\delta_1, \delta_2, \dots, \dot{\delta}_1, \dot{\delta_2}]
         """
 
         self.sys.assemble_ss()
@@ -131,19 +141,28 @@ class LinearUVLM(ss_interface.BaseElement):
         if self.settings['remove_inputs']:
             self.remove_inputs(self.settings['remove_inputs'])
 
+        if self.gust_assembler is not None:
+            A, B, C, D = self.gust_assembler.generate(self.sys, aero=None)
+            ss_gust = libss.ss(A, B, C, D, dt=self.ss.dt)
+            self.gust_assembler.ss_gust = ss_gust
+            self.ss = libss.series(ss_gust, self.ss)
+
         if self.control_surface is not None:
-            Kzeta_delta = self.control_surface.generate()
+            Kzeta_delta, Kdzeta_ddelta = self.control_surface.generate()
+            n_zeta, n_ctrl_sfc = Kzeta_delta.shape
 
             # Modify the state space system with a gain at the input side
             # such that the control surface deflections are last
             if self.sys.use_sparse:
-                gain_cs = sp.eye(self.ss.inputs, self.ss.inputs + self.control_surface.n_control_surfaces,
+                gain_cs = sp.eye(self.ss.inputs, self.ss.inputs + 2 * self.control_surface.n_control_surfaces,
                                  format='lil')
-                gain_cs[:Kzeta_delta.shape[0], -self.control_surface.n_control_surfaces:] = Kzeta_delta
+                gain_cs[:n_zeta, self.ss.inputs: self.ss.inputs + n_ctrl_sfc] = Kzeta_delta
+                gain_cs[n_zeta: 2*n_zeta, self.ss.inputs + n_ctrl_sfc: self.ss.inputs + 2 * n_ctrl_sfc] = Kdzeta_ddelta
                 gain_cs = libsp.csc_matrix(gain_cs)
             else:
-                gain_cs = np.eye(self.ss.inputs, self.ss.inputs + self.control_surface.n_control_surfaces)
-                gain_cs[:Kzeta_delta.shape[0], -self.control_surface.n_control_surfaces:] = Kzeta_delta
+                gain_cs = np.eye(self.ss.inputs, self.ss.inputs + 2 * self.control_surface.n_control_surfaces)
+                gain_cs[:n_zeta, self.ss.inputs: self.ss.inputs + n_ctrl_sfc] = Kzeta_delta
+                gain_cs[n_zeta: 2*n_zeta, self.ss.inputs + n_ctrl_sfc: self.ss.inputs + 2 * n_ctrl_sfc] = Kdzeta_ddelta
             self.ss.addGain(gain_cs, where='in')
             self.gain_cs = gain_cs
 
@@ -230,6 +249,7 @@ class LinearUVLM(ss_interface.BaseElement):
         else:
             Cg_uvlm = np.eye(3)
         y_n = self.C_to_vertex_forces.dot(x_n)
+        # y_n = np.zeros((3 * self.sys.Kzeta))
 
         gamma_vec, gamma_star_vec, gamma_dot_vec = self.sys.unpack_state(x_n)
 
@@ -299,6 +319,9 @@ class LinearUVLM(ss_interface.BaseElement):
 
         if self.control_surface is not None:
             u_n = self.gain_cs.dot(u_n)
+
+        # if self.gust_assembler is not None:
+        #     u_n = self.gust_assembler.ss_gust
         input_vars = self.input_variables.vector_vars
         tsaero0 = self.tsaero0
 
