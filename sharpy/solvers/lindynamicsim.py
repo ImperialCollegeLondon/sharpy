@@ -135,6 +135,7 @@ class LinearDynamicSimulation(BaseSolver):
         sys = libss.ss_to_scipy(ss)
         cout.cout_wrap('Solving linear system using scipy...')
         t0 = time.time()
+        # breakpoint()
         out = sys.output(u, t=t_dom, x0=x0)
         ts = time.time() - t0
         cout.cout_wrap('\tSolved in %.2fs' % ts, 1)
@@ -223,7 +224,11 @@ def state_to_timestep(data, x, u=None, y=None):
     else:
         modal = False
     # modal = True
-    x_aero = x[:data.linear.linear_system.uvlm.ss.states]
+    if data.linear.linear_system.uvlm.gust_assembler:
+        start_x_aero = data.linear.linear_system.uvlm.gust_assembler.ss_gust.states
+    else:
+        start_x_aero = 0
+    x_aero = x[start_x_aero:data.linear.linear_system.uvlm.ss.states]
     x_struct = x[-data.linear.linear_system.beam.ss.states:]
     # u_aero = TODO: external velocities
     phi = data.linear.linear_system.beam.sys.U
@@ -295,4 +300,3 @@ def state_to_timestep(data, x, u=None, y=None):
     # data.structure.timestep_info.append(current_struct_step)
 
     return current_aero_tstep, current_struct_step
-

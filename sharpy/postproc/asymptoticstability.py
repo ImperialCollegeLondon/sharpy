@@ -41,6 +41,10 @@ class AsymptoticStability(BaseSolver):
     settings_default['print_info'] = False
     settings_description['print_info'] = 'Print information and table of eigenvalues'
 
+    settings_types['reference_velocity'] = 'float'
+    settings_default['reference_velocity'] = 1.
+    settings_description['reference_velocity'] = 'Reference velocity at which to compute eigenvalues for scaled systems'
+
     settings_types['frequency_cutoff'] = 'float'
     settings_default['frequency_cutoff'] = 0
     settings_description['frequency_cutoff'] = 'Truncate higher frequency modes. If zero none are truncated'
@@ -71,7 +75,6 @@ class AsymptoticStability(BaseSolver):
 
     settings_types['postprocessors_settings'] = 'dict'
     settings_default['postprocessors_settings'] = dict()
-
 
     settings_table = settings.SettingsTable()
     __doc__ += settings_table.generate(settings_types, settings_default, settings_description)
@@ -142,19 +145,23 @@ class AsymptoticStability(BaseSolver):
         if self.frequency_cutoff == 0:
             self.frequency_cutoff = np.inf
 
-        ss = self.data.linear.ss
+        if self.settings['reference_velocity'].value != 1.:
+            ss = self.data.linear.linear_system.update(self.settings['reference_velocity'].value)
+        else:
+            ss = self.data.linear.ss
 
         # Calculate eigenvectors and eigenvalues of the full system
         eigenvalues, eigenvectors = sclalg.eig(ss.A)
-        # np.savetxt('./Amatrix', ss.A)
+
         # Convert DT eigenvalues into CT
         if ss.dt:
             # Obtain dimensional time step
             try:
                 ScalingFacts = self.data.linear.linear_system.uvlm.sys.ScalingFacts
                 if ScalingFacts['length'] != 1.0 and ScalingFacts['time'] != 1.0:
-                    dt = ScalingFacts['length'] * 2 / self.data.aero.surface_m[0] / ScalingFacts['speed']
-                    assert np.abs(dt - ScalingFacts['time'] * ss.dt) < 1e-14, 'dimensional time-scaling not correct!'
+                    # dt = ScalingFacts['length'] * 2 / self.data.aero.surface_m[0] / ScalingFacts['speed']
+                    dt = ScalingFacts['length'] / self.settings['reference_velocity'].value * ss.dt
+                    # assert np.abs(dt - ScalingFacts['time'] * ss.dt) < 1e-14, 'dimensional time-scaling not correct!'
                 else:
                     dt = ss.dt
             except AttributeError:
@@ -199,27 +206,17 @@ class AsymptoticStability(BaseSolver):
 
         stability_folder_path = self.folder
 
-        evec_pd = pd.DataFrame(data=self.eigenvectors[:, :num_evals])
-        # eval_pd = pd.DataFrame(data=[self.eigenvalues.real, self.eigenvalues.imag]).T
-        # evec_pd.to_csv(stability_folder_path + '/eigenvectors.csv')
-        # eval_pd.to_csv(stability_folder_path + '/eigenvalues.csv')
+        num_evals = min(num_evals, self.eigenvalues.shape[0])
+
         np.savetxt(stability_folder_path + '/eigenvalues.dat', self.eigenvalues[:num_evals].view(float).reshape(-1, 2))
-        np.savetxt(stability_folder_path + '/eigenvectors.dat', self.eigenvectors[:, :num_evals].view(float).reshape(-1, 2*num_evals))
+        np.savetxt(stability_folder_path + '/eigenvectors_r.dat', self.eigenvectors.real[:, :num_evals])
+        np.savetxt(stability_folder_path + '/eigenvectors_i.dat', self.eigenvectors.imag[:, :num_evals])
 
     def print_eigenvalues(self):
         """
         Prints the eigenvalues to a table with the corresponding natural frequency, period and damping ratios
 
         """
-        # for eval in range(self.settings['num_evals'].value):
-        #     eigenvalue = self.eigenvalues[eval]
-        #     omega_n = np.abs(eigenvalue)
-        #     omega_d = np.abs(eigenvalue.imag)
-        #     damping_ratio = -eigenvalue.real / omega_n
-        #     f_n = omega_n / 2 / np.pi
-        #     f_d = omega_d / 2 / np.pi
-        #     period = 1 / f_d
-        #     self.eigenvalue_table.print_line([eval, eigenvalue.real, eigenvalue.imag, f_n, f_d, damping_ratio, period])
 
         self.eigenvalue_table.print_evals(self.eigenvalues[:self.settings['num_evals'].value])
 

@@ -78,7 +78,8 @@ class FrequencyResponse(solver_interface.BaseSolver):
 
         self.data = data
         try:
-            self.ss = data.linear.linear_system.uvlm.rom.ss
+            rom_method = data.linear.linear_system.uvlm.settings['rom_method'][0]
+            self.ss = data.linear.linear_system.uvlm.rom[rom_method].ss
             self.ssrom = data.linear.linear_system.uvlm.ss
         except AttributeError:
             self.ss = data.linear.linear_system.uvlm.ss
@@ -195,6 +196,7 @@ class FrequencyResponse(solver_interface.BaseSolver):
 
                 ax1.set_ylabel('Y')
                 fig1.savefig(self.folder + '/' + fig_title + '.png')
+                plt.close()
 
         cout.cout_wrap('\tPlots saved to %s' % self.folder, 1)
 
