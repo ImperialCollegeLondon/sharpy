@@ -919,6 +919,7 @@ class GolandControlSurface(Goland):
                  rho=1.02,
                  b_ref=2. * 6.096,  # geometry
                  main_chord=1.8288,
+                 pct_flap=0.2,
                  aspect_ratio=(2. * 6.096) / 1.8288,
                  roll=0.,
                  yaw=0.,
@@ -961,6 +962,7 @@ class GolandControlSurface(Goland):
         self.control_surface_type = np.zeros(self.n_control_surfaces, dtype=int)
         # other
         self.c_ref = 1.8288
+        self.pct_flap = pct_flap
 
     def update_aero_prop(self):
         assert hasattr(self, 'conn_glob'), \
@@ -971,6 +973,7 @@ class GolandControlSurface(Goland):
         num_node_tot = self.num_node_tot
         num_elem_surf = self.num_elem_surf
         num_elem_tot = self.num_elem_tot
+        pct_flap = self.pct_flap
 
         control_surface = self.control_surface
 
@@ -991,11 +994,11 @@ class GolandControlSurface(Goland):
                 print('Surface' + str(i_surf))
                 for i_elem in range(num_elem_surf):
                     for i_local_node in range(self.num_node_elem):
-                        if i_elem >= num_elem_surf // 2:
+                        if i_elem >= int(num_elem_surf *(1- pct_flap)):
                             if i_surf == 0:
                                 control_surface[ws_elem + i_elem, i_local_node] = 0  # Right flap
                             else:
-                                control_surface[ws_elem + i_elem, i_local_node] = 1  # Left flap
+                                control_surface[ws_elem + i_elem, i_local_node] = 0  # Left flap
                 ws_elem += num_elem_surf
                         # control_surface[i_elem, i_local_node] = 0
 
