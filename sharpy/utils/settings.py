@@ -263,7 +263,7 @@ class SettingsTable:
 
         self.table_string = ''
 
-    def generate(self, settings_types, settings_default, settings_description):
+    def generate(self, settings_types, settings_default, settings_description, header_line=None):
         """
         Returns a rst-format table with the settings' names, types, description and default values
 
@@ -287,7 +287,11 @@ class SettingsTable:
         self.set_field_length()
         self.line_format = self.setting_line_format()
 
-        table_string = '\n    ' + 'The settings that this solver accepts are given by a dictionary, with the following key-value pairs:\n'
+        if header_line is None:
+            header_line = 'The settings that this solver accepts are given by a dictionary, ' \
+                          'with the following key-value pairs:\n'
+
+        table_string = '\n    ' + header_line
         table_string += '\n    ' + self.print_divider_line()
         table_string += '    ' + self.print_header()
         table_string += '    ' + self.print_divider_line()
