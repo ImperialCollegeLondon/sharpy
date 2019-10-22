@@ -180,7 +180,8 @@ class LinearAeroelastic(ss_interface.BaseElement):
 
             # Reduce uvlm projected onto structural coordinates
             if uvlm.rom is not None:
-                uvlm.ss = uvlm.rom.run(uvlm.ss)
+                for k, rom in uvlm.rom.items():
+                    uvlm.ss = rom.run(uvlm.ss)
 
         else:
             uvlm.ss = self.load_uvlm(self.settings['uvlm_filename'])
@@ -204,7 +205,7 @@ class LinearAeroelastic(ss_interface.BaseElement):
         ss = libss.couple(ss01=uvlm.ss, ss02=beam.ss, K12=Tas, K21=Tsa)
         self.couplings['Tas'] = Tas
         self.couplings['Tsa'] = Tsa
-
+        Y_freq = uvlm.ss.freqresp(np.array([0]))[:, :, 0]
         self.state_variables = {'aero': uvlm.ss.states,
                                 'beam': beam.ss.states}
 

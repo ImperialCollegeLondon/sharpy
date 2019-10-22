@@ -13,6 +13,11 @@ import sharpy.linear.src.libss as libss
 
 @ss_interface.linear_system
 class LinearUVLM(ss_interface.BaseElement):
+    """
+    Linear UVLM System Assembler
+
+
+    """
     sys_id = 'LinearUVLM'
 
     settings_types = dict()
@@ -21,37 +26,46 @@ class LinearUVLM(ss_interface.BaseElement):
     
     settings_types['dt'] = 'float'
     settings_default['dt'] = 0.1
+    settings_description['dt'] = 'Time step'
 
     settings_types['integr_order'] = 'int'
     settings_default['integr_order'] = 2
-
-    settings_types['density'] = 'float'
-    settings_default['density'] = 1.225
+    settings_description['integr_order'] = 'Integration order of the circulation derivative. Either ``1`` or ``2``.'
 
     settings_types['ScalingDict'] = 'dict'
     settings_default['ScalingDict'] = {'length': 1.0,
                                                'speed': 1.0,
                                                'density': 1.0}
+    settings_description['ScalingDict'] = 'Dictionary of scaling factors to achieve normalised UVLM realisation.'
 
     settings_types['remove_predictor'] = 'bool'
     settings_default['remove_predictor'] = True
+    settings_description['remove_predictor'] = 'Remove the predictor term from the UVLM equations'
 
     settings_types['use_sparse'] = 'bool'
     settings_default['use_sparse'] = True
+    settings_description['use_sparse'] = 'Assemble UVLM plant matrix in sparse format'
 
     settings_types['density'] = 'float'
     settings_default['density'] = 1.225
+    settings_description['density'] = 'Air density'
 
     settings_types['remove_inputs'] = 'list'
     settings_default['remove_inputs'] = []
+    settings_description['remove_inputs'] = 'List of inputs to remove. ``u_gust`` to remove external velocity input.'
 
-    settings_types['rom_method'] = 'str'
-    settings_default['rom_method'] = ''
-    settings_description['rom_method'] = 'Model reduction method to reduce UVLM'
+    settings_types['gust_assembler'] = 'str'
+    settings_default['gust_assembler'] = ''
+    settings_description['gust_assembler'] = 'Selected gust assembler. ``leading_edge`` for now'
+
+    settings_types['rom_method'] = 'list(str)'
+    settings_default['rom_method'] = []
+    settings_description['rom_method'] = 'List of model reduction methods to reduce UVLM'
 
     settings_types['rom_method_settings'] = 'dict'
     settings_default['rom_method_settings'] = dict()
-    settings_description['rom_method_settings'] = 'Settings for the desired ROM method'
+    settings_description['rom_method_settings'] = 'Dictionary with settings for the desired ROM methods, ' \
+                                                  'where the name is the key to the dictionary'
     
     def __init__(self):
         
@@ -109,10 +123,12 @@ class LinearUVLM(ss_interface.BaseElement):
 
         if self.settings['rom_method'] != '':
             # Initialise ROM
-            self.rom = rom_interface.initialise_rom(self.settings['rom_method'])
-            self.rom.initialise(self.settings['rom_method_settings'])
+            self.rom = dict()
+            for rom_name in self.settings['rom_method']:
+                self.rom[rom_name] = rom_interface.initialise_rom(rom_name)
+                self.rom[rom_name].initialise(self.settings['rom_method_settings'][rom_name])
 
-        if 'u_gust' not in self.settings['remove_inputs']:
+        if 'u_gust' not in self.settings['remove_inputs'] and self.settings['gust_assembler'] == 'leading_edge':
             import sharpy.linear.assembler.lineargustassembler as lineargust
             self.gust_assembler = lineargust.LinearGustGenerator()
             self.gust_assembler.initialise(data.aero)
@@ -317,11 +333,12 @@ class LinearUVLM(ss_interface.BaseElement):
             tuple: Tuple containing ``zeta``, ``zeta_dot`` and ``u_ext``, accounting for the effect of control surfaces.
         """
 
+        # if self.gust_assembler is not None:
+        #     u_n = self.gust_assembler.ss_gust
+
         if self.control_surface is not None:
             u_n = self.gain_cs.dot(u_n)
 
-        # if self.gust_assembler is not None:
-        #     u_n = self.gust_assembler.ss_gust
         input_vars = self.input_variables.vector_vars
         tsaero0 = self.tsaero0
 
