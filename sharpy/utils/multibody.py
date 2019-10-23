@@ -152,6 +152,11 @@ def merge_multibody(MB_tstep, MB_beam, beam, tstep, mb_data_dict, dt):
         tstep.q[first_dof:first_dof+ibody_num_dof] = MB_tstep[ibody].q[:-10].astype(dtype=ct.c_double, order='F', copy=True)
         tstep.dqdt[first_dof:first_dof+ibody_num_dof] = MB_tstep[ibody].dqdt[:-10].astype(dtype=ct.c_double, order='F', copy=True)
         tstep.dqddt[first_dof:first_dof+ibody_num_dof] = MB_tstep[ibody].dqddt[:-10].astype(dtype=ct.c_double, order='F', copy=True)
+
+        tstep.mb_q[ibody, :] = MB_tstep[ibody].q[-10:].astype(dtype=ct.c_double, order='F', copy=True)
+        tstep.mb_dqdt[ibody, :] = MB_tstep[ibody].dqdt[-10:].astype(dtype=ct.c_double, order='F', copy=True)
+        tstep.mb_dqddt[ibody, :] = MB_tstep[ibody].dqddt[-10:].astype(dtype=ct.c_double, order='F', copy=True)
+
         first_dof += ibody_num_dof
 
     tstep.q[-10:] = MB_tstep[0].q[-10:].astype(dtype=ct.c_double, order='F', copy=True)
@@ -159,13 +164,18 @@ def merge_multibody(MB_tstep, MB_beam, beam, tstep, mb_data_dict, dt):
     tstep.dqddt[-10:] = MB_tstep[0].dqddt[-10:].astype(dtype=ct.c_double, order='F', copy=True)
 
     # Define the new FoR information
-    CAG = algebra.quat2rotation(tstep.quat).T
-    tstep.for_pos = tstep.mb_FoR_pos[0,:].astype(dtype=ct.c_double, order='F', copy=True)
-    tstep.for_vel[0:3] = np.dot(CAG,tstep.mb_FoR_vel[0,0:3])
-    tstep.for_vel[3:6] = np.dot(CAG,tstep.mb_FoR_vel[0,3:6])
-    tstep.for_acc[0:3] = np.dot(CAG,tstep.mb_FoR_acc[0,0:3])
-    tstep.for_acc[3:6] = np.dot(CAG,tstep.mb_FoR_acc[0,3:6])
-    tstep.quat = tstep.mb_quat[0,:].astype(dtype=ct.c_double, order='F', copy=True)
+    tstep.for_pos = MB_tstep[0].for_pos.astype(dtype=ct.c_double, order='F', copy=True)
+    tstep.for_vel = MB_tstep[0].for_vel.astype(dtype=ct.c_double, order='F', copy=True)
+    tstep.for_acc = MB_tstep[0].for_acc.astype(dtype=ct.c_double, order='F', copy=True)
+    tstep.quat = MB_tstep[0].quat.astype(dtype=ct.c_double, order='F', copy=True)
+
+    # CAG = algebra.quat2rotation(tstep.quat).T
+    # tstep.for_pos = tstep.mb_FoR_pos[0,:].astype(dtype=ct.c_double, order='F', copy=True)
+    # tstep.for_vel[0:3] = np.dot(CAG,tstep.mb_FoR_vel[0,0:3])
+    # tstep.for_vel[3:6] = np.dot(CAG,tstep.mb_FoR_vel[0,3:6])
+    # tstep.for_acc[0:3] = np.dot(CAG,tstep.mb_FoR_acc[0,0:3])
+    # tstep.for_acc[3:6] = np.dot(CAG,tstep.mb_FoR_acc[0,3:6])
+    # tstep.quat = tstep.mb_quat[0,:].astype(dtype=ct.c_double, order='F', copy=True)
 
 def update_mb_db_before_split(tstep, beam, mb_data_dict, ts):
     """
@@ -186,6 +196,10 @@ def update_mb_db_before_split(tstep, beam, mb_data_dict, ts):
         At this point, this function does nothing, but we might need it at some point
 
     """
+
+    return
+
+    raise NotImplementedError("This function is useless right now")
 
     # TODO: Right now, the Amaster FoR is not expected to move
     # when it does, the rest of FoR positions should be updated accordingly
@@ -252,24 +266,25 @@ def update_mb_dB_before_merge(tstep, MB_tstep):
 
     for ibody in range(len(MB_tstep)):
 
-        CAslaveG = algebra.quat2rotation(MB_tstep[ibody].quat).T
+        # CAslaveG = algebra.quat2rotation(MB_tstep[ibody].quat).T
 
-        tstep.mb_FoR_pos[ibody,:] = MB_tstep[ibody].for_pos
-        tstep.mb_FoR_vel[ibody,0:3] = np.dot(np.transpose(CAslaveG), MB_tstep[ibody].for_vel[0:3])
-        tstep.mb_FoR_vel[ibody,3:6] = np.dot(np.transpose(CAslaveG), MB_tstep[ibody].for_vel[3:6])
-        tstep.mb_FoR_acc[ibody,0:3] = np.dot(np.transpose(CAslaveG), MB_tstep[ibody].for_acc[0:3])
-        tstep.mb_FoR_acc[ibody,3:6] = np.dot(np.transpose(CAslaveG), MB_tstep[ibody].for_acc[3:6])
+        tstep.mb_FoR_pos[ibody,:] = MB_tstep[ibody].for_pos.astype(dtype=ct.c_double, order='F', copy=True)
+        tstep.mb_FoR_vel[ibody,:] = MB_tstep[ibody].for_vel.astype(dtype=ct.c_double, order='F', copy=True)
+        tstep.mb_FoR_acc[ibody,:] = MB_tstep[ibody].for_acc.astype(dtype=ct.c_double, order='F', copy=True)
         tstep.mb_quat[ibody,:] =  MB_tstep[ibody].quat.astype(dtype=ct.c_double, order='F', copy=True)
-        tstep.mb_dqddt_quat[ibody,:] =  MB_tstep[ibody].dqddt[-4:].astype(dtype=ct.c_double, order='F', copy=True)
+        # tstep.mb_dqddt_quat[ibody,:] =  MB_tstep[ibody].dqddt[-4:].astype(dtype=ct.c_double, order='F', copy=True)
+        tstep.mb_q[ibody,:] =  MB_tstep[ibody].q[-10:].astype(dtype=ct.c_double, order='F', copy=True)
+        tstep.mb_dqdt[ibody,:] =  MB_tstep[ibody].q[-10:].astype(dtype=ct.c_double, order='F', copy=True)
+        tstep.mb_dqddt[ibody,:] =  MB_tstep[ibody].q[-10:].astype(dtype=ct.c_double, order='F', copy=True)
 
 
     # TODO: Is it convenient to do this?
-    for ibody in range(len(MB_tstep)):
-        MB_tstep[ibody].mb_FoR_pos = tstep.mb_FoR_pos.astype(dtype=ct.c_double, order='F', copy=True)
-        MB_tstep[ibody].mb_FoR_vel = tstep.mb_FoR_vel.astype(dtype=ct.c_double, order='F', copy=True)
-        MB_tstep[ibody].mb_FoR_acc = tstep.mb_FoR_acc.astype(dtype=ct.c_double, order='F', copy=True)
-        MB_tstep[ibody].mb_quat = tstep.mb_quat.astype(dtype=ct.c_double, order='F', copy=True)
-        MB_tstep[ibody].mb_dqddt_quat = tstep.mb_dqddt_quat.astype(dtype=ct.c_double, order='F', copy=True)
+    # for ibody in range(len(MB_tstep)):
+    #     MB_tstep[ibody].mb_FoR_pos = tstep.mb_FoR_pos.astype(dtype=ct.c_double, order='F', copy=True)
+    #     MB_tstep[ibody].mb_FoR_vel = tstep.mb_FoR_vel.astype(dtype=ct.c_double, order='F', copy=True)
+    #     MB_tstep[ibody].mb_FoR_acc = tstep.mb_FoR_acc.astype(dtype=ct.c_double, order='F', copy=True)
+    #     MB_tstep[ibody].mb_quat = tstep.mb_quat.astype(dtype=ct.c_double, order='F', copy=True)
+    #     MB_tstep[ibody].mb_dqddt_quat = tstep.mb_dqddt_quat.astype(dtype=ct.c_double, order='F', copy=True)
 
 def disp2state(MB_beam, MB_tstep, q, dqdt, dqddt):
     """
@@ -309,8 +324,8 @@ def disp2state(MB_beam, MB_tstep, q, dqdt, dqddt):
             xbeamlib.xbeam_solv_disp2state(MB_beam[ibody], MB_tstep[ibody])
             q[first_dof:first_dof+ibody_num_dof+10]=MB_tstep[ibody].q.astype(dtype=ct.c_double, order='F', copy=True)
             dqdt[first_dof:first_dof+ibody_num_dof+10]=MB_tstep[ibody].dqdt.astype(dtype=ct.c_double, order='F', copy=True)
-            dqddt[first_dof:first_dof+ibody_num_dof+6]=MB_tstep[ibody].dqddt[:-4].astype(dtype=ct.c_double, order='F', copy=True)
-            dqddt[first_dof+ibody_num_dof+6:first_dof+ibody_num_dof+10]=MB_tstep[ibody].mb_dqddt_quat[ibody,:].astype(dtype=ct.c_double, order='F', copy=True)
+            dqddt[first_dof:first_dof+ibody_num_dof+10]=MB_tstep[ibody].dqddt.astype(dtype=ct.c_double, order='F', copy=True)
+            # dqddt[first_dof+ibody_num_dof+6:first_dof+ibody_num_dof+10]=MB_tstep[ibody].mb_dqddt_quat[ibody,:].astype(dtype=ct.c_double, order='F', copy=True)
             first_dof += ibody_num_dof + 10
 
         # MB_beam[ibody].timestep_info = MB_tstep[ibody].copy()
@@ -362,20 +377,20 @@ def state2disp(q, dqdt, dqddt, MB_beam, MB_tstep):
             first_dof += ibody_num_dof + 10
 
 
-    for ibody in range(len(MB_beam)):
-        CAslaveG = algebra.quat2rotation(MB_tstep[ibody].quat).T
-        # MB_tstep[0].mb_FoR_pos[ibody,:] = MB_tstep[ibody].for_pos.astype(dtype=ct.c_double, order='F', copy=True)
-        MB_tstep[0].mb_FoR_vel[ibody,0:3] = np.dot(CAslaveG.T, MB_tstep[ibody].for_vel[0:3])
-        MB_tstep[0].mb_FoR_vel[ibody,3:6] = np.dot(CAslaveG.T, MB_tstep[ibody].for_vel[3:6])
-        MB_tstep[0].mb_FoR_acc[ibody,0:3] = np.dot(CAslaveG.T, MB_tstep[ibody].for_acc[0:3])
-        MB_tstep[0].mb_FoR_acc[ibody,3:6] = np.dot(CAslaveG.T, MB_tstep[ibody].for_acc[3:6])
-        MB_tstep[0].mb_quat[ibody,:] = MB_tstep[ibody].quat.astype(dtype=ct.c_double, order='F', copy=True)
-
-    for ibody in range(len(MB_beam)):
-        # MB_tstep[ibody].mb_FoR_pos = MB_tstep[0].mb_FoR_pos.astype(dtype=ct.c_double, order='F', copy=True)
-        MB_tstep[ibody].mb_FoR_vel = MB_tstep[0].mb_FoR_vel.astype(dtype=ct.c_double, order='F', copy=True)
-        MB_tstep[ibody].mb_FoR_acc = MB_tstep[0].mb_FoR_acc.astype(dtype=ct.c_double, order='F', copy=True)
-        MB_tstep[ibody].mb_quat = MB_tstep[0].mb_quat.astype(dtype=ct.c_double, order='F', copy=True)
+    # for ibody in range(len(MB_beam)):
+    #     CAslaveG = algebra.quat2rotation(MB_tstep[ibody].quat).T
+    #     # MB_tstep[0].mb_FoR_pos[ibody,:] = MB_tstep[ibody].for_pos.astype(dtype=ct.c_double, order='F', copy=True)
+    #     MB_tstep[0].mb_FoR_vel[ibody,0:3] = np.dot(CAslaveG.T, MB_tstep[ibody].for_vel[0:3])
+    #     MB_tstep[0].mb_FoR_vel[ibody,3:6] = np.dot(CAslaveG.T, MB_tstep[ibody].for_vel[3:6])
+    #     MB_tstep[0].mb_FoR_acc[ibody,0:3] = np.dot(CAslaveG.T, MB_tstep[ibody].for_acc[0:3])
+    #     MB_tstep[0].mb_FoR_acc[ibody,3:6] = np.dot(CAslaveG.T, MB_tstep[ibody].for_acc[3:6])
+    #     MB_tstep[0].mb_quat[ibody,:] = MB_tstep[ibody].quat.astype(dtype=ct.c_double, order='F', copy=True)
+    #
+    # for ibody in range(len(MB_beam)):
+    #     # MB_tstep[ibody].mb_FoR_pos = MB_tstep[0].mb_FoR_pos.astype(dtype=ct.c_double, order='F', copy=True)
+    #     MB_tstep[ibody].mb_FoR_vel = MB_tstep[0].mb_FoR_vel.astype(dtype=ct.c_double, order='F', copy=True)
+    #     MB_tstep[ibody].mb_FoR_acc = MB_tstep[0].mb_FoR_acc.astype(dtype=ct.c_double, order='F', copy=True)
+    #     MB_tstep[ibody].mb_quat = MB_tstep[0].mb_quat.astype(dtype=ct.c_double, order='F', copy=True)
 
 
 def get_elems_nodes_list(beam, ibody):
