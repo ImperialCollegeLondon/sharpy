@@ -613,7 +613,6 @@ class StructTimeStepInfo(object):
 
         """
 
-        print("timestep changing to local FoR")
         # Define the rotation matrices between the different FoR
         CAslaveG = algebra.quat2rotation(self.mb_quat[global_ibody,:]).T
         CGAmaster = algebra.quat2rotation(self.mb_quat[0,:])
@@ -679,7 +678,6 @@ class StructTimeStepInfo(object):
 
         """
 
-        print("timestep changing to global FoR")
         # Define the rotation matrices between the different FoR
         CAslaveG = algebra.quat2rotation(self.mb_quat[global_ibody,:]).T
         CGAmaster = algebra.quat2rotation(self.mb_quat[0,:])
@@ -717,7 +715,6 @@ class StructTimeStepInfo(object):
         self.quat = self.mb_quat[0,:].astype(dtype=ct.c_double, order='F', copy=True)
 
     def whole_structure_to_local_AFoR(self, beam):
-        print("begin: changing FoR whole strcuture")
         self.in_global_AFoR = False
 
         MB_beam = [None]*beam.num_bodies
@@ -744,7 +741,31 @@ class StructTimeStepInfo(object):
             # TODO: Do I need a change in FoR for the following variables? Maybe for the FoR ones.
             # tstep.forces_constraints_nodes[ibody_nodes,:] = MB_tstep[ibody].forces_constraints_nodes.astype(dtype=ct.c_double, order='F', copy=True)
             # tstep.forces_constraints_FoR[ibody, :] = MB_tstep[ibody].forces_constraints_FoR[ibody, :].astype(dtype=ct.c_double, order='F', copy=True)
-        print("end: changing FoR whole strcuture")
+
+    def whole_structure_to_global_AFoR(self, beam):
+        self.in_global_AFoR = True
+
+        MB_beam = [None]*beam.num_bodies
+        MB_tstep = [None]*beam.num_bodies
+
+        for ibody in range(beam.num_bodies):
+            MB_beam[ibody] = beam.get_body(ibody = ibody)
+            MB_tstep[ibody] = self.get_body(beam, MB_beam[ibody].num_dof, ibody = ibody)
+            MB_tstep[ibody].change_to_global_AFoR(ibody)
+
+
+        first_dof = 0
+        for ibody in range(beam.num_bodies):
+            # Renaming for clarity
+            ibody_elems = MB_beam[ibody].global_elems_num
+            ibody_nodes = MB_beam[ibody].global_nodes_num
+
+            # Merge tstep
+            self.pos[ibody_nodes,:] = MB_tstep[ibody].pos.astype(dtype=ct.c_double, order='F', copy=True)
+            # tstep.pos_dot[ibody_nodes,:] = MB_tstep[ibody].pos_dot.astype(dtype=ct.c_double, order='F', copy=True)
+            self.psi[ibody_elems,:,:] = MB_tstep[ibody].psi.astype(dtype=ct.c_double, order='F', copy=True)
+
+
 
 class LinearTimeStepInfo(object):
     """
