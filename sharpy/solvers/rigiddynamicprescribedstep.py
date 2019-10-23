@@ -45,11 +45,11 @@ class RigidDynamicPrescribedStep(BaseSolver):
         self.settings_types['num_steps'] = 'int'
         self.settings_default['num_steps'] = 500
         #
-        self.settings_types['gravity_on'] = 'bool'
-        self.settings_default['gravity_on'] = False
+        # self.settings_types['gravity_on'] = 'bool'
+        # self.settings_default['gravity_on'] = False
 
-        self.settings_types['gravity'] = 'float'
-        self.settings_default['gravity'] = 9.81
+        # self.settings_types['gravity'] = 'float'
+        # self.settings_default['gravity'] = 9.81
         #
         # self.data = None
         # self.settings = None
@@ -92,9 +92,9 @@ class RigidDynamicPrescribedStep(BaseSolver):
         #                             self.data.ts,
         #                             structural_step,
         #                             dt=dt)
-        # self.extract_resultants(structural_step)
-        # # if self.data.ts > 0:
-        # #     self.data.structure.integrate_position(self.data.ts, self.settings['dt'].value)
+        self.extract_resultants(structural_step)
+        if self.data.ts > 0:
+            self.data.structure.integrate_position(structural_step, self.settings['dt'].value)
         return self.data
 
     def add_step(self):
