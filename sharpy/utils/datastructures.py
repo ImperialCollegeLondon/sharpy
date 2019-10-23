@@ -382,6 +382,10 @@ class StructTimeStepInfo(object):
         self.psi_dot = np.zeros((self.num_elem, num_node_elem, 3), dtype=ct.c_double, order='F')
         self.psi_ddot = np.zeros((self.num_elem, num_node_elem, 3), dtype=ct.c_double, order='F')
 
+        self.save_psi = np.zeros((self.num_elem, num_node_elem, 3), dtype=ct.c_double, order='F')
+        self.save_psi_dot = np.zeros((self.num_elem, num_node_elem, 3), dtype=ct.c_double, order='F')
+        self.save_psi_ddot = np.zeros((self.num_elem, num_node_elem, 3), dtype=ct.c_double, order='F')
+
         # FoR data
         self.quat = np.array([1., 0, 0, 0], dtype=ct.c_double, order='F')
         self.for_pos = np.zeros((6,), dtype=ct.c_double, order='F')
@@ -435,6 +439,10 @@ class StructTimeStepInfo(object):
         copied.psi = self.psi.astype(dtype=ct.c_double, order='F', copy=True)
         copied.psi_dot = self.psi_dot.astype(dtype=ct.c_double, order='F', copy=True)
         copied.psi_ddot = self.psi_ddot.astype(dtype=ct.c_double, order='F', copy=True)
+
+        copied.save_psi = self.save_psi.astype(dtype=ct.c_double, order='F', copy=True)
+        copied.save_psi_dot = self.save_psi_dot.astype(dtype=ct.c_double, order='F', copy=True)
+        copied.save_psi_ddot = self.save_psi_ddot.astype(dtype=ct.c_double, order='F', copy=True)
 
         # FoR data
         copied.quat = self.quat.astype(dtype=ct.c_double, order='F', copy=True)
@@ -553,6 +561,9 @@ class StructTimeStepInfo(object):
 
         ibody_StructTimeStepInfo.psi = self.psi[ibody_elems,:,:].astype(dtype=ct.c_double, order='F', copy=True)
         ibody_StructTimeStepInfo.psi_dot = self.psi_dot[ibody_elems,:,:].astype(dtype=ct.c_double, order='F', copy=True)
+
+        ibody_StructTimeStepInfo.save_psi = self.save_psi[ibody_elems,:,:].astype(dtype=ct.c_double, order='F', copy=True)
+        ibody_StructTimeStepInfo.save_psi_dot = self.save_psi_dot[ibody_elems,:,:].astype(dtype=ct.c_double, order='F', copy=True)
 
         ibody_StructTimeStepInfo.gravity_vector_inertial = self.gravity_vector_inertial.astype(dtype=ct.c_double, order='F', copy=True)
         ibody_StructTimeStepInfo.gravity_vector_body = self.gravity_vector_body.astype(dtype=ct.c_double, order='F', copy=True)
@@ -719,4 +730,3 @@ class LinearTimeStepInfo(object):
         copied.y = self.y.copy()
         copied.u = self.u.copy()
         copied.t = self.t.copy()
-

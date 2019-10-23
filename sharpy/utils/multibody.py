@@ -67,6 +67,28 @@ def split_multibody(beam, tstep, mb_data_dict, ts):
             ibody_beam.timestep_info.psi_dot *= 0
             ibody_tstep.psi_dot *= 0
 
+            ibody_beam.ini_info.save_psi = ibody_beam.ini_info.psi.astype(dtype=ct.c_double, order='F', copy=True)
+            ibody_beam.ini_info.save_psi_dot = ibody_beam.ini_info.psi_dot.astype(dtype=ct.c_double, order='F', copy=True)
+
+            ibody_beam.timestep_info.save_psi = ibody_beam.timestep_info.psi.astype(dtype=ct.c_double, order='F', copy=True)
+            ibody_beam.timestep_info.save_psi_dot = ibody_beam.timestep_info.psi_dot.astype(dtype=ct.c_double, order='F', copy=True)
+
+            ibody_tstep.save_psi = ibody_tstep.psi.astype(dtype=ct.c_double, order='F', copy=True)
+            ibody_tstep.save_psi_dot = ibody_tstep.psi_dot.astype(dtype=ct.c_double, order='F', copy=True)
+
+        else:
+            # ibody_beam.ini_info.psi = ibody_beam.ini_info.save_psi.astype(dtype=ct.c_double, order='F', copy=True)
+            # ibody_beam.timestep_info.psi = ibody_beam.timestep_info.save_psi.astype(dtype=ct.c_double, order='F', copy=True)
+            ibody_tstep.psi = ibody_tstep.save_psi.astype(dtype=ct.c_double, order='F', copy=True)
+
+            # ibody_beam.ini_info.psi_dot = ibody_beam.ini_info.save_psi_dot.astype(dtype=ct.c_double, order='F', copy=True)
+            # ibody_beam.timestep_info.psi_dot = ibody_beam.timestep_info.save_psi_dot.astype(dtype=ct.c_double, order='F', copy=True)
+            ibody_tstep.psi_dot = ibody_tstep.save_psi_dot.astype(dtype=ct.c_double, order='F', copy=True)
+
+            # ibody_beam.ini_info.psi_ddot = ibody_beam.ini_info.save_psi_ddot
+            # ibody_beam.timestep_info.psi_ddot = ibody_beam.timestep_info.save_psi_ddot
+            # ibody_tstep.psi_ddot = ibody_tstep.save_psi_ddot
+
         MB_beam.append(ibody_beam)
         MB_tstep.append(ibody_tstep)
 
@@ -105,6 +127,14 @@ def merge_multibody(MB_tstep, MB_beam, beam, tstep, mb_data_dict, dt):
         # Renaming for clarity
         ibody_elems = MB_beam[ibody].global_elems_num
         ibody_nodes = MB_beam[ibody].global_nodes_num
+
+        MB_tstep[ibody].save_psi = MB_tstep[ibody].psi.astype(dtype=ct.c_double, order='F', copy=True)
+        MB_tstep[ibody].save_psi_dot = MB_tstep[ibody].psi_dot.astype(dtype=ct.c_double, order='F', copy=True)
+        MB_tstep[ibody].save_psi_ddot = MB_tstep[ibody].psi_ddot.astype(dtype=ct.c_double, order='F', copy=True)
+
+        tstep.save_psi[ibody_elems,:,:] = MB_tstep[ibody].save_psi.astype(dtype=ct.c_double, order='F', copy=True)
+        tstep.save_psi_dot[ibody_elems,:,:] = MB_tstep[ibody].save_psi_dot.astype(dtype=ct.c_double, order='F', copy=True)
+        tstep.save_psi_ddot[ibody_elems,:,:] = MB_tstep[ibody].save_psi_ddot.astype(dtype=ct.c_double, order='F', copy=True)
 
         # Merge tstep
         MB_tstep[ibody].change_to_global_AFoR(ibody)
