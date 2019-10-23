@@ -153,9 +153,9 @@ def merge_multibody(MB_tstep, MB_beam, beam, tstep, mb_data_dict, dt):
         tstep.dqdt[first_dof:first_dof+ibody_num_dof] = MB_tstep[ibody].dqdt[:-10].astype(dtype=ct.c_double, order='F', copy=True)
         tstep.dqddt[first_dof:first_dof+ibody_num_dof] = MB_tstep[ibody].dqddt[:-10].astype(dtype=ct.c_double, order='F', copy=True)
 
-        tstep.mb_q[ibody, :] = MB_tstep[ibody].q[-10:].astype(dtype=ct.c_double, order='F', copy=True)
-        tstep.mb_dqdt[ibody, :] = MB_tstep[ibody].dqdt[-10:].astype(dtype=ct.c_double, order='F', copy=True)
-        tstep.mb_dqddt[ibody, :] = MB_tstep[ibody].dqddt[-10:].astype(dtype=ct.c_double, order='F', copy=True)
+        # tstep.mb_q[ibody, :] = MB_tstep[ibody].q[-10:].astype(dtype=ct.c_double, order='F', copy=True)
+        # tstep.mb_dqdt[ibody, :] = MB_tstep[ibody].dqdt[-10:].astype(dtype=ct.c_double, order='F', copy=True)
+        # tstep.mb_dqddt[ibody, :] = MB_tstep[ibody].dqddt[-10:].astype(dtype=ct.c_double, order='F', copy=True)
 
         first_dof += ibody_num_dof
 
@@ -273,9 +273,9 @@ def update_mb_dB_before_merge(tstep, MB_tstep):
         tstep.mb_FoR_acc[ibody,:] = MB_tstep[ibody].for_acc.astype(dtype=ct.c_double, order='F', copy=True)
         tstep.mb_quat[ibody,:] =  MB_tstep[ibody].quat.astype(dtype=ct.c_double, order='F', copy=True)
         # tstep.mb_dqddt_quat[ibody,:] =  MB_tstep[ibody].dqddt[-4:].astype(dtype=ct.c_double, order='F', copy=True)
-        tstep.mb_q[ibody,:] =  MB_tstep[ibody].q[-10:].astype(dtype=ct.c_double, order='F', copy=True)
-        tstep.mb_dqdt[ibody,:] =  MB_tstep[ibody].q[-10:].astype(dtype=ct.c_double, order='F', copy=True)
-        tstep.mb_dqddt[ibody,:] =  MB_tstep[ibody].q[-10:].astype(dtype=ct.c_double, order='F', copy=True)
+        # tstep.mb_q[ibody,:] =  MB_tstep[ibody].q[-10:].astype(dtype=ct.c_double, order='F', copy=True)
+        # tstep.mb_dqdt[ibody,:] =  MB_tstep[ibody].q[-10:].astype(dtype=ct.c_double, order='F', copy=True)
+        # tstep.mb_dqddt[ibody,:] =  MB_tstep[ibody].q[-10:].astype(dtype=ct.c_double, order='F', copy=True)
 
 
     # TODO: Is it convenient to do this?
