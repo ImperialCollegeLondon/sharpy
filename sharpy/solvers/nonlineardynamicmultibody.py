@@ -92,7 +92,7 @@ class NonLinearDynamicMultibody(_BaseStructural):
                 self.sys_size += 10
 
     def assembly_MB_eq_system(self, MB_beam, MB_tstep, ts, dt, Lambda, Lambda_dot, MBdict):
-        self.lc_list = lagrangeconstraints.initialize_constraints(MBdict)
+        # self.lc_list = lagrangeconstraints.initialize_constraints(MBdict)
         self.num_LM_eq = lagrangeconstraints.define_num_LM_eq(self.lc_list)
 
         MB_M = np.zeros((self.sys_size+self.num_LM_eq, self.sys_size+self.num_LM_eq), dtype=ct.c_double, order='F')
@@ -221,7 +221,7 @@ class NonLinearDynamicMultibody(_BaseStructural):
         else:
             self.settings['dt'] = ct.c_float(dt)
 
-        self.lc_list = lagrangeconstraints.initialize_constraints(MBdict)
+        # self.lc_list = lagrangeconstraints.initialize_constraints(MBdict)
         self.num_LM_eq = lagrangeconstraints.define_num_LM_eq(self.lc_list)
 
         # TODO: only working for constant forces
@@ -262,7 +262,7 @@ class NonLinearDynamicMultibody(_BaseStructural):
         for iteration in range(self.settings['max_iterations'].value):
             # Check if the maximum of iterations has been reached
             if iteration == self.settings['max_iterations'].value - 1:
-                error = ('Solver did not converge in %d iterations.\n res = %e \n LM_res = %e' % 
+                error = ('Solver did not converge in %d iterations.\n res = %e \n LM_res = %e' %
                         (iteration, res, LM_res))
                 raise exc.NotConvergedSolver(error)
 
@@ -348,4 +348,3 @@ class NonLinearDynamicMultibody(_BaseStructural):
         # structural_step.dqddt[:] = dqddt[:self.sys_size].copy()
 
         return self.data
-
