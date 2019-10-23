@@ -48,6 +48,9 @@ class NonLinearDynamicMultibody(_BaseStructural):
         # Total number of equations associated to the Lagrange multipliers
         self.lc_list = None
         self.num_LM_eq = None
+        self.Lambda = None
+        self.Lambda_dot = None
+        self.Lambda_ddot = None
 
         self.gamma = None
         self.beta = None
@@ -72,6 +75,10 @@ class NonLinearDynamicMultibody(_BaseStructural):
         # Define the number of equations
         self.lc_list = lagrangeconstraints.initialize_constraints(self.data.structure.ini_mb_dict)
         self.num_LM_eq = lagrangeconstraints.define_num_LM_eq(self.lc_list)
+
+        self.Lambda = np.zeros((self.num_LM_eq,), dtype=ct.c_double, order='F')
+        self.Lambda_dot = np.zeros((self.num_LM_eq,), dtype=ct.c_double, order='F')
+        self.Lambda_ddot = np.zeros((self.num_LM_eq,), dtype=ct.c_double, order='F')
 
         # Define the number of dofs
         self.define_sys_size()
@@ -233,8 +240,8 @@ class NonLinearDynamicMultibody(_BaseStructural):
 
         # Lagrange multipliers parameters
         num_LM_eq = self.num_LM_eq
-        Lambda = np.zeros((num_LM_eq,), dtype=ct.c_double, order='F')
-        Lambda_dot = np.zeros((num_LM_eq,), dtype=ct.c_double, order='F')
+        # Lambda = np.zeros((num_LM_eq,), dtype=ct.c_double, order='F')
+        # Lambda_dot = np.zeros((num_LM_eq,), dtype=ct.c_double, order='F')
 
         # Initialize
         q = np.zeros((self.sys_size + num_LM_eq,), dtype=ct.c_double, order='F')
@@ -248,8 +255,14 @@ class NonLinearDynamicMultibody(_BaseStructural):
         dqdt += (1.0 - self.gamma)*dt*dqddt
         dqddt = np.zeros((self.sys_size + num_LM_eq,), dtype=ct.c_double, order='F')
         if not num_LM_eq == 0:
-            Lambda = q[-num_LM_eq:].astype(dtype=ct.c_double, copy=True, order='F')
-            Lambda_dot = dqdt[-num_LM_eq:].astype(dtype=ct.c_double, copy=True, order='F')
+            # Lambda = q[-num_LM_eq:].astype(dtype=ct.c_double, copy=True, order='F')
+            # Lambda_dot = dqdt[-num_LM_eq:].astype(dtype=ct.c_double, copy=True, order='F')
+            Lambda = self.Lambda.astype(dtype=ct.c_double, copy=True, order='F')
+            Lambda_dot = self.Lambda_dot.astype(dtype=ct.c_double, copy=True, order='F')
+            Lambda_ddot = self.Lambda_ddot.astype(dtype=ct.c_double, copy=True, order='F')
+            q[-num_LM_eq:] = Lambda.astype(dtype=ct.c_double, copy=True, order='F')
+            dqdt[-num_LM_eq:] = Lambda_dot.astype(dtype=ct.c_double, copy=True, order='F')
+            dqddt[-num_LM_eq:] = Lambda_ddot.astype(dtype=ct.c_double, copy=True, order='F')
         else:
             Lambda = 0
             Lambda_dot = 0
@@ -291,9 +304,10 @@ class NonLinearDynamicMultibody(_BaseStructural):
             if iteration:
                 res = np.max(np.abs(Dq[0:self.sys_size]))/old_Dq
                 if np.isnan(res):
-                    raise exc.NotConvergedSolver('Multibody res = NaN')
+                    raise exc.NotConvergedSolver('Multibody res = NaN with old_Dq:' + old_Dq)
                 if num_LM_eq:
                     LM_res = np.max(np.abs(Dq[self.sys_size:self.sys_size+num_LM_eq]))/LM_old_Dq
+                    # LM_res = np.max(np.abs(Dq[self.sys_size:self.sys_size+num_LM_eq]))
                 else:
                     LM_res = 0.0
                 if (res < self.settings['min_delta'].value) and (LM_res < self.settings['min_delta'].value):
@@ -314,6 +328,7 @@ class NonLinearDynamicMultibody(_BaseStructural):
             if not num_LM_eq == 0:
                 Lambda = q[-num_LM_eq:].astype(dtype=ct.c_double, copy=True, order='F')
                 Lambda_dot = dqdt[-num_LM_eq:].astype(dtype=ct.c_double, copy=True, order='F')
+                Lambda_ddot = dqddt[-num_LM_eq:].astype(dtype=ct.c_double, copy=True, order='F')
             else:
                 Lambda = 0
                 Lambda_dot = 0
@@ -346,5 +361,9 @@ class NonLinearDynamicMultibody(_BaseStructural):
         # structural_step.q[:] = q[:self.sys_size].copy()
         # structural_step.dqdt[:] = dqdt[:self.sys_size].copy()
         # structural_step.dqddt[:] = dqddt[:self.sys_size].copy()
+        self.Lambda = Lambda.astype(dtype=ct.c_double, copy=True, order='F')
+        self.Lambda_dot = Lambda_dot.astype(dtype=ct.c_double, copy=True, order='F')
+        self.Lambda_ddot = Lambda_ddot.astype(dtype=ct.c_double, copy=True, order='F')
+        print("struct solver converged in", iteration, "iterations")
 
         return self.data
