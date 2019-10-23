@@ -251,9 +251,6 @@ class NonLinearDynamicMultibody(_BaseStructural):
         # Predictor step
         mb.disp2state(MB_beam, MB_tstep, q, dqdt, dqddt)
 
-        q += dt*dqdt + (0.5 - self.beta)*dt*dt*dqddt
-        dqdt += (1.0 - self.gamma)*dt*dqddt
-        dqddt = np.zeros((self.sys_size + num_LM_eq,), dtype=ct.c_double, order='F')
         if not num_LM_eq == 0:
             # Lambda = q[-num_LM_eq:].astype(dtype=ct.c_double, copy=True, order='F')
             # Lambda_dot = dqdt[-num_LM_eq:].astype(dtype=ct.c_double, copy=True, order='F')
@@ -266,6 +263,10 @@ class NonLinearDynamicMultibody(_BaseStructural):
         else:
             Lambda = 0
             Lambda_dot = 0
+
+        q += dt*dqdt + (0.5 - self.beta)*dt*dt*dqddt
+        dqdt += (1.0 - self.gamma)*dt*dqddt
+        dqddt = np.zeros((self.sys_size + num_LM_eq,), dtype=ct.c_double, order='F')
 
         # Newmark-beta iterations
         old_Dq = 1.0
