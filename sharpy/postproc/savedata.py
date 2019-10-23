@@ -162,8 +162,6 @@ class SaveData(BaseSolver):
         file_exists = os.path.isfile(self.filename)
         hdfile=h5py.File(self.filename,'a')
 
-        #from IPython import embed;embed()
-
         if (online and file_exists):
             if self.settings['save_aero']:
                 h5utils.add_as_grp(self.data.aero.timestep_info[self.data.ts], hdfile['data']['aero']['timestep_info'],

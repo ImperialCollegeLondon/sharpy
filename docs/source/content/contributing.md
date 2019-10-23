@@ -1,4 +1,64 @@
 # Contributing to SHARPy
+## Bug fixes and features
+
+SHARPy is a collaborative effort, and this means that some coding practices need
+to be encouraged so that the code is kept tidy and consistent. Any user is welcome
+to raise issues for bug fixes and feature proposals through Github.
+
+If you are submitting a bug report:
+
+1. Make sure your SHARPy, xbeam and uvlm local copies are up to date and in the
+same branch.
+
+2. Double check that your python distribution is updated by comparing with 
+the `utils/environment_*.yml` file.
+
+3. Try to assemble a minimal working example that can be run quickly and easily.
+
+4. Describe as accurately as possible your setup (OS, path, compilers...) and
+the problem.
+
+5. Raise an issue with all this information in the Github repo and label it
+`potential bug`.
+
+Please bear in mind that we do not have the resources to provide support for
+user modifications of the code through Github. If you have doubts about how to modify certain
+parts of the code, contact us through email and we will help you as much as we can.
+
+If you are fixing a bug:
+
+1. THANKS!
+
+2. Please create a pull request from your modified fork, and describe in a few
+lines which bug you are fixing, a minimal example that triggers the bug and how you
+are fixing it. We will review it ASAP and hopefully it will be incorporated in the
+code!
+
+If you have an idea for new functionality but do not know how to implement it:
+
+1. We welcome tips and suggestions from users, as it allow us to broaden the scope
+of the code. The more people using it, the better!
+
+2. Feel free to fill an issue in Github, and tag it as `feature proposal`. Please
+understand that the more complete the description of the potential feature, the more
+likely it is that some of the developers will give it a go.
+
+If you have developed new functionality and you want to share it with the world:
+
+1. AWESOME! Please follow the same instructions than for the bug fix submission.
+If you have some peer-reviewed references related to the new code, even better, as
+it will save us some precious time.
+
+## Code formatting
+
+We try to follow the [PEP8](https://www.python.org/dev/peps/pep-0008/) standards
+(with spaces, no tabs please!) and [Google Python Style Guide](http://google.github.io/styleguide/pyguide.html).
+We do not ask you to freak out over formatting, but please, try to keep it tidy and
+descriptive. A good tip is to run `pylint` [https://www.pylint.org/](https://www.pylint.org/)
+to make sure there are no obvious formatting problems.
+
+
+
 
 ## Documentation
 
@@ -94,12 +154,13 @@ That said, the recipe for a successfully documented class, function, module is t
 
 5. See how your docs looks like!
     
-    - Once you are done, run the following sharpy command:
+    - Once you are done, run the following ``SHARPy`` command:
     ```bash
     sharpy any_string -d
     ```
     
-    - Then go to `sharpy/docs` and run 
+    - If you are making minor updates to docstrings (i.e. you are not documenting a previously undocumented
+    function/class/module) you can simply change directory to  `sharpy/docs` and run 
     ```bash
     make html
     ```
@@ -108,6 +169,12 @@ That said, the recipe for a successfully documented class, function, module is t
     ```bash
     docs/build/index.html
     ```
-    and navigating to tour recently created page.
-            
+    and navigating to your recently created page.
+    
+    - Make sure that **before committing** any changes in the documentation you update the entire ``docs`` directory
+    by running
+    ```bash
+    sharpy any_string -d
+    ```
+    
 Thank you for reading through this and contributing to make SHARPy a better documented, more user friendly code!

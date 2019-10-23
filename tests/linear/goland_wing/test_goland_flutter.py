@@ -44,8 +44,9 @@ class TestGolandFlutter(unittest.TestCase):
 
         case_name += case_nlin_info + case_rom_info
 
-        fig_folder = sharpydir.SharpyDir + '/tests/linear/goland_wing/figures/'
-        os.system('mkdir -p %s' % fig_folder)
+        self.route_test_dir = os.path.abspath(os.path.dirname(os.path.realpath(__file__)))
+        fig_folder = self.route_test_dir + 'figures/'
+        os.makedirs(fig_folder, exist_ok=True)
 
         # SHARPy nonlinear reference solution
         ws = wings.GolandControlSurface(M=M,
@@ -82,6 +83,7 @@ class TestGolandFlutter(unittest.TestCase):
                                        'AsymptoticStability',
 
                                        ]
+
         ws.config['LinearAssembler']['linear_system_settings']['aero_settings']['use_sparse'] = use_sparse
         ws.config['LinearAssembler']['linear_system_settings']['aero_settings']['ScalingDict'] = {
             'length': 0.5 * ws.c_ref,
