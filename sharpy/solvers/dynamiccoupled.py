@@ -423,7 +423,7 @@ class DynamicCoupled(BaseSolver):
                 # check convergence
                 if self.convergence(k,
                                     structural_kstep,
-                                    previous_kstep):
+                                    previous_kstep) or self.settings['aero_solver'].lower() == 'noaero':
                     # move the aerodynamic surface according to the structural one
                     self.aero_solver.update_custom_grid(
                         structural_kstep,
@@ -608,4 +608,3 @@ def relax(beam, timestep, previous_timestep, coeff):
 def normalise_quaternion(tstep):
     tstep.dqdt[-4:] = algebra.unit_vector(tstep.dqdt[-4:])
     tstep.quat = tstep.dqdt[-4:].astype(dtype=ct.c_double, order='F', copy=True)
-
