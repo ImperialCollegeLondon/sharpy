@@ -369,6 +369,7 @@ def standalone_ctypes_pointer(matrix):
 
 class StructTimeStepInfo(object):
     def __init__(self, num_node, num_elem, num_node_elem=3, num_dof=None, num_bodies=1):
+        self.in_global_AFoR = True
         self.num_node = num_node
         self.num_elem = num_elem
         self.num_node_elem = num_node_elem
@@ -382,9 +383,9 @@ class StructTimeStepInfo(object):
         self.psi_dot = np.zeros((self.num_elem, num_node_elem, 3), dtype=ct.c_double, order='F')
         self.psi_ddot = np.zeros((self.num_elem, num_node_elem, 3), dtype=ct.c_double, order='F')
 
-        self.save_psi = np.zeros((self.num_elem, num_node_elem, 3), dtype=ct.c_double, order='F')
-        self.save_psi_dot = np.zeros((self.num_elem, num_node_elem, 3), dtype=ct.c_double, order='F')
-        self.save_psi_ddot = np.zeros((self.num_elem, num_node_elem, 3), dtype=ct.c_double, order='F')
+        # self.save_psi = np.zeros((self.num_elem, num_node_elem, 3), dtype=ct.c_double, order='F')
+        # self.save_psi_dot = np.zeros((self.num_elem, num_node_elem, 3), dtype=ct.c_double, order='F')
+        # self.save_psi_ddot = np.zeros((self.num_elem, num_node_elem, 3), dtype=ct.c_double, order='F')
 
         # FoR data
         self.quat = np.array([1., 0, 0, 0], dtype=ct.c_double, order='F')
@@ -425,6 +426,7 @@ class StructTimeStepInfo(object):
     def copy(self):
         copied = StructTimeStepInfo(self.num_node, self.num_elem, self.num_node_elem, ct.c_int(len(self.q)-10), self.mb_quat.shape[0])
 
+        copied.in_global_AFoR = self.in_global_AFoR
         copied.num_node = self.num_node
         copied.num_elem = self.num_elem
         copied.num_node_elem = self.num_node_elem
@@ -440,9 +442,9 @@ class StructTimeStepInfo(object):
         copied.psi_dot = self.psi_dot.astype(dtype=ct.c_double, order='F', copy=True)
         copied.psi_ddot = self.psi_ddot.astype(dtype=ct.c_double, order='F', copy=True)
 
-        copied.save_psi = self.save_psi.astype(dtype=ct.c_double, order='F', copy=True)
-        copied.save_psi_dot = self.save_psi_dot.astype(dtype=ct.c_double, order='F', copy=True)
-        copied.save_psi_ddot = self.save_psi_ddot.astype(dtype=ct.c_double, order='F', copy=True)
+        # copied.save_psi = self.save_psi.astype(dtype=ct.c_double, order='F', copy=True)
+        # copied.save_psi_dot = self.save_psi_dot.astype(dtype=ct.c_double, order='F', copy=True)
+        # copied.save_psi_ddot = self.save_psi_ddot.astype(dtype=ct.c_double, order='F', copy=True)
 
         # FoR data
         copied.quat = self.quat.astype(dtype=ct.c_double, order='F', copy=True)
@@ -562,8 +564,8 @@ class StructTimeStepInfo(object):
         ibody_StructTimeStepInfo.psi = self.psi[ibody_elems,:,:].astype(dtype=ct.c_double, order='F', copy=True)
         ibody_StructTimeStepInfo.psi_dot = self.psi_dot[ibody_elems,:,:].astype(dtype=ct.c_double, order='F', copy=True)
 
-        ibody_StructTimeStepInfo.save_psi = self.save_psi[ibody_elems,:,:].astype(dtype=ct.c_double, order='F', copy=True)
-        ibody_StructTimeStepInfo.save_psi_dot = self.save_psi_dot[ibody_elems,:,:].astype(dtype=ct.c_double, order='F', copy=True)
+        # ibody_StructTimeStepInfo.save_psi = self.save_psi[ibody_elems,:,:].astype(dtype=ct.c_double, order='F', copy=True)
+        # ibody_StructTimeStepInfo.save_psi_dot = self.save_psi_dot[ibody_elems,:,:].astype(dtype=ct.c_double, order='F', copy=True)
 
         ibody_StructTimeStepInfo.gravity_vector_inertial = self.gravity_vector_inertial.astype(dtype=ct.c_double, order='F', copy=True)
         ibody_StructTimeStepInfo.gravity_vector_body = self.gravity_vector_body.astype(dtype=ct.c_double, order='F', copy=True)
@@ -611,6 +613,7 @@ class StructTimeStepInfo(object):
 
         """
 
+        print("timestep changing to local FoR")
         # Define the rotation matrices between the different FoR
         CAslaveG = algebra.quat2rotation(self.mb_quat[global_ibody,:]).T
         CGAmaster = algebra.quat2rotation(self.mb_quat[0,:])
@@ -676,6 +679,7 @@ class StructTimeStepInfo(object):
 
         """
 
+        print("timestep changing to global FoR")
         # Define the rotation matrices between the different FoR
         CAslaveG = algebra.quat2rotation(self.mb_quat[global_ibody,:]).T
         CGAmaster = algebra.quat2rotation(self.mb_quat[0,:])
@@ -712,6 +716,35 @@ class StructTimeStepInfo(object):
         self.for_acc[3:6] = np.dot(np.transpose(CGAmaster),self.mb_FoR_acc[0,3:6])
         self.quat = self.mb_quat[0,:].astype(dtype=ct.c_double, order='F', copy=True)
 
+    def whole_structure_to_local_AFoR(self, beam):
+        print("begin: changing FoR whole strcuture")
+        self.in_global_AFoR = False
+
+        MB_beam = [None]*beam.num_bodies
+        MB_tstep = [None]*beam.num_bodies
+
+        for ibody in range(beam.num_bodies):
+            MB_beam[ibody] = beam.get_body(ibody = ibody)
+            MB_tstep[ibody] = self.get_body(beam, MB_beam[ibody].num_dof, ibody = ibody)
+            MB_tstep[ibody].change_to_local_AFoR(ibody)
+
+
+        first_dof = 0
+        for ibody in range(beam.num_bodies):
+            # Renaming for clarity
+            ibody_elems = MB_beam[ibody].global_elems_num
+            ibody_nodes = MB_beam[ibody].global_nodes_num
+
+            # Merge tstep
+            self.pos[ibody_nodes,:] = MB_tstep[ibody].pos.astype(dtype=ct.c_double, order='F', copy=True)
+            # tstep.pos_dot[ibody_nodes,:] = MB_tstep[ibody].pos_dot.astype(dtype=ct.c_double, order='F', copy=True)
+            self.psi[ibody_elems,:,:] = MB_tstep[ibody].psi.astype(dtype=ct.c_double, order='F', copy=True)
+            # tstep.psi_dot[ibody_elems,:,:] = MB_tstep[ibody].psi_dot.astype(dtype=ct.c_double, order='F', copy=True)
+            # tstep.gravity_forces[ibody_nodes,:] = MB_tstep[ibody].gravity_forces.astype(dtype=ct.c_double, order='F', copy=True)
+            # TODO: Do I need a change in FoR for the following variables? Maybe for the FoR ones.
+            # tstep.forces_constraints_nodes[ibody_nodes,:] = MB_tstep[ibody].forces_constraints_nodes.astype(dtype=ct.c_double, order='F', copy=True)
+            # tstep.forces_constraints_FoR[ibody, :] = MB_tstep[ibody].forces_constraints_FoR[ibody, :].astype(dtype=ct.c_double, order='F', copy=True)
+        print("end: changing FoR whole strcuture")
 
 class LinearTimeStepInfo(object):
     """
