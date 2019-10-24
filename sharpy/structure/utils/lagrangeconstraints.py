@@ -839,7 +839,7 @@ class fully_constrained_node_FoR(BaseLagrangeConstraint):
             # for k, v in MBdict_entry.items():
                 # cout.cout_wrap(k, v)
 
-        cout.cout_wrap("WARNING: do not use fully_constrained_node_FoR. It is outdated", 3)
+        cout.cout_wrap("WARNING: do not use fully_constrained_node_FoR. It is outdated. Definetly not working if 'body' has velocity", 3)
         self.node_number = MBdict_entry['node_in_body']
         self.node_body = MBdict_entry['body']
         self.FoR_body = MBdict_entry['body_FoR']
