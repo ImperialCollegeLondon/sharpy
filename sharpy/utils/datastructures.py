@@ -564,9 +564,11 @@ class StructTimeStepInfo(object):
 
         ibody_StructTimeStepInfo.pos = self.pos[ibody_nodes,:].astype(dtype=ct.c_double, order='F', copy=True)
         ibody_StructTimeStepInfo.pos_dot = self.pos_dot[ibody_nodes,:].astype(dtype=ct.c_double, order='F', copy=True)
+        ibody_StructTimeStepInfo.pos_ddot = self.pos_ddot[ibody_nodes,:].astype(dtype=ct.c_double, order='F', copy=True)
 
         ibody_StructTimeStepInfo.psi = self.psi[ibody_elems,:,:].astype(dtype=ct.c_double, order='F', copy=True)
         ibody_StructTimeStepInfo.psi_dot = self.psi_dot[ibody_elems,:,:].astype(dtype=ct.c_double, order='F', copy=True)
+        ibody_StructTimeStepInfo.psi_ddot = self.psi_ddot[ibody_elems,:,:].astype(dtype=ct.c_double, order='F', copy=True)
 
         # ibody_StructTimeStepInfo.save_psi = self.save_psi[ibody_elems,:,:].astype(dtype=ct.c_double, order='F', copy=True)
         # ibody_StructTimeStepInfo.save_psi_dot = self.save_psi_dot[ibody_elems,:,:].astype(dtype=ct.c_double, order='F', copy=True)

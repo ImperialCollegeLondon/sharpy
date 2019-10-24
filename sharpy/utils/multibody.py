@@ -140,8 +140,10 @@ def merge_multibody(MB_tstep, MB_beam, beam, tstep, mb_data_dict, dt):
         # MB_tstep[ibody].change_to_global_AFoR(ibody)
         tstep.pos[ibody_nodes,:] = MB_tstep[ibody].pos.astype(dtype=ct.c_double, order='F', copy=True)
         tstep.pos_dot[ibody_nodes,:] = MB_tstep[ibody].pos_dot.astype(dtype=ct.c_double, order='F', copy=True)
+        tstep.pos_ddot[ibody_nodes,:] = MB_tstep[ibody].pos_ddot.astype(dtype=ct.c_double, order='F', copy=True)
         tstep.psi[ibody_elems,:,:] = MB_tstep[ibody].psi.astype(dtype=ct.c_double, order='F', copy=True)
         tstep.psi_dot[ibody_elems,:,:] = MB_tstep[ibody].psi_dot.astype(dtype=ct.c_double, order='F', copy=True)
+        tstep.psi_ddot[ibody_elems,:,:] = MB_tstep[ibody].psi_ddot.astype(dtype=ct.c_double, order='F', copy=True)
         tstep.gravity_forces[ibody_nodes,:] = MB_tstep[ibody].gravity_forces.astype(dtype=ct.c_double, order='F', copy=True)
         # TODO: Do I need a change in FoR for the following variables? Maybe for the FoR ones.
         tstep.forces_constraints_nodes[ibody_nodes,:] = MB_tstep[ibody].forces_constraints_nodes.astype(dtype=ct.c_double, order='F', copy=True)
@@ -276,6 +278,7 @@ def update_mb_dB_before_merge(tstep, MB_tstep):
         # tstep.mb_q[ibody,:] =  MB_tstep[ibody].q[-10:].astype(dtype=ct.c_double, order='F', copy=True)
         # tstep.mb_dqdt[ibody,:] =  MB_tstep[ibody].q[-10:].astype(dtype=ct.c_double, order='F', copy=True)
         # tstep.mb_dqddt[ibody,:] =  MB_tstep[ibody].q[-10:].astype(dtype=ct.c_double, order='F', copy=True)
+        tstep.mb_dquatdt[ibody, :] = MB_tstep[ibody].dqddt[-4:].astype(dtype=ct.c_double, order='F', copy=True)
 
 
     # TODO: Is it convenient to do this?
@@ -286,7 +289,7 @@ def update_mb_dB_before_merge(tstep, MB_tstep):
     #     MB_tstep[ibody].mb_quat = tstep.mb_quat.astype(dtype=ct.c_double, order='F', copy=True)
     #     MB_tstep[ibody].mb_dqddt_quat = tstep.mb_dqddt_quat.astype(dtype=ct.c_double, order='F', copy=True)
 
-def disp2state(MB_beam, MB_tstep, q, dqdt, dqddt):
+def disp_and_accel2state(MB_beam, MB_tstep, q, dqdt, dqddt):
     """
     disp2state
 
@@ -315,6 +318,7 @@ def disp2state(MB_beam, MB_tstep, q, dqdt, dqddt):
         ibody_num_dof = MB_beam[ibody].num_dof.value
         if (MB_beam[ibody].FoR_movement == 'prescribed'):
             xbeamlib.cbeam3_solv_disp2state(MB_beam[ibody], MB_tstep[ibody])
+            xbeamlib.cbeam3_solv_accel2state(MB_beam[ibody], MB_tstep[ibody])
             q[first_dof:first_dof+ibody_num_dof]=MB_tstep[ibody].q[:-10].astype(dtype=ct.c_double, order='F', copy=True)
             dqdt[first_dof:first_dof+ibody_num_dof]=MB_tstep[ibody].dqdt[:-10].astype(dtype=ct.c_double, order='F', copy=True)
             dqddt[first_dof:first_dof+ibody_num_dof]=MB_tstep[ibody].dqddt[:-10].astype(dtype=ct.c_double, order='F', copy=True)
@@ -322,6 +326,7 @@ def disp2state(MB_beam, MB_tstep, q, dqdt, dqddt):
 
         elif (MB_beam[ibody].FoR_movement == 'free'):
             xbeamlib.xbeam_solv_disp2state(MB_beam[ibody], MB_tstep[ibody])
+            xbeamlib.xbeam_solv_accel2state(MB_beam[ibody], MB_tstep[ibody])
             q[first_dof:first_dof+ibody_num_dof+10]=MB_tstep[ibody].q.astype(dtype=ct.c_double, order='F', copy=True)
             dqdt[first_dof:first_dof+ibody_num_dof+10]=MB_tstep[ibody].dqdt.astype(dtype=ct.c_double, order='F', copy=True)
             dqddt[first_dof:first_dof+ibody_num_dof+10]=MB_tstep[ibody].dqddt.astype(dtype=ct.c_double, order='F', copy=True)
@@ -330,7 +335,7 @@ def disp2state(MB_beam, MB_tstep, q, dqdt, dqddt):
 
         # MB_beam[ibody].timestep_info = MB_tstep[ibody].copy()
 
-def state2disp(q, dqdt, dqddt, MB_beam, MB_tstep):
+def state2disp_and_accel(q, dqdt, dqddt, MB_beam, MB_tstep):
     """
     state2disp
 
@@ -362,6 +367,7 @@ def state2disp(q, dqdt, dqddt, MB_beam, MB_tstep):
             MB_tstep[ibody].dqdt[:-10] = dqdt[first_dof:first_dof+ibody_num_dof].astype(dtype=ct.c_double, order='F', copy=True)
             MB_tstep[ibody].dqddt[:-10] = dqddt[first_dof:first_dof+ibody_num_dof].astype(dtype=ct.c_double, order='F', copy=True)
             xbeamlib.cbeam3_solv_state2disp(MB_beam[ibody], MB_tstep[ibody])
+            xbeamlib.cbeam3_solv_state2accel(MB_beam[ibody], MB_tstep[ibody])
             first_dof += ibody_num_dof
 
         elif (MB_beam[ibody].FoR_movement == 'free'):
@@ -370,6 +376,7 @@ def state2disp(q, dqdt, dqddt, MB_beam, MB_tstep):
             MB_tstep[ibody].dqdt = dqdt[first_dof:first_dof+ibody_num_dof+10].astype(dtype=ct.c_double, order='F', copy=True)
             MB_tstep[ibody].dqddt = dqddt[first_dof:first_dof+ibody_num_dof+10].astype(dtype=ct.c_double, order='F', copy=True)
             xbeamlib.xbeam_solv_state2disp(MB_beam[ibody], MB_tstep[ibody])
+            xbeamlib.xbeam_solv_state2accel(MB_beam[ibody], MB_tstep[ibody])
             # if onlyFlex:
             #     xbeamlib.cbeam3_solv_state2disp(MB_beam[ibody], MB_tstep[ibody])
             # else:

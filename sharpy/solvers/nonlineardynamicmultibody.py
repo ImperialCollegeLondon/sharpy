@@ -249,7 +249,7 @@ class NonLinearDynamicMultibody(_BaseStructural):
         dqddt = np.zeros((self.sys_size + num_LM_eq,), dtype=ct.c_double, order='F')
 
         # Predictor step
-        mb.disp2state(MB_beam, MB_tstep, q, dqdt, dqddt)
+        mb.disp_and_accel2state(MB_beam, MB_tstep, q, dqdt, dqddt)
 
         if not num_LM_eq == 0:
             # Lambda = q[-num_LM_eq:].astype(dtype=ct.c_double, copy=True, order='F')
@@ -281,7 +281,7 @@ class NonLinearDynamicMultibody(_BaseStructural):
                 raise exc.NotConvergedSolver(error)
 
             # Update positions and velocities
-            mb.state2disp(q, dqdt, dqddt, MB_beam, MB_tstep)
+            mb.state2disp_and_accel(q, dqdt, dqddt, MB_beam, MB_tstep)
             MB_Asys, MB_Q = self.assembly_MB_eq_system(MB_beam,
                                                        MB_tstep,
                                                        self.data.ts,
@@ -346,7 +346,7 @@ class NonLinearDynamicMultibody(_BaseStructural):
                 else:
                     LM_old_Dq = 1.0
 
-        mb.state2disp(q, dqdt, dqddt, MB_beam, MB_tstep)
+        mb.state2disp_and_accel(q, dqdt, dqddt, MB_beam, MB_tstep)
         # end: comment time stepping
 
         # End of Newmark-beta iterations
@@ -362,9 +362,9 @@ class NonLinearDynamicMultibody(_BaseStructural):
         # structural_step.q[:] = q[:self.sys_size].copy()
         # structural_step.dqdt[:] = dqdt[:self.sys_size].copy()
         # structural_step.dqddt[:] = dqddt[:self.sys_size].copy()
-        self.Lambda = Lambda.astype(dtype=ct.c_double, copy=True, order='F')
-        self.Lambda_dot = Lambda_dot.astype(dtype=ct.c_double, copy=True, order='F')
-        self.Lambda_ddot = Lambda_ddot.astype(dtype=ct.c_double, copy=True, order='F')
-        print("struct solver converged in", iteration, "iterations")
+        # self.Lambda = Lambda.astype(dtype=ct.c_double, copy=True, order='F')
+        # self.Lambda_dot = Lambda_dot.astype(dtype=ct.c_double, copy=True, order='F')
+        # self.Lambda_ddot = Lambda_ddot.astype(dtype=ct.c_double, copy=True, order='F')
+        # print("struct solver converged in", iteration, "iterations")
 
         return self.data

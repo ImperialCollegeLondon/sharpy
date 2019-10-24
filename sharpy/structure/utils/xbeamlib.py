@@ -612,8 +612,14 @@ def xbeam_solv_state2disp(beam, tstep, cbeam3=False):
     cbeam3_solv_state2disp(beam, tstep)
     if not cbeam3:
         tstep.for_vel = tstep.dqdt[numdof:numdof+6].astype(dtype=ct.c_double, order='F', copy=True)
-        tstep.for_acc = tstep.dqddt[numdof:numdof+6].astype(dtype=ct.c_double, order='F', copy=True)
+        # tstep.for_acc = tstep.dqddt[numdof:numdof+6].astype(dtype=ct.c_double, order='F', copy=True)
         tstep.quat = algebra.unit_vector(tstep.dqdt[numdof+6:]).astype(dtype=ct.c_double, order='F', copy=True)
+
+def xbeam_solv_state2accel(beam, tstep, cbeam3=False):
+    numdof = beam.num_dof.value
+    cbeam3_solv_state2accel(beam, tstep)
+    if not cbeam3:
+        tstep.for_acc = tstep.dqddt[numdof:numdof+6].astype(dtype=ct.c_double, order='F', copy=True)
 
 def cbeam3_solv_state2disp(beam, tstep):
     # library load
@@ -642,16 +648,52 @@ def cbeam3_solv_state2disp(beam, tstep):
         tstep.q.ctypes.data_as(doubleP),
         tstep.dqdt.ctypes.data_as(doubleP))
 
+def cbeam3_solv_state2accel(beam, tstep):
+    # library load
+    f_cbeam3_solv_state2disp = xbeamlib.cbeam3_solv_state2disp_python
+    f_cbeam3_solv_state2disp.restype = None
+
+    # initialisation
+    n_elem = ct.c_int(beam.num_elem)
+    n_nodes = ct.c_int(beam.num_node)
+    numdof = ct.c_int(beam.num_dof.value)
+
+    dummy_pos = np.zeros_like(tstep.pos)
+    dummy_psi = np.zeros_like(tstep.psi)
+    dummy_ini_pos = np.zeros_like(tstep.pos)
+    dummy_ini_psi = np.zeros_like(tstep.psi)
+    dummy_q = np.zeros_like(tstep.q)
+
+    f_cbeam3_solv_state2disp(
+        ct.byref(n_elem),
+        ct.byref(n_nodes),
+        ct.byref(numdof),
+        dummy_ini_pos.ctypes.data_as(doubleP),
+        dummy_ini_psi.ctypes.data_as(doubleP),
+        dummy_pos.ctypes.data_as(doubleP),
+        dummy_psi.ctypes.data_as(doubleP),
+        tstep.pos_ddot.ctypes.data_as(doubleP),
+        tstep.psi_ddot.ctypes.data_as(doubleP),
+        beam.fortran['node_master_elem'].ctypes.data_as(intP),
+        beam.fortran['vdof'].ctypes.data_as(intP),
+        beam.fortran['num_nodes'].ctypes.data_as(intP),
+        beam.fortran['master'].ctypes.data_as(intP),
+        dummy_q.ctypes.data_as(doubleP),
+        tstep.dqddt.ctypes.data_as(doubleP))
 
 def xbeam_solv_disp2state(beam, tstep):
     numdof = beam.num_dof.value
     cbeam3_solv_disp2state(beam, tstep)
     tstep.dqdt[numdof:numdof+6] = tstep.for_vel
-    tstep.dqddt[numdof:numdof+6] = tstep.for_acc
+    # tstep.dqddt[numdof:numdof+6] = tstep.for_acc
     tstep.dqdt[numdof+6:] = algebra.unit_vector(tstep.quat)
     # tstep.dqdt[numdof+6:] = tstep.quat
     # tstep.dqdt[numdof+6:] = algebra.unit_quat(tstep.quat)
 
+def xbeam_solv_accel2state(beam, tstep):
+    numdof = beam.num_dof.value
+    cbeam3_solv_accel2state(beam, tstep)
+    tstep.dqddt[numdof:numdof+6] = tstep.for_acc
 
 def cbeam3_solv_disp2state(beam, tstep):
     # library load
@@ -675,6 +717,34 @@ def cbeam3_solv_disp2state(beam, tstep):
         beam.fortran['node_master_elem'].ctypes.data_as(intP),
         tstep.q.ctypes.data_as(doubleP),
         tstep.dqdt.ctypes.data_as(doubleP))
+
+def cbeam3_solv_accel2state(beam, tstep):
+    # library load
+    f_cbeam3_solv_disp2state = xbeamlib.cbeam3_solv_disp2state_python
+    f_cbeam3_solv_disp2state.restype = None
+
+    # initialisation
+    n_elem = ct.c_int(beam.num_elem)
+    n_nodes = ct.c_int(beam.num_node)
+    numdof = ct.c_int(beam.num_dof.value)
+
+    dummy_pos = np.zeros_like(tstep.pos)
+    dummy_psi = np.zeros_like(tstep.psi)
+    dummy_q = np.zeros_like(tstep.q)
+
+    # Reused
+    f_cbeam3_solv_disp2state(
+        ct.byref(n_elem),
+        ct.byref(n_nodes),
+        ct.byref(numdof),
+        dummy_pos.ctypes.data_as(doubleP),
+        dummy_psi.ctypes.data_as(doubleP),
+        tstep.pos_ddot.ctypes.data_as(doubleP),
+        tstep.psi_ddot.ctypes.data_as(doubleP),
+        beam.fortran['vdof'].ctypes.data_as(intP),
+        beam.fortran['node_master_elem'].ctypes.data_as(intP),
+        dummy_q.ctypes.data_as(doubleP),
+        tstep.dqddt.ctypes.data_as(doubleP))
 
 def cbeam3_solv_modal(beam, settings, ts, FullMglobal, FullCglobal, FullKglobal):
     """
