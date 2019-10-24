@@ -266,7 +266,8 @@ class AeroGridSurface(AeroGridGeo):
     def __init__(self, Map, zeta, gamma,
                  u_ext=None, zeta_dot=None, gamma_dot=None,
                  rho=1., aM=0.5, aN=0.5,
-                 omega=np.zeros((3,), )):
+                 omega=np.zeros((3,), ),
+                 for_vel=np.zeros((3, ))):
 
         super().__init__(Map, zeta, aM, aN)
 
@@ -276,6 +277,7 @@ class AeroGridSurface(AeroGridGeo):
         self.gamma_dot = gamma_dot
         self.rho = rho
         self.omega = omega
+        self.for_vel = for_vel
 
         msg_out = 'wrong input shape!'
         assert self.gamma.shape == (self.maps.M, self.maps.N), msg_out
@@ -310,7 +312,7 @@ class AeroGridSurface(AeroGridGeo):
             for i_n in range(self.maps.N + 1):
                 # print(u_tot[:,i_m,i_n])
                 # print(np.cross(self.omega,self.zeta[:,i_m,i_n]))
-                u_tot[:, i_m, i_n] -= np.cross(self.omega, self.zeta[:, i_m, i_n])
+                u_tot[:, i_m, i_n] -= np.cross(self.omega, self.zeta[:, i_m, i_n]) + self.for_vel
 
         self.u_input_coll = self.interp_vertex_to_coll(u_tot)
 
@@ -351,7 +353,7 @@ class AeroGridSurface(AeroGridGeo):
         # Include rotation
         for i_m in range(self.maps.M + 1):
             for i_n in range(self.maps.N + 1):
-                u_tot[:, i_m, i_n] -= np.cross(self.omega, self.zeta[:, i_m, i_n])
+                u_tot[:, i_m, i_n] -= np.cross(self.omega, self.zeta[:, i_m, i_n]) + self.for_vel
 
         M, N = self.maps.M, self.maps.N
         self.u_input_seg = np.empty((3, 4, M, N))
