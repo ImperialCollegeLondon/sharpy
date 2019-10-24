@@ -884,7 +884,6 @@ class Dynamic(Static):
         if self.use_sparse:
             Bss = libsp.csc_matrix(Bss)
         LU, P = None, None
-
         # ---------------------------------------------------------- output eq.
 
         ### state terms (C matrix)
