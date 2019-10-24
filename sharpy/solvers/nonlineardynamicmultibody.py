@@ -257,6 +257,9 @@ class NonLinearDynamicMultibody(_BaseStructural):
             Lambda = self.Lambda.astype(dtype=ct.c_double, copy=True, order='F')
             Lambda_dot = self.Lambda_dot.astype(dtype=ct.c_double, copy=True, order='F')
             Lambda_ddot = self.Lambda_ddot.astype(dtype=ct.c_double, copy=True, order='F')
+            #Lambda = np.zeros((num_LM_eq))
+            #Lambda_dot = np.zeros((num_LM_eq))
+            #Lambda_ddot = np.zeros((num_LM_eq))
             q[-num_LM_eq:] = Lambda.astype(dtype=ct.c_double, copy=True, order='F')
             dqdt[-num_LM_eq:] = Lambda_dot.astype(dtype=ct.c_double, copy=True, order='F')
             dqddt[-num_LM_eq:] = Lambda_ddot.astype(dtype=ct.c_double, copy=True, order='F')
@@ -362,9 +365,9 @@ class NonLinearDynamicMultibody(_BaseStructural):
         # structural_step.q[:] = q[:self.sys_size].copy()
         # structural_step.dqdt[:] = dqdt[:self.sys_size].copy()
         # structural_step.dqddt[:] = dqddt[:self.sys_size].copy()
-        # self.Lambda = Lambda.astype(dtype=ct.c_double, copy=True, order='F')
-        # self.Lambda_dot = Lambda_dot.astype(dtype=ct.c_double, copy=True, order='F')
-        # self.Lambda_ddot = Lambda_ddot.astype(dtype=ct.c_double, copy=True, order='F')
+        self.Lambda = Lambda.astype(dtype=ct.c_double, copy=True, order='F')
+        self.Lambda_dot = Lambda_dot.astype(dtype=ct.c_double, copy=True, order='F')
+        self.Lambda_ddot = Lambda_ddot.astype(dtype=ct.c_double, copy=True, order='F')
         # print("struct solver converged in", iteration, "iterations")
 
         return self.data
