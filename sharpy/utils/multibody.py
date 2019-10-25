@@ -380,7 +380,7 @@ def state2disp_and_accel(q, dqdt, dqddt, MB_beam, MB_tstep):
             # dqdt[first_dof+ibody_num_dof+6:first_dof+ibody_num_dof+10] = algebra.unit_quat(dqdt[first_dof+ibody_num_dof+6:first_dof+ibody_num_dof+10])
             MB_tstep[ibody].dqdt = dqdt[first_dof:first_dof+ibody_num_dof+10].astype(dtype=ct.c_double, order='F', copy=True)
             MB_tstep[ibody].dqddt = dqddt[first_dof:first_dof+ibody_num_dof+10].astype(dtype=ct.c_double, order='F', copy=True)
-            MB_tstep[ibody].mb_dquatdt[ibody, :] = MB_step[ibody].dqddt[-4:]
+            MB_tstep[ibody].mb_dquatdt[ibody, :] = MB_tstep[ibody].dqddt[-4:]
             xbeamlib.xbeam_solv_state2disp(MB_beam[ibody], MB_tstep[ibody])
             xbeamlib.xbeam_solv_state2accel(MB_beam[ibody], MB_tstep[ibody])
             # if onlyFlex:
