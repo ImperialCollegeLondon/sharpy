@@ -591,6 +591,7 @@ class StructTimeStepInfo(object):
         # ibody_StructTimeStepInfo.dqdt[-4:] = ibody_StructTimeStepInfo.quat.astype(dtype=ct.c_double, order='F', copy=True)
         ibody_StructTimeStepInfo.dqdt[-4:] = self.quat.astype(dtype=ct.c_double, order='F', copy=True)
         ibody_StructTimeStepInfo.dqddt[-4:] = self.mb_dquatdt[ibody, :].astype(dtype=ct.c_double, order='F', copy=True)
+        ibody_StructTimeStepInfo.mb_dquatdt[ibody, :] = self.mb_dquatdt[ibody, :].astype(dtype=ct.c_double, order='F', copy=True)
 
         # ibody_StructTimeStepInfo.mb_quat = self.mb_quat.astype(dtype=ct.c_double, order='F', copy=True)
         # ibody_StructTimeStepInfo.mb_FoR_pos = self.mb_FoR_pos.astype(dtype=ct.c_double, order='F', copy=True)
