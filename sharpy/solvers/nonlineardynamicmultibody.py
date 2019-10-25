@@ -308,7 +308,7 @@ class NonLinearDynamicMultibody(_BaseStructural):
             if iteration:
                 res = np.max(np.abs(Dq[0:self.sys_size]))/old_Dq
                 if np.isnan(res):
-                    raise exc.NotConvergedSolver('Multibody res = NaN with old_Dq:' + old_Dq)
+                    raise exc.NotConvergedSolver('Multibody res = NaN')
                 if num_LM_eq:
                     LM_res = np.max(np.abs(Dq[self.sys_size:self.sys_size+num_LM_eq]))/LM_old_Dq
                     # LM_res = np.max(np.abs(Dq[self.sys_size:self.sys_size+num_LM_eq]))
