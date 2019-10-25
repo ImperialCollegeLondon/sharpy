@@ -155,6 +155,8 @@ def merge_multibody(MB_tstep, MB_beam, beam, tstep, mb_data_dict, dt):
         tstep.dqdt[first_dof:first_dof+ibody_num_dof] = MB_tstep[ibody].dqdt[:-10].astype(dtype=ct.c_double, order='F', copy=True)
         tstep.dqddt[first_dof:first_dof+ibody_num_dof] = MB_tstep[ibody].dqddt[:-10].astype(dtype=ct.c_double, order='F', copy=True)
 
+        tstep.mb_dquatdt[ibody, :0] = MB_tstep[ibody].dqddt[-4:].astype(dtype=ct.c_double, order='F', copy=True)
+
         # tstep.mb_q[ibody, :] = MB_tstep[ibody].q[-10:].astype(dtype=ct.c_double, order='F', copy=True)
         # tstep.mb_dqdt[ibody, :] = MB_tstep[ibody].dqdt[-10:].astype(dtype=ct.c_double, order='F', copy=True)
         # tstep.mb_dqddt[ibody, :] = MB_tstep[ibody].dqddt[-10:].astype(dtype=ct.c_double, order='F', copy=True)
@@ -325,12 +327,14 @@ def disp_and_accel2state(MB_beam, MB_tstep, q, dqdt, dqddt):
             first_dof += ibody_num_dof
 
         elif (MB_beam[ibody].FoR_movement == 'free'):
+            dquatdt = MB_tstep[ibody].dqddt[-4:].astype(dtype=ct.c_double, order='F', copy=True)
             xbeamlib.xbeam_solv_disp2state(MB_beam[ibody], MB_tstep[ibody])
             xbeamlib.xbeam_solv_accel2state(MB_beam[ibody], MB_tstep[ibody])
             q[first_dof:first_dof+ibody_num_dof+10]=MB_tstep[ibody].q.astype(dtype=ct.c_double, order='F', copy=True)
             dqdt[first_dof:first_dof+ibody_num_dof+10]=MB_tstep[ibody].dqdt.astype(dtype=ct.c_double, order='F', copy=True)
             dqddt[first_dof:first_dof+ibody_num_dof+10]=MB_tstep[ibody].dqddt.astype(dtype=ct.c_double, order='F', copy=True)
             # dqddt[first_dof+ibody_num_dof+6:first_dof+ibody_num_dof+10]=MB_tstep[ibody].mb_dqddt_quat[ibody,:].astype(dtype=ct.c_double, order='F', copy=True)
+            dqddt[first_dof+ibody_num_dof+6:first_dof+ibody_num_dof+10]=dquatdt.astype(dtype=ct.c_double, order='F', copy=True)
             first_dof += ibody_num_dof + 10
 
         # MB_beam[ibody].timestep_info = MB_tstep[ibody].copy()
