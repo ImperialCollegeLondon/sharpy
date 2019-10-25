@@ -155,7 +155,7 @@ def merge_multibody(MB_tstep, MB_beam, beam, tstep, mb_data_dict, dt):
         tstep.dqdt[first_dof:first_dof+ibody_num_dof] = MB_tstep[ibody].dqdt[:-10].astype(dtype=ct.c_double, order='F', copy=True)
         tstep.dqddt[first_dof:first_dof+ibody_num_dof] = MB_tstep[ibody].dqddt[:-10].astype(dtype=ct.c_double, order='F', copy=True)
 
-        tstep.mb_dquatdt[ibody, :0] = MB_tstep[ibody].dqddt[-4:].astype(dtype=ct.c_double, order='F', copy=True)
+        tstep.mb_dquatdt[ibody, :] = MB_tstep[ibody].dqddt[-4:].astype(dtype=ct.c_double, order='F', copy=True)
 
         # tstep.mb_q[ibody, :] = MB_tstep[ibody].q[-10:].astype(dtype=ct.c_double, order='F', copy=True)
         # tstep.mb_dqdt[ibody, :] = MB_tstep[ibody].dqdt[-10:].astype(dtype=ct.c_double, order='F', copy=True)
