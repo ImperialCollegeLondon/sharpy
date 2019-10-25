@@ -280,7 +280,7 @@ def update_mb_dB_before_merge(tstep, MB_tstep):
         # tstep.mb_q[ibody,:] =  MB_tstep[ibody].q[-10:].astype(dtype=ct.c_double, order='F', copy=True)
         # tstep.mb_dqdt[ibody,:] =  MB_tstep[ibody].q[-10:].astype(dtype=ct.c_double, order='F', copy=True)
         # tstep.mb_dqddt[ibody,:] =  MB_tstep[ibody].q[-10:].astype(dtype=ct.c_double, order='F', copy=True)
-        assert MB_tstep[ibody].mb_dquatdt[ibody, :] == MB_tstep[ibody].dqddt[-4:], "Error in multibody storage"
+        assert (MB_tstep[ibody].mb_dquatdt[ibody, :] == MB_tstep[ibody].dqddt[-4:]).all(), "Error in multibody storage"
         tstep.mb_dquatdt[ibody, :] = MB_tstep[ibody].dqddt[-4:].astype(dtype=ct.c_double, order='F', copy=True)
 
 
