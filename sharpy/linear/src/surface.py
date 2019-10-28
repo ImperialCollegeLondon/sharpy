@@ -246,28 +246,42 @@ class AeroGridGeo():
 
 class AeroGridSurface(AeroGridGeo):
     """
-    Contains geometrical and aerodynamical information about bound/wake surface.
+    Contains geometric and aerodynamic information about bound/wake surface.
 
     Compulsory input are those that apply to both bound and wake surfaces:
-    - zeta: defines geometry
-    - gamma: circulation
+        - ``zeta``: defines geometry
+        - ``gamma``: circulation
 
-    With respect to AeroGridGeo, the class contains methods to:
-    - project prescribed input velocity at nodes (u_ext, zeta_dot) over
-    collocaiton points.
-    - compute induced velocity over ANOTHER surface.
-    - compute AIC induced over ANOTHER surface
+    With respect to :class:`.AeroGridGeo`, the class contains methods to:
+        - project prescribed input velocity at nodes (``u_ext``, ``zeta_dot``) over
+          collocation points.
+        - compute induced velocity over ANOTHER surface.
+        - compute AIC induced over ANOTHER surface
+
+    Args:
+        Map (gridmapping.AeroGridMap): Map of grid.
+        zeta (list(np.ndarray)): Grid vertices coordinates in inertial (G) frame.
+        zeta_dot (list(np.ndarray)): Grid vertices velocities in inertial (G) frame. Default is ``None``.
+        u_ext (list(np.ndarray)): Grid external velocities in inertial (G) frame. Default is ``None``.
+        gamma_dot (list(np.ndarray)): Panel circulation derivative. Default is ``None``.
+        rho (float): Air density. Default is ``1.``
+        aM (float): Chordwise position in panel of collocation point. Default is ``0.5``
+        aN (float): Spanwise position in panel of collocation point. Default is ``0.5``
+        for_vel (np.ndarray): Frame of reference velocity (including rotational velocity) in the inertial frame.
 
     To add:
-    - project prescribed input velocity at nodes (u_ext, zeta_dot) over
-    mid-point segments
+        - project prescribed input velocity at nodes (u_ext, zeta_dot) over
+        mid-point segments
     """
 
     def __init__(self, Map, zeta, gamma,
-                 u_ext=None, zeta_dot=None, gamma_dot=None,
-                 rho=1., aM=0.5, aN=0.5,
-                 omega=np.zeros((3,), ),
-                 for_vel=np.zeros((3, ))):
+                 u_ext=None,
+                 zeta_dot=None,
+                 gamma_dot=None,
+                 rho=1.,
+                 aM=0.5,
+                 aN=0.5,
+                 for_vel=np.zeros((6, ))):
 
         super().__init__(Map, zeta, aM, aN)
 
@@ -276,8 +290,8 @@ class AeroGridSurface(AeroGridGeo):
         self.u_ext = u_ext
         self.gamma_dot = gamma_dot
         self.rho = rho
-        self.omega = omega
-        self.for_vel = for_vel
+        self.omega = for_vel[3:]
+        self.for_vel_tra = for_vel[:3]
 
         msg_out = 'wrong input shape!'
         assert self.gamma.shape == (self.maps.M, self.maps.N), msg_out
@@ -286,19 +300,25 @@ class AeroGridSurface(AeroGridGeo):
             assert self.zeta_dot.shape == (3, self.maps.M + 1, self.maps.N + 1), msg_out
         if self.u_ext is not None:
             assert self.u_ext.shape == (3, self.maps.M + 1, self.maps.N + 1), msg_out
+        assert for_vel.shape == (6, ), msg_out
+        assert self.omega.shape == (3, ), msg_out
+        assert self.for_vel_tra.shape == (3, ), msg_out
 
     # -------------------------------------------------------- input velocities
 
     def get_input_velocities_at_collocation_points(self):
         """
-        Returns velocities at collocation points from nodal values u_ext and
-        zeta_dot of shape (3,M+1,N+1).
+        Returns velocities at collocation points from nodal values ``u_ext`` and
+        ``zeta_dot`` of shape ``(3, M+1, N+1)`` at the collocation points.
 
-        Remark: u_input_coll=Wcv*(u_ext-zet_dot) does not depend on the
-        coordinates zeta.
+        Notes:
 
-        2018/08/24: Include effects due to rotation (omega x zeta). Now it
-        depends on the coordinates zeta
+            .. math:: \boldsymbol{u}_{c} = \mathcal{W}_{cv}(\boldsymbol(\nu)_0 - \boldsymbol{\zeta}_0)
+
+            is the input velocity at the collocation point, where :math:`\mathcal{W}_{cv} projects the velocity
+            from the grid points onto the collocation point. This variable is referred to as
+            ``u_input_coll=Wcv*(u_ext-zeta_dot)`` and depends on the coordinates ``zeta`` when the body is rotating.
+
         """
 
         # define total velocity
@@ -310,9 +330,7 @@ class AeroGridSurface(AeroGridGeo):
         # Include rotation
         for i_m in range(self.maps.M + 1):
             for i_n in range(self.maps.N + 1):
-                # print(u_tot[:,i_m,i_n])
-                # print(np.cross(self.omega,self.zeta[:,i_m,i_n]))
-                u_tot[:, i_m, i_n] -= np.cross(self.omega, self.zeta[:, i_m, i_n]) + self.for_vel
+                u_tot[:, i_m, i_n] -= np.cross(self.omega, self.zeta[:, i_m, i_n]) + self.for_vel_tra
 
         self.u_input_coll = self.interp_vertex_to_coll(u_tot)
 
@@ -353,7 +371,7 @@ class AeroGridSurface(AeroGridGeo):
         # Include rotation
         for i_m in range(self.maps.M + 1):
             for i_n in range(self.maps.N + 1):
-                u_tot[:, i_m, i_n] -= np.cross(self.omega, self.zeta[:, i_m, i_n]) + self.for_vel
+                u_tot[:, i_m, i_n] -= np.cross(self.omega, self.zeta[:, i_m, i_n]) + self.for_vel_tra
 
         M, N = self.maps.M, self.maps.N
         self.u_input_seg = np.empty((3, 4, M, N))

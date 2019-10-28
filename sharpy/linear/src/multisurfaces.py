@@ -17,6 +17,10 @@ class MultiAeroGridSurfaces():
     def __init__(self, tsdata, for_vel=np.zeros((6,))):
         """
         Initialise from data structure at time step.
+
+        Args:
+            tsdata (sharpy.utils.datastructures.AeroTimeStepInfo): Linearisation time step
+            for_vel (np.ndarray): Frame of reference velocity in the inertial (G) frame, including the angular velocity.
         """
 
         self.tsdata0 = tsdata
@@ -43,17 +47,17 @@ class MultiAeroGridSurfaces():
             ### Allocate bound surfaces
             M, N = tsdata.dimensions[ss]
             Map = gridmapping.AeroGridMap(M, N)
-            try:
-                omega = tsdata.omega[ss]
-            except:
-                omega = for_vel[3:]
+            # try:
+            #     omega = tsdata.omega[ss]
+            # except AttributeError:
+            #     omega = for_vel[3:]
+
             Surf = surface.AeroGridSurface(
                 Map, zeta=tsdata.zeta[ss], gamma=tsdata.gamma[ss],
                 u_ext=tsdata.u_ext[ss], zeta_dot=tsdata.zeta_dot[ss],
                 gamma_dot=tsdata.gamma_dot[ss],
                 rho=tsdata.rho,
-                omega=omega,
-                for_vel=for_vel[:3])
+                for_vel=for_vel)
 
             # generate geometry data
             Surf.generate_areas()
@@ -132,7 +136,7 @@ class MultiAeroGridSurfaces():
             else:
                 # Loop input surfaces
                 for ss_in in range(self.n_surf):
-                    # Buond
+                    # Bound
                     Surf_in = self.Surfs[ss_in]
                     Surf_out.u_ind_coll_norm += \
                         Surf_in.get_induced_velocity_over_surface(Surf_out,
