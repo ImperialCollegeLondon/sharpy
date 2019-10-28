@@ -304,6 +304,9 @@ class AeroGridSurface(AeroGridGeo):
         assert self.omega.shape == (3, ), msg_out
         assert self.for_vel_tra.shape == (3, ), msg_out
 
+        self.u_input_coll = None  # input velocities at the collocation points
+        self.u_input_coll_norm = None  # normal input velocities at the collocation points
+        self.u_input_seg = None  # input velocities at segments
     # -------------------------------------------------------- input velocities
 
     def get_input_velocities_at_collocation_points(self):
@@ -736,7 +739,7 @@ class AeroGridSurface(AeroGridGeo):
         circulation of panel (mm,nn).
         """
 
-        if not hasattr(self, 'u_input_seg'):
+        if self.u_input_seg is None:
             if not recompute_velocities:
                 print("WARNING: recomputing velocities")
             self.get_input_velocities_at_segments()

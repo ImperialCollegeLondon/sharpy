@@ -333,7 +333,8 @@ def uc_dncdzeta(Surf):
             DerList.append(uc_dncdzeta(Surf[ss]))
         return DerList
     else:
-        if (not hasattr(Surf, 'u_ind_coll')) or (not hasattr(Surf, 'u_input_coll')):
+        # if (not hasattr(Surf, 'u_ind_coll')) or (not hasattr(Surf, 'u_input_coll')):
+        if (not hasattr(Surf, 'u_ind_coll')) or (Surf.u_input_coll is None):
             raise NameError(
                 'Surf does not have the required attributes\nu_ind_coll\nu_input_coll')
 
@@ -404,7 +405,7 @@ def dfqsdgamma_vrel0(Surfs, Surfs_star):
         Surf = Surfs[ss]
         if not hasattr(Surf, 'u_ind_seg'):
             raise NameError('Induced velocities at segments missing')
-        if not hasattr(Surf, 'u_input_seg'):
+        if Surf.u_input_seg is None:
             raise NameError('Input velocities at segments missing')
         if not hasattr(Surf, 'fqs_seg'):
             Surf.get_joukovski_qs(gammaw_TE=Surfs_star[ss].gamma[0, :])
@@ -501,7 +502,7 @@ def dfqsdzeta_vrel0(Surfs, Surfs_star):
         Surf = Surfs[ss]
         if not hasattr(Surf, 'u_ind_seg'):
             raise NameError('Induced velocities at segments missing')
-        if not hasattr(Surf, 'u_input_seg'):
+        if Surf.u_input_seg is None:
             raise NameError('Input velocities at segments missing')
 
         M, N = Surf.maps.M, Surf.maps.N
@@ -581,7 +582,7 @@ def dfqsduinput(Surfs, Surfs_star):
     for ss in range(n_surf):
 
         Surf = Surfs[ss]
-        if not hasattr(Surf, 'u_input_seg'):
+        if Surf.u_input_seg is None:
             raise NameError('Input velocities at segments missing')
 
         M, N = Surf.maps.M, Surf.maps.N

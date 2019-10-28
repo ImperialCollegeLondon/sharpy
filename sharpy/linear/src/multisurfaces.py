@@ -150,10 +150,9 @@ class MultiAeroGridSurfaces():
 
     def get_input_velocities_at_collocation_points(self):
 
-        for ss in range(self.n_surf):
-            Surf = self.Surfs[ss]
-            if not hasattr(Surf, 'u_input_coll'):
-                Surf.get_input_velocities_at_collocation_points()
+        for surf in self.Surfs:
+            if surf.u_input_coll is None:
+                surf.get_input_velocities_at_collocation_points()
 
     # -------------------------------------------------------------------------
 
@@ -188,11 +187,10 @@ class MultiAeroGridSurfaces():
 
     def get_input_velocities_at_segments(self, overwrite=False):
 
-        for ss in range(self.n_surf):
-            Surf = self.Surfs[ss]
-            if hasattr(Surf, 'u_input_seg') and (not overwrite):
+        for surf in self.Surfs:
+            if (surf.u_input_seg is not None) and (not overwrite):
                 continue
-            Surf.get_input_velocities_at_segments()
+            surf.get_input_velocities_at_segments()
 
     # -------------------------------------------------------------------------
 
@@ -230,14 +228,13 @@ class MultiAeroGridSurfaces():
                 break
 
         print('Verifing non-penetration at bound...')
-        for ss in range(self.n_surf):
-            Surf_here = self.Surfs[ss]
+        for surf in self.Surfs:
             # project input velocities
-            if not hasattr(Surf_here, 'u_input_coll_norm'):
-                Surf_here.get_normal_input_velocities_at_collocation_points()
+            if surf.u_input_coll_norm is None:
+                surf.get_normal_input_velocities_at_collocation_points()
 
             ErMax = np.max(np.abs(
-                Surf_here.u_ind_coll_norm + Surf_here.u_input_coll_norm))
+                surf.u_ind_coll_norm + surf.u_input_coll_norm))
             print('Surface %.2d max abs error: %.3e' % (ss, ErMax))
 
             assert ErMax < 1e-12 * np.max(np.abs(self.Surfs[0].u_ext)), \
@@ -276,18 +273,19 @@ class MultiAeroGridSurfaces():
                 Surf_out.u_ind_coll_norm.reshape((Surf_out.maps.M, Surf_out.maps.N))
 
         print('Verifing AICs at collocation points...')
-        for ss in range(self.n_surf):
-            Surf_here = self.Surfs[ss]
+        i_surf = 0
+        for surf in self.Surfs:
             # project input velocities
-            if not hasattr(Surf_here, 'u_input_coll_norm'):
-                Surf_here.get_normal_input_velocities_at_collocation_points()
+            if surf.u_input_coll_norm is None:
+                surf.get_normal_input_velocities_at_collocation_points()
 
             ErMax = np.max(np.abs(
-                Surf_here.u_ind_coll_norm + Surf_here.u_input_coll_norm))
-            print('Surface %.2d max abs error: %.3e' % (ss, ErMax))
+                surf.u_ind_coll_norm + surf.u_input_coll_norm))
+            print('Surface %.2d max abs error: %.3e' % (i_surf, ErMax))
 
             assert ErMax < 1e-12 * np.max(np.abs(self.Surfs[0].u_ext)), \
                 'Linearisation state does not verify the non-penetration condition!'
+            i_surf += 1
 
     # For rotating cases:
     # assert ErMax<1e-10*np.max(np.abs(self.Surfs[0].u_input_coll)),\
@@ -338,6 +336,6 @@ if __name__ == '__main__':
     # joukovski
     MS.verify_joukovski_qs()
 
-    embed()
+    # embed()
 
 ### verify u_induced
