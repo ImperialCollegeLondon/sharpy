@@ -239,7 +239,7 @@ class LinearAeroelastic(ss_interface.BaseElement):
         cout.cout_wrap('\tTotal states: %g' % ss.states, 1)
         cout.cout_wrap('\tInputs: %g' % ss.inputs, 1)
         cout.cout_wrap('\tOutputs: %g' % ss.outputs, 1)
-        Y_freq = uvlm.ss.freqresp(np.array([0]))[:, :, 0]
+        Y_freq = uvlm.ss.freqresp(np.array([0]))[-10:, -11:, 0].real
         return ss
 
     def update(self, u_infty):

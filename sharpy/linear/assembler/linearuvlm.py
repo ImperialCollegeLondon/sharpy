@@ -85,7 +85,13 @@ class LinearUVLM(ss_interface.BaseElement):
 
         self.scaled = not all(scale == 1.0 for scale in self.settings['ScalingDict'].values())
 
-        uvlm = linuvlm.Dynamic(data.linear.tsaero0, dt=None, dynamic_settings=self.settings)
+        for_vel = data.structure.timestep_info[-1].for_vel
+        Cga = data.structure.timestep_info[-1].cga()
+        uvlm = linuvlm.Dynamic(data.linear.tsaero0,
+                               dt=None,
+                               dynamic_settings=self.settings,
+                               for_vel=np.hstack((Cga.dot(for_vel[:3]), Cga.dot(for_vel[3:]))))
+
         self.tsaero0 = data.linear.tsaero0
         self.sys = uvlm
 

@@ -682,6 +682,7 @@ class FlexDynamic():
         #     self.Cstr[-4:, -7:-4] = 0.5*np.block([[-q1, -q2, -q3], [q0, -q3, q2], [q3, q0, -q1], [-q2, q1, q0]])
 
         Kgrav = np.zeros_like(self.Kstr)
+        Cgrav = np.zeros_like(self.Cstr)
         Kgrav[flex_dof:, :flex_dof] += Krs_grav
         Kgrav[:flex_dof, :flex_dof] += Kss_grav
         Cgrav[-rig_dof:, -rig_dof:] += Crr_grav

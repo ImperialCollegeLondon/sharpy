@@ -126,7 +126,8 @@ class LinAeroEla():
                 UseSparse=settings_here['use_sparse'].value,
                 integr_order=settings_here['integr_order'].value,
                 ScalingDict=settings_here['ScalingDict'],
-                for_vel=self.tsstr.for_vel)
+                for_vel=np.hstack((self.tsstr.cga().dot(self.tsstr.for_vel[:3]),
+                                   self.tsstr.cga().dot(self.tsstr.for_vel[3:]))))
         else:
             self.linuvlm = linuvlm.Dynamic(
                 self.tsaero,
@@ -135,7 +136,8 @@ class LinAeroEla():
                 UseSparse=settings_here['use_sparse'].value,
                 integr_order=settings_here['integr_order'].value,
                 ScalingDict=settings_here['ScalingDict'],
-                for_vel=self.tsstr.for_vel)
+                for_vel=np.hstack((self.tsstr.cga().dot(self.tsstr.for_vel[:3]),
+                                   self.tsstr.cga().dot(self.tsstr.for_vel[3:]))))
 
         # add rotational speed
         for ii in range(self.linuvlm.MS.n_surf):
@@ -451,7 +453,7 @@ class LinAeroEla():
         Cag = Cga.T
 
         # for_pos=tsstr.for_pos
-        for_tra = tsstr.for_vel[:3]
+        for_vel = tsstr.for_vel[:3]
         for_rot = tsstr.for_vel[3:]
         skew_for_rot = algebra.skew(for_rot)
         Der_vel_Ra = np.dot(Cga, skew_for_rot)
@@ -539,7 +541,7 @@ class LinAeroEla():
                     XbskewTan = np.dot(Xbskew, Tan)
 
                     # get velocity terms
-                    zetag_dot = tsaero.zeta_dot[ss][:, mm, nn]  # in G FoR, w.r.t. origin A-G
+                    zetag_dot = tsaero.zeta_dot[ss][:, mm, nn] - Cga.dot(for_vel)  # in G FoR, w.r.t. origin A-G
                     zetaa_dot = np.dot(Cag, zetag_dot)  # in A FoR, w.r.t. origin A-G
 
                     # get aero force
