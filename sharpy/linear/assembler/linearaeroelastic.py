@@ -165,7 +165,6 @@ class LinearAeroelastic(ss_interface.BaseElement):
         # np.savetxt('./vecs_r_beam_grav_euler.dat', eigvecs.real)
         # np.savetxt('./vecs_i_beam_grav_euler.dat', eigvecs.imag)
 
-
         if not self.load_uvlm_from_file:
             # Projecting the UVLM inputs and outputs onto the structural degrees of freedom
             Ksa = self.sys.Kforces[:beam.sys.num_dof, :]  # maps aerodynamic grid forces to nodal forces

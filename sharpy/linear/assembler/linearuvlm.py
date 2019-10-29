@@ -85,12 +85,12 @@ class LinearUVLM(ss_interface.BaseElement):
 
         self.scaled = not all(scale == 1.0 for scale in self.settings['ScalingDict'].values())
 
-        for_vel = data.structure.timestep_info[-1].for_vel
-        Cga = data.structure.timestep_info[-1].cga()
+        for_vel = data.linear.tsstruct0.for_vel
+        cga = data.linear.tsstruct0.cga()
         uvlm = linuvlm.Dynamic(data.linear.tsaero0,
                                dt=None,
                                dynamic_settings=self.settings,
-                               for_vel=np.hstack((Cga.dot(for_vel[:3]), Cga.dot(for_vel[3:]))))
+                               for_vel=np.hstack((cga.dot(for_vel[:3]), cga.dot(for_vel[3:]))))
 
         self.tsaero0 = data.linear.tsaero0
         self.sys = uvlm
@@ -106,10 +106,10 @@ class LinearUVLM(ss_interface.BaseElement):
         self.input_variables = ss_interface.LinearVector(input_variables_database, self.sys_id)
         self.state_variables = ss_interface.LinearVector(state_variables_database, self.sys_id)
 
-        if data.aero.n_control_surfaces >= 1:
-            import sharpy.linear.assembler.lincontrolsurfacedeflector as lincontrolsurfacedeflector
-            self.control_surface = lincontrolsurfacedeflector.LinControlSurfaceDeflector()
-            self.control_surface.initialise(data, uvlm)
+        # if data.aero.n_control_surfaces >= 1:
+        #     import sharpy.linear.assembler.lincontrolsurfacedeflector as lincontrolsurfacedeflector
+        #     self.control_surface = lincontrolsurfacedeflector.LinControlSurfaceDeflector()
+        #     self.control_surface.initialise(data, uvlm)
 
         if self.settings['rom_method'] != '':
             # Initialise ROM

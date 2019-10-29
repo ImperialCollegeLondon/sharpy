@@ -140,8 +140,8 @@ class LinAeroEla():
                                    self.tsstr.cga().dot(self.tsstr.for_vel[3:]))))
 
         # add rotational speed
-        for ii in range(self.linuvlm.MS.n_surf):
-            self.linuvlm.MS.Surfs[ii].omega = self.tsstr.for_vel[3:]
+        # for ii in range(self.linuvlm.MS.n_surf):
+        #     self.linuvlm.MS.Surfs[ii].omega = self.tsstr.for_vel[3:]
 
 
     def reshape_struct_input(self):

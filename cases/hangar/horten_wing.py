@@ -724,7 +724,7 @@ class HortenWing:
             lumped_mass_position_handle = h5file.create_dataset(
                 'lumped_mass_position', data=self.lumped_mass_position)
 
-    def create_linear_simulation(self, delta_e=None):
+    def create_linear_simulation(self, delta_e=None, delta_dot=None):
 
         Kpanels = self.M * (self.n_node - 1)
         Kvertices = (self.M + 1) * self.n_node
@@ -732,7 +732,7 @@ class HortenWing:
         n_states_aero = 3 * Kpanels + Kpanels_wake
         # n_inputs_aero = 2 * 3 * Kvertices
 
-        n_states_struct = 2*(6 * (self.n_node - 1) + 10)
+        n_states_struct = 2*(6 * (self.n_node - 1) + 9)
         n_inputs_struct = n_states_struct // 2
 
         x0 = np.zeros((n_states_aero + n_states_struct))
@@ -742,6 +742,7 @@ class HortenWing:
         # u[0:3, -7] = -1000
         if delta_e is not None:
             u[:, n_states_struct:n_states_struct+self.n_control_surfaces] = delta_e
+            # u[:, n_states_struct:n_states_struct+self.n_control_surfaces + self.n_control_surfaces] = delta_dot
 
         # u[10:15, -8] = 100
 

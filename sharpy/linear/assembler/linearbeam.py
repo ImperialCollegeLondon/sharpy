@@ -17,7 +17,6 @@ class LinearBeam(BaseElement):
     """
     sys_id = "LinearBeam"
 
-
     settings_types = dict()
     settings_default = dict()
     settings_description = dict()
@@ -82,10 +81,6 @@ class LinearBeam(BaseElement):
         Returns:
 
         """
-        # Would assemble the system as per the settings
-        # Here we would add further options such as discarding DOFs etc
-
-        # linearise then trim
         if self.settings['gravity'].value:
             self.sys.linearise_gravity_forces()
 
@@ -98,18 +93,15 @@ class LinearBeam(BaseElement):
         if t_ref is not None:
             self.sys.scale_system_normalised_time(t_ref)
 
-        import sharpy.linear.assembler.linearthrust as linearthrust
-        engine = linearthrust.LinearThrust()
-        engine.initialise()
+        # import sharpy.linear.assembler.linearthrust as linearthrust
+        # engine = linearthrust.LinearThrust()
+        # engine.initialise()
 
         # K_thrust = engine.generate(self.tsstruct0, self.sys)
         #
         # self.sys.Kstr += K_thrust
 
         self.sys.assemble()
-
-        # remove yaw dof
-        rem_yaw = np.eye(self.sys.Mstr.shape[0], self.sys.Mstr.shape[0]-1)
 
         # TODO: remove integrals of the rigid body modes (and change mode shapes to account for this in the coupling matrices)
         # Option to remove certain dofs via dict: i.e. dofs to remove

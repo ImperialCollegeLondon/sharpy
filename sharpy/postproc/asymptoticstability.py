@@ -72,7 +72,6 @@ class AsymptoticStability(BaseSolver):
     settings_types['postprocessors_settings'] = 'dict'
     settings_default['postprocessors_settings'] = dict()
 
-
     settings_table = settings.SettingsTable()
     __doc__ += settings_table.generate(settings_types, settings_default, settings_description)
 
@@ -99,16 +98,6 @@ class AsymptoticStability(BaseSolver):
             self.settings = custom_settings
 
         settings.to_custom_types(self.settings, self.settings_types, self.settings_default)
-
-        # # Initialise postproc
-        # # initialise postprocessors
-        # # self.postprocessors = dict()
-        # if len(self.settings['postprocessors']) > 0:
-        #     self.with_postprocessors = True
-        # for postproc in self.settings['postprocessors']:
-        #     self.postprocessors[postproc] = initialise_solver(postproc)
-        #     self.postprocessors[postproc].initialise(
-        #         self.data, self.settings['postprocessors_settings'][postproc])
 
         self.num_evals = self.settings['num_evals'].value
 
@@ -147,17 +136,8 @@ class AsymptoticStability(BaseSolver):
 
         ss = self.data.linear.ss
 
-        # Calculate eigenvectors and eigenvalues of the full system
-
-        #remove yaw
-        # rem_yaw = np.zeros((ss.A.shape[0], ss.A.shape[0]-2))
-        # rem_yaw[:1536+296, :1536+296] = np.eye(1536+296)
-        # rem_yaw[-297:-1, -296:] = np.eye(296)
-        #
-        # ss.A = rem_yaw.T.dot(ss.A.dot(rem_yaw))
-
         eigenvalues, eigenvectors = sclalg.eig(ss.A)
-        # np.savetxt('./Amatrix', ss.A)
+
         # Convert DT eigenvalues into CT
         if ss.dt:
             # Obtain dimensional time step
@@ -212,10 +192,6 @@ class AsymptoticStability(BaseSolver):
 
         stability_folder_path = self.folder
 
-        evec_pd = pd.DataFrame(data=self.eigenvectors[:, :num_evals])
-        # eval_pd = pd.DataFrame(data=[self.eigenvalues.real, self.eigenvalues.imag]).T
-        # evec_pd.to_csv(stability_folder_path + '/eigenvectors.csv')
-        # eval_pd.to_csv(stability_folder_path + '/eigenvalues.csv')
         np.savetxt(stability_folder_path + '/eigenvalues.dat', self.eigenvalues[:num_evals].view(float).reshape(-1, 2))
         np.savetxt(stability_folder_path + '/eigenvectors_real.dat', self.eigenvectors[:, :num_evals].real.view(float))
         np.savetxt(stability_folder_path + '/eigenvectors_imag.dat', self.eigenvectors[:, :num_evals].imag.view(float))
@@ -225,16 +201,6 @@ class AsymptoticStability(BaseSolver):
         Prints the eigenvalues to a table with the corresponding natural frequency, period and damping ratios
 
         """
-        # for eval in range(self.settings['num_evals'].value):
-        #     eigenvalue = self.eigenvalues[eval]
-        #     omega_n = np.abs(eigenvalue)
-        #     omega_d = np.abs(eigenvalue.imag)
-        #     damping_ratio = -eigenvalue.real / omega_n
-        #     f_n = omega_n / 2 / np.pi
-        #     f_d = omega_d / 2 / np.pi
-        #     period = 1 / f_d
-        #     self.eigenvalue_table.print_line([eval, eigenvalue.real, eigenvalue.imag, f_n, f_d, damping_ratio, period])
-
         self.eigenvalue_table.print_evals(self.eigenvalues[:self.settings['num_evals'].value])
 
     def velocity_analysis(self):

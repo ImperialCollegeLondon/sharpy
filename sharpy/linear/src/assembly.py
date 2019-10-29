@@ -333,7 +333,6 @@ def uc_dncdzeta(Surf):
             DerList.append(uc_dncdzeta(Surf[ss]))
         return DerList
     else:
-        # if (not hasattr(Surf, 'u_ind_coll')) or (not hasattr(Surf, 'u_input_coll')):
         if (not hasattr(Surf, 'u_ind_coll')) or (Surf.u_input_coll is None):
             raise NameError(
                 'Surf does not have the required attributes\nu_ind_coll\nu_input_coll')

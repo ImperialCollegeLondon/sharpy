@@ -168,9 +168,9 @@ class StabilityDerivatives(solver_interface.BaseSolver):
         derivatives_g[:, -2] = derivatives_g[:, 2] * u_inf  # ders wrt alpha
         derivatives_g[:, -1] = derivatives_g[:, 1] * u_inf  # ders wrt beta
 
-        der_matrix = np.zeros((6, self.inputs - 4))
+        der_matrix = np.zeros((6, self.inputs - (rig_dof - 6)))
         der_col = 0
-        for i in list(range(6))+list(range(10, self.inputs)):
+        for i in list(range(6))+list(range(rig_dof, self.inputs)):
             der_matrix[:3, der_col] = Y_freq[:3, i]
             der_matrix[3:6, der_col] = Y_freq[3:6, i]
             der_col += 1
