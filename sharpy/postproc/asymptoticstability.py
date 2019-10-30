@@ -305,10 +305,10 @@ class AsymptoticStability(BaseSolver):
             aero_states = self.data.linear.linear_system.uvlm.ss.states
             displacement_states = self.data.linear.linear_system.beam.ss.states // 2
             amplitude_factor = modalutils.scale_mode(self.data,
-                                                self.eigenvectors[aero_states:aero_states + displacement_states-10,
+                                                self.eigenvectors[aero_states:aero_states + displacement_states-9,
                                                 mode], rot_max_deg=10, perc_max=0.1)
 
-            fact_rbm = self.scale_rigid_body_mode(self.eigenvectors[:, mode], self.eigenvalues[mode].imag)
+            fact_rbm = self.scale_rigid_body_mode(self.eigenvectors[:, mode], self.eigenvalues[mode].imag)* 100
             print(fact_rbm)
 
             t, x = self.mode_time_domain(amplitude_factor, fact_rbm, mode)
@@ -338,7 +338,7 @@ class AsymptoticStability(BaseSolver):
             for postproc in postprocessor_list:
                 self.data = postprocessors[postproc].run(online=True)
             for n in range(t.shape[1]):
-                aero_tstep, struct_tstep = lindynamicsim.state_to_timestep(self.data, None, x[:, n])
+                aero_tstep, struct_tstep = lindynamicsim.state_to_timestep(self.data, x[:, n])
                 self.data.aero.timestep_info.append(aero_tstep)
                 self.data.structure.timestep_info.append(struct_tstep)
 

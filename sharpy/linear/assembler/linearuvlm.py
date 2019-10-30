@@ -106,10 +106,10 @@ class LinearUVLM(ss_interface.BaseElement):
         self.input_variables = ss_interface.LinearVector(input_variables_database, self.sys_id)
         self.state_variables = ss_interface.LinearVector(state_variables_database, self.sys_id)
 
-        # if data.aero.n_control_surfaces >= 1:
-        #     import sharpy.linear.assembler.lincontrolsurfacedeflector as lincontrolsurfacedeflector
-        #     self.control_surface = lincontrolsurfacedeflector.LinControlSurfaceDeflector()
-        #     self.control_surface.initialise(data, uvlm)
+        if data.aero.n_control_surfaces >= 1:
+            import sharpy.linear.assembler.lincontrolsurfacedeflector as lincontrolsurfacedeflector
+            self.control_surface = lincontrolsurfacedeflector.LinControlSurfaceDeflector()
+            self.control_surface.initialise(data, uvlm)
 
         if self.settings['rom_method'] != '':
             # Initialise ROM
