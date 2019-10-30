@@ -61,7 +61,6 @@ class AsymptoticStability(BaseSolver):
     settings_default['velocity_analysis'] = []
     settings_description['velocity_analysis'] = 'List containing min, max and number ' \
                                                 'of velocities to analyse the system'
-
     settings_types['modes_to_plot'] = 'list(int)'
     settings_default['modes_to_plot'] = []
     settings_description['modes_to_plot'] = 'List of mode numbers to simulate and plot'

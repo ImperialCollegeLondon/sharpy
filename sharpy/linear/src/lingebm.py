@@ -717,6 +717,10 @@ class FlexDynamic():
         assert self.inout_coords in ['modes', 'nodes'], \
             'inout_coords=%s not implemented!' % self.inout_coords
 
+        det_mass_matrix = np.linalg.det(self.Mstr)
+        if det_mass_matrix == 0.:
+            warnings.warn('Mass matrix determinant is equal to 0. Inverse may not be correct.')
+
         dlti = self.dlti
         modal = self.modal
         num_dof = self.num_dof
@@ -781,6 +785,7 @@ class FlexDynamic():
 
                 else:  # Full system
                     self.Minv = np.linalg.inv(self.Mstr)
+
                     Ass, Bss, Css, Dss = newmark_ss(
                         self.Minv, self.Cstr, self.Kstr,
                         self.dt, self.newmark_damp)

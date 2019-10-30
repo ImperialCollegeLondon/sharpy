@@ -81,7 +81,7 @@ class FrequencyResponse(solver_interface.BaseSolver):
             rom_method = data.linear.linear_system.uvlm.settings['rom_method'][0]
             self.ss = data.linear.linear_system.uvlm.rom[rom_method].ss
             self.ssrom = data.linear.linear_system.uvlm.ss
-        except AttributeError:
+        except IndexError:
             self.ss = data.linear.linear_system.uvlm.ss
 
         if not custom_settings:
