@@ -79,16 +79,18 @@ class BeamPlot(BaseSolver):
             timesteps = len(self.data.structure.timestep_info)
             temp_matrix = np.zeros((timesteps, 6))
             for it in range(timesteps):
-                temp_matrix[it, :] = self.data.structure.timestep_info[it].for_acc
+                if self.data.structure.timestep_info[it] is not None:
+                    temp_matrix[it, :] = self.data.structure.timestep_info[it].for_acc
 
             np.savetxt(filename, temp_matrix, delimiter=',')
 
     def plot(self, online):
         if not online:
             for it in range(len(self.data.structure.timestep_info)):
-                self.write_beam(it)
-                if self.settings['include_FoR']:
-                    self.write_for(it)
+                if self.data.structure.timestep_info[it] is not None:
+                    self.write_beam(it)
+                    if self.settings['include_FoR']:
+                        self.write_for(it)
         else:
             it = len(self.data.structure.timestep_info) - 1
             self.write_beam(it)
