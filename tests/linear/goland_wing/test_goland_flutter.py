@@ -28,7 +28,7 @@ class TestGolandFlutter(unittest.TestCase):
         # ROM Properties
         rom_settings = dict()
         rom_settings['algorithm'] = 'mimo_rational_arnoldi'
-        rom_settings['r'] = 4
+        rom_settings['r'] = 6
         frequency_continuous_k = np.array([0.])
 
         # Case Admin - Create results folders
@@ -201,8 +201,8 @@ class TestGolandFlutter(unittest.TestCase):
                                                               'rigid_body_motion': 'off',
                                                               'use_euler': 'off',
                                                               'remove_inputs': ['u_gust'],
-                                                              'rom_method': 'Krylov',
-                                                              'rom_method_settings': rom_settings},
+                                                              'rom_method': ['Krylov'],
+                                                              'rom_method_settings': {'Krylov': rom_settings}},
                                             'rigid_body_motion': False}}
 
         ws.config['AsymptoticStability'] = {'print_info': True,
@@ -235,7 +235,7 @@ class TestGolandFlutter(unittest.TestCase):
         self.data = sharpy.sharpy_main.main(['', ws.route + ws.case_name + '.solver.txt'])
 
     def run_rom_stable(self):
-        ssrom = self.data.linear.linear_system.uvlm.rom.ssrom
+        ssrom = self.data.linear.linear_system.uvlm.rom['Krylov'].ssrom
         eigs_rom = np.linalg.eigvals(ssrom.A)
 
         assert all(np.abs(eigs_rom) <= 1.), 'UVLM Krylov ROM is unstable - flutter speed may not be correct. Change' \

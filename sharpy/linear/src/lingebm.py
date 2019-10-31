@@ -157,7 +157,7 @@ class FlexDynamic():
 
         # Extract settings
         self.settings = custom_settings
-        settings.to_custom_types(self.settings, self.settings_types, self.settings_default)
+        # settings.to_custom_types(self.settings, self.settings_types, self.settings_default)
 
         ### extract timestep_info modal results
         # unavailable attrs will be None
@@ -176,20 +176,20 @@ class FlexDynamic():
         self.Cstr = tsinfo.modal.get('C')
         self.Kstr = tsinfo.modal.get('K')
 
-        self.Nmodes = self.settings['num_modes'].value
+        self.Nmodes = self.settings['num_modes']
         self._num_modes = None
-        self.num_modes = self.settings['num_modes'].value
+        self.num_modes = self.settings['num_modes']
         self.num_dof = self.U.shape[0]
         if self.V is not None:
             self.num_dof = self.num_dof // 2
 
         ### set other flags
-        self.modal = self.settings['modal_projection'].value
+        self.modal = self.settings['modal_projection']
         self.inout_coords = self.settings['inout_coords']
-        self.dlti = self.settings['discrete_time'].value
+        self.dlti = self.settings['discrete_time']
 
         if self.dlti:
-            self.dt = self.settings['dt'].value
+            self.dt = self.settings['dt']
         else:
             self.dt = None
 
@@ -197,8 +197,8 @@ class FlexDynamic():
         if self.V is None:
             self.proj_modes = 'undamped'
         self.discr_method = self.settings['discr_method']
-        self.newmark_damp = self.settings['newmark_damp'].value
-        self.use_euler = self.settings['use_euler'].value
+        self.newmark_damp = self.settings['newmark_damp']
+        self.use_euler = self.settings['use_euler']
 
         ### set state-space variables
         self.SScont = None
@@ -217,6 +217,70 @@ class FlexDynamic():
             self.euler_propagation_equations(tsinfo)
 
         self.update_modal()
+
+        if self.use_euler:
+            self.num_dof_rig = 9
+        else:
+            self.num_dof_rig = 10
+
+        self.num_dof_flex = np.sum(structure.vdof >= 0)*6
+
+        self.num_dof_str = self.num_dof_flex + self.num_dof_rig
+        q, dq = self.reshape_struct_input()
+
+        self.tsstruct0.q = q
+        self.tsstruct0.dq = dq
+
+    def reshape_struct_input(self):
+        """ Reshape structural input in a column vector """
+
+        structure = self.structure  # self.data.aero.beam
+        tsdata = self.tsstruct0
+
+        q = np.zeros(self.num_dof_str)
+        dq = np.zeros(self.num_dof_str)
+
+        jj = 0  # structural dofs index
+        for node_glob in range(structure.num_node):
+
+            ### detect bc at node (and no. of dofs)
+            bc_here = structure.boundary_conditions[node_glob]
+            if bc_here == 1:  # clamp
+                dofs_here = 0
+                continue
+            elif bc_here == -1 or bc_here == 0:
+                dofs_here = 6
+                jj_tra = [jj, jj + 1, jj + 2]
+                jj_rot = [jj + 3, jj + 4, jj + 5]
+
+            # retrieve element and local index
+            ee, node_loc = structure.node_master_elem[node_glob, :]
+
+            # allocate
+            q[jj_tra] = tsdata.pos[node_glob, :]
+            q[jj_rot] = tsdata.psi[ee, node_loc]
+            # update
+            jj += dofs_here
+
+        # allocate FoR A quantities
+        if self.use_euler:
+            q[-9:-3] = tsdata.for_vel
+            q[-3:] = algebra.quat2euler(tsdata.quat)
+
+            wa = tsdata.for_vel[3:]
+            dq[-9:-3] = tsdata.for_acc
+            T = algebra.deuler_dt(q[-3:])
+            dq[-3:] = T.dot(wa)
+
+        else:
+            q[-10:-4] = tsdata.for_vel
+            q[-4:] = tsdata.quat
+
+            wa = tsdata.for_vel[3:]
+            dq[-10:-4] = tsdata.for_acc
+            dq[-4] = -0.5 * np.dot(wa, tsdata.quat[1:])
+
+        return q, dq
 
     @property
     def num_modes(self):

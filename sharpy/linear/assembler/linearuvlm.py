@@ -33,9 +33,7 @@ class LinearUVLM(ss_interface.BaseElement):
     settings_description['integr_order'] = 'Integration order of the circulation derivative. Either ``1`` or ``2``.'
 
     settings_types['ScalingDict'] = 'dict'
-    settings_default['ScalingDict'] = {'length': 1.0,
-                                               'speed': 1.0,
-                                               'density': 1.0}
+    settings_default['ScalingDict'] = dict()
     settings_description['ScalingDict'] = 'Dictionary of scaling factors to achieve normalised UVLM realisation.'
 
     settings_types['remove_predictor'] = 'bool'
@@ -66,7 +64,30 @@ class LinearUVLM(ss_interface.BaseElement):
     settings_default['rom_method_settings'] = dict()
     settings_description['rom_method_settings'] = 'Dictionary with settings for the desired ROM methods, ' \
                                                   'where the name is the key to the dictionary'
-    
+
+    settings_table = settings.SettingsTable()
+    __doc__ += settings_table.generate(settings_types, settings_default, settings_description)
+
+    scaling_settings_types = dict()
+    scaling_settings_default = dict()
+    scaling_settings_description = dict()
+
+    scaling_settings_types['length'] = 'float'
+    scaling_settings_default['length'] = 1.0
+    scaling_settings_description['length'] = 'Reference length to be used for UVLM scaling'
+
+    scaling_settings_types['speed'] = 'float'
+    scaling_settings_default['speed'] = 1.0
+    scaling_settings_description['speed'] = 'Reference speed to be used for UVLM scaling'
+
+    scaling_settings_types['density'] = 'float'
+    scaling_settings_default['density'] = 1.0
+    scaling_settings_description['density'] = 'Reference density to be used for UVLM scaling'
+
+    __doc__ += settings_table.generate(scaling_settings_types,
+                                       scaling_settings_default,
+                                       scaling_settings_description)
+
     def __init__(self):
         
         self.sys = None
@@ -85,6 +106,8 @@ class LinearUVLM(ss_interface.BaseElement):
         self.gain_cs = None
         self.scaled = None
 
+        self.linearisation_vectors = dict()  # reference conditions at the linearisation
+
     def initialise(self, data, custom_settings=None):
 
         if custom_settings:
@@ -95,9 +118,11 @@ class LinearUVLM(ss_interface.BaseElement):
             except KeyError:
                 pass
 
-        settings.to_custom_types(self.settings, self.settings_types, self.settings_default)
+        settings.to_custom_types(self.settings, self.settings_types, self.settings_default, no_ctype=True)
+        settings.to_custom_types(self.settings['ScalingDict'], self.scaling_settings_types,
+                                 self.scaling_settings_default, no_ctype=True)
 
-        data.linear.tsaero0.rho = float(self.settings['density'].value)
+        data.linear.tsaero0.rho = float(self.settings['density'])
 
         self.scaled = not all(scale == 1.0 for scale in self.settings['ScalingDict'].values())
 
@@ -112,6 +137,15 @@ class LinearUVLM(ss_interface.BaseElement):
                                     'gamma_w': [self.sys.K, self.sys.K_star],
                                     'dtgamma_dot': [self.sys.K + self.sys.K_star, 2*self.sys.K + self.sys.K_star],
                                     'gamma_m1': [2*self.sys.K + self.sys.K_star, 3*self.sys.K + self.sys.K_star]}
+
+        self.linearisation_vectors['zeta'] = np.concatenate([self.tsaero0.zeta[i_surf].reshape(-1, order='C')
+                                                             for i_surf in range(self.tsaero0.n_surf)])
+        self.linearisation_vectors['zeta_dot'] = np.concatenate([self.tsaero0.zeta_dot[i_surf].reshape(-1, order='C')
+                                                                 for i_surf in range(self.tsaero0.n_surf)])
+        self.linearisation_vectors['u_ext'] = np.concatenate([self.tsaero0.u_ext[i_surf].reshape(-1, order='C')
+                                                              for i_surf in range(self.tsaero0.n_surf)])
+        self.linearisation_vectors['forces_aero'] = np.concatenate([self.tsaero0.forces[i_surf][:3].reshape(-1, order='C')
+                                                                    for i_surf in range(self.tsaero0.n_surf)])
 
         self.input_variables = ss_interface.LinearVector(input_variables_database, self.sys_id)
         self.state_variables = ss_interface.LinearVector(state_variables_database, self.sys_id)

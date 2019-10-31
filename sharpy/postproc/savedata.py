@@ -1,6 +1,6 @@
 import os
 import h5py
-
+import numpy as np
 import sharpy
 import sharpy.utils.cout_utils as cout
 from sharpy.utils.solver_interface import solver, BaseSolver
@@ -168,6 +168,8 @@ class SaveData(BaseSolver):
             file_exists = os.path.isfile(self.filename)
             hdfile=h5py.File(self.filename,'a')
 
+            #reference-forces
+            linearisation_vectors = self.data.linear.linear_system.linearisation_vectors
             if (online and file_exists):
                 if self.settings['save_aero']:
                     h5utils.add_as_grp(self.data.aero.timestep_info[self.data.ts], hdfile['data']['aero']['timestep_info'],
@@ -189,11 +191,16 @@ class SaveData(BaseSolver):
             hdfile.close()
 
             if self.settings['save_linear_uvlm']:
+
                 linhdffile = h5py.File(self.filename.replace('.data.h5', '.uvlmss.h5'), 'a')
                 h5utils.add_as_grp(self.data.linear.linear_system.uvlm.ss, linhdffile, grpname='ss',
                                    ClassesToSave=self.ClassesToSave, SkipAttr=self.settings['skip_attr'],
                                    compress_float=self.settings['compress_float'])
+                h5utils.add_as_grp(self.data.linear.linear_system.linearisation_vectors, linhdffile, grpname='linearisation_vectors',
+                                   ClassesToSave=self.ClassesToSave, SkipAttr=self.settings['skip_attr'],
+                                   compress_float=self.settings['compress_float'])
                 linhdffile.close()
+
         elif self.settings['format'] == 'mat':
             from scipy.io import savemat
             if self.settings['save_linear']:
@@ -203,6 +210,8 @@ class SaveData(BaseSolver):
                             'B': B,
                             'C': C,
                             'D': D}
+                for k, v in linearisation_vectors.items():
+                    savedict[k] = v
                 try:
                     dt = self.data.linear.ss.dt
                     savedict['dt'] = dt
@@ -216,7 +225,8 @@ class SaveData(BaseSolver):
                 savedict = {'A': A,
                             'B': B,
                             'C': C,
-                            'D': D}
+                            'D': D,
+                            'forces_0': forces_0}
                 try:
                     dt = self.data.linear.ss.dt
                     savedict['dt'] = dt
