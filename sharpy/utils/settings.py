@@ -34,24 +34,32 @@ def cast(k, v, pytype, ctype, default):
     return val
 
 
-def to_custom_types(dictionary, types, default):
+def to_custom_types(dictionary, types, default, no_ctype=False):
     for k, v in types.items():
         if v == 'int':
+            if no_ctype:
+                data_type = int
+            else:
+                data_type = ct.c_int
             try:
-                dictionary[k] = cast(k, dictionary[k], int, ct.c_int, default[k])
+                dictionary[k] = cast(k, dictionary[k], int, data_type, default[k])
             except KeyError:
                 if default[k] is None:
                     raise exceptions.NoDefaultValueException(k)
-                dictionary[k] = cast(k, default[k], int, ct.c_int, default[k])
+                dictionary[k] = cast(k, default[k], int, data_type, default[k])
                 notify_default_value(k, dictionary[k])
 
         elif v == 'float':
+            if no_ctype:
+                data_type = float
+            else:
+                data_type = ct.c_double
             try:
-                dictionary[k] = cast(k, dictionary[k], float, ct.c_double, default[k])
+                dictionary[k] = cast(k, dictionary[k], float, data_type, default[k])
             except KeyError:
                 if default[k] is None:
                     raise exceptions.NoDefaultValueException(k)
-                dictionary[k] = cast(k, default[k], float, ct.c_double, default[k])
+                dictionary[k] = cast(k, default[k], float, data_type, default[k])
                 notify_default_value(k, dictionary[k])
 
         elif v == 'str':
@@ -64,6 +72,10 @@ def to_custom_types(dictionary, types, default):
                 notify_default_value(k, dictionary[k])
 
         elif v == 'bool':
+            if no_ctype:
+                data_type = bool
+            else:
+                data_type = ct.c_bool
             try:
                 dictionary[k] = cast(k, dictionary[k], str2bool, ct.c_bool, default[k])
             except KeyError:
