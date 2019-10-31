@@ -41,6 +41,10 @@ class AsymptoticStability(BaseSolver):
     settings_default['print_info'] = False
     settings_description['print_info'] = 'Print information and table of eigenvalues'
 
+    settings_types['reference_velocity'] = 'float'
+    settings_default['reference_velocity'] = 1.
+    settings_description['reference_velocity'] = 'Reference velocity at which to compute eigenvalues for scaled systems'
+
     settings_types['frequency_cutoff'] = 'float'
     settings_default['frequency_cutoff'] = 0
     settings_description['frequency_cutoff'] = 'Truncate higher frequency modes. If zero none are truncated'
@@ -57,7 +61,6 @@ class AsymptoticStability(BaseSolver):
     settings_default['velocity_analysis'] = []
     settings_description['velocity_analysis'] = 'List containing min, max and number ' \
                                                 'of velocities to analyse the system'
-
     settings_types['modes_to_plot'] = 'list(int)'
     settings_default['modes_to_plot'] = []
     settings_description['modes_to_plot'] = 'List of mode numbers to simulate and plot'
@@ -134,7 +137,10 @@ class AsymptoticStability(BaseSolver):
         if self.frequency_cutoff == 0:
             self.frequency_cutoff = np.inf
 
-        ss = self.data.linear.ss
+        if self.settings['reference_velocity'].value != 1.:
+            ss = self.data.linear.linear_system.update(self.settings['reference_velocity'].value)
+        else:
+            ss = self.data.linear.ss
 
         eigenvalues, eigenvectors = sclalg.eig(ss.A)
 
@@ -144,8 +150,9 @@ class AsymptoticStability(BaseSolver):
             try:
                 ScalingFacts = self.data.linear.linear_system.uvlm.sys.ScalingFacts
                 if ScalingFacts['length'] != 1.0 and ScalingFacts['time'] != 1.0:
-                    dt = ScalingFacts['length'] * 2 / self.data.aero.surface_m[0] / ScalingFacts['speed']
-                    assert np.abs(dt - ScalingFacts['time'] * ss.dt) < 1e-14, 'dimensional time-scaling not correct!'
+                    # dt = ScalingFacts['length'] * 2 / self.data.aero.surface_m[0] / ScalingFacts['speed']
+                    dt = ScalingFacts['length'] / self.settings['reference_velocity'].value * ss.dt
+                    # assert np.abs(dt - ScalingFacts['time'] * ss.dt) < 1e-14, 'dimensional time-scaling not correct!'
                 else:
                     dt = ss.dt
             except AttributeError:
@@ -192,15 +199,18 @@ class AsymptoticStability(BaseSolver):
 
         stability_folder_path = self.folder
 
+        num_evals = min(num_evals, self.eigenvalues.shape[0])
+
         np.savetxt(stability_folder_path + '/eigenvalues.dat', self.eigenvalues[:num_evals].view(float).reshape(-1, 2))
-        np.savetxt(stability_folder_path + '/eigenvectors_real.dat', self.eigenvectors[:, :num_evals].real.view(float))
-        np.savetxt(stability_folder_path + '/eigenvectors_imag.dat', self.eigenvectors[:, :num_evals].imag.view(float))
+        np.savetxt(stability_folder_path + '/eigenvectors_r.dat', self.eigenvectors.real[:, :num_evals])
+        np.savetxt(stability_folder_path + '/eigenvectors_i.dat', self.eigenvectors.imag[:, :num_evals])
 
     def print_eigenvalues(self):
         """
         Prints the eigenvalues to a table with the corresponding natural frequency, period and damping ratios
 
         """
+
         self.eigenvalue_table.print_evals(self.eigenvalues[:self.settings['num_evals'].value])
 
     def velocity_analysis(self):
@@ -230,10 +240,10 @@ class AsymptoticStability(BaseSolver):
             Nunst = np.sum(eigs_cont.real > 0)
             fn = np.abs(eigs_cont)
 
-            cout.cout_wrap('CLTI\tu: %.2f m/2\tmax.eig. real: %.6f\t' \
+            cout.cout_wrap('LTI\tu: %.2f m/2\tmax. CT eig. real: %.6f\t' \
                            % (u_inf_vec[i], np.max(eigs_cont.real)))
             cout.cout_wrap('\tN unstab.: %.3d' % (Nunst,))
-            print('\tUnstable aeroelastic natural frequency CT(rad/s):' + Nunst * '\t%.2f' % tuple(fn[:Nunst]))
+            cout.cout_wrap('\tUnstable aeroelastic natural frequency CT(rad/s):' + Nunst * '\t%.2f' % tuple(fn[:Nunst]))
 
             # Store eigenvalues for plot
             real_part_plot.append(eigs_cont.real)

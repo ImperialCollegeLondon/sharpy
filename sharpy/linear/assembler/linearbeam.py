@@ -21,15 +21,60 @@ class LinearBeam(BaseElement):
     settings_default = dict()
     settings_description = dict()
 
-    settings_types['gravity'] = 'bool'
+    settings_default['modal_projection'] = True
+    settings_types['modal_projection'] = 'bool'
+    settings_description['modal_projection'] = 'Use modal projection'
+
+    settings_default['inout_coords'] = 'nodes' # or 'modes'
+    settings_types['inout_coords'] = 'str'
+    settings_description['inout_coords'] = 'Beam state space input/output coordinates. ``modes`` or ``nodes``'
+
+    settings_types['num_modes'] = 'int'
+    settings_default['num_modes'] = 10
+    settings_description['num_modes'] = 'Number of modes to retain'
+
+    settings_default['discrete_time'] = True
+    settings_types['discrete_time'] = 'bool'
+    settings_description['discrete_time'] = 'Assemble beam in discrete time'
+
+    settings_default['dt'] = 0.001
+    settings_types['dt'] = 'float'
+    settings_description['dt'] = 'Discrete time system integration time step'
+
+    settings_default['proj_modes'] = 'undamped'
+    settings_types['proj_modes'] = 'str'
+    settings_description['proj_modes'] = 'Use ``undamped`` or ``damped`` modes'
+
+    settings_default['discr_method'] = 'newmark'
+    settings_types['discr_method'] = 'str'
+    settings_description['discr_method'] = 'Discrete time assembly system method: ``newmark`` or ``zoh``'
+
+    settings_default['newmark_damp'] = 1e-4
+    settings_types['newmark_damp'] = 'float'
+    settings_description['newmark_damp'] = 'Newmark damping value. For systems assembled using ``newmark``'
+
+    settings_default['use_euler'] = False
+    settings_types['use_euler'] = 'bool'
+    settings_description['use_euler'] = 'Use euler angles for rigid body parametrisation'
+
+    settings_default['print_info'] = True
+    settings_types['print_info'] = 'bool'
+    settings_description['print_info'] = 'Display information on screen'
+
     settings_default['gravity'] = False
+    settings_types['gravity'] = 'bool'
+    settings_description['gravity'] = 'Linearise gravitational forces'
 
     settings_types['remove_dofs'] = 'list'
     settings_default['remove_dofs'] = []
+    settings_description['remove_dofs'] = 'Remove desired degrees of freedom: ``eta``, ``V``, ``W`` or ``orient``'
 
     settings_types['remove_sym_modes'] = 'bool'
     settings_default['remove_sym_modes'] = False
     settings_description['remove_sym_modes'] = 'Remove symmetric modes if wing is clamped'
+
+    settings_table = settings.SettingsTable()
+    __doc__ += settings_table.generate(settings_types, settings_default, settings_description)
 
     def __init__(self):
         self.sys = None  # The actual object
@@ -39,6 +84,7 @@ class LinearBeam(BaseElement):
 
         self.settings = dict()
         self.state_variables = None
+        self.linearisation_vectors = dict()
 
     def initialise(self, data, custom_settings=None):
 
@@ -49,7 +95,7 @@ class LinearBeam(BaseElement):
                 self.settings = data.settings['LinearAssembler']['linear_system_settings']
             except KeyError:
                 pass
-        settings.to_custom_types(self.settings, self.settings_types, self.settings_default)
+        settings.to_custom_types(self.settings, self.settings_types, self.settings_default, no_ctype=True)
 
         beam = lingebm.FlexDynamic(data.linear.tsstruct0, data.structure, self.settings)
         self.sys = beam
@@ -70,6 +116,10 @@ class LinearBeam(BaseElement):
 
         if num_dof_rig == 0:
             self.clamped = True
+
+        self.linearisation_vectors['eta'] = self.tsstruct0.q
+        self.linearisation_vectors['eta_dot'] = self.tsstruct0.dqdt
+        self.linearisation_vectors['forces_struct'] = self.tsstruct0.steady_applied_forces.reshape(-1, order='C')
 
     def assemble(self, t_ref=None):
         """

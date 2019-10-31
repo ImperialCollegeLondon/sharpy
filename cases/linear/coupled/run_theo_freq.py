@@ -128,7 +128,7 @@ import cases.templates.flying_wings as flying_wings
 
 # Define Parametrisation
 M = 32
-N, Mstar_fact = 12, 40
+N, Mstar_fact = 4, 100
 
 integr_order = 2
 RemovePred = True

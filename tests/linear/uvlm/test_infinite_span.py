@@ -18,12 +18,15 @@ import sharpy.linear.src.linuvlm as linuvlm
 import sharpy.linear.src.libss as libss
 
 import cases.templates.flying_wings as flying_wings
+import sharpy.utils.sharpydir as sharpydir
 
 
 class Test_infinite_span(unittest.TestCase):
     """
     Test infitite-span flat wing at zero incidence against analytical solutions
     """
+
+    test_dir = sharpydir.SharpyDir + '/tests/linear/uvlm/'
 
     def setUp_from_params(self, Nsurf, integr_ord, RemovePred, UseSparse, RollNodes):
         """
@@ -73,6 +76,7 @@ class Test_infinite_span(unittest.TestCase):
         # solution flow
         ws.set_default_config_dict()
         ws.config['SHARPy']['flow'] = ['BeamLoader', 'AerogridLoader', 'StaticUvlm']
+        ws.config['SHARPy']['write_screen'] = 'off'
         ws.config['LinearUvlm'] = {'dt': ws.dt,
                                    'integr_order': integr_ord,
                                    'density': ws.rho,
@@ -269,6 +273,7 @@ class Test_infinite_span(unittest.TestCase):
         # solution flow
         ws_pert.set_default_config_dict()
         ws_pert.config['SHARPy']['flow'] = ws.config['SHARPy']['flow']
+        ws_pert.config['SHARPy']['write_screen'] = 'off'
         ws_pert.config.write()
 
         # solve at perturbed point
@@ -419,6 +424,12 @@ class Test_infinite_span(unittest.TestCase):
         if self.DeleteOutput:
             os.system('rm %s*' % (self.route_main + self.case_code))
             os.system('rm %s/output/%s*' % (self.route_main, self.case_code))
+
+    def tearDown(self):
+
+        shutil.rmtree(Test_infinite_span.test_dir + '/figs/')
+        shutil.rmtree(Test_infinite_span.test_dir + '/output/')
+        shutil.rmtree(Test_infinite_span.test_dir + '/res/')
 
 
 if __name__ == '__main__':

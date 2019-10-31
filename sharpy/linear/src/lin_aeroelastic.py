@@ -601,10 +601,11 @@ class LinAeroEla():
                         Kvel_disp[np.ix_(ii_vert, jj_rot)] += np.dot(Cbg.T, np.dot(
                             algebra.skew(np.dot(XbskewTan, psi_dot)), Tan))
 
-                        Kvel_disp[np.ix_(ii_vert, jj_rot)] -= \
-                            np.dot(Cbg.T,
-                                   np.dot(Xbskew,
-                                          algebra.der_Tan_by_xv(psi, psi_dot)))
+                        if np.linalg.norm(psi) >=1e-6:
+                            Kvel_disp[np.ix_(ii_vert, jj_rot)] -= \
+                                np.dot(Cbg.T,
+                                       np.dot(Xbskew,
+                                              algebra.der_Tan_by_xv(psi, psi_dot)))
 
                     # # w.r.t. position of FoR A (w.r.t. origin G)
                     # # null as A and G have always same origin in SHARPy
