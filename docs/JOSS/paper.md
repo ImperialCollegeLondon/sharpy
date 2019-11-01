@@ -60,7 +60,7 @@ aircraft and wind turbines. It features a versatile interface and core code writ
 expensive routines are included in libraries coded in C++ and Modern Fortran. SHARPy is easily extended through a
 modular object-oriented design, and includes tools for linear and nonlinear analysis of the time-domain aeroelastic
 response of flexible bodies in a large number of cases, such as 3-D discrete gust [@del2019ifasd] and turbulent field
-input [@Hesse2016] [@arxiv2019Deskos], control surface deflection and prescribed motion [@del2019efficient]. In addition, linearised
+input [@Hesse201, @arxiv2019Deskos], control surface deflection and prescribed motion [@del2019efficient]. In addition, linearised
 state-space models can be obtained for frequency domain analysis, controller design and model reduction.
 
 
@@ -73,7 +73,7 @@ function calls.
 
 ## Features
 The [structural model](https://github.com/imperialcollegelondon/xbeam)
-included in ``SHARPy`` is a Geometrically-Exact Composite Beam (GECB) [@Geradin2001] [@Hesse2014a]
+included in ``SHARPy`` is a Geometrically-Exact Composite Beam (GECB) [@geradin2001, @Hesse2014a]
 supports multibody features
 such as hinges, joints and absolute and relative nodal velocity constraints.
 Rigid body motion can be prescribed or simulated. The structural solver supports
@@ -81,7 +81,7 @@ distributed and lumped mass formulation (or a combination of both). Time-integra
 is carried out using a Newmark-$\beta$ scheme.
 
 The [aerodynamic solver](https://github.com/imperialcollegelondon/uvlm) is an Unsteady
-Vortex Lattice Method (UVLM) [@Katz2001] [@Simpson2013-2].
+Vortex Lattice Method (UVLM) [@Katz2001, @Simpson2013-2].
 It can simulate an arbitrary number of surfaces together
 with their interactions. A non conventional force evaluation scheme is used [@Simpson2013-2] in
 order to support large sideslip angles and obtain an induced drag estimation.
