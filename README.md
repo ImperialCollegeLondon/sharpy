@@ -1,6 +1,6 @@
 # Simulation of High Aspect Ratio Planes in Python [SHARPy]
 ![Version badge](https://img.shields.io/endpoint.svg?url=https%3A%2F%2Fraw.githubusercontent.com%2FImperialCollegeLondon%2Fsharpy%2Fmaster%2F.version.json) [![codecov](https://codecov.io/gh/ImperialCollegeLondon/sharpy/branch/master/graph/badge.svg)](https://codecov.io/gh/ImperialCollegeLondon/sharpy)
-[![License](https://img.shields.io/badge/License-BSD%203--Clause-blue.svg)](https://opensource.org/licenses/BSD-3-Clause)[![DocStatus](https://readthedocs.org/projects/pip/badge/?badge=master)](https://ic-sharpy.readthedocs.io/en/master/)
+[![License](https://img.shields.io/badge/License-BSD%203--Clause-blue.svg)](https://opensource.org/licenses/BSD-3-Clause)[![Documentation Status](https://readthedocs.org/projects/ic-sharpy/badge/?version=master)](https://ic-sharpy.readthedocs.io/en/master/?badge=master)
 
 
 __Status__
