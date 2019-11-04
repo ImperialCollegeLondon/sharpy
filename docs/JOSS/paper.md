@@ -1,7 +1,6 @@
 ---
-title: 'SHARPy: A nonlinear aeroelasticity toolbox'
+title: 'SHARPy: A dynamic aeroelastic simulation toolbox for very flexible aircraft and wind turbines'
 tags:
-    - Python
     - aeroelasticity
     - structural dynamics
     - aerodynamics
@@ -55,12 +54,12 @@ conventional quasi-linear methods may not accurately capture the relevant phenom
 of these new configurations.
 
 
-``SHARPy`` (Simulation of High-Aspect Ratio Planes in Python) is a dynamic aeroelasticity simulation toolbox for
-aircraft and wind turbines. It features a versatile interface and core code written in Python3, while computationally
+``SHARPy`` (Simulation of High-Aspect Ratio aeroplanes in Python) is a dynamic aeroelasticity simulation toolbox for
+aircraft and wind turbines. It features a versatile interface and core code written in Python 3, while computationally
 expensive routines are included in libraries coded in C++ and Modern Fortran. SHARPy is easily extended through a
 modular object-oriented design, and includes tools for linear and nonlinear analysis of the time-domain aeroelastic
-response of flexible bodies in a large number of cases, such as 3-D discrete gust [@del2019ifasd] and turbulent field
-input [@Hesse2016; @arxiv2019Deskos], control surface deflection and prescribed motion [@del2019efficient]. In addition, linearised
+response of flexible bodies in a large number of cases, such as 3-D discrete gust [@del2019ifasd], turbulent field
+input [@Hesse2016; @deskos2019], control surface deflection and prescribed motion [@del2019efficient]. In addition, linearised
 state-space models can be obtained for frequency domain analysis, controller design and model reduction.
 
 
@@ -68,14 +67,14 @@ state-space models can be obtained for frequency domain analysis, controller des
 such as [Paraview](https://paraview.org) for post-processing
 The computationally
 expensive routines written in C++ and Fortran have been designed with Fluid-Structure
-Interaction (FSI) problems in mind, this resulting in minimal overhead between
+Interaction (FSI) problems in mind, resulting in minimal overhead between
 function calls.
 
 ## Features
 The [structural model](https://github.com/imperialcollegelondon/xbeam)
 included in ``SHARPy`` is a Geometrically-Exact Composite Beam (GECB) [@geradin2001; @Hesse2014a]
 supports multibody features
-such as hinges, joints and absolute and relative nodal velocity constraints.
+such as hinges, joints and absolute and relative nodal velocity constraints through Lagrange Multipliers.
 Rigid body motion can be prescribed or simulated. The structural solver supports
 distributed and lumped mass formulation (or a combination of both). Time-integration
 is carried out using a Newmark-$\beta$ scheme.
@@ -95,8 +94,7 @@ structural or aerodynamic simulation are supported natively.
 The nonlinear system can also be linearised taking an arbitrary reference condition. The linearised system can be used
 for frequency domain analysis and linear model order reduction methods and controller design.
 
-![Static simulation of the XHALE [@del2019ifasd] nonlinear aeroelasticity
-testbed.](https://github.com/ImperialCollegeLondon/sharpy/raw/master/docs/source/media/XHALE-render.jpg)
+![Aerodynamic grid and forces in the static aeroelastic equilibrium configuration on the XHALE aircraft [@del2019ifasd]](https://github.com/ImperialCollegeLondon/sharpy/raw/master/docs/source/media/XHALE-render.jpg)
 
 
 # Acknowledgements
