@@ -33,6 +33,10 @@ class GridBox(generator_interface.BaseGenerator):
     settings_default['spacing'] = [1., 1., 1.]
     settings_description['spacing'] = 'Spacing parameters of the bbox'
 
+    settings_types['moving'] = 'bool'
+    settings_default['moving'] = False
+    settings_description['moving'] = 'If ``True``, the box moves with the body frame of reference. It does not rotate with it, though'
+
     settings_table = settings.SettingsTable()
     __doc__ += settings_table.generate(settings_types, settings_default, settings_description)
 
@@ -54,21 +58,25 @@ class GridBox(generator_interface.BaseGenerator):
         self.dz = self.in_dict['spacing'][2]
 
     def generate(self, params):
+        if self.settings['moving']:
+            for_pos = params['for_pos']
+        else:
+            for_pos = np.zeros((3,))
         nx = np.abs(int((self.x1.value-self.x0.value)/self.dx.value + 1))
         ny = np.abs(int((self.y1.value-self.y0.value)/self.dy.value + 1))
         nz = np.abs(int((self.z1.value-self.z0.value)/self.dz.value + 1))
 
-        xarray = np.linspace(self.x0.value,self.x1.value,nx)
-        yarray = np.linspace(self.y0.value,self.y1.value,ny)
-        zarray = np.linspace(self.z0.value,self.z1.value,nz)
+        xarray = np.linspace(self.x0.value, self.x1.value, nx) + for_pos[0]
+        yarray = np.linspace(self.y0.value, self.y1.value, ny) + for_pos[1]
+        zarray = np.linspace(self.z0.value, self.z1.value, nz) + for_pos[2]
         grid = []
         for iz in range(nz):
-            grid.append(np.zeros((3,nx,ny), dtype=ct.c_double))
+            grid.append(np.zeros((3, nx, ny), dtype=ct.c_double))
             for ix in range(nx):
                 for iy in range(ny):
-                    grid[iz][0,ix,iy] = xarray[ix]
-                    grid[iz][1,ix,iy] = yarray[iy]
-                    grid[iz][2,ix,iy] = zarray[iz]
+                    grid[iz][0, ix, iy] = xarray[ix]
+                    grid[iz][1, ix, iy] = yarray[iy]
+                    grid[iz][2, ix, iy] = zarray[iz]
 
 
         vtk_info = tvtk.RectilinearGrid()
