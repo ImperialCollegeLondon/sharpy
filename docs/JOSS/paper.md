@@ -30,7 +30,7 @@ bibliography: paper.bib
 # Summary
 
 Aeroelasticity is the study of the dynamic interaction between unsteady aerodynamics
-and structural dynamics on flexible streamlined bodies, potentially also including
+and structural dynamics on flexible streamlined bodies, which may include
 rigid-body dynamics.  Industry standard solutions in aeronautics and wind energy
 are built on the assumption of small structural displacements, which lead to linear
 or quasi-linear theories. However, advances in areas such as energy storage and generation,
@@ -42,7 +42,7 @@ have recently seen very significant progress. New configurations
 are now able
 to stay airborne for longer than three weeks at a time.
 Extreme efficiency is achieved by reducing the total weight of the aircraft while
-increasing the lifting surfaces aspect ratio.
+increasing the lifting surfaces' aspect ratio.
 In a similar quest for extreme efficiency, the wind energy industry
 is also trending towards longer and more slender blades, specially for off-shore
 applications, where the largest blades are now close to 100-m long.
@@ -50,9 +50,8 @@ applications, where the largest blades are now close to 100-m long.
 
 These longer and much slender structures can present large deflections and have relatively low frequency structural
 modes which, in the case of aircraft, can interact with the flight dynamics modes with potentially unstable couplings.
-In the case of offshore wind energy, the platform movement is generating important rotor excursions. Due to this, the
-conventional quasi-linear methods may not accurately capture the relevant phenomena present in the aeroelastic response
-of these new configurations.
+In the case of offshore wind turbines, platform movement may generate important rotor excursions that cause complex
+aeroelastic phenomena which conventional quasi-linear methods may not accurately capture.
 
 
 ``SHARPy`` (Simulation of High-Aspect Ratio Planes in Python) is a dynamic aeroelasticity simulation toolbox for
@@ -93,15 +92,15 @@ The coupling algorithm included in the code is designed to allow fully coupled
 nonlinear simulations, although weakly coupled solutions can be obtained. Independent
 structural or aerodynamic simulation are supported natively.
 The nonlinear system can also be linearised taking an arbitrary reference condition. The linearised system can be used
-for frequency domain analysis and linear model order reduction methods and controller design.
+for frequency domain analysis, linear model order reduction methods and controller design.
 
 ![Static simulation of the XHALE [@del2019ifasd] nonlinear aeroelasticity
 testbed.](https://github.com/ImperialCollegeLondon/sharpy/raw/master/docs/source/media/XHALE-render.jpg)
 
 
 # Acknowledgements
-A. Carre gratefully acknowledges the support provided by Airbus Defence and Space. Norberto Goizueta's research is
-sponsored by the Department of Aeronautics at Imperial College for which the author is truly grateful.
+A. Carre gratefully acknowledges the support provided by Airbus Defence and Space. Norberto Goizueta's acknowledges and
+thanks the Department of Aeronautics at Imperial College for sponsoring his research.
 Arturo Muñoz-Simón's research has received funding from the EU's H2020 research and innovation programme
 under the Marie Sklodowska-Curie grant agreement 765579.
 
