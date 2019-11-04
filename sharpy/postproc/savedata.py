@@ -1,6 +1,6 @@
 import os
 import h5py
-
+import numpy as np
 import sharpy
 import sharpy.utils.cout_utils as cout
 from sharpy.utils.solver_interface import solver, BaseSolver
@@ -82,6 +82,9 @@ class SaveData(BaseSolver):
         self.settings_types['compress_float'] = 'bool'
         self.settings_default['compress_float'] = False
 
+        self.settings_types['format'] = 'str'
+        self.settings_default['format'] = 'h5'
+
         self.settings = None
         self.data = None
 
@@ -132,26 +135,28 @@ class SaveData(BaseSolver):
         if os.path.isfile(self.filename):
             os.remove(self.filename)
 
-        # allocate list of classes to be saved
-        if self.settings['save_aero']:
-            self.ClassesToSave+=(sharpy.aero.models.aerogrid.Aerogrid,
-                                 sharpy.utils.datastructures.AeroTimeStepInfo,)
+        if self.settings['format'] == 'h5':
 
-        if self.settings['save_struct']:
-            self.ClassesToSave+=(
-                                sharpy.structure.models.beam.Beam,
-                                sharpy.utils.datastructures.StructTimeStepInfo,)
+            # allocate list of classes to be saved
+            if self.settings['save_aero']:
+                self.ClassesToSave+=(sharpy.aero.models.aerogrid.Aerogrid,
+                                     sharpy.utils.datastructures.AeroTimeStepInfo,)
 
-        if self.settings['save_linear']:
-            self.ClassesToSave += (sharpy.solvers.linearassembler.Linear,
-                                   sharpy.linear.assembler.linearaeroelastic.LinearAeroelastic,
-                                   sharpy.linear.assembler.linearbeam.LinearBeam,
-                                   sharpy.linear.assembler.linearuvlm.LinearUVLM,
-                                   sharpy.linear.src.libss.ss,
-                                   sharpy.linear.src.lingebm.FlexDynamic,)
+            if self.settings['save_struct']:
+                self.ClassesToSave+=(
+                                    sharpy.structure.models.beam.Beam,
+                                    sharpy.utils.datastructures.StructTimeStepInfo,)
 
-        if self.settings['save_linear_uvlm']:
-            self.ClassesToSave += (sharpy.solvers.linearassembler.Linear, sharpy.linear.src.libss.ss)
+            if self.settings['save_linear']:
+                self.ClassesToSave += (sharpy.solvers.linearassembler.Linear,
+                                       sharpy.linear.assembler.linearaeroelastic.LinearAeroelastic,
+                                       sharpy.linear.assembler.linearbeam.LinearBeam,
+                                       sharpy.linear.assembler.linearuvlm.LinearUVLM,
+                                       sharpy.linear.src.libss.ss,
+                                       sharpy.linear.src.lingebm.FlexDynamic,)
+
+            if self.settings['save_linear_uvlm']:
+                self.ClassesToSave += (sharpy.solvers.linearassembler.Linear, sharpy.linear.src.libss.ss)
 
     def run(self, online=False):
 
@@ -159,34 +164,74 @@ class SaveData(BaseSolver):
         # you need them on uvlm3d
         # self.data.aero.timestep_info[-1].generate_ctypes_pointers()
 
-        file_exists = os.path.isfile(self.filename)
-        hdfile=h5py.File(self.filename,'a')
+        if self.settings['format'] == 'h5':
+            file_exists = os.path.isfile(self.filename)
+            hdfile=h5py.File(self.filename,'a')
 
-        if (online and file_exists):
-            if self.settings['save_aero']:
-                h5utils.add_as_grp(self.data.aero.timestep_info[self.data.ts], hdfile['data']['aero']['timestep_info'],
-                                   grpname=("%05d" % self.data.ts),
-                                   ClassesToSave=(sharpy.utils.datastructures.AeroTimeStepInfo,),
-                                   SkipAttr=self.settings['skip_attr'],
+            #reference-forces
+            linearisation_vectors = self.data.linear.linear_system.linearisation_vectors
+            if (online and file_exists):
+                if self.settings['save_aero']:
+                    h5utils.add_as_grp(self.data.aero.timestep_info[self.data.ts], hdfile['data']['aero']['timestep_info'],
+                                       grpname=("%05d" % self.data.ts),
+                                       ClassesToSave=(sharpy.utils.datastructures.AeroTimeStepInfo,),
+                                       SkipAttr=self.settings['skip_attr'],
+                                       compress_float=self.settings['compress_float'])
+                if self.settings['save_struct']:
+                    h5utils.add_as_grp(self.data.structure.timestep_info[self.data.ts], hdfile['data']['structure']['timestep_info'],
+                                       grpname=("%05d" % self.data.ts),
+                                       ClassesToSave=(sharpy.utils.datastructures.StructTimeStepInfo,),
+                                       SkipAttr=self.settings['skip_attr'],
+                                       compress_float=self.settings['compress_float'])
+            else:
+                h5utils.add_as_grp(self.data,hdfile,grpname='data',
+                                   ClassesToSave=self.ClassesToSave,SkipAttr=self.settings['skip_attr'],
                                    compress_float=self.settings['compress_float'])
-            if self.settings['save_struct']:
-                h5utils.add_as_grp(self.data.structure.timestep_info[self.data.ts], hdfile['data']['structure']['timestep_info'],
-                                   grpname=("%05d" % self.data.ts),
-                                   ClassesToSave=(sharpy.utils.datastructures.StructTimeStepInfo,),
-                                   SkipAttr=self.settings['skip_attr'],
+
+            hdfile.close()
+
+            if self.settings['save_linear_uvlm']:
+
+                linhdffile = h5py.File(self.filename.replace('.data.h5', '.uvlmss.h5'), 'a')
+                h5utils.add_as_grp(self.data.linear.linear_system.uvlm.ss, linhdffile, grpname='ss',
+                                   ClassesToSave=self.ClassesToSave, SkipAttr=self.settings['skip_attr'],
                                    compress_float=self.settings['compress_float'])
-        else:
-            h5utils.add_as_grp(self.data,hdfile,grpname='data',
-                               ClassesToSave=self.ClassesToSave,SkipAttr=self.settings['skip_attr'],
-                               compress_float=self.settings['compress_float'])
+                h5utils.add_as_grp(self.data.linear.linear_system.linearisation_vectors, linhdffile, grpname='linearisation_vectors',
+                                   ClassesToSave=self.ClassesToSave, SkipAttr=self.settings['skip_attr'],
+                                   compress_float=self.settings['compress_float'])
+                linhdffile.close()
 
-        hdfile.close()
+        elif self.settings['format'] == 'mat':
+            from scipy.io import savemat
+            if self.settings['save_linear']:
+                matfilename = self.filename.replace('.data.h5', '.linss.mat')
+                A, B, C, D = self.data.linear.ss.get_mats()
+                savedict = {'A': A,
+                            'B': B,
+                            'C': C,
+                            'D': D}
+                for k, v in linearisation_vectors.items():
+                    savedict[k] = v
+                try:
+                    dt = self.data.linear.ss.dt
+                    savedict['dt'] = dt
+                except AttributeError:
+                    pass
+                savemat(matfilename, savedict)
 
-        if self.settings['save_linear_uvlm']:
-            linhdffile = h5py.File(self.filename.replace('.data.h5', '.uvlmss.h5'), 'a')
-            h5utils.add_as_grp(self.data.linear.linear_system.uvlm.ss, linhdffile, grpname='ss',
-                               ClassesToSave=self.ClassesToSave, SkipAttr=self.settings['skip_attr'],
-                               compress_float=self.settings['compress_float'])
-            linhdffile.close()
+            if self.settings['save_linear_uvlm']:
+                matfilename = self.filename.replace('.data.h5', '.uvlmss.mat')
+                A, B, C, D = self.data.linear.linear_system.uvlm.ss.get_mats()
+                savedict = {'A': A,
+                            'B': B,
+                            'C': C,
+                            'D': D,
+                            'forces_0': forces_0}
+                try:
+                    dt = self.data.linear.ss.dt
+                    savedict['dt'] = dt
+                except AttributeError:
+                    pass
+                savemat(matfilename, savedict)
 
         return self.data

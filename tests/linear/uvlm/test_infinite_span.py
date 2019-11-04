@@ -177,6 +177,7 @@ class Test_infinite_span(unittest.TestCase):
 
         ### ----- linearisation
         uvlm = linuvlm.Dynamic(tsaero0,
+                               dynamic_settings=ws.config['LinearUvlm'],
                                dt=ws.config['LinearUvlm']['dt'],
                                integr_order=ws.config['LinearUvlm']['integr_order'],
                                RemovePredictor=ws.config['LinearUvlm']['remove_predictor'],
