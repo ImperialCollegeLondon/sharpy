@@ -17,11 +17,14 @@ import numpy as np
 import sharpy.utils.algebra as algebra
 import sharpy.utils.solver_interface as solver_interface
 import sharpy.utils.generator_interface as generator_interface
+import sharpy.structure.utils.lagrangeconstraints as lagrangeconstraints
 # from sharpy.utils.solver_interface import solver, dict_of_solvers
 import h5py as h5
 import os
+import sys
 import pandas as pd
 import scipy.integrate
+from copy import deepcopy
 
 
 ######################################################################
@@ -848,26 +851,33 @@ class StructuralInformation():
 
         """
         # CHECKING
-        if(self.elem_stiffness.shape[0]!=self.num_elem):
+        if(self.elem_stiffness.shape[0] != self.num_elem):
             sys.exit("ERROR: Element stiffness must be defined for each element")
-        if(self.elem_mass.shape[0]!=self.num_elem):
+        if(self.elem_mass.shape[0] != self.num_elem):
             sys.exit("ERROR: Element mass must be defined for each element")
-        if(self.frame_of_reference_delta.shape[0]!=self.num_elem):
+        if(self.frame_of_reference_delta.shape[0] != self.num_elem):
             sys.exit("ERROR: The first dimension of FoR does not match the number of elements")
-        if(self.frame_of_reference_delta.shape[1]!=self.num_node_elem):
+        if(self.frame_of_reference_delta.shape[1] != self.num_node_elem):
             sys.exit("ERROR: The second dimension of FoR does not match the number of nodes element")
-        if(self.frame_of_reference_delta.shape[2]!=3):
+        if(self.frame_of_reference_delta.shape[2] != 3):
             sys.exit("ERROR: The third dimension of FoR must be 3")
-        if(self.structural_twist.shape[0]!=self.num_elem):
+        if(self.structural_twist.shape[0] != self.num_elem):
             sys.exit("ERROR: The structural twist must be defined for each element")
-        if(self.boundary_conditions.shape[0]!=self.num_node):
+        if(self.boundary_conditions.shape[0] != self.num_node):
             sys.exit("ERROR: The boundary conditions must be defined for each node")
-        if(self.beam_number.shape[0]!=self.num_elem):
+        if(self.beam_number.shape[0] != self.num_elem):
             sys.exit("ERROR: The beam number must be defined for each element")
-        if(self.app_forces.shape[0]!=self.num_node):
+        if(self.app_forces.shape[0] != self.num_node):
             sys.exit("ERROR: The first dimension of the applied forces matrix does not match the number of nodes")
-        if(self.app_forces.shape[1]!=6):
+        if(self.app_forces.shape[1] != 6):
             sys.exit("ERROR: The second dimension of the applied forces matrix must be 6")
+
+        default = StructuralInformation()
+
+        for attr, value in self.__dict__.items():
+            if not hasattr(default, attr):
+                sys.exit("StructuralInformation has no attribute named '%s'" % attr)
+
 
     def generate_fem_file(self, route, case_name):
         """
@@ -880,7 +890,7 @@ class StructuralInformation():
         	case_name (string): name of the case
         """
     	# TODO: check variables that are not defined
-
+        self.check_StructuralInformation()
         # Writting the file
         with h5.File(route + '/' + case_name + '.fem.h5', 'a') as h5file:
     		# TODO: include something to write only exsisting variables
@@ -1319,7 +1329,13 @@ class AerodynamicInformation():
         if(self.twist.shape[1] != StructuralInformation.num_node_elem):
             sys.exit("ERROR: The second dimension of the aerodynamic twist does not match the number nodes per element")
 
-    def generate_aero_file(self, route, case_name):
+        default = AerodynamicInformation()
+
+        for attr, value in self.__dict__.items():
+            if not hasattr(default, attr):
+                sys.exit("AerodynamicInformation has no attribute named '%s'" % attr)
+
+    def generate_aero_file(self, route, case_name, StructuralInformation):
         """
         generate_aero_file
 
@@ -1329,6 +1345,8 @@ class AerodynamicInformation():
             route (string): path of the case
             case_name (string): name of the case
         """
+        self.check_AerodynamicInformation(StructuralInformation)
+
         with h5.File(route + '/' + case_name + '.aero.h5', 'a') as h5file:
 
             h5file.create_dataset('aero_node', data=self.aero_node)
@@ -1565,14 +1583,24 @@ class AeroelasticInformation():
 
         return copied
 
+    def check(self):
+
+        default = AeroelasticInformation()
+
+        for attr, value in self.__dict__.items():
+            if not hasattr(default, attr):
+                sys.exit("AeroelasticInformation has no attribute named '%s'" % attr)
+
+
     def generate_h5_files(self, route, case_name):
         """
         write_h5_files
 
         Writes the structural and aerodynamic h5 files
         """
+        self.check()
         self.StructuralInformation.generate_fem_file(route, case_name)
-        self.AerodynamicInformation.generate_aero_file(route, case_name)
+        self.AerodynamicInformation.generate_aero_file(route, case_name, self.StructuralInformation)
 
 ######################################################################
 ######################  SOLVERS INFORMATION  #########################
@@ -1610,9 +1638,27 @@ class SimulationInformation():
 
         self.solvers = dict()
         cout.start_writer()
-        self.solvers = solver_interface.dictionary_of_solvers().copy()
+        aux_names = solver_interface.dictionary_of_solvers()
         cout.finish_writer()
-        self.solvers.update(generator_interface.dictionary_of_generators())
+        aux_names.update(generator_interface.dictionary_of_generators())
+
+        # TODO: I am sure this can be done in a better way
+        for solver in aux_names:
+            self.solvers[solver] = {}
+            if not solver == 'PreSharpy':
+                try:
+                    aux_solver = solver_interface.solver_from_string(solver)
+                except:
+                    aux_solver = generator_interface.generator_from_string(solver)
+                    # TODO: remove this try/except when generators are rewriten as solvers with class attributes instead of instance attributes
+                    aux_solver.__init__(aux_solver)
+
+                if aux_solver.settings_default == {}:
+                    aux_solver.__init__(aux_solver)
+
+                for key, value in aux_solver.settings_default.items():
+                    self.solvers[solver][key] = deepcopy(value)
+
         # # MAIN
         self.solvers['SHARPy'] = {'flow': '',
                                   'case': 'default_case_name',
@@ -1629,7 +1675,15 @@ class SimulationInformation():
                                    'compress_float': False}
 
 
+    def check(self):
 
+        default = SimulationInformation()
+        default.set_default_values()
+
+        for solver in self.solvers['SHARPy']['flow']:
+            for key in self.solvers[solver]:
+                if not key in default.solvers[solver]:
+                    sys.exit("solver '%s' has no key named '%s'" % (solver, key))
 
 
     def define_num_steps(self, num_steps):
@@ -1723,6 +1777,9 @@ class SimulationInformation():
         	case_name (string): name of the case
         """
         import configobj
+
+        self.check()
+
         config = configobj.ConfigObj()
         config.filename = self.solvers['SHARPy']['route'] + '/' + self.solvers['SHARPy']['case'] + '.solver.txt'
         config['SHARPy'] = self.solvers['SHARPy']
@@ -1823,6 +1880,14 @@ class BodyInformation():
         copied.FoR_movement = self.FoR_movement
         copied.quat = self.quat.astype(dtype=float, copy=True)
 
+    def check(self):
+
+        default = BodyInformation()
+
+        for attr, value in self.__dict__.items():
+            if not hasattr(default, attr):
+                sys.exit("BodyInformation has no attribute named '%s'" % attr)
+
 class LagrangeConstraint():
 
     def __init__(self):
@@ -1831,7 +1896,34 @@ class LagrangeConstraint():
         self.behaviour = None
         # Each BC will have its own variables
 
+    def check(self):
+        default = lagrangeconstraints.lc_from_string(self.behaviour)
+        default.__init__(default)
+        required_parameters = default.required_parameters
+        for param in required_parameters:
+            try:
+                getattr(self, param)
+            except:
+                sys.exit("'%s' parameter required in '%s' lagrange constraint" % (param, self.behaviour))
+        has_behaviour = False
+        for param, value in self.__dict__.items():
+            if not param == 'behaviour':
+                if not param in required_parameters:
+                    sys.exit("'%s' parameter is not required in '%s' lagrange constraint" % (param, self.behaviour))
+            else:
+                has_behaviour = True
+
+        if not has_behaviour:
+            sys.exit("'behaviour' parameter is required in '%s' lagrange constraint" % self.behaviour)
+
+
 def generate_multibody_file(list_LagrangeConstraints, list_Bodies, route, case_name):
+
+    # Check
+    for body in list_Bodies:
+        body.check()
+    for lc in list_LagrangeConstraints:
+        lc.check()
 
     with h5.File(route + '/' + case_name + '.mb.h5', 'a') as h5file:
 
@@ -1847,60 +1939,68 @@ def generate_multibody_file(list_LagrangeConstraints, list_Bodies, route, case_n
             constraint_id.create_dataset("behaviour", data=constraint.behaviour.encode('ascii', 'ignore'))
 
             # Write parameters associated to the specific type of boundary condition
-            if constraint.behaviour == 'spherical_node_FoR':
-                constraint_id.create_dataset("node_in_body", data=constraint.node_in_body)
-                constraint_id.create_dataset("body", data=constraint.body)
-                constraint_id.create_dataset("body_FoR", data=constraint.body_FoR)
+            default = lagrangeconstraints.lc_from_string(constraint.behaviour)
+            default.__init__(default)
+            required_parameters = default.required_parameters
+            for param in required_parameters:
+                constraint_id.create_dataset(param, data=getattr(constraint, param))
 
-            if constraint.behaviour == 'hinge_node_FoR':
-                constraint_id.create_dataset("node_in_body", data=constraint.node_in_body)
-                constraint_id.create_dataset("body", data=constraint.body)
-                constraint_id.create_dataset("body_FoR", data=constraint.body_FoR)
-                constraint_id.create_dataset("rot_axisB", data=constraint.rot_axisB)
-
-            if constraint.behaviour == 'hinge_node_FoR_constant_rotation':
-                constraint_id.create_dataset("node_in_body", data=constraint.node_in_body)
-                constraint_id.create_dataset("body", data=constraint.body)
-                constraint_id.create_dataset("body_FoR", data=constraint.body_FoR)
-                constraint_id.create_dataset("rot_vel", data=constraint.rot_vel)
-
-            if constraint.behaviour == 'spherical_FoR':
-                constraint_id.create_dataset("body_FoR", data=constraint.body_FoR)
-
-            if constraint.behaviour == 'hinge_FoR':
-                constraint_id.create_dataset("body_FoR", data=constraint.body_FoR)
-                constraint_id.create_dataset("rot_axis_AFoR", data=constraint.rot_axis_AFoR)
-
-            if constraint.behaviour == 'constant_rot_vel_FoR':
-                constraint_id.create_dataset("FoR_body", data=constraint.FoR_body)
-                constraint_id.create_dataset("rot_vel", data=constraint.rot_vel)
-
-            if constraint.behaviour == 'constant_vel_FoR':
-                constraint_id.create_dataset("FoR_body", data=constraint.FoR_body)
-                constraint_id.create_dataset("vel", data=constraint.vel)
-
-            if constraint.behaviour == 'hinge_node_FoR_constant_vel':
-                constraint_id.create_dataset("node_in_body", data=constraint.node_in_body)
-                constraint_id.create_dataset("body", data=constraint.body)
-                constraint_id.create_dataset("body_FoR", data=constraint.body_FoR)
-                constraint_id.create_dataset("rot_axisB", data=constraint.rot_axisB)
-                constraint_id.create_dataset("rot_vel", data=constraint.rot_vel)
-
-            if constraint.behaviour == 'lin_vel_node_wrtA':
-                constraint_id.create_dataset("velocity", data=constraint.velocity)
-                constraint_id.create_dataset("body_number", data=constraint.body_number)
-                constraint_id.create_dataset("node_number", data=constraint.node_number)
-
-            if constraint.behaviour == 'lin_vel_node_wrtG':
-                constraint_id.create_dataset("velocity", data=constraint.velocity)
-                constraint_id.create_dataset("body_number", data=constraint.body_number)
-                constraint_id.create_dataset("node_number", data=constraint.node_number)
-
-            if constraint.behaviour == 'fully_constrained_node_FoR':
-                constraint_id.create_dataset("node_in_body", data=constraint.node_in_body)
-                constraint_id.create_dataset("node_body", data=constraint.node_body)
-                constraint_id.create_dataset("body_FoR", data=constraint.body_FoR)
             iconstraint += 1
+
+            # if constraint.behaviour == 'spherical_node_FoR':
+            #     constraint_id.create_dataset("node_in_body", data=constraint.node_in_body)
+            #     constraint_id.create_dataset("body", data=constraint.body)
+            #     constraint_id.create_dataset("body_FoR", data=constraint.body_FoR)
+            #
+            # if constraint.behaviour == 'hinge_node_FoR':
+            #     constraint_id.create_dataset("node_in_body", data=constraint.node_in_body)
+            #     constraint_id.create_dataset("body", data=constraint.body)
+            #     constraint_id.create_dataset("body_FoR", data=constraint.body_FoR)
+            #     constraint_id.create_dataset("rot_axisB", data=constraint.rot_axisB)
+            #
+            # if constraint.behaviour == 'hinge_node_FoR_constant_rotation':
+            #     constraint_id.create_dataset("node_in_body", data=constraint.node_in_body)
+            #     constraint_id.create_dataset("body", data=constraint.body)
+            #     constraint_id.create_dataset("body_FoR", data=constraint.body_FoR)
+            #     constraint_id.create_dataset("rot_vel", data=constraint.rot_vel)
+            #
+            # if constraint.behaviour == 'spherical_FoR':
+            #     constraint_id.create_dataset("body_FoR", data=constraint.body_FoR)
+            #
+            # if constraint.behaviour == 'hinge_FoR':
+            #     constraint_id.create_dataset("body_FoR", data=constraint.body_FoR)
+            #     constraint_id.create_dataset("rot_axis_AFoR", data=constraint.rot_axis_AFoR)
+            #
+            # if constraint.behaviour == 'constant_rot_vel_FoR':
+            #     constraint_id.create_dataset("FoR_body", data=constraint.FoR_body)
+            #     constraint_id.create_dataset("rot_vel", data=constraint.rot_vel)
+            #
+            # if constraint.behaviour == 'constant_vel_FoR':
+            #     constraint_id.create_dataset("FoR_body", data=constraint.FoR_body)
+            #     constraint_id.create_dataset("vel", data=constraint.vel)
+            #
+            # if constraint.behaviour == 'hinge_node_FoR_constant_vel':
+            #     constraint_id.create_dataset("node_in_body", data=constraint.node_in_body)
+            #     constraint_id.create_dataset("body", data=constraint.body)
+            #     constraint_id.create_dataset("body_FoR", data=constraint.body_FoR)
+            #     constraint_id.create_dataset("rot_axisB", data=constraint.rot_axisB)
+            #     constraint_id.create_dataset("rot_vel", data=constraint.rot_vel)
+            #
+            # if constraint.behaviour == 'lin_vel_node_wrtA':
+            #     constraint_id.create_dataset("velocity", data=constraint.velocity)
+            #     constraint_id.create_dataset("body_number", data=constraint.body_number)
+            #     constraint_id.create_dataset("node_number", data=constraint.node_number)
+            #
+            # if constraint.behaviour == 'lin_vel_node_wrtG':
+            #     constraint_id.create_dataset("velocity", data=constraint.velocity)
+            #     constraint_id.create_dataset("body_number", data=constraint.body_number)
+            #     constraint_id.create_dataset("node_number", data=constraint.node_number)
+            #
+            # if constraint.behaviour == 'fully_constrained_node_FoR':
+            #     constraint_id.create_dataset("node_in_body", data=constraint.node_in_body)
+            #     constraint_id.create_dataset("node_body", data=constraint.node_body)
+            #     constraint_id.create_dataset("body_FoR", data=constraint.body_FoR)
+            # # iconstraint += 1
 
         # Write the body information
         h5file.create_dataset('num_bodies', data=len(list_Bodies))

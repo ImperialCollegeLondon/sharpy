@@ -8,25 +8,16 @@ equations.
 Reference: this test case is as per Sec V.B.1 of:
 	S. Maraniello % R.Palacios, "State-space realizations and internal balancing in
 	potential-flow aerodynamics with arbitrary kinematics", AIAA J., 2018,
-but with less points and on a courser UVLM grid.
+but with less points and on a coarser UVLM grid.
 '''
-import time
-import copy
 import numpy as np
-import scipy as sc
-import sys, os
-import warnings
-import matplotlib.pyplot as plt 
+import os
+import matplotlib.pyplot as plt
 
 # sharpy
-import sharpy.sharpy_main
-import sharpy.utils.solver_interface as solver_interface
-import sharpy.solvers.modal as modal
 import sharpy.utils.h5utils as h5
-import cases.templates.flying_wings as flying_wings
 
-import sharpy.linear.src.linuvlm as linuvlm
-import sharpy.linear.src.libss as libss 
+import sharpy.linear.src.libss as libss
 import sharpy.linear.src.libsparse as libsp
 import sharpy.linear.src.lin_aeroelastic as lin_aeroelastic
 

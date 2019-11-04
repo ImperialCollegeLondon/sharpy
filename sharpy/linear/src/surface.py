@@ -224,7 +224,6 @@ class AeroGridGeo():
 
     def plot(self, plot_normals=False):
 
-        from mpl_toolkits.mplot3d import axes3d
         import matplotlib.pyplot as plt
 
         fig = plt.figure()

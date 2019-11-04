@@ -1682,7 +1682,7 @@ def ss_to_scipy(ss):
     if ss.dt == None:
         sys = scsig.lti(ss.A, ss.B, ss.C, ss.D)
     else:
-        sys = scsig.dlti(ss.A, ss.B, ss.C, ss.D, ss.dt)
+        sys = scsig.dlti(ss.A, ss.B, ss.C, ss.D, dt=ss.dt)
 
     return sys
 
