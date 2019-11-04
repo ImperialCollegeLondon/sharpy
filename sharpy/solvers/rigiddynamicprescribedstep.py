@@ -16,7 +16,7 @@ import sharpy.utils.algebra as algebra
 @solver
 class RigidDynamicPrescribedStep(BaseSolver):
     solver_id = 'RigidDynamicPrescribedStep'
-    solver_classification = 'FSI'
+    solver_classification = 'Coupled'
 
     settings_types = dict()
     settings_default = dict()

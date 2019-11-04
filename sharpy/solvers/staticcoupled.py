@@ -17,7 +17,7 @@ class StaticCoupled(BaseSolver):
     It requires a ``structural_solver`` and a ``aero_solver`` to be defined.
     """
     solver_id = 'StaticCoupled'
-    solver_classification = 'FSI'
+    solver_classification = 'Coupled'
 
     settings_types = dict()
     settings_default = dict()

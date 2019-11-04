@@ -11,12 +11,12 @@ import sharpy.utils.cout_utils as cout
 import time
 
 @solver
-class LinearDynamicSimulation(BaseSolver):
+class LinDynamicSim(BaseSolver):
     """Time-domain solution of Linear Time Invariant Systems
 
     """
     solver_id = 'LinDynamicSim'
-    solver_classification = 'FSI'
+    solver_classification = 'Coupled'
 
     settings_types = dict()
     settings_default = dict()

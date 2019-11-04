@@ -38,6 +38,7 @@ class LinearAssembler(BaseSolver):
 
     """
     solver_id = 'LinearAssembler'
+    solver_classification = 'Linear'
 
     settings_types = dict()
     settings_default = dict()

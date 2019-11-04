@@ -12,12 +12,12 @@ import sharpy.utils.cout_utils as cout
 
 
 @solver
-class StepUvlm(BaseSolver):
+class NoAero(BaseSolver):
     """
     Solver to be used with DynamicCoupled when aerodynamics are not of interest
     """
     solver_id = 'NoAero'
-    solver_classification = 'Aerodynamic'
+    solver_classification = 'Aero'
 
     settings_types = dict()
     settings_default = dict()
@@ -50,7 +50,6 @@ class StepUvlm(BaseSolver):
             dt=None,
             t=None,
             unsteady_contribution=False):
-        
         return self.data
 
     def add_step(self):

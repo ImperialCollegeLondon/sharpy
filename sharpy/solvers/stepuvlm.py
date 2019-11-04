@@ -17,7 +17,7 @@ class StepUvlm(BaseSolver):
     StepUVLM is the main solver to use for unsteady aerodynamics.
     """
     solver_id = 'StepUvlm'
-    solver_classification = 'Aerodynamic'
+    solver_classification = 'aero'
 
     settings_types = dict()
     settings_default = dict()

@@ -18,6 +18,7 @@ class StabilityDerivatives(solver_interface.BaseSolver):
 
     """
     solver_id = 'StabilityDerivatives'
+    solver_classification = 'post-processor'
 
     def __init__(self):
         self.data = None

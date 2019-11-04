@@ -30,7 +30,7 @@ class Modal(BaseSolver):
     of the structure.
     """
     solver_id = 'Modal'
-    solver_classification = 'modal'
+    solver_classification = 'Linear'
 
     settings_types = dict()
     settings_default = dict()

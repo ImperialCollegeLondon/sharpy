@@ -16,7 +16,7 @@ class StaticTrim(BaseSolver):
 
     """
     solver_id = 'StaticTrim'
-    solver_classification = 'Flight'
+    solver_classification = 'Flight Dynamics'
 
     settings_types = dict()
     settings_default = dict()

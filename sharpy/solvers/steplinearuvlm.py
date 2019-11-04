@@ -69,13 +69,45 @@ class StepLinearUVLM(BaseSolver):
 
     """
     solver_id = 'StepLinearUVLM'
+    solver_classification = 'aero'
+
+    settings_types = dict()
+    settings_default = dict()
+    settings_description = dict()
+
+    settings_types['dt'] = 'float'
+    settings_default['dt'] = 0.1
+    settings_description['dt'] = 'Time step'
+
+    settings_types['integr_order'] = 'int'
+    settings_default['integr_order'] = 2
+    settings_description['integr_order'] = 'Integration order of the circulation derivative. Either ``1`` or ``2``.'
+
+    settings_types['ScalingDict'] = 'dict'
+    settings_default['ScalingDict'] = dict()
+    settings_description['ScalingDict'] = 'Dictionary of scaling factors to achieve normalised UVLM realisation.'
+
+    settings_types['remove_predictor'] = 'bool'
+    settings_default['remove_predictor'] = True
+    settings_description['remove_predictor'] = 'Remove the predictor term from the UVLM equations'
+
+    settings_types['use_sparse'] = 'bool'
+    settings_default['use_sparse'] = True
+    settings_description['use_sparse'] = 'Assemble UVLM plant matrix in sparse format'
+
+    settings_types['density'] = 'float'
+    settings_default['density'] = 1.225
+    settings_description['density'] = 'Air density'
+
+    settings_table = settings.SettingsTable()
+    __doc__ += settings_table.generate(settings_types, settings_default, settings_description)
 
     def __init__(self):
         """
         Read default settings from linuvlm module
         """
-        self.settings_types = linuvlm.settings_types_dynamic
-        self.settings_default = linuvlm.settings_default_dynamic
+        # self.settings_types = linuvlm.settings_types_dynamic
+        # self.settings_default = linuvlm.settings_default_dynamic
 
         self.data = None
         self.settings = None
