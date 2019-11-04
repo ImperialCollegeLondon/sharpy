@@ -10,7 +10,7 @@ import sharpy.utils.cout_utils as cout
 
 @ss_interface.linear_system
 class LinearAeroelastic(ss_interface.BaseElement):
-    """
+    r"""
     Assemble a linearised aeroelastic system
 
     The aeroelastic system can be seen as the coupling between a linearised aerodynamic system (System 1) and
@@ -156,6 +156,10 @@ class LinearAeroelastic(ss_interface.BaseElement):
             # Retain other inputs
             Kas[2*self.sys.Kdisp.shape[0]:, 2*beam.sys.num_dof:] = np.eye(uvlm.ss.inputs - 2 * self.sys.Kdisp.shape[0])
 
+            # Scaling
+            if uvlm.scaled:
+                Kas /= uvlm.sys.ScalingFacts['length']
+
             uvlm.ss.addGain(Ksa, where='out')
             uvlm.ss.addGain(Kas, where='in')
 
@@ -164,12 +168,11 @@ class LinearAeroelastic(ss_interface.BaseElement):
 
             if self.settings['beam_settings']['modal_projection'].value == True and \
                     self.settings['beam_settings']['inout_coords'] == 'modes':
-                # Project UVLM onto modal space and scale length
+                # Project UVLM onto modal space
                 phi = beam.sys.U
                 in_mode_matrix = np.zeros((uvlm.ss.inputs, beam.ss.outputs + (uvlm.ss.inputs - 2*beam.sys.num_dof)))
                 in_mode_matrix[:2*beam.sys.num_dof, :2*beam.sys.num_modes] = sclalg.block_diag(phi, phi)
                 in_mode_matrix[2*beam.sys.num_dof:, 2*beam.sys.num_modes:] = np.eye(uvlm.ss.inputs - 2*beam.sys.num_dof)
-                in_mode_matrix /= uvlm.sys.ScalingFacts['length']
                 out_mode_matrix = phi.T
 
                 uvlm.ss.addGain(in_mode_matrix, where='in')
@@ -177,7 +180,8 @@ class LinearAeroelastic(ss_interface.BaseElement):
 
             # Reduce uvlm projected onto structural coordinates
             if uvlm.rom is not None:
-                uvlm.ss = uvlm.rom.run(uvlm.ss)
+                for k, rom in uvlm.rom.items():
+                    uvlm.ss = rom.run(uvlm.ss)
 
         else:
             uvlm.ss = self.load_uvlm(self.settings['uvlm_filename'])
@@ -201,7 +205,7 @@ class LinearAeroelastic(ss_interface.BaseElement):
         ss = libss.couple(ss01=uvlm.ss, ss02=beam.ss, K12=Tas, K21=Tsa)
         self.couplings['Tas'] = Tas
         self.couplings['Tsa'] = Tsa
-
+        Y_freq = uvlm.ss.freqresp(np.array([0]))[:, :, 0]
         self.state_variables = {'aero': uvlm.ss.states,
                                 'beam': beam.ss.states}
 
@@ -235,6 +239,7 @@ class LinearAeroelastic(ss_interface.BaseElement):
     def load_uvlm(filename):
         import sharpy.utils.h5utils as h5
         cout.cout_wrap('Loading UVLM state space system projected onto structural DOFs from file')
-        read_data = h5.readh5(filename).data
-        uvlm_ss_read = read_data.linear.linear_system.uvlm.ss
+        read_data = h5.readh5(filename).ss
+        # uvlm_ss_read = read_data.linear.linear_system.uvlm.ss
+        uvlm_ss_read = read_data
         return libss.ss(uvlm_ss_read.A, uvlm_ss_read.B, uvlm_ss_read.C, uvlm_ss_read.D, dt=uvlm_ss_read.dt)

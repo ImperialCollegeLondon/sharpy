@@ -9,9 +9,15 @@ import sharpy.linear.src.libsparse as libsp
 import sharpy.utils.settings as settings
 import scipy.sparse as sp
 import sharpy.utils.rom_interface as rom_interface
+import sharpy.linear.src.libss as libss
 
 @ss_interface.linear_system
 class LinearUVLM(ss_interface.BaseElement):
+    """
+    Linear UVLM System Assembler
+
+
+    """
     sys_id = 'LinearUVLM'
 
     settings_types = dict()
@@ -20,37 +26,46 @@ class LinearUVLM(ss_interface.BaseElement):
     
     settings_types['dt'] = 'float'
     settings_default['dt'] = 0.1
+    settings_description['dt'] = 'Time step'
 
     settings_types['integr_order'] = 'int'
     settings_default['integr_order'] = 2
-
-    settings_types['density'] = 'float'
-    settings_default['density'] = 1.225
+    settings_description['integr_order'] = 'Integration order of the circulation derivative. Either ``1`` or ``2``.'
 
     settings_types['ScalingDict'] = 'dict'
     settings_default['ScalingDict'] = {'length': 1.0,
                                                'speed': 1.0,
                                                'density': 1.0}
+    settings_description['ScalingDict'] = 'Dictionary of scaling factors to achieve normalised UVLM realisation.'
 
     settings_types['remove_predictor'] = 'bool'
     settings_default['remove_predictor'] = True
+    settings_description['remove_predictor'] = 'Remove the predictor term from the UVLM equations'
 
     settings_types['use_sparse'] = 'bool'
     settings_default['use_sparse'] = True
+    settings_description['use_sparse'] = 'Assemble UVLM plant matrix in sparse format'
 
     settings_types['density'] = 'float'
     settings_default['density'] = 1.225
+    settings_description['density'] = 'Air density'
 
     settings_types['remove_inputs'] = 'list'
     settings_default['remove_inputs'] = []
+    settings_description['remove_inputs'] = 'List of inputs to remove. ``u_gust`` to remove external velocity input.'
 
-    settings_types['rom_method'] = 'str'
-    settings_default['rom_method'] = ''
-    settings_description['rom_method'] = 'Model reduction method to reduce UVLM'
+    settings_types['gust_assembler'] = 'str'
+    settings_default['gust_assembler'] = ''
+    settings_description['gust_assembler'] = 'Selected gust assembler. ``leading_edge`` for now'
+
+    settings_types['rom_method'] = 'list(str)'
+    settings_default['rom_method'] = []
+    settings_description['rom_method'] = 'List of model reduction methods to reduce UVLM'
 
     settings_types['rom_method_settings'] = 'dict'
     settings_default['rom_method_settings'] = dict()
-    settings_description['rom_method_settings'] = 'Settings for the desired ROM method'
+    settings_description['rom_method_settings'] = 'Dictionary with settings for the desired ROM methods, ' \
+                                                  'where the name is the key to the dictionary'
     
     def __init__(self):
         
@@ -66,6 +81,7 @@ class LinearUVLM(ss_interface.BaseElement):
         self.C_to_vertex_forces = None
 
         self.control_surface = None
+        self.gust_assembler = None
         self.gain_cs = None
         self.scaled = None
 
@@ -75,7 +91,7 @@ class LinearUVLM(ss_interface.BaseElement):
             self.settings = custom_settings
         else:
             try:
-                self.settings = data.settings['LinearAssembler'][self.sys_id]  # Load settings, the settings should be stored in data.linear.settings
+                self.settings = data.settings['LinearAssembler']['linear_system_settings']  # Load settings, the settings should be stored in data.linear.settings
             except KeyError:
                 pass
 
@@ -107,8 +123,15 @@ class LinearUVLM(ss_interface.BaseElement):
 
         if self.settings['rom_method'] != '':
             # Initialise ROM
-            self.rom = rom_interface.initialise_rom(self.settings['rom_method'])
-            self.rom.initialise(self.settings['rom_method_settings'])
+            self.rom = dict()
+            for rom_name in self.settings['rom_method']:
+                self.rom[rom_name] = rom_interface.initialise_rom(rom_name)
+                self.rom[rom_name].initialise(self.settings['rom_method_settings'][rom_name])
+
+        if 'u_gust' not in self.settings['remove_inputs'] and self.settings['gust_assembler'] == 'leading_edge':
+            import sharpy.linear.assembler.lineargustassembler as lineargust
+            self.gust_assembler = lineargust.LinearGustGenerator()
+            self.gust_assembler.initialise(data.aero)
 
     def assemble(self):
         r"""
@@ -119,6 +142,9 @@ class LinearUVLM(ss_interface.BaseElement):
 
         .. math:: \mathbf{u} = [\boldsymbol{\zeta},\,\dot{\boldsymbol{\zeta}},\,\mathbf{w},\,\delta]
 
+        Control surface inputs are ordered last as:
+
+        .. math:: [\delta_1, \delta_2, \dots, \dot{\delta}_1, \dot{\delta_2}]
         """
 
         self.sys.assemble_ss()
@@ -131,19 +157,28 @@ class LinearUVLM(ss_interface.BaseElement):
         if self.settings['remove_inputs']:
             self.remove_inputs(self.settings['remove_inputs'])
 
+        if self.gust_assembler is not None:
+            A, B, C, D = self.gust_assembler.generate(self.sys, aero=None)
+            ss_gust = libss.ss(A, B, C, D, dt=self.ss.dt)
+            self.gust_assembler.ss_gust = ss_gust
+            self.ss = libss.series(ss_gust, self.ss)
+
         if self.control_surface is not None:
-            Kzeta_delta = self.control_surface.generate()
+            Kzeta_delta, Kdzeta_ddelta = self.control_surface.generate()
+            n_zeta, n_ctrl_sfc = Kzeta_delta.shape
 
             # Modify the state space system with a gain at the input side
             # such that the control surface deflections are last
             if self.sys.use_sparse:
-                gain_cs = sp.eye(self.ss.inputs, self.ss.inputs + self.control_surface.n_control_surfaces,
+                gain_cs = sp.eye(self.ss.inputs, self.ss.inputs + 2 * self.control_surface.n_control_surfaces,
                                  format='lil')
-                gain_cs[:Kzeta_delta.shape[0], -self.control_surface.n_control_surfaces:] = Kzeta_delta
+                gain_cs[:n_zeta, self.ss.inputs: self.ss.inputs + n_ctrl_sfc] = Kzeta_delta
+                gain_cs[n_zeta: 2*n_zeta, self.ss.inputs + n_ctrl_sfc: self.ss.inputs + 2 * n_ctrl_sfc] = Kdzeta_ddelta
                 gain_cs = libsp.csc_matrix(gain_cs)
             else:
-                gain_cs = np.eye(self.ss.inputs, self.ss.inputs + self.control_surface.n_control_surfaces)
-                gain_cs[:Kzeta_delta.shape[0], -self.control_surface.n_control_surfaces:] = Kzeta_delta
+                gain_cs = np.eye(self.ss.inputs, self.ss.inputs + 2 * self.control_surface.n_control_surfaces)
+                gain_cs[:n_zeta, self.ss.inputs: self.ss.inputs + n_ctrl_sfc] = Kzeta_delta
+                gain_cs[n_zeta: 2*n_zeta, self.ss.inputs + n_ctrl_sfc: self.ss.inputs + 2 * n_ctrl_sfc] = Kdzeta_ddelta
             self.ss.addGain(gain_cs, where='in')
             self.gain_cs = gain_cs
 
@@ -230,6 +265,7 @@ class LinearUVLM(ss_interface.BaseElement):
         else:
             Cg_uvlm = np.eye(3)
         y_n = self.C_to_vertex_forces.dot(x_n)
+        # y_n = np.zeros((3 * self.sys.Kzeta))
 
         gamma_vec, gamma_star_vec, gamma_dot_vec = self.sys.unpack_state(x_n)
 
@@ -297,8 +333,12 @@ class LinearUVLM(ss_interface.BaseElement):
             tuple: Tuple containing ``zeta``, ``zeta_dot`` and ``u_ext``, accounting for the effect of control surfaces.
         """
 
+        # if self.gust_assembler is not None:
+        #     u_n = self.gust_assembler.ss_gust
+
         if self.control_surface is not None:
             u_n = self.gain_cs.dot(u_n)
+
         input_vars = self.input_variables.vector_vars
         tsaero0 = self.tsaero0
 
