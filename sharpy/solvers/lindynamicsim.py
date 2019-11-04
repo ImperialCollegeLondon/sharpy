@@ -16,6 +16,7 @@ class LinearDynamicSimulation(BaseSolver):
 
     """
     solver_id = 'LinDynamicSim'
+    solver_classification = 'FSI'
 
     settings_types = dict()
     settings_default = dict()
