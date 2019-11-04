@@ -92,6 +92,7 @@ class TestRotor(unittest.TestCase):
         SimInfo.solvers['AerogridLoader']['freestream_dir'] = np.array([0.,0.,0.])
 
         SimInfo.solvers['Modal']['write_modes_vtk'] = False
+        SimInfo.solvers['Modal']['write_dat'] = True
 
         ######################################################################
         #######################  GENERATE FILES  #############################
