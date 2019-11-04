@@ -102,6 +102,8 @@ class TestFixNodeVelocitywrtA(unittest.TestCase):
         SimInfo.solvers['NonLinearDynamicMultibody']['max_iterations'] = 200
         SimInfo.solvers['NonLinearDynamicMultibody']['newmark_damp'] = 1e-3
 
+        SimInfo.solvers['WriteVariablesTime']['cleanup_old_solution'] = 'on'
+
         SimInfo.solvers['DynamicCoupled']['structural_solver'] = 'NonLinearDynamicMultibody'
         SimInfo.solvers['DynamicCoupled']['structural_solver_settings'] = SimInfo.solvers['NonLinearDynamicMultibody']
         SimInfo.solvers['DynamicCoupled']['aero_solver'] = 'StepUvlm'
