@@ -68,7 +68,7 @@ class StepUvlm(BaseSolver):
     settings_description['gamma_dot_filtering'] = 'Filtering parameter for the Welch filter for the Gamma_dot estimation. Used when ``unsteady_force_contribution`` is ``on``.'
 
     settings_types['rho'] = 'float'
-    settings_default['rho'] = 2.225
+    settings_default['rho'] = 1.225
     settings_description['rho'] = 'Air density'
 
     settings_table = settings.SettingsTable()
