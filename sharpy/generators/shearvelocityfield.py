@@ -13,7 +13,7 @@ class ShearVelocityField(generator_interface.BaseGenerator):
 
     The object creates a steady velocity field with shear
 
-    .. math:: \hat{u} = \hat{u}\_\infty ( \frac{h - h\_\mathrm{corr}}{h\_\mathrm{ref}} ) ^\mathrm{shear}\_\mathrm{exp}
+    .. math:: \hat{u} = \hat{u}\_\infty \left( \frac{h - h\_\mathrm{corr}}{h\_\mathrm{ref}} \right)^{\mathrm{shear}\_\mathrm{exp}}
     .. math:: h = \zeta \cdot \mathrm{shear}\_\mathrm{direction}
 
     """
