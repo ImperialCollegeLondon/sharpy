@@ -1145,8 +1145,7 @@ class AerodynamicInformation():
 
         if m_distribution == 'user_defined':
             self.user_defined_m_distribution = []
-            for isurf in range(len(num_chord_panels)):
-                self.user_defined_m_distribution.append(np.zeros((num_chord_panels + 1, num_elem, num_node_elem)))
+            self.user_defined_m_distribution.append(np.zeros((num_chord_panels + 1, num_elem, num_node_elem)))
 
     def change_airfoils_discretezation(self, airfoils, new_num_nodes):
         """
