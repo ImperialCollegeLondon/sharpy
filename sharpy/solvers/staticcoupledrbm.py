@@ -154,8 +154,12 @@ class StaticCoupledRBM(BaseSolver):
                     self.previous_force = temp
 
                 # copy force in beam
-                old_g = self.structural_solver.settings['gravity'].value
-                self.structural_solver.settings['gravity'] = old_g*load_step_multiplier
+                with_gravity_setting = True
+                try:
+                    old_g = self.structural_solver.settings['gravity'].value
+                    self.structural_solver.settings['gravity'] = old_g*load_step_multiplier
+                except KeyError:
+                    with_gravity_setting = False
                 temp1 = load_step_multiplier*(struct_forces + self.data.structure.ini_info.steady_applied_forces)
                 self.data.structure.timestep_info[self.data.ts].steady_applied_forces[:] = temp1
                 # run beam
@@ -163,7 +167,8 @@ class StaticCoupledRBM(BaseSolver):
                 self.data = self.structural_solver.run()
                 # The following line removes the rbm
                 self.data.structure.timestep_info[self.data.ts].quat = prev_quat.copy()
-                self.structural_solver.settings['gravity'] = ct.c_double(old_g)
+                if with_gravity_setting:
+                    self.structural_solver.settings['gravity'] = ct.c_double(old_g)
 
                 # update grid
                 self.aero_solver.update_step()

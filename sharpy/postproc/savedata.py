@@ -53,7 +53,7 @@ class SaveData(BaseSolver):
         self.settings_default['save_struct'] = True
 
         self.settings_types['save_linear'] = 'bool'
-        self.settings_default['save_linear'] = True
+        self.settings_default['save_linear'] = False
         self.settings_description['save_linear'] = 'Save linear state space system'
 
         self.settings_types['save_linear_uvlm'] = 'bool'
@@ -161,8 +161,6 @@ class SaveData(BaseSolver):
 
         file_exists = os.path.isfile(self.filename)
         hdfile=h5py.File(self.filename,'a')
-
-        #from IPython import embed;embed()
 
         if (online and file_exists):
             if self.settings['save_aero']:
