@@ -4,7 +4,7 @@ import numpy as np
 import os
 import sharpy.utils.algebra as algebra
 
-case_name = 'simple_HALE_phugoid'
+case_name = 'simple_HALE'
 route = os.path.dirname(os.path.realpath(__file__)) + '/'
 
 # EXECUTION
@@ -21,7 +21,7 @@ flow = ['BeamLoader',
         ]
 
 # if free_flight is False, the motion of the centre of the wing is prescribed.
-free_flight = False
+free_flight = True
 if not free_flight:
     case_name += '_prescribed'
     amplitude = 0*np.pi/180
@@ -118,14 +118,6 @@ physical_time = 100
 tstep_factor = 1.
 dt = 1.0/m/u_inf*tstep_factor
 n_tstep = round(physical_time/dt)
-
-
-# elevator deflection
-dynamic_elevator = 1
-delta_e = np.zeros(n_tstep) + cs_deflection
-delta_e[10:150] += 2 * np.pi / 180
-elev_file = route + '/' + case_name + '.input.txt'
-np.savetxt(elev_file, delta_e)
 
 # END OF INPUT-----------------------------------------------------------------
 
@@ -229,7 +221,7 @@ def clean_test_files():
     if os.path.isfile(aero_file_name):
         os.remove(aero_file_name)
 
-    solver_file_name = route + '/' + case_name + '.solver.txt'
+    solver_file_name = route + '/' + case_name + '.solver.sharpy'
     if os.path.isfile(solver_file_name):
         os.remove(solver_file_name)
 
@@ -481,7 +473,7 @@ def generate_aero_file():
 
     # control surface type 0 = static
     # control surface type 1 = dynamic
-    control_surface_type[0] = dynamic_elevator
+    control_surface_type[0] = 0
     control_surface_deflection[0] = cs_deflection
     control_surface_chord[0] = m
     control_surface_hinge_coord[0] = -0.25 # nondimensional wrt elastic axis (+ towards the trailing edge)
@@ -659,7 +651,7 @@ def generate_naca_camber(M=0, P=0):
 
 
 def generate_solver_file():
-    file_name = route + '/' + case_name + '.solver.txt'
+    file_name = route + '/' + case_name + '.solver.sharpy'
     settings = dict()
     settings['SHARPy'] = {'case': case_name,
                           'route': route,
@@ -676,12 +668,7 @@ def generate_solver_file():
     settings['AerogridLoader'] = {'unsteady': 'on',
                                   'aligned_grid': 'on',
                                   'mstar': int(20/tstep_factor),
-                                  'freestream_dir': ['1', '0', '0'],
-                                  'control_surface_deflection': ['DynamicControlSurface', ''],
-                                  'control_surface_deflection_generator':
-                                  [{'dt': dt,
-                                    'deflection_file': elev_file},
-                                   {}]}
+                                  'freestream_dir': ['1', '0', '0']}
 
     settings['NonLinearStatic'] = {'print_info': 'off',
                                    'max_iterations': 150,

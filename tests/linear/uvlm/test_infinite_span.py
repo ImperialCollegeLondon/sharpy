@@ -85,8 +85,8 @@ class Test_infinite_span(unittest.TestCase):
 
         # solution flow
         ws.set_default_config_dict()
-        ws.config['SHARPy']['flow'] = ['BeamLoader', 'AerogridLoader', 'StaticUvlm']
-        ws.config['SHARPy']['write_screen'] = 'off'
+        ws.config['SHARPy']['flow'] = ['BeamLoader', 'AerogridLoader', 'StaticUvlm', 'AeroForcesCalculator']
+        ws.config['SHARPy']['write_screen'] = 'on'
         ws.config['LinearUvlm'] = {'dt': ws.dt,
                                    'integr_order': integr_ord,
                                    'density': ws.rho,
@@ -176,6 +176,7 @@ class Test_infinite_span(unittest.TestCase):
 
         ### ----- linearisation
         uvlm = linuvlm.Dynamic(tsaero0,
+                               dynamic_settings=ws.config['LinearUvlm'],
                                dt=ws.config['LinearUvlm']['dt'],
                                integr_order=ws.config['LinearUvlm']['integr_order'],
                                RemovePredictor=ws.config['LinearUvlm']['remove_predictor'],
