@@ -83,7 +83,7 @@ class BeamLoader(BaseSolver):
         self.settings = data.settings[self.solver_id]
 
         # init settings
-        settings_utils.to_custom_types(self.settings, self.settings_types, self.settings_default)
+        settings.to_custom_types(self.settings, self.settings_types, self.settings_default)
 
         # read input files (fem and dyn)
         self.read_files()

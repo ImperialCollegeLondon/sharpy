@@ -2,6 +2,7 @@ import numpy as np
 import os
 import unittest
 import shutil
+import glob
 
 
 folder = os.path.abspath(os.path.dirname(os.path.realpath(__file__)))
@@ -26,8 +27,8 @@ class TestRotor(unittest.TestCase):
         ######################################################################
         # Case
         global case
+        route = folder + '/'
         case = 'rotor'
-        route = os.path.dirname(os.path.realpath(__file__)) + '/'
 
         # Geometry discretization
         chord_panels = np.array([8], dtype=int)
@@ -93,6 +94,7 @@ class TestRotor(unittest.TestCase):
 
         SimInfo.solvers['Modal']['write_modes_vtk'] = False
         SimInfo.solvers['Modal']['write_dat'] = True
+        SimInfo.solvers['Modal']['folder'] = folder + '/output/'
 
         ######################################################################
         #######################  GENERATE FILES  #############################
@@ -100,7 +102,6 @@ class TestRotor(unittest.TestCase):
         gc.clean_test_files(SimInfo.solvers['SHARPy']['route'], SimInfo.solvers['SHARPy']['case'])
         rotor.generate_h5_files(SimInfo.solvers['SHARPy']['route'], SimInfo.solvers['SHARPy']['case'])
         SimInfo.generate_solver_file()
-        # SimInfo.generate_dyn_file(time_steps)
 
     def test_rotor(self):
         import sharpy.sharpy_main
@@ -121,11 +122,17 @@ class TestRotor(unittest.TestCase):
         self.assertAlmostEqual(freq_data[0, 3], edge_1, 0) # 1st edgewise
         self.assertAlmostEqual(freq_data[0, 6], flap_2, 0) # 2nd flapwise
 
-    def tearDowns(self):
+    def tearDown(self):
         files_to_delete = [case + '.aero.h5',
                            case + '.fem.h5',
                            case + '.solver.txt']
-        for f in files_to_delete:
-            os.remove(folder +'/' + f)
+        try:
+            for f in files_to_delete:
+                os.remove(folder +'/' + f)
+        except FileNotFoundError:
+            pass
 
-        shutil.rmtree(folder + '/output/')
+        try:
+            shutil.rmtree(folder + '/output/')
+        except FileNotFoundError:
+            pass
