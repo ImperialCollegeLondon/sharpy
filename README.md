@@ -3,7 +3,7 @@
 [![License](https://img.shields.io/badge/License-BSD%203--Clause-blue.svg)](https://opensource.org/licenses/BSD-3-Clause) [![Documentation Status](https://readthedocs.org/projects/ic-sharpy/badge/?version=master)](https://ic-sharpy.readthedocs.io/en/master/?badge=master)
 
 
-__Status__
+__Continuous Integration Status__
 
 | Master  | Develop        |
 |---------|----------------|
