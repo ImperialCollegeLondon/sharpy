@@ -6,7 +6,6 @@ import glob
 
 
 folder = os.path.abspath(os.path.dirname(os.path.realpath(__file__)))
-print('Folder of TestRotor: ', folder)
 
 
 class TestRotor(unittest.TestCase):
@@ -83,7 +82,7 @@ class TestRotor(unittest.TestCase):
         SimInfo.solvers['SHARPy']['case'] = case
         SimInfo.solvers['SHARPy']['route'] = route
         SimInfo.solvers['SHARPy']['write_log'] = True
-        SimInfo.solvers['SHARPy']['write_screen'] = 'on'
+        SimInfo.solvers['SHARPy']['write_screen'] = 'off'
         SimInfo.set_variable_all_dicts('dt', dt)
         SimInfo.set_variable_all_dicts('rho', air_density)
 
@@ -112,13 +111,7 @@ class TestRotor(unittest.TestCase):
 
         # read output and compare
         output_path = folder + '/output/' + case + '/beam_modal_analysis/'
-        print('Reading freq.dat file from: ', output_path)
-        print('Files in the folder are: ')
-        for f in glob.glob(output_path + '/*'):
-            print(f)
-        print('------')
         freq_data = np.atleast_2d(np.genfromtxt(output_path + "frequencies.dat"))
-        print(freq_data)
 
         # Data from reference. Several values are provided, the average is used
         flap_1 = np.average([0.6664, 0.6296, 0.6675, 0.6686, 0.6993, 0.7019])*2*np.pi

@@ -401,18 +401,11 @@ class Modal(BaseSolver):
                        fmt='%.12f', delimiter='\t', newline='\n')
 
             if not self.settings['use_undamped_modes'].value:
-                cout.cout_wrap('In damped')
-                cout.cout_wrap('Printing frequencies.dat to: ' + os.path.abspath(self.folder), 1)
                 np.savetxt(self.folder + 'frequencies.dat', freq_damped[:NumLambda],
                            fmt='%e', delimiter='\t', newline='\n')
-                cout.cout_wrap('Success', 1)
             else:
-                cout.cout_wrap('In undamped', 1)
-                print(freq_natural[:NumLambda])
-                cout.cout_wrap('Printing frequencies.dat to: ' + os.path.abspath(self.folder), 1)
                 np.savetxt(self.folder + 'frequencies.dat', freq_natural[:NumLambda],
                            fmt='%e', delimiter='\t', newline='\n')
-                cout.cout_wrap('Success', 1)
 
             np.savetxt(self.filename_damp, damping[:NumLambda],
                        fmt='%e', delimiter='\t', newline='\n')
