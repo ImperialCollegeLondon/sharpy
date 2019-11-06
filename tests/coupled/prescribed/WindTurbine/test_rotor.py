@@ -2,9 +2,11 @@ import numpy as np
 import os
 import unittest
 import shutil
+import glob
 
 
 folder = os.path.abspath(os.path.dirname(os.path.realpath(__file__)))
+print('Folder of TestRotor: ', folder)
 
 
 class TestRotor(unittest.TestCase):
@@ -100,7 +102,6 @@ class TestRotor(unittest.TestCase):
         gc.clean_test_files(SimInfo.solvers['SHARPy']['route'], SimInfo.solvers['SHARPy']['case'])
         rotor.generate_h5_files(SimInfo.solvers['SHARPy']['route'], SimInfo.solvers['SHARPy']['case'])
         SimInfo.generate_solver_file()
-        # SimInfo.generate_dyn_file(time_steps)
 
     def test_rotor(self):
         import sharpy.sharpy_main
@@ -110,7 +111,13 @@ class TestRotor(unittest.TestCase):
 
         # read output and compare
         output_path = folder + '/output/' + case + '/beam_modal_analysis/'
+        print('Reading freq.dat file from: ', output_path)
+        print('Files in the folder are: ')
+        for f in glob.glob(output_path + '/*'):
+            print(f)
+        print('')
         freq_data = np.atleast_2d(np.genfromtxt(output_path + "frequencies.dat"))
+        print(freq_data)
 
         # Data from reference. Several values are provided, the average is used
         flap_1 = np.average([0.6664, 0.6296, 0.6675, 0.6686, 0.6993, 0.7019])*2*np.pi
@@ -125,7 +132,13 @@ class TestRotor(unittest.TestCase):
         files_to_delete = [case + '.aero.h5',
                            case + '.fem.h5',
                            case + '.solver.txt']
-        for f in files_to_delete:
-            os.remove(folder +'/' + f)
+        try:
+            for f in files_to_delete:
+                os.remove(folder +'/' + f)
+        except FileNotFoundError:
+            pass
 
-        shutil.rmtree(folder + '/output/')
+        try:
+            shutil.rmtree(folder + '/output/')
+        except FileNotFoundError:
+            pass
