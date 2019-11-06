@@ -30,16 +30,12 @@ install:
   - echo $(pwd)
   - echo $TRAVIS_BRANCH
   - cd ../
-  - git clone https://github.com/imperialcollegelondon/xbeam
+  - git clone --branch=$TRAVIS_BRANCH https://github.com/imperialcollegelondon/xbeam
   - cd xbeam
-  - export exists=`git show-ref refs/remotes/origin/$TRAVIS_BRANCH`
-  - if [ -n "$exists" ]; then export LIBS_BRANCH=$TRAVIS_BRANCH; else export LIBS_BRANCH=master; fi
-  - echo $LIBS_BRANCH
-  - git checkout $LIBS_BRANCH
   - export LAPACK_LIB_DIR=$(conda info --json | python -c "import sys, json; print(json.load(sys.stdin)['active_prefix'])")/lib
   - make install
   - cd ../
-  - git clone --branch=$LIBS_BRANCH https://github.com/imperialcollegelondon/uvlm
+  - git clone --branch=$TRAVIS_BRANCH https://github.com/imperialcollegelondon/uvlm
   - cd uvlm
   - export EIGEN3_INCLUDE_DIR=$(conda info --json | python -c "import sys, json; print(json.load(sys.stdin)['active_prefix'])")/include/eigen3
   - export MKL_ROOT=$(conda info --json | python -c "import sys, json; print(json.load(sys.stdin)['active_prefix'])")
@@ -50,7 +46,4 @@ install:
   - source bin/sharpy_vars.sh
 
 script:
-  - coverage run -m unittest discover
-
-after_success:
-  - bash <(curl -s https://codecov.io/bash)
+  - python -m unittest

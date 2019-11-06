@@ -128,7 +128,10 @@ class LinearVector():
         removed_dofs = 0
         removed_db = dict()
         for item in trim_list:
-            removed_db[item] = vec_db[item]
+            try:
+                removed_db[item] = vec_db[item]
+            except KeyError:
+                continue
             removed_dofs += vec_db[item].size
             del used_vars_db[item]
 

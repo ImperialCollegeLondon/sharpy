@@ -7,3 +7,5 @@ Assembler
 	./lincontrolsurfacedeflector/index
 	./linearaeroelastic/index
 	./linearbeam/index
+	./lineargustassembler/index
+	./linearuvlm/index

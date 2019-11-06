@@ -206,16 +206,24 @@ class WriteVariablesTime(BaseSolver):
                 continue
             var = getattr(self.data.structure.timestep_info[-1], self.settings['structure_variables'][ivariable])
             num_indices = len(var.shape)
-            for inode in range(len(self.settings['structure_nodes'])):
-                node = self.settings['structure_nodes'][inode]
-                filename = self.dir + "struct_" + self.settings['structure_variables'][ivariable] + "_node" + str(node) + ".dat"
-                fid = open(filename,"a")
+            if num_indices == 1:
+                # Beam global variables (i.e. not node dependant)
+                filename = self.dir + "struct_" + self.settings['structure_variables'][ivariable] + ".dat"
+                fid = open(filename, "a")
+                self.write_nparray_to_file(fid, self.data.ts, var, self.settings['delimiter'])
+                fid.close()
 
-                if num_indices == 2:
-                    self.write_nparray_to_file(fid, self.data.ts, var[node,:], self.settings['delimiter'])
-                elif num_indices == 3:
-                    ielem, inode_in_elem = self.data.structure.node_master_elem[node]
-                    self.write_nparray_to_file(fid, self.data.ts, var[ielem,inode_in_elem,:], self.settings['delimiter'])
+            else:  # These variables have nodal values (i.e the number of indices is either 2 or 3)
+                for inode in range(len(self.settings['structure_nodes'])):
+                    node = self.settings['structure_nodes'][inode]
+                    filename = self.dir + "struct_" + self.settings['structure_variables'][ivariable] + "_node" + str(node) + ".dat"
+                    fid = open(filename,"a")
+
+                    if num_indices == 2:
+                        self.write_nparray_to_file(fid, self.data.ts, var[node,:], self.settings['delimiter'])
+                    elif num_indices == 3:
+                        ielem, inode_in_elem = self.data.structure.node_master_elem[node]
+                        self.write_nparray_to_file(fid, self.data.ts, var[ielem,inode_in_elem,:], self.settings['delimiter'])
 
                 fid.close()
 
