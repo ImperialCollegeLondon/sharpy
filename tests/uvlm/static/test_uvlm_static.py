@@ -40,9 +40,9 @@ class TestStaticUvlm(unittest.TestCase):
         # read output and compare
         output_path = os.path.dirname(solver_path) + '/output/planarwing/forces/'
         forces_data = np.atleast_2d(np.genfromtxt(output_path + 'planarwing_aeroforces.csv', delimiter=','))
-        self.assertAlmostEqual((forces_data[-1, 1] - 22.53)/22.53, 0, 2)
+        self.assertAlmostEqual((forces_data[-1, 1] - 22.3898)/22.3898, 0, 2)
         self.assertAlmostEqual(forces_data[-1, 2], 0.0, 2)
-        self.assertAlmostEqual((forces_data[-1, 3] - 4917.311)/4917.311, 0, 2)
+        self.assertAlmostEqual((forces_data[-1, 3] - 4901.311)/4901.311, 0, 2)
 
     def test_planarwing_discrete_wake(self):
         import sharpy.sharpy_main
