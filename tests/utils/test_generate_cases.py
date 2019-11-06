@@ -27,7 +27,7 @@ class TestGenerateCases(unittest.TestCase):
         # Case
         global case
         case = 'rotor'
-        route = os.path.dirname(os.path.realpath(__file__)) + '/'
+        route = os.path.abspath(os.path.dirname(os.path.realpath(__file__))) + '/'
 
         # Geometry discretization
         chord_panels = np.array([4], dtype=int)

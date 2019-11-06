@@ -7,7 +7,7 @@ class DocTest(unittest.TestCase):
     """
 
     """
-    route = os.path.dirname(os.path.realpath(__file__)) + '/'
+    route = os.path.abspath(os.path.dirname(os.path.realpath(__file__))) + '/'
     source_dir = route + u'../../docs/source'
     config_dir = route + u'../../docs/source'
     output_dir = route + u'../../docs/build'
