@@ -21,6 +21,7 @@ class TestGeradinXbeam(unittest.TestCase):
         case = 'geradin'
         mod = importlib.import_module('tests.xbeam.' + case + '.generate_' + case)
 
+
     def test_geradin(self):
         import sharpy.sharpy_main
         # suppress screen output

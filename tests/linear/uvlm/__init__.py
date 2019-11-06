@@ -1,2 +1,0 @@
-"""Linearised UVLM Test Suite
-"""
