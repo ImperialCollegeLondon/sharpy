@@ -21,13 +21,6 @@ class BeamLoader(BaseSolver):
     Attributes:
         settings (dict): contains the specific settings for the solver
 
-            ===============  ===============  ==========================================================  ================
-            Key              Type             Description                                                 Default
-            ===============  ===============  ==========================================================  ================
-            ``unsteady``     ``bool``         Dynamic problem                                             ``False``
-            ``orientation``  ``list(float)``  Beam orientation with respect to flow in Quaternion format  ``[1, 0, 0, 0]``
-            ===============  ===============  ==========================================================  ================
-
         settings_types (dict): Key  value pairs of the accepted types for the settings values
         settings_default (dict): Dictionary containing the default solver settings, should none be provided.
         data (ProblemData): class containing the data for the problem
