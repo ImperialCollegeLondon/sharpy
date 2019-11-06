@@ -37,7 +37,7 @@ class BaseGust(metaclass=ABCMeta):
 @gust
 class one_minus_cos(BaseGust):
     r"""
-        Discrte gust model
+        Discrete gust model
         .. math:: U_z = \frac{u_{de}}{2}\left[1-\cos\left(\frac{2\pi x}{S}\right)\right]
     """
     _gust_id = '1-cos'
@@ -362,6 +362,12 @@ class GustVelocityField(generator_interface.BaseGenerator):
 
     See Also:
         .. py:class:: sharpy.utils.generator_interface.BaseGenerator
+
+    Note:
+        To get a list of the supported gusts, check the source code of the
+        ``sharpy/generators/gustvelocityfield.py`` or click on the
+        ``[source]`` link right next to the class title in the documentation
+        page.
 
     """
     generator_id = 'GustVelocityField'

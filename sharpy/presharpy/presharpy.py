@@ -45,7 +45,6 @@ class PreSharpy(object):
     """
     solver_id = 'PreSharpy'
 
-
     def __init__(self, in_settings=None):
         self._settings = True
         if in_settings is None:

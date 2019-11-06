@@ -20,7 +20,7 @@ class Trim(BaseSolver):
     We advise to start with ``StaticTrim`` even if you configuration is not totally symmetric.
     """
     solver_id = 'Trim'
-    solve_classification = 'Flight dynamics'
+    solver_classification = 'Flight dynamics'
 
     settings_types = dict()
     settings_default = dict()
