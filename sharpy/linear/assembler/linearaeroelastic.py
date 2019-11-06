@@ -174,16 +174,6 @@ class LinearAeroelastic(ss_interface.BaseElement):
         else:
             beam.assemble()
 
-        # Eigenvector of stiffenning terms
-        eigvals, eigvecs = np.linalg.eig(beam.ss.A)
-        eigvals = np.log(eigvals)/beam.ss.dt
-        order = np.argsort(eigvals.real)[::-1]
-        eigvals = eigvals[order]
-        eigvecs = eigvecs[:, order]
-        # np.savetxt('./beam_grav_euler.dat', eigvals.reshape(-1, 2).view(float))
-        # np.savetxt('./vecs_r_beam_grav_euler.dat', eigvecs.real)
-        # np.savetxt('./vecs_i_beam_grav_euler.dat', eigvecs.imag)
-
         if not self.load_uvlm_from_file:
             # Projecting the UVLM inputs and outputs onto the structural degrees of freedom
             Ksa = self.Kforces[:beam.sys.num_dof, :]  # maps aerodynamic grid forces to nodal forces
@@ -247,15 +237,15 @@ class LinearAeroelastic(ss_interface.BaseElement):
 
         ss = libss.couple(ss01=uvlm.ss, ss02=beam.ss, K12=Tas, K21=Tsa)
         # Conditioning of A matrix
-        cond_a = np.linalg.cond(ss.A)
-        if type(uvlm.ss.A) != np.ndarray:
-            cond_a_uvlm = np.linalg.cond(uvlm.ss.A.todense())
-        else:
-            cond_a_uvlm = np.linalg.cond(uvlm.ss.A)
-        cond_a_beam = np.linalg.cond(beam.ss.A)
-        cout.cout_wrap('Matrix A condition = %e' % cond_a)
-        cout.cout_wrap('Matrix A_uvlm condition = %e' % cond_a_uvlm)
-        cout.cout_wrap('Matrix A_beam condition = %e' % cond_a_beam)
+        # cond_a = np.linalg.cond(ss.A)
+        # if type(uvlm.ss.A) != np.ndarray:
+        #     cond_a_uvlm = np.linalg.cond(uvlm.ss.A.todense())
+        # else:
+        #     cond_a_uvlm = np.linalg.cond(uvlm.ss.A)
+        # cond_a_beam = np.linalg.cond(beam.ss.A)
+        # cout.cout_wrap('Matrix A condition = %e' % cond_a)
+        # cout.cout_wrap('Matrix A_uvlm condition = %e' % cond_a_uvlm)
+        # cout.cout_wrap('Matrix A_beam condition = %e' % cond_a_beam)
 
         self.couplings['Tas'] = Tas
         self.couplings['Tsa'] = Tsa
