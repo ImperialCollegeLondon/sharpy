@@ -1,1 +1,0 @@
-from tests.coupled.static.static_test import *

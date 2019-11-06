@@ -15,13 +15,13 @@ import sharpy.linear.src.libsparse as libsp
 import sharpy.postproc.frequencyresponse as frequencyresponse
 import matplotlib.pyplot as plt
 
-cout.cout_wrap.initialise(True, False)
 
 class TestKrylov(unittest.TestCase):
 
     test_dir = sharpydir.SharpyDir + '/tests/linear/rom'
 
     def setUp(self):
+        cout.cout_wrap.initialise(True, False)
         A = scio.loadmat(TestKrylov.test_dir + '/src/' + 'A.mat')
         B = scio.loadmat(TestKrylov.test_dir + '/src/' + 'B.mat')
         C = scio.loadmat(TestKrylov.test_dir + '/src/' + 'C.mat')
