@@ -37,7 +37,6 @@ class Test_infinite_span(unittest.TestCase):
 
         # Flags
         self.ProducePlots = True
-        self.DeleteOutput = True
 
         # Define Parametrisation
         M, N, Mstar_fact = 8, 8, 50
@@ -58,16 +57,17 @@ class Test_infinite_span(unittest.TestCase):
                             int(np.round(100 * self.Alpha0Deg)),
                             RollNodes, Nsurf, M, N, Mstar_fact)
         self.case_main += 'ord%.1d_rp%s_sp%s' % (integr_ord, RemovePred, UseSparse)
-        route_main = sharpydir.SharpyDir + '/tests/linear/uvlm/res/'
-        self.figfold = sharpydir.SharpyDir + '/tests/linear/uvlm/figs/'
+        self.route_test_dir = os.path.abspath(os.path.dirname(os.path.realpath(__file__)))
+        route_main = self.route_test_dir + '/res/'
+        self.figfold = self.route_test_dir + '/figs/'
 
         if os.path.exists(route_main):
             shutil.rmtree(route_main)
         if os.path.exists(self.figfold):
             shutil.rmtree(self.figfold)
 
-        os.system('mkdir -p %s' % route_main)
-        os.system('mkdir -p %s' % self.figfold)
+        os.makedirs(route_main)
+        os.makedirs(self.figfold)
 
         ### ----- sharpy reference solution
         # Build wing model
@@ -85,8 +85,9 @@ class Test_infinite_span(unittest.TestCase):
 
         # solution flow
         ws.set_default_config_dict()
-        ws.config['SHARPy']['flow'] = ['BeamLoader', 'AerogridLoader', 'StaticUvlm', 'AeroForcesCalculator']
-        ws.config['SHARPy']['write_screen'] = 'on'
+        ws.config['SHARPy']['flow'] = ['BeamLoader', 'AerogridLoader', 'StaticUvlm']
+        ws.config['SHARPy']['log_folder'] = self.route_test_dir + '/output/' + self.case_code + '/'
+        ws.config['SHARPy']['write_screen'] = 'off'
         ws.config['LinearUvlm'] = {'dt': ws.dt,
                                    'integr_order': integr_ord,
                                    'density': ws.rho,
@@ -281,6 +282,7 @@ class Test_infinite_span(unittest.TestCase):
         ws_pert.set_default_config_dict()
         ws_pert.config['SHARPy']['flow'] = ws.config['SHARPy']['flow']
         ws_pert.config['SHARPy']['write_screen'] = 'off'
+        ws_pert.config['SHARPy']['log_folder'] = self.route_test_dir + '/output/' + self.case_code + '/'
         ws_pert.config.write()
 
         # solve at perturbed point
@@ -427,16 +429,12 @@ class Test_infinite_span(unittest.TestCase):
             'Error of dynamic step response at time-steps 16 and 36 ' + \
             '(%.2e and %.2e) too large. Verify Linear UVLM.' % (er_th_2perc, er_th_1perc)
 
-        # clean-up
-        # if self.DeleteOutput:
-        #     os.system('rm %s*' % (self.route_main + self.case_code))
-        #     os.system('rm %s/output/%s*' % (self.route_main, self.case_code))
-
     def tearDown(self):
+
         try:
-            shutil.rmtree(Test_infinite_span.test_dir + '/figs/')
-            shutil.rmtree(Test_infinite_span.test_dir + '/output/')
-            shutil.rmtree(Test_infinite_span.test_dir + '/res/')
+            shutil.rmtree(self.route_test_dir + '/res/')
+            shutil.rmtree(self.route_test_dir + '/figs/')
+            shutil.rmtree(self.route_test_dir + '/output/')
         except FileNotFoundError:
             pass
 

@@ -321,6 +321,7 @@ def generate_solver_file(horseshoe=False):
                                'tolerance': 1e-6,
                                'relaxation_factor': 0.0}
     config['WriteVariablesTime'] = {'cleanup_old_solution': 'on',
+                                    'folder': route + '/output/',
                                     'structure_variables': ['pos'],
                                     'structure_nodes': [num_node_main - 1]}
 

@@ -192,7 +192,7 @@ class FrequencyResponse(solver_interface.BaseSolver):
                 if self.settings['frequency_unit'] == 'k':
                     ax1.set_xlabel('Reduced Frequency, k [-]')
                 else:
-                    ax1.set_xlabel('Frequency, $\omega$ [rad/s]')
+                    ax1.set_xlabel(r'Frequency, $\omega$ [rad/s]')
 
                 ax1.set_ylabel('Y')
                 fig1.savefig(self.folder + '/' + fig_title + '.png')

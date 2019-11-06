@@ -19,7 +19,7 @@ class SHWUvlm(BaseSolver):
     """
 
     solver_id = 'SHWUvlm'
-    solver_classification = 'aerodynamic'
+    solver_classification = 'aero'
 
     # settings list
     settings_types = dict()

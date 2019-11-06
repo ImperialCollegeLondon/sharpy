@@ -22,6 +22,7 @@ class StabilityDerivatives(solver_interface.BaseSolver):
 
     """
     solver_id = 'StabilityDerivatives'
+    solver_classification = 'post-processor'
 
     settings_default = dict()
     settings_description = dict()

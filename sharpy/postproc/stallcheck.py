@@ -14,7 +14,11 @@ import sharpy.aero.utils.uvlmlib as uvlmlib
 
 @solver
 class StallCheck(BaseSolver):
+    """
+    Outputs the incidence angle of every panel of the surface.
+    """
     solver_id = 'StallCheck'
+    solver_classification = 'post-processor'
 
     def __init__(self):
         self.settings_types = dict()

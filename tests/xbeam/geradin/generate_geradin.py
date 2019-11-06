@@ -155,7 +155,8 @@ def generate_solver_file():
                                  'gravity': 9.81,
                                  'gravity_dir': ['0', '0', '1']}
     config['WriteVariablesTime'] = {'structure_variables': ['pos', 'psi'],
-                                    'cleanup_old_solution': 'on'}
+                                    'cleanup_old_solution': 'on',
+                                    'folder': route + '/output'}
     config['BeamPlot'] = {'folder': route + '/output',
                           'include_rbm': 'off',
                           'include_applied_forces': 'on'}

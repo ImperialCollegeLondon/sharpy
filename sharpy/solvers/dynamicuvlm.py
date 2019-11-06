@@ -29,34 +29,56 @@ class DynamicUVLM(BaseSolver):
 
     """
     solver_id = 'DynamicUVLM'
+    solver_classification = 'Aero'
+
+    settings_types = dict()
+    settings_default = dict()
+    settings_description = dict()
+
+    settings_types['print_info'] = 'bool'
+    settings_default['print_info'] = True
+    settings_description['print_info'] = 'Write status to screen'
+
+    settings_types['structural_solver'] = 'str'
+    settings_default['structural_solver'] = None
+    settings_description['structural_solver'] = 'Structural solver to use in the coupled simulation'
+
+    settings_types['structural_solver_settings'] = 'dict'
+    settings_default['structural_solver_settings'] = None
+    settings_description['structural_solver_settings'] = 'Dictionary of settings for the structural solver'
+
+    settings_types['aero_solver'] = 'str'
+    settings_default['aero_solver'] = None
+    settings_description['aero_solver'] = 'Aerodynamic solver to use in the coupled simulation'
+
+    settings_types['aero_solver_settings'] = 'dict'
+    settings_default['aero_solver_settings'] = None
+    settings_description['aero_solver_settings'] = 'Dictionary of settings for the aerodynamic solver'
+
+    settings_types['n_time_steps'] = 'int'
+    settings_default['n_time_steps'] = None
+    settings_description['n_time_steps'] = 'Number of time steps for the simulation'
+
+    settings_types['dt'] = 'float'
+    settings_default['dt'] = None
+    settings_description['dt'] = 'Time step'
+
+    settings_types['include_unsteady_force_contribution'] = 'bool'
+    settings_default['include_unsteady_force_contribution'] = False
+    settings_description['include_unsteady_force_contribution'] = 'If on, added mass contribution is added to the forces. This depends on the time derivative of the bound circulation. Check ``filter_gamma_dot`` in the aero solver'
+    settings_types['postprocessors'] = 'list(str)'
+    settings_default['postprocessors'] = list()
+    settings_description['postprocessors'] = 'List of the postprocessors to run at the end of every time step'
+
+    settings_types['postprocessors_settings'] = 'dict'
+    settings_default['postprocessors_settings'] = dict()
+    settings_description['postprocessors_settings'] = 'Dictionary with the applicable settings for every ``psotprocessor``. Every ``postprocessor`` needs its entry, even if empty'
+
+    settings_table = settings.SettingsTable()
+    __doc__ += settings_table.generate(settings_types, settings_default, settings_description)
+
 
     def __init__(self):
-        self.settings_types = dict()
-        self.settings_default = dict()
-
-        self.settings_types['print_info'] = 'bool'
-        self.settings_default['print_info'] = False
-
-        self.settings_types['aero_solver'] = 'str'
-        self.settings_default['aero_solver'] = None
-
-        self.settings_types['aero_solver_settings'] = 'dict'
-        self.settings_default['aero_solver_settings'] = None
-
-        self.settings_types['n_time_steps'] = 'int'
-        self.settings_default['n_time_steps'] = 100
-
-        self.settings_types['dt'] = 'float'
-        self.settings_default['dt'] = 0.05
-
-        self.settings_types['include_unsteady_force_contribution'] = 'bool'
-        self.settings_default['include_unsteady_force_contribution'] = False
-
-        self.settings_types['postprocessors'] = 'list(str)'
-        self.settings_default['postprocessors'] = list()
-
-        self.settings_types['postprocessors_settings'] = 'dict'
-        self.settings_default['postprocessors_settings'] = dict()
 
         self.data = None
         self.settings = None

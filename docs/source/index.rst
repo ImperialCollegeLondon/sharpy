@@ -6,7 +6,7 @@
 SHARPy Documentation
 ====================
 
-Welcome to SHARPy (Simulation of High Aspect Ratio Planes in Python)!
+Welcome to SHARPy (Simulation of High Aspect Ratio aeroplanes in Python)!
 
 .. warning:: SHARPy is currently under development
 

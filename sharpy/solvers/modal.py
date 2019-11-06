@@ -30,7 +30,7 @@ class Modal(BaseSolver):
     of the structure.
     """
     solver_id = 'Modal'
-    solver_classification = 'modal'
+    solver_classification = 'Linear'
 
     settings_types = dict()
     settings_default = dict()
@@ -399,12 +399,14 @@ class Modal(BaseSolver):
                            delimiter='\t', newline='\n')
             np.savetxt(self.folder + "eigenvectors.dat", eigenvectors[:num_dof].real,
                        fmt='%.12f', delimiter='\t', newline='\n')
-            try:
+
+            if not self.settings['use_undamped_modes'].value:
                 np.savetxt(self.folder + 'frequencies.dat', freq_damped[:NumLambda],
                            fmt='%e', delimiter='\t', newline='\n')
-            except NameError:
+            else:
                 np.savetxt(self.folder + 'frequencies.dat', freq_natural[:NumLambda],
                            fmt='%e', delimiter='\t', newline='\n')
+
             np.savetxt(self.filename_damp, damping[:NumLambda],
                        fmt='%e', delimiter='\t', newline='\n')
 

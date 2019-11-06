@@ -99,7 +99,7 @@ class NonLinearDynamicCoupledStep(_BaseStructural):
     def extract_resultants(self, step=None):
         if step is None:
             step = self.data.structure.timestep_info[-1]
-        applied_forces = self.data.structure.nodal_b_for_2_a_for(step.steady_applied_forces,
+        applied_forces = self.data.structure.nodal_b_for_2_a_for(step.steady_applied_forces + step.unsteady_applied_forces,
                                                                  step)
 
         applied_forces_copy = applied_forces.copy()

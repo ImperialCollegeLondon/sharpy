@@ -12,38 +12,57 @@ import sharpy.utils.algebra as algebra
 
 @solver
 class StaticCoupled(BaseSolver):
+    """
+    This class is the main FSI driver for static simulations.
+    It requires a ``structural_solver`` and a ``aero_solver`` to be defined.
+    """
     solver_id = 'StaticCoupled'
+    solver_classification = 'Coupled'
+
+    settings_types = dict()
+    settings_default = dict()
+    settings_description = dict()
+
+    settings_types['print_info'] = 'bool'
+    settings_default['print_info'] = True
+    settings_description['print_info'] = 'Write status to screen'
+
+    settings_types['structural_solver'] = 'str'
+    settings_default['structural_solver'] = None
+    settings_description['structural_solver'] = 'Structural solver to use in the coupled simulation'
+
+    settings_types['structural_solver_settings'] = 'dict'
+    settings_default['structural_solver_settings'] = None
+    settings_description['structural_solver_settings'] = 'Dictionary of settings for the structural solver'
+
+    settings_types['aero_solver'] = 'str'
+    settings_default['aero_solver'] = None
+    settings_description['aero_solver'] = 'Aerodynamic solver to use in the coupled simulation'
+
+    settings_types['aero_solver_settings'] = 'dict'
+    settings_default['aero_solver_settings'] = None
+    settings_description['aero_solver_settings'] = 'Dictionary of settings for the aerodynamic solver'
+
+    settings_types['max_iter'] = 'int'
+    settings_default['max_iter'] = 100
+    settings_description['max_iter'] = 'Max iterations in the FSI loop'
+
+    settings_types['n_load_steps'] = 'int'
+    settings_default['n_load_steps'] = 0
+    settings_description['n_load_steps'] = 'Length of ramp for forces and gravity during FSI iteration'
+
+    settings_types['tolerance'] = 'float'
+    settings_default['tolerance'] = 1e-5
+    settings_description['tolerance'] = 'Convergence threshold for the FSI loop'
+
+    settings_types['relaxation_factor'] = 'float'
+    settings_default['relaxation_factor'] = 0.
+    settings_description['relaxation_factor'] = 'Relaxation parameter in the FSI iteration. 0 is no relaxation and -> 1 is very relaxed'
+
+    settings_table = settings.SettingsTable()
+    __doc__ += settings_table.generate(settings_types, settings_default, settings_description)
 
     def __init__(self):
-        self.settings_types = dict()
-        self.settings_default = dict()
-
-        self.settings_types['print_info'] = 'bool'
-        self.settings_default['print_info'] = True
-
-        self.settings_types['structural_solver'] = 'str'
-        self.settings_default['structural_solver'] = None
-
-        self.settings_types['structural_solver_settings'] = 'dict'
-        self.settings_default['structural_solver_settings'] = None
-
-        self.settings_types['aero_solver'] = 'str'
-        self.settings_default['aero_solver'] = None
-
-        self.settings_types['aero_solver_settings'] = 'dict'
-        self.settings_default['aero_solver_settings'] = None
-
-        self.settings_types['max_iter'] = 'int'
-        self.settings_default['max_iter'] = 100
-
-        self.settings_types['n_load_steps'] = 'int'
-        self.settings_default['n_load_steps'] = 0
-
-        self.settings_types['tolerance'] = 'float'
-        self.settings_default['tolerance'] = 1e-5
-
-        self.settings_types['relaxation_factor'] = 'float'
-        self.settings_default['relaxation_factor'] = 0.
 
         self.data = None
         self.settings = None
