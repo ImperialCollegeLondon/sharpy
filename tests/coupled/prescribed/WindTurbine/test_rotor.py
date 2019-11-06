@@ -28,8 +28,8 @@ class TestRotor(unittest.TestCase):
         ######################################################################
         # Case
         global case
+        route = folder + '/'
         case = 'rotor'
-        route = os.path.dirname(os.path.realpath(__file__)) + '/'
 
         # Geometry discretization
         chord_panels = np.array([8], dtype=int)
@@ -83,7 +83,7 @@ class TestRotor(unittest.TestCase):
         SimInfo.solvers['SHARPy']['case'] = case
         SimInfo.solvers['SHARPy']['route'] = route
         SimInfo.solvers['SHARPy']['write_log'] = True
-        SimInfo.solvers['SHARPy']['write_screen'] = 'off'
+        SimInfo.solvers['SHARPy']['write_screen'] = 'on'
         SimInfo.set_variable_all_dicts('dt', dt)
         SimInfo.set_variable_all_dicts('rho', air_density)
 
@@ -115,7 +115,7 @@ class TestRotor(unittest.TestCase):
         print('Files in the folder are: ')
         for f in glob.glob(output_path + '/*'):
             print(f)
-        print('')
+        print('------')
         freq_data = np.atleast_2d(np.genfromtxt(output_path + "frequencies.dat"))
         print(freq_data)
 

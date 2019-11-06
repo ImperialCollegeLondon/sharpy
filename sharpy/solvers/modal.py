@@ -400,9 +400,12 @@ class Modal(BaseSolver):
             np.savetxt(self.folder + "eigenvectors.dat", eigenvectors[:num_dof].real,
                        fmt='%.12f', delimiter='\t', newline='\n')
             try:
+                cout.cout_wrap('Printing frequencies.dat to: ' + os.path.abspath(self.folder), 1)
                 np.savetxt(self.folder + 'frequencies.dat', freq_damped[:NumLambda],
                            fmt='%e', delimiter='\t', newline='\n')
+                cout.cout_wrap('Success', 1)
             except NameError:
+                cout.cout_wrap('In exception', 1)
                 np.savetxt(self.folder + 'frequencies.dat', freq_natural[:NumLambda],
                            fmt='%e', delimiter='\t', newline='\n')
             np.savetxt(self.filename_damp, damping[:NumLambda],
