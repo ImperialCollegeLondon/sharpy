@@ -90,7 +90,7 @@ def generate_fem_file():
     num_mass = 1
     m_base = 0.75
     j_base = 0.1
-    base_mass = np.diag([m_base, m_base, m_base, j_base, j_base, j_base])
+    base_mass = np.diag([m_base, m_base, m_base, j_base, 0.5*j_base, 0.5*j_base])
     mass = np.zeros((num_mass, 6, 6))
     mass[0, :, :] = base_mass
     elem_mass = np.zeros((num_elem,), dtype=int)
@@ -272,10 +272,10 @@ def generate_naca_camber(M=0, P=0):
 
 
 def generate_solver_file(horseshoe=False):
-    file_name = route + '/' + case_name + '.solver.txt'
-    # config = configparser.ConfigParser()
     import configobj
+    file_name = route + '/' + case_name + '.solver.txt'
     config = configobj.ConfigObj()
+    np.set_printoptions(precision=16)
     config.filename = file_name
     config['SHARPy'] = {'case': case_name,
                         'route': route,
