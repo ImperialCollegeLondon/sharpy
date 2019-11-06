@@ -312,7 +312,7 @@ latex_elements = {
 
      # Additional stuff for the LaTeX preamble.
      #
-     'preamble': '\setcounter{tocdepth}{2}',
+     'preamble': r'\setcounter{tocdepth}{2}',
 
      # Latex figure (float) alignment
      #
