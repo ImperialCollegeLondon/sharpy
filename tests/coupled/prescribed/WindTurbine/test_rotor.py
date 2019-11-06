@@ -121,7 +121,7 @@ class TestRotor(unittest.TestCase):
         self.assertAlmostEqual(freq_data[0, 3], edge_1, 0) # 1st edgewise
         self.assertAlmostEqual(freq_data[0, 6], flap_2, 0) # 2nd flapwise
 
-    def tearDowns(self):
+    def tearDown(self):
         files_to_delete = [case + '.aero.h5',
                            case + '.fem.h5',
                            case + '.solver.txt']
