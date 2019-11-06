@@ -33,7 +33,7 @@ def print_available_solvers():
 
 class BaseSolver(metaclass=ABCMeta):
 
-    solver_classification = 'other'
+    # solver_classification = 'other'
     settings_types = dict()
     settings_description = dict()
     settings_default = dict()
@@ -132,26 +132,33 @@ def output_documentation(route=None):
         solver = v()
         created_solvers[k] = solver
 
+        if solver.solver_id == 'PreSharpy':
+            continue
+            # route_to_solver_python = 'sharpy.presharpy.'
+
         filename = k + '.rst'
+
         try:
             solver_folder = solver.solver_classification.lower()
         except AttributeError:
+            print('The solver {} does not have a classification. Dumping it into "Other"'.format(k))
             solver_folder = 'other'
-
-        if solver_folder not in solver_types:
-            solver_types.append(solver_folder)
+            if solver.__doc__ is None:
+                continue
 
         if solver_folder == 'post-processor':
+            solver_type = 'postprocessor'
             route_to_solver_python = 'sharpy.postproc.'
             folder = 'postprocs'
             solver_folder = '' # post-procs do not have sub classification unlike solvers
         else:
+            solver_type = 'solver'
             route_to_solver_python = 'sharpy.solvers.'
             folder = 'solvers'
+            if solver_folder not in solver_types:
+                solver_types.append(solver_folder)
 
-        if solver.solver_id == 'PreSharpy':
-            continue
-            # route_to_solver_python = 'sharpy.presharpy.'
+
 
         os.makedirs(base_route + '/' + folder + '/' + solver_folder, exist_ok=True)
         title = k + '\n'

@@ -99,7 +99,7 @@ class NonLinearDynamicCoupledStep(_BaseStructural):
     def extract_resultants(self, step=None):
         if step is None:
             step = self.data.structure.timestep_info[-1]
-        applied_forces = self.data.structure.nodal_b_for_2_a_for(step.steady_applied_forces,
+        applied_forces = self.data.structure.nodal_b_for_2_a_for(step.steady_applied_forces + step.unsteady_applied_forces,
                                                                  step)
 
         applied_forces_copy = applied_forces.copy()
@@ -111,4 +111,6 @@ class NonLinearDynamicCoupledStep(_BaseStructural):
                                                          gravity_forces_copy[i_node, 0:3])
 
         totals = np.sum(applied_forces_copy + gravity_forces_copy, axis=0)
+        step.total_forces = np.sum(applied_forces_copy, axis=0)
+        step.total_gravity_forces = np.sum(gravity_forces_copy, axis=0)
         return totals[0:3], totals[3:6]

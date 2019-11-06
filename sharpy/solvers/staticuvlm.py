@@ -1,8 +1,6 @@
 import ctypes as ct
 import numpy as np
 
-# import sharpy.aero.models.aerogrid as aerogrid
-# import sharpy.aero.utils.mapping as mapping
 import sharpy.utils.algebra as algebra
 import sharpy.aero.utils.uvlmlib as uvlmlib
 import sharpy.utils.cout_utils as cout
@@ -29,83 +27,72 @@ class StaticUvlm(BaseSolver):
         data (PreSharpy): object containing the information of the problem
         velocity_generator(object): object containing the flow conditions information
 
-    Notes:
-        The following are valid key-value pair arguments for the ``settings`` dictionary:
-
-        ============================  =========  =======================================  =======================
-        Name                          Type       Description                              Default
-        ============================  =========  =======================================  =======================
-        ``print_info``                ``bool``   Print solver information to terminal     ``True``
-        ``horseshoe``                 ``bool``   Utilise a horseshoe model for wake       ``False``
-        ``num_cores``                 ``int``    Number of cores                          ``0``
-        ``n_rollup``                  ``int``    Rollup                                   ``1``
-        ``rollup_dt``                 ``float``  ??                                       ``0.1``
-        ``rollup_aic_refresh``        ``int``    ??                                       ``1``
-        ``rollup_tolerance``          ``float``  ??                                       ``1e-4``
-        ``iterative_solver``          ``bool``   ??                                       ``False``
-        ``iterative_tol``             ``float``  ??                                       ``1e-4``
-        ``iterative_precond``         ``bool``   ??                                       ``False``
-        ``velocity_field_generator``  ``str``    Selected velocity field                  ``SteadyVelocityField``
-        ``velocity_field_input``      ``dict``   Settings for the desired velocity field  ``{}``
-        ``rho``                       ``float``  Air density                              ``1.225``
-        ============================  =========  =======================================  =======================
 
     """
     solver_id = 'StaticUvlm'
+    solver_classification = 'aero'
+
+    settings_types = dict()
+    settings_default = dict()
+    settings_description = dict()
+
+    settings_types['print_info'] = 'bool'
+    settings_default['print_info'] = True
+    settings_description['print_info'] = 'Print info to screen'
+
+    settings_types['horseshoe'] = 'bool'
+    settings_default['horseshoe'] = False
+    settings_description['horseshoe'] = 'Horseshoe wake modelling for steady simulations.'
+
+    settings_types['num_cores'] = 'int'
+    settings_default['num_cores'] = 0
+    settings_description['num_cores'] = 'Number of cores to use in the VLM lib'
+
+    settings_types['n_rollup'] = 'int'
+    settings_default['n_rollup'] = 1
+    settings_description['n_rollup'] = 'Number of rollup iterations for free wake. Use at least ``n_rollup > 1.1*m_star``'
+
+    settings_types['rollup_dt'] = 'float'
+    settings_default['rollup_dt'] = 0.1
+    settings_description['rollup_dt'] = 'Pseudo time step for wake convection. Chose it so that it is similar to the unsteady time step'
+
+    settings_types['rollup_aic_refresh'] = 'int'
+    settings_default['rollup_aic_refresh'] = 1
+    settings_description['rollup_dt'] = 'Controls when the AIC matrix is refreshed during the wake rollup'
+
+    settings_types['rollup_tolerance'] = 'float'
+    settings_default['rollup_tolerance'] = 1e-4
+    settings_description['rollup_tolerance'] = 'Convergence criterium for rollup wake'
+
+    settings_types['iterative_solver'] = 'bool'
+    settings_default['iterative_solver'] = False
+    settings_description['iterative_solver'] = 'Not in use'
+
+    settings_types['iterative_tol'] = 'float'
+    settings_default['iterative_tol'] = 1e-4
+    settings_description['iterative_tol'] = 'Not in use'
+
+    settings_types['iterative_precond'] = 'bool'
+    settings_default['iterative_precond'] = False
+    settings_description['iterative_precond'] = 'Not in use'
+
+    settings_types['velocity_field_generator'] = 'str'
+    settings_default['velocity_field_generator'] = 'SteadyVelocityField'
+    settings_description['velocity_field_generator'] = 'Name of the velocity field generator to be used in the simulation'
+
+    settings_types['velocity_field_input'] = 'dict'
+    settings_default['velocity_field_input'] = {}
+    settings_description['velocity_field_input'] = 'Dictionary of settings for the velocity field generator'
+
+    settings_types['rho'] = 'float'
+    settings_default['rho'] = 1.225
+    settings_description['rho'] = 'Air density'
+
+    settings_table = settings.SettingsTable()
+    __doc__ += settings_table.generate(settings_types, settings_default, settings_description)
 
     def __init__(self):
         # settings list
-        self.settings_types = dict()
-        self.settings_default = dict()
-
-        self.settings_types['print_info'] = 'bool'
-        self.settings_default['print_info'] = True
-
-        self.settings_types['horseshoe'] = 'bool'
-        self.settings_default['horseshoe'] = False
-
-        self.settings_types['num_cores'] = 'int'
-        self.settings_default['num_cores'] = 0
-
-        self.settings_types['n_rollup'] = 'int'
-        self.settings_default['n_rollup'] = 1
-
-        self.settings_types['rollup_dt'] = 'float'
-        self.settings_default['rollup_dt'] = 0.1
-
-        self.settings_types['rollup_aic_refresh'] = 'int'
-        self.settings_default['rollup_aic_refresh'] = 1
-
-        self.settings_types['rollup_tolerance'] = 'float'
-        self.settings_default['rollup_tolerance'] = 1e-4
-
-        self.settings_types['iterative_solver'] = 'bool'
-        self.settings_default['iterative_solver'] = False
-
-        self.settings_types['iterative_tol'] = 'float'
-        self.settings_default['iterative_tol'] = 1e-4
-
-        self.settings_types['iterative_precond'] = 'bool'
-        self.settings_default['iterative_precond'] = False
-
-        self.settings_types['velocity_field_generator'] = 'str'
-        self.settings_default['velocity_field_generator'] = 'SteadyVelocityField'
-
-        self.settings_types['velocity_field_input'] = 'dict'
-        self.settings_default['velocity_field_input'] = {}
-
-        # self.settings_types['alpha'] = 'float'
-        # self.settings_default['alpha'] = 0.0
-        #
-        # self.settings_types['beta'] = 'float'
-        # self.settings_default['beta'] = 0.0
-        #
-        # self.settings_types['roll'] = 'float'
-        # self.settings_default['roll'] = 0.0
-
-        self.settings_types['rho'] = 'float'
-        self.settings_default['rho'] = 1.225
-
         self.data = None
         self.settings = None
         self.velocity_generator = None

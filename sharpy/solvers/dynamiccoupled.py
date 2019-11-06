@@ -26,7 +26,7 @@ class DynamicCoupled(BaseSolver):
 
     """
     solver_id = 'DynamicCoupled'
-    solver_classification = 'Aeroelastic'
+    solver_classification = 'Coupled'
 
     settings_types = dict()
     settings_default = dict()

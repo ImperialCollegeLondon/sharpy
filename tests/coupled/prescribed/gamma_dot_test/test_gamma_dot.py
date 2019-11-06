@@ -73,11 +73,11 @@ class TestGammaDot(unittest.TestCase):
                                                                                             'u_inf_direction': [1., 0.,
                                                                                                                 0.],
                                                                                             'gust_shape': 'continuous_sin',
-                                                                                            'gust_length': 2.,
-                                                                                            'gust_intensity': ws.gust_intensity
-                                                                                                              * ws.u_inf,
                                                                                             'offset': 2.,
-                                                                                            'span': ws.main_chord * ws.aspect_ratio}}
+                                                                                            'gust_parameters': {'gust_length': 2.,
+                                                                                                                'gust_intensity': ws.gust_intensity
+                                                                                                                                  * ws.u_inf,
+                                                                                                                'span': ws.main_chord * ws.aspect_ratio}}}
         else:
             ws.config['DynamicCoupled']['aero_solver'] = 'StepUvlm'
             ws.config['DynamicCoupled']['aero_solver_settings'] = {
@@ -100,7 +100,7 @@ class TestGammaDot(unittest.TestCase):
                 'rho': ws.rho,
                 'n_time_steps': ws.n_tstep,
                 'dt': ws.dt,
-                'gamma_dot_filtering': 0, 
+                'gamma_dot_filtering': 0,
                 'track_body': True,
                 'track_body_number': -1}
             ws.config['DynamicCoupled']['include_unsteady_force_contribution'] = 'on'
