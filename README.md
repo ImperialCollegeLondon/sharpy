@@ -1,6 +1,6 @@
-# Simulation of High Aspect Ratio Planes in Python [SHARPy]
+# Simulation of High Aspect Ratio aeroplanes in Python [SHARPy]
 ![Version badge](https://img.shields.io/endpoint.svg?url=https%3A%2F%2Fraw.githubusercontent.com%2FImperialCollegeLondon%2Fsharpy%2Fmaster%2F.version.json) [![codecov](https://codecov.io/gh/ImperialCollegeLondon/sharpy/branch/master/graph/badge.svg)](https://codecov.io/gh/ImperialCollegeLondon/sharpy)
-[![License](https://img.shields.io/badge/License-BSD%203--Clause-blue.svg)](https://opensource.org/licenses/BSD-3-Clause)[![Documentation Status](https://readthedocs.org/projects/ic-sharpy/badge/?version=master)](https://ic-sharpy.readthedocs.io/en/master/?badge=master)
+[![License](https://img.shields.io/badge/License-BSD%203--Clause-blue.svg)](https://opensource.org/licenses/BSD-3-Clause) [![Documentation Status](https://readthedocs.org/projects/ic-sharpy/badge/?version=master)](https://ic-sharpy.readthedocs.io/en/master/?badge=master)
 
 
 __Status__
@@ -10,7 +10,7 @@ __Status__
 | [![Build Status](https://travis-ci.org/ImperialCollegeLondon/sharpy.svg?branch=master)](https://travis-ci.org/ImperialCollegeLondon/sharpy) | [![Build Status](https://travis-ci.org/ImperialCollegeLondon/sharpy.svg?branch=develop)](https://travis-ci.org/ImperialCollegeLondon/sharpy)|
 
 
-SHARPy is an aeroelastic analysis package currently under development at the Department of Aeronautics, Imperial
+SHARPy is an aeroelastic analysis package at the Department of Aeronautics, Imperial
 College London. It can be used for the structural, aerodynamic and aeroelastic analysis of flexible aircraft, flying
 wings and wind turbines.
 
