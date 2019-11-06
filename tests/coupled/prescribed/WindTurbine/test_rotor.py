@@ -95,6 +95,7 @@ class TestRotor(unittest.TestCase):
 
         SimInfo.solvers['Modal']['write_modes_vtk'] = False
         SimInfo.solvers['Modal']['write_dat'] = True
+        SimInfo.solvers['Modal']['folder'] = folder + '/output/'
 
         ######################################################################
         #######################  GENERATE FILES  #############################
