@@ -3,24 +3,19 @@ import numpy as np
 import sharpy.utils.settings as settings
 from sharpy.utils.solver_interface import solver, BaseSolver, initialise_solver
 import sharpy.utils.h5utils as h5
-import sharpy.solvers.modal as modal
 import sharpy.utils.cout_utils as cout
 import sharpy.utils.algebra as algebra
 import sharpy.solvers.lindynamicsim as lindynamicsim
-import pandas as pd
 import os
 import sharpy.structure.utils.modalutils as modalutils
 import scipy.linalg as sclalg
+import warnings as warn
 
 @solver
 class AsymptoticStability(BaseSolver):
     """
     Calculates the asymptotic stability properties of aeroelastic systems by creating linearised systems and computing
     the corresponding eigenvalues
-
-    Todo:
-        Better integration of the linear system settings (create a loader and check that the system has not been
-        previously assembled.
 
     Warnings:
         Currently under development.
@@ -51,7 +46,8 @@ class AsymptoticStability(BaseSolver):
 
     settings_types['export_eigenvalues'] = 'bool'
     settings_default['export_eigenvalues'] = False
-    settings_description['export_eigenvalues'] = 'Save eigenvalues and eigenvectors to file'
+    settings_description['export_eigenvalues'] = 'Save eigenvalues and eigenvectors to file. ' \
+                                                 'Details in :func:`AsymptoticStability.export_eigenvalues`'
 
     settings_types['display_root_locus'] = 'bool'
     settings_default['display_root_locus'] = False
@@ -137,7 +133,7 @@ class AsymptoticStability(BaseSolver):
         if self.frequency_cutoff == 0:
             self.frequency_cutoff = np.inf
 
-        if self.settings['reference_velocity'].value != 1.:
+        if self.settings['reference_velocity'].value != 1. and self.data.linear.linear_system.uvlm.scaled:
             ss = self.data.linear.linear_system.update(self.settings['reference_velocity'].value)
         else:
             ss = self.data.linear.ss
@@ -150,9 +146,7 @@ class AsymptoticStability(BaseSolver):
             try:
                 ScalingFacts = self.data.linear.linear_system.uvlm.sys.ScalingFacts
                 if ScalingFacts['length'] != 1.0 and ScalingFacts['time'] != 1.0:
-                    # dt = ScalingFacts['length'] * 2 / self.data.aero.surface_m[0] / ScalingFacts['speed']
                     dt = ScalingFacts['length'] / self.settings['reference_velocity'].value * ss.dt
-                    # assert np.abs(dt - ScalingFacts['time'] * ss.dt) < 1e-14, 'dimensional time-scaling not correct!'
                 else:
                     dt = ss.dt
             except AttributeError:
@@ -174,6 +168,7 @@ class AsymptoticStability(BaseSolver):
 
         # Under development
         if self.settings['modes_to_plot'] is not []:
+            warn.warn('Plotting modes is under development')
             self.plot_modes()
 
         if len(self.settings['velocity_analysis']) == 3:
@@ -181,13 +176,19 @@ class AsymptoticStability(BaseSolver):
 
         self.data.linear.stability['eigenvectors'] = self.eigenvectors
         self.data.linear.stability['eigenvalues'] = self.eigenvalues
-        # self.data.linear.stability.mode_shapes = mode_shape_list
 
         return self.data
 
     def export_eigenvalues(self, num_evals):
         """
-        Saves a certain number of eigenvalues and eigenvectors to file
+        Saves a ``num_evals`` number of eigenvalues and eigenvectors to file. The files are saved in the output directoy
+        and include:
+
+            * ``eigenvectors.dat``: ``(num_dof, num_evals)`` array of eigenvectors
+
+            * ``eigenvalues_r.dat``: ``(num_evals, 1)`` array of the real part of the eigenvalues
+
+            * ``eigenvalues_i.dat``: ``(num_evals, 1)`` array of the imaginary part of the eigenvalues.
 
         References:
             Loading and saving complex arrays:

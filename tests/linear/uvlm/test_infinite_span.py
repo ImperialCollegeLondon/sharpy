@@ -75,8 +75,8 @@ class Test_infinite_span(unittest.TestCase):
 
         # solution flow
         ws.set_default_config_dict()
-        ws.config['SHARPy']['flow'] = ['BeamLoader', 'AerogridLoader', 'StaticUvlm']
-        ws.config['SHARPy']['write_screen'] = 'off'
+        ws.config['SHARPy']['flow'] = ['BeamLoader', 'AerogridLoader', 'StaticUvlm', 'AeroForcesCalculator']
+        ws.config['SHARPy']['write_screen'] = 'on'
         ws.config['LinearUvlm'] = {'dt': ws.dt,
                                    'integr_order': integr_ord,
                                    'density': ws.rho,
@@ -165,11 +165,7 @@ class Test_infinite_span(unittest.TestCase):
 
         ### ----- linearisation
         uvlm = linuvlm.Dynamic(tsaero0,
-                               dt=ws.config['LinearUvlm']['dt'],
-                               integr_order=ws.config['LinearUvlm']['integr_order'],
-                               RemovePredictor=ws.config['LinearUvlm']['remove_predictor'],
-                               ScalingDict=ws.config['LinearUvlm']['ScalingDict'],
-                               UseSparse=ws.config['LinearUvlm']['use_sparse'])
+                               dynamic_settings=ws.config['LinearUvlm'])
         uvlm.assemble_ss()
         zeta_pole = np.array([0., 0., 0.])
         uvlm.get_total_forces_gain(zeta_pole=zeta_pole)

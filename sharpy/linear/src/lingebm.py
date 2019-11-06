@@ -28,25 +28,6 @@ class FlexDynamic():
         custom_settings (dict): settings for the linearised beam
 
 
-    Settings types, description and default values:
-
-    ============================  =========  ================================================   ============
-    Name                          Type       Description                                        Default
-    ============================  =========  ================================================   ============
-    ``modal_projection``          ``bool``   Change coordinates to modal projection             ``False``
-    ``num_modes``                 ``int``    Number of modes to retain from truncation          ``10``
-    ``inout_coords``              ``str``    Input/output coordinates: ``nodes`` or ``modes``   ``nodes``
-    ``proj_modes``                ``str``    ``damped`` or ``undamped`` modes used              ``undamped``
-    ``discrete_time``             ``bool``   Assemble a discrete or continuous time system      ``True``
-    ``discr_method``              ``str``    Time discretisation method. See below.             ``newmark``
-    ``newmark_damp``              ``float``  Newmark damping                                    ``1e-4``
-    ``dt``                        ``float``  Time increment                                     ``1e-3``
-    ``use_euler``                 ``bool``   Replace quaternion parametrisation for euler       ``False``
-    ``print_info``                ``bool``   Print to screen online status and information      ``False``
-    ``gravity``                   ``bool``   Linearise gravitational forces                     ``False``
-    ============================  =========  ================================================   ============
-
-
     State-space models can be defined in continuous or discrete time (dt
     required). Modal projection, either on the damped or undamped modal shapes,
     is also avaiable. The rad/s array wv can be optionally passed for freq.
@@ -115,49 +96,8 @@ class FlexDynamic():
     """
 
     def __init__(self, tsinfo, structure=None, custom_settings=dict()):
-
-        # ----->
-        self.settings_default = dict()
-        self.settings_types = dict()
-
-        self.settings_default['modal_projection'] = True
-        self.settings_types['modal_projection'] = 'bool'
-
-        self.settings_types['num_modes'] = 'int'
-        self.settings_default['num_modes'] = 10
-
-        self.settings_default['inout_coords'] = 'nodes' # or 'modes'
-        self.settings_types['inout_coords'] = 'str'
-
-        self.settings_default['discrete_time'] = True
-        self.settings_types['discrete_time'] = 'bool'
-
-        self.settings_default['dt'] = 0.001
-        self.settings_types['dt'] = 'float'
-
-        self.settings_default['proj_modes'] = 'undamped'
-        self.settings_types['proj_modes'] = 'str'
-
-        self.settings_default['discr_method'] = 'newmark'
-        self.settings_types['discr_method'] = 'str'
-
-        self.settings_default['newmark_damp'] = 1e-4
-        self.settings_types['newmark_damp'] = 'float'
-
-        self.settings_default['use_euler'] = False
-        self.settings_types['use_euler'] = 'bool'
-
-        self.settings_default['print_info'] = True
-        self.settings_types['print_info'] = 'bool'
-
-        self.settings_default['gravity'] = False
-        self.settings_types['gravity'] = 'bool'
-
-        # <-----
-
         # Extract settings
         self.settings = custom_settings
-        # settings.to_custom_types(self.settings, self.settings_types, self.settings_default)
 
         ### extract timestep_info modal results
         # unavailable attrs will be None
@@ -237,6 +177,12 @@ class FlexDynamic():
 
         self.tsstruct0.q = q
         self.tsstruct0.dq = dq
+
+        # Linearised gravity matrices
+        self.Crr_grav = None
+        self.Csr_grav = None
+        self.Krs_grav = None
+        self.Kss_grav = None
 
     def reshape_struct_input(self):
         """ Reshape structural input in a column vector """
@@ -726,34 +672,17 @@ class FlexDynamic():
         # Update matrices
         self.Kstr[:flex_dof, :flex_dof] += Kss_grav
 
-        # debug:
-        Cgrav = self.Cstr.copy()
-
         if self.Kstr[:flex_dof, :flex_dof].shape != self.Kstr.shape:  # If the beam is free, update rigid terms as well
             self.Cstr[-rig_dof:, -rig_dof:] += Crr_grav
             self.Cstr[:-rig_dof, -rig_dof:] += Csr_grav
             self.Kstr[flex_dof:, :flex_dof] += Krs_grav
 
-            # for debugging
+            # Save gravity matrices for post-processing
             self.Crr_grav = Crr_grav
             self.Csr_grav = Csr_grav
             self.Krs_grav = Krs_grav
             self.Kss_grav = Kss_grav
 
-        # Debug - update propagation equations
-        # if not self.use_euler:
-        #     q0, q1, q2, q3 = list(tsstr.quat)
-        #     self.Cstr[-4:, -7:-4] = 0.5*np.block([[-q1, -q2, -q3], [q0, -q3, q2], [q3, q0, -q1], [-q2, q1, q0]])
-
-        Kgrav = np.zeros_like(self.Kstr)
-        Cgrav = np.zeros_like(self.Cstr)
-        Kgrav[flex_dof:, :flex_dof] += Krs_grav
-        Kgrav[:flex_dof, :flex_dof] += Kss_grav
-        Cgrav[-rig_dof:, -rig_dof:] += Crr_grav
-        Cgrav[:-rig_dof, -rig_dof:] += Csr_grav
-        Cgrav[flex_dof:, :flex_dof] += Krs_grav
-        np.savetxt('./output/' + '/Kgrav.dat', Kgrav)
-        np.savetxt('./output/' + '/Cgrav.dat', Cgrav)
         if self.modal:
             self.Ccut = self.U.T.dot(self.Cstr.dot(self.U))
 
@@ -794,9 +723,12 @@ class FlexDynamic():
         assert self.inout_coords in ['modes', 'nodes'], \
             'inout_coords=%s not implemented!' % self.inout_coords
 
-        det_mass_matrix = np.linalg.det(self.Mstr)
-        if det_mass_matrix == 0.:
-            warnings.warn('Mass matrix determinant is equal to 0. Inverse may not be correct.')
+        cond_mass_matrix = np.linalg.cond(self.Mstr)
+        if np.log10(cond_mass_matrix) >= 10.:
+            warnings.warn('Mass matrix is poorly conditioned (Cond = 10^%f). Inverse may not be correct.'
+                          % np.log10(cond_mass_matrix), 3)
+        else:
+            cout.cout_wrap('Mass matrix condition = %e' % cond_mass_matrix)
 
         dlti = self.dlti
         modal = self.modal

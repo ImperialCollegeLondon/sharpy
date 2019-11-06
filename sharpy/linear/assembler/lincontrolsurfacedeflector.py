@@ -190,12 +190,12 @@ class LinControlSurfaceDeflector(object):
                                         print('BVec = ' + str(Cbg.dot(chord_vec/np.linalg.norm(chord_vec))))
                                         # pass
                                     # Removing the += because cs where being added twice
-                                    # Kdisp[i_vertex, i_control_surface] = \
-                                    #     Cgb.dot(der_R_arbitrary_axis_times_v(Cbg.dot(hinge_axis),
-                                    #                                          0,
-                                    #                                          -for_delta * Cbg.dot(chord_vec)))
                                     Kdisp[i_vertex, i_control_surface] = \
-                                        der_R_arbitrary_axis_times_v(hinge_axis, 0, chord_vec)
+                                        Cgb.dot(der_R_arbitrary_axis_times_v(Cbg.dot(hinge_axis),
+                                                                             0,
+                                                                             -for_delta * Cbg.dot(chord_vec)))
+                                    # Kdisp[i_vertex, i_control_surface] = \
+                                    #     der_R_arbitrary_axis_times_v(hinge_axis, 0, chord_vec)
 
                                     # Flap velocity
                                     Kvel[i_vertex, i_control_surface] = -algebra.skew(chord_vec).dot(

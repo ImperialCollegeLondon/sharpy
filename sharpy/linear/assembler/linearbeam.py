@@ -12,8 +12,51 @@ import sharpy.utils.algebra as algebra
 
 @linear_system
 class LinearBeam(BaseElement):
-    """
+    r"""
     State space member
+
+    Define class for linear state-space realisation of GEBM flexible-body
+    equations from SHARPy``timestep_info`` class and with the nonlinear structural information.
+
+    State-space models can be defined in continuous or discrete time (dt
+    required). Modal projection, either on the damped or undamped modal shapes,
+    is also avaiable.
+
+    To produce the state-space equations:
+
+    Notes on the settings:
+
+        a. ``modal_projection={True,False}``: determines whether to project the states
+            onto modal coordinates. Projection over damped or undamped modal
+            shapes can be obtained selecting:
+
+                - ``proj_modes={'damped','undamped'}``
+
+            while
+
+                 - ``inout_coords={'modes','nodal'}``
+
+             determines whether the modal state-space inputs/outputs are modal
+             coords or nodal degrees-of-freedom. If ``modes`` is selected, the
+             ``Kin`` and ``Kout`` gain matrices are generated to transform nodal to modal
+             dofs
+
+        b. ``dlti={True,False}``: if true, generates discrete-time system.
+            The continuous to discrete transformation method is determined by::
+
+                discr_method={ 'newmark',  # Newmark-beta
+                                    'zoh',		# Zero-order hold
+                                    'bilinear'} # Bilinear (Tustin) transformation
+
+            DLTIs can be obtained directly using the Newmark-:math:`\beta` method
+
+                ``discr_method='newmark'``
+                ``newmark_damp=xx`` with ``xx<<1.0``
+
+            for full-states descriptions (``modal_projection=False``) and modal projection
+            over the undamped structural modes (``modal_projection=True`` and ``proj_modes``).
+            The Zero-order holder and bilinear methods, instead, work in all
+            descriptions, but require the continuous state-space equations.
     """
     sys_id = "LinearBeam"
 
@@ -25,7 +68,7 @@ class LinearBeam(BaseElement):
     settings_types['modal_projection'] = 'bool'
     settings_description['modal_projection'] = 'Use modal projection'
 
-    settings_default['inout_coords'] = 'nodes' # or 'modes'
+    settings_default['inout_coords'] = 'nodes'
     settings_types['inout_coords'] = 'str'
     settings_description['inout_coords'] = 'Beam state space input/output coordinates. ``modes`` or ``nodes``'
 
@@ -252,6 +295,8 @@ class LinearBeam(BaseElement):
         # Wing 1 and 2 nodes
         # z-displacement index
         ind_w1 = [6*i + 2 for i in range(self.sys.structure.num_node // 2)]  # Wing 1 nodes are in the first half rows
+        ind_w1_x = [6*i for i in range(self.sys.structure.num_node // 2)]  # Wing 1 nodes are in the first half rows
+        ind_w1_y = [6*i + 1 for i in range(self.sys.structure.num_node // 2)]  # Wing 1 nodes are in the first half rows
         ind_w2 = [6*i + 2 for i in range(self.sys.structure.num_node // 2, self.sys.structure.num_node - 1)]  # Wing 2 nodes are in the second half rows
 
         sym_mode_index = []
@@ -278,7 +323,11 @@ class LinearBeam(BaseElement):
 
         # make all elastic modes have a positive z component at the wingtip
         for i in range(self.sys.U.shape[1]):
-            self.sys.U[:, i] = np.sign(self.sys.U[ind_w1[-1], i]) * self.sys.U[:, i]
+            if np.abs(self.sys.U[ind_w1[-1], i]) > 1e-10:
+                self.sys.U[:, i] = np.sign(self.sys.U[ind_w1[-1], i]) * self.sys.U[:, i]
+            elif np.abs(self.sys.U[ind_w1_y, i][-1]) > 1e-4:
+                self.sys.U[:, i] = np.sign(self.sys.U[ind_w1_y[-1], i]) * self.sys.U[:, i]
+
         self.sys.freq_natural = self.sys.freq_natural[sym_mode_index]
         self.sys.num_modes = len(self.sys.freq_natural)
 

@@ -738,11 +738,11 @@ class HortenWing:
         x0 = np.zeros((n_states_aero + n_states_struct))
         # x0[-7] = 0.05
         # x0[-4:] = (algebra.euler2quat([ -5*np.pi/180, 0, 0]))
-        u = np.zeros((self.n_tstep, n_states_struct + n_inputs_struct + self.n_control_surfaces))
+        u = np.zeros((self.n_tstep, n_states_struct + n_inputs_struct + 2 * self.n_control_surfaces))
         # u[0:3, -7] = -1000
         if delta_e is not None:
             u[:, n_states_struct:n_states_struct+self.n_control_surfaces] = delta_e
-            # u[:, n_states_struct:n_states_struct+self.n_control_surfaces + self.n_control_surfaces] = delta_dot
+            u[:, n_states_struct + self.n_control_surfaces:n_states_struct+self.n_control_surfaces + self.n_control_surfaces] = delta_dot
 
         # u[10:15, -8] = 100
 
