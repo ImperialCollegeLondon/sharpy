@@ -186,19 +186,18 @@ class WriteVariablesTime(BaseSolver):
                 continue
             for ifor in range(len(self.settings['FoR_number'])):
                 filename = self.dir + "FoR_" + '%02d' % self.settings['FoR_number'][ifor] + "_" + self.settings['FoR_variables'][ivariable] + ".dat"
-                fid = open(filename,"a")
 
-                var = np.atleast_2d(getattr(self.data.structure.timestep_info[-1], self.settings['FoR_variables'][ivariable]))
-                rows, cols = var.shape
-                if ((cols == 1) and (rows == 1)):
-                    self.write_value_to_file(fid, self.data.ts, var, self.settings['delimiter'])
-                elif ((cols > 1) and (rows == 1)):
-                    self.write_nparray_to_file(fid, self.data.ts, var, self.settings['delimiter'])
-                elif ((cols == 1) and (rows >= 1)):
-                    self.write_value_to_file(fid, self.data.ts, var[ifor], self.settings['delimiter'])
-                else:
-                    self.write_nparray_to_file(fid, self.data.ts, var[ifor,:], self.settings['delimiter'])
-                fid.close()
+                with open(filename, 'a') as fid:
+                    var = np.atleast_2d(getattr(self.data.structure.timestep_info[-1], self.settings['FoR_variables'][ivariable]))
+                    rows, cols = var.shape
+                    if ((cols == 1) and (rows == 1)):
+                        self.write_value_to_file(fid, self.data.ts, var, self.settings['delimiter'])
+                    elif ((cols > 1) and (rows == 1)):
+                        self.write_nparray_to_file(fid, self.data.ts, var, self.settings['delimiter'])
+                    elif ((cols == 1) and (rows >= 1)):
+                        self.write_value_to_file(fid, self.data.ts, var[ifor], self.settings['delimiter'])
+                    else:
+                        self.write_nparray_to_file(fid, self.data.ts, var[ifor,:], self.settings['delimiter'])
 
         # Structure variables at nodes
         for ivariable in range(len(self.settings['structure_variables'])):
@@ -209,23 +208,20 @@ class WriteVariablesTime(BaseSolver):
             if num_indices == 1:
                 # Beam global variables (i.e. not node dependant)
                 filename = self.dir + "struct_" + self.settings['structure_variables'][ivariable] + ".dat"
-                fid = open(filename, "a")
-                self.write_nparray_to_file(fid, self.data.ts, var, self.settings['delimiter'])
-                fid.close()
+                with open(filename, 'a') as fid:
+                    self.write_nparray_to_file(fid, self.data.ts, var, self.settings['delimiter'])
 
             else:  # These variables have nodal values (i.e the number of indices is either 2 or 3)
                 for inode in range(len(self.settings['structure_nodes'])):
                     node = self.settings['structure_nodes'][inode]
                     filename = self.dir + "struct_" + self.settings['structure_variables'][ivariable] + "_node" + str(node) + ".dat"
-                    fid = open(filename,"a")
+                    with open(filename, 'a') as fid:
+                        if num_indices == 2:
+                            self.write_nparray_to_file(fid, self.data.ts, var[node,:], self.settings['delimiter'])
+                        elif num_indices == 3:
+                            ielem, inode_in_elem = self.data.structure.node_master_elem[node]
+                            self.write_nparray_to_file(fid, self.data.ts, var[ielem,inode_in_elem,:], self.settings['delimiter'])
 
-                    if num_indices == 2:
-                        self.write_nparray_to_file(fid, self.data.ts, var[node,:], self.settings['delimiter'])
-                    elif num_indices == 3:
-                        ielem, inode_in_elem = self.data.structure.node_master_elem[node]
-                        self.write_nparray_to_file(fid, self.data.ts, var[ielem,inode_in_elem,:], self.settings['delimiter'])
-
-                fid.close()
 
         # Aerodynamic variables at panels
         for ivariable in range(len(self.settings['aero_panels_variables'])):
@@ -237,12 +233,11 @@ class WriteVariablesTime(BaseSolver):
                 i_n = self.settings['aero_panels_in'][ipanel]
 
                 filename = self.dir + "aero_" + self.settings['aero_panels_variables'][ivariable] + "_panel" + "_isurf" + str(i_surf) + "_im"+ str(i_m) + "_in"+ str(i_n) + ".dat"
-                fid = open(filename,"a")
 
-                var = getattr(self.data.aero.timestep_info[-1], self.settings['aero_panels_variables'][ivariable])
-                self.write_value_to_file(fid, self.data.ts, var.gamma[i_surf][i_m,i_n], self.settings['delimiter'])
+                with open(filename, 'a') as fid:
+                    var = getattr(self.data.aero.timestep_info[-1], self.settings['aero_panels_variables'][ivariable])
+                    self.write_value_to_file(fid, self.data.ts, var.gamma[i_surf][i_m,i_n], self.settings['delimiter'])
 
-                fid.close()
 
         # Aerodynamic variables at nodes
         for ivariable in range(len(self.settings['aero_nodes_variables'])):
@@ -254,12 +249,11 @@ class WriteVariablesTime(BaseSolver):
                 i_n = self.settings['aero_nodes_in'][inode]
 
                 filename = self.dir + "aero_" + self.settings['aero_nodes_variables'][ivariable] + "_node" + "_isurf" + str(i_surf) + "_im"+ str(i_m) + "_in"+ str(i_n) + ".dat"
-                fid = open(filename,"a")
 
-                var = getattr(self.data.aero.timestep_info[-1], self.settings['aero_nodes_variables'][ivariable])
-                self.write_nparray_to_file(fid, self.data.ts, var[i_surf][:,i_m,i_n], self.settings['delimiter'])
+                with open(filename, 'a') as fid:
+                    var = getattr(self.data.aero.timestep_info[-1], self.settings['aero_nodes_variables'][ivariable])
+                    self.write_nparray_to_file(fid, self.data.ts, var[i_surf][:,i_m,i_n], self.settings['delimiter'])
 
-                fid.close()
 
         return self.data
 
