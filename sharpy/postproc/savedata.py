@@ -168,8 +168,6 @@ class SaveData(BaseSolver):
             file_exists = os.path.isfile(self.filename)
             hdfile=h5py.File(self.filename,'a')
 
-            #reference-forces
-            linearisation_vectors = self.data.linear.linear_system.linearisation_vectors
             if (online and file_exists):
                 if self.settings['save_aero']:
                     h5utils.add_as_grp(self.data.aero.timestep_info[self.data.ts], hdfile['data']['aero']['timestep_info'],
@@ -204,6 +202,9 @@ class SaveData(BaseSolver):
         elif self.settings['format'] == 'mat':
             from scipy.io import savemat
             if self.settings['save_linear']:
+                #reference-forces
+                linearisation_vectors = self.data.linear.linear_system.linearisation_vectors
+
                 matfilename = self.filename.replace('.data.h5', '.linss.mat')
                 A, B, C, D = self.data.linear.ss.get_mats()
                 savedict = {'A': A,
