@@ -92,6 +92,11 @@ class Modal(BaseSolver):
     settings_default['max_displacement'] = 0.15
     settings_description['max_displacement'] = 'Scale mode shape to have specified maximum displacement'
 
+    settings_types['use_custom_timestep'] = 'int'
+    settings_default['use_custom_timestep'] = -1
+    settings_description['use_custom_timestep'] = 'If > -1, it will use that time step geometry for calculating the modes'
+
+
     settings_table = settings.SettingsTable()
     __doc__ += settings_table.generate(settings_types, settings_default, settings_description)
 
@@ -197,6 +202,8 @@ class Modal(BaseSolver):
 
         """
         self.data.ts = len(self.data.structure.timestep_info) - 1
+        if self.settings['use_custom_timestep'].value > -1:
+            self.data.ts = self.settings['use_custom_timestep'].value
 
         # Number of degrees of freedom
         num_str_dof = self.data.structure.num_dof.value
