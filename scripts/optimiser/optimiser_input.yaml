@@ -1,5 +1,5 @@
 case:
-    name: r05_sc0p1_newcost
+    name: r05_sc0p2_newcost
     output_folder: ./output/
 base:
     name: base
@@ -11,16 +11,16 @@ settings:
     cases_folder: ./cases/
     save_data: true
 
-#previous_data:
-    #cases: ./cases/ramp20_sc1/*.pkl
+previous_data:
+    cases: ../../../../optimisers_postproc/cases/r10_sc0p1_newcost/*.pkl
 
 optimiser:
     numerics:
         tolerance: 0.01 
         n_iter: 30
-        batch_size: 5
-        n_cores: 20
-        initial_design_numdata: 5
+        batch_size: 4
+        n_cores: 16
+        initial_design_numdata: 4
     parameters:
         0: acceleration
         1: dAoA
@@ -44,11 +44,11 @@ optimiser:
         loads:
             reference_loads: 'input/cruise_loads.csv'
             Torsion:
-                scale: 0.1
+                scale: 0.2
             OOP:
-                scale: 0.1
+                scale: 0.2
             IP:
-                scale: 0.1
+                scale: 0.2
     constraints:
         ramp_length: 5.0
         incidence_angle:

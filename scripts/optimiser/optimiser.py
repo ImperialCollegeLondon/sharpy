@@ -225,7 +225,7 @@ def optimiser(in_dict, previous_x, previous_y):
         exact_feval=True,
         model_type='GP',
         acquisition_type='EI',
-        normalize_y=True,
+        normalize_y=False,
         initial_design_numdata=in_dict['optimiser']['numerics']['initial_design_numdata'],
         evaluator_type='local_penalization',
         batch_size=batch_size,
@@ -267,11 +267,11 @@ def optimiser(in_dict, previous_x, previous_y):
 
     import pdb; pdb.set_trace()
 
-def local_optimisation(opt, yaml_dict=None, min_method='Nelder-Mead'):
+def local_optimisation(opt, yaml_dict=None, min_method='Powell'):
     x_in = opt.X
     y_in = opt.Y
 
-    rbf = create_rbf_surrogate(x_in, y_in)
+    # rbf = create_rbf_surrogate(x_in, y_in)
 
     points = x_in
     values = y_in
@@ -280,7 +280,8 @@ def local_optimisation(opt, yaml_dict=None, min_method='Nelder-Mead'):
                'gtol': 1e-3}
     # scipy.optimize
     local_opt = optimize.minimize(
-                                  lambda x: rbf_constrained(x, rbf, yaml_dict, opt),
+                                  # lambda x: rbf_constrained(x, rbf, yaml_dict, opt),
+                                  lambda x: gp_constrained(x, opt, yaml_dict),
                                   x0=opt.x_opt,
                                   method=min_method,
                                   options=options,
@@ -293,6 +294,43 @@ def local_optimisation(opt, yaml_dict=None, min_method='Nelder-Mead'):
     print('n_inter = ', local_opt.nit)
     print('message = ', local_opt.message)
     return local_opt.x, local_opt.fun
+
+
+# def create_gp_surrogate(opt, yaml_dict):
+    # breakpoint()
+    # opt.mode
+
+def gp_constrained(x_in, opt, yaml_dict):
+    values, _ = opt.model.predict(np.atleast_2d(x_in))
+
+    parameters = yaml_dict['optimiser']['parameters']
+    bounds = np.zeros((len(parameters), 2))
+    for k, v in parameters.items():
+        bounds[k, :] = yaml_dict['optimiser']['parameters_bounds'][k]
+
+    constraints_list = opt.constraints
+    constraints = list()
+    for v in constraints_list:
+        constraints.append(v['constraint'])
+        constraints[-1] = constraints[-1].replace(':,', '') + ' <= 0'
+
+    multidim = True
+    if len(x_in.shape) == 1:
+        multidim = False
+
+    if multidim:
+        for i in range(x_in.shape[0]):
+            for i_cons in range(len(constraints)):
+                x = x_in[i, :]
+                if not eval(constraints[i_cons]):
+                    values[i] += 15
+    else:
+        for i_cons in range(len(constraints)):
+            x = x_in
+            if not eval(constraints[i_cons]):
+                values += 15
+
+    return values
 
 def rbf_constrained(x_in, rbf, yaml_dict, opt):
     parameters = yaml_dict['optimiser']['parameters']
