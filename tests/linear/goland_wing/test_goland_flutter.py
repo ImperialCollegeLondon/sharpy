@@ -40,7 +40,7 @@ class TestGolandFlutter(unittest.TestCase):
         case_name += case_nlin_info + case_rom_info
 
         self.route_test_dir = os.path.abspath(os.path.dirname(os.path.realpath(__file__)))
-        fig_folder = self.route_test_dir + 'figures/'
+        fig_folder = self.route_test_dir + '/figures/'
         os.makedirs(fig_folder, exist_ok=True)
 
         # SHARPy nonlinear reference solution
@@ -54,7 +54,7 @@ class TestGolandFlutter(unittest.TestCase):
                                         sweep=0,
                                         physical_time=2,
                                         n_surfaces=2,
-                                        route=sharpydir.SharpyDir + '/tests/linear/goland_wing/cases',
+                                        route=self.route_test_dir + '/cases',
                                         case_name=case_name)
 
         ws.gust_intensity = 0.01
@@ -84,7 +84,7 @@ class TestGolandFlutter(unittest.TestCase):
                  ],
             'case': ws.case_name, 'route': ws.route,
             'write_screen': 'off', 'write_log': 'on',
-            'log_folder': './output/' + ws.case_name + '/',
+            'log_folder': self.route_test_dir + '/output/' + ws.case_name + '/',
             'log_file': ws.case_name + '.log'}
 
         ws.config['BeamLoader'] = {
@@ -141,27 +141,27 @@ class TestGolandFlutter(unittest.TestCase):
                                            'gravity_on': 'on',
                                            'gravity': 9.754}}
 
-        ws.config['AerogridPlot'] = {'folder': './output/',
+        ws.config['AerogridPlot'] = {'folder': self.route_test_dir + '/output/',
                                      'include_rbm': 'off',
                                      'include_applied_forces': 'on',
                                      'minus_m_star': 0}
 
-        ws.config['AeroForcesCalculator'] = {'folder': './output/forces',
+        ws.config['AeroForcesCalculator'] = {'folder': self.route_test_dir + '/output/forces',
                                              'write_text_file': 'on',
                                              'text_file_name': ws.case_name + '_aeroforces.csv',
                                              'screen_output': 'on',
                                              'unsteady': 'off'}
 
-        ws.config['BeamPlot'] = {'folder': './output/',
+        ws.config['BeamPlot'] = {'folder': self.route_test_dir + '/output/',
                                  'include_rbm': 'off',
                                  'include_applied_forces': 'on'}
 
-        ws.config['BeamCsvOutput'] = {'folder': './output/',
+        ws.config['BeamCsvOutput'] = {'folder': self.route_test_dir + '/output/',
                                       'output_pos': 'on',
                                       'output_psi': 'on',
                                       'screen_output': 'on'}
 
-        ws.config['Modal'] = {'folder': './output/',
+        ws.config['Modal'] = {'folder': self.route_test_dir + '/output/',
                               'NumLambda': 20,
                               'rigid_body_modes': 'off',
                               'print_matrices': 'on',
@@ -207,6 +207,7 @@ class TestGolandFlutter(unittest.TestCase):
                                             'rigid_body_motion': False}}
 
         ws.config['AsymptoticStability'] = {'print_info': True,
+                                            'folder': self.route_test_dir + '/output/',
                                             'velocity_analysis': [160, 180, 20]}
 
         ws.config['LinDynamicSim'] = {'dt': ws.dt,
@@ -215,7 +216,7 @@ class TestGolandFlutter(unittest.TestCase):
                                       'postprocessors': ['BeamPlot', 'AerogridPlot'],
                                       'postprocessors_settings': {'AerogridPlot': {
                                           'u_inf': ws.u_inf,
-                                          'folder': './output/',
+                                          'folder': self.route_test_dir + '/output/',
                                           'include_rbm': 'on',
                                           'include_applied_forces': 'on',
                                           'minus_m_star': 0},
@@ -224,9 +225,8 @@ class TestGolandFlutter(unittest.TestCase):
                                                        'include_applied_forces': 'on'}}}
 
         ws.config['FrequencyResponse'] = {'compute_fom': 'on',
-                                          'load_fom': './output/' + case_name,
                                           'quick_plot': 'on',
-                                          'folder': './output/',
+                                          'folder': self.route_test_dir + '/output/',
                                           'frequency_unit': 'k',
                                           'frequency_bounds': [0.0001, 1.0],
                                           }
@@ -267,6 +267,12 @@ class TestGolandFlutter(unittest.TestCase):
         self.setup()
         self.run_rom_stable()
         self.run_flutter()
+
+    def tearDown(self):
+        import shutil
+        folders = ['cases', 'figures', 'output']
+        for folder in folders:
+            shutil.rmtree(self.route_test_dir + '/' + folder)
 
 
 if __name__ == '__main__':

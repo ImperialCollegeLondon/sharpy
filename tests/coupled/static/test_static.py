@@ -42,8 +42,8 @@ class TestCoupledStatic(unittest.TestCase):
         # read output and compare
         output_path = os.path.dirname(solver_path) + '/output/smith_nog_2deg/WriteVariablesTime/'
         pos_data = np.genfromtxt(output_path + 'struct_pos_node20.dat')
-        self.assertAlmostEqual((pos_data[2] - 15.6175)/15.6175, 0.00, 2)
-        self.assertAlmostEqual((pos_data[3] - 3.2500)/3.2500, 0.00, 2)
+        self.assertAlmostEqual((pos_data[2] - 15.599)/15.599, 0.00, 2)
+        self.assertAlmostEqual((pos_data[3] - 3.32600)/3.32600, 0.00, 2)
 
         # results:
         # N = 10 elements
@@ -68,8 +68,8 @@ class TestCoupledStatic(unittest.TestCase):
         output_path = os.path.dirname(solver_path) + '/output/smith_g_2deg/WriteVariablesTime/'
         pos_data = np.genfromtxt(output_path + 'struct_pos_node20.dat')
 
-        self.assertAlmostEqual((pos_data[2] - 15.9875)/15.9875, 0.00, 2)
-        self.assertAlmostEqual((pos_data[3] - 0.588507)/0.588507, 0.00, 2)
+        self.assertAlmostEqual((pos_data[2] - 15.98295)/15.98295, 0.00, 2)
+        self.assertAlmostEqual((pos_data[3] - 0.682268)/0.682268, 0.00, 2)
 
     def test_smith4deg_g(self):
         """

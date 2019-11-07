@@ -18,8 +18,7 @@ class TestGenerateCases(unittest.TestCase):
     """
 
     def setUp(self):
-
-        remove_terminal_output = True
+        # remove_terminal_output = True
         deg2rad = np.pi/180.
         ######################################################################
         ###########################  PARAMETERS  #############################
@@ -27,7 +26,7 @@ class TestGenerateCases(unittest.TestCase):
         # Case
         global case
         case = 'rotor'
-        route = os.path.dirname(os.path.realpath(__file__)) + '/'
+        route = os.path.abspath(os.path.dirname(os.path.realpath(__file__))) + '/'
 
         # Geometry discretization
         chord_panels = np.array([4], dtype=int)
@@ -55,14 +54,14 @@ class TestGenerateCases(unittest.TestCase):
         mstar = 1 # For the test cases
 
         # Remove screen output
-        if remove_terminal_output:
-            sys.stdout = open(os.devnull, "w")
+        # if remove_terminal_output:
+        #     sys.stdout = open(os.devnull, "w")
 
         rotor = template_wt.rotor_from_excel_type02(
                                           chord_panels,
                                           rotation_velocity,
                                           pitch_deg,
-                                          excel_file_name= 'type02_db_NREL_5MW.xlsx',
+                                          excel_file_name = route + 'type02_db_NREL_5MW.xlsx',
                                           excel_sheet_parameters = 'parameters',
                                           excel_sheet_structural_blade = 'structural_blade',
                                           excel_sheet_discretization_blade = 'discretization_blade',
@@ -74,8 +73,9 @@ class TestGenerateCases(unittest.TestCase):
                                           tol_remove_points = 1e-8)
 
         # Return the standard output to the terminal
-        if remove_terminal_output:
-            sys.stdout = sys.__stdout__
+        # if remove_terminal_output:
+        #     sys.stdout.close()
+        #     sys.stdout = sys.__stdout__
 
         ######################################################################
         ######################  DEFINE SIMULATION  ###########################
@@ -92,12 +92,14 @@ class TestGenerateCases(unittest.TestCase):
         SimInfo.solvers['SHARPy']['write_screen'] = 'off'
         SimInfo.solvers['SHARPy']['route'] = route
         SimInfo.solvers['SHARPy']['write_log'] = True
+        SimInfo.solvers['SHARPy']['log_folder'] = os.path.abspath(os.path.dirname(os.path.realpath(__file__))) + '/'
         SimInfo.set_variable_all_dicts('dt', dt)
         SimInfo.set_variable_all_dicts('rho', air_density)
 
         SimInfo.solvers['SteadyVelocityField']['u_inf'] = WSP
         SimInfo.solvers['SteadyVelocityField']['u_inf_direction'] = np.array([0., 0., 1.])
         SimInfo.set_variable_all_dicts('velocity_field_input', SimInfo.solvers['SteadyVelocityField'])
+        SimInfo.set_variable_all_dicts('output', os.path.abspath(os.path.dirname(os.path.realpath(__file__))))
 
         SimInfo.solvers['BeamLoader']['unsteady'] = 'on'
 
@@ -139,6 +141,9 @@ class TestGenerateCases(unittest.TestCase):
         SimInfo.solvers['DynamicCoupled']['dynamic_relaxation'] = False
         SimInfo.solvers['DynamicCoupled']['relaxation_steps'] = 0
 
+        SimInfo.solvers['DynamicCoupled']['postprocessors_settings']['BeamPlot']['folder'] = os.path.abspath(os.path.dirname(os.path.realpath(__file__))) + '/output/'
+        SimInfo.solvers['DynamicCoupled']['postprocessors_settings']['AerogridPlot']['folder'] = os.path.abspath(os.path.dirname(os.path.realpath(__file__))) + '/output/'
+        SimInfo.solvers['DynamicCoupled']['postprocessors_settings']['SaveData']['folder'] = os.path.abspath(os.path.dirname(os.path.realpath(__file__))) + '/output/'
         SimInfo.define_num_steps(time_steps)
 
         # Define dynamic simulation
@@ -164,15 +169,18 @@ class TestGenerateCases(unittest.TestCase):
 
         solver_path = os.path.abspath(os.path.dirname(os.path.realpath(__file__)) + '/' + case +'.solver.txt')
         sharpy.sharpy_main.main(['', solver_path])
+        print('done executing')
 
     def tearDowns(self):
-        solver_path = os.path.dirname(os.path.realpath(__file__))
+        solver_path = os.path.abspath(os.path.dirname(os.path.realpath(__file__)))
         solver_path += '/'
         files_to_delete = [case + '.aero.h5',
                            case + '.dyn.h5',
                            case + '.fem.h5',
                            case + '.solver.txt']
         for f in files_to_delete:
+            print('removing ', f)
             os.remove(solver_path + f)
 
         shutil.rmtree(solver_path + 'output/')
+        print('Out generate cases')

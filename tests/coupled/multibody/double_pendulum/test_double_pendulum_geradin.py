@@ -218,11 +218,13 @@ class TestDoublePendulum(unittest.TestCase):
         name = 'double_pendulum_geradin'
         SimInfo.solvers['SHARPy']['case'] = 'double_pendulum_geradin'
         SimInfo.solvers['SHARPy']['write_screen'] = 'off'
-        SimInfo.solvers['SHARPy']['route'] = os.path.dirname(os.path.realpath(__file__)) + '/'
+        SimInfo.solvers['SHARPy']['route'] = os.path.abspath(os.path.dirname(os.path.realpath(__file__))) + '/'
+        SimInfo.solvers['SHARPy']['log_folder'] = os.path.abspath(os.path.dirname(os.path.realpath(__file__))) + '/'
         SimInfo.set_variable_all_dicts('dt', dt)
         SimInfo.define_num_steps(numtimesteps)
         SimInfo.set_variable_all_dicts('rho', 0.0)
         SimInfo.set_variable_all_dicts('velocity_field_input', SimInfo.solvers['SteadyVelocityField'])
+        SimInfo.set_variable_all_dicts('output', os.path.abspath(os.path.dirname(os.path.realpath(__file__))) + '/output/')
 
         SimInfo.solvers['BeamLoader']['unsteady'] = 'on'
 
@@ -248,6 +250,9 @@ class TestDoublePendulum(unittest.TestCase):
                                                                         'BeamPlot': SimInfo.solvers['BeamPlot'],
                                                                         'AerogridPlot': SimInfo.solvers['AerogridPlot']}
 
+        SimInfo.solvers['DynamicCoupled']['postprocessors_settings']['WriteVariablesTime']['folder'] = os.path.abspath(os.path.dirname(os.path.realpath(__file__))) + '/output/'
+        SimInfo.solvers['DynamicCoupled']['postprocessors_settings']['BeamPlot']['folder'] = os.path.abspath(os.path.dirname(os.path.realpath(__file__))) + '/output/'
+        SimInfo.solvers['DynamicCoupled']['postprocessors_settings']['AerogridPlot']['folder'] = os.path.abspath(os.path.dirname(os.path.realpath(__file__))) + '/output/'
         SimInfo.with_forced_vel = False
         SimInfo.with_dynamic_forces = False
 
@@ -302,14 +307,14 @@ class TestDoublePendulum(unittest.TestCase):
         sharpy.sharpy_main.main(['', solver_path])
 
         # read output and compare
-        output_path = os.path.dirname(solver_path) + '/output/double_pendulum_geradin/WriteVariablesTime/'
+        output_path = os.path.abspath(os.path.dirname(os.path.realpath(__file__))) + '/output/double_pendulum_geradin/WriteVariablesTime/'
         pos_tip_data = np.atleast_2d(np.genfromtxt(output_path + "struct_pos_node" + str(nnodes1*2-1) + ".dat", delimiter=' '))
         self.assertAlmostEqual(pos_tip_data[-1, 1], 1.051004, 4)
         self.assertAlmostEqual(pos_tip_data[-1, 2], 0.000000, 4)
         self.assertAlmostEqual(pos_tip_data[-1, 3], -0.9986984, 4)
 
     def tearDowns(self):
-        solver_path = os.path.dirname(os.path.realpath(__file__))
+        solver_path = os.path.abspath(os.path.dirname(os.path.realpath(__file__)))
         solver_path += '/'
         files_to_delete = [name + '.aero.h5',
                            name + '.dyn.h5',
