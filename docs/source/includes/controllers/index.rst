@@ -1,7 +1,6 @@
 Controllers
 -----------
 
-
 .. toctree::
 	:maxdepth: 1
 

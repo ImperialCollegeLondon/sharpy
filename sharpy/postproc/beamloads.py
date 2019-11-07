@@ -12,20 +12,33 @@ import sharpy.structure.utils.xbeamlib as xbeamlib
 
 @solver
 class BeamLoads(BaseSolver):
+    """
+    Writes to file the total loads acting on the beam elements
+
+    """
     solver_id = 'BeamLoads'
+    solver_classification = 'post-processor'
+
+    settings_types = dict()
+    settings_default = dict()
+    settings_description = dict()
+
+    settings_types['csv_output'] = 'bool'
+    settings_default['csv_output'] = False
+    settings_description['csv_output'] = 'Write ``csv`` file with results'
+
+    settings_types['output_file_name'] = 'str'
+    settings_default['output_file_name'] = 'beam_loads'
+    settings_description['output_file_name'] = 'Output file name'
+
+    settings_types['folder'] = 'str'
+    settings_default['folder'] = './output'
+    settings_description['folder'] = 'Output folder path'
+
+    settings_table = settings.SettingsTable()
+    __doc__ += settings_table.generate(settings_types, settings_default, settings_description)
 
     def __init__(self):
-        self.settings_types = dict()
-        self.settings_default = dict()
-
-        self.settings_types['csv_output'] = 'bool'
-        self.settings_default['csv_output'] = False
-
-        self.settings_types['output_file_name'] = 'str'
-        self.settings_default['output_file_name'] = 'beam_loads'
-
-        self.settings_types['folder'] = 'str'
-        self.settings_default['folder'] = './output'
 
         self.settings = None
         self.data = None

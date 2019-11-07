@@ -13,57 +13,82 @@ import sharpy.utils.algebra as algebra
 
 @solver
 class Trim(BaseSolver):
+    """
+    Trim routine with support for lateral dynamics. It usually struggles much more
+    than the ``StaticTrim`` (only longitudinal) solver.
+
+    We advise to start with ``StaticTrim`` even if you configuration is not totally symmetric.
+    """
     solver_id = 'Trim'
+    solver_classification = 'Flight dynamics'
+
+    settings_types = dict()
+    settings_default = dict()
+    settings_description = dict()
+
+    settings_types['print_info'] = 'bool'
+    settings_default['print_info'] = True
+    settings_description['print_info'] = 'Print info to screen'
+
+    settings_types['solver'] = 'str'
+    settings_default['solver'] = ''
+    settings_description['solver'] = 'Solver to run in trim routine'
+
+    settings_types['solver_settings'] = 'dict'
+    settings_default['solver_settings'] = dict()
+    settings_description['solver_settings'] = 'Solver settings dictionary'
+
+    settings_types['max_iter'] = 'int'
+    settings_default['max_iter'] = 100
+    settings_description['max_iter'] = 'Maximum number of iterations of trim routine'
+
+    settings_types['tolerance'] = 'float'
+    settings_default['tolerance'] = 1e-4
+    settings_description['tolerance'] = 'Threshold for convergence of trim'
+
+    settings_types['initial_alpha'] = 'float'
+    settings_default['initial_alpha'] = 0.
+    settings_description['initial_alpha'] = 'Initial angle of attack'
+
+    settings_types['initial_beta'] = 'float'
+    settings_default['initial_beta'] = 0.*np.pi/180.
+    settings_description['initial_beta'] = 'Initial sideslip angle'
+
+    settings_types['initial_roll'] = 'float'
+    settings_default['initial_roll'] = 0*np.pi/180.
+    settings_description['initial_roll'] = 'Initial roll angle'
+
+    settings_types['cs_indices'] = 'list(int)'
+    settings_default['cs_indices'] = np.array([])
+    settings_description['cs_indices'] = 'Indices of control surfaces to be trimmed'
+
+    settings_types['initial_cs_deflection'] = 'list(float)'
+    settings_default['initial_cs_deflection'] = np.array([])
+    settings_description['initial_cs_deflection'] = 'Initial deflection of the control surfaces in order.'
+
+    settings_types['thrust_nodes'] = 'list(int)'
+    settings_default['thrust_nodes'] = np.array([0])
+    settings_description['thrust_nodes'] = 'Nodes at which thrust is applied'
+
+    settings_types['initial_thrust'] = 'list(float)'
+    settings_default['initial_thrust'] = np.array([1.])
+    settings_description['initial_thrust'] = 'Initial thrust setting'
+
+    settings_types['thrust_direction'] = 'list(float)'
+    settings_default['thrust_direction'] = np.array([.0, 1.0, 0.0])
+    settings_description['thrust_direction'] = 'Thrust direction setting'
+
+    settings_types['special_case'] = 'dict'
+    settings_default['special_case'] = dict()
+    settings_description['special_case'] = 'Extra settings for specific cases such as differential thrust control'
+    settings_types['refine_solution'] = 'bool'
+    settings_default['refine_solution'] = False
+    settings_description['refine_solution'] = 'If ``True`` and the optimiser routine allows for it, the optimiser will try to improve the solution with hybrid methods'
+
+    settings_table = settings.SettingsTable()
+    __doc__ += settings_table.generate(settings_types, settings_default, settings_description)
 
     def __init__(self):
-        self.settings_types = dict()
-        self.settings_default = dict()
-
-        self.settings_types['print_info'] = 'bool'
-        self.settings_default['print_info'] = True
-
-        self.settings_types['solver'] = 'str'
-        self.settings_default['solver'] = None
-
-        self.settings_types['solver_settings'] = 'dict'
-        self.settings_default['solver_settings'] = None
-
-        self.settings_types['max_iter'] = 'int'
-        self.settings_default['max_iter'] = 100
-
-        self.settings_types['tolerance'] = 'float'
-        self.settings_default['tolerance'] = 1e-4
-
-        self.settings_types['initial_alpha'] = 'float'
-        self.settings_default['initial_alpha'] = 0.*np.pi/180.
-
-        self.settings_types['initial_beta'] = 'float'
-        self.settings_default['initial_beta'] = 0.*np.pi/180.
-
-        self.settings_types['initial_roll'] = 'float'
-        self.settings_default['initial_roll'] = 0*np.pi/180.
-
-        self.settings_types['cs_indices'] = 'list(int)'
-        self.settings_default['cs_indices'] = np.array([])
-
-        self.settings_types['initial_cs_deflection'] = 'list(float)'
-        self.settings_default['initial_cs_deflection'] = np.array([])
-
-        self.settings_types['thrust_nodes'] = 'list(int)'
-        self.settings_default['thrust_nodes'] = np.array([0])
-
-        self.settings_types['initial_thrust'] = 'list(float)'
-        self.settings_default['initial_thrust'] = np.array([1.])
-
-        self.settings_types['thrust_direction'] = 'list(float)'
-        self.settings_default['thrust_direction'] = np.array([.0, 1.0, 0.0])
-
-        self.settings_types['special_case'] = 'dict'
-        self.settings_default['special_case'] = dict()
-
-        self.settings_types['refine_solution'] = 'bool'
-        self.settings_default['refine_solution'] = False
-
         self.data = None
         self.settings = None
         self.solver = None

@@ -1275,7 +1275,7 @@ def rotor_from_excel_type02(chord_panels,
     # Define the nodes with aerodynamic properties
     # Look for the first element that is goint to be aerodynamic
     first_aero_elem=0
-    while (elem_r[first_aero_elem]<=rR_aero[0]):
+    while (elem_r[first_aero_elem]<=rR_aero[0]*TipRad):
         first_aero_elem+=1
     first_aero_node=first_aero_elem*(blade.StructuralInformation.num_node_elem-1)
     aero_node = np.zeros((blade.StructuralInformation.num_node,), dtype=bool)

@@ -19,7 +19,7 @@ class AerogridPlot(BaseSolver):
     """
     solver_id = 'AerogridPlot'
     solver_classification = 'post-processor'
-    
+
     settings_types = dict()
     settings_default = dict()
     settings_description = dict()
@@ -55,6 +55,9 @@ class AerogridPlot(BaseSolver):
 
     settings_types['include_velocities'] = 'bool'
     settings_default['include_velocities'] = False
+
+    settings_types['num_cores'] = 'int'
+    settings_default['num_cores'] = 1
 
     table = settings.SettingsTable()
     __doc__ += table.generate(settings_types, settings_default, settings_description)
@@ -172,8 +175,6 @@ class AerogridPlot(BaseSolver):
                         u_inf[node_counter, :] = self.data.aero.timestep_info[self.ts].u_ext[i_surf][0:3, i_m, i_n]
                     except AttributeError:
                         pass
-                    if self.settings['include_velocities']:
-                        vel[node_counter, :] = uvlmlib.uvlm_calculate_total_induced_velocity_at_point(self.data.aero.timestep_info[self.ts],coords[node_counter, :])
                     if i_n < dims[1] and i_m < dims[0]:
                         counter += 1
                     else:
@@ -194,6 +195,11 @@ class AerogridPlot(BaseSolver):
                         incidence_angle[counter] = \
                             self.data.aero.timestep_info[self.ts].postproc_cell['incidence_angle'][i_surf][i_m, i_n]
 
+            if self.settings['include_velocities']:
+                vel = uvlmlib.uvlm_calculate_total_induced_velocity_at_points(self.data.aero.timestep_info[self.ts],
+                                                                                              coords,
+                                                                                              self.data.aero.timestep_info[self.ts].for_pos,
+                                                                                              self.settings['numcores'])
 
             ug = tvtk.UnstructuredGrid(points=coords)
             ug.set_cells(tvtk.Quad().cell_type, conn)

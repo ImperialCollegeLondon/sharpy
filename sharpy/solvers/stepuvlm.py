@@ -17,7 +17,7 @@ class StepUvlm(BaseSolver):
     StepUVLM is the main solver to use for unsteady aerodynamics.
     """
     solver_id = 'StepUvlm'
-    solver_classification = 'Aerodynamic'
+    solver_classification = 'aero'
 
     settings_types = dict()
     settings_default = dict()
@@ -68,7 +68,7 @@ class StepUvlm(BaseSolver):
     settings_description['gamma_dot_filtering'] = 'Filtering parameter for the Welch filter for the Gamma_dot estimation. Used when ``unsteady_force_contribution`` is ``on``.'
 
     settings_types['rho'] = 'float'
-    settings_default['rho'] = 2.225
+    settings_default['rho'] = 1.225
     settings_description['rho'] = 'Air density'
 
     settings_table = settings.SettingsTable()

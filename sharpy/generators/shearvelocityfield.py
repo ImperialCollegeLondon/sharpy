@@ -13,8 +13,8 @@ class ShearVelocityField(generator_interface.BaseGenerator):
 
     The object creates a steady velocity field with shear
 
-    .. math:: \hat{u} = \hat{u}\_inf ( \frac{h - h\_{corr}}{h\_ref} ) ^shear\_exp
-    .. math:: h = zeta \cdot shear\_direction
+    .. math:: \hat{u} = \hat{u}\_\infty \left( \frac{h - h\_\mathrm{corr}}{h\_\mathrm{ref}} \right)^{\mathrm{shear}\_\mathrm{exp}}
+    .. math:: h = \zeta \cdot \mathrm{shear}\_\mathrm{direction}
 
     """
     generator_id = 'ShearVelocityField'
@@ -81,3 +81,4 @@ class ShearVelocityField(generator_interface.BaseGenerator):
                 for j in range(zeta[i_surf].shape[2]):
                     h = np.dot(zeta[i_surf][:, i, j], self.shear_direction) + self.h_corr
                     uext[i_surf][:, i, j] += self.u_inf*self.u_inf_direction*(h/self.h_ref)**self.shear_exp
+

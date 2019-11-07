@@ -3,7 +3,7 @@ import numpy as np
 
 from sharpy.utils.solver_interface import solver, BaseSolver
 import sharpy.structure.models.beam as beam
-import sharpy.utils.settings as settings_utils
+import sharpy.utils.settings as settings
 import sharpy.utils.h5utils as h5utils
 import os
 
@@ -20,13 +20,6 @@ class BeamLoader(BaseSolver):
 
     Attributes:
         settings (dict): contains the specific settings for the solver
-
-            ===============  ===============  ==========================================================  ================
-            Key              Type             Description                                                 Default
-            ===============  ===============  ==========================================================  ================
-            ``unsteady``     ``bool``         Dynamic problem                                             ``False``
-            ``orientation``  ``list(float)``  Beam orientation with respect to flow in Quaternion format  ``[1, 0, 0, 0]``
-            ===============  ===============  ==========================================================  ================
 
         settings_types (dict): Key  value pairs of the accepted types for the settings values
         settings_default (dict): Dictionary containing the default solver settings, should none be provided.
@@ -48,18 +41,24 @@ class BeamLoader(BaseSolver):
 
     """
     solver_id = 'BeamLoader'
+    solver_classification = 'loader'
+
+    settings_types = dict()
+    settings_default = dict()
+    settings_description = dict()
+
+    settings_types['unsteady'] = 'bool'
+    settings_default['unsteady'] = True
+    settings_description['unsteady'] = 'If ``True`` it will be a dynamic problem. The default is usually good for all simulations'
+
+    settings_types['orientation'] = 'list(float)'
+    settings_default['orientation'] = np.array([1., 0, 0, 0])
+    settings_description['orientation'] = 'Initial attitude of the structure given as the quaternion that parametrises the rotation from G to A frames of reference.'
+
+    settings_table = settings.SettingsTable()
+    __doc__ += settings_table.generate(settings_types, settings_default, settings_description)
 
     def __init__(self):
-        # settings list
-        self.settings_types = dict()
-        self.settings_default = dict()
-
-        self.settings_types['unsteady'] = 'bool'
-        self.settings_default['unsteady'] = False
-
-        self.settings_types['orientation'] = 'list(float)'
-        self.settings_default['orientation'] = np.array([1., 0, 0, 0])
-
         self.data = None
         self.settings = None
         self.fem_file_name = ''
@@ -77,7 +76,7 @@ class BeamLoader(BaseSolver):
         self.settings = data.settings[self.solver_id]
 
         # init settings
-        settings_utils.to_custom_types(self.settings, self.settings_types, self.settings_default)
+        settings.to_custom_types(self.settings, self.settings_types, self.settings_default)
 
         # read input files (fem and dyn)
         self.read_files()
