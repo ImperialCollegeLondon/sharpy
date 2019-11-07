@@ -148,7 +148,7 @@ def generate_solver_file():
     config['BeamLoader'] = {'unsteady': 'off'}
     config['NonLinearStatic'] = {'print_info': 'off',
                                  'max_iterations': 99,
-                                 'num_load_steps': 10,
+                                 'num_load_steps': 1,
                                  'delta_curved': 1e-5,
                                  'min_delta': 1e-8,
                                  'gravity_on': 'on',

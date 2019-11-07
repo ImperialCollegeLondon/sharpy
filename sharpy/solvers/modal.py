@@ -474,7 +474,7 @@ class Modal(BaseSolver):
         else:
             # unit normalise (diagonalises A)
             if not self.rigid_body_motion:
-                for ii in range(eigenvectors.shape[1]):  # Issue - dot product = 0 when you have arbitrary damping
+                for ii in range(self.settings['NumLambda']):  # Issue - dot product = 0 when you have arbitrary damping
                     fact = 1./np.sqrt(np.dot(eigenvectors_left[:, ii], eigenvectors[:, ii]))
                     eigenvectors_left[:, ii] = fact*eigenvectors_left[:, ii]
                     eigenvectors[:, ii] = fact*eigenvectors[:, ii]

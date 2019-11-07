@@ -116,7 +116,7 @@ class SaveData(BaseSolver):
         # create folder for containing files if necessary
         if not os.path.exists(self.settings['folder']):
             os.makedirs(self.settings['folder'])
-        self.folder = self.settings['folder'] + '/' + self.data.settings['SHARPy']['case'] + '/'
+        self.folder = self.settings['folder'] + '/'
         if not os.path.exists(self.folder):
             os.makedirs(self.folder)
         self.filename = self.folder+self.data.settings['SHARPy']['case']+'.data.h5'
@@ -124,28 +124,26 @@ class SaveData(BaseSolver):
         if os.path.isfile(self.filename):
             os.remove(self.filename)
 
-        if self.settings['format'] == 'h5':
+        # allocate list of classes to be saved
+        if self.settings['save_aero']:
+            self.ClassesToSave+=(sharpy.aero.models.aerogrid.Aerogrid,
+                                 sharpy.utils.datastructures.AeroTimeStepInfo,)
 
-            # allocate list of classes to be saved
-            if self.settings['save_aero']:
-                self.ClassesToSave+=(sharpy.aero.models.aerogrid.Aerogrid,
-                                     sharpy.utils.datastructures.AeroTimeStepInfo,)
+        if self.settings['save_struct']:
+            self.ClassesToSave+=(
+                                sharpy.structure.models.beam.Beam,
+                                sharpy.utils.datastructures.StructTimeStepInfo,)
 
-            if self.settings['save_struct']:
-                self.ClassesToSave+=(
-                                    sharpy.structure.models.beam.Beam,
-                                    sharpy.utils.datastructures.StructTimeStepInfo,)
+        if self.settings['save_linear']:
+            self.ClassesToSave += (sharpy.solvers.linearassembler.Linear,
+                                   sharpy.linear.assembler.linearaeroelastic.LinearAeroelastic,
+                                   sharpy.linear.assembler.linearbeam.LinearBeam,
+                                   sharpy.linear.assembler.linearuvlm.LinearUVLM,
+                                   sharpy.linear.src.libss.ss,
+                                   sharpy.linear.src.lingebm.FlexDynamic,)
 
-            if self.settings['save_linear']:
-                self.ClassesToSave += (sharpy.solvers.linearassembler.Linear,
-                                       sharpy.linear.assembler.linearaeroelastic.LinearAeroelastic,
-                                       sharpy.linear.assembler.linearbeam.LinearBeam,
-                                       sharpy.linear.assembler.linearuvlm.LinearUVLM,
-                                       sharpy.linear.src.libss.ss,
-                                       sharpy.linear.src.lingebm.FlexDynamic,)
-
-            if self.settings['save_linear_uvlm']:
-                self.ClassesToSave += (sharpy.solvers.linearassembler.Linear, sharpy.linear.src.libss.ss)
+        if self.settings['save_linear_uvlm']:
+            self.ClassesToSave += (sharpy.solvers.linearassembler.Linear, sharpy.linear.src.libss.ss)
 
     def run(self, online=False):
 
@@ -153,9 +151,8 @@ class SaveData(BaseSolver):
         # you need them on uvlm3d
         # self.data.aero.timestep_info[-1].generate_ctypes_pointers()
 
-        if self.settings['format'] == 'h5':
-            file_exists = os.path.isfile(self.filename)
-            hdfile=h5py.File(self.filename,'a')
+        file_exists = os.path.isfile(self.filename)
+        hdfile=h5py.File(self.filename,'a')
 
             if (online and file_exists):
                 if self.settings['save_aero']:
@@ -174,19 +171,16 @@ class SaveData(BaseSolver):
                 h5utils.add_as_grp(self.data,hdfile,grpname='data',
                                    ClassesToSave=self.ClassesToSave,SkipAttr=self.settings['skip_attr'],
                                    compress_float=self.settings['compress_float'])
-
-            hdfile.close()
-
-            if self.settings['save_linear_uvlm']:
-
-                linhdffile = h5py.File(self.filename.replace('.data.h5', '.uvlmss.h5'), 'a')
-                h5utils.add_as_grp(self.data.linear.linear_system.uvlm.ss, linhdffile, grpname='ss',
-                                   ClassesToSave=self.ClassesToSave, SkipAttr=self.settings['skip_attr'],
+            if self.settings['save_struct']:
+                h5utils.add_as_grp(self.data.structure.timestep_info[self.data.ts], hdfile['data']['structure']['timestep_info'],
+                                   grpname=("%05d" % self.data.ts),
+                                   ClassesToSave=(sharpy.utils.datastructures.StructTimeStepInfo,),
+                                   SkipAttr=self.settings['skip_attr'],
                                    compress_float=self.settings['compress_float'])
-                h5utils.add_as_grp(self.data.linear.linear_system.linearisation_vectors, linhdffile, grpname='linearisation_vectors',
-                                   ClassesToSave=self.ClassesToSave, SkipAttr=self.settings['skip_attr'],
-                                   compress_float=self.settings['compress_float'])
-                linhdffile.close()
+        else:
+            h5utils.add_as_grp(self.data,hdfile,grpname='data',
+                               ClassesToSave=self.ClassesToSave,SkipAttr=self.settings['skip_attr'],
+                               compress_float=self.settings['compress_float'])
 
         elif self.settings['format'] == 'mat':
             from scipy.io import savemat

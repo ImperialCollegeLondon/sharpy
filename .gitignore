@@ -90,7 +90,11 @@ ENV/
 *.*~
 *.swp
 *.txt
+
+# SHARPy stuff
 *.h5
+*.sharpy
+
 
 # project dependant stuff
 lib/*
@@ -139,3 +143,10 @@ figs/*
 tests/linear/rom/figs/
 
 \.spyproject/
+
+*.sharpy
+
+scripts/optimiser/cases
+
+
+.vscode/

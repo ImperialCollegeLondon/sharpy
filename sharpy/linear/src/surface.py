@@ -1,7 +1,7 @@
-"""
+'''
 Geometrical methods for bound surface
 S. Maraniello, 20 May 2018
-"""
+'''
 
 import ctypes as ct
 import numpy as np
@@ -19,7 +19,7 @@ libc = ct_utils.import_ctypes_lib(SharpyDir + '/lib/', 'libuvlm')
 
 
 class AeroGridGeo():
-    """
+    '''
     Allows retrieving geometrical information of a surface. Requires a
     gridmapping.AeroGridMap mapping structure in input and the surface vertices
     coordinates.
@@ -36,7 +36,7 @@ class AeroGridGeo():
     - these are labelled as 'Wba', where 'a' defines the initial format, b the
     final. Hence, given the array vb, it holds va=Wab*vb
 
-    """
+    '''
 
     def __init__(self,
                  Map: 'gridmapping.AeroGridMap instance',
@@ -56,9 +56,9 @@ class AeroGridGeo():
     # -------------------------------------------------------------------------
 
     def get_panel_vertices_coords(self, m, n):
-        """
+        '''
         Retrieves coordinates of panel (m,n) vertices.
-        """
+        '''
 
         ###
         # mpv=self.maps.from_panel_to_vertices(m,n)
@@ -104,7 +104,7 @@ class AeroGridGeo():
     # -------------------------------------------------- get collocation points
 
     def get_panel_wcv(self):
-        """
+        '''
         Produces a compact array with weights for bilinear interpolation, where
         aN,aM in [0,1] are distances in the chordwise and spanwise directions
         such that:
@@ -112,7 +112,7 @@ class AeroGridGeo():
             - (aM,aN)=(1,0) --> quantity at vertex 1
             - (aM,aN)=(1,1) --> quantity at vertex 2
             - (aM,aN)=(0,1) --> quantity at vertex 3
-        """
+        '''
 
         aM = self.aM
         aN = self.aN
@@ -121,7 +121,7 @@ class AeroGridGeo():
         return wcv
 
     def get_panel_collocation(self, zetav_here):
-        """
+        '''
         Using bilinear interpolation, retrieves panel collocation point, where
         aN,aM in [0,1] are distances in the chordwise and spanwise directions
         such that:
@@ -129,7 +129,7 @@ class AeroGridGeo():
             - (aM,aN)=(1,0) --> quantity at vertex 1
             - (aM,aN)=(1,1) --> quantity at vertex 2
             - (aM,aN)=(0,1) --> quantity at vertex 3
-        """
+        '''
 
         wcv = self.get_panel_wcv()
         zetac_here = np.dot(wcv, zetav_here)
@@ -165,10 +165,10 @@ class AeroGridGeo():
     # ----------------------------------------------- Interpolations/Projection
 
     def interp_vertex_to_coll(self, q_vert):
-        """
+        '''
         Project a quantity q_vert (scalar or vector) defined at vertices to
         collocation points.
-        """
+        '''
 
         M, N = self.maps.M, self.maps.N
         # embed()
@@ -203,9 +203,9 @@ class AeroGridGeo():
         return q_coll
 
     def project_coll_to_normal(self, q_coll):
-        """
+        '''
         Project a vector quantity q_coll defined at collocation points to normal.
-        """
+        '''
 
         M, N = self.maps.M, self.maps.N
         assert q_coll.shape == (3, M, N), 'Unexpected shape of q_coll'
@@ -245,43 +245,28 @@ class AeroGridGeo():
 
 
 class AeroGridSurface(AeroGridGeo):
-    """
-    Contains geometric and aerodynamic information about bound/wake surface.
+    '''
+    Contains geometrical and aerodynamical information about bound/wake surface.
 
     Compulsory input are those that apply to both bound and wake surfaces:
-        - ``zeta``: defines geometry
-        - ``gamma``: circulation
+    - zeta: defines geometry
+    - gamma: circulation
 
-    With respect to :class:`.AeroGridGeo`, the class contains methods to:
-        - project prescribed input velocity at nodes (``u_ext``, ``zeta_dot``) over
-          collocation points.
-        - compute induced velocity over ANOTHER surface.
-        - compute AIC induced over ANOTHER surface
-
-    Args:
-        Map (gridmapping.AeroGridMap): Map of grid.
-        zeta (list(np.ndarray)): Grid vertices coordinates in inertial (G) frame.
-        zeta_dot (list(np.ndarray)): Grid vertices velocities in inertial (G) frame. Default is ``None``.
-        u_ext (list(np.ndarray)): Grid external velocities in inertial (G) frame. Default is ``None``.
-        gamma_dot (list(np.ndarray)): Panel circulation derivative. Default is ``None``.
-        rho (float): Air density. Default is ``1.``
-        aM (float): Chordwise position in panel of collocation point. Default is ``0.5``
-        aN (float): Spanwise position in panel of collocation point. Default is ``0.5``
-        for_vel (np.ndarray): Frame of reference velocity (including rotational velocity) in the inertial frame.
+    With respect to AeroGridGeo, the class contains methods to:
+    - project prescribed input velocity at nodes (u_ext, zeta_dot) over
+    collocaiton points.
+    - compute induced velocity over ANOTHER surface.
+    - compute AIC induced over ANOTHER surface
 
     To add:
-        - project prescribed input velocity at nodes (u_ext, zeta_dot) over
-        mid-point segments
-    """
+    - project prescribed input velocity at nodes (u_ext, zeta_dot) over
+    mid-point segments
+    '''
 
     def __init__(self, Map, zeta, gamma,
-                 u_ext=None,
-                 zeta_dot=None,
-                 gamma_dot=None,
-                 rho=1.,
-                 aM=0.5,
-                 aN=0.5,
-                 for_vel=np.zeros((6, ))):
+                 u_ext=None, zeta_dot=None, gamma_dot=None,
+                 rho=1., aM=0.5, aN=0.5,
+                 omega=np.zeros((3,), )):
 
         super().__init__(Map, zeta, aM, aN)
 
@@ -290,8 +275,7 @@ class AeroGridSurface(AeroGridGeo):
         self.u_ext = u_ext
         self.gamma_dot = gamma_dot
         self.rho = rho
-        self.omega = for_vel[3:]
-        self.for_vel_tra = for_vel[:3]
+        self.omega = omega
 
         msg_out = 'wrong input shape!'
         assert self.gamma.shape == (self.maps.M, self.maps.N), msg_out
@@ -300,29 +284,20 @@ class AeroGridSurface(AeroGridGeo):
             assert self.zeta_dot.shape == (3, self.maps.M + 1, self.maps.N + 1), msg_out
         if self.u_ext is not None:
             assert self.u_ext.shape == (3, self.maps.M + 1, self.maps.N + 1), msg_out
-        assert for_vel.shape == (6, ), msg_out
-        assert self.omega.shape == (3, ), msg_out
-        assert self.for_vel_tra.shape == (3, ), msg_out
 
-        self.u_input_coll = None  # input velocities at the collocation points
-        self.u_input_coll_norm = None  # normal input velocities at the collocation points
-        self.u_input_seg = None  # input velocities at segments
     # -------------------------------------------------------- input velocities
 
     def get_input_velocities_at_collocation_points(self):
-        """
-        Returns velocities at collocation points from nodal values ``u_ext`` and
-        ``zeta_dot`` of shape ``(3, M+1, N+1)`` at the collocation points.
+        '''
+        Returns velocities at collocation points from nodal values u_ext and
+        zeta_dot of shape (3,M+1,N+1).
 
-        Notes:
+        Remark: u_input_coll=Wcv*(u_ext-zet_dot) does not depend on the
+        coordinates zeta.
 
-            .. math:: \boldsymbol{u}_{c} = \mathcal{W}_{cv}(\boldsymbol(\nu)_0 - \boldsymbol{\zeta}_0)
-
-            is the input velocity at the collocation point, where :math:`\mathcal{W}_{cv} projects the velocity
-            from the grid points onto the collocation point. This variable is referred to as
-            ``u_input_coll=Wcv*(u_ext-zeta_dot)`` and depends on the coordinates ``zeta`` when the body is rotating.
-
-        """
+        2018/08/24: Include effects due to rotation (omega x zeta). Now it
+        depends on the coordinates zeta
+        '''
 
         # define total velocity
         if self.zeta_dot is not None:
@@ -333,14 +308,16 @@ class AeroGridSurface(AeroGridGeo):
         # Include rotation
         for i_m in range(self.maps.M + 1):
             for i_n in range(self.maps.N + 1):
-                u_tot[:, i_m, i_n] -= np.cross(self.omega, self.zeta[:, i_m, i_n]) + self.for_vel_tra
+                # print(u_tot[:,i_m,i_n])
+                # print(np.cross(self.omega,self.zeta[:,i_m,i_n]))
+                u_tot[:, i_m, i_n] -= np.cross(self.omega, self.zeta[:, i_m, i_n])
 
         self.u_input_coll = self.interp_vertex_to_coll(u_tot)
 
     def get_normal_input_velocities_at_collocation_points(self):
-        """
+        '''
         From nodal input velocity to normal velocities at collocation points.
-        """
+        '''
 
         # M,N=self.maps.M,self.maps.N
 
@@ -349,7 +326,7 @@ class AeroGridSurface(AeroGridGeo):
         self.u_input_coll_norm = self.project_coll_to_normal(self.u_input_coll)
 
     def get_input_velocities_at_segments(self):
-        """
+        '''
         Returns velocities at mid-segment points from nodal values u_ext and
         zeta_dot of shape (3,M+1,N+1).
 
@@ -363,7 +340,7 @@ class AeroGridSurface(AeroGridGeo):
 
         2018/08/24: Include effects due to rotation (omega x zeta). Now it
         depends on the coordinates zeta
-        """
+        '''
 
         # define total velocity
         if self.zeta_dot is not None:
@@ -374,7 +351,7 @@ class AeroGridSurface(AeroGridGeo):
         # Include rotation
         for i_m in range(self.maps.M + 1):
             for i_n in range(self.maps.N + 1):
-                u_tot[:, i_m, i_n] -= np.cross(self.omega, self.zeta[:, i_m, i_n]) + self.for_vel_tra
+                u_tot[:, i_m, i_n] -= np.cross(self.omega, self.zeta[:, i_m, i_n])
 
         M, N = self.maps.M, self.maps.N
         self.u_input_seg = np.empty((3, 4, M, N))
@@ -433,9 +410,9 @@ class AeroGridSurface(AeroGridGeo):
     # ------------------------------------------------------ induced velocities
 
     def get_induced_velocity(self, zeta_target):
-        """
+        '''
         Computes induced velocity at a point zeta_target.
-        """
+        '''
 
         M, N = self.maps.M, self.maps.N
         uind_target = np.zeros((3,), order='C')
@@ -451,9 +428,9 @@ class AeroGridSurface(AeroGridGeo):
         return uind_target
 
     def get_induced_velocity_cpp(self, zeta_target):
-        """
+        '''
         Computes induced velocity at a point zeta_target.
-        """
+        '''
         call_ind_vel = libc.call_ind_vel
         call_ind_vel.restype = None
 
@@ -473,10 +450,10 @@ class AeroGridSurface(AeroGridGeo):
         return uind_target
 
     def get_aic3(self, zeta_target):
-        """
+        '''
         Produces influence coefficinet matrix to calculate the induced velocity
         at a target point. The aic3 matrix has shape (3,K)
-        """
+        '''
 
         K = self.maps.K
         aic3 = np.zeros((3, K))
@@ -493,10 +470,10 @@ class AeroGridSurface(AeroGridGeo):
         return aic3
 
     def get_aic3_cpp(self, zeta_target):
-        """
+        '''
         Produces influence coefficinet matrix to calculate the induced velocity
         at a target point. The aic3 matrix has shape (3,K)
-        """
+        '''
 
         assert zeta_target.flags['C_CONTIGUOUS'], "Input not C contiguous"
 
@@ -514,7 +491,7 @@ class AeroGridSurface(AeroGridGeo):
 
     def get_induced_velocity_over_surface(self, Surf_target,
                                           target='collocation', Project=False):
-        """
+        '''
         Computes induced velocity over an instance of AeroGridSurface, where
         target specifies the target grid (collocation or segments). If Project
         is True, velocities are projected onver panel normal (only available at
@@ -531,7 +508,7 @@ class AeroGridSurface(AeroGridGeo):
             (:,ss,mm,nn)
         is the induced velocity over the ss-th segment of panel (mm,nn). A fast
         looping is implemented to re-use previously computed velocities
-        """
+        '''
 
         M_trg = Surf_target.maps.M
         N_trg = Surf_target.maps.N
@@ -615,7 +592,7 @@ class AeroGridSurface(AeroGridGeo):
 
     def get_aic_over_surface(self, Surf_target,
                              target='collocation', Project=True):
-        """
+        '''
         Produces influence coefficient matrices such that the velocity induced
         over the Surface_target is given by the product:
 
@@ -632,7 +609,7 @@ class AeroGridSurface(AeroGridGeo):
                 AIC[:,:,ss,mm,nn]
             is the influence coefficient matrix associated to the induced
             velocity at segment ss of panel (mm,nn)
-        """
+        '''
 
         K_in = self.maps.K
 
@@ -724,7 +701,7 @@ class AeroGridSurface(AeroGridGeo):
     # ------------------------------------------------------------------ forces
 
     def get_joukovski_qs(self, gammaw_TE=None, recompute_velocities=True):
-        """
+        '''
         Returns quasi-steady forces evaluated at mid-segment points over the
         surface.
 
@@ -737,9 +714,9 @@ class AeroGridSurface(AeroGridGeo):
             (:,ss,mm,nn)
         is the contribution to the force over the ss-th segment due to the
         circulation of panel (mm,nn).
-        """
+        '''
 
-        if self.u_input_seg is None:
+        if not hasattr(self, 'u_input_seg'):
             if not recompute_velocities:
                 print("WARNING: recomputing velocities")
             self.get_input_velocities_at_segments()
@@ -797,9 +774,9 @@ class AeroGridSurface(AeroGridGeo):
         return self
 
     def get_joukovski_unsteady(self):
-        """
+        '''
         Returns added mass effects over lattive grid
-        """
+        '''
 
         if self.gamma_dot is None:
             raise NameError('circulation derivative not specified!')
