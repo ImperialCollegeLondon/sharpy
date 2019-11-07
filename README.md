@@ -8,9 +8,7 @@ __Continuous Integration Status__
 | Master  | Develop        |
 |---------|----------------|
 | [![Build Status](https://travis-ci.org/ImperialCollegeLondon/sharpy.svg?branch=master)](https://travis-ci.org/ImperialCollegeLondon/sharpy) | [![Build Status](https://travis-ci.org/ImperialCollegeLondon/sharpy.svg?branch=develop)](https://travis-ci.org/ImperialCollegeLondon/sharpy)|
-| [![DocStatus](https://readthedocs.org/projects/pip/badge/?badge=master)](https://ic-sharpy.readthedocs.io/en/master/) | [![DocStatus](https://readthedocs.org/projects/pip/badge/?badge=develop)](https://ic-sharpy.readthedocs.io/en/develop/) |
 
-[![License](https://img.shields.io/badge/License-BSD%203--Clause-blue.svg)](https://opensource.org/licenses/BSD-3-Clause)
 
 SHARPy is an aeroelastic analysis package at the Department of Aeronautics, Imperial
 College London. It can be used for the structural, aerodynamic and aeroelastic analysis of flexible aircraft, flying
