@@ -1,7 +1,12 @@
-Calculate derivative of Uc*dnc/dzeta w.r.t local panel coordinates
-++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+Induced Velocity Derivatives with respect to Panel Normal
++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
-Calculate derivative of Uc*dnc/dzeta w.r.t local panel coordinates
+
+Calculate derivative of
+
+    ..  math:: \boldsymbol{u}_c\frac{\partial\boldsymbol{n}_c}{\partial\boldsymbol{zeta}}
+
+with respect to local panel coordinates.
 
 
 .. toctree::

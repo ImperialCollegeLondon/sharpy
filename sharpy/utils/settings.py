@@ -34,24 +34,32 @@ def cast(k, v, pytype, ctype, default):
     return val
 
 
-def to_custom_types(dictionary, types, default):
+def to_custom_types(dictionary, types, default, no_ctype=False):
     for k, v in types.items():
         if v == 'int':
+            if no_ctype:
+                data_type = int
+            else:
+                data_type = ct.c_int
             try:
-                dictionary[k] = cast(k, dictionary[k], int, ct.c_int, default[k])
+                dictionary[k] = cast(k, dictionary[k], int, data_type, default[k])
             except KeyError:
                 if default[k] is None:
                     raise exceptions.NoDefaultValueException(k)
-                dictionary[k] = cast(k, default[k], int, ct.c_int, default[k])
+                dictionary[k] = cast(k, default[k], int, data_type, default[k])
                 notify_default_value(k, dictionary[k])
 
         elif v == 'float':
+            if no_ctype:
+                data_type = float
+            else:
+                data_type = ct.c_double
             try:
-                dictionary[k] = cast(k, dictionary[k], float, ct.c_double, default[k])
+                dictionary[k] = cast(k, dictionary[k], float, data_type, default[k])
             except KeyError:
                 if default[k] is None:
                     raise exceptions.NoDefaultValueException(k)
-                dictionary[k] = cast(k, default[k], float, ct.c_double, default[k])
+                dictionary[k] = cast(k, default[k], float, data_type, default[k])
                 notify_default_value(k, dictionary[k])
 
         elif v == 'str':
@@ -64,6 +72,10 @@ def to_custom_types(dictionary, types, default):
                 notify_default_value(k, dictionary[k])
 
         elif v == 'bool':
+            if no_ctype:
+                data_type = bool
+            else:
+                data_type = ct.c_bool
             try:
                 dictionary[k] = cast(k, dictionary[k], str2bool, ct.c_bool, default[k])
             except KeyError:
@@ -263,7 +275,7 @@ class SettingsTable:
 
         self.table_string = ''
 
-    def generate(self, settings_types, settings_default, settings_description):
+    def generate(self, settings_types, settings_default, settings_description, header_line=None):
         """
         Returns a rst-format table with the settings' names, types, description and default values
 
@@ -287,7 +299,11 @@ class SettingsTable:
         self.set_field_length()
         self.line_format = self.setting_line_format()
 
-        table_string = '\n    ' + 'The settings that this solver accepts are given by a dictionary, with the following key-value pairs:\n'
+        if header_line is None:
+            header_line = 'The settings that this solver accepts are given by a dictionary, ' \
+                          'with the following key-value pairs:\n'
+
+        table_string = '\n    ' + header_line
         table_string += '\n    ' + self.print_divider_line()
         table_string += '    ' + self.print_header()
         table_string += '    ' + self.print_divider_line()

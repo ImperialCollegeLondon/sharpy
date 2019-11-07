@@ -1,4 +1,4 @@
-Post-Processors
+Post-Processing
 ---------------
 
 .. toctree::

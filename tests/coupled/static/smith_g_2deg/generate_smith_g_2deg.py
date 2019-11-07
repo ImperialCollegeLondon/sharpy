@@ -2,6 +2,7 @@ import h5py as h5
 import numpy as np
 import configparser
 import os
+np.set_printoptions(precision=16)
 
 import sharpy.utils.algebra as algebra
 
@@ -90,7 +91,7 @@ def generate_fem_file():
     num_mass = 1
     m_base = 0.75
     j_base = 0.1
-    base_mass = np.diag([m_base, m_base, m_base, j_base, j_base, j_base])
+    base_mass = np.diag([m_base, m_base, m_base, j_base, 0.5*j_base, 0.5*j_base])
     mass = np.zeros((num_mass, 6, 6))
     mass[0, :, :] = base_mass
     elem_mass = np.zeros((num_elem,), dtype=int)

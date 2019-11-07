@@ -16,7 +16,7 @@ class FrequencyResponse(solver_interface.BaseSolver):
     """
     solver_id = 'FrequencyResponse'
     solver_classification = 'post-processor'
-    
+
     settings_types = dict()
     settings_default = dict()
     settings_description = dict()
@@ -78,9 +78,10 @@ class FrequencyResponse(solver_interface.BaseSolver):
 
         self.data = data
         try:
-            self.ss = data.linear.linear_system.uvlm.rom.ss
+            rom_method = data.linear.linear_system.uvlm.settings['rom_method'][0]
+            self.ss = data.linear.linear_system.uvlm.rom[rom_method].ss
             self.ssrom = data.linear.linear_system.uvlm.ss
-        except AttributeError:
+        except IndexError:
             self.ss = data.linear.linear_system.uvlm.ss
 
         if not custom_settings:
@@ -125,7 +126,7 @@ class FrequencyResponse(solver_interface.BaseSolver):
         compute_fom = False
 
         if self.settings['load_fom'] != '':
-            if os.path.exists(self.settings['load_fom'] + '/frequencyresponse/'):
+            if os.path.exists(self.settings['load_fom']):
                 try:
                     Y_freq_fom = self.load_frequency_data()
                 except OSError:
@@ -150,7 +151,8 @@ class FrequencyResponse(solver_interface.BaseSolver):
             cout.cout_wrap('\tComputed the frequency response of the reduced order system in %f s' %trom, 2)
             self.save_freq_resp(self.wv, Y_freq_rom, 'rom')
 
-            self.frequency_error(Y_freq_fom, Y_freq_rom)
+            if Y_freq_fom is not None:
+                frequency_error(Y_freq_fom, Y_freq_rom, self.wv)
 
         if self.settings['quick_plot'].value:
             self.quick_plot(Y_freq_fom, Y_freq_rom)
@@ -158,7 +160,6 @@ class FrequencyResponse(solver_interface.BaseSolver):
         return self.data
 
     def save_freq_resp(self, wv, Yfreq, filename):
-
 
         with open(self.folder + '/freqdata_readme.txt', 'w') as outfile:
             outfile.write('Frequency Response Data Output\n\n')
@@ -195,6 +196,9 @@ class FrequencyResponse(solver_interface.BaseSolver):
 
                 ax1.set_ylabel('Y')
                 fig1.savefig(self.folder + '/' + fig_title + '.png')
+                plt.close()
+
+        cout.cout_wrap('\tPlots saved to %s' % self.folder, 1)
 
     def load_frequency_data(self):
         cout.cout_wrap('Loading frequency response')
@@ -202,28 +206,31 @@ class FrequencyResponse(solver_interface.BaseSolver):
         for m in range(self.ss.inputs):
             for p in range(self.ss.outputs):
                 y_load = np.loadtxt(self.settings['load_fom'] +
-                                    '/frequencyresponse/Y_freq_fom_m%02g_p%02g.dat' %(m,p)).view(complex)
+                                    '/Y_freq_fom_m%02g_p%02g.dat' %(m,p)).view(complex)
                 y_load.shape = (y_load.shape[0], )
                 Y_freq_fom[p, m, :] = y_load
 
         return Y_freq_fom
 
-    def frequency_error(self, Y_fom, Y_rom):
+def frequency_error(Y_fom, Y_rom, wv):
+    n_in = Y_fom.shape[1]
+    n_out = Y_fom.shape[0]
+    cout.cout_wrap('Computing error in frequency response')
+    max_error = np.zeros((n_out, n_in, 2))
+    for m in range(n_in):
+        for p in range(n_out):
+            cout.cout_wrap('m = %g, p = %g' %(m, p))
+            max_error[p, m, 0] = error_between_signals(Y_fom[p, m, :].real,
+                                                            Y_rom[p, m, :].real,
+                                                            wv, 'real')
+            max_error[p, m, 1] = error_between_signals(Y_fom[p, m, :].imag,
+                                                            Y_rom[p, m, :].imag,
+                                                            wv, 'imag')
 
-        cout.cout_wrap('Computing error in frequency response')
-        max_error = np.zeros((self.ss.outputs, self.ss.inputs, 2))
-        for m in range(self.ss.inputs):
-            for p in range(self.ss.outputs):
-                cout.cout_wrap('m = %g, p = %g' %(m, p))
-                max_error[p, m, 0] = error_between_signals(Y_fom[p, m, :].real,
-                                                                Y_rom[p, m, :].real,
-                                                                self.wv, 'real')
-                max_error[p, m, 1] = error_between_signals(Y_fom[p, m, :].imag,
-                                                                Y_rom[p, m, :].imag,
-                                                                self.wv, 'imag')
+    if np.max(np.log10(max_error)) >= 0:
+        warnings.warn('Significant mismatch in the frequency response of the ROM and FOM')
 
-        if np.max(np.log10(max_error)) >= 0:
-            warnings.warn('Significant mismatch in the frequency response of the ROM and FOM')
+    return np.max(max_error)
 
 
 def error_between_signals(sig1, sig2, wv, sig_title=''):

@@ -98,6 +98,11 @@ class Modal(BaseSolver):
     settings_default['max_displacement'] = 0.15
     settings_description['max_displacement'] = 'Scale mode shape to have specified maximum displacement'
 
+    settings_types['use_custom_timestep'] = 'int'
+    settings_default['use_custom_timestep'] = -1
+    settings_description['use_custom_timestep'] = 'If > -1, it will use that time step geometry for calculating the modes'
+
+
     settings_types['rigid_modes_cg'] = 'bool'
     settings_default['rigid_modes_cg'] = False
     settings_description['rigid_modes_cg'] = 'Modify the ridid body modes such that they are defined wrt to the CG'
@@ -216,6 +221,8 @@ class Modal(BaseSolver):
 
         """
         self.data.ts = len(self.data.structure.timestep_info) - 1
+        if self.settings['use_custom_timestep'].value > -1:
+            self.data.ts = self.settings['use_custom_timestep'].value
 
         # Number of degrees of freedom
         num_str_dof = self.data.structure.num_dof.value
@@ -474,7 +481,7 @@ class Modal(BaseSolver):
         else:
             # unit normalise (diagonalises A)
             if not self.rigid_body_motion:
-                for ii in range(self.settings['NumLambda']):  # Issue - dot product = 0 when you have arbitrary damping
+                for ii in range(eigenvectors.shape[1]):  # Issue - dot product = 0 when you have arbitrary damping
                     fact = 1./np.sqrt(np.dot(eigenvectors_left[:, ii], eigenvectors[:, ii]))
                     eigenvectors_left[:, ii] = fact*eigenvectors_left[:, ii]
                     eigenvectors[:, ii] = fact*eigenvectors[:, ii]
