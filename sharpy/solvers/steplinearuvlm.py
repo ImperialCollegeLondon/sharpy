@@ -14,37 +14,11 @@ import sharpy.linear.src.linuvlm as linuvlm
 @solver
 class StepLinearUVLM(BaseSolver):
     r"""
-    Time domain aerodynamic solver that uses a linear UVLM formulation to be used with the :func:`DynamicCoupled`
-    solver.
+    Time domain aerodynamic solver that uses a linear UVLM formulation to be used with the
+    :class:`solvers.DynamicCoupled` solver.
 
-    To use this solver, the ``solver_id = StepLinearUVLM`` must be given as the aerodynamic settings value for the
-    aeroelastic solver.
-
-    To Do:
-        - Add option for impulsive/non impulsive start start?
-
-    Attributes:
-        settings (dict): Contains the solver's ``settings``. See below for acceptable values:
-
-            ============================  =========  ===============================================    ==========
-            Name                          Type       Description                                        Default
-            ============================  =========  ===============================================    ==========
-            ``dt``                        ``float``  Time increment                                     ``0.1``
-            ``integr_order``              ``int``    Finite difference order for bound circulation      ``2``
-            ``ScalingDict``               ``dict``   Dictionary with scaling gains. See Notes.
-            ``remove_predictor``          ``bool``   Remove predictor term from UVLM system assembly    ``True``
-            ``use_sparse``                ``bool``   Use sparse form of A and B state space matrices    ``True``
-            ``velocity_field_generator``  ``str``    Selected velocity generator                        ``None``
-            ``velocity_filed_input``      ``dict``   Settings for the velocity generator                ``None``
-            ``track_body``                ``bool``   If True, the linearised grid will follow the       ``False``
-                                                     A frame or a body (for multi-body solution)
-            ``track_body_number``         ``int``    If -1, the linearised grid will follow the         ``-1``
-                                                     A frame. Otherwise, this is the number of the
-                                                     body to track in a multi-body solution. This
-                                                     option also specifies where to read the
-                                                     rotational speed at linearisation point
-            ============================  =========  ===============================================    ==========
-
+    To use this solver, the ``solver_id = StepLinearUVLM`` must be given as the name for the ``aero_solver``
+    is the case of an aeroelastic solver, where the setting below would be parsed through ``aero_solver_settings``.
 
     Notes:
         The ``integr_order`` variable refers to the finite differencing scheme used to calculate the bound circulation
@@ -58,14 +32,21 @@ class StepLinearUVLM(BaseSolver):
         .. math:: \dot{\mathbf{\Gamma}}^{n+1} = \frac{3\mathbf{\Gamma}^{n+1}-4\mathbf{\Gamma}^n + \mathbf{\Gamma}^{n-1}}
             {2\Delta t}
 
-        The ``ScalingDict`` dictionary contains the gains by which to scale the
-        linear system in ``length``, ``speed`` and ``density``.
+        If ``track_body`` is ``True``, the UVLM is projected onto a frame ``U`` that is:
+
+            * Coincident with ``G`` at the linearisation timestep.
+
+            * Thence, rotates by the same quantity as the FoR ``A``.
+
+        It is resemblant of a stability axes and is recommended any time rigid body dynamics are included.
 
     See Also:
-        :func:`sharpy.linear.src.linuvlm`
+        :module:`sharpy.linear.assembler.linearuvlm.LinearUVLM`
 
     References:
-        [1] S. Maraniello, R. Palacios. Linearisation and state-space realisation of UVLM with arbitrary kinematics
+        [1] Maraniello, S., & Palacios, R.. State-Space Realizations and Internal Balancing in Potential-Flow
+            Aerodynamics with
+            Arbitrary Kinematics. AIAA Journal, 57(6), 1–14. 2019. https://doi.org/10.2514/1.J058153
 
     """
     solver_id = 'StepLinearUVLM'
@@ -99,16 +80,37 @@ class StepLinearUVLM(BaseSolver):
     settings_default['density'] = 1.225
     settings_description['density'] = 'Air density'
 
+    settings_types['track_body'] = 'bool'
+    settings_default['track_body'] = True
+    settings_description['track_body'] = 'UVLM inputs and outputs projected to coincide with lattice at linearisation'
+
     settings_table = settings.SettingsTable()
     __doc__ += settings_table.generate(settings_types, settings_default, settings_description)
+
+    scaling_settings_types = dict()
+    scaling_settings_default = dict()
+    scaling_settings_description = dict()
+
+    scaling_settings_types['length'] = 'float'
+    scaling_settings_default['length'] = 1.0
+    scaling_settings_description['length'] = 'Reference length to be used for UVLM scaling'
+
+    scaling_settings_types['speed'] = 'float'
+    scaling_settings_default['speed'] = 1.0
+    scaling_settings_description['speed'] = 'Reference speed to be used for UVLM scaling'
+
+    scaling_settings_types['density'] = 'float'
+    scaling_settings_default['density'] = 1.0
+    scaling_settings_description['density'] = 'Reference density to be used for UVLM scaling'
+
+    __doc__ += settings_table.generate(scaling_settings_types,
+                                       scaling_settings_default,
+                                       scaling_settings_description)
 
     def __init__(self):
         """
         Read default settings from linuvlm module
         """
-        # self.settings_types = linuvlm.settings_types_dynamic
-        # self.settings_default = linuvlm.settings_default_dynamic
-
         self.data = None
         self.settings = None
         self.lin_uvlm_system = None
