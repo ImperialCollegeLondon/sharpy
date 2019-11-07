@@ -22,26 +22,23 @@ class PickleData(BaseSolver):
         data(ProblemData): class containing the data of the problem
         custom_settings (dict): dictionary containing custom settings for the solver to use
 
-    Attributes:
-        settings (dict): Contains the solver's ``settings``. See below for acceptable values:
-
-            =======================================  =============  =============================================================  =========
-            Name                                     Type           Description                                                    Default
-            =======================================  =============  =============================================================  =========
-            ``folder``                               ``str``        Target folder to write the file                                ``./output``
-            =======================================  =============  =============================================================  =========
     """
     solver_id = 'PickleData'
     solver_classification = 'post-processor'
 
+    settings_types = dict()
+    settings_default = dict()
+    settings_description = dict()
+
+    settings_types['folder'] = 'str'
+    settings_default['folder'] = './output'
+    settings_description['folder'] = 'Folder to output pickle file'
+
+    settings_table = settings.SettingsTable()
+    __doc__ += settings_table.generate(settings_types, settings_default, settings_description)
+
     def __init__(self):
         import sharpy
-
-        self.settings_types = dict()
-        self.settings_default = dict()
-
-        self.settings_types['folder'] = 'str'
-        self.settings_default['folder'] = './output'
 
         self.settings = None
         self.data = None

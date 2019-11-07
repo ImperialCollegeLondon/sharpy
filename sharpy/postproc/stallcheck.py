@@ -20,18 +20,26 @@ class StallCheck(BaseSolver):
     solver_id = 'StallCheck'
     solver_classification = 'post-processor'
 
+    settings_types = dict()
+    settings_default = dict()
+    settings_description = dict()
+
+    settings_types['print_info'] = 'bool'
+    settings_default['print_info'] = True
+    settings_description['print_info'] = 'Print info to screen '
+
+    settings_types['airfoil_stall_angles'] = 'dict'
+    settings_default['airfoil_stall_angles'] = dict()
+    settings_description['airfoil_stall_angles'] = 'Dictionary of stall angles for each airfoil'
+
+    settings_types['output_degrees'] = 'bool'
+    settings_default['output_degrees'] = False
+    settings_description['output_degrees'] = 'Output incidence angles in degrees vs radians'
+
+    settings_table = settings.SettingsTable()
+    __doc__ += settings_table.generate(settings_types, settings_default, settings_description)
+
     def __init__(self):
-        self.settings_types = dict()
-        self.settings_default = dict()
-
-        self.settings_types['print_info'] = 'bool'
-        self.settings_default['print_info'] = True
-
-        self.settings_types['airfoil_stall_angles'] = 'dict'
-        self.settings_default['airfoil_stall_angles'] = dict()
-
-        self.settings_types['output_degrees'] = 'bool'
-        self.settings_default['output_degrees'] = False
 
         self.settings = None
         self.data = None

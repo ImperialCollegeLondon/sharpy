@@ -1,6 +1,5 @@
 import os
 import h5py
-import numpy as np
 import sharpy
 import sharpy.utils.cout_utils as cout
 from sharpy.utils.solver_interface import solver, BaseSolver
@@ -16,74 +15,64 @@ class SaveData(BaseSolver):
     """
     The ``SaveData`` postprocessor writes the SHARPy variables into hdf5 files.
 
-    Args:
-        data(ProblemData): class containing the data of the problem
-        custom_settings (dict): dictionary containing custom settings for the solver to use
-
-    Attributes:
-        settings (dict): Contains the solver's ``settings``. See below for acceptable values:
-
-            =======================================  =============  =============================================================  =========
-            Name                                     Type           Description                                                    Default
-            =======================================  =============  =============================================================  =========
-            ``folder``                               ``str``        Target folder to write the file                                ``./output``
-            ``save_aero``                            ``bool``       Write aerodynamic information                                  ``True``
-            ``save_struct``                          ``bool``       Write structural information                                   ``True``
-            ``skip_attr``                            ``list(str)``  Attributes that will NOT be saved                              ``['fortran', 'airfoils', 'airfoil_db', 'settings_types', 'beam', 'ct_dynamic_forces_list', 'ct_gamma_dot_list', 'ct_gamma_list', 'ct_gamma_star_list', 'ct_normals_list', 'ct_u_ext_list', 'ct_u_ext_star_list', 'ct_zeta_dot_list', 'ct_zeta_list', 'ct_zeta_star_list', 'dynamic_input']``
-            ``compress_float``                       ``bool``       Save numpy arrays as single precission                         ``False``
-            =======================================  =============  =============================================================  =========
     """
     solver_id = 'SaveData'
     solver_classification = 'post-processor'
 
+    settings_types = dict()
+    settings_default = dict()
+    settings_description = dict()
+
+    settings_types['folder'] = 'str'
+    settings_default['folder'] = './output'
+
+    settings_types['save_aero'] = 'bool'
+    settings_default['save_aero'] = True
+
+    settings_types['save_struct'] = 'bool'
+    settings_default['save_struct'] = True
+
+    settings_types['save_linear'] = 'bool'
+    settings_default['save_linear'] = False
+    settings_description['save_linear'] = 'Save linear state space system'
+
+    settings_types['save_linear_uvlm'] = 'bool'
+    settings_default['save_linear_uvlm'] = False
+    settings_description['save_linear_uvlm'] = 'Save linear UVLM state space system'
+
+    settings_types['skip_attr'] = 'list(str)'
+    settings_default['skip_attr'] = ['fortran',
+                                          'airfoils',
+                                          'airfoil_db',
+                                          'settings_types',
+                                          # 'beam',
+                                          'ct_dynamic_forces_list',
+                                          #'ct_forces_list',
+                                          'ct_gamma_dot_list',
+                                          'ct_gamma_list',
+                                          'ct_gamma_star_list',
+                                          'ct_normals_list',
+                                          'ct_u_ext_list',
+                                          'ct_u_ext_star_list',
+                                          'ct_zeta_dot_list',
+                                          'ct_zeta_list',
+                                          'ct_zeta_star_list',
+                                          'dynamic_input']
+    settings_description['skip_attr'] = 'List of attributes to skip when writing file'
+
+    settings_types['compress_float'] = 'bool'
+    settings_default['compress_float'] = False
+    settings_description['compress_float'] = 'Compress float'
+
+    settings_types['format'] = 'str'
+    settings_default['format'] = 'h5'
+    settings_description['format'] = 'Save linear state space to hdf5 ``h5`` or Matlab ``mat`` format'
+
+    settings_table = settings.SettingsTable()
+    __doc__ += settings_table.generate(settings_types, settings_default, settings_description)
+
     def __init__(self):
         import sharpy
-
-        self.settings_types = dict()
-        self.settings_default = dict()
-        self.settings_description = dict()
-
-        self.settings_types['folder'] = 'str'
-        self.settings_default['folder'] = './output'
-
-        self.settings_types['save_aero'] = 'bool'
-        self.settings_default['save_aero'] = True
-
-        self.settings_types['save_struct'] = 'bool'
-        self.settings_default['save_struct'] = True
-
-        self.settings_types['save_linear'] = 'bool'
-        self.settings_default['save_linear'] = False
-        self.settings_description['save_linear'] = 'Save linear state space system'
-
-        self.settings_types['save_linear_uvlm'] = 'bool'
-        self.settings_default['save_linear_uvlm'] = False
-        self.settings_description['save_linear_uvlm'] = 'Save linear UVLM state space system'
-
-        self.settings_types['skip_attr'] = 'list(str)'
-        self.settings_default['skip_attr'] = ['fortran',
-                                              'airfoils',
-                                              'airfoil_db',
-                                              'settings_types',
-                                              # 'beam',
-                                              'ct_dynamic_forces_list',
-                                              #'ct_forces_list',
-                                              'ct_gamma_dot_list',
-                                              'ct_gamma_list',
-                                              'ct_gamma_star_list',
-                                              'ct_normals_list',
-                                              'ct_u_ext_list',
-                                              'ct_u_ext_star_list',
-                                              'ct_zeta_dot_list',
-                                              'ct_zeta_list',
-                                              'ct_zeta_star_list',
-                                              'dynamic_input']
-
-        self.settings_types['compress_float'] = 'bool'
-        self.settings_default['compress_float'] = False
-
-        self.settings_types['format'] = 'str'
-        self.settings_default['format'] = 'h5'
 
         self.settings = None
         self.data = None
@@ -222,12 +211,14 @@ class SaveData(BaseSolver):
 
             if self.settings['save_linear_uvlm']:
                 matfilename = self.filename.replace('.data.h5', '.uvlmss.mat')
+                linearisation_vectors = self.data.linear.linear_system.uvlm.linearisation_vectors
                 A, B, C, D = self.data.linear.linear_system.uvlm.ss.get_mats()
                 savedict = {'A': A,
                             'B': B,
                             'C': C,
-                            'D': D,
-                            'forces_0': forces_0}
+                            'D': D}
+                for k, v in linearisation_vectors.items():
+                    savedict[k] = v
                 try:
                     dt = self.data.linear.ss.dt
                     savedict['dt'] = dt
