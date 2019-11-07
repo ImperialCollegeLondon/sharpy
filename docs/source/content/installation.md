@@ -1,5 +1,5 @@
 # SHARPy Installation Guide
-__Last revision 13 December 2018__
+__Last revision 30 August 2019__
 
 The following step by step tutorial will guide you through the installation process of SHARPy.
 
@@ -10,13 +10,12 @@ __Operating System Requirements__
 SHARPy is being developed and tested on the following operating systems:
 + CentOS 7
 + Ubuntu 18.04 LTS
-+ MacOS Sierra
++ MacOS Mojave
 
 __Required Distributions__
 
-+ Anaconda Python 3.5.3
-+ GCC 5.0 or higher (recommended)
-
++ Anaconda Python 3.7.0
++ GCC 5.0 up to 8.0 (we recommend 6.0, this is what the tests are run with).
 
 __GitHub Repositories__
 
@@ -45,66 +44,52 @@ SHARPy depends on the UVLM and xbeam repositories that are also found on GitHub:
     git checkout develop
     ```
     To run the release version of SHARPy, skip this last step.
-2. Clone `xbeam` inside the working folder
+
+2. Install the [Anaconda](https://conda.io/docs/) Python 3 distribution
+
+3. Create the conda environment that SHARPy will use. Change `environment_linux.yml` to `environment_mac.yml`
+file if you are installing SHARPy on Mac OS X
+    ```bash
+    cd sharpy/utils
+    conda env create -f environment_linux.yml # this will take a while
+    cd ../..
+    ```
+
+4. Activate the `sharpy_env` conda environment
+    ```bash
+    conda activate sharpy_env
+    ```
+    you need to do this before you compile the `xbeam` and `uvlm` libs, as
+    some dependencies are included in the conda env.
+    Sometimes Anaconda does not want to install some packages: make sure these
+    are in by running this commands (after `conda activate sharpy_env`):
+    ```bash
+    conda install eigen
+    conda install -c conda-forge lapack
+    ```
+
+5. Clone `xbeam` inside the working folder
     ```bash
     git clone http://github.com/ImperialCollegeLondon/xbeam
     ```
     Similarly, check out the `develop` branch for the latest work under development
     ```bash
+    cd xbeam
     git checkout develop
+    cd ../
     ```
-3. Clone the `UVLM` repository to the working directory
+6. Clone the `UVLM` repository to the working directory
     ```bash
     git clone http://github.com/ImperialCollegeLondon/UVLM
     ```
     Check out the `develop` branch for the latest work under development
     ```bash
+    cd uvlm
     git checkout develop origin/develop
+    cd ../
     ```
     Likewise, skip the `git checkout` commands if you are running the `master` branch in `sharpy`.
 
-### Set up the Python Environment
-
-SHARPy uses the Anaconda package manager to provide the necessary Python packages.
-These are specified in an Anaconda environment that shall be activated prior to compiling the xbeam and UVLM libraries
-or running any SHARPy cases.
-
-1. Install the [Anaconda](https://conda.io/docs/) Python distribution
-
-2. Make sure your Python version is at least 3.5:
-    ```bash
-    python --version
-    # it returns:
-    #>>> Python 3.5.3 :: Anaconda custom (64-bit)
-    ```
-
-        If it returns `Python 2.X.X` (where `X` does not matter), there are two possibilities:
-        1. You haven't installed the proper [Anaconda](https://www.continuum.io/Anaconda-Overview).
-            Make sure you install the python3 version.
-        2. You have the correct python installation, but the `python` command
-        points to the default python of the OS. In this case, try `python3`
-
-3. Create the conda environment that SHARPy will use. Change `environment_linux.yml` to read `environment_mac.yml`
-file if you are installing SHARPy on Mac OS X
-    ```bash
-    cd sharpy/utils
-    conda env create -f environment_linux.yml
-    cd ../..
-    ```
-
-4. Anaconda will now install its required packages for the SHARPy environment. This new environment will be created with
-the name `sharpy_env`.
-
-5. Activate the newly created SHARPy environment `sharpy_env`.
-    ```bash
-    source activate sharpy_env
-    ```
-
-6. Install the [Eigen](http://eigen.tuxfamily.org/) and [Lapack](http://www.netlib.org/lapack) libraries
-    ```bash
-    conda install eigen
-    conda install -c conda-forge lapack
-    ```
 
 ### Compiling the UVLM and xbeam libraries
 
@@ -118,9 +103,8 @@ Ensure that the SHARPy environment is active in the session. Your terminal promp
 If it is not the case, activate the environment. Otherwise xbeam and UVLM will not compile
 2. 
     ```bash
-    source activate sharpy_env
+    conda activate sharpy_env
     ```
-
 
 #### Compiling xbeam
 
@@ -181,7 +165,7 @@ __Common issues when compiling xbeam__
     ```bash
     scl enable devtoolset-6 bash
     ```
-    Check that the version is now as required and clean `make clean` and redo the installation `sh runmake.sh`
+    Check that the version is now as required and clean `make clean` and redo the installation `sh run_make.sh`
 
 #### Compiling UVLM
 
@@ -221,10 +205,10 @@ __Before you run any SHARPy cases__
 
 1. Activate the SHARPy conda environment
     ```bash
-    source activate sharpy_env
+    conda activate sharpy_env
     ```
 
-2. Load the SHARPy variables
+2. Load the SHARPy variables into the Python environment
     ```bash
     source sharpy/bin/sharpy_vars.sh
     ```
@@ -235,27 +219,27 @@ You are now ready to run SHARPy cases from the terminal.
 
 SHARPy cases are usually structured in the following way:
 
-1. The `generate_case.py` file: contains the setup of the problem, like the geometry, flight conditions etc.
-This script creates two output files that will then be used by SHARPy, `.fem.h5` and the `.solver.txt` file.
+1. The `generate.py` file: contains the setup of the problem, like the geometry, flight conditions etc.
+This script creates two output files that will then be used by SHARPy, `.fem.h5` and the `.sharpy` file.
 
-2. The `h5` files contain data of the FEM, aerodynamics, dynamic conditions. They are later read by SHARPy.
+2. The `.h5` files contain data of the FEM, aerodynamics, dynamic conditions. They are later read by SHARPy.
 
-3. The `.solver.txt` file contains the settings for SHARPy and is the file that is parsed to SHARPy.
+3. The `.sharpy` file contains the settings for SHARPy and is the file that is parsed to SHARPy.
 
 __To run a SHARPy case__
 
 SHARPy cases are therefore usually ran in the following way:
 
-1. Create a `generate_case.py` file following the provided templates
+1. Create a `generate.py` file following the provided templates
 
-2. Run it to produce the `.h5` files and the `.solver.txt` files
+2. Run it to produce the `.h5` files and the `.sharpy` files
     ```bash
-    python generate_case.py
+    python generate.py
     ```
 
 3. Run SHARPy (ensure the environment is activated)
     ```bash
-    run_sharpy case.solver.txt
+    sharpy case.sharpy
     ```
 
 ### Output
@@ -265,62 +249,3 @@ By default, the output is located in the `output` folder.
 The contents of the folder will typically be a `beam` and `aero` folders, which contain the output data that can then be
 loaded in Paraview.
 
-#### Run a test case
-
-__*TODO* review Geradin case and update sharpy calls__
-
-__TUTORIAL OUT OF DATE__
-
-
-
-1.  This command generates the required files for running a static, clamped beam: 
-    ```sh
-    cd ../sharpy
-    python ./tests/beam/static/geradin_cardona/generate_geradin.py
-    ```
-    
-Now you should see a success message, and if you check the
-`./tests/beam/static/geradin_cardona/` folder, you should see two new files:
-+ geradin_cardona.solver.txt
-+ geradin_cardona.fem.h5
-
-Try to open the `solver.txt` file and have a quick look. The `solver` file is
-the main settings file. We'll get deeper into this later.
-
-If you try to open the `fem.h5` file, you'll get an error or something meaningless. This is because the structural data is stored in [HDF5](https://support.hdfgroup.org/HDF5/) format, which is compressed binary.
-
-5. Now run it
-
-    The usual `sharpy` call is something like:
-    ```bash
-    # from the sharpy folder
-    python __main__.py "solver.txt file"
-    # from outside the sharpy folder (make sure working_dir is in your path:)
-    python sharpy "solver.txt file"
-    ```
-    So if you are in the sharpy folder, just run:
-    ```bash
-    python __main__.py ./tests/beam/static/geradin_cardona/geradin_cardona.solver.txt
-    ```
-
-6. Results
-
-    After a successful execution, you should get something similar to:
-    ```
-    Plotting the structure...
-    Tip:
-	    Pos_def:
-		      4.403530 0.000000 -2.159692
-	    Psi_def:
-		      0.000000 0.672006 0.000000
-    ...Finished
-    ```
-    And a 3D plot in a matplotlib screen.
-
-    FYI, the correct solution for this test case by Geradin and Cardona is
-    Delta R_3 = -2.159m and Psi_2 = 0.6720rad.
-
-Congratulations, you've run your first case.
-
-If you want to know how to configure your own cases, check 
-[Geradin and Cardona Static Structural Case](../../../tests/xbeam/geradin/generate_geradin.py).

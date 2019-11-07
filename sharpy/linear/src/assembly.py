@@ -171,29 +171,23 @@ def nc_dqcdzeta_Sin_to_Sout(Surf_in, Surf_out, Der_coll, Der_vert, Surf_in_bound
 
 
 def nc_dqcdzeta(Surfs, Surfs_star, Merge=False):
-    r"""
-    Produces a list of derivative matrix
-
-    .. math:: \frac{\partial(\mathcal{A}\boldsymbol{\Gamma}_0)}{\partial\boldsymbol{\zeta}}
-
-    where :math:`\mathcal{A}` is the aerodynamic influence coefficient matrix at the bound
-    surfaces collocation point, assuming constant panel norm.
+    """
+    Produces a list of derivative matrix d(AIC*Gamma)/dzeta, where AIC are the
+    influence coefficient matrices at the bound surfaces collocation point,
+    ASSUMING constant panel norm.
 
     Each list is such that:
+    - the ii-th element is associated to the ii-th bound surface collocation
+    point, and will contain a sub-list such that:
+        - the j-th element of the sub-list is the dAIC_dzeta matrices w.r.t. the
+        zeta d.o.f. of the j-th bound surface.
+    Hence, DAIC*[ii][jj] will have size K_ii x Kzeta_jj
 
-        - the ``ii``-th element is associated to the ``ii``-th bound surface collocation
-          point, and will contain a sub-list such that:
-            - the ``j``-th element of the sub-list is the ``dAIC_dzeta`` matrices w.r.t. the
-              ``zeta`` d.o.f. of the ``j``-th bound surface.
-
-    Hence, ``DAIC*[ii][jj]`` will have size ``K_ii x Kzeta_jj``
-
-    If ``Merge`` is ``True``, the derivatives due to collocation points movement are added
-    to ``Dvert`` to minimise storage space.
+    If merge is true, the derivatives due to collocation points movement are added
+    to Dvert to minimise storage space.
 
     To do:
-
-        - Dcoll is highly sparse, exploit?
+    - Dcoll is highly sparse, exploit?
     """
 
     n_surf = len(Surfs)
@@ -310,20 +304,14 @@ def nc_domegazetadzeta(Surfs, Surfs_star):
 
 
 def uc_dncdzeta(Surf):
-    r"""
-    Build derivative of
-
-    ..  math:: \boldsymbol{u}_c\frac{\partial\boldsymbol{n}_c}{\partial\boldsymbol{zeta}}
-
-    where :math:`\boldsymbol{u}_c` is the total velocity at the
-    collocation points.
-
-    Args:
-        Surf (surface.AerogridSurface): the input can also be a list of :class:`surface.AerogridSurface`
-
-    References:
-        - :module:`linear.develop_sym.linsum_Wnc`
-        - :module:`lib_ucdncdzeta`
+    """
+    Build derivative of uc*dnc/dzeta where uc is the total velocity at the
+    collocation points. Input Surf can be:
+    - an instance of surface.AeroGridSurface.
+    - a list of instance of surface.AeroGridSurface.
+    Refs:
+    - develop_sym.linsum_Wnc
+    - lib_ucdncdzeta
     """
 
     if type(Surf) is list:
@@ -333,7 +321,7 @@ def uc_dncdzeta(Surf):
             DerList.append(uc_dncdzeta(Surf[ss]))
         return DerList
     else:
-        if (not hasattr(Surf, 'u_ind_coll')) or (Surf.u_input_coll is None):
+        if (not hasattr(Surf, 'u_ind_coll')) or (not hasattr(Surf, 'u_input_coll')):
             raise NameError(
                 'Surf does not have the required attributes\nu_ind_coll\nu_input_coll')
 
@@ -404,7 +392,7 @@ def dfqsdgamma_vrel0(Surfs, Surfs_star):
         Surf = Surfs[ss]
         if not hasattr(Surf, 'u_ind_seg'):
             raise NameError('Induced velocities at segments missing')
-        if Surf.u_input_seg is None:
+        if not hasattr(Surf, 'u_input_seg'):
             raise NameError('Input velocities at segments missing')
         if not hasattr(Surf, 'fqs_seg'):
             Surf.get_joukovski_qs(gammaw_TE=Surfs_star[ss].gamma[0, :])
@@ -501,7 +489,7 @@ def dfqsdzeta_vrel0(Surfs, Surfs_star):
         Surf = Surfs[ss]
         if not hasattr(Surf, 'u_ind_seg'):
             raise NameError('Induced velocities at segments missing')
-        if Surf.u_input_seg is None:
+        if not hasattr(Surf, 'u_input_seg'):
             raise NameError('Input velocities at segments missing')
 
         M, N = Surf.maps.M, Surf.maps.N
@@ -581,7 +569,7 @@ def dfqsduinput(Surfs, Surfs_star):
     for ss in range(n_surf):
 
         Surf = Surfs[ss]
-        if Surf.u_input_seg is None:
+        if not hasattr(Surf, 'u_input_seg'):
             raise NameError('Input velocities at segments missing')
 
         M, N = Surf.maps.M, Surf.maps.N

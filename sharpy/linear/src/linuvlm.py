@@ -89,7 +89,7 @@ settings_default_dynamic['track_body_number'] = -1
 class Static():
     """	Static linear solver """
 
-    def __init__(self, tsdata, for_vel=np.zeros((6,))):
+    def __init__(self, tsdata, for_vel=np.zeros((6),)):
 
         print('Initialising Static linear UVLM solver class...')
         t0 = time.time()
@@ -555,7 +555,7 @@ class Dynamic(Static):
     """
 
     def __init__(self, tsdata, dt=None, dynamic_settings=None, integr_order=2,
-                       RemovePredictor=True, ScalingDict=None, UseSparse=True, for_vel=np.zeros((6,))):
+                       RemovePredictor=True, ScalingDict=None, UseSparse=True, for_vel=np.zeros((6),)):
 
         super().__init__(tsdata, for_vel=for_vel)
 
@@ -563,15 +563,31 @@ class Dynamic(Static):
         self.settings = dict()
         if dynamic_settings:
             self.settings = dynamic_settings
+            settings.to_custom_types(self.settings, settings_types_dynamic, settings_default_dynamic)
 
-        self.dt = self.settings['dt']
-        self.integr_order = self.settings['integr_order']
+
+            if type(self.settings['integr_order']) == int:
+                dt = self.settings['dt'].value
+                rho = self.settings['rho'].value
+                integr_order = self.settings['integr_order']
+                RemovePredictor = self.settings['remove_predictor'].value
+                UseSparse = self.settings['use_sparse'].value
+                ScalingDict = self.settings['ScalingDict'].value
+            else:
+                dt = self.settings['dt'].value
+                integr_order = self.settings['integr_order'].value
+                RemovePredictor = self.settings['remove_predictor']
+                UseSparse = self.settings['use_sparse']
+                ScalingDict = self.settings['ScalingDict']
+
+        self.dt = float(dt)
+        self.integr_order = integr_order
 
         if self.integr_order == 1:
             Nx = 2 * self.K + self.K_star
         elif self.integr_order == 2:
             Nx = 3 * self.K + self.K_star
-            # b0, bm1, bp1 = -2., 0.5, 1.5
+            b0, bm1, bp1 = -2., 0.5, 1.5
         else:
             raise NameError('Only integration orders 1 and 2 are supported')
         Ny = 3 * self.Kzeta
@@ -580,15 +596,25 @@ class Dynamic(Static):
         self.Nu = Nu
         self.Ny = Ny
 
-        self.remove_predictor = self.settings['remove_predictor']
+        self.remove_predictor = RemovePredictor
         # Stores original B matrix for state recovery later
         self.B_predictor = None
         self.D_predictor = None
 
         self.include_added_mass = True
-        self.use_sparse = self.settings['use_sparse']
+        self.use_sparse = UseSparse
 
-        ScalingFacts = self.settings['ScalingDict']
+        # create scaling quantities
+        if ScalingDict is None:
+            ScalingFacts = {'length': 1.,
+                            'speed': 1.,
+                            'density': 1.}
+        else:
+            ScalingFacts = ScalingDict
+
+        for key in ScalingFacts:
+            ScalingFacts[key] = np.float(ScalingFacts[key])
+
         ScalingFacts['time'] = ScalingFacts['length'] / ScalingFacts['speed']
         ScalingFacts['circulation'] = ScalingFacts['speed'] * ScalingFacts['length']
         ScalingFacts['dyn_pressure'] = 0.5 * ScalingFacts['density'] * ScalingFacts['speed'] ** 2
@@ -699,6 +725,7 @@ class Dynamic(Static):
 
                 \mathbf{x}_{n+1} &= \mathbf{A}\,\mathbf{x}_n + \mathbf{B} \mathbf{u}_{n+1} \\
                 \mathbf{y}_n &= \mathbf{C}\,\mathbf{x}_n + \mathbf{D} \mathbf{u}_n
+
 
         where the state, inputs and outputs are:
 
@@ -857,6 +884,7 @@ class Dynamic(Static):
         if self.use_sparse:
             Bss = libsp.csc_matrix(Bss)
         LU, P = None, None
+
         # ---------------------------------------------------------- output eq.
 
         ### state terms (C matrix)

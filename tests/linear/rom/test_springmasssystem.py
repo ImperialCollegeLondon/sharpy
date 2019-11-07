@@ -1,6 +1,5 @@
 """
 Generate a mass spring system
-
 NGoizueta 16 Feb 2019
 
 """
@@ -11,15 +10,12 @@ import sharpy.linear.src.lingebm as lingebm
 import sharpy.rom.krylov as krylov
 import unittest
 import matplotlib.pyplot as plt
-import sharpy.utils.cout_utils as cout
 
-cout.cout_wrap.initialise(False, False)
 
-@unittest.skip('Not a robust test case that is giving too many failures. Use test_krylov instead')
 class TestKrylovRom(unittest.TestCase):
 
     tolerance = 1e-3
-    display_output = True
+    display_output = False
 
     def test_siso_ct(self):
         system_inputs = 'SISO'
@@ -29,7 +25,7 @@ class TestKrylovRom(unittest.TestCase):
 
         algorithm = 'two_sided_arnoldi'
         interpolation_point = np.array([1.0j])
-        r = 7
+        r = 6
 
         print('\nTesting CT, SISO rational Arnoldi...')
         rom = self.run_rom(ss, algorithm, r, interpolation_point)
@@ -49,7 +45,7 @@ class TestKrylovRom(unittest.TestCase):
 
         algorithm = 'two_sided_arnoldi'
         interpolation_point_ct = np.array([0.8j])
-        r = 7
+        r = 2
 
         print('\nTesting DT, SISO rational Arnoldi...')
         rom = self.run_rom(ss, algorithm, r, interpolation_point_ct)
@@ -69,7 +65,7 @@ class TestKrylovRom(unittest.TestCase):
 
         algorithm = 'dual_rational_arnoldi'
         interpolation_point_ct = np.array([0.0, 2.0j, 11.0j])
-        r = 7
+        r = 2
 
         print('\nTesting DT, SISO Multipoint rational Arnoldi...')
         rom = self.run_rom(ss, algorithm, r, interpolation_point_ct)
@@ -179,8 +175,7 @@ class TestKrylovRom(unittest.TestCase):
             fig.show()
         return error
 
-    def tearDown(self):
-        cout.cout_wrap = cout.Writer()
+
 
 # evals_DT = np.linalg.eigvals(system_DT.A)
 #

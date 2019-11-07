@@ -4,7 +4,7 @@ import numpy as np
 import os
 import sharpy.utils.algebra as algebra
 
-case_name = 'simple_HALE'
+case_name = 'simple_HALE_phugoid'
 route = os.path.dirname(os.path.realpath(__file__)) + '/'
 
 # EXECUTION
@@ -18,13 +18,10 @@ flow = ['BeamLoader',
         'AerogridPlot',
         'BeamPlot',
         'DynamicCoupled',
-        'Modal',
-        'LinearAssember',
-        'AsymptoticStability',
         ]
 
 # if free_flight is False, the motion of the centre of the wing is prescribed.
-free_flight = True
+free_flight = False
 if not free_flight:
     case_name += '_prescribed'
     amplitude = 0*np.pi/180
@@ -121,6 +118,14 @@ physical_time = 100
 tstep_factor = 1.
 dt = 1.0/m/u_inf*tstep_factor
 n_tstep = round(physical_time/dt)
+
+
+# elevator deflection
+dynamic_elevator = 1
+delta_e = np.zeros(n_tstep) + cs_deflection
+delta_e[10:150] += 2 * np.pi / 180
+elev_file = route + '/' + case_name + '.input.txt'
+np.savetxt(elev_file, delta_e)
 
 # END OF INPUT-----------------------------------------------------------------
 
@@ -224,7 +229,7 @@ def clean_test_files():
     if os.path.isfile(aero_file_name):
         os.remove(aero_file_name)
 
-    solver_file_name = route + '/' + case_name + '.solver.sharpy'
+    solver_file_name = route + '/' + case_name + '.solver.txt'
     if os.path.isfile(solver_file_name):
         os.remove(solver_file_name)
 
@@ -476,7 +481,7 @@ def generate_aero_file():
 
     # control surface type 0 = static
     # control surface type 1 = dynamic
-    control_surface_type[0] = 0
+    control_surface_type[0] = dynamic_elevator
     control_surface_deflection[0] = cs_deflection
     control_surface_chord[0] = m
     control_surface_hinge_coord[0] = -0.25 # nondimensional wrt elastic axis (+ towards the trailing edge)
@@ -654,7 +659,7 @@ def generate_naca_camber(M=0, P=0):
 
 
 def generate_solver_file():
-    file_name = route + '/' + case_name + '.solver.sharpy'
+    file_name = route + '/' + case_name + '.solver.txt'
     settings = dict()
     settings['SHARPy'] = {'case': case_name,
                           'route': route,
@@ -671,7 +676,12 @@ def generate_solver_file():
     settings['AerogridLoader'] = {'unsteady': 'on',
                                   'aligned_grid': 'on',
                                   'mstar': int(20/tstep_factor),
-                                  'freestream_dir': ['1', '0', '0']}
+                                  'freestream_dir': ['1', '0', '0'],
+                                  'control_surface_deflection': ['DynamicControlSurface', ''],
+                                  'control_surface_deflection_generator':
+                                  [{'dt': dt,
+                                    'deflection_file': elev_file},
+                                   {}]}
 
     settings['NonLinearStatic'] = {'print_info': 'off',
                                    'max_iterations': 150,
@@ -802,23 +812,12 @@ def generate_solver_file():
                                 'u_inf': u_inf,
                                 'dt': dt}
 
-    settings['Modal'] = {'print_info': True,
-                     'use_undamped_modes': True,
-                     'NumLambda': 30,
-                     'rigid_body_modes': True,
-                     'write_modes_vtk': 'on',
-                     'print_matrices': 'on',
-                     'write_data': 'on',
-                     'continuous_eigenvalues': 'off',
-                     'dt': dt,
-                     'plot_eigenvalues': False}
-
     settings['LinearAssembler'] = {'linear_system': 'LinearAeroelastic',
                                     'linear_system_settings': {
                                         'beam_settings': {'modal_projection': False,
                                                           'inout_coords': 'nodes',
                                                           'discrete_time': True,
-                                                          'newmark_damp': 0.05,
+                                                          'newmark_damp': 0.5,
                                                           'discr_method': 'newmark',
                                                           'dt': dt,
                                                           'proj_modes': 'undamped',
@@ -829,17 +828,17 @@ def generate_solver_file():
                                                           'remove_dofs': []},
                                         'aero_settings': {'dt': dt,
                                                           'integr_order': 2,
-                                                          'density': rho,
+                                                          'density': rho * 1,
                                                           'remove_predictor': False,
                                                           'use_sparse': True,
-                                                          'rigid_body_motion': free_flight,
+                                                          'rigid_body_motion': True,
                                                           'use_euler': False,
                                                           'remove_inputs': ['u_gust']},
-                                        'rigid_body_motion': free_flight}}
+                                        'rigid_body_motion': True}}
 
     settings['AsymptoticStability'] = {'sys_id': 'LinearAeroelastic',
                                         'print_info': 'on',
-                                        'modes_to_plot': [],
+                                        'modes_to_plot': [],  # [0, 13, 15, 17, 19, 21, 23, 33],
                                         'display_root_locus': 'off',
                                         'frequency_cutoff': 0,
                                         'export_eigenvalues': 'off',

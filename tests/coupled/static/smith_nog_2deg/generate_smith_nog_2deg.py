@@ -272,6 +272,8 @@ def generate_naca_camber(M=0, P=0):
 
 
 def generate_solver_file(horseshoe=False):
+    file_name = route + '/' + case_name + '.solver.txt'
+    # config = configparser.ConfigParser()
     import configobj
     file_name = route + '/' + case_name + '.solver.txt'
     config = configobj.ConfigObj()
