@@ -53,11 +53,13 @@ import warnings
 import random
 import pprint
 import numpy as np
+import scipy
+import scipy.optimize as optimize
+from scipy.interpolate import Rbf
 import yaml
 import dill as pickle
-# import skopt
-# import joblib
 import GPyOpt
+
 
 import sharpy.sharpy_main
 import sharpy.utils.exceptions as exc
@@ -77,10 +79,12 @@ def driver():
     # read yaml
     yaml_dict = read_yaml(parser.input_file)
     pprint.pprint(yaml_dict)
-    # form cost function call
+
+    # get previous cases
+    previous_x, previous_y = process_previous_cases(yaml_dict)
 
     # call optimiser
-    optimiser(yaml_dict)
+    optimiser(yaml_dict, previous_x, previous_y)
 
     # postprocess output
 
@@ -113,7 +117,7 @@ def read_yaml(file_name):
     return yaml_dict
 
 
-def optimiser(in_dict):
+def optimiser(in_dict, previous_x, previous_y):
     settings_dict = in_dict['settings']
     case_dict = in_dict['case']
     base_dict = in_dict['base']
@@ -181,8 +185,8 @@ def optimiser(in_dict):
 
         # ramp_length = release_vel**2 / acceleration
         constraints.append({'name': 'length',
-                            'constraint': 'x[:, ' + str(release_vel_var_i) + ']**2' +
-                                          '/x[:, ' + str(acc_var_i) + ']' +
+                            'constraint': '0.5*(x[:, ' + str(release_vel_var_i) + ']**2' +
+                                          '/x[:, ' + str(acc_var_i) + '])' +
                                           ' - ' + str(length)})
     except KeyError:
         pass
@@ -221,14 +225,16 @@ def optimiser(in_dict):
         exact_feval=True,
         model_type='GP',
         acquisition_type='EI',
-        normalize_y=True,
+        normalize_y=False,
         initial_design_numdata=in_dict['optimiser']['numerics']['initial_design_numdata'],
         evaluator_type='local_penalization',
         batch_size=batch_size,
         num_cores=num_cores,
         acquisition_jitter=0,
         de_duplication=True,
-        constraints=constraints)
+        constraints=constraints,
+        X=previous_x,
+        Y=previous_y)
 
     opt.run_optimization(in_dict['optimiser']['numerics']['n_iter'],
                          report_file=output_route + 'report.log',
@@ -244,41 +250,136 @@ def optimiser(in_dict):
     with open(output_route + 'optimiser.pkl', 'wb') as f:
         pickle.dump(opt, f, protocol=pickle.HIGHEST_PROTOCOL)
 
+    print('Running local optimisation step')
+    local_x, local_cost = local_optimisation(opt, in_dict)
+
+    if np.linalg.norm(opt.x_opt - local_x) < 1e-1:
+        print('Results are very close, no need to dig deeper')
+    else:
+        new_cost = gpyopt_wrapper(local_x)
+        print('New cost: ', new_cost)
+        print('Improvement over the previous solution with the local min.: ',
+              -(local_cost - opt.fx_opt)/opt.fx_opt*100, '%')
+        print('The RBF estimation of the cost was off by: ',
+              (local_cost - new_cost)/new_cost)
+
     print('FINISHED')
 
-    breakpoint()
-    # skopt_wrapper = lambda x: wrapper(x, in_dict)
-    # res = skopt.gp_minimize(func=skopt_wrapper,
-                            # dimensions=bounds,
-                            # base_estimator=None,
-                            # n_calls=100,
-                            # n_random_starts=10,
-                            # acq_func='gp_hedge',
-                            # acq_optimizer='auto',
-                            # base_estimator=None,
-                            # n_calls=100,
-                            # n_random_starts=10,
-                            # acq_func='gp_hedge',
-                            # acq_optimizer='auto',
-                            # x0=None,
-                            # y0=None,
-                            # random_state=None,
-                            # verbose=True,
-                            # callback=None,
-                            # n_points=10000,
-                            # xi=0.01,
-                            # kappa=1.96,
-                            # noise=1e-8,
-                            # n_jobs=4)
+    import pdb; pdb.set_trace()
+
+def local_optimisation(opt, yaml_dict=None, min_method='Powell'):
+    x_in = opt.X
+    y_in = opt.Y
+
+    # rbf = create_rbf_surrogate(x_in, y_in)
+
+    points = x_in
+    values = y_in
+    method = 'linear'
+    options = {'eps': 0.1,
+               'gtol': 1e-3}
+    # scipy.optimize
+    local_opt = optimize.minimize(
+                                  # lambda x: rbf_constrained(x, rbf, yaml_dict, opt),
+                                  lambda x: gp_constrained(x, opt, yaml_dict),
+                                  x0=opt.x_opt,
+                                  method=min_method,
+                                  options=options,
+                                  jac='2-point')
+
+    print('Local optimisation result: ')
+    print('X = ', local_opt.x)
+    print('f(X) = ', local_opt.fun)
+    print('sucess = ', local_opt.success)
+    print('n_inter = ', local_opt.nit)
+    print('message = ', local_opt.message)
+    return local_opt.x, local_opt.fun
 
 
-def case_id():
-    case_name = '{0:04d}'.format(random.randint(0, 9999+1))
+# def create_gp_surrogate(opt, yaml_dict):
+    # breakpoint()
+    # opt.mode
+
+def gp_constrained(x_in, opt, yaml_dict):
+    values, _ = opt.model.predict(np.atleast_2d(x_in))
+
+    parameters = yaml_dict['optimiser']['parameters']
+    bounds = np.zeros((len(parameters), 2))
+    for k, v in parameters.items():
+        bounds[k, :] = yaml_dict['optimiser']['parameters_bounds'][k]
+
+    constraints_list = opt.constraints
+    constraints = list()
+    for v in constraints_list:
+        constraints.append(v['constraint'])
+        constraints[-1] = constraints[-1].replace(':,', '') + ' <= 0'
+
+    multidim = True
+    if len(x_in.shape) == 1:
+        multidim = False
+
+    if multidim:
+        for i in range(x_in.shape[0]):
+            for i_cons in range(len(constraints)):
+                x = x_in[i, :]
+                if not eval(constraints[i_cons]):
+                    values[i] += 15
+    else:
+        for i_cons in range(len(constraints)):
+            x = x_in
+            if not eval(constraints[i_cons]):
+                values += 15
+
+    return values
+
+def rbf_constrained(x_in, rbf, yaml_dict, opt):
+    parameters = yaml_dict['optimiser']['parameters']
+    bounds = np.zeros((len(parameters), 2))
+    for k, v in parameters.items():
+        bounds[k, :] = yaml_dict['optimiser']['parameters_bounds'][k]
+
+    constraints_list = opt.constraints
+    constraints = list()
+    for v in constraints_list:
+        constraints.append(v['constraint'])
+        constraints[-1] = constraints[-1].replace(':,', '') + ' <= 0'
+
+    values = rbf(*x_in)
+
+    multidim = True
+    if len(x_in.shape) == 1:
+        multidim = False
+
+    if multidim:
+        for i in range(x_in.shape[0]):
+            for i_cons in range(len(constraints)):
+                x = x_in[i, :]
+                if not eval(constraints[i_cons]):
+                    values[i] += 15
+    else:
+        for i_cons in range(len(constraints)):
+            x = x_in
+            if not eval(constraints[i_cons]):
+                values += 15
+
+    return values
+
+def create_rbf_surrogate(X, Y):
+    rbf = Rbf(*(X.T), Y, function='multiquadric')
+    return rbf
+
+
+def case_id(case, x_dict):
+    case_name = case
+    for k, v in x_dict.items():
+        case_name += f'_{k}_{v:7.5f}'
+    case_name = case_name.replace('.', 'p')
+
     return case_name
 
 
 def evaluate(x_dict, yaml_dict):
-    case_name = case_id()
+    case_name = case_id(yaml_dict['case']['name'], x_dict)
 
     print('Running ' + case_name)
     files, case_name = set_case(case_name,
@@ -296,9 +397,13 @@ def evaluate(x_dict, yaml_dict):
         if yaml_dict['settings']['delete_case_folders']:
             raise NotImplementedError('delete_case_folders not supported yet')
         if yaml_dict['settings']['save_data']:
+            try:
+                os.mkdir(yaml_dict['settings']['cases_folder'] +
+                          '/' + yaml_dict['case']['name'] + '/')
+            except FileExistsError:
+                pass
             with open(yaml_dict['settings']['cases_folder'] +
-                      '/' +
-                      case_name +
+                      '/' + yaml_dict['case']['name'] + '/' +
                       'data.pkl', 'wb') as data_file:
                 pickle.dump(data, data_file, -1)
 
@@ -384,52 +489,47 @@ def cost_function(data,
     else:
         return cost
 
+# def loads_cost(data, cost_loads_dict):
+    # index2load = {0: 'Torsion',
+                  # 1: 'OOP',
+                  # 2: 'IP'}
+    # try:
+        # loads_array = np.loadtxt(
+            # cost_loads_dict['reference_loads'],
+            # skiprows=1,
+            # delimiter=',')
+    # except OSError:
+        # try:
+            # warnings.warn(
+                # 'Not found reference_loads file, trying parent folder')
+            # loads_array = np.loadtxt(
+                # '../' + cost_loads_dict['reference_loads'],
+                # skiprows=1,
+                # delimiter=',')
+        # except OSError:
+            # warnings.warn('Not found reference_loads file, anywhere. Filling up with ones instead')
+            # loads_array = np.ones((data.structure.ini_info.psi.shape[0], 4))
 
-def loads_cost_2(data, cost_loads_dict):
-    """
+    # separate_cost = np.zeros((3,))
 
-    """
-    # the other way around
-    index2load = {0: 'Torsion',
-                  1: 'OOP',
-                  2: 'IP'}
+    # loads_array = np.abs(loads_array)
+    # loads_array_norm = np.linalg.norm(loads_array, axis=0)
+    # for row in range(loads_array.shape[0]):
+        # for col in range(loads_array.shape[1]):
+            # if loads_array[row, col] < loads_array_norm[col]:
+                # loads_array[row, col] = loads_array_norm[col]
 
-    try:
-        loads_array_25g = np.loadtxt(
-            cost_loads_dict['25g_loads'],
-            skiprows=1,
-            delimiter=',')
-    except OSError:
-        try:
-            warnings.warn('Not found 2.5g file, trying parent folder')
-            loads_array_25g = np.loadtxt(
-                '../' + cost_loads_dict['25g_loads'],
-                skiprows=1,
-                delimiter=',')
-        except OSError:
-            warnings.warn('Not found 2.5g file, anywhere. Filling up with ones instead')
-            loads_array_25g = np.ones((data.structure.ini_info.psi.shape[0], 4))
+    # max_cost = np.zeros((3,))
+    # for it, tstep in enumerate(data.structure.timestep_info):
+        # temp = np.abs(tstep.postproc_cell['loads'][:, 3:])
+        # max_vals = np.max(temp/loads_array[:, 1:] - 1.0, axis=0)
+        # for i_dim in range(3):
+            # max_cost[i_dim] = max(max_cost[i_dim], max_vals[i_dim])
+    # separate_cost = max_cost
 
-    loads_array_25g[np.abs(loads_array_25g) < 1.0] = 1.0
-    loads_array_25g = np.abs(loads_array_25g)*1.5
-    separate_cost = np.zeros((3,))
-
-    max_cost = np.zeros((3,))
-    for it, tstep in enumerate(data.structure.timestep_info):
-        temp = np.abs(
-            tstep.postproc_cell['loads'][:, 3:]/
-            loads_array_25g[:, 1:])
-        max_vals = np.max(temp, axis=0)
-        max_vals = (max_vals >= 1.0)*max_vals
-        for i_dim in range(3):
-            max_cost[i_dim] = max(max_cost[i_dim], max(max_vals[i_dim] - 1., 0.0))
-    separate_cost[:] = max_cost
-
-    for k, v in index2load.items():
-        separate_cost[k] *= cost_loads_dict[v]['scale']
-#     print('loads cost = ', separate_cost)
-    return np.sum(separate_cost)
-
+    # for k, v in index2load.items():
+        # separate_cost[k] *= cost_loads_dict[v]['scale']
+    # return np.sum(separate_cost)
 
 def loads_cost(data, cost_loads_dict):
     index2load = {0: 'Torsion',
@@ -442,7 +542,8 @@ def loads_cost(data, cost_loads_dict):
             delimiter=',')
     except OSError:
         try:
-            warnings.warn('Not found reference_loads file, trying parent folder')
+            warnings.warn(
+                'Not found reference_loads file, trying parent folder')
             loads_array = np.loadtxt(
                 '../' + cost_loads_dict['reference_loads'],
                 skiprows=1,
@@ -453,21 +554,21 @@ def loads_cost(data, cost_loads_dict):
 
     separate_cost = np.zeros((3,))
 
-    loads_array = np.abs(loads_array)
-    loads_array_norm = np.linalg.norm(loads_array, axis=0)
-    for row in range(loads_array.shape[0]):
-        for col in range(loads_array.shape[1]):
-            if loads_array[row, col] < loads_array_norm[col]:
-                loads_array[row, col] = loads_array_norm[col]
-    
-    
-    max_cost = np.zeros((3,))
+    loads_array_root = np.abs(loads_array[0, 1:])
+
+    # max_cost = np.zeros((3,))
+    # for it, tstep in enumerate(data.structure.timestep_info):
+        # temp = np.abs(tstep.postproc_cell['loads'][:, 3:])
+        # max_vals = np.max(temp/loads_array[:, 1:] - 1.0, axis=0)
+        # for i_dim in range(3):
+            # max_cost[i_dim] = max(max_cost[i_dim], max_vals[i_dim])
+    # separate_cost = max_cost
+    loads_history = np.zeros((len(data.structure.timestep_info), 3))
     for it, tstep in enumerate(data.structure.timestep_info):
-        temp = np.abs(tstep.postproc_cell['loads'][:, 3:])
-        max_vals = np.max(temp/loads_array[:, 1:] - 1.0, axis=0)
-        for i_dim in range(3):
-            max_cost[i_dim] = max(max_cost[i_dim], max_vals[i_dim])
-    separate_cost = max_cost
+        loads_history[it, :] = tstep.postproc_cell['loads'][0, 3:]/loads_array_root
+
+    separate_cost = np.max(loads_history, axis=0) - 1.
+    separate_cost = separate_cost*(separate_cost > 0)
 
     for k, v in index2load.items():
         separate_cost[k] *= cost_loads_dict[v]['scale']
@@ -515,15 +616,38 @@ def unfold_x(x, parameters_dict):
     return x_dict
 
 
-# def run_sharpy(file_names, route, name):
-    # """
+def process_previous_cases(yaml_dict):
+    try:
+        previous_cases_string = yaml_dict['previous_data']['cases']
+    except KeyError:
+        return None, None
 
-    # """
-    # print('Running case {}...'.format(name))
-    # sharpy_data = sharpy.sharpy_main.main([None, file_names['solver']])
-    # print('\tfinished')
+    n_cases = len(glob.glob(previous_cases_string))
+    x_out = np.zeros((n_cases, len(yaml_dict['optimiser']['parameters'])))
+    y_out = np.zeros((n_cases, 1))
 
-    # return sharpy_data
+    for i, f in enumerate(glob.glob(previous_cases_string)):
+        print('Loading ', f)
+        with open(f, 'rb') as fhandle:
+            data = pickle.load(fhandle)
+
+        x_vec, x_dict = x_vec_from_data(data, yaml_dict['optimiser']['parameters'])
+        x_out[i, :] = x_vec
+
+        cost = cost_function(data, x_dict, yaml_dict['optimiser']['cost'])
+        y_out[i, 0] = cost
+
+    return x_out, y_out
+
+
+def x_vec_from_data(data, param_dict):
+    input_dict = eval(data.settings['Notes']['note'])
+
+    x_vec = np.zeros((len(param_dict),))
+    for k, v in param_dict.items():
+        x_vec[k] = input_dict[v]
+    return x_vec, input_dict
+
 
 if __name__ == '__main__':
     driver()
