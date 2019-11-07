@@ -24,15 +24,16 @@ def generate(x_dict={}, case_name=None):
             'StaticCoupled',
             'BeamLoads',
             'DynamicCoupled',
-            # 'PickleData'
+            'PickleData'
             ]
 
 # FLIGHT CONDITIONS
 # the simulation is set such that the aircraft flies at a u_inf velocity while
 # the air is calm.
     try:
-        u_inf = x_dict['release_vel']
+        u_inf = x_dict['release_velocity']
     except KeyError:
+        print('Using default value of 10 for u_inf')
         u_inf = 10
 
     u_inf_cruise = 10
@@ -44,21 +45,23 @@ def generate(x_dict={}, case_name=None):
     try:
         alpha_cato_delta = x_dict['dAoA']*np.pi/180
     except KeyError:
+        print('Using default value of 0 for dAoA')
         alpha_cato_delta = 0*np.pi/180
 
     try:
         ramp_angle = x_dict['ramp_angle']*np.pi/180
     except KeyError:
+        print('Using default value of 0 for ramp_angle')
         ramp_angle = 0.0
 
-    alpha = 4.2999*np.pi/180 + alpha_cato_delta
+    alpha = 4.0782*np.pi/180 + alpha_cato_delta
     beta = 0
     roll = 0
     gravity = 'on'
-    cs_deflection = -2.0550*np.pi/180
+    cs_deflection = -1.2703*np.pi/180
     rudder_static_deflection = 0.0
     # rudder_step = 0.0*np.pi/180
-    thrust = 6.0695
+    thrust = 3.8682
     sigma = 1.5
     lambda_dihedral = 20*np.pi/180
 
@@ -69,6 +72,7 @@ def generate(x_dict={}, case_name=None):
     try:
         acceleration = x_dict['acceleration']
     except KeyError:
+        print('Using default value of 3 for acceleration')
         acceleration = 3.
 
     t_ramp = u_inf/acceleration
@@ -777,7 +781,7 @@ def generate(x_dict={}, case_name=None):
         settings['AerogridLoader'] = {'unsteady': 'on',
                                       'aligned_grid': 'on',
                                       # 'mstar': int(160/tstep_factor),
-                                      'mstar': int(20/tstep_factor),
+                                      'mstar': int(100/tstep_factor),
                                       'freestream_dir': ['1', '0', '0'],
                                       'control_surface_deflection': ['', ''],
                                       'control_surface_deflection_generator':
@@ -860,7 +864,7 @@ def generate(x_dict={}, case_name=None):
                                 'dt': dt}
 
         solver = 'NonLinearDynamicMultibody'
-        settings['PickleData'] = {}
+        settings['PickleData'] = {'folder': route + '/'}
         settings['DynamicCoupled'] = {'structural_solver': solver,
                                       'structural_solver_settings': settings[solver],
                                       'aero_solver': 'StepUvlm',
