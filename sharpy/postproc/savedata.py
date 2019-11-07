@@ -154,6 +154,7 @@ class SaveData(BaseSolver):
         file_exists = os.path.isfile(self.filename)
         hdfile=h5py.File(self.filename,'a')
 
+        if self.settings['format'] == 'h5':
             if (online and file_exists):
                 if self.settings['save_aero']:
                     h5utils.add_as_grp(self.data.aero.timestep_info[self.data.ts], hdfile['data']['aero']['timestep_info'],
@@ -177,10 +178,10 @@ class SaveData(BaseSolver):
                                    ClassesToSave=(sharpy.utils.datastructures.StructTimeStepInfo,),
                                    SkipAttr=self.settings['skip_attr'],
                                    compress_float=self.settings['compress_float'])
-        else:
-            h5utils.add_as_grp(self.data,hdfile,grpname='data',
-                               ClassesToSave=self.ClassesToSave,SkipAttr=self.settings['skip_attr'],
-                               compress_float=self.settings['compress_float'])
+            else:
+                h5utils.add_as_grp(self.data,hdfile,grpname='data',
+                                   ClassesToSave=self.ClassesToSave,SkipAttr=self.settings['skip_attr'],
+                                   compress_float=self.settings['compress_float'])
 
         elif self.settings['format'] == 'mat':
             from scipy.io import savemat
