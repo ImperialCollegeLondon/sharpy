@@ -32,6 +32,7 @@ dependencies:
   - chardet=3.0.4=py37_1
   - colorama=0.4.1=py37_0
   - configobj=5.0.6=py37_1
+  - coverage=4.5.4
   - cryptography=2.5=py37h1ba5d50_0
   - curl=7.63.0=hbc83047_1000
   - cycler=0.10.0=py37_0
