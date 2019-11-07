@@ -18,12 +18,15 @@ import sharpy.utils.algebra as algebra
 import sharpy.utils.analytical as an
 import sharpy.linear.src.linuvlm as linuvlm
 import cases.templates.flying_wings as flying_wings
+import sharpy.utils.sharpydir as sharpydir
 
 
 class Test_infinite_span(unittest.TestCase):
     """
     Test infinite-span flat wing at zero incidence against analytical solutions
     """
+
+    test_dir = sharpydir.SharpyDir + '/tests/linear/uvlm/'
 
     def setUp_from_params(self, Nsurf, integr_ord, RemovePred, UseSparse, RollNodes):
         """
@@ -174,11 +177,7 @@ class Test_infinite_span(unittest.TestCase):
 
         ### ----- linearisation
         uvlm = linuvlm.Dynamic(tsaero0,
-                               dt=ws.config['LinearUvlm']['dt'],
-                               integr_order=ws.config['LinearUvlm']['integr_order'],
-                               RemovePredictor=ws.config['LinearUvlm']['remove_predictor'],
-                               ScalingDict=ws.config['LinearUvlm']['ScalingDict'],
-                               UseSparse=ws.config['LinearUvlm']['use_sparse'])
+                               dynamic_settings=ws.config['LinearUvlm'])
         uvlm.assemble_ss()
         zeta_pole = np.array([0., 0., 0.])
         uvlm.get_total_forces_gain(zeta_pole=zeta_pole)
@@ -438,6 +437,7 @@ class Test_infinite_span(unittest.TestCase):
             shutil.rmtree(self.route_test_dir + '/output/')
         except FileNotFoundError:
             pass
+
 
 if __name__ == '__main__':
     if os.path.exists('./figs/infinite_span'):

@@ -12,25 +12,112 @@ import sharpy.utils.algebra as algebra
 
 @linear_system
 class LinearBeam(BaseElement):
-    """
+    r"""
     State space member
+
+    Define class for linear state-space realisation of GEBM flexible-body
+    equations from SHARPy``timestep_info`` class and with the nonlinear structural information.
+
+    State-space models can be defined in continuous or discrete time (dt
+    required). Modal projection, either on the damped or undamped modal shapes,
+    is also avaiable.
+
+    To produce the state-space equations:
+
+    Notes on the settings:
+
+        a. ``modal_projection={True,False}``: determines whether to project the states
+            onto modal coordinates. Projection over damped or undamped modal
+            shapes can be obtained selecting:
+
+                - ``proj_modes={'damped','undamped'}``
+
+            while
+
+                 - ``inout_coords={'modes','nodal'}``
+
+             determines whether the modal state-space inputs/outputs are modal
+             coords or nodal degrees-of-freedom. If ``modes`` is selected, the
+             ``Kin`` and ``Kout`` gain matrices are generated to transform nodal to modal
+             dofs
+
+        b. ``dlti={True,False}``: if true, generates discrete-time system.
+            The continuous to discrete transformation method is determined by::
+
+                discr_method={ 'newmark',  # Newmark-beta
+                                    'zoh',		# Zero-order hold
+                                    'bilinear'} # Bilinear (Tustin) transformation
+
+            DLTIs can be obtained directly using the Newmark-:math:`\beta` method
+
+                ``discr_method='newmark'``
+                ``newmark_damp=xx`` with ``xx<<1.0``
+
+            for full-states descriptions (``modal_projection=False``) and modal projection
+            over the undamped structural modes (``modal_projection=True`` and ``proj_modes``).
+            The Zero-order holder and bilinear methods, instead, work in all
+            descriptions, but require the continuous state-space equations.
     """
     sys_id = "LinearBeam"
-
 
     settings_types = dict()
     settings_default = dict()
     settings_description = dict()
 
-    settings_types['gravity'] = 'bool'
+    settings_default['modal_projection'] = True
+    settings_types['modal_projection'] = 'bool'
+    settings_description['modal_projection'] = 'Use modal projection'
+
+    settings_default['inout_coords'] = 'nodes'
+    settings_types['inout_coords'] = 'str'
+    settings_description['inout_coords'] = 'Beam state space input/output coordinates. ``modes`` or ``nodes``'
+
+    settings_types['num_modes'] = 'int'
+    settings_default['num_modes'] = 10
+    settings_description['num_modes'] = 'Number of modes to retain'
+
+    settings_default['discrete_time'] = True
+    settings_types['discrete_time'] = 'bool'
+    settings_description['discrete_time'] = 'Assemble beam in discrete time'
+
+    settings_default['dt'] = 0.001
+    settings_types['dt'] = 'float'
+    settings_description['dt'] = 'Discrete time system integration time step'
+
+    settings_default['proj_modes'] = 'undamped'
+    settings_types['proj_modes'] = 'str'
+    settings_description['proj_modes'] = 'Use ``undamped`` or ``damped`` modes'
+
+    settings_default['discr_method'] = 'newmark'
+    settings_types['discr_method'] = 'str'
+    settings_description['discr_method'] = 'Discrete time assembly system method: ``newmark`` or ``zoh``'
+
+    settings_default['newmark_damp'] = 1e-4
+    settings_types['newmark_damp'] = 'float'
+    settings_description['newmark_damp'] = 'Newmark damping value. For systems assembled using ``newmark``'
+
+    settings_default['use_euler'] = False
+    settings_types['use_euler'] = 'bool'
+    settings_description['use_euler'] = 'Use euler angles for rigid body parametrisation'
+
+    settings_default['print_info'] = True
+    settings_types['print_info'] = 'bool'
+    settings_description['print_info'] = 'Display information on screen'
+
     settings_default['gravity'] = False
+    settings_types['gravity'] = 'bool'
+    settings_description['gravity'] = 'Linearise gravitational forces'
 
     settings_types['remove_dofs'] = 'list'
     settings_default['remove_dofs'] = []
+    settings_description['remove_dofs'] = 'Remove desired degrees of freedom: ``eta``, ``V``, ``W`` or ``orient``'
 
     settings_types['remove_sym_modes'] = 'bool'
     settings_default['remove_sym_modes'] = False
     settings_description['remove_sym_modes'] = 'Remove symmetric modes if wing is clamped'
+
+    settings_table = settings.SettingsTable()
+    __doc__ += settings_table.generate(settings_types, settings_default, settings_description)
 
     def __init__(self):
         self.sys = None  # The actual object
@@ -40,6 +127,7 @@ class LinearBeam(BaseElement):
 
         self.settings = dict()
         self.state_variables = None
+        self.linearisation_vectors = dict()
 
     def initialise(self, data, custom_settings=None):
 
@@ -50,7 +138,7 @@ class LinearBeam(BaseElement):
                 self.settings = data.settings['LinearAssembler']['linear_system_settings']
             except KeyError:
                 pass
-        settings.to_custom_types(self.settings, self.settings_types, self.settings_default)
+        settings.to_custom_types(self.settings, self.settings_types, self.settings_default, no_ctype=True)
 
         beam = lingebm.FlexDynamic(data.linear.tsstruct0, data.structure, self.settings)
         self.sys = beam
@@ -72,6 +160,10 @@ class LinearBeam(BaseElement):
         if num_dof_rig == 0:
             self.clamped = True
 
+        self.linearisation_vectors['eta'] = self.tsstruct0.q
+        self.linearisation_vectors['eta_dot'] = self.tsstruct0.dqdt
+        self.linearisation_vectors['forces_struct'] = self.tsstruct0.steady_applied_forces.reshape(-1, order='C')
+
     def assemble(self, t_ref=None):
         """
         Assemble the beam state-space system.
@@ -82,10 +174,6 @@ class LinearBeam(BaseElement):
         Returns:
 
         """
-        # Would assemble the system as per the settings
-        # Here we would add further options such as discarding DOFs etc
-
-        # linearise then trim
         if self.settings['gravity'].value:
             self.sys.linearise_gravity_forces()
 
@@ -97,6 +185,14 @@ class LinearBeam(BaseElement):
 
         if t_ref is not None:
             self.sys.scale_system_normalised_time(t_ref)
+
+        # import sharpy.linear.assembler.linearthrust as linearthrust
+        # engine = linearthrust.LinearThrust()
+        # engine.initialise()
+
+        # K_thrust = engine.generate(self.tsstruct0, self.sys)
+        #
+        # self.sys.Kstr += K_thrust
 
         self.sys.assemble()
 
@@ -126,7 +222,8 @@ class LinearBeam(BaseElement):
         dof_db = {'eta': [0, num_dof_flex, 1],
                   'V': [num_dof_flex, num_dof_flex + 3, 2],
                   'W': [num_dof_flex + 3, num_dof_flex + 6, 3],
-                  'orient': [num_dof_flex + 6, num_dof_flex + num_dof_rig, 4]}
+                  'orient': [num_dof_flex + 6, num_dof_flex + num_dof_rig, 4],
+                  'yaw': [num_dof_flex + 8, num_dof_flex + num_dof_rig, 1]}
 
         # -----------------------------------------------------------------------
         # Better to place in a function available to all elements since it will equally apply
@@ -198,6 +295,8 @@ class LinearBeam(BaseElement):
         # Wing 1 and 2 nodes
         # z-displacement index
         ind_w1 = [6*i + 2 for i in range(self.sys.structure.num_node // 2)]  # Wing 1 nodes are in the first half rows
+        ind_w1_x = [6*i for i in range(self.sys.structure.num_node // 2)]  # Wing 1 nodes are in the first half rows
+        ind_w1_y = [6*i + 1 for i in range(self.sys.structure.num_node // 2)]  # Wing 1 nodes are in the first half rows
         ind_w2 = [6*i + 2 for i in range(self.sys.structure.num_node // 2, self.sys.structure.num_node - 1)]  # Wing 2 nodes are in the second half rows
 
         sym_mode_index = []
@@ -224,7 +323,11 @@ class LinearBeam(BaseElement):
 
         # make all elastic modes have a positive z component at the wingtip
         for i in range(self.sys.U.shape[1]):
-            self.sys.U[:, i] = np.sign(self.sys.U[ind_w1[-1], i]) * self.sys.U[:, i]
+            if np.abs(self.sys.U[ind_w1[-1], i]) > 1e-10:
+                self.sys.U[:, i] = np.sign(self.sys.U[ind_w1[-1], i]) * self.sys.U[:, i]
+            elif np.abs(self.sys.U[ind_w1_y, i][-1]) > 1e-4:
+                self.sys.U[:, i] = np.sign(self.sys.U[ind_w1_y[-1], i]) * self.sys.U[:, i]
+
         self.sys.freq_natural = self.sys.freq_natural[sym_mode_index]
         self.sys.num_modes = len(self.sys.freq_natural)
 
@@ -252,16 +355,20 @@ class LinearBeam(BaseElement):
         vdof = self.sys.structure.vdof
         num_node = struct_tstep.num_node
         num_dof = 6*sum(vdof >= 0)
-        if len(x_n) == 2 * num_dof:
+        if self.sys.clamped:
             clamped = True
             rig_dof = 0
         else:
             clamped = False
-            rig_dof = 10
+            if self.settings['use_euler']:
+                rig_dof = 9
+            else:
+                rig_dof = 10
 
         q = np.zeros_like(struct_tstep.q)
-        dqdt = np.zeros_like(struct_tstep.dqdt)
-        dqddt = np.zeros_like(struct_tstep.dqddt)
+        q = np.zeros((num_dof + rig_dof))
+        dqdt = np.zeros_like(q)
+        dqddt = np.zeros_like(q)
 
         pos = np.zeros_like(struct_tstep.pos)
         pos_dot = np.zeros_like(struct_tstep.pos_dot)
@@ -295,7 +402,11 @@ class LinearBeam(BaseElement):
 
         if not clamped:
             for_vel = dqdt[-rig_dof: -rig_dof + 6]
-            quat = dqdt[-4:]
+            if self.settings['use_euler']:
+                euler = dqdt[-4:-1]
+                quat = algebra.euler2quat(euler)
+            else:
+                quat = dqdt[-4:]
             for_pos = q[-rig_dof:-rig_dof + 6]
             for_acc = dqddt[-rig_dof:-rig_dof + 6]
 
@@ -310,7 +421,7 @@ class LinearBeam(BaseElement):
         try:
             Crr = self.sys.Crr_grav
             Csr = self.sys.Csr_grav
-            C_grav[:-rig_dof, -rig_dof:] = Csr
+            C_grav[:-rig_dof, -rig_dof:] = Csr # TODO: sort out changing q vector with euler
             C_grav[-rig_dof:, -rig_dof:] = Crr
             K_grav[-rig_dof:, :-rig_dof] = self.sys.Krs_grav
             K_grav[:-rig_dof, :-rig_dof] = self.sys.Kss_grav
@@ -318,14 +429,14 @@ class LinearBeam(BaseElement):
             for i in range(gravity_forces.shape[0]-1):
                 #add bc at node - doing it manually here
                 gravity_forces[i+1, :] = fgrav[6*i:6*(i+1)]
-            gravity_forces[0, :] = fgrav[-10:-4] - np.sum(gravity_forces[1:], 0)
+            gravity_forces[0, :] = fgrav[-rig_dof:-rig_dof+6] - np.sum(gravity_forces[1:], 0)
         except AttributeError:
             pass
 
         current_time_step = struct_tstep.copy()
-        current_time_step.q = q + struct_tstep.q
-        current_time_step.dqdt = dqdt + struct_tstep.dqdt
-        current_time_step.dqddt = dqddt + struct_tstep.dqddt
+        current_time_step.q[:len(q)] = q + struct_tstep.q[:len(q)]
+        current_time_step.dqdt[:len(q)] = dqdt + struct_tstep.dqdt[:len(q)]
+        current_time_step.dqddt[:len(q)] = dqddt + struct_tstep.dqddt[:len(q)]
         current_time_step.pos = pos + struct_tstep.pos
         current_time_step.pos_dot = pos + struct_tstep.pos_dot
         current_time_step.psi = psi + struct_tstep.psi
@@ -341,6 +452,26 @@ class LinearBeam(BaseElement):
         current_time_step.steady_applied_forces = steady_applied_forces + struct_tstep.steady_applied_forces
 
         return current_time_step
+
+    def rigid_aero_forces(self):
+
+        # Debug adding rigid forces from tornado
+        derivatives_alpha = np.zeros((6, 5))
+        derivatives_alpha[0, :] = np.array([0.0511, 0, 0, 0.08758, 0])  # drag derivatives
+        derivatives_alpha[1, :] = np.array([0, 0, -0.05569, 0, 0])  # Y derivatives
+        derivatives_alpha[2, :] = np.array([5.53, 0, 0, 11.35, 0])  # lift derivatives
+        derivatives_alpha[3, :] = np.array([0, 0, -0.609, 0, 0])  # roll derivatives
+        derivatives_alpha[4, :] = np.array([-9.9988, 0, 0, -37.61, 0]) # pitch derivatives
+        derivatives_alpha[5, :] = np.array([0, 0, -0.047, 0, 0])  # yaw derivatives
+
+        Cx0 = -0.0324
+        Cz0 = 0.436
+        Cm0 = -0.78966
+
+
+        quat = self.tsstruct0.quat
+        Cga = algebra.quat2rotation(quat)
+
 
 
 class VectorVariable(object):
