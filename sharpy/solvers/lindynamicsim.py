@@ -12,11 +12,12 @@ import time
 import warnings
 
 @solver
-class LinearDynamicSimulation(BaseSolver):
+class LinDynamicSim(BaseSolver):
     """Time-domain solution of Linear Time Invariant Systems
 
     """
     solver_id = 'LinDynamicSim'
+    solver_classification = 'Coupled'
 
     settings_types = dict()
     settings_default = dict()
@@ -266,7 +267,7 @@ def state_to_timestep(data, x, u=None, y=None):
         track_body=True)
 
     current_aero_tstep = data.aero.timestep_info[-1].copy()
-    current_aero_tstep.forces = [forces[i_surf] + 0 * data.linear.tsaero0.forces[i_surf] for i_surf in
+    current_aero_tstep.forces = [forces[i_surf] + data.linear.tsaero0.forces[i_surf] for i_surf in
                                  range(len(gamma))]
     current_aero_tstep.gamma = [gamma[i_surf] + data.linear.tsaero0.gamma[i_surf] for i_surf in
                                 range(len(gamma))]

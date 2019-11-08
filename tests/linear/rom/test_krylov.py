@@ -15,13 +15,13 @@ import sharpy.linear.src.libsparse as libsp
 import sharpy.postproc.frequencyresponse as frequencyresponse
 import matplotlib.pyplot as plt
 
-cout.cout_wrap.initialise(True, False)
 
 class TestKrylov(unittest.TestCase):
 
     test_dir = sharpydir.SharpyDir + '/tests/linear/rom'
 
     def setUp(self):
+        cout.cout_wrap.initialise(True, False)
         A = scio.loadmat(TestKrylov.test_dir + '/src/' + 'A.mat')
         B = scio.loadmat(TestKrylov.test_dir + '/src/' + 'B.mat')
         C = scio.loadmat(TestKrylov.test_dir + '/src/' + 'C.mat')
@@ -36,8 +36,8 @@ class TestKrylov(unittest.TestCase):
 
         self.rom = krylov.Krylov()
 
-        if not os.path.exists('./figs'):
-            os.makedirs('./figs')
+        if not os.path.exists(self.test_dir + '/figs'):
+            os.makedirs(self.test_dir + '/figs')
 
     def run_test(self, test_settings):
         self.rom.initialise(test_settings)
@@ -55,7 +55,7 @@ class TestKrylov(unittest.TestCase):
         plt.semilogx(wv, Y_fom[0, 0, :].real)
         plt.semilogx(wv, Y_rom[0, 0, :].real)
 
-        fig.savefig('./figs/%sfreqresp.png' %test_settings['algorithm'])
+        fig.savefig(self.test_dir + '/figs/%sfreqresp.png' %test_settings['algorithm'])
 
         assert np.log10(max_error) < -2, 'Significant mismatch in ROM frequency Response'
 
@@ -78,7 +78,9 @@ class TestKrylov(unittest.TestCase):
                                  'frequency': algorithm_list[algorithm]['frequency']}
                 self.run_test(test_settings)
 
-
+    def tearDown(self):
+        import shutil
+        shutil.rmtree(self.test_dir + '/figs/')
 
 if __name__ == '__main__':
     unittest.main()

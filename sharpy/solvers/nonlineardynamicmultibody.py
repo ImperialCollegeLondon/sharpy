@@ -262,9 +262,8 @@ class NonLinearDynamicMultibody(_BaseStructural):
         for iteration in range(self.settings['max_iterations'].value):
             # Check if the maximum of iterations has been reached
             if iteration == self.settings['max_iterations'].value - 1:
-                error = ('Solver did not converge in ', iteration, ' iterations.\n' +
-                         'res = ', res  + '\n'+
-                         'LM_res = ', LM_res)
+                error = ('Solver did not converge in %d iterations.\n res = %e \n LM_res = %e' % 
+                        (iteration, res, LM_res))
                 raise exc.NotConvergedSolver(error)
 
             # Update positions and velocities

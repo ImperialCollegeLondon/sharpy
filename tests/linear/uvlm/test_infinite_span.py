@@ -177,12 +177,7 @@ class Test_infinite_span(unittest.TestCase):
 
         ### ----- linearisation
         uvlm = linuvlm.Dynamic(tsaero0,
-                               dynamic_settings=ws.config['LinearUvlm'],
-                               dt=ws.config['LinearUvlm']['dt'],
-                               integr_order=ws.config['LinearUvlm']['integr_order'],
-                               RemovePredictor=ws.config['LinearUvlm']['remove_predictor'],
-                               ScalingDict=ws.config['LinearUvlm']['ScalingDict'],
-                               UseSparse=ws.config['LinearUvlm']['use_sparse'])
+                               dynamic_settings=ws.config['LinearUvlm'])
         uvlm.assemble_ss()
         zeta_pole = np.array([0., 0., 0.])
         uvlm.get_total_forces_gain(zeta_pole=zeta_pole)
@@ -435,6 +430,7 @@ class Test_infinite_span(unittest.TestCase):
             '(%.2e and %.2e) too large. Verify Linear UVLM.' % (er_th_2perc, er_th_1perc)
 
     def tearDown(self):
+
         try:
             shutil.rmtree(self.route_test_dir + '/res/')
             shutil.rmtree(self.route_test_dir + '/figs/')

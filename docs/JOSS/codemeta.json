@@ -1,0 +1,20 @@
+{
+  "@context": "https://raw.githubusercontent.com/codemeta/codemeta/master/codemeta.jsonld",
+  "@type": "Code",
+  "author": [
+    "Alfonso del Carre",
+    "Arturo Muñoz-Simón",
+    "Norberto Goizueta",
+    "Rafael Palacios"
+  ],
+  "identifier": "",
+  "codeRepository": "https://github.com/imperialcollegelondon/sharpy",
+  "datePublished": "2019-11-04",
+  "dateModified": "2019-11-04",
+  "dateCreated": "2019-11-04",
+  "description": "A dynamic aeroelastic simulation toolbox for very flexible aircraft and wind turbines",
+  "keywords": "aeroelasticity, structural dynamics, aerodynamics, solar flight, perpetual flight, wing energy",
+  "license": "BSD-3",
+  "title": "SHARPy",
+  "version": "v1.0.0-rc1"
+}

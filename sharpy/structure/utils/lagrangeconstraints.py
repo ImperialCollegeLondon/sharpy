@@ -254,7 +254,7 @@ def def_rot_axis_FoR_wrt_node(MB_tstep, MB_beam, FoR_body, node_body, node_numbe
             # indep = np.array([0,1], dtype = int)
             indep[:] = [0, 1]
             # new_Lambda_dot = np.array([Lambda_dot[ieq], Lambda_dot[ieq+1], 0.0])
-
+    
     new_Lambda_dot = np.zeros(3)
     new_Lambda_dot[indep[0]] = Lambda_dot[ieq]
     new_Lambda_dot[indep[1]] = Lambda_dot[ieq+1]
@@ -826,7 +826,7 @@ class fully_constrained_node_FoR(BaseLagrangeConstraint):
     _lc_id = 'fully_constrained_node_FoR'
 
     def __init__(self):
-        self.required_parameters = ['node_in_body', 'node_body', 'body_FoR']
+        self.required_parameters = ['node_in_body', 'body', 'body_FoR']
         self._n_eq = 6
 
     def get_n_eq(self):
@@ -840,9 +840,9 @@ class fully_constrained_node_FoR(BaseLagrangeConstraint):
                 # cout.cout_wrap(k, v)
 
         cout.cout_wrap("WARNING: do not use fully_constrained_node_FoR. It is outdated", 3)
-        self.node_in_body = MBdict_entry['node_in_body']
-        self.node_body = MBdict_entry['node_body']
-        self.body_FoR = MBdict_entry['body_FoR']
+        self.node_number = MBdict_entry['node_in_body']
+        self.node_body = MBdict_entry['body']
+        self.FoR_body = MBdict_entry['body_FoR']
         self._ieq = ieq
         return self._ieq + self._n_eq
 
@@ -858,19 +858,19 @@ class fully_constrained_node_FoR(BaseLagrangeConstraint):
         Bnh = np.zeros((num_LM_eq_specific, sys_size), dtype=ct.c_double, order = 'F')
         B = np.zeros((num_LM_eq_specific, sys_size), dtype=ct.c_double, order = 'F')
 
-        node_dof = define_node_dof(MB_beam, self.node_body, self.node_in_body)
-        FoR_dof = define_FoR_dof(MB_beam, self.body_FoR)
+        node_dof = define_node_dof(MB_beam, self.node_body, self.node_number)
+        FoR_dof = define_FoR_dof(MB_beam, self.FoR_body)
         ieq = self._ieq
 
         # Option with non holonomic constraints
         # BC for linear velocities
         Bnh[:3, node_dof:node_dof+3] = -1.0*np.eye(3)
-        quat = algebra.quat_bound(MB_tstep[self.body_FoR].quat)
+        quat = algebra.quat_bound(MB_tstep[self.FoR_body].quat)
         Bnh[:3, FoR_dof:FoR_dof+3] = algebra.quat2rotation(quat)
 
         # BC for angular velocities
         Bnh[3:6,FoR_dof+3:FoR_dof+6] = -1.0*algebra.quat2rotation(quat)
-        ielem, inode_in_elem = MB_beam[0].node_master_elem[self.node_in_body]
+        ielem, inode_in_elem = MB_beam[0].node_master_elem[self.node_number]
         Bnh[3:6,node_dof+3:node_dof+6] = algebra.crv2tan(MB_tstep[0].psi[ielem, inode_in_elem, :])
 
         LM_C[sys_size+ieq:sys_size+ieq+num_LM_eq_specific,:sys_size] += scalingFactor*Bnh
@@ -879,7 +879,7 @@ class fully_constrained_node_FoR(BaseLagrangeConstraint):
         LM_Q[:sys_size] += scalingFactor*np.dot(np.transpose(Bnh),Lambda_dot[ieq:ieq+num_LM_eq_specific])
         LM_Q[sys_size+ieq:sys_size+ieq+3] += -MB_tstep[0].pos_dot[-1,:] + np.dot(algebra.quat2rotation(quat),MB_tstep[1].for_vel[0:3])
         LM_Q[sys_size+ieq+3:sys_size+ieq+6] += (np.dot(algebra.crv2tan(MB_tstep[0].psi[ielem, inode_in_elem, :]),MB_tstep[0].psi_dot[ielem, inode_in_elem, :]) -
-                                      np.dot(algebra.quat2rotation(quat), MB_tstep[self.body_FoR].for_vel[3:6]))
+                                      np.dot(algebra.quat2rotation(quat), MB_tstep[self.FoR_body].for_vel[3:6]))
 
         #LM_K[FoR_dof:FoR_dof+3,FoR_dof+6:FoR_dof+10] = algebra.der_CquatT_by_v(MB_tstep[body_FoR].quat,Lambda_dot)
         LM_C[FoR_dof:FoR_dof+3,FoR_dof+6:FoR_dof+10] += algebra.der_CquatT_by_v(quat,scalingFactor*Lambda_dot[ieq:ieq+3])
@@ -894,6 +894,7 @@ class fully_constrained_node_FoR(BaseLagrangeConstraint):
         return
 
     def dynamicpost(self, lc_list, MB_beam, MB_tstep):
+        MB_tstep[self.FoR_body].for_pos[0:3] = np.dot(algebra.quat2rotation(MB_tstep[self.node_body].quat), MB_tstep[self.node_body].pos[self.node_number,:]) + MB_tstep[self.node_body].for_pos[0:3]
         return
 
 

@@ -89,7 +89,7 @@ settings_default_dynamic['track_body_number'] = -1
 class Static():
     """	Static linear solver """
 
-    def __init__(self, tsdata, for_vel=np.zeros((6),)):
+    def __init__(self, tsdata, for_vel=np.zeros((6,))):
 
         print('Initialising Static linear UVLM solver class...')
         t0 = time.time()
@@ -555,7 +555,7 @@ class Dynamic(Static):
     """
 
     def __init__(self, tsdata, dt=None, dynamic_settings=None, integr_order=2,
-                       RemovePredictor=True, ScalingDict=None, UseSparse=True, for_vel=np.zeros((6),)):
+                       RemovePredictor=True, ScalingDict=None, UseSparse=True, for_vel=np.zeros((6,))):
 
         super().__init__(tsdata, for_vel=for_vel)
 
@@ -857,7 +857,6 @@ class Dynamic(Static):
         if self.use_sparse:
             Bss = libsp.csc_matrix(Bss)
         LU, P = None, None
-
         # ---------------------------------------------------------- output eq.
 
         ### state terms (C matrix)

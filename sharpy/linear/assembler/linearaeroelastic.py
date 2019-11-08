@@ -1,4 +1,5 @@
 import sharpy.linear.utils.ss_interface as ss_interface
+import scipy.sparse as scsp
 import numpy as np
 import sharpy.linear.src.libss as libss
 import scipy.linalg as sclalg
@@ -48,6 +49,10 @@ class LinearAeroelastic(ss_interface.BaseElement):
     settings_default['track_body'] = True
     settings_description['track_body'] = 'UVLM inputs and outputs projected to coincide with lattice at linearisation'
 
+    settings_types['use_euler'] = 'bool'
+    settings_default['use_euler'] = False
+    settings_description['use_euler'] = 'Parametrise orientations in terms of Euler angles'
+
     settings_table = settings.SettingsTable()
     __doc__ += settings_table.generate(settings_types, settings_default, settings_description)
 
@@ -88,11 +93,15 @@ class LinearAeroelastic(ss_interface.BaseElement):
             self.settings = None
         settings.to_custom_types(self.settings, self.settings_types, self.settings_default)
 
+        if self.settings['use_euler']:
+            self.settings['aero_settings']['use_euler'] = True
+            self.settings['beam_settings']['use_euler'] = True
+
         # Create Linear UVLM
         self.uvlm = ss_interface.initialise_system('LinearUVLM')
         self.uvlm.initialise(data, custom_settings=self.settings['aero_settings'])
         if self.settings['uvlm_filename'] == '':
-            self.uvlm.assemble()
+            self.uvlm.assemble(track_body=self.settings['track_body'].value)
         else:
             self.load_uvlm_from_file = True
 
@@ -150,7 +159,7 @@ class LinearAeroelastic(ss_interface.BaseElement):
         total_dof = flex_nodes + rigid_dof
 
         if rigid_dof > 0:
-            rigid_dof = beam.Kstr.shape[0]-self.Kss.shape[0]
+            rigid_dof = beam.sys.Kstr.shape[0]-self.Kss.shape[0]
             stiff_aero[flex_nodes:, :flex_nodes] = self.Krs
 
             damping_aero[:flex_nodes, flex_nodes:] = self.Csr
@@ -160,7 +169,10 @@ class LinearAeroelastic(ss_interface.BaseElement):
         beam.sys.Cstr += damping_aero
         beam.sys.Kstr += stiff_aero
 
-        beam.assemble(t_ref=uvlm.sys.ScalingFacts['time'])
+        if uvlm.scaled:
+            beam.assemble(t_ref=uvlm.sys.ScalingFacts['time'])
+        else:
+            beam.assemble()
 
         if not self.load_uvlm_from_file:
             # Projecting the UVLM inputs and outputs onto the structural degrees of freedom
@@ -198,9 +210,12 @@ class LinearAeroelastic(ss_interface.BaseElement):
                 uvlm.ss.addGain(out_mode_matrix, where='out')
 
             # Reduce uvlm projected onto structural coordinates
-            if uvlm.rom is not None:
-                for k, rom in uvlm.rom.items():
-                    uvlm.ss = rom.run(uvlm.ss)
+            if uvlm.rom:
+                if rigid_dof != 0:
+                    self.runrom_rbm(uvlm)
+                else:
+                    for k, rom in uvlm.rom.items():
+                        uvlm.ss = rom.run(uvlm.ss)
 
         else:
             uvlm.ss = self.load_uvlm(self.settings['uvlm_filename'])
@@ -212,19 +227,28 @@ class LinearAeroelastic(ss_interface.BaseElement):
         # Scale coupling matrices
         if uvlm.scaled:
             Tsa *= uvlm.sys.ScalingFacts['force'] * uvlm.sys.ScalingFacts['time'] ** 2
-        if rigid_dof > 0:
-            raise NotImplementedError('Linearisation of problems with rigid body dynamics not yet implemented')
-            warnings.warn('Time scaling for problems with rigid body motion under development.')
-            Tas[:flex_nodes + 3, :flex_nodes + 3] /= uvlm.sys.ScalingFacts['length']
-            Tas[total_dof: total_dof + flex_nodes + 3] /= uvlm.sys.ScalingFacts['length']
-        else:
-            if not self.settings['beam_settings']['modal_projection'].value:
-                Tas /= uvlm.sys.ScalingFacts['length']
+            if rigid_dof > 0:
+                warnings.warn('Time scaling for problems with rigid body motion under development.')
+                Tas[:flex_nodes + 6, :flex_nodes + 6] /= uvlm.sys.ScalingFacts['length']
+                Tas[total_dof: total_dof + flex_nodes + 6] /= uvlm.sys.ScalingFacts['length']
+            else:
+                if not self.settings['beam_settings']['modal_projection'].value:
+                    Tas /= uvlm.sys.ScalingFacts['length']
 
         ss = libss.couple(ss01=uvlm.ss, ss02=beam.ss, K12=Tas, K21=Tsa)
+        # Conditioning of A matrix
+        # cond_a = np.linalg.cond(ss.A)
+        # if type(uvlm.ss.A) != np.ndarray:
+        #     cond_a_uvlm = np.linalg.cond(uvlm.ss.A.todense())
+        # else:
+        #     cond_a_uvlm = np.linalg.cond(uvlm.ss.A)
+        # cond_a_beam = np.linalg.cond(beam.ss.A)
+        # cout.cout_wrap('Matrix A condition = %e' % cond_a)
+        # cout.cout_wrap('Matrix A_uvlm condition = %e' % cond_a_uvlm)
+        # cout.cout_wrap('Matrix A_beam condition = %e' % cond_a_beam)
+
         self.couplings['Tas'] = Tas
         self.couplings['Tsa'] = Tsa
-        Y_freq = uvlm.ss.freqresp(np.array([0]))[:, :, 0]
         self.state_variables = {'aero': uvlm.ss.states,
                                 'beam': beam.ss.states}
 
@@ -235,6 +259,12 @@ class LinearAeroelastic(ss_interface.BaseElement):
                 self.settings['beam_settings']['inout_coords'] == 'modes':
             self.linearisation_vectors['forces_aero_beam_dof'] = out_mode_matrix.dot(self.linearisation_vectors['forces_aero_beam_dof'])
 
+        cout.cout_wrap('Aeroelastic system assembled:')
+        cout.cout_wrap('\tAerodynamic states: %g' % uvlm.ss.states, 1)
+        cout.cout_wrap('\tStructural states: %g' % beam.ss.states, 1)
+        cout.cout_wrap('\tTotal states: %g' % ss.states, 1)
+        cout.cout_wrap('\tInputs: %g' % ss.inputs, 1)
+        cout.cout_wrap('\tOutputs: %g' % ss.outputs, 1)
         return ss
 
     def update(self, u_infty):
@@ -260,6 +290,49 @@ class LinearAeroelastic(ss_interface.BaseElement):
                                K12=self.couplings['Tas'], K21=self.couplings['Tsa'])
 
         return self.ss
+
+    def runrom_rbm(self, uvlm):
+        ss = uvlm.ss
+        rig_nodes = self.beam.sys.num_dof_rig
+        if rig_nodes == 9:
+            orient_dof = 3
+        else:
+            orient_dof = 4
+        # Input side
+        if self.settings['beam_settings']['modal_projection'].value == True and \
+                self.settings['beam_settings']['inout_coords'] == 'modes':
+            rem_int_modes = np.zeros((ss.inputs, ss.inputs - rig_nodes))
+            rem_int_modes[rig_nodes:, :] = np.eye(ss.inputs - rig_nodes)
+
+            # Output side - remove quaternion equations output
+            rem_quat_out = np.zeros((ss.outputs-orient_dof, ss.outputs))
+            # find quaternion indices
+            U = self.beam.sys.U
+            indices = np.where(U[-orient_dof:, :] == 1.)[1]
+            j = 0
+            for i in range(ss.outputs):
+                if i in indices:
+                    continue
+                rem_quat_out[j, i] = 1
+                j += 1
+
+        else:
+            rem_int_modes = np.zeros((ss.inputs, ss.inputs - rig_nodes))
+            rem_int_modes[:self.beam.sys.num_dof_flex, :self.beam.sys.num_dof_flex] = \
+                np.eye(self.beam.sys.num_dof_flex)
+            rem_int_modes[self.beam.sys.num_dof_flex+rig_nodes:, self.beam.sys.num_dof_flex:] = \
+                np.eye(ss.inputs - self.beam.sys.num_dof_flex - rig_nodes)
+
+            rem_quat_out = np.zeros((ss.outputs-orient_dof, ss.outputs))
+            rem_quat_out[:, :-orient_dof] = np.eye(ss.outputs-orient_dof)
+
+        ss.addGain(rem_int_modes, where='in')
+        ss.addGain(rem_quat_out, where='out')
+        for k, rom in uvlm.rom.items():
+            uvlm.ss = rom.run(uvlm.ss)
+
+        uvlm.ss.addGain(rem_int_modes.T, where='in')
+        uvlm.ss.addGain(rem_quat_out.T, where='out')
 
     def get_gebm2uvlm_gains(self, data):
         r"""
@@ -405,6 +478,39 @@ class LinearAeroelastic(ss_interface.BaseElement):
                     C_{sr}^{rot} -= T^\top\widetilde{\mathbf{X}}_B C^{BG}
                     \frac{\partial}{\partial\boldsymbol{\chi}}
                     \left(C^{GA} C^{AG}_0 \boldsymbol{f}_{G,0}\right)\delta\boldsymbol{\chi}
+
+
+        The ``track_body`` setting.
+
+        When ``track_body`` is enabled, the UVLM grid is no longer coincident with the inertial reference frame
+        throughout the simulation but rather it is able to rotate as the ``A`` frame rotates. This is to simulate a free
+        flying vehicle, where, for instance, the orientation does not affect the aerodynamics. The UVLM defined in this
+        frame of reference, named ``U``, satisfies the following convention:
+
+            * The ``U`` frame is coincident with the ``G`` frame at the time of linearisation.
+
+            * The ``U`` frame rotates as the ``A`` frame rotates.
+
+        Transformations related to the ``U`` frame of reference:
+
+            * The angle between the ``U`` frame and the ``A`` frame is always constant and equal
+              to :math:`\boldsymbol{\Theta}_0`.
+
+            * The angle between the ``A`` frame and the ``G`` frame is :math:`\boldsymbol{\Theta}=\boldsymbol{\Theta}_0
+              + \delta\boldsymbol{\Theta}`
+
+            * The projection of a vector expressed in the ``G`` frame onto the ``U`` frame is expressed by:
+
+                .. math:: \boldsymbol{v}^U = C^{GA}_0 C^{AG} \boldsymbol{v}^G
+
+            * The reverse, a projection of a vector expressed in the ``U`` frame onto the ``G`` frame, is expressed by
+
+                .. math:: \boldsymbol{v}^U = C^{GA} C^{AG}_0 \boldsymbol{v}^U
+
+        The effect this has on the aeroelastic coupling between the UVLM and the structural dynamics is that the
+        orientation and change of orientation of the vehicle has no effect on the aerodynamics. The aerodynamics are
+        solely affected by the contribution of the 6-rigid body velocities (as well as the flexible DOFs velocities).
+
         """
 
         aero = data.aero
@@ -437,7 +543,7 @@ class LinearAeroelastic(ss_interface.BaseElement):
         Cag = Cga.T
 
         # for_pos=tsstr.for_pos
-        for_tra = tsstr.for_vel[:3]
+        for_vel = tsstr.for_vel[:3]
         for_rot = tsstr.for_vel[3:]
         skew_for_rot = algebra.skew(for_rot)
         Der_vel_Ra = np.dot(Cga, skew_for_rot)
@@ -525,7 +631,7 @@ class LinearAeroelastic(ss_interface.BaseElement):
                     XbskewTan = np.dot(Xbskew, Tan)
 
                     # get velocity terms
-                    zetag_dot = tsaero.zeta_dot[ss][:, mm, nn]  # in G FoR, w.r.t. origin A-G
+                    zetag_dot = tsaero.zeta_dot[ss][:, mm, nn] - Cga.dot(for_vel)  # in G FoR, w.r.t. origin A-G
                     zetaa_dot = np.dot(Cag, zetag_dot)  # in A FoR, w.r.t. origin A-G
 
                     # get aero force
@@ -552,6 +658,11 @@ class LinearAeroelastic(ss_interface.BaseElement):
                     if use_euler:
                         Kdisp_vel[np.ix_(ii_vert, jj_euler)] += \
                             algebra.der_Ceuler_by_v(tsstr.euler, zetaa)
+
+                        # Track body - project inputs as for A not moving
+                        if track_body:
+                            Kdisp_vel[np.ix_(ii_vert, jj_euler)] += \
+                                Cga.dot(algebra.der_Peuler_by_v(tsstr.euler, zetag))
                     else:
                         # Equation 25
                         # Kdisp[np.ix_(ii_vert, jj_quat)] += \
@@ -580,7 +691,7 @@ class LinearAeroelastic(ss_interface.BaseElement):
                         Kvel_disp[np.ix_(ii_vert, jj_rot)] += np.dot(Cbg.T, np.dot(
                             algebra.skew(np.dot(XbskewTan, psi_dot)), Tan))
 
-                        if np.linalg.norm(psi) >=1e-6:
+                        if np.linalg.norm(psi) >= 1e-6:
                             Kvel_disp[np.ix_(ii_vert, jj_rot)] -= \
                                 np.dot(Cbg.T,
                                        np.dot(Xbskew,
@@ -593,6 +704,11 @@ class LinearAeroelastic(ss_interface.BaseElement):
                     if use_euler:
                         Kvel_vel[np.ix_(ii_vert, jj_euler)] += \
                             algebra.der_Ceuler_by_v(tsstr.euler, zetaa_dot)
+
+                        # Track body if ForA is rotating
+                        if track_body:
+                            Kvel_vel[np.ix_(ii_vert, jj_euler)] += \
+                                Cga.dot(algebra.der_Peuler_by_v(tsstr.euler, zetag_dot))
                     else:
                         Kvel_vel[np.ix_(ii_vert, jj_quat)] += \
                             algebra.der_Cquat_by_v(tsstr.quat, zetaa_dot)
@@ -643,15 +759,19 @@ class LinearAeroelastic(ss_interface.BaseElement):
 
                     ### flexible dof equations (Kss and Csr)
                     if bc_here != 1:
-                        # forces
+                        # nodal forces
                         if use_euler:
-                            Csr[jj_tra, -3:] -= algebra.der_Peuler_by_v(tsstr.euler, faero)
+                            if not track_body:
+                                Csr[jj_tra, -3:] -= algebra.der_Peuler_by_v(tsstr.euler, faero)
+                                # Csr[jj_tra, -3:] -= algebra.der_Ceuler_by_v(tsstr.euler, Cga.T.dot(faero))
+
                         else:
-                            Csr[jj_tra, -4:] -= algebra.der_CquatT_by_v(tsstr.quat, faero)
+                            if not track_body:
+                                Csr[jj_tra, -4:] -= algebra.der_CquatT_by_v(tsstr.quat, faero)
 
                             # Track body
-                            if track_body:
-                                Csr[jj_tra, -4:] -= algebra.der_Cquat_by_v(tsstr.quat, Cga.T.dot(faero))
+                            # if track_body:
+                            #     Csr[jj_tra, -4:] -= algebra.der_Cquat_by_v(tsstr.quat, Cga.T.dot(faero))
 
                         ### moments
                         TanTXbskew = np.dot(Tan.T, Xbskew)
@@ -662,22 +782,30 @@ class LinearAeroelastic(ss_interface.BaseElement):
                             np.dot(TanTXbskew, algebra.der_CcrvT_by_v(psi, np.dot(Cag, faero)))
                         # contribution of delta aero moment (dquat)
                         if use_euler:
-                            Csr[jj_rot, -3:] -= \
-                                np.dot(TanTXbskew,
-                                       np.dot(Cba,
-                                              algebra.der_Peuler_by_v(tsstr.euler, faero)))
-                        else:
-                            Csr[jj_rot, -4:] -= \
-                                np.dot(TanTXbskew,
-                                       np.dot(Cba,
-                                              algebra.der_CquatT_by_v(tsstr.quat, faero)))
+                            if not track_body:
+                                Csr[jj_rot, -3:] -= \
+                                    np.dot(TanTXbskew,
+                                           np.dot(Cba,
+                                                  algebra.der_Peuler_by_v(tsstr.euler, faero)))
 
-                            # Track body
-                            if track_body:
+                            # if track_body:
+                            #     Csr[jj_rot, -3:] -= \
+                            #         np.dot(TanTXbskew,
+                            #                np.dot(Cbg,
+                            #                       algebra.der_Peuler_by_v(tsstr.euler, Cga.T.dot(faero))))
+                        else:
+                            if not track_body:
                                 Csr[jj_rot, -4:] -= \
                                     np.dot(TanTXbskew,
-                                           np.dot(Cbg,
-                                                  algebra.der_CquatT_by_v(tsstr.quat, Cga.T.dot(faero))))
+                                           np.dot(Cba,
+                                                  algebra.der_CquatT_by_v(tsstr.quat, faero)))
+
+                            # Track body
+                            # if track_body:
+                            #     Csr[jj_rot, -4:] -= \
+                            #         np.dot(TanTXbskew,
+                            #                np.dot(Cbg,
+                            #                       algebra.der_CquatT_by_v(tsstr.quat, Cga.T.dot(faero))))
 
                     ### rigid body eqs (Crs and Crr)
 
@@ -690,32 +818,34 @@ class LinearAeroelastic(ss_interface.BaseElement):
                                                    algebra.der_Ccrv_by_v(psi, Xb))
 
                     if use_euler:
-                        # total force
-                        Crr[:3, -3:] -= algebra.der_Peuler_by_v(tsstr.euler, faero)
+                        if not track_body:
+                            # total force
+                            Crr[:3, -3:] -= algebra.der_Peuler_by_v(tsstr.euler, faero)
 
-                        # total moment contribution due to change in euler angles
-                        Crr[3:6, -3:] -= algebra.der_Peuler_by_v(tsstr.euler, np.cross(zetag, faero))
-                        Crr[3:6, -3:] += np.dot(
-                            np.dot(Cag, algebra.skew(faero)),
-                            algebra.der_Peuler_by_v(tsstr.euler, np.dot(Cab, Xb)))
+                            # total moment contribution due to change in euler angles
+                            Crr[3:6, -3:] -= algebra.der_Peuler_by_v(tsstr.euler, np.cross(zetag, faero))
+                            Crr[3:6, -3:] += np.dot(
+                                np.dot(Cag, algebra.skew(faero)),
+                                algebra.der_Peuler_by_v(tsstr.euler, np.dot(Cab, Xb)))
 
                     else:
-                        # total force
-                        Crr[:3, -4:] -= algebra.der_CquatT_by_v(tsstr.quat, faero)
+                        if not track_body:
+                            # total force
+                            Crr[:3, -4:] -= algebra.der_CquatT_by_v(tsstr.quat, faero)
 
-                        # total moment contribution due to quaternion
-                        Crr[3:6, -4:] -= algebra.der_CquatT_by_v(tsstr.quat, np.cross(zetag, faero))
-                        Crr[3:6, -4:] += np.dot(
-                            np.dot(Cag, algebra.skew(faero)),
-                            algebra.der_CquatT_by_v(tsstr.quat, np.dot(Cab, Xb)))
+                            # total moment contribution due to quaternion
+                            Crr[3:6, -4:] -= algebra.der_CquatT_by_v(tsstr.quat, np.cross(zetag, faero))
+                            Crr[3:6, -4:] += np.dot(
+                                np.dot(Cag, algebra.skew(faero)),
+                                algebra.der_CquatT_by_v(tsstr.quat, np.dot(Cab, Xb)))
 
-                        # Track body
-                        if track_body:
-                            # NG 20/8/19 - is the Cag needed here? Verify
-                            Crr[:3, -4:] -= Cag.dot(algebra.der_Cquat_by_v(tsstr.quat, Cga.T.dot(faero)))
-
-                            Crr[3:6, -4:] -= Cag.dot(algebra.skew(zetag).dot(algebra.der_Cquat_by_v(tsstr.quat, Cga.T.dot(faero))))
-                            Crr[3:6, -4:] += Cag.dot(algebra.skew(faero)).dot(algebra.der_Cquat_by_v(tsstr.quat, Cga.T.dot(zetag)))
+                        # # Track body
+                        # if track_body:
+                        #     # NG 20/8/19 - is the Cag needed here? Verify
+                        #     Crr[:3, -4:] -= Cag.dot(algebra.der_Cquat_by_v(tsstr.quat, Cga.T.dot(faero)))
+                        #
+                        #     Crr[3:6, -4:] -= Cag.dot(algebra.skew(zetag).dot(algebra.der_Cquat_by_v(tsstr.quat, Cga.T.dot(faero))))
+                        #     Crr[3:6, -4:] += Cag.dot(algebra.skew(faero)).dot(algebra.der_Cquat_by_v(tsstr.quat, Cga.T.dot(zetag)))
 
 
         # transfer

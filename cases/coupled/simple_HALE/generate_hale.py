@@ -18,6 +18,9 @@ flow = ['BeamLoader',
         'AerogridPlot',
         'BeamPlot',
         'DynamicCoupled',
+        'Modal',
+        'LinearAssember',
+        'AsymptoticStability',
         ]
 
 # if free_flight is False, the motion of the centre of the wing is prescribed.
@@ -799,12 +802,23 @@ def generate_solver_file():
                                 'u_inf': u_inf,
                                 'dt': dt}
 
+    settings['Modal'] = {'print_info': True,
+                     'use_undamped_modes': True,
+                     'NumLambda': 30,
+                     'rigid_body_modes': True,
+                     'write_modes_vtk': 'on',
+                     'print_matrices': 'on',
+                     'write_data': 'on',
+                     'continuous_eigenvalues': 'off',
+                     'dt': dt,
+                     'plot_eigenvalues': False}
+
     settings['LinearAssembler'] = {'linear_system': 'LinearAeroelastic',
                                     'linear_system_settings': {
                                         'beam_settings': {'modal_projection': False,
                                                           'inout_coords': 'nodes',
                                                           'discrete_time': True,
-                                                          'newmark_damp': 0.5,
+                                                          'newmark_damp': 0.05,
                                                           'discr_method': 'newmark',
                                                           'dt': dt,
                                                           'proj_modes': 'undamped',
@@ -815,17 +829,17 @@ def generate_solver_file():
                                                           'remove_dofs': []},
                                         'aero_settings': {'dt': dt,
                                                           'integr_order': 2,
-                                                          'density': rho * 1,
+                                                          'density': rho,
                                                           'remove_predictor': False,
                                                           'use_sparse': True,
-                                                          'rigid_body_motion': True,
+                                                          'rigid_body_motion': free_flight,
                                                           'use_euler': False,
                                                           'remove_inputs': ['u_gust']},
-                                        'rigid_body_motion': True}}
+                                        'rigid_body_motion': free_flight}}
 
     settings['AsymptoticStability'] = {'sys_id': 'LinearAeroelastic',
                                         'print_info': 'on',
-                                        'modes_to_plot': [],  # [0, 13, 15, 17, 19, 21, 23, 33],
+                                        'modes_to_plot': [],
                                         'display_root_locus': 'off',
                                         'frequency_cutoff': 0,
                                         'export_eigenvalues': 'off',

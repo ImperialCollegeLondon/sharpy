@@ -126,7 +126,13 @@ class LinearUVLM(ss_interface.BaseElement):
 
         self.scaled = not all(scale == 1.0 for scale in self.settings['ScalingDict'].values())
 
-        uvlm = linuvlm.Dynamic(data.linear.tsaero0, dt=None, dynamic_settings=self.settings)
+        for_vel = data.linear.tsstruct0.for_vel
+        cga = data.linear.tsstruct0.cga()
+        uvlm = linuvlm.Dynamic(data.linear.tsaero0,
+                               dt=None,
+                               dynamic_settings=self.settings,
+                               for_vel=np.hstack((cga.dot(for_vel[:3]), cga.dot(for_vel[3:]))))
+
         self.tsaero0 = data.linear.tsaero0
         self.sys = uvlm
 
@@ -167,7 +173,7 @@ class LinearUVLM(ss_interface.BaseElement):
             self.gust_assembler = lineargust.LinearGustGenerator()
             self.gust_assembler.initialise(data.aero)
 
-    def assemble(self):
+    def assemble(self, track_body=False):
         r"""
         Assembles the linearised UVLM system, removes the desired inputs and adds linearised control surfaces
         (if present).
@@ -187,6 +193,8 @@ class LinearUVLM(ss_interface.BaseElement):
             self.sys.nondimss()
         self.ss = self.sys.SS
         self.C_to_vertex_forces = self.ss.C.copy()
+
+        nzeta = 3 * self.sys.Kzeta
 
         if self.settings['remove_inputs']:
             self.remove_inputs(self.settings['remove_inputs'])

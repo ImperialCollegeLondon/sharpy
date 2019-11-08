@@ -38,7 +38,7 @@ class AerogridLoader(BaseSolver):
 
     """
     solver_id = 'AerogridLoader'
-    solver_classification = 'aero'
+    solver_classification = 'loader'
 
     settings_types = dict()
     settings_default = dict()

@@ -239,7 +239,7 @@ Sol.get_gebm2uvlm_gains()
 
 # gains, str -> aero
 Zblock = np.zeros((3 * Sol.linuvlm.Kzeta, Sol.num_dof_str))
-Kas = np.block([[Sol.Kdisp, Zblock],
+Kas = np.block([[Sol.Kdisp, Sol.Kdisp_vel],
                 [Sol.Kvel_disp, Sol.Kvel_vel],
                 [Zblock, Zblock]])
 Zblock = None
@@ -538,7 +538,7 @@ plt.rcParams.update(std_params)
 # visualise at quarter-span, which is the furthest away point from the tip and
 # the wing clamp (which is not moving in the flex dof inputs case)
 node_plot = N // 4
-span_adim = np.linalg.norm(tsstr0.pos[node_plot]) / np.linalg.norm(tsstr0.pos[0])
+span_adim = np.linalg.norm(tsstr0.pos[node_plot]) / np.linalg.norm(2*tsstr0.pos[6])
 
 for ii in range(Nin_real):
     for oo in range(Nout):
@@ -599,6 +599,6 @@ for ii in range(Nin_real):
                     % (figfold, inputs_labs[ii], outputs_labs[oo], case_main))
         fig.savefig('%s/freq_%sto%s_%s.pdf' \
                     % (figfold, inputs_labs[ii], outputs_labs[oo], case_main))
-        fig.show()
+
         # plt.close('all')
-    # plt.show()
+    plt.show()

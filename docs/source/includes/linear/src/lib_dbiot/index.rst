@@ -1,5 +1,6 @@
-Calculate derivatives of induced velocity.
-++++++++++++++++++++++++++++++++++++++++++
+Induced Velocity Derivatives
+++++++++++++++++++++++++++++
+
 
 Calculate derivatives of induced velocity.
 
