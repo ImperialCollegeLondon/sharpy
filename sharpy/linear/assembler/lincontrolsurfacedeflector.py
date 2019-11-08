@@ -61,7 +61,7 @@ class LinControlSurfaceDeflector(object):
         """
         pass
 
-    def generate(self, linuvlm=None, tsaero0=None, tsstruct0=None, aero=None, structure=None, track_body=False):
+    def generate(self, linuvlm=None, tsaero0=None, tsstruct0=None, aero=None, structure=None):
         """
         Generates a matrix mapping a linear control surface deflection onto the aerodynamic grid.
 
@@ -97,7 +97,6 @@ class LinControlSurfaceDeflector(object):
         Kdisp = np.zeros((3 * linuvlm.Kzeta, n_control_surfaces))
         Kvel = np.zeros((3 * linuvlm.Kzeta, n_control_surfaces))
         Kmom = np.zeros((3 * linuvlm.Kzeta, n_control_surfaces))
-        Knew = np.zeros((3 * linuvlm.Kzeta, 3 * linuvlm.Kzeta + n_control_surfaces))
         zeta0 = np.concatenate([tsaero0.zeta[i_surf].reshape(-1, order='C') for i_surf in range(n_surf)])
 
         Cga = algebra.quat2rotation(tsstruct0.quat).T
