@@ -13,9 +13,63 @@ import sharpy.linear.src.libss as libss
 
 @ss_interface.linear_system
 class LinearUVLM(ss_interface.BaseElement):
-    """
+    r"""
     Linear UVLM System Assembler
 
+    Produces state-space model of the form
+
+        .. math::
+
+            \mathbf{x}_{n+1} &= \mathbf{A}\,\mathbf{x}_n + \mathbf{B} \mathbf{u}_{n+1} \\
+            \mathbf{y}_n &= \mathbf{C}\,\mathbf{x}_n + \mathbf{D} \mathbf{u}_n
+
+    where the state, inputs and outputs are:
+
+        .. math:: \mathbf{x}_n = \{ \delta \mathbf{\Gamma}_n,\, \delta \mathbf{\Gamma_{w_n}},\,
+            \Delta t\,\delta\mathbf{\Gamma}'_n,\, \delta\mathbf{\Gamma}_{n-1} \}
+
+        .. math:: \mathbf{u}_n = \{ \delta\mathbf{\zeta}_n,\, \delta\mathbf{\zeta}'_n,\,
+            \delta\mathbf{u}_{ext,n} \}
+
+        .. math:: \mathbf{y} = \{\delta\mathbf{f}\}
+
+    with :math:`\mathbf{\Gamma}\in\mathbb{R}^{MN}` being the vector of vortex circulations,
+    :math:`\mathbf{\zeta}\in\mathbb{R}^{3(M+1)(N+1)}` the vector of vortex lattice coordinates and
+    :math:`\mathbf{f}\in\mathbb{R}^{3(M+1)(N+1)}` the vector of aerodynamic forces and moments. Note
+    that :math:`(\bullet)'` denotes a derivative with respect to time.
+
+    Note that the input is atypically defined at time ``n+1``. If the setting
+    ``remove_predictor = True`` the predictor term ``u_{n+1}`` is eliminated through
+    the change of state[1]:
+
+        .. math::
+            \mathbf{h}_n &= \mathbf{x}_n - \mathbf{B}\,\mathbf{u}_n \\
+
+    such that:
+
+        .. math::
+            \mathbf{h}_{n+1} &= \mathbf{A}\,\mathbf{h}_n + \mathbf{A\,B}\,\mathbf{u}_n \\
+            \mathbf{y}_n &= \mathbf{C\,h}_n + (\mathbf{C\,B}+\mathbf{D})\,\mathbf{u}_n
+
+    which only modifies the equivalent :math:`\mathbf{B}` and :math:`\mathbf{D}` matrices.
+
+    The ``integr_order`` setting refers to the finite differencing scheme used to calculate the bound circulation
+    derivative with respect to time :math:`\dot{\mathbf{\Gamma}}`. A first order scheme is used when
+    ``integr_order == 1``
+
+    .. math:: \dot{\mathbf{\Gamma}}^{n+1} = \frac{\mathbf{\Gamma}^{n+1}-\mathbf{\Gamma}^n}{\Delta t}
+
+    If ``integr_order == 2`` a higher order scheme is used (but it isn't exactly second order accurate [1]).
+
+    .. math:: \dot{\mathbf{\Gamma}}^{n+1} = \frac{3\mathbf{\Gamma}^{n+1}-4\mathbf{\Gamma}^n + \mathbf{\Gamma}^{n-1}}
+        {2\Delta t}
+
+    References:
+        [1] Franklin, GF and Powell, JD. Digital Control of Dynamic Systems, Addison-Wesley Publishing Company, 1980
+
+        [2] Maraniello, S., & Palacios, R.. State-Space Realizations and Internal Balancing in Potential-Flow
+            Aerodynamics with
+            Arbitrary Kinematics. AIAA Journal, 57(6), 1–14. 2019. https://doi.org/10.2514/1.J058153
 
     """
     sys_id = 'LinearUVLM'
@@ -23,7 +77,7 @@ class LinearUVLM(ss_interface.BaseElement):
     settings_types = dict()
     settings_default = dict()
     settings_description = dict()
-    
+
     settings_types['dt'] = 'float'
     settings_default['dt'] = 0.1
     settings_description['dt'] = 'Time step'
@@ -89,7 +143,7 @@ class LinearUVLM(ss_interface.BaseElement):
                                        scaling_settings_description)
 
     def __init__(self):
-        
+
         self.sys = None
         self.ss = None
         self.tsaero0 = None

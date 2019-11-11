@@ -241,12 +241,6 @@ class FlexDynamic():
 
     @num_modes.setter
     def num_modes(self, value):
-        # self.U = self.U[:, :value]
-        # self.freq_natural = self.freq_natural[:value]
-        # if self.freq_damp is not None:
-        #     self.freq_damp = self.freq_damp[:value]
-        # if self.V is not None:
-        #     self.V = self.V[:value, :]
         self.update_truncated_modes(value)
         self._num_modes = value
 
@@ -723,12 +717,12 @@ class FlexDynamic():
         assert self.inout_coords in ['modes', 'nodes'], \
             'inout_coords=%s not implemented!' % self.inout_coords
 
-        cond_mass_matrix = np.linalg.cond(self.Mstr)
-        if np.log10(cond_mass_matrix) >= 10.:
-            warnings.warn('Mass matrix is poorly conditioned (Cond = 10^%f). Inverse may not be correct.'
-                          % np.log10(cond_mass_matrix), 3)
-        else:
-            cout.cout_wrap('Mass matrix condition = %e' % cond_mass_matrix)
+        # cond_mass_matrix = np.linalg.cond(self.Mstr)
+        # if np.log10(cond_mass_matrix) >= 10.:
+        #     warnings.warn('Mass matrix is poorly conditioned (Cond = 10^%f). Inverse may not be correct.'
+        #                   % np.log10(cond_mass_matrix), 3)
+        # else:
+        #     cout.cout_wrap('Mass matrix condition = %e' % cond_mass_matrix)
 
         dlti = self.dlti
         modal = self.modal
