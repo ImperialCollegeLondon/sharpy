@@ -1,5 +1,4 @@
 import sharpy.linear.utils.ss_interface as ss_interface
-import scipy.sparse as scsp
 import numpy as np
 import sharpy.linear.src.libss as libss
 import scipy.linalg as sclalg
