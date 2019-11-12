@@ -1,5 +1,7 @@
 FROM centos:8
 
+ARG conda_env=sharpy_env
+
 # Development tools including compilers
 RUN yum groupinstall "Development Tools" -y
 RUN yum install -y mesa-libGL
@@ -17,7 +19,7 @@ RUN rm /miniconda.sh
 RUN hash -r
 
 # Get SHARPy
-RUN git clone https://github.com/imperialcollegelondon/sharpy --branch=master
+RUN git clone https://github.com/imperialcollegelondon/sharpy --branch=dev_docker
 
 ENV PATH="/miniconda3/bin/:${PATH}"
 RUN conda init bash
@@ -35,12 +37,16 @@ RUN conda env create -f sharpy/utils/environment_linux.yml
 RUN yum install -y gcc-gfortran
 
 RUN conda activate sharpy_env
-
+ENV PATH="/miniconda3/envs/sharpy_env/bin:${PATH}"
 RUN conda install -c conda-forge lapack
+
 RUN git clone https://github.com/imperialcollegelondon/xbeam --branch=master
 RUN conda activate sharpy_env && cd xbeam/ && sh run_make.sh && cd ..
 RUN git clone https://github.com/imperialcollegelondon/uvlm --branch=master
 RUN conda activate sharpy_env && cd uvlm/ && sh run_make.sh && cd ..
 
-ENTRYPOINT ['sharpy/utils/sharpy_bash.sh', 'p1_entry']
+COPY ./utils/docker/* /root/
+
+ENTRYPOINT ["/bin/bash", "--init-file", "/root/bashrc"]
+#ENTRYPOINT ["/bin/bash"]
 
