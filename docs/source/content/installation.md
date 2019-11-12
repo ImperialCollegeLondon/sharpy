@@ -268,14 +268,14 @@ SHARPy cases are therefore usually ran in the following way:
     run_sharpy case.solver.sharpy
     ```
 
-### Output
+#### Output
 
 By default, the output is located in the `output` folder.
 
 The contents of the folder will typically be a `beam` and `aero` folders, which contain the output data that can then be
 loaded in Paraview.
 
-#### Running (and modifiying) a test case
+### Running (and modifiying) a test case
 
 1.  This command generates the required files for running a static, clamped beam case that is used as part of code 
 verification: 
