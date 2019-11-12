@@ -30,6 +30,7 @@ Contents
    content/installation
    content/sharpy_intro
    content/contributing
+   content/casefiles
    content/generators
    content/solvers
    content/postproc
