@@ -239,15 +239,14 @@ SHARPy cases are usually structured in the following way:
 
 1. A `generate_case.py` file: contains the setup of the problem, like geometry, flight conditions etc.
 This script creates the output files that will then be used by SHARPy, namely:
-    * The structural `.fem.h5` file.
-    * The aerodynamic `.aero.h5` file.
-    * Simulation information and settings `.solver.sharpy` file.
+    * The [structural](./casefiles.html#fem-file) `.fem.h5` file.
+    * The [aerodynamic](./casefiles.html#aerodynamics-file) `.aero.h5` file.
+    * [Simulation information](./casefiles.html#solver-configuration-file) and settings `.solver.sharpy` file.
     * The dynamic forces file `.dyn.h5` (when required).
     * The linear input files `.lininput.h5` (when required).
     * The ROM settings file `.rom.h5` (when required).
     
-    See the [link TBD] for a detailed description on the contents of each of the files
-    
+    See the [chapter](./casefiles) on the case files for a detailed description on the contents of each one.    
 
 2. The `h5` files contain data of the FEM, aerodynamics, dynamic conditions. They are later read by SHARPy.
 
