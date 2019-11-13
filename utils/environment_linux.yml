@@ -93,7 +93,6 @@ dependencies:
   - mkl_random=1.0.2=py37hd81dba3_0
   - nbconvert=5.3.1=py37_0
   - nbformat=4.4.0=py37_0
-  - nbsphinx=0.4.3=py_0
   - ncurses=6.1=he6710b0_1
   - notebook=5.7.4=py37_0
   - numpy=1.15.4=py37h7e9f1db_0
@@ -167,4 +166,5 @@ dependencies:
     - sphinx-rtd-theme==0.4.3
     - traits==5.0.0
     - traitsui==6.0.0
+    - nbsphinx=0.4.3=py_0
 
