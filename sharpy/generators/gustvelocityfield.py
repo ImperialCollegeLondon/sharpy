@@ -58,7 +58,7 @@ class one_minus_cos(BaseGust):
     __doc__ += setting_table.generate(settings_types, settings_default, settings_description)
 
     def __init__(self):
-        pass
+        self.settings = None
 
     def initialise(self, in_dict):
         self.in_dict = in_dict
@@ -434,11 +434,12 @@ class GustVelocityField(generator_interface.BaseGenerator):
             raise AttributeError('The gust shape ' + self.settings['gust_shape'] + ' is not implemented')
 
         self.gust = dict_of_gusts[self.settings['gust_shape']]()
-        self.gust.initialise(self.settings['gust_parameters'])
-
+        temp_settings = self.settings['gust_parameters'].copy()
         for key, value in self.settings.items():
             if not key == 'gust_parameters':
-                self.gust.settings[key] = value
+                temp_settings[key] = value
+        self.gust.initialise(temp_settings)
+
 
     def generate(self, params, uext):
         zeta = params['zeta']
