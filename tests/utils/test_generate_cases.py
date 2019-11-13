@@ -171,13 +171,15 @@ class TestGenerateCases(unittest.TestCase):
         sharpy.sharpy_main.main(['', solver_path])
         print('done executing')
 
-    def tearDowns(self):
+    def tearDown(self):
         solver_path = os.path.abspath(os.path.dirname(os.path.realpath(__file__)))
         solver_path += '/'
         files_to_delete = [case + '.aero.h5',
                            case + '.dyn.h5',
                            case + '.fem.h5',
-                           case + '.solver.txt']
+                           case + '.solver.txt',
+                           'log']
+
         for f in files_to_delete:
             print('removing ', f)
             os.remove(solver_path + f)

@@ -74,9 +74,9 @@ class LinearAssembler(BaseSolver):
 
     settings_table = settings.SettingsTable()
     __doc__ += settings_table.generate(settings_types, settings_default, settings_description)
+
     def __init__(self):
 
-        warnings.warn('LinearAssembler solver under development')
         self.settings = dict()
         self.data = None
 
