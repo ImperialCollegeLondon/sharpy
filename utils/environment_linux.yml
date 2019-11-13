@@ -166,5 +166,5 @@ dependencies:
     - sphinx-rtd-theme==0.4.3
     - traits==5.0.0
     - traitsui==6.0.0
-    - nbsphinx==0.4.3=py_0
+    - nbsphinx==0.4.3
 
