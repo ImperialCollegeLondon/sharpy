@@ -1,2 +1,10 @@
-conda:
-  - nbsphinx
+channels:
+  - conda-forge
+dependencies:
+  - python==3.5
+  - sphinx>=1.4
+  - pandoc
+  - nbconvert
+  - ipykernel
+  - pip:
+    - nbsphinx
