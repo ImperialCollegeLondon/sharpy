@@ -9,10 +9,12 @@ cases running on SHARPy.
     :caption: SHARPy Examples
 
     example_notebooks/linear_goland_flutter
+    example_notebooks/nonlinear_t-tail_HALE
 
 Downloadable files
 ------------------
 
 * :download:`./example_notebooks/linear_goland_flutter.ipynb`
+* :download:`./example_notebooks/nonlinear_t-tail_HALE`
 
 
