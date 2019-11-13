@@ -362,10 +362,25 @@ def schur_ordered(A, ct=False):
     else:
         sort_eigvals = 'iuc'
 
-    As, Tt, n_stable1 = sclalg.schur(A, output='complex', sort=sort_eigvals)
-    n_stable = np.sum(np.abs(np.linalg.eigvals(A))<=1.)
+    # if A.dtype == complex:
+    #     output_form = 'complex'
+    # else:
+    #     output_form = 'real'
+    # issues when not using the complex form of the Schur decomposition
 
-    assert (np.abs(As-np.conj(Tt.T).dot(A.dot(Tt))) < 1e-6).all(), 'Schur breakdown - A_schur != T^H A T'
+    output_form = 'complex'
+    As, Tt, n_stable1 = sclalg.schur(A, output=output_form, sort=sort_eigvals)
+
+    if sort_eigvals == 'lhp':
+        n_stable = np.sum(np.linalg.eigvals(A).real <= 0)
+    elif sort_eigvals == 'iuc':
+        n_stable = np.sum(np.abs(np.linalg.eigvals(A)) <= 1.)
+    else:
+        raise NotImplementedError('Unknown sorting of eigenvalues. Either iuc or lhp')
+
+    assert n_stable == n_stable1, 'Number of stable eigenvalues not equal in Schur output and manual calculation'
+
+    assert (np.abs(As-np.conj(Tt.T).dot(A.dot(Tt))) < 1e-4).all(), 'Schur breakdown - A_schur != T^H A T'
     return As, Tt.T, n_stable
 
 
