@@ -15,6 +15,6 @@ Downloadable files
 ------------------
 
 * :download:`./example_notebooks/linear_goland_flutter.ipynb`
-* :download:`./example_notebooks/nonlinear_t-tail_HALE`
+* :download:`./example_notebooks/nonlinear_t-tail_HALE.ipynb`
 
 
