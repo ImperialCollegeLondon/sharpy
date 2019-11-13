@@ -31,6 +31,7 @@ Contents
    content/sharpy_intro
    content/contributing
    content/casefiles
+   content/examples
    content/generators
    content/solvers
    content/postproc
