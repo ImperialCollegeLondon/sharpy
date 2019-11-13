@@ -108,7 +108,6 @@ class Krylov(rom_interface.BaseRom):
 
     def initialise(self, in_settings=None):
 
-
         if in_settings is not None:
             self.settings = in_settings
 
@@ -126,10 +125,11 @@ class Krylov(rom_interface.BaseRom):
                                       'could be that is not yet implemented'
                                       % self.algorithm)
 
-        self.frequency = self.settings['frequency']
+        self.frequency = np.array(self.settings['frequency'], dtype=complex)
         self.r = self.settings['r'].value
         self.restart_arnoldi = self.settings['restart_arnoldi'].value
-
+        print(self.frequency)
+        # breakpoint()
         try:
             self.nfreq = self.frequency.shape[0]
         except AttributeError:
@@ -181,12 +181,12 @@ class Krylov(rom_interface.BaseRom):
         self.stable = self.check_stability(restart_arnoldi=self.restart_arnoldi)
 
         if not self.stable:
-            pass
+            # pass
             # Under development
-            # self.restart()
-            # TL, TR = self.stable_realisation()
-            # self.ssrom = libss.ss(TL.T.dot(Ar.dot(TR)), TL.T.dot(Br), Cr.dot(TR), self.ss.D, self.ss.dt)
-            # self.stable = self.check_stability(restart_arnoldi=self.restart_arnoldi)
+            self.restart()
+            TL, TR = self.stable_realisation()
+            self.ssrom = libss.ss(TL.T.dot(Ar.dot(TR)), TL.T.dot(Br), Cr.dot(TR), self.ss.D, self.ss.dt)
+            self.stable = self.check_stability(restart_arnoldi=self.restart_arnoldi)
 
         t_rom = time.time() - t0
         self.cpu_summary['run'] = t_rom
@@ -204,10 +204,10 @@ class Krylov(rom_interface.BaseRom):
         cout.cout_wrap('\tConstruction Algorithm:')
         cout.cout_wrap('\t\t%s' % self.algorithm, 1)
         cout.cout_wrap('\tInterpolation points:')
-        # try:
-        #     cout.cout_wrap(self.nfreq * '\t\tsigma = %4f + %4fj [rad/s]\n' %tuple(self.frequency.view(float)), 1)
-        # except AttributeError:
-            # print(self.frequency)
+        try:
+            cout.cout_wrap(self.nfreq * '\t\tsigma = %4f + %4fj [rad/s]\n' %tuple(self.frequency.view(float)), 1)
+        except AttributeError:
+            print(self.frequency)
         cout.cout_wrap('\tKrylov order:')
         cout.cout_wrap('\t\tr = %d' % self.r, 1)
 
