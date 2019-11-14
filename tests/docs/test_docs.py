@@ -2,6 +2,7 @@ import unittest
 import os
 from sphinx.application import Sphinx
 
+
 class DocTest(unittest.TestCase):
     """
 
