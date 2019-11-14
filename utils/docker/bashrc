@@ -29,6 +29,9 @@ unset __conda_setup
 conda activate sharpy_minimal
 source /sharpy/bin/sharpy_vars.sh
 
+# custom prompt
+PS1="SHARPy> "
+
 echo "======================================================================="
 echo "Welcome to the Docker image of SHARPy"
 echo "SHARPy is located in /sharpy and the"
