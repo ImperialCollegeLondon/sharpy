@@ -8,8 +8,6 @@ import sharpy.utils.exceptions as exceptions
 import sharpy.utils.cout_utils as cout
 import ast
 
-
-
 class DictConfigParser(configparser.ConfigParser):
     def as_dict(self):
         d = dict(self._sections)
@@ -77,11 +75,11 @@ def to_custom_types(dictionary, types, default, no_ctype=False):
             else:
                 data_type = ct.c_bool
             try:
-                dictionary[k] = cast(k, dictionary[k], str2bool, ct.c_bool, default[k])
+                dictionary[k] = cast(k, dictionary[k], str2bool, data_type, default[k])
             except KeyError:
                 if default[k] is None:
                     raise exceptions.NoDefaultValueException(k)
-                dictionary[k] = cast(k, default[k], str2bool, ct.c_bool, default[k])
+                dictionary[k] = cast(k, default[k], str2bool, data_type, default[k])
                 notify_default_value(k, dictionary[k])
 
         elif v == 'list(str)':
@@ -186,6 +184,8 @@ def to_custom_types(dictionary, types, default, no_ctype=False):
                     raise exceptions.NoDefaultValueException(k)
                 dictionary[k] = default[k].copy()
                 notify_default_value(k, dictionary[k])
+        else:
+            raise TypeError('Variable %s has an unknown type (%s) that cannot be casted' % (k, v))
 
 
 
