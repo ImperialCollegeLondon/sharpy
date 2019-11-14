@@ -9,7 +9,6 @@ import sharpy.utils.cout_utils as cout
 import ast
 
 
-
 class DictConfigParser(configparser.ConfigParser):
     def as_dict(self):
         d = dict(self._sections)
