@@ -29,3 +29,9 @@ unset __conda_setup
 conda activate sharpy_env
 source /sharpy/bin/sharpy_vars.sh
 
+echo "Welcome to the Docker image of SHARPy"
+echo "SHARPy is located in /sharpy and the"
+echo "environment is already set up!"
+echo "Copyright Imperial College London. Released under BSD 3-Clause license."
+echo "======================================================================="
+
