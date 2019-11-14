@@ -25,20 +25,17 @@ RUN conda init bash && \
     conda config --set always_yes yes --set changeps1 no && \
     conda update -q conda && \
     conda config --set auto_activate_base false && \
-    conda env create -f sharpy/utils/environment_linux.yml && conda clean -afy && \
+    conda env create -f sharpy/utils/environment_minimal.yml && conda clean -afy && \
     find /miniconda3/ -follow -type f -name '*.a' -delete && \
     find /miniconda3/ -follow -type f -name '*.pyc' -delete && \
     find /miniconda3/ -follow -type f -name '*.js.map' -delete
 
 COPY ./utils/docker/* /root/
 
-#RUN conda activate sharpy_env 
-
-RUN echo "Building the libraries"
 RUN git clone https://github.com/imperialcollegelondon/xbeam --branch=master && \
-    conda activate sharpy_env && cd xbeam/ && sh run_make.sh && cd ..
-RUN git clone https://github.com/imperialcollegelondon/uvlm --branch=master && \
-    conda activate sharpy_env && cd uvlm/ && sh run_make.sh && cd .. && \
+    conda activate sharpy_minimal && cd xbeam/ && sh run_make.sh && cd .. && \
+    git clone https://github.com/imperialcollegelondon/uvlm --branch=master && \
+    cd uvlm/ && sh run_make.sh && cd .. && \
     rm -rf xbeam uvlm
 
 ENTRYPOINT ["/bin/bash", "--init-file", "/root/bashrc"]
