@@ -13,7 +13,7 @@ import sharpy.rom.krylov as krylov
 import scipy as sc
 import sharpy.linear.src.libsparse as libsp
 import sharpy.postproc.frequencyresponse as frequencyresponse
-import matplotlib.pyplot as plt
+# import matplotlib.pyplot as plt
 
 
 class TestKrylov(unittest.TestCase):
@@ -51,11 +51,11 @@ class TestKrylov(unittest.TestCase):
 
         max_error = frequencyresponse.frequency_error(Y_fom, Y_rom, wv)
 
-        fig = plt.figure()
-        plt.semilogx(wv, Y_fom[0, 0, :].real)
-        plt.semilogx(wv, Y_rom[0, 0, :].real)
+        # fig = plt.figure()
+        # plt.semilogx(wv, Y_fom[0, 0, :].real)
+        # plt.semilogx(wv, Y_rom[0, 0, :].real)
 
-        fig.savefig(self.test_dir + '/figs/%sfreqresp.png' %test_settings['algorithm'])
+        # fig.savefig(self.test_dir + '/figs/%sfreqresp.png' %test_settings['algorithm'])
 
         assert np.log10(max_error) < -2, 'Significant mismatch in ROM frequency Response'
 

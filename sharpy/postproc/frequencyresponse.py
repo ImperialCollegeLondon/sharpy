@@ -1,11 +1,11 @@
 import numpy as np
 import time
 import os
-import matplotlib.pyplot as plt
 import sharpy.utils.solver_interface as solver_interface
 import sharpy.utils.settings as settings_utils
 import sharpy.utils.cout_utils as cout
 import warnings
+
 
 
 @solver_interface.solver
@@ -47,7 +47,7 @@ class FrequencyResponse(solver_interface.BaseSolver):
 
     settings_types['quick_plot'] = 'bool'
     settings_default['quick_plot'] = False
-    settings_description['quick_plot'] = 'Produce array of plots showing response'
+    settings_description['quick_plot'] = 'Produce array of plots showing response. Requires matplotlib'
 
     settings_table = settings_utils.SettingsTable()
     __doc__ += settings_table.generate(settings_types, settings_default, settings_description)
@@ -177,6 +177,7 @@ class FrequencyResponse(solver_interface.BaseSolver):
 
     def quick_plot(self, Y_freq_fom=None, Y_freq_rom=None):
         cout.cout_wrap('Creating Quick plots of the frequency response')
+        import matplotlib.pyplot as plt
         for mj in range(self.ss.inputs):
             for pj in range(self.ss.outputs):
                 fig1, ax1 = plt.subplots()

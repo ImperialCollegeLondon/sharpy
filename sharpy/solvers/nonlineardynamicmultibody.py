@@ -13,7 +13,6 @@ import sharpy.utils.h5utils as h5utils
 import sharpy.utils.multibody as mb
 import sharpy.utils.utils_ams as uams
 import sharpy.structure.utils.lagrangeconstraints as lagrangeconstraints
-import matplotlib.pyplot as plt
 import sharpy.utils.exceptions as exc
 
 

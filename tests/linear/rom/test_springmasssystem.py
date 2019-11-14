@@ -10,7 +10,7 @@ import sharpy.linear.src.libss as libss
 import sharpy.linear.src.lingebm as lingebm
 import sharpy.rom.krylov as krylov
 import unittest
-import matplotlib.pyplot as plt
+# import matplotlib.pyplot as plt
 import sharpy.utils.cout_utils as cout
 
 cout.cout_wrap.initialise(False, False)
@@ -170,13 +170,14 @@ class TestKrylovRom(unittest.TestCase):
         error = np.abs(Y_fom[0, 0, interpol_index] - Y_rom[0, 0, interpol_index])
 
         if TestKrylovRom.display_output:
-            fig, ax = plt.subplots(nrows=2)
-            ax[0].semilogx(wv, np.abs(Y_fom[0, 0, :]), 'k-')
-            ax[0].semilogx(wv, np.abs(Y_rom[0, 0, :]), '--', color='0.2')
+            pass
+            # fig, ax = plt.subplots(nrows=2)
+            # ax[0].semilogx(wv, np.abs(Y_fom[0, 0, :]), 'k-')
+            # ax[0].semilogx(wv, np.abs(Y_rom[0, 0, :]), '--', color='0.2')
 
-            ax[1].semilogx(wv, np.angle(Y_fom[0, 0, :]), 'k-')
-            ax[1].semilogx(wv, np.angle(Y_rom[0, 0, :]), '--', color='0.2')
-            fig.show()
+            # ax[1].semilogx(wv, np.angle(Y_fom[0, 0, :]), 'k-')
+            # ax[1].semilogx(wv, np.angle(Y_rom[0, 0, :]), '--', color='0.2')
+            # fig.show()
         return error
 
     def tearDown(self):
