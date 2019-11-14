@@ -26,6 +26,7 @@ dependencies:
   - libxslt=1.1.33=h7d1a2b0_0
   - lxml=4.4.1=py37hefd8a0e_0
   - mkl=2019.4=243
+  - mkl-include=2019.4=243
   - mkl-service=2.3.0=py37he904b0f_0
   - mkl_fft=1.0.15=py37ha843d7b_0
   - mkl_random=1.1.0=py37hd6b4f25_0
