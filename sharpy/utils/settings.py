@@ -283,6 +283,7 @@ class SettingsTable:
             settings_types (dict): Setting types.
             settings_default (dict): Settings default value.
             settings_description (dict): Setting description.
+            header_line (str): Header line description (optional)
 
         Returns:
             str: .rst formatted string with a table containing the settings' information.

@@ -8,6 +8,9 @@ import sharpy.utils.exceptions as exc
 
 dict_of_gusts = {}
 
+doc_settings_description = 'The ``GustVelocityField`` generator takes the following settings as a dictionary assigned' \
+                           'to ``gust_parameters``.'
+
 
 def gust(arg):
     global dict_of_gusts
@@ -21,7 +24,28 @@ def gust(arg):
 
 #@gust
 class BaseGust(metaclass=ABCMeta):
-    pass
+
+    def __init__(self):
+        self.settings = dict()
+        self._u_inf = None
+        self._u_inf_direction = None
+
+    @property
+    def u_inf(self):
+        return self._u_inf
+
+    @u_inf.setter
+    def u_inf(self, value):
+        self._u_inf = value
+
+    @property
+    def u_inf_direction(self):
+        return self._u_inf_direction
+
+    @u_inf_direction.setter
+    def u_inf_direction(self, value):
+        self._u_inf_direction = value
+
 # class BaseGust():
 #     _gust_id = 'BaseGust'
 #
@@ -37,8 +61,10 @@ class BaseGust(metaclass=ABCMeta):
 @gust
 class one_minus_cos(BaseGust):
     r"""
-        Discrete gust model
+    One minus cos gust (single bump)
         .. math:: U_z = \frac{u_{de}}{2}\left[1-\cos\left(\frac{2\pi x}{S}\right)\right]
+
+    This gust can be used by using the setting ``gust_shape = 1-cos`` in ``GustVelocityField``.
     """
     _gust_id = '1-cos'
 
@@ -55,15 +81,11 @@ class one_minus_cos(BaseGust):
     settings_description['gust_intensity'] = 'Intensity of the gust'
 
     setting_table = settings.SettingsTable()
-    __doc__ += setting_table.generate(settings_types, settings_default, settings_description)
-
-    def __init__(self):
-        self.settings = None
+    __doc__ += setting_table.generate(settings_types, settings_default, settings_description, doc_settings_description)
 
     def initialise(self, in_dict):
-        self.in_dict = in_dict
-        settings.to_custom_types(self.in_dict, self.settings_types, self.settings_default)
-        self.settings = self.in_dict
+        self.settings = in_dict
+        settings.to_custom_types(self.settings, self.settings_types, self.settings_default)
 
     def gust_shape(self, x, y, z, time=0):
         gust_length = self.settings['gust_length'].value
@@ -81,7 +103,10 @@ class one_minus_cos(BaseGust):
 class DARPA(BaseGust):
     r"""
     Discrete, non-uniform span model
+
     .. math:: U_z = \frac{u_{de}}{2}\left[1-\cos\left(\frac{2\pi x}{S}\right)\right]\cos\left(\frac{\pi y}{b}\right)
+
+    This gust can be used by using the setting ``gust_shape = DARPA`` in ``GustVelocityField``.
     """
     _gust_id = 'DARPA'
 
@@ -102,12 +127,11 @@ class DARPA(BaseGust):
     settings_description['span'] = 'Wing span'
 
     setting_table = settings.SettingsTable()
-    __doc__ += setting_table.generate(settings_types, settings_default, settings_description)
+    __doc__ += setting_table.generate(settings_types, settings_default, settings_description, doc_settings_description)
 
     def initialise(self, in_dict):
-        self.in_dict = in_dict
-        settings.to_custom_types(self.in_dict, self.settings_types, self.settings_default)
-        self.settings = self.in_dict
+        self.settings = in_dict
+        settings.to_custom_types(self.settings, self.settings_types, self.settings_default)
 
     def gust_shape(self, x, y, z, time=0):
         gust_length = self.settings['gust_length'].value
@@ -127,7 +151,10 @@ class DARPA(BaseGust):
 class continuous_sin(BaseGust):
     r"""
     Continuous sinusoidal gust model
+
     .. math:: U_z = \frac{u_{de}}{2}\sin\left(\frac{2\pi x}{S}\right)
+
+    This gust can be used by using the setting ``gust_shape = 'continuous_sin'`` in ``GustVelocityField``.
     """
     _gust_id = 'continuous_sin'
 
@@ -144,12 +171,11 @@ class continuous_sin(BaseGust):
     settings_description['gust_intensity'] = 'Intensity of the gust'
 
     setting_table = settings.SettingsTable()
-    __doc__ += setting_table.generate(settings_types, settings_default, settings_description)
+    __doc__ += setting_table.generate(settings_types, settings_default, settings_description, doc_settings_description)
 
     def initialise(self, in_dict):
-        self.in_dict = in_dict
-        settings.to_custom_types(self.in_dict, self.settings_types, self.settings_default)
-        self.settings = self.in_dict
+        self.settings = in_dict
+        settings.to_custom_types(self.settings, self.settings_types, self.settings_default)
 
     def gust_shape(self, x, y, z, time=0):
         gust_length = self.settings['gust_length'].value
@@ -166,6 +192,7 @@ class continuous_sin(BaseGust):
 @gust
 class lateral_one_minus_cos(BaseGust):
     r"""
+    This gust can be used by using the setting ``gust_shape = 'lateral 1-cos'`` in ``GustVelocityField``.
     """
     _gust_id = 'lateral 1-cos'
 
@@ -182,12 +209,11 @@ class lateral_one_minus_cos(BaseGust):
     settings_description['gust_intensity'] = 'Intensity of the gust'
 
     setting_table = settings.SettingsTable()
-    __doc__ += setting_table.generate(settings_types, settings_default, settings_description)
+    __doc__ += setting_table.generate(settings_types, settings_default, settings_description, doc_settings_description)
 
     def initialise(self, in_dict):
-        self.in_dict = in_dict
-        settings.to_custom_types(self.in_dict, self.settings_types, self.settings_default)
-        self.settings = self.in_dict
+        self.settings = in_dict
+        settings.to_custom_types(self.settings, self.settings_types, self.settings_default)
 
     def gust_shape(self, x, y, z, time=0):
         gust_length = self.settings['gust_length'].value
@@ -205,7 +231,10 @@ class lateral_one_minus_cos(BaseGust):
 class time_varying(BaseGust):
     r"""
     The inflow velocity changes with time but it is uniform in space. It is read from a 4 column file:
+
     .. math:: time[s] \Delta U_x \Delta U_y \Delta U_z
+
+    This gust can be used by using the setting ``gust_shape = 'time varying'`` in ``GustVelocityField``.
     """
     _gust_id = 'time varying'
 
@@ -213,44 +242,44 @@ class time_varying(BaseGust):
     settings_default = dict()
     settings_description = dict()
 
-    settings_types['gust_length'] = 'float'
-    settings_default['gust_length'] = 0.0
-    settings_description['gust_length'] = 'Length of gust'
-
-    settings_types['gust_intensity'] = 'float'
-    settings_default['gust_intensity'] = 0.0
-    settings_description['gust_intensity'] = 'Intensity of the gust'
-
     settings_types['file'] = 'str'
     settings_default['file'] = ''
-    settings_description['file'] = 'File with the information (only for time varying)'
+    settings_description['file'] = 'File with the information'
 
     setting_table = settings.SettingsTable()
-    __doc__ += setting_table.generate(settings_types, settings_default, settings_description)
+    __doc__ += setting_table.generate(settings_types, settings_default, settings_description, doc_settings_description)
+
+    def __init__(self):
+
+        super().__init__()
+
+        self.file_info = None
 
     def initialise(self, in_dict):
-        self.in_dict = in_dict
-        settings.to_custom_types(self.in_dict, self.settings_types, self.settings_default)
-        self.settings = self.in_dict
+        self.settings = in_dict
+        settings.to_custom_types(self.settings, self.settings_types, self.settings_default)
 
         self.file_info = np.loadtxt(self.settings['file'])
 
     def gust_shape(self, x, y, z, time=0):
         vel = np.zeros((3,))
-        d = np.dot(np.array([x, y, z]), self.settings['u_inf_direction'])
+        d = np.dot(np.array([x, y, z]), self.u_inf_direction)
         if d > 0.0:
             return vel
 
-        vel[0] = np.interp(d, -self.file_info[::-1,0]*self.u_inf, self.file_info[::-1,1])
-        vel[1] = np.interp(d, -self.file_info[::-1,0]*self.u_inf, self.file_info[::-1,2])
-        vel[2] = np.interp(d, -self.file_info[::-1,0]*self.u_inf, self.file_info[::-1,3])
+        vel[0] = np.interp(d, -self.file_info[::-1, 0] * self.u_inf, self.file_info[::-1, 1])
+        vel[1] = np.interp(d, -self.file_info[::-1, 0] * self.u_inf, self.file_info[::-1, 2])
+        vel[2] = np.interp(d, -self.file_info[::-1, 0] * self.u_inf, self.file_info[::-1, 3])
         return vel
 
 
 @gust
 class time_varying_global(BaseGust):
     r"""
-    Similar to the previous one but the velocity changes instanteneously in the whole flow field. It is not fed into the solid
+    Similar to the previous one but the velocity changes instanteneously in the whole flow field. It is not fed
+    into the solid.
+
+    This gust can be used by using the setting ``gust_shape = 'time varying global'`` in ``GustVelocityField``.
     """
     _gust_id = 'time varying global'
 
@@ -271,12 +300,17 @@ class time_varying_global(BaseGust):
     settings_description['file'] = 'File with the information (only for time varying)'
 
     setting_table = settings.SettingsTable()
-    __doc__ += setting_table.generate(settings_types, settings_default, settings_description)
+    __doc__ += setting_table.generate(settings_types, settings_default, settings_description, doc_settings_description)
+
+    def __init__(self):
+
+        super().__init__()
+
+        self.file_info = None
 
     def initialise(self, in_dict):
-        self.in_dict = in_dict
-        settings.to_custom_types(self.in_dict, self.settings_types, self.settings_default)
-        self.settings = self.in_dict
+        self.settings = in_dict
+        settings.to_custom_types(self.settings, self.settings_types, self.settings_default)
 
         self.file_info = np.loadtxt(self.settings['file'])
 
@@ -292,6 +326,7 @@ class time_varying_global(BaseGust):
 @gust
 class span_sine(BaseGust):
     r"""
+    This gust can be used by using the setting ``gust_shape = 'span sine'`` in ``GustVelocityField``.
     """
     _gust_id = 'span sine'
 
@@ -324,12 +359,11 @@ class span_sine(BaseGust):
     settings_description['span_with_gust'] = 'Extension of the span to which the gust will be applied'
 
     setting_table = settings.SettingsTable()
-    __doc__ += setting_table.generate(settings_types, settings_default, settings_description)
+    __doc__ += setting_table.generate(settings_types, settings_default, settings_description, doc_settings_description)
 
     def initialise(self, in_dict):
-        self.in_dict = in_dict
-        settings.to_custom_types(self.in_dict, self.settings_types, self.settings_default)
-        self.settings = self.in_dict
+        self.settings = in_dict
+        settings.to_custom_types(self.settings, self.settings_types, self.settings_default)
 
         if self.settings['span_with_gust'].value == 0:
             self.settings['span_with_gust'] = self.settings['span']
@@ -407,8 +441,8 @@ class GustVelocityField(generator_interface.BaseGenerator):
 
         self.settings = dict()
         self.gust = None
-        # self.u_inf = None
-        # self.u_inf_direction = None
+        self.u_inf = None
+        self.u_inf_direction = None
         # self.gust_shape = None
         # self.gust_parameters = None
         #
@@ -425,21 +459,29 @@ class GustVelocityField(generator_interface.BaseGenerator):
         # self.implemented_gusts.append('span sine')
 
     def initialise(self, in_dict):
-        self.in_dict = in_dict
-        settings.to_custom_types(self.in_dict, self.settings_types, self.settings_default)
-        self.settings = self.in_dict
+        self.settings = in_dict
+        settings.to_custom_types(self.settings, self.settings_types, self.settings_default)
 
         # check that the gust type is valid
         if not (self.settings['gust_shape'] in self.implemented_gusts):
             raise AttributeError('The gust shape ' + self.settings['gust_shape'] + ' is not implemented')
 
         self.gust = dict_of_gusts[self.settings['gust_shape']]()
+
+        # backward compatibility
         temp_settings = self.settings['gust_parameters'].copy()
         for key, value in self.settings.items():
             if not key == 'gust_parameters':
                 temp_settings[key] = value
-        self.gust.initialise(temp_settings)
 
+        self.u_inf = self.settings['u_inf']
+        self.u_inf_direction = self.settings['u_inf_direction']
+
+        # set gust properties
+        self.gust.u_inf = self.u_inf
+        self.gust.u_inf_direction = self.u_inf_direction
+
+        self.gust.initialise(temp_settings)
 
     def generate(self, params, uext):
         zeta = params['zeta']
