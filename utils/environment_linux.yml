@@ -130,4 +130,3 @@ dependencies:
     - pyface==6.1.2
     - traits==5.1.2
     - traitsui==6.1.3
-    - vtk==8.1.2
