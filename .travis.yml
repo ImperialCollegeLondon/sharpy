@@ -7,9 +7,9 @@ addons:
     sources:
       - ubuntu-toolchain-r-test
     packages:
-      - gcc-6
-      - g++-6
-      - gfortran-6
+      - gcc-7
+      - g++-7
+      - gfortran-7
 
 before_install:
     # Link gcc-6 and g++-6 to their standard commands
@@ -25,7 +25,7 @@ before_install:
   - conda update -q conda
   - export QT_QPA_PLATFORM='offscreen'
   - conda env create -f utils/environment_linux.yml
-  - source activate sharpy_env
+  - conda activate sharpy_env
 
 install:
   - echo $(pwd)
@@ -42,8 +42,9 @@ install:
   - cd ../
   - git clone --branch=$LIBS_BRANCH https://github.com/imperialcollegelondon/uvlm
   - cd uvlm
-  - export EIGEN3_INCLUDE_DIR=$(conda info --json | python -c "import sys, json; print(json.load(sys.stdin)['active_prefix'])")/include/eigen3
-  - export MKL_ROOT=$(conda info --json | python -c "import sys, json; print(json.load(sys.stdin)['active_prefix'])")
+  - export PREFIX=$(conda info --json | python -c "import sys, json; print(json.load(sys.stdin)['active_prefix'])")
+  - export EIGEN3_INCLUDE_DIR=$PREFIX/include/eigen3
+  - export MKL_ROOT=$PREFIX
   - make
   - cp lib/* ../sharpy/lib
   - cd ../sharpy
