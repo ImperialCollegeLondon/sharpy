@@ -9,7 +9,7 @@
 [![DOI](https://zenodo.org/badge/70235936.svg)](https://zenodo.org/badge/latestdoi/70235936)
 
 
-SHARPy is an aeroelastic analysis package at the Department of Aeronautics, Imperial
+SHARPy is an aeroelastic analysis package developed at the Department of Aeronautics, Imperial
 College London. It can be used for the structural, aerodynamic and aeroelastic analysis of flexible aircraft, flying
 wings and wind turbines.
 
