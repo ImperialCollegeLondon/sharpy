@@ -9,7 +9,6 @@ import sharpy.utils.cout_utils as cout
 import ast
 
 
-
 class DictConfigParser(configparser.ConfigParser):
     def as_dict(self):
         d = dict(self._sections)
@@ -283,6 +282,7 @@ class SettingsTable:
             settings_types (dict): Setting types.
             settings_default (dict): Settings default value.
             settings_description (dict): Setting description.
+            header_line (str): Header line description (optional)
 
         Returns:
             str: .rst formatted string with a table containing the settings' information.
@@ -301,9 +301,9 @@ class SettingsTable:
 
         if header_line is None:
             header_line = 'The settings that this solver accepts are given by a dictionary, ' \
-                          'with the following key-value pairs:\n'
+                          'with the following key-value pairs:'
 
-        table_string = '\n    ' + header_line
+        table_string = '\n    ' + header_line + '\n'
         table_string += '\n    ' + self.print_divider_line()
         table_string += '    ' + self.print_header()
         table_string += '    ' + self.print_divider_line()

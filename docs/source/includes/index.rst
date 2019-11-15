@@ -6,6 +6,7 @@ SHARPy Source Code
 
 	./aero/index
 	./controllers/index
+	./generators/index
 	./linear/index
 	./rom/index
 	./structure/index

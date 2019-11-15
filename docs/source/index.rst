@@ -32,7 +32,6 @@ Contents
    content/contributing
    content/casefiles
    content/examples
-   content/generators
    content/solvers
    content/postproc
    includes/index
