@@ -17,7 +17,7 @@ RUN wget https://repo.continuum.io/miniconda/Miniconda3-latest-Linux-x86_64.sh -
     rm /miniconda.sh && hash -r
 
 # Get SHARPy
-RUN git clone https://github.com/imperialcollegelondon/sharpy --branch=dev_docker
+RUN git clone https://github.com/imperialcollegelondon/sharpy
 
 # Update conda and make it run with no user interaction
 # Cleanup conda installation
