@@ -494,7 +494,7 @@ class Static():
 
 
 class Dynamic(Static):
-    """
+    r"""
     Class for dynamic linearised UVLM solution. Linearisation around steady-state
     are only supported. The class is built upon Static, and inherits all the
     methods contained there.

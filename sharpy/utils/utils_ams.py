@@ -1,7 +1,6 @@
 '''
 ams: utilities
 '''
-from mpl_toolkits.mplot3d import axes3d
 import matplotlib.pyplot as plt
 
 def plot_xy(x, y):
