@@ -13,14 +13,10 @@
 # you will see them accessed via {{ site.title }}, {{ site.email }}, and so on.
 # You can create any custom variable you would like, and they will be accessible
 # in the templates via {{ site.myvariable }}.
-title: SHARPy - Imperial College Aeroelastics
+title: SHARPy
 email: r.palacios@imperial.ac.uk
 description: >- # this means to ignore newlines until "baseurl:"
-  SHARPy is an aeroelastic analysis package developed by the Load Control and Aeroelasticty lab at Imperial College.
-  The tool is capable of running nonlinear, time-domain and static coupled simulations 
-  of high-aspect ratio wings, including very flexible aircraft and wind turbines. It is based on a geometrically exact,
-  displacement and rotation based nonlinear beam theory coupled with an unsteady vortex lattice method solver (UVLM) for 
-  the aerodynamics.
+    A nonlinear aeroelastic simulation analysis package for very flexible aircraft and wind turbines.
 baseurl: "/sharpy" # the subpath of your site, e.g. /blog
 url: "" # the base hostname & protocol for your site, e.g. http://example.com
 twitter_username: aeroelastics
