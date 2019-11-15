@@ -10,11 +10,13 @@ cases running on SHARPy.
 
     example_notebooks/linear_goland_flutter
     example_notebooks/nonlinear_t-tail_HALE
+    example_notebooks/linear_horten
 
 Downloadable files
 ------------------
 
 * :download:`./example_notebooks/linear_goland_flutter.ipynb`
 * :download:`./example_notebooks/nonlinear_t-tail_HALE.ipynb`
+* :download:`./example_notebooks/linear_horten.ipynb`
 
 
