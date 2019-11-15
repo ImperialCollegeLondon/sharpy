@@ -13,9 +13,9 @@ addons:
 
 before_install:
     # Link gcc-6 and g++-6 to their standard commands
-  - sudo unlink /usr/bin/gcc && sudo ln -s /usr/bin/gcc-6 /usr/bin/gcc
-  - sudo unlink /usr/bin/g++ && sudo ln -s /usr/bin/g++-6 /usr/bin/g++
-  - sudo ln -s /usr/bin/gfortran-6 /usr/bin/gfortran
+  - sudo unlink /usr/bin/gcc && sudo ln -s /usr/bin/gcc-7 /usr/bin/gcc
+  - sudo unlink /usr/bin/g++ && sudo ln -s /usr/bin/g++-7 /usr/bin/g++
+  - sudo ln -s /usr/bin/gfortran-7 /usr/bin/gfortran
   - gfortran --version
   - wget https://repo.continuum.io/miniconda/Miniconda3-latest-Linux-x86_64.sh -O miniconda.sh;
   - bash miniconda.sh -b -p $HOME/miniconda
