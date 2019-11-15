@@ -61,7 +61,7 @@ dependencies:
   - lxml=4.4.1=py37hefd8a0e_0
   - markupsafe=1.1.1=py37h7b6447c_0
   - matplotlib=3.1.1=py37h5429711_0
-  - mistune=0.8.4=py37h516909a_1000
+  - mistune=0.8.4=py37h516909a_1000https://www.komoot.com/user/809520623342/tours
   - mkl=2019.4=243
   - mkl-include=2019.4=243
   - mkl-service=2.3.0=py37he904b0f_0
@@ -125,9 +125,9 @@ dependencies:
   - pip:
     - apptools==4.5.0
     - envisage==4.8.0
+    - gpy==1.9.8
     - mayavi==4.7.1
     - pyface==6.1.2
     - traits==5.1.2
     - traitsui==6.1.3
     - vtk==8.1.2
-

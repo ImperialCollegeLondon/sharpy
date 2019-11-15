@@ -18,9 +18,9 @@ flow = ['BeamLoader',
         'AerogridPlot',
         'BeamPlot',
         'DynamicCoupled',
-        'Modal',
-        'LinearAssember',
-        'AsymptoticStability',
+        # 'Modal',
+        # 'LinearAssember',
+        # 'AsymptoticStability',
         ]
 
 # if free_flight is False, the motion of the centre of the wing is prescribed.
@@ -38,15 +38,15 @@ u_inf = 10
 rho = 1.225
 
 # trim sigma = 1.5
-alpha = 4.2521231600122045*np.pi/180
+alpha = 4.31*np.pi/180
 beta = 0
 roll = 0
 gravity = 'on'
-cs_deflection = -2.219632690157531*np.pi/180
+cs_deflection = -2.08*np.pi/180
 rudder_static_deflection = 0.0
 rudder_step = 0.0*np.pi/180
-thrust = 5.036931047647685
-sigma = 100
+thrust = 6.16
+sigma = 1.5
 lambda_dihedral = 20*np.pi/180
 
 # gust settings
@@ -56,10 +56,11 @@ gust_offset = 0.5*u_inf
 
 
 # numerics
-n_step = 1
-relaxation_factor = 0.5
-tolerance = 1e-7
-fsi_tolerance = 1e-6
+n_step = 5
+structural_relaxation_factor = 0.6
+relaxation_factor = 0.35
+tolerance = 1e-6
+fsi_tolerance = 1e-4
 
 num_cores = 2
 
@@ -70,7 +71,7 @@ lambda_main = 0.25
 ea_main = 0.3
 
 ea = 1e7
-ga = 1e7
+ga = 1e5
 gj = 1e4
 eiy = 2e4
 eiz = 4e6
@@ -79,7 +80,7 @@ j_bar_main = 0.075
 
 length_fuselage = 10
 offset_fuselage = 0
-sigma_fuselage = 100
+sigma_fuselage = 10
 m_bar_fuselage = 0.2
 j_bar_fuselage = 0.08
 
@@ -107,7 +108,7 @@ chord_fin = 0.5
 # DISCRETISATION
 # spatial discretisation
 # chordiwse panels
-m = 8
+m = 4
 # spanwise elements
 n_elem_multiplier = 2
 n_elem_main = int(4*n_elem_multiplier)
@@ -117,7 +118,7 @@ n_elem_fuselage = int(2*n_elem_multiplier)
 n_surfaces = 5
 
 # temporal discretisation
-physical_time = 100
+physical_time = 30
 tstep_factor = 1.
 dt = 1.0/m/u_inf*tstep_factor
 n_tstep = round(physical_time/dt)
@@ -224,7 +225,7 @@ def clean_test_files():
     if os.path.isfile(aero_file_name):
         os.remove(aero_file_name)
 
-    solver_file_name = route + '/' + case_name + '.solver.sharpy'
+    solver_file_name = route + '/' + case_name + '.sharpy'
     if os.path.isfile(solver_file_name):
         os.remove(solver_file_name)
 
@@ -654,12 +655,12 @@ def generate_naca_camber(M=0, P=0):
 
 
 def generate_solver_file():
-    file_name = route + '/' + case_name + '.solver.sharpy'
+    file_name = route + '/' + case_name + '.sharpy'
     settings = dict()
     settings['SHARPy'] = {'case': case_name,
                           'route': route,
                           'flow': flow,
-                          'write_screen': 'on',
+                          'write_screen': 'off',
                           'write_log': 'on',
                           'log_folder': route + '/output/',
                           'log_file': case_name + '.log'}
@@ -693,7 +694,7 @@ def generate_solver_file():
                                                        'u_inf_direction': [1., 0, 0]},
                               'rho': rho}
 
-    settings['StaticCoupled'] = {'print_info': 'on',
+    settings['StaticCoupled'] = {'print_info': 'off',
                                  'structural_solver': 'NonLinearStatic',
                                  'structural_solver_settings': settings['NonLinearStatic'],
                                  'aero_solver': 'StaticUvlm',
@@ -701,7 +702,7 @@ def generate_solver_file():
                                  'max_iter': 100,
                                  'n_load_steps': n_step,
                                  'tolerance': fsi_tolerance,
-                                 'relaxation_factor': relaxation_factor}
+                                 'relaxation_factor': structural_relaxation_factor}
 
     settings['StaticTrim'] = {'solver': 'StaticCoupled',
                               'solver_settings': settings['StaticCoupled'],

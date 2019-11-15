@@ -15,6 +15,14 @@ class SaveData(BaseSolver):
     """
     The ``SaveData`` postprocessor writes the SHARPy variables into hdf5 files.
 
+    It has options to save the following classes:
+
+        * :class:`~sharpy.sharpy.aero.models.Aerogrid` including :class:`sharpy.sharpy.utils.datastructures.AeroTimeStepInfo`
+
+        * :class:`~sharpy.sharpy.structure.beam.Beam` including :class:`sharpy.sharpy.utils.datastructures.StructTimeStepInfo`
+
+        * :class:`sharpy.solvers.linearassembler.Linear` including classes in :exc:`sharpy.linear.assembler`
+
     """
     solver_id = 'SaveData'
     solver_classification = 'post-processor'
@@ -25,12 +33,15 @@ class SaveData(BaseSolver):
 
     settings_types['folder'] = 'str'
     settings_default['folder'] = './output'
+    settings_description['folder'] = 'Folder to save data'
 
     settings_types['save_aero'] = 'bool'
     settings_default['save_aero'] = True
+    settings_description['save_aero'] = 'Save aerodynamic classes'
 
     settings_types['save_struct'] = 'bool'
     settings_default['save_struct'] = True
+    settings_description['save_struct'] = 'Save structural classes'
 
     settings_types['save_linear'] = 'bool'
     settings_default['save_linear'] = False
@@ -42,22 +53,22 @@ class SaveData(BaseSolver):
 
     settings_types['skip_attr'] = 'list(str)'
     settings_default['skip_attr'] = ['fortran',
-                                          'airfoils',
-                                          'airfoil_db',
-                                          'settings_types',
-                                          # 'beam',
-                                          'ct_dynamic_forces_list',
-                                          #'ct_forces_list',
-                                          'ct_gamma_dot_list',
-                                          'ct_gamma_list',
-                                          'ct_gamma_star_list',
-                                          'ct_normals_list',
-                                          'ct_u_ext_list',
-                                          'ct_u_ext_star_list',
-                                          'ct_zeta_dot_list',
-                                          'ct_zeta_list',
-                                          'ct_zeta_star_list',
-                                          'dynamic_input']
+                                     'airfoils',
+                                     'airfoil_db',
+                                     'settings_types',
+                                     # 'beam',
+                                     'ct_dynamic_forces_list',
+                                     # 'ct_forces_list',
+                                     'ct_gamma_dot_list',
+                                     'ct_gamma_list',
+                                     'ct_gamma_star_list',
+                                     'ct_normals_list',
+                                     'ct_u_ext_list',
+                                     'ct_u_ext_star_list',
+                                     'ct_zeta_dot_list',
+                                     'ct_zeta_list',
+                                     'ct_zeta_star_list',
+                                     'dynamic_input']
     settings_description['skip_attr'] = 'List of attributes to skip when writing file'
 
     settings_types['compress_float'] = 'bool'
@@ -83,34 +94,34 @@ class SaveData(BaseSolver):
 
         ### specify which classes are saved as hdf5 group
         # see initialise and add_as_grp
-        self.ClassesToSave=(sharpy.presharpy.presharpy.PreSharpy,)
+        self.ClassesToSave = (sharpy.presharpy.presharpy.PreSharpy,)
 
     def initialise(self, data, custom_settings=None):
 
         # Add these anyway - therefore if you add your own skip_attr you don't have to retype all of these
         self.settings_default['skip_attr'].append(['fortran',
-                                              'airfoils',
-                                              'airfoil_db',
-                                              'settings_types',
-                                              'ct_dynamic_forces_list',
-                                              'ct_forces_list',
-                                              'ct_gamma_dot_list',
-                                              'ct_gamma_list',
-                                              'ct_gamma_star_list',
-                                              'ct_normals_list',
-                                              'ct_u_ext_list',
-                                              'ct_u_ext_star_list',
-                                              'ct_zeta_dot_list',
-                                              'ct_zeta_list',
-                                              'ct_zeta_star_list',
-                                              'dynamic_input'])
+                                                   'airfoils',
+                                                   'airfoil_db',
+                                                   'settings_types',
+                                                   'ct_dynamic_forces_list',
+                                                   'ct_forces_list',
+                                                   'ct_gamma_dot_list',
+                                                   'ct_gamma_list',
+                                                   'ct_gamma_star_list',
+                                                   'ct_normals_list',
+                                                   'ct_u_ext_list',
+                                                   'ct_u_ext_star_list',
+                                                   'ct_zeta_dot_list',
+                                                   'ct_zeta_list',
+                                                   'ct_zeta_star_list',
+                                                   'dynamic_input'])
         self.data = data
         if custom_settings is None:
             self.settings = data.settings[self.solver_id]
         else:
             self.settings = custom_settings
         settings.to_custom_types(self.settings,
-                                     self.settings_types, self.settings_default)
+                                 self.settings_types, self.settings_default)
         self.ts_max = self.data.ts + 1
 
         # create folder for containing files if necessary
@@ -119,22 +130,32 @@ class SaveData(BaseSolver):
         self.folder = self.settings['folder'] + '/' + self.data.settings['SHARPy']['case'] + '/'
         if not os.path.exists(self.folder):
             os.makedirs(self.folder)
-        self.filename = self.folder+self.data.settings['SHARPy']['case']+'.data.h5'
+        self.filename = self.folder + self.data.settings['SHARPy']['case'] + '.data.h5'
 
         if os.path.isfile(self.filename):
             os.remove(self.filename)
+
+        # check that there is a linear system - else return setting to false
+        if self.settings['save_linear'] or self.settings['save_linear_uvlm']:
+            try:
+                self.data.linear
+            except AttributeError:
+                cout.cout_wrap('SaveData variables ``save_linear`` and/or ``save_linear`` are True but no linear system'
+                               'been found', 3)
+                self.settings['save_linear'] = False
+                self.settings['save_linear_uvlm'] = False
 
         if self.settings['format'] == 'h5':
 
             # allocate list of classes to be saved
             if self.settings['save_aero']:
-                self.ClassesToSave+=(sharpy.aero.models.aerogrid.Aerogrid,
-                                     sharpy.utils.datastructures.AeroTimeStepInfo,)
+                self.ClassesToSave += (sharpy.aero.models.aerogrid.Aerogrid,
+                                       sharpy.utils.datastructures.AeroTimeStepInfo,)
 
             if self.settings['save_struct']:
-                self.ClassesToSave+=(
-                                    sharpy.structure.models.beam.Beam,
-                                    sharpy.utils.datastructures.StructTimeStepInfo,)
+                self.ClassesToSave += (
+                    sharpy.structure.models.beam.Beam,
+                    sharpy.utils.datastructures.StructTimeStepInfo,)
 
             if self.settings['save_linear']:
                 self.ClassesToSave += (sharpy.solvers.linearassembler.Linear,
@@ -155,35 +176,37 @@ class SaveData(BaseSolver):
 
         if self.settings['format'] == 'h5':
             file_exists = os.path.isfile(self.filename)
-            hdfile=h5py.File(self.filename,'a')
+            hdfile = h5py.File(self.filename, 'a')
 
             if (online and file_exists):
                 if self.settings['save_aero']:
-                    h5utils.add_as_grp(self.data.aero.timestep_info[self.data.ts], hdfile['data']['aero']['timestep_info'],
+                    h5utils.add_as_grp(self.data.aero.timestep_info[self.data.ts],
+                                       hdfile['data']['aero']['timestep_info'],
                                        grpname=("%05d" % self.data.ts),
                                        ClassesToSave=(sharpy.utils.datastructures.AeroTimeStepInfo,),
                                        SkipAttr=self.settings['skip_attr'],
                                        compress_float=self.settings['compress_float'])
                 if self.settings['save_struct']:
-                    h5utils.add_as_grp(self.data.structure.timestep_info[self.data.ts], hdfile['data']['structure']['timestep_info'],
+                    h5utils.add_as_grp(self.data.structure.timestep_info[self.data.ts],
+                                       hdfile['data']['structure']['timestep_info'],
                                        grpname=("%05d" % self.data.ts),
                                        ClassesToSave=(sharpy.utils.datastructures.StructTimeStepInfo,),
                                        SkipAttr=self.settings['skip_attr'],
                                        compress_float=self.settings['compress_float'])
             else:
-                h5utils.add_as_grp(self.data,hdfile,grpname='data',
-                                   ClassesToSave=self.ClassesToSave,SkipAttr=self.settings['skip_attr'],
+                h5utils.add_as_grp(self.data, hdfile, grpname='data',
+                                   ClassesToSave=self.ClassesToSave, SkipAttr=self.settings['skip_attr'],
                                    compress_float=self.settings['compress_float'])
 
             hdfile.close()
 
             if self.settings['save_linear_uvlm']:
-
                 linhdffile = h5py.File(self.filename.replace('.data.h5', '.uvlmss.h5'), 'a')
                 h5utils.add_as_grp(self.data.linear.linear_system.uvlm.ss, linhdffile, grpname='ss',
                                    ClassesToSave=self.ClassesToSave, SkipAttr=self.settings['skip_attr'],
                                    compress_float=self.settings['compress_float'])
-                h5utils.add_as_grp(self.data.linear.linear_system.linearisation_vectors, linhdffile, grpname='linearisation_vectors',
+                h5utils.add_as_grp(self.data.linear.linear_system.linearisation_vectors, linhdffile,
+                                   grpname='linearisation_vectors',
                                    ClassesToSave=self.ClassesToSave, SkipAttr=self.settings['skip_attr'],
                                    compress_float=self.settings['compress_float'])
                 linhdffile.close()
@@ -191,7 +214,7 @@ class SaveData(BaseSolver):
         elif self.settings['format'] == 'mat':
             from scipy.io import savemat
             if self.settings['save_linear']:
-                #reference-forces
+                # reference-forces
                 linearisation_vectors = self.data.linear.linear_system.linearisation_vectors
 
                 matfilename = self.filename.replace('.data.h5', '.linss.mat')

@@ -1,5 +1,4 @@
 import sharpy.linear.utils.ss_interface as ss_interface
-import scipy.sparse as scsp
 import numpy as np
 import sharpy.linear.src.libss as libss
 import scipy.linalg as sclalg
@@ -91,7 +90,7 @@ class LinearAeroelastic(ss_interface.BaseElement):
             self.settings = data.settings['LinearAssembler']['linear_system_settings']
         except KeyError:
             self.settings = None
-        settings.to_custom_types(self.settings, self.settings_types, self.settings_default)
+        settings.to_custom_types(self.settings, self.settings_types, self.settings_default, no_ctype=True)
 
         if self.settings['use_euler']:
             self.settings['aero_settings']['use_euler'] = True
@@ -101,7 +100,7 @@ class LinearAeroelastic(ss_interface.BaseElement):
         self.uvlm = ss_interface.initialise_system('LinearUVLM')
         self.uvlm.initialise(data, custom_settings=self.settings['aero_settings'])
         if self.settings['uvlm_filename'] == '':
-            self.uvlm.assemble(track_body=self.settings['track_body'].value)
+            self.uvlm.assemble(track_body=self.settings['track_body'])
         else:
             self.load_uvlm_from_file = True
 
@@ -197,7 +196,7 @@ class LinearAeroelastic(ss_interface.BaseElement):
             self.couplings['Ksa'] = Ksa
             self.couplings['Kas'] = Kas
 
-            if self.settings['beam_settings']['modal_projection'].value == True and \
+            if self.settings['beam_settings']['modal_projection'] == True and \
                     self.settings['beam_settings']['inout_coords'] == 'modes':
                 # Project UVLM onto modal space
                 phi = beam.sys.U
@@ -232,7 +231,7 @@ class LinearAeroelastic(ss_interface.BaseElement):
                 Tas[:flex_nodes + 6, :flex_nodes + 6] /= uvlm.sys.ScalingFacts['length']
                 Tas[total_dof: total_dof + flex_nodes + 6] /= uvlm.sys.ScalingFacts['length']
             else:
-                if not self.settings['beam_settings']['modal_projection'].value:
+                if not self.settings['beam_settings']['modal_projection']:
                     Tas /= uvlm.sys.ScalingFacts['length']
 
         ss = libss.couple(ss01=uvlm.ss, ss02=beam.ss, K12=Tas, K21=Tsa)
@@ -255,7 +254,7 @@ class LinearAeroelastic(ss_interface.BaseElement):
         # Save zero force reference
         self.linearisation_vectors['forces_aero_beam_dof'] = Ksa.dot(self.linearisation_vectors['forces_aero'])
 
-        if self.settings['beam_settings']['modal_projection'].value == True and \
+        if self.settings['beam_settings']['modal_projection'] == True and \
                 self.settings['beam_settings']['inout_coords'] == 'modes':
             self.linearisation_vectors['forces_aero_beam_dof'] = out_mode_matrix.dot(self.linearisation_vectors['forces_aero_beam_dof'])
 
@@ -299,7 +298,7 @@ class LinearAeroelastic(ss_interface.BaseElement):
         else:
             orient_dof = 4
         # Input side
-        if self.settings['beam_settings']['modal_projection'].value == True and \
+        if self.settings['beam_settings']['modal_projection'] == True and \
                 self.settings['beam_settings']['inout_coords'] == 'modes':
             rem_int_modes = np.zeros((ss.inputs, ss.inputs - rig_nodes))
             rem_int_modes[rig_nodes:, :] = np.eye(ss.inputs - rig_nodes)

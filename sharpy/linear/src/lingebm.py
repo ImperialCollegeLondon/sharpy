@@ -241,12 +241,6 @@ class FlexDynamic():
 
     @num_modes.setter
     def num_modes(self, value):
-        # self.U = self.U[:, :value]
-        # self.freq_natural = self.freq_natural[:value]
-        # if self.freq_damp is not None:
-        #     self.freq_damp = self.freq_damp[:value]
-        # if self.V is not None:
-        #     self.V = self.V[:value, :]
         self.update_truncated_modes(value)
         self._num_modes = value
 
@@ -501,7 +495,7 @@ class FlexDynamic():
         if tsstr is None:
             tsstr = self.tsstruct0
 
-        if self.settings['print_info'].value:
+        if self.settings['print_info']:
             try:
                 cout.cout_wrap('\nLinearising gravity terms...')
             except ValueError:
@@ -543,7 +537,7 @@ class FlexDynamic():
         Xcg_A = -np.array([Mrr[2, 4], Mrr[0, 5], Mrr[1, 3]]) / Mrr[0, 0]
         Xcg_Askew = algebra.skew(Xcg_A)
 
-        if self.settings['print_info'].value:
+        if self.settings['print_info']:
             cout.cout_wrap('\tM = %.2f kg' % Mrr[0, 0], 1)
             cout.cout_wrap('\tX_CG A -> %.2f %.2f %.2f' %(Xcg_A[0], Xcg_A[1], Xcg_A[2]), 1)
 
@@ -604,7 +598,7 @@ class FlexDynamic():
                 # Nodal CG in G frame - debug
                 Xcg_G_n = Pga.dot(Xcg_A_n)
 
-                if self.settings['print_info'].value:
+                if self.settings['print_info']:
                     cout.cout_wrap("Node %2d \t-> B %.3f %.3f %.3f" %(i_node, Xcg_B[0], Xcg_B[1], Xcg_B[2]), 2)
                     cout.cout_wrap("\t\t\t-> A %.3f %.3f %.3f" %(Xcg_A_n[0], Xcg_A_n[1], Xcg_A_n[2]), 2)
                     cout.cout_wrap("\t\t\t-> G %.3f %.3f %.3f" %(Xcg_G_n[0], Xcg_G_n[1], Xcg_G_n[2]), 2)
@@ -686,7 +680,7 @@ class FlexDynamic():
         if self.modal:
             self.Ccut = self.U.T.dot(self.Cstr.dot(self.U))
 
-        if self.settings['print_info'].value:
+        if self.settings['print_info']:
             cout.cout_wrap('\tUpdated the beam C, modal C and K matrices with the terms from the gravity linearisation\n')
 
     def assemble(self, Nmodes=None):
@@ -723,12 +717,12 @@ class FlexDynamic():
         assert self.inout_coords in ['modes', 'nodes'], \
             'inout_coords=%s not implemented!' % self.inout_coords
 
-        cond_mass_matrix = np.linalg.cond(self.Mstr)
-        if np.log10(cond_mass_matrix) >= 10.:
-            warnings.warn('Mass matrix is poorly conditioned (Cond = 10^%f). Inverse may not be correct.'
-                          % np.log10(cond_mass_matrix), 3)
-        else:
-            cout.cout_wrap('Mass matrix condition = %e' % cond_mass_matrix)
+        # cond_mass_matrix = np.linalg.cond(self.Mstr)
+        # if np.log10(cond_mass_matrix) >= 10.:
+        #     warnings.warn('Mass matrix is poorly conditioned (Cond = 10^%f). Inverse may not be correct.'
+        #                   % np.log10(cond_mass_matrix), 3)
+        # else:
+        #     cout.cout_wrap('Mass matrix condition = %e' % cond_mass_matrix)
 
         dlti = self.dlti
         modal = self.modal

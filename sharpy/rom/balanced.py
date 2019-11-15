@@ -188,19 +188,9 @@ class FrequencyLimited(BaseBalancedRom):
         if in_settings is not None:
             self.settings = in_settings
 
-        settings.to_custom_types(self.settings, self.settings_types, self.settings_default)
-        settings.to_custom_types(self.settings['options_low'], self.settings_options_types, self.settings_options_default)
-        settings.to_custom_types(self.settings['options_high'], self.settings_options_types, self.settings_options_default)
-
-        # Remove c-type
-        for k in self.settings_types:
-            if self.settings_types[k] == 'float' or self.settings_types[k] == 'int':
-                self.settings[k] = self.settings[k].value
-            elif self.settings_types[k] == 'dict':
-                opt_dict = self.settings[k]
-                for kk in opt_dict:
-                    if self.settings_options_types[kk] == 'int':
-                        opt_dict[kk] = opt_dict[kk].value
+        settings.to_custom_types(self.settings, self.settings_types, self.settings_default, no_ctype=True)
+        settings.to_custom_types(self.settings['options_low'], self.settings_options_types, self.settings_options_default, no_ctype=True)
+        settings.to_custom_types(self.settings['options_high'], self.settings_options_types, self.settings_options_default, no_ctype=True)
 
     def run(self, ss):
 

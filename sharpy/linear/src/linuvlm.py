@@ -428,11 +428,11 @@ class Static():
 # # utilities for Dynamic.balfreq method
 
 # def get_trapz_weights(k0,kend,Nk,knyq=False):
-#     '''
+#     """
 #     Returns uniform frequency grid (kv of length Nk) and weights (wv) for
 #     Gramians integration using trapezoidal rule. If knyq is True, it is assumed
 #     that kend is also the Nyquist frequency.
-#     '''
+#     """
 
 #     assert k0>=0. and kend>=0., 'Frequencies must be positive!'
 
@@ -454,7 +454,7 @@ class Static():
 
 
 # def get_gauss_weights(k0,kend,Npart,order):
-#     '''
+#     """
 #     Returns gauss-legendre frequency grid (kv of length Npart*order) and
 #     weights (wv) for Gramians integration.
 
@@ -465,7 +465,7 @@ class Static():
 #     Note: integration points are never located at k0 or kend, hence there
 #     is no need for special treatment as in (for e.g.) a uniform grid case
 #     (see get_unif_weights)
-#     '''
+#     """
 
 #     if Npart==1:
 #         # get gauss normalised coords and weights
@@ -563,6 +563,16 @@ class Dynamic(Static):
         self.settings = dict()
         if dynamic_settings:
             self.settings = dynamic_settings
+        else:
+            warnings.warn('No settings dictionary found. Using default. Individual parsing of settings is deprecated',
+                          DeprecationWarning)
+            # Future: remove deprecation warning and make settings the only argument
+            settings.to_custom_types(self.settings, settings_types_dynamic, settings_default_dynamic)
+            self.settings['dt'] = dt
+            self.settings['integr_order'] = integr_order
+            self.settings['remove_predictor'] = RemovePredictor
+            self.settings['use_sparse'] = UseSparse
+            self.settings['ScalingDict'] = ScalingDict
 
         self.dt = self.settings['dt']
         self.integr_order = self.settings['integr_order']
@@ -1664,7 +1674,7 @@ class Dynamic(Static):
 ################################################################################
 
 class DynamicBlock(Dynamic):
-    '''
+    """
     Class for dynamic linearised UVLM solution. Linearisation around steady-state
     are only supported.
 
@@ -1709,13 +1719,16 @@ class DynamicBlock(Dynamic):
     To do:
 
     - upgrade to linearise around unsteady snapshot (adjoint)
-    '''
+    """
 
-
-    def __init__(self, tsdata, dt,
+    def __init__(self, tsdata, dt=None,
                  dynamic_settings=None,
                  integr_order=2,
                        RemovePredictor=True, ScalingDict=None, UseSparse=True, for_vel=np.zeros((6),)):
+
+        if dynamic_settings is None:
+            warnings.warn('Individual parsing of settings is deprecated. Please use the settings dictionary',
+                          DeprecationWarning)
 
         super().__init__(tsdata, dt,
                          dynamic_settings=dynamic_settings,
@@ -2036,7 +2049,7 @@ class DynamicBlock(Dynamic):
         print('\t\t\t...done in %.2f sec' % self.cpu_summary['assemble'])
 
     def freqresp(self, kv):
-        '''
+        """
         Ad-hoc method for fast UVLM frequency response over the frequencies
         kv. The method, only requires inversion of a K x K matrix at each
         frequency as the equation for propagation of wake circulation are solved
@@ -2047,7 +2060,7 @@ class DynamicBlock(Dynamic):
         Note:
         This method is very similar to the "minsize" solution option is the
         steady_solve.
-        '''
+        """
 
         MS = self.MS
         K = self.K
@@ -2092,7 +2105,7 @@ class DynamicBlock(Dynamic):
         return Yfreq
 
     def balfreq(self, DictBalFreq):
-        '''
+        """
         Low-rank method for frequency limited balancing.
         The Observability ad controllability Gramians over the frequencies kv
         are solved in factorised form. Balancd modes are then obtained with a
@@ -2186,7 +2199,7 @@ class DynamicBlock(Dynamic):
             min{ 2*28* number_inputs, 2*28* number_outputs }
         The model is finally truncated so as to retain only the first Ns stable
         modes.
-        '''
+        """
 
         ### check input dictionary
         if 'frequency' not in DictBalFreq:
@@ -2406,8 +2419,6 @@ class DynamicBlock(Dynamic):
             self.Zo=Zo
             self.svd_res={ 'U': U, 'hsv': hsv, 'Vh': Vh }
 
-
-
     def solve_step(self, x_n, u_n, u_n1=None, transform_state=False):
         r"""
         Solve step.
@@ -2456,9 +2467,6 @@ class DynamicBlock(Dynamic):
             'self.SS', the implementation change with respect to Dynamic. However,
             formulas are consistent.
         """
-
-        # from IPython import embed
-        # embed()
 
         if u_n1 is None:
             u_n1 = u_n.copy()

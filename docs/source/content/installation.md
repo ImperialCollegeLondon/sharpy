@@ -1,5 +1,5 @@
 # SHARPy Installation Guide
-__Last revision 13 December 2018__
+__Last revision 12 November 2019__
 
 The following step by step tutorial will guide you through the installation process of SHARPy.
 
@@ -233,14 +233,24 @@ You are now ready to run SHARPy cases from the terminal.
 
 ### The SHARPy Case Structure
 
+__Setting up a SHARPy case__
+
 SHARPy cases are usually structured in the following way:
 
-1. The `generate_case.py` file: contains the setup of the problem, like the geometry, flight conditions etc.
-This script creates two output files that will then be used by SHARPy, `.fem.h5` and the `.solver.txt` file.
+1. A `generate_case.py` file: contains the setup of the problem, like geometry, flight conditions etc.
+This script creates the output files that will then be used by SHARPy, namely:
+    * The [structural](./casefiles.html#fem-file) `.fem.h5` file.
+    * The [aerodynamic](./casefiles.html#aerodynamics-file) `.aero.h5` file.
+    * [Simulation information](./casefiles.html#solver-configuration-file) and settings `.solver.sharpy` file.
+    * The dynamic forces file `.dyn.h5` (when required).
+    * The linear input files `.lininput.h5` (when required).
+    * The ROM settings file `.rom.h5` (when required).
+    
+    See the [chapter](./casefiles) on the case files for a detailed description on the contents of each one.    
 
 2. The `h5` files contain data of the FEM, aerodynamics, dynamic conditions. They are later read by SHARPy.
 
-3. The `.solver.txt` file contains the settings for SHARPy and is the file that is parsed to SHARPy.
+3. The `.solver.sharpy` file contains the settings for SHARPy and is the file that is parsed to SHARPy.
 
 __To run a SHARPy case__
 
@@ -255,72 +265,89 @@ SHARPy cases are therefore usually ran in the following way:
 
 3. Run SHARPy (ensure the environment is activated)
     ```bash
-    run_sharpy case.solver.txt
+    run_sharpy case.solver.sharpy
     ```
 
-### Output
+#### Output
 
 By default, the output is located in the `output` folder.
 
 The contents of the folder will typically be a `beam` and `aero` folders, which contain the output data that can then be
 loaded in Paraview.
 
-#### Run a test case
+### Running (and modifiying) a test case
 
-__*TODO* review Geradin case and update sharpy calls__
-
-__TUTORIAL OUT OF DATE__
-
-
-
-1.  This command generates the required files for running a static, clamped beam: 
+1.  This command generates the required files for running a static, clamped beam case that is used as part of code 
+verification: 
     ```sh
     cd ../sharpy
     python ./tests/beam/static/geradin_cardona/generate_geradin.py
     ```
     
-Now you should see a success message, and if you check the
-`./tests/beam/static/geradin_cardona/` folder, you should see two new files:
-+ geradin_cardona.solver.txt
-+ geradin_cardona.fem.h5
+    The script will run and if you check the
+    `./tests/beam/static/geradin_cardona/` folder, you should see two new files:
+    + `geradin.solver.txt`
+    + `geradin.fem.h5`
 
-Try to open the `solver.txt` file and have a quick look. The `solver` file is
-the main settings file. We'll get deeper into this later.
+    Try to open the `solver.txt` file and have a quick look. The `solver` file is
+    the main settings file. We'll get deeper into this in a separate chapter.
 
-If you try to open the `fem.h5` file, you'll get an error or something meaningless. This is because the structural data is stored in [HDF5](https://support.hdfgroup.org/HDF5/) format, which is compressed binary.
+    If you try to open the `fem.h5` file, you'll get an error or something meaningless. This is because the structural data
+    is stored in [HDF5](https://support.hdfgroup.org/HDF5/) format, which is compressed binary.
 
-5. Now run it
+5. Run it (part 1)
 
-    The usual `sharpy` call is something like:
+    The `sharpy` call is:
     ```bash
-    # from the sharpy folder
-    python __main__.py "solver.txt file"
-    # from outside the sharpy folder (make sure working_dir is in your path:)
-    python sharpy "solver.txt file"
+    # Make sure that the sharpy_env conda environment is active
+    sharpy <solver.txt file>
     ```
-    So if you are in the sharpy folder, just run:
+
+6. Results (part 1)
+
+    Since this is a test case, there is no output directly to screen. 
+    
+    We will therefore change this setting first.
+    In the `generate_geradin.py` file, look for the `SHARPy` setting `write_screen` and set it to `on`. This will
+    output the progress of the execution to the terminal.
+    
+    We would also like to create a Paraview file to view the beam deformation. Append the post-processor `BeamPlot` to
+    the end of the `SHARPy` setting `flow`. This will plot the beam in Paraview format with the settings specified in 
+    the `generate_geradin.py` file under `config['BeamPlot]`.
+    
+7. Run (part 2)
+
+    Now that we have made these modifications, run again the generation script:
+    ```sh
+    python ./tests/beam/static/geradin_cardona/generate_geradin.py
+    ```
+    
+    Check the new `.solver.txt` file and look for the settings we just changed. Make sure they read what we wanted.
+    
+    You are now ready to run the case again:
     ```bash
-    python __main__.py ./tests/beam/static/geradin_cardona/geradin_cardona.solver.txt
+    # Make sure that the sharpy_env conda environment is active
+    sharpy <solver.txt file>
     ```
+    
+8. Post-processing
 
-6. Results
-
-    After a successful execution, you should get something similar to:
+    After a successful execution, you should a long display of information in the terminal as the case is being 
+    executed.
+    
+    The deformed beam will have been written in a `.vtu` file and will be located in the `output/` folder (or where
+    you specified in the settings) which you can open using Paraview.
+    
+    In the `output` directory you will also note a folder named `WriteVariablesTime` which outputs certain variables
+    as a function of time to a `.dat` file. In this case, the beam tip position deflection and rotation is written.
+    Check the values of those files and look for the following result:
     ```
-    Plotting the structure...
-    Tip:
 	    Pos_def:
 		      4.403530 0.000000 -2.159692
 	    Psi_def:
 		      0.000000 0.672006 0.000000
-    ...Finished
     ```
-    And a 3D plot in a matplotlib screen.
-
     FYI, the correct solution for this test case by Geradin and Cardona is
-    Delta R_3 = -2.159m and Psi_2 = 0.6720rad.
+    `Delta R_3 = -2.159 m` and `Psi_2 = 0.6720 rad`.
 
 Congratulations, you've run your first case.
-
-If you want to know how to configure your own cases, check 
-[Geradin and Cardona Static Structural Case](../../../tests/xbeam/geradin/generate_geradin.py).
