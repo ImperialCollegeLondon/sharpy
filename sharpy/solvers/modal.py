@@ -133,6 +133,10 @@ class Modal(BaseSolver):
 
         self.rigid_body_motion = self.settings['rigid_body_modes'].value
 
+        self.data.ts = len(self.data.structure.timestep_info) - 1
+        if self.settings['use_custom_timestep'].value > -1:
+            self.data.ts = self.settings['use_custom_timestep'].value
+
         # load info from dyn dictionary
         self.data.structure.add_unsteady_information(
                                             self.data.structure.dyn_dict,
@@ -220,9 +224,6 @@ class Modal(BaseSolver):
             PreSharpy: updated data object with modal analysis as part of the last structural time step.
 
         """
-        self.data.ts = len(self.data.structure.timestep_info) - 1
-        if self.settings['use_custom_timestep'].value > -1:
-            self.data.ts = self.settings['use_custom_timestep'].value
 
         # Number of degrees of freedom
         num_str_dof = self.data.structure.num_dof.value
@@ -433,7 +434,8 @@ class Modal(BaseSolver):
                     NumLambda,
                     self.filename_shapes,
                     self.settings['max_rotation_deg'],
-                    self.settings['max_displacement'])
+                    self.settings['max_displacement'],
+                    ts=self.settings['use_custom_timestep'].value)
 
         outdict = dict()
 
