@@ -267,8 +267,10 @@ def construct_mimo_krylov(r, lu_A_input, B, approx_type='Pade',side='controllabi
     last_column = 0
 
     # Pre-allocate w, V
-    V = np.zeros((n, m * r), dtype=complex)
-    w = np.zeros((n, m * r), dtype=complex)  # Initialise w, may be smaller than this due to deflation
+    # V = np.zeros((n, m * r), dtype=complex)
+    # w = np.zeros((n, m * r), dtype=complex)  # Initialise w, may be smaller than this due to deflation
+    V = np.zeros((n, m * r))
+    w = np.zeros((n, m * r))  # Initialise w, may be smaller than this due to deflation
 
     if approx_type == 'partial_realisation':
         G = B
@@ -360,10 +362,25 @@ def schur_ordered(A, ct=False):
     else:
         sort_eigvals = 'iuc'
 
-    As, Tt, n_stable1 = sclalg.schur(A, output='complex', sort=sort_eigvals)
-    n_stable = np.sum(np.abs(np.linalg.eigvals(A))<=1.)
+    # if A.dtype == complex:
+    #     output_form = 'complex'
+    # else:
+    #     output_form = 'real'
+    # issues when not using the complex form of the Schur decomposition
 
-    assert (np.abs(As-np.conj(Tt.T).dot(A.dot(Tt))) < 1e-6).all(), 'Schur breakdown - A_schur != T^H A T'
+    output_form = 'complex'
+    As, Tt, n_stable1 = sclalg.schur(A, output=output_form, sort=sort_eigvals)
+
+    if sort_eigvals == 'lhp':
+        n_stable = np.sum(np.linalg.eigvals(A).real <= 0)
+    elif sort_eigvals == 'iuc':
+        n_stable = np.sum(np.abs(np.linalg.eigvals(A)) <= 1.)
+    else:
+        raise NotImplementedError('Unknown sorting of eigenvalues. Either iuc or lhp')
+
+    assert n_stable == n_stable1, 'Number of stable eigenvalues not equal in Schur output and manual calculation'
+
+    assert (np.abs(As-np.conj(Tt.T).dot(A.dot(Tt))) < 1e-4).all(), 'Schur breakdown - A_schur != T^H A T'
     return As, Tt.T, n_stable
 
 

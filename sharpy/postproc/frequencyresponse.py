@@ -13,6 +13,9 @@ class FrequencyResponse(solver_interface.BaseSolver):
     """
     Frequency Response Calculator
 
+    Computes the frequency response of a linear system. If a reduced order model has been created, a comparison is
+    made between the two responses.
+
     """
     solver_id = 'FrequencyResponse'
     solver_classification = 'post-processor'
@@ -47,7 +50,7 @@ class FrequencyResponse(solver_interface.BaseSolver):
 
     settings_types['quick_plot'] = 'bool'
     settings_default['quick_plot'] = False
-    settings_description['quick_plot'] = 'Produce array of plots showing response'
+    settings_description['quick_plot'] = 'Produce array of ``.png`` plots showing response'
 
     settings_table = settings_utils.SettingsTable()
     __doc__ += settings_table.generate(settings_types, settings_default, settings_description)
@@ -141,14 +144,14 @@ class FrequencyResponse(solver_interface.BaseSolver):
             Y_freq_fom = self.ss.freqresp(self.wv)
             tfom = time.time() - t0fom
             self.save_freq_resp(self.wv, Y_freq_fom, 'fom')
-            cout.cout_wrap('\tComputed the frequency response of the full order system in %f s' %tfom, 2)
+            cout.cout_wrap('\tComputed the frequency response of the full order system in %f s' % tfom, 2)
 
         if self.ssrom is not None:
             cout.cout_wrap('Reduced order system:', 1)
             t0rom = time.time()
             Y_freq_rom = self.ssrom.freqresp(self.wv)
             trom = time.time() - t0rom
-            cout.cout_wrap('\tComputed the frequency response of the reduced order system in %f s' %trom, 2)
+            cout.cout_wrap('\tComputed the frequency response of the reduced order system in %f s' % trom, 2)
             self.save_freq_resp(self.wv, Y_freq_rom, 'rom')
 
             if Y_freq_fom is not None:
@@ -211,6 +214,7 @@ class FrequencyResponse(solver_interface.BaseSolver):
                 Y_freq_fom[p, m, :] = y_load
 
         return Y_freq_fom
+
 
 def frequency_error(Y_fom, Y_rom, wv):
     n_in = Y_fom.shape[1]
