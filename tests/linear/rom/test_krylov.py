@@ -10,10 +10,8 @@ import scipy.io as scio
 import sharpy.utils.sharpydir as sharpydir
 import sharpy.linear.src.libss as libss
 import sharpy.rom.krylov as krylov
-import scipy as sc
 import sharpy.linear.src.libsparse as libsp
 import sharpy.postproc.frequencyresponse as frequencyresponse
-# import matplotlib.pyplot as plt
 
 
 class TestKrylov(unittest.TestCase):
@@ -36,8 +34,8 @@ class TestKrylov(unittest.TestCase):
 
         self.rom = krylov.Krylov()
 
-        if not os.path.exists(self.test_dir + '/figs'):
-            os.makedirs(self.test_dir + '/figs')
+        if not os.path.exists(self.test_dir + '/figs/'):
+            os.makedirs(self.test_dir + '/figs/')
 
     def run_test(self, test_settings):
         self.rom.initialise(test_settings)
@@ -45,32 +43,34 @@ class TestKrylov(unittest.TestCase):
 
         # self.rom.restart()
         frequency = test_settings['frequency'].imag
-        wv = np.logspace(np.log10(np.min(frequency))-0.5, np.log10(np.max(frequency))+0.5, 100)
+        if frequency[0] != 0.:
+            wv = np.logspace(np.log10(np.min(frequency))-0.5, np.log10(np.max(frequency))+0.5, 100)
+        else:
+            wv = np.logspace(-1, 2, 100)
         Y_fom = self.ss.freqresp(wv)
         Y_rom = ssrom.freqresp(wv)
 
         max_error = frequencyresponse.frequency_error(Y_fom, Y_rom, wv)
 
+        # can be used for debugging
+        # import matplotlib.pyplot as plt
         # fig = plt.figure()
         # plt.semilogx(wv, Y_fom[0, 0, :].real)
         # plt.semilogx(wv, Y_rom[0, 0, :].real)
-
+        #
         # fig.savefig(self.test_dir + '/figs/%sfreqresp.png' %test_settings['algorithm'])
 
         assert np.log10(max_error) < -2, 'Significant mismatch in ROM frequency Response'
 
     def test_krylov(self):
         algorithm_list = {
-            # 'one_sided_arnoldi':
-            #     {'r': 10,
-            #      'frequency': np.array([10j], dtype=complex)},
+            'one_sided_arnoldi':
+                {'r': 48,
+                 'frequency': np.array([0])},
             'dual_rational_arnoldi':
-                {'r': 10,
-                 'frequency': np.array([10j], dtype=complex)}
+                {'r': 48,
+                 'frequency': np.array([0])}
             }
-        algorithm = 'dual_rational_arnoldi'
-        r = 10
-        interpolation_points = np.array([10j], dtype=complex)
         for algorithm in list(algorithm_list.keys()):
             with self.subTest(algorithm=algorithm):
                 test_settings = {'algorithm': algorithm,
@@ -84,5 +84,3 @@ class TestKrylov(unittest.TestCase):
 
 if __name__ == '__main__':
     unittest.main()
-    # test = TestKrylov()
-    # test.setUp()

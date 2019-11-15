@@ -9,7 +9,6 @@ import sharpy.utils.cout_utils as cout
 import ast
 
 
-
 class DictConfigParser(configparser.ConfigParser):
     def as_dict(self):
         d = dict(self._sections)
@@ -77,11 +76,11 @@ def to_custom_types(dictionary, types, default, no_ctype=False):
             else:
                 data_type = ct.c_bool
             try:
-                dictionary[k] = cast(k, dictionary[k], str2bool, ct.c_bool, default[k])
+                dictionary[k] = cast(k, dictionary[k], str2bool, data_type, default[k])
             except KeyError:
                 if default[k] is None:
                     raise exceptions.NoDefaultValueException(k)
-                dictionary[k] = cast(k, default[k], str2bool, ct.c_bool, default[k])
+                dictionary[k] = cast(k, default[k], str2bool, data_type, default[k])
                 notify_default_value(k, dictionary[k])
 
         elif v == 'list(str)':
@@ -186,6 +185,8 @@ def to_custom_types(dictionary, types, default, no_ctype=False):
                     raise exceptions.NoDefaultValueException(k)
                 dictionary[k] = default[k].copy()
                 notify_default_value(k, dictionary[k])
+        else:
+            raise TypeError('Variable %s has an unknown type (%s) that cannot be casted' % (k, v))
 
 
 
@@ -283,6 +284,7 @@ class SettingsTable:
             settings_types (dict): Setting types.
             settings_default (dict): Settings default value.
             settings_description (dict): Setting description.
+            header_line (str): Header line description (optional)
 
         Returns:
             str: .rst formatted string with a table containing the settings' information.
@@ -301,9 +303,9 @@ class SettingsTable:
 
         if header_line is None:
             header_line = 'The settings that this solver accepts are given by a dictionary, ' \
-                          'with the following key-value pairs:\n'
+                          'with the following key-value pairs:'
 
-        table_string = '\n    ' + header_line
+        table_string = '\n    ' + header_line + '\n'
         table_string += '\n    ' + self.print_divider_line()
         table_string += '    ' + self.print_header()
         table_string += '    ' + self.print_divider_line()

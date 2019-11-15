@@ -256,12 +256,6 @@ class AsymptoticStability(BaseSolver):
         imag_part_plot = np.hstack(imag_part_plot)
         uinf_part_plot = np.hstack(uinf_part_plot)
 
-        try:
-            import matplotlib.pyplot as plt
-            plt.scatter(real_part_plot, imag_part_plot, c=uinf_part_plot)
-        except ModuleNotFoundError:
-            cout.cout_wrap('Could not plot in asymptoticstability beacuse there is no Matplotlib', 4)
-
         cout.cout_wrap('Saving velocity analysis results...')
         np.savetxt(self.folder + '/velocity_analysis_min%04d_max%04d_nvel%04d.dat' %(ulb*10, uub*10, num_u),
                    np.concatenate((uinf_part_plot, real_part_plot, imag_part_plot)).reshape((-1, 3), order='F'))

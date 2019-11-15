@@ -12,29 +12,45 @@ import warnings
 
 @solver
 class LinearAssembler(BaseSolver):
-    """
+    r"""
     Warnings:
         Under development - please advise of new features and bugs!
 
     Creates a workspace containing the different linear elements of the state-space.
 
-    The user specifies which elements to build sequentially via the ``linear_system`` setting. If building
-    more than one system, they can be joined in series.
+    The user specifies which elements to build sequentially via the ``linear_system`` setting.
 
     The most common uses will be:
 
-        * Aerodynamic: ``LinearUVLM`` solver
+        * Aerodynamic: :class:`sharpy.linear.assembler.LinearUVLM` solver
 
-        * Structural: ``LinearBeam`` solver
+        * Structural: :class:`sharpy.linear.assembler.LinearBeam` solver
 
-        * Aeroelastic: ``LinearAeroelastic`` solver
+        * Aeroelastic: :class:`sharpy.linear.assembler.LinearAeroelastic` solver
 
     The solver enables to load a user specific assembly of a state-space by means of the ``LinearCustom`` block.
 
-    See ``sharpy.linear.assembler`` for a detailed description of each of the state-space assemblies.
+    See :module:`sharpy.linear.assembler` for a detailed description of each of the state-space assemblies.
 
     Upon assembly of the linear system, the data structure ``data.linear`` will be created. The :class:`.Linear`
     contains the state-space as an attribute. This state space will be the one employed by postprocessors.
+
+    Important: running the linear routines requires information on the tangent mass, stiffness and gyroscopic
+    structural matrices therefore the solver :class:`solvers.modal.Modal` must have been run prior to linearisation.
+    In addition, if the problem includes rigid body velocities, at least one
+    timestep of :class:`solvers.DynamicCoupled` must have run such that the rigid body velocity is included.
+
+    Example:
+
+    The typical ``flow`` setting used prior to using this solver for an aeroelastic simulation with rigid body dynamics
+    will be similar to:
+
+    >>> flow = ['BeamLoader',
+    >>>        'AerogridLoader',
+    >>>        'StaticTrim',
+    >>>        'DynamicCoupled',  # a single time step will suffice
+    >>>        'Modal',
+    >>>        'LinearAssembler']
 
     """
     solver_id = 'LinearAssembler'
@@ -54,11 +70,13 @@ class LinearAssembler(BaseSolver):
 
     settings_types['linearisation_tstep'] = 'int'
     settings_default['linearisation_tstep'] = -1
-    settings_description['linearisation_tstep'] = 'Chosen linearisation time step from ran time steps'
+    settings_description['linearisation_tstep'] = 'Chosen linearisation time step number from available time steps'
+
+    settings_table = settings.SettingsTable()
+    __doc__ += settings_table.generate(settings_types, settings_default, settings_description)
 
     def __init__(self):
 
-        warnings.warn('LinearAssembler solver under development')
         self.settings = dict()
         self.data = None
 
