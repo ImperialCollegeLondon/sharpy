@@ -41,14 +41,14 @@ SHARPy offers (amongst others) the following solutions to the user:
 * Static aerodynamic, structural and aeroelastic solutions
 * Finding trim conditions for aeroelastic configurations
 * Nonlinear, dynamic time domain simulations under a large number of conditions such as:
-    + Prescribed trajectories
-    + Free flight
-    + Dynamic follower forces
+    + Prescribed trajectories.
+    + Free flight.
+    + Dynamic follower forces.
     + Control inputs in thrust, control surface deflection...
-    + Arbitrary time-domain gusts, including non span-constant ones
-    + Full 3D turbulent fields
-    + Multibody dynamics with hinges, articulations and prescribed nodal motions
-    + Linearisation around nonlinear equilibriums.
+    + Arbitrary time-domain gusts, including non span-constant ones.
+    + Full 3D turbulent fields.
+    + Multibody dynamics with hinges, articulations and prescribed nodal motions.
+    + Linearisation around a nonlinear equilibrium.
     + Frequency response analysis.
     + Model order reduction.
     
