@@ -6,8 +6,8 @@ SHELL ["/bin/bash", "-c"]
 ENV PATH=${PATH}:/miniconda3/bin
 
 # Development tools including compilers
-RUN yum groupinstall "Development Tools" -y && \
-    yum install -y mesa-libGL libXt libXt-devel wget gcc-gfortran lapack vim-minimal tmux && \
+RUN yum groupinstall "Development Tools" -y --nogpgcheck && \
+    yum install -y --nogpgcheck mesa-libGL libXt libXt-devel wget gcc-gfortran lapack vim-minimal tmux && \
     yum clean all
 
 # Install miniconda
