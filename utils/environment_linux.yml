@@ -17,6 +17,7 @@ dependencies:
   - colorama=0.4.1=py37_0
   - commonmark=0.9.0=py_0
   - configobj=5.0.6=py37_1
+  - coverage
   - cryptography=2.8=py37h1ba5d50_0
   - cycler=0.10.0=py37_0
   - dbus=1.13.12=h746ee38_0
