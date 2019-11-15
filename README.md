@@ -1,14 +1,12 @@
 # Simulation of High Aspect Ratio aeroplanes in Python [SHARPy]
-![Version badge](https://img.shields.io/endpoint.svg?url=https%3A%2F%2Fraw.githubusercontent.com%2FImperialCollegeLondon%2Fsharpy%2Fmaster%2F.version.json) [![codecov](https://codecov.io/gh/ImperialCollegeLondon/sharpy/branch/master/graph/badge.svg)](https://codecov.io/gh/ImperialCollegeLondon/sharpy)
-[![License](https://img.shields.io/badge/License-BSD%203--Clause-blue.svg)](https://opensource.org/licenses/BSD-3-Clause) [![Documentation Status](https://readthedocs.org/projects/ic-sharpy/badge/?version=master)](https://ic-sharpy.readthedocs.io/en/master/?badge=master)
 
-The current version of SHARPy is archived in Zenodo. If you need to cite it, use this: [![DOI](https://zenodo.org/badge/70235936.svg)](https://zenodo.org/badge/latestdoi/70235936)
-
-__Continuous Integration Status__
-
-| Master  | Develop        |
-|---------|----------------|
-| [![Build Status](https://travis-ci.org/ImperialCollegeLondon/sharpy.svg?branch=master)](https://travis-ci.org/ImperialCollegeLondon/sharpy) | [![Build Status](https://travis-ci.org/ImperialCollegeLondon/sharpy.svg?branch=develop)](https://travis-ci.org/ImperialCollegeLondon/sharpy)|
+![Version badge](https://img.shields.io/endpoint.svg?url=https%3A%2F%2Fraw.githubusercontent.com%2FImperialCollegeLondon%2Fsharpy%2Fmaster%2F.version.json)
+[![Build Status](https://travis-ci.org/ImperialCollegeLondon/sharpy.svg?branch=master)](https://travis-ci.org/ImperialCollegeLondon/sharpy) 
+[![Documentation Status](https://readthedocs.org/projects/ic-sharpy/badge/?version=master)](https://ic-sharpy.readthedocs.io/en/master/?badge=master)
+[![codecov](https://codecov.io/gh/ImperialCollegeLondon/sharpy/branch/master/graph/badge.svg)](https://codecov.io/gh/ImperialCollegeLondon/sharpy)
+[![License](https://img.shields.io/badge/License-BSD%203--Clause-blue.svg)](https://opensource.org/licenses/BSD-3-Clause) 
+[![status](https://joss.theoj.org/papers/f7ccd562160f1a54f64a81e90f5d9af9/status.svg)](https://joss.theoj.org/papers/f7ccd562160f1a54f64a81e90f5d9af9)
+[![DOI](https://zenodo.org/badge/70235936.svg)](https://zenodo.org/badge/latestdoi/70235936)
 
 
 SHARPy is an aeroelastic analysis package at the Department of Aeronautics, Imperial
@@ -43,13 +41,16 @@ SHARPy offers (amongst others) the following solutions to the user:
 * Static aerodynamic, structural and aeroelastic solutions
 * Finding trim conditions for aeroelastic configurations
 * Nonlinear, dynamic time domain simulations under a large number of conditions such as:
-    + Prescribed trajectories
-    + Free flight
-    + Dynamic follower forces
+    + Prescribed trajectories.
+    + Free flight.
+    + Dynamic follower forces.
     + Control inputs in thrust, control surface deflection...
-    + Arbitrary time-domain gusts, including non span-constant ones
-    + Full 3D turbulent fields
-    + Multibody dynamics with hinges, articulations and prescribed nodal motions
+    + Arbitrary time-domain gusts, including non span-constant ones.
+    + Full 3D turbulent fields.
+    + Multibody dynamics with hinges, articulations and prescribed nodal motions.
+    + Linearisation around a nonlinear equilibrium.
+    + Frequency response analysis.
+    + Model order reduction.
     
 ## Documentation
 
@@ -67,4 +68,30 @@ the [SHARPy Docker distribution docs](https://ic-sharpy.readthedocs.io/en/latest
 
 If you think you can add some useful feature to SHARPy, by all means, check out
 the [collaboration guide](https://ic-sharpy.readthedocs.io/en/latest/content/contributing.html).
+
+## Citing SHARPy
+
+The _current_ version of SHARPy is archived in Zenodo. If you need to cite it, use this: 
+
+
+[![DOI](https://zenodo.org/badge/70235936.svg)](https://zenodo.org/badge/latestdoi/70235936)
+
+
+SHARPy has also a _concept_ DOI which represents all the versions of the given software package, i.e. the concept of 
+the software package and the ensemble of versions.
+
+[![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.3531965.svg)](https://doi.org/10.5281/zenodo.3531965)
+
+For more information on citing and Zenodo, [read more](https://help.zenodo.org/#versioning)
+
+## Continuous Integration Status
+
+SHARPy uses Continuous Integration to control the integrity of its code. The status in the release and develop branches
+is:
+
+Master 
+[![Build Status](https://travis-ci.org/ImperialCollegeLondon/sharpy.svg?branch=master)](https://travis-ci.org/ImperialCollegeLondon/sharpy) 
+
+Develop
+[![Build Status](https://travis-ci.org/ImperialCollegeLondon/sharpy.svg?branch=develop)](https://travis-ci.org/ImperialCollegeLondon/sharpy)
 
