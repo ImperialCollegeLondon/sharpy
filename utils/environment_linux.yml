@@ -61,7 +61,7 @@ dependencies:
   - lxml=4.4.1=py37hefd8a0e_0
   - markupsafe=1.1.1=py37h7b6447c_0
   - matplotlib=3.1.1=py37h5429711_0
-  - mistune=0.8.4=py37h516909a_1000https://www.komoot.com/user/809520623342/tours
+  - mistune=0.8.4=py37h516909a_1000
   - mkl=2019.4=243
   - mkl-include=2019.4=243
   - mkl-service=2.3.0=py37he904b0f_0
