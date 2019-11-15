@@ -25,7 +25,7 @@ def generate_documentation():
     print('Cleaning docs/source/includes')
     shutil.rmtree(sharpydir.SharpyDir + '/docs/source/includes/')
     solver_interface.output_documentation()  # Solvers and generators have a slightly different generation method
-    generator_interface.output_documentation()
+    # generator_interface.output_documentation()
 
     # Main sharpy source code
     sharpy_folders = get_sharpy_folders()
@@ -311,6 +311,7 @@ def get_module_title_and_body(module):
         pass
     return title, body
 
+
 def get_sharpy_folders():
     sharpy_directory = sharpydir.SharpyDir + '/sharpy/'
     files = glob.glob('%s/*' % sharpy_directory)
@@ -320,6 +321,7 @@ def get_sharpy_folders():
         elif item.replace(sharpy_directory, '')[0] == '_':
             files.remove(item)
     return files
+
 
 def open_folder(folder_path):
     files = glob.glob(folder_path + '/*')
@@ -332,6 +334,7 @@ def open_folder(folder_path):
         elif file.replace(folder_path, '')[1] != '_':
             outfiles.append(file)
     return outfiles, mtitle, mbody
+
 
 def module_title(file):
     module, module_path = module_from_path(file, None)
