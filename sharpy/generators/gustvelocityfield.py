@@ -65,18 +65,6 @@ class BaseGust(metaclass=ABCMeta):
         self._u_inf_direction = value
 
 
-# class BaseGust():
-#     gust_id = 'BaseGust'
-#
-#     settings_types = dict()
-#     settings_default = dict()
-#     settings_description = dict()
-#
-#     def gust_shape(x, y, z, time=0):
-#         return np.zeros((3))
-
-
-# class one-cos(BaseGust):
 @gust
 class one_minus_cos(BaseGust):
     r"""
@@ -449,20 +437,8 @@ class GustVelocityField(generator_interface.BaseGenerator):
         self.gust = None
         self.u_inf = None
         self.u_inf_direction = None
-        # self.gust_shape = None
-        # self.gust_parameters = None
-        #
-        # self.file_info = None
 
         self.implemented_gusts = dict_of_gusts
-        # self.implemented_gusts = []
-        # self.implemented_gusts.append('1-cos')
-        # self.implemented_gusts.append('DARPA')
-        # self.implemented_gusts.append('continuous_sin')
-        # self.implemented_gusts.append('lateral 1-cos')
-        # self.implemented_gusts.append('time varying')
-        # self.implemented_gusts.append('time varying global')
-        # self.implemented_gusts.append('span sine')
 
     def initialise(self, in_dict):
         self.settings = in_dict
