@@ -102,7 +102,7 @@ class LinearUVLM(ss_interface.BaseElement):
     settings_default['density'] = 1.225
     settings_description['density'] = 'Air density'
 
-    settings_types['remove_inputs'] = 'list'
+    settings_types['remove_inputs'] = 'list(str)'
     settings_default['remove_inputs'] = []
     settings_description['remove_inputs'] = 'List of inputs to remove. ``u_gust`` to remove external velocity input.'
 

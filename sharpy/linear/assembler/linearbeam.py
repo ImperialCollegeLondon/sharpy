@@ -108,7 +108,7 @@ class LinearBeam(BaseElement):
     settings_types['gravity'] = 'bool'
     settings_description['gravity'] = 'Linearise gravitational forces'
 
-    settings_types['remove_dofs'] = 'list'
+    settings_types['remove_dofs'] = 'list(str)'
     settings_default['remove_dofs'] = []
     settings_description['remove_dofs'] = 'Remove desired degrees of freedom: ``eta``, ``V``, ``W`` or ``orient``'
 
@@ -174,13 +174,13 @@ class LinearBeam(BaseElement):
         Returns:
 
         """
-        if self.settings['gravity'].value:
+        if self.settings['gravity']:
             self.sys.linearise_gravity_forces()
 
         if self.settings['remove_dofs']:
             self.trim_nodes(self.settings['remove_dofs'])
 
-        if self.settings['modal_projection'].value and self.settings['remove_sym_modes'].value and self.clamped:
+        if self.settings['modal_projection'] and self.settings['remove_sym_modes'] and self.clamped:
             self.remove_symmetric_modes()
 
         if t_ref is not None:

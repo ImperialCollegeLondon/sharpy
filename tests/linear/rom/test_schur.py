@@ -5,11 +5,13 @@
 import numpy as np
 import unittest
 import sharpy.rom.krylov as krylov
+import os
 
 
 class TestSchurDecomposition(unittest.TestCase):
 
-    A = np.random.rand(20, 20)
+    test_dir = os.path.abspath(os.path.dirname(__file__))
+    A = np.loadtxt(test_dir + '/src/schur_A.dat')
     eigsA = np.linalg.eigvals(A)
 
     def test_dt(self):
