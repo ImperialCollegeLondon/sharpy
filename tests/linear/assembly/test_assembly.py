@@ -10,8 +10,6 @@ import unittest
 import itertools
 import numpy as np
 import scipy.linalg as scalg
-import matplotlib.pyplot as plt
-
 
 import sharpy.utils.h5utils as h5utils
 import sharpy.linear.src.assembly as assembly
@@ -21,7 +19,6 @@ import sharpy.linear.src.libuvlm as libuvlm
 import sharpy.utils.algebra as algebra
 
 
-# from IPython import embed
 np.set_printoptions(linewidth=200,precision=3)
 
 def max_error_tensor(Pder_an,Pder_num):
@@ -209,21 +206,21 @@ class Test_assembly(unittest.TestCase):
                 print('\t\t\t%.1e\t%.1e\t%.1e' %(step,ermax,ermax_rel))
                 assert ermax<50*step and ermax_rel<50*step, embed()#'Test failed!'
 
-                fig=plt.figure('Spy Er vs coll derivs',figsize=(12,4))
+                # fig=plt.figure('Spy Er vs coll derivs',figsize=(12,4))
 
-                ax1=fig.add_subplot(131)
-                ax1.spy(ErAbs,precision=1e2*step)
-                ax1.set_title('error abs %d to %d' %(ss_in,ss_out))
+                # ax1=fig.add_subplot(131)
+                # ax1.spy(ErAbs,precision=1e2*step)
+                # ax1.set_title('error abs %d to %d' %(ss_in,ss_out))
 
-                ax2=fig.add_subplot(132)
-                ax2.spy(ErRel,precision=1e2*step)
-                ax2.set_title('error rel %d to %d' %(ss_in,ss_out))
+                # ax2=fig.add_subplot(132)
+                # ax2.spy(ErRel,precision=1e2*step)
+                # ax2.set_title('error rel %d to %d' %(ss_in,ss_out))
 
-                ax3=fig.add_subplot(133)
-                ax3.spy(Dercoll_list[ss_out],precision=50*step)
-                ax3.set_title('Dcoll an. %d to %d' %(ss_out,ss_out))
-                #plt.show()
-                plt.close()
+                # ax3=fig.add_subplot(133)
+                # ax3.spy(Dercoll_list[ss_out],precision=50*step)
+                # ax3.set_title('Dcoll an. %d to %d' %(ss_out,ss_out))
+                # #plt.show()
+                # plt.close()
 
 
 
@@ -292,12 +289,13 @@ class Test_assembly(unittest.TestCase):
             print('------------------------------------------------------------ OK')
 
             if PlotFlag:
-                fig = plt.figure('Spy Der',figsize=(10,4))
-                ax1 = fig.add_subplot(121)
-                ax1.spy(Der,precision=step)
-                ax2 = fig.add_subplot(122)
-                ax2.spy(DerNum,precision=step)
-                plt.show()
+                pass
+                # fig = plt.figure('Spy Der',figsize=(10,4))
+                # ax1 = fig.add_subplot(121)
+                # ax1.spy(Der,precision=step)
+                # ax2 = fig.add_subplot(122)
+                # ax2.spy(DerNum,precision=step)
+                # plt.show()
 
     def test_nc_domegazetadzeta(self):
         """
@@ -871,15 +869,15 @@ class Test_assembly(unittest.TestCase):
             print('\t\t\t%.1e\t%.1e\t%.1e' %(step,ermax,ermax_rel))
             assert ercoll<10*step, 'Error at vertices'
 
-            fig=plt.figure('Spy Er vs coll derivs',figsize=(12,4))
-            ax1=fig.add_subplot(121)
-            ax1.spy(ErAbs,precision=1e2*step)
-            ax1.set_title('error abs %d' %(ss_in))
-            ax2=fig.add_subplot(122)
-            ax2.spy(ErRel,precision=1e2*step)
-            ax2.set_title('error rel %d' %(ss_in))
-            #plt.show()
-            plt.close()
+            # fig=plt.figure('Spy Er vs coll derivs',figsize=(12,4))
+            # ax1=fig.add_subplot(121)
+            # ax1.spy(ErAbs,precision=1e2*step)
+            # ax1.set_title('error abs %d' %(ss_in))
+            # ax2=fig.add_subplot(122)
+            # ax2.spy(ErRel,precision=1e2*step)
+            # ax2.set_title('error rel %d' %(ss_in))
+            # #plt.show()
+            # plt.close()
 
 
 
@@ -973,21 +971,21 @@ class Test_assembly(unittest.TestCase):
                 print('\t\t\t%.1e\t%.1e\t%.1e' %(step,ermax,ermax_rel))
                 assert ermax<5e2*step and ermax_rel<50*step, 'Test failed!'
 
-                fig=plt.figure('Spy Er vs coll derivs',figsize=(12,4))
+                # fig=plt.figure('Spy Er vs coll derivs',figsize=(12,4))
 
-                ax1=fig.add_subplot(131)
-                ax1.spy(ErAbs,precision=1e2*step)
-                ax1.set_title('error abs %d to %d' %(ss_in,ss_out))
+                # ax1=fig.add_subplot(131)
+                # ax1.spy(ErAbs,precision=1e2*step)
+                # ax1.set_title('error abs %d to %d' %(ss_in,ss_out))
 
-                ax2=fig.add_subplot(132)
-                ax2.spy(ErRel,precision=1e2*step)
-                ax2.set_title('error rel %d to %d' %(ss_in,ss_out))
+                # ax2=fig.add_subplot(132)
+                # ax2.spy(ErRel,precision=1e2*step)
+                # ax2.set_title('error rel %d to %d' %(ss_in,ss_out))
 
-                ax3=fig.add_subplot(133)
-                ax3.spy(Dercoll_list[ss_out],precision=50*step)
-                ax3.set_title('Dcoll an. %d to %d' %(ss_out,ss_out))
-                #plt.show()
-                plt.close()
+                # ax3=fig.add_subplot(133)
+                # ax3.spy(Dercoll_list[ss_out],precision=50*step)
+                # ax3.set_title('Dcoll an. %d to %d' %(ss_out,ss_out))
+                # #plt.show()
+                # plt.close()
 
 
 

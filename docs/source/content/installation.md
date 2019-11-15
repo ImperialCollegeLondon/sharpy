@@ -1,5 +1,5 @@
 # SHARPy Installation Guide
-__Last revision 12 November 2019__
+__Last revision 15 November 2019__
 
 The following step by step tutorial will guide you through the installation process of SHARPy.
 
@@ -8,26 +8,92 @@ The following step by step tutorial will guide you through the installation proc
 __Operating System Requirements__
 
 SHARPy is being developed and tested on the following operating systems:
-+ CentOS 7
++ CentOS 7 and CentOS 8
 + Ubuntu 18.04 LTS
-+ MacOS Sierra
++ MacOS Mojave and Catalina
+
+It is also available to the vast majority of operating systems that are supported
+by Docker, including Windows!
 
 __Required Distributions__
 
-+ Anaconda Python 3.5.3
-+ GCC 5.0 or higher (recommended)
++ Anaconda Python 3.7
++ GCC 6.0 or higher (recommended)
 
 
 __GitHub Repositories__
 
 + [SHARPy](http://github.com/imperialcollegelongon/sharpy)
 
+SHARPy can be obtained from Docker Hub, or can be built from scratch.
+If what you want is to give it a go and run some static or simple dynamic cases,
+we recommend the Docker route. If you want to check the code, modify it and
+compile the libraries with custom flags, build it from source.
+
+## Using SHARPy from a Docker container
+
+Docker containers are similar to lightweight virtual machines. The SHARPy container
+distributed through [Docker Hub](https://hub.docker.com/) is a CentOS 8
+machine with the libraries compiled with `gfortran` and `g++` and an
+Anaconda Python distribution.
+
+Make sure your machine has Docker working. The instructions are here:
+[link](https://docs.docker.com/v17.09/engine/installation/).
+
+You might want to run a test in your terminal:
+```
+docker pull hello-world
+docker run hello-world
+```
+If this works, you're good to go!
+
+First, obtain the SHARPy docker container:
+```
+docker pull fonsocarre/sharpy:latest
+```
+
+Now you can run it:
+```
+docker run -it fonsocarre/sharpy:latest --name sharpy
+```
+You should see a welcome dialog such as:
+```
+>>>> docker run -it fonsocarre/sharpy:dev_docker
+SHARPy added to PATH from the directory: /sharpy/bin
+=======================================================================
+Welcome to the Docker image of SHARPy
+SHARPy is located in /sharpy and the
+environment is already set up!
+Copyright Imperial College London. Released under BSD 3-Clause license.
+=======================================================================
+SHARPy> 
+```
+You are now good to go.
+
+It is important to note that a docker container runs as an independant
+operating system with no access to your hard drive. If you want to copy your own
+files, run the container and from another terminal run:
+```
+docker cp my_file.txt sharpy:/my_file.txt     # copy from host to container
+docker cp sharpy:/my_file.txt my_file.txt     # copy from container to host
+```
+The `sharpy:` part is the `--name` argument you wrote in the `docker run` command.
+
+You can run the test suite once inside the container as:
+```
+cd sharpy
+python -m unittest
+```
+
+**Enjoy!**
+
+
+## Building SHARPy from source
+
 SHARPy depends on the UVLM and xbeam repositories that are also found on GitHub:
 
 + [xbeam](http://github.com/imperialcollegelondon/xbeam)
 + [UVLM](http://github.com/imperialcollegelondon/UVLM)
-
-## Installing SHARPy
 
 ### Set up the folder structure
 
@@ -241,7 +307,7 @@ SHARPy cases are usually structured in the following way:
 This script creates the output files that will then be used by SHARPy, namely:
     * The [structural](./casefiles.html#fem-file) `.fem.h5` file.
     * The [aerodynamic](./casefiles.html#aerodynamics-file) `.aero.h5` file.
-    * [Simulation information](./casefiles.html#solver-configuration-file) and settings `.solver.sharpy` file.
+    * [Simulation information](./casefiles.html#solver-configuration-file) and settings `.sharpy` file.
     * The dynamic forces file `.dyn.h5` (when required).
     * The linear input files `.lininput.h5` (when required).
     * The ROM settings file `.rom.h5` (when required).
@@ -250,7 +316,7 @@ This script creates the output files that will then be used by SHARPy, namely:
 
 2. The `h5` files contain data of the FEM, aerodynamics, dynamic conditions. They are later read by SHARPy.
 
-3. The `.solver.sharpy` file contains the settings for SHARPy and is the file that is parsed to SHARPy.
+3. The `.sharpy` file contains the settings for SHARPy and is the file that is parsed to SHARPy.
 
 __To run a SHARPy case__
 
@@ -258,14 +324,14 @@ SHARPy cases are therefore usually ran in the following way:
 
 1. Create a `generate_case.py` file following the provided templates
 
-2. Run it to produce the `.h5` files and the `.solver.txt` files
+2. Run it to produce the `.h5` files and the `.sharpy` files
     ```bash
     python generate_case.py
     ```
 
 3. Run SHARPy (ensure the environment is activated)
     ```bash
-    run_sharpy case.solver.sharpy
+    sharpy case.sharpy
     ```
 
 #### Output
@@ -283,17 +349,17 @@ verification:
     cd ../sharpy
     python ./tests/beam/static/geradin_cardona/generate_geradin.py
     ```
-    
-    The script will run and if you check the
-    `./tests/beam/static/geradin_cardona/` folder, you should see two new files:
-    + `geradin.solver.txt`
-    + `geradin.fem.h5`
 
-    Try to open the `solver.txt` file and have a quick look. The `solver` file is
-    the main settings file. We'll get deeper into this in a separate chapter.
+Now you should see a success message, and if you check the
+`./tests/beam/static/geradin_cardona/` folder, you should see two new files:
++ geradin_cardona.sharpy
++ geradin_cardona.fem.h5
 
-    If you try to open the `fem.h5` file, you'll get an error or something meaningless. This is because the structural data
-    is stored in [HDF5](https://support.hdfgroup.org/HDF5/) format, which is compressed binary.
+Try to open the `sharpy` file with a plain text editor and have a quick look. The `sharpy` file is
+the main settings file. We'll get deeper into this later.
+
+If you try to open the `fem.h5` file, you'll get an error or something meaningless. This is because the structural data
+is stored in [HDF5](https://support.hdfgroup.org/HDF5/) format, which is compressed binary.
 
 5. Run it (part 1)
 

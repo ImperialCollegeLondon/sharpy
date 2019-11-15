@@ -12,4 +12,8 @@ if import_path[0] == "/": import_path = import_path[1:]
 import_path = import_path.replace("/", ".")
 
 for file in sorted(files):
-    solver_interface.solvers[file] = importlib.import_module(import_path + "." + file)
+    try:
+        solver_interface.solvers[file] = importlib.import_module(import_path + "." + file)
+    except ModuleNotFoundError:
+        solver_interface.solvers[file] = importlib.import_module('sharpy.' + import_path + "." + file)
+

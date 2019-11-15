@@ -2,7 +2,6 @@ import numpy as np
 from numpy.polynomial import polynomial as P
 import scipy as sc
 from scipy import interpolate
-import matplotlib.pyplot as plt
 
 import sharpy.utils.generator_interface as generator_interface
 import sharpy.utils.settings as settings
@@ -50,7 +49,7 @@ class TrajectoryGenerator(generator_interface.BaseGenerator):
 
     settings_types['plot'] = 'bool'
     settings_default['plot'] = False
-    settings_description['plot'] = 'Plot the ramp shape or not'
+    settings_description['plot'] = 'Plot the ramp shape. Requires matplotlib installed'
 
     settings_types['print_info'] = 'bool'
     settings_default['print_info'] = False
@@ -112,6 +111,7 @@ class TrajectoryGenerator(generator_interface.BaseGenerator):
         cout.cout_wrap('-------------------------------', 2)
 
     def plot(self):
+        import matplotlib.pyplot as plt
         plt.figure()
         plt.scatter(self.x_vec, self.y_vec, c=self.time_vec)
         plt.colorbar(orientation='horizontal')

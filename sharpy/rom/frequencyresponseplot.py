@@ -1,5 +1,4 @@
 import numpy as np
-import matplotlib.pyplot as plt
 
 import sharpy.utils.settings as settings_utils
 
@@ -47,6 +46,7 @@ class FrequencyResponseComparison(object):
 
 
     def plot_frequency_response(self, kv, Y_freq_ss, Y_freq_rom, interp_frequencies):
+        import matplotlib.pyplot as plt
 
         nstates = self.ss.states
         if self.rom is not None and Y_freq_rom is not None:

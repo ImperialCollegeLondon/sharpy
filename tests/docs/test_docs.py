@@ -1,9 +1,10 @@
 import unittest
 import os
-from sphinx.application import Sphinx
 
-
-@unittest.skip('Documentation test not significant yet and failing due to pandoc - skipping test')
+# Skipped to avoid dependency of minimal environment with sphinx
+# we agreed that it is best to have the core of SHARPy only in the tests
+# ADC 14 Nov 2019
+@unittest.skip
 class DocTest(unittest.TestCase):
     """
 
@@ -16,6 +17,7 @@ class DocTest(unittest.TestCase):
     all_files = 1
 
     def test_html_documentation(self):
+        from sphinx.application import Sphinx
         app = Sphinx(self.source_dir,
                      self.config_dir,
                      self.output_dir,
@@ -27,6 +29,7 @@ class DocTest(unittest.TestCase):
         # TODO: additional checks here if needed
 
     def test_text_documentation(self):
+        from sphinx.application import Sphinx
         # The same, but with different buildername
         app = Sphinx(self.source_dir,
                      self.config_dir,
