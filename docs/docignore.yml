@@ -28,6 +28,6 @@ modules:
   - 'sharpy/utils/solver_interface.py'
 #  - 'sharpy/utils'
   - 'sharpy/linear/test'
-  - 'sharpy/generators'
+#  - 'sharpy/generators'
   - 'sharpy/presharpy'
   - 'sharpy/lib'

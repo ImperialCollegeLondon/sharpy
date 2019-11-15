@@ -301,9 +301,9 @@ class SettingsTable:
 
         if header_line is None:
             header_line = 'The settings that this solver accepts are given by a dictionary, ' \
-                          'with the following key-value pairs:\n'
+                          'with the following key-value pairs:'
 
-        table_string = '\n    ' + header_line
+        table_string = '\n    ' + header_line + '\n'
         table_string += '\n    ' + self.print_divider_line()
         table_string += '    ' + self.print_header()
         table_string += '    ' + self.print_divider_line()

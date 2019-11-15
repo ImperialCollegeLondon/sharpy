@@ -15,6 +15,20 @@ import sharpy.utils.cout_utils as cout
 class StepUvlm(BaseSolver):
     """
     StepUVLM is the main solver to use for unsteady aerodynamics.
+
+    The desired flow field is injected into the simulation by means of a ``generator``. For a list of available
+    velocity field generators see the documentation page on generators which can be found under SHARPy Source Code.
+
+    Typical generators could be:
+
+    * :class:`~.generators.steadyvelocityfield.SteadyVelocityField`
+
+    * :class:`~.generators.gustvelocityfield.GustVelocityField`
+
+    * :class:`~.generators.turbvelocityfield.TurbVelocityField`
+
+    amongst others.
+
     """
     solver_id = 'StepUvlm'
     solver_classification = 'aero'

@@ -1,6 +1,22 @@
+"""Gust Velocity Field Generators
+
+These generators are used to create a gust velocity field. :class:`.GustVelocityField` is the main class that should be
+parsed as the ``velocity_field_input`` to the desired aerodynamic solver.
+
+The remaining classes are the specific gust profiles and parsed as ``gust_shape``.
+
+Examples:
+    The typical input to the aerodynamic solver settings would therefore read similar to:
+
+    >>> aero_settings = {'<some_aero_settings>': '<some_aero_settings>',
+    >>>                  'velocity_field_generator': 'GustVelocityField',
+    >>>                  'velocity_field_input': {'u_inf': 1,
+    >>>                                           'gust_shape': '<desired_gust>',
+    >>>                                           'gust_parameters': '<gust_settings>'}}
+
+"""
 import numpy as np
 from abc import ABCMeta
-
 import sharpy.utils.generator_interface as generator_interface
 import sharpy.utils.settings as settings
 
@@ -65,9 +81,10 @@ class BaseGust(metaclass=ABCMeta):
 class one_minus_cos(BaseGust):
     r"""
     One minus cos gust (single bump)
+
         .. math:: U_z = \frac{u_{de}}{2}\left[1-\cos\left(\frac{2\pi x}{S}\right)\right]
 
-    This gust can be used by using the setting ``gust_shape = '1-cos'`` in ``GustVelocityField``.
+    This gust can be used by using the setting ``gust_shape = '1-cos'`` in :class:`.GustVelocityField`.
     """
     gust_id = '1-cos'
 
@@ -109,7 +126,7 @@ class DARPA(BaseGust):
 
     .. math:: U_z = \frac{u_{de}}{2}\left[1-\cos\left(\frac{2\pi x}{S}\right)\right]\cos\left(\frac{\pi y}{b}\right)
 
-    This gust can be used by using the setting ``gust_shape = 'DARPA'`` in ``GustVelocityField``.
+    This gust can be used by using the setting ``gust_shape = 'DARPA'`` in :class:`.GustVelocityField`.
     """
     gust_id = 'DARPA'
 
@@ -157,7 +174,7 @@ class continuous_sin(BaseGust):
 
     .. math:: U_z = \frac{u_{de}}{2}\sin\left(\frac{2\pi x}{S}\right)
 
-    This gust can be used by using the setting ``gust_shape = 'continuous_sin'`` in ``GustVelocityField``.
+    This gust can be used by using the setting ``gust_shape = 'continuous_sin'`` in :class:`GustVelocityField`.
     """
     gust_id = 'continuous_sin'
 
@@ -195,7 +212,7 @@ class continuous_sin(BaseGust):
 @gust
 class lateral_one_minus_cos(BaseGust):
     r"""
-    This gust can be used by using the setting ``gust_shape = 'lateral 1-cos'`` in ``GustVelocityField``.
+    This gust can be used by using the setting ``gust_shape = 'lateral 1-cos'`` in :class:`GustVelocityField`.
     """
     gust_id = 'lateral 1-cos'
 
@@ -237,7 +254,7 @@ class time_varying(BaseGust):
 
     .. math:: time[s] \Delta U_x \Delta U_y \Delta U_z
 
-    This gust can be used by using the setting ``gust_shape = 'time varying'`` in ``GustVelocityField``.
+    This gust can be used by using the setting ``gust_shape = 'time varying'`` in :class:.`GustVelocityField`.
     """
     gust_id = 'time varying'
 
@@ -281,7 +298,7 @@ class time_varying_global(BaseGust):
     Similar to the previous one but the velocity changes instanteneously in the whole flow field. It is not fed
     into the solid.
 
-    This gust can be used by using the setting ``gust_shape = 'time varying global'`` in ``GustVelocityField``.
+    This gust can be used by using the setting ``gust_shape = 'time varying global'`` in :class:`GustVelocityField`.
     """
     gust_id = 'time varying global'
 
@@ -319,7 +336,7 @@ class time_varying_global(BaseGust):
 @gust
 class span_sine(BaseGust):
     r"""
-    This gust can be used by using the setting ``gust_shape = 'span sine'`` in ``GustVelocityField``.
+    This gust can be used by using the setting ``gust_shape = 'span sine'`` in :class:`GustVelocityField`.
     """
     gust_id = 'span sine'
 
@@ -385,20 +402,11 @@ class GustVelocityField(generator_interface.BaseGenerator):
     To call this generator, the ``generator_id = GustVelocityField`` shall be used.
     This is parsed as the value for the ``velocity_field_generator`` key in the desired aerodynamic solver's settings.
 
-    Notation :math:`u_{de}` is the gust intensity, :math:`S` is the gust length and :math:`b` is the wing span.
+    Notation: :math:`u_{de}` is the gust intensity, :math:`S` is the gust length and :math:`b` is the wing span.
     :math:`x` and :math:`y` refer to the chordwise and spanwise distance penetrated into the gust, respectively.
 
     Several gust profiles are available. Your chosen gust profile should be parsed to ``gust_shape`` and the
     corresponding settings as a dictionary to ``gust_parameters``.
-
-    See Also:
-        .. py:class:: sharpy.utils.generator_interface.BaseGenerator
-
-    Note:
-        To get a list of the supported gusts, check the source code of the
-        ``sharpy/generators/gustvelocityfield.py`` or click on the
-        ``[source]`` link right next to the class title in the documentation
-        page.
 
     """
     generator_id = 'GustVelocityField'
@@ -412,7 +420,7 @@ class GustVelocityField(generator_interface.BaseGenerator):
     settings_description['u_inf'] = 'Free stream velocity'
 
     settings_types['u_inf_direction'] = 'list(float)'
-    settings_default['u_inf_direction'] = np.array([1.0, 0, 0])
+    settings_default['u_inf_direction'] = [1., 0., 0.]
     settings_description['u_inf_direction'] = 'Free stream velocity relative component'
 
     settings_types['offset'] = 'float'
