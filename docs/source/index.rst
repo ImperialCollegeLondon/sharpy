@@ -6,6 +6,23 @@
 SHARPy Documentation
 ====================
 
+
+.. image:: https://img.shields.io/endpoint.svg?url=https%3A%2F%2Fraw.githubusercontent.com%2FImperialCollegeLondon%2Fsharpy%2Fmaster%2F.version.json
+
+.. image:: https://codecov.io/gh/ImperialCollegeLondon/sharpy/branch/master/graph/badge.svg
+    :target: https://codecov.io/gh/ImperialCollegeLondon/sharpy
+
+.. image:: https://img.shields.io/badge/License-BSD%203--Clause-blue.svg
+   :target: https://opensource.org/licenses/BSD-3-Clause
+
+.. image:: https://readthedocs.org/projects/ic-sharpy/badge/?version=master
+
+.. image:: https://joss.theoj.org/papers/f7ccd562160f1a54f64a81e90f5d9af9/status.svg
+   :target: https://joss.theoj.org/papers/f7ccd562160f1a54f64a81e90f5d9af9
+
+.. image:: https://zenodo.org/badge/DOI/10.5281/zenodo.3531966.svg
+   :target: https://doi.org/10.5281/zenodo.3531966
+
 Welcome to SHARPy (Simulation of High Aspect Ratio aeroplanes in Python)!
 
 SHARPy is an aeroelastic analysis package currently under development at the Department of Aeronautics,
@@ -37,6 +54,25 @@ Contents
    includes/index
    content/test_cases
 
+Citing SHARPy
+-------------
+
+SHARPy is archived in Zenodo and has two unique DOIs that can be used depending on whether you'd like to
+cite a specific SHARPy version or all versions of SHARPy (i.e. this is the concept DOI).
+
+**Version DOI:**
+
+.. image:: https://zenodo.org/badge/DOI/10.5281/zenodo.3531966.svg
+   :target: https://doi.org/10.5281/zenodo.3531966
+
+**Concept DOI:**
+
+.. image:: https://zenodo.org/badge/DOI/10.5281/zenodo.3531965.svg
+   :target: https://doi.org/10.5281/zenodo.3531965
+
+For more information on citing and Zenodo, read more_.
+
+.. _more: https://help.zenodo.org/#versioning
 
 Indices and tables
 ------------------
