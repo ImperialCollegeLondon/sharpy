@@ -23,6 +23,8 @@ before_install:
   - hash -r
   - conda config --set always_yes yes --set changeps1 no
   - conda update -q conda
+  - conda init bash
+  - hash -r
   - export QT_QPA_PLATFORM='offscreen'
   - conda env create -f utils/environment_linux.yml
   - conda activate sharpy_env
