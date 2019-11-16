@@ -4,7 +4,6 @@
 
 **Implemented enhancements:**
 
-- Stall Model [\#7](https://github.com/ImperialCollegeLondon/sharpy/issues/7)
 - New example of linearised flying wing [\#28](https://github.com/ImperialCollegeLondon/sharpy/pull/28) ([ngoiz](https://github.com/ngoiz))
 - SHARPy can now be obtained from a Docker Hub container [\#27](https://github.com/ImperialCollegeLondon/sharpy/pull/27) ([fonsocarre](https://github.com/fonsocarre))
 - Improved modal solver [\#26](https://github.com/ImperialCollegeLondon/sharpy/pull/26) ([fonsocarre](https://github.com/fonsocarre))
