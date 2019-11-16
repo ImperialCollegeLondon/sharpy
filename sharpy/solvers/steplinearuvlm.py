@@ -14,37 +14,11 @@ import sharpy.linear.src.linuvlm as linuvlm
 @solver
 class StepLinearUVLM(BaseSolver):
     r"""
-    Time domain aerodynamic solver that uses a linear UVLM formulation to be used with the :func:`DynamicCoupled`
-    solver.
+    Time domain aerodynamic solver that uses a linear UVLM formulation to be used with the
+    :class:`solvers.DynamicCoupled` solver.
 
-    To use this solver, the ``solver_id = StepLinearUVLM`` must be given as the aerodynamic settings value for the
-    aeroelastic solver.
-
-    To Do:
-        - Add option for impulsive/non impulsive start start?
-
-    Attributes:
-        settings (dict): Contains the solver's ``settings``. See below for acceptable values:
-
-            ============================  =========  ===============================================    ==========
-            Name                          Type       Description                                        Default
-            ============================  =========  ===============================================    ==========
-            ``dt``                        ``float``  Time increment                                     ``0.1``
-            ``integr_order``              ``int``    Finite difference order for bound circulation      ``2``
-            ``ScalingDict``               ``dict``   Dictionary with scaling gains. See Notes.
-            ``remove_predictor``          ``bool``   Remove predictor term from UVLM system assembly    ``True``
-            ``use_sparse``                ``bool``   Use sparse form of A and B state space matrices    ``True``
-            ``velocity_field_generator``  ``str``    Selected velocity generator                        ``None``
-            ``velocity_filed_input``      ``dict``   Settings for the velocity generator                ``None``
-            ``track_body``                ``bool``   If True, the linearised grid will follow the       ``False``
-                                                     A frame or a body (for multi-body solution)
-            ``track_body_number``         ``int``    If -1, the linearised grid will follow the         ``-1``
-                                                     A frame. Otherwise, this is the number of the
-                                                     body to track in a multi-body solution. This
-                                                     option also specifies where to read the
-                                                     rotational speed at linearisation point
-            ============================  =========  ===============================================    ==========
-
+    To use this solver, the ``solver_id = StepLinearUVLM`` must be given as the name for the ``aero_solver``
+    is the case of an aeroelastic solver, where the setting below would be parsed through ``aero_solver_settings``.
 
     Notes:
         The ``integr_order`` variable refers to the finite differencing scheme used to calculate the bound circulation
@@ -58,14 +32,21 @@ class StepLinearUVLM(BaseSolver):
         .. math:: \dot{\mathbf{\Gamma}}^{n+1} = \frac{3\mathbf{\Gamma}^{n+1}-4\mathbf{\Gamma}^n + \mathbf{\Gamma}^{n-1}}
             {2\Delta t}
 
-        The ``ScalingDict`` dictionary contains the gains by which to scale the
-        linear system in ``length``, ``speed`` and ``density``.
+        If ``track_body`` is ``True``, the UVLM is projected onto a frame ``U`` that is:
+
+            * Coincident with ``G`` at the linearisation timestep.
+
+            * Thence, rotates by the same quantity as the FoR ``A``.
+
+        It is resemblant of a stability axes and is recommended any time rigid body dynamics are included.
 
     See Also:
-        :func:`sharpy.linear.src.linuvlm`
+        :module:`sharpy.linear.assembler.linearuvlm.LinearUVLM`
 
     References:
-        [1] S. Maraniello, R. Palacios. Linearisation and state-space realisation of UVLM with arbitrary kinematics
+        [1] Maraniello, S., & Palacios, R.. State-Space Realizations and Internal Balancing in Potential-Flow
+            Aerodynamics with
+            Arbitrary Kinematics. AIAA Journal, 57(6), 1–14. 2019. https://doi.org/10.2514/1.J058153
 
     """
     solver_id = 'StepLinearUVLM'
@@ -99,16 +80,41 @@ class StepLinearUVLM(BaseSolver):
     settings_default['density'] = 1.225
     settings_description['density'] = 'Air density'
 
+    settings_types['track_body'] = 'bool'
+    settings_default['track_body'] = True
+    settings_description['track_body'] = 'UVLM inputs and outputs projected to coincide with lattice at linearisation'
+
+    settings_types['track_body_number'] = 'int'
+    settings_default['track_body_number'] = -1
+    settings_description['track_body_number'] = 'Frame of reference number to follow. If ``-1`` track ``A`` frame.'
+
     settings_table = settings.SettingsTable()
     __doc__ += settings_table.generate(settings_types, settings_default, settings_description)
+
+    scaling_settings_types = dict()
+    scaling_settings_default = dict()
+    scaling_settings_description = dict()
+
+    scaling_settings_types['length'] = 'float'
+    scaling_settings_default['length'] = 1.0
+    scaling_settings_description['length'] = 'Reference length to be used for UVLM scaling'
+
+    scaling_settings_types['speed'] = 'float'
+    scaling_settings_default['speed'] = 1.0
+    scaling_settings_description['speed'] = 'Reference speed to be used for UVLM scaling'
+
+    scaling_settings_types['density'] = 'float'
+    scaling_settings_default['density'] = 1.0
+    scaling_settings_description['density'] = 'Reference density to be used for UVLM scaling'
+
+    __doc__ += settings_table.generate(scaling_settings_types,
+                                       scaling_settings_default,
+                                       scaling_settings_description)
 
     def __init__(self):
         """
         Read default settings from linuvlm module
         """
-        # self.settings_types = linuvlm.settings_types_dynamic
-        # self.settings_default = linuvlm.settings_default_dynamic
-
         self.data = None
         self.settings = None
         self.lin_uvlm_system = None
@@ -142,7 +148,9 @@ class StepLinearUVLM(BaseSolver):
             self.settings = data.settings[self.solver_id]
         else:
             self.settings = custom_settings
-        settings.to_custom_types(self.settings, self.settings_types, self.settings_default)
+        settings.to_custom_types(self.settings, self.settings_types, self.settings_default, no_ctype=True)
+        settings.to_custom_types(self.settings['ScalingDict'], self.scaling_settings_types,
+                                 self.scaling_settings_default, no_ctype=True)
 
         # Check whether linear UVLM has been initialised
         try:
@@ -154,12 +162,12 @@ class StepLinearUVLM(BaseSolver):
             ### Record body orientation/velocities at time 0
             # This option allows to rotate the linearised UVLM with the A frame
             # or a specific body (multi-body solution)
-            if self.settings['track_body'].value:
+            if self.settings['track_body']:
 
-                self.num_body_track = self.settings['track_body_number'].value
+                self.num_body_track = self.settings['track_body_number']
 
                 # track A frame
-                if self.num_body_track  == -1:
+                if self.num_body_track == -1:
                     self.quat0 = self.data.structure.timestep_info[0].quat.copy()
                     self.for_vel0 = self.data.structure.timestep_info[0].for_vel.copy()
                 else: # track a specific body
@@ -182,15 +190,16 @@ class StepLinearUVLM(BaseSolver):
                 self.for_vel0 = np.zeros((6,))
 
             # TODO: verify of a better way to implement rho
-            aero_tstep.rho = self.settings['density'].value
+            aero_tstep.rho = self.settings['density']
 
             # Generate instance of linuvlm.Dynamic()
             lin_uvlm_system = linuvlm.DynamicBlock(aero_tstep,
-                                              dt=self.settings['dt'].value,
-                                              integr_order=self.settings['integr_order'].value,
-                                              ScalingDict=self.settings['ScalingDict'],
-                                              RemovePredictor=self.settings['remove_predictor'].value,
-                                              UseSparse=self.settings['use_sparse'].value,
+                                                   dynamic_settings=self.settings,
+                                              # dt=self.settings['dt'].value,
+                                              # integr_order=self.settings['integr_order'].value,
+                                              # ScalingDict=self.settings['ScalingDict'],
+                                              # RemovePredictor=self.settings['remove_predictor'].value,
+                                              # UseSparse=self.settings['use_sparse'].value,
                                               for_vel=self.for_vel0)
 
             # add rotational speed
@@ -202,8 +211,8 @@ class StepLinearUVLM(BaseSolver):
             u_0 = self.pack_input_vector()
 
             # Linearised state
-            dt = self.settings['dt'].value
-            x_0 = self.pack_state_vector(aero_tstep, None, dt, self.settings['integr_order'].value)
+            dt = self.settings['dt']
+            x_0 = self.pack_state_vector(aero_tstep, None, dt, self.settings['integr_order'])
 
             # Reference forces
             f_0 = np.concatenate([aero_tstep.forces[ss][0:3].reshape(-1, order='C')
@@ -229,7 +238,6 @@ class StepLinearUVLM(BaseSolver):
         velocity_generator_type = gen_interface.generator_from_string(self.settings['velocity_field_generator'])
         self.velocity_generator = velocity_generator_type()
         self.velocity_generator.initialise(self.settings['velocity_field_input'])
-
 
     def run(self,
             aero_tstep,
@@ -297,11 +305,11 @@ class StepLinearUVLM(BaseSolver):
         if structure_tstep is None:
             structure_tstep = self.data.structure.timestep_info[-1]
         if dt is None:
-            dt = self.settings['dt'].value
+            dt = self.settings['dt']
         if t is None:
             t = self.data.ts*dt
 
-        integr_order = self.settings['integr_order'].value
+        integr_order = self.settings['integr_order']
 
         ### Define Input
 
@@ -316,7 +324,7 @@ class StepLinearUVLM(BaseSolver):
 
         ### Proj from FoR G to linearisation frame
         # - proj happens in self.pack_input_vector and unpack_ss_vectors
-        if self.settings['track_body'].value:
+        if self.settings['track_body']:
             # track A frame
             if self.num_body_track  == -1:
                 self.Cga = algebra.quat2rotation( structure_tstep.quat )
@@ -420,7 +428,7 @@ class StepLinearUVLM(BaseSolver):
         """
 
         ### project forces from uvlm FoR to FoR G
-        if self.settings['track_body'].value:
+        if self.settings['track_body']:
             Cg_uvlm = np.dot( self.Cga, self.Cga0.T )
 
         f_aero = y_n
@@ -458,7 +466,7 @@ class StepLinearUVLM(BaseSolver):
             ### project forces.
             # - forces are in UVLM linearisation frame. Hence, these  are projected
             # into FoR (using rotation matrix Cag0 time 0) A and back to FoR G
-            if self.settings['track_body'].value:
+            if self.settings['track_body']:
                 for mm in range(dimensions[1]):
                     for nn in range(dimensions[2]):
                         forces[i_surf][:,mm,nn] = np.dot(Cg_uvlm, forces[i_surf][:,mm,nn])
@@ -504,7 +512,7 @@ class StepLinearUVLM(BaseSolver):
         ### re-compute projection in G frame as if A was not rotating
         # - u_n is in FoR G. Hence, this is project in FoR A and back to FoR G
         # using rotation matrix aat time 0 (as if FoR A was not rotating).
-        if self.settings['track_body'].value:
+        if self.settings['track_body']:
 
             Cuvlm_g = np.dot( self.Cga0, self.Cga.T )
             zeta_uvlm, zeta_dot_uvlm, u_ext_uvlm = [], [], []

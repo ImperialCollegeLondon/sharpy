@@ -10,7 +10,7 @@ Modified: N. Goizueta, Sep 2019
 import sharpy.utils.sharpydir as sharpydir
 import unittest
 import os
-import matplotlib.pyplot as plt
+# import matplotlib.pyplot as plt
 import numpy as np
 import shutil
 import sharpy.sharpy_main
@@ -392,38 +392,38 @@ class Test_infinite_span(unittest.TestCase):
                           'ytick.labelsize': fontlabel - 2,
                           'figure.autolayout': True,
                           'legend.numpoints': 1}
-            plt.rcParams.update(std_params)
+            # plt.rcParams.update(std_params)
 
-            fig = plt.figure('Lift time-history', (12, 6))
-            axvec = fig.subplots(1, 2)
-            for aa in [0, 1]:
-                comp = aa + 1
-                axvec[aa].set_title(axtitle[aa])
-                axvec[aa].plot(sv, Cfvec_an[:, comp] / Cl_inf, lw=4, ls='-',
-                               alpha=0.5, color='r', label=r'Wagner')
-                axvec[aa].plot(sv, Ftot[:, comp] / Cl_inf, lw=5, ls=':',
-                               alpha=0.7, color='k', label=r'Total')
-                cc = 0
-                for ss in range(Nsurf):
-                    for nn in Nplot:
-                        axvec[aa].plot(sv, Fsect[:, ss, comp, nn] / Cl_inf,
-                                       lw=4 - cc, ls='--', alpha=0.7, color=clist[cc],
-                                       label=r'Surf. %.1d, n=%.2d (%s)' % (ss, nn, labs[cc]))
-                        cc += 1
-                axvec[aa].grid(color='0.8', ls='-')
-                axvec[aa].grid(color='0.85', ls='-', which='minor')
-                axvec[aa].set_xlabel(r'normalised time $t=2 U_\infty \tilde{t}/c$')
-                axvec[aa].set_ylabel(axtitle[aa] + r'$/C_{l_\infty}$')
-                axvec[aa].set_xlim(0, sv[-1])
-                if Cfvec_inf[comp] > 0.:
-                    axvec[aa].set_ylim(0, 1.1)
-                else:
-                    axvec[aa].set_ylim(-1.1, 0)
-            plt.legend(ncol=1)
-            # plt.show()
-            fig.savefig(self.figfold + self.case_main + '.png')
-            fig.savefig(self.figfold + self.case_main + '.pdf')
-            plt.close()
+            # fig = plt.figure('Lift time-history', (12, 6))
+            # axvec = fig.subplots(1, 2)
+            # for aa in [0, 1]:
+                # comp = aa + 1
+                # axvec[aa].set_title(axtitle[aa])
+                # axvec[aa].plot(sv, Cfvec_an[:, comp] / Cl_inf, lw=4, ls='-',
+                               # alpha=0.5, color='r', label=r'Wagner')
+                # axvec[aa].plot(sv, Ftot[:, comp] / Cl_inf, lw=5, ls=':',
+                               # alpha=0.7, color='k', label=r'Total')
+                # cc = 0
+                # for ss in range(Nsurf):
+                    # for nn in Nplot:
+                        # axvec[aa].plot(sv, Fsect[:, ss, comp, nn] / Cl_inf,
+                                       # lw=4 - cc, ls='--', alpha=0.7, color=clist[cc],
+                                       # label=r'Surf. %.1d, n=%.2d (%s)' % (ss, nn, labs[cc]))
+                        # cc += 1
+                # axvec[aa].grid(color='0.8', ls='-')
+                # axvec[aa].grid(color='0.85', ls='-', which='minor')
+                # axvec[aa].set_xlabel(r'normalised time $t=2 U_\infty \tilde{t}/c$')
+                # axvec[aa].set_ylabel(axtitle[aa] + r'$/C_{l_\infty}$')
+                # axvec[aa].set_xlim(0, sv[-1])
+                # if Cfvec_inf[comp] > 0.:
+                    # axvec[aa].set_ylim(0, 1.1)
+                # else:
+                    # axvec[aa].set_ylim(-1.1, 0)
+            # plt.legend(ncol=1)
+            # # plt.show()
+            # fig.savefig(self.figfold + self.case_main + '.png')
+            # fig.savefig(self.figfold + self.case_main + '.pdf')
+            # plt.close()
 
         assert er_th_2perc < 2e-2 and er_th_1perc < 1e-2, \
             'Error of dynamic step response at time-steps 16 and 36 ' + \

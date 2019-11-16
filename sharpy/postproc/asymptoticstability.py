@@ -1,15 +1,15 @@
-import matplotlib.pyplot as plt
+import os
+import warnings as warn
 import numpy as np
+import scipy.linalg as sclalg
 import sharpy.utils.settings as settings
 from sharpy.utils.solver_interface import solver, BaseSolver, initialise_solver
 import sharpy.utils.h5utils as h5
 import sharpy.utils.cout_utils as cout
 import sharpy.utils.algebra as algebra
 import sharpy.solvers.lindynamicsim as lindynamicsim
-import os
 import sharpy.structure.utils.modalutils as modalutils
-import scipy.linalg as sclalg
-import warnings as warn
+
 
 @solver
 class AsymptoticStability(BaseSolver):
@@ -256,8 +256,6 @@ class AsymptoticStability(BaseSolver):
         imag_part_plot = np.hstack(imag_part_plot)
         uinf_part_plot = np.hstack(uinf_part_plot)
 
-        plt.scatter(real_part_plot, imag_part_plot, c=uinf_part_plot)
-
         cout.cout_wrap('Saving velocity analysis results...')
         np.savetxt(self.folder + '/velocity_analysis_min%04d_max%04d_nvel%04d.dat' %(ulb*10, uub*10, num_u),
                    np.concatenate((uinf_part_plot, real_part_plot, imag_part_plot)).reshape((-1, 3), order='F'))
@@ -280,7 +278,11 @@ class AsymptoticStability(BaseSolver):
             ax:
         """
 
-        # Title
+        try:
+            import matplotlib.pyplot as plt
+        except ModuleNotFoundError:
+            cout.cout_wrap('Could not plot in asymptoticstability beacuse there is no Matplotlib', 4)
+            return
         fig, ax = plt.subplots()
 
         ax.scatter(np.real(self.eigenvalues), np.imag(self.eigenvalues),
@@ -307,6 +309,11 @@ class AsymptoticStability(BaseSolver):
         Returns:
 
         """
+        try:
+            import matplotlib.pyplot as plt
+        except ModuleNotFoundError:
+            cout.cout_wrap('Could not plot in asymptoticstability beacuse there is no Matplotlib', 4)
+            return
         mode_shape_list = self.settings['modes_to_plot']
         for mode in mode_shape_list:
             # Scale mode
