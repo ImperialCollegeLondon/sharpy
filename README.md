@@ -6,8 +6,7 @@
 [![codecov](https://codecov.io/gh/ImperialCollegeLondon/sharpy/branch/master/graph/badge.svg)](https://codecov.io/gh/ImperialCollegeLondon/sharpy)
 [![License](https://img.shields.io/badge/License-BSD%203--Clause-blue.svg)](https://opensource.org/licenses/BSD-3-Clause) 
 [![status](https://joss.theoj.org/papers/f7ccd562160f1a54f64a81e90f5d9af9/status.svg)](https://joss.theoj.org/papers/f7ccd562160f1a54f64a81e90f5d9af9)
-[![DOI](https://zenodo.org/badge/70235936.svg)](https://zenodo.org/badge/latestdoi/70235936)
-
+[![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.3531965.svg)](https://doi.org/10.5281/zenodo.3531965)
 
 SHARPy is an aeroelastic analysis package developed at the Department of Aeronautics, Imperial
 College London. It can be used for the structural, aerodynamic and aeroelastic analysis of flexible aircraft, flying
