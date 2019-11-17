@@ -71,16 +71,12 @@ the [collaboration guide](https://ic-sharpy.readthedocs.io/en/latest/content/con
 
 ## Citing SHARPy
 
-The _current_ version of SHARPy is archived in Zenodo. If you need to cite it, use this: 
-
-
-[![DOI](https://zenodo.org/badge/70235936.svg)](https://zenodo.org/badge/latestdoi/70235936)
-
-
-SHARPy has also a _concept_ DOI which represents all the versions of the given software package, i.e. the concept of 
-the software package and the ensemble of versions.
+The SHARPy is archived in Zenodo. If you need to cite it, use this: 
 
 [![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.3531965.svg)](https://doi.org/10.5281/zenodo.3531965)
+
+This DOI which represents all the versions of the given software package, i.e. the concept of 
+the software package and the ensemble of versions. In Zenodo you can find the DOI of a specific version.
 
 For more information on citing and Zenodo, [read more](https://help.zenodo.org/#versioning)
 
