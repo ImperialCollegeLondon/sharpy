@@ -36,6 +36,7 @@ def block_arnoldi_krylov(r, F, G, approx_type='Pade', side='controllability'):
 
     return V
 
+
 def mgs_ortho(X):
     r"""
     Modified Gram-Schmidt Orthogonalisation
@@ -57,21 +58,14 @@ def mgs_ortho(X):
     n = X.shape[1]
     m = X.shape[0]
 
-    if type(X) == scsp.csc_matrix:
-        Q = scsp.csc_matrix((m, n), dtype=complex)
-
-    else:
-        Q = np.zeros((m, n), dtype=complex)
+    Q = np.zeros((m, n), dtype=float)
 
     for i in range(n):
         w = X[:, i]
         for j in range(i):
             h = Q[:, j].T.dot(w)
             w = w - h * Q[:, j]
-        if type(X) == scsp.csc_matrix:
-            Q[:, i] = w / scsp.linalg.norm(w)
-        else:
-            Q[:, i] = w / sclalg.norm(w)
+        Q[:, i] = w / sclalg.norm(w)
 
     return Q
 
@@ -132,7 +126,7 @@ def construct_krylov(r, lu_A, B, approx_type='Pade', side='b'):
     nx = B.shape[0]
 
     # Side indicates projection side. if using C then it needs to be transposed
-    if side=='c':
+    if side == 'c':
         transpose_mode = 1
         B.shape = (nx, 1)
     else:
@@ -376,7 +370,7 @@ def schur_ordered(A, ct=False):
     elif sort_eigvals == 'iuc':
         n_stable = np.sum(np.abs(np.linalg.eigvals(A)) <= 1.)
     else:
-        raise NotImplementedError('Unknown sorting of eigenvalues. Either iuc or lhp')
+        raise NameError('Unknown sorting of eigenvalues. Either iuc or lhp')
 
     assert n_stable == n_stable1, 'Number of stable eigenvalues not equal in Schur output and manual calculation'
 
