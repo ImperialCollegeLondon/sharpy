@@ -21,29 +21,6 @@ import sharpy.utils.settings as settings
 import sharpy.utils.cout_utils as cout
 
 
-"""
- Dictionary for default settings.
-============================  =========  ===============================================    ==========
-Name                          Type       Description                                        Default
-============================  =========  ===============================================    ==========
-``dt``                        ``float``  Time increment                                     ``0.1``
-``integr_order``              ``int``    Finite difference order for bound circulation      ``2``
-``density``                   ``float``  Air density                                        ``1.225``
-``ScalingDict``               ``dict``   Dictionary with scaling gains. See Notes.
-``remove_predictor``          ``bool``   Remove predictor term from UVLM system assembly    ``True``
-``use_sparse``                ``bool``   Use sparse form of A and B state space matrices    ``True``
-``velocity_field_generator``  ``str``    Selected velocity generator                        ``None``
-``velocity_filed_input``      ``dict``   Settings for the velocity generator                ``None``
-``track_body``                ``bool``   If True, the linearised grid will follow the       ``False``
-                                         A frame or a body (for multi-body solution)
-``track_body_number``         ``int``    If -1, the linearised grid will follow the         ``-1``
-                                         A frame. Otherwise, this is the number of the
-                                         body to track in a multi-body solution. This
-                                         option also specifies where to read the
-                                         rotational speed at linearisation point
-============================  =========  ===============================================    ==========
-"""
-
 settings_types_dynamic = dict()
 settings_default_dynamic = dict()
 
@@ -1685,40 +1662,47 @@ class DynamicBlock(Dynamic):
     limited balancing.
 
     Input:
+
         - tsdata: aero timestep data from SHARPy solution
         - dt: time-step
         - integr_order=2: integration order for UVLM unsteady aerodynamic force
         - RemovePredictor=True: if true, the state-space model is modified so as
-        to accept in input perturbations, u, evaluated at time-step n rather than
-        n+1.
+          to accept in input perturbations, u, evaluated at time-step n rather than
+          n+1.
         - ScalingDict=None: disctionary containing fundamental reference units
-            {'length':  reference_length,
-             'speed':   reference_speed,
-             'density': reference density}
-        used to derive scaling quantities for the state-space model variables.
-        The scaling factors are stores in
-            self.ScalingFact.
-        Note that while time, circulation, angular speeds) are scaled
-        accordingly, FORCES ARE NOT. These scale by qinf*b**2, where b is the
-        reference length and qinf is the dinamic pressure.
+
+            >>> {'length':  reference_length,
+                 'speed':   reference_speed,
+                 'density': reference density}
+
+
+          used to derive scaling quantities for the state-space model variables.
+          The scaling factors are stores in ``self.ScalingFact``.
+
+          Note that while time, circulation, angular speeds) are scaled
+          accordingly, FORCES ARE NOT. These scale by qinf*b**2, where b is the
+          reference length and qinf is the dinamic pressure.
         - UseSparse=False: builds the A and B matrices in sparse form. C and D
-        are dense, hence the sparce format is not used.
+          are dense, hence the sparce format is not used.
+
 
     Methods:
         - nondimss: normalises a dimensional state-space model based on the
-        scaling factors in self.ScalingFact.
+          scaling factors in self.ScalingFact.
         - dimss: inverse of nondimss.
         - assemble_ss: builds state-space model. See function for more details.
         - assemble_ss_profiling: generate profiling report of the assembly and
-        saves it into self.prof_out. To read the report:
-            import pstats
-            p=pstats.Stats(self.prof_out)
+          saves it into self.prof_out. To read the report:
+
+            >>> import pstats
+                p=pstats.Stats(self.prof_out)
+
+
         - freqresp: ad-hoc method for fast frequency response (only implemented)
-        for remove_predictor=False
+          for remove_predictor=False
 
-    To do:
 
-    - upgrade to linearise around unsteady snapshot (adjoint)
+    To do: upgrade to linearise around unsteady snapshot (adjoint)
     """
 
     def __init__(self, tsdata, dt=None,

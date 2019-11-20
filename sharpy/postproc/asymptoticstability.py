@@ -299,14 +299,9 @@ class AsymptoticStability(BaseSolver):
     def plot_modes(self):
         """
         Warnings:
-            under development
+            Under development
 
-        Plot the aeroelastic mode shapes for the first n_modes_to_plot
-
-        Todo:
-            Export to paraview format
-
-        Returns:
+        Plot the aeroelastic mode shapes for the first ``n_modes_to_plot``
 
         """
         try:
