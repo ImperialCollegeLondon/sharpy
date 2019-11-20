@@ -20,8 +20,10 @@
 import os
 import sys
 # import guzzle_sphinx_theme
-sys.path.insert(0, os.path.abspath('../'))
-sys.path.insert(0, os.path.abspath('../../'))
+# sys.path.insert(0, os.path.abspath('../'))
+sys.path.insert(0, os.path.abspath('./../../'))
+sys.path.insert(0, os.path.abspath('./../../sharpy/'))
+# sys.path.insert(0, os.path.abspath('..'))
 # import recommonmark
 # from recommonmark.transform import AutoStructify
 # # Markdown Source Parsers
