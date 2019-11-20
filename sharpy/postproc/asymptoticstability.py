@@ -216,9 +216,13 @@ class AsymptoticStability(BaseSolver):
 
     def velocity_analysis(self):
 
-        cout.cout_wrap('Velocity Asymptotic Stability Analysis')
-
         ulb, uub, num_u = self.settings['velocity_analysis']
+
+        if self.settings['print_info']:
+            cout.cout_wrap('Velocity Asymptotic Stability Analysis')
+            cout.cout_wrap('Initial velocity: %.2f m/s' % ulb, 1)
+            cout.cout_wrap('Final velocity: %.2f m/s' % uub, 1)
+            cout.cout_wrap('Number of evaluations: %g' %num_u, 1)
 
         u_inf_vec = np.linspace(ulb, uub, int(num_u))
 
