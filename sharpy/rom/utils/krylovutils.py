@@ -3,6 +3,7 @@ import scipy.sparse as scsp
 import numpy as np
 import scipy.linalg as sclalg
 import sharpy.linear.src.libsparse as libsp
+import sharpy.utils.cout_utils as cout
 
 def block_arnoldi_krylov(r, F, G, approx_type='Pade', side='controllability'):
 
@@ -244,18 +245,19 @@ def lu_solve(lu_A, b, trans=0):
         return sclalg.lu_solve(lu_A, b, trans=trans)
 
 
+def construct_mimo_krylov(r, lu_A_input, B, approx_type='Pade', side='controllability'):
 
-def construct_mimo_krylov(r, lu_A_input, B, approx_type='Pade',side='controllability'):
-
-    if side=='controllability':
+    if side == 'controllability' or side == 'b':
         transpose_mode = 0
-    else:
+    elif side == 'observability' or side == 'c':
         transpose_mode = 1
+    else:
+        raise NameError('Unknown option for side: %s', side)
 
     m = B.shape[1]  # Full system number of inputs/outputs
     n = B.shape[0]  # Full system number of states
 
-    deflation_tolerance = 1e-10  # Inexact deflation tolerance to approximate norm(V)=0 in machine precision
+    deflation_tolerance = 1e-4  # Inexact deflation tolerance to approximate norm(V)=0 in machine precision
 
     # Preallocated size may be too large in case columns are deflated
     last_column = 0
@@ -278,6 +280,12 @@ def construct_mimo_krylov(r, lu_A_input, B, approx_type='Pade',side='controllabi
         ## Orthogonalise w_k to preceding w_j for j < k
         if k >= 1:
             w[:, :k+1] = mgs_ortho(w[:, :k+1])[:, :k+1]
+        # from sharpy.rom.krylov import check_eye
+        # try:
+        #     check_eye(w[:, :k+1], w[:, :k+1].T)
+        # except AssertionError:
+        #     print('failing here - k = %g' % k)
+
 
     V[:, :m+1] = w[:, :m+1]
     last_column += m
@@ -285,6 +293,12 @@ def construct_mimo_krylov(r, lu_A_input, B, approx_type='Pade',side='controllabi
     mu = m  # Initialise controllability index
     mu_c = m  # Guess at controllability index with no deflation
     t = m   # worked column index
+
+    # from sharpy.rom.krylov import check_eye
+    # try:
+    #     check_eye(V[:, :m+1], V[:, :m+1].T)
+    # except AssertionError:
+    #     print('failing here')
 
     for k in range(1, r):
         for j in range(mu_c):
@@ -296,19 +310,62 @@ def construct_mimo_krylov(r, lu_A_input, B, approx_type='Pade',side='controllabi
             # Orthogonalise w[:,t] against V_i -
             w[:, :t+1] = mgs_ortho(w[:, :t+1])[:, :t+1]
 
-            if np.linalg.norm(w[:, t]) < deflation_tolerance:
-                # Deflate w_k
-                print('Vector deflated')
-                w = [w[:, 0:t], w[:, t+1:]]
-                last_column -= 1
-                mu -= 1
-            else:
+            # if np.linalg.norm(w[:, t]) < deflation_tolerance:
+            #     # Deflate w_k
+            #     cout.cout_wrap('\tVector deflated', 3)
+            #     w = [w[:, 0:t], w[:, t+1:]]
+            #     last_column -= 1
+            #     mu -= 1
+            # else:
+            #     pass
+            #     # V[:, t] = w[:, t]
+            #     # last_column += 1
+            #     # t += 1
+            try:
+                check_eye(w[:, :t+1], w[:, :t+1].T)
                 V[:, t] = w[:, t]
                 last_column += 1
                 t += 1
+            except AssertionError:
+                cout.cout_wrap('\tMatrix lost orthogonality creating Krylov subspace:'
+                               ' \n\t\tKrylov order = %g\n\t\tInput vector = %g'
+                               % (k, j), 2)
+                w = np.hstack((w[:, 0:t], w[:, t+1:]))
+                cout.cout_wrap('\t\tVector deflated', 2)
+                last_column -= 1
+                mu -= 1
         mu_c = mu
 
+    try:
+        check_eye(V[:, :t], V[:, :t].T)
+    except AssertionError:
+        raise ValueError('Krylov space construction failed to create an orthogonal space')
+
     return V[:, :t]
+
+
+def build_krylov_space(frequency, r, side, a, b):
+
+    if frequency == np.inf or frequency.real == np.inf:
+        approx_type = 'partial_realisation'
+        lu_a = a
+    else:
+        approx_type = 'Pade'
+        lu_a = lu_factor(frequency, a)
+
+    try:
+        nu = b.shape[1]
+    except IndexError:
+        nu = 1
+
+    if nu == 1:
+        krylov_function = construct_krylov
+    else:
+        krylov_function = construct_mimo_krylov
+
+    v = krylov_function(r, lu_a, b, approx_type, side)
+
+    return v
 
 def evec(j):
     """j-th unit vector (in row format)
@@ -422,3 +479,17 @@ def remove_a12(As, n_stable):
     T2 = np.eye(n, n_stable)
     # App = T2.T.dot(T.dot(As.dot(np.linalg.inv(T).dot(T2))))
     return T, X
+
+
+def check_eye(T, Tinv, msg=''):
+    """Simple utility to verify matrix inverses"""
+    eye_approx = Tinv.dot(T)
+    max_diff = np.max(np.abs(np.eye(eye_approx.shape[0]) - eye_approx))
+
+    try:
+        log_error = np.log10(max_diff)
+        assert log_error < -6, 'T.dot(Tinv) not equal to identity, %s \nlog(error) = %.e' \
+                               % (msg, np.log10(max_diff))
+    except RuntimeWarning:
+        # unlikely event that both matrices are identical and max_diff == 0
+        pass

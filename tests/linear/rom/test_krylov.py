@@ -19,7 +19,7 @@ class TestKrylov(unittest.TestCase):
     test_dir = sharpydir.SharpyDir + '/tests/linear/rom'
 
     def setUp(self):
-        cout.cout_wrap.initialise(True, False)
+        cout.cout_wrap.initialise(False, False)
         A = scio.loadmat(TestKrylov.test_dir + '/src/' + 'A.mat')
         B = scio.loadmat(TestKrylov.test_dir + '/src/' + 'B.mat')
         C = scio.loadmat(TestKrylov.test_dir + '/src/' + 'C.mat')
