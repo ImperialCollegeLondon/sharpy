@@ -21,7 +21,7 @@ import os
 import sys
 # import guzzle_sphinx_theme
 # sys.path.insert(0, os.path.abspath('../'))
-sys.path.insert(0, os.path.abspath('./../'))
+sys.path.insert(0, os.path.abspath('./../../'))
 # sys.path.insert(0, os.path.abspath('..'))
 # import recommonmark
 # from recommonmark.transform import AutoStructify
@@ -46,7 +46,7 @@ extensions = [
     # 'sphinx.ext.githubpages',
     'sphinx.ext.napoleon',
     'nbsphinx',
-    # 'sphinx.ext.autosectionlabel',
+    'sphinx.ext.autosectionlabel',
 ]
 
 # Add any paths that contain templates here, relative to this directory.
