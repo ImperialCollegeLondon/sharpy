@@ -21,8 +21,7 @@ import os
 import sys
 # import guzzle_sphinx_theme
 # sys.path.insert(0, os.path.abspath('../'))
-sys.path.insert(0, os.path.abspath('./../../'))
-sys.path.insert(0, os.path.abspath('./../../sharpy/'))
+sys.path.insert(0, os.path.abspath('./../'))
 # sys.path.insert(0, os.path.abspath('..'))
 # import recommonmark
 # from recommonmark.transform import AutoStructify
@@ -47,7 +46,7 @@ extensions = [
     # 'sphinx.ext.githubpages',
     'sphinx.ext.napoleon',
     'nbsphinx',
-    'sphinx.ext.autosectionlabel',
+    # 'sphinx.ext.autosectionlabel',
 ]
 
 # Add any paths that contain templates here, relative to this directory.
@@ -105,7 +104,7 @@ language = None
 # List of patterns, relative to source directory, that match files and
 # directories to ignore when looking for source files.
 # This patterns also effect to html_static_path and html_extra_path
-exclude_patterns = ["**/.so", "../../lib/*", "../sharpy/utils/*", "../*", "/_static", "/content/",
+exclude_patterns = ["**/.so", "../../lib/*", "../*", "/_static", "/content/",
                     '_build', '**.ipynb_checkpoints']
 
 # The reST default role (used for this markup: `text`) to use for all
@@ -157,7 +156,8 @@ autodoc_mock_imports = ["matplotlib",
                         'mpl_toolkits',
                         'sharpy.aero.utils',
                         'yaml',
-                        'sharpy.aero.utils.uvlmlib', 'sharpy.structure.utils.xbeamlib']
+                        'sharpy.aero.utils.uvlmlib',
+                        'sharpy.structure.utils.xbeamlib']
                         # "interp", "multisurfaces", "assembly", "libss",]
 
                         # Note: N. Goizueta 3/12/18: mocking imports from sharpy.linear.src that contain numpy
