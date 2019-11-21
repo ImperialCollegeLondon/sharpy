@@ -38,7 +38,7 @@ class NonLinearDynamicCoupledStep(_BaseStructural):
 
     # initial speed direction is given in inertial FOR!!!
     settings_types['initial_velocity_direction'] = 'list(float)'
-    settings_default['initial_velocity_direction'] = np.array([-1.0, 0.0, 0.0])
+    settings_default['initial_velocity_direction'] = [-1.0, 0.0, 0.0]
     settings_description['initial_velocity_direction'] = 'Initial velocity of the reference node given in the inertial FOR'
 
     settings_types['initial_velocity'] = 'float'

@@ -20,8 +20,9 @@
 import os
 import sys
 # import guzzle_sphinx_theme
-sys.path.insert(0, os.path.abspath('../'))
-sys.path.insert(0, os.path.abspath('../../'))
+# sys.path.insert(0, os.path.abspath('../'))
+sys.path.insert(0, os.path.abspath('./../../'))
+# sys.path.insert(0, os.path.abspath('..'))
 # import recommonmark
 # from recommonmark.transform import AutoStructify
 # # Markdown Source Parsers
@@ -45,6 +46,7 @@ extensions = [
     # 'sphinx.ext.githubpages',
     'sphinx.ext.napoleon',
     'nbsphinx',
+    'sphinx.ext.autosectionlabel',
 ]
 
 # Add any paths that contain templates here, relative to this directory.
@@ -102,7 +104,7 @@ language = None
 # List of patterns, relative to source directory, that match files and
 # directories to ignore when looking for source files.
 # This patterns also effect to html_static_path and html_extra_path
-exclude_patterns = ["**/.so", "../../lib/*", "../sharpy/utils/*", "../*", "/_static", "/content/",
+exclude_patterns = ["**/.so", "../../lib/*", "../*", "/_static", "/content/",
                     '_build', '**.ipynb_checkpoints']
 
 # The reST default role (used for this markup: `text`) to use for all
@@ -138,11 +140,24 @@ todo_include_todos = False
 
 # Exclude matplotlib - avoids conflicts when running sphinx
 # http://www.sphinx-doc.org/en/master/usage/extensions/autodoc.html#confval-autodoc_mock_imports
-autodoc_mock_imports = ["matplotlib", "numpy", "colorama", "h5py", "scipy", "ctypes", "tvtk",
-                        "sharpy.lib", "sharpy.utils.ctypes_utils", "sharpy.linear.src.libuvlm",
-                        "sharpy.linear.src.lib_dbiot", "pandas", "lxml", 'mpl_toolkits', 'sharpy.linear',
-                                                                         'sharpy.aero.utils', 'yaml',
-                        'sharpy.aero.utils.uvlmlib', 'sharpy.structure.utils.xbeamlib']
+autodoc_mock_imports = ["matplotlib",
+                        "numpy",
+                        "colorama",
+                        "h5py",
+                        "scipy",
+                        "ctypes",
+                        "tvtk",
+                        "sharpy.lib",
+                        "sharpy.utils.ctypes_utils",
+                        "sharpy.linear.src.libuvlm",
+                        "sharpy.linear.src.lib_dbiot",
+                        "pandas",
+                        "lxml",
+                        'mpl_toolkits',
+                        'sharpy.aero.utils',
+                        'yaml',
+                        'sharpy.aero.utils.uvlmlib',
+                        'sharpy.structure.utils.xbeamlib']
                         # "interp", "multisurfaces", "assembly", "libss",]
 
                         # Note: N. Goizueta 3/12/18: mocking imports from sharpy.linear.src that contain numpy
