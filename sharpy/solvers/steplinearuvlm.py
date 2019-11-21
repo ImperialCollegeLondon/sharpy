@@ -41,7 +41,7 @@ class StepLinearUVLM(BaseSolver):
         It is resemblant of a stability axes and is recommended any time rigid body dynamics are included.
 
     See Also:
-        :module:`sharpy.linear.assembler.linearuvlm.LinearUVLM`
+        :class:`sharpy.sharpy.linear.assembler.linearuvlm.LinearUVLM`
 
     References:
         [1] Maraniello, S., & Palacios, R.. State-Space Realizations and Internal Balancing in Potential-Flow
@@ -495,7 +495,7 @@ class StepLinearUVLM(BaseSolver):
         r"""
         Transform a SHARPy AeroTimestep instance into a column vector containing the input to the linear UVLM system.
 
-        .. math:: [\zeta,\, \dot{\zeta}, u_{ext}] \longrightarrow \\mathbf{u}
+        .. math:: [\zeta,\, \dot{\zeta}, u_{ext}] \longrightarrow \mathbf{u}
 
         If the ``track_body`` option is on, the function projects all the input
         into a frame that:

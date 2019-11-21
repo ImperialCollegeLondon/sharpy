@@ -52,7 +52,7 @@ class BeamLoader(BaseSolver):
     settings_description['unsteady'] = 'If ``True`` it will be a dynamic problem. The default is usually good for all simulations'
 
     settings_types['orientation'] = 'list(float)'
-    settings_default['orientation'] = np.array([1., 0, 0, 0])
+    settings_default['orientation'] = [1., 0, 0, 0]
     settings_description['orientation'] = 'Initial attitude of the structure given as the quaternion that parametrises the rotation from G to A frames of reference.'
 
     settings_table = settings.SettingsTable()
