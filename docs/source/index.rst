@@ -3,8 +3,8 @@
    You can adapt this file completely to your liking, but it should at least
    contain the root `toctree` directive.
 
-Simulation of High Aspect Ratio planes in Python [SHARPy]
-=========================================================
+SHARPy Documentation
+====================
 
 
 .. image:: https://img.shields.io/endpoint.svg?url=https%3A%2F%2Fraw.githubusercontent.com%2FImperialCollegeLondon%2Fsharpy%2Fmaster%2F.version.json
@@ -20,34 +20,23 @@ Simulation of High Aspect Ratio planes in Python [SHARPy]
 .. image:: https://joss.theoj.org/papers/f7ccd562160f1a54f64a81e90f5d9af9/status.svg
    :target: https://joss.theoj.org/papers/f7ccd562160f1a54f64a81e90f5d9af9
 
-.. image:: https://zenodo.org/badge/DOI/10.5281/zenodo.3531965.svg
-   :target: https://doi.org/10.5281/zenodo.3531965
+.. image:: https://zenodo.org/badge/DOI/10.5281/zenodo.3531966.svg
+   :target: https://doi.org/10.5281/zenodo.3531966
 
 Welcome to SHARPy (Simulation of High Aspect Ratio aeroplanes in Python)!
 
 SHARPy is an aeroelastic analysis package currently under development at the Department of Aeronautics,
 Imperial College London. It can be used for the structural, aerodynamic, aeroelastic and flight dynamics
-analysis of flexible aircraft, flying wings and wind turbines. Amongst others, it offers the following solutions to the user:
+analysis of flexible aircraft, flying wings and wind turbines.
 
-* Static aerodynamic, structural and aeroelastic solutions
-* Finding trim conditions for aeroelastic configurations
-* Nonlinear, dynamic time domain simulations under a large number of conditions such as:
+This site contains the available documentation of the software. The documentation project is still work in process and,
+at the time of writing, only includes documentation for the Python modules of SHARPy, which encompass the aeroelastic
+solvers and interfaces to the structural and aerodynamic modules.
+The UVLM and structural modules are written in C++ and Fortran, respectively, and do not have
+detailed documentation yet.
 
-    + Prescribed trajectories.
-    + Free flight.
-    + Dynamic follower forces.
-    + Control inputs in thrust, control surface deflection...
-    + Arbitrary time-domain gusts, including non span-constant ones.
-    + Full 3D turbulent fields.
-    + Multibody dynamics with hinges, articulations and prescribed nodal motions.
-    + Linearisation around a nonlinear equilibrium.
-    + Frequency response analysis.
-    + Model order reduction.
-
-The modular design of SHARPy allows to simulate complex aeroelastic cases involving very flexible aircraft.
-The structural solver supports very complex beam arrangements, while retaining geometrical nonlinearity.
-The UVLM solver features different wake modelling fidelities while supporting large lifting surface deformations in a
-native way. Detailed information on each of the solvers is presented in their respective documentation packages.
+The objective of this documentation package is to show the user how to run cases by defining the geometry, flow
+conditions and desired solution process.
 
 Contents
 --------
@@ -68,18 +57,22 @@ Contents
 Citing SHARPy
 -------------
 
-SHARPy is archived in Zenodo. If you need to cite it, use this:
+SHARPy is archived in Zenodo and has two unique DOIs that can be used depending on whether you'd like to
+cite a specific SHARPy version or all versions of SHARPy (i.e. this is the concept DOI).
+
+**Version DOI:**
+
+.. image:: https://zenodo.org/badge/DOI/10.5281/zenodo.3531966.svg
+   :target: https://doi.org/10.5281/zenodo.3531966
+
+**Concept DOI:**
 
 .. image:: https://zenodo.org/badge/DOI/10.5281/zenodo.3531965.svg
    :target: https://doi.org/10.5281/zenodo.3531965
 
-This DOI which represents all the versions of the given software package, i.e. the concept of
-the software package and the ensemble of versions. In Zenodo you can find the DOI of a specific version.
-
 For more information on citing and Zenodo, read more_.
 
 .. _more: https://help.zenodo.org/#versioning
-
 
 Indices and tables
 ------------------

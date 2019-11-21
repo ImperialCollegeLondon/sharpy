@@ -30,7 +30,7 @@ class LinearAssembler(BaseSolver):
 
     The solver enables to load a user specific assembly of a state-space by means of the ``LinearCustom`` block.
 
-    See :class:`sharpy.sharpy.linear.assembler.LinearAssembler` for a detailed description of each of the state-space assemblies.
+    See :module:`sharpy.linear.assembler` for a detailed description of each of the state-space assemblies.
 
     Upon assembly of the linear system, the data structure ``data.linear`` will be created. The :class:`.Linear`
     contains the state-space as an attribute. This state space will be the one employed by postprocessors.

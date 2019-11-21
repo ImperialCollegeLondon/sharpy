@@ -336,13 +336,11 @@ class LinearAeroelastic(ss_interface.BaseElement):
     def get_gebm2uvlm_gains(self, data):
         r"""
         Provides:
-
             - the gain matrices required to connect the linearised GEBM and UVLM
              inputs/outputs
-
             - the stiffening and damping factors to be added to the linearised
-              GEBM equations in order to account for non-zero aerodynamic loads at
-              the linearisation point.
+            GEBM equations in order to account for non-zero aerodynamic loads at
+            the linearisation point.
 
         The function produces the gain matrices:
 
@@ -352,16 +350,15 @@ class LinearAeroelastic(ss_interface.BaseElement):
             - ``Kvel_vel``: influence of GEBM dofs displacements to UVLM grid
               displacements.
             - ``Kforces`` (UVLM->GEBM) dimensions are the transpose than the
-               Kdisp and Kvel* matrices. Hence, when allocation this term, ``ii``
-               and ``jj`` indices will unintuitively refer to columns and rows,
-              respectively.
-
+            Kdisp and Kvel* matrices. Hence, when allocation this term, ``ii``
+            and ``jj`` indices will unintuitively refer to columns and rows,
+            respectively.
 
         And the stiffening/damping terms accounting for non-zero aerodynamic
         forces at the linearisation point:
 
             - ``Kss``: stiffness factor (flexible dof -> flexible dof) accounting
-              for non-zero forces at the linearisation point.
+            for non-zero forces at the linearisation point.
             - ``Csr``: damping factor  (rigid dof -> flexible dof)
             - ``Crs``: damping factor (flexible dof -> rigid dof)
             - ``Crr``: damping factor (rigid dof -> rigid dof)

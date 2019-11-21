@@ -70,7 +70,7 @@ the [collaboration guide](https://ic-sharpy.readthedocs.io/en/latest/content/con
 
 ## Citing SHARPy
 
-SHARPy is archived in Zenodo. If you need to cite it, use this: 
+The SHARPy is archived in Zenodo. If you need to cite it, use this: 
 
 [![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.3531965.svg)](https://doi.org/10.5281/zenodo.3531965)
 

@@ -75,11 +75,11 @@ class SHWUvlm(BaseSolver):
     settings_description['rot_vel'] = 'Rotation velocity in rad/s'
 
     settings_types['rot_axis'] = 'list(float)'
-    settings_default['rot_axis'] = [1., 0., 0.]
+    settings_default['rot_axis'] = np.array([1.,0.,0.])
     settings_description['rot_axis'] = 'Axis of rotation of the wake'
 
     settings_types['rot_center'] = 'list(float)'
-    settings_default['rot_center'] = [0., 0., 0.]
+    settings_default['rot_center'] = np.array([0.,0.,0.])
     settings_description['rot_center'] = 'Center of rotation of the wake'
 
     settings_table = settings.SettingsTable()

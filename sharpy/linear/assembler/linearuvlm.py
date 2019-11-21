@@ -319,11 +319,8 @@ class LinearUVLM(ss_interface.BaseElement):
         If the ``track_body`` option is on, the output forces are projected from
         the linearization frame, to the G frame. Note that the linearisation
         frame is:
-
             a. equal to the FoR G at time 0 (linearisation point)
-
             b. rotates as the body frame specified in the ``track_body_number``
-
 
         Args:
             y_n (np.ndarray): Column output vector of linear UVLM system

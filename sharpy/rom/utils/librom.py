@@ -663,11 +663,11 @@ def low_rank_smith(A, Q, tol=1e-10, Square=True, tolSVD=1e-12, tolAbs=False,
 ### utilities for balfreq
 
 def get_trapz_weights(k0,kend,Nk,knyq=False):
-    """
+    '''
     Returns uniform frequency grid (kv of length Nk) and weights (wv) for
     Gramians integration using trapezoidal rule. If knyq is True, it is assumed
     that kend is also the Nyquist frequency.
-    """
+    '''
 
     assert k0>=0. and kend>=0., 'Frequencies must be positive!'
 
@@ -689,7 +689,7 @@ def get_trapz_weights(k0,kend,Nk,knyq=False):
 
 
 def get_gauss_weights(k0,kend,Npart,order):
-    """
+    '''
     Returns gauss-legendre frequency grid (kv of length Npart*order) and
     weights (wv) for Gramians integration.
 
@@ -700,7 +700,7 @@ def get_gauss_weights(k0,kend,Npart,order):
     Note: integration points are never located at k0 or kend, hence there
     is no need for special treatment as in (for e.g.) a uniform grid case
     (see get_unif_weights)
-    """
+    '''
 
     if Npart==1:
         # get gauss normalised coords and weights
@@ -726,107 +726,91 @@ def get_gauss_weights(k0,kend,Npart,order):
 
 
 def balfreq(SS,DictBalFreq):
-    """
+    '''
     Method for frequency limited balancing.
-
-    The Observability and controllability Gramians over the frequencies kv
-    are solved in factorised form. Balanced modes are then obtained with a
+    The Observability ad controllability Gramians over the frequencies kv
+    are solved in factorised form. Balancd modes are then obtained with a
     square-root method.
 
     Details:
+    Observability and controllability Gramians are solved in factorised form
+    through explicit integration. The number of integration points determines
+    both the accuracy and the maximum size of the balanced model.
 
-        * Observability and controllability Gramians are solved in factorised form
-          through explicit integration. The number of integration points determines
-          both the accuracy and the maximum size of the balanced model.
-
-        * Stability over all (Nb) balanced states is achieved if:
-
-            a. one of the Gramian is integrated through the full Nyquist range
-            b. the integration points are enough.
-
+    Stability over all (Nb) balanced states is achieved if:
+        a. one of the Gramian is integrated through the full Nyquist range
+        b. the integration points are enough.
 
     Input:
 
     - DictBalFreq: dictionary specifying integration method with keys:
 
-        - ``frequency``: defines limit frequencies for balancing. The balanced
-           model will be accurate in the range ``[0,F]``, where ``F`` is the value of
-           this key. Note that ``F`` units must be consistent with the units specified
-           in the ``self.ScalingFacts`` dictionary.
+        - 'frequency': defines limit frequencies for balancing. The balanced
+        model will be accurate in the range [0,F], where F is the value of
+        this key. Note that F units must be consistent with the units specified
+        in the self.ScalingFacts dictionary.
 
-        - ``method_low``: ``['gauss','trapz']`` specifies whether to use gauss
-          quadrature or trapezoidal rule in the low-frequency range ``[0,F]``.
+        - 'method_low': ['gauss','trapz'] specifies whether to use gauss
+        quadrature or trapezoidal rule in the low-frequency range [0,F]
 
-        - ``options_low``: options to use for integration in the low-frequencies.
-          These depend on the integration scheme (See below).
+        - 'options_low': options to use for integration in the low-frequencies.
+        These depend on the integration scheme (See below).
 
-        - ``method_high``: method to use for integration in the range [F,F_N],
-          where F_N is the Nyquist frequency. See 'method_low'.
+        - 'method_high': method to use for integration in the range [F,F_N],
+        where F_N is the Nyquist frequency. See 'method_low'.
 
-        - ``options_high``: options to use for integration in the high-frequencies.
+        - 'options_high': options to use for integration in the high-frequencies.
 
-        - ``check_stability``: if True, the balanced model is truncated to
-          eliminate unstable modes - if any is found. Note that very accurate
-          balanced model can still be obtained, even if high order modes are
-          unstable. Note that this option is overridden if ""
+        - 'check_stability': if True, the balanced model is truncated to
+        eliminate unstable modes - if any is found. Note that very accurate
+        balanced model can still be obtained, even if high order modes are
+        unstable. Note that this option is overridden if ""
 
-        - ``get_frequency_response``: if True, the function also returns the
-          frequency response evaluated at the low-frequency range integration
-          points. If True, this option also allows to automatically tune the
-          balanced model.
-
+        - 'get_frequency_response': if True, the function also returns the
+        frequency response evaluated at the low-frequency range integration
+        points. If True, this option also allows to automatically tune the
+        balanced model.
 
     Future options:
         - Ncpu: for parallel run
 
 
     The following integration schemes are available:
-        - ``trapz``: performs integration over equally spaced points using
-          trapezoidal rule. It accepts options dictionaries with keys:
+        - 'trapz': performs integration over equally spaced points using
+        trapezoidal rule. It accepts options dictionaries with keys:
+            - 'points': number of integration points to use (including
+            domain boundary)
 
-             - ``points``: number of integration points to use (including
-               domain boundary)
+        - 'gauss' performs gauss-lobotto quadrature. The domain can be
+        partitioned in Npart sub-domain in which the gauss-lobotto quadrature
+        of order Ord can be applied. A total number of Npart*Ord points is
+        required. It accepts options dictionaries of the form:
+            - 'partitions': number of partitions
+            - 'order': quadrature order.
 
-        - ``gauss`` performs gauss-lobotto quadrature. The domain can be
-          partitioned in Npart sub-domain in which the gauss-lobotto quadrature
-          of order Ord can be applied. A total number of Npart*Ord points is
-          required. It accepts options dictionaries of the form:
+    Example:
+    The following dictionary
 
-             - ``partitions``: number of partitions
+        DictBalFreq={   'frequency': 1.2,
+                        'method_low': 'trapz',
+                        'options_low': {'points': 12},
+                        'method_high': 'gauss',
+                        'options_high': {'partitions': 2, 'order': 8},
+                        'check_stability': True }
 
-             - ``order``: quadrature order.
+    balances the state-space model in the frequency range [0, 1.2]
+    using
+        (a) 12 equally-spaced points integration of the Gramians in
+    the low-frequency range [0,1.2] and
+        (b) a 2 Gauss-Lobotto 8-th order quadratures of the controllability
+        Gramian in the high-frequency range.
 
-
-    Examples:
-        The following dictionary
-
-        >>>   DictBalFreq={   'frequency': 1.2,
-                            'method_low': 'trapz',
-                            'options_low': {'points': 12},
-                            'method_high': 'gauss',
-                            'options_high': {'partitions': 2, 'order': 8},
-                            'check_stability': True }
-
-
-        balances the state-space model in the frequency range [0, 1.2]
-        using:
-
-            a. 12 equally-spaced points integration of the Gramians in
-               the low-frequency range [0,1.2] and
-
-            b. A 2 Gauss-Lobotto 8-th order quadratures of the controllability
-               Gramian in the high-frequency range.
-
-
-        A total number of 28 integration points will be required, which will
-        result into a balanced model with number of states
-
-        >>>    min{ 2*28* number_inputs, 2*28* number_outputs }
-
-
-        The model is finally truncated so as to retain only the first Ns stable
-        modes.
-    """
+    A total number of 28 integration points will be required, which will
+    result into a balanced model with number of states
+        min{ 2*28* number_inputs, 2*28* number_outputs }
+    The model is finally truncated so as to retain only the first Ns stable
+    modes.
+    '''
 
     ### check input dictionary
     if 'frequency' not in DictBalFreq:

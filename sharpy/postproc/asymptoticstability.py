@@ -46,8 +46,8 @@ class AsymptoticStability(BaseSolver):
 
     settings_types['export_eigenvalues'] = 'bool'
     settings_default['export_eigenvalues'] = False
-    settings_description['export_eigenvalues'] = 'Save eigenvalues and eigenvectors to file. '
-                                                 # 'Details in :func:`AsymptoticStability.export_eigenvalues`'
+    settings_description['export_eigenvalues'] = 'Save eigenvalues and eigenvectors to file. ' \
+                                                 'Details in :func:`AsymptoticStability.export_eigenvalues`'
 
     settings_types['display_root_locus'] = 'bool'
     settings_default['display_root_locus'] = False
@@ -299,9 +299,14 @@ class AsymptoticStability(BaseSolver):
     def plot_modes(self):
         """
         Warnings:
-            Under development
+            under development
 
-        Plot the aeroelastic mode shapes for the first ``n_modes_to_plot``
+        Plot the aeroelastic mode shapes for the first n_modes_to_plot
+
+        Todo:
+            Export to paraview format
+
+        Returns:
 
         """
         try:

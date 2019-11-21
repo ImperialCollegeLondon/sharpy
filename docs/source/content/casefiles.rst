@@ -85,9 +85,10 @@ The ``case.fem.h5`` file has several components. We go one by one:
     because all the inputs that move WITH the beam are in material FoR. For example: follower forces, stiffness, mass,
     lumped masses...
 
-    .. image:: ./../_static/case_files/frames_of_reference.jpg
-        :target: ./../_static/case_files/frames_of_reference.jpg
-        :alt: SHARPy Frames of Reference
+    
+  .. image:: ../media/frames_of_reference.png
+     :target: ../media/frames_of_reference.png
+     :alt: SHARPy Frames of Reference
 
 
     The material frame of reference is noted as :math:`B`. Essentially, the :math:`x` component is tangent to the beam in the
@@ -100,9 +101,9 @@ The ``case.fem.h5`` file has several components. We go one by one:
     reference delta vector (:math:`\Delta`).
 
     
-    .. image:: ../_static/case_files/frame_of_reference_delta.jpg
-        :target: ../_static/case_files/frame_of_reference_delta.jpg
-        :alt: Frame of Reference Delta Vector
+  .. image:: ../media/frame_of_reference_delta.png
+     :target: ../media/frame_of_reference_delta.png
+     :alt: Frame of Reference Delta Vector
 
 
     Now we can define unequivocally the material frame of reference. With :math:`x_B` and :math:`\Delta` defining a
