@@ -14,7 +14,6 @@ import yaml
 import sharpy.utils.sharpydir as sharpydir
 import sharpy.utils.exceptions as exceptions
 import sharpy.utils.solver_interface as solver_interface
-import sharpy.utils.generator_interface as generator_interface
 
 
 def generate_documentation():

@@ -14,6 +14,31 @@ to run them.
 
 .. _ConfigObj: http://pypi.org/project/configobj/
 
+A typical way to assemble the solver configuration file is to place all your desired settings
+in a dictionary and then convert to and write your ``ConfigObj``. If a setting is not provided the default value will be used. The settings that each solver takes, its type and default value are explained in their relevant documentation pages.
+
+.. code-block:: python
+    import configobj
+    filename = '<case_route>/<case_name>.sharpy'
+    config = configobj.ConfigObj()
+    config.filename = filename
+    config['SHARPy'] = {'case': '<your SHARPy case name>',  # an example setting
+                        # Rest of your settings for the PreSHARPy class
+                        }
+    config['BeamLoader'] = {'orientation': [1., 0., 0.],  # an example setting
+                            # Rest of settings for the BeamLoader solver
+                            }
+    # Continue as above for the remainder of solvers that you would like to include
+
+    # finally, write the config file
+    config.write()
+
+The resulting ``.sharpy`` file is a plain text file with your specified settings for each of
+the solvers.
+
+Note that, therefore, if one of your settings is a ``np.array``, it will get transformed into
+a string of plain text before being read by SHARPy. However, any setting with ``list(float)`` specified as its setting type will get converted into a ``np.array`` once it is read by SHARPy.
+
 
 FEM file
 --------
