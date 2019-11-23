@@ -18,6 +18,7 @@ A typical way to assemble the solver configuration file is to place all your des
 in a dictionary and then convert to and write your ``ConfigObj``. If a setting is not provided the default value will be used. The settings that each solver takes, its type and default value are explained in their relevant documentation pages.
 
 .. code-block:: python
+
     import configobj
     filename = '<case_route>/<case_name>.sharpy'
     config = configobj.ConfigObj()
