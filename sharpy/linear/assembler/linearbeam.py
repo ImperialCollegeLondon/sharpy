@@ -63,6 +63,7 @@ class LinearBeam(BaseElement):
     settings_types = dict()
     settings_default = dict()
     settings_description = dict()
+    settings_options = dict()
 
     settings_default['modal_projection'] = True
     settings_types['modal_projection'] = 'bool'
@@ -71,6 +72,7 @@ class LinearBeam(BaseElement):
     settings_default['inout_coords'] = 'nodes'
     settings_types['inout_coords'] = 'str'
     settings_description['inout_coords'] = 'Beam state space input/output coordinates. ``modes`` or ``nodes``'
+    settings_options['inout_coords'] = ['nodes', 'modes']
 
     settings_types['num_modes'] = 'int'
     settings_default['num_modes'] = 10
@@ -138,7 +140,8 @@ class LinearBeam(BaseElement):
                 self.settings = data.settings['LinearAssembler']['linear_system_settings']
             except KeyError:
                 pass
-        settings.to_custom_types(self.settings, self.settings_types, self.settings_default, no_ctype=True)
+        settings.to_custom_types(self.settings, self.settings_types, self.settings_default,
+                                 self.settings_options, no_ctype=True)
 
         beam = lingebm.FlexDynamic(data.linear.tsstruct0, data.structure, self.settings)
         self.sys = beam

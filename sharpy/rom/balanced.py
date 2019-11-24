@@ -178,7 +178,7 @@ class FrequencyLimited(BaseBalancedRom):
 
     options_table = settings.SettingsTable()
     __doc__ += options_table.generate(settings_options_types, settings_options_default, settings_options_description,
-                                      'The parameters of integration take the following options:\n')
+                                      header_line='The parameters of integration take the following options:\n')
 
     def __init__(self):
         self.settings = dict()

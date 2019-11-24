@@ -33,7 +33,7 @@ def cast(k, v, pytype, ctype, default):
     return val
 
 
-def to_custom_types(dictionary, types, default, no_ctype=False):
+def to_custom_types(dictionary, types, default, options=dict(), no_ctype=False):
     for k, v in types.items():
         if v == 'int':
             if no_ctype:
@@ -194,6 +194,12 @@ def to_custom_types(dictionary, types, default, no_ctype=False):
         else:
             raise TypeError('Variable %s has an unknown type (%s) that cannot be casted' % (k, v))
 
+        # Check that value is within options
+        try:
+            if dictionary[k] not in options[k]:
+                raise ValueError('The setting %s is not one of the available options: %s' % (k, options[k]))
+        except KeyError:
+            pass
 
 
 def load_config_file(file_name: str) -> dict:
