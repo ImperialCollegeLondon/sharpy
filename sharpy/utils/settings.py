@@ -196,7 +196,8 @@ def to_custom_types(dictionary, types, default, options=dict(), no_ctype=False):
 
         # Check that value is within options
         try:
-            if dictionary[k] not in options[k]:
+            if dictionary[k] not in options[k] and dictionary[k]:
+                # checks that the value is within the options and that it is not an empty string.
                 raise ValueError('The setting %s is not one of the available options: %s' % (k, options[k]))
         except KeyError:
             pass
@@ -284,6 +285,7 @@ class SettingsTable:
         self.settings_description = dict()
         self.settings_default = dict()
         self.settings_options = dict()
+        self.settings_options_strings = dict()
 
         self.line_format = ''
 
@@ -346,12 +348,12 @@ class SettingsTable:
         return table_string
 
     def process_options(self):
-
+        self.settings_options_strings = self.settings_options.copy()
         for k, v in self.settings_options.items():
             opts = ''
             for option in v:
                 opts += ' ``%s``,' %str(option)
-            self.settings_options[k] = opts[1:-1]  # removes the initial whitespace and final comma
+            self.settings_options_strings[k] = opts[1:-1]  # removes the initial whitespace and final comma
 
     def set_field_length(self):
 
@@ -360,7 +362,7 @@ class SettingsTable:
             stype = str(self.settings_types.get(setting, ''))
             description = self.settings_description.get(setting, '')
             default = str(self.settings_default.get(setting, ''))
-            option = str(self.settings_options.get(setting, ''))
+            option = str(self.settings_options_strings.get(setting, ''))
 
             field_lengths[0].append(len(setting) + 4)  # length of name
             field_lengths[1].append(len(stype) + 4)  # length of type + 4 for the rst ``X``
@@ -386,7 +388,7 @@ class SettingsTable:
         description = self.settings_description.get(setting, '')
         default = '``' + str(self.settings_default.get(setting, '')) + '``'
         if self.settings_options:
-            option = self.settings_options.get(setting, '')
+            option = self.settings_options_strings.get(setting, '')
             line = self.line_format.format(['``' + str(setting) + '``', type, description, default, option]) + '\n'
         else:
             line = self.line_format.format(['``' + str(setting) + '``', type, description, default]) + '\n'
