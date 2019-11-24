@@ -54,7 +54,7 @@ docker pull fonsocarre/sharpy:latest
 
 Now you can run it:
 ```
-docker run -it fonsocarre/sharpy:latest --name sharpy
+docker run --name sharpy -it fonsocarre/sharpy:latest
 ```
 You should see a welcome dialog such as:
 ```
