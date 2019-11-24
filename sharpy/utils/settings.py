@@ -112,69 +112,75 @@ def to_custom_types(dictionary, types, default, no_ctype=False):
 
         elif v == 'list(float)':
             try:
-                if isinstance(dictionary[k], np.ndarray):
-                    continue
-                if isinstance(dictionary[k], list):
-                    for i in range(len(dictionary[k])):
-                        dictionary[k][i] = float(dictionary[k][i])
-                    dictionary[k] = np.array(dictionary[k])
-                    continue
-                # dictionary[k] = dictionary[k].split(',')
-                # # getting rid of leading and trailing spaces
-                # dictionary[k] = list(map(lambda x: x.strip(), dictionary[k]))
-                if dictionary[k].find(',') < 0:
-                    dictionary[k] = np.fromstring(dictionary[k].strip('[]'), sep=' ', dtype=ct.c_double)
-                else:
-                    dictionary[k] = np.fromstring(dictionary[k].strip('[]'), sep=',', dtype=ct.c_double)
+                dictionary[k]
             except KeyError:
                 if default[k] is None:
                     raise exceptions.NoDefaultValueException(k)
                 dictionary[k] = default[k].copy()
                 notify_default_value(k, dictionary[k])
+
+            if isinstance(dictionary[k], np.ndarray):
+                continue
+            if isinstance(dictionary[k], list):
+                for i in range(len(dictionary[k])):
+                    dictionary[k][i] = float(dictionary[k][i])
+                dictionary[k] = np.array(dictionary[k])
+                continue
+            # dictionary[k] = dictionary[k].split(',')
+            # # getting rid of leading and trailing spaces
+            # dictionary[k] = list(map(lambda x: x.strip(), dictionary[k]))
+            if dictionary[k].find(',') < 0:
+                dictionary[k] = np.fromstring(dictionary[k].strip('[]'), sep=' ', dtype=ct.c_double)
+            else:
+                dictionary[k] = np.fromstring(dictionary[k].strip('[]'), sep=',', dtype=ct.c_double)
 
         elif v == 'list(int)':
             try:
-                if isinstance(dictionary[k], np.ndarray):
-                    continue
-                if isinstance(dictionary[k], list):
-                    for i in range(len(dictionary[k])):
-                        dictionary[k][i] = int(dictionary[k][i])
-                    dictionary[k] = np.array(dictionary[k])
-                    continue
-                # dictionary[k] = dictionary[k].split(',')
-                # # getting rid of leading and trailing spaces
-                # dictionary[k] = list(map(lambda x: x.strip(), dictionary[k]))
-                if dictionary[k].find(',') < 0:
-                    dictionary[k] = np.fromstring(dictionary[k].strip('[]'), sep=' ').astype(ct.c_int)
-                else:
-                    dictionary[k] = np.fromstring(dictionary[k].strip('[]'), sep=',').astype(ct.c_int)
+                dictionary[k]
             except KeyError:
                 if default[k] is None:
                     raise exceptions.NoDefaultValueException(k)
                 dictionary[k] = default[k].copy()
                 notify_default_value(k, dictionary[k])
 
+            if isinstance(dictionary[k], np.ndarray):
+                continue
+            if isinstance(dictionary[k], list):
+                for i in range(len(dictionary[k])):
+                    dictionary[k][i] = int(dictionary[k][i])
+                dictionary[k] = np.array(dictionary[k])
+                continue
+            # dictionary[k] = dictionary[k].split(',')
+            # # getting rid of leading and trailing spaces
+            # dictionary[k] = list(map(lambda x: x.strip(), dictionary[k]))
+            if dictionary[k].find(',') < 0:
+                dictionary[k] = np.fromstring(dictionary[k].strip('[]'), sep=' ').astype(ct.c_int)
+            else:
+                dictionary[k] = np.fromstring(dictionary[k].strip('[]'), sep=',').astype(ct.c_int)
+
         elif v == 'list(complex)':
             try:
-                if isinstance(dictionary[k], np.ndarray):
-                    continue
-                if isinstance(dictionary[k], list):
-                    for i in range(len(dictionary[k])):
-                        dictionary[k][i] = float(dictionary[k][i])
-                    dictionary[k] = np.array(dictionary[k])
-                    continue
-                # dictionary[k] = dictionary[k].split(',')
-                # # getting rid of leading and trailing spaces
-                # dictionary[k] = list(map(lambda x: x.strip(), dictionary[k]))
-                if dictionary[k].find(',') < 0:
-                    dictionary[k] = np.fromstring(dictionary[k].strip('[]'), sep=' ').astype(complex)
-                else:
-                    dictionary[k] = np.fromstring(dictionary[k].strip('[]'), sep=',').astype(complex)
+                dictionary[k]
             except KeyError:
                 if default[k] is None:
                     raise exceptions.NoDefaultValueException(k)
                 dictionary[k] = default[k].copy()
                 notify_default_value(k, dictionary[k])
+
+            if isinstance(dictionary[k], np.ndarray):
+                continue
+            if isinstance(dictionary[k], list):
+                for i in range(len(dictionary[k])):
+                    dictionary[k][i] = float(dictionary[k][i])
+                dictionary[k] = np.array(dictionary[k])
+                continue
+            # dictionary[k] = dictionary[k].split(',')
+            # # getting rid of leading and trailing spaces
+            # dictionary[k] = list(map(lambda x: x.strip(), dictionary[k]))
+            if dictionary[k].find(',') < 0:
+                dictionary[k] = np.fromstring(dictionary[k].strip('[]'), sep=' ').astype(complex)
+            else:
+                dictionary[k] = np.fromstring(dictionary[k].strip('[]'), sep=',').astype(complex)
 
         elif v == 'dict':
             try:

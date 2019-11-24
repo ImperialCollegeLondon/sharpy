@@ -82,11 +82,11 @@ class one_minus_cos(BaseGust):
 
     settings_types['gust_length'] = 'float'
     settings_default['gust_length'] = 0.0
-    settings_description['gust_length'] = 'Length of gust'
+    settings_description['gust_length'] = 'Length of gust, :math:`S`.'
 
     settings_types['gust_intensity'] = 'float'
     settings_default['gust_intensity'] = 0.0
-    settings_description['gust_intensity'] = 'Intensity of the gust'
+    settings_description['gust_intensity'] = 'Intensity of the gust :math:`u_{de}`.'
 
     setting_table = settings.SettingsTable()
     __doc__ += setting_table.generate(settings_types, settings_default, settings_description, doc_settings_description)

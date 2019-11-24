@@ -254,7 +254,7 @@ class LinearAeroelastic(ss_interface.BaseElement):
         # Save zero force reference
         self.linearisation_vectors['forces_aero_beam_dof'] = Ksa.dot(self.linearisation_vectors['forces_aero'])
 
-        if self.settings['beam_settings']['modal_projection'] == True and \
+        if self.settings['beam_settings']['modal_projection'] is True and \
                 self.settings['beam_settings']['inout_coords'] == 'modes':
             self.linearisation_vectors['forces_aero_beam_dof'] = out_mode_matrix.dot(self.linearisation_vectors['forces_aero_beam_dof'])
 

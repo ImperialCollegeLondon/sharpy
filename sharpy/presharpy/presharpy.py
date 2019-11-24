@@ -10,40 +10,60 @@ import sharpy.utils.exceptions as exceptions
 @solver
 class PreSharpy(object):
     """
-    The main class for preSHARPy.
+    The PreSharpy solver is the main loader solver of SHARPy. It takes the admin-like settings for the simulation,
+    including the case name, case route and the list of solvers to run and in which order to run them. This order
+    of solvers is referred to, throughout SHARPy, as the ``flow`` setting.
 
-    PreSharpy objects contain information on the output of the problem.
-    The ``PreSharpy`` ``settings`` attributes are obtained from the ``.solver.txt`` file, under ``[SHARPy]``.
+    This is a mandatory solver for all simulations at the start so it is never included in the ``flow`` setting.
 
-    Args:
-        in_settings: settings file, from which ``[SHARPy]`` values are extracted
+    The settings for this solver are parsed through in the configuration file under the header ``SHARPy``. I.e, when
+    you are defining the config file for a simulation, the settings for PreSharpy are included as:
 
-    Attributes:
-        settings (dict): name-value pairs of solution settings types.
-            See Notes for acceptable combinations.
-        settings_types (dict): accepted types for values in ``settings``
-        settings_default (dict): default values for ``settings``, should none be provided.
-        ts (int): solution time step
-        case_route (str): route to case folder
-        case_name (str): name of the case
+    .. code-block:: python
 
-    Notes:
+        import configobj
+        filename = '<case_route>/<case_name>.sharpy'
+        config = configobj.ConfigObj()
+        config.filename = filename
+        config['SHARPy'] = {'case': '<your SHARPy case name>',  # an example setting
+                            # Rest of your settings for the PreSHARPy class
+                            }
 
-        The following key-value pairs are acceptable ``settings`` for the ``PreSharpy`` class:
-
-        ================  =============  ===============================================  =====================
-        Key               Type           Description                                      Default
-        ================  =============  ===============================================  =====================
-        ``flow``          ``list(str)``  List of solvers to run in the appropriate order  ``None``
-        ``case``          ``str``        Case name                                        ``default_case_name``
-        ``route``         ``str``        Route to folder                                  ``None``
-        ``write_screen``  ``bool``       Write output to terminal screen                  ``True``
-        ``write_log``     ``bool``       Write log file to output folder                  ``False``
-        ``log_folder``    ``str``        Folder to write log file within ``/output``      ``None``
-        ``log_file``      ``str``        Log file name                                    ``log``
-        ================  =============  ===============================================  =====================
     """
     solver_id = 'PreSharpy'
+    solver_classification = 'loader'
+
+    settings_types = dict()
+    settings_default = dict()
+    settings_description = dict()
+
+    settings_types['flow'] = 'list(str)'
+    settings_default['flow'] = None
+    settings_description['flow'] = "List of the desired solvers' ``solver_id`` to run in sequential order."
+
+    settings_types['case'] = 'str'
+    settings_default['case'] = 'default_case_name'
+    settings_description['case'] = 'Case name'
+
+    settings_types['route'] = 'str'
+    settings_default['route'] = None
+    settings_description['route'] = 'Route to case files'
+
+    settings_types['write_screen'] = 'bool'
+    settings_default['write_screen'] = True
+    settings_description['write_screen'] = 'Display output on terminal screen.'
+
+    settings_types['write_log'] = 'bool'
+    settings_default['write_log'] = False
+    settings_description['write_log'] = 'Write log file'
+
+    settings_types['log_folder'] = 'str'
+    settings_default['log_folder'] = ''
+    settings_description['log_folder'] = 'Log folder destination directory'
+
+    settings_table = settings.SettingsTable()
+    __doc__ += settings_table.generate(settings_types, settings_default, settings_description,
+                                       'The following are the settings that the PreSharpy class takes:')
 
     def __init__(self, in_settings=None):
         self._settings = True
@@ -52,27 +72,6 @@ class PreSharpy(object):
             self._settings = False
 
         self.ts = 0
-
-        self.settings_types = dict()
-        self.settings_default = dict()
-
-        self.settings_types['flow'] = 'list(str)'
-        self.settings_default['flow'] = None
-
-        self.settings_types['case'] = 'str'
-        self.settings_default['case'] = 'default_case_name'
-
-        self.settings_types['route'] = 'str'
-        self.settings_default['route'] = None
-
-        self.settings_types['write_screen'] = 'bool'
-        self.settings_default['write_screen'] = True
-
-        self.settings_types['write_log'] = 'bool'
-        self.settings_default['write_log'] = False
-
-        self.settings_types['log_folder'] = 'str'
-        self.settings_default['log_folder'] = ''
 
         self.settings_types['log_file'] = 'str'
         self.settings_default['log_file'] = 'log'
@@ -111,15 +110,6 @@ class PreSharpy(object):
 
     @staticmethod
     def load_config_file(file_name):
-        """Reads the flight condition and solver input files.
-
-        Args:
-            file_name (str): contains the path and file name of the file to be read by the ``configparser``
-                reader.
-
-        Returns:
-            ``ConfigParser`` object that behaves like a dictionary
-        """
         config = configparser.ConfigParser()
         config.read(file_name)
         return config
