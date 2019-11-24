@@ -283,12 +283,13 @@ class SettingsTable:
         self.settings_types = dict()
         self.settings_description = dict()
         self.settings_default = dict()
+        self.settings_options = dict()
 
         self.line_format = ''
 
         self.table_string = ''
 
-    def generate(self, settings_types, settings_default, settings_description, header_line=None):
+    def generate(self, settings_types, settings_default, settings_description, settings_options=dict(), header_line=None):
         """
         Returns a rst-format table with the settings' names, types, description and default values
 
@@ -296,6 +297,7 @@ class SettingsTable:
             settings_types (dict): Setting types.
             settings_default (dict): Settings default value.
             settings_description (dict): Setting description.
+
             header_line (str): Header line description (optional)
 
         Returns:
@@ -305,6 +307,24 @@ class SettingsTable:
         self.settings_default = settings_default
         self.n_settings = len(self.settings_types)
         #
+
+        if header_line is None:
+            header_line = 'The settings that this solver accepts are given by a dictionary, ' \
+                          'with the following key-value pairs:'
+        else:
+            assert type(header_line) == str, 'header_line not a string, verify order of arguments'
+
+        if type(settings_options) != dict:
+            raise TypeError('settings_options is not a dictionary')
+
+        if settings_options:
+            # if settings_options are provided
+            self.settings_options = settings_options
+            self.n_fields += 1
+            self.field_length.append(0)
+            self.titles.append('Options')
+            self.process_options()
+
         try:
             self.settings_description = settings_description
         except AttributeError:
@@ -312,10 +332,6 @@ class SettingsTable:
 
         self.set_field_length()
         self.line_format = self.setting_line_format()
-
-        if header_line is None:
-            header_line = 'The settings that this solver accepts are given by a dictionary, ' \
-                          'with the following key-value pairs:'
 
         table_string = '\n    ' + header_line + '\n'
         table_string += '\n    ' + self.print_divider_line()
@@ -329,17 +345,30 @@ class SettingsTable:
 
         return table_string
 
+    def process_options(self):
+
+        for k, v in self.settings_options.items():
+            opts = ''
+            for option in v:
+                opts += ' ``%s``,' %str(option)
+            self.settings_options[k] = opts[1:-1]  # removes the initial whitespace and final comma
+
     def set_field_length(self):
 
-        field_lengths = [[], [], [], []]
+        field_lengths = [[] for i in range(self.n_fields)]
         for setting in self.settings_types:
             stype = str(self.settings_types.get(setting, ''))
             description = self.settings_description.get(setting, '')
             default = str(self.settings_default.get(setting, ''))
+            option = str(self.settings_options.get(setting, ''))
+
             field_lengths[0].append(len(setting) + 4)  # length of name
             field_lengths[1].append(len(stype) + 4)  # length of type + 4 for the rst ``X``
-            field_lengths[2].append(len(description))  # length of type + 4 for the rst ``X``
+            field_lengths[2].append(len(description))  # length of type
             field_lengths[3].append(len(default) + 4)  # length of type + 4 for the rst ``X``
+
+            if self.settings_options:
+                field_lengths[4].append(len(option))
 
         for i_field in range(self.n_fields):
             field_lengths[i_field].append(len(self.titles[i_field]))
@@ -356,7 +385,11 @@ class SettingsTable:
         type = '``' + str(self.settings_types.get(setting, '')) + '``'
         description = self.settings_description.get(setting, '')
         default = '``' + str(self.settings_default.get(setting, '')) + '``'
-        line = self.line_format.format(['``' + str(setting) + '``', type, description, default]) + '\n'
+        if self.settings_options:
+            option = self.settings_options.get(setting, '')
+            line = self.line_format.format(['``' + str(setting) + '``', type, description, default, option]) + '\n'
+        else:
+            line = self.line_format.format(['``' + str(setting) + '``', type, description, default]) + '\n'
         return line
 
     def print_header(self):
