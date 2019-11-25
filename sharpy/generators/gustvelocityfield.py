@@ -89,7 +89,8 @@ class one_minus_cos(BaseGust):
     settings_description['gust_intensity'] = 'Intensity of the gust :math:`u_{de}`.'
 
     setting_table = settings.SettingsTable()
-    __doc__ += setting_table.generate(settings_types, settings_default, settings_description, doc_settings_description)
+    __doc__ += setting_table.generate(settings_types, settings_default, settings_description,
+                                      header_line=doc_settings_description)
 
     def initialise(self, in_dict):
         self.settings = in_dict
@@ -135,7 +136,8 @@ class DARPA(BaseGust):
     settings_description['span'] = 'Wing span'
 
     setting_table = settings.SettingsTable()
-    __doc__ += setting_table.generate(settings_types, settings_default, settings_description, doc_settings_description)
+    __doc__ += setting_table.generate(settings_types, settings_default, settings_description,
+                                      header_line=doc_settings_description)
 
     def initialise(self, in_dict):
         self.settings = in_dict
@@ -179,7 +181,8 @@ class continuous_sin(BaseGust):
     settings_description['gust_intensity'] = 'Intensity of the gust'
 
     setting_table = settings.SettingsTable()
-    __doc__ += setting_table.generate(settings_types, settings_default, settings_description, doc_settings_description)
+    __doc__ += setting_table.generate(settings_types, settings_default, settings_description,
+                                      header_line=doc_settings_description)
 
     def initialise(self, in_dict):
         self.settings = in_dict
@@ -217,7 +220,8 @@ class lateral_one_minus_cos(BaseGust):
     settings_description['gust_intensity'] = 'Intensity of the gust'
 
     setting_table = settings.SettingsTable()
-    __doc__ += setting_table.generate(settings_types, settings_default, settings_description, doc_settings_description)
+    __doc__ += setting_table.generate(settings_types, settings_default, settings_description,
+                                      header_line=doc_settings_description)
 
     def initialise(self, in_dict):
         self.settings = in_dict
@@ -255,7 +259,8 @@ class time_varying(BaseGust):
     settings_description['file'] = 'File with the information'
 
     setting_table = settings.SettingsTable()
-    __doc__ += setting_table.generate(settings_types, settings_default, settings_description, doc_settings_description)
+    __doc__ += setting_table.generate(settings_types, settings_default, settings_description,
+                                      header_line=doc_settings_description)
 
     def __init__(self):
         super().__init__()
@@ -299,7 +304,8 @@ class time_varying_global(BaseGust):
     settings_description['file'] = 'File with the information (only for time varying)'
 
     setting_table = settings.SettingsTable()
-    __doc__ += setting_table.generate(settings_types, settings_default, settings_description, doc_settings_description)
+    __doc__ += setting_table.generate(settings_types, settings_default, settings_description,
+                                      header_line=doc_settings_description)
 
     def __init__(self):
         super().__init__()
@@ -357,7 +363,8 @@ class span_sine(BaseGust):
     settings_description['span_with_gust'] = 'Extension of the span to which the gust will be applied'
 
     setting_table = settings.SettingsTable()
-    __doc__ += setting_table.generate(settings_types, settings_default, settings_description, doc_settings_description)
+    __doc__ += setting_table.generate(settings_types, settings_default, settings_description,
+                                      header_line=doc_settings_description)
 
     def initialise(self, in_dict):
         self.settings = in_dict
@@ -428,8 +435,8 @@ class GustVelocityField(generator_interface.BaseGenerator):
     settings_description['gust_parameters'] = 'Dictionary of parameters specific of the gust_shape selected'
 
     setting_table = settings.SettingsTable()
-    __doc__ += setting_table.generate(settings_types, settings_default, settings_description, 'This generator takes'
-                                                                                              'the following settings')
+    __doc__ += setting_table.generate(settings_types, settings_default, settings_description,
+                                      header_line='This generator takes the following settings')
 
     def __init__(self):
 
