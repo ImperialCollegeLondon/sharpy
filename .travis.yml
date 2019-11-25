@@ -25,8 +25,8 @@ before_install:
   - conda init bash
   - hash -r
   - export QT_QPA_PLATFORM='offscreen'
-  - conda env create -f utils/environment_linux.yml
-  - source activate sharpy_env
+  - conda env create -f utils/environment_minimal.yml
+  - source activate sharpy_minimal
 
 install:
   - echo $(pwd)
