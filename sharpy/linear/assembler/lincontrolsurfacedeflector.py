@@ -93,7 +93,13 @@ class LinControlSurfaceDeflector(object):
         n_control_surfaces = self.n_control_surfaces
 
         if self.under_development:
-            import matplotlib.pyplot as plt  # Part of the testing process
+            try:
+                import matplotlib.pyplot as plt  # Part of the testing process
+            except ModuleNotFoundError:
+                import warnings
+                warnings.warn('Unable to import matplotlib, skipping plots')
+                self.under_development = False
+
         Kdisp = np.zeros((3 * linuvlm.Kzeta, n_control_surfaces))
         Kvel = np.zeros((3 * linuvlm.Kzeta, n_control_surfaces))
         Kmom = np.zeros((3 * linuvlm.Kzeta, n_control_surfaces))

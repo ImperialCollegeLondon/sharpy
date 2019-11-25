@@ -103,89 +103,72 @@ def get_Wnv_vector(SurfGeo,aM=0.5,aN=0.5):
 
 # -----------------------------------------------------------------------------
 
-
-if __name__=='__main__':
-
-	import read
-	import gridmapping
-	import surface
-	import matplotlib.pyplot as plt 
-
-	# select test case
-	fname='../test/h5input/goland_mod_Nsurf01_M003_N004_a040.aero_state.h5'
-	haero=read.h5file(fname)
-	tsdata=haero.ts00000
-
-	# select surface and retrieve data
-	ss=0
-	M,N=tsdata.dimensions[ss]
-	Map=gridmapping.AeroGridMap(M,N)
-	SurfGeo=surface.AeroGridGeo(Map,tsdata.zeta[ss])
-
-	# generate geometry data
-	SurfGeo.generate_areas()
-	SurfGeo.generate_normals()
-	#SurfGeo.aM,SurfGeo.aN=0.25,0.75
-	SurfGeo.generate_collocations()
-
-
-	# ---------------------------------------------------------------- Test Wvc
-	zeta_vec=SurfGeo.zeta.reshape(-1,order='C')
-	Wvc_scalar=get_Wvc_scalar(Map)
-	Wvc=get_Wvc_vector(Wvc_scalar)
-	zetac_vec=np.dot(Wvc.T,zeta_vec)
-	zetac=zetac_vec.reshape(Map.shape_pan_vect)
-	SurfGeo.plot(plot_normals=False)
-	SurfGeo.ax.scatter(zetac[0],zetac[1],zetac[2],zdir='z',s=6,c='b',marker='+')
-	# # way back - can't work
-	# zetav_vec=np.dot(Wvc,zetac_vec)
-	# zetav=zetav_vec.reshape(Map.shape_vert_vect)
-	# SurfGeo.ax.scatter(zetav[0],zetav[1],zetav[2],zdir='z',s=6,c='k',marker='+')	
-	# plt.show()
-	plt.close('all')
-
-
-	# ---------------------------------------------------------------- Test wnv
-	# generate non-zero field of external force
-	u_ext=tsdata.u_ext[ss]
-	u_ext[0,:,:]=u_ext[0,:,:]-20.0
-	u_ext[1,:,:]=u_ext[1,:,:]+60.0
-	u_ext[2,:,:]=u_ext[2,:,:]+30.0
-	u_ext=u_ext+np.random.rand(*u_ext.shape)
-	# interpolate velocity at collocation points
-
-	# compute normal velocity at panels
-	wcv=get_panel_wcv(aM=0.5,aN=0.5)
-	u_norm=np.zeros((M,N))
-	for mm in range(M):
-		for nn in range(N):
-			# get velocity at panel corners
-			mpv=SurfGeo.maps.from_panel_to_vertices(mm,nn)
-			uc=np.zeros((3,))
-			for vv in range(4):
-				uc=uc+wcv[vv]*u_ext[:,mpv[vv,0],mpv[vv,1]]
-			u_norm[mm,nn]=np.dot(uc,SurfGeo.normals[:,mm,nn])
-	u_norm_vec_ref=u_norm.reshape(-1,order='C')
-	# compute normal velocity through projection matrix
-	u_ext_vec=u_ext.reshape(-1,order='C')
-	Wnv=get_Wnv_vector(SurfGeo)
-	u_norm_vec=np.dot(Wnv,u_ext_vec)
-
-	assert np.max(np.abs(u_norm_vec-u_norm_vec_ref))<1e-12, 'Wnv not correct'
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+#
+# if __name__=='__main__':
+#
+# 	import read
+# 	import gridmapping
+# 	import surface
+# 	import matplotlib.pyplot as plt
+#
+# 	# select test case
+# 	fname='../test/h5input/goland_mod_Nsurf01_M003_N004_a040.aero_state.h5'
+# 	haero=read.h5file(fname)
+# 	tsdata=haero.ts00000
+#
+# 	# select surface and retrieve data
+# 	ss=0
+# 	M,N=tsdata.dimensions[ss]
+# 	Map=gridmapping.AeroGridMap(M,N)
+# 	SurfGeo=surface.AeroGridGeo(Map,tsdata.zeta[ss])
+#
+# 	# generate geometry data
+# 	SurfGeo.generate_areas()
+# 	SurfGeo.generate_normals()
+# 	#SurfGeo.aM,SurfGeo.aN=0.25,0.75
+# 	SurfGeo.generate_collocations()
+#
+#
+# 	# ---------------------------------------------------------------- Test Wvc
+# 	zeta_vec=SurfGeo.zeta.reshape(-1,order='C')
+# 	Wvc_scalar=get_Wvc_scalar(Map)
+# 	Wvc=get_Wvc_vector(Wvc_scalar)
+# 	zetac_vec=np.dot(Wvc.T,zeta_vec)
+# 	zetac=zetac_vec.reshape(Map.shape_pan_vect)
+# 	SurfGeo.plot(plot_normals=False)
+# 	SurfGeo.ax.scatter(zetac[0],zetac[1],zetac[2],zdir='z',s=6,c='b',marker='+')
+# 	# # way back - can't work
+# 	# zetav_vec=np.dot(Wvc,zetac_vec)
+# 	# zetav=zetav_vec.reshape(Map.shape_vert_vect)
+# 	# SurfGeo.ax.scatter(zetav[0],zetav[1],zetav[2],zdir='z',s=6,c='k',marker='+')
+# 	# plt.show()
+# 	plt.close('all')
+#
+#
+# 	# ---------------------------------------------------------------- Test wnv
+# 	# generate non-zero field of external force
+# 	u_ext=tsdata.u_ext[ss]
+# 	u_ext[0,:,:]=u_ext[0,:,:]-20.0
+# 	u_ext[1,:,:]=u_ext[1,:,:]+60.0
+# 	u_ext[2,:,:]=u_ext[2,:,:]+30.0
+# 	u_ext=u_ext+np.random.rand(*u_ext.shape)
+# 	# interpolate velocity at collocation points
+#
+# 	# compute normal velocity at panels
+# 	wcv=get_panel_wcv(aM=0.5,aN=0.5)
+# 	u_norm=np.zeros((M,N))
+# 	for mm in range(M):
+# 		for nn in range(N):
+# 			# get velocity at panel corners
+# 			mpv=SurfGeo.maps.from_panel_to_vertices(mm,nn)
+# 			uc=np.zeros((3,))
+# 			for vv in range(4):
+# 				uc=uc+wcv[vv]*u_ext[:,mpv[vv,0],mpv[vv,1]]
+# 			u_norm[mm,nn]=np.dot(uc,SurfGeo.normals[:,mm,nn])
+# 	u_norm_vec_ref=u_norm.reshape(-1,order='C')
+# 	# compute normal velocity through projection matrix
+# 	u_ext_vec=u_ext.reshape(-1,order='C')
+# 	Wnv=get_Wnv_vector(SurfGeo)
+# 	u_norm_vec=np.dot(Wnv,u_ext_vec)
+#
+# 	assert np.max(np.abs(u_norm_vec-u_norm_vec_ref))<1e-12, 'Wnv not correct'

@@ -111,12 +111,16 @@ class TrajectoryGenerator(generator_interface.BaseGenerator):
         cout.cout_wrap('-------------------------------', 2)
 
     def plot(self):
-        import matplotlib.pyplot as plt
-        plt.figure()
-        plt.scatter(self.x_vec, self.y_vec, c=self.time_vec)
-        plt.colorbar(orientation='horizontal')
-        plt.axis('equal')
-        plt.show()
+        try:
+            import matplotlib.pyplot as plt
+            plt.figure()
+            plt.scatter(self.x_vec, self.y_vec, c=self.time_vec)
+            plt.colorbar(orientation='horizontal')
+            plt.axis('equal')
+            plt.show()
+        except ModuleNotFoundError:
+            import warnings
+            warnings.warn('Unable to import matplotlib, skipping plot')
 
     def get_n_steps(self):
         return self.n_steps
