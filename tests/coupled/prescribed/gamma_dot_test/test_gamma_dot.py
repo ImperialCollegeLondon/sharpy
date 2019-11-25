@@ -138,13 +138,17 @@ class TestGammaDot(unittest.TestCase):
             passed_test = error_derivative < 1e-2 * np.abs(gamma_dot_at_max)
 
         if not passed_test:
-            import matplotlib.pyplot as plt
-            plt.plot(gamma_dot)
-            plt.plot(gamma_dot_fd, color='k')
-            plt.show()
+            try:
+                import matplotlib.pyplot as plt
+                plt.plot(gamma_dot)
+                plt.plot(gamma_dot_fd, color='k')
+                plt.show()
 
-            plt.plot(gamma_dot - gamma_dot_fd)
-            plt.show()
+                plt.plot(gamma_dot - gamma_dot_fd)
+                plt.show()
+            except ModuleNotFoundError:
+                import warnings
+                warnings.warn('Unable to import matplotlib, skipping plot')
 
         assert passed_test == True, \
             'Discrepancy between gamma_dot and that calculated using FD, relative difference is %.2f' % (

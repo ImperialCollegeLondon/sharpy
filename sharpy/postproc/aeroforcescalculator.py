@@ -1,9 +1,7 @@
-import ctypes as ct
 import numpy as np
 import os
 
 import sharpy.utils.cout_utils as cout
-from sharpy.utils.settings import str2bool
 from sharpy.utils.solver_interface import solver, BaseSolver
 import sharpy.utils.settings as settings
 import sharpy.utils.algebra as algebra
@@ -53,7 +51,7 @@ class AeroForcesCalculator(BaseSolver):
 
     settings_default['coefficients'] = False
     settings_types['coefficients'] = 'bool'
-    settings_description['coefficients'] = 'Calculate aerodynamic coeffients'
+    settings_description['coefficients'] = 'Calculate aerodynamic coefficients'
 
     settings_types['q_ref'] = 'float'
     settings_default['q_ref'] = 1

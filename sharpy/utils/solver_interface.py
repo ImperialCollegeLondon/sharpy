@@ -132,10 +132,6 @@ def output_documentation(route=None):
         solver = v()
         created_solvers[k] = solver
 
-        if solver.solver_id == 'PreSharpy':
-            continue
-            # route_to_solver_python = 'sharpy.presharpy.'
-
         filename = k + '.rst'
 
         try:
@@ -158,7 +154,8 @@ def output_documentation(route=None):
             if solver_folder not in solver_types:
                 solver_types.append(solver_folder)
 
-
+        if solver.solver_id == 'PreSharpy':
+            route_to_solver_python = 'sharpy.presharpy.'
 
         os.makedirs(base_route + '/' + folder + '/' + solver_folder, exist_ok=True)
         title = k + '\n'

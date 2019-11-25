@@ -63,11 +63,6 @@ class DynamicControlSurface(generator_interface.BaseGenerator):
         self.deflection_dot = np.zeros_like(self.deflection)
         self.deflection_dot[0:-1] = np.diff(self.deflection)/self.in_dict['dt'].value
         self.deflection_dot[-1] = 0
-        # import matplotlib.pyplot as plt
-        # plt.figure()
-        # plt.plot(self.deflection)
-        # plt.plot(self.deflection_dot)
-        # plt.show()
 
     def generate(self, params):
         it = params['it']
