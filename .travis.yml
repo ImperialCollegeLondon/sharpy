@@ -27,6 +27,7 @@ before_install:
   - export QT_QPA_PLATFORM='offscreen'
   - conda env create -f utils/environment_minimal.yml
   - source activate sharpy_minimal
+  - conda install coverage
 
 install:
   - echo $(pwd)
