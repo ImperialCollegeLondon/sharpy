@@ -35,6 +35,7 @@ class Direct(BaseBalancedRom):
     settings_types = dict()
     settings_default = dict()
     settings_description = dict()
+    settings_options = dict()
 
     settings_types['tune'] = 'bool'
     settings_default['tune'] = True
@@ -56,10 +57,11 @@ class Direct(BaseBalancedRom):
 
     settings_types['reduction_method'] = 'str'
     settings_default['reduction_method'] = 'realisation'
-    settings_description['reduction_method'] = 'Reduction method. ``realisation`` or ``truncation``'
+    settings_description['reduction_method'] = 'Desired reduction method'
+    settings_options['reduction_method'] = ['realisation', 'truncation']
 
     settings_table = settings.SettingsTable()
-    __doc__ += settings_table.generate(settings_types, settings_default, settings_description)
+    __doc__ += settings_table.generate(settings_types, settings_default, settings_description, settings_options)
 
     def __init__(self):
         self.settings = dict()
@@ -68,7 +70,7 @@ class Direct(BaseBalancedRom):
         if in_settings is not None:
             self.settings = in_settings
 
-        settings.to_custom_types(self.settings, self.settings_types, self.settings_default)
+        settings.to_custom_types(self.settings, self.settings_types, self.settings_default, self.settings_options)
 
     def run(self, ss):
         A, B, C, D = ss.get_mats()
@@ -116,6 +118,7 @@ class FrequencyLimited(BaseBalancedRom):
     settings_types = dict()
     settings_default = dict()
     settings_description = dict()
+    settings_options = dict()
 
     settings_types['frequency'] = 'float'
     settings_default['frequency'] = 1.
@@ -126,8 +129,9 @@ class FrequencyLimited(BaseBalancedRom):
 
     settings_types['method_low'] = 'str'
     settings_default['method_low'] = 'trapz'
-    settings_description['method_low'] = '``gauss`` or ``trapz`` specifies whether to use gauss quadrature or ' \
+    settings_description['method_low'] = 'Specifies whether to use gauss quadrature or ' \
                                          'trapezoidal rule in the low-frequency range ``[0,F]``'
+    settings_options['method_low'] = ['gauss', 'trapz']
 
     settings_types['options_low'] = 'dict'
     settings_default['options_low'] = dict()
@@ -135,8 +139,9 @@ class FrequencyLimited(BaseBalancedRom):
 
     settings_types['method_high'] = 'str'
     settings_default['method_high'] = 'trapz'
-    settings_description['method_high'] = '``gauss`` or ``trapz`` specifies whether to use gauss quadrature or ' \
-                                         'trapezoidal rule in the high-frequency range ``[F,FN]``'
+    settings_description['method_high'] = 'Specifies whether to use gauss quadrature or ' \
+                                          'trapezoidal rule in the high-frequency range ``[F,FN]``'
+    settings_options['method_high'] = ['gauss', 'trapz']
 
     settings_types['options_high'] = 'dict'
     settings_default['options_high'] = dict()
@@ -174,7 +179,7 @@ class FrequencyLimited(BaseBalancedRom):
     settings_options_description['order'] = 'Order of Gauss-Lobotto quadratures'
 
     settings_table = settings.SettingsTable()
-    __doc__ += settings_table.generate(settings_types, settings_default, settings_description)
+    __doc__ += settings_table.generate(settings_types, settings_default, settings_description, settings_options)
 
     options_table = settings.SettingsTable()
     __doc__ += options_table.generate(settings_options_types, settings_options_default, settings_options_description,
@@ -188,9 +193,12 @@ class FrequencyLimited(BaseBalancedRom):
         if in_settings is not None:
             self.settings = in_settings
 
-        settings.to_custom_types(self.settings, self.settings_types, self.settings_default, no_ctype=True)
-        settings.to_custom_types(self.settings['options_low'], self.settings_options_types, self.settings_options_default, no_ctype=True)
-        settings.to_custom_types(self.settings['options_high'], self.settings_options_types, self.settings_options_default, no_ctype=True)
+        settings.to_custom_types(self.settings, self.settings_types, self.settings_default,
+                                 self.settings_options, no_ctype=True)
+        settings.to_custom_types(self.settings['options_low'], self.settings_options_types,
+                                 self.settings_options_default, no_ctype=True)
+        settings.to_custom_types(self.settings['options_high'], self.settings_options_types,
+                                 self.settings_options_default, no_ctype=True)
 
     def run(self, ss):
 

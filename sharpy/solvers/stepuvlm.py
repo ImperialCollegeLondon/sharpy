@@ -36,6 +36,7 @@ class StepUvlm(BaseSolver):
     settings_types = dict()
     settings_default = dict()
     settings_description = dict()
+    settings_options = dict()
 
     settings_types['print_info'] = 'bool'
     settings_default['print_info'] = True
@@ -51,12 +52,16 @@ class StepUvlm(BaseSolver):
 
     settings_types['convection_scheme'] = 'int'
     settings_default['convection_scheme'] = 3
-    settings_description['convection_scheme'] = '0 for fixed wake, 2 for convected with background flow and 3 for full force-free wake'
+    settings_description['convection_scheme'] = '``0``: fixed wake, ' \
+                                                '``2``: convected with background flow;' \
+                                                '``3``: full force-free wake'
+    settings_options['convection_scheme'] = [0, 2, 3]
 
     settings_types['dt'] = 'float'
     settings_default['dt'] = 0.1
     settings_description['dt'] = 'Time step'
 
+    # the following settings are not in used but are required in place since they are called in uvlmlib
     settings_types['iterative_solver'] = 'bool'
     settings_default['iterative_solver'] = False
     settings_description['iterative_solver'] = 'Not in use'
@@ -71,7 +76,8 @@ class StepUvlm(BaseSolver):
 
     settings_types['velocity_field_generator'] = 'str'
     settings_default['velocity_field_generator'] = 'SteadyVelocityField'
-    settings_description['velocity_field_generator'] = 'Name of the velocity field generator to be used in the simulation'
+    settings_description['velocity_field_generator'] = 'Name of the velocity field generator to be used in the ' \
+                                                       'simulation'
 
     settings_types['velocity_field_input'] = 'dict'
     settings_default['velocity_field_input'] = {}
@@ -79,14 +85,15 @@ class StepUvlm(BaseSolver):
 
     settings_types['gamma_dot_filtering'] = 'int'
     settings_default['gamma_dot_filtering'] = 0
-    settings_description['gamma_dot_filtering'] = 'Filtering parameter for the Welch filter for the Gamma_dot estimation. Used when ``unsteady_force_contribution`` is ``on``.'
+    settings_description['gamma_dot_filtering'] = 'Filtering parameter for the Welch filter for the Gamma_dot ' \
+                                                  'estimation. Used when ``unsteady_force_contribution`` is ``on``.'
 
     settings_types['rho'] = 'float'
     settings_default['rho'] = 1.225
     settings_description['rho'] = 'Air density'
 
     settings_table = settings.SettingsTable()
-    __doc__ += settings_table.generate(settings_types, settings_default, settings_description)
+    __doc__ += settings_table.generate(settings_types, settings_default, settings_description, settings_options)
 
     def __init__(self):
         self.data = None
@@ -104,7 +111,8 @@ class StepUvlm(BaseSolver):
             self.settings = custom_settings
         settings.to_custom_types(self.settings,
                                  self.settings_types,
-                                 self.settings_default)
+                                 self.settings_default,
+                                 self.settings_options)
 
         self.data.structure.add_unsteady_information(
             self.data.structure.dyn_dict,

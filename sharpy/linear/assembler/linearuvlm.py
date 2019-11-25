@@ -77,6 +77,7 @@ class LinearUVLM(ss_interface.BaseElement):
     settings_types = dict()
     settings_default = dict()
     settings_description = dict()
+    settings_options = dict()
 
     settings_types['dt'] = 'float'
     settings_default['dt'] = 0.1
@@ -85,6 +86,7 @@ class LinearUVLM(ss_interface.BaseElement):
     settings_types['integr_order'] = 'int'
     settings_default['integr_order'] = 2
     settings_description['integr_order'] = 'Integration order of the circulation derivative. Either ``1`` or ``2``.'
+    settings_options['integr_order'] = [1, 2]
 
     settings_types['ScalingDict'] = 'dict'
     settings_default['ScalingDict'] = dict()
@@ -105,10 +107,12 @@ class LinearUVLM(ss_interface.BaseElement):
     settings_types['remove_inputs'] = 'list(str)'
     settings_default['remove_inputs'] = []
     settings_description['remove_inputs'] = 'List of inputs to remove. ``u_gust`` to remove external velocity input.'
+    settings_options['remove_inputs'] = ['u_gust']
 
     settings_types['gust_assembler'] = 'str'
     settings_default['gust_assembler'] = ''
     settings_description['gust_assembler'] = 'Selected gust assembler. ``leading_edge`` for now'
+    settings_options['gust_assembler'] = ['leading_edge']
 
     settings_types['rom_method'] = 'list(str)'
     settings_default['rom_method'] = []
@@ -120,7 +124,7 @@ class LinearUVLM(ss_interface.BaseElement):
                                                   'where the name is the key to the dictionary'
 
     settings_table = settings.SettingsTable()
-    __doc__ += settings_table.generate(settings_types, settings_default, settings_description)
+    __doc__ += settings_table.generate(settings_types, settings_default, settings_description, settings_options)
 
     scaling_settings_types = dict()
     scaling_settings_default = dict()
@@ -172,7 +176,9 @@ class LinearUVLM(ss_interface.BaseElement):
             except KeyError:
                 pass
 
-        settings.to_custom_types(self.settings, self.settings_types, self.settings_default, no_ctype=True)
+        settings.to_custom_types(self.settings, self.settings_types, self.settings_default,
+                                 self.settings_options,
+                                 no_ctype=True)
         settings.to_custom_types(self.settings['ScalingDict'], self.scaling_settings_types,
                                  self.scaling_settings_default, no_ctype=True)
 
