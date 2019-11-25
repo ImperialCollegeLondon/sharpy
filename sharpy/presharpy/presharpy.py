@@ -63,7 +63,7 @@ class PreSharpy(object):
 
     settings_table = settings.SettingsTable()
     __doc__ += settings_table.generate(settings_types, settings_default, settings_description,
-                                       'The following are the settings that the PreSharpy class takes:')
+                                       header_line='The following are the settings that the PreSharpy class takes:')
 
     def __init__(self, in_settings=None):
         self._settings = True
@@ -113,4 +113,3 @@ class PreSharpy(object):
         config = configparser.ConfigParser()
         config.read(file_name)
         return config
-

@@ -8,4 +8,5 @@ Settings Generator Utilities
 	:glob:
 
 	./SettingsTable
+	./check_settings
 	./load_config_file
