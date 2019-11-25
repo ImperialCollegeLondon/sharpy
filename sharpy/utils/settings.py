@@ -194,13 +194,46 @@ def to_custom_types(dictionary, types, default, options=dict(), no_ctype=False):
         else:
             raise TypeError('Variable %s has an unknown type (%s) that cannot be casted' % (k, v))
 
-        # Check that value is within options
-        try:
-            if dictionary[k] not in options[k] and dictionary[k]:
+    check_settings(dictionary, types, options)
+
+
+def check_settings(settings, settings_types, settings_options):
+    """
+    Checks that settings given a type ``str`` or ``int`` and allowable options are indeed valid.
+
+    Args:
+        settings (dict): Dictionary of processed settings
+        settings_types (dict): Dictionary of settings types
+        settings_options (dict): Dictionary of options (may be empty)
+
+    Raises:
+        ValueError: if the setting is not allowed.
+    """
+    for k in settings_options:
+        if settings_types[k] == 'int':
+            try:
+                value = settings[k].value
+            except AttributeError:
+                value = settings[k]
+            if value not in settings_options[k]:
+                raise ValueError('The setting %s with value %s is not one of the available '
+                                 'options: %s' % (k, value, settings_options[k]))
+
+        elif settings_types[k] == 'str':
+            value = settings[k]
+            if value not in settings_options[k] and value:
                 # checks that the value is within the options and that it is not an empty string.
-                raise ValueError('The setting %s is not one of the available options: %s' % (k, options[k]))
-        except KeyError:
-            pass
+                raise ValueError('The setting %s with value %s is not one of the available '
+                                 'options: %s' % (k, value, settings_options[k]))
+
+        elif settings_types[k] == 'list(str)':
+            for item in settings[k]:
+                if item not in settings_options[k] and item:
+                    raise ValueError('The setting %s with item %s is not one of the available '
+                                     'options: %s' % (k, item, settings_options[k]))
+
+        else:
+            pass  # no other checks implemented / required
 
 
 def load_config_file(file_name: str) -> dict:
