@@ -185,7 +185,7 @@ class Krylov(rom_interface.BaseRom):
         if not self.stable:
             # pass
             # Under development
-            warn.warnings('Stabilisation under development')
+            warn.warn('Stabilisation under development')
             # TL, TR = self.restart()
             # Wtr, Vr = self.restart()
             # TL, TR = self.stable_realisation()
