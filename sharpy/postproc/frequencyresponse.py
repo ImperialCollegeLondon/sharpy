@@ -179,30 +179,33 @@ class FrequencyResponse(solver_interface.BaseSolver):
                            freq_2_cols)
 
     def quick_plot(self, Y_freq_fom=None, Y_freq_rom=None):
-        cout.cout_wrap('Creating Quick plots of the frequency response')
-        import matplotlib.pyplot as plt
-        for mj in range(self.ss.inputs):
-            for pj in range(self.ss.outputs):
-                fig1, ax1 = plt.subplots()
-                fig_title = 'in%02g_out%02g' % (mj, pj)
-                ax1.set_title(fig_title)
-                if Y_freq_fom is not None:
-                    ax1.plot(self.wv * self.w_to_k, Y_freq_fom[pj, mj, :].real, color='C0', label='Real FOM')
-                    ax1.plot(self.wv * self.w_to_k, Y_freq_fom[pj, mj, :].imag, '--', color='C0', label='Imag FOM')
-                if Y_freq_rom is not None:
-                    ax1.plot(self.wv * self.w_to_k, Y_freq_rom[pj, mj, :].real, color='C1', label='Real ROM')
-                    ax1.plot(self.wv * self.w_to_k, Y_freq_rom[pj, mj, :].imag, '--', color='C1', label='Imag FOM')
-                ax1.legend()
-                if self.settings['frequency_unit'] == 'k':
-                    ax1.set_xlabel('Reduced Frequency, k [-]')
-                else:
-                    ax1.set_xlabel(r'Frequency, $\omega$ [rad/s]')
+        try:
+            cout.cout_wrap('Creating Quick plots of the frequency response')
+            import matplotlib.pyplot as plt
+            for mj in range(self.ss.inputs):
+                for pj in range(self.ss.outputs):
+                    fig1, ax1 = plt.subplots()
+                    fig_title = 'in%02g_out%02g' % (mj, pj)
+                    ax1.set_title(fig_title)
+                    if Y_freq_fom is not None:
+                        ax1.plot(self.wv * self.w_to_k, Y_freq_fom[pj, mj, :].real, color='C0', label='Real FOM')
+                        ax1.plot(self.wv * self.w_to_k, Y_freq_fom[pj, mj, :].imag, '--', color='C0', label='Imag FOM')
+                    if Y_freq_rom is not None:
+                        ax1.plot(self.wv * self.w_to_k, Y_freq_rom[pj, mj, :].real, color='C1', label='Real ROM')
+                        ax1.plot(self.wv * self.w_to_k, Y_freq_rom[pj, mj, :].imag, '--', color='C1', label='Imag FOM')
+                    ax1.legend()
+                    if self.settings['frequency_unit'] == 'k':
+                        ax1.set_xlabel('Reduced Frequency, k [-]')
+                    else:
+                        ax1.set_xlabel(r'Frequency, $\omega$ [rad/s]')
 
-                ax1.set_ylabel('Y')
-                fig1.savefig(self.folder + '/' + fig_title + '.png')
-                plt.close()
+                    ax1.set_ylabel('Y')
+                    fig1.savefig(self.folder + '/' + fig_title + '.png')
+                    plt.close()
 
-        cout.cout_wrap('\tPlots saved to %s' % self.folder, 1)
+            cout.cout_wrap('\tPlots saved to %s' % self.folder, 1)
+        except ModuleNotFoundError:
+            warnings.warn('Matplotlib not found - skipping plot')
 
     def load_frequency_data(self):
         cout.cout_wrap('Loading frequency response')
