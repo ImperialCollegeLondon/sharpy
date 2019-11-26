@@ -62,7 +62,7 @@ input [@Hesse2016; @deskos2019], control surface deflection and prescribed motio
 state-space models can be obtained for frequency domain analysis, controller design and model reduction.
 
 
-Few open source options are available for aeroelastic analysis. A well known code for wind
+Few open source options are available for nonlinear aeroelastic analysis. A well known code for wind
 energy is OpenFAST [@openfast], developed at NREL and distributed under
 Apache 2.0 license. OpenFAST features a Geometrically-Exact Composite Beam structural
 model and an actuator-line based aerodynamic solver. The wake is modelled using
@@ -71,9 +71,9 @@ no other nonlinear aeroelasticity framework for aircraft is available
 under open-source terms. An example of a commonly-used aircraft-oriented software
 is ASWING [@Drela1999]. It is based on geometrically nonlinear beams with approximated
 rigid body dynamics. Aerodynamic loads are calculated using a lifting-line
-theory solver with prescribed coefficients. Lastly, UM/NAST[@del2019ifasd] is a nonlinear
+theory solver with prescribed coefficients. Lastly, UM/NAST [@del2019ifasd] is a nonlinear
 aeroelastic code with GECB and UVLM solvers. However, it is a research code
-only referred to in papers.
+which has not been released as open source.
 
 
 ``SHARPy`` relies only on freely-available open-source dependencies
