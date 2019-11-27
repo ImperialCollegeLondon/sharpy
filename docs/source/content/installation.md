@@ -150,7 +150,7 @@ or running any SHARPy cases.
         2. You have the correct python installation, but the `python` command
         points to the default python of the OS. In this case, try `python3`
 
-3. Create the conda environment that SHARPy will use. Change `environment_linux.yml` to read `environment_mac.yml`
+3. Create the conda environment that SHARPy will use. Change `environment_linux.yml` to read `environment_macos.yml`
 file if you are installing SHARPy on Mac OS X
     ```bash
     cd sharpy/utils
@@ -347,7 +347,7 @@ loaded in Paraview.
 verification: 
     ```sh
     cd ../sharpy
-    python ./tests/beam/static/geradin_cardona/generate_geradin.py
+    python ./tests/xbeam/geradin/generate_geradin.py
     ```
 
 Now you should see a success message, and if you check the
