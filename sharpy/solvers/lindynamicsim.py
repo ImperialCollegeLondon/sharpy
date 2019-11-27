@@ -219,7 +219,7 @@ def state_to_timestep(data, x, u=None, y=None):
 
     """
 
-    if data.settings['LinearAssembler']['linear_system_settings']['beam_settings']['modal_projection'].value and \
+    if data.settings['LinearAssembler']['linear_system_settings']['beam_settings']['modal_projection'] and \
             data.settings['LinearAssembler']['linear_system_settings']['beam_settings']['inout_coords'] == 'modes':
         modal = True
     else:

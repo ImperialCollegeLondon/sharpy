@@ -129,7 +129,7 @@ class Baseline(HortenWing):
         ixx_dummy = []
         iyy_dummy = []
         izz_dummy = []
-        import matplotlib.pyplot as plt
+
         for i_elem in range(self.n_elem_wing):
             # Create full cross section
             c_bar = self.c_root * ((1-alpha[i_elem]) + self.taper_ratio * alpha[i_elem])

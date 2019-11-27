@@ -8,9 +8,6 @@ import scipy as sc
 import os
 import itertools
 import warnings
-from tvtk.api import tvtk, write_data
-import scipy.linalg
-
 import sharpy.structure.utils.xbeamlib as xbeamlib
 from sharpy.utils.solver_interface import solver, BaseSolver
 import sharpy.utils.settings as settings
@@ -168,7 +165,6 @@ class Modal(BaseSolver):
             self.eigenvalue_table = modalutils.EigenvalueTable()
             self.eigenvalue_table.print_header(self.eigenvalue_table.headers)
 
-
     def run(self):
         r"""
         Extracts the eigenvalues and eigenvectors of the clamped structure.
@@ -279,10 +275,9 @@ class Modal(BaseSolver):
         if self.settings['use_undamped_modes'].value:
             zero_FullCglobal = True
             for i,j in itertools.product(range(num_dof),range(num_dof)):
-                if(np.absolute(FullCglobal[i, j]) > np.finfo(float).eps):
+                if np.absolute(FullCglobal[i, j]) > np.finfo(float).eps:
                     zero_FullCglobal = False
-                    warnings.warn(
-                        'Projecting a system with damping on undamped modal shapes')
+                    warnings.warn('Projecting a system with damping on undamped modal shapes')
                     break
         # Check if the damping matrix is skew-symmetric
         # skewsymmetric_FullCglobal = True
@@ -397,9 +392,7 @@ class Modal(BaseSolver):
                 plt.show()
                 plt.savefig(self.folder + 'eigenvalues.png', transparent=True, bbox_inches='tight')
             except ModuleNotFoundError:
-                import warnings
                 warnings.warn('Unable to import matplotlib, skipping plot')
-
 
         # Write dat files
         if self.settings['write_dat'].value:

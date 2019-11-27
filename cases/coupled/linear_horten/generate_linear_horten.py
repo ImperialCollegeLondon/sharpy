@@ -26,7 +26,7 @@ else:
     orient = 'quat'
 
 case_notes = '_rho%s' % (str(rho_fact))
-case_rmks = 'M%gN%gMsf%g_tb%g_nb2_testtemp' % (M, N, Msf)
+case_rmks = 'M%gN%gMsf%g' % (M, N, Msf)
 
 # M4N11Msf5 - trim values
 alpha_deg = 4.5135
