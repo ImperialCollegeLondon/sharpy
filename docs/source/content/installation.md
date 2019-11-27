@@ -100,6 +100,7 @@ required to run SHARPy:
 ### Set up the folder structure
 
 0. Create the folder that will contain SHARPy and the underlying aerodynamic and structural libraries and `cd` into it.
+We will refer to this as the working folder.
     ```bash
     mkdir ~/code
     cd !$
@@ -109,36 +110,39 @@ required to run SHARPy:
     git clone http://github.com/ImperialCollegeLondon/sharpy
     ```
     
-    #### Building the release version of SHARPy. 
+#### Cloning the release version of SHARPy. 
+![Version badge](https://img.shields.io/endpoint.svg?url=https%3A%2F%2Fraw.githubusercontent.com%2FImperialCollegeLondon%2Fsharpy%2Fmaster%2F.version.json)
+
+1. Determine the latest version.
+
+    The latest version can be found on the release bagde on the readme or in the documentation index page.
+    Alternatively, you can see SHARPy's release history from [Github releases](https://github.com/ImperialCollegeLondon/sharpy/releases).
     
-    1. Determine the latest version.
+2. In your cloned `sharpy` directory, run:
     
-        The latest version can be found on the release bagde on the readme or in the documentation index page.
-        Alternatively, you can see SHARPy's release history from [Github releases](https://github.com/ImperialCollegeLondon/sharpy/releases).
-        
-    2. In your cloned `sharpy` directory, run:
-        
-        ```bash
-        git fetch && git fetch --tags
-        ```
-        This will pull the latest release tags, that are not normally pulled by default.
-        
-    3. Finally, check out the desired release tag. For instance,
-        ```bash
-        git checkout v1.0.1
-        ```
-    You are now running SHARPy's latest __release__ build. Continue with the installation of xbeam in step 3.
+    ```bash
+    git fetch && git fetch --tags
+    ```
+    This will pull the latest release tags, that are not normally pulled by default.
     
-    #### Building the development version of SHARPy
-    
-    1. To keep up with the latest developments (stable build), check out the `master` branch:
-    
-        ```bash
-        git checkout master
-        ```
-       
-    2. Continue with the installation of `xbeam`.
-    
+3. Finally, check out the desired release tag. For instance,
+    ```bash
+    git checkout v1.0.1
+    ```
+You are now running SHARPy's latest __release__ build. 
+
+#### Cloning the development version of SHARPy
+
+1. To keep up with the latest developments (stable build), check out the `master` branch:
+
+    ```bash
+    git checkout master
+    ```
+   
+You are now running SHARPy's latest __development__ build. 
+
+#### Cloning xbeam and UVLM
+
 2. Clone `xbeam` inside the working folder
     ```bash
     git clone http://github.com/ImperialCollegeLondon/xbeam
