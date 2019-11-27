@@ -172,8 +172,8 @@ or running any SHARPy cases.
 
 2. Install the [Anaconda](https://conda.io/docs/) Python 3 distribution
 
-3. Create the conda environment that SHARPy will use. Change `environment_linux.yml` to `environment_mac.yml`
-file if you are installing SHARPy on Mac OS X. This step may take some time.
+3. Create the conda environment that SHARPy will use. Change `environment_linux.yml` to read `environment_macos.yml`
+file if you are installing SHARPy on Mac OS X
     ```bash
     cd sharpy/utils
     conda env create -f environment_linux.yml
@@ -361,7 +361,7 @@ loaded in Paraview.
 verification: 
     ```sh
     cd ../sharpy
-    python ./tests/beam/static/geradin_cardona/generate_geradin.py
+    python ./tests/xbeam/geradin/generate_geradin.py
     ```
 
 Now you should see a success message, and if you check the
