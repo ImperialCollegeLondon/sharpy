@@ -1,5 +1,5 @@
 # SHARPy Installation Guide
-__Last revision 15 November 2019__
+__Last revision 27 November 2019__
 
 The following step by step tutorial will guide you through the installation process of SHARPy.
 
@@ -87,10 +87,12 @@ python -m unittest
 
 **Enjoy!**
 
+## Building SHARPy from source (release or development builds)
 
-## Building SHARPy from source
+SHARPy can be built from source so that you can get the latest release or (stable) development build.
 
-SHARPy depends on the UVLM and xbeam repositories that are also found on GitHub:
+Apart from the SHARPy repository, you will need the UVLM and xbeam repositories that are also found on GitHub and are
+required to run SHARPy:
 
 + [xbeam](http://github.com/imperialcollegelondon/xbeam)
 + [UVLM](http://github.com/imperialcollegelondon/UVLM)
@@ -106,30 +108,50 @@ SHARPy depends on the UVLM and xbeam repositories that are also found on GitHub:
     ```bash
     git clone http://github.com/ImperialCollegeLondon/sharpy
     ```
-    To keep up with the latest development work, check out the `develop` branch:
-    ```bash
-    git checkout develop
-    ```
-    To run the release version of SHARPy, skip this last step.
+    
+    #### Building the release version of SHARPy. 
+    
+    1. Determine the latest version.
+    
+        The latest version can be found on the release bagde on the readme or in the documentation index page.
+        Alternatively, you can see SHARPy's release history from [Github releases](https://github.com/ImperialCollegeLondon/sharpy/releases).
+        
+    2. In your cloned `sharpy` directory, run:
+        
+        ```bash
+        git fetch && git fetch --tags
+        ```
+        This will pull the latest release tags, that are not normally pulled by default.
+        
+    3. Finally, check out the desired release tag. For instance,
+        ```bash
+        git checkout v1.0.1
+        ```
+    You are now running SHARPy's latest __release__ build. Continue with the installation of xbeam in step 3.
+    
+    #### Building the development version of SHARPy
+    
+    1. To keep up with the latest developments (stable build), check out the `master` branch:
+    
+        ```bash
+        git checkout master
+        ```
+       
+    2. Continue with the installation of `xbeam`.
+    
 2. Clone `xbeam` inside the working folder
     ```bash
     git clone http://github.com/ImperialCollegeLondon/xbeam
-    ```
-    Similarly, check out the `develop` branch for the latest work under development
-    ```bash
-    git checkout develop
     ```
 3. Clone the `UVLM` repository to the working directory
     ```bash
     git clone http://github.com/ImperialCollegeLondon/UVLM
     ```
-    Check out the `develop` branch for the latest work under development
-    ```bash
-    git checkout develop origin/develop
-    ```
-    Likewise, skip the `git checkout` commands if you are running the `master` branch in `sharpy`.
 
-### Set up the Python Environment
+SHARPy is now ready for you to compile its dependencies, just a few more steps...
+
+
+### Setting up the Python Environment
 
 SHARPy uses the Anaconda package manager to provide the necessary Python packages.
 These are specified in an Anaconda environment that shall be activated prior to compiling the xbeam and UVLM libraries
@@ -144,33 +166,22 @@ or running any SHARPy cases.
     #>>> Python 3.5.3 :: Anaconda custom (64-bit)
     ```
 
-        If it returns `Python 2.X.X` (where `X` does not matter), there are two possibilities:
-        1. You haven't installed the proper [Anaconda](https://www.continuum.io/Anaconda-Overview).
-            Make sure you install the python3 version.
-        2. You have the correct python installation, but the `python` command
-        points to the default python of the OS. In this case, try `python3`
+2. Install the [Anaconda](https://conda.io/docs/) Python 3 distribution
 
-3. Create the conda environment that SHARPy will use. Change `environment_linux.yml` to read `environment_mac.yml`
-file if you are installing SHARPy on Mac OS X
+3. Create the conda environment that SHARPy will use. Change `environment_linux.yml` to `environment_mac.yml`
+file if you are installing SHARPy on Mac OS X. This step may take some time.
     ```bash
     cd sharpy/utils
     conda env create -f environment_linux.yml
     cd ../..
     ```
 
-4. Anaconda will now install its required packages for the SHARPy environment. This new environment will be created with
-the name `sharpy_env`.
-
-5. Activate the newly created SHARPy environment `sharpy_env`.
+4. Activate the `sharpy_env` conda environment
     ```bash
-    source activate sharpy_env
+    conda activate sharpy_env
     ```
-
-6. Install the [Eigen](http://eigen.tuxfamily.org/) and [Lapack](http://www.netlib.org/lapack) libraries
-    ```bash
-    conda install eigen
-    conda install -c conda-forge lapack
-    ```
+    you need to do this before you compile the `xbeam` and `uvlm` libs, as
+    some dependencies are included in the conda env.
 
 ### Compiling the UVLM and xbeam libraries
 
@@ -184,9 +195,8 @@ Ensure that the SHARPy environment is active in the session. Your terminal promp
 If it is not the case, activate the environment. Otherwise xbeam and UVLM will not compile
 2. 
     ```bash
-    source activate sharpy_env
+    conda activate sharpy_env
     ```
-
 
 #### Compiling xbeam
 
@@ -200,13 +210,7 @@ flags in the compiler. Else, if you prefer to use `gfortran`, proceed to step 3.
 with your favourite text editor and comment out the `GFORTRAN SETTINGS` section, and uncomment the 
 `INTEL FORTRAN SETTINGS` section. If you have the Math Kernel Library MKL, it is advised that you use it as well.
 
-3. Change the permissions of the `run_make.sh` file so that it can be executed
-
-    ```bash
-    chmod +x run_make.sh
-    ```
-
-4. Compile xbeam
+3. Compile xbeam
     ```bash
     ./run_make.sh
     cd ..
@@ -223,6 +227,12 @@ with your favourite text editor and comment out the `GFORTRAN SETTINGS` section,
     `run_make` script automatically copies the library to the required folder in
     `sharpy` (this is why you need to clone `sharpy` before compiling `xbeam`).
     
+4. It may be possible that you don't have permission to execute the `run_make`. In that case, change the permissions by
+ running:
+
+    ```bash
+    chmod +x run_make.sh
+    ```
     
 __Common issues when compiling xbeam__
 
@@ -247,7 +257,7 @@ __Common issues when compiling xbeam__
     ```bash
     scl enable devtoolset-6 bash
     ```
-    Check that the version is now as required and clean `make clean` and redo the installation `sh runmake.sh`
+    Check that the version is now as required and clean `make clean` and redo the installation `sh run_make.sh`
 
 #### Compiling UVLM
 
@@ -261,17 +271,17 @@ __Common issues when compiling xbeam__
 `icc` open the `src/Makefile` and comment out the `G++` sections and uncomment the `INTEL C++` section. In addition, 
 set the flag in line `17` to `CPP = icc`.
 
-3. Change the permissions of the `run_make.sh` file so that it can be executed
-    ```bash
-    chmod +x run_make.sh
-    ```
-
 4. Compile UVLM
     ```bash
     ./run_make.sh
     cd ..
     ```
 
+3. If you have problems with the file permissions of the `run_make.sh` file:
+    ```bash
+    chmod +x run_make.sh
+    ```
+    
 You have now successfully installed SHARPy!
 
 ## Output and binary files
@@ -283,11 +293,11 @@ languages of the required libraries. To view these `.h5` files, a viewer like [H
 
 ## Running SHARPy cases
 
-__Before you run any SHARPy cases__
+__Before you run any SHARPy case__
 
 1. Activate the SHARPy conda environment
     ```bash
-    source activate sharpy_env
+    conda activate sharpy_env
     ```
 
 2. Load the SHARPy variables
@@ -326,12 +336,12 @@ SHARPy cases are therefore usually ran in the following way:
 
 2. Run it to produce the `.h5` files and the `.sharpy` files
     ```bash
-    python generate_case.py
+    (sharpy_env) python generate_case.py
     ```
 
 3. Run SHARPy (ensure the environment is activated)
     ```bash
-    sharpy case.sharpy
+    (sharpy_env) sharpy case.sharpy
     ```
 
 #### Output
@@ -416,4 +426,4 @@ is stored in [HDF5](https://support.hdfgroup.org/HDF5/) format, which is compres
     FYI, the correct solution for this test case by Geradin and Cardona is
     `Delta R_3 = -2.159 m` and `Psi_2 = 0.6720 rad`.
 
-Congratulations, you've run your first case.
+Congratulations, you've run your first case. You can now check the Examples section for further cases.
