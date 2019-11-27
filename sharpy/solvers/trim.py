@@ -51,36 +51,37 @@ class Trim(BaseSolver):
     settings_description['initial_alpha'] = 'Initial angle of attack'
 
     settings_types['initial_beta'] = 'float'
-    settings_default['initial_beta'] = 0.*np.pi/180.
+    settings_default['initial_beta'] = 0.
     settings_description['initial_beta'] = 'Initial sideslip angle'
 
     settings_types['initial_roll'] = 'float'
-    settings_default['initial_roll'] = 0*np.pi/180.
+    settings_default['initial_roll'] = 0
     settings_description['initial_roll'] = 'Initial roll angle'
 
     settings_types['cs_indices'] = 'list(int)'
-    settings_default['cs_indices'] = np.array([])
+    settings_default['cs_indices'] = []
     settings_description['cs_indices'] = 'Indices of control surfaces to be trimmed'
 
     settings_types['initial_cs_deflection'] = 'list(float)'
-    settings_default['initial_cs_deflection'] = np.array([])
+    settings_default['initial_cs_deflection'] = []
     settings_description['initial_cs_deflection'] = 'Initial deflection of the control surfaces in order.'
 
     settings_types['thrust_nodes'] = 'list(int)'
-    settings_default['thrust_nodes'] = np.array([0])
+    settings_default['thrust_nodes'] = [0]
     settings_description['thrust_nodes'] = 'Nodes at which thrust is applied'
 
     settings_types['initial_thrust'] = 'list(float)'
-    settings_default['initial_thrust'] = np.array([1.])
+    settings_default['initial_thrust'] = [1.]
     settings_description['initial_thrust'] = 'Initial thrust setting'
 
     settings_types['thrust_direction'] = 'list(float)'
-    settings_default['thrust_direction'] = np.array([.0, 1.0, 0.0])
+    settings_default['thrust_direction'] = [.0, 1.0, 0.0]
     settings_description['thrust_direction'] = 'Thrust direction setting'
 
     settings_types['special_case'] = 'dict'
     settings_default['special_case'] = dict()
     settings_description['special_case'] = 'Extra settings for specific cases such as differential thrust control'
+
     settings_types['refine_solution'] = 'bool'
     settings_default['refine_solution'] = False
     settings_description['refine_solution'] = 'If ``True`` and the optimiser routine allows for it, the optimiser will try to improve the solution with hybrid methods'

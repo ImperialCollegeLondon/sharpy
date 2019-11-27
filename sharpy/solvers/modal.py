@@ -390,11 +390,15 @@ class Modal(BaseSolver):
 
         # Plot eigenvalues using matplotlib if specified in settings
         if self.settings['plot_eigenvalues']:
-            import matplotlib.pyplot as plt
-            fig = plt.figure()
-            plt.scatter(eigenvalues.real, eigenvalues.imag)
-            plt.show()
-            plt.savefig(self.folder + 'eigenvalues.png', transparent=True, bbox_inches='tight')
+            try:
+                import matplotlib.pyplot as plt
+                fig = plt.figure()
+                plt.scatter(eigenvalues.real, eigenvalues.imag)
+                plt.show()
+                plt.savefig(self.folder + 'eigenvalues.png', transparent=True, bbox_inches='tight')
+            except ModuleNotFoundError:
+                import warnings
+                warnings.warn('Unable to import matplotlib, skipping plot')
 
 
         # Write dat files

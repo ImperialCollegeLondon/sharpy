@@ -224,24 +224,28 @@ class AeroGridGeo():
 
     def plot(self, plot_normals=False):
 
-        import matplotlib.pyplot as plt
+        try:
+            import matplotlib.pyplot as plt
 
-        fig = plt.figure()
-        ax = fig.add_subplot(111, projection='3d')
+            fig = plt.figure()
+            ax = fig.add_subplot(111, projection='3d')
 
-        # Plot vertices grid
-        ax.plot_wireframe(self.zeta[0], self.zeta[1], self.zeta[2])
-        # rstride=10, cstride=10)
+            # Plot vertices grid
+            ax.plot_wireframe(self.zeta[0], self.zeta[1], self.zeta[2])
+            # rstride=10, cstride=10)
 
-        # Plot collocation points
-        ax.scatter(self.zetac[0], self.zetac[1], self.zetac[2], zdir='z', s=3, c='r')
+            # Plot collocation points
+            ax.scatter(self.zetac[0], self.zetac[1], self.zetac[2], zdir='z', s=3, c='r')
 
-        if plot_normals:
-            ax.quiver(self.zetac[0], self.zetac[1], self.zetac[2],
-                      self.normals[0], self.normals[1], self.normals[2],
-                      length=0.01 * np.max(self.zeta), )  # normalize=True)
+            if plot_normals:
+                ax.quiver(self.zetac[0], self.zetac[1], self.zetac[2],
+                          self.normals[0], self.normals[1], self.normals[2],
+                          length=0.01 * np.max(self.zeta), )  # normalize=True)
 
-        self.ax = ax
+            self.ax = ax
+        except ModuleNotFoundError:
+            import warnings
+            warnings.warn('Unable to import matplotlib, skipping plots')
 
 
 class AeroGridSurface(AeroGridGeo):
@@ -821,44 +825,44 @@ class AeroGridSurface(AeroGridGeo):
                 self.funst[:, mm + dmver[vv], nn + dnver[vv]] += wcv[vv] * fcoll
 
 
-if __name__ == '__main__':
-    import read, gridmapping
-    import matplotlib.pyplot as plt
-
-    # select test case
-    fname = '../test/h5input/goland_mod_Nsurf01_M003_N004_a040.aero_state.h5'
-    haero = read.h5file(fname)
-    tsdata = haero.ts00000
-
-    # select surface and retrieve data
-    ss = 0
-    M, N = tsdata.dimensions[ss]
-    Map = gridmapping.AeroGridMap(M, N)
-    G = AeroGridGeo(Map, tsdata.zeta[ss])
-    # generate geometry data
-    G.generate_areas()
-    G.generate_normals()
-    G.generate_collocations()
-
-    # Visualise
-    G.plot(plot_normals=True)
-    plt.close('all')
-    # plt.show()
-
-    S = AeroGridSurface(Map, zeta=tsdata.zeta[ss],
-                        gamma=tsdata.gamma[ss],
-                        zeta_dot=tsdata.zeta_dot[ss],
-                        u_ext=tsdata.u_ext[ss],
-                        gamma_dot=tsdata.gamma_dot[ss])
-    S.get_normal_input_velocities_at_collocation_points()
-
-    # verify aic3
-    zeta_out = np.array([1, 4, 2])
-    uind_out = S.get_induced_velocity_cpp(zeta_out)
-    aic3 = S.get_aic3_cpp(zeta_out)
-    uind_out2 = np.dot(aic3, S.gamma.reshape(-1, order='C'))
-    assert np.max(np.abs(uind_out - uind_out2)) < 1e-12, 'Wrong aic3 calculation'
-
-    # calc unsteady joukovski force
-    S.generate_areas()
-    S.get_joukovski_unsteady()
+# if __name__ == '__main__':
+#     import read, gridmapping
+#     import matplotlib.pyplot as plt
+#
+#     # select test case
+#     fname = '../test/h5input/goland_mod_Nsurf01_M003_N004_a040.aero_state.h5'
+#     haero = read.h5file(fname)
+#     tsdata = haero.ts00000
+#
+#     # select surface and retrieve data
+#     ss = 0
+#     M, N = tsdata.dimensions[ss]
+#     Map = gridmapping.AeroGridMap(M, N)
+#     G = AeroGridGeo(Map, tsdata.zeta[ss])
+#     # generate geometry data
+#     G.generate_areas()
+#     G.generate_normals()
+#     G.generate_collocations()
+#
+#     # Visualise
+#     G.plot(plot_normals=True)
+#     plt.close('all')
+#     # plt.show()
+#
+#     S = AeroGridSurface(Map, zeta=tsdata.zeta[ss],
+#                         gamma=tsdata.gamma[ss],
+#                         zeta_dot=tsdata.zeta_dot[ss],
+#                         u_ext=tsdata.u_ext[ss],
+#                         gamma_dot=tsdata.gamma_dot[ss])
+#     S.get_normal_input_velocities_at_collocation_points()
+#
+#     # verify aic3
+#     zeta_out = np.array([1, 4, 2])
+#     uind_out = S.get_induced_velocity_cpp(zeta_out)
+#     aic3 = S.get_aic3_cpp(zeta_out)
+#     uind_out2 = np.dot(aic3, S.gamma.reshape(-1, order='C'))
+#     assert np.max(np.abs(uind_out - uind_out2)) < 1e-12, 'Wrong aic3 calculation'
+#
+#     # calc unsteady joukovski force
+#     S.generate_areas()
+#     S.get_joukovski_unsteady()

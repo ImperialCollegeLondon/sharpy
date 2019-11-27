@@ -16,13 +16,11 @@ class LinearBeam(BaseElement):
     State space member
 
     Define class for linear state-space realisation of GEBM flexible-body
-    equations from SHARPy``timestep_info`` class and with the nonlinear structural information.
+    equations from SHARPy ``timestep_info`` class and with the nonlinear structural information.
 
     State-space models can be defined in continuous or discrete time (dt
     required). Modal projection, either on the damped or undamped modal shapes,
     is also avaiable.
-
-    To produce the state-space equations:
 
     Notes on the settings:
 
@@ -30,7 +28,7 @@ class LinearBeam(BaseElement):
             onto modal coordinates. Projection over damped or undamped modal
             shapes can be obtained selecting:
 
-                - ``proj_modes={'damped','undamped'}``
+                - ``proj_modes = {'damped','undamped'}``
 
             while
 
@@ -57,12 +55,15 @@ class LinearBeam(BaseElement):
             over the undamped structural modes (``modal_projection=True`` and ``proj_modes``).
             The Zero-order holder and bilinear methods, instead, work in all
             descriptions, but require the continuous state-space equations.
+
+
     """
     sys_id = "LinearBeam"
 
     settings_types = dict()
     settings_default = dict()
     settings_description = dict()
+    settings_options = dict()
 
     settings_default['modal_projection'] = True
     settings_types['modal_projection'] = 'bool'
@@ -70,7 +71,8 @@ class LinearBeam(BaseElement):
 
     settings_default['inout_coords'] = 'nodes'
     settings_types['inout_coords'] = 'str'
-    settings_description['inout_coords'] = 'Beam state space input/output coordinates. ``modes`` or ``nodes``'
+    settings_description['inout_coords'] = 'Beam state space input/output coordinates'
+    settings_options['inout_coords'] = ['nodes', 'modes']
 
     settings_types['num_modes'] = 'int'
     settings_default['num_modes'] = 10
@@ -87,10 +89,12 @@ class LinearBeam(BaseElement):
     settings_default['proj_modes'] = 'undamped'
     settings_types['proj_modes'] = 'str'
     settings_description['proj_modes'] = 'Use ``undamped`` or ``damped`` modes'
+    settings_options['proj_modes'] = ['damped', 'undamped']
 
     settings_default['discr_method'] = 'newmark'
     settings_types['discr_method'] = 'str'
-    settings_description['discr_method'] = 'Discrete time assembly system method: ``newmark`` or ``zoh``'
+    settings_description['discr_method'] = 'Discrete time assembly system method:'
+    settings_options['discr_method'] = ['newmark', 'zoh', 'bilinear']
 
     settings_default['newmark_damp'] = 1e-4
     settings_types['newmark_damp'] = 'float'
@@ -110,14 +114,15 @@ class LinearBeam(BaseElement):
 
     settings_types['remove_dofs'] = 'list(str)'
     settings_default['remove_dofs'] = []
-    settings_description['remove_dofs'] = 'Remove desired degrees of freedom: ``eta``, ``V``, ``W`` or ``orient``'
+    settings_description['remove_dofs'] = 'Remove desired degrees of freedom'
+    settings_options['remove_dofs'] = ['eta', 'V', 'W', 'orient']
 
     settings_types['remove_sym_modes'] = 'bool'
     settings_default['remove_sym_modes'] = False
     settings_description['remove_sym_modes'] = 'Remove symmetric modes if wing is clamped'
 
     settings_table = settings.SettingsTable()
-    __doc__ += settings_table.generate(settings_types, settings_default, settings_description)
+    __doc__ += settings_table.generate(settings_types, settings_default, settings_description, settings_options)
 
     def __init__(self):
         self.sys = None  # The actual object
@@ -138,7 +143,8 @@ class LinearBeam(BaseElement):
                 self.settings = data.settings['LinearAssembler']['linear_system_settings']
             except KeyError:
                 pass
-        settings.to_custom_types(self.settings, self.settings_types, self.settings_default, no_ctype=True)
+        settings.to_custom_types(self.settings, self.settings_types, self.settings_default,
+                                 self.settings_options, no_ctype=True)
 
         beam = lingebm.FlexDynamic(data.linear.tsstruct0, data.structure, self.settings)
         self.sys = beam
@@ -495,3 +501,6 @@ class VectorVariable(object):
     @property
     def size(self):
         return self.end_pos - self.first_pos
+
+if __name__=='__main__':
+    print(LinearBeam.__doc__)

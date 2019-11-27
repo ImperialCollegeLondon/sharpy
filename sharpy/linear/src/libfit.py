@@ -459,50 +459,45 @@ def rfa_mimo(Yfull,kv,ds,tolAbs,Nnum,Nden,Dmatrix=None,NtrialMax=6,Ncpu=4,method
 
 
 
-if __name__=='__main__':
-
-    import libss
-    import matplotlib.pyplot as plt
-
-
-    ### common params
-    ds=2./40.
-    fs=1./ds
-    fn=fs/2.
-    kn=2.*np.pi*fn
-    kv=np.linspace(0,kn,301)
-
-    # build a state-space
-    cfnum=np.array([4, 1.25, 1.5])
-    cfden=np.array([2, .5, 1])
-    A,B,C,D=tf2ss(cfnum,cfden)
-    SS=libss.ss(A,B,C,D,dt=ds)
-    Cvref=libss.freqresp(SS,kv)
-    Cvref=Cvref[0,0,:]
-
-    # Find fitting
-    Nnum,Nden=3,3
-    cnopt,cdopt=rfa_fit_dev(kv,Cvref,Nnum,Nden,ds,True,3,Cfbound=1e3,
-                                          OutFull=False,Print=True)
-
-    print('Error coefficients (DLTI):')
-    print('Numerator:   '+3*'%.2e  ' %tuple(np.abs(cnopt-cfnum)))
-    print('Denominator: '+3*'%.2e  ' %tuple(np.abs(cnopt-cfnum)))
-
-    # Visualise
-    Cfit=rfa(cnopt,cdopt,kv,ds)
-
-    fig=plt.figure('Transfer function',(10,4))
-    ax1=fig.add_subplot(111)
-    ax1.plot(kv,Cvref.real,color='r',lw=2,ls='-',label=r'ref - real')
-    ax1.plot(kv,Cvref.imag,color='r',lw=2,ls='--',label=r'ref - imag')
-    ax1.plot(kv,Cfit.real,color='k',lw=1,ls='-',label=r'RFA - real')
-    ax1.plot(kv,Cfit.imag,color='k',lw=1,ls='--',label=r'RFA - imag')
-    ax1.legend(ncol=1,frameon=True,columnspacing=.5,labelspacing=.4)
-    ax1.grid(color='0.85', linestyle='-')
-    plt.show()
-
-
-
-
-
+# if __name__=='__main__':
+#
+#     import libss
+#     import matplotlib.pyplot as plt
+#
+#
+#     ### common params
+#     ds=2./40.
+#     fs=1./ds
+#     fn=fs/2.
+#     kn=2.*np.pi*fn
+#     kv=np.linspace(0,kn,301)
+#
+#     # build a state-space
+#     cfnum=np.array([4, 1.25, 1.5])
+#     cfden=np.array([2, .5, 1])
+#     A,B,C,D=tf2ss(cfnum,cfden)
+#     SS=libss.ss(A,B,C,D,dt=ds)
+#     Cvref=libss.freqresp(SS,kv)
+#     Cvref=Cvref[0,0,:]
+#
+#     # Find fitting
+#     Nnum,Nden=3,3
+#     cnopt,cdopt=rfa_fit_dev(kv,Cvref,Nnum,Nden,ds,True,3,Cfbound=1e3,
+#                                           OutFull=False,Print=True)
+#
+#     print('Error coefficients (DLTI):')
+#     print('Numerator:   '+3*'%.2e  ' %tuple(np.abs(cnopt-cfnum)))
+#     print('Denominator: '+3*'%.2e  ' %tuple(np.abs(cnopt-cfnum)))
+#
+#     # Visualise
+#     Cfit=rfa(cnopt,cdopt,kv,ds)
+#
+#     fig=plt.figure('Transfer function',(10,4))
+#     ax1=fig.add_subplot(111)
+#     ax1.plot(kv,Cvref.real,color='r',lw=2,ls='-',label=r'ref - real')
+#     ax1.plot(kv,Cvref.imag,color='r',lw=2,ls='--',label=r'ref - imag')
+#     ax1.plot(kv,Cfit.real,color='k',lw=1,ls='-',label=r'RFA - real')
+#     ax1.plot(kv,Cfit.imag,color='k',lw=1,ls='--',label=r'RFA - imag')
+#     ax1.legend(ncol=1,frameon=True,columnspacing=.5,labelspacing=.4)
+#     ax1.grid(color='0.85', linestyle='-')
+#     plt.show()
