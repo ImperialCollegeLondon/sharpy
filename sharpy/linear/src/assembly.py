@@ -28,7 +28,7 @@ import sharpy.linear.src.lib_ucdncdzeta as lib_ucdncdzeta
 import sharpy.utils.algebra as algebra
 import warnings
 
-libc = ct_utils.import_ctypes_lib(SharpyDir + '/lib/', 'libuvlm')
+libc = ct_utils.import_ctypes_lib(SharpyDir + '/lib/UVLM/lib/', 'libuvlm')
 
 # local indiced panel/vertices as per self.maps
 dmver = [0, 1, 1, 0]  # delta to go from (m,n) panel to (m,n) vertices
