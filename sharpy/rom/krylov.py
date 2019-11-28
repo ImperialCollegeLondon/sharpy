@@ -630,6 +630,11 @@ class Krylov(rom_interface.BaseRom):
             r_c = r
             r_o = r
 
+        if self.settings['single_side']:
+            # if only a single side is built, use the original setting without modification
+            r_c = r
+            r_o = r
+
         V = None
         W = None
 
