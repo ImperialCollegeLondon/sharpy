@@ -93,7 +93,7 @@ ENV/
 *.h5
 
 # project dependant stuff
-lib/*
+lib/*.so
 output/*
 .idea
 

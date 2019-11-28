@@ -1,3 +1,6 @@
 [submodule "UVLM"]
 	path = UVLM
 	url = http://github.com/imperialcollegelondon/UVLM
+[submodule "lib/UVLM"]
+	path = lib/UVLM
+	url = http://github.com/imperialcollegelondon/UVLM
