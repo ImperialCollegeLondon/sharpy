@@ -45,7 +45,7 @@ install:
   - export MKL_ROOT=$PREFIX
   - make
 #  - cp lib/* ../sharpy/lib
-  - cd ../../sharpy
+  - cd ../../
   - git fetch -t
   - source bin/sharpy_vars.sh
 
