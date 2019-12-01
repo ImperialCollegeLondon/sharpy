@@ -32,11 +32,8 @@ RUN conda init bash && \
 
 COPY ./utils/docker/* /root/
 
-RUN git clone https://github.com/imperialcollegelondon/xbeam --branch=master && \
-    conda activate sharpy_minimal && cd xbeam/ && sh run_make.sh && cd .. && \
-    git clone https://github.com/imperialcollegelondon/uvlm --branch=master && \
-    cd uvlm/ && sh run_make.sh && cd .. && \
-    rm -rf xbeam uvlm
+RUN git submodule init && git submodule update && conda activate sharpy_minimal && \
+    cd lib/xbeam && sh run_make.sh && cd ../UVLM && sh run_make.sh && cd ../../
 
 ENTRYPOINT ["/bin/bash", "--init-file", "/root/bashrc"]
 
