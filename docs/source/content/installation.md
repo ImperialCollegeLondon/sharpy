@@ -1,5 +1,5 @@
 # SHARPy Installation Guide
-__Last revision 27 November 2019__
+__Last revision 2 December 2019__
 
 The following step by step tutorial will guide you through the installation process of SHARPy.
 
@@ -91,11 +91,9 @@ python -m unittest
 
 SHARPy can be built from source so that you can get the latest release or (stable) development build.
 
-Apart from the SHARPy repository, you will need the UVLM and xbeam repositories that are also found on GitHub and are
-required to run SHARPy:
-
-+ [xbeam](http://github.com/imperialcollegelondon/xbeam)
-+ [UVLM](http://github.com/imperialcollegelondon/UVLM)
+SHARPy depends on two external libraries, [xbeam](http://github.com/imperialcollegelondon/xbeam) and 
+[UVLM](http://github.com/imperialcollegelondon/UVLM). These are included as submodules to SHARPy and therefore
+once you initialise SHARPy you will also automatically clone the relevant versions of each library.
 
 ### Set up the folder structure
 
@@ -110,51 +108,8 @@ We will refer to this as the working folder.
     git clone http://github.com/ImperialCollegeLondon/sharpy
     ```
     
-#### Cloning the release version of SHARPy. 
-![Version badge](https://img.shields.io/endpoint.svg?url=https%3A%2F%2Fraw.githubusercontent.com%2FImperialCollegeLondon%2Fsharpy%2Fmaster%2F.version.json)
-
-1. Determine the latest version.
-
-    The latest version can be found on the release bagde on the readme or in the documentation index page.
-    Alternatively, you can see SHARPy's release history from [Github releases](https://github.com/ImperialCollegeLondon/sharpy/releases).
+2. We will now set up the SHARPy environment that will install other required distributions.
     
-2. In your cloned `sharpy` directory, run:
-    
-    ```bash
-    git fetch && git fetch --tags
-    ```
-    This will pull the latest release tags, that are not normally pulled by default.
-    
-3. Finally, check out the desired release tag. For instance,
-    ```bash
-    git checkout v1.0.1
-    ```
-You are now running SHARPy's latest __release__ build. 
-
-#### Cloning the development version of SHARPy
-
-1. To keep up with the latest developments (stable build), check out the `master` branch:
-
-    ```bash
-    git checkout master
-    ```
-   
-You are now running SHARPy's latest __development__ build. 
-
-#### Cloning xbeam and UVLM
-
-2. Clone `xbeam` inside the working folder
-    ```bash
-    git clone http://github.com/ImperialCollegeLondon/xbeam
-    ```
-3. Clone the `UVLM` repository to the working directory
-    ```bash
-    git clone http://github.com/ImperialCollegeLondon/UVLM
-    ```
-
-SHARPy is now ready for you to compile its dependencies, just a few more steps...
-
-
 ### Setting up the Python Environment
 
 SHARPy uses the Anaconda package manager to provide the necessary Python packages.
@@ -184,61 +139,96 @@ file if you are installing SHARPy on Mac OS X
     ```bash
     conda activate sharpy_env
     ```
-    you need to do this before you compile the `xbeam` and `uvlm` libs, as
-    some dependencies are included in the conda env.
+    you need to do this before you compile the `xbeam` and `uvlm` libraries, as
+    some dependencies are included in the conda environment.
+    
+    
+### Quick install
+The quick install is geared towards getting the release build of SHARPy running as quickly and simply as possible. If
+you would like to install a develop build or modify the compilation settings of the libraries skip to the next section.
 
-### Compiling the UVLM and xbeam libraries
-
-Once the folder structure has been laid out, the aerodynamic and structural libraries can be compiled.
-Ensure that the SHARPy environment is active in the session. Your terminal prompt line should begin with
-1. 
+1. Ensure that the SHARPy environment is active in the session. Your terminal prompt line should begin with
     ```bash
-    (sharpy_env) [usr@host]
+    (sharpy_env) [usr@host] $
     ```
 
-If it is not the case, activate the environment. Otherwise xbeam and UVLM will not compile
-2. 
+    If it is not the case, activate the environment. Otherwise xbeam and UVLM will not compile
     ```bash
     conda activate sharpy_env
     ```
-
-#### Compiling xbeam
-
-1. `cd` into the xbeam folder and clean any previous files
-    ```bash
-    cd xbeam
-    make clean
-    ```
-2. If you have the Intel Fortran compiler `ifort` installed and would like to use it, you need to specify some
-flags in the compiler. Else, if you prefer to use `gfortran`, proceed to step 3. To use `ifort`, open the file `makefile` 
-with your favourite text editor and comment out the `GFORTRAN SETTINGS` section, and uncomment the 
-`INTEL FORTRAN SETTINGS` section. If you have the Math Kernel Library MKL, it is advised that you use it as well.
-
-3. Compile xbeam
-    ```bash
-    ./run_make.sh
-    cd ..
-    ```
-
-    This compiles a release version of xbeam calling to `gfortran`. If you
-    have several versions of `gcc` compiled, you might have to modify
-    the `FC` flag in `xbeam/makefile` in order
-    to account for this. For example, I have `gfortran-5.4.0` for a newer
-    version of `gcc` not included with CentOS, so I need to modify the makefile
-    if I want to take advantage of the improved features.
-
-    After a (hopefully) successful compilation of the xbeam library, the
-    `run_make` script automatically copies the library to the required folder in
-    `sharpy` (this is why you need to clone `sharpy` before compiling `xbeam`).
     
-4. It may be possible that you don't have permission to execute the `run_make`. In that case, change the permissions by
- running:
-
+1. Run from the `sharpy` root directory the install script:
     ```bash
-    chmod +x run_make.sh
+    sh install.sh
     ```
     
-__Common issues when compiling xbeam__
+This will initialise the required submodules and compile the UVLM and xbeam libraries' release build with the default
+compilation parameters. You will see messages appearing in the terminal as the compilation progresses. If you see an
+error message please proceed with the custom installation. If you get no errors... __you are ready to run SHARPy__.
+
+### Custom installation
+
+These steps will show you how to compile the xbeam and UVLM libraries such that you can modify the compilation settings
+to your taste. 
+
+1. Ensure that the SHARPy environment is loaded in your session
+    ```bash
+    conda activate sharpy_env
+    ```
+    
+1. If you want to use SHARPy's latest release, skip this step.If you would like to use the latest development work, 
+you will need to checkout the `develop` branch. For more info on how we structure our development and what branches 
+are used for certain kind of features have a look at the [Contributing](contributing.html) page. 
+    ```bash
+    git checkout -b develop --track origin\develop
+    ```
+    This command will check out the `develop` branch and set it to track the remote origin.
+
+1. SHARPy uses git submodules to keep track of its dependencies. Therefore, we first initialise and update them.
+    ```bash
+    git submodule init
+    git submodule update
+    ```
+    This command will initialise and clone both xbeam and UVLM. You will see a progress bar with the download status.
+    
+1. Compiling xbeam:
+    1. Change into the xbeam working directory:
+        ```bash
+        cd lib/xbeam
+        make clean
+        ``` 
+
+    2. If you have the Intel Fortran compiler `ifort` installed and would like to use it, you need to specify some
+    flags in the compiler. Else, if you prefer to use `gfortran`, proceed to step 3. To use `ifort`, open the file `makefile` 
+    with your favourite text editor and comment out the `GFORTRAN SETTINGS` section, and uncomment the 
+    `INTEL FORTRAN SETTINGS` section. If you have the Math Kernel Library MKL, it is advised that you use it as well.
+    
+    3. Compile xbeam
+        ```bash
+        sh run_make.sh
+        cd ../../
+        ```
+        
+1. Compiling UVLM:
+    1. `cd` into the UVLM folder
+        ```bash
+        cd lib/UVLM
+        make clean
+        ```
+        
+    2. Again, if you have the Intel C++ compiler `icc` you can use it. Else, if you use `gcc`, proceed to step `vi`. 
+    To use `icc` open the `src/Makefile` and comment out the `G++` sections and uncomment the `INTEL C++` section. 
+    In addition, set the flag in line `17` to `CPP = icc`.
+
+    4. Compile UVLM
+        ```bash
+        sh run_make.sh
+        cd ../../
+        ```
+        
+1. This concludes the installation!
+
+### Common issues when compiling libraries
 
 * GFortran Version
 
@@ -263,30 +253,6 @@ __Common issues when compiling xbeam__
     ```
     Check that the version is now as required and clean `make clean` and redo the installation `sh run_make.sh`
 
-#### Compiling UVLM
-
-1. `cd` into the UVLM folder
-    ```bash
-    cd UVLM
-    make clean
-    ```
-    
-2. Again, if you have the Intel C++ compiler `icc` you can use it. Else, if you use `gcc`, proceed to step 3. To use 
-`icc` open the `src/Makefile` and comment out the `G++` sections and uncomment the `INTEL C++` section. In addition, 
-set the flag in line `17` to `CPP = icc`.
-
-4. Compile UVLM
-    ```bash
-    ./run_make.sh
-    cd ..
-    ```
-
-3. If you have problems with the file permissions of the `run_make.sh` file:
-    ```bash
-    chmod +x run_make.sh
-    ```
-    
-You have now successfully installed SHARPy!
 
 ## Output and binary files
 
@@ -311,6 +277,27 @@ __Before you run any SHARPy case__
 
 You are now ready to run SHARPy cases from the terminal.
 
+### Automated tests
+SHARPy uses unittests to verify the integrity of the code.
+
+These tests can be run from the `./sharpy` directory. 
+```bash
+python -m unittest
+```
+The tests will run and you should see a success message. If you don't... check the following options:
+* Check you are running the latest version. Running the following from the root directory should update to the 
+latest release version:
+    - `git pull`
+    - `git submodule update`
+* If the tests don't run, make sure you have followed correctly the instructions and that you managed to compile xbeam
+and UVLM.
+* If some tests fail, i.e. you get a message after the tests run saying that certain tests did not pass, please open
+an [issue](http://www.github.com/imperialcollegelondon/sharpy/issues) with the following information:
+    - Operating system
+    - Whether you did a Custom/quick install
+    - UVLM and xbeam compiler of choice
+    - A log of the tests that failed
+
 ### The SHARPy Case Structure
 
 __Setting up a SHARPy case__
@@ -326,7 +313,7 @@ This script creates the output files that will then be used by SHARPy, namely:
     * The linear input files `.lininput.h5` (when required).
     * The ROM settings file `.rom.h5` (when required).
     
-    See the [chapter](./casefiles) on the case files for a detailed description on the contents of each one.    
+    See the [chapter](./casefiles.html) on the case files for a detailed description on the contents of each one.    
 
 2. The `h5` files contain data of the FEM, aerodynamics, dynamic conditions. They are later read by SHARPy.
 
@@ -399,7 +386,7 @@ is stored in [HDF5](https://support.hdfgroup.org/HDF5/) format, which is compres
 
     Now that we have made these modifications, run again the generation script:
     ```sh
-    python ./tests/beam/static/geradin_cardona/generate_geradin.py
+    python ./tests/xbeam/geradin/generate_geradin.py
     ```
     
     Check the new `.solver.txt` file and look for the settings we just changed. Make sure they read what we wanted.
