@@ -49,7 +49,7 @@ install:
   - git fetch -t
   - source bin/sharpy_vars.sh
   - mkdir build && cd build
-  - cmake .. && make install -j 4
+  - cmake .. && make install -j 4 && cd ..
 
 script:
   - coverage run -m unittest discover
