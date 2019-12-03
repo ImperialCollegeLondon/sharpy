@@ -116,7 +116,7 @@ SHARPy uses the Anaconda package manager to provide the necessary Python package
 These are specified in an Anaconda environment that shall be activated prior to compiling the xbeam and UVLM libraries
 or running any SHARPy cases.
 
-1. Install the [Anaconda](https://conda.io/docs/) Python distribution
+1. If you do not have it, install the [Anaconda](https://conda.io/docs/) Python  3 distribution
 
 2. Make sure your Python version is at least 3.5:
     ```bash
@@ -125,8 +125,6 @@ or running any SHARPy cases.
     #>>> Python 3.5.3 :: Anaconda custom (64-bit)
     ```
 
-2. Install the [Anaconda](https://conda.io/docs/) Python 3 distribution
-
 3. Create the conda environment that SHARPy will use. Change `environment_linux.yml` to read `environment_macos.yml`
 file if you are installing SHARPy on Mac OS X
     ```bash
@@ -134,6 +132,9 @@ file if you are installing SHARPy on Mac OS X
     conda env create -f environment_linux.yml
     cd ../..
     ```
+    
+    We also provide a light-weight environment with the minimum required dependencies. If you'd like to use it, 
+    create the conda environment using `environment_minimal.yml`.
 
 4. Activate the `sharpy_env` conda environment
     ```bash
@@ -141,6 +142,8 @@ file if you are installing SHARPy on Mac OS X
     ```
     you need to do this before you compile the `xbeam` and `uvlm` libraries, as
     some dependencies are included in the conda environment.
+    
+    If you would like to use the minimal environment you can run `conda activate sharpy_minimal`.
     
     
 ### Quick install
@@ -176,7 +179,7 @@ to your taste.
     conda activate sharpy_env
     ```
     
-1. If you want to use SHARPy's latest release, skip this step.If you would like to use the latest development work, 
+1. If you want to use SHARPy's latest release, skip this step. If you would like to use the latest development work, 
 you will need to checkout the `develop` branch. For more info on how we structure our development and what branches 
 are used for certain kind of features have a look at the [Contributing](contributing.html) page. 
     ```bash
@@ -352,7 +355,7 @@ verification:
     ```
 
 Now you should see a success message, and if you check the
-`./tests/beam/static/geradin_cardona/` folder, you should see two new files:
+`./tests/xbeam/geradin/` folder, you should see two new files:
 + geradin_cardona.sharpy
 + geradin_cardona.fem.h5
 
@@ -367,7 +370,7 @@ is stored in [HDF5](https://support.hdfgroup.org/HDF5/) format, which is compres
     The `sharpy` call is:
     ```bash
     # Make sure that the sharpy_env conda environment is active
-    sharpy <solver.txt file>
+    sharpy <path to solver file>
     ```
 
 6. Results (part 1)
@@ -389,12 +392,12 @@ is stored in [HDF5](https://support.hdfgroup.org/HDF5/) format, which is compres
     python ./tests/xbeam/geradin/generate_geradin.py
     ```
     
-    Check the new `.solver.txt` file and look for the settings we just changed. Make sure they read what we wanted.
+    Check the solver file `geradin.sharpy` and look for the settings we just changed. Make sure they read what we wanted.
     
     You are now ready to run the case again:
     ```bash
     # Make sure that the sharpy_env conda environment is active
-    sharpy <solver.txt file>
+    sharpy <path to solver file>
     ```
     
 8. Post-processing
