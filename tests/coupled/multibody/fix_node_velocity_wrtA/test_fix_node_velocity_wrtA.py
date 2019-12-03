@@ -180,7 +180,7 @@ class TestFixNodeVelocitywrtA(unittest.TestCase):
         self.assertAlmostEqual(pos_root_data[-1, 2], 0.0, 2)
         self.assertAlmostEqual(pos_root_data[-1, 3], 0.0, 2)
 
-    def tearDowns(self):
+    def tearDown(self):
         # pass
         files_to_delete = [name + '.aero.h5',
                            name + '.dyn.h5',
