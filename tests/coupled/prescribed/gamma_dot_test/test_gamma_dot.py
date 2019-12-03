@@ -179,7 +179,7 @@ class TestGammaDot(unittest.TestCase):
 
                     self.run_test(aero_type, predictor, sparse, integration_order)
 
-    def tearDowns(self):
+    def tearDown(self):
 
         solver_path = os.path.dirname(os.path.realpath(__file__))
         # solver_path += '/'
