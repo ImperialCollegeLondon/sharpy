@@ -32,7 +32,7 @@ RUN conda init bash && \
 
 COPY ./utils/docker/* /root/
 
-RUN git submodule init && git submodule update && conda activate sharpy_minimal && \
+RUN cd /sharpy && git submodule init && git submodule update && conda activate sharpy_minimal && \
     cd lib/xbeam && sh run_make.sh && cd ../UVLM && sh run_make.sh && cd ../../
 
 ENTRYPOINT ["/bin/bash", "--init-file", "/root/bashrc"]
