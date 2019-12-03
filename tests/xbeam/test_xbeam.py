@@ -38,7 +38,7 @@ class TestGeradinXbeam(unittest.TestCase):
         psi_data = np.atleast_2d(np.genfromtxt(output_path + 'struct_psi_node-1.dat'))
         self.assertAlmostEqual(psi_data[-1, 2], 0.6720, 3)
 
-    def tearDowns(self):
+    def tearDown(self):
         solver_path = os.path.abspath(os.path.dirname(os.path.realpath(__file__)) + '/geradin/')
         files_to_delete = list()
         extensions = ('*.txt', '*.h5')

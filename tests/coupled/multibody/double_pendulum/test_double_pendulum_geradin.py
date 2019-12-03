@@ -313,7 +313,7 @@ class TestDoublePendulum(unittest.TestCase):
         self.assertAlmostEqual(pos_tip_data[-1, 2], 0.000000, 4)
         self.assertAlmostEqual(pos_tip_data[-1, 3], -0.9986984, 4)
 
-    def tearDowns(self):
+    def tearDown(self):
         solver_path = os.path.abspath(os.path.dirname(os.path.realpath(__file__)))
         solver_path += '/'
         files_to_delete = [name + '.aero.h5',
