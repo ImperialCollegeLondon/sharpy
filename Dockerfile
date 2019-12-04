@@ -17,7 +17,7 @@ RUN wget https://repo.continuum.io/miniconda/Miniconda3-latest-Linux-x86_64.sh -
     rm /miniconda.sh && hash -r
 
 # Get SHARPy
-RUN git clone https://github.com/imperialcollegelondon/sharpy
+RUN git clone --recursive https://github.com/imperialcollegelondon/sharpy
 
 # Update conda and make it run with no user interaction
 # Cleanup conda installation
@@ -32,8 +32,9 @@ RUN conda init bash && \
 
 COPY ./utils/docker/* /root/
 
-RUN cd /sharpy && git submodule init && git submodule update && conda activate sharpy_minimal && \
-    cd lib/xbeam && sh run_make.sh && cd ../UVLM && sh run_make.sh && cd ../../
+RUN cd /sharpy && conda activate sharpy_minimal && \
+    mkdir build && cd build && cmake .. && make install -j 2 \
+    && cd .. && rm -rf build
 
 ENTRYPOINT ["/bin/bash", "--init-file", "/root/bashrc"]
 
