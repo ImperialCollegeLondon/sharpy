@@ -52,6 +52,7 @@ dependencies:
   - tk=8.6.8=ha441bb4_0
   - tornado=6.0.3=py37h1de35cc_0
   - wheel=0.33.6=py37_0
+  - xlrd=1.2.0
   - xz=5.2.4=h1de35cc_4
   - zlib=1.2.11=h1de35cc_3
   - pip:
