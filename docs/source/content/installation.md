@@ -1,5 +1,5 @@
 # SHARPy Installation Guide
-__Last revision 2 December 2019__
+__Last revision 4 December 2019__
 
 The following step by step tutorial will guide you through the installation process of SHARPy.
 
@@ -19,6 +19,7 @@ __Required Distributions__
 
 + Anaconda Python 3.7
 + GCC 6.0 or higher (recommended)
++ CMake 3.9
 
 
 __GitHub Repositories__
@@ -70,7 +71,7 @@ SHARPy>
 ```
 You are now good to go.
 
-It is important to note that a docker container runs as an independant
+It is important to note that a docker container runs as an independent
 operating system with no access to your hard drive. If you want to copy your own
 files, run the container and from another terminal run:
 ```
@@ -105,8 +106,9 @@ We will refer to this as the working folder.
     ```
 1. Clone `sharpy` in the working folder, if you agree with the license in `license.txt`
     ```bash
-    git clone http://github.com/ImperialCollegeLondon/sharpy
+    git clone --recursive http://github.com/ImperialCollegeLondon/sharpy
     ```
+    The `--recursive` flag will also initialise and update the submodules SHARPy depends on: xbeam and UVLM.
     
 2. We will now set up the SHARPy environment that will install other required distributions.
     
@@ -118,11 +120,9 @@ or running any SHARPy cases.
 
 1. If you do not have it, install the [Anaconda](https://conda.io/docs/) Python  3 distribution
 
-2. Make sure your Python version is at least 3.5:
+2. Make sure your Python version is at least 3.7:
     ```bash
     python --version
-    # it returns:
-    #>>> Python 3.5.3 :: Anaconda custom (64-bit)
     ```
 
 3. Create the conda environment that SHARPy will use. Change `environment_linux.yml` to read `environment_macos.yml`
@@ -149,7 +149,11 @@ file if you are installing SHARPy on Mac OS X
 ### Quick install
 The quick install is geared towards getting the release build of SHARPy running as quickly and simply as possible. If
 you would like to install a develop build or modify the compilation settings of the libraries skip to the next section.
-
+1. Move into the cloned repository
+    ```bash
+    cd sharpy
+    ```
+    
 1. Ensure that the SHARPy environment is active in the session. Your terminal prompt line should begin with
     ```bash
     (sharpy_env) [usr@host] $
@@ -160,14 +164,30 @@ you would like to install a develop build or modify the compilation settings of 
     conda activate sharpy_env
     ```
     
-1. Run from the `sharpy` root directory the install script:
+1. Create a directory `build` that will be used during CMake's building process and `cd` into it:
     ```bash
-    sh install.sh
+    mkdir build
+    cd build
+    ```
+
+2. Prepare UVLM and xbeam for compilation using `gfortran` and `g++` in their release builds running. If you'd like to 
+change compilers see the Custom Installation.
+    ```bash
+    cmake ..
     ```
     
-This will initialise the required submodules and compile the UVLM and xbeam libraries' release build with the default
-compilation parameters. You will see messages appearing in the terminal as the compilation progresses. If you see an
-error message please proceed with the custom installation. If you get no errors... __you are ready to run SHARPy__.
+3. Compile the libraries
+    ```bash
+    make install -j 4
+    ```
+    where the number after the `-j` flag will specify how many cores to use during installation.
+    
+4. Finally, load the SHARPy variables
+    ```bash
+    source bin/sharpy_vars.sh
+    ```
+    
+__You are ready to run SHARPy__.
 
 ### Custom installation
 
@@ -183,78 +203,29 @@ to your taste.
 you will need to checkout the `develop` branch. For more info on how we structure our development and what branches 
 are used for certain kind of features have a look at the [Contributing](contributing.html) page. 
     ```bash
-    git checkout -b develop --track origin\develop
+    git checkout -b develop --track origin/develop
     ```
     This command will check out the `develop` branch and set it to track the remote origin.
 
-1. SHARPy uses git submodules to keep track of its dependencies. Therefore, we first initialise and update them.
+1. Run CMake with custom flags:
+    1. Choose your compilers for Fortran `FC` and C++ `CXX`, for instance
+        ```bash
+        FC=gfortran CXX=g++ cmake ..
+        ```
+        If you'd like to use the Intel compilers you can set them using:
+        ```bash
+        FC=ifort CXX=icpc cmake ..
+        ```
+    2. To build the libraries in debug mode:
+        ```bash
+        cmake -DCMAKE_BUILD_TYPE=Debug ..
+        ```
+        
+1. Compile the libraries and parallelise as you prefer
     ```bash
-    git submodule init
-    git submodule update
+    make install -j 4
     ```
-    This command will initialise and clone both xbeam and UVLM. You will see a progress bar with the download status.
-    
-1. Compiling xbeam:
-    1. Change into the xbeam working directory:
-        ```bash
-        cd lib/xbeam
-        make clean
-        ``` 
-
-    2. If you have the Intel Fortran compiler `ifort` installed and would like to use it, you need to specify some
-    flags in the compiler. Else, if you prefer to use `gfortran`, proceed to step 3. To use `ifort`, open the file `makefile` 
-    with your favourite text editor and comment out the `GFORTRAN SETTINGS` section, and uncomment the 
-    `INTEL FORTRAN SETTINGS` section. If you have the Math Kernel Library MKL, it is advised that you use it as well.
-    
-    3. Compile xbeam
-        ```bash
-        sh run_make.sh
-        cd ../../
-        ```
-        
-1. Compiling UVLM:
-    1. `cd` into the UVLM folder
-        ```bash
-        cd lib/UVLM
-        make clean
-        ```
-        
-    2. Again, if you have the Intel C++ compiler `icc` you can use it. Else, if you use `gcc`, proceed to step `vi`. 
-    To use `icc` open the `src/Makefile` and comment out the `G++` sections and uncomment the `INTEL C++` section. 
-    In addition, set the flag in line `17` to `CPP = icc`.
-
-    4. Compile UVLM
-        ```bash
-        sh run_make.sh
-        cd ../../
-        ```
-        
 1. This concludes the installation!
-
-### Common issues when compiling libraries
-
-* GFortran Version
-
-    It is often the case that even though the required version of GFortran is installed, it is not used during the compilation
-    and xbeam will return an error like the one below
-    ```bash
-        gfortran -fPIC -O3 -funroll-loops -ftree-parallelize-loops=4 -march=native -fopenmp  -c lib_lu.f90 lib_lu.f90:372.25:
-
-        use, intrinsic :: IEEE_ARITHMETIC
-                         1
-        Fatal Error: Can't find an intrinsic module named 'ieee_arithmetic' at (1)
-    ```
-            
-    The version of GFORTRAN that will be used can be checked beforehand
-    ```bash
-    gfortran --version
-    ```
-        
-    If the version shown is below 5.0 yet you have a newer version installed you can enable it using: 
-    ```bash
-    scl enable devtoolset-6 bash
-    ```
-    Check that the version is now as required and clean `make clean` and redo the installation `sh run_make.sh`
 
 
 ## Output and binary files
