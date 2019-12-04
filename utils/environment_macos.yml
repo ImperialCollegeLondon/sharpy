@@ -1,5 +1,6 @@
 name: sharpy_env
 channels:
+  - conda-forge
   - defaults
 dependencies:
   - blas=1.0=mkl
@@ -8,19 +9,26 @@ dependencies:
   - colorama=0.4.1=py37_0
   - configobj=5.0.6=py37_1
   - coverage=4.5.4=py37h1de35cc_0
+  - cycler=0.10.0=py37_0
   - dill=0.3.1.1=py37_0
-  - eigen=3.3.7=h04f5b5a_0
+  - eigen=3.3.7=h04f5b5a_1000
+  - freetype=2.9.1=hb4e5f40_0
+  - h5py=2.9.0=py37h3134771_0
+  - hdf5=1.10.4=hfa1e0ec_0
   - icu=58.2=h4b95b61_1
   - intel-openmp=2019.4=233
+  - kiwisolver=1.1.0=py37h0a44026_0
   - libcxx=4.0.1=hcfea43d_1
   - libcxxabi=4.0.1=hcfea43d_1
   - libedit=3.1.20181209=hb402a30_0
   - libffi=3.2.1=h475c297_4
   - libgfortran=3.0.1=h93005f0_2
   - libiconv=1.15=hdd342a3_7
+  - libpng=1.6.37=ha441bb4_0
   - libxml2=2.9.9=hf6e021a_1
   - libxslt=1.1.33=h33a18ac_0
   - lxml=4.4.2=py37hef8c89e_0
+  - matplotlib=3.1.1=py37h54f8f79_0
   - mkl=2019.4=233
   - mkl-include=2019.4=233
   - mkl-service=2.3.0=py37hfbe908c_0
@@ -32,6 +40,7 @@ dependencies:
   - openssl=1.1.1d=h1de35cc_3
   - pandas=0.25.3=py37h0a44026_0
   - pip=19.3.1=py37_0
+  - pyparsing=2.4.5=py_0
   - python=3.7.5=h359304d_0
   - python-dateutil=2.8.1=py_0
   - pytz=2019.3=py_0
@@ -41,6 +50,7 @@ dependencies:
   - six=1.13.0=py37_0
   - sqlite=3.30.1=ha441bb4_0
   - tk=8.6.8=ha441bb4_0
+  - tornado=6.0.3=py37h1de35cc_0
   - wheel=0.33.6=py37_0
   - xz=5.2.4=h1de35cc_4
   - zlib=1.2.11=h1de35cc_3
