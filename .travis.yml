@@ -30,22 +30,8 @@ before_install:
   - conda install coverage
 
 install:
-  #- git submodule init
-  #- git submodule update
-  #- cd lib/xbeam
-## - export exists=`git show-ref refs/remotes/origin/$TRAVIS_BRANCH`
-##  - if [ -n "$exists" ]; then export LIBS_BRANCH=$TRAVIS_BRANCH; else export LIBS_BRANCH=master; fi
-##  - echo $LIBS_BRANCH
-##  - git checkout $LIBS_BRANCH
-  #- export LAPACK_LIB_DIR=$(conda info --json | python -c "import sys, json; print(json.load(sys.stdin)['active_prefix'])")/lib
-  #- make install
-  #- cd ../UVLM
-  #- export PREFIX=$(conda info --json | python -c "import sys, json; print(json.load(sys.stdin)['active_prefix'])")
-  #- export EIGEN3_INCLUDE_DIR=$PREFIX/include/eigen3
-  #- export MKL_ROOT=$PREFIX
-  #- make
-##  - cp lib/* ../sharpy/lib
-  #- cd ../../
+  - git submodule init
+  - git submodule update
   - git fetch -t
   - source bin/sharpy_vars.sh
   - mkdir build && cd build
