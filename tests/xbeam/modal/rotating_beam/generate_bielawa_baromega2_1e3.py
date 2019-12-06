@@ -43,7 +43,7 @@ def clean_test_files():
     if os.path.isfile(aero_file_name):
         os.remove(aero_file_name)
 
-    solver_file_name = route + '/' + case_name + '.solver.txt'
+    solver_file_name = route + '/' + case_name + '.sharpy'
     if os.path.isfile(solver_file_name):
         os.remove(solver_file_name)
 
@@ -245,7 +245,7 @@ def generate_aero_file():
         elastic_axis_input = h5file.create_dataset('elastic_axis', data=0.5*np.ones((num_elem,num_node_elem),))
 
 def generate_solver_file():
-    file_name = route + '/' + case_name + '.solver.txt'
+    file_name = route + '/' + case_name + '.sharpy'
 
     aux_settings = dict()
     settings = dict()

@@ -116,7 +116,7 @@ class TestGammaDot(unittest.TestCase):
 
         self.set_up_test_case(aero_type, predictor, sparse, integration_order)
         ws = self.ws
-        data = sharpy.sharpy_main.main(['', self.case_route + self.case_name + '.solver.txt'])
+        data = sharpy.sharpy_main.main(['', self.case_route + self.case_name + '.sharpy'])
 
         # Obtain gamma
         gamma = np.zeros((ws.n_tstep,))
@@ -186,7 +186,7 @@ class TestGammaDot(unittest.TestCase):
         # files_to_delete = [case + '.aero.h5',
         #                    case + '.dyn.h5',
         #                    case + '.fem.h5',
-        #                    case + '.solver.txt']
+        #                    case + '.sharpy']
         # for f in files_to_delete:
         #     os.remove(solver_path + f)
 

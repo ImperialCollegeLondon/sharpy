@@ -27,7 +27,7 @@ class TestCoupledPrescribed(unittest.TestCase):
     # def test_smith2deg_prescribed(self):
     #     import sharpy.sharpy_main
     #     solver_path = os.path.abspath(os.path.dirname(os.path.realpath(__file__)) +
-    #                                   '/smith_2deg_prescribed/smith_2deg_prescribed.solver.txt')
+    #                                   '/smith_2deg_prescribed/smith_2deg_prescribed.sharpy')
     #     sharpy.sharpy_main.main(['', solver_path])
     #
     #     # read output and compare
@@ -38,7 +38,7 @@ class TestCoupledPrescribed(unittest.TestCase):
     def test_rotating_wing(self):
         # import sharpy.sharpy_main
         # solver_path = os.path.abspath(os.path.dirname(os.path.realpath(__file__)) +
-                                      # '/rotating_wing/rotating_wing.solver.txt')
+                                      # '/rotating_wing/rotating_wing.sharpy')
         # sharpy.sharpy_main.main(['', solver_path])
         print('No tests for prescribed dynamic configurations (yet)!')
         pass

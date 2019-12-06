@@ -377,7 +377,7 @@ class FlyingWing():
         str_u_inf_direction = [str(self.u_inf_direction[cc]) for cc in range(3)]
 
         config = configobj.ConfigObj()
-        config.filename = self.route + '/' + self.case_name + '.solver.txt'
+        config.filename = self.route + '/' + self.case_name + '.sharpy'
         settings = dict()
 
         config['SHARPy'] = {
@@ -746,7 +746,7 @@ class FlyingWing():
         if os.path.isfile(aero_file_name):
             os.remove(aero_file_name)
 
-        solver_file_name = self.route + '/' + self.case_name + '.solver.txt'
+        solver_file_name = self.route + '/' + self.case_name + '.sharpy'
         if os.path.isfile(solver_file_name):
             os.remove(solver_file_name)
 

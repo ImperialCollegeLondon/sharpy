@@ -303,7 +303,7 @@ class TestDoublePendulum(unittest.TestCase):
     def test_doublependulum(self):
         import sharpy.sharpy_main
 
-        solver_path = os.path.abspath(os.path.dirname(os.path.realpath(__file__)) + '/double_pendulum_geradin.solver.txt')
+        solver_path = os.path.abspath(os.path.dirname(os.path.realpath(__file__)) + '/double_pendulum_geradin.sharpy')
         sharpy.sharpy_main.main(['', solver_path])
 
         # read output and compare
@@ -320,7 +320,7 @@ class TestDoublePendulum(unittest.TestCase):
                            name + '.dyn.h5',
                            name + '.fem.h5',
                            name + '.mb.h5',
-                           name + '.solver.txt']
+                           name + '.sharpy']
         for f in files_to_delete:
             os.remove(solver_path + f)
 
