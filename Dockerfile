@@ -32,9 +32,15 @@ RUN conda init bash && \
 #COPY /utils/docker/* /root/
 RUN ln -s /sharpy_dir/utils/docker/* /root/
 
-RUN cd sharpy_dir && conda activate sharpy_minimal && \
-    mkdir build && cd build && CXX=g++ FC=gfortran cmake .. && make install -j 2 \
-    && cd .. && rm -rf build
+RUN cd sharpy_dir && \
+    git submodule init && \
+    git submodule update && \
+    conda activate sharpy_minimal && \
+    mkdir build && \
+    cd build && \
+    CXX=g++ FC=gfortran cmake .. && make install -j 2 && \
+    cd .. && \
+    rm -rf build
 
 ENTRYPOINT ["/bin/bash", "--init-file", "/root/bashrc"]
 
