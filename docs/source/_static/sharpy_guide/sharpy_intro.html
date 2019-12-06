@@ -12219,7 +12219,7 @@ LiftDistribution</code></pre>
 <ul>
 <li><p><strong>The <code>case</code></strong> is a name for the simulation so we can identify results.</p>
 </li>
-<li><p><strong>The <code>route</code></strong> is the path to the <code>.solver.txt</code> file, so that SHARPy can find all the other necessary files.</p>
+<li><p><strong>The <code>route</code></strong> is the path to the <code>.sharpy</code> file, so that SHARPy can find all the other necessary files.</p>
 </li>
 </ul>
 
@@ -12239,7 +12239,7 @@ LiftDistribution</code></pre>
 </div>
 <div class="inner_cell">
 <div class="text_cell_render border-box-sizing rendered_html">
-<p>Then, the other parts of the <code>.solver.txt</code> (or <code>.sharpy</code>) file are based on the following structure:</p>
+<p>Then, the other parts of the <code>.sharpy</code> (or <code>.sharpy</code>) file are based on the following structure:</p>
 
 <pre><code>[Header_name]
 variable1 = 1
@@ -12271,7 +12271,7 @@ variable3 = [a, a, b]</code></pre>
 </pre></div>
 <p>you can also change the name of the case so that the results are not overwritten:
 In line <code>6</code>, <code>case_name = geradin_stiff</code>.</p>
-<p>Now run again the case. First, generate the files: <code>python generate_geradin.py</code>, and then run the case <code>sharpy geradin_stiff.solver.txt</code>.</p>
+<p>Now run again the case. First, generate the files: <code>python generate_geradin.py</code>, and then run the case <code>sharpy geradin_stiff.sharpy</code>.</p>
 <p>You can now have a look at the wing tip deformations for both cases in <code>output/&lt;case_name&gt;/WriteVariablesTime/struct_pos_node-1.dat</code>.</p>
 
 </div>

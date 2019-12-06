@@ -167,7 +167,7 @@ class TestGenerateCases(unittest.TestCase):
 
         import sharpy.sharpy_main
 
-        solver_path = os.path.abspath(os.path.dirname(os.path.realpath(__file__)) + '/' + case +'.solver.txt')
+        solver_path = os.path.abspath(os.path.dirname(os.path.realpath(__file__)) + '/' + case +'.sharpy')
         sharpy.sharpy_main.main(['', solver_path])
         print('done executing')
 
@@ -177,7 +177,7 @@ class TestGenerateCases(unittest.TestCase):
         files_to_delete = [case + '.aero.h5',
                            case + '.dyn.h5',
                            case + '.fem.h5',
-                           case + '.solver.txt',
+                           case + '.sharpy',
                            'log']
 
         for f in files_to_delete:

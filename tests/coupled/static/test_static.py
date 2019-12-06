@@ -36,7 +36,7 @@ class TestCoupledStatic(unittest.TestCase):
         """
         import sharpy.sharpy_main
         solver_path = os.path.abspath(os.path.dirname(os.path.realpath(__file__)) +
-                                      '/smith_nog_2deg/smith_nog_2deg.solver.txt')
+                                      '/smith_nog_2deg/smith_nog_2deg.sharpy')
         sharpy.sharpy_main.main(['', solver_path])
 
         # read output and compare
@@ -61,7 +61,7 @@ class TestCoupledStatic(unittest.TestCase):
     def test_smith2deg_g(self):
         import sharpy.sharpy_main
         solver_path = os.path.abspath(os.path.dirname(os.path.realpath(__file__)) +
-                                      '/smith_g_2deg/smith_g_2deg.solver.txt')
+                                      '/smith_g_2deg/smith_g_2deg.sharpy')
         sharpy.sharpy_main.main(['', solver_path])
 
         # read output and compare
@@ -81,7 +81,7 @@ class TestCoupledStatic(unittest.TestCase):
         """
         import sharpy.sharpy_main
         solver_path = os.path.abspath(os.path.dirname(os.path.realpath(__file__)) +
-                                      '/smith_g_4deg/smith_g_4deg.solver.txt')
+                                      '/smith_g_4deg/smith_g_4deg.sharpy')
         sharpy.sharpy_main.main(['', solver_path])
 
         # read output and compare
@@ -111,7 +111,7 @@ class TestCoupledStatic(unittest.TestCase):
         """
         import sharpy.sharpy_main
         solver_path = os.path.abspath(os.path.dirname(os.path.realpath(__file__)) +
-                                      '/smith_nog_4deg/smith_nog_4deg.solver.txt')
+                                      '/smith_nog_4deg/smith_nog_4deg.sharpy')
         sharpy.sharpy_main.main(['', solver_path])
 
         # read output and compare

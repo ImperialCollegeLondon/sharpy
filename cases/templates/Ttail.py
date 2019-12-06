@@ -467,7 +467,7 @@ class Ttail_3beams():
 
 
         config=configobj.ConfigObj()
-        config.filename=self.route+'/'+self.case_name+'.solver.txt'
+        config.filename=self.route+'/'+self.case_name+'.sharpy'
 
         config['SHARPy']={
                 'flow':['BeamLoader', 'AerogridLoader',
@@ -617,7 +617,7 @@ class Ttail_3beams():
         if os.path.isfile(aero_file_name):
             os.remove(aero_file_name)
 
-        solver_file_name = self.route+'/'+self.case_name+'.solver.txt'
+        solver_file_name = self.route+'/'+self.case_name+'.sharpy'
         if os.path.isfile(solver_file_name):
             os.remove(solver_file_name)
 

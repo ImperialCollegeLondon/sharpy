@@ -11,12 +11,12 @@ def main(args=None, sharpy_input_dict=None):
 
     This is the main ``SHARPy`` routine.
     It starts the solution process by reading the settings that are
-    included in the ``.solver.txt`` file that is parsed
+    included in the ``.sharpy`` file that is parsed
     as an argument, or an equivalent dictionary given as ``sharpy_input_dict``.
     It reads the solvers specific settings and runs them in order
 
     Args:
-        args (str): ``.solver.txt`` file with the problem information and settings
+        args (str): ``.sharpy`` file with the problem information and settings
         sharpy_input_dict (dict): ``dict`` with the same contents as the
             ``solver.txt`` file would have.
 
@@ -48,7 +48,7 @@ def main(args=None, sharpy_input_dict=None):
         parser = argparse.ArgumentParser(prog='SHARPy', description=
         """This is the executable for Simulation of High Aspect Ratio Planes.\n
         Imperial College London 2019""")
-        parser.add_argument('input_filename', help='path to the *.solver.txt input file', type=str, default='')
+        parser.add_argument('input_filename', help='path to the *.sharpy input file', type=str, default='')
         parser.add_argument('-r', '--restart', help='restart the solution with a given snapshot', type=str, default=None)
         parser.add_argument('-d', '--docs', help='generates the solver documentation in the specified location. Code does not execute if running this flag', action='store_true')
         if args is not None:
@@ -92,7 +92,7 @@ def main(args=None, sharpy_input_dict=None):
         # # run preSHARPy
         # data = PreSharpy(settings)
 
-    # Loop for the solvers specified in *.solver.txt['SHARPy']['flow']
+    # Loop for the solvers specified in *.sharpy['SHARPy']['flow']
     for solver_name in settings['SHARPy']['flow']:
         solver = solver_interface.initialise_solver(solver_name)
         solver.initialise(data)

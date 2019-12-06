@@ -305,7 +305,7 @@ settings['SaveData'] = {'folder': './output',
 
 config = configobj.ConfigObj()
 np.set_printoptions(precision=16)
-file_name = ws.case_route + '/' + ws.case_name + '.solver.txt'
+file_name = ws.case_route + '/' + ws.case_name + '.sharpy'
 config.filename = file_name
 for k, v in settings.items():
     config[k] = v
@@ -324,4 +324,4 @@ delta_dot[int(t_init//ws.dt):int(t_ramp//ws.dt), 0] = d_elev / (t_ramp - t_init)
 delta_dot[int(t_final//ws.dt):(int((t_final+1.0)//ws.dt)), 0] = - d_elev / 1. * 1
 ws.create_linear_simulation(delta, delta_dot)
 
-# data = sharpy.sharpy_main.main(['', ws.case_route + '/' + ws.case_name + '.solver.txt'])
+# data = sharpy.sharpy_main.main(['', ws.case_route + '/' + ws.case_name + '.sharpy'])

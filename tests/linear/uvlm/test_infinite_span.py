@@ -99,7 +99,7 @@ class Test_infinite_span(unittest.TestCase):
         ws.config.write()
 
         # solve at linearistion point
-        data0 = sharpy.sharpy_main.main(['...', route_main + self.case_main + '.solver.txt'])
+        data0 = sharpy.sharpy_main.main(['...', route_main + self.case_main + '.sharpy'])
         tsaero0 = data0.aero.timestep_info[0]
         tsaero0.rho = ws.config['LinearUvlm']['density']
 
@@ -286,7 +286,7 @@ class Test_infinite_span(unittest.TestCase):
         ws_pert.config.write()
 
         # solve at perturbed point
-        data_pert = sharpy.sharpy_main.main(['...', self.route_main + case_pert + '.solver.txt'])
+        data_pert = sharpy.sharpy_main.main(['...', self.route_main + case_pert + '.sharpy'])
         tsaero = data_pert.aero.timestep_info[0]
 
         # get total forces

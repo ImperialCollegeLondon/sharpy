@@ -107,7 +107,7 @@ class TestRotor(unittest.TestCase):
     def test_rotor(self):
         import sharpy.sharpy_main
 
-        solver_path = folder + '/' + case + '.solver.txt'
+        solver_path = folder + '/' + case + '.sharpy'
         sharpy.sharpy_main.main(['', solver_path])
 
         # read output and compare
@@ -126,7 +126,7 @@ class TestRotor(unittest.TestCase):
     def tearDown(self):
         files_to_delete = [case + '.aero.h5',
                            case + '.fem.h5',
-                           case + '.solver.txt',
+                           case + '.sharpy',
                            'log']
         try:
             for f in files_to_delete:

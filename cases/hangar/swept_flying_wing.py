@@ -584,7 +584,7 @@ class SweptWing:
             os.remove(aero_file_name)
 
         # Solver file
-        solver_file_name = route + '/' + case_name + '.solver.txt'
+        solver_file_name = route + '/' + case_name + '.sharpy'
         if os.path.isfile(solver_file_name):
             os.remove(solver_file_name)
 
@@ -874,7 +874,7 @@ class SweptWing:
         gust_intensity = self.gust_intensity
         relaxation_factor = self.relaxation_factor
 
-        file_name = route + '/' + case_name + '.solver.txt'
+        file_name = route + '/' + case_name + '.sharpy'
 
         settings = dict()
         settings['SHARPy'] = {'case': case_name,
@@ -1201,4 +1201,4 @@ if __name__=='__main__':
 ]
     ws.config.write()
 
-    sharpy.sharpy_main.main(['', ws.config['SHARPy']['route'] + '/' + ws.config['SHARPy']['case'] + '.solver.txt'])
+    sharpy.sharpy_main.main(['', ws.config['SHARPy']['route'] + '/' + ws.config['SHARPy']['case'] + '.sharpy'])
