@@ -1,5 +1,5 @@
 # SHARPy Installation Guide
-__Last revision 4 December 2019__
+__Last revision 7 December 2019__
 
 The following step by step tutorial will guide you through the installation process of SHARPy.
 
@@ -19,7 +19,6 @@ __Required Distributions__
 
 + Anaconda Python 3.7
 + GCC 6.0 or higher (recommended)
-+ CMake 3.9
 
 
 __GitHub Repositories__
@@ -98,13 +97,7 @@ once you initialise SHARPy you will also automatically clone the relevant versio
 
 ### Set up the folder structure
 
-0. Create the folder that will contain SHARPy and the underlying aerodynamic and structural libraries and `cd` into it.
-We will refer to this as the working folder.
-    ```bash
-    mkdir ~/code
-    cd !$
-    ```
-1. Clone `sharpy` in the working folder, if you agree with the license in `license.txt`
+1. Clone `sharpy` in your desired location, if you agree with the license in `license.txt`
     ```bash
     git clone --recursive http://github.com/ImperialCollegeLondon/sharpy
     ```
@@ -118,7 +111,7 @@ SHARPy uses the Anaconda package manager to provide the necessary Python package
 These are specified in an Anaconda environment that shall be activated prior to compiling the xbeam and UVLM libraries
 or running any SHARPy cases.
 
-1. If you do not have it, install the [Anaconda](https://conda.io/docs/) Python  3 distribution
+1. If you do not have it, install the [Anaconda](https://conda.io/docs/) Python 3 distribution
 
 2. Make sure your Python version is at least 3.7:
     ```bash
@@ -132,7 +125,6 @@ file if you are installing SHARPy on Mac OS X
     conda env create -f environment_linux.yml
     cd ../..
     ```
-    
     We also provide a light-weight environment with the minimum required dependencies. If you'd like to use it, 
     create the conda environment using `environment_minimal.yml`.
 
@@ -201,7 +193,7 @@ to your taste.
     
 1. If you want to use SHARPy's latest release, skip this step. If you would like to use the latest development work, 
 you will need to checkout the `develop` branch. For more info on how we structure our development and what branches 
-are used for certain kind of features have a look at the [Contributing](contributing.html) page. 
+are used for what kind of features have a look at the [Contributing](contributing.html) page. 
     ```bash
     git checkout -b develop --track origin/develop
     ```
@@ -262,7 +254,7 @@ The tests will run and you should see a success message. If you don't... check t
 * Check you are running the latest version. Running the following from the root directory should update to the 
 latest release version:
     - `git pull`
-    - `git submodule update`
+    - `git submodule update --init --recursive`
 * If the tests don't run, make sure you have followed correctly the instructions and that you managed to compile xbeam
 and UVLM.
 * If some tests fail, i.e. you get a message after the tests run saying that certain tests did not pass, please open
@@ -278,7 +270,7 @@ __Setting up a SHARPy case__
 
 SHARPy cases are usually structured in the following way:
 
-1. A `generate_case.py` file: contains the setup of the problem, like geometry, flight conditions etc.
+1. A `generate_case.py` file: contains the setup of the problem like geometry, flight conditions etc.
 This script creates the output files that will then be used by SHARPy, namely:
     * The [structural](./casefiles.html#fem-file) `.fem.h5` file.
     * The [aerodynamic](./casefiles.html#aerodynamics-file) `.aero.h5` file.
@@ -353,7 +345,7 @@ is stored in [HDF5](https://support.hdfgroup.org/HDF5/) format, which is compres
     output the progress of the execution to the terminal.
     
     We would also like to create a Paraview file to view the beam deformation. Append the post-processor `BeamPlot` to
-    the end of the `SHARPy` setting `flow`. This will plot the beam in Paraview format with the settings specified in 
+    the end of the `SHARPy` setting `flow`, which is a list. This will run the post-processor and plot the beam in Paraview format with the settings specified in 
     the `generate_geradin.py` file under `config['BeamPlot]`.
     
 7. Run (part 2)
