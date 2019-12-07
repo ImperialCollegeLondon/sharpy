@@ -156,7 +156,7 @@ class TestFixNodeVelocitywrtA(unittest.TestCase):
     def test_testfixnodevelocitywrta(self):
         import sharpy.sharpy_main
 
-        solver_path = folder + '/fix_node_velocity_wrtA.solver.txt'
+        solver_path = folder + '/fix_node_velocity_wrtA.sharpy'
         sharpy.sharpy_main.main(['', solver_path])
 
         # read output and compare
@@ -186,7 +186,7 @@ class TestFixNodeVelocitywrtA(unittest.TestCase):
                            name + '.dyn.h5',
                            name + '.fem.h5',
                            name + '.mb.h5',
-                           name + '.solver.txt']
+                           name + '.sharpy']
         for f in files_to_delete:
             os.remove(folder + '/' + f)
 

@@ -660,7 +660,7 @@ def generate_solver_file():
     settings['SHARPy'] = {'case': case_name,
                           'route': route,
                           'flow': flow,
-                          'write_screen': 'off',
+                          'write_screen': 'on',
                           'write_log': 'on',
                           'log_folder': route + '/output/',
                           'log_file': case_name + '.log'}

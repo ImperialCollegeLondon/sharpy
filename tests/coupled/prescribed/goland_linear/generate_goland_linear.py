@@ -58,4 +58,4 @@ if aero_type == 'lin':
 
 ws.config.write()
 
-data = sharpy.sharpy_main.main(['',ws.route+ws.case_name+'.solver.txt'])
+data = sharpy.sharpy_main.main(['',ws.route+ws.case_name+'.sharpy'])

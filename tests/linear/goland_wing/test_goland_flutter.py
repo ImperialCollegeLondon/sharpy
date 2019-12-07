@@ -233,7 +233,7 @@ class TestGolandFlutter(unittest.TestCase):
 
         ws.config.write()
 
-        self.data = sharpy.sharpy_main.main(['', ws.route + ws.case_name + '.solver.txt'])
+        self.data = sharpy.sharpy_main.main(['', ws.route + ws.case_name + '.sharpy'])
 
     def run_rom_stable(self):
         ssrom = self.data.linear.linear_system.uvlm.rom['Krylov'].ssrom

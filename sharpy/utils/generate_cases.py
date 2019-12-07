@@ -1780,7 +1780,7 @@ class SimulationInformation():
         self.check()
 
         config = configobj.ConfigObj()
-        config.filename = self.solvers['SHARPy']['route'] + '/' + self.solvers['SHARPy']['case'] + '.solver.txt'
+        config.filename = self.solvers['SHARPy']['route'] + '/' + self.solvers['SHARPy']['case'] + '.sharpy'
         config['SHARPy'] = self.solvers['SHARPy']
         # for k, v in self.solvers['SHARPy'].items():
         #     config[k] = v
@@ -1846,7 +1846,7 @@ def clean_test_files(route, case_name):
     if os.path.isfile(lagrange_file_name):
         os.remove(lagrange_file_name)
 
-    solver_file_name = route + '/' + case_name + '.solver.txt'
+    solver_file_name = route + '/' + case_name + '.sharpy'
     if os.path.isfile(solver_file_name):
         os.remove(solver_file_name)
 
