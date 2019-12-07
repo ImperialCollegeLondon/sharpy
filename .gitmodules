@@ -1,0 +1,6 @@
+[submodule "lib/UVLM"]
+	path = lib/UVLM
+	url = http://github.com/imperialcollegelondon/UVLM
+[submodule "lib/xbeam"]
+	path = lib/xbeam
+	url = http://github.com/imperialcollegelondon/xbeam

@@ -178,3 +178,21 @@ That said, the recipe for a successfully documented class, function, module is t
     ```
     
 Thank you for reading through this and contributing to make SHARPy a better documented, more user friendly code!
+
+## Git branching model
+
+For the development of SHARPy, we try to follow [this](https://nvie.com/posts/a-successful-git-branching-model/) 
+branching model summarised by the schematic
+
+![BranchingModel](https://nvie.com/img/git-model@2x.png)
+_Credit: Vincent Driessen https://nvie.com/posts/a-successful-git-branching-model/_
+
+Therefore, attending to this model our branches have the following versions of the code:
+* `master`: latest stable release - paired with the appropriate tag.
+* `develop`: latest stable development build. Features get merged to develop.
+* `rc-**`: release candidate branch. Prior to releasing tests are performed on this branch.
+* `dev_doc`: documentation development branch. All work relating to documentation gets done here.
+* `fix_**`: hotfix branch.
+* `dev_**`: feature development branch.
+
+If you contribute, please make sure you know what branch to work from. If in doubt please ask!

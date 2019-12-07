@@ -181,8 +181,6 @@ class TestGenerateCases(unittest.TestCase):
                            'log']
 
         for f in files_to_delete:
-            print('removing ', f)
             os.remove(solver_path + f)
 
         shutil.rmtree(solver_path + 'output/')
-        print('Out generate cases')

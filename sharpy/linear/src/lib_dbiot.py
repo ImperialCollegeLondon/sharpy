@@ -21,7 +21,7 @@ from sharpy.utils.sharpydir import SharpyDir
 import sharpy.utils.ctypes_utils as ct_utils
 import sharpy.linear.src.libalg as libalg
 
-libc = ct_utils.import_ctypes_lib(SharpyDir + '/lib/', 'libuvlm')
+libc = ct_utils.import_ctypes_lib(SharpyDir + '/lib/UVLM/lib/', 'libuvlm')
 
 ### constants
 cfact_biot = 0.25 / np.pi

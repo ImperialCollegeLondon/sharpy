@@ -7,7 +7,7 @@ import platform
 import os
 from sharpy.utils.constants import NDIM
 
-UvlmLib = ct_utils.import_ctypes_lib(SharpyDir + '/lib/', 'libuvlm')
+UvlmLib = ct_utils.import_ctypes_lib(SharpyDir + '/lib/UVLM/lib/', 'libuvlm')
 
 
 class VMopts(ct.Structure):

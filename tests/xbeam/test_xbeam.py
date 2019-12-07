@@ -21,7 +21,6 @@ class TestGeradinXbeam(unittest.TestCase):
         case = 'geradin'
         mod = importlib.import_module('tests.xbeam.' + case + '.generate_' + case)
 
-
     def test_geradin(self):
         import sharpy.sharpy_main
         # suppress screen output
@@ -41,7 +40,7 @@ class TestGeradinXbeam(unittest.TestCase):
     def tearDown(self):
         solver_path = os.path.abspath(os.path.dirname(os.path.realpath(__file__)) + '/geradin/')
         files_to_delete = list()
-        extensions = ('*.txt', '*.h5')
+        extensions = ('*.txt', '*.h5', '*.sharpy')
         for f in extensions:
             files_to_delete.extend(glob.glob(solver_path + '/' + f))
 
