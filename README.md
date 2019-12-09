@@ -12,7 +12,7 @@ SHARPy is an aeroelastic analysis package developed at the Department of Aeronau
 College London. It can be used for the structural, aerodynamic and aeroelastic analysis of flexible aircraft, flying
 wings and wind turbines.
 
-<img src="https://github.com/ImperialCollegeLondon/sharpy/raw/master/docs/source/media/XHALE-render.jpg" width=640>
+![XHALE](./docs/source/_static/XHALE-render.jpg)
 
 ### Contact 
 

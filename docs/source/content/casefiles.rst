@@ -5,6 +5,20 @@ SHARPy takes as input a series of ``.h5`` files that contain the numerical data 
 the settings for each of the solvers. How these files are generated is at the user's discretion, though templates are
 provided, and all methods are valid as long as the required variables are provided with the appropriate format.
 
+Modular Framework
+-----------------
+
+SHARPy is built with a modular framework in mind. The following diagram shows the strutuctre of a nonlinear, time
+marching aeroelastic simulation
+
+.. image:: ../_static/case_files/sharpy_modular.png
+    :target: ../_static/case_files/sharpy_modular.png
+    :alt: SHARPy's modular structure
+
+Each of the blocks correspond to individual solvers with specific settings. How we choose which solvers to run,
+in which order and with what settings is done through the solver configuration file, explained in the next section.
+
+
 Solver configuration file
 -------------------------
 
