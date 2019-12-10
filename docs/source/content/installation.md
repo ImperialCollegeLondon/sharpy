@@ -384,4 +384,4 @@ is stored in [HDF5](https://support.hdfgroup.org/HDF5/) format, which is compres
     FYI, the correct solution for this test case by Geradin and Cardona is
     `Delta R_3 = -2.159 m` and `Psi_2 = 0.6720 rad`.
 
-Congratulations, you've run your first case. You can now check the Examples section for further cases.
+Congratulations, you've run your first case. You can now check the [Examples](examples.html) section for further cases.

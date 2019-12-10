@@ -1,6 +1,6 @@
 # Capabilities
-This is just the tip of the iceberg, possibilities are nearly endless and once you understand how SHARPys modularity
-works, you will be capable of running very complex simulations.
+This is just the tip of the iceberg, possibilities are nearly endless and once you understand how SHARPy's modular
+interface works, you will be capable of running very complex simulations.
 
 ## Very flexible aircraft nonlinear aeroelasticity
 
@@ -16,20 +16,20 @@ structural nodes (the clamping points). Then, several take off strategies were s
 of the structural stiffness in this kind of procedures. This case is a very good example of the type of problems where
 nonlinear aeroelasticity is essential.
  
-![CATO](../_static/capabilities/hale_cruise.png) 
+![_Catapult Takeoff of Flexible Aircraft_](../_static/capabilities/hale_cruise.png) 
 
 * Flight in full 3D atmospheric boundary layer (to be published). A very flexible aircraft is flown immersed in a
 turbulent boundary layer obtained from HPC LES simulations. The results are compared against simpler turbulence models
 such as von Karman and Kaimal. Intermittency and coherence features in the LES field are absent or less remarkable in
 the synthetic turbulence fields.
 
-![Turb](../_static/capabilities/hale_turb.jpeg)
+![_HALE Aircraft in a Turbulent Field_](../_static/capabilities/hale_turb.jpeg)
 
 * Lateral gust reponse of a realistic very flexible aircraft. For this problem (to be published), a realistic very
 flexible aircraft (University of Michigan X-HALE) model has been created in SHARPy and validated against their own
 aeroelastic solver for static and dynamic cases. A set of vertical and lateral gust responses have been simulated.
 
-![XHALE](../_static/capabilities/xhale.png)
+![_X-HALE_](../_static/capabilities/xhale.png)
 
 ## Wind turbine aeroelasticity
 
@@ -80,7 +80,7 @@ the full system.
 The full order model was reduced utilising Krylov methods, in particular the Arnoldi iteration, with an expansion about
 zero frequency to produce the following result.
 
-![Sears](../_static/capabilities/sears.png)
+![_Sears Gust Bode Plot_](../_static/capabilities/sears.png)
 
 As it can be seen from the image above, the ROM approximates well the low frequency, quasi-steady state and loses
 accuracy as the frequency is increased, just as intended. Still, perfect matching is never achieved even at the
@@ -95,7 +95,7 @@ Krylov methods aimed at MIMO systems which use variations of the block Arnoldi i
 frequency selected was the zero frequency. As a sample, the transfer function from two inputs to two outputs is
 shown to illustrate the performance of the reduced model against the full order UVLM.
 
-![Goland ROM](../_static/capabilities/goland_rom.png)
+![_Goland Reduced Order Model Transfer Functions_](../_static/capabilities/goland_rom.png)
 
 The reduced aerodynamic model projected onto the modal shapes was then coupled to the linearised beam model, and the
 stability analysed against a change in velocity. Note that the UVLM model and its ROM are actually scaled to be
@@ -103,4 +103,4 @@ independent on the freestream velocity, hence only one UVLM and ROM need to be c
 to be updated at each test velocity but its a lot less costly in computational terms. The resulting stability of the
 aeroelastic system is plotted on the Argand diagram below with changing freestream velocity.
 
-![Goland Flutter](../_static/capabilities/goland_flutter.png)
+![_Goland Flutter_](../_static/capabilities/goland_flutter.png)

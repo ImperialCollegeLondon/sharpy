@@ -6,7 +6,6 @@ yourself out of them!
 
 * Did you forget `conda activate sharpy_env` and `source bin/sharpy_vars.sh`?
 
-    - Check my alias tip at the beginning of the document.
     - If you do in the terminal: `which sharpy`, do you get the one you want?
     - If you do `which python`, does the result point to `anaconda3/envs/sharpy_env/bin` (or similar)?
 
@@ -75,7 +74,7 @@ If your model doesn't do what it is supposed to do:
 
 
 * Make sure your inputs are correct. For example: a dynamic case can be run with :math:`u_\infty = 0` and the plane
-  moving forwards, or $u_\infty = $whatever and the plane velocity = 0. It is very easy to mix both, and end up with
+  moving forwards, or :math:`u_\infty = x` whatever and the plane velocity = 0. It is very easy to mix both, and end up with
   double the effective incoming speed (or none).
 
 * Run simple stuff before coupling it. For example, if your wing tip deflections don't match what you'd expect,
