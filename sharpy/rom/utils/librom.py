@@ -1267,7 +1267,7 @@ def check_stability(A, dt=True):
     else:
         criteria = np.real(eigvals) > 0.0
 
-    if np.sum(criteria) >= 1:
+    if np.sum(criteria) >= 1.0:
         return True
     else:
         return False
