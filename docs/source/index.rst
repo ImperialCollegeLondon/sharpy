@@ -39,10 +39,23 @@ analysis of flexible aircraft, flying wings and wind turbines. Amongst other cap
     + Control inputs in thrust, control surface deflection...
     + Arbitrary time-domain gusts, including non span-constant ones.
     + Full 3D turbulent fields.
-    + Multibody dynamics with hinges, articulations and prescribed nodal motions.
+
+* Multibody dynamics with hinges, articulations and prescribed nodal motions.
+
+    + Applicable to wind turbines.
+    + Hinged aircraft.
+    + Catapult assisted takeoffs.
+
+* Linear analysis
+
     + Linearisation around a nonlinear equilibrium.
     + Frequency response analysis.
-    + Model order reduction.
+    + Asymptotic stability analysis.
+
+* Model order reduction
+
+    + Krylov-subspace reduction methods.
+    + Balancing reduction methods.
 
 The modular design of SHARPy allows to simulate complex aeroelastic cases involving very flexible aircraft.
 The structural solver supports very complex beam arrangements, while retaining geometrical nonlinearity.
