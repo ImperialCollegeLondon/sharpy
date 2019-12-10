@@ -175,7 +175,7 @@ def generate_from_excel_type01(chord_panels,
     elem_EIz = np.interp(elem_r,Radius,EdgStff)
     elem_GJ = np.interp(elem_r,Radius,GJStff)
     # Stiffness: estimate unknown properties
-    print('WARNING: The poisson cofficient is supossed equal to 0.3')
+    print('WARNING: The poisson cofficient is assumed equal to 0.3')
     print('WARNING: Cross-section area is used as shear area')
     poisson_coef = 0.3
     elem_GAy = elem_EA/2.0/(1.0+poisson_coef)
@@ -340,7 +340,7 @@ def generate_from_excel_type01(chord_panels,
     elem_EIy = np.interp(elem_r,Elevation,TwFAStif)
     elem_GJ = np.interp(elem_r,Elevation,TwGJStif)
     # Stiffness: estimate unknown properties
-    print('WARNING: The poisson cofficient is supossed equal to 0.3')
+    print('WARNING: The poisson cofficient is assumed equal to 0.3')
     print('WARNING: Cross-section area is used as shear area')
     poisson_coef = 0.3
     elem_GAy = elem_EA/2.0/(1.0+poisson_coef)
@@ -650,7 +650,7 @@ def rotor_from_OpenFAST_db(chord_panels,
         elem_EIz = np.interp(elem_r,Radius,EdgStff)
         elem_GJ = np.interp(elem_r,Radius,GJStff)
         # Stiffness: estimate unknown properties
-        print('WARNING: The poisson cofficient is supossed equal to 0.3')
+        print('WARNING: The poisson cofficient is assumed equal to 0.3')
         print('WARNING: Cross-section area is used as shear area')
         poisson_coef = 0.3
         elem_GAy = elem_EA/2.0/(1.0+poisson_coef)
@@ -880,7 +880,7 @@ def generate_from_OpenFAST_db(chord_panels,
     elem_EIy = np.interp(elem_r,Elevation,TwFAStif)
     elem_GJ = np.interp(elem_r,Elevation,TwGJStif)
     # Stiffness: estimate unknown properties
-    print('WARNING: The poisson cofficient is supossed equal to 0.3')
+    print('WARNING: The poisson cofficient is assumed equal to 0.3')
     print('WARNING: Cross-section area is used as shear area')
     poisson_coef = 0.3
     elem_GAy = elem_EA/2.0/(1.0+poisson_coef)
@@ -1184,7 +1184,7 @@ def rotor_from_excel_type02(chord_panels,
         elem_GJ = np.interp(elem_rR,rR_structural,GJStff)
 
         # Stiffness: estimate unknown properties
-        print('WARNING: The poisson cofficient is supossed equal to 0.3')
+        print('WARNING: The poisson cofficient is assumed equal to 0.3')
         print('WARNING: Cross-section area is used as shear area')
         poisson_coef = 0.3
         elem_GAy = elem_EA/2.0/(1.0+poisson_coef)
@@ -1485,7 +1485,7 @@ def generate_from_excel_type02(chord_panels,
     elem_EIy = np.interp(elem_r,Elevation,TwFAStif)
     elem_GJ = np.interp(elem_r,Elevation,TwGJStif)
     # Stiffness: estimate unknown properties
-    print('WARNING: The poisson cofficient is supossed equal to 0.3')
+    print('WARNING: The poisson cofficient is assumed equal to 0.3')
     print('WARNING: Cross-section area is used as shear area')
     poisson_coef = 0.3
     elem_GAy = elem_EA/2.0/(1.0+poisson_coef)
