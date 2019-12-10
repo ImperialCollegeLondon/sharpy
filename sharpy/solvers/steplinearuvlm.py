@@ -43,12 +43,13 @@ class StepLinearUVLM(BaseSolver):
         It is similar to a stability axes and is recommended any time rigid body dynamics are included.
 
     See Also:
+
         :class:`sharpy.sharpy.linear.assembler.linearuvlm.LinearUVLM`
 
     References:
+
         [1] Maraniello, S., & Palacios, R.. State-Space Realizations and Internal Balancing in Potential-Flow
-            Aerodynamics with
-            Arbitrary Kinematics. AIAA Journal, 57(6), 1–14. 2019. https://doi.org/10.2514/1.J058153
+        Aerodynamics with Arbitrary Kinematics. AIAA Journal, 57(6), 1–14. 2019. https://doi.org/10.2514/1.J058153
 
     """
     solver_id = 'StepLinearUVLM'
@@ -111,7 +112,8 @@ class StepLinearUVLM(BaseSolver):
 
     __doc__ += settings_table.generate(scaling_settings_types,
                                        scaling_settings_default,
-                                       scaling_settings_description)
+                                       scaling_settings_description, header_line='The settings that ``ScalingDict`` '
+                                                                                 'accepts are the following:')
 
     def __init__(self):
         self.data = None
