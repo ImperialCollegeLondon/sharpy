@@ -147,22 +147,25 @@ def balreal_iter(A, B, C, lowrank=True, tolSmith=1e-10, tolSVD=1e-6, kmin=None,
     """
     Find balanced realisation of DLTI system.
 
-    Notes: Lyapunov equations are solved using iterative squared Smith
-    algorithm, in its low or full rank version. These implementations are
-    as per the low_rank_smith and smith_iter functions respectively but,
-    for computational efficiency, the iterations are rewritten here so as to
-    solve for the observability and controllability Gramians contemporary.
+    Notes:
 
-    Input:
+        Lyapunov equations are solved using iterative squared Smith
+        algorithm, in its low or full rank version. These implementations are
+        as per the low_rank_smith and smith_iter functions respectively but,
+        for computational efficiency, the iterations are rewritten here so as to
+        solve for the observability and controllability Gramians contemporary.
+
 
     - Exploiting sparsity:
-    This algorithm is not ideal to exploit sparsity. However, the following
-    strategies are implemented:
-        - if the A matrix is provided in sparse format, the powers of A will be
-        calculated exploiting sparsity UNTIL the number of non-zero elements
-        is below 15% the size of A. Upon this threshold, the cost of the matrix
-        multiplication rises dramatically, and A is hence converted to a dense
-        numpy array.
+
+        This algorithm is not ideal to exploit sparsity. However, the following
+        strategies are implemented:
+
+            - if the A matrix is provided in sparse format, the powers of A will be
+              calculated exploiting sparsity UNTIL the number of non-zero elements
+              is below 15% the size of A. Upon this threshold, the cost of the matrix
+              multiplication rises dramatically, and A is hence converted to a dense
+              numpy array.
     """
 
     ### Solve Lyapunov equations
@@ -1119,22 +1122,24 @@ def eigen_dec(A, B, C, dlti=True, N=None, eigs=None, UR=None, URinv=None,
     consecutivelly.
 
 
-    Input:
-    A,B,C: matrices of state-space model
-    dlti: specifies whether discrete (True) or continuous-time. This information
-        is only required to order the eigenvalues in decreasing dmaping order
-    N: number of states to retain. If None, all states are retained
-    eigs,Ur: eigenvalues and right eigenvector of A matrix as given by:
-        eigs,Ur=scipy.linalg.eig(A,b=None,left=False,right=True)
-    Urinv: inverse of Ur
-    order_by={'damp','freq','stab'}: order according to increasing damping (damp)
-    or decreasing frequency (freq) or decreasing damping (stab).
-        If None, the same order as eigs/UR is followed.
-    tol: absolute tolerance used to identify complex conj pair of eigenvalues
-    complex: if true, the system is left in complex form
+    Args:
+        A: state-space matrix
+        B: state-space matrix
+        C: matrices of state-space model
+        dlti: specifies whether discrete (True) or continuous-time. This information
+            is only required to order the eigenvalues in decreasing dmaping order
+        N: number of states to retain. If None, all states are retained
+        eigs,Ur: eigenvalues and right eigenvector of A matrix as given by:
+            eigs,Ur=scipy.linalg.eig(A,b=None,left=False,right=True)
+        Urinv: inverse of Ur
+        order_by={'damp','freq','stab'}: order according to increasing damping (damp)
+        or decreasing frequency (freq) or decreasing damping (stab).
+            If None, the same order as eigs/UR is followed.
+        tol: absolute tolerance used to identify complex conj pair of eigenvalues
+        complex: if true, the system is left in complex form
 
 
-    Output:
+    Returns:
     (Aproj,Bproj,Cproj): state-space matrices projected over the first N (or N+1
         if N removes the imaginary part equations of a complex conj pair of
         eigenvalues) related to the least damped modes
@@ -1250,45 +1255,25 @@ def eigen_dec(A, B, C, dlti=True, N=None, eigs=None, UR=None, URinv=None,
     return Aproj, Bproj, Cproj, Nlist
 
 
-if __name__ == '__main__':
-    gv = np.array([5, 4, 3, 2, 1])
-    import unittest
-    import copy
+def check_stability(A, dt=True):
+    """
+    Checks the stability of the system.
 
-    class Test_librom():
+    Args:
+        A (np.ndarray): System plant matrix
+        dt (bool): Discrete time system
 
+    Returns:
+        bool: True if the system is stable
+    """
+    eigvals = scalg.eigvals(A)
+    if dt:
+        criteria = np.abs(eigvals) > 1.
+    else:
+        criteria = np.real(eigvals) > 0.0
 
-        def test_balreal_direct_py(self):
+    if np.sum(criteria) >= 1.0:
+        return True
+    else:
+        return False
 
-            Nx,Nu,Ny = 6, 4, 2
-            ss = libss.random_ss(Nx,Nu,Ny,dt=0.1,stable=True)
-
-            ### direct balancing
-            hsv,T,Ti = balreal_direct_py( ss.A,ss.B,ss.C,
-              DLTI=True,full_outputs=False)
-            ssb = copy.deepcopy(ss)
-            ssb.project(Ti,T)
-
-            # compare freq. resp.
-            kv = np.array([0., .5, 3., 5.67])
-            Y = ss.freqresp(kv)
-            Yb = ssb.freqresp(kv)
-            er_max = np.max(np.abs(Yb-Y))
-            assert er_max/np.max(np.abs(Y))<1e-10, 'error too large'
-
-            # test full_outputs option
-            hsv, U,Vh, Qc,Qo =  balreal_direct_py( ss.A,ss.B,ss.C,
-                                       DLTI=True,full_outputs=True)
-
-            # build M matrix and SVD
-            sinv=hsv**(-0.5)
-            T2=libsp.dot(Qc,Vh.T*sinv)
-            Ti2=np.dot((U*sinv).T,Qo.T)
-            assert np.linalg.norm(T2-T)<1e-13, 'error too large'
-            assert np.linalg.norm(Ti2-Ti)<1e-13, 'error too large'
-
-            ssb2 = copy.deepcopy(ss)
-            ssb2.project(Ti2,T2)
-            Yb2 = ssb2.freqresp(kv)
-            er_max = np.max(np.abs(Yb2-Y))
-            assert er_max/np.max(np.abs(Y))<1e-10, 'error too large'

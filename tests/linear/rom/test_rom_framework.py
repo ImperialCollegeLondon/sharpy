@@ -5,9 +5,13 @@ import cases.templates.flying_wings as wings
 import sharpy.sharpy_main
 
 
-class TestGolandFlutter(unittest.TestCase):
-
-    def setup(self):
+class TestROMFramework(unittest.TestCase):
+    """
+    Test verifyies the execution of the balancing ROMs (i.e. checks that everything runs rather than checking
+    against a benchmark case
+    """
+    
+    def setUp(self):
         # Problem Set up
         u_inf = 1.
         alpha_deg = 0.
@@ -15,49 +19,40 @@ class TestGolandFlutter(unittest.TestCase):
         num_modes = 4
 
         # Lattice Discretisation
-        M = 16
-        N = 32
-        M_star_fact = 10
+        M = 4
+        N = 8
+        M_star_fact = 1
 
         # Linear UVLM settings
         integration_order = 2
         remove_predictor = False
-        use_sparse = True
-
-        # ROM Properties
-        rom_settings = dict()
-        rom_settings['algorithm'] = 'mimo_rational_arnoldi'
-        rom_settings['r'] = 6
-        frequency_continuous_k = np.array([0.])
+        use_sparse = False
 
         # Case Admin - Create results folders
         case_name = 'goland_cs'
         case_nlin_info = 'M%dN%dMs%d_nmodes%d' % (M, N, M_star_fact, num_modes)
-        case_rom_info = 'rom_MIMORA_r%d_sig%04d_%04dj' % (rom_settings['r'], frequency_continuous_k[-1].real * 100,
-                                                          frequency_continuous_k[-1].imag * 100)
-
-        case_name += case_nlin_info + case_rom_info
+        case_name += case_nlin_info
 
         self.route_test_dir = os.path.abspath(os.path.dirname(os.path.realpath(__file__)))
         fig_folder = self.route_test_dir + '/figures/'
         os.makedirs(fig_folder, exist_ok=True)
 
         # SHARPy nonlinear reference solution
-        ws = wings.GolandControlSurface(M=M,
-                                        N=N,
-                                        Mstar_fact=M_star_fact,
-                                        u_inf=u_inf,
-                                        alpha=alpha_deg,
-                                        cs_deflection=[0, 0],
-                                        rho=rho,
-                                        sweep=0,
-                                        physical_time=2,
-                                        n_surfaces=2,
-                                        route=self.route_test_dir + '/cases',
-                                        case_name=case_name)
+        ws = wings.Goland(M=M,
+                          N=N,
+                          Mstar_fact=M_star_fact,
+                          u_inf=u_inf,
+                          alpha=alpha_deg,
+                          rho=rho,
+                          sweep=0,
+                          physical_time=2,
+                          n_surfaces=2,
+                          route=self.route_test_dir + '/cases',
+                          case_name=case_name)
 
         ws.gust_intensity = 0.01
         ws.sigma = 1
+        ws.horseshoe = True
 
         ws.clean_test_files()
         ws.update_derived_params()
@@ -65,10 +60,6 @@ class TestGolandFlutter(unittest.TestCase):
 
         ws.generate_aero_file()
         ws.generate_fem_file()
-
-        frequency_continuous_w = 2 * u_inf * frequency_continuous_k / ws.c_ref
-        rom_settings['frequency'] = frequency_continuous_w
-        rom_settings['tangent_input_file'] = ws.route + '/' + ws.case_name + '.rom.h5'
 
         ws.config['SHARPy'] = {
             'flow':
@@ -79,7 +70,6 @@ class TestGolandFlutter(unittest.TestCase):
                  'Modal',
                  'LinearAssembler',
                  'FrequencyResponse',
-                 'AsymptoticStability',
                  ],
             'case': ws.case_name, 'route': ws.route,
             'write_screen': 'off', 'write_log': 'on',
@@ -93,7 +83,7 @@ class TestGolandFlutter(unittest.TestCase):
         ws.config['AerogridLoader'] = {
             'unsteady': 'off',
             'aligned_grid': 'on',
-            'mstar': ws.Mstar_fact * ws.M,
+            'mstar': 1,
             'freestream_dir': ws.u_inf_direction
         }
 
@@ -201,13 +191,8 @@ class TestGolandFlutter(unittest.TestCase):
                                                               'rigid_body_motion': 'off',
                                                               'use_euler': 'off',
                                                               'remove_inputs': ['u_gust'],
-                                                              'rom_method': ['Krylov'],
-                                                              'rom_method_settings': {'Krylov': rom_settings}},
+                                                              },
                                             'rigid_body_motion': False}}
-
-        ws.config['AsymptoticStability'] = {'print_info': True,
-                                            'folder': self.route_test_dir + '/output/',
-                                            'velocity_analysis': [160, 180, 20]}
 
         ws.config['LinDynamicSim'] = {'dt': ws.dt,
                                       'n_tsteps': ws.n_tstep,
@@ -230,48 +215,47 @@ class TestGolandFlutter(unittest.TestCase):
                                           'frequency_bounds': [0.0001, 1.0],
                                           }
 
-        ws.config.write()
+        self.ws = ws
 
-        self.data = sharpy.sharpy_main.main(['', ws.route + ws.case_name + '.sharpy'])
+    def test_roms(self):
+        settings = dict()
+        settings['Direct'] = {'algorithm': 'Direct',
+                              'print_info': 'off',
+                              'algorithm_settings': {'tune': 'off',
+                                                     'use_schur': 'on',
+                                                     'reduction_method': 'realisation'}}
 
-    def run_rom_stable(self):
-        ssrom = self.data.linear.linear_system.uvlm.rom['Krylov'].ssrom
-        eigs_rom = np.linalg.eigvals(ssrom.A)
+        settings['FrequencyLimited'] = {'algorithm': 'FrequencyLimited',
+                                        'print_info': 'off',
+                                        'algorithm_settings': {'frequency': 0.8,
+                                                               'method_low': 'trapz',
+                                                               'options_low': {'points': 3},
+                                                               'method_high': 'gauss',
+                                                               'options_high': {'partitions': 2, 'order': 1},
+                                                               'check_stability': True}}
 
-        assert all(np.abs(eigs_rom) <= 1.), 'UVLM Krylov ROM is unstable - flutter speed may not be correct. Change' \
-                                            'ROM settings to achieve stability'
-        print('ROM is stable')
+        settings['Iterative'] = {'algorithm': 'Iterative',
+                                 'print_info': 'off',
+                                 'algorithm_settings': {'lowrank': 'on'}}
 
-    def run_flutter(self):
-        flutter_ref_speed = 166 # at current discretisation
-
-        u_inf = self.data.linear.stability['velocity_results']['u_inf']
-        eval_real = self.data.linear.stability['velocity_results']['evals_real']
-        eval_imag = self.data.linear.stability['velocity_results']['evals_imag']
-
-        # Flutter onset
-        ind_zero_real = np.where(eval_real >= 0)[0][0]
-        assert ind_zero_real > 0, 'Flutter speed not below 165.00 m/s'
-        flutter_speed = 0.5 * (u_inf[ind_zero_real] + u_inf[ind_zero_real - 1])
-        flutter_frequency = np.sqrt(eval_real[ind_zero_real] ** 2 + eval_imag[ind_zero_real] ** 2)
-
-        print('Flutter speed = %.1f m/s' % flutter_speed)
-        print('Flutter frequency = %.2f rad/s' % flutter_frequency)
-        assert np.abs(
-            flutter_speed - flutter_ref_speed) / flutter_ref_speed < 1e-2, ' Flutter speed error greater than ' \
-                                                                           '1 percent'
-        print('Test Complete')
-
-    def test_flutter(self):
-        self.setup()
-        self.run_rom_stable()
-        self.run_flutter()
+        for rom in settings:
+            with self.subTest(rom):
+                self.ws.config['LinearAssembler']['linear_system_settings']['aero_settings']['rom_method'] = [
+                    'Balanced']
+                rom_settings = {'Balanced': settings[rom]}
+                self.ws.config['LinearAssembler']['linear_system_settings']['aero_settings']['rom_method_settings'] = \
+                    rom_settings
+                self.ws.config.write()
+                sharpy.sharpy_main.main(['', self.ws.route + self.ws.case_name + '.sharpy'])
 
     def tearDown(self):
         import shutil
         folders = ['cases', 'figures', 'output']
         for folder in folders:
-            shutil.rmtree(self.route_test_dir + '/' + folder)
+            try:
+                shutil.rmtree(self.route_test_dir + '/' + folder)
+            except FileNotFoundError:
+                pass
 
 
 if __name__ == '__main__':

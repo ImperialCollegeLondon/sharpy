@@ -382,7 +382,7 @@ def generate_solver_file(horseshoe=False):
                                  'BeamPlot',
                                  # 'AeroForcesCalculator',
                                  'BeamCsvOutput'],
-                        'write_screen': 'on',
+                        'write_screen': 'off',
                         'write_log': 'on',
                         'log_folder': route + '/output/',
                         'log_file': case_name + '.log'}

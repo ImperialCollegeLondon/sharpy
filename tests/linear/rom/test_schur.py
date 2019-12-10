@@ -6,6 +6,7 @@ import numpy as np
 import unittest
 import sharpy.rom.krylov as krylov
 import os
+import sharpy.utils.cout_utils as coututils
 
 
 class TestSchurDecomposition(unittest.TestCase):
@@ -13,6 +14,9 @@ class TestSchurDecomposition(unittest.TestCase):
     test_dir = os.path.abspath(os.path.dirname(__file__))
     A = np.loadtxt(test_dir + '/src/schur_A.dat')
     eigsA = np.linalg.eigvals(A)
+
+    def setUp(self):
+        coututils.start_writer()
 
     def test_dt(self):
         """
@@ -49,3 +53,6 @@ class TestSchurDecomposition(unittest.TestCase):
         n_stable_rom = np.sum(eigsAp.real <= 0)
 
         assert n_stable_rom == n_stable_fom, 'Number of stable eigenvalues not preserved during decomposition'
+
+    def tearDown(self):
+        coututils.finish_writer()
