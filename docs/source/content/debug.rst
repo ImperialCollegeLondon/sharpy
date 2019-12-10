@@ -30,7 +30,7 @@ yourself out of them!
 
 * Very different (I'm talking orders of magnitude) stiffnesses between nodes or directions?
 
-* The UVLM requires a smaller vortex core cutoff?
+* Maybe the UVLM requires a smaller a smaller vortex core cutoff (only for linear UVLM simulations, as the nonlinear uses another vortex core model).
 
 * Newmark damping is not enough for this case?
 
