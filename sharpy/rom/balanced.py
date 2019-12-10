@@ -1,4 +1,18 @@
-"""Balancing Methods"""
+"""Balancing Methods
+
+The following classes are available to reduce a linear system employing balancing methods.
+
+The main class is :class:`.Balanced` and the other available classes:
+
+* :class:`.Direct`
+
+* :class:`.Iterative`
+
+* :class:`.FrequencyLimited`
+
+correspond to the reduction algorithm.
+
+"""
 import sharpy.utils.settings as settings
 import numpy as np
 from abc import ABCMeta
@@ -6,6 +20,7 @@ import sharpy.utils.cout_utils as cout
 import sharpy.utils.rom_interface as rom_interface
 import sharpy.rom.utils.librom as librom
 import sharpy.linear.src.libss as libss
+import time
 
 dict_of_balancing_roms = dict()
 
@@ -21,11 +36,14 @@ def bal_rom(arg):
 
 class BaseBalancedRom(metaclass=ABCMeta):
 
+    print_info = False
+
     def initialise(self, in_settings=None):
         pass
 
     def run(self, ss):
         pass
+
 
 @bal_rom
 class Direct(BaseBalancedRom):
@@ -40,6 +58,10 @@ class Direct(BaseBalancedRom):
     settings_types['tune'] = 'bool'
     settings_default['tune'] = True
     settings_description['tune'] = 'Tune ROM to specified tolerance'
+
+    settings_types['use_schur'] = 'bool'
+    settings_default['use_schur'] = False
+    settings_description['use_schur'] = 'Use Schur decomposition during build'
 
     settings_types['rom_tolerance'] = 'float'
     settings_default['rom_tolerance'] = 1e-2
@@ -73,6 +95,9 @@ class Direct(BaseBalancedRom):
         settings.to_custom_types(self.settings, self.settings_types, self.settings_default, self.settings_options)
 
     def run(self, ss):
+        if self.print_info:
+            cout.cout_wrap('Reducing system using a Direct balancing method...')
+        t0 = time.time()
         A, B, C, D = ss.get_mats()
 
         try:
@@ -83,18 +108,23 @@ class Direct(BaseBalancedRom):
         except AttributeError:
             dtsystem = False
 
-        S, T, Tinv = librom.balreal_direct_py(A, B, C, DLTI=dtsystem)
+        S, T, Tinv = librom.balreal_direct_py(A, B, C, DLTI=dtsystem, Schur=self.settings['use_schur'])
 
         Ar = T.dot(A.dot(Tinv))
         Br = T.dot(B)
         Cr = C.dot(Tinv)
 
-        if self.dtsystem:
-            ss_bal = libss.ss(Ar, Br, Cr, self.ss.D, dt=self.ss.dt)
+        if dtsystem:
+            ss_bal = libss.ss(Ar, Br, Cr, D, dt=ss.dt)
         else:
-            ss_bal = libss.ss(Ar, Br, Cr, self.ss.D)
+            ss_bal = libss.ss(Ar, Br, Cr, D)
+
+        t1 = time.time()
+        if self.print_info:
+            cout.cout_wrap('\t...completed balancing in %.2fs' % (t1-t0), 1)
 
         if self.settings['tune']:
+            cout.cout_wrap('\t\tTuning ROM to specified tolerance...', 2)
             kv = np.linspace(self.settings['rom_tune_freq_range'][0],
                              self.settings['rom_tune_freq_range'][1])
             ssrom = librom.tune_rom(ss_bal,
@@ -103,7 +133,11 @@ class Direct(BaseBalancedRom):
                                     gv=S,
                                     convergence=self.settings['convergence'],
                                     method=self.settings['reduction_method'])
-
+            if librom.check_stability(ssrom.A, dt=True):
+                if self.settings['print_info']:
+                    cout.cout_wrap('ROM by direct balancing is stable')
+            t2 = time.time()
+            cout.cout_wrap('\t...completed reduction in %.2fs' % (t2-t0), 1)
             return ssrom
         else:
             return ss_bal
@@ -271,7 +305,7 @@ class Balanced(rom_interface.BaseRom):
     Supported algorithms:
         * Direct balancing :class:`.Direct`
 
-        * Iterative balancing
+        * Iterative balancing :class:`.Iterative`
 
         * Frequency limited balancing :class:`.FrequencyLimited`
 
@@ -281,17 +315,23 @@ class Balanced(rom_interface.BaseRom):
     settings_types = dict()
     settings_default = dict()
     settings_description = dict()
+    settings_options = dict()
+
+    settings_types['print_info'] = 'bool'
+    settings_default['print_info'] = True
+    settings_description['print_info'] = 'Write output to screen'
 
     settings_types['algorithm'] = 'str'
     settings_default['algorithm'] = ''
     settings_description['algorithm'] = 'Balanced realisation method'
+    settings_options['algorithm'] = ['Direct', 'Iterative', 'FrequencyLimited']
 
     settings_types['algorithm_settings'] = 'dict'
     settings_default['algorithm_settings'] = dict()
     settings_description['algorithm_settings'] = 'Settings for the desired algorithm'
 
     settings_table = settings.SettingsTable()
-    __doc__ += settings_table.generate(settings_types, settings_default, settings_description)
+    __doc__ += settings_table.generate(settings_types, settings_default, settings_description, settings_options)
 
     def __init__(self):
         self.settings = dict()
@@ -305,13 +345,14 @@ class Balanced(rom_interface.BaseRom):
         if in_settings is not None:
             self.settings = in_settings
 
-        settings.to_custom_types(self.settings, self.settings_types, self.settings_default)
+        settings.to_custom_types(self.settings, self.settings_types, self.settings_default, self.settings_options)
 
         if not (self.settings['algorithm'] in dict_of_balancing_roms):
             raise AttributeError('Balancing algorithm %s is not yet implemented' % self.settings['algorithm'])
 
         self.algorithm = dict_of_balancing_roms[self.settings['algorithm']]()
         self.algorithm.initialise(self.settings['algorithm_settings'])
+        self.algorithm.print_info = self.settings['print_info']
 
     def run(self, ss):
 

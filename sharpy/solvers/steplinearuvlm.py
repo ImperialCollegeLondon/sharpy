@@ -21,6 +21,7 @@ class StepLinearUVLM(BaseSolver):
     is the case of an aeroelastic solver, where the setting below would be parsed through ``aero_solver_settings``.
 
     Notes:
+
         The ``integr_order`` variable refers to the finite differencing scheme used to calculate the bound circulation
         derivative with respect to time :math:`\dot{\mathbf{\Gamma}}`. A first order scheme is used when
         ``integr_order == 1``
@@ -38,15 +39,17 @@ class StepLinearUVLM(BaseSolver):
 
             * Thence, rotates by the same quantity as the FoR ``A``.
 
-        It is resemblant of a stability axes and is recommended any time rigid body dynamics are included.
+
+        It is similar to a stability axes and is recommended any time rigid body dynamics are included.
 
     See Also:
+
         :class:`sharpy.sharpy.linear.assembler.linearuvlm.LinearUVLM`
 
     References:
+
         [1] Maraniello, S., & Palacios, R.. State-Space Realizations and Internal Balancing in Potential-Flow
-            Aerodynamics with
-            Arbitrary Kinematics. AIAA Journal, 57(6), 1–14. 2019. https://doi.org/10.2514/1.J058153
+        Aerodynamics with Arbitrary Kinematics. AIAA Journal, 57(6), 1–14. 2019. https://doi.org/10.2514/1.J058153
 
     """
     solver_id = 'StepLinearUVLM'
@@ -109,12 +112,10 @@ class StepLinearUVLM(BaseSolver):
 
     __doc__ += settings_table.generate(scaling_settings_types,
                                        scaling_settings_default,
-                                       scaling_settings_description)
+                                       scaling_settings_description, header_line='The settings that ``ScalingDict`` '
+                                                                                 'accepts are the following:')
 
     def __init__(self):
-        """
-        Read default settings from linuvlm module
-        """
         self.data = None
         self.settings = None
         self.lin_uvlm_system = None
@@ -284,8 +285,7 @@ class StepLinearUVLM(BaseSolver):
         The linear UVLM system is then solved as detailed in :func:`sharpy.linear.src.linuvlm.Dynamic.solve_step`.
         The output is a column vector containing the aerodynamic forces at the panel vertices.
 
-        To Do:
-            Option for impulsive start?
+        To Do: option for impulsive start?
 
         Args:
             aero_tstep (AeroTimeStepInfo): object containing the aerodynamic data at the current time step
@@ -434,9 +434,6 @@ class StepLinearUVLM(BaseSolver):
         f_aero = y_n
 
         gamma_vec, gamma_star_vec, gamma_dot_vec = self.data.aero.linear['System'].unpack_state(x_n)
-        # gamma_vec = self.data.aero.linear['gamma_0'] + dgamma_vec
-        # gamma_star_vec = self.data.aero.linear['gamma_star_0'] + dgamma_star_vec
-        # gamma_dot_vec = self.data.aero.linear['gamma_dot_0'] + dgamma_dot_vec
 
         # Reshape output into forces[i_surface] where forces[i_surface] is a (6,M+1,N+1) matrix and circulation terms
         # where gamma is a [i_surf](M+1, N+1) matrix
