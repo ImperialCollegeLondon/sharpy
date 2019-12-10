@@ -101,7 +101,6 @@ output/*
 *figs/*
 
 *.csv
-*.png
 *.eps
 *.vtu
 
