@@ -30,7 +30,7 @@ the analyses that can be done by SHARPy to slender structures, such as high aspe
 The aerodynamic model utilises the Unsteady Vortex Lattice Method (UVLM). The aerodynamic surfaces are modelled as a thin
 vortex ring lattice with the boundary conditions enforced at the collocation points in the middle of the vortex rings.
 The Kutta condition is also enforced at the trailing edge. The wake can be simulated by either additional vortex rings 
-or by infinitely long horseshoe vortices, which ideally suited for steady simulations only.
+or by infinitely long horseshoe vortices, which are ideally suited for steady simulations only.
 
 The input problems can be structural, aerodynamic or coupled, yielding an aeroelastic system.
 
