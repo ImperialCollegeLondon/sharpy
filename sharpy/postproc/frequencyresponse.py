@@ -137,8 +137,8 @@ class FrequencyResponse(solver_interface.BaseSolver):
             else:
                 compute_fom = True
 
-        cout.cout_wrap('Computing frequency response...')
         if (self.settings['compute_fom'].value and self.settings['load_fom'] == '') or compute_fom:
+            cout.cout_wrap('Computing frequency response...')
             cout.cout_wrap('Full order system:', 1)
             t0fom = time.time()
             Y_freq_fom = self.ss.freqresp(self.wv)
@@ -147,6 +147,7 @@ class FrequencyResponse(solver_interface.BaseSolver):
             cout.cout_wrap('\tComputed the frequency response of the full order system in %f s' % tfom, 2)
 
         if self.ssrom is not None:
+            cout.cout_wrap('Computing frequency response...')
             cout.cout_wrap('Reduced order system:', 1)
             t0rom = time.time()
             Y_freq_rom = self.ssrom.freqresp(self.wv)
@@ -208,7 +209,8 @@ class FrequencyResponse(solver_interface.BaseSolver):
             warnings.warn('Matplotlib not found - skipping plot')
 
     def load_frequency_data(self):
-        cout.cout_wrap('Loading frequency response')
+        cout.cout_wrap('Loading frequency response from:')
+        cout.cout_wrap('\t%s' % self.settings['load_fom'], 1)
         Y_freq_fom = np.zeros((self.ss.outputs, self.ss.inputs, len(self.wv)), dtype=complex)
         for m in range(self.ss.inputs):
             for p in range(self.ss.outputs):

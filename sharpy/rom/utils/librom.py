@@ -1250,6 +1250,28 @@ def eigen_dec(A, B, C, dlti=True, N=None, eigs=None, UR=None, URinv=None,
     return Aproj, Bproj, Cproj, Nlist
 
 
+def check_stability(A, dt=True):
+    """
+    Checks the stability of the system.
+
+    Args:
+        A (np.ndarray): System plant matrix
+        dt (bool): Discrete time system
+
+    Returns:
+        bool: True if the system is stable
+    """
+    eigvals = scalg.eigvals(A)
+    if dt:
+        criteria = np.abs(eigvals) > 1.
+    else:
+        criteria = np.real(eigvals) > 0
+
+    if np.sum(criteria) >= 1:
+        return True
+    else:
+        return False
+
 if __name__ == '__main__':
     gv = np.array([5, 4, 3, 2, 1])
     import unittest

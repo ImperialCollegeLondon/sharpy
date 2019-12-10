@@ -1,4 +1,18 @@
-"""Balancing Methods"""
+"""Balancing Methods
+
+The following classes are available to reduce a linear system employing balancing methods.
+
+The main class is :class:`.Balanced` and the other available classes:
+
+* :class:`.Direct`
+
+* :class:`.Iterative`
+
+* :class:`.FrequencyLimited`
+
+correspond to the reduction algorithm.
+
+"""
 import sharpy.utils.settings as settings
 import numpy as np
 from abc import ABCMeta
@@ -6,6 +20,7 @@ import sharpy.utils.cout_utils as cout
 import sharpy.utils.rom_interface as rom_interface
 import sharpy.rom.utils.librom as librom
 import sharpy.linear.src.libss as libss
+import time
 
 dict_of_balancing_roms = dict()
 
@@ -73,6 +88,8 @@ class Direct(BaseBalancedRom):
         settings.to_custom_types(self.settings, self.settings_types, self.settings_default, self.settings_options)
 
     def run(self, ss):
+        cout.cout_wrap('Reducing system using a Direct balancing method...')
+        t0 = time.time()
         A, B, C, D = ss.get_mats()
 
         try:
@@ -89,12 +106,16 @@ class Direct(BaseBalancedRom):
         Br = T.dot(B)
         Cr = C.dot(Tinv)
 
-        if self.dtsystem:
-            ss_bal = libss.ss(Ar, Br, Cr, self.ss.D, dt=self.ss.dt)
+        if dtsystem:
+            ss_bal = libss.ss(Ar, Br, Cr, D, dt=ss.dt)
         else:
-            ss_bal = libss.ss(Ar, Br, Cr, self.ss.D)
+            ss_bal = libss.ss(Ar, Br, Cr, D)
+
+        t1 = time.time()
+        cout.cout_wrap('\t...completed balancing in %.2fs' % (t1-t0), 1)
 
         if self.settings['tune']:
+            cout.cout_wrap('\t\tTuning ROM to specified tolerance...', 2)
             kv = np.linspace(self.settings['rom_tune_freq_range'][0],
                              self.settings['rom_tune_freq_range'][1])
             ssrom = librom.tune_rom(ss_bal,
@@ -103,7 +124,10 @@ class Direct(BaseBalancedRom):
                                     gv=S,
                                     convergence=self.settings['convergence'],
                                     method=self.settings['reduction_method'])
-
+            if librom.check_stability(ssrom.A, dt=True):
+                cout.cout_wrap('ROM by direct balancing is stable')
+            t2 = time.time()
+            cout.cout_wrap('\t...completed reduction in %.2fs' % (t2-t0), 1)
             return ssrom
         else:
             return ss_bal
