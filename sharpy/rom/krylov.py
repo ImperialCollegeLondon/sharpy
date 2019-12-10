@@ -56,6 +56,7 @@ class Krylov(rom_interface.BaseRom):
     settings_types = dict()
     settings_default = dict()
     settings_description = dict()
+    settings_options = dict()
 
     settings_types['print_info'] = 'bool'
     settings_default['print_info'] = True
@@ -75,8 +76,8 @@ class Krylov(rom_interface.BaseRom):
 
     settings_types['single_side'] = 'str'
     settings_default['single_side'] = ''
-    settings_description['single_side'] = 'Construct the rom using a single side - ``C`` for controllability or ' \
-                                          '``O`` for observability. Leave blank for both.'
+    settings_description['single_side'] = 'Construct the rom using a single side. Leave blank (or empty string) for both.'
+    settings_options['single_side'] = ['controllability', 'observability']
 
     settings_types['tangent_input_file'] = 'str'
     settings_default['tangent_input_file'] = ''
@@ -87,7 +88,7 @@ class Krylov(rom_interface.BaseRom):
     settings_description['restart_arnoldi'] = 'Restart Arnoldi iteration with r-=1 if ROM is unstable'
 
     settings_table = settings.SettingsTable()
-    __doc__ += settings_table.generate(settings_types, settings_default, settings_description)
+    __doc__ += settings_table.generate(settings_types, settings_default, settings_description, settings_options)
 
     supported_methods = ('one_sided_arnoldi',
                          'two_sided_arnoldi',
@@ -118,7 +119,7 @@ class Krylov(rom_interface.BaseRom):
         if in_settings is not None:
             self.settings = in_settings
 
-        settings.to_custom_types(self.settings, self.settings_types, self.settings_default)
+        settings.to_custom_types(self.settings, self.settings_types, self.settings_default, self.settings_options)
 
         try:
             if self.settings['print_info']:
@@ -183,9 +184,9 @@ class Krylov(rom_interface.BaseRom):
         self.stable = self.check_stability(restart_arnoldi=self.restart_arnoldi)
 
         if not self.stable:
-            # pass
+            pass
+            warn.warn('Reduced Order Model Unstable')
             # Under development
-            warn.warn('Stabilisation under development')
             # TL, TR = self.restart()
             # Wtr, Vr = self.restart()
             # TL, TR = self.stable_realisation()
