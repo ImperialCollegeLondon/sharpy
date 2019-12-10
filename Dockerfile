@@ -33,8 +33,6 @@ RUN conda init bash && \
 RUN ln -s /sharpy_dir/utils/docker/* /root/
 
 RUN cd sharpy_dir && \
-    git submodule init && \
-    git submodule update && \
     conda activate sharpy_minimal && \
     mkdir build && \
     cd build && \
