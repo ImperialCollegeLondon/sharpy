@@ -5,7 +5,7 @@ The core SHARPy documentation is found herein.
 
 .. note::
 
-	The docs are still a work in progress and therefore, most functions/classes with which there is not much user interaction are not fully documented.We would appreciate any help by means of your contributing to our growing documentation!
+	The docs are still a work in progress and therefore, most functions/classes with which there is not much user interaction are not fully documented. We would appreciate any help by means of your contributing to our growing documentation!
 
 
 If you feel that a function/class is not well documented and, hence, you cannot use it, feel free to raise an issue so that we can improve it.
