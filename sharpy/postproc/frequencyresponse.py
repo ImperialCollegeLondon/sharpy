@@ -23,10 +23,15 @@ class FrequencyResponse(solver_interface.BaseSolver):
     settings_types = dict()
     settings_default = dict()
     settings_description = dict()
+    settings_options = dict()
 
     settings_types['folder'] = 'str'
     settings_default['folder'] = './output'
     settings_description['folder'] = 'Output folder'
+
+    settings_types['print_info'] = 'bool'
+    settings_default['print_info'] = False
+    settings_description['print_info'] = 'Write output to screen'
 
     settings_types['compute_fom'] = 'bool'
     settings_default['compute_fom'] = False
@@ -39,6 +44,7 @@ class FrequencyResponse(solver_interface.BaseSolver):
     settings_types['frequency_unit'] = 'str'
     settings_default['frequency_unit'] = 'k'
     settings_description['frequency_unit'] = 'Units of frequency, "w" for rad/s, "k" reduced'
+    settings_options['frequency_unit'] = ['w', 'k']
 
     settings_types['frequency_bounds'] = 'list(float)'
     settings_default['frequency_bounds'] = [1e-3, 1]
@@ -53,7 +59,7 @@ class FrequencyResponse(solver_interface.BaseSolver):
     settings_description['quick_plot'] = 'Produce array of ``.png`` plots showing response. Requires matplotlib'
 
     settings_table = settings_utils.SettingsTable()
-    __doc__ += settings_table.generate(settings_types, settings_default, settings_description)
+    __doc__ += settings_table.generate(settings_types, settings_default, settings_description, settings_options)
 
     def __init__(self):
 
@@ -82,7 +88,7 @@ class FrequencyResponse(solver_interface.BaseSolver):
             self.settings = self.data.settings[self.solver_id]
         else:
             self.settings = custom_settings
-        settings_utils.to_custom_types(self.settings, self.settings_types, self.settings_default)
+        settings_utils.to_custom_types(self.settings, self.settings_types, self.settings_default, self.settings_options)
 
         # Number of interpolation points
         try:

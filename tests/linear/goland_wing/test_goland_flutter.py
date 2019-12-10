@@ -3,7 +3,6 @@ import os
 import unittest
 import cases.templates.flying_wings as wings
 import sharpy.sharpy_main
-import sharpy.utils.sharpydir as sharpydir
 
 
 class TestGolandFlutter(unittest.TestCase):

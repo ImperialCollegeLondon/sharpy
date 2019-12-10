@@ -147,22 +147,25 @@ def balreal_iter(A, B, C, lowrank=True, tolSmith=1e-10, tolSVD=1e-6, kmin=None,
     """
     Find balanced realisation of DLTI system.
 
-    Notes: Lyapunov equations are solved using iterative squared Smith
-    algorithm, in its low or full rank version. These implementations are
-    as per the low_rank_smith and smith_iter functions respectively but,
-    for computational efficiency, the iterations are rewritten here so as to
-    solve for the observability and controllability Gramians contemporary.
+    Notes:
 
-    Input:
+        Lyapunov equations are solved using iterative squared Smith
+        algorithm, in its low or full rank version. These implementations are
+        as per the low_rank_smith and smith_iter functions respectively but,
+        for computational efficiency, the iterations are rewritten here so as to
+        solve for the observability and controllability Gramians contemporary.
+
 
     - Exploiting sparsity:
-    This algorithm is not ideal to exploit sparsity. However, the following
-    strategies are implemented:
-        - if the A matrix is provided in sparse format, the powers of A will be
-        calculated exploiting sparsity UNTIL the number of non-zero elements
-        is below 15% the size of A. Upon this threshold, the cost of the matrix
-        multiplication rises dramatically, and A is hence converted to a dense
-        numpy array.
+
+        This algorithm is not ideal to exploit sparsity. However, the following
+        strategies are implemented:
+
+            - if the A matrix is provided in sparse format, the powers of A will be
+              calculated exploiting sparsity UNTIL the number of non-zero elements
+              is below 15% the size of A. Upon this threshold, the cost of the matrix
+              multiplication rises dramatically, and A is hence converted to a dense
+              numpy array.
     """
 
     ### Solve Lyapunov equations
