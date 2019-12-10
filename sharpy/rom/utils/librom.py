@@ -1119,22 +1119,24 @@ def eigen_dec(A, B, C, dlti=True, N=None, eigs=None, UR=None, URinv=None,
     consecutivelly.
 
 
-    Input:
-    A,B,C: matrices of state-space model
-    dlti: specifies whether discrete (True) or continuous-time. This information
-        is only required to order the eigenvalues in decreasing dmaping order
-    N: number of states to retain. If None, all states are retained
-    eigs,Ur: eigenvalues and right eigenvector of A matrix as given by:
-        eigs,Ur=scipy.linalg.eig(A,b=None,left=False,right=True)
-    Urinv: inverse of Ur
-    order_by={'damp','freq','stab'}: order according to increasing damping (damp)
-    or decreasing frequency (freq) or decreasing damping (stab).
-        If None, the same order as eigs/UR is followed.
-    tol: absolute tolerance used to identify complex conj pair of eigenvalues
-    complex: if true, the system is left in complex form
+    Args:
+        A: state-space matrix
+        B: state-space matrix
+        C: matrices of state-space model
+        dlti: specifies whether discrete (True) or continuous-time. This information
+            is only required to order the eigenvalues in decreasing dmaping order
+        N: number of states to retain. If None, all states are retained
+        eigs,Ur: eigenvalues and right eigenvector of A matrix as given by:
+            eigs,Ur=scipy.linalg.eig(A,b=None,left=False,right=True)
+        Urinv: inverse of Ur
+        order_by={'damp','freq','stab'}: order according to increasing damping (damp)
+        or decreasing frequency (freq) or decreasing damping (stab).
+            If None, the same order as eigs/UR is followed.
+        tol: absolute tolerance used to identify complex conj pair of eigenvalues
+        complex: if true, the system is left in complex form
 
 
-    Output:
+    Returns:
     (Aproj,Bproj,Cproj): state-space matrices projected over the first N (or N+1
         if N removes the imaginary part equations of a complex conj pair of
         eigenvalues) related to the least damped modes

@@ -5,6 +5,7 @@ import scipy.linalg as sclalg
 import sharpy.linear.src.libsparse as libsp
 import sharpy.utils.cout_utils as cout
 
+
 def block_arnoldi_krylov(r, F, G, approx_type='Pade', side='controllability'):
 
     n = G.shape[0]
@@ -367,6 +368,7 @@ def build_krylov_space(frequency, r, side, a, b):
 
     return v
 
+
 def evec(j):
     """j-th unit vector (in row format)
 
@@ -481,15 +483,30 @@ def remove_a12(As, n_stable):
     return T, X
 
 
-def check_eye(T, Tinv, msg=''):
-    """Simple utility to verify matrix inverses"""
+def check_eye(T, Tinv, msg='', eps=-6):
+    r"""Simple utility to verify matrix inverses
+
+    Asserts that
+
+    .. math:: \mathbf{T}^{-1}\mathbf{T} = \mathbf{I}
+
+    Args:
+        T (np.ndarray): Matrix to test
+        Tinv (np.ndarray): Supposed matrix inverse
+        msg (str): Output error message if inverse check not satisfied
+        eps (float): Error threshold (:math:`10^\varepsilon`)
+
+    Raises:
+        AssertionError: if matrix inverse check is not satisfied
+
+    """
     eye_approx = Tinv.dot(T)
     max_diff = np.max(np.abs(np.eye(eye_approx.shape[0]) - eye_approx))
 
     try:
         log_error = np.log10(max_diff)
-        assert log_error < -6, 'T.dot(Tinv) not equal to identity, %s \nlog(error) = %.e' \
-                               % (msg, np.log10(max_diff))
+        assert log_error < eps, 'Tinv.dot(T) not equal to identity, %s \nlog(error) = %.e' \
+                               % (msg, log_error)
     except RuntimeWarning:
         # unlikely event that both matrices are identical and max_diff == 0
         pass
