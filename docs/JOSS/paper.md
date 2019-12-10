@@ -47,7 +47,7 @@ is also trending towards longer and more slender blades, specially for off-shore
 applications, where the largest blades are now close to 100-m long.
 
 
-These longer and much slender structures can present large deflections and have relatively low frequency structural
+These longer and more slender structures can present large deflections and have relatively low frequency structural
 modes which, in the case of aircraft, can interact with the flight dynamics modes with potentially unstable couplings.
 In the case of offshore wind turbines, platform movement may generate important rotor excursions that cause complex
 aeroelastic phenomena which conventional quasi-linear methods may not accurately capture.
