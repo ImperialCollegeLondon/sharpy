@@ -1,42 +1,58 @@
-# Welcome to Jekyll!
-#
-# This config file is meant for settings that affect your whole blog, values
-# which you are expected to set up once and rarely edit after that. If you find
-# yourself editing this file very often, consider using Jekyll's data files
-# feature for the data you need to update frequently.
-#
-# For technical reasons, this file is *NOT* reloaded automatically when you use
-# 'bundle exec jekyll serve'. If you change this file, please restart the server process.
-
 # Site settings
-# These are used to personalize your new site. If you look in the HTML files,
-# you will see them accessed via {{ site.title }}, {{ site.email }}, and so on.
-# You can create any custom variable you would like, and they will be accessible
-# in the templates via {{ site.myvariable }}.
 title: SHARPy
-email: r.palacios@imperial.ac.uk
-description: >- # this means to ignore newlines until "baseurl:"
-    A nonlinear aeroelastic simulation analysis package for very flexible aircraft and wind turbines.
-baseurl: "/sharpy" # the subpath of your site, e.g. /blog
-url: "" # the base hostname & protocol for your site, e.g. http://example.com
-twitter_username: aeroelastics
-github_username:  imperialcollegelondon
-port: 4444
+email: rpalacios@imperial.ac.uk
+description: >
+  A nonlinear aeroelastic simulation toolbox for very flexible aircraft and wind turbines.
+lang: en-US
+
+baseurl: "/sharpy" # the subpath of your site, e.g. /blog/
+url: https://imperialcollegelondon.github.io/sharpy # the base hostname & protocol for your site
+git_address: https://github.com/imperialcollegelondon/sharpy
+git_edit_address: https://github.com/aksakalli/jekyll-doc-theme/blob/gh-pages
+port: 4000
+
+# theme options from https://bootswatch.com/3/
+# comment out this to use default Bootstrap
+bootwatch: paper # cerulean cosmo custom cyborg darkly flatly journal lumen readable sandstone simplex slate solar spacelab superhero united yeti
 
 # Build settings
 markdown: kramdown
-theme: jekyll-theme-minimal
+highlighter: rouge
+# Plugins (previously gems:)
 plugins:
-  # - jekyll-feed
+  - jekyll-feed
+  - jekyll-redirect-from
+  - jekyll-seo-tag
+  - jekyll-sitemap
 
-# Exclude from processing.
-# The following items will not be processed, by default. Create a custom list
-# to override the default setting.
-# exclude:
-#   - Gemfile
-#   - Gemfile.lock
-#   - node_modules
-#   - vendor/bundle/
-#   - vendor/cache/
-#   - vendor/gems/
-#   - vendor/ruby/
+exclude:
+  - Gemfile
+  - Gemfile.lock
+  - .idea/
+  - .gitignore
+  - README.md
+timezone: Europe/Berlin
+defaults:
+- scope:
+    path: _posts
+    type: posts
+  values:
+    layout: post
+    sectionid: blog
+
+- scope:
+    path: _docs
+    type: docs
+  values:
+    layout: docs
+    sectionid: docs
+    seo:
+      type: "WebPage"
+
+collections:
+  docs:
+    permalink: /:collection/:path/
+    output: true
+  posts:
+    permalink: /blog/:year/:month/:day/:title/
+    output: true
