@@ -6,8 +6,8 @@ import shutil
 import sharpy.utils.generate_cases as gc
 import cases.templates.template_wt as template_wt
 import sharpy.utils.algebra as algebra
+from sharpy.utils.constants import deg2rad
 
-deg2rad = np.pi/180.
 ######################################################################
 ###########################  PARAMETERS  #############################
 ######################################################################

@@ -9,6 +9,7 @@ import shutil
 # import sharpy.utils.algebra as algebra
 import sharpy.utils.generate_cases as gc
 import cases.templates.template_wt as template_wt
+from sharpy.utils.constants import deg2rad
 
 
 class TestGenerateCases(unittest.TestCase):
@@ -19,7 +20,6 @@ class TestGenerateCases(unittest.TestCase):
 
     def setUp(self):
         # remove_terminal_output = True
-        deg2rad = np.pi/180.
         ######################################################################
         ###########################  PARAMETERS  #############################
         ######################################################################

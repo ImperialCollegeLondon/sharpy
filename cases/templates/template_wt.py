@@ -15,9 +15,9 @@ import math
 import os
 import sharpy.utils.algebra as algebra
 import sharpy.utils.h5utils as h5
+from sharpy.utils.constants import deg2rad
 
 
-deg2rad = np.pi/180.
 
 ######################################################################
 # AUX FUNCTIONS

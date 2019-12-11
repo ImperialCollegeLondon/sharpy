@@ -121,8 +121,7 @@ class TestDoublePendulum(unittest.TestCase):
 
     def setUp(self):
         import sharpy.utils.generate_cases as gc
-
-        deg2rad = np.pi/180.
+        from sharpy.utils.constants import deg2rad
 
         # Structural properties
         mass_per_unit_length = 1.

@@ -10,7 +10,6 @@ class TestFixNodeVelocitywrtA(unittest.TestCase):
     def setUp(self):
         import sharpy.utils.generate_cases as gc
 
-        deg2rad = np.pi/180.
         nodes_per_elem = 3
 
         # beam1: uniform and symmetric with aerodynamic properties equal to zero
@@ -191,4 +190,3 @@ class TestFixNodeVelocitywrtA(unittest.TestCase):
             os.remove(folder + '/' + f)
 
         shutil.rmtree(folder + '/output/')
-
