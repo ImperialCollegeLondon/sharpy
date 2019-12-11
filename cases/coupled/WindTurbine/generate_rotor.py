@@ -1,11 +1,8 @@
 import numpy as np
 import os
-import unittest
-import shutil
 
 import sharpy.utils.generate_cases as gc
 import cases.templates.template_wt as template_wt
-import sharpy.utils.algebra as algebra
 from sharpy.utils.constants import deg2rad
 
 ######################################################################
@@ -44,7 +41,7 @@ rotor = template_wt.rotor_from_excel_type02(
                                   chord_panels,
                                   rotation_velocity,
                                   pitch_deg,
-                                  excel_file_name= '../../../tests/coupled/prescribed/WindTurbine/type02_db_NREL_5MW.xlsx',
+                                  excel_file_name = '../../../docs/source/content/example_notebooks/source/type02_db_NREL5MW_v01.xlsx',
                                   excel_sheet_parameters = 'parameters',
                                   excel_sheet_structural_blade = 'structural_blade',
                                   excel_sheet_discretization_blade = 'discretization_blade',

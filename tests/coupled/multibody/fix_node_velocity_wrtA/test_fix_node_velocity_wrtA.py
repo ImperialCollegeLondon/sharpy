@@ -5,6 +5,7 @@ import shutil
 
 folder = os.path.abspath(os.path.dirname(os.path.realpath(__file__)))
 
+
 class TestFixNodeVelocitywrtA(unittest.TestCase):
 
     def setUp(self):
