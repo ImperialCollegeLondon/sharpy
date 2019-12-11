@@ -57,7 +57,7 @@ class TestGenerateCases(unittest.TestCase):
                                           chord_panels,
                                           rotation_velocity,
                                           pitch_deg,
-                                          excel_file_name = '../../docs/source/content/example_notebooks/source/type02_db_NREL5MW_v01.xlsx',
+                                          excel_file_name = route + '../../docs/source/content/example_notebooks/source/type02_db_NREL5MW_v01.xlsx',
                                           excel_sheet_parameters = 'parameters',
                                           excel_sheet_structural_blade = 'structural_blade',
                                           excel_sheet_discretization_blade = 'discretization_blade',
