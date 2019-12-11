@@ -5,50 +5,96 @@ layout: default
 <div class="header-container jumbotron">
     <div class="container">
         <h1>Simulation of High Aspect Ratio airplanes in Python</h1>
-        <p>Simple and modern design for publishing blog posts, documentation and many more things about your project.
-          You can now clone and start to create a website for your project like this one.</p>
-        <p><a class="btn btn-primary btn-lg" href="{{ "/docs/home/" | relative_url }}" role="button">Learn more</a></p>
+        <p>A nonlinear aeroelastic analysis and simulation toolbox for very flexible aircraft and wind turbines</p>
+        <p><a class="btn btn-primary btn-lg" href="{{ "http://ic-sharpy.rtfd.io"}}" role="button">Learn more</a></p>
     </div>
 </div>
 
 <div class="container">
     <div class="row">
         <div class="col-md-6">
-            <h2 class="header-light regular-pad">What is Jekyll?</h2>
-              <p class="lead">Jekyll is a simple, blog-aware, static site generator. It takes a template
-              directory containing raw text files in various formats, runs it through
-              a converter (like <a href="https://daringfireball.net/projects/markdown/">Markdown</a>)
-              and our <a href="https://github.com/Shopify/liquid/wiki">Liquid</a> renderer, and
-              spits out a complete, ready-to-publish static website suitable
-              for serving with your favorite web server. Jekyll also happens to be the engine
-              behind <a href="https://pages.github.com">GitHub Pages</a>, which means you can use Jekyll
-              to host your project’s page, blog, or website from GitHub’s servers <strong>for
-              free</strong>.</p>
-        </div>
+            <h2 class="header-light regular-pad">SHARPy</h2>
+              <p class="lead">SHARPy is an aeroelastic analysis package developed at the Department of Aeronautics,  
+              Imperial College London. It can be used for the structural, aerodynamic and aeroelastic analysis of
+              flexible aircraft, flying wings and wind turbines.        </div>
         <div class="col-md-6 text-center">
-            <img src="{{ "/assets/img/ttail_white.gif" | relative_url }}" alt="Jekyll logo" class="img-responsive">
+            <img src="{{ "/assets/img/ttail_white.gif" | relative_url }}" alt="HALE" class="img-responsive">
         </div>
     </div>
     <hr>
     <div class="row">
         <div class="col-sm-4">
-            <h1 class="text-center"><i class="fa fa-pencil" aria-hidden="true"></i></h1>
-            <h3 class="text-center">Easy to install and publish</h3>
-            <p>Get started by cloning source into GitHub account of your project. Thanks to <a href="https://pages.github.com">GitHub Pages</a>,
-              it will be automatically compiled and published under your account's (or organisation's) subdomain under <code>github.io</code>.
+            <h1 class="text-center"><i class="fa fa-cogs" aria-hidden="true"></i></h1>
+            <h3 class="text-center">Nonlinear Aeroelasticity</h3>
+            <p> At its core, SHARPy includes a geometrically-exact, displacement-based beam model that is coupled to
+            an Unsteady Vortex Lattice Method, enabling the time domain simulation of nonlinear, highly flexible
+            aeroelastic systems such as flexible aircraft and wind turbines.
             </p>
         </div>
         <div class="col-sm-4">
-            <h1 class="text-center"><i class="fa fa-cogs" aria-hidden="true"></i></h1>
-            <h3 class="text-center">Modular Styling and Templating</h3>
-            <p>This template uses <a href="https://github.com/twbs/bootstrap-sass">bootstrap-sass</a> along with <a href="https://bootswatch.com/">Bootwatch themes</a>.
-            You can change the theme or write your custom one by overwriting bootstrap sass variables for a different color set, font options, etc.</p>
+            <h1 class="text-center"><i class="fa fa-cubes" aria-hidden="true"></i></h1>
+            <h3 class="text-center">Modular Framework</h3>
+            <p> SHARPy employs a modular framework where the user can order solvers in different ways to
+            simulate nearly endless variations of the same problem. Choose from nonlinear or linear modules,
+            apply model order reduction techniques, analyse frequency responses or plot full time domain simulations.
+            </p>
         </div>
         <div class="col-sm-4">
-            <h1 class="text-center"><i class="fa fa-code-fork" aria-hidden="true"></i></h1>
-            <h3 class="text-center">Git-based source control</h3>
-            <p>Leverage from Git version control system by
-              maintaining your documentation along with the source code; publish the page when you merge to the master branch.</p>
+            <h1 class="text-center"><i class="fa fa-globe" aria-hidden="true"></i></h1>
+            <h3 class="text-center">Open-source</h3>
+            <p>For you to explore, simulate, learn and contribute. You will find SHARPy on
+            <a href="http://github.com/imperialcollegelondon/sharpy">GitHub</a>.
+            We welcome any contribution you may want to make to the project: from tests, to examples to documentation
+            and even new features! Please check our 
+            <a href="https://ic-sharpy.readthedocs.io/en/master/content/contributing.html">Contributing</a> page.
+            </p>
+        </div>
+    </div>
+    <hr>
+    <div class="row">
+        <div class="col-md-6">
+            <h2 class="header-light regular-pad">Capabilities</h2>
+              <p class="text-left">SHARPy offers numerous analysis and simulation capabilities. As a small overview:
+              <ul>
+              <li> Static aerodynamic, structural and aeroelastic solutions</li>
+              <li> Finding trim conditions for aeroelastic configurations</li>
+              <li> Nonlinear, dynamic time domain simulations under a large number of conditions such as:
+                <ul>
+        <li>Prescribed trajectories.</li>
+        <li>Free flight.</li>
+        <li> Dynamic follower forces.</li>
+        <li> Control inputs in thrust, control surface deflection...</li>
+        <li>Arbitrary time-domain gusts, including non span-constant ones.</li>
+        <li>Full 3D turbulent fields.</li>
+                </ul>
+              </li>
+        <li> Multibody dynamics with hinges, articulations and prescribed nodal motions.
+            <ul>
+                <li> Applicable to wind turbines.</li>
+                <li>Hinged aircraft.</li>
+                <li>Catapult assisted takeoffs.</li>
+                </ul>
+        </li>
+        <li>
+             Linear analysis
+             <ul>
+                <li>Linearisation around a nonlinear equilibrium.</li>
+                <li>Frequency response analysis.</li>
+                <li>Asymptotic stability analysis.</li>
+            </ul>
+        </li>
+        <li>
+            Model order reduction
+            <ul>
+            <li>Krylov-subspace reduction methods.</li>
+            <li> Balancing reduction methods.</li>
+            </ul>
+            </li>
+              </ul>
+    </div>
+
+        <div class="col-md-6 text-center">
+            <img src="{{ "/assets/img/wt_hd.gif" | relative_url }}" alt="WindTurbine" class="img-responsive">
         </div>
     </div>
 </div>
