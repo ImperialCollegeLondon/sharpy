@@ -1,0 +1,101 @@
+--------------------------------------------------------------------------------
+            ######  ##     ##    ###    ########  ########  ##    ##
+           ##    ## ##     ##   ## ##   ##     ## ##     ##  ##  ##
+           ##       ##     ##  ##   ##  ##     ## ##     ##   ####
+            ######  ######### ##     ## ########  ########     ##
+                 ## ##     ## ######### ##   ##   ##           ##
+           ##    ## ##     ## ##     ## ##    ##  ##           ##
+            ######  ##     ## ##     ## ##     ## ##           ##
+--------------------------------------------------------------------------------
+Aeroelastics Lab, Aeronautics Department.
+    Copyright (c), Imperial College London.
+    All rights reserved. 
+    License available at https://github.com/imperialcollegelondon/sharpy
+Running SHARPy from /home/arturo/code/sharpy/tests/utils
+SHARPy being run is in /home/arturo/code/sharpy
+The branch being run is cleanup_wt
+The version and commit hash are: v0.1-1812-g34bb640-34bb640
+The available solvers on this session are:
+_BaseStructural 
+AerogridLoader 
+BeamLoader 
+DynamicCoupled 
+DynamicUVLM 
+LinDynamicSim 
+LinearAssembler 
+Modal 
+NoAero 
+NonLinearDynamic 
+NonLinearDynamicCoupledStep 
+NonLinearDynamicMultibody 
+NonLinearDynamicPrescribedStep 
+NonLinearStatic 
+NonLinearStaticMultibody 
+PrescribedUvlm 
+RigidDynamicPrescribedStep 
+SHWUvlm 
+StaticCoupled 
+StaticCoupledRBM 
+StaticTrim 
+StaticUvlm 
+StepLinearUVLM 
+StepUvlm 
+Trim 
+FrequencyResponse 
+WriteVariablesTime 
+BeamPlot 
+LiftDistribution 
+AeroForcesCalculator 
+CreateSnapshot 
+StabilityDerivatives 
+Cleanup 
+AsymptoticStability 
+PickleData 
+SaveData 
+StallCheck 
+BeamLoads 
+PlotFlowField 
+AerogridPlot 
+PreSharpy 
+Generating an instance of BeamLoader
+Generating an instance of AerogridLoader
+The aerodynamic grid contains 3 surfaces
+  Surface 0, M=4, N=48
+     Wake 0, M=1, N=48
+  Surface 1, M=4, N=48
+     Wake 1, M=1, N=48
+  Surface 2, M=4, N=48
+     Wake 2, M=1, N=48
+  In total: 576 bound panels
+  In total: 144 wake panels
+  Total number of panels = 720
+Generating an instance of StaticCoupledRBM
+Generating an instance of RigidDynamicPrescribedStep
+Generating an instance of SHWUvlm
+i_step: 0, i_iter: 0
+i_step: 0, i_iter: 1
+Pos res     = 0.000000e+00. Psi res     = 0.000000e+00.
+Pos_dot res = 0.000000e+00. Psi_dot res = 0.000000e+00.
+Resultant forces and moments: (array([ 1.10690241e-01, -4.52192292e-02,  6.79623463e+05]), array([-4.96287537e-03,  1.18874199e-02,  4.34902715e+06]))
+Generating an instance of DynamicCoupled
+Generating an instance of RigidDynamicPrescribedStep
+Generating an instance of StepUvlm
+Generating an instance of BeamPlot
+Generating an instance of AerogridPlot
+Generating an instance of Cleanup
+Generating an instance of SaveData
+Variable save_linear has no assigned value in the settings file.
+    will default to the value: c_bool(False)
+Variable save_linear_uvlm has no assigned value in the settings file.
+    will default to the value: c_bool(False)
+Variable skip_attr has no assigned value in the settings file.
+    will default to the value: ['fortran', 'airfoils', 'airfoil_db', 'settings_types', 'ct_dynamic_forces_list', 'ct_gamma_dot_list', 'ct_gamma_list', 'ct_gamma_star_list', 'ct_normals_list', 'ct_u_ext_list', 'ct_u_ext_star_list', 'ct_zeta_dot_list', 'ct_zeta_list', 'ct_zeta_star_list', 'dynamic_input', ['fortran', 'airfoils', 'airfoil_db', 'settings_types', 'ct_dynamic_forces_list', 'ct_forces_list', 'ct_gamma_dot_list', 'ct_gamma_list', 'ct_gamma_star_list', 'ct_normals_list', 'ct_u_ext_list', 'ct_u_ext_star_list', 'ct_zeta_dot_list', 'ct_zeta_list', 'ct_zeta_star_list', 'dynamic_input']]
+Variable format has no assigned value in the settings file.
+    will default to the value: h5
+
+
+
+|=======|========|======|==============|==============|==============|==============|==============|
+|  ts   |   t    | iter | struc ratio  |  iter time   | residual vel |  FoR_vel(x)  |  FoR_vel(z)  |
+|=======|========|======|==============|==============|==============|==============|==============|
+|   1   | 0.0511 |  1   |   0.134283   |   0.883430   |     -inf     | 0.000000e+00 | 0.000000e+00 |
