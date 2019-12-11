@@ -1,14 +1,11 @@
 import unittest
 import numpy as np
-import sys
 import os
 import shutil
-# import math
-# import pandas as pd
-#
-# import sharpy.utils.algebra as algebra
+
 import sharpy.utils.generate_cases as gc
 import cases.templates.template_wt as template_wt
+from sharpy.utils.constants import deg2rad
 
 
 class TestGenerateCases(unittest.TestCase):
@@ -19,7 +16,6 @@ class TestGenerateCases(unittest.TestCase):
 
     def setUp(self):
         # remove_terminal_output = True
-        deg2rad = np.pi/180.
         ######################################################################
         ###########################  PARAMETERS  #############################
         ######################################################################
@@ -61,7 +57,7 @@ class TestGenerateCases(unittest.TestCase):
                                           chord_panels,
                                           rotation_velocity,
                                           pitch_deg,
-                                          excel_file_name = route + 'type02_db_NREL_5MW.xlsx',
+                                          excel_file_name = route + '../../docs/source/content/example_notebooks/source/type02_db_NREL5MW_v01.xlsx',
                                           excel_sheet_parameters = 'parameters',
                                           excel_sheet_structural_blade = 'structural_blade',
                                           excel_sheet_discretization_blade = 'discretization_blade',

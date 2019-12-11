@@ -15,7 +15,6 @@ class TestFixNodeVelocitywrtG(unittest.TestCase):
     """
     def setUp(self):
 
-        deg2rad = np.pi/180.
         nodes_per_elem = 3
 
         # beam1: uniform and symmetric with aerodynamic properties equal to zero

@@ -112,6 +112,7 @@ geradin_FoR1 = np.array([[0.00756934, 0.0266485],
                         [4.91188, 0.74549],
                         [4.98432, 0.797635]])
 
+
 class TestDoublePendulum(unittest.TestCase):
     """
     Validation of a double pendulum with a mass at each tip position
@@ -121,8 +122,7 @@ class TestDoublePendulum(unittest.TestCase):
 
     def setUp(self):
         import sharpy.utils.generate_cases as gc
-
-        deg2rad = np.pi/180.
+        from sharpy.utils.constants import deg2rad
 
         # Structural properties
         mass_per_unit_length = 1.
