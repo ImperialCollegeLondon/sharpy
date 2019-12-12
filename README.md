@@ -12,7 +12,7 @@ SHARPy is an aeroelastic analysis package developed at the Department of Aeronau
 College London. It can be used for the structural, aerodynamic and aeroelastic analysis of flexible aircraft, flying
 wings and wind turbines.
 
-<img src="https://github.com/ImperialCollegeLondon/sharpy/raw/master/docs/source/media/XHALE-render.jpg" width=640>
+![XHALE](./docs/source/_static/XHALE-render.jpg)
 
 ### Contact 
 
@@ -34,9 +34,13 @@ or by infinitely long horseshoe vortices, which are ideally suited for steady si
 
 The input problems can be structural, aerodynamic or coupled, yielding an aeroelastic system.
 
-## Capabilities
+## [Capabilities](http://ic-sharpy.readthedocs.io/en/latest/content/capabilities.html)
 
-SHARPy offers (amongst others) the following solutions to the user:
+At its core, SHARPy is a nonlinear aeroelastic analysis package that can be used on both free-flying aircraft, 
+clamped structures and wind turbines. In addition, it supports linearisation of these nonlinear systems about
+arbitrary conditions and includes various tools such as: model reduction or frequency analysis.
+
+In short, SHARPy offers (amongst others) the following solutions to the user:
 * Static aerodynamic, structural and aeroelastic solutions
 * Finding trim conditions for aeroelastic configurations
 * Nonlinear, dynamic time domain simulations under a large number of conditions such as:
@@ -46,10 +50,17 @@ SHARPy offers (amongst others) the following solutions to the user:
     + Control inputs in thrust, control surface deflection...
     + Arbitrary time-domain gusts, including non span-constant ones.
     + Full 3D turbulent fields.
-    + Multibody dynamics with hinges, articulations and prescribed nodal motions.
+* Multibody dynamics with hinges, articulations and prescribed nodal motions.
+    + Applicable to wind turbines.
+    + Hinged aircraft.
+    + Catapult assisted takeoffs.
+* Linear analysis
     + Linearisation around a nonlinear equilibrium.
     + Frequency response analysis.
-    + Model order reduction.
+    + Asymptotic stability analysis.
+* Model order reduction
+    + Krylov-subspace reduction methods.
+    + Balancing reduction methods.
     
 ## Documentation
 
@@ -63,9 +74,9 @@ As of version v1.0.1, SHARPy can also be obtained from Docker Hub to avoid compi
 and platform-dependant issues. If you are interested, make sure you check
 the [SHARPy Docker distribution docs](https://ic-sharpy.readthedocs.io/en/latest/content/installation.html#using-sharpy-from-a-docker-container).
 
-## Contributing
+## Contributing and Bug reports
 
-If you think you can add some useful feature to SHARPy, by all means, check out
+If you think you can add some useful feature to SHARPy or you encounter a bug, by all means, check out
 the [collaboration guide](https://ic-sharpy.readthedocs.io/en/latest/content/contributing.html).
 
 ## Citing SHARPy

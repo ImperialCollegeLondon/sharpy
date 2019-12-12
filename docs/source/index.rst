@@ -27,7 +27,7 @@ Welcome to SHARPy (Simulation of High Aspect Ratio aeroplanes in Python)!
 
 SHARPy is an aeroelastic analysis package currently under development at the Department of Aeronautics,
 Imperial College London. It can be used for the structural, aerodynamic, aeroelastic and flight dynamics
-analysis of flexible aircraft, flying wings and wind turbines. Amongst others, it offers the following solutions to the user:
+analysis of flexible aircraft, flying wings and wind turbines. Amongst other capabilities_, it offers the following solutions to the user:
 
 * Static aerodynamic, structural and aeroelastic solutions
 * Finding trim conditions for aeroelastic configurations
@@ -39,10 +39,23 @@ analysis of flexible aircraft, flying wings and wind turbines. Amongst others, i
     + Control inputs in thrust, control surface deflection...
     + Arbitrary time-domain gusts, including non span-constant ones.
     + Full 3D turbulent fields.
-    + Multibody dynamics with hinges, articulations and prescribed nodal motions.
+
+* Multibody dynamics with hinges, articulations and prescribed nodal motions.
+
+    + Applicable to wind turbines.
+    + Hinged aircraft.
+    + Catapult assisted takeoffs.
+
+* Linear analysis
+
     + Linearisation around a nonlinear equilibrium.
     + Frequency response analysis.
-    + Model order reduction.
+    + Asymptotic stability analysis.
+
+* Model order reduction
+
+    + Krylov-subspace reduction methods.
+    + Balancing reduction methods.
 
 The modular design of SHARPy allows to simulate complex aeroelastic cases involving very flexible aircraft.
 The structural solver supports very complex beam arrangements, while retaining geometrical nonlinearity.
@@ -56,14 +69,15 @@ Contents
    :maxdepth: 1
 
    content/installation
-   content/sharpy_intro
+   content/capabilities
+   content/examples
    content/contributing
    content/casefiles
-   content/examples
    content/solvers
    content/postproc
    includes/index
    content/test_cases
+   content/debug
 
 Citing SHARPy
 -------------
@@ -93,3 +107,5 @@ Contact
 
 SHARPy is developed at the Department of Aeronautics, Imperial College London. To get in touch, visit the `Loads Control
 and Aeroelastics Lab <http://imperial.ac.uk/aeroelastics>`_ website.
+
+.. _capabilities: ./content/capabilities.html

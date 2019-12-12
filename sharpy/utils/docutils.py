@@ -37,7 +37,16 @@ def generate_documentation():
             continue
         mtitle, mbody = write_folder(folder, ignore_modules['modules'])
         create_index_files(folder, mtitle, mbody)
-    create_index_files('./', 'SHARPy Source Code')
+
+    main_msg = 'The core SHARPy documentation is found herein.\n\n' \
+               '.. note::\n\n' \
+               '\tThe docs are still a work in progress and therefore, ' \
+               'most functions/classes with which there is not much user interaction are not fully documented.' \
+               'We would appreciate any help by means of your contributing to our growing documentation!\n\n\n' \
+               'If you feel that a function/class is not well documented and, hence, you cannot use it, feel free ' \
+               'to raise an issue so that we can improve it.\n\n'
+
+    create_index_files('./', 'SHARPy Source Code', main_msg)
 
 
 def write_folder(folder, ignore_list):

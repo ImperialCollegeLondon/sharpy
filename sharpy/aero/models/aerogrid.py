@@ -24,6 +24,12 @@ import sharpy.utils.generator_interface as gen_interface
 
 
 class Aerogrid(object):
+    """
+    ``Aerogrid`` is the main object containing information of the grid of panels
+
+    It is created by the solver :class:`sharpy.solvers.aerogridloader.AerogridLoader`
+
+    """
     def __init__(self):
         self.aero_dict = None
         self.beam = None
@@ -456,13 +462,8 @@ class Aerogrid(object):
 
 def generate_strip(node_info, airfoil_db, aligned_grid, orientation_in=np.array([1, 0, 0]), calculate_zeta_dot = False):
     """
-    Returns a strip in "a" frame of reference, it has to be then rotated to
+    Returns a strip of panels in ``A`` frame of reference, it has to be then rotated to
     simulate angles of attack, etc
-    :param node_info:
-    :param airfoil_db:
-    :param aligned_grid:
-    :param orientation_in:
-    :return:
     """
     strip_coordinates_a_frame = np.zeros((3, node_info['M'] + 1), dtype=ct.c_double)
     strip_coordinates_b_frame = np.zeros((3, node_info['M'] + 1), dtype=ct.c_double)

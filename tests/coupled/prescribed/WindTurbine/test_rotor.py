@@ -19,9 +19,8 @@ class TestRotor(unittest.TestCase):
     def setUp(self):
         import sharpy.utils.generate_cases as gc
         import cases.templates.template_wt as template_wt
-        import sharpy.utils.algebra as algebra
+        from sharpy.utils.constants import deg2rad
 
-        deg2rad = np.pi/180.
         ######################################################################
         ###########################  PARAMETERS  #############################
         ######################################################################
@@ -59,7 +58,7 @@ class TestRotor(unittest.TestCase):
                                           chord_panels,
                                           rotation_velocity,
                                           pitch_deg,
-                                          excel_file_name= folder + '/type02_db_NREL_5MW.xlsx',
+                                          excel_file_name = route + '../../../../docs/source/content/example_notebooks/source/type02_db_NREL5MW_v01.xlsx',
                                           excel_sheet_parameters = 'parameters',
                                           excel_sheet_structural_blade = 'structural_blade',
                                           excel_sheet_discretization_blade = 'discretization_blade',
