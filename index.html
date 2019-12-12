@@ -6,7 +6,7 @@ layout: default
     <div class="container">
         <h1>Simulation of High Aspect Ratio airplanes in Python</h1>
         <p>A nonlinear aeroelastic analysis and simulation toolbox for very flexible aircraft and wind turbines</p>
-        <p><a class="btn btn-primary btn-lg" href="{{ "http://ic-sharpy.rtfd.io"}}" role="button">Learn more</a></p>
+        <p><a class="btn btn-primary btn-lg" href="{{"http://ic-sharpy.rtfd.io"}}" role="button">Learn more</a></p>
     </div>
 </div>
 
@@ -14,9 +14,12 @@ layout: default
     <div class="row">
         <div class="col-md-6">
             <h2 class="header-light regular-pad">SHARPy</h2>
-              <p class="lead">SHARPy is an aeroelastic analysis package developed at the Department of Aeronautics,  
-              Imperial College London. It can be used for the structural, aerodynamic and aeroelastic analysis of
-              flexible aircraft, flying wings and wind turbines.        </div>
+            <p class="lead">SHARPy is an aeroelastic analysis package developed at the Department of Aeronautics,
+                Imperial College London. It can be used for the structural, aerodynamic and aeroelastic analysis of
+                flexible aircraft, flying wings and wind turbines.
+            <p><a class="btn btn-primary btn-lg" href="{{"http://ic-sharpy.readthedocs.io/en/master/content/installation.html"}}" role="button">Download</a>
+            </p>
+        </div>
         <div class="col-md-6 text-center">
             <img src="{{ "/assets/img/ttail_white.gif" | relative_url }}" alt="HALE" class="img-responsive">
         </div>
@@ -27,71 +30,73 @@ layout: default
             <h1 class="text-center"><i class="fa fa-cogs" aria-hidden="true"></i></h1>
             <h3 class="text-center">Nonlinear Aeroelasticity</h3>
             <p> At its core, SHARPy includes a geometrically-exact, displacement-based beam model that is coupled to
-            an Unsteady Vortex Lattice Method, enabling the time domain simulation of nonlinear, highly flexible
-            aeroelastic systems such as flexible aircraft and wind turbines.
+                an Unsteady Vortex Lattice Method, enabling the time domain simulation of nonlinear, highly flexible
+                aeroelastic systems such as flexible aircraft and wind turbines.
             </p>
         </div>
         <div class="col-sm-4">
             <h1 class="text-center"><i class="fa fa-cubes" aria-hidden="true"></i></h1>
             <h3 class="text-center">Modular Framework</h3>
             <p> SHARPy employs a modular framework where the user can order solvers in different ways to
-            simulate nearly endless variations of the same problem. Choose from nonlinear or linear modules,
-            apply model order reduction techniques, analyse frequency responses or plot full time domain simulations.
+                simulate nearly endless variations of the same problem. Choose from nonlinear or linear modules,
+                apply model order reduction techniques, analyse frequency responses or plot full time domain
+                simulations.
             </p>
         </div>
         <div class="col-sm-4">
             <h1 class="text-center"><i class="fa fa-globe" aria-hidden="true"></i></h1>
             <h3 class="text-center">Open-source</h3>
             <p>For you to explore, simulate, learn and contribute. You will find SHARPy on
-            <a href="http://github.com/imperialcollegelondon/sharpy">GitHub</a>.
-            We welcome any contribution you may want to make to the project: from tests, to examples to documentation
-            and even new features! Please check our 
-            <a href="https://ic-sharpy.readthedocs.io/en/master/content/contributing.html">Contributing</a> page.
+                <a href="http://github.com/imperialcollegelondon/sharpy">GitHub</a>.
+                We welcome any contribution you may want to make to the project: from tests, to examples to
+                documentation
+                and even new features! Please check our
+                <a href="https://ic-sharpy.readthedocs.io/en/master/content/contributing.html">Contributing</a> page.
             </p>
         </div>
     </div>
     <hr>
     <div class="row">
         <div class="col-md-6">
-            <h2 class="header-light regular-pad">Capabilities</h2>
-              <p class="text-left">SHARPy offers numerous analysis and simulation capabilities. As a small overview:
-              <ul>
-              <li> Static aerodynamic, structural and aeroelastic solutions</li>
-              <li> Finding trim conditions for aeroelastic configurations</li>
-              <li> Nonlinear, dynamic time domain simulations under a large number of conditions such as:
-                <ul>
-        <li>Prescribed trajectories.</li>
-        <li>Free flight.</li>
-        <li> Dynamic follower forces.</li>
-        <li> Control inputs in thrust, control surface deflection...</li>
-        <li>Arbitrary time-domain gusts, including non span-constant ones.</li>
-        <li>Full 3D turbulent fields.</li>
-                </ul>
-              </li>
-        <li> Multibody dynamics with hinges, articulations and prescribed nodal motions.
+            <h3 class="header-light regular-pad">Capabilities</h3>
+            <p class="text-left">SHARPy offers numerous analysis and simulation capabilities. As a small overview:
             <ul>
-                <li> Applicable to wind turbines.</li>
-                <li>Hinged aircraft.</li>
-                <li>Catapult assisted takeoffs.</li>
-                </ul>
-        </li>
-        <li>
-             Linear analysis
-             <ul>
-                <li>Linearisation around a nonlinear equilibrium.</li>
-                <li>Frequency response analysis.</li>
-                <li>Asymptotic stability analysis.</li>
+                <li> Static aerodynamic, structural and aeroelastic solutions</li>
+                <li> Finding trim conditions for aeroelastic configurations</li>
+                <li> Nonlinear, dynamic time domain simulations under a large number of conditions such as:
+                    <ul>
+                        <li>Prescribed trajectories.</li>
+                        <li>Free flight.</li>
+                        <li>Dynamic follower forces.</li>
+                        <li>Control inputs in thrust, control surface deflection...</li>
+                        <li>Arbitrary time-domain gusts, including non span-constant ones.</li>
+                        <li>Full 3D turbulent fields.</li>
+                    </ul>
+                </li>
+                <li> Multibody dynamics with hinges, articulations and prescribed nodal motions.
+                    <ul>
+                        <li>Applicable to wind turbines.</li>
+                        <li>Hinged aircraft.</li>
+                        <li>Catapult assisted takeoffs.</li>
+                    </ul>
+                </li>
+                <li>
+                    Linear analysis
+                    <ul>
+                        <li>Linearisation around a nonlinear equilibrium.</li>
+                        <li>Frequency response analysis.</li>
+                        <li>Asymptotic stability analysis.</li>
+                    </ul>
+                </li>
+                <li>
+                    Model order reduction
+                    <ul>
+                        <li>Krylov-subspace reduction methods.</li>
+                        <li> Balancing reduction methods.</li>
+                    </ul>
+                </li>
             </ul>
-        </li>
-        <li>
-            Model order reduction
-            <ul>
-            <li>Krylov-subspace reduction methods.</li>
-            <li> Balancing reduction methods.</li>
-            </ul>
-            </li>
-              </ul>
-    </div>
+        </div>
 
         <div class="col-md-6 text-center">
             <img src="{{ "/assets/img/wt_hd.gif" | relative_url }}" alt="WindTurbine" class="img-responsive">
