@@ -49,20 +49,20 @@ If this works, you're good to go!
 
 First, obtain the SHARPy docker container:
 ```
-docker pull fonsocarre/sharpy:latest
+docker pull fonsocarre/sharpy:stable
 ```
 
 Now you can run it:
 ```
-docker run --name sharpy -it fonsocarre/sharpy:latest
+docker run --name sharpy -it fonsocarre/sharpy:stable
 ```
 You should see a welcome dialog such as:
 ```
->>>> docker run -it fonsocarre/sharpy:dev_docker
-SHARPy added to PATH from the directory: /sharpy/bin
+>>>> docker run -it fonsocarre/sharpy:stable
+SHARPy added to PATH from the directory: /sharpy_dir/bin
 =======================================================================
 Welcome to the Docker image of SHARPy
-SHARPy is located in /sharpy and the
+SHARPy is located in /sharpy_dir/ and the
 environment is already set up!
 Copyright Imperial College London. Released under BSD 3-Clause license.
 =======================================================================
@@ -81,9 +81,14 @@ The `sharpy:` part is the `--name` argument you wrote in the `docker run` comman
 
 You can run the test suite once inside the container as:
 ```
-cd sharpy
+cd sharpy_dir
 python -m unittest
 ```
+
+We make available two different releases: `stable` and `experimental`. The former is the latest SHARPy
+release. The latter is our latest development work which will include new features but with higher chances
+of encountering some bugs along the way. To obtain the experimental build, follow the instructions
+above replacing the `stable` tag for `experimental`.
 
 **Enjoy!**
 
