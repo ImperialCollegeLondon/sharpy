@@ -154,7 +154,7 @@ autodoc_mock_imports = ["matplotlib",
                         "pandas",
                         "lxml",
                         'mpl_toolkits',
-                        'sharpy.aero.utils',
+                        # 'sharpy.aero.utils',
                         'yaml',
                         'sharpy.aero.utils.uvlmlib',
                         'sharpy.structure.utils.xbeamlib']
