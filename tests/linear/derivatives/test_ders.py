@@ -41,7 +41,7 @@ class Test_ders(unittest.TestCase):
         assert er_max < 1e-16, 'Analytical models not matching'
 
         ### compare vs numerical derivative
-        Steps = np.array([1e-2, 1e-4, 1e-6])
+        Steps = np.linspace(libuvlm.VORTEX_RADIUS*0.99, libuvlm.VORTEX_RADIUS * 1e-2, 4)
         Er_max = 0.0 * Steps
         for ss in range(len(Steps)):
             step = Steps[ss]
@@ -83,7 +83,8 @@ class Test_ders(unittest.TestCase):
         assert er_max < 1e-16, 'Analytical models not matching'
 
         ### compare vs numerical derivative
-        Steps = np.array([1e-2, 1e-4, 1e-6])
+        #  first step must be smaller than vortex radius
+        Steps = np.linspace(libuvlm.VORTEX_RADIUS*0.99, libuvlm.VORTEX_RADIUS * 1e-2, 4)
         Er_max = 0.0 * Steps
         for ss in range(len(Steps)):
             step = Steps[ss]
@@ -136,7 +137,7 @@ class Test_ders(unittest.TestCase):
         assert er_max < 1e-16, 'eval_panel_cpp not matching with eval_panel_exp'
 
         # compare vs. numerical derivative
-        Steps = np.array([1e-2, 1e-4, 1e-6])
+        Steps = np.linspace(libuvlm.VORTEX_RADIUS*0.99, libuvlm.VORTEX_RADIUS * 1e-2, 4)
         ErP_max = 0.0 * Steps
         ErVer_max = 0.0 * Steps
         for ss in range(len(Steps)):
@@ -208,7 +209,8 @@ class Test_ders(unittest.TestCase):
         assert er_max < 1e-16, 'eval_panel_cpp not matching with eval_panel_exp'
 
         # compare vs. numerical derivative
-        Steps = np.array([1e-2, 1e-4, 1e-6, 1e-8])
+        # first step must be smaller than vortex radius
+        Steps = np.linspace(libuvlm.VORTEX_RADIUS*0.99, libuvlm.VORTEX_RADIUS * 1e-2, 4)
         ErP_max = 0.0 * Steps
         ErVer_max = 0.0 * Steps
         for ss in range(len(Steps)):
@@ -236,10 +238,10 @@ class Test_ders(unittest.TestCase):
             erVer_max = np.max(np.abs(DerVer_num - DerVer_an))
             print('FD step: %.2e ---> Max error (P,Vert): (%.2e,%.2e)' \
                   % (step, erP_max, erVer_max))
-            # assert erP_max < 5e1 * step, \
-            # 	'Error w.r.t. zetaP larger than 50 times step size'
-            # assert erVer_max < 5e1 * step, \
-            # 	'Error w.r.t. ZetaPanel larger than 50 times step size'
+            assert erP_max < 5e1 * step, \
+            	'Error w.r.t. zetaP larger than 50 times step size'
+            assert erVer_max < 5e1 * step, \
+            	'Error w.r.t. ZetaPanel larger than 50 times step size'
             ErP_max[ss] = erP_max
             ErVer_max[ss] = erVer_max
 

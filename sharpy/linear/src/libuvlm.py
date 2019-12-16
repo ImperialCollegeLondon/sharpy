@@ -12,7 +12,7 @@ import sharpy.utils.algebra as algebra
 libc = UvlmLib
 
 cfact_biot = 0.25 / np.pi
-VORTEX_RADIUS = 1e-2  # numerical radious of vortex
+VORTEX_RADIUS = 1e-6  # numerical radius of vortex
 VORTEX_RADIUS_SQ = VORTEX_RADIUS ** 2
 
 # local mapping segment/vertices of a panel
@@ -62,7 +62,7 @@ def biot_segment(zetaP, zetaA, zetaB, gamma=1.0):
     vcross = algebra.cross3(ra, rb)
     vcross_sq = np.dot(vcross, vcross)
 
-    # numerical radious
+    # numerical radius
     if vcross_sq < (VORTEX_RADIUS_SQ * algebra.normsq3d(rab)):
         return np.zeros((3,))
 
@@ -114,7 +114,7 @@ def biot_panel_fast(zetaC, ZetaPanel, gamma=1.0):
 
 def panel_normal(ZetaPanel):
     """
-    return normal of panel with vertiex coordinates ZetaPanel, where:
+    return normal of panel with vertex coordinates ZetaPanel, where:
         ZetaPanel.shape=(4,3)
     """
 
