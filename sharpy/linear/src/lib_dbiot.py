@@ -18,7 +18,7 @@ import numpy as np
 import ctypes as ct
 
 from sharpy.aero.utils.uvlmlib import UvlmLib
-import sharpy.linear.src.libalg as libalg
+import sharpy.utils.algebra as algebra
 
 libc = UvlmLib
 
@@ -103,16 +103,16 @@ def eval_seg_exp_loop(DerP, DerA, DerB, ZetaP, ZetaA, ZetaB, gamma_seg):
     RA = ZetaP - ZetaA
     RB = ZetaP - ZetaB
     RAB = ZetaB - ZetaA
-    Vcr = libalg.cross3d(RA, RB)
+    Vcr = algebra.cross3(RA, RB)
     vcr2 = np.dot(Vcr, Vcr)
 
     # numerical radious
-    vortex_radious_here = VORTEX_RADIUS * libalg.norm3d(RAB)
+    vortex_radious_here = VORTEX_RADIUS * algebra.norm3d(RAB)
     if vcr2 < vortex_radious_here ** 2:
         return
 
     # scaling
-    ra1, rb1 = libalg.norm3d(RA), libalg.norm3d(RB)
+    ra1, rb1 = algebra.norm3d(RA), algebra.norm3d(RB)
     ra2, rb2 = ra1 ** 2, rb1 ** 2
     rainv = 1. / ra1
     rbinv = 1. / rb1
@@ -131,8 +131,8 @@ def eval_seg_exp_loop(DerP, DerA, DerB, ZetaP, ZetaA, ZetaB, gamma_seg):
     vcr_x, vcr_y, vcr_z = Vcr
     ra2_x, ra2_y, ra2_z = RA ** 2
     rb2_x, rb2_y, rb2_z = RB ** 2
-    ra_vcr_x, ra_vcr_y, ra_vcr_z = 2. * libalg.cross3d(RA, Vcr)
-    rb_vcr_x, rb_vcr_y, rb_vcr_z = 2. * libalg.cross3d(RB, Vcr)
+    ra_vcr_x, ra_vcr_y, ra_vcr_z = 2. * algebra.cross3(RA, Vcr)
+    rb_vcr_x, rb_vcr_y, rb_vcr_z = 2. * algebra.cross3(RB, Vcr)
     vcr_sca_x, vcr_sca_y, vcr_sca_z = Vcr * ra3inv
     vcr_scb_x, vcr_scb_y, vcr_scb_z = Vcr * rb3inv
 
@@ -301,15 +301,15 @@ def eval_seg_comp_loop(DerP, DerA, DerB, ZetaP, ZetaA, ZetaB, gamma_seg):
     RA = ZetaP - ZetaA
     RB = ZetaP - ZetaB
     RAB = ZetaB - ZetaA
-    Vcr = libalg.cross3d(RA, RB)
+    Vcr = algebra.cross3(RA, RB)
     vcr2 = np.dot(Vcr, Vcr)
 
     # numerical radious
-    if vcr2 < (VORTEX_RADIUS_SQ * libalg.normsq3d(RAB)):
+    if vcr2 < (VORTEX_RADIUS_SQ * algebra.normsq3d(RAB)):
         return
 
     ### other constants
-    ra1, rb1 = libalg.norm3d(RA), libalg.norm3d(RB)
+    ra1, rb1 = algebra.norm3d(RA), algebra.norm3d(RB)
     rainv = 1. / ra1
     rbinv = 1. / rb1
     Tv = RA * rainv - RB * rbinv
@@ -393,7 +393,7 @@ def eval_panel_fast(zetaP, ZetaPanel, gamma_pan=1.0):
 
     # distance vertex ii-th from P
     R_list = zetaP - ZetaPanel
-    r1_list = [libalg.norm3d(R_list[ii]) for ii in svec]
+    r1_list = [algebra.norm3d(R_list[ii]) for ii in svec]
     r1inv_list = [1. / r1_list[ii] for ii in svec]
     Runit_list = [R_list[ii] * r1inv_list[ii] for ii in svec]
     Der_runit_list = [
@@ -403,10 +403,10 @@ def eval_panel_fast(zetaP, ZetaPanel, gamma_pan=1.0):
     for aa, bb in LoopPanel:
 
         RAB = ZetaPanel[bb, :] - ZetaPanel[aa, :]  # segment vector
-        Vcr = libalg.cross3d(R_list[aa], R_list[bb])
+        Vcr = algebra.cross3(R_list[aa], R_list[bb])
         vcr2 = np.dot(Vcr, Vcr)
 
-        if vcr2 < (VORTEX_RADIUS_SQ * libalg.normsq3d(RAB)):
+        if vcr2 < (VORTEX_RADIUS_SQ * algebra.normsq3d(RAB)):
             continue
 
         Tv = Runit_list[aa] - Runit_list[bb]
@@ -467,7 +467,7 @@ def eval_panel_fast_coll(zetaP, ZetaPanel, gamma_pan=1.0):
 
     # distance vertex ii-th from P
     R_list = zetaP - ZetaPanel
-    r1_list = [libalg.norm3d(R_list[ii]) for ii in svec]
+    r1_list = [algebra.norm3d(R_list[ii]) for ii in svec]
     r1inv_list = [1. / r1_list[ii] for ii in svec]
     Runit_list = [R_list[ii] * r1inv_list[ii] for ii in svec]
     Der_runit_list = [
@@ -477,10 +477,10 @@ def eval_panel_fast_coll(zetaP, ZetaPanel, gamma_pan=1.0):
     for aa, bb in LoopPanel:
 
         RAB = ZetaPanel[bb, :] - ZetaPanel[aa, :]  # segment vector
-        Vcr = libalg.cross3d(R_list[aa], R_list[bb])
+        Vcr = algebra.cross3(R_list[aa], R_list[bb])
         vcr2 = np.dot(Vcr, Vcr)
 
-        if vcr2 < (VORTEX_RADIUS_SQ * libalg.normsq3d(RAB)):
+        if vcr2 < (VORTEX_RADIUS_SQ * algebra.normsq3d(RAB)):
             continue
 
         Tv = Runit_list[aa] - Runit_list[bb]

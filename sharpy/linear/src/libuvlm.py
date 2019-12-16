@@ -1,13 +1,13 @@
-'''Methods for UVLM solution
+"""Methods for UVLM solution
 
 S. Maraniello, 1 Jun 2018
-'''
+"""
 
 import numpy as np
 import ctypes as ct
 
 from sharpy.aero.utils.uvlmlib import UvlmLib
-import sharpy.linear.src.libalg as libalg
+import sharpy.utils.algebra as algebra
 
 libc = UvlmLib
 
@@ -36,34 +36,34 @@ def biot_panel_cpp(zetaP, ZetaPanel, gamma=1.0):
 
 
 def joukovski_qs_segment(zetaA, zetaB, v_mid, gamma=1.0, fact=0.5):
-    '''
+    """
     Joukovski force over vetices A and B produced by the segment A->B.
     The factor fact allows to compute directly the contribution over the
     vertices A and B (e.g. 0.5) or include DENSITY.
-    '''
+    """
 
     rab = zetaB - zetaA
-    fs = libalg.cross3d(v_mid, rab)
+    fs = algebra.cross3(v_mid, rab)
     gfact = fact * gamma
 
     return gfact * fs
 
 
 def biot_segment(zetaP, zetaA, zetaB, gamma=1.0):
-    '''
+    """
     Induced velocity of segment A_>B of circulation gamma over point P.
-    '''
+    """
 
     # differences
     ra = zetaP - zetaA
     rb = zetaP - zetaB
     rab = zetaB - zetaA
-    ra_norm, rb_norm = libalg.norm3d(ra), libalg.norm3d(rb)
-    vcross = libalg.cross3d(ra, rb)
+    ra_norm, rb_norm = algebra.norm3d(ra), algebra.norm3d(rb)
+    vcross = algebra.cross3(ra, rb)
     vcross_sq = np.dot(vcross, vcross)
 
     # numerical radious
-    if vcross_sq < (VORTEX_RADIUS_SQ * libalg.normsq3d(rab)):
+    if vcross_sq < (VORTEX_RADIUS_SQ * algebra.normsq3d(rab)):
         return np.zeros((3,))
 
     q = ((cfact_biot * gamma / vcross_sq) * \
@@ -73,11 +73,11 @@ def biot_segment(zetaP, zetaA, zetaB, gamma=1.0):
 
 
 def biot_panel(zetaC, ZetaPanel, gamma=1.0):
-    '''
+    """
     Induced velocity over point ZetaC of a panel of vertices coordinates
     ZetaPanel and circulaiton gamma, where:
         ZetaPanel.shape=(4,3)=[vertex local number, (x,y,z) component]
-    '''
+    """
 
     q = np.zeros((3,))
     for ss, aa, bb in zip(svec, avec, bvec):
@@ -87,24 +87,24 @@ def biot_panel(zetaC, ZetaPanel, gamma=1.0):
 
 
 def biot_panel_fast(zetaC, ZetaPanel, gamma=1.0):
-    '''
+    """
     Induced velocity over point ZetaC of a panel of vertices coordinates
     ZetaPanel and circulaiton gamma, where:
         ZetaPanel.shape=(4,3)=[vertex local number, (x,y,z) component]
-    '''
+    """
 
     Cfact = cfact_biot * gamma
     q = np.zeros((3,))
 
     R_list = zetaC - ZetaPanel
-    Runit_list = [R_list[ii] / libalg.norm3d(R_list[ii]) for ii in svec]
+    Runit_list = [R_list[ii] / algebra.norm3d(R_list[ii]) for ii in svec]
 
     for aa, bb in LoopPanel:
 
         RAB = ZetaPanel[bb, :] - ZetaPanel[aa, :]  # segment vector
-        Vcr = libalg.cross3d(R_list[aa], R_list[bb])
+        Vcr = algebra.cross3(R_list[aa], R_list[bb])
         vcr2 = np.dot(Vcr, Vcr)
-        if vcr2 < (VORTEX_RADIUS_SQ * libalg.normsq3d(RAB)):
+        if vcr2 < (VORTEX_RADIUS_SQ * algebra.normsq3d(RAB)):
             continue
 
         q += ((Cfact / vcr2) * np.dot(RAB, Runit_list[aa] - Runit_list[bb])) * Vcr
@@ -113,27 +113,27 @@ def biot_panel_fast(zetaC, ZetaPanel, gamma=1.0):
 
 
 def panel_normal(ZetaPanel):
-    '''
+    """
     return normal of panel with vertiex coordinates ZetaPanel, where:
         ZetaPanel.shape=(4,3)
-    '''
+    """
 
     # build cross-vectors
     r02 = ZetaPanel[2, :] - ZetaPanel[0, :]
     r13 = ZetaPanel[3, :] - ZetaPanel[1, :]
 
-    nvec = libalg.cross3d(r02, r13)
-    nvec = nvec / libalg.norm3d(nvec)
+    nvec = algebra.cross3(r02, r13)
+    nvec = nvec / algebra.norm3d(nvec)
 
     return nvec
 
 
 def panel_area(ZetaPanel):
-    '''
+    """
     return area of panel with vertices coordinates ZetaPanel, where:
         ZetaPanel.shape=(4,3)
     using Bretschneider formula - for cyclic or non-cyclic quadrilaters.
-    '''
+    """
 
     # build cross-vectors
     r02 = ZetaPanel[2, :] - ZetaPanel[0, :]
@@ -145,12 +145,12 @@ def panel_area(ZetaPanel):
     r30 = ZetaPanel[0, :] - ZetaPanel[3, :]
 
     # compute distances
-    d02 = libalg.norm3d(r02)
-    d13 = libalg.norm3d(r13)
-    d01 = libalg.norm3d(r01)
-    d12 = libalg.norm3d(r12)
-    d23 = libalg.norm3d(r23)
-    d30 = libalg.norm3d(r30)
+    d02 = algebra.norm3d(r02)
+    d13 = algebra.norm3d(r13)
+    d01 = algebra.norm3d(r01)
+    d12 = algebra.norm3d(r12)
+    d23 = algebra.norm3d(r23)
+    d30 = algebra.norm3d(r30)
 
     A = 0.25 * np.sqrt((4. * d02 ** 2 * d13 ** 2) - ((d12 ** 2 + d30 ** 2) - (d01 ** 2 + d23 ** 2)) ** 2)
 
