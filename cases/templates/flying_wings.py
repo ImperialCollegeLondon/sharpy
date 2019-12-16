@@ -51,7 +51,7 @@ class FlyingWing():
         RollNodes=False : If true, the wing nodes are rolled insted of the FoR A
 
     Usage: 
-        ws=flying_wings.FltingWing(*args)
+        ws=flying_wings.FlyingWing(*args)
         ws.clean_test_files()
         ws.update_derived_params()
         ws.generate_fem_file()
@@ -647,7 +647,7 @@ class FlyingWing():
         # print('config dictionary set-up with flow:')
         # print(config['SHARPy']['flow'])
 
-    def generate_aero_file(self):
+    def generate_aero_file(self, airfoil_efficiency=None):
 
         with h5.File(self.route + '/' + self.case_name + '.aero.h5', 'a') as h5file:
             airfoils_group = h5file.create_group('airfoils')
@@ -682,6 +682,9 @@ class FlyingWing():
                 'control_surface_deflection', data=self.control_surface_deflection)
             control_surface_chord_input = h5file.create_dataset(
                 'control_surface_chord', data=self.control_surface_chord)
+            if airfoil_efficiency is not None:
+                a_eff_handle = h5file.create_dataset(
+                    'airfoil_efficiency', data=airfoil_efficiency)
 
     def generate_fem_file(self):
 
