@@ -33,7 +33,6 @@ Includes:
 	./nc_domegazetadzeta
 	./nc_dqcdzeta
 	./nc_dqcdzeta_Sin_to_Sout
-	./skew
 	./test_wake_prop_term
 	./uc_dncdzeta
 	./wake_prop

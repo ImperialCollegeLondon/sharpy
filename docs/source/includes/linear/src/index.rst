@@ -10,7 +10,6 @@ Linearised System Source Code
 	./interp/index
 	./lib_dbiot/index
 	./lib_ucdncdzeta/index
-	./libalg/index
 	./libfit/index
 	./libsparse/index
 	./libss/index
