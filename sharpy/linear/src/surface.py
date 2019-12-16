@@ -10,11 +10,10 @@ import itertools
 dmver = np.array([0, 1, 1, 0])  # delta to go from (m,n) panel to (m,n) vertices
 dnver = np.array([0, 0, 1, 1])
 
-from sharpy.utils.sharpydir import SharpyDir
-import sharpy.utils.ctypes_utils as ct_utils
+from sharpy.aero.utils.uvlmlib import UvlmLib
 import sharpy.linear.src.libuvlm as libuvlm
 
-libc = ct_utils.import_ctypes_lib(SharpyDir + '/lib/UVLM/lib/', 'libuvlm')
+libc = UvlmLib
 
 
 class AeroGridGeo():

@@ -6,11 +6,10 @@ S. Maraniello, 1 Jun 2018
 import numpy as np
 import ctypes as ct
 
-from sharpy.utils.sharpydir import SharpyDir
-import sharpy.utils.ctypes_utils as ct_utils
+from sharpy.aero.utils.uvlmlib import UvlmLib
 import sharpy.linear.src.libalg as libalg
 
-libc = ct_utils.import_ctypes_lib(SharpyDir + '/lib/UVLM/lib/', 'libuvlm')
+libc = UvlmLib
 
 cfact_biot = 0.25 / np.pi
 VORTEX_RADIUS = 1e-2  # numerical radious of vortex

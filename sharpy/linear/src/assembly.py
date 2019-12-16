@@ -20,15 +20,13 @@ import numpy as np
 import scipy.sparse as sparse
 import itertools
 
-from sharpy.utils.sharpydir import SharpyDir
-import sharpy.utils.ctypes_utils as ct_utils
+from sharpy.aero.utils.uvlmlib import UvlmLib
 import sharpy.linear.src.libsparse as libsp
 import sharpy.linear.src.lib_dbiot as dbiot
 import sharpy.linear.src.lib_ucdncdzeta as lib_ucdncdzeta
 import sharpy.utils.algebra as algebra
-import warnings
 
-libc = ct_utils.import_ctypes_lib(SharpyDir + '/lib/UVLM/lib/', 'libuvlm')
+libc = UvlmLib
 
 # local indiced panel/vertices as per self.maps
 dmver = [0, 1, 1, 0]  # delta to go from (m,n) panel to (m,n) vertices
@@ -36,17 +34,6 @@ dnver = [0, 0, 1, 1]
 svec = [0, 1, 2, 3]  # seg. no.
 avec = [0, 1, 2, 3]  # 1st vertex no.
 bvec = [1, 2, 3, 0]  # 2nd vertex no.
-
-
-def skew(Av):
-    """ Produce skew matrix such that Av x Bv = skew(Av)*Bv	"""
-    warnings.warn('sharpy.linear.src.assembly.skew() is obsolete, use algebra.skew() instead', stacklevel=2)
-    # ax, ay, az = Av[0], Av[1], Av[2]
-    # Askew = np.array([[0, -az, ay],
-    #                   [az, 0, -ax],
-    #                   [-ay, ax, 0]])
-
-    return algebra.skew(Av)
 
 
 def AICs(Surfs, Surfs_star, target='collocation', Project=True):
