@@ -117,9 +117,9 @@ def local_aero2struct_forces(local_aero_forces, chi_g, cbg, force_efficiency=Non
     Maps the local aerodynamic forces at a given vertex to its corresponding structural node.
 
     .. math::
-        \mathbf{f}_{struct}^B &= \varepsilon^f_0 C^{BG}\mathbf{f}_{i,aero}^G + \varepsilon^f_1\\
-        \mathbf{m}_{struct}^B &= \varepsilon^m_0 (C^{BG}(\mathbf{m}_{i,aero}^G +
-        \tilde{\boldsymbol{\zeta}}^G\mathbf{f}_{i, aero}^G)) + \varepsilon^m_1
+        \mathbf{f}_{struct}^B &= C^{BG}\mathbf{f}_{i,aero}^G\\
+        \mathbf{m}_{struct}^B &= C^{BG}(\mathbf{m}_{i,aero}^G +
+        \tilde{\boldsymbol{\zeta}}^G\mathbf{f}_{i, aero}^G)
 
     Args:
         local_aero_forces (np.ndarray): aerodynamic forces and moments at a grid vertex
