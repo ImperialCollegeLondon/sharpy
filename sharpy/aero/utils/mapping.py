@@ -15,7 +15,7 @@ def aero2struct_force_mapping(aero_forces,
     r"""
     Maps the aerodynamic forces at the lattice to the structural nodes
 
-    The aerodynamic forces from the UVLM are always in the inertial ``G`` frame of reference and have to be trasnformed
+    The aerodynamic forces from the UVLM are always in the inertial ``G`` frame of reference and have to be transformed
     to the body or local ``B`` frame of reference in which the structural forces are defined.
 
     Since the structural nodes and aerodynamic panels are coincident in a spanwise direction, the aerodynamic forces
@@ -29,6 +29,14 @@ def aero2struct_force_mapping(aero_forces,
 
     where :math:`\tilde{\boldsymbol{\zeta}}^G` is the skew-symmetric matrix of the vector between the lattice
     grid vertex and the structural node.
+
+    It is possible to introduce efficiency and constant terms in the mapping of forces that are user-defined. For more
+    info see :func:`~sharpy.aero.utils.mapping.efficiency_local_aero2struct_forces`.
+
+    The efficiency and constant terms are introduced by means of the array ``airfoil_efficiency`` in the ``aero.h5``
+    input file. If this variable has been defined, the function used to map the forces will be
+    :func:`~sharpy.aero.utils.mapping.efficiency_local_aero2struct_forces`. Else, the standard formulation
+    :func:`~sharpy.aero.utils.mapping.local_aero2struct_forces` will be used.
 
     Args:
         aero_forces (list): Aerodynamic forces from the UVLM in inertial frame of reference
@@ -59,14 +67,14 @@ def aero2struct_force_mapping(aero_forces,
     if aero_dict is not None:
         try:
             airfoil_efficiency = aero_dict['airfoil_efficiency']
-            # force efficiency dimensions [n_elem, n_node_elem, 2, [fx, fy, fz]]
+            # force efficiency dimensions [n_elem, n_node_elem, 2, [fx, fy, fz]] - all defined in B frame
             force_efficiency = np.zeros((n_elem, 3, 2, 3))
-            force_efficiency[:, :, :, 0] = airfoil_efficiency[:, :, :, 0]
+            force_efficiency[:, :, :, 1] = airfoil_efficiency[:, :, :, 0]
             force_efficiency[:, :, :, 2] = airfoil_efficiency[:, :, :, 1]
 
-            # moment efficiency dimensions [n_elem, n_node_elem, 2, [mx, my, mz]]
+            # moment efficiency dimensions [n_elem, n_node_elem, 2, [mx, my, mz]] - all defined in B frame
             moment_efficiency = np.zeros_like(force_efficiency)
-            moment_efficiency[:, :, :, 1] = airfoil_efficiency[:, :, :, 2]
+            moment_efficiency[:, :, :, 0] = airfoil_efficiency[:, :, :, 2]
 
             struct2aero_force_function = efficiency_local_aero2struct_forces
 
@@ -117,8 +125,8 @@ def local_aero2struct_forces(local_aero_forces, chi_g, cbg, force_efficiency=Non
         local_aero_forces (np.ndarray): aerodynamic forces and moments at a grid vertex
         chi_g (np.ndarray): vector between grid vertex and structural node in inertial frame
         cbg (np.ndarray): transformation matrix between inertial and body frames of reference
-        force_efficiency (np.ndarray): Unused. See :func:`.efficiency_local_aero2struct_forces`.
-        moment_efficiency (np.ndarray): Unused. See :func:`.efficiency_local_aero2struct_forces`.
+        force_efficiency (np.ndarray): Unused. See :func:`~sharpy.aero.utils.mapping.efficiency_local_aero2struct_forces`.
+        moment_efficiency (np.ndarray): Unused. See :func:`~sharpy.aero.utils.mapping.efficiency_local_aero2struct_forces`.
         i_elem (int):
 
     Returns:
