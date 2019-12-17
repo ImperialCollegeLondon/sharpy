@@ -5,12 +5,12 @@ Calculate derivatives of induced velocity.
 Methods:
 
 - eval_seg_exp and eval_seg_exp_loop: profide ders in format 
-	[Q_{x,y,z},ZetaPoint_{x,y,z}]
+    [Q_{x,y,z},ZetaPoint_{x,y,z}]
   and use fully-expanded analytical formula.
 - eval_panel_exp: iterates through whole panel
 
 - eval_seg_comp and eval_seg_comp_loop: profide ders in format 
-	[Q_{x,y,z},ZetaPoint_{x,y,z}]
+    [Q_{x,y,z},ZetaPoint_{x,y,z}]
   and use compact analytical formula.
 """
 
@@ -19,13 +19,12 @@ import ctypes as ct
 
 from sharpy.aero.utils.uvlmlib import UvlmLib
 import sharpy.utils.algebra as algebra
+from sharpy.linear.src.libuvlm import VORTEX_RADIUS, VORTEX_RADIUS_SQ
 
 libc = UvlmLib
 
 ### constants
 cfact_biot = 0.25 / np.pi
-VORTEX_RADIUS = 1e-2  # numerical radious of vortex
-VORTEX_RADIUS_SQ = VORTEX_RADIUS ** 2
 
 ### looping through panels
 svec = [0, 1, 2, 3]  # seg. no.
