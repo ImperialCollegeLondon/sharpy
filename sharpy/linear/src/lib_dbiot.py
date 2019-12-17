@@ -5,63 +5,29 @@ Calculate derivatives of induced velocity.
 Methods:
 
 - eval_seg_exp and eval_seg_exp_loop: profide ders in format 
-	[Q_{x,y,z},ZetaPoint_{x,y,z}]
+    [Q_{x,y,z},ZetaPoint_{x,y,z}]
   and use fully-expanded analytical formula.
 - eval_panel_exp: iterates through whole panel
 
 - eval_seg_comp and eval_seg_comp_loop: profide ders in format 
-	[Q_{x,y,z},ZetaPoint_{x,y,z}]
+    [Q_{x,y,z},ZetaPoint_{x,y,z}]
   and use compact analytical formula.
 """
 
 import numpy as np
-import ctypes as ct
 
-from sharpy.utils.sharpydir import SharpyDir
-import sharpy.utils.ctypes_utils as ct_utils
-import sharpy.linear.src.libalg as libalg
-
-libc = ct_utils.import_ctypes_lib(SharpyDir + '/lib/UVLM/lib/', 'libuvlm')
+from sharpy.aero.utils.uvlmlib import eval_panel_cpp
+import sharpy.utils.algebra as algebra
+from sharpy.linear.src.uvlmutils import VORTEX_RADIUS, VORTEX_RADIUS_SQ
 
 ### constants
 cfact_biot = 0.25 / np.pi
-VORTEX_RADIUS = 1e-2  # numerical radious of vortex
-VORTEX_RADIUS_SQ = VORTEX_RADIUS ** 2
 
 ### looping through panels
 svec = [0, 1, 2, 3]  # seg. no.
 # avec =[ 0, 1, 2, 3] # 1st vertex no.
 # bvec =[ 1, 2, 3, 0] # 2nd vertex no.
 LoopPanel = [(0, 1), (1, 2), (2, 3), (3, 0)]  # used in eval_panel_{exp/comp}
-
-
-def eval_panel_cpp(zetaP, ZetaPanel, gamma_pan=1.0):
-    """
-    Warning: function may fail if zetaP is not stored contiguously.
-
-    Eg: the following will fail
-        zetaP=Mat[:,2,5]
-        eval_panel_cpp(zetaP,ZetaPanel,gamma_pan=1.0)
-    but
-        zetaP=Mat[:,2,5].copy()
-        eval_panel_cpp(zetaP,ZetaPanel,gamma_pan=1.0)
-    will not.
-    """
-
-    assert zetaP.flags['C_CONTIGUOUS'] and ZetaPanel.flags['C_CONTIGUOUS'], \
-        'Input not C contiguous'
-
-    DerP = np.zeros((3, 3), order='C')
-    DerVertices = np.zeros((4, 3, 3), order='C')
-
-    libc.call_der_biot_panel(
-        DerP.ctypes.data_as(ct.POINTER(ct.c_double)),
-        DerVertices.ctypes.data_as(ct.POINTER(ct.c_double)),
-        zetaP.ctypes.data_as(ct.POINTER(ct.c_double)),
-        ZetaPanel.ctypes.data_as(ct.POINTER(ct.c_double)),
-        ct.byref(ct.c_double(gamma_pan)))
-
-    return DerP, DerVertices
 
 
 def eval_panel_cpp_coll(zetaP, ZetaPanel, gamma_pan=1.0):
@@ -104,16 +70,16 @@ def eval_seg_exp_loop(DerP, DerA, DerB, ZetaP, ZetaA, ZetaB, gamma_seg):
     RA = ZetaP - ZetaA
     RB = ZetaP - ZetaB
     RAB = ZetaB - ZetaA
-    Vcr = libalg.cross3d(RA, RB)
+    Vcr = algebra.cross3(RA, RB)
     vcr2 = np.dot(Vcr, Vcr)
 
     # numerical radious
-    vortex_radious_here = VORTEX_RADIUS * libalg.norm3d(RAB)
+    vortex_radious_here = VORTEX_RADIUS * algebra.norm3d(RAB)
     if vcr2 < vortex_radious_here ** 2:
         return
 
     # scaling
-    ra1, rb1 = libalg.norm3d(RA), libalg.norm3d(RB)
+    ra1, rb1 = algebra.norm3d(RA), algebra.norm3d(RB)
     ra2, rb2 = ra1 ** 2, rb1 ** 2
     rainv = 1. / ra1
     rbinv = 1. / rb1
@@ -132,8 +98,8 @@ def eval_seg_exp_loop(DerP, DerA, DerB, ZetaP, ZetaA, ZetaB, gamma_seg):
     vcr_x, vcr_y, vcr_z = Vcr
     ra2_x, ra2_y, ra2_z = RA ** 2
     rb2_x, rb2_y, rb2_z = RB ** 2
-    ra_vcr_x, ra_vcr_y, ra_vcr_z = 2. * libalg.cross3d(RA, Vcr)
-    rb_vcr_x, rb_vcr_y, rb_vcr_z = 2. * libalg.cross3d(RB, Vcr)
+    ra_vcr_x, ra_vcr_y, ra_vcr_z = 2. * algebra.cross3(RA, Vcr)
+    rb_vcr_x, rb_vcr_y, rb_vcr_z = 2. * algebra.cross3(RB, Vcr)
     vcr_sca_x, vcr_sca_y, vcr_sca_z = Vcr * ra3inv
     vcr_scb_x, vcr_scb_y, vcr_scb_z = Vcr * rb3inv
 
@@ -302,15 +268,15 @@ def eval_seg_comp_loop(DerP, DerA, DerB, ZetaP, ZetaA, ZetaB, gamma_seg):
     RA = ZetaP - ZetaA
     RB = ZetaP - ZetaB
     RAB = ZetaB - ZetaA
-    Vcr = libalg.cross3d(RA, RB)
+    Vcr = algebra.cross3(RA, RB)
     vcr2 = np.dot(Vcr, Vcr)
 
     # numerical radious
-    if vcr2 < (VORTEX_RADIUS_SQ * libalg.normsq3d(RAB)):
+    if vcr2 < (VORTEX_RADIUS_SQ * algebra.normsq3d(RAB)):
         return
 
     ### other constants
-    ra1, rb1 = libalg.norm3d(RA), libalg.norm3d(RB)
+    ra1, rb1 = algebra.norm3d(RA), algebra.norm3d(RB)
     rainv = 1. / ra1
     rbinv = 1. / rb1
     Tv = RA * rainv - RB * rbinv
@@ -394,7 +360,7 @@ def eval_panel_fast(zetaP, ZetaPanel, gamma_pan=1.0):
 
     # distance vertex ii-th from P
     R_list = zetaP - ZetaPanel
-    r1_list = [libalg.norm3d(R_list[ii]) for ii in svec]
+    r1_list = [algebra.norm3d(R_list[ii]) for ii in svec]
     r1inv_list = [1. / r1_list[ii] for ii in svec]
     Runit_list = [R_list[ii] * r1inv_list[ii] for ii in svec]
     Der_runit_list = [
@@ -404,10 +370,10 @@ def eval_panel_fast(zetaP, ZetaPanel, gamma_pan=1.0):
     for aa, bb in LoopPanel:
 
         RAB = ZetaPanel[bb, :] - ZetaPanel[aa, :]  # segment vector
-        Vcr = libalg.cross3d(R_list[aa], R_list[bb])
+        Vcr = algebra.cross3(R_list[aa], R_list[bb])
         vcr2 = np.dot(Vcr, Vcr)
 
-        if vcr2 < (VORTEX_RADIUS_SQ * libalg.normsq3d(RAB)):
+        if vcr2 < (VORTEX_RADIUS_SQ * algebra.normsq3d(RAB)):
             continue
 
         Tv = Runit_list[aa] - Runit_list[bb]
@@ -468,7 +434,7 @@ def eval_panel_fast_coll(zetaP, ZetaPanel, gamma_pan=1.0):
 
     # distance vertex ii-th from P
     R_list = zetaP - ZetaPanel
-    r1_list = [libalg.norm3d(R_list[ii]) for ii in svec]
+    r1_list = [algebra.norm3d(R_list[ii]) for ii in svec]
     r1inv_list = [1. / r1_list[ii] for ii in svec]
     Runit_list = [R_list[ii] * r1inv_list[ii] for ii in svec]
     Der_runit_list = [
@@ -478,10 +444,10 @@ def eval_panel_fast_coll(zetaP, ZetaPanel, gamma_pan=1.0):
     for aa, bb in LoopPanel:
 
         RAB = ZetaPanel[bb, :] - ZetaPanel[aa, :]  # segment vector
-        Vcr = libalg.cross3d(R_list[aa], R_list[bb])
+        Vcr = algebra.cross3(R_list[aa], R_list[bb])
         vcr2 = np.dot(Vcr, Vcr)
 
-        if vcr2 < (VORTEX_RADIUS_SQ * libalg.normsq3d(RAB)):
+        if vcr2 < (VORTEX_RADIUS_SQ * algebra.normsq3d(RAB)):
             continue
 
         Tv = Runit_list[aa] - Runit_list[bb]
@@ -593,13 +559,3 @@ if __name__ == '__main__':
 
     print('------------------------------------------ profiling eval_panel_exp')
     cProfile.runctx('run_eval_panel_exp()', globals(), locals())
-
-# ### profiling sub-functions
-# def f01():
-# 	for ii in range(100000):
-# 		R_list = [zetaP-ZetaPanel[ii,:] for ii in svec]
-# def f02():
-# 	for ii in range(100000):
-# 		R_list = zetaP-ZetaPanel
-# cProfile.runctx('f01()',globals(),locals())
-# cProfile.runctx('f02()',globals(),locals())

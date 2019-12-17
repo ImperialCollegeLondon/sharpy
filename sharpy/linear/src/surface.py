@@ -1,20 +1,18 @@
 """
-Geometrical methods for bound surface
+Geometrical methods for bound surfaces
+
+
 S. Maraniello, 20 May 2018
 """
 
-import ctypes as ct
 import numpy as np
 import itertools
+import sharpy.aero.utils.uvlmlib as uvlmlib  # SHARPy's main uvlm interface with cpp
+import sharpy.linear.src.uvlmutils as uvlmutils  # library with UVLM solution methods
+from sharpy.aero.utils.uvlmlib import get_aic3_cpp
 
 dmver = np.array([0, 1, 1, 0])  # delta to go from (m,n) panel to (m,n) vertices
 dnver = np.array([0, 0, 1, 1])
-
-from sharpy.utils.sharpydir import SharpyDir
-import sharpy.utils.ctypes_utils as ct_utils
-import sharpy.linear.src.libuvlm as libuvlm
-
-libc = ct_utils.import_ctypes_lib(SharpyDir + '/lib/UVLM/lib/', 'libuvlm')
 
 
 class AeroGridGeo():
@@ -86,7 +84,7 @@ class AeroGridGeo():
         for mm in range(M):
             for nn in range(N):
                 zetav_here = self.get_panel_vertices_coords(mm, nn)
-                self.normals[:, mm, nn] = libuvlm.panel_normal(zetav_here)
+                self.normals[:, mm, nn] = uvlmutils.panel_normal(zetav_here)
 
     # -------------------------------------------------- get panel surface area
 
@@ -98,7 +96,7 @@ class AeroGridGeo():
         for mm in range(M):
             for nn in range(N):
                 zetav_here = self.get_panel_vertices_coords(mm, nn)
-                self.areas[mm, nn] = libuvlm.panel_area(zetav_here)
+                self.areas[mm, nn] = uvlmutils.panel_area(zetav_here)
 
     # -------------------------------------------------- get collocation points
 
@@ -448,30 +446,8 @@ class AeroGridSurface(AeroGridGeo):
             for nn in range(N):
                 # panel info
                 zetav_here = self.get_panel_vertices_coords(mm, nn)
-                uind_target += libuvlm.biot_panel_cpp(zeta_target,
+                uind_target += uvlmlib.biot_panel_cpp(zeta_target,
                                                       zetav_here, self.gamma[mm, nn])
-
-        return uind_target
-
-    def get_induced_velocity_cpp(self, zeta_target):
-        """
-        Computes induced velocity at a point zeta_target.
-        """
-        call_ind_vel = libc.call_ind_vel
-        call_ind_vel.restype = None
-
-        assert zeta_target.flags['C_CONTIGUOUS'], "Input not C contiguous"
-
-        M, N = self.maps.M, self.maps.N
-        uind_target = np.zeros((3,), order='C')
-
-        call_ind_vel(
-            uind_target.ctypes.data_as(ct.POINTER(ct.c_double)),
-            zeta_target.ctypes.data_as(ct.POINTER(ct.c_double)),
-            self.zeta.ctypes.data_as(ct.POINTER(ct.c_double)),
-            self.gamma.ctypes.data_as(ct.POINTER(ct.c_double)),
-            ct.byref(ct.c_int(M)),
-            ct.byref(ct.c_int(N)))
 
         return uind_target
 
@@ -491,27 +467,7 @@ class AeroGridSurface(AeroGridGeo):
 
             # get panel coordinates
             zetav_here = self.get_panel_vertices_coords(mm, nn)
-            aic3[:, cc] = libuvlm.biot_panel_cpp(zeta_target, zetav_here, gamma=1.0)
-
-        return aic3
-
-    def get_aic3_cpp(self, zeta_target):
-        """
-        Produces influence coefficinet matrix to calculate the induced velocity
-        at a target point. The aic3 matrix has shape (3,K)
-        """
-
-        assert zeta_target.flags['C_CONTIGUOUS'], "Input not C contiguous"
-
-        K = self.maps.K
-        aic3 = np.zeros((3, K), order='C')
-
-        libc.call_aic3(
-            aic3.ctypes.data_as(ct.POINTER(ct.c_double)),
-            zeta_target.ctypes.data_as(ct.POINTER(ct.c_double)),
-            self.zeta.ctypes.data_as(ct.POINTER(ct.c_double)),
-            ct.byref(ct.c_int(self.maps.M)),
-            ct.byref(ct.c_int(self.maps.N)))
+            aic3[:, cc] = uvlmlib.biot_panel_cpp(zeta_target, zetav_here, gamma=1.0)
 
         return aic3
 
@@ -554,7 +510,7 @@ class AeroGridSurface(AeroGridGeo):
             # loop target points
             for pp in itertools.product(range(M_trg), range(N_trg)):
                 mm, nn = pp
-                uind = self.get_induced_velocity_cpp(ZetaTarget[:, mm, nn])
+                uind = uvlmlib.get_induced_velocity_cpp(self.maps, self.zeta, self.gamma, ZetaTarget[:, mm, nn])
                 if Project:
                     Uind[mm, nn] = np.dot(uind, Surf_target.normals[:, mm, nn])
                 else:
@@ -575,7 +531,7 @@ class AeroGridSurface(AeroGridGeo):
             zetav_here = Surf_target.get_panel_vertices_coords(mm, nn)
             for ss, aa, bb in zip(svec, avec, bvec):
                 zeta_mid = 0.5 * (zetav_here[aa, :] + zetav_here[bb, :])
-                Uind[:, ss, mm, nn] = self.get_induced_velocity_cpp(zeta_mid)
+                Uind[:, ss, mm, nn] = uvlmlib.get_induced_velocity_cpp(self.maps, self.zeta, self.gamma, zeta_mid)
 
             ##### panels n=0: copy seg.3
             nn = 0
@@ -586,7 +542,7 @@ class AeroGridSurface(AeroGridGeo):
                 zetav_here = Surf_target.get_panel_vertices_coords(mm, nn)
                 for ss, aa, bb in zip(svec, avec, bvec):
                     zeta_mid = 0.5 * (zetav_here[aa, :] + zetav_here[bb, :])
-                    Uind[:, ss, mm, nn] = self.get_induced_velocity_cpp(zeta_mid)
+                    Uind[:, ss, mm, nn] = uvlmlib.get_induced_velocity_cpp(self.maps, self.zeta, self.gamma, zeta_mid)
                 Uind[:, 3, mm, nn] = Uind[:, 1, mm - 1, nn]
 
             ##### panels m=0: copy seg.0
@@ -598,7 +554,7 @@ class AeroGridSurface(AeroGridGeo):
                 zetav_here = Surf_target.get_panel_vertices_coords(mm, nn)
                 for ss, aa, bb in zip(svec, avec, bvec):
                     zeta_mid = 0.5 * (zetav_here[aa, :] + zetav_here[bb, :])
-                    Uind[:, ss, mm, nn] = self.get_induced_velocity_cpp(zeta_mid)
+                    Uind[:, ss, mm, nn] = uvlmlib.get_induced_velocity_cpp(self.maps, self.zeta, self.gamma, zeta_mid)
                 Uind[:, 0, mm, nn] = Uind[:, 2, mm, nn - 1]
 
             ##### all others: copy seg. 0 and 3
@@ -610,7 +566,7 @@ class AeroGridSurface(AeroGridGeo):
                 zetav_here = Surf_target.get_panel_vertices_coords(*pp)
                 for ss, aa, bb in zip(svec, avec, bvec):
                     zeta_mid = 0.5 * (zetav_here[aa, :] + zetav_here[bb, :])
-                    Uind[:, ss, mm, nn] = self.get_induced_velocity_cpp(zeta_mid)
+                    Uind[:, ss, mm, nn] = uvlmlib.get_induced_velocity_cpp(self.maps, self.zeta, self.gamma, zeta_mid)
                 Uind[:, 0, mm, nn] = Uind[:, 2, mm, nn - 1]
                 Uind[:, 3, mm, nn] = Uind[:, 1, mm - 1, nn]
 
@@ -660,7 +616,7 @@ class AeroGridSurface(AeroGridGeo):
                 nn = Surf_target.maps.ind_2d_pan_scal[1][cc]
                 # retrieve influence coefficients
                 # ref_aic3=self.get_aic3(ZetaTarget[:,mm,nn])
-                aic3 = self.get_aic3_cpp(ZetaTarget[:, mm, nn])
+                aic3 = get_aic3_cpp(self.maps, self.zeta, ZetaTarget[:, mm, nn])
                 # assert np.max(np.abs(aic3-ref_aic3))<1e-13, embed()
 
                 if Project:
@@ -683,7 +639,7 @@ class AeroGridSurface(AeroGridGeo):
             zetav_here = Surf_target.get_panel_vertices_coords(mm, nn)
             for ss, aa, bb in zip(svec, avec, bvec):
                 zeta_mid = 0.5 * (zetav_here[aa, :] + zetav_here[bb, :])
-                AIC[:, :, ss, mm, nn] = self.get_aic3_cpp(zeta_mid)
+                AIC[:, :, ss, mm, nn] = get_aic3_cpp(self.maps, self.zeta, zeta_mid)
 
             ##### panels n=0: copy seg.3
             nn = 0
@@ -694,7 +650,7 @@ class AeroGridSurface(AeroGridGeo):
                 zetav_here = Surf_target.get_panel_vertices_coords(mm, nn)
                 for ss, aa, bb in zip(svec, avec, bvec):
                     zeta_mid = 0.5 * (zetav_here[aa, :] + zetav_here[bb, :])
-                    AIC[:, :, ss, mm, nn] = self.get_aic3_cpp(zeta_mid)
+                    AIC[:, :, ss, mm, nn] = get_aic3_cpp(self.maps, self.zeta, zeta_mid)
                 AIC[:, :, 3, mm, nn] = AIC[:, :, 1, mm - 1, nn]
 
             ##### panels m=0: copy seg.0
@@ -706,7 +662,7 @@ class AeroGridSurface(AeroGridGeo):
                 zetav_here = Surf_target.get_panel_vertices_coords(mm, nn)
                 for ss, aa, bb in zip(svec, avec, bvec):
                     zeta_mid = 0.5 * (zetav_here[aa, :] + zetav_here[bb, :])
-                    AIC[:, :, ss, mm, nn] = self.get_aic3_cpp(zeta_mid)
+                    AIC[:, :, ss, mm, nn] = get_aic3_cpp(self.maps, self.zeta, zeta_mid)
                 AIC[:, :, 0, mm, nn] = AIC[:, :, 2, mm, nn - 1]
 
             ##### all others: copy seg. 0 and 3
@@ -718,7 +674,7 @@ class AeroGridSurface(AeroGridGeo):
                 zetav_here = Surf_target.get_panel_vertices_coords(*pp)
                 for ss, aa, bb in zip(svec, avec, bvec):
                     zeta_mid = 0.5 * (zetav_here[aa, :] + zetav_here[bb, :])
-                    AIC[:, :, ss, mm, nn] = self.get_aic3_cpp(zeta_mid)
+                    AIC[:, :, ss, mm, nn] = get_aic3_cpp(self.maps, self.zeta, zeta_mid)
                 AIC[:, :, 3, mm, nn] = AIC[:, :, 1, mm - 1, nn]
                 AIC[:, :, 0, mm, nn] = AIC[:, :, 2, mm, nn - 1]
 
@@ -765,7 +721,7 @@ class AeroGridSurface(AeroGridGeo):
             mm, nn = pp
             zetav_here = self.get_panel_vertices_coords(mm, nn)
             for ss, aa, bb in zip(svec, avec, bvec):
-                df = libuvlm.joukovski_qs_segment(
+                df = uvlmutils.joukovski_qs_segment(
                     zetaA=zetav_here[aa, :], zetaB=zetav_here[bb, :],
                     v_mid=self.u_ind_seg[:, ss, mm, nn] + self.u_input_seg[:, ss, mm, nn],
                     gamma=1.0, fact=self.rho)
@@ -786,7 +742,7 @@ class AeroGridSurface(AeroGridGeo):
         self.fqs_wTE_unit = np.zeros((3, N))
 
         for nn in range(N):
-            df = libuvlm.joukovski_qs_segment(
+            df = uvlmutils.joukovski_qs_segment(
                 zetaA=self.zeta[:, M, nn + 1],
                 zetaB=self.zeta[:, M, nn],
                 v_mid=self.u_input_seg[:, 1, M - 1, nn] + self.u_ind_seg[:, 1, M - 1, nn],
@@ -822,46 +778,3 @@ class AeroGridSurface(AeroGridGeo):
             # project at vertices
             for vv in range(4):
                 self.funst[:, mm + dmver[vv], nn + dnver[vv]] += wcv[vv] * fcoll
-
-
-# if __name__ == '__main__':
-#     import read, gridmapping
-#     import matplotlib.pyplot as plt
-#
-#     # select test case
-#     fname = '../test/h5input/goland_mod_Nsurf01_M003_N004_a040.aero_state.h5'
-#     haero = read.h5file(fname)
-#     tsdata = haero.ts00000
-#
-#     # select surface and retrieve data
-#     ss = 0
-#     M, N = tsdata.dimensions[ss]
-#     Map = gridmapping.AeroGridMap(M, N)
-#     G = AeroGridGeo(Map, tsdata.zeta[ss])
-#     # generate geometry data
-#     G.generate_areas()
-#     G.generate_normals()
-#     G.generate_collocations()
-#
-#     # Visualise
-#     G.plot(plot_normals=True)
-#     plt.close('all')
-#     # plt.show()
-#
-#     S = AeroGridSurface(Map, zeta=tsdata.zeta[ss],
-#                         gamma=tsdata.gamma[ss],
-#                         zeta_dot=tsdata.zeta_dot[ss],
-#                         u_ext=tsdata.u_ext[ss],
-#                         gamma_dot=tsdata.gamma_dot[ss])
-#     S.get_normal_input_velocities_at_collocation_points()
-#
-#     # verify aic3
-#     zeta_out = np.array([1, 4, 2])
-#     uind_out = S.get_induced_velocity_cpp(zeta_out)
-#     aic3 = S.get_aic3_cpp(zeta_out)
-#     uind_out2 = np.dot(aic3, S.gamma.reshape(-1, order='C'))
-#     assert np.max(np.abs(uind_out - uind_out2)) < 1e-12, 'Wrong aic3 calculation'
-#
-#     # calc unsteady joukovski force
-#     S.generate_areas()
-#     S.get_joukovski_unsteady()
