@@ -13,11 +13,10 @@ Linearised System Source Code
 	./libfit/index
 	./libsparse/index
 	./libss/index
-	./libuvlm/index
 	./lin_aeroelastic/index
 	./lin_utils/index
 	./lingebm/index
 	./linuvlm/index
 	./multisurfaces/index
-	./pp_aero/index
 	./surface/index
+	./uvlmutils/index

@@ -1,7 +1,9 @@
-Geometrical methods for bound surface
-+++++++++++++++++++++++++++++++++++++
+Geometrical methods for bound surfaces
+++++++++++++++++++++++++++++++++++++++
 
-Geometrical methods for bound surface
+Geometrical methods for bound surfaces
+
+
 S. Maraniello, 20 May 2018
 
 
