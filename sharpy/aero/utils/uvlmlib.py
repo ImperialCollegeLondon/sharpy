@@ -530,3 +530,121 @@ def eval_panel_cpp(zeta_point, zeta_panel, gamma_pan=1.0):
         ct.byref(ct.c_double(gamma_pan)))
 
     return der_point, der_vertices
+
+
+def get_induced_velocity_cpp(maps, zeta, gamma, zeta_target):
+    """
+    Linear UVLM function used in bound surfaces
+
+    Computes induced velocity at a point zeta_target.
+
+    Args:
+        maps (sharpy.linear.src.surface.AeroGridSurface): instance of bound surface
+        zeta (np.ndarray): Coordinates of panel
+        gamma (float): Panel circulation strength
+        zeta_target (np.ndarray): Coordinates of target point
+
+    Returns:
+        np.ndarray: Induced velocity by panel at target point
+
+    """
+    call_ind_vel = UvlmLib.call_ind_vel
+    call_ind_vel.restype = None
+
+    assert zeta_target.flags['C_CONTIGUOUS'], "Input not C contiguous"
+
+    M, N = maps.M, maps.N
+    uind_target = np.zeros((3,), order='C')
+
+    call_ind_vel(
+        uind_target.ctypes.data_as(ct.POINTER(ct.c_double)),
+        zeta_target.ctypes.data_as(ct.POINTER(ct.c_double)),
+        zeta.ctypes.data_as(ct.POINTER(ct.c_double)),
+        gamma.ctypes.data_as(ct.POINTER(ct.c_double)),
+        ct.byref(ct.c_int(M)),
+        ct.byref(ct.c_int(N)))
+
+    return uind_target
+
+
+def get_aic3_cpp(maps, zeta, zeta_target):
+    """
+    Linear UVLM function used in bound surfaces
+
+    Produces influence coefficient matrix to calculate the induced velocity
+    at a target point. The aic3 matrix has shape (3,K)
+
+    Args:
+        maps (sharpy.linear.src.surface.AeroGridSurface): instance of linear bound surface
+        zeta (np.ndarray): Coordinates of panel
+        zeta_target (np.ndarray): Coordinates of target point
+
+    Returns:
+        np.ndarray: Aerodynamic influence coefficient
+    """
+
+    assert zeta_target.flags['C_CONTIGUOUS'], "Input not C contiguous"
+
+    K = maps.K
+    aic3 = np.zeros((3, K), order='C')
+
+    UvlmLib.call_aic3(
+        aic3.ctypes.data_as(ct.POINTER(ct.c_double)),
+        zeta_target.ctypes.data_as(ct.POINTER(ct.c_double)),
+        zeta.ctypes.data_as(ct.POINTER(ct.c_double)),
+        ct.byref(ct.c_int(maps.M)),
+        ct.byref(ct.c_int(maps.N)))
+
+    return aic3
+
+
+def dvinddzeta_cpp(zetac, surf_in, is_bound, M_in_bound=None):
+    """
+    Linear UVLM function used in the assembly of the linear system
+
+    Produces derivatives of induced velocity by surf_in w.r.t. the zetac point.
+    Derivatives are divided into those associated to the movement of zetac, and
+    to the movement of the surf_in vertices (DerVert).
+
+    If surf_in is bound (is_bound==True), the circulation over the TE due to the
+    wake is not included in the input.
+
+    If surf_in is a wake (is_bound==False), derivatives w.r.t. collocation
+    points are computed ad the TE contribution on ``der_vert``. In this case, the
+    chordwise paneling Min_bound of the associated input is required so as to
+    calculate Kzeta and correctly allocate the derivative matrix.
+
+    Returns:
+         tuple: output derivatives are:
+                - der_coll: 3 x 3 matrix
+                - der_vert: 3 x 3*Kzeta (if surf_in is a wake, Kzeta is that of the bound)
+
+    Warning:
+        zetac must be contiguously stored!
+    """
+
+    M_in, N_in = surf_in.maps.M, surf_in.maps.N
+    Kzeta_in = surf_in.maps.Kzeta
+    shape_zeta_in = (3, M_in + 1, N_in + 1)
+
+    # allocate matrices
+    der_coll = np.zeros((3, 3), order='C')
+
+    if is_bound:
+        M_in_bound = M_in
+    Kzeta_in_bound = (M_in_bound + 1) * (N_in + 1)
+    der_vert = np.zeros((3, 3 * Kzeta_in_bound))
+
+    UvlmLib.call_dvinddzeta(
+        der_coll.ctypes.data_as(ct.POINTER(ct.c_double)),
+        der_vert.ctypes.data_as(ct.POINTER(ct.c_double)),
+        zetac.ctypes.data_as(ct.POINTER(ct.c_double)),
+        surf_in.zeta.ctypes.data_as(ct.POINTER(ct.c_double)),
+        surf_in.gamma.ctypes.data_as(ct.POINTER(ct.c_double)),
+        ct.byref(ct.c_int(M_in)),
+        ct.byref(ct.c_int(N_in)),
+        ct.byref(ct.c_bool(is_bound)),
+        ct.byref(ct.c_int(M_in_bound)),
+    )
+
+    return der_coll, der_vert

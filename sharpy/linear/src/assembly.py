@@ -15,19 +15,15 @@ Includes:
           points
 """
 
-import ctypes as ct
 import numpy as np
 import scipy.sparse as sparse
 import itertools
 
-import sharpy.aero.utils.uvlmlib
-from sharpy.aero.utils.uvlmlib import UvlmLib
+from sharpy.aero.utils.uvlmlib import dvinddzeta_cpp, eval_panel_cpp
 import sharpy.linear.src.libsparse as libsp
 import sharpy.linear.src.lib_dbiot as dbiot
 import sharpy.linear.src.lib_ucdncdzeta as lib_ucdncdzeta
 import sharpy.utils.algebra as algebra
-
-libc = UvlmLib
 
 # local indiced panel/vertices as per self.maps
 dmver = [0, 1, 1, 0]  # delta to go from (m,n) panel to (m,n) vertices
@@ -136,10 +132,10 @@ def nc_dqcdzeta_Sin_to_Sout(Surf_in, Surf_out, Der_coll, Der_vert, Surf_in_bound
         # get derivative of induced velocity w.r.t. zetac
         if Surf_in_bound:
             dvind_coll, dvind_vert = dvinddzeta_cpp(zetac_here, Surf_in,
-                                                    IsBound=Surf_in_bound)
+                                                    is_bound=Surf_in_bound)
         else:
             dvind_coll, dvind_vert = dvinddzeta_cpp(zetac_here, Surf_in,
-                                                    IsBound=Surf_in_bound, M_in_bound=M_bound_in)
+                                                    is_bound=Surf_in_bound, M_in_bound=M_bound_in)
 
         ### Surf_in vertices contribution
         Der_vert[cc_out, :] += np.dot(nc_here, dvind_vert)
@@ -884,7 +880,7 @@ def dvinddzeta(zetac, Surf_in, IsBound, M_in_bound=None):
             zeta_panel_in = Surf_in.zeta[:, [mm_in + 0, mm_in + 1, mm_in + 1, mm_in + 0],
                             [nn_in + 0, nn_in + 0, nn_in + 1, nn_in + 1]].T
             # get local derivatives
-            der_zetac, der_zeta_panel = sharpy.aero.utils.uvlmlib.eval_panel_cpp(
+            der_zetac, der_zeta_panel = eval_panel_cpp(
                 zetac, zeta_panel_in, gamma_pan=Surf_in.gamma[mm_in, nn_in])
             ### Mid-segment point contribution
             Dercoll += der_zetac
@@ -937,7 +933,7 @@ def dvinddzeta(zetac, Surf_in, IsBound, M_in_bound=None):
             zeta_panel_in = Surf_in.zeta[:, [0, 1, 1, 0],
                             [nn_in + 0, nn_in + 0, nn_in + 1, nn_in + 1]].T
             # get local derivatives
-            _, der_zeta_panel = sharpy.aero.utils.uvlmlib.eval_panel_cpp(
+            _, der_zeta_panel = eval_panel_cpp(
                 zetac, zeta_panel_in, gamma_pan=Surf_in.gamma[0, nn_in])
 
             for vv in range(2):
@@ -947,54 +943,6 @@ def dvinddzeta(zetac, Surf_in, IsBound, M_in_bound=None):
                     jj_v.append(np.ravel_multi_index(
                         (cc, M_in_bound, nn_v), shape_zeta_in_bound))
                 Dervert[:, jj_v] += der_zeta_panel[vvec[vv], :, :]
-
-    return Dercoll, Dervert
-
-
-def dvinddzeta_cpp(zetac, Surf_in, IsBound, M_in_bound=None):
-    """
-    Produces derivatives of induced velocity by Surf_in w.r.t. the zetac point.
-    Derivatives are divided into those associated to the movement of zetac, and
-    to the movement of the Surf_in vertices (DerVert).
-
-    If Surf_in is bound (IsBound==True), the circulation over the TE due to the
-    wake is not included in the input.
-
-    If Surf_in is a wake (IsBound==False), derivatives w.r.t. collocation
-    points are computed ad the TE contribution on DerVert. In this case, the
-    chordwise paneling Min_bound of the associated input is required so as to
-    calculate Kzeta and correctly allocate the derivative matrix.
-
-    The output derivatives are:
-    - Dercoll: 3 x 3 matrix
-    - Dervert: 3 x 3*Kzeta (if Surf_in is a wake, Kzeta is that of the bound)
-
-    Warning:
-    zetac must be contiguously stored!
-    """
-
-    M_in, N_in = Surf_in.maps.M, Surf_in.maps.N
-    Kzeta_in = Surf_in.maps.Kzeta
-    shape_zeta_in = (3, M_in + 1, N_in + 1)
-
-    # allocate matrices
-    Dercoll = np.zeros((3, 3), order='C')
-
-    if IsBound: M_in_bound = M_in
-    Kzeta_in_bound = (M_in_bound + 1) * (N_in + 1)
-    Dervert = np.zeros((3, 3 * Kzeta_in_bound))
-
-    libc.call_dvinddzeta(
-        Dercoll.ctypes.data_as(ct.POINTER(ct.c_double)),
-        Dervert.ctypes.data_as(ct.POINTER(ct.c_double)),
-        zetac.ctypes.data_as(ct.POINTER(ct.c_double)),
-        Surf_in.zeta.ctypes.data_as(ct.POINTER(ct.c_double)),
-        Surf_in.gamma.ctypes.data_as(ct.POINTER(ct.c_double)),
-        ct.byref(ct.c_int(M_in)),
-        ct.byref(ct.c_int(N_in)),
-        ct.byref(ct.c_bool(IsBound)),
-        ct.byref(ct.c_int(M_in_bound)),
-    )
 
     return Dercoll, Dervert
 
@@ -1062,7 +1010,7 @@ def dfqsdvind_zeta(Surfs, Surfs_star):
                     Dervert = Dervert_list[ss_out][ss_in]  # <- link
                     # deriv wrt induced velocity
                     dvind_mid, dvind_vert = dvinddzeta_cpp(
-                        zeta_mid, Surf_in, IsBound=True)
+                        zeta_mid, Surf_in, is_bound=True)
                     # allocate coll
                     Df = np.dot(0.25 * Lskew, dvind_mid)
                     Dercoll[np.ix_(ii_a, ii_a)] += Df
@@ -1078,7 +1026,7 @@ def dfqsdvind_zeta(Surfs, Surfs_star):
                     # deriv wrt induced velocity
                     dvind_mid, dvind_vert = dvinddzeta_cpp(
                         zeta_mid, Surfs_star[ss_in],
-                        IsBound=False, M_in_bound=Surf_in.maps.M)
+                        is_bound=False, M_in_bound=Surf_in.maps.M)
                     # allocate coll
                     Df = np.dot(0.25 * Lskew, dvind_mid)
                     Dercoll[np.ix_(ii_a, ii_a)] += Df
@@ -1119,7 +1067,7 @@ def dfqsdvind_zeta(Surfs, Surfs_star):
                 shape_zeta_in_bound = (3, M_in_bound + 1, N_in_bound + 1)
                 Dervert = Dervert_list[ss_out][ss_in]  # <- link
                 # deriv wrt induced velocity
-                dvind_mid, dvind_vert = dvinddzeta_cpp(zeta_mid, Surf_in, IsBound=True)
+                dvind_mid, dvind_vert = dvinddzeta_cpp(zeta_mid, Surf_in, is_bound=True)
                 # allocate coll
                 Df = np.dot(0.25 * Lskew, dvind_mid)
                 Dercoll[np.ix_(ii_a, ii_a)] += Df
@@ -1135,7 +1083,7 @@ def dfqsdvind_zeta(Surfs, Surfs_star):
                 # deriv wrt induced velocity
                 dvind_mid, dvind_vert = dvinddzeta_cpp(
                     zeta_mid, Surfs_star[ss_in],
-                    IsBound=False, M_in_bound=Surf_in.maps.M)
+                    is_bound=False, M_in_bound=Surf_in.maps.M)
                 # allocate coll
                 Df = np.dot(0.25 * Lskew, dvind_mid)
                 Dercoll[np.ix_(ii_a, ii_a)] += Df
@@ -1282,7 +1230,6 @@ def test_wake_prop_term(M, N, M_star, N_star, use_sparse, sparse_format='csc'):
 
 if __name__ == '__main__':
     import time
-    import cProfile
 
     M, N = 20, 30
     M_star, N_star = M * 20, N
