@@ -459,3 +459,74 @@ def uvlm_calculate_total_induced_velocity_at_points(ts_info,
     del p_target_triads
 
     return uind
+
+
+def biot_panel_cpp(zeta_point, zeta_panel, gamma=1.0):
+    """
+    Linear UVLM function
+
+    Returns the induced velocity at a point ``zeta_point`` due to a panel located at ``zeta_panel`` with circulation
+    ``gamma``.
+
+    Args:
+        zeta_point (np.ndarray): Coordinates of the point with size ``(3,)``.
+        zeta_panel (np.ndarray): Panel coordinates with size ``(4, 3)``.
+        gamma (float): Panel circulation.
+
+    Returns:
+        np.ndarray: Induced velocity at point
+
+    """
+
+    assert zeta_point.flags['C_CONTIGUOUS'] and zeta_panel.flags['C_CONTIGUOUS'], \
+        'Input not C contiguous'
+
+    velP = np.zeros((3,), order='C')
+    UvlmLib.call_biot_panel(
+        velP.ctypes.data_as(ct.POINTER(ct.c_double)),
+        zeta_point.ctypes.data_as(ct.POINTER(ct.c_double)),
+        zeta_panel.ctypes.data_as(ct.POINTER(ct.c_double)),
+        ct.byref(ct.c_double(gamma)))
+
+    return velP
+
+
+def eval_panel_cpp(zeta_point, zeta_panel, gamma_pan=1.0):
+    """
+    Linear UVLM function
+
+    Returns
+        tuple: The derivative of the induced velocity with respect to point ``P`` and panel vertices ``ZetaP``.
+
+    Warnings:
+        Function may fail if zeta_point is not stored contiguously.
+
+        Eg:
+
+        The following will fail
+
+            zeta_point=Mat[:,2,5]
+            eval_panel_cpp(zeta_point,zeta_panel,gamma_pan=1.0)
+
+        but
+
+            zeta_point=Mat[:,2,5].copy()
+            eval_panel_cpp(zeta_point,zeta_panel,gamma_pan=1.0)
+
+        will not.
+    """
+
+    assert zeta_point.flags['C_CONTIGUOUS'] and zeta_panel.flags['C_CONTIGUOUS'], \
+        'Input not C contiguous'
+
+    der_point = np.zeros((3, 3), order='C')
+    der_vertices = np.zeros((4, 3, 3), order='C')
+
+    UvlmLib.call_der_biot_panel(
+        der_point.ctypes.data_as(ct.POINTER(ct.c_double)),
+        der_vertices.ctypes.data_as(ct.POINTER(ct.c_double)),
+        zeta_point.ctypes.data_as(ct.POINTER(ct.c_double)),
+        zeta_panel.ctypes.data_as(ct.POINTER(ct.c_double)),
+        ct.byref(ct.c_double(gamma_pan)))
+
+    return der_point, der_vertices

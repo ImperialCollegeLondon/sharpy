@@ -20,6 +20,7 @@ import numpy as np
 import scipy.sparse as sparse
 import itertools
 
+import sharpy.aero.utils.uvlmlib
 from sharpy.aero.utils.uvlmlib import UvlmLib
 import sharpy.linear.src.libsparse as libsp
 import sharpy.linear.src.lib_dbiot as dbiot
@@ -883,7 +884,7 @@ def dvinddzeta(zetac, Surf_in, IsBound, M_in_bound=None):
             zeta_panel_in = Surf_in.zeta[:, [mm_in + 0, mm_in + 1, mm_in + 1, mm_in + 0],
                             [nn_in + 0, nn_in + 0, nn_in + 1, nn_in + 1]].T
             # get local derivatives
-            der_zetac, der_zeta_panel = dbiot.eval_panel_cpp(
+            der_zetac, der_zeta_panel = sharpy.aero.utils.uvlmlib.eval_panel_cpp(
                 zetac, zeta_panel_in, gamma_pan=Surf_in.gamma[mm_in, nn_in])
             ### Mid-segment point contribution
             Dercoll += der_zetac
@@ -936,7 +937,7 @@ def dvinddzeta(zetac, Surf_in, IsBound, M_in_bound=None):
             zeta_panel_in = Surf_in.zeta[:, [0, 1, 1, 0],
                             [nn_in + 0, nn_in + 0, nn_in + 1, nn_in + 1]].T
             # get local derivatives
-            _, der_zeta_panel = dbiot.eval_panel_cpp(
+            _, der_zeta_panel = sharpy.aero.utils.uvlmlib.eval_panel_cpp(
                 zetac, zeta_panel_in, gamma_pan=Surf_in.gamma[0, nn_in])
 
             for vv in range(2):

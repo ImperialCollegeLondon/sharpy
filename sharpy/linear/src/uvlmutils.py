@@ -2,14 +2,9 @@
 
 S. Maraniello, 1 Jun 2018
 """
-
 import numpy as np
-import ctypes as ct
-
-from sharpy.aero.utils.uvlmlib import UvlmLib
+import sharpy.aero.utils.uvlmlib as uvlmlib
 import sharpy.utils.algebra as algebra
-
-libc = UvlmLib
 
 cfact_biot = 0.25 / np.pi
 VORTEX_RADIUS = 1e-6  # numerical radius of vortex
@@ -20,19 +15,6 @@ svec = [0, 1, 2, 3]  # seg. number
 avec = [0, 1, 2, 3]  # 1st vertex of seg.
 bvec = [1, 2, 3, 0]  # 2nd vertex of seg.
 LoopPanel = [(0, 1), (1, 2), (2, 3), (3, 0)]  # used in eval_panel_{exp/comp}
-
-
-def biot_panel_cpp(zetaP, ZetaPanel, gamma=1.0):
-    assert zetaP.flags['C_CONTIGUOUS'] and ZetaPanel.flags['C_CONTIGUOUS'], \
-        'Input not C contiguous'
-    velP = np.zeros((3,), order='C')
-    libc.call_biot_panel(
-        velP.ctypes.data_as(ct.POINTER(ct.c_double)),
-        zetaP.ctypes.data_as(ct.POINTER(ct.c_double)),
-        ZetaPanel.ctypes.data_as(ct.POINTER(ct.c_double)),
-        ct.byref(ct.c_double(gamma)))
-
-    return velP
 
 
 def joukovski_qs_segment(zetaA, zetaB, v_mid, gamma=1.0, fact=0.5):
@@ -175,7 +157,7 @@ if __name__ == '__main__':
     ### verify model consistency
     qref = biot_panel(zetaP, ZetaPanel, gamma=gamma)
     qfast = biot_panel_fast(zetaP, ZetaPanel, gamma=gamma)
-    qcpp = biot_panel_cpp(zetaP, ZetaPanel, gamma=gamma)
+    qcpp = uvlmlib.biot_panel_cpp(zetaP, ZetaPanel, gamma=gamma)
 
     ermax = np.max(np.abs(qref - qfast))
     assert ermax < 1e-16, 'biot_panel_fast not matching with biot_panel'
@@ -186,7 +168,7 @@ if __name__ == '__main__':
     ### profiling
     def run_biot_panel_cpp():
         for ii in range(10000):
-            biot_panel_cpp(zetaP, ZetaPanel, gamma=3.)
+            uvlmlib.biot_panel_cpp(zetaP, ZetaPanel, gamma=3.)
 
 
     def run_biot_panel_fast():

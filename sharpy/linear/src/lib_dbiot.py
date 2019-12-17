@@ -15,13 +15,10 @@ Methods:
 """
 
 import numpy as np
-import ctypes as ct
 
-from sharpy.aero.utils.uvlmlib import UvlmLib
+from sharpy.aero.utils.uvlmlib import eval_panel_cpp
 import sharpy.utils.algebra as algebra
-from sharpy.linear.src.libuvlm import VORTEX_RADIUS, VORTEX_RADIUS_SQ
-
-libc = UvlmLib
+from sharpy.linear.src.uvlmutils import VORTEX_RADIUS, VORTEX_RADIUS_SQ
 
 ### constants
 cfact_biot = 0.25 / np.pi
@@ -31,35 +28,6 @@ svec = [0, 1, 2, 3]  # seg. no.
 # avec =[ 0, 1, 2, 3] # 1st vertex no.
 # bvec =[ 1, 2, 3, 0] # 2nd vertex no.
 LoopPanel = [(0, 1), (1, 2), (2, 3), (3, 0)]  # used in eval_panel_{exp/comp}
-
-
-def eval_panel_cpp(zetaP, ZetaPanel, gamma_pan=1.0):
-    """
-    Warning: function may fail if zetaP is not stored contiguously.
-
-    Eg: the following will fail
-        zetaP=Mat[:,2,5]
-        eval_panel_cpp(zetaP,ZetaPanel,gamma_pan=1.0)
-    but
-        zetaP=Mat[:,2,5].copy()
-        eval_panel_cpp(zetaP,ZetaPanel,gamma_pan=1.0)
-    will not.
-    """
-
-    assert zetaP.flags['C_CONTIGUOUS'] and ZetaPanel.flags['C_CONTIGUOUS'], \
-        'Input not C contiguous'
-
-    DerP = np.zeros((3, 3), order='C')
-    DerVertices = np.zeros((4, 3, 3), order='C')
-
-    libc.call_der_biot_panel(
-        DerP.ctypes.data_as(ct.POINTER(ct.c_double)),
-        DerVertices.ctypes.data_as(ct.POINTER(ct.c_double)),
-        zetaP.ctypes.data_as(ct.POINTER(ct.c_double)),
-        ZetaPanel.ctypes.data_as(ct.POINTER(ct.c_double)),
-        ct.byref(ct.c_double(gamma_pan)))
-
-    return DerP, DerVertices
 
 
 def eval_panel_cpp_coll(zetaP, ZetaPanel, gamma_pan=1.0):
@@ -591,13 +559,3 @@ if __name__ == '__main__':
 
     print('------------------------------------------ profiling eval_panel_exp')
     cProfile.runctx('run_eval_panel_exp()', globals(), locals())
-
-# ### profiling sub-functions
-# def f01():
-# 	for ii in range(100000):
-# 		R_list = [zetaP-ZetaPanel[ii,:] for ii in svec]
-# def f02():
-# 	for ii in range(100000):
-# 		R_list = zetaP-ZetaPanel
-# cProfile.runctx('f01()',globals(),locals())
-# cProfile.runctx('f02()',globals(),locals())
