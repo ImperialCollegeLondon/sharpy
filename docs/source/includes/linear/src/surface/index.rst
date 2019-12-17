@@ -12,3 +12,4 @@ S. Maraniello, 20 May 2018
 
 	./AeroGridGeo
 	./AeroGridSurface
+	./get_aic3_cpp

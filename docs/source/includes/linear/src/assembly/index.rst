@@ -30,6 +30,7 @@ Includes:
 	./dfunstdgamma_dot
 	./dvinddzeta
 	./dvinddzeta_cpp
+	./eval_panel_cpp
 	./nc_domegazetadzeta
 	./nc_dqcdzeta
 	./nc_dqcdzeta_Sin_to_Sout
