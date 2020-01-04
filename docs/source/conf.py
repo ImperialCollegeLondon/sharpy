@@ -157,6 +157,7 @@ autodoc_mock_imports = ["matplotlib",
                         # 'sharpy.aero.utils',
                         'yaml',
                         'sharpy.aero.utils.uvlmlib',
+                        'sharpy.linear.src.uvlmutils',
                         'sharpy.structure.utils.xbeamlib']
                         # "interp", "multisurfaces", "assembly", "libss",]
 

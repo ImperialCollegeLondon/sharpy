@@ -1,10 +1,10 @@
 # Simulation of High Aspect Ratio aeroplanes in Python [SHARPy]
 
 ![Version badge](https://img.shields.io/endpoint.svg?url=https%3A%2F%2Fraw.githubusercontent.com%2FImperialCollegeLondon%2Fsharpy%2Fmaster%2F.version.json)
-[![Build Status](https://travis-ci.org/ImperialCollegeLondon/sharpy.svg?branch=master)](https://travis-ci.org/ImperialCollegeLondon/sharpy) 
+[![Build Status](https://travis-ci.org/ImperialCollegeLondon/sharpy.svg?branch=master)](https://travis-ci.org/ImperialCollegeLondon/sharpy)
 [![Documentation Status](https://readthedocs.org/projects/ic-sharpy/badge/?version=master)](https://ic-sharpy.readthedocs.io/en/master/?badge=master)
 [![codecov](https://codecov.io/gh/ImperialCollegeLondon/sharpy/branch/master/graph/badge.svg)](https://codecov.io/gh/ImperialCollegeLondon/sharpy)
-[![License](https://img.shields.io/badge/License-BSD%203--Clause-blue.svg)](https://opensource.org/licenses/BSD-3-Clause) 
+[![License](https://img.shields.io/badge/License-BSD%203--Clause-blue.svg)](https://opensource.org/licenses/BSD-3-Clause)
 [![status](https://joss.theoj.org/papers/f7ccd562160f1a54f64a81e90f5d9af9/status.svg)](https://joss.theoj.org/papers/f7ccd562160f1a54f64a81e90f5d9af9)
 [![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.3531965.svg)](https://doi.org/10.5281/zenodo.3531965)
 
@@ -14,7 +14,7 @@ wings and wind turbines.
 
 ![XHALE](./docs/source/_static/XHALE-render.jpg)
 
-### Contact 
+### Contact
 
 For more information on the [research team](http://www.imperial.ac.uk/aeroelastics/people/) developing SHARPy or to get in touch, [visit our homepage](http://www.imperial.ac.uk/aeroelastics).
 
@@ -23,20 +23,20 @@ For more information on the [research team](http://www.imperial.ac.uk/aeroelasti
 SHARPy is an aeroelastic solver that uses two specific models for the structural and aerodynamic response of the system.
 
 For the structural model, SHARPy employs a nonlinear, geometrically-exact displacement and rotation-based beam formulation.
-This model has the advantage of providing the solution directly in the physical problem's degrees of freedom, making the 
-coupling with the aerodynamic solver simple and not requiring any post-processing. The 1D beam formulation used limits 
+This model has the advantage of providing the solution directly in the physical problem's degrees of freedom, making the
+coupling with the aerodynamic solver simple and not requiring any post-processing. The 1D beam formulation used limits
 the analyses that can be done by SHARPy to slender structures, such as high aspect ratio wings.
 
 The aerodynamic model utilises the Unsteady Vortex Lattice Method (UVLM). The aerodynamic surfaces are modelled as a thin
 vortex ring lattice with the boundary conditions enforced at the collocation points in the middle of the vortex rings.
-The Kutta condition is also enforced at the trailing edge. The wake can be simulated by either additional vortex rings 
+The Kutta condition is also enforced at the trailing edge. The wake can be simulated by either additional vortex rings
 or by infinitely long horseshoe vortices, which are ideally suited for steady simulations only.
 
 The input problems can be structural, aerodynamic or coupled, yielding an aeroelastic system.
 
 ## [Capabilities](http://ic-sharpy.readthedocs.io/en/latest/content/capabilities.html)
 
-At its core, SHARPy is a nonlinear aeroelastic analysis package that can be used on both free-flying aircraft, 
+At its core, SHARPy is a nonlinear aeroelastic analysis package that can be used on both free-flying aircraft,
 clamped structures and wind turbines. In addition, it supports linearisation of these nonlinear systems about
 arbitrary conditions and includes various tools such as: model reduction or frequency analysis.
 
@@ -61,7 +61,7 @@ In short, SHARPy offers (amongst others) the following solutions to the user:
 * Model order reduction
     + Krylov-subspace reduction methods.
     + Balancing reduction methods.
-    
+
 ## Documentation
 
 The documentation for SHARPy can be found [here](http://ic-sharpy.readthedocs.io).
@@ -81,23 +81,38 @@ the [collaboration guide](https://ic-sharpy.readthedocs.io/en/latest/content/con
 
 ## Citing SHARPy
 
-SHARPy is archived in Zenodo. If you need to cite it, use this: 
+SHARPy has been published in the Journal of Open Source Software (JOSS) and the relevant paper can be found
+[here](https://joss.theoj.org/papers/10.21105/joss.01885).
 
-[![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.3531965.svg)](https://doi.org/10.5281/zenodo.3531965)
+If you are using SHARPy for your work, please remember to cite it using the paper in JOSS as:
 
-This DOI which represents all the versions of the given software package, i.e. the concept of 
-the software package and the ensemble of versions. In Zenodo you can find the DOI of a specific version.
+`del Carre et al., (2019). SHARPy: A dynamic aeroelastic simulation toolbox for very flexible aircraft and wind
+turbines. Journal of Open Source Software, 4(44), 1885, https://doi.org/10.21105/joss.01885`
 
-For more information on citing and Zenodo, [read more](https://help.zenodo.org/#versioning)
+The bibtex entry for this citation is:
+
+`@Article{delCarre2019,
+doi = {10.21105/joss.01885},
+url = {https://doi.org/10.21105/joss.01885},
+year = {2019},
+month = dec,
+publisher = {The Open Journal},
+volume = {4},
+number = {44},
+pages = {1885},
+author = {Alfonso del Carre and Arturo Mu{~{n}}oz-Sim{'{o}}n and Norberto Goizueta and Rafael Palacios},
+title = {{SHARPy}: A dynamic aeroelastic simulation toolbox for very flexible aircraft and wind turbines},
+journal = {Journal of Open Source Software}
+}`
+
 
 ## Continuous Integration Status
 
 SHARPy uses Continuous Integration to control the integrity of its code. The status in the release and develop branches
 is:
 
-Master 
-[![Build Status](https://travis-ci.org/ImperialCollegeLondon/sharpy.svg?branch=master)](https://travis-ci.org/ImperialCollegeLondon/sharpy) 
+Master
+[![Build Status](https://travis-ci.org/ImperialCollegeLondon/sharpy.svg?branch=master)](https://travis-ci.org/ImperialCollegeLondon/sharpy)
 
 Develop
 [![Build Status](https://travis-ci.org/ImperialCollegeLondon/sharpy.svg?branch=develop)](https://travis-ci.org/ImperialCollegeLondon/sharpy)
-
