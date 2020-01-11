@@ -8,7 +8,7 @@
 [![status](https://joss.theoj.org/papers/f7ccd562160f1a54f64a81e90f5d9af9/status.svg)](https://joss.theoj.org/papers/f7ccd562160f1a54f64a81e90f5d9af9)
 [![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.3531965.svg)](https://doi.org/10.5281/zenodo.3531965)
 
-SHARPy is an aeroelastic analysis package developed at the Department of Aeronautics, Imperial
+SHARPy is a nnonlinear aeroelastic analysis package developed at the Department of Aeronautics, Imperial
 College London. It can be used for the structural, aerodynamic and aeroelastic analysis of flexible aircraft, flying
 wings and wind turbines.
 
@@ -20,9 +20,10 @@ For more information on the [research team](http://www.imperial.ac.uk/aeroelasti
 
 ## Physical Models
 
-SHARPy is an aeroelastic solver that uses two specific models for the structural and aerodynamic response of the system.
+SHARPy is a modular aeroelastic solver that currently uses two specific models for the structural and aerodynamic response of the system.
 
-For the structural model, SHARPy employs a nonlinear, geometrically-exact displacement and rotation-based beam formulation.
+For the structural model, SHARPy employs a nonlinear, geometrically-exact displacement and rotation-based composite beam formulation,
+augmented with Lagrange multipliers for additional kinematic constraints.
 This model has the advantage of providing the solution directly in the physical problem's degrees of freedom, making the 
 coupling with the aerodynamic solver simple and not requiring any post-processing. The 1D beam formulation used limits 
 the analyses that can be done by SHARPy to slender structures, such as high aspect ratio wings.
