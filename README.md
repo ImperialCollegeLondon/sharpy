@@ -8,7 +8,7 @@
 [![status](https://joss.theoj.org/papers/f7ccd562160f1a54f64a81e90f5d9af9/status.svg)](https://joss.theoj.org/papers/f7ccd562160f1a54f64a81e90f5d9af9)
 [![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.3531965.svg)](https://doi.org/10.5281/zenodo.3531965)
 
-SHARPy is a nnonlinear aeroelastic analysis package developed at the Department of Aeronautics, Imperial
+SHARPy is a nonlinear aeroelastic analysis package developed at the Department of Aeronautics, Imperial
 College London. It can be used for the structural, aerodynamic and aeroelastic analysis of flexible aircraft, flying
 wings and wind turbines.
 
