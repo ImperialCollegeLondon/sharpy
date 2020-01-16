@@ -114,7 +114,7 @@ def main(args=None, sharpy_input_dict=None):
             logdir = './'
         logdir = os.path.abspath(logdir)
         print('Exception raised, writing error log in %s/error.log' % logdir)
-        logging.basicConfig(filename='%s/error.txt' % logdir,
+        logging.basicConfig(filename='%s/error.log' % logdir,
                             filemode='w',
                             format='%(asctime)s-%(levelname)s-%(message)s',
                             datefmt='%d-%b-%y %H:%M:%S',
