@@ -72,3 +72,10 @@ class NotValidSetting(DefaultValueBaseException):
             cout.cout_wrap.print_separator(3)
             cout.cout_wrap(message, 3)
             cout.cout_wrap.print_separator(3)
+
+
+class SolverNotFound(Exception):
+    def __init__(self, solver_name):
+        message = 'The solver %s cannot be found in the list of solvers. Ensure you have spelt the solver name ' \
+                  'correctly.' % solver_name
+        super().__init__(message)
