@@ -9,16 +9,21 @@ import sharpy.utils.cout_utils as cout
 import sharpy.utils.algebra as algebra
 import sharpy.solvers.lindynamicsim as lindynamicsim
 import sharpy.structure.utils.modalutils as modalutils
+import scipy.sparse as scsp
 
 
 @solver
 class AsymptoticStability(BaseSolver):
     """
-    Calculates the asymptotic stability properties of aeroelastic systems by creating linearised systems and computing
-    the corresponding eigenvalues
+    Calculates the asymptotic stability properties of the linearised aeroelastic system by computing
+    the corresponding eigenvalues.
+
+    To use an iterative eigenvalue solver, the setting ``iterative_eigvals`` should be set to ``on``. This
+    will be beneficial when deailing with very large systems. However, the direct method is
+    preferred and more efficient when the system is of a relatively small size (typically around 5000 states).
 
     Warnings:
-        Currently under development.
+        The setting ``modes_to_plot`` to plot the eigenvectors in Paraview is currently under development.
 
     """
     solver_id = 'AsymptoticStability'
@@ -47,7 +52,6 @@ class AsymptoticStability(BaseSolver):
     settings_types['export_eigenvalues'] = 'bool'
     settings_default['export_eigenvalues'] = False
     settings_description['export_eigenvalues'] = 'Save eigenvalues and eigenvectors to file. '
-                                                 # 'Details in :func:`AsymptoticStability.export_eigenvalues`'
 
     settings_types['display_root_locus'] = 'bool'
     settings_default['display_root_locus'] = False
@@ -57,19 +61,26 @@ class AsymptoticStability(BaseSolver):
     settings_default['velocity_analysis'] = []
     settings_description['velocity_analysis'] = 'List containing min, max and number ' \
                                                 'of velocities to analyse the system'
-    settings_types['modes_to_plot'] = 'list(int)'
-    settings_default['modes_to_plot'] = []
-    settings_description['modes_to_plot'] = 'List of mode numbers to simulate and plot'
+
+    settings_types['iterative_eigvals'] = 'bool'
+    settings_default['iterative_eigvals'] = False
+    settings_description['iterative_eigvals'] = 'Calculate the first ``num_evals`` using an iterative solver.'
 
     settings_types['num_evals'] = 'int'
     settings_default['num_evals'] = 200
     settings_description['num_evals'] = 'Number of eigenvalues to retain.'
 
+    settings_types['modes_to_plot'] = 'list(int)'
+    settings_default['modes_to_plot'] = []
+    settings_description['modes_to_plot'] = 'List of mode numbers to simulate and plot'
+
     settings_types['postprocessors'] = 'list(str)'
     settings_default['postprocessors'] = list()
+    settings_description['postprocessors'] = 'To be used with ``modes_to_plot``. Under development.'
 
     settings_types['postprocessors_settings'] = 'dict'
     settings_default['postprocessors_settings'] = dict()
+    settings_description['postprocessors_settings'] = 'To be used with ``modes_to_plot``. Under development.'
 
     settings_table = settings.SettingsTable()
     __doc__ += settings_table.generate(settings_types, settings_default, settings_description)
@@ -96,9 +107,9 @@ class AsymptoticStability(BaseSolver):
         else:
             self.settings = custom_settings
 
-        settings.to_custom_types(self.settings, self.settings_types, self.settings_default)
+        settings.to_custom_types(self.settings, self.settings_types, self.settings_default, no_ctype=True)
 
-        self.num_evals = self.settings['num_evals'].value
+        self.num_evals = self.settings['num_evals']
 
         stability_folder_path = self.settings['folder'] + '/' + self.data.settings['SHARPy']['case'] + '/stability'
         if not os.path.exists(stability_folder_path):
@@ -126,19 +137,27 @@ class AsymptoticStability(BaseSolver):
 
         """
         try:
-            self.frequency_cutoff = self.settings['frequency_cutoff'].value
+            self.frequency_cutoff = self.settings['frequency_cutoff']
         except AttributeError:
             self.frequency_cutoff = float(self.settings['frequency_cutoff'])
 
         if self.frequency_cutoff == 0:
             self.frequency_cutoff = np.inf
 
-        if self.settings['reference_velocity'].value != 1. and self.data.linear.linear_system.uvlm.scaled:
-            ss = self.data.linear.linear_system.update(self.settings['reference_velocity'].value)
+        if self.settings['reference_velocity'] != 1. and self.data.linear.linear_system.uvlm.scaled:
+            ss = self.data.linear.linear_system.update(self.settings['reference_velocity'])
         else:
             ss = self.data.linear.ss
 
-        eigenvalues, eigenvectors = sclalg.eig(ss.A)
+        if self.settings['iterative_eigvals']:
+            if self.settings['print_info']:
+                cout.cout_wrap('Calculating first %g, largest magnitude eigenvalues using iterative solver.'
+                               % self.settings['num_evals'])
+            eigenvalues, eigenvectors = scsp.linalg.eigs(ss.A, k=self.settings['num_evals'])
+        else:
+            if self.settings['print_info']:
+                cout.cout_wrap('Calculating eigenvalues using direct method')
+            eigenvalues, eigenvectors = sclalg.eig(ss.A)
 
         # Convert DT eigenvalues into CT
         if ss.dt:
@@ -146,7 +165,7 @@ class AsymptoticStability(BaseSolver):
             try:
                 ScalingFacts = self.data.linear.linear_system.uvlm.sys.ScalingFacts
                 if ScalingFacts['length'] != 1.0 and ScalingFacts['time'] != 1.0:
-                    dt = ScalingFacts['length'] / self.settings['reference_velocity'].value * ss.dt
+                    dt = ScalingFacts['length'] / self.settings['reference_velocity'] * ss.dt
                 else:
                     dt = ss.dt
             except AttributeError:
@@ -157,17 +176,17 @@ class AsymptoticStability(BaseSolver):
 
         self.eigenvalues, self.eigenvectors = self.sort_eigenvalues(eigenvalues, eigenvectors, self.frequency_cutoff)
 
-        if self.settings['export_eigenvalues'].value:
+        if self.settings['export_eigenvalues']:
             self.export_eigenvalues(self.num_evals)
 
-        if self.settings['print_info'].value:
+        if self.settings['print_info']:
             self.eigenvalue_table.print_evals(self.eigenvalues[:self.num_evals])
 
         if self.settings['display_root_locus']:
             self.display_root_locus()
 
         # Under development
-        if self.settings['modes_to_plot'] is not []:
+        if len(self.settings['modes_to_plot']) == 0:
             warn.warn('Plotting modes is under development')
             self.plot_modes()
 
@@ -189,6 +208,8 @@ class AsymptoticStability(BaseSolver):
             * ``eigenvalues_r.dat``: ``(num_evals, 1)`` array of the real part of the eigenvalues
 
             * ``eigenvalues_i.dat``: ``(num_evals, 1)`` array of the imaginary part of the eigenvalues.
+
+        The units of the eigenvalues are ``rad/s``
 
         References:
             Loading and saving complex arrays:
@@ -212,7 +233,7 @@ class AsymptoticStability(BaseSolver):
 
         """
 
-        self.eigenvalue_table.print_evals(self.eigenvalues[:self.settings['num_evals'].value])
+        self.eigenvalue_table.print_evals(self.eigenvalues[:self.settings['num_evals']])
 
     def velocity_analysis(self):
 
@@ -464,38 +485,3 @@ class AsymptoticStability(BaseSolver):
             fact = np.max(np.abs(omega)) / max_omega
 
         return fact
-
-if __name__ == '__main__':
-    u_inf = 140
-    try:
-        data = h5.readh5('/home/ng213/code/sharpy/tests/linear/goland_wing/cases/output/goland_u%04g.data.h5' %u_inf).data
-    except FileNotFoundError:
-        raise FileNotFoundError('Unable to find test case')
-
-
-    integr_order = 2
-    predictor = True
-    sparse = False
-
-    aeroelastic_settings = {'LinearUvlm':{
-        'dt': data.settings['LinearUvlm']['dt'],
-        'integr_order': integr_order,
-        'density': 1.020,
-        'remove_predictor': predictor,
-        'use_sparse': sparse,
-        'ScalingDict': {'length': 1,
-                        'speed': 1,
-                        'density': 1},
-        'rigid_body_motion': False},
-        'frequency_cutoff': 0,
-        'export_eigenvalues': True,
-    }
-
-    analysis = AsymptoticStability()
-
-    analysis.initialise(data, aeroelastic_settings)
-    eigenvalues, eigenvectors = analysis.run()
-
-    fig, ax = analysis.display_root_locus()
-
-    # analysis.plot_modes(10)
