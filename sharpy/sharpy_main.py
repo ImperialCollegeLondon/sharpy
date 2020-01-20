@@ -21,7 +21,7 @@ def main(args=None, sharpy_input_dict=None):
             ``solver.txt`` file would have.
 
     Returns:
-        ``PreSharpy`` class object
+        sharpy.presharpy.presharpy.PreSharpy: object containing the simulation results.
 
     """
     import time
@@ -47,10 +47,12 @@ def main(args=None, sharpy_input_dict=None):
     if sharpy_input_dict is None:
         parser = argparse.ArgumentParser(prog='SHARPy', description=
         """This is the executable for Simulation of High Aspect Ratio Planes.\n
-        Imperial College London 2019""")
+        Imperial College London 2020""")
         parser.add_argument('input_filename', help='path to the *.sharpy input file', type=str, default='')
-        parser.add_argument('-r', '--restart', help='restart the solution with a given snapshot', type=str, default=None)
-        parser.add_argument('-d', '--docs', help='generates the solver documentation in the specified location. Code does not execute if running this flag', action='store_true')
+        parser.add_argument('-r', '--restart', help='restart the solution with a given snapshot', type=str,
+                            default=None)
+        parser.add_argument('-d', '--docs', help='generates the solver documentation in the specified location. Code '
+                                                 'does not execute if running this flag', action='store_true')
         if args is not None:
             args = parser.parse_args(args[1:])
         else:
