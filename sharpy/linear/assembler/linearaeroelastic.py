@@ -264,6 +264,7 @@ class LinearAeroelastic(ss_interface.BaseElement):
         cout.cout_wrap('\tTotal states: %g' % ss.states, 1)
         cout.cout_wrap('\tInputs: %g' % ss.inputs, 1)
         cout.cout_wrap('\tOutputs: %g' % ss.outputs, 1)
+
         return ss
 
     def update(self, u_infty):
