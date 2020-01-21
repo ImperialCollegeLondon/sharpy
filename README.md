@@ -16,7 +16,8 @@ wings and wind turbines.
 
 ### Contact
 
-For more information on the [research team](http://www.imperial.ac.uk/aeroelastics/people/) developing SHARPy or to get in touch, [visit our homepage](http://www.imperial.ac.uk/aeroelastics).
+For more information on the [research team](http://www.imperial.ac.uk/aeroelastics/people/) developing SHARPy or to get 
+in touch, [visit our homepage](http://www.imperial.ac.uk/aeroelastics).
 
 ## Physical Models
 
@@ -50,15 +51,15 @@ In short, SHARPy offers (amongst others) the following solutions to the user:
     + Control inputs in thrust, control surface deflection...
     + Arbitrary time-domain gusts, including non span-constant ones.
     + Full 3D turbulent fields.
-* Multibody dynamics with hinges, articulations and prescribed nodal motions.
+* Multibody dynamics with hinges, articulations and prescribed nodal motions:
     + Applicable to wind turbines.
     + Hinged aircraft.
     + Catapult assisted takeoffs.
-* Linear analysis
+* Linear analysis:
     + Linearisation around a nonlinear equilibrium.
     + Frequency response analysis.
     + Asymptotic stability analysis.
-* Model order reduction
+* Model order reduction:
     + Krylov-subspace reduction methods.
     + Balancing reduction methods.
 
@@ -68,7 +69,8 @@ The documentation for SHARPy can be found [here](http://ic-sharpy.readthedocs.io
 
 ## Installing SHARPy
 
-For the latest documentation, see the [installation docs](https://ic-sharpy.readthedocs.io/en/latest/content/installation.html)
+For the latest documentation, see the 
+[installation docs](https://ic-sharpy.readthedocs.io/en/latest/content/installation.html).
 
 As of version v1.0.1, SHARPy can also be obtained from Docker Hub to avoid compilation
 and platform-dependant issues. If you are interested, make sure you check
@@ -76,8 +78,8 @@ the [SHARPy Docker distribution docs](https://ic-sharpy.readthedocs.io/en/latest
 
 ## Contributing and Bug reports
 
-If you think you can add some useful feature to SHARPy or you encounter a bug, by all means, check out
-the [collaboration guide](https://ic-sharpy.readthedocs.io/en/latest/content/contributing.html).
+If you think you can add a useful feature to SHARPy, want to write documentation or you encounter a bug, by all means, 
+check out the [collaboration guide](https://ic-sharpy.readthedocs.io/en/latest/content/contributing.html).
 
 ## Citing SHARPy
 
