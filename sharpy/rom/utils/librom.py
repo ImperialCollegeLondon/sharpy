@@ -123,24 +123,25 @@ def balreal_direct_py(A, B, C, DLTI=True, Schur=False, full_outputs=False):
 
     ### Find transformation matrices
     # avoid Cholevski - unstable
-    hsv_sq, Tinv  = np.linalg.eig( np.dot(Wc,Wo) )
+    hsv_sq, Tinv = np.linalg.eig(np.dot(Wc, Wo))
     T = np.linalg.inv(Tinv)
 
     # sort
     iisort = np.argsort(hsv_sq)[::-1]
     hsv = np.sqrt(hsv_sq[iisort])
-    T = T[:,iisort]
-    Tinv = Tinv[iisort,:]
+    T = T[:, iisort]
+    Tinv = Tinv[iisort, :]
 
     if full_outputs is False:
         return hsv, T, Tinv
 
     else:
         # get square-root factors
-        UT,QoT = scalg.qr( np.dot(np.diag(np.sqrt(hsv)),Tinv), pivoting=False )
-        Vh, QcT = scalg.qr( np.dot(T,np.diag(np.sqrt(hsv))).T, pivoting=False )
+        UT, QoT = scalg.qr(np.dot(np.diag(np.sqrt(hsv)), Tinv), pivoting=False)
+        Vh, QcT = scalg.qr(np.dot(T, np.diag(np.sqrt(hsv))).T, pivoting=False)
 
-        return hsv, UT.T,Vh, QcT.T,QoT.T
+        return hsv, UT.T, Vh, QcT.T, QoT.T
+
 
 def balreal_iter(A, B, C, lowrank=True, tolSmith=1e-10, tolSVD=1e-6, kmin=None,
                  tolAbs=False, Print=False, outFacts=False):
@@ -282,7 +283,7 @@ def balreal_iter(A, B, C, lowrank=True, tolSmith=1e-10, tolSVD=1e-6, kmin=None,
     cc, co = Qck.shape[1], Qok.shape[1]
     if Print:
         print('cc=%.2d, co=%.2d' % (cc, co))
-        print('rank(Zc)=%.4d\trank(Zo)=%.4d'%(rcmax,romax) )
+        print('rank(Zc)=%.4d\trank(Zo)=%.4d' % (rcmax, romax))
 
     # build M matrix and SVD
     M = libsp.dot(Qok.T, Qck)
@@ -665,33 +666,33 @@ def low_rank_smith(A, Q, tol=1e-10, Square=True, tolSVD=1e-12, tolAbs=False,
 
 ### utilities for balfreq
 
-def get_trapz_weights(k0,kend,Nk,knyq=False):
+def get_trapz_weights(k0, kend, Nk, knyq=False):
     """
     Returns uniform frequency grid (kv of length Nk) and weights (wv) for
     Gramians integration using trapezoidal rule. If knyq is True, it is assumed
     that kend is also the Nyquist frequency.
     """
 
-    assert k0>=0. and kend>=0., 'Frequencies must be positive!'
+    assert k0 >= 0. and kend >= 0., 'Frequencies must be positive!'
 
-    dk=(kend-k0)/(Nk-1.)
-    kv=np.linspace(k0,kend,Nk)
-    wv=np.ones((Nk,))*dk*np.sqrt(2)
+    dk = (kend - k0) / (Nk - 1.)
+    kv = np.linspace(k0, kend, Nk)
+    wv = np.ones((Nk,)) * dk * np.sqrt(2)
 
-    if k0/(kend-k0)<1e-10:
-        wv[0]=.5*dk
+    if k0 / (kend - k0) < 1e-10:
+        wv[0] = .5 * dk
     else:
-        wv[0]=dk/np.sqrt(2)
+        wv[0] = dk / np.sqrt(2)
 
     if knyq:
-        wv[-1]=.5*dk
+        wv[-1] = .5 * dk
     else:
-        wv[-1]=dk/np.sqrt(2)
+        wv[-1] = dk / np.sqrt(2)
 
-    return kv,wv
+    return kv, wv
 
 
-def get_gauss_weights(k0,kend,Npart,order):
+def get_gauss_weights(k0, kend, Npart, order):
     """
     Returns gauss-legendre frequency grid (kv of length Npart*order) and
     weights (wv) for Gramians integration.
@@ -705,30 +706,30 @@ def get_gauss_weights(k0,kend,Npart,order):
     (see get_unif_weights)
     """
 
-    if Npart==1:
+    if Npart == 1:
         # get gauss normalised coords and weights
-        xad,wad=np.polynomial.legendre.leggauss(order)
-        krange=kend-k0
-        kv=.5*(k0+kend) + .5*krange*xad
-        wv=wad*(.5*krange)*np.sqrt(2)
-        print('partitioning: %.3f to %.3f' %(k0,kend) )
+        xad, wad = np.polynomial.legendre.leggauss(order)
+        krange = kend - k0
+        kv = .5 * (k0 + kend) + .5 * krange * xad
+        wv = wad * (.5 * krange) * np.sqrt(2)
+        print('partitioning: %.3f to %.3f' % (k0, kend))
 
     else:
-        kv=np.zeros((Npart*order,))
-        wv=np.zeros((Npart*order,))
+        kv = np.zeros((Npart * order,))
+        wv = np.zeros((Npart * order,))
 
-        dk_part=(kend-k0)/Npart
+        dk_part = (kend - k0) / Npart
 
         for ii in range(Npart):
-            k0_part=k0+ii*dk_part
-            kend_part=k0_part+dk_part
-            iivec=range(order*ii, order*(ii+1))
-            kv[iivec],wv[iivec]=get_gauss_weights(k0_part,kend_part,Npart=1,order=order)
+            k0_part = k0 + ii * dk_part
+            kend_part = k0_part + dk_part
+            iivec = range(order * ii, order * (ii + 1))
+            kv[iivec], wv[iivec] = get_gauss_weights(k0_part, kend_part, Npart=1, order=order)
 
-    return kv,wv
+    return kv, wv
 
 
-def balfreq(SS,DictBalFreq):
+def balfreq(SS, DictBalFreq):
     """
     Method for frequency limited balancing.
 
@@ -801,14 +802,15 @@ def balfreq(SS,DictBalFreq):
 
 
     Examples:
+
         The following dictionary
 
-        >>>   DictBalFreq={   'frequency': 1.2,
-                            'method_low': 'trapz',
-                            'options_low': {'points': 12},
-                            'method_high': 'gauss',
-                            'options_high': {'partitions': 2, 'order': 8},
-                            'check_stability': True }
+        >>>   DictBalFreq={'frequency': 1.2,
+        >>>                'method_low': 'trapz',
+        >>>                'options_low': {'points': 12},
+        >>>                'method_high': 'gauss',
+        >>>                'options_high': {'partitions': 2, 'order': 8},
+        >>>                'check_stability': True }
 
 
         balances the state-space model in the frequency range [0, 1.2]
@@ -837,138 +839,133 @@ def balfreq(SS,DictBalFreq):
 
     if 'method_low' not in DictBalFreq:
         warnings.warn('Setting default options for low-frequency integration')
-        DictBalFreq['method_low']='trapz'
-        DictBalFreq['options_low']={'points': 12}
+        DictBalFreq['method_low'] = 'trapz'
+        DictBalFreq['options_low'] = {'points': 12}
 
     if 'method_high' not in DictBalFreq:
         warnings.warn('Setting default options for high-frequency integration')
-        DictBalFreq['method_high']='gauss'
-        DictBalFreq['options_high']={'partitions': 2, 'order': 8}
+        DictBalFreq['method_high'] = 'gauss'
+        DictBalFreq['options_high'] = {'partitions': 2, 'order': 8}
 
     if 'check_stability' not in DictBalFreq:
-        DictBalFreq['check_stability']=True
+        DictBalFreq['check_stability'] = True
 
     if 'output_modes' not in DictBalFreq:
-        DictBalFreq['output_modes']=True
+        DictBalFreq['output_modes'] = True
 
     if 'get_frequency_response' not in DictBalFreq:
         DictBalFreq['get_frequency_response'] = False
 
-
     ### get integration points and weights
 
     # Nyquist frequency
-    kn=np.pi/SS.dt
+    kn = np.pi / SS.dt
 
-    Opt=DictBalFreq['options_low']
+    Opt = DictBalFreq['options_low']
     if DictBalFreq['method_low'] == 'trapz':
-        kv_low, wv_low=get_trapz_weights(0., DictBalFreq['frequency'],
-                                                       Opt['points'], False)
+        kv_low, wv_low = get_trapz_weights(0., DictBalFreq['frequency'],
+                                           Opt['points'], False)
     elif DictBalFreq['method_low'] == 'gauss':
-        kv_low, wv_low=get_gauss_weights(0., DictBalFreq['frequency'],
-                                             Opt['partitions'],Opt['order'])
+        kv_low, wv_low = get_gauss_weights(0., DictBalFreq['frequency'],
+                                           Opt['partitions'], Opt['order'])
     else:
         raise NameError(
-            'Invalid value %s for key "method_low"' %DictBalFreq['method_low'])
+            'Invalid value %s for key "method_low"' % DictBalFreq['method_low'])
 
-    Opt=DictBalFreq['options_high']
+    Opt = DictBalFreq['options_high']
     if DictBalFreq['method_high'] == 'trapz':
-        if Opt['points']==0:
+        if Opt['points'] == 0:
             warnings.warn('You have chosen no points in high frequency range!')
             kv_high, wv_high = [], []
         else:
-            kv_high, wv_high=get_trapz_weights(DictBalFreq['frequency'], kn,
-                                                        Opt['points'], True)
+            kv_high, wv_high = get_trapz_weights(DictBalFreq['frequency'], kn,
+                                                 Opt['points'], True)
     elif DictBalFreq['method_high'] == 'gauss':
-        if Opt['order']*Opt['partitions']==0:
+        if Opt['order'] * Opt['partitions'] == 0:
             warnings.warn('You have chosen no points in high frequency range!')
             kv_high, wv_high = [], []
         else:
-            kv_high, wv_high=get_gauss_weights(DictBalFreq['frequency'], kn,
-                                             Opt['partitions'],Opt['order'])
+            kv_high, wv_high = get_gauss_weights(DictBalFreq['frequency'], kn,
+                                                 Opt['partitions'], Opt['order'])
     else:
         raise NameError(
-            'Invalid value %s for key "method_high"'%DictBalFreq['method_high'])
-
-
+            'Invalid value %s for key "method_high"' % DictBalFreq['method_high'])
 
     ### -------------------------------------------------- loop frequencies
 
     ### merge vectors
-    Nk_low=len(kv_low)
-    kvdt = np.concatenate( (kv_low,kv_high) ) * SS.dt
-    wv = np.concatenate( (wv_low,wv_high) ) * SS.dt
-    zv = np.cos(kvdt)+1.j*np.sin(kvdt)
+    Nk_low = len(kv_low)
+    kvdt = np.concatenate((kv_low, kv_high)) * SS.dt
+    wv = np.concatenate((wv_low, wv_high)) * SS.dt
+    zv = np.cos(kvdt) + 1.j * np.sin(kvdt)
 
-    Eye=libsp.eye_as(SS.A)
-    Zc=np.zeros( (SS.states,2*SS.inputs*len(kvdt)),)
-    Zo=np.zeros( (SS.states,2*SS.outputs*Nk_low),)
+    Eye = libsp.eye_as(SS.A)
+    Zc = np.zeros((SS.states, 2 * SS.inputs * len(kvdt)), )
+    Zo = np.zeros((SS.states, 2 * SS.outputs * Nk_low), )
 
     if DictBalFreq['get_frequency_response']:
-        Yfreq=np.empty((SS.outputs,SS.inputs,Nk_low,),dtype=np.complex_)
-        kv=kv_low
+        Yfreq = np.empty((SS.outputs, SS.inputs, Nk_low,), dtype=np.complex_)
+        kv = kv_low
 
-    for kk in range( len(kvdt) ):
+    for kk in range(len(kvdt)):
 
-        zval=zv[kk]
-        Intfact=wv[kk]   # integration factor
+        zval = zv[kk]
+        Intfact = wv[kk]  # integration factor
 
-        Qctrl = Intfact * libsp.solve(zval*Eye-SS.A,SS.B)
-        kkvec=range( 2*kk*SS.inputs, 2*(kk+1)*SS.inputs )
-        Zc[:,kkvec[:SS.inputs]]= Qctrl.real
-        Zc[:,kkvec[SS.inputs:]]= Qctrl.imag
-
+        Qctrl = Intfact * libsp.solve(zval * Eye - SS.A, SS.B)
+        kkvec = range(2 * kk * SS.inputs, 2 * (kk + 1) * SS.inputs)
+        Zc[:, kkvec[:SS.inputs]] = Qctrl.real
+        Zc[:, kkvec[SS.inputs:]] = Qctrl.imag
 
         ### ----- frequency response
-        if DictBalFreq['get_frequency_response'] and kk<Nk_low:
-            Yfreq[:,:,kk]= (1./Intfact)*\
-            				 libsp.dot(SS.C,Qctrl,type_out=np.ndarray)+SS.D
+        if DictBalFreq['get_frequency_response'] and kk < Nk_low:
+            Yfreq[:, :, kk] = (1. / Intfact) * \
+                              libsp.dot(SS.C, Qctrl, type_out=np.ndarray) + SS.D
 
         ### ----- observability
-        if kk>=Nk_low:
+        if kk >= Nk_low:
             continue
 
-        Qobs = Intfact * libsp.solve(np.conj(zval)*Eye-SS.A.T,SS.C.T)
+        Qobs = Intfact * libsp.solve(np.conj(zval) * Eye - SS.A.T, SS.C.T)
 
-        kkvec=range( 2*kk*SS.outputs, 2*(kk+1)*SS.outputs )
-        Zo[:,kkvec[:SS.outputs]]= Intfact*Qobs.real
-        Zo[:,kkvec[SS.outputs:]]= Intfact*Qobs.imag
+        kkvec = range(2 * kk * SS.outputs, 2 * (kk + 1) * SS.outputs)
+        Zo[:, kkvec[:SS.outputs]] = Intfact * Qobs.real
+        Zo[:, kkvec[SS.outputs:]] = Intfact * Qobs.imag
 
     # delete full matrices
-    Kernel=None
-    Qctrl=None
-    Qobs=None
+    Kernel = None
+    Qctrl = None
+    Qobs = None
 
     # LRSQM (optimised)
-    U,hsv,Vh=scalg.svd( np.dot(Zo.T,Zc), full_matrices=False)
-    sinv=hsv**(-0.5)
-    T=np.dot(Zc,Vh.T*sinv)
-    Ti=np.dot((U*sinv).T,Zo.T)
+    U, hsv, Vh = scalg.svd(np.dot(Zo.T, Zc), full_matrices=False)
+    sinv = hsv ** (-0.5)
+    T = np.dot(Zc, Vh.T * sinv)
+    Ti = np.dot((U * sinv).T, Zo.T)
     # Zc,Zo=None,None
 
     ### build frequency balanced model
-    Ab = libsp.dot( Ti, libsp.dot(SS.A, T) )
-    Bb = libsp.dot( Ti, SS.B)
-    Cb = libsp.dot( SS.C, T)
-    SSb = libss.ss( Ab, Bb, Cb, SS.D, dt=SS.dt)
+    Ab = libsp.dot(Ti, libsp.dot(SS.A, T))
+    Bb = libsp.dot(Ti, SS.B)
+    Cb = libsp.dot(SS.C, T)
+    SSb = libss.ss(Ab, Bb, Cb, SS.D, dt=SS.dt)
 
     ### Eliminate unstable modes - if any:
     if DictBalFreq['check_stability']:
-        for nn in range(1,len(hsv)+1):
-            eigs_trunc=scalg.eigvals(SSb.A[:nn,:nn] )
-            eigs_trunc_max=np.max(np.abs(eigs_trunc))
-            if eigs_trunc_max>1.-1e-16:
-                SSb.truncate(nn-1)
-                hsv=hsv[:nn-1]
-                T=T[:,:nn-1]
-                Ti=Ti[:nn-1,:]
+        for nn in range(1, len(hsv) + 1):
+            eigs_trunc = scalg.eigvals(SSb.A[:nn, :nn])
+            eigs_trunc_max = np.max(np.abs(eigs_trunc))
+            if eigs_trunc_max > 1. - 1e-16:
+                SSb.truncate(nn - 1)
+                hsv = hsv[:nn - 1]
+                T = T[:, :nn - 1]
+                Ti = Ti[:nn - 1, :]
                 break
 
-    outs=(SSb, hsv)
+    outs = (SSb, hsv)
     if DictBalFreq['output_modes']:
-        outs += (T,Ti,Zc,Zo,U,Vh)
+        outs += (T, Ti, Zc, Zo, U, Vh)
     return outs
-
 
 
 def modred(SSb, N, method='residualisation'):
@@ -1103,7 +1100,9 @@ def eigen_dec(A, B, C, dlti=True, N=None, eigs=None, UR=None, URinv=None,
     Eigen decomposition of state-space model (either discrete or continuous time)
     defined by the A,B,C matrices. Eigen-states are organised in decreasing
     damping order or increased frequency order such that the truncation
-        A[:N,:N], B[:N,:], C[:,:N]
+
+        ``A[:N,:N], B[:N,:], C[:,:N]``
+
     will retain the least N damped (or lower frequency) modes.
 
     If the eigenvalues of A, eigs, are complex, the state-space is automatically
@@ -1113,13 +1112,13 @@ def eigen_dec(A, B, C, dlti=True, N=None, eigs=None, UR=None, URinv=None,
     truncating the system, so as to ensure that the chosen value of N does not
     retain the real part, but not the imaginary part, of a complex pair.
 
-    For this reason, the function also returns an optional output, Nlist, such
+    For this reason, the function also returns an optional output, ``Nlist``, such
     that, for each N in Nlist, the truncation
         A[:N,:N], B[:N,:], C[:,:N]
     does guarantee that both the real and imaginary part of a complex conj pair
-    is included in the truncated model. Note that if order_by == None, the eigs
+    is included in the truncated model. Note that if ```order_by == None``, the eigs
     and UR must be given in input and must be such that complex pairs are stored
-    consecutivelly.
+    consecutively.
 
 
     Args:
@@ -1191,11 +1190,11 @@ def eigen_dec(A, B, C, dlti=True, N=None, eigs=None, UR=None, URinv=None,
                 order = np.argsort(np.abs(np.angle(eigs)))
             else:
                 order = np.argsort(np.abs(eigs.imag))
-        elif order_by=='stab':
+        elif order_by == 'stab':
             if dlti:
-                order=np.argsort(np.abs(eigs))
+                order = np.argsort(np.abs(eigs))
             else:
-                order=np.argsort(eigs.real)
+                order = np.argsort(eigs.real)
         else:
             raise NameError("order_by must be equal to 'damp' or 'freq'")
         eigs = eigs[order]
@@ -1276,4 +1275,3 @@ def check_stability(A, dt=True):
         return True
     else:
         return False
-
