@@ -68,8 +68,7 @@ class LinearUVLM(ss_interface.BaseElement):
         [1] Franklin, GF and Powell, JD. Digital Control of Dynamic Systems, Addison-Wesley Publishing Company, 1980
 
         [2] Maraniello, S., & Palacios, R.. State-Space Realizations and Internal Balancing in Potential-Flow
-            Aerodynamics with
-            Arbitrary Kinematics. AIAA Journal, 57(6), 1–14. 2019. https://doi.org/10.2514/1.J058153
+        Aerodynamics with Arbitrary Kinematics. AIAA Journal, 57(6), 1–14. 2019. https://doi.org/10.2514/1.J058153
 
     """
     sys_id = 'LinearUVLM'
