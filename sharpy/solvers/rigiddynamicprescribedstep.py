@@ -11,16 +11,18 @@ from sharpy.utils.solver_interface import solver, BaseSolver
 import sharpy.utils.settings as settings
 import sharpy.utils.cout_utils as cout
 import sharpy.utils.algebra as algebra
+from sharpy.utils.solver_interface import solver_from_string
 
+_BaseStructural = solver_from_string('_BaseStructural')
 
 @solver
 class RigidDynamicPrescribedStep(BaseSolver):
     solver_id = 'RigidDynamicPrescribedStep'
-    solver_classification = 'Coupled'
+    solver_classification = 'structural'
 
-    settings_types = dict()
-    settings_default = dict()
-    settings_description = dict()
+    settings_types = _BaseStructural.settings_types.copy()
+    settings_default = _BaseStructural.settings_default.copy()
+    settings_description = _BaseStructural.settings_description.copy()
 
     settings_types['dt'] = 'float'
     settings_default['dt'] = 0.01
