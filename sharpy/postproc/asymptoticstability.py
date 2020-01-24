@@ -121,8 +121,8 @@ class AsymptoticStability(BaseSolver):
 
         if self.settings['print_info']:
             cout.cout_wrap('Dynamical System Eigenvalues')
-            self.eigenvalue_table = modalutils.EigenvalueTable()
-            self.eigenvalue_table.print_header(self.eigenvalue_table.headers)
+            eigenvalue_description_file = stability_folder_path + '/eigenvaluetable.txt'
+            self.eigenvalue_table = modalutils.EigenvalueTable(filename=eigenvalue_description_file)
 
         # Output dict
         self.data.linear.stability = dict()
@@ -180,7 +180,9 @@ class AsymptoticStability(BaseSolver):
             self.export_eigenvalues(self.num_evals)
 
         if self.settings['print_info']:
+            self.eigenvalue_table.print_header(self.eigenvalue_table.headers)
             self.eigenvalue_table.print_evals(self.eigenvalues[:self.num_evals])
+            self.eigenvalue_table.close_file()
 
         if self.settings['display_root_locus']:
             self.display_root_locus()
@@ -275,7 +277,6 @@ class AsymptoticStability(BaseSolver):
             real_part_plot.append(eigs_cont.real)
             imag_part_plot.append(eigs_cont.imag)
             uinf_part_plot.append(np.ones_like(eigs_cont.real)*u_inf_vec[i])
-
 
         real_part_plot = np.hstack(real_part_plot)
         imag_part_plot = np.hstack(imag_part_plot)
