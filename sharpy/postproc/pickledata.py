@@ -16,11 +16,8 @@ import sharpy.utils.h5utils as h5utils
 @solver
 class PickleData(BaseSolver):
     """
-    The ``SaveData`` postprocessor writes the SHARPy `data` structure in a pickle file
-
-    Args:
-        data(ProblemData): class containing the data of the problem
-        custom_settings (dict): dictionary containing custom settings for the solver to use
+    This postprocessor writes the SHARPy ``data`` structure in a pickle file, such that classes and
+    methods from SHARPy are retained for restarted solutions or further post-processing.
 
     """
     solver_id = 'PickleData'
@@ -42,6 +39,8 @@ class PickleData(BaseSolver):
 
         self.settings = None
         self.data = None
+        self.filename = None
+        self.folder = None
 
     def initialise(self, data, custom_settings=None):
         self.data = data
@@ -58,7 +57,7 @@ class PickleData(BaseSolver):
         self.folder = self.settings['folder'] + '/'
         if not os.path.exists(self.folder):
             os.makedirs(self.folder)
-        self.filename= self.folder + self.data.settings['SHARPy']['case']+'.pkl'
+        self.filename = self.folder + self.data.settings['SHARPy']['case']+'.pkl'
 
     def run(self, online=False):
         with open(self.filename, 'wb') as f:

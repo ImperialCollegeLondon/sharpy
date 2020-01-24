@@ -188,7 +188,7 @@ class AsymptoticStability(BaseSolver):
             self.display_root_locus()
 
         # Under development
-        if len(self.settings['modes_to_plot']) == 0:
+        if len(self.settings['modes_to_plot']) != 0:
             warn.warn('Plotting modes is under development')
             self.plot_modes()
 

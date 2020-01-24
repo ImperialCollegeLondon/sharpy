@@ -13,7 +13,8 @@ import sharpy.utils.h5utils as h5utils
 @solver
 class SaveData(BaseSolver):
     """
-    The ``SaveData`` postprocessor writes the SHARPy variables into hdf5 files.
+    The ``SaveData`` postprocessor writes the SHARPy variables into ``hdf5`` files. The linear state space files
+    may be saved to ``.mat`` if desired instead.
 
     It has options to save the following classes:
 
@@ -23,6 +24,10 @@ class SaveData(BaseSolver):
 
         * :class:`sharpy.solvers.linearassembler.Linear` including classes in :exc:`sharpy.linear.assembler`
 
+    Notes:
+        This method saves simply the data. If you would like to preserve the SHARPy methods of the relevant classes
+        see also :class:`sharpy.solvers.pickledata.PickleData`.
+
     """
     solver_id = 'SaveData'
     solver_classification = 'post-processor'
@@ -30,6 +35,7 @@ class SaveData(BaseSolver):
     settings_types = dict()
     settings_default = dict()
     settings_description = dict()
+    settings_options = dict()
 
     settings_types['folder'] = 'str'
     settings_default['folder'] = './output'
@@ -37,19 +43,20 @@ class SaveData(BaseSolver):
 
     settings_types['save_aero'] = 'bool'
     settings_default['save_aero'] = True
-    settings_description['save_aero'] = 'Save aerodynamic classes'
+    settings_description['save_aero'] = 'Save aerodynamic classes.'
 
     settings_types['save_struct'] = 'bool'
     settings_default['save_struct'] = True
-    settings_description['save_struct'] = 'Save structural classes'
+    settings_description['save_struct'] = 'Save structural classes.'
 
     settings_types['save_linear'] = 'bool'
     settings_default['save_linear'] = False
-    settings_description['save_linear'] = 'Save linear state space system'
+    settings_description['save_linear'] = 'Save linear state space system.'
 
     settings_types['save_linear_uvlm'] = 'bool'
     settings_default['save_linear_uvlm'] = False
-    settings_description['save_linear_uvlm'] = 'Save linear UVLM state space system'
+    settings_description['save_linear_uvlm'] = 'Save linear UVLM state space system. Use with caution when dealing with ' \
+                                               'large systems.'
 
     settings_types['skip_attr'] = 'list(str)'
     settings_default['skip_attr'] = ['fortran',
@@ -77,10 +84,12 @@ class SaveData(BaseSolver):
 
     settings_types['format'] = 'str'
     settings_default['format'] = 'h5'
-    settings_description['format'] = 'Save linear state space to hdf5 ``h5`` or Matlab ``mat`` format'
+    settings_description['format'] = 'Save linear state space to hdf5 ``.h5`` or Matlab ``.mat`` format.'
+    settings_options['format'] = ['h5', 'mat']
 
     settings_table = settings.SettingsTable()
-    __doc__ += settings_table.generate(settings_types, settings_default, settings_description)
+    __doc__ += settings_table.generate(settings_types, settings_default, settings_description,
+                                       settings_options=settings_options)
 
     def __init__(self):
         import sharpy
@@ -121,7 +130,7 @@ class SaveData(BaseSolver):
         else:
             self.settings = custom_settings
         settings.to_custom_types(self.settings,
-                                 self.settings_types, self.settings_default)
+                                 self.settings_types, self.settings_default, options=self.settings_options)
         self.ts_max = self.data.ts + 1
 
         # create folder for containing files if necessary
