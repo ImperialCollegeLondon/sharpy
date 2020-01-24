@@ -84,7 +84,7 @@ class LinearUVLM(ss_interface.BaseElement):
 
     settings_types['integr_order'] = 'int'
     settings_default['integr_order'] = 2
-    settings_description['integr_order'] = 'Integration order of the circulation derivative. Either ``1`` or ``2``.'
+    settings_description['integr_order'] = 'Integration order of the circulation derivative.'
     settings_options['integr_order'] = [1, 2]
 
     settings_types['ScalingDict'] = 'dict'
@@ -110,17 +110,17 @@ class LinearUVLM(ss_interface.BaseElement):
 
     settings_types['gust_assembler'] = 'str'
     settings_default['gust_assembler'] = ''
-    settings_description['gust_assembler'] = 'Selected gust assembler. ``leading_edge`` for now'
+    settings_description['gust_assembler'] = 'Selected linear gust assembler.'
     settings_options['gust_assembler'] = ['leading_edge']
 
     settings_types['rom_method'] = 'list(str)'
     settings_default['rom_method'] = []
-    settings_description['rom_method'] = 'List of model reduction methods to reduce UVLM'
+    settings_description['rom_method'] = 'List of model reduction methods to reduce UVLM.'
 
     settings_types['rom_method_settings'] = 'dict'
     settings_default['rom_method_settings'] = dict()
     settings_description['rom_method_settings'] = 'Dictionary with settings for the desired ROM methods, ' \
-                                                  'where the name is the key to the dictionary'
+                                                  'where the name of the ROM method is the key to the dictionary'
 
     settings_table = settings.SettingsTable()
     __doc__ += settings_table.generate(settings_types, settings_default, settings_description, settings_options)
