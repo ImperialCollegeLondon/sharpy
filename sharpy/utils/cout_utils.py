@@ -134,6 +134,7 @@ def finish_writer():
     if cout_wrap is not None:
         cout_wrap.close()
 
+
 # table output for residuals
 class TablePrinter(object):
     global cout_wrap
@@ -141,8 +142,10 @@ class TablePrinter(object):
     divider_char = '|'
     line_char = '='
 
-    def __init__(self, n_fields=3, field_length=12, field_types=[['g']]*100):
+    def __init__(self, n_fields=3, field_length=12, field_types=[['g']]*100, filename=None):
         self.n_fields = n_fields
+        self.file = None
+        self.divider_line = None
         try:
             field_length[0]
         except TypeError:
@@ -157,6 +160,9 @@ class TablePrinter(object):
 
         if cout_wrap is None:
             start_writer()
+
+        if filename is not None:
+            self.file = open(filename, 'w')
 
     def print_header(self, field_names):
         self.field_names = field_names
@@ -181,10 +187,16 @@ class TablePrinter(object):
 
         string += self.divider_char
         divider_line += self.divider_char
+        self.divider_line = divider_line
         cout_wrap('\n\n')
         cout_wrap(divider_line)
         cout_wrap(string.format(*(self.field_names)))
         cout_wrap(divider_line)
+
+        if self.file is not None:
+            self.file.write(divider_line)
+            self.file.write('\n' + string.format(*(self.field_names)))
+            self.file.write('\n' + divider_line)
 
     def print_line(self, line_data):
         string = ''
@@ -201,6 +213,16 @@ class TablePrinter(object):
 
         string += self.divider_char
         cout_wrap(string.format(line_data))
+        if self.file is not None:
+            self.file.write('\n'+string.format(line_data))
+
+    def close_file(self):
+        if self.file is not None:
+            try:
+                self.file.write('\n' + self.divider_line)
+            except ValueError:
+                pass
+            self.file.close()
 
 
 # version tracker and output
