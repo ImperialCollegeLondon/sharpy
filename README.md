@@ -93,7 +93,8 @@ turbines. Journal of Open Source Software, 4(44), 1885, https://doi.org/10.21105
 
 The bibtex entry for this citation is:
 
-`@Article{delCarre2019,
+```
+@Article{delCarre2019,
 doi = {10.21105/joss.01885},
 url = {https://doi.org/10.21105/joss.01885},
 year = {2019},
@@ -102,10 +103,11 @@ publisher = {The Open Journal},
 volume = {4},
 number = {44},
 pages = {1885},
-author = {Alfonso del Carre and Arturo Mu{~{n}}oz-Sim{'{o}}n and Norberto Goizueta and Rafael Palacios},
+author = {Alfonso del Carre and Arturo Mu{\~{n}}oz-Sim\'on and Norberto Goizueta and Rafael Palacios},
 title = {{SHARPy}: A dynamic aeroelastic simulation toolbox for very flexible aircraft and wind turbines},
 journal = {Journal of Open Source Software}
-}`
+}
+```
 
 
 ## Continuous Integration Status
