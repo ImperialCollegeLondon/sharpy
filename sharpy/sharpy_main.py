@@ -21,7 +21,7 @@ def main(args=None, sharpy_input_dict=None):
             ``solver.txt`` file would have.
 
     Returns:
-        ``PreSharpy`` class object
+        sharpy.presharpy.presharpy.PreSharpy: object containing the simulation results.
 
     """
     import time

@@ -11,6 +11,7 @@ modules:
   - 'sharpy/postproc'
   - 'sharpy/solvers'
   - 'sharpy/linear/dev'
+  - 'sharpy/linear/src/uvlmutils.py'
   - 'sharpy/aero/utils/uvlmlib.py'
   - 'sharpy/aero/utils/utils.py'
   - 'sharpy/utils/plot_utils.py'
