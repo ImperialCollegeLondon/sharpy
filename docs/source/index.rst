@@ -87,10 +87,8 @@ here_.
 
 If you are using SHARPy for your work, please remember to cite it using the paper in JOSS as:
 
-.. code-block:: none
-
     del Carre et al., (2019). SHARPy: A dynamic aeroelastic simulation toolbox for very flexible aircraft and wind
-    turbines. Journal of Open Source Software, 4(44), 1885, https://doi.org/10.21105/joss.01885`
+    turbines. Journal of Open Source Software, 4(44), 1885, https://doi.org/10.21105/joss.01885
 
 The bibtex entry for this citation is:
 

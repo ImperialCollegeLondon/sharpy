@@ -1,8 +1,27 @@
 # Changelog
 
-## [1.1](https://github.com/imperialcollegelondon/sharpy/tree/1.1) (2019-12-12)
+## [1.1.1](https://github.com/imperialcollegelondon/sharpy/tree/1.1.1) (2020-01-29)
 
-[Full Changelog](https://github.com/imperialcollegelondon/sharpy/compare/v1.0.1...1.1)
+[Full Changelog](https://github.com/imperialcollegelondon/sharpy/compare/v1.1.0-2...1.1.1)
+
+**Implemented enhancements:**
+
+- User-defined aerodynamic airfoil efficiency factor and constant force terms [\#59](https://github.com/ImperialCollegeLondon/sharpy/pull/59) ([ngoiz](https://github.com/ngoiz))
+
+**Merged pull requests:**
+
+- Documentation Improvements [\#66](https://github.com/ImperialCollegeLondon/sharpy/pull/66) ([ngoiz](https://github.com/ngoiz))
+- Minor fixes and general code clean up of linear modules [\#65](https://github.com/ImperialCollegeLondon/sharpy/pull/65) ([ngoiz](https://github.com/ngoiz))
+- Error log file created when program encounters exceptions [\#64](https://github.com/ImperialCollegeLondon/sharpy/pull/64) ([ngoiz](https://github.com/ngoiz))
+- Clean up linear SHARPy's interface with UVLM [\#60](https://github.com/ImperialCollegeLondon/sharpy/pull/60) ([ngoiz](https://github.com/ngoiz))
+
+## [v1.1.0-2](https://github.com/imperialcollegelondon/sharpy/tree/v1.1.0-2) (2019-12-12)
+
+[Full Changelog](https://github.com/imperialcollegelondon/sharpy/compare/v1.1.0...v1.1.0-2)
+
+## [v1.1.0](https://github.com/imperialcollegelondon/sharpy/tree/v1.1.0) (2019-12-12)
+
+[Full Changelog](https://github.com/imperialcollegelondon/sharpy/compare/v1.0.1...v1.1.0)
 
 **Implemented enhancements:**
 
