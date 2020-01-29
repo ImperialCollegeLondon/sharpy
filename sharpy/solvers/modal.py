@@ -15,8 +15,6 @@ import sharpy.utils.algebra as algebra
 import sharpy.utils.cout_utils as cout
 import sharpy.structure.utils.modalutils as modalutils
 
-
-
 @solver
 class Modal(BaseSolver):
     """
@@ -99,7 +97,6 @@ class Modal(BaseSolver):
     settings_default['use_custom_timestep'] = -1
     settings_description['use_custom_timestep'] = 'If > -1, it will use that time step geometry for calculating the modes'
 
-
     settings_types['rigid_modes_cg'] = 'bool'
     settings_default['rigid_modes_cg'] = False
     settings_description['rigid_modes_cg'] = 'Modify the ridid body modes such that they are defined wrt to the CG'
@@ -159,10 +156,8 @@ class Modal(BaseSolver):
 
         if self.settings['print_info']:
             cout.cout_wrap('Structural eigenvalues')
-            # self.eigenvalue_table = cout.TablePrinter(7, 12, ['d', 'f', 'f', 'f', 'f', 'f', 'f'])
-            # self.eigenvalue_table.print_header(['mode', 'eval_real', 'eval_imag', 'freq_n (Hz)', 'freq_d (Hz)',
-            #                                     'damping', 'period (s)'])
-            self.eigenvalue_table = modalutils.EigenvalueTable()
+            eigenvalue_filename = self.folder + '/eigenvaluetable.txt'
+            self.eigenvalue_table = modalutils.EigenvalueTable(filename=eigenvalue_filename)
             self.eigenvalue_table.print_header(self.eigenvalue_table.headers)
 
     def run(self):
@@ -469,6 +464,7 @@ class Modal(BaseSolver):
                 self.eigenvalue_table.print_evals(np.sqrt(eigenvalues[:NumLambda])*1j)
             else:
                 self.eigenvalue_table.print_evals(eigenvalues[:NumLambda])
+            self.eigenvalue_table.close_file()
 
         return self.data
 

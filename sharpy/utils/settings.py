@@ -194,10 +194,14 @@ def to_custom_types(dictionary, types, default, options=dict(), no_ctype=False):
         else:
             raise TypeError('Variable %s has an unknown type (%s) that cannot be casted' % (k, v))
 
-    check_settings(dictionary, types, options)
+    check_settings_in_options(dictionary, types, options)
+
+    for k in dictionary.keys():
+        if k not in list(types.keys()):
+            cout.cout_wrap('Warning - Unrecognised setting: %s. Please check input file and/or documentation.' % k, 3)
 
 
-def check_settings(settings, settings_types, settings_options):
+def check_settings_in_options(settings, settings_types, settings_options):
     """
     Checks that settings given a type ``str`` or ``int`` and allowable options are indeed valid.
 
@@ -267,13 +271,8 @@ def str2bool(string):
 
 
 def notify_default_value(k, v):
-    # NG 9/4/19 - when using these methods after SHARPy it will raise an error since the log file would have been closed
-    # at the end of SHARPy
-    try:
-        cout.cout_wrap('Variable ' + k + ' has no assigned value in the settings file.')
-        cout.cout_wrap('    will default to the value: ' + str(v), 1)
-    except ValueError:
-        pass
+    cout.cout_wrap('Variable ' + k + ' has no assigned value in the settings file.')
+    cout.cout_wrap('    will default to the value: ' + str(v), 1)
 
 
 class SettingsTable:

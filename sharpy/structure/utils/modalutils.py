@@ -20,8 +20,8 @@ def frequency_damping(eigenvalue):
 
 
 class EigenvalueTable(cout.TablePrinter):
-    def __init__(self):
-        super().__init__(7, 12, ['g', 'f', 'f', 'f', 'f', 'f', 'f'])
+    def __init__(self, filename=None):
+        super().__init__(7, 12, ['g', 'f', 'f', 'f', 'f', 'f', 'f'], filename)
 
         self.headers = ['mode', 'eval_real', 'eval_imag', 'freq_n (Hz)', 'freq_d (Hz)',
                         'damping', 'period (s)']
