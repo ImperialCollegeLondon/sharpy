@@ -70,6 +70,7 @@ Contents
 
    content/installation
    content/capabilities
+   content/publications
    content/examples
    content/contributing
    content/casefiles
@@ -104,7 +105,7 @@ The bibtex entry for this citation is:
     volume = {4},
     number = {44},
     pages = {1885},
-    author = {Alfonso del Carre and Arturo Mu{~{n}}oz-Sim{'{o}}n and Norberto Goizueta and Rafael Palacios},
+    author = {Alfonso del Carre and Arturo Mu{\~{n}}oz-Sim\'on and Norberto Goizueta and Rafael Palacios},
     title = {{SHARPy}: A dynamic aeroelastic simulation toolbox for very flexible aircraft and wind turbines},
     journal = {Journal of Open Source Software}
     }
