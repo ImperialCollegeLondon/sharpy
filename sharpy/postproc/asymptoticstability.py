@@ -4,12 +4,10 @@ import numpy as np
 import scipy.linalg as sclalg
 import sharpy.utils.settings as settings
 from sharpy.utils.solver_interface import solver, BaseSolver, initialise_solver
-import sharpy.utils.h5utils as h5
 import sharpy.utils.cout_utils as cout
 import sharpy.utils.algebra as algebra
 import sharpy.solvers.lindynamicsim as lindynamicsim
 import sharpy.structure.utils.modalutils as modalutils
-import scipy.sparse as scsp
 
 
 @solver
@@ -17,10 +15,6 @@ class AsymptoticStability(BaseSolver):
     """
     Calculates the asymptotic stability properties of the linearised aeroelastic system by computing
     the corresponding eigenvalues.
-
-    To use an iterative eigenvalue solver, the setting ``iterative_eigvals`` should be set to ``on``. This
-    will be beneficial when deailing with very large systems. However, the direct method is
-    preferred and more efficient when the system is of a relatively small size (typically around 5000 states).
 
     Warnings:
         The setting ``modes_to_plot`` to plot the eigenvectors in Paraview is currently under development.
@@ -61,10 +55,6 @@ class AsymptoticStability(BaseSolver):
     settings_default['velocity_analysis'] = []
     settings_description['velocity_analysis'] = 'List containing min, max and number ' \
                                                 'of velocities to analyse the system'
-
-    settings_types['iterative_eigvals'] = 'bool'
-    settings_default['iterative_eigvals'] = False
-    settings_description['iterative_eigvals'] = 'Calculate the first ``num_evals`` using an iterative solver.'
 
     settings_types['num_evals'] = 'int'
     settings_default['num_evals'] = 200
@@ -149,15 +139,9 @@ class AsymptoticStability(BaseSolver):
         else:
             ss = self.data.linear.ss
 
-        if self.settings['iterative_eigvals']:
-            if self.settings['print_info']:
-                cout.cout_wrap('Calculating first %g, largest magnitude eigenvalues using iterative solver.'
-                               % self.settings['num_evals'])
-            eigenvalues, eigenvectors = scsp.linalg.eigs(ss.A, k=self.settings['num_evals'])
-        else:
-            if self.settings['print_info']:
-                cout.cout_wrap('Calculating eigenvalues using direct method')
-            eigenvalues, eigenvectors = sclalg.eig(ss.A)
+        if self.settings['print_info']:
+            cout.cout_wrap('Calculating eigenvalues using direct method')
+        eigenvalues, eigenvectors = sclalg.eig(ss.A)
 
         # Convert DT eigenvalues into CT
         if ss.dt:
@@ -384,7 +368,6 @@ class AsymptoticStability(BaseSolver):
             # Delete 'modal' timesteps ready for next mode
             del self.data.structure.timestep_info[1:]
             del self.data.aero.timestep_info[1:]
-
 
     def mode_time_domain(self, fact, fact_rbm, mode_num, cycles=2):
         """
