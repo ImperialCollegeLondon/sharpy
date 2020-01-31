@@ -68,22 +68,22 @@ class StraightWake(generator_interface.BaseGenerator):
         self.dt = self.in_dict['dt']
 
         try:
-            self.dx1 = self.in_dict['dx1']
+            self.dx1 = self.in_dict['dx1'].value
         except KeyError:
             self.dx1 = self.u_inf*self.dt
 
         try:
-            self.ndx1 = self.in_dict['ndx1']
+            self.ndx1 = self.in_dict['ndx1'].value
         except KeyError:
             self.ndx1 = -1
 
         try:
-            self.r = self.in_dict['r']
+            self.r = self.in_dict['r'].value
         except KeyError:
             self.r = 1.
 
         try:
-            self.dxmax = self.in_dict['dxmax']
+            self.dxmax = self.in_dict['dxmax'].value
         except KeyError:
             self.dxmax = self.dx1
 

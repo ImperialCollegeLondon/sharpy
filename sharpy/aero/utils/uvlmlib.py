@@ -145,6 +145,7 @@ def vlm_solver(ts_info, options):
     vmopts.iterative_solver = ct.c_bool(options['iterative_solver'].value)
     vmopts.iterative_tol = ct.c_double(options['iterative_tol'].value)
     vmopts.iterative_precond = ct.c_bool(options['iterative_precond'].value)
+    vmopts.cfl1 = ct.c_bool(options['cfl1'])
 
     flightconditions = FlightConditions()
     flightconditions.rho = options['rho']
@@ -183,7 +184,6 @@ def uvlm_init(ts_info, options):
     except KeyError:
         pass
     vmopts.NumCores = ct.c_uint(options['num_cores'].value)
-    vmopts.cfl1 = ct.c_bool(options['cfl1'])
 
     flightconditions = FlightConditions()
     flightconditions.rho = options['rho']
@@ -229,6 +229,7 @@ def uvlm_solver(i_iter, ts_info, struct_ts_info, options, convect_wake=True, dt=
     uvmopts.iterative_tol = ct.c_double(options['iterative_tol'].value)
     uvmopts.iterative_precond = ct.c_bool(options['iterative_precond'].value)
     uvmopts.convect_wake = ct.c_bool(convect_wake)
+    uvmopts.cfl1 = ct.c_bool(options['cfl1'])
 
     flightconditions = FlightConditions()
     flightconditions.rho = options['rho']
