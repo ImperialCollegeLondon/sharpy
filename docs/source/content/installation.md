@@ -23,7 +23,7 @@ __Required Distributions__
 
 __GitHub Repositories__
 
-+ [SHARPy](http://github.com/imperialcollegelongon/sharpy)
++ [SHARPy](http://github.com/imperialcollegelondon/sharpy)
 
 SHARPy can be obtained from Docker Hub, or can be built from scratch.
 If what you want is to give it a go and run some static or simple dynamic cases,
