@@ -70,6 +70,7 @@ Contents
 
    content/installation
    content/capabilities
+   content/publications
    content/examples
    content/contributing
    content/casefiles
@@ -81,18 +82,33 @@ Contents
 
 Citing SHARPy
 -------------
+SHARPy has been published in the Journal of Open Source Software (JOSS) and the relevant paper can be found
+here_.
 
-SHARPy is archived in Zenodo. If you need to cite it, use this:
+If you are using SHARPy for your work, please remember to cite it using the paper in JOSS as:
 
-.. image:: https://zenodo.org/badge/DOI/10.5281/zenodo.3531965.svg
-   :target: https://doi.org/10.5281/zenodo.3531965
+    del Carre et al., (2019). SHARPy: A dynamic aeroelastic simulation toolbox for very flexible aircraft and wind
+    turbines. Journal of Open Source Software, 4(44), 1885, https://doi.org/10.21105/joss.01885
 
-This DOI which represents all the versions of the given software package, i.e. the concept of
-the software package and the ensemble of versions. In Zenodo you can find the DOI of a specific version.
+The bibtex entry for this citation is:
 
-For more information on citing and Zenodo, read more_.
+.. code-block:: none
 
-.. _more: https://help.zenodo.org/#versioning
+    @Article{delCarre2019,
+    doi = {10.21105/joss.01885},
+    url = {https://doi.org/10.21105/joss.01885},
+    year = {2019},
+    month = dec,
+    publisher = {The Open Journal},
+    volume = {4},
+    number = {44},
+    pages = {1885},
+    author = {Alfonso del Carre and Arturo Mu{\~{n}}oz-Sim\'on and Norberto Goizueta and Rafael Palacios},
+    title = {{SHARPy}: A dynamic aeroelastic simulation toolbox for very flexible aircraft and wind turbines},
+    journal = {Journal of Open Source Software}
+    }
+
+.. _here: https://joss.theoj.org/papers/10.21105/joss.01885
 
 
 Indices and tables

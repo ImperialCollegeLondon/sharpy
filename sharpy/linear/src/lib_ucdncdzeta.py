@@ -8,7 +8,7 @@ with respect to local panel coordinates.
 """
 
 import numpy as np
-import sharpy.linear.src.libalg as libalg
+import sharpy.utils.algebra as algebra
 
 dR_dZeta = np.array(
     [[[[-1, 0, 0], [0, 0, 0]], [[0, -1, 0], [0, 0, 0]], [[0, 0, -1], [0, 0, 0]]],
@@ -26,19 +26,19 @@ def eval(Zeta00, Zeta01, Zeta02, Zeta03, Uc):
     R02 = Zeta02 - Zeta00
     R13 = Zeta03 - Zeta01
 
-    crR02R13 = libalg.cross3d(R02, R13)
+    crR02R13 = algebra.cross3(R02, R13)
     norm_crR02R13 = np.linalg.norm(crR02R13)
     cub_crR02R13 = norm_crR02R13 ** 3
 
-    Acr = libalg.cross3d(crR02R13, R13)
-    Bcr = libalg.cross3d(crR02R13, R02)
+    Acr = algebra.cross3(crR02R13, R13)
+    Bcr = algebra.cross3(crR02R13, R02)
     Cdot = np.dot(crR02R13, Uc)
 
     uc_x, uc_y, uc_z = Uc
     r02_x, r02_y, r02_z = R02
     r13_x, r13_y, r13_z = R13
-    crR13Uc_x, crR13Uc_y, crR13Uc_z = libalg.cross3d(R13, Uc)
-    crR02Uc_x, crR02Uc_y, crR02Uc_z = libalg.cross3d(R02, Uc)
+    crR13Uc_x, crR13Uc_y, crR13Uc_z = algebra.cross3(R13, Uc)
+    crR02Uc_x, crR02Uc_y, crR02Uc_z = algebra.cross3(R02, Uc)
     crR02R13_x, crR02R13_y, crR02R13_z = crR02R13
     Acr_x, Acr_y, Acr_z = Acr
     Bcr_x, Bcr_y, Bcr_z = Bcr

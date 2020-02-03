@@ -93,7 +93,6 @@ class LinearAeroelastic(ss_interface.BaseElement):
         settings.to_custom_types(self.settings, self.settings_types, self.settings_default, no_ctype=True)
 
         if self.settings['use_euler']:
-            self.settings['aero_settings']['use_euler'] = True
             self.settings['beam_settings']['use_euler'] = True
 
         # Create Linear UVLM
@@ -235,16 +234,6 @@ class LinearAeroelastic(ss_interface.BaseElement):
                     Tas /= uvlm.sys.ScalingFacts['length']
 
         ss = libss.couple(ss01=uvlm.ss, ss02=beam.ss, K12=Tas, K21=Tsa)
-        # Conditioning of A matrix
-        # cond_a = np.linalg.cond(ss.A)
-        # if type(uvlm.ss.A) != np.ndarray:
-        #     cond_a_uvlm = np.linalg.cond(uvlm.ss.A.todense())
-        # else:
-        #     cond_a_uvlm = np.linalg.cond(uvlm.ss.A)
-        # cond_a_beam = np.linalg.cond(beam.ss.A)
-        # cout.cout_wrap('Matrix A condition = %e' % cond_a)
-        # cout.cout_wrap('Matrix A_uvlm condition = %e' % cond_a_uvlm)
-        # cout.cout_wrap('Matrix A_beam condition = %e' % cond_a_beam)
 
         self.couplings['Tas'] = Tas
         self.couplings['Tsa'] = Tsa
@@ -264,6 +253,7 @@ class LinearAeroelastic(ss_interface.BaseElement):
         cout.cout_wrap('\tTotal states: %g' % ss.states, 1)
         cout.cout_wrap('\tInputs: %g' % ss.inputs, 1)
         cout.cout_wrap('\tOutputs: %g' % ss.outputs, 1)
+
         return ss
 
     def update(self, u_infty):

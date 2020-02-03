@@ -1,5 +1,5 @@
 # SHARPy Installation Guide
-__Last revision 7 December 2019__
+__Last revision 3 February 2020__
 
 The following step by step tutorial will guide you through the installation process of SHARPy.
 
@@ -18,79 +18,26 @@ by Docker, including Windows!
 __Required Distributions__
 
 + Anaconda Python 3.7
-+ GCC 6.0 or higher (recommended)
++ GCC 6.0 or higher (recommended). C++ and Fortran.
+
+__Recommended Software__
+
+You may find the applications below useful, we recommend you use them but cannot provide any direct support.
+
++ [HDFView](https://portal.hdfgroup.org/display/HDFVIEW/HDFView) to read and view `.h5` files. HDF5 is the SHARPy
+input file format.
+
++ [Paraview](https://www.paraview.org/) to visualise SHARPy's output.
 
 
-__GitHub Repositories__
+__GitHub Repository__
 
-+ [SHARPy](http://github.com/imperialcollegelongon/sharpy)
++ [SHARPy](http://github.com/imperialcollegelondon/sharpy)
 
-SHARPy can be obtained from Docker Hub, or can be built from scratch.
-If what you want is to give it a go and run some static or simple dynamic cases,
-we recommend the Docker route. If you want to check the code, modify it and
-compile the libraries with custom flags, build it from source.
-
-## Using SHARPy from a Docker container
-
-Docker containers are similar to lightweight virtual machines. The SHARPy container
-distributed through [Docker Hub](https://hub.docker.com/) is a CentOS 8
-machine with the libraries compiled with `gfortran` and `g++` and an
-Anaconda Python distribution.
-
-Make sure your machine has Docker working. The instructions are here:
-[link](https://docs.docker.com/v17.09/engine/installation/).
-
-You might want to run a test in your terminal:
-```
-docker pull hello-world
-docker run hello-world
-```
-If this works, you're good to go!
-
-First, obtain the SHARPy docker container:
-```
-docker pull fonsocarre/sharpy:stable
-```
-
-Now you can run it:
-```
-docker run --name sharpy -it fonsocarre/sharpy:stable
-```
-You should see a welcome dialog such as:
-```
->>>> docker run -it fonsocarre/sharpy:stable
-SHARPy added to PATH from the directory: /sharpy_dir/bin
-=======================================================================
-Welcome to the Docker image of SHARPy
-SHARPy is located in /sharpy_dir/ and the
-environment is already set up!
-Copyright Imperial College London. Released under BSD 3-Clause license.
-=======================================================================
-SHARPy> 
-```
-You are now good to go.
-
-It is important to note that a docker container runs as an independent
-operating system with no access to your hard drive. If you want to copy your own
-files, run the container and from another terminal run:
-```
-docker cp my_file.txt sharpy:/my_file.txt     # copy from host to container
-docker cp sharpy:/my_file.txt my_file.txt     # copy from container to host
-```
-The `sharpy:` part is the `--name` argument you wrote in the `docker run` command.
-
-You can run the test suite once inside the container as:
-```
-cd sharpy_dir
-python -m unittest
-```
-
-We make available two different releases: `stable` and `experimental`. The former is the latest SHARPy
-release. The latter is our latest development work which will include new features but with higher chances
-of encountering some bugs along the way. To obtain the experimental build, follow the instructions
-above replacing the `stable` tag for `experimental`.
-
-**Enjoy!**
+SHARPy can be installed from the source code available on GitHub or you can get it packed in a Docker container.
+If what you want is to give it a go and run some static or simple dynamic cases (and are familiar with Docker),
+we recommend the [Docker route](#using-sharpy-from-a-docker-container). If you want to check the code, modify it and
+compile the libraries with custom flags, build it from source (recommended).
 
 ## Building SHARPy from source (release or development builds)
 
@@ -106,7 +53,8 @@ once you initialise SHARPy you will also automatically clone the relevant versio
     ```bash
     git clone --recursive http://github.com/ImperialCollegeLondon/sharpy
     ```
-    The `--recursive` flag will also initialise and update the submodules SHARPy depends on: xbeam and UVLM.
+    The `--recursive` flag will also initialise and update the submodules SHARPy depends on, 
+    [xbeam](http://github.com/imperialcollegelondon/xbeam) and [UVLM](http://github.com/imperialcollegelondon/UVLM).
     
 2. We will now set up the SHARPy environment that will install other required distributions.
     
@@ -184,7 +132,7 @@ change compilers see the Custom Installation.
     source bin/sharpy_vars.sh
     ```
     
-__You are ready to run SHARPy__.
+__You are ready to run SHARPy__. Continue reading the [Running SHARPy](#running-sharpy) section.
 
 ### Custom installation
 
@@ -222,19 +170,75 @@ are used for what kind of features have a look at the [Contributing](contributin
     ```bash
     make install -j 4
     ```
-1. This concludes the installation!
+1. This concludes the installation! Continue reading the [Running SHARPy](#running-sharpy) section.
+
+## Using SHARPy from a Docker container
+
+Docker containers are similar to lightweight virtual machines. The SHARPy container
+distributed through [Docker Hub](https://hub.docker.com/) is a CentOS 8
+machine with the libraries compiled with `gfortran` and `g++` and an
+Anaconda Python distribution.
+
+Make sure your machine has Docker working. The instructions are here:
+[link](https://docs.docker.com/v17.09/engine/installation/).
+
+You might want to run a test in your terminal:
+```
+docker pull hello-world
+docker run hello-world
+```
+If this works, you're good to go!
+
+First, obtain the SHARPy docker container:
+```
+docker pull fonsocarre/sharpy:stable
+```
+
+Now you can run it:
+```
+docker run --name sharpy -it fonsocarre/sharpy:stable
+```
+You should see a welcome dialog such as:
+```
+>>>> docker run -it fonsocarre/sharpy:stable
+SHARPy added to PATH from the directory: /sharpy_dir/bin
+=======================================================================
+Welcome to the Docker image of SHARPy
+SHARPy is located in /sharpy_dir/ and the
+environment is already set up!
+Copyright Imperial College London. Released under BSD 3-Clause license.
+=======================================================================
+SHARPy> 
+```
+You are now good to go.
+
+It is important to note that a docker container runs as an independent
+operating system with no access to your hard drive. If you want to copy your own
+files, run the container and from another terminal run:
+```
+docker cp my_file.txt sharpy:/my_file.txt     # copy from host to container
+docker cp sharpy:/my_file.txt my_file.txt     # copy from container to host
+```
+The `sharpy:` part is the `--name` argument you wrote in the `docker run` command.
+
+You can run the test suite once inside the container as:
+```
+cd sharpy_dir
+python -m unittest
+```
+
+We make available two different releases: `stable` and `experimental`. The former is the latest SHARPy
+release. The latter is our latest development work which will include new features but with higher chances
+of encountering some bugs along the way. To obtain the experimental build, follow the instructions
+above replacing the `stable` tag for `experimental`.
+
+**Enjoy!**
 
 
-## Output and binary files
+## Running SHARPy
 
-SHARPy produces its output in `.vtu` format that can be used with [Paraview](https://www.paraview.org/).
-
-Data is exchanged in binary format by means of `.h5` files that make the transmission efficient between the different
-languages of the required libraries. To view these `.h5` files, a viewer like [HDF5](https://portal.hdfgroup.org/display/support) is recommended.
-
-## Running SHARPy cases
-
-__Before you run any SHARPy case__
+In order to run SHARPy, you need to load the conda environment and load the SHARPy variables (so your computer knows
+where SHARPy is). Therefore, __before you run any SHARPy case__:
 
 1. Activate the SHARPy conda environment
     ```bash
@@ -249,6 +253,7 @@ __Before you run any SHARPy case__
 You are now ready to run SHARPy cases from the terminal.
 
 ### Automated tests
+
 SHARPy uses unittests to verify the integrity of the code.
 
 These tests can be run from the `./sharpy` directory. 
@@ -269,7 +274,7 @@ an [issue](http://www.github.com/imperialcollegelondon/sharpy/issues) with the f
     - UVLM and xbeam compiler of choice
     - A log of the tests that failed
 
-### The SHARPy Case Structure
+### The SHARPy Case Structure and input files
 
 __Setting up a SHARPy case__
 
@@ -285,6 +290,8 @@ This script creates the output files that will then be used by SHARPy, namely:
     * The ROM settings file `.rom.h5` (when required).
     
     See the [chapter](./casefiles.html) on the case files for a detailed description on the contents of each one.    
+    Data is exchanged in binary format by means of `.h5` files that make the transmission efficient between the different
+    languages of the required libraries. To view these `.h5` files, a viewer like [HDF5](https://portal.hdfgroup.org/display/support) is recommended.
 
 2. The `h5` files contain data of the FEM, aerodynamics, dynamic conditions. They are later read by SHARPy.
 
@@ -294,14 +301,14 @@ __To run a SHARPy case__
 
 SHARPy cases are therefore usually ran in the following way:
 
-1. Create a `generate_case.py` file following the provided templates
+1. Create a `generate_case.py` file following the provided templates.
 
-2. Run it to produce the `.h5` files and the `.sharpy` files
+2. Run it to produce the `.h5` files and the `.sharpy` files.
     ```bash
     (sharpy_env) python generate_case.py
     ```
 
-3. Run SHARPy (ensure the environment is activated)
+3. Run SHARPy (ensure the environment is activated).
     ```bash
     (sharpy_env) sharpy case.sharpy
     ```
@@ -311,7 +318,8 @@ SHARPy cases are therefore usually ran in the following way:
 By default, the output is located in the `output` folder.
 
 The contents of the folder will typically be a `beam` and `aero` folders, which contain the output data that can then be
-loaded in Paraview.
+loaded in Paraview. These are the `.vtu` format files that can be used with [Paraview](https://www.paraview.org/).
+
 
 ### Running (and modifiying) a test case
 

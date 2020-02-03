@@ -4,6 +4,7 @@ import os
 import sharpy.utils.settings as settings
 import inspect
 import shutil
+import sharpy.utils.exceptions as exceptions
 
 dict_of_solvers = {}
 solvers = {}  # for internal working
@@ -61,8 +62,13 @@ class BaseSolver(metaclass=ABCMeta):
         _doc += settings_table.generate(settings_types, settings_default, settings_description)
         return _doc
 
+
 def solver_from_string(string):
-    return dict_of_solvers[string]
+    try:
+        solver = dict_of_solvers[string]
+    except KeyError:
+        raise exceptions.SolverNotFound(string)
+    return solver
 
 
 def solver_list_from_path(cwd):
@@ -88,6 +94,7 @@ def initialise_solver(solver_name, print_info=True):
     solver = cls_type()
     return solver
 
+
 def dictionary_of_solvers(print_info=True):
     import sharpy.solvers
     import sharpy.postproc
@@ -99,6 +106,7 @@ def dictionary_of_solvers(print_info=True):
             dictionary[solver] = init_solver.settings_default
 
     return dictionary
+
 
 def output_documentation(route=None):
     """

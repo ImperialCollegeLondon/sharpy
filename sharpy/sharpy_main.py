@@ -21,7 +21,7 @@ def main(args=None, sharpy_input_dict=None):
             ``solver.txt`` file would have.
 
     Returns:
-        ``PreSharpy`` class object
+        sharpy.presharpy.presharpy.PreSharpy: object containing the simulation results.
 
     """
     import time
@@ -31,6 +31,9 @@ def main(args=None, sharpy_input_dict=None):
     import sharpy.utils.solver_interface as solver_interface
     from sharpy.presharpy.presharpy import PreSharpy
     from sharpy.utils.cout_utils import start_writer, finish_writer
+    import logging
+    import os
+
     # Loading solvers and postprocessors
     import sharpy.solvers
     import sharpy.postproc
@@ -38,69 +41,87 @@ def main(args=None, sharpy_input_dict=None):
     import sharpy.controllers
     # ------------
 
-    # output writer
-    start_writer()
-    # timing
-    t = time.process_time()
-    t0_wall = time.perf_counter()
+    try:
+        # output writer
+        start_writer()
+        # timing
+        t = time.process_time()
+        t0_wall = time.perf_counter()
 
-    if sharpy_input_dict is None:
-        parser = argparse.ArgumentParser(prog='SHARPy', description=
-        """This is the executable for Simulation of High Aspect Ratio Planes.\n
-        Imperial College London 2019""")
-        parser.add_argument('input_filename', help='path to the *.sharpy input file', type=str, default='')
-        parser.add_argument('-r', '--restart', help='restart the solution with a given snapshot', type=str, default=None)
-        parser.add_argument('-d', '--docs', help='generates the solver documentation in the specified location. Code does not execute if running this flag', action='store_true')
-        if args is not None:
-            args = parser.parse_args(args[1:])
+        if sharpy_input_dict is None:
+            parser = argparse.ArgumentParser(prog='SHARPy', description=
+            """This is the executable for Simulation of High Aspect Ratio Planes.\n
+            Imperial College London 2020""")
+            parser.add_argument('input_filename', help='path to the *.sharpy input file', type=str, default='')
+            parser.add_argument('-r', '--restart', help='restart the solution with a given snapshot', type=str,
+                                default=None)
+            parser.add_argument('-d', '--docs', help='generates the solver documentation in the specified location. '
+                                                     'Code does not execute if running this flag', action='store_true')
+            if args is not None:
+                args = parser.parse_args(args[1:])
+            else:
+                args = parser.parse_args()
+
+        if args.docs:
+            import subprocess
+            import sharpy.utils.docutils as docutils
+            import sharpy.utils.sharpydir as sharpydir
+            docutils.generate_documentation()
+
+            # run make
+            cout.cout_wrap('Running make html in sharpy/docs')
+            subprocess.Popen(['make', 'html'],
+                             stdout=None,
+                             cwd=sharpydir.SharpyDir + '/docs')
+
+            return 0
+
+        if args.input_filename == '':
+            parser.error('input_filename is a required argument of SHARPy.')
+        settings = input_arg.read_settings(args)
+        if args.restart is None:
+            # run preSHARPy
+            data = PreSharpy(settings)
         else:
-            args = parser.parse_args()
+            try:
+                with open(args.restart, 'rb') as restart_file:
+                    data = pickle.load(restart_file)
+            except FileNotFoundError:
+                raise FileNotFoundError('The file specified for the snapshot \
+                    restart (-r) does not exist. Please check.')
 
-    if args.docs:
-        import subprocess
-        import sharpy.utils.docutils as docutils
-        import sharpy.utils.sharpydir as sharpydir
-        docutils.generate_documentation()
+            # update the settings
+            data.update_settings(settings)
 
-        # run make
-        cout.cout_wrap('Running make html in sharpy/docs')
-        subprocess.Popen(['make', 'html'],
-                         stdout=None,
-                         cwd=sharpydir.SharpyDir + '/docs')
+        # Loop for the solvers specified in *.sharpy['SHARPy']['flow']
+        for solver_name in settings['SHARPy']['flow']:
+            solver = solver_interface.initialise_solver(solver_name)
+            solver.initialise(data)
+            data = solver.run()
 
-        return 0
+        cpu_time = time.process_time() - t
+        wall_time = time.perf_counter() - t0_wall
+        cout.cout_wrap('FINISHED - Elapsed time = %f6 seconds' % wall_time, 2)
+        cout.cout_wrap('FINISHED - CPU process time = %f6 seconds' % cpu_time, 2)
+        finish_writer()
 
-    if args.input_filename == '':
-        parser.error('input_filename is a required argument of sharpy.')
-    settings = input_arg.read_settings(args)
-    if args.restart is None:
-        # run preSHARPy
-        data = PreSharpy(settings)
-    else:
+    except Exception as e:
         try:
-            with open(args.restart, 'rb') as restart_file:
-                data = pickle.load(restart_file)
-        except FileNotFoundError:
-            raise FileNotFoundError('The file specified for the snapshot \
-                restart (-r) does not exist. Please check.')
+            logdir = settings['SHARPy']['log_folder']
+        except KeyError:
+            logdir = './'
+        except NameError:
+            logdir = './'
+        logdir = os.path.abspath(logdir)
+        print('Exception raised, writing error log in %s/error.log' % logdir)
+        logging.basicConfig(filename='%s/error.log' % logdir,
+                            filemode='w',
+                            format='%(asctime)s-%(levelname)s-%(message)s',
+                            datefmt='%d-%b-%y %H:%M:%S',
+                            level=logging.INFO)
+        logging.info('SHARPy Error Log')
+        logging.error("Exception occurred", exc_info=True)
+        raise e
 
-        # update the settings
-        data.update_settings(settings)
-    # else:
-        # # Case for input from dictionary
-        # settings = input_arg.read_settings(args)
-        # # run preSHARPy
-        # data = PreSharpy(settings)
-
-    # Loop for the solvers specified in *.sharpy['SHARPy']['flow']
-    for solver_name in settings['SHARPy']['flow']:
-        solver = solver_interface.initialise_solver(solver_name)
-        solver.initialise(data)
-        data = solver.run()
-
-    cpu_time = time.process_time() - t
-    wall_time = time.perf_counter() - t0_wall
-    cout.cout_wrap('FINISHED - Elapsed time = %f6 seconds' % wall_time, 2)
-    cout.cout_wrap('FINISHED - CPU process time = %f6 seconds' % cpu_time, 2)
-    finish_writer()
     return data
+

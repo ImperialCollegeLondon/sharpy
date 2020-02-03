@@ -300,3 +300,13 @@ Item by item:
 
     Only necessary for lifting surfaces that are deflected as a
     whole, like some horizontal tails in some aircraft. Leave it at ``0`` if you are not modelling this.
+
+*  ``airfoil_efficiency [num_elem, num_node_elem, 2, 3]``: Airfoil efficiency.
+
+    This is an optional setting that introduces a user-defined efficiency and constant terms to the mapping
+    between the aerodynamic forces calculated at the lattice grid and the structural nodes. The formatting of the
+    4-dimensional array is simple. The first two dimensions correspond to the element index and the local node index.
+    The third index is whether the term is the multiplier to the force ``0`` or a constant term ``1``. The final term refers to,
+    in the **local, body-attached** ``B`` frame, the factors and constant terms for: ``fy, fz, mx``.
+    For more information on how these factors are included in the mapping terms
+    see :func:`sharpy.aero.utils.mapping.aero2struct_force_mapping`.

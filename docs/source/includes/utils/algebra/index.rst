@@ -36,6 +36,8 @@ Note:
 	./get_triad
 	./mat2quat
 	./multiply_matrices
+	./norm3d
+	./normsq3d
 	./quadskew
 	./quat2euler
 	./quat2rotation

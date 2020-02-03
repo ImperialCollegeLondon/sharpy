@@ -1,6 +1,8 @@
 """
 Simple Horten Wing as used by Richards. Baseline and simplified models
 
+Richards, P. W., Yao, Y., Herd, R. A., Hodges, D. H., & Mardanpour, P. (2016). Effect of Inertial and Constitutive
+Properties on Body-Freedom Flutter for Flying Wings. Journal of Aircraft. https://doi.org/10.2514/1.C033435
 """
 import numpy as np
 from cases.hangar.horten_wing import HortenWing
@@ -49,10 +51,9 @@ class Baseline(HortenWing):
         self.fsi_tolerance = 1e-10
         self.relaxation_factor = 0.2
 
-
-    def update_mass_stiffness(self, sigma=1., sigma_mass=1.):
+    def update_mass_stiffness(self, sigma=1., sigma_mass=1., payload=0):
         """
-        Set's the mass and stiffness properties of the default wing
+        Sets the mass and stiffness properties of the default wing
 
         Returns:
 
@@ -187,7 +188,7 @@ class Baseline(HortenWing):
 
         # Lumped mass value from Richards 2013
         lumped_mass[0:2] = 51.445 / 9.81
-        lumped_mass[2] = 150 / 9.81
+        lumped_mass[2] = 150 / 9.81 + payload
         # lumped_mass_position[2] = [0, 0, -10.]
 
         # Lumped mass inertia
