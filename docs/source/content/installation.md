@@ -132,7 +132,7 @@ change compilers see the Custom Installation.
     source bin/sharpy_vars.sh
     ```
     
-__You are ready to run SHARPy__.
+__You are ready to run SHARPy__. Continue reading the [Running SHARPy](#running-sharpy) section.
 
 ### Custom installation
 
