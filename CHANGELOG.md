@@ -1,23 +1,27 @@
 # Changelog
 
-## [1.1.1](https://github.com/imperialcollegelondon/sharpy/tree/1.1.1) (2020-01-29)
+## [1.1.1](https://github.com/imperialcollegelondon/sharpy/tree/1.1.1) (2020-02-03)
 
-[Full Changelog](https://github.com/imperialcollegelondon/sharpy/compare/v1.1.0-2...1.1.1)
+[Full Changelog](https://github.com/imperialcollegelondon/sharpy/compare/v1.1.0...1.1.1)
 
 **Implemented enhancements:**
 
 - User-defined aerodynamic airfoil efficiency factor and constant force terms [\#59](https://github.com/ImperialCollegeLondon/sharpy/pull/59) ([ngoiz](https://github.com/ngoiz))
+
+**Closed issues:**
+
+- Broken link on SHARPy Installation Guide [\#67](https://github.com/ImperialCollegeLondon/sharpy/issues/67)
+- Update citation instructions [\#62](https://github.com/ImperialCollegeLondon/sharpy/issues/62)
+- Incorrect version tag displayed when running SHARPy [\#61](https://github.com/ImperialCollegeLondon/sharpy/issues/61)
+- Clean up SHARPy linear interface with UVLM [\#48](https://github.com/ImperialCollegeLondon/sharpy/issues/48)
 
 **Merged pull requests:**
 
 - Documentation Improvements [\#66](https://github.com/ImperialCollegeLondon/sharpy/pull/66) ([ngoiz](https://github.com/ngoiz))
 - Minor fixes and general code clean up of linear modules [\#65](https://github.com/ImperialCollegeLondon/sharpy/pull/65) ([ngoiz](https://github.com/ngoiz))
 - Error log file created when program encounters exceptions [\#64](https://github.com/ImperialCollegeLondon/sharpy/pull/64) ([ngoiz](https://github.com/ngoiz))
+- Update README.md [\#63](https://github.com/ImperialCollegeLondon/sharpy/pull/63) ([rafapalacios](https://github.com/rafapalacios))
 - Clean up linear SHARPy's interface with UVLM [\#60](https://github.com/ImperialCollegeLondon/sharpy/pull/60) ([ngoiz](https://github.com/ngoiz))
-
-## [v1.1.0-2](https://github.com/imperialcollegelondon/sharpy/tree/v1.1.0-2) (2019-12-12)
-
-[Full Changelog](https://github.com/imperialcollegelondon/sharpy/compare/v1.1.0...v1.1.0-2)
 
 ## [v1.1.0](https://github.com/imperialcollegelondon/sharpy/tree/v1.1.0) (2019-12-12)
 
