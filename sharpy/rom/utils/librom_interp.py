@@ -280,7 +280,7 @@ class InterpROM:
     Grassmann Manifolds with a View on Algorithmic Computation. Acta Applicandae 
     Mathematicae, 80(2), pp.199–220.
 
-    [4] Geuss, M., Panzer, H. & Lohmann, B., 2018. On parametric model order 
+    [4] Geuss, M., Panzer, H. & Lohmann, B., 2013. On parametric model order
     reduction by matrix interpolation. 2013 European Control Conference (ECC), 
     pp.3433–3438.
 
