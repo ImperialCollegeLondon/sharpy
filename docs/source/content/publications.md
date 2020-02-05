@@ -5,6 +5,11 @@ Here we present a list of past papers which have used SHARPy for research purpos
 
 ## 2020
 
+* Goizueta, Norberto, del Carre, Alfonso, Muñoz-Simón, Arturo, & Palacios, Rafael. (2020, February). 
+SHARPy: from a research code to an open-source software tool for the simulation of very flexible aircraft. 
+RSLondonSouthEast 2020 Conference.
+Zenodo: [http://doi.org/10.5281/zenodo.3641216](http://doi.org/10.5281/zenodo.3641216)
+
 * Del Carre, A., Deskos, G., & Palacios, R. (2020). Realistic turbulence effects in low altitude dynamics of very 
 flexible aircraft. In AIAA SciTech Forum (pp. 1–18). [https://doi.org/10.2514/6.2020-1187](https://doi.org/10.2514/6.2020-1187)
 
