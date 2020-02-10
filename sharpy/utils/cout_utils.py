@@ -224,6 +224,9 @@ class TablePrinter(object):
                 pass
             self.file.close()
 
+    def print_divider_line(self):
+        cout_wrap(self.divider_line)
+
 
 # version tracker and output
 def get_git_revision_hash(di=sharpydir.SharpyDir):
