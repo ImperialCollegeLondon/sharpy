@@ -89,7 +89,7 @@ class ROMLibrary:
             data = pickle.load(open(pickle_path[0], "rb"))
 
             # load pmor
-            pmor_path = glob.glob(case_path + '/*.pmor')
+            pmor_path = glob.glob(case_path + '/*.pmor*')
             if len(pmor_path) != 0:
                 params = configobj.ConfigObj(pmor_path[0])
 
