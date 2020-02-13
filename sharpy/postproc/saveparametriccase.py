@@ -12,6 +12,9 @@ class SaveParametricCase(BaseSolver):
     ``<sharpy_case_name>.pmor.sharpy`` that contains information on certain user parameters. It is useful as
     a record keeper if you are doing a parametric study and for parametric model interpolation.
 
+    If the solver :class:~sharpy.solvers.pickledata.PickleData` is not present in the SHARPy flow, this solver
+    will pickle the data to the path given in the ``folder`` setting.
+
     Examples:
 
         In the case you are running several SHARPy cases, varying for instance the velocity, the settings would
@@ -39,10 +42,6 @@ class SaveParametricCase(BaseSolver):
     settings_types['folder'] = 'str'
     settings_default['folder'] = './output/'
     settings_description['folder'] = 'Folder to save parametric case.'
-
-    settings_types['pickle_data'] = 'bool'
-    settings_default['pickle_data'] = True
-    settings_description['pickle_data'] = 'Save SHARPy data to a pickle.'
 
     settings_types['parameters'] = 'dict'
     settings_default['parameters'] = None
@@ -85,11 +84,20 @@ class SaveParametricCase(BaseSolver):
         for k, v in self.settings['parameters'].items():
             cout.cout_wrap('\tWriting parameter %s: %s' % (k, str(v)), 1)
             config['parameters'][k] = v
-        config.write()
 
-        if 'PickleData' not in self.data.settings['SHARPy']['flow'] and self.settings['pickle_data']:
+        sim_info = dict()
+        sim_info['case'] = self.data.settings['SHARPy']['case']
+
+        if 'PickleData' not in self.data.settings['SHARPy']['flow']:
+            self.data.settings['PickleData'] = {'folder': self.settings['folder']}
             pickle_solver = initialise_solver('PickleData')
             pickle_solver.initialise(self.data)
             self.data = pickle_solver.run()
+            sim_info['path_to_data'] = os.path.abspath(self.settings['folder'])
+        else:
+            sim_info['path_to_data'] = os.path.abspath(self.data.settings['PickleData']['folder'])
+
+        config['sim_info'] = sim_info
+        config.write()
 
         return self.data

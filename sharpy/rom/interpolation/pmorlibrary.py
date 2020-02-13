@@ -5,6 +5,7 @@ import glob
 import pickle
 import configobj
 import sharpy.utils.cout_utils as coututils
+import os
 
 coututils.start_writer()
 coututils.cout_wrap.cout_talk()
@@ -20,6 +21,8 @@ class ROMLibrary:
         self.library_name = None
         self.folder = None
         self.library = None
+
+        self.data_library = None
 
         self.reference_case = None
 
@@ -60,7 +63,7 @@ class ROMLibrary:
         if settings is None:
             self.get_library_name()
             # look for pickles and configs
-            pickle_source_path = input('Enter path to folder containing ROMs (in .pkl):')
+            pickle_source_path = input('Enter path to folder containing ROMs (in .pkl): ')
         else:
             self.library_name = settings.get('library_name', None)
             self.folder = settings.get('folder', None)
@@ -83,31 +86,35 @@ class ROMLibrary:
 
     def load_case(self, case_path):
 
-        coututils.cout_wrap('Loading %s' % case_path)
-        pickle_path = glob.glob(case_path + '/*.pkl')
-        if len(pickle_path) != 0:
-            data = pickle.load(open(pickle_path[0], "rb"))
+        coututils.cout_wrap('Loading %s' % os.path.abspath(case_path))
 
-            # load pmor
-            pmor_path = glob.glob(case_path + '/*.pmor*')
-            if len(pmor_path) != 0:
-                params = configobj.ConfigObj(pmor_path[0])
+        # load pmor
+        pmor_path = glob.glob(case_path + '/*.pmor*')
+        if len(pmor_path) != 0:
+            pmor_case_data = configobj.ConfigObj(pmor_path[0])
 
-                dict_params = dict()
-                for item in params['parameters']:
-                    dict_params[item] = float(params['parameters'][item])
+            dict_params = dict()
+            for item in pmor_case_data['parameters']:
+                dict_params[item] = float(pmor_case_data['parameters'][item])
 
-                self.library.append((data, dict_params))
-            else:
-                coututils.cout_wrap('Unable to locate .pmor config file with parameter information', 4)
+            try:
+                case_name = pmor_case_data['sim_info']['case']
+                path_to_data = glob.glob(pmor_case_data['sim_info']['path_to_data'] + '/*.pkl')[0]
+                if not os.path.isfile(path_to_data):
+
+                    coututils.cout_wrap('Unable to locate pickle file containing case data %s' % path_to_data, 4)
+                else:
+                    self.library.append({'case': case_name, 'path_to_data': path_to_data, 'parameters': dict_params})
+            except KeyError:
+                coututils.cout_wrap('File not in correct format', 4)
         else:
-            coututils.cout_wrap('Unable to locate pickle file', 4)
+            coututils.cout_wrap('Unable to locate .pmor.sharpy config file with parameter information', 4)
 
     def save_library(self):
         if self.library is not None:
             path = self.folder + '/' + self.library_name + '.pkl'
             pickle.dump((self.library, self.reference_case), open(path, 'wb'))
-            coututils.cout_wrap('Saved library to %s' % self.folder, 2)
+            coututils.cout_wrap('Saved library to %s' % os.path.abspath(self.folder), 2)
 
     def load_library(self, path=None):
         if path is None:
@@ -122,13 +129,13 @@ class ROMLibrary:
 
     def display_library(self):
 
-        params = self.library[0][1].keys()
+        params = self.library[0]['parameters'].keys()
 
         library_table = coututils.TablePrinter(n_fields=len(params) + 2,
                                                field_types=['g'] + ['g'] * len(params) + ['s'],
                                                field_length=[4] + len(params) * [12] + [90])
         library_table.print_header(field_names=['no'] + list(params) + ['Case Name'])
-        [library_table.print_line([ith] + list(entry[1].values()) + [entry[0].settings['SHARPy']['case']])
+        [library_table.print_line([ith] + list(entry['parameters'].values()) + [entry['case']])
          for ith, entry in enumerate(self.library)]
         library_table.print_divider_line()
 
@@ -157,7 +164,7 @@ class ROMLibrary:
             coututils.cout_wrap('Index Error. Unable to set reference case to desired index', 4)
 
     def main_menu(self):
-        coututils.cout_wrap("\n-----------------------------\n"
+        coututils.cout_wrap("\n-------------------------------\n"
                             "PMOR Library Interface Menu\n"
                             "-------------------------------\n\n"
                             "[1] - Create library\n"
@@ -177,6 +184,15 @@ class ROMLibrary:
         coututils.cout_wrap("\n[0] - Quit")
 
         return self.select_from_menu()
+
+    def load_data_from_library(self):
+
+        self.data_library = []
+
+        for case in self.library:
+            with open(case['path_to_data'], 'rb') as f:
+                case_data = pickle.load(f)
+            self.data_library.append(case_data)
 
     @staticmethod
     def select_from_menu(input_message='Select option: ',
