@@ -81,6 +81,12 @@ class ROMLibrary:
 
         sharpy_cases = glob.glob(path + '/*')
 
+        coututils.cout_wrap('Loading cases from SHARPy cases in %s' % os.path.abspath(path) + '/')
+
+        if len(sharpy_cases) == 0:
+            coututils.cout_wrap('Unable to find any SHARPy cases. Please use interface', 3)
+            self.interface()
+
         for case in sharpy_cases:
             self.load_case(case)
 
@@ -129,17 +135,20 @@ class ROMLibrary:
 
     def display_library(self):
 
-        params = self.library[0]['parameters'].keys()
+        if len(self.library) == 0:
+            coututils.cout_utils('Libary is empty. Nothing to display', 3)
+        else:
+            params = self.library[0]['parameters'].keys()
 
-        library_table = coututils.TablePrinter(n_fields=len(params) + 2,
-                                               field_types=['g'] + ['g'] * len(params) + ['s'],
-                                               field_length=[4] + len(params) * [12] + [90])
-        library_table.print_header(field_names=['no'] + list(params) + ['Case Name'])
-        [library_table.print_line([ith] + list(entry['parameters'].values()) + [entry['case']])
-         for ith, entry in enumerate(self.library)]
-        library_table.print_divider_line()
+            library_table = coututils.TablePrinter(n_fields=len(params) + 2,
+                                                   field_types=['g'] + ['g'] * len(params) + ['s'],
+                                                   field_length=[4] + len(params) * [12] + [90])
+            library_table.print_header(field_names=['no'] + list(params) + ['Case Name'])
+            [library_table.print_line([ith] + list(entry['parameters'].values()) + [entry['case']])
+             for ith, entry in enumerate(self.library)]
+            library_table.print_divider_line()
 
-        coututils.cout_wrap('Reference case: %s' % str(self.reference_case))
+            coututils.cout_wrap('Reference case: %s' % str(self.reference_case))
 
     def delete_case(self):
         self.display_library()
@@ -204,6 +213,34 @@ class ROMLibrary:
             coututils.cout_wrap(unrecognised_message, 3)
             user_input = -1
         return user_input
+
+
+class InterpolatedROMLibrary:
+    """
+    Library of interpolated ROMs for storage in PreSHARPy object
+
+    Attributes:
+        ss_list (list): List of interpolated :class:`~sharpy.linear.src.libss.ss`
+        parameter_list (list(dict)): List of dictionaries corresponding to the parameters at which the state-spaces
+          were interpolated.
+    """
+
+    def __init__(self, ss_list=list(), parameter_list=list()):
+
+        self.ss_list = ss_list
+        self.parameter_list = parameter_list
+
+    def append(self, interpolated_ss, parameters):
+        """
+        Add entry to library
+
+        Args:
+            interpolated_ss (sharpy.linear.src.libss.ss): Interpolated system.
+            parameters (dict): Dictionary with parameters at which system was interpolated.
+        """
+
+        self.ss_list.append(interpolated_ss)
+        self.parameter_list.append(parameters)
 
 
 if __name__ == '__main__':
