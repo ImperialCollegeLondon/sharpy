@@ -1,4 +1,5 @@
-from sharpy.utils.solver_interface import solver, BaseSolver
+from sharpy.utils.solver_interface import solver, BaseSolver, initialise_solver
+import os
 import sharpy.utils.settings as settings
 import sharpy.rom.interpolation.pmorlibrary as pmorlibrary
 import sharpy.rom.utils.librom_interp as librominterp
@@ -72,6 +73,17 @@ class ParametricModelReduction(BaseSolver):
                                              'weakMAC_right_orth',
                                              'weakMAC']
 
+    settings_types['postprocessors'] = 'list(str)'
+    settings_default['postprocessors'] = list()
+    settings_description['postprocessors'] = 'List of the postprocessors to run at the end of every time step'
+    settings_options['postprocessors'] = ['AsymptoticStability']  # supported postprocs for pMOR
+
+    settings_types['postprocessors_settings'] = 'dict'
+    settings_default['postprocessors_settings'] = dict()
+    settings_description['postprocessors_settings'] = 'Dictionary with the applicable settings for every ' \
+                                                      '``postprocessor``. Every ``postprocessor`` needs its entry, ' \
+                                                      'even if empty.'
+
     settings_table = settings.SettingsTable()
     __doc__ += settings_table.generate(settings_types, settings_default, settings_description)
 
@@ -89,8 +101,11 @@ class ParametricModelReduction(BaseSolver):
         self.inverse_mapping = None
 
         self.data = None
+        self.postprocessors = None
 
     def initialise(self, data):
+
+        self.data = data
 
         self.settings = data.settings[self.solver_id]
         settings.to_custom_types(self.settings, self.settings_types, self.settings_default,
@@ -113,8 +128,17 @@ class ParametricModelReduction(BaseSolver):
             self.rom_library.set_reference_case(self.settings['reference_case'])
 
         if self.settings['print_info']:
-            cout.cout_wrap('Current library for ROM interpolation')
-            self.rom_library.display_library()
+            cout.cout_wrap.cout_talk()
+        else:
+            cout.cout_wrap.cout_quiet()
+
+        self.postprocessors = dict()
+        for postproc in self.settings['postprocessors']:
+            self.postprocessors[postproc] = initialise_solver(postproc)
+            self.postprocessors[postproc].initialise(self.data, self.settings['postprocessors_settings'][postproc])
+
+        cout.cout_wrap('Current library for ROM interpolation')
+        self.rom_library.display_library()
 
         # load the actual data pickles from the pointers in the library
         self.rom_library.load_data_from_library()
@@ -142,7 +166,9 @@ class ParametricModelReduction(BaseSolver):
         input_list = [
             # {'payload': 10, 'u_inf': 20},
             {'payload': 20, 'u_inf': 30}
-        ]  # simulated input
+        ]  # TODO: simulated input - get from YAML or settings
+
+        interpolated_roms = pmorlibrary.InterpolatedROMLibrary()
 
         for case in input_list:
             weights = self.interpolate_n_sys(case)
@@ -150,10 +176,18 @@ class ParametricModelReduction(BaseSolver):
 
             cout.cout_wrap(str(weights))
 
-            new_ss = self.pmor(weights)
+            interpolated_ss = self.pmor(weights)
 
-            # call interpolation
+            interpolated_roms.append(interpolated_ss, case)
 
+            for ith, postproc in enumerate(self.postprocessors):
+                self.postprocessors[postproc].folder += '/param_case%02g' % ith + '/'
+                if not os.path.exists(self.postprocessors[postproc].folder):
+                    os.makedirs(self.postprocessors[postproc].folder)
+                self.postprocessors[postproc].run(ss=interpolated_ss)
+
+        interpolated_roms.write_summary(self.data.settings['SHARPy']['log_folder'] + './pmor_summary.txt')
+        self.data.interp_rom = interpolated_roms
 
         return self.data
 
@@ -169,18 +203,16 @@ class ParametricModelReduction(BaseSolver):
                                        case[parameter],
                                        side='left') for parameter in self.parameters]
 
-        bin_table = itertools.product(*[[0, 1] for i in range(len(self.parameters))])
+        bin_table = itertools.product(*[[0, 1] for i in range(len(self.parameters))])  # this is a table of binary
+                                                                                       # combinations, i.e, if n = 2,
+                                                                                       # the result is a list with
+                                                                                       # [00, 01, 10, 11]
         for permutation in bin_table:
-            print(permutation)
             current_interpolation_weight = []
             for parameter in self.parameters:
                 param_index = self.parameter_index[parameter]
-                print(parameter)
-                print(case[parameter])
                 x_min = self.param_values[param_index][lower_limit[param_index]]
                 x_max = self.param_values[param_index][upper_limit[param_index]]
-                print(x_min)
-                print(x_max)
 
                 try:
                     alpha = 1 - (case[parameter] - x_min) / (x_max - x_min)
@@ -208,7 +240,7 @@ class ParametricModelReduction(BaseSolver):
                 break  # you have hit a data point
 
         if sum(weights) < 1:
-            cout.cout_wrap('Extrapolating data - You are at the edge of your data set', 4)
+            cout.cout_wrap('Warning: Extrapolating data - You are at the edge of your data set', 4)
         return weights
 
     def sort_grid(self):
