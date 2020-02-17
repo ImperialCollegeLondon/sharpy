@@ -105,12 +105,11 @@ class ROMLibrary:
 
             try:
                 case_name = pmor_case_data['sim_info']['case']
-                path_to_data = glob.glob(pmor_case_data['sim_info']['path_to_data'] + '/*.pkl')[0]
-                if not os.path.isfile(path_to_data):
-
-                    coututils.cout_wrap('Unable to locate pickle file containing case data %s' % path_to_data, 4)
-                else:
+                try:
+                    path_to_data = glob.glob(pmor_case_data['sim_info']['path_to_data'] + '/*.pkl')[0]
                     self.library.append({'case': case_name, 'path_to_data': path_to_data, 'parameters': dict_params})
+                except IndexError:
+                    coututils.cout_wrap('Unable to locate pickle file containing case data %s' % path_to_data, 4)
             except KeyError:
                 coututils.cout_wrap('File not in correct format', 4)
         else:
@@ -241,6 +240,18 @@ class InterpolatedROMLibrary:
 
         self.ss_list.append(interpolated_ss)
         self.parameter_list.append(parameters)
+
+    def write_summary(self, filename):
+
+        summary = configobj.ConfigObj()
+        summary.filename = filename
+
+        for ith, case in enumerate(self.parameter_list):
+            case_number = 'case_%02g' % ith
+            summary[case_number] = case
+
+        summary.write()
+
 
 
 if __name__ == '__main__':
