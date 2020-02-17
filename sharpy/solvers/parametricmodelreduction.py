@@ -76,7 +76,7 @@ class ParametricModelReduction(BaseSolver):
     settings_types['postprocessors'] = 'list(str)'
     settings_default['postprocessors'] = list()
     settings_description['postprocessors'] = 'List of the postprocessors to run at the end of every time step'
-    settings_options['postprocessors'] = ['AsymptoticStability']  # supported postprocs for pMOR
+    settings_options['postprocessors'] = ['AsymptoticStability', 'FrequencyResponse']  # supported postprocs for pMOR
 
     settings_types['postprocessors_settings'] = 'dict'
     settings_default['postprocessors_settings'] = dict()
@@ -85,7 +85,7 @@ class ParametricModelReduction(BaseSolver):
                                                       'even if empty.'
 
     settings_table = settings.SettingsTable()
-    __doc__ += settings_table.generate(settings_types, settings_default, settings_description)
+    __doc__ += settings_table.generate(settings_types, settings_default, settings_description, settings_options)
 
     def __init__(self):
         self.settings = None

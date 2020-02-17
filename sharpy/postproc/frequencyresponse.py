@@ -75,12 +75,6 @@ class FrequencyResponse(solver_interface.BaseSolver):
     def initialise(self, data, custom_settings=None):
 
         self.data = data
-        try:
-            rom_method = data.linear.linear_system.uvlm.settings['rom_method'][0]
-            self.ss = data.linear.linear_system.uvlm.rom[rom_method].ss
-            self.ssrom = data.linear.linear_system.uvlm.ss
-        except IndexError:
-            self.ss = data.linear.linear_system.uvlm.ss
 
         if not custom_settings:
             self.settings = self.data.settings[self.solver_id]
@@ -88,10 +82,13 @@ class FrequencyResponse(solver_interface.BaseSolver):
             self.settings = custom_settings
         settings_utils.to_custom_types(self.settings, self.settings_types, self.settings_default, self.settings_options)
 
-        scaling = self.data.linear.linear_system.uvlm.sys.ScalingFacts
-        if self.settings['frequency_unit'] == 'k':
-            self.w_to_k = scaling['length'] / scaling['speed']
-        else:
+        try:
+            scaling = self.data.linear.linear_system.uvlm.sys.ScalingFacts
+            if self.settings['frequency_unit'] == 'k':
+                self.w_to_k = scaling['length'] / scaling['speed']  # TODO: make explicit setting as well
+            else:
+                self.w_to_k = 1.
+        except AttributeError:
             self.w_to_k = 1.
 
         lb = self.settings['frequency_bounds'][0] / self.w_to_k
@@ -106,12 +103,22 @@ class FrequencyResponse(solver_interface.BaseSolver):
         if not os.path.exists(self.folder):
             os.makedirs(self.folder)
 
-    def run(self):
+    def run(self, ss=None):
         """
         Get the frequency response of the linear state-space
         Returns:
 
         """
+        if ss is None:
+            try:
+                rom_method = self.data.linear.linear_system.uvlm.settings['rom_method'][0]
+                self.ss = self.data.linear.linear_system.uvlm.rom[rom_method].ss
+                self.ssrom = self.data.linear.linear_system.uvlm.ss
+            except IndexError:
+                self.ss = self.data.linear.linear_system.uvlm.ss
+        else:
+            self.ss = ss
+
         Y_freq_rom = None
         Y_freq_fom = None
 
@@ -161,8 +168,9 @@ class FrequencyResponse(solver_interface.BaseSolver):
         with open(self.folder + '/freqdata_readme.txt', 'w') as outfile:
             outfile.write('Frequency Response Data Output\n\n')
             outfile.write('Frequency range found in _wv.txt file in rad/s\n')
-            outfile.write('Response data from input m to output p in complex form. Column 1 corresponds'
-                          ' to the real value and column 2 to the imaginary part.')
+            outfile.write('Response data from input m to output p in complex form. '
+                          'Each file Y_freq_<case_name>_m<input>_p<output>.dat is a <num_freq> x 2 file, where '
+                          'Column 1 corresponds to the real value and column 2 to the imaginary part.')
 
         np.savetxt(self.folder + '/' + filename + '_wv.dat', wv)
 
