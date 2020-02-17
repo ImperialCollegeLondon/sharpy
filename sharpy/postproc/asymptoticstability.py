@@ -119,22 +119,10 @@ class AsymptoticStability(BaseSolver):
             os.makedirs(stability_folder_path)
 
         if self.settings['print_info']:
-            cout.cout_wrap('Dynamical System Eigenvalues')
-            eigenvalue_description_file = stability_folder_path + '/eigenvaluetable.txt'
-            self.eigenvalue_table = modalutils.EigenvalueTable(filename=eigenvalue_description_file)
+            cout.cout_wrap.cout_talk()
+        else:
+            cout.cout_wrap.cout_quiet()
 
-        # Output dict
-        self.data.linear.stability = dict()
-
-    def run(self):
-        """
-        Computes the eigenvalues and eigenvectors
-
-        Returns:
-            eigenvalues (np.ndarray): Eigenvalues sorted and frequency truncated
-            eigenvectors (np.ndarray): Corresponding mode shapes
-
-        """
         try:
             self.frequency_cutoff = self.settings['frequency_cutoff']
         except AttributeError:
@@ -143,27 +131,29 @@ class AsymptoticStability(BaseSolver):
         if self.frequency_cutoff == 0:
             self.frequency_cutoff = np.inf
 
-        if self.settings['reference_velocity'] != 1. and self.data.linear.linear_system.uvlm.scaled:
-            ss = self.data.linear.linear_system.update(self.settings['reference_velocity'])
-        else:
-            ss = self.data.linear.ss
+    def run(self, ss=None):
+        """
+        Computes the eigenvalues and eigenvectors
 
-        if self.settings['print_info']:
-            cout.cout_wrap('Calculating eigenvalues using direct method')
+        """
+
+        if ss is None:
+            if self.settings['reference_velocity'] != 1. and self.data.linear.linear_system.uvlm.scaled:
+                ss = self.data.linear.linear_system.update(self.settings['reference_velocity'])
+                not_scaled = False
+            else:
+                ss = self.data.linear.ss
+                not_scaled = True
+        else:
+            not_scaled = True  # If the state space is an external input (i.e. not part of PreSHARPy), assume it is
+                               # not scaled
+
+        cout.cout_wrap('Calculating eigenvalues using direct method')
         eigenvalues, eigenvectors = sclalg.eig(ss.A)
 
         # Convert DT eigenvalues into CT
         if ss.dt:
-            # Obtain dimensional time step
-            try:
-                ScalingFacts = self.data.linear.linear_system.uvlm.sys.ScalingFacts
-                if ScalingFacts['length'] != 1.0 and ScalingFacts['time'] != 1.0:
-                    dt = ScalingFacts['length'] / self.settings['reference_velocity'] * ss.dt
-                else:
-                    dt = ss.dt
-            except AttributeError:
-                dt = ss.dt
-            eigenvalues = np.log(eigenvalues) / dt
+            eigenvalues = self.convert_to_continuoustime(ss.dt, eigenvalues, not_scaled)
 
         self.num_evals = min(self.num_evals, len(eigenvalues))
 
@@ -173,6 +163,9 @@ class AsymptoticStability(BaseSolver):
             self.export_eigenvalues(self.num_evals)
 
         if self.settings['print_info']:
+            cout.cout_wrap('Dynamical System Eigenvalues')
+            eigenvalue_description_file = self.folder + '/eigenvaluetable.txt'
+            self.eigenvalue_table = modalutils.EigenvalueTable(filename=eigenvalue_description_file)
             self.eigenvalue_table.print_header(self.eigenvalue_table.headers)
             self.eigenvalue_table.print_evals(self.eigenvalues[:self.num_evals])
             self.eigenvalue_table.close_file()
@@ -188,10 +181,33 @@ class AsymptoticStability(BaseSolver):
         if len(self.settings['velocity_analysis']) == 3:
             self.velocity_analysis()
 
-        self.data.linear.stability['eigenvectors'] = self.eigenvectors
-        self.data.linear.stability['eigenvalues'] = self.eigenvalues
-
         return self.data
+
+    def convert_to_continuoustime(self, dt, dt_eigenvalues, not_scaled=False):
+        """
+        Convert eigenvalues to discrete time. The ``not_scaled`` argument can be used to bypass the search from
+        within SHARPy of scaling factors. For instance, when the state-space of choice is not part of a standard
+        SHARPy case but rather an interpolated ROM etc.
+
+        Args:
+            dt (float): Discrete time increment.
+            dt_eigenvalues (np.ndarray): Array of discrete time eigenvalues
+            not_scaled (bool): Treat the system as not scaled. No Scaling Factors will be searched in SHARPy.
+        """
+        if not_scaled:
+            dt = dt
+        else:
+            try:
+                ScalingFacts = self.data.linear.linear_system.uvlm.sys.ScalingFacts
+                if ScalingFacts['length'] != 1.0 and ScalingFacts['time'] != 1.0:
+                    dt = ScalingFacts['length'] / self.settings['reference_velocity'] * ss.dt
+                else:
+                    dt = dt
+            except AttributeError:
+                dt = dt
+
+        return np.log(dt_eigenvalues) / dt
+
 
     def export_eigenvalues(self, num_evals):
         """
