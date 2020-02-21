@@ -245,9 +245,16 @@ class TestGolandFlutter(unittest.TestCase):
     def run_flutter(self):
         flutter_ref_speed = 166 # at current discretisation
 
-        u_inf = self.data.linear.stability['velocity_results']['u_inf']
-        eval_real = self.data.linear.stability['velocity_results']['evals_real']
-        eval_imag = self.data.linear.stability['velocity_results']['evals_imag']
+        # load results file - variables below determined by ``velocity_analysis`` setting in AsymptoticStability
+        ulb = 160   # velocity lower bound
+        uub = 180   # velocity upper bound
+        num_u = 20  # n_speeds
+        res = np.loadtxt(self.route_test_dir + '/output/%s/stability/' % self.data.settings['SHARPy']['case']+
+                         '/velocity_analysis_min%04d_max%04d_nvel%04d.dat' %(ulb*10, uub*10, num_u),)
+
+        u_inf = res[:, 0]
+        eval_real = res[:, 1]
+        eval_imag = res[:, 2]
 
         # Flutter onset
         ind_zero_real = np.where(eval_real >= 0)[0][0]

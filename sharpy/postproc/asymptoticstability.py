@@ -200,14 +200,13 @@ class AsymptoticStability(BaseSolver):
             try:
                 ScalingFacts = self.data.linear.linear_system.uvlm.sys.ScalingFacts
                 if ScalingFacts['length'] != 1.0 and ScalingFacts['time'] != 1.0:
-                    dt = ScalingFacts['length'] / self.settings['reference_velocity'] * ss.dt
+                    dt = ScalingFacts['length'] / self.settings['reference_velocity'] * self.ss.dt
                 else:
                     dt = dt
             except AttributeError:
                 dt = dt
 
         return np.log(dt_eigenvalues) / dt
-
 
     def export_eigenvalues(self, num_evals):
         """
@@ -295,12 +294,6 @@ class AsymptoticStability(BaseSolver):
         np.savetxt(self.folder + '/velocity_analysis_min%04d_max%04d_nvel%04d.dat' %(ulb*10, uub*10, num_u),
                    np.concatenate((uinf_part_plot, real_part_plot, imag_part_plot)).reshape((-1, 3), order='F'))
         cout.cout_wrap('\tSuccessful', 1)
-
-        self.velocity_results = dict()
-        self.data.linear.stability['velocity_results'] = dict()
-        self.data.linear.stability['velocity_results']['u_inf'] = uinf_part_plot
-        self.data.linear.stability['velocity_results']['evals_real'] = real_part_plot
-        self.data.linear.stability['velocity_results']['evals_imag'] = imag_part_plot
 
     def display_root_locus(self):
         """
