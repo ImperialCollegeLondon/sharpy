@@ -252,7 +252,22 @@ class InterpolatedROMLibrary:
 
         summary.write()
 
+    def load_previous_cases(self, filename):
 
+        try:
+            summary = configobj.ConfigObj(filename)
+            for entry in summary:
+                current_case = dict()
+                for parameter in summary[entry]:
+                    current_case[parameter] = float(summary[entry][parameter])
+                self.parameter_list.append(current_case)
+
+        except OSError:
+            coututils.cout_wrap('Unable to load summary file containing info on previous cases', 3)
+
+    @property
+    def case_number(self):
+        return len(self.parameter_list)
 
 if __name__ == '__main__':
     ROMLibrary().interface()
