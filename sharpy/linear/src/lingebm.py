@@ -1057,10 +1057,14 @@ class FlexDynamic():
         except ValueError:
             pass
 
-        self.Kstr = self.scaled_reference_matrices['K'] * time_ref ** 2
-        self.Cstr = self.scaled_reference_matrices['C'] * time_ref
+        try:
+            self.Kstr = self.scaled_reference_matrices['K'] * time_ref ** 2
+            self.Cstr = self.scaled_reference_matrices['C'] * time_ref
 
-        self.freq_natural *= time_ref
+            self.freq_natural *= time_ref
+        except KeyError:
+            raise KeyError('The scaled reference matrices have not been set, most likely because you are trying to '
+                           'rescale a dimensional system. Make sure your system is normalised.')
 
     def cont2disc(self, dt=None):
         """Convert continuous-time SS model into """
