@@ -69,7 +69,7 @@ The ``case.fem.h5`` file has several components. We go one by one:
 
 *  ``num_node [int]`` : number of nodes.
 
-   For simple structures, it is ``num_elem*(num_node_elem - 1) - 1``. 
+   For simple structures, it is ``num_elem*(num_node_elem - 1) - 1``.
    For more complicated ones, you need to calculate it properly.
 
 
@@ -78,12 +78,16 @@ The ``case.fem.h5`` file has several components. We go one by one:
 
 *  ``connectivites [num_elem, num_node_elem]`` : Beam element's connectivities.
 
-   Every row refers to an element, and the three integers in that row are the indices of the three nodes 
-   belonging to that elem. Now, the catch: the ordering is not as you'd think. Order them as ``[0, 2, 1]``. 
-   That means, first one, last one, central one. The following image shows the node indices inside the 
-   circles representing the nodes, the element indices in blue and the resulting connectivities matrix next to it. 
-   Connectivities are tricky when considering complex configurations. Pay attention at the beginning and you'll 
+   Every row refers to an element, and the three integers in that row are the indices of the three nodes
+   belonging to that elem. Now, the catch: the ordering is not as you'd think. Order them as ``[0, 2, 1]``.
+   That means, first one, last one, central one. The following image shows the node indices inside the
+   circles representing the nodes, the element indices in blue and the resulting connectivities matrix next to it.
+   Connectivities are tricky when considering complex configurations. Pay attention at the beginning and you'll
    save yourself a lot of trouble.
+
+    .. image:: ./../_static/case_files/connectivities.png
+        :target: ./../_static/case_files/connectivities.png
+        :alt: SHARPy Beam Element Connectivities
 
 
 *  ``stiffness_db [:, 6, 6]``: database of stiffness matrices.
@@ -139,7 +143,7 @@ The ``case.fem.h5`` file has several components. We go one by one:
     being normal to :math:`x` but rotating around it. The solution is to indicate a ``for_delta``, or frame of
     reference delta vector (:math:`\Delta`).
 
-    
+
     .. image:: ../_static/case_files/frame_of_reference_delta.jpg
         :target: ../_static/case_files/frame_of_reference_delta.jpg
         :alt: Frame of Reference Delta Vector
@@ -223,7 +227,7 @@ The ``case.fem.h5`` file has several components. We go one by one:
 Aerodynamics file
 -----------------
 
-All the aerodynamic data is contained in ``case.aero.h5``. 
+All the aerodynamic data is contained in ``case.aero.h5``.
 
 It is important to know that the input for aero is usually based on elements (and inside the elements, their nodes).
 This causes sometimes an overlap in information, as some nodes are shared by two adjacent elements (like in the

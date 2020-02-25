@@ -179,6 +179,9 @@ class AsymptoticStability(BaseSolver):
             self.plot_modes()
 
         if len(self.settings['velocity_analysis']) == 3:
+            assert self.data.linear.linear_system.uvlm.scaled, 'The UVLM system is unscaled, unable to rescale the ' \
+                                                               'structural equations only. Rerun with a normalised ' \
+                                                               'UVLM system.'
             self.velocity_analysis()
 
         return self.data
