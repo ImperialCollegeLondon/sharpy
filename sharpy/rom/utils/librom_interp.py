@@ -32,10 +32,11 @@ Date: Mar-Apr 2019
 
 import warnings
 import numpy as np
-import scipy.linalg as scalg
+import scipy.linalg as sclalg
 
 # dependency
 import sharpy.linear.src.libss as libss
+import sharpy.utils.algebra as algebra
 
 
 def transfer_function(SS_list, wv):
@@ -168,7 +169,7 @@ def FLB_transfer_function(SS_list, wv, U_list, VT_list, hsv_list=None, M_list=No
     for ii in range(N_interp):
         M_int += wv[ii] * M_list[ii]
 
-    U_int, hsv_int, Vh_int = scalg.svd(M_int, full_matrices=False)
+    U_int, hsv_int, Vh_int = sclalg.svd(M_int, full_matrices=False)
     sinv_int = hsv_int ** (-0.5)
 
     ### build projection matrices
@@ -331,7 +332,7 @@ class InterpROM:
         assert self.Projected, ('You must project the state-space models over' +
                                 ' a common basis before interpolating')
 
-        Aint = np.zeros_like(self.AA[0])
+        Aint = np.zeros_like(self.AA[0], dtype=complex)
         Bint = np.zeros_like(self.BB[0])
         Cint = np.zeros_like(self.CC[0])
         Dint = np.zeros_like(self.DD[0])
@@ -361,14 +362,15 @@ class InterpROM:
             warnings.warn('Method untested!')
 
             for ii in range(len(self.SS)):
-                U, sv, Z = scalg.svd(np.dot(self.VV[ii].T, self.Vref),
-                                     full_matrices=False, overwrite_a=False,
-                                     lapack_driver='gesdd')
+                U, sv, Z = sclalg.svd(np.dot(self.VV[ii].T, self.Vref),
+                                      full_matrices=False, overwrite_a=False,
+                                      lapack_driver='gesdd')
                 Q = np.dot(U, Z.T)
-                U, sv, Z = scalg.svd(np.dot(self.WWT[ii], self.WTref),
-                                     full_matrices=False, overwrite_a=False,
-                                     lapack_driver='gesdd')
-                Qinv = np.dot(U, Z.T).T
+                # U, sv, Z = sclalg.svd(np.dot(self.WWT[ii], self.WTref),
+                #                       full_matrices=False, overwrite_a=False,
+                #                       lapack_driver='gesdd')
+                # Qinv = np.dot(U, Z.T).T
+                Qinv = sclalg.inv(Q)
                 self.QQ.append(Q)
                 self.QQinv.append(Qinv)
 
@@ -376,9 +378,9 @@ class InterpROM:
             warnings.warn('Method untested!')
 
             # generate basis
-            U, sv = scalg.svd(np.concatenate(self.VV, axis=1),
-                              full_matrices=False, overwrite_a=False,
-                              lapack_driver='gesdd')[:2]
+            U, sv = sclalg.svd(np.concatenate(self.VV, axis=1),
+                               full_matrices=False, overwrite_a=False,
+                               lapack_driver='gesdd')[:2]
             # chop U
             U = U[:, :self.SS[0].states]
             for ii in range(len(self.SS)):
@@ -390,12 +392,12 @@ class InterpROM:
         elif self.method_proj == 'leastsq':
 
             for ii in range(len(self.SS)):
-                Q, _, _, _ = scalg.lstsq(self.VV[ii], self.Vref)
+                Q, _, _, _ = sclalg.lstsq(self.VV[ii], self.Vref)
                 print('det(Q): %.3e\tcond(Q): %.3e' \
                       % (np.linalg.det(Q), np.linalg.cond(Q)))
                 # if cond(Q) is small...
                 # Qinv = np.linalg.inv(Q)
-                P, _, _, _ = scalg.lstsq(self.WWT[ii].T, self.WTref.T)
+                P, _, _, _ = sclalg.lstsq(self.WWT[ii].T, self.WTref.T)
                 self.QQ.append(Q)
                 self.QQinv.append(P.T)
 
@@ -449,7 +451,7 @@ class InterpROM:
             """
 
             for ii in range(len(self.SS)):
-                Q, sc = scalg.orthogonal_procrustes(self.VV[ii], self.Vref)
+                Q, sc = sclalg.orthogonal_procrustes(self.VV[ii], self.Vref)
                 Qinv = Q.T
                 print('det(Q): %.3e\tcond(Q): %.3e' \
                       % (np.linalg.det(Q), np.linalg.cond(Q)))
@@ -462,13 +464,13 @@ class InterpROM:
             """
 
             # svd of reference
-            Uref, svref, Zhref = scalg.svd(self.Vref, full_matrices=False)
+            Uref, svref, Zhref = sclalg.svd(self.Vref, full_matrices=False)
 
             for ii in range(len(self.SS)):
                 # svd of basis
-                Uhere, svhere, Zhhere = scalg.svd(self.VV[ii], full_matrices=False)
+                Uhere, svhere, Zhhere = sclalg.svd(self.VV[ii], full_matrices=False)
 
-                R, sc = scalg.orthogonal_procrustes(Uhere, Uref)
+                R, sc = sclalg.orthogonal_procrustes(Uhere, Uref)
                 Q = np.dot(np.dot(Zhhere.T, np.diag(svhere ** (-1))), R)
                 Qinv = np.dot(R.T, np.dot(np.diag(svhere), Zhhere))
                 print('det(Q): %.3e\tcond(Q): %.3e' \
@@ -486,6 +488,62 @@ class InterpROM:
             self.CC.append(np.dot(self.SS[ii].C, self.QQ[ii]))
 
         self.Projected = True
+
+
+class BasisInterpolation:
+
+    def __init__(self, v_list=list(), vt_list=list(), ss_list=list(), reference_case=0):
+        self.v_list = v_list
+        self.vt_list = vt_list
+        self.reference_case = reference_case
+        self.ss_list = ss_list
+
+        self.gamma = [None] * len(self.v_list)
+
+    def create_tangent_space(self, indices=None):
+
+        n, r = self.v_list[0].shape
+        vref = self.v_list[self.reference_case]
+
+        if indices is None:
+            indices = range(len(self.v_list))
+
+        for vi in indices:
+            v = self.v_list[vi]
+            a = np.eye(n) - vref.dot(v.T)
+            b = v
+            c = sclalg.inv(vref.T.dot(v))
+
+            p, s, q = sclalg.svd(algebra.multiply_matrices(a, b, c), full_matrices=False)
+
+            self.gamma[vi] = p.dot(np.diag(np.arctan(s)).dot(q))
+
+    def interpolate_gamma(self, weights):
+
+        gamma = []
+        for ith, gamma_i in enumerate(self.gamma):
+            if gamma_i is not None:
+                gamma.append(gamma_i * weights[ith])
+        return sum(gamma)
+
+    def return_from_tangent_space(self, gamma):
+        p, s, q = sclalg.svd(gamma, full_matrices=False)
+        v_ref = self.v_list[self.reference_case]
+
+        v = v_ref.dot(q.T.dot(np.diag(np.cos(s)))) + p.dot(np.diag(np.sin(s)))
+
+        return v
+
+    def interpolate(self, weights, ss):
+
+        gamma = self.interpolate_gamma(weights)
+
+        v_interp = self.return_from_tangent_space(gamma)
+
+        interp_ss = ss.project(v_interp.T, v_interp)
+
+        return ss
+
 
 
 # ------------------------------------------------------------------------------

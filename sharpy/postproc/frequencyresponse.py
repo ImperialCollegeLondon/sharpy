@@ -110,12 +110,13 @@ class FrequencyResponse(solver_interface.BaseSolver):
 
         """
         if ss is None:
-            try:
-                rom_method = self.data.linear.linear_system.uvlm.settings['rom_method'][0]
-                self.ss = self.data.linear.linear_system.uvlm.rom[rom_method].ss
-                self.ssrom = self.data.linear.linear_system.uvlm.ss
-            except IndexError:
-                self.ss = self.data.linear.linear_system.uvlm.ss
+            self.ss = self.data.linear.ss
+        #     try:
+        #         rom_method = self.data.linear.linear_system.uvlm.settings['rom_method'][0]
+        #         self.ss = self.data.linear.linear_system.uvlm.rom[rom_method].ss
+        #         self.ssrom = self.data.linear.linear_system.uvlm.ss
+        #     except IndexError:
+        #         self.ss = self.data.linear.linear_system.uvlm.ss
         else:
             self.ss = ss
 

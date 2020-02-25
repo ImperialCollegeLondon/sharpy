@@ -98,7 +98,7 @@ class DynamicCoupled(BaseSolver):
 
     settings_types['postprocessors_settings'] = 'dict'
     settings_default['postprocessors_settings'] = dict()
-    settings_description['postprocessors_settings'] = 'Dictionary with the applicable settings for every ``psotprocessor``. Every ``postprocessor`` needs its entry, even if empty'
+    settings_description['postprocessors_settings'] = 'Dictionary with the applicable settings for every ``postprocessor``. Every ``postprocessor`` needs its entry, even if empty'
 
     settings_types['controller_id'] = 'dict'
     settings_default['controller_id'] = dict()
@@ -610,4 +610,3 @@ def relax(beam, timestep, previous_timestep, coeff):
 def normalise_quaternion(tstep):
     tstep.dqdt[-4:] = algebra.unit_vector(tstep.dqdt[-4:])
     tstep.quat = tstep.dqdt[-4:].astype(dtype=ct.c_double, order='F', copy=True)
-

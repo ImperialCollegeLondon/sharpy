@@ -6,8 +6,10 @@ import sharpy.rom.utils.librom_interp as librominterp
 import numpy as np
 import itertools
 import sharpy.utils.cout_utils as cout
-from scipy.linalg import block_diag
-
+import scipy.linalg as sclalg
+import yaml
+import sharpy.linear.src.libss as libss
+import shutil
 
 @solver
 class ParametricModelReduction(BaseSolver):
@@ -50,6 +52,14 @@ class ParametricModelReduction(BaseSolver):
     settings_default['library_filepath'] = ''
     settings_description['library_filepath'] = 'Filepath to .pkl file containing pROM library.'
 
+    settings_types['input_file'] = 'str'
+    settings_default['input_file'] = None
+    settings_description['input_file'] = 'Path to YAML file containing the input cases.'
+
+    settings_types['cleanup_previous_cases'] = 'bool'
+    settings_default['cleanup_previous_cases'] = False
+    settings_description['cleanup_previous_cases'] = 'Reruns any previously computed interpolated ROMs.'
+
     settings_types['reference_case'] = 'int'
     settings_default['reference_case'] = -1
     settings_description['reference_case'] = "Reference case for coordinate transformation. If ``-1`` the library's " \
@@ -71,7 +81,9 @@ class ParametricModelReduction(BaseSolver):
                                              'strongMAC_BT',
                                              'maraniello_BT',
                                              'weakMAC_right_orth',
-                                             'weakMAC']
+                                             'weakMAC',
+                                             'amsallem',
+                                             ]
 
     settings_types['postprocessors'] = 'list(str)'
     settings_default['postprocessors'] = list()
@@ -101,7 +113,10 @@ class ParametricModelReduction(BaseSolver):
         self.inverse_mapping = None
 
         self.data = None
-        self.postprocessors = None
+        self.postprocessors = dict()
+        self.postproc_output_folder = dict()
+
+        self.input_cases = list()
 
     def initialise(self, data):
 
@@ -132,10 +147,15 @@ class ParametricModelReduction(BaseSolver):
         else:
             cout.cout_wrap.cout_quiet()
 
-        self.postprocessors = dict()
         for postproc in self.settings['postprocessors']:
             self.postprocessors[postproc] = initialise_solver(postproc)
             self.postprocessors[postproc].initialise(self.data, self.settings['postprocessors_settings'][postproc])
+            self.postproc_output_folder[postproc] = self.postprocessors[postproc].folder
+            if self.settings['cleanup_previous_cases']:
+                try:
+                    shutil.rmtree(self.postproc_output_folder[postproc])
+                except FileNotFoundError:
+                    pass
 
         cout.cout_wrap('Current library for ROM interpolation')
         self.rom_library.display_library()
@@ -148,6 +168,13 @@ class ParametricModelReduction(BaseSolver):
         v_ref = vv_list[self.rom_library.reference_case]
         wt_ref = wwt_list[self.rom_library.reference_case]
 
+        ## >>> testing basis interpolation
+        #
+        # self.pmor = librominterp.BasisInterpolation(vv_list, wwt_list, ss_list, self.rom_library.reference_case)
+        # self.pmor.create_tangent_space()
+        #
+        ## <<< end of test
+
         self.pmor = librominterp.InterpROM(ss_list, vv_list, wwt_list, v_ref, wt_ref,
                                            method_proj=self.settings['projection_method'])
 
@@ -159,29 +186,53 @@ class ParametricModelReduction(BaseSolver):
 
         # Future: save for online use?
 
+        # load input cases
+        self.input_cases = load_parameter_cases(self.settings['input_file'])
+
     def run(self):
         # keep this section for the online part i.e. the interpolation
-        cout.cout_wrap('Running Interpolation')
-        # input is list of dicts with parameters at each point
-        input_list = [
-            # {'payload': 10, 'u_inf': 20},
-            {'payload': 20, 'u_inf': 30}
-        ]  # TODO: simulated input - get from YAML or settings
-
         interpolated_roms = pmorlibrary.InterpolatedROMLibrary()
 
+        if not self.settings['cleanup_previous_cases']:
+            interpolated_roms.load_previous_cases(self.data.settings['SHARPy']['log_folder'] + './pmor_summary.txt')
+
+        input_list = [case for case in self.input_cases if case not in interpolated_roms.parameter_list]
         for case in input_list:
+            cout.cout_wrap('Running Interpolation')
+            print(case)
             weights = self.interpolate_n_sys(case)
-            cout.cout_wrap('Finished interpolating')
+            # weights = [2/3, 0, 1/3]
+
+            non_zero_matrices = [ith for ith, weight in enumerate(weights) if weight != 0]  # indices
+
+            for i in non_zero_matrices:
+                # pass
+                self.pmor.AA[i] = self.to_tangent_manifold(self.pmor.AA[i], self.pmor.AA[self.rom_library.reference_case])
+                self.pmor.BB[i] = self.to_tangent_manifold(self.pmor.BB[i], self.pmor.BB[self.rom_library.reference_case])
+                self.pmor.CC[i] = self.to_tangent_manifold(self.pmor.CC[i], self.pmor.CC[self.rom_library.reference_case])
+                self.pmor.DD[i] = self.to_tangent_manifold(self.pmor.DD[i], self.pmor.DD[self.rom_library.reference_case])
+                # for every matrix A, B, C, D
+                # map onto log
+                # interpolate
+                # return from log
+            interpolated_ss = self.pmor(weights)
+            interpolated_ss.A = self.from_tangent_manifold(interpolated_ss.A, self.pmor.AA[self.rom_library.reference_case])
+            interpolated_ss.B = self.from_tangent_manifold(interpolated_ss.B, self.pmor.BB[self.rom_library.reference_case])
+            interpolated_ss.C = self.from_tangent_manifold(interpolated_ss.C, self.pmor.CC[self.rom_library.reference_case])
+            interpolated_ss.D = self.from_tangent_manifold(interpolated_ss.D, self.pmor.DD[self.rom_library.reference_case])
+
+            # >>>> Basis Interpolation
+            # interpolated_ss = self.pmor.interpolate(weights, ss=self.retrieve_fom(self.rom_library.reference_case))
+            # interpolated_ss = self.pmor.interpolate(weights, ss=self.retrieve_fom(1))
+            # <<<< Basis Interpolation
 
             cout.cout_wrap(str(weights))
 
-            interpolated_ss = self.pmor(weights)
-
             interpolated_roms.append(interpolated_ss, case)
 
-            for ith, postproc in enumerate(self.postprocessors):
-                self.postprocessors[postproc].folder += '/param_case%02g' % ith + '/'
+            for postproc in self.postprocessors:
+                self.postprocessors[postproc].folder = self.postproc_output_folder[postproc] + \
+                                                       '/param_case%02g' % (interpolated_roms.case_number - 1) + '/'
                 if not os.path.exists(self.postprocessors[postproc].folder):
                     os.makedirs(self.postprocessors[postproc].folder)
                 self.postprocessors[postproc].run(ss=interpolated_ss)
@@ -190,6 +241,54 @@ class ParametricModelReduction(BaseSolver):
         self.data.interp_rom = interpolated_roms
 
         return self.data
+
+    def to_tangent_manifold(self, matrix, ref_matrix):
+        """
+        Based on Table 4.1 in Amsallem and Farhat
+
+        Args:
+            matrix:
+            ref_matrix:
+
+        Returns:
+
+        """
+        m, n = matrix.shape
+
+        if m != n:
+            gamma = matrix - ref_matrix
+        else:
+            inv_ref_matrix = sclalg.inv(ref_matrix)
+            gamma = sclalg.logm(matrix.dot(inv_ref_matrix))
+        #
+        # to_svd = (np.eye(ref_matrix.shape[0]) - ref_matrix.dot(ref_matrix.T)).dot(matrix.dot(sclalg.inv(ref_matrix.T.dot(matrix))))
+        # u, s, v = sclalg.svd(to_svd)
+        #
+        # gamma = u.dot(np.arctan(s).dot(v.T))
+
+        return gamma
+
+    def from_tangent_manifold(self, matrix, ref_matrix):
+        """
+        Based on Table 4.1 from Amsallem and Farhat
+
+        Args:
+            matrix: equivalent to gamma
+            ref_matrix: reference matrix
+
+        Returns:
+
+        """
+        m, n = matrix.shape
+
+        if m != n:
+            return matrix + ref_matrix
+        else:
+            return sclalg.expm(matrix).dot(ref_matrix)
+        #
+        # u, s, v = sclalg.svd(matrix)
+        #
+        # return ref_matrix.dot(v.dot(np.cos(s))) + u.dot(np.sin(s))
 
     def interpolate_n_sys(self, case):
         """
@@ -284,10 +383,10 @@ class ParametricModelReduction(BaseSolver):
             vv_list = []
             wwt_list = []
             for rom in self.rom_library.data_library:
-                vv = block_diag(rom.linear.linear_system.uvlm.rom['Krylov'].V,
-                                np.eye(rom.linear.linear_system.beam.ss.states))
-                wwt = block_diag(rom.linear.linear_system.uvlm.rom['Krylov'].W.T,
-                                np.eye(rom.linear.linear_system.beam.ss.states))
+                vv = sclalg.block_diag(rom.linear.linear_system.uvlm.rom['Krylov'].V,
+                                       np.eye(rom.linear.linear_system.beam.ss.states))
+                wwt = sclalg.block_diag(rom.linear.linear_system.uvlm.rom['Krylov'].W.T,
+                                        np.eye(rom.linear.linear_system.beam.ss.states))
                 ss_list.append(rom.linear.ss)
                 vv_list.append(vv)
                 wwt_list.append(wwt)
@@ -295,6 +394,19 @@ class ParametricModelReduction(BaseSolver):
             raise NameError('Unrecognised system on which to perform interpolation')
 
         return ss_list, vv_list, wwt_list
+
+    def retrieve_fom(self, rom_index):
+
+        ss_fom_aero = self.rom_library.data_library[rom_index].linear.linear_system.uvlm.rom['Krylov'].ss
+        ss_fom_beam = self.rom_library.data_library[rom_index].linear.linear_system.beam.ss
+
+        Tas = np.eye(ss_fom_aero.inputs, ss_fom_beam.outputs)
+        Tsa = np.eye(ss_fom_beam.inputs, ss_fom_aero.outputs)
+
+        ss = libss.couple(ss_fom_aero, ss_fom_beam, Tas, Tsa)
+
+        return ss
+
 
 # def find_nearest(array,value):
 #     idx = np.searchsorted(array, value, side="left")
@@ -305,8 +417,21 @@ class ParametricModelReduction(BaseSolver):
 
 def f7(seq):
     """
-    Adds single occurances of an item in a list
+    Adds single occurrences of an item in a list
     """
     seen = set()
     seen_add = seen.add
     return [x for x in seq if not (x in seen or seen_add(x))]
+
+
+def load_parameter_cases(yaml_file_name):
+    """
+
+    Args:
+        yaml_file_name:
+
+    Returns:
+        list: List of dictionaries
+    """
+    # TODO: input validation
+    return yaml.load(open(yaml_file_name, 'r'), Loader=yaml.Loader)

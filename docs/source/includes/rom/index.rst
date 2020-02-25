@@ -6,5 +6,6 @@ Model Order Reduction
 	:maxdepth: 1
 
 	./balanced/index
+	./interpolation/index
 	./krylov/index
 	./utils/index

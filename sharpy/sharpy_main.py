@@ -87,8 +87,8 @@ def main(args=None, sharpy_input_dict=None):
                 with open(args.restart, 'rb') as restart_file:
                     data = pickle.load(restart_file)
             except FileNotFoundError:
-                raise FileNotFoundError('The file specified for the snapshot \
-                    restart (-r) does not exist. Please check.')
+                raise FileNotFoundError('The file specified for the snapshot %s\
+                    restart (-r) does not exist. Please check.' % args.restart)
 
             # update the settings
             data.update_settings(settings)
