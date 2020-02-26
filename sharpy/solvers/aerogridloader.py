@@ -75,7 +75,7 @@ class AerogridLoader(BaseSolver):
                                                                             'for each generator'
 
     settings_types['wake_shape_generator'] = 'str'
-    settings_default['wake_shape_generator'] = 'straight_wake'
+    settings_default['wake_shape_generator'] = 'StraightWake'
     settings_description['wake_shape_generator'] = 'ID of the generator to define the initial wake shape'
 
     settings_types['wake_shape_generator_input'] = 'dict'
