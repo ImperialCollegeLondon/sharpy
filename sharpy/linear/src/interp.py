@@ -1,17 +1,16 @@
-'''
+"""
 Defines interpolation methods (geometrically-exact) and matrices (linearisation)
 S. Maraniello, 20 May 2018
-'''
+"""
 
 import numpy as np
-# from IPython import embed
 
 
 
 # -------------------------------------------------- interp at ollocation point
 
 def get_panel_wcv(aM=0.5,aN=0.5):
-	'''
+	"""
 	Produces a compact array with weights for bilinear interpolation, where
 	aN,aM in [0,1] are distances in the chordwise and spanwise directions 
 	such that:
@@ -19,7 +18,7 @@ def get_panel_wcv(aM=0.5,aN=0.5):
 		- (aM,aN)=(1,0) --> quantity at vertex 1
 		- (aM,aN)=(1,1) --> quantity at vertex 2
 		- (aM,aN)=(0,1) --> quantity at vertex 3
-	'''
+	"""
 
 	wcv=np.array([ (1-aM)*(1-aN), aM*(1-aN), aM*aN, aN*(1-aM) ])
 
@@ -27,7 +26,7 @@ def get_panel_wcv(aM=0.5,aN=0.5):
 
 
 def get_Wvc_scalar(Map,aM=0.5,aN=0.5):
-	'''
+	"""
 	Produce scalar interpolation matrix Wvc for state-space realisation.
 
 	Important: this will not work for coordinates extrapolation, as it would
@@ -35,7 +34,7 @@ def get_Wvc_scalar(Map,aM=0.5,aN=0.5):
 	quantities extrapolation. It assumes the quantity at the collocation point
 	is determined proportionally to the weight associated to each vertex and 
 	obtained through get_panel_wcv. 
-	'''
+	"""
 
 	# initialise
 	K,Kzeta=Map.K,Map.Kzeta
@@ -73,10 +72,10 @@ def get_Wvc_vector(Wvc_scalar):
 
 
 def get_Wnv_vector(SurfGeo,aM=0.5,aN=0.5):
-	'''
+	"""
 	Provide projection matrix from nodal velocities to normal velocity at 
 	collocation points
-	'''
+	"""
 
 	# initialise
 	Map=SurfGeo.maps

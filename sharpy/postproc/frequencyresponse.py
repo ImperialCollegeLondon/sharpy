@@ -7,7 +7,6 @@ import sharpy.utils.cout_utils as cout
 import warnings
 
 
-
 @solver_interface.solver
 class FrequencyResponse(solver_interface.BaseSolver):
     """
@@ -70,7 +69,6 @@ class FrequencyResponse(solver_interface.BaseSolver):
         self.ss = None
         self.ssrom = None
 
-        self.nfreqs = None
         self.w_to_k = 1
         self.wv = None
 
@@ -89,12 +87,6 @@ class FrequencyResponse(solver_interface.BaseSolver):
         else:
             self.settings = custom_settings
         settings_utils.to_custom_types(self.settings, self.settings_types, self.settings_default, self.settings_options)
-
-        # Number of interpolation points
-        try:
-            self.nfreqs = self.rom.frequency.shape[0]
-        except AttributeError:
-            self.nfreqs = 1
 
         scaling = self.data.linear.linear_system.uvlm.sys.ScalingFacts
         if self.settings['frequency_unit'] == 'k':

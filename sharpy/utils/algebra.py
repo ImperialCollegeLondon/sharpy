@@ -1936,3 +1936,32 @@ def multiply_matrices(*argv):
     for M in argv:
         sol = np.dot(sol, M)
     return sol
+
+
+def norm3d(v):
+    """
+    Norm of a 3D vector
+
+    Notes:
+        Faster than np.linalg.norm
+
+    Args:
+        v (np.ndarray): 3D vector
+
+    Returns:
+        np.ndarray: Norm of the vector
+    """
+    return np.sqrt(v[0]*v[0]+v[1]*v[1]+v[2]*v[2])
+
+
+def normsq3d(v):
+    """
+    Square of the norm of a 3D vector
+
+    Args:
+        v (np.ndarray): 3D vector
+
+    Returns:
+        np.ndarray: Square of the norm of the vector
+    """
+    return v[0]*v[0]+v[1]*v[1]+v[2]*v[2]

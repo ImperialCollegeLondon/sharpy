@@ -142,7 +142,8 @@ class StaticCoupled(BaseSolver):
                     self.data.structure.timestep_info[self.data.ts].psi,
                     self.data.structure.node_master_elem,
                     self.data.structure.connectivities,
-                    self.data.structure.timestep_info[self.data.ts].cag())
+                    self.data.structure.timestep_info[self.data.ts].cag(),
+                    self.data.aero.aero_dict)
 
                 if not self.settings['relaxation_factor'].value == 0.:
                     if i_iter == 0:

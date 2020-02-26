@@ -4,16 +4,20 @@ import sharpy.utils.cout_utils as cout
 import sharpy.utils.solver_interface as solver_interface
 from sharpy.utils.solver_interface import solver, BaseSolver
 import sharpy.utils.settings as settings
+import os
 
 
 @solver
 class StaticTrim(BaseSolver):
     """
-    ``StaticTrim`` class solver, inherited from ``BaseSolver``
+    The ``StaticTrim`` solver determines the longitudinal state of trim (equilibrium) for an aeroelastic system in
+    static conditions. It wraps around the desired solver to yield the state of trim of the system, in most cases
+    the :class:`~sharpy.solvers.staticcoupled.StaticCoupled` solver.
 
-    The ``StaticTrim`` solver determines the state of trim (equilibrium) for an aeroelastic system in static conditions.
-    It wraps around the desired solver to yield the state of trim of the system.
+    It calculates the required angle of attack, elevator deflection and thrust required to achieve longitudinal
+    equilibrium. The output angles are shown in degrees.
 
+    The results from the trimming iteration can be saved to a text file by using the `save_info` option.
     """
     solver_id = 'StaticTrim'
     solver_classification = 'Flight Dynamics'
@@ -82,6 +86,14 @@ class StaticTrim(BaseSolver):
     settings_default['relaxation_factor'] = 0.2
     settings_description['relaxation_factor'] = 'Relaxation factor'
 
+    settings_types['save_info'] = 'bool'
+    settings_default['save_info'] = False
+    settings_description['save_info'] = 'Save trim results to text file'
+
+    settings_types['folder'] = 'str'
+    settings_default['folder'] = './output/'
+    settings_description['folder'] = 'Output location for trim results'
+
     settings_table = settings.SettingsTable()
     __doc__ += settings_table.generate(settings_types, settings_default, settings_description)
 
@@ -103,6 +115,8 @@ class StaticTrim(BaseSolver):
         self.gradient_history = []
         self.trimmed_values = np.zeros((3,))
 
+        self.table = None
+
     def initialise(self, data):
         self.data = data
         self.settings = data.settings[self.solver_id]
@@ -111,8 +125,13 @@ class StaticTrim(BaseSolver):
         self.solver = solver_interface.initialise_solver(self.settings['solver'])
         self.solver.initialise(self.data, self.settings['solver_settings'])
 
-        self.table = cout.TablePrinter(10, 8, ['g', 'f', 'f', 'f', 'f', 'f', 'f', 'f', 'f', 'f'])
-        self.table.print_header(['iter', 'alpha', 'elev', 'thrust', 'Fx', 'Fy', 'Fz', 'Mx', 'My', 'Mz'])
+        folder = self.settings['folder'] + '/' + self.data.settings['SHARPy']['case'] + '/statictrim/'
+        if not os.path.exists(folder):
+            os.makedirs(folder)
+
+        self.table = cout.TablePrinter(10, 8, ['g', 'f', 'f', 'f', 'f', 'f', 'f', 'f', 'f', 'f'],
+                                       filename=folder+'trim_iterations.txt')
+        self.table.print_header(['iter', 'alpha[deg]', 'elev[deg]', 'thrust', 'Fx', 'Fy', 'Fz', 'Mx', 'My', 'Mz'])
 
     def increase_ts(self):
         self.data.ts += 1
@@ -294,6 +313,7 @@ class StaticTrim(BaseSolver):
                                            self.output_history[self.i_iter][2])
             if all(convergence):
                 self.trimmed_values = self.input_history[self.i_iter]
+                self.table.close_file()
                 return
 
     def evaluate(self, alpha, deflection_gamma, thrust):
@@ -339,33 +359,4 @@ class StaticTrim(BaseSolver):
                                moments[1],
                                moments[2]])
 
-
-
-
         return forcez, moment, forcex
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
