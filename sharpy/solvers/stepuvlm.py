@@ -195,13 +195,6 @@ class StepUvlm(BaseSolver):
                             convect_wake=convect_wake,
                             dt=dt)
 
-        aero_tstep.postproc_cell['incidence_angle'] = []
-        for isurf in range(len(aero_tstep.dimensions)):
-            aero_tstep.postproc_cell['incidence_angle'].append(np.zeros_like(aero_tstep.gamma[isurf]))
-
-        uvlmlib.uvlm_calculate_incidence_angle(aero_tstep,
-                                               structure_tstep)
-
         if unsteady_contribution:
             # calculate unsteady (added mass) forces:
             self.data.aero.compute_gamma_dot(dt,
