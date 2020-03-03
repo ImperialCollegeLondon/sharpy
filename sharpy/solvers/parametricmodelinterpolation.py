@@ -68,7 +68,7 @@ class ParametricModelInterpolation(BaseSolver):
 
         .. code-block:: python
 
-            settings['ParametricModelReduction'] = {'cases_folder': './source/output/',
+            settings['ParametricModelInterpolation'] = {'cases_folder': './source/output/',
                                                     'reference_case': 0,
                                                     'interpolation_system': 'uvlm',
                                                     'input_file': './input_v.yaml',
@@ -88,7 +88,7 @@ class ParametricModelInterpolation(BaseSolver):
                                                                                 }}
 
     Notes:
-        This solver can be used as a standalone solver. I.e it could be the only
+        This solver can be used as a standalone solver. In other words, it could be the only
         solver in the SHARPy ``flow`` variable.
 
     See Also:
