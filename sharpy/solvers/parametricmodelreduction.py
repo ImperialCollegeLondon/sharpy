@@ -11,19 +11,81 @@ import yaml
 import sharpy.linear.src.libss as libss
 import shutil
 
+
 @solver
 class ParametricModelReduction(BaseSolver):
     """
     Warnings:
         Under development
 
-    Standalone solver to
+    This solver allows the user to obtain an interpolated reduced order model based on tabulated, stored
+    SHARPy cases of the ``interpolation_system`` (``uvlm`` or ``aeroelastic``).
 
-    * Load parametric ROM libraries
+    This is a standalone solver, in other words, it can be the only solver in the SHARPy ``flow`` variable
+    and loads the previously calculated SHARPy cases in the user defined ``cases_folder``.
 
-    * Create parametric ROMs
+    A reference ROM has to be chosen as the ``reference_case``, this is for the purposes of a coordinate transformation
+    onto a set of generalised coordinates [1] which will be performed using the desired ``projection_method``. For more
+    details on the different ways of achieving this congruent transformation
+    see :class:`~sharpy.linear.rom.utils.librom_interp.InterpROM`.
 
-    * Interpolate ROMs
+    Once this transformation has been performed, we can choose whether to interpolate the ROMs directly or in the
+    tangent manifold to the reference system by means of ``interpolation_space``.
+    See :class:`~sharpy.linear.rom.utils.librom_interp.TangentInterpolation` for further details on the implications
+    of interpolating in the tangent space.
+
+    Finally, the ``interpolation_scheme`` sets the interpolation method (i.e. ``lagrange``, ``linear``, etc).
+    Note that some methods are only available for monoparametric cases.
+
+    The interpolation is performed at those points specified in the ``input_file``. This file is a simple ``.yaml``
+    consisting of a list of cases with the appropriate parameters and values. See the example below.
+
+    For each of the cases listed in the ``input_file``, an interpolated state-space will be produced with which the
+    user may interact by means of ``postprocessors`` and their associated ``postprocessors_settings``.
+
+
+    Examples:
+
+        The input ``.yaml`` file may look something like this for a case with a single parameter:
+
+        .. code-block:: yaml
+
+            # Cases to run
+            - alpha: 0.0  # case 1
+            - alpha: 5.0  # case 2
+
+        Or if you use multiple parameters:
+
+        .. code-block:: yaml
+
+            # Cases to run
+            - alpha: 0.0  # case 1
+              u_inf: 10
+            - alpha: 5.0  # case 2
+              u_inf: 15
+
+        A possible set of settings for this solver could be given by:
+
+        .. code-block:: python
+
+            settings['ParametricModelReduction'] = {'cases_folder': './source/output/',
+                                                    'reference_case': 0,
+                                                    'interpolation_system': 'uvlm',
+                                                    'input_file': './input_v.yaml',
+                                                    'cleanup_previous_cases': 'on',
+                                                    'projection_method': 'weakMAC',
+                                                    'interpolation_space': 'direct',
+                                                    'interpolation_scheme': 'linear',
+                                                    'postprocessors': ['AsymptoticStability', 'FrequencyResponse'],
+                                                    'postprocessors_settings': {'AsymptoticStability': {'print_info': 'on',
+                                                                                                        'export_eigenvalues': 'on',
+                                                                                                        },
+                                                                                'FrequencyResponse': {'print_info': 'on',
+                                                                                                      'compute_fom': 'on',
+                                                                                                      'frequency_bounds': [1, 200],
+                                                                                                      'num_freqs': 200,
+                                                                                                      }
+                                                                                }}
 
     Notes:
         This solver can be used as a standalone solver. I.e it could be the only
@@ -46,11 +108,11 @@ class ParametricModelReduction(BaseSolver):
 
     settings_types['cases_folder'] = 'str'
     settings_default['cases_folder'] = ''
-    settings_description['cases_folder'] = 'Path to folder containing cases, a new library will be generated'
+    settings_description['cases_folder'] = 'Path to folder containing cases, a new library will be generated.'
 
     settings_types['library_filepath'] = 'str'
     settings_default['library_filepath'] = ''
-    settings_description['library_filepath'] = 'Filepath to .pkl file containing pROM library.'
+    settings_description['library_filepath'] = 'Filepath to .pkl file containing pROM library. If previously created.'
 
     settings_types['input_file'] = 'str'
     settings_default['input_file'] = None
@@ -83,7 +145,20 @@ class ParametricModelReduction(BaseSolver):
                                              'weakMAC_right_orth',
                                              'weakMAC',
                                              'amsallem',
+                                             'panzer',
                                              ]
+
+    settings_types['interpolation_space'] = 'str'
+    settings_default['interpolation_space'] = 'direct'
+    settings_description['interpolation_space'] = 'Perform a ``direct`` interpolation of the ROM matrices or perform ' \
+                                                  'the interpolation in the ``tangent`` manifold to the reference ' \
+                                                  'system.'
+    settings_options['interpolation_space'] = ['direct', 'tangent']
+
+    settings_types['interpolation_scheme'] = 'str'
+    settings_default['interpolation_scheme'] = None
+    settings_description['interpolation_scheme'] = 'Desired interpolation scheme.'
+    settings_options['interpolation_scheme'] = ['linear', 'lagrange']
 
     settings_types['postprocessors'] = 'list(str)'
     settings_default['postprocessors'] = list()
@@ -165,18 +240,23 @@ class ParametricModelReduction(BaseSolver):
 
         ss_list, vv_list, wwt_list = self.aeroelastic_bases()  # list of ss and reduced order bases
 
-        v_ref = vv_list[self.rom_library.reference_case]
-        wt_ref = wwt_list[self.rom_library.reference_case]
-
         ## >>> testing basis interpolation
         #
         # self.pmor = librominterp.BasisInterpolation(vv_list, wwt_list, ss_list, self.rom_library.reference_case)
         # self.pmor.create_tangent_space()
         #
-        ## <<< end of test
+        ## <<< end of test - to be removed to a dedicated solver
 
-        self.pmor = librominterp.InterpROM(ss_list, vv_list, wwt_list, v_ref, wt_ref,
-                                           method_proj=self.settings['projection_method'])
+        if self.settings['interpolation_space'] == 'direct':
+            self.pmor = librominterp.InterpROM(ss_list, vv_list, wwt_list,
+                                               method_proj=self.settings['projection_method'],
+                                               reference_case=self.rom_library.reference_case)
+        elif self.settings['interpolation_space'] == 'tangent':
+            self.pmor = librominterp.TangentInterpolation(ss_list, vv_list, wwt_list,
+                                                          method_proj=self.settings['projection_method'],
+                                                          reference_case=self.rom_library.reference_case)
+        else:
+            raise NotImplementedError('Interpolation space %s is not recognised' % self.settings['interpolation_space'])
 
         # Transform onto gen coordinates
         self.pmor.project()
@@ -198,28 +278,11 @@ class ParametricModelReduction(BaseSolver):
 
         input_list = [case for case in self.input_cases if case not in interpolated_roms.parameter_list]
         for case in input_list:
-            cout.cout_wrap('Running Interpolation')
-            print(case)
-            weights = self.interpolate_n_sys(case)
-            # weights = [2/3, 0, 1/3]
+            weights = self.interpolate(case,
+                                       method=self.settings['interpolation_scheme'],
+                                       interpolation_parameter=0)
 
-            non_zero_matrices = [ith for ith, weight in enumerate(weights) if weight != 0]  # indices
-
-            for i in non_zero_matrices:
-                # pass
-                self.pmor.AA[i] = self.to_tangent_manifold(self.pmor.AA[i], self.pmor.AA[self.rom_library.reference_case])
-                self.pmor.BB[i] = self.to_tangent_manifold(self.pmor.BB[i], self.pmor.BB[self.rom_library.reference_case])
-                self.pmor.CC[i] = self.to_tangent_manifold(self.pmor.CC[i], self.pmor.CC[self.rom_library.reference_case])
-                self.pmor.DD[i] = self.to_tangent_manifold(self.pmor.DD[i], self.pmor.DD[self.rom_library.reference_case])
-                # for every matrix A, B, C, D
-                # map onto log
-                # interpolate
-                # return from log
             interpolated_ss = self.pmor(weights)
-            interpolated_ss.A = self.from_tangent_manifold(interpolated_ss.A, self.pmor.AA[self.rom_library.reference_case])
-            interpolated_ss.B = self.from_tangent_manifold(interpolated_ss.B, self.pmor.BB[self.rom_library.reference_case])
-            interpolated_ss.C = self.from_tangent_manifold(interpolated_ss.C, self.pmor.CC[self.rom_library.reference_case])
-            interpolated_ss.D = self.from_tangent_manifold(interpolated_ss.D, self.pmor.DD[self.rom_library.reference_case])
 
             # >>>> Basis Interpolation
             # interpolated_ss = self.pmor.interpolate(weights, ss=self.retrieve_fom(self.rom_library.reference_case))
@@ -242,53 +305,23 @@ class ParametricModelReduction(BaseSolver):
 
         return self.data
 
-    def to_tangent_manifold(self, matrix, ref_matrix):
-        """
-        Based on Table 4.1 in Amsallem and Farhat
+    def interpolate(self, case, method, interpolation_parameter):
 
-        Args:
-            matrix:
-            ref_matrix:
+        x_vec = self.param_values[interpolation_parameter]
+        x0 = case[self.parameters[interpolation_parameter]]
 
-        Returns:
+        if method == 'lagrange':
+            weights = librominterp.lagrange_interpolation(x_vec, x0)
+            order = [i[0] for i in self.mapping]
+            weights = [weights[i] for i in order]  # give weights in order in which state-spaces are stored.
 
-        """
-        m, n = matrix.shape
+        elif method == 'linear':
+            weights = self.interpolate_n_sys(case)
 
-        if m != n:
-            gamma = matrix - ref_matrix
         else:
-            inv_ref_matrix = sclalg.inv(ref_matrix)
-            gamma = sclalg.logm(matrix.dot(inv_ref_matrix))
-        #
-        # to_svd = (np.eye(ref_matrix.shape[0]) - ref_matrix.dot(ref_matrix.T)).dot(matrix.dot(sclalg.inv(ref_matrix.T.dot(matrix))))
-        # u, s, v = sclalg.svd(to_svd)
-        #
-        # gamma = u.dot(np.arctan(s).dot(v.T))
+            raise NotImplementedError('Interpolation method %s not yet implemented/recognised' % method)
 
-        return gamma
-
-    def from_tangent_manifold(self, matrix, ref_matrix):
-        """
-        Based on Table 4.1 from Amsallem and Farhat
-
-        Args:
-            matrix: equivalent to gamma
-            ref_matrix: reference matrix
-
-        Returns:
-
-        """
-        m, n = matrix.shape
-
-        if m != n:
-            return matrix + ref_matrix
-        else:
-            return sclalg.expm(matrix).dot(ref_matrix)
-        #
-        # u, s, v = sclalg.svd(matrix)
-        #
-        # return ref_matrix.dot(v.dot(np.cos(s))) + u.dot(np.sin(s))
+        return weights
 
     def interpolate_n_sys(self, case):
         """
@@ -396,7 +429,7 @@ class ParametricModelReduction(BaseSolver):
         return ss_list, vv_list, wwt_list
 
     def retrieve_fom(self, rom_index):
-
+        # Move to a dedicated solver for reduced order basis interpolation
         ss_fom_aero = self.rom_library.data_library[rom_index].linear.linear_system.uvlm.rom['Krylov'].ss
         ss_fom_beam = self.rom_library.data_library[rom_index].linear.linear_system.beam.ss
 
