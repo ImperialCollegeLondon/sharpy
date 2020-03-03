@@ -288,33 +288,39 @@ class InterpROM:
 
     """
 
-    def __init__(self, SS, VV=None, WWT=None,
-                 Vref=None, WTref=None, method_proj=None):
+    def __init__(self,
+                 ss_list,
+                 vv_list=None,
+                 wwt_list=None,
+                 method_proj=None,
+                 reference_case=0):
 
-        self.SS = SS
+        self.SS = ss_list
 
-        self.VV = VV
-        self.WWT = WWT
+        self.VV = vv_list
+        self.WWT = wwt_list
 
-        self.Vref = Vref
-        self.WTref = WTref
+        self.Vref = self.VV[reference_case]
+        self.WTref = self.WWT[reference_case]
 
         self.method_proj = method_proj
 
+        self.reference_case = reference_case
+
         self.Projected = False
-        if VV is None or WWT is None:
+        if self.VV is None or self.WWT is None:
             self.Projected = True
-            self.AA = [ss_here.A for ss_here in SS]
-            self.BB = [ss_here.B for ss_here in SS]
-            self.CC = [ss_here.C for ss_here in SS]
+            self.AA = [ss_here.A for ss_here in self.SS]
+            self.BB = [ss_here.B for ss_here in self.SS]
+            self.CC = [ss_here.C for ss_here in self.SS]
 
         # projection required for D
-        self.DD = [ss_here.D for ss_here in SS]
+        self.DD = [ss_here.D for ss_here in self.SS]
 
         ### check state-space models
-        Nx, Nu, Ny = SS[0].states, SS[0].inputs, SS[0].outputs
-        dt = SS[0].dt
-        for ss_here in SS:
+        Nx, Nu, Ny = self.SS[0].states, self.SS[0].inputs, self.SS[0].outputs
+        dt = self.SS[0].dt
+        for ss_here in self.SS:
             assert ss_here.states == Nx, \
                 'State-space models do not have the same number of states'
             assert ss_here.inputs == Nu, \
@@ -330,9 +336,9 @@ class InterpROM:
         """
 
         assert self.Projected, ('You must project the state-space models over' +
-                                ' a common basis before interpolating')
+                                ' a common basis before interpolating.')
 
-        Aint = np.zeros_like(self.AA[0], dtype=complex)
+        Aint = np.zeros_like(self.AA[0])
         Bint = np.zeros_like(self.BB[0])
         Cint = np.zeros_like(self.CC[0])
         Dint = np.zeros_like(self.DD[0])
@@ -363,14 +369,15 @@ class InterpROM:
 
             for ii in range(len(self.SS)):
                 U, sv, Z = sclalg.svd(np.dot(self.VV[ii].T, self.Vref),
-                                      full_matrices=False, overwrite_a=False,
+                                      full_matrices=False,
+                                      overwrite_a=False,
                                       lapack_driver='gesdd')
                 Q = np.dot(U, Z.T)
-                # U, sv, Z = sclalg.svd(np.dot(self.WWT[ii], self.WTref),
-                #                       full_matrices=False, overwrite_a=False,
-                #                       lapack_driver='gesdd')
-                # Qinv = np.dot(U, Z.T).T
-                Qinv = sclalg.inv(Q)
+                U, sv, Z = sclalg.svd(np.dot(self.WWT[ii], self.WTref.T),
+                                      full_matrices=False, overwrite_a=False,
+                                      lapack_driver='gesdd')
+                Qinv = np.dot(U, Z.T).T
+                # Qinv = sclalg.inv(Q)
                 self.QQ.append(Q)
                 self.QQinv.append(Qinv)
 
@@ -443,7 +450,6 @@ class InterpROM:
                 self.QQ.append(Q)
                 self.QQinv.append(Qinv)
 
-
         elif self.method_proj == 'weakMAC_right_orth':
             """
             This is like Amsallem, but only for state-space models with right 
@@ -488,6 +494,164 @@ class InterpROM:
             self.CC.append(np.dot(self.SS[ii].C, self.QQ[ii]))
 
         self.Projected = True
+
+
+class TangentInterpolation(InterpROM):
+    """
+    Performs interpolation in the tangent space. This class is inherited from :class:`~.InterpROM`
+    with minor modifications to perform the actual interpolation in the tangent manifold to the reference
+    system.
+
+    Warnings:
+        Interpolation in the tangent space is not fully understood. When transforming to the tangent space
+        using the logarithmic mapping, complex terms may appear whose impact/meaning is unknown.
+
+    References:
+        [1] D. Amsallem and C. Farhat, An online method for interpolating linear
+        parametric reduced-order models, SIAM J. Sci. Comput., 33 (2011), pp. 2169–2198.
+    """
+
+    def __init__(self,
+                 ss_list,
+                 vv_list=None,
+                 wwt_list=None,
+                 method_proj=None,
+                 reference_case=0):
+
+        super().__init__(ss_list,
+                         vv_list=vv_list,
+                         wwt_list=wwt_list,
+                         method_proj=method_proj,
+                         reference_case=reference_case)
+
+        self.gamma = None
+        self.reference_system = None
+
+        warn_msg = 'TangentInterpolation is not well understood for many systems where complex terms' \
+                   ' may appear in the transformation. See documentation.'
+        warnings.warn(warn_msg)
+
+    def __call__(self, weights):
+
+        assert self.Projected, ('You must project the state-space models over' +
+                                ' a common basis before interpolating.')
+
+        a_tan = np.zeros_like(self.AA[0], dtype=complex)
+        b_tan = np.zeros_like(self.BB[0])
+        c_tan = np.zeros_like(self.CC[0])
+        d_tan = np.zeros_like(self.DD[0])
+
+        for i in range(len(self.AA)):
+            a_tan += weights[i] * self.gamma[0][i]
+            b_tan += weights[i] * self.gamma[1][i]
+            c_tan += weights[i] * self.gamma[2][i]
+            d_tan += weights[i] * self.gamma[3][i]
+
+        a = self.from_tangent_manifold(a_tan, self.reference_system[0])
+        b = self.from_tangent_manifold(b_tan, self.reference_system[1])
+        c = self.from_tangent_manifold(c_tan, self.reference_system[2])
+        d = self.from_tangent_manifold(d_tan, self.reference_system[3])
+
+        if self.SS[0].dt:
+            return libss.ss(a, b, c, d, self.SS[0].dt)
+        else:
+            return libss.ss(a, b, c, d)
+
+    def project(self):
+        r"""
+        Projects the system onto a set of generalised coordinates and creates the matrices in the
+        tangent manifold to the reference system.
+
+        See Also:
+            Projection methods described in :func:`~sharpy.linear.rom.utils.librom_interp.InterpROM.project()`
+        """
+        super().project()
+
+        gamma_a = []
+        gamma_b = []
+        gamma_c = []
+        gamma_d = []
+
+        self.reference_system = (self.AA[self.reference_case],
+                                 self.BB[self.reference_case],
+                                 self.CC[self.reference_case],
+                                 self.DD[self.reference_case],
+                                 )
+
+        for i in range(len(self.AA)):
+            gamma_a.append(self.to_tangent_manifold(self.AA[i], self.reference_system[0]))
+            gamma_b.append(self.to_tangent_manifold(self.BB[i], self.reference_system[1]))
+            gamma_c.append(self.to_tangent_manifold(self.CC[i], self.reference_system[2]))
+            gamma_d.append(self.to_tangent_manifold(self.DD[i], self.reference_system[3]))
+
+        self.gamma = (gamma_a, gamma_b, gamma_c, gamma_d)
+
+    @staticmethod
+    def to_tangent_manifold(matrix, ref_matrix):
+        r"""
+        Based on Table 4.1 in Amsallem and Farhat [1] performs the mapping onto the tangent manifold:
+
+        .. math:: \mathrm{Log}_\mathbf{X}(\mathbf{Y}) = \boldsymbol{\Gamma}
+
+        If the matrices are square, this is calculated as:
+
+        .. math:: \boldsymbol{\Gamma} = \log(\mathbf{YX}^{-1})
+
+        Else:
+
+        .. math:: \boldsymbol{\Gamma} = \mathbf{Y} - \mathbf{X}
+
+        Args:
+            matrix (np.ndarray): Matrix to map, :math:`\mathbf{Y}`.
+            ref_matrix: (np.ndarray): Reference matrix, :math:`\mathbf{X}`.
+
+        Returns:
+            (np.ndarray): matrix in the tangent manifold, :math:`\boldsymbol{\Gamma}`.
+        """
+        m, n = matrix.shape
+
+        if m != n:
+            gamma = matrix - ref_matrix
+        else:
+            inv_ref_matrix = sclalg.inv(ref_matrix)
+            gamma = sclalg.logm(matrix.dot(inv_ref_matrix))
+
+        return gamma
+
+    @staticmethod
+    def from_tangent_manifold(matrix, ref_matrix):
+        r"""
+        Based on Table 4.1 from Amsallem and Farhat [1], returns a matrix from the tangent manifold using
+        an exponential mapping.
+
+        .. math:: \mathrm{Exp}_\mathbf{X}(\boldsymbol{\Gamma}) = \mathbf{Y}
+
+        Args:
+            matrix: equivalent to gamma
+            ref_matrix: reference matrix
+
+        If the matrices are square, this is calculated as:
+
+        .. math:: \mathbf{Y} = \exp(\boldsymbol{\Gamma})\mathbf{X}
+
+        Else:
+
+        .. math:: \mathbf{Y} = \mathbf{X} + \boldsymbol{\Gamma}
+
+        Args:
+            matrix (np.ndarray): Matrix in the tangent manifold, :math:`\boldsymbol{\Gamma}`.
+            ref_matrix: (np.ndarray): Reference matrix, :math:`\mathbf{X}`.
+
+        Returns:
+            (np.ndarray): matrix in the original manifold, :math:`\mathbf{Y}`.
+
+        """
+        m, n = matrix.shape
+
+        if m != n:
+            return matrix + ref_matrix
+        else:
+            return sclalg.expm(matrix).dot(ref_matrix)
 
 
 class BasisInterpolation:
@@ -540,11 +704,27 @@ class BasisInterpolation:
 
         v_interp = self.return_from_tangent_space(gamma)
 
-        interp_ss = ss.project(v_interp.T, v_interp)
+        ss.project(v_interp.T, v_interp)
 
         return ss
 
 
+def lagrange_interpolation(x_vec, x0):
+
+    # TODO: limit the lagrange degree when there are too many points! Method could be unstable
+    # Would need to have x sorted and limit the degree by a number of points left and
+    # right of x0
+
+    out = [0] * len(x_vec)
+
+    for i in range(len(x_vec)):
+        curr = []
+        for j in range(len(x_vec)):
+            if j != i:
+                curr.append((x0 - x_vec[j]) / (x_vec[i] - x_vec[j]))
+        out[i] = np.prod(curr)
+
+    return out
 
 # ------------------------------------------------------------------------------
 
