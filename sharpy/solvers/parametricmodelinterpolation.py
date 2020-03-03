@@ -13,7 +13,7 @@ import shutil
 
 
 @solver
-class ParametricModelReduction(BaseSolver):
+class ParametricModelInterpolation(BaseSolver):
     """
     Warnings:
         Under development
@@ -94,7 +94,7 @@ class ParametricModelReduction(BaseSolver):
     See Also:
         How to create pROM libraries in :class:`~sharpy.rom.interpolation.pmorlibrary.ROMLibrary`
     """
-    solver_id = 'ParametricModelReduction'
+    solver_id = 'ParametricModelInterpolation'
     solver_classification = 'model reduction'
 
     settings_types = dict()
