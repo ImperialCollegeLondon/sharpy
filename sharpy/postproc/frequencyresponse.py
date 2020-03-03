@@ -5,6 +5,7 @@ import sharpy.utils.solver_interface as solver_interface
 import sharpy.utils.settings as settings_utils
 import sharpy.utils.cout_utils as cout
 import warnings
+import sharpy.linear.src.libss as libss
 
 
 @solver_interface.solver
@@ -26,36 +27,46 @@ class FrequencyResponse(solver_interface.BaseSolver):
 
     settings_types['folder'] = 'str'
     settings_default['folder'] = './output'
-    settings_description['folder'] = 'Output folder'
+    settings_description['folder'] = 'Output folder.'
 
     settings_types['print_info'] = 'bool'
     settings_default['print_info'] = False
-    settings_description['print_info'] = 'Write output to screen'
+    settings_description['print_info'] = 'Write output to screen.'
+
+    settings_types['target_system'] = 'list(str)'
+    settings_default['target_system'] = ['aeroelastic']
+    settings_description['target_system'] = 'System or systems for which to find frequency response.'
+    settings_options['target_system'] = ['aeroelastic', 'aerodynamic', 'structural']
 
     settings_types['compute_fom'] = 'bool'
     settings_default['compute_fom'] = False
-    settings_description['compute_fom'] = 'Compute frequency response of full order model (use caution if large)'
+    settings_description['compute_fom'] = 'Compute frequency response of full order model (use caution if large).'
 
     settings_types['load_fom'] = 'str'
     settings_default['load_fom'] = ''
-    settings_description['load_fom'] = 'Folder to locate full order model frequency response data'
+    settings_description['load_fom'] = 'Folder to locate full order model frequency response data.'
 
     settings_types['frequency_unit'] = 'str'
     settings_default['frequency_unit'] = 'k'
-    settings_description['frequency_unit'] = 'Units of frequency, "w" for rad/s, "k" reduced'
+    settings_description['frequency_unit'] = 'Units of frequency, ``w`` for rad/s, ``k`` reduced.'
     settings_options['frequency_unit'] = ['w', 'k']
 
     settings_types['frequency_bounds'] = 'list(float)'
     settings_default['frequency_bounds'] = [1e-3, 1]
-    settings_description['frequency_bounds'] = 'Lower and upper frequency bounds in the corresponding unit'
+    settings_description['frequency_bounds'] = 'Lower and upper frequency bounds in the corresponding unit.'
+
+    settings_types['frequency_spacing'] = 'str'
+    settings_default['frequency_spacing'] = 'linear'
+    settings_description['frequency_spacing'] = 'Compute the frequency response in a ``linear`` or ``log`` grid.'
+    settings_options['frequency_spacing'] = ['linear', 'log']
 
     settings_types['num_freqs'] = 'int'
     settings_default['num_freqs'] = 50
-    settings_description['num_freqs'] = 'Number of frequencies to evaluate'
+    settings_description['num_freqs'] = 'Number of frequencies to evaluate.'
 
     settings_types['quick_plot'] = 'bool'
     settings_default['quick_plot'] = False
-    settings_description['quick_plot'] = 'Produce array of ``.png`` plots showing response. Requires matplotlib'
+    settings_description['quick_plot'] = 'Produce array of ``.png`` plots showing response. Requires matplotlib.'
 
     settings_table = settings_utils.SettingsTable()
     __doc__ += settings_table.generate(settings_types, settings_default, settings_description, settings_options)
@@ -98,7 +109,12 @@ class FrequencyResponse(solver_interface.BaseSolver):
         ub = self.settings['frequency_bounds'][1] / self.w_to_k
 
         nfreqs = self.settings['num_freqs'].value
-        self.wv = np.linspace(lb, ub, nfreqs)
+        if self.settings['frequency_spacing'] == 'linear':
+            self.wv = np.linspace(lb, ub, nfreqs)
+        elif self.settings['frequency_spacing'] == 'log':
+            self.wv = np.logspace(np.log10(lb), np.log10(ub), nfreqs)
+        else:
+            raise NotImplementedError('Unrecognised frequency spacing setting %s' % self.settings['frequency_spacing'])
 
         if not os.path.exists(self.settings['folder']):
             os.makedirs(self.settings['folder'])
@@ -106,57 +122,111 @@ class FrequencyResponse(solver_interface.BaseSolver):
         if not os.path.exists(self.folder):
             os.makedirs(self.folder)
 
-    def run(self):
+        if self.settings['print_info']:
+            cout.cout_wrap.cout_talk()
+        else:
+            cout.cout_wrap.cout_quiet()
+
+    def run(self, ss=None):
         """
         Get the frequency response of the linear state-space
         Returns:
 
         """
-        Y_freq_rom = None
-        Y_freq_fom = None
 
-        compute_fom = False
+        if ss is None:
+            ss_list = [self.find_target_system(system_name) for system_name in self.settings['target_system']]
+        elif type(ss) is libss.ss:
+            ss_list = [ss]
+        elif type(ss) is list:
+            ss_list = ss
+        else:
+            raise TypeError('ss input must be either a libss.ss instance or a list of libss.ss')
 
-        if self.settings['load_fom'] != '':
-            if os.path.exists(self.settings['load_fom']):
+        for ith, system in enumerate(ss_list):
+            if ss is None:
                 try:
-                    Y_freq_fom = self.load_frequency_data()
-                except OSError:
-                    compute_fom = True
+                    out_folder = self.settings['target_system'][ith]
+                except IndexError:
+                    out_folder = None
             else:
-                compute_fom = True
+                out_folder = None
 
-        if (self.settings['compute_fom'].value and self.settings['load_fom'] == '') or compute_fom:
-            if self.settings['print_info']:
-                cout.cout_wrap('Computing frequency response...')
-                cout.cout_wrap('Full order system:', 1)
+            if out_folder is not None:
+                os.makedirs(self.folder + '/' + out_folder, exist_ok=True)
+
+            cout.cout_wrap('Computing frequency response...')
+            cout.cout_wrap('Full order system:', 1)
+
             t0fom = time.time()
-            Y_freq_fom = self.ss.freqresp(self.wv)
+            y_freq_fom = system.freqresp(self.wv)
             tfom = time.time() - t0fom
-            self.save_freq_resp(self.wv, Y_freq_fom, 'fom')
-            if self.settings['print_info']:
-                cout.cout_wrap('\tComputed the frequency response of the full order system in %f s' % tfom, 2)
 
-        if self.ssrom is not None:
-            if self.settings['print_info']:
-                cout.cout_wrap('Computing frequency response...')
-                cout.cout_wrap('Reduced order system:', 1)
-            t0rom = time.time()
-            Y_freq_rom = self.ssrom.freqresp(self.wv)
-            trom = time.time() - t0rom
-            if self.settings['print_info']:
-                cout.cout_wrap('\tComputed the frequency response of the reduced order system in %f s' % trom, 2)
-            self.save_freq_resp(self.wv, Y_freq_rom, 'rom')
+            self.save_freq_resp(self.wv, y_freq_fom, 'fom', subfolder=out_folder)
 
-            if Y_freq_fom is not None:
-                frequency_error(Y_freq_fom, Y_freq_rom, self.wv)
+            cout.cout_wrap('\tComputed the frequency response of the full order system in %f s' % tfom, 2)
 
-        if self.settings['quick_plot'].value:
-            self.quick_plot(Y_freq_fom, Y_freq_rom)
+            # >>>>>>>>>>>>>>>>
+            # Y_freq_rom = None
+            # compute_fom = False
+
+            # if self.settings['load_fom'] != '':
+            #     if os.path.exists(self.settings['load_fom']):
+            #         try:
+            #             Y_freq_fom = self.load_frequency_data()
+            #         except OSError:
+            #             compute_fom = True
+            #     else:
+            #         compute_fom = True
+            #
+            # if (self.settings['compute_fom'].value and self.settings['load_fom'] == '') or compute_fom:
+            #     if self.settings['print_info']:
+            #         cout.cout_wrap('Computing frequency response...')
+            #         cout.cout_wrap('Full order system:', 1)
+            #     t0fom = time.time()
+            #     Y_freq_fom = system.freqresp(self.wv)
+            #     tfom = time.time() - t0fom
+            #     self.save_freq_resp(self.wv, Y_freq_fom, 'fom')
+            #     if self.settings['print_info']:
+            #         cout.cout_wrap('\tComputed the frequency response of the full order system in %f s' % tfom, 2)
+            #
+            # if self.ssrom is not None:
+            #     if self.settings['print_info']:
+            #         cout.cout_wrap('Computing frequency response...')
+            #         cout.cout_wrap('Reduced order system:', 1)
+            #     t0rom = time.time()
+            #     Y_freq_rom = self.ssrom.freqresp(self.wv)
+            #     trom = time.time() - t0rom
+            #     if self.settings['print_info']:
+            #         cout.cout_wrap('\tComputed the frequency response of the reduced order system in %f s' % trom, 2)
+            #     self.save_freq_resp(self.wv, Y_freq_rom, 'rom')
+            #
+            #     if Y_freq_fom is not None:
+            #         frequency_error(Y_freq_fom, Y_freq_rom, self.wv)
+            # <<<<<<<<<<<<<<<<<< Things to do with ROM comparison need to go elsewhere
+
+            if self.settings['quick_plot'].value:
+                self.quick_plot(y_freq_fom, None)
 
         return self.data
 
-    def save_freq_resp(self, wv, Yfreq, filename):
+    def find_target_system(self, target_system):
+
+        if target_system == 'aeroelastic':
+            ss = self.data.linear.ss
+
+        elif target_system == 'structural':
+            ss = self.data.linear.linear_system.beam.ss
+
+        elif target_system == 'aerodynamic':
+            ss = self.data.linear.linear_system.uvlm.ss  # this could be a ROM
+
+        else:
+            raise NameError('Unrecognised system')
+
+        return ss
+
+    def save_freq_resp(self, wv, Yfreq, filename, subfolder=None):
 
         with open(self.folder + '/freqdata_readme.txt', 'w') as outfile:
             outfile.write('Frequency Response Data Output\n\n')
@@ -164,20 +234,26 @@ class FrequencyResponse(solver_interface.BaseSolver):
             outfile.write('Response data from input m to output p in complex form. Column 1 corresponds'
                           ' to the real value and column 2 to the imaginary part.')
 
-        np.savetxt(self.folder + '/' + filename + '_wv.dat', wv)
+        if subfolder is None:
+            np.savetxt(self.folder + '/' + filename + '_wv.dat', wv)
+        else:
+            np.savetxt(self.folder + '/' + subfolder + '/' + filename + '_wv.dat', wv)
 
-        for mj in range(self.ss.inputs):
-            for pj in range(self.ss.outputs):
+        p, m, _ = Yfreq.shape
+
+        for mj in range(m):
+            for pj in range(p):
                 freq_2_cols = Yfreq[pj, mj, :].view(float).reshape(-1, 2)
                 np.savetxt(self.folder + '/' + 'Y_freq_' + filename + '_m%02d_p%02d.dat' % (mj, pj),
                            freq_2_cols)
 
     def quick_plot(self, Y_freq_fom=None, Y_freq_rom=None):
+        p, m, _ = Y_freq_fom.shape
         try:
             cout.cout_wrap('Creating Quick plots of the frequency response')
             import matplotlib.pyplot as plt
-            for mj in range(self.ss.inputs):
-                for pj in range(self.ss.outputs):
+            for mj in range(m):
+                for pj in range(p):
                     fig1, ax1 = plt.subplots()
                     fig_title = 'in%02g_out%02g' % (mj, pj)
                     ax1.set_title(fig_title)
@@ -202,6 +278,7 @@ class FrequencyResponse(solver_interface.BaseSolver):
             warnings.warn('Matplotlib not found - skipping plot')
 
     def load_frequency_data(self):
+        # TODO: need to change so that it doesn't require self.ss
         if self.settings['print_info']:
             cout.cout_wrap('Loading frequency response from:')
             cout.cout_wrap('\t%s' % self.settings['load_fom'], 1)
@@ -223,7 +300,7 @@ def frequency_error(Y_fom, Y_rom, wv):
     max_error = np.zeros((n_out, n_in, 2))
     for m in range(n_in):
         for p in range(n_out):
-            cout.cout_wrap('m = %g, p = %g' %(m, p))
+            cout.cout_wrap('m = %g, p = %g' % (m, p))
             max_error[p, m, 0] = error_between_signals(Y_fom[p, m, :].real,
                                                             Y_rom[p, m, :].real,
                                                             wv, 'real')
