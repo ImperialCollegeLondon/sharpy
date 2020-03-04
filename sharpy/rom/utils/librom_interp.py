@@ -295,7 +295,9 @@ class InterpROM:
                  method_proj=None,
                  reference_case=0):
 
-        self.SS = ss_list
+        self.ss_list = ss_list
+
+        self.check_discrete_timestep()
 
         self.VV = vv_list
         self.WWT = wwt_list
@@ -310,16 +312,16 @@ class InterpROM:
         self.Projected = False
         if self.VV is None or self.WWT is None:
             self.Projected = True
-            self.AA = [ss_here.A for ss_here in self.SS]
-            self.BB = [ss_here.B for ss_here in self.SS]
-            self.CC = [ss_here.C for ss_here in self.SS]
+            self.AA = [ss_here.A for ss_here in self.ss_list]
+            self.BB = [ss_here.B for ss_here in self.ss_list]
+            self.CC = [ss_here.C for ss_here in self.ss_list]
 
         # projection required for D
-        self.DD = [ss_here.D for ss_here in self.SS]
+        self.DD = [ss_here.D for ss_here in self.ss_list]
 
         ### check state-space models
-        Nx, Nu, Ny = self.SS[0].states, self.SS[0].inputs, self.SS[0].outputs
-        dt = self.SS[0].dt
+        Nx, Nu, Ny = self.ss_list[0].states, self.ss_list[0].inputs, self.ss_list[0].outputs
+        dt = self.ss_list[0].dt
         for ss_here in self.SS:
             assert ss_here.states == Nx, \
                 'State-space models do not have the same number of states'
@@ -327,8 +329,22 @@ class InterpROM:
                 'State-space models do not have the same number of inputs'
             assert ss_here.outputs == Ny, \
                 'State-space models do not have the same number of outputs'
-            assert ss_here.dt == dt, \
-                'State-space models do not have same timestep'
+
+    def check_discrete_timestep(self):
+        """
+        Checks that the systems have the same timestep. If they don't, it converts them to continuous time.
+        Returns:
+
+        """
+        mismatch_dt = False
+        for ss in self.ss_list:
+            if ss.dt != self.ss_list[0].dt:
+                mismatch_dt = True
+                break
+
+        if mismatch_dt:
+            for i, ss in enumerate(self.ss_list):
+                self.ss_list[i] = libss.disc2cont(ss)
 
     def __call__(self, wv):
         """
@@ -349,7 +365,7 @@ class InterpROM:
             Cint += wv[ii] * self.CC[ii]
             Dint += wv[ii] * self.DD[ii]
 
-        return libss.ss(Aint, Bint, Cint, Dint, self.SS[0].dt)
+        return libss.ss(Aint, Bint, Cint, Dint, self.ss_list[0].dt)
 
     def project(self):
         """
@@ -367,7 +383,7 @@ class InterpROM:
         if self.method_proj == 'amsallem':
             warnings.warn('Method untested!')
 
-            for ii in range(len(self.SS)):
+            for ii in range(len(self.ss_list)):
                 U, sv, Z = sclalg.svd(np.dot(self.VV[ii].T, self.Vref),
                                       full_matrices=False,
                                       overwrite_a=False,
@@ -389,8 +405,8 @@ class InterpROM:
                                full_matrices=False, overwrite_a=False,
                                lapack_driver='gesdd')[:2]
             # chop U
-            U = U[:, :self.SS[0].states]
-            for ii in range(len(self.SS)):
+            U = U[:, :self.ss_list[0].states]
+            for ii in range(len(self.ss_list)):
                 Qinv = np.linalg.inv(np.dot(self.WWT[ii], U))
                 Q = np.linalg.inv(np.dot(self.VV[ii].T, U))
                 self.QQ.append(Q)
@@ -398,7 +414,7 @@ class InterpROM:
 
         elif self.method_proj == 'leastsq':
 
-            for ii in range(len(self.SS)):
+            for ii in range(len(self.ss_list)):
                 Q, _, _, _ = sclalg.lstsq(self.VV[ii], self.Vref)
                 print('det(Q): %.3e\tcond(Q): %.3e' \
                       % (np.linalg.det(Q), np.linalg.cond(Q)))
@@ -414,7 +430,7 @@ class InterpROM:
             """
 
             VTVref = np.dot(self.Vref.T, self.Vref)
-            for ii in range(len(self.SS)):
+            for ii in range(len(self.ss_list)):
                 Q = np.linalg.solve(np.dot(self.Vref.T, self.VV[ii]), VTVref)
                 Qinv = np.linalg.inv(Q)
                 print('det(Q): %.3e\tcond(Q): %.3e' \
@@ -429,7 +445,7 @@ class InterpROM:
             do not describe the same subspace
             """
 
-            for ii in range(len(self.SS)):
+            for ii in range(len(self.ss_list)):
                 Q = np.linalg.inv(np.dot(self.WTref, self.VV[ii]))
                 Qinv = np.dot(self.WTref, self.VV[ii])
                 print('det(Q): %.3e\tcond(Q): %.3e' \
@@ -442,7 +458,7 @@ class InterpROM:
             Projection over ii. This is a sort of weak enforcement
             """
 
-            for ii in range(len(self.SS)):
+            for ii in range(len(self.ss_list)):
                 Q = np.dot(self.WWT[ii], self.Vref)
                 Qinv = np.dot(self.WTref, self.VV[ii])
                 print('det(Q): %.3e\tcond(Q): %.3e' \
@@ -456,7 +472,7 @@ class InterpROM:
             orthogonal basis 
             """
 
-            for ii in range(len(self.SS)):
+            for ii in range(len(self.ss_list)):
                 Q, sc = sclalg.orthogonal_procrustes(self.VV[ii], self.Vref)
                 Qinv = Q.T
                 print('det(Q): %.3e\tcond(Q): %.3e' \
@@ -472,7 +488,7 @@ class InterpROM:
             # svd of reference
             Uref, svref, Zhref = sclalg.svd(self.Vref, full_matrices=False)
 
-            for ii in range(len(self.SS)):
+            for ii in range(len(self.ss_list)):
                 # svd of basis
                 Uhere, svhere, Zhhere = sclalg.svd(self.VV[ii], full_matrices=False)
 
@@ -488,10 +504,10 @@ class InterpROM:
             raise NameError('Projection method %s not implemented!' % self.method_proj)
 
         ### Project
-        for ii in range(len(self.SS)):
-            self.AA.append(np.dot(self.QQinv[ii], np.dot(self.SS[ii].A, self.QQ[ii])))
-            self.BB.append(np.dot(self.QQinv[ii], self.SS[ii].B))
-            self.CC.append(np.dot(self.SS[ii].C, self.QQ[ii]))
+        for ii in range(len(self.ss_list)):
+            self.AA.append(np.dot(self.QQinv[ii], np.dot(self.ss_list[ii].A, self.QQ[ii])))
+            self.BB.append(np.dot(self.QQinv[ii], self.ss_list[ii].B))
+            self.CC.append(np.dot(self.ss_list[ii].C, self.QQ[ii]))
 
         self.Projected = True
 
@@ -552,8 +568,8 @@ class TangentInterpolation(InterpROM):
         c = self.from_tangent_manifold(c_tan, self.reference_system[2])
         d = self.from_tangent_manifold(d_tan, self.reference_system[3])
 
-        if self.SS[0].dt:
-            return libss.ss(a, b, c, d, self.SS[0].dt)
+        if self.ss_list[0].dt:
+            return libss.ss(a, b, c, d, self.ss_list[0].dt)
         else:
             return libss.ss(a, b, c, d)
 

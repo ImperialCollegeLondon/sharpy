@@ -287,7 +287,7 @@ class ss():
 
         """
         if self.dt:
-            self = disc2cont(self)
+            disc2cont(self)
 
     def remove_inout_channels(self, retain_channels, where):
         remove_inout_channels(self, retain_channels, where)
