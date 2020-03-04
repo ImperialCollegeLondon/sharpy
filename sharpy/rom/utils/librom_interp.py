@@ -322,7 +322,7 @@ class InterpROM:
         ### check state-space models
         Nx, Nu, Ny = self.ss_list[0].states, self.ss_list[0].inputs, self.ss_list[0].outputs
         dt = self.ss_list[0].dt
-        for ss_here in self.SS:
+        for ss_here in self.ss_list:
             assert ss_here.states == Nx, \
                 'State-space models do not have the same number of states'
             assert ss_here.inputs == Nu, \
