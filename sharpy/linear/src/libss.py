@@ -289,6 +289,13 @@ class ss():
         if self.dt:
             self = disc2cont(self)
 
+    def remove_inout_channels(self, retain_channels, where):
+        remove_inout_channels(self, retain_channels, where)
+
+    def summary(self):
+        msg = 'State-space system\nStates: %g\nInputs: %g\nOutputs: %g\n' % (self.states, self.inputs, self.outputs)
+        return msg
+
 class ss_block():
     '''
     State-space model in block form. This class has the same purpose as "ss",
@@ -603,6 +610,34 @@ def disc2cont(sys):
     d = sys.D - sys.C.dot(eye_a_inv.dot(sys.B))
 
     return ss(a, b, c, d)
+
+
+def remove_inout_channels(sys, retain_channels, where):
+
+    retain_m = len(retain_channels)  # new number of in/out
+
+    if where == 'in':
+        m = sys.inputs  # current number of in/out
+    elif where == 'out':
+        m = sys.outputs
+    else:
+        raise NameError('Argument ``where`` can only be ``in`` or ``out``.')
+
+    gain_matrix = np.zeros((retain_m, m))
+    for ith, channel in enumerate(retain_channels):
+        gain_matrix[ith, channel] = 1
+
+    if where == 'in':
+        sys.addGain(gain_matrix.T, where='in')
+    elif where == 'out':
+        sys.addGain(gain_matrix, where='out')
+    else:
+        raise NameError('Argument ``where`` can only be ``in`` or ``out``.')
+
+    return sys
+
+
+
 
 # def couple_wrong02(ss01, ss02, K12, K21):
 #     """
