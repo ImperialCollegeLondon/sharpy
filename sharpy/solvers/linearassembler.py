@@ -7,6 +7,7 @@ from sharpy.utils.solver_interface import solver, BaseSolver
 import sharpy.linear.utils.ss_interface as ss_interface
 import sharpy.utils.settings as settings
 import sharpy.utils.h5utils as h5
+import sharpy.utils.cout_utils as cout
 
 
 @solver
@@ -58,6 +59,7 @@ class LinearAssembler(BaseSolver):
     settings_types = dict()
     settings_default = dict()
     settings_description = dict()
+    settings_options = dict()
 
     settings_types['linear_system'] = 'str'
     settings_default['linear_system'] = None
@@ -71,8 +73,21 @@ class LinearAssembler(BaseSolver):
     settings_default['linearisation_tstep'] = -1
     settings_description['linearisation_tstep'] = 'Chosen linearisation time step number from available time steps'
 
+    settings_types['inout_coordinates'] = 'str'
+    settings_default['inout_coordinates'] = ''
+    settings_description['inout_coordinates'] = 'Input/output coordinates of the system. Nodal or modal space.'
+    settings_options['inout_coordinates'] = ['', 'nodes', 'modes']
+
+    settings_types['retain_inputs'] = 'list(int)'
+    settings_default['retain_inputs'] = []
+    settings_description['retain_inputs'] = 'List of input channels to retain in the chosen ``inout_coordinates``.'
+
+    settings_types['retain_outputs'] = 'list(int)'
+    settings_default['retain_outputs'] = []
+    settings_description['retain_outputs'] = 'List of input channels to retain in the chosen ``inout_coordinates``.'
+
     settings_table = settings.SettingsTable()
-    __doc__ += settings_table.generate(settings_types, settings_default, settings_description)
+    __doc__ += settings_table.generate(settings_types, settings_default, settings_description, settings_options)
 
     def __init__(self):
 
@@ -89,7 +104,8 @@ class LinearAssembler(BaseSolver):
 
         else:
             self.settings = data.settings[self.solver_id]
-        settings.to_custom_types(self.settings, self.settings_types, self.settings_default)
+        settings.to_custom_types(self.settings, self.settings_types, self.settings_default,
+                                 options=self.settings_options)
 
         # Get consistent linearisation timestep
         ii_step = self.settings['linearisation_tstep']
@@ -116,4 +132,21 @@ class LinearAssembler(BaseSolver):
 
         self.data.linear.ss = self.data.linear.linear_system.assemble()
 
+        # modify inout coordinates
+        if self.settings['inout_coordinates'] == 'nodes':
+            try:
+                self.data.linear.linear_system.to_nodal_coordinates()
+            except AttributeError:
+                pass
+
+        # retain only selected inputs and outputs
+        if len(self.settings['retain_inputs']) != 0:
+            self.data.linear.ss.remove_inout_channels(self.settings['retain_inputs'], where='in')
+        if len(self.settings['retain_outputs']) != 0:
+            self.data.linear.ss.remove_inout_channels(self.settings['retain_outputs'], where='out')
+        cout.cout_wrap('Final system is:')
+        cout.cout_wrap(self.data.linear.ss.summary(), 1)
+
         return self.data
+
+
