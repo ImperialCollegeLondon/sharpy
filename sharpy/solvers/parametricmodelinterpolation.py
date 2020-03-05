@@ -1,3 +1,4 @@
+import sharpy.rom.interpolation.interpolationspaces
 from sharpy.utils.solver_interface import solver, BaseSolver, initialise_solver
 import os
 import sharpy.utils.settings as settings
@@ -153,7 +154,7 @@ class ParametricModelInterpolation(BaseSolver):
     settings_description['interpolation_space'] = 'Perform a ``direct`` interpolation of the ROM matrices or perform ' \
                                                   'the interpolation in the ``tangent`` manifold to the reference ' \
                                                   'system.'
-    settings_options['interpolation_space'] = ['direct', 'tangent']
+    settings_options['interpolation_space'] = ['direct', 'tangent', 'real']
 
     settings_types['interpolation_scheme'] = 'str'
     settings_default['interpolation_scheme'] = None
@@ -248,15 +249,17 @@ class ParametricModelInterpolation(BaseSolver):
         ## <<< end of test - to be removed to a dedicated solver
 
         if self.settings['interpolation_space'] == 'direct':
-            self.pmor = librominterp.InterpROM(ss_list, vv_list, wwt_list,
-                                               method_proj=self.settings['projection_method'],
-                                               reference_case=self.rom_library.reference_case)
+            self.pmor = sharpy.rom.interpolation.interpolationspaces.InterpROM()
         elif self.settings['interpolation_space'] == 'tangent':
-            self.pmor = librominterp.TangentInterpolation(ss_list, vv_list, wwt_list,
-                                                          method_proj=self.settings['projection_method'],
-                                                          reference_case=self.rom_library.reference_case)
+            self.pmor = sharpy.rom.interpolation.interpolationspaces.TangentInterpolation()
+        elif self.settings['interpolation_space'] == 'real':
+            self.pmor = sharpy.rom.interpolation.interpolationspaces.InterpolationRealMatrices()
         else:
             raise NotImplementedError('Interpolation space %s is not recognised' % self.settings['interpolation_space'])
+
+        self.pmor.initialise(ss_list, vv_list, wwt_list,
+                             method_proj=self.settings['projection_method'],
+                             reference_case=self.rom_library.reference_case)
 
         # Transform onto gen coordinates
         self.pmor.project()
@@ -288,8 +291,6 @@ class ParametricModelInterpolation(BaseSolver):
             # interpolated_ss = self.pmor.interpolate(weights, ss=self.retrieve_fom(self.rom_library.reference_case))
             # interpolated_ss = self.pmor.interpolate(weights, ss=self.retrieve_fom(1))
             # <<<< Basis Interpolation
-
-            cout.cout_wrap(str(weights))
 
             interpolated_roms.append(interpolated_ss, case)
 
@@ -406,7 +407,14 @@ class ParametricModelInterpolation(BaseSolver):
         self.inverse_mapping = inverse_mapping
 
     def aeroelastic_bases(self):
+        """
+        Returns the bases and state spaces of the chosen systems.
 
+        To Do: find system regardless of MOR method
+
+        Returns:
+            tuple: list of state spaces, list of right ROBs and list of left ROBs
+        """
         if self.settings['interpolation_system'] == 'uvlm':
             ss_list = [rom.linear.linear_system.uvlm.ss for rom in self.rom_library.data_library]
             vv_list = [rom.linear.linear_system.uvlm.rom['Krylov'].V for rom in self.rom_library.data_library]
