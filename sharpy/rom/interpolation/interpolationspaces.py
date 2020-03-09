@@ -338,7 +338,8 @@ class TangentInterpolation(InterpROM):
 
     Warnings:
         Interpolation in the tangent space is not fully understood. When transforming to the tangent space
-        using the logarithmic mapping, complex terms may appear whose impact/meaning is unknown.
+        using the logarithmic mapping, complex terms may appear whose impact/meaning is unknown. For the method to work
+        the matrices to interpolate must be regular matrices.
 
     References:
         [1] D. Amsallem and C. Farhat, An online method for interpolating linear
@@ -513,7 +514,7 @@ class TangentInterpolation(InterpROM):
 
 class InterpolationRealMatrices(TangentInterpolation):
     """
-    Uses interpolation on the manifold or real matrices
+    Uses interpolation on the manifold of real matrices.
 
     References:
         Geuss, Panzer, Lohmann. On Parametric Model Order Reduction By Matrix Interpolation. European Control Conference

@@ -95,7 +95,8 @@ class FrequencyResponse(solver_interface.BaseSolver):
         ub = self.settings['frequency_bounds'][1] / self.w_to_k
 
         nfreqs = self.settings['num_freqs'].value
-        self.wv = np.linspace(lb, ub, nfreqs)
+        # self.wv = np.linspace(lb, ub, nfreqs)
+        self.wv = np.logspace(np.log10(lb), np.log10(ub), nfreqs)
 
         if not os.path.exists(self.settings['folder']):
             os.makedirs(self.settings['folder'])
