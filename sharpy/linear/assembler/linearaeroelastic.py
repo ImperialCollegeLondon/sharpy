@@ -254,7 +254,8 @@ class LinearAeroelastic(ss_interface.BaseElement):
         cout.cout_wrap('\tInputs: %g' % ss.inputs, 1)
         cout.cout_wrap('\tOutputs: %g' % ss.outputs, 1)
 
-        return ss
+        self.ss = ss
+        return self.ss
 
     def update(self, u_infty):
         """
@@ -854,6 +855,21 @@ class LinearAeroelastic(ss_interface.BaseElement):
         self.Crs = Crs
         self.Crr = Crr
 
+    def to_nodal_coordinates(self):
+
+        is_modal = self.beam.sys.modal
+
+        if is_modal:
+            phi = self.beam.sys.U
+
+            # these would include control surface deflections, thrust etc.
+            non_structural_inputs = self.uvlm.ss.inputs - self.beam.ss.outputs
+
+            input_gain = sclalg.block_diag(phi.T, phi.T, np.eye(non_structural_inputs), phi.T)
+            output_gain = sclalg.block_diag(phi, phi, phi)
+
+            self.ss.addGain(input_gain, where='in')
+            self.ss.addGain(output_gain, where='out')
 
     @staticmethod
     def load_uvlm(filename):
