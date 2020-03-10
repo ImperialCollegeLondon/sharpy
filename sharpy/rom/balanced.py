@@ -378,9 +378,3 @@ class Balanced(rom_interface.BaseRom):
                 self.ssrom = libss.ss(Ar, Br, Cr, D)
 
         return self.ssrom
-
-
-if __name__=='__main__':
-    import sharpy.utils.docutils as docutils
-    import sharpy.utils.sharpydir as sharpydir
-    docutils.output_documentation_module_page(sharpydir.SharpyDir + '/sharpy/rom/balanced', '/rom')
