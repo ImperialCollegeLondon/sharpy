@@ -10,6 +10,7 @@ import itertools
 import sharpy.aero.utils.uvlmlib as uvlmlib  # SHARPy's main uvlm interface with cpp
 import sharpy.linear.src.uvlmutils as uvlmutils  # library with UVLM solution methods
 from sharpy.aero.utils.uvlmlib import get_aic3_cpp
+import sharpy.utils.cout_utils as cout
 
 dmver = np.array([0, 1, 1, 0])  # delta to go from (m,n) panel to (m,n) vertices
 dnver = np.array([0, 0, 1, 1])
@@ -293,6 +294,10 @@ class AeroGridSurface(AeroGridGeo):
         self.rho = rho
         self.omega = for_vel[3:]
         self.for_vel_tra = for_vel[:3]
+
+        cout.cout_wrap('\nGenerating instance of AerogridSurface')
+        cout.cout_wrap('Circulation matrix shape = ' + str(self.gamma.shape))
+        cout.cout_wrap('Grid dimensions (from gridmapping.AeroGridMap) = ' + str((self.maps.M, self.maps.N)))
 
         msg_out = 'wrong input shape!'
         assert self.gamma.shape == (self.maps.M, self.maps.N), msg_out

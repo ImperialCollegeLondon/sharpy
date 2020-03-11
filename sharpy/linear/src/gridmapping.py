@@ -4,6 +4,7 @@ S. Maraniello, 19 May 2018
 """
 
 import numpy as np
+import sharpy.utils.cout_utils as cout
 
 
 class AeroGridMap():
@@ -36,7 +37,7 @@ class AeroGridMap():
     """
 
     def __init__(self, M: 'number of chord-wise', N: 'number of span-wise'):
-
+        cout.cout_wrap('Generating an instance of AeroGridMap')
         ### init
         self.M = M
         self.N = N
