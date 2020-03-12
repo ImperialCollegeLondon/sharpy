@@ -8,4 +8,5 @@ Classes for the Aerotimestep and Structuraltimestep, amongst others
 .. toctree::
 	:glob:
 
+	./Linear
 	./LinearTimeStepInfo
