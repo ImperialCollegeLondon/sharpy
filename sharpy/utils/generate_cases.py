@@ -956,7 +956,8 @@ class AerodynamicInformation():
         copied.airfoil_distribution = self.airfoil_distribution.astype(dtype=int, copy=True)
         copied.airfoils = self.airfoils.astype(dtype=float, copy=True)
         copied.user_defined_m_distribution = self.user_defined_m_distribution.copy()
-        copied.polars = self.polars.copy()
+        if self.polars is not None:
+            copied.polars = self.polars.copy()
 
         return copied
 
@@ -1197,7 +1198,8 @@ class AerodynamicInformation():
                 self.airfoils = np.concatenate((new_airfoils, aerodynamics_to_add.airfoils), axis=0)
             if self.m_distribution.lower() == 'user_defined':
                 self.user_defined_m_distribution = self.user_defined_m_distribution + aerodynamics_to_add.user_defined_m_distribution
-            self.polars = self.polars + aerodynamics_to_add.polars
+            if self.polars is not None:
+                self.polars = self.polars + aerodynamics_to_add.polars
             total_num_airfoils += len(aerodynamics_to_add.airfoils[:, 0, 0])
             # total_num_surfaces += len(aerodynamics_to_add.surface_m)
             total_num_surfaces += np.sum(aerodynamics_to_add.surface_m != -1)
@@ -1342,10 +1344,13 @@ class AerodynamicInformation():
             h5file.create_dataset('sweep', data=self.sweep)
 
             airfoils_group = h5file.create_group('airfoils')
-            polars_group = h5file.create_group('polars')
             for iairfoil in range(len(self.airfoils)):
                 airfoils_group.create_dataset("%d" % iairfoil, data=self.airfoils[iairfoil, :, :])
-                polars_group.create_dataset("%d" % iairfoil, data=self.polars[iairfoil])
+
+            if self.polars is not None:
+                polars_group = h5file.create_group('polars')
+                for iairfoil in range(len(self.airfoils)):
+                    polars_group.create_dataset("%d" % iairfoil, data=self.polars[iairfoil])
 
             if self.m_distribution.lower() == 'user_defined':
                 udmd_group = h5file.create_group('user_defined_m_distribution')
