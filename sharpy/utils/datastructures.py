@@ -97,6 +97,14 @@ class AeroTimeStepInfo(object):
                                             dimensions[i_surf, 1]),
                                            dtype=ct.c_double))
 
+        # Induced velocity by the wake on the colocation points
+        self.uindw_col = []
+        for i_surf in range(self.n_surf):
+            self.uindw_col.append(np.zeros((3,
+                                          dimensions[i_surf, 0],
+                                          dimensions[i_surf, 1]),
+                                         dtype=ct.c_double))
+
         # total forces
         self.inertial_total_forces = np.zeros((self.n_surf, 6))
         self.body_total_forces = np.zeros((self.n_surf, 6))
@@ -154,6 +162,9 @@ class AeroTimeStepInfo(object):
 
         for i_surf in range(copied.n_surf):
             copied.gamma_star[i_surf] = self.gamma_star[i_surf].astype(dtype=ct.c_double, copy=True, order='C')
+
+        for i_surf in range(copied.n_surf):
+            copied.uindw_col[i_surf] = self.uindw_col[i_surf].astype(dtype=ct.c_double, copy=True, order='C')
 
         # total forces
         copied.inertial_total_forces = self.inertial_total_forces.astype(dtype=ct.c_double, copy=True, order='C')
@@ -242,6 +253,11 @@ class AeroTimeStepInfo(object):
             for i_surf in range(self.n_surf):
                 self.ct_incidence_list.append(self.postproc_cell['incidence_angle'][i_surf][:, :].reshape(-1))
 
+        self.ct_uindw_col_list = []
+        for i_surf in range(self.n_surf):
+            for i_dim in range(NDIM):
+                self.ct_uindw_col_list.append(self.uindw_col[i_surf][i_dim, :, :].reshape(-1))
+
         self.ct_p_dimensions = ((ct.POINTER(ct.c_uint)*n_surf)
                                 (* np.ctypeslib.as_ctypes(self.ct_dimensions)))
         self.ct_p_dimensions_star = ((ct.POINTER(ct.c_uint)*n_surf)
@@ -271,6 +287,8 @@ class AeroTimeStepInfo(object):
         if with_incidence_angle:
             self.postproc_cell['incidence_angle_ct_pointer'] = ((ct.POINTER(ct.c_double)*len(self.ct_incidence_list))
                             (* [np.ctypeslib.as_ctypes(array) for array in self.ct_incidence_list]))
+        self.ct_p_uindw_col = ((ct.POINTER(ct.c_double)*len(self.ct_uindw_col_list))
+                             (* [np.ctypeslib.as_ctypes(array) for array in self.ct_uindw_col_list]))
 
     def remove_ctypes_pointers(self):
         try:
@@ -335,6 +353,11 @@ class AeroTimeStepInfo(object):
 
         try:
             del self.ct_p_dynamic_forces
+        except AttributeError:
+            pass
+
+        try:
+            del self.ct_p_uindw_col
         except AttributeError:
             pass
 

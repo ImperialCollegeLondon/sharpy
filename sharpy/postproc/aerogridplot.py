@@ -148,6 +148,7 @@ class AerogridPlot(BaseSolver):
             point_unsteady_cf = np.zeros((point_data_dim, 3))
             zeta_dot = np.zeros((point_data_dim, 3))
             u_inf = np.zeros((point_data_dim, 3))
+            panel_uindw = np.zeros((panel_data_dim, 3))
             if self.settings['include_velocities']:
                 vel = np.zeros((point_data_dim, 3))
             counter = -1
@@ -201,6 +202,7 @@ class AerogridPlot(BaseSolver):
                     panel_surf_id[counter] = i_surf
                     panel_gamma[counter] = aero_tstep.gamma[i_surf][i_m, i_n]
                     panel_gamma_dot[counter] = aero_tstep.gamma_dot[i_surf][i_m, i_n]
+                    panel_uindw[counter, :] = aero_tstep.uindw_col[i_surf][:, i_m, i_n]
 
                     if self.settings['include_incidence_angle']:
                         incidence_angle[counter] = \
@@ -210,7 +212,7 @@ class AerogridPlot(BaseSolver):
                 vel = uvlmlib.uvlm_calculate_total_induced_velocity_at_points(aero_tstep,
                                                                               coords,
                                                                               struct_tstep.for_pos,
-                                                                              self.settings['numcores'])
+                                                                              self.settings['num_cores'])
 
             ug = tvtk.UnstructuredGrid(points=coords)
             ug.set_cells(tvtk.Quad().cell_type, conn)
@@ -225,7 +227,7 @@ class AerogridPlot(BaseSolver):
             if self.settings['include_incidence_angle']:
                 ug.cell_data.add_array(incidence_angle)
                 ug.cell_data.get_array(4).name = 'incidence_angle'
-            ug.cell_data.vectors = normal
+            ug.cell_data.vectors = panel_uindw
             ug.cell_data.vectors.name = 'panel_normal'
             ug.point_data.scalars = np.arange(0, coords.shape[0])
             ug.point_data.scalars.name = 'n_id'
