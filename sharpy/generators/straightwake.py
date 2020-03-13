@@ -59,8 +59,32 @@ class StraightWake(generator_interface.BaseGenerator):
         self.u_inf_direction = None
         self.dt = None
 
-    def initialise(self, in_dict):
+    def initialise(self, data, in_dict=None):
         self.in_dict = in_dict
+
+        # For backwards compatibility
+        if len(self.in_dict.keys()) == 0:
+            print("WARNING: The code will run for backwards compatibility. \
+                   In future releases you will need to define a 'wake_shape_generator' in ``AerogridLoader''. \
+                   Please, check the documentation")
+            # Look for an aerodynamic solver
+            if 'StepUvlm' in data.settings:
+                aero_solver = data.settings['StepUvlm']
+            elif 'SHWUvlm' in data.settings:
+                aero_solver = data.settings['SHWUvlm']
+            elif 'StaticCoupled' in data.settings:
+                aero_solver = data.settings['StaticCoupled']['aero_solver_settings']
+            elif 'StaticCoupledRBM' in data.settings:
+                aero_solver = data.settings['StaticCoupledRBM']['aero_solver_settings']
+            elif 'DynamicCoupled' in data.settings:
+                aero_solver = data.settings['DynamicCoupled']['aero_solver_settings']
+
+            print(aero_solver)
+            # Get the minimum parameters needed to define the wake
+            self.in_dict = {'u_inf': aero_solver['velocity_field_input']['u_inf'],
+                            'u_inf_direction': aero_solver['velocity_field_input']['u_inf_direction'],
+                            'dt': aero_solver['dt']}
+
         settings.to_custom_types(self.in_dict, self.settings_types, self.settings_default)
 
         self.u_inf = self.in_dict['u_inf']

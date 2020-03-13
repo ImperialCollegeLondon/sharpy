@@ -39,7 +39,7 @@ class AerogridLoader(BaseSolver):
         generators for accepted key-value pairs as settings.
 
         The initial wake shape is now defined in SHARPy (instead of UVLM) through a wake shape generator ``wake_shape_generator`` and the
-        required inputs ``wake_shape_generator``
+        required inputs ``wake_shape_generator_input``
 
     """
     solver_id = 'AerogridLoader'
@@ -110,8 +110,8 @@ class AerogridLoader(BaseSolver):
         wake_shape_generator_type = gen_interface.generator_from_string(
             self.settings['wake_shape_generator'])
         self.wake_shape_generator = wake_shape_generator_type()
-        self.wake_shape_generator.initialise(
-            self.settings['wake_shape_generator_input'])
+        self.wake_shape_generator.initialise(data,
+                        self.settings['wake_shape_generator_input'])
 
     def read_files(self):
         # open aero file

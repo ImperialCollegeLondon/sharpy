@@ -74,7 +74,7 @@ class HelicoidalWake(generator_interface.BaseGenerator):
 
         self.rotation_velocity = None
 
-    def initialise(self, in_dict):
+    def initialise(self, data, in_dict):
         self.in_dict = in_dict
         settings.to_custom_types(self.in_dict, self.settings_types, self.settings_default)
 
