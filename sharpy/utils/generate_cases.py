@@ -932,6 +932,7 @@ class AerodynamicInformation():
         # self.control_surface_deflection = None
         # self.control_surface_chord = None
         # self.control_surface_hinge_coords = None
+        self.polars = None
 
     def copy(self):
         """
@@ -955,6 +956,7 @@ class AerodynamicInformation():
         copied.airfoil_distribution = self.airfoil_distribution.astype(dtype=int, copy=True)
         copied.airfoils = self.airfoils.astype(dtype=float, copy=True)
         copied.user_defined_m_distribution = self.user_defined_m_distribution.copy()
+        copied.polars = self.polars.copy()
 
         return copied
 
@@ -1195,6 +1197,7 @@ class AerodynamicInformation():
                 self.airfoils = np.concatenate((new_airfoils, aerodynamics_to_add.airfoils), axis=0)
             if self.m_distribution.lower() == 'user_defined':
                 self.user_defined_m_distribution = self.user_defined_m_distribution + aerodynamics_to_add.user_defined_m_distribution
+            self.polars = self.polars + aerodynamics_to_add.polars
             total_num_airfoils += len(aerodynamics_to_add.airfoils[:, 0, 0])
             # total_num_surfaces += len(aerodynamics_to_add.surface_m)
             total_num_surfaces += np.sum(aerodynamics_to_add.surface_m != -1)
@@ -1339,8 +1342,10 @@ class AerodynamicInformation():
             h5file.create_dataset('sweep', data=self.sweep)
 
             airfoils_group = h5file.create_group('airfoils')
+            polars_group = h5file.create_group('polars')
             for iairfoil in range(len(self.airfoils)):
                 airfoils_group.create_dataset("%d" % iairfoil, data=self.airfoils[iairfoil, :, :])
+                polars_group.create_dataset("%d" % iairfoil, data=self.polars[iairfoil])
 
             if self.m_distribution.lower() == 'user_defined':
                 udmd_group = h5file.create_group('user_defined_m_distribution')
@@ -1657,36 +1662,44 @@ class SimulationInformation():
         Args:
             num_steps (int): number of steps
         """
+
+        solver_names = solver_interface.dictionary_of_solvers()
+        for solver in solver_names:
+            if 'n_time_steps' in self.solvers[solver]:
+                self.solvers[solver]['n_time_steps'] = num_steps
+            if 'num_steps' in self.solvers[solver]:
+                self.solvers[solver]['num_steps'] = num_steps
+
         # TODO:Maybe it would be convenient to use the same name for all the solvers
-        try:
-            self.solvers["DynamicCoupled"]['n_time_steps'] = num_steps
-        except KeyError:
-            pass
-        # self.solvers["DynamicPrescribedCoupled"]['n_time_steps'] = num_steps
-        try:
-            self.solvers["StepUvlm"]['n_time_steps'] = num_steps
-        except KeyError:
-            pass
-        try:
-            self.solvers['NonLinearDynamicMultibody']['num_steps'] = num_steps
-        except KeyError:
-            pass
-        try:
-            self.solvers['NonLinearDynamicCoupledStep']['num_steps'] = num_steps
-        except KeyError:
-            pass
-        try:
-            self.solvers['NonLinearDynamicPrescribedStep']['num_steps'] = num_steps
-        except KeyError:
-            pass
-        try:
-            self.solvers['RigidDynamicPrescribedStep']['num_steps'] = num_steps
-        except KeyError:
-            pass
-        try:
-            self.solvers['SteadyHelicoidalWake']['n_time_steps'] = num_steps
-        except KeyError:
-            pass
+        # try:
+        #     self.solvers["DynamicCoupled"]['n_time_steps'] = num_steps
+        # except KeyError:
+        #     pass
+        # # self.solvers["DynamicPrescribedCoupled"]['n_time_steps'] = num_steps
+        # try:
+        #     self.solvers["StepUvlm"]['n_time_steps'] = num_steps
+        # except KeyError:
+        #     pass
+        # try:
+        #     self.solvers['NonLinearDynamicMultibody']['num_steps'] = num_steps
+        # except KeyError:
+        #     pass
+        # try:
+        #     self.solvers['NonLinearDynamicCoupledStep']['num_steps'] = num_steps
+        # except KeyError:
+        #     pass
+        # try:
+        #     self.solvers['NonLinearDynamicPrescribedStep']['num_steps'] = num_steps
+        # except KeyError:
+        #     pass
+        # try:
+        #     self.solvers['RigidDynamicPrescribedStep']['num_steps'] = num_steps
+        # except KeyError:
+        #     pass
+        # try:
+        #     self.solvers['SteadyHelicoidalWake']['n_time_steps'] = num_steps
+        # except KeyError:
+        #     pass
 
     def define_uinf(self, unit_vector, norm):
         """

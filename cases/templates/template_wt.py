@@ -18,6 +18,8 @@ import sharpy.utils.generate_cases as gc
 import sharpy.utils.algebra as algebra
 import sharpy.utils.h5utils as h5
 from sharpy.utils.constants import deg2rad
+import sharpy.aero.utils.airfoilpolars as ap
+from warnings import warn
 
 
 ######################################################################
@@ -83,63 +85,87 @@ def create_blade_coordinates(num_node, node_r, node_y, node_z):
 
 
 ######################################################################
-# FROM excel type02
+# FROM excel type03
 ######################################################################
-def rotor_from_excel_type02(chord_panels,
-                            rotation_velocity,
-                            pitch_deg,
-                            excel_file_name='database_excel_type02.xlsx',
-                            excel_sheet_parameters='parameters',
-                            excel_sheet_structural_blade='structural_blade',
-                            excel_sheet_discretization_blade='discretization_blade',
-                            excel_sheet_aero_blade='aero_blade',
-                            excel_sheet_airfoil_info='airfoil_info',
-                            excel_sheet_airfoil_coord='airfoil_coord',
-                            m_distribution='uniform',
-                            h5_cross_sec_prop=None,
-                            n_points_camber=100,
-                            tol_remove_points=1e-3,
-                            user_defined_m_distribution_type=None,
-                            camber_effect_on_twist=False,
-                            wsp=0.,
-                            dt=0.):
+def rotor_from_excel_type03(in_op_params,
+                            in_geom_params,
+                            in_excel_description,
+                            in_options):
     """
-    generate_from_excel_type02_db
+    generate_from_excel_type03_db
 
-    Function needed to generate a wind turbine from an excel database type02
+    Function needed to generate a wind turbine from an excel database type03
 
     Args:
-        chord_panels (int): Number of panels on the blade surface in the chord direction
-        rotation_velocity (float): Rotation velocity of the rotor
-        pitch_deg (float): pitch angle in degrees
-        excel_file_name (str):
-        excel_sheet_structural_blade (str):
-        excel_sheet_discretization_blade (str):
-        excel_sheet_aero_blade (str):
-        excel_sheet_airfoil_info (str):
-        excel_sheet_airfoil_coord (str):
-        excel_sheet_parameters (str):
-        h5_cross_sec_prop (str): h5 containing mass and stiffness matrices along the blade.
-        m_distribution (str):
-        n_points_camber (int): number of points to define the camber of the airfoil,
-        tol_remove_points (float): maximum distance to remove adjacent points
-        user_defined_m_distribution_type (string): type of distribution of the chordwise panels when 'm_distribution' == 'user_defined'
-        camber_effects_on_twist (bool): When true plain airfoils are used and the blade is twisted and preloaded based on thin airfoil theory
-        wsp (float): wind speed (It may be needed for discretisation purposes)
-        dt (float): time step (It may be needed for discretisation purposes)
+        op_param (dict): Dictionary with operating parameters
+        geom_param (dict): Dictionray with geometical parameters
+        excel_description (dict): Dictionary describing the sheets of the excel file
+        option (dict): Dictionary with the different options for the wind turbine generation
 
     Returns:
         rotor (sharpy.utils.generate_cases.AeroelasticInfromation): Aeroelastic information of the rotor
-
-    Note:
-        - h5_cross_sec_prop is a path to a h5 containing the following groups:
-            - str_prop: with:
-                - K: list of 6x6 stiffness matrices
-                - M: list of 6x6 mass matrices
-                - radius: radial location (including hub) of K and M matrices
-        - when h5_cross_sec_prop is not None, mass and stiffness properties are
-        interpolated at BlFract location specified in "excel_sheet_structural_blade"
     """
+    # Default values
+    op_params = {}
+    op_params['rotation_velocity'] = None # Rotation velocity of the rotor
+    op_params['pitch_deg'] = None # pitch angle in degrees
+    op_params['wsp'] = 0. # wind speed (It may be needed for discretisation purposes)
+    op_params['dt'] = 0. # time step (It may be needed for discretisation purposes)
+
+    geom_params = {}
+    geom_params['chord_panels'] = None # Number of panels on the blade surface in the chord direction
+    geom_params['tol_remove_points'] = 1e-3 # maximum distance to remove adjacent points
+    geom_params['n_points_camber'] = 100 # number of points to define the camber of the airfoil
+    geom_params['h5_cross_sec_prop'] = None # h5 containing mass and stiffness matrices along the blade
+    geom_params['m_distribution'] = 'uniform' #
+
+    options = {}
+    options['camber_effect_on_twist'] = False # When true plain airfoils are used and the blade is twisted and preloaded based on thin airfoil theory
+    options['user_defined_m_distribution_type'] = None # type of distribution of the chordwise panels when 'm_distribution' == 'user_defined'
+    options['include_polars'] = False #
+
+    excel_description = {}
+    excel_description['excel_file_name'] = 'database_excel_type02.xlsx'
+    excel_description['excel_sheet_parameters'] = 'parameters'
+    excel_description['excel_sheet_structural_blade'] = 'structural_blade'
+    excel_description['excel_sheet_discretization_blade'] = 'discretization_blade'
+    excel_description['excel_sheet_aero_blade'] = 'aero_blade'
+    excel_description['excel_sheet_airfoil_info'] = 'airfoil_info'
+    excel_description['excel_sheet_airfoil_chord'] = 'airfoil_coord'
+
+    # Overwrite the default values with the values of the input arguments
+    for key in in_op_params:
+        op_params[key] = in_op_params[key]
+    for key in in_geom_params:
+        geom_params[key] = in_geom_params[key]
+    for key in in_options:
+        options[key] = in_options[key]
+    for key in in_excel_description:
+        excel_description[key] = in_excel_description[key]
+
+    # Put the dictionaries information into variables (to avoid changing the function)
+    rotation_velocity = op_params['rotation_velocity']
+    pitch_deg = op_params['pitch_deg']
+    wsp = op_params['wsp']
+    dt = op_params['dt']
+
+    chord_panels = geom_params['chord_panels']
+    tol_remove_points = geom_params['tol_remove_points']
+    n_points_camber = geom_params['n_points_camber']
+    h5_cross_sec_prop = geom_params['h5_cross_sec_prop']
+    m_distribution = geom_params['m_distribution']
+
+    camber_effect_on_twist = options['camber_effect_on_twist']
+    user_defined_m_distribution_type = options['user_defined_m_distribution_type']
+    include_polars = options['include_polars']
+
+    excel_file_name = excel_description['excel_file_name']
+    excel_sheet_parameters = excel_description['excel_sheet_parameters']
+    excel_sheet_structural_blade = excel_description['excel_sheet_structural_blade']
+    excel_sheet_discretization_blade = excel_description['excel_sheet_discretization_blade']
+    excel_sheet_aero_blade = excel_description['excel_sheet_aero_blade']
+    excel_sheet_airfoil_info = excel_description['excel_sheet_airfoil_info']
+    excel_sheet_airfoil_coord = excel_description['excel_sheet_airfoil_chord']
 
     ######################################################################
     ## BLADE
@@ -323,6 +349,7 @@ def rotor_from_excel_type02(chord_panels,
     # Basic variables
     surface_distribution = np.zeros((blade.StructuralInformation.num_elem), dtype=int)
 
+
     # Interpolate in the correct positions
     node_chord = np.interp(node_r, rR_aero*TipRad, chord_aero)
 
@@ -400,6 +427,34 @@ def rotor_from_excel_type02(chord_panels,
                                                             airfoil_distribution,
                                                             airfoils,
                                                             udmd_by_nodes)
+
+    # Read the polars of the pure airfoils
+    if include_polars:
+        pure_polars = [None]*n_pure_airfoils
+        for iairfoil in range(n_pure_airfoils):
+            excel_sheet_polar = pure_airfoils_names[iairfoil]
+            aoa = gc.read_column_sheet_type01(excel_file_name, excel_sheet_polar, 'AoA')
+            cl = gc.read_column_sheet_type01(excel_file_name, excel_sheet_polar, 'CL')
+            cd = gc.read_column_sheet_type01(excel_file_name, excel_sheet_polar, 'CD')
+            cm = gc.read_column_sheet_type01(excel_file_name, excel_sheet_polar, 'CM')
+            polar = ap.polar()
+            polar.initialise(np.column_stack((aoa, cl, cd, cm)))
+            pure_polars[iairfoil] = polar
+
+        # Generate the polars for each airfoil
+        blade.AerodynamicInformation.polars = [None]*blade.StructuralInformation.num_node
+        for inode in range(blade.StructuralInformation.num_node):
+            # Find the airfoils between which the node is;
+            ipure = 0
+            while pure_airfoils_thickness[ipure] > node_thickness[inode]:
+                ipure += 1
+                if(ipure == n_pure_airfoils):
+                    ipure -= 1
+                    break
+
+            coef = (node_thickness[inode] - pure_airfoils_thickness[ipure - 1])/(pure_airfoils_thickness[ipure] - pure_airfoils_thickness[ipure - 1])
+            polar = ap.interpolate(pure_polars[ipure - 1], pure_polars[ipure], coef)
+            blade.AerodynamicInformation.polars[inode] = polar.table
 
     ######################################################################
     ## ROTOR
@@ -686,3 +741,65 @@ def generate_from_excel_type02(chord_panels,
     ## RETURN
     ######################################################################
     return wt, LC, MB
+
+
+######################################################################
+# FROM excel type02
+######################################################################
+def rotor_from_excel_type02(chord_panels,
+                            rotation_velocity,
+                            pitch_deg,
+                            excel_file_name='database_excel_type02.xlsx',
+                            excel_sheet_parameters='parameters',
+                            excel_sheet_structural_blade='structural_blade',
+                            excel_sheet_discretization_blade='discretization_blade',
+                            excel_sheet_aero_blade='aero_blade',
+                            excel_sheet_airfoil_info='airfoil_info',
+                            excel_sheet_airfoil_coord='airfoil_coord',
+                            excel_sheet_structural_tower='structural_tower',
+                            m_distribution='uniform',
+                            h5_cross_sec_prop=None,
+                            n_points_camber=100,
+                            tol_remove_points=1e-3,
+                            user_defined_m_distribution_type=None,
+                            camber_effect_on_twist=False,
+                            wsp=0.,
+                            dt=0.):
+
+    # Warning for back compatibility
+    warn('rotor_from_excel_type02 is obsolete! rotor_from_excel_type03 instead!', stacklevel=2)
+
+    # Assign values to dictionaries
+    op_params = {}
+    op_params['rotation_velocity'] = rotation_velocity
+    op_params['pitch_deg'] = pitch_deg
+    op_params['wsp'] = wsp
+    op_params['dt'] = dt
+
+    geom_params = {}
+    geom_params['chord_panels'] = chord_panels
+    geom_params['tol_remove_points'] = tol_remove_points
+    geom_params['n_points_camber'] = n_points_camber
+    geom_params['h5_cross_sec_prop'] = h5_cross_sec_prop
+    geom_params['m_distribution'] = m_distribution
+
+    options = {}
+    options['camber_effect_on_twist'] = camber_effect_on_twist
+    options['user_defined_m_distribution_type'] = user_defined_m_distribution_type
+    options['include_polars'] = False
+
+    excel_description = {}
+    excel_description['excel_file_name'] = excel_file_name
+    excel_description['excel_sheet_parameters'] = excel_sheet_parameters
+    excel_description['excel_sheet_structural_blade'] = excel_sheet_structural_blade
+    excel_description['excel_sheet_discretization_blade'] = excel_sheet_discretization_blade
+    excel_description['excel_sheet_aero_blade'] = excel_sheet_aero_blade
+    excel_description['excel_sheet_airfoil_info'] = excel_sheet_airfoil_info
+    excel_description['excel_sheet_airfoil_chord'] = excel_sheet_airfoil_coord
+
+    rotor = rotor_from_excel_type03(op_params,
+                                   geom_params,
+                                   excel_description,
+                                   options)
+
+    return rotor
