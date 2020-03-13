@@ -2,6 +2,7 @@ import numpy as np
 
 import sharpy.utils.generator_interface as generator_interface
 import sharpy.utils.settings as settings
+import sharpy.utils.solver_interface as solver_interface
 
 
 @generator_interface.generator
@@ -67,23 +68,43 @@ class StraightWake(generator_interface.BaseGenerator):
             print("WARNING: The code will run for backwards compatibility. \
                    In future releases you will need to define a 'wake_shape_generator' in ``AerogridLoader''. \
                    Please, check the documentation")
+
             # Look for an aerodynamic solver
             if 'StepUvlm' in data.settings:
-                aero_solver = data.settings['StepUvlm']
+                aero_solver_name = 'StepUvlm'
+                aero_solver_settings = data.settings['StepUvlm']
             elif 'SHWUvlm' in data.settings:
-                aero_solver = data.settings['SHWUvlm']
+                aero_solver_name = 'SHWUvlm'
+                aero_solver_settings = data.settings['SHWUvlm']
             elif 'StaticCoupled' in data.settings:
-                aero_solver = data.settings['StaticCoupled']['aero_solver_settings']
+                aero_solver_name = data.settings['StaticCoupled']['aero_solver']
+                aero_solver_settings = data.settings['StaticCoupled']['aero_solver_settings']
             elif 'StaticCoupledRBM' in data.settings:
-                aero_solver = data.settings['StaticCoupledRBM']['aero_solver_settings']
+                aero_solver_name = data.settings['StaticCoupled']['aero_solver']
+                aero_solver_settings = data.settings['StaticCoupledRBM']['aero_solver_settings']
             elif 'DynamicCoupled' in data.settings:
-                aero_solver = data.settings['DynamicCoupled']['aero_solver_settings']
+                aero_solver_name = data.settings['StaticCoupled']['aero_solver']
+                aero_solver_settings = data.settings['DynamicCoupled']['aero_solver_settings']
+            elif 'StepUvlm' in data.settings:
+                aero_solver_name = 'StaticUvlm'
+                aero_solver_settings = data.settings['StaticUvlm']
 
-            print(aero_solver)
             # Get the minimum parameters needed to define the wake
-            self.in_dict = {'u_inf': aero_solver['velocity_field_input']['u_inf'],
-                            'u_inf_direction': aero_solver['velocity_field_input']['u_inf_direction'],
-                            'dt': aero_solver['dt']}
+            aero_solver = solver_interface.solver_from_string(aero_solver_name)
+            settings.to_custom_types(aero_solver_settings,
+                                     aero_solver.settings_types,
+                                     aero_solver.settings_default)
+
+            if 'dt' in aero_solver_settings.keys():
+                dt = aero_solver_settings['dt']
+            elif 'rollup_dt' in aero_solver_settings.keys():
+                dt = aero_solver_settings['rollup_dt']
+            else:
+                # print(aero_solver['velocity_field_input']['u_inf'])
+                dt = 1./aero_solver_settings['velocity_field_input']['u_inf']
+            self.in_dict = {'u_inf': aero_solver_settings['velocity_field_input']['u_inf'],
+                            'u_inf_direction': aero_solver_settings['velocity_field_input']['u_inf_direction'],
+                            'dt': dt}
 
         settings.to_custom_types(self.in_dict, self.settings_types, self.settings_default, no_ctype=True)
 
