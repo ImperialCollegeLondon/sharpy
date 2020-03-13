@@ -47,7 +47,7 @@ class TestGenerateCases(unittest.TestCase):
         time_steps = int(revs_to_simulate*2.*np.pi/dphi)
         time_steps = 1 # For the test cases
         mstar = int(revs_in_wake*2.*np.pi/dphi)
-        mstar = 1 # For the test cases
+        mstar = 2 # For the test cases
 
         # Remove screen output
         # if remove_terminal_output:
@@ -96,7 +96,7 @@ class TestGenerateCases(unittest.TestCase):
                                 'StaticCoupledRBM',
                                 'DynamicCoupled',
                                 'SaveData']
-                                
+
         SimInfo.solvers['SHARPy']['case'] = case
         SimInfo.solvers['SHARPy']['write_screen'] = 'off'
         SimInfo.solvers['SHARPy']['route'] = route
@@ -114,7 +114,12 @@ class TestGenerateCases(unittest.TestCase):
 
         SimInfo.solvers['AerogridLoader']['unsteady'] = 'on'
         SimInfo.solvers['AerogridLoader']['mstar'] = mstar
-        SimInfo.solvers['AerogridLoader']['freestream_dir'] = np.array([1.,0.,0.])
+        SimInfo.solvers['AerogridLoader']['freestream_dir'] = np.array([0.,0.,0.])
+        SimInfo.solvers['AerogridLoader']['wake_shape_generator'] = 'HelicoidalWake'
+        SimInfo.solvers['AerogridLoader']['wake_shape_generator_input'] = {'u_inf': WSP,
+                                                                           'u_inf_direction': np.array([0., 0., 1.]),
+                                                                           'dt': dt,
+                                                                           'rotation_velocity': rotation_velocity*np.array([0., 0., 1.])}
 
         SimInfo.solvers['StaticCoupledRBM']['structural_solver'] = 'RigidDynamicPrescribedStep'
         SimInfo.solvers['StaticCoupledRBM']['structural_solver_settings'] = SimInfo.solvers['RigidDynamicPrescribedStep']
@@ -131,6 +136,10 @@ class TestGenerateCases(unittest.TestCase):
         SimInfo.solvers['SHWUvlm']['rot_vel'] = rotation_velocity
         SimInfo.solvers['SHWUvlm']['rot_axis'] = np.array([0.,0.,1.])
         SimInfo.solvers['SHWUvlm']['rot_center'] = np.zeros((3),)
+
+        SimInfo.solvers['StepUvlm']['convection_scheme'] = 2
+        SimInfo.solvers['StepUvlm']['num_cores'] = 1
+        SimInfo.solvers['StepUvlm']['cfl1'] = False
 
         # SimInfo.solvers['DynamicCoupled']['structural_solver'] = 'NonLinearDynamicMultibody'
         # SimInfo.solvers['DynamicCoupled']['structural_solver_settings'] = SimInfo.solvers['NonLinearDynamicMultibody']
@@ -181,6 +190,7 @@ class TestGenerateCases(unittest.TestCase):
         print('done executing')
 
     def tearDown(self):
+        return
         solver_path = os.path.abspath(os.path.dirname(os.path.realpath(__file__)))
         solver_path += '/'
         files_to_delete = [case + '.aero.h5',
@@ -192,4 +202,6 @@ class TestGenerateCases(unittest.TestCase):
         for f in files_to_delete:
             os.remove(solver_path + f)
 
-        shutil.rmtree(solver_path + 'output/')
+        output_path = solver_path + 'output/'
+        if os.path.isdir(output_path):
+            shutil.rmtree(output_path)
