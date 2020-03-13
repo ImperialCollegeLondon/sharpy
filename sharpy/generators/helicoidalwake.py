@@ -37,7 +37,7 @@ class HelicoidalWake(generator_interface.BaseGenerator):
 
     # Shear parameters
     settings_types['shear_direction'] = 'list(float)'
-    settings_default['shear_direction'] = np.array([.0, 0, 1.0])
+    settings_default['shear_direction'] = np.array([1.0, 0, 0])
     settings_description['shear_direction'] = '``x``, ``y`` and ``z`` relative components of the direction along which shear applies'
 
     settings_types['shear_exp'] = 'float'
@@ -76,7 +76,7 @@ class HelicoidalWake(generator_interface.BaseGenerator):
 
     def initialise(self, data, in_dict):
         self.in_dict = in_dict
-        settings.to_custom_types(self.in_dict, self.settings_types, self.settings_default)
+        settings.to_custom_types(self.in_dict, self.settings_types, self.settings_default, no_ctype=True)
 
         self.u_inf = self.in_dict['u_inf']
         self.u_inf_direction = self.in_dict['u_inf_direction']
@@ -100,16 +100,18 @@ class HelicoidalWake(generator_interface.BaseGenerator):
         for isurf in range(nsurf):
             M, N = zeta_star[isurf][0, :, :].shape
             for i in range(M):
-                angle = dt*np.linalg.norm(self.rotation_velocity)
+                angle = -self.dt*i*np.linalg.norm(self.rotation_velocity)
                 rot = algebra.rotation_matrix_around_axis(self.u_inf_direction, angle)
                 for j in range(N):
                     # Define the helicoidal
                     aux_zeta_TE = zeta[isurf][:, -1, j] - (self.h_ref - self.h_corr)*self.shear_direction
-                    aux_zeta_TE = np.dot(rot, aux_zeta_TE) + (self.h_ref - self.h_cor)*self.shear_direction
+                    aux_zeta_TE = np.dot(rot, aux_zeta_TE) + (self.h_ref - self.h_corr)*self.shear_direction
 
                     # Translate according to u_inf depending on the height
                     h = np.dot(aux_zeta_TE, self.shear_direction) + self.h_corr
-                    zeta_star[isurf][:, i, j] + aux_zeta_TE + self.u_inf*self.u_inf_direction*(h/self.h_ref)**self.shear_exp
+                    zeta_star[isurf][:, i, j] = aux_zeta_TE + self.u_inf*self.u_inf_direction*(h/self.h_ref)**self.shear_exp*self.dt*i
+                    # zeta_star[isurf][:, i, j] = zeta[isurf][:, -1, j] + self.u_inf*self.u_inf_direction*self.dt*i
+                    # print(zeta_star[isurf][:, i, j])
 
             gamma[isurf] *= 0.
             gamma_star[isurf] *= 0.

@@ -85,29 +85,29 @@ class StraightWake(generator_interface.BaseGenerator):
                             'u_inf_direction': aero_solver['velocity_field_input']['u_inf_direction'],
                             'dt': aero_solver['dt']}
 
-        settings.to_custom_types(self.in_dict, self.settings_types, self.settings_default)
+        settings.to_custom_types(self.in_dict, self.settings_types, self.settings_default, no_ctype=True)
 
         self.u_inf = self.in_dict['u_inf']
         self.u_inf_direction = self.in_dict['u_inf_direction']
         self.dt = self.in_dict['dt']
 
         try:
-            self.dx1 = self.in_dict['dx1'].value
+            self.dx1 = self.in_dict['dx1']
         except KeyError:
             self.dx1 = self.u_inf*self.dt
 
         try:
-            self.ndx1 = self.in_dict['ndx1'].value
+            self.ndx1 = self.in_dict['ndx1']
         except KeyError:
             self.ndx1 = -1
 
         try:
-            self.r = self.in_dict['r'].value
+            self.r = self.in_dict['r']
         except KeyError:
             self.r = 1.
 
         try:
-            self.dxmax = self.in_dict['dxmax'].value
+            self.dxmax = self.in_dict['dxmax']
         except KeyError:
             self.dxmax = self.dx1
 
