@@ -1,6 +1,11 @@
 """Force Mapping Utilities"""
 import numpy as np
 import sharpy.utils.algebra as algebra
+import sharpy.aero.utils as aero_utils
+from sharpy.utils.constants import deg2rad
+import sharpy.aero.utils.airfoilpolars as ap
+import sharpy.aero.utils.uvlmlib as uvlmlib
+import ctypes as ct
 
 
 def aero2struct_force_mapping(aero_forces,
@@ -172,3 +177,92 @@ def efficiency_local_aero2struct_forces(local_aero_forces, chi_g, cbg, force_eff
     local_struct_forces[3:6] += moment_efficiency[i_elem, i_local_node, 1]
 
     return local_struct_forces
+
+def correct_forces_polars(aerogrid, beam, aero_kstep, structural_kstep, struct_forces):
+
+    rho = 1.225
+    aero_dict = aerogrid.aero_dict
+    if aerogrid.polars is None:
+        return struct_forces
+
+    nnode = struct_forces.shape[0]
+    for inode in range(nnode):
+        if aero_dict['aero_node'][inode]:
+
+            ielem, inode_in_elem = beam.node_master_elem[inode]
+            iairfoil = aero_dict['airfoil_distribution'][ielem, inode_in_elem]
+            isurf = aerogrid.struct2aero_mapping[inode][0]['i_surf']
+            i_n = aerogrid.struct2aero_mapping[inode][0]['i_n']
+            N = aerogrid.aero_dimensions[isurf, 1]
+            polar = aerogrid.polars[iairfoil]
+            cab = algebra.crv2rotation(structural_kstep.psi[ielem, inode_in_elem, :])
+            cgb = np.dot(structural_kstep.cga(), cab)
+
+            # Deal with the extremes
+            if i_n == 0:
+                node1 = 0
+                node2 = 1
+            elif i_n == N:
+                node1 = nnode - 1
+                node2 = nnode - 2
+            else:
+                node1 = inode + 1
+                node2 = inode - 1
+
+            # Define the span and the span direction
+            dir_span = 0.5*np.dot(structural_kstep.cga(),
+                              structural_kstep.pos[node1, :] - structural_kstep.pos[node2, :])
+            span = np.linalg.norm(dir_span)
+            dir_span = algebra.unit_vector(dir_span)
+
+            # Define the chord and the chord direction
+            dir_chord = aero_kstep.zeta[isurf][:, -1, i_n] - aero_kstep.zeta[isurf][:, 0, i_n]
+            chord = np.linalg.norm(dir_chord)
+            dir_chord = algebra.unit_vector(dir_chord)
+
+            # Define the relative velocity and its direction
+            urel = (structural_kstep.pos_dot[inode, :] +
+                    structural_kstep.for_vel[0:3] +
+                    np.cross(structural_kstep.for_vel[3:6],
+                             structural_kstep.pos[inode, :]))
+            urel = -np.dot(structural_kstep.cga(), urel)
+            urel += np.average(aero_kstep.u_ext[isurf][:, :, i_n], axis=1)
+            # uind = uvlmlib.uvlm_calculate_total_induced_velocity_at_points(aero_kstep,
+            #                                                                np.array([structural_kstep.pos[inode, :] - np.array([0, 0, 1])]),
+            #                                                                structural_kstep.for_pos,
+            #                                                                ct.c_uint(8))[0]
+            # print(inode, urel, uind)
+            # urel -= uind
+            dir_urel = algebra.unit_vector(urel)
+
+
+            # Force in the G frame of reference
+            force = np.dot(cgb,
+                           struct_forces[inode, 0:3])
+            dir_force = algebra.unit_vector(force)
+
+            # Coefficient to change from aerodynamic coefficients to forces (and viceversa)
+            coef = 0.5*rho*np.linalg.norm(urel)**2*chord*span
+
+            # Divide the force in drag and lift
+            drag_force = np.dot(force, dir_urel)*dir_urel
+            lift_force = force - drag_force
+
+            # Compute the associated lift
+            cl = np.linalg.norm(lift_force)/coef
+
+            # Compute the angle of attack assuming that UVLM giveas a 2pi polar
+            aoa_deg_2pi = polar.get_aoa_deg_from_cl_2pi(cl)
+
+            # Compute the coefficients assocaited to that angle of attack
+            cl_new, cd, cm = polar.get_coefs(aoa_deg_2pi)
+            # print(cl, cl_new)
+
+            # Recompute the forces based on the coefficients
+            lift_force = cl*algebra.unit_vector(lift_force)*coef
+            drag_force += cd*dir_urel*coef
+            force = lift_force + drag_force
+            struct_forces[inode, 0:3] = np.dot(cgb.T,
+                                               force)
+
+    return struct_forces

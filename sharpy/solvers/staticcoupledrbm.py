@@ -109,7 +109,7 @@ class StaticCoupledRBM(BaseSolver):
     def run(self):
 
         # Include the rbm
-         # print("ts", self.data.ts) 
+         # print("ts", self.data.ts)
         self.data.structure.timestep_info[-1].for_vel = self.data.structure.dynamic_input[0]['for_vel']
 
         for i_step in range(self.settings['n_load_steps'].value + 1):
@@ -144,6 +144,12 @@ class StaticCoupledRBM(BaseSolver):
                     self.data.structure.connectivities,
                     self.data.structure.timestep_info[self.data.ts].cag(),
                     self.data.aero.aero_dict)
+
+                struct_forces = mapping.correct_forces_polars(self.data.aero,
+                                                              self.data.structure,
+                                                              self.data.aero.timestep_info[self.data.ts],
+                                                              self.data.structure.timestep_info[self.data.ts],
+                                                              struct_forces)
 
                 if not self.settings['relaxation_factor'].value == 0.:
                     if i_iter == 0:

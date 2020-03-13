@@ -536,6 +536,9 @@ class DynamicCoupled(BaseSolver):
             structural_kstep.cag(),
             self.data.aero.aero_dict)
 
+        struct_forces = mapping.correct_forces_polars(self.data.aero, self.data.structure, aero_kstep, structural_kstep, struct_forces)
+        # dynamic_struct_forces = mapping.correct_forces_polars(self.data.aero, self.data.structure, aero_kstep, structural_kstep, dynamic_struct_forces)
+
         # prescribed forces + aero forces
         try:
             structural_kstep.steady_applied_forces = (
@@ -610,4 +613,3 @@ def relax(beam, timestep, previous_timestep, coeff):
 def normalise_quaternion(tstep):
     tstep.dqdt[-4:] = algebra.unit_vector(tstep.dqdt[-4:])
     tstep.quat = tstep.dqdt[-4:].astype(dtype=ct.c_double, order='F', copy=True)
-
