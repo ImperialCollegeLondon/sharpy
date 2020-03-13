@@ -85,7 +85,7 @@ class FrequencyResponse(solver_interface.BaseSolver):
         self.data = None
         self.folder = None
 
-        self.ss = None
+        # self.ss = None
         # self.ssrom = None
 
         self.w_to_k = 1
