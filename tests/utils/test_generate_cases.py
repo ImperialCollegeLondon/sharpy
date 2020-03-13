@@ -190,7 +190,6 @@ class TestGenerateCases(unittest.TestCase):
         print('done executing')
 
     def tearDown(self):
-        return
         solver_path = os.path.abspath(os.path.dirname(os.path.realpath(__file__)))
         solver_path += '/'
         files_to_delete = [case + '.aero.h5',
