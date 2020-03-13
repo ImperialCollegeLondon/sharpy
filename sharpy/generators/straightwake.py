@@ -96,12 +96,12 @@ class StraightWake(generator_interface.BaseGenerator):
                                      aero_solver.settings_default)
 
             if 'dt' in aero_solver_settings.keys():
-                dt = aero_solver_settings['dt']
+                dt = aero_solver_settings['dt'].value
             elif 'rollup_dt' in aero_solver_settings.keys():
-                dt = aero_solver_settings['rollup_dt']
+                dt = aero_solver_settings['rollup_dt'].value
             else:
                 # print(aero_solver['velocity_field_input']['u_inf'])
-                dt = 1./aero_solver_settings['velocity_field_input']['u_inf']
+                dt = 1./aero_solver_settings['velocity_field_input']['u_inf'].value
             self.in_dict = {'u_inf': aero_solver_settings['velocity_field_input']['u_inf'],
                             'u_inf_direction': aero_solver_settings['velocity_field_input']['u_inf_direction'],
                             'dt': dt}
@@ -112,24 +112,13 @@ class StraightWake(generator_interface.BaseGenerator):
         self.u_inf_direction = self.in_dict['u_inf_direction']
         self.dt = self.in_dict['dt']
 
-        try:
-            self.dx1 = self.in_dict['dx1']
-        except KeyError:
+        if self.in_dict['dx1'] == -1:
             self.dx1 = self.u_inf*self.dt
 
-        try:
-            self.ndx1 = self.in_dict['ndx1']
-        except KeyError:
-            self.ndx1 = -1
+        self.ndx1 = self.in_dict['ndx1']
+        self.r = self.in_dict['r']
 
-        try:
-            self.r = self.in_dict['r']
-        except KeyError:
-            self.r = 1.
-
-        try:
-            self.dxmax = self.in_dict['dxmax']
-        except KeyError:
+        if self.in_dict['dxmax'] == -1:
             self.dxmax = self.dx1
 
     def generate(self, params):
@@ -148,9 +137,12 @@ class StraightWake(generator_interface.BaseGenerator):
                 for i in range(2, self.ndx1 + 1):
                     zeta_star[isurf][:, i, j] = zeta_star[isurf][:, i-1, j] + self.dx1*self.u_inf_direction
                 for i in range(self.ndx1 + 1, M):
+                    # print(self.dx1, self.r, i, self.ndx1)
                     deltax = self.dx1*self.r**(i - self.ndx1)
                     if deltax > self.dxmax:
                         deltax = self.dxmax
                     zeta_star[isurf][:, i, j] = zeta_star[isurf][:, i-1, j] + deltax*self.u_inf_direction
             gamma[isurf] *= 0.
             gamma_star[isurf] *= 0.
+
+            # print(zeta_star[isurf][0, :, :])
