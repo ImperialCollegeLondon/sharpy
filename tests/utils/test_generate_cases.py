@@ -53,20 +53,32 @@ class TestGenerateCases(unittest.TestCase):
         # if remove_terminal_output:
         #     sys.stdout = open(os.devnull, "w")
 
-        rotor = template_wt.rotor_from_excel_type02(
-                                          chord_panels,
-                                          rotation_velocity,
-                                          pitch_deg,
-                                          excel_file_name = route + '../../docs/source/content/example_notebooks/source/type02_db_NREL5MW_v01.xlsx',
-                                          excel_sheet_parameters = 'parameters',
-                                          excel_sheet_structural_blade = 'structural_blade',
-                                          excel_sheet_discretization_blade = 'discretization_blade',
-                                          excel_sheet_aero_blade = 'aero_blade',
-                                          excel_sheet_airfoil_info = 'airfoil_info',
-                                          excel_sheet_airfoil_coord = 'airfoil_coord',
-                                          m_distribution = 'uniform',
-                                          n_points_camber = 100,
-                                          tol_remove_points = 1e-8)
+        op_params = {'rotation_velocity': rotation_velocity,
+                     'pitch_deg': pitch_deg,
+                     'wsp': WSP,
+                     'dt': dt}
+
+        geom_params = {'chord_panels':chord_panels,
+                    'tol_remove_points': 1e-8,
+                    'n_points_camber': 100,
+                    'm_distribution': 'uniform'}
+
+        excel_description = {'excel_file_name': route + '../../docs/source/content/example_notebooks/source/type02_db_NREL5MW_v01.xlsx',
+                            'excel_sheet_parameters': 'parameters',
+                            'excel_sheet_structural_blade': 'structural_blade',
+                            'excel_sheet_discretization_blade': 'discretization_blade',
+                            'excel_sheet_aero_blade': 'aero_blade',
+                            'excel_sheet_airfoil_info': 'airfoil_info',
+                            'excel_sheet_airfoil_chord': 'airfoil_coord'}
+
+        options = {'camber_effect_on_twist': False,
+                   'user_defined_m_distribution_type': None,
+                   'include_polars': False}
+
+        rotor = template_wt.rotor_from_excel_type03(op_params,
+                                                    geom_params,
+                                                    excel_description,
+                                                    options)
 
         # Return the standard output to the terminal
         # if remove_terminal_output:
@@ -84,6 +96,7 @@ class TestGenerateCases(unittest.TestCase):
                                 'StaticCoupledRBM',
                                 'DynamicCoupled',
                                 'SaveData']
+                                
         SimInfo.solvers['SHARPy']['case'] = case
         SimInfo.solvers['SHARPy']['write_screen'] = 'off'
         SimInfo.solvers['SHARPy']['route'] = route
@@ -101,7 +114,7 @@ class TestGenerateCases(unittest.TestCase):
 
         SimInfo.solvers['AerogridLoader']['unsteady'] = 'on'
         SimInfo.solvers['AerogridLoader']['mstar'] = mstar
-        SimInfo.solvers['AerogridLoader']['freestream_dir'] = np.array([0.,0.,0.])
+        SimInfo.solvers['AerogridLoader']['freestream_dir'] = np.array([1.,0.,0.])
 
         SimInfo.solvers['StaticCoupledRBM']['structural_solver'] = 'RigidDynamicPrescribedStep'
         SimInfo.solvers['StaticCoupledRBM']['structural_solver_settings'] = SimInfo.solvers['RigidDynamicPrescribedStep']
