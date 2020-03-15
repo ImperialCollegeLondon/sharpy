@@ -295,17 +295,17 @@ class AeroGridSurface(AeroGridGeo):
         self.omega = for_vel[3:]
         self.for_vel_tra = for_vel[:3]
 
-        cout.cout_wrap('\nGenerating instance of AerogridSurface')
-        cout.cout_wrap('Circulation matrix shape = ' + str(self.gamma.shape))
-        cout.cout_wrap('Grid dimensions (from gridmapping.AeroGridMap) = ' + str((self.maps.M, self.maps.N)))
-
         msg_out = 'wrong input shape!'
-        assert self.gamma.shape == (self.maps.M, self.maps.N), msg_out
-        assert self.zeta.shape == (3, self.maps.M + 1, self.maps.N + 1), msg_out
+        assert self.gamma.shape == (self.maps.M, self.maps.N), \
+            'Gamma shape %s not equal to M, N %s' % (str(self.gamma.shape), str((self.maps.M, self.maps.N)))
+        assert self.zeta.shape == (3, self.maps.M + 1, self.maps.N + 1), \
+            'Zeta shape %s not equal to 3, M+1, N+1 %s' % (str(self.zeta.shape), str((3, self.maps.M, self.maps.N)))
         if self.zeta_dot is not None:
-            assert self.zeta_dot.shape == (3, self.maps.M + 1, self.maps.N + 1), msg_out
+            assert self.zeta_dot.shape == (3, self.maps.M + 1, self.maps.N + 1), \
+                'zeta_dot shape %s not equal to 3, M+1, N+1 %s' % (str(self.zeta_dot.shape), str((3, self.maps.M, self.maps.N)))
         if self.u_ext is not None:
-            assert self.u_ext.shape == (3, self.maps.M + 1, self.maps.N + 1), msg_out
+            assert self.u_ext.shape == (3, self.maps.M + 1, self.maps.N + 1), \
+                'u_ext shape %s not equal to 3, M+1, N+1 %s' % (str(self.u_ext.shape), str((3, self.maps.M, self.maps.N)))
         assert for_vel.shape == (6, ), msg_out
         assert self.omega.shape == (3, ), msg_out
         assert self.for_vel_tra.shape == (3, ), msg_out

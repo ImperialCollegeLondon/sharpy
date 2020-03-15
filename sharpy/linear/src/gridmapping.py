@@ -37,7 +37,6 @@ class AeroGridMap():
     """
 
     def __init__(self, M: 'number of chord-wise', N: 'number of span-wise'):
-        cout.cout_wrap('Generating an instance of AeroGridMap')
         ### init
         self.M = M
         self.N = N

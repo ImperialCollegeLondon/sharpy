@@ -43,18 +43,10 @@ class MultiAeroGridSurfaces():
         self.KK_star = []
         self.KKzeta_star = []
 
-        cout.cout_wrap('Number of surfaces %g' % self.n_surf)
         for ss in range(self.n_surf):
-            cout.cout_wrap('\n>>>>>>>>>>>>>>>>>>>>>>>>>>>>>\n')
-            cout.cout_wrap('i_surf = %g' % ss)
 
             ### Allocate bound surfaces
             M, N = tsdata.dimensions[ss]
-            cout.cout_wrap('Bound Surface')
-            cout.cout_wrap("M = %g and N = %g from timestep info" % (M, N))
-            cout.cout_wrap('Gamma shape: ' + str(tsdata.gamma[ss].shape))
-            cout.cout_wrap('Zeta shape: ' + str(tsdata.zeta[ss].shape))
-            cout.cout_wrap('Zeta dot shape: ' + str(tsdata.zeta_dot[ss].shape))
             Map = gridmapping.AeroGridMap(M, N)
             # try:
             #     omega = tsdata.omega[ss]
@@ -82,8 +74,6 @@ class MultiAeroGridSurfaces():
             ### Allocate wake surfaces
             M, N = tsdata.dimensions_star[ss]
             Map = gridmapping.AeroGridMap(M, N)
-            cout.cout_wrap('\nWake Surface')
-            cout.cout_wrap("M = %g and N = %g from timestep info" % (M, N))
             Surf = surface.AeroGridSurface(Map,
                                            zeta=tsdata.zeta_star[ss], gamma=tsdata.gamma_star[ss],
                                            rho=tsdata.rho)
@@ -93,14 +83,6 @@ class MultiAeroGridSurfaces():
             self.NN_star.append(N)
             self.KK_star.append(Map.K)
             self.KKzeta_star.append(Map.Kzeta)
-
-            cout.cout_wrap('\nSurface Summary:')
-            cout.cout_wrap('\tWorked bound surfaces: %g' %len(self.Surfs))
-            cout.cout_wrap('\tWorked wake surfaces: %g' %len(self.Surfs_star))
-            cout.cout_wrap('\tChordwise panels: ' + str(self.MM))
-            cout.cout_wrap('\tChordwise wake panels: ' + str(self.MM_star))
-            cout.cout_wrap('\tSpanwise panels: ' + str(self.NN))
-            cout.cout_wrap('\tSpanwise wake panels: ' + str(self.NN_star))
 
     def get_ind_velocities_at_collocation_points(self):
         """
