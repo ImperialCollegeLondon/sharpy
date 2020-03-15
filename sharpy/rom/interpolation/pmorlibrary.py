@@ -105,9 +105,9 @@ class ROMLibrary:
 
             try:
                 case_name = pmor_case_data['sim_info']['case']
+                path_to_data = glob.glob(pmor_case_data['sim_info']['path_to_data'] + '/*.pkl')
                 try:
-                    path_to_data = glob.glob(pmor_case_data['sim_info']['path_to_data'] + '/*.pkl')[0]
-                    self.library.append({'case': case_name, 'path_to_data': path_to_data, 'parameters': dict_params})
+                    self.library.append({'case': case_name, 'path_to_data': path_to_data[0], 'parameters': dict_params})
                 except IndexError:
                     coututils.cout_wrap('Unable to locate pickle file containing case data %s' % path_to_data, 4)
             except KeyError:
@@ -135,7 +135,7 @@ class ROMLibrary:
     def display_library(self):
 
         if len(self.library) == 0:
-            coututils.cout_utils('Libary is empty. Nothing to display', 3)
+            coututils.cout_wrap('Libary is empty. Nothing to display', 3)
         else:
             params = self.library[0]['parameters'].keys()
 

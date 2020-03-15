@@ -94,7 +94,7 @@ class FrequencyResponse(solver_interface.BaseSolver):
     def initialise(self, data, custom_settings=None):
 
         self.data = data
-        self.ss = data.linear.linear_system.uvlm.ss
+        # self.ss = data.linear.linear_system.uvlm.ss
 
         if not custom_settings:
             self.settings = self.data.settings[self.solver_id]
