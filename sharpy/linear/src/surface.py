@@ -17,7 +17,7 @@ dnver = np.array([0, 0, 1, 1])
 
 
 class AeroGridGeo():
-    """
+    r"""
     Allows retrieving geometrical information of a surface. Requires a
     gridmapping.AeroGridMap mapping structure in input and the surface vertices
     coordinates.
@@ -102,13 +102,17 @@ class AeroGridGeo():
     # -------------------------------------------------- get collocation points
 
     def get_panel_wcv(self):
-        """
+        r"""
         Produces a compact array with weights for bilinear interpolation, where
         aN,aM in [0,1] are distances in the chordwise and spanwise directions
         such that:
+
             - (aM,aN)=(0,0) --> quantity at vertex 0
+
             - (aM,aN)=(1,0) --> quantity at vertex 1
+
             - (aM,aN)=(1,1) --> quantity at vertex 2
+
             - (aM,aN)=(0,1) --> quantity at vertex 3
         """
 
@@ -119,13 +123,17 @@ class AeroGridGeo():
         return wcv
 
     def get_panel_collocation(self, zetav_here):
-        """
+        r"""
         Using bilinear interpolation, retrieves panel collocation point, where
         aN,aM in [0,1] are distances in the chordwise and spanwise directions
         such that:
+
             - (aM,aN)=(0,0) --> quantity at vertex 0
+
             - (aM,aN)=(1,0) --> quantity at vertex 1
+
             - (aM,aN)=(1,1) --> quantity at vertex 2
+
             - (aM,aN)=(0,1) --> quantity at vertex 3
         """
 
@@ -247,7 +255,7 @@ class AeroGridGeo():
 
 
 class AeroGridSurface(AeroGridGeo):
-    """
+    r"""
     Contains geometric and aerodynamic information about bound/wake surface.
 
     Compulsory input are those that apply to both bound and wake surfaces:
@@ -316,7 +324,7 @@ class AeroGridSurface(AeroGridGeo):
     # -------------------------------------------------------- input velocities
 
     def get_input_velocities_at_collocation_points(self):
-        """
+        r"""
         Returns velocities at collocation points from nodal values ``u_ext`` and
         ``zeta_dot`` of shape ``(3, M+1, N+1)`` at the collocation points.
 
@@ -324,7 +332,7 @@ class AeroGridSurface(AeroGridGeo):
 
             .. math:: \boldsymbol{u}_{c} = \mathcal{W}_{cv}(\boldsymbol(\nu)_0 - \boldsymbol{\zeta}_0)
 
-            is the input velocity at the collocation point, where :math:`\mathcal{W}_{cv} projects the velocity
+            is the input velocity at the collocation point, where :math:`\mathcal{W}_{cv}` projects the velocity
             from the grid points onto the collocation point. This variable is referred to as
             ``u_input_coll=Wcv*(u_ext-zeta_dot)`` and depends on the coordinates ``zeta`` when the body is rotating.
 
@@ -490,9 +498,13 @@ class AeroGridSurface(AeroGridGeo):
 
         Warning: induced velocities at grid segments are stored in a redundant
         format:
+
             (3,4,M,N)
+
         where the element
+
             (:,ss,mm,nn)
+
         is the induced velocity over the ss-th segment of panel (mm,nn). A fast
         looping is implemented to re-use previously computed velocities
         """
@@ -579,23 +591,29 @@ class AeroGridSurface(AeroGridGeo):
 
     def get_aic_over_surface(self, Surf_target,
                              target='collocation', Project=True):
-        """
+        r"""
         Produces influence coefficient matrices such that the velocity induced
         over the Surface_target is given by the product:
 
-        if target=='collocation':
-            if Project:
-                u_ind_coll_norm.rehape(-1)=AIC*self.gamma.reshape(-1,order='C')
-            else:
-                u_ind_coll_norm[ii,:,:].rehape(-1)=
-                                    AIC[ii,:,:]*self.gamma.reshape(-1,order='C')
-                where ii=0,1,2
+        .. code-block:: python
 
-        if targer=='segments':
+            if target=='collocation':
+                if Project:
+                    u_ind_coll_norm.rehape(-1)=AIC*self.gamma.reshape(-1,order='C')
+                else:
+                    u_ind_coll_norm[ii,:,:].rehape(-1)=
+                                        AIC[ii,:,:]*self.gamma.reshape(-1,order='C')
+
+        where ``ii=0,1,2``.
+
+        For the case where ``if target=='segments'``:
+
             - AIC has shape (3,self.maps.K,4,Mout,Nout), such that
-                AIC[:,:,ss,mm,nn]
+
+                ``AIC[:,:,ss,mm,nn]``
+
             is the influence coefficient matrix associated to the induced
-            velocity at segment ss of panel (mm,nn)
+            velocity at segment ss of panel (mm,nn).
         """
 
         K_in = self.maps.K
