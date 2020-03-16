@@ -117,6 +117,7 @@ class LinAeroEla():
             beam_settings = dict()
         self.lingebm_str = lingebm.FlexDynamic(self.tsstr, structure, beam_settings)
 
+        cga = algebra.quat2rotation(self.tsstr.quat)
         ### uvlm
         if uvlm_block:
             self.linuvlm = linuvlm.DynamicBlock(
@@ -126,8 +127,8 @@ class LinAeroEla():
                 UseSparse=settings_here['use_sparse'].value,
                 integr_order=settings_here['integr_order'].value,
                 ScalingDict=settings_here['ScalingDict'],
-                for_vel=np.hstack((self.tsstr.cga().dot(self.tsstr.for_vel[:3]),
-                                   self.tsstr.cga().dot(self.tsstr.for_vel[3:]))))
+                for_vel=np.hstack((cga.dot(self.tsstr.for_vel[:3]),
+                                   cga.dot(self.tsstr.for_vel[3:]))))
         else:
             self.linuvlm = linuvlm.Dynamic(
                 self.tsaero,
@@ -136,8 +137,8 @@ class LinAeroEla():
                 UseSparse=settings_here['use_sparse'].value,
                 integr_order=settings_here['integr_order'].value,
                 ScalingDict=settings_here['ScalingDict'],
-                for_vel=np.hstack((self.tsstr.cga().dot(self.tsstr.for_vel[:3]),
-                                   self.tsstr.cga().dot(self.tsstr.for_vel[3:]))))
+                for_vel=np.hstack((cga.dot(self.tsstr.for_vel[:3]),
+                                   cga.dot(self.tsstr.for_vel[3:]))))
 
         # add rotational speed
         # for ii in range(self.linuvlm.MS.n_surf):
