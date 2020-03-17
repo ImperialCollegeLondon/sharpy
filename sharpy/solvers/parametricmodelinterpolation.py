@@ -270,7 +270,7 @@ class ParametricModelInterpolation(BaseSolver):
         # Future: save for online use?
 
         # load input cases
-        self.input_cases = load_parameter_cases(self.settings['input_file'])
+        self.input_cases = librominterp.load_parameter_cases(self.settings['input_file'])
 
     def run(self):
         # keep this section for the online part i.e. the interpolation
@@ -463,16 +463,3 @@ def f7(seq):
     seen = set()
     seen_add = seen.add
     return [x for x in seq if not (x in seen or seen_add(x))]
-
-
-def load_parameter_cases(yaml_file_name):
-    """
-
-    Args:
-        yaml_file_name:
-
-    Returns:
-        list: List of dictionaries
-    """
-    # TODO: input validation
-    return yaml.load(open(yaml_file_name, 'r'), Loader=yaml.Loader)

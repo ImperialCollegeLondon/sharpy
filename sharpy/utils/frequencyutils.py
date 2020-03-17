@@ -191,9 +191,7 @@ def l2norm(y_freq, wv, **kwargs):
     assert nwv == len(wv), "Number of frequency evaluations different %g vs %g" % (nwv, len(wv))
 
     i_min, i_max = find_limits(wv, **kwargs)
-
     freq_range = wv[i_min:i_max].copy()
-
     h2 = np.zeros(len(freq_range))  # frobenius norm at each frequency
 
     for i in range(len(freq_range)):

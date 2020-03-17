@@ -6,6 +6,7 @@ import pickle
 import configobj
 import sharpy.utils.cout_utils as coututils
 import os
+import numpy as np
 
 coututils.start_writer()
 coututils.cout_wrap.cout_talk()
@@ -25,6 +26,12 @@ class ROMLibrary:
         self.data_library = None
 
         self.reference_case = None
+
+        self.parameters = None
+        self.param_values = None
+        self.mapping = None
+        self.parameter_index = None
+        self.inverse_mapping = None
 
     def interface(self):
 
@@ -202,6 +209,70 @@ class ROMLibrary:
                 case_data = pickle.load(f)
             self.data_library.append(case_data)
 
+    def get_reduced_order_bases(self, target_system):
+        """
+        Returns the bases and state spaces of the chosen systems.
+
+        To Do: find system regardless of MOR method
+
+        Returns:
+            tuple: list of state spaces, list of right ROBs and list of left ROBs
+        """
+
+        assert self.data_library is not None, 'ROM Library is empty. Load the data first.'
+
+        if target_system == 'uvlm':
+            ss_list = [rom.linear.linear_system.uvlm.ss for rom in self.data_library]
+            vv_list = [rom.linear.linear_system.uvlm.rom['Krylov'].V for rom in self.data_library]
+            wwt_list = [rom.linear.linear_system.uvlm.rom['Krylov'].W.T for rom in self.data_library]
+
+        elif target_system == 'aeroelastic':
+            ss_list = []
+            vv_list = []
+            wwt_list = []
+            for rom in self.data_library:
+                vv = sclalg.block_diag(rom.linear.linear_system.uvlm.rom['Krylov'].V,
+                                       np.eye(rom.linear.linear_system.beam.ss.states))
+                wwt = sclalg.block_diag(rom.linear.linear_system.uvlm.rom['Krylov'].W.T,
+                                        np.eye(rom.linear.linear_system.beam.ss.states))
+                ss_list.append(rom.linear.ss)
+                vv_list.append(vv)
+                wwt_list.append(wwt)
+        else:
+            raise NameError('Unrecognised system on which to perform interpolation')
+
+        return ss_list, vv_list, wwt_list
+
+    def sort_grid(self):
+
+        param_library = [case['parameters'] for case in self.library]
+        parameters = list(param_library[0].keys())  # all should have the same parameters
+        param_values = [[case[param] for case in param_library] for param in parameters]
+
+        parameter_index = {parameter: ith for ith, parameter in enumerate(parameters)}
+
+        # sort parameters
+        [parameter_values.sort() for parameter_values in param_values]
+        parameter_values = [f7(item) for item in param_values]  # TODO: rename these variables
+
+        inverse_mapping = np.empty([len(parameter_values[n]) for n in range(len(parameters))], dtype=int)
+        mapping = []
+        i_case = 0
+        for case_parameters in param_library:
+            current_case_mapping = []
+            for ith, parameter in enumerate(parameters):
+                p_index = parameter_values[ith].index(case_parameters[parameter])
+                current_case_mapping.append(p_index)
+            mapping.append(current_case_mapping)
+            inverse_mapping[tuple(current_case_mapping)] = i_case
+            i_case += 1
+
+        self.parameters = parameters
+        self.param_values = parameter_values  # TODO: caution -- rename
+        self.mapping = mapping
+        self.parameter_index = parameter_index
+        self.inverse_mapping = inverse_mapping
+
     @staticmethod
     def select_from_menu(input_message='Select option: ',
                          unrecognised_message='Unrecognised input choice'):
@@ -268,6 +339,14 @@ class InterpolatedROMLibrary:
     @property
     def case_number(self):
         return len(self.parameter_list)
+
+def f7(seq):
+    """
+    Adds single occurrences of an item in a list
+    """
+    seen = set()
+    seen_add = seen.add
+    return [x for x in seq if not (x in seen or seen_add(x))]
 
 if __name__ == '__main__':
     ROMLibrary().interface()

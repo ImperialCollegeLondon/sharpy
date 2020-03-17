@@ -32,6 +32,7 @@ Date: Mar-Apr 2019
 
 import numpy as np
 import scipy.linalg as sclalg
+import yaml
 
 # dependency
 import sharpy.linear.src.libss as libss
@@ -40,10 +41,10 @@ from sharpy.rom.interpolation.interpolationspaces import TangentInterpolation
 
 def transfer_function(SS_list, wv):
     """
-    Returns an interpolatory state-space model based on the transfer function 
-    method [1]. This method is general and is, effectively, a wrapper of the 
+    Returns an interpolatory state-space model based on the transfer function
+    method [1]. This method is general and is, effectively, a wrapper of the
     :func:`sharpy.linear.src.libss.join` method.
-    
+
     Features:
 
         - stability preserved
@@ -71,8 +72,8 @@ def transfer_function(SS_list, wv):
 
 def FLB_transfer_function(SS_list, wv, U_list, VT_list, hsv_list=None, M_list=None):
     r"""
-    Returns an interpolatory state-space model based on the transfer function 
-    method [1]. This method is applicable to frequency limited balanced 
+    Returns an interpolatory state-space model based on the transfer function
+    method [1]. This method is applicable to frequency limited balanced
     state-space models only.
 
 
@@ -141,7 +142,7 @@ def FLB_transfer_function(SS_list, wv, U_list, VT_list, hsv_list=None, M_list=No
 
         #     # # avoid direct
         #     # hsv,U,Vh,Zc,Zo = librom.balreal_direct_py(
-        #     #                         SS_list[ii].A, SS_list[ii].B, SS_list[ii].C, 
+        #     #                         SS_list[ii].A, SS_list[ii].B, SS_list[ii].C,
         #     #                         DLTI=True,full_outputs=True)
 
         #     # iterative also fails
@@ -220,3 +221,15 @@ def lagrange_interpolation(x_vec, x0):
 
     return out
 
+
+def load_parameter_cases(yaml_file_name):
+    """
+
+    Args:
+        yaml_file_name:
+
+    Returns:
+        list: List of dictionaries
+    """
+    # TODO: input validation
+    return yaml.load(open(yaml_file_name, 'r'), Loader=yaml.Loader)
