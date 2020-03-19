@@ -169,13 +169,13 @@ class StepLinearUVLM(BaseSolver):
 
                 # track A frame
                 if self.num_body_track == -1:
-                    self.quat0 = self.data.structure.timestep_info[0].quat.copy()
-                    self.for_vel0 = self.data.structure.timestep_info[0].for_vel.copy()
+                    self.quat0 = self.data.structure.timestep_info[-1].quat.copy()
+                    self.for_vel0 = self.data.structure.timestep_info[-1].for_vel.copy()
                 else: # track a specific body
                     self.quat0 = \
-                        self.data.structure.timestep_info[0].mb_quat[self.num_body_track,:].copy()
+                        self.data.structure.timestep_info[-1].mb_quat[self.num_body_track,:].copy()
                     self.for_vel0 = \
-                        self.data.structure.timestep_info[0].mb_FoR_vel[self.num_body_track ,:].copy()
+                        self.data.structure.timestep_info[-1].mb_FoR_vel[self.num_body_track ,:].copy()
 
                 # convert to G frame
                 self.Cga0 = algebra.quat2rotation(self.quat0)
