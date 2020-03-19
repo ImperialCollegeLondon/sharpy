@@ -6,6 +6,7 @@ import sharpy.utils.settings as settings_utils
 import sharpy.utils.cout_utils as cout
 import warnings
 import sharpy.linear.src.libss as libss
+import h5py as h5
 
 
 @solver_interface.solver
@@ -94,7 +95,7 @@ class FrequencyResponse(solver_interface.BaseSolver):
     def initialise(self, data, custom_settings=None):
 
         self.data = data
-        self.ss = data.linear.linear_system.uvlm.ss
+        # self.ss = data.linear.linear_system.uvlm.ss
 
         if not custom_settings:
             self.settings = self.data.settings[self.solver_id]
@@ -102,10 +103,13 @@ class FrequencyResponse(solver_interface.BaseSolver):
             self.settings = custom_settings
         settings_utils.to_custom_types(self.settings, self.settings_types, self.settings_default, self.settings_options)
 
-        scaling = self.data.linear.linear_system.uvlm.sys.ScalingFacts
-        if self.settings['frequency_unit'] == 'k':
-            self.w_to_k = scaling['length'] / scaling['speed']
-        else:
+        try:
+            scaling = self.data.linear.linear_system.uvlm.sys.ScalingFacts
+            if self.settings['frequency_unit'] == 'k':
+                self.w_to_k = scaling['length'] / scaling['speed']
+            else:
+                self.w_to_k = 1.
+        except AttributeError:
             self.w_to_k = 1.
 
         lb = self.settings['frequency_bounds'][0] / self.w_to_k
@@ -251,6 +255,14 @@ class FrequencyResponse(solver_interface.BaseSolver):
                 np.savetxt(out_folder + '/' + 'Y_freq_' + filename + '_m%02d_p%02d.dat' % (mj, pj),
                            freq_2_cols)
 
+        h5filename = out_folder + 'frequency_response.h5'
+        with h5.File(h5filename, 'a') as f:
+            wv_handle = f.create_dataset('frequency', data=wv)
+            f_handle = f.create_dataset('response', data=Yfreq)
+            nin_handle = f.create_dataset('inputs', data=m)
+            nout_handle = f.create_dataset('outputs', data=p)
+        cout.cout_wrap('Saved .h5 file to %s with frequency response data' % h5filename)
+
     def quick_plot(self, Y_freq_fom=None, subfolder=None):
         p, m, _ = Y_freq_fom.shape
         try:
@@ -299,4 +311,3 @@ class FrequencyResponse(solver_interface.BaseSolver):
     #
     #     return Y_freq_fom
     # <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
-
