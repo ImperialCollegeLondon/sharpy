@@ -17,8 +17,9 @@ class FrequencyResponse(solver_interface.BaseSolver):
     Computes the frequency response of a built linear system. The frequency will be calculated for the systems
     specified in the ``target_system`` list. The desired ``frequency_unit`` will be either ``w`` for radians/s or ``k``
     for reduced frequency (if the system is scaled). The ``frequency_bounds`` setting will set the lower and upper
-    bounds of the response, while ``num_freqs`` will specify the number of evaluations. The option ``frequency_spacing``
-    allows you to space the evaluations point following a ``log`` or ``linear`` spacing.
+    bounds of the response, while ``num_freqs`` will specify the number of evaluations.
+    The option ``frequency_spacing`` allows you to space the evaluations point following a ``log``
+    or ``linear`` spacing.
 
     This will be saved to a binary ``.h5`` file as detailed in :func:`save_freq_resp`.
 
@@ -105,7 +106,7 @@ class FrequencyResponse(solver_interface.BaseSolver):
             self.settings = custom_settings
         settings_utils.to_custom_types(self.settings, self.settings_types, self.settings_default,
                                        self.settings_options,
-                                       no_cytpe=True)
+                                       no_ctype=True)
 
         try:
             scaling = self.data.linear.linear_system.uvlm.sys.ScalingFacts
@@ -233,7 +234,7 @@ class FrequencyResponse(solver_interface.BaseSolver):
 
         return ss
 
-    def save_freq_resp(self, wv, Yfreq, filename, system_name=None):
+    def save_freq_resp(self, wv, Yfreq, system_name=None):
         """
         Saves the frequency response to a binary ``.h5`` file.
 
@@ -244,7 +245,7 @@ class FrequencyResponse(solver_interface.BaseSolver):
         Args:
             wv (np.ndarray): Frequency array.
             Y_freq (np.ndarray): Frequency response data ``[p, m, n_freq_eval]`` matrix.
-            filename (str)
+            system_name (str (optional)): State-space system name.
         """
 
         with open(self.folder + '/freqdata_readme.txt', 'w') as outfile:
@@ -260,7 +261,7 @@ class FrequencyResponse(solver_interface.BaseSolver):
         p, m, _ = Yfreq.shape
 
         h5filename = out_folder + '.freqresp.h5'
-        with h5.File(h5filename, 'r') as f:
+        with h5.File(h5filename, 'w') as f:
             f.create_dataset('frequency', data=wv)
             f.create_dataset('response', data=Yfreq, dtype=complex)
             f.create_dataset('inputs', data=m)
