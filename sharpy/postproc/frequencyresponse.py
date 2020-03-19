@@ -20,6 +20,8 @@ class FrequencyResponse(solver_interface.BaseSolver):
     bounds of the response, while ``num_freqs`` will specify the number of evaluations. The option ``frequency_spacing``
     allows you to space the evaluations point following a ``log`` or ``linear`` spacing.
 
+    This will be saved to a binary ``.h5`` file as detailed in :func:`save_freq_resp`.
+
     Finally, the ``quick_plot`` option will plot some quick and dirty bode plots of the response. This requires
     access to ``matplotlib``.
 
@@ -101,7 +103,8 @@ class FrequencyResponse(solver_interface.BaseSolver):
             self.settings = self.data.settings[self.solver_id]
         else:
             self.settings = custom_settings
-        settings_utils.to_custom_types(self.settings, self.settings_types, self.settings_default, self.settings_options
+        settings_utils.to_custom_types(self.settings, self.settings_types, self.settings_default,
+                                       self.settings_options,
                                        no_cytpe=True)
 
         try:
