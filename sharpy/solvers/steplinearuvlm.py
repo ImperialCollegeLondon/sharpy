@@ -91,6 +91,15 @@ class StepLinearUVLM(BaseSolver):
     settings_default['track_body_number'] = -1
     settings_description['track_body_number'] = 'Frame of reference number to follow. If ``-1`` track ``A`` frame.'
 
+    settings_types['velocity_field_generator'] = 'str'
+    settings_default['velocity_field_generator'] = 'SteadyVelocityField'
+    settings_description['velocity_field_generator'] = 'Name of the velocity field generator to be used in the ' \
+                                                       'simulation'
+
+    settings_types['velocity_field_input'] = 'dict'
+    settings_default['velocity_field_input'] = {}
+    settings_description['velocity_field_input'] = 'Dictionary of settings for the velocity field generator'
+
     settings_table = settings.SettingsTable()
     __doc__ += settings_table.generate(settings_types, settings_default, settings_description)
 
