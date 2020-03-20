@@ -6,6 +6,7 @@ import sharpy.utils.settings as settings_utils
 import sharpy.utils.cout_utils as cout
 import warnings
 import sharpy.linear.src.libss as libss
+import h5py as h5
 
 
 @solver_interface.solver
@@ -16,8 +17,11 @@ class FrequencyResponse(solver_interface.BaseSolver):
     Computes the frequency response of a built linear system. The frequency will be calculated for the systems
     specified in the ``target_system`` list. The desired ``frequency_unit`` will be either ``w`` for radians/s or ``k``
     for reduced frequency (if the system is scaled). The ``frequency_bounds`` setting will set the lower and upper
-    bounds of the response, while ``num_freqs`` will specify the number of evaluations. The option ``frequency_spacing``
-    allows you to space the evaluations point following a ``log`` or ``linear`` spacing.
+    bounds of the response, while ``num_freqs`` will specify the number of evaluations.
+    The option ``frequency_spacing`` allows you to space the evaluations point following a ``log``
+    or ``linear`` spacing.
+
+    This will be saved to a binary ``.h5`` file as detailed in :func:`save_freq_resp`.
 
     Finally, the ``quick_plot`` option will plot some quick and dirty bode plots of the response. This requires
     access to ``matplotlib``.
@@ -100,7 +104,9 @@ class FrequencyResponse(solver_interface.BaseSolver):
             self.settings = self.data.settings[self.solver_id]
         else:
             self.settings = custom_settings
-        settings_utils.to_custom_types(self.settings, self.settings_types, self.settings_default, self.settings_options)
+        settings_utils.to_custom_types(self.settings, self.settings_types, self.settings_default,
+                                       self.settings_options,
+                                       no_ctype=True)
 
         try:
             scaling = self.data.linear.linear_system.uvlm.sys.ScalingFacts
@@ -114,7 +120,7 @@ class FrequencyResponse(solver_interface.BaseSolver):
         lb = self.settings['frequency_bounds'][0] / self.w_to_k
         ub = self.settings['frequency_bounds'][1] / self.w_to_k
 
-        nfreqs = self.settings['num_freqs'].value
+        nfreqs = self.settings['num_freqs']
         if self.settings['frequency_spacing'] == 'linear':
             self.wv = np.linspace(lb, ub, nfreqs)
         elif self.settings['frequency_spacing'] == 'log':
@@ -153,26 +159,23 @@ class FrequencyResponse(solver_interface.BaseSolver):
             cout.cout_wrap('Computing frequency response...')
             if ss is None:
                 try:
-                    out_folder = self.settings['target_system'][ith]
+                    system_name = self.settings['target_system'][ith]
+                    cout.cout_wrap('\tComputing frequency response for %s system' % system_name, 1)
                 except IndexError:
-                    out_folder = None
+                    system_name = None
             else:
-                out_folder = None
-
-            if out_folder is not None:
-                os.makedirs(self.folder + '/' + out_folder, exist_ok=True)
-                cout.cout_wrap('\tComputing frequency response for %s system' % out_folder, 1)
+                system = None
 
             t0fom = time.time()
             y_freq_fom = system.freqresp(self.wv)
             tfom = time.time() - t0fom
 
-            self.save_freq_resp(self.wv, y_freq_fom, 'fom', subfolder=out_folder)
+            self.save_freq_resp(self.wv, y_freq_fom, system_name=system_name)
 
             cout.cout_wrap('\tComputed the frequency response in %f s' % tfom, 2)
 
-            if self.settings['quick_plot'].value:
-                self.quick_plot(y_freq_fom, subfolder=out_folder)
+            if self.settings['quick_plot']:
+                self.quick_plot(y_freq_fom, subfolder=system_name)
 
             # >>>>>>>>>>>>>>>> Move to a dedicated ROM metric module
             # Y_freq_rom = None
@@ -187,7 +190,7 @@ class FrequencyResponse(solver_interface.BaseSolver):
             #     else:
             #         compute_fom = True
             #
-            # if (self.settings['compute_fom'].value and self.settings['load_fom'] == '') or compute_fom:
+            # if (self.settings['compute_fom'] and self.settings['load_fom'] == '') or compute_fom:
             #     if self.settings['print_info']:
             #         cout.cout_wrap('Computing frequency response...')
             #         cout.cout_wrap('Full order system:', 1)
@@ -231,29 +234,39 @@ class FrequencyResponse(solver_interface.BaseSolver):
 
         return ss
 
-    def save_freq_resp(self, wv, Yfreq, filename, subfolder=None):
+    def save_freq_resp(self, wv, Yfreq, system_name=None):
+        """
+        Saves the frequency response to a binary ``.h5`` file.
+
+        If the system has not been scaled, the units of frequency are ``rad/s`` and the response is given in complex
+        form. The response is saved in a ``[p, m, n_freq_eval]`` format, where ``p`` corresponds to the system's
+        outputs, ``n`` to the number of inputs and ``n_freq_eval`` to the number of frequency evaluations.
+
+        Args:
+            wv (np.ndarray): Frequency array.
+            Y_freq (np.ndarray): Frequency response data ``[p, m, n_freq_eval]`` matrix.
+            system_name (str (optional)): State-space system name.
+        """
 
         with open(self.folder + '/freqdata_readme.txt', 'w') as outfile:
             outfile.write('Frequency Response Data Output\n\n')
-            outfile.write('Frequency range found in _wv.txt file in rad/s\n')
-            outfile.write('Response data from input m to output p in complex form. '
-                          'Each file Y_freq_<case_name>_m<input>_p<output>.dat is a <num_freq> x 2 file, where '
-                          'Column 1 corresponds to the real value and column 2 to the imaginary part.')
+            outfile.write('Frequency data found in the relevant .h5 file\n')
+            outfile.write('If the system has not been scaled, the units of frequency are rad/s\nThe frequency' \
+                          'response is given in complex form.')
 
         out_folder = self.folder
-        if subfolder is None:
-            np.savetxt(self.folder + '/' + filename + '_wv.dat', wv)
-        else:
-            np.savetxt(self.folder + '/' + subfolder + '/' + filename + '_wv.dat', wv)
-            out_folder += '/' + subfolder
+        if system_name is not None:
+            out_folder += '/' + system_name
 
         p, m, _ = Yfreq.shape
 
-        for mj in range(m):
-            for pj in range(p):
-                freq_2_cols = Yfreq[pj, mj, :].view(float).reshape(-1, 2)
-                np.savetxt(out_folder + '/' + 'Y_freq_' + filename + '_m%02d_p%02d.dat' % (mj, pj),
-                           freq_2_cols)
+        h5filename = out_folder + '.freqresp.h5'
+        with h5.File(h5filename, 'w') as f:
+            f.create_dataset('frequency', data=wv)
+            f.create_dataset('response', data=Yfreq, dtype=complex)
+            f.create_dataset('inputs', data=m)
+            f.create_dataset('outputs', data=p)
+        cout.cout_wrap('Saved .h5 file to %s with frequency response data' % h5filename)
 
     def quick_plot(self, Y_freq_fom=None, subfolder=None):
         p, m, _ = Y_freq_fom.shape
@@ -263,6 +276,9 @@ class FrequencyResponse(solver_interface.BaseSolver):
             out_folder = self.folder
             if subfolder:
                 out_folder += '/' + subfolder
+
+            if not os.path.isdir(out_folder):
+                os.makedirs(out_folder, exist_ok=True)
 
             import matplotlib.pyplot as plt
             for mj in range(m):
@@ -303,4 +319,3 @@ class FrequencyResponse(solver_interface.BaseSolver):
     #
     #     return Y_freq_fom
     # <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
-
