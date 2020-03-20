@@ -249,10 +249,13 @@ class ParametricModelInterpolation(BaseSolver):
         ## <<< end of test - to be removed to a dedicated solver
 
         if self.settings['interpolation_space'] == 'direct':
+            cout.cout_wrap('\tInterpolating Directly', 1)
             self.pmor = sharpy.rom.interpolation.interpolationspaces.InterpROM()
         elif self.settings['interpolation_space'] == 'tangent':
+            cout.cout_wrap('\tInterpolating in the Tangent space', 1)
             self.pmor = sharpy.rom.interpolation.interpolationspaces.TangentInterpolation()
         elif self.settings['interpolation_space'] == 'real':
+            cout.cout_wrap('\tInterpolating Real Matrices', 1)
             self.pmor = sharpy.rom.interpolation.interpolationspaces.InterpolationRealMatrices()
         else:
             raise NotImplementedError('Interpolation space %s is not recognised' % self.settings['interpolation_space'])

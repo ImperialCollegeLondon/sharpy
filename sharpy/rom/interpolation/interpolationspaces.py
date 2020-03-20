@@ -140,14 +140,16 @@ class InterpROM:
         self.DD = [ss_here.D for ss_here in self.ss_list]
 
         ### check state-space models
-        Nx, Nu, Ny = self.ss_list[0].states, self.ss_list[0].inputs, self.ss_list[0].outputs
+        Nx = self.ss_list[self.reference_case].states
+        Nu = self.ss_list[self.reference_case].inputs
+        Ny = self.ss_list[self.reference_case].outputs
         for ss_here in self.ss_list:
             assert ss_here.states == Nx, \
-                'State-space models do not have the same number of states'
+                'State-space models do not have the same number of states. Current ss %g states, ref %g states' % (ss_here.states, Nx)
             assert ss_here.inputs == Nu, \
-                'State-space models do not have the same number of inputs'
+                'State-space models do not have the same number of inputs. Current ss %g inputs, ref %g inputs' % (ss_here.inputs, Nu)
             assert ss_here.outputs == Ny, \
-                'State-space models do not have the same number of outputs'
+                'State-space models do not have the same number of outputs. Current ss %g outputs, ref %g outputs' % (ss_here.outputs, Ny)
 
     def check_discrete_timestep(self):
         """
@@ -286,8 +288,8 @@ class InterpROM:
 
         elif self.method_proj == 'weakMAC_right_orth':
             """
-            This is like Amsallem, but only for state-space models with right 
-            orthogonal basis 
+            This is like Amsallem, but only for state-space models with right
+            orthogonal basis
             """
 
             for ii in range(len(self.ss_list)):
