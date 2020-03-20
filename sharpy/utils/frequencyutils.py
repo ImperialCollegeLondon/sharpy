@@ -201,3 +201,90 @@ def l2norm(y_freq, wv, **kwargs):
     integral_h2 = np.sqrt(np.max(np.trapz(h2, freq_range)))
 
     return integral_h2
+
+
+def gap_metric(ss1, ss2):
+    """
+    Computes the gap metric between two linear systems
+
+    Warnings:
+        Under Development
+
+    Args:
+        ss1:
+        ss2:
+
+    Returns:
+
+    References:
+        NG - Mendeley Gap Metric
+    """
+
+    pass
+
+
+def right_coprime_factorisation(ss):
+    """
+    Computes the right coprime normalised factors (RCNF) of a linear system
+
+    Warnings:
+        Under development. Currently not working.
+
+    Args:
+        ss:
+
+    Returns:
+
+    References:
+        Robust Control Optimization with Metaheuristics, pg 355, Appendix A.2
+        https://onlinelibrary.wiley.com/doi/pdf/10.1002/9781119340959.app1
+    """
+    a, b, c, d = ss.get_mats()
+
+    s = np.eye(ss.inputs) + d.T.dot(d)
+    sinv = sclalg.inv(s)
+
+    s_root_r = sclalg.cholesky(s, lower=False)
+
+    # Generalised Riccatti equation
+    a_care = a - b.dot(sinv.dot(d.T.dot(c)))
+    b_care = b
+    q_care = c.T.dot(sclalg.inv(np.eye(ss.outputs) + d.dot(d.T)).dot(c))
+    r_care = s
+
+    x = sclalg.solve_continuous_are(a_care, b_care, q_care, r_care)
+
+    f = -sinv.dot(d.T.dot(c) + b.T.dot(x))
+
+    sroot_inv = sclalg.inv(s_root_r)
+
+    n = np.block([[a + b.dot(f), b.dot(sroot_inv)], [c + d.dot(f), d.dot(sroot_inv)]])
+    m = np.block([[a + b.dot(f), b.dot(sroot_inv)], [f, sroot_inv]])
+
+    return n, m
+
+
+if __name__ == '__main__':
+    import unittest
+    import sharpy.linear.src.libss as libss
+
+    class TestMetrics(unittest.TestCase):
+
+        def setUp(self):
+            self.ss = libss.random_ss(10, 4, 3, dt=None)
+
+        def test_coprime(self):
+            n, m = right_coprime_factorisation(self.ss)
+
+            a, b, c, d = self.ss.get_mats()
+            h = np.block([[a, b], [c, d]])
+
+            res_a = h - n.dot(m)
+            res_b = h - n.dot(sclalg.inv(m))
+
+            print(res_a)
+            print(np.max(np.abs(res_a)))
+            print(res_b)
+            print(np.max(np.abs(res_b)))
+
+    unittest.main()
