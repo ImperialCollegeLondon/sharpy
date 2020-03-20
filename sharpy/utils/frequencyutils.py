@@ -225,15 +225,57 @@ def gap_metric(ss1, ss2):
 
 def right_coprime_factorisation(ss):
     """
-    Computes the right coprime normalised factors (RCNF) of a linear system
+    Computes the right coprime normalised factors (RCNF) of a linear system.
 
-    Warnings:
-        Under development. Currently not working.
+    For a linear system
+
+    .. math:: \Sigma = \begin{bmatrix}{c|c} \mathbf{A} & \mathbf{B} \\ \hline \mathbf{C} & \mathbf{D} \end{bmatrix}
+
+    its transfer function :math:`\mathbf{H}(s)\in\mathbf{R}H\infty^{p\times m}` is defined by
+
+    .. math:: \mathbf{H}(s) = \mathbf{C}(s\mathbf{I}_n - \mathbf{A})^{-1}\mathbf{B} + \mathbf{D}.
+
+    The right coprime factorisation results in a factorisation such that
+
+    .. math:: \mathbf{H}(s) = \mathbf{N}(s)\mathbf{M}^{-1}(s)
+
+    where :math:`\mathbf{N}(s)\in\mathbf{R}H|infty^{p \times m}` and
+    :math:`\mathbf{M}(s)\in\mathbf{R}H_\infty^{m \times m}` are stable, rational and proper transfer functions.
+
+    The state-space representations of the above transfer functions are given by
+
+    .. math:: \mathbf{N}(s) = \begin{bmatrix}{c|c} \mathbf{A + BF} & \mathbf{BS}^{-1/2} \\ \hline
+        \mathbf{C + DF} & \mathbf{DS}^{-1/2} \end{bmatrix}
+
+    .. math:: \mathbf{M}(s) = \begin{bmatrix}{c|c} \mathbf{A + BF} & \mathbf{BS}^{-1/2} \\ \hline
+        \mathbf{F} & \mathbf{S}^{-1/2} \end{bmatrix}.
+
+    The matrices :math:`\mathbf{S}` and :math:`\mathbf{F}` are given by:
+
+    .. math:: \mathbf{F} = -\mathbf{S}^{-1}(\mathbf{D^\top C} + \mathbf{B^\top X}
+
+    .. math:: \mathbf{S} = \mathbf{I}_m + \mathbf{D^\top D},
+
+     with \mathbf{S}^{1/2\top}\mathbf{S}^{1/2} = \mathbf{S} computed using an upper cholesky factorisation.
+
+     The term :math:`\mathbf{X}` is solved for using the generalised continuous algebraic Riccati equation (GCARE):
+
+     .. math:: (\mathbf{A} - \mathbf{BS}^{-1}\mathbf{D^\top C)^\top\mathbf{X} +
+        \mathbf{X}(\mathbf{A} - \mathbf{BS}^{-1}\mathbf{D^\top C}) -
+        \mathbf{XBS}^{-1}\mathbf{B^\top X} +
+        \mathbf{C}^\top(\mathbf{I}_p + \mathbf{DD}^\top)^{-1}\mathbf{C} = \mathbf{0}.
+
+    The inverse representation of :math:`\mathbf{M}(s)` can be computed as
+
+    .. math:: \mathbf{M}^{-1}(s) = \begin{bmatrix}{c|c} \mathbf{A} & \mathbf{B} \\ \hline
+        \mathbf{S}^{1/2}\mathbf{F} & \mathbf{S}^{1/2} \end{bmatrix}.
+
 
     Args:
-        ss:
+        ss (sharpy.linear.src.libss.ss): Continuous time linear system.
 
     Returns:
+        tuple: Tuple of linear systems :math:`(\mathbf{N}(s), \mathbf{M}^{-1}(s)`.
 
     References:
         Robust Control Optimization with Metaheuristics, pg 355, Appendix A.2
@@ -244,9 +286,9 @@ def right_coprime_factorisation(ss):
     s = np.eye(ss.inputs) + d.T.dot(d)
     sinv = sclalg.inv(s)
 
-    s_root_r = sclalg.cholesky(s, lower=False)
+    s_root_r = sclalg.cholesky(s, lower=False)  # S^{1/2}
 
-    # Generalised Riccatti equation
+    # Generalised Riccati equation - formatting below for gcare scipy input
     a_care = a - b.dot(sinv.dot(d.T.dot(c)))
     b_care = b
     q_care = c.T.dot(sclalg.inv(np.eye(ss.outputs) + d.dot(d.T)).dot(c))
@@ -256,12 +298,14 @@ def right_coprime_factorisation(ss):
 
     f = -sinv.dot(d.T.dot(c) + b.T.dot(x))
 
-    sroot_inv = sclalg.inv(s_root_r)
+    sroot_inv = sclalg.inv(s_root_r)  # S^{-1/2}
 
-    n = np.block([[a + b.dot(f), b.dot(sroot_inv)], [c + d.dot(f), d.dot(sroot_inv)]])
-    m = np.block([[a + b.dot(f), b.dot(sroot_inv)], [f, sroot_inv]])
+    n = libss.ss(a + b.dot(f), b.dot(sroot_inv), c + d.dot(f), d.dot(sroot_inv), dt=None)
+    # m = libss.ss(a + b.dot(f), b.dot(sroot_inv), f, sroot_inv)
 
-    return n, m
+    minv = libss.ss(a, -b, s_root_r.dot(f), s_root_r, dt=None)  # M^{-1}
+
+    return n, minv
 
 
 if __name__ == '__main__':
@@ -274,17 +318,31 @@ if __name__ == '__main__':
             self.ss = libss.random_ss(10, 4, 3, dt=None)
 
         def test_coprime(self):
-            n, m = right_coprime_factorisation(self.ss)
+            n, minv = right_coprime_factorisation(self.ss)
 
-            a, b, c, d = self.ss.get_mats()
-            h = np.block([[a, b], [c, d]])
+            wv = np.logspace(-1, 4, 50)
+            h = self.ss.freqresp(wv)
+            coprime_system = libss.series(minv, n)  # N M^{-1}
 
-            res_a = h - n.dot(m)
-            res_b = h - n.dot(sclalg.inv(m))
+            h_bar = coprime_system.freqresp(wv)
 
-            print(res_a)
-            print(np.max(np.abs(res_a)))
-            print(res_b)
-            print(np.max(np.abs(res_b)))
+            res = h - h_bar
+
+            np.testing.assert_array_almost_equal(np.max(np.abs(res)), 0, decimal=6, verbose=True,
+                                                 err_msg='Original transfer function and coprime '
+                                                         'factorisation not equal')
+
+            # Useful debug >>>>>>
+            # print('L2 %f' % l2norm(h - h_bar, wv))
+
+            # print('Rel err %f' % freqresp_relative_error(h, h_bar, wv))
+
+            # import matplotlib.pyplot as plt
+            # plt.semilogx(wv, h[0, 0, :].real, color='tab:blue', marker='x')
+            # plt.semilogx(wv, h_bar[0, 0, :].real, color='tab:orange', marker='+')
+            # plt.semilogx(wv, h[0, 0, :].imag, ls='--', color='tab:blue', marker='x')
+            # plt.semilogx(wv, h_bar[0, 0, :].imag, ls='--', color='tab:orange', marker='+')
+            # plt.show()
+            # <<<<<<<<<<<<
 
     unittest.main()
