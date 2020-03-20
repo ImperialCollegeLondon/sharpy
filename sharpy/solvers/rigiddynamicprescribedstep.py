@@ -50,11 +50,9 @@ class RigidDynamicPrescribedStep(BaseSolver):
 
         # load info from dyn dictionary
         self.data.structure.add_unsteady_information(self.data.structure.dyn_dict, self.settings['num_steps'].value)
-
-
+ 
     def run(self, structural_step=None, dt=None):
 
-        pass
         if structural_step is None:
             structural_step = self.data.structure.timestep_info[-1]
         if dt is None:
