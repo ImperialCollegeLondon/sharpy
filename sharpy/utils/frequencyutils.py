@@ -224,12 +224,12 @@ def gap_metric(ss1, ss2):
 
 
 def right_coprime_factorisation(ss):
-    """
+    r"""
     Computes the right coprime normalised factors (RCNF) of a linear system.
 
     For a linear system
 
-    .. math:: \Sigma = \begin{bmatrix}{c|c} \mathbf{A} & \mathbf{B} \\ \hline \mathbf{C} & \mathbf{D} \end{bmatrix}
+    .. math:: \Sigma = \left(\begin{array}{c|c} \mathbf{A} & \mathbf{B} \\ \hline \mathbf{C} & \mathbf{D} \end{array}\right)
 
     its transfer function :math:`\mathbf{H}(s)\in\mathbf{R}H\infty^{p\times m}` is defined by
 
@@ -239,16 +239,16 @@ def right_coprime_factorisation(ss):
 
     .. math:: \mathbf{H}(s) = \mathbf{N}(s)\mathbf{M}^{-1}(s)
 
-    where :math:`\mathbf{N}(s)\in\mathbf{R}H|infty^{p \times m}` and
+    where :math:`\mathbf{N}(s)\in\mathbf{R}H_\infty^{p \times m}` and
     :math:`\mathbf{M}(s)\in\mathbf{R}H_\infty^{m \times m}` are stable, rational and proper transfer functions.
 
     The state-space representations of the above transfer functions are given by
 
-    .. math:: \mathbf{N}(s) = \begin{bmatrix}{c|c} \mathbf{A + BF} & \mathbf{BS}^{-1/2} \\ \hline
-        \mathbf{C + DF} & \mathbf{DS}^{-1/2} \end{bmatrix}
+    .. math:: \mathbf{N}(s) = \left(\begin{array}{c|c} \mathbf{A + BF} & \mathbf{BS}^{-1/2} \\ \hline
+        \mathbf{C + DF} & \mathbf{DS}^{-1/2} \end{array}\right).
 
-    .. math:: \mathbf{M}(s) = \begin{bmatrix}{c|c} \mathbf{A + BF} & \mathbf{BS}^{-1/2} \\ \hline
-        \mathbf{F} & \mathbf{S}^{-1/2} \end{bmatrix}.
+    .. math:: \mathbf{M}(s) = \left(\begin{array}{c|c} \mathbf{A + BF} & \mathbf{BS}^{-1/2} \\ \hline
+        \mathbf{F} & \mathbf{S}^{-1/2} \end{array}\right).
 
     The matrices :math:`\mathbf{S}` and :math:`\mathbf{F}` are given by:
 
@@ -256,29 +256,32 @@ def right_coprime_factorisation(ss):
 
     .. math:: \mathbf{S} = \mathbf{I}_m + \mathbf{D^\top D},
 
-     with \mathbf{S}^{1/2\top}\mathbf{S}^{1/2} = \mathbf{S} computed using an upper cholesky factorisation.
 
-     The term :math:`\mathbf{X}` is solved for using the generalised continuous algebraic Riccati equation (GCARE):
+    with :math:`\mathbf{S}^{1/2\top}\mathbf{S}^{1/2} = \mathbf{S}` computed using an upper cholesky factorisation.
 
-     .. math:: (\mathbf{A} - \mathbf{BS}^{-1}\mathbf{D^\top C)^\top\mathbf{X} +
+
+    The term :math:`\mathbf{X}` is solved for using the generalised continuous algebraic Riccati equation (GCARE):
+
+     .. math:: (\mathbf{A} - \mathbf{BS}^{-1}\mathbf{D^\top C})^\top\mathbf{X} +
         \mathbf{X}(\mathbf{A} - \mathbf{BS}^{-1}\mathbf{D^\top C}) -
         \mathbf{XBS}^{-1}\mathbf{B^\top X} +
         \mathbf{C}^\top(\mathbf{I}_p + \mathbf{DD}^\top)^{-1}\mathbf{C} = \mathbf{0}.
 
+
     The inverse representation of :math:`\mathbf{M}(s)` can be computed as
 
-    .. math:: \mathbf{M}^{-1}(s) = \begin{bmatrix}{c|c} \mathbf{A} & \mathbf{B} \\ \hline
-        \mathbf{S}^{1/2}\mathbf{F} & \mathbf{S}^{1/2} \end{bmatrix}.
+    .. math:: \mathbf{M}^{-1}(s) = \left(\begin{array}{c|c} \mathbf{A} & \mathbf{B} \\ \hline
+        \mathbf{S}^{1/2}\mathbf{F} & \mathbf{S}^{1/2} \end{array}\right).
 
 
     Args:
         ss (sharpy.linear.src.libss.ss): Continuous time linear system.
 
     Returns:
-        tuple: Tuple of linear systems :math:`(\mathbf{N}(s), \mathbf{M}^{-1}(s)`.
+        tuple: Tuple of linear systems :math:`(\mathbf{N}(s), \mathbf{M}^{-1}(s))`.
 
     References:
-        Robust Control Optimization with Metaheuristics, pg 355, Appendix A.2
+        Feyel, P.. Robust Control Optimization with Metaheuristics. Wiley 2017. pg 355, Appendix A.
         https://onlinelibrary.wiley.com/doi/pdf/10.1002/9781119340959.app1
     """
     a, b, c, d = ss.get_mats()
