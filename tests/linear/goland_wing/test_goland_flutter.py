@@ -223,13 +223,14 @@ class TestGolandFlutter(unittest.TestCase):
                                                        'include_rbm': 'on',
                                                        'include_applied_forces': 'on'}}}
 
-        ws.config['FrequencyResponse'] = {'quick_plot': 'on',
+        ws.config['FrequencyResponse'] = {'quick_plot': 'off',
                                           'folder': self.route_test_dir + '/output/',
                                           'frequency_unit': 'k',
                                           'frequency_bounds': [0.0001, 1.0],
                                           'target_system': ['aeroelastic'],
                                           'num_freqs': 100,
                                           'frequency_spacing': 'log',
+                                          'target_system': ['aeroelastic'],
                                           }
 
         ws.config.write()
