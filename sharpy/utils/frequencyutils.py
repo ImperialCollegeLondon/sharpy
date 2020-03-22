@@ -223,7 +223,7 @@ def gap_metric(ss1, ss2):
     pass
 
 
-def right_coprime_factorisation(ss):
+def right_coprime_factorisation(ss, return_m=False):
     r"""
     Computes the right coprime normalised factors (RCNF) of a linear system.
 
@@ -231,7 +231,7 @@ def right_coprime_factorisation(ss):
 
     .. math:: \Sigma = \left(\begin{array}{c|c} \mathbf{A} & \mathbf{B} \\ \hline \mathbf{C} & \mathbf{D} \end{array}\right)
 
-    its transfer function :math:`\mathbf{H}(s)\in\mathbf{R}H\infty^{p\times m}` is defined by
+    its transfer function :math:`\mathbf{H}(s)\in\mathbb{R}H\infty^{p\times m}` is defined by
 
     .. math:: \mathbf{H}(s) = \mathbf{C}(s\mathbf{I}_n - \mathbf{A})^{-1}\mathbf{B} + \mathbf{D}.
 
@@ -239,7 +239,7 @@ def right_coprime_factorisation(ss):
 
     .. math:: \mathbf{H}(s) = \mathbf{N}(s)\mathbf{M}^{-1}(s)
 
-    where :math:`\mathbf{N}(s)\in\mathbf{R}H_\infty^{p \times m}` and
+    where :math:`\mathbf{N}(s)\in\mathbb{R}H_\infty^{p \times m}` and
     :math:`\mathbf{M}(s)\in\mathbf{R}H_\infty^{m \times m}` are stable, rational and proper transfer functions.
 
     The state-space representations of the above transfer functions are given by
@@ -273,12 +273,31 @@ def right_coprime_factorisation(ss):
     .. math:: \mathbf{M}^{-1}(s) = \left(\begin{array}{c|c} \mathbf{A} & \mathbf{B} \\ \hline
         \mathbf{S}^{1/2}\mathbf{F} & \mathbf{S}^{1/2} \end{array}\right).
 
+    Notes:
+
+        The Hardy space, :math:`H_\infty` consists of all complex-valued functions of a complex variable
+        :math:`\mathbf{F}(s)` which are analytic and bounded in the open right half-plane $\mathrm{Re(s)}>0$.
+        By bounded, there exists a limit :math:`b` such that
+
+        .. math:: |\mathbf{F}(s)| \le b, \mathrm{Re}(s)>0
+
+        This bound :math:`b` is referred to as the :math:`H_\infty` norm:
+
+        .. math:: ||\mathbf{F}(s)||_\infty = \mathrm{sup} {|\mathbf{F}(s)|: \mathrm{Re}(s)>0}
+
+        The subset of the Hardy space that consists of all the real-rational functions (i.e. functions with real
+        coefficients is denoted by :math:`\mathbb{R}H_\infty`. Therefore, :math:`\mathbf{F}(s)\in\mathbb{R}H_\infty` if
+        it is proper (bounded, ||\mathbf{F}(s)||_\infty exists), stable (no poles in the closed right half-plane,
+        :math:`\mathrm{Re}(s)\ge 0` and has real-valued coefficients.
 
     Args:
         ss (sharpy.linear.src.libss.ss): Continuous time linear system.
+        return_m (bool (optional)): In addition to :math:`\mathbf{N}(s)` and :math:`\mathbf{M}^{-1}(s)`, also return
+          :math:`\mathbf{M}(s)`.
 
     Returns:
-        tuple: Tuple of linear systems :math:`(\mathbf{N}(s), \mathbf{M}^{-1}(s))`.
+        tuple: Tuple of linear systems :math:`(\mathbf{N}(s), \mathbf{M}^{-1}(s))`. If ``return_m==True`` then the
+          system for :math:`\mathbf{M}(s)` is appended to the tuple.
 
     References:
         Feyel, P.. Robust Control Optimization with Metaheuristics. Wiley 2017. pg 355, Appendix A.
@@ -304,11 +323,14 @@ def right_coprime_factorisation(ss):
     sroot_inv = sclalg.inv(s_root_r)  # S^{-1/2}
 
     n = libss.ss(a + b.dot(f), b.dot(sroot_inv), c + d.dot(f), d.dot(sroot_inv), dt=None)
-    # m = libss.ss(a + b.dot(f), b.dot(sroot_inv), f, sroot_inv)
+    m = libss.ss(a + b.dot(f), b.dot(sroot_inv), f, sroot_inv, dt=None)
 
     minv = libss.ss(a, -b, s_root_r.dot(f), s_root_r, dt=None)  # M^{-1}
 
-    return n, minv
+    if return_m:
+        return n, minv, m
+    else:
+        return n, minv
 
 
 if __name__ == '__main__':
@@ -321,7 +343,7 @@ if __name__ == '__main__':
             self.ss = libss.random_ss(10, 4, 3, dt=None)
 
         def test_coprime(self):
-            n, minv = right_coprime_factorisation(self.ss)
+            n, minv, m = right_coprime_factorisation(self.ss, return_m=True)
 
             wv = np.logspace(-1, 4, 50)
             h = self.ss.freqresp(wv)
@@ -340,11 +362,22 @@ if __name__ == '__main__':
 
             # print('Rel err %f' % freqresp_relative_error(h, h_bar, wv))
 
+
+            # tf_minv = minv.freqresp(wv)
+            # tf_m = m.freqresp(wv)
+            #
+            # h_bar2 = np.zeros((4, 4, len(wv)), dtype=complex)  # this is n^H.dot(n) + m^H.dot(m) = I
+            #
+            # for i in range(len(wv)):
+            #     h_bar[:, :, i] = tf_n[:, :, i].dot(tf_minv[:, :, i])
+            #     h_bar2[:, :, i] = np.conj(tf_n[:, :, i]).T.dot(tf_n[:, :, i]) + np.conj(tf_m[:, :, i]).T.dot(tf_m[:, :, i])
+            #
             # import matplotlib.pyplot as plt
             # plt.semilogx(wv, h[0, 0, :].real, color='tab:blue', marker='x')
             # plt.semilogx(wv, h_bar[0, 0, :].real, color='tab:orange', marker='+')
+            # plt.semilogx(wv, h_bar2[0, 0, :].real, color='tab:red', marker='+')
             # plt.semilogx(wv, h[0, 0, :].imag, ls='--', color='tab:blue', marker='x')
-            # plt.semilogx(wv, h_bar[0, 0, :].imag, ls='--', color='tab:orange', marker='+')
+            # plt.semilogx(wv, h_bar2[0, 0, :].imag, ls='--', color='tab:green', marker='+')
             # plt.show()
             # <<<<<<<<<<<<
 
