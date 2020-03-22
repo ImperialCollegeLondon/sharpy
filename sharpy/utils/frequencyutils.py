@@ -276,7 +276,7 @@ def right_coprime_factorisation(ss, return_m=False):
     Notes:
 
         The Hardy space, :math:`H_\infty` consists of all complex-valued functions of a complex variable
-        :math:`\mathbf{F}(s)` which are analytic and bounded in the open right half-plane $\mathrm{Re(s)}>0$.
+        :math:`\mathbf{F}(s)` which are analytic and bounded in the open right half-plane :math:`\mathrm{Re(s)}>0`.
         By bounded, there exists a limit :math:`b` such that
 
         .. math:: |\mathbf{F}(s)| \le b, \mathrm{Re}(s)>0
@@ -287,7 +287,7 @@ def right_coprime_factorisation(ss, return_m=False):
 
         The subset of the Hardy space that consists of all the real-rational functions (i.e. functions with real
         coefficients is denoted by :math:`\mathbb{R}H_\infty`. Therefore, :math:`\mathbf{F}(s)\in\mathbb{R}H_\infty` if
-        it is proper (bounded, ||\mathbf{F}(s)||_\infty exists), stable (no poles in the closed right half-plane,
+        it is proper (bounded, :math:`||\mathbf{F}(s)||_\infty` exists), stable (no poles in the closed right half-plane,
         :math:`\mathrm{Re}(s)\ge 0` and has real-valued coefficients.
 
     Args:
