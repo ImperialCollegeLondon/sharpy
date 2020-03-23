@@ -283,7 +283,10 @@ class ParametricModelInterpolation(BaseSolver):
             interpolated_roms.load_previous_cases(self.data.settings['SHARPy']['log_folder'] + './pmor_summary.txt')
 
         input_list = [case for case in self.input_cases if case not in interpolated_roms.parameter_list]
-        for case in input_list:
+        for case_number, case in enumerate(input_list):
+
+            cout.cout_wrap('Interpolating...')
+            cout.cout_wrap('\tCase: %g of %g' % (case_number, len(input_list)), 1)
             weights = self.interpolate(case,
                                        method=self.settings['interpolation_scheme'],
                                        interpolation_parameter=0)
