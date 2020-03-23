@@ -258,15 +258,13 @@ class FrequencyResponse(solver_interface.BaseSolver):
             outfile.write('If the system has not been scaled, the units of frequency are rad/s\nThe frequency' \
                           'response is given in complex form.')
 
-        out_folder = self.folder
         case_name = ''
         if system_name is not None:
-            out_folder += '/' + system_name
             case_name += system_name + '.'
 
         p, m, _ = Yfreq.shape
 
-        h5filename = out_folder + '/' + case_name + 'freqresp.h5'
+        h5filename = self.folder + '/' + case_name + 'freqresp.h5'
         with h5.File(h5filename, 'w') as f:
             f.create_dataset('frequency', data=wv)
             f.create_dataset('response', data=Yfreq, dtype=complex)

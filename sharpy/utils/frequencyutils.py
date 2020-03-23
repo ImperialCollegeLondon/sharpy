@@ -165,7 +165,7 @@ def l2norm(y_freq, wv, **kwargs):
     r"""
     Computes the L-2 norm of a complex valued function.
 
-    .. math:: \mathcal{L}_2 = \left(\int_{-\infty}^\infty ||\mathbf{F}(i\omega)||_{F2}\,d\omega\right)^{0.5}
+    .. math:: \mathcal{L}_2 = \left(\int_{-\infty}^\infty ||\mathbf{F}(i\omega)||^2_{F2}\,d\omega\right)^{0.5}
 
     where :math:`||\mathbf{F}(i\omega)||_{F2}` refers to teh Frobenius norm calculated by
     :func:`sharpy.utils.frequencyutils.frobenius_norm`.
@@ -195,7 +195,7 @@ def l2norm(y_freq, wv, **kwargs):
     h2 = np.zeros(len(freq_range))  # frobenius norm at each frequency
 
     for i in range(len(freq_range)):
-        h2[i] = frobenius_norm(y_freq[:, :, i])
+        h2[i] = frobenius_norm(y_freq[:, :, i]) ** 2
     integral_h2 = np.sqrt(np.max(np.trapz(h2, freq_range)))
 
     return integral_h2
