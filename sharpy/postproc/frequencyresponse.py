@@ -141,8 +141,12 @@ class FrequencyResponse(solver_interface.BaseSolver):
 
     def run(self, ss=None):
         """
-        Get the frequency response of the linear state-space
-        Returns:
+        Computes the frequency response of the linear state-space.
+
+        Args:
+            ss (sharpy.linear.src.libss.ss (Optional)): State-space object for which to compute the frequency response.
+              If not given, the response for the previously assembled systems and specified in ``target_system`` will
+              be performed.
 
         """
 
@@ -164,7 +168,7 @@ class FrequencyResponse(solver_interface.BaseSolver):
                 except IndexError:
                     system_name = None
             else:
-                system = None
+                system_name = None  # For the case where the state-space is parsed in run().
 
             t0fom = time.time()
             y_freq_fom = system.freqresp(self.wv)
@@ -255,12 +259,14 @@ class FrequencyResponse(solver_interface.BaseSolver):
                           'response is given in complex form.')
 
         out_folder = self.folder
+        case_name = ''
         if system_name is not None:
             out_folder += '/' + system_name
+            case_name += system_name + '.'
 
         p, m, _ = Yfreq.shape
 
-        h5filename = out_folder + '.freqresp.h5'
+        h5filename = out_folder + '/' + case_name + 'freqresp.h5'
         with h5.File(h5filename, 'w') as f:
             f.create_dataset('frequency', data=wv)
             f.create_dataset('response', data=Yfreq, dtype=complex)
@@ -268,8 +274,8 @@ class FrequencyResponse(solver_interface.BaseSolver):
             f.create_dataset('outputs', data=p)
         cout.cout_wrap('Saved .h5 file to %s with frequency response data' % h5filename)
 
-    def quick_plot(self, Y_freq_fom=None, subfolder=None):
-        p, m, _ = Y_freq_fom.shape
+    def quick_plot(self, y_freq_fom=None, subfolder=None):
+        p, m, _ = y_freq_fom.shape
         try:
             cout.cout_wrap('\tCreating Quick plots of the frequency response', 1)
 
@@ -286,9 +292,9 @@ class FrequencyResponse(solver_interface.BaseSolver):
                     fig1, ax1 = plt.subplots(nrows=2)
                     fig_title = 'in%02g_out%02g' % (mj, pj)
                     ax1[0].set_title(fig_title)
-                    if Y_freq_fom is not None:
-                        ax1[0].plot(self.wv * self.w_to_k, 20 * np.log10(np.abs(Y_freq_fom[pj, mj, :])), color='C0')
-                        ax1[1].plot(self.wv * self.w_to_k, np.angle(Y_freq_fom[pj, mj, :]), '-', color='C0')
+                    if y_freq_fom is not None:
+                        ax1[0].plot(self.wv * self.w_to_k, 20 * np.log10(np.abs(y_freq_fom[pj, mj, :])), color='C0')
+                        ax1[1].plot(self.wv * self.w_to_k, np.angle(y_freq_fom[pj, mj, :]), '-', color='C0')
                     if self.settings['frequency_unit'] == 'k':
                         ax1[1].set_xlabel('Reduced Frequency, k [-]')
                     else:
