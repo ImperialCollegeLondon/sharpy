@@ -46,7 +46,7 @@ class LinAeroEla():
         SS (scipy.signal): state space formulation (discrete or continuous time), as selected by the user
     """
 
-    def __init__(self, data, custom_settings_linear=None, uvlm_block=False):
+    def __init__(self, data, custom_settings_linear=None, uvlm_block=False, chosen_ts=None):
 
         self.data = data
         if custom_settings_linear is None:
@@ -57,6 +57,11 @@ class LinAeroEla():
         sharpy.utils.settings.to_custom_types(settings_here,
                                               linuvlm.settings_types_dynamic,
                                               linuvlm.settings_default_dynamic)
+
+        if chosen_ts is None:
+            self.chosen_ts = self.data.ts
+        else:
+            self.chosen_ts = chosen_ts
 
         ## TEMPORARY - NEED TO INCLUDE PROPER INTEGRATION OF SETTINGS
         try:
@@ -81,10 +86,10 @@ class LinAeroEla():
         ### reference to timestep_info
         # aero
         aero = data.aero
-        self.tsaero = aero.timestep_info[data.ts]
+        self.tsaero = aero.timestep_info[self.chosen_ts]
         # structure
         structure = data.structure
-        self.tsstr = structure.timestep_info[data.ts]
+        self.tsstr = structure.timestep_info[self.chosen_ts]
 
         # --- backward compatibility
         try:
@@ -149,7 +154,7 @@ class LinAeroEla():
         """ Reshape structural input in a column vector """
 
         structure = self.data.structure  # self.data.aero.beam
-        tsdata = structure.timestep_info[self.data.ts]
+        tsdata = structure.timestep_info[self.chosen_ts]
 
         self.q = np.zeros(self.num_dof_str)
         self.dq = np.zeros(self.num_dof_str)
