@@ -7,6 +7,8 @@ import configobj
 import sharpy.utils.cout_utils as coututils
 import os
 import numpy as np
+import sharpy.linear.src.libss as libss
+import scipy.linalg as sclalg
 
 coututils.start_writer()
 coututils.cout_wrap.cout_talk()
@@ -238,6 +240,10 @@ class ROMLibrary:
                 ss_list.append(rom.linear.ss)
                 vv_list.append(vv)
                 wwt_list.append(wwt)
+
+        elif target_system == 'structural':
+            raise NotImplementedError
+
         else:
             raise NameError('Unrecognised system on which to perform interpolation')
 
@@ -284,6 +290,17 @@ class ROMLibrary:
             user_input = -1
         return user_input
 
+    def retrieve_fom(self, rom_index):
+        # TODO: search for FOM other than in the Krylov case...
+        ss_fom_aero = self.data_library[rom_index].linear.linear_system.uvlm.rom['Krylov'].ss
+        ss_fom_beam = self.data_library[rom_index].linear.linear_system.beam.ss
+
+        Tas = np.eye(ss_fom_aero.inputs, ss_fom_beam.outputs)
+        Tsa = np.eye(ss_fom_beam.inputs, ss_fom_aero.outputs)
+
+        ss = libss.couple(ss_fom_aero, ss_fom_beam, Tas, Tsa)
+
+        return ss
 
 class InterpolatedROMLibrary:
     """

@@ -7,9 +7,6 @@ import sharpy.rom.utils.librom_interp as librominterp
 import numpy as np
 import itertools
 import sharpy.utils.cout_utils as cout
-import scipy.linalg as sclalg
-import yaml
-import sharpy.linear.src.libss as libss
 import shutil
 
 
@@ -182,12 +179,6 @@ class ParametricModelInterpolation(BaseSolver):
 
         self.pmor = None  # InterpROM
 
-        self.param_values = None
-        self.mapping = None
-        self.parameters = None
-        self.parameter_index = None
-        self.inverse_mapping = None
-
         self.data = None
         self.postprocessors = dict()
         self.postproc_output_folder = dict()
@@ -218,11 +209,6 @@ class ParametricModelInterpolation(BaseSolver):
         if self.settings['reference_case'] != -1 or self.rom_library.reference_case is None:
             self.rom_library.set_reference_case(self.settings['reference_case'])
 
-        if self.settings['print_info']:
-            cout.cout_wrap.cout_talk()
-        else:
-            cout.cout_wrap.cout_quiet()
-
         for postproc in self.settings['postprocessors']:
             self.postprocessors[postproc] = initialise_solver(postproc)
             self.postprocessors[postproc].initialise(self.data, self.settings['postprocessors_settings'][postproc])
@@ -238,6 +224,9 @@ class ParametricModelInterpolation(BaseSolver):
 
         # load the actual data pickles from the pointers in the library
         self.rom_library.load_data_from_library()
+
+        # Generate mappings for easier interpolation
+        self.rom_library.sort_grid()
 
         ss_list, vv_list, wwt_list = self.aeroelastic_bases()  # list of ss and reduced order bases
 
@@ -257,15 +246,13 @@ class ParametricModelInterpolation(BaseSolver):
                              method_proj=self.settings['projection_method'],
                              reference_case=self.rom_library.reference_case)
 
-        # Transform onto gen coordinates
-        self.pmor.project()
-
-        # Generate mappings for easier interpolation
-        self.sort_grid()
+        self.pmor = self.generate_pmor(target_system=self.settings['interpolation_system'],
+                                       interpolation_space=self.settings['interpolation_space'],
+                                       projection_method=self.settings['projection_method'])
 
         # Future: save for online use?
 
-        # load input cases
+        # load input cases from file
         self.input_cases = librominterp.load_parameter_cases(self.settings['input_file'])
 
     def run(self):
@@ -302,12 +289,12 @@ class ParametricModelInterpolation(BaseSolver):
 
     def interpolate(self, case, method, interpolation_parameter):
 
-        x_vec = self.param_values[interpolation_parameter]
-        x0 = case[self.parameters[interpolation_parameter]]
+        x_vec = self.rom_library.param_values[interpolation_parameter]
+        x0 = case[self.rom_library.parameters[interpolation_parameter]]
 
         if method == 'lagrange':
             weights = librominterp.lagrange_interpolation(x_vec, x0)
-            order = [i[0] for i in self.mapping]
+            order = [i[0] for i in self.rom_library.mapping]
             weights = [weights[i] for i in order]  # give weights in order in which state-spaces are stored.
 
         elif method == 'linear':
@@ -324,22 +311,22 @@ class ParametricModelInterpolation(BaseSolver):
         """
         weights = [0] * len(self.rom_library.data_library)
         # find lower limits
-        lower_limit = [np.searchsorted(self.param_values[self.parameter_index[parameter]],
-                                       case[parameter], side='right') - 1 for parameter in self.parameters]
-        upper_limit = [np.searchsorted(self.param_values[self.parameter_index[parameter]],
+        lower_limit = [np.searchsorted(self.rom_library.param_values[self.rom_library.parameter_index[parameter]],
+                                       case[parameter], side='right') - 1 for parameter in self.rom_library.parameters]
+        upper_limit = [np.searchsorted(self.rom_library.param_values[self.rom_library.parameter_index[parameter]],
                                        case[parameter],
-                                       side='left') for parameter in self.parameters]
+                                       side='left') for parameter in self.rom_library.parameters]
 
-        bin_table = itertools.product(*[[0, 1] for i in range(len(self.parameters))])  # this is a table of binary
-                                                                                       # combinations, i.e, if n = 2,
-                                                                                       # the result is a list with
-                                                                                       # [00, 01, 10, 11]
+        # this is a table of binary combinations, i.e, if n = 2, the result is a list with [00, 01, 10, 11]
+        bin_table = itertools.product(
+            *[[0, 1] for i in range(len(self.rom_library.parameters))])  # the ``i`` is not used on purpose
+
         for permutation in bin_table:
             current_interpolation_weight = []
-            for parameter in self.parameters:
-                param_index = self.parameter_index[parameter]
-                x_min = self.param_values[param_index][lower_limit[param_index]]
-                x_max = self.param_values[param_index][upper_limit[param_index]]
+            for parameter in self.rom_library.parameters:
+                param_index = self.rom_library.parameter_index[parameter]
+                x_min = self.rom_library.param_values[param_index][lower_limit[param_index]]
+                x_max = self.rom_library.param_values[param_index][upper_limit[param_index]]
 
                 try:
                     alpha = 1 - (case[parameter] - x_min) / (x_max - x_min)
@@ -356,7 +343,7 @@ class ParametricModelInterpolation(BaseSolver):
 
             actual_rom_index = [sum(x) for x in zip(permutation, lower_limit)]  # sum of permutation + lower index
             try:
-                real_rom_index = self.inverse_mapping[tuple(actual_rom_index)]
+                real_rom_index = self.rom_library.inverse_mapping[tuple(actual_rom_index)]
                 weights[real_rom_index] = np.prod(current_interpolation_weight)
             except IndexError:
                 pass  # no data available hence we don't interpolate
@@ -370,90 +357,26 @@ class ParametricModelInterpolation(BaseSolver):
             cout.cout_wrap('Warning: Extrapolating data - You are at the edge of your data set', 4)
         return weights
 
-    def sort_grid(self):
+    def generate_pmor(self, target_system, interpolation_space, projection_method):
+        ss_list, vv_list, wwt_list = self.rom_library.get_reduced_order_bases(target_system)
 
-        param_library = [case['parameters'] for case in self.rom_library.library]
-        parameters = list(param_library[0].keys())  # all should have the same parameters
-        param_values = [[case[param] for case in param_library] for param in parameters]
-
-        parameter_index = {parameter: ith for ith, parameter in enumerate(parameters)}
-
-        # sort parameters
-        [parameter_values.sort() for parameter_values in param_values]
-        parameter_values = [f7(item) for item in param_values]  # TODO: rename these variables
-
-        inverse_mapping = np.empty([len(parameter_values[n]) for n in range(len(parameters))], dtype=int)
-        mapping = []
-        i_case = 0
-        for case_parameters in param_library:
-            current_case_mapping = []
-            for ith, parameter in enumerate(parameters):
-                p_index = parameter_values[ith].index(case_parameters[parameter])
-                current_case_mapping.append(p_index)
-            mapping.append(current_case_mapping)
-            inverse_mapping[tuple(current_case_mapping)] = i_case
-            i_case += 1
-
-        self.parameters = parameters
-        self.param_values = parameter_values  # TODO: caution -- rename
-        self.mapping = mapping
-        self.parameter_index = parameter_index
-        self.inverse_mapping = inverse_mapping
-
-    def aeroelastic_bases(self):
-        """
-        Returns the bases and state spaces of the chosen systems.
-
-        To Do: find system regardless of MOR method
-
-        Returns:
-            tuple: list of state spaces, list of right ROBs and list of left ROBs
-        """
-        if self.settings['interpolation_system'] == 'uvlm':
-            ss_list = [rom.linear.linear_system.uvlm.ss for rom in self.rom_library.data_library]
-            vv_list = [rom.linear.linear_system.uvlm.rom['Krylov'].V for rom in self.rom_library.data_library]
-            wwt_list = [rom.linear.linear_system.uvlm.rom['Krylov'].W.T for rom in self.rom_library.data_library]
-        elif self.settings['interpolation_system'] == 'aeroelastic':
-            ss_list = []
-            vv_list = []
-            wwt_list = []
-            for rom in self.rom_library.data_library:
-                vv = sclalg.block_diag(rom.linear.linear_system.uvlm.rom['Krylov'].V,
-                                       np.eye(rom.linear.linear_system.beam.ss.states))
-                wwt = sclalg.block_diag(rom.linear.linear_system.uvlm.rom['Krylov'].W.T,
-                                        np.eye(rom.linear.linear_system.beam.ss.states))
-                ss_list.append(rom.linear.ss)
-                vv_list.append(vv)
-                wwt_list.append(wwt)
+        if interpolation_space == 'direct':
+            cout.cout_wrap('\tInterpolating Directly', 1)
+            pmor = sharpy.rom.interpolation.interpolationspaces.InterpROM()
+        elif interpolation_space == 'tangent':
+            cout.cout_wrap('\tInterpolating in the Tangent space', 1)
+            pmor = sharpy.rom.interpolation.interpolationspaces.TangentInterpolation()
+        elif interpolation_space == 'real':
+            cout.cout_wrap('\tInterpolating Real Matrices', 1)
+            pmor = sharpy.rom.interpolation.interpolationspaces.InterpolationRealMatrices()
         else:
-            raise NameError('Unrecognised system on which to perform interpolation')
+            raise NotImplementedError('Interpolation space %s is not recognised' % interpolation_space)
 
-        return ss_list, vv_list, wwt_list
+        pmor.initialise(ss_list, vv_list, wwt_list,
+                        method_proj=projection_method,
+                        reference_case=self.rom_library.reference_case)
 
-    def retrieve_fom(self, rom_index):
-        # Move to a dedicated solver for reduced order basis interpolation
-        ss_fom_aero = self.rom_library.data_library[rom_index].linear.linear_system.uvlm.rom['Krylov'].ss
-        ss_fom_beam = self.rom_library.data_library[rom_index].linear.linear_system.beam.ss
+        # Transform onto gen coordinates
+        pmor.project()
 
-        Tas = np.eye(ss_fom_aero.inputs, ss_fom_beam.outputs)
-        Tsa = np.eye(ss_fom_beam.inputs, ss_fom_aero.outputs)
-
-        ss = libss.couple(ss_fom_aero, ss_fom_beam, Tas, Tsa)
-
-        return ss
-
-
-# def find_nearest(array,value):
-#     idx = np.searchsorted(array, value, side="left")
-#     if idx > 0 and (idx == len(array) or math.fabs(value - array[idx-1]) < math.fabs(value - array[idx])):
-#         return array[idx-1]
-#     else:
-#         return array[idx]
-
-def f7(seq):
-    """
-    Adds single occurrences of an item in a list
-    """
-    seen = set()
-    seen_add = seen.add
-    return [x for x in seq if not (x in seen or seen_add(x))]
+        return pmor
