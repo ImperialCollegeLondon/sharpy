@@ -118,11 +118,6 @@ class AsymptoticStability(BaseSolver):
         if not os.path.exists(stability_folder_path):
             os.makedirs(stability_folder_path)
 
-        if self.settings['print_info']:
-            cout.cout_wrap.cout_talk()
-        else:
-            cout.cout_wrap.cout_quiet()
-
         try:
             self.frequency_cutoff = self.settings['frequency_cutoff']
         except AttributeError:
