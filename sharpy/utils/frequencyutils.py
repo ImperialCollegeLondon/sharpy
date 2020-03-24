@@ -158,7 +158,7 @@ def frobenius_norm(a):
 
     a_star = np.conj(a).T
 
-    return np.sqrt(np.trace(a_star.dot(a)))
+    return np.sqrt(np.trace(a_star.dot(a))).real
 
 
 def l2norm(y_freq, wv, **kwargs):
@@ -171,11 +171,12 @@ def l2norm(y_freq, wv, **kwargs):
     :func:`sharpy.utils.frequencyutils.frobenius_norm`.
 
     Args:
-        y_freq (np.ndarray): Complex valued function.
-        wv (np.ndarray): Frequency array.
+        y_freq (np.ndarray): Complex valued function of dimensions ``[outputs, inputs, num_freqs]`` or for a SISO
+          system or individual transfer function ``[num_freqs]``.
+        wv (np.ndarray): Frequency array of dimensions ``[num_freqs]``.
         **kwargs: Key word arguments for max and min frequencies. See below.
 
-    Keyword Args
+    Keyword Args:
         vmin (float): Lower bound value to find index in ``wv``.
         vmax (float): Upper bound value to find index in ``wv``.
 
@@ -187,6 +188,9 @@ def l2norm(y_freq, wv, **kwargs):
     """
 
     nwv = y_freq.shape[-1]
+
+    if len(y_freq.shape) == 1:  # case for a SISO system or an individual transfer function already chosen by the user.
+        y_freq.shape = (1, 1, nwv)
 
     assert nwv == len(wv), "Number of frequency evaluations different %g vs %g" % (nwv, len(wv))
 

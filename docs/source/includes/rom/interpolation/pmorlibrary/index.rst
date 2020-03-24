@@ -9,3 +9,4 @@ ROM Interpolation library interface
 
 	./InterpolatedROMLibrary
 	./ROMLibrary
+	./f7
