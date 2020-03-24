@@ -7,10 +7,66 @@ import sharpy.rom.interpolation.pmorlibrary as pmorlibrary
 import sharpy.rom.interpolation.interpolationspaces as interpolationspaces
 import sharpy.rom.utils.librom_interp as librominterp
 
+
 @rom_interface.rom
 class BasisInterpolation(rom_interface.BaseRom):
     """
-    Model Order Reduction by basis interpolation.
+    Model Order Reduction by basis interpolation [1].
+
+    This model order reduction method for the UVLM system is based on interpolating the reduced order bases generated
+    for some source cases and employing an interpolated version of these for the reduction of the given high fidelity
+    model.
+
+    The user specifies a ``cases_folder`` where the parametric source cases are stored. Reference
+    :class:`~sharpy.solvers.SaveParametricCase` to see how to properly save the source cases.
+
+    The interpolation of the basis requires of a reference set of bases, specified by the ``reference_case``. An optimal
+    choice for the reference is still an open problem [2].
+
+    Finally, the ``interpolation_parameter`` is parsed as a dictionary, where the key in the dictionary is the parameter
+    name, which has to be the same as that used to save the source parametric case.
+
+    The interpolation is performed for a single parameter using a Lagrange interpolation method.
+
+    Examples:
+
+        We desire to obtain reduced order bases at an interpolated point, where the parameter is the free stream
+        velocity. For the source cases, we include the :class:`~sharpy.solvers.SaveParametricCase` with the following
+        settings:
+
+        .. code-block::
+
+            settings = dict()
+            settings['SaveParametricCase'] = {'folder': '<path_to_source_output>',
+                                              'parameters': {
+                                                   'u_inf': 10}  # The name of the parameter is at the user's discretion
+                                               }
+
+
+        Once we have the set of source cases, we can run a new case where the reduced order bases are calculated by
+        interpolation. An example set of settings could be
+
+        .. code-block::
+
+            interpolation_settings = dict()
+            interpolation_settings['cases_folder'] = self.route_test_dir + '/source/output/'
+            interpolation_settings['reference_case'] = 0
+            interpolation_settings['interpolation_parameter']: {'u_inf': 15}  # The name must be the same as in the source
+
+            # These settings can now be used to define the ROM in the linear UVLM settings.
+
+            settings = dict()  # SHARPy case settings. Populate as desired
+            settings['LinearUVLM'] = {'rom_method': ['BasisInterpolation'],
+                                      'rom_method_settings': {'BasisInterpolation':interpolation_settings}}
+
+
+    References:
+
+        [1] Amsallem, D., & Farhat, C. (2008). Interpolation method for adapting reduced-order models and application
+        to aeroelasticity. AIAA Journal, 46(7), 1803–1813. https://doi.org/10.2514/1.35374
+
+        [2] Amsallem, D., & Farhat, C. (2011). An Online Method for interpolating linear parametric reduced order
+        models, 33(5), 2169–2198.
     """
     rom_id = 'BasisInterpolation'
 
@@ -30,9 +86,12 @@ class BasisInterpolation(rom_interface.BaseRom):
                                              'If the library has no set default, it will ' \
                                              'prompt the user.'
 
-    settings_types['input_file'] = 'str'
-    settings_default['input_file'] = None
-    settings_description['input_file'] = 'Path to YAML file containing the input cases.'
+    settings_types['interpolation_parameter'] = 'dict'
+    settings_default['interpolation_parameter'] = None
+    settings_description['interpolation_parameter'] = 'Dictionary containing the name of the interpolation parameter ' \
+                                                      'as key and the corresponding value to interpolate. Ensure the ' \
+                                                      'name of the parameter is the same as that used in the source ' \
+                                                      'case.'
 
     settings_table = settings.SettingsTable()
     __doc__ += settings_table.generate(settings_types, settings_default, settings_description, settings_options)
@@ -40,10 +99,10 @@ class BasisInterpolation(rom_interface.BaseRom):
     def __init__(self):
         self.settings = None
 
-        self.rom_library = None
-        self.pmor = None
+        self.rom_library = None  #: sharpy.rom.interpolation.pmorlibrary.ROMlibrary
+        self.pmor = None  #: sharpy.rom.interpolation.interpolationspaces.BasisInterpolation
 
-        self.input_cases = None
+        self.input_cases = None  #: dict where the key is the parameter name and value is the parameter value
 
     def initialise(self, in_settings):
 
@@ -64,19 +123,18 @@ class BasisInterpolation(rom_interface.BaseRom):
 
         self.pmor.create_tangent_space()
 
-        # Change this: input case can only be one (the one being run)
-        self.input_cases = librominterp.load_parameter_cases(self.settings['input_file'])
+        self.input_cases = self.settings['interpolation_parameter']
 
     def run(self, ss):
 
-        weights = self.interpolate(self.input_cases[0], 'lagrange', interpolation_parameter=0)
+        weights = self.interpolate(self.input_cases, 'lagrange', interpolation_parameter=0)
 
         return self.pmor.interpolate(weights, ss)
 
     def interpolate(self, case, method, interpolation_parameter):
 
         x_vec = self.rom_library.param_values[interpolation_parameter]
-        x0 = case[self.rom_library.parameters[interpolation_parameter]]
+        x0 = float(case[self.rom_library.parameters[interpolation_parameter]])
 
         if method == 'lagrange':
             weights = librominterp.lagrange_interpolation(x_vec, x0)
