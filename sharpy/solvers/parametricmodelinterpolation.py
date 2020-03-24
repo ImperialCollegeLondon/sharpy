@@ -241,13 +241,6 @@ class ParametricModelInterpolation(BaseSolver):
 
         ss_list, vv_list, wwt_list = self.aeroelastic_bases()  # list of ss and reduced order bases
 
-        ## >>> testing basis interpolation
-        #
-        # self.pmor = librominterp.BasisInterpolation(vv_list, wwt_list, ss_list, self.rom_library.reference_case)
-        # self.pmor.create_tangent_space()
-        #
-        ## <<< end of test - to be removed to a dedicated solver
-
         if self.settings['interpolation_space'] == 'direct':
             cout.cout_wrap('\tInterpolating Directly', 1)
             self.pmor = sharpy.rom.interpolation.interpolationspaces.InterpROM()
@@ -292,11 +285,6 @@ class ParametricModelInterpolation(BaseSolver):
                                        interpolation_parameter=0)
 
             interpolated_ss = self.pmor(weights)
-
-            # >>>> Basis Interpolation
-            # interpolated_ss = self.pmor.interpolate(weights, ss=self.retrieve_fom(self.rom_library.reference_case))
-            # interpolated_ss = self.pmor.interpolate(weights, ss=self.retrieve_fom(1))
-            # <<<< Basis Interpolation
 
             interpolated_roms.append(interpolated_ss, case)
 
