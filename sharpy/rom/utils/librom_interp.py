@@ -226,10 +226,13 @@ def load_parameter_cases(yaml_file_name):
     """
 
     Args:
-        yaml_file_name:
+        yaml_file_name (str): Path to YAML file containing input of parameters.
 
     Returns:
         list: List of dictionaries
     """
     # TODO: input validation
-    return yaml.load(open(yaml_file_name, 'r'), Loader=yaml.Loader)
+    with open(yaml_file_name, 'r') as yaml_file:
+        out_dict = yaml.load(yaml_file, Loader=yaml.Loader)
+        yaml_file.close()
+    return out_dict

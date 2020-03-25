@@ -228,24 +228,6 @@ class ParametricModelInterpolation(BaseSolver):
         # Generate mappings for easier interpolation
         self.rom_library.sort_grid()
 
-        ss_list, vv_list, wwt_list = self.aeroelastic_bases()  # list of ss and reduced order bases
-
-        if self.settings['interpolation_space'] == 'direct':
-            cout.cout_wrap('\tInterpolating Directly', 1)
-            self.pmor = sharpy.rom.interpolation.interpolationspaces.InterpROM()
-        elif self.settings['interpolation_space'] == 'tangent':
-            cout.cout_wrap('\tInterpolating in the Tangent space', 1)
-            self.pmor = sharpy.rom.interpolation.interpolationspaces.TangentInterpolation()
-        elif self.settings['interpolation_space'] == 'real':
-            cout.cout_wrap('\tInterpolating Real Matrices', 1)
-            self.pmor = sharpy.rom.interpolation.interpolationspaces.InterpolationRealMatrices()
-        else:
-            raise NotImplementedError('Interpolation space %s is not recognised' % self.settings['interpolation_space'])
-
-        self.pmor.initialise(ss_list, vv_list, wwt_list,
-                             method_proj=self.settings['projection_method'],
-                             reference_case=self.rom_library.reference_case)
-
         self.pmor = self.generate_pmor(target_system=self.settings['interpolation_system'],
                                        interpolation_space=self.settings['interpolation_space'],
                                        projection_method=self.settings['projection_method'])
@@ -266,7 +248,7 @@ class ParametricModelInterpolation(BaseSolver):
         for case_number, case in enumerate(input_list):
 
             cout.cout_wrap('Interpolating...')
-            cout.cout_wrap('\tCase: %g of %g' % (case_number, len(input_list)), 1)
+            cout.cout_wrap('\tCase: %g of %g' % (case_number + 1, len(input_list)), 1)
             weights = self.interpolate(case,
                                        method=self.settings['interpolation_scheme'],
                                        interpolation_parameter=0)

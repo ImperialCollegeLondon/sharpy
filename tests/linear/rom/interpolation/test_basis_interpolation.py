@@ -2,10 +2,12 @@ import numpy as np
 import unittest
 import os
 from tests.linear.rom.interpolation.generate_goland import generate_goland
+from tests.linear.rom.interpolation.generate_pmor import generate_pmor
 import h5py as h5
 import sharpy.utils.h5utils as h5utils
 import sharpy.utils.frequencyutils as frequencyutils
 import shutil
+import configobj
 
 
 class TestBasisInterpolation(unittest.TestCase):
@@ -53,8 +55,6 @@ class TestBasisInterpolation(unittest.TestCase):
                     'u_inf': u_inf}
             self.interpolated_cases[u_inf] = case
 
-    def test_frequency_response(self):
-
         for case in self.interpolated_cases.values():
             case['freqresp'] = self.load_freqresp(self.route_test_dir + '/interpolation/', case[case['u_inf']])
 
@@ -68,16 +68,65 @@ class TestBasisInterpolation(unittest.TestCase):
                                          verbose=True,
                                          err_msg='L2 norm of error system too large')
 
+    def test_pmor_interpolation(self):
+
+        if not os.path.isdir(self.route_test_dir + '/pmor'):
+            os.makedirs(self.route_test_dir + '/pmor')
+
+        # create input yaml file
+        with open(self.route_test_dir + '/pmor/pmor_input_file.yaml', 'w') as in_file:
+            for u_inf in self.u_inf_test_cases:
+                in_file.write('- u_inf: %f\n' % u_inf)
+            in_file.close()
+
+        pmor_case_name = generate_pmor(self.route_test_dir + '/source/output',
+                                        pmor_route=self.route_test_dir + '/pmor',
+                                       input_file=self.route_test_dir + '/pmor/pmor_input_file.yaml',
+                                       pmor_output=self.route_test_dir + '/pmor')
+        pmor_output_root = self.route_test_dir + '/output/' + pmor_case_name + '/pmor_summary.txt'
+        pmor_results = configobj.ConfigObj(pmor_output_root)
+
+        # import pdb; pdb.set_trace()
+
+        for case_number, case_name in enumerate(pmor_results):
+            pmor_results[case_name]['freqresp'] = self.load_pmor_freqresp(self.route_test_dir, pmor_case_name, case_number)
+
+            a_case = self.actual_cases[float(pmor_results[case_name]['u_inf'])]
+            y_error_system = pmor_results[case_name]['freqresp']['response'] - a_case['freqresp']['response']
+            l2_norm = frequencyutils.l2norm(y_error_system, a_case['freqresp']['frequency'])
+            np.testing.assert_array_less([l2_norm], [1e-3],
+                                         verbose=True,
+                                         err_msg='L2 norm of PMOR error system too large')
+
+            # >>>>>>>>>>>>>>>>>>>>>>>>useful debug
+            # import matplotlib.pyplot as plt
+            # plt.semilogx(a_case['freqresp']['frequency'], a_case['freqresp']['response'][0, 0, :])
+            # plt.semilogx(a_case['freqresp']['frequency'], pmor_results[case_name]['freqresp']['response'][0, 0, :], marker='+')
+            # plt.title(l2_norm)
+            # plt.show()
+            # <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
+
     @classmethod
     def tearDownClass(cls):
-        folders = ['interpolation', 'actual', 'source']
+        folders = ['interpolation', 'actual', 'source', 'pmor']
         for folder in folders:
             if os.path.isdir(cls.route_test_dir + '/' + folder):
                 shutil.rmtree(cls.route_test_dir + '/' + folder)
+        # os.remove(cls.route_test_dir + '/pmor_input_file.yaml')
 
     @staticmethod
     def load_freqresp(folder, case_name):
         filename = folder + '/output/' + case_name + '/frequencyresponse/aeroelastic.freqresp.h5'
+
+        with h5.File(filename, 'r') as freq_file_handle:
+            # store files in dictionary
+            freq_dict = h5utils.load_h5_in_dict(freq_file_handle)
+
+        return freq_dict
+
+    @staticmethod
+    def load_pmor_freqresp(folder, pmor_case_name, case_number):
+        filename = folder + '/output/' + pmor_case_name + '/frequencyresponse/param_case%02g' % case_number + '/freqresp.h5'
 
         with h5.File(filename, 'r') as freq_file_handle:
             # store files in dictionary
