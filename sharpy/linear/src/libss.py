@@ -504,8 +504,9 @@ def couple(ss01, ss02, K12, K21, out_sparse=False):
     Other inputs:
     - out_sparse: if True, the output system is stored as sparse (not recommended)
     """
-
-    assert np.abs(ss01.dt - ss02.dt) < 1e-10 * ss01.dt, 'Time-steps not matching!'
+    assert type(ss01.dt) is type(ss02.dt), 'ss01 and ss02 are not the same type. One is CT vs DT'
+    if ss01.dt:
+        assert np.abs(ss01.dt - ss02.dt) < 1e-10 * ss01.dt, 'Time-steps not matching!'
     assert K12.shape == (ss01.inputs, ss02.outputs), \
         'Gain K12 shape not matching with systems number of inputs/outputs'
     assert K21.shape == (ss02.inputs, ss01.outputs), \
