@@ -80,7 +80,7 @@ class TestBasisInterpolation(unittest.TestCase):
             in_file.close()
 
         pmor_case_name = generate_pmor(self.route_test_dir + '/source/output',
-                                        pmor_route=self.route_test_dir + '/pmor',
+                                       pmor_route=self.route_test_dir + '/pmor',
                                        input_file=self.route_test_dir + '/pmor/pmor_input_file.yaml',
                                        pmor_output=self.route_test_dir + '/pmor')
         pmor_output_root = self.route_test_dir + '/output/' + pmor_case_name + '/pmor_summary.txt'
@@ -89,7 +89,8 @@ class TestBasisInterpolation(unittest.TestCase):
         # import pdb; pdb.set_trace()
 
         for case_number, case_name in enumerate(pmor_results):
-            pmor_results[case_name]['freqresp'] = self.load_pmor_freqresp(self.route_test_dir, pmor_case_name, case_number)
+            pmor_results[case_name]['freqresp'] = self.load_pmor_freqresp(self.route_test_dir, pmor_case_name,
+                                                                          case_number)
 
             a_case = self.actual_cases[float(pmor_results[case_name]['u_inf'])]
             y_error_system = pmor_results[case_name]['freqresp']['response'] - a_case['freqresp']['response']
