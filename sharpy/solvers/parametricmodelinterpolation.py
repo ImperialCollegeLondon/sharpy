@@ -1,4 +1,3 @@
-import sharpy.rom.interpolation.interpolationspaces
 from sharpy.utils.solver_interface import solver, BaseSolver, initialise_solver
 import os
 import sharpy.utils.settings as settings
@@ -8,13 +7,16 @@ import numpy as np
 import itertools
 import sharpy.utils.cout_utils as cout
 import shutil
+import sharpy.rom.interpolation.interpolationsystem as interpolationsystem
 
 
 @solver
 class ParametricModelInterpolation(BaseSolver):
     """
     Warnings:
-        Under development
+        Under development.
+
+        Following the latest developments in the organisation of settings this documentation is outdated.
 
     This solver allows the user to obtain an interpolated reduced order model based on tabulated, stored
     SHARPy cases of the ``interpolation_system`` (``uvlm`` or ``aeroelastic``).
@@ -127,31 +129,65 @@ class ParametricModelInterpolation(BaseSolver):
                                              'If the library has no set default, it will ' \
                                              'prompt the user.'
 
+    settings_types['continuous_time'] = 'bool'
+    settings_default['continuous_time'] = False
+    settings_description['continuous_time'] = 'Convert systems to continuous time.'
+
     settings_types['interpolation_system'] = 'str'
     settings_default['interpolation_system'] = None
     settings_description['interpolation_system'] = 'System on which to perform the interpolation'
-    settings_options['interpolation_system'] = ['aeroelastic', 'uvlm']
+    settings_options['interpolation_system'] = ['aeroelastic', 'aerodynamic', 'structural']
 
-    settings_types['projection_method'] = 'str'
-    settings_default['projection_method'] = None
-    settings_description['projection_method'] = 'Projection method employed in the transformation of the ' \
-                                                'reduced bases to a set of generalised coordinates.'
-    settings_options['projection_method'] = ['leastsq',
-                                             'strongMAC',
-                                             'strongMAC_BT',
-                                             'maraniello_BT',
-                                             'weakMAC_right_orth',
-                                             'weakMAC',
-                                             'amsallem',
-                                             'panzer',
-                                             ]
+    settings_types['interpolation_settings'] = 'dict'
+    settings_default['interpolation_settings'] = dict()
+    settings_description['interpolation_settings'] = 'Settings with keys ``aerodynamic`` and/or ``structural``, ' \
+                                                     'depending on the choice for the ``interpolation_system``.'
 
-    settings_types['interpolation_space'] = 'str'
-    settings_default['interpolation_space'] = 'direct'
-    settings_description['interpolation_space'] = 'Perform a ``direct`` interpolation of the ROM matrices or perform ' \
-                                                  'the interpolation in the ``tangent`` manifold to the reference ' \
-                                                  'system.'
-    settings_options['interpolation_space'] = ['direct', 'tangent', 'real']
+    settings_types['independent_interpolation'] = 'bool'
+    settings_default['independent_interpolation'] = False
+    settings_description['independent_interpolation'] = 'Interpolate the aerodynamic and structural subsystems ' \
+                                                        'independently.'
+
+    interpolation_system_types = dict()
+    interpolation_system_default = dict()
+
+    interpolation_system_types['aerodynamic'] = 'dict'
+    interpolation_system_default['aerodynamic'] = None
+
+    interpolation_system_types['structural'] = 'dict'
+    interpolation_system_default['structural'] = None
+
+    interpolation_settings_types = dict()
+    interpolation_settings_default = dict()
+    interpolation_settings_description = dict()
+    interpolation_settings_options = dict()
+
+    interpolation_settings_types['projection_method'] = 'str'
+    interpolation_settings_default['projection_method'] = None
+    interpolation_settings_description['projection_method'] = 'Projection method employed in the transformation of the ' \
+                                                              'reduced bases to a set of generalised coordinates.'
+    interpolation_settings_options['projection_method'] = ['leastsq',
+                                                           'strongMAC',
+                                                           'strongMAC_BT',
+                                                           'maraniello_BT',
+                                                           'weakMAC_right_orth',
+                                                           'weakMAC',
+                                                           'amsallem',
+                                                           'panzer',
+                                                           ]
+
+    interpolation_settings_types['interpolation_space'] = 'str'
+    interpolation_settings_default['interpolation_space'] = 'direct'
+    interpolation_settings_description[
+        'interpolation_space'] = 'Perform a ``direct`` interpolation of the ROM matrices or perform ' \
+                                 'the interpolation in the ``tangent`` manifold to the reference ' \
+                                 'system.'
+    interpolation_settings_options['interpolation_space'] = ['direct', 'tangent', 'real', 'tangentspd']
+
+    # interpolation_settings_types['interpolation_scheme'] = 'str'
+    # interpolation_settings_default['interpolation_scheme'] = None
+    # interpolation_settings_description['interpolation_scheme'] = 'Desired interpolation scheme.'
+    # interpolation_settings_options['interpolation_scheme'] = ['linear', 'lagrange']
 
     settings_types['interpolation_scheme'] = 'str'
     settings_default['interpolation_scheme'] = None
@@ -172,8 +208,17 @@ class ParametricModelInterpolation(BaseSolver):
     settings_table = settings.SettingsTable()
     __doc__ += settings_table.generate(settings_types, settings_default, settings_description, settings_options)
 
+    interpolation_settings_table = settings.SettingsTable()
+    __doc__ += interpolation_settings_table.generate(interpolation_settings_types,
+                                                     interpolation_settings_default,
+                                                     interpolation_settings_description,
+                                                     interpolation_settings_options,
+                                                     header_line='Then acceptable interpolation settings for each '
+                                                                 'state-space are listed below:')
+
     def __init__(self):
         self.settings = None
+        self.interpolation_settings = None
 
         self.rom_library = None
 
@@ -192,6 +237,12 @@ class ParametricModelInterpolation(BaseSolver):
         self.settings = data.settings[self.solver_id]
         settings.to_custom_types(self.settings, self.settings_types, self.settings_default,
                                  self.settings_options, no_ctype=True)
+
+        self.interpolation_settings = self.settings['interpolation_settings']
+        for k in self.settings['interpolation_settings'].keys():
+            settings.to_custom_types(self.interpolation_settings[k], self.interpolation_settings_types,
+                                     self.interpolation_settings_default, self.interpolation_settings_options,
+                                     no_ctype=True)
 
         self.rom_library = pmorlibrary.ROMLibrary()
 
@@ -228,9 +279,20 @@ class ParametricModelInterpolation(BaseSolver):
         # Generate mappings for easier interpolation
         self.rom_library.sort_grid()
 
-        self.pmor = self.generate_pmor(target_system=self.settings['interpolation_system'],
-                                       interpolation_space=self.settings['interpolation_space'],
-                                       projection_method=self.settings['projection_method'])
+        # >>>>> Independent interpolation
+        if self.settings['interpolation_system'] == 'aeroelastic' and \
+                self.settings['independent_interpolation']:
+            self.pmor = interpolationsystem.CoupledPMOR(self.rom_library,
+                                                        interpolation_settings=self.interpolation_settings)
+        else:
+            target_system = self.settings['interpolation_system']
+            system_settings = self.interpolation_settings[target_system]
+            self.pmor = interpolationsystem.pmor_loader(self.rom_library,
+                                                        target_system=target_system,
+                                                        interpolation_space=system_settings['interpolation_space'],
+                                                        projection_method=system_settings['projection_method'])
+
+        # <<<<<<<<<<<<<<<<<<<<<<
 
         # Future: save for online use?
 
@@ -339,26 +401,3 @@ class ParametricModelInterpolation(BaseSolver):
             cout.cout_wrap('Warning: Extrapolating data - You are at the edge of your data set', 4)
         return weights
 
-    def generate_pmor(self, target_system, interpolation_space, projection_method):
-        ss_list, vv_list, wwt_list = self.rom_library.get_reduced_order_bases(target_system)
-
-        if interpolation_space == 'direct':
-            cout.cout_wrap('\tInterpolating Directly', 1)
-            pmor = sharpy.rom.interpolation.interpolationspaces.InterpROM()
-        elif interpolation_space == 'tangent':
-            cout.cout_wrap('\tInterpolating in the Tangent space', 1)
-            pmor = sharpy.rom.interpolation.interpolationspaces.TangentInterpolation()
-        elif interpolation_space == 'real':
-            cout.cout_wrap('\tInterpolating Real Matrices', 1)
-            pmor = sharpy.rom.interpolation.interpolationspaces.InterpolationRealMatrices()
-        else:
-            raise NotImplementedError('Interpolation space %s is not recognised' % interpolation_space)
-
-        pmor.initialise(ss_list, vv_list, wwt_list,
-                        method_proj=projection_method,
-                        reference_case=self.rom_library.reference_case)
-
-        # Transform onto gen coordinates
-        pmor.project()
-
-        return pmor

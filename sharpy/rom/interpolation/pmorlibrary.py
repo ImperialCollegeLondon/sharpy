@@ -223,7 +223,7 @@ class ROMLibrary:
 
         assert self.data_library is not None, 'ROM Library is empty. Load the data first.'
 
-        if target_system == 'uvlm':
+        if target_system == 'aerodynamic':
             ss_list = [rom.linear.linear_system.uvlm.ss for rom in self.data_library]
             vv_list = [rom.linear.linear_system.uvlm.rom['Krylov'].V for rom in self.data_library]
             wwt_list = [rom.linear.linear_system.uvlm.rom['Krylov'].W.T for rom in self.data_library]
@@ -234,9 +234,11 @@ class ROMLibrary:
             wwt_list = []
             for rom in self.data_library:
                 vv = sclalg.block_diag(rom.linear.linear_system.uvlm.rom['Krylov'].V,
-                                       np.eye(rom.linear.linear_system.beam.ss.states))
+                                       sclalg.block_diag(rom.linear.linear_system.beam.sys.U,
+                                                         rom.linear.linear_system.beam.sys.U))
                 wwt = sclalg.block_diag(rom.linear.linear_system.uvlm.rom['Krylov'].W.T,
-                                        np.eye(rom.linear.linear_system.beam.ss.states))
+                                        sclalg.block_diag(rom.linear.linear_system.beam.sys.U.T,
+                                                          rom.linear.linear_system.beam.sys.U.T))
                 ss_list.append(rom.linear.ss)
                 vv_list.append(vv)
                 wwt_list.append(wwt)
@@ -302,6 +304,7 @@ class ROMLibrary:
 
         return ss
 
+
 class InterpolatedROMLibrary:
     """
     Library of interpolated ROMs for storage in PreSHARPy object
@@ -356,6 +359,7 @@ class InterpolatedROMLibrary:
     @property
     def case_number(self):
         return len(self.parameter_list)
+
 
 def f7(seq):
     """
