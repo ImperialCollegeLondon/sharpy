@@ -1,6 +1,7 @@
 import configobj
 import sharpy.sharpy_main
 
+
 def generate_pmor(source_path, pmor_route, input_file, pmor_output):
     settings = dict()
     case_name = 'goland_ct_pmor'
@@ -17,17 +18,18 @@ def generate_pmor(source_path, pmor_route, input_file, pmor_output):
                                                 'interpolation_system': 'aeroelastic',
                                                 'input_file': input_file,
                                                 'cleanup_previous_cases': 'on',
-                                                'projection_method': 'weakMAC',
-                                                'interpolation_space': 'direct',
+                                                'interpolation_settings': {'aeroelastic': {
+                                                    'projection_method': 'weakMAC',
+                                                    'interpolation_space': 'direct'}},
                                                 'interpolation_scheme': 'lagrange',
                                                 'postprocessors': ['FrequencyResponse'],
-                                                'postprocessors_settings': {'FrequencyResponse': {'frequency_bounds': [10,
-                                                                                                                       200],
-                                                                                                  'num_freqs': 200,
-                                                                                                  'folder': pmor_output
-                                                                                                  }
-                                                                            }}
-
+                                                'postprocessors_settings': {
+                                                    'FrequencyResponse': {'frequency_bounds': [10,
+                                                                                               200],
+                                                                          'num_freqs': 200,
+                                                                          'folder': pmor_output
+                                                                          }
+                                                    }}
 
     config = configobj.ConfigObj()
     file_name = pmor_route + '/pmor.sharpy'

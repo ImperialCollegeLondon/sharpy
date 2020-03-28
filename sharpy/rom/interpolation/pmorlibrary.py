@@ -247,7 +247,7 @@ class ROMLibrary:
             raise NotImplementedError
 
         else:
-            raise NameError('Unrecognised system on which to perform interpolation')
+            raise NameError('Unrecognised %s system on which to perform interpolation' % target_system)
 
         return ss_list, vv_list, wwt_list
 
