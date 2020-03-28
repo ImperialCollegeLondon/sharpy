@@ -5,6 +5,7 @@ from scipy import linalg as sclalg
 
 from sharpy.linear.src import libss as libss
 from sharpy.utils import algebra as algebra
+import sharpy.rom.interpolation.projectionmethods as projectionmethods
 
 
 class InterpROM:
@@ -30,46 +31,18 @@ class InterpROM:
     projected matrices into the self.AA, self.BB, self.CC lists
 
 
-    Inputs:
+    Attributes:
+        ss_list (list): list of state-space models (instances of libss.ss class)
+        VV (list): list of V matrices used to produce SS. If None, it is assumed that
+          ROMs are defined over the same basis
+        WWT (list): list of W^T matrices used to derive the ROMs.
+        Vref (np.ndarray): reference subspaces for projection. Some methods neglect this
+          input (e.g. panzer)
+        WTref (np.ndarray): reference subspaces for projection. Some methods neglect this
+          input (e.g. panzer)
+        method_proj (str): method for projection of state-space models over common
+          coordinates. Available options are listed in :mod:`~sharpy.linear.rom.interpolation.projectionspaces`.
 
-    - SS: list of state-space models (instances of libss.ss class)
-
-    - VV: list of V matrices used to produce SS. If None, it is assumed that
-      ROMs are defined over the same basis
-
-    - WWT: list of W^T matrices used to derive the ROMs.
-
-    - Vref, WTref: reference subspaces for projection. Some methods neglect this
-      input (e.g. panzer)
-
-    - method_proj: method for projection of state-space models over common
-      coordinates. Available options are:
-
-        - leastsq: find left/right projectors using least squares approx. Suitable
-          for all basis.
-
-        - strongMAC: strong Modal Assurance Criterion [4] enforcement for general
-          basis. See Ref. [3], Eq. (7)
-
-        - strongMAC_BT: strong Modal Assurance Criterion [4] enforcement for
-          basis obtained by Balanced Truncation. Equivalent to strongMAC
-
-        - maraniello_BT: this is equivalent to strongMAC and strongMAC_BT but
-          avoids inversions. However, performance are the same as other strongMAC
-          approaches - it works only when basis map the same subspaces
-
-        - weakMAC_right_orth: weak MAC enforcement [1,3] for state-space models
-          with right orthonoraml basis, i.e. V.T V = I. This is like Ref. [1], but
-          implemented only on one side.
-
-        - weakMAC: implementation of weak MAC enforcement for a general system.
-          The method orthonormalises the right basis (V) and then solves the
-          orthogonal Procrustes problem.
-
-        - for orthonormal basis (V.T V = I): !!! These methods are not tested !!!
-
-            - panzer: produces a new reference point based on svd [2]
-            - amsallem: project over Vref,WTref [1]
 
     References:
 
@@ -108,16 +81,23 @@ class InterpROM:
         self.CC = None
         self.DD = None
 
+        self.QQ = None     #: list: Transformation matrices to generalised coordinates
+        self.QQinv = None  #: list: Transformation matrices to generalised coordinates
+
     def initialise(self,
-                 ss_list,
-                 vv_list=None,
-                 wwt_list=None,
-                 method_proj=None,
-                 reference_case=0):
+                   ss_list,
+                   vv_list=None,
+                   wwt_list=None,
+                   method_proj=None,
+                   reference_case=0,
+                   use_ct=True):
 
         self.ss_list = ss_list
 
         self.check_discrete_timestep()
+
+        if use_ct:
+            self.convert_disc2cont()
 
         self.VV = vv_list
         self.WWT = wwt_list
@@ -153,18 +133,25 @@ class InterpROM:
 
     def check_discrete_timestep(self):
         """
-        Checks that the systems have the same timestep. If they don't, it converts them to continuous time using
-        :func:`sharpy.linear.src.libss.disc2cont()`.
+        Checks that the systems have the same timestep. If they don't, it converts them to continuous time.
         """
         mismatch_dt = False
         for ss in self.ss_list:
+            if ss.dt is None:
+                break
             if ss.dt != self.ss_list[0].dt:
                 mismatch_dt = True
                 break
 
         if mismatch_dt:
+            self.convert_disc2cont()
+
+    def convert_disc2cont(self):
             for i, ss in enumerate(self.ss_list):
-                self.ss_list[i] = libss.disc2cont(ss)
+                if ss.dt is not None:
+                    self.ss_list[i] = libss.disc2cont(ss)
+                else:
+                    pass
 
     def __call__(self, wv):
         """
@@ -200,127 +187,11 @@ class InterpROM:
         self.QQ = []
         self.QQinv = []
 
-        if self.method_proj == 'amsallem':
-            warnings.warn('Method untested!')
-
-            for ii in range(len(self.ss_list)):
-                U, sv, Z = sclalg.svd(np.dot(self.VV[ii].T, self.Vref),
-                                      full_matrices=False,
-                                      overwrite_a=False,
-                                      lapack_driver='gesdd')
-                Q = np.dot(U, Z.T)
-                U, sv, Z = sclalg.svd(np.dot(self.WWT[ii], self.WTref.T),
-                                      full_matrices=False, overwrite_a=False,
-                                      lapack_driver='gesdd')
-                Qinv = np.dot(U, Z.T).T
-                # Qinv = sclalg.inv(Q)
-                self.QQ.append(Q)
-                self.QQinv.append(Qinv)
-
-        elif self.method_proj == 'panzer':
-            warnings.warn('Method untested!')
-
-            # generate basis
-            U, sv = sclalg.svd(np.concatenate(self.VV, axis=1),
-                               full_matrices=False, overwrite_a=False,
-                               lapack_driver='gesdd')[:2]
-            # chop U
-            U = U[:, :self.ss_list[0].states]
-            for ii in range(len(self.ss_list)):
-                Qinv = np.linalg.inv(np.dot(self.WWT[ii], U))
-                Q = np.linalg.inv(np.dot(self.VV[ii].T, U))
-                self.QQ.append(Q)
-                self.QQinv.append(Qinv)
-
-        elif self.method_proj == 'leastsq':
-
-            for ii in range(len(self.ss_list)):
-                Q, _, _, _ = sclalg.lstsq(self.VV[ii], self.Vref)
-                print('det(Q): %.3e\tcond(Q): %.3e' \
-                      % (np.linalg.det(Q), np.linalg.cond(Q)))
-                # if cond(Q) is small...
-                # Qinv = np.linalg.inv(Q)
-                P, _, _, _ = sclalg.lstsq(self.WWT[ii].T, self.WTref.T)
-                self.QQ.append(Q)
-                self.QQinv.append(P.T)
-
-        elif self.method_proj == 'strongMAC':
-            """
-            Strong MAC enforcements as per Ref.[4]
-            """
-
-            VTVref = np.dot(self.Vref.T, self.Vref)
-            for ii in range(len(self.ss_list)):
-                Q = np.linalg.solve(np.dot(self.Vref.T, self.VV[ii]), VTVref)
-                Qinv = np.linalg.inv(Q)
-                print('det(Q): %.3e\tcond(Q): %.3e' \
-                      % (np.linalg.det(Q), np.linalg.cond(Q)))
-                self.QQ.append(Q)
-                self.QQinv.append(Qinv)
-
-        elif self.method_proj == 'strongMAC_BT':
-            """
-            This is equivalent to Mahony 2004, Eq. 7, for the case of basis
-            obtained by balancing. In general, it will fail if VV[ii] and Vref
-            do not describe the same subspace
-            """
-
-            for ii in range(len(self.ss_list)):
-                Q = np.linalg.inv(np.dot(self.WTref, self.VV[ii]))
-                Qinv = np.dot(self.WTref, self.VV[ii])
-                print('det(Q): %.3e\tcond(Q): %.3e' \
-                      % (np.linalg.det(Q), np.linalg.cond(Q)))
-                self.QQ.append(Q)
-                self.QQinv.append(Qinv)
-
-        elif self.method_proj == 'maraniello_BT':
-            """
-            Projection over ii. This is a sort of weak enforcement
-            """
-
-            for ii in range(len(self.ss_list)):
-                Q = np.dot(self.WWT[ii], self.Vref)
-                Qinv = np.dot(self.WTref, self.VV[ii])
-                print('det(Q): %.3e\tcond(Q): %.3e' \
-                      % (np.linalg.det(Q), np.linalg.cond(Q)))
-                self.QQ.append(Q)
-                self.QQinv.append(Qinv)
-
-        elif self.method_proj == 'weakMAC_right_orth':
-            """
-            This is like Amsallem, but only for state-space models with right
-            orthogonal basis
-            """
-
-            for ii in range(len(self.ss_list)):
-                Q, sc = sclalg.orthogonal_procrustes(self.VV[ii], self.Vref)
-                Qinv = Q.T
-                print('det(Q): %.3e\tcond(Q): %.3e' \
-                      % (np.linalg.det(Q), np.linalg.cond(Q)))
-                self.QQ.append(Q)
-                self.QQinv.append(Qinv)
-
-        elif self.method_proj == 'weakMAC':
-            """
-            WeakMAC enforcement on the right hand side basis, V
-            """
-
-            # svd of reference
-            Uref, svref, Zhref = sclalg.svd(self.Vref, full_matrices=False)
-
-            for ii in range(len(self.ss_list)):
-                # svd of basis
-                Uhere, svhere, Zhhere = sclalg.svd(self.VV[ii], full_matrices=False)
-
-                R, sc = sclalg.orthogonal_procrustes(Uhere, Uref)
-                Q = np.dot(np.dot(Zhhere.T, np.diag(svhere ** (-1))), R)
-                Qinv = np.dot(R.T, np.dot(np.diag(svhere), Zhhere))
-                print('det(Q): %.3e\tcond(Q): %.3e' \
-                      % (np.linalg.det(Q), np.linalg.cond(Q)))
-                self.QQ.append(Q)
-                self.QQinv.append(Qinv)
-
-        else:
+        try:
+            self.QQ, self.QQinv = getattr(projectionmethods, self.method_proj)(self.VV, self.WWT,
+                                                                               vref=self.Vref,
+                                                                               wtref=self.WTref)
+        except AttributeError:
             raise NameError('Projection method %s not implemented!' % self.method_proj)
 
         ### Project
@@ -512,6 +383,89 @@ class TangentInterpolation(InterpROM):
             # amsallem 2008
             # u, s, z = sclalg.svd(matrix, full_matrices=False)
             # return matrix.dot(z.dot(np.diag(np.cos(s)))) + u.dot(np.diag(np.sin(s)))
+
+
+class TangentSPDInterpolation(TangentInterpolation):
+    """
+    Tangent interpolation for semi positive definite (SPD) matrices.
+
+    References:
+        [1] D. Amsallem and C. Farhat, An online method for interpolating linear
+        parametric reduced-order models, SIAM J. Sci. Comput., 33 (2011), pp. 2169–2198.
+    """
+
+    @staticmethod
+    def to_tangent_manifold(matrix, ref_matrix):
+        r"""
+        Based on Table 4.1 in Amsallem and Farhat [1] performs the mapping onto the tangent manifold:
+
+        .. math:: \mathrm{Log}_\mathbf{X}(\mathbf{Y}) = \boldsymbol{\Gamma}
+
+        If the matrices are square, this is calculated as:
+
+        .. math:: \boldsymbol{\Gamma} = \log(\mathbf{X}^{-1/2}\mathbf{Y}\mathbf{X}^{-1/2})
+
+        Else:
+
+        .. math:: \boldsymbol{\Gamma} = \mathbf{Y} - \mathbf{X}
+
+        Args:
+            matrix (np.ndarray): Matrix to map, :math:`\mathbf{Y}`.
+            ref_matrix: (np.ndarray): Reference matrix, :math:`\mathbf{X}`.
+
+        Returns:
+            (np.ndarray): matrix in the tangent manifold, :math:`\boldsymbol{\Gamma}`.
+        """
+        m, n = matrix.shape
+
+        if m != n:
+            return matrix - ref_matrix
+        else:
+            ref_matrix_sqrt = sclalg.cholesky(ref_matrix, lower=False)
+
+            inv_ref_matrix_sqrt = sclalg.inv(ref_matrix_sqrt)
+
+            return sclalg.logm(inv_ref_matrix_sqrt.dot(matrix.dot(inv_ref_matrix_sqrt)))
+
+    @staticmethod
+    def from_tangent_manifold(matrix, ref_matrix):
+        r"""
+        Based on Table 4.1 from Amsallem and Farhat [1], returns a matrix from the tangent manifold using
+        an exponential mapping for semi positive definite matrices.
+
+        .. math:: \mathrm{Exp}_\mathbf{X}(\boldsymbol{\Gamma}) = \mathbf{Y}
+
+        Args:
+            matrix: equivalent to gamma
+            ref_matrix: reference matrix
+
+        If the matrices are square, this is calculated as:
+
+        .. math:: \mathbf{Y} = \mathbf{X}^{1/2}\exp(\boldsymbol{\Gamma})\mathbf{X}^{1/2}
+
+        Else:
+
+        .. math:: \mathbf{Y} = \mathbf{X} + \boldsymbol{\Gamma}
+
+        Args:
+            matrix (np.ndarray): Matrix in the tangent manifold, :math:`\boldsymbol{\Gamma}`.
+            ref_matrix: (np.ndarray): Reference matrix, :math:`\mathbf{X}`.
+
+        Returns:
+            (np.ndarray): matrix in the original manifold, :math:`\mathbf{Y}`.
+
+        """
+        m, n = matrix.shape
+        mref, nref = ref_matrix.shape
+
+        assert (m, n) == (mref, nref), 'Matrix and ref matrix not equal size'
+
+        if m != n:
+            return matrix + ref_matrix
+        else:
+            ref_matrix_sqrt = sclalg.cholesky(ref_matrix, lower=False)
+
+            return ref_matrix_sqrt.dot(sclalg.expm(matrix).dot(ref_matrix_sqrt))
 
 
 class InterpolationRealMatrices(TangentInterpolation):
