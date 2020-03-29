@@ -211,7 +211,7 @@ class ROMLibrary:
                 case_data = pickle.load(f)
             self.data_library.append(case_data)
 
-    def get_reduced_order_bases(self, target_system):
+    def get_reduced_order_bases(self, target_system, structural_spd_interpolation=False):
         """
         Returns the bases and state spaces of the chosen systems.
 
@@ -244,7 +244,30 @@ class ROMLibrary:
                 wwt_list.append(wwt)
 
         elif target_system == 'structural':
-            raise NotImplementedError
+            if structural_spd_interpolation:
+                # Assembly of the system in second order form (i.e. M, C, K matrices)
+                pmor_list = []
+                for rom in self.data_library:
+                    m = rom.linear.linear_system.beam.sys.Mstr
+                    c = rom.linear.linear_system.beam.sys.Cstr
+                    k = rom.linear.linear_system.beam.sys.Kstr
+                    phi = rom.linear.linear_system.beam.sys.U
+                    # import pdb; pdb.set_trace()
+                    # ss_list.append(rom.linear.linear_system.beam.sys.build_first_order_ct(m, k, c, phi))
+
+                    from sharpy.rom.interpolation.interpolationsystem import StructuralPMOR
+                    pmor_list.append(StructuralPMOR(m, c, k,
+                                                    bu=np.eye(m.shape[0]),
+                                                    cy=np.eye(m.shape[0]),
+                                                    phi=phi))
+                return pmor_list
+            else:
+                ss_list = [rom.linear.linear_system.beam.ss for rom in self.data_library]
+
+                vv_list = [sclalg.block_diag(rom.linear.linear_system.beam.sys.U, rom.linear.linear_system.beam.sys.U)
+                           for rom in self.data_library]
+                wwt_list = [sclalg.block_diag(rom.linear.linear_system.beam.sys.U.T, rom.linear.linear_system.beam.sys.U.T)
+                            for rom in self.data_library]
 
         else:
             raise NameError('Unrecognised %s system on which to perform interpolation' % target_system)
