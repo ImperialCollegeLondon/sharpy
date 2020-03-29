@@ -285,7 +285,11 @@ class ParametricModelInterpolation(BaseSolver):
             self.pmor = interpolationsystem.CoupledPMOR(self.rom_library,
                                                         interpolation_settings=self.interpolation_settings)
         else:
-            target_system = self.settings['interpolation_system']
+            try:
+                target_system = self.settings['interpolation_system']
+            except KeyError:
+                raise KeyError('No settings given for the interpolation_system: %s in '
+                               'interpolation_settings' % self.settings['interpolation_settings'])
             system_settings = self.interpolation_settings[target_system]
             self.pmor = interpolationsystem.pmor_loader(self.rom_library,
                                                         target_system=target_system,

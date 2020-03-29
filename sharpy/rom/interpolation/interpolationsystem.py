@@ -7,10 +7,17 @@ import sharpy.linear.src.lingebm as lingebm
 
 def pmor_loader(rom_library, target_system, interpolation_space, projection_method,
                 use_ct=True):
-    cout.cout_wrap('Generating PMOR for %s' % target_system)
+    cout.cout_wrap('Generating PMOR for %s system' % target_system)
 
-    if target_system == 'structural':
-        raise NotImplementedError
+    if target_system == 'structural' and interpolation_space == 'tangentspd':
+        raise NotImplementedError("Tangent SPD Interpolation on the individual second order matrices is a WIP")
+
+        # >>>>>>>>>>>>>>>>>>>>>>>>>>>>>  WIP
+        # if interpolation_space == 'tangentspd':
+        #     interpolate_spd = True
+        # else:
+        #     interpolate_spd = False
+        #
         # pmor_list = rom_library.get_reduced_order_bases(target_system)
         # pmor = SetStructuralPMORs(pmor_list, method_proj=projection_method,
         #                           reference_case=rom_library.reference_case)
@@ -29,9 +36,6 @@ def pmor_loader(rom_library, target_system, interpolation_space, projection_meth
         elif interpolation_space == 'tangentspd':
             cout.cout_wrap('\tInterpolating in the Tangent space', 1)
             pmor = interpolationspaces.TangentSPDInterpolation()
-
-    # else:
-    #     raise NotImplementedError('Interpolation space %s is not recognised' % interpolation_space)
 
         pmor.initialise(ss_list, vv_list, wwt_list,
                         method_proj=projection_method,

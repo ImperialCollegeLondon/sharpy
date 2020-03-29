@@ -237,7 +237,7 @@ class TangentInterpolation(InterpROM):
 
         a_tan = np.zeros_like(self.AA[0], dtype=complex)
         b_tan = np.zeros_like(self.BB[0])
-        c_tan = np.zeros_like(self.CC[0])
+        c_tan = np.zeros_like(self.CC[0], dtype=complex)
         d_tan = np.zeros_like(self.DD[0])
 
         for i in range(len(self.AA)):
