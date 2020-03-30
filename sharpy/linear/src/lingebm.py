@@ -811,16 +811,10 @@ class FlexDynamic():
 
                 if self.proj_modes == 'undamped':
                     Phi = self.U[:, :Nmodes]
-                    Ass[iivec, Nmodes + iivec] = 1.
-                    # Ass[Nmodes:, :Nmodes] = -np.diag(self.freq_natural[:Nmodes] ** 2)
-                    Ass[Nmodes:, :Nmodes] = -self.U.T.dot(self.Kstr.dot(self.U))
-                    if self.Ccut is not None:
-                        Ass[Nmodes:, Nmodes:] = -self.Ccut[:Nmodes, :Nmodes]
-                    Bss = np.zeros((2 * Nmodes, Nmodes))
-                    Dss = np.zeros((2 * Nmodes, Nmodes))
-                    Bss[Nmodes + iivec, iivec] = 1.
                     self.Kin = Phi.T
                     self.Kout = sc.linalg.block_diag(*(Phi, Phi))
+                    self.SScont = self.build_first_order_ct(m=self.Mstr, k=self.Kstr, phi=Phi)
+
                 else:  # damped mode shapes
                     # The algorithm assumes that for each couple of complex conj
                     # eigenvalues, only one eigenvalue (and the eigenvectors
@@ -838,9 +832,9 @@ class FlexDynamic():
                         [[self.Kin_damp[iivec, :].real],
                          [self.Kin_damp[iivec, :].imag]])
                     self.Kout = np.block([2. * U.real, (-2.) * U.imag])
+                    self.SScont = libss.ss(Ass, Bss, Css, Dss, dt=None)
 
                 # build state-space model
-                self.SScont = libss.ss(Ass, Bss, Css, Dss)
                 if self.inout_coords == 'nodes':
                     self.SScont = libss.addGain(self.SScont, self.Kin, 'in')
                     self.SScont = libss.addGain(self.SScont, self.Kout, 'out')
@@ -849,20 +843,100 @@ class FlexDynamic():
             else:  # Full system
                 if self.Mstr is None:
                     raise NameError('Full-states matrices not available')
-                Mstr, Cstr, Kstr = self.Mstr, self.Cstr, self.Kstr
 
-                Ass = np.zeros((2 * num_dof, 2 * num_dof))
-                Bss = np.zeros((2 * num_dof, num_dof))
-                Css = np.eye(2 * num_dof)
-                Dss = np.zeros((2 * num_dof, num_dof))
-                Minv_neg = -np.linalg.inv(self.Mstr)
-                Ass[range(num_dof), range(num_dof, 2 * num_dof)] = 1.
-                Ass[num_dof:, :num_dof] = np.dot(Minv_neg, Kstr)
-                Ass[num_dof:, num_dof:] = np.dot(Minv_neg, Cstr)
-                Bss[num_dof:, :] = -Minv_neg
                 self.Kin = None
                 self.Kout = None
-                self.SScont = libss.ss(Ass, Bss, Css, Dss)
+                self.SScont = self.build_first_order_ct(m=self.Mstr, k=self.Kstr, c_damp=self.Cstr)
+
+    @staticmethod
+    def build_first_order_ct(m, k, c_damp=None, bu=None, cy=None, phi=None):
+        r"""
+        Static method to assemble a first order continuous time system.
+
+        Given the second order system
+
+        .. math::
+
+            \boldsymbol{M\ddot{\eta}} + \boldsymbol{C\dot{\eta}} + \boldsymbol{K\eta} &= \boldsymbol{B_u N} \\
+            \boldsymbol{y} &= \boldsymbol{C_y}\begin{bmatrix}\boldsymbol{\eta} \\ \boldsymbol{\dot{\eta}} \end{bmatrix}
+
+        it returns a first order system of the form
+
+        .. math::
+
+            \begin{bmatrix} \boldsymbol{\dot{\eta}} \\ \boldsymbol{\ddot{\eta}} \end{bmatrix} &=
+            \begin{bmatrix} \boldsymbol{0} & \mathbf{I}_n  \\ -\boldsymbol{M}^{-1}\boldsymbol{K} &
+            -\boldsymbol{M}^{-1}\boldsymbol{C} \end{bmatrix}
+            \begin{bmatrix}\boldsymbol{\eta} \\ \boldsymbol{\dot{\eta}} \end{bmatrix} +
+            \begin{bmatrix} \boldsymbol{0} \\ \boldsymbol{M}^{-1}\boldsymbol{B}_u\end{bmatrix}\boldsymbol{N} \\
+            \boldsymbol{y} &= \boldsymbol{C_y}\begin{bmatrix}\boldsymbol{\eta} \\ \boldsymbol{\dot{\eta}} \end{bmatrix}.
+
+        If the eigenvector matrix :math:`\boldsymbol{\phi}` (``phi``) is provided, the system is assembled in modal
+        form. The modes shall be scaled such that they are mass normalised
+        :math:`\boldsymbol{\Phi}^\top\boldsymbol{M\Phi} = \boldsymbol{I}_k`.
+
+
+        Args:
+            m (np.ndarray): Mass matrix.
+            k (np.ndarray): Stiffness matrix.
+            c_damp (np.ndarray (optional)): Damping matrix
+            bu (np.ndarray (optional)): Input matrix.
+            cy (np.ndarray (optional)): Output matrix.
+            phi (np.ndarray (optional)): Mass normalised eigenvector matrix
+              :math:`\boldsymbol{\Phi}\in\mathbb{R}^{n\times k}`.
+
+        Returns:
+            sharpy.linear.src.libss.ss: First order continuous time system.
+        """
+
+        num_dof = m.shape[0]
+
+        if phi is not None:
+            # Modes are mass normalised such that Phi.T.dot(M.dot(Phi)) = I
+            _, num_modes = phi.shape
+            a = np.zeros((2 * num_modes, 2 * num_modes))
+            iivec = np.arange(num_modes, dtype=int)
+
+            modal_stiffness = phi.T.dot(k.dot(phi))
+
+            a[iivec, num_modes + iivec] = 1.
+            a[num_modes:, :num_modes] = -modal_stiffness
+
+            if c_damp is not None:
+                a[num_modes:, num_modes:] = -phi.T.dot(c_damp.dot(phi))
+
+            b = np.zeros((2 * num_modes, num_modes))
+            d = np.zeros_like(b)
+
+            if bu is not None:
+                b[num_modes + iivec, iivec] = bu
+            else:
+                b[num_modes + iivec, iivec] = 1.
+
+            if cy is None:
+                c = np.eye(2 * num_modes)
+            else:
+                c = cy
+
+        else:
+            minv_neg = -np.linalg.inv(m)
+            a = np.zeros((2 * num_dof, 2 * num_dof))
+            b = np.zeros((2 * num_dof, num_dof))
+            if cy is None:
+                c = np.eye(2 * num_dof)
+            else:
+                c = cy
+            d = np.zeros_like(b)
+
+            a[range(num_dof), range(num_dof, 2 * num_dof)] = 1.
+            a[num_dof:, :num_dof] = minv_neg.dot(k)
+            a[num_dof:, num_dof:] = minv_neg.dot(c_damp)
+            if bu is not None:
+                b[num_dof:, :] = -minv_neg.dot(bu)
+            else:
+                b[num_dof:, :] = -minv_neg
+
+        return libss.ss(a, b, c, d, dt=None)
 
     def freqresp(self, wv=None, bode=True):
         """
