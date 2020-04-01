@@ -296,6 +296,23 @@ class ss():
         msg = 'State-space system\nStates: %g\nInputs: %g\nOutputs: %g\n' % (self.states, self.inputs, self.outputs)
         return msg
 
+    def transfer_function_evaluation(self, s):
+        r"""
+        Returns the transfer function of the system evaluated at :math:`s\in\mathbb{C}`.
+
+        Args:
+            s (complex): Point in the complex plane at which to evaluate the transfer function.
+
+        Returns:
+            np.ndarray: Transfer function evaluated at :math:`s`.
+        """
+        a, b, c, d = self.get_mats()
+
+        n = a.shape[0]
+
+        return c.dot(scalg.inv(s * np.eye(n) - a)).dot(b) + d
+
+
 class ss_block():
     '''
     State-space model in block form. This class has the same purpose as "ss",
