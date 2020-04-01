@@ -239,13 +239,17 @@ def hamiltonian(gamma, ss):
     return ham
 
 
-def h_infinity_mimo(ss, **kwargs):
+def h_infinity_norm(ss, **kwargs):
     r"""
-    Returns H-infinity norm of a multi-input multi-output linear system using iterative methods.
+    Returns H-infinity norm of a linear system using iterative methods.
 
     The H-infinity norm of a MIMO system is traditionally calculated finding the largest SVD of the
     transfer function evaluated across the entire frequency spectrum. That can prove costly for a
     large number of evaluations, hence the iterative methods of [1] are employed.
+
+    In the case of a SISO system the H-infinity norm corresponds to the maximum frequency gain.
+
+    A scalar value is returned if the system is stable. If the system is unstable it returns ``np.Inf``.
 
     References:
 
@@ -272,8 +276,16 @@ def h_infinity_mimo(ss, **kwargs):
     # tolerance to find purely imaginary eigenvalues i.e those with Re(eig) < tol_imag_eigs
     tol_imag_eigs = kwargs.get('tol_imag_eigs', 1e-7)
 
+    if ss.dt is not None:
+        libss.disc2cont(ss)
+
     # 1) Compute eigenvalues of original system
     eigs = sclalg.eigvals(ss.A)
+
+    if any(eigs.real > 0):
+        if print_info:
+            print('System is unstable')
+        return np.inf
 
     # 2) Find eigenvalue that maximises equation. If all real pick largest eig
     if np.max(np.abs(eigs.imag) < tol_imag_eigs):
@@ -313,7 +325,7 @@ def h_infinity_mimo(ss, **kwargs):
                 m = imag_eigs[0]
                 svdmax = np.max(sclalg.svd(ss.transfer_function_evaluation(1j*m), compute_uv=False))
 
-                gamma_lb = max(svdmax)
+                gamma_lb = svdmax
             else:
                 m_list = [0.5 * (imag_eigs[i] + imag_eigs[i+1]) for i in range(len(imag_eigs) - 1)]
 
@@ -328,6 +340,9 @@ def h_infinity_mimo(ss, **kwargs):
             break
 
         iter_num += 1
+
+        if iter_num == iter_max:
+            raise np.linalg.LinAlgError('Unconverged H-inf solution after %g iterations' % iter_num)
 
     hinf = 0.5 * (gamma_lb + gamma_ub)
 
