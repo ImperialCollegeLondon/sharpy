@@ -2,21 +2,24 @@ import unittest
 import sharpy.linear.src.libss as libss
 import scipy.linalg as sclalg
 import numpy as np
+import os
 
 import sharpy.utils.frequencyutils as frequencyutils
 
 
 class TestFrequencyUtils(unittest.TestCase):
 
+    test_dir = os.path.abspath(os.path.dirname(__file__))
+
     def setUp(self):
 
         # This particular system is a good test as it requires a few iterations of the Hinf
         # solver. In addition it is known that its SVD peak occurs between 0.1 and 1.0 rad/s
         # allowing us to increase the resolution in the graphical method around that vicinity.
-        a = np.load('./src/a.npy')
-        b = np.load('./src/b.npy')
-        c = np.load('./src/c.npy')
-        d = np.load('./src/d.npy')
+        a = np.load(self.test_dir + '/src/a.npy')
+        b = np.load(self.test_dir + '/src/b.npy')
+        c = np.load(self.test_dir + '/src/c.npy')
+        d = np.load(self.test_dir + '/src/d.npy')
 
         self.sys = libss.ss(a, b, c, d, dt=None)
 
