@@ -275,7 +275,7 @@ def h_infinity_norm(ss, **kwargs):
     tol_imag_eigs = kwargs.get('tol_imag_eigs', 1e-7)
 
     if ss.dt is not None:
-        libss.disc2cont(ss)
+        ss = libss.disc2cont(ss)
 
     # 1) Compute eigenvalues of original system
     eigs = sclalg.eigvals(ss.A)
