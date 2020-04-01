@@ -7,6 +7,7 @@ import numpy as np
 import scipy.linalg as sclalg
 
 from sharpy.utils import cout_utils as cout
+import sharpy.linear.src.libss as libss
 
 
 def frequency_error(Y_fom, Y_rom, wv):
@@ -203,3 +204,160 @@ def l2norm(y_freq, wv, **kwargs):
     integral_h2 = np.sqrt(np.max(np.trapz(h2, freq_range)))
 
     return integral_h2
+
+
+def hamiltonian(gamma, ss):
+    """
+    Returns the Hamiltonian of a linear system as defined in [1].
+
+
+    References:
+
+        [1] Bruinsma, N. A., & Steinbuch, M. (1990). A fast algorithm to compute the H∞-norm of a transfer function
+        matrix. Systems and Control Letters, 14(4), 287–293. https://doi.org/10.1016/0167-6911(90)90049-Z
+
+    Args:
+        gamma (float): Evaluation point.
+        ss (sharpy.linear.src.libss.ss): Linear system.
+
+    Returns:
+        np.ndarray: Hamiltonian evaluated at ``gamma``.
+    """
+
+    a, b, c, d = ss.get_mats()
+
+    p, m = d.shape
+
+    r = d.T.dot(d) - gamma ** 2 * np.eye(m)
+    s = d.dot(d.T) - gamma ** 2 * np.eye(p)
+
+    rinv = sclalg.inv(r)
+    sinv = sclalg.inv(s)
+
+    ham = np.block([[a - b.dot(rinv.dot(d.T.dot(c))),  - gamma * b.dot(rinv.dot(b.T))],
+                    [gamma * c.T.dot(sinv.dot(c)), - a.T + c.T.dot(d.dot(rinv.dot(b.T)))]])
+    return ham
+
+
+def h_infinity_mimo(ss, **kwargs):
+    r"""
+    Returns H-infinity norm of a multi-input multi-output linear system using iterative methods.
+
+    The H-infinity norm of a MIMO system is traditionally calculated finding the largest SVD of the
+    transfer function evaluated across the entire frequency spectrum. That can prove costly for a
+    large number of evaluations, hence the iterative methods of [1] are employed.
+
+    References:
+
+        [1] Bruinsma, N. A., & Steinbuch, M. (1990). A fast algorithm to compute the H∞-norm of a transfer function
+        matrix. Systems and Control Letters, 14(4), 287–293. https://doi.org/10.1016/0167-6911(90)90049-Z
+
+    Args:
+        ss (sharpy.linear.src.libss.ss): Multi input multi output system.
+        **kwargs: Key-word arguments.
+
+    Keyword Args:
+        tol (float (optional)): Tolerance. Defaults to ``1e-7``.
+        tol_imag_eigs (float (optional)): Tolerance to find purely imaginary eigenvalues. Defaults to ``1e-7``.
+        iter_max (int (optional)): Maximum number of iterations.
+        print_info (bool (optional)): Print status and information. Defaults to ``False``.
+
+    Returns:
+        float: H-infinity norm of the system.
+    """
+    tol = kwargs.get('tol', 1e-7)
+    iter_max = kwargs.get('iter_max', 10)
+    print_info = kwargs.get('print_info', False)
+
+    # tolerance to find purely imaginary eigenvalues i.e those with Re(eig) < tol_imag_eigs
+    tol_imag_eigs = kwargs.get('tol_imag_eigs', 1e-7)
+
+    # 1) Compute eigenvalues of original system
+    eigs = sclalg.eigvals(ss.A)
+
+    # 2) Find eigenvalue that maximises equation. If all real pick largest eig
+    if np.max(np.abs(eigs.imag) < tol_imag_eigs):
+        eig_m = np.max(eigs.real)
+    else:
+        eig_m, _ = max_eigs(eigs)
+
+    # 3) Choose best option for gamma_lb
+    max_steady_state = np.max(sclalg.svd(ss.transfer_function_evaluation(0), compute_uv=False))
+    max_eig_m = np.max(sclalg.svd(ss.transfer_function_evaluation(1j*np.abs(eig_m)), compute_uv=False))
+    max_d = np.max(sclalg.svd(ss.D, compute_uv=False))
+
+    gamma_lb = max(max_steady_state, max_eig_m, max_d)
+
+    iter_num = 0
+
+    while iter_num < iter_max:
+        if print_info:
+            print('Iteration %g ::::: %f' % (iter_num, gamma_lb))
+        gamma = (1 + 2 * tol) * gamma_lb
+
+        # 4) compute hamiltonian and eigenvalues
+        ham = hamiltonian(gamma, ss)
+        eigs = sclalg.eigvals(ham)
+
+        # If eigenvalues all eigenvalues are purely imaginary
+        if any(np.abs(eigs.real) < tol_imag_eigs):
+            # Select imaginary eigenvalues and those with positive values
+            condition_imag = (np.abs(eigs.real) < tol_imag_eigs) * eigs.imag > 0
+            imag_eigs = eigs[condition_imag].imag
+
+            # Sort them in decreasing order
+            order = np.argsort(imag_eigs)[::-1]
+            imag_eigs = imag_eigs[order]
+
+            if len(imag_eigs) == 1:
+                m = imag_eigs[0]
+                svdmax = np.max(sclalg.svd(ss.transfer_function_evaluation(1j*m), compute_uv=False))
+
+                gamma_lb = max(svdmax)
+            else:
+                m_list = [0.5 * (imag_eigs[i] + imag_eigs[i+1]) for i in range(len(imag_eigs) - 1)]
+
+                svdmax = [np.max(sclalg.svd(ss.transfer_function_evaluation(1j*m), compute_uv=False)) for m in m_list]
+
+                gamma_lb = max(svdmax)
+
+        else:
+            gamma_ub = gamma
+            if print_info:
+                print('Finishing loop at iteration %g' % iter_num)
+            break
+
+        iter_num += 1
+
+    hinf = 0.5 * (gamma_lb + gamma_ub)
+
+    return hinf
+
+
+def max_eigs(eigs):
+    r"""
+    Returns the maximum of
+
+    .. math:: \left|\frac{Im(\lambda_i)}{Re(\lambda_i)}\frac{1}{\lambda_i}\right|
+
+    for a given array of eigenvalues ``eigs``.
+
+    Used as part of the computation of the H infinity norm
+
+
+    References:
+
+        [1] Bruinsma, N. A., & Steinbuch, M. (1990). A fast algorithm to compute the H∞-norm of a transfer function
+        matrix. Systems and Control Letters, 14(4), 287–293. https://doi.org/10.1016/0167-6911(90)90049-Z
+
+    Args:
+        eigs (np.ndarray): Array of eigenvalues.
+
+    Returns:
+        complex: Maximum value of function.
+    """
+    func = np.abs(eigs.imag / eigs.real / eigs)
+
+    i_max = np.argmax(func)
+
+    return func[i_max], i_max
