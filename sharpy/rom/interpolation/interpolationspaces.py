@@ -538,3 +538,9 @@ class BasisInterpolation:
         ss.project(v_interp.T, v_interp)
 
         return ss
+
+    def get_interpolated_basis(self, weights):
+
+        gamma = self.interpolate_gamma(weights)
+
+        return self.return_from_tangent_space(gamma)

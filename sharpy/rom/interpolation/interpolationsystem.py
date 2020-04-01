@@ -42,9 +42,15 @@ def pmor_loader(rom_library, target_system, interpolation_space, projection_meth
                         reference_case=rom_library.reference_case,
                         use_ct=use_ct)
 
+        # >>>>>>>>>>>>>>> Interpolate modal matrix to extract results in nodal coords
+        # pmor.basis = interpolationspaces.BasisInterpolation(v_list=[U[:U.shape[0]//2, :U.shape[1]//2] for U in vv_list],
+        #                                                     vt_list=[U[:U.shape[0]//2, :U.shape[1]//2] for U in wwt_list],
+        #                                                     reference_case=rom_library.reference_case)
+
     # Transform onto gen coordinates
     pmor.project()
 
+    # pmor.basis.create_tangent_space()
     return pmor
 
 
@@ -63,6 +69,8 @@ class CoupledPMOR:
                                          projection_method=interpolation_settings[sys]['projection_method'],
                                          use_ct=use_ct)
 
+        self.source_settings = rom_library.data_library[0].settings  # settings from the source case
+
     def __call__(self, weights):
 
         interpolated_systems = dict()
@@ -74,10 +82,33 @@ class CoupledPMOR:
         t_as = np.eye(interpolated_systems['aerodynamic'].inputs, interpolated_systems['structural'].outputs)
         t_sa = np.eye(interpolated_systems['structural'].inputs, interpolated_systems['aerodynamic'].outputs)
 
-        return libss.couple(ss01=interpolated_systems['aerodynamic'],
-                            ss02=interpolated_systems['structural'],
-                            K12=t_as,
-                            K21=t_sa)
+        aeroelastic_ss = libss.couple(ss01=interpolated_systems['aerodynamic'],
+                                      ss02=interpolated_systems['structural'],
+                                      K12=t_as,
+                                      K21=t_sa)
+
+        # interpolated_modes = self.pmor['structural'].basis.get_interpolated_basis(weights)
+        #
+        # if self.source_settings['LinearAssembler']['inout_coordinates'] == 'nodes':
+        #     # check if nodal
+        #     from sharpy.linear.assembler.linearaeroelastic import LinearAeroelastic
+        #     input_gain, output_gain = LinearAeroelastic.to_nodal(interpolated_modes,
+        #                                                          interpolated_systems['aerodynamic'],
+        #                                                          interpolated_systems['structural'])
+        #
+        #     # import pdb; pdb.set_trace()
+        #     aeroelastic_ss.addGain(input_gain, where='in')
+        #     aeroelastic_ss.addGain(output_gain, where='out')
+        #
+        # if len(self.source_settings['LinearAssembler']['retain_inputs']) != 0:
+        #     aeroelastic_ss.remove_inout_channels(self.source_settings['LinearAssembler']['retain_inputs'], where='in')
+        # if len(self.source_settings['LinearAssembler']['retain_outputs']) != 0:
+        #     aeroelastic_ss.remove_inout_channels(self.source_settings['LinearAssembler']['retain_outputs'], where='out')
+        #
+        # aeroelastic_ss.summary()
+        # import pdb; pdb.set_trace()
+
+        return aeroelastic_ss
 
 # >>>>>>>>>>>>> WIP
 #
