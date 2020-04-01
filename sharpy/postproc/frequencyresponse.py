@@ -42,9 +42,9 @@ class FrequencyResponse(solver_interface.BaseSolver):
     settings_default['folder'] = './output'
     settings_description['folder'] = 'Output folder.'
 
-    # settings_types['print_info'] = 'bool'
-    # settings_default['print_info'] = False
-    # settings_description['print_info'] = 'Write output to screen.'
+    settings_types['print_info'] = 'bool'
+    settings_default['print_info'] = False
+    settings_description['print_info'] = 'Write output to screen.'
 
     settings_types['target_system'] = 'list(str)'
     settings_default['target_system'] = ['aeroelastic']
@@ -95,6 +95,7 @@ class FrequencyResponse(solver_interface.BaseSolver):
         self.settings = None
         self.data = None
         self.folder = None
+        self.print_info = False
 
         # self.ss = None
         # self.ssrom = None
@@ -114,6 +115,8 @@ class FrequencyResponse(solver_interface.BaseSolver):
         settings_utils.to_custom_types(self.settings, self.settings_types, self.settings_default,
                                        self.settings_options,
                                        no_ctype=True)
+
+        self.print_info = self.settings['print_info']
 
         try:
             scaling = self.data.linear.linear_system.uvlm.sys.ScalingFacts
@@ -141,11 +144,6 @@ class FrequencyResponse(solver_interface.BaseSolver):
         if not os.path.exists(self.folder):
             os.makedirs(self.folder)
 
-        # if self.settings['print_info']:
-        #     cout.cout_wrap.cout_talk()
-        # else:
-        #     cout.cout_wrap.cout_quiet()
-
     def run(self, ss=None):
         """
         Computes the frequency response of the linear state-space.
@@ -167,11 +165,13 @@ class FrequencyResponse(solver_interface.BaseSolver):
             raise TypeError('ss input must be either a libss.ss instance or a list of libss.ss')
 
         for ith, system in enumerate(ss_list):
-            cout.cout_wrap('Computing frequency response...')
+            if self.print_info:
+                cout.cout_wrap('Computing frequency response...')
             if ss is None:
                 try:
                     system_name = self.settings['target_system'][ith]
-                    cout.cout_wrap('\tComputing frequency response for %s system' % system_name, 1)
+                    if self.print_info:
+                        cout.cout_wrap('\tComputing frequency response for %s system' % system_name, 1)
                 except IndexError:
                     system_name = None
             else:
@@ -182,7 +182,12 @@ class FrequencyResponse(solver_interface.BaseSolver):
             tfom = time.time() - t0fom
 
             if self.settings['compute_hinf']:
-                hinf = frequencyutils.h_infinity_mimo(system)
+
+                if self.print_info:
+                    cout.cout_wrap('Computing H-infinity norm...')
+
+                hinf = frequencyutils.h_infinity_norm(system, iter_max=50, print_info=self.settings['print_info'])
+
             else:
                 hinf = None
 
@@ -286,7 +291,8 @@ class FrequencyResponse(solver_interface.BaseSolver):
             if hinf is not None:
                 f.create_dataset('hinf_norm', data=hinf)
 
-        cout.cout_wrap('Saved .h5 file to %s with frequency response data' % h5filename)
+        if self.print_info:
+            cout.cout_wrap('Saved .h5 file to %s with frequency response data' % h5filename)
 
     def quick_plot(self, y_freq_fom=None, subfolder=None):
         p, m, _ = y_freq_fom.shape
