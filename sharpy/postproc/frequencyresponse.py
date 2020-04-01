@@ -7,6 +7,7 @@ import sharpy.utils.cout_utils as cout
 import warnings
 import sharpy.linear.src.libss as libss
 import h5py as h5
+import sharpy.utils.frequencyutils as frequencyutils
 
 
 @solver_interface.solver
@@ -20,6 +21,8 @@ class FrequencyResponse(solver_interface.BaseSolver):
     bounds of the response, while ``num_freqs`` will specify the number of evaluations.
     The option ``frequency_spacing`` allows you to space the evaluations point following a ``log``
     or ``linear`` spacing.
+
+    If ``compute_hinf`` is set, the H-infinity norm of the system is calculated.
 
     This will be saved to a binary ``.h5`` file as detailed in :func:`save_freq_resp`.
 
@@ -75,6 +78,10 @@ class FrequencyResponse(solver_interface.BaseSolver):
     settings_types['num_freqs'] = 'int'
     settings_default['num_freqs'] = 50
     settings_description['num_freqs'] = 'Number of frequencies to evaluate.'
+
+    settings_types['compute_hinf'] = 'bool'
+    settings_default['compute_hinf'] = False
+    settings_description['compute_hinf'] = 'Compute Hinfinity norm of the system.'
 
     settings_types['quick_plot'] = 'bool'
     settings_default['quick_plot'] = False
@@ -174,7 +181,12 @@ class FrequencyResponse(solver_interface.BaseSolver):
             y_freq_fom = system.freqresp(self.wv)
             tfom = time.time() - t0fom
 
-            self.save_freq_resp(self.wv, y_freq_fom, system_name=system_name)
+            if self.settings['compute_hinf']:
+                hinf = frequencyutils.h_infinity_mimo(system)
+            else:
+                hinf = None
+
+            self.save_freq_resp(self.wv, y_freq_fom, system_name=system_name, hinf=hinf)
 
             cout.cout_wrap('\tComputed the frequency response in %f s' % tfom, 2)
 
@@ -238,7 +250,7 @@ class FrequencyResponse(solver_interface.BaseSolver):
 
         return ss
 
-    def save_freq_resp(self, wv, Yfreq, system_name=None):
+    def save_freq_resp(self, wv, Yfreq, system_name=None, hinf=None):
         """
         Saves the frequency response to a binary ``.h5`` file.
 
@@ -250,6 +262,7 @@ class FrequencyResponse(solver_interface.BaseSolver):
             wv (np.ndarray): Frequency array.
             Y_freq (np.ndarray): Frequency response data ``[p, m, n_freq_eval]`` matrix.
             system_name (str (optional)): State-space system name.
+            hinf (float (optional)): H-infinity norm of the system.
         """
 
         with open(self.folder + '/freqdata_readme.txt', 'w') as outfile:
@@ -270,6 +283,9 @@ class FrequencyResponse(solver_interface.BaseSolver):
             f.create_dataset('response', data=Yfreq, dtype=complex)
             f.create_dataset('inputs', data=m)
             f.create_dataset('outputs', data=p)
+            if hinf is not None:
+                f.create_dataset('hinf_norm', data=hinf)
+
         cout.cout_wrap('Saved .h5 file to %s with frequency response data' % h5filename)
 
     def quick_plot(self, y_freq_fom=None, subfolder=None):
