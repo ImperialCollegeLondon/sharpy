@@ -25,7 +25,7 @@ class TestFrequencyUtils(unittest.TestCase):
 
     def test_hinfinity_norm(self):
 
-        h_inf_iterative = frequencyutils.h_infinity_mimo(self.sys)
+        h_inf_iterative = frequencyutils.h_infinity_norm(self.sys)
 
         # Compare against graphical method
         # Hinf norm is the maximum SVD across all frequencies
@@ -33,7 +33,8 @@ class TestFrequencyUtils(unittest.TestCase):
         svd_val = np.zeros_like(wv_vec)
 
         for i in range(len(svd_val)):
-            svd_val[i] = np.max(sclalg.svd(self.sys.transfer_function_evaluation(1j*wv_vec[i]),
+            frequency_response = self.sys.transfer_function_evaluation(1j*wv_vec[i])
+            svd_val[i] = np.max(sclalg.svd(frequency_response,
                                            compute_uv=False))
 
         h_inf_graph = np.max(svd_val)
