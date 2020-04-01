@@ -22,10 +22,12 @@ class TestFrequencyUtils(unittest.TestCase):
         d = np.load(self.test_dir + '/src/d.npy')
 
         self.sys = libss.ss(a, b, c, d, dt=None)
+        # self.sys = libss.random_ss(10, 4, 3, dt=0.1, stable=True)
+        # self.sys = libss.disc2cont(self.sys)
 
     def test_hinfinity_norm(self):
 
-        h_inf_iterative = frequencyutils.h_infinity_norm(self.sys)
+        h_inf_iterative = frequencyutils.h_infinity_norm(self.sys, print_info=False)
 
         # Compare against graphical method
         # Hinf norm is the maximum SVD across all frequencies
@@ -50,5 +52,10 @@ class TestFrequencyUtils(unittest.TestCase):
         # import matplotlib.pyplot as plt
         # plt.semilogx(wv_vec, svd_val)
         # plt.show()
-        #
+
         # <<<<<<<<<<<<<<<<<<<<<<<<<<<<
+
+        # a = np.save(self.test_dir + '/src/a.npy', self.sys.A)
+        # b = np.save(self.test_dir + '/src/b.npy', self.sys.B)
+        # c = np.save(self.test_dir + '/src/c.npy', self.sys.C)
+        # d = np.save(self.test_dir + '/src/d.npy', self.sys.D)
