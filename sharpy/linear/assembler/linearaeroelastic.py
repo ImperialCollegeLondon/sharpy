@@ -862,14 +862,32 @@ class LinearAeroelastic(ss_interface.BaseElement):
         if is_modal:
             phi = self.beam.sys.U
 
-            # these would include control surface deflections, thrust etc.
-            non_structural_inputs = self.uvlm.ss.inputs - self.beam.ss.outputs
-
-            input_gain = sclalg.block_diag(phi.T, phi.T, np.eye(non_structural_inputs), phi.T)
-            output_gain = sclalg.block_diag(phi, phi, phi)
+            input_gain, output_gain = self.to_nodal(phi, self.uvlm.ss, self.beam.ss)
 
             self.ss.addGain(input_gain, where='in')
             self.ss.addGain(output_gain, where='out')
+
+    @staticmethod
+    def to_nodal(phi, uvlm_ss, beam_ss):
+        """
+        Return input and output gains to transform to nodal coordinates. It takes into account the presence of
+        control surfaces.
+
+        Args:
+            phi (np.ndarray): Modal matrix.
+            uvlm_ss (sharpy.linear.src.libss.ss): UVLM state space.
+            beam_ss (sharpy.linear.src.libss.ss): Beam state space.
+
+        Returns:
+            tuple: input and output gain matrices.
+        """
+        # these would include control surface deflections, thrust etc.
+        non_structural_inputs = uvlm_ss.inputs - beam_ss.outputs
+
+        input_gain = sclalg.block_diag(phi.T, phi.T, np.eye(non_structural_inputs), phi.T)
+        output_gain = sclalg.block_diag(phi, phi, phi)
+
+        return input_gain, output_gain
 
     @staticmethod
     def load_uvlm(filename):
