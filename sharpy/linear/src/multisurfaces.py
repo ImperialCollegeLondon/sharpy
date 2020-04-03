@@ -7,6 +7,7 @@ import numpy as np
 import sharpy.linear.src.gridmapping as gridmapping
 import sharpy.linear.src.surface as surface
 import sharpy.linear.src.assembly as assembly
+import sharpy.utils.cout_utils as cout
 
 
 class MultiAeroGridSurfaces():
@@ -51,7 +52,6 @@ class MultiAeroGridSurfaces():
             #     omega = tsdata.omega[ss]
             # except AttributeError:
             #     omega = for_vel[3:]
-
             Surf = surface.AeroGridSurface(
                 Map, zeta=tsdata.zeta[ss], gamma=tsdata.gamma[ss],
                 u_ext=tsdata.u_ext[ss], zeta_dot=tsdata.zeta_dot[ss],

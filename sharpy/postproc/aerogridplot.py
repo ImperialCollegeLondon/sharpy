@@ -251,7 +251,7 @@ class AerogridPlot(BaseSolver):
                         '%02u_' % i_surf +
                         '%06u' % self.ts)
 
-            dims_star = self.data.aero.timestep_info[self.ts].dimensions_star[i_surf, :]
+            dims_star = self.data.aero.timestep_info[self.ts].dimensions_star[i_surf, :].copy()
             dims_star[0] -= self.settings['minus_m_star']
 
             point_data_dim = (dims_star[0]+1)*(dims_star[1]+1)
