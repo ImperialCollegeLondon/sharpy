@@ -447,6 +447,14 @@ class ss_block():
                     libsp.block_dot(self.C, Vblock))
 
 
+    def solve_step(self, xn, un):
+
+        # TODO: add options about predictor ...
+        xn1 = libsp.block_sum(libsp.block_dot(self.A, xn), libsp.block_dot(self.B, un))
+        yn = libsp.block_sum(libsp.block_dot(self.C, xn), libsp.block_dot(self.D, un))        
+
+        return xn1, yn    
+
 
 # ---------------------------------------- Methods for state-space manipulation
 def project(ss_here,WT,V):
