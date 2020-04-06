@@ -23,7 +23,7 @@ class StraightWake(generator_interface.BaseGenerator):
     settings_description = dict()
 
     settings_types['u_inf'] = 'float'
-    settings_default['u_inf'] = None
+    settings_default['u_inf'] = 1.
     settings_description['u_inf'] = 'Free stream velocity magnitude'
 
     settings_types['u_inf_direction'] = 'list(float)'
@@ -31,7 +31,7 @@ class StraightWake(generator_interface.BaseGenerator):
     settings_description['u_inf_direction'] = '``x``, ``y`` and ``z`` relative components of the free stream velocity'
 
     settings_types['dt'] = 'float'
-    settings_default['dt'] = None
+    settings_default['dt'] = 0.1
     settings_description['dt'] = 'Time step'
 
     settings_types['dx1'] = 'float'
@@ -39,7 +39,7 @@ class StraightWake(generator_interface.BaseGenerator):
     settings_description['dx1'] = 'Size of the first wake panel'
 
     settings_types['ndx1'] = 'int'
-    settings_default['ndx1'] = -1
+    settings_default['ndx1'] = 1
     settings_description['ndx1'] = 'Number of panels with size ``dx1``'
 
     settings_types['r'] = 'float'
@@ -70,9 +70,9 @@ class StraightWake(generator_interface.BaseGenerator):
                    Please, check the documentation")
 
             # Look for an aerodynamic solver
-            if 'StepUvlm' in data.settings:
-                aero_solver_name = 'StepUvlm'
-                aero_solver_settings = data.settings['StepUvlm']
+            if 'StaticUvlm' in data.settings:
+                aero_solver_name = 'StaticUvlm'
+                aero_solver_settings = data.settings['StaticUvlm']
             elif 'SHWUvlm' in data.settings:
                 aero_solver_name = 'SHWUvlm'
                 aero_solver_settings = data.settings['SHWUvlm']
@@ -86,8 +86,10 @@ class StraightWake(generator_interface.BaseGenerator):
                 aero_solver_name = data.settings['DynamicCoupled']['aero_solver']
                 aero_solver_settings = data.settings['DynamicCoupled']['aero_solver_settings']
             elif 'StepUvlm' in data.settings:
-                aero_solver_name = 'StaticUvlm'
-                aero_solver_settings = data.settings['StaticUvlm']
+                aero_solver_name = 'StepUvlm'
+                aero_solver_settings = data.settings['StepUvlm']
+            else:
+                print("ERROR: aerodynamic solver not found")
 
             # Get the minimum parameters needed to define the wake
             aero_solver = solver_interface.solver_from_string(aero_solver_name)
@@ -145,4 +147,4 @@ class StraightWake(generator_interface.BaseGenerator):
             gamma[isurf] *= 0.
             gamma_star[isurf] *= 0.
 
-            # print(zeta_star[isurf][0, :, :])
+            # print(zeta_star[isurf][0, :, 0])
