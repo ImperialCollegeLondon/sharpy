@@ -153,7 +153,6 @@ def vlm_solver(ts_info, options):
     flightconditions.uinf_direction = np.ctypeslib.as_ctypes(ts_info.u_ext[0][:, 0, 0]/flightconditions.uinf)
 
     ts_info.generate_ctypes_pointers()
-    print(ts_info.zeta_star[0][0, 0, :])
     run_VLM(ct.byref(vmopts),
             ct.byref(flightconditions),
             ts_info.ct_p_dimensions,

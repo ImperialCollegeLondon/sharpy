@@ -204,7 +204,6 @@ class Test_infinite_span(unittest.TestCase):
         uvec0 = np.array([Uinf0, 0, 0])
         uvec = np.dot(algebra.crv2rotation(dcrv), uvec0)
         duvec = uvec - uvec0
-        print(self.data.aero.timestep_info[self.data.ts].zeta_star[0][0, :, :])
         dzeta = np.zeros((Nsurf, 3, M + 1, N // Nsurf + 1))
         dzeta_dot = np.zeros((Nsurf, 3, M + 1, N // Nsurf + 1))
         du_ext = np.zeros((Nsurf, 3, M + 1, N // Nsurf + 1))
