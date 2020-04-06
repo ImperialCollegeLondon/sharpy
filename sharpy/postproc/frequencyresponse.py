@@ -185,8 +185,11 @@ class FrequencyResponse(solver_interface.BaseSolver):
 
                 if self.print_info:
                     cout.cout_wrap('Computing H-infinity norm...')
-
-                hinf = frequencyutils.h_infinity_norm(system, iter_max=50, print_info=self.settings['print_info'])
+                try:
+                    hinf = frequencyutils.h_infinity_norm(system, iter_max=50, print_info=self.settings['print_info'])
+                except np.linalg.LinAlgError:
+                    hinf = None
+                    cout.cout_wrap('H-infinity calculation did not converge', 4)
 
             else:
                 hinf = None

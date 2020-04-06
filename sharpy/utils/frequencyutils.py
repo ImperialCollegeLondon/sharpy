@@ -280,7 +280,7 @@ def h_infinity_norm(ss, **kwargs):
     # 1) Compute eigenvalues of original system
     eigs = sclalg.eigvals(ss.A)
 
-    if any(eigs.real > 0):
+    if any(eigs.real > tol_imag_eigs):
         if print_info:
             print('System is unstable')
         return np.inf
