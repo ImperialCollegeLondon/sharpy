@@ -28,7 +28,7 @@ class HelicoidalWake(generator_interface.BaseGenerator):
     settings_description['u_inf'] = 'Free stream velocity magnitude'
 
     settings_types['u_inf_direction'] = 'list(float)'
-    settings_default['u_inf_direction'] = np.array([1.0, 0, 0])
+    settings_default['u_inf_direction'] = None
     settings_description['u_inf_direction'] = '``x``, ``y`` and ``z`` relative components of the free stream velocity'
 
     settings_types['dt'] = 'float'
@@ -49,12 +49,12 @@ class HelicoidalWake(generator_interface.BaseGenerator):
     settings_description['h_ref'] = 'Reference height at which ``u_inf`` is defined'
 
     settings_types['h_corr'] = 'float'
-    settings_default['h_corr'] = 0.
+    settings_default['h_corr'] = 1.
     settings_description['h_corr'] = 'Height to correct the shear law'
 
     # Rotation
     settings_types['rotation_velocity'] = 'list(float)'
-    settings_default['rotation_velocity'] = np.array([1.0, 0, 0])
+    settings_default['rotation_velocity'] = None
     settings_description['rotation_velocity'] = 'Rotation velocity'
 
     setting_table = settings.SettingsTable()

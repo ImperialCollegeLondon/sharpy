@@ -23,15 +23,15 @@ class StraightWake(generator_interface.BaseGenerator):
     settings_description = dict()
 
     settings_types['u_inf'] = 'float'
-    settings_default['u_inf'] = 1.
+    settings_default['u_inf'] = 1. # None
     settings_description['u_inf'] = 'Free stream velocity magnitude'
 
     settings_types['u_inf_direction'] = 'list(float)'
-    settings_default['u_inf_direction'] = np.array([1.0, 0, 0])
+    settings_default['u_inf_direction'] = np.array([1.0, 0, 0]) # None
     settings_description['u_inf_direction'] = '``x``, ``y`` and ``z`` relative components of the free stream velocity'
 
     settings_types['dt'] = 'float'
-    settings_default['dt'] = 0.1
+    settings_default['dt'] = 0.1 # None
     settings_description['dt'] = 'Time step'
 
     settings_types['dx1'] = 'float'
@@ -116,6 +116,8 @@ class StraightWake(generator_interface.BaseGenerator):
 
         if self.in_dict['dx1'] == -1:
             self.dx1 = self.u_inf*self.dt
+        else:
+            self.dx1 = self.in_dict['dx1']
 
         self.ndx1 = self.in_dict['ndx1']
         self.r = self.in_dict['r']
