@@ -170,12 +170,13 @@ class TestFixNodeVelocitywrtG(unittest.TestCase):
 
         # read output and compare
         output_path = folder + '/output/fix_node_velocity_wrtG/WriteVariablesTime/'
-        pos_tip_data = np.matrix(np.genfromtxt(output_path + "struct_pos_node-1" + ".dat", delimiter=' '))
+        pos_tip_data = np.loadtxt(("%sstruct_pos_node-1.dat" % output_path), )
         self.assertAlmostEqual(pos_tip_data[-1, 1], 9.999386, 4)
         self.assertAlmostEqual(pos_tip_data[-1, 2], -0.089333, 4)
         self.assertAlmostEqual(pos_tip_data[-1, 3], 0., 4)
 
     def tearDown(self):
+        return
         files_to_delete = [self.name + '.aero.h5',
                            self.name + '.dyn.h5',
                            self.name + '.fem.h5',

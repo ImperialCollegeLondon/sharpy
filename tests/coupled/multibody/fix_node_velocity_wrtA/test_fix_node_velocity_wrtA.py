@@ -167,7 +167,7 @@ class TestFixNodeVelocitywrtA(unittest.TestCase):
         # read output and compare
         output_path = folder + '/output/fix_node_velocity_wrtA/WriteVariablesTime/'
         # quat_data = np.matrix(np.genfromtxt(output_path + 'FoR_00_mb_quat.dat', delimiter=' '))
-        pos_tip_data = np.matrix(np.genfromtxt(output_path + "struct_pos_node" + str(-1) + ".dat", delimiter=' '))
+        pos_tip_data = np.loadtxt(("%sstruct_pos_node-1.dat" % output_path), )
         self.assertAlmostEqual(pos_tip_data[0, 1], 9.993, 3)
         self.assertAlmostEqual(pos_tip_data[0, 2], 0., 2)
         self.assertAlmostEqual(pos_tip_data[0, 3], -3.40215e-1, 3)
