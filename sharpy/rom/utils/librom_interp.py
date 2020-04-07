@@ -33,6 +33,7 @@ Date: Mar-Apr 2019
 import numpy as np
 import scipy.linalg as sclalg
 import yaml
+import warnings
 
 # dependency
 import sharpy.linear.src.libss as libss
@@ -204,17 +205,72 @@ def FLB_transfer_function(SS_list, wv, U_list, VT_list, hsv_list=None, M_list=No
     return libss.ss(A_int, B_int, C_int, D_int, dt=SS_list[0].dt), hsv_int
 
 
-def lagrange_interpolation(x_vec, x0):
+def lagrange_interpolation(x_vec, x0, interpolation_degree=None):
+    """
+    Performs a lagrange interpolation over the domain ``x_vec`` at the point ``x0``.
 
-    # TODO: limit the lagrange degree when there are too many points! Method could be unstable
-    # Would need to have x sorted and limit the degree by a number of points left and
-    # right of x0
+    The ``interpolation_degree`` is an optional argument that sets the maximum degree of the lagrange polynomials
+    employed. If left to ``None``, all points in ``x_vec`` are used.
 
-    out = [0] * len(x_vec)
+    It returns the lagrange interpolation weights :math:`w_i` at each source point,
+    such that the interpolation value :math:`y_0` can then be calculated as
 
-    for i in range(len(x_vec)):
+    .. math:: y_0 = \sum_{i=0}^{N}w_i y_i.
+
+    Args:
+        x_vec (np.ndarray): Array of source points
+        x0 (float): Interpolation point.
+        interpolation_degree (int (optional)): Interpolation degree (optional).
+
+    Returns:
+        np.ndarray: Array of the same size as ``x_vec`` containing the weights :math:`w_i` at each of the source points.
+    """
+
+    n_points = len(x_vec)
+
+    out = [0] * n_points
+
+    if interpolation_degree is None or interpolation_degree > n_points:
+        interpolation_degree = n_points
+
+    if interpolation_degree > 15:
+        warnings.warn('Caution, interpolation degree larger than 15. Method may be unstable. Be cautious of overfitting'
+                      ' data.')
+
+    if x0 > x_vec[-1] or x0 < x_vec[0]:
+        warnings.warn('Use Caution: Interpolation point x0 = %f outside domain [%f, %f]. Extrapolation in progress.'
+                      % (x0, x_vec[0], x_vec[-1]))
+
+    d_half_degree = interpolation_degree // 2  # half the interpolation degree
+    rem = np.mod(interpolation_degree, 2)  # remainder in the case of odd degrees
+
+    # Moving window
+    i_interp_point = np.searchsorted(x_vec, x0)
+    if i_interp_point - d_half_degree - rem < 0:
+        add_right = - (i_interp_point - d_half_degree - rem)  # points to add to the right side
+        add_left = 0
+    elif i_interp_point + d_half_degree > n_points:
+        add_left = - (n_points - (i_interp_point + d_half_degree))  # points to add to the left side
+        add_right = 0
+    else:
+        add_left = 0
+        add_right = 0
+
+    if add_right > 0:
+        min_i = 0
+    else:
+        min_i = i_interp_point - d_half_degree - rem - add_left  # index of left side of window
+
+    if add_left > 0:
+        max_i = n_points
+    else:
+        max_i = i_interp_point + d_half_degree + add_right  # index of right side of window
+
+    window = range(min_i, max_i)  # window of points which will serve as the source of the lagrange polynomials
+
+    for i in window:
         curr = []
-        for j in range(len(x_vec)):
+        for j in window:
             if j != i:
                 curr.append((x0 - x_vec[j]) / (x_vec[i] - x_vec[j]))
         out[i] = np.prod(curr)
