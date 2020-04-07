@@ -33,6 +33,7 @@ import sharpy.utils.cout_utils as cout
 
 
 cout.cout_wrap.print_screen = True
+cout.cout_wrap.print_file = False
 ######################################################################
 #########################  AUX FUNCTIONS  ############################
 ######################################################################
