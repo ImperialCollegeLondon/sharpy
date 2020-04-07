@@ -265,6 +265,7 @@ def rotor_from_excel_type03(in_op_params,
         elem_GJ = np.interp(elem_rR, rR_structural, GJStff)
 
         # Stiffness: estimate unknown properties
+        cout.cout_wrap.print_file = False
         cout.cout_wrap('WARNING: The poisson cofficient is assumed equal to 0.3', 3)
         cout.cout_wrap('WARNING: Cross-section area is used as shear area', 3)
         poisson_coef = 0.3
@@ -593,6 +594,7 @@ def generate_from_excel_type02(chord_panels,
     elem_EIy = np.interp(elem_r, Elevation, TwFAStif)
     elem_GJ = np.interp(elem_r, Elevation, TwGJStif)
     # Stiffness: estimate unknown properties
+    cout.cout_wrap.print_file = False
     cout.cout_wrap('WARNING: The poisson cofficient is assumed equal to 0.3', 3)
     cout.cout_wrap('WARNING: Cross-section area is used as shear area', 3)
     poisson_coef = 0.3
