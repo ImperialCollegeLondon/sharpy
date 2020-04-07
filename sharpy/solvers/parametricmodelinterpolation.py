@@ -194,6 +194,11 @@ class ParametricModelInterpolation(BaseSolver):
     settings_description['interpolation_scheme'] = 'Desired interpolation scheme.'
     settings_options['interpolation_scheme'] = ['linear', 'lagrange']
 
+    settings_types['interpolation_degree'] = 'int'
+    settings_default['interpolation_degree'] = 4
+    settings_description['interpolation_degree'] = 'Degree of interpolation for applicable schemes, such as ' \
+                                                   '``lagrange``.'
+
     settings_types['postprocessors'] = 'list(str)'
     settings_default['postprocessors'] = list()
     settings_description['postprocessors'] = 'List of the postprocessors to run at the end of every time step'
@@ -317,7 +322,8 @@ class ParametricModelInterpolation(BaseSolver):
             cout.cout_wrap('\tCase: %g of %g' % (case_number + 1, len(input_list)), 1)
             weights = self.interpolate(case,
                                        method=self.settings['interpolation_scheme'],
-                                       interpolation_parameter=0)
+                                       interpolation_parameter=0,
+                                       interpolation_degree=self.settings['interpolation_degree'])
 
             interpolated_ss = self.pmor(weights)
 
@@ -335,13 +341,13 @@ class ParametricModelInterpolation(BaseSolver):
 
         return self.data
 
-    def interpolate(self, case, method, interpolation_parameter):
+    def interpolate(self, case, method, interpolation_parameter, interpolation_degree=None):
 
         x_vec = self.rom_library.param_values[interpolation_parameter]
         x0 = case[self.rom_library.parameters[interpolation_parameter]]
 
         if method == 'lagrange':
-            weights = librominterp.lagrange_interpolation(x_vec, x0)
+            weights = librominterp.lagrange_interpolation(x_vec, x0, interpolation_degree=interpolation_degree)
             order = [i[0] for i in self.rom_library.mapping]
             weights = [weights[i] for i in order]  # give weights in order in which state-spaces are stored.
 

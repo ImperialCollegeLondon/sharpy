@@ -26,7 +26,8 @@ class BasisInterpolation(rom_interface.BaseRom):
     Finally, the ``interpolation_parameter`` is parsed as a dictionary, where the key in the dictionary is the parameter
     name, which has to be the same as that used to save the source parametric case.
 
-    The interpolation is performed for a single parameter using a Lagrange interpolation method.
+    The interpolation is performed for a single parameter using a Lagrange interpolation method. The maximum degree
+    of the lagrange interpolation polynomials is specified through the setting ``interpolation_degree``.
 
     Examples:
 
@@ -92,6 +93,10 @@ class BasisInterpolation(rom_interface.BaseRom):
                                                       'as key and the corresponding value to interpolate. Ensure the ' \
                                                       'name of the parameter is the same as that used in the source ' \
                                                       'case.'
+
+    settings_types['interpolation_degree'] = 'int'
+    settings_default['interpolation_degree'] = 4
+    settings_description['interpolation_degree'] = 'Polynomial degree for lagrange interpolation.'
 
     settings_table = settings.SettingsTable()
     __doc__ += settings_table.generate(settings_types, settings_default, settings_description, settings_options)
