@@ -16,7 +16,7 @@ class polar(object):
         if (np.diff(table[:, 0]) > 0.).all():
             self.table = table
         else:
-            print("ERROR: angles of attack not ordered")
+            raise RuntimeError("ERROR: angles of attack not ordered")
 
         # Look for aoa where CL=0
         npoints = self.table.shape[0]

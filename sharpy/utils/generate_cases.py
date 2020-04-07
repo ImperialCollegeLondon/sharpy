@@ -31,6 +31,8 @@ import sharpy.utils.generator_interface as generator_interface
 import sharpy.structure.utils.lagrangeconstraints as lagrangeconstraints
 import sharpy.utils.cout_utils as cout
 
+
+cout.cout_wrap.print_screen = True
 ######################################################################
 #########################  AUX FUNCTIONS  ############################
 ######################################################################
@@ -832,31 +834,31 @@ class StructuralInformation():
         """
         # CHECKING
         if(self.elem_stiffness.shape[0] != self.num_elem):
-            sys.exit("ERROR: Element stiffness must be defined for each element")
+            raise RuntimeError("ERROR: Element stiffness must be defined for each element")
         if(self.elem_mass.shape[0] != self.num_elem):
-            sys.exit("ERROR: Element mass must be defined for each element")
+            raise RuntimeError("ERROR: Element mass must be defined for each element")
         if(self.frame_of_reference_delta.shape[0] != self.num_elem):
-            sys.exit("ERROR: The first dimension of FoR does not match the number of elements")
+            raise RuntimeError("ERROR: The first dimension of FoR does not match the number of elements")
         if(self.frame_of_reference_delta.shape[1] != self.num_node_elem):
-            sys.exit("ERROR: The second dimension of FoR does not match the number of nodes element")
+            raise RuntimeError("ERROR: The second dimension of FoR does not match the number of nodes element")
         if(self.frame_of_reference_delta.shape[2] != 3):
-            sys.exit("ERROR: The third dimension of FoR must be 3")
+            raise RuntimeError("ERROR: The third dimension of FoR must be 3")
         if(self.structural_twist.shape[0] != self.num_elem):
-            sys.exit("ERROR: The structural twist must be defined for each element")
+            raise RuntimeError("ERROR: The structural twist must be defined for each element")
         if(self.boundary_conditions.shape[0] != self.num_node):
-            sys.exit("ERROR: The boundary conditions must be defined for each node")
+            raise RuntimeError("ERROR: The boundary conditions must be defined for each node")
         if(self.beam_number.shape[0] != self.num_elem):
-            sys.exit("ERROR: The beam number must be defined for each element")
+            raise RuntimeError("ERROR: The beam number must be defined for each element")
         if(self.app_forces.shape[0] != self.num_node):
-            sys.exit("ERROR: The first dimension of the applied forces matrix does not match the number of nodes")
+            raise RuntimeError("ERROR: The first dimension of the applied forces matrix does not match the number of nodes")
         if(self.app_forces.shape[1] != 6):
-            sys.exit("ERROR: The second dimension of the applied forces matrix must be 6")
+            raise RuntimeError("ERROR: The second dimension of the applied forces matrix must be 6")
 
         default = StructuralInformation()
 
         for attr, value in self.__dict__.items():
             if not hasattr(default, attr):
-                sys.exit("StructuralInformation has no attribute named '%s'" % attr)
+                raise RuntimeError(("StructuralInformation has no attribute named '%s'" % attr))
 
     def generate_fem_file(self, route, case_name):
         """
@@ -1294,29 +1296,29 @@ class AerodynamicInformation():
         """
         # CHECKING
         if(self.aero_node.shape[0] != StructuralInformation.num_node):
-            sys.exit("ERROR: Aero node must be defined for each node")
+            raise RuntimeError("ERROR: Aero node must be defined for each node")
         if(self.airfoil_distribution.shape[0] != StructuralInformation.num_elem or self.airfoil_distribution.shape[1] != StructuralInformation.num_node_elem):
-            sys.exit("ERROR: Airfoil distribution must be defined for each element/local node")
+            raise RuntimeError("ERROR: Airfoil distribution must be defined for each element/local node")
         if(self.chord.shape[0] != StructuralInformation.num_elem):
-            sys.exit("ERROR: The first dimension of the chord matrix does not match the number of elements")
+            raise RuntimeError("ERROR: The first dimension of the chord matrix does not match the number of elements")
         if(self.chord.shape[1] != StructuralInformation.num_node_elem):
-            sys.exit("ERROR: The second dimension of the chord matrix does not match the number of nodes per element")
+            raise RuntimeError("ERROR: The second dimension of the chord matrix does not match the number of nodes per element")
         if(self.elastic_axis.shape[0] != StructuralInformation.num_elem):
-            sys.exit("ERROR: The first dimension of the elastic axis matrix does not match the number of elements")
+            raise RuntimeError("ERROR: The first dimension of the elastic axis matrix does not match the number of elements")
         if(self.elastic_axis.shape[1] != StructuralInformation.num_node_elem):
-            sys.exit("ERROR: The second dimension of the elastic axis matrix does not match the number of nodes per element")
+            raise RuntimeError("ERROR: The second dimension of the elastic axis matrix does not match the number of nodes per element")
         if(self.surface_distribution.shape[0] != StructuralInformation.num_elem):
-            sys.exit("ERROR: The surface distribution must be defined for each element")
+            raise RuntimeError("ERROR: The surface distribution must be defined for each element")
         if(self.twist.shape[0] != StructuralInformation.num_elem):
-            sys.exit("ERROR: The first dimension of the aerodynamic twist does not match the number of elements")
+            raise RuntimeError("ERROR: The first dimension of the aerodynamic twist does not match the number of elements")
         if(self.twist.shape[1] != StructuralInformation.num_node_elem):
-            sys.exit("ERROR: The second dimension of the aerodynamic twist does not match the number nodes per element")
+            raise RuntimeError("ERROR: The second dimension of the aerodynamic twist does not match the number nodes per element")
 
         default = AerodynamicInformation()
 
         for attr, value in self.__dict__.items():
             if not hasattr(default, attr):
-                sys.exit("AerodynamicInformation has no attribute named '%s'" % attr)
+                raise RuntimeError(("AerodynamicInformation has no attribute named '%s'" % attr))
 
     def generate_aero_file(self, route, case_name, StructuralInformation):
         """
@@ -1453,7 +1455,7 @@ class AeroelasticInformation():
                 if (np.linalg.norm(
                     self.StructuralInformation.coordinates[inode, :] -
                     self.StructuralInformation.coordinates[iprev_node, :]) < tol):
-                    cout.cout_wrap(("WARNING: Replacing node %d by node %d" % (inode, iprev_node)), 4)
+                    cout.cout_wrap(("WARNING: Replacing node %d by node %d" % (inode, iprev_node)), 3)
                     replace_matrix[inode, 0] = iprev_node
                     replace_matrix[inode, 1], replace_matrix[inode, 2] = (
                         find_connectivities_index(
@@ -1564,7 +1566,7 @@ class AeroelasticInformation():
 
         for attr, value in self.__dict__.items():
             if not hasattr(default, attr):
-                sys.exit("AeroelasticInformation has no attribute named '%s'" % attr)
+                raise RuntimeError(("AeroelasticInformation has no attribute named '%s'" % attr))
 
     def generate_h5_files(self, route, case_name):
         """
@@ -1656,7 +1658,7 @@ class SimulationInformation():
         for solver in self.solvers['SHARPy']['flow']:
             for key in self.solvers[solver]:
                 if key not in default.solvers[solver]:
-                    sys.exit("solver '%s' has no key named '%s'" % (solver, key))
+                    raise RuntimeError(("solver '%s' has no key named '%s'" % (solver, key)))
 
     def define_num_steps(self, num_steps):
         """
@@ -1864,7 +1866,7 @@ class BodyInformation():
 
         for attr, value in self.__dict__.items():
             if not hasattr(default, attr):
-                sys.exit("BodyInformation has no attribute named '%s'" % attr)
+                raise RuntimeError(("BodyInformation has no attribute named '%s'" % attr))
 
 
 class LagrangeConstraint():
@@ -1883,17 +1885,17 @@ class LagrangeConstraint():
             try:
                 getattr(self, param)
             except:
-                sys.exit("'%s' parameter required in '%s' lagrange constraint" % (param, self.behaviour))
+                raise RuntimeError(("'%s' parameter required in '%s' lagrange constraint" % (param, self.behaviour)))
         has_behaviour = False
         for param, value in self.__dict__.items():
             if not param == 'behaviour':
                 if param not in required_parameters:
-                    sys.exit("'%s' parameter is not required in '%s' lagrange constraint" % (param, self.behaviour))
+                    raise RuntimeError(("'%s' parameter is not required in '%s' lagrange constraint" % (param, self.behaviour)))
             else:
                 has_behaviour = True
 
         if not has_behaviour:
-            sys.exit("'behaviour' parameter is required in '%s' lagrange constraint" % self.behaviour)
+            raise RuntimeError(("'behaviour' parameter is required in '%s' lagrange constraint" % self.behaviour))
 
 
 def generate_multibody_file(list_LagrangeConstraints, list_Bodies, route, case_name):

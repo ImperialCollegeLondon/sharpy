@@ -187,7 +187,6 @@ class TestGenerateCases(unittest.TestCase):
 
         solver_path = os.path.abspath(os.path.dirname(os.path.realpath(__file__)) + '/' + case +'.sharpy')
         sharpy.sharpy_main.main(['', solver_path])
-        print('done executing')
 
     def tearDown(self):
         solver_path = os.path.abspath(os.path.dirname(os.path.realpath(__file__)))

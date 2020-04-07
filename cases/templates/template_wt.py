@@ -19,10 +19,10 @@ import sharpy.utils.algebra as algebra
 import sharpy.utils.h5utils as h5
 from sharpy.utils.constants import deg2rad
 import sharpy.aero.utils.airfoilpolars as ap
-from warnings import warn
 import sharpy.utils.cout_utils as cout
 
 
+cout.cout_wrap.print_screen = True
 ######################################################################
 # AUX FUNCTIONS
 ######################################################################
@@ -265,7 +265,7 @@ def rotor_from_excel_type03(in_op_params,
 
         # Stiffness: estimate unknown properties
         cout.cout_wrap('WARNING: The poisson cofficient is assumed equal to 0.3', 3)
-        print('WARNING: Cross-section area is used as shear area')
+        cout.cout_wrap('WARNING: Cross-section area is used as shear area', 3)
         poisson_coef = 0.3
         elem_GAy = elem_EA/2.0/(1.0+poisson_coef)
         elem_GAz = elem_EA/2.0/(1.0+poisson_coef)
@@ -280,7 +280,7 @@ def rotor_from_excel_type03(in_op_params,
         elem_mass_iner_yz = np.interp(elem_rR, rR_structural, FlapEdgeIner)
 
         # Inertia: estimate unknown properties
-        print('WARNING: Using perpendicular axis theorem to compute the inertia around xB')
+        cout.cout_wrap('WARNING: Using perpendicular axis theorem to compute the inertia around xB', 3)
         elem_mass_iner_x = elem_mass_iner_y + elem_mass_iner_z
 
         # Generate blade structural properties
@@ -391,14 +391,14 @@ def rotor_from_excel_type03(in_op_params,
                 if (np.diff(udmd_by_nodes[inode, :]) < 0.).any():
                     sys.error("ERROR in the panel discretization of the blade in node %d" % (inode))
             else:
-                print("ERROR: cannot match the last panel size for node:", inode)
+                raise RuntimeError(("ERROR: cannot match the last panel size for node: %d" % inode))
                 udmd_by_nodes[inode, :] = np.linspace(0, 1, chord_panels + 1)
     else:
         udmd_by_nodes = None
 
     node_twist = np.zeros_like(node_chord)
     if camber_effect_on_twist:
-        print("WARNING: The steady applied Mx should be manually multiplied by the density")
+        cout.cout_wrap("WARNING: The steady applied Mx should be manually multiplied by the density", 3)
         for inode in range(blade.StructuralInformation.num_node):
             node_twist[inode] = gc.get_aoacl0_from_camber(airfoils[inode, :, 0], airfoils[inode, :, 1])
             mu0 = gc.get_mu0_from_camber(airfoils[inode, :, 0], airfoils[inode, :, 1])
@@ -592,8 +592,8 @@ def generate_from_excel_type02(chord_panels,
     elem_EIy = np.interp(elem_r, Elevation, TwFAStif)
     elem_GJ = np.interp(elem_r, Elevation, TwGJStif)
     # Stiffness: estimate unknown properties
-    print('WARNING: The poisson cofficient is assumed equal to 0.3')
-    print('WARNING: Cross-section area is used as shear area')
+    cout.cout_wrap('WARNING: The poisson cofficient is assumed equal to 0.3', 3)
+    cout.cout_wrap('WARNING: Cross-section area is used as shear area', 3)
     poisson_coef = 0.3
     elem_GAy = elem_EA/2.0/(1.0+poisson_coef)
     elem_GAz = elem_EA/2.0/(1.0+poisson_coef)
@@ -608,7 +608,7 @@ def generate_from_excel_type02(chord_panels,
     elem_pos_cg_B[:, 2] = np.interp(elem_r, Elevation, TwFAcgOf)
 
     # Stiffness: estimate unknown properties
-    print('WARNING: Using perpendicular axis theorem to compute the inertia around xB')
+    cout.cout_wrap('WARNING: Using perpendicular axis theorem to compute the inertia around xB', 3)
     elem_mass_iner_x = elem_mass_iner_y + elem_mass_iner_z
 
     # Create the tower
@@ -661,7 +661,7 @@ def generate_from_excel_type02(chord_panels,
     node_pos[:, 2] = np.linspace(0., -overhang_len*np.cos(tilt*deg2rad), overhang.StructuralInformation.num_node)
     # TODO: change the following by real values
     # Same properties as the last element of the tower
-    print("WARNING: Using the structural properties of the last tower section for the overhang")
+    cout.cout_wrap("WARNING: Using the structural properties of the last tower section for the overhang", 3)
     oh_mass_per_unit_length = tower.StructuralInformation.mass_db[-1, 0, 0]
     oh_mass_iner = tower.StructuralInformation.mass_db[-1, 3, 3]
     oh_EA = tower.StructuralInformation.stiffness_db[-1, 0, 0]
@@ -768,7 +768,7 @@ def rotor_from_excel_type02(chord_panels,
                             dt=0.):
 
     # Warning for back compatibility
-    warn('rotor_from_excel_type02 is obsolete! rotor_from_excel_type03 instead!', stacklevel=2)
+    cout.cout_wrap('rotor_from_excel_type02 is obsolete! rotor_from_excel_type03 instead!', 3)
 
     # Assign values to dictionaries
     op_params = {}

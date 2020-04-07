@@ -81,9 +81,9 @@ class TestFixNodeVelocitywrtG(unittest.TestCase):
 
         SimInfo.solvers['AerogridLoader']['unsteady'] = 'on'
         SimInfo.solvers['AerogridLoader']['mstar'] = 2
-        SimInfo.solvers['AerogridLoader']['wake_shape_generator'] = 'StraightWake'                                                                                           
-        SimInfo.solvers['AerogridLoader']['wake_shape_generator_input'] = {'u_inf':10.,                                                                                      
-                                                                           'u_inf_direction': np.array([0., 1., 0.]),                                                        
+        SimInfo.solvers['AerogridLoader']['wake_shape_generator'] = 'StraightWake'
+        SimInfo.solvers['AerogridLoader']['wake_shape_generator_input'] = {'u_inf':10.,
+                                                                           'u_inf_direction': np.array([0., 1., 0.]),
                                                                            'dt': 0.1}
 
 
@@ -176,7 +176,6 @@ class TestFixNodeVelocitywrtG(unittest.TestCase):
         self.assertAlmostEqual(pos_tip_data[-1, 3], 0., 4)
 
     def tearDown(self):
-        return
         files_to_delete = [self.name + '.aero.h5',
                            self.name + '.dyn.h5',
                            self.name + '.fem.h5',

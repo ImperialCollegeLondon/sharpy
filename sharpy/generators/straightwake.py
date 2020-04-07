@@ -3,8 +3,10 @@ import numpy as np
 import sharpy.utils.generator_interface as generator_interface
 import sharpy.utils.settings as settings
 import sharpy.utils.solver_interface as solver_interface
+import sharpy.utils.cout_utils as cout
 
 
+cout.cout_wrap.print_screen = True
 @generator_interface.generator
 class StraightWake(generator_interface.BaseGenerator):
     r"""
@@ -65,9 +67,9 @@ class StraightWake(generator_interface.BaseGenerator):
 
         # For backwards compatibility
         if len(self.in_dict.keys()) == 0:
-            print("WARNING: The code will run for backwards compatibility. \
+            cout.cout_wrap("WARNING: The code will run for backwards compatibility. \
                    In future releases you will need to define a 'wake_shape_generator' in ``AerogridLoader''. \
-                   Please, check the documentation")
+                   Please, check the documentation", 3)
 
             # Look for an aerodynamic solver
             if 'StaticUvlm' in data.settings:
@@ -89,7 +91,7 @@ class StraightWake(generator_interface.BaseGenerator):
                 aero_solver_name = 'StepUvlm'
                 aero_solver_settings = data.settings['StepUvlm']
             else:
-                print("ERROR: aerodynamic solver not found")
+                raise RuntimeError("ERROR: aerodynamic solver not found")
 
             # Get the minimum parameters needed to define the wake
             aero_solver = solver_interface.solver_from_string(aero_solver_name)

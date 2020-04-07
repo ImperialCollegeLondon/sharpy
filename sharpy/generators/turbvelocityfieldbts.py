@@ -4,8 +4,10 @@ import scipy.interpolate as interpolate
 import sharpy.utils.generator_interface as generator_interface
 import sharpy.utils.settings as settings
 import sharpy.utils.cout_utils as cout
+import sharpy.utils.cout_utils as cout
 
 
+cout.cout_wrap.print_screen = True
 def interp_rectgrid_vectorfield(points, grid, vector_field, out_value, regularGrid=False, num_cores=1):
     # check: https://en.wikipedia.org/wiki/Trilinear_interpolation
     npoints = points.shape[0]
@@ -274,7 +276,7 @@ class TurbVelocityFieldBts(generator_interface.BaseGenerator):
         # Checks
         # print("Case description: ", dictionary['description'])
         if dictionary['description'][-1] == ".":
-            print("WARNING: I think there is something wrong with the case description. The length is not",  n_char_description, "characters.")
+            cout.cout_wrap(("WARNING: I think there is something wrong with the case description. The length is not %d characters" %  n_char_description), 3)
             # print("Input", dictionary['n_char_description'], "as the number of characters of the case description")
 
         # vel_aux = np.fromstring(dictionary['data'], dtype='>i2')

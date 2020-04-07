@@ -5,7 +5,10 @@ import os
 import sharpy.utils.algebra as algebra
 # Generate errors during execution
 import sys
+import sharpy.utils.cout_utils as cout
 
+
+cout.cout_wrap.print_screen = True
 case_name = 'bielawa_baromega2_1e3'
 route = os.path.dirname(os.path.realpath(__file__)) + '/'
 
@@ -83,11 +86,11 @@ def generate_fem_file(route, case_name, num_elem, num_node_elem=3):
 
     ea = E*A
     # APPROXIMATION!!!
-    print("WARNING: Assuming isotropic material")
+    cout.cout_wrap("Assuming isotropic material", 2)
     G = E / 2.0 / (1.0+0.3)
-    print("WARNING: Using total cross-section area as shear area")
+    cout.cout_wrap("Using total cross-section area as shear area", 2)
     ga = G*A
-    print("WARNING: Assuming planar cross-sections")
+    cout.cout_wrap("Assuming planar cross-sections", 2)
     J = 2.0* I
     gj = G*J
 
@@ -269,10 +272,10 @@ def generate_solver_file():
     settings['AerogridLoader'] = {'unsteady': 'on',
                                   'aligned_grid': 'on',
                                   'mstar': 1,
-                                  'freestream_dir': ['0', '-1', '0'],                                                                                                       
-                                  'wake_shape_generator': 'StraightWake',                                                                                                  
-                                  'wake_shape_generator_input': {'u_inf': 100,                                                                                           
-                                                                 'u_inf_direction': np.array([0., -1., 0.]),                                                                
+                                  'freestream_dir': ['0', '-1', '0'],
+                                  'wake_shape_generator': 'StraightWake',
+                                  'wake_shape_generator_input': {'u_inf': 100,
+                                                                 'u_inf_direction': np.array([0., -1., 0.]),
                                                                  'dt': dt}}
 
     # POSTPROCESS
@@ -396,4 +399,4 @@ generate_aero_file()
 generate_dyn_file()
 generate_solver_file()
 
-print('Reference for validation: "Rotary wing structural dynamics and aeroelasticity", R.L. Bielawa. AIAA education series. Second edition')
+cout.cout_wrap('Reference for validation: "Rotary wing structural dynamics and aeroelasticity", R.L. Bielawa. AIAA education series. Second edition', 1)
