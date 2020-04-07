@@ -29,7 +29,7 @@ import sharpy.utils.algebra as algebra
 import sharpy.utils.solver_interface as solver_interface
 import sharpy.utils.generator_interface as generator_interface
 import sharpy.structure.utils.lagrangeconstraints as lagrangeconstraints
-
+import sharpy.utils.cout_utils as cout
 
 ######################################################################
 #########################  AUX FUNCTIONS  ############################
@@ -174,7 +174,7 @@ def read_column_sheet_type01(excel_file_name, excel_sheet, column_name):
     elif excel_db[column_name][1] == 'vec_str':
         var = np.zeros((num_elem,), dtype=object)
     else:
-        print("ERROR: not recognized number type")
+        raise RuntimeError("ERROR: not recognized number type")
 
     if 'vec' in excel_db[column_name][1]:
         for i in range(2, excel_db.index.stop):
@@ -220,7 +220,8 @@ def get_factor_geometric_progression(a0, Sn_target, n):
         it += 1
 
     if it == max_it:
-        print("Maximum iterations reached. Sn target:", Sn_target, ". Sn obtained:", Sn_temp, ". Relative error:", error)
+        message = ("Maximum iterations reached. Sn target:%f . Sn obtained:%f . Relative error: %f" % (Sn_target, Sn_temp, error))
+        cout.cout_wrap(message, 3)
 
     return r
 
@@ -234,7 +235,7 @@ def get_ielem_inode(connectivities, inode):
             if connectivities[ielem, inode_in_elem] == inode:
                 return ielem, inode_in_elem
 
-    print("ERROR: cannot find ielem and inode_in_elem")
+    raise RuntimeError("ERROR: cannot find ielem and inode_in_elem")
 
 
 def get_aoacl0_from_camber(x, y):
@@ -514,7 +515,7 @@ class StructuralInformation():
         elif y_BFoR == 'z_AFoR':
             yB = np.array([0.0, 0.0, 1.0])
         else:
-            print("WARNING: y_BFoR not recognized, using the default value: y_BFoR = y_AFoR")
+            cout.cout_wrap("WARNING: y_BFoR not recognized, using the default value: y_BFoR = y_AFoR", 3)
 
         # y vector of the B frame of reference
         self.frame_of_reference_delta = np.zeros((self.num_elem,
@@ -640,7 +641,7 @@ class StructuralInformation():
         if ((self.num_node-1) % (self.num_node_elem-1)) == 0:
             self.num_elem = int((self.num_node-1)/(self.num_node_elem-1))
         else:
-            print("ERROR: number of nodes cannot be converted into ", self.num_node_elem, "-noded elements")
+            raise RuntimeError("The number of nodes cannot be converted into " + self.num_node_elem + "-noded elements")
 
     def compute_basic_num_node(self):
         """
@@ -1189,11 +1190,11 @@ class AerodynamicInformation():
             if (self.airfoils.shape[1] == aerodynamics_to_add.airfoils.shape[1]):
                 self.airfoils = np.concatenate((self.airfoils, aerodynamics_to_add.airfoils), axis=0)
             elif (self.airfoils.shape[1] > aerodynamics_to_add.airfoils.shape[1]):
-                print("WARNING: redefining the discretization of airfoil camber line")
+                cout.cout_wrap("WARNING: redefining the discretization of airfoil camber line", 3)
                 new_airfoils = self.change_airfoils_discretezation(aerodynamics_to_add.airfoils, self.airfoils.shape[1])
                 self.airfoils = np.concatenate((self.airfoils, new_airfoils), axis=0)
             elif (self.airfoils.shape[1] < aerodynamics_to_add.airfoils.shape[1]):
-                print("WARNING: redefining the discretization of airfoil camber line")
+                cout.cout_wrap("WARNING: redefining the discretization of airfoil camber line", 3)
                 new_airfoils = self.change_airfoils_discretezation(self.airfoils, aerodynamics_to_add.airfoils.shape[1])
                 self.airfoils = np.concatenate((new_airfoils, aerodynamics_to_add.airfoils), axis=0)
             if self.m_distribution.lower() == 'user_defined':
@@ -1452,7 +1453,7 @@ class AeroelasticInformation():
                 if (np.linalg.norm(
                     self.StructuralInformation.coordinates[inode, :] -
                     self.StructuralInformation.coordinates[iprev_node, :]) < tol):
-                    print("WARNING: Replacing node ", inode, "by node ", iprev_node)
+                    cout.cout_wrap(("WARNING: Replacing node %d by node %d" % (inode, iprev_node)), 4)
                     replace_matrix[inode, 0] = iprev_node
                     replace_matrix[inode, 1], replace_matrix[inode, 2] = (
                         find_connectivities_index(
@@ -1608,7 +1609,6 @@ class SimulationInformation():
 
         Set the default values for all the solvers
         """
-        import sharpy.utils.cout_utils as cout
 
         self.solvers = dict()
         cout.start_writer()

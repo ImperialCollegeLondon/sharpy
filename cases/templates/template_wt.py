@@ -20,6 +20,7 @@ import sharpy.utils.h5utils as h5
 from sharpy.utils.constants import deg2rad
 import sharpy.aero.utils.airfoilpolars as ap
 from warnings import warn
+import sharpy.utils.cout_utils as cout
 
 
 ######################################################################
@@ -246,7 +247,7 @@ def rotor_from_excel_type03(in_op_params,
             elem_rR = rR[1::2] + 0.
             elem_r = rR[1::2]*TipRad + 0.
         else:
-            print("ERROR: Cannot build ", blade.StructuralInformation.num_node_elem, "-noded elements from ", blade.StructuralInformation.num_node, "nodes")
+            raise RuntimeError(("ERROR: Cannot build %d-noded elements from %d nodes" % (blade.StructuralInformation.num_node_elem, blade.StructuralInformation.num_node)))
 
     node_y = np.interp(rR, rR_structural, InPElAxis) + np.interp(rR, rR_structural, PreswpRef)
     node_z = -np.interp(rR, rR_structural, OutPElAxis) - np.interp(rR, rR_structural, PrebendRef)
@@ -263,7 +264,7 @@ def rotor_from_excel_type03(in_op_params,
         elem_GJ = np.interp(elem_rR, rR_structural, GJStff)
 
         # Stiffness: estimate unknown properties
-        print('WARNING: The poisson cofficient is assumed equal to 0.3')
+        cout.cout_wrap('WARNING: The poisson cofficient is assumed equal to 0.3', 3)
         print('WARNING: Cross-section area is used as shear area')
         poisson_coef = 0.3
         elem_GAy = elem_EA/2.0/(1.0+poisson_coef)
