@@ -81,6 +81,11 @@ class TestFixNodeVelocitywrtA(unittest.TestCase):
 
         SimInfo.solvers['AerogridLoader']['unsteady'] = 'on'
         SimInfo.solvers['AerogridLoader']['mstar'] = 2
+        SimInfo.solvers['AerogridLoader']['wake_shape_generator'] = 'StraightWake'                                                                                           
+        SimInfo.solvers['AerogridLoader']['wake_shape_generator_input'] = {'u_inf':10.,                                                                                      
+                                                                           'u_inf_direction': np.array([0., 1., 0.]),                                                        
+                                                                           'dt': 0.05}    
+
 
         SimInfo.solvers['NonLinearStatic']['print_info'] = False
 

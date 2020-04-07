@@ -269,7 +269,11 @@ def generate_solver_file():
     settings['AerogridLoader'] = {'unsteady': 'on',
                                   'aligned_grid': 'on',
                                   'mstar': 1,
-                                  'freestream_dir': ['0', '-1', '0']}
+                                  'freestream_dir': ['0', '-1', '0'],                                                                                                       
+                                  'wake_shape_generator': 'StraightWake',                                                                                                  
+                                  'wake_shape_generator_input': {'u_inf': 100,                                                                                           
+                                                                 'u_inf_direction': np.array([0., -1., 0.]),                                                                
+                                                                 'dt': dt}}
 
     # POSTPROCESS
     settings['AerogridPlot'] = {'folder': route + '/output/',

@@ -94,8 +94,11 @@ class TestGolandFlutter(unittest.TestCase):
             'unsteady': 'off',
             'aligned_grid': 'on',
             'mstar': ws.Mstar_fact * ws.M,
-            'freestream_dir': ws.u_inf_direction
-        }
+            'freestream_dir': ws.u_inf_direction,                                                                                                       
+            'wake_shape_generator': 'StraightWake',                                                                                                  
+            'wake_shape_generator_input': {'u_inf': ws.u_inf,                                                                                           
+                                           'u_inf_direction': ws.u_inf_direction,                                                                
+                                           'dt': ws.dt}}
 
         ws.config['StaticUvlm'] = {
             'rho': ws.rho,
