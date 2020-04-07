@@ -124,6 +124,11 @@ class DynamicCoupled(BaseSolver):
     settings_default['pseudosteps_ramp_unsteady_force'] = 0
     settings_description['pseudosteps_ramp_unsteady_force'] = 'Length of the ramp with which unsteady force contribution is introduced every time step during the FSI iteration process'
 
+    settings_types['correct_forces_method'] = 'str'
+    settings_default['correct_forces_method'] = '' # 'efficiency'
+    settings_description['correct_forces_method'] = 'Function used to correct aerodynamic forces'
+    settings_options['correct_forces_method'] = ['efficiency', 'polars']
+
     settings_table = settings.SettingsTable()
     __doc__ += settings_table.generate(settings_types, settings_default, settings_description)
 
@@ -152,6 +157,10 @@ class DynamicCoupled(BaseSolver):
 
         self.time_aero = 0.
         self.time_struc = 0.
+
+        self.correct_forces = False
+        self.correct_forces_method = None
+        self.correct_forces_function = None
 
     def get_g(self):
         """
@@ -246,6 +255,10 @@ class DynamicCoupled(BaseSolver):
             self.residual_table.print_header(['ts', 't', 'iter', 'struc ratio', 'iter time', 'residual vel',
                                               'FoR_vel(x)', 'FoR_vel(z)'])
 
+        # Define the function to be used to be used
+        if self.settings['correct_forces_method'] is not '':
+            self.correct_forces = True
+            self.correct_forces_function = cf.dict_of_corrections[self.settings['correct_forces_method']]
 
     def cleanup_timestep_info(self):
         if max(len(self.data.aero.timestep_info), len(self.data.structure.timestep_info)) > 1:
@@ -319,7 +332,7 @@ class DynamicCoupled(BaseSolver):
         included.
         """
         # dynamic simulations start at tstep == 1, 0 is reserved for the initial state
-    
+
         for self.data.ts in range(
                 len(self.data.structure.timestep_info),
                 self.settings['n_time_steps'].value + 1):
@@ -537,8 +550,15 @@ class DynamicCoupled(BaseSolver):
             structural_kstep.cag(),
             self.data.aero.aero_dict)
 
-        struct_forces = mapping.correct_forces_polars(self.data.aero, self.data.structure, aero_kstep, structural_kstep, struct_forces)
-        # dynamic_struct_forces = mapping.correct_forces_polars(self.data.aero, self.data.structure, aero_kstep, structural_kstep, dynamic_struct_forces)
+        if self.correct_forces:
+            struct_forces = self.correct_forces_function(self.data,
+                                                         aero_kstep,
+                                                         structural_kstep,
+                                                         struct_forces)
+            # dynamic_struct_forces = self.correct_forces_function(self.data,
+            #                                                      aero_kstep,
+            #                                                      structural_kstep,
+            #                                                      dynamic_struct_forces)
 
         # prescribed forces + aero forces
         try:
