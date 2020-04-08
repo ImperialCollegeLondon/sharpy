@@ -36,7 +36,9 @@ def efficiency(data, aero_kstep, structural_kstep, struct_forces):
     Returns:
          np.ndarray: corresponding aerodynamic force at the structural node from the force and moment at a grid vertex
     """
-    n_node = struct_forces.shape[0]
+
+    n_node = data.structure.num_node
+    n_elem = data.structure.num_elem
     aero_dict = data.aero.aero_dict
     new_struct_forces = np.zeros_like(struct_forces)
 
@@ -44,21 +46,22 @@ def efficiency(data, aero_kstep, structural_kstep, struct_forces):
     airfoil_efficiency = aero_dict['airfoil_efficiency']
     # force efficiency dimensions [n_elem, n_node_elem, 2, [fx, fy, fz]] - all defined in B frame
     force_efficiency = np.zeros((n_elem, 3, 2, 3))
+    force_efficiency[:, :, 0, :] = 1. 
     force_efficiency[:, :, :, 1] = airfoil_efficiency[:, :, :, 0]
     force_efficiency[:, :, :, 2] = airfoil_efficiency[:, :, :, 1]
 
     # moment efficiency dimensions [n_elem, n_node_elem, 2, [mx, my, mz]] - all defined in B frame
-    moment_efficiency = np.zeros_like(force_efficiency)
+    moment_efficiency = np.zeros((n_elem, 3, 2, 3))
+    moment_efficiency[:, :, 0, :] = 1. 
     moment_efficiency[:, :, :, 0] = airfoil_efficiency[:, :, :, 2]
 
     for inode in range(n_node):
         i_elem, i_local_node = data.structure.node_master_elem[inode]
         new_struct_forces[inode, :] = struct_forces[inode, :].copy()
-        new_struct_forces[inode, 0:3] *= force_efficiency[i_elem, i_local_node, 0] # element wise multiplication
-        new_struct_forces[inode, 0:3] += force_efficiency[i_elem, i_local_node, 1]
-        new_struct_forces[inode, 3:6] *= moment_efficiency[i_elem, i_local_node, 0]
-        new_struct_forces[inode, 3:6] += moment_efficiency[i_elem, i_local_node, 1]
-
+        new_struct_forces[inode, 0:3] *= force_efficiency[i_elem, i_local_node, 0, :] # element wise multiplication
+        new_struct_forces[inode, 0:3] += force_efficiency[i_elem, i_local_node, 1, :]
+        new_struct_forces[inode, 3:6] *= moment_efficiency[i_elem, i_local_node, 0, :]
+        new_struct_forces[inode, 3:6] += moment_efficiency[i_elem, i_local_node, 1, :]
     return new_struct_forces
 
 @gen_dict_force_corrections
