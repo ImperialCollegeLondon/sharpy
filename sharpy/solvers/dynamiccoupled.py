@@ -13,6 +13,7 @@ import sharpy.utils.settings as settings
 import sharpy.utils.algebra as algebra
 import sharpy.structure.utils.xbeamlib as xbeam
 import sharpy.utils.exceptions as exc
+import sharpy.utils.correct_forces as cf
 
 
 @solver
@@ -31,6 +32,7 @@ class DynamicCoupled(BaseSolver):
     settings_types = dict()
     settings_default = dict()
     settings_description = dict()
+    settings_options = dict()
 
     settings_types['print_info'] = 'bool'
     settings_default['print_info'] = True
@@ -130,7 +132,7 @@ class DynamicCoupled(BaseSolver):
     settings_options['correct_forces_method'] = ['efficiency', 'polars']
 
     settings_table = settings.SettingsTable()
-    __doc__ += settings_table.generate(settings_types, settings_default, settings_description)
+    __doc__ += settings_table.generate(settings_types, settings_default, settings_description, settings_options)
 
     def __init__(self):
         self.data = None
@@ -159,7 +161,6 @@ class DynamicCoupled(BaseSolver):
         self.time_struc = 0.
 
         self.correct_forces = False
-        self.correct_forces_method = None
         self.correct_forces_function = None
 
     def get_g(self):
@@ -255,7 +256,7 @@ class DynamicCoupled(BaseSolver):
             self.residual_table.print_header(['ts', 't', 'iter', 'struc ratio', 'iter time', 'residual vel',
                                               'FoR_vel(x)', 'FoR_vel(z)'])
 
-        # Define the function to be used to be used
+        # Define the function to correct aerodynamic forces
         if self.settings['correct_forces_method'] is not '':
             self.correct_forces = True
             self.correct_forces_function = cf.dict_of_corrections[self.settings['correct_forces_method']]
