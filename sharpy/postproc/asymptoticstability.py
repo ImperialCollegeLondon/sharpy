@@ -181,15 +181,26 @@ class AsymptoticStability(BaseSolver):
 
         return self.data
 
-    def convert_to_continuoustime(self, dt, dt_eigenvalues, not_scaled=False):
-        """
+    def convert_to_continuoustime(self, dt, discrete_time_eigenvalues, not_scaled=False):
+        r"""
         Convert eigenvalues to discrete time. The ``not_scaled`` argument can be used to bypass the search from
         within SHARPy of scaling factors. For instance, when the state-space of choice is not part of a standard
         SHARPy case but rather an interpolated ROM etc.
 
+        The eigenvalues are converted to continuous time using
+
+        .. math:: \lambda_{ct} = \frac{\log (\lambda_{dt})}{\Delta t}
+
+        If the system is scaled, the dimensional time step is retrieved as
+
+        .. math:: \Delta t_{dim} = \bar{\Delta t} \frac{l_{ref}}{U_{\infty, actual}}
+
+        where :math:`l_{ref}` is the reference length and :math:`U_{\infty, actual}` is the free stream velocity at
+        which to calculate the eigenvalues.
+
         Args:
             dt (float): Discrete time increment.
-            dt_eigenvalues (np.ndarray): Array of discrete time eigenvalues
+            discrete_time_eigenvalues (np.ndarray): Array of discrete time eigenvalues.
             not_scaled (bool): Treat the system as not scaled. No Scaling Factors will be searched in SHARPy.
         """
         if not_scaled:
@@ -198,13 +209,13 @@ class AsymptoticStability(BaseSolver):
             try:
                 ScalingFacts = self.data.linear.linear_system.uvlm.sys.ScalingFacts
                 if ScalingFacts['length'] != 1.0 and ScalingFacts['time'] != 1.0:
-                    dt = ScalingFacts['length'] / self.settings['reference_velocity'] * self.ss.dt
+                    dt *= ScalingFacts['length'] / self.settings['reference_velocity']
                 else:
                     dt = dt
             except AttributeError:
                 dt = dt
 
-        return np.log(dt_eigenvalues) / dt
+        return np.log(discrete_time_eigenvalues) / dt
 
     def export_eigenvalues(self, num_evals):
         """
