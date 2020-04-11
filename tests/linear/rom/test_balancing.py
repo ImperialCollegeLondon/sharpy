@@ -4,6 +4,7 @@ import sharpy.linear.src.libss as libss
 import sharpy.rom.utils.librom as librom
 import numpy as np
 import sharpy.linear.src.libsparse as libsp
+import scipy.linalg as scalg
 
 
 class TestBalancing(unittest.TestCase):
@@ -35,8 +36,8 @@ class TestBalancing(unittest.TestCase):
         assert er_max / np.max(np.abs(Y)) < 1e-10, 'Error too large in frequency response'
 
         # Compare grammians:
-        Wc = linalg.solve_discrete_lyapunov(ssb.A, np.dot(ssb.B, ssb.B.T))
-        Wo = linalg.solve_discrete_lyapunov(ssb.A.T, np.dot(ssb.C.T, ssb.C))
+        Wc = scalg.solve_discrete_lyapunov(ssb.A, np.dot(ssb.B, ssb.B.T))
+        Wo = scalg.solve_discrete_lyapunov(ssb.A.T, np.dot(ssb.C.T, ssb.C))
 
         er_grammians = np.max(np.abs(Wc - Wo))
         # Print grammians to compare:
