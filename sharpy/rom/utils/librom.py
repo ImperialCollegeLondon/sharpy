@@ -128,8 +128,7 @@ def balreal_direct_py(A, B, C, DLTI=True, Schur=False, full_outputs=False):
     ### Find transformation matrices
     # avoid Cholevski - unstable
 
-    # Added 11/04/2020: Building T and Tinv using SVD:
-    # Perform SVD on grammians:
+    # Building T and Tinv using SVD:
     Uc, Sc, Vc = scalg.svd(Wc)
     Uo, So, Vo = scalg.svd(Wo)
 
@@ -153,36 +152,6 @@ def balreal_direct_py(A, B, C, DLTI=True, Schur=False, full_outputs=False):
     # This is a known feature of SHARPy, hence it is maintained throughout (including documentation).
     Tinv = scalg.inv(S) @ U.T @ Qot
     T = Qc @ Vt.T @ scalg.inv(S)
-
-    # Building T and Tinv using eigenvalues instead:
-    # Note: the method commented out below does not work!
-    #
-    # 11/04/2020
-    #
-    # This section is based on the following idea: given the grammians, one can show that:
-    #
-    # .. math::
-    #     \mathbf{T W_c W_o T}^{-1} = \mathbf{\Sigma}^2
-    #
-    # False proof then left-multiplies by $\mathbf{T}^{-1}$:
-    #
-    # .. math::
-    #     \mathbf{W_c W_o T}^{-1} = \mathbf{T}^{-1} \mathbf{\Sigma}^2
-    #
-    # And argues that since Hankel Singular Value matrix \mathbf{\Sigma} is diagonal, the order of the RHS can be
-    # reversed. This does not actually work, since \mathbf{\Sigma} is not an identity matrix. The section below
-    # is therefore not advised to be used.
-    #
-    # The method does however yield correct Hankel singular values.
-
-    # hsv_sq, Tinv = np.linalg.eig(np.dot(Wc, Wo))
-    # T = np.linalg.inv(Tinv)
-    #
-    # # sort
-    # iisort = np.argsort(hsv_sq)[::-1]
-    # hsv = np.sqrt(hsv_sq[iisort])
-    # T = T[:, iisort]
-    # Tinv = Tinv[iisort, :]
 
     if full_outputs is False:
         return hsv, T, Tinv
