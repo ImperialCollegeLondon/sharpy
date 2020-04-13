@@ -46,9 +46,9 @@ def balreal_direct_py(A, B, C, DLTI=True, Schur=False, full_outputs=False):
     The balanced system is therefore of the form:
 
     .. math::
-        \mathbf{A_b} &= \mathbf{T\,A\,T^{-1}} \\
-        \mathbf{B_b} &= \mathbf{T\,B} \\
-        \mathbf{C_b} &= \mathbf{C\,T^{-1}} \\
+        \mathbf{A_b} &= \mathbf{T^{-1}\,A\,T} \\
+        \mathbf{B_b} &= \mathbf{T^{-1}\,B} \\
+        \mathbf{C_b} &= \mathbf{C\,T} \\
         \mathbf{D_b} &= \mathbf{D}
 
     Warnings:
@@ -57,8 +57,10 @@ def balreal_direct_py(A, B, C, DLTI=True, Schur=False, full_outputs=False):
         in frequency and time.
 
     Notes:
-        Lyapunov equations are solved using Barlets-Stewart algorithm for
-        Sylvester equation, which is based on A matrix Schur decomposition.
+        - Lyapunov equations are solved using Barlets-Stewart algorithm for
+          Sylvester equation, which is based on A matrix Schur decomposition.
+
+        - Notation above is consistent with Gawronski [2].
 
     Args:
         A (np.ndarray): Plant Matrix
@@ -74,8 +76,10 @@ def balreal_direct_py(A, B, C, DLTI=True, Schur=False, full_outputs=False):
             - Inverse transformation matrix(``Tinv``).
 
     References:
-        Anthoulas, A.C.. Approximation of Large Scale Dynamical Systems. Chapter 7. Advances in Design and Control.
+        [1] Anthoulas, A.C.. Approximation of Large Scale Dynamical Systems. Chapter 7. Advances in Design and Control.
         SIAM. 2005.
+
+        [2] Gawronski, W.. Dynamics and control of structures. New York: Springer. 1998
     """
 
     ### select solver for Lyapunov equation
@@ -123,24 +127,42 @@ def balreal_direct_py(A, B, C, DLTI=True, Schur=False, full_outputs=False):
 
     ### Find transformation matrices
     # avoid Cholevski - unstable
-    hsv_sq, Tinv = np.linalg.eig(np.dot(Wc, Wo))
-    T = np.linalg.inv(Tinv)
 
-    # sort
-    iisort = np.argsort(hsv_sq)[::-1]
-    hsv = np.sqrt(hsv_sq[iisort])
-    T = T[:, iisort]
-    Tinv = Tinv[iisort, :]
+    # Building T and Tinv using SVD:
+    Uc, Sc, Vc = scalg.svd(Wc)
+    Uo, So, Vo = scalg.svd(Wo)
+
+    # Perform decomposition:
+    Sc = np.sqrt(np.diag(Sc))
+    So = np.sqrt(np.diag(So))
+    Qc = Uc @ Sc
+    Qot = So @ Vo
+
+    # Build Hankel matrix:
+    H = Qot @ Qc
+
+    # Find SVD of Hankel matrix:
+    U, hsv, Vt = scalg.svd(H)
+    # hsv = np.diag(hsv)
+
+    # Find T and Tinv:
+    S = np.sqrt(np.diag(hsv))
+
+    # Please note, the notation below is swapped as compared to regular notation in the literature.
+    # This is a known feature of SHARPy, hence it is maintained throughout (including documentation).
+    Tinv = scalg.inv(S) @ U.T @ Qot
+    T = Qc @ Vt.T @ scalg.inv(S)
 
     if full_outputs is False:
         return hsv, T, Tinv
 
     else:
         # get square-root factors
-        UT, QoT = scalg.qr(np.dot(np.diag(np.sqrt(hsv)), Tinv), pivoting=False)
-        Vh, QcT = scalg.qr(np.dot(T, np.diag(np.sqrt(hsv))).T, pivoting=False)
+        # UT, QoT = scalg.qr(np.dot(np.diag(np.sqrt(hsv)), Tinv), pivoting=False)
+        # Vh, QcT = scalg.qr(np.dot(T, np.diag(np.sqrt(hsv))).T, pivoting=False)
 
-        return hsv, UT.T, Vh, QcT.T, QoT.T
+        # return hsv, UT.T, Vh, QcT.T, QoT.T
+        return hsv, U, Vt, Qc, Qot.T
 
 
 def balreal_iter(A, B, C, lowrank=True, tolSmith=1e-10, tolSVD=1e-6, kmin=None,
