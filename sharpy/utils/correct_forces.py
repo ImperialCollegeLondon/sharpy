@@ -51,8 +51,6 @@ def efficiency(data, aero_kstep, structural_kstep, struct_forces):
          np.ndarray: corresponding aerodynamic force at the structural node from the force and moment at a grid vertex
     """
 
-    __doc__ += "arturo"
-
     n_node = data.structure.num_node
     n_elem = data.structure.num_elem
     aero_dict = data.aero.aero_dict
