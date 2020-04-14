@@ -28,6 +28,7 @@ class TestGolandFlutter(unittest.TestCase):
         rom_settings = dict()
         rom_settings['algorithm'] = 'mimo_rational_arnoldi'
         rom_settings['r'] = 6
+        rom_settings['single_side'] = 'observability'
         frequency_continuous_k = np.array([0.])
 
         # Case Admin - Create results folders
@@ -94,8 +95,11 @@ class TestGolandFlutter(unittest.TestCase):
             'unsteady': 'off',
             'aligned_grid': 'on',
             'mstar': ws.Mstar_fact * ws.M,
-            'freestream_dir': ws.u_inf_direction
-        }
+            'freestream_dir': ws.u_inf_direction,                                                                                                       
+            'wake_shape_generator': 'StraightWake',                                                                                                  
+            'wake_shape_generator_input': {'u_inf': ws.u_inf,                                                                                           
+                                           'u_inf_direction': ws.u_inf_direction,                                                                
+                                           'dt': ws.dt}}
 
         ws.config['StaticUvlm'] = {
             'rho': ws.rho,

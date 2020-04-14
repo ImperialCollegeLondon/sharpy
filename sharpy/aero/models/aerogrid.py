@@ -54,6 +54,8 @@ class Aerogrid(object):
 
         self.cs_generators = []
 
+        self.polars = None
+
     def generate(self, aero_dict, beam, aero_settings, ts):
         self.aero_dict = aero_dict
         self.beam = beam
@@ -129,6 +131,15 @@ class Aerogrid(object):
         self.add_timestep()
         self.generate_mapping()
         self.generate_zeta(self.beam, self.aero_settings, ts)
+
+        if 'polars' in aero_dict:
+            import sharpy.aero.utils.airfoilpolars as ap
+            self.polars = []
+            nairfoils = np.amax(self.aero_dict['airfoil_distribution']) + 1
+            for iairfoil in range(nairfoils):
+                new_polar = ap.polar()
+                new_polar.initialise(aero_dict['polars'][str(iairfoil)])
+                self.polars.append(new_polar)
 
     def output_info(self):
         cout.cout_wrap('The aerodynamic grid contains %u surfaces' % self.n_surf, 1)

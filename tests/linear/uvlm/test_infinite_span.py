@@ -85,7 +85,7 @@ class Test_infinite_span(unittest.TestCase):
 
         # solution flow
         ws.set_default_config_dict()
-        ws.config['SHARPy']['flow'] = ['BeamLoader', 'AerogridLoader', 'StaticUvlm']
+        ws.config['SHARPy']['flow'] = ['BeamLoader', 'AerogridLoader', 'StaticUvlm', 'BeamPlot', 'AerogridPlot']
         ws.config['SHARPy']['log_folder'] = self.route_test_dir + '/output/' + self.case_code + '/'
         ws.config['SHARPy']['write_screen'] = 'off'
         ws.config['LinearUvlm'] = {'dt': ws.dt,
@@ -204,7 +204,6 @@ class Test_infinite_span(unittest.TestCase):
         uvec0 = np.array([Uinf0, 0, 0])
         uvec = np.dot(algebra.crv2rotation(dcrv), uvec0)
         duvec = uvec - uvec0
-
         dzeta = np.zeros((Nsurf, 3, M + 1, N // Nsurf + 1))
         dzeta_dot = np.zeros((Nsurf, 3, M + 1, N // Nsurf + 1))
         du_ext = np.zeros((Nsurf, 3, M + 1, N // Nsurf + 1))
@@ -430,7 +429,7 @@ class Test_infinite_span(unittest.TestCase):
             '(%.2e and %.2e) too large. Verify Linear UVLM.' % (er_th_2perc, er_th_1perc)
 
     def tearDown(self):
-
+        return
         try:
             shutil.rmtree(self.route_test_dir + '/res/')
             shutil.rmtree(self.route_test_dir + '/figs/')

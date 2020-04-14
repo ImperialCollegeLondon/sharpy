@@ -108,6 +108,9 @@ class PreSharpy(object):
                                   self.settings['SHARPy']['log_folder'],
                                   self.settings['SHARPy']['log_file'])
 
+        self.case_route = self.settings['SHARPy']['route'] + '/'
+        self.case_name = self.settings['SHARPy']['case']
+
     @staticmethod
     def load_config_file(file_name):
         config = configparser.ConfigParser()

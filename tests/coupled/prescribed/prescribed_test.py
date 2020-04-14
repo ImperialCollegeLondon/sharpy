@@ -5,7 +5,10 @@ import numpy as np
 import importlib
 import unittest
 import os
+import sharpy.utils.cout_utils as cout
 
+
+cout.cout_wrap.print_screen = True
 
 class TestCoupledPrescribed(unittest.TestCase):
     """
@@ -40,6 +43,5 @@ class TestCoupledPrescribed(unittest.TestCase):
         # solver_path = os.path.abspath(os.path.dirname(os.path.realpath(__file__)) +
                                       # '/rotating_wing/rotating_wing.sharpy')
         # sharpy.sharpy_main.main(['', solver_path])
-        print('No tests for prescribed dynamic configurations (yet)!')
+        cout.cout_wrap('No tests for prescribed dynamic configurations (yet)!', 1)
         pass
-

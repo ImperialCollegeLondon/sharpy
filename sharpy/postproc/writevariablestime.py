@@ -110,9 +110,9 @@ class WriteVariablesTime(BaseSolver):
 
         # Check inputs
         if not ((len(self.settings['aero_panels_isurf']) == len(self.settings['aero_panels_im'])) and (len(self.settings['aero_panels_isurf']) == len(self.settings['aero_panels_in']))):
-            print("ERROR: aero_panels should be defined as [i_surf,i_m,i_n]")
+            raise RuntimeError("aero_panels should be defined as [i_surf,i_m,i_n]")
         if not ((len(self.settings['aero_nodes_isurf']) == len(self.settings['aero_nodes_im'])) and (len(self.settings['aero_nodes_isurf']) == len(self.settings['aero_nodes_in']))):
-            print("ERROR: aero_nodes should be defined as [i_surf,i_m,i_n]")
+            raise RuntimeError("aero_nodes should be defined as [i_surf,i_m,i_n]")
 
         if self.settings['cleanup_old_solution']:
             for ivariable in range(len(self.settings['FoR_variables'])):
