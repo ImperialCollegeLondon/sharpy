@@ -1,7 +1,5 @@
 """Basis Interpolation Model Reduction"""
-import numpy as np
 import sharpy.utils.settings as settings
-import sharpy.utils.cout_utils as cout
 import sharpy.utils.rom_interface as rom_interface
 import sharpy.rom.interpolation.pmorlibrary as pmorlibrary
 import sharpy.rom.interpolation.interpolationspaces as interpolationspaces
@@ -79,6 +77,10 @@ class BasisInterpolation(rom_interface.BaseRom):
     settings_default['cases_folder'] = None
     settings_description['cases_folder'] = 'Path to folder containing cases, a new library will be generated.'
 
+    settings_types['library_filepath'] = 'str'
+    settings_default['library_filepath'] = ''
+    settings_description['library_filepath'] = 'Filepath to .pkl file containing pROM library. If previously created.'
+
     settings_types['reference_case'] = 'int'
     settings_default['reference_case'] = -1
     settings_description['reference_case'] = "Reference case for coordinate transformation. If ``-1`` the library's " \
@@ -108,18 +110,31 @@ class BasisInterpolation(rom_interface.BaseRom):
 
         self.settings = in_settings
 
-        settings.to_custom_types(self.settings, self.settings_types, self.settings_default, self.settings_options, no_ctype=True)
+        settings.to_custom_types(self.settings, self.settings_types, self.settings_default, self.settings_options,
+                                 no_ctype=True)
 
         self.rom_library = pmorlibrary.ROMLibrary()
-        self.rom_library.create(settings={'pickle_source_path': self.settings['cases_folder']})
-        self.rom_library.set_reference_case(self.settings['reference_case'])
+        if self.settings['cases_folder'] is not '':
+            # creates library from a folder containing all cases
+            new_library_settings = {'pickle_source_path': self.settings['cases_folder']}
+            self.rom_library.create(settings=new_library_settings)
+
+        elif self.settings['library_filepath'] is '':
+            self.rom_library.interface()
+
+        else:
+            self.rom_library.load_library(path=self.settings['library_filepath'])
+
+        if self.settings['reference_case'] != -1 or self.rom_library.reference_case is None:
+            self.rom_library.set_reference_case(self.settings['reference_case'])
 
         self.rom_library.display_library()
         self.rom_library.sort_grid()
         self.rom_library.load_data_from_library()
 
         ss_list, vv_list, wwt_list = self.rom_library.get_reduced_order_bases(target_system='uvlm')
-        self.pmor = interpolationspaces.BasisInterpolation(v_list=vv_list, vt_list=wwt_list, ss_list=ss_list)
+        self.pmor = interpolationspaces.BasisInterpolation(v_list=vv_list,
+                                                           reference_case=self.rom_library.reference_case)
 
         self.pmor.create_tangent_space()
 
