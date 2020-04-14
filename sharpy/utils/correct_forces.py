@@ -5,9 +5,9 @@ The aerodynamic forces can be corrected with these functions.
 The correction is done once they are projected on the structural beam.
 
 Args:
-    data (``sharpy.PreSharpy``): SHARPy data
-    aero_kstep (``sharpy.utils.datastructures.AeroTimeStepInfo``): Current aerodynamic substep
-    structural_kstep (``sharpy.utils.datastructures.StructTimeStepInfo``): Current structural substep
+    data (:class:`sharpy.PreSharpy`): SHARPy data
+    aero_kstep (:class:`sharpy.utils.datastructures.AeroTimeStepInfo`): Current aerodynamic substep
+    structural_kstep (:class:`sharpy.utils.datastructures.StructTimeStepInfo`): Current structural substep
     struct_forces (np.array): Array with the aerodynamic forces mapped on the structure in the B frame of reference
 
 Returns:
