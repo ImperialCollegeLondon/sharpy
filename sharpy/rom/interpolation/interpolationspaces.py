@@ -486,16 +486,34 @@ class InterpolationRealMatrices(TangentInterpolation):
 
 
 class BasisInterpolation:
+    """
+    Interpolation of reduced order bases for parametric reduced order systems.
 
-    def __init__(self, v_list=list(), vt_list=list(), ss_list=list(), reference_case=0):
+    Args:
+        v_list (list): List of ``np.ndarray``s containing the right reduced order bases of the systems.
+        reference_case (int): Reference case.
+
+    References:
+        [1] Amsallem, D. and Farhat, C. Interpolation Method for Adapting Reduced-Order Models and Application to
+        Aeroelasticity. AIAA Jounal, Vol 46, No 7, July 2008.
+    """
+
+    def __init__(self, v_list=list(), reference_case=0):
         self.v_list = v_list
-        self.vt_list = vt_list
         self.reference_case = reference_case
-        self.ss_list = ss_list
 
         self.gamma = [None] * len(self.v_list)
 
     def create_tangent_space(self, indices=None):
+        r"""
+        Maps the reduced order bases onto the tangent space.
+
+        Reference equation (20) and (21) in [1].
+
+        Args:
+            indices (list (optional)): List containing indices of bases to compute. Defaults to all.
+
+        """
 
         n, r = self.v_list[0].shape
         vref = self.v_list[self.reference_case]
@@ -514,7 +532,18 @@ class BasisInterpolation:
             self.gamma[vi] = p.dot(np.diag(np.arctan(s)).dot(q))
 
     def interpolate_gamma(self, weights):
+        r"""
+        Interpolates the matrices :math:`\Gamma_i`, previously computed given the input ``weights``.
 
+        .. math:: \Gamma_{N+1} = \Sum_{i=0}^N w_i\Gamma_i
+
+
+        Args:
+            weights (list(float)): List of weights corresponding to each interpolation point.
+
+        Returns:
+            np.ndarray: Tangent matrix at the new operating point.
+        """
         gamma = []
         for ith, gamma_i in enumerate(self.gamma):
             if gamma_i is not None:
@@ -522,6 +551,18 @@ class BasisInterpolation:
         return sum(gamma)
 
     def return_from_tangent_space(self, gamma):
+        r"""
+        Maps the newly interpolated matrix :math:`\Gamma_{N+1}` back from the tangent space using an exponential
+        mapping.
+
+        See Equation (22) and (23) in [1].
+
+        Args:
+            gamma (np.ndarray): Newly interpolated matrix in the tangent space.
+
+        Returns:
+            np.ndarray: Right reduced order basis at the new operating point.
+        """
         p, s, q = sclalg.svd(gamma, full_matrices=False)
         v_ref = self.v_list[self.reference_case]
 
@@ -530,7 +571,18 @@ class BasisInterpolation:
         return v
 
     def interpolate(self, weights, ss):
+        r"""
+        Given the linear state space of the high fidelity model at the new operating point, this method computes the
+        interpolated reduced order bases corresponding to the operating point and projects the state space using these
+        newly computed bases.
 
+        Args:
+            weights (list(float)): List of weights corresponding to each interpolation point.
+            ss (sharpy.linear.src.libss.ss): State-space of the high fidelity model at the new operating point.
+
+        Returns:
+            sharpy.linear.src.libss.ss: Reduced order model at the new operating point.
+        """
         gamma = self.interpolate_gamma(weights)
 
         v_interp = self.return_from_tangent_space(gamma)
