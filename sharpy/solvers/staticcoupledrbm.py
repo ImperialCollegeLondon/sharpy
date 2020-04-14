@@ -63,7 +63,7 @@ class StaticCoupledRBM(BaseSolver):
 
     settings_types['correct_forces_method'] = 'str'
     settings_default['correct_forces_method'] = ''
-    settings_description['correct_forces_method'] = 'Function used to correct aerodynamic forces'
+    settings_description['correct_forces_method'] = 'Function used to correct aerodynamic forces. Check :py:mod:`sharpy.utils.correct_forces`'
     settings_options['correct_forces_method'] = ['efficiency', 'polars']
 
     settings_table = settings.SettingsTable()
@@ -97,11 +97,11 @@ class StaticCoupledRBM(BaseSolver):
 
         # load info from dyn dictionary
         self.data.structure.add_unsteady_information(self.data.structure.dyn_dict, 1)
-        
+
         # Define the function to correct aerodynamic forces
         if self.settings['correct_forces_method'] is not '':
             self.correct_forces = True
-            self.correct_forces_function = cf.dict_of_corrections[self.settings['correct_forces_method']]    
+            self.correct_forces_function = cf.dict_of_corrections[self.settings['correct_forces_method']]
 
     def increase_ts(self):
         self.data.ts += 1

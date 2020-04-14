@@ -20,13 +20,13 @@ import sharpy.utils.algebra as algebra
 from sharpy.utils.constants import deg2rad
 
 
-dict_of_corrections = {}
-# Decorator
-def gen_dict_force_corrections(func):
-    global dict_of_corrections
-    dict_of_corrections[func.__name__] = func
+# dict_of_corrections = {}
+# # Decorator
+# def gen_dict_force_corrections(func):
+#     global dict_of_corrections
+#     dict_of_corrections[func.__name__] = func
 
-@gen_dict_force_corrections
+# @gen_dict_force_corrections
 def efficiency(data, aero_kstep, structural_kstep, struct_forces):
     r"""
     The efficiency and constant terms are introduced by means of the array ``airfoil_efficiency`` in the ``aero.h5``
@@ -50,6 +50,8 @@ def efficiency(data, aero_kstep, structural_kstep, struct_forces):
     Returns:
          np.ndarray: corresponding aerodynamic force at the structural node from the force and moment at a grid vertex
     """
+
+    __doc__ += "arturo"
 
     n_node = data.structure.num_node
     n_elem = data.structure.num_elem
@@ -78,15 +80,15 @@ def efficiency(data, aero_kstep, structural_kstep, struct_forces):
         new_struct_forces[inode, 3:6] += moment_efficiency[i_elem, i_local_node, 1, :]
     return new_struct_forces
 
-@gen_dict_force_corrections
+# @gen_dict_force_corrections
 def polars(data, aero_kstep, structural_kstep, struct_forces):
     r"""
     This function corrects the aerodynamic forces from UVLM based on the airfoil polars provided by the user in the aero.h5 file
 
     These are the steps needed to correct the forces:
-    - The force coming from UVLM is divided into induced drag (parallel to the incoming flow velocity) and lift (the remaining force).
-    - The angle of attack is computed based on that lift force and the angle of zero lift computed form the airfoil polar and assuming a slope of :math::`2 \pi`
-    - The dreag force is computed based on the angle of attack and the polars provided by the user
+    * The force coming from UVLM is divided into induced drag (parallel to the incoming flow velocity) and lift (the remaining force).
+    * The angle of attack is computed based on that lift force and the angle of zero lift computed form the airfoil polar and assuming a slope of :math:`2 \pi`
+    * The dreag force is computed based on the angle of attack and the polars provided by the user
     """
 
     aerogrid = data.aero
@@ -179,3 +181,8 @@ def polars(data, aero_kstep, structural_kstep, struct_forces):
                                                force)
 
     return new_struct_forces
+
+# TODO: the idea of the decorator is better. However, this is the only way I
+# found to make this appear in the documentation
+dict_of_corrections = {'efficiency': efficiency,
+                       'polars': polars}

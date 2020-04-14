@@ -128,7 +128,7 @@ class DynamicCoupled(BaseSolver):
 
     settings_types['correct_forces_method'] = 'str'
     settings_default['correct_forces_method'] = '' # 'efficiency'
-    settings_description['correct_forces_method'] = 'Function used to correct aerodynamic forces'
+    settings_description['correct_forces_method'] = 'Function used to correct aerodynamic forces. Check :py:mod:`sharpy.utils.correct_forces`'
     settings_options['correct_forces_method'] = ['efficiency', 'polars']
 
     settings_table = settings.SettingsTable()
