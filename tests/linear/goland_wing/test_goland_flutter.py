@@ -28,6 +28,7 @@ class TestGolandFlutter(unittest.TestCase):
         rom_settings = dict()
         rom_settings['algorithm'] = 'mimo_rational_arnoldi'
         rom_settings['r'] = 6
+        rom_settings['single_side'] = 'observability'
         frequency_continuous_k = np.array([0.])
 
         # Case Admin - Create results folders
