@@ -36,6 +36,7 @@ install:
   - source bin/sharpy_vars.sh
   - mkdir build && cd build
   - cmake .. && make install -j 4 && cd ..
+  - git submodule
 
 script:
   - coverage run -m unittest discover
