@@ -1,4 +1,18 @@
-"""Force correction utilities"""
+"""
+Force correction utilities
+
+The aerodynamic forces can be corrected with these functions.
+The correction is done once they are projected on the structural beam.
+
+Args:
+    data (:class:`sharpy.PreSharpy`): SHARPy data
+    aero_kstep (:class:`sharpy.utils.datastructures.AeroTimeStepInfo`): Current aerodynamic substep
+    structural_kstep (:class:`sharpy.utils.datastructures.StructTimeStepInfo`): Current structural substep
+    struct_forces (np.array): Array with the aerodynamic forces mapped on the structure in the B frame of reference
+
+Returns:
+    new_struct_forces (np.array): Array with the corrected forces
+"""
 import numpy as np
 
 import sharpy.aero.utils.airfoilpolars as ap
@@ -46,13 +60,13 @@ def efficiency(data, aero_kstep, structural_kstep, struct_forces):
     airfoil_efficiency = aero_dict['airfoil_efficiency']
     # force efficiency dimensions [n_elem, n_node_elem, 2, [fx, fy, fz]] - all defined in B frame
     force_efficiency = np.zeros((n_elem, 3, 2, 3))
-    force_efficiency[:, :, 0, :] = 1. 
+    force_efficiency[:, :, 0, :] = 1.
     force_efficiency[:, :, :, 1] = airfoil_efficiency[:, :, :, 0]
     force_efficiency[:, :, :, 2] = airfoil_efficiency[:, :, :, 1]
 
     # moment efficiency dimensions [n_elem, n_node_elem, 2, [mx, my, mz]] - all defined in B frame
     moment_efficiency = np.zeros((n_elem, 3, 2, 3))
-    moment_efficiency[:, :, 0, :] = 1. 
+    moment_efficiency[:, :, 0, :] = 1.
     moment_efficiency[:, :, :, 0] = airfoil_efficiency[:, :, :, 2]
 
     for inode in range(n_node):
@@ -66,6 +80,14 @@ def efficiency(data, aero_kstep, structural_kstep, struct_forces):
 
 @gen_dict_force_corrections
 def polars(data, aero_kstep, structural_kstep, struct_forces):
+    r"""
+    This function corrects the aerodynamic forces from UVLM based on the airfoil polars provided by the user in the aero.h5 file
+
+    These are the steps needed to correct the forces:
+    - The force coming from UVLM is divided into induced drag (parallel to the incoming flow velocity) and lift (the remaining force).
+    - The angle of attack is computed based on that lift force and the angle of zero lift computed form the airfoil polar and assuming a slope of :math::`2 \pi`
+    - The dreag force is computed based on the angle of attack and the polars provided by the user
+    """
 
     aerogrid = data.aero
     beam = data.beam
