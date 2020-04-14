@@ -137,7 +137,7 @@ class BasisInterpolation(rom_interface.BaseRom):
         self.rom_library.sort_grid()
         self.rom_library.load_data_from_library()
 
-        ss_list, vv_list, wwt_list = self.rom_library.get_reduced_order_bases(target_system='uvlm')
+        ss_list, vv_list, wwt_list = self.rom_library.get_reduced_order_bases(target_system='aerodynamic')
         self.pmor = interpolationspaces.BasisInterpolation(v_list=vv_list,
                                                            reference_case=self.rom_library.reference_case)
 
