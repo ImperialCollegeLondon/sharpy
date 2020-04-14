@@ -90,7 +90,7 @@ def polars(data, aero_kstep, structural_kstep, struct_forces):
     """
 
     aerogrid = data.aero
-    beam = data.beam
+    beam = data.structure
     rho = 1.225
     aero_dict = aerogrid.aero_dict
     if aerogrid.polars is None:
