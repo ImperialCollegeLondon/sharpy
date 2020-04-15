@@ -282,7 +282,10 @@ def h_infinity_norm(ss, **kwargs):
 
     if any(eigs.real > tol_imag_eigs):
         if print_info:
-            print('System is unstable')
+            try:
+                cout.cout_wrap('System is unstable - H-inf = np.inf')
+            except ValueError:
+                print('System is unstable - H-inf = np.inf')
         return np.inf
 
     # 2) Find eigenvalue that maximises equation. If all real pick largest eig
@@ -300,9 +303,18 @@ def h_infinity_norm(ss, **kwargs):
 
     iter_num = 0
 
+    if print_info:
+        try:
+            cout.cout_wrap('Calculating H-inf norm\n{0:>4s} ::::: {1:^8s}'.format('Iter', 'Hinf'))
+        except ValueError:
+            print('Calculating H_inf norm\n{0:>4s} ::::: {1:^8s}'.format('Iter', 'Hinf'))
+
     while iter_num < iter_max:
         if print_info:
-            print('Iteration %g ::::: %f' % (iter_num, gamma_lb))
+            try:
+                cout.cout_wrap('{0:>4g} ::::: {1:>8.2e}'.format(iter_num, gamma_lb))
+            except ValueError:
+                print('{0:>4g} ::::: {1:>8.2e}'.format(iter_num, gamma_lb))
         gamma = (1 + 2 * tol) * gamma_lb
 
         # 4) compute hamiltonian and eigenvalues
@@ -333,8 +345,6 @@ def h_infinity_norm(ss, **kwargs):
 
         else:
             gamma_ub = gamma
-            if print_info:
-                print('Finishing loop at iteration %g' % iter_num)
             break
 
         iter_num += 1
