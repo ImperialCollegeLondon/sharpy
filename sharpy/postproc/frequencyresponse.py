@@ -8,6 +8,7 @@ import warnings
 import sharpy.linear.src.libss as libss
 import h5py as h5
 import sharpy.utils.frequencyutils as frequencyutils
+from sharpy.utils.frequencyutils import find_target_system
 
 
 @solver_interface.solver
@@ -142,7 +143,7 @@ class FrequencyResponse(solver_interface.BaseSolver):
         """
 
         if ss is None:
-            ss_list = [self.find_target_system(system_name) for system_name in self.settings['target_system']]
+            ss_list = [find_target_system(self.data, system_name) for system_name in self.settings['target_system']]
         elif type(ss) is libss.ss:
             ss_list = [ss]
         elif type(ss) is list:
@@ -188,22 +189,6 @@ class FrequencyResponse(solver_interface.BaseSolver):
                 self.quick_plot(y_freq_fom, subfolder=system_name)
 
         return self.data
-
-    def find_target_system(self, target_system):
-
-        if target_system == 'aeroelastic':
-            ss = self.data.linear.ss
-
-        elif target_system == 'structural':
-            ss = self.data.linear.linear_system.beam.ss
-
-        elif target_system == 'aerodynamic':
-            ss = self.data.linear.linear_system.uvlm.ss  # this will be a ROM if a ROM has been calculated
-
-        else:
-            raise NameError('Unrecognised system')
-
-        return ss
 
     def save_freq_resp(self, wv, Yfreq, system_name=None, hinf=None):
         """
