@@ -81,10 +81,10 @@ class TestFixNodeVelocitywrtA(unittest.TestCase):
 
         SimInfo.solvers['AerogridLoader']['unsteady'] = 'on'
         SimInfo.solvers['AerogridLoader']['mstar'] = 2
-        SimInfo.solvers['AerogridLoader']['wake_shape_generator'] = 'StraightWake'                                                                                           
-        SimInfo.solvers['AerogridLoader']['wake_shape_generator_input'] = {'u_inf':10.,                                                                                      
-                                                                           'u_inf_direction': np.array([0., 1., 0.]),                                                        
-                                                                           'dt': 0.05}    
+        SimInfo.solvers['AerogridLoader']['wake_shape_generator'] = 'StraightWake'
+        SimInfo.solvers['AerogridLoader']['wake_shape_generator_input'] = {'u_inf':10.,
+                                                                           'u_inf_direction': np.array([0., 1., 0.]),
+                                                                           'dt': 0.05}
 
 
         SimInfo.solvers['NonLinearStatic']['print_info'] = False
@@ -176,7 +176,7 @@ class TestFixNodeVelocitywrtA(unittest.TestCase):
         self.assertAlmostEqual(pos_tip_data[-1, 2], 0., 2)
         self.assertAlmostEqual(pos_tip_data[-1, 3], -4.58856e-1, 3)
 
-        pos_root_data = np.matrix(np.genfromtxt(output_path + "struct_pos_node" + str(0) + ".dat", delimiter=' '))
+        pos_root_data = np.loadtxt(("%sstruct_pos_node0.dat" % output_path), )
         self.assertAlmostEqual(pos_root_data[0, 1], 0.0, 2)
         self.assertAlmostEqual(pos_root_data[0, 2], 0.0, 2)
         self.assertAlmostEqual(pos_root_data[0, 3], 0.0, 2)
