@@ -376,3 +376,30 @@ def max_eigs(eigs):
     i_max = np.argmax(func)
 
     return func[i_max], i_max
+
+
+def find_target_system(data, target_system):
+    """
+    Finds target system ``aeroelastic``, ``aerodynamic`` or ``structural``.
+
+    Args:
+        data (sharpy.PreSharpy): Object containing problem data
+        target_system (str): Desired target system.
+
+    Returns:
+        sharpy.linear.src.libss.ss: State-space object of target system
+    """
+
+    if target_system == 'aeroelastic':
+        ss = data.linear.ss
+
+    elif target_system == 'structural':
+        ss = data.linear.linear_system.beam.ss
+
+    elif target_system == 'aerodynamic':
+        ss = data.linear.linear_system.uvlm.ss  # this could be a ROM
+
+    else:
+        raise NameError('Unrecognised system')
+
+    return ss
