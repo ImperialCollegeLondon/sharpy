@@ -8,8 +8,6 @@ import os
 import sharpy.utils.cout_utils as cout
 
 
-cout.cout_wrap.print_screen = True
-
 class TestCoupledPrescribed(unittest.TestCase):
     """
     """

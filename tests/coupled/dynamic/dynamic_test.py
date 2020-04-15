@@ -5,8 +5,6 @@ import os
 import sharpy.utils.cout_utils as cout
 
 
-cout.cout_wrap.print_screen = True
-
 class TestCoupledDynamic(unittest.TestCase):
     """
     Placeholder for dynamic coupled tests

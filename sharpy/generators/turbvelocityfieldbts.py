@@ -4,10 +4,8 @@ import scipy.interpolate as interpolate
 import sharpy.utils.generator_interface as generator_interface
 import sharpy.utils.settings as settings
 import sharpy.utils.cout_utils as cout
-import sharpy.utils.cout_utils as cout
 
 
-cout.cout_wrap.print_screen = True
 def interp_rectgrid_vectorfield(points, grid, vector_field, out_value, regularGrid=False, num_cores=1):
     # check: https://en.wikipedia.org/wiki/Trilinear_interpolation
     npoints = points.shape[0]

@@ -9,7 +9,6 @@ import sharpy.structure.utils.lagrangeconstraints as lagrangeconstraints
 import sharpy.utils.cout_utils as cout
 
 
-cout.cout_wrap.print_screen = True
 _BaseStructural = solver_from_string('_BaseStructural')
 
 

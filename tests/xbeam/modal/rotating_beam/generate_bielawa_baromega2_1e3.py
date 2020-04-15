@@ -8,7 +8,6 @@ import sys
 import sharpy.utils.cout_utils as cout
 
 
-cout.cout_wrap.print_screen = True
 case_name = 'bielawa_baromega2_1e3'
 route = os.path.dirname(os.path.realpath(__file__)) + '/'
 

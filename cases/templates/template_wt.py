@@ -22,8 +22,11 @@ import sharpy.aero.utils.airfoilpolars as ap
 import sharpy.utils.cout_utils as cout
 
 
-cout.cout_wrap.print_screen = True
-cout.cout_wrap.print_file = False
+if not cout.check_running_unittest:
+    cout.cout_wrap.print_screen = True
+    cout.cout_wrap.print_file = False
+
+
 ######################################################################
 # AUX FUNCTIONS
 ######################################################################

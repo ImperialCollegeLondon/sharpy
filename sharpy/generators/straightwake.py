@@ -6,7 +6,6 @@ import sharpy.utils.solver_interface as solver_interface
 import sharpy.utils.cout_utils as cout
 
 
-cout.cout_wrap.print_screen = True
 @generator_interface.generator
 class StraightWake(generator_interface.BaseGenerator):
     r"""
