@@ -207,6 +207,7 @@ class TestGolandFlutter(unittest.TestCase):
 
         ws.config['AsymptoticStability'] = {'print_info': True,
                                             'folder': self.route_test_dir + '/output/',
+                                            'target_system': ['aeroelastic', 'aerodynamic', 'structural'],
                                             'velocity_analysis': [160, 180, 20]}
 
         ws.config['LinDynamicSim'] = {'dt': ws.dt,
@@ -227,7 +228,6 @@ class TestGolandFlutter(unittest.TestCase):
                                           'folder': self.route_test_dir + '/output/',
                                           'frequency_unit': 'k',
                                           'frequency_bounds': [0.0001, 1.0],
-                                          'target_system': ['aeroelastic'],
                                           'num_freqs': 100,
                                           'frequency_spacing': 'log',
                                           'target_system': ['aeroelastic'],
@@ -246,14 +246,14 @@ class TestGolandFlutter(unittest.TestCase):
         print('ROM is stable')
 
     def run_flutter(self):
-        flutter_ref_speed = 166 # at current discretisation
+        flutter_ref_speed = 166  # at current discretisation
 
         # load results file - variables below determined by ``velocity_analysis`` setting in AsymptoticStability
-        ulb = 160   # velocity lower bound
-        uub = 180   # velocity upper bound
+        ulb = 160  # velocity lower bound
+        uub = 180  # velocity upper bound
         num_u = 20  # n_speeds
-        res = np.loadtxt(self.route_test_dir + '/output/%s/stability/' % self.data.settings['SHARPy']['case']+
-                         '/velocity_analysis_min%04d_max%04d_nvel%04d.dat' %(ulb*10, uub*10, num_u),)
+        res = np.loadtxt(self.route_test_dir + '/output/%s/stability/' % self.data.settings['SHARPy']['case'] +
+                         '/aeroelastic_velocity_analysis_min%04d_max%04d_nvel%04d.dat' % (ulb * 10, uub * 10, num_u), )
 
         u_inf = res[:, 0]
         eval_real = res[:, 1]
