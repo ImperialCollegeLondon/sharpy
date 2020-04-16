@@ -32,7 +32,7 @@ import sharpy.structure.utils.lagrangeconstraints as lagrangeconstraints
 import sharpy.utils.cout_utils as cout
 
 
-if not cout.check_running_unittest:
+if not cout.check_running_unittest():
     cout.cout_wrap.print_screen = True
     cout.cout_wrap.print_file = False
 
@@ -1616,16 +1616,11 @@ class SimulationInformation():
         Set the default values for all the solvers
         """
 
-        cout_prev_screen = cout.cout_wrap.print_screen
-        cout_prev_file = cout.cout_wrap.print_file
-        cout.cout_wrap.print_screen = False
-        cout.cout_wrap.print_file = False
-
         self.solvers = dict()
         # cout.start_writer()
-        aux_names = solver_interface.dictionary_of_solvers()
+        aux_names = solver_interface.dictionary_of_solvers(print_info=False)
         # cout.finish_writer()
-        aux_names.update(generator_interface.dictionary_of_generators())
+        aux_names.update(generator_interface.dictionary_of_generators(print_info=False))
 
         # TODO: I am sure this can be done in a better way
         for solver in aux_names:
@@ -1659,9 +1654,6 @@ class SimulationInformation():
                                    # 'skip_attr': dict(),
                                    'compress_float': False}
 
-        cout.cout_wrap.print_screen = cout_prev_screen
-        cout.cout_wrap.print_file = cout_prev_file
-
     def check(self):
 
         default = SimulationInformation()
@@ -1682,7 +1674,7 @@ class SimulationInformation():
             num_steps (int): number of steps
         """
 
-        solver_names = solver_interface.dictionary_of_solvers()
+        solver_names = solver_interface.dictionary_of_solvers(print_info=False)
         for solver in solver_names:
             if 'n_time_steps' in self.solvers[solver]:
                 self.solvers[solver]['n_time_steps'] = num_steps

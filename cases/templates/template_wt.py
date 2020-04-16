@@ -21,8 +21,7 @@ from sharpy.utils.constants import deg2rad
 import sharpy.aero.utils.airfoilpolars as ap
 import sharpy.utils.cout_utils as cout
 
-
-if not cout.check_running_unittest:
+if not cout.check_running_unittest():
     cout.cout_wrap.print_screen = True
     cout.cout_wrap.print_file = False
 

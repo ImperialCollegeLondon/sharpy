@@ -255,7 +255,7 @@ def check_running_unittest():
     running_unittest = False
     for arg in sys.argv:
         if "unittest" in arg:
+            print("running unittest")
             running_unittest = True
 
     return running_unittest
-    
