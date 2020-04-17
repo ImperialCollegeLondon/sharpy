@@ -55,7 +55,7 @@ class PrescribedUvlm(BaseSolver):
 
     settings_types['postprocessors_settings'] = 'dict'
     settings_default['postprocessors_settings'] = dict()
-    settings_description['postprocessors_settings'] = 'Dictionary with the applicable settings for every ``psotprocessor``. Every ``postprocessor`` needs its entry, even if empty'
+    settings_description['postprocessors_settings'] = 'Dictionary with the applicable settings for every ``postprocessor``. Every ``postprocessor`` needs its entry, even if empty'
 
     settings_types['cfl1'] = 'bool'
     settings_default['cfl1'] = True
