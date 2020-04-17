@@ -58,6 +58,7 @@ import numpy as np
 import scipy.signal as scsig
 import scipy.linalg as scalg
 import scipy.interpolate as scint
+import h5py
 
 # dependency
 import sharpy.linear.src.libsparse as libsp
@@ -245,7 +246,6 @@ class ss():
         self.C = libsp.dot( self.C, V)
         self.states=V.shape[1]
 
-
     def truncate(self, N):
         ''' Retains only the first N states. '''
 
@@ -311,6 +311,16 @@ class ss():
         n = a.shape[0]
 
         return c.dot(scalg.inv(s * np.eye(n) - a)).dot(b) + d
+
+    def save(self, path):
+        """Save state-space object to h5 file"""
+        with h5py.File(path, 'w') as f:
+            f.create_dataset('a', data=self.A)
+            f.create_dataset('b', data=self.B)
+            f.create_dataset('c', data=self.C)
+            f.create_dataset('d', data=self.D)
+            if self.dt:
+                f.create_dataset('dt', data=self.dt)
 
 
 class ss_block():
