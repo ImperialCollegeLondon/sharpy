@@ -84,9 +84,10 @@ def polars(data, aero_kstep, structural_kstep, struct_forces):
     This function corrects the aerodynamic forces from UVLM based on the airfoil polars provided by the user in the aero.h5 file
 
     These are the steps needed to correct the forces:
-    * The force coming from UVLM is divided into induced drag (parallel to the incoming flow velocity) and lift (the remaining force).
-    * The angle of attack is computed based on that lift force and the angle of zero lift computed form the airfoil polar and assuming a slope of :math:`2 \pi`
-    * The dreag force is computed based on the angle of attack and the polars provided by the user
+    
+        * The force coming from UVLM is divided into induced drag (parallel to the incoming flow velocity) and lift (the remaining force).
+        * The angle of attack is computed based on that lift force and the angle of zero lift computed form the airfoil polar and assuming a slope of :math:`2 \pi`
+        * The dreag force is computed based on the angle of attack and the polars provided by the user
     """
 
     aerogrid = data.aero
