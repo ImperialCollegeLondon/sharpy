@@ -2,6 +2,10 @@
 
 Set of transformations onto generalised coordinates.
 
+The methods in this module have a common signature and all return a tuple. The first element is the right projector
+and the second the left one. This transformations are then applied to the local reduced order systems to transform them
+to a generalised set of coordinates on which to perform the interpolation.
+
 References:
     [1] D. Amsallem and C. Farhat, An online method for interpolating linear
     parametric reduced-order models, SIAM J. Sci. Comput., 33 (2011), pp. 2169–2198.
@@ -76,46 +80,85 @@ def panzer(vv_list, wwt_list, **kwargs):
     r"""
     Congruent Transformation following the methods of Panzer for orthonormal bases.
 
+    The right reduced order bases are collected into
+
+    .. math:: V_{all} = [V_1, V_2, \dots, V_k] \in \mathbb{R}^{n\times kq}
+
+    The first :math:`q` most important directions are then chosen using an SVD
+
+    .. math:: V_{all} = U\Sigma N^T,\,U\in\mathbb{R}^{n\times n},\,\Sigma\in\mathbb{R}^{n\times kq}
+
+    and the first :math:`q` columns of :math:`U` form the basis for the subspace spanned by :math:`V_{all}`. Choosing
+    the first :math:`q` columns guarantees to capture the most important directions in :math:`V_{all}`.
+
+    Following the notation from [3], the transformation matrix :math:`R` is such that
+
+    .. math:: R^\top x_1 = R\top x_2 \in \mathbb{R}^{q}.
+
+    :math:`R` is chosen as :math:`R=U[:, q]`.
+
+    The local reduced state vectors are transformed to the generalised set of coordinates through the transformation
+    :math:`x_{r, i} = T^{-1}_i x^*_{r, i}` where :math:`x^*_{r, i}` is the reduced state space vector in generalised
+    coordinates.
+
+    .. math:: T_i = R^\top V_i
+
+    and :math:`R` is an orthogonal matrix. The remaining transformation for the left projector is given analogously
+    by :math:`M_i = (W_i^\top R)^{-1}` (see note 1).
+
+    Therefore, the local reduced order systems need to be projected onto the congruent set of coordinates by using
+    the right projector :math:`T_i^{-1}` and the left projector :math:`M_i`.
 
     Args:
         vv_list (list(np.ndarray)): List of right reduced order bases.
         wwt_list (list(np.ndarray)): List of left reduced order bases transposed.
-        **kwargs: Key word arguments
-
-    Keyword Args:
-        ref_case (int): Reference case index.
-        vref (np.ndarray): Reference right reduced order basis (if ``ref_case`` not provided)
-        wtref (np.ndarray): Reference left reduced order basis (if ``ref_case`` not provided)
+        **kwargs: Key word arguments. Unused. Needed to keep the same signature as the other projection methods.
 
     Returns:
-        tuple: (Q, Q^{-1}): Tuple containing lists of :math:`Q` and :math:`Q^{-1}`.
+
+        tuple: :math:`(T^{-1}, M)` tuple containing lists of :math:`T^{-1}` and :math:`M`, where :math:`T^{-1}` is the right
+        projector and :math:`M` is the left projector.
 
     References:
 
         [3] Panzer, J. Mohring, R. Eid, and B. Lohmann, Parametric model order
         reduction by matrix interpolation, at–Automatisierungstechnik, 58 (2010),
         pp. 475–484.
+
+    Notes:
+        1. For the moment, this method is only implemented for orthogonal projections (i.e. :math:`V=W^\top`) in which
+           case :math:`M_i = T_i`
+
+        2. If a warning message appears saying that :math:`R` is not orthogonal, check Remark 1 in [3].
     """
-    warnings.warn('Method untested!')
 
-    vref, wtref = get_reference_bases(vv_list, wwt_list, **kwargs)
+    # kwargs are required (despite them not being used) to keep the same signature as the remaining methods
 
-    q_list = []
-    qinv_list = []
+    # orthogonal projection support only
+    if not np.allclose(wwt_list[0].T, vv_list[0]):
+        raise NotImplementedError('Panzer projection method does not currently support oblique projections. See Docs.')
+
+    m_list = []
+    tinv_list = []
 
     # generate basis
     U, sv = sclalg.svd(np.concatenate(vv_list, axis=1),
                        full_matrices=False, overwrite_a=False,
                        lapack_driver='gesdd')[:2]
     # chop U
-    U = U[:, :vref.shape[0]]
-    for ii in range(len(vv_list)):
-        q = np.linalg.inv(np.dot(wwt_list[ii], U))
-        qinv = np.linalg.inv(np.dot(vv_list[ii].T, U))
-        q_list.append(q)
-        qinv_list.append(qinv)
+    r = U[:, :vv_list[0].shape[1]]
 
-    return q_list, qinv_list
+    if not np.allclose(r.T.dot(r), np.eye(r.shape[1])):
+        raise NotImplementedError('Panzer projection. Method not supported for non-orthogonal R. See Docs.')
+
+    for ii in range(len(vv_list)):
+        t = r.T.dot(vv_list[ii])
+        # m = np.linalg.inv(wwt_list[ii].dot(r))  # for the case where W != V (not tested)
+        m = t
+        tinv_list.append(np.linalg.inv(t))
+        m_list.append(m)
+
+    return tinv_list, m_list
 
 
 def leastsq(vv_list, wwt_list, **kwargs):
