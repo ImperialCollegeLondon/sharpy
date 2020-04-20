@@ -965,7 +965,8 @@ class FlexDynamic():
 
         if self.proj_modes == 'undamped':
             if self.Cstr is not None:
-                print('Warning, projecting system with damping onto undamped modes')
+                if self.settings['print_info']:
+                    cout.cout_wrap('Warning, projecting system with damping onto undamped modes')
 
             # Eigenvalues are purely complex - only the complex part is calculated
             eigenvalues, eigenvectors = np.linalg.eig(np.linalg.solve(self.Mstr, self.Kstr))

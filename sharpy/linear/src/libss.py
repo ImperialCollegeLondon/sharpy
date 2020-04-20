@@ -116,8 +116,6 @@ class ss():
     @property
     def inputs(self):
         """Number of inputs :math:`m` to the system."""
-        # print('Getting number of inputs')
-        # return self._inputs
         if self.B.shape.__len__() == 1:
             self.inputs = 1
         else:
@@ -775,7 +773,7 @@ def freqresp(SS, wv, dlti=True):
         wTs = Ts * wv
         zv = np.cos(wTs) + 1.j * np.sin(wTs)
     else:
-        print('Assuming a continuous time system')
+        # print('Assuming a continuous time system')
         zv = 1.j * wv
 
     Nx = SS.A.shape[0]
