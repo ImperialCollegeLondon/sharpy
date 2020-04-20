@@ -19,6 +19,7 @@ import sharpy.rom.utils.librom as librom
 import sharpy.utils.algebra as algebra
 import sharpy.utils.settings as settings
 import sharpy.utils.cout_utils as cout
+import sharpy.utils.exceptions as exceptions
 
 
 settings_types_dynamic = dict()
@@ -68,7 +69,7 @@ class Static():
 
     def __init__(self, tsdata, for_vel=np.zeros((6,))):
 
-        print('Initialising Static linear UVLM solver class...')
+        cout.cout_wrap('Initialising Static linear UVLM solver class...')
         t0 = time.time()
 
         MS = multisurfaces.MultiAeroGridSurfaces(tsdata, for_vel=for_vel)
@@ -93,7 +94,7 @@ class Static():
         self.prof_out = './asbly.prof'
 
         self.time_init_sta = time.time() - t0
-        print('\t\t\t...done in %.2f sec' % self.time_init_sta)
+        cout.cout_wrap('\t\t\t...done in %.2f sec' % self.time_init_sta)
 
     def assemble_profiling(self):
         """
@@ -111,7 +112,7 @@ class Static():
         """
         Assemble global matrices
         """
-        print('Assembly of static linear UVLM equations started...')
+        cout.cout_wrap('\tAssembly of static linear UVLM equations started...', 1)
         MS = self.MS
         t0 = time.time()
 
@@ -191,7 +192,7 @@ class Static():
         del List_dfqsdvind_gamma, List_dfqsdvind_gamma_star
 
         self.time_asbly = time.time() - t0
-        print('\t\t\t...done in %.2f sec' % self.time_asbly)
+        cout.cout_wrap('\t\t\t...done in %.2f sec' % self.time_asbly, 1)
 
     def solve(self):
         r"""
@@ -230,7 +231,7 @@ class Static():
                    np.dot(self.Dfqsdu_ext, self.u_ext - self.zeta_dot)
 
         self.time_sol = time.time() - t0
-        print('Solution done in %.2f sec' % self.time_sol)
+        cout.cout_wrap('\tSolution done in %.2f sec' % self.time_sol, 1)
 
     def reshape(self):
         """
@@ -725,7 +726,7 @@ class Dynamic(Static):
         - remove all calls to scipy.linalg.block_diag
         """
 
-        print('State-space realisation of UVLM equations started...')
+        cout.cout_wrap('State-space realisation of UVLM equations started...')
         t0 = time.time()
         MS = self.MS
         K, K_star = self.K, self.K_star
@@ -903,18 +904,16 @@ class Dynamic(Static):
             self.B_predictor = Bss
             self.D_predictor = Dss
 
-            print('state-space model produced in form:\n\t' \
-                  'h_{n+1} = A h_{n} + B u_{n}\n\t' \
-                  'with:\n\tx_n = h_n + Bp u_n')
+            cout.cout_wrap('\tstate-space model produced in form:\n\t' \
+                  '\t\th_{n+1} = A h_{n} + B u_{n}\n\t' \
+                  '\t\twith:\n\tx_n = h_n + Bp u_n', 1)
         else:
             self.SS = libss.ss(Ass, Bss, Css, Dss, dt=self.dt)
-            print('state-space model produced in form:\n\t' \
-                  'x_{n+1} = A x_{n} + Bp u_{n+1}')
+            cout.cout_wrap('\tstate-space model produced in form:\n\t' \
+                  'x_{n+1} = A x_{n} + Bp u_{n+1}', 1)
 
         self.cpu_summary['assemble'] = time.time() - t0
-        print('\t\t\t...done in %.2f sec' % self.cpu_summary['assemble'])
-
-
+        cout.cout_wrap('\t\t\t...done in %.2f sec' % self.cpu_summary['assemble'])
 
     def freqresp(self,kv):
         """
@@ -1005,7 +1004,6 @@ class Dynamic(Static):
 
         return Yfreq
 
-
     def get_Cw_cpx(self,zval):
         r"""
         Produces a sparse matrix
@@ -1045,8 +1043,7 @@ class Dynamic(Static):
 
         return libsp.csc_matrix((valvec, (iivec, jjvec)), shape=(K_star, K), dtype=np.complex_)
 
-
-    def balfreq(self,DictBalFreq):
+    def balfreq(self, DictBalFreq):
         """
         Low-rank method for frequency limited balancing.
         The Observability ad controllability Gramians over the frequencies kv
@@ -1490,7 +1487,6 @@ class Dynamic(Static):
 
             ysta = np.dot(Css, xsta) + np.dot(Dss, usta)
 
-
         elif method == 'direct':
             """ Solves (I - A) x = B u with direct method"""
             # if self.use_sparse:
@@ -1500,7 +1496,6 @@ class Dynamic(Static):
             #     xsta = np.linalg.solve(Ass_steady, np.dot(Bss, usta))
             xsta = libsp.solve(libsp.eye_as(Ass) - Ass, Bss.dot(usta))
             ysta = np.dot(Css, xsta) + np.dot(Dss, usta)
-
 
         elif method == 'recursive':
             """ Proovides steady-state solution solving for impulsive response """
@@ -1520,8 +1515,7 @@ class Dynamic(Static):
             if er < tol:
                 pass  # print('Recursive solution found in %.3d iterations'%nn)
             else:
-                print('Solution not found! Max. iterations reached with error: %.3e' % er)
-
+                raise exceptions.NotConvergedSolver('Solution not found! Max. iterations reached with error: %.3e' % er)
 
         elif method == 'subsystem':
             """ Solves sub-system related to Gamma, Gamma_w states only """
@@ -1853,7 +1847,7 @@ class DynamicBlock(Dynamic):
         - remove all calls to scipy.linalg.block_diag
         """
 
-        print('Block form state-space realisation of UVLM equations started...')
+        cout.cout_wrap('\tBlock form state-space realisation of UVLM equations started...', 1)
         t0 = time.time()
         MS = self.MS
         K, K_star = self.K, self.K_star
@@ -2021,16 +2015,16 @@ class DynamicBlock(Dynamic):
         Dss[0].append(-Dss[0][1])
 
         if self.remove_predictor:
-            print( "Predictor not be removed! " +
-                   "(Though this is accounted for in all methods)" )
+            cout.cout_wrap("\t\tPredictor not be removed! " +
+                           "(Though this is accounted for in all methods)", 1)
 
         self.SS = libss.ss_block(Ass, Bss, Css, Dss,
                                        self.S_x, self.S_u, self.S_y, dt=self.dt)
-        print('state-space model produced in form:\n\t' \
-              'x_{n+1} = A x_{n} + Bp u_{n+1}')
+        cout.cout_wrap('\tstate-space model produced in form:\n\t' \
+              'x_{n+1} = A x_{n} + Bp u_{n+1}', 1)
 
         self.cpu_summary['assemble'] = time.time() - t0
-        print('\t\t\t...done in %.2f sec' % self.cpu_summary['assemble'])
+        cout.cout_wrap('\t\t\t...done in %.2f sec' % self.cpu_summary['assemble'], 1)
 
     def freqresp(self, kv):
         """
@@ -2688,7 +2682,7 @@ class Frequency(Static):
         are not required for frequency response analysis.
         """
 
-        print('Assembly of frequency description of UVLM started...')
+        cout.cout_wrap('\tAssembly of frequency description of UVLM started...', 1)
         t0 = time.time()
         MS = self.MS
         K, K_star = self.K, self.K_star
@@ -2790,7 +2784,7 @@ class Frequency(Static):
         self.outputs = 3 * Kzeta
 
         self.cpu_summary['assemble'] = time.time() - t0
-        print('\t\t\t...done in %.2f sec' % self.cpu_summary['assemble'])
+        cout.cout_wrap('\t\t\t...done in %.2f sec' % self.cpu_summary['assemble'], 1)
 
     def addGain(self, K, where):
 
@@ -2811,7 +2805,6 @@ class Frequency(Static):
             self.Css=libsp.dot(K,self.Css)
             self.Dss=libsp.dot(K,self.Dss)
             self.outputs=K.shape[0]
-
 
     def freqresp(self,kv):
         """
@@ -2864,7 +2857,6 @@ class Frequency(Static):
                             self.Dss
 
         return Yfreq
-
 
     def get_Cw_cpx(self,zval):
         r"""
