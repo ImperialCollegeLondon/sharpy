@@ -290,7 +290,7 @@ class AsymptoticStability(BaseSolver):
                    eigenvalues[:num_evals].view(float).reshape(-1, 2))
 
         with h5py.File(stability_folder_path + '/{:s}stability.h5'.format(filename), 'w') as f:
-            f.create_dataset('eigenvalues', data=eigenvalues[:, :num_evals], dtype=complex)
+            f.create_dataset('eigenvalues', data=eigenvalues[:num_evals], dtype=complex)
             f.create_dataset('eigenvectors', data=eigenvectors[:, :num_evals], dtype=complex)
             f.create_dataset('num_eigenvalues', data=num_evals, dtype=int)
 
@@ -356,7 +356,7 @@ class AsymptoticStability(BaseSolver):
             ulb * 10,
             uub * 10,
             num_u)
-        
+
         np.savetxt(velocity_file_name,
                    np.concatenate((uinf_part_plot, real_part_plot, imag_part_plot)).reshape((-1, 3), order='F'))
 
