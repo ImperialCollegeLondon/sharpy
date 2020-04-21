@@ -253,7 +253,7 @@ class TestGolandFlutter(unittest.TestCase):
         uub = 180  # velocity upper bound
         num_u = 20  # n_speeds
         res = np.loadtxt(self.route_test_dir + '/output/%s/stability/' % self.data.settings['SHARPy']['case'] +
-                         '/aeroelastic_velocity_analysis_min%04d_max%04d_nvel%04d.dat' % (ulb * 10, uub * 10, num_u), )
+                         '/velocity_analysis_min%04d_max%04d_nvel%04d.dat' % (ulb * 10, uub * 10, num_u), )
 
         u_inf = res[:, 0]
         eval_real = res[:, 1]
