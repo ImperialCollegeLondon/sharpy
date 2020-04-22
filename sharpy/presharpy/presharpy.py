@@ -1,5 +1,5 @@
-
 import configparser
+import configobj
 
 import sharpy.utils.cout_utils as cout
 from sharpy.utils.solver_interface import solver, dict_of_solvers
@@ -61,6 +61,11 @@ class PreSharpy(object):
     settings_default['log_folder'] = ''
     settings_description['log_folder'] = 'Log folder destination directory'
 
+    settings_types['save_settings'] = 'bool'
+    settings_default['save_settings'] = False
+    settings_description['save_settings'] = 'Save a copy of the settings to a ``.sharpy`` file in the output ' \
+                                            'directory specified in ``log_folder``.'
+
     settings_table = settings.SettingsTable()
     __doc__ += settings_table.generate(settings_types, settings_default, settings_description,
                                        header_line='The following are the settings that the PreSharpy class takes:')
@@ -95,6 +100,9 @@ class PreSharpy(object):
                 except KeyError:
                     exceptions.NotImplementedSolver(solver_name)
 
+        if self.settings['SHARPy']['save_settings']:
+            self.save_settings()
+
     def initialise(self):
         pass
 
@@ -107,6 +115,17 @@ class PreSharpy(object):
                                   self.settings['SHARPy']['write_log'],
                                   self.settings['SHARPy']['log_folder'],
                                   self.settings['SHARPy']['log_file'])
+
+    def save_settings(self):
+        """
+        Saves the settings to a ``.sharpy`` config obj file in the output directory.
+        """
+        out_settings = configobj.ConfigObj()
+        for k, v in self.settings.items():
+            out_settings[k] = v
+        out_settings.filename = self.settings['SHARPy']['log_folder'] + '/' + self.settings['SHARPy']['case'] \
+                                + '.sharpy'
+        out_settings.write()
 
     @staticmethod
     def load_config_file(file_name):
