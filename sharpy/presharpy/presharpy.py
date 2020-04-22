@@ -100,8 +100,8 @@ class PreSharpy(object):
                 except KeyError:
                     exceptions.NotImplementedSolver(solver_name)
 
-        if self.settings['SHARPy']['save_settings']:
-            self.save_settings()
+            if self.settings['SHARPy']['save_settings']:
+                self.save_settings()
 
     def initialise(self):
         pass
