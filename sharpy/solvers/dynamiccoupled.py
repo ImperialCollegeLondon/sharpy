@@ -200,7 +200,8 @@ class DynamicCoupled(BaseSolver):
             self.settings = custom_settings
         settings.to_custom_types(self.settings,
                                  self.settings_types,
-                                 self.settings_default)
+                                 self.settings_default,
+                                 options=self.settings_options)
 
         self.original_settings = copy.deepcopy(self.settings)
 

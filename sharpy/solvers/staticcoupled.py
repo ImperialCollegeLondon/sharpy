@@ -88,7 +88,10 @@ class StaticCoupled(BaseSolver):
             self.settings = data.settings[self.solver_id]
         else:
             self.settings = input_dict
-        settings.to_custom_types(self.settings, self.settings_types, self.settings_default)
+        settings.to_custom_types(self.settings,
+                                 self.settings_types,
+                                 self.settings_default,
+                                 options=self.settings_options)
 
         self.print_info = self.settings['print_info']
 

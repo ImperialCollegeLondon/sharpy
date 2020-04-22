@@ -87,7 +87,10 @@ class StaticCoupledRBM(BaseSolver):
             self.settings = data.settings[self.solver_id]
         else:
             self.settings = input_dict
-        settings.to_custom_types(self.settings, self.settings_types, self.settings_default)
+        settings.to_custom_types(self.settings,
+                                 self.settings_types,
+                                 self.settings_default,
+                                 options=self.settings_options)
 
         self.structural_solver = solver_interface.initialise_solver(self.settings['structural_solver'])
         self.structural_solver.initialise(self.data, self.settings['structural_solver_settings'])
