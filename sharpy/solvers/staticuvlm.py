@@ -88,6 +88,10 @@ class StaticUvlm(BaseSolver):
     settings_default['rho'] = 1.225
     settings_description['rho'] = 'Air density'
 
+    settings_types['cfl1'] = 'bool'
+    settings_default['cfl1'] = True
+    settings_description['cfl1'] = 'If it is ``True``, it assumes that the discretisation complies with CFL=1'
+
     settings_table = settings.SettingsTable()
     __doc__ += settings_table.generate(settings_types, settings_default, settings_description)
 
@@ -141,16 +145,3 @@ class StaticUvlm(BaseSolver):
         # for i_surf in range(self.data.aero.timestep_info[self.data.ts].n_surf):
         #     self.data.aero.timestep_info[self.data.ts].forces[i_surf].fill(0.0)
         #     self.data.aero.timestep_info[self.data.ts].dynamic_forces[i_surf].fill(0.0)
-
-
-
-
-
-
-
-
-
-
-
-
-

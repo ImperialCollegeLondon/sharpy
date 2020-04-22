@@ -230,6 +230,11 @@ class TestDoublePendulum(unittest.TestCase):
 
         SimInfo.solvers['AerogridLoader']['unsteady'] = 'on'
         SimInfo.solvers['AerogridLoader']['mstar'] = 2
+        SimInfo.solvers['AerogridLoader']['wake_shape_generator'] = 'StraightWake'
+        SimInfo.solvers['AerogridLoader']['wake_shape_generator_input'] = {'u_inf':1.,
+                                                                           'u_inf_direction': np.array([0., 1., 0.]),
+                                                                           'dt': dt}
+
 
         SimInfo.solvers['WriteVariablesTime']['FoR_number'] = np.array([0, 1], dtype = int)
         SimInfo.solvers['WriteVariablesTime']['FoR_variables'] = ['mb_quat']
@@ -308,7 +313,7 @@ class TestDoublePendulum(unittest.TestCase):
 
         # read output and compare
         output_path = os.path.abspath(os.path.dirname(os.path.realpath(__file__))) + '/output/double_pendulum_geradin/WriteVariablesTime/'
-        pos_tip_data = np.atleast_2d(np.genfromtxt(output_path + "struct_pos_node" + str(nnodes1*2-1) + ".dat", delimiter=' '))
+        pos_tip_data = np.loadtxt(("%sstruct_pos_node%d.dat" % (output_path, nnodes1*2-1)), )
         self.assertAlmostEqual(pos_tip_data[-1, 1], 1.051004, 4)
         self.assertAlmostEqual(pos_tip_data[-1, 2], 0.000000, 4)
         self.assertAlmostEqual(pos_tip_data[-1, 3], -0.9986984, 4)
