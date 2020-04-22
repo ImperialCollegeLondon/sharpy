@@ -110,7 +110,8 @@ def polars(data, aero_kstep, structural_kstep, struct_forces):
             N = aerogrid.aero_dimensions[isurf, 1]
             polar = aerogrid.polars[iairfoil]
             cab = algebra.crv2rotation(structural_kstep.psi[ielem, inode_in_elem, :])
-            cgb = np.dot(structural_kstep.cga(), cab)
+            cga = algebra.quat2rotation(structural_kstep.quat)
+            cgb = np.dot(cga, cab)
 
             # Deal with the extremes
             if i_n == 0:
@@ -124,7 +125,7 @@ def polars(data, aero_kstep, structural_kstep, struct_forces):
                 node2 = inode - 1
 
             # Define the span and the span direction
-            dir_span = 0.5*np.dot(structural_kstep.cga(),
+            dir_span = 0.5*np.dot(cga,
                               structural_kstep.pos[node1, :] - structural_kstep.pos[node2, :])
             span = np.linalg.norm(dir_span)
             dir_span = algebra.unit_vector(dir_span)
@@ -139,7 +140,7 @@ def polars(data, aero_kstep, structural_kstep, struct_forces):
                     structural_kstep.for_vel[0:3] +
                     np.cross(structural_kstep.for_vel[3:6],
                              structural_kstep.pos[inode, :]))
-            urel = -np.dot(structural_kstep.cga(), urel)
+            urel = -np.dot(cga, urel)
             urel += np.average(aero_kstep.u_ext[isurf][:, :, i_n], axis=1)
             # uind = uvlmlib.uvlm_calculate_total_induced_velocity_at_points(aero_kstep,
             #                                                                np.array([structural_kstep.pos[inode, :] - np.array([0, 0, 1])]),
