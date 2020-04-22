@@ -456,12 +456,13 @@ class DynamicCoupled(BaseSolver):
             final_time = time.perf_counter()
 
             if self.print_info:
+                print_res = 0 if self.res_dqdt == 0. else np.log10(self.res_dqdt)
                 self.residual_table.print_line([self.data.ts,
                                                 self.data.ts*self.dt.value,
                                                 k,
                                                 self.time_struc/(self.time_aero + self.time_struc),
                                                 final_time - initial_time,
-                                                np.log10(self.res_dqdt),
+                                                print_res,
                                                 structural_kstep.for_vel[0],
                                                 structural_kstep.for_vel[2],
                                                 np.sum(structural_kstep.steady_applied_forces[:, 0]),
