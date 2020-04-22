@@ -116,6 +116,9 @@ class PreSharpy(object):
                                   self.settings['SHARPy']['log_folder'],
                                   self.settings['SHARPy']['log_file'])
 
+        self.case_route = self.settings['SHARPy']['route'] + '/'
+        self.case_name = self.settings['SHARPy']['case']
+
     def save_settings(self):
         """
         Saves the settings to a ``.sharpy`` config obj file in the output directory.

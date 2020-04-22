@@ -230,6 +230,18 @@ class AeroTimeStepInfo(object):
             for i_dim in range(NDIM*2):
                 self.ct_dynamic_forces_list.append(self.dynamic_forces[i_surf][i_dim, :, :].reshape(-1))
 
+        try:
+            self.postproc_cell['incidence_angle']
+        except KeyError:
+            with_incidence_angle = False
+        else:
+            with_incidence_angle = True
+
+        if with_incidence_angle:
+            self.ct_incidence_list = []
+            for i_surf in range(self.n_surf):
+                self.ct_incidence_list.append(self.postproc_cell['incidence_angle'][i_surf][:, :].reshape(-1))
+
         self.ct_p_dimensions = ((ct.POINTER(ct.c_uint)*n_surf)
                                 (* np.ctypeslib.as_ctypes(self.ct_dimensions)))
         self.ct_p_dimensions_star = ((ct.POINTER(ct.c_uint)*n_surf)
@@ -256,6 +268,9 @@ class AeroTimeStepInfo(object):
                             (* [np.ctypeslib.as_ctypes(array) for array in self.ct_forces_list]))
         self.ct_p_dynamic_forces = ((ct.POINTER(ct.c_double)*len(self.ct_dynamic_forces_list))
                             (* [np.ctypeslib.as_ctypes(array) for array in self.ct_dynamic_forces_list]))
+        if with_incidence_angle:
+            self.postproc_cell['incidence_angle_ct_pointer'] = ((ct.POINTER(ct.c_double)*len(self.ct_incidence_list))
+                            (* [np.ctypeslib.as_ctypes(array) for array in self.ct_incidence_list]))
 
     def remove_ctypes_pointers(self):
         try:
@@ -719,4 +734,3 @@ class LinearTimeStepInfo(object):
         copied.y = self.y.copy()
         copied.u = self.u.copy()
         copied.t = self.t.copy()
-

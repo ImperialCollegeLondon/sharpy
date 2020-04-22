@@ -28,7 +28,7 @@ class Writer(object):
     sharpy_license = \
         '''Aeroelastics Lab, Aeronautics Department.
     Copyright (c), Imperial College London.
-    All rights reserved. 
+    All rights reserved.
     License available at https://github.com/imperialcollegelondon/sharpy'''
 
     wrapper = textwrap.TextWrapper(width=output_columns, break_long_words=False)
@@ -248,3 +248,14 @@ def get_git_tag(di=sharpydir.SharpyDir):
 def print_git_status():
     return ('The branch being run is ' + get_git_revision_branch() + '\n'\
             'The version and commit hash are: ' + get_git_tag() + '-' + get_git_revision_short_hash())
+
+def check_running_unittest():
+    import sys
+    # Define if the script is being run in unittest
+    running_unittest = False
+    for arg in sys.argv:
+        if "unittest" in arg:
+            print("running unittest")
+            running_unittest = True
+
+    return running_unittest
