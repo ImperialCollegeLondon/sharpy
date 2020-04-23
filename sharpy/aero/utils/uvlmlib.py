@@ -23,6 +23,7 @@ class VMopts(ct.Structure):
             bool Rollup;
             unsigned int NumCores;
             unsigned int NumSurfaces;
+            bool cfl1;
         };
     """
     _fields_ = [("ImageMethod", ct.c_bool),
@@ -40,7 +41,8 @@ class VMopts(ct.Structure):
                 ("rollup_aic_refresh", ct.c_uint),
                 ("iterative_solver", ct.c_bool),
                 ("iterative_tol", ct.c_double),
-                ("iterative_precond", ct.c_bool)]
+                ("iterative_precond", ct.c_bool),
+                ("cfl1", ct.c_bool)]
 
     def __init__(self):
         ct.Structure.__init__(self)
@@ -60,6 +62,7 @@ class VMopts(ct.Structure):
         self.iterative_solver = ct.c_bool(False)
         self.iterative_tol = ct.c_double(0)
         self.iterative_precond = ct.c_bool(False)
+        self.cfl1 = ct.c_bool(True)
 
 
 class UVMopts(ct.Structure):
@@ -75,7 +78,8 @@ class UVMopts(ct.Structure):
                 ("iterative_solver", ct.c_bool),
                 ("iterative_tol", ct.c_double),
                 ("iterative_precond", ct.c_bool),
-                ("convect_wake", ct.c_bool)]
+                ("convect_wake", ct.c_bool),
+                ("cfl1", ct.c_bool)]
 
     def __init__(self):
         ct.Structure.__init__(self)
@@ -89,6 +93,7 @@ class UVMopts(ct.Structure):
         self.iterative_tol = ct.c_double(0)
         self.iterative_precond = ct.c_bool(False)
         self.convect_wake = ct.c_bool(True)
+        self.cfl1 = ct.c_bool(True)
 
 
 class FlightConditions(ct.Structure):
@@ -140,6 +145,7 @@ def vlm_solver(ts_info, options):
     vmopts.iterative_solver = ct.c_bool(options['iterative_solver'].value)
     vmopts.iterative_tol = ct.c_double(options['iterative_tol'].value)
     vmopts.iterative_precond = ct.c_bool(options['iterative_precond'].value)
+    vmopts.cfl1 = ct.c_bool(options['cfl1'])
 
     flightconditions = FlightConditions()
     flightconditions.rho = options['rho']
@@ -222,6 +228,7 @@ def uvlm_solver(i_iter, ts_info, struct_ts_info, options, convect_wake=True, dt=
     uvmopts.iterative_tol = ct.c_double(options['iterative_tol'].value)
     uvmopts.iterative_precond = ct.c_bool(options['iterative_precond'].value)
     uvmopts.convect_wake = ct.c_bool(convect_wake)
+    uvmopts.cfl1 = ct.c_bool(options['cfl1'])
 
     flightconditions = FlightConditions()
     flightconditions.rho = options['rho']

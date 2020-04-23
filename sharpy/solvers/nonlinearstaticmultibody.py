@@ -6,6 +6,7 @@ import sharpy.utils.settings as settings
 import sharpy.structure.utils.xbeamlib as xbeamlib
 import sharpy.utils.multibody as mb
 import sharpy.structure.utils.lagrangeconstraints as lagrangeconstraints
+import sharpy.utils.cout_utils as cout
 
 
 _BaseStructural = solver_from_string('_BaseStructural')
@@ -242,8 +243,8 @@ class NonLinearStaticMultibody(_BaseStructural):
             while converged == False:
                 iter += 1
                 if (iter == self.settings['max_iterations'].value - 1):
-                    print("Residual is:", np.amax(np.abs(Dq)))
-                    print("Static equations did not converge")
+                    cout.cout_wrap(("Residual is: %f" % np.amax(np.abs(Dq))), 4)
+                    cout.cout_wrap("Static equations did not converge", 4)
                     break
 
                 MB_K, MB_Q = self.assembly_MB_eq_system(MB_beam, MB_tstep, Lambda, MBdict, iLoadStep)

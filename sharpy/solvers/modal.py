@@ -1,7 +1,3 @@
-"""
-@modified   Alfonso del Carre
-"""
-
 import ctypes as ct
 import numpy as np
 import scipy as sc

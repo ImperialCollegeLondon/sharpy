@@ -778,10 +778,10 @@ class Krylov(rom_interface.BaseRom):
         else:
             if any(eigs.real > 0):
                 unstable = True
-                print('Unstable ROM')
+                cout.cout_wrap('Unstable ROM', 3)
                 unstable_eigenvalues = eigs[eigs.real > 0]
             else:
-                print('ROM is stable')
+                cout.cout_wrap('ROM is stable')
 
         # Restarted Arnoldi
         # Modify the B matrix in the full state system -> maybe better to have a copy
