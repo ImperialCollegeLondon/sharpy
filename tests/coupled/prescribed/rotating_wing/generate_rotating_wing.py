@@ -488,12 +488,20 @@ def generate_solver_file(horseshoe=False):
         config['AerogridLoader'] = {'unsteady': 'on',
                                     'aligned_grid': 'on',
                                     'mstar': 1,
-                                    'freestream_dir': ['1', '0', '0']}
+                                    'freestream_dir': ['1', '0', '0'],
+                                    'wake_shape_generator': 'StraightWake',                                                                                                 
+                                    'wake_shape_generator_input': {'u_inf': u_inf,                                                                                      
+                                                                     'u_inf_direction': np.array([1., 0., 0.]),                                                              
+                                                                     'dt': dt}}
     else:
         config['AerogridLoader'] = {'unsteady': 'on',
                                     'aligned_grid': 'on',
                                     'mstar': 150,
-                                    'freestream_dir': ['1', '0', '0']}
+                                    'freestream_dir': ['1', '0', '0'],
+                                    'wake_shape_generator': 'StraightWake'                                                                                                 
+                                    'wake_shape_generator_input': {'u_inf': u_inf,                                                                                      
+                                                                     'u_inf_direction': np.array([1., 0., 0.]),                                                              
+                                                                     'dt': dt}}
     config['AerogridPlot'] = {'folder': route + '/output/',
                               'include_rbm': 'on',
                               'include_applied_forces': 'on',

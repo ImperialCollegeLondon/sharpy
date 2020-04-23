@@ -60,7 +60,7 @@ def mgs_ortho(X):
     n = X.shape[1]
     m = X.shape[0]
 
-    Q = np.zeros((m, n), dtype=float)
+    Q = np.zeros((m, n), dtype=complex)
 
     for i in range(n):
         w = X[:, i]
@@ -264,10 +264,10 @@ def construct_mimo_krylov(r, lu_A_input, B, approx_type='Pade', side='controllab
     last_column = 0
 
     # Pre-allocate w, V
-    # V = np.zeros((n, m * r), dtype=complex)
-    # w = np.zeros((n, m * r), dtype=complex)  # Initialise w, may be smaller than this due to deflation
-    V = np.zeros((n, m * r))
-    w = np.zeros((n, m * r))  # Initialise w, may be smaller than this due to deflation
+    V = np.zeros((n, m * r), dtype=complex)
+    w = np.zeros((n, m * r), dtype=complex)  # Initialise w, may be smaller than this due to deflation
+    # V = np.zeros((n, m * r))
+    # w = np.zeros((n, m * r))  # Initialise w, may be smaller than this due to deflation
 
     if approx_type == 'partial_realisation':
         G = B

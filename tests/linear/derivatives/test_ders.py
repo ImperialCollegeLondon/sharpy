@@ -15,6 +15,7 @@ class Test_ders(unittest.TestCase):
     """
     Test methods into assembly module
     """
+    print_info = False  # useful for debugging. Leave False to keep test log clean
 
     def setUp(self):
 
@@ -25,7 +26,8 @@ class Test_ders(unittest.TestCase):
         self.zeta3 = np.array([0.9, 7.9, 1.7])
 
     def test_dbiot_segment(self):
-        print('\n-------------------------------------- Testing dbiot.eval_seg')
+        if self.print_info:
+            print('\n-------------------------------------- Testing dbiot.eval_seg')
 
         gamma = 2.4
         zetaP = self.zetaP
@@ -61,12 +63,14 @@ class Test_ders(unittest.TestCase):
             er_max = max(np.max(np.abs(DerP_num - DerP_an)),
                          np.max(np.abs(DerA_num - DerA_an)),
                          np.max(np.abs(DerB_num - DerB_an)))
-            print('FD step: %.2e ---> Max error: %.2e' % (step, er_max))
+            if self.print_info:
+                print('FD step: %.2e ---> Max error: %.2e' % (step, er_max))
             assert er_max < 5e1 * step, 'Error larger than 50 times step size'
             Er_max[ss] = er_max
 
     def test_dbiot_segment_mid(self):
-        print('\n------------------------- Testing dbiot.eval_seg at mid-point')
+        if self.print_info:
+            print('\n------------------------- Testing dbiot.eval_seg at mid-point')
 
         gamma = 2.4
         zetaA = self.zeta1
@@ -104,12 +108,15 @@ class Test_ders(unittest.TestCase):
             er_max = max(np.max(np.abs(DerP_num - DerP_an)),
                          np.max(np.abs(DerA_num - DerA_an)),
                          np.max(np.abs(DerB_num - DerB_an)))
-            print('FD step: %.2e ---> Max error: %.2e' % (step, er_max))
+
+            if self.print_info:
+                print('FD step: %.2e ---> Max error: %.2e' % (step, er_max))
             assert er_max < 5e1 * step, 'Error larger than 50 times step size'
             Er_max[ss] = er_max
 
     def test_dbiot_panel(self):
-        print('\n---------------------------------- Testing dbiot.eval_panel_*')
+        if self.print_info:
+            print('\n---------------------------------- Testing dbiot.eval_panel_*')
 
         gamma = 2.4
         zetaP = self.zetaP
@@ -164,8 +171,10 @@ class Test_ders(unittest.TestCase):
 
             erP_max = np.max(np.abs(DerP_num - DerP_an))
             erVer_max = np.max(np.abs(DerVer_num - DerVer_an))
-            print('FD step: %.2e ---> Max error (P,Vert): (%.2e,%.2e)' \
-                  % (step, erP_max, erVer_max))
+
+            if self.print_info:
+                print('FD step: %.2e ---> Max error (P,Vert): (%.2e,%.2e)' \
+                      % (step, erP_max, erVer_max))
             assert erP_max < 5e1 * step, \
                 'Error w.r.t. zetaP larger than 50 times step size'
             assert erVer_max < 5e1 * step, \
@@ -181,7 +190,9 @@ class Test_ders(unittest.TestCase):
                 'Error of derivative w.r.t. ZetaPanel not decreasing monothonically'
 
     def test_dbiot_panel_mid_segment(self):
-        print('\n-------------- Testing dbiot.eval_panel with zetaP on segment')
+
+        if self.print_info:
+            print('\n-------------- Testing dbiot.eval_panel with zetaP on segment')
 
         gamma = 2.4
         zeta0 = self.zeta0
@@ -237,8 +248,10 @@ class Test_ders(unittest.TestCase):
 
             erP_max = np.max(np.abs(DerP_num - DerP_an))
             erVer_max = np.max(np.abs(DerVer_num - DerVer_an))
-            print('FD step: %.2e ---> Max error (P,Vert): (%.2e,%.2e)' \
-                  % (step, erP_max, erVer_max))
+
+            if self.print_info:
+                print('FD step: %.2e ---> Max error (P,Vert): (%.2e,%.2e)' \
+                      % (step, erP_max, erVer_max))
             assert erP_max < 5e1 * step, \
                 'Error w.r.t. zetaP larger than 50 times step size'
             assert erVer_max < 5e1 * step, \

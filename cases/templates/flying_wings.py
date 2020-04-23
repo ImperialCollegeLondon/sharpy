@@ -994,7 +994,7 @@ class GolandControlSurface(Goland):
                 # if inode >= num_node_surf // 2:
             ws_elem = 0
             for i_surf in range(2):
-                print('Surface' + str(i_surf))
+                # print('Surface' + str(i_surf))
                 for i_elem in range(num_elem_surf):
                     for i_local_node in range(self.num_node_elem):
                         if i_elem >= int(num_elem_surf *(1- pct_flap)):

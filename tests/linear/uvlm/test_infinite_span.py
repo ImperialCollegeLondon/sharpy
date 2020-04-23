@@ -19,6 +19,7 @@ import sharpy.utils.analytical as an
 import sharpy.linear.src.linuvlm as linuvlm
 import cases.templates.flying_wings as flying_wings
 import sharpy.utils.sharpydir as sharpydir
+import sharpy.utils.cout_utils as cout
 
 
 class Test_infinite_span(unittest.TestCase):
@@ -85,9 +86,10 @@ class Test_infinite_span(unittest.TestCase):
 
         # solution flow
         ws.set_default_config_dict()
-        ws.config['SHARPy']['flow'] = ['BeamLoader', 'AerogridLoader', 'StaticUvlm']
+        ws.config['SHARPy']['flow'] = ['BeamLoader', 'AerogridLoader', 'StaticUvlm', 'BeamPlot', 'AerogridPlot']
         ws.config['SHARPy']['log_folder'] = self.route_test_dir + '/output/' + self.case_code + '/'
         ws.config['SHARPy']['write_screen'] = 'off'
+        ws.config['SHARPy']['write_log'] = 'off'
         ws.config['LinearUvlm'] = {'dt': ws.dt,
                                    'integr_order': integr_ord,
                                    'density': ws.rho,
@@ -104,7 +106,7 @@ class Test_infinite_span(unittest.TestCase):
         tsaero0.rho = ws.config['LinearUvlm']['density']
 
         ### ---- normalisation parameters
-
+        self.start_writer()
         # verify chord
         c_ext = np.linalg.norm(tsaero0.zeta[0][:, 0, 0] - tsaero0.zeta[0][:, -1, 0])
         assert np.abs(ws.c_ref - c_ext) < 1e-8, 'Wrong reference chord'
@@ -204,7 +206,6 @@ class Test_infinite_span(unittest.TestCase):
         uvec0 = np.array([Uinf0, 0, 0])
         uvec = np.dot(algebra.crv2rotation(dcrv), uvec0)
         duvec = uvec - uvec0
-
         dzeta = np.zeros((Nsurf, 3, M + 1, N // Nsurf + 1))
         dzeta_dot = np.zeros((Nsurf, 3, M + 1, N // Nsurf + 1))
         du_ext = np.zeros((Nsurf, 3, M + 1, N // Nsurf + 1))
@@ -282,12 +283,15 @@ class Test_infinite_span(unittest.TestCase):
         ws_pert.set_default_config_dict()
         ws_pert.config['SHARPy']['flow'] = ws.config['SHARPy']['flow']
         ws_pert.config['SHARPy']['write_screen'] = 'off'
+        ws_pert.config['SHARPy']['write_log'] = 'off'
         ws_pert.config['SHARPy']['log_folder'] = self.route_test_dir + '/output/' + self.case_code + '/'
         ws_pert.config.write()
 
         # solve at perturbed point
         data_pert = sharpy.sharpy_main.main(['...', self.route_main + case_pert + '.sharpy'])
         tsaero = data_pert.aero.timestep_info[0]
+
+        self.start_writer()
 
         # get total forces
         Ftot_ste_pert = np.zeros((3,))
@@ -429,8 +433,16 @@ class Test_infinite_span(unittest.TestCase):
             'Error of dynamic step response at time-steps 16 and 36 ' + \
             '(%.2e and %.2e) too large. Verify Linear UVLM.' % (er_th_2perc, er_th_1perc)
 
-    def tearDown(self):
+    def start_writer(self):
+        # Over write writer with print_file False to avoid I/O errors
+        global cout_wrap
+        cout_wrap = cout.Writer()
+        # cout_wrap.initialise(print_screen=False, print_file=False)
+        cout_wrap.cout_quiet()
+        sharpy.utils.cout_utils.cout_wrap = cout_wrap
 
+    def tearDown(self):
+        cout.finish_writer()
         try:
             shutil.rmtree(self.route_test_dir + '/res/')
             shutil.rmtree(self.route_test_dir + '/figs/')

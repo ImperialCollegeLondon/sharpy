@@ -147,7 +147,7 @@ class TurbVelocityFieldBts(generator_interface.BaseGenerator):
         settings.to_custom_types(self.in_dict, self.settings_types, self.settings_default)
         self.settings = self.in_dict
 
-        self.x_grid, self.y_grid, self.z_grid, self.vel = self.read_turbsim_bts(self.settings['turbulent_field'])
+        self.x_grid, self.y_grid, self.z_grid, self.vel = self.read_turbsim_bts(self.settings['turbulent_field'], self.settings['case_with_tower'])
         if not self.settings['new_orientation'] == 'xyz':
             # self.settings['new_orientation'] = 'zyx'
             self.x_grid, self.y_grid, self.z_grid, self.vel = self.change_orientation(self.x_grid, self.y_grid, self.z_grid, self.vel, self.settings['new_orientation'])
@@ -207,7 +207,8 @@ class TurbVelocityFieldBts(generator_interface.BaseGenerator):
                     u_ext[isurf][:, i_m, i_n] = list_uext[ipoint, :]
                     ipoint += 1
 
-    def read_turbsim_bts(self, fname):
+    @staticmethod
+    def read_turbsim_bts(fname, case_with_tower=False):
 
         # This post may be useful to understand the function:
         # https://wind.nrel.gov/forum/wind/viewtopic.php?t=1384
@@ -274,7 +275,7 @@ class TurbVelocityFieldBts(generator_interface.BaseGenerator):
         # Checks
         # print("Case description: ", dictionary['description'])
         if dictionary['description'][-1] == ".":
-            print("WARNING: I think there is something wrong with the case description. The length is not",  n_char_description, "characters.")
+            cout.cout_wrap(("WARNING: I think there is something wrong with the case description. The length is not %d characters" %  n_char_description), 3)
             # print("Input", dictionary['n_char_description'], "as the number of characters of the case description")
 
         # vel_aux = np.fromstring(dictionary['data'], dtype='>i2')
@@ -295,14 +296,15 @@ class TurbVelocityFieldBts(generator_interface.BaseGenerator):
 
         x_grid = np.linspace(-dictionary['ntime_steps'] + 1, 0, dictionary['ntime_steps'])*dictionary['dt']*dictionary['u_mean']
         y_grid = np.linspace(-width/2, width/2, dictionary['ny'])
-        if self.settings['case_with_tower']:
+        if case_with_tower:
             z_grid = np.linspace(dictionary['Zbottom'], dictionary['Zbottom'] + height, dictionary['nz'])
         else:
             z_grid = np.linspace(-height/2, height/2, dictionary['nz'])
 
         return x_grid, y_grid, z_grid, vel
 
-    def change_orientation(self, old_xgrid, old_ygrid, old_zgrid, old_vel, new_orientation_input):
+    @staticmethod
+    def change_orientation(old_xgrid, old_ygrid, old_zgrid, old_vel, new_orientation_input):
         old_grid = []
         old_grid.append(old_xgrid.copy())
         old_grid.append(old_ygrid.copy())

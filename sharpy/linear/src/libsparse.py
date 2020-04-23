@@ -120,6 +120,31 @@ def block_dot(A, B):
 	return P
 
 
+def block_matrix_dot_vector(A, v):
+        '''
+        dot product between block matrix and block vector
+
+        Inputs:
+        A, v: are nested lists of dense/sparse matrices of compatible shape for
+        block matrices product. Empty blocks can be defined with None. (see numpy.block)
+        '''
+
+        rA, cA = len(A), len(A[0])
+        rv = len(B)
+
+        for arow in A:
+            assert len(arow) == cA,\
+                'A rows do not contain the same number of column blocks'
+        assert cA==rv, 'Columns of A not equal to rows of v!'
+
+        P=[None]*rA
+        for ii in range(rA):
+            for jj in range(cA):
+                # check first that the result will not be None
+                if A[ii][jj] is not None and B[jj] is not None:
+                    P[ii] += dot(A[ii][jj], B[jj])
+        return P
+
 def block_sum(A, B, factA = None, factB = None):
 	'''
 	dot product between block matrices.

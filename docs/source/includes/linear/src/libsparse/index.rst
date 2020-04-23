@@ -38,6 +38,7 @@ To Do:
 	:glob:
 
 	./block_dot
+	./block_matrix_dot_vector
 	./block_sum
 	./csc_matrix
 	./dense
