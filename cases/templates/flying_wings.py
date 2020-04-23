@@ -1168,6 +1168,10 @@ class Pazi(FlyingWing):
         '''
         # uniform mass/stiffness
 
+        # Scaling factors (for debugging):
+        sigma_scale_stiff = 1
+        sigma_scale_I = 1
+
         # Pulling:
         ea = 7.12E+07
 
@@ -1187,14 +1191,17 @@ class Pazi(FlyingWing):
         # Torsion:
         gj = 7.20E+00
 
-        base_stiffness = np.diag([ea, ga_oup, ga_inp, gj, ei_oup, ei_inp])
+        base_stiffness = np.diag([ea, ga_oup, ga_inp, gj, ei_oup, ei_inp]) * sigma_scale_stiff
 
         self.stiffness = np.zeros((1, 6, 6))
         self.stiffness[0] = base_stiffness
 
         m_unit = 0.589 # kg/m
 
-        # Lumped mass to confirm wing properties:
+        # Test cases to confirm properties:
+        # Tests in vacuum, AoA=0 deg, analysed with NonLinearStatic beam solver. Verification displacements taken from
+        # full 3D non-linear analysis in Abaqus.
+
         # Bending:
         # 5 N load at the tip. Expected deflection of about 62.6 mm at the tip (no gravity)
         # Tip coordinate in beam-fitted coordinates: X = 0.55m, Y = 0.m, Z = 0.m
@@ -1206,18 +1213,12 @@ class Pazi(FlyingWing):
 
         # Alternative bending:
         # self.app_forces[self.N//2, :] = [0, 0, 5.2866, 0, 0, 0]
+
         # Torsion:
         # Torsion of 0.3275 Nm, difference in tip LE/TE height: 1.130498767 + 1.361232758 = 2.49 mm
-        # m_unit = 0.001  # negligible mass distribution to mimic no-gravity FEA analysis
-        # self.lumped_mass[0] = 1 / 9.81
-        # self.lumped_mass_position[0] = np.array([0, 0.3275/1, 0])
-        # self.lumped_mass_nodes[0] = self.N // 2
-        # self.lumped_mass_inertia[0, :, :] = np.diag([1e-1, 1e-1, 1e-1])
+        # self.app_forces[self.N // 2, :] = [0, 0, 0, 0.3275, 0, 0]
 
-        # Alternative torsion:
-        # self.app_forces[self.N // 2, :] = [0, 0, 0, 1.6375, 0, 0]
-
-        pos_cg_b = np.array([0., self.c_ref * (self.main_cg - self.main_ea), 0.])
+        pos_cg_b = np.array([0., self.c_ref * (self.main_cg - self.main_ea), 0.])*sigma_scale_I
         m_chi_cg = algebra.skew(m_unit * pos_cg_b)
         self.mass = np.zeros((1, 6, 6))
 
