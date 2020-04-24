@@ -116,8 +116,6 @@ class ss():
     @property
     def inputs(self):
         """Number of inputs :math:`m` to the system."""
-        # print('Getting number of inputs')
-        # return self._inputs
         if self.B.shape.__len__() == 1:
             self.inputs = 1
         else:
@@ -491,6 +489,16 @@ class ss_block():
                     libsp.block_dot(WTblock, self.B),
                     libsp.block_dot(self.C, Vblock))
 
+
+    def solve_step(self, xn, un):
+
+        # TODO: add options about predictor ...
+        xn1 = libsp.block_sum(libsp.block_dot(self.A, xn), libsp.block_dot(self.B, un))
+        yn = libsp.block_sum(libsp.block_dot(self.C, xn), libsp.block_dot(self.D, un))        
+
+        return xn1, yn    
+
+
 # ---------------------------------------- Methods for state-space manipulation
 def project(ss_here,WT,V):
     '''
@@ -827,7 +835,7 @@ def freqresp(SS, wv, dlti=True):
         wTs = Ts * wv
         zv = np.cos(wTs) + 1.j * np.sin(wTs)
     else:
-        print('Assuming a continuous time system')
+        # print('Assuming a continuous time system')
         zv = 1.j * wv
 
     Nx = SS.A.shape[0]

@@ -1158,11 +1158,11 @@ def wake_prop(Surfs, Surfs_star, use_sparse=False, sparse_format='lil'):
     not allocate memory until this is accessed.
     """
 
-    C_list = []
-    Cstar_list = []
-
     n_surf = len(Surfs)
     assert len(Surfs_star) == n_surf, 'No. of wake and bound surfaces not matching!'
+
+    dimensions = [None]*n_surf
+    dimensions_star = [None]*n_surf
 
     for ss in range(n_surf):
 
@@ -1172,6 +1172,37 @@ def wake_prop(Surfs, Surfs_star, use_sparse=False, sparse_format='lil'):
         N, M, K = Surf.maps.N, Surf.maps.M, Surf.maps.K
         M_star, K_star = Surf_star.maps.M, Surf_star.maps.K
         assert Surf_star.maps.N == N, \
+            'Bound and wake surface do not have the same spanwise discretisation'
+
+        dimensions[ss] = [M, N, K]
+        dimensions_star[ss] = [M_star, N, K_star]
+
+    C_list, Cstar_list = wake_prop_from_dimensions(dimensions,
+                                                   dimensions_star,
+                                                   use_sparse=use_sparse,
+                                                   sparse_format=sparse_format)
+
+    return C_list, Cstar_list
+
+
+def wake_prop_from_dimensions(dimensions, dimensions_star, use_sparse=False, sparse_format='lil'):
+    """
+    Same as ``wake_prop'' but using the dimensions directly
+    """
+
+    C_list = []
+    Cstar_list = []
+
+    # dimensions = [None]*n_surf
+
+    n_surf = len(dimensions)
+    assert len(dimensions_star) == n_surf, 'No. of wake and bound surfaces not matching!'
+
+    for ss in range(n_surf):
+
+        M, N, K = dimensions[ss]
+        M_star, N_star, K_star = dimensions_star[ss]
+        assert N_star == N, \
             'Bound and wake surface do not have the same spanwise discretisation'
 
         # allocate...

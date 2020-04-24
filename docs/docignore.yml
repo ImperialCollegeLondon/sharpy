@@ -20,3 +20,4 @@ modules:
 #  - 'sharpy/generators'
   - 'sharpy/presharpy'
   - 'sharpy/lib'
+  - 'sharpy/__pycache__'

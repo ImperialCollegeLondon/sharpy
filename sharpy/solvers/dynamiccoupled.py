@@ -13,6 +13,7 @@ import sharpy.utils.settings as settings
 import sharpy.utils.algebra as algebra
 import sharpy.structure.utils.xbeamlib as xbeam
 import sharpy.utils.exceptions as exc
+import sharpy.utils.correct_forces as cf
 
 
 @solver
@@ -31,6 +32,7 @@ class DynamicCoupled(BaseSolver):
     settings_types = dict()
     settings_default = dict()
     settings_description = dict()
+    settings_options = dict()
 
     settings_types['print_info'] = 'bool'
     settings_default['print_info'] = True
@@ -124,8 +126,13 @@ class DynamicCoupled(BaseSolver):
     settings_default['pseudosteps_ramp_unsteady_force'] = 0
     settings_description['pseudosteps_ramp_unsteady_force'] = 'Length of the ramp with which unsteady force contribution is introduced every time step during the FSI iteration process'
 
+    settings_types['correct_forces_method'] = 'str'
+    settings_default['correct_forces_method'] = '' # 'efficiency'
+    settings_description['correct_forces_method'] = 'Function used to correct aerodynamic forces. Check :py:mod:`sharpy.utils.correct_forces`'
+    settings_options['correct_forces_method'] = ['efficiency', 'polars']
+
     settings_table = settings.SettingsTable()
-    __doc__ += settings_table.generate(settings_types, settings_default, settings_description)
+    __doc__ += settings_table.generate(settings_types, settings_default, settings_description, settings_options)
 
     def __init__(self):
         self.data = None
@@ -152,6 +159,9 @@ class DynamicCoupled(BaseSolver):
 
         self.time_aero = 0.
         self.time_struc = 0.
+
+        self.correct_forces = False
+        self.correct_forces_function = None
 
     def get_g(self):
         """
@@ -190,7 +200,8 @@ class DynamicCoupled(BaseSolver):
             self.settings = custom_settings
         settings.to_custom_types(self.settings,
                                  self.settings_types,
-                                 self.settings_default)
+                                 self.settings_default,
+                                 options=self.settings_options)
 
         self.original_settings = copy.deepcopy(self.settings)
 
@@ -246,6 +257,10 @@ class DynamicCoupled(BaseSolver):
             self.residual_table.print_header(['ts', 't', 'iter', 'struc ratio', 'iter time', 'residual vel',
                                               'FoR_vel(x)', 'FoR_vel(z)'])
 
+        # Define the function to correct aerodynamic forces
+        if self.settings['correct_forces_method'] is not '':
+            self.correct_forces = True
+            self.correct_forces_function = cf.dict_of_corrections[self.settings['correct_forces_method']]
 
     def cleanup_timestep_info(self):
         if max(len(self.data.aero.timestep_info), len(self.data.structure.timestep_info)) > 1:
@@ -319,9 +334,10 @@ class DynamicCoupled(BaseSolver):
         included.
         """
         # dynamic simulations start at tstep == 1, 0 is reserved for the initial state
+
         for self.data.ts in range(
                 len(self.data.structure.timestep_info),
-                self.settings['n_time_steps'].value + len(self.data.structure.timestep_info)):
+                self.settings['n_time_steps'].value + 1):
             initial_time = time.perf_counter()
             structural_kstep = self.data.structure.timestep_info[-1].copy()
             aero_kstep = self.data.aero.timestep_info[-1].copy()
@@ -441,12 +457,13 @@ class DynamicCoupled(BaseSolver):
             final_time = time.perf_counter()
 
             if self.print_info:
+                print_res = 0 if self.res_dqdt == 0. else np.log10(self.res_dqdt)
                 self.residual_table.print_line([self.data.ts,
                                                 self.data.ts*self.dt.value,
                                                 k,
                                                 self.time_struc/(self.time_aero + self.time_struc),
                                                 final_time - initial_time,
-                                                np.log10(self.res_dqdt),
+                                                print_res,
                                                 structural_kstep.for_vel[0],
                                                 structural_kstep.for_vel[2],
                                                 np.sum(structural_kstep.steady_applied_forces[:, 0]),
@@ -536,6 +553,16 @@ class DynamicCoupled(BaseSolver):
             structural_kstep.cag(),
             self.data.aero.aero_dict)
 
+        if self.correct_forces:
+            struct_forces = self.correct_forces_function(self.data,
+                                                         aero_kstep,
+                                                         structural_kstep,
+                                                         struct_forces)
+            # dynamic_struct_forces = self.correct_forces_function(self.data,
+            #                                                      aero_kstep,
+            #                                                      structural_kstep,
+            #                                                      dynamic_struct_forces)
+
         # prescribed forces + aero forces
         try:
             structural_kstep.steady_applied_forces = (
@@ -610,4 +637,3 @@ def relax(beam, timestep, previous_timestep, coeff):
 def normalise_quaternion(tstep):
     tstep.dqdt[-4:] = algebra.unit_vector(tstep.dqdt[-4:])
     tstep.quat = tstep.dqdt[-4:].astype(dtype=ct.c_double, order='F', copy=True)
-

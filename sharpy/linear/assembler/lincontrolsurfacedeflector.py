@@ -130,12 +130,22 @@ class LinControlSurfaceDeflector(object):
 
                     # print(global_node)
                     if self.under_development:
-                        print('Node -- ' + str(global_node))
-                    # Map onto aerodynamic coordinates. Some nodes may be part of two aerodynamic surfaces. This will happen
-                    # at the surface boundary
+                        print('\n\nNode -- ' + str(global_node))
+                        print('i_elem = %g' % i_elem)
+                    # Map onto aerodynamic coordinates. Some nodes may be part of two aerodynamic surfaces.
                     for structure2aero_node in aero.struct2aero_mapping[global_node]:
                         # Retrieve surface and span-wise coordinate
                         i_surf, i_node_span = structure2aero_node['i_surf'], structure2aero_node['i_n']
+
+                        # Although a node may be part of 2 aerodynamic surfaces, we need to ensure that the current
+                        # element for the given node is indeed part of that surface.
+                        elems_in_surf = np.where(aero_dict['surface_distribution'] == i_surf)[0]
+                        if i_elem not in elems_in_surf:
+                            continue
+
+                        if self.under_development:
+                            print("i_surf = %g" % i_surf)
+                            print("i_node_span = %g" % i_node_span)
 
                         # Surface panelling
                         M = aero.aero_dimensions[i_surf][0]
@@ -144,11 +154,18 @@ class LinControlSurfaceDeflector(object):
                         K_zeta_start = 3 * sum(linuvlm.MS.KKzeta[:i_surf])
                         shape_zeta = (3, M + 1, N + 1)
 
+                        if self.under_development:
+                            print('Surface dimensions, M = %g, N = %g' % (M, N))
+
                         i_control_surface = aero_dict['control_surface'][i_elem, i_local_node]
                         if i_control_surface >= 0:
+                            if self.under_development:
+                                print('Control surface present, i_control_surface = %g' % i_control_surface)
                             if not with_control_surface:
                                 i_start_of_cs = i_node_span.copy()
                                 with_control_surface = True
+                            if self.under_development:
+                                print('Control surface span start index = %g' % i_start_of_cs)
                             control_surface_chord = aero_dict['control_surface_chord'][i_control_surface]
                             i_node_hinge = M - control_surface_chord
                             i_vertex_hinge = [K_zeta_start +
