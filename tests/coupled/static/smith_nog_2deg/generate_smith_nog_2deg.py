@@ -329,12 +329,20 @@ def generate_solver_file(horseshoe=False):
         config['AerogridLoader'] = {'unsteady': 'off',
                                     'aligned_grid': 'on',
                                     'mstar': 1,
-                                    'freestream_dir': ['1', '0', '0']}
+                                    'freestream_dir': ['1', '0', '0'],
+                                    'wake_shape_generator': 'StraightWake',                                                                                                 
+                                    'wake_shape_generator_input': {'u_inf': u_inf,                                                                                           
+                                                                   'u_inf_direction': np.array([1., 0., 0.]),                                                              
+                                                                   'dt': main_chord/m_main/u_inf}}       
     else:
         config['AerogridLoader'] = {'unsteady': 'off',
                                     'aligned_grid': 'on',
                                     'mstar': 20,
-                                    'freestream_dir': ['1', '0', '0']}
+                                    'freestream_dir': ['1', '0', '0'],
+                                    'wake_shape_generator': 'StraightWake',                                                                                                 
+                                    'wake_shape_generator_input': {'u_inf': u_inf,                                                                                           
+                                                                   'u_inf_direction': np.array([1., 0., 0.]),                                                              
+                                                                   'dt': main_chord/m_main/u_inf}}
     config['AerogridPlot'] = {'folder': route + '/output/',
                               'include_rbm': 'off',
                               'include_applied_forces': 'on',

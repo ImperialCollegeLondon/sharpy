@@ -116,13 +116,6 @@ class FlexDynamic():
         self.Cstr = tsinfo.modal.get('C')
         self.Kstr = tsinfo.modal.get('K')
 
-        self.Nmodes = self.settings['num_modes']
-        self._num_modes = None
-        self.num_modes = self.settings['num_modes']
-        self.num_dof = self.U.shape[0]
-        if self.V is not None:
-            self.num_dof = self.num_dof // 2
-
         ### set other flags
         self.modal = self.settings['modal_projection']
         self.inout_coords = self.settings['inout_coords']
@@ -132,6 +125,13 @@ class FlexDynamic():
             self.dt = self.settings['dt']
         else:
             self.dt = None
+
+        self.Nmodes = self.settings['num_modes']
+        self._num_modes = None
+        self.num_modes = self.settings['num_modes']
+        self.num_dof = self.U.shape[0]
+        if self.V is not None:
+            self.num_dof = self.num_dof // 2
 
         self.proj_modes = self.settings['proj_modes']
         if self.V is None:
@@ -965,7 +965,8 @@ class FlexDynamic():
 
         if self.proj_modes == 'undamped':
             if self.Cstr is not None:
-                print('Warning, projecting system with damping onto undamped modes')
+                if self.settings['print_info']:
+                    cout.cout_wrap('Warning, projecting system with damping onto undamped modes')
 
             # Eigenvalues are purely complex - only the complex part is calculated
             eigenvalues, eigenvectors = np.linalg.eig(np.linalg.solve(self.Mstr, self.Kstr))
@@ -1011,7 +1012,8 @@ class FlexDynamic():
             pass
 
         # Update Ccut matrix
-        self.Ccut = np.dot(self.U.T, np.dot(self.Cstr, self.U))
+        if self.modal:
+            self.Ccut = np.dot(self.U.T, np.dot(self.Cstr, self.U))
 
     def scale_system_normalised_time(self, time_ref):
         r"""
