@@ -73,6 +73,11 @@ class LinearAssembler(BaseSolver):
     settings_default['linearisation_tstep'] = -1
     settings_description['linearisation_tstep'] = 'Chosen linearisation time step number from available time steps'
 
+    settings_types['modal_tstep'] = 'int'
+    settings_default['modal_tstep'] = -1
+    settings_description['modal_tstep'] = 'Timestep in which modal information is stored. Useful if the ``Modal`` is' \
+                                          ' being ran at the start of the SHARPy flow.'
+
     settings_types['inout_coordinates'] = 'str'
     settings_default['inout_coordinates'] = ''
     settings_description['inout_coordinates'] = 'Input/output coordinates of the system. Nodal or modal space.'
@@ -105,15 +110,19 @@ class LinearAssembler(BaseSolver):
         else:
             self.settings = data.settings[self.solver_id]
         settings.to_custom_types(self.settings, self.settings_types, self.settings_default,
-                                 options=self.settings_options)
+                                 options=self.settings_options, no_ctype=True)
 
         # Get consistent linearisation timestep
         ii_step = self.settings['linearisation_tstep']
-        if type(ii_step) != int:
-            ii_step = self.settings['linearisation_tstep'].value
 
         tsstruct0 = data.structure.timestep_info[ii_step]
         tsaero0 = data.aero.timestep_info[ii_step]
+
+        try:
+            tsstruct0.modal = data.structure.timestep_info[self.settings['modal_tstep']].modal
+        except AttributeError:
+            raise AttributeError('Unable to find modal information at desired '
+                                 'timestep {:g}'.format(self.settings['modal_tstep']))
 
         # Create data.linear
         self.data.linear = Linear(tsaero0, tsstruct0)
