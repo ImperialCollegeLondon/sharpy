@@ -8,6 +8,7 @@ Utilities
 	./algebra/index
 	./analytical/index
 	./control_utils/index
+	./correct_forces/index
 	./datastructures/index
 	./docutils/index
 	./exceptions/index

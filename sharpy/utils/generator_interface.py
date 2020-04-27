@@ -50,18 +50,19 @@ def generator_list_from_path(cwd):
     return files
 
 
-def initialise_generator(generator_name):
-    cout.cout_wrap('Generating an instance of %s' % generator_name, 2)
+def initialise_generator(generator_name, print_info=True):
+    if print_info:
+        cout.cout_wrap('Generating an instance of %s' % generator_name, 2)
     cls_type = generator_from_string(generator_name)
     gen = cls_type()
     return gen
 
-def dictionary_of_generators():
+def dictionary_of_generators(print_info=True):
 
     import sharpy.generators
     dictionary = dict()
     for gen in dict_of_generators:
-        init_gen = initialise_generator(gen)
+        init_gen = initialise_generator(gen, print_info)
         dictionary[gen] = init_gen.settings_default
 
     return dictionary
