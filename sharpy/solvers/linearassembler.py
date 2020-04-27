@@ -144,7 +144,7 @@ class LinearAssembler(BaseSolver):
             self.data.linear.ss.remove_inout_channels(self.settings['retain_inputs'], where='in')
         if len(self.settings['retain_outputs']) != 0:
             self.data.linear.ss.remove_inout_channels(self.settings['retain_outputs'], where='out')
-        cout.cout_wrap('Final system is:')
+        cout.cout_wrap('Final system is:', 1)
         cout.cout_wrap(self.data.linear.ss.summary(), 1)
 
         return self.data
