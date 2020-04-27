@@ -84,7 +84,7 @@ class LinearAssembler(BaseSolver):
 
     settings_types['retain_outputs'] = 'list(int)'
     settings_default['retain_outputs'] = []
-    settings_description['retain_outputs'] = 'List of input channels to retain in the chosen ``inout_coordinates``.'
+    settings_description['retain_outputs'] = 'List of output channels to retain in the chosen ``inout_coordinates``.'
 
     settings_table = settings.SettingsTable()
     __doc__ += settings_table.generate(settings_types, settings_default, settings_description, settings_options)
