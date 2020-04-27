@@ -75,8 +75,8 @@ class LinearAssembler(BaseSolver):
 
     settings_types['modal_tstep'] = 'int'
     settings_default['modal_tstep'] = -1
-    settings_description['modal_tstep'] = 'Timestep in which modal information is stored. Useful if the ``Modal`` is' \
-                                          ' being ran at the start of the SHARPy flow.'
+    settings_description['modal_tstep'] = 'Timestep in which modal information is stored. Useful if the ``Modal`` solver' \
+                                          ' is run at the start of the SHARPy flow.'
 
     settings_types['inout_coordinates'] = 'str'
     settings_default['inout_coordinates'] = ''
