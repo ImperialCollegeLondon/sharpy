@@ -212,11 +212,11 @@ class TestROMFramework(unittest.TestCase):
                                                        'include_rbm': 'on',
                                                        'include_applied_forces': 'on'}}}
 
-        ws.config['FrequencyResponse'] = {'compute_fom': 'on',
-                                          'quick_plot': 'off',
+        ws.config['FrequencyResponse'] = {'quick_plot': 'off',
                                           'folder': self.route_test_dir + '/output/',
                                           'frequency_unit': 'k',
                                           'frequency_bounds': [0.0001, 1.0],
+                                          'target_system': ['aeroelastic']
                                           }
 
         self.ws = ws

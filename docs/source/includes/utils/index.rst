@@ -12,6 +12,7 @@ Utilities
 	./datastructures/index
 	./docutils/index
 	./exceptions/index
+	./frequencyutils/index
 	./generate_cases/index
 	./generator_interface/index
 	./geo_utils/index

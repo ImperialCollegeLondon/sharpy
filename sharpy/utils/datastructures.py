@@ -734,3 +734,27 @@ class LinearTimeStepInfo(object):
         copied.y = self.y.copy()
         copied.u = self.u.copy()
         copied.t = self.t.copy()
+
+
+class Linear(object):
+    """
+    This is the class responsible for the transfer of information between linear systems
+    and can be accessed as ``data.linear``. It stores
+    as class attributes the following classes that describe the linearised problem.
+
+    Attributes:
+        ss (sharpy.linear.src.libss.ss): State-space system
+        linear_system (sharpy.linear.utils.ss_interface.BaseElement): Assemble system properties
+        tsaero0 (sharpy.utils.datastructures.AeroTimeStepInfo): Linearisation aerodynamic timestep
+        tsstruct0 (sharpy.utils.datastructures.StructTimeStepInfo): Linearisation structural timestep
+        timestep_info (list): Linear time steps
+    """
+
+    def __init__(self, tsaero0, tsstruct0):
+        self.linear_system = None
+        self.ss = None
+        self.tsaero0 = tsaero0
+        self.tsstruct0 = tsstruct0
+        self.timestep_info = []
+        self.uvlm = None
+        self.beam = None
