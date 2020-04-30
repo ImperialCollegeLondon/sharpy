@@ -92,11 +92,23 @@ class CoupledPMOR(InterpolationPMOR):
                                          target_system=sys,
                                          interpolation_space=interpolation_settings[sys]['interpolation_space'],
                                          projection_method=interpolation_settings[sys]['projection_method'],
-                                         use_ct=use_ct)
+                                         use_ct=use_ct,
+                                         structural_system_quintuplet=structural_quintuplet)
 
         self.source_settings = rom_library.data_library[0].settings  # settings from the source case
+        self.interpolated_systems = None
 
-    def __call__(self, weights):
+    def save_projected_ss(self, folder):
+        # save
+        for sys in self.systems:
+            for i in range(len(self.pmor[sys].AA)):
+                projected_ss = libss.ss(self.pmor[sys].AA[i],
+                                        self.pmor[sys].BB[i],
+                                        self.pmor[sys].CC[i],
+                                        self.pmor[sys].DD[i])
+                projected_ss.save(folder + '/ss_%s_i%02g.h5' % (sys, i))
+
+    def __call__(self, weights, **kwargs):
 
         interpolated_systems = dict()
         for sys in self.systems:
