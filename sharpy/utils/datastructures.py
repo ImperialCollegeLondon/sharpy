@@ -100,8 +100,9 @@ class AeroTimeStepInfo(object):
         # Distance from the trailing edge of the wake vertices
         self.dist_to_orig = []
         for i_surf in range(self.n_surf):
-            self.dist_to_orig.append(np.zeros((dimensions_star[i_surf, 0] + 1),
-                                           dtype=ct.c_double))
+            self.dist_to_orig.append(np.zeros((dimensions_star[i_surf, 0] + 1,
+                                               dimensions_star[i_surf, 1] + 1),
+                                               dtype=ct.c_double))
 
         self.wake_conv_vel = []
         for i_surf in range(self.n_surf):
@@ -251,7 +252,7 @@ class AeroTimeStepInfo(object):
 
         self.ct_dist_to_orig_list = []
         for i_surf in range(self.n_surf):
-            self.ct_dist_to_orig_list.append(self.dist_to_orig[i_surf])
+            self.ct_dist_to_orig_list.append(self.dist_to_orig[i_surf][:, :].reshape(-1))
 
         self.ct_wake_conv_vel_list = []
         for i_surf in range(self.n_surf):
