@@ -157,7 +157,7 @@ class BasisInterpolation(rom_interface.BaseRom):
         x0 = float(case[self.rom_library.parameters[interpolation_parameter]])
 
         if method == 'lagrange':
-            weights = librominterp.lagrange_interpolation(x_vec, x0)
+            weights = librominterp.lagrange_interpolation(x_vec, x0, interpolation_degree=self.settings['interpolation_degree'])
             order = [i[0] for i in self.rom_library.mapping]
             weights = [weights[i] for i in order]  # give weights in order in which state-spaces are stored.
 
