@@ -206,11 +206,12 @@ def FLB_transfer_function(SS_list, wv, U_list, VT_list, hsv_list=None, M_list=No
 
 
 def lagrange_interpolation(x_vec, x0, interpolation_degree=None):
-    """
+    r"""
     Performs a lagrange interpolation over the domain ``x_vec`` at the point ``x0``.
 
     The ``interpolation_degree`` is an optional argument that sets the maximum degree of the lagrange polynomials
-    employed. If left to ``None``, all points in ``x_vec`` are used.
+    employed. If left to ``None``, all points in ``x_vec`` are used and the degree of the langrange polynomial will
+    be the number of points minus one (i.e. 3 points will result in a quadratic fit).
 
     It returns the lagrange interpolation weights :math:`w_i` at each source point,
     such that the interpolation value :math:`y_0` can then be calculated as
@@ -230,10 +231,14 @@ def lagrange_interpolation(x_vec, x0, interpolation_degree=None):
 
     out = [0] * n_points
 
-    n_lagrange_points = interpolation_degree + 1  # i.e. for a quadratic fit 3 points are needed
+    if interpolation_degree is None:
+        n_lagrange_points = n_points  # default value if no degree is provided
 
-    if n_lagrange_points is None or n_lagrange_points > n_points:
-        n_lagrange_points = n_points
+    else:
+        n_lagrange_points = interpolation_degree + 1  # i.e. for a quadratic fit 3 points are needed
+
+        if n_lagrange_points > n_points:
+            n_lagrange_points = n_points
 
     if n_lagrange_points > 15:
         warnings.warn('Caution, interpolation degree larger than 15. Method may be unstable. Be cautious of overfitting'
