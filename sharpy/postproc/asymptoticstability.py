@@ -170,7 +170,10 @@ class AsymptoticStability(BaseSolver):
                 raise TypeError('ss input must be either a libss.ss instance or a list of libss.ss')
 
         for ith, system in enumerate(ss_list):
-            system_name = system_name_list[ith]
+            if ss is not None:
+                system_name = ''
+            else:
+                system_name = self.settings['target_system'][ith]
 
             if self.print_info:
                 cout.cout_wrap('Calculating %s eigenvalues using direct method' % system_name)
@@ -279,9 +282,7 @@ class AsymptoticStability(BaseSolver):
 
         stability_folder_path = self.folder
 
-        if filename is None or filename == '':
-            filename = ''
-        else:
+        if filename is not None or filename != '':
             filename += '_'
 
         num_evals = min(num_evals, eigenvalues.shape[0])
