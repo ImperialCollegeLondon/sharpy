@@ -78,6 +78,15 @@ class IndividualPMOR(InterpolationPMOR):
 
         return self.interpolated_systems[self.system]
 
+    def save_projected_ss(self, folder):
+        # save
+        for i in range(len(self.interpolation_space.AA)):
+            projected_ss = libss.ss(self.interpolation_space.AA[i],
+                                    self.interpolation_space.BB[i],
+                                    self.interpolation_space.CC[i],
+                                    self.interpolation_space.DD[i])
+            projected_ss.save(folder + '/ss_i{:02g}.h5'.format(i))
+
 
 class CoupledPMOR(InterpolationPMOR):
 
