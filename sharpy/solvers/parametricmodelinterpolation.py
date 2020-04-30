@@ -284,11 +284,14 @@ class ParametricModelInterpolation(BaseSolver):
         # Generate mappings for easier interpolation
         self.rom_library.sort_grid()
 
-        # >>>>> Independent interpolation
         if self.settings['interpolation_system'] == 'aeroelastic' and \
                 self.settings['independent_interpolation']:
-            self.pmor = interpolationsystem.CoupledPMOR(self.rom_library,
-                                                        interpolation_settings=self.interpolation_settings)
+            if self.rom_library.data_library[0].linear.linear_system.uvlm.scaled:
+                sys = interpolationsystem.CoupledScaledPMOR
+            else:
+                sys = interpolationsystem.CoupledPMOR
+            self.pmor = sys(self.rom_library,
+                            interpolation_settings=self.interpolation_settings)
         else:
             try:
                 target_system = self.settings['interpolation_system']
@@ -296,12 +299,16 @@ class ParametricModelInterpolation(BaseSolver):
                 raise KeyError('No settings given for the interpolation_system: %s in '
                                'interpolation_settings' % self.settings['interpolation_settings'])
             system_settings = self.interpolation_settings[target_system]
-            self.pmor = interpolationsystem.pmor_loader(self.rom_library,
-                                                        target_system=target_system,
-                                                        interpolation_space=system_settings['interpolation_space'],
-                                                        projection_method=system_settings['projection_method'])
+            self.pmor = interpolationsystem.IndividualPMOR(self.rom_library,
+                                                           target_system=target_system,
+                                                           interpolation_settings=system_settings,
+                                                           use_ct=False)
 
         # <<<<<<<<<<<<<<<<<<<<<<
+
+        # >>>>> DEBUG: Save projected systems
+        self.pmor.save_projected_ss(self.settings['postprocessors_settings']['SaveStateSpace']['folder'])
+        # <<<<<
 
         # Future: save for online use?
 
