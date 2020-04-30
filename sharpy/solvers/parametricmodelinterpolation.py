@@ -307,7 +307,7 @@ class ParametricModelInterpolation(BaseSolver):
         # <<<<<<<<<<<<<<<<<<<<<<
 
         # >>>>> DEBUG: Save projected systems
-        self.pmor.save_projected_ss(self.settings['postprocessors_settings']['SaveStateSpace']['folder'])
+        # self.pmor.save_projected_ss(self.settings['postprocessors_settings']['SaveStateSpace']['folder'])
         # <<<<<
 
         # Future: save for online use?
