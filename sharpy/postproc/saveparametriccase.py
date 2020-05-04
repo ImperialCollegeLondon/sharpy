@@ -99,7 +99,7 @@ class SaveParametricCase(BaseSolver):
             self.data = pickle_solver.run()
             sim_info['path_to_data'] = os.path.abspath(self.settings['folder'])
         else:
-            sim_info['path_to_data'] = os.path.abspath(self.data.settings['PickleData']['folder'])
+            sim_info['path_to_data'] = os.path.abspath(self.settings['folder'])
 
         config['sim_info'] = sim_info
         config.write()
