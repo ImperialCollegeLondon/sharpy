@@ -34,6 +34,7 @@ import sharpy.utils.algebra as algebra
 import sharpy.utils.settings as settings
 import sharpy.utils.cout_utils as cout
 import sharpy.utils.exceptions as exceptions
+from sharpy.utils.constants import vortex_radius_def
 
 settings_types_dynamic = dict()
 settings_default_dynamic = dict()
@@ -76,16 +77,19 @@ settings_default_dynamic['track_body'] = False
 settings_types_dynamic['track_body_number'] = 'int'
 settings_default_dynamic['track_body_number'] = -1
 
+settings_types_dynamic['vortex_radius'] = 'float'
+settings_default_dynamic['vortex_radius'] = vortex_radius_def
+
 
 class Static():
     """	Static linear solver """
 
-    def __init__(self, tsdata, for_vel=np.zeros((6,))):
+    def __init__(self, tsdata, vortex_radius, for_vel=np.zeros((6,))):
 
         cout.cout_wrap('Initialising Static linear UVLM solver class...')
         t0 = time.time()
 
-        MS = multisurfaces.MultiAeroGridSurfaces(tsdata, for_vel=for_vel)
+        MS = multisurfaces.MultiAeroGridSurfaces(tsdata, vortex_radius, for_vel=for_vel)
         MS.get_ind_velocities_at_collocation_points()
         MS.get_input_velocities_at_collocation_points()
         MS.get_ind_velocities_at_segments()
@@ -102,6 +106,7 @@ class Static():
         self.zeta = np.zeros((3 * self.Kzeta))
         self.zeta_dot = np.zeros((3 * self.Kzeta))
         self.u_ext = np.zeros((3 * self.Kzeta))
+
 
         # profiling output
         self.prof_out = './asbly.prof'

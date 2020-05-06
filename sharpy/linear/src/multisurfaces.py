@@ -15,12 +15,13 @@ class MultiAeroGridSurfaces():
     Creates and assembles multiple aerodynamic surfaces from data
     """
 
-    def __init__(self, tsdata, for_vel=np.zeros((6,))):
+    def __init__(self, tsdata, vortex_radius, for_vel=np.zeros((6,))):
         """
         Initialise from data structure at time step.
 
         Args:
             tsdata (sharpy.utils.datastructures.AeroTimeStepInfo): Linearisation time step
+            vortex_radius (np.float): Distance below which induction is not computed
             for_vel (np.ndarray): Frame of reference velocity in the inertial (G) frame, including the angular velocity.
         """
 
@@ -54,6 +55,7 @@ class MultiAeroGridSurfaces():
             #     omega = for_vel[3:]
             Surf = surface.AeroGridSurface(
                 Map, zeta=tsdata.zeta[ss], gamma=tsdata.gamma[ss],
+                vortex_radius,
                 u_ext=tsdata.u_ext[ss], zeta_dot=tsdata.zeta_dot[ss],
                 gamma_dot=tsdata.gamma_dot[ss],
                 rho=tsdata.rho,
@@ -76,6 +78,7 @@ class MultiAeroGridSurfaces():
             Map = gridmapping.AeroGridMap(M, N)
             Surf = surface.AeroGridSurface(Map,
                                            zeta=tsdata.zeta_star[ss], gamma=tsdata.gamma_star[ss],
+                                           vortex_radius,
                                            rho=tsdata.rho)
             self.Surfs_star.append(Surf)
             # store size
@@ -332,7 +335,7 @@ if __name__ == '__main__':
     haero = read.h5file(fname)
     tsdata = haero.ts00000
 
-    MS = MultiAeroGridSurfaces(tsdata)
+    MS = MultiAeroGridSurfaces(tsdata, 1e-6) # vortex_radius
 
     # collocation points
     MS.get_normal_ind_velocities_at_collocation_points()

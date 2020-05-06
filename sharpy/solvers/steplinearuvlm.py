@@ -119,6 +119,10 @@ class StepLinearUVLM(BaseSolver):
     scaling_settings_default['density'] = 1.0
     scaling_settings_description['density'] = 'Reference density to be used for UVLM scaling'
 
+    settings_types['vortex_radius'] = 'float'
+    settings_default['vortex_radius'] = vortex_radius_def
+    settings_description['vortex_radius'] = 'Distance between points below which induction is not computed'
+
     __doc__ += settings_table.generate(scaling_settings_types,
                                        scaling_settings_default,
                                        scaling_settings_description, header_line='The settings that ``ScalingDict`` '

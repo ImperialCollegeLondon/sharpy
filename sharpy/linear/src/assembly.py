@@ -132,10 +132,13 @@ def nc_dqcdzeta_Sin_to_Sout(Surf_in, Surf_out, Der_coll, Der_vert, Surf_in_bound
         # get derivative of induced velocity w.r.t. zetac
         if Surf_in_bound:
             dvind_coll, dvind_vert = dvinddzeta_cpp(zetac_here, Surf_in,
-                                                    is_bound=Surf_in_bound)
+                                                    is_bound=Surf_in_bound,
+                                                    Surf_in.vortex_radius)
         else:
             dvind_coll, dvind_vert = dvinddzeta_cpp(zetac_here, Surf_in,
-                                                    is_bound=Surf_in_bound, M_in_bound=M_bound_in)
+                                                    is_bound=Surf_in_bound,
+                                                    Surf_in.vortex_radius,
+                                                    M_in_bound=M_bound_in)
 
         ### Surf_in vertices contribution
         Der_vert[cc_out, :] += np.dot(nc_here, dvind_vert)
@@ -881,7 +884,7 @@ def dvinddzeta(zetac, Surf_in, IsBound, M_in_bound=None):
                             [nn_in + 0, nn_in + 0, nn_in + 1, nn_in + 1]].T
             # get local derivatives
             der_zetac, der_zeta_panel = eval_panel_cpp(
-                zetac, zeta_panel_in, gamma_pan=Surf_in.gamma[mm_in, nn_in])
+                zetac, zeta_panel_in, Surf_in.vortex_radius, gamma_pan=Surf_in.gamma[mm_in, nn_in])
             ### Mid-segment point contribution
             Dercoll += der_zetac
             ### Panel vertices contribution
@@ -912,7 +915,7 @@ def dvinddzeta(zetac, Surf_in, IsBound, M_in_bound=None):
                             [nn_in + 0, nn_in + 0, nn_in + 1, nn_in + 1]].T
             # get local derivatives
             der_zetac = dbiot.eval_panel_cpp_coll(
-                zetac, zeta_panel_in, gamma_pan=Surf_in.gamma[mm_in, nn_in])
+                zetac, zeta_panel_in, Surf_in.vortex_radius, gamma_pan=Surf_in.gamma[mm_in, nn_in])
             # der_zetac_fast=dbiot.eval_panel_fast_coll(
             # 		zetac,zeta_panel_in,gamma_pan=Surf_in.gamma[mm_in,nn_in])
             # if np.max(np.abs(der_zetac-der_zetac_fast))>1e-10:
@@ -934,7 +937,7 @@ def dvinddzeta(zetac, Surf_in, IsBound, M_in_bound=None):
                             [nn_in + 0, nn_in + 0, nn_in + 1, nn_in + 1]].T
             # get local derivatives
             _, der_zeta_panel = eval_panel_cpp(
-                zetac, zeta_panel_in, gamma_pan=Surf_in.gamma[0, nn_in])
+                zetac, zeta_panel_in, Surf_in.vortex_radius, gamma_pan=Surf_in.gamma[0, nn_in])
 
             for vv in range(2):
                 nn_v = nn_in + dn[vv]
@@ -1010,7 +1013,7 @@ def dfqsdvind_zeta(Surfs, Surfs_star):
                     Dervert = Dervert_list[ss_out][ss_in]  # <- link
                     # deriv wrt induced velocity
                     dvind_mid, dvind_vert = dvinddzeta_cpp(
-                        zeta_mid, Surf_in, is_bound=True)
+                        zeta_mid, Surf_in, is_bound=True, Surf_in.vortex_radius)
                     # allocate coll
                     Df = np.dot(0.25 * Lskew, dvind_mid)
                     Dercoll[np.ix_(ii_a, ii_a)] += Df
@@ -1026,7 +1029,8 @@ def dfqsdvind_zeta(Surfs, Surfs_star):
                     # deriv wrt induced velocity
                     dvind_mid, dvind_vert = dvinddzeta_cpp(
                         zeta_mid, Surfs_star[ss_in],
-                        is_bound=False, M_in_bound=Surf_in.maps.M)
+                        is_bound=False, Surf_in.vortex_radius,
+                        M_in_bound=Surf_in.maps.M)
                     # allocate coll
                     Df = np.dot(0.25 * Lskew, dvind_mid)
                     Dercoll[np.ix_(ii_a, ii_a)] += Df
@@ -1067,7 +1071,9 @@ def dfqsdvind_zeta(Surfs, Surfs_star):
                 shape_zeta_in_bound = (3, M_in_bound + 1, N_in_bound + 1)
                 Dervert = Dervert_list[ss_out][ss_in]  # <- link
                 # deriv wrt induced velocity
-                dvind_mid, dvind_vert = dvinddzeta_cpp(zeta_mid, Surf_in, is_bound=True)
+                dvind_mid, dvind_vert = dvinddzeta_cpp(zeta_mid, Surf_in,
+                                                       is_bound=True,
+                                                       Surf_in.vortex_radius)
                 # allocate coll
                 Df = np.dot(0.25 * Lskew, dvind_mid)
                 Dercoll[np.ix_(ii_a, ii_a)] += Df
@@ -1083,7 +1089,8 @@ def dfqsdvind_zeta(Surfs, Surfs_star):
                 # deriv wrt induced velocity
                 dvind_mid, dvind_vert = dvinddzeta_cpp(
                     zeta_mid, Surfs_star[ss_in],
-                    is_bound=False, M_in_bound=Surf_in.maps.M)
+                    is_bound=False, Surf_in.vortex_radius,
+                    M_in_bound=Surf_in.maps.M)
                 # allocate coll
                 Df = np.dot(0.25 * Lskew, dvind_mid)
                 Dercoll[np.ix_(ii_a, ii_a)] += Df

@@ -414,7 +414,7 @@ def uvlm_calculate_total_induced_velocity_at_points(ts_info,
                                                    target_triads,
                                                    for_pos=np.zeros((6)),
                                                    ncores=ct.c_uint(1),
-                                                   vortex_radius=vortex_radius_def):
+                                                   vortex_radius):
     """
     uvlm_calculate_total_induced_velocity_at_points
 
@@ -480,8 +480,7 @@ def uvlm_calculate_total_induced_velocity_at_points(ts_info,
     return uind
 
 
-def biot_panel_cpp(zeta_point, zeta_panel, gamma=1.0,
-                   vortex_radius=vortex_radius_def):
+def biot_panel_cpp(zeta_point, zeta_panel, vortex_radius, gamma=1.0):
     """
     Linear UVLM function
 
@@ -512,8 +511,8 @@ def biot_panel_cpp(zeta_point, zeta_panel, gamma=1.0,
     return velP
 
 
-def eval_panel_cpp(zeta_point, zeta_panel, gamma_pan=1.0,
-                   vortex_radius=vortex_radius_def):
+def eval_panel_cpp(zeta_point, zeta_panel,
+                   vortex_radius, gamma_pan=1.0):
     """
     Linear UVLM function
 
@@ -528,12 +527,12 @@ def eval_panel_cpp(zeta_point, zeta_panel, gamma_pan=1.0,
         The following will fail
 
             zeta_point=Mat[:,2,5]
-            eval_panel_cpp(zeta_point,zeta_panel,gamma_pan=1.0)
+            eval_panel_cpp(zeta_point,zeta_panel, vortex_radius, gamma_pan=1.0)
 
         but
 
             zeta_point=Mat[:,2,5].copy()
-            eval_panel_cpp(zeta_point,zeta_panel,gamma_pan=1.0)
+            eval_panel_cpp(zeta_point,zeta_panel, vortex_radius, gamma_pan=1.0)
 
         will not.
     """
@@ -556,7 +555,7 @@ def eval_panel_cpp(zeta_point, zeta_panel, gamma_pan=1.0,
 
 
 def get_induced_velocity_cpp(maps, zeta, gamma, zeta_target,
-                             vortex_radius=vortex_radius_def):
+                             vortex_radius):
     """
     Linear UVLM function used in bound surfaces
 
@@ -592,8 +591,7 @@ def get_induced_velocity_cpp(maps, zeta, gamma, zeta_target,
     return uind_target
 
 
-def get_aic3_cpp(maps, zeta, zeta_target,
-                 vortex_radius=vortex_radius_def):
+def get_aic3_cpp(maps, zeta, zeta_target, vortex_radius):
     """
     Linear UVLM function used in bound surfaces
 
@@ -625,8 +623,8 @@ def get_aic3_cpp(maps, zeta, zeta_target,
     return aic3
 
 
-def dvinddzeta_cpp(zetac, surf_in, is_bound, M_in_bound=None,
-                   vortex_radius=vortex_radius_def):
+def dvinddzeta_cpp(zetac, surf_in, is_bound,
+                   vortex_radius, M_in_bound=None):
     """
     Linear UVLM function used in the assembly of the linear system
 

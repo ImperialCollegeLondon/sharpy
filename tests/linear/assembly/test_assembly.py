@@ -17,7 +17,9 @@ import sharpy.linear.src.multisurfaces as multisurfaces
 import sharpy.linear.src.surface as surface
 import sharpy.utils.algebra as algebra
 
+
 np.set_printoptions(linewidth=200, precision=3)
+vortex_radius = 1e-6
 
 
 def max_error_tensor(Pder_an, Pder_num):
@@ -76,7 +78,7 @@ class Test_assembly(unittest.TestCase):
         # for ss in range(haero.data.aero.n_surf):
         #     tsdata.omega.append(haero.data.structure.timestep_info[-1].for_vel[3:6])
 
-        MS = multisurfaces.MultiAeroGridSurfaces(tsdata)
+        MS = multisurfaces.MultiAeroGridSurfaces(tsdata, vortex_radius)
         MS.get_normal_ind_velocities_at_collocation_points()
         MS.verify_non_penetration(print_info=self.print_info)
         MS.verify_aic_coll(print_info=self.print_info)
@@ -269,7 +271,8 @@ class Test_assembly(unittest.TestCase):
                     zeta_pert[cc_pert, mm_pert, nn_pert] += step
                     # calculate new normal velocity
                     Surf_pert = surface.AeroGridSurface(Surf.maps, zeta=zeta_pert,
-                                                        u_ext=Surf.u_ext, gamma=Surf.gamma)
+                                                        u_ext=Surf.u_ext, gamma=Surf.gamma,
+                                                        vortex_radius)
                     u_norm = Surf_pert.project_coll_to_normal(u_tot0)
                     u_norm_vec = u_norm.reshape(-1, order='C')
                     # FD derivative

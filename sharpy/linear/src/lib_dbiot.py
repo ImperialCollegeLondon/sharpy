@@ -4,12 +4,12 @@ Calculate derivatives of induced velocity.
 
 Methods:
 
-- eval_seg_exp and eval_seg_exp_loop: profide ders in format 
+- eval_seg_exp and eval_seg_exp_loop: profide ders in format
     [Q_{x,y,z},ZetaPoint_{x,y,z}]
   and use fully-expanded analytical formula.
 - eval_panel_exp: iterates through whole panel
 
-- eval_seg_comp and eval_seg_comp_loop: profide ders in format 
+- eval_seg_comp and eval_seg_comp_loop: profide ders in format
     [Q_{x,y,z},ZetaPoint_{x,y,z}]
   and use compact analytical formula.
 """
@@ -18,10 +18,7 @@ import numpy as np
 
 from sharpy.aero.utils.uvlmlib import eval_panel_cpp
 import sharpy.utils.algebra as algebra
-from sharpy.linear.src.uvlmutils import VORTEX_RADIUS, VORTEX_RADIUS_SQ
-
-### constants
-cfact_biot = 0.25 / np.pi
+from sharpy.utils.constants import cfact_biot
 
 ### looping through panels
 svec = [0, 1, 2, 3]  # seg. no.
@@ -30,12 +27,12 @@ svec = [0, 1, 2, 3]  # seg. no.
 LoopPanel = [(0, 1), (1, 2), (2, 3), (3, 0)]  # used in eval_panel_{exp/comp}
 
 
-def eval_panel_cpp_coll(zetaP, ZetaPanel, gamma_pan=1.0):
-    DerP, DerVertices = eval_panel_cpp(zetaP, ZetaPanel, gamma_pan)
+def eval_panel_cpp_coll(zetaP, ZetaPanel, vortex_radius, gamma_pan=1.0):
+    DerP, DerVertices = eval_panel_cpp(zetaP, ZetaPanel, vortex_radius, gamma_pan)
     return DerP
 
 
-def eval_seg_exp(ZetaP, ZetaA, ZetaB, gamma_seg=1.0):
+def eval_seg_exp(ZetaP, ZetaA, ZetaB, vortex_radius, gamma_seg=1.0):
     """
     Derivative of induced velocity Q w.r.t. collocation and segment coordinates
     in format:
@@ -48,11 +45,13 @@ def eval_seg_exp(ZetaP, ZetaA, ZetaB, gamma_seg=1.0):
     DerP = np.zeros((3, 3))
     DerA = np.zeros((3, 3))
     DerB = np.zeros((3, 3))
-    eval_seg_exp_loop(DerP, DerA, DerB, ZetaP, ZetaA, ZetaB, gamma_seg)
+    eval_seg_exp_loop(DerP, DerA, DerB, ZetaP, ZetaA, ZetaB, gamma_seg,
+                      vortex_radius)
     return DerP, DerA, DerB
 
 
-def eval_seg_exp_loop(DerP, DerA, DerB, ZetaP, ZetaA, ZetaB, gamma_seg):
+def eval_seg_exp_loop(DerP, DerA, DerB, ZetaP, ZetaA, ZetaB, gamma_seg,
+                      vortex_radius):
     """
     Derivative of induced velocity Q w.r.t. collocation (DerC) and segment
     coordinates in format.
@@ -74,7 +73,7 @@ def eval_seg_exp_loop(DerP, DerA, DerB, ZetaP, ZetaA, ZetaB, gamma_seg):
     vcr2 = np.dot(Vcr, Vcr)
 
     # numerical radious
-    vortex_radious_here = VORTEX_RADIUS * algebra.norm3d(RAB)
+    vortex_radious_here = vortex_radius * algebra.norm3d(RAB)
     if vcr2 < vortex_radious_here ** 2:
         return
 
@@ -162,7 +161,7 @@ def eval_seg_exp_loop(DerP, DerA, DerB, ZetaP, ZetaA, ZetaB, gamma_seg):
     DerB += (cfact_biot * gamma_seg) * (dQ_dRAB - dQ_dRB).T  # w.r.t. B
 
 
-def eval_panel_exp(zetaP, ZetaPanel, gamma_pan=1.0):
+def eval_panel_exp(zetaP, ZetaPanel, vortex_radius, gamma_pan=1.0):
     """
     Computes derivatives of induced velocity w.r.t. coordinates of target point,
     zetaP, and panel coordinates. Returns two elements:
@@ -178,7 +177,8 @@ def eval_panel_exp(zetaP, ZetaPanel, gamma_pan=1.0):
 
     for aa, bb in LoopPanel:
         eval_seg_exp_loop(DerP, DerVertices[aa, :, :], DerVertices[bb, :, :],
-                          zetaP, ZetaPanel[aa, :], ZetaPanel[bb, :], gamma_pan)
+                          zetaP, ZetaPanel[aa, :], ZetaPanel[bb, :], gamma_pan,
+                          vortex_radius)
 
     return DerP, DerVertices
 
@@ -212,7 +212,7 @@ def Dvcross_by_skew3d(Dvcross, rv):
 
 # def Dvcross_by_skew3d(Dvcross,rv):
 # 	"""
-# 	Fast matrix multiplication of der(vcross)*skew(rv), where 
+# 	Fast matrix multiplication of der(vcross)*skew(rv), where
 # 		vcross = (rv x sv)/|rv x sv|^2
 # 	The function exploits the property that the output matrix is symmetric.
 # 	"""
@@ -246,15 +246,16 @@ def der_runit(r, rinv, minus_rinv3):
     return Der
 
 
-def eval_seg_comp(ZetaP, ZetaA, ZetaB, gamma_seg=1.0):
+def eval_seg_comp(ZetaP, ZetaA, ZetaB, vortex_radius, gamma_seg=1.0):
     DerP = np.zeros((3, 3))
     DerA = np.zeros((3, 3))
     DerB = np.zeros((3, 3))
-    eval_seg_comp_loop(DerP, DerA, DerB, ZetaP, ZetaA, ZetaB, gamma_seg)
+    eval_seg_comp_loop(DerP, DerA, DerB, ZetaP, ZetaA, ZetaB, gamma_seg,
+                       vortex_radius)
     return DerP, DerA, DerB
 
 
-def eval_seg_comp_loop(DerP, DerA, DerB, ZetaP, ZetaA, ZetaB, gamma_seg):
+def eval_seg_comp_loop(DerP, DerA, DerB, ZetaP, ZetaA, ZetaB, gamma_seg, vortex_radius):
     """
     Derivative of induced velocity Q w.r.t. collocation and segment coordinates
     in format:
@@ -263,6 +264,7 @@ def eval_seg_comp_loop(DerP, DerA, DerB, ZetaP, ZetaA, ZetaB, gamma_seg):
     execution.
     """
 
+    vortex_radius_sq = vortex_radius_sq*vortex_radius_sq
     Cfact = cfact_biot * gamma_seg
 
     RA = ZetaP - ZetaA
@@ -272,7 +274,7 @@ def eval_seg_comp_loop(DerP, DerA, DerB, ZetaP, ZetaA, ZetaB, gamma_seg):
     vcr2 = np.dot(Vcr, Vcr)
 
     # numerical radious
-    if vcr2 < (VORTEX_RADIUS_SQ * algebra.normsq3d(RAB)):
+    if vcr2 < (vortex_radius_sq * algebra.normsq3d(RAB)):
         return
 
     ### other constants
@@ -316,7 +318,7 @@ def eval_seg_comp_loop(DerP, DerA, DerB, ZetaP, ZetaA, ZetaB, gamma_seg):
 # 		  der_runit(RA,rainv,minus_rainv3)-der_runit(RB,rbinv,minus_rbinv3))
 
 
-def eval_panel_comp(zetaP, ZetaPanel, gamma_pan=1.0):
+def eval_panel_comp(zetaP, ZetaPanel, vortex_radius, gamma_pan=1.0):
     """
     Computes derivatives of induced velocity w.r.t. coordinates of target point,
     zetaP, and panel coordinates. Returns two elements:
@@ -332,12 +334,13 @@ def eval_panel_comp(zetaP, ZetaPanel, gamma_pan=1.0):
 
     for aa, bb in LoopPanel:
         eval_seg_comp_loop(DerP, DerVertices[aa, :, :], DerVertices[bb, :, :],
-                           zetaP, ZetaPanel[aa, :], ZetaPanel[bb, :], gamma_pan)
+                           zetaP, ZetaPanel[aa, :], ZetaPanel[bb, :], gamma_pan,
+                           vortex_radius)
 
     return DerP, DerVertices
 
 
-def eval_panel_fast(zetaP, ZetaPanel, gamma_pan=1.0):
+def eval_panel_fast(zetaP, ZetaPanel, vortex_radius, gamma_pan=1.0):
     """
     Computes derivatives of induced velocity w.r.t. coordinates of target point,
     zetaP, and panel coordinates. Returns two elements:
@@ -351,6 +354,7 @@ def eval_panel_fast(zetaP, ZetaPanel, gamma_pan=1.0):
     recycling variables.
     """
 
+    vortex_radius_sq = vortex_radius*vortex_radius
     DerP = np.zeros((3, 3))
     DerVertices = np.zeros((4, 3, 3))
 
@@ -373,7 +377,7 @@ def eval_panel_fast(zetaP, ZetaPanel, gamma_pan=1.0):
         Vcr = algebra.cross3(R_list[aa], R_list[bb])
         vcr2 = np.dot(Vcr, Vcr)
 
-        if vcr2 < (VORTEX_RADIUS_SQ * algebra.normsq3d(RAB)):
+        if vcr2 < (vortex_radius_sq * algebra.normsq3d(RAB)):
             continue
 
         Tv = Runit_list[aa] - Runit_list[bb]
@@ -415,7 +419,7 @@ def eval_panel_fast(zetaP, ZetaPanel, gamma_pan=1.0):
     return DerP, DerVertices
 
 
-def eval_panel_fast_coll(zetaP, ZetaPanel, gamma_pan=1.0):
+def eval_panel_fast_coll(zetaP, ZetaPanel, vortex_radius, gamma_pan=1.0):
     """
     Computes derivatives of induced velocity w.r.t. coordinates of target point,
     zetaP, coordinates. Returns two elements:
@@ -426,6 +430,7 @@ def eval_panel_fast_coll(zetaP, ZetaPanel, gamma_pan=1.0):
     required to compute the derivatives w.r.t. the panel coordinates.
     """
 
+    vortex_radius_sq = vortex_radius*vortex_radius
     DerP = np.zeros((3, 3))
 
     ### ---------------------------------------------- Compute common variables
@@ -447,7 +452,7 @@ def eval_panel_fast_coll(zetaP, ZetaPanel, gamma_pan=1.0):
         Vcr = algebra.cross3(R_list[aa], R_list[bb])
         vcr2 = np.dot(Vcr, Vcr)
 
-        if vcr2 < (VORTEX_RADIUS_SQ * algebra.normsq3d(RAB)):
+        if vcr2 < (vortex_radius_sq * algebra.normsq3d(RAB)):
             continue
 
         Tv = Runit_list[aa] - Runit_list[bb]
@@ -502,11 +507,13 @@ if __name__ == '__main__':
     # zetaP=np.array([-0.243,  0.776,  0.037])
 
     ### verify model consistency
-    DPcpp, DVcpp = eval_panel_cpp(zetaP, ZetaPanel, gamma_pan=gamma)
+    DPcpp, DVcpp = eval_panel_cpp(zetaP, ZetaPanel, 1e-6, gamma_pan=gamma) # vortex_radius
     DPexp, DVexp = eval_panel_exp(zetaP, ZetaPanel, gamma_pan=gamma)
     DPcomp, DVcomp = eval_panel_comp(zetaP, ZetaPanel, gamma_pan=gamma)
-    DPfast, DVfast = eval_panel_fast(zetaP, ZetaPanel, gamma_pan=gamma)
-    DPfast_coll = eval_panel_fast_coll(zetaP, ZetaPanel, gamma_pan=gamma)
+    DPfast, DVfast = eval_panel_fast(zetaP, ZetaPanel,
+                                     vortex_radius, gamma_pan=gamma)
+    DPfast_coll = eval_panel_fast_coll(zetaP, ZetaPanel,
+                                       vortex_radius, gamma_pan=gamma)
 
     ermax = max(np.max(np.abs(DPcpp - DPexp)), np.max(np.abs(DVcpp - DVexp)))
     assert ermax < 1e-15, 'eval_panel_cpp not matching with eval_panel_exp'
@@ -522,17 +529,19 @@ if __name__ == '__main__':
 
     def run_eval_panel_cpp():
         for ii in range(10000):
-            eval_panel_cpp(zetaP, ZetaPanel, gamma_pan=3.)
+            eval_panel_cpp(zetaP, ZetaPanel, 1e-6, gamma_pan=3.) # vortex_radius
 
 
-    def run_eval_panel_fast():
+    def run_eval_panel_fast(vortex_radius=vortex_radius_def):
         for ii in range(10000):
-            eval_panel_fast(zetaP, ZetaPanel, gamma_pan=3.)
+            eval_panel_fast(zetaP, ZetaPanel,
+                                   vortex_radius, gamma_pan=3.)
 
 
-    def run_eval_panel_fast_coll():
+    def run_eval_panel_fast_coll(vortex_radius=vortex_radius_def):
         for ii in range(10000):
-            eval_panel_fast_coll(zetaP, ZetaPanel, gamma_pan=3.)
+            eval_panel_fast_coll(zetaP, ZetaPanel,
+                                 vortex_radius, gamma_pan=3.)
 
 
     def run_eval_panel_comp():

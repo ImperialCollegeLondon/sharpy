@@ -11,6 +11,9 @@ import sharpy.linear.src.lib_dbiot as dbiot
 import sharpy.linear.src.uvlmutils as uvlmutils
 
 
+vortex_radius = 1e-6
+
+
 class Test_ders(unittest.TestCase):
     """
     Test methods into assembly module
@@ -36,7 +39,7 @@ class Test_ders(unittest.TestCase):
         Q0 = uvlmutils.biot_segment(zetaP, zetaA, zetaB, gamma)
 
         ### compare different analytical derivative
-        DerP_an, DerA_an, DerB_an = dbiot.eval_seg_exp(zetaP, zetaA, zetaB, gamma)
+        DerP_an, DerA_an, DerB_an = dbiot.eval_seg_exp(zetaP, zetaA, zetaB, vortex_radius, gamma)
         DerP_an2, DerA_an2, DerB_an2 = dbiot.eval_seg_comp(zetaP, zetaA, zetaB, gamma)
         er_max = max(np.max(np.abs(DerP_an2 - DerP_an)),
                      np.max(np.abs(DerA_an2 - DerA_an)),
@@ -44,7 +47,7 @@ class Test_ders(unittest.TestCase):
         assert er_max < 1e-16, 'Analytical models not matching'
 
         ### compare vs numerical derivative
-        Steps = np.linspace(uvlmutils.VORTEX_RADIUS * 0.99, uvlmutils.VORTEX_RADIUS * 1e-2, 4)
+        Steps = np.linspace(vortex_radius * 0.99, vortex_radius * 1e-2, 4)
         Er_max = 0.0 * Steps
         for ss in range(len(Steps)):
             step = Steps[ss]
@@ -80,7 +83,7 @@ class Test_ders(unittest.TestCase):
         Q0 = uvlmutils.biot_segment(zetaP, zetaA, zetaB, gamma)
 
         ### compare different analytical derivative
-        DerP_an, DerA_an, DerB_an = dbiot.eval_seg_exp(zetaP, zetaA, zetaB, gamma)
+        DerP_an, DerA_an, DerB_an = dbiot.eval_seg_exp(zetaP, zetaA, zetaB, vortex_radius, gamma)
         DerP_an2, DerA_an2, DerB_an2 = dbiot.eval_seg_comp(zetaP, zetaA, zetaB, gamma)
         er_max = max(np.max(np.abs(DerP_an2 - DerP_an)),
                      np.max(np.abs(DerA_an2 - DerA_an)),
@@ -89,7 +92,7 @@ class Test_ders(unittest.TestCase):
 
         ### compare vs numerical derivative
         #  first step must be smaller than vortex radius
-        Steps = np.linspace(uvlmutils.VORTEX_RADIUS * 0.99, uvlmutils.VORTEX_RADIUS * 1e-2, 4)
+        Steps = np.linspace(vortex_radius * 0.99, vortex_radius * 1e-2, 4)
         Er_max = 0.0 * Steps
         for ss in range(len(Steps)):
             step = Steps[ss]
@@ -129,10 +132,15 @@ class Test_ders(unittest.TestCase):
         Q0 = uvlmutils.biot_panel(zetaP, ZetaPanel, gamma)
 
         # compare analytical derivatives models
-        DerP_an, DerVer_an = dbiot.eval_panel_exp(zetaP, ZetaPanel, gamma)
-        DerP_an2, DerVer_an2 = dbiot.eval_panel_comp(zetaP, ZetaPanel, gamma)
-        DerP_an3, DerVer_an3 = dbiot.eval_panel_fast(zetaP, ZetaPanel, gamma)
-        DerP_an4, DerVer_an4 = sharpy.aero.utils.uvlmlib.eval_panel_cpp(zetaP, ZetaPanel, gamma)
+        DerP_an, DerVer_an = dbiot.eval_panel_exp(zetaP, ZetaPanel,
+                                                  vortex_radius, gamma)
+        DerP_an2, DerVer_an2 = dbiot.eval_panel_comp(zetaP, ZetaPanel,
+                                                     vortex_radius, gamma)
+        DerP_an3, DerVer_an3 = dbiot.eval_panel_fast(zetaP, ZetaPanel,
+                                                     vortex_radius, gamma)
+        DerP_an4, DerVer_an4 = sharpy.aero.utils.uvlmlib.eval_panel_cpp(zetaP, ZetaPanel,
+                                                                        vortex_radius,
+                                                                        gamma)
 
         er_max = max(np.max(np.abs(DerP_an2 - DerP_an)),
                      np.max(np.abs(DerVer_an2 - DerVer_an)))
@@ -145,7 +153,7 @@ class Test_ders(unittest.TestCase):
         assert er_max < 1e-16, 'eval_panel_cpp not matching with eval_panel_exp'
 
         # compare vs. numerical derivative
-        Steps = np.linspace(uvlmutils.VORTEX_RADIUS * 0.99, uvlmutils.VORTEX_RADIUS * 1e-2, 4)
+        Steps = np.linspace(vortex_radius * 0.99, vortex_radius * 1e-2, 4)
         ErP_max = 0.0 * Steps
         ErVer_max = 0.0 * Steps
         for ss in range(len(Steps)):
@@ -207,8 +215,11 @@ class Test_ders(unittest.TestCase):
         # compare analytical derivatives models
         DerP_an, DerVer_an = dbiot.eval_panel_exp(zetaP, ZetaPanel, gamma)
         DerP_an2, DerVer_an2 = dbiot.eval_panel_comp(zetaP, ZetaPanel, gamma)
-        DerP_an3, DerVer_an3 = dbiot.eval_panel_fast(zetaP, ZetaPanel, gamma)
-        DerP_an4, DerVer_an4 = sharpy.aero.utils.uvlmlib.eval_panel_cpp(zetaP, ZetaPanel, gamma)
+        DerP_an3, DerVer_an3 = dbiot.eval_panel_fast(zetaP, ZetaPanel,
+                                                     vortex_radius, gamma)
+        DerP_an4, DerVer_an4 = sharpy.aero.utils.uvlmlib.eval_panel_cpp(zetaP, ZetaPanel,
+                                                                        vortex_radius,
+                                                                        gamma)
 
         er_max = max(np.max(np.abs(DerP_an2 - DerP_an)),
                      np.max(np.abs(DerVer_an2 - DerVer_an)))
@@ -222,7 +233,7 @@ class Test_ders(unittest.TestCase):
 
         # compare vs. numerical derivative
         # first step must be smaller than vortex radius
-        Steps = np.linspace(uvlmutils.VORTEX_RADIUS * 0.99, uvlmutils.VORTEX_RADIUS * 1e-2, 4)
+        Steps = np.linspace(vortex_radius * 0.99, vortex_radius * 1e-2, 4)
         ErP_max = 0.0 * Steps
         ErVer_max = 0.0 * Steps
         for ss in range(len(Steps)):

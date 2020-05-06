@@ -5,8 +5,8 @@ S. Maraniello, 1 Jun 2018
 import numpy as np
 import sharpy.aero.utils.uvlmlib as uvlmlib
 import sharpy.utils.algebra as algebra
+from sharpy.utils.constants import cfact_biot
 
-cfact_biot = 0.25 / np.pi
 VORTEX_RADIUS = 1e-6  # numerical radius of vortex
 VORTEX_RADIUS_SQ = VORTEX_RADIUS ** 2
 
@@ -157,7 +157,7 @@ if __name__ == '__main__':
     ### verify model consistency
     qref = biot_panel(zetaP, ZetaPanel, gamma=gamma)
     qfast = biot_panel_fast(zetaP, ZetaPanel, gamma=gamma)
-    qcpp = uvlmlib.biot_panel_cpp(zetaP, ZetaPanel, gamma=gamma)
+    qcpp = uvlmlib.biot_panel_cpp(zetaP, ZetaPanel, 1e-6, gamma=gamma) # vortex_radius
 
     ermax = np.max(np.abs(qref - qfast))
     assert ermax < 1e-16, 'biot_panel_fast not matching with biot_panel'
@@ -168,7 +168,7 @@ if __name__ == '__main__':
     ### profiling
     def run_biot_panel_cpp():
         for ii in range(10000):
-            uvlmlib.biot_panel_cpp(zetaP, ZetaPanel, gamma=3.)
+            uvlmlib.biot_panel_cpp(zetaP, ZetaPanel, 1e-6, gamma=3.) # vortex_radius
 
 
     def run_biot_panel_fast():
