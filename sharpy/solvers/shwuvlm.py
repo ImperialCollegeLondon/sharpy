@@ -9,6 +9,7 @@ import sharpy.utils.settings as settings
 from sharpy.utils.solver_interface import solver, BaseSolver
 import sharpy.utils.generator_interface as gen_interface
 import sharpy.utils.cout_utils as cout
+from sharpy.utils.constants import vortex_radius_def
 import sys
 
 
@@ -81,6 +82,10 @@ class SHWUvlm(BaseSolver):
     settings_types['rot_center'] = 'list(float)'
     settings_default['rot_center'] = [0., 0., 0.]
     settings_description['rot_center'] = 'Center of rotation of the wake'
+
+    settings_types['vortex_radius'] = 'float'
+    settings_default['vortex_radius'] = vortex_radius_def
+    settings_description['vortex_radius'] = 'Distance between points below which induction is not computed'
 
     settings_table = settings.SettingsTable()
     __doc__ += settings_table.generate(settings_types, settings_default, settings_description)
