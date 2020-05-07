@@ -19,7 +19,7 @@ import sharpy.utils.algebra as algebra
 
 
 np.set_printoptions(linewidth=200, precision=3)
-vortex_radius = 1e-6
+vortex_radius = 1e-2
 
 
 def max_error_tensor(Pder_an, Pder_num):

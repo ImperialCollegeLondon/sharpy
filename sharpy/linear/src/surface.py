@@ -676,7 +676,7 @@ class AeroGridSurface(AeroGridGeo):
             for ss, aa, bb in zip(svec, avec, bvec):
                 zeta_mid = 0.5 * (zetav_here[aa, :] + zetav_here[bb, :])
                 AIC[:, :, ss, mm, nn] = get_aic3_cpp(self.maps, self.zeta,
-                                                     zeta_mid, vortex_radius)
+                                                     zeta_mid, self.vortex_radius)
 
             ##### panels n=0: copy seg.3
             nn = 0
@@ -688,7 +688,7 @@ class AeroGridSurface(AeroGridGeo):
                 for ss, aa, bb in zip(svec, avec, bvec):
                     zeta_mid = 0.5 * (zetav_here[aa, :] + zetav_here[bb, :])
                     AIC[:, :, ss, mm, nn] = get_aic3_cpp(self.maps, self.zeta,
-                                                         zeta_mid, vortex_radius)
+                                                         zeta_mid, self.vortex_radius)
                 AIC[:, :, 3, mm, nn] = AIC[:, :, 1, mm - 1, nn]
 
             ##### panels m=0: copy seg.0
@@ -701,7 +701,7 @@ class AeroGridSurface(AeroGridGeo):
                 for ss, aa, bb in zip(svec, avec, bvec):
                     zeta_mid = 0.5 * (zetav_here[aa, :] + zetav_here[bb, :])
                     AIC[:, :, ss, mm, nn] = get_aic3_cpp(self.maps, self.zeta,
-                                                         zeta_mid, vortex_radius)
+                                                         zeta_mid, self.vortex_radius)
                 AIC[:, :, 0, mm, nn] = AIC[:, :, 2, mm, nn - 1]
 
             ##### all others: copy seg. 0 and 3

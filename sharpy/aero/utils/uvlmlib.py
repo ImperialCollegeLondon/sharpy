@@ -151,7 +151,7 @@ def vlm_solver(ts_info, options):
     vmopts.iterative_tol = ct.c_double(options['iterative_tol'].value)
     vmopts.iterative_precond = ct.c_bool(options['iterative_precond'].value)
     vmopts.cfl1 = ct.c_bool(options['cfl1'])
-    vmopts.vortex_radius = ct.c_double(options['vortex_radius'])
+    vmopts.vortex_radius = ct.c_double(options['vortex_radius'].value)
 
     flightconditions = FlightConditions()
     flightconditions.rho = options['rho']
@@ -189,7 +189,7 @@ def uvlm_init(ts_info, options):
     except KeyError:
         pass
     vmopts.NumCores = ct.c_uint(options['num_cores'].value)
-    vmopts.vortex_radius = ct.c_double(options['vortex_radius'])
+    vmopts.vortex_radius = ct.c_double(options['vortex_radius'].value)
 
     flightconditions = FlightConditions()
     flightconditions.rho = options['rho']
@@ -236,7 +236,7 @@ def uvlm_solver(i_iter, ts_info, struct_ts_info, options, convect_wake=True, dt=
     uvmopts.iterative_precond = ct.c_bool(options['iterative_precond'].value)
     uvmopts.convect_wake = ct.c_bool(convect_wake)
     uvmopts.cfl1 = ct.c_bool(options['cfl1'])
-    uvmopts.vortex_radius = ct.c_double(options['vortex_radius'])
+    uvmopts.vortex_radius = ct.c_double(options['vortex_radius'].value)
 
     flightconditions = FlightConditions()
     flightconditions.rho = options['rho']
@@ -280,16 +280,16 @@ def shw_solver(i_iter, ts_info, struct_ts_info, options, convect_wake=True, dt=N
 
     uvmopts = UVMopts()
     if dt is None:
-        uvmopts.dt = ct.c_double(options["dt"].value)
+        uvmopts.dt = ct.c_double(options["dt"])
     else:
         uvmopts.dt = ct.c_double(dt)
-    uvmopts.NumCores = ct.c_uint(options["num_cores"].value)
+    uvmopts.NumCores = ct.c_uint(options["num_cores"])
     uvmopts.NumSurfaces = ct.c_uint(ts_info.n_surf)
     uvmopts.ImageMethod = ct.c_bool(False)
-    uvmopts.convection_scheme = ct.c_uint(options["convection_scheme"].value)
-    uvmopts.iterative_solver = ct.c_bool(options['iterative_solver'].value)
-    uvmopts.iterative_tol = ct.c_double(options['iterative_tol'].value)
-    uvmopts.iterative_precond = ct.c_bool(options['iterative_precond'].value)
+    uvmopts.convection_scheme = ct.c_uint(options["convection_scheme"])
+    uvmopts.iterative_solver = ct.c_bool(options['iterative_solver'])
+    uvmopts.iterative_tol = ct.c_double(options['iterative_tol'])
+    uvmopts.iterative_precond = ct.c_bool(options['iterative_precond'])
     uvmopts.convect_wake = ct.c_bool(convect_wake)
     uvmopts.vortex_radius = ct.c_double(options['vortex_radius'])
 
@@ -356,7 +356,7 @@ def uvlm_calculate_unsteady_forces(ts_info,
     uvmopts.iterative_tol = ct.c_double(options['iterative_tol'].value)
     uvmopts.iterative_precond = ct.c_bool(options['iterative_precond'].value)
     uvmopts.convect_wake = ct.c_bool(convect_wake)
-    uvmopts.vortex_radius = ct.c_double(options['vortex_radius'])
+    uvmopts.vortex_radius = ct.c_double(options['vortex_radius'].value)
 
     flightconditions = FlightConditions()
     flightconditions.rho = options['rho']
@@ -437,7 +437,7 @@ def uvlm_calculate_total_induced_velocity_at_points(ts_info,
     uvmopts.NumSurfaces = ct.c_uint(ts_info.n_surf)
     uvmopts.ImageMethod = ct.c_bool(False)
     uvmopts.NumCores = ct.c_uint(ncores.value)
-    umopts.vortex_radius = ct.c_double(options['vortex_radius'])
+    uvmopts.vortex_radius = ct.c_double(options['vortex_radius'].value)
 
     npoints = target_triads.shape[0]
     uind = np.zeros((npoints, 3), dtype=ct.c_double)
@@ -500,13 +500,17 @@ def biot_panel_cpp(zeta_point, zeta_panel, vortex_radius, gamma=1.0):
     assert zeta_point.flags['C_CONTIGUOUS'] and zeta_panel.flags['C_CONTIGUOUS'], \
         'Input not C contiguous'
 
+    if type(vortex_radius) is ct.c_double:
+        vortex_radius_float = vortex_radius.value
+    else:
+        vortex_radius_float = vortex_radius
     velP = np.zeros((3,), order='C')
     UvlmLib.call_biot_panel(
         velP.ctypes.data_as(ct.POINTER(ct.c_double)),
         zeta_point.ctypes.data_as(ct.POINTER(ct.c_double)),
         zeta_panel.ctypes.data_as(ct.POINTER(ct.c_double)),
         ct.byref(ct.c_double(gamma)),
-        ct.byref(ct.c_double(vortex_radiux)))
+        ct.byref(ct.c_double(vortex_radius_float)))
 
     return velP
 
@@ -543,13 +547,17 @@ def eval_panel_cpp(zeta_point, zeta_panel,
     der_point = np.zeros((3, 3), order='C')
     der_vertices = np.zeros((4, 3, 3), order='C')
 
+    if type(vortex_radius) is ct.c_double:
+        vortex_radius_float = vortex_radius.value
+    else:
+        vortex_radius_float = vortex_radius
     UvlmLib.call_der_biot_panel(
         der_point.ctypes.data_as(ct.POINTER(ct.c_double)),
         der_vertices.ctypes.data_as(ct.POINTER(ct.c_double)),
         zeta_point.ctypes.data_as(ct.POINTER(ct.c_double)),
         zeta_panel.ctypes.data_as(ct.POINTER(ct.c_double)),
         ct.byref(ct.c_double(gamma_pan)),
-        ct.byref(ct.c_double(vortex_radius)))
+        ct.byref(ct.c_double(vortex_radius_float)))
 
     return der_point, der_vertices
 
@@ -579,6 +587,10 @@ def get_induced_velocity_cpp(maps, zeta, gamma, zeta_target,
     M, N = maps.M, maps.N
     uind_target = np.zeros((3,), order='C')
 
+    if type(vortex_radius) is ct.c_double:
+        vortex_radius_float = vortex_radius.value
+    else:
+        vortex_radius_float = vortex_radius
     call_ind_vel(
         uind_target.ctypes.data_as(ct.POINTER(ct.c_double)),
         zeta_target.ctypes.data_as(ct.POINTER(ct.c_double)),
@@ -586,7 +598,7 @@ def get_induced_velocity_cpp(maps, zeta, gamma, zeta_target,
         gamma.ctypes.data_as(ct.POINTER(ct.c_double)),
         ct.byref(ct.c_int(M)),
         ct.byref(ct.c_int(N)),
-        ct.byref(ct.c_double(vortex_radiux)))
+        ct.byref(ct.c_double(vortex_radius_float)))
 
     return uind_target
 
@@ -612,13 +624,17 @@ def get_aic3_cpp(maps, zeta, zeta_target, vortex_radius):
     K = maps.K
     aic3 = np.zeros((3, K), order='C')
 
+    if type(vortex_radius) is ct.c_double:
+        vortex_radius_float = vortex_radius.value
+    else:
+        vortex_radius_float = vortex_radius
     UvlmLib.call_aic3(
         aic3.ctypes.data_as(ct.POINTER(ct.c_double)),
         zeta_target.ctypes.data_as(ct.POINTER(ct.c_double)),
         zeta.ctypes.data_as(ct.POINTER(ct.c_double)),
         ct.byref(ct.c_int(maps.M)),
         ct.byref(ct.c_int(maps.N)),
-        ct.byref(ct.c_double(vortex_radiux)))
+        ct.byref(ct.c_double(vortex_radius_float)))
 
     return aic3
 
@@ -661,6 +677,10 @@ def dvinddzeta_cpp(zetac, surf_in, is_bound,
     Kzeta_in_bound = (M_in_bound + 1) * (N_in + 1)
     der_vert = np.zeros((3, 3 * Kzeta_in_bound))
 
+    if type(vortex_radius) is ct.c_double:
+        vortex_radius_float = vortex_radius.value
+    else:
+        vortex_radius_float = vortex_radius
     UvlmLib.call_dvinddzeta(
         der_coll.ctypes.data_as(ct.POINTER(ct.c_double)),
         der_vert.ctypes.data_as(ct.POINTER(ct.c_double)),
@@ -671,7 +691,7 @@ def dvinddzeta_cpp(zetac, surf_in, is_bound,
         ct.byref(ct.c_int(N_in)),
         ct.byref(ct.c_bool(is_bound)),
         ct.byref(ct.c_int(M_in_bound)),
-        ct.byref(ct.c_double(vortex_radiux))
+        ct.byref(ct.c_double(vortex_radius_float))
     )
 
     return der_coll, der_vert
