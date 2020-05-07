@@ -36,7 +36,7 @@ class Test_ders(unittest.TestCase):
         zetaP = self.zetaP
         zetaA = self.zeta1
         zetaB = self.zeta2
-        Q0 = uvlmutils.biot_segment(zetaP, zetaA, zetaB, gamma)
+        Q0 = uvlmutils.biot_segment(zetaP, zetaA, zetaB, vortex_radius, gamma)
 
         ### compare different analytical derivative
         DerP_an, DerA_an, DerB_an = dbiot.eval_seg_exp(zetaP, zetaA, zetaB, vortex_radius, gamma)
@@ -58,11 +58,11 @@ class Test_ders(unittest.TestCase):
                 dzeta = np.zeros((3,))
                 dzeta[cc_zeta] = step
                 DerP_num[:, cc_zeta] = (
-                                               uvlmutils.biot_segment(zetaP + dzeta, zetaA, zetaB, gamma) - Q0) / step
+                                               uvlmutils.biot_segment(zetaP + dzeta, zetaA, zetaB, vortex_radius, gamma) - Q0) / step
                 DerA_num[:, cc_zeta] = (
-                                               uvlmutils.biot_segment(zetaP, zetaA + dzeta, zetaB, gamma) - Q0) / step
+                                               uvlmutils.biot_segment(zetaP, zetaA + dzeta, zetaB, vortex_radius, gamma) - Q0) / step
                 DerB_num[:, cc_zeta] = (
-                                               uvlmutils.biot_segment(zetaP, zetaA, zetaB + dzeta, gamma) - Q0) / step
+                                               uvlmutils.biot_segment(zetaP, zetaA, zetaB + dzeta, vortex_radius, gamma) - Q0) / step
             er_max = max(np.max(np.abs(DerP_num - DerP_an)),
                          np.max(np.abs(DerA_num - DerA_an)),
                          np.max(np.abs(DerB_num - DerB_an)))
@@ -80,7 +80,7 @@ class Test_ders(unittest.TestCase):
         zetaB = self.zeta2
         zetaP = .3 * zetaA + 0.7 * zetaB
 
-        Q0 = uvlmutils.biot_segment(zetaP, zetaA, zetaB, gamma)
+        Q0 = uvlmutils.biot_segment(zetaP, zetaA, zetaB, vortex_radius, gamma)
 
         ### compare different analytical derivative
         DerP_an, DerA_an, DerB_an = dbiot.eval_seg_exp(zetaP, zetaA, zetaB, vortex_radius, gamma)
@@ -103,11 +103,11 @@ class Test_ders(unittest.TestCase):
                 dzeta = np.zeros((3,))
                 dzeta[cc_zeta] = step
                 DerP_num[:, cc_zeta] = (
-                                               uvlmutils.biot_segment(zetaP + dzeta, zetaA, zetaB, gamma) - Q0) / step
+                                               uvlmutils.biot_segment(zetaP + dzeta, zetaA, zetaB, vortex_radius, gamma) - Q0) / step
                 DerA_num[:, cc_zeta] = (
-                                               uvlmutils.biot_segment(zetaP, zetaA + dzeta, zetaB, gamma) - Q0) / step
+                                               uvlmutils.biot_segment(zetaP, zetaA + dzeta, zetaB, vortex_radius, gamma) - Q0) / step
                 DerB_num[:, cc_zeta] = (
-                                               uvlmutils.biot_segment(zetaP, zetaA, zetaB + dzeta, gamma) - Q0) / step
+                                               uvlmutils.biot_segment(zetaP, zetaA, zetaB + dzeta, vortex_radius, gamma) - Q0) / step
             er_max = max(np.max(np.abs(DerP_num - DerP_an)),
                          np.max(np.abs(DerA_num - DerA_an)),
                          np.max(np.abs(DerB_num - DerB_an)))
@@ -129,7 +129,7 @@ class Test_ders(unittest.TestCase):
         zeta3 = self.zeta3
 
         ZetaPanel = np.array([zeta0, zeta1, zeta2, zeta3])
-        Q0 = uvlmutils.biot_panel(zetaP, ZetaPanel, gamma)
+        Q0 = uvlmutils.biot_panel(zetaP, ZetaPanel, vortex_radius, gamma)
 
         # compare analytical derivatives models
         DerP_an, DerVer_an = dbiot.eval_panel_exp(zetaP, ZetaPanel,
@@ -168,14 +168,14 @@ class Test_ders(unittest.TestCase):
 
                 # derivative w.r.t. target point
                 DerP_num[:, cc] = \
-                    (uvlmutils.biot_panel(zetaP + dzeta, ZetaPanel, gamma) - Q0) / step
+                    (uvlmutils.biot_panel(zetaP + dzeta, ZetaPanel, vortex_raidus, gamma) - Q0) / step
 
                 # derivative w.r.t panel vertices
                 for vv in range(4):
                     ZetaPanel_pert = ZetaPanel.copy()
                     ZetaPanel_pert[vv, :] += dzeta
                     DerVer_num[vv, :, cc] = \
-                        (uvlmutils.biot_panel(zetaP, ZetaPanel_pert, gamma) - Q0) / step
+                        (uvlmutils.biot_panel(zetaP, ZetaPanel_pert, vortex_raidus, gamma) - Q0) / step
 
             erP_max = np.max(np.abs(DerP_num - DerP_an))
             erVer_max = np.max(np.abs(DerVer_num - DerVer_an))
@@ -210,7 +210,7 @@ class Test_ders(unittest.TestCase):
         zetaP = 0.3 * zeta1 + 0.7 * zeta2
 
         ZetaPanel = np.array([zeta0, zeta1, zeta2, zeta3])
-        Q0 = uvlmutils.biot_panel(zetaP, ZetaPanel, gamma)
+        Q0 = uvlmutils.biot_panel(zetaP, ZetaPanel, vortex_raidus, gamma)
 
         # compare analytical derivatives models
         DerP_an, DerVer_an = dbiot.eval_panel_exp(zetaP, ZetaPanel, gamma)
@@ -248,14 +248,14 @@ class Test_ders(unittest.TestCase):
 
                 # derivative w.r.t. target point
                 DerP_num[:, cc] = \
-                    (uvlmutils.biot_panel(zetaP + dzeta, ZetaPanel, gamma) - Q0) / step
+                    (uvlmutils.biot_panel(zetaP + dzeta, ZetaPanel, vortex_raidus, gamma) - Q0) / step
 
                 # derivative w.r.t panel vertices
                 for vv in range(4):
                     ZetaPanel_pert = ZetaPanel.copy()
                     ZetaPanel_pert[vv, :] += dzeta
                     DerVer_num[vv, :, cc] = \
-                        (uvlmutils.biot_panel(zetaP, ZetaPanel_pert, gamma) - Q0) / step
+                        (uvlmutils.biot_panel(zetaP, ZetaPanel_pert, vortex_raidus, gamma) - Q0) / step
 
             erP_max = np.max(np.abs(DerP_num - DerP_an))
             erVer_max = np.max(np.abs(DerVer_num - DerVer_an))

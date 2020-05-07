@@ -7,9 +7,6 @@ import sharpy.aero.utils.uvlmlib as uvlmlib
 import sharpy.utils.algebra as algebra
 from sharpy.utils.constants import cfact_biot
 
-VORTEX_RADIUS = 1e-6  # numerical radius of vortex
-VORTEX_RADIUS_SQ = VORTEX_RADIUS ** 2
-
 # local mapping segment/vertices of a panel
 svec = [0, 1, 2, 3]  # seg. number
 avec = [0, 1, 2, 3]  # 1st vertex of seg.
@@ -31,11 +28,12 @@ def joukovski_qs_segment(zetaA, zetaB, v_mid, gamma=1.0, fact=0.5):
     return gfact * fs
 
 
-def biot_segment(zetaP, zetaA, zetaB, gamma=1.0):
+def biot_segment(zetaP, zetaA, zetaB, vortex_radius, gamma=1.0):
     """
     Induced velocity of segment A_>B of circulation gamma over point P.
     """
 
+    vortex_radius_sq = vortex_radius*vortex_radius
     # differences
     ra = zetaP - zetaA
     rb = zetaP - zetaB
@@ -45,7 +43,7 @@ def biot_segment(zetaP, zetaA, zetaB, gamma=1.0):
     vcross_sq = np.dot(vcross, vcross)
 
     # numerical radius
-    if vcross_sq < (VORTEX_RADIUS_SQ * algebra.normsq3d(rab)):
+    if vcross_sq < (vortex_radius_sq * algebra.normsq3d(rab)):
         return np.zeros((3,))
 
     q = ((cfact_biot * gamma / vcross_sq) * \
@@ -54,7 +52,7 @@ def biot_segment(zetaP, zetaA, zetaB, gamma=1.0):
     return q
 
 
-def biot_panel(zetaC, ZetaPanel, gamma=1.0):
+def biot_panel(zetaC, ZetaPanel, vortex_radius, gamma=1.0):
     """
     Induced velocity over point ZetaC of a panel of vertices coordinates
     ZetaPanel and circulaiton gamma, where:
@@ -63,18 +61,20 @@ def biot_panel(zetaC, ZetaPanel, gamma=1.0):
 
     q = np.zeros((3,))
     for ss, aa, bb in zip(svec, avec, bvec):
-        q += biot_segment(zetaC, ZetaPanel[aa, :], ZetaPanel[bb, :], gamma)
+        q += biot_segment(zetaC, ZetaPanel[aa, :], ZetaPanel[bb, :],
+                          vortex_radius, gamma)
 
     return q
 
 
-def biot_panel_fast(zetaC, ZetaPanel, gamma=1.0):
+def biot_panel_fast(zetaC, ZetaPanel, vortex_radius, gamma=1.0):
     """
     Induced velocity over point ZetaC of a panel of vertices coordinates
     ZetaPanel and circulaiton gamma, where:
         ZetaPanel.shape=(4,3)=[vertex local number, (x,y,z) component]
     """
 
+    vortex_radius_sq = vortex_radius*vortex_radius
     Cfact = cfact_biot * gamma
     q = np.zeros((3,))
 
@@ -86,7 +86,7 @@ def biot_panel_fast(zetaC, ZetaPanel, gamma=1.0):
         RAB = ZetaPanel[bb, :] - ZetaPanel[aa, :]  # segment vector
         Vcr = algebra.cross3(R_list[aa], R_list[bb])
         vcr2 = np.dot(Vcr, Vcr)
-        if vcr2 < (VORTEX_RADIUS_SQ * algebra.normsq3d(RAB)):
+        if vcr2 < (vortex_radius * algebra.normsq3d(RAB)):
             continue
 
         q += ((Cfact / vcr2) * np.dot(RAB, Runit_list[aa] - Runit_list[bb])) * Vcr
@@ -155,8 +155,8 @@ if __name__ == '__main__':
     zetaP = zeta2 * 0.3 + zeta3 * 0.7
 
     ### verify model consistency
-    qref = biot_panel(zetaP, ZetaPanel, gamma=gamma)
-    qfast = biot_panel_fast(zetaP, ZetaPanel, gamma=gamma)
+    qref = biot_panel(zetaP, ZetaPanel, 1e-6, gamma=gamma) # vortex_radius
+    qfast = biot_panel_fast(zetaP, ZetaPanel, 1e-6, gamma=gamma) # vortex_radius
     qcpp = uvlmlib.biot_panel_cpp(zetaP, ZetaPanel, 1e-6, gamma=gamma) # vortex_radius
 
     ermax = np.max(np.abs(qref - qfast))
@@ -173,12 +173,12 @@ if __name__ == '__main__':
 
     def run_biot_panel_fast():
         for ii in range(10000):
-            biot_panel_fast(zetaP, ZetaPanel, gamma=3.)
+            biot_panel_fast(zetaP, ZetaPanel, 1e-6, gamma=3.) # vortex_radius
 
 
     def run_biot_panel_ref():
         for ii in range(10000):
-            biot_panel(zetaP, ZetaPanel, gamma=3.)
+            biot_panel(zetaP, ZetaPanel, 1e-6, gamma=3.) # vortex_radius
 
 
     print('------------------------------------------ profiling biot_panel_cpp')
