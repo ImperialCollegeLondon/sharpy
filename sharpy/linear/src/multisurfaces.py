@@ -55,7 +55,7 @@ class MultiAeroGridSurfaces():
             #     omega = for_vel[3:]
             Surf = surface.AeroGridSurface(
                 Map, zeta=tsdata.zeta[ss], gamma=tsdata.gamma[ss],
-                vortex_radius,
+                vortex_radius=vortex_radius,
                 u_ext=tsdata.u_ext[ss], zeta_dot=tsdata.zeta_dot[ss],
                 gamma_dot=tsdata.gamma_dot[ss],
                 rho=tsdata.rho,
@@ -78,7 +78,7 @@ class MultiAeroGridSurfaces():
             Map = gridmapping.AeroGridMap(M, N)
             Surf = surface.AeroGridSurface(Map,
                                            zeta=tsdata.zeta_star[ss], gamma=tsdata.gamma_star[ss],
-                                           vortex_radius,
+                                           vortex_radius=vortex_radius,
                                            rho=tsdata.rho)
             self.Surfs_star.append(Surf)
             # store size

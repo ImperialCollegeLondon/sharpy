@@ -133,11 +133,11 @@ def nc_dqcdzeta_Sin_to_Sout(Surf_in, Surf_out, Der_coll, Der_vert, Surf_in_bound
         if Surf_in_bound:
             dvind_coll, dvind_vert = dvinddzeta_cpp(zetac_here, Surf_in,
                                                     is_bound=Surf_in_bound,
-                                                    Surf_in.vortex_radius)
+                                                    vortex_radius=Surf_in.vortex_radius)
         else:
             dvind_coll, dvind_vert = dvinddzeta_cpp(zetac_here, Surf_in,
                                                     is_bound=Surf_in_bound,
-                                                    Surf_in.vortex_radius,
+                                                    vortex_radius=Surf_in.vortex_radius,
                                                     M_in_bound=M_bound_in)
 
         ### Surf_in vertices contribution
@@ -1013,7 +1013,7 @@ def dfqsdvind_zeta(Surfs, Surfs_star):
                     Dervert = Dervert_list[ss_out][ss_in]  # <- link
                     # deriv wrt induced velocity
                     dvind_mid, dvind_vert = dvinddzeta_cpp(
-                        zeta_mid, Surf_in, is_bound=True, Surf_in.vortex_radius)
+                        zeta_mid, Surf_in, is_bound=True, vortex_radius=Surf_in.vortex_radius)
                     # allocate coll
                     Df = np.dot(0.25 * Lskew, dvind_mid)
                     Dercoll[np.ix_(ii_a, ii_a)] += Df
@@ -1029,7 +1029,7 @@ def dfqsdvind_zeta(Surfs, Surfs_star):
                     # deriv wrt induced velocity
                     dvind_mid, dvind_vert = dvinddzeta_cpp(
                         zeta_mid, Surfs_star[ss_in],
-                        is_bound=False, Surf_in.vortex_radius,
+                        is_bound=False, vortex_radius=Surf_in.vortex_radius,
                         M_in_bound=Surf_in.maps.M)
                     # allocate coll
                     Df = np.dot(0.25 * Lskew, dvind_mid)
@@ -1073,7 +1073,7 @@ def dfqsdvind_zeta(Surfs, Surfs_star):
                 # deriv wrt induced velocity
                 dvind_mid, dvind_vert = dvinddzeta_cpp(zeta_mid, Surf_in,
                                                        is_bound=True,
-                                                       Surf_in.vortex_radius)
+                                                       vortex_radius=Surf_in.vortex_radius)
                 # allocate coll
                 Df = np.dot(0.25 * Lskew, dvind_mid)
                 Dercoll[np.ix_(ii_a, ii_a)] += Df
@@ -1089,7 +1089,7 @@ def dfqsdvind_zeta(Surfs, Surfs_star):
                 # deriv wrt induced velocity
                 dvind_mid, dvind_vert = dvinddzeta_cpp(
                     zeta_mid, Surfs_star[ss_in],
-                    is_bound=False, Surf_in.vortex_radius,
+                    is_bound=False, vortex_radius=Surf_in.vortex_radius,
                     M_in_bound=Surf_in.maps.M)
                 # allocate coll
                 Df = np.dot(0.25 * Lskew, dvind_mid)

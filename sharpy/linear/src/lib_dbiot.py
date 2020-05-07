@@ -264,7 +264,7 @@ def eval_seg_comp_loop(DerP, DerA, DerB, ZetaP, ZetaA, ZetaB, gamma_seg, vortex_
     execution.
     """
 
-    vortex_radius_sq = vortex_radius_sq*vortex_radius_sq
+    vortex_radius_sq = vortex_radius*vortex_radius
     Cfact = cfact_biot * gamma_seg
 
     RA = ZetaP - ZetaA

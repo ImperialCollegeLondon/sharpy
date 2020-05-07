@@ -20,6 +20,7 @@ import sharpy.utils.generator_interface as gen_interface
 import sharpy.utils.settings as settings
 import sharpy.aero.utils.uvlmlib as uvlmlib
 import ctypes as ct
+from sharpy.utils.constants import vortex_radius_def
 
 
 @solver
@@ -56,6 +57,10 @@ class PlotFlowField(BaseSolver):
 
         self.settings_types['num_cores'] = 'int'
         self.settings_default['num_cores'] = 1
+
+        self.settings_types['vortex_radius'] = 'float'
+        self.settings_default['vortex_radius'] = vortex_radius_def
+        # settings_description['vortex_radius'] = 'Distance below which inductions are not computed'
 
         self.settings = None
         self.data = None
@@ -114,6 +119,7 @@ class PlotFlowField(BaseSolver):
 
             u_ind_points = uvlmlib.uvlm_calculate_total_induced_velocity_at_points(self.data.aero.timestep_info[ts],
                                                                                                       target_triads,
+                                                                                                      self.settings['vortex_radius'],
                                                                                                       self.data.structure.timestep_info[ts].for_pos[0:3],
                                                                                                       self.settings['num_cores'])
             ipoint = -1

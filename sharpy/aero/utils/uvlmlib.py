@@ -412,9 +412,9 @@ def uvlm_calculate_incidence_angle(ts_info,
 
 def uvlm_calculate_total_induced_velocity_at_points(ts_info,
                                                    target_triads,
+                                                   vortex_radius,
                                                    for_pos=np.zeros((6)),
-                                                   ncores=ct.c_uint(1),
-                                                   vortex_radius):
+                                                   ncores=ct.c_uint(1)):
     """
     uvlm_calculate_total_induced_velocity_at_points
 
@@ -549,7 +549,7 @@ def eval_panel_cpp(zeta_point, zeta_panel,
         zeta_point.ctypes.data_as(ct.POINTER(ct.c_double)),
         zeta_panel.ctypes.data_as(ct.POINTER(ct.c_double)),
         ct.byref(ct.c_double(gamma_pan)),
-        ct.byref(ct.c_double(vortex_radiux)))
+        ct.byref(ct.c_double(vortex_radius)))
 
     return der_point, der_vertices
 

@@ -272,7 +272,7 @@ class Test_assembly(unittest.TestCase):
                     # calculate new normal velocity
                     Surf_pert = surface.AeroGridSurface(Surf.maps, zeta=zeta_pert,
                                                         u_ext=Surf.u_ext, gamma=Surf.gamma,
-                                                        vortex_radius)
+                                                        vortex_radius=vortex_radius)
                     u_norm = Surf_pert.project_coll_to_normal(u_tot0)
                     u_norm_vec = u_norm.reshape(-1, order='C')
                     # FD derivative
