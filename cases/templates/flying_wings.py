@@ -1173,7 +1173,7 @@ class Pazi(FlyingWing):
         sigma_scale_I = 1
 
         # Pulling:
-        ea = 7.12E+07
+        ea = 7.12E+06
 
         # In-plane bending:
         ga_inp = 3.31E+06
