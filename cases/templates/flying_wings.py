@@ -1173,7 +1173,7 @@ class Pazi(FlyingWing):
         sigma_scale_I = 1
 
         # Pulling:
-        ea = 7.12E+07
+        ea = 7.12E+06  # Typo corrected
 
         # In-plane bending:
         ga_inp = 3.31E+06
@@ -1196,7 +1196,7 @@ class Pazi(FlyingWing):
         self.stiffness = np.zeros((1, 6, 6))
         self.stiffness[0] = base_stiffness
 
-        m_unit = 0.589 # kg/m
+        m_unit = 5.50E-01 # kg/m
 
         # Test cases to confirm properties:
         # Tests in vacuum, AoA=0 deg, analysed with NonLinearStatic beam solver. Verification displacements taken from
@@ -1222,17 +1222,38 @@ class Pazi(FlyingWing):
         m_chi_cg = algebra.skew(m_unit * pos_cg_b)
         self.mass = np.zeros((1, 6, 6))
 
+        Js = 3.03E-04  # kg.m2/m
+
         # Mass matrix J components: torsion, out of plane bending, in-plane bending
         # Torsion: increasing J decreases natural frequency
         # Bending: increasing J increases natural frequency
         # Chosen experimentally to match natural frequencies from Abaqus analysis
-        self.mass[0, :, :] = np.diag([m_unit, m_unit, m_unit, 8.4E-04, 1.6E-05, 8.4E-04])
-        # self.mass[0, :, :] = np.diag([m_unit, m_unit, m_unit, 2.965E-03, 4.1E-04, 3E-02])
+        self.mass[0, :, :] = np.diag([m_unit, m_unit, m_unit, Js, 0.5*Js, 12*Js])*sigma_scale_I
         self.mass[0, :3, 3:] = m_chi_cg
         self.mass[0, 3:, :3] = -m_chi_cg
 
         self.elem_stiffness = np.zeros((self.num_elem_tot,), dtype=int)
         self.elem_mass = np.zeros((self.num_elem_tot,), dtype=int)
+
+        n_lumped_mass = 2
+        self.lumped_mass = np.zeros((n_lumped_mass))
+        self.lumped_mass_position = np.zeros((n_lumped_mass, 3))
+        self.lumped_mass_inertia = np.zeros((n_lumped_mass, 3, 3))
+        self.lumped_mass_nodes = np.zeros((n_lumped_mass), dtype=int)
+
+        # Lumped mass for approximating the wingtip weight (1):
+        self.lumped_mass[0] = 19.95 / 1E3  # mass in kg
+        # self.lumped_mass[0] = 1  # mass in kg - just to visually check
+        self.lumped_mass_position[0] = np.array([0, 0.005, 0])
+        self.lumped_mass_nodes[0] = self.N // 2
+        self.lumped_mass_inertia[0, :, :] = np.diag([1.17E-04, 2.87E-07, 1.17E-04])
+
+        # Lumped mass for approximating the wingtip weight (2):
+        self.lumped_mass[1] = 19.95 / 1E3  # mass in kg
+        # self.lumped_mass[1] = 1  # mass in kg - just to visually check
+        self.lumped_mass_position[1] = np.array([0, 0.005, 0])
+        self.lumped_mass_nodes[1] = self.N // 2 + 1
+        self.lumped_mass_inertia[1, :, :] = np.diag([1.17E-04, 2.87E-07, 1.17E-04])
 
 
 
