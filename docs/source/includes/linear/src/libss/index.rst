@@ -67,6 +67,8 @@ to do:
 	./butter
 	./compare_ss
 	./couple
+	./disc2cont
+	./eigvals
 	./freqresp
 	./get_freq_from_eigs
 	./join

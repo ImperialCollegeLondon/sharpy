@@ -2,6 +2,7 @@ import numpy as np
 import importlib
 import unittest
 import os
+import sharpy.utils.cout_utils as cout
 
 
 class TestCoupledDynamic(unittest.TestCase):
@@ -19,5 +20,5 @@ class TestCoupledDynamic(unittest.TestCase):
         pass
 
     def test_coupled_dynamic1(self):
-        print('No tests for dynamic coupled simulations (yet)!')
+        cout.cout_wrap('No tests for dynamic coupled simulations (yet)!', 1)
         pass

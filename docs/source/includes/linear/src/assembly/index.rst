@@ -37,3 +37,4 @@ Includes:
 	./test_wake_prop_term
 	./uc_dncdzeta
 	./wake_prop
+	./wake_prop_from_dimensions

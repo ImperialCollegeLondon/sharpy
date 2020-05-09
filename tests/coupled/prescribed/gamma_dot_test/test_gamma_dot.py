@@ -59,6 +59,11 @@ class TestGammaDot(unittest.TestCase):
                                        'DynamicCoupled']
         ws.config['SHARPy']['write_screen'] = 'off'
 
+        ws.config['AerogridLoader']['wake_shape_generator'] = 'StraightWake'
+        ws.config['AerogridLoader']['wake_shape_generator_input'] = {'u_inf': ws.u_inf,                                                                                      
+                                                                     'u_inf_direction': np.array([1., 0., 0.]),                                                        
+                                                                     'dt': ws.dt}
+
         # Remove newmark damping from structural solver settings
         ws.config['DynamicCoupled']['structural_solver_settings']['newmark_damp'] = 0
 

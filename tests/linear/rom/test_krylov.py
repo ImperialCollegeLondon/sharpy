@@ -5,13 +5,14 @@ Test Krylov ROM using Hospital Building Model
 import os
 import unittest
 import numpy as np
+
+import sharpy.utils.frequencyutils
 import sharpy.utils.cout_utils as cout
 import scipy.io as scio
 import sharpy.utils.sharpydir as sharpydir
 import sharpy.linear.src.libss as libss
 import sharpy.rom.krylov as krylov
 import sharpy.linear.src.libsparse as libsp
-import sharpy.postproc.frequencyresponse as frequencyresponse
 
 
 class TestKrylov(unittest.TestCase):
@@ -50,7 +51,7 @@ class TestKrylov(unittest.TestCase):
         Y_fom = self.ss.freqresp(wv)
         Y_rom = ssrom.freqresp(wv)
 
-        max_error = frequencyresponse.frequency_error(Y_fom, Y_rom, wv)
+        max_error = sharpy.utils.frequencyutils.frequency_error(Y_fom, Y_rom, wv)
 
         # can be used for debugging
         # import matplotlib.pyplot as plt

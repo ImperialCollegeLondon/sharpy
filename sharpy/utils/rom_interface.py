@@ -1,6 +1,7 @@
 from abc import ABCMeta, abstractmethod
 import sharpy.utils.cout_utils as cout
 import os
+import sharpy.utils.frequencyutils as frequencyutils
 
 dict_of_roms = {}
 roms = {}  # for internal working
@@ -41,6 +42,10 @@ class BaseRom(metaclass=ABCMeta):
     def run(self, ss):
         pass
 
+    @staticmethod
+    def compare_fom_rom(y1, y2, wv=None, **kwargs):
+        return frequencyutils.freqresp_relative_error(y1, y2, wv, **kwargs)
+
 
 def rom_from_string(string):
     return dict_of_roms[string]
@@ -67,6 +72,7 @@ def initialise_rom(rom_name):
     cls_type = rom_from_string(rom_name)
     solver = cls_type()
     return solver
+
 
 def dictionary_of_solvers():
     # import sharpy.rom

@@ -15,8 +15,10 @@ Dynamic Control Surface generators enable the user to prescribe a certain contro
 	./dynamiccontrolsurface/index
 	./gridbox/index
 	./gustvelocityfield/index
+	./helicoidalwake/index
 	./shearvelocityfield/index
 	./steadyvelocityfield/index
+	./straightwake/index
 	./trajectorygenerator/index
 	./turbvelocityfield/index
 	./turbvelocityfieldbts/index
