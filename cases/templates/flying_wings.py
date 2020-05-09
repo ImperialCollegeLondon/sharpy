@@ -1104,11 +1104,13 @@ class QuasiInfinite(FlyingWing):
         self.elem_stiffness = np.zeros((self.num_elem_tot,), dtype=int)
         self.elem_mass = np.zeros((self.num_elem_tot,), dtype=int)
 
-class Pazi(FlyingWing):
+class Pazy(FlyingWing):
     '''
-    Build a Pazi wing.
-    This class is nothing but a FlyingWing with pre-defined geometry properties
-    and mass/stiffness data ("update_mass_stiffness" method)
+    Build a Pazy wing.
+
+    The Pazy wing is a highly flexible wing designed and developed at Technion University as an aeroelastic
+    test case.
+
     '''
 
     def __init__(self,
@@ -1127,7 +1129,7 @@ class Pazi(FlyingWing):
                  n_surfaces=1,
                  physical_time=2,
                  route='.',
-                 case_name='pazi',
+                 case_name='pazy',
                  RollNodes=False):
         super().__init__(M=M, N=N,
                          Mstar_fact=Mstar_fact,
@@ -1173,7 +1175,7 @@ class Pazi(FlyingWing):
         sigma_scale_I = 1
 
         # Pulling:
-        ea = 7.12E+06  # Typo corrected
+        ea = 7.12E+06
 
         # In-plane bending:
         ga_inp = 3.31E+06
@@ -1257,7 +1259,7 @@ class Pazi(FlyingWing):
 
 
 
-class PaziControlSurface(Pazi):
+class PazyControlSurface(Pazy):
 
     def __init__(self,
                  M, N,  # chord/span-wise discretisations
@@ -1277,7 +1279,7 @@ class PaziControlSurface(Pazi):
                  n_surfaces=1,
                  physical_time=2,
                  route='.',
-                 case_name='pazi',
+                 case_name='pazy',
                  RollNodes=False):
 
         super().__init__(M=M, N=N,
