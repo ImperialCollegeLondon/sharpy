@@ -1119,8 +1119,9 @@ class Pazy(FlyingWing):
                  u_inf,  # flight cond
                  alpha,
                  rho=1.225,
+                 tip_rod=True,
                  b_ref=2. * 0.55,  # geometry
-                 main_chord= 0.1,
+                 main_chord=0.1,
                  aspect_ratio=(2. * 0.55) / 0.1,
                  roll=0.,
                  yaw=0.,
@@ -1131,6 +1132,7 @@ class Pazy(FlyingWing):
                  route='.',
                  case_name='pazy',
                  RollNodes=False):
+
         super().__init__(M=M, N=N,
                          Mstar_fact=Mstar_fact,
                          u_inf=u_inf,
@@ -1157,6 +1159,8 @@ class Pazy(FlyingWing):
 
         # other
         self.c_ref = main_chord
+
+        self.tip_rod = tip_rod
 
     def update_mass_stiff(self):
         '''
@@ -1237,25 +1241,26 @@ class Pazy(FlyingWing):
         self.elem_stiffness = np.zeros((self.num_elem_tot,), dtype=int)
         self.elem_mass = np.zeros((self.num_elem_tot,), dtype=int)
 
-        n_lumped_mass = 2
-        self.lumped_mass = np.zeros((n_lumped_mass))
-        self.lumped_mass_position = np.zeros((n_lumped_mass, 3))
-        self.lumped_mass_inertia = np.zeros((n_lumped_mass, 3, 3))
-        self.lumped_mass_nodes = np.zeros((n_lumped_mass), dtype=int)
+        if self.tip_rod:
+            n_lumped_mass = 2
+            self.lumped_mass = np.zeros((n_lumped_mass))
+            self.lumped_mass_position = np.zeros((n_lumped_mass, 3))
+            self.lumped_mass_inertia = np.zeros((n_lumped_mass, 3, 3))
+            self.lumped_mass_nodes = np.zeros((n_lumped_mass), dtype=int)
 
-        # Lumped mass for approximating the wingtip weight (1):
-        self.lumped_mass[0] = 19.95 / 1E3  # mass in kg
-        # self.lumped_mass[0] = 1  # mass in kg - just to visually check
-        self.lumped_mass_position[0] = np.array([0, 0.005, 0])
-        self.lumped_mass_nodes[0] = self.N // 2
-        self.lumped_mass_inertia[0, :, :] = np.diag([1.17E-04, 2.87E-07, 1.17E-04])
+            # Lumped mass for approximating the wingtip weight (1):
+            self.lumped_mass[0] = 19.95 / 1E3  # mass in kg
+            # self.lumped_mass[0] = 1  # mass in kg - just to visually check
+            self.lumped_mass_position[0] = np.array([0, 0.005, 0])
+            self.lumped_mass_nodes[0] = self.N // 2
+            self.lumped_mass_inertia[0, :, :] = np.diag([1.17E-04, 2.87E-07, 1.17E-04])
 
-        # Lumped mass for approximating the wingtip weight (2):
-        self.lumped_mass[1] = 19.95 / 1E3  # mass in kg
-        # self.lumped_mass[1] = 1  # mass in kg - just to visually check
-        self.lumped_mass_position[1] = np.array([0, 0.005, 0])
-        self.lumped_mass_nodes[1] = self.N // 2 + 1
-        self.lumped_mass_inertia[1, :, :] = np.diag([1.17E-04, 2.87E-07, 1.17E-04])
+            # Lumped mass for approximating the wingtip weight (2):
+            self.lumped_mass[1] = 19.95 / 1E3  # mass in kg
+            # self.lumped_mass[1] = 1  # mass in kg - just to visually check
+            self.lumped_mass_position[1] = np.array([0, 0.005, 0])
+            self.lumped_mass_nodes[1] = self.N // 2 + 1
+            self.lumped_mass_inertia[1, :, :] = np.diag([1.17E-04, 2.87E-07, 1.17E-04])
 
 
 
@@ -1268,6 +1273,7 @@ class PazyControlSurface(Pazy):
                  alpha,
                  cs_deflection=[0],
                  rho=1.225,
+                 tip_rod=True,
                  b_ref= 2. * 0.55,  # geometry
                  main_chord= 0.1,
                  pct_flap= 0.2,
@@ -1287,6 +1293,7 @@ class PazyControlSurface(Pazy):
                          u_inf=u_inf,
                          alpha=alpha,
                          rho=rho,
+                         tip_rod=tip_rod,
                          b_ref=b_ref,
                          main_chord=main_chord,
                          aspect_ratio=aspect_ratio,
@@ -1343,7 +1350,6 @@ class PazyControlSurface(Pazy):
                 # if inode >= num_node_surf // 2:
             ws_elem = 0
             for i_surf in range(2):
-                print('Surface' + str(i_surf))
                 for i_elem in range(num_elem_surf):
                     for i_local_node in range(self.num_node_elem):
                         if i_elem >= int(num_elem_surf *(1- pct_flap)):
