@@ -1251,16 +1251,16 @@ class Pazy(FlyingWing):
             # Lumped mass for approximating the wingtip weight (1):
             self.lumped_mass[0] = 19.95 / 1E3  # mass in kg
             # self.lumped_mass[0] = 1  # mass in kg - just to visually check
-            self.lumped_mass_position[0] = np.array([0.005, 0.005, 0])
+            self.lumped_mass_position[0] = np.array([0.005, -0.005, 0])
             self.lumped_mass_nodes[0] = self.N // 2
-            self.lumped_mass_inertia[0, :, :] = np.diag([1.17E-04, 2.87E-07, 1.17E-04])
+            self.lumped_mass_inertia[0, :, :] = np.diag([1.2815E-04, 2.87E-07, 1.17E-04])
 
             # Lumped mass for approximating the wingtip weight (2):
             self.lumped_mass[1] = 19.95 / 1E3  # mass in kg
             # self.lumped_mass[1] = 1  # mass in kg - just to visually check
-            self.lumped_mass_position[1] = np.array([-0.005, 0.005, 0])  # positive x now ascending towards root
+            self.lumped_mass_position[1] = np.array([-0.005, -0.005, 0])  # positive x now ascending towards root
             self.lumped_mass_nodes[1] = self.N // 2 + 1
-            self.lumped_mass_inertia[1, :, :] = np.diag([1.17E-04, 2.87E-07, 1.17E-04])
+            self.lumped_mass_inertia[1, :, :] = np.diag([1.2815E-04, 2.87E-07, 1.17E-04])
 
 
 
