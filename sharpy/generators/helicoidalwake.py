@@ -137,15 +137,8 @@ class HelicoidalWake(generator_interface.BaseGenerator):
             angle = 0.
             for i in range(M):
                 # Compute the step in azimuthal angle
-                if i == 0:
-                    dphi = 0.
-                elif i <= self.ndphi1:
-                    dphi = self.dphi1
-                else:
-                    dphi = self.dphi1*self.r**(i - self.ndphi1)
-                dphi = min(dphi, self.dphimax)
+                angle -= self.get_dphi(i, self.dphi1, self.ndphi1, self.r, self.dphimax)
 
-                angle -= dphi
                 delta_t = -angle/np.linalg.norm(self.rotation_velocity)
                 rot = algebra.rotation_matrix_around_axis(self.u_inf_direction, angle)
                 for j in range(N):
@@ -173,3 +166,15 @@ class HelicoidalWake(generator_interface.BaseGenerator):
             # dist_to_orig[isurf][:] /= dist_to_orig[isurf][-1]
             for j in range(0, N - 1):
                 wake_conv_vel[isurf][:, j] = self.rotation_velocity*0.5*np.linalg.norm(zeta[isurf][:, -1, j] + zeta[isurf][:, -1, j + 1])
+
+    @staticmethod
+    def get_dphi(i, dphi1, ndphi1, r, dphimax):
+        if i == 0:
+            dphi = 0.
+        elif i <= ndphi1:
+            dphi = dphi1
+        else:
+            dphi = dphi1*r**(i - ndphi1)
+        dphi = min(dphi, dphimax)
+
+        return dphi
