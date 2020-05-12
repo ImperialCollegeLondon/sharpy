@@ -142,4 +142,7 @@ class AerogridLoader(BaseSolver):
                                             'gamma_star': aero_tstep.gamma_star,
                                             'dist_to_orig': aero_tstep.dist_to_orig,
                                             'wake_conv_vel': aero_tstep.wake_conv_vel})
+        # keep the call to the wake generator
+        # because it might be needed by other solvers
+        self.data.aero.wake_shape_generator = self.wake_shape_generator
         return self.data
