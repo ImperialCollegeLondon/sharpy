@@ -126,7 +126,9 @@ class StaticUvlm(BaseSolver):
         self.data.aero.wake_shape_generator.generate({'zeta': aero_tstep.zeta,
                                             'zeta_star': aero_tstep.zeta_star,
                                             'gamma': aero_tstep.gamma,
-                                            'gamma_star': aero_tstep.gamma_star})
+                                            'gamma_star': aero_tstep.gamma_star,
+                                            'dist_to_orig': aero_tstep.dist_to_orig,
+                                            'wake_conv_vel': aero_tstep.wake_conv_vel})
 
         # generate uext
         self.velocity_generator.generate({'zeta': self.data.aero.timestep_info[self.data.ts].zeta,
