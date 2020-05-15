@@ -290,6 +290,25 @@ def get_mu0_from_camber(x, y):
     return scipy.integrate.trapz(int, xc)
 
 
+def list_methods(class_instance, print_info=True, clean=True):
+
+    list = []
+    for str in dir(class_instance):
+        func = getattr(class_instance, str)
+        if callable(func):
+            if clean:
+                if not str.startswith("__"):
+                    list.append(str)
+            else:
+                list.append(str)
+
+    if print_info:
+        for str in list:
+            print(str)
+
+    return list
+
+
 ######################################################################
 ###############  STRUCTURAL INFORMATION  #############################
 ######################################################################
