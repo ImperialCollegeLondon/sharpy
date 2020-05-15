@@ -1695,10 +1695,11 @@ class SimulationInformation():
 
         solver_names = solver_interface.dictionary_of_solvers(print_info=False)
         for solver in solver_names:
-            if 'n_time_steps' in self.solvers[solver]:
-                self.solvers[solver]['n_time_steps'] = num_steps
-            if 'num_steps' in self.solvers[solver]:
-                self.solvers[solver]['num_steps'] = num_steps
+            if not solver == 'PreSharpy':
+                if 'n_time_steps' in self.solvers[solver]:
+                    self.solvers[solver]['n_time_steps'] = num_steps
+                if 'num_steps' in self.solvers[solver]:
+                    self.solvers[solver]['num_steps'] = num_steps
 
         # TODO:Maybe it would be convenient to use the same name for all the solvers
         # try:
