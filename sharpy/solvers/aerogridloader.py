@@ -135,8 +135,12 @@ class AerogridLoader(BaseSolver):
                                 self.data.structure,
                                 self.settings,
                                 self.data.ts)
-        self.wake_shape_generator.generate({'zeta': self.data.aero.timestep_info[self.data.ts].zeta,
-                                            'zeta_star': self.data.aero.timestep_info[self.data.ts].zeta_star,
-                                            'gamma': self.data.aero.timestep_info[self.data.ts].gamma,
-                                            'gamma_star': self.data.aero.timestep_info[self.data.ts].gamma_star})
+        aero_tstep = self.data.aero.timestep_info[self.data.ts]
+        self.wake_shape_generator.generate({'zeta': aero_tstep.zeta,
+                                            'zeta_star': aero_tstep.zeta_star,
+                                            'gamma': aero_tstep.gamma,
+                                            'gamma_star': aero_tstep.gamma_star})
+        # keep the call to the wake generator
+        # because it might be needed by other solvers
+        self.data.aero.wake_shape_generator = self.wake_shape_generator
         return self.data

@@ -55,6 +55,7 @@ class Aerogrid(object):
         self.cs_generators = []
 
         self.polars = None
+        self.wake_shape_generator = None
 
     def generate(self, aero_dict, beam, aero_settings, ts):
         self.aero_dict = aero_dict

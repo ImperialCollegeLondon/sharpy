@@ -1104,11 +1104,13 @@ class QuasiInfinite(FlyingWing):
         self.elem_stiffness = np.zeros((self.num_elem_tot,), dtype=int)
         self.elem_mass = np.zeros((self.num_elem_tot,), dtype=int)
 
-class Pazi(FlyingWing):
+class Pazy(FlyingWing):
     '''
-    Build a Pazi wing.
-    This class is nothing but a FlyingWing with pre-defined geometry properties
-    and mass/stiffness data ("update_mass_stiffness" method)
+    Build a Pazy wing.
+
+    The Pazy wing is a highly flexible wing designed and developed at Technion University as an aeroelastic
+    test case.
+
     '''
 
     def __init__(self,
@@ -1117,8 +1119,9 @@ class Pazi(FlyingWing):
                  u_inf,  # flight cond
                  alpha,
                  rho=1.225,
+                 tip_rod=True,
                  b_ref=2. * 0.55,  # geometry
-                 main_chord= 0.1,
+                 main_chord=0.1,
                  aspect_ratio=(2. * 0.55) / 0.1,
                  roll=0.,
                  yaw=0.,
@@ -1127,8 +1130,9 @@ class Pazi(FlyingWing):
                  n_surfaces=1,
                  physical_time=2,
                  route='.',
-                 case_name='pazi',
+                 case_name='pazy',
                  RollNodes=False):
+
         super().__init__(M=M, N=N,
                          Mstar_fact=Mstar_fact,
                          u_inf=u_inf,
@@ -1156,6 +1160,8 @@ class Pazi(FlyingWing):
         # other
         self.c_ref = main_chord
 
+        self.tip_rod = tip_rod
+
     def update_mass_stiff(self):
         '''
         This method can be substituted to produce different wing configs.
@@ -1173,7 +1179,7 @@ class Pazi(FlyingWing):
         sigma_scale_I = 1
 
         # Pulling:
-        ea = 7.12E+07
+        ea = 7.12E+06
 
         # In-plane bending:
         ga_inp = 3.31E+06
@@ -1196,7 +1202,7 @@ class Pazi(FlyingWing):
         self.stiffness = np.zeros((1, 6, 6))
         self.stiffness[0] = base_stiffness
 
-        m_unit = 0.589 # kg/m
+        m_unit = 5.50E-01 # kg/m
 
         # Test cases to confirm properties:
         # Tests in vacuum, AoA=0 deg, analysed with NonLinearStatic beam solver. Verification displacements taken from
@@ -1222,21 +1228,43 @@ class Pazi(FlyingWing):
         m_chi_cg = algebra.skew(m_unit * pos_cg_b)
         self.mass = np.zeros((1, 6, 6))
 
+        Js = 3.03E-04  # kg.m2/m
+
         # Mass matrix J components: torsion, out of plane bending, in-plane bending
         # Torsion: increasing J decreases natural frequency
         # Bending: increasing J increases natural frequency
         # Chosen experimentally to match natural frequencies from Abaqus analysis
-        self.mass[0, :, :] = np.diag([m_unit, m_unit, m_unit, 8.4E-04, 1.6E-05, 8.4E-04])
-        # self.mass[0, :, :] = np.diag([m_unit, m_unit, m_unit, 2.965E-03, 4.1E-04, 3E-02])
+        self.mass[0, :, :] = np.diag([m_unit, m_unit, m_unit, Js, 0.5*Js, 12*Js])*sigma_scale_I
         self.mass[0, :3, 3:] = m_chi_cg
         self.mass[0, 3:, :3] = -m_chi_cg
 
         self.elem_stiffness = np.zeros((self.num_elem_tot,), dtype=int)
         self.elem_mass = np.zeros((self.num_elem_tot,), dtype=int)
 
+        if self.tip_rod:
+            n_lumped_mass = 2
+            self.lumped_mass = np.zeros((n_lumped_mass))
+            self.lumped_mass_position = np.zeros((n_lumped_mass, 3))
+            self.lumped_mass_inertia = np.zeros((n_lumped_mass, 3, 3))
+            self.lumped_mass_nodes = np.zeros((n_lumped_mass), dtype=int)
+
+            # Lumped mass for approximating the wingtip weight (1):
+            self.lumped_mass[0] = 19.95 / 1E3  # mass in kg
+            # self.lumped_mass[0] = 1  # mass in kg - just to visually check
+            self.lumped_mass_position[0] = np.array([0.005, -0.005, 0])
+            self.lumped_mass_nodes[0] = self.N // 2
+            self.lumped_mass_inertia[0, :, :] = np.diag([1.2815E-04, 2.87E-07, 1.17E-04])
+
+            # Lumped mass for approximating the wingtip weight (2):
+            self.lumped_mass[1] = 19.95 / 1E3  # mass in kg
+            # self.lumped_mass[1] = 1  # mass in kg - just to visually check
+            self.lumped_mass_position[1] = np.array([-0.005, -0.005, 0])  # positive x now ascending towards root
+            self.lumped_mass_nodes[1] = self.N // 2 + 1
+            self.lumped_mass_inertia[1, :, :] = np.diag([1.2815E-04, 2.87E-07, 1.17E-04])
 
 
-class PaziControlSurface(Pazi):
+
+class PazyControlSurface(Pazy):
 
     def __init__(self,
                  M, N,  # chord/span-wise discretisations
@@ -1245,6 +1273,7 @@ class PaziControlSurface(Pazi):
                  alpha,
                  cs_deflection=[0],
                  rho=1.225,
+                 tip_rod=True,
                  b_ref= 2. * 0.55,  # geometry
                  main_chord= 0.1,
                  pct_flap= 0.2,
@@ -1256,7 +1285,7 @@ class PaziControlSurface(Pazi):
                  n_surfaces=1,
                  physical_time=2,
                  route='.',
-                 case_name='pazi',
+                 case_name='pazy',
                  RollNodes=False):
 
         super().__init__(M=M, N=N,
@@ -1264,6 +1293,7 @@ class PaziControlSurface(Pazi):
                          u_inf=u_inf,
                          alpha=alpha,
                          rho=rho,
+                         tip_rod=tip_rod,
                          b_ref=b_ref,
                          main_chord=main_chord,
                          aspect_ratio=aspect_ratio,
@@ -1320,7 +1350,6 @@ class PaziControlSurface(Pazi):
                 # if inode >= num_node_surf // 2:
             ws_elem = 0
             for i_surf in range(2):
-                # print('Surface' + str(i_surf))
                 for i_elem in range(num_elem_surf):
                     for i_local_node in range(self.num_node_elem):
                         if i_elem >= int(num_elem_surf *(1- pct_flap)):
