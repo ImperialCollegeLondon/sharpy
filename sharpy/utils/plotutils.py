@@ -88,43 +88,12 @@ def plot_timestep(data, tstep=-1, minus_mstar=0, plotly=False):
     else:
         import plotly.graph_objects as go
 
-        # Plot structure
-        # Split into different beams
-        nodes = data.structure.connectivities[0, :][[0, 2, 1]]
-        fig = go.Figure(data=go.Scatter3d(x=struct_tstep.pos[nodes, 0],
-                                          y=struct_tstep.pos[nodes, 1],
-                                          z=struct_tstep.pos[nodes, 2],
-                                          marker= {'size':2, 'color':'blue'},
-                                          line = {'color':'blue', 'width':4},
-                                          name='Beam nodes'))
-        for ielem in range(1, data.structure.num_elem):
-            nodes = data.structure.connectivities[ielem, :][[0, 2, 1]]
-            fig.add_trace(go.Scatter3d(x=struct_tstep.pos[nodes, 0],
-                                       y=struct_tstep.pos[nodes, 1],
-                                       z=struct_tstep.pos[nodes, 2],
-                                       marker= {'size':2, 'color':'blue'},
-                                       line = {'color':'blue', 'width':4},
-                                       showlegend=False))
-
+        fig = go.Figure()
         # Plot aerodynamic grid
         if aero_tstep is not None:
             for isurf in range(aero_tstep.n_surf):
                 M, N = aero_tstep.dimensions[isurf]
-                for i_m in range(M + 1):
-                    fig.add_trace(go.Scatter3d(x=aero_tstep.zeta[isurf][0, i_m, :],
-                                               y=aero_tstep.zeta[isurf][1, i_m, :],
-                                               z=aero_tstep.zeta[isurf][2, i_m, :],
-                                               mode='lines',
-                                               line={'color':'black'},
-                                               showlegend=False))
-                for i_n in range(N + 1):
-                    fig.add_trace(go.Scatter3d(x=aero_tstep.zeta[isurf][0, :, i_n],
-                                               y=aero_tstep.zeta[isurf][1, :, i_n],
-                                               z=aero_tstep.zeta[isurf][2, :, i_n],
-                                               mode='lines',
-                                               line={'color':'black'},
-                                               showlegend=False))
-
+                # Plot surfaces
                 for i_m in range(M):
                     for i_n in range(N):
                         vert_m = [i_m, i_m + 1, i_m +1, i_m, i_m]
@@ -150,24 +119,24 @@ def plot_timestep(data, tstep=-1, minus_mstar=0, plotly=False):
                                                      surfaceaxis=2,
                                                      showlegend=False))
 
+                # Plot wireframe
+                for i_m in range(M + 1):
+                    fig.add_trace(go.Scatter3d(x=aero_tstep.zeta[isurf][0, i_m, :],
+                                               y=aero_tstep.zeta[isurf][1, i_m, :],
+                                               z=aero_tstep.zeta[isurf][2, i_m, :],
+                                               mode='lines',
+                                               line={'color':'black'},
+                                               showlegend=False))
+                for i_n in range(N + 1):
+                    fig.add_trace(go.Scatter3d(x=aero_tstep.zeta[isurf][0, :, i_n],
+                                               y=aero_tstep.zeta[isurf][1, :, i_n],
+                                               z=aero_tstep.zeta[isurf][2, :, i_n],
+                                               mode='lines',
+                                               line={'color':'black'},
+                                               showlegend=False))
 
                 Mstar, Nstar = aero_tstep.dimensions_star[isurf]
                 # Wake grid
-                for i_m in range(Mstar + 1 - minus_mstar):
-                    fig.add_trace(go.Scatter3d(x=aero_tstep.zeta_star[isurf][0, i_m, :],
-                                               y=aero_tstep.zeta_star[isurf][1, i_m, :],
-                                               z=aero_tstep.zeta_star[isurf][2, i_m, :],
-                                               mode='lines',
-                                               line={'color':'grey'},
-                                               showlegend=False))
-                for i_n in range(Nstar + 1):
-                    fig.add_trace(go.Scatter3d(x=aero_tstep.zeta_star[isurf][0, :(Mstar + 1 - minus_mstar), i_n],
-                                               y=aero_tstep.zeta_star[isurf][1, :(Mstar + 1 - minus_mstar), i_n],
-                                               z=aero_tstep.zeta_star[isurf][2, :(Mstar + 1 - minus_mstar), i_n],
-                                               mode='lines',
-                                               line={'color':'grey'},
-                                               showlegend=False))
-
                 for i_m in range(Mstar - minus_mstar):
                     for i_n in range(Nstar):
                         vert_m = [i_m, i_m + 1, i_m +1, i_m, i_m]
@@ -192,4 +161,39 @@ def plot_timestep(data, tstep=-1, minus_mstar=0, plotly=False):
                                          line={'color':'lightskyblue'},
                                          surfaceaxis=2,
                                          showlegend=False))
+
+                for i_m in range(Mstar + 1 - minus_mstar):
+                    fig.add_trace(go.Scatter3d(x=aero_tstep.zeta_star[isurf][0, i_m, :],
+                                               y=aero_tstep.zeta_star[isurf][1, i_m, :],
+                                               z=aero_tstep.zeta_star[isurf][2, i_m, :],
+                                               mode='lines',
+                                               line={'color':'grey'},
+                                               showlegend=False))
+                for i_n in range(Nstar + 1):
+                    fig.add_trace(go.Scatter3d(x=aero_tstep.zeta_star[isurf][0, :(Mstar + 1 - minus_mstar), i_n],
+                                               y=aero_tstep.zeta_star[isurf][1, :(Mstar + 1 - minus_mstar), i_n],
+                                               z=aero_tstep.zeta_star[isurf][2, :(Mstar + 1 - minus_mstar), i_n],
+                                               mode='lines',
+                                               line={'color':'grey'},
+                                               showlegend=False))
+
+        # Plot structure
+        # Split into different beams
+        nodes = data.structure.connectivities[0, :][[0, 2, 1]]
+        fig = fig.add_trace(go.Scatter3d(x=struct_tstep.pos[nodes, 0],
+                                          y=struct_tstep.pos[nodes, 1],
+                                          z=struct_tstep.pos[nodes, 2],
+                                          marker= {'size':2, 'color':'blue'},
+                                          line = {'color':'blue', 'width':4},
+                                          name='Beam nodes'))
+        for ielem in range(1, data.structure.num_elem):
+            nodes = data.structure.connectivities[ielem, :][[0, 2, 1]]
+            fig.add_trace(go.Scatter3d(x=struct_tstep.pos[nodes, 0],
+                                       y=struct_tstep.pos[nodes, 1],
+                                       z=struct_tstep.pos[nodes, 2],
+                                       marker= {'size':2, 'color':'blue'},
+                                       line = {'color':'blue', 'width':4},
+                                       showlegend=False))
+
+
     return fig
