@@ -37,6 +37,8 @@ def set_axes_equal(ax):
 def plot_timestep(data, tstep=-1, minus_mstar=0, plotly=False):
     ''' This function creates a simple plot with matplotlib of a
     timestep in SHARPy.
+    Notice that this function is not efficient at all for large surfaces, it just
+    aims to provide a simple way of generating simple quick plots.
 
     Input:
         data (``sharpy.presharpy.presharpy.PreSharpy``): Main data strucuture in SHARPy
@@ -123,29 +125,30 @@ def plot_timestep(data, tstep=-1, minus_mstar=0, plotly=False):
                                                line={'color':'black'},
                                                showlegend=False))
 
-                xsurf = [aero_tstep.zeta[isurf][0, 0, 0],
-                         aero_tstep.zeta[isurf][0, -1, 0],
-                         aero_tstep.zeta[isurf][0, -1, -1],
-                         aero_tstep.zeta[isurf][0, 0, -1],
-                         aero_tstep.zeta[isurf][0, 0, 0]]
-                ysurf = [aero_tstep.zeta[isurf][1, 0, 0],
-                         aero_tstep.zeta[isurf][1, -1, 0],
-                         aero_tstep.zeta[isurf][1, -1, -1],
-                         aero_tstep.zeta[isurf][1, 0, -1],
-                         aero_tstep.zeta[isurf][1, 0, 0]]
-                zsurf = [aero_tstep.zeta[isurf][2, 0, 0],
-                         aero_tstep.zeta[isurf][2, -1, 0],
-                         aero_tstep.zeta[isurf][2, -1, -1],
-                         aero_tstep.zeta[isurf][2, 0, -1],
-                         aero_tstep.zeta[isurf][2, 0, 0]]
+                for i_m in range(M):
+                    for i_n in range(N):
+                        vert_m = [i_m, i_m + 1, i_m +1, i_m, i_m]
+                        vert_n = [i_n, i_n, i_n +1, i_n + 1, i_n]
+                        xsurf = aero_tstep.zeta[isurf][0, vert_m, vert_n]
+                        ysurf = aero_tstep.zeta[isurf][1, vert_m, vert_n]
+                        zsurf = aero_tstep.zeta[isurf][2, vert_m, vert_n]
 
-                fig.add_trace(go.Scatter3d(x=xsurf,
-                                         y=ysurf,
-                                         z=zsurf,
-                                         mode='lines',
-                                         line={'color':'grey'},
-                                         surfaceaxis=2,
-                                         name='Aero surface'))
+                        if i_m == 0 and i_n == 0:
+                            fig.add_trace(go.Scatter3d(x=xsurf,
+                                                     y=ysurf,
+                                                     z=zsurf,
+                                                     mode='lines',
+                                                     line={'color':'grey'},
+                                                     surfaceaxis=2,
+                                                     name='Aero surface'))
+                        else:
+                            fig.add_trace(go.Scatter3d(x=xsurf,
+                                                     y=ysurf,
+                                                     z=zsurf,
+                                                     mode='lines',
+                                                     line={'color':'grey'},
+                                                     surfaceaxis=2,
+                                                     showlegend=False))
 
 
                 Mstar, Nstar = aero_tstep.dimensions_star[isurf]
@@ -165,27 +168,28 @@ def plot_timestep(data, tstep=-1, minus_mstar=0, plotly=False):
                                                line={'color':'grey'},
                                                showlegend=False))
 
-                xsurf = [aero_tstep.zeta_star[isurf][0, 0, 0],
-                         aero_tstep.zeta_star[isurf][0, Mstar - minus_mstar, 0],
-                         aero_tstep.zeta_star[isurf][0, Mstar - minus_mstar, Nstar],
-                         aero_tstep.zeta_star[isurf][0, 0, Nstar],
-                         aero_tstep.zeta_star[isurf][0, 0, 0]]
-                ysurf = [aero_tstep.zeta_star[isurf][1, 0, 0],
-                         aero_tstep.zeta_star[isurf][1, Mstar - minus_mstar, 0],
-                         aero_tstep.zeta_star[isurf][1, Mstar - minus_mstar, Nstar],
-                         aero_tstep.zeta_star[isurf][1, 0, Nstar],
-                         aero_tstep.zeta_star[isurf][1, 0, 0]]
-                zsurf = [aero_tstep.zeta_star[isurf][2, 0, 0],
-                         aero_tstep.zeta_star[isurf][2, Mstar - minus_mstar, 0],
-                         aero_tstep.zeta_star[isurf][2, Mstar - minus_mstar, Nstar],
-                         aero_tstep.zeta_star[isurf][2, 0, Nstar],
-                         aero_tstep.zeta_star[isurf][2, 0, 0]]
+                for i_m in range(Mstar - minus_mstar):
+                    for i_n in range(Nstar):
+                        vert_m = [i_m, i_m + 1, i_m +1, i_m, i_m]
+                        vert_n = [i_n, i_n, i_n +1, i_n + 1, i_n]
+                        xsurf = aero_tstep.zeta_star[isurf][0, vert_m, vert_n]
+                        ysurf = aero_tstep.zeta_star[isurf][1, vert_m, vert_n]
+                        zsurf = aero_tstep.zeta_star[isurf][2, vert_m, vert_n]
 
-                fig.add_trace(go.Scatter3d(x=xsurf,
+                        if i_m == 0 and i_n == 0:
+                            fig.add_trace(go.Scatter3d(x=xsurf,
                                          y=ysurf,
                                          z=zsurf,
                                          mode='lines',
                                          line={'color':'lightskyblue'},
                                          surfaceaxis=2,
                                          name='Aero wake'))
+                        else:
+                            fig.add_trace(go.Scatter3d(x=xsurf,
+                                         y=ysurf,
+                                         z=zsurf,
+                                         mode='lines',
+                                         line={'color':'lightskyblue'},
+                                         surfaceaxis=2,
+                                         showlegend=False))
     return fig
