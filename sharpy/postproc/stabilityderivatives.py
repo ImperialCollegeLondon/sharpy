@@ -233,7 +233,7 @@ class StabilityDerivatives(solver_interface.BaseSolver):
         b_ref = self.settings['b_ref'].value
         c_ref = self.settings['c_ref'].value
         rho = self.data.linear.tsaero0.rho
-        euler_orient = algebra.quat2euler(self.data.settings['BeamLoader']['orientation']) * 180/np.pi
+        euler_orient = algebra.quat2euler(self.data.linear.tsstruct0.quat) * 180/np.pi
 
         labels_der = {0: 'u',
                            1: 'v',

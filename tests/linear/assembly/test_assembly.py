@@ -59,6 +59,8 @@ def max_error_tensor(Pder_an, Pder_num):
 class Test_assembly(unittest.TestCase):
     """ Test methods into assembly module """
 
+    print_info = False  # useful for debugging. Leave False to keep test log clean
+
     def setUp(self):
 
         # select test case
@@ -76,10 +78,10 @@ class Test_assembly(unittest.TestCase):
 
         MS = multisurfaces.MultiAeroGridSurfaces(tsdata)
         MS.get_normal_ind_velocities_at_collocation_points()
-        MS.verify_non_penetration()
-        MS.verify_aic_coll()
+        MS.verify_non_penetration(print_info=self.print_info)
+        MS.verify_aic_coll(print_info=self.print_info)
         MS.get_joukovski_qs()
-        MS.verify_joukovski_qs()
+        MS.verify_joukovski_qs(print_info=self.print_info)
         self.MS = MS
 
     def test_nc_dqcdzeta(self):
@@ -89,7 +91,8 @@ class Test_assembly(unittest.TestCase):
         For wakes, only TE is displaced.
         """
 
-        print('----------------------------- Testing assembly.test_nc_dqcdzeta')
+        if self.print_info:
+            print('----------------------------- Testing assembly.test_nc_dqcdzeta')
 
         MS = self.MS
         n_surf = MS.n_surf
@@ -196,8 +199,9 @@ class Test_assembly(unittest.TestCase):
                 iimax = np.unravel_index(np.argmax(ErAbs), ErAbs.shape)
                 ermax_rel = ErRel[iimax]
 
-                print('Bound%.2d->Bound%.2d\tFDstep\tErrAbs\tErrRel' % (ss_in, ss_out))
-                print('\t\t\t%.1e\t%.1e\t%.1e' % (step, ermax, ermax_rel))
+                if self.print_info:
+                    print('Bound%.2d->Bound%.2d\tFDstep\tErrAbs\tErrRel' % (ss_in, ss_out))
+                    print('\t\t\t%.1e\t%.1e\t%.1e' % (step, ermax, ermax_rel))
                 assert ermax < 50 * step and ermax_rel < 50 * step, embed()  # 'Test failed!'
 
                 # fig=plt.figure('Spy Er vs coll derivs',figsize=(12,4))
@@ -218,7 +222,8 @@ class Test_assembly(unittest.TestCase):
 
     def test_uc_dncdzeta(self, PlotFlag=False):
 
-        print('---------------------------------- Testing assembly.uc_dncdzeta')
+        if self.print_info:
+            print('---------------------------------- Testing assembly.uc_dncdzeta')
 
         MS = self.MS
         n_surf = MS.n_surf
@@ -227,7 +232,8 @@ class Test_assembly(unittest.TestCase):
         MS.get_normal_ind_velocities_at_collocation_points()
 
         for ss in range(n_surf):
-            print('Surface %.2d:' % ss)
+            if self.print_info:
+                print('Surface %.2d:' % ss)
             Surf = MS.Surfs[ss]
 
             # generate non-zero field of external force
@@ -270,7 +276,8 @@ class Test_assembly(unittest.TestCase):
                     DerNum[:, jj] = (u_norm_vec - u_norm0_vec) / step
 
                 er_max = np.max(np.abs(Der - DerNum))
-                print('FD step: %.2e ---> Max error: %.2e' % (step, er_max))
+                if self.print_info:
+                    print('FD step: %.2e ---> Max error: %.2e' % (step, er_max))
                 assert er_max < 5e1 * step, 'Error larger than 50 times step size'
                 Er_max[ss] = er_max
 
@@ -278,7 +285,8 @@ class Test_assembly(unittest.TestCase):
             for ss in range(1, len(Steps)):
                 assert Er_max[ss] < Er_max[ss - 1], \
                     'Error not decreasing as FD step size is reduced'
-            print('------------------------------------------------------------ OK')
+            if self.print_info:
+                print('------------------------------------------------------------ OK')
 
             if PlotFlag:
                 pass
@@ -295,7 +303,8 @@ class Test_assembly(unittest.TestCase):
         Needs to be tested with a case that actually rotates
         """
 
-        print('----------------------------- Testing assembly.test_nc_domegazetadzeta')
+        if self.print_info:
+            print('----------------------------- Testing assembly.test_nc_domegazetadzeta')
 
         MS = self.MS
         n_surf = MS.n_surf
@@ -367,18 +376,21 @@ class Test_assembly(unittest.TestCase):
                 # COMPUTE THE ERROR
                 error[istep] = np.maximum(error[istep], np.absolute(Der_num - Der_an).max())
 
-            print('FD step: %.2e ---> Max error: %.2e' % (step, error[istep]))
+            if self.print_info:
+                print('FD step: %.2e ---> Max error: %.2e' % (step, error[istep]))
             assert error[istep] < 5e1 * step, 'Error larger than 50 times the step size'
 
             if istep > 0:
                 assert error[istep] <= error[istep - 1], \
                     'Error not decreasing as FD step size is reduced'
 
-        print('------------------------------------------------------------ OK')
+        if self.print_info:
+            print('------------------------------------------------------------ OK')
 
     def test_dfqsdgamma_vrel0(self):
 
-        print('----------------------------- Testing assembly.dfqsdgamma_vrel0')
+        if self.print_info:
+            print('----------------------------- Testing assembly.dfqsdgamma_vrel0')
 
         MS = self.MS
         n_surf = MS.n_surf
@@ -417,8 +429,9 @@ class Test_assembly(unittest.TestCase):
                     Der_num[:, pp] = df.reshape(-1, order='C')
 
                 er_max = np.max(np.abs(Der_an - Der_num))
-                print('Surface %.2d - bound:' % ss)
-                print('FD step: %.2e ---> Max error: %.2e' % (step, er_max))
+                if self.print_info:
+                    print('Surface %.2d - bound:' % ss)
+                    print('FD step: %.2e ---> Max error: %.2e' % (step, er_max))
                 assert er_max < 5e1 * step, 'Error larger than 50 times step size'
                 Er_max.append(er_max)
 
@@ -437,8 +450,9 @@ class Test_assembly(unittest.TestCase):
                     Der_star_num[:, pp] = df.reshape(-1, order='C')
 
                 er_max = np.max(np.abs(Der_star_an - Der_star_num))
-                print('Surface %.2d - wake:' % ss)
-                print('FD step: %.2e ---> Max error: %.2e' % (step, er_max))
+                if self.print_info:
+                    print('Surface %.2d - wake:' % ss)
+                    print('FD step: %.2e ---> Max error: %.2e' % (step, er_max))
                 assert er_max < 5e1 * step, 'Error larger than 50 times step size'
                 Er_max_star.append(er_max)
             Surf.gamma = gamma0.copy()
@@ -461,7 +475,8 @@ class Test_assembly(unittest.TestCase):
         tests are not affected.
         """
 
-        print('------------------------------ Testing assembly.dfqsdzeta_vrel0')
+        if self.print_info:
+            print('------------------------------ Testing assembly.dfqsdzeta_vrel0')
 
         MS = self.MS
         n_surf = MS.n_surf
@@ -496,8 +511,9 @@ class Test_assembly(unittest.TestCase):
                     Der_num[:, kk] = df.reshape(-1, order='C')
 
                 er_max = np.max(np.abs(Der_an - Der_num))
-                print('Surface %.2d - bound:' % ss)
-                print('FD step: %.2e ---> Max error: %.2e' % (step, er_max))
+                if self.print_info:
+                    print('Surface %.2d - bound:' % ss)
+                    print('FD step: %.2e ---> Max error: %.2e' % (step, er_max))
                 assert er_max < 5e1 * step, 'Error larger than 50 times step size'
                 Er_max.append(er_max)
 
@@ -509,7 +525,8 @@ class Test_assembly(unittest.TestCase):
         Needs to be tested with a case that actually rotates
         """
 
-        print('------------------------------ Testing assembly.dfqsdzeta_omega')
+        if self.print_info:
+            print('------------------------------ Testing assembly.dfqsdzeta_omega')
 
         # rename
         MS = self.MS
@@ -560,8 +577,9 @@ class Test_assembly(unittest.TestCase):
                     Der_num[:, kk] = df.reshape(-1, order='C')
 
                 er_max = np.max(np.abs(Der_an - Der_num))
-                print('Surface %.2d - bound:' % ss)
-                print('FD step: %.2e ---> Max error: %.2e' % (step, er_max))
+                if self.print_info:
+                    print('Surface %.2d - bound:' % ss)
+                    print('FD step: %.2e ---> Max error: %.2e' % (step, er_max))
                 assert er_max < 5e1 * step, 'Error larger than 50 times step size'
                 Er_max.append(er_max)
 
@@ -570,7 +588,8 @@ class Test_assembly(unittest.TestCase):
         Step change in input velocity is allocated to both u_ext and zeta_dot
         """
 
-        print('---------------------------------- Testing assembly.dfqsduinput')
+        if self.print_info:
+            print('---------------------------------- Testing assembly.dfqsduinput')
 
         MS = self.MS
         n_surf = MS.n_surf
@@ -612,14 +631,16 @@ class Test_assembly(unittest.TestCase):
                     Der_num[:, kk] = df.reshape(-1, order='C')
 
                 er_max = np.max(np.abs(Der_an - Der_num))
-                print('Surface %.2d - bound:' % ss)
-                print('FD step: %.2e ---> Max error: %.2e' % (step, er_max))
+                if self.print_info:
+                    print('Surface %.2d - bound:' % ss)
+                    print('FD step: %.2e ---> Max error: %.2e' % (step, er_max))
                 assert er_max < 5e1 * step, 'Error larger than 50 times step size'
                 Er_max.append(er_max)
 
     def test_dfqsdvind_gamma(self):
 
-        print('------------------------------ Testing assembly.dfqsdvind_gamma')
+        if self.print_info:
+            print('------------------------------ Testing assembly.dfqsdvind_gamma')
 
         MS = self.MS
         n_surf = MS.n_surf
@@ -712,16 +733,18 @@ class Test_assembly(unittest.TestCase):
                 Der_num = Der_list_num[ss_out][ss_in]
                 ErMat = Der_an - Der_num
                 ermax = np.max(np.abs(ErMat))
-                print('Bound%.2d->Bound%.2d\tFDstep\tError' % (ss_in, ss_out))
-                print('\t\t\t%.1e\t%.1e' % (step, ermax))
+                if self.print_info:
+                    print('Bound%.2d->Bound%.2d\tFDstep\tError' % (ss_in, ss_out))
+                    print('\t\t\t%.1e\t%.1e' % (step, ermax))
                 assert ermax < 50 * step, 'Test failed!'
 
                 Der_an = Der_star_list[ss_out][ss_in]
                 Der_num = Der_star_list_num[ss_out][ss_in]
                 ErMat = Der_an - Der_num
                 ermax = np.max(np.abs(ErMat))
-                print('Wake%.2d->Bound%.2d\tFDstep\tError' % (ss_in, ss_out))
-                print('\t\t\t%.1e\t%.1e' % (step, ermax))
+                if self.print_info:
+                    print('Wake%.2d->Bound%.2d\tFDstep\tError' % (ss_in, ss_out))
+                    print('\t\t\t%.1e\t%.1e' % (step, ermax))
                 assert ermax < 50 * step, 'Test failed!'
 
                 # fig = plt.figure('Spy Der',figsize=(10,4))
@@ -746,7 +769,8 @@ class Test_assembly(unittest.TestCase):
                 V += Surf_star_in.get_induced_velocity(zetac)
             return V
 
-        print('----------------------------------- Testing assembly.dvinddzeta')
+        if self.print_info:
+            print('----------------------------------- Testing assembly.dvinddzeta')
 
         MS = self.MS
         n_surf = MS.n_surf
@@ -816,8 +840,9 @@ class Test_assembly(unittest.TestCase):
             Vnum = comp_vind(zetac_pert, MS)
             Dercoll_num[:, cc] = (Vnum - V0) / step
         ercoll = np.max(np.abs(Dercoll - Dercoll_num))
-        print('Error coll.\tFDstep\tErrAbs')
-        print('\t\t%.1e\t%.1e' % (step, ercoll))
+        if self.print_info:
+            print('Error coll.\tFDstep\tErrAbs')
+            print('\t\t%.1e\t%.1e' % (step, ercoll))
         # if ercoll>10*step: embed()
         assert ercoll < 10 * step, 'Error at collocation point'
 
@@ -832,8 +857,9 @@ class Test_assembly(unittest.TestCase):
             # relative error at max abs error point
             iimax = np.unravel_index(np.argmax(ErAbs), ErAbs.shape)
             ermax_rel = ErRel[iimax]
-            print('Bound and wake%.2d\tFDstep\tErrAbs\tErrRel' % ss_in)
-            print('\t\t\t%.1e\t%.1e\t%.1e' % (step, ermax, ermax_rel))
+            if self.print_info:
+                print('Bound and wake%.2d\tFDstep\tErrAbs\tErrRel' % ss_in)
+                print('\t\t\t%.1e\t%.1e\t%.1e' % (step, ermax, ermax_rel))
             assert ercoll < 10 * step, 'Error at vertices'
 
             # fig=plt.figure('Spy Er vs coll derivs',figsize=(12,4))
@@ -853,7 +879,8 @@ class Test_assembly(unittest.TestCase):
         For wakes, only TE is displaced.
         """
 
-        print('------------------------------- Testing assembly.dfqsdvind_zeta')
+        if self.print_info:
+            print('------------------------------- Testing assembly.dfqsdvind_zeta')
 
         MS = self.MS
         n_surf = MS.n_surf
@@ -930,8 +957,9 @@ class Test_assembly(unittest.TestCase):
                 iimax = np.unravel_index(np.argmax(ErAbs), ErAbs.shape)
                 ermax_rel = ErRel[iimax]
 
-                print('Bound%.2d->Bound%.2d\tFDstep\tErrAbs\tErrRel' % (ss_in, ss_out))
-                print('\t\t\t%.1e\t%.1e\t%.1e' % (step, ermax, ermax_rel))
+                if self.print_info:
+                    print('Bound%.2d->Bound%.2d\tFDstep\tErrAbs\tErrRel' % (ss_in, ss_out))
+                    print('\t\t\t%.1e\t%.1e\t%.1e' % (step, ermax, ermax_rel))
                 assert ermax < 5e2 * step and ermax_rel < 50 * step, 'Test failed!'
 
                 # fig=plt.figure('Spy Er vs coll derivs',figsize=(12,4))
@@ -1000,8 +1028,9 @@ class Test_assembly(unittest.TestCase):
             iimax = np.unravel_index(np.argmax(ErAbs), ErAbs.shape)
             ermax_rel = ErRel[iimax]
 
-            print('Bound%.2d\t\t\tFDstep\tErrAbs\tErrRel' % (ss,))
-            print('\t\t\t%.1e\t%.1e\t%.1e' % (step, ermax, ermax_rel))
+            if self.print_info:
+                print('Bound%.2d\t\t\tFDstep\tErrAbs\tErrRel' % (ss,))
+                print('\t\t\t%.1e\t%.1e\t%.1e' % (step, ermax, ermax_rel))
             assert ermax < 5e2 * step and ermax_rel < 50 * step, 'Test failed!'
 
     def test_wake_prop(self):

@@ -10,5 +10,6 @@ These classes are responsible for storing the aerodynamic and structural time st
 	:glob:
 
 	./AeroTimeStepInfo
+	./Linear
 	./LinearTimeStepInfo
 	./StructTimeStepInfo

@@ -81,6 +81,11 @@ class TestFixNodeVelocitywrtG(unittest.TestCase):
 
         SimInfo.solvers['AerogridLoader']['unsteady'] = 'on'
         SimInfo.solvers['AerogridLoader']['mstar'] = 2
+        SimInfo.solvers['AerogridLoader']['wake_shape_generator'] = 'StraightWake'
+        SimInfo.solvers['AerogridLoader']['wake_shape_generator_input'] = {'u_inf':10.,
+                                                                           'u_inf_direction': np.array([0., 1., 0.]),
+                                                                           'dt': 0.1}
+
 
         SimInfo.solvers['NonLinearStatic']['print_info'] = False
 
@@ -165,7 +170,7 @@ class TestFixNodeVelocitywrtG(unittest.TestCase):
 
         # read output and compare
         output_path = folder + '/output/fix_node_velocity_wrtG/WriteVariablesTime/'
-        pos_tip_data = np.matrix(np.genfromtxt(output_path + "struct_pos_node-1" + ".dat", delimiter=' '))
+        pos_tip_data = np.loadtxt(("%sstruct_pos_node-1.dat" % output_path), )
         self.assertAlmostEqual(pos_tip_data[-1, 1], 9.999386, 4)
         self.assertAlmostEqual(pos_tip_data[-1, 2], -0.089333, 4)
         self.assertAlmostEqual(pos_tip_data[-1, 3], 0., 4)
