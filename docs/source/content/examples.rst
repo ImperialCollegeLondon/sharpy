@@ -21,7 +21,7 @@ Downloadable files
 * :download:`./example_notebooks/nonlinear_t-tail_HALE.ipynb`
 * :download:`./example_notebooks/linear_horten.ipynb`
 * :download:`./example_notebooks/wind_turbine.ipynb`
-* :download:`./example_notebooks/simple_airfoil.ipynb`
+* :download:`./example_notebooks/simple_airfoil_download.ipynb`
 
 Input data for wind turbine: 
 
