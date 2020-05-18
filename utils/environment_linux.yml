@@ -135,7 +135,7 @@ dependencies:
   - sip=4.19.8=py37hf484d3e_0
   - six=1.13.0=py37_0
   - snowballstemmer=2.0.0=py_0
-  - sphinx=2.2.1=py_0
+  - sphinx=3.0.3=py_0
   - sphinxcontrib-applehelp=1.0.1=py_0
   - sphinxcontrib-devhelp=1.0.1=py_0
   - sphinxcontrib-htmlhelp=1.0.2=py_0
