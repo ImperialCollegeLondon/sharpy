@@ -47,6 +47,7 @@ extensions = [
     'sphinx.ext.napoleon',
     'nbsphinx',
     'sphinx.ext.autosectionlabel',
+    'recommonmark'
 ]
 
 # Add any paths that contain templates here, relative to this directory.
