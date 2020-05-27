@@ -175,6 +175,12 @@ class WriteVariablesTime(BaseSolver):
         else:
             self.settings['FoR_number'] = np.array([0], dtype=int)
 
+        if self.data.structure.timestep_info[-1].in_global_AFoR:
+            tstep = self.data.structure.timestep_info[-1]
+        else:
+            tstep = self.data.structure.timestep_info[-1].copy()
+            tstep.whole_structure_to_global_AFoR(self.data.structure)
+
         for ivariable in range(len(self.settings['FoR_variables'])):
             if self.settings['FoR_variables'][ivariable] == '':
                 continue
@@ -182,7 +188,7 @@ class WriteVariablesTime(BaseSolver):
                 filename = self.dir + "FoR_" + '%02d' % self.settings['FoR_number'][ifor] + "_" + self.settings['FoR_variables'][ivariable] + ".dat"
 
                 with open(filename, 'a') as fid:
-                    var = np.atleast_2d(getattr(self.data.structure.timestep_info[-1], self.settings['FoR_variables'][ivariable]))
+                    var = np.atleast_2d(getattr(tstep, self.settings['FoR_variables'][ivariable]))
                     rows, cols = var.shape
                     if ((cols == 1) and (rows == 1)):
                         self.write_value_to_file(fid, self.data.ts, var, self.settings['delimiter'])
@@ -197,7 +203,7 @@ class WriteVariablesTime(BaseSolver):
         for ivariable in range(len(self.settings['structure_variables'])):
             if self.settings['structure_variables'][ivariable] == '':
                 continue
-            var = getattr(self.data.structure.timestep_info[-1], self.settings['structure_variables'][ivariable])
+            var = getattr(tstep, self.settings['structure_variables'][ivariable])
             num_indices = len(var.shape)
             if num_indices == 1:
                 # Beam global variables (i.e. not node dependant)
