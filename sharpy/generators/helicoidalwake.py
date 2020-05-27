@@ -158,12 +158,12 @@ class HelicoidalWake(generator_interface.BaseGenerator):
         for isurf in range(nsurf):
             M, N = zeta_star[isurf][0, :, :].shape
             dist_to_orig[isurf][0, :] = 0.
-            for i in range(1, M):
-                for j in range(0, N):
+            for j in range(0, N):
+                for i in range(1, M):
                     dist_to_orig[isurf][i, j] = (dist_to_orig[isurf][i - 1, j] +
                                           np.linalg.norm(zeta_star[isurf][:, i, j] -
                                                          zeta_star[isurf][:, i - 1, j]))
-            # dist_to_orig[isurf][:] /= dist_to_orig[isurf][-1]
+                dist_to_orig[isurf][:, j] /= dist_to_orig[isurf][-1, j]
             for j in range(0, N - 1):
                 wake_conv_vel[isurf][:, j] = self.rotation_velocity*0.5*np.linalg.norm(zeta[isurf][:, -1, j] + zeta[isurf][:, -1, j + 1])
 
