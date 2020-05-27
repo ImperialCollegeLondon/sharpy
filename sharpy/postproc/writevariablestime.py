@@ -169,16 +169,25 @@ class WriteVariablesTime(BaseSolver):
 
     def run(self, online=False):
 
+        if online:
+            self.write(-1)
+        else:
+            for it in range(len(self.data.structure.timestep_info)):
+                if self.data.structure.timestep_info[it] is not None:
+                    self.write(it)
+
+    def write(self, it):
+
         # FoR variables
         if 'FoR_number' in self.settings:
             pass
         else:
             self.settings['FoR_number'] = np.array([0], dtype=int)
 
-        if self.data.structure.timestep_info[-1].in_global_AFoR:
-            tstep = self.data.structure.timestep_info[-1]
+        if self.data.structure.timestep_info[it].in_global_AFoR:
+            tstep = self.data.structure.timestep_info[it]
         else:
-            tstep = self.data.structure.timestep_info[-1].copy()
+            tstep = self.data.structure.timestep_info[it].copy()
             tstep.whole_structure_to_global_AFoR(self.data.structure)
 
         for ivariable in range(len(self.settings['FoR_variables'])):
@@ -235,7 +244,7 @@ class WriteVariablesTime(BaseSolver):
                 filename = self.dir + "aero_" + self.settings['aero_panels_variables'][ivariable] + "_panel" + "_isurf" + str(i_surf) + "_im"+ str(i_m) + "_in"+ str(i_n) + ".dat"
 
                 with open(filename, 'a') as fid:
-                    var = getattr(self.data.aero.timestep_info[-1], self.settings['aero_panels_variables'][ivariable])
+                    var = getattr(self.data.aero.timestep_info[it], self.settings['aero_panels_variables'][ivariable])
                     self.write_value_to_file(fid, self.data.ts, var.gamma[i_surf][i_m,i_n], self.settings['delimiter'])
 
 
@@ -251,7 +260,7 @@ class WriteVariablesTime(BaseSolver):
                 filename = self.dir + "aero_" + self.settings['aero_nodes_variables'][ivariable] + "_node" + "_isurf" + str(i_surf) + "_im"+ str(i_m) + "_in"+ str(i_n) + ".dat"
 
                 with open(filename, 'a') as fid:
-                    var = getattr(self.data.aero.timestep_info[-1], self.settings['aero_nodes_variables'][ivariable])
+                    var = getattr(self.data.aero.timestep_info[it], self.settings['aero_nodes_variables'][ivariable])
                     self.write_nparray_to_file(fid, self.data.ts, var[i_surf][:,i_m,i_n], self.settings['delimiter'])
 
 
