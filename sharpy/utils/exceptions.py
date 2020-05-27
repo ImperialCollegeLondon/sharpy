@@ -57,3 +57,25 @@ class NotConvergedSolver(Exception):
     """
     pass
 
+
+class NotValidSetting(DefaultValueBaseException):
+    """
+    Raised when a user gives a setting an invalid value
+    """
+
+    def __init__(self, setting, variable, options, value=None, message=''):
+        message = 'The setting %s with entry %s is not one of the valid options: %s' % (setting, variable, options)
+        super().__init__(variable, value, message=message)
+        if cout.cout_wrap is None:
+            print(message)
+        else:
+            cout.cout_wrap.print_separator(3)
+            cout.cout_wrap(message, 3)
+            cout.cout_wrap.print_separator(3)
+
+
+class SolverNotFound(Exception):
+    def __init__(self, solver_name):
+        message = 'The solver %s cannot be found in the list of solvers. Ensure you have spelt the solver name ' \
+                  'correctly.' % solver_name
+        super().__init__(message)

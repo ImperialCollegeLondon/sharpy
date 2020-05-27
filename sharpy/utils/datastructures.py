@@ -230,6 +230,18 @@ class AeroTimeStepInfo(object):
             for i_dim in range(NDIM*2):
                 self.ct_dynamic_forces_list.append(self.dynamic_forces[i_surf][i_dim, :, :].reshape(-1))
 
+        try:
+            self.postproc_cell['incidence_angle']
+        except KeyError:
+            with_incidence_angle = False
+        else:
+            with_incidence_angle = True
+
+        if with_incidence_angle:
+            self.ct_incidence_list = []
+            for i_surf in range(self.n_surf):
+                self.ct_incidence_list.append(self.postproc_cell['incidence_angle'][i_surf][:, :].reshape(-1))
+
         self.ct_p_dimensions = ((ct.POINTER(ct.c_uint)*n_surf)
                                 (* np.ctypeslib.as_ctypes(self.ct_dimensions)))
         self.ct_p_dimensions_star = ((ct.POINTER(ct.c_uint)*n_surf)
@@ -256,6 +268,9 @@ class AeroTimeStepInfo(object):
                             (* [np.ctypeslib.as_ctypes(array) for array in self.ct_forces_list]))
         self.ct_p_dynamic_forces = ((ct.POINTER(ct.c_double)*len(self.ct_dynamic_forces_list))
                             (* [np.ctypeslib.as_ctypes(array) for array in self.ct_dynamic_forces_list]))
+        if with_incidence_angle:
+            self.postproc_cell['incidence_angle_ct_pointer'] = ((ct.POINTER(ct.c_double)*len(self.ct_incidence_list))
+                            (* [np.ctypeslib.as_ctypes(array) for array in self.ct_incidence_list]))
 
     def remove_ctypes_pointers(self):
         try:
@@ -813,3 +828,27 @@ class LinearTimeStepInfo(object):
         copied.y = self.y.copy()
         copied.u = self.u.copy()
         copied.t = self.t.copy()
+
+
+class Linear(object):
+    """
+    This is the class responsible for the transfer of information between linear systems
+    and can be accessed as ``data.linear``. It stores
+    as class attributes the following classes that describe the linearised problem.
+
+    Attributes:
+        ss (sharpy.linear.src.libss.ss): State-space system
+        linear_system (sharpy.linear.utils.ss_interface.BaseElement): Assemble system properties
+        tsaero0 (sharpy.utils.datastructures.AeroTimeStepInfo): Linearisation aerodynamic timestep
+        tsstruct0 (sharpy.utils.datastructures.StructTimeStepInfo): Linearisation structural timestep
+        timestep_info (list): Linear time steps
+    """
+
+    def __init__(self, tsaero0, tsstruct0):
+        self.linear_system = None
+        self.ss = None
+        self.tsaero0 = tsaero0
+        self.tsstruct0 = tsstruct0
+        self.timestep_info = []
+        self.uvlm = None
+        self.beam = None

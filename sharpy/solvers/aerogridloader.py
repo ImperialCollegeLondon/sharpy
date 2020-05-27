@@ -5,6 +5,7 @@ from sharpy.utils.solver_interface import solver, BaseSolver
 import sharpy.aero.models.aerogrid as aerogrid
 import sharpy.utils.settings as settings_utils
 import sharpy.utils.h5utils as h5utils
+import sharpy.utils.generator_interface as gen_interface
 
 
 @solver
@@ -25,6 +26,7 @@ class AerogridLoader(BaseSolver):
         aero_file_name (str): name of the ``.aero.h5`` HDF5 file
         aero: empty attribute
         aero_data_dict (dict): key-value pairs of aerodynamic data
+        wake_shape_generator (class): Wake shape generator
 
     Notes:
         The ``control_surface_deflection`` setting allows the user to use a time specific control surface deflection,
@@ -36,9 +38,12 @@ class AerogridLoader(BaseSolver):
         surface is simply static, an empty string should be parsed. See the documentation for ``DynamicControlSurface``
         generators for accepted key-value pairs as settings.
 
+        The initial wake shape is now defined in SHARPy (instead of UVLM) through a wake shape generator ``wake_shape_generator`` and the
+        required inputs ``wake_shape_generator_input``
+
     """
     solver_id = 'AerogridLoader'
-    solver_classification = 'aero'
+    solver_classification = 'loader'
 
     settings_types = dict()
     settings_default = dict()
@@ -69,6 +74,14 @@ class AerogridLoader(BaseSolver):
     settings_description['control_surface_deflection_generator_settings'] = 'List of dictionaries with the settings ' \
                                                                             'for each generator'
 
+    settings_types['wake_shape_generator'] = 'str'
+    settings_default['wake_shape_generator'] = 'StraightWake'
+    settings_description['wake_shape_generator'] = 'ID of the generator to define the initial wake shape'
+
+    settings_types['wake_shape_generator_input'] = 'dict'
+    settings_default['wake_shape_generator_input'] = dict()
+    settings_description['wake_shape_generator_input'] = 'Dictionary of inputs needed by the wake shape generator'
+
     settings_table = settings_utils.SettingsTable()
     __doc__ += settings_table.generate(settings_types, settings_default, settings_description)
 
@@ -94,6 +107,12 @@ class AerogridLoader(BaseSolver):
         # read input file (aero)
         self.read_files()
 
+        wake_shape_generator_type = gen_interface.generator_from_string(
+            self.settings['wake_shape_generator'])
+        self.wake_shape_generator = wake_shape_generator_type()
+        self.wake_shape_generator.initialise(data,
+                        self.settings['wake_shape_generator_input'])
+
     def read_files(self):
         # open aero file
         # first, file names
@@ -116,4 +135,12 @@ class AerogridLoader(BaseSolver):
                                 self.data.structure,
                                 self.settings,
                                 self.data.ts)
+        aero_tstep = self.data.aero.timestep_info[self.data.ts]
+        self.wake_shape_generator.generate({'zeta': aero_tstep.zeta,
+                                            'zeta_star': aero_tstep.zeta_star,
+                                            'gamma': aero_tstep.gamma,
+                                            'gamma_star': aero_tstep.gamma_star})
+        # keep the call to the wake generator
+        # because it might be needed by other solvers
+        self.data.aero.wake_shape_generator = self.wake_shape_generator
         return self.data

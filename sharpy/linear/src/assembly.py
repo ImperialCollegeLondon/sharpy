@@ -15,20 +15,15 @@ Includes:
           points
 """
 
-import ctypes as ct
 import numpy as np
 import scipy.sparse as sparse
 import itertools
 
-from sharpy.utils.sharpydir import SharpyDir
-import sharpy.utils.ctypes_utils as ct_utils
+from sharpy.aero.utils.uvlmlib import dvinddzeta_cpp, eval_panel_cpp
 import sharpy.linear.src.libsparse as libsp
 import sharpy.linear.src.lib_dbiot as dbiot
 import sharpy.linear.src.lib_ucdncdzeta as lib_ucdncdzeta
 import sharpy.utils.algebra as algebra
-import warnings
-
-libc = ct_utils.import_ctypes_lib(SharpyDir + '/lib/', 'libuvlm')
 
 # local indiced panel/vertices as per self.maps
 dmver = [0, 1, 1, 0]  # delta to go from (m,n) panel to (m,n) vertices
@@ -36,17 +31,6 @@ dnver = [0, 0, 1, 1]
 svec = [0, 1, 2, 3]  # seg. no.
 avec = [0, 1, 2, 3]  # 1st vertex no.
 bvec = [1, 2, 3, 0]  # 2nd vertex no.
-
-
-def skew(Av):
-    """ Produce skew matrix such that Av x Bv = skew(Av)*Bv	"""
-    warnings.warn('sharpy.linear.src.assembly.skew() is obsolete, use algebra.skew() instead', stacklevel=2)
-    # ax, ay, az = Av[0], Av[1], Av[2]
-    # Askew = np.array([[0, -az, ay],
-    #                   [az, 0, -ax],
-    #                   [-ay, ax, 0]])
-
-    return algebra.skew(Av)
 
 
 def AICs(Surfs, Surfs_star, target='collocation', Project=True):
@@ -148,10 +132,10 @@ def nc_dqcdzeta_Sin_to_Sout(Surf_in, Surf_out, Der_coll, Der_vert, Surf_in_bound
         # get derivative of induced velocity w.r.t. zetac
         if Surf_in_bound:
             dvind_coll, dvind_vert = dvinddzeta_cpp(zetac_here, Surf_in,
-                                                    IsBound=Surf_in_bound)
+                                                    is_bound=Surf_in_bound)
         else:
             dvind_coll, dvind_vert = dvinddzeta_cpp(zetac_here, Surf_in,
-                                                    IsBound=Surf_in_bound, M_in_bound=M_bound_in)
+                                                    is_bound=Surf_in_bound, M_in_bound=M_bound_in)
 
         ### Surf_in vertices contribution
         Der_vert[cc_out, :] += np.dot(nc_here, dvind_vert)
@@ -171,23 +155,29 @@ def nc_dqcdzeta_Sin_to_Sout(Surf_in, Surf_out, Der_coll, Der_vert, Surf_in_bound
 
 
 def nc_dqcdzeta(Surfs, Surfs_star, Merge=False):
-    """
-    Produces a list of derivative matrix d(AIC*Gamma)/dzeta, where AIC are the
-    influence coefficient matrices at the bound surfaces collocation point,
-    ASSUMING constant panel norm.
+    r"""
+    Produces a list of derivative matrix
+
+    .. math:: \frac{\partial(\mathcal{A}\boldsymbol{\Gamma}_0)}{\partial\boldsymbol{\zeta}}
+
+    where :math:`\mathcal{A}` is the aerodynamic influence coefficient matrix at the bound
+    surfaces collocation point, assuming constant panel norm.
 
     Each list is such that:
-    - the ii-th element is associated to the ii-th bound surface collocation
-    point, and will contain a sub-list such that:
-        - the j-th element of the sub-list is the dAIC_dzeta matrices w.r.t. the
-        zeta d.o.f. of the j-th bound surface.
-    Hence, DAIC*[ii][jj] will have size K_ii x Kzeta_jj
 
-    If merge is true, the derivatives due to collocation points movement are added
-    to Dvert to minimise storage space.
+        - the ``ii``-th element is associated to the ``ii``-th bound surface collocation
+          point, and will contain a sub-list such that:
+            - the ``j``-th element of the sub-list is the ``dAIC_dzeta`` matrices w.r.t. the
+              ``zeta`` d.o.f. of the ``j``-th bound surface.
+
+    Hence, ``DAIC*[ii][jj]`` will have size ``K_ii x Kzeta_jj``
+
+    If ``Merge`` is ``True``, the derivatives due to collocation points movement are added
+    to ``Dvert`` to minimise storage space.
 
     To do:
-    - Dcoll is highly sparse, exploit?
+
+        - Dcoll is highly sparse, exploit?
     """
 
     n_surf = len(Surfs)
@@ -304,14 +294,20 @@ def nc_domegazetadzeta(Surfs, Surfs_star):
 
 
 def uc_dncdzeta(Surf):
-    """
-    Build derivative of uc*dnc/dzeta where uc is the total velocity at the
-    collocation points. Input Surf can be:
-    - an instance of surface.AeroGridSurface.
-    - a list of instance of surface.AeroGridSurface.
-    Refs:
-    - develop_sym.linsum_Wnc
-    - lib_ucdncdzeta
+    r"""
+    Build derivative of
+
+    ..  math:: \boldsymbol{u}_c\frac{\partial\boldsymbol{n}_c}{\partial\boldsymbol{zeta}}
+
+    where :math:`\boldsymbol{u}_c` is the total velocity at the
+    collocation points.
+
+    Args:
+        Surf (surface.AerogridSurface): the input can also be a list of :class:`surface.AerogridSurface`
+
+    References:
+        - :module:`linear.develop_sym.linsum_Wnc`
+        - :module:`lib_ucdncdzeta`
     """
 
     if type(Surf) is list:
@@ -321,7 +317,7 @@ def uc_dncdzeta(Surf):
             DerList.append(uc_dncdzeta(Surf[ss]))
         return DerList
     else:
-        if (not hasattr(Surf, 'u_ind_coll')) or (not hasattr(Surf, 'u_input_coll')):
+        if (not hasattr(Surf, 'u_ind_coll')) or (Surf.u_input_coll is None):
             raise NameError(
                 'Surf does not have the required attributes\nu_ind_coll\nu_input_coll')
 
@@ -392,7 +388,7 @@ def dfqsdgamma_vrel0(Surfs, Surfs_star):
         Surf = Surfs[ss]
         if not hasattr(Surf, 'u_ind_seg'):
             raise NameError('Induced velocities at segments missing')
-        if not hasattr(Surf, 'u_input_seg'):
+        if Surf.u_input_seg is None:
             raise NameError('Input velocities at segments missing')
         if not hasattr(Surf, 'fqs_seg'):
             Surf.get_joukovski_qs(gammaw_TE=Surfs_star[ss].gamma[0, :])
@@ -489,7 +485,7 @@ def dfqsdzeta_vrel0(Surfs, Surfs_star):
         Surf = Surfs[ss]
         if not hasattr(Surf, 'u_ind_seg'):
             raise NameError('Induced velocities at segments missing')
-        if not hasattr(Surf, 'u_input_seg'):
+        if Surf.u_input_seg is None:
             raise NameError('Input velocities at segments missing')
 
         M, N = Surf.maps.M, Surf.maps.N
@@ -569,7 +565,7 @@ def dfqsduinput(Surfs, Surfs_star):
     for ss in range(n_surf):
 
         Surf = Surfs[ss]
-        if not hasattr(Surf, 'u_input_seg'):
+        if Surf.u_input_seg is None:
             raise NameError('Input velocities at segments missing')
 
         M, N = Surf.maps.M, Surf.maps.N
@@ -884,7 +880,7 @@ def dvinddzeta(zetac, Surf_in, IsBound, M_in_bound=None):
             zeta_panel_in = Surf_in.zeta[:, [mm_in + 0, mm_in + 1, mm_in + 1, mm_in + 0],
                             [nn_in + 0, nn_in + 0, nn_in + 1, nn_in + 1]].T
             # get local derivatives
-            der_zetac, der_zeta_panel = dbiot.eval_panel_cpp(
+            der_zetac, der_zeta_panel = eval_panel_cpp(
                 zetac, zeta_panel_in, gamma_pan=Surf_in.gamma[mm_in, nn_in])
             ### Mid-segment point contribution
             Dercoll += der_zetac
@@ -937,7 +933,7 @@ def dvinddzeta(zetac, Surf_in, IsBound, M_in_bound=None):
             zeta_panel_in = Surf_in.zeta[:, [0, 1, 1, 0],
                             [nn_in + 0, nn_in + 0, nn_in + 1, nn_in + 1]].T
             # get local derivatives
-            _, der_zeta_panel = dbiot.eval_panel_cpp(
+            _, der_zeta_panel = eval_panel_cpp(
                 zetac, zeta_panel_in, gamma_pan=Surf_in.gamma[0, nn_in])
 
             for vv in range(2):
@@ -947,54 +943,6 @@ def dvinddzeta(zetac, Surf_in, IsBound, M_in_bound=None):
                     jj_v.append(np.ravel_multi_index(
                         (cc, M_in_bound, nn_v), shape_zeta_in_bound))
                 Dervert[:, jj_v] += der_zeta_panel[vvec[vv], :, :]
-
-    return Dercoll, Dervert
-
-
-def dvinddzeta_cpp(zetac, Surf_in, IsBound, M_in_bound=None):
-    """
-    Produces derivatives of induced velocity by Surf_in w.r.t. the zetac point.
-    Derivatives are divided into those associated to the movement of zetac, and
-    to the movement of the Surf_in vertices (DerVert).
-
-    If Surf_in is bound (IsBound==True), the circulation over the TE due to the
-    wake is not included in the input.
-
-    If Surf_in is a wake (IsBound==False), derivatives w.r.t. collocation
-    points are computed ad the TE contribution on DerVert. In this case, the
-    chordwise paneling Min_bound of the associated input is required so as to
-    calculate Kzeta and correctly allocate the derivative matrix.
-
-    The output derivatives are:
-    - Dercoll: 3 x 3 matrix
-    - Dervert: 3 x 3*Kzeta (if Surf_in is a wake, Kzeta is that of the bound)
-
-    Warning:
-    zetac must be contiguously stored!
-    """
-
-    M_in, N_in = Surf_in.maps.M, Surf_in.maps.N
-    Kzeta_in = Surf_in.maps.Kzeta
-    shape_zeta_in = (3, M_in + 1, N_in + 1)
-
-    # allocate matrices
-    Dercoll = np.zeros((3, 3), order='C')
-
-    if IsBound: M_in_bound = M_in
-    Kzeta_in_bound = (M_in_bound + 1) * (N_in + 1)
-    Dervert = np.zeros((3, 3 * Kzeta_in_bound))
-
-    libc.call_dvinddzeta(
-        Dercoll.ctypes.data_as(ct.POINTER(ct.c_double)),
-        Dervert.ctypes.data_as(ct.POINTER(ct.c_double)),
-        zetac.ctypes.data_as(ct.POINTER(ct.c_double)),
-        Surf_in.zeta.ctypes.data_as(ct.POINTER(ct.c_double)),
-        Surf_in.gamma.ctypes.data_as(ct.POINTER(ct.c_double)),
-        ct.byref(ct.c_int(M_in)),
-        ct.byref(ct.c_int(N_in)),
-        ct.byref(ct.c_bool(IsBound)),
-        ct.byref(ct.c_int(M_in_bound)),
-    )
 
     return Dercoll, Dervert
 
@@ -1062,7 +1010,7 @@ def dfqsdvind_zeta(Surfs, Surfs_star):
                     Dervert = Dervert_list[ss_out][ss_in]  # <- link
                     # deriv wrt induced velocity
                     dvind_mid, dvind_vert = dvinddzeta_cpp(
-                        zeta_mid, Surf_in, IsBound=True)
+                        zeta_mid, Surf_in, is_bound=True)
                     # allocate coll
                     Df = np.dot(0.25 * Lskew, dvind_mid)
                     Dercoll[np.ix_(ii_a, ii_a)] += Df
@@ -1078,7 +1026,7 @@ def dfqsdvind_zeta(Surfs, Surfs_star):
                     # deriv wrt induced velocity
                     dvind_mid, dvind_vert = dvinddzeta_cpp(
                         zeta_mid, Surfs_star[ss_in],
-                        IsBound=False, M_in_bound=Surf_in.maps.M)
+                        is_bound=False, M_in_bound=Surf_in.maps.M)
                     # allocate coll
                     Df = np.dot(0.25 * Lskew, dvind_mid)
                     Dercoll[np.ix_(ii_a, ii_a)] += Df
@@ -1119,7 +1067,7 @@ def dfqsdvind_zeta(Surfs, Surfs_star):
                 shape_zeta_in_bound = (3, M_in_bound + 1, N_in_bound + 1)
                 Dervert = Dervert_list[ss_out][ss_in]  # <- link
                 # deriv wrt induced velocity
-                dvind_mid, dvind_vert = dvinddzeta_cpp(zeta_mid, Surf_in, IsBound=True)
+                dvind_mid, dvind_vert = dvinddzeta_cpp(zeta_mid, Surf_in, is_bound=True)
                 # allocate coll
                 Df = np.dot(0.25 * Lskew, dvind_mid)
                 Dercoll[np.ix_(ii_a, ii_a)] += Df
@@ -1135,7 +1083,7 @@ def dfqsdvind_zeta(Surfs, Surfs_star):
                 # deriv wrt induced velocity
                 dvind_mid, dvind_vert = dvinddzeta_cpp(
                     zeta_mid, Surfs_star[ss_in],
-                    IsBound=False, M_in_bound=Surf_in.maps.M)
+                    is_bound=False, M_in_bound=Surf_in.maps.M)
                 # allocate coll
                 Df = np.dot(0.25 * Lskew, dvind_mid)
                 Dercoll[np.ix_(ii_a, ii_a)] += Df
@@ -1210,11 +1158,11 @@ def wake_prop(Surfs, Surfs_star, use_sparse=False, sparse_format='lil'):
     not allocate memory until this is accessed.
     """
 
-    C_list = []
-    Cstar_list = []
-
     n_surf = len(Surfs)
     assert len(Surfs_star) == n_surf, 'No. of wake and bound surfaces not matching!'
+
+    dimensions = [None]*n_surf
+    dimensions_star = [None]*n_surf
 
     for ss in range(n_surf):
 
@@ -1224,6 +1172,37 @@ def wake_prop(Surfs, Surfs_star, use_sparse=False, sparse_format='lil'):
         N, M, K = Surf.maps.N, Surf.maps.M, Surf.maps.K
         M_star, K_star = Surf_star.maps.M, Surf_star.maps.K
         assert Surf_star.maps.N == N, \
+            'Bound and wake surface do not have the same spanwise discretisation'
+
+        dimensions[ss] = [M, N, K]
+        dimensions_star[ss] = [M_star, N, K_star]
+
+    C_list, Cstar_list = wake_prop_from_dimensions(dimensions,
+                                                   dimensions_star,
+                                                   use_sparse=use_sparse,
+                                                   sparse_format=sparse_format)
+
+    return C_list, Cstar_list
+
+
+def wake_prop_from_dimensions(dimensions, dimensions_star, use_sparse=False, sparse_format='lil'):
+    """
+    Same as ``wake_prop'' but using the dimensions directly
+    """
+
+    C_list = []
+    Cstar_list = []
+
+    # dimensions = [None]*n_surf
+
+    n_surf = len(dimensions)
+    assert len(dimensions_star) == n_surf, 'No. of wake and bound surfaces not matching!'
+
+    for ss in range(n_surf):
+
+        M, N, K = dimensions[ss]
+        M_star, N_star, K_star = dimensions_star[ss]
+        assert N_star == N, \
             'Bound and wake surface do not have the same spanwise discretisation'
 
         # allocate...
@@ -1282,7 +1261,6 @@ def test_wake_prop_term(M, N, M_star, N_star, use_sparse, sparse_format='csc'):
 
 if __name__ == '__main__':
     import time
-    import cProfile
 
     M, N = 20, 30
     M_star, N_star = M * 20, N

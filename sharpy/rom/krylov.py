@@ -1,6 +1,6 @@
+"""Krylov-subspaces model order reduction techniques
+"""
 import numpy as np
-import scipy.sparse as scsp
-import sharpy.linear.src.libsparse as libsp
 import scipy.linalg as sclalg
 import sharpy.linear.src.libss as libss
 import time
@@ -9,6 +9,8 @@ import sharpy.utils.cout_utils as cout
 import sharpy.utils.rom_interface as rom_interface
 import sharpy.utils.h5utils as h5
 import sharpy.rom.utils.krylovutils as krylovutils
+import warnings as warn
+
 
 @rom_interface.rom
 class Krylov(rom_interface.BaseRom):
@@ -54,36 +56,46 @@ class Krylov(rom_interface.BaseRom):
     settings_types = dict()
     settings_default = dict()
     settings_description = dict()
+    settings_options = dict()
+
+    settings_types['print_info'] = 'bool'
+    settings_default['print_info'] = True
+    settings_description['print_info'] = 'Write ROM information to screen and log'
 
     settings_types['frequency'] = 'list(complex)'
     settings_default['frequency'] = [0]
     settings_description['frequency'] = 'Interpolation points in the continuous time complex plane [rad/s]'
-    
+
     settings_types['algorithm'] = 'str'
     settings_default['algorithm'] = ''
     settings_description['algorithm'] = 'Krylov reduction method algorithm'
-    
+
     settings_types['r'] = 'int'
     settings_default['r'] = 1
     settings_description['r'] = 'Moments to match at the interpolation points'
 
+    settings_types['single_side'] = 'str'
+    settings_default['single_side'] = ''
+    settings_description['single_side'] = 'Construct the rom using a single side. Leave blank (or empty string) for both.'
+    settings_options['single_side'] = ['controllability', 'observability']
+
     settings_types['tangent_input_file'] = 'str'
     settings_default['tangent_input_file'] = ''
     settings_description['tangent_input_file'] = 'Filepath to .h5 file containing tangent interpolation vectors'
-    
+
     settings_types['restart_arnoldi'] = 'bool'
     settings_default['restart_arnoldi'] = False
     settings_description['restart_arnoldi'] = 'Restart Arnoldi iteration with r-=1 if ROM is unstable'
 
     settings_table = settings.SettingsTable()
-    __doc__ += settings_table.generate(settings_types, settings_default, settings_description)
+    __doc__ += settings_table.generate(settings_types, settings_default, settings_description, settings_options)
 
     supported_methods = ('one_sided_arnoldi',
                          'two_sided_arnoldi',
                          'dual_rational_arnoldi',
                          'mimo_rational_arnoldi',
                          'mimo_block_arnoldi')
-    
+
     def __init__(self):
         self.settings = dict()
 
@@ -104,15 +116,16 @@ class Krylov(rom_interface.BaseRom):
 
     def initialise(self, in_settings=None):
 
-        try:
-            cout.cout_wrap('Initialising Krylov Model Order Reduction')
-        except ValueError:
-            pass
-
         if in_settings is not None:
             self.settings = in_settings
 
-        settings.to_custom_types(self.settings, self.settings_types, self.settings_default)
+        settings.to_custom_types(self.settings, self.settings_types, self.settings_default, self.settings_options)
+
+        try:
+            if self.settings['print_info']:
+                cout.cout_wrap('Initialising Krylov Model Order Reduction')
+        except ValueError:
+            pass
 
         self.algorithm = self.settings['algorithm']
         if self.algorithm not in self.supported_methods:
@@ -120,10 +133,9 @@ class Krylov(rom_interface.BaseRom):
                                       'could be that is not yet implemented'
                                       % self.algorithm)
 
-        self.frequency = self.settings['frequency']
+        self.frequency = np.array(self.settings['frequency'])
         self.r = self.settings['r'].value
         self.restart_arnoldi = self.settings['restart_arnoldi'].value
-
         try:
             self.nfreq = self.frequency.shape[0]
         except AttributeError:
@@ -153,11 +165,9 @@ class Krylov(rom_interface.BaseRom):
         """
         self.ss = ss
 
-        try:
+        if self.settings['print_info']:
             cout.cout_wrap('Model Order Reduction in progress...')
             self.print_header()
-        except ValueError:
-            pass
 
         if self.ss.dt is None:
             self.sstype = 'ct'
@@ -174,18 +184,22 @@ class Krylov(rom_interface.BaseRom):
         self.stable = self.check_stability(restart_arnoldi=self.restart_arnoldi)
 
         if not self.stable:
-            TL, TR = self.stable_realisation()
-            self.ssrom = libss.ss(TL.T.dot(Ar.dot(TR)), TL.T.dot(Br), Cr.dot(TR), self.ss.D, self.ss.dt)
-            self.stable = self.check_stability(restart_arnoldi=self.restart_arnoldi)
+            pass
+            warn.warn('Reduced Order Model Unstable')
+            # Under development
+            # TL, TR = self.restart()
+            # Wtr, Vr = self.restart()
+            # TL, TR = self.stable_realisation()
+            # self.ssrom = libss.ss(TL.T.dot(Ar.dot(TR)), TL.T.dot(Br), Cr.dot(TR), self.ss.D, self.ss.dt)
+            # self.ssrom = libss.ss(Wtr.dot(self.ssrom.A.dot(Vr)), Wtr.dot(self.ssrom.B), self.ssrom.C.dot(Vr), self.ss.D, self.ss.dt)
+            # self.stable = self.check_stability(restart_arnoldi=self.restart_arnoldi)
 
         t_rom = time.time() - t0
         self.cpu_summary['run'] = t_rom
-        try:
+        if self.settings['print_info']:
             cout.cout_wrap('System reduced from order %d to ' % self.ss.states)
             cout.cout_wrap('\tn = %d states' % self.ssrom.states, 1)
             cout.cout_wrap('...Completed Model Order Reduction in %.2f s' % t_rom)
-        except ValueError:
-            pass
 
         return self.ssrom
 
@@ -194,7 +208,10 @@ class Krylov(rom_interface.BaseRom):
         cout.cout_wrap('\tConstruction Algorithm:')
         cout.cout_wrap('\t\t%s' % self.algorithm, 1)
         cout.cout_wrap('\tInterpolation points:')
-        cout.cout_wrap(self.nfreq * '\t\tsigma = %4f + %4fj [rad/s]\n' %tuple(self.frequency.view(float)), 1)
+        if self.frequency.dtype == complex:
+            cout.cout_wrap(self.nfreq * '\t\tsigma = %4f + %4fj [rad/s]\n' %tuple(self.frequency.view(float)), 1)
+        else:
+            cout.cout_wrap(self.nfreq * '\t\tsigma = %4f [rad/s]\n' % self.frequency, 1)
         cout.cout_wrap('\tKrylov order:')
         cout.cout_wrap('\t\tr = %d' % self.r, 1)
 
@@ -250,6 +267,9 @@ class Krylov(rom_interface.BaseRom):
         Br = V.T.dot(B)
         Cr = C.dot(V)
 
+        self.V = V
+        self.W = V
+
         return Ar, Br, Cr
 
     def two_sided_arnoldi(self, frequency, r):
@@ -298,6 +318,7 @@ class Krylov(rom_interface.BaseRom):
 
         T = W.T.dot(V)
         Tinv = sclalg.inv(T)
+        reduction_checks(T, Tinv)
         self.W = W
         self.V = V
 
@@ -305,8 +326,6 @@ class Krylov(rom_interface.BaseRom):
         Ar = W.T.dot(self.ss.A.dot(V.dot(Tinv)))
         Br = W.T.dot(self.ss.B)
         Cr = self.ss.C.dot(V.dot(Tinv))
-
-
 
         return Ar, Br, Cr
 
@@ -553,6 +572,7 @@ class Krylov(rom_interface.BaseRom):
 
         T = W.T.dot(V)
         Tinv = sclalg.inv(T)
+        reduction_checks(T, Tinv)
         self.W = W
         self.V = V
 
@@ -592,7 +612,7 @@ class Krylov(rom_interface.BaseRom):
             [1] Gugercin, S. Projection Methods for Model Reduction of Large-Scale Dynamical
              Systems PhD Thesis. Rice University 2003.
         """
- 
+
         m = self.ss.inputs  # Full system number of inputs
         n = self.ss.states  # Full system number of states
         p = self.ss.outputs  # Full system number of outputs
@@ -611,42 +631,62 @@ class Krylov(rom_interface.BaseRom):
             r_c = r
             r_o = r
 
-        B = self.ss.B
-        C = self.ss.C
+        if self.settings['single_side']:
+            # if only a single side is built, use the original setting without modification
+            r_c = r
+            r_o = r
+
+        V = None
+        W = None
 
         for i in range(self.nfreq):
 
-            if frequency[i] == np.inf or frequency[i].real == np.inf:
-                lu_a = self.ss.A
-                approx_type = 'partial_realisation'
-            else:
-                approx_type = 'Pade'
-                lu_a = krylovutils.lu_factor(frequency[i], self.ss.A)
-            if i == 0:
-                V = krylovutils.construct_mimo_krylov(r_c, lu_a, B, approx_type=approx_type, side='controllability')
-                W = krylovutils.construct_mimo_krylov(r_o, lu_a, C.T, approx_type=approx_type, side='observability')
-            else:
-                Vi = krylovutils.construct_mimo_krylov(r_c, lu_a, B, approx_type=approx_type, side='controllability')
-                Wi = krylovutils.construct_mimo_krylov(r_o, lu_a, C.T, approx_type=approx_type, side='observability')
-                V = np.block([V, Vi])
-                W = np.block([W, Wi])
-                V = krylovutils.mgs_ortho(V)
-                W = krylovutils.mgs_ortho(W)
+            if self.settings['single_side'] == 'controllability' or self.settings['single_side'] == '':
+                cout.cout_wrap('\tConstructing controllability space', 1)
+                if i == 0:
+                    V = krylovutils.build_krylov_space(frequency[i], r_c, side='b', a=self.ss.A, b=self.ss.B)
+                else:
+                    Vi = krylovutils.build_krylov_space(frequency[i], r_c, side='b', a=self.ss.A, b=self.ss.B)
+                    V = np.hstack((V, Vi))
+                    V = krylovutils.mgs_ortho(V)
 
-        # Match number of columns in each matrix
-        min_cols = min(V.shape[1], W.shape[1])
-        V = V[:, :min_cols]
-        W = W[:, :min_cols]
+            if self.settings['single_side'] == 'observability' or self.settings['single_side'] == '':
+                cout.cout_wrap('\tConstructing observability space', 1)
+                if i == 0:
+                    W = krylovutils.build_krylov_space(frequency[i], r_o, side='c', a=self.ss.A, b=self.ss.C.T)
+                else:
+                    Wi = krylovutils.build_krylov_space(frequency[i], r_o, side='c', a=self.ss.A, b=self.ss.C.T)
+                    W = np.hstack((W, Wi))
+                    W = krylovutils.mgs_ortho(W)
 
-        T = W.T.dot(V)
-        Tinv = sclalg.inv(T)
+        if self.settings['single_side'] == 'controllability' or self.settings['single_side'] == 'observability':
+            if self.settings['single_side'] == 'observability':
+                V = W
+            Ar = V.T.dot(self.ss.A.dot(V))
+            Br = V.T.dot(self.ss.B)
+            Cr = self.ss.C.dot(V)
+
+        else:
+            # Match number of columns in each matrix
+            min_cols = min(V.shape[1], W.shape[1])
+            V = V[:, :min_cols]
+            W = W[:, :min_cols]
+
+            V, W = check_rank(V, W) # checks the product for rank deficiencies
+            # V = krylovutils.mgs_ortho(V) # need to verify whether this is necessary
+            # W = krylovutils.mgs_ortho(W)
+
+            T = W.T.dot(V)
+            Tinv = sclalg.inv(T)
+            krylovutils.check_eye(T, Tinv)
+
+            # Reduced state space model
+            Ar = W.T.dot(self.ss.A.dot(V.dot(Tinv)))
+            Br = W.T.dot(self.ss.B)
+            Cr = self.ss.C.dot(V.dot(Tinv))
+
         self.W = W
         self.V = V
-
-        # Reduced state space model
-        Ar = W.T.dot(self.ss.A.dot(V.dot(Tinv)))
-        Br = W.T.dot(self.ss.B)
-        Cr = self.ss.C.dot(V.dot(Tinv))
 
         return Ar, Br, Cr
 
@@ -738,10 +778,10 @@ class Krylov(rom_interface.BaseRom):
         else:
             if any(eigs.real > 0):
                 unstable = True
-                print('Unstable ROM')
+                cout.cout_wrap('Unstable ROM', 3)
                 unstable_eigenvalues = eigs[eigs.real > 0]
             else:
-                print('ROM is stable')
+                cout.cout_wrap('ROM is stable')
 
         # Restarted Arnoldi
         # Modify the B matrix in the full state system -> maybe better to have a copy
@@ -781,7 +821,7 @@ class Krylov(rom_interface.BaseRom):
 
         return left_tangent, right_tangent, rc, ro, fc, fo
 
-    def stable_realisation(self, *args):
+    def stable_realisation(self, *args, **kwargs):
         r"""Remove unstable poles left after reduction
 
         Using a Schur decomposition of the reduced plant matrix :math:`\mathbf{A}_m\in\mathbb{C}^{m\times m}`,
@@ -793,7 +833,7 @@ class Krylov(rom_interface.BaseRom):
         .. math:: \mathbf{A}_s = \mathbf{T}_L^\top\mathbf{AT}_R \in \mathbb{C}^{p\times p}.
 
         Args:
-            A (np.ndarray): plant matrix (if not provided ``self.ssrom.A`` will be used.
+            A (np.ndarray): plant matrix (if not provided ``self.ssrom.A`` will be used).
 
         Returns:
             tuple: Left and right projection matrices :math:`\mathbf{T}_L\in\mathbb{C}^{m \times p}` and
@@ -811,11 +851,18 @@ class Krylov(rom_interface.BaseRom):
         cout.cout_wrap('Stabilising system by removing unstable eigenvalues using a Schur decomposition', 1)
         if self.ssrom is None:
             A = args[0]
+            ct = kwargs['ct']
+            assert type(ct) == bool, 'CT system flag should be a bool'
         else:
             A = self.ssrom.A
 
+            if self.sstype == 'ct':
+                ct = True
+            else:
+                ct = False
+
         m = A.shape[0]
-        As, T1, n_stable = krylovutils.schur_ordered(A)
+        As, T1, n_stable = krylovutils.schur_ordered(A, ct=ct)
 
         # Remove the (1,2) block of the Schur ordered matrix
         T2, X = krylovutils.remove_a12(As, n_stable)
@@ -827,8 +874,141 @@ class Krylov(rom_interface.BaseRom):
 
         cout.cout_wrap('System reduced to %g states' %n_stable, 1)
 
+        # for debugging
+        # import matplotlib.pyplot as plt
+        Ar = TL.dot(A.dot(TR))
+        eigsA = np.linalg.eigvals(A)
+        eigsAr = np.linalg.eigvals(Ar)
+        #
+        # plt.scatter(eigsA.real, eigsA.imag)
+        # plt.scatter(eigsAr.real, eigsAr.imag)
+        # plt.show()
+        if ct:
+            assert np.sum(np.real(eigsAr) <= 0.) == n_stable, 'Number of stable eigvals computed not equal to those in Ar'
+        else:
+            assert np.sum(np.abs(eigsAr) <= 1.) == n_stable, 'Number of stable eigvals computed not equal to those in Ar'
+
         return TL.T, TR
 
+    def restart(self):
+        """
+        Implicitly Restarted Krylov Algorithm
+        """
+
+        # Run krylov here
+
+        W = self.W
+        V = self.V
+
+        check_eye(V, V.T)
+        check_eye(W, W.T)
+
+        Tm = W.T.dot(V)
+        Tminv = sclalg.inv(Tm)
+
+        check_eye(Tm, Tminv, 'Tm = W^T.dot(V)')
+
+        # d = Tminv.dot(W.T)
+        #
+        # Tmcond = np.linalg.cond(Tm)
+        #
+        # if Tmcond > 1e10:
+        #     cout.cout_wrap('Matrix Tm = W^T.dot(V) is poorly conditioned. Condition = %e' % Tmcond, 3)
+
+        TL, TR = self.stable_realisation()
+
+        m, r = TR.shape
+
+        Ar = TL.T.dot(self.ssrom.A.dot(TR))
+        eigsAr = np.linalg.eigvals(Ar)
+        n_stable_r = np.sum(np.abs(eigsAr)<=1.)
+
+        assert n_stable_r == r, 'lost evals'
+
+        # QR decomposition
+        QRfull, RRfull = sclalg.qr(TR)
+        QLfull, RLfull = sclalg.qr(sclalg.inv(Tm.T).dot(TL))
+
+        QR = QRfull[:, :r]
+        QRcomp = QRfull[:, r:]
+        RR = RRfull[:r, :]
+        RRcomp = RRfull[r:, :]
+
+        QL = QLfull[:, :r]
+        RL = RLfull[:r, :]
+
+        Vr = V.dot(QR)
+        Wr = W.dot(QL)
+        Tr = Wr.T.dot(Vr)
+
+        print('Tr cond = %e' % np.linalg.cond(Tr))
+
+        Trinv = sclalg.inv(QL.T.dot(Tm.dot(QR)))
+        Trinv2 = RR.dot(RL.T)
+        #
+        print('Trinv diff = %f' % (np.max(np.abs(Trinv - Trinv2))))
+        Wtr = Trinv.dot(Wr.T)
+        # Wtr = Wr.T
+        # return QL.dot(Trinv), QR
+        Wtr2 = TL.T.dot(Tminv.dot(W.T))
+        # return Wtr2, V.dot(TR)
+
+        Ar = RR.dot(TL.T).dot(self.ssrom.A.dot(QR))
+        eigsAr = np.linalg.eigvals(Ar)
+        n_stable_r = np.sum(np.abs(eigsAr)<=1.)
+
+        assert n_stable_r == r, 'lost evals'
+
+
+
+        return RR.dot(TL.T), QR
+        # pass
+
+
+def reduction_checks(T, Tinv):
+
+    cout.cout_wrap('Tm condition = %e' % np.linalg.cond(T))
+
+    check_eye(T, Tinv)
+
+
+def check_eye(T, Tinv, msg=''):
+
+    eye_approx = Tinv.dot(T)
+    max_diff = np.max(np.abs(np.eye(eye_approx.shape[0]) - eye_approx))
+
+    if max_diff != 0.0:
+        log_error = np.log10(max_diff)
+        assert log_error < -6, 'T.dot(Tinv) not equal to identity, %s \nlog(error) = %.e' \
+                               % (msg, np.log10(max_diff))
+
+
+def check_rank(V, W):
+
+    n_cols = V.shape[1]
+
+    for col in range(1, n_cols):
+        T = W[:, :col].T.dot(V[:, :col])
+        Tinv = np.linalg.inv(T)
+        try:
+            check_eye(T, Tinv)
+        except AssertionError:
+            cout.cout_wrap('\tDeflating column %g' % col, 1)
+            W = np.hstack((W[:, :col-1], W[:, col:]))
+            V = np.hstack((V[:, :col-1], V[:, col:]))
+
+    try:
+        check_eye(T, Tinv)
+    except AssertionError:
+        V, W = check_rank(V, W)
+
+    # need to check if necessary
+    # V = krylovutils.mgs_ortho(V)
+    # W = krylovutils.mgs_ortho(W)
+    # V, W = check_rank(V, W)
+    # breakpoint()
+
+    return V, W
 
 if __name__=="__main__":
     import numpy as np
@@ -846,4 +1026,3 @@ if __name__=="__main__":
     print("\nNew matrix size %g" % Ap.shape[0])
     print('Stable eigvals = %g' % np.sum(np.abs(eigsA)<=1))
     print(eigsA)
-

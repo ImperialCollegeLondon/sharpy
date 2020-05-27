@@ -16,35 +16,31 @@ import sharpy.utils.h5utils as h5utils
 @solver
 class PickleData(BaseSolver):
     """
-    The ``SaveData`` postprocessor writes the SHARPy `data` structure in a pickle file
+    This postprocessor writes the SHARPy ``data`` structure in a pickle file, such that classes and
+    methods from SHARPy are retained for restarted solutions or further post-processing.
 
-    Args:
-        data(ProblemData): class containing the data of the problem
-        custom_settings (dict): dictionary containing custom settings for the solver to use
-
-    Attributes:
-        settings (dict): Contains the solver's ``settings``. See below for acceptable values:
-
-            =======================================  =============  =============================================================  =========
-            Name                                     Type           Description                                                    Default
-            =======================================  =============  =============================================================  =========
-            ``folder``                               ``str``        Target folder to write the file                                ``./output``
-            =======================================  =============  =============================================================  =========
     """
     solver_id = 'PickleData'
     solver_classification = 'post-processor'
 
+    settings_types = dict()
+    settings_default = dict()
+    settings_description = dict()
+
+    settings_types['folder'] = 'str'
+    settings_default['folder'] = './output'
+    settings_description['folder'] = 'Folder to output pickle file'
+
+    settings_table = settings.SettingsTable()
+    __doc__ += settings_table.generate(settings_types, settings_default, settings_description)
+
     def __init__(self):
         import sharpy
 
-        self.settings_types = dict()
-        self.settings_default = dict()
-
-        self.settings_types['folder'] = 'str'
-        self.settings_default['folder'] = './output'
-
         self.settings = None
         self.data = None
+        self.filename = None
+        self.folder = None
 
     def initialise(self, data, custom_settings=None):
         self.data = data
@@ -61,7 +57,7 @@ class PickleData(BaseSolver):
         self.folder = self.settings['folder'] + '/'
         if not os.path.exists(self.folder):
             os.makedirs(self.folder)
-        self.filename= self.folder + self.data.settings['SHARPy']['case']+'.pkl'
+        self.filename = self.folder + self.data.settings['SHARPy']['case']+'.pkl'
 
     def run(self, online=False):
         with open(self.filename, 'wb') as f:

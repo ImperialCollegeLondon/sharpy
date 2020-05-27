@@ -15,7 +15,6 @@ class TestFixNodeVelocitywrtG(unittest.TestCase):
     """
     def setUp(self):
 
-        deg2rad = np.pi/180.
         nodes_per_elem = 3
 
         # beam1: uniform and symmetric with aerodynamic properties equal to zero
@@ -82,6 +81,11 @@ class TestFixNodeVelocitywrtG(unittest.TestCase):
 
         SimInfo.solvers['AerogridLoader']['unsteady'] = 'on'
         SimInfo.solvers['AerogridLoader']['mstar'] = 2
+        SimInfo.solvers['AerogridLoader']['wake_shape_generator'] = 'StraightWake'
+        SimInfo.solvers['AerogridLoader']['wake_shape_generator_input'] = {'u_inf':10.,
+                                                                           'u_inf_direction': np.array([0., 1., 0.]),
+                                                                           'dt': 0.1}
+
 
         SimInfo.solvers['NonLinearStatic']['print_info'] = False
 
@@ -161,12 +165,12 @@ class TestFixNodeVelocitywrtG(unittest.TestCase):
         """
 
         """
-        solver_path = folder + '/fix_node_velocity_wrtG.solver.txt'
+        solver_path = folder + '/fix_node_velocity_wrtG.sharpy'
         sharpy.sharpy_main.main(['', solver_path])
 
         # read output and compare
         output_path = folder + '/output/fix_node_velocity_wrtG/WriteVariablesTime/'
-        pos_tip_data = np.matrix(np.genfromtxt(output_path + "struct_pos_node-1" + ".dat", delimiter=' '))
+        pos_tip_data = np.loadtxt(("%sstruct_pos_node-1.dat" % output_path), )
         self.assertAlmostEqual(pos_tip_data[-1, 1], 9.999386, 4)
         self.assertAlmostEqual(pos_tip_data[-1, 2], -0.089333, 4)
         self.assertAlmostEqual(pos_tip_data[-1, 3], 0., 4)
@@ -176,7 +180,7 @@ class TestFixNodeVelocitywrtG(unittest.TestCase):
                            self.name + '.dyn.h5',
                            self.name + '.fem.h5',
                            self.name + '.mb.h5',
-                           self.name + '.solver.txt']
+                           self.name + '.sharpy']
         for f in files_to_delete:
             os.remove(folder + '/' + f)
 

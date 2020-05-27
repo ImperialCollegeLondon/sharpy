@@ -36,17 +36,6 @@ class TurbVelocityField(generator_interface.BaseGenerator):
     Args:
         in_dict (dict): Input data in the form of dictionary. See acceptable entries below:
 
-            ===================  ===============  ===============================================================  ===================
-            Name                 Type             Description                                                      Default
-            ===================  ===============  ===============================================================  ===================
-            ``print_info``       ``bool``         Output solver-specific information in runtime.                   ``True``
-            ``turbulent_field``  ``str``          XDMF file path of the velocity file.                             ``None``
-            ``offset``           ``list(float)``  Spatial offset in the 3 dimensions                               ``[0.0, 0.0, 0.0]``
-            ``centre_y``         ``bool``         Flag for changing the domain to [-y_max/2, y_max/2].             ``True``
-            ``periodicity``      ``str``          Axes in which periodicity is enforced                            ``xy``
-            ``frozen``           ``bool``         If True, the turbulent field will not be updated in time.        ``True``
-            ===================  ===============  ===============================================================  ===================
-
     Attributes:
 
     See Also:
@@ -55,31 +44,43 @@ class TurbVelocityField(generator_interface.BaseGenerator):
     """
     generator_id = 'TurbVelocityField'
 
+    settings_types = dict()
+    settings_default = dict()
+    settings_description = dict()
+
+    settings_types['print_info'] = 'bool'
+    settings_default['print_info'] = True
+    settings_description['print_info'] = 'Output solver-specific information in runtime.'
+
+    settings_types['turbulent_field'] = 'str'
+    settings_default['turbulent_field'] = None
+    settings_description['turbulent_field'] = 'XDMF file path of the velocity field'
+
+    settings_types['offset'] = 'list(float)'
+    settings_default['offset'] = np.zeros((3,))
+    settings_description['offset'] = 'Spatial offset in the 3 dimensions'
+
+    settings_types['centre_y'] = 'bool'
+    settings_default['centre_y'] = True
+    settings_description['centre_y'] = 'Flat for changing the domain to [``-y_max/2``, ``y_max/2``]'
+
+    settings_types['periodicity'] = 'str'
+    settings_default['periodicity'] = 'xy'
+    settings_description['periodicity'] = 'Axes in which periodicity is enforced'
+
+    settings_types['frozen'] = 'bool'
+    settings_default['frozen'] = True
+    settings_description['frozen'] = 'If ``True``, the turbulent field will not be updated in time'
+
+    settings_types['store_field'] = 'bool'
+    settings_default['store_field'] = False
+    settings_description['store_field'] = 'If ``True``, the xdmf snapshots are stored in memory. Only two at a time for the linear interpolation'
+
+    settings_table = settings.SettingsTable()
+    __doc__ += settings_table.generate(settings_types, settings_default, settings_description)
+
     def __init__(self):
         self.in_dict = dict()
-        self.settings_types = dict()
-        self.settings_default = dict()
-
-        self.settings_types['print_info'] = 'bool'
-        self.settings_default['print_info'] = True
-
-        self.settings_types['turbulent_field'] = 'str'
-        self.settings_default['turbulent_field'] = None
-
-        self.settings_types['offset'] = 'list(float)'
-        self.settings_default['offset'] = np.zeros((3,))
-
-        self.settings_types['centre_y'] = 'bool'
-        self.settings_default['centre_y'] = True
-
-        self.settings_types['periodicity'] = 'str'
-        self.settings_default['periodicity'] = 'xy'
-
-        self.settings_types['frozen'] = 'bool'
-        self.settings_default['frozen'] = True
-
-        self.settings_types['store_field'] = 'bool'
-        self.settings_default['store_field'] = False
 
         self.settings = dict()
 

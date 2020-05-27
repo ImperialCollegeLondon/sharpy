@@ -2,7 +2,6 @@ import numpy as np
 from numpy.polynomial import polynomial as P
 import scipy as sc
 from scipy import interpolate
-import matplotlib.pyplot as plt
 
 import sharpy.utils.generator_interface as generator_interface
 import sharpy.utils.settings as settings
@@ -11,45 +10,68 @@ import sharpy.utils.cout_utils as cout
 
 @generator_interface.generator
 class TrajectoryGenerator(generator_interface.BaseGenerator):
+    """
+    ``TrajectoryGenerator`` is used to generate nodal positions or velocities
+    for trajectory constraints such as the ones included in the multibody
+    solver.
+
+    It is usually called from a ``Controller`` module.
+    """
     generator_id = 'TrajectoryGenerator'
+
+    settings_types = dict()
+    settings_default = dict()
+    settings_description = dict()
+
+    settings_types['angle_end'] = 'float'
+    settings_default['angle_end'] = 0.0
+    settings_description['angle_end'] = 'Trajectory angle wrt horizontal at release'
+
+    settings_types['veloc_end'] = 'float'
+    settings_default['veloc_end'] = None
+    settings_description['veloc_end'] = 'Release velocity at release'
+
+    settings_types['shape'] = 'str'
+    settings_default['shape'] = 'quadratic'
+    settings_description['shape'] = 'Shape of the ``z`` vs ``x`` function. ``quadratic`` or ``linear`` are supported'
+
+    settings_types['acceleration'] = 'str'
+    settings_default['acceleration'] = 'linear'
+    settings_description['acceleration'] = 'Acceleration law, possible values are ``linear`` or ``constant``'
+
+    settings_types['dt'] = 'float'
+    settings_default['dt'] = None
+    settings_description['dt'] = 'Time step of the simulation'
+
+    settings_types['coords_end'] = 'list(float)'
+    settings_default['coords_end'] = None
+    settings_description['coords_end'] = 'Coordinates of the final ramp point'
+
+    settings_types['plot'] = 'bool'
+    settings_default['plot'] = False
+    settings_description['plot'] = 'Plot the ramp shape. Requires matplotlib installed'
+
+    settings_types['print_info'] = 'bool'
+    settings_default['print_info'] = False
+    settings_description['print_info'] = 'Print information on runtime'
+
+    settings_types['time_offset'] = 'float'
+    settings_default['time_offset'] = 0.0
+    settings_description['time_offset'] = 'Time interval before the start of the ramp acceleration'
+
+    settings_types['offset'] = 'list(float)'
+    settings_default['offset'] = np.zeros((3,))
+    settings_description['offset'] = 'Coordinates of the starting point of the simulation'
+
+    settings_types['return_velocity'] = 'bool'
+    settings_default['return_velocity'] = False
+    settings_description['return_velocity'] = 'If ``True``, nodal velocities are given, if ``False``, coordinates are the output'
+
+    settings_table = settings.SettingsTable()
+    __doc__ += settings_table.generate(settings_types, settings_default, settings_description)
 
     def __init__(self):
         self.in_dict = dict()
-        self.settings_types = dict()
-        self.settings_default = dict()
-
-        self.settings_types['angle_end'] = 'float'
-        self.settings_default['angle_end'] = 0.0
-
-        self.settings_types['veloc_end'] = 'float'
-        self.settings_default['veloc_end'] = None
-
-        self.settings_types['shape'] = 'str'
-        self.settings_default['shape'] = 'quadratic'
-
-        self.settings_types['acceleration'] = 'str'
-        self.settings_default['acceleration'] = 'linear'
-
-        self.settings_types['dt'] = 'float'
-        self.settings_default['dt'] = None
-
-        self.settings_types['coords_end'] = 'list(float)'
-        self.settings_default['coords_end'] = None
-
-        self.settings_types['plot'] = 'bool'
-        self.settings_default['plot'] = False
-
-        self.settings_types['print_info'] = 'bool'
-        self.settings_default['print_info'] = False
-
-        self.settings_types['time_offset'] = 'float'
-        self.settings_default['time_offset'] = 0.0
-
-        self.settings_types['offset'] = 'list(float)'
-        self.settings_default['offset'] = np.zeros((3,))
-
-        self.settings_types['return_velocity'] = 'bool'
-        self.settings_default['return_velocity'] = False
 
         self.x_vec = None
         self.y_vec = None
@@ -89,11 +111,16 @@ class TrajectoryGenerator(generator_interface.BaseGenerator):
         cout.cout_wrap('-------------------------------', 2)
 
     def plot(self):
-        plt.figure()
-        plt.scatter(self.x_vec, self.y_vec, c=self.time_vec)
-        plt.colorbar(orientation='horizontal')
-        plt.axis('equal')
-        plt.show()
+        try:
+            import matplotlib.pyplot as plt
+            plt.figure()
+            plt.scatter(self.x_vec, self.y_vec, c=self.time_vec)
+            plt.colorbar(orientation='horizontal')
+            plt.axis('equal')
+            plt.show()
+        except ModuleNotFoundError:
+            import warnings
+            warnings.warn('Unable to import matplotlib, skipping plot')
 
     def get_n_steps(self):
         return self.n_steps

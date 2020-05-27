@@ -90,14 +90,10 @@ ENV/
 *.*~
 *.swp
 *.txt
-
-# SHARPy stuff
 *.h5
-*.sharpy
-
 
 # project dependant stuff
-lib/*
+lib/*.so
 output/*
 .idea
 
@@ -105,7 +101,6 @@ output/*
 *figs/*
 
 *.csv
-*.png
 *.eps
 *.vtu
 
@@ -144,9 +139,5 @@ tests/linear/rom/figs/
 
 \.spyproject/
 
+# sharpy extension
 *.sharpy
-
-scripts/optimiser/cases
-
-
-.vscode/

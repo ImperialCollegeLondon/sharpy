@@ -11,7 +11,6 @@ class TestFixNodeVelocitywrtA(unittest.TestCase):
     def setUp(self):
         import sharpy.utils.generate_cases as gc
 
-        deg2rad = np.pi/180.
         nodes_per_elem = 3
 
         # beam1: uniform and symmetric with aerodynamic properties equal to zero
@@ -19,8 +18,8 @@ class TestFixNodeVelocitywrtA(unittest.TestCase):
         length1  = 10.
         mass_per_unit_length = 1.
         mass_iner = 1e-4
-        EA = 1e9
-        GA = 1e9
+        EA = 1e7
+        GA = 1e7
         GJ = 1e3
         EI = 1e4
 
@@ -66,13 +65,14 @@ class TestFixNodeVelocitywrtA(unittest.TestCase):
         SimInfo.solvers['SHARPy']['flow'] = ['BeamLoader',
                                 'AerogridLoader',
                                 'StaticCoupled',
-                                'DynamicCoupled']
+                                'DynamicCoupled',
+                                'BeamPlot']
         global name
         name = 'fix_node_velocity_wrtA'
         SimInfo.solvers['SHARPy']['case'] = name
         SimInfo.solvers['SHARPy']['write_screen'] = 'off'
         SimInfo.solvers['SHARPy']['route'] = folder + '/'
-        SimInfo.set_variable_all_dicts('dt', 0.1)
+        SimInfo.set_variable_all_dicts('dt', 0.05)
         SimInfo.set_variable_all_dicts('rho', 0.0)
         SimInfo.set_variable_all_dicts('velocity_field_input', SimInfo.solvers['SteadyVelocityField'])
         SimInfo.set_variable_all_dicts('folder', folder + '/output/')
@@ -81,11 +81,16 @@ class TestFixNodeVelocitywrtA(unittest.TestCase):
 
         SimInfo.solvers['AerogridLoader']['unsteady'] = 'on'
         SimInfo.solvers['AerogridLoader']['mstar'] = 2
+        SimInfo.solvers['AerogridLoader']['wake_shape_generator'] = 'StraightWake'
+        SimInfo.solvers['AerogridLoader']['wake_shape_generator_input'] = {'u_inf':10.,
+                                                                           'u_inf_direction': np.array([0., 1., 0.]),
+                                                                           'dt': 0.05}
 
-        SimInfo.solvers['NonLinearStaticMultibody']['print_info'] = False
 
-        SimInfo.solvers['StaticCoupled']['structural_solver'] = 'NonLinearStaticMultibody'
-        SimInfo.solvers['StaticCoupled']['structural_solver_settings'] = SimInfo.solvers['NonLinearStaticMultibody']
+        SimInfo.solvers['NonLinearStatic']['print_info'] = False
+
+        SimInfo.solvers['StaticCoupled']['structural_solver'] = 'NonLinearStatic'
+        SimInfo.solvers['StaticCoupled']['structural_solver_settings'] = SimInfo.solvers['NonLinearStatic']
         SimInfo.solvers['StaticCoupled']['aero_solver'] = 'StaticUvlm'
         SimInfo.solvers['StaticCoupled']['aero_solver_settings'] = SimInfo.solvers['StaticUvlm']
         SimInfo.solvers['StaticCoupled']['relaxation_factor'] = 0.0
@@ -96,10 +101,12 @@ class TestFixNodeVelocitywrtA(unittest.TestCase):
         SimInfo.solvers['WriteVariablesTime']['structure_variables'] = ['pos']
 
         SimInfo.solvers['BeamPlot']['include_FoR'] = True
-        SimInfo.solvers['NonLinearDynamicMultibody']['relaxation_factor'] = 0.0
-        SimInfo.solvers['NonLinearDynamicMultibody']['min_delta'] = 1e-5
+        SimInfo.solvers['NonLinearDynamicMultibody']['relaxation_factor'] = 0.2
+        SimInfo.solvers['NonLinearDynamicMultibody']['min_delta'] = 1e-6
         SimInfo.solvers['NonLinearDynamicMultibody']['max_iterations'] = 200
         SimInfo.solvers['NonLinearDynamicMultibody']['newmark_damp'] = 1e-3
+
+        SimInfo.solvers['WriteVariablesTime']['cleanup_old_solution'] = 'on'
 
         SimInfo.solvers['DynamicCoupled']['structural_solver'] = 'NonLinearDynamicMultibody'
         SimInfo.solvers['DynamicCoupled']['structural_solver_settings'] = SimInfo.solvers['NonLinearDynamicMultibody']
@@ -110,7 +117,7 @@ class TestFixNodeVelocitywrtA(unittest.TestCase):
                                                                         'BeamPlot': SimInfo.solvers['BeamPlot'],
                                                                         'AerogridPlot': SimInfo.solvers['AerogridPlot']}
 
-        ntimesteps = 10
+        ntimesteps = 100
 
         SimInfo.define_num_steps(ntimesteps)
 
@@ -154,30 +161,38 @@ class TestFixNodeVelocitywrtA(unittest.TestCase):
     def test_testfixnodevelocitywrta(self):
         import sharpy.sharpy_main
 
-        solver_path = folder + '/fix_node_velocity_wrtA.solver.txt'
+        solver_path = folder + '/fix_node_velocity_wrtA.sharpy'
         sharpy.sharpy_main.main(['', solver_path])
 
         # read output and compare
         output_path = folder + '/output/fix_node_velocity_wrtA/WriteVariablesTime/'
         # quat_data = np.matrix(np.genfromtxt(output_path + 'FoR_00_mb_quat.dat', delimiter=' '))
-        pos_tip_data = np.matrix(np.genfromtxt(output_path + "struct_pos_node" + str(-1) + ".dat", delimiter=' '))
-        self.assertAlmostEqual(pos_tip_data[0, 1], 9.999863, 2)
+        pos_tip_data = np.loadtxt(("%sstruct_pos_node-1.dat" % output_path), )
+        self.assertAlmostEqual(pos_tip_data[0, 1], 9.993, 3)
         self.assertAlmostEqual(pos_tip_data[0, 2], 0., 2)
-        self.assertAlmostEqual(pos_tip_data[0, 3], -3.587865e-02, 2)
+        self.assertAlmostEqual(pos_tip_data[0, 3], -3.40215e-1, 3)
 
-        self.assertAlmostEqual(pos_tip_data[-1, 1], 9.992430, 2)
+        self.assertAlmostEqual(pos_tip_data[-1, 1], 9.9858, 3)
         self.assertAlmostEqual(pos_tip_data[-1, 2], 0., 2)
-        self.assertAlmostEqual(pos_tip_data[-1, 3], -2.646091e-01, 2)
+        self.assertAlmostEqual(pos_tip_data[-1, 3], -4.58856e-1, 3)
 
-    def tearDowns(self):
+        pos_root_data = np.loadtxt(("%sstruct_pos_node0.dat" % output_path), )
+        self.assertAlmostEqual(pos_root_data[0, 1], 0.0, 2)
+        self.assertAlmostEqual(pos_root_data[0, 2], 0.0, 2)
+        self.assertAlmostEqual(pos_root_data[0, 3], 0.0, 2)
+
+        self.assertAlmostEqual(pos_root_data[-1, 1], 0.0, 2)
+        self.assertAlmostEqual(pos_root_data[-1, 2], 0.0, 2)
+        self.assertAlmostEqual(pos_root_data[-1, 3], 0.0, 2)
+
+    def tearDown(self):
         # pass
         files_to_delete = [name + '.aero.h5',
                            name + '.dyn.h5',
                            name + '.fem.h5',
                            name + '.mb.h5',
-                           name + '.solver.txt']
+                           name + '.sharpy']
         for f in files_to_delete:
             os.remove(folder + '/' + f)
 
         shutil.rmtree(folder + '/output/')
-

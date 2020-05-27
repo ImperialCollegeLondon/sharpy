@@ -28,25 +28,6 @@ class FlexDynamic():
         custom_settings (dict): settings for the linearised beam
 
 
-    Settings types, description and default values:
-
-    ============================  =========  ================================================   ============
-    Name                          Type       Description                                        Default
-    ============================  =========  ================================================   ============
-    ``modal_projection``          ``bool``   Change coordinates to modal projection             ``False``
-    ``num_modes``                 ``int``    Number of modes to retain from truncation          ``10``
-    ``inout_coords``              ``str``    Input/output coordinates: ``nodes`` or ``modes``   ``nodes``
-    ``proj_modes``                ``str``    ``damped`` or ``undamped`` modes used              ``undamped``
-    ``discrete_time``             ``bool``   Assemble a discrete or continuous time system      ``True``
-    ``discr_method``              ``str``    Time discretisation method. See below.             ``newmark``
-    ``newmark_damp``              ``float``  Newmark damping                                    ``1e-4``
-    ``dt``                        ``float``  Time increment                                     ``1e-3``
-    ``use_euler``                 ``bool``   Replace quaternion parametrisation for euler       ``False``
-    ``print_info``                ``bool``   Print to screen online status and information      ``False``
-    ``gravity``                   ``bool``   Linearise gravitational forces                     ``False``
-    ============================  =========  ================================================   ============
-
-
     State-space models can be defined in continuous or discrete time (dt
     required). Modal projection, either on the damped or undamped modal shapes,
     is also avaiable. The rad/s array wv can be optionally passed for freq.
@@ -115,49 +96,8 @@ class FlexDynamic():
     """
 
     def __init__(self, tsinfo, structure=None, custom_settings=dict()):
-
-        # ----->
-        self.settings_default = dict()
-        self.settings_types = dict()
-
-        self.settings_default['modal_projection'] = True
-        self.settings_types['modal_projection'] = 'bool'
-
-        self.settings_types['num_modes'] = 'int'
-        self.settings_default['num_modes'] = 10
-
-        self.settings_default['inout_coords'] = 'nodes' # or 'modes'
-        self.settings_types['inout_coords'] = 'str'
-
-        self.settings_default['discrete_time'] = True
-        self.settings_types['discrete_time'] = 'bool'
-
-        self.settings_default['dt'] = 0.001
-        self.settings_types['dt'] = 'float'
-
-        self.settings_default['proj_modes'] = 'undamped'
-        self.settings_types['proj_modes'] = 'str'
-
-        self.settings_default['discr_method'] = 'newmark'
-        self.settings_types['discr_method'] = 'str'
-
-        self.settings_default['newmark_damp'] = 1e-4
-        self.settings_types['newmark_damp'] = 'float'
-
-        self.settings_default['use_euler'] = False
-        self.settings_types['use_euler'] = 'bool'
-
-        self.settings_default['print_info'] = True
-        self.settings_types['print_info'] = 'bool'
-
-        self.settings_default['gravity'] = False
-        self.settings_types['gravity'] = 'bool'
-
-        # <-----
-
         # Extract settings
         self.settings = custom_settings
-        settings.to_custom_types(self.settings, self.settings_types, self.settings_default)
 
         ### extract timestep_info modal results
         # unavailable attrs will be None
@@ -176,29 +116,29 @@ class FlexDynamic():
         self.Cstr = tsinfo.modal.get('C')
         self.Kstr = tsinfo.modal.get('K')
 
-        self.Nmodes = self.settings['num_modes'].value
+        ### set other flags
+        self.modal = self.settings['modal_projection']
+        self.inout_coords = self.settings['inout_coords']
+        self.dlti = self.settings['discrete_time']
+
+        if self.dlti:
+            self.dt = self.settings['dt']
+        else:
+            self.dt = None
+
+        self.Nmodes = self.settings['num_modes']
         self._num_modes = None
-        self.num_modes = self.settings['num_modes'].value
+        self.num_modes = self.settings['num_modes']
         self.num_dof = self.U.shape[0]
         if self.V is not None:
             self.num_dof = self.num_dof // 2
-
-        ### set other flags
-        self.modal = self.settings['modal_projection'].value
-        self.inout_coords = self.settings['inout_coords']
-        self.dlti = self.settings['discrete_time'].value
-
-        if self.dlti:
-            self.dt = self.settings['dt'].value
-        else:
-            self.dt = None
 
         self.proj_modes = self.settings['proj_modes']
         if self.V is None:
             self.proj_modes = 'undamped'
         self.discr_method = self.settings['discr_method']
-        self.newmark_damp = self.settings['newmark_damp'].value
-        self.use_euler = self.settings['use_euler'].value
+        self.newmark_damp = self.settings['newmark_damp']
+        self.use_euler = self.settings['use_euler']
 
         ### set state-space variables
         self.SScont = None
@@ -218,18 +158,89 @@ class FlexDynamic():
 
         self.update_modal()
 
+        self.U = self.sort_repeated_evecs(self.U, self.eigs)
+
+        if self.Mstr.shape[0] == 6*(self.tsstruct0.num_node - 1):
+            self.clamped = True
+        else:
+            self.clamped = False
+
+        if self.use_euler:
+            self.num_dof_rig = 9
+        else:
+            self.num_dof_rig = 10
+
+        self.num_dof_flex = np.sum(structure.vdof >= 0)*6
+
+        self.num_dof_str = self.num_dof_flex + self.num_dof_rig
+        q, dq = self.reshape_struct_input()
+
+        self.tsstruct0.q = q
+        self.tsstruct0.dq = dq
+
+        # Linearised gravity matrices
+        self.Crr_grav = None
+        self.Csr_grav = None
+        self.Krs_grav = None
+        self.Kss_grav = None
+
+    def reshape_struct_input(self):
+        """ Reshape structural input in a column vector """
+
+        structure = self.structure  # self.data.aero.beam
+        tsdata = self.tsstruct0
+
+        q = np.zeros(self.num_dof_str)
+        dq = np.zeros(self.num_dof_str)
+
+        jj = 0  # structural dofs index
+        for node_glob in range(structure.num_node):
+
+            ### detect bc at node (and no. of dofs)
+            bc_here = structure.boundary_conditions[node_glob]
+            if bc_here == 1:  # clamp
+                dofs_here = 0
+                continue
+            elif bc_here == -1 or bc_here == 0:
+                dofs_here = 6
+                jj_tra = [jj, jj + 1, jj + 2]
+                jj_rot = [jj + 3, jj + 4, jj + 5]
+
+            # retrieve element and local index
+            ee, node_loc = structure.node_master_elem[node_glob, :]
+
+            # allocate
+            q[jj_tra] = tsdata.pos[node_glob, :]
+            q[jj_rot] = tsdata.psi[ee, node_loc]
+            # update
+            jj += dofs_here
+
+        # allocate FoR A quantities
+        if self.use_euler:
+            q[-9:-3] = tsdata.for_vel
+            q[-3:] = algebra.quat2euler(tsdata.quat)
+
+            wa = tsdata.for_vel[3:]
+            dq[-9:-3] = tsdata.for_acc
+            T = algebra.deuler_dt(q[-3:])
+            dq[-3:] = T.dot(wa)
+
+        else:
+            q[-10:-4] = tsdata.for_vel
+            q[-4:] = tsdata.quat
+
+            wa = tsdata.for_vel[3:]
+            dq[-10:-4] = tsdata.for_acc
+            dq[-4] = -0.5 * np.dot(wa, tsdata.quat[1:])
+
+        return q, dq
+
     @property
     def num_modes(self):
         return self._num_modes
 
     @num_modes.setter
     def num_modes(self, value):
-        # self.U = self.U[:, :value]
-        # self.freq_natural = self.freq_natural[:value]
-        # if self.freq_damp is not None:
-        #     self.freq_damp = self.freq_damp[:value]
-        # if self.V is not None:
-        #     self.V = self.V[:value, :]
         self.update_truncated_modes(value)
         self._num_modes = value
 
@@ -240,6 +251,19 @@ class FlexDynamic():
     @property
     def num_rig_dof(self):
         return self.Mstr.shape[0] - self.num_flex_dof
+
+    def sort_repeated_evecs(self, evecs, evals):
+        num_rbm = np.sum(evals.__abs__() == 0.)
+        num_dof = evecs.shape[0]
+
+        evecs_sorted = evecs.copy()
+
+        if num_rbm != 0:
+            for i in range(num_rbm):
+                index_mode = np.argmax(evecs[:, i].__abs__()) - num_dof + num_rbm
+                evecs_sorted[:, index_mode] = evecs[:, i]
+
+        return evecs_sorted
 
     def euler_propagation_equations(self, tsstr):
         """
@@ -471,7 +495,7 @@ class FlexDynamic():
         if tsstr is None:
             tsstr = self.tsstruct0
 
-        if self.settings['print_info'].value:
+        if self.settings['print_info']:
             try:
                 cout.cout_wrap('\nLinearising gravity terms...')
             except ValueError:
@@ -513,7 +537,7 @@ class FlexDynamic():
         Xcg_A = -np.array([Mrr[2, 4], Mrr[0, 5], Mrr[1, 3]]) / Mrr[0, 0]
         Xcg_Askew = algebra.skew(Xcg_A)
 
-        if self.settings['print_info'].value:
+        if self.settings['print_info']:
             cout.cout_wrap('\tM = %.2f kg' % Mrr[0, 0], 1)
             cout.cout_wrap('\tX_CG A -> %.2f %.2f %.2f' %(Xcg_A[0], Xcg_A[1], Xcg_A[2]), 1)
 
@@ -574,13 +598,13 @@ class FlexDynamic():
                 # Nodal CG in G frame - debug
                 Xcg_G_n = Pga.dot(Xcg_A_n)
 
-                if self.settings['print_info'].value:
+                if self.settings['print_info']:
                     cout.cout_wrap("Node %2d \t-> B %.3f %.3f %.3f" %(i_node, Xcg_B[0], Xcg_B[1], Xcg_B[2]), 2)
                     cout.cout_wrap("\t\t\t-> A %.3f %.3f %.3f" %(Xcg_A_n[0], Xcg_A_n[1], Xcg_A_n[2]), 2)
                     cout.cout_wrap("\t\t\t-> G %.3f %.3f %.3f" %(Xcg_G_n[0], Xcg_G_n[1], Xcg_G_n[2]), 2)
                     cout.cout_wrap("\tNode mass:", 2)
                     cout.cout_wrap("\t\tMatrix: %.4f" % Mss_node[0, 0], 2)
-                    cout.cout_wrap("\t\tGrav: %.4f" % (np.linalg.norm(fgravG)/9.81), 2)
+                    # cout.cout_wrap("\t\tGrav: %.4f" % (np.linalg.norm(fgravG)/9.81), 2)
 
             if self.use_euler:
                 if bc_at_node != 1:
@@ -600,13 +624,6 @@ class FlexDynamic():
 
                     # Total moments -> linearisation terms wrt to delta_Psi
                     Krs_grav[3:6, jj_rot] += np.dot(algebra.skew(fgravA), algebra.der_Ccrv_by_v(psi, Xcg_B))
-
-                # Rigid equations always in A frame
-                # Total forces -> linearisation terms wrt to delta_euler
-                # Crr_grav[:3, -3:] -= algebra.der_Peuler_by_v(tsstr.euler, fgravG)
-
-                # Total moments -> linearisation terms wrt to delta_euler
-                # Crr_grav[3:6, -3:] -= Xcg_Askew.dot(algebra.der_Peuler_by_v(tsstr.euler, fgravG))
 
             else:
                 if bc_at_node != 1:
@@ -628,59 +645,42 @@ class FlexDynamic():
                     # Nodal moments due to gravity -> linearisation terms wrt to delta_euler
                     Csr_grav[jj_rot, -4:] -= Tan.dot(Xcg_Bskew.dot(Cba.dot(algebra.der_CquatT_by_v(tsstr.quat, fgravG))))
 
-                    # Crr_debug[3:6, -4:] -= Xcg_A_n_skew.dot(algebra.der_CquatT_by_v(tsstr.quat, fgravG))
-                    # Crr_grav[3:6, -4:] += algebra.skew(fgravG).dot(algebra.der_Cquat_by_v(tsstr.quat, Xcg_A_n))
-
-                # Rigid equations always in A frame
-                # Total forces -> linearisation terms wrt to delta_euler
-                # Having issues when including the total forces at the A frame.... system appears to work well without
-                # except when post processing the forces. If this term is included the post process plotting of the
-                # forces improves but there is no longer a restoring moment
-                # Crr_grav[:3, -4:] -= algebra.der_CquatT_by_v(tsstr.quat, fgravG)
-
-                # Total moments -> linearisation terms wrt to delta_euler
-                # Disregard - better to use total force and overall CG to include effect of A frame CG on moments
-                # Crr_grav[3:6, -4:] -= Xcg_Askew.dot(algebra.der_CquatT_by_v(tsstr.quat, fgravG))
-                # Crr_grav[3:6, -4:] -= Xcg_A_n_skew.dot(algebra.der_CquatT_by_v(tsstr.quat, fgravG))
-                # Crr_grav[3:6, -4:] -= algebra.der_CquatT_by_v(tsstr.quat, mgravG) - produces instability
 
             # Debugging:
             FgravA += fgravA
             FgravG += fgravG
 
         if self.use_euler:
-            Crr_grav[:3, -3:] -= algebra.der_Peuler_by_v(tsstr.euler, FgravG)  # not ok - destroys restoring moment effect
+            # Total gravity forces acting at the A frame
+            Crr_grav[:3, -3:] -= algebra.der_Peuler_by_v(tsstr.euler, FgravG)
 
             # Total moments due to gravity in A frame
             Crr_grav[3:6, -3:] -= algebra.skew(Xcg_A).dot(algebra.der_Peuler_by_v(tsstr.euler, FgravG))
         else:
-            Crr_grav[:3, -4:] -= algebra.der_CquatT_by_v(tsstr.quat, FgravG)  # not ok - destroys restoring moment effect
+            # Total gravity forces acting at the A frame
+            Crr_grav[:3, -4:] -= algebra.der_CquatT_by_v(tsstr.quat, FgravG)
 
             # Total moments due to gravity in A frame
             Crr_grav[3:6, -4:] -= algebra.skew(Xcg_A).dot(algebra.der_CquatT_by_v(tsstr.quat, FgravG))
 
         # Update matrices
         self.Kstr[:flex_dof, :flex_dof] += Kss_grav
+
         if self.Kstr[:flex_dof, :flex_dof].shape != self.Kstr.shape:  # If the beam is free, update rigid terms as well
             self.Cstr[-rig_dof:, -rig_dof:] += Crr_grav
             self.Cstr[:-rig_dof, -rig_dof:] += Csr_grav
             self.Kstr[flex_dof:, :flex_dof] += Krs_grav
 
-            # for debugging
+            # Save gravity matrices for post-processing
             self.Crr_grav = Crr_grav
             self.Csr_grav = Csr_grav
             self.Krs_grav = Krs_grav
             self.Kss_grav = Kss_grav
 
-        # Debug - update propagation equations
-        # if not self.use_euler:
-        #     q0, q1, q2, q3 = list(tsstr.quat)
-        #     self.Cstr[-4:, -7:-4] = 0.5*np.block([[-q1, -q2, -q3], [q0, -q3, q2], [q3, q0, -q1], [-q2, q1, q0]])
-
         if self.modal:
             self.Ccut = self.U.T.dot(self.Cstr.dot(self.U))
 
-        if self.settings['print_info'].value:
+        if self.settings['print_info']:
             cout.cout_wrap('\tUpdated the beam C, modal C and K matrices with the terms from the gravity linearisation\n')
 
     def assemble(self, Nmodes=None):
@@ -716,6 +716,13 @@ class FlexDynamic():
         ### checks
         assert self.inout_coords in ['modes', 'nodes'], \
             'inout_coords=%s not implemented!' % self.inout_coords
+
+        # cond_mass_matrix = np.linalg.cond(self.Mstr)
+        # if np.log10(cond_mass_matrix) >= 10.:
+        #     warnings.warn('Mass matrix is poorly conditioned (Cond = 10^%f). Inverse may not be correct.'
+        #                   % np.log10(cond_mass_matrix), 3)
+        # else:
+        #     cout.cout_wrap('Mass matrix condition = %e' % cond_mass_matrix)
 
         dlti = self.dlti
         modal = self.modal
@@ -781,6 +788,7 @@ class FlexDynamic():
 
                 else:  # Full system
                     self.Minv = np.linalg.inv(self.Mstr)
+
                     Ass, Bss, Css, Dss = newmark_ss(
                         self.Minv, self.Cstr, self.Kstr,
                         self.dt, self.newmark_damp)
@@ -957,7 +965,8 @@ class FlexDynamic():
 
         if self.proj_modes == 'undamped':
             if self.Cstr is not None:
-                print('Warning, projecting system with damping onto undamped modes')
+                if self.settings['print_info']:
+                    cout.cout_wrap('Warning, projecting system with damping onto undamped modes')
 
             # Eigenvalues are purely complex - only the complex part is calculated
             eigenvalues, eigenvectors = np.linalg.eig(np.linalg.solve(self.Mstr, self.Kstr))
@@ -1003,7 +1012,8 @@ class FlexDynamic():
             pass
 
         # Update Ccut matrix
-        self.Ccut = np.dot(self.U.T, np.dot(self.Cstr, self.U))
+        if self.modal:
+            self.Ccut = np.dot(self.U.T, np.dot(self.Cstr, self.U))
 
     def scale_system_normalised_time(self, time_ref):
         r"""
@@ -1030,18 +1040,17 @@ class FlexDynamic():
                               ' See update_matrices_time_scale')
 
         # if time_ref != 1.0 and time_ref is not None:
-        if self.num_rig_dof == 0:
-            self.scaled_reference_matrices['dt'] = self.dt
-            self.dt /= time_ref
-            if self.settings['print_info']:
-                cout.cout_wrap('Scaling beam according to reduced time...', 0)
-                cout.cout_wrap('\tSetting the beam time step to (%.4f)' % self.dt, 1)
-
-            self.scaled_reference_matrices['C'] = self.Cstr.copy()
-            self.scaled_reference_matrices['K'] = self.Kstr.copy()
-            self.update_matrices_time_scale(time_ref)
-        else:
+        if self.num_rig_dof != 0:
             warnings.warn('Time normalisation not yet implemented with rigid body motion.')
+        self.scaled_reference_matrices['dt'] = self.dt
+        self.dt /= time_ref
+        if self.settings['print_info']:
+            cout.cout_wrap('Scaling beam according to reduced time...', 0)
+            cout.cout_wrap('\tSetting the beam time step to (%.4f)' % self.dt, 1)
+
+        self.scaled_reference_matrices['C'] = self.Cstr.copy()
+        self.scaled_reference_matrices['K'] = self.Kstr.copy()
+        self.update_matrices_time_scale(time_ref)
 
     def update_matrices_time_scale(self, time_ref):
 
@@ -1050,10 +1059,14 @@ class FlexDynamic():
         except ValueError:
             pass
 
-        self.Kstr = self.scaled_reference_matrices['K'] * time_ref ** 2
-        self.Cstr = self.scaled_reference_matrices['C'] * time_ref
+        try:
+            self.Kstr = self.scaled_reference_matrices['K'] * time_ref ** 2
+            self.Cstr = self.scaled_reference_matrices['C'] * time_ref
 
-        self.freq_natural *= time_ref
+            self.freq_natural *= time_ref
+        except KeyError:
+            raise KeyError('The scaled reference matrices have not been set, most likely because you are trying to '
+                           'rescale a dimensional system. Make sure your system is normalised.')
 
     def cont2disc(self, dt=None):
         """Convert continuous-time SS model into """

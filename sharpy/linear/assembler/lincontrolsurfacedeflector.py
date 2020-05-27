@@ -21,6 +21,7 @@ class LinControlSurfaceDeflector(object):
         # As of now, it simply maps a deflection onto the aerodynamic grid by means of Kzeta_delta
         self.n_control_surfaces = 0
         self.Kzeta_delta = None
+        self.Kdzeta_ddelta = None
         self.Kmom = None
 
         self.linuvlm = None
@@ -92,8 +93,15 @@ class LinControlSurfaceDeflector(object):
         n_control_surfaces = self.n_control_surfaces
 
         if self.under_development:
-            import matplotlib.pyplot as plt  # Part of the testing process
+            try:
+                import matplotlib.pyplot as plt  # Part of the testing process
+            except ModuleNotFoundError:
+                import warnings
+                warnings.warn('Unable to import matplotlib, skipping plots')
+                self.under_development = False
+
         Kdisp = np.zeros((3 * linuvlm.Kzeta, n_control_surfaces))
+        Kvel = np.zeros((3 * linuvlm.Kzeta, n_control_surfaces))
         Kmom = np.zeros((3 * linuvlm.Kzeta, n_control_surfaces))
         zeta0 = np.concatenate([tsaero0.zeta[i_surf].reshape(-1, order='C') for i_surf in range(n_surf)])
 
@@ -122,12 +130,22 @@ class LinControlSurfaceDeflector(object):
 
                     # print(global_node)
                     if self.under_development:
-                        print('Node -- ' + str(global_node))
-                    # Map onto aerodynamic coordinates. Some nodes may be part of two aerodynamic surfaces. This will happen
-                    # at the surface boundary
+                        print('\n\nNode -- ' + str(global_node))
+                        print('i_elem = %g' % i_elem)
+                    # Map onto aerodynamic coordinates. Some nodes may be part of two aerodynamic surfaces.
                     for structure2aero_node in aero.struct2aero_mapping[global_node]:
                         # Retrieve surface and span-wise coordinate
                         i_surf, i_node_span = structure2aero_node['i_surf'], structure2aero_node['i_n']
+
+                        # Although a node may be part of 2 aerodynamic surfaces, we need to ensure that the current
+                        # element for the given node is indeed part of that surface.
+                        elems_in_surf = np.where(aero_dict['surface_distribution'] == i_surf)[0]
+                        if i_elem not in elems_in_surf:
+                            continue
+
+                        if self.under_development:
+                            print("i_surf = %g" % i_surf)
+                            print("i_node_span = %g" % i_node_span)
 
                         # Surface panelling
                         M = aero.aero_dimensions[i_surf][0]
@@ -136,11 +154,18 @@ class LinControlSurfaceDeflector(object):
                         K_zeta_start = 3 * sum(linuvlm.MS.KKzeta[:i_surf])
                         shape_zeta = (3, M + 1, N + 1)
 
+                        if self.under_development:
+                            print('Surface dimensions, M = %g, N = %g' % (M, N))
+
                         i_control_surface = aero_dict['control_surface'][i_elem, i_local_node]
                         if i_control_surface >= 0:
+                            if self.under_development:
+                                print('Control surface present, i_control_surface = %g' % i_control_surface)
                             if not with_control_surface:
                                 i_start_of_cs = i_node_span.copy()
                                 with_control_surface = True
+                            if self.under_development:
+                                print('Control surface span start index = %g' % i_start_of_cs)
                             control_surface_chord = aero_dict['control_surface_chord'][i_control_surface]
                             i_node_hinge = M - control_surface_chord
                             i_vertex_hinge = [K_zeta_start +
@@ -191,7 +216,14 @@ class LinControlSurfaceDeflector(object):
                                         Cgb.dot(der_R_arbitrary_axis_times_v(Cbg.dot(hinge_axis),
                                                                              0,
                                                                              -for_delta * Cbg.dot(chord_vec)))
-                                    # Flap hinge moment
+                                    # Kdisp[i_vertex, i_control_surface] = \
+                                    #     der_R_arbitrary_axis_times_v(hinge_axis, 0, chord_vec)
+
+                                    # Flap velocity
+                                    Kvel[i_vertex, i_control_surface] = -algebra.skew(chord_vec).dot(
+                                        hinge_axis)
+
+                                    # Flap hinge moment - future work
                                     # Kmom[i_vertex, i_control_surface] += algebra.skew(chord_vec)
 
                                     # Testing progress
@@ -203,7 +235,8 @@ class LinControlSurfaceDeflector(object):
 
                                         # Testing out
                                         delta = 5*np.pi/180
-                                        zeta_newB = Cbg.dot(Kdisp[i_vertex, 1].dot(delta)) + zeta_nodeB
+                                        # zeta_newB = Cbg.dot(Kdisp[i_vertex, 1].dot(delta)) + zeta_nodeB
+                                        zeta_newB = Cbg.dot(Kdisp[i_vertex, -1].dot(delta)) + zeta_nodeB
                                         plt.scatter(zeta_newB[1], zeta_newB[2], color='r')
 
                                         old_vector = zeta_nodeB - zeta_hingeB
@@ -221,8 +254,9 @@ class LinControlSurfaceDeflector(object):
                             hinge_axis = None  # Reset for next control surface
 
         self.Kzeta_delta = Kdisp
+        self.Kdzeta_ddelta = Kvel
         # self.Kmom = Kmom
-        return Kdisp
+        return Kdisp, Kvel
 
 
 def der_Cx_by_v(delta, v):

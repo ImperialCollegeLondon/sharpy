@@ -11,32 +11,48 @@ import sharpy.utils.algebra as algebra
 
 @solver
 class BeamPlot(BaseSolver):
+    """
+    Plots beam to Paraview format
+    """
     solver_id = 'BeamPlot'
+    solver_classification = 'post-processor'
+
+    settings_types = dict()
+    settings_default = dict()
+    settings_description = dict()
+
+    settings_types['folder'] = 'str'
+    settings_default['folder'] = './output'
+    settings_description['folder'] = 'Output folder path'
+
+    settings_types['include_rbm'] = 'bool'
+    settings_default['include_rbm'] = True
+    settings_description['include_rbm'] = 'Include frame of reference rigid body motion'
+
+    settings_types['include_FoR'] = 'bool'
+    settings_default['include_FoR'] = False
+    settings_description['include_FoR'] = 'Include frame of reference variables'
+
+    settings_types['include_applied_forces'] = 'bool'
+    settings_default['include_applied_forces'] = True
+    settings_description['include_applied_forces'] = 'Write beam applied forces'
+
+    settings_types['include_applied_moments'] = 'bool'
+    settings_default['include_applied_moments'] = True
+    settings_description['include_applied_moments'] = 'Write beam applied moments'
+
+    settings_types['name_prefix'] = 'str'
+    settings_default['name_prefix'] = ''
+    settings_description['name_prefix'] = 'Name prefix for files'
+
+    settings_types['output_rbm'] = 'bool'
+    settings_default['output_rbm'] = True
+    settings_description['output_rbm'] = 'Write ``csv`` file with rigid body motion data'
+
+    settings_table = settings.SettingsTable()
+    __doc__ += settings_table.generate(settings_types, settings_default, settings_description)
 
     def __init__(self):
-        self.settings_types = dict()
-        self.settings_default = dict()
-
-        self.settings_types['folder'] = 'str'
-        self.settings_default['folder'] = './output'
-
-        self.settings_types['include_rbm'] = 'bool'
-        self.settings_default['include_rbm'] = True
-
-        self.settings_types['include_FoR'] = 'bool'
-        self.settings_default['include_FoR'] = False
-
-        self.settings_types['include_applied_forces'] = 'bool'
-        self.settings_default['include_applied_forces'] = True
-
-        self.settings_types['include_applied_moments'] = 'bool'
-        self.settings_default['include_applied_moments'] = True
-
-        self.settings_types['name_prefix'] = 'str'
-        self.settings_default['name_prefix'] = ''
-
-        self.settings_types['output_rbm'] = 'bool'
-        self.settings_default['output_rbm'] = True
 
         self.settings = None
         self.data = None

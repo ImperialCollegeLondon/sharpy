@@ -10,7 +10,7 @@ Modified: N. Goizueta, Sep 2019
 import sharpy.utils.sharpydir as sharpydir
 import unittest
 import os
-import matplotlib.pyplot as plt
+# import matplotlib.pyplot as plt
 import numpy as np
 import shutil
 import sharpy.sharpy_main
@@ -18,12 +18,16 @@ import sharpy.utils.algebra as algebra
 import sharpy.utils.analytical as an
 import sharpy.linear.src.linuvlm as linuvlm
 import cases.templates.flying_wings as flying_wings
+import sharpy.utils.sharpydir as sharpydir
+import sharpy.utils.cout_utils as cout
 
 
 class Test_infinite_span(unittest.TestCase):
     """
     Test infinite-span flat wing at zero incidence against analytical solutions
     """
+
+    test_dir = sharpydir.SharpyDir + '/tests/linear/uvlm/'
 
     def setUp_from_params(self, Nsurf, integr_ord, RemovePred, UseSparse, RollNodes):
         """
@@ -82,9 +86,10 @@ class Test_infinite_span(unittest.TestCase):
 
         # solution flow
         ws.set_default_config_dict()
-        ws.config['SHARPy']['flow'] = ['BeamLoader', 'AerogridLoader', 'StaticUvlm']
+        ws.config['SHARPy']['flow'] = ['BeamLoader', 'AerogridLoader', 'StaticUvlm', 'BeamPlot', 'AerogridPlot']
         ws.config['SHARPy']['log_folder'] = self.route_test_dir + '/output/' + self.case_code + '/'
         ws.config['SHARPy']['write_screen'] = 'off'
+        ws.config['SHARPy']['write_log'] = 'off'
         ws.config['LinearUvlm'] = {'dt': ws.dt,
                                    'integr_order': integr_ord,
                                    'density': ws.rho,
@@ -96,12 +101,12 @@ class Test_infinite_span(unittest.TestCase):
         ws.config.write()
 
         # solve at linearistion point
-        data0 = sharpy.sharpy_main.main(['...', route_main + self.case_main + '.solver.txt'])
+        data0 = sharpy.sharpy_main.main(['...', route_main + self.case_main + '.sharpy'])
         tsaero0 = data0.aero.timestep_info[0]
         tsaero0.rho = ws.config['LinearUvlm']['density']
 
         ### ---- normalisation parameters
-
+        self.start_writer()
         # verify chord
         c_ext = np.linalg.norm(tsaero0.zeta[0][:, 0, 0] - tsaero0.zeta[0][:, -1, 0])
         assert np.abs(ws.c_ref - c_ext) < 1e-8, 'Wrong reference chord'
@@ -174,11 +179,7 @@ class Test_infinite_span(unittest.TestCase):
 
         ### ----- linearisation
         uvlm = linuvlm.Dynamic(tsaero0,
-                               dt=ws.config['LinearUvlm']['dt'],
-                               integr_order=ws.config['LinearUvlm']['integr_order'],
-                               RemovePredictor=ws.config['LinearUvlm']['remove_predictor'],
-                               ScalingDict=ws.config['LinearUvlm']['ScalingDict'],
-                               UseSparse=ws.config['LinearUvlm']['use_sparse'])
+                               dynamic_settings=ws.config['LinearUvlm'])
         uvlm.assemble_ss()
         zeta_pole = np.array([0., 0., 0.])
         uvlm.get_total_forces_gain(zeta_pole=zeta_pole)
@@ -205,7 +206,6 @@ class Test_infinite_span(unittest.TestCase):
         uvec0 = np.array([Uinf0, 0, 0])
         uvec = np.dot(algebra.crv2rotation(dcrv), uvec0)
         duvec = uvec - uvec0
-
         dzeta = np.zeros((Nsurf, 3, M + 1, N // Nsurf + 1))
         dzeta_dot = np.zeros((Nsurf, 3, M + 1, N // Nsurf + 1))
         du_ext = np.zeros((Nsurf, 3, M + 1, N // Nsurf + 1))
@@ -283,12 +283,15 @@ class Test_infinite_span(unittest.TestCase):
         ws_pert.set_default_config_dict()
         ws_pert.config['SHARPy']['flow'] = ws.config['SHARPy']['flow']
         ws_pert.config['SHARPy']['write_screen'] = 'off'
+        ws_pert.config['SHARPy']['write_log'] = 'off'
         ws_pert.config['SHARPy']['log_folder'] = self.route_test_dir + '/output/' + self.case_code + '/'
         ws_pert.config.write()
 
         # solve at perturbed point
-        data_pert = sharpy.sharpy_main.main(['...', self.route_main + case_pert + '.solver.txt'])
+        data_pert = sharpy.sharpy_main.main(['...', self.route_main + case_pert + '.sharpy'])
         tsaero = data_pert.aero.timestep_info[0]
+
+        self.start_writer()
 
         # get total forces
         Ftot_ste_pert = np.zeros((3,))
@@ -393,51 +396,60 @@ class Test_infinite_span(unittest.TestCase):
                           'ytick.labelsize': fontlabel - 2,
                           'figure.autolayout': True,
                           'legend.numpoints': 1}
-            plt.rcParams.update(std_params)
+            # plt.rcParams.update(std_params)
 
-            fig = plt.figure('Lift time-history', (12, 6))
-            axvec = fig.subplots(1, 2)
-            for aa in [0, 1]:
-                comp = aa + 1
-                axvec[aa].set_title(axtitle[aa])
-                axvec[aa].plot(sv, Cfvec_an[:, comp] / Cl_inf, lw=4, ls='-',
-                               alpha=0.5, color='r', label=r'Wagner')
-                axvec[aa].plot(sv, Ftot[:, comp] / Cl_inf, lw=5, ls=':',
-                               alpha=0.7, color='k', label=r'Total')
-                cc = 0
-                for ss in range(Nsurf):
-                    for nn in Nplot:
-                        axvec[aa].plot(sv, Fsect[:, ss, comp, nn] / Cl_inf,
-                                       lw=4 - cc, ls='--', alpha=0.7, color=clist[cc],
-                                       label=r'Surf. %.1d, n=%.2d (%s)' % (ss, nn, labs[cc]))
-                        cc += 1
-                axvec[aa].grid(color='0.8', ls='-')
-                axvec[aa].grid(color='0.85', ls='-', which='minor')
-                axvec[aa].set_xlabel(r'normalised time $t=2 U_\infty \tilde{t}/c$')
-                axvec[aa].set_ylabel(axtitle[aa] + r'$/C_{l_\infty}$')
-                axvec[aa].set_xlim(0, sv[-1])
-                if Cfvec_inf[comp] > 0.:
-                    axvec[aa].set_ylim(0, 1.1)
-                else:
-                    axvec[aa].set_ylim(-1.1, 0)
-            plt.legend(ncol=1)
-            # plt.show()
-            fig.savefig(self.figfold + self.case_main + '.png')
-            fig.savefig(self.figfold + self.case_main + '.pdf')
-            plt.close()
+            # fig = plt.figure('Lift time-history', (12, 6))
+            # axvec = fig.subplots(1, 2)
+            # for aa in [0, 1]:
+                # comp = aa + 1
+                # axvec[aa].set_title(axtitle[aa])
+                # axvec[aa].plot(sv, Cfvec_an[:, comp] / Cl_inf, lw=4, ls='-',
+                               # alpha=0.5, color='r', label=r'Wagner')
+                # axvec[aa].plot(sv, Ftot[:, comp] / Cl_inf, lw=5, ls=':',
+                               # alpha=0.7, color='k', label=r'Total')
+                # cc = 0
+                # for ss in range(Nsurf):
+                    # for nn in Nplot:
+                        # axvec[aa].plot(sv, Fsect[:, ss, comp, nn] / Cl_inf,
+                                       # lw=4 - cc, ls='--', alpha=0.7, color=clist[cc],
+                                       # label=r'Surf. %.1d, n=%.2d (%s)' % (ss, nn, labs[cc]))
+                        # cc += 1
+                # axvec[aa].grid(color='0.8', ls='-')
+                # axvec[aa].grid(color='0.85', ls='-', which='minor')
+                # axvec[aa].set_xlabel(r'normalised time $t=2 U_\infty \tilde{t}/c$')
+                # axvec[aa].set_ylabel(axtitle[aa] + r'$/C_{l_\infty}$')
+                # axvec[aa].set_xlim(0, sv[-1])
+                # if Cfvec_inf[comp] > 0.:
+                    # axvec[aa].set_ylim(0, 1.1)
+                # else:
+                    # axvec[aa].set_ylim(-1.1, 0)
+            # plt.legend(ncol=1)
+            # # plt.show()
+            # fig.savefig(self.figfold + self.case_main + '.png')
+            # fig.savefig(self.figfold + self.case_main + '.pdf')
+            # plt.close()
 
         assert er_th_2perc < 2e-2 and er_th_1perc < 1e-2, \
             'Error of dynamic step response at time-steps 16 and 36 ' + \
             '(%.2e and %.2e) too large. Verify Linear UVLM.' % (er_th_2perc, er_th_1perc)
 
-    def tearDown(self):
+    def start_writer(self):
+        # Over write writer with print_file False to avoid I/O errors
+        global cout_wrap
+        cout_wrap = cout.Writer()
+        # cout_wrap.initialise(print_screen=False, print_file=False)
+        cout_wrap.cout_quiet()
+        sharpy.utils.cout_utils.cout_wrap = cout_wrap
 
+    def tearDown(self):
+        cout.finish_writer()
         try:
             shutil.rmtree(self.route_test_dir + '/res/')
             shutil.rmtree(self.route_test_dir + '/figs/')
             shutil.rmtree(self.route_test_dir + '/output/')
         except FileNotFoundError:
             pass
+
 
 if __name__ == '__main__':
     if os.path.exists('./figs/infinite_span'):

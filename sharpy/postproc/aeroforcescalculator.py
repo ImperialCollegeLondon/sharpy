@@ -1,9 +1,7 @@
-import ctypes as ct
 import numpy as np
 import os
 
 import sharpy.utils.cout_utils as cout
-from sharpy.utils.settings import str2bool
 from sharpy.utils.solver_interface import solver, BaseSolver
 import sharpy.utils.settings as settings
 import sharpy.utils.algebra as algebra
@@ -19,35 +17,54 @@ class ForcesContainer(object):
 
 @solver
 class AeroForcesCalculator(BaseSolver):
+    """AeroForcesCalculator
+
+    Calculates the total aerodynamic forces on the frame of reference ``A``.
+
+    """
     solver_id = 'AeroForcesCalculator'
+    solver_classification = 'post-processor'
+
+    settings_types = dict()
+    settings_default = dict()
+    settings_description = dict()
+
+    settings_types['folder'] = 'str'
+    settings_default['folder'] = './output'
+    settings_description['folder'] = 'Output folder location'
+
+    settings_types['write_text_file'] = 'bool'
+    settings_default['write_text_file'] = False
+    settings_description['write_text_file'] = 'Write ``txt`` file with results'
+
+    settings_types['text_file_name'] = 'str'
+    settings_default['text_file_name'] = ''
+    settings_description['text_file_name'] = 'Text file name'
+
+    settings_types['screen_output'] = 'bool'
+    settings_default['screen_output'] = True
+    settings_description['screen_output'] = 'Show results on screen'
+
+    settings_types['unsteady'] = 'bool'
+    settings_default['unsteady'] = False
+    settings_description['unsteady'] = 'Include unsteady contributions'
+
+    settings_default['coefficients'] = False
+    settings_types['coefficients'] = 'bool'
+    settings_description['coefficients'] = 'Calculate aerodynamic coefficients'
+
+    settings_types['q_ref'] = 'float'
+    settings_default['q_ref'] = 1
+    settings_description['q_ref'] = 'Reference dynamic pressure'
+
+    settings_types['S_ref'] = 'float'
+    settings_default['S_ref'] = 1
+    settings_description['S_ref'] = 'Reference area'
+
+    settings_table = settings.SettingsTable()
+    __doc__ += settings_table.generate(settings_types, settings_default, settings_description)
 
     def __init__(self):
-        self.settings_types = dict()
-        self.settings_default = dict()
-
-        self.settings_types['folder'] = 'str'
-        self.settings_default['folder'] = './output'
-
-        self.settings_types['write_text_file'] = 'bool'
-        self.settings_default['write_text_file'] = False
-
-        self.settings_types['text_file_name'] = 'str'
-        self.settings_default['text_file_name'] = ''
-
-        self.settings_types['screen_output'] = 'bool'
-        self.settings_default['screen_output'] = True
-
-        self.settings_types['unsteady'] = 'bool'
-        self.settings_default['unsteady'] = False
-
-        self.settings_default['coefficients'] = False
-        self.settings_types['coefficients'] = 'bool'
-
-        self.settings_types['q_ref'] = 'float'
-        self.settings_default['q_ref'] = 1
-
-        self.settings_types['S_ref'] = 'float'
-        self.settings_default['S_ref'] = 1
 
         self.settings = None
         self.data = None

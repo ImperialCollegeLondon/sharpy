@@ -4,7 +4,7 @@ import numpy as np
 import os
 import sharpy.utils.algebra as algebra
 
-case_name = 'simple_HALE_phugoid'
+case_name = 'simple_HALE'
 route = os.path.dirname(os.path.realpath(__file__)) + '/'
 
 # EXECUTION
@@ -18,10 +18,13 @@ flow = ['BeamLoader',
         'AerogridPlot',
         'BeamPlot',
         'DynamicCoupled',
+        # 'Modal',
+        # 'LinearAssember',
+        # 'AsymptoticStability',
         ]
 
 # if free_flight is False, the motion of the centre of the wing is prescribed.
-free_flight = False
+free_flight = True
 if not free_flight:
     case_name += '_prescribed'
     amplitude = 0*np.pi/180
@@ -35,15 +38,15 @@ u_inf = 10
 rho = 1.225
 
 # trim sigma = 1.5
-alpha = 4.2521231600122045*np.pi/180
+alpha = 4.31*np.pi/180
 beta = 0
 roll = 0
 gravity = 'on'
-cs_deflection = -2.219632690157531*np.pi/180
+cs_deflection = -2.08*np.pi/180
 rudder_static_deflection = 0.0
 rudder_step = 0.0*np.pi/180
-thrust = 5.036931047647685
-sigma = 100
+thrust = 6.16
+sigma = 1.5
 lambda_dihedral = 20*np.pi/180
 
 # gust settings
@@ -53,10 +56,11 @@ gust_offset = 0.5*u_inf
 
 
 # numerics
-n_step = 1
-relaxation_factor = 0.5
-tolerance = 1e-7
-fsi_tolerance = 1e-6
+n_step = 5
+structural_relaxation_factor = 0.6
+relaxation_factor = 0.35
+tolerance = 1e-6
+fsi_tolerance = 1e-4
 
 num_cores = 2
 
@@ -67,7 +71,7 @@ lambda_main = 0.25
 ea_main = 0.3
 
 ea = 1e7
-ga = 1e7
+ga = 1e5
 gj = 1e4
 eiy = 2e4
 eiz = 4e6
@@ -76,7 +80,7 @@ j_bar_main = 0.075
 
 length_fuselage = 10
 offset_fuselage = 0
-sigma_fuselage = 100
+sigma_fuselage = 10
 m_bar_fuselage = 0.2
 j_bar_fuselage = 0.08
 
@@ -104,7 +108,7 @@ chord_fin = 0.5
 # DISCRETISATION
 # spatial discretisation
 # chordiwse panels
-m = 8
+m = 4
 # spanwise elements
 n_elem_multiplier = 2
 n_elem_main = int(4*n_elem_multiplier)
@@ -114,18 +118,10 @@ n_elem_fuselage = int(2*n_elem_multiplier)
 n_surfaces = 5
 
 # temporal discretisation
-physical_time = 100
+physical_time = 30
 tstep_factor = 1.
 dt = 1.0/m/u_inf*tstep_factor
 n_tstep = round(physical_time/dt)
-
-
-# elevator deflection
-dynamic_elevator = 1
-delta_e = np.zeros(n_tstep) + cs_deflection
-delta_e[10:150] += 2 * np.pi / 180
-elev_file = route + '/' + case_name + '.input.txt'
-np.savetxt(elev_file, delta_e)
 
 # END OF INPUT-----------------------------------------------------------------
 
@@ -229,7 +225,7 @@ def clean_test_files():
     if os.path.isfile(aero_file_name):
         os.remove(aero_file_name)
 
-    solver_file_name = route + '/' + case_name + '.solver.txt'
+    solver_file_name = route + '/' + case_name + '.sharpy'
     if os.path.isfile(solver_file_name):
         os.remove(solver_file_name)
 
@@ -481,7 +477,7 @@ def generate_aero_file():
 
     # control surface type 0 = static
     # control surface type 1 = dynamic
-    control_surface_type[0] = dynamic_elevator
+    control_surface_type[0] = 0
     control_surface_deflection[0] = cs_deflection
     control_surface_chord[0] = m
     control_surface_hinge_coord[0] = -0.25 # nondimensional wrt elastic axis (+ towards the trailing edge)
@@ -659,7 +655,7 @@ def generate_naca_camber(M=0, P=0):
 
 
 def generate_solver_file():
-    file_name = route + '/' + case_name + '.solver.txt'
+    file_name = route + '/' + case_name + '.sharpy'
     settings = dict()
     settings['SHARPy'] = {'case': case_name,
                           'route': route,
@@ -676,12 +672,7 @@ def generate_solver_file():
     settings['AerogridLoader'] = {'unsteady': 'on',
                                   'aligned_grid': 'on',
                                   'mstar': int(20/tstep_factor),
-                                  'freestream_dir': ['1', '0', '0'],
-                                  'control_surface_deflection': ['DynamicControlSurface', ''],
-                                  'control_surface_deflection_generator':
-                                  [{'dt': dt,
-                                    'deflection_file': elev_file},
-                                   {}]}
+                                  'freestream_dir': ['1', '0', '0']}
 
     settings['NonLinearStatic'] = {'print_info': 'off',
                                    'max_iterations': 150,
@@ -703,7 +694,7 @@ def generate_solver_file():
                                                        'u_inf_direction': [1., 0, 0]},
                               'rho': rho}
 
-    settings['StaticCoupled'] = {'print_info': 'on',
+    settings['StaticCoupled'] = {'print_info': 'off',
                                  'structural_solver': 'NonLinearStatic',
                                  'structural_solver_settings': settings['NonLinearStatic'],
                                  'aero_solver': 'StaticUvlm',
@@ -711,7 +702,7 @@ def generate_solver_file():
                                  'max_iter': 100,
                                  'n_load_steps': n_step,
                                  'tolerance': fsi_tolerance,
-                                 'relaxation_factor': relaxation_factor}
+                                 'relaxation_factor': structural_relaxation_factor}
 
     settings['StaticTrim'] = {'solver': 'StaticCoupled',
                               'solver_settings': settings['StaticCoupled'],
@@ -812,12 +803,23 @@ def generate_solver_file():
                                 'u_inf': u_inf,
                                 'dt': dt}
 
+    settings['Modal'] = {'print_info': True,
+                     'use_undamped_modes': True,
+                     'NumLambda': 30,
+                     'rigid_body_modes': True,
+                     'write_modes_vtk': 'on',
+                     'print_matrices': 'on',
+                     'write_data': 'on',
+                     'continuous_eigenvalues': 'off',
+                     'dt': dt,
+                     'plot_eigenvalues': False}
+
     settings['LinearAssembler'] = {'linear_system': 'LinearAeroelastic',
                                     'linear_system_settings': {
                                         'beam_settings': {'modal_projection': False,
                                                           'inout_coords': 'nodes',
                                                           'discrete_time': True,
-                                                          'newmark_damp': 0.5,
+                                                          'newmark_damp': 0.05,
                                                           'discr_method': 'newmark',
                                                           'dt': dt,
                                                           'proj_modes': 'undamped',
@@ -828,17 +830,17 @@ def generate_solver_file():
                                                           'remove_dofs': []},
                                         'aero_settings': {'dt': dt,
                                                           'integr_order': 2,
-                                                          'density': rho * 1,
+                                                          'density': rho,
                                                           'remove_predictor': False,
                                                           'use_sparse': True,
-                                                          'rigid_body_motion': True,
+                                                          'rigid_body_motion': free_flight,
                                                           'use_euler': False,
                                                           'remove_inputs': ['u_gust']},
-                                        'rigid_body_motion': True}}
+                                        'rigid_body_motion': free_flight}}
 
     settings['AsymptoticStability'] = {'sys_id': 'LinearAeroelastic',
                                         'print_info': 'on',
-                                        'modes_to_plot': [],  # [0, 13, 15, 17, 19, 21, 23, 33],
+                                        'modes_to_plot': [],
                                         'display_root_locus': 'off',
                                         'frequency_cutoff': 0,
                                         'export_eigenvalues': 'off',

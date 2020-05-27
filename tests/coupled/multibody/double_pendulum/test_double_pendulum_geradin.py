@@ -113,9 +113,6 @@ geradin_FoR1 = np.array([[0.00756934, 0.0266485],
                         [4.98432, 0.797635]])
 
 
-folder = os.path.abspath(os.path.dirname(os.path.realpath(__file__)))
-
-
 class TestDoublePendulum(unittest.TestCase):
     """
     Validation of a double pendulum with a mass at each tip position
@@ -125,8 +122,7 @@ class TestDoublePendulum(unittest.TestCase):
 
     def setUp(self):
         import sharpy.utils.generate_cases as gc
-
-        deg2rad = np.pi/180.
+        from sharpy.utils.constants import deg2rad
 
         # Structural properties
         mass_per_unit_length = 1.
@@ -222,17 +218,23 @@ class TestDoublePendulum(unittest.TestCase):
         name = 'double_pendulum_geradin'
         SimInfo.solvers['SHARPy']['case'] = 'double_pendulum_geradin'
         SimInfo.solvers['SHARPy']['write_screen'] = 'off'
-        SimInfo.solvers['SHARPy']['route'] = folder + '/'
+        SimInfo.solvers['SHARPy']['route'] = os.path.abspath(os.path.dirname(os.path.realpath(__file__))) + '/'
+        SimInfo.solvers['SHARPy']['log_folder'] = os.path.abspath(os.path.dirname(os.path.realpath(__file__))) + '/'
         SimInfo.set_variable_all_dicts('dt', dt)
         SimInfo.define_num_steps(numtimesteps)
         SimInfo.set_variable_all_dicts('rho', 0.0)
         SimInfo.set_variable_all_dicts('velocity_field_input', SimInfo.solvers['SteadyVelocityField'])
-        SimInfo.set_variable_all_dicts('folder', folder + '/output/')
+        SimInfo.set_variable_all_dicts('output', os.path.abspath(os.path.dirname(os.path.realpath(__file__))) + '/output/')
 
         SimInfo.solvers['BeamLoader']['unsteady'] = 'on'
 
         SimInfo.solvers['AerogridLoader']['unsteady'] = 'on'
         SimInfo.solvers['AerogridLoader']['mstar'] = 2
+        SimInfo.solvers['AerogridLoader']['wake_shape_generator'] = 'StraightWake'
+        SimInfo.solvers['AerogridLoader']['wake_shape_generator_input'] = {'u_inf':1.,
+                                                                           'u_inf_direction': np.array([0., 1., 0.]),
+                                                                           'dt': dt}
+
 
         SimInfo.solvers['WriteVariablesTime']['FoR_number'] = np.array([0, 1], dtype = int)
         SimInfo.solvers['WriteVariablesTime']['FoR_variables'] = ['mb_quat']
@@ -253,6 +255,9 @@ class TestDoublePendulum(unittest.TestCase):
                                                                         'BeamPlot': SimInfo.solvers['BeamPlot'],
                                                                         'AerogridPlot': SimInfo.solvers['AerogridPlot']}
 
+        SimInfo.solvers['DynamicCoupled']['postprocessors_settings']['WriteVariablesTime']['folder'] = os.path.abspath(os.path.dirname(os.path.realpath(__file__))) + '/output/'
+        SimInfo.solvers['DynamicCoupled']['postprocessors_settings']['BeamPlot']['folder'] = os.path.abspath(os.path.dirname(os.path.realpath(__file__))) + '/output/'
+        SimInfo.solvers['DynamicCoupled']['postprocessors_settings']['AerogridPlot']['folder'] = os.path.abspath(os.path.dirname(os.path.realpath(__file__))) + '/output/'
         SimInfo.with_forced_vel = False
         SimInfo.with_dynamic_forces = False
 
@@ -303,23 +308,25 @@ class TestDoublePendulum(unittest.TestCase):
     def test_doublependulum(self):
         import sharpy.sharpy_main
 
-        solver_path = folder + '/double_pendulum_geradin.solver.txt'
+        solver_path = os.path.abspath(os.path.dirname(os.path.realpath(__file__)) + '/double_pendulum_geradin.sharpy')
         sharpy.sharpy_main.main(['', solver_path])
 
         # read output and compare
-        output_path = folder + '/output/double_pendulum_geradin/WriteVariablesTime/'
-        pos_tip_data = np.atleast_2d(np.genfromtxt(output_path + "struct_pos_node" + str(nnodes1*2-1) + ".dat", delimiter=' '))
+        output_path = os.path.abspath(os.path.dirname(os.path.realpath(__file__))) + '/output/double_pendulum_geradin/WriteVariablesTime/'
+        pos_tip_data = np.loadtxt(("%sstruct_pos_node%d.dat" % (output_path, nnodes1*2-1)), )
         self.assertAlmostEqual(pos_tip_data[-1, 1], 1.051004, 4)
         self.assertAlmostEqual(pos_tip_data[-1, 2], 0.000000, 4)
         self.assertAlmostEqual(pos_tip_data[-1, 3], -0.9986984, 4)
 
-    def tearDowns(self):
+    def tearDown(self):
+        solver_path = os.path.abspath(os.path.dirname(os.path.realpath(__file__)))
+        solver_path += '/'
         files_to_delete = [name + '.aero.h5',
                            name + '.dyn.h5',
                            name + '.fem.h5',
                            name + '.mb.h5',
-                           name + '.solver.txt']
+                           name + '.sharpy']
         for f in files_to_delete:
-            os.remove(folder +'/' + f)
+            os.remove(solver_path + f)
 
-        shutil.rmtree(folder + '/output/')
+        shutil.rmtree(solver_path + 'output/')

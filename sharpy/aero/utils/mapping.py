@@ -1,3 +1,4 @@
+"""Force Mapping Utilities"""
 import numpy as np
 import sharpy.utils.algebra as algebra
 
@@ -9,7 +10,40 @@ def aero2struct_force_mapping(aero_forces,
                               psi_def,
                               master,
                               conn,
-                              cag=np.eye(3)):
+                              cag=np.eye(3),
+                              aero_dict=None):
+    r"""
+    Maps the aerodynamic forces at the lattice to the structural nodes
+
+    The aerodynamic forces from the UVLM are always in the inertial ``G`` frame of reference and have to be transformed
+    to the body or local ``B`` frame of reference in which the structural forces are defined.
+
+    Since the structural nodes and aerodynamic panels are coincident in a spanwise direction, the aerodynamic forces
+    that correspond to a structural node are the summation of the ``M+1`` forces defined at the lattice at that
+    spanwise location.
+
+    .. math::
+        \mathbf{f}_{struct}^B &= \sum\limits_{i=0}^{m+1}C^{BG}\mathbf{f}_{i,aero}^G \\
+        \mathbf{m}_{struct}^B &= \sum\limits_{i=0}^{m+1}C^{BG}(\mathbf{m}_{i,aero}^G +
+        \tilde{\boldsymbol{\zeta}}^G\mathbf{f}_{i, aero}^G)
+
+    where :math:`\tilde{\boldsymbol{\zeta}}^G` is the skew-symmetric matrix of the vector between the lattice
+    grid vertex and the structural node.
+
+    Args:
+        aero_forces (list): Aerodynamic forces from the UVLM in inertial frame of reference
+        struct2aero_mapping (dict): Structural to aerodynamic node mapping
+        zeta (list): Aerodynamic grid coordinates
+        pos_def (np.ndarray): Vector of structural node displacements
+        psi_def (np.ndarray): Vector of structural node rotations (CRVs)
+        master: Unused
+        conn (np.ndarray): Connectivities matrix
+        cag (np.ndarray): Transformation matrix between inertial and body-attached reference ``A``
+        aero_dict (dict): Dictionary containing the grid's information.
+
+    Returns:
+        np.ndarray: structural forces in an ``n_node x 6`` vector
+    """
 
     n_node, _ = pos_def.shape
     n_elem, _, _ = psi_def.shape
@@ -30,8 +64,6 @@ def aero2struct_force_mapping(aero_forces,
                 i_n = mapping['i_n']
                 _, n_m, _ = aero_forces[i_surf].shape
 
-                # i_master_elem, master_elem_local_node = master[i_global_node, :]
-
                 crv = psi_def[i_elem, i_local_node, :]
                 cab = algebra.crv2rotation(crv)
                 cbg = np.dot(cab.T, cag)
@@ -40,23 +72,6 @@ def aero2struct_force_mapping(aero_forces,
                     chi_g = zeta[i_surf][:, i_m, i_n] - np.dot(cag.T, pos_def[i_global_node, :])
                     struct_forces[i_global_node, 0:3] += np.dot(cbg, aero_forces[i_surf][0:3, i_m, i_n])
                     struct_forces[i_global_node, 3:6] += np.dot(cbg, aero_forces[i_surf][3:6, i_m, i_n])
-                    struct_forces[i_global_node, 3:6] += np.dot(cbg, np.cross(chi_g, aero_forces[i_surf][0:3, i_m, i_n]))
+                    struct_forces[i_global_node, 3:6] += np.dot(cbg, algebra.cross3(chi_g, aero_forces[i_surf][0:3, i_m, i_n]))
 
-    # for i_global_node in range(n_node):
-        # for mapping in struct2aero_mapping[i_global_node]:
-            # i_surf = mapping['i_surf']
-            # i_n = mapping['i_n']
-            # _, n_m, _ = aero_forces[i_surf].shape
-
-            # i_master_elem, master_elem_local_node = master[i_global_node, :]
-
-            # crv = psi_def[i_master_elem, master_elem_local_node, :]
-            # cab = algebra.crv2rotation(crv)
-            # cbg = np.dot(cab.T, cag)
-
-            # for i_m in range(n_m):
-                # chi_g = zeta[i_surf][:, i_m, i_n] - np.dot(cag.T, pos_def[i_global_node, :])
-                # struct_forces[i_global_node, 0:3] += np.dot(cbg, aero_forces[i_surf][0:3, i_m, i_n])
-                # struct_forces[i_global_node, 3:6] += np.dot(cbg, aero_forces[i_surf][3:6, i_m, i_n])
-                # struct_forces[i_global_node, 3:6] += np.dot(cbg, np.cross(chi_g, aero_forces[i_surf][0:3, i_m, i_n]))
     return struct_forces

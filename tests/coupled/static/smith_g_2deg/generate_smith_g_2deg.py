@@ -2,6 +2,7 @@ import h5py as h5
 import numpy as np
 import configparser
 import os
+np.set_printoptions(precision=16)
 
 import sharpy.utils.algebra as algebra
 
@@ -50,7 +51,7 @@ def clean_test_files():
     if os.path.isfile(aero_file_name):
         os.remove(aero_file_name)
 
-    solver_file_name = route + '/' + case_name + '.solver.txt'
+    solver_file_name = route + '/' + case_name + '.sharpy'
     if os.path.isfile(solver_file_name):
         os.remove(solver_file_name)
 
@@ -90,7 +91,7 @@ def generate_fem_file():
     num_mass = 1
     m_base = 0.75
     j_base = 0.1
-    base_mass = np.diag([m_base, m_base, m_base, j_base, j_base, j_base])
+    base_mass = np.diag([m_base, m_base, m_base, j_base, 0.5*j_base, 0.5*j_base])
     mass = np.zeros((num_mass, 6, 6))
     mass[0, :, :] = base_mass
     elem_mass = np.zeros((num_elem,), dtype=int)
@@ -272,7 +273,7 @@ def generate_naca_camber(M=0, P=0):
 
 
 def generate_solver_file(horseshoe=False):
-    file_name = route + '/' + case_name + '.solver.txt'
+    file_name = route + '/' + case_name + '.sharpy'
     # config = configparser.ConfigParser()
     import configobj
     config = configobj.ConfigObj()
@@ -329,12 +330,20 @@ def generate_solver_file(horseshoe=False):
         config['AerogridLoader'] = {'unsteady': 'off',
                                     'aligned_grid': 'on',
                                     'mstar': 1,
-                                    'freestream_dir': ['1', '0', '0']}
+                                    'freestream_dir': ['1', '0', '0'],
+                                    'wake_shape_generator': 'StraightWake',                                                                                                 
+                                    'wake_shape_generator_input': {'u_inf': u_inf,                                                                                           
+                                                                   'u_inf_direction': np.array([1., 0., 0.]),                                                              
+                                                                   'dt': main_chord/m_main/u_inf}}       
     else:
         config['AerogridLoader'] = {'unsteady': 'off',
                                     'aligned_grid': 'on',
                                     'mstar': 20,
-                                    'freestream_dir': ['1', '0', '0']}
+                                    'freestream_dir': ['1', '0', '0'],
+                                    'wake_shape_generator': 'StraightWake',                                                                                                 
+                                    'wake_shape_generator_input': {'u_inf': u_inf,                                                                                           
+                                                                   'u_inf_direction': np.array([1., 0., 0.]),                                                              
+                                                                   'dt': main_chord/m_main/u_inf}}
     config['AerogridPlot'] = {'folder': route + '/output/',
                               'include_rbm': 'off',
                               'include_applied_forces': 'on',

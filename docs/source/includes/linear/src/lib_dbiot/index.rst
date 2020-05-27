@@ -1,17 +1,18 @@
-Calculate derivatives of induced velocity.
-++++++++++++++++++++++++++++++++++++++++++
+Induced Velocity Derivatives
+++++++++++++++++++++++++++++
+
 
 Calculate derivatives of induced velocity.
 
 Methods:
 
 - eval_seg_exp and eval_seg_exp_loop: profide ders in format 
-	[Q_{x,y,z},ZetaPoint_{x,y,z}]
+    [Q_{x,y,z},ZetaPoint_{x,y,z}]
   and use fully-expanded analytical formula.
 - eval_panel_exp: iterates through whole panel
 
 - eval_seg_comp and eval_seg_comp_loop: profide ders in format 
-	[Q_{x,y,z},ZetaPoint_{x,y,z}]
+    [Q_{x,y,z},ZetaPoint_{x,y,z}]
   and use compact analytical formula.
 
 

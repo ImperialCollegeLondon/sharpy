@@ -8,196 +8,63 @@ import sharpy.utils.solver_interface as solver_interface
 import sharpy.utils.cout_utils as cout
 
 
-# @solver
-# class PrescribedUvlm(BaseSolver):
-#     solver_id = 'PrescribedUvlm'
-#
-#     def __init__(self):
-#         # settings list
-#         self.settings_types = dict()
-#         self.settings_default = dict()
-#
-#         self.settings_types['print_info'] = 'bool'
-#         self.settings_default['print_info'] = True
-#
-#         self.settings_types['num_cores'] = 'int'
-#         self.settings_default['num_cores'] = 0
-#
-#         self.settings_types['n_time_steps'] = 'int'
-#         self.settings_default['n_time_steps'] = 100
-#
-#         self.settings_types['convection_scheme'] = 'int'
-#         self.settings_default['convection_scheme'] = 3
-#
-#         self.settings_types['steady_n_rollup'] = 'int'
-#         self.settings_default['steady_n_rollup'] = 0
-#
-#         self.settings_types['steady_rollup_tolerance'] = 'float'
-#         self.settings_default['steady_rollup_tolerance'] = 1e-4
-#
-#         self.settings_types['steady_rollup_aic_refresh'] = 'int'
-#         self.settings_default['steady_rollup_aic_refresh'] = 1
-#
-#         self.settings_types['dt'] = 'float'
-#         self.settings_default['dt'] = 0.1
-#
-#         self.settings_types['iterative_solver'] = 'bool'
-#         self.settings_default['iterative_solver'] = False
-#
-#         self.settings_types['iterative_tol'] = 'float'
-#         self.settings_default['iterative_tol'] = 1e-4
-#
-#         self.settings_types['iterative_precond'] = 'bool'
-#         self.settings_default['iterative_precond'] = False
-#
-#         self.settings_types['velocity_field_generator'] = 'str'
-#         self.settings_default['velocity_field_generator'] = 'SteadyVelocityField'
-#
-#         self.settings_types['velocity_field_input'] = 'dict'
-#         self.settings_default['velocity_field_input'] = {}
-#
-#         self.settings_types['rho'] = 'float'
-#         self.settings_default['rho'] = 1.225
-#
-#         self.data = None
-#         self.settings = None
-#         self.velocity_generator = None
-#
-#     def initialise(self, data, custom_settings=None):
-#         self.data = data
-#         if custom_settings is None:
-#             self.settings = data.settings[self.solver_id]
-#         else:
-#             self.settings = custom_settings
-#         settings.to_custom_types(self.settings, self.settings_types, self.settings_default)
-#
-#         self.data.structure.add_unsteady_information(self.data.structure.dyn_dict, self.settings['n_time_steps'].value)
-#
-#         # generates and rotates the aero grid and rotates the structure
-#         self.update_step()
-#
-#         # init velocity generator
-#         velocity_generator_type = gen_interface.generator_from_string(
-#             self.settings['velocity_field_generator'])
-#         self.velocity_generator = velocity_generator_type()
-#         self.velocity_generator.initialise(self.settings['velocity_field_input'])
-#
-#         self.data.ts = 0
-#         # generate uext
-#         self.velocity_generator.generate({'zeta': self.data.aero.timestep_info[self.data.ts].zeta,
-#                                           'override': True,
-#                                           'ts': self.data.ts,
-#                                           't': 0.0},
-#                                          self.data.aero.timestep_info[self.data.ts].u_ext)
-#
-#         uvlmlib.uvlm_init(self.data.aero.timestep_info[self.data.ts], self.settings)
-#
-#     def run(self):
-#         for self.data.ts in range(1, self.settings['n_time_steps'].value + 1):
-#             cout.cout_wrap('i_iter: ' + str(self.data.ts))
-#             self.next_step()
-#             t = self.data.ts*self.settings['dt'].value
-#             # generate uext
-#             self.velocity_generator.generate({'zeta': self.data.aero.timestep_info[self.data.ts].zeta,
-#                                               'override': True,
-#                                               'ts': self.data.ts,
-#                                               't': t},
-#                                              self.data.aero.timestep_info[self.data.ts].u_ext)
-#             if self.settings['convection_scheme'].value > 1:
-#                 # generate uext_star
-#                 self.velocity_generator.generate({'zeta': self.data.aero.timestep_info[self.data.ts].zeta_star,
-#                                                   'override': True,
-#                                                   'ts': self.data.ts,
-#                                                   't': t},
-#                                                  self.data.aero.timestep_info[self.data.ts].u_ext_star)
-#
-#             self.data.structure.timestep_info[self.data.ts].for_vel = self.data.structure.dynamic_input[self.data.ts - 1]['for_vel'].astype(ct.c_double)
-#
-#             uvlmlib.uvlm_solver(self.data.ts,
-#                                 self.data.aero.timestep_info[self.data.ts],
-#                                 self.data.aero.timestep_info[self.data.ts - 1],
-#                                 self.data.structure.timestep_info[self.data.ts],
-#                                 self.settings)
-#
-#             self.data.structure.timestep_info[self.data.ts].for_pos[0:3] = (
-#                 self.data.structure.timestep_info[self.data.ts - 1].for_pos[0:3] +
-#                 np.dot(self.data.structure.timestep_info[self.data.ts].cga().transpose(),
-#                        self.settings['dt'].value*self.data.structure.timestep_info[self.data.ts - 1].for_vel[0:3]))
-#             self.data.structure.timestep_info[self.data.ts].for_pos[3:6] = (
-#                 self.data.structure.timestep_info[self.data.ts - 1].for_pos[3:6] +
-#                 np.dot(self.data.structure.timestep_info[self.data.ts].cga().transpose(),
-#                        self.settings['dt'].value*self.data.structure.timestep_info[self.data.ts - 1].for_vel[3:6]))
-#
-#         return self.data
-#
-#     def next_step(self):
-#         """ Updates de aerogrid based on the info of the step, and increases
-#         the self.ts counter """
-#         self.data.structure.next_step()
-#         self.data.aero.add_timestep()
-#         self.update_step()
-#
-#     def update_step(self, integrate_orientation=True):
-#         self.data.aero.generate_zeta(self.data.structure,
-#                                      self.data.aero.aero_settings,
-#                                      self.data.ts)
-#
-#         if integrate_orientation:
-#             if self.data.ts > 0:
-#                 # euler = self.data.structure.dynamic_input[self.data.ts - 1]['for_pos'][3:6]
-#                 # euler_rot = algebra.euler2rot(euler)  # this is Cag
-#                 # quat = algebra.mat2quat(euler_rot.T)
-#                 # TODO need to update orientation
-#                 # quat = self.data.structure.timestep_info[self.data.ts - 1].quat
-#                 quat = algebra.rotate_quaternion(self.data.structure.timestep_info[self.data.ts].quat,
-#                                                  self.data.structure.timestep_info[self.data.ts].for_vel[3:6]*
-#                                                  self.settings['dt'])
-#             else:
-#                 quat = self.data.structure.ini_info.quat.copy()
-#         else:
-#             quat = self.data.structure.timestep_info[self.data.ts].quat
-#
-#         quat = algebra.unit_vector(quat)
-#         self.data.structure.update_orientation(quat, self.data.ts)  # quat corresponding to Cga
-#         self.data.aero.update_orientation(self.data.structure.timestep_info[self.data.ts].quat, self.data.ts)       # quat corresponding to Cga
-#
-
-
 @solver
 class PrescribedUvlm(BaseSolver):
+    """
+    This class runs a prescribed rigid body motion simulation of a rigid
+    aerodynamic body.
+    """
     solver_id = 'PrescribedUvlm'
+    solver_classification = 'Aero'
+
+    settings_types = dict()
+    settings_default = dict()
+    settings_description = dict()
+
+    settings_types['print_info'] = 'bool'
+    settings_default['print_info'] = True
+    settings_description['print_info'] = 'Write status to screen'
+
+    settings_types['structural_solver'] = 'str'
+    settings_default['structural_solver'] = None
+    settings_description['structural_solver'] = 'Structural solver to use in the coupled simulation'
+
+    settings_types['structural_solver_settings'] = 'dict'
+    settings_default['structural_solver_settings'] = None
+    settings_description['structural_solver_settings'] = 'Dictionary of settings for the structural solver'
+
+    settings_types['aero_solver'] = 'str'
+    settings_default['aero_solver'] = None
+    settings_description['aero_solver'] = 'Aerodynamic solver to use in the coupled simulation'
+
+    settings_types['aero_solver_settings'] = 'dict'
+    settings_default['aero_solver_settings'] = None
+    settings_description['aero_solver_settings'] = 'Dictionary of settings for the aerodynamic solver'
+
+    settings_types['n_time_steps'] = 'int'
+    settings_default['n_time_steps'] = None
+    settings_description['n_time_steps'] = 'Number of time steps for the simulation'
+
+    settings_types['dt'] = 'float'
+    settings_default['dt'] = None
+    settings_description['dt'] = 'Time step'
+
+    settings_types['postprocessors'] = 'list(str)'
+    settings_default['postprocessors'] = list()
+    settings_description['postprocessors'] = 'List of the postprocessors to run at the end of every time step'
+
+    settings_types['postprocessors_settings'] = 'dict'
+    settings_default['postprocessors_settings'] = dict()
+    settings_description['postprocessors_settings'] = 'Dictionary with the applicable settings for every ``postprocessor``. Every ``postprocessor`` needs its entry, even if empty'
+
+    settings_types['cfl1'] = 'bool'
+    settings_default['cfl1'] = True
+    settings_description['cfl1'] = 'If it is ``True``, it assumes that the discretisation complies with CFL=1'
+
+    settings_table = settings.SettingsTable()
+    __doc__ += settings_table.generate(settings_types, settings_default, settings_description)
 
     def __init__(self):
-        self.settings_types = dict()
-        self.settings_default = dict()
-
-        self.settings_types['print_info'] = 'bool'
-        self.settings_default['print_info'] = True
-
-        self.settings_types['structural_solver'] = 'str'
-        self.settings_default['structural_solver'] = None
-
-        self.settings_types['structural_solver_settings'] = 'dict'
-        self.settings_default['structural_solver_settings'] = None
-
-        self.settings_types['aero_solver'] = 'str'
-        self.settings_default['aero_solver'] = None
-
-        self.settings_types['aero_solver_settings'] = 'dict'
-        self.settings_default['aero_solver_settings'] = None
-
-        self.settings_types['n_time_steps'] = 'int'
-        self.settings_default['n_time_steps'] = 100
-
-        self.settings_types['dt'] = 'float'
-        self.settings_default['dt'] = 0.05
-
-        self.settings_types['postprocessors'] = 'list(str)'
-        self.settings_default['postprocessors'] = list()
-
-        self.settings_types['postprocessors_settings'] = 'dict'
-        self.settings_default['postprocessors_settings'] = dict()
-
         self.data = None
         self.settings = None
         self.structural_solver = None
@@ -362,4 +229,3 @@ class PrescribedUvlm(BaseSolver):
 #
 #
 #
-

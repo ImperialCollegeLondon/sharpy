@@ -8,42 +8,67 @@ import sharpy.utils.solver_interface as solver_interface
 from sharpy.utils.solver_interface import solver, BaseSolver
 import sharpy.utils.settings as settings
 import sharpy.utils.algebra as algebra
-
+import sharpy.utils.correct_forces as cf
 
 @solver
 class StaticCoupled(BaseSolver):
+    """
+    This class is the main FSI driver for static simulations.
+    It requires a ``structural_solver`` and a ``aero_solver`` to be defined.
+    """
     solver_id = 'StaticCoupled'
+    solver_classification = 'Coupled'
+
+    settings_types = dict()
+    settings_default = dict()
+    settings_description = dict()
+    settings_options = dict()
+
+    settings_types['print_info'] = 'bool'
+    settings_default['print_info'] = True
+    settings_description['print_info'] = 'Write status to screen'
+
+    settings_types['structural_solver'] = 'str'
+    settings_default['structural_solver'] = None
+    settings_description['structural_solver'] = 'Structural solver to use in the coupled simulation'
+
+    settings_types['structural_solver_settings'] = 'dict'
+    settings_default['structural_solver_settings'] = None
+    settings_description['structural_solver_settings'] = 'Dictionary of settings for the structural solver'
+
+    settings_types['aero_solver'] = 'str'
+    settings_default['aero_solver'] = None
+    settings_description['aero_solver'] = 'Aerodynamic solver to use in the coupled simulation'
+
+    settings_types['aero_solver_settings'] = 'dict'
+    settings_default['aero_solver_settings'] = None
+    settings_description['aero_solver_settings'] = 'Dictionary of settings for the aerodynamic solver'
+
+    settings_types['max_iter'] = 'int'
+    settings_default['max_iter'] = 100
+    settings_description['max_iter'] = 'Max iterations in the FSI loop'
+
+    settings_types['n_load_steps'] = 'int'
+    settings_default['n_load_steps'] = 0
+    settings_description['n_load_steps'] = 'Length of ramp for forces and gravity during FSI iteration'
+
+    settings_types['tolerance'] = 'float'
+    settings_default['tolerance'] = 1e-5
+    settings_description['tolerance'] = 'Convergence threshold for the FSI loop'
+
+    settings_types['relaxation_factor'] = 'float'
+    settings_default['relaxation_factor'] = 0.
+    settings_description['relaxation_factor'] = 'Relaxation parameter in the FSI iteration. 0 is no relaxation and -> 1 is very relaxed'
+
+    settings_types['correct_forces_method'] = 'str'
+    settings_default['correct_forces_method'] = '' # 'efficiency'
+    settings_description['correct_forces_method'] = 'Function used to correct aerodynamic forces. Check :py:mod:`sharpy.utils.correct_forces`'
+    settings_options['correct_forces_method'] = ['efficiency', 'polars']
+
+    settings_table = settings.SettingsTable()
+    __doc__ += settings_table.generate(settings_types, settings_default, settings_description, settings_options)
 
     def __init__(self):
-        self.settings_types = dict()
-        self.settings_default = dict()
-
-        self.settings_types['print_info'] = 'bool'
-        self.settings_default['print_info'] = True
-
-        self.settings_types['structural_solver'] = 'str'
-        self.settings_default['structural_solver'] = None
-
-        self.settings_types['structural_solver_settings'] = 'dict'
-        self.settings_default['structural_solver_settings'] = None
-
-        self.settings_types['aero_solver'] = 'str'
-        self.settings_default['aero_solver'] = None
-
-        self.settings_types['aero_solver_settings'] = 'dict'
-        self.settings_default['aero_solver_settings'] = None
-
-        self.settings_types['max_iter'] = 'int'
-        self.settings_default['max_iter'] = 100
-
-        self.settings_types['n_load_steps'] = 'int'
-        self.settings_default['n_load_steps'] = 0
-
-        self.settings_types['tolerance'] = 'float'
-        self.settings_default['tolerance'] = 1e-5
-
-        self.settings_types['relaxation_factor'] = 'float'
-        self.settings_default['relaxation_factor'] = 0.
 
         self.data = None
         self.settings = None
@@ -54,13 +79,19 @@ class StaticCoupled(BaseSolver):
 
         self.residual_table = None
 
+        self.correct_forces = False
+        self.correct_forces_function = None
+
     def initialise(self, data, input_dict=None):
         self.data = data
         if input_dict is None:
             self.settings = data.settings[self.solver_id]
         else:
             self.settings = input_dict
-        settings.to_custom_types(self.settings, self.settings_types, self.settings_default)
+        settings.to_custom_types(self.settings,
+                                 self.settings_types,
+                                 self.settings_default,
+                                 options=self.settings_options)
 
         self.print_info = self.settings['print_info']
 
@@ -76,6 +107,11 @@ class StaticCoupled(BaseSolver):
             self.residual_table.field_length[1] = 3
             self.residual_table.field_length[2] = 10
             self.residual_table.print_header(['iter', 'step', 'log10(res)', 'Fx', 'Fy', 'Fz', 'Mx', 'My', 'Mz'])
+
+        # Define the function to correct aerodynamic forces
+        if self.settings['correct_forces_method'] is not '':
+            self.correct_forces = True
+            self.correct_forces_function = cf.dict_of_corrections[self.settings['correct_forces_method']]
 
     def increase_ts(self):
         self.data.ts += 1
@@ -123,7 +159,14 @@ class StaticCoupled(BaseSolver):
                     self.data.structure.timestep_info[self.data.ts].psi,
                     self.data.structure.node_master_elem,
                     self.data.structure.connectivities,
-                    self.data.structure.timestep_info[self.data.ts].cag())
+                    self.data.structure.timestep_info[self.data.ts].cag(),
+                    self.data.aero.aero_dict)
+
+                if self.correct_forces:
+                    struct_forces = self.correct_forces_function(self.data,
+                                        self.data.aero.timestep_info[self.data.ts],
+                                        self.data.structure.timestep_info[self.data.ts],
+                                        struct_forces)
 
                 if not self.settings['relaxation_factor'].value == 0.:
                     if i_iter == 0:

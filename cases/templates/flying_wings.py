@@ -51,7 +51,7 @@ class FlyingWing():
         RollNodes=False : If true, the wing nodes are rolled insted of the FoR A
 
     Usage: 
-        ws=flying_wings.FltingWing(*args)
+        ws=flying_wings.FlyingWing(*args)
         ws.clean_test_files()
         ws.update_derived_params()
         ws.generate_fem_file()
@@ -136,7 +136,7 @@ class FlyingWing():
         self.relaxation_factor = 0.2
         self.gust_intensity = 0.01
         self.gust_length = 5
-        self.tolerance = 1e-12
+        self.tolerance = 1e-6
 
         n_lumped_mass = 1
         self.lumped_mass = np.zeros((n_lumped_mass))
@@ -377,7 +377,7 @@ class FlyingWing():
         str_u_inf_direction = [str(self.u_inf_direction[cc]) for cc in range(3)]
 
         config = configobj.ConfigObj()
-        config.filename = self.route + '/' + self.case_name + '.solver.txt'
+        config.filename = self.route + '/' + self.case_name + '.sharpy'
         settings = dict()
 
         config['SHARPy'] = {
@@ -402,7 +402,7 @@ class FlyingWing():
         }
         config['NonLinearStatic'] = {'print_info': 'off',
                                      'max_iterations': 150,
-                                     'num_load_steps': 4,
+                                     'num_load_steps': 0,
                                      'delta_curved': 1e-5,
                                      'min_delta': 1e-5,
                                      'gravity_on': self.gravity_on,
@@ -446,11 +446,11 @@ class FlyingWing():
             'structural_solver': 'NonLinearStatic',
             'structural_solver_settings': {'print_info': 'off',
                                            'max_iterations': 150,
-                                           'num_load_steps': 4,
+                                           'num_load_steps': 0,
                                            'delta_curved': 1e-1,
                                            'min_delta': 1e-10,
                                            'gravity_on': self.gravity_on,
-                                           'gravity': 9.754}}
+                                           'gravity': 9.81}}
 
         config['LinearUvlm'] = {'dt': self.dt,
                                 'integr_order': 2,
@@ -470,7 +470,7 @@ class FlyingWing():
 
         settings['NonLinearDynamicPrescribedStep'] = {'print_info': 'off',
                                                       'max_iterations': 950,
-                                                      'delta_curved': 1e-6,
+                                                      'delta_curved': 1e-1,
                                                       'min_delta': self.tolerance*1e3,
                                                       'newmark_damp': 5e-3,
                                                       'gravity_on': self.gravity_on,
@@ -578,7 +578,7 @@ class FlyingWing():
                                    'output_psi': 'on',
                                    'screen_output': 'on'}
 
-        config['SaveData'] = {'folder': self.route + '/output/' + self.case_name + '/'}
+        config['SaveData'] = {'folder': './output/' + self.case_name + '/'}
 
         config['Modal'] = {'folder': './output/',
                            'NumLambda': 20,
@@ -647,7 +647,7 @@ class FlyingWing():
         # print('config dictionary set-up with flow:')
         # print(config['SHARPy']['flow'])
 
-    def generate_aero_file(self):
+    def generate_aero_file(self, airfoil_efficiency=None):
 
         with h5.File(self.route + '/' + self.case_name + '.aero.h5', 'a') as h5file:
             airfoils_group = h5file.create_group('airfoils')
@@ -682,6 +682,9 @@ class FlyingWing():
                 'control_surface_deflection', data=self.control_surface_deflection)
             control_surface_chord_input = h5file.create_dataset(
                 'control_surface_chord', data=self.control_surface_chord)
+            if airfoil_efficiency is not None:
+                a_eff_handle = h5file.create_dataset(
+                    'airfoil_efficiency', data=airfoil_efficiency)
 
     def generate_fem_file(self):
 
@@ -746,7 +749,7 @@ class FlyingWing():
         if os.path.isfile(aero_file_name):
             os.remove(aero_file_name)
 
-        solver_file_name = self.route + '/' + self.case_name + '.solver.txt'
+        solver_file_name = self.route + '/' + self.case_name + '.sharpy'
         if os.path.isfile(solver_file_name):
             os.remove(solver_file_name)
 
@@ -919,6 +922,7 @@ class GolandControlSurface(Goland):
                  rho=1.02,
                  b_ref=2. * 6.096,  # geometry
                  main_chord=1.8288,
+                 pct_flap=0.2,
                  aspect_ratio=(2. * 6.096) / 1.8288,
                  roll=0.,
                  yaw=0.,
@@ -961,6 +965,7 @@ class GolandControlSurface(Goland):
         self.control_surface_type = np.zeros(self.n_control_surfaces, dtype=int)
         # other
         self.c_ref = 1.8288
+        self.pct_flap = pct_flap
 
     def update_aero_prop(self):
         assert hasattr(self, 'conn_glob'), \
@@ -971,6 +976,7 @@ class GolandControlSurface(Goland):
         num_node_tot = self.num_node_tot
         num_elem_surf = self.num_elem_surf
         num_elem_tot = self.num_elem_tot
+        pct_flap = self.pct_flap
 
         control_surface = self.control_surface
 
@@ -988,14 +994,14 @@ class GolandControlSurface(Goland):
                 # if inode >= num_node_surf // 2:
             ws_elem = 0
             for i_surf in range(2):
-                print('Surface' + str(i_surf))
+                # print('Surface' + str(i_surf))
                 for i_elem in range(num_elem_surf):
                     for i_local_node in range(self.num_node_elem):
-                        if i_elem >= num_elem_surf // 2:
+                        if i_elem >= int(num_elem_surf *(1- pct_flap)):
                             if i_surf == 0:
                                 control_surface[ws_elem + i_elem, i_local_node] = 0  # Right flap
                             else:
-                                control_surface[ws_elem + i_elem, i_local_node] = 1  # Left flap
+                                control_surface[ws_elem + i_elem, i_local_node] = 0  # Left flap
                 ws_elem += num_elem_surf
                         # control_surface[i_elem, i_local_node] = 0
 
@@ -1097,6 +1103,302 @@ class QuasiInfinite(FlyingWing):
         self.mass[0, :, :] = np.diag([m_unit, m_unit, m_unit, 1., .5, .5])
         self.elem_stiffness = np.zeros((self.num_elem_tot,), dtype=int)
         self.elem_mass = np.zeros((self.num_elem_tot,), dtype=int)
+
+class Pazy(FlyingWing):
+    '''
+    Build a Pazy wing.
+
+    The Pazy wing is a highly flexible wing designed and developed at Technion University as an aeroelastic
+    test case.
+
+    '''
+
+    def __init__(self,
+                 M, N,  # chord/span-wise discretisations
+                 Mstar_fact,
+                 u_inf,  # flight cond
+                 alpha,
+                 rho=1.225,
+                 tip_rod=True,
+                 b_ref=2. * 0.55,  # geometry
+                 main_chord=0.1,
+                 aspect_ratio=(2. * 0.55) / 0.1,
+                 roll=0.,
+                 yaw=0.,
+                 beta=0.,
+                 sweep=0.,
+                 n_surfaces=1,
+                 physical_time=2,
+                 route='.',
+                 case_name='pazy',
+                 RollNodes=False):
+
+        super().__init__(M=M, N=N,
+                         Mstar_fact=Mstar_fact,
+                         u_inf=u_inf,
+                         alpha=alpha,
+                         rho=rho,
+                         b_ref=b_ref,
+                         main_chord=main_chord,
+                         aspect_ratio=aspect_ratio,
+                         roll=roll,
+                         beta=beta,
+                         yaw=yaw,
+                         sweep=sweep,
+                         physical_time=physical_time,
+                         n_surfaces=n_surfaces,
+                         route=route,
+                         case_name=case_name,
+                         RollNodes=RollNodes)
+
+        # aeroelasticity parameters
+#         self.main_ea = 0.3
+        self.main_ea = 0.4475
+        self.main_cg = 0.4510
+        self.sigma = 1
+
+        # other
+        self.c_ref = main_chord
+
+        self.tip_rod = tip_rod
+
+    def update_mass_stiff(self):
+        '''
+        This method can be substituted to produce different wing configs.
+
+        For this model, remind that the delta_frame_of_reference is chosen such
+        that the B FoR axis are:
+        - xb: along the wing span
+        - yb: pointing towards the leading edge (i.e. roughly opposite than xa)
+        - zb: upward as za
+        '''
+        # uniform mass/stiffness
+
+        # Scaling factors (for debugging):
+        sigma_scale_stiff = 1
+        sigma_scale_I = 1
+
+        # Pulling:
+        ea = 7.12E+06
+
+        # In-plane bending:
+        ga_inp = 3.31E+06
+        ei_inp = 3.11E+03
+
+        # Out-of-plane bending:
+        # Original:
+        # ga_oup = -4.16E+03
+        ei_oup = 4.67E+00
+
+        # Adjusted:
+        # Adjusted to become non-negative
+        ga_oup = 1E+06
+
+        # Torsion:
+        gj = 7.20E+00
+
+        base_stiffness = np.diag([ea, ga_oup, ga_inp, gj, ei_oup, ei_inp]) * sigma_scale_stiff
+
+        self.stiffness = np.zeros((1, 6, 6))
+        self.stiffness[0] = base_stiffness
+
+        m_unit = 5.50E-01 # kg/m
+
+        # Test cases to confirm properties:
+        # Tests in vacuum, AoA=0 deg, analysed with NonLinearStatic beam solver. Verification displacements taken from
+        # full 3D non-linear analysis in Abaqus.
+
+        # Bending:
+        # 5 N load at the tip. Expected deflection of about 62.6 mm at the tip (no gravity)
+        # Tip coordinate in beam-fitted coordinates: X = 0.55m, Y = 0.m, Z = 0.m
+        # m_unit = 0.001 # negligible mass distribution to mimic no-gravity FEA analysis
+        # self.lumped_mass[0] = 5.2866 / 9.81
+        # self.lumped_mass_position[0] = np.array([0, 0, 0])
+        # self.lumped_mass_nodes[0] = self.N // 2
+        # self.lumped_mass_inertia[0, :, :] = np.diag([1e-1, 1e-1, 1e-1])
+
+        # Alternative bending:
+        # self.app_forces[self.N//2, :] = [0, 0, 5.2866, 0, 0, 0]
+
+        # Torsion:
+        # Torsion of 0.3275 Nm, difference in tip LE/TE height: 1.130498767 + 1.361232758 = 2.49 mm
+        # self.app_forces[self.N // 2, :] = [0, 0, 0, 0.3275, 0, 0]
+
+        pos_cg_b = np.array([0., self.c_ref * (self.main_cg - self.main_ea), 0.])*sigma_scale_I
+        m_chi_cg = algebra.skew(m_unit * pos_cg_b)
+        self.mass = np.zeros((1, 6, 6))
+
+        Js = 3.03E-04  # kg.m2/m
+
+        # Mass matrix J components: torsion, out of plane bending, in-plane bending
+        # Torsion: increasing J decreases natural frequency
+        # Bending: increasing J increases natural frequency
+        # Chosen experimentally to match natural frequencies from Abaqus analysis
+        self.mass[0, :, :] = np.diag([m_unit, m_unit, m_unit, Js, 0.5*Js, 12*Js])*sigma_scale_I
+        self.mass[0, :3, 3:] = m_chi_cg
+        self.mass[0, 3:, :3] = -m_chi_cg
+
+        self.elem_stiffness = np.zeros((self.num_elem_tot,), dtype=int)
+        self.elem_mass = np.zeros((self.num_elem_tot,), dtype=int)
+
+        if self.tip_rod:
+            n_lumped_mass = 2
+            self.lumped_mass = np.zeros((n_lumped_mass))
+            self.lumped_mass_position = np.zeros((n_lumped_mass, 3))
+            self.lumped_mass_inertia = np.zeros((n_lumped_mass, 3, 3))
+            self.lumped_mass_nodes = np.zeros((n_lumped_mass), dtype=int)
+
+            # Lumped mass for approximating the wingtip weight (1):
+            self.lumped_mass[0] = 19.95 / 1E3  # mass in kg
+            # self.lumped_mass[0] = 1  # mass in kg - just to visually check
+            self.lumped_mass_position[0] = np.array([0.005, -0.005, 0])
+            self.lumped_mass_nodes[0] = self.N // 2
+            self.lumped_mass_inertia[0, :, :] = np.diag([1.2815E-04, 2.87E-07, 1.17E-04])
+
+            # Lumped mass for approximating the wingtip weight (2):
+            self.lumped_mass[1] = 19.95 / 1E3  # mass in kg
+            # self.lumped_mass[1] = 1  # mass in kg - just to visually check
+            self.lumped_mass_position[1] = np.array([-0.005, -0.005, 0])  # positive x now ascending towards root
+            self.lumped_mass_nodes[1] = self.N // 2 + 1
+            self.lumped_mass_inertia[1, :, :] = np.diag([1.2815E-04, 2.87E-07, 1.17E-04])
+
+
+
+class PazyControlSurface(Pazy):
+
+    def __init__(self,
+                 M, N,  # chord/span-wise discretisations
+                 Mstar_fact,
+                 u_inf,  # flight cond
+                 alpha,
+                 cs_deflection=[0],
+                 rho=1.225,
+                 tip_rod=True,
+                 b_ref= 2. * 0.55,  # geometry
+                 main_chord= 0.1,
+                 pct_flap= 0.2,
+                 aspect_ratio= (2. * 0.55) / 0.1,
+                 roll=0.,
+                 yaw=0.,
+                 beta=0.,
+                 sweep=0.,
+                 n_surfaces=1,
+                 physical_time=2,
+                 route='.',
+                 case_name='pazy',
+                 RollNodes=False):
+
+        super().__init__(M=M, N=N,
+                         Mstar_fact=Mstar_fact,
+                         u_inf=u_inf,
+                         alpha=alpha,
+                         rho=rho,
+                         tip_rod=tip_rod,
+                         b_ref=b_ref,
+                         main_chord=main_chord,
+                         aspect_ratio=aspect_ratio,
+                         roll=roll,
+                         beta=beta,
+                         yaw=yaw,
+                         sweep=sweep,
+                         physical_time=physical_time,
+                         n_surfaces=n_surfaces,
+                         route=route,
+                         case_name=case_name,
+                         RollNodes=RollNodes)
+
+        # aeroelasticity parameters
+#         self.main_ea = 0.3
+        self.main_ea = 0.4475
+        self.main_cg = 0.4510
+        self.sigma = 1
+
+        self.n_control_surfaces = len(cs_deflection)
+        self.control_surface_deflection = np.zeros(self.n_control_surfaces, dtype=float)
+        for i in range(len(cs_deflection)):
+            self.control_surface_deflection[i] = cs_deflection[i] * np.pi/180
+        self.control_surface_chord = M // 2 * np.ones(self.n_control_surfaces, dtype=int)
+        self.control_surface_type = np.zeros(self.n_control_surfaces, dtype=int)
+        # other
+        self.c_ref = main_chord
+        self.pct_flap = pct_flap
+
+    def update_aero_prop(self):
+        assert hasattr(self, 'conn_glob'), \
+            'Run "update_derived_params" before generating files'
+
+        n_surfaces = self.n_surfaces
+        num_node_surf = self.num_node_surf
+        num_node_tot = self.num_node_tot
+        num_elem_surf = self.num_elem_surf
+        num_elem_tot = self.num_elem_tot
+        pct_flap = self.pct_flap
+
+        control_surface = self.control_surface
+
+        ### Generate aerofoil profiles. Only on surf 0.
+        Airfoils_surf = []
+        if n_surfaces == 2:
+            for inode in range(num_node_surf):
+                eta = inode / num_node_surf
+                Airfoils_surf.append(
+                    np.column_stack(
+                        geo_utils.interpolate_naca_camber(
+                            eta,
+                            self.root_airfoil_M, self.root_airfoil_P,
+                            self.tip_airfoil_M, self.tip_airfoil_P)))
+                # if inode >= num_node_surf // 2:
+            ws_elem = 0
+            for i_surf in range(2):
+                for i_elem in range(num_elem_surf):
+                    for i_local_node in range(self.num_node_elem):
+                        if i_elem >= int(num_elem_surf *(1- pct_flap)):
+                            if i_surf == 0:
+                                control_surface[ws_elem + i_elem, i_local_node] = 0  # Right flap
+                            else:
+                                control_surface[ws_elem + i_elem, i_local_node] = 0  # Left flap
+                ws_elem += num_elem_surf
+                        # control_surface[i_elem, i_local_node] = 0
+
+            airfoil_distribution_surf = self.conn_surf
+            airfoil_distribution = np.concatenate([airfoil_distribution_surf,
+                                                   airfoil_distribution_surf[::-1, [1, 0, 2]]])
+            control_surface[-num_elem_surf:] = control_surface[-num_elem_surf:, :][::-1]
+
+        if n_surfaces == 1:
+            num_node_half = (num_node_surf + 1) // 2
+            for inode in range(num_node_half):
+                eta = inode / num_node_half
+                Airfoils_surf.append(
+                    np.column_stack(
+                        geo_utils.interpolate_naca_camber(
+                            eta,
+                            self.root_airfoil_M, self.root_airfoil_P,
+                            self.tip_airfoil_M, self.tip_airfoil_P)))
+            airfoil_distribution_surf = self.conn_surf[:num_elem_surf // 2, :]
+            airfoil_distribution = np.concatenate([
+                airfoil_distribution_surf[::-1, [1, 0, 2]],
+                airfoil_distribution_surf])
+
+        self.Airfoils_surf = Airfoils_surf
+        self.airfoil_distribution = airfoil_distribution
+
+        ### others
+        self.aero_node = np.ones((num_node_tot,), dtype=bool)
+        self.surface_m = self.M * np.ones((n_surfaces,), dtype=int)
+
+        self.twist = np.zeros((num_elem_tot, 3))
+        self.chord = self.main_chord * np.ones((num_elem_tot, 3))
+        self.elastic_axis = self.main_ea * np.ones((num_elem_tot, 3,))
+        self.control_surface = control_surface
+
+    def create_linear_files(self, x0, input_vec):
+        with h5.File(self.route + '/' + self.case_name + '.lininput.h5', 'a') as h5file:
+            x0 = h5file.create_dataset(
+                'x0', data=x0)
+            u = h5file.create_dataset(
+                'u', data=input_vec)
+
 
 
 if __name__ == '__main__':

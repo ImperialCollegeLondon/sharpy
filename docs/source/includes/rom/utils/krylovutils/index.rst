@@ -6,6 +6,7 @@ Krylov Model Reduction Methods Utilities
 .. toctree::
 	:glob:
 
+	./check_eye
 	./construct_krylov
 	./evec
 	./lu_factor

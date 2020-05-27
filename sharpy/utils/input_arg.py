@@ -20,4 +20,18 @@ def parse_settings(file):
         settings['SHARPy']['flow']
     except KeyError:
         raise exceptions.NotValidInputFile('The solver file does not contain a SHARPy header.')
+
+    from sharpy.utils.solver_interface import dict_of_solvers
+
+    for solver in settings['SHARPy']['flow']:
+        # Check that the solvers in the flow exist and that they have a valid set of settings
+        try:
+            dict_of_solvers[solver]
+        except KeyError:
+            raise exceptions.SolverNotFound(solver)
+
+        try:
+            settings[solver]
+        except KeyError:
+            raise exceptions.NotValidInputFile('The settings for the solver %s have not been given.' % solver)
     return settings

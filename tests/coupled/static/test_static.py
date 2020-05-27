@@ -36,14 +36,14 @@ class TestCoupledStatic(unittest.TestCase):
         """
         import sharpy.sharpy_main
         solver_path = os.path.abspath(os.path.dirname(os.path.realpath(__file__)) +
-                                      '/smith_nog_2deg/smith_nog_2deg.solver.txt')
+                                      '/smith_nog_2deg/smith_nog_2deg.sharpy')
         sharpy.sharpy_main.main(['', solver_path])
 
         # read output and compare
         output_path = os.path.dirname(solver_path) + '/output/smith_nog_2deg/WriteVariablesTime/'
         pos_data = np.genfromtxt(output_path + 'struct_pos_node20.dat')
-        self.assertAlmostEqual((pos_data[2] - 15.6175)/15.6175, 0.00, 2)
-        self.assertAlmostEqual((pos_data[3] - 3.2500)/3.2500, 0.00, 2)
+        self.assertAlmostEqual((pos_data[2] - 15.599)/15.599, 0.00, 2)
+        self.assertAlmostEqual((pos_data[3] - 3.32600)/3.32600, 0.00, 2)
 
         # results:
         # N = 10 elements
@@ -61,15 +61,15 @@ class TestCoupledStatic(unittest.TestCase):
     def test_smith2deg_g(self):
         import sharpy.sharpy_main
         solver_path = os.path.abspath(os.path.dirname(os.path.realpath(__file__)) +
-                                      '/smith_g_2deg/smith_g_2deg.solver.txt')
+                                      '/smith_g_2deg/smith_g_2deg.sharpy')
         sharpy.sharpy_main.main(['', solver_path])
 
         # read output and compare
         output_path = os.path.dirname(solver_path) + '/output/smith_g_2deg/WriteVariablesTime/'
         pos_data = np.genfromtxt(output_path + 'struct_pos_node20.dat')
 
-        self.assertAlmostEqual((pos_data[2] - 15.9875)/15.9875, 0.00, 2)
-        self.assertAlmostEqual((pos_data[3] - 0.588507)/0.588507, 0.00, 2)
+        self.assertAlmostEqual((pos_data[2] - 15.98295)/15.98295, 0.00, 2)
+        self.assertAlmostEqual((pos_data[3] - 0.682268)/0.682268, 0.00, 2)
 
     def test_smith4deg_g(self):
         """
@@ -81,7 +81,7 @@ class TestCoupledStatic(unittest.TestCase):
         """
         import sharpy.sharpy_main
         solver_path = os.path.abspath(os.path.dirname(os.path.realpath(__file__)) +
-                                      '/smith_g_4deg/smith_g_4deg.solver.txt')
+                                      '/smith_g_4deg/smith_g_4deg.sharpy')
         sharpy.sharpy_main.main(['', solver_path])
 
         # read output and compare
@@ -111,7 +111,7 @@ class TestCoupledStatic(unittest.TestCase):
         """
         import sharpy.sharpy_main
         solver_path = os.path.abspath(os.path.dirname(os.path.realpath(__file__)) +
-                                      '/smith_nog_4deg/smith_nog_4deg.solver.txt')
+                                      '/smith_nog_4deg/smith_nog_4deg.sharpy')
         sharpy.sharpy_main.main(['', solver_path])
 
         # read output and compare

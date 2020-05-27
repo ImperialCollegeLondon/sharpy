@@ -20,8 +20,8 @@ def frequency_damping(eigenvalue):
 
 
 class EigenvalueTable(cout.TablePrinter):
-    def __init__(self):
-        super().__init__(7, 12, ['g', 'f', 'f', 'f', 'f', 'f', 'f'])
+    def __init__(self, filename=None):
+        super().__init__(7, 12, ['g', 'f', 'f', 'f', 'f', 'f', 'f'], filename)
 
         self.headers = ['mode', 'eval_real', 'eval_imag', 'freq_n (Hz)', 'freq_d (Hz)',
                         'damping', 'period (s)']
@@ -260,7 +260,7 @@ def write_zeta_vtk(zeta, zeta_ref, filename_root):
 
 
 def write_modes_vtk(data, eigenvectors, NumLambda, filename_root,
-                    rot_max_deg=15., perc_max=0.15):
+                    rot_max_deg=15., perc_max=0.15, ts=-1):
     """
     Writes a vtk file for each of the first ``NumLambda`` eigenvectors. When these
     are associated to the state-space form of the structural equations, only
@@ -270,8 +270,8 @@ def write_modes_vtk(data, eigenvectors, NumLambda, filename_root,
     ### initialise
     aero = data.aero
     struct = data.structure
-    tsaero = data.aero.timestep_info[data.ts]
-    tsstr = data.structure.timestep_info[data.ts]
+    tsaero = data.aero.timestep_info[ts]
+    tsstr = data.structure.timestep_info[ts]
 
     num_dof = struct.num_dof.value
     eigenvectors = eigenvectors[:num_dof, :]

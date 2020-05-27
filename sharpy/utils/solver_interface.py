@@ -4,6 +4,7 @@ import os
 import sharpy.utils.settings as settings
 import inspect
 import shutil
+import sharpy.utils.exceptions as exceptions
 
 dict_of_solvers = {}
 solvers = {}  # for internal working
@@ -33,7 +34,7 @@ def print_available_solvers():
 
 class BaseSolver(metaclass=ABCMeta):
 
-    solver_classification = 'other'
+    # solver_classification = 'other'
     settings_types = dict()
     settings_description = dict()
     settings_default = dict()
@@ -61,8 +62,13 @@ class BaseSolver(metaclass=ABCMeta):
         _doc += settings_table.generate(settings_types, settings_default, settings_description)
         return _doc
 
+
 def solver_from_string(string):
-    return dict_of_solvers[string]
+    try:
+        solver = dict_of_solvers[string]
+    except KeyError:
+        raise exceptions.SolverNotFound(string)
+    return solver
 
 
 def solver_list_from_path(cwd):
@@ -88,6 +94,7 @@ def initialise_solver(solver_name, print_info=True):
     solver = cls_type()
     return solver
 
+
 def dictionary_of_solvers(print_info=True):
     import sharpy.solvers
     import sharpy.postproc
@@ -99,6 +106,7 @@ def dictionary_of_solvers(print_info=True):
             dictionary[solver] = init_solver.settings_default
 
     return dictionary
+
 
 def output_documentation(route=None):
     """
@@ -133,25 +141,29 @@ def output_documentation(route=None):
         created_solvers[k] = solver
 
         filename = k + '.rst'
+
         try:
             solver_folder = solver.solver_classification.lower()
         except AttributeError:
+            print('The solver {} does not have a classification. Dumping it into "Other"'.format(k))
             solver_folder = 'other'
-
-        if solver_folder not in solver_types:
-            solver_types.append(solver_folder)
+            if solver.__doc__ is None:
+                continue
 
         if solver_folder == 'post-processor':
+            solver_type = 'postprocessor'
             route_to_solver_python = 'sharpy.postproc.'
             folder = 'postprocs'
             solver_folder = '' # post-procs do not have sub classification unlike solvers
         else:
+            solver_type = 'solver'
             route_to_solver_python = 'sharpy.solvers.'
             folder = 'solvers'
+            if solver_folder not in solver_types:
+                solver_types.append(solver_folder)
 
         if solver.solver_id == 'PreSharpy':
-            continue
-            # route_to_solver_python = 'sharpy.presharpy.'
+            route_to_solver_python = 'sharpy.presharpy.'
 
         os.makedirs(base_route + '/' + folder + '/' + solver_folder, exist_ok=True)
         title = k + '\n'

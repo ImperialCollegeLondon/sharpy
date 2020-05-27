@@ -59,6 +59,11 @@ class TestGammaDot(unittest.TestCase):
                                        'DynamicCoupled']
         ws.config['SHARPy']['write_screen'] = 'off'
 
+        ws.config['AerogridLoader']['wake_shape_generator'] = 'StraightWake'
+        ws.config['AerogridLoader']['wake_shape_generator_input'] = {'u_inf': ws.u_inf,                                                                                      
+                                                                     'u_inf_direction': np.array([1., 0., 0.]),                                                        
+                                                                     'dt': ws.dt}
+
         # Remove newmark damping from structural solver settings
         ws.config['DynamicCoupled']['structural_solver_settings']['newmark_damp'] = 0
 
@@ -116,7 +121,7 @@ class TestGammaDot(unittest.TestCase):
 
         self.set_up_test_case(aero_type, predictor, sparse, integration_order)
         ws = self.ws
-        data = sharpy.sharpy_main.main(['', self.case_route + self.case_name + '.solver.txt'])
+        data = sharpy.sharpy_main.main(['', self.case_route + self.case_name + '.sharpy'])
 
         # Obtain gamma
         gamma = np.zeros((ws.n_tstep,))
@@ -138,13 +143,17 @@ class TestGammaDot(unittest.TestCase):
             passed_test = error_derivative < 1e-2 * np.abs(gamma_dot_at_max)
 
         if not passed_test:
-            import matplotlib.pyplot as plt
-            plt.plot(gamma_dot)
-            plt.plot(gamma_dot_fd, color='k')
-            plt.show()
+            try:
+                import matplotlib.pyplot as plt
+                plt.plot(gamma_dot)
+                plt.plot(gamma_dot_fd, color='k')
+                plt.show()
 
-            plt.plot(gamma_dot - gamma_dot_fd)
-            plt.show()
+                plt.plot(gamma_dot - gamma_dot_fd)
+                plt.show()
+            except ModuleNotFoundError:
+                import warnings
+                warnings.warn('Unable to import matplotlib, skipping plot')
 
         assert passed_test == True, \
             'Discrepancy between gamma_dot and that calculated using FD, relative difference is %.2f' % (
@@ -175,14 +184,14 @@ class TestGammaDot(unittest.TestCase):
 
                     self.run_test(aero_type, predictor, sparse, integration_order)
 
-    def tearDowns(self):
+    def tearDown(self):
 
         solver_path = os.path.dirname(os.path.realpath(__file__))
         # solver_path += '/'
         # files_to_delete = [case + '.aero.h5',
         #                    case + '.dyn.h5',
         #                    case + '.fem.h5',
-        #                    case + '.solver.txt']
+        #                    case + '.sharpy']
         # for f in files_to_delete:
         #     os.remove(solver_path + f)
 

@@ -2,6 +2,7 @@ import numpy as np
 import os
 import unittest
 import shutil
+import glob
 
 
 folder = os.path.abspath(os.path.dirname(os.path.realpath(__file__)))
@@ -18,16 +19,15 @@ class TestRotor(unittest.TestCase):
     def setUp(self):
         import sharpy.utils.generate_cases as gc
         import cases.templates.template_wt as template_wt
-        import sharpy.utils.algebra as algebra
+        from sharpy.utils.constants import deg2rad
 
-        deg2rad = np.pi/180.
         ######################################################################
         ###########################  PARAMETERS  #############################
         ######################################################################
         # Case
         global case
+        route = folder + '/'
         case = 'rotor'
-        route = os.path.dirname(os.path.realpath(__file__)) + '/'
 
         # Geometry discretization
         chord_panels = np.array([8], dtype=int)
@@ -54,20 +54,32 @@ class TestRotor(unittest.TestCase):
 
         mstar = int(revs_in_wake*2.*np.pi/dphi)
 
-        rotor = template_wt.rotor_from_excel_type02(
-                                          chord_panels,
-                                          rotation_velocity,
-                                          pitch_deg,
-                                          excel_file_name= folder + '/type02_db_NREL_5MW.xlsx',
-                                          excel_sheet_parameters = 'parameters',
-                                          excel_sheet_structural_blade = 'structural_blade',
-                                          excel_sheet_discretization_blade = 'discretization_blade',
-                                          excel_sheet_aero_blade = 'aero_blade',
-                                          excel_sheet_airfoil_info = 'airfoil_info',
-                                          excel_sheet_airfoil_coord = 'airfoil_coord',
-                                          m_distribution = 'uniform',
-                                          n_points_camber = 100,
-                                          tol_remove_points = 1e-8)
+        op_params = {'rotation_velocity': rotation_velocity,
+                     'pitch_deg': pitch_deg,
+                     'wsp': WSP,
+                     'dt': dt}
+
+        geom_params = {'chord_panels':chord_panels,
+                    'tol_remove_points': 1e-8,
+                    'n_points_camber': 100,
+                    'm_distribution': 'uniform'}
+
+        excel_description = {'excel_file_name': route + '../../../../docs/source/content/example_notebooks/source/type02_db_NREL5MW_v01.xlsx',
+                            'excel_sheet_parameters': 'parameters',
+                            'excel_sheet_structural_blade': 'structural_blade',
+                            'excel_sheet_discretization_blade': 'discretization_blade',
+                            'excel_sheet_aero_blade': 'aero_blade',
+                            'excel_sheet_airfoil_info': 'airfoil_info',
+                            'excel_sheet_airfoil_chord': 'airfoil_coord'}
+
+        options = {'camber_effect_on_twist': False,
+                   'user_defined_m_distribution_type': None,
+                   'include_polars': False}
+
+        rotor = template_wt.rotor_from_excel_type03(op_params,
+                                                    geom_params,
+                                                    excel_description,
+                                                    options)
 
         ######################################################################
         ######################  DEFINE SIMULATION  ###########################
@@ -76,22 +88,20 @@ class TestRotor(unittest.TestCase):
         SimInfo.set_default_values()
 
         SimInfo.solvers['SHARPy']['flow'] = ['BeamLoader',
-                                'AerogridLoader',
                                 'Modal']
         SimInfo.solvers['SHARPy']['case'] = case
         SimInfo.solvers['SHARPy']['route'] = route
         SimInfo.solvers['SHARPy']['write_log'] = True
         SimInfo.solvers['SHARPy']['write_screen'] = 'off'
+        SimInfo.solvers['SHARPy']['log_folder'] = os.path.abspath(os.path.dirname(os.path.realpath(__file__))) + '/'
         SimInfo.set_variable_all_dicts('dt', dt)
         SimInfo.set_variable_all_dicts('rho', air_density)
 
         SimInfo.solvers['BeamLoader']['unsteady'] = 'on'
 
-        SimInfo.solvers['AerogridLoader']['unsteady'] = 'on'
-        SimInfo.solvers['AerogridLoader']['mstar'] = mstar
-        SimInfo.solvers['AerogridLoader']['freestream_dir'] = np.array([0.,0.,0.])
-
         SimInfo.solvers['Modal']['write_modes_vtk'] = False
+        SimInfo.solvers['Modal']['write_dat'] = True
+        SimInfo.solvers['Modal']['folder'] = folder + '/output/'
 
         ######################################################################
         #######################  GENERATE FILES  #############################
@@ -99,12 +109,11 @@ class TestRotor(unittest.TestCase):
         gc.clean_test_files(SimInfo.solvers['SHARPy']['route'], SimInfo.solvers['SHARPy']['case'])
         rotor.generate_h5_files(SimInfo.solvers['SHARPy']['route'], SimInfo.solvers['SHARPy']['case'])
         SimInfo.generate_solver_file()
-        # SimInfo.generate_dyn_file(time_steps)
 
     def test_rotor(self):
         import sharpy.sharpy_main
 
-        solver_path = folder + '/' + case + '.solver.txt'
+        solver_path = folder + '/' + case + '.sharpy'
         sharpy.sharpy_main.main(['', solver_path])
 
         # read output and compare
@@ -120,11 +129,18 @@ class TestRotor(unittest.TestCase):
         self.assertAlmostEqual(freq_data[0, 3], edge_1, 0) # 1st edgewise
         self.assertAlmostEqual(freq_data[0, 6], flap_2, 0) # 2nd flapwise
 
-    def tearDowns(self):
+    def tearDown(self):
         files_to_delete = [case + '.aero.h5',
                            case + '.fem.h5',
-                           case + '.solver.txt']
-        for f in files_to_delete:
-            os.remove(folder +'/' + f)
+                           case + '.sharpy',
+                           'log']
+        try:
+            for f in files_to_delete:
+                os.remove(folder +'/' + f)
+        except FileNotFoundError:
+            pass
 
-        shutil.rmtree(folder + '/output/')
+        try:
+            shutil.rmtree(folder + '/output/')
+        except FileNotFoundError:
+            pass

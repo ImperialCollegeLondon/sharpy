@@ -1,24 +1,15 @@
-"""
-@modified   Alfonso del Carre
-"""
-
 import ctypes as ct
 import numpy as np
 import scipy as sc
 import os
 import itertools
 import warnings
-from tvtk.api import tvtk, write_data
-import scipy.linalg
-
 import sharpy.structure.utils.xbeamlib as xbeamlib
 from sharpy.utils.solver_interface import solver, BaseSolver
 import sharpy.utils.settings as settings
 import sharpy.utils.algebra as algebra
 import sharpy.utils.cout_utils as cout
 import sharpy.structure.utils.modalutils as modalutils
-
-
 
 @solver
 class Modal(BaseSolver):
@@ -30,7 +21,7 @@ class Modal(BaseSolver):
     of the structure.
     """
     solver_id = 'Modal'
-    solver_classification = 'modal'
+    solver_classification = 'Linear'
 
     settings_types = dict()
     settings_default = dict()
@@ -98,6 +89,10 @@ class Modal(BaseSolver):
     settings_default['max_displacement'] = 0.15
     settings_description['max_displacement'] = 'Scale mode shape to have specified maximum displacement'
 
+    settings_types['use_custom_timestep'] = 'int'
+    settings_default['use_custom_timestep'] = -1
+    settings_description['use_custom_timestep'] = 'If > -1, it will use that time step geometry for calculating the modes'
+
     settings_types['rigid_modes_cg'] = 'bool'
     settings_default['rigid_modes_cg'] = False
     settings_description['rigid_modes_cg'] = 'Modify the ridid body modes such that they are defined wrt to the CG'
@@ -128,6 +123,10 @@ class Modal(BaseSolver):
 
         self.rigid_body_motion = self.settings['rigid_body_modes'].value
 
+        self.data.ts = len(self.data.structure.timestep_info) - 1
+        if self.settings['use_custom_timestep'].value > -1:
+            self.data.ts = self.settings['use_custom_timestep'].value
+
         # load info from dyn dictionary
         self.data.structure.add_unsteady_information(
                                             self.data.structure.dyn_dict,
@@ -153,12 +152,9 @@ class Modal(BaseSolver):
 
         if self.settings['print_info']:
             cout.cout_wrap('Structural eigenvalues')
-            # self.eigenvalue_table = cout.TablePrinter(7, 12, ['d', 'f', 'f', 'f', 'f', 'f', 'f'])
-            # self.eigenvalue_table.print_header(['mode', 'eval_real', 'eval_imag', 'freq_n (Hz)', 'freq_d (Hz)',
-            #                                     'damping', 'period (s)'])
-            self.eigenvalue_table = modalutils.EigenvalueTable()
+            eigenvalue_filename = self.folder + '/eigenvaluetable.txt'
+            self.eigenvalue_table = modalutils.EigenvalueTable(filename=eigenvalue_filename)
             self.eigenvalue_table.print_header(self.eigenvalue_table.headers)
-
 
     def run(self):
         r"""
@@ -215,7 +211,6 @@ class Modal(BaseSolver):
             PreSharpy: updated data object with modal analysis as part of the last structural time step.
 
         """
-        self.data.ts = len(self.data.structure.timestep_info) - 1
 
         # Number of degrees of freedom
         num_str_dof = self.data.structure.num_dof.value
@@ -271,10 +266,9 @@ class Modal(BaseSolver):
         if self.settings['use_undamped_modes'].value:
             zero_FullCglobal = True
             for i,j in itertools.product(range(num_dof),range(num_dof)):
-                if(np.absolute(FullCglobal[i, j]) > np.finfo(float).eps):
+                if np.absolute(FullCglobal[i, j]) > np.finfo(float).eps:
                     zero_FullCglobal = False
-                    warnings.warn(
-                        'Projecting a system with damping on undamped modal shapes')
+                    warnings.warn('Projecting a system with damping on undamped modal shapes')
                     break
         # Check if the damping matrix is skew-symmetric
         # skewsymmetric_FullCglobal = True
@@ -382,12 +376,14 @@ class Modal(BaseSolver):
 
         # Plot eigenvalues using matplotlib if specified in settings
         if self.settings['plot_eigenvalues']:
-            import matplotlib.pyplot as plt
-            fig = plt.figure()
-            plt.scatter(eigenvalues.real, eigenvalues.imag)
-            plt.show()
-            plt.savefig(self.folder + 'eigenvalues.png', transparent=True, bbox_inches='tight')
-
+            try:
+                import matplotlib.pyplot as plt
+                fig = plt.figure()
+                plt.scatter(eigenvalues.real, eigenvalues.imag)
+                plt.show()
+                plt.savefig(self.folder + 'eigenvalues.png', transparent=True, bbox_inches='tight')
+            except ModuleNotFoundError:
+                warnings.warn('Unable to import matplotlib, skipping plot')
 
         # Write dat files
         if self.settings['write_dat'].value:
@@ -399,12 +395,14 @@ class Modal(BaseSolver):
                            delimiter='\t', newline='\n')
             np.savetxt(self.folder + "eigenvectors.dat", eigenvectors[:num_dof].real,
                        fmt='%.12f', delimiter='\t', newline='\n')
-            try:
+
+            if not self.settings['use_undamped_modes'].value:
                 np.savetxt(self.folder + 'frequencies.dat', freq_damped[:NumLambda],
                            fmt='%e', delimiter='\t', newline='\n')
-            except NameError:
+            else:
                 np.savetxt(self.folder + 'frequencies.dat', freq_natural[:NumLambda],
                            fmt='%e', delimiter='\t', newline='\n')
+
             np.savetxt(self.filename_damp, damping[:NumLambda],
                        fmt='%e', delimiter='\t', newline='\n')
 
@@ -424,7 +422,8 @@ class Modal(BaseSolver):
                     NumLambda,
                     self.filename_shapes,
                     self.settings['max_rotation_deg'],
-                    self.settings['max_displacement'])
+                    self.settings['max_displacement'],
+                    ts=self.settings['use_custom_timestep'].value)
 
         outdict = dict()
 
@@ -461,6 +460,7 @@ class Modal(BaseSolver):
                 self.eigenvalue_table.print_evals(np.sqrt(eigenvalues[:NumLambda])*1j)
             else:
                 self.eigenvalue_table.print_evals(eigenvalues[:NumLambda])
+            self.eigenvalue_table.close_file()
 
         return self.data
 
@@ -472,7 +472,7 @@ class Modal(BaseSolver):
         else:
             # unit normalise (diagonalises A)
             if not self.rigid_body_motion:
-                for ii in range(self.settings['NumLambda']):  # Issue - dot product = 0 when you have arbitrary damping
+                for ii in range(eigenvectors.shape[1]):  # Issue - dot product = 0 when you have arbitrary damping
                     fact = 1./np.sqrt(np.dot(eigenvectors_left[:, ii], eigenvectors[:, ii]))
                     eigenvectors_left[:, ii] = fact*eigenvectors_left[:, ii]
                     eigenvectors[:, ii] = fact*eigenvectors[:, ii]

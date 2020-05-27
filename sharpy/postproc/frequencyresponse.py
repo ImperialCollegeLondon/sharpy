@@ -1,111 +1,129 @@
 import numpy as np
 import time
 import os
-import matplotlib.pyplot as plt
 import sharpy.utils.solver_interface as solver_interface
 import sharpy.utils.settings as settings_utils
 import sharpy.utils.cout_utils as cout
 import warnings
+import sharpy.linear.src.libss as libss
+import h5py as h5
+import sharpy.utils.frequencyutils as frequencyutils
+from sharpy.utils.frequencyutils import find_target_system
 
 
 @solver_interface.solver
 class FrequencyResponse(solver_interface.BaseSolver):
     """
-    Frequency Response Calculator
+    Frequency Response Calculator.
+
+    Computes the frequency response of a built linear system. The frequency will be calculated for the systems
+    specified in the ``target_system`` list. The desired ``frequency_unit`` will be either ``w`` for radians/s or ``k``
+    for reduced frequency (if the system is scaled). The ``frequency_bounds`` setting will set the lower and upper
+    bounds of the response, while ``num_freqs`` will specify the number of evaluations.
+    The option ``frequency_spacing`` allows you to space the evaluations point following a ``log``
+    or ``linear`` spacing.
+
+    If ``compute_hinf`` is set, the H-infinity norm of the system is calculated.
+
+    This will be saved to a binary ``.h5`` file as detailed in :func:`save_freq_resp`.
+
+    Finally, the ``quick_plot`` option will plot some quick and dirty bode plots of the response. This requires
+    access to ``matplotlib``.
 
     """
     solver_id = 'FrequencyResponse'
     solver_classification = 'post-processor'
-    
+
     settings_types = dict()
     settings_default = dict()
     settings_description = dict()
+    settings_options = dict()
 
     settings_types['folder'] = 'str'
     settings_default['folder'] = './output'
-    settings_description['folder'] = 'Output folder'
+    settings_description['folder'] = 'Output folder.'
 
-    settings_types['compute_fom'] = 'bool'
-    settings_default['compute_fom'] = False
-    settings_description['compute_fom'] = 'Compute frequency response of full order model (use caution if large)'
+    settings_types['print_info'] = 'bool'
+    settings_default['print_info'] = False
+    settings_description['print_info'] = 'Write output to screen.'
 
-    settings_types['load_fom'] = 'str'
-    settings_default['load_fom'] = ''
-    settings_description['load_fom'] = 'Folder to locate full order model frequency response data'
+    settings_types['target_system'] = 'list(str)'
+    settings_default['target_system'] = ['aeroelastic']
+    settings_description['target_system'] = 'System or systems for which to find frequency response.'
+    settings_options['target_system'] = ['aeroelastic', 'aerodynamic', 'structural']
 
     settings_types['frequency_unit'] = 'str'
     settings_default['frequency_unit'] = 'k'
-    settings_description['frequency_unit'] = 'Units of frequency, "w" for rad/s, "k" reduced'
+    settings_description['frequency_unit'] = 'Units of frequency, ``w`` for rad/s, ``k`` reduced.'
+    settings_options['frequency_unit'] = ['w', 'k']
 
     settings_types['frequency_bounds'] = 'list(float)'
     settings_default['frequency_bounds'] = [1e-3, 1]
-    settings_description['frequency_bounds'] = 'Lower and upper frequency bounds in the corresponding unit'
+    settings_description['frequency_bounds'] = 'Lower and upper frequency bounds in the corresponding unit.'
+
+    settings_types['frequency_spacing'] = 'str'
+    settings_default['frequency_spacing'] = 'linear'
+    settings_description['frequency_spacing'] = 'Compute the frequency response in a ``linear`` or ``log`` grid.'
+    settings_options['frequency_spacing'] = ['linear', 'log']
 
     settings_types['num_freqs'] = 'int'
     settings_default['num_freqs'] = 50
-    settings_description['num_freqs'] = 'Number of frequencies to evaluate'
+    settings_description['num_freqs'] = 'Number of frequencies to evaluate.'
+
+    settings_types['compute_hinf'] = 'bool'
+    settings_default['compute_hinf'] = False
+    settings_description['compute_hinf'] = 'Compute Hinfinity norm of the system.'
 
     settings_types['quick_plot'] = 'bool'
     settings_default['quick_plot'] = False
-    settings_description['quick_plot'] = 'Produce array of plots showing response'
+    settings_description['quick_plot'] = 'Produce array of ``.png`` plots showing response. Requires matplotlib.'
 
     settings_table = settings_utils.SettingsTable()
-    __doc__ += settings_table.generate(settings_types, settings_default, settings_description)
-
-    # settings_types['plot_type'] = 'str'
-    # settings_default['plot_type'] = 'bode'
-    #
-    # settings_types['inputs'] = 'list(int)'
-    # settings_default['inputs'] = []
-    #
-    # settings_types['outputs'] = 'list(int)'
-    # settings_default['outputs'] = []
+    __doc__ += settings_table.generate(settings_types, settings_default, settings_description, settings_options)
 
     def __init__(self):
 
         self.settings = None
         self.data = None
         self.folder = None
+        self.print_info = False
 
-        self.ss = None
-        self.ssrom = None
-
-        self.nfreqs = None
         self.w_to_k = 1
         self.wv = None
 
     def initialise(self, data, custom_settings=None):
 
         self.data = data
-        try:
-            self.ss = data.linear.linear_system.uvlm.rom.ss
-            self.ssrom = data.linear.linear_system.uvlm.ss
-        except AttributeError:
-            self.ss = data.linear.linear_system.uvlm.ss
 
         if not custom_settings:
             self.settings = self.data.settings[self.solver_id]
         else:
             self.settings = custom_settings
-        settings_utils.to_custom_types(self.settings, self.settings_types, self.settings_default)
+        settings_utils.to_custom_types(self.settings, self.settings_types, self.settings_default,
+                                       self.settings_options,
+                                       no_ctype=True)
 
-        # Number of interpolation points
+        self.print_info = self.settings['print_info']
+
         try:
-            self.nfreqs = self.rom.frequency.shape[0]
+            scaling = self.data.linear.linear_system.uvlm.sys.ScalingFacts
+            if self.settings['frequency_unit'] == 'k':
+                self.w_to_k = scaling['length'] / scaling['speed']
+            else:
+                self.w_to_k = 1.
         except AttributeError:
-            self.nfreqs = 1
-
-        scaling = self.data.linear.linear_system.uvlm.sys.ScalingFacts
-        if self.settings['frequency_unit'] == 'k':
-            self.w_to_k = scaling['length'] / scaling['speed']
-        else:
             self.w_to_k = 1.
 
         lb = self.settings['frequency_bounds'][0] / self.w_to_k
         ub = self.settings['frequency_bounds'][1] / self.w_to_k
 
-        nfreqs = self.settings['num_freqs'].value
-        self.wv = np.linspace(lb, ub, nfreqs)
+        nfreqs = self.settings['num_freqs']
+        if self.settings['frequency_spacing'] == 'linear':
+            self.wv = np.linspace(lb, ub, nfreqs)
+        elif self.settings['frequency_spacing'] == 'log':
+            self.wv = np.logspace(np.log10(lb), np.log10(ub), nfreqs)
+        else:
+            raise NotImplementedError('Unrecognised frequency spacing setting %s' % self.settings['frequency_spacing'])
 
         if not os.path.exists(self.settings['folder']):
             os.makedirs(self.settings['folder'])
@@ -113,547 +131,135 @@ class FrequencyResponse(solver_interface.BaseSolver):
         if not os.path.exists(self.folder):
             os.makedirs(self.folder)
 
-    def run(self):
+    def run(self, ss=None):
         """
-        Get the frequency response of the linear state-space
-        Returns:
+        Computes the frequency response of the linear state-space.
+
+        Args:
+            ss (sharpy.linear.src.libss.ss (Optional)): State-space object for which to compute the frequency response.
+              If not given, the response for the previously assembled systems and specified in ``target_system`` will
+              be performed.
 
         """
-        Y_freq_rom = None
-        Y_freq_fom = None
 
-        compute_fom = False
+        if ss is None:
+            ss_list = [find_target_system(self.data, system_name) for system_name in self.settings['target_system']]
+        elif type(ss) is libss.ss:
+            ss_list = [ss]
+        elif type(ss) is list:
+            ss_list = ss
+        else:
+            raise TypeError('ss input must be either a libss.ss instance or a list of libss.ss')
 
-        if self.settings['load_fom'] != '':
-            if os.path.exists(self.settings['load_fom'] + '/frequencyresponse/'):
+        for ith, system in enumerate(ss_list):
+            if self.print_info:
+                cout.cout_wrap('Computing frequency response...')
+            if ss is None:
                 try:
-                    Y_freq_fom = self.load_frequency_data()
-                except OSError:
-                    compute_fom = True
+                    system_name = self.settings['target_system'][ith]
+                    if self.print_info:
+                        cout.cout_wrap('\tComputing frequency response for %s system' % system_name, 1)
+                except IndexError:
+                    system_name = None
             else:
-                compute_fom = True
+                system_name = None  # For the case where the state-space is parsed in run().
 
-        cout.cout_wrap('Computing frequency response...')
-        if (self.settings['compute_fom'].value and self.settings['load_fom'] == '') or compute_fom:
-            cout.cout_wrap('Full order system:', 1)
             t0fom = time.time()
-            Y_freq_fom = self.ss.freqresp(self.wv)
+            y_freq_fom = system.freqresp(self.wv)
             tfom = time.time() - t0fom
-            self.save_freq_resp(self.wv, Y_freq_fom, 'fom')
-            cout.cout_wrap('\tComputed the frequency response of the full order system in %f s' %tfom, 2)
 
-        if self.ssrom is not None:
-            cout.cout_wrap('Reduced order system:', 1)
-            t0rom = time.time()
-            Y_freq_rom = self.ssrom.freqresp(self.wv)
-            trom = time.time() - t0rom
-            cout.cout_wrap('\tComputed the frequency response of the reduced order system in %f s' %trom, 2)
-            self.save_freq_resp(self.wv, Y_freq_rom, 'rom')
+            if self.settings['compute_hinf']:
 
-            self.frequency_error(Y_freq_fom, Y_freq_rom)
+                if self.print_info:
+                    cout.cout_wrap('Computing H-infinity norm...')
+                try:
+                    hinf = frequencyutils.h_infinity_norm(system, iter_max=50, print_info=self.settings['print_info'])
+                except np.linalg.LinAlgError:
+                    hinf = None
+                    cout.cout_wrap('H-infinity calculation did not converge', 4)
 
-        if self.settings['quick_plot'].value:
-            self.quick_plot(Y_freq_fom, Y_freq_rom)
+            else:
+                hinf = None
+
+            self.save_freq_resp(self.wv, y_freq_fom, system_name=system_name, hinf=hinf)
+
+            cout.cout_wrap('\tComputed the frequency response in %f s' % tfom, 2)
+
+            if self.settings['quick_plot']:
+                self.quick_plot(y_freq_fom, subfolder=system_name)
 
         return self.data
 
-    def save_freq_resp(self, wv, Yfreq, filename):
+    def save_freq_resp(self, wv, Yfreq, system_name=None, hinf=None):
+        """
+        Saves the frequency response to a binary ``.h5`` file.
 
+        If the system has not been scaled, the units of frequency are ``rad/s`` and the response is given in complex
+        form. The response is saved in a ``[p, m, n_freq_eval]`` format, where ``p`` corresponds to the system's
+        outputs, ``n`` to the number of inputs and ``n_freq_eval`` to the number of frequency evaluations.
+
+        Args:
+            wv (np.ndarray): Frequency array.
+            Y_freq (np.ndarray): Frequency response data ``[p, m, n_freq_eval]`` matrix.
+            system_name (str (optional)): State-space system name.
+            hinf (float (optional)): H-infinity norm of the system.
+        """
 
         with open(self.folder + '/freqdata_readme.txt', 'w') as outfile:
             outfile.write('Frequency Response Data Output\n\n')
-            outfile.write('Frequency range found in _wv.txt file in rad/s\n')
-            outfile.write('Response data from input m to output p in complex form. Column 1 corresponds'
-                          ' to the real value and column 2 to the imaginary part.')
+            outfile.write('Frequency data found in the relevant .h5 file\n')
+            outfile.write('If the system has not been scaled, the units of frequency are rad/s\nThe frequency' \
+                          'response is given in complex form.')
 
-        np.savetxt(self.folder + '/' + filename + '_wv.dat', wv)
+        case_name = ''
+        if system_name is not None:
+            case_name += system_name + '.'
 
-        for mj in range(self.ss.inputs):
-            for pj in range(self.ss.outputs):
-                freq_2_cols = Yfreq[pj, mj, :].view(float).reshape(-1, 2)
-                np.savetxt(self.folder + '/' + 'Y_freq_' + filename + '_m%02d_p%02d.dat' % (mj, pj),
-                           freq_2_cols)
+        p, m, _ = Yfreq.shape
 
-    def quick_plot(self, Y_freq_fom=None, Y_freq_rom=None):
-        cout.cout_wrap('Creating Quick plots of the frequency response')
-        for mj in range(self.ss.inputs):
-            for pj in range(self.ss.outputs):
-                fig1, ax1 = plt.subplots()
-                fig_title = 'in%02g_out%02g' % (mj, pj)
-                ax1.set_title(fig_title)
-                if Y_freq_fom is not None:
-                    ax1.plot(self.wv * self.w_to_k, Y_freq_fom[pj, mj, :].real, color='C0', label='Real FOM')
-                    ax1.plot(self.wv * self.w_to_k, Y_freq_fom[pj, mj, :].imag, '--', color='C0', label='Imag FOM')
-                if Y_freq_rom is not None:
-                    ax1.plot(self.wv * self.w_to_k, Y_freq_rom[pj, mj, :].real, color='C1', label='Real ROM')
-                    ax1.plot(self.wv * self.w_to_k, Y_freq_rom[pj, mj, :].imag, '--', color='C1', label='Imag FOM')
-                ax1.legend()
-                if self.settings['frequency_unit'] == 'k':
-                    ax1.set_xlabel('Reduced Frequency, k [-]')
-                else:
-                    ax1.set_xlabel(r'Frequency, $\omega$ [rad/s]')
+        h5filename = self.folder + '/' + case_name + 'freqresp.h5'
+        with h5.File(h5filename, 'w') as f:
+            f.create_dataset('frequency', data=wv)
+            f.create_dataset('response', data=Yfreq, dtype=complex)
+            f.create_dataset('inputs', data=m)
+            f.create_dataset('outputs', data=p)
+            if hinf is not None:
+                f.create_dataset('hinf_norm', data=hinf)
 
-                ax1.set_ylabel('Y')
-                fig1.savefig(self.folder + '/' + fig_title + '.png')
+        if self.print_info:
+            cout.cout_wrap('Saved .h5 file to %s with frequency response data' % h5filename)
 
-    def load_frequency_data(self):
-        cout.cout_wrap('Loading frequency response')
-        Y_freq_fom = np.zeros((self.ss.outputs, self.ss.inputs, len(self.wv)), dtype=complex)
-        for m in range(self.ss.inputs):
-            for p in range(self.ss.outputs):
-                y_load = np.loadtxt(self.settings['load_fom'] +
-                                    '/frequencyresponse/Y_freq_fom_m%02g_p%02g.dat' %(m,p)).view(complex)
-                y_load.shape = (y_load.shape[0], )
-                Y_freq_fom[p, m, :] = y_load
+    def quick_plot(self, y_freq_fom=None, subfolder=None):
+        p, m, _ = y_freq_fom.shape
+        try:
+            cout.cout_wrap('\tCreating Quick plots of the frequency response', 1)
 
-        return Y_freq_fom
+            out_folder = self.folder
+            if subfolder:
+                out_folder += '/' + subfolder
 
-    def frequency_error(self, Y_fom, Y_rom):
+            if not os.path.isdir(out_folder):
+                os.makedirs(out_folder, exist_ok=True)
 
-        cout.cout_wrap('Computing error in frequency response')
-        max_error = np.zeros((self.ss.outputs, self.ss.inputs, 2))
-        for m in range(self.ss.inputs):
-            for p in range(self.ss.outputs):
-                cout.cout_wrap('m = %g, p = %g' %(m, p))
-                max_error[p, m, 0] = error_between_signals(Y_fom[p, m, :].real,
-                                                                Y_rom[p, m, :].real,
-                                                                self.wv, 'real')
-                max_error[p, m, 1] = error_between_signals(Y_fom[p, m, :].imag,
-                                                                Y_rom[p, m, :].imag,
-                                                                self.wv, 'imag')
+            import matplotlib.pyplot as plt
+            for mj in range(m):
+                for pj in range(p):
+                    fig1, ax1 = plt.subplots(nrows=2)
+                    fig_title = 'in%02g_out%02g' % (mj, pj)
+                    ax1[0].set_title(fig_title)
+                    if y_freq_fom is not None:
+                        ax1[0].plot(self.wv * self.w_to_k, 20 * np.log10(np.abs(y_freq_fom[pj, mj, :])), color='C0')
+                        ax1[1].plot(self.wv * self.w_to_k, np.angle(y_freq_fom[pj, mj, :]), '-', color='C0')
+                    if self.settings['frequency_unit'] == 'k':
+                        ax1[1].set_xlabel('Reduced Frequency, k [-]')
+                    else:
+                        ax1[1].set_xlabel(r'Frequency, $\omega$ [rad/s]')
 
-        if np.max(np.log10(max_error)) >= 0:
-            warnings.warn('Significant mismatch in the frequency response of the ROM and FOM')
+                    ax1[0].set_ylabel('Amplitude [dB]')
+                    ax1[1].set_ylabel('Phase [rad]')
+                    fig1.savefig(out_folder + '/' + fig_title + '.png')
+                    plt.close()
 
-
-def error_between_signals(sig1, sig2, wv, sig_title=''):
-    abs_error = np.abs(sig1 - sig2)
-    max_error = np.max(abs_error)
-    max_error_index = np.argmax(abs_error)
-    pct_error = max_error/sig1[max_error_index]
-
-    max_err_freq = wv[max_error_index]
-    if 1e-1 > max_error > 1e-3:
-        c = 3
-    elif max_error >= 1e-1:
-        c = 4
-    else:
-        c = 1
-    cout.cout_wrap('\tError Magnitude -%s-: log10(error) = %.2f (%.2f pct) at %.2f rad/s'
-                   % (sig_title, np.log10(max_error), pct_error, max_err_freq), c)
-
-    return max_error
-
-    # def plot_frequency_response(self, kv, Y_freq_ss, Y_freq_rom, interp_frequencies):
-    #
-    #     nstates = self.ss.states
-    #     if self.rom is not None and Y_freq_rom is not None:
-    #         rstates = self.rom.ssrom.states
-    #         freqresp_title = 'ROM - %s' % self.rom.algorithm
-    #     else:
-    #         freqresp_title = ''
-    #     if self.settings['frequency_type'] == 'k':
-    #         freq_label = 'Reduced Frequency, k'
-    #     else:
-    #         freq_label = 'Angular Frequency, $\omega$ [rad/s]'
-    #
-    #
-    #     if self.settings['plot_type'] == 'bode':
-    #         fig, ax = plt.subplots(nrows=2, sharex=True)
-    #
-    #         phase_ss = np.angle((Y_freq_ss[0, 0, :]))  # - (np.angle((Y_full_system[0, 0, :])) // np.pi) * 2 * np.pi
-    #         if Y_freq_rom is not None:
-    #             phase_ssrom = np.angle((Y_freq_rom[0, 0, :]))  #- (np.angle((Y_freq_rom[0, 0, :])) // np.pi) * 2 * np.pi
-    #
-    #         ax[0].semilogx(kv, np.abs(Y_freq_ss[0, 0, :]),
-    #                        lw=4,
-    #                        alpha=0.5,
-    #                        color='b',
-    #                        label='Full - %g states' % nstates)
-    #         ax[1].semilogx(kv, phase_ss, ls='-',
-    #                        lw=4,
-    #                        alpha=0.5,
-    #                        color='b')
-    #
-    #         if Y_freq_rom is not None:
-    #             ax[0].semilogx(kv, np.abs(Y_freq_rom[0, 0, :]), ls='-.',
-    #                            lw=1.5,
-    #                            color='k',
-    #                            label='ROM - %g states' % rstates)
-    #             ax[1].semilogx(kv, phase_ssrom, ls='-.',
-    #                            lw=1.5,
-    #                            color='k')
-    #
-    #         ax[1].set_xlim(0, kv[-1])
-    #
-    #         ax[0].grid()
-    #         ax[1].grid()
-    #
-    #         if self.settings['frequency_type'] == 'k':
-    #             ax[1].set_xlabel('Reduced Frequency, k')
-    #         else:
-    #             ax[1].set_xlabel('Angular Frequency, $\omega$ [rad/s]')
-    #
-    #         ax[0].set_ylabel('Gain, M [-]')
-    #         ax[1].set_ylabel('Phase, $\Phi$ [rad]')
-    #
-    #         ax[1].set_ylim([-3.3, 3.3])
-    #         ax[1].set_yticks(np.linspace(-np.pi, np.pi, 5))
-    #         ax[1].set_yticklabels(['-$\pi$','-$\pi/2$', '0', '$\pi/2$', '$\pi$'])
-    #
-    #
-    #
-    #         ax[0].set_title(freqresp_title)
-    #         ax[0].legend()
-    #
-    #
-    #         # Plot interpolation regions
-    #         nfreqs = self.nfreqs
-    #         if nfreqs > 1:
-    #             for i in range(nfreqs):
-    #                 if interp_frequencies[i] != 0 and interp_frequencies[i] != np.inf:
-    #                     index_of_frequency = np.argwhere(kv >= interp_frequencies[i].imag)[0]
-    #                     ax[0].plot(interp_frequencies[i].imag,
-    #                                np.max(np.abs(Y_freq_ss[0, 0, index_of_frequency])),
-    #                                lw=1,
-    #                                marker='o',
-    #                                color='r')
-    #                     ax[1].plot(interp_frequencies[i],
-    #                                np.max(np.angle(Y_freq_ss[0, 0, index_of_frequency])),
-    #                                lw=1,
-    #                                marker='o',
-    #                                color='r')
-    #         else:
-    #             if interp_frequencies != 0 and interp_frequencies != np.inf:
-    #                 index_of_frequency = np.argwhere(kv >= interp_frequencies.imag)[0]
-    #                 ax[0].plot(interp_frequencies,
-    #                            np.max(np.abs(Y_freq_ss[0, 0, index_of_frequency])),
-    #                            lw=1,
-    #                            marker='o',
-    #                            color='r')
-    #                 ax[1].plot(interp_frequencies,
-    #                            np.max(np.angle(Y_freq_ss[0, 0, index_of_frequency])),
-    #                            lw=1,
-    #                            marker='o',
-    #                            color='r')
-    #         fig.show()
-    #
-    #         self.fig = fig
-    #         self.ax = ax
-    #
-    #     elif self.settings['plot_type'] == 'nyquist':
-    #
-    #         fig, ax = plt.subplots()
-    #
-    #         ax.plot(Y_freq_ss[0, 0, :].real, Y_freq_ss[0, 0, :].imag,
-    #                 lw=4,
-    #                 alpha=0.5,
-    #                 color='b',
-    #                 label='Full - %g states' % self.ss.states)
-    #
-    #         ax.plot(Y_freq_rom[0, 0, :].real, Y_freq_rom[0, 0, :].imag,
-    #                 ls='-.',
-    #                 lw=1.5,
-    #                 color='k',
-    #                 label='ROM - %g states' % rstates)
-    #
-    #         fig.show()
-    #
-    #     elif self.settings['plot_type'] == 'real_and_imaginary_mimo':
-    #
-    #         nu = Y_freq_rom.shape[0]
-    #         ny = Y_freq_rom.shape[1]
-    #
-    #         fig, ax = plt.subplots(nrows=nu, ncols=ny, sharex=True, squeeze=True, constrained_layout=True)
-    #         # fig.suptitle(freqresp_title)
-    #
-    #         for i in range(nu):
-    #             for j in range(ny):
-    #                 ax[i, j].semilogx(kv, Y_freq_ss[i, j, :].real,
-    #                               lw=4,
-    #                               alpha=0.5,
-    #                               color='b',
-    #                               label='Real - %g states' % nstates)
-    #                 ax[i, j].semilogx(kv, Y_freq_ss[i, j, :].imag,
-    #                               lw=4,
-    #                               alpha=0.5,
-    #                               color='b',
-    #                               ls='-.',
-    #                               label='Imag - %g states' % nstates)
-    #                 ax[i, j].semilogx(kv, Y_freq_rom[i, j, :].real, ls='-',
-    #                               lw=1.5,
-    #                               color='k',
-    #                               label='Real - %g states' % rstates)
-    #                 ax[i, j].semilogx(kv, Y_freq_rom[i, j, :].imag, ls='-.',
-    #                               lw=1.5,
-    #                               color='k',
-    #                               label='Imag - %g states' % rstates)
-    #
-    #                 if j == 0:
-    #                     ax[i, 0].set_ylabel('To Output [%d]' % (i+1))
-    #
-    #                 if i == 0:
-    #                     ax[0, j].set_title('From Input [%d]' % (j+1))
-    #
-    #                 if i == ny - 1:
-    #                     ax[ny-1, j].set_xlabel(freq_label)
-    #
-    #         ax[0, 0].legend()
-    #
-    #         fig.show()
-    #         self.fig = fig
-    #         self.ax = ax
-    #
-    #     elif self.settings['plot_type'] == 'real_and_imaginary_siso':
-    #         fig, ax = plt.subplots(nrows=1, ncols=1, sharex=True, squeeze=True, constrained_layout=True)
-    #         ax.plot(kv, Y_freq_ss[0, 0, :].real,
-    #                       lw=4,
-    #                       alpha=0.5,
-    #                       color='b',
-    #                       label='Real - %g states' % nstates)
-    #         ax.plot(kv, Y_freq_ss[0, 0, :].imag,
-    #                       lw=4,
-    #                       alpha=0.5,
-    #                       color='b',
-    #                       ls='-.',
-    #                       label='Imag - %g states' % nstates)
-    #         ax.plot(kv, Y_freq_rom[0, 0, :].real, ls='-',
-    #                       lw=1.5,
-    #                       color='k',
-    #                       label='Real - %g states' % rstates)
-    #         ax.plot(kv, Y_freq_rom[0, 0, :].imag, ls='-.',
-    #                       lw=1.5,
-    #                       color='k',
-    #                       label='Imag - %g states' % rstates)
-    #
-    #         ax.set_ylabel('Normalised Response')
-    #         ax.set_xlabel(freq_label)
-    #
-    #         ax.legend()
-    #
-    #         fig.show()
-    #         self.fig = fig
-    #         self.ax = ax
-    #
-    #     else:
-    #         raise NotImplementedError('%s - Plot type not yet implemented')
-    #
-    #
-    # def savefig(self, filename):
-    #     # Incorporate folder paths to save to output folder.
-    #     self.fig.savefig(filename)
-    #
-    #     # if self.data is not None:
-    #     #     Uinf0 = self.data.aero.timestep_info[0].u_ext[0][0, 0, 0]
-    #     #     c_ref = self.data.aero.timestep_info[0].zeta[0][0, -1, 0] - self.data.aero.timestep_info[0].zeta[0][0, 0, 0]
-    #     #     ds = 2. / self.data.aero.aero_dimensions[0][0]  # Spatial discretisation
-    #     #     fs = 1. / ds
-    #     #     fn = fs / 2.
-    #     #     ks = 2. * np.pi * fs
-    #     #     kn = 2. * np.pi * fn  # Nyquist frequency
-    #     #     Nk = 151  # Number of frequencies to evaluate
-    #     #     kv = np.linspace(1e-3, kn, Nk)  # Reduced frequency range
-    #     #     wv = 2. * Uinf0 / c_ref * kv  # Angular frequency range
-    #     # else:
-    #     #     kv = wv
-    #     #     c_ref = 2
-    #     #     Uinf0 = 1
-    #     #
-    #     # frequency = self.frequency
-    #     # # TODO to be modified for plotting purposes when using multi rational interpolation
-    #     # try:
-    #     #     nfreqs = frequency.shape[0]
-    #     # except AttributeError:
-    #     #     nfreqs = 1
-    #     #
-    #     # if frequency is None:
-    #     #     k_rom = np.inf
-    #     # else:
-    #     #     if self.ss.dt is not None:
-    #     #         ct_frequency = np.log(frequency)/self.ss.dt
-    #     #         k_rom = c_ref * ct_frequency * 0.5 / Uinf0
-    #     #     else:
-    #     #         k_rom = c_ref * frequency * 0.5 / Uinf0
-    #     #
-    #     # display_frequency = '$\sigma$ ='
-    #     # if nfreqs > 1:
-    #     #     display_frequency += ' ['
-    #     #     for i in range(nfreqs):
-    #     #         if type(k_rom[i]) == complex:
-    #     #             display_frequency += ' %.1f + %.1fj' % (k_rom[i].real, k_rom[i].imag)
-    #     #         else:
-    #     #             display_frequency += ' %.1f' % k_rom[i]
-    #     #         display_frequency += ','
-    #     #     display_frequency += ']'
-    #     # else:
-    #     #     if type(k_rom) == complex:
-    #     #         display_frequency += ', %.1f + %.1fj' % (k_rom.real, k_rom.imag)
-    #     #     else:
-    #     #         display_frequency += ', %.1f' % k_rom
-    #     #
-    #     # nstates = self.ss.states
-    #     # rstates = self.ssrom.states
-    #     #
-    #     # # Compute the frequency response
-    #     # Y_full_system = self.ss.freqresp(wv)
-    #     # Y_freq_rom = self.ssrom.freqresp(wv)
-    #     #
-    #     # rel_error = (Y_freq_rom[0, 0, :] - Y_full_system[0, 0, :]) / Y_full_system[0, 0, :]
-    #     #
-    #     # fig, ax = plt.subplots(nrows=2)
-    #     #
-    #     # if plot_figures:
-    #     #
-    #     #     phase_ss = np.angle((Y_full_system[0, 0, :])) # - (np.angle((Y_full_system[0, 0, :])) // np.pi) * 2 * np.pi
-    #     #     phase_ssrom = np.angle((Y_freq_rom[0, 0, :])) #- (np.angle((Y_freq_rom[0, 0, :])) // np.pi) * 2 * np.pi
-    #     #
-    #     #     ax[0].semilogx(kv, np.abs(Y_full_system[0, 0, :]),
-    #     #                    lw=4,
-    #     #                    alpha=0.5,
-    #     #                    color='b',
-    #     #                    label='UVLM - %g states' % nstates)
-    #     #     ax[1].semilogx(kv, phase_ss, ls='-',
-    #     #                    lw=4,
-    #     #                    alpha=0.5,
-    #     #                    color='b')
-    #     #
-    #     #     ax[1].set_xlim(0, kv[-1])
-    #     #     ax[0].grid()
-    #     #     ax[1].grid()
-    #     #     ax[0].semilogx(kv, np.abs(Y_freq_rom[0, 0, :]), ls='-.',
-    #     #                    lw=1.5,
-    #     #                    color='k',
-    #     #                    label='ROM - %g states' % rstates)
-    #     #     ax[1].semilogx(kv, phase_ssrom, ls='-.',
-    #     #                    lw=1.5,
-    #     #                    color='k')
-    #     #
-    #     #     # axins0 = inset_axes(ax[0], 1, 1, loc=1)
-    #     #     # axins0.semilogx(kv, np.abs(Y_full_system[0, 0, :]),
-    #     #     #             lw=4,
-    #     #     #             alpha=0.5,
-    #     #     #             color='b')
-    #     #     # axins0.semilogx(kv, np.abs(Y_freq_rom[0, 0, :]), ls='-.',
-    #     #     #             lw=1.5,
-    #     #     #             color='k')
-    #     #     # axins0.set_xlim([0, 1])
-    #     #     # axins0.set_ylim([0, 0.1])
-    #     #     #
-    #     #     # axins1 = inset_axes(ax[1], 1, 1.25, loc=1)
-    #     #     # axins1.semilogx(kv, np.angle((Y_full_system[0, 0, :])), ls='-',
-    #     #     #             lw=4,
-    #     #     #             alpha=0.5,
-    #     #     #             color='b')
-    #     #     # axins1.semilogx(kv, np.angle((Y_freq_rom[0, 0, :])), ls='-.',
-    #     #     #             lw=1.5,
-    #     #     #             color='k')
-    #     #     # axins1.set_xlim([0, 1])
-    #     #     # axins1.set_ylim([-3.5, 3.5])
-    #     #
-    #     #     ax[1].set_xlabel('Reduced Frequency, k')
-    #     #     ax[1].set_ylim([-3.3, 3.3])
-    #     #     ax[1].set_yticks(np.linspace(-np.pi, np.pi, 5))
-    #     #     ax[1].set_yticklabels(['-$\pi$','-$\pi/2$', '0', '$\pi/2$', '$\pi$'])
-    #     #     # ax.set_ylabel('Normalised Response')
-    #     #     freqresp_title = 'ROM - %s, r = %g, %s' % (self.algorithm, rstates, display_frequency)
-    #     #     ax[0].set_title(freqresp_title)
-    #     #     ax[0].legend()
-    #     #
-    #     #
-    #     #
-    #     #     # Plot interpolation regions
-    #     #     if nfreqs > 1:
-    #     #         for i in range(nfreqs):
-    #     #             if k_rom[i] != 0 and k_rom[i] != np.inf:
-    #     #                 index_of_frequency = np.argwhere(kv >= k_rom[i])[0]
-    #     #                 ax[0].plot(k_rom[i],
-    #     #                            np.max(np.abs(Y_full_system[0, 0, index_of_frequency])),
-    #     #                            lw=1,
-    #     #                            marker='o',
-    #     #                            color='r')
-    #     #                 ax[1].plot(k_rom[i],
-    #     #                            np.max(np.angle(Y_full_system[0, 0, index_of_frequency])),
-    #     #                            lw=1,
-    #     #                            marker='o',
-    #     #                            color='r')
-    #     #     else:
-    #     #         if k_rom != 0 and k_rom != np.inf:
-    #     #             index_of_frequency = np.argwhere(kv >= k_rom)[0]
-    #     #             ax[0].plot(k_rom,
-    #     #                        np.max(np.abs(Y_full_system[0, 0, index_of_frequency])),
-    #     #                        lw=1,
-    #     #                        marker='o',
-    #     #                        color='r')
-    #     #             ax[1].plot(k_rom,
-    #     #                        np.max(np.angle(Y_full_system[0, 0, index_of_frequency])),
-    #     #                        lw=1,
-    #     #                        marker='o',
-    #     #                        color='r')
-    #     #     fig.show()
-    #     #     # fig.savefig('./figs/theo_rolled/Freq_resp%s.eps' % freqresp_title)
-    #     #     # fig.savefig('./figs/theo_rolled/Freq_resp%s.png' % freqresp_title)
-    #     #
-    #     #     # Relative error
-    #     #     fig, ax = plt.subplots()
-    #     #
-    #     #     real_rel_error = np.abs(rel_error.real)
-    #     #     imag_rel_error = np.abs(rel_error.imag)
-    #     #
-    #     #     ax.loglog(kv, real_rel_error,
-    #     #               color='k',
-    #     #               lw=1.5,
-    #     #               label='Real')
-    #     #
-    #     #     ax.loglog(kv, imag_rel_error,
-    #     #               ls='--',
-    #     #               color='k',
-    #     #               lw=1.5,
-    #     #               label='Imag')
-    #     #
-    #     #     errresp_title = 'ROM - %s, r = %g, %s' % (self.algorithm, rstates, display_frequency)
-    #     #     ax.set_title(errresp_title)
-    #     #     ax.set_xlabel('Reduced Frequency, k')
-    #     #     ax.set_ylabel('Relative Error')
-    #     #     ax.set_ylim([1e-5, 1])
-    #     #     ax.legend()
-    #     #     fig.show()
-    #
-    #         # fig.savefig('./figs/theo_rolled/Err_resp%s.eps' % errresp_title)
-    #         # fig.savefig('./figs/theo_rolled/Err_resp%s.png' % errresp_title)
-    #
-    # # def display_frequency(self):
-    # #
-    # #     frequency = self.ssrom.frequency
-    # #
-    # #     display_frequency = '$\sigma$ ='
-    # #     if self.nfreqs > 1:
-    # #         for i in range(self.nfreqs):
-    # #         pass
-    # #
-    # #
-    # #
-    # #
-    # #     if frequency is None:
-    # #         k_rom = np.inf
-    # #     else:
-    # #         if self.ss.dt is not None:
-    # #             ct_frequency = np.log(frequency)/self.ss.dt
-    # #             k_rom = c_ref * ct_frequency * 0.5 / Uinf0
-    # #         else:
-    # #             k_rom = c_ref * frequency * 0.5 / Uinf0
-    # #
-    # #     display_frequency = '$\sigma$ ='
-    # #     if nfreqs > 1:
-    # #         display_frequency += ' ['
-    # #         for i in range(nfreqs):
-    # #             if type(k_rom[i]) == complex:
-    # #                 display_frequency += ' %.1f + %.1fj' % (k_rom[i].real, k_rom[i].imag)
-    # #             else:
-    # #                 display_frequency += ' %.1f' % k_rom[i]
-    # #             display_frequency += ','
-    # #         display_frequency += ']'
-    # #     else:
-    # #         if type(k_rom) == complex:
-    # #             display_frequency += ', %.1f + %.1fj' % (k_rom.real, k_rom.imag)
-    # #         else:
-    # #             display_frequency += ', %.1f' % k_rom
+            cout.cout_wrap('\tPlots saved to %s' % out_folder, 1)
+        except ModuleNotFoundError:
+            warnings.warn('Matplotlib not found - skipping plot')

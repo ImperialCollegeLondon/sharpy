@@ -3,7 +3,6 @@ import os
 import unittest
 import cases.templates.flying_wings as wings
 import sharpy.sharpy_main
-import sharpy.utils.sharpydir as sharpydir
 
 
 class TestGolandFlutter(unittest.TestCase):
@@ -16,11 +15,6 @@ class TestGolandFlutter(unittest.TestCase):
         num_modes = 4
 
         # Lattice Discretisation
-        # N = 52
-        # Runs - no cs
-        # M = 32
-        # N = 32
-        # M_star_fact = 10
         M = 16
         N = 32
         M_star_fact = 10
@@ -33,7 +27,8 @@ class TestGolandFlutter(unittest.TestCase):
         # ROM Properties
         rom_settings = dict()
         rom_settings['algorithm'] = 'mimo_rational_arnoldi'
-        rom_settings['r'] = 4
+        rom_settings['r'] = 6
+        rom_settings['single_side'] = 'observability'
         frequency_continuous_k = np.array([0.])
 
         # Case Admin - Create results folders
@@ -45,7 +40,7 @@ class TestGolandFlutter(unittest.TestCase):
         case_name += case_nlin_info + case_rom_info
 
         self.route_test_dir = os.path.abspath(os.path.dirname(os.path.realpath(__file__)))
-        fig_folder = self.route_test_dir + 'figures/'
+        fig_folder = self.route_test_dir + '/figures/'
         os.makedirs(fig_folder, exist_ok=True)
 
         # SHARPy nonlinear reference solution
@@ -59,7 +54,7 @@ class TestGolandFlutter(unittest.TestCase):
                                         sweep=0,
                                         physical_time=2,
                                         n_surfaces=2,
-                                        route=sharpydir.SharpyDir + '/tests/linear/goland_wing/cases',
+                                        route=self.route_test_dir + '/cases',
                                         case_name=case_name)
 
         ws.gust_intensity = 0.01
@@ -72,72 +67,201 @@ class TestGolandFlutter(unittest.TestCase):
         ws.generate_aero_file()
         ws.generate_fem_file()
 
-        ws.config['SHARPy']['flow'] = ['BeamLoader',
-                                       'AerogridLoader',
-                                       'StaticCoupled',
-                                       'AerogridPlot',
-                                       'BeamPlot',
-                                       'Modal',
-                                       'LinearAssembler',
-                                       'FrequencyResponse',
-                                       'AsymptoticStability',
-
-                                       ]
-
-        ws.config['LinearAssembler']['linear_system_settings']['aero_settings']['use_sparse'] = use_sparse
-        ws.config['LinearAssembler']['linear_system_settings']['aero_settings']['ScalingDict'] = {
-            'length': 0.5 * ws.c_ref,
-            'speed': u_inf,
-            'density': rho}
-        ws.config['LinearAssembler']['linear_system_settings']['aero_settings']['remove_inputs'] = ['u_gust']
-        ws.config['LinearAssembler']['linear_system_settings']['aero_settings']['rom_method'] = 'Krylov'
         frequency_continuous_w = 2 * u_inf * frequency_continuous_k / ws.c_ref
         rom_settings['frequency'] = frequency_continuous_w
         rom_settings['tangent_input_file'] = ws.route + '/' + ws.case_name + '.rom.h5'
-        ws.config['LinearAssembler']['linear_system_settings']['aero_settings']['rom_method_settings'] = rom_settings
 
-        ws.config['LinearAssembler']['linear_system_settings']['beam_settings']['gravity'] = 'on'
-        ws.config['LinearAssembler']['linear_system_settings']['beam_settings']['modal_projection'] = 'on'
-        ws.config['LinearAssembler']['linear_system_settings']['beam_settings']['inout_coords'] = 'modes'
-        ws.config['LinearAssembler']['linear_system_settings']['beam_settings']['num_modes'] = num_modes
-        ws.config['LinearAssembler']['linear_system_settings']['beam_settings']['remove_sym_modes'] = 'on'
-        ws.config['LinearAssembler']['linear_system_settings']['beam_settings']['newmark_damp'] = 0.5e-4
-        ws.config['SHARPy']['write_screen'] = 'off'
-        ws.config['Modal']['NumLambda'] = 20
-        ws.config['Modal']['rigid_body_modes'] = False
-        ws.config['Modal']['write_dat'] = True
-        ws.config['Modal']['print_matrices'] = True
-        ws.config['Modal']['rigid_modes_cg'] = False
-        ws.config['NonLinearStatic']['gravity_on'] = 'off'
-        ws.config['StaticCoupled']['structural_solver_settings']['gravity_on'] = 'on'
-        ws.config['AsymptoticStability']['velocity_analysis'] = [165, 175, 20]
+        ws.config['SHARPy'] = {
+            'flow':
+                ['BeamLoader', 'AerogridLoader',
+                 'StaticCoupled',
+                 'AerogridPlot',
+                 'BeamPlot',
+                 'Modal',
+                 'LinearAssembler',
+                 'FrequencyResponse',
+                 'AsymptoticStability',
+                 ],
+            'case': ws.case_name, 'route': ws.route,
+            'write_screen': 'off', 'write_log': 'on',
+            'log_folder': self.route_test_dir + '/output/' + ws.case_name + '/',
+            'log_file': ws.case_name + '.log'}
 
-        ws.config['FrequencyResponse'] = {'compute_fom': 'on',
-                                          'load_fom': './output/' + case_name,
-                                          'quick_plot': 'on',
-                                          'folder': './output/',
+        ws.config['BeamLoader'] = {
+            'unsteady': 'off',
+            'orientation': ws.quat}
+
+        ws.config['AerogridLoader'] = {
+            'unsteady': 'off',
+            'aligned_grid': 'on',
+            'mstar': ws.Mstar_fact * ws.M,
+            'freestream_dir': ws.u_inf_direction,                                                                                                       
+            'wake_shape_generator': 'StraightWake',                                                                                                  
+            'wake_shape_generator_input': {'u_inf': ws.u_inf,                                                                                           
+                                           'u_inf_direction': ws.u_inf_direction,                                                                
+                                           'dt': ws.dt}}
+
+        ws.config['StaticUvlm'] = {
+            'rho': ws.rho,
+            'velocity_field_generator': 'SteadyVelocityField',
+            'velocity_field_input': {
+                'u_inf': ws.u_inf,
+                'u_inf_direction': ws.u_inf_direction},
+            'rollup_dt': ws.dt,
+            'print_info': 'on',
+            'horseshoe': 'off',
+            'num_cores': 4,
+            'n_rollup': 0,
+            'rollup_aic_refresh': 0,
+            'rollup_tolerance': 1e-4}
+
+        ws.config['StaticCoupled'] = {
+            'print_info': 'on',
+            'max_iter': 200,
+            'n_load_steps': 1,
+            'tolerance': 1e-10,
+            'relaxation_factor': 0.,
+            'aero_solver': 'StaticUvlm',
+            'aero_solver_settings': {
+                'rho': ws.rho,
+                'print_info': 'off',
+                'horseshoe': 'off',
+                'num_cores': 4,
+                'n_rollup': 0,
+                'rollup_dt': ws.dt,
+                'rollup_aic_refresh': 1,
+                'rollup_tolerance': 1e-4,
+                'velocity_field_generator': 'SteadyVelocityField',
+                'velocity_field_input': {
+                    'u_inf': ws.u_inf,
+                    'u_inf_direction': ws.u_inf_direction}},
+            'structural_solver': 'NonLinearStatic',
+            'structural_solver_settings': {'print_info': 'off',
+                                           'max_iterations': 150,
+                                           'num_load_steps': 4,
+                                           'delta_curved': 1e-1,
+                                           'min_delta': 1e-10,
+                                           'gravity_on': 'on',
+                                           'gravity': 9.754}}
+
+        ws.config['AerogridPlot'] = {'folder': self.route_test_dir + '/output/',
+                                     'include_rbm': 'off',
+                                     'include_applied_forces': 'on',
+                                     'minus_m_star': 0}
+
+        ws.config['AeroForcesCalculator'] = {'folder': self.route_test_dir + '/output/forces',
+                                             'write_text_file': 'on',
+                                             'text_file_name': ws.case_name + '_aeroforces.csv',
+                                             'screen_output': 'on',
+                                             'unsteady': 'off'}
+
+        ws.config['BeamPlot'] = {'folder': self.route_test_dir + '/output/',
+                                 'include_rbm': 'off',
+                                 'include_applied_forces': 'on'}
+
+        ws.config['BeamCsvOutput'] = {'folder': self.route_test_dir + '/output/',
+                                      'output_pos': 'on',
+                                      'output_psi': 'on',
+                                      'screen_output': 'on'}
+
+        ws.config['Modal'] = {'folder': self.route_test_dir + '/output/',
+                              'NumLambda': 20,
+                              'rigid_body_modes': 'off',
+                              'print_matrices': 'on',
+                              'keep_linear_matrices': 'on',
+                              'write_dat': 'off',
+                              'rigid_modes_cg': 'off',
+                              'continuous_eigenvalues': 'off',
+                              'dt': 0,
+                              'plot_eigenvalues': False,
+                              'max_rotation_deg': 15.,
+                              'max_displacement': 0.15,
+                              'write_modes_vtk': True,
+                              'use_undamped_modes': True}
+
+        ws.config['LinearAssembler'] = {'linear_system': 'LinearAeroelastic',
+                                        'linear_system_settings': {
+                                            'beam_settings': {'modal_projection': 'on',
+                                                              'inout_coords': 'modes',
+                                                              'discrete_time': 'on',
+                                                              'newmark_damp': 0.5e-4,
+                                                              'discr_method': 'newmark',
+                                                              'dt': ws.dt,
+                                                              'proj_modes': 'undamped',
+                                                              'use_euler': 'off',
+                                                              'num_modes': num_modes,
+                                                              'print_info': 'on',
+                                                              'gravity': 'on',
+                                                              'remove_sym_modes': 'on',
+                                                              'remove_dofs': []},
+                                            'aero_settings': {'dt': ws.dt,
+                                                              'ScalingDict': {'length': 0.5 * ws.c_ref,
+                                                                              'speed': u_inf,
+                                                                              'density': rho},
+                                                              'integr_order': integration_order,
+                                                              'density': ws.rho,
+                                                              'remove_predictor': remove_predictor,
+                                                              'use_sparse': use_sparse,
+                                                              'rigid_body_motion': 'off',
+                                                              'use_euler': 'off',
+                                                              'remove_inputs': ['u_gust'],
+                                                              'rom_method': ['Krylov'],
+                                                              'rom_method_settings': {'Krylov': rom_settings}},
+                                            'rigid_body_motion': False}}
+
+        ws.config['AsymptoticStability'] = {'print_info': True,
+                                            'folder': self.route_test_dir + '/output/',
+                                            'target_system': ['aeroelastic', 'aerodynamic', 'structural'],
+                                            'velocity_analysis': [160, 180, 20]}
+
+        ws.config['LinDynamicSim'] = {'dt': ws.dt,
+                                      'n_tsteps': ws.n_tstep,
+                                      'sys_id': 'LinearAeroelastic',
+                                      'postprocessors': ['BeamPlot', 'AerogridPlot'],
+                                      'postprocessors_settings': {'AerogridPlot': {
+                                          'u_inf': ws.u_inf,
+                                          'folder': self.route_test_dir + '/output/',
+                                          'include_rbm': 'on',
+                                          'include_applied_forces': 'on',
+                                          'minus_m_star': 0},
+                                          'BeamPlot': {'folder': ws.route + '/output/',
+                                                       'include_rbm': 'on',
+                                                       'include_applied_forces': 'on'}}}
+
+        ws.config['FrequencyResponse'] = {'quick_plot': 'off',
+                                          'folder': self.route_test_dir + '/output/',
                                           'frequency_unit': 'k',
                                           'frequency_bounds': [0.0001, 1.0],
+                                          'num_freqs': 100,
+                                          'frequency_spacing': 'log',
+                                          'target_system': ['aeroelastic'],
                                           }
 
         ws.config.write()
 
-        self.data = sharpy.sharpy_main.main(['', ws.route + ws.case_name + '.solver.txt'])
+        self.data = sharpy.sharpy_main.main(['', ws.route + ws.case_name + '.sharpy'])
 
     def run_rom_stable(self):
-        ssrom = self.data.linear.linear_system.uvlm.rom.ssrom
+        ssrom = self.data.linear.linear_system.uvlm.rom['Krylov'].ssrom
         eigs_rom = np.linalg.eigvals(ssrom.A)
 
         assert all(np.abs(eigs_rom) <= 1.), 'UVLM Krylov ROM is unstable - flutter speed may not be correct. Change' \
                                             'ROM settings to achieve stability'
-        print('ROM is stable')
+        # print('ROM is stable')
 
     def run_flutter(self):
-        flutter_ref_speed = 166
+        flutter_ref_speed = 166  # at current discretisation
 
-        u_inf = self.data.linear.stability['velocity_results']['u_inf']
-        eval_real = self.data.linear.stability['velocity_results']['evals_real']
-        eval_imag = self.data.linear.stability['velocity_results']['evals_imag']
+        # load results file - variables below determined by ``velocity_analysis`` setting in AsymptoticStability
+        ulb = 160  # velocity lower bound
+        uub = 180  # velocity upper bound
+        num_u = 20  # n_speeds
+        res = np.loadtxt(self.route_test_dir + '/output/%s/stability/' % self.data.settings['SHARPy']['case'] +
+                         '/velocity_analysis_min%04d_max%04d_nvel%04d.dat' % (ulb * 10, uub * 10, num_u), )
+
+        u_inf = res[:, 0]
+        eval_real = res[:, 1]
+        eval_imag = res[:, 2]
 
         # Flutter onset
         ind_zero_real = np.where(eval_real >= 0)[0][0]
@@ -145,17 +269,24 @@ class TestGolandFlutter(unittest.TestCase):
         flutter_speed = 0.5 * (u_inf[ind_zero_real] + u_inf[ind_zero_real - 1])
         flutter_frequency = np.sqrt(eval_real[ind_zero_real] ** 2 + eval_imag[ind_zero_real] ** 2)
 
-        print('Flutter speed = %.1f m/s' % flutter_speed)
-        print('Flutter frequency = %.2f rad/s' % flutter_frequency)
+        # print('Flutter speed = %.1f m/s' % flutter_speed)
+        # print('Flutter frequency = %.2f rad/s' % flutter_frequency)
         assert np.abs(
             flutter_speed - flutter_ref_speed) / flutter_ref_speed < 1e-2, ' Flutter speed error greater than ' \
-                                                                           '1 percent'
-        print('Test Complete')
+                                                                           '1 percent. \nFlutter speed: %.2f m/s\n' \
+                                                                           'Frequency: %.2f rad/s' % (flutter_speed,
+                                                                                                      flutter_frequency)
 
     def test_flutter(self):
         self.setup()
         self.run_rom_stable()
         self.run_flutter()
+
+    def tearDown(self):
+        import shutil
+        folders = ['cases', 'figures', 'output']
+        for folder in folders:
+            shutil.rmtree(self.route_test_dir + '/' + folder)
 
 
 if __name__ == '__main__':
