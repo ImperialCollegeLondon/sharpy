@@ -60,6 +60,11 @@ class PickleData(BaseSolver):
         self.filename = self.folder + self.data.settings['SHARPy']['case']+'.pkl'
 
     def run(self, online=False):
+        for it in range(len(self.data.structure.timestep_info)):
+            tstep_p = self.data.structure.timestep_info[it]
+            if tstep_p is not None:
+                if not tstep_p.in_global_AFoR:
+                    tstep_p.whole_structure_to_global_AFoR(self.data.structure)
         with open(self.filename, 'wb') as f:
             pickle.dump(self.data, f, protocol=pickle.HIGHEST_PROTOCOL)
 
