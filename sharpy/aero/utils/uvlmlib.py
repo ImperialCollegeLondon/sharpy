@@ -147,12 +147,13 @@ def vlm_solver(ts_info, options):
     vmopts.iterative_tol = ct.c_double(options['iterative_tol'].value)
     vmopts.iterative_precond = ct.c_bool(options['iterative_precond'].value)
     vmopts.cfl1 = ct.c_bool(options['cfl1'])
-    vmopts.rbm_vel_g = np.ctypeslib.as_ctypes(options['rbm_vel_g'])
 
     flightconditions = FlightConditions()
     flightconditions.rho = options['rho']
     flightconditions.uinf = np.ctypeslib.as_ctypes(np.linalg.norm(ts_info.u_ext[0][:, 0, 0]))
     flightconditions.uinf_direction = np.ctypeslib.as_ctypes(ts_info.u_ext[0][:, 0, 0]/flightconditions.uinf)
+
+    p_rbm_vel_g = options['rbm_vel_g'].ctypes.data_as(ct.POINTER(ct.c_double))
 
     ts_info.generate_ctypes_pointers()
     run_VLM(ct.byref(vmopts),
@@ -165,7 +166,8 @@ def vlm_solver(ts_info, options):
             ts_info.ct_p_u_ext,
             ts_info.ct_p_gamma,
             ts_info.ct_p_gamma_star,
-            ts_info.ct_p_forces)
+            ts_info.ct_p_forces,
+            p_rbm_vel_g)
     ts_info.remove_ctypes_pointers()
 
 
