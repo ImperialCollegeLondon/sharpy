@@ -79,7 +79,10 @@ class UVMopts(ct.Structure):
                 ("iterative_tol", ct.c_double),
                 ("iterative_precond", ct.c_bool),
                 ("convect_wake", ct.c_bool),
-                ("cfl1", ct.c_bool)]
+                ("cfl1", ct.c_bool),
+                ("interp_coords", ct.c_uint),
+                ("filter_method", ct.c_uint),
+                ("interp_method", ct.c_uint),]
 
     def __init__(self):
         ct.Structure.__init__(self)
@@ -229,6 +232,9 @@ def uvlm_solver(i_iter, ts_info, struct_ts_info, options, convect_wake=True, dt=
     uvmopts.iterative_precond = ct.c_bool(options['iterative_precond'].value)
     uvmopts.convect_wake = ct.c_bool(convect_wake)
     uvmopts.cfl1 = ct.c_bool(options['cfl1'])
+    uvmopts.interp_coords = ct.c_uint(options["interp_coords"].value)
+    uvmopts.filter_method = ct.c_uint(options["filter_method"].value)
+    uvmopts.interp_method = ct.c_uint(options["interp_method"].value)
 
     flightconditions = FlightConditions()
     flightconditions.rho = options['rho']

@@ -96,6 +96,21 @@ class StepUvlm(BaseSolver):
     settings_default['cfl1'] = True
     settings_description['cfl1'] = 'If it is ``True``, it assumes that the discretisation complies with CFL=1'
 
+    settings_types['interp_coords'] = 'int'
+    settings_default['interp_coords'] = 0
+    settings_description['interp_coords'] = 'Coordinates to use for wake description: cartesian(0) or cylindrical_z(1)'
+    settings_options['interp_coords'] = [0, 1]
+
+    settings_types['filter_method'] = 'int'
+    settings_default['filter_method'] = 0
+    settings_description['filter_method'] = 'Method to filter the points: no filter (0) or splines(1)'
+    settings_options['interp_coords'] = [0, 1]
+
+    settings_types['interp_method'] = 'int'
+    settings_default['interp_method'] = 0
+    settings_description['interp_method'] = 'Method of interpolation: linear(0), parabolic(1) or splines(2)'
+    settings_options['interp_method'] = [0, 1, 2]
+
     settings_table = settings.SettingsTable()
     __doc__ += settings_table.generate(settings_types, settings_default, settings_description, settings_options)
 
