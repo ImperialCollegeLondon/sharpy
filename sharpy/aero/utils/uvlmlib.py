@@ -7,6 +7,7 @@ import platform
 import os
 from sharpy.utils.constants import NDIM
 
+AlgLib = ct_utils.import_ctypes_lib(SharpyDir + '/lib/UVLM/ALGLIB/lib/', 'libalglib')
 UvlmLib = ct_utils.import_ctypes_lib(SharpyDir + '/lib/UVLM/lib/', 'libuvlm')
 
 
