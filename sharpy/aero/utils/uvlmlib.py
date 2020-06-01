@@ -64,6 +64,7 @@ class VMopts(ct.Structure):
         self.iterative_tol = ct.c_double(0)
         self.iterative_precond = ct.c_bool(False)
         self.cfl1 = ct.c_bool(True)
+        self.rbm_vel_g = np.ctypeslib.as_ctypes(np.zeros((6)))
 
 
 class UVMopts(ct.Structure):
@@ -156,6 +157,8 @@ def vlm_solver(ts_info, options):
     flightconditions.uinf = np.ctypeslib.as_ctypes(np.linalg.norm(ts_info.u_ext[0][:, 0, 0]))
     flightconditions.uinf_direction = np.ctypeslib.as_ctypes(ts_info.u_ext[0][:, 0, 0]/flightconditions.uinf)
 
+    p_rbm_vel_g = options['rbm_vel_g'].ctypes.data_as(ct.POINTER(ct.c_double))
+
     ts_info.generate_ctypes_pointers()
     run_VLM(ct.byref(vmopts),
             ct.byref(flightconditions),
@@ -163,10 +166,12 @@ def vlm_solver(ts_info, options):
             ts_info.ct_p_dimensions_star,
             ts_info.ct_p_zeta,
             ts_info.ct_p_zeta_star,
+            ts_info.ct_p_zeta_dot,
             ts_info.ct_p_u_ext,
             ts_info.ct_p_gamma,
             ts_info.ct_p_gamma_star,
-            ts_info.ct_p_forces)
+            ts_info.ct_p_forces,
+            p_rbm_vel_g)
     ts_info.remove_ctypes_pointers()
 
 

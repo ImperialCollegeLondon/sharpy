@@ -92,6 +92,10 @@ class StaticUvlm(BaseSolver):
     settings_default['cfl1'] = True
     settings_description['cfl1'] = 'If it is ``True``, it assumes that the discretisation complies with CFL=1'
 
+    settings_types['rbm_vel_g'] = 'list(float)'
+    settings_default['rbm_vel_g'] = np.zeros((6))
+    settings_description['rbm_vel_g'] = 'Rigid body velocity in G FoR'
+
     settings_table = settings.SettingsTable()
     __doc__ += settings_table.generate(settings_types, settings_default, settings_description)
 
