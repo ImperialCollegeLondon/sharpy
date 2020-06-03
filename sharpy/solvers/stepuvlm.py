@@ -108,8 +108,8 @@ class StepUvlm(BaseSolver):
 
     settings_types['interp_method'] = 'int'
     settings_default['interp_method'] = 0
-    settings_description['interp_method'] = 'Method of interpolation: linear(0), parabolic(1) or splines(2)'
-    settings_options['interp_method'] = [0, 1, 2]
+    settings_description['interp_method'] = 'Method of interpolation: linear(0), parabolic(1), splines(2) or slerp(3)'
+    settings_options['interp_method'] = [0, 1, 2, 3]
 
     settings_table = settings.SettingsTable()
     __doc__ += settings_table.generate(settings_types, settings_default, settings_description, settings_options)
