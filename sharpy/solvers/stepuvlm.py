@@ -101,6 +101,10 @@ class StepUvlm(BaseSolver):
     settings_default['vortex_radius'] = vortex_radius_def
     settings_description['vortex_radius'] = 'Distance between points below which induction is not computed'
 
+    settings_types['vortex_radius_wake_ind'] = 'float'
+    settings_default['vortex_radius_wake_ind'] = vortex_radius_def
+    settings_description['vortex_radius_wake_ind'] = 'Distance between points below which induction is not computed in the wake convection'
+
     settings_types['interp_coords'] = 'int'
     settings_default['interp_coords'] = 0
     settings_description['interp_coords'] = 'Coordinates to use for wake description: cartesian(0) or cylindrical_z(1)'

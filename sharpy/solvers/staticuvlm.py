@@ -98,6 +98,10 @@ class StaticUvlm(BaseSolver):
     settings_default['vortex_radius'] = vortex_radius_def
     settings_description['vortex_radius'] = 'Distance between points below which induction is not computed'
 
+    settings_types['vortex_radius_wake_ind'] = 'float'
+    settings_default['vortex_radius_wake_ind'] = vortex_radius_def
+    settings_description['vortex_radius_wake_ind'] = 'Distance between points below which induction is not computed in the wake convection'
+
     settings_types['rbm_vel_g'] = 'list(float)'
     settings_default['rbm_vel_g'] = np.zeros((6))
     settings_description['rbm_vel_g'] = 'Rigid body velocity in G FoR'

@@ -26,6 +26,7 @@ class VMopts(ct.Structure):
             unsigned int NumSurfaces;
             bool cfl1;
             double vortex_radius;
+            double vortex_radius_wake_ind;
         };
     """
     _fields_ = [("ImageMethod", ct.c_bool),
@@ -45,7 +46,8 @@ class VMopts(ct.Structure):
                 ("iterative_tol", ct.c_double),
                 ("iterative_precond", ct.c_bool),
                 ("cfl1", ct.c_bool),
-                ("vortex_radius", ct.c_double)]
+                ("vortex_radius", ct.c_double),
+                ("vortex_radius_wake_ind", ct.c_double)]
 
     def __init__(self):
         ct.Structure.__init__(self)
@@ -67,6 +69,7 @@ class VMopts(ct.Structure):
         self.iterative_precond = ct.c_bool(False)
         self.cfl1 = ct.c_bool(True)
         self.vortex_radius = ct.c_double(vortex_radius_def)
+        self.vortex_radius_wake_ind = ct.c_double(vortex_radius_def)
         self.rbm_vel_g = np.ctypeslib.as_ctypes(np.zeros((6)))
 
 
@@ -85,7 +88,8 @@ class UVMopts(ct.Structure):
                 ("iterative_precond", ct.c_bool),
                 ("convect_wake", ct.c_bool),
                 ("cfl1", ct.c_bool),
-                ("vortex_radius", ct.c_double)]
+                ("vortex_radius", ct.c_double),
+                ("vortex_radius_wake_ind", ct.c_double),
                 ("interp_coords", ct.c_uint),
                 ("filter_method", ct.c_uint),
                 ("interp_method", ct.c_uint),]
@@ -104,6 +108,7 @@ class UVMopts(ct.Structure):
         self.convect_wake = ct.c_bool(True)
         self.cfl1 = ct.c_bool(True)
         self.vortex_radius = ct.c_double(vortex_radius_def)
+        self.vortex_radius_wake_ind = ct.c_double(vortex_radius_def)
 
 
 class FlightConditions(ct.Structure):
@@ -157,6 +162,7 @@ def vlm_solver(ts_info, options):
     vmopts.iterative_precond = ct.c_bool(options['iterative_precond'].value)
     vmopts.cfl1 = ct.c_bool(options['cfl1'])
     vmopts.vortex_radius = ct.c_double(options['vortex_radius'].value)
+    vmopts.vortex_radius_wake_ind = ct.c_double(options['vortex_radius_wake_ind'].value)
 
     flightconditions = FlightConditions()
     flightconditions.rho = options['rho']
@@ -199,6 +205,7 @@ def uvlm_init(ts_info, options):
         pass
     vmopts.NumCores = ct.c_uint(options['num_cores'].value)
     vmopts.vortex_radius = ct.c_double(options['vortex_radius'].value)
+    vmopts.vortex_radius_wake_ind = ct.c_double(options['vortex_radius_wake_ind'].value)
 
     flightconditions = FlightConditions()
     flightconditions.rho = options['rho']
@@ -246,6 +253,7 @@ def uvlm_solver(i_iter, ts_info, struct_ts_info, options, convect_wake=True, dt=
     uvmopts.convect_wake = ct.c_bool(convect_wake)
     uvmopts.cfl1 = ct.c_bool(options['cfl1'])
     uvmopts.vortex_radius = ct.c_double(options['vortex_radius'].value)
+    uvmopts.vortex_radius_wake_ind = ct.c_double(options['vortex_radius_wake_ind'].value)
     uvmopts.interp_coords = ct.c_uint(options["interp_coords"].value)
     uvmopts.filter_method = ct.c_uint(options["filter_method"].value)
     uvmopts.interp_method = ct.c_uint(options["interp_method"].value)
