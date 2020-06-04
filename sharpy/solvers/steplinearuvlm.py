@@ -9,6 +9,7 @@ import sharpy.utils.settings as settings
 import sharpy.utils.generator_interface as gen_interface
 import sharpy.utils.algebra as algebra
 import sharpy.linear.src.linuvlm as linuvlm
+from sharpy.utils.constants import vortex_radius_def
 
 
 @solver
@@ -99,6 +100,10 @@ class StepLinearUVLM(BaseSolver):
     settings_types['velocity_field_input'] = 'dict'
     settings_default['velocity_field_input'] = {}
     settings_description['velocity_field_input'] = 'Dictionary of settings for the velocity field generator'
+
+    settings_types['vortex_radius'] = 'float'
+    settings_default['vortex_radius'] = vortex_radius_def
+    settings_description['vortex_radius'] = 'Distance between points below which induction is not computed'
 
     settings_table = settings.SettingsTable()
     __doc__ += settings_table.generate(settings_types, settings_default, settings_description)

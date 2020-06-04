@@ -9,6 +9,7 @@ import sharpy.utils.settings as settings
 from sharpy.utils.solver_interface import solver, BaseSolver
 import sharpy.utils.generator_interface as gen_interface
 import sharpy.utils.cout_utils as cout
+from sharpy.utils.constants import vortex_radius_def
 import sys
 
 
@@ -82,6 +83,10 @@ class SHWUvlm(BaseSolver):
     settings_default['rot_center'] = [0., 0., 0.]
     settings_description['rot_center'] = 'Center of rotation of the wake'
 
+    settings_types['vortex_radius'] = 'float'
+    settings_default['vortex_radius'] = vortex_radius_def
+    settings_description['vortex_radius'] = 'Distance between points below which induction is not computed'
+
     settings_table = settings.SettingsTable()
     __doc__ += settings_table.generate(settings_types, settings_default, settings_description)
 
@@ -97,7 +102,7 @@ class SHWUvlm(BaseSolver):
             self.settings = data.settings[self.solver_id]
         else:
             self.settings = custom_settings
-        settings.to_custom_types(self.settings, self.settings_types, self.settings_default)
+        settings.to_custom_types(self.settings, self.settings_types, self.settings_default, no_ctype=True)
 
         # self.data.structure.add_unsteady_information(self.data.structure.dyn_dict, self.settings['n_time_steps'].value)
 
@@ -108,8 +113,8 @@ class SHWUvlm(BaseSolver):
         self.velocity_generator.initialise(self.settings['velocity_field_input'])
 
         # Checks
-        if not self.settings['convection_scheme'].value == 2:
-            sys.exit("ERROR: convection_scheme: %u. Only 2 supported" % self.settings['convection_scheme'].value)
+        if not self.settings['convection_scheme'] == 2:
+            sys.exit("ERROR: convection_scheme: %u. Only 2 supported" % self.settings['convection_scheme'])
 
     def run(self,
             aero_tstep=None,
@@ -128,7 +133,7 @@ class SHWUvlm(BaseSolver):
         if structure_tstep is None:
             structure_tstep = self.data.structure.timestep_info[-1]
         if dt is None:
-            dt = self.settings['dt'].value
+            dt = self.settings['dt']
         if t is None:
             t = self.data.ts*dt
 
@@ -174,8 +179,8 @@ class SHWUvlm(BaseSolver):
         if unsteady_contribution:
             # calculate unsteady (added mass) forces:
             self.data.aero.compute_gamma_dot(dt, aero_tstep, self.data.aero.timestep_info[-3:])
-            if self.settings['gamma_dot_filtering'].value > 0:
-                self.filter_gamma_dot(aero_tstep, self.data.aero.timestep_info, self.settings['gamma_dot_filtering'].value)
+            if self.settings['gamma_dot_filtering'] > 0:
+                self.filter_gamma_dot(aero_tstep, self.data.aero.timestep_info, self.settings['gamma_dot_filtering'])
             uvlmlib.uvlm_calculate_unsteady_forces(aero_tstep,
                                                    structure_tstep,
                                                    self.settings,

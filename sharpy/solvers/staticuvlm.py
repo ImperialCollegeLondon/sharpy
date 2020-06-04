@@ -7,6 +7,8 @@ import sharpy.utils.cout_utils as cout
 import sharpy.utils.settings as settings
 from sharpy.utils.solver_interface import solver, BaseSolver
 import sharpy.utils.generator_interface as gen_interface
+from sharpy.utils.constants import vortex_radius_def
+
 
 @solver
 class StaticUvlm(BaseSolver):
@@ -91,6 +93,10 @@ class StaticUvlm(BaseSolver):
     settings_types['cfl1'] = 'bool'
     settings_default['cfl1'] = True
     settings_description['cfl1'] = 'If it is ``True``, it assumes that the discretisation complies with CFL=1'
+
+    settings_types['vortex_radius'] = 'float'
+    settings_default['vortex_radius'] = vortex_radius_def
+    settings_description['vortex_radius'] = 'Distance between points below which induction is not computed'
 
     settings_types['rbm_vel_g'] = 'list(float)'
     settings_default['rbm_vel_g'] = np.zeros((6))

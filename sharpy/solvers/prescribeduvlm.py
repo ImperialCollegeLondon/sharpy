@@ -6,6 +6,7 @@ import sharpy.utils.settings as settings
 from sharpy.utils.solver_interface import solver, BaseSolver
 import sharpy.utils.solver_interface as solver_interface
 import sharpy.utils.cout_utils as cout
+from sharpy.utils.constants import vortex_radius_def
 
 
 @solver
@@ -60,6 +61,10 @@ class PrescribedUvlm(BaseSolver):
     settings_types['cfl1'] = 'bool'
     settings_default['cfl1'] = True
     settings_description['cfl1'] = 'If it is ``True``, it assumes that the discretisation complies with CFL=1'
+
+    settings_types['vortex_radius'] = 'float'
+    settings_default['vortex_radius'] = vortex_radius_def
+    settings_description['vortex_radius'] = 'Distance between points below which induction is not computed'
 
     settings_table = settings.SettingsTable()
     __doc__ += settings_table.generate(settings_types, settings_default, settings_description)
