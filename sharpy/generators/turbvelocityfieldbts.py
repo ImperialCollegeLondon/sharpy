@@ -129,6 +129,10 @@ class TurbVelocityFieldBts(generator_interface.BaseGenerator):
     settings_default['case_with_tower'] = False
     settings_description['case_with_tower'] = 'Does the SHARPy case will include the tower in the simulation?'
 
+    settings_types['interpolate_wake'] = 'bool'
+    settings_default['interpolate_wake'] = True
+    settings_description['interpolate_wake'] = 'If False, u_out will be assigned to all the points in the wake'
+
     setting_table = settings.SettingsTable()
     __doc__ += setting_table.generate(settings_types, settings_default, settings_description)
 
@@ -186,15 +190,29 @@ class TurbVelocityFieldBts(generator_interface.BaseGenerator):
         for_pos = params['for_pos']
         t = params['t']
 
-        offset = self.settings['u_fed']*t
-        if offset > self.grid_size_ufed_dir:
-            self.dist_to_recirculate += self.grid_size_ufed_dir
-        # Through "offstet" zeta can be modified to simulate the turbulence being fed to the solid
-        # Usual method for wind turbines
-        self.interpolate_zeta(zeta,
-                              for_pos,
-                              uext,
-                              offset = -1.*offset + self.dist_to_recirculate)
+        try:
+            is_wake = params['is_wake']
+        except KeyError:
+            is_wake = False
+
+        if is_wake and not self.settings['interpolate_wake']:
+            # The generator has received a wake and it will not be interpolated
+            for isurf in range(len(uext)):
+                _, n_m, n_n = uext[isurf].shape
+                for i_m in range(n_m):
+                    for i_n in range(n_n):
+                        uext[isurf][:, i_m, i_n] = self.settings['u_out']
+
+        else:
+            offset = self.settings['u_fed']*t
+            if offset > self.grid_size_ufed_dir:
+                self.dist_to_recirculate += self.grid_size_ufed_dir
+            # Through "offstet" zeta can be modified to simulate the turbulence being fed to the solid
+            # Usual method for wind turbines
+            self.interpolate_zeta(zeta,
+                                  for_pos,
+                                  uext,
+                                  offset = -1.*offset + self.dist_to_recirculate)
 
     def interpolate_zeta(self, zeta, for_pos, u_ext, interpolator=None, offset=np.zeros((3))):
         # if interpolator is None:
