@@ -142,6 +142,10 @@ class TurbVelocityFieldBts(generator_interface.BaseGenerator):
 
         self.vel = None
 
+        self.dist_to_recirculate = None
+        self.gird_size_vec = None
+        self.grid_size_ufed_dir = None
+
     def initialise(self, in_dict):
         self.in_dict = in_dict
         settings.to_custom_types(self.in_dict, self.settings_types, self.settings_default)
@@ -159,6 +163,13 @@ class TurbVelocityFieldBts(generator_interface.BaseGenerator):
             cout.cout_wrap(' y = [' + str(self.bbox[1, 0]) + ', ' + str(self.bbox[1, 1]) + ']', 1)
             cout.cout_wrap(' z = [' + str(self.bbox[2, 0]) + ', ' + str(self.bbox[2, 1]) + ']', 1)
 
+        self.dist_to_recirculate = 0.
+        self.grid_size_vec = np.array([np.max(self.x_grid) - np.min(self.x_grid),
+                                                   np.max(self.y_grid) - np.min(self.y_grid),
+                                                   np.max(self.z_grid) - np.min(self.z_grid)])
+        self.grid_size_ufed_dir = np.dot(self.grid_size_vec,
+                                         self.settings['u_fed']/np.lingalg.norm(self.settings['u_fed']))
+
         # self.init_interpolator(x_grid, y_grid, z_grid, vel)
 
     def init_interpolator(self, x_grid, y_grid, z_grid, vel):
@@ -175,12 +186,15 @@ class TurbVelocityFieldBts(generator_interface.BaseGenerator):
         for_pos = params['for_pos']
         t = params['t']
 
+        offset = self.settings['u_fed']*t
+        if offset > self.grid_size_ufed_dir:
+            self.dist_to_recirculate += self.grid_size_ufed_dir
         # Through "offstet" zeta can be modified to simulate the turbulence being fed to the solid
         # Usual method for wind turbines
         self.interpolate_zeta(zeta,
                               for_pos,
                               uext,
-                              offset = -self.settings['u_fed']*t)
+                              offset = -1.*offset + self.dist_to_recirculate)
 
     def interpolate_zeta(self, zeta, for_pos, u_ext, interpolator=None, offset=np.zeros((3))):
         # if interpolator is None:
