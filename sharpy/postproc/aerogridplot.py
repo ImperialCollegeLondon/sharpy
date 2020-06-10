@@ -106,8 +106,9 @@ class AerogridPlot(BaseSolver):
         # TODO: Create a dictionary to plot any variable as in beamplot
         if not online:
             for self.ts in range(self.ts_max):
-                self.plot_body()
-                self.plot_wake()
+                if self.data.structure.timestep_info[self.ts] is not None:
+                    self.plot_body()
+                    self.plot_wake()
             cout.cout_wrap('...Finished', 1)
         else:
             aero_tsteps = len(self.data.aero.timestep_info) - 1

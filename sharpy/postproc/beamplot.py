@@ -102,9 +102,10 @@ class BeamPlot(BaseSolver):
     def plot(self, online):
         if not online:
             for it in range(len(self.data.structure.timestep_info)):
-                self.write_beam(it)
-                if self.settings['include_FoR']:
-                    self.write_for(it)
+                if it is not None:
+                    self.write_beam(it)
+                    if self.settings['include_FoR']:
+                        self.write_for(it)
         else:
             it = len(self.data.structure.timestep_info) - 1
             self.write_beam(it)
