@@ -364,7 +364,8 @@ class DynamicCoupled(BaseSolver):
             for k in range(self.settings['fsi_substeps'].value + 1):
                 if (k == self.settings['fsi_substeps'].value and
                         self.settings['fsi_substeps']):
-                    cout.cout_wrap('The FSI solver did not converge!!!')
+                    print_res = 0 if self.res_dqdt == 0. else np.log10(self.res_dqdt)
+                    cout.cout_wrap(("The FSI solver did not converge!!! residual: %f" % print_res))
                     break
 
                 # generate new grid (already rotated)
