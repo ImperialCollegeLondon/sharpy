@@ -172,7 +172,7 @@ class TurbVelocityFieldBts(generator_interface.BaseGenerator):
                                                    np.max(self.y_grid) - np.min(self.y_grid),
                                                    np.max(self.z_grid) - np.min(self.z_grid)])
         self.grid_size_ufed_dir = np.dot(self.grid_size_vec,
-                                         self.settings['u_fed']/np.lingalg.norm(self.settings['u_fed']))
+                                         self.settings['u_fed']/np.linalg.norm(self.settings['u_fed']))
 
         # self.init_interpolator(x_grid, y_grid, z_grid, vel)
 
