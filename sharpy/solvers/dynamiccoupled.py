@@ -366,6 +366,9 @@ class DynamicCoupled(BaseSolver):
                         self.settings['fsi_substeps']):
                     print_res = 0 if self.res_dqdt == 0. else np.log10(self.res_dqdt)
                     cout.cout_wrap(("The FSI solver did not converge!!! residual: %f" % print_res))
+                    self.aero_solver.update_custom_grid(
+                        structural_kstep,
+                        aero_kstep)
                     break
 
                 # generate new grid (already rotated)
