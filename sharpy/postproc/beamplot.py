@@ -95,7 +95,8 @@ class BeamPlot(BaseSolver):
             timesteps = len(self.data.structure.timestep_info)
             temp_matrix = np.zeros((timesteps, 6))
             for it in range(timesteps):
-                temp_matrix[it, :] = self.data.structure.timestep_info[it].for_acc
+                if self.data.structure.timestep_info[it] is not None:
+                    temp_matrix[it, :] = self.data.structure.timestep_info[it].for_acc
 
             np.savetxt(filename, temp_matrix, delimiter=',')
 
