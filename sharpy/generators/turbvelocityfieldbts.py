@@ -115,7 +115,7 @@ class TurbVelocityFieldBts(generator_interface.BaseGenerator):
 
     settings_types['new_orientation'] = 'str'
     settings_default['new_orientation'] = 'xyz'
-    settings_description['new_orientation'] = 'New order of the axes'
+    settings_description['new_orientation'] = 'New orientation of the axes'
 
     settings_types['u_fed'] = 'list(float)'
     settings_default['u_fed'] = np.zeros((3,))
@@ -132,6 +132,10 @@ class TurbVelocityFieldBts(generator_interface.BaseGenerator):
     settings_types['interpolate_wake'] = 'bool'
     settings_default['interpolate_wake'] = True
     settings_description['interpolate_wake'] = 'If False, u_out will be assigned to all the points in the wake'
+
+    settings_types['num_cores'] = 'int'
+    settings_default['num_cores'] = 1
+    settings_description['num_cores'] = 'Number of cores to be used in parallel computation'
 
     setting_table = settings.SettingsTable()
     __doc__ += setting_table.generate(settings_types, settings_default, settings_description)
@@ -152,7 +156,7 @@ class TurbVelocityFieldBts(generator_interface.BaseGenerator):
 
     def initialise(self, in_dict):
         self.in_dict = in_dict
-        settings.to_custom_types(self.in_dict, self.settings_types, self.settings_default)
+        settings.to_custom_types(self.in_dict, self.settings_types, self.settings_default, no_ctype=True)
         self.settings = self.in_dict
 
         self.x_grid, self.y_grid, self.z_grid, self.vel = self.read_turbsim_bts(self.settings['turbulent_field'], self.settings['case_with_tower'])
@@ -230,7 +234,12 @@ class TurbVelocityFieldBts(generator_interface.BaseGenerator):
                     ipoint += 1
 
             # Interpolate
-            list_uext = interp_rectgrid_vectorfield(points_list, (self.x_grid, self.y_grid, self.z_grid), self.vel, self.settings['u_out'], regularGrid=True, num_cores=1)
+            list_uext = interp_rectgrid_vecfield(points_list,
+                                                 (self.x_grid, self.y_grid, self.z_grid),
+                                                 self.vel,
+                                                 self.settings['u_out'],
+                                                 regularGrid=True,
+                                                 num_cores=self.settings['num_cores'])
 
             # Reorder the values
             ipoint = 0
