@@ -204,15 +204,15 @@ class TurbVelocityFieldBts(generator_interface.BaseGenerator):
                         uext[isurf][:, i_m, i_n] = self.settings['u_out']
 
         else:
-            offset = self.settings['u_fed']*t
-            if offset > self.grid_size_ufed_dir:
+            offset_mod = np.linalg.norm(self.settings['u_fed'])*t
+            if offset_mod > self.grid_size_ufed_dir:
                 self.dist_to_recirculate += self.grid_size_ufed_dir
             # Through "offstet" zeta can be modified to simulate the turbulence being fed to the solid
             # Usual method for wind turbines
             self.interpolate_zeta(zeta,
                                   for_pos,
                                   uext,
-                                  offset = -1.*offset + self.dist_to_recirculate)
+                                  offset = (-1.*offset_mod + self.dist_to_recirculate)*self.settings['u_fed'])
 
     def interpolate_zeta(self, zeta, for_pos, u_ext, interpolator=None, offset=np.zeros((3))):
         # if interpolator is None:
