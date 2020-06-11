@@ -20,6 +20,7 @@ class PlotFlowField(BaseSolver):
     settings_types = dict()
     settings_default = dict()
     settings_description = dict()
+    settings_options = dict()
 
     settings_types['postproc_grid_generator'] = 'str'
     settings_default['postproc_grid_generator'] = 'GridBox'
