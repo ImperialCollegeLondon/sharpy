@@ -1,6 +1,7 @@
 import ctypes as ct
 import time
 import copy
+import multiprocessing
 
 import numpy as np
 
@@ -327,7 +328,6 @@ class DynamicCoupled(BaseSolver):
 
         return controlled_state['structural'], controlled_state['aero']
 
-
     def run(self):
         """
         Run the time stepping procedure with controllers and postprocessors
@@ -335,12 +335,36 @@ class DynamicCoupled(BaseSolver):
         """
         # dynamic simulations start at tstep == 1, 0 is reserved for the initial state
 
+        self.time_loop()
+        # print('About to start process 1')
+        # p1 = multiprocessing.Process(target=self.time_loop, args=())
+
+        # print('About to start process 1')
+        # p1.start()
+
+        # print('Waiting on process 1')
+        # p1.join()
+
+        if self.print_info:
+            cout.cout_wrap('...Finished', 1)
+
+        for postproc in self.postprocessors:
+            try:
+                self.postprocessors[postproc].shutdown()
+            except AttributeError:
+                pass
+
+        return self.data
+
+    def time_loop(self):
+        # print('Inside loop')
         for self.data.ts in range(
                 len(self.data.structure.timestep_info),
                 self.settings['n_time_steps'].value + 1):
             initial_time = time.perf_counter()
             structural_kstep = self.data.structure.timestep_info[-1].copy()
             aero_kstep = self.data.aero.timestep_info[-1].copy()
+            # print(self.data.ts)
 
             # Add the controller here
             if self.with_controllers:
@@ -473,17 +497,6 @@ class DynamicCoupled(BaseSolver):
             if self.with_postprocessors:
                 for postproc in self.postprocessors:
                     self.data = self.postprocessors[postproc].run(online=True)
-
-        if self.print_info:
-            cout.cout_wrap('...Finished', 1)
-
-        for postproc in self.postprocessors:
-            try:
-                self.postprocessors[postproc].shutdown()
-            except AttributeError:
-                pass
-
-        return self.data
 
     def convergence(self, k, tstep, previous_tstep):
         r"""
