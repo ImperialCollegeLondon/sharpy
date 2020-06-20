@@ -2,6 +2,10 @@ import ctypes as ct
 import time
 import copy
 import multiprocessing
+import threading
+import logging
+import concurrent.futures
+import queue
 
 import numpy as np
 
@@ -163,6 +167,10 @@ class DynamicCoupled(BaseSolver):
 
         self.correct_forces = False
         self.correct_forces_function = None
+
+        logging.basicConfig(format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
+                            level=20)
+        self.logger = logging.getLogger(__name__)
 
     def get_g(self):
         """
@@ -333,16 +341,25 @@ class DynamicCoupled(BaseSolver):
         Run the time stepping procedure with controllers and postprocessors
         included.
         """
-        # dynamic simulations start at tstep == 1, 0 is reserved for the initial state
 
-        self.time_loop()
-        # print('About to start process 1')
+        # self.time_loop()
+        logging.info('About to start process 1')
         # p1 = multiprocessing.Process(target=self.time_loop, args=())
+        # p1 = threading.Thread(target=self.time_loop, args=())
+        # going to not use multiprocessing for now given the issues with child multiprocesses
+        # in the UVLM module
+        incoming_queue = queue.Queue(maxsize=1)
+        outgoing_queue = queue.Queue(maxsize=1)
 
-        # print('About to start process 1')
-        # p1.start()
+        finish_event = threading.Event()
+        with concurrent.futures.ThreadPoolExecutor(max_workers=2) as executor:
+            executor.submit(self.simulate_network, incoming_queue, outgoing_queue, finish_event)
+            executor.submit(self.time_loop, incoming_queue, outgoing_queue, finish_event)
 
-        # print('Waiting on process 1')
+        # logging.info('About to start thread 1')
+        # p1.start()/
+
+        # logging.info('Waiting on thread 1')
         # p1.join()
 
         if self.print_info:
@@ -356,15 +373,43 @@ class DynamicCoupled(BaseSolver):
 
         return self.data
 
-    def time_loop(self):
-        # print('Inside loop')
+    def simulate_network(self, in_queue, out_queue, finish_event):
+        # This will simulate the network
+        value = 1
+        while not finish_event.is_set():
+            # in_queue is the queue where stuff from the network goes
+            logging.info('Network - Sending {} in the queue'.format(value))
+            in_queue.put(value)
+
+            # out_queue is the queue where stuff for the network goes
+            value = out_queue.get()
+            logging.info('Network - received {}'.format(value))
+
+            value = value ** 2
+            logging.info('Network - squared {}'.format(value))
+
+        logging.info('Closed network')
+
+
+    def time_loop(self, in_queue, out_queue, finish_event):
+        logging.info('Inside time loop')
+        # dynamic simulations start at tstep == 1, 0 is reserved for the initial state
         for self.data.ts in range(
                 len(self.data.structure.timestep_info),
                 self.settings['n_time_steps'].value + 1):
             initial_time = time.perf_counter()
             structural_kstep = self.data.structure.timestep_info[-1].copy()
             aero_kstep = self.data.aero.timestep_info[-1].copy()
-            # print(self.data.ts)
+            logging.debug('Time step {}'.format(self.data.ts))
+
+            # >>>>>>>>>>>>>>>>>>>
+
+            # get number from queue
+            # while in_queue.empty(): # this is not needed!
+            #     logging.info('TL Empty queue - waiting for input')
+            value = in_queue.get()
+            logging.info('Time loop - received {}'.format(value))
+            # <<<<<<<<<<<<<<<<<<<
 
             # Add the controller here
             if self.with_controllers:
@@ -386,6 +431,7 @@ class DynamicCoupled(BaseSolver):
 
             k = 0
             for k in range(self.settings['fsi_substeps'].value + 1):
+                logging.debug('In FSI iter {}'.format(k))
                 if (k == self.settings['fsi_substeps'].value and
                         self.settings['fsi_substeps']):
                     cout.cout_wrap('The FSI solver did not converge!!!')
@@ -410,10 +456,12 @@ class DynamicCoupled(BaseSolver):
 
                 # run the solver
                 ini_time_aero = time.perf_counter()
+                logging.debug('About to run UVLM')
                 self.data = self.aero_solver.run(aero_kstep,
                                                  structural_kstep,
                                                  convect_wake=True,
                                                  unsteady_contribution=unsteady_contribution)
+                logging.debug('Finished running UVLM')
                 self.time_aero += time.perf_counter() - ini_time_aero
 
                 previous_kstep = structural_kstep.copy()
@@ -497,6 +545,14 @@ class DynamicCoupled(BaseSolver):
             if self.with_postprocessors:
                 for postproc in self.postprocessors:
                     self.data = self.postprocessors[postproc].run(online=True)
+
+            # put result back in queue
+            out_number = len(self.data.structure.timestep_info)
+            logging.info('Time loop - sending {}'.format(out_number))
+            out_queue.put(out_number)
+
+        finish_event.set()
+        logging.info('Time loop - Complete')
 
     def convergence(self, k, tstep, previous_tstep):
         r"""
