@@ -37,14 +37,14 @@ class Message:
         self.sock.sendto(msg, self.addr)
 
     @staticmethod
-    def read_msg(self, msg):
+    def read_msg(msg):
         index = struct.unpack('i', msg[5:9])
         print('Index:')
         print(index)
         values = []
         for data_field_i in range(9, 41, 4):
             values.append(struct.unpack('f', msg[data_field_i:data_field_i+4]))
-            print(values)
+        print(values)
 
 if __name__ == '__main__':
     m = Message(None, None, None)
