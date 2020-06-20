@@ -476,6 +476,13 @@ class DynamicCoupled(BaseSolver):
 
         if self.print_info:
             cout.cout_wrap('...Finished', 1)
+
+        for postproc in self.postprocessors:
+            try:
+                self.postprocessors[postproc].shutdown()
+            except AttributeError:
+                pass
+
         return self.data
 
     def convergence(self, k, tstep, previous_tstep):

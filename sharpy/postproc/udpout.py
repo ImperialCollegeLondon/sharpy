@@ -127,3 +127,8 @@ class UDPout(BaseSolver):
                 logging.info('Sent packet to {}'.format(msg.addr))
 
         return self.data
+
+    def shutdown(self):
+        self.s.close()
+        cout.cout_wrap('Closed socket {}'.format((self.HOST, self.PORT)))
+        logging.info('Closed socket {}'.format((self.HOST, self.PORT)))

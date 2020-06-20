@@ -23,7 +23,6 @@ class Message:
         msg += struct.pack('i', index)
 
         for i in range(n_vals):
-            print('Encoding {}'.format(values[i]))
             msg += struct.pack('f', values[i])
 
         for i in range(n_vals, 8):
