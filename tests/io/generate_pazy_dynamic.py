@@ -300,6 +300,7 @@ def generate_pazy(u_inf, case_name, output_folder='/output/', cases_folder='', *
                                   'n_time_steps': 4, #ws.n_tstep,
                                   'dt': ws.dt,
                                   'include_unsteady_force_contribution': 'off',
+                                  'network_connections': False,
                                   'postprocessors': ['UDPout'],
                                   'postprocessors_settings': {'BeamLoads': {'folder': output_folder,
                                                                             'csv_output': 'off'},
@@ -320,7 +321,7 @@ def generate_pazy(u_inf, case_name, output_folder='/output/', cases_folder='', *
                                                                                       ws.num_node_surf,
                                                                                       ws.num_node_surf + 1]},
                                                               'UDPout': {'receiver_hostnames': ['127.0.0.1'],
-                                                                         'receiver_port': [65431],
+                                                                         'receiver_port': [65430],
                                                                          'structure_variables': ['pos'],
                                                                          'structure_nodes': [0, 1, 2, 3, 4, 5, 6, 7, 8, 9]},
                                                               }}

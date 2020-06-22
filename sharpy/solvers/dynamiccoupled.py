@@ -132,9 +132,14 @@ class DynamicCoupled(BaseSolver):
     settings_description['pseudosteps_ramp_unsteady_force'] = 'Length of the ramp with which unsteady force contribution is introduced every time step during the FSI iteration process'
 
     settings_types['correct_forces_method'] = 'str'
-    settings_default['correct_forces_method'] = '' # 'efficiency'
+    settings_default['correct_forces_method'] = ''  # 'efficiency'
     settings_description['correct_forces_method'] = 'Function used to correct aerodynamic forces. Check :py:mod:`sharpy.utils.correct_forces`'
     settings_options['correct_forces_method'] = ['efficiency', 'polars']
+
+    # network settings should be in their own dict
+    settings_types['network_connections'] = 'bool'
+    settings_default['network_connections'] = False
+    settings_description['network_connections'] = 'Temporary setting to disable network connections'
 
     settings_table = settings.SettingsTable()
     __doc__ += settings_table.generate(settings_types, settings_default, settings_description, settings_options)
@@ -347,20 +352,17 @@ class DynamicCoupled(BaseSolver):
         # p1 = threading.Thread(target=self.time_loop, args=())
         # going to not use multiprocessing for now given the issues with child multiprocesses
         # in the UVLM module
+        if self.settings['network_connections']:
+            incoming_queue = queue.Queue(maxsize=1)
+            outgoing_queue = queue.Queue(maxsize=1)
 
-        incoming_queue = queue.Queue(maxsize=1)
-        outgoing_queue = queue.Queue(maxsize=1)
+            finish_event = threading.Event()
+            with concurrent.futures.ThreadPoolExecutor(max_workers=2) as executor:
+                executor.submit(self.network_interface, incoming_queue, outgoing_queue, finish_event)
+                executor.submit(self.time_loop, incoming_queue, outgoing_queue, finish_event)
 
-        finish_event = threading.Event()
-        with concurrent.futures.ThreadPoolExecutor(max_workers=2) as executor:
-            executor.submit(self.network_interface, incoming_queue, outgoing_queue, finish_event)
-            executor.submit(self.time_loop, incoming_queue, outgoing_queue, finish_event)
-
-        # logging.info('About to start thread 1')
-        # p1.start()/
-
-        # logging.info('Waiting on thread 1')
-        # p1.join()
+        else:
+            self.time_loop()
 
         if self.print_info:
             cout.cout_wrap('...Finished', 1)
@@ -417,11 +419,12 @@ class DynamicCoupled(BaseSolver):
             # logging.info('Network - Got message from the queue')
             # network.send(value, dest_addr)
 
+        # TODO: send signal that simulation finished
 
         # close sockets
         network.close()
 
-    def time_loop(self, in_queue, out_queue, finish_event):
+    def time_loop(self, in_queue=None, out_queue=None, finish_event=None):
         logging.info('Inside time loop')
         # dynamic simulations start at tstep == 1, 0 is reserved for the initial state
         for self.data.ts in range(
@@ -437,9 +440,10 @@ class DynamicCoupled(BaseSolver):
             # get number from queue
             # while in_queue.empty(): # this is not needed!
             #     logging.info('TL Empty queue - waiting for input')
-            logging.info('Time Loop - Waiting for input')
-            value = in_queue.get()
-            logging.info('Time loop - received {}'.format(value))
+            if in_queue:
+                logging.info('Time Loop - Waiting for input')
+                value = in_queue.get()
+                logging.info('Time loop - received {}'.format(value))
             # <<<<<<<<<<<<<<<<<<<
 
             # Add the controller here
@@ -578,12 +582,14 @@ class DynamicCoupled(BaseSolver):
                     self.data = self.postprocessors[postproc].run(online=True)
 
             # put result back in queue
-            out_number = len(self.data.structure.timestep_info)
-            logging.info('Time loop - sending {} in the queue (length of time step list)'.format(out_number))
-            out_queue.put(out_number)
+            if out_queue:
+                out_number = len(self.data.structure.timestep_info)
+                logging.info('Time loop - sending {} in the queue (length of time step list)'.format(out_number))
+                out_queue.put(out_number)
 
-        finish_event.set()
-        logging.info('Time loop - Complete')
+        if finish_event:
+            finish_event.set()
+            logging.info('Time loop - Complete')
 
     def convergence(self, k, tstep, previous_tstep):
         r"""

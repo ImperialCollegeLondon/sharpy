@@ -50,7 +50,7 @@ class UDPout(BaseSolver):
         self.data = None  # type: sharpy.presharpy.PreSharpy
 
         self.HOST = '127.0.0.1'
-        self.PORT = 65432
+        self.PORT = 65433
 
         self.destinations = []
 
