@@ -343,17 +343,17 @@ class DynamicCoupled(BaseSolver):
         """
 
         # self.time_loop()
-        logging.info('About to start process 1')
         # p1 = multiprocessing.Process(target=self.time_loop, args=())
         # p1 = threading.Thread(target=self.time_loop, args=())
         # going to not use multiprocessing for now given the issues with child multiprocesses
         # in the UVLM module
+
         incoming_queue = queue.Queue(maxsize=1)
         outgoing_queue = queue.Queue(maxsize=1)
 
         finish_event = threading.Event()
         with concurrent.futures.ThreadPoolExecutor(max_workers=2) as executor:
-            executor.submit(self.simulate_network, incoming_queue, outgoing_queue, finish_event)
+            executor.submit(self.network_interface, incoming_queue, outgoing_queue, finish_event)
             executor.submit(self.time_loop, incoming_queue, outgoing_queue, finish_event)
 
         # logging.info('About to start thread 1')
@@ -390,6 +390,36 @@ class DynamicCoupled(BaseSolver):
 
         logging.info('Closed network')
 
+    def network_interface(self, in_queue, out_queue, finish_event):
+        # set up
+        import sharpy.io.network_interface as network_interface
+
+        network = network_interface.Network('127.0.0.1', 65432)
+        dest_addr = ('127.0.0.1', 65431)
+        network.initialise()
+        network.add_client(dest_addr)
+        while not finish_event.is_set():
+
+            # selector version
+            logging.info('Network Interface - waiting for events')
+            events = network.sel.select(timeout=None)
+
+            for key, mask in events:
+                logging.info('Network Interface - Got event')
+                network.process_events(mask, in_queue, out_queue)
+
+            # non-selector version
+            # msg = network.receive()
+            # logging.info('Network - Placing message in the queue')
+            # in_queue.put(msg)
+            #
+            # value = out_queue.get()
+            # logging.info('Network - Got message from the queue')
+            # network.send(value, dest_addr)
+
+
+        # close sockets
+        network.close()
 
     def time_loop(self, in_queue, out_queue, finish_event):
         logging.info('Inside time loop')
@@ -407,6 +437,7 @@ class DynamicCoupled(BaseSolver):
             # get number from queue
             # while in_queue.empty(): # this is not needed!
             #     logging.info('TL Empty queue - waiting for input')
+            logging.info('Time Loop - Waiting for input')
             value = in_queue.get()
             logging.info('Time loop - received {}'.format(value))
             # <<<<<<<<<<<<<<<<<<<
@@ -548,7 +579,7 @@ class DynamicCoupled(BaseSolver):
 
             # put result back in queue
             out_number = len(self.data.structure.timestep_info)
-            logging.info('Time loop - sending {}'.format(out_number))
+            logging.info('Time loop - sending {} in the queue (length of time step list)'.format(out_number))
             out_queue.put(out_number)
 
         finish_event.set()
