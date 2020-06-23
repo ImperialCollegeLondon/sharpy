@@ -1,0 +1,10 @@
+---
+- name: 'pos'
+  inout: 'out'
+  position: 5
+  index: 2
+- name: 'pos'
+  inout: 'out'
+  position: 3
+  index: 0
+...

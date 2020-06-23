@@ -34,7 +34,9 @@ class Variable:
         self.variable_index = Variable.num_vars
         Variable.num_vars += 1
 
+        self.value = None
         logger.info('Loaded variable {}'.format(self.dref_name))
+
 
     def encode(self, data):
         value = self.get_variable_value(data)
@@ -57,6 +59,7 @@ class Variable:
         else:  # aero variables
             raise NotImplementedError('Aero variables not yet implemented')
 
+        self.value = value
         return value
 
     def set_dref_name(self):
