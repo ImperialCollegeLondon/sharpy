@@ -611,10 +611,12 @@ class DynamicCoupled(BaseSolver):
 
             # put result back in queue
             if out_queue:
-                # logging.info('Time loop - about to get out variables from data')
+                logging.info('Time loop - about to get out variables from data')
                 # for out_var_idx in self.set_of_variables.out_variables:
                 #     print(out_var_idx)
+                #     pass
                 #     out_number = self.set_of_variables.variables[out_var_idx].encode(self.data)
+                #     self.set_of_variables.variables[out_var_idx].get_varible_value(self.data)
                 #     logging.info('Getting {}'.format(self.set_of_variables.variables[out_var_idx].dref_name))
                 #     out_queue.put(out_number)
                 #     logging.info('Time loop - sending {} in the queue'.format(out_number))
@@ -622,9 +624,13 @@ class DynamicCoupled(BaseSolver):
                 # old set - for now while testing both sockets
 
                 out_number = len(self.data.structure.timestep_info)
-                # might be a godd idea to clear the queue before putting anything else in
-                logging.info('Time loop - sending {} in the queue (length of time step list)'.format(out_number))
+                # might be a good idea to clear the queue before putting anything else in
+                # logging.info('Time loop - sending {} in the queue (length of time step list)'.format(out_number))
+                if out_queue.full():
+                    out_queue.get()  # clear item from queue
+                    logging.info('Data output Queue is full - clearing output')
                 out_queue.put(out_number)
+                # out_queue.put(self.set_of_variables)
 
         if finish_event:
             finish_event.set()
