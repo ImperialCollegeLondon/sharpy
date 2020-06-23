@@ -177,6 +177,9 @@ class DynamicCoupled(BaseSolver):
                             level=20)
         self.logger = logging.getLogger(__name__)
 
+        # variables to send and receive
+        self.set_of_variables = None
+
     def get_g(self):
         """
         Getter for ``g``, the gravity value
@@ -353,8 +356,18 @@ class DynamicCoupled(BaseSolver):
         # going to not use multiprocessing for now given the issues with child multiprocesses
         # in the UVLM module
         if self.settings['network_connections']:
-            incoming_queue = queue.Queue(maxsize=1)
-            outgoing_queue = queue.Queue(maxsize=1)
+            import sharpy.io.inout_variables as inout_variables
+
+            path_to_variables_yaml = self.settings['io_variables_yaml']
+
+            # variables to import/export
+            # things to think of: send encoded values in the queue?
+            #                     send actual object?
+            self.set_of_variables = inout_variables.LoadVariables()
+            self.set_of_variables.load_variables_from_yaml(path_to_variables_yaml)
+
+            incoming_queue = queue.Queue(maxsize=10)
+            outgoing_queue = queue.Queue(maxsize=10)
 
             finish_event = threading.Event()
             with concurrent.futures.ThreadPoolExecutor(max_workers=2) as executor:
@@ -583,9 +596,18 @@ class DynamicCoupled(BaseSolver):
 
             # put result back in queue
             if out_queue:
-                out_number = len(self.data.structure.timestep_info)
-                logging.info('Time loop - sending {} in the queue (length of time step list)'.format(out_number))
-                out_queue.put(out_number)
+                logging.info('Time loop - about to get out variables from data')
+                for out_var_idx in self.set_of_variables.out_variables:
+                    print(out_var_idx)
+                    out_number = self.set_of_variables.variables[out_var_idx].encode(self.data)
+                    logging.info('Getting {}'.format(self.set_of_variables.variables[out_var_idx].dref_name))
+                    out_queue.put(out_number)
+                    logging.info('Time loop - sending {} in the queue'.format(out_number))
+
+                # old set
+                # out_number = len(self.data.structure.timestep_info)
+                # logging.info('Time loop - sending {} in the queue (length of time step list)'.format(out_number))
+                # out_queue.put(out_number)
 
         if finish_event:
             finish_event.set()
