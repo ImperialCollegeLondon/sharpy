@@ -92,6 +92,7 @@ class OutNetwork(Network):
 
     def process_events(self, mask):
         value = None
+        self.sock.setblocking(False)
         if mask and selectors.EVENT_READ:
             logger.info('Out Network - waiting for request for data')
             msg = self.receive()
@@ -109,6 +110,7 @@ class OutNetwork(Network):
 class InNetwork(Network):
 
     def process_events(self, mask):
+        self.sock.setblocking(False)
         if mask and selectors.EVENT_READ:
             logger.info('In Network - waiting for input data')
             msg = self.receive()
