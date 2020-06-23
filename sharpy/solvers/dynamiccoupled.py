@@ -366,8 +366,8 @@ class DynamicCoupled(BaseSolver):
             self.set_of_variables = inout_variables.LoadVariables()
             self.set_of_variables.load_variables_from_yaml(path_to_variables_yaml)
 
-            incoming_queue = queue.Queue(maxsize=10)
-            outgoing_queue = queue.Queue(maxsize=10)
+            incoming_queue = queue.Queue(maxsize=1)
+            outgoing_queue = queue.Queue(maxsize=1)
 
             finish_event = threading.Event()
             with concurrent.futures.ThreadPoolExecutor(max_workers=2) as executor:
@@ -409,19 +409,33 @@ class DynamicCoupled(BaseSolver):
         # set up
         import sharpy.io.network_interface as network_interface
 
-        network = network_interface.Network('127.0.0.1', 65432)
-        dest_addr = ('127.0.0.1', 65431)
-        network.initialise()
-        network.add_client(dest_addr)
+        # input and output sockets
+        # sharpy control input is 65001
+        # sharpy output on demand is 65000
+
+        #
+
+        # output side
+        out_network = network_interface.OutNetwork('127.0.0.1', 65000)
+        out_network.initialise('r')
+        out_network.set_queue(out_queue)
+
+        in_network = network_interface.InNetwork('127.0.0.1', 65001)
+        in_network.initialise('r')
+        in_network.set_queue(in_queue)
+
         while not finish_event.is_set():
 
             # selector version
             logging.info('Network Interface - waiting for events')
-            events = network.sel.select(timeout=None)
-
-            for key, mask in events:
-                logging.info('Network Interface - Got event')
-                network.process_events(mask, in_queue, out_queue)
+            events = network_interface.sel.select(timeout=None)
+            # import pdb; pdb.set_trace()
+            try:
+                for key, mask in events:
+                    logging.info('Network Interface - Got event')
+                    key.data.process_events(mask)
+            except KeyboardInterrupt:
+                break
 
             # non-selector version
             # msg = network.receive()
@@ -435,7 +449,8 @@ class DynamicCoupled(BaseSolver):
         # TODO: send signal that simulation finished
 
         # close sockets
-        network.close()
+        in_network.close()
+        out_network.close()
 
     def time_loop(self, in_queue=None, out_queue=None, finish_event=None):
         logging.info('Inside time loop')
@@ -596,18 +611,20 @@ class DynamicCoupled(BaseSolver):
 
             # put result back in queue
             if out_queue:
-                logging.info('Time loop - about to get out variables from data')
-                for out_var_idx in self.set_of_variables.out_variables:
-                    print(out_var_idx)
-                    out_number = self.set_of_variables.variables[out_var_idx].encode(self.data)
-                    logging.info('Getting {}'.format(self.set_of_variables.variables[out_var_idx].dref_name))
-                    out_queue.put(out_number)
-                    logging.info('Time loop - sending {} in the queue'.format(out_number))
+                # logging.info('Time loop - about to get out variables from data')
+                # for out_var_idx in self.set_of_variables.out_variables:
+                #     print(out_var_idx)
+                #     out_number = self.set_of_variables.variables[out_var_idx].encode(self.data)
+                #     logging.info('Getting {}'.format(self.set_of_variables.variables[out_var_idx].dref_name))
+                #     out_queue.put(out_number)
+                #     logging.info('Time loop - sending {} in the queue'.format(out_number))
 
-                # old set
-                # out_number = len(self.data.structure.timestep_info)
-                # logging.info('Time loop - sending {} in the queue (length of time step list)'.format(out_number))
-                # out_queue.put(out_number)
+                # old set - for now while testing both sockets
+
+                out_number = len(self.data.structure.timestep_info)
+                # might be a godd idea to clear the queue before putting anything else in
+                logging.info('Time loop - sending {} in the queue (length of time step list)'.format(out_number))
+                out_queue.put(out_number)
 
         if finish_event:
             finish_event.set()
