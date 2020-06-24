@@ -1,6 +1,7 @@
 import struct
 import yaml
 import logging
+import numpy as np
 
 logging.basicConfig(format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
                     level=20)
@@ -17,14 +18,28 @@ class Variable:
 
         self.index = kwargs.get('index', None)  # if variable is a vector
         position = kwargs.get('position', None)  # int for node, (i_surf, m, n) for panel
-        if type(position) is int:
+        # if type(position) is int:
+        #     self.node = position
+        #     self.panel = None
+        # elif len(position) == 3:
+        #     self.panel = position
+        #     self.node = None
+        # else:
+        #     raise TypeError('Position should be either an integer for nodes or a tuple for panels')
+
+        self.node = None
+        self.panel = None
+        self.cs_index = None
+
+        var_type = kwargs.get('var_type', None)
+        if  var_type == 'node':
             self.node = position
-            self.panel = None
-        elif len(position) == 3:
+        elif var_type == 'panel':
             self.panel = position
-            self.node = None
+        elif var_type == 'control_surface':
+            self.cs_index = position
         else:
-            raise TypeError('Position should be either an integer for nodes or a tuple for panels')
+            raise Exception('Unknown variable type')
 
         self.dref_name = None
         self.set_dref_name()
@@ -36,7 +51,6 @@ class Variable:
 
         self.value = None
         logger.info('Loaded variable {}'.format(self.dref_name))
-
 
     def encode(self, data):
         value = self.get_variable_value(data)
@@ -60,7 +74,50 @@ class Variable:
             raise NotImplementedError('Aero variables not yet implemented')
 
         self.value = value
+        logger.info('Getting value {} for variable {}'.format(self.value, self.dref_name))
         return value
+
+    def set_variable_value(self, value):
+        """
+        Set the value of input variables
+
+        Args:
+            value: value of variable
+        """
+        if self.inout == 'in' or self.inout == 'inout':
+            self.value = value
+        else:
+            logger.warning('Trying to set the value of {} which is only an output variable'.format(self.dref_name))
+
+    def set_in_timestep(self, data):
+        """
+        Set the variable value in the time step
+
+        Args:
+            data:
+
+        """
+        if self.node is not None: # structural variable then
+            variable = getattr(data.structure.timestep_info[-1], self.name)
+            try:
+                variable[self.node, self.index] = self.value
+            except IndexError:
+                logger.warning('Unable to set node {}, index {} of variable {}'.format(
+                    self.node, self.index, self.dref_name
+                ))
+            else:
+                setattr(data.structure.timestep_info[-1], self.name, variable)
+                logger.info('Updated timestep')
+
+        if self.cs_index is not None:
+            variable = getattr(data.aero.timestep_info[-1], self.name)
+            if len(variable) == 0:
+                variable = np.hstack((variable, np.array([self.value])))
+            else:
+                variable[self.cs_index] = self.value
+
+            setattr(data.aero.timestep_info[-1], self.name, variable)
+            logger.info('Updated control surface deflection')
 
     def set_dref_name(self):
         divider = '_'
@@ -68,16 +125,17 @@ class Variable:
 
         if self.node is not None:
             dref_name += 'node{}'.format(self.node)
-        else:
+        elif self.panel is not None:
             dref_name += 'paneli{}m{}n{}'.format(*self.panel)
+        elif self.cs_index is not None:
+            dref_name += 'idx{}'.format(self.cs_index)
+        else:
+            raise Exception('Unknown variable')
 
         if self.index is not None:
             dref_name += divider + 'index{}'.format(self.index)
 
         self.dref_name = dref_name
-
-def encode_dref(value, dref_name):
-    pass
 
 
 class SetOfVariables:
@@ -94,7 +152,7 @@ class SetOfVariables:
             self.variables.append(new_var)
             if new_var.inout == 'out' or new_var.inout == 'inout':
                 self.out_variables.append(new_var.variable_index)
-            elif new_var.inout == 'in' or new_var.inout == 'inout':
+            if new_var.inout == 'in' or new_var.inout == 'inout':
                 self.in_variables.append(new_var.variable_index)
             logger.info('Number of tracked variables {}'.format(Variable.num_vars))
 
@@ -125,6 +183,34 @@ class SetOfVariables:
             msg += struct.pack('<if', variable.variable_index, variable.value)
 
         return msg
+
+    def get_value(self, data):
+        """
+        Sets the value from the data structure for output variables
+        """
+
+        for out_idx in self.out_variables:
+            self.variables[out_idx].get_variable_value(data)
+
+    def set_value(self, values):
+        """
+        Sets the values of the input variables.
+
+        Args:
+            values (list(tuple)): List of tuples containing the index and value of the respective input variables.
+        """
+
+        for idx, value in values:
+            self.variables[idx].set_variable_value(value)
+            logger.info('Set the input variable {} to {}'.format(self.variables[idx].dref_name,
+                                                                 self.variables[idx].value))
+
+    def update_timestep(self, data, values):
+
+        logger.info('Update time step routine')
+        self.set_value(values)
+        for idx in self.in_variables:
+            self.variables[idx].set_in_timestep(data)
 
 
 class VariableIterator:

@@ -470,10 +470,12 @@ class DynamicCoupled(BaseSolver):
             #     logging.info('TL Empty queue - waiting for input')
             if in_queue:
                 logging.info('Time Loop - Waiting for input')
-                value = in_queue.get()
-                logging.info('Time loop - received {}'.format(value))
+                values = in_queue.get()  # should be list of tuples
+                logging.info('Time loop - received {}'.format(values))
+                self.set_of_variables.update_timestep(self.data, values)
             # <<<<<<<<<<<<<<<<<<<
 
+            # import pdb; pdb.set_trace()
             # Add the controller here
             if self.with_controllers:
                 state = {'structural': structural_kstep,
@@ -612,25 +614,11 @@ class DynamicCoupled(BaseSolver):
             # put result back in queue
             if out_queue:
                 logging.info('Time loop - about to get out variables from data')
-                for out_var_idx in self.set_of_variables.out_variables:
-                    out_number = self.set_of_variables[out_var_idx].get_variable_value(self.data)
-
-                    logging.info('Getting value for {}'.format(self.set_of_variables[out_var_idx].dref_name))
-                    logging.info('With value {}'.format(out_number))
-                #     self.set_of_variables.variables[out_var_idx].get_varible_value(self.data)
-                #     logging.info('Getting {}'.format(self.set_of_variables.variables[out_var_idx].dref_name))
-                #     out_queue.put(out_number)
-                #     logging.info('Time loop - sending {} in the queue'.format(out_number))
-
-                # old set - for now while testing both sockets
-
-                out_number = len(self.data.structure.timestep_info)
-                # might be a good idea to clear the queue before putting anything else in
-                # logging.info('Time loop - sending {} in the queue (length of time step list)'.format(out_number))
+                self.set_of_variables.get_value(self.data)
                 if out_queue.full():
+                    # clear the queue such that it always contains the latest time step
                     out_queue.get()  # clear item from queue
                     logging.info('Data output Queue is full - clearing output')
-                # out_queue.put(out_number)
                 out_queue.put(self.set_of_variables)
 
         if finish_event:
