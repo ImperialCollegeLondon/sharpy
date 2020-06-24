@@ -1,7 +1,7 @@
 import socket
 import selectors
 import logging
-import struct
+import sharpy.io.message_interface as message_interface
 
 sel = selectors.DefaultSelector()
 
@@ -48,7 +48,7 @@ class Network:
 
     def _sendto(self, msg, address):
         logger.info('Network - Sending')
-        msg = struct.pack('f', msg) # need to move encoding to dedicated message processing
+        # msg = struct.pack('f', msg) # need to move encoding to dedicated message processing
         self.sock.sendto(msg, address)
         logger.info('Network - Sent data packet to {}'.format(address))
 
@@ -101,10 +101,15 @@ class OutNetwork(Network):
             logger.info('Received request for data')
             # if mask and selectors.EVENT_WRITE:
             logger.info('Out Network ready to receive from the queue')
-            value = self.queue.get()  # check that it waits for the queue not to be empty
+            # value = self.queue.get()  # check that it waits for the queue not to be empty
+            set_of_vars = self.queue.get()
             logger.info('Out Network - got message from queue')
-
+            # for out_idx in set_of_vars.out_variables:
+            #     value = set_of_vars[out_idx].value
+            value = set_of_vars.encode()
+            logger.info('Message of length {} bytes ready to send'.format(len(value)))
             self.send(value, self.clients)
+            # self.send(value, self.clients)
 
 
 class InNetwork(Network):
@@ -115,7 +120,9 @@ class InNetwork(Network):
             logger.info('In Network - waiting for input data')
             msg = self.receive()
             # any required processing
-            self.queue.put(msg)
+            # send list of tuples
+            list_of_variables = message_interface.decoder(msg)
+            self.queue.put(list_of_variables)
             logger.info('In Network - put data in the queue')
 
 

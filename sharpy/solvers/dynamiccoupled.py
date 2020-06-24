@@ -612,10 +612,11 @@ class DynamicCoupled(BaseSolver):
             # put result back in queue
             if out_queue:
                 logging.info('Time loop - about to get out variables from data')
-                # for out_var_idx in self.set_of_variables.out_variables:
-                #     print(out_var_idx)
-                #     pass
-                #     out_number = self.set_of_variables.variables[out_var_idx].encode(self.data)
+                for out_var_idx in self.set_of_variables.out_variables:
+                    out_number = self.set_of_variables[out_var_idx].get_variable_value(self.data)
+
+                    logging.info('Getting value for {}'.format(self.set_of_variables[out_var_idx].dref_name))
+                    logging.info('With value {}'.format(out_number))
                 #     self.set_of_variables.variables[out_var_idx].get_varible_value(self.data)
                 #     logging.info('Getting {}'.format(self.set_of_variables.variables[out_var_idx].dref_name))
                 #     out_queue.put(out_number)
@@ -629,8 +630,8 @@ class DynamicCoupled(BaseSolver):
                 if out_queue.full():
                     out_queue.get()  # clear item from queue
                     logging.info('Data output Queue is full - clearing output')
-                out_queue.put(out_number)
-                # out_queue.put(self.set_of_variables)
+                # out_queue.put(out_number)
+                out_queue.put(self.set_of_variables)
 
         if finish_event:
             finish_event.set()

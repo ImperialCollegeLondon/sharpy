@@ -53,4 +53,6 @@ class TestPazyCoupledStatic(unittest.TestCase):
 
 
 if __name__ == '__main__':
-    unittest.main()
+    test = TestPazyCoupledStatic()
+    test.test_dynamic_aoa()
+    # unittest.main()

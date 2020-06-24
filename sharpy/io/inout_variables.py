@@ -107,6 +107,25 @@ class SetOfVariables:
     def __len__(self):
         return len(self.variables)
 
+    def encode(self):
+        """
+        Encode output variables in binary format with little-endian byte ordering.
+
+        The signal consists of a 5-byte header ``RREF0`` followed by 8 bytes per variable.
+        Of those 8 bytes allocated to each variable, the first 4 are the integer value of the variable index
+        and the last 4 are the single precision float value.
+
+        Returns:
+            bytes: Encoded message of length ``5 + num_var * 8``.
+        """
+        msg = struct.pack('<5s', b'RREF0')
+        for var_idx in self.out_variables:
+            variable = self.variables[var_idx]
+            logger.info('Encoding variable {}'.format(variable.dref_name))
+            msg += struct.pack('<if', variable.variable_index, variable.value)
+
+        return msg
+
 
 class VariableIterator:
 
