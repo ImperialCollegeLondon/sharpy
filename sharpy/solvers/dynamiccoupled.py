@@ -363,7 +363,7 @@ class DynamicCoupled(BaseSolver):
             # variables to import/export
             # things to think of: send encoded values in the queue?
             #                     send actual object?
-            self.set_of_variables = inout_variables.LoadVariables()
+            self.set_of_variables = inout_variables.SetOfVariables()
             self.set_of_variables.load_variables_from_yaml(path_to_variables_yaml)
 
             incoming_queue = queue.Queue(maxsize=1)

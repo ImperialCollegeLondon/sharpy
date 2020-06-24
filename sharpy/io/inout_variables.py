@@ -80,7 +80,7 @@ def encode_dref(value, dref_name):
     pass
 
 
-class LoadVariables:
+class SetOfVariables:
     def __init__(self):
         self.variables = []  # list of Variables()
         self.out_variables = []  #indices
@@ -98,3 +98,26 @@ class LoadVariables:
                 self.in_variables.append(new_var.variable_index)
             logger.info('Number of tracked variables {}'.format(Variable.num_vars))
 
+    def __iter__(self):
+        return VariableIterator(self)
+
+    def __getitem__(self, item):
+        return self.variables[item]
+
+    def __len__(self):
+        return len(self.variables)
+
+
+class VariableIterator:
+
+    def __init__(self, set_of_variables):
+        self._set_variables = set_of_variables
+        self._index = 0
+
+    def __next__(self):
+        if self._index < len(self._set_variables):
+            res = self._set_variables(self._index)
+            self._index += 1
+            return res
+
+        raise StopIteration
