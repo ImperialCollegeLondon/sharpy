@@ -98,6 +98,7 @@ class Network:
         self.sock.bind(self.addr)
         logger.info('Binded socket to {}'.format(self.addr))
         events = get_events(mode)
+        logger.info('Host: {}'.format(socket.gethostname()))
         self.sock.setblocking(False)
         sel.register(self.sock, events, data=self)
 
@@ -119,10 +120,15 @@ class Network:
 
     def receive(self, msg_length=1024):
         r_msg, client_addr = self.sock.recvfrom(msg_length)  # adapt message length
-        logger.info('Received a {}-byte long data packet from {}'.format(msg_length, client_addr))
+        # recv_data += r_msg
+        logger.info('Received a {}-byte long data packet from {}'.format(len(r_msg), client_addr))
+        # if r_msg != b'':
+        #     break
+        # print(struct)
         self.add_client(client_addr)
         # r_msg = struct.unpack('f', r_msg)  # need to move decoding to dedicated message processing
         return r_msg
+        # return recv_data
 
     def process_events(self, mask):  # should only have the relevant queue
         logger.info('should not be here')
@@ -232,6 +238,7 @@ class InNetwork(Network):
     def __init__(self):
         super().__init__()
         self._in_message_length = 1024
+        self._recv_buffer = b''
 
     def set_message_length(self, value):
         self._in_message_length = value
@@ -242,11 +249,15 @@ class InNetwork(Network):
         if mask and selectors.EVENT_READ:
             logger.info('In Network - waiting for input data of size {}'.format(self._in_message_length))
             msg = self.receive(self._in_message_length)
+            self._recv_buffer += msg
             # any required processing
             # send list of tuples
-            list_of_variables = message_interface.decoder(msg)
-            self.queue.put(list_of_variables)
-            logger.info('In Network - put data in the queue')
+            if len(self._recv_buffer) == self._in_message_length:
+                logger.info('In Network - enough bytes read')
+                list_of_variables = message_interface.decoder(self._recv_buffer)
+                self.queue.put(list_of_variables)
+                logger.info('In Network - put data in the queue')
+                self._recv_buffer = b''  # clean up
 
 
 def get_events(mode):
