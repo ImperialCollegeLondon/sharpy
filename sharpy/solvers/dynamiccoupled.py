@@ -459,10 +459,6 @@ class DynamicCoupled(BaseSolver):
                 len(self.data.structure.timestep_info),
                 self.settings['n_time_steps'].value + 1):
             initial_time = time.perf_counter()
-            structural_kstep = self.data.structure.timestep_info[-1].copy()
-            aero_kstep = self.data.aero.timestep_info[-1].copy()
-            logging.debug('Time step {}'.format(self.data.ts))
-
             # >>>>>>>>>>>>>>>>>>>
 
             # get number from queue
@@ -474,8 +470,10 @@ class DynamicCoupled(BaseSolver):
                 logging.info('Time loop - received {}'.format(values))
                 self.set_of_variables.update_timestep(self.data, values)
             # <<<<<<<<<<<<<<<<<<<
+            structural_kstep = self.data.structure.timestep_info[-1].copy()
+            aero_kstep = self.data.aero.timestep_info[-1].copy()
+            logging.debug('Time step {}'.format(self.data.ts))
 
-            # import pdb; pdb.set_trace()
             # Add the controller here
             if self.with_controllers:
                 state = {'structural': structural_kstep,
