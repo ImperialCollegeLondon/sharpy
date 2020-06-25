@@ -2,6 +2,8 @@ import socket
 import selectors
 import logging
 import sharpy.io.message_interface as message_interface
+import sharpy.io.inout_variables as inout_variables
+import sharpy.utils.settings as settings
 
 sel = selectors.DefaultSelector()
 
@@ -10,25 +12,87 @@ logging.basicConfig(format='%(asctime)s - %(name)s - %(levelname)s - %(message)s
 logger = logging.getLogger(__name__)
 
 
+class NetworkLoader:
+    """
+    Settings for each input or output port
+    """
+    settings_types = dict()
+    settings_default = dict()
+    settings_description = dict()
+
+    settings_types['variables_filename'] = 'str'
+    settings_default['variables_filename'] = None
+    settings_description['variables_filename'] = 'Path to YAML file containing input/output variables'
+
+    settings_types['input_network_settings'] = 'dict'
+    settings_default['input_network_settings'] = dict()
+    settings_description['input_network_settings'] = 'Settings for the input network.'
+
+    settings_types['output_network_settings'] = 'dict'
+    settings_default['output_network_settings'] = dict()
+    settings_description['output_network_settings'] = 'Settings for the output network.'
+
+    def __init__(self):
+        self.settings = None
+
+    def initialise(self, in_settings):
+        self.settings = in_settings
+        settings.to_custom_types(self.settings, self.settings_types, self.settings_default)
+
+    def get_inout_variables(self):
+        set_of_variables = inout_variables.SetOfVariables()
+        set_of_variables.load_variables_from_yaml(self.settings['variables_filename'])
+
+        return set_of_variables
+
+    def get_networks(self):
+
+        out_network = OutNetwork()
+        out_network.initialise('r', in_settings=self.settings['output_network_settings'])
+
+        in_network = InNetwork()
+        in_network.initialise('r', in_settings=self.settings['input_network_settings'])
+        return out_network, in_network
+
+
 class Network:
 
-    def __init__(self, host, port):
+    settings_types = dict()
+    settings_default = dict()
+    settings_description = dict()
 
-        self.addr = (host, port)
+    settings_types['address'] = 'str'
+    settings_default['address'] = '127.0.0.1'
+    settings_description['address'] = 'Own network address.'
+
+    settings_types['port'] = 'int'
+    settings_default['port'] = 65000
+    settings_description['port'] = 'Own port.'
+
+    def __init__(self, host=None, port=None):  # remove args when this is tested
+
+        self.addr = (host, port)  # own address
 
         self.sock = None
         self.sel = sel
 
         self.clients = list()
 
-        self.queue = None # queue object
+        self.queue = None  # queue object
+
+        self.settings = None
 
     def _set_selector_events_mask(self, mode):
         """Set selector to listen for events: mode is 'r', 'w', or 'rw'."""
         events = get_events(mode)
         self.sel.modify(self.sock, events, data=self)
 
-    def initialise(self, mode):
+    def initialise(self, mode, in_settings):
+        self.settings = in_settings
+        settings.to_custom_types(self.settings, self.settings_types, self.settings_default,
+                                 no_ctype=True)
+        self.addr = (self.settings['address'], self.settings['port'])
+
         self.sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
         self.sock.bind(self.addr)
         logger.info('Binded socket to {}'.format(self.addr))
@@ -90,9 +154,30 @@ class Network:
 
 class OutNetwork(Network):
 
+    settings_types = Network.settings_types.copy()
+    settings_default = Network.settings_default.copy()
+    settings_description = Network.settings_description.copy()
+
+    settings_types['port'] = 'int'
+    settings_default['port'] = 65000
+    settings_description['port'] = 'Own port for output network'
+
+    settings_types['send_on_demand'] = 'bool'
+    settings_default['send_on_demand'] = True
+    settings_description['send_on_demand'] = 'Waits for a signal demanding the output data. Else, sends to destination' \
+                                             ' buffer'
+
+    settings_types['destination_address'] = 'list(str)'
+    settings_default['destination_address'] = list()  # add check to raise error if send_on_demand false and this is empty
+    settings_description['destination_address'] = 'List of addresses to send output data. If ``send_on_demand`` is ' \
+                                                  '``False`` this is a required setting.'
+
+    settings_types['destination_ports'] = 'list(int)'
+    settings_default['destination_ports'] = list()
+    settings_description['destination_ports'] = 'List of ports number for the destination addresses.'
+
     def process_events(self, mask):
-        value = None
-        self.sock.setblocking(False)
+        self.sock.setblocking(False)  # TODO: try without this since already in initialise()
         if mask and selectors.EVENT_READ:
             logger.info('Out Network - waiting for request for data')
             msg = self.receive()
@@ -113,6 +198,14 @@ class OutNetwork(Network):
 
 
 class InNetwork(Network):
+
+    settings_types = Network.settings_types.copy()
+    settings_default = Network.settings_default.copy()
+    settings_description = Network.settings_description.copy()
+
+    settings_types['port'] = 'int'
+    settings_default['port'] = 65001
+    settings_description['port'] = 'Own port for input network'
 
     def process_events(self, mask):
         self.sock.setblocking(False)
