@@ -56,6 +56,8 @@ def generate_pazy(u_inf, case_name, output_folder='/output/', cases_folder='', *
     ws.gust_intensity = 0.01
     ws.sigma = 1
 
+    ws.control_surface_type = np.array([0])
+
     ws.clean_test_files()
     ws.update_derived_params()
     ws.set_default_config_dict()
@@ -111,7 +113,7 @@ def generate_pazy(u_inf, case_name, output_folder='/output/', cases_folder='', *
             'u_inf_direction': ws.u_inf_direction},
         'rollup_dt': ws.dt,
         'print_info': 'on',
-        'horseshoe': 'on',
+        'horseshoe': 'off',
         'num_cores': 4,
         'n_rollup': 0,
         'rollup_aic_refresh': 0,
@@ -136,7 +138,7 @@ def generate_pazy(u_inf, case_name, output_folder='/output/', cases_folder='', *
         'aero_solver_settings': {
             'rho': ws.rho,
             'print_info': 'off',
-            'horseshoe': 'on',
+            'horseshoe': 'off',
             'num_cores': 4,
             'n_rollup': 0,
             'rollup_dt': ws.dt,
@@ -278,6 +280,7 @@ def generate_pazy(u_inf, case_name, output_folder='/output/', cases_folder='', *
                                                      'u_inf_direction': [1., 0., 0.]},
                             'rho': ws.rho,
                             'n_time_steps': ws.n_tstep,
+                            'vortex_radius': 1e-9,
                             'dt': ws.dt,
                             'gamma_dot_filtering': 3}
 
@@ -299,9 +302,12 @@ def generate_pazy(u_inf, case_name, output_folder='/output/', cases_folder='', *
                                   'n_time_steps': 4, #ws.n_tstep,
                                   'dt': ws.dt,
                                   'include_unsteady_force_contribution': 'off',
-                                  'network_connections': True,
-                                  'io_variables_yaml': './variables.yaml',
-                                  'postprocessors': [],
+                                  'network_settings': {'variables_filename': './variables.yaml',
+                                  #                      'input_network_settings'
+                                                       },
+                                  # 'network_connections': True,
+                                  # 'io_variables_yaml': './variables.yaml',
+                                  'postprocessors': ['AerogridPlot', 'BeamPlot'],
                                   'postprocessors_settings': {'BeamLoads': {'folder': output_folder,
                                                                             'csv_output': 'off'},
                                                               'BeamPlot': {'folder': output_folder,

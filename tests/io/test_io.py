@@ -21,7 +21,7 @@ class TestPazyCoupledStatic(unittest.TestCase):
 
         M = 4
         N = 16
-        Msf = 1
+        Msf = 4
 
         cases_folder = self.route_test_dir + '/cases/'
         output_folder = self.route_test_dir + '/cases/'
