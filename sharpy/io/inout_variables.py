@@ -38,6 +38,8 @@ class Variable:
             self.panel = position
         elif var_type == 'control_surface':
             self.cs_index = position
+        elif self.name == 'dt' or self.name == 'nt':
+            pass
         else:
             raise Exception('Unknown variable type')
 
@@ -70,6 +72,11 @@ class Variable:
                              'which is of size ({})'.format(self.node, self.index, self.dref_name,
                                                             variable.shape))
                 raise IndexError
+        elif self.name == 'dt':
+            value = data.settings['DynamicCoupled']['dt'].value
+        elif self.name == 'nt':
+            value = len(data.structure.timestep_info)
+            # value = 1.0
         else:  # aero variables
             raise NotImplementedError('Aero variables not yet implemented')
 
@@ -129,6 +136,8 @@ class Variable:
             dref_name += 'paneli{}m{}n{}'.format(*self.panel)
         elif self.cs_index is not None:
             dref_name += 'idx{}'.format(self.cs_index)
+        elif self.name == 'dt' or self.name == 'nt':
+            pass
         else:
             raise Exception('Unknown variable')
 
@@ -185,7 +194,8 @@ class SetOfVariables:
         for var_idx in self.out_variables:
             variable = self.variables[var_idx]
             logger.info('Encoding variable {}'.format(variable.dref_name))
-            msg += struct.pack('<if', variable.variable_index, variable.value)
+            # msg += struct.pack('<if', variable.variable_index, variable.value)
+            msg += struct.pack('>if', variable.variable_index, variable.value)
 
         return msg
 
