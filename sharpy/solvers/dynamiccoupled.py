@@ -427,15 +427,18 @@ class DynamicCoupled(BaseSolver):
         in_network.set_message_length(self.set_of_variables.input_msg_len)
         in_network.set_queue(in_queue)
 
+        previous_queue_empty = True
         while not finish_event.is_set():
 
             # selector version
             # logging.info('Network Interface - waiting for events')
             events = network_interface.sel.select(timeout=1)
-            if out_network.queue.empty():
+            if out_network.queue.empty() and not previous_queue_empty:
                 out_network._set_selector_events_mask('r')
-            else:
+                previous_queue_empty = True
+            elif not out_network.queue.empty() and previous_queue_empty:
                 out_network._set_selector_events_mask('w')
+                previous_queue_empty = False
             # key = out_network.sel.get_key()
             # key.events()
 
@@ -610,6 +613,7 @@ class DynamicCoupled(BaseSolver):
                 for postproc in self.postprocessors:
                     self.data = self.postprocessors[postproc].run(online=True)
 
+            logging.info('Time Loop - Finished Time step')
             # put result back in queue
             if out_queue:
                 logging.info('Time loop - about to get out variables from data')
