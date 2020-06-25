@@ -19,6 +19,7 @@ import sharpy.utils.algebra as algebra
 import sharpy.structure.utils.xbeamlib as xbeam
 import sharpy.utils.exceptions as exc
 import sharpy.utils.correct_forces as cf
+import sharpy.io.network_interface as network_interface
 
 
 @solver
@@ -137,6 +138,10 @@ class DynamicCoupled(BaseSolver):
     settings_options['correct_forces_method'] = ['efficiency', 'polars']
 
     # network settings should be in their own dict
+    settings_types['network_settings'] = 'dict'
+    settings_default['network_settings'] = dict()
+    settings_description['network_settings'] = 'Network settings'
+
     settings_types['network_connections'] = 'bool'
     settings_default['network_connections'] = False
     settings_description['network_connections'] = 'Temporary setting to disable network connections'
@@ -178,6 +183,7 @@ class DynamicCoupled(BaseSolver):
         self.logger = logging.getLogger(__name__)
 
         # variables to send and receive
+        self.network_loader = None
         self.set_of_variables = None
 
     def get_g(self):
@@ -279,6 +285,11 @@ class DynamicCoupled(BaseSolver):
             self.correct_forces = True
             self.correct_forces_function = cf.dict_of_corrections[self.settings['correct_forces_method']]
 
+        # check for empty dictionary
+        if self.settings['network_settings']:
+            self.network_loader = network_interface.NetworkLoader()
+            self.network_loader.initialise(in_settings=self.settings['network_settings'])
+
     def cleanup_timestep_info(self):
         if max(len(self.data.aero.timestep_info), len(self.data.structure.timestep_info)) > 1:
             # copy last info to first
@@ -350,29 +361,33 @@ class DynamicCoupled(BaseSolver):
         included.
         """
 
-        # self.time_loop()
-        # p1 = multiprocessing.Process(target=self.time_loop, args=())
-        # p1 = threading.Thread(target=self.time_loop, args=())
-        # going to not use multiprocessing for now given the issues with child multiprocesses
-        # in the UVLM module
-        if self.settings['network_connections']:
+        if self.network_loader is not None:
             import sharpy.io.inout_variables as inout_variables
 
-            path_to_variables_yaml = self.settings['io_variables_yaml']
+            # path_to_variables_yaml = self.settings['io_variables_yaml']
 
             # variables to import/export
             # things to think of: send encoded values in the queue?
             #                     send actual object?
-            self.set_of_variables = inout_variables.SetOfVariables()
-            self.set_of_variables.load_variables_from_yaml(path_to_variables_yaml)
+            self.set_of_variables = self.network_loader.get_inout_variables()
 
             incoming_queue = queue.Queue(maxsize=1)
             outgoing_queue = queue.Queue(maxsize=1)
 
             finish_event = threading.Event()
+            # self.network_interface(incoming_queue, outgoing_queue, finish_event) for debug purposes
             with concurrent.futures.ThreadPoolExecutor(max_workers=2) as executor:
-                executor.submit(self.network_interface, incoming_queue, outgoing_queue, finish_event)
-                executor.submit(self.time_loop, incoming_queue, outgoing_queue, finish_event)
+                net = executor.submit(self.network_interface, incoming_queue, outgoing_queue, finish_event)
+                timeloop = executor.submit(self.time_loop, incoming_queue, outgoing_queue, finish_event)
+
+                # TODO: improve exception handling to get exceptions when they happen from each thread
+                for t1 in [net, timeloop]:
+                    try:
+                        t1.result()
+                    except Exception as e:
+                        print(e)
+                        raise Exception
+
 
         else:
             self.time_loop()
@@ -407,7 +422,6 @@ class DynamicCoupled(BaseSolver):
 
     def network_interface(self, in_queue, out_queue, finish_event):
         # set up
-        import sharpy.io.network_interface as network_interface
 
         # input and output sockets
         # sharpy control input is 65001
@@ -416,12 +430,13 @@ class DynamicCoupled(BaseSolver):
         #
 
         # output side
-        out_network = network_interface.OutNetwork('127.0.0.1', 65000)
-        out_network.initialise('r')
+        out_network, in_network = self.network_loader.get_networks()
+        # out_network = network_interface.OutNetwork('127.0.0.1', 65000)
+        # out_network.initialise('r')
         out_network.set_queue(out_queue)
 
-        in_network = network_interface.InNetwork('127.0.0.1', 65001)
-        in_network.initialise('r')
+        # in_network = network_interface.InNetwork('127.0.0.1', 65001)
+        # in_network.initialise('r')
         in_network.set_queue(in_queue)
 
         while not finish_event.is_set():
