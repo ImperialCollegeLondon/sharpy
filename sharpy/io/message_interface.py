@@ -21,7 +21,7 @@ def decoder(msg):
     values = []
     for i_val in range(n_values):
         current_signal = msg[5 + i_val * 8: 5 + i_val * 8 + 8]
-        sig_index = struct.unpack('<if', current_signal)
+        sig_index = struct.unpack('>if', current_signal)
         values.append(sig_index)
 
     return values
