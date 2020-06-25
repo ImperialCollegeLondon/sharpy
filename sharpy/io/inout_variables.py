@@ -156,6 +156,11 @@ class SetOfVariables:
                 self.in_variables.append(new_var.variable_index)
             logger.info('Number of tracked variables {}'.format(Variable.num_vars))
 
+    @property
+    def input_msg_len(self):
+        msg_len = 5 + 8 * len(self.in_variables)  # 5 bytes header + 8 for each channel
+        return msg_len
+
     def __iter__(self):
         return VariableIterator(self)
 

@@ -26,7 +26,7 @@ out_sock.bind(own_receive)
 
 # from https://stackoverflow.com/questions/2719017/how-to-set-timeout-on-pythons-socket-recv-method
 # ready_to_read = select.select([out_sock], [], [], 2)
-out_sock.settimeout(2)
+out_sock.settimeout(10)
 
 tsteps = 401
 t = np.linspace(0, 0.2, tsteps)
@@ -53,7 +53,7 @@ while True:
     out_sock.sendto(req_message, sharpy_outgoing)
     # if ready_to_read[0]:
     try:
-        msg, conn = out_sock.recvfrom(413)
+        msg, conn = out_sock.recvfrom(21)
     except socket.timeout:
         logger.info('Socket time out')
         break

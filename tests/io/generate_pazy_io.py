@@ -303,7 +303,9 @@ def generate_pazy(u_inf, case_name, output_folder='/output/', cases_folder='', *
                                   'dt': ws.dt,
                                   'include_unsteady_force_contribution': 'off',
                                   'network_settings': {'variables_filename': './variables.yaml',
-                                  #                      'input_network_settings'
+                                                       'output_network_settings': {'send_on_demand': False,
+                                                                                   'destination_address': ['127.0.0.1'],
+                                                                                   'destination_ports': [64001]},
                                                        },
                                   # 'network_connections': True,
                                   # 'io_variables_yaml': './variables.yaml',

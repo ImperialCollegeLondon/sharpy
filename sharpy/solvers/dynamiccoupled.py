@@ -421,45 +421,31 @@ class DynamicCoupled(BaseSolver):
         logging.info('Closed network')
 
     def network_interface(self, in_queue, out_queue, finish_event):
-        # set up
-
-        # input and output sockets
-        # sharpy control input is 65001
-        # sharpy output on demand is 65000
-
-        #
-
-        # output side
         out_network, in_network = self.network_loader.get_networks()
-        # out_network = network_interface.OutNetwork('127.0.0.1', 65000)
-        # out_network.initialise('r')
         out_network.set_queue(out_queue)
 
-        # in_network = network_interface.InNetwork('127.0.0.1', 65001)
-        # in_network.initialise('r')
+        in_network.set_message_length(self.set_of_variables.input_msg_len)
         in_network.set_queue(in_queue)
 
         while not finish_event.is_set():
 
             # selector version
-            logging.info('Network Interface - waiting for events')
-            events = network_interface.sel.select(timeout=None)
+            # logging.info('Network Interface - waiting for events')
+            events = network_interface.sel.select(timeout=1)
+            if out_network.queue.empty():
+                out_network._set_selector_events_mask('r')
+            else:
+                out_network._set_selector_events_mask('w')
+            # key = out_network.sel.get_key()
+            # key.events()
+
             # import pdb; pdb.set_trace()
             try:
                 for key, mask in events:
-                    logging.info('Network Interface - Got event')
+                    # logging.info('Network Interface - Got event')
                     key.data.process_events(mask)
             except KeyboardInterrupt:
                 break
-
-            # non-selector version
-            # msg = network.receive()
-            # logging.info('Network - Placing message in the queue')
-            # in_queue.put(msg)
-            #
-            # value = out_queue.get()
-            # logging.info('Network - Got message from the queue')
-            # network.send(value, dest_addr)
 
         # TODO: send signal that simulation finished
 
