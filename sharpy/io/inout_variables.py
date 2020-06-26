@@ -17,7 +17,7 @@ class Variable:
         self.inout = inout  # str: (in, out, inout)
 
         self.index = kwargs.get('index', None)  # if variable is a vector
-        position = kwargs.get('position', None)  # int for node, (i_surf, m, n) for panel
+        position = kwargs.get('position', None)  # int for node, (i_surf, m, n, idx) for panel
         # if type(position) is int:
         #     self.node = position
         #     self.panel = None
@@ -32,7 +32,7 @@ class Variable:
         self.cs_index = None
 
         var_type = kwargs.get('var_type', None)
-        if  var_type == 'node':
+        if var_type == 'node':
             self.node = position
         elif var_type == 'panel':
             self.panel = position
@@ -54,13 +54,6 @@ class Variable:
         self.value = None
         logger.info('Loaded variable {}'.format(self.dref_name))
 
-    def encode(self, data):
-        value = self.get_variable_value(data)
-        dref_name = self.dref_name
-
-        return value
-        # TODO: add variable index to keep track of how many have been created and sent that as well
-
     def get_variable_value(self, data):
         if self.node is not None:
             # structural variables for now
@@ -75,10 +68,29 @@ class Variable:
         elif self.name == 'dt':
             value = data.settings['DynamicCoupled']['dt'].value
         elif self.name == 'nt':
-            value = len(data.structure.timestep_info)
-            # value = 1.0
-        else:  # aero variables
-            raise NotImplementedError('Aero variables not yet implemented')
+            value = len(data.structure.timestep_info) - 1  # (-1) needed since first time step is idx 0
+        elif self.panel is not None:
+            variable = getattr(data.aero.timestep_info[-1], self.name)[self.panel[0]]  # surface index
+            i_m = self.panel[1]
+            i_n = self.panel[2]
+
+            try:
+                i_idx = self.panel[3]
+            except IndexError:
+                value = variable[i_m, i_n]
+            else:
+                value = variable[i_m, i_n, i_idx]
+        elif self.cs_index is not None:
+            try:
+                value = data.aero.timestep_info[-1].control_surface_deflection[self.cs_index]
+            except AttributeError:
+                logger.error('Model not equipped with dynamic control surfaces')
+                raise AttributeError
+            except IndexError:
+                logger.error('Requested index {} for control surface is out of range (size {})'.format(
+                    self.cs_index, len(data.aero.timestep_info[-1].control_surface_deflection)))
+        else:
+            raise NotImplementedError('Unable to get value for {} variable'.format(self.name))
 
         self.value = value
         logger.info('Getting value {} for variable {}'.format(self.value, self.dref_name))
@@ -128,14 +140,14 @@ class Variable:
 
     def set_dref_name(self):
         divider = '_'
-        dref_name = self.name + divider
+        dref_name = self.name
 
         if self.node is not None:
-            dref_name += 'node{}'.format(self.node)
+            dref_name += divider +'node{}'.format(self.node)
         elif self.panel is not None:
-            dref_name += 'paneli{}m{}n{}'.format(*self.panel)
+            dref_name += divider + 'paneli{}m{}n{}'.format(*self.panel)
         elif self.cs_index is not None:
-            dref_name += 'idx{}'.format(self.cs_index)
+            dref_name += divider + 'idx{}'.format(self.cs_index)
         elif self.name == 'dt' or self.name == 'nt':
             pass
         else:
