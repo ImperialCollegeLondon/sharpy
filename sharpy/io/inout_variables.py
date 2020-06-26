@@ -7,6 +7,7 @@ logging.basicConfig(format='%(asctime)s - %(name)s - %(levelname)s - %(message)s
                     level=20)
 logger = logging.getLogger(__name__)
 
+
 class Variable:
     num_vars = 0
 
@@ -18,14 +19,6 @@ class Variable:
 
         self.index = kwargs.get('index', None)  # if variable is a vector
         position = kwargs.get('position', None)  # int for node, (i_surf, m, n, idx) for panel
-        # if type(position) is int:
-        #     self.node = position
-        #     self.panel = None
-        # elif len(position) == 3:
-        #     self.panel = position
-        #     self.node = None
-        # else:
-        #     raise TypeError('Position should be either an integer for nodes or a tuple for panels')
 
         self.node = None
         self.panel = None
@@ -45,7 +38,6 @@ class Variable:
 
         self.dref_name = None
         self.set_dref_name()
-        print(self.dref_name)
 
         # update variable counter
         self.variable_index = Variable.num_vars
@@ -162,8 +154,13 @@ class Variable:
 class SetOfVariables:
     def __init__(self):
         self.variables = []  # list of Variables()
-        self.out_variables = []  #indices
+        self.out_variables = []  # indices
         self.in_variables = []
+
+        self._byte_ordering = '<'
+
+    def set_byte_ordering(self, value):
+        self._byte_ordering = value
 
     def load_variables_from_yaml(self, path_to_yaml):
         with open(path_to_yaml, 'r') as yaml_file:
@@ -202,12 +199,12 @@ class SetOfVariables:
         Returns:
             bytes: Encoded message of length ``5 + num_var * 8``.
         """
-        msg = struct.pack('<5s', b'RREF0')
+        msg = struct.pack('{}5s'.format(self._byte_ordering), b'RREF0')
         for var_idx in self.out_variables:
             variable = self.variables[var_idx]
             logger.info('Encoding variable {}'.format(variable.dref_name))
             # msg += struct.pack('<if', variable.variable_index, variable.value)
-            msg += struct.pack('>if', variable.variable_index, variable.value)
+            msg += struct.pack('{}if'.format(self._byte_ordering), variable.variable_index, variable.value)
 
         return msg
 

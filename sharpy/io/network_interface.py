@@ -15,14 +15,23 @@ logger = logging.getLogger(__name__)
 class NetworkLoader:
     """
     Settings for each input or output port
+
+    See Also:
+        Endianness: https://docs.python.org/3/library/struct.html#byte-order-size-and-alignment
     """
     settings_types = dict()
     settings_default = dict()
     settings_description = dict()
+    settings_options = dict()
 
     settings_types['variables_filename'] = 'str'
     settings_default['variables_filename'] = None
     settings_description['variables_filename'] = 'Path to YAML file containing input/output variables'
+
+    settings_types['byte_ordering'] = 'str'
+    settings_default['byte_ordering'] = 'little'
+    settings_description['byte_ordering'] = 'Desired endianness byte ordering'
+    settings_options['byte_ordering'] = ['little', 'big']
 
     settings_types['input_network_settings'] = 'dict'
     settings_default['input_network_settings'] = dict()
@@ -32,16 +41,30 @@ class NetworkLoader:
     settings_default['output_network_settings'] = dict()
     settings_description['output_network_settings'] = 'Settings for the output network.'
 
+    settings_table = settings.SettingsTable()
+    __doc__ += settings_table.generate(settings_types, settings_default, settings_description)
+
     def __init__(self):
         self.settings = None
 
+        self.byte_ordering = '<'
+
     def initialise(self, in_settings):
         self.settings = in_settings
-        settings.to_custom_types(self.settings, self.settings_types, self.settings_default)
+        settings.to_custom_types(self.settings, self.settings_types, self.settings_default,
+                                 no_ctype=True, options=self.settings_options)
+
+        if self.settings['byte_ordering'] == 'little':
+            self.byte_ordering = '<'
+        elif self.settings['byte_ordering'] == 'big':
+            self.byte_ordering = '>'
+        else:
+            raise KeyError('Unknown byte ordering {}'.format(self.settings['byte_ordering']))
 
     def get_inout_variables(self):
         set_of_variables = inout_variables.SetOfVariables()
         set_of_variables.load_variables_from_yaml(self.settings['variables_filename'])
+        set_of_variables.set_byte_ordering(self.byte_ordering)
 
         return set_of_variables
 
@@ -49,9 +72,12 @@ class NetworkLoader:
 
         out_network = OutNetwork()
         out_network.initialise('rw', in_settings=self.settings['output_network_settings'])
+        out_network.set_byte_ordering(self.byte_ordering)
+        # TODO: check initialisation mode of output network
 
         in_network = InNetwork()
         in_network.initialise('r', in_settings=self.settings['input_network_settings'])
+        in_network.set_byte_ordering(self.byte_ordering)
         return out_network, in_network
 
 
@@ -81,6 +107,11 @@ class Network:
         self.queue = None  # queue object
 
         self.settings = None
+
+        self._byte_ordering = '<'
+
+    def set_byte_ordering(self, value):
+        self._byte_ordering = value
 
     def _set_selector_events_mask(self, mode):
         """Set selector to listen for events: mode is 'r', 'w', or 'rw'."""
@@ -114,17 +145,12 @@ class Network:
 
     def _sendto(self, msg, address):
         logger.info('Network - Sending')
-        # msg = struct.pack('f', msg) # need to move encoding to dedicated message processing
         self.sock.sendto(msg, address)
         logger.info('Network - Sent data packet to {}'.format(address))
 
     def receive(self, msg_length=1024):
         r_msg, client_addr = self.sock.recvfrom(msg_length)  # adapt message length
-        # recv_data += r_msg
         logger.info('Received a {}-byte long data packet from {}'.format(len(r_msg), client_addr))
-        # if r_msg != b'':
-        #     break
-        # print(struct)
         self.add_client(client_addr)
         # r_msg = struct.unpack('f', r_msg)  # need to move decoding to dedicated message processing
         return r_msg
@@ -254,7 +280,7 @@ class InNetwork(Network):
             # send list of tuples
             if len(self._recv_buffer) == self._in_message_length:
                 logger.info('In Network - enough bytes read')
-                list_of_variables = message_interface.decoder(self._recv_buffer)
+                list_of_variables = message_interface.decoder(self._recv_buffer, byte_ordering=self._byte_ordering)
                 self.queue.put(list_of_variables)
                 logger.info('In Network - put data in the queue')
                 self._recv_buffer = b''  # clean up
