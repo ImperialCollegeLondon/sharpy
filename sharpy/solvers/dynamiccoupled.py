@@ -178,8 +178,6 @@ class DynamicCoupled(BaseSolver):
         self.correct_forces = False
         self.correct_forces_function = None
 
-        logging.basicConfig(format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
-                            level=20)
         self.logger = logging.getLogger(__name__)
 
         # variables to send and receive
@@ -388,7 +386,6 @@ class DynamicCoupled(BaseSolver):
                         print(e)
                         raise Exception
 
-
         else:
             self.time_loop()
 
@@ -408,17 +405,17 @@ class DynamicCoupled(BaseSolver):
         value = 1
         while not finish_event.is_set():
             # in_queue is the queue where stuff from the network goes
-            logging.info('Network - Sending {} in the queue'.format(value))
+            self.logger.info('Network - Sending {} in the queue'.format(value))
             in_queue.put(value)
 
             # out_queue is the queue where stuff for the network goes
             value = out_queue.get()
-            logging.info('Network - received {}'.format(value))
+            self.logger.info('Network - received {}'.format(value))
 
             value = value ** 2
-            logging.info('Network - squared {}'.format(value))
+            self.logger.info('Network - squared {}'.format(value))
 
-        logging.info('Closed network')
+        self.logger.info('Closed network')
 
     def network_interface(self, in_queue, out_queue, finish_event):
         out_network, in_network = self.network_loader.get_networks()
@@ -431,7 +428,7 @@ class DynamicCoupled(BaseSolver):
         while not finish_event.is_set():
 
             # selector version
-            # logging.info('Network Interface - waiting for events')
+            # self.logger.info('Network Interface - waiting for events')
             events = network_interface.sel.select(timeout=1)
             if out_network.queue.empty() and not previous_queue_empty:
                 out_network._set_selector_events_mask('r')
@@ -445,7 +442,7 @@ class DynamicCoupled(BaseSolver):
             # import pdb; pdb.set_trace()
             try:
                 for key, mask in events:
-                    # logging.info('Network Interface - Got event')
+                    # self.logger.info('Network Interface - Got event')
                     key.data.process_events(mask)
             except KeyboardInterrupt:
                 break
@@ -457,7 +454,7 @@ class DynamicCoupled(BaseSolver):
         out_network.close()
 
     def time_loop(self, in_queue=None, out_queue=None, finish_event=None):
-        logging.info('Inside time loop')
+        self.logger.debug('Inside time loop')
         # dynamic simulations start at tstep == 1, 0 is reserved for the initial state
         for self.data.ts in range(
                 len(self.data.structure.timestep_info),
@@ -467,16 +464,16 @@ class DynamicCoupled(BaseSolver):
 
             # get number from queue
             # while in_queue.empty(): # this is not needed!
-            #     logging.info('TL Empty queue - waiting for input')
+            #     self.logger.info('TL Empty queue - waiting for input')
             if in_queue:
-                logging.info('Time Loop - Waiting for input')
+                self.logger.info('Time Loop - Waiting for input')
                 values = in_queue.get()  # should be list of tuples
-                logging.info('Time loop - received {}'.format(values))
+                self.logger.debug('Time loop - received {}'.format(values))
                 self.set_of_variables.update_timestep(self.data, values)
             # <<<<<<<<<<<<<<<<<<<
             structural_kstep = self.data.structure.timestep_info[-1].copy()
             aero_kstep = self.data.aero.timestep_info[-1].copy()
-            logging.debug('Time step {}'.format(self.data.ts))
+            self.logger.debug('Time step {}'.format(self.data.ts))
 
             # Add the controller here
             if self.with_controllers:
@@ -498,7 +495,7 @@ class DynamicCoupled(BaseSolver):
 
             k = 0
             for k in range(self.settings['fsi_substeps'].value + 1):
-                logging.debug('In FSI iter {}'.format(k))
+                self.logger.debug('In FSI iter {}'.format(k))
                 if (k == self.settings['fsi_substeps'].value and
                         self.settings['fsi_substeps']):
                     cout.cout_wrap('The FSI solver did not converge!!!')
@@ -523,12 +520,12 @@ class DynamicCoupled(BaseSolver):
 
                 # run the solver
                 ini_time_aero = time.perf_counter()
-                logging.debug('About to run UVLM')
+                self.logger.debug('About to run UVLM')
                 self.data = self.aero_solver.run(aero_kstep,
                                                  structural_kstep,
                                                  convect_wake=True,
                                                  unsteady_contribution=unsteady_contribution)
-                logging.debug('Finished running UVLM')
+                self.logger.debug('Finished running UVLM')
                 self.time_aero += time.perf_counter() - ini_time_aero
 
                 previous_kstep = structural_kstep.copy()
@@ -613,20 +610,19 @@ class DynamicCoupled(BaseSolver):
                 for postproc in self.postprocessors:
                     self.data = self.postprocessors[postproc].run(online=True)
 
-            logging.info('Time Loop - Finished Time step')
             # put result back in queue
             if out_queue:
-                logging.info('Time loop - about to get out variables from data')
+                self.logger.debug('Time loop - about to get out variables from data')
                 self.set_of_variables.get_value(self.data)
                 if out_queue.full():
                     # clear the queue such that it always contains the latest time step
                     out_queue.get()  # clear item from queue
-                    logging.info('Data output Queue is full - clearing output')
+                    self.logger.debug('Data output Queue is full - clearing output')
                 out_queue.put(self.set_of_variables)
 
         if finish_event:
             finish_event.set()
-            logging.info('Time loop - Complete')
+            self.logger.info('Time loop - Complete')
 
     def convergence(self, k, tstep, previous_tstep):
         r"""

@@ -3,8 +3,8 @@ import yaml
 import logging
 import numpy as np
 
-logging.basicConfig(format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
-                    level=20)
+# logging.basicConfig(format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
+#                     level=20)
 logger = logging.getLogger(__name__)
 
 
@@ -85,7 +85,7 @@ class Variable:
             raise NotImplementedError('Unable to get value for {} variable'.format(self.name))
 
         self.value = value
-        logger.info('Getting value {} for variable {}'.format(self.value, self.dref_name))
+        logger.debug('Getting value {} for variable {}'.format(self.value, self.dref_name))
         return value
 
     def set_variable_value(self, value):
@@ -118,7 +118,7 @@ class Variable:
                 ))
             else:
                 setattr(data.structure.timestep_info[-1], self.name, variable)
-                logger.info('Updated timestep')
+                logger.debug('Updated timestep')
 
         if self.cs_index is not None:
             variable = getattr(data.aero.timestep_info[-1], self.name)
@@ -128,7 +128,7 @@ class Variable:
                 variable[self.cs_index] = self.value
 
             setattr(data.aero.timestep_info[-1], self.name, variable)
-            logger.info('Updated control surface deflection')
+            logger.debug('Updated control surface deflection')
 
     def set_dref_name(self):
         divider = '_'
@@ -172,7 +172,7 @@ class SetOfVariables:
                 self.out_variables.append(new_var.variable_index)
             if new_var.inout == 'in' or new_var.inout == 'inout':
                 self.in_variables.append(new_var.variable_index)
-            logger.info('Number of tracked variables {}'.format(Variable.num_vars))
+            logger.debug('Number of tracked variables {}'.format(Variable.num_vars))
 
     @property
     def input_msg_len(self):
@@ -202,8 +202,7 @@ class SetOfVariables:
         msg = struct.pack('{}5s'.format(self._byte_ordering), b'RREF0')
         for var_idx in self.out_variables:
             variable = self.variables[var_idx]
-            logger.info('Encoding variable {}'.format(variable.dref_name))
-            # msg += struct.pack('<if', variable.variable_index, variable.value)
+            logger.debug('Encoding variable {}'.format(variable.dref_name))
             msg += struct.pack('{}if'.format(self._byte_ordering), variable.variable_index, variable.value)
 
         return msg
@@ -226,12 +225,12 @@ class SetOfVariables:
 
         for idx, value in values:
             self.variables[idx].set_variable_value(value)
-            logger.info('Set the input variable {} to {}'.format(self.variables[idx].dref_name,
-                                                                 self.variables[idx].value))
+            logger.info('Set the input variable {} to {:.4f}'.format(self.variables[idx].dref_name,
+                                                                     self.variables[idx].value))
 
     def update_timestep(self, data, values):
 
-        logger.info('Update time step routine')
+        logger.debug('Update time step routine')
         self.set_value(values)
         for idx in self.in_variables:
             self.variables[idx].set_in_timestep(data)

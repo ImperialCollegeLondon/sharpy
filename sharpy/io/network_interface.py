@@ -90,10 +90,12 @@ class NetworkLoader:
 
     def get_networks(self):
 
+        logger.info('Initialising output network')
         out_network = OutNetwork()
         out_network.initialise('w', in_settings=self.settings['output_network_settings'])
         out_network.set_byte_ordering(self.byte_ordering)
 
+        logger.info('Initialising input network')
         in_network = InNetwork()
         in_network.initialise('r', in_settings=self.settings['input_network_settings'])
         in_network.set_byte_ordering(self.byte_ordering)
@@ -135,7 +137,7 @@ class Network:
     def _set_selector_events_mask(self, mode):
         """Set selector to listen for events: mode is 'r', 'w', or 'rw'."""
         events = get_events(mode)
-        logger.info('Modifying selector to {}'.format(mode))
+        logger.debug('Modifying selector to {}'.format(mode))
         sel.modify(self.sock, events, data=self)
 
     def initialise(self, mode, in_settings):
@@ -148,7 +150,6 @@ class Network:
         self.sock.bind(self.addr)
         logger.info('Binded socket to {}'.format(self.addr))
         events = get_events(mode)
-        logger.info('Host: {}'.format(socket.gethostname()))
         self.sock.setblocking(False)
         sel.register(self.sock, events, data=self)
 
@@ -163,9 +164,9 @@ class Network:
         self.queue = queue
 
     def _sendto(self, msg, address):
-        logger.info('Network - Sending')
+        logger.debug('Network - Sending')
         self.sock.sendto(msg, address)
-        logger.info('Network - Sent data packet to {}'.format(address))
+        logger.debug('Network - Sent data packet to {}'.format(address))
 
     def receive(self, msg_length=1024):
         r_msg, client_addr = self.sock.recvfrom(msg_length)  # adapt message length
@@ -176,21 +177,8 @@ class Network:
         # return recv_data
 
     def process_events(self, mask):  # should only have the relevant queue
-        logger.info('should not be here')
+        logger.debug('Should not be here')
         pass
-        # if mask and selectors.EVENT_READ:
-        #     logger.info('Network - Receiving')
-        #     msg = self.receive()
-        #     # would need to process msg beforehand
-        #     in_queue.put(msg)
-        #     logger.info('Network - Placed message in the queue')
-        #
-        # if mask and selectors.EVENT_WRITE:
-        #     msg = out_queue.get()
-        #     logger.info('Network - Got message from the queue')
-        #     self.send(msg, self.clients)
-
-        # return in_queue, out_queue: not needed, processing done on original objects
 
     def add_client(self, client_addr):
         if type(client_addr) is tuple:
@@ -252,15 +240,12 @@ class OutNetwork(Network):
                 msg = self.receive()
                 # get variable that has been demanded, this would be easy if a SetOfVariables was sent in the queue
                 # logger.info('Received request for data {}'.format(msg))
-                logger.info('Received request for data')
+                logger.debug('Received request for data')
         if mask and selectors.EVENT_WRITE and not self.queue.empty():
-            logger.info('Queue: {}'.format(self.queue.empty))
-            # if mask and selectors.EVENT_WRITE:
-        # if not self.queue.empty:
-            logger.info('Out Network ready to receive from the queue')
+            logger.debug('Out Network ready to receive from the queue')
             # value = self.queue.get()  # check that it waits for the queue not to be empty
             set_of_vars = self.queue.get()  # always gets latest time step info
-            logger.info('Out Network - got message from queue')
+            logger.debug('Out Network - got message from queue')
             # for out_idx in set_of_vars.out_variables:
             #     value = set_of_vars[out_idx].value
             value = set_of_vars.encode()
@@ -286,21 +271,21 @@ class InNetwork(Network):
 
     def set_message_length(self, value):
         self._in_message_length = value
-        logger.info('Set input message size to {} bytes'.format(self._in_message_length))
+        logger.debug('Set input signal message size to {} bytes'.format(self._in_message_length))
 
     def process_events(self, mask):
         self.sock.setblocking(False)
         if mask and selectors.EVENT_READ:
-            logger.info('In Network - waiting for input data of size {}'.format(self._in_message_length))
+            logger.info('In Network - waiting for input data of size {} bytes'.format(self._in_message_length))
             msg = self.receive(self._in_message_length)
             self._recv_buffer += msg
             # any required processing
             # send list of tuples
             if len(self._recv_buffer) == self._in_message_length:
-                logger.info('In Network - enough bytes read')
+                logger.info('In Network - {}/{} bytes read'.format(len(self._recv_buffer), self._in_message_length))
                 list_of_variables = message_interface.decoder(self._recv_buffer, byte_ordering=self._byte_ordering)
                 self.queue.put(list_of_variables)
-                logger.info('In Network - put data in the queue')
+                logger.debug('In Network - put data in the queue')
                 self._recv_buffer = b''  # clean up
 
 
