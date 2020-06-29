@@ -495,7 +495,6 @@ class DynamicCoupled(BaseSolver):
 
             k = 0
             for k in range(self.settings['fsi_substeps'].value + 1):
-                self.logger.debug('In FSI iter {}'.format(k))
                 if (k == self.settings['fsi_substeps'].value and
                         self.settings['fsi_substeps']):
                     cout.cout_wrap('The FSI solver did not converge!!!')
@@ -520,12 +519,10 @@ class DynamicCoupled(BaseSolver):
 
                 # run the solver
                 ini_time_aero = time.perf_counter()
-                self.logger.debug('About to run UVLM')
                 self.data = self.aero_solver.run(aero_kstep,
                                                  structural_kstep,
                                                  convect_wake=True,
                                                  unsteady_contribution=unsteady_contribution)
-                self.logger.debug('Finished running UVLM')
                 self.time_aero += time.perf_counter() - ini_time_aero
 
                 previous_kstep = structural_kstep.copy()

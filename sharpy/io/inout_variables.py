@@ -159,6 +159,8 @@ class SetOfVariables:
 
         self._byte_ordering = '<'
 
+        self.file_name = None  # for input variables
+
     def set_byte_ordering(self, value):
         self._byte_ordering = value
 
@@ -173,6 +175,17 @@ class SetOfVariables:
             if new_var.inout == 'in' or new_var.inout == 'inout':
                 self.in_variables.append(new_var.variable_index)
             logger.debug('Number of tracked variables {}'.format(Variable.num_vars))
+
+    def set_input_file(self, filename):
+        self.file_name = filename
+
+        with open(self.file_name, 'w') as f:
+            header = ''
+            for var_idx in self.in_variables:
+                header += '{},\t'.format(self.variables[var_idx].dref_name)
+            header += '\n'
+
+            f.write(header)
 
     @property
     def input_msg_len(self):
@@ -227,6 +240,8 @@ class SetOfVariables:
             self.variables[idx].set_variable_value(value)
             logger.info('Set the input variable {} to {:.4f}'.format(self.variables[idx].dref_name,
                                                                      self.variables[idx].value))
+        # save to file:
+        self.save_to_file(values)
 
     def update_timestep(self, data, values):
 
@@ -234,6 +249,16 @@ class SetOfVariables:
         self.set_value(values)
         for idx in self.in_variables:
             self.variables[idx].set_in_timestep(data)
+
+    def save_to_file(self, input_variables):
+        if self.file_name is not None:
+            input_values = [value for idx, value in input_variables]
+            with open(self.file_name, 'a') as f:
+                out_msg = ''
+                for value in input_values:
+                    out_msg += '{:10.6f},\t'.format(value)
+                out_msg += '\n'
+                f.write(out_msg)
 
 
 class VariableIterator:

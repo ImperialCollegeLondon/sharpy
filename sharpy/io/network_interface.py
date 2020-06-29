@@ -48,6 +48,10 @@ class NetworkLoader:
     settings_description['send_output_to_all_clients'] = 'Send output to all clients, including those from where the ' \
                                                          'input is received.'
 
+    settings_types['received_data_filename'] = 'str'
+    settings_default['received_data_filename'] = ''
+    settings_description['received_data_filename'] = 'If not empty, writes received input data to the specified file.'
+
     settings_types['log_name'] = 'str'
     settings_default['log_name'] = './network_output.log'
     settings_description['log_name'] = 'Network log name'
@@ -92,6 +96,9 @@ class NetworkLoader:
         set_of_variables.load_variables_from_yaml(self.settings['variables_filename'])
         set_of_variables.set_byte_ordering(self.byte_ordering)
 
+        if self.settings['received_data_filename'] != '':
+            set_of_variables.set_input_file(self.settings['received_data_filename'])
+
         return set_of_variables
 
     def get_networks(self):
@@ -111,7 +118,6 @@ class NetworkLoader:
             in_network.set_client_list(client_list)
 
         return out_network, in_network
-
 
 
 class Network:
@@ -265,7 +271,6 @@ class OutNetwork(Network):
                 # logger.info('Received request for data {}'.format(msg))
                 logger.debug('Received request for data')
         if mask and selectors.EVENT_WRITE and not self.queue.empty():
-            import pdb; pdb.set_trace()
             logger.debug('Out Network ready to receive from the queue')
             # value = self.queue.get()  # check that it waits for the queue not to be empty
             set_of_vars = self.queue.get()  # always gets latest time step info
