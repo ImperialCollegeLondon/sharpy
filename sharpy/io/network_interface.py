@@ -226,10 +226,8 @@ class OutNetwork(Network):
         self.add_client(clients)
 
     def process_events(self, mask):
-        # if not self.queue.empty():
-        #     self._set_selector_events_mask('rw')
 
-        if mask and selectors.EVENT_READ:
+        if mask and selectors.EVENT_READ and not self.queue.empty():
             if self.settings['send_on_demand']:
                 logger.info('Out Network - waiting for request for data')
                 msg = self.receive()
@@ -237,6 +235,7 @@ class OutNetwork(Network):
                 # logger.info('Received request for data {}'.format(msg))
                 logger.info('Received request for data')
         if mask and selectors.EVENT_WRITE and not self.queue.empty():
+            logger.info('Queue: {}'.format(self.queue.empty))
             # if mask and selectors.EVENT_WRITE:
         # if not self.queue.empty:
             logger.info('Out Network ready to receive from the queue')
