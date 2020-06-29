@@ -557,7 +557,8 @@ class DynamicCoupled(BaseSolver):
             struct_forces = self.correct_forces_function(self.data,
                                                          aero_kstep,
                                                          structural_kstep,
-                                                         struct_forces)
+                                                         struct_forces,
+                                                         rho=self.get_rho())
             # dynamic_struct_forces = self.correct_forces_function(self.data,
             #                                                      aero_kstep,
             #                                                      structural_kstep,
