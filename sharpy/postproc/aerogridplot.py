@@ -65,7 +65,7 @@ class AerogridPlot(BaseSolver):
 
     settings_types['vortex_radius'] = 'float'
     settings_default['vortex_radius'] = vortex_radius_def
-    # settings_description['vortex_radius'] = 'Distance below which inductions are not computed'
+    settings_description['vortex_radius'] = 'Distance below which inductions are not computed'
 
     table = settings.SettingsTable()
     __doc__ += table.generate(settings_types, settings_default, settings_description)
