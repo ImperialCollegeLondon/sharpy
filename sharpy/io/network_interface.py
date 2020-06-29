@@ -4,11 +4,12 @@ import logging
 import sharpy.io.message_interface as message_interface
 import sharpy.io.inout_variables as inout_variables
 import sharpy.utils.settings as settings
+import sharpy.io.logger_utils as logger_utils
 
 sel = selectors.DefaultSelector()
 
-logging.basicConfig(format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
-                    level=20)
+# logging.basicConfig(format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
+#                     level=20)
 logger = logging.getLogger(__name__)
 
 
@@ -41,6 +42,20 @@ class NetworkLoader:
     settings_default['output_network_settings'] = dict()
     settings_description['output_network_settings'] = 'Settings for the output network.'
 
+    settings_types['log_name'] = 'str'
+    settings_default['log_name'] = './network_output.log'
+    settings_description['log_name'] = 'Network log name'
+
+    settings_types['console_log_level'] = 'str'
+    settings_default['console_log_level'] = 'info'
+    settings_description['console_log_level'] = 'Minimum logging level in console.'
+    settings_options['console_log_level'] = ['debug', 'info', 'warning', 'error']
+
+    settings_types['file_log_level'] = 'str'
+    settings_default['file_log_level'] = 'debug'
+    settings_description['file_log_level'] = 'Minimum logging level in log file.'
+    settings_options['file_log_level'] = ['debug', 'info', 'warning', 'error']
+
     settings_table = settings.SettingsTable()
     __doc__ += settings_table.generate(settings_types, settings_default, settings_description)
 
@@ -60,6 +75,11 @@ class NetworkLoader:
             self.byte_ordering = '>'
         else:
             raise KeyError('Unknown byte ordering {}'.format(self.settings['byte_ordering']))
+
+        logger_utils.load_logger_settings(log_name=self.settings['log_name'],
+                                          file_level=self.settings['file_log_level'],
+                                          console_level=self.settings['console_log_level'])
+        logger.info('Initialising Network Interface. Local host name: {}'.format(socket.gethostname()))
 
     def get_inout_variables(self):
         set_of_variables = inout_variables.SetOfVariables()
