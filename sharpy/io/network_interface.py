@@ -91,9 +91,8 @@ class NetworkLoader:
     def get_networks(self):
 
         out_network = OutNetwork()
-        out_network.initialise('rw', in_settings=self.settings['output_network_settings'])
+        out_network.initialise('w', in_settings=self.settings['output_network_settings'])
         out_network.set_byte_ordering(self.byte_ordering)
-        # TODO: check initialisation mode of output network
 
         in_network = InNetwork()
         in_network.initialise('r', in_settings=self.settings['input_network_settings'])
