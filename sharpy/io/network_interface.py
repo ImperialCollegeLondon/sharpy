@@ -12,6 +12,7 @@ sel = selectors.DefaultSelector()
 #                     level=20)
 logger = logging.getLogger(__name__)
 
+client_list = list()
 
 class NetworkLoader:
     """
@@ -41,6 +42,11 @@ class NetworkLoader:
     settings_types['output_network_settings'] = 'dict'
     settings_default['output_network_settings'] = dict()
     settings_description['output_network_settings'] = 'Settings for the output network.'
+
+    settings_types['send_output_to_all_clients'] = 'bool'
+    settings_default['send_output_to_all_clients'] = False
+    settings_description['send_output_to_all_clients'] = 'Send output to all clients, including those from where the ' \
+                                                         'input is received.'
 
     settings_types['log_name'] = 'str'
     settings_default['log_name'] = './network_output.log'
@@ -99,7 +105,13 @@ class NetworkLoader:
         in_network = InNetwork()
         in_network.initialise('r', in_settings=self.settings['input_network_settings'])
         in_network.set_byte_ordering(self.byte_ordering)
+
+        if self.settings['send_output_to_all_clients']:
+            out_network.set_client_list(client_list)
+            in_network.set_client_list(client_list)
+
         return out_network, in_network
+
 
 
 class Network:
@@ -133,6 +145,17 @@ class Network:
 
     def set_byte_ordering(self, value):
         self._byte_ordering = value
+
+    def set_client_list(self, list_of_clients):
+        """
+        Set a client list for network.
+
+        Args:
+            client_list (list): List of tuples containing ``(HOST, PORT)``
+        """
+        own_clients = self.clients.copy()  # make a copy of own clients prior to setting the common list
+        self.clients = list_of_clients
+        self.add_client(own_clients)
 
     def _set_selector_events_mask(self, mode):
         """Set selector to listen for events: mode is 'r', 'w', or 'rw'."""
@@ -242,6 +265,7 @@ class OutNetwork(Network):
                 # logger.info('Received request for data {}'.format(msg))
                 logger.debug('Received request for data')
         if mask and selectors.EVENT_WRITE and not self.queue.empty():
+            import pdb; pdb.set_trace()
             logger.debug('Out Network ready to receive from the queue')
             # value = self.queue.get()  # check that it waits for the queue not to be empty
             set_of_vars = self.queue.get()  # always gets latest time step info
