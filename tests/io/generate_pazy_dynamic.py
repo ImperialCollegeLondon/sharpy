@@ -320,10 +320,12 @@ def generate_pazy(u_inf, case_name, output_folder='/output/', cases_folder='', *
                                                                   'structure_nodes': [ws.num_node_surf - 1,
                                                                                       ws.num_node_surf,
                                                                                       ws.num_node_surf + 1]},
-                                                              'UDPout': {'receiver_hostnames': ['127.0.0.1'],
-                                                                         'receiver_port': [65430],
-                                                                         'structure_variables': ['pos'],
-                                                                         'structure_nodes': [0, 1, 2, 3, 4, 5, 6, 7, 8, 9]},
+                                                              'UDPout': {'variables_filename': './variables.yaml',
+                                                                         'output_network_settings':
+                                                                             {'destination_address': ['127.0.0.1'],
+                                                                                                     'destination_ports': [65431]},
+                                                                         'console_log_level': 'info',
+                                                                         },
                                                               }}
 
     ws.config['DynamicCoupled'] = settings['DynamicCoupled']

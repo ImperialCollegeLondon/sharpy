@@ -87,11 +87,13 @@ class NetworkLoader:
 
     settings_types['input_network_settings'] = 'dict'
     settings_default['input_network_settings'] = dict()
-    settings_description['input_network_settings'] = 'Settings for the input network.'
+    settings_description['input_network_settings'] = 'Settings for the input network.' \
+                                                     ':class:`~sharpy.io.network_interface.InNetwork`.'
 
     settings_types['output_network_settings'] = 'dict'
     settings_default['output_network_settings'] = dict()
-    settings_description['output_network_settings'] = 'Settings for the output network.'
+    settings_description['output_network_settings'] = 'Settings for the output network ' \
+                                                      ':class:`~sharpy.io.network_interface.OutNetwork`.'
 
     settings_types['send_output_to_all_clients'] = 'bool'
     settings_default['send_output_to_all_clients'] = False
@@ -152,23 +154,30 @@ class NetworkLoader:
 
         return set_of_variables
 
-    def get_networks(self):
+    def get_networks(self, networks='inout'):
+        to_return = []
+        if networks == 'out' or networks == 'inout':
+            logger.info('Initialising output network')
+            out_network = OutNetwork()
+            out_network.initialise('w', in_settings=self.settings['output_network_settings'])
+            out_network.set_byte_ordering(self.byte_ordering)
+            to_return.append(out_network)
 
-        logger.info('Initialising output network')
-        out_network = OutNetwork()
-        out_network.initialise('w', in_settings=self.settings['output_network_settings'])
-        out_network.set_byte_ordering(self.byte_ordering)
+        if networks == 'in' or networks == 'inout':
+            logger.info('Initialising input network')
+            in_network = InNetwork()
+            in_network.initialise('r', in_settings=self.settings['input_network_settings'])
+            in_network.set_byte_ordering(self.byte_ordering)
+            to_return.append(in_network)
 
-        logger.info('Initialising input network')
-        in_network = InNetwork()
-        in_network.initialise('r', in_settings=self.settings['input_network_settings'])
-        in_network.set_byte_ordering(self.byte_ordering)
-
-        if self.settings['send_output_to_all_clients']:
+        if self.settings['send_output_to_all_clients'] and networks == 'inout':
             out_network.set_client_list(client_list)
             in_network.set_client_list(client_list)
 
-        return out_network, in_network
+        if len(to_return) == 2:
+            return tuple(to_return)
+        elif len(to_return) == 1:
+            return to_return[0]  # for single network cases (usually output only)
 
 
 class Network:
@@ -255,7 +264,7 @@ class Network:
     def _sendto(self, msg, address):
         logger.debug('Network - Sending')
         self.sock.sendto(msg, address)
-        logger.debug('Network - Sent data packet to {}'.format(address))
+        logger.info('Network - Sent data packet to {}'.format(address))
 
     def receive(self, msg_length=1024):
         r_msg, client_addr = self.sock.recvfrom(msg_length)  # adapt message length
