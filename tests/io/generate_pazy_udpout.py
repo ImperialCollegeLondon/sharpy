@@ -116,6 +116,7 @@ def generate_pazy_udp(u_inf, case_name, output_folder='/output/', cases_folder='
         'num_cores': 4,
         'n_rollup': 0,
         'rollup_aic_refresh': 0,
+        'vortex_radius': 1e-9, 
         'rollup_tolerance': 1e-4}
 
     settings = dict()
@@ -279,6 +280,7 @@ def generate_pazy_udp(u_inf, case_name, output_folder='/output/', cases_folder='
                                                      'u_inf_direction': [1., 0., 0.]},
                             'rho': ws.rho,
                             'n_time_steps': ws.n_tstep,
+                            'vortex_radius': 1e-9,
                             'dt': ws.dt,
                             'gamma_dot_filtering': 3}
 
