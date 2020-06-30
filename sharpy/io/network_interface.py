@@ -232,7 +232,7 @@ class Network:
         self.clients = list_of_clients
         self.add_client(own_clients)
 
-    def _set_selector_events_mask(self, mode):
+    def set_selector_events_mask(self, mode):
         """Set selector to listen for events: mode is 'r', 'w', or 'rw'."""
         events = get_events(mode)
         logger.debug('Modifying selector to {}'.format(mode))

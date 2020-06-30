@@ -376,13 +376,6 @@ class DynamicCoupled(BaseSolver):
         """
 
         if self.network_loader is not None:
-            import sharpy.io.inout_variables as inout_variables
-
-            # path_to_variables_yaml = self.settings['io_variables_yaml']
-
-            # variables to import/export
-            # things to think of: send encoded values in the queue?
-            #                     send actual object?
             self.set_of_variables = self.network_loader.get_inout_variables()
 
             incoming_queue = queue.Queue(maxsize=1)
@@ -416,24 +409,8 @@ class DynamicCoupled(BaseSolver):
 
         return self.data
 
-    def simulate_network(self, in_queue, out_queue, finish_event):
-        # This will simulate the network
-        value = 1
-        while not finish_event.is_set():
-            # in_queue is the queue where stuff from the network goes
-            self.logger.info('Network - Sending {} in the queue'.format(value))
-            in_queue.put(value)
-
-            # out_queue is the queue where stuff for the network goes
-            value = out_queue.get()
-            self.logger.info('Network - received {}'.format(value))
-
-            value = value ** 2
-            self.logger.info('Network - squared {}'.format(value))
-
-        self.logger.info('Closed network')
-
     def network_interface(self, in_queue, out_queue, finish_event):
+        # runs in a separate thread from time_loop()
         out_network, in_network = self.network_loader.get_networks()
         out_network.set_queue(out_queue)
 
@@ -444,26 +421,19 @@ class DynamicCoupled(BaseSolver):
         while not finish_event.is_set():
 
             # selector version
-            # self.logger.info('Network Interface - waiting for events')
             events = network_interface.sel.select(timeout=1)
             if out_network.queue.empty() and not previous_queue_empty:
-                out_network._set_selector_events_mask('r')
+                out_network.set_selector_events_mask('r')
                 previous_queue_empty = True
             elif not out_network.queue.empty() and previous_queue_empty:
-                out_network._set_selector_events_mask('w')
+                out_network.set_selector_events_mask('w')
                 previous_queue_empty = False
-            # key = out_network.sel.get_key()
-            # key.events()
 
-            # import pdb; pdb.set_trace()
             try:
                 for key, mask in events:
-                    # self.logger.info('Network Interface - Got event')
                     key.data.process_events(mask)
             except KeyboardInterrupt:
                 break
-
-        # TODO: send signal that simulation finished
 
         # close sockets
         in_network.close()
@@ -476,17 +446,15 @@ class DynamicCoupled(BaseSolver):
                 len(self.data.structure.timestep_info),
                 self.settings['n_time_steps'].value + 1):
             initial_time = time.perf_counter()
-            # >>>>>>>>>>>>>>>>>>>
 
-            # get number from queue
-            # while in_queue.empty(): # this is not needed!
-            #     self.logger.info('TL Empty queue - waiting for input')
+            # network only
+            # get input from the other thread
             if in_queue:
                 self.logger.info('Time Loop - Waiting for input')
                 values = in_queue.get()  # should be list of tuples
                 self.logger.debug('Time loop - received {}'.format(values))
                 self.set_of_variables.update_timestep(self.data, values)
-            # <<<<<<<<<<<<<<<<<<<
+
             structural_kstep = self.data.structure.timestep_info[-1].copy()
             aero_kstep = self.data.aero.timestep_info[-1].copy()
             self.logger.debug('Time step {}'.format(self.data.ts))
@@ -623,6 +591,7 @@ class DynamicCoupled(BaseSolver):
                 for postproc in self.postprocessors:
                     self.data = self.postprocessors[postproc].run(online=True)
 
+            # network only
             # put result back in queue
             if out_queue:
                 self.logger.debug('Time loop - about to get out variables from data')
