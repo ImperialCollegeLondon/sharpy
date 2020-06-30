@@ -8,18 +8,68 @@ import sharpy.io.logger_utils as logger_utils
 
 sel = selectors.DefaultSelector()
 
-# logging.basicConfig(format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
-#                     level=20)
 logger = logging.getLogger(__name__)
 
-client_list = list()
+client_list = list()  # Common client list between input and output sockets
+
 
 class NetworkLoader:
     """
-    Settings for each input or output port
+    SHARPy UDP data input and output interface.
+
+    The settings of this interface are to be used as the dictionary to the setting ``network_setting`` in the
+    :class:`~sharpy.solvers.dynamiccoupled.DynamicCoupled` solver, which is the only one that is currently supported.
+
+    This interface allows for SHARPy to receive and send simulation data over the network using an UDP protocol.
+
+    The setting ``variables_filename`` is a filename to a ``YAML`` file that contains a list of the
+    input or output variables. The example below shows an acceptable input
+
+    .. code-block:: yaml
+
+        ---
+        - name: 'control_surface_deflection' # variable name. those in the timestep_info are supported
+          var_type: 'control_surface'
+          inout: 'in'  # either `in`, `out` or `inout`
+          position: 0  # control surface index
+        - name: 'pos'  # variable name
+          var_type: 'node'  # type of variable. In this case a node variable. Others: `panel` or `control_surface`
+          inout: 'out'
+          position: 5  # node number
+          index: 2  # vector index, in this case a 3d vector where the desired index is number 2
+        - name: 'gamma'
+          inout: 'out'
+          position: [0, 1, 2] # [i_surf, i_chordwise, i_spanwise]
+          var_type: 'panel'
+        ...
+
+    All variables in the aero and structural timestep info classes :class:`~sharpy.utils.datastructures` are supported,
+    with the addition of ``dt`` for the time increment and ``nt`` for the current time step number.
+
+    Note:
+        If using a control surface input, make sure this control surface is given ``control_surface_type = 2`` in the
+        the case ``.aero.h5`` file. Otherwise, the control surface will not move!
+
+    The relevant settings for the input and output sockets can be found in
+    :class:`~sharpy.io.network_interface.InNetwork` and :class:`~sharpy.io.network_interface.OutNetwork`, respectively.
+
+    If the setting ``send_output_to_all_clients`` is ``True``, then
+    the clients from which the input signal is received will also be added to the destination client address book.
+
+    The input and output messages follow the example set by X-Plane ``RREF0`` protocol. Thus, a message consists
+    of a 5-byte header containing ``RREF0`` followed by 8-bytes per variable, where the first 4-bytes correspond to the
+    variable number (as ordered in the YAML file) as an integer and the latter 4-bytes correspond to the value of the
+    variable in single precision float. The byte ordering is specified by the user.
+
+    A specific network log is created to detail the ins and outs of the communication protocol. The level of messages
+    that are shown can be set in the settings.
+
 
     See Also:
         Endianness: https://docs.python.org/3/library/struct.html#byte-order-size-and-alignment
+
+    Note:
+        The SHARPy input and output sockets do not time out.
     """
     settings_types = dict()
     settings_default = dict()
@@ -54,7 +104,7 @@ class NetworkLoader:
 
     settings_types['log_name'] = 'str'
     settings_default['log_name'] = './network_output.log'
-    settings_description['log_name'] = 'Network log name'
+    settings_description['log_name'] = 'Network log file name'
 
     settings_types['console_log_level'] = 'str'
     settings_default['console_log_level'] = 'info'
@@ -67,7 +117,8 @@ class NetworkLoader:
     settings_options['file_log_level'] = ['debug', 'info', 'warning', 'error']
 
     settings_table = settings.SettingsTable()
-    __doc__ += settings_table.generate(settings_types, settings_default, settings_description)
+    __doc__ += settings_table.generate(settings_types, settings_default, settings_description,
+                                       header_line='The ``NetworkLoader`` takes the following settings:')
 
     def __init__(self):
         self.settings = None
@@ -121,7 +172,12 @@ class NetworkLoader:
 
 
 class Network:
+    """
+    Network Adapter
 
+    Contains the basic methods. See ``InNetwork`` and ``OutNetwork`` for specific settings pertaining to the
+    input and output sockets.
+    """
     settings_types = dict()
     settings_default = dict()
     settings_description = dict()
@@ -133,6 +189,9 @@ class Network:
     settings_types['port'] = 'int'
     settings_default['port'] = 65000
     settings_description['port'] = 'Own port.'
+
+    settings_table = settings.SettingsTable()
+    __doc__ += settings_table.generate(settings_types, settings_default, settings_description)
 
     def __init__(self, host=None, port=None):  # remove args when this is tested
 
@@ -157,7 +216,8 @@ class Network:
         Set a client list for network.
 
         Args:
-            client_list (list): List of tuples containing ``(HOST, PORT)``
+            list_of_clients (list): List of tuples containing ``(HOST, PORT)``, where ``HOST`` is a ``string`` and
+                ``port`` and integer.
         """
         own_clients = self.clients.copy()  # make a copy of own clients prior to setting the common list
         self.clients = list_of_clients
@@ -177,7 +237,7 @@ class Network:
 
         self.sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
         self.sock.bind(self.addr)
-        logger.info('Binded socket to {}'.format(self.addr))
+        logger.info('Bound socket to {}'.format(self.addr))
         events = get_events(mode)
         self.sock.setblocking(False)
         sel.register(self.sock, events, data=self)
@@ -229,7 +289,20 @@ class Network:
 
 
 class OutNetwork(Network):
+    """Output network socket settings
 
+    If ``send_on_demand`` is ``True``, SHARPy will only output data when it receives a request for it. The request
+    message can be any message under 1024 bytes. SHARPy will reply to the socket that sent the request with the latest
+    time step information. Otherwise, it will send data at the end of each time step to the specified destination
+    clients.
+
+    If the :class:`~sharpy.io.network_interface.NetworkLoader` setting ``send_output_to_all_clients`` is ``True``, then
+    the clients from which the input signal is received will also be added to the destination client address book.
+
+    Note:
+        If sending/receiving data across the net or LAN, make sure that your firewall has the desired ports open,
+        otherwise the signals will not make it through.
+    """
     settings_types = Network.settings_types.copy()
     settings_default = Network.settings_default.copy()
     settings_description = Network.settings_description.copy()
@@ -251,6 +324,9 @@ class OutNetwork(Network):
     settings_types['destination_ports'] = 'list(int)'
     settings_default['destination_ports'] = list()
     settings_description['destination_ports'] = 'List of ports number for the destination addresses.'
+
+    settings_table = settings.SettingsTable()
+    __doc__ += settings_table.generate(settings_types, settings_default, settings_description)
 
     def initialise(self, mode, in_settings):
         super().initialise(mode, in_settings)
@@ -284,7 +360,13 @@ class OutNetwork(Network):
 
 
 class InNetwork(Network):
+    """
+    Input Network socket settings
 
+    Note:
+        If sending/receiving data across the net or LAN, make sure that your firewall has the desired ports open,
+        otherwise the signals will not make it through.
+    """
     settings_types = Network.settings_types.copy()
     settings_default = Network.settings_default.copy()
     settings_description = Network.settings_description.copy()
@@ -292,6 +374,9 @@ class InNetwork(Network):
     settings_types['port'] = 'int'
     settings_default['port'] = 65001
     settings_description['port'] = 'Own port for input network'
+
+    settings_table = settings.SettingsTable()
+    __doc__ += settings_table.generate(settings_types, settings_default, settings_description)
 
     def __init__(self):
         super().__init__()

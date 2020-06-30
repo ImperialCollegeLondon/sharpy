@@ -3,8 +3,6 @@ import yaml
 import logging
 import numpy as np
 
-# logging.basicConfig(format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
-#                     level=20)
 logger = logging.getLogger(__name__)
 
 
@@ -152,6 +150,12 @@ class Variable:
 
 
 class SetOfVariables:
+    """
+    Iterable class containing the input and output variables
+
+    Attributes:
+        variables (list(Variable)): List of :class:`Variable`
+    """
     def __init__(self):
         self.variables = []  # list of Variables()
         self.out_variables = []  # indices

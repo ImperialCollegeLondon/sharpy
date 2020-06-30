@@ -1,7 +1,6 @@
 import ctypes as ct
 import time
 import copy
-import multiprocessing
 import threading
 import logging
 import concurrent.futures
@@ -16,7 +15,6 @@ import sharpy.utils.controller_interface as controller_interface
 from sharpy.utils.solver_interface import solver, BaseSolver
 import sharpy.utils.settings as settings
 import sharpy.utils.algebra as algebra
-import sharpy.structure.utils.xbeamlib as xbeam
 import sharpy.utils.exceptions as exc
 import sharpy.utils.correct_forces as cf
 import sharpy.io.network_interface as network_interface
@@ -30,6 +28,10 @@ class DynamicCoupled(BaseSolver):
 
     Using the ``DynamicCoupled`` solver requires that an instance of the ``StaticCoupled`` solver is called in the
     SHARPy solution ``flow`` when defining the problem case.
+
+    Input data (from external controllers) can be received and data sent using the SHARPy network
+    interface, specified through the setting ``network_settings`` of this solver. For more detail on how to send
+    and receive data see the :class:`~sharpy.io.network_interface.NetworkLoader` documentation.
 
     """
     solver_id = 'DynamicCoupled'
@@ -78,15 +80,18 @@ class DynamicCoupled(BaseSolver):
 
     settings_types['structural_substeps'] = 'int'
     settings_default['structural_substeps'] = 0 # 0 is normal coupled sim.
-    settings_description['structural_substeps'] = 'Number of extra structural time steps per aero time step. 0 is a fully coupled simulation.'
+    settings_description['structural_substeps'] = 'Number of extra structural time steps per aero time step. ``0`` ' \
+                                                  'is a fully coupled simulation.'
 
     settings_types['relaxation_factor'] = 'float'
     settings_default['relaxation_factor'] = 0.2
-    settings_description['relaxation_factor'] = 'Relaxation parameter in the FSI iteration. 0 is no relaxation and -> 1 is very relaxed'
+    settings_description['relaxation_factor'] = 'Relaxation parameter in the FSI iteration. ``0`` is no relaxation ' \
+                                                'and -> ``1`` is very relaxed'
 
     settings_types['final_relaxation_factor'] = 'float'
     settings_default['final_relaxation_factor'] = 0.0
-    settings_description['final_relaxation_factor'] = 'Relaxation factor reached in ``relaxation_steps`` with ``dynamic_relaxation`` on'
+    settings_description['final_relaxation_factor'] = 'Relaxation factor reached in ``relaxation_steps`` with ' \
+                                                      '``dynamic_relaxation`` on'
 
     settings_types['minimum_steps'] = 'int'
     settings_default['minimum_steps'] = 3
@@ -94,11 +99,13 @@ class DynamicCoupled(BaseSolver):
 
     settings_types['relaxation_steps'] = 'int'
     settings_default['relaxation_steps'] = 100
-    settings_description['relaxation_steps'] = 'Length of the relaxation factor ramp between ``relaxation_factor`` and ``final_relaxation_factor`` with ``dynamic_relaxation`` on'
+    settings_description['relaxation_steps'] = 'Length of the relaxation factor ramp between ``relaxation_factor`` ' \
+                                               'and ``final_relaxation_factor`` with ``dynamic_relaxation`` on'
 
     settings_types['dynamic_relaxation'] = 'bool'
     settings_default['dynamic_relaxation'] = False
-    settings_description['dynamic_relaxation'] = 'Controls if relaxation factor is modified during the FSI iteration process'
+    settings_description['dynamic_relaxation'] = 'Controls if relaxation factor is modified during the FSI iteration ' \
+                                                 'process'
 
     settings_types['postprocessors'] = 'list(str)'
     settings_default['postprocessors'] = list()
@@ -106,7 +113,10 @@ class DynamicCoupled(BaseSolver):
 
     settings_types['postprocessors_settings'] = 'dict'
     settings_default['postprocessors_settings'] = dict()
-    settings_description['postprocessors_settings'] = 'Dictionary with the applicable settings for every ``psotprocessor``. Every ``postprocessor`` needs its entry, even if empty'
+    settings_description['postprocessors_settings'] = 'Dictionary with the applicable settings for every ' \
+                                                      '' \
+                                                      '``psotprocessor``. Every ``postprocessor`` needs its entry, ' \
+                                                      'even if empty'
 
     settings_types['controller_id'] = 'dict'
     settings_default['controller_id'] = dict()
@@ -118,33 +128,39 @@ class DynamicCoupled(BaseSolver):
 
     settings_types['cleanup_previous_solution'] = 'bool'
     settings_default['cleanup_previous_solution'] = False
-    settings_description['cleanup_previous_solution'] = 'Controls if previous ``timestep_info`` arrays are reset before running the solver'
+    settings_description['cleanup_previous_solution'] = 'Controls if previous ``timestep_info`` arrays are ' \
+                                                        'reset before running the solver'
 
     settings_types['include_unsteady_force_contribution'] = 'bool'
     settings_default['include_unsteady_force_contribution'] = False
-    settings_description['include_unsteady_force_contribution'] = 'If on, added mass contribution is added to the forces. This depends on the time derivative of the bound circulation. Check ``filter_gamma_dot`` in the aero solver'
+    settings_description['include_unsteady_force_contribution'] = 'If on, added mass contribution is added to the ' \
+                                                                  'forces. This depends on the time derivative of ' \
+                                                                  'the bound circulation. Check ``filter_gamma_dot`` ' \
+                                                                  'in the aero solver'
 
     settings_types['steps_without_unsteady_force'] = 'int'
     settings_default['steps_without_unsteady_force'] = 0
-    settings_description['steps_without_unsteady_force'] = 'Number of initial timesteps that don\'t include unsteady forces contributions. This avoids oscillations due to no perfectly trimmed initial conditions'
+    settings_description['steps_without_unsteady_force'] = 'Number of initial timesteps that don\'t include unsteady ' \
+                                                           'forces contributions. This avoids oscillations due to ' \
+                                                           'no perfectly trimmed initial conditions'
 
     settings_types['pseudosteps_ramp_unsteady_force'] = 'int'
     settings_default['pseudosteps_ramp_unsteady_force'] = 0
-    settings_description['pseudosteps_ramp_unsteady_force'] = 'Length of the ramp with which unsteady force contribution is introduced every time step during the FSI iteration process'
+    settings_description['pseudosteps_ramp_unsteady_force'] = 'Length of the ramp with which unsteady force ' \
+                                                              'contribution is introduced every time step during ' \
+                                                              'the FSI iteration process'
 
     settings_types['correct_forces_method'] = 'str'
     settings_default['correct_forces_method'] = ''  # 'efficiency'
-    settings_description['correct_forces_method'] = 'Function used to correct aerodynamic forces. Check :py:mod:`sharpy.utils.correct_forces`'
+    settings_description['correct_forces_method'] = 'Function used to correct aerodynamic forces. Check ' \
+                                                    ':py:mod:`sharpy.utils.correct_forces`'
     settings_options['correct_forces_method'] = ['efficiency', 'polars']
 
-    # network settings should be in their own dict
     settings_types['network_settings'] = 'dict'
     settings_default['network_settings'] = dict()
-    settings_description['network_settings'] = 'Network settings'
-
-    settings_types['network_connections'] = 'bool'
-    settings_default['network_connections'] = False
-    settings_description['network_connections'] = 'Temporary setting to disable network connections'
+    settings_description['network_settings'] = 'Network settings. See ' \
+                                               ':class:`~sharpy.io.network_interface.NetworkLoader` for supported ' \
+                                               'entries'
 
     settings_table = settings.SettingsTable()
     __doc__ += settings_table.generate(settings_types, settings_default, settings_description, settings_options)
@@ -178,7 +194,7 @@ class DynamicCoupled(BaseSolver):
         self.correct_forces = False
         self.correct_forces_function = None
 
-        self.logger = logging.getLogger(__name__)
+        self.logger = logging.getLogger(__name__)  # used with the network interface
 
         # variables to send and receive
         self.network_loader = None
