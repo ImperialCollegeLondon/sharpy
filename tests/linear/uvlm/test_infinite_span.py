@@ -97,7 +97,8 @@ class Test_infinite_span(unittest.TestCase):
                                    'use_sparse': UseSparse,
                                    'ScalingDict': {'length': 1.,
                                                    'speed': 1.,
-                                                   'density': 1.}}
+                                                   'density': 1.},
+                                    'vortex_radius': 1e-6}
         ws.config.write()
 
         # solve at linearistion point

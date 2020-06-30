@@ -34,6 +34,13 @@ import sharpy.utils.algebra as algebra
 import sharpy.utils.settings as settings
 import sharpy.utils.cout_utils as cout
 import sharpy.utils.exceptions as exceptions
+from sharpy.utils.constants import vortex_radius_def
+
+settings_types_static = dict()
+settings_default_static = dict()
+
+settings_types_static['vortex_radius'] = 'float'
+settings_default_static['vortex_radius'] = vortex_radius_def
 
 settings_types_dynamic = dict()
 settings_default_dynamic = dict()
@@ -76,16 +83,31 @@ settings_default_dynamic['track_body'] = False
 settings_types_dynamic['track_body_number'] = 'int'
 settings_default_dynamic['track_body_number'] = -1
 
+settings_types_dynamic['vortex_radius'] = 'float'
+settings_default_dynamic['vortex_radius'] = vortex_radius_def
+
 
 class Static():
     """	Static linear solver """
 
-    def __init__(self, tsdata, for_vel=np.zeros((6,))):
+    def __init__(self, tsdata, custom_settings=None, for_vel=np.zeros((6,))):
 
         cout.cout_wrap('Initialising Static linear UVLM solver class...')
         t0 = time.time()
 
-        MS = multisurfaces.MultiAeroGridSurfaces(tsdata, for_vel=for_vel)
+        if custom_settings is None:
+            settings_here = settings_default_static
+        else:
+            settings_here = custom_settings
+
+        settings.to_custom_types(settings_here,
+                                 settings_types_static,
+                                 settings_default_static)
+
+        self.vortex_radius = settings_here['vortex_radius']
+        MS = multisurfaces.MultiAeroGridSurfaces(tsdata,
+                                                 self.vortex_radius,
+                                                 for_vel=for_vel)
         MS.get_ind_velocities_at_collocation_points()
         MS.get_input_velocities_at_collocation_points()
         MS.get_ind_velocities_at_segments()
@@ -102,6 +124,7 @@ class Static():
         self.zeta = np.zeros((3 * self.Kzeta))
         self.zeta_dot = np.zeros((3 * self.Kzeta))
         self.u_ext = np.zeros((3 * self.Kzeta))
+
 
         # profiling output
         self.prof_out = './asbly.prof'
@@ -548,8 +571,6 @@ class Dynamic(Static):
     def __init__(self, tsdata, dt=None, dynamic_settings=None, integr_order=2,
                  RemovePredictor=True, ScalingDict=None, UseSparse=True, for_vel=np.zeros((6,))):
 
-        super().__init__(tsdata, for_vel=for_vel)
-
         # Transform settings dictionary - in the future remove remaining inputs
         self.settings = dict()
         if dynamic_settings:
@@ -565,8 +586,12 @@ class Dynamic(Static):
             self.settings['use_sparse'] = UseSparse
             self.settings['ScalingDict'] = ScalingDict
 
+        static_dict = {'vortex_radius': self.settings['vortex_radius']}
+        super().__init__(tsdata, custom_settings=static_dict, for_vel=for_vel)
+
         self.dt = self.settings['dt']
         self.integr_order = self.settings['integr_order']
+        self.vortex_radius = self.settings['vortex_radius']
 
         if self.integr_order == 1:
             Nx = 2 * self.K + self.K_star
@@ -1722,7 +1747,7 @@ class DynamicBlock(Dynamic):
             warnings.warn('Individual parsing of settings is deprecated. Please use the settings dictionary',
                           DeprecationWarning)
 
-        super().__init__(tsdata, dt,
+        super().__init__(tsdata, vortex_radius, dt,
                          dynamic_settings=dynamic_settings,
                          integr_order=integr_order,
                          RemovePredictor=RemovePredictor,
@@ -3096,13 +3121,15 @@ if __name__ == '__main__':
                            'density': rho}
 
             # reference
-            Dyn0 = Dynamic(self.tsdata, dt=0.05,
+            Dyn0 = Dynamic(self.tsdata,
+                           dt=0.05,
                            integr_order=2, RemovePredictor=True,
                            UseSparse=True)
             Dyn0.assemble_ss()
 
             # scale/unscale
-            Dyn1 = Dynamic(self.tsdata, dt=0.05,
+            Dyn1 = Dynamic(self.tsdata,
+                           dt=0.05,
                            integr_order=2, RemovePredictor=True,
                            UseSparse=True, ScalingDict=ScalingDict)
             Dyn1.assemble_ss()
@@ -3131,7 +3158,8 @@ if __name__ == '__main__':
             for use_sparse in [False, True]:
                 for remove_predictor in [True, False]:
                     ### ----- Dynamic class
-                    Dyn = Dynamic(self.tsdata, dt=0.05, ScalingDict=ScalingDict,
+                    Dyn = Dynamic(self.tsdata,
+                                  dt=0.05, ScalingDict=ScalingDict,
                                   integr_order=2, RemovePredictor=remove_predictor,
                                   UseSparse=use_sparse)
                     Dyn.assemble_ss()
@@ -3143,7 +3171,9 @@ if __name__ == '__main__':
                         'Dynamic.freqresp produces too large error (%.2e)!' % ermax
 
                     ### ----- BlockDynamic class
-                    BlockDyn = DynamicBlock(self.tsdata, dt=0.05, ScalingDict=ScalingDict,
+                    BlockDyn = DynamicBlock(self.tsdata,
+                                            dt=0.05,
+                                            ScalingDict=ScalingDict,
                                             integr_order=2, RemovePredictor=remove_predictor,
                                             UseSparse=use_sparse)
                     BlockDyn.assemble_ss()
@@ -3202,7 +3232,9 @@ if __name__ == '__main__':
                         Yblock *= 0.
 
                         ### ----- Dynamic class
-                        Dyn = Dynamic(self.tsdata, dt=0.05, ScalingDict=ScalingDict,
+                        Dyn = Dynamic(self.tsdata,
+                                      dt=0.05,
+                                      ScalingDict=ScalingDict,
                                       integr_order=integr_order, Remove=remove_predictor,
                                       UseSparse=use_sparse)
                         Dyn.assemble_ss()
@@ -3214,7 +3246,9 @@ if __name__ == '__main__':
                                                transform_state=True)
 
                         ### ----- BlockDynamic class
-                        BlockDyn = DynamicBlock(self.tsdata, dt=0.05, ScalingDict=ScalingDict,
+                        BlockDyn = DynamicBlock(self.tsdata,
+                                                dt=0.05,
+                                                ScalingDict=ScalingDict,
                                                 integr_order=integr_order, RemovePredictor=remove_predictor,
                                                 UseSparse=use_sparse)
                         BlockDyn.assemble_ss()
