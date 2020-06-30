@@ -303,10 +303,15 @@ def generate_pazy(u_inf, case_name, output_folder='/output/', cases_folder='', *
                                   'include_unsteady_force_contribution': 'on',
                                   'steps_without_unsteady_force': 2,
                                   'network_settings': {'variables_filename': './variables_coarse.yaml',
+                                                       'send_output_to_all_clients': 'on',
                                                        'byte_ordering': 'little',
+                                                       'received_data_filename': output_folder + './input.dat',
+                                                       'log_name': output_folder + '/sharpy_network.log',
+                                                       'file_log_level': 'debug',
+                                                       'console_log_level': 'debug',
                                                        'input_network_settings': {'address': '127.0.0.1',
                                                                                   'port': 64011},
-                                                       'output_network_settings': {'send_on_demand': True,
+                                                       'output_network_settings': {'send_on_demand': 'off',
                                                                                    'destination_address': ['127.0.0.1'],
                                                                                    'address': '127.0.0.1',
                                                                                    'port': 64010,
@@ -346,19 +351,10 @@ def generate_pazy(u_inf, case_name, output_folder='/output/', cases_folder='', *
     sharpy.sharpy_main.main(['', ws.route + ws.case_name + '.sharpy'])
 
 if __name__== '__main__':
-    # u_inf = 1
-    # generate_pazi(u_inf)
-    #
+
     from datetime import datetime
 
-    # datetime object containing current date and time
-    # u_inf_vec = np.array([46])
-    # u_inf_vec = np.linspace(28, 30, 50)
-    # u_inf_vec = np.linspace(5, 30, 26)
-    u_inf_vec = [50]
-    #     u_inf_vec = np.linspace(20, 60, 41)
-    #     u_inf_vec = np.linspace(1, 20, 20)
-    #     u_inf_vec = np.linspace(1, 60, 60)
+    u_inf = 50
 
     alpha = 4
     gravity_on = True
@@ -366,11 +362,6 @@ if __name__== '__main__':
     M = 4
     N = 32
     Ms = 4
-
-    # For comparison with Marc
-    #     M = 8
-    #     N = 128
-    #     Ms = 8
 
     batch_log = 'batch_log_alpha{:04g}'.format(alpha*100)
 
@@ -381,20 +372,19 @@ if __name__== '__main__':
         f.write('SHARPy launch - START\n')
         f.write("date and time = %s\n\n" % dt_string)
 
-    for i, u_inf in enumerate(u_inf_vec):
-        print('RUNNING SHARPY %f\n' % u_inf)
-        case_name = 'pazy_uinf{:04g}_alpha{:04g}'.format(u_inf*10, alpha*100)
-        try:
-            generate_pazy(u_inf, case_name, output_folder='./output/test_65001_wake3_M{:g}N{:g}Ms{:g}_alpha{:04g}/'.format(M, N, Ms, alpha*100),
-                          cases_folder='./cases/test_M{:g}N{:g}Ms{:g}wake3/'.format(M, N, Ms),
-                          M=M, N=N, Ms=Ms, alpha=alpha,
-                          gravity_on=gravity_on)
-            now = datetime.now()
-            dt_string = now.strftime("%d/%m/%Y %H:%M:%S")
-            with open('./{:s}.txt'.format(batch_log), 'a') as f:
-                f.write('%s Ran case %i :::: u_inf = %f\n\n' % (dt_string, i, u_inf))
-        except AssertionError:
-            now = datetime.now()
-            dt_string = now.strftime("%d/%m/%Y %H:%M:%S")
-            with open('./{:s}.txt'.format(batch_log), 'a') as f:
-                f.write('%s ERROR RUNNING case %f\n\n' % (dt_string, u_inf))
+    print('RUNNING SHARPY %f\n' % u_inf)
+    case_name = 'pazy_uinf{:04g}_alpha{:04g}'.format(u_inf*10, alpha*100)
+    try:
+        generate_pazy(u_inf, case_name, output_folder='./output/test_65001_wake3_M{:g}N{:g}Ms{:g}_alpha{:04g}/'.format(M, N, Ms, alpha*100),
+                      cases_folder='./cases/test_M{:g}N{:g}Ms{:g}wake3/'.format(M, N, Ms),
+                      M=M, N=N, Ms=Ms, alpha=alpha,
+                      gravity_on=gravity_on)
+        now = datetime.now()
+        dt_string = now.strftime("%d/%m/%Y %H:%M:%S")
+        with open('./{:s}.txt'.format(batch_log), 'a') as f:
+            f.write('%s Ran case %i :::: u_inf = %f\n\n' % (dt_string, i, u_inf))
+    except AssertionError:
+        now = datetime.now()
+        dt_string = now.strftime("%d/%m/%Y %H:%M:%S")
+        with open('./{:s}.txt'.format(batch_log), 'a') as f:
+            f.write('%s ERROR RUNNING case %f\n\n' % (dt_string, u_inf))

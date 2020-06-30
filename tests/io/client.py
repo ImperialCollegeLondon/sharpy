@@ -5,6 +5,14 @@ import logging
 import struct
 import sharpy.io.message_interface as message_interface
 import numpy as np
+"""
+This is not a test but is to be used as client when testing the development of the input
+output capabilities of sharpy.
+
+Run this script as client.
+
+Run ``python generate_pazy_test_io_local.py`` as server
+"""
 
 # sel = selectors.DefaultSelector()
 
@@ -12,8 +20,8 @@ logging.basicConfig(format='%(asctime)s - %(name)s - %(levelname)s - %(message)s
                     level=20)
 logger = logging.getLogger(__name__)
 
-sharpy_incoming = ('127.0.0.1', 65001)  # control side socket
-sharpy_outgoing = ('127.0.0.1', 65000)  # output side socket
+sharpy_incoming = ('127.0.0.1', 64011)  # control side socket
+sharpy_outgoing = ('127.0.0.1', 64010)  # output side socket
 
 own_control = ('127.0.0.1', 64000)
 own_receive = ('127.0.0.1', 64001)
@@ -49,8 +57,8 @@ while True:
     # input('Continue loop')
 
     # receive output data
-    req_message = b'I want data'  # this would be the RREF0 value
-    out_sock.sendto(req_message, sharpy_outgoing)
+    # req_message = b'I want data'  # this would be the RREF0 value
+    # out_sock.sendto(req_message, sharpy_outgoing)
     # if ready_to_read[0]:
     try:
         msg, conn = out_sock.recvfrom(21)
