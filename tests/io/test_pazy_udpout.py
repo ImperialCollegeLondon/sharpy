@@ -1,6 +1,6 @@
 import unittest
 import numpy as np
-import tests.io.generate_pazy_dynamic as gp
+import tests.io.generate_pazy_udpout as gp
 import os
 import shutil
 
@@ -25,11 +25,12 @@ class TestPazyCoupledStatic(unittest.TestCase):
         cases_folder = self.route_test_dir + '/cases/'
         output_folder = self.route_test_dir + '/cases/'
         # run case
-        gp.generate_pazy(u_inf, case_name, output_folder, cases_folder,
-                         alpha=alpha,
-                         M=M,
-                         N=N,
-                         Msf=Msf)
+        gp.generate_pazy_udp(u_inf, case_name, output_folder, cases_folder,
+                             alpha=alpha,
+                             M=M,
+                             N=N,
+                             Msf=Msf,
+                             cd=self.route_test_dir)
 
         node_number = N / 2 # wing tip node
 

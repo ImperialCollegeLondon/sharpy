@@ -1,17 +1,17 @@
-
 import numpy as np
 import os
 import unittest
 import cases.templates.flying_wings as wings
 import sharpy.sharpy_main
 
-    # Problem Set up
-def generate_pazy(u_inf, case_name, output_folder='/output/', cases_folder='', **kwargs):
+# Problem Set up
+def generate_pazy_udp(u_inf, case_name, output_folder='/output/', cases_folder='', **kwargs):
     # u_inf = 60
     alpha_deg = kwargs.get('alpha', 0.)
     rho = 1.225
     num_modes = 16
     gravity_on = kwargs.get('gravity_on', True)
+    cd = kwargs.get('cd', './')  # current directory (useful for tests)
 
     # Lattice Discretisation
     M = kwargs.get('M', 4)
@@ -320,7 +320,7 @@ def generate_pazy(u_inf, case_name, output_folder='/output/', cases_folder='', *
                                                                   'structure_nodes': [ws.num_node_surf - 1,
                                                                                       ws.num_node_surf,
                                                                                       ws.num_node_surf + 1]},
-                                                              'UDPout': {'variables_filename': './variables.yaml',
+                                                              'UDPout': {'variables_filename': cd + '/variables.yaml',
                                                                          'output_network_settings':
                                                                              {'destination_address': ['127.0.0.1'],
                                                                                                      'destination_ports': [65431]},
@@ -377,10 +377,10 @@ if __name__== '__main__':
         print('RUNNING SHARPY %f\n' % u_inf)
         case_name = 'pazi_uinf{:04g}_alpha{:04g}'.format(u_inf*10, alpha*100)
         try:
-            generate_pazy(u_inf, case_name, output_folder='/output/vortex_radius_M{:g}N{:g}Ms{:g}_alpha{:04g}/'.format(M, N, Ms, alpha*100),
-                          cases_subfolder='/M{:g}N{:g}Ms{:g}/'.format(M, N, Ms),
-                          M=M, N=N, Ms=Ms, alpha=alpha,
-                          gravity_on=gravity_on)
+            generate_pazy_udp(u_inf, case_name, output_folder='/output/vortex_radius_M{:g}N{:g}Ms{:g}_alpha{:04g}/'.format(M, N, Ms, alpha * 100),
+                              cases_subfolder='/M{:g}N{:g}Ms{:g}/'.format(M, N, Ms),
+                              M=M, N=N, Ms=Ms, alpha=alpha,
+                              gravity_on=gravity_on)
             now = datetime.now()
             dt_string = now.strftime("%d/%m/%Y %H:%M:%S")
             with open('./{:s}.txt'.format(batch_log), 'a') as f:
