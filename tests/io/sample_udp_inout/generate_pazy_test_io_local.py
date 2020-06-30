@@ -345,14 +345,12 @@ def generate_pazy(u_inf, case_name, output_folder='/output/', cases_folder='', *
 
     ws.config['DynamicCoupled'] = settings['DynamicCoupled']
 
-
     ws.config.write()
 
     sharpy.sharpy_main.main(['', ws.route + ws.case_name + '.sharpy'])
 
-if __name__== '__main__':
 
-    from datetime import datetime
+if __name__== '__main__':
 
     u_inf = 50
 
@@ -363,28 +361,8 @@ if __name__== '__main__':
     N = 32
     Ms = 4
 
-    batch_log = 'batch_log_alpha{:04g}'.format(alpha*100)
-
-    with open('./{:s}.txt'.format(batch_log), 'w') as f:
-        # dd/mm/YY H:M:S
-        now = datetime.now()
-        dt_string = now.strftime("%d/%m/%Y %H:%M:%S")
-        f.write('SHARPy launch - START\n')
-        f.write("date and time = %s\n\n" % dt_string)
-
-    print('RUNNING SHARPY %f\n' % u_inf)
     case_name = 'pazy_uinf{:04g}_alpha{:04g}'.format(u_inf*10, alpha*100)
-    try:
-        generate_pazy(u_inf, case_name, output_folder='./output/test_65001_wake3_M{:g}N{:g}Ms{:g}_alpha{:04g}/'.format(M, N, Ms, alpha*100),
-                      cases_folder='./cases/test_M{:g}N{:g}Ms{:g}wake3/'.format(M, N, Ms),
-                      M=M, N=N, Ms=Ms, alpha=alpha,
-                      gravity_on=gravity_on)
-        now = datetime.now()
-        dt_string = now.strftime("%d/%m/%Y %H:%M:%S")
-        with open('./{:s}.txt'.format(batch_log), 'a') as f:
-            f.write('%s Ran case %i :::: u_inf = %f\n\n' % (dt_string, i, u_inf))
-    except AssertionError:
-        now = datetime.now()
-        dt_string = now.strftime("%d/%m/%Y %H:%M:%S")
-        with open('./{:s}.txt'.format(batch_log), 'a') as f:
-            f.write('%s ERROR RUNNING case %f\n\n' % (dt_string, u_inf))
+    generate_pazy(u_inf, case_name, output_folder='./output/test_65001_wake3_M{:g}N{:g}Ms{:g}_alpha{:04g}/'.format(M, N, Ms, alpha*100),
+                  cases_folder='./cases/test_M{:g}N{:g}Ms{:g}wake3/'.format(M, N, Ms),
+                  M=M, N=N, Ms=Ms, alpha=alpha,
+                  gravity_on=gravity_on)
