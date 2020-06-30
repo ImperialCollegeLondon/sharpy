@@ -85,7 +85,7 @@ def generate_pazy_udp(u_inf, case_name, output_folder='/output/', cases_folder='
 #              'SaveParametricCase',
              ],
         'case': ws.case_name, 'route': ws.route,
-        'write_screen': 'on', 'write_log': 'on',
+        'write_screen': 'off', 'write_log': 'on',
         'save_settings': 'on',
         'log_folder': output_folder + '/' + ws.case_name + '/',
         'log_file': ws.case_name + '.log'}
@@ -116,7 +116,7 @@ def generate_pazy_udp(u_inf, case_name, output_folder='/output/', cases_folder='
         'num_cores': 4,
         'n_rollup': 0,
         'rollup_aic_refresh': 0,
-        'vortex_radius': 1e-9, 
+        'vortex_radius': 1e-9,
         'rollup_tolerance': 1e-4}
 
     settings = dict()
@@ -326,7 +326,7 @@ def generate_pazy_udp(u_inf, case_name, output_folder='/output/', cases_folder='
                                                                          'output_network_settings':
                                                                              {'destination_address': ['127.0.0.1'],
                                                                                                      'destination_ports': [65431]},
-                                                                         'console_log_level': 'info',
+                                                                         'console_log_level': 'error',
                                                                          },
                                                               }}
 
