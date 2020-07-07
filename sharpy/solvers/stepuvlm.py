@@ -112,8 +112,8 @@ class StepUvlm(BaseSolver):
 
     settings_types['filter_method'] = 'int'
     settings_default['filter_method'] = 0
-    settings_description['filter_method'] = 'Method to filter the points: no filter (0) or splines(1)'
-    settings_options['interp_coords'] = [0, 1]
+    settings_description['filter_method'] = 'Method to filter the points: no filter (0) , splines(1) or moving average(2)'
+    settings_options['filter_method'] = [0, 1, 2]
 
     settings_types['interp_method'] = 'int'
     settings_default['interp_method'] = 0
