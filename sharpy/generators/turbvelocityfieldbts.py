@@ -209,14 +209,16 @@ class TurbVelocityFieldBts(generator_interface.BaseGenerator):
 
         else:
             offset_mod = np.linalg.norm(self.settings['u_fed'])*t
-            if offset_mod > self.grid_size_ufed_dir:
+            while ((offset_mod - self.dist_to_recirculate) > self.grid_size_ufed_dir):
+                cout.cout_wrap("Recirculate inflow", 2)
                 self.dist_to_recirculate += self.grid_size_ufed_dir
             # Through "offstet" zeta can be modified to simulate the turbulence being fed to the solid
             # Usual method for wind turbines
+            offset = (-1.*offset_mod + self.dist_to_recirculate)*self.settings['u_fed']/np.linalg.norm(self.settings['u_fed'])
             self.interpolate_zeta(zeta,
                                   for_pos,
                                   uext,
-                                  offset = (-1.*offset_mod + self.dist_to_recirculate)*self.settings['u_fed'])
+                                  offset = offset)
 
     def interpolate_zeta(self, zeta, for_pos, u_ext, interpolator=None, offset=np.zeros((3))):
         # if interpolator is None:
@@ -234,7 +236,7 @@ class TurbVelocityFieldBts(generator_interface.BaseGenerator):
                     ipoint += 1
 
             # Interpolate
-            list_uext = interp_rectgrid_vecfield(points_list,
+            list_uext = interp_rectgrid_vectorfield(points_list,
                                                  (self.x_grid, self.y_grid, self.z_grid),
                                                  self.vel,
                                                  self.settings['u_out'],
@@ -245,7 +247,7 @@ class TurbVelocityFieldBts(generator_interface.BaseGenerator):
             ipoint = 0
             for i_m in range(n_m):
                 for i_n in range(n_n):
-                    u_ext[isurf][:, i_m, i_n] = list_uext[ipoint, :]
+                    u_ext[isurf][:, i_m, i_n] = list_uext[ipoint]
                     ipoint += 1
 
     @staticmethod
