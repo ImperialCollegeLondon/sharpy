@@ -140,7 +140,7 @@ class HelicoidalWake(generator_interface.BaseGenerator):
                 angle -= self.get_dphi(i, self.dphi1, self.ndphi1, self.r, self.dphimax)
 
                 delta_t = -angle/np.linalg.norm(self.rotation_velocity)
-                rot = algebra.rotation_matrix_around_axis(self.u_inf_direction, angle)
+                rot = algebra.rotation_matrix_around_axis(algebra.unit_vector(self.rotation_velocity), angle)
                 for j in range(N):
                     # Define the helicoidal
                     aux_zeta_TE = zeta[isurf][:, -1, j] - (self.h_ref - self.h_corr)*self.shear_direction
@@ -165,7 +165,7 @@ class HelicoidalWake(generator_interface.BaseGenerator):
                                                          zeta_star[isurf][:, i - 1, j]))
                 dist_to_orig[isurf][:, j] /= dist_to_orig[isurf][-1, j]
             for j in range(0, N - 1):
-                wake_conv_vel[isurf][:, j] = self.rotation_velocity*0.5*np.linalg.norm(zeta[isurf][:, -1, j] + zeta[isurf][:, -1, j + 1])
+                wake_conv_vel[isurf][:, j] = np.linalg.norm(self.rotation_velocity)*0.5*np.linalg.norm(zeta[isurf][:, -1, j] + zeta[isurf][:, -1, j + 1])
 
     @staticmethod
     def get_dphi(i, dphi1, ndphi1, r, dphimax):
