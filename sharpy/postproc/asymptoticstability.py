@@ -126,7 +126,7 @@ class AsymptoticStability(BaseSolver):
         # Output dict
         self.data.linear.stability = dict()
 
-    def run(self):
+    def run(self, online=False):
         """
         Computes the eigenvalues and eigenvectors
 

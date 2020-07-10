@@ -72,7 +72,7 @@ class StabilityDerivatives(solver_interface.BaseSolver):
 
         settings.to_custom_types(self.settings, self.settings_types, self.settings_default)
 
-    def run(self):
+    def run(self, online=False):
 
         Y_freq = self.uvlm_steady_state_transfer_function()
         derivatives_dimensional, derivatives_coeff = self.derivatives(Y_freq)
