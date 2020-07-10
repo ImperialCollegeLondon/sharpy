@@ -184,7 +184,7 @@ class WriteVariablesTime(BaseSolver):
                         os.remove(filename)
                 if not os.path.isfile(filename): 
                     fid = open(filename, 'w')
-                    fid.write(("#t[s]%suext_x[m/s]%suext_y[m/s]%suext_z[m/s]i\n" % ((self.settings['delimiter'],)*3)))
+                    fid.write(("#t[s]%suext_x[m/s]%suext_y[m/s]%suext_z[m/s]\n" % ((self.settings['delimiter'],)*3)))
                     fid.close()
 
         # Initialise velocity generator
