@@ -37,7 +37,7 @@ class WriteVariablesTime(BaseSolver):
     settings_description['delimiter'] = 'Delimiter to be used in the output file'
 
     settings_types['FoR_variables'] = 'list(str)'
-    settings_default['FoR_variables'] = ['']
+    settings_default['FoR_variables'] = list()
     settings_description['FoR_variables'] = 'Variables of ``StructTimeStepInfo`` associated to the frame of reference to be writen'
 
     settings_types['FoR_number'] = 'list(int)'
@@ -45,7 +45,7 @@ class WriteVariablesTime(BaseSolver):
     settings_description['FoR_number'] = 'Number of the A frame of reference to output (for multibody configurations)'
 
     settings_types['structure_variables'] = 'list(str)'
-    settings_default['structure_variables'] = ['']
+    settings_default['structure_variables'] = list()
     settings_description['structure_variables'] = 'Variables of ``StructTimeStepInfo`` associated to the frame of reference to be writen'
 
     settings_types['structure_nodes'] = 'list(int)'
@@ -53,7 +53,7 @@ class WriteVariablesTime(BaseSolver):
     settings_description['structure_nodes'] = 'Number of the nodes to be writen'
 
     settings_types['aero_panels_variables'] = 'list(str)'
-    settings_default['aero_panels_variables'] = ['']
+    settings_default['aero_panels_variables'] = list()
     settings_description['aero_panels_variables'] = 'Variables of ``AeroTimeStepInfo`` associated to panels to be writen'
 
     settings_types['aero_panels_isurf'] = 'list(int)'
@@ -69,7 +69,7 @@ class WriteVariablesTime(BaseSolver):
     settings_description['aero_panels_in'] = 'Spanwise index of the panels to be output'
 
     settings_types['aero_nodes_variables'] = 'list(str)'
-    settings_default['aero_nodes_variables'] = ['']
+    settings_default['aero_nodes_variables'] = list()
     settings_description['aero_nodes_variables'] = 'Variables of ``AeroTimeStepInfo`` associated to nodes to be writen'
 
     settings_types['aero_nodes_isurf'] = 'list(int)'
@@ -85,15 +85,15 @@ class WriteVariablesTime(BaseSolver):
     settings_description['aero_nodes_in'] = 'Spanwise index of the nodes to be output'
 
     settings_types['cleanup_old_solution'] = 'bool'
-    settings_default['cleanup_old_solution'] = 'false'
+    settings_default['cleanup_old_solution'] = False
     settings_description['cleanup_old_solution'] = 'Remove the existing files'
 
     settings_types['vel_field_variables'] = 'list(str)'
-    settings_default['vel_field_variables'] = ['']
+    settings_default['vel_field_variables'] = list()
     settings_description['vel_field_variables'] = 'Variables associated to the velocity field. Only ``uext`` implemented so far'
 
     settings_types['vel_field_points'] = 'list(float)'
-    settings_default['vel_field_points'] = []
+    settings_default['vel_field_points'] = np.array([0., 0., 0.])
     settings_description['vel_field_points'] = 'List of coordinates of the control points as x1, y1, z1, x2, y2, z2 ...'
 
     settings_table = settings.SettingsTable()
@@ -127,7 +127,7 @@ class WriteVariablesTime(BaseSolver):
         if not ((len(self.settings['aero_nodes_isurf']) == len(self.settings['aero_nodes_im'])) and (len(self.settings['aero_nodes_isurf']) == len(self.settings['aero_nodes_in']))):
             raise RuntimeError("aero_nodes should be defined as [i_surf,i_m,i_n]")
 
-        if not self.settings['vel_field_variables'] == '':
+        if len(self.settings['vel_field_variables']) > 0:
             if not (len(self.settings['vel_field_points']) % 3 == 0):
                 raise RuntimeError('Number of entries in ``vel_field_points`` has to be a multiple of 3')
             else:
@@ -138,8 +138,6 @@ class WriteVariablesTime(BaseSolver):
 
         if self.settings['cleanup_old_solution']:
             for ivariable in range(len(self.settings['FoR_variables'])):
-                if self.settings['FoR_variables'][ivariable] == '':
-                    continue
                 for ifor in range(len(self.settings['FoR_number'])):
                     filename = self.dir + "FoR_" + '%02d' % self.settings['FoR_number'][ifor] + "_" + self.settings['FoR_variables'][ivariable] + ".dat"
                     try:
@@ -149,8 +147,6 @@ class WriteVariablesTime(BaseSolver):
 
             # Structure variables at nodes
             for ivariable in range(len(self.settings['structure_variables'])):
-                if self.settings['structure_variables'][ivariable] == '':
-                    continue
                 for inode in range(len(self.settings['structure_nodes'])):
                     node = self.settings['structure_nodes'][inode]
                     filename = self.dir + "struct_" + self.settings['structure_variables'][ivariable] + "_node" + str(node) + ".dat"
@@ -161,8 +157,6 @@ class WriteVariablesTime(BaseSolver):
 
             # Aerodynamic variables at panels
             for ivariable in range(len(self.settings['aero_panels_variables'])):
-                if self.settings['aero_panels_variables'][ivariable] == '':
-                    continue
                 for ipanel in range(len(self.settings['aero_panels_isurf'])):
                     i_surf = self.settings['aero_panels_isurf'][ipanel]
                     i_m = self.settings['aero_panels_im'][ipanel]
@@ -176,8 +170,6 @@ class WriteVariablesTime(BaseSolver):
 
             # Aerodynamic variables at nodes
             for ivariable in range(len(self.settings['aero_nodes_variables'])):
-                if self.settings['aero_nodes_variables'][ivariable] == '':
-                    continue
                 for inode in range(len(self.settings['aero_nodes_isurf'])):
                     i_surf = self.settings['aero_nodes_isurf'][inode]
                     i_m = self.settings['aero_nodes_im'][inode]
@@ -191,10 +183,6 @@ class WriteVariablesTime(BaseSolver):
 
             # Velocity field variables at points
             for ivariable in range(len(self.settings['vel_field_variables'])):
-                if self.settings['vel_field_variables'][ivariable] == '':
-                    continue
-                else:
-                    write_vel_field_variables = True
                 for ipoint in range(self.n_vel_field_points):
 
                     filename = self.dir + "vel_field_" + self.settings['vel_field_variables'][ivariable] + "_point" + str(ipoint) + ".dat"
@@ -221,8 +209,6 @@ class WriteVariablesTime(BaseSolver):
             self.settings['FoR_number'] = np.array([0], dtype=int)
 
         for ivariable in range(len(self.settings['FoR_variables'])):
-            if self.settings['FoR_variables'][ivariable] == '':
-                continue
             for ifor in range(len(self.settings['FoR_number'])):
                 filename = self.dir + "FoR_" + '%02d' % self.settings['FoR_number'][ifor] + "_" + self.settings['FoR_variables'][ivariable] + ".dat"
 
@@ -240,8 +226,6 @@ class WriteVariablesTime(BaseSolver):
 
         # Structure variables at nodes
         for ivariable in range(len(self.settings['structure_variables'])):
-            if self.settings['structure_variables'][ivariable] == '':
-                continue
             var = getattr(self.data.structure.timestep_info[-1], self.settings['structure_variables'][ivariable])
             num_indices = len(var.shape)
             if num_indices == 1:
@@ -264,8 +248,6 @@ class WriteVariablesTime(BaseSolver):
 
         # Aerodynamic variables at panels
         for ivariable in range(len(self.settings['aero_panels_variables'])):
-            if self.settings['aero_panels_variables'][ivariable] == '':
-                continue
             for ipanel in range(len(self.settings['aero_panels_isurf'])):
                 i_surf = self.settings['aero_panels_isurf'][ipanel]
                 i_m = self.settings['aero_panels_im'][ipanel]
@@ -280,8 +262,6 @@ class WriteVariablesTime(BaseSolver):
 
         # Aerodynamic variables at nodes
         for ivariable in range(len(self.settings['aero_nodes_variables'])):
-            if self.settings['aero_nodes_variables'][ivariable] == '':
-                continue
             for inode in range(len(self.settings['aero_nodes_isurf'])):
                 i_surf = self.settings['aero_nodes_isurf'][inode]
                 i_m = self.settings['aero_nodes_im'][inode]
@@ -295,9 +275,7 @@ class WriteVariablesTime(BaseSolver):
 
         # Velocity field variables at points
         for ivariable in range(len(self.settings['vel_field_variables'])):
-            if self.settings['vel_field_variables'][ivariable] == '':
-                continue
-            elif self.settings['vel_field_variables'][ivariable] == 'uext':
+            if self.settings['vel_field_variables'][ivariable] == 'uext':
                 uext = [np.zeros((3, self.n_vel_field_points, 1))]
                 self.velocity_generator.generate({'zeta': self.vel_field_points,
                                     'for_pos': self.data.structure.timestep_info[self.data.ts].for_pos[0:3],
