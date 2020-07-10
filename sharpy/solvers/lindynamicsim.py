@@ -92,7 +92,7 @@ class LinDynamicSim(BaseSolver):
         for postproc in self.settings['postprocessors']:
             self.postprocessors[postproc] = initialise_solver(postproc)
             self.postprocessors[postproc].initialise(
-                self.data, self.settings['postprocessors_settings'][postproc])
+                self.data, self.settings['postprocessors_settings'][postproc], caller=self)
 
     def run(self):
 

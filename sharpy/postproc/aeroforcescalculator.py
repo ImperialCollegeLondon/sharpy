@@ -72,8 +72,9 @@ class AeroForcesCalculator(BaseSolver):
         self.ts = 0
 
         self.folder = ''
+        self.caller = None
 
-    def initialise(self, data):
+    def initialise(self, data, custom_settings=None, caller=None):
         self.data = data
         self.settings = data.settings[self.solver_id]
         if self.data.structure.settings['unsteady']:
@@ -82,6 +83,7 @@ class AeroForcesCalculator(BaseSolver):
             self.ts_max = 1
             self.ts_max = len(self.data.structure.timestep_info)
         settings.to_custom_types(self.settings, self.settings_types, self.settings_default)
+        self.caller = caller
 
     def run(self, online=False):
         self.ts = 0

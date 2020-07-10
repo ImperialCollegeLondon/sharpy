@@ -100,12 +100,13 @@ class SaveData(BaseSolver):
         self.folder = ''
         self.filename = ''
         self.ts_max = 0
+        self.caller = None
 
         ### specify which classes are saved as hdf5 group
         # see initialise and add_as_grp
         self.ClassesToSave = (sharpy.presharpy.presharpy.PreSharpy,)
 
-    def initialise(self, data, custom_settings=None):
+    def initialise(self, data, custom_settings=None, caller=None):
 
         # Add these anyway - therefore if you add your own skip_attr you don't have to retype all of these
         self.settings_default['skip_attr'].append(['fortran',
@@ -176,6 +177,7 @@ class SaveData(BaseSolver):
 
             if self.settings['save_linear_uvlm']:
                 self.ClassesToSave += (sharpy.solvers.linearassembler.Linear, sharpy.linear.src.libss.ss)
+        self.caller = caller
 
     def run(self, online=False):
 

@@ -41,8 +41,9 @@ class PickleData(BaseSolver):
         self.data = None
         self.filename = None
         self.folder = None
+        self.caller = None
 
-    def initialise(self, data, custom_settings=None):
+    def initialise(self, data, custom_settings=None, caller=None):
         self.data = data
         if custom_settings is None:
             self.settings = data.settings[self.solver_id]
@@ -58,6 +59,7 @@ class PickleData(BaseSolver):
         if not os.path.exists(self.folder):
             os.makedirs(self.folder)
         self.filename = self.folder + self.data.settings['SHARPy']['case']+'.pkl'
+        self.caller = caller
 
     def run(self, online=False):
         with open(self.filename, 'wb') as f:

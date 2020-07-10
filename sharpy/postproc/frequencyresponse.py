@@ -90,8 +90,9 @@ class FrequencyResponse(solver_interface.BaseSolver):
 
         self.w_to_k = 1
         self.wv = None
+        self.caller = None
 
-    def initialise(self, data, custom_settings=None):
+    def initialise(self, data, custom_settings=None, caller=None):
 
         self.data = data
 
@@ -130,6 +131,7 @@ class FrequencyResponse(solver_interface.BaseSolver):
         self.folder = self.settings['folder'] + '/' + self.data.settings['SHARPy']['case'] + '/frequencyresponse/'
         if not os.path.exists(self.folder):
             os.makedirs(self.folder)
+        self.caller = caller
 
     def run(self, ss=None, online=False):
         """

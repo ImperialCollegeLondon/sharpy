@@ -31,8 +31,9 @@ class LiftDistribution(BaseSolver):
 
         self.ts_max = None
         self.ts = None
+        self.caller = None
 
-    def initialise(self, data, custom_settings=None):
+    def initialise(self, data, custom_settings=None, caller=None):
         self.data = data
         if custom_settings is None:
             self.settings = data.settings[self.solver_id]
@@ -40,6 +41,7 @@ class LiftDistribution(BaseSolver):
             self.settings = custom_settings
         settings.to_custom_types(self.settings, self.settings_types, self.settings_default)
         self.ts_max = len(self.data.structure.timestep_info)
+        self.caller = caller
 
     def run(self, online=False):
         if not online:
@@ -75,4 +77,3 @@ class LiftDistribution(BaseSolver):
                     abs_forces[i_n, i_m] = np.abs(forces[:, i_m, i_n])
 
                 tstep.postproc_cell['lift_distribution'][i_surf][i_n, i_m] = np.sum(abs_forces[i_n, :], axis = 2)/norm
-
