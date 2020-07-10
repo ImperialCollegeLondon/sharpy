@@ -117,8 +117,12 @@ class StepUvlm(BaseSolver):
 
     settings_types['interp_method'] = 'int'
     settings_default['interp_method'] = 0
-    settings_description['interp_method'] = 'Method of interpolation: linear(0), parabolic(1), splines(2) or slerp(3)'
-    settings_options['interp_method'] = [0, 1, 2, 3]
+    settings_description['interp_method'] = 'Method of interpolation: linear(0), parabolic(1), splines(2), slerp around z(3), slerp around yaw_slerp(4)'
+    settings_options['interp_method'] = [0, 1, 2, 3, 4]
+    
+    settings_types['yaw_slerp'] = 'float'
+    settings_default['yaw_slerp'] = 0
+    settings_description['yaw_slerp'] = 'Yaw angle in radians to be used when interp_metod == 4'
 
     settings_table = settings.SettingsTable()
     __doc__ += settings_table.generate(settings_types, settings_default, settings_description, settings_options)
