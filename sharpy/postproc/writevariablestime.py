@@ -88,6 +88,14 @@ class WriteVariablesTime(BaseSolver):
     settings_default['cleanup_old_solution'] = 'false'
     settings_description['cleanup_old_solution'] = 'Remove the existing files'
 
+    settings_types['vel_field_variables'] = 'list(str)'
+    settings_default['vel_field_variables'] = ['']
+    settings_description['vel_field_variables'] = 'Variables associated to the velocity field. Only ``uext`` implemented so far'
+
+    settings_types['vel_field_points'] = 'list(float)'
+    settings_default['vel_field_points'] = []
+    settings_description['vel_field_points'] = 'List of coordinates of the control points as x1, y1, z1, x2, y2, z2 ...'
+
     settings_table = settings.SettingsTable()
     __doc__ += settings_table.generate(settings_types, settings_default, settings_description)
 
@@ -96,7 +104,12 @@ class WriteVariablesTime(BaseSolver):
         self.data = None
         self.dir = 'output/'
 
-    def initialise(self, data, custom_settings=None):
+        self.n_velocity_field_points = None
+        self.velocity_field_points = None
+        self.caller = None
+        self.velocity_generator = None
+
+    def initialise(self, data, custom_settings=None, caller=None):
         self.data = data
         if custom_settings is None:
             self.settings = data.settings[self.solver_id]
@@ -113,6 +126,15 @@ class WriteVariablesTime(BaseSolver):
             raise RuntimeError("aero_panels should be defined as [i_surf,i_m,i_n]")
         if not ((len(self.settings['aero_nodes_isurf']) == len(self.settings['aero_nodes_im'])) and (len(self.settings['aero_nodes_isurf']) == len(self.settings['aero_nodes_in']))):
             raise RuntimeError("aero_nodes should be defined as [i_surf,i_m,i_n]")
+
+        if not self.settings['vel_field_variables'] == '':
+            if not (len(self.settings['vel_field_points']) % 3 == 0):
+                raise RuntimeError('Number of entries in ``vel_field_points`` has to be a multiple of 3')
+            else:
+                self.n_vel_field_points = len(self.settings['vel_field_points']) // 3
+                self.vel_field_points = [np.zeros((3, self.n_vel_field_points, 1))]
+                for ipoint in range(self.n_vel_field_points):
+                    self.vel_field_points[0][:, ipoint, 0] = self.settings['vel_field_points'][ipoint*3:(ipoint + 1)*3]
 
         if self.settings['cleanup_old_solution']:
             for ivariable in range(len(self.settings['FoR_variables'])):
@@ -166,6 +188,29 @@ class WriteVariablesTime(BaseSolver):
                         os.remove(filename)
                     except FileNotFoundError:
                         pass
+
+            # Velocity field variables at points
+            for ivariable in range(len(self.settings['vel_field_variables'])):
+                if self.settings['vel_field_variables'][ivariable] == '':
+                    continue
+                else:
+                    write_vel_field_variables = True
+                for ipoint in range(self.n_vel_field_points):
+
+                    filename = self.dir + "vel_field_" + self.settings['vel_field_variables'][ivariable] + "_point" + str(ipoint) + ".dat"
+                    try:
+                        os.remove(filename)
+                    except FileNotFoundError:
+                        pass
+
+        self.caller = caller
+        if not self.caller is None:
+            if self.caller.solver_classification.lower() == 'aero':
+                # For aerodynamic solvers
+                self.velocity_generator = self.caller.velocity_generator
+            elif self.caller.solver_classification.lower() == 'coupled':
+                # For coupled solvers
+                self.velocity_generator = self.caller.aero_solver.velocity_generator
 
     def run(self, online=False):
 
@@ -248,6 +293,21 @@ class WriteVariablesTime(BaseSolver):
                     var = getattr(self.data.aero.timestep_info[-1], self.settings['aero_nodes_variables'][ivariable])
                     self.write_nparray_to_file(fid, self.data.ts, var[i_surf][:,i_m,i_n], self.settings['delimiter'])
 
+        # Velocity field variables at points
+        for ivariable in range(len(self.settings['vel_field_variables'])):
+            if self.settings['vel_field_variables'][ivariable] == '':
+                continue
+            elif self.settings['vel_field_variables'][ivariable] == 'uext':
+                uext = [np.zeros((3, self.n_vel_field_points, 1))]
+                self.velocity_generator.generate({'zeta': self.vel_field_points,
+                                    'for_pos': self.data.structure.timestep_info[self.data.ts].for_pos[0:3],
+                                    't': self.data.ts*self.caller.settings['dt'].value,
+                                    'is_wake': False},
+                                    uext)
+                for ipoint in range(self.n_vel_field_points):
+                    filename = self.dir + "vel_field_" + self.settings['vel_field_variables'][ivariable] + "_point" + str(ipoint) + ".dat"
+                    fid = open(filename, 'a')
+                    self.write_nparray_to_file(fid, self.data.ts, uext[0][:,ipoint,0], self.settings['delimiter'])
 
         return self.data
 
