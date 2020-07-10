@@ -137,6 +137,10 @@ class TurbVelocityFieldBts(generator_interface.BaseGenerator):
     settings_default['num_cores'] = 1
     settings_description['num_cores'] = 'Number of cores to be used in parallel computation'
 
+    settings_types['extra_offset'] = 'float'
+    settings_default['extra_offset'] = 0.
+    settings_description['extra_offset'] = 'Distance [m] to displace the turbulence box'
+
     setting_table = settings.SettingsTable()
     __doc__ += setting_table.generate(settings_types, settings_default, settings_description)
 
@@ -208,7 +212,7 @@ class TurbVelocityFieldBts(generator_interface.BaseGenerator):
                         uext[isurf][:, i_m, i_n] = self.settings['u_out']
 
         else:
-            offset_mod = np.linalg.norm(self.settings['u_fed'])*t
+            offset_mod = np.linalg.norm(self.settings['u_fed'])*t + self.settings['extra_offset']
             while ((offset_mod - self.dist_to_recirculate) > self.grid_size_ufed_dir):
                 cout.cout_wrap("Recirculate inflow", 2)
                 self.dist_to_recirculate += self.grid_size_ufed_dir
