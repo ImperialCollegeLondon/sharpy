@@ -115,7 +115,7 @@ class DynamicCoupled(BaseSolver):
     settings_default['postprocessors_settings'] = dict()
     settings_description['postprocessors_settings'] = 'Dictionary with the applicable settings for every ' \
                                                       '' \
-                                                      '``psotprocessor``. Every ``postprocessor`` needs its entry, ' \
+                                                      '``postprocessor``. Every ``postprocessor`` needs its entry, ' \
                                                       'even if empty'
 
     settings_types['controller_id'] = 'dict'
@@ -151,7 +151,7 @@ class DynamicCoupled(BaseSolver):
                                                               'the FSI iteration process'
 
     settings_types['correct_forces_method'] = 'str'
-    settings_default['correct_forces_method'] = ''  # 'efficiency'
+    settings_default['correct_forces_method'] = ''
     settings_description['correct_forces_method'] = 'Function used to correct aerodynamic forces. Check ' \
                                                     ':py:mod:`sharpy.utils.correct_forces`'
     settings_options['correct_forces_method'] = ['efficiency', 'polars']
