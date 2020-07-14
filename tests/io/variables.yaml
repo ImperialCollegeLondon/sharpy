@@ -1,0 +1,16 @@
+---
+- name: 'control_surface_deflection'
+  var_type: 'control_surface'
+  inout: 'in'
+  position: 0
+- name: 'pos'
+  var_type: 'node'
+  inout: 'out'
+  position: 5
+  index: 2
+- name: 'pos'
+  inout: 'out'
+  position: 16
+  index: 2
+  var_type: 'node'
+...

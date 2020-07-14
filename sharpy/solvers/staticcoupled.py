@@ -166,7 +166,8 @@ class StaticCoupled(BaseSolver):
                     struct_forces = self.correct_forces_function(self.data,
                                         self.data.aero.timestep_info[self.data.ts],
                                         self.data.structure.timestep_info[self.data.ts],
-                                        struct_forces)
+                                        struct_forces,
+                                        rho=self.aero_solver.settings['rho'].value)
 
                 if not self.settings['relaxation_factor'].value == 0.:
                     if i_iter == 0:

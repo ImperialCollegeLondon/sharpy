@@ -158,7 +158,8 @@ autodoc_mock_imports = ["matplotlib",
                         'yaml',
                         'sharpy.aero.utils.uvlmlib',
                         'sharpy.linear.src.uvlmutils',
-                        'sharpy.structure.utils.xbeamlib']
+                        'sharpy.structure.utils.xbeamlib',
+                        'sharpy.utils.constants']
                         # "interp", "multisurfaces", "assembly", "libss",]
 
                         # Note: N. Goizueta 3/12/18: mocking imports from sharpy.linear.src that contain numpy

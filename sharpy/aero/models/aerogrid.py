@@ -3,14 +3,6 @@
 Aerogrid contains all the necessary routines to generate an aerodynamic
 grid based on the input dictionaries.
 """
-# Alfonso del Carre
-
-# alfonso.del-carre14@imperial.ac.uk
-# Imperial College London
-# LoCA lab
-# 29 Sept 2016
-
-
 import ctypes as ct
 import warnings
 
@@ -257,7 +249,7 @@ class Aerogrid(object):
                 # 1) check that this node and elem have a control surface
                     if self.aero_dict['control_surface'][i_elem, i_local_node] >= 0:
                         i_control_surface = self.aero_dict['control_surface'][i_elem, i_local_node]
-                # 2) type of control surface + write info
+                        # 2) type of control surface + write info
                         control_surface_info = dict()
                         if self.aero_dict['control_surface_type'][i_control_surface] == 0:
                             control_surface_info['type'] = 'static'
@@ -307,6 +299,7 @@ class Aerogrid(object):
                                 control_surface_info['hinge_coords'] = self.aero_dict['control_surface_hinge_coords'][i_control_surface]
                             except KeyError:
                                 control_surface_info['hinge_coords'] = None
+
                         else:
                             raise NotImplementedError(str(self.aero_dict['control_surface_type'][i_control_surface]) +
                                 ' control surfaces are not yet implemented')
