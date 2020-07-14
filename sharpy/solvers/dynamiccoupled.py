@@ -382,13 +382,12 @@ class DynamicCoupled(BaseSolver):
             outgoing_queue = queue.Queue(maxsize=1)
 
             finish_event = threading.Event()
-            # self.network_interface(incoming_queue, outgoing_queue, finish_event) for debug purposes
             with concurrent.futures.ThreadPoolExecutor(max_workers=2) as executor:
-                net = executor.submit(self.network_interface, incoming_queue, outgoing_queue, finish_event)
+                netloop = executor.submit(self.network_loop, incoming_queue, outgoing_queue, finish_event)
                 timeloop = executor.submit(self.time_loop, incoming_queue, outgoing_queue, finish_event)
 
                 # TODO: improve exception handling to get exceptions when they happen from each thread
-                for t1 in [net, timeloop]:
+                for t1 in [netloop, timeloop]:
                     try:
                         t1.result()
                     except Exception as e:
@@ -409,7 +408,7 @@ class DynamicCoupled(BaseSolver):
 
         return self.data
 
-    def network_interface(self, in_queue, out_queue, finish_event):
+    def network_loop(self, in_queue, out_queue, finish_event):
         # runs in a separate thread from time_loop()
         out_network, in_network = self.network_loader.get_networks()
         out_network.set_queue(out_queue)
