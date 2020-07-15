@@ -170,11 +170,13 @@ class WriteVariablesTime(BaseSolver):
     def run(self, online=False):
 
         if online:
-            self.write(-1)
+            self.data = self.write(-1)
         else:
             for it in range(len(self.data.structure.timestep_info)):
                 if self.data.structure.timestep_info[it] is not None:
-                    self.write(it)
+                    self.data = self.write(it)
+
+        return self.data
 
     def write(self, it):
 
