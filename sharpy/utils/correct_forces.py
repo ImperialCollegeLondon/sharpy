@@ -27,7 +27,7 @@ from sharpy.utils.constants import deg2rad
 #     dict_of_corrections[func.__name__] = func
 
 # @gen_dict_force_corrections
-def efficiency(data, aero_kstep, structural_kstep, struct_forces):
+def efficiency(data, aero_kstep, structural_kstep, struct_forces, **kwargs):
     r"""
     The efficiency and constant terms are introduced by means of the array ``airfoil_efficiency`` in the ``aero.h5``
 
@@ -50,6 +50,7 @@ def efficiency(data, aero_kstep, structural_kstep, struct_forces):
     Returns:
          np.ndarray: corresponding aerodynamic force at the structural node from the force and moment at a grid vertex
     """
+    # kwargs argument included to have the same signature as polars()
 
     n_node = data.structure.num_node
     n_elem = data.structure.num_elem
@@ -79,20 +80,32 @@ def efficiency(data, aero_kstep, structural_kstep, struct_forces):
     return new_struct_forces
 
 # @gen_dict_force_corrections
-def polars(data, aero_kstep, structural_kstep, struct_forces):
+def polars(data, aero_kstep, structural_kstep, struct_forces, **kwargs):
     r"""
     This function corrects the aerodynamic forces from UVLM based on the airfoil polars provided by the user in the aero.h5 file
 
     These are the steps needed to correct the forces:
-    
+
         * The force coming from UVLM is divided into induced drag (parallel to the incoming flow velocity) and lift (the remaining force).
         * The angle of attack is computed based on that lift force and the angle of zero lift computed form the airfoil polar and assuming a slope of :math:`2 \pi`
-        * The dreag force is computed based on the angle of attack and the polars provided by the user
+        * The drag force is computed based on the angle of attack and the polars provided by the user
+
+    Args:
+        data (:class:`sharpy.PreSharpy`): SHARPy data
+        aero_kstep (:class:`sharpy.utils.datastructures.AeroTimeStepInfo`): Current aerodynamic substep
+        structural_kstep (:class:`sharpy.utils.datastructures.StructTimeStepInfo`): Current structural substep
+        struct_forces (np.array): Array with the aerodynamic forces mapped on the structure in the B frame of reference
+
+    Keyword Arguments:
+        rho (float): air density
+        
+    Returns:
+         np.ndarray: corresponding aerodynamic force at the structural node from the force and moment at a grid vertex
     """
 
     aerogrid = data.aero
     beam = data.structure
-    rho = 1.225
+    rho = kwargs.get('rho', 1.225)
     aero_dict = aerogrid.aero_dict
     if aerogrid.polars is None:
         return struct_forces

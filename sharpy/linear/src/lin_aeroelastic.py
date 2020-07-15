@@ -128,6 +128,7 @@ class LinAeroEla():
             self.linuvlm = linuvlm.DynamicBlock(
                 self.tsaero,
                 dt=settings_here['dt'].value,
+                dynamic_settings=settings_here,
                 RemovePredictor=settings_here['remove_predictor'].value,
                 UseSparse=settings_here['use_sparse'].value,
                 integr_order=settings_here['integr_order'].value,
@@ -138,6 +139,7 @@ class LinAeroEla():
             self.linuvlm = linuvlm.Dynamic(
                 self.tsaero,
                 dt=settings_here['dt'].value,
+                dynamic_settings=settings_here,
                 RemovePredictor=settings_here['remove_predictor'].value,
                 UseSparse=settings_here['use_sparse'].value,
                 integr_order=settings_here['integr_order'].value,
