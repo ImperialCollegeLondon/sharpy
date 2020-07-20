@@ -28,6 +28,7 @@ class TestGolandFlutter(unittest.TestCase):
         rom_settings = dict()
         rom_settings['algorithm'] = 'mimo_rational_arnoldi'
         rom_settings['r'] = 6
+        rom_settings['single_side'] = 'observability'
         frequency_continuous_k = np.array([0.])
 
         # Case Admin - Create results folders
@@ -94,8 +95,11 @@ class TestGolandFlutter(unittest.TestCase):
             'unsteady': 'off',
             'aligned_grid': 'on',
             'mstar': ws.Mstar_fact * ws.M,
-            'freestream_dir': ws.u_inf_direction
-        }
+            'freestream_dir': ws.u_inf_direction,                                                                                                       
+            'wake_shape_generator': 'StraightWake',                                                                                                  
+            'wake_shape_generator_input': {'u_inf': ws.u_inf,                                                                                           
+                                           'u_inf_direction': ws.u_inf_direction,                                                                
+                                           'dt': ws.dt}}
 
         ws.config['StaticUvlm'] = {
             'rho': ws.rho,
@@ -243,7 +247,7 @@ class TestGolandFlutter(unittest.TestCase):
 
         assert all(np.abs(eigs_rom) <= 1.), 'UVLM Krylov ROM is unstable - flutter speed may not be correct. Change' \
                                             'ROM settings to achieve stability'
-        print('ROM is stable')
+        # print('ROM is stable')
 
     def run_flutter(self):
         flutter_ref_speed = 166  # at current discretisation
@@ -253,7 +257,7 @@ class TestGolandFlutter(unittest.TestCase):
         uub = 180  # velocity upper bound
         num_u = 20  # n_speeds
         res = np.loadtxt(self.route_test_dir + '/output/%s/stability/' % self.data.settings['SHARPy']['case'] +
-                         '/aeroelastic_velocity_analysis_min%04d_max%04d_nvel%04d.dat' % (ulb * 10, uub * 10, num_u), )
+                         '/velocity_analysis_min%04d_max%04d_nvel%04d.dat' % (ulb * 10, uub * 10, num_u), )
 
         u_inf = res[:, 0]
         eval_real = res[:, 1]
@@ -265,12 +269,13 @@ class TestGolandFlutter(unittest.TestCase):
         flutter_speed = 0.5 * (u_inf[ind_zero_real] + u_inf[ind_zero_real - 1])
         flutter_frequency = np.sqrt(eval_real[ind_zero_real] ** 2 + eval_imag[ind_zero_real] ** 2)
 
-        print('Flutter speed = %.1f m/s' % flutter_speed)
-        print('Flutter frequency = %.2f rad/s' % flutter_frequency)
+        # print('Flutter speed = %.1f m/s' % flutter_speed)
+        # print('Flutter frequency = %.2f rad/s' % flutter_frequency)
         assert np.abs(
             flutter_speed - flutter_ref_speed) / flutter_ref_speed < 1e-2, ' Flutter speed error greater than ' \
-                                                                           '1 percent'
-        print('Test Complete')
+                                                                           '1 percent. \nFlutter speed: %.2f m/s\n' \
+                                                                           'Frequency: %.2f rad/s' % (flutter_speed,
+                                                                                                      flutter_frequency)
 
     def test_flutter(self):
         self.setup()

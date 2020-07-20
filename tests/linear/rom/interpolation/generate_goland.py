@@ -6,7 +6,7 @@ import os
 import cases.templates.flying_wings as wings
 import sharpy.sharpy_main
 
-def generate_goland(u_inf, problem_type, rom_method_settings):
+def generate_goland(u_inf, problem_type, rom_method_settings, **kwargs):
     """
     rom_method_settings is the {Krylov: krylov_settings} dictionary
     """
@@ -81,7 +81,8 @@ def generate_goland(u_inf, problem_type, rom_method_settings):
              'SaveParametricCase',
              ],
         'case': ws.case_name, 'route': ws.route,
-        'write_screen': 'off', 'write_log': 'on',
+        'write_screen': kwargs.get('write_screen', 'off'),
+        'write_log': 'on',
         'log_folder': abspath + '/output/' + ws.case_name + '/',
         'log_file': ws.case_name + '.log'}
 

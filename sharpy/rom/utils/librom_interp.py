@@ -206,11 +206,12 @@ def FLB_transfer_function(SS_list, wv, U_list, VT_list, hsv_list=None, M_list=No
 
 
 def lagrange_interpolation(x_vec, x0, interpolation_degree=None):
-    """
+    r"""
     Performs a lagrange interpolation over the domain ``x_vec`` at the point ``x0``.
 
     The ``interpolation_degree`` is an optional argument that sets the maximum degree of the lagrange polynomials
-    employed. If left to ``None``, all points in ``x_vec`` are used.
+    employed. If left to ``None``, all points in ``x_vec`` are used and the degree of the langrange polynomial will
+    be the number of points minus one (i.e. 3 points will result in a quadratic fit).
 
     It returns the lagrange interpolation weights :math:`w_i` at each source point,
     such that the interpolation value :math:`y_0` can then be calculated as
@@ -230,10 +231,16 @@ def lagrange_interpolation(x_vec, x0, interpolation_degree=None):
 
     out = [0] * n_points
 
-    if interpolation_degree is None or interpolation_degree > n_points:
-        interpolation_degree = n_points
+    if interpolation_degree is None:
+        n_lagrange_points = n_points  # default value if no degree is provided
 
-    if interpolation_degree > 15:
+    else:
+        n_lagrange_points = interpolation_degree + 1  # i.e. for a quadratic fit 3 points are needed
+
+        if n_lagrange_points > n_points:
+            n_lagrange_points = n_points
+
+    if n_lagrange_points > 15:
         warnings.warn('Caution, interpolation degree larger than 15. Method may be unstable. Be cautious of overfitting'
                       ' data.')
 
@@ -241,13 +248,13 @@ def lagrange_interpolation(x_vec, x0, interpolation_degree=None):
         warnings.warn('Use Caution: Interpolation point x0 = %f outside domain [%f, %f]. Extrapolation in progress.'
                       % (x0, x_vec[0], x_vec[-1]))
 
-    d_half_degree = interpolation_degree // 2  # half the interpolation degree
-    rem = np.mod(interpolation_degree, 2)  # remainder in the case of odd degrees
+    d_half_degree = n_lagrange_points // 2  # half the interpolation degree
+    rem = np.mod(n_lagrange_points, 2)  # remainder in the case of odd degrees
 
     # Moving window
     i_interp_point = np.searchsorted(x_vec, x0)
     if i_interp_point - d_half_degree - rem < 0:
-        add_right = - (i_interp_point - d_half_degree - rem)  # points to add to the right side
+        add_right = - (i_interp_point - d_half_degree - rem)  # points to add to the right side in case the window is exceeded
         add_left = 0
     elif i_interp_point + d_half_degree > n_points:
         add_left = - (n_points - (i_interp_point + d_half_degree))  # points to add to the left side
@@ -272,7 +279,8 @@ def lagrange_interpolation(x_vec, x0, interpolation_degree=None):
         curr = []
         for j in window:
             if j != i:
-                curr.append((x0 - x_vec[j]) / (x_vec[i] - x_vec[j]))
+                lag = (x0 - x_vec[j]) / (x_vec[i] - x_vec[j])
+                curr.append(lag)
         out[i] = np.prod(curr)
 
     return out

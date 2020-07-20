@@ -10,21 +10,23 @@ import sharpy.solvers.lindynamicsim as lindynamicsim
 import sharpy.structure.utils.modalutils as modalutils
 import sharpy.utils.frequencyutils as frequencyutils
 import sharpy.linear.src.libss as libss
+import h5py
 
 
 @solver
 class AsymptoticStability(BaseSolver):
     """
-    Calculates the asymptotic stability properties of the linearised aeroelastic system by computing
-    the corresponding eigenvalues.
+    Calculates the asymptotic stability properties of the linearised system by computing
+    the corresponding eigenvalues and eigenvectors.
 
-    To use an iterative eigenvalue solver, the setting ``iterative_eigvals`` should be set to ``on``. This
-    will be beneficial when deailing with very large systems. However, the direct method is
-    preferred and more efficient when the system is of a relatively small size (typically around 5000 states).
+    The stability of the systems specified in ``target_systems`` is performed. If the system has been previously
+    scaled, a ``reference_velocity`` should be provided to compute the stability at such point.
 
-    Warnings:
-        The setting ``modes_to_plot`` to plot the eigenvectors in Paraview is currently under development.
+    The eigenvalues can be truncated, keeping a minimum ``num_evals`` (sorted by decreasing real part) or by limiting
+    the higher frequency modes through ``frequency_cutoff``.
 
+    Results can be saved to file using ``export_eigenvalues``. The setting ``display_root_locus`` shows a simple
+    Argand diagram where the continuous time eigenvalues are displayed.
     """
     solver_id = 'AsymptoticStability'
     solver_classification = 'post-processor'
@@ -68,25 +70,23 @@ class AsymptoticStability(BaseSolver):
     settings_description['target_system'] = 'System or systems for which to find frequency response.'
     settings_options['target_system'] = ['aeroelastic', 'aerodynamic', 'structural']
 
-    settings_types['iterative_eigvals'] = 'bool'
-    settings_default['iterative_eigvals'] = False
-    settings_description['iterative_eigvals'] = 'Calculate the first ``num_evals`` using an iterative solver.'
-
     settings_types['num_evals'] = 'int'
     settings_default['num_evals'] = 200
     settings_description['num_evals'] = 'Number of eigenvalues to retain.'
 
-    settings_types['modes_to_plot'] = 'list(int)'
-    settings_default['modes_to_plot'] = []
-    settings_description['modes_to_plot'] = 'List of mode numbers to simulate and plot'
-
-    settings_types['postprocessors'] = 'list(str)'
-    settings_default['postprocessors'] = list()
-    settings_description['postprocessors'] = 'To be used with ``modes_to_plot``. Under development.'
-
-    settings_types['postprocessors_settings'] = 'dict'
-    settings_default['postprocessors_settings'] = dict()
-    settings_description['postprocessors_settings'] = 'To be used with ``modes_to_plot``. Under development.'
+    # >>>>>>>>> Not currently supported
+    # settings_types['modes_to_plot'] = 'list(int)'
+    # settings_default['modes_to_plot'] = []
+    # settings_description['modes_to_plot'] = 'List of mode numbers to simulate and plot'
+    #
+    # settings_types['postprocessors'] = 'list(str)'
+    # settings_default['postprocessors'] = list()
+    # settings_description['postprocessors'] = 'To be used with ``modes_to_plot``. Under development.'
+    #
+    # settings_types['postprocessors_settings'] = 'dict'
+    # settings_default['postprocessors_settings'] = dict()
+    # settings_description['postprocessors_settings'] = 'To be used with ``modes_to_plot``. Under development.'
+    # <<<<<<<<<<<
 
     settings_table = settings.SettingsTable()
     __doc__ += settings_table.generate(settings_types, settings_default, settings_description,
@@ -115,7 +115,9 @@ class AsymptoticStability(BaseSolver):
         else:
             self.settings = custom_settings
 
-        settings.to_custom_types(self.settings, self.settings_types, self.settings_default, no_ctype=True)
+        settings.to_custom_types(self.settings, self.settings_types, self.settings_default,
+                                 options=self.settings_options,
+                                 no_ctype=True)
 
         self.num_evals = self.settings['num_evals']
 
@@ -151,20 +153,28 @@ class AsymptoticStability(BaseSolver):
                 ss_list = [self.data.linear.linear_system.update(self.settings['reference_velocity'])]
                 not_scaled = False
             else:
-                ss_list = [frequencyutils.find_target_system(self.data, system_name) for system_name in self.settings['target_system']]
+                ss_list = [frequencyutils.find_target_system(self.data, system_name) for system_name in
+                           self.settings['target_system']]
                 not_scaled = True
+            system_name_list = self.settings['target_system']
         else:
             not_scaled = True  # If the state space is an external input (i.e. not part of PreSHARPy), assume it is
-                               # not scaled
+            # not scaled
             if type(ss) is libss.ss:
                 ss_list = [ss]
+                system_name_list = ['']
             elif type(ss) is list:
                 ss_list = ss
+                system_name_list = ['system{:g}'.format(sys_number) for sys_number in len(ss_list)]
             else:
                 raise TypeError('ss input must be either a libss.ss instance or a list of libss.ss')
 
         for ith, system in enumerate(ss_list):
-            system_name = self.settings['target_system'][ith]
+            if ss is not None:
+                system_name = ''
+            else:
+                system_name = self.settings['target_system'][ith]
+
             if self.print_info:
                 cout.cout_wrap('Calculating %s eigenvalues using direct method' % system_name)
 
@@ -183,7 +193,11 @@ class AsymptoticStability(BaseSolver):
 
             if self.settings['print_info']:
                 cout.cout_wrap('Dynamical System Eigenvalues')
-                eigenvalue_description_file = self.folder + '/%s_eigenvaluetable.txt' % system_name
+                if system_name != '':
+                    eig_table_filename = system_name + '_'
+                else:
+                    eig_table_filename = ''
+                eigenvalue_description_file = self.folder + '/{:s}eigenvaluetable.txt'.format(eig_table_filename)
                 eigenvalue_table = modalutils.EigenvalueTable(filename=eigenvalue_description_file)
                 eigenvalue_table.print_header(eigenvalue_table.headers)
                 eigenvalue_table.print_evals(eigenvalues[:self.num_evals])
@@ -193,15 +207,15 @@ class AsymptoticStability(BaseSolver):
                 self.display_root_locus(eigenvalues)
 
             # Under development
-            if len(self.settings['modes_to_plot']) != 0:
-                warn.warn('Plotting modes is under development')
-                # self.plot_modes()
+            # if len(self.settings['modes_to_plot']) != 0:
+            #     warn.warn('Plotting modes is under development')
+            #     self.plot_modes()
 
-            if len(self.settings['velocity_analysis']) == 3 and system_name != 'structural':
-                assert self.data.linear.linear_system.uvlm.scaled, 'The UVLM system is unscaled, unable to rescale the ' \
-                                                                   'structural equations only. Rerun with a normalised ' \
-                                                                   'UVLM system.'
-                self.velocity_analysis(system_name)
+            if len(self.settings['velocity_analysis']) == 3 and system_name == 'aeroelastic':
+                assert self.data.linear.linear_system.uvlm.scaled, \
+                    'The UVLM system is unscaled, unable to rescale the structural equations only. Rerun with a ' \
+                    'normalised UVLM system.'
+                self.velocity_analysis()
 
         return self.data
 
@@ -243,49 +257,64 @@ class AsymptoticStability(BaseSolver):
 
     def export_eigenvalues(self, num_evals, eigenvalues, eigenvectors, filename=None):
         """
-        Saves a ``num_evals`` number of eigenvalues and eigenvectors to file. The files are saved in the output directoy
-        and include:
+        Saves a ``num_evals`` number of eigenvalues and eigenvectors to file.
 
-            * ``eigenvectors.dat``: ``(num_dof, num_evals)`` array of eigenvectors
+        The files are saved in the output directory and include:
 
-            * ``eigenvalues_r.dat``: ``(num_evals, 1)`` array of the real part of the eigenvalues
+            * ``eigenvalues.dat``: Array of eigenvalues of shape ``(num_evals, 2)`` where the first column corresponds
+              to the real part and the second column to the imaginary part.
 
-            * ``eigenvalues_i.dat``: ``(num_evals, 1)`` array of the imaginary part of the eigenvalues.
+            * ``stability.h5``: An ``.h5`` file containing the desired number of eigenvalues and eigenvectors of the
+              chosen systems.
 
-        The units of the eigenvalues are ``rad/s``
-
-        References:
-            Loading and saving complex arrays:
-            https://stackoverflow.com/questions/6494102/how-to-save-and-load-an-array-of-complex-numbers-using-numpy-savetxt/6522396
+        The units of the eigenvalues are ``rad/s``.
 
         Args:
             num_evals (int): Number of eigenvalues to save.
             eigenvalues (np.ndarray): Eigenvalue array.
             eigenvectors (np.ndarray): Matrix of eigenvectors.
+            filename (str (optional)): Optional prefix of the output filenames.
+
+        See Also:
+            Loading and saving complex arrays:
+            https://stackoverflow.com/questions/6494102/how-to-save-and-load-an-array-of-complex-numbers-using-numpy-savetxt/6522396
         """
 
         stability_folder_path = self.folder
 
-        if filename is not None:
+        if filename is not None or filename != '':
             filename += '_'
-        else:
-            filename = ''
 
         num_evals = min(num_evals, eigenvalues.shape[0])
 
-        np.savetxt(stability_folder_path + '/%seigenvalues.dat' % filename, eigenvalues[:num_evals].view(float).reshape(-1, 2))
-        np.savetxt(stability_folder_path + '/%seigenvectors_r.dat' % filename, eigenvectors.real[:, :num_evals])
-        np.savetxt(stability_folder_path + '/%seigenvectors_i.dat' % filename, eigenvectors.imag[:, :num_evals])
+        np.savetxt(stability_folder_path + '/{:s}eigenvalues.dat'.format(filename),
+                   eigenvalues[:num_evals].view(float).reshape(-1, 2))
 
-    def velocity_analysis(self, system_name):
+        with h5py.File(stability_folder_path + '/{:s}stability.h5'.format(filename), 'w') as f:
+            f.create_dataset('eigenvalues', data=eigenvalues[:num_evals], dtype=complex)
+            f.create_dataset('eigenvectors', data=eigenvectors[:, :num_evals], dtype=complex)
+            f.create_dataset('num_eigenvalues', data=num_evals, dtype=int)
+
+    def velocity_analysis(self):
+        """
+        Velocity analysis for scaled systems.
+
+        Runs the stability analysis for different velocities for aeroelastic systems that have been previously scaled.
+
+        For every velocity, the linear system is updated. This involves updating the structural matrices and the
+        coupling matrix. The eigenvalues saved are in continuous time.
+
+        It saves the results to a ``.dat`` file where the first column corresponds to the free stream velocity and the
+        second and third columns to the real and imaginary parts of the eigenvalues.
+        """
 
         ulb, uub, num_u = self.settings['velocity_analysis']
 
         if self.settings['print_info']:
             cout.cout_wrap('Velocity Asymptotic Stability Analysis', 1)
-            cout.cout_wrap('Initial velocity: %.2f m/s' % ulb, 1)
-            cout.cout_wrap('Final velocity: %.2f m/s' % uub, 1)
-            cout.cout_wrap('Number of evaluations: %g' % num_u, 1)
+            cout.cout_wrap('Initial velocity: {:02f} m/s'.format(ulb), 1)
+            cout.cout_wrap('Final velocity: {:02f} m/s'.format(uub), 1)
+            cout.cout_wrap('Number of evaluations: {:g}'.format(num_u), 1)
 
         u_inf_vec = np.linspace(ulb, uub, int(num_u))
 
@@ -308,10 +337,12 @@ class AsymptoticStability(BaseSolver):
             Nunst = np.sum(eigs_cont.real > 0)
             fn = np.abs(eigs_cont)
 
-            cout.cout_wrap('LTI\tu: %.2f m/2\tmax. CT eig. real: %.6f\t' \
-                           % (u_inf_vec[i], np.max(eigs_cont.real)))
-            cout.cout_wrap('\tN unstab.: %.3d' % (Nunst,))
-            cout.cout_wrap('\tUnstable aeroelastic natural frequency CT(rad/s):' + Nunst * '\t%.2f' % tuple(fn[:Nunst]))
+            if self.settings['print_info']:
+                cout.cout_wrap('LTI\tu: %.2f m/2\tmax. CT eig. real: %.6f\t' \
+                               % (u_inf_vec[i], np.max(eigs_cont.real)))
+                cout.cout_wrap('\tN unstab.: %.3d' % (Nunst,))
+                cout.cout_wrap(
+                    '\tUnstable aeroelastic natural frequency CT(rad/s):' + Nunst * '\t%.2f' % tuple(fn[:Nunst]))
 
             # Store eigenvalues for plot
             real_part_plot.append(eigs_cont.real)
@@ -322,10 +353,16 @@ class AsymptoticStability(BaseSolver):
         imag_part_plot = np.hstack(imag_part_plot)
         uinf_part_plot = np.hstack(uinf_part_plot)
 
-        cout.cout_wrap('Saving velocity analysis results...')
-        np.savetxt(self.folder + '/%s_velocity_analysis_min%04d_max%04d_nvel%04d.dat' % (system_name, ulb * 10, uub * 10, num_u),
+        velocity_file_name = self.folder + '/velocity_analysis_min{:04g}_max{:04g}_nvel{:04g}.dat'.format(
+            ulb * 10,
+            uub * 10,
+            num_u)
+
+        np.savetxt(velocity_file_name,
                    np.concatenate((uinf_part_plot, real_part_plot, imag_part_plot)).reshape((-1, 3), order='F'))
-        cout.cout_wrap('\tSuccessful', 1)
+
+        if self.settings['print_info']:
+            cout.cout_wrap('\t\tSuccessfully saved velocity analysis to {:s}'.format(velocity_file_name), 2)
 
     @staticmethod
     def display_root_locus(eigenvalues):
@@ -365,6 +402,9 @@ class AsymptoticStability(BaseSolver):
         Plot the aeroelastic mode shapes for the first ``n_modes_to_plot``
 
         """
+        # >>>>>> Feature under development
+        raise NotImplementedError('This feature is under development')
+        # <<<<<<<
         try:
             import matplotlib.pyplot as plt
         except ModuleNotFoundError:

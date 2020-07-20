@@ -34,6 +34,9 @@ def main(args=None, sharpy_input_dict=None):
     import logging
     import os
 
+    import h5py
+    import sharpy.utils.h5utils as h5utils
+
     # Loading solvers and postprocessors
     import sharpy.solvers
     import sharpy.postproc
@@ -90,8 +93,18 @@ def main(args=None, sharpy_input_dict=None):
                 raise FileNotFoundError('The file specified for the snapshot %s\
                     restart (-r) does not exist. Please check.' % args.restart)
 
+
             # update the settings
             data.update_settings(settings)
+
+            # Read again the dyn.h5 file
+            data.structure.dynamic_input = []
+            dyn_file_name = data.case_route + '/' + data.case_name + '.dyn.h5'
+            if os.path.isfile(dyn_file_name):
+                fid = h5py.File(dyn_file_name, 'r')
+                data.structure.dyn_dict = h5utils.load_h5_in_dict(fid)
+            # for it in range(self.num_steps):
+            #     data.structure.dynamic_input.append(dict())
 
         # Loop for the solvers specified in *.sharpy['SHARPy']['flow']
         for solver_name in settings['SHARPy']['flow']:
@@ -113,7 +126,7 @@ def main(args=None, sharpy_input_dict=None):
         except NameError:
             logdir = './'
         logdir = os.path.abspath(logdir)
-        print('Exception raised, writing error log in %s/error.log' % logdir)
+        cout.cout_wrap(('Exception raised, writing error log in %s/error.log' % logdir), 4)
         logging.basicConfig(filename='%s/error.log' % logdir,
                             filemode='w',
                             format='%(asctime)s-%(levelname)s-%(message)s',
@@ -124,4 +137,3 @@ def main(args=None, sharpy_input_dict=None):
         raise e
 
     return data
-

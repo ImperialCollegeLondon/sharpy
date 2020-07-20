@@ -32,7 +32,8 @@ class TestBasisInterpolation(unittest.TestCase):
         for u_inf in u_inf_source_cases:
             generate_goland(u_inf,
                             problem_type='source',
-                            rom_method_settings={'Krylov': rom_settings})
+                            rom_method_settings={'Krylov': rom_settings},
+                            write_screen='off')
 
         for u_inf in cls.u_inf_test_cases:
             case = {u_inf: generate_goland(u_inf,
@@ -46,6 +47,7 @@ class TestBasisInterpolation(unittest.TestCase):
         interpolation_settings = dict()
         interpolation_settings['cases_folder'] = self.route_test_dir + '/source/output/'
         interpolation_settings['reference_case'] = 0
+        interpolation_settings['interpolation_degree'] = 1
 
         for u_inf in self.u_inf_test_cases:
             interpolation_settings['interpolation_parameter'] = {'u_inf': u_inf}
@@ -64,9 +66,19 @@ class TestBasisInterpolation(unittest.TestCase):
             i_case = self.interpolated_cases[case['u_inf']]
             y_error_system = case['freqresp']['response'] - i_case['freqresp']['response']
             l2_norm = frequencyutils.l2norm(y_error_system, case['freqresp']['frequency'])
-            np.testing.assert_array_less([l2_norm], [1e-4],
-                                         verbose=True,
-                                         err_msg='L2 norm of error system too large')
+            try:
+                np.testing.assert_array_less([l2_norm], [1e-4],
+                                             verbose=True,
+                                             err_msg='L2 norm of error system too large')
+
+            except AssertionError:
+                # >>>>>>>>>>>>>>>>>>>>>>>>useful debug
+                import matplotlib.pyplot as plt
+                plt.semilogx(case['freqresp']['frequency'], case['freqresp']['response'][0, 0, :])
+                plt.semilogx(i_case['freqresp']['frequency'], i_case['freqresp']['response'][0, 0, :], marker='+')
+                plt.title(l2_norm)
+                plt.show()
+                raise AssertionError
 
     def test_pmor_interpolation(self):
 
@@ -95,16 +107,19 @@ class TestBasisInterpolation(unittest.TestCase):
             a_case = self.actual_cases[float(pmor_results[case_name]['u_inf'])]
             y_error_system = pmor_results[case_name]['freqresp']['response'] - a_case['freqresp']['response']
             l2_norm = frequencyutils.l2norm(y_error_system, a_case['freqresp']['frequency'])
-            np.testing.assert_array_less([l2_norm], [1e-3],
-                                         verbose=True,
-                                         err_msg='L2 norm of PMOR error system too large')
+            try:
+                np.testing.assert_array_less([l2_norm], [1e-3],
+                                             verbose=True,
+                                             err_msg='L2 norm of PMOR error system too large')
+            except AssertionError:
 
             # >>>>>>>>>>>>>>>>>>>>>>>>useful debug
-            # import matplotlib.pyplot as plt
-            # plt.semilogx(a_case['freqresp']['frequency'], a_case['freqresp']['response'][0, 0, :])
-            # plt.semilogx(a_case['freqresp']['frequency'], pmor_results[case_name]['freqresp']['response'][0, 0, :], marker='+')
-            # plt.title(l2_norm)
-            # plt.show()
+                import matplotlib.pyplot as plt
+                plt.semilogx(a_case['freqresp']['frequency'], a_case['freqresp']['response'][0, 0, :])
+                plt.semilogx(a_case['freqresp']['frequency'], pmor_results[case_name]['freqresp']['response'][0, 0, :], marker='+')
+                plt.title(l2_norm)
+                plt.show()
+                raise AssertionError
             # <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
 
     @classmethod

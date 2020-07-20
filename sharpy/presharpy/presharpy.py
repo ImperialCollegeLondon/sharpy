@@ -100,8 +100,8 @@ class PreSharpy(object):
                 except KeyError:
                     exceptions.NotImplementedSolver(solver_name)
 
-        if self.settings['SHARPy']['save_settings']:
-            self.save_settings()
+            if self.settings['SHARPy']['save_settings']:
+                self.save_settings()
 
     def initialise(self):
         pass
@@ -115,6 +115,9 @@ class PreSharpy(object):
                                   self.settings['SHARPy']['write_log'],
                                   self.settings['SHARPy']['log_folder'],
                                   self.settings['SHARPy']['log_file'])
+
+        self.case_route = self.settings['SHARPy']['route'] + '/'
+        self.case_name = self.settings['SHARPy']['case']
 
     def save_settings(self):
         """

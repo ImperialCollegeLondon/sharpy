@@ -202,7 +202,7 @@ class ParametricModelInterpolation(BaseSolver):
     settings_types['postprocessors'] = 'list(str)'
     settings_default['postprocessors'] = list()
     settings_description['postprocessors'] = 'List of the postprocessors to run at the end of every time step'
-    settings_options['postprocessors'] = ['AsymptoticStability', 'FrequencyResponse']  # supported postprocs for pMOR
+    settings_options['postprocessors'] = ['AsymptoticStability', 'FrequencyResponse', 'SaveStateSpace']  # supported postprocs for pMOR
 
     settings_types['postprocessors_settings'] = 'dict'
     settings_default['postprocessors_settings'] = dict()
@@ -218,7 +218,7 @@ class ParametricModelInterpolation(BaseSolver):
                                                      interpolation_settings_default,
                                                      interpolation_settings_description,
                                                      interpolation_settings_options,
-                                                     header_line='Then acceptable interpolation settings for each '
+                                                     header_line='The acceptable interpolation settings for each '
                                                                  'state-space are listed below:')
 
     def __init__(self):
@@ -284,11 +284,14 @@ class ParametricModelInterpolation(BaseSolver):
         # Generate mappings for easier interpolation
         self.rom_library.sort_grid()
 
-        # >>>>> Independent interpolation
         if self.settings['interpolation_system'] == 'aeroelastic' and \
                 self.settings['independent_interpolation']:
-            self.pmor = interpolationsystem.CoupledPMOR(self.rom_library,
-                                                        interpolation_settings=self.interpolation_settings)
+            if self.rom_library.data_library[0].linear.linear_system.uvlm.scaled:
+                sys = interpolationsystem.CoupledScaledPMOR
+            else:
+                sys = interpolationsystem.CoupledPMOR
+            self.pmor = sys(self.rom_library,
+                            interpolation_settings=self.interpolation_settings)
         else:
             try:
                 target_system = self.settings['interpolation_system']
@@ -296,12 +299,16 @@ class ParametricModelInterpolation(BaseSolver):
                 raise KeyError('No settings given for the interpolation_system: %s in '
                                'interpolation_settings' % self.settings['interpolation_settings'])
             system_settings = self.interpolation_settings[target_system]
-            self.pmor = interpolationsystem.pmor_loader(self.rom_library,
-                                                        target_system=target_system,
-                                                        interpolation_space=system_settings['interpolation_space'],
-                                                        projection_method=system_settings['projection_method'])
+            self.pmor = interpolationsystem.IndividualPMOR(self.rom_library,
+                                                           target_system=target_system,
+                                                           interpolation_settings=system_settings,
+                                                           use_ct=False)
 
         # <<<<<<<<<<<<<<<<<<<<<<
+
+        # >>>>> DEBUG: Save projected systems
+        # self.pmor.save_projected_ss(self.settings['postprocessors_settings']['SaveStateSpace']['folder'])
+        # <<<<<
 
         # Future: save for online use?
 
@@ -330,11 +337,16 @@ class ParametricModelInterpolation(BaseSolver):
             interpolated_roms.append(interpolated_ss, case)
 
             for postproc in self.postprocessors:
-                self.postprocessors[postproc].folder = self.postproc_output_folder[postproc] + \
-                                                       '/param_case%02g' % (interpolated_roms.case_number - 1) + '/'
-                if not os.path.exists(self.postprocessors[postproc].folder):
-                    os.makedirs(self.postprocessors[postproc].folder)
-                self.postprocessors[postproc].run(ss=interpolated_ss)
+                for target_system in self.settings['postprocessors_settings'][postproc]['target_system']:
+
+                    ss = self.pmor.interpolated_systems[target_system]
+                    self.postprocessors[postproc].folder = self.postproc_output_folder[postproc] + \
+                                                           '/param_case%02g' % (interpolated_roms.case_number - 1) \
+                                                           + '/' + target_system + '/'
+
+                    if not os.path.exists(self.postprocessors[postproc].folder):
+                        os.makedirs(self.postprocessors[postproc].folder)
+                    self.postprocessors[postproc].run(ss=ss)
 
         interpolated_roms.write_summary(self.data.settings['SHARPy']['log_folder'] + './pmor_summary.txt')
         self.data.interp_rom = interpolated_roms
