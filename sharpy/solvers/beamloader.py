@@ -49,7 +49,8 @@ class BeamLoader(BaseSolver):
 
     settings_types['unsteady'] = 'bool'
     settings_default['unsteady'] = True
-    settings_description['unsteady'] = 'If ``True`` it will be a dynamic problem. The default is usually good for all simulations'
+    settings_description['unsteady'] = 'If ``True`` it will be a dynamic problem and the solver will look for the' \
+                                       ' ``.dyn.h5`` file that contains the time varying input to the problem.'
 
     settings_types['orientation'] = 'list(float)'
     settings_default['orientation'] = [1., 0, 0, 0]
