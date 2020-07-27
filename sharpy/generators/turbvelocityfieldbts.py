@@ -141,6 +141,10 @@ class TurbVelocityFieldBts(generator_interface.BaseGenerator):
     settings_default['extra_offset'] = 0.
     settings_description['extra_offset'] = 'Distance [m] to displace the turbulence box'
 
+    settings_types['use_3_4_interpolation'] = 'bool'
+    settings_default['use_3_4_interpolation'] = False
+    settings_description['use_3_4_interpolation'] = 'Use the farfield velocity at 3/4 chord for all the points along the chord'
+
     setting_table = settings.SettingsTable()
     __doc__ += setting_table.generate(settings_types, settings_default, settings_description)
 
@@ -219,10 +223,35 @@ class TurbVelocityFieldBts(generator_interface.BaseGenerator):
             # Through "offstet" zeta can be modified to simulate the turbulence being fed to the solid
             # Usual method for wind turbines
             offset = (-1.*offset_mod + self.dist_to_recirculate)*self.settings['u_fed']/np.linalg.norm(self.settings['u_fed'])
-            self.interpolate_zeta(zeta,
-                                  for_pos,
-                                  uext,
-                                  offset = offset)
+            if ((not is_wake) and (self.settings['use_3_4_interpolation'])):
+                nsurf = len(zeta)
+                zeta_3_4_chord = [None]*nsurf
+                for isurf in range(nsurf):
+                    N = zeta[isurf].shape[2]
+                    zeta_3_4_chord[isurf] = np.zeros((3, 1, N))
+                    uext_3_4_chord[isurf] = np.zeros((3, 1, N))
+                    # Compute the 3/4 chord position
+                    for i_n in range(N):
+                        zeta_3_4_chord[isurf][:, 0, i_n] = (zeta[isurf][:, 0, N] + 3.*zeta[isurf][:, -1, N])/4.
+
+                # Interpolate at the 3/4 chord point
+                self.interpolate_zeta(zeta_3_4_chord,
+                                      for_pos,
+                                      uext_3_4_chord,
+                                      offset = offset)
+
+                # Assign the values to all chord points
+                for isurf in range(nsurf):
+                    _, M, N = zeta[isurf].shape
+                    for i_n in range(N):
+                        for i_m in range(M):
+                            uext[isurf][:, i_m, i_n] = uext_3_4_chord[isurf][:, 0, i_n]
+
+            else:
+                self.interpolate_zeta(zeta,
+                                      for_pos,
+                                      uext,
+                                      offset = offset)
 
     def interpolate_zeta(self, zeta, for_pos, u_ext, interpolator=None, offset=np.zeros((3))):
         # if interpolator is None:
