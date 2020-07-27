@@ -98,6 +98,7 @@ def polars(data, aero_kstep, structural_kstep, struct_forces, **kwargs):
 
     Keyword Arguments:
         rho (float): air density
+        correct_lift (bool): correct also lift coefficient according to the polars
         
     Returns:
          np.ndarray: corresponding aerodynamic force at the structural node from the force and moment at a grid vertex
@@ -106,6 +107,7 @@ def polars(data, aero_kstep, structural_kstep, struct_forces, **kwargs):
     aerogrid = data.aero
     beam = data.structure
     rho = kwargs.get('rho', 1.225)
+    correct_lift = kwargs.get('correct_lift', False)
     aero_dict = aerogrid.aero_dict
     if aerogrid.polars is None:
         return struct_forces
@@ -185,6 +187,9 @@ def polars(data, aero_kstep, structural_kstep, struct_forces, **kwargs):
             # Compute the coefficients assocaited to that angle of attack
             cl_new, cd, cm = polar.get_coefs(aoa_deg_2pi)
             # print(cl, cl_new)
+    
+            if correct_lift:
+                cl = cl_new
 
             # Recompute the forces based on the coefficients
             lift_force = cl*algebra.unit_vector(lift_force)*coef
