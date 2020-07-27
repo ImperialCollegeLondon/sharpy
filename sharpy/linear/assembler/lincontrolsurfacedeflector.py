@@ -79,6 +79,8 @@ class LinControlSurfaceDeflector(object):
         Returns:
 
         """
+        # In hindsight, building this matrix iterating through structural node was a big mistake that
+        # has led to very messy code. Would rework by element and in B frame
 
         if self.aero is not None:
             aero = self.aero
@@ -166,7 +168,14 @@ class LinControlSurfaceDeflector(object):
                                 with_control_surface = True
                             if self.under_development:
                                 print('Control surface span start index = %g' % i_start_of_cs)
+
                             control_surface_chord = aero_dict['control_surface_chord'][i_control_surface]
+
+                            try:
+                                control_surface_hinge_coord = aero_dict['control_surface_hinge_coord'][i_control_surface] * aero_dict['chord'][i_elem, i_local_node]
+                            except KeyError:
+                                control_surface_hinge_coord = None
+
                             i_node_hinge = M - control_surface_chord
                             i_vertex_hinge = [K_zeta_start +
                                               np.ravel_multi_index((i_axis, i_node_hinge, i_node_span), shape_zeta)
@@ -174,8 +183,13 @@ class LinControlSurfaceDeflector(object):
                             i_vertex_next_hinge = [K_zeta_start +
                                                    np.ravel_multi_index((i_axis, i_node_hinge, i_start_of_cs + 1),
                                                                         shape_zeta) for i_axis in range(3)]
-                            zeta_hinge = zeta0[i_vertex_hinge]
-                            zeta_next_hinge = zeta0[i_vertex_next_hinge]
+
+                            if control_surface_hinge_coord is not None and M == control_surface_chord:  # fully articulated control surface
+                                zeta_hinge = Cgb.dot(Cba.dot(tsstruct0.pos[global_node]) + for_delta * np.array([0, control_surface_hinge_coord, 0]))
+                                zeta_next_hinge = Cgb.dot(Cbg.dot(zeta_hinge) + np.array([1, 0, 0]))  # parallel to the x_b vector
+                            else:
+                                zeta_hinge = zeta0[i_vertex_hinge]
+                                zeta_next_hinge = zeta0[i_vertex_next_hinge]
 
                             if hinge_axis is None:
                                 # Hinge axis not yet set for current control surface
@@ -187,7 +201,7 @@ class LinControlSurfaceDeflector(object):
                                             np.ravel_multi_index((i_axis, i_node_chord, i_node_span), shape_zeta)
                                             for i_axis in range(3)]
 
-                                if i_node_chord > i_node_hinge:
+                                if i_node_chord >= i_node_hinge: # may need >=
                                     # Zeta in G frame
                                     zeta_node = zeta0[i_vertex]  # Gframe
                                     zeta_nodeA = Cag.dot(zeta_node)
@@ -211,7 +225,7 @@ class LinControlSurfaceDeflector(object):
                                         print('GVec = ' + str(chord_vec/np.linalg.norm(chord_vec)))
                                         print('BVec = ' + str(Cbg.dot(chord_vec/np.linalg.norm(chord_vec))))
                                         # pass
-                                    # Removing the += because cs where being added twice
+                                    # Removing the += because cs were being added twice
                                     Kdisp[i_vertex, i_control_surface] = \
                                         Cgb.dot(der_R_arbitrary_axis_times_v(Cbg.dot(hinge_axis),
                                                                              0,
