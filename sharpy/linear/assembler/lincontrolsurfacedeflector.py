@@ -229,13 +229,13 @@ class LinControlSurfaceDeflector(object):
                                     Kdisp[i_vertex, i_control_surface] = \
                                         Cgb.dot(der_R_arbitrary_axis_times_v(Cbg.dot(hinge_axis),
                                                                              0,
-                                                                             -for_delta * Cbg.dot(chord_vec)))
+                                                                             -for_delta * Cbg.dot(chord_vec))) * for_delta * -1
                                     # Kdisp[i_vertex, i_control_surface] = \
                                     #     der_R_arbitrary_axis_times_v(hinge_axis, 0, chord_vec)
 
                                     # Flap velocity
                                     Kvel[i_vertex, i_control_surface] = -algebra.skew(chord_vec).dot(
-                                        hinge_axis)
+                                        hinge_axis) * for_delta * -1
 
                                     # Flap hinge moment - future work
                                     # Kmom[i_vertex, i_control_surface] += algebra.skew(chord_vec)
@@ -266,6 +266,10 @@ class LinControlSurfaceDeflector(object):
                         else:
                             with_control_surface = False
                             hinge_axis = None  # Reset for next control surface
+
+        # >>>> Merge control surfaces 0 and 1
+        # Kdisp[:, 0] -= Kdisp[:, 1]
+        # Kvel[:, 0] -= Kvel[:, 1]
 
         self.Kzeta_delta = Kdisp
         self.Kdzeta_ddelta = Kvel
