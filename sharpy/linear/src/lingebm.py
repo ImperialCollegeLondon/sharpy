@@ -12,6 +12,7 @@ import sharpy.linear.src.libss as libss
 import sharpy.utils.algebra as algebra
 import sharpy.utils.settings as settings
 import sharpy.utils.cout_utils as cout
+import sharpy.structure.utils.modalutils as modalutils
 import warnings
 
 
@@ -139,6 +140,7 @@ class FlexDynamic():
         self.discr_method = self.settings['discr_method']
         self.newmark_damp = self.settings['newmark_damp']
         self.use_euler = self.settings['use_euler']
+        self.use_principal_axes = self.settings.get('rigid_modes_cg', False)  # this setting is inherited from the setting in Modal solver
 
         ### set state-space variables
         self.SScont = None
@@ -158,7 +160,6 @@ class FlexDynamic():
 
         self.update_modal()
 
-        self.U = self.sort_repeated_evecs(self.U, self.eigs)
 
         if self.Mstr.shape[0] == 6*(self.tsstruct0.num_node - 1):
             self.clamped = True
@@ -977,12 +978,20 @@ class FlexDynamic():
 
             phi = eigenvectors[:, order]
 
+            if not self.clamped and self.use_principal_axes:
+                phi = modalutils.free_modes_principal_axes(phi, self.Mstr, use_euler=self.use_euler)
+
             # Scale modes to have an identity mass matrix
             dfact = np.diag(np.dot(phi.T, np.dot(self.Mstr, phi)))
             self.U = (1./np.sqrt(dfact))*phi
 
+            np.testing.assert_array_almost_equal(self.U.T.dot(self.Mstr.dot(self.U)), np.eye(self.U.shape[1]))
+
             # Update
             self.eigs = eigenvalues[order]
+            if not self.use_principal_axes:
+                # in the case of use_principal_axes modes are already ordered
+                self.U = self.sort_repeated_evecs(self.U, self.eigs)
 
             # To do: update SHARPy's timestep info modal results
         else:
