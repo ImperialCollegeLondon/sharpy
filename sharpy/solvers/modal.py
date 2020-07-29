@@ -11,6 +11,7 @@ import sharpy.utils.algebra as algebra
 import sharpy.utils.cout_utils as cout
 import sharpy.structure.utils.modalutils as modalutils
 
+
 @solver
 class Modal(BaseSolver):
     """
@@ -355,7 +356,7 @@ class Modal(BaseSolver):
         # Modify rigid body modes for them to be defined wrt the CG
         if self.settings['rigid_modes_cg']:
             if not eigenvectors_left:
-                eigenvectors = self.free_free_modes(eigenvectors, FullMglobal)
+                eigenvectors = modalutils.free_modes_principal_axes(eigenvectors, FullMglobal)
 
         # Scaling
         eigenvectors, eigenvectors_left = self.scale_modes_unit_mass_matrix(eigenvectors, FullMglobal, eigenvectors_left)
@@ -481,6 +482,11 @@ class Modal(BaseSolver):
 
     def free_free_modes(self, phi, M):
         r"""
+
+        Warning:
+            This function is deprecated. See :func:`~sharpy.structure.utils.modalutils.free_modes_principal_axes`
+            for a transformation to the CG and with respect to the principal axes of inertia.
+
         Returns the rigid body modes defined with respect to the centre of gravity
 
         The transformation from the modes defined at the FoR A origin, :math:`\boldsymbol{\Phi}`, to the modes defined
@@ -503,7 +509,8 @@ class Modal(BaseSolver):
         #
         # .. math:: \boldsymbol{\Phi}_{ss,CG}|_{ROT} = \boldsymbol{\Phi}_{SS}|_{ROT}
         # + (\mathbf{T}(\boldsymbol{\Psi})^\top)^{-1}\boldsymbol{\Phi}_{RS}|_{ROT}
-
+        warnings.warn('This function is deprecated. See sharpy.structure.utils.modalutils.free_modes_principal_axes',
+                      category=DeprecationWarning)
         if not self.rigid_body_motion:
             warnings.warn('No rigid body modes to transform because the structure is clamped')
             return phi
