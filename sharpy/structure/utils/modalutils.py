@@ -33,8 +33,11 @@ class EigenvalueTable(cout.TablePrinter):
                              damping_ratio, period])
 
 
-def cg(M):
-    Mrr = M[-10:, -10:]
+def cg(M, use_euler=False):
+    if use_euler:
+        Mrr = M[-9:, -9:]
+    else:
+        Mrr = M[-10:, -10:]
     return -np.array([Mrr[2, 4], Mrr[0, 5], Mrr[1, 3]]) / Mrr[0, 0]
 
 
@@ -291,3 +294,45 @@ def write_modes_vtk(data, eigenvectors, NumLambda, filename_root,
         zeta_mode = get_mode_zeta(data, eigvec)
         write_zeta_vtk(zeta_mode, tsaero.zeta, filename_root + "_%06u" % (mode,))
 
+
+def free_modes_principal_axes(phi, mass_matrix, use_euler=False):
+    """
+    Transforms the rigid body modes defined at with the A frame as reference to the centre of mass position and aligned
+    with the principal axes of inertia.
+
+
+    References:
+        Marc Artola, 2020
+    """
+    if use_euler:
+        num_rigid_modes = 9
+    else:
+        num_rigid_modes = 10
+
+    r_cg = cg(mass_matrix, use_euler)  # centre of gravity
+    mrr = mass_matrix[-num_rigid_modes:-num_rigid_modes + 6, -num_rigid_modes:-num_rigid_modes + 6]
+    m = mrr[0, 0]  # mass
+
+    # principal axes of inertia matrix and transformation matrix
+    j_cm, t_rb = np.linalg.eig(mrr[-3:, -3:] + algebra.multiply_matrices(algebra.skew(r_cg), algebra.skew(r_cg)) * m)
+
+    # rigid body mass matrix about CM and inertia in principal axes
+    m_cm = np.eye(6) * m
+    m_cm[-3:, -3:] = np.diag(j_cm)
+
+    # rigid body modes about CG - mass normalised
+    rb_cm = np.eye(6)
+    rb_cm /= np.sqrt(np.diag(rb_cm.T.dot(m_cm.dot(rb_cm))))
+
+    # transform to A frame reference position
+    trb_diag = np.zeros((6, 6))  # matrix with (t_rb, t_rb) in the diagonal
+    trb_diag[:3, :3] = t_rb
+    trb_diag[-3:, -3:] = t_rb
+    rb_a = np.block([[np.eye(3), algebra.skew(r_cg)], [np.zeros((3, 3)), np.eye(3)]]).dot(trb_diag.dot(rb_cm))
+
+    phit = np.block([np.zeros((phi.shape[0], num_rigid_modes)), phi[:, num_rigid_modes:]])
+    phit[-num_rigid_modes:-num_rigid_modes + 6, :6] = rb_a
+
+    phit[-num_rigid_modes + 6:, 6:num_rigid_modes] = np.eye(num_rigid_modes - 6)  # euler or quaternion modes
+
+    return phit
