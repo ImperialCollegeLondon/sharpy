@@ -336,3 +336,77 @@ def free_modes_principal_axes(phi, mass_matrix, use_euler=False):
     phit[-num_rigid_modes + 6:, 6:num_rigid_modes] = np.eye(num_rigid_modes - 6)  # euler or quaternion modes
 
     return phit
+
+def mode_sign_convention(bocos, eigenvectors, rigid_body_motion=False, use_euler=False):
+    """
+    When comparing against different cases, it is important that the modes share a common sign convention.
+
+    In this case, modes will be arranged such that the z-coordinate of the first free end is positive.
+
+    If the z-coordinate is 0, then the y-coordinate is forced to be positive
+
+    Returns:
+        np.ndarray: Eigenvectors following the aforementioned sign convention.
+    """
+
+    # bocos = self.data.structure.boundary_conditions  #input
+
+    if use_euler:
+        num_rigid_modes = 9
+    else:
+        num_rigid_modes = 10
+
+    first_free_end_node = np.where(bocos == -1)[0][0]
+
+    z_coord = 6 * (first_free_end_node - 1) + 2
+    y_coord = 6 * (first_free_end_node - 1) + 1
+    x_coord = 6 * (first_free_end_node - 1) + 1
+
+    # import pdb; pdb.set_trace()
+    if rigid_body_motion:
+        eigenvectors = order_rigid_body_modes(eigenvectors, use_euler)
+
+    for i in range(num_rigid_modes, eigenvectors.shape[1]):
+        if np.abs(eigenvectors[z_coord, i]) > 1e-8:
+            print('Mode {}\tz={:04f}'.format(i, eigenvectors[z_coord, i]))
+            eigenvectors[:, i] = np.sign(eigenvectors[z_coord, i]) * eigenvectors[:, i]
+            print('\t\tTransformed z={:04f}'.format(eigenvectors[z_coord, i]))
+
+        elif np.abs(eigenvectors[y_coord, i]) > 1e-8:
+            print('Mode {}\ty={:04f}'.format(i, eigenvectors[y_coord, i]))
+            eigenvectors[:, i] = np.sign(eigenvectors[y_coord, i]) * eigenvectors[:, i]
+
+        elif np.abs(eigenvectors[x_coord, i]) > 1e-8:
+            print('Mode {}\tx={:04f}'.format(i, eigenvectors[x_coord, i]))
+            eigenvectors[:, i] = np.sign(eigenvectors[x_coord, i]) * eigenvectors[:, i]
+
+        else:
+            print(i)
+            import pdb; pdb.set_trace()
+            # pass
+
+    return eigenvectors
+
+
+def order_rigid_body_modes(eigenvectors, use_euler):
+
+    if use_euler:
+        num_rigid_modes = 9
+    else:
+        num_rigid_modes = 10
+
+    phi_rr = np.zeros((num_rigid_modes, num_rigid_modes))
+    num_node = eigenvectors.shape[0]
+
+    for i in range(num_rigid_modes):
+        index_max_node = np.where(eigenvectors[:, i] == np.max(eigenvectors[:, i]))[0][0]
+        print(index_max_node)
+        index_mode = num_rigid_modes - (num_node - index_max_node)
+        print(index_mode)
+        phi_rr[:, index_mode] = eigenvectors[-num_rigid_modes:, i]
+
+    eigenvectors[-num_rigid_modes:, -num_rigid_modes:] = phi_rr
+
+    print(eigenvectors[-num_rigid_modes:, -num_rigid_modes:])
+
+    return eigenvectors
