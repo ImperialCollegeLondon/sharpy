@@ -158,9 +158,6 @@ class FlexDynamic():
         if self.use_euler:
             self.euler_propagation_equations(tsinfo)
 
-        self.update_modal()
-
-
         if self.Mstr.shape[0] == 6*(self.tsstruct0.num_node - 1):
             self.clamped = True
         else:
@@ -170,6 +167,8 @@ class FlexDynamic():
             self.num_dof_rig = 9
         else:
             self.num_dof_rig = 10
+
+        self.update_modal()
 
         self.num_dof_flex = np.sum(structure.vdof >= 0)*6
 
