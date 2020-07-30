@@ -984,7 +984,9 @@ class FlexDynamic():
             dfact = np.diag(np.dot(phi.T, np.dot(self.Mstr, phi)))
             self.U = (1./np.sqrt(dfact))*phi
 
-            np.testing.assert_array_almost_equal(self.U.T.dot(self.Mstr.dot(self.U)), np.eye(self.U.shape[1]))
+            np.testing.assert_array_almost_equal(self.U.T.dot(self.Mstr.dot(self.U)), np.eye(self.U.shape[1]),
+                                                 decimal=5, err_msg='Unable to scale the modes such that they are'
+                                                                    'mass normalised.')
 
             # Update
             self.eigs = eigenvalues[order]
