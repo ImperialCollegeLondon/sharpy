@@ -354,6 +354,7 @@ class Modal(BaseSolver):
             eigenvectors_left = eigenvectors_left[:, order].conj()
 
         # Modify rigid body modes for them to be defined wrt the CG
+        eigenvectors = modalutils.mode_sign_convention(self.data.structure.boundary_conditions, eigenvectors, self.rigid_body_motion)
         if self.settings['rigid_modes_cg']:
             if not eigenvectors_left:
                 eigenvectors = modalutils.free_modes_principal_axes(eigenvectors, FullMglobal)
