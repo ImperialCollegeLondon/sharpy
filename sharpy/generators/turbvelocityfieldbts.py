@@ -226,13 +226,14 @@ class TurbVelocityFieldBts(generator_interface.BaseGenerator):
             if ((not is_wake) and (self.settings['use_3_4_interpolation'])):
                 nsurf = len(zeta)
                 zeta_3_4_chord = [None]*nsurf
+                uext_3_4_chord = [None]*nsurf
                 for isurf in range(nsurf):
                     N = zeta[isurf].shape[2]
                     zeta_3_4_chord[isurf] = np.zeros((3, 1, N))
                     uext_3_4_chord[isurf] = np.zeros((3, 1, N))
                     # Compute the 3/4 chord position
                     for i_n in range(N):
-                        zeta_3_4_chord[isurf][:, 0, i_n] = (zeta[isurf][:, 0, N] + 3.*zeta[isurf][:, -1, N])/4.
+                        zeta_3_4_chord[isurf][:, 0, i_n] = (zeta[isurf][:, 0, i_n] + 3.*zeta[isurf][:, -1, i_n])/4.
 
                 # Interpolate at the 3/4 chord point
                 self.interpolate_zeta(zeta_3_4_chord,
