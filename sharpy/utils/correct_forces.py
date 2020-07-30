@@ -99,6 +99,7 @@ def polars(data, aero_kstep, structural_kstep, struct_forces, **kwargs):
     Keyword Arguments:
         rho (float): air density
         correct_lift (bool): correct also lift coefficient according to the polars
+        cd_from_cl (bool): interpolate drag from lift instead of computing the AoA first
         
     Returns:
          np.ndarray: corresponding aerodynamic force at the structural node from the force and moment at a grid vertex
@@ -108,6 +109,7 @@ def polars(data, aero_kstep, structural_kstep, struct_forces, **kwargs):
     beam = data.structure
     rho = kwargs.get('rho', 1.225)
     correct_lift = kwargs.get('correct_lift', False)
+    cd_from_cl = kwargs.get('cd_from_cl', False)
     aero_dict = aerogrid.aero_dict
     if aerogrid.polars is None:
         return struct_forces
@@ -180,16 +182,23 @@ def polars(data, aero_kstep, structural_kstep, struct_forces, **kwargs):
 
             # Compute the associated lift
             cl = np.linalg.norm(lift_force)/coef
+            cd_sharpy = np.linalg.norm(drag_force)/coef
+            print(cd_sharpy)
 
-            # Compute the angle of attack assuming that UVLM giveas a 2pi polar
-            aoa_deg_2pi = polar.get_aoa_deg_from_cl_2pi(cl)
+            if cd_from_cl:
+                # Compute the drag from the lift
+                cd, cm = polar.get_cdcm_from_cl(cl)
 
-            # Compute the coefficients assocaited to that angle of attack
-            cl_new, cd, cm = polar.get_coefs(aoa_deg_2pi)
-            # print(cl, cl_new)
+            else:
+                # Compute the angle of attack assuming that UVLM gives a 2pi polar
+                aoa_deg_2pi = polar.get_aoa_deg_from_cl_2pi(cl)
+
+                # Compute the coefficients assocaited to that angle of attack
+                cl_new, cd, cm = polar.get_coefs(aoa_deg_2pi)
+                # print(cl, cl_new)
     
-            if correct_lift:
-                cl = cl_new
+                if correct_lift:
+                    cl = cl_new
 
             # Recompute the forces based on the coefficients
             lift_force = cl*algebra.unit_vector(lift_force)*coef
