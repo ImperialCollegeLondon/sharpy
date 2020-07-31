@@ -977,16 +977,22 @@ class FlexDynamic():
 
             phi = eigenvectors[:, order]
 
+            phi = modalutils.mode_sign_convention(self.structure.boundary_conditions,
+                                                  phi,
+                                                  not self.clamped,
+                                                  self.use_euler)
+
             if not self.clamped and self.use_principal_axes:
                 phi = modalutils.free_modes_principal_axes(phi, self.Mstr, use_euler=self.use_euler)
 
             # Scale modes to have an identity mass matrix
             dfact = np.diag(np.dot(phi.T, np.dot(self.Mstr, phi)))
-            self.U = (1./np.sqrt(dfact))*phi
+            phi = (1./np.sqrt(dfact))*phi
 
-            np.testing.assert_array_almost_equal(self.U.T.dot(self.Mstr.dot(self.U)), np.eye(self.U.shape[1]),
+            np.testing.assert_array_almost_equal(phi.T.dot(self.Mstr.dot(phi)), np.eye(phi.shape[1]),
                                                  decimal=5, err_msg='Unable to scale the modes such that they are'
                                                                     'mass normalised.')
+            self.U = phi
 
             # Update
             self.eigs = eigenvalues[order]

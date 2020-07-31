@@ -356,17 +356,26 @@ def mode_sign_convention(bocos, eigenvectors, rigid_body_motion=False, use_euler
     else:
         num_rigid_modes = 10
 
-    first_free_end_node = np.where(bocos == -1)[0][0]
-
-    z_coord = 6 * (first_free_end_node - 1) + 2
-    y_coord = 6 * (first_free_end_node - 1) + 1
-    x_coord = 6 * (first_free_end_node - 1) + 1
 
     # import pdb; pdb.set_trace()
     if rigid_body_motion:
         eigenvectors = order_rigid_body_modes(eigenvectors, use_euler)
 
-    for i in range(num_rigid_modes, eigenvectors.shape[1]):
+        # A frame reference
+        z_coord = -num_rigid_modes + 2
+        y_coord = -num_rigid_modes + 1
+        x_coord = -num_rigid_modes + 0
+        mz_coord = -num_rigid_modes + 5
+        my_coord = -num_rigid_modes + 4
+        mx_coord = -num_rigid_modes + 3
+    else:
+        first_free_end_node = np.where(bocos == -1)[0][0]
+
+        z_coord = 6 * (first_free_end_node - 1) + 2
+        y_coord = 6 * (first_free_end_node - 1) + 1
+        x_coord = 6 * (first_free_end_node - 1) + 1
+
+    for i in range(num_rigid_modes * 0, eigenvectors.shape[1]):
         if np.abs(eigenvectors[z_coord, i]) > 1e-8:
             print('Mode {}\tz={:04f}'.format(i, eigenvectors[z_coord, i]))
             eigenvectors[:, i] = np.sign(eigenvectors[z_coord, i]) * eigenvectors[:, i]
@@ -380,9 +389,20 @@ def mode_sign_convention(bocos, eigenvectors, rigid_body_motion=False, use_euler
             print('Mode {}\tx={:04f}'.format(i, eigenvectors[x_coord, i]))
             eigenvectors[:, i] = np.sign(eigenvectors[x_coord, i]) * eigenvectors[:, i]
 
+        elif np.abs(eigenvectors[my_coord, i]) > 1e-8 and rigid_body_motion:
+            print('Mode {}\tx={:04f}'.format(i, eigenvectors[my_coord, i]))
+            eigenvectors[:, i] = np.sign(eigenvectors[my_coord, i]) * eigenvectors[:, i]
+
+        elif np.abs(eigenvectors[mx_coord, i]) > 1e-8 and rigid_body_motion:
+            print('Mode {}\tx={:04f}'.format(i, eigenvectors[mx_coord, i]))
+            eigenvectors[:, i] = np.sign(eigenvectors[mx_coord, i]) * eigenvectors[:, i]
+
+        elif np.abs(eigenvectors[mz_coord, i]) > 1e-8 and rigid_body_motion:
+            print('Mode {}\tx={:04f}'.format(i, eigenvectors[mz_coord, i]))
+            eigenvectors[:, i] = np.sign(eigenvectors[mz_coord, i]) * eigenvectors[:, i]
         else:
-            print(i)
-            import pdb; pdb.set_trace()
+            print('Mode {} no rigid body component or z tip component'.format(i))
+            # import pdb; pdb.set_trace()
             # pass
 
     return eigenvectors
@@ -405,8 +425,8 @@ def order_rigid_body_modes(eigenvectors, use_euler):
         print(index_mode)
         phi_rr[:, index_mode] = eigenvectors[-num_rigid_modes:, i]
 
-    eigenvectors[-num_rigid_modes:, -num_rigid_modes:] = phi_rr
+    eigenvectors[-num_rigid_modes:, :num_rigid_modes] = phi_rr
 
-    print(eigenvectors[-num_rigid_modes:, -num_rigid_modes:])
+    print(eigenvectors[-num_rigid_modes:, :num_rigid_modes])
 
     return eigenvectors
