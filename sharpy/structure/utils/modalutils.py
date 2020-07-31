@@ -336,3 +336,128 @@ def free_modes_principal_axes(phi, mass_matrix, use_euler=False):
     phit[-num_rigid_modes + 6:, 6:num_rigid_modes] = np.eye(num_rigid_modes - 6)  # euler or quaternion modes
 
     return phit
+
+
+def mode_sign_convention(bocos, eigenvectors, rigid_body_motion=False, use_euler=False):
+    """
+    When comparing against different cases, it is important that the modes share a common sign convention.
+
+    In the case of clamped structures, modes will be arranged such that the z-coordinate of the first free end is
+    positive.
+
+    If the z-coordinate is 0, then the y-coordinate is forced to be positive, then x and so on.
+
+    In the case of free-flying structures, the convention is such that the A-frame contribution (i.e. the rigid-body
+    part of the mode) is positive in z or, in the case it is zero, y and followed by x, wx, wy, wz.
+
+    Args:
+        bocos (np.array): Boundary conditions array, ``1`` for clamped, ``-1`` for free, ``0`` elsewhere.
+        eigenvectors (np.array): Matrix of eigenvectors.
+        rigid_body_motion (bool): Free-flying or clamped structures
+        use_euler (bool): If ``True`` use Euler angle parametrisation (9 rigid-body modes) else quaternions
+          (10 rigid-body modes).
+
+    Returns:
+        np.ndarray: Eigenvectors following the aforementioned sign convention.
+    """
+    cout.cout_wrap('\tImplementing sign convention on the structural modes', 2)
+
+    if use_euler:
+        num_rigid_modes = 9
+    else:
+        num_rigid_modes = 10
+
+    if rigid_body_motion:
+        eigenvectors = order_rigid_body_modes(eigenvectors, use_euler)
+
+        # A frame reference
+        z_coord = -num_rigid_modes + 2
+        y_coord = -num_rigid_modes + 1
+        x_coord = -num_rigid_modes + 0
+        mz_coord = -num_rigid_modes + 5
+        my_coord = -num_rigid_modes + 4
+        mx_coord = -num_rigid_modes + 3
+    else:
+        first_free_end_node = np.where(bocos == -1)[0][0]
+
+        z_coord = 6 * (first_free_end_node - 1) + 2
+        y_coord = 6 * (first_free_end_node - 1) + 1
+        x_coord = 6 * (first_free_end_node - 1) + 1
+
+    for i in range(num_rigid_modes * 0, eigenvectors.shape[1]):
+        if np.abs(eigenvectors[z_coord, i]) > 1e-8:
+            eigenvectors[:, i] = np.sign(eigenvectors[z_coord, i]) * eigenvectors[:, i]
+
+        elif np.abs(eigenvectors[y_coord, i]) > 1e-8:
+            eigenvectors[:, i] = np.sign(eigenvectors[y_coord, i]) * eigenvectors[:, i]
+
+        elif np.abs(eigenvectors[x_coord, i]) > 1e-8:
+            eigenvectors[:, i] = np.sign(eigenvectors[x_coord, i]) * eigenvectors[:, i]
+
+        elif np.abs(eigenvectors[my_coord, i]) > 1e-8 and rigid_body_motion:
+            eigenvectors[:, i] = np.sign(eigenvectors[my_coord, i]) * eigenvectors[:, i]
+
+        elif np.abs(eigenvectors[mx_coord, i]) > 1e-8 and rigid_body_motion:
+            eigenvectors[:, i] = np.sign(eigenvectors[mx_coord, i]) * eigenvectors[:, i]
+
+        elif np.abs(eigenvectors[mz_coord, i]) > 1e-8 and rigid_body_motion:
+            eigenvectors[:, i] = np.sign(eigenvectors[mz_coord, i]) * eigenvectors[:, i]
+        else:
+            pass
+
+    return eigenvectors
+
+
+def order_rigid_body_modes(eigenvectors, use_euler):
+    """
+    Orders the rigid-body part of the eigenvector matrix such that it is diagonal.
+
+    Args:
+        eigenvectors (np.array): Eigenvector matrix.
+        use_euler (bool): If ``True`` use Euler angle parametrisation (9 rigid-body modes) else quaternions
+          (10 rigid-body modes).
+
+    Returns:
+        np.array: Eigenvector matrix with sorted rigid-body modes.
+    """
+
+    if use_euler:
+        num_rigid_modes = 9
+    else:
+        num_rigid_modes = 10
+
+    phi_rr = np.zeros((num_rigid_modes, num_rigid_modes))
+    num_node = eigenvectors.shape[0]
+
+    for i in range(num_rigid_modes):
+        index_max_node = np.where(eigenvectors[:, i] == np.max(eigenvectors[:, i]))[0][0]
+        index_mode = num_rigid_modes - (num_node - index_max_node)
+        phi_rr[:, index_mode] = eigenvectors[-num_rigid_modes:, i]
+
+    eigenvectors[-num_rigid_modes:, :num_rigid_modes] = phi_rr
+
+    return eigenvectors
+
+
+def scale_mass_normalised_modes(self, eigenvectors, mass_matrix):
+    r"""
+    Scales eigenvector matrix such that the modes are mass normalised:
+
+    .. math:: \phi^\top\boldsymbol{M}\phi = \boldsymbol{I}
+
+    and
+
+    .. math:: \phi^\top\boldsymbol{K}\phi = \mathrm{diag}(\omega^2)
+
+    Args:
+        eigenvectors (np.array): Eigenvector matrix.
+        mass_matrix (np.array): Mass matrix.
+
+    Returns:
+        np.array: Mass-normalised eigenvectors.
+    """
+    # mass normalise (diagonalises M and K)
+    dfact = np.diag(np.dot(eigenvectors.T, np.dot(mass_matrix, eigenvectors)))
+    eigenvectors = (1./np.sqrt(dfact))*eigenvectors
+
+    return eigenvectors

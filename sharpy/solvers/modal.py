@@ -354,6 +354,7 @@ class Modal(BaseSolver):
             eigenvectors_left = eigenvectors_left[:, order].conj()
 
         # Modify rigid body modes for them to be defined wrt the CG
+        eigenvectors = modalutils.mode_sign_convention(self.data.structure.boundary_conditions, eigenvectors, self.rigid_body_motion)
         if self.settings['rigid_modes_cg']:
             if not eigenvectors_left:
                 eigenvectors = modalutils.free_modes_principal_axes(eigenvectors, FullMglobal)
@@ -361,6 +362,12 @@ class Modal(BaseSolver):
         # Scaling
         eigenvectors, eigenvectors_left = self.scale_modes_unit_mass_matrix(eigenvectors, FullMglobal, eigenvectors_left)
 
+        np.testing.assert_almost_equal(eigenvectors[:, 10].dot(eigenvectors[:, 11]), 0, decimal=5,
+                                       err_msg='Eigenvectors not orthogonal')  # random eigenvector to test orthonality
+
+        np.testing.assert_array_almost_equal(eigenvectors.T.dot(FullMglobal.dot(eigenvectors)), np.eye(eigenvectors.shape[1]),
+                                             decimal=5, err_msg='Unable to scale the modes such that they are'
+                                                                'mass normalised.')
         # Other terms required for state-space realisation
         # non-zero damping matrix
         # Modal damping matrix
@@ -468,8 +475,7 @@ class Modal(BaseSolver):
     def scale_modes_unit_mass_matrix(self, eigenvectors, FullMglobal, eigenvectors_left=None):
         if self.settings['use_undamped_modes']:
             # mass normalise (diagonalises M and K)
-            dfact = np.diag(np.dot(eigenvectors.T, np.dot(FullMglobal, eigenvectors)))
-            eigenvectors = (1./np.sqrt(dfact))*eigenvectors
+            eigenvectors = modalutils.scale_mass_normalised_modes(eigenvectors, FullMglobal)
         else:
             # unit normalise (diagonalises A)
             if not self.rigid_body_motion:
