@@ -1,6 +1,7 @@
 from sharpy.utils.solver_interface import solver, BaseSolver
 import sharpy.utils.settings as settings
 import sharpy.io.network_interface as network_interface
+import sharpy.utils.cout_utils as cout
 
 
 @solver
@@ -46,6 +47,8 @@ class UDPout(BaseSolver):
         self.out_network = None
         self.set_of_variables = None
 
+        self.ts_max = 0
+
     def initialise(self, data, custom_settings=None):
         self.data = data
         if custom_settings is None:
@@ -60,11 +63,22 @@ class UDPout(BaseSolver):
 
         self.out_network = self.network_loader.get_networks(networks='out')
 
-    def run(self, online=True):
+        self.ts_max = self.data.ts + 1
 
-        self.set_of_variables.get_value(self.data)
-        msg = self.set_of_variables.encode()
-        self.out_network.send(msg, self.out_network.clients)
+    def run(self, online=False):
+
+        if online:
+            self.set_of_variables.get_value(self.data)
+            msg = self.set_of_variables.encode()
+            self.out_network.send(msg, self.out_network.clients)
+        else:
+            for ts_index in range(self.ts_max):
+                self.set_of_variables.get_value(self.data, timestep_index=ts_index)
+                msg = self.set_of_variables.encode()
+                self.out_network.send(msg, self.out_network.clients)
+
+            cout.cout_wrap('...Finished', 1)
+            self.shutdown()
 
         return self.data
 
