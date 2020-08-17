@@ -494,9 +494,9 @@ class ss_block():
 
         # TODO: add options about predictor ...
         xn1 = libsp.block_sum(libsp.block_dot(self.A, xn), libsp.block_dot(self.B, un))
-        yn = libsp.block_sum(libsp.block_dot(self.C, xn), libsp.block_dot(self.D, un))        
+        yn = libsp.block_sum(libsp.block_dot(self.C, xn), libsp.block_dot(self.D, un))
 
-        return xn1, yn    
+        return xn1, yn
 
 
 # ---------------------------------------- Methods for state-space manipulation
@@ -624,7 +624,6 @@ def disc2cont(sys):
     assert sys.dt is not None, 'System to transform is not a discrete-time system.'
 
     n = sys.A.shape[0]
-    p, m = sys.D.shape
     eye = np.eye(n)
     eye_a_inv = np.linalg.inv(sys.A + eye)
     omega_0 = 2 / sys.dt
