@@ -429,7 +429,7 @@ def order_rigid_body_modes(eigenvectors, use_euler):
     return eigenvectors
 
 
-def scale_mass_normalised_modes(self, eigenvectors, mass_matrix):
+def scale_mass_normalised_modes(eigenvectors, mass_matrix):
     r"""
     Scales eigenvector matrix such that the modes are mass normalised:
 
@@ -451,3 +451,54 @@ def scale_mass_normalised_modes(self, eigenvectors, mass_matrix):
     eigenvectors = (1./np.sqrt(dfact))*eigenvectors
 
     return eigenvectors
+
+
+def assert_orthogonal_eigenvectors(u, v, decimal, raise_error=False):
+    """
+    Checks orthogonality between eigenvectors
+
+    Args:
+        u (np.ndarray): Eigenvector 1.
+        v (np.ndarray): Eigenvector 2.
+        decimal (int): Number of decimal points to compare
+        raise_error (bool): Raise an error or print a warning
+
+    Raises:
+        AssertionError: if ``raise_error == True`` it raises an error.
+
+    """
+    try:
+        np.testing.assert_almost_equal(u.dot(v), 0, decimal=decimal,
+                                       err_msg='Eigenvectors not orthogonal')  # random eigenvector to test orthonality
+    except AssertionError as e:
+        if raise_error:
+            raise e
+        else:
+            cout.cout_wrap('Eigenvectors not orthogonal', 3)
+
+
+def assert_modes_mass_normalised(phi, m, tolerance, raise_error=False):
+    """
+    Asserts the eigenvectors result in an identity modal mass matrix.
+
+    Args:
+        phi (np.ndarray): Eigenvector matrix
+        m (np.ndarray): Mass matrix
+        tolerance (float): Absolute tolerance.
+        raise_error (bool): Raise ``AssertionError`` if modes not mass normalised.
+
+    Returns:
+        AssertionError: if ``raise_error == True`` it raises an error.
+
+    """
+    modal_mass = phi.T.dot(m.dot(phi))
+
+    try:
+        np.testing.assert_allclose(modal_mass - np.eye(modal_mass.shape[0]), np.zeros_like(modal_mass),
+                                   atol=tolerance, err_msg='Eigenvectors are not mass normalised')
+    except AssertionError as e:
+        if raise_error:
+            raise e
+        else:
+            cout.cout_wrap('Eigenvectors are not mass normalised', 3)
+

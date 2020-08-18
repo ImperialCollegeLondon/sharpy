@@ -988,9 +988,7 @@ class FlexDynamic():
             # Scale modes to have an identity mass matrix
             phi = modalutils.scale_mass_normalised_modes(phi, self.Mstr)
 
-            np.testing.assert_array_almost_equal(phi.T.dot(self.Mstr.dot(phi)), np.eye(phi.shape[1]),
-                                                 decimal=5, err_msg='Unable to scale the modes such that they are'
-                                                                    'mass normalised.')
+            modalutils.assert_modes_mass_normalised(phi, self.Mstr, tolerance=1e-5, raise_error=True)
             self.U = phi
 
             # Update
