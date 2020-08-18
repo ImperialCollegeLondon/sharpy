@@ -38,7 +38,7 @@ yourself out of them!
 
 * Are you mass matrices consistent? Check that :math:`I_{xx} = I_{yy} + I_{zz}`.
 
-* Have a look at the $\dot{\Gamma}$ filtering and numerical parameters in the settings of `StepUvlm` and
+* Have a look at the :math:`\dot{\Gamma}` filtering and numerical parameters in the settings of `StepUvlm` and
   `DynamicCoupled`.
 
 * Add more relaxation to the `StaticCoupled` or `DynamicCoupled` solvers.

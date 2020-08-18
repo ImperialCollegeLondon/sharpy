@@ -1,6 +1,7 @@
 """Data Management Structures
 
-Classes for the Aerotimestep and Structuraltimestep, amongst others
+These classes are responsible for storing the aerodynamic and structural time step information and relevant variables.
+
 """
 import copy
 import ctypes as ct
@@ -11,6 +12,11 @@ import sharpy.utils.multibody as mb
 
 
 class AeroTimeStepInfo(object):
+    """
+    Aerodynamic Time step class.
+
+    Contains the relevant aerodynamic attributes for a single time step.
+    """
     def __init__(self, dimensions, dimensions_star):
         self.ct_dimensions = None
         self.ct_dimensions_star = None
@@ -383,6 +389,27 @@ def standalone_ctypes_pointer(matrix):
 
 
 class StructTimeStepInfo(object):
+    """
+    Structural Time Step Class.
+
+    Contains the relevant attributes for the structural description of a single time step.
+
+    Attributes:
+        num_node (int): Number of nodes.
+        num_elem (int): Number of elements.
+        num_node_elem (int): Number of nodes per element
+        pos (np.ndarray): Displacements. ``[num_node x 3]`` containing the vector of ``x``, ``y`` and ``z``
+          coordinates (in ``A`` frame) of the beam nodes.
+        pos_dot (np.ndarray): Velocities. Time derivative of ``pos``.
+        pos_ddot (np.ndarray): Accelerations. Time derivative of ``pos_dot``
+        psi (np.ndarray): Cartesian Rotation Vector. ``[num_elem x num_node_elem x 3]`` CRV for each node in each element.
+        psi_dot (np.ndarray): Time derivative of ``psi``.
+        quat (np.ndarray): Quaternion expressing the transformation between the ``A`` and ``G`` frame.
+        for_pos (np.ndarray): Frame of reference displacement (with respect to inertial frame).
+        for_vel (np.ndarray): Frame of reference velocity.
+        for_acc (np.ndarray): Frame of reference acceleration.
+
+    """
     def __init__(self, num_node, num_elem, num_node_elem=3, num_dof=None, num_bodies=1):
         self.num_node = num_node
         self.num_elem = num_elem

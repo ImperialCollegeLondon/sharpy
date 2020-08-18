@@ -5,6 +5,10 @@ Here we present a list of past papers which have used SHARPy for research purpos
 
 ## 2020
 
+* Deskos, G., del Carre, A., & Palacios, R. (2020). Assessment of low-altitude atmospheric 
+turbulence models for aircraft aeroelasticity. Journal of Fluids and Structures, 95, 102981.
+[https://doi.org/10.1016/j.jfluidstructs.2020.102981](https://doi.org/10.1016/j.jfluidstructs.2020.102981)
+
 * Goizueta, Norberto, del Carre, Alfonso, Muñoz-Simón, Arturo, & Palacios, Rafael. (2020, February). 
 SHARPy: from a research code to an open-source software tool for the simulation of very flexible aircraft. 
 RSLondonSouthEast 2020 Conference.
