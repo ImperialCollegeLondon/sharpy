@@ -108,8 +108,9 @@ That said, the recipe for a successfully documented class, function, module is t
     - For modules with several functions, the module docstring has to be at the very top of the file, prior to the 
     `import` statements.
     
-2. We use the Google documentation style. See [description](https://google.github.io/styleguide/pyguide.html#38-comments-and-docstrings).
-        
+2. We use the [Google documentation](https://google.github.io/styleguide/pyguide.html#38-comments-and-docstrings)
+  style. A very good set of examples of Google style documentation for functions, modules, classes etc. can be found 
+  [here](https://sphinxcontrib-napoleon.readthedocs.io/en/latest/example_google.html).         
 3. Function arguments and returns:
     
     - Function arguments are simple to describe:
@@ -127,7 +128,7 @@ That said, the recipe for a successfully documented class, function, module is t
           bool: Description of return value
 
         """
-        return True
+            return True
        ```
 
 4. Solver settings:
@@ -196,3 +197,7 @@ Therefore, attending to this model our branches have the following versions of t
 * `dev_**`: feature development branch.
 
 If you contribute, please make sure you know what branch to work from. If in doubt please ask!
+
+Commit names are also important since they are the backbone of the code's change log. Please write concise commit titles
+and explain the main changes in the body of the commit message. An excellent guide on writing good commit messages can
+be found [here](https://chris.beams.io/posts/git-commit/).

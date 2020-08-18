@@ -44,10 +44,21 @@ class Variable:
         self.value = None
         logger.info('Loaded variable {}'.format(self.dref_name))
 
-    def get_variable_value(self, data):
+    def get_variable_value(self, data, timestep_index=-1):
+        """
+        Get the variables value at the selected timestep (last one by default)
+
+        Args:
+            data (sharpy.presharpy.PreSharpy): the standard SHARPy class
+            timestep_index (int (optional)): Integer representing the time step value. Defaults to ``-1`` i.e. the
+              last one available.
+
+        Returns:
+            float: value of the variable
+        """
         if self.node is not None:
             # structural variables for now
-            variable = getattr(data.structure.timestep_info[-1], self.name)
+            variable = getattr(data.structure.timestep_info[timestep_index], self.name)
             try:
                 value = variable[self.node, self.index]
             except IndexError:
@@ -58,9 +69,9 @@ class Variable:
         elif self.name == 'dt':
             value = data.settings['DynamicCoupled']['dt'].value
         elif self.name == 'nt':
-            value = len(data.structure.timestep_info) - 1  # (-1) needed since first time step is idx 0
+            value = len(data.structure.timestep_info[:timestep_index]) - 1  # (-1) needed since first time step is idx 0
         elif self.panel is not None:
-            variable = getattr(data.aero.timestep_info[-1], self.name)[self.panel[0]]  # surface index
+            variable = getattr(data.aero.timestep_info[timestep_index], self.name)[self.panel[0]]  # surface index
             i_m = self.panel[1]
             i_n = self.panel[2]
 
@@ -72,13 +83,13 @@ class Variable:
                 value = variable[i_m, i_n, i_idx]
         elif self.cs_index is not None:
             try:
-                value = data.aero.timestep_info[-1].control_surface_deflection[self.cs_index]
+                value = data.aero.timestep_info[timestep_index].control_surface_deflection[self.cs_index]
             except AttributeError:
                 logger.error('Model not equipped with dynamic control surfaces')
                 raise AttributeError
             except IndexError:
                 logger.error('Requested index {} for control surface is out of range (size {})'.format(
-                    self.cs_index, len(data.aero.timestep_info[-1].control_surface_deflection)))
+                    self.cs_index, len(data.aero.timestep_info[timestep_index].control_surface_deflection)))
         else:
             raise NotImplementedError('Unable to get value for {} variable'.format(self.name))
 
@@ -224,13 +235,18 @@ class SetOfVariables:
 
         return msg
 
-    def get_value(self, data):
+    def get_value(self, data, timestep_index=-1):
         """
-        Sets the value from the data structure for output variables
+        Gets the value from the data structure for output variables
+
+        Args:
+            data (sharpy.presharpy.PreSharpy): the standard SHARPy class
+            timestep_index (int (optional)): Integer representing the time step value. Defaults to ``-1`` i.e. the
+              last one available.
         """
 
         for out_idx in self.out_variables:
-            self.variables[out_idx].get_variable_value(data)
+            self.variables[out_idx].get_variable_value(data, timestep_index=timestep_index)
 
     def set_value(self, values):
         """

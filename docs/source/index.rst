@@ -79,6 +79,7 @@ Contents
    includes/index
    content/test_cases
    content/debug
+   content/faqs
 
 Citing SHARPy
 -------------
