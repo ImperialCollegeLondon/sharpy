@@ -137,9 +137,4 @@ class BeamLoader(BaseSolver):
             self.data.structure.ini_info.whole_structure_to_local_AFoR(self.data.structure)
             self.data.structure.timestep_info[0].whole_structure_to_local_AFoR(self.data.structure)
 
-        # print("pos:", self.data.structure.ini_info.pos)
-        # print("psi[:,0,:]:", self.data.structure.ini_info.psi[:,0,:])
-        # print("psi[:,1,:]:", self.data.structure.ini_info.psi[:,1,:])
-        # print("psi[:,2,:]:", self.data.structure.ini_info.psi[:,2,:])
-
         return self.data
