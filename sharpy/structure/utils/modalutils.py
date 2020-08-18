@@ -342,25 +342,13 @@ def mode_sign_convention(bocos, eigenvectors, rigid_body_motion=False, use_euler
     """
     When comparing against different cases, it is important that the modes share a common sign convention.
 
-    In the case of clamped structures, modes will be arranged such that the z-coordinate of the first free end is
-    positive.
+    In this case, modes will be arranged such that the z-coordinate of the first free end is positive.
 
-    If the z-coordinate is 0, then the y-coordinate is forced to be positive, then x and so on.
-
-    In the case of free-flying structures, the convention is such that the A-frame contribution (i.e. the rigid-body
-    part of the mode) is positive in z or, in the case it is zero, y and followed by x, wx, wy, wz.
-
-    Args:
-        bocos (np.array): Boundary conditions array, ``1`` for clamped, ``-1`` for free, ``0`` elsewhere.
-        eigenvectors (np.array): Matrix of eigenvectors.
-        rigid_body_motion (bool): Free-flying or clamped structures
-        use_euler (bool): If ``True`` use Euler angle parametrisation (9 rigid-body modes) else quaternions
-          (10 rigid-body modes).
+    If the z-coordinate is 0, then the y-coordinate is forced to be positive, then x, followed by the CRV in y, x and z.
 
     Returns:
         np.ndarray: Eigenvectors following the aforementioned sign convention.
     """
-    cout.cout_wrap('\tImplementing sign convention on the structural modes', 2)
 
     if use_euler:
         num_rigid_modes = 9
@@ -382,9 +370,12 @@ def mode_sign_convention(bocos, eigenvectors, rigid_body_motion=False, use_euler
 
         z_coord = 6 * (first_free_end_node - 1) + 2
         y_coord = 6 * (first_free_end_node - 1) + 1
-        x_coord = 6 * (first_free_end_node - 1) + 1
+        x_coord = 6 * (first_free_end_node - 1) + 0
+        my_coord = 6 * (first_free_end_node - 1) + 4
+        mz_coord = 6 * (first_free_end_node - 1) + 5
+        mx_coord = 6 * (first_free_end_node - 1) + 3
 
-    for i in range(num_rigid_modes * 0, eigenvectors.shape[1]):
+    for i in range(0, eigenvectors.shape[1]):
         if np.abs(eigenvectors[z_coord, i]) > 1e-8:
             eigenvectors[:, i] = np.sign(eigenvectors[z_coord, i]) * eigenvectors[:, i]
 
@@ -394,32 +385,29 @@ def mode_sign_convention(bocos, eigenvectors, rigid_body_motion=False, use_euler
         elif np.abs(eigenvectors[x_coord, i]) > 1e-8:
             eigenvectors[:, i] = np.sign(eigenvectors[x_coord, i]) * eigenvectors[:, i]
 
-        elif np.abs(eigenvectors[my_coord, i]) > 1e-8 and rigid_body_motion:
+        elif np.abs(eigenvectors[my_coord, i]) > 1e-8:
             eigenvectors[:, i] = np.sign(eigenvectors[my_coord, i]) * eigenvectors[:, i]
 
-        elif np.abs(eigenvectors[mx_coord, i]) > 1e-8 and rigid_body_motion:
+        elif np.abs(eigenvectors[mx_coord, i]) > 1e-8:
             eigenvectors[:, i] = np.sign(eigenvectors[mx_coord, i]) * eigenvectors[:, i]
 
-        elif np.abs(eigenvectors[mz_coord, i]) > 1e-8 and rigid_body_motion:
+        elif np.abs(eigenvectors[mz_coord, i]) > 1e-8:
             eigenvectors[:, i] = np.sign(eigenvectors[mz_coord, i]) * eigenvectors[:, i]
+
         else:
-            pass
+            if rigid_body_motion:
+                cout.cout_wrap('Mode component at the A frame is 0.', 3)
+            else:
+                # cout.cout_wrap('Mode component at the first free end (node {:g}) is 0.'.format(first_free_end_node), 3)
+
+                # this will be the case for symmetric clamped structures, where modes will be present for the left and
+                # right wings. Method should be called again when symmetric modes are removed.
+                pass
 
     return eigenvectors
 
 
 def order_rigid_body_modes(eigenvectors, use_euler):
-    """
-    Orders the rigid-body part of the eigenvector matrix such that it is diagonal.
-
-    Args:
-        eigenvectors (np.array): Eigenvector matrix.
-        use_euler (bool): If ``True`` use Euler angle parametrisation (9 rigid-body modes) else quaternions
-          (10 rigid-body modes).
-
-    Returns:
-        np.array: Eigenvector matrix with sorted rigid-body modes.
-    """
 
     if use_euler:
         num_rigid_modes = 9
@@ -431,7 +419,9 @@ def order_rigid_body_modes(eigenvectors, use_euler):
 
     for i in range(num_rigid_modes):
         index_max_node = np.where(eigenvectors[:, i] == np.max(eigenvectors[:, i]))[0][0]
+        print(index_max_node)
         index_mode = num_rigid_modes - (num_node - index_max_node)
+        print(index_mode)
         phi_rr[:, index_mode] = eigenvectors[-num_rigid_modes:, i]
 
     eigenvectors[-num_rigid_modes:, :num_rigid_modes] = phi_rr
