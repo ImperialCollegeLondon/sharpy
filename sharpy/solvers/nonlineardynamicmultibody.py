@@ -92,7 +92,6 @@ class NonLinearDynamicMultibody(_BaseStructural):
                 self.sys_size += 10
 
     def assembly_MB_eq_system(self, MB_beam, MB_tstep, ts, dt, Lambda, Lambda_dot, MBdict):
-        # self.lc_list = lagrangeconstraints.initialize_constraints(MBdict)
         self.num_LM_eq = lagrangeconstraints.define_num_LM_eq(self.lc_list)
 
         MB_M = np.zeros((self.sys_size+self.num_LM_eq, self.sys_size+self.num_LM_eq), dtype=ct.c_double, order='F')
@@ -100,9 +99,9 @@ class NonLinearDynamicMultibody(_BaseStructural):
         MB_K = np.zeros((self.sys_size+self.num_LM_eq, self.sys_size+self.num_LM_eq), dtype=ct.c_double, order='F')
         MB_Asys = np.zeros((self.sys_size+self.num_LM_eq, self.sys_size+self.num_LM_eq), dtype=ct.c_double, order='F')
         MB_Q = np.zeros((self.sys_size+self.num_LM_eq,), dtype=ct.c_double, order='F')
-        #ipdb.set_trace()
         first_dof = 0
         last_dof = 0
+        
         # Loop through the different bodies
         for ibody in range(len(MB_beam)):
 
@@ -162,7 +161,6 @@ class NonLinearDynamicMultibody(_BaseStructural):
         for ibody in range(0, len(MB_tstep)):
             # I think this is the right way to do it, but to make it match the rest I change it temporally
             if True:
-                # MB_tstep[ibody].mb_quat[ibody,:] =  algebra.quaternion_product(MB_tstep[ibody].quat, MB_tstep[ibody].mb_quat[ibody,:])
                 acc[0:3] = (0.5-self.beta)*np.dot(MB_beam[ibody].timestep_info.cga(),MB_beam[ibody].timestep_info.for_acc[0:3])+self.beta*np.dot(MB_tstep[ibody].cga(),MB_tstep[ibody].for_acc[0:3])
                 vel[0:3] = np.dot(MB_beam[ibody].timestep_info.cga(),MB_beam[ibody].timestep_info.for_vel[0:3])
                 MB_tstep[ibody].for_pos[0:3] += dt*(vel[0:3] + dt*acc[0:3])
@@ -204,7 +202,6 @@ class NonLinearDynamicMultibody(_BaseStructural):
                 last_dof += 10
 
             first_dof = last_dof
-            # print(MB_tstep[ibody].forces_constraints_nodes)
         # TODO: right now, these forces are only used as an output, they are not read when the multibody is splitted
 
     def run(self, structural_step=None, dt=None):
@@ -221,7 +218,6 @@ class NonLinearDynamicMultibody(_BaseStructural):
         else:
             self.settings['dt'] = ct.c_float(dt)
 
-        # self.lc_list = lagrangeconstraints.initialize_constraints(MBdict)
         self.num_LM_eq = lagrangeconstraints.define_num_LM_eq(self.lc_list)
 
         # TODO: only working for constant forces
@@ -233,8 +229,6 @@ class NonLinearDynamicMultibody(_BaseStructural):
 
         # Lagrange multipliers parameters
         num_LM_eq = self.num_LM_eq
-        # Lambda = np.zeros((num_LM_eq,), dtype=ct.c_double, order='F')
-        # Lambda_dot = np.zeros((num_LM_eq,), dtype=ct.c_double, order='F')
 
         # Initialize
         q = np.zeros((self.sys_size + num_LM_eq,), dtype=ct.c_double, order='F')
@@ -245,14 +239,10 @@ class NonLinearDynamicMultibody(_BaseStructural):
         mb.disp_and_accel2state(MB_beam, MB_tstep, q, dqdt, dqddt)
 
         if not num_LM_eq == 0:
-            # Lambda = q[-num_LM_eq:].astype(dtype=ct.c_double, copy=True, order='F')
-            # Lambda_dot = dqdt[-num_LM_eq:].astype(dtype=ct.c_double, copy=True, order='F')
             Lambda = self.Lambda.astype(dtype=ct.c_double, copy=True, order='F')
             Lambda_dot = self.Lambda_dot.astype(dtype=ct.c_double, copy=True, order='F')
             Lambda_ddot = self.Lambda_ddot.astype(dtype=ct.c_double, copy=True, order='F')
-            #Lambda = np.zeros((num_LM_eq))
-            #Lambda_dot = np.zeros((num_LM_eq))
-            #Lambda_ddot = np.zeros((num_LM_eq))
+
             q[-num_LM_eq:] = Lambda.astype(dtype=ct.c_double, copy=True, order='F')
             dqdt[-num_LM_eq:] = Lambda_dot.astype(dtype=ct.c_double, copy=True, order='F')
             dqddt[-num_LM_eq:] = Lambda_ddot.astype(dtype=ct.c_double, copy=True, order='F')
@@ -347,7 +337,6 @@ class NonLinearDynamicMultibody(_BaseStructural):
 
         # End of Newmark-beta iterations
         self.integrate_position(MB_beam, MB_tstep, dt)
-        # lagrangeconstraints.postprocess(self.lc_list, MB_beam, MB_tstep, MBdict, "dynamic")
         lagrangeconstraints.postprocess(self.lc_list, MB_beam, MB_tstep, "dynamic")
         self.compute_forces_constraints(MB_beam, MB_tstep, self.data.ts, dt, Lambda, Lambda_dot)
         if self.settings['gravity_on']:
@@ -355,12 +344,8 @@ class NonLinearDynamicMultibody(_BaseStructural):
                 xbeamlib.cbeam3_correct_gravity_forces(MB_beam[ibody], MB_tstep[ibody], self.settings)
         mb.merge_multibody(MB_tstep, MB_beam, self.data.structure, structural_step, MBdict, dt)
 
-        # structural_step.q[:] = q[:self.sys_size].copy()
-        # structural_step.dqdt[:] = dqdt[:self.sys_size].copy()
-        # structural_step.dqddt[:] = dqddt[:self.sys_size].copy()
         self.Lambda = Lambda.astype(dtype=ct.c_double, copy=True, order='F')
         self.Lambda_dot = Lambda_dot.astype(dtype=ct.c_double, copy=True, order='F')
         self.Lambda_ddot = Lambda_ddot.astype(dtype=ct.c_double, copy=True, order='F')
-        # print("struct solver converged in", iteration, "iterations")
 
         return self.data
