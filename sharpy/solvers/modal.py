@@ -362,9 +362,6 @@ class Modal(BaseSolver):
         # Scaling
         eigenvectors, eigenvectors_left = self.scale_modes_unit_mass_matrix(eigenvectors, FullMglobal, eigenvectors_left)
 
-        np.testing.assert_almost_equal(eigenvectors[:, 10].dot(eigenvectors[:, 11]), 0, decimal=5,
-                                       err_msg='Eigenvectors not orthogonal')  # random eigenvector to test orthonality
-
         modalutils.assert_orthogonal_eigenvectors(eigenvectors[:, 10], eigenvectors[:, 11],
                                                   decimal=5,
                                                   raise_error=False)
