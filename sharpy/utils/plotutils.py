@@ -1,8 +1,6 @@
 """Plotting utilities
 """
 import numpy as np
-from mpl_toolkits.mplot3d import axes3d
-import matplotlib.pyplot as plt
 
 
 def set_axes_equal(ax):
@@ -49,9 +47,6 @@ def plot_timestep(data, tstep=-1, minus_mstar=0, plotly=False):
         Plot object: Can be matplotlib.pyplot.plt (plotly=False) or plotly.graph_objects.Figure() (plotly=True)
     '''
 
-    # from mpl_toolkits.mplot3d import axes3d
-    # import matplotlib.pyplot as plt
-    # import ipdb
     if len(data.structure.timestep_info) == 0:
         struct_tstep = data.structure.ini_info
         aero_tstep = data.aero.ini_info
@@ -60,6 +55,13 @@ def plot_timestep(data, tstep=-1, minus_mstar=0, plotly=False):
         aero_tstep = data.aero.timestep_info[tstep]
 
     if not plotly:
+        try:
+            from mpl_toolkits.mplot3d import axes3d
+            import matplotlib.pyplot as plt
+        except ModuleNotFoundError:
+            print("Matplotlib package not found")
+            return
+
         fig = plt.figure()
         ax = fig.add_subplot(111, projection='3d')
 
@@ -86,7 +88,11 @@ def plot_timestep(data, tstep=-1, minus_mstar=0, plotly=False):
                                   aero_tstep.zeta_star[isurf][2, :(Mstar - minus_mstar), :])
 
     else:
-        import plotly.graph_objects as go
+        try: 
+            import plotly.graph_objects as go
+        except ModuleNotFoundError:
+            print("Plotly package not found")
+            return
 
         fig = go.Figure()
         # Plot aerodynamic grid
