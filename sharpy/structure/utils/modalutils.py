@@ -337,27 +337,24 @@ def free_modes_principal_axes(phi, mass_matrix, use_euler=False):
 
     return phit
 
+
 def mode_sign_convention(bocos, eigenvectors, rigid_body_motion=False, use_euler=False):
     """
     When comparing against different cases, it is important that the modes share a common sign convention.
 
     In this case, modes will be arranged such that the z-coordinate of the first free end is positive.
 
-    If the z-coordinate is 0, then the y-coordinate is forced to be positive
+    If the z-coordinate is 0, then the y-coordinate is forced to be positive, then x, followed by the CRV in y, x and z.
 
     Returns:
         np.ndarray: Eigenvectors following the aforementioned sign convention.
     """
-
-    # bocos = self.data.structure.boundary_conditions  #input
 
     if use_euler:
         num_rigid_modes = 9
     else:
         num_rigid_modes = 10
 
-
-    # import pdb; pdb.set_trace()
     if rigid_body_motion:
         eigenvectors = order_rigid_body_modes(eigenvectors, use_euler)
 
@@ -373,37 +370,39 @@ def mode_sign_convention(bocos, eigenvectors, rigid_body_motion=False, use_euler
 
         z_coord = 6 * (first_free_end_node - 1) + 2
         y_coord = 6 * (first_free_end_node - 1) + 1
-        x_coord = 6 * (first_free_end_node - 1) + 1
+        x_coord = 6 * (first_free_end_node - 1) + 0
+        my_coord = 6 * (first_free_end_node - 1) + 4
+        mz_coord = 6 * (first_free_end_node - 1) + 5
+        mx_coord = 6 * (first_free_end_node - 1) + 3
 
-    for i in range(num_rigid_modes * 0, eigenvectors.shape[1]):
+    for i in range(0, eigenvectors.shape[1]):
         if np.abs(eigenvectors[z_coord, i]) > 1e-8:
-            print('Mode {}\tz={:04f}'.format(i, eigenvectors[z_coord, i]))
             eigenvectors[:, i] = np.sign(eigenvectors[z_coord, i]) * eigenvectors[:, i]
-            print('\t\tTransformed z={:04f}'.format(eigenvectors[z_coord, i]))
 
         elif np.abs(eigenvectors[y_coord, i]) > 1e-8:
-            print('Mode {}\ty={:04f}'.format(i, eigenvectors[y_coord, i]))
             eigenvectors[:, i] = np.sign(eigenvectors[y_coord, i]) * eigenvectors[:, i]
 
         elif np.abs(eigenvectors[x_coord, i]) > 1e-8:
-            print('Mode {}\tx={:04f}'.format(i, eigenvectors[x_coord, i]))
             eigenvectors[:, i] = np.sign(eigenvectors[x_coord, i]) * eigenvectors[:, i]
 
-        elif np.abs(eigenvectors[my_coord, i]) > 1e-8 and rigid_body_motion:
-            print('Mode {}\tx={:04f}'.format(i, eigenvectors[my_coord, i]))
+        elif np.abs(eigenvectors[my_coord, i]) > 1e-8:
             eigenvectors[:, i] = np.sign(eigenvectors[my_coord, i]) * eigenvectors[:, i]
 
-        elif np.abs(eigenvectors[mx_coord, i]) > 1e-8 and rigid_body_motion:
-            print('Mode {}\tx={:04f}'.format(i, eigenvectors[mx_coord, i]))
+        elif np.abs(eigenvectors[mx_coord, i]) > 1e-8:
             eigenvectors[:, i] = np.sign(eigenvectors[mx_coord, i]) * eigenvectors[:, i]
 
-        elif np.abs(eigenvectors[mz_coord, i]) > 1e-8 and rigid_body_motion:
-            print('Mode {}\tx={:04f}'.format(i, eigenvectors[mz_coord, i]))
+        elif np.abs(eigenvectors[mz_coord, i]) > 1e-8:
             eigenvectors[:, i] = np.sign(eigenvectors[mz_coord, i]) * eigenvectors[:, i]
+
         else:
-            print('Mode {} no rigid body component or z tip component'.format(i))
-            # import pdb; pdb.set_trace()
-            # pass
+            if rigid_body_motion:
+                cout.cout_wrap('Mode component at the A frame is 0.', 3)
+            else:
+                # cout.cout_wrap('Mode component at the first free end (node {:g}) is 0.'.format(first_free_end_node), 3)
+
+                # this will be the case for symmetric clamped structures, where modes will be present for the left and
+                # right wings. Method should be called again when symmetric modes are removed.
+                pass
 
     return eigenvectors
 
@@ -426,7 +425,5 @@ def order_rigid_body_modes(eigenvectors, use_euler):
         phi_rr[:, index_mode] = eigenvectors[-num_rigid_modes:, i]
 
     eigenvectors[-num_rigid_modes:, :num_rigid_modes] = phi_rr
-
-    print(eigenvectors[-num_rigid_modes:, :num_rigid_modes])
 
     return eigenvectors
