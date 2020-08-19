@@ -105,10 +105,10 @@ class NonLinearDynamicCoupledStep(_BaseStructural):
         applied_forces_copy = applied_forces.copy()
         gravity_forces_copy = step.gravity_forces.copy()
         for i_node in range(self.data.structure.num_node):
-            applied_forces_copy[i_node, 3:6] += np.cross(step.pos[i_node, :],
-                                                         applied_forces_copy[i_node, 0:3])
-            gravity_forces_copy[i_node, 3:6] += np.cross(step.pos[i_node, :],
-                                                         gravity_forces_copy[i_node, 0:3])
+            applied_forces_copy[i_node, 3:6] += algebra.cross3(step.pos[i_node, :],
+                                                               applied_forces_copy[i_node, 0:3])
+            gravity_forces_copy[i_node, 3:6] += algebra.cross3(step.pos[i_node, :],
+                                                               gravity_forces_copy[i_node, 0:3])
 
         totals = np.sum(applied_forces_copy + gravity_forces_copy, axis=0)
         step.total_forces = np.sum(applied_forces_copy, axis=0)
