@@ -1965,3 +1965,67 @@ def normsq3d(v):
         np.ndarray: Square of the norm of the vector
     """
     return v[0]*v[0]+v[1]*v[1]+v[2]*v[2]
+
+
+def get_transformation_matrix(transformation):
+    r"""
+    Returns a projection matrix function between the desired frames of reference.
+
+    Examples:
+
+        The projection matrix :math:`C^GA(\chi)` expresses a vector in the body-attached
+        reference frame ``A`` in the inertial frame ``G``, which is a function of the quaternion.
+
+        .. code-block::
+
+            cga_function = get_transformation_matrix('ga')
+            cga = cga_function(quat)  # The actual projection matrix between A and G for a known quaternion
+
+
+        If the projection involves the ``G`` and ``B`` frames, the output function will take both the quaternion
+        and the CRV as arguments.
+
+        .. code-block::
+
+            cgb_function = get_transformation_matrix('gb')
+            cgb = cgb_function(psi, quat)  # The actual projection matrix between B and G for a known CRV and quaternion
+
+    Args:
+        transformation (str): Desired projection matrix function.
+
+    Returns:
+        function: Function to obtain the desired projection matrix. The function will either take the CRV, the
+          quaternion, or both as arguments.
+
+    Note:
+        If a rotation is desired, it can be achieved by transposing the resulting projection matrix.
+    """
+
+    if transformation == 'ab':
+        cab = crv2rotation
+        return cab
+    elif transformation == 'ba':
+        def cba(psi):
+            return crv2rotation(psi).T
+        return cba
+    elif transformation == 'ga':
+        cga = quat2rotation
+        return cga
+    elif transformation == 'ag':
+        def cag(quat):
+            return quat2rotation(quat).T
+        return cag
+    elif transformation == 'bg':
+        def cbg(psi, quat):
+            cag = get_transformation_matrix('ag')
+            cba = get_transformation_matrix('ba')
+            return cba(psi).dot(cag(quat))
+        return cbg
+    elif transformation == 'gb':
+        def cgb(psi, quat):
+            cab = get_transformation_matrix('ba')
+            cga = get_transformation_matrix('ga')
+            return cga(quat).dot(cab(psi))
+        return cgb
+    else:
+        raise NameError('Unknown transformation.')
