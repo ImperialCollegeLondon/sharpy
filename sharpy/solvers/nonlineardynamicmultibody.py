@@ -105,7 +105,7 @@ class NonLinearDynamicMultibody(_BaseStructural):
         .. math::
             MB_Asys = MB_K + MB_C \frac{\gamma}{\beta dt} + \frac{1}{\beta dt^2} MB_M
 
-        Arguments:
+        Args:
             MB_beam (list(``Beam``)): each entry represents a body
             MB_tstep (list(``StructTimeStepInfo``)): each entry represents a body
             ts (int): Time step number
@@ -188,7 +188,7 @@ class NonLinearDynamicMultibody(_BaseStructural):
 
         It uses a Newmark-beta approximation.
 
-        Arguments:
+        Args:
             MB_beam (list(``Beam``)): each entry represents a body
             MB_tstep (list(``StructTimeStepInfo``)): each entry represents a body
             dt(int): time step
@@ -218,7 +218,7 @@ class NonLinearDynamicMultibody(_BaseStructural):
         """
         This function computes the forces generated at Lagrange Constraints
 
-        Arguments:
+        Args:
             MB_beam (list(``Beam``)): each entry represents a body
             MB_tstep (list(``StructTimeStepInfo``)): each entry represents a body
             ts (int): Time step number

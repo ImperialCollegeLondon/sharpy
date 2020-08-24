@@ -19,7 +19,7 @@ def split_multibody(beam, tstep, mb_data_dict, ts):
 
     This functions splits a structure at a certain time step in its different bodies
 
-    Arguments:
+    Args:
     	beam (``Beam``): structural information of the multibody system
     	tstep (``StructTimeStepInfo``): timestep information of the multibody system
         mb_data_dict (dict): Dictionary including the multibody information
@@ -64,7 +64,7 @@ def merge_multibody(MB_tstep, MB_beam, beam, tstep, mb_data_dict, dt):
 
     Longer description
 
-    Arguments:
+    Args:
         MB_beam (list(``Beam``)): each entry represents a body
         MB_tstep (list(``StructTimeStepInfo``)): each entry represents a body
     	beam (``Beam``): structural information of the multibody system
@@ -125,7 +125,7 @@ def update_mb_db_before_split(tstep, beam, mb_data_dict, ts):
 
     Updates the FoR information database before splitting system
 
-    Arguments:
+    Args:
     	tstep (``StructTimeStepInfo``): timestep information of the multibody system
     	beam (``Beam``): structural information of the multibody system
         mb_data_dict (dict): Dictionary including the multibody information
@@ -174,7 +174,7 @@ def update_mb_dB_before_merge(tstep, MB_tstep):
 
     Updates the FoR information database before merging bodies
 
-    Arguments:
+    Args:
     	tstep (``StructTimeStepInfo``): timestep information of the multibody system
         MB_tstep (list(``StructTimeStepInfo``)): each entry represents a body
     """
@@ -197,7 +197,7 @@ def disp_and_accel2state(MB_beam, MB_tstep, q, dqdt, dqddt):
 
     Fills the vector of states according to the displacements information
 
-    Arguments:
+    Args:
         MB_beam (list(``Beam``)): each entry represents a body
         MB_tstep (list(``StructTimeStepInfo``)): each entry represents a body
         q(np.ndarray): Vector of states
@@ -237,7 +237,7 @@ def state2disp_and_accel(q, dqdt, dqddt, MB_beam, MB_tstep):
 
     Longer description
 
-    Arguments:
+    Args:
         MB_beam (list(``Beam``)): each entry represents a body
         MB_tstep (list(``StructTimeStepInfo``)): each entry represents a body
         q(np.ndarray): Vector of states
@@ -279,7 +279,7 @@ def get_elems_nodes_list(beam, ibody):
         This function returns the elements (``ibody_elements``) and the nodes
         (``ibody_nodes``) that belong to the body number ``ibody``
 
-        Arguments:
+        Args:
     	   beam (``Beam``): structural information of the multibody system
            ibody (int): Body number about which the information is required
 

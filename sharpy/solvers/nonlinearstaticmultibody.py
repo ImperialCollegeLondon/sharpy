@@ -93,7 +93,7 @@ class NonLinearStaticMultibody(_BaseStructural):
         This function generates the matrix and vector associated to the linear system to solve a structural iteration
         It usses a Newmark-beta scheme for time integration.
 
-        Arguments:
+        Args:
             MB_beam (list(``Beam``)): each entry represents a body
             MB_tstep (list(``StructTimeStepInfo``)): each entry represents a body
             Lambda (np.ndarray): Lagrange Multipliers array
@@ -204,7 +204,7 @@ class NonLinearStaticMultibody(_BaseStructural):
         """
         This function computes the forces generated at Lagrange Constraints
 
-        Arguments:
+        Args:
             MB_beam (list(``Beam``)): each entry represents a body
             MB_tstep (list(``StructTimeStepInfo``)): each entry represents a body
             ts (int): Time step number

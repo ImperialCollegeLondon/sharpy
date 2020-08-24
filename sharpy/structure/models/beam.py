@@ -496,7 +496,7 @@ class Beam(BaseStructure):
         This function returns a ``Beam`` class (``ibody_beam``)
         that only includes the body number ``ibody`` of the original system
 
-        Arguments:
+        Args:
             self(``Beam``): structural information of the multibody system
             ibody(int): body number to be extracted
 

@@ -56,7 +56,7 @@ class AeroTimeStepInfo(object):
         """
         Initialises ``AeroTimeStepInfo``
 
-        Arguments:
+        Args:
             dimensions (np.ndarray): Matrix defining the dimensions of the vortex grid on solid surfaces ``[num_surf x chordwise panels x spanwise panels]``
             dimensions_star (np.ndarray): Matrix defining the dimensions of the vortex grid on wakes ``[num_surf x streamwise panels x spanwise panels]``
         """

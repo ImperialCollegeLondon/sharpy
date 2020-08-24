@@ -1,43 +1,38 @@
 """
 LagrangeConstraints library
 
-Library used to create the matrices associate to boundary conditions through
-the method of Lagrange Multipliers. It includes four different sections.
+Library used to create the matrices associated to boundary conditions through
+the method of Lagrange Multipliers. The source code includes four different sections.
 
-The section "Basic structures" contains the basic functions and variables needed to
-organise the library with different Lagrange Constraints to enhance the interaction
-with this library.
+* Basic structures: basic functions and variables needed to organise the library with different Lagrange Constraints to enhance the interaction with this library.
 
-The section "Auxiliar functions" includes basic operations that are performed repeatedly.
+* Auxiliar functions: basic queries that are performed repeatedly.
 
-The section "Equations" includes functions that generate the equations associated to a certain
-constrain of basic degrees of freedom.
+* Equations: functions that generate the equations associated to the constraint of basic degrees of freedom.
 
-The section "Lagrange Constraints" includes the different available Lagrange Constraints. They
-use the functions in "Equations" to assembly the required set of equations.
+* Lagrange Constraints: different available Lagrange Constraints. They tipically use the basic functions in "Equations" to assembly the required set of equations.
 
 Attributes:
-    dict_of_lc (dict): Dictionary including the available Lagrange Contraint identifier (``_lc_id``) and the associated ``BaseLagrangeConstraint``
+    dict_of_lc (dict): Dictionary including the available Lagrange Contraint identifier
+    (``_lc_id``) and the associated ``BaseLagrangeConstraint`` class
 
 Notes:
     To use this library: import sharpy.structure.utils.lagrangeconstraints as lagrangeconstraints
 
-Variables:
-    lc_list(): list of all the defined contraints
-    MBdict(dict): dictionary with the MultiBody and LagrangeMultipliers information
-    MB_beam(list): list of ``Beams`` of each of the bodies that form the system
-    MB_tstep(list): list of ``StructTimeStepInfo`` of each of the bodies that form the system
-    num_LM_eq(int): number of new equations needed to define the boundary boundary conditions
-    sys_size(int): total number of degrees of freedom of the multibody system
-    dt(float): time step
-    Lambda(np.ndarray): list of Lagrange multipliers values
-    Lambda_dot(np.ndarray): list of the first derivative of the Lagrange multipliers values
+Args:
+    lc_list (list): list of all the defined contraints
+    MBdict (dict): dictionary with the MultiBody and LagrangeMultipliers information
+    MB_beam (list): list of ``Beams`` of each of the bodies that form the system
+    MB_tstep (list): list of ``StructTimeStepInfo`` of each of the bodies that form the system
+    num_LM_eq (int): number of new equations needed to define the boundary boundary conditions
+    sys_size (int): total number of degrees of freedom of the multibody system
+    dt (float): time step
+    Lambda (np.ndarray): list of Lagrange multipliers values
+    Lambda_dot (np.ndarray): list of the first derivative of the Lagrange multipliers values
     dynamic_or_static (str): string defining if the computation is dynamic or static
     LM_C (np.ndarray): Damping matrix associated to the Lagrange Multipliers equations
     LM_K (np.ndarray): Stiffness matrix associated to the Lagrange Multipliers equations
     LM_Q (np.ndarray): Vector of independent terms associated to the Lagrange Multipliers equations
-
-
 """
 from abc import ABCMeta, abstractmethod
 import sharpy.utils.cout_utils as cout
@@ -99,7 +94,7 @@ def lc_list_from_path(cwd):
 
 def initialise_lc(lc_name, print_info=True):
     """
-    Initialises the LagrangeConstraints
+    Initialises the Lagrange Constraints
     """
     if print_info:
         cout.cout_wrap('Generating an instance of %s' % lc_name, 2)
@@ -236,11 +231,12 @@ def define_FoR_dof(MB_beam, FoR_body):
 ################################################################################
 def equal_lin_vel_node_FoR(MB_tstep, MB_beam, FoR_body, node_body, node_number, node_FoR_dof, node_dof, FoR_dof, sys_size, Lambda_dot, scalingFactor, penaltyFactor, ieq, LM_K, LM_C, LM_Q):
     """
-    This function generates the stiffness and damping matrices and the independent vector associated to a joint that
+    This function generates the stiffness and damping matrices and the independent vector associated to a constraint that
     imposes equal linear velocities between a node and a frame of reference
 
     See ``LagrangeConstraints`` for the description of variables
-    Variables:
+
+    Args:
         node_number (int): number of the "node" within its own body
         node_body (int): body number of the "node"
         node_FoR_dof (int): position of the first degree of freedom of the FoR to which the "node" belongs
@@ -304,7 +300,7 @@ def def_rot_axis_FoR_wrt_node(MB_tstep, MB_beam, FoR_body, node_body, node_numbe
 
     See ``LagrangeConstraints`` for the description of variables
 
-    Variables:
+    Args:
         rot_axisB (np.ndarray): Rotation axis with respect to the node B FoR
         indep (np.ndarray): Number of the equations that are used as independent
         node_number (int): number of the "node" within its own body
@@ -408,7 +404,7 @@ def def_rot_vel_FoR_wrt_node(MB_tstep, MB_beam, FoR_body, node_body, node_number
 
     See ``LagrangeConstraints`` for the description of variables
 
-    Variables:
+    Args:
         rot_axisB (np.ndarray): Rotation axis with respect to the node B FoR
         rot_vel (float): Rotation velocity
         node_number (int): number of the "node" within its own body
@@ -1486,7 +1482,7 @@ def generate_lagrange_matrix(lc_list, MB_beam, MB_tstep, ts, num_LM_eq, sys_size
 
     Generates the matrices associated to the Lagrange multipliers boundary conditions
 
-    Arguments:
+    Args:
         lc_list(): list of all the defined contraints
         MBdict(dict): dictionary with the MultiBody and LagrangeMultipliers information
         MB_beam(list): list of 'beams' of each of the bodies that form the system
