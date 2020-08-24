@@ -109,7 +109,9 @@ def initialise_lc(lc_name, print_info=True):
 
 
 class BaseLagrangeConstraint(metaclass=ABCMeta):
-    """
+    __doc__ = """
+    BaseLagrangeConstraint
+
     Base class for LagrangeConstraints showing the methods required. They will
     be inherited by all the Lagrange Constraints
 
@@ -118,7 +120,6 @@ class BaseLagrangeConstraint(metaclass=ABCMeta):
         _ieq (int): Number of the first equation associated to the Lagrange Constraint in the whole set of Lagrange equations
     """
     _lc_id = 'BaseLagrangeConstraint'
-    __doc__ = _lc_id
 
     def __init__(self):
         """
@@ -401,7 +402,6 @@ def def_rot_axis_FoR_wrt_node(MB_tstep, MB_beam, FoR_body, node_body, node_numbe
 
 
 def def_rot_vel_FoR_wrt_node(MB_tstep, MB_beam, FoR_body, node_body, node_number, node_FoR_dof, node_dof, FoR_dof, sys_size, Lambda_dot, rot_axisB, rot_vel, scalingFactor, penaltyFactor, ieq, LM_K, LM_C, LM_Q):
-
     """
     This function generates the stiffness and damping matrices and the independent vector associated to a joint that
     forces the rotation velocity of a FoR with respect to a node
@@ -477,7 +477,9 @@ def def_rot_vel_FoR_wrt_node(MB_tstep, MB_beam, FoR_body, node_body, node_number
 ################################################################################
 @lagrangeconstraint
 class hinge_node_FoR(BaseLagrangeConstraint):
-    """
+    __doc__ = """
+    hinge_node_FoR
+
     This constraint forces a hinge behaviour between a node and a FoR
 
     See ``LagrangeConstraints`` for the description of variables
@@ -489,7 +491,6 @@ class hinge_node_FoR(BaseLagrangeConstraint):
         rot_axisB (np.ndarray): Rotation axis with respect to the node B FoR
     """
     _lc_id = 'hinge_node_FoR'
-    __doc__ = _lc_id
 
     def __init__(self):
         self.required_parameters = ['node_in_body', 'body', 'body_FoR', 'rot_axisB']
@@ -545,7 +546,9 @@ class hinge_node_FoR(BaseLagrangeConstraint):
 
 @lagrangeconstraint
 class hinge_node_FoR_constant_vel(BaseLagrangeConstraint):
-    """
+    __doc__ = """
+    hinge_node_FoR_constant_vel
+
     This constraint forces a hinge behaviour between a node and a FoR and
     a constant rotation velocity at that join
 
@@ -558,8 +561,7 @@ class hinge_node_FoR_constant_vel(BaseLagrangeConstraint):
         rot_axisB (np.ndarray): Rotation axis with respect to the node B FoR
         rot_vel (float): Rotation velocity
     """
-     _lc_id = 'hinge_node_FoR_constant_vel'
-    __doc__ = _lc_id
+    _lc_id = 'hinge_node_FoR_constant_vel'
 
     def __init__(self):
         self.required_parameters = ['node_in_body', 'body', 'body_FoR', 'rot_axisB', 'rot_vel']
@@ -616,7 +618,9 @@ class hinge_node_FoR_constant_vel(BaseLagrangeConstraint):
 
 @lagrangeconstraint
 class spherical_node_FoR(BaseLagrangeConstraint):
-    """
+    __doc__ = """
+    spherical_node_FoR
+
     This constraint forces a spherical join between a node and a FoR
 
     See ``LagrangeConstraints`` for the description of variables
@@ -627,7 +631,6 @@ class spherical_node_FoR(BaseLagrangeConstraint):
         FoR_body (int): Number of the body that the FoR involved in the join belongs to
     """
     _lc_id = 'spherical_node_FoR'
-    __doc__ = _lc_id
 
     def __init__(self):
         self.required_parameters = ['node_in_body', 'body', 'body_FoR']
@@ -719,7 +722,9 @@ class free(BaseLagrangeConstraint):
 
 @lagrangeconstraint
 class spherical_FoR(BaseLagrangeConstraint):
-    """
+    __doc__ = """
+    spherical_FoR
+
     This constraint forces a spherical join at a FoR
 
     See ``LagrangeConstraints`` for the description of variables
@@ -728,7 +733,6 @@ class spherical_FoR(BaseLagrangeConstraint):
         body_FoR (int): Number of the body that the FoR involved in the join belongs to
     """
     _lc_id = 'spherical_FoR'
-    __doc__ = _lc_id
 
     def __init__(self):
         self.required_parameters = ['body_FoR']
@@ -786,7 +790,9 @@ class spherical_FoR(BaseLagrangeConstraint):
 
 @lagrangeconstraint
 class hinge_FoR(BaseLagrangeConstraint):
-    """
+    __doc__ = """
+    hinge_FoR
+
     This constraint forces a hinge at a FoR
 
     See ``LagrangeConstraints`` for the description of variables
@@ -796,7 +802,6 @@ class hinge_FoR(BaseLagrangeConstraint):
         rot_axis_AFoR (np.ndarray): Rotation axis with respect to the node A FoR
     """
     _lc_id = 'hinge_FoR'
-    __doc__ = _lc_id
 
     def __init__(self):
         self.required_parameters = ['body_FoR', 'rot_axis_AFoR']
@@ -873,7 +878,9 @@ class hinge_FoR(BaseLagrangeConstraint):
 
 @lagrangeconstraint
 class hinge_FoR_wrtG(BaseLagrangeConstraint):
-    """
+    __doc__ = """
+    hinge_FoR_wrtG
+
     This constraint forces a hinge at a FoR
 
     See ``LagrangeConstraints`` for the description of variables
@@ -883,7 +890,6 @@ class hinge_FoR_wrtG(BaseLagrangeConstraint):
         rot_axis_AFoR (np.ndarray): Rotation axis with respect to the node G FoR
     """
     _lc_id = 'hinge_FoR_wrtG'
-    __doc__ = _lc_id
 
     def __init__(self):
         self.required_parameters = ['body_FoR', 'rot_axis_AFoR']
@@ -962,7 +968,9 @@ class hinge_FoR_wrtG(BaseLagrangeConstraint):
 
 @lagrangeconstraint
 class fully_constrained_node_FoR(BaseLagrangeConstraint):
-    """
+    __doc__ = """
+    fully_constrained_node_FoR
+
     This constraint forces linear and angular displacements between a node
     and a FoR to be the same
 
@@ -975,7 +983,6 @@ class fully_constrained_node_FoR(BaseLagrangeConstraint):
         FoR_body (int): Number of the body that the FoR involved in the join belongs to
     """
     _lc_id = 'fully_constrained_node_FoR'
-    __doc__ = _lc_id
 
     def __init__(self):
         self.required_parameters = ['node_in_body', 'body', 'body_FoR']
@@ -1087,7 +1094,9 @@ class fully_constrained_node_FoR(BaseLagrangeConstraint):
 
 @lagrangeconstraint
 class constant_rot_vel_FoR(BaseLagrangeConstraint):
-    """
+    __doc__ = """
+    constant_rot_vel_FoR
+
     This constraint forces a constant rotation velocity of a FoR
 
     See ``LagrangeConstraints`` for the description of variables
@@ -1096,7 +1105,6 @@ class constant_rot_vel_FoR(BaseLagrangeConstraint):
         FoR_body (int): Number of the body that the FoR involved in the join belongs to
     """
     _lc_id = 'constant_rot_vel_FoR'
-    __doc__ = _lc_id
 
     def __init__(self):
         self.required_parameters = ['FoR_body', 'rot_vel']
@@ -1153,7 +1161,9 @@ class constant_rot_vel_FoR(BaseLagrangeConstraint):
 
 @lagrangeconstraint
 class constant_vel_FoR(BaseLagrangeConstraint):
-    """
+    __doc__ = """
+    constant_vel_FoR
+
     This constraint forces a constant velocity of a FoR
 
     See ``LagrangeConstraints`` for the description of variables
@@ -1163,7 +1173,6 @@ class constant_vel_FoR(BaseLagrangeConstraint):
         vel (np.ndarray): 6 components of the desired velocity
     """
     _lc_id = 'constant_vel_FoR'
-    __doc__ = _lc_id
 
     def __init__(self):
         self.required_parameters = ['FoR_body', 'vel']
@@ -1220,7 +1229,9 @@ class constant_vel_FoR(BaseLagrangeConstraint):
 
 @lagrangeconstraint
 class lin_vel_node_wrtA(BaseLagrangeConstraint):
-    """
+    __doc__ = """
+    lin_vel_node_wrtA
+
     This constraint forces the linear velocity of a node to have a
     certain value with respect to the A FoR
 
@@ -1232,7 +1243,6 @@ class lin_vel_node_wrtA(BaseLagrangeConstraint):
         vel (np.ndarray): 6 components of the desired velocity with respect to the A FoR
     """
     _lc_id = 'lin_vel_node_wrtA'
-    __doc__ = _lc_id
 
     def __init__(self):
         self.required_parameters = ['velocity', 'body_number', 'node_number']
@@ -1316,7 +1326,9 @@ class lin_vel_node_wrtA(BaseLagrangeConstraint):
 
 @lagrangeconstraint
 class lin_vel_node_wrtG(BaseLagrangeConstraint):
-    """
+    __doc__ = """
+    lin_vel_node_wrtG
+
     This constraint forces the linear velocity of a node to have a
     certain value with respect to the G FoR
 
@@ -1328,7 +1340,6 @@ class lin_vel_node_wrtG(BaseLagrangeConstraint):
         vel (np.ndarray): 6 components of the desired velocity with respect to the G FoR
     """
     _lc_id = 'lin_vel_node_wrtG'
-    __doc__ = _lc_id
 
     def __init__(self):
         self.required_parameters = ['velocity', 'body_number', 'node_number']
