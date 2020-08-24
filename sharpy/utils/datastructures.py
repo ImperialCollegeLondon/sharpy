@@ -15,9 +15,51 @@ class AeroTimeStepInfo(object):
     """
     Aerodynamic Time step class.
 
-    Contains the relevant aerodynamic attributes for a single time step.
+    Contains the relevant aerodynamic attributes for a single time step. All variables should be expressed in ``G`` FoR unless otherwise stated.
+
+    Attributes:
+        ct_dimensions: Pointer to ``dimensions`` to interface the C++ library `uvlmlib``
+        ct_dimensions_star: Pointer to ``dimensions_star`` to interface the C++ library `uvlmlib``
+
+        dimensions (np.ndarray): Matrix defining the dimensions of the vortex grid on solid surfaces ``[num_surf x chordwise panels x spanwise panels]``
+        dimensions_star (np.ndarray): Matrix defining the dimensions of the vortex grid on wakes ``[num_surf x streamwise panels x spanwise panels]``
+
+        n_surf (int): Number of aerodynamic surfaces on solid bodies. Each aerodynamic surface on solid bodies will have an associted wake
+
+        zeta (list(np.ndarray): Location of solid grid vertices ``[n_surf][3 x (chordwise nodes + 1) x (spanwise nodes + 1)]``
+        zeta_dot (list(np.ndarray)): Time derivative of ``zeta``
+        normals (list(np.ndarray)): Normal direction to panels at the panel center ``[n_surf][3 x chordwise nodes x spanwise nodes]``
+        forces (list(np.ndarray)): Forces not associated to time derivatives on grid vertices ``[n_surf][3 x (chordwise nodes + 1) x (spanwise nodes + 1)]``
+        dynamic_forces (list(np.ndarray)): Forces associated to time derivatives on grid vertices ``[n_surf][3 x (chordwise nodes + 1) x (spanwise nodes + 1)]``
+        zeta_star (list(np.ndarray): Location of wake grid vertices ``[n_surf][3 x (streamwise nodes + 1) x (spanwise nodes + 1)]``
+        u_ext (list(np.ndarray)): Background flow velocity on solid grid nodes ``[n_surf][3 x (chordwise nodes + 1) x (spanwise nodes + 1)]``
+        u_ext_star (list(np.ndarray)): Background flow velocity on wake grid nodes ``[n_surf][3 x (streamwise nodes + 1) x (spanwise nodes + 1)]``
+        gamma (list(np.ndarray)): Circulation associated to solid panels ``[n_surf][3 x chordwise nodes x spanwise nodes]``
+        gamma_star (list(np.ndarray)): Circulation associated to wake panels ``[n_surf][3 x streamwise nodes x spanwise nodes]``
+        gamma_dot (list(np.ndarray)): Time derivative of ``gamma``
+
+        inertial_total_forces (list(np.ndarray)): Total forces in ``G`` FoR ``[n_surf x 6]``
+        body_total_forces (list(np.ndarray)): Total forces in ``A`` FoR ``[n_surf x 6]``
+        inertial_steady_forces (list(np.ndarray)): Total steady forces in ``G`` FoR ``[n_surf x 6]``
+        body_steady_forces (list(np.ndarray)): Total steady forces in ``A`` FoR ``[n_surf x 6]``
+        inertial_unsteady_forces (list(np.ndarray)): Total unsteady forces in ``G`` FoR ``[n_surf x 6]``
+        body_unsteady_forces (list(np.ndarray)): Total unsteady forces in ``A`` FoR ``[n_surf x 6]``
+
+        postproc_cell (dict): Variables associated to cells to be postprocessed
+        postproc_node (dict): Variables associated to nodes to be postprocessed
+
+        in_global_AFoR (bool): ``True`` if the variables are stored in the global A FoR. ``False'' if they are stored in the local A FoR of each body. Always ``True`` for single-body simulations. Currently not used.
+
+        control_surface_deflection (np.ndarray): Description of the type of control surface
     """
     def __init__(self, dimensions, dimensions_star):
+        """
+        Initialises ``AeroTimeStepInfo``
+
+        Arguments:
+            dimensions (np.ndarray): Matrix defining the dimensions of the vortex grid on solid surfaces ``[num_surf x chordwise panels x spanwise panels]``
+            dimensions_star (np.ndarray): Matrix defining the dimensions of the vortex grid on wakes ``[num_surf x streamwise panels x spanwise panels]``
+        """
         self.ct_dimensions = None
         self.ct_dimensions_star = None
 
@@ -120,6 +162,9 @@ class AeroTimeStepInfo(object):
         self.control_surface_deflection = np.array([])
 
     def copy(self):
+        """
+        Returns a copy of a deepcopy of a ``AeroTimeStepInfo``
+        """
         copied = AeroTimeStepInfo(self.dimensions, self.dimensions_star)
         # generate placeholder for aero grid zeta coordinates
         for i_surf in range(copied.n_surf):
@@ -177,6 +222,9 @@ class AeroTimeStepInfo(object):
         return copied
 
     def generate_ctypes_pointers(self):
+        """
+        Generates the pointers to aerodynamic variables used to interface the C++ library ``uvlmlib``
+        """
         self.ct_dimensions = self.dimensions.astype(dtype=ct.c_uint, copy=True)
         self.ct_dimensions_star = self.dimensions_star.astype(dtype=ct.c_uint, copy=True)
 
@@ -279,6 +327,9 @@ class AeroTimeStepInfo(object):
                             (* [np.ctypeslib.as_ctypes(array) for array in self.ct_incidence_list]))
 
     def remove_ctypes_pointers(self):
+        """
+        Removes the pointers to aerodynamic variables used to interface the C++ library ``uvlmlib``
+        """
         try:
             del self.ct_p_dimensions
         except AttributeError:
@@ -395,22 +446,57 @@ class StructTimeStepInfo(object):
     Contains the relevant attributes for the structural description of a single time step.
 
     Attributes:
-        num_node (int): Number of nodes.
-        num_elem (int): Number of elements.
+        in_global_AFoR (bool): ``True`` if the variables are stored in the global A FoR. ``False'' if they are stored in the local A FoR of each body. Always ``True`` for single-body simulations
+
+        num_node (int): Number of nodes
+        num_elem (int): Number of elements
         num_node_elem (int): Number of nodes per element
+
         pos (np.ndarray): Displacements. ``[num_node x 3]`` containing the vector of ``x``, ``y`` and ``z``
           coordinates (in ``A`` frame) of the beam nodes.
         pos_dot (np.ndarray): Velocities. Time derivative of ``pos``.
         pos_ddot (np.ndarray): Accelerations. Time derivative of ``pos_dot``
+
         psi (np.ndarray): Cartesian Rotation Vector. ``[num_elem x num_node_elem x 3]`` CRV for each node in each element.
         psi_dot (np.ndarray): Time derivative of ``psi``.
-        quat (np.ndarray): Quaternion expressing the transformation between the ``A`` and ``G`` frame.
-        for_pos (np.ndarray): Frame of reference displacement (with respect to inertial frame).
-        for_vel (np.ndarray): Frame of reference velocity.
-        for_acc (np.ndarray): Frame of reference acceleration.
+        psi_ddot (np.ndarray): Time derivative of ``psi_dot``.
 
+        quat (np.ndarray): Quaternion expressing the transformation between the ``A`` and ``G`` frames.
+        for_pos (np.ndarray): ``A`` frame of reference position (with respect to the `G`` frame of reference).
+        for_vel (np.ndarray): ``A`` frame of reference velocity. Expressed in A FoR
+        for_acc (np.ndarray): ``A`` frame of reference acceleration. Expressed in A FoR
+
+        gravity_vector_inertial (np.ndarray): Unit vector parallel to the direction of gravity expressed in the ``G`` FoR
+        gravity_vector_body (np.ndarray): Unit vector parallel to the direction of gravity expressed in the ``A`` FoR
+        steady_applied_forces (np.ndarray): Forces applied to the structure not associated to time derivatives ``[num_nodes x 6]``. Expressed in B FoR
+        unsteady_applied_forces (np.ndarray): Forces applied to the structure associated to time derivatives ``[num_node x 6]``. Expressed in B FoR
+        gravity_forces (np.ndarray): Gravity forces at nodes ``[num_node x 6]``. Expressed in A FoR
+
+        total_gravity_forces (np.ndarray): Total gravity forces on the structure ``[6]``. Expressed in A FoR
+        total_forces (np.ndarray): Total forces applied to the structure ``[6]``. Expressed in A FoR
+
+        q (np.ndarray): State vector associated to the structural system of equations ``[num_dof + 10]``
+        dqdt (np.ndarray): Time derivative of ``q``
+        dqddt (np.ndarray): Time derivative of ``dqdt``
+
+        postproc_cell (dict): Variables associated to cells to be postprocessed
+        postproc_node (dict): Variables associated to nodes to be postprocessed
+
+        mb_FoR_pos (np.ndarray): Position of the local A FoR of each body ``[num_bodies x 6]``
+        mb_FoR_vel (np.ndarray): Velocity of the local A FoR of each body ``[num_bodies x 6]``
+        mb_FoR_acc (np.ndarray): Acceleration of the local A FoR of each body ``[num_bodies x 6]``
+        mb_quat (np.ndarray): Quaternion of the local A FoR of each body ``[num_bodies x 4]``
+        mb_dquatdt (np.ndarray): Time derivative of ``mb_quat``
+
+        forces_constraints_nodes (np.ndarray): Forces associated to Lagrange Constraints on nodes ``[num_node x 6]``
+        forces_constraints_FoR (np.ndarray): Forces associated to Lagrange Contraints on frames of reference ``[num_bodies x 10]``
+
+        mb_dict (np.ndarray): Dictionary with the multibody information. It comes from the file ``case.mb.h5``
     """
     def __init__(self, num_node, num_elem, num_node_elem=3, num_dof=None, num_bodies=1):
+        """
+        Initialises ``StructTimeStepInfo``
+        """
         self.in_global_AFoR = True
         self.num_node = num_node
         self.num_elem = num_elem
@@ -461,6 +547,9 @@ class StructTimeStepInfo(object):
         self.mb_dict = None
 
     def copy(self):
+        """
+        Returns a copy of a deepcopy of a ``StructTimeStepInfo``
+        """
         copied = StructTimeStepInfo(self.num_node, self.num_elem, self.num_node_elem, ct.c_int(len(self.q)-10), self.mb_quat.shape[0])
 
         copied.in_global_AFoR = self.in_global_AFoR
@@ -514,6 +603,9 @@ class StructTimeStepInfo(object):
         return copied
 
     def glob_pos(self, include_rbm=True):
+        """
+        Returns the position of the nodes in ``G`` FoR
+        """
         coords = self.pos.copy()
         c = self.cga()
         for i_node in range(self.num_node):
@@ -542,24 +634,19 @@ class StructTimeStepInfo(object):
         """
         get_body
 
-        Extract the body number 'ibody' from a multibody system
+        Extract the body number ``ibody`` from a multibody system
 
-        Given 'self' as a StructTimeStepInfo class of a multibody system, this
-        function returns another StructTimeStepInfo class (ibody_StructTimeStepInfo)
-        that only includes the body number 'ibody' of the original system
+        This function returns a ``StructTimeStepInfo`` class (``ibody_StructTimeStepInfo``)
+        that only includes the body number ``ibody`` of the original multibody system ``self``
 
         Args:
-            self(StructTimeStepInfo): timestep information of the multibody system
-            beam(Beam): beam information of the multibody system
+            self(``StructTimeStepInfo``): timestep information of the multibody system
+            beam(``Beam``): beam information of the multibody system
+            num_dof_ibody (int): Number of degrees of freedom associated to the ``ibody``
             ibody(int): body number to be extracted
 
         Returns:
-        	ibody_StructTimeStepInfo(StructTimeStepInfo): timestep information of the isolated body
-
-        Examples:
-
-        Notes:
-
+        	ibody_StructTimeStepInfo(``StructTimeStepInfo``): timestep information of the isolated body
         """
 
         # Define the nodes and elements belonging to the body
@@ -619,21 +706,13 @@ class StructTimeStepInfo(object):
         """
         change_to_local_AFoR
 
-        Reference a StructTimeStepInfo to the local A frame of reference
-
-        Given 'self' as a StructTimeStepInfo class, this function references
-        it to the local A frame of reference
+        Reference a ``StructTimeStepInfo`` to the local A frame of reference
 
         Args:
-            self(StructTimeStepInfo): timestep information
-            global_ibody(int): body number (as defined in the mutibody system) to be modified
-
-        Returns:
-
-        Examples:
-
-        Notes:
-
+            self(``StructTimeStepInfo``): timestep information
+            for0_pos (np.ndarray): Position of the global A FoR
+            for0_vel (np.ndarray): Velocity of the global A FoR
+            quat0 (np.ndarray): Quaternion of the global A FoR
         """
 
         # Define the rotation matrices between the different FoR
@@ -672,21 +751,14 @@ class StructTimeStepInfo(object):
         """
         change_to_global_AFoR
 
-        Reference a StructTimeStepInfo to the global A frame of reference
-
-        Given 'self' as a StructTimeStepInfo class, this function references
-        it to the global A frame of reference
+        Reference a ``StructTimeStepInfo`` to the global A frame of reference
 
         Args:
             self(StructTimeStepInfo): timestep information
-            global_ibody(int): body number (as defined in the mutibody system) to be modified
-
-        Returns:
-
-        Examples:
-
-        Notes:
-
+            self(``StructTimeStepInfo``): timestep information
+            for0_pos (np.ndarray): Position of the global A FoR
+            for0_vel (np.ndarray): Velocity of the global A FoR
+            quat0 (np.ndarray): Quaternion of the global A FoR
         """
 
         # Define the rotation matrices between the different FoR
@@ -721,6 +793,13 @@ class StructTimeStepInfo(object):
 
 
     def whole_structure_to_local_AFoR(self, beam):
+        """
+        Same as change_to_local_AFoR but for a multibody structure
+
+        Args:
+            self(``StructTimeStepInfo``): timestep information
+            beam(``Beam``): Beam structure of ``PreSharpy``
+        """
         if not self.in_global_AFoR:
             raise NotImplementedError("Wrong managing of FoR")
 
@@ -752,6 +831,13 @@ class StructTimeStepInfo(object):
             # tstep.forces_constraints_FoR[ibody, :] = MB_tstep[ibody].forces_constraints_FoR[ibody, :].astype(dtype=ct.c_double, order='F', copy=True)
 
     def whole_structure_to_global_AFoR(self, beam):
+        """
+        Same as change_to_global_AFoR but for a multibody structure
+
+        Args:
+            self(``StructTimeStepInfo``): timestep information
+            beam(``Beam``): Beam structure of ``PreSharpy``
+        """
         if self.in_global_AFoR:
             raise NotImplementedError("Wrong managing of FoR")
 
