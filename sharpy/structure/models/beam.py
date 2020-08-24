@@ -491,23 +491,17 @@ class Beam(BaseStructure):
         """
         get_body
 
-        Extract the body number 'ibody' from a multibody system
+        Extract the body number ``ibody`` from a multibody system
 
-        Given 'self' as a Beam class of a multibody system, this
-        function returns another Beam class (ibody_beam)
-        that only includes the body number 'ibody' of the original system
+        This function returns a ``Beam`` class (``ibody_beam``)
+        that only includes the body number ``ibody`` of the original system
 
-        Args:
-            self(Beam): structural information of the multibody system
+        Arguments:
+            self(``Beam``): structural information of the multibody system
             ibody(int): body number to be extracted
 
         Returns:
-        	ibody_beam(Beam): structural information of the isolated body
-
-        Examples:
-
-        Notes:
-
+        	ibody_beam(``Beam``): structural information of the isolated body
         """
 
         ibody_beam = Beam()

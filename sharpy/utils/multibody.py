@@ -3,14 +3,7 @@ Multibody library
 
 Library used to manipulate multibody systems
 
-Args:
-
-Returns:
-
-Examples:
-    To use this library: import sharpy.utils.multibody as mb
-
-Notes:
+To use this library: import sharpy.utils.multibody as mb
 
 """
 import numpy as np
@@ -26,21 +19,15 @@ def split_multibody(beam, tstep, mb_data_dict, ts):
 
     This functions splits a structure at a certain time step in its different bodies
 
-    Longer description
-
-    Args:
-    	beam (beam): structural information of the multibody system
-    	tstep (StructTimeStepInfo): timestep information of the multibody system
-        mb_data_dict (): Dictionary including the multibody information
+    Arguments:
+    	beam (``Beam``): structural information of the multibody system
+    	tstep (``StructTimeStepInfo``): timestep information of the multibody system
+        mb_data_dict (dict): Dictionary including the multibody information
+        ts (int): time step number
 
     Returns:
-        MB_beam (list of beam): each entry represents a body
-        MB_tstep (list of StructTimeStepInfo): each entry represents a body
-
-    Examples:
-
-    Notes:
-
+        MB_beam (list(``Beam``)): each entry represents a body
+        MB_tstep (list(``StructTimeStepInfo``)): each entry represents a body
     """
 
     update_mb_db_before_split(tstep, beam, mb_data_dict, ts)
@@ -77,22 +64,17 @@ def merge_multibody(MB_tstep, MB_beam, beam, tstep, mb_data_dict, dt):
 
     Longer description
 
-    Args:
-        MB_beam (list of beam): each entry represents a body
-        MB_tstep (list of StructTimeStepInfo): each entry represents a body
-    	beam (beam): structural information of the multibody system
-    	tstep (StructTimeStepInfo): timestep information of the multibody system
-        mb_data_dict (): Dictionary including the multibody information
+    Arguments:
+        MB_beam (list(``Beam``)): each entry represents a body
+        MB_tstep (list(``StructTimeStepInfo``)): each entry represents a body
+    	beam (``Beam``): structural information of the multibody system
+    	tstep (``StructTimeStepInfo``): timestep information of the multibody system
+        mb_data_dict (dict): Dictionary including the multibody information
         dt(int): time step
 
     Returns:
-        beam (beam): structural information of the multibody system
-    	tstep (StructTimeStepInfo): timestep information of the multibody system
-
-    Examples:
-
-    Notes:
-
+        beam (``Beam``): structural information of the multibody system
+    	tstep (``StructTimeStepInfo``): timestep information of the multibody system
     """
 
     update_mb_dB_before_merge(tstep, MB_tstep)
@@ -141,16 +123,13 @@ def update_mb_db_before_split(tstep, beam, mb_data_dict, ts):
     """
     update_mb_db_before_split
 
-    Updates the FoR information database before split the system
+    Updates the FoR information database before splitting system
 
-    Longer description
-
-    Args:
-    	tstep (StructTimeStepInfo): timestep information of the multibody system
-
-    Returns:
-
-    Examples:
+    Arguments:
+    	tstep (``StructTimeStepInfo``): timestep information of the multibody system
+    	beam (``Beam``): structural information of the multibody system
+        mb_data_dict (dict): Dictionary including the multibody information
+        ts (int): time step number
 
     Notes:
         At this point, this function does nothing, but we might need it at some point
@@ -193,20 +172,11 @@ def update_mb_dB_before_merge(tstep, MB_tstep):
     """
     update_mb_db_before_merge
 
-    Updates the FoR information database before merge the bodies
+    Updates the FoR information database before merging bodies
 
-    Longer description
-
-    Args:
-    	tstep (StructTimeStepInfo): timestep information of the multibody system
-        MB_tstep (list of StructTimeStepInfo): each entry represents a body
-
-    Returns:
-
-    Examples:
-
-    Notes:
-
+    Arguments:
+    	tstep (``StructTimeStepInfo``): timestep information of the multibody system
+        MB_tstep (list(``StructTimeStepInfo``)): each entry represents a body
     """
 
     for ibody in range(len(MB_tstep)):
@@ -227,21 +197,12 @@ def disp_and_accel2state(MB_beam, MB_tstep, q, dqdt, dqddt):
 
     Fills the vector of states according to the displacements information
 
-    Longer description
-
-    Args:
-        MB_beam (list of beam): each entry represents a body
-        MB_tstep (list of StructTimeStepInfo): each entry represents a body
-        q(numpy array): Vector of states
-    	dqdt(numpy array): Time derivatives of states
-        dqddt(numpy array): Second time derivatives of states
-
-    Returns:
-
-    Examples:
-
-    Notes:
-
+    Arguments:
+        MB_beam (list(``Beam``)): each entry represents a body
+        MB_tstep (list(``StructTimeStepInfo``)): each entry represents a body
+        q(np.ndarray): Vector of states
+    	dqdt(np.ndarray): Time derivatives of states
+        dqddt(np.ndarray): Second time derivatives of states
     """
 
     first_dof = 0
@@ -276,18 +237,12 @@ def state2disp_and_accel(q, dqdt, dqddt, MB_beam, MB_tstep):
 
     Longer description
 
-    Args:
-        MB_beam (list of beam): each entry represents a body
-        MB_tstep (list of StructTimeStepInfo): each entry represents a body
-        q(numpy array): Vector of states
-    	dqdt(numpy array): Time derivatives of states
-        dqddt(numpy array): Second time derivatives of states
-
-    Returns:
-
-    Examples:
-
-    Notes:
+    Arguments:
+        MB_beam (list(``Beam``)): each entry represents a body
+        MB_tstep (list(``StructTimeStepInfo``)): each entry represents a body
+        q(np.ndarray): Vector of states
+    	dqdt(np.ndarray): Time derivatives of states
+        dqddt(np.ndarray): Second time derivatives of states
 
     """
 
@@ -318,7 +273,21 @@ def state2disp_and_accel(q, dqdt, dqddt, MB_beam, MB_tstep):
 
 
 def get_elems_nodes_list(beam, ibody):
+    """
+        get_elems_nodes_list
 
+        This function returns the elements (``ibody_elements``) and the nodes
+        (``ibody_nodes``) that belong to the body number ``ibody``
+
+        Arguments:
+    	   beam (``Beam``): structural information of the multibody system
+           ibody (int): Body number about which the information is required
+
+        Returns:
+            ibody_elements (list): List of elements that belong the ``ibody``
+            ibody_nodes (list): List of nodes that belong the ``ibody``
+
+    """
     int_list = np.arange(0, beam.num_elem, 1)
     ibody_elements = int_list[beam.body_number == ibody]
     ibody_nodes = list(set(beam.connectivities[ibody_elements, :].reshape(-1)))

@@ -83,7 +83,12 @@ class NonLinearDynamicMultibody(_BaseStructural):
         pass
 
     def define_sys_size(self):
+        """
+        This function defines the number of degrees of freedom in a multibody systems
 
+        Each body contributes with ``num_dof`` degrees of freedom and 10 more if the
+        associated local FoR can move or has Lagrange Constraints associated
+        """
         MBdict = self.data.structure.ini_mb_dict
         self.sys_size = self.data.structure.num_dof.value
 
@@ -92,6 +97,27 @@ class NonLinearDynamicMultibody(_BaseStructural):
                 self.sys_size += 10
 
     def assembly_MB_eq_system(self, MB_beam, MB_tstep, ts, dt, Lambda, Lambda_dot, MBdict):
+        """
+        This function generates the matrix and vector associated to the linear system to solve a structural iteration
+        It usses a Newmark-beta scheme for time integration. Being M, C and K the mass, damping
+        and stiffness matrices of the system:
+
+        .. math::
+            MB_Asys = MB_K + MB_C \frac{\gamma}{\beta dt} + \frac{1}{\beta dt^2} MB_M
+
+        Arguments:
+            MB_beam (list(``Beam``)): each entry represents a body
+            MB_tstep (list(``StructTimeStepInfo``)): each entry represents a body
+            ts (int): Time step number
+            dt(int): time step
+            Lambda (np.ndarray): Lagrange Multipliers array
+            Lambda_dot (np.ndarray): Time derivarive of ``Lambda``
+            MBdict (dict): Dictionary including the multibody information
+
+        Returns:
+            MB_Asys (np.ndarray): Matrix of the systems of equations
+            MB_Q (np.ndarray): Vector of the systems of equations
+        """
         self.num_LM_eq = lagrangeconstraints.define_num_LM_eq(self.lc_list)
 
         MB_M = np.zeros((self.sys_size+self.num_LM_eq, self.sys_size+self.num_LM_eq), dtype=ct.c_double, order='F')
@@ -101,7 +127,7 @@ class NonLinearDynamicMultibody(_BaseStructural):
         MB_Q = np.zeros((self.sys_size+self.num_LM_eq,), dtype=ct.c_double, order='F')
         first_dof = 0
         last_dof = 0
-        
+
         # Loop through the different bodies
         for ibody in range(len(MB_beam)):
 
@@ -156,6 +182,17 @@ class NonLinearDynamicMultibody(_BaseStructural):
         return MB_Asys, MB_Q
 
     def integrate_position(self, MB_beam, MB_tstep, dt):
+        """
+        This function integrates the position of each local A FoR after the
+        structural iteration has been solved.
+
+        It uses a Newmark-beta approximation.
+
+        Arguments:
+            MB_beam (list(``Beam``)): each entry represents a body
+            MB_tstep (list(``StructTimeStepInfo``)): each entry represents a body
+            dt(int): time step
+        """
         vel = np.zeros((6,),)
         acc = np.zeros((6,),)
         for ibody in range(0, len(MB_tstep)):
@@ -178,6 +215,20 @@ class NonLinearDynamicMultibody(_BaseStructural):
         pass
 
     def compute_forces_constraints(self, MB_beam, MB_tstep, ts, dt, Lambda, Lambda_dot):
+        """
+        This function computes the forces generated at Lagrange Constraints
+
+        Arguments:
+            MB_beam (list(``Beam``)): each entry represents a body
+            MB_tstep (list(``StructTimeStepInfo``)): each entry represents a body
+            ts (int): Time step number
+            dt(int): time step
+            Lambda (np.ndarray): Lagrange Multipliers array
+            Lambda_dot (np.ndarray): Time derivarive of ``Lambda``
+
+        Notes:
+            This function is underdevelopment and not fully functional
+        """
         try:
             self.lc_list[0]
         except IndexError:

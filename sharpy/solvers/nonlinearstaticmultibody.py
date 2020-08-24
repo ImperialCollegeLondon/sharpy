@@ -75,7 +75,12 @@ class NonLinearStaticMultibody(_BaseStructural):
         pass
 
     def define_sys_size(self):
+        """
+        This function defines the number of degrees of freedom in a multibody systems
 
+        Each body contributes with ``num_dof`` degrees of freedom and 10 more if the
+        associated local FoR can move or has Lagrange Constraints associated
+        """
         MBdict = self.data.structure.ini_mb_dict
         self.sys_size = self.data.structure.num_dof.value
 
@@ -84,6 +89,21 @@ class NonLinearStaticMultibody(_BaseStructural):
                 self.sys_size += 10
 
     def assembly_MB_eq_system(self, MB_beam, MB_tstep, Lambda, MBdict, iLoadStep):
+        """
+        This function generates the matrix and vector associated to the linear system to solve a structural iteration
+        It usses a Newmark-beta scheme for time integration.
+
+        Arguments:
+            MB_beam (list(``Beam``)): each entry represents a body
+            MB_tstep (list(``StructTimeStepInfo``)): each entry represents a body
+            Lambda (np.ndarray): Lagrange Multipliers array
+            MBdict (dict): Dictionary including the multibody information
+            iLoadStep (int): load step
+
+        Returns:
+            MB_K (np.ndarray): Matrix of the multibody system
+            MB_Q (np.ndarray): Vector of the systems of equations
+        """
         self.lc_list = lagrangeconstraints.initialize_constraints(MBdict)
         self.num_LM_eq = lagrangeconstraints.define_num_LM_eq(self.lc_list)
 
@@ -181,6 +201,20 @@ class NonLinearStaticMultibody(_BaseStructural):
         xb.xbeam_solv_disp2state(self.data.structure, tstep)
 
     def compute_forces_constraints(self, MB_beam, MB_tstep, Lambda):
+        """
+        This function computes the forces generated at Lagrange Constraints
+
+        Arguments:
+            MB_beam (list(``Beam``)): each entry represents a body
+            MB_tstep (list(``StructTimeStepInfo``)): each entry represents a body
+            ts (int): Time step number
+            dt(int): time step
+            Lambda (np.ndarray): Lagrange Multipliers array
+            Lambda_dot (np.ndarray): Time derivarive of ``Lambda``
+
+        Notes:
+            This function is underdevelopment and not fully functional
+        """
         try:
             self.lc_list[0]
         except IndexError:
