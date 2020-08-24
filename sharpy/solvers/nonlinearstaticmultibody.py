@@ -228,7 +228,7 @@ class NonLinearStaticMultibody(_BaseStructural):
         q = np.zeros((self.sys_size + self.num_LM_eq,), dtype=ct.c_double, order='F')
         dqdt = np.zeros((self.sys_size + self.num_LM_eq,), dtype=ct.c_double, order='F')
         dqddt = np.zeros((self.sys_size + self.num_LM_eq,), dtype=ct.c_double, order='F')
-        mb.disp2state(MB_beam, MB_tstep, q, dqdt, dqddt)
+        mb.disp_and_accel2state(MB_beam, MB_tstep, q, dqdt, dqddt)
         # Lagrange multipliers parameters
         num_LM_eq = self.num_LM_eq
         Lambda = np.zeros((num_LM_eq,), dtype=ct.c_double, order='F')
@@ -252,7 +252,7 @@ class NonLinearStaticMultibody(_BaseStructural):
 
                 # Dq *= 0.7
                 q += Dq
-                mb.state2disp(q, dqdt, dqddt, MB_beam, MB_tstep)
+                mb.state2disp_and_accel(q, dqdt, dqddt, MB_beam, MB_tstep)
 
                 if (iter > 0):
                     if (np.amax(np.abs(Dq)) < Dq_old):

@@ -555,7 +555,7 @@ class DynamicCoupled(BaseSolver):
                 # check convergence
                 if self.convergence(k,
                                     structural_kstep,
-                                    previous_kstep):
+                                    previous_kstep) or self.settings['aero_solver'].lower() == 'noaero':
                     # move the aerodynamic surface according to the structural one
                     self.aero_solver.update_custom_grid(
                         structural_kstep,

@@ -411,6 +411,7 @@ class StructTimeStepInfo(object):
 
     """
     def __init__(self, num_node, num_elem, num_node_elem=3, num_dof=None, num_bodies=1):
+        self.in_global_AFoR = True
         self.num_node = num_node
         self.num_elem = num_elem
         self.num_node_elem = num_node_elem
@@ -454,8 +455,7 @@ class StructTimeStepInfo(object):
         self.mb_FoR_vel = np.zeros((num_bodies,6), dtype=ct.c_double, order='F')
         self.mb_FoR_acc = np.zeros((num_bodies,6), dtype=ct.c_double, order='F')
         self.mb_quat = np.zeros((num_bodies,4), dtype=ct.c_double, order='F')
-        self.mb_quat[:,0] = np.ones((num_bodies), dtype=ct.c_double, order='F')
-        self.mb_dqddt_quat = np.zeros((num_bodies,4), dtype=ct.c_double, order='F')
+        self.mb_dquatdt = np.zeros((num_bodies, 4), dtype=ct.c_double, order='F')
         self.forces_constraints_nodes = np.zeros((self.num_node, 6), dtype=ct.c_double, order='F')
         self.forces_constraints_FoR = np.zeros((num_bodies, 10), dtype=ct.c_double, order='F')
         self.mb_dict = None
@@ -463,6 +463,7 @@ class StructTimeStepInfo(object):
     def copy(self):
         copied = StructTimeStepInfo(self.num_node, self.num_elem, self.num_node_elem, ct.c_int(len(self.q)-10), self.mb_quat.shape[0])
 
+        copied.in_global_AFoR = self.in_global_AFoR
         copied.num_node = self.num_node
         copied.num_elem = self.num_elem
         copied.num_node_elem = self.num_node_elem
@@ -471,7 +472,6 @@ class StructTimeStepInfo(object):
         copied.pos = self.pos.astype(dtype=ct.c_double, order='F', copy=True)
         copied.pos_dot = self.pos_dot.astype(dtype=ct.c_double, order='F', copy=True)
         copied.pos_ddot = self.pos_ddot.astype(dtype=ct.c_double, order='F', copy=True)
-        # self.pos_dot = np.zeros((self.num_node, 3), dtype=ct.c_double, order='F')
 
         # placeholder for CRV
         copied.psi = self.psi.astype(dtype=ct.c_double, order='F', copy=True)
@@ -505,7 +505,7 @@ class StructTimeStepInfo(object):
         copied.mb_FoR_vel = self.mb_FoR_vel.astype(dtype=ct.c_double, order='F', copy=True)
         copied.mb_FoR_acc = self.mb_FoR_acc.astype(dtype=ct.c_double, order='F', copy=True)
         copied.mb_quat = self.mb_quat.astype(dtype=ct.c_double, order='F', copy=True)
-        copied.mb_dqddt_quat = self.mb_dqddt_quat.astype(dtype=ct.c_double, order='F', copy=True)
+        copied.mb_dquatdt = self.mb_dquatdt.astype(dtype=ct.c_double, order='F', copy=True)
         copied.forces_constraints_nodes = self.forces_constraints_nodes.astype(dtype=ct.c_double, order='F', copy=True)
         copied.forces_constraints_FoR = self.forces_constraints_FoR.astype(dtype=ct.c_double, order='F', copy=True)
 
@@ -577,24 +577,18 @@ class StructTimeStepInfo(object):
         ibody_StructTimeStepInfo = StructTimeStepInfo(ibody_num_node, ibody_num_elem, self.num_node_elem, num_dof = num_dof_ibody, num_bodies = beam.num_bodies)
 
         # Assign all the variables
-        # ibody_StructTimeStepInfo.quat = self.quat.astype(dtype=ct.c_double, order='F', copy=True)
-        # ibody_StructTimeStepInfo.for_pos = self.for_pos.astype(dtype=ct.c_double, order='F', copy=True)
-        # ibody_StructTimeStepInfo.for_vel = self.for_vel.astype(dtype=ct.c_double, order='F', copy=True)
-        # ibody_StructTimeStepInfo.for_acc = self.for_acc.astype(dtype=ct.c_double, order='F', copy=True)
-
-        CAslaveG = algebra.quat2rotation(self.mb_quat[ibody, :]).T
         ibody_StructTimeStepInfo.quat = self.mb_quat[ibody, :].astype(dtype=ct.c_double, order='F', copy=True)
         ibody_StructTimeStepInfo.for_pos = self.mb_FoR_pos[ibody, :].astype(dtype=ct.c_double, order='F', copy=True)
-        ibody_StructTimeStepInfo.for_vel[0:3] = np.dot(CAslaveG, self.mb_FoR_vel[ibody, 0:3])
-        ibody_StructTimeStepInfo.for_vel[3:6] = np.dot(CAslaveG, self.mb_FoR_vel[ibody, 3:6])
-        ibody_StructTimeStepInfo.for_acc[0:3] = np.dot(CAslaveG, self.mb_FoR_acc[ibody, 0:3])
-        ibody_StructTimeStepInfo.for_acc[3:6] = np.dot(CAslaveG, self.mb_FoR_acc[ibody, 3:6])
+        ibody_StructTimeStepInfo.for_vel = self.mb_FoR_vel[ibody, :]
+        ibody_StructTimeStepInfo.for_acc = self.mb_FoR_acc[ibody, :]
 
         ibody_StructTimeStepInfo.pos = self.pos[ibody_nodes,:].astype(dtype=ct.c_double, order='F', copy=True)
         ibody_StructTimeStepInfo.pos_dot = self.pos_dot[ibody_nodes,:].astype(dtype=ct.c_double, order='F', copy=True)
+        ibody_StructTimeStepInfo.pos_ddot = self.pos_ddot[ibody_nodes,:].astype(dtype=ct.c_double, order='F', copy=True)
 
         ibody_StructTimeStepInfo.psi = self.psi[ibody_elems,:,:].astype(dtype=ct.c_double, order='F', copy=True)
         ibody_StructTimeStepInfo.psi_dot = self.psi_dot[ibody_elems,:,:].astype(dtype=ct.c_double, order='F', copy=True)
+        ibody_StructTimeStepInfo.psi_ddot = self.psi_ddot[ibody_elems,:,:].astype(dtype=ct.c_double, order='F', copy=True)
 
         ibody_StructTimeStepInfo.gravity_vector_inertial = self.gravity_vector_inertial.astype(dtype=ct.c_double, order='F', copy=True)
         ibody_StructTimeStepInfo.gravity_vector_body = self.gravity_vector_body.astype(dtype=ct.c_double, order='F', copy=True)
@@ -608,20 +602,20 @@ class StructTimeStepInfo(object):
         ibody_StructTimeStepInfo.dqdt[0:num_dof_ibody.value] = self.dqdt[ibody_first_dof:ibody_first_dof+num_dof_ibody.value].astype(dtype=ct.c_double, order='F', copy=True)
         ibody_StructTimeStepInfo.dqddt[0:num_dof_ibody.value] = self.dqddt[ibody_first_dof:ibody_first_dof+num_dof_ibody.value].astype(dtype=ct.c_double, order='F', copy=True)
 
-        # ibody_StructTimeStepInfo.q[-10:] = self.q[-10:].astype(dtype=ct.c_double, order='F', copy=True)
-        # ibody_StructTimeStepInfo.dqdt[-10:] = self.dqdt[-10:].astype(dtype=ct.c_double, order='F', copy=True)
-        ibody_StructTimeStepInfo.dqdt[-4:] = ibody_StructTimeStepInfo.quat.astype(dtype=ct.c_double, order='F', copy=True)
-        # ibody_StructTimeStepInfo.dqddt[-10:] = self.dqddt[-10:].astype(dtype=ct.c_double, order='F', copy=True)
+        ibody_StructTimeStepInfo.dqdt[-10:-4] = ibody_StructTimeStepInfo.for_vel.astype(dtype=ct.c_double, order='F', copy=True)
+        ibody_StructTimeStepInfo.dqddt[-10:-4] = ibody_StructTimeStepInfo.for_acc.astype(dtype=ct.c_double, order='F', copy=True)
+        ibody_StructTimeStepInfo.dqdt[-4:] = self.quat.astype(dtype=ct.c_double, order='F', copy=True)
+        ibody_StructTimeStepInfo.dqddt[-4:] = self.mb_dquatdt[ibody, :].astype(dtype=ct.c_double, order='F', copy=True)
+        ibody_StructTimeStepInfo.mb_dquatdt[ibody, :] = self.mb_dquatdt[ibody, :].astype(dtype=ct.c_double, order='F', copy=True)
 
-        ibody_StructTimeStepInfo.mb_quat = self.mb_quat.astype(dtype=ct.c_double, order='F', copy=True)
-        ibody_StructTimeStepInfo.mb_FoR_pos = self.mb_FoR_pos.astype(dtype=ct.c_double, order='F', copy=True)
-        ibody_StructTimeStepInfo.mb_FoR_vel = self.mb_FoR_vel.astype(dtype=ct.c_double, order='F', copy=True)
-        ibody_StructTimeStepInfo.mb_FoR_acc = self.mb_FoR_acc.astype(dtype=ct.c_double, order='F', copy=True)
-        ibody_StructTimeStepInfo.mb_dqddt_quat = self.mb_dqddt_quat.astype(dtype=ct.c_double, order='F', copy=True)
+        ibody_StructTimeStepInfo.mb_quat = None
+        ibody_StructTimeStepInfo.mb_FoR_pos = None
+        ibody_StructTimeStepInfo.mb_FoR_vel = None
+        ibody_StructTimeStepInfo.mb_FoR_acc = None
 
         return ibody_StructTimeStepInfo
 
-    def change_to_local_AFoR(self, global_ibody):
+    def change_to_local_AFoR(self, for0_pos, for0_vel, quat0):
         """
         change_to_local_AFoR
 
@@ -643,12 +637,14 @@ class StructTimeStepInfo(object):
         """
 
         # Define the rotation matrices between the different FoR
-        CAslaveG = algebra.quat2rotation(self.mb_quat[global_ibody,:]).T
-        CGAmaster = algebra.quat2rotation(self.mb_quat[0,:])
+        CAslaveG = algebra.quat2rotation(self.quat).T
+        CGAmaster = algebra.quat2rotation(quat0)
         Csm = np.dot(CAslaveG, CGAmaster)
 
-        delta_pos_ms = self.mb_FoR_pos[global_ibody,:] - self.mb_FoR_pos[0,:]
-        delta_vel_ms = self.mb_FoR_vel[global_ibody,:] - self.mb_FoR_vel[0,:]
+        delta_vel_ms = np.zeros((6,))
+        delta_pos_ms = self.for_pos[0:3] - for0_pos[0:3]
+        delta_vel_ms[0:3] = np.dot(CAslaveG.T, self.for_vel[0:3]) - np.dot(CGAmaster, for0_vel[0:3])
+        delta_vel_ms[3:6] = np.dot(CAslaveG.T, self.for_vel[3:6]) - np.dot(CGAmaster, for0_vel[3:6])
 
         # Modify position
         for inode in range(self.pos.shape[0]):
@@ -657,17 +653,11 @@ class StructTimeStepInfo(object):
             # self.pos_dot[inode,:] = np.dot(Csm,self.pos_dot[inode,:]) - np.dot(CAslaveG,delta_vel_ms[0:3])
             self.pos_dot[inode,:] = (np.dot(Csm, self.pos_dot[inode,:]) -
                                     np.dot(CAslaveG, delta_vel_ms[0:3]) -
-                                    np.dot(algebra.skew(np.dot( CAslaveG, self.mb_FoR_vel[global_ibody,3:6])), self.pos[inode,:]) +
-                                    np.dot(Csm, np.dot(algebra.skew(np.dot(CGAmaster.T, self.mb_FoR_vel[0,3:6])), pos_previous)))
+                                    np.dot(algebra.skew(np.dot( CAslaveG, self.for_vel[3:6])), self.pos[inode,:]) +
+                                    np.dot(Csm, np.dot(algebra.skew(np.dot(CGAmaster.T, for0_vel[3:6])), pos_previous)))
 
             self.gravity_forces[inode,0:3] = np.dot(Csm, self.gravity_forces[inode,0:3])
             self.gravity_forces[inode,3:6] = np.dot(Csm, self.gravity_forces[inode,3:6])
-
-            # self.pos_dot[inode,:] = (np.dot(np.transpose(Csm),self.pos_dot[inode,:]) +
-            #                         np.dot(np.transpose(CGAmaster),delta_vel_ms[0:3]) +
-            #                         np.dot(Csm.T, np.cross( np.dot(CAslaveG, self.mb_FoR_vel[global_ibody,3:6]), pos_previous)) -
-            #                         np.cross(np.dot(CGAmaster.T, self.mb_FoR_vel[0,3:6]), self.pos[inode,:]))
-
 
         # Modify local rotations
         for ielem in range(self.psi.shape[0]):
@@ -677,16 +667,8 @@ class StructTimeStepInfo(object):
                 self.psi_dot[ielem, inode, :] = np.dot(np.dot(algebra.crv2tan(self.psi[ielem,inode,:]),Csm),
                                                     (np.dot(algebra.crv2tan(psi_previous).T,self.psi_dot[ielem,inode,:]) - np.dot(CGAmaster.T,delta_vel_ms[3:6])))
 
-        # Set the output FoR variables
-        self.for_pos = self.mb_FoR_pos[global_ibody,:].astype(dtype=ct.c_double, order='F', copy=True)
-        self.for_vel[0:3] = np.dot(CAslaveG,self.mb_FoR_vel[global_ibody,0:3])
-        self.for_vel[3:6] = np.dot(CAslaveG,self.mb_FoR_vel[global_ibody,3:6])
-        self.for_acc[0:3] = np.dot(CAslaveG,self.mb_FoR_acc[global_ibody,0:3])
-        self.for_acc[3:6] = np.dot(CAslaveG,self.mb_FoR_acc[global_ibody,3:6])
-        self.quat = self.mb_quat[global_ibody,:].astype(dtype=ct.c_double, order='F', copy=True)
-        self.dqdt[-4:] = self.quat.astype(dtype=ct.c_double, order='F', copy=True)
 
-    def change_to_global_AFoR(self, global_ibody):
+    def change_to_global_AFoR(self, for0_pos, for0_vel, quat0):
         """
         change_to_global_AFoR
 
@@ -708,12 +690,14 @@ class StructTimeStepInfo(object):
         """
 
         # Define the rotation matrices between the different FoR
-        CAslaveG = algebra.quat2rotation(self.mb_quat[global_ibody,:]).T
-        CGAmaster = algebra.quat2rotation(self.mb_quat[0,:])
+        CAslaveG = algebra.quat2rotation(self.quat).T
+        CGAmaster = algebra.quat2rotation(quat0)
         Csm = np.dot(CAslaveG, CGAmaster)
 
-        delta_pos_ms = self.mb_FoR_pos[global_ibody,:] - self.mb_FoR_pos[0,:]
-        delta_vel_ms = self.mb_FoR_vel[global_ibody,:] - self.mb_FoR_vel[0,:]
+        delta_vel_ms = np.zeros((6,))
+        delta_pos_ms = self.for_pos[0:3] - for0_pos[0:3]
+        delta_vel_ms[0:3] = np.dot(CAslaveG.T, self.for_vel[0:3]) - np.dot(CGAmaster, for0_vel[0:3])
+        delta_vel_ms[3:6] = np.dot(CAslaveG.T, self.for_vel[3:6]) - np.dot(CGAmaster, for0_vel[3:6])
 
         for inode in range(self.pos.shape[0]):
             pos_previous = self.pos[inode,:] + np.zeros((3,),)
@@ -721,8 +705,8 @@ class StructTimeStepInfo(object):
                                 np.dot(np.transpose(CGAmaster),delta_pos_ms[0:3]))
             self.pos_dot[inode,:] = (np.dot(np.transpose(Csm),self.pos_dot[inode,:]) +
                                     np.dot(np.transpose(CGAmaster),delta_vel_ms[0:3]) +
-                                    np.dot(Csm.T, np.dot(algebra.skew(np.dot(CAslaveG, self.mb_FoR_vel[global_ibody,3:6])), pos_previous)) -
-                                    np.dot(algebra.skew(np.dot(CGAmaster.T, self.mb_FoR_vel[0,3:6])), self.pos[inode,:]))
+                                    np.dot(Csm.T, np.dot(algebra.skew(np.dot(CAslaveG, self.for_vel[3:6])), pos_previous)) -
+                                    np.dot(algebra.skew(np.dot(CGAmaster.T, for0_vel[3:6])), self.pos[inode,:]))
             self.gravity_forces[inode,0:3] = np.dot(Csm.T, self.gravity_forces[inode,0:3])
             self.gravity_forces[inode,3:6] = np.dot(Csm.T, self.gravity_forces[inode,3:6])
                                     # np.cross(np.dot(CGAmaster.T, delta_vel_ms[3:6]), pos_previous))
@@ -733,15 +717,70 @@ class StructTimeStepInfo(object):
                 self.psi[ielem,inode,:] = algebra.rotation2crv(np.dot(Csm.T, algebra.crv2rotation(self.psi[ielem,inode,:])))
                 self.psi_dot[ielem, inode, :] = np.dot(algebra.crv2tan(self.psi[ielem,inode,:]),
                                                 (np.dot(Csm.T, np.dot(algebra.crv2tan(psi_previous).T, self.psi_dot[ielem, inode, :])) +
-                                                np.dot(algebra.quat2rotation(self.mb_quat[0,:]).T, delta_vel_ms[3:6])))
+                                                np.dot(algebra.quat2rotation(quat0).T, delta_vel_ms[3:6])))
 
-        # Set the output FoR variables
-        self.for_pos = self.mb_FoR_pos[0,:].astype(dtype=ct.c_double, order='F', copy=True)
-        self.for_vel[0:3] = np.dot(np.transpose(CGAmaster),self.mb_FoR_vel[0,0:3])
-        self.for_vel[3:6] = np.dot(np.transpose(CGAmaster),self.mb_FoR_vel[0,3:6])
-        self.for_acc[0:3] = np.dot(np.transpose(CGAmaster),self.mb_FoR_acc[0,0:3])
-        self.for_acc[3:6] = np.dot(np.transpose(CGAmaster),self.mb_FoR_acc[0,3:6])
-        self.quat = self.mb_quat[0,:].astype(dtype=ct.c_double, order='F', copy=True)
+
+    def whole_structure_to_local_AFoR(self, beam):
+        if not self.in_global_AFoR:
+            raise NotImplementedError("Wrong managing of FoR")
+
+        self.in_global_AFoR = False
+        quat0 = self.quat.astype(dtype=ct.c_double, order='F', copy=True)
+        for0_pos = self.for_pos.astype(dtype=ct.c_double, order='F', copy=True)
+        for0_vel = self.for_vel.astype(dtype=ct.c_double, order='F', copy=True)
+
+        MB_beam = [None]*beam.num_bodies
+        MB_tstep = [None]*beam.num_bodies
+
+        for ibody in range(beam.num_bodies):
+            MB_beam[ibody] = beam.get_body(ibody = ibody)
+            MB_tstep[ibody] = self.get_body(beam, MB_beam[ibody].num_dof, ibody = ibody)
+            MB_tstep[ibody].change_to_local_AFoR(for0_pos, for0_vel, quat0)
+
+        first_dof = 0
+        for ibody in range(beam.num_bodies):
+            # Renaming for clarity
+            ibody_elems = MB_beam[ibody].global_elems_num
+            ibody_nodes = MB_beam[ibody].global_nodes_num
+
+            # Merge tstep
+            self.pos[ibody_nodes,:] = MB_tstep[ibody].pos.astype(dtype=ct.c_double, order='F', copy=True)
+            self.psi[ibody_elems,:,:] = MB_tstep[ibody].psi.astype(dtype=ct.c_double, order='F', copy=True)
+            self.gravity_forces[ibody_nodes,:] = MB_tstep[ibody].gravity_forces.astype(dtype=ct.c_double, order='F', copy=True)
+            # TODO: Do I need a change in FoR for the following variables? Maybe for the FoR ones.
+            # tstep.forces_constraints_nodes[ibody_nodes,:] = MB_tstep[ibody].forces_constraints_nodes.astype(dtype=ct.c_double, order='F', copy=True)
+            # tstep.forces_constraints_FoR[ibody, :] = MB_tstep[ibody].forces_constraints_FoR[ibody, :].astype(dtype=ct.c_double, order='F', copy=True)
+
+    def whole_structure_to_global_AFoR(self, beam):
+        if self.in_global_AFoR:
+            raise NotImplementedError("Wrong managing of FoR")
+
+        self.in_global_AFoR = True
+
+        MB_beam = [None]*beam.num_bodies
+        MB_tstep = [None]*beam.num_bodies
+        quat0 = self.quat.astype(dtype=ct.c_double, order='F', copy=True)
+        for0_pos = self.for_pos.astype(dtype=ct.c_double, order='F', copy=True)
+        for0_vel = self.for_vel.astype(dtype=ct.c_double, order='F', copy=True)
+
+        for ibody in range(beam.num_bodies):
+            MB_beam[ibody] = beam.get_body(ibody = ibody)
+            MB_tstep[ibody] = self.get_body(beam, MB_beam[ibody].num_dof, ibody = ibody)
+            MB_tstep[ibody].change_to_global_AFoR(for0_pos, for0_vel, quat0)
+
+
+        first_dof = 0
+        for ibody in range(beam.num_bodies):
+            # Renaming for clarity
+            ibody_elems = MB_beam[ibody].global_elems_num
+            ibody_nodes = MB_beam[ibody].global_nodes_num
+
+            # Merge tstep
+            self.pos[ibody_nodes,:] = MB_tstep[ibody].pos.astype(dtype=ct.c_double, order='F', copy=True)
+            # tstep.pos_dot[ibody_nodes,:] = MB_tstep[ibody].pos_dot.astype(dtype=ct.c_double, order='F', copy=True)
+            self.psi[ibody_elems,:,:] = MB_tstep[ibody].psi.astype(dtype=ct.c_double, order='F', copy=True)
+            self.gravity_forces[ibody_nodes,:] = MB_tstep[ibody].gravity_forces.astype(dtype=ct.c_double, order='F', copy=True)
+
 
 
 class LinearTimeStepInfo(object):

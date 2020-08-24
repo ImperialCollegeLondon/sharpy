@@ -196,13 +196,24 @@ class SaveData(BaseSolver):
                                        SkipAttr=self.settings['skip_attr'],
                                        compress_float=self.settings['compress_float'])
                 if self.settings['save_struct']:
-                    h5utils.add_as_grp(self.data.structure.timestep_info[self.data.ts],
+                    if self.data.structure.timestep_info[self.data.ts].in_global_AFoR:
+                        tstep = self.data.structure.timestep_info[self.data.ts]
+                    else:
+                        tstep = self.data.structure.timestep_info[self.data.ts].copy()
+                        tstep.whole_structure_to_global_AFoR(self.data.structure)
+
+                    h5utils.add_as_grp(tstep,
                                        hdfile['data']['structure']['timestep_info'],
                                        grpname=("%05d" % self.data.ts),
                                        ClassesToSave=(sharpy.utils.datastructures.StructTimeStepInfo,),
                                        SkipAttr=self.settings['skip_attr'],
                                        compress_float=self.settings['compress_float'])
             else:
+                for it in range(len(self.data.structure.timestep_info)):
+                    tstep_p = self.data.structure.timestep_info[it]
+                    if tstep_p is not None:
+                        if not tstep_p.in_global_AFoR:
+                            tstep_p.whole_structure_to_global_AFoR(self.data.structure)
                 h5utils.add_as_grp(self.data, hdfile, grpname='data',
                                    ClassesToSave=self.ClassesToSave, SkipAttr=self.settings['skip_attr'],
                                    compress_float=self.settings['compress_float'])
