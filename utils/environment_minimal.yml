@@ -6,8 +6,8 @@ dependencies:
   - _libgcc_mutex=0.1=main
   - apptools=4.5.0=py_0
   - bzip2=1.0.8=h7b6447c_0
-  - ca-certificates=2019.11.27=0
-  - certifi=2019.11.28=py37_0
+  - ca-certificates=2020.6.24=0
+  - certifi=2020.6.20=py37_0
   - cmake=3.14.0=h52cb24c_0
   - colorama=0.4.1=py37_0
   - configobj=5.0.6=py_0
@@ -60,10 +60,10 @@ dependencies:
   - lxml=4.4.2=py37hefd8a0e_0
   - lz4-c=1.8.1.2=h14c3975_0
   - matplotlib=3.1.1=py37h5429711_0
-  - mayavi=4.6.2=py37hcf37d21_4
+  - mayavi=4.7.1=py37h94891b3_2
   - ncurses=6.1=he6710b0_1
   - numpy=1.17.3=py37h95a1406_0
-  - openssl=1.1.1d=h7b6447c_3
+  - openssl=1.1.1g=h7b6447c_0
   - pandas=0.25.3=py37hb3f55d8_0
   - pcre=8.43=he1b5a44_0
   - pip=19.3.1=py37_0

@@ -142,7 +142,7 @@ class TestGolandFlutter(unittest.TestCase):
                                            'delta_curved': 1e-1,
                                            'min_delta': 1e-10,
                                            'gravity_on': 'on',
-                                           'gravity': 9.754}}
+                                           'gravity': 9.81}}
 
         ws.config['AerogridPlot'] = {'folder': self.route_test_dir + '/output/',
                                      'include_rbm': 'off',
@@ -202,12 +202,10 @@ class TestGolandFlutter(unittest.TestCase):
                                                               'density': ws.rho,
                                                               'remove_predictor': remove_predictor,
                                                               'use_sparse': use_sparse,
-                                                              'rigid_body_motion': 'off',
-                                                              'use_euler': 'off',
                                                               'remove_inputs': ['u_gust'],
                                                               'rom_method': ['Krylov'],
                                                               'rom_method_settings': {'Krylov': rom_settings}},
-                                            'rigid_body_motion': False}}
+                                            'rigid_body_motion': 'off'}}
 
         ws.config['AsymptoticStability'] = {'print_info': True,
                                             'folder': self.route_test_dir + '/output/',

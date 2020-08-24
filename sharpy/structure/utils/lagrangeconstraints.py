@@ -292,13 +292,13 @@ def def_rot_axis_FoR_wrt_node(MB_tstep, MB_beam, FoR_body, node_body, node_numbe
 
     LM_C[FoR_dof+3:FoR_dof+6,FoR_dof+6:FoR_dof+10] += algebra.der_CquatT_by_v(MB_tstep[FoR_body].quat,
                                                                               algebra.multiply_matrices(algebra.quat2rotation(MB_tstep[node_body].quat),
-                                                                                                algebra.crv2rotation(MB_tstep[node_body].psi[ielem,inode_in_elem,:]).T,
+                                                                                                algebra.crv2rotation(MB_tstep[node_body].psi[ielem,inode_in_elem,:]),
                                                                                                 algebra.skew(rot_axisB).T,
                                                                                                 new_Lambda_dot))
 
     LM_K[FoR_dof+3:FoR_dof+6,node_dof+3:node_dof+6] += algebra.multiply_matrices(algebra.quat2rotation(MB_tstep[FoR_body].quat).T,
                                                                          algebra.quat2rotation(MB_tstep[node_body].quat),
-                                                                         algebra.der_Ccrv_by_v(MB_tstep[node_body].psi[ielem,inode_in_elem,:],
+                                                                         algebra.der_CcrvT_by_v(MB_tstep[node_body].psi[ielem,inode_in_elem,:],
                                                                                                 np.dot(algebra.skew(rot_axisB).T,
                                                                                                        new_Lambda_dot)))
 
@@ -848,7 +848,7 @@ class fully_constrained_node_FoR(BaseLagrangeConstraint):
             # for k, v in MBdict_entry.items():
                 # cout.cout_wrap(k, v)
 
-        cout.cout_wrap("WARNING: do not use fully_constrained_node_FoR. It is outdated", 3)
+        cout.cout_wrap("WARNING: do not use fully_constrained_node_FoR. It is outdated. Definetly not working if 'body' has velocity", 3)
         self.node_number = MBdict_entry['node_in_body']
         self.node_body = MBdict_entry['body']
         self.FoR_body = MBdict_entry['body_FoR']
@@ -903,7 +903,7 @@ class fully_constrained_node_FoR(BaseLagrangeConstraint):
         return
 
     def dynamicpost(self, lc_list, MB_beam, MB_tstep):
-        MB_tstep[self.FoR_body].for_pos[0:3] = np.dot(algebra.quat2rotation(MB_tstep[self.node_body].quat), MB_tstep[self.node_body].pos[self.node_number,:]) + MB_tstep[self.node_body].for_pos[0:3]
+        # MB_tstep[self.FoR_body].for_pos[0:3] = np.dot(algebra.quat2rotation(MB_tstep[self.node_body].quat), MB_tstep[self.node_body].pos[self.node_number,:]) + MB_tstep[self.node_body].for_pos[0:3]
         return
 
 

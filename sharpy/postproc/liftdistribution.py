@@ -53,7 +53,11 @@ class LiftDistribution(BaseSolver):
 
     def lift_distribution(self):
         # add entry to dictionary for postproc
-        tstep = self.data.aero.timestep_info[self.ts]
+        if self.data.structure.timestep_info[self.data.ts].in_global_AFoR:
+            tstep = self.data.structure.timestep_info[self.data.ts]
+        else:
+            tstep = self.data.structure.timestep_info[self.data.ts].copy()
+            tstep.whole_structure_to_global_AFoR(self.data.structure)
         tstep.postproc_cell['lift_distribution'] = init_matrix_structure(dimensions=tstep.dimensions,
                                                                            with_dim_dimension=False)
 
@@ -75,4 +79,3 @@ class LiftDistribution(BaseSolver):
                     abs_forces[i_n, i_m] = np.abs(forces[:, i_m, i_n])
 
                 tstep.postproc_cell['lift_distribution'][i_surf][i_n, i_m] = np.sum(abs_forces[i_n, :], axis = 2)/norm
-
