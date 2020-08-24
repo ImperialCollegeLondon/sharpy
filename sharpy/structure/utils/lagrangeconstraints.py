@@ -296,7 +296,7 @@ def def_rot_axis_FoR_wrt_node(MB_tstep, MB_beam, FoR_body, node_body, node_numbe
     """
     This function generates the stiffness and damping matrices and the independent vector associated to a joint that
     forces the rotation axis of a FoR to be parallel to a certain direction. This direction is defined in the
-    B FoR of a node and, thus, changes along the simulation.
+    B FoR of a node and, thus, might change along the simulation.
 
     See ``LagrangeConstraints`` for the description of variables
 
@@ -481,9 +481,9 @@ class hinge_node_FoR(BaseLagrangeConstraint):
     See ``LagrangeConstraints`` for the description of variables
 
     Attributes:
-        node_number (int): Local number of the node involved in the join
-        node_body (int): Number of the body that the previous node belongs to
-        FoR_body (int): Number of the body that the FoR involved in the join belongs to
+        node_number (int): number of the "node" within its own body
+        node_body (int): body number of the "node"
+        FoR_body (int): body number of the "FoR"
         rot_axisB (np.ndarray): Rotation axis with respect to the node B FoR
     """
     _lc_id = 'hinge_node_FoR'
@@ -546,14 +546,14 @@ class hinge_node_FoR_constant_vel(BaseLagrangeConstraint):
     hinge_node_FoR_constant_vel
 
     This constraint forces a hinge behaviour between a node and a FoR and
-    a constant rotation velocity at that join
+    a constant rotation velocity at the join
 
     See ``LagrangeConstraints`` for the description of variables
 
     Attributes:
-        node_number (int): Local number of the node involved in the join
-        node_body (int): Number of the body that the previous node belongs to
-        FoR_body (int): Number of the body that the FoR involved in the join belongs to
+        node_number (int): number of the "node" within its own body
+        node_body (int): body number of the "node"
+        FoR_body (int): body number of the "FoR"
         rot_axisB (np.ndarray): Rotation axis with respect to the node B FoR
         rot_vel (float): Rotation velocity
     """
@@ -622,9 +622,9 @@ class spherical_node_FoR(BaseLagrangeConstraint):
     See ``LagrangeConstraints`` for the description of variables
 
     Attributes:
-        node_number (int): Local number of the node involved in the join
-        node_body (int): Number of the body that the previous node belongs to
-        FoR_body (int): Number of the body that the FoR involved in the join belongs to
+        node_number (int): number of the "node" within its own body
+        node_body (int): body number of the "node"
+        FoR_body (int): body number of the "FoR"
     """
     _lc_id = 'spherical_node_FoR'
 
@@ -726,7 +726,7 @@ class spherical_FoR(BaseLagrangeConstraint):
     See ``LagrangeConstraints`` for the description of variables
 
     Attributes:
-        body_FoR (int): Number of the body that the FoR involved in the join belongs to
+        body_FoR (int): body number of the "FoR"
     """
     _lc_id = 'spherical_FoR'
 
@@ -794,7 +794,7 @@ class hinge_FoR(BaseLagrangeConstraint):
     See ``LagrangeConstraints`` for the description of variables
 
     Attributes:
-        body_FoR (int): Number of the body that the FoR involved in the join belongs to
+        body_FoR (int): body number of the "FoR"
         rot_axis_AFoR (np.ndarray): Rotation axis with respect to the node A FoR
     """
     _lc_id = 'hinge_FoR'
@@ -882,7 +882,7 @@ class hinge_FoR_wrtG(BaseLagrangeConstraint):
     See ``LagrangeConstraints`` for the description of variables
 
     Attributes:
-        body_FoR (int): Number of the body that the FoR involved in the join belongs to
+        body_FoR (int): body number of the "FoR"
         rot_axis_AFoR (np.ndarray): Rotation axis with respect to the node G FoR
     """
     _lc_id = 'hinge_FoR_wrtG'
@@ -973,10 +973,9 @@ class fully_constrained_node_FoR(BaseLagrangeConstraint):
     See ``LagrangeConstraints`` for the description of variables
 
     Attributes:
-        node_number (int): Local number of the node involved in the join
-        node_body (int): Number of the body that the previous node belongs to
-        FoR_body (int): Number of the body that the FoR involved in the join belongs to
-        FoR_body (int): Number of the body that the FoR involved in the join belongs to
+        node_number (int): number of the "node" within its own body
+        node_body (int): body number of the "node"
+        FoR_body (int): body number of the "FoR"
     """
     _lc_id = 'fully_constrained_node_FoR'
 
@@ -1098,7 +1097,7 @@ class constant_rot_vel_FoR(BaseLagrangeConstraint):
     See ``LagrangeConstraints`` for the description of variables
 
     Attributes:
-        FoR_body (int): Number of the body that the FoR involved in the join belongs to
+        FoR_body (int): body number of the "FoR"
     """
     _lc_id = 'constant_rot_vel_FoR'
 
@@ -1165,7 +1164,7 @@ class constant_vel_FoR(BaseLagrangeConstraint):
     See ``LagrangeConstraints`` for the description of variables
 
     Attributes:
-        FoR_body (int): Number of the body that the FoR involved in the join belongs to
+        FoR_body (int): body number of the "FoR"
         vel (np.ndarray): 6 components of the desired velocity
     """
     _lc_id = 'constant_vel_FoR'
@@ -1234,8 +1233,8 @@ class lin_vel_node_wrtA(BaseLagrangeConstraint):
     See ``LagrangeConstraints`` for the description of variables
 
     Attributes:
-        node_number (int): Local number of the node involved in the join
-        body_number (int): Number of the body that the previous node belongs to
+        node_number (int): number of the "node" within its own body
+        body_number (int): body number of the "node"
         vel (np.ndarray): 6 components of the desired velocity with respect to the A FoR
     """
     _lc_id = 'lin_vel_node_wrtA'
@@ -1331,8 +1330,8 @@ class lin_vel_node_wrtG(BaseLagrangeConstraint):
     See ``LagrangeConstraints`` for the description of variables
 
     Attributes:
-        node_number (int): Local number of the node involved in the join
-        body_number (int): Number of the body that the previous node belongs to
+        node_number (int): number of the "node" within its own body
+        body_number (int): body number of the "node"
         vel (np.ndarray): 6 components of the desired velocity with respect to the G FoR
     """
     _lc_id = 'lin_vel_node_wrtG'
