@@ -106,8 +106,8 @@ class NonLinearDynamicMultibody(_BaseStructural):
             MB_Asys = MB_K + MB_C \frac{\gamma}{\beta dt} + \frac{1}{\beta dt^2} MB_M
 
         Args:
-            MB_beam (list(``Beam``)): each entry represents a body
-            MB_tstep (list(``StructTimeStepInfo``)): each entry represents a body
+            MB_beam (list(:class:`~sharpy.structure.models.beam.Beam`)): each entry represents a body
+            MB_tstep (list(:class:`~sharpy.utils.datastructures.StructTimeStepInfo`)): each entry represents a body
             ts (int): Time step number
             dt(int): time step
             Lambda (np.ndarray): Lagrange Multipliers array
@@ -189,8 +189,8 @@ class NonLinearDynamicMultibody(_BaseStructural):
         It uses a Newmark-beta approximation.
 
         Args:
-            MB_beam (list(``Beam``)): each entry represents a body
-            MB_tstep (list(``StructTimeStepInfo``)): each entry represents a body
+            MB_beam (list(:class:`~sharpy.structure.models.beam.Beam`)): each entry represents a body
+            MB_tstep (list(:class:`~sharpy.utils.datastructures.StructTimeStepInfo`)): each entry represents a body
             dt(int): time step
         """
         vel = np.zeros((6,),)
@@ -219,8 +219,8 @@ class NonLinearDynamicMultibody(_BaseStructural):
         This function computes the forces generated at Lagrange Constraints
 
         Args:
-            MB_beam (list(``Beam``)): each entry represents a body
-            MB_tstep (list(``StructTimeStepInfo``)): each entry represents a body
+            MB_beam (list(:class:`~sharpy.structure.models.beam.Beam`)): each entry represents a body
+            MB_tstep (list(:class:`~sharpy.utils.datastructures.StructTimeStepInfo`)): each entry represents a body
             ts (int): Time step number
             dt(float): Time step increment
             Lambda (np.ndarray): Lagrange Multipliers array

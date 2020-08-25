@@ -20,14 +20,14 @@ def split_multibody(beam, tstep, mb_data_dict, ts):
     This functions splits a structure at a certain time step in its different bodies
 
     Args:
-    	beam (``Beam``): structural information of the multibody system
-    	tstep (``StructTimeStepInfo``): timestep information of the multibody system
+    	beam (:class:`~sharpy.structure.models.beam.Beam`): structural information of the multibody system
+    	tstep (:class:`~sharpy.utils.datastructures.StructTimeStepInfo`): timestep information of the multibody system
         mb_data_dict (dict): Dictionary including the multibody information
         ts (int): time step number
 
     Returns:
-        MB_beam (list(``Beam``)): each entry represents a body
-        MB_tstep (list(``StructTimeStepInfo``)): each entry represents a body
+        MB_beam (list(:class:`~sharpy.structure.models.beam.Beam`)): each entry represents a body
+        MB_tstep (list(:class:`~sharpy.utils.datastructures.StructTimeStepInfo`)): each entry represents a body
     """
 
     update_mb_db_before_split(tstep, beam, mb_data_dict, ts)
@@ -65,16 +65,16 @@ def merge_multibody(MB_tstep, MB_beam, beam, tstep, mb_data_dict, dt):
     Longer description
 
     Args:
-        MB_beam (list(``Beam``)): each entry represents a body
-        MB_tstep (list(``StructTimeStepInfo``)): each entry represents a body
-    	beam (``Beam``): structural information of the multibody system
-    	tstep (``StructTimeStepInfo``): timestep information of the multibody system
+        MB_beam (list(:class:`~sharpy.structure.models.beam.Beam`)): each entry represents a body
+        MB_tstep (list(:class:`~sharpy.utils.datastructures.StructTimeStepInfo`)): each entry represents a body
+    	beam (:class:`~sharpy.structure.models.beam.Beam`): structural information of the multibody system
+    	tstep (:class:`~sharpy.utils.datastructures.StructTimeStepInfo`): timestep information of the multibody system
         mb_data_dict (dict): Dictionary including the multibody information
         dt(int): time step
 
     Returns:
-        beam (``Beam``): structural information of the multibody system
-    	tstep (``StructTimeStepInfo``): timestep information of the multibody system
+        beam (:class:`~sharpy.structure.models.beam.Beam`): structural information of the multibody system
+    	tstep (:class:`~sharpy.utils.datastructures.StructTimeStepInfo`): timestep information of the multibody system
     """
 
     update_mb_dB_before_merge(tstep, MB_tstep)
@@ -126,8 +126,8 @@ def update_mb_db_before_split(tstep, beam, mb_data_dict, ts):
     Updates the FoR information database before splitting system
 
     Args:
-    	tstep (``StructTimeStepInfo``): timestep information of the multibody system
-    	beam (``Beam``): structural information of the multibody system
+    	tstep (:class:`~sharpy.utils.datastructures.StructTimeStepInfo`): timestep information of the multibody system
+    	beam (:class:`~sharpy.structure.models.beam.Beam`): structural information of the multibody system
         mb_data_dict (dict): Dictionary including the multibody information
         ts (int): time step number
 
@@ -175,8 +175,8 @@ def update_mb_dB_before_merge(tstep, MB_tstep):
     Updates the FoR information database before merging bodies
 
     Args:
-    	tstep (``StructTimeStepInfo``): timestep information of the multibody system
-        MB_tstep (list(``StructTimeStepInfo``)): each entry represents a body
+    	tstep (:class:`~sharpy.utils.datastructures.StructTimeStepInfo`): timestep information of the multibody system
+        MB_tstep (list(:class:`~sharpy.utils.datastructures.StructTimeStepInfo`)): each entry represents a body
     """
 
     for ibody in range(len(MB_tstep)):
@@ -198,8 +198,8 @@ def disp_and_accel2state(MB_beam, MB_tstep, q, dqdt, dqddt):
     Fills the vector of states according to the displacements information
 
     Args:
-        MB_beam (list(``Beam``)): each entry represents a body
-        MB_tstep (list(``StructTimeStepInfo``)): each entry represents a body
+        MB_beam (list(:class:`~sharpy.structure.models.beam.Beam`)): each entry represents a body
+        MB_tstep (list(:class:`~sharpy.utils.datastructures.StructTimeStepInfo`)): each entry represents a body
         q(np.ndarray): Vector of states
     	dqdt(np.ndarray): Time derivatives of states
         dqddt(np.ndarray): Second time derivatives of states
@@ -238,8 +238,8 @@ def state2disp_and_accel(q, dqdt, dqddt, MB_beam, MB_tstep):
     Longer description
 
     Args:
-        MB_beam (list(``Beam``)): each entry represents a body
-        MB_tstep (list(``StructTimeStepInfo``)): each entry represents a body
+        MB_beam (list(:class:`~sharpy.structure.models.beam.Beam`)): each entry represents a body
+        MB_tstep (list(:class:`~sharpy.utils.datastructures.StructTimeStepInfo`)): each entry represents a body
         q(np.ndarray): Vector of states
     	dqdt(np.ndarray): Time derivatives of states
         dqddt(np.ndarray): Second time derivatives of states
@@ -280,7 +280,7 @@ def get_elems_nodes_list(beam, ibody):
         (``ibody_nodes``) that belong to the body number ``ibody``
 
         Args:
-    	   beam (``Beam``): structural information of the multibody system
+    	   beam (:class:`~sharpy.structure.models.beam.Beam`): structural information of the multibody system
            ibody (int): Body number about which the information is required
 
         Returns:

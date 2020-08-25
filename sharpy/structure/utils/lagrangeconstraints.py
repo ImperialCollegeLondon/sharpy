@@ -22,8 +22,8 @@ Notes:
 Args:
     lc_list (list): list of all the defined contraints
     MBdict (dict): dictionary with the MultiBody and LagrangeMultipliers information
-    MB_beam (list): list of ``Beams`` of each of the bodies that form the system
-    MB_tstep (list): list of ``StructTimeStepInfo`` of each of the bodies that form the system
+    MB_beam (list): list of :class:`~sharpy.structure.models.beam.Beam` of each of the bodies that form the system
+    MB_tstep (list): list of :class:`~sharpy.utils.datastructures.StructTimeStepInfo` of each of the bodies that form the system
     num_LM_eq (int): number of new equations needed to define the boundary boundary conditions
     sys_size (int): total number of degrees of freedom of the multibody system
     dt (float): time step
@@ -210,7 +210,7 @@ def define_FoR_dof(MB_beam, FoR_body):
     Define the position of the first degree of freedom associated to a certain frame of reference
 
     Args:
-        MB_beam(list): list of ``Beam``
+        MB_beam(list): list of :class:`~sharpy.structure.models.beam.Beam`
         node_body(int): body to which the node belongs
         num_node(int): number os the node within the body
 

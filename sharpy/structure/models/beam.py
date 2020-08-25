@@ -493,15 +493,15 @@ class Beam(BaseStructure):
 
         Extract the body number ``ibody`` from a multibody system
 
-        This function returns a ``Beam`` class (``ibody_beam``)
+        This function returns a :class:`~sharpy.structure.models.beam.Beam` class (``ibody_beam``)
         that only includes the body number ``ibody`` of the original system
 
         Args:
-            self(``Beam``): structural information of the multibody system
+            self(:class:`~sharpy.structure.models.beam.Beam`): structural information of the multibody system
             ibody(int): body number to be extracted
 
         Returns:
-        	ibody_beam(``Beam``): structural information of the isolated body
+        	ibody_beam(:class:`~sharpy.structure.models.beam.Beam`): structural information of the isolated body
         """
 
         ibody_beam = Beam()

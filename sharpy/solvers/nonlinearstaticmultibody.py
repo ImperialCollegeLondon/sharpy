@@ -94,8 +94,8 @@ class NonLinearStaticMultibody(_BaseStructural):
         It usses a Newmark-beta scheme for time integration.
 
         Args:
-            MB_beam (list(``Beam``)): each entry represents a body
-            MB_tstep (list(``StructTimeStepInfo``)): each entry represents a body
+            MB_beam (list(:class:`~sharpy.structure.models.beam.Beam`)): each entry represents a body
+            MB_tstep (list(:class:`~sharpy.utils.datastructures.StructTimeStepInfo`)): each entry represents a body
             Lambda (np.ndarray): Lagrange Multipliers array
             MBdict (dict): Dictionary including the multibody information
             iLoadStep (int): load step
@@ -205,8 +205,8 @@ class NonLinearStaticMultibody(_BaseStructural):
         This function computes the forces generated at Lagrange Constraints
 
         Args:
-            MB_beam (list(``Beam``)): each entry represents a body
-            MB_tstep (list(``StructTimeStepInfo``)): each entry represents a body
+            MB_beam (list(:class:`~sharpy.structure.models.beam.Beam`)): each entry represents a body
+            MB_tstep (list(:class:`~sharpy.utils.datastructures.StructTimeStepInfo`)): each entry represents a body
             ts (int): Time step number
             dt(float): Time step increment
             Lambda (np.ndarray): Lagrange Multipliers array

@@ -176,7 +176,7 @@ class AeroTimeStepInfo(object):
 
     def copy(self):
         """
-        Returns a copy of a deepcopy of a ``AeroTimeStepInfo``
+        Returns a copy of a deepcopy of a :class:`~sharpy.utils.datastructures.AeroTimeStepInfo`
         """
         copied = AeroTimeStepInfo(self.dimensions, self.dimensions_star)
         # generate placeholder for aero grid zeta coordinates
@@ -564,7 +564,7 @@ class StructTimeStepInfo(object):
 
     def copy(self):
         """
-        Returns a copy of a deepcopy of a ``StructTimeStepInfo``
+        Returns a copy of a deepcopy of a :class:`~sharpy.utils.datastructures.StructTimeStepInfo`
         """
         copied = StructTimeStepInfo(self.num_node, self.num_elem, self.num_node_elem, ct.c_int(len(self.q)-10),
                                     self.mb_quat.shape[0])
@@ -653,11 +653,11 @@ class StructTimeStepInfo(object):
 
         Extract the body number ``ibody`` from a multibody system
 
-        This function returns a ``StructTimeStepInfo`` class (``ibody_StructTimeStepInfo``)
+        This function returns a :class:`~sharpy.utils.datastructures.StructTimeStepInfo` class (``ibody_StructTimeStepInfo``)
         that only includes the body number ``ibody`` of the original multibody system ``self``
 
         Args:
-            beam(``Beam``): beam information of the multibody system
+            beam(:class:`~sharpy.structure.models.beam.Beam`): beam information of the multibody system
             num_dof_ibody (int): Number of degrees of freedom associated to the ``ibody``
             ibody(int): body number to be extracted
 
