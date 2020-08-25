@@ -773,7 +773,6 @@ class FlexDynamic():
         # For aeroelastic cases, applied forces merged with aerodynamic forces...
         # TODO: separate applied forces from aero forces for aeroelastic cases with aero and external forcing (i.e. thrust)
         # TODO: gains for externally applied forces (i.e. thrust inputs)
-        # TODO: verify how to handle forces applied at A frame since the A frame does have an associated CRV (worth looking i_elem)
 
         num_node = tsstr.num_node
         flex_dof = 6 * sum(self.structure.vdof >= 0)
@@ -836,6 +835,30 @@ class FlexDynamic():
                 # Total moments
                 # force contribution
                 stiff_rig[3:6, jj_tra] += algebra.skew(Cab.dot(fext_b))  # delta Ra term
+                stiff_rig[3:6, jj_rot] -= algebra.skew(Ra).dot(algebra.der_Ccrv_by_v(psi, fext_b))  # delta psi term
+
+                # moment contribution
+                stiff_rig[3:6, jj_rot] -= algebra.der_Ccrv_by_v(psi, mext_b)
+
+            if bc_at_node == 1:
+                # forces applied at the A-frame (clamped node) need special attention since the
+                # node has an associated CRV to it's master element which may not be zero.
+                # forces applied at this node only appear in the rigid-body equations
+                try:
+                    closest_node = self.structure.connectivities[ee, node_loc + 2]
+                except IndexError:  # node is not in the first position
+                    try:
+                        closest_node = self.structure.connectivities[ee, node_loc + 1]
+                    except IndexError:  # node is the midpoint
+                        closest_node = self.structure.connectivities[ee, node_loc - 1]
+
+                # indices of the node whos CRV applies to the clamped node
+                jj_rot = 6 * self.structure.vdof[closest_node] + np.array([3, 4, 5], dtype=int)
+
+                stiff_rig[:3, jj_rot] -= algebra.der_Ccrv_by_v(psi, fext_b)  # Rigid body contribution
+                # Total moments
+                # force contribution
+                stiff_rig[3:6, jj_rot] += algebra.skew(Cab.dot(fext_b))  # delta Ra term
                 stiff_rig[3:6, jj_rot] -= algebra.skew(Ra).dot(algebra.der_Ccrv_by_v(psi, fext_b))  # delta psi term
 
                 # moment contribution
