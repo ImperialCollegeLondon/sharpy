@@ -188,7 +188,7 @@ def define_node_dof(MB_beam, node_body, num_node):
     Define the position of the first degree of freedom associated to a certain node
 
     Args:
-        MB_beam(list): list of ``Beam``
+        MB_beam(list): list of :class:`~sharpy.structure.models.beam.Beam`
         node_body(int): body to which the node belongs
         num_node(int): number os the node within the body
 
