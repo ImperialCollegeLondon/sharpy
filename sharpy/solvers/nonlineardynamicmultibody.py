@@ -226,7 +226,7 @@ class NonLinearDynamicMultibody(_BaseStructural):
             Lambda (np.ndarray): Lagrange Multipliers array
             Lambda_dot (np.ndarray): Time derivarive of ``Lambda``
 
-        Notes:
+        Warning:
             This function is underdevelopment and not fully functional
         """
         try:
