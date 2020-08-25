@@ -222,7 +222,7 @@ class NonLinearDynamicMultibody(_BaseStructural):
             MB_beam (list(``Beam``)): each entry represents a body
             MB_tstep (list(``StructTimeStepInfo``)): each entry represents a body
             ts (int): Time step number
-            dt(int): time step
+            dt(float): Time step increment
             Lambda (np.ndarray): Lagrange Multipliers array
             Lambda_dot (np.ndarray): Time derivarive of ``Lambda``
 
