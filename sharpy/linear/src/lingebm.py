@@ -770,9 +770,7 @@ class FlexDynamic():
         if tsstr is None:
             tsstr = self.tsstruct0
 
-        # For aeroelastic cases, applied forces merged with aerodynamic forces...
-        # TODO: separate applied forces from aero forces for aeroelastic cases with aero and external forcing (i.e. thrust)
-        # TODO: gains for externally applied forces (i.e. thrust inputs)
+        # TODO: Future feature: gains for externally applied forces (i.e. thrust inputs)
 
         num_node = tsstr.num_node
         flex_dof = 6 * sum(self.structure.vdof >= 0)
@@ -792,8 +790,8 @@ class FlexDynamic():
         stiff_rig = np.zeros((rig_dof, flex_dof), dtype=float)  # rig-flex partition of K
 
         for i_node in range(num_node):
-            fext_b = tsstr.steady_applied_forces[i_node, :3]
-            mext_b = tsstr.steady_applied_forces[i_node, 3:]
+            fext_b = self.structure.steady_app_forces[i_node, :3]
+            mext_b = self.structure.steady_app_forces[i_node, 3:]
 
             # retrieve element and local index
             ee, node_loc = self.structure.node_master_elem[i_node, :]
@@ -819,8 +817,7 @@ class FlexDynamic():
                 jj_tra = 6 * self.structure.vdof[i_node] + np.array([0, 1, 2], dtype=int)  # Translations
                 jj_rot = 6 * self.structure.vdof[i_node] + np.array([3, 4, 5], dtype=int)  # Rotations
             else:
-                raise NameError('Invalid boundary condition (%d) at node %d!' \
-                                % (bc_at_node, i_node))
+                raise NameError('Invalid boundary condition ({}) at node {}'.format(bc_at_node, i_node))
 
             jj += dofs_at_node
 
