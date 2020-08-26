@@ -112,14 +112,15 @@ class StepUvlm(BaseSolver):
 
     settings_types['filter_method'] = 'int'
     settings_default['filter_method'] = 0
-    settings_description['filter_method'] = 'Method to filter the points: no filter (0) , splines(1) or moving average(2)'
-    settings_options['filter_method'] = [0, 1, 2]
+    settings_description['filter_method'] = 'Method to filter the points: no filter (0) moving average(2)'
+    settings_options['filter_method'] = [0, 2]
+    # filter_method = 1 was dedicated to a splines filter. If it is needed in the future chack dev_alglib branch
 
     settings_types['interp_method'] = 'int'
     settings_default['interp_method'] = 0
     settings_description['interp_method'] = 'Method of interpolation: linear(0), parabolic(1), splines(2), slerp around z(3), slerp around yaw_slerp(4)'
     settings_options['interp_method'] = [0, 1, 2, 3, 4]
-    
+
     settings_types['yaw_slerp'] = 'float'
     settings_default['yaw_slerp'] = 0
     settings_description['yaw_slerp'] = 'Yaw angle in radians to be used when interp_metod == 4'
