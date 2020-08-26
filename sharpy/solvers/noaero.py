@@ -1,20 +1,17 @@
-import ctypes as ct
-import numpy as np
-import scipy.optimize
-import scipy.signal
-
-import sharpy.utils.algebra as algebra
-import sharpy.aero.utils.uvlmlib as uvlmlib
 import sharpy.utils.settings as settings
 from sharpy.utils.solver_interface import solver, BaseSolver
-import sharpy.utils.generator_interface as gen_interface
-import sharpy.utils.cout_utils as cout
 
 
 @solver
 class NoAero(BaseSolver):
     """
-    Solver to be used with DynamicCoupled when aerodynamics are not of interest
+    Skip UVLM evaluation
+
+    Solver to be used with either :class:`~sharpy.solvers.staticcoupled.StaticCoupled` or
+    :class:`~sharpy.solvers.dynamiccoupled.DynamicCoupled` when aerodynamics are not of interest.
+
+    An example would be running a structural-only simulation where you would like to keep an aerodynamic grid for
+    visualisation purposes.
     """
     solver_id = 'NoAero'
     solver_classification = 'Aero'
@@ -27,6 +24,10 @@ class NoAero(BaseSolver):
     settings_default['dt'] = 0.1
     settings_description['dt'] = 'Time step'
 
+    settings_types['update_grid'] = 'bool'
+    settings_default['update_grid'] = True
+    settings_description['update_grid'] = 'Update aerodynamic grid as the structure deforms.'
+
     settings_table = settings.SettingsTable()
     __doc__ += settings_table.generate(settings_types, settings_default, settings_description)
 
@@ -35,9 +36,6 @@ class NoAero(BaseSolver):
         self.settings = None
 
     def initialise(self, data, custom_settings=None):
-        """
-        To be called just once per simulation.
-        """
         self.data = data
         if custom_settings is None:
             self.settings = data.settings[self.solver_id]
@@ -45,7 +43,11 @@ class NoAero(BaseSolver):
             self.settings = custom_settings
         settings.to_custom_types(self.settings,
                                  self.settings_types,
-                                 self.settings_default)
+                                 self.settings_default,
+                                 no_ctype=True)
+
+        if len(self.data.aero.timestep_info) == 0:  # initialise with zero timestep for static sims
+            self.update_step()
 
     def run(self,
             aero_tstep=None,
@@ -71,15 +73,31 @@ class NoAero(BaseSolver):
         self.data.aero.add_timestep()
 
     def update_grid(self, beam):
-        self.data.aero.generate_zeta(beam,
-                                     self.data.aero.aero_settings,
-                                     -1,
-                                     beam_ts=-1)
+        # called by DynamicCoupled
+        if self.settings['update_grid']:
+            self.data.aero.generate_zeta(beam,
+                                         self.data.aero.aero_settings,
+                                         -1,
+                                         beam_ts=-1)
 
     def update_custom_grid(self, structure_tstep, aero_tstep):
-        self.data.aero.generate_zeta_timestep_info(structure_tstep,
-                                                   aero_tstep,
-                                                   self.data.structure,
-                                                   self.data.aero.aero_settings,
-                                                   dt=self.settings['dt'].value)
-    
+        # called by DynamicCoupled
+        if self.settings['update_grid']:
+            self.data.aero.generate_zeta_timestep_info(structure_tstep,
+                                                       aero_tstep,
+                                                       self.data.structure,
+                                                       self.data.aero.aero_settings,
+                                                       dt=None)
+
+    def update_step(self):
+        # called by StaticCoupled
+        if self.settings['update_grid']:
+            self.data.aero.generate_zeta(self.data.structure,
+                                         self.data.aero.aero_settings,
+                                         self.data.ts)
+        else:
+            self.add_step()
+
+    def next_step(self):
+        # called by StaticCoupled
+        self.add_step()
