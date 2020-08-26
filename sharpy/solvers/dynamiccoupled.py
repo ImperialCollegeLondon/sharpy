@@ -23,10 +23,10 @@ import sharpy.io.network_interface as network_interface
 @solver
 class DynamicCoupled(BaseSolver):
     """
-    The ``DynamicCoupled`` solver couples the aerodynamic and structural solvers of choice to march forward in time
+    The :class:`~sharpy.solvers.dynamiccoupled.DynamicCoupled` solver couples the aerodynamic and structural solvers of choice to march forward in time
     the aeroelastic system's solution.
 
-    Using the ``DynamicCoupled`` solver requires that an instance of the ``StaticCoupled`` solver is called in the
+    Using the :class:`~sharpy.solvers.dynamiccoupled.DynamicCoupled` solver requires that an instance of the ``StaticCoupled`` solver is called in the
     SHARPy solution ``flow`` when defining the problem case.
 
     Input data (from external controllers) can be received and data sent using the SHARPy network

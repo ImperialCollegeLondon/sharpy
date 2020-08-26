@@ -38,7 +38,7 @@ class WriteVariablesTime(BaseSolver):
 
     settings_types['FoR_variables'] = 'list(str)'
     settings_default['FoR_variables'] = ['']
-    settings_description['FoR_variables'] = 'Variables of ``StructTimeStepInfo`` associated to the frame of reference to be writen'
+    settings_description['FoR_variables'] = 'Variables of :class:`~sharpy.utils.datastructures.StructTimeStepInfo` associated to the frame of reference to be writen'
 
     settings_types['FoR_number'] = 'list(int)'
     settings_default['FoR_number'] = np.array([0], dtype=int)
@@ -46,7 +46,7 @@ class WriteVariablesTime(BaseSolver):
 
     settings_types['structure_variables'] = 'list(str)'
     settings_default['structure_variables'] = ['']
-    settings_description['structure_variables'] = 'Variables of ``StructTimeStepInfo`` associated to the frame of reference to be writen'
+    settings_description['structure_variables'] = 'Variables of :class:`~sharpy.utils.datastructures.StructTimeStepInfo` associated to the frame of reference to be writen'
 
     settings_types['structure_nodes'] = 'list(int)'
     settings_default['structure_nodes'] = np.array([-1])
@@ -54,7 +54,7 @@ class WriteVariablesTime(BaseSolver):
 
     settings_types['aero_panels_variables'] = 'list(str)'
     settings_default['aero_panels_variables'] = ['']
-    settings_description['aero_panels_variables'] = 'Variables of ``AeroTimeStepInfo`` associated to panels to be writen'
+    settings_description['aero_panels_variables'] = 'Variables of :class:`~sharpy.utils.datastructures.AeroTimeStepInfo` associated to panels to be writen'
 
     settings_types['aero_panels_isurf'] = 'list(int)'
     settings_default['aero_panels_isurf'] = np.array([0])
@@ -70,7 +70,7 @@ class WriteVariablesTime(BaseSolver):
 
     settings_types['aero_nodes_variables'] = 'list(str)'
     settings_default['aero_nodes_variables'] = ['']
-    settings_description['aero_nodes_variables'] = 'Variables of ``AeroTimeStepInfo`` associated to nodes to be writen'
+    settings_description['aero_nodes_variables'] = 'Variables of :class:`~sharpy.utils.datastructures.AeroTimeStepInfo` associated to nodes to be writen'
 
     settings_types['aero_nodes_isurf'] = 'list(int)'
     settings_default['aero_nodes_isurf'] = np.array([0])
