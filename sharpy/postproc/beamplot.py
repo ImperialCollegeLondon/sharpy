@@ -137,16 +137,22 @@ class BeamPlot(BaseSolver):
         forces_constraints_nodes = np.zeros((num_nodes, 3))
         moments_constraints_nodes = np.zeros((num_nodes, 3))
 
+        if self.data.structure.timestep_info[it].in_global_AFoR:
+            tstep = self.data.structure.timestep_info[it]
+        else:
+            tstep = self.data.structure.timestep_info[it].copy()
+            tstep.whole_structure_to_global_AFoR(self.data.structure)
+
         # aero2inertial rotation
-        aero2inertial = self.data.structure.timestep_info[it].cga()
+        aero2inertial = tstep.cga()
 
         # coordinates of corners
-        coords = self.data.structure.timestep_info[it].glob_pos(include_rbm=self.settings['include_rbm'])
+        coords = tstep.glob_pos(include_rbm=self.settings['include_rbm'])
 
         # check if I can output gravity forces
         with_gravity = False
         try:
-            gravity_forces = self.data.structure.timestep_info[it].gravity_forces[:]
+            gravity_forces = tstep.gravity_forces[:]
             gravity_forces_g = np.zeros_like(gravity_forces)
             with_gravity = True
         except AttributeError:
@@ -155,24 +161,24 @@ class BeamPlot(BaseSolver):
         # check if postproc dicts are present and count/prepare
         with_postproc_cell = False
         try:
-            self.data.structure.timestep_info[it].postproc_cell
+            tstep.postproc_cell
             with_postproc_cell = True
         except AttributeError:
             pass
         with_postproc_node = False
         try:
-            self.data.structure.timestep_info[it].postproc_node
+            tstep.postproc_node
             with_postproc_node = True
         except AttributeError:
             pass
 
         # count number of arguments
-        postproc_cell_keys = self.data.structure.timestep_info[it].postproc_cell.keys()
-        postproc_cell_vals = self.data.structure.timestep_info[it].postproc_cell.values()
+        postproc_cell_keys = tstep.postproc_cell.keys()
+        postproc_cell_vals = tstep.postproc_cell.values()
         postproc_cell_scalar = []
         postproc_cell_vector = []
         postproc_cell_6vector = []
-        for k, v in self.data.structure.timestep_info[it].postproc_cell.items():
+        for k, v in tstep.postproc_cell.items():
             _, cols = v.shape
             if cols == 1:
                 raise NotImplementedError('scalar cell types not supported in beamplot (Easy to implement)')
@@ -184,12 +190,12 @@ class BeamPlot(BaseSolver):
             else:
                 raise AttributeError('Only scalar and 3-vector types supported in beamplot')
         # count number of arguments
-        postproc_node_keys = self.data.structure.timestep_info[it].postproc_node.keys()
-        postproc_node_vals = self.data.structure.timestep_info[it].postproc_node.values()
+        postproc_node_keys = tstep.postproc_node.keys()
+        postproc_node_vals = tstep.postproc_node.values()
         postproc_node_scalar = []
         postproc_node_vector = []
         postproc_node_6vector = []
-        for k, v in self.data.structure.timestep_info[it].postproc_node.items():
+        for k, v in tstep.postproc_node.items():
             _, cols = v.shape
             if cols == 1:
                 raise NotImplementedError('scalar node types not supported in beamplot (Easy to implement)')
@@ -210,31 +216,31 @@ class BeamPlot(BaseSolver):
             v2 = np.array([0., 1, 0])
             v3 = np.array([0., 0, 1])
             cab = algebra.crv2rotation(
-                self.data.structure.timestep_info[it].psi[i_elem, i_local_node, :])
+                tstep.psi[i_elem, i_local_node, :])
             local_x[i_node, :] = np.dot(aero2inertial, np.dot(cab, v1))
             local_y[i_node, :] = np.dot(aero2inertial, np.dot(cab, v2))
             local_z[i_node, :] = np.dot(aero2inertial, np.dot(cab, v3))
 
             if i_local_node == 2:
-                coords_a_cell[i_elem, :] = self.data.structure.timestep_info[it].pos[i_node, :]
-            coords_a[i_node, :] = self.data.structure.timestep_info[it].pos[i_node, :]
+                coords_a_cell[i_elem, :] = tstep.pos[i_node, :]
+            coords_a[i_node, :] = tstep.pos[i_node, :]
 
             # applied forces
-            cab = algebra.crv2rotation(self.data.structure.timestep_info[it].psi[i_elem, i_local_node, :])
+            cab = algebra.crv2rotation(tstep.psi[i_elem, i_local_node, :])
             app_forces[i_node, :] = np.dot(aero2inertial,
                                            np.dot(cab,
-                                                  self.data.structure.timestep_info[it].steady_applied_forces[i_node, 0:3]+
-                                                  self.data.structure.timestep_info[it].unsteady_applied_forces[i_node, 0:3]))
+                                                  tstep.steady_applied_forces[i_node, 0:3]+
+                                                  tstep.unsteady_applied_forces[i_node, 0:3]))
             app_moment[i_node, :] = np.dot(aero2inertial,
                                            np.dot(cab,
-                                                  self.data.structure.timestep_info[it].steady_applied_forces[i_node, 3:6]+
-                                                  self.data.structure.timestep_info[it].unsteady_applied_forces[i_node, 3:6]))
+                                                  tstep.steady_applied_forces[i_node, 3:6]+
+                                                  tstep.unsteady_applied_forces[i_node, 3:6]))
             forces_constraints_nodes[i_node, :] = np.dot(aero2inertial,
                                            np.dot(cab,
-                                                  self.data.structure.timestep_info[it].forces_constraints_nodes[i_node, 0:3]))
+                                                  tstep.forces_constraints_nodes[i_node, 0:3]))
             moments_constraints_nodes[i_node, :] = np.dot(aero2inertial,
                                            np.dot(cab,
-                                                  self.data.structure.timestep_info[it].forces_constraints_nodes[i_node, 3:6]))
+                                                  tstep.forces_constraints_nodes[i_node, 3:6]))
 
             if with_gravity:
                 gravity_forces_g[i_node, 0:3] = np.dot(aero2inertial,
@@ -253,12 +259,12 @@ class BeamPlot(BaseSolver):
         counter = 1
         if with_postproc_cell:
             for k in postproc_cell_vector:
-                ug.cell_data.add_array(self.data.structure.timestep_info[it].postproc_cell[k])
+                ug.cell_data.add_array(tstep.postproc_cell[k])
                 ug.cell_data.get_array(counter).name = k + '_cell'
                 counter += 1
             for k in postproc_cell_6vector:
                 for i in range(0, 2):
-                    ug.cell_data.add_array(self.data.structure.timestep_info[it].postproc_cell[k][:, 3*i:3*(i+1)])
+                    ug.cell_data.add_array(tstep.postproc_cell[k][:, 3*i:3*(i+1)])
                     ug.cell_data.get_array(counter).name = k + '_' + str(i) + '_cell'
                     counter += 1
         ug.cell_data.add_array(coords_a_cell)
@@ -305,12 +311,12 @@ class BeamPlot(BaseSolver):
         if with_postproc_node:
             for k in postproc_node_vector:
                 point_vector_counter += 1
-                ug.point_data.add_array(self.data.structure.timestep_info[it].postproc_node[k])
+                ug.point_data.add_array(tstep.postproc_node[k])
                 ug.point_data.get_array(point_vector_counter).name = k + '_point'
             for k in postproc_node_6vector:
                 for i in range(0, 2):
                     point_vector_counter += 1
-                    ug.point_data.add_array(self.data.structure.timestep_info[it].postproc_node[k][:, 3*i:3*(i+1)])
+                    ug.point_data.add_array(tstep.postproc_node[k][:, 3*i:3*(i+1)])
                     ug.point_data.get_array(point_vector_counter).name = k + '_' + str(i) + '_point'
 
         write_data(ug, it_filename)

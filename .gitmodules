@@ -1,7 +1,7 @@
 [submodule "lib/UVLM"]
 	path = lib/UVLM
 	url = http://github.com/imperialcollegelondon/UVLM
-	branch = dev_vortex_rad
+	branch = dev_merge_changes
 [submodule "lib/xbeam"]
 	path = lib/xbeam
 	url = http://github.com/imperialcollegelondon/xbeam
