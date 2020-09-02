@@ -331,55 +331,89 @@ class AsymptoticStability(BaseSolver):
         except ModuleNotFoundError:
             cout.cout_wrap('Could not plot in asymptoticstability beacuse there is no Matplotlib', 4)
             return
+
         mode_shape_list = self.settings['modes_to_plot']
+
+        route = self.folder + '/modes/'
+        if not os.path.isdir(route):
+            os.makedirs(route, exist_ok=True)
+
         for mode in mode_shape_list:
             # Scale mode
-            aero_states = self.data.linear.linear_system.uvlm.ss.states
-            displacement_states = self.data.linear.linear_system.beam.ss.states // 2
+
+            beam = self.data.linear.linear_system.beam
+            displacement_states = beam.ss.states // 2
+            structural_states = beam.ss.states
+            structural_modal_coords = beam.sys.modal
+
+            v = self.eigenvectors[-structural_states:-structural_states//2, mode]
+            v_dot = self.eigenvectors[-structural_states//2:, mode]
+
+            if beam.sys.clamped:
+                num_dof_rig = 1 # to get the full vector (if 0 line356 returns empty array)
+            else:
+                num_dof_rig = beam.sys.num_dof_rig
+
+            if structural_modal_coords:
+                # project aeroelastic mode back to modal coordinates
+                phi = beam.sys.U
+                eta = phi.dot(v).real
+                eta_dot = phi.dot(v_dot)[:-num_dof_rig].__abs__()
+            else:
+                eta = v[:-num_dof_rig].__abs__()
+                eta_dot = v_dot[:-num_dof_rig].__abs__()
+
             amplitude_factor = modalutils.scale_mode(self.data,
-                                                self.eigenvectors[aero_states:aero_states + displacement_states-9,
-                                                mode], rot_max_deg=10, perc_max=0.1)
+                                                     eta,
+                                                     rot_max_deg=10, perc_max=0.15)
+            eta *= amplitude_factor
+            zeta_mode = modalutils.get_mode_zeta(self.data, eta)
+            modalutils.write_zeta_vtk(zeta_mode, self.data.linear.tsaero0.zeta, filename_root=route + 'mode_{:06g}'.format(mode))
 
-            fact_rbm = self.scale_rigid_body_mode(self.eigenvectors[:, mode], self.eigenvalues[mode].imag)* 100
-            print(fact_rbm)
+        eta *= 0
+        zeta_mode = modalutils.get_mode_zeta(self.data, eta)
+        modalutils.write_zeta_vtk(zeta_mode, self.data.linear.tsaero0.zeta, filename_root=route + 'mode_ref')
 
-            t, x = self.mode_time_domain(amplitude_factor, fact_rbm, mode)
-
-            # Initialise postprocessors - new folder for each mode
-            # initialise postprocessors
-            route = self.settings['folder'] + '/stability/mode_%06d/' % mode
-            postprocessors = dict()
-            postprocessor_list = ['AerogridPlot', 'BeamPlot']
-            postprocessors_settings = dict()
-            postprocessors_settings['AerogridPlot'] = {'folder': route,
-                                    'include_rbm': 'on',
-                                    'include_applied_forces': 'on',
-                                    'minus_m_star': 0,
-                                    'u_inf': 1
-                                    }
-            postprocessors_settings['BeamPlot'] = {'folder': route + '/',
-                                    'include_rbm': 'on',
-                                    'include_applied_forces': 'on'}
-
-            for postproc in postprocessor_list:
-                postprocessors[postproc] = initialise_solver(postproc)
-                postprocessors[postproc].initialise(
-                    self.data, postprocessors_settings[postproc])
-
-            # Plot reference
-            for postproc in postprocessor_list:
-                self.data = postprocessors[postproc].run(online=True)
-            for n in range(t.shape[1]):
-                aero_tstep, struct_tstep = lindynamicsim.state_to_timestep(self.data, x[:, n])
-                self.data.aero.timestep_info.append(aero_tstep)
-                self.data.structure.timestep_info.append(struct_tstep)
-
-                for postproc in postprocessor_list:
-                    self.data = postprocessors[postproc].run(online=True)
-
-            # Delete 'modal' timesteps ready for next mode
-            del self.data.structure.timestep_info[1:]
-            del self.data.aero.timestep_info[1:]
+            # # fact_rbm = self.scale_rigid_body_mode(self.eigenvectors[:, mode], self.eigenvalues[mode].imag)* 100
+            # # print(fact_rbm)
+            #
+            # t, x = self.mode_time_domain(amplitude_factor, fact_rbm, mode)
+            #
+            # # Initialise postprocessors - new folder for each mode
+            # # initialise postprocessors
+            # route = self.settings['folder'] + '/stability/mode_%06d/' % mode
+            # postprocessors = dict()
+            # postprocessor_list = ['AerogridPlot', 'BeamPlot']
+            # postprocessors_settings = dict()
+            # postprocessors_settings['AerogridPlot'] = {'folder': route,
+            #                         'include_rbm': 'on',
+            #                         'include_applied_forces': 'on',
+            #                         'minus_m_star': 0,
+            #                         'u_inf': 1
+            #                         }
+            # postprocessors_settings['BeamPlot'] = {'folder': route + '/',
+            #                         'include_rbm': 'on',
+            #                         'include_applied_forces': 'on'}
+            #
+            # for postproc in postprocessor_list:
+            #     postprocessors[postproc] = initialise_solver(postproc)
+            #     postprocessors[postproc].initialise(
+            #         self.data, postprocessors_settings[postproc])
+            #
+            # # Plot reference
+            # for postproc in postprocessor_list:
+            #     self.data = postprocessors[postproc].run(online=True)
+            # for n in range(t.shape[1]):
+            #     aero_tstep, struct_tstep = lindynamicsim.state_to_timestep(self.data, x[:, n])
+            #     self.data.aero.timestep_info.append(aero_tstep)
+            #     self.data.structure.timestep_info.append(struct_tstep)
+            #
+            #     for postproc in postprocessor_list:
+            #         self.data = postprocessors[postproc].run(online=True)
+            #
+            # # Delete 'modal' timesteps ready for next mode
+            # del self.data.structure.timestep_info[1:]
+            # del self.data.aero.timestep_info[1:]
 
     def mode_time_domain(self, fact, fact_rbm, mode_num, cycles=2):
         """
