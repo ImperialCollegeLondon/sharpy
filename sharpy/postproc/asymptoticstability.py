@@ -423,10 +423,10 @@ class AsymptoticStability(BaseSolver):
                 # project aeroelastic mode back to modal coordinates
                 phi = beam.sys.U
                 eta = phi.dot(v).real
-                eta_dot = phi.dot(v_dot)[:-num_dof_rig].__abs__()
+                eta_dot = phi.dot(v_dot)[:-num_dof_rig].real
             else:
-                eta = v[:-num_dof_rig].__abs__()
-                eta_dot = v_dot[:-num_dof_rig].__abs__()
+                eta = v[:-num_dof_rig].real
+                eta_dot = v_dot[:-num_dof_rig].real
 
             amplitude_factor = modalutils.scale_mode(self.data,
                                                      eta,
@@ -435,6 +435,7 @@ class AsymptoticStability(BaseSolver):
             zeta_mode = modalutils.get_mode_zeta(self.data, eta)
             modalutils.write_zeta_vtk(zeta_mode, self.data.linear.tsaero0.zeta, filename_root=route + 'mode_{:06g}'.format(mode))
 
+        # Reference - linearisation state
         eta *= 0
         zeta_mode = modalutils.get_mode_zeta(self.data, eta)
         modalutils.write_zeta_vtk(zeta_mode, self.data.linear.tsaero0.zeta, filename_root=route + 'mode_ref')
