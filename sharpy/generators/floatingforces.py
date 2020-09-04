@@ -107,25 +107,25 @@ class FloatingForces(generator_interface.BaseGenerator):
     settings_default['mooring_node'] = 0
     settings_description['mooring_node'] = 'Structure node where mooring forces are applied'
 
-    settings_types['Kmooring'] = 'float'
-    settings_default['Kmooring'] = 0.
-    settings_description['Kmooring'] = 'Elastic constant of mooring lines'
+    settings_types['mooring_K'] = 'float'
+    settings_default['mooring_K'] = 0.
+    settings_description['mooring_K'] = 'Elastic constant of mooring lines'
 
-    settings_types['Cmooring'] = 'float'
-    settings_default['Cmooring'] = 0.
-    settings_description['Cmooring'] = 'Damping constant of mooring lines'
+    settings_types['mooring_C'] = 'float'
+    settings_default['mooring_C'] = 0.
+    settings_description['mooring_C'] = 'Damping constant of mooring lines'
 
-    settings_types['floating_node'] = 'int'
-    settings_default['floating_node'] = 0
-    settings_description['floating_node'] = 'Structure node where floating forces are applied'
+    settings_types['buoyancy_node'] = 'int'
+    settings_default['buoyancy_node'] = 0
+    settings_description['buoyancy_node'] = 'Structure node where buoyancy forces are applied'
 
-    settings_types['floating_dist'] = 'float'
-    settings_default['floating_dist'] = 0.
-    settings_description['floating_dist'] = 'Distance between the base and the floating positions'
+    settings_types['buoyancy_dist'] = 'float'
+    settings_default['buoyancy_dist'] = 0.
+    settings_description['buoyancy_dist'] = 'Distance between the base and the buoyancy positions'
 
-    settings_types['floating_cross_area'] = 'float'
-    settings_default['floating_cross_area'] = 0.
-    settings_description['floating_cross_area'] = 'Cross area of the floating cylinders'
+    settings_types['buoyancy_cross_area'] = 'float'
+    settings_default['buoyancy_cross_area'] = 0.
+    settings_description['buoyancy_cross_area'] = 'Cross area of the buoyancy cylinders'
 
     setting_table = settings.SettingsTable()
     __doc__ += setting_table.generate(settings_types, settings_default, settings_description)
@@ -138,12 +138,12 @@ class FloatingForces(generator_interface.BaseGenerator):
         self.gravity_dir = None
 
         self.mooring_node = None
-        self.Kmooring = None
-        self.Cmooring = None
+        self.mooring_K = None
+        self.mooring_C = None
 
-        self.floating_node = None
-        self.floating_dist = None
-        self.floating_cross_area = None
+        self.buoyancy_node = None
+        self.buoyancy_dist = None
+        self.buoyancy_cross_area = None
 
 
     def initialise(self, in_dict=None):
@@ -159,12 +159,12 @@ class FloatingForces(generator_interface.BaseGenerator):
         self.gravity_dir = self.settings['gravity_dir']
 
         self.mooring_node = self.settings['mooring_node']
-        self.Kmooring = self.settings['Kmooring']
-        self.Cmooring = self.settings['Cmooring']
+        self.mooring_K = self.settings['mooring_K']
+        self.mooring_C = self.settings['mooring_C']
 
-        self.floating_node = self.settings['floating_node']
-        self.floating_dist = self.settings['floating_dist']
-        self.floating_cross_area = self.settings['floating_cross_area']
+        self.buoyancy_node = self.settings['buoyancy_node']
+        self.buoyancy_dist = self.settings['buoyancy_dist']
+        self.buoyancy_cross_area = self.settings['buoyancy_cross_area']
 
 
     def generate(self, params):
@@ -185,20 +185,20 @@ class FloatingForces(generator_interface.BaseGenerator):
         for imooring in range(mooring.shape[0]):
             disp = np.dot(mooring[imooring, :], base_disp)
             if disp < 0.:
-                struct_tstep.applied_forces[self.mooring_node, 0:3] += solf.Kmooring*np.abs(disp)*mooring[imooring, :]
+                struct_tstep.applied_forces[self.mooring_node, 0:3] += solf.mooring_K*np.abs(disp)*mooring[imooring, :]
 
             vel = np.dot(mooring[imooring, :], base_vel)
             if vel < 0.:
-                struct_tstep.applied_forces[self.mooring_node, 0:3] += solf.Cmooring*np.abs(vel)*mooring[imooring, :]
+                struct_tstep.applied_forces[self.mooring_node, 0:3] += solf.mooring_C*np.abs(vel)*mooring[imooring, :]
 
         # Hydrostatic model
         CGA = struct_tstep.cga()
-        floating_A = self.floatting_dist*np.array([[0., 0., 1.0],
+        buoyancy_A = self._dist*np.array([[0., 0., 1.0],
                             [0., np.cos(30*deg2rad), -np.sin(30*deg2rad)],)
                             [0., -np.cos(30*deg2rad), -np.sin(30*deg2rad)]])
-        for ifloat in range(floating.shape[0])
-            floating_G = np.dot(CGA, floating_A[ifloat, :])
-            force = -self.water_density*self.gravity*np.dot(floating_G[0], self.gravity_dir)*self.floating_cross_area
+        for ibuoyancy in range(buoyancy_A.shape[0])
+            buoyancy_G = np.dot(CGA, buoyancy_A[ifloat, :])
+            force = -self.water_density*self.gravity*np.dot(buoyancy_G[0], self.gravity_dir)*self.buoyancy_cross_area
 
-            struct_tstep.applied_forces[self.floating_node, 0:3] = force
-            struct_tstep.applied_forces[self.floating_node, 3:6] = np.dot(floating_G[ifloat, :], force)
+            struct_tstep.applied_forces[self.buoyancy_node, 0:3] = force
+            struct_tstep.applied_forces[self.buoyancy_node, 3:6] = np.dot(buoyancy_G[ifloat, :], force)
