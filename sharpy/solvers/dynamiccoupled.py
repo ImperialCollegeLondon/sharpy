@@ -18,6 +18,7 @@ import sharpy.utils.algebra as algebra
 import sharpy.utils.exceptions as exc
 import sharpy.utils.correct_forces as cf
 import sharpy.io.network_interface as network_interface
+import sharpy.utils.generator_interface as gen_interface
 
 
 @solver
@@ -32,6 +33,8 @@ class DynamicCoupled(BaseSolver):
     Input data (from external controllers) can be received and data sent using the SHARPy network
     interface, specified through the setting ``network_settings`` of this solver. For more detail on how to send
     and receive data see the :class:`~sharpy.io.network_interface.NetworkLoader` documentation.
+
+    External forces that depend on the instantaneous situation of the system can be applied through the ``apply_forces_generators``.
 
     """
     solver_id = 'DynamicCoupled'
@@ -162,6 +165,12 @@ class DynamicCoupled(BaseSolver):
                                                ':class:`~sharpy.io.network_interface.NetworkLoader` for supported ' \
                                                'entries'
 
+    settings_types['apply_forces_generators'] = 'dict'
+    settings_default['apply_forces_generators'] = dict()
+    settings_description['apply_forces_generators'] = 'The dictionary keys are the generator of forces to be used.' \
+                                                      'The dictionary values are dictionaries with the parameters ' \
+                                                      'needed by each generator.'
+
     settings_table = settings.SettingsTable()
     __doc__ += settings_table.generate(settings_types, settings_default, settings_description, settings_options)
 
@@ -199,6 +208,9 @@ class DynamicCoupled(BaseSolver):
         # variables to send and receive
         self.network_loader = None
         self.set_of_variables = None
+
+        self.apply_forces_generators = dict()
+        self.with_apply_forces = False
 
     def get_g(self):
         """
@@ -303,6 +315,15 @@ class DynamicCoupled(BaseSolver):
         if self.settings['network_settings']:
             self.network_loader = network_interface.NetworkLoader()
             self.network_loader.initialise(in_settings=self.settings['network_settings'])
+
+        # initialise force generators
+        self.apply_forces_generators = dict()
+        if self.settings['apply_forces_generators']:
+            self.with_apply_forces = True
+            for id, param in self.settings['apply_forces_generators'].items():
+                gen = gen_interface.generator_from_string(id)
+                self.apply_forces_generators[id] = gen()
+                self.apply_forces_generators[id].initialise(param)
 
     def cleanup_timestep_info(self):
         if max(len(self.data.aero.timestep_info), len(self.data.structure.timestep_info)) > 1:
@@ -467,6 +488,15 @@ class DynamicCoupled(BaseSolver):
                     # this takes care of the changes in options for the solver
                     structural_kstep, aero_kstep = self.process_controller_output(
                         state)
+
+            # Add external forces
+            if self.with_apply_forces:
+                params = dict()
+                params['data'] = self.data
+                params['struct_tstep'] = structural_kstep
+                params['aero_tstep'] = aero_kstep
+                for id, apply_forces_generator in self.apply_forces_generators.items():
+                    apply_forces_generator.generate(params)
 
             self.time_aero = 0.0
             self.time_struc = 0.0
