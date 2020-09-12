@@ -234,7 +234,7 @@ class LinControlSurfaceDeflector(object):
                                     #     der_R_arbitrary_axis_times_v(hinge_axis, 0, chord_vec)
 
                                     # Flap velocity
-                                    Kvel[i_vertex, i_control_surface] = -algebra.skew(chord_vec).dot(
+                                    Kvel[i_vertex, i_control_surface] = -algebra.skew(-for_delta * chord_vec).dot(
                                         hinge_axis) * for_delta * -1
 
                                     # Flap hinge moment - future work
