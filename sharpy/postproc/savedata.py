@@ -136,7 +136,7 @@ class SaveData(BaseSolver):
         # create folder for containing files if necessary
         if not os.path.exists(self.settings['folder']):
             os.makedirs(self.settings['folder'])
-        self.folder = self.settings['folder'] + '/' + self.data.settings['SHARPy']['case'] + '/'
+        self.folder = self.settings['folder'] + '/' + self.data.settings['SHARPy']['case'] + '/savedata/'
         if not os.path.exists(self.folder):
             os.makedirs(self.folder)
         self.filename = self.folder + self.data.settings['SHARPy']['case'] + '.data.h5'
