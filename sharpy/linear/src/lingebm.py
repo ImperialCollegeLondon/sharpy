@@ -988,7 +988,6 @@ class FlexDynamic():
             # Scale modes to have an identity mass matrix
             phi = modalutils.scale_mass_normalised_modes(phi, self.Mstr)
 
-            modalutils.assert_modes_mass_normalised(phi, self.Mstr, tolerance=1e-5, raise_error=True)
             self.U = phi
 
             # Update

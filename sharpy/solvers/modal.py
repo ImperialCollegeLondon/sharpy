@@ -362,12 +362,6 @@ class Modal(BaseSolver):
         # Scaling
         eigenvectors, eigenvectors_left = self.scale_modes_unit_mass_matrix(eigenvectors, FullMglobal, eigenvectors_left)
 
-        modalutils.assert_orthogonal_eigenvectors(eigenvectors[:, 10], eigenvectors[:, 11],
-                                                  decimal=5,
-                                                  raise_error=False)
-
-        modalutils.assert_modes_mass_normalised(eigenvectors, FullMglobal, tolerance=1e-7, raise_error=False)
-
         # Other terms required for state-space realisation
         # non-zero damping matrix
         # Modal damping matrix
