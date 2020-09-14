@@ -72,7 +72,7 @@ class LinControlSurfaceDeflector(object):
 
         # Find the vertices corresponding to a control surface from beam coordinates to aerogrid
         aero_dict = aero.aero_dict
-        n_surf = aero.timestep_info[0].n_surf
+        n_surf = tsaero0.n_surf
         n_control_surfaces = self.n_control_surfaces
 
         Kdisp = np.zeros((3 * linuvlm.Kzeta, n_control_surfaces))
