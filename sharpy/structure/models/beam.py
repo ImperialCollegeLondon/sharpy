@@ -295,7 +295,7 @@ class Beam(BaseStructure):
                     self.elements[i_lumped_master_elem].max_nodes_elem, 6, 6))
 
             self.elements[i_lumped_master_elem].rbmass[i_lumped_master_node_local, :, :] += (
-                inertia_tensor)
+                inertia_tensor) # += necessary in case multiple masses defined per node
 
     # def generate_master_structure(self):
     #     self.master = np.zeros((self.num_elem, self.num_node_elem, 2), dtype=int) - 1
