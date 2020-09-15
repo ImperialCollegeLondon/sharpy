@@ -39,6 +39,9 @@ class ModifyStructure(generator_interface.BaseGenerator):
 
         self.num_changes = len(self.settings['change_variable'])
 
+        # lumped_mass_ready = False # unchanged variables are not yet set to zero
+        lumped_mass_variables = []
+        # run once - since it gets added it prevents unchanged variables to change with original value...
         for i in range(self.num_changes):
             var_type = self.settings['change_variable'][i]
             if var_type == 'lumped_mass':
@@ -47,11 +50,24 @@ class ModifyStructure(generator_interface.BaseGenerator):
                 variable.initialise(structure)
 
                 self.variables.append(variable)
+                lumped_mass_variables.append(i)
+                # if not lumped_mass_ready:
+                #     for i_mass in range(len(structure.lumped_mass)):
+                #         # TODO: change such that it checks which variables are lumped mass
+                #         if i_mass not in self.settings['variable_index']:
+                #             ChangeLumpedMass.set_to_zero(structure, i_mass)
+                #     lumped_mass_ready = True
+
+        for i_mass in range(len(structure.lumped_mass)):
+            if i_mass not in lumped_mass_variables:
+                # set to zero unchanged lumped masses (that way they won't change)
+                ChangeLumpedMass.set_to_zero(structure, i_mass)
 
     def generate(self, params):
         data = params['data']
         ts = len(data.structure.timestep_info) - 1
         structure = data.structure
+        # print('Time step: {:g}'.format(ts))
 
         for variable in self.variables:
             variable(structure, ts)
@@ -88,7 +104,6 @@ class ChangedVariable:
 
     def load_file(self):
         self.target_value = np.loadtxt(self.file)
-        print('Successfully loaded file, {:s}'.format(self.file))
 
 
 class ChangeLumpedMass(ChangedVariable):
@@ -116,6 +131,14 @@ class ChangeLumpedMass(ChangedVariable):
         # called once all variables changes
         structure.lump_masses()
         structure.generate_fortran()
+
+    @staticmethod
+    def set_to_zero(structure, i_unchanged_var):
+        # called once during initialisation
+        # it changes all the parameters to zero for lumped masses that are not being changed
+        structure.lumped_mass[i_unchanged_var] *= 0
+        structure.lumped_mass_position[i_unchanged_var] *= 0
+        structure.lumped_mass_inertia[i_unchanged_var] *= 0
 
     def load_file(self):
 
