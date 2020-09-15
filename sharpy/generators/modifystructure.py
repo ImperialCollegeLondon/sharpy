@@ -31,6 +31,7 @@ class ModifyStructure(generator_interface.BaseGenerator):
 
         self.num_changes = None
         self.variables = []
+        self.control_objects = {}
 
     def initialise(self, in_dict, structure):
         self.settings = in_dict
@@ -39,9 +40,10 @@ class ModifyStructure(generator_interface.BaseGenerator):
 
         self.num_changes = len(self.settings['change_variable'])
 
-        # lumped_mass_ready = False # unchanged variables are not yet set to zero
+        if 'lumped_mass' in self.settings['change_variable']:
+            self.control_objects['lumped_mass'] = LumpedMassControl()
+
         lumped_mass_variables = []
-        # run once - since it gets added it prevents unchanged variables to change with original value...
         for i in range(self.num_changes):
             var_type = self.settings['change_variable'][i]
             if var_type == 'lumped_mass':
@@ -51,21 +53,17 @@ class ModifyStructure(generator_interface.BaseGenerator):
 
                 self.variables.append(variable)
                 lumped_mass_variables.append(i)
-                # if not lumped_mass_ready:
-                #     for i_mass in range(len(structure.lumped_mass)):
-                #         # TODO: change such that it checks which variables are lumped mass
-                #         if i_mass not in self.settings['variable_index']:
-                #             ChangeLumpedMass.set_to_zero(structure, i_mass)
-                #     lumped_mass_ready = True
-
-        for i_mass in range(len(structure.lumped_mass)):
-            if i_mass not in lumped_mass_variables:
-                # set to zero unchanged lumped masses (that way they won't change)
-                ChangeLumpedMass.set_to_zero(structure, i_mass)
+                self.control_objects['lumped_mass'].append(i)
+            else:
+                raise NotImplementedError('Variable {:s} not yet coded to be modified in runtime'.format(var_type))
+        try:
+            self.control_objects['lumped_mass'].set_unchanged_vars_to_zero(structure)
+        except KeyError:
+            pass
 
     def generate(self, params):
         data = params['data']
-        ts = len(data.structure.timestep_info) - 1
+        ts = data.ts
         structure = data.structure
         # print('Time step: {:g}'.format(ts))
 
@@ -73,7 +71,13 @@ class ModifyStructure(generator_interface.BaseGenerator):
             variable(structure, ts)
 
         # should only be called once per time step
-        ChangeLumpedMass.execute_change(structure)
+        try:
+            self.control_objects['lumped_mass'].execute_change(structure)
+        except KeyError:
+            pass
+
+        # for future variables supported, have the control objects have the same signatures such that they may be
+        # called in a loop
 
 
 class ChangedVariable:
@@ -90,8 +94,8 @@ class ChangedVariable:
 
     def initialise(self, structure):
 
-        self.load_file()
         self.get_original(structure)
+        self.load_file()
 
         self.delta = self.target_value
         self.current_value = self.original  # initially
@@ -126,28 +130,19 @@ class ChangeLumpedMass(ChangedVariable):
             structure.lumped_mass_position[self.variable_index, :] = np.zeros(3)
             structure.lumped_mass_inertia[self.variable_index, :, :] = np.zeros((3, 3))
 
-    @staticmethod
-    def execute_change(structure):
-        # called once all variables changes
-        structure.lump_masses()
-        structure.generate_fortran()
-
-    @staticmethod
-    def set_to_zero(structure, i_unchanged_var):
-        # called once during initialisation
-        # it changes all the parameters to zero for lumped masses that are not being changed
-        structure.lumped_mass[i_unchanged_var] *= 0
-        structure.lumped_mass_position[i_unchanged_var] *= 0
-        structure.lumped_mass_inertia[i_unchanged_var] *= 0
-
     def load_file(self):
 
         super().load_file()
 
-        # if not enough column entries # TODO: pad with original!
-        if self.target_value.shape[1] != 10:
+        # if not enough column entries pad with original values
+        n_values = len(self.original)
+        if self.target_value.shape[1] != n_values:
+
             self.target_value = np.column_stack((self.target_value,
-                                                 np.zeros((self.target_value.shape[0], 10 - self.target_value.shape[1]))))
+                                                 self.original[-(n_values - self.target_value.shape[1]):]
+                                                 * np.ones((self.target_value.shape[0], n_values - self.target_value.shape[1])
+                                                           )
+                                                 ))
 
     def get_original(self, structure):
         m = structure.lumped_mass[self.variable_index]
@@ -155,3 +150,43 @@ class ChangeLumpedMass(ChangedVariable):
         inertia = structure.lumped_mass_inertia[self.variable_index, :, :]
 
         self.original = np.hstack((m, pos, np.diag(inertia), inertia[0, 1], inertia[0, 2], inertia[1, 2]))
+
+
+class LumpedMassControl:
+    """Lumped Mass Control Class
+
+    This class is instantiated when at least one lumped mass is modified.
+
+    It allows control over unchanged lumped masses and calls the method to execute the change.
+    """
+    def __init__(self):
+        self.lumped_mass_variables = []
+
+    def set_unchanged_vars_to_zero(self, structure):
+        """
+        Sets the lumped masses variables of unchanged lumped masses to zero.
+
+        This is to avoid the lumped mass changing during execution
+
+        Args:
+            structure (sharpy.structure.models.beam.Beam): SHARPy structure object
+
+        """
+        for i_lumped_mass in range(len(structure.lumped_mass)):
+            if i_lumped_mass not in self.lumped_mass_variables:
+                structure.lumped_mass[i_lumped_mass] *= 0
+                structure.lumped_mass_position[i_lumped_mass] *= 0
+                structure.lumped_mass_inertia[i_lumped_mass] *= 0
+
+    @staticmethod
+    def execute_change(structure):
+        """Executes the change in the lumped masses.
+
+        Called only once per time step when all the changed lumped mass variables have been processed.
+        """
+        # called once all variables changed
+        structure.lump_masses()
+        structure.generate_fortran()
+
+    def append(self, i):
+        self.lumped_mass_variables.append(i)
