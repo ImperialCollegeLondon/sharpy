@@ -287,7 +287,7 @@ class DynamicCoupled(BaseSolver):
             self.postprocessors[postproc] = solver_interface.initialise_solver(
                 postproc)
             self.postprocessors[postproc].initialise(
-                self.data, self.settings['postprocessors_settings'][postproc], caller=self)
+                self.data, self.settings['postprocessors_settings'][postproc])
 
         # initialise controllers
         self.controllers = dict()
