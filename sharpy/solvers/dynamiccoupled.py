@@ -327,7 +327,7 @@ class DynamicCoupled(BaseSolver):
             for id, param in self.settings['runtime_generators'].items():
                 gen = gen_interface.generator_from_string(id)
                 self.runtime_generators[id] = gen()
-                self.runtime_generators[id].initialise(param)
+                self.runtime_generators[id].initialise(param, data=self.data)
 
     def cleanup_timestep_info(self):
         if max(len(self.data.aero.timestep_info), len(self.data.structure.timestep_info)) > 1:
