@@ -5,6 +5,15 @@ import sharpy.utils.settings as settings
 
 @generator_interface.generator
 class ModifyStructure(generator_interface.BaseGenerator):
+    """
+    ModifyStructure generator.
+
+    This generator allows the user to modify structural parameters at runtime. At the moment, changes to lumped
+    masses are supported. For each lumped mass you want to change, set ``change_variable`` to ``lumped_mass``, and the
+    ``variable_index`` and ``file_list`` as specified in :class:`~sharpy.generators.modifystructure.ChangeLumpedMass`.
+
+    This generator is called at the start of each time step in ``DynamicCoupled``.
+    """
     generator_id = 'ModifyStructure'
 
     settings_types = dict()
@@ -111,12 +120,24 @@ class ChangedVariable:
 
 
 class ChangeLumpedMass(ChangedVariable):
+    """
+    Lumped Mass to be modified
 
+    The arguments are parsed as items of the list in the settings for ``variable_index`` and ``file_list``. For
+    those variables marked where ``change_variables = 'lumped_mass'``.
+
+    Args:
+        var_index (int): Index of lumped mass. NOT the lumped mass node.
+        file (str): Path to file containing time history of the lumped mass.
+    """
     def __init__(self, var_index, file):
         super().__init__('lumped_mass', var_index=var_index, file=file)
 
     def __call__(self, structure, ts):
         try:
+            # lumped masses get added at structure.lump_masses(), therefore the increment with respect to the
+            # previous time step must be provided. This is such that this generator is backwards compatible with the
+            # way lumped masses are assembled.
             delta = self.target_value[ts] - self.current_value
             structure.lumped_mass[self.variable_index] = delta[0]
             structure.lumped_mass_position[self.variable_index, :] = delta[1:4]
