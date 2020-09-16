@@ -8,6 +8,7 @@ import sharpy.linear.src.lingebm as lingebm
 import numpy as np
 import sharpy.utils.settings as settings
 import sharpy.utils.algebra as algebra
+import sharpy.structure.utils.modalutils as modalutils
 
 
 @linear_system
@@ -146,6 +147,7 @@ class LinearBeam(BaseElement):
         settings.to_custom_types(self.settings, self.settings_types, self.settings_default,
                                  self.settings_options, no_ctype=True)
 
+        self.settings['rigid_modes_cg'] = data.settings['Modal']['rigid_modes_cg']  # use the same value as in Modal solver
         beam = lingebm.FlexDynamic(data.linear.tsstruct0, data.structure, self.settings)
         self.sys = beam
         self.tsstruct0 = data.linear.tsstruct0
@@ -328,11 +330,10 @@ class LinearBeam(BaseElement):
         self.sys.U = modes_sym[:, sym_mode_index]
 
         # make all elastic modes have a positive z component at the wingtip
-        for i in range(self.sys.U.shape[1]):
-            if np.abs(self.sys.U[ind_w1[-1], i]) > 1e-10:
-                self.sys.U[:, i] = np.sign(self.sys.U[ind_w1[-1], i]) * self.sys.U[:, i]
-            elif np.abs(self.sys.U[ind_w1_y, i][-1]) > 1e-4:
-                self.sys.U[:, i] = np.sign(self.sys.U[ind_w1_y[-1], i]) * self.sys.U[:, i]
+        self.sys.U = modalutils.mode_sign_convention(self.sys.structure.boundary_conditions,
+                                                     self.sys.U,
+                                                     rigid_body_motion=not self.clamped,
+                                                     use_euler=self.settings['use_euler'])
 
         self.sys.freq_natural = self.sys.freq_natural[sym_mode_index]
         self.sys.num_modes = len(self.sys.freq_natural)

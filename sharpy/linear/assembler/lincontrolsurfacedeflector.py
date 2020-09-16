@@ -178,6 +178,10 @@ class LinControlSurfaceDeflector(object):
                             with_control_surface = False
                             hinge_axis = None  # Reset for next control surface
 
+        # >>>> Merge control surfaces 0 and 1
+        # Kdisp[:, 0] -= Kdisp[:, 1]
+        # Kvel[:, 0] -= Kvel[:, 1]
+
         self.Kzeta_delta = Kdisp
         self.Kdzeta_ddelta = Kvel
         return Kdisp, Kvel
