@@ -75,7 +75,6 @@ class ModifyStructure(generator_interface.BaseGenerator):
         data = params['data']
         ts = data.ts
         structure = data.structure
-        # print('Time step: {:g}'.format(ts))
 
         for variable in self.variables:
             variable(structure, ts)
@@ -136,7 +135,7 @@ class ChangeLumpedMass(ChangedVariable):
 
     def __call__(self, structure, ts):
         try:
-            # lumped masses get added at structure.lump_masses(), therefore the increment with respect to the
+            # lumped masses get added (+=) at structure.lump_masses(), therefore the increment with respect to the
             # previous time step must be provided. This is such that this generator is backwards compatible with the
             # way lumped masses are assembled.
             delta = self.target_value[ts] - self.current_value
