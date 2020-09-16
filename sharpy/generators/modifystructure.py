@@ -42,7 +42,8 @@ class ModifyStructure(generator_interface.BaseGenerator):
         self.variables = []
         self.control_objects = {}
 
-    def initialise(self, in_dict, structure):
+    def initialise(self, in_dict, **kwargs):
+        structure = kwargs['data'].structure
         self.settings = in_dict
         settings.to_custom_types(self.settings, self.settings_types, self.settings_default, no_ctype=True,
                                  options=self.settings_options)
