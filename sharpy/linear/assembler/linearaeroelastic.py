@@ -185,6 +185,10 @@ class LinearAeroelastic(ss_interface.BaseElement):
                 Dmod[flex_nodes:, total_dof: total_dof + flex_nodes] -= self.Crs
                 Dmod[:flex_nodes, total_dof + flex_nodes: 2 * total_dof] -= self.Csr
                 Dmod[flex_nodes:, total_dof + flex_nodes: 2 * total_dof] -= self.Crr
+                if uvlm.scaled:
+                    ## this needs to be verified
+                    # uvlm.ss.D is non-dimensional in inputs and outputs....
+                    Dmod /= uvlm.sys.ScalingFacts['force'] * uvlm.sys.ScalingFacts['length']
                 uvlm.ss.D += Dmod
 
             self.couplings['Ksa'] = Ksa
