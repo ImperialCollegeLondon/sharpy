@@ -396,7 +396,8 @@ def mode_sign_convention(bocos, eigenvectors, rigid_body_motion=False, use_euler
 
         else:
             if rigid_body_motion:
-                cout.cout_wrap('Mode component at the A frame is 0.', 3)
+                if not np.max(np.abs(eigenvectors[-num_rigid_modes+6:, i])) == 1.0: # orientation mode, either euler/quat
+                    cout.cout_wrap('Implementing mode sign convention. Mode {:g} component at the A frame is 0.'.format(i), 3)
             else:
                 # cout.cout_wrap('Mode component at the first free end (node {:g}) is 0.'.format(first_free_end_node), 3)
 
@@ -419,9 +420,7 @@ def order_rigid_body_modes(eigenvectors, use_euler):
 
     for i in range(num_rigid_modes):
         index_max_node = np.where(eigenvectors[:, i] == np.max(eigenvectors[:, i]))[0][0]
-        print(index_max_node)
         index_mode = num_rigid_modes - (num_node - index_max_node)
-        print(index_mode)
         phi_rr[:, index_mode] = eigenvectors[-num_rigid_modes:, i]
 
     eigenvectors[-num_rigid_modes:, :num_rigid_modes] = phi_rr
