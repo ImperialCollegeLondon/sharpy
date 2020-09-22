@@ -61,6 +61,9 @@ dependencies:
   - lz4-c=1.8.1.2=h14c3975_0
   - matplotlib=3.1.1=py37h5429711_0
   - mayavi=4.7.1=py37h94891b3_2
+  - nbconvert=5.6.1=py37_0
+  - nbformat=4.4.0=py_1
+  - nbsphinx=0.4.3=py_0
   - ncurses=6.1=he6710b0_1
   - numpy=1.17.3=py37h95a1406_0
   - openssl=1.1.1g=h7b6447c_0
