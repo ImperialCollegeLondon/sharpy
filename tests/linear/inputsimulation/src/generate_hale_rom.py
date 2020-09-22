@@ -860,10 +860,11 @@ def generate_linearised_system(alpha_deg):
                                             'screen_output': 'on'}
 
         settings['Modal'] = {'print_info': 'on',
+                             'folder': route + '/output/',
                              'use_undamped_modes': 'on',
                              'NumLambda': num_modes,
                              'rigid_body_modes': free_flight,
-                             'write_modes_vtk': 'on',
+                             'write_modes_vtk': 'off',
                              'print_matrices': 'off',
                              'write_data': 'on',
                              'rigid_modes_cg': 'off'}
