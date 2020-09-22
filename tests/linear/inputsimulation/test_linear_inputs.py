@@ -12,7 +12,6 @@ class TestJupyter(unittest.TestCase):
     sharpy_root = os.path.abspath(test_dir + '../../../../')
 
     def setUp(self):
-
         nonlinear_results_file = self.test_dir + '/nonlinear_results.txt'
         with open(nonlinear_results_file, 'w') as f:
             f.write('alpha,\tFxG,\tFyG,\tFzG\n')
@@ -38,4 +37,3 @@ class TestJupyter(unittest.TestCase):
         with open('executed_notebook.ipynb', 'w', encoding='utf-8') as f:
             nbformat.write(nb, f)
 
-        # add matplotlib exception 

@@ -709,7 +709,7 @@ def execute_sharpy_simulations(test_dir):
             settings['SHARPy'] = {'case': case_name,
                                   'route': cases_folder,
                                   'flow': flow,
-                                  'write_screen': 'on',
+                                  'write_screen': 'off',
                                   'write_log': 'on',
                                   'log_folder': route + '/output/' + case_name,
                                   'log_file': case_name + '.log'}

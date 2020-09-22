@@ -708,7 +708,7 @@ def generate_linearised_system(alpha_deg):
         settings['SHARPy'] = {'case': case_name,
                               'route': cases_folder,
                               'flow': flow,
-                              'write_screen': 'on',
+                              'write_screen': 'off',
                               'write_log': 'on',
                               'log_folder': route + '/output/' + case_name,
                               'log_file': case_name + '.log'}
