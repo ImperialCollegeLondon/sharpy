@@ -14,7 +14,7 @@ cases running on SHARPy.
     example_notebooks/wind_turbine
     example_notebooks/cantilever/static_cantilever
     example_notebooks/simple_airfoil
-    example_notebooks/linear_systems_example
+    example_notebooks/linear_system_inputs
 
 Downloadable files
 ------------------
@@ -25,7 +25,7 @@ Downloadable files
 * :download:`./example_notebooks/wind_turbine.ipynb`
 * :download:`./example_notebooks/simple_airfoil.ipynb`
 * :download:`./example_notebooks/cantilever/static_cantilever.ipynb`
-* :download:`./example_notebooks/linear_systems_example.ipynb`
+* :download:`./example_notebooks/linear_system_inputs.ipynb`
 
 Input data for wind turbine: 
 
