@@ -9,11 +9,12 @@ import sharpy.utils.cout_utils as cout
 class SaveParametricCase(BaseSolver):
     """
     SaveParametricCase is a post-processor that creates a ConfigParser text file called
-    ``<sharpy_case_name>.pmor.sharpy`` that contains information on certain user parameters. It is useful as
+    ``<sharpy_case_name>.pmor.sharpy`` that contains information on certain simulation parameters. It is useful as
     a record keeper if you are doing a parametric study and for parametric model interpolation.
 
-    If the solver :class:`~sharpy.solvers.pickledata.PickleData` is not present in the SHARPy flow, this solver
-    will pickle the data to the path given in the ``folder`` setting.
+
+    If the setting ``save_case`` is selected and the post processor :class:`~sharpy.solvers.pickledata.PickleData`
+    is not present in the SHARPy flow, this solver will pickle the data to the path given in the ``folder`` setting.
 
     Examples:
 

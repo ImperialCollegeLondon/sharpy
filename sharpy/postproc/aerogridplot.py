@@ -9,6 +9,7 @@ from sharpy.utils.settings import str2bool
 from sharpy.utils.solver_interface import solver, BaseSolver
 import sharpy.utils.settings as settings
 import sharpy.aero.utils.uvlmlib as uvlmlib
+from sharpy.utils.constants import vortex_radius_def
 
 
 @solver
@@ -62,6 +63,10 @@ class AerogridPlot(BaseSolver):
     settings_types['num_cores'] = 'int'
     settings_default['num_cores'] = 1
 
+    settings_types['vortex_radius'] = 'float'
+    settings_default['vortex_radius'] = vortex_radius_def
+    settings_description['vortex_radius'] = 'Distance below which inductions are not computed'
+
     table = settings.SettingsTable()
     __doc__ += table.generate(settings_types, settings_default, settings_description)
 
@@ -101,8 +106,9 @@ class AerogridPlot(BaseSolver):
         # TODO: Create a dictionary to plot any variable as in beamplot
         if not online:
             for self.ts in range(self.ts_max):
-                self.plot_body()
-                self.plot_wake()
+                if self.data.aero.timestep_info[self.ts] is not None:
+                    self.plot_body()
+                    self.plot_wake()
             cout.cout_wrap('...Finished', 1)
         else:
             aero_tsteps = len(self.data.aero.timestep_info) - 1
@@ -209,6 +215,7 @@ class AerogridPlot(BaseSolver):
             if self.settings['include_velocities']:
                 vel = uvlmlib.uvlm_calculate_total_induced_velocity_at_points(aero_tstep,
                                                                               coords,
+                                                                              self.settings['vortex_radius'],
                                                                               struct_tstep.for_pos,
                                                                               self.settings['numcores'])
 
