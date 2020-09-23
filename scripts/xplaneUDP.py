@@ -14,9 +14,6 @@ import sharpy.utils.solver_interface as solver_interface
 import sharpy.postproc
 from sharpy.utils.algebra import quat2euler
 
-import matplotlib.pyplot as plt
-
-
 class XPlaneIpNotFound(Exception):
     args = "Could not find any running XPlane instance in network."
 
