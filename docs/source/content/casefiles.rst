@@ -314,3 +314,29 @@ Item by item:
     in the **local, body-attached** ``B`` frame, the factors and constant terms for: ``fy, fz, mx``.
     For more information on how these factors are included in the mapping terms
     see :func:`sharpy.aero.utils.mapping.aero2struct_force_mapping`.
+
+Time-varying force input file (``.dyn.h5``)
+-------------------------------------------
+
+The ``.dyn.h5`` file is an *optional* input file that may contain force and acceleration inputs that vary with time.
+This is intended for use in dynamic problems. For SHARPy to look for and use this file the setting ``unsteady`` in the
+:class:`~sharpy.solvers.beamloader.BeamLoader` must be turned to ``on``.
+
+Appropriate data entries in the ``.dyn.h5`` include:
+
+* ``dynamic_forces [num_t_steps, num_node, 6]``: Dynamic forces in body attached ``B`` frame.
+
+    Forces given at each time step, for each node and then for the 6 degrees of freedom (``fx, fy, fz, mx, my, mz``) in
+    a body-attached (local) frame of reference ``B``.
+
+* ``for_pos [num_t_steps, 6]``: Body frame of reference (A FoR) position.
+
+    Position of the reference frame A in time.
+
+* ``for_vel [num_t_steps, 6]``: Body frame of reference (A FoR) velocity.
+
+    Velocity of the reference frame A in time.
+
+* ``for_acc [num_t_steps, 6]``: Body frame of reference (A FoR) acceleration.
+
+    Acceleration of the reference frame A in time.
