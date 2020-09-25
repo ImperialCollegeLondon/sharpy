@@ -125,6 +125,10 @@ class StepUvlm(BaseSolver):
     settings_default['yaw_slerp'] = 0
     settings_description['yaw_slerp'] = 'Yaw angle in radians to be used when interp_metod == 4'
 
+    settings_types['quasi_steady'] = 'bool'
+    settings_default['quasi_steady'] = False
+    settings_description['quasi_steady'] = 'Use quasi-steady approximation in UVLM'
+
     settings_table = settings.SettingsTable()
     __doc__ += settings_table.generate(settings_types, settings_default, settings_description, settings_options)
 
@@ -226,7 +230,7 @@ class StepUvlm(BaseSolver):
                             convect_wake=convect_wake,
                             dt=dt)
 
-        if unsteady_contribution:
+        if unsteady_contribution and not self.settings['quasi_steady']:
             # calculate unsteady (added mass) forces:
             self.data.aero.compute_gamma_dot(dt,
                                              aero_tstep,
