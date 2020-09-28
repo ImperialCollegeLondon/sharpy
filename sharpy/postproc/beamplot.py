@@ -59,8 +59,9 @@ class BeamPlot(BaseSolver):
 
         self.folder = ''
         self.filename = ''
+        self.caller = None
 
-    def initialise(self, data, custom_settings=None):
+    def initialise(self, data, custom_settings=None, caller=None):
         self.data = data
         if custom_settings is None:
             self.settings = data.settings[self.solver_id]
@@ -81,6 +82,7 @@ class BeamPlot(BaseSolver):
                          self.settings['name_prefix'] +
                          'for_' +
                          self.data.settings['SHARPy']['case'])
+        self.caller = caller
 
     def run(self, online=False):
         self.plot(online)

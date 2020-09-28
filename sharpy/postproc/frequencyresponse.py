@@ -90,8 +90,9 @@ class FrequencyResponse(solver_interface.BaseSolver):
 
         self.w_to_k = 1
         self.wv = None
+        self.caller = None
 
-    def initialise(self, data, custom_settings=None):
+    def initialise(self, data, custom_settings=None, caller=None):
 
         self.data = data
 
@@ -130,8 +131,9 @@ class FrequencyResponse(solver_interface.BaseSolver):
         self.folder = self.settings['folder'] + '/' + self.data.settings['SHARPy']['case'] + '/frequencyresponse/'
         if not os.path.exists(self.folder):
             os.makedirs(self.folder)
+        self.caller = caller
 
-    def run(self, ss=None):
+    def run(self, ss=None, online=False):
         """
         Computes the frequency response of the linear state-space.
 
@@ -139,8 +141,8 @@ class FrequencyResponse(solver_interface.BaseSolver):
             ss (sharpy.linear.src.libss.ss (Optional)): State-space object for which to compute the frequency response.
               If not given, the response for the previously assembled systems and specified in ``target_system`` will
               be performed.
-
         """
+        # TODO: This postproc does not have an standard call. Maybe a @staticmethod might help
 
         if ss is None:
             ss_list = [find_target_system(self.data, system_name) for system_name in self.settings['target_system']]

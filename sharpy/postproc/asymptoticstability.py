@@ -106,8 +106,9 @@ class AsymptoticStability(BaseSolver):
 
         self.postprocessors = dict()
         self.with_postprocessors = False
+        self.caller = None
 
-    def initialise(self, data, custom_settings=None):
+    def initialise(self, data, custom_settings=None, caller=None):
         self.data = data
 
         if custom_settings is None:
@@ -128,6 +129,8 @@ class AsymptoticStability(BaseSolver):
 
         if not os.path.exists(stability_folder_path):
             os.makedirs(stability_folder_path)
+
+        self.caller = caller
 
         try:
             self.frequency_cutoff = self.settings['frequency_cutoff']
