@@ -78,8 +78,9 @@ class AerogridPlot(BaseSolver):
         self.body_filename = ''
         self.wake_filename = ''
         self.ts_max = 0
+        self.caller = None
 
-    def initialise(self, data, custom_settings=None):
+    def initialise(self, data, custom_settings=None, caller=None):
         self.data = data
         if custom_settings is None:
             self.settings = data.settings[self.solver_id]
@@ -101,12 +102,13 @@ class AerogridPlot(BaseSolver):
                               self.settings['name_prefix'] +
                               'wake_' +
                               self.data.settings['SHARPy']['case'])
+        self.caller = caller
 
     def run(self, online=False):
         # TODO: Create a dictionary to plot any variable as in beamplot
         if not online:
             for self.ts in range(self.ts_max):
-                if self.data.aero.timestep_info[self.ts] is not None:
+                if self.data.structure.timestep_info[self.ts] is not None:
                     self.plot_body()
                     self.plot_wake()
             cout.cout_wrap('...Finished', 1)

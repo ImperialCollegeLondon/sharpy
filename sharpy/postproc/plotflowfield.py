@@ -70,8 +70,9 @@ class PlotFlowField(BaseSolver):
         self.settings = None
         self.data = None
         self.dir = 'output/'
+        self.caller = None
 
-    def initialise(self, data, custom_settings=None):
+    def initialise(self, data, custom_settings=None, caller=None):
         self.data = data
         if custom_settings is None:
             self.settings = data.settings[self.solver_id]
@@ -95,6 +96,7 @@ class PlotFlowField(BaseSolver):
             self.settings['postproc_grid_generator'])
         self.postproc_grid_generator = postproc_grid_generator_type()
         self.postproc_grid_generator.initialise(self.settings['postproc_grid_input'])
+        self.caller = caller
 
     def output_velocity_field(self, ts):
         # Notice that SHARPy utilities deal with several two-dimensional surfaces
