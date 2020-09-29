@@ -646,7 +646,8 @@ class DynamicCoupled(BaseSolver):
 
         # we don't want this to converge before introducing the gamma_dot forces!
         if self.settings['include_unsteady_force_contribution'].value:
-            if k < self.settings['pseudosteps_ramp_unsteady_force'].value:
+            if k < self.settings['pseudosteps_ramp_unsteady_force'].value \
+                    and self.data.ts > self.settings['steps_without_unsteady_force'].value:
                 return False
 
         # convergence
