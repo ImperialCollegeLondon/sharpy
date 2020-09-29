@@ -70,7 +70,39 @@ class polar(object):
         new_polar.initialise(table)
         return new_polar
 
+    def get_cdcm_from_cl(self, cl):
+        # Computes the cd and cm from cl
+        # It provides the first match after (or before) the AOA of CL=0
 
+        cl_max = np.max(self.table[:,1])  
+        cl_min = np.min(self.table[:,1])
+
+        if cl_max < cl or cl_min > cl:
+            print(("cl = %.2f out of range, forces at this point will not be corrected" % cl))  
+            cd = 0.
+            cm = 0. 
+        else: 
+            if cl == 0.:
+                cl_new, cd, cm = get_coefs(self.aoa_cl0_deg)
+            elif cl > 0.:
+                dist = np.abs(self.table[:,0] - self.aoa_cl0_deg)
+                min_dist = np.min(dist)
+                i = np.where(dist == min_dist)[0][0]
+                while self.table[i, 1] < cl:
+                    i += 1
+                cd = np.interp(cl, self.table[i-1:i+1, 1], self.table[i-1:i+1, 2])
+                cm = np.interp(cl, self.table[i-1:i+1, 1], self.table[i-1:i+1, 3])
+            else:
+                dist = np.abs(self.table[:,0] - self.aoa_cl0_deg)
+                min_dist = np.min(dist)
+                i = np.where(dist == min_dist)[0][0]
+                while self.table[i, 1] > cl:
+                        i -= 1
+                cd = np.interp(cl, self.table[i:i+2, 1], self.table[i:i+2, 2])
+        
+        return cd, cm
+
+    
 def interpolate(polar1, polar2, coef=0.5):
 
     all_aoa = np.sort(np.concatenate((polar1.table[:, 0], polar2.table[:, 0]),))

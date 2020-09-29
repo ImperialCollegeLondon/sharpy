@@ -109,15 +109,10 @@ def tangent_vector(in_coord, ordering=None):
             continue
         fake_tangent[inode, :] = coord[inode+1, :] - coord[inode, :]
 
-    inverted_tangent = False
     for inode in range(n_nodes):
         if np.dot(tangent[inode, :], fake_tangent[inode, :]) < 0:
-            inverted_tangent = True
-            break
-
-    if inverted_tangent:
-        tangent *= -1
-
+            tangent[inode, :] *= -1
+    
     return tangent, polyfit_vec
 
 

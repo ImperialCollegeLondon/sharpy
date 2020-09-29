@@ -287,7 +287,7 @@ class DynamicCoupled(BaseSolver):
             self.postprocessors[postproc] = solver_interface.initialise_solver(
                 postproc)
             self.postprocessors[postproc].initialise(
-                self.data, self.settings['postprocessors_settings'][postproc])
+                self.data, self.settings['postprocessors_settings'][postproc], caller=self)
 
         # initialise controllers
         self.controllers = dict()
@@ -515,7 +515,7 @@ class DynamicCoupled(BaseSolver):
                 if (k == self.settings['fsi_substeps'].value and
                         self.settings['fsi_substeps']):
                     print_res = 0 if self.res_dqdt == 0. else np.log10(self.res_dqdt)
-                    cout.cout_wrap('The FSI solver did not converge!!! residual: {:f}'.format(print_res))
+                    cout.cout_wrap(("The FSI solver did not converge!!! residual: %f" % print_res))
                     self.aero_solver.update_custom_grid(
                         structural_kstep,
                         aero_kstep)
@@ -680,7 +680,8 @@ class DynamicCoupled(BaseSolver):
 
         # we don't want this to converge before introducing the gamma_dot forces!
         if self.settings['include_unsteady_force_contribution'].value:
-            if k < self.settings['pseudosteps_ramp_unsteady_force'].value:
+            if k < self.settings['pseudosteps_ramp_unsteady_force'].value \
+                    and self.data.ts > self.settings['steps_without_unsteady_force'].value:
                 return False
 
         # convergence

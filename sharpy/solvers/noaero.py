@@ -19,6 +19,10 @@ class NoAero(BaseSolver):
     settings_types = dict()
     settings_default = dict()
     settings_description = dict()
+    
+    settings_types['dt'] = 'float'
+    settings_default['dt'] = 0.1
+    settings_description['dt'] = 'Time step'
 
     settings_types['update_grid'] = 'bool'
     settings_default['update_grid'] = True
@@ -52,6 +56,17 @@ class NoAero(BaseSolver):
             dt=None,
             t=None,
             unsteady_contribution=False):
+        
+        # generate the wake because the solid shape might change
+        if aero_tstep is None: 
+            aero_tstep = self.data.aero.timestep_info[self.data.ts]
+        self.data.aero.wake_shape_generator.generate({'zeta': aero_tstep.zeta,
+                                            'zeta_star': aero_tstep.zeta_star,
+                                            'gamma': aero_tstep.gamma,
+                                            'gamma_star': aero_tstep.gamma_star,
+                                            'dist_to_orig': aero_tstep.dist_to_orig,
+                                            'wake_conv_vel': aero_tstep.wake_conv_vel})
+
         return self.data
 
     def add_step(self):

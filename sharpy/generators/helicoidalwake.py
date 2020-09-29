@@ -35,6 +35,22 @@ class HelicoidalWake(generator_interface.BaseGenerator):
     settings_default['dt'] = None
     settings_description['dt'] = 'Time step'
 
+    settings_types['dphi1'] = 'float'
+    settings_default['dphi1'] = -1.0
+    settings_description['dphi1'] = 'Size of the first wake panel in radians'
+
+    settings_types['ndphi1'] = 'int'
+    settings_default['ndphi1'] = 1
+    settings_description['ndphi1'] = 'Number of panels with size ``dphi1``'
+
+    settings_types['r'] = 'float'
+    settings_default['r'] = 1.
+    settings_description['r'] = 'Growth rate after ``ndphi1`` panels'
+
+    settings_types['dphimax'] = 'float'
+    settings_default['dphimax'] = -1.0
+    settings_description['dphimax'] = 'Maximum panel size in radians'
+
     # Shear parameters
     settings_types['shear_direction'] = 'list(float)'
     settings_default['shear_direction'] = np.array([1.0, 0, 0])
@@ -65,29 +81,46 @@ class HelicoidalWake(generator_interface.BaseGenerator):
 
         self.u_inf = 0.
         self.u_inf_direction = None
+        self.rotation_velocity = None
         self.dt = None
+
+        self.dphi1 = None
+        self.ndphi1 = None
+        self.r = None
+        self.dphimax = None
 
         self.shear_direction = None
         self.shear_exp = None
         self.h_ref = None
         self.h_corr = None
 
-        self.rotation_velocity = None
-
     def initialise(self, data, in_dict):
         self.in_dict = in_dict
-        settings.to_custom_types(self.in_dict, self.settings_types, self.settings_default, no_ctype=True)
+        settings.to_custom_types(self.in_dict, self.settings_types, self.settings_default,  no_ctype=True)
 
         self.u_inf = self.in_dict['u_inf']
         self.u_inf_direction = self.in_dict['u_inf_direction']
+        self.rotation_velocity = self.in_dict['rotation_velocity']
         self.dt = self.in_dict['dt']
+
+        if self.in_dict['dphi1'] == -1:
+            self.dphi1 = np.linalg.norm(self.rotation_velocity)*self.dt
+        else:
+            self.dphi1 = self.in_dict['dphi1']
+
+        self.ndphi1 = self.in_dict['ndphi1']
+        self.r = self.in_dict['r']
+
+        if self.in_dict['dphimax'] == -1:
+            self.dphimax = self.dphi1
+        else:
+            self.dphimax = self.in_dict['dphimax']
 
         self.shear_direction = self.in_dict['shear_direction']
         self.shear_exp = self.in_dict['shear_exp']
         self.h_ref = self.in_dict['h_ref']
         self.h_corr = self.in_dict['h_corr']
 
-        self.rotation_velocity = self.in_dict['rotation_velocity']
 
     def generate(self, params):
         # Renaming for convenience
@@ -95,13 +128,19 @@ class HelicoidalWake(generator_interface.BaseGenerator):
         zeta_star = params['zeta_star']
         gamma = params['gamma']
         gamma_star = params['gamma_star']
+        dist_to_orig = params['dist_to_orig']
+        wake_conv_vel = params['wake_conv_vel']
 
         nsurf = len(zeta)
         for isurf in range(nsurf):
             M, N = zeta_star[isurf][0, :, :].shape
+            angle = 0.
             for i in range(M):
-                angle = -self.dt*i*np.linalg.norm(self.rotation_velocity)
-                rot = algebra.rotation_matrix_around_axis(self.u_inf_direction, angle)
+                # Compute the step in azimuthal angle
+                angle -= self.get_dphi(i, self.dphi1, self.ndphi1, self.r, self.dphimax)
+
+                delta_t = -angle/np.linalg.norm(self.rotation_velocity)
+                rot = algebra.rotation_matrix_around_axis(algebra.unit_vector(self.rotation_velocity), angle)
                 for j in range(N):
                     # Define the helicoidal
                     aux_zeta_TE = zeta[isurf][:, -1, j] - (self.h_ref - self.h_corr)*self.shear_direction
@@ -109,9 +148,33 @@ class HelicoidalWake(generator_interface.BaseGenerator):
 
                     # Translate according to u_inf depending on the height
                     h = np.dot(aux_zeta_TE, self.shear_direction) + self.h_corr
-                    zeta_star[isurf][:, i, j] = aux_zeta_TE + self.u_inf*self.u_inf_direction*(h/self.h_ref)**self.shear_exp*self.dt*i
+                    zeta_star[isurf][:, i, j] = aux_zeta_TE + self.u_inf*self.u_inf_direction*(h/self.h_ref)**self.shear_exp*delta_t
                     # zeta_star[isurf][:, i, j] = zeta[isurf][:, -1, j] + self.u_inf*self.u_inf_direction*self.dt*i
                     # print(zeta_star[isurf][:, i, j])
 
             gamma[isurf] *= 0.
             gamma_star[isurf] *= 0.
+
+        for isurf in range(nsurf):
+            M, N = zeta_star[isurf][0, :, :].shape
+            dist_to_orig[isurf][0, :] = 0.
+            for j in range(0, N):
+                for i in range(1, M):
+                    dist_to_orig[isurf][i, j] = (dist_to_orig[isurf][i - 1, j] +
+                                          np.linalg.norm(zeta_star[isurf][:, i, j] -
+                                                         zeta_star[isurf][:, i - 1, j]))
+                dist_to_orig[isurf][:, j] /= dist_to_orig[isurf][-1, j]
+            for j in range(0, N - 1):
+                wake_conv_vel[isurf][:, j] = np.linalg.norm(self.rotation_velocity)*0.5*np.linalg.norm(zeta[isurf][:, -1, j] + zeta[isurf][:, -1, j + 1])
+
+    @staticmethod
+    def get_dphi(i, dphi1, ndphi1, r, dphimax):
+        if i == 0:
+            dphi = 0.
+        elif i <= ndphi1:
+            dphi = dphi1
+        else:
+            dphi = dphi1*r**(i - ndphi1)
+        dphi = min(dphi, dphimax)
+
+        return dphi

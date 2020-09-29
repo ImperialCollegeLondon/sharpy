@@ -61,8 +61,9 @@ class StabilityDerivatives(solver_interface.BaseSolver):
 
         self.u_inf = 1
         self.inputs = 0
+        self.caller = None
 
-    def initialise(self, data, custom_settings=None):
+    def initialise(self, data, custom_settings=None, caller=None):
         self.data = data
 
         if custom_settings:
@@ -71,8 +72,9 @@ class StabilityDerivatives(solver_interface.BaseSolver):
             self.settings = self.data.settings[self.solver_id]
 
         settings.to_custom_types(self.settings, self.settings_types, self.settings_default)
+        self.caller = caller
 
-    def run(self):
+    def run(self, online=False):
 
         Y_freq = self.uvlm_steady_state_transfer_function()
         derivatives_dimensional, derivatives_coeff = self.derivatives(Y_freq)
