@@ -441,6 +441,16 @@ class AeroTimeStepInfo(object):
         except AttributeError:
             pass
 
+        try:
+            del self.ct_p_dist_to_orig
+        except AttributeError:
+            pass
+
+        try:
+            del self.ct_p_wake_conv_vel
+        except AttributeError:
+            pass
+
         for k in list(self.postproc_cell.keys()):
             if 'ct_list' in k:
                 del self.postproc_cell[k]
