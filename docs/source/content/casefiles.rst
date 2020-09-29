@@ -340,3 +340,5 @@ Appropriate data entries in the ``.dyn.h5`` include:
 * ``for_acc [num_t_steps, 6]``: Body frame of reference (A FoR) acceleration.
 
     Acceleration of the reference frame A in time.
+    
+    If a case is restarted from a pickle file, the .dyn.h5 file should include the dynamic information for the previous simulation (that will be discarded) and the information for the new simulation. 
