@@ -29,14 +29,16 @@ class Cleanup(BaseSolver):
 
         self.settings = None
         self.data = None
+        self.caller = None
 
-    def initialise(self, data, custom_settings=None):
+    def initialise(self, data, custom_settings=None, caller=None):
         self.data = data
         if custom_settings is None:
             self.settings = data.settings[self.solver_id]
         else:
             self.settings = custom_settings
         settings.to_custom_types(self.settings, self.settings_types, self.settings_default)
+        self.caller = caller
 
     def run(self, online=False):
         if self.settings['clean_structure']:

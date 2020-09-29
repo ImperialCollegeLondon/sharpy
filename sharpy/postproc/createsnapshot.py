@@ -75,8 +75,9 @@ class CreateSnapshot(BaseSolver):
         self.ts = None
 
         self.filename = None
+        self.caller = None
 
-    def initialise(self, data, custom_settings=None):
+    def initialise(self, data, custom_settings=None, caller=None):
         self.data = data
         if custom_settings is None:
             self.settings = data.settings[self.solver_id]
@@ -92,6 +93,7 @@ class CreateSnapshot(BaseSolver):
         self.filename = (self.settings['folder'] + '/' +
                          self.data.settings['SHARPy']['case'] +
                          '.snapshot')
+        self.caller = caller
 
     def snap_name(self, ts=None):
         if ts is None:
@@ -141,5 +143,3 @@ class CreateSnapshot(BaseSolver):
 
         for file in files:
             os.unlink(os.path.abspath(self.settings['folder'] + '/' + file))
-
-

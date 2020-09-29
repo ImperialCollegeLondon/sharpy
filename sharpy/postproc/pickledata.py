@@ -41,8 +41,9 @@ class PickleData(BaseSolver):
         self.data = None
         self.filename = None
         self.folder = None
+        self.caller = None
 
-    def initialise(self, data, custom_settings=None):
+    def initialise(self, data, custom_settings=None, caller=None):
         self.data = data
         if custom_settings is None:
             self.settings = data.settings[self.solver_id]
@@ -58,8 +59,14 @@ class PickleData(BaseSolver):
         if not os.path.exists(self.folder):
             os.makedirs(self.folder)
         self.filename = self.folder + self.data.settings['SHARPy']['case']+'.pkl'
+        self.caller = caller
 
     def run(self, online=False):
+        for it in range(len(self.data.structure.timestep_info)):
+            tstep_p = self.data.structure.timestep_info[it]
+            if tstep_p is not None:
+                if not tstep_p.in_global_AFoR:
+                    tstep_p.whole_structure_to_global_AFoR(self.data.structure)
         with open(self.filename, 'wb') as f:
             pickle.dump(self.data, f, protocol=pickle.HIGHEST_PROTOCOL)
 
