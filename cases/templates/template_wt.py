@@ -490,6 +490,8 @@ def rotor_from_excel_type03(in_op_params,
     # Apply tilt
     rotor.StructuralInformation.rotate_around_origin(np.array([0., 1., 0.]), tilt)
 
+    rotor.StructuralInformation.body_number *= 0
+
     return rotor
 
 

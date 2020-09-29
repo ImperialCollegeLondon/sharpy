@@ -100,12 +100,13 @@ class SaveData(BaseSolver):
         self.folder = ''
         self.filename = ''
         self.ts_max = 0
+        self.caller = None
 
         ### specify which classes are saved as hdf5 group
         # see initialise and add_as_grp
         self.ClassesToSave = (sharpy.presharpy.presharpy.PreSharpy,)
 
-    def initialise(self, data, custom_settings=None):
+    def initialise(self, data, custom_settings=None, caller=None):
 
         # Add these anyway - therefore if you add your own skip_attr you don't have to retype all of these
         self.settings_default['skip_attr'].append(['fortran',
@@ -176,6 +177,7 @@ class SaveData(BaseSolver):
 
             if self.settings['save_linear_uvlm']:
                 self.ClassesToSave += (sharpy.solvers.linearassembler.Linear, sharpy.linear.src.libss.ss)
+        self.caller = caller
 
     def run(self, online=False):
 
@@ -196,13 +198,24 @@ class SaveData(BaseSolver):
                                        SkipAttr=self.settings['skip_attr'],
                                        compress_float=self.settings['compress_float'])
                 if self.settings['save_struct']:
-                    h5utils.add_as_grp(self.data.structure.timestep_info[self.data.ts],
+                    if self.data.structure.timestep_info[self.data.ts].in_global_AFoR:
+                        tstep = self.data.structure.timestep_info[self.data.ts]
+                    else:
+                        tstep = self.data.structure.timestep_info[self.data.ts].copy()
+                        tstep.whole_structure_to_global_AFoR(self.data.structure)
+
+                    h5utils.add_as_grp(tstep,
                                        hdfile['data']['structure']['timestep_info'],
                                        grpname=("%05d" % self.data.ts),
                                        ClassesToSave=(sharpy.utils.datastructures.StructTimeStepInfo,),
                                        SkipAttr=self.settings['skip_attr'],
                                        compress_float=self.settings['compress_float'])
             else:
+                for it in range(len(self.data.structure.timestep_info)):
+                    tstep_p = self.data.structure.timestep_info[it]
+                    if tstep_p is not None:
+                        if not tstep_p.in_global_AFoR:
+                            tstep_p.whole_structure_to_global_AFoR(self.data.structure)
                 h5utils.add_as_grp(self.data, hdfile, grpname='data',
                                    ClassesToSave=self.ClassesToSave, SkipAttr=self.settings['skip_attr'],
                                    compress_float=self.settings['compress_float'])
