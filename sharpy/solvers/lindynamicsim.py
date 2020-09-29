@@ -15,6 +15,18 @@ import warnings
 class LinDynamicSim(BaseSolver):
     """Time-domain solution of Linear Time Invariant Systems
 
+    Uses the derived linear time invariant systems and solves it in time domain.
+
+    Requires a ``case_name.lininput.h5`` file in the case root folder that contains:
+
+        * ``x0`` (optional): Initial state vector
+        * ``input_vec``: Input vector ``(n_tsteps, n_inputs)``.
+
+    Note:
+        This solver is seldom used in SHARPy (its focus is on nonlinear time domain aeroelasticity) hence you may
+        find this solver lacking in features. If you use it, you may need to make modifications. We would greatly
+        appreciate that you contribute these modifications by means of a pull request!
+
     """
     solver_id = 'LinDynamicSim'
     solver_classification = 'Coupled'
@@ -92,15 +104,15 @@ class LinDynamicSim(BaseSolver):
         for postproc in self.settings['postprocessors']:
             self.postprocessors[postproc] = initialise_solver(postproc)
             self.postprocessors[postproc].initialise(
-                self.data, self.settings['postprocessors_settings'][postproc])
+                self.data, self.settings['postprocessors_settings'][postproc], caller=self)
 
     def run(self):
 
-        n_steps = self.settings['n_tsteps'].value
-        x0 = self.input_data_dict['x0']
-        u = self.input_data_dict['u']
-
         ss = self.data.linear.ss
+
+        n_steps = self.settings['n_tsteps'].value
+        x0 = self.input_data_dict.get('x0', np.zeros(ss.states))
+        u = self.input_data_dict['u']
 
         if len(x0) != ss.states:
             warnings.warn('Number of states in the initial state vector not equal to the number of states')

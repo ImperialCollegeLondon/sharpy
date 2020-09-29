@@ -49,7 +49,9 @@ class UDPout(BaseSolver):
 
         self.ts_max = 0
 
-    def initialise(self, data, custom_settings=None):
+        self.caller = None
+
+    def initialise(self, data, custom_settings=None, caller=None):
         self.data = data
         if custom_settings is None:
             self.settings = data.settings[self.solver_id]
@@ -64,6 +66,8 @@ class UDPout(BaseSolver):
         self.out_network = self.network_loader.get_networks(networks='out')
 
         self.ts_max = self.data.ts + 1
+
+        self.caller = caller
 
     def run(self, online=False):
 

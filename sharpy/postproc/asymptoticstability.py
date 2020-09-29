@@ -97,8 +97,9 @@ class AsymptoticStability(BaseSolver):
 
         self.postprocessors = dict()
         self.with_postprocessors = False
+        self.caller = None
 
-    def initialise(self, data, custom_settings=None):
+    def initialise(self, data, custom_settings=None, caller=None):
         self.data = data
 
         if custom_settings is None:
@@ -126,7 +127,9 @@ class AsymptoticStability(BaseSolver):
         # Output dict
         self.data.linear.stability = dict()
 
-    def run(self):
+        self.caller = caller
+
+    def run(self, online=False):
         """
         Computes the eigenvalues and eigenvectors
 

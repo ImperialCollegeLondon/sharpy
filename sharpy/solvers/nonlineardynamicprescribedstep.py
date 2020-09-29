@@ -56,6 +56,8 @@ class NonLinearDynamicPrescribedStep(_BaseStructural):
     def run(self, structural_step=None, dt=None):
         if dt is None:
             dt = self.settings['dt'].value
+        if structural_step is None:
+            structural_step = self.data.structure.timestep_info[-1]
 
         if self.data.ts > 0:
             try:
