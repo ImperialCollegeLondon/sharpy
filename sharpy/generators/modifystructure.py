@@ -157,11 +157,17 @@ class ChangeLumpedMass(ChangedVariable):
 
         # if not enough column entries pad with original values
         n_values = len(self.original)
-        if self.target_value.shape[1] != n_values:
+
+        try:
+            n_target_values = self.target_value.shape[1]
+        except IndexError:
+            n_target_values = 1
+
+        if n_target_values != n_values:
 
             self.target_value = np.column_stack((self.target_value,
-                                                 self.original[-(n_values - self.target_value.shape[1]):]
-                                                 * np.ones((self.target_value.shape[0], n_values - self.target_value.shape[1])
+                                                 self.original[-(n_values - n_target_values):]
+                                                 * np.ones((self.target_value.shape[0], n_values - n_target_values)
                                                            )
                                                  ))
 
