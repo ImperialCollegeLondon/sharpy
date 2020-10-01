@@ -6,7 +6,7 @@ import sharpy.utils.settings as settings
 @generator_interface.generator
 class ModifyStructure(generator_interface.BaseGenerator):
     """
-    ModifyStructure generator.
+    ``ModifyStructure`` generator.
 
     This generator allows the user to modify structural parameters at runtime. At the moment, changes to lumped
     masses are supported. For each lumped mass you want to change, set ``change_variable`` to ``lumped_mass``, and the
@@ -28,19 +28,20 @@ class ModifyStructure(generator_interface.BaseGenerator):
 
     settings_types['variable_index'] = 'list(int)'
     settings_default['variable_index'] = None
-    settings_description['variable_index'] = 'Index of variable to change. For instance the 1st lumped mass.'
+    settings_description['variable_index'] = 'List of indices of variables to change. ' \
+                                             'For instance the 1st lumped mass would be ``[0]``'
 
     settings_types['file_list'] = 'list(str)'
     settings_default['file_list'] = None
-    settings_description['file_list'] = 'File path for each variable containing the changing info, in the appropriate ' \
-                                        'format'
+    settings_description['file_list'] = 'File path for each variable containing the changing info, in the ' \
+                                        'appropriate format. See each of the allowed variables for the correct format.'
 
     def __init__(self):
         self.settings = None
 
-        self.num_changes = None
-        self.variables = []
-        self.control_objects = {}
+        self.num_changes = None  # :int number of variables that are changed
+        self.variables = []  # :list of changed variables objects
+        self.control_objects = {}  #: dictionary of changed variable name and its control object as value
 
     def initialise(self, in_dict, **kwargs):
         structure = kwargs['data'].structure
@@ -90,7 +91,16 @@ class ModifyStructure(generator_interface.BaseGenerator):
 
 
 class ChangedVariable:
+    """
+    Base class of a changed variable
 
+    Attributes:
+        name (str): Name of the changed variable
+        variable_index (int): Index of the variable to change
+        file (str): Name of the file containing the input data (.txt)
+        original (np.ndarray): Original value of the desired value in the appropriate format
+        current_value (np.ndarray): Running track of the current value of the desired variable
+    """
     def __init__(self, name, var_index, file):
         self.name = name
         self.variable_index = var_index
@@ -98,7 +108,6 @@ class ChangedVariable:
 
         self.original = None
         self.target_value = None
-        self.delta = None
         self.current_value = None  # initially
 
     def initialise(self, structure):
@@ -106,13 +115,13 @@ class ChangedVariable:
         self.get_original(structure)
         self.load_file()
 
-        self.delta = self.target_value
         self.current_value = self.original  # initially
 
     def __call__(self, structure, ts):
         pass
 
     def get_original(self, structure):
+        # should be overridden for the desired variable class. it should set self.original in the appropriate format
         pass
 
     def load_file(self):
@@ -125,6 +134,19 @@ class ChangeLumpedMass(ChangedVariable):
 
     The arguments are parsed as items of the list in the settings for ``variable_index`` and ``file_list``. For
     those variables marked where ``change_variables = 'lumped_mass'``.
+
+    The file should contain a time varying series with the following 10 columns:
+
+    * Lumped mass
+
+    * Lumped mass position in the material frame ``B`` (3 columns for ``xb``, ``yb`` and ``zb``)
+
+    * Lumped mass inertia in the material frame ``B`` (6 columns for ``ixx``, ``iyy``, ``izz``, ``ixy``, ``ixz`` and
+      ``iyz``.
+
+    Not all 10 columns are necessary in the input file, missing columns are ignored and left unchanged. There should be
+    one row per time step. If there are not enough entries for the number of time steps in the simulation, the changed
+    variable value remains unchanged after all rows have been processed.
 
     Args:
         var_index (int): Index of lumped mass. NOT the lumped mass node.
@@ -139,6 +161,12 @@ class ChangeLumpedMass(ChangedVariable):
             # previous time step must be provided. This is such that this generator is backwards compatible with the
             # way lumped masses are assembled.
             delta = self.target_value[ts] - self.current_value
+        except IndexError:  # input file has less entries than the simulation time steps
+            structure.lumped_mass[self.variable_index] = 0
+            structure.lumped_mass_position[self.variable_index, :] = np.zeros(3)
+            structure.lumped_mass_inertia[self.variable_index, :, :] = np.zeros((3, 3))
+
+        else:
             structure.lumped_mass[self.variable_index] = delta[0]
             structure.lumped_mass_position[self.variable_index, :] = delta[1:4]
             ixx, iyy, izz, ixy, ixz, iyz = delta[-6:]
@@ -146,25 +174,26 @@ class ChangeLumpedMass(ChangedVariable):
             structure.lumped_mass_inertia[self.variable_index, :, :] = inertia
 
             self.current_value += delta
-        except IndexError:
-            structure.lumped_mass[self.variable_index] = 0
-            structure.lumped_mass_position[self.variable_index, :] = np.zeros(3)
-            structure.lumped_mass_inertia[self.variable_index, :, :] = np.zeros((3, 3))
 
     def load_file(self):
+        """Sets ``self.target_value`` by reading from the file.
+
+        If the input does not have as many columns as needed (10), these get padded with the original value such that
+        they are not changed at runtime.
+
+        """
 
         super().load_file()
 
-        # if not enough column entries pad with original values
         n_values = len(self.original)
 
         try:
-            n_target_values = self.target_value.shape[1]
+            n_target_values = self.target_value.shape[1]  # number of columns
         except IndexError:
             n_target_values = 1
 
         if n_target_values != n_values:
-
+            # if not enough column entries pad with original values
             self.target_value = np.column_stack((self.target_value,
                                                  self.original[-(n_values - n_target_values):]
                                                  * np.ones((self.target_value.shape[0], n_values - n_target_values)
@@ -185,6 +214,10 @@ class LumpedMassControl:
     This class is instantiated when at least one lumped mass is modified.
 
     It allows control over unchanged lumped masses and calls the method to execute the change.
+
+    Attributes:
+        lumped_mass_variables (list): List of integers containing the indices of the variables to change. These indices
+        refer to the order in which they are provided in the general settings for the generator.
     """
     def __init__(self):
         self.lumped_mass_variables = []
