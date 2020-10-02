@@ -5,6 +5,11 @@ Here we present a list of past papers which have used SHARPy for research purpos
 
 ## 2020
 
+* Muñoz-Simón, A., Palacios, R., & Wynn, A. (2020). Benchmarking different fidelities in wind turbine aerodynamics under yaw. Journal of Physics: Conference Series, 1618, 42017. https://doi.org/10.1088/1742-6596/1618/4/042017
+
+* del Carre, A., & Palacios, R. (2020). Simulation and Optimization of Takeoff Maneuvers of Very Flexible Aircraft. Journal of Aircraft (Article in Advance) 
+1–14. https://doi.org/10.2514/1.C035901
+
 * Deskos, G., del Carre, A., & Palacios, R. (2020). Assessment of low-altitude atmospheric 
 turbulence models for aircraft aeroelasticity. Journal of Fluids and Structures, 95, 102981.
 [https://doi.org/10.1016/j.jfluidstructs.2020.102981](https://doi.org/10.1016/j.jfluidstructs.2020.102981)
