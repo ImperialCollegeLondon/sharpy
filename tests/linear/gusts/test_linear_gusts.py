@@ -193,8 +193,8 @@ class TestGolandControlSurface(unittest.TestCase):
                                                               'density': ws.rho,
                                                               'remove_predictor': remove_predictor,
                                                               'use_sparse': use_sparse,
-                                                              'remove_inputs': ['u_gust'],
-                                                              # 'gust_assembler': 'leading_edge',
+                                                              'remove_inputs': [],
+                                                              'gust_assembler': 'LeadingEdge',
                                                               },
                                             'rigid_body_motion': 'off'}}
 
