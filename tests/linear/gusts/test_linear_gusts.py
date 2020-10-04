@@ -5,7 +5,6 @@ import cases.templates.flying_wings as wings
 import sharpy.sharpy_main
 
 
-# @unittest.skip('Control Surface Test for visual inspection')
 class TestGolandControlSurface(unittest.TestCase):
 
     def setup(self):

@@ -11,6 +11,7 @@ import scipy.sparse as sp
 import sharpy.utils.rom_interface as rom_interface
 import sharpy.linear.src.libss as libss
 from sharpy.utils.constants import vortex_radius_def
+from sharpy.linear.utils.ss_interface import VectorVariable
 
 
 @ss_interface.linear_system
@@ -201,14 +202,24 @@ class LinearUVLM(ss_interface.BaseElement):
         self.tsaero0 = data.linear.tsaero0
         self.sys = uvlm
 
-        input_variables_database = {'zeta': [0, 3*self.sys.Kzeta],
-                                    'zeta_dot': [3*self.sys.Kzeta, 6*self.sys.Kzeta],
-                                    'u_gust': [6*self.sys.Kzeta, 9*self.sys.Kzeta]}
+        # input_variables_database = {'zeta': {'size': 3*self.sys.Kzeta, 'index': 0},
+        #                             'zeta_dot': [3*self.sys.Kzeta, 6*self.sys.Kzeta],
+        #                             'u_gust': [6*self.sys.Kzeta, 9*self.sys.Kzeta]}
+        input_variables_list = [VectorVariable('zeta', size=3 * self.sys.Kzeta, index=0),
+                                VectorVariable('zeta_dot', size=3 * self.sys.Kzeta, index=1),
+                                VectorVariable('u_gust', size=3 * self.sys.Kzeta, index=2)]
+
         state_variables_database = {'gamma': [0, self.sys.K],
                                     'gamma_w': [self.sys.K, self.sys.K_star],
                                     'dtgamma_dot': [self.sys.K + self.sys.K_star, 2*self.sys.K + self.sys.K_star],
                                     'gamma_m1': [2*self.sys.K + self.sys.K_star, 3*self.sys.K + self.sys.K_star]}
 
+        state_variables_list = [
+            VectorVariable('gamma', size=self.sys.K, index=0),
+            VectorVariable('gamma_w', size=self.sys.K_star, index=1),
+            VectorVariable('dtgamma_dot', size=self.sys.K, index=2),
+            VectorVariable('gamma_m1', size=self.sys.K, index=3),
+                                ]
         self.linearisation_vectors['zeta'] = np.concatenate([self.tsaero0.zeta[i_surf].reshape(-1, order='C')
                                                              for i_surf in range(self.tsaero0.n_surf)])
         self.linearisation_vectors['zeta_dot'] = np.concatenate([self.tsaero0.zeta_dot[i_surf].reshape(-1, order='C')
@@ -218,8 +229,8 @@ class LinearUVLM(ss_interface.BaseElement):
         self.linearisation_vectors['forces_aero'] = np.concatenate([self.tsaero0.forces[i_surf][:3].reshape(-1, order='C')
                                                                     for i_surf in range(self.tsaero0.n_surf)])
 
-        self.input_variables = ss_interface.LinearVector(input_variables_database, self.sys_id)
-        self.state_variables = ss_interface.LinearVector(state_variables_database, self.sys_id)
+        self.input_variables = ss_interface.LinearVector(input_variables_list)
+        self.state_variables = ss_interface.LinearVector(state_variables_list)
 
         if data.aero.n_control_surfaces >= 1:
             import sharpy.linear.assembler.lincontrolsurfacedeflector as lincontrolsurfacedeflector
@@ -266,6 +277,7 @@ class LinearUVLM(ss_interface.BaseElement):
 
         if self.gust_assembler is not None:
             self.ss = self.gust_assembler.apply({'ss': self.ss})
+            # modify input database
 
         if self.control_surface is not None:
             Kzeta_delta, Kdzeta_ddelta = self.control_surface.generate()
@@ -297,18 +309,20 @@ class LinearUVLM(ss_interface.BaseElement):
             remove_list (list): Inputs to remove
         """
 
-        self.input_variables.remove(remove_list)
+        self.input_variables.remove(*remove_list)
 
         i = 0
-        for variable in self.input_variables.vector_vars:
+        for variable in self.input_variables:
             if i == 0:
-                trim_array = self.input_variables.vector_vars[variable].cols_loc
+                trim_array = variable.cols_loc
             else:
-                trim_array = np.hstack((trim_array, self.input_variables.vector_vars[variable].cols_loc))
+                trim_array = np.hstack((trim_array, variable.cols_loc))
             i += 1
 
         self.sys.SS.B = libsp.csc_matrix(self.sys.SS.B[:, trim_array])
         self.sys.SS.D = libsp.csc_matrix(self.sys.SS.D[:, trim_array])
+
+        self.input_variables.update_column_locations()
 
     def unpack_ss_vector(self, data, x_n, aero_tstep, track_body=False):
         r"""
