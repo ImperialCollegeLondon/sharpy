@@ -186,6 +186,11 @@ class LinControlSurfaceDeflector(object):
         self.Kdzeta_ddelta = Kvel
         return Kdisp, Kvel
 
+    # def generator():
+    # future feature idea: instead of defining the inputs for the time domain simulations as the whole input vector
+    # etc, we could add a generate() method to these systems that can be called from the LinDynamicSim to apply
+    # the gust and generate the correct input vector.
+
 
 def der_Cx_by_v(delta, v):
     sd = np.sin(delta)
