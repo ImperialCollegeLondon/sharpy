@@ -276,8 +276,7 @@ class LinearUVLM(ss_interface.BaseElement):
             self.remove_inputs(self.settings['remove_inputs'])
 
         if self.gust_assembler is not None:
-            self.ss = self.gust_assembler.apply({'ss': self.ss})
-            # modify input database
+            self.ss = self.gust_assembler.apply(self.ss, self.input_variables, self.state_variables)
 
         if self.control_surface is not None:
             Kzeta_delta, Kdzeta_ddelta = self.control_surface.generate()
@@ -314,13 +313,13 @@ class LinearUVLM(ss_interface.BaseElement):
         i = 0
         for variable in self.input_variables:
             if i == 0:
-                trim_array = variable.cols_loc
+                retain_input_array = variable.cols_loc
             else:
-                trim_array = np.hstack((trim_array, variable.cols_loc))
+                retain_input_array = np.hstack((retain_input_array, variable.cols_loc))
             i += 1
 
-        self.sys.SS.B = libsp.csc_matrix(self.sys.SS.B[:, trim_array])
-        self.sys.SS.D = libsp.csc_matrix(self.sys.SS.D[:, trim_array])
+        self.sys.SS.B = libsp.csc_matrix(self.sys.SS.B[:, retain_input_array])
+        self.sys.SS.D = libsp.csc_matrix(self.sys.SS.D[:, retain_input_array])
 
         self.input_variables.update_column_locations()
 

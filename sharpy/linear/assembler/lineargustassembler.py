@@ -92,16 +92,17 @@ class LeadingEdgeGust(LinearGust):
 
         self.gust_ss = libss.ss(A_gust, B_gust, C_gust, D_gust, dt=self.linuvlm.SS.dt)
 
-    def apply(self, params):
+    def apply(self, ss, input_variables=None, state_variables=None):
 
         self.__assemble()
 
-        try:
-            ss = params['ss']
-        except KeyError:
-            raise KeyError('Linear State space object not parsed into gust apply() method')
-        else:
-            ss = libss.series(self.gust_ss, ss)
+        ss = libss.series(self.gust_ss, ss)
+
+        input_variables.modify('u_gust', size=1)
+        state_variables.add('gust', size=self.gust_ss.states, index=-1)
+
+        input_variables.update()
+        state_variables.update()
 
         return ss
 

@@ -147,7 +147,8 @@ class LinearVector:
         self.vector_variables = list_of_vector_variables
 
         # initialise position of variables
-        self.update()
+        self.update_indices()
+        self.update_column_locations()
 
     @property
     def num_variables(self):
@@ -166,21 +167,52 @@ class LinearVector:
             except ValueError:
                 cout.cout_wrap('Trying to remove non-existent {:s} variable'.format(variable_name))
             else:
-                self._remove_variable(remove_variable_index)
+                self.__remove_variable(remove_variable_index)
 
-    def _remove_variable(self, index):
+    def __remove_variable(self, index):
         self.vector_variables.pop(index)
-        self.update()
+        self.update_indices()
 
-    def modify(self, variable_name, new_length):
-        pass
-        # either modify or condense (i..e new length)
-        # replace i.e. when projecting
+    def modify(self, variable_name, **kwargs):
+        """
+        Modifies the attributes of the desired variable. The new attributes are passed as **kwargs. If an attribute is
+        not recognised a ``NameError`` is returned.
 
-    def add(self, vector_variable):
-        pass
+        Note:
+            If changing the size of the variable, you should then update the linear vector.
 
-    def update(self):
+        Args:
+            variable_name (str): Name of the variable to modify
+            **kwargs: Key-word arguments containing the attributes of the variable as keys and the new values as values.
+
+        """
+        variable = self.get_variable_from_name(variable_name)
+        for var_attribute, new_var_value in kwargs.items():
+            if hasattr(variable, var_attribute):
+                variable.__setattr__(var_attribute, new_var_value)
+            else:
+                raise NameError('Unknown variable attribute {:s}'.format(var_attribute))
+
+    def add(self, vector_variable, **kwargs):
+
+        if type(vector_variable) is VectorVariable:
+            self.__add_vector_variable(vector_variable)
+        elif type(vector_variable) is str:
+            new_variable = VectorVariable(name=vector_variable, **kwargs)
+            self.__add_vector_variable(new_variable)
+        else:
+            raise TypeError('Only can add a variable from either a VectorVariable object or with name and kwargs')
+
+    def __add_vector_variable(self, vector_variable):
+        list_of_indices = [variable.index for variable in self.vector_variables]
+
+        if vector_variable.index in list_of_indices:
+            raise IndexError('New variable index is already in use')
+        self.vector_variables.append(vector_variable)
+        self.update_indices()
+
+    def update_indices(self):
+
         list_of_indices = [variable.index for variable in self.vector_variables]
         ordered_list = sorted(list_of_indices)
 
@@ -191,11 +223,7 @@ class LinearVector:
             current_variable_index = ordered_list[i_var]
             current_variable = index_variable_dict[current_variable_index]
             current_variable.index = i_var
-            if i_var == 0:
-                current_variable.first_position = 0
-            elif i_var > 0:
-                # since end item is not included in range methods, set the first position to last variable end position
-                current_variable.first_position = updated_list[i_var - 1].end_position
+
             updated_list.append(current_variable)
 
         self.vector_variables = updated_list
@@ -208,14 +236,46 @@ class LinearVector:
                 # since end item is not included in range methods, set the first position to last variable end position
                 self.vector_variables[i_var].first_position = self.vector_variables[i_var - 1].end_position
 
-    def merge(self):
+    def update_row_locations(self):
         pass
+
+    def merge(self):
+        pass  # likely a class method that returns a neew object?
+
+    def differentiate(self):
+        pass
+        # going from second order to first order systems
+
+    def get_variable_from_name(self, name):
+        list_of_variable_names = [variable.name for variable in self.vector_variables]
+        try:
+            variable_index = list_of_variable_names.index(name)
+        except ValueError:
+            raise ValueError('Variable {:s} is non existent'.format(name))
+        else:
+            return self.vector_variables[variable_index]
+
+    def update(self):
+        self.update_indices()
+        self.update_column_locations()
+        self.update_row_locations()
 
     def __iter__(self):
         return SetIterator(self)
 
     def __getitem__(self, item):
         return self.vector_variables[item]
+
+    def __repr__(self):
+        string_out = ''
+        for var in self.vector_variables:
+            try:
+                out_var = str(repr(var))
+            except TypeError:
+                print('Error printing var {:s}'.format(var.name))
+            else:
+                string_out += out_var + '\n'
+        return string_out
 
 
 class SetIterator:
@@ -238,15 +298,14 @@ import unittest
 
 class TestVariables(unittest.TestCase):
 
-    @classmethod
-    def setUpClass(cls):
+    def setUp(self):
         # initialising with index out of order
         Kzeta = 4
         input_variables_list = [VectorVariable('zeta', size=3 * Kzeta, index=0),
                                 VectorVariable('zeta_dot', size=3 * Kzeta, index=4), # this should be one
                                 VectorVariable('u_gust', size=3 * Kzeta, index=2)]
 
-        cls.input_variables = LinearVector(input_variables_list)
+        self.input_variables = LinearVector(input_variables_list)
 
     def test_initialisation(self):
 
@@ -260,6 +319,44 @@ class TestVariables(unittest.TestCase):
         sorted_indices = [variable.index for variable in self.input_variables]
         assert sorted_indices == [0, 1], 'Error removing variable'
 
+    def test_modify(self):
+
+        new_values = {'name': 'new_u_gust',
+                      'size': 5,
+                      }
+
+        self.input_variables.modify('u_gust', **new_values)
+
+        assert self.input_variables.get_variable_from_name('new_u_gust').size == 5, 'Variable not modified correctly'
+
+    def test_add(self):
+
+        new_variable = VectorVariable('control_surface', size=2, index=3)
+
+        self.input_variables.add(new_variable)
+        self.input_variables.update_column_locations()
+
+        # test it's properly included - it will raise an error internally if not
+        included_var = self.input_variables.get_variable_from_name('control_surface')
+
+        new_variable_repeated_index = VectorVariable('control_surface_2', size=2, index=3)
+        try:
+            self.input_variables.add(new_variable_repeated_index)
+        except IndexError:
+            # correct behaviour
+            pass
+        else:
+            raise IndexError('Variable was added when it should have been rejected because of repeated index')
+
+        new_variable_inbetween = VectorVariable('first_variable', size=2, index=-1)
+        self.input_variables.add(new_variable_inbetween)
+        self.input_variables.update_column_locations()
+
+        assert self.input_variables[0].name == new_variable_inbetween.name, 'New variable not added at the start of' \
+                                                                            ' the list'
+
+        self.input_variables.add('var_from_string', size=3, index=10)
+        assert self.input_variables[-1].name == 'var_from_string', 'Variable from string not added correctly'
 
 if __name__ == '__main__':
     unittest.main()
