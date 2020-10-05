@@ -295,6 +295,9 @@ class LinearUVLM(ss_interface.BaseElement):
                 gain_cs[:n_zeta, self.ss.inputs: self.ss.inputs + n_ctrl_sfc] = Kzeta_delta
                 gain_cs[n_zeta: 2*n_zeta, self.ss.inputs + n_ctrl_sfc: self.ss.inputs + 2 * n_ctrl_sfc] = Kdzeta_ddelta
             self.ss.addGain(gain_cs, where='in')
+            self.input_variables.append('control_surface_deflection', size=n_ctrl_sfc)
+            self.input_variables.append('dot_control_surface_deflection', size=n_ctrl_sfc)
+            self.input_variables.update()
             self.gain_cs = gain_cs
 
     def remove_inputs(self, remove_list=list):

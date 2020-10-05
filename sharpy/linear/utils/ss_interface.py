@@ -203,6 +203,18 @@ class LinearVector:
         else:
             raise TypeError('Only can add a variable from either a VectorVariable object or with name and kwargs')
 
+    def append(self, vector_variable, **kwargs):
+        self.update_indices()
+        appending_index = self.num_variables
+        if type(vector_variable) is VectorVariable:
+            vector_variable.index = appending_index
+        elif type(vector_variable) is str:
+            kwargs['index'] = appending_index
+        else:
+            raise TypeError('Only can add a variable from either a VectorVariable object or with name and kwargs')
+
+        self.add(vector_variable, **kwargs)
+
     def __add_vector_variable(self, vector_variable):
         list_of_indices = [variable.index for variable in self.vector_variables]
 
@@ -357,6 +369,14 @@ class TestVariables(unittest.TestCase):
 
         self.input_variables.add('var_from_string', size=3, index=10)
         assert self.input_variables[-1].name == 'var_from_string', 'Variable from string not added correctly'
+
+        self.input_variables.update()
+
+    def test_append(self):
+        self.input_variables.append('last_var', size=3)
+        self.input_variables.update()
+
+        assert self.input_variables[-1].name == 'last_var', 'Variable not properly appended'
 
 if __name__ == '__main__':
     unittest.main()
