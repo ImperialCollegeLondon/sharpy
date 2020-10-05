@@ -9,6 +9,7 @@ import numpy as np
 import sharpy.utils.settings as settings
 import sharpy.utils.algebra as algebra
 import sharpy.structure.utils.modalutils as modalutils
+from sharpy.linear.utils.ss_interface import VectorVariable
 
 
 @linear_system
@@ -155,15 +156,20 @@ class LinearBeam(BaseElement):
         # State variables
         num_dof_flex = self.sys.structure.num_dof.value
         num_dof_rig = self.sys.Mstr.shape[0] - num_dof_flex
-        state_db = {'eta': [0, num_dof_flex],
-                  'V_bar': [num_dof_flex, num_dof_flex + 3],
-                  'W_bar': [num_dof_flex + 3, num_dof_flex + 6],
-                  'orient_bar': [num_dof_flex + 6, num_dof_flex + num_dof_rig],
-                  'dot_eta': [num_dof_flex + num_dof_rig, 2 * num_dof_flex + num_dof_rig],
-                  'V': [2 * num_dof_flex + num_dof_rig, 2 * num_dof_flex + num_dof_rig + 3],
-                  'W': [2 * num_dof_flex + num_dof_rig + 3, 2 * num_dof_flex + num_dof_rig + 6],
-                  'orient': [2 * num_dof_flex + num_dof_rig + 6, 2 * num_dof_flex + 2 * num_dof_rig]}
-        self.state_variables = LinearVector(state_db, self.sys_id)
+
+        if num_dof_rig == 0:
+            state_variable_list = [
+                VectorVariable('eta', size=num_dof_flex, index=0),
+            ]
+        else:
+            state_variable_list = [
+                VectorVariable('eta', size=num_dof_flex, index=0),
+                VectorVariable('V', size=3, index=1),
+                VectorVariable('W', size=3, index=2),
+                VectorVariable('orient', size=num_dof_rig - 6, index=3),
+            ]
+
+        self.state_variables = LinearVector(state_variable_list)
 
         if num_dof_rig == 0:
             self.clamped = True
@@ -217,56 +223,23 @@ class LinearBeam(BaseElement):
         return x
 
     def trim_nodes(self, trim_list=list):
+        """
+        Removes degrees of freedom from the second order system.
+
+        Args:
+            trim_list (list): List of degrees of freedom to remove ``eta``, ``V``, ``W`` or ``orient``
+
+        """
 
         num_dof_flex = self.sys.structure.num_dof.value
-        num_dof_rig = self.sys.Mstr.shape[0] - num_dof_flex
 
-        # Dictionary containing DOFs and corresponding equations
-        dof_db = {'eta': [0, num_dof_flex, 1],
-                  'V': [num_dof_flex, num_dof_flex + 3, 2],
-                  'W': [num_dof_flex + 3, num_dof_flex + 6, 3],
-                  'orient': [num_dof_flex + 6, num_dof_flex + num_dof_rig, 4],
-                  'yaw': [num_dof_flex + 8, num_dof_flex + num_dof_rig, 1]}
+        n_dofs = self.state_variables.size
+        self.state_variables.remove(*trim_list)
+        removed_dofs = n_dofs - self.state_variables.size
+        trim_matrix = np.zeros((n_dofs, n_dofs - removed_dofs))
 
-        # -----------------------------------------------------------------------
-        # Better to place in a function available to all elements since it will equally apply
-        # Therefore, the dof_db should be a class attribute
-        # Take away alongside the vector variable class
-
-        # All variables
-        vec_db = dict()
-        for item in dof_db:
-            vector_var = VectorVariable(item, dof_db[item], 'LinearBeam')
-            vec_db[item] = vector_var
-
-        used_vars_db = vec_db.copy()
-
-        # Variables to remove
-        removed_dofs = 0
-        removed_db = dict()
-        for item in trim_list:
-            removed_db[item] = vec_db[item]
-            removed_dofs += vec_db[item].size
-            del used_vars_db[item]
-
-        # Update variables position
-        for rem_item in removed_db:
-            for item in used_vars_db:
-                if used_vars_db[item].rows_loc[0] < removed_db[rem_item].first_pos:
-                    continue
-                else:
-                    # Update order and position
-                    used_vars_db[item].first_pos -= removed_db[rem_item].size
-                    used_vars_db[item].end_pos -= removed_db[rem_item].size
-
-        self.state_variables = used_vars_db
-        # TODO: input and output variables
-        ### ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-
-        # Map dofs to equations
-        trim_matrix = np.zeros((num_dof_rig+num_dof_flex, num_dof_flex+num_dof_rig-removed_dofs))
-        for item in used_vars_db:
-            trim_matrix[used_vars_db[item].rows_loc, used_vars_db[item].cols_loc] = 1
+        for variable in self.state_variables:
+            trim_matrix[variable.rows_loc, variable.cols_loc] = 1
 
         # Update matrices
         self.sys.Mstr = trim_matrix.T.dot(self.sys.Mstr.dot(trim_matrix))
@@ -454,29 +427,3 @@ class LinearBeam(BaseElement):
         current_time_step.steady_applied_forces = steady_applied_forces + struct_tstep.steady_applied_forces
 
         return current_time_step
-
-
-class VectorVariable(object):
-
-    def __init__(self, name, pos_list, var_system):
-
-        self.name = name
-        self.var_system = var_system
-
-        self.first_pos = pos_list[0]
-        self.end_pos = pos_list[1]
-        self.rows_loc = np.arange(self.first_pos, self.end_pos, dtype=int) # Original location, should not update
-
-
-    # add methods to reorganise into SHARPy method?
-
-    @property
-    def cols_loc(self):
-        return np.arange(self.first_pos, self.end_pos, dtype=int)
-
-    @property
-    def size(self):
-        return self.end_pos - self.first_pos
-
-if __name__=='__main__':
-    print(LinearBeam.__doc__)
