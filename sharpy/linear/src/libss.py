@@ -148,6 +148,16 @@ class ss():
     def states(self, value):
         self._states = value
 
+    def __repr__(self):
+        str_out = ''
+        str_out += 'State-space object\n'
+        str_out += 'States: {:g}\n'.format(self.states)
+        str_out += 'Inputs: {:g}\n'.format(self.inputs)
+        str_out += 'Outputs: {:g}\n'.format(self.outputs)
+        if self.dt is not None:
+            str_out += 'dt: {:g}'.format(self.dt)
+        return str_out
+
     def check_types(self):
         assert type(self.A) in libsp.SupportedTypes, \
             'Type of A matrix (%s) not supported' % type(self.A)
@@ -867,6 +877,8 @@ def series(SS01, SS02):
         u \rightarrow \mathsf{SS01} \rightarrow \mathsf{SS02} \rightarrow y \Longrightarrow
         u \rightarrow \mathsf{SStot} \rightarrow y
 
+    where the state vector :math:`x` is :math:`[x_1, x_2]`.
+
     Args:
         SS01 (libss.ss): State Space 1 instance. Can be DLTI/CLTI, dense or sparse.
         SS02 (libss.ss): State Space 2 instance. Can be DLTI/CLTI, dense or sparse.
@@ -876,15 +888,19 @@ def series(SS01, SS02):
     """
 
     if type(SS01) is not type(SS02):
-        raise NameError('The two input systems need to have the same size!')
+        raise TypeError('The two input systems are not of the same type')
     if SS01.dt != SS02.dt:
-        raise NameError('DLTI systems do not have the same time-step!')
+        raise NameError('DLTI systems do not have the same time-step. SS01 dt={:f}, SS02 dt={:f}'.format(
+            SS01.dt, SS02.dt))
 
     # determine size of total system
     Nst01, Nst02 = SS01.states, SS02.states
     Nst = Nst01 + Nst02
     Nin = SS01.inputs
     Nout = SS02.outputs
+
+    if SS01.outputs != SS02.inputs:
+        raise ValueError('SS01 outputs not equal to SS02 inputs,\nSS01={:s}\nSS02={:s}'.format(str(SS01), str(SS02)))
 
     # Build A matrix
     A = np.zeros((Nst, Nst))
