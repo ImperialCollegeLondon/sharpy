@@ -279,26 +279,8 @@ class LinearUVLM(ss_interface.BaseElement):
             self.ss = self.gust_assembler.apply(self.ss, self.input_variables, self.state_variables)
 
         if self.control_surface is not None:
-            Kzeta_delta, Kdzeta_ddelta = self.control_surface.generate()
-            n_zeta, n_ctrl_sfc = Kzeta_delta.shape
-
-            # Modify the state space system with a gain at the input side
-            # such that the control surface deflections are last
-            if self.sys.use_sparse:
-                gain_cs = sp.eye(self.ss.inputs, self.ss.inputs + 2 * self.control_surface.n_control_surfaces,
-                                 format='lil')
-                gain_cs[:n_zeta, self.ss.inputs: self.ss.inputs + n_ctrl_sfc] = Kzeta_delta
-                gain_cs[n_zeta: 2*n_zeta, self.ss.inputs + n_ctrl_sfc: self.ss.inputs + 2 * n_ctrl_sfc] = Kdzeta_ddelta
-                gain_cs = libsp.csc_matrix(gain_cs)
-            else:
-                gain_cs = np.eye(self.ss.inputs, self.ss.inputs + 2 * self.control_surface.n_control_surfaces)
-                gain_cs[:n_zeta, self.ss.inputs: self.ss.inputs + n_ctrl_sfc] = Kzeta_delta
-                gain_cs[n_zeta: 2*n_zeta, self.ss.inputs + n_ctrl_sfc: self.ss.inputs + 2 * n_ctrl_sfc] = Kdzeta_ddelta
-            self.ss.addGain(gain_cs, where='in')
-            self.input_variables.append('control_surface_deflection', size=n_ctrl_sfc)
-            self.input_variables.append('dot_control_surface_deflection', size=n_ctrl_sfc)
-            self.input_variables.update()
-            self.gain_cs = gain_cs
+            self.ss = self.control_surface.apply(self.ss, self.input_variables, self.state_variables)
+            self.gain_cs = self.control_surface.gain_cs
 
     def remove_inputs(self, remove_list=list):
         """

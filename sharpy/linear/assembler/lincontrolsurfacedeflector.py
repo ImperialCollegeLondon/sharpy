@@ -4,6 +4,8 @@ Control surface deflector for linear systems
 import sharpy.linear.utils.ss_interface as ss_interface
 import numpy as np
 import sharpy.utils.algebra as algebra
+import sharpy.linear.src.libsparse as libsp
+import scipy.sparse as sp
 
 
 @ss_interface.linear_system
@@ -30,6 +32,8 @@ class LinControlSurfaceDeflector(object):
 
         self.tsaero0 = None
         self.tsstruct0 = None
+
+        self.gain_cs = None  # type: np.ndarray # input gain to the UVLM
 
     def initialise(self, data, linuvlm):
         # Tasks:
@@ -186,6 +190,30 @@ class LinControlSurfaceDeflector(object):
         self.Kdzeta_ddelta = Kvel
         return Kdisp, Kvel
 
+    def apply(self, ss, input_variables, state_variables):
+
+        Kzeta_delta, Kdzeta_ddelta = self.generate()
+        n_zeta, n_ctrl_sfc = Kzeta_delta.shape
+
+        if type(ss.A) is libsp.csc_matrix:
+            gain_cs = sp.eye(ss.inputs, ss.inputs + 2 * self.n_control_surfaces,
+                             format='lil')
+            gain_cs[:n_zeta, ss.inputs: ss.inputs + n_ctrl_sfc] = Kzeta_delta
+            gain_cs[n_zeta: 2*n_zeta, ss.inputs + n_ctrl_sfc: ss.inputs + 2 * n_ctrl_sfc] = Kdzeta_ddelta
+            gain_cs = libsp.csc_matrix(gain_cs)
+        else:
+            gain_cs = np.eye(ss.inputs, ss.inputs + 2 * self.n_control_surfaces)
+            gain_cs[:n_zeta, ss.inputs: ss.inputs + n_ctrl_sfc] = Kzeta_delta
+            gain_cs[n_zeta: 2*n_zeta, ss.inputs + n_ctrl_sfc: ss.inputs + 2 * n_ctrl_sfc] = Kdzeta_ddelta
+
+        ss.addGain(gain_cs, where='in')
+        input_variables.append('control_surface_deflection', size=n_ctrl_sfc)
+        input_variables.append('dot_control_surface_deflection', size=n_ctrl_sfc)
+        input_variables.update()
+
+        self.gain_cs = gain_cs
+
+        return ss
     # def generator():
     # future feature idea: instead of defining the inputs for the time domain simulations as the whole input vector
     # etc, we could add a generate() method to these systems that can be called from the LinDynamicSim to apply
