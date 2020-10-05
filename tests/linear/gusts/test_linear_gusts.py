@@ -69,11 +69,8 @@ class TestGolandControlSurface(unittest.TestCase):
             'flow':
                 ['BeamLoader', 'AerogridLoader',
                  'StaticCoupled',
-                 'AerogridPlot',
-                 'BeamPlot',
                  'Modal',
                  'LinearAssembler',
-                 'LinDynamicSim',
                  ],
             'case': ws.case_name, 'route': ws.route,
             'write_screen': 'on', 'write_log': 'on',
@@ -198,21 +195,21 @@ class TestGolandControlSurface(unittest.TestCase):
                                             'rigid_body_motion': 'off'}}
 
         ws.config['LinDynamicSim'] = {'folder': self.route_test_dir + '/output/',
-                                     'n_tsteps': lin_tsteps,
-                                     'dt': ws.dt,
-                                     'postprocessors': ['AerogridPlot'],
-                                     'postprocessors_settings':
-                                         {'AerogridPlot': {'folder': self.route_test_dir + '/output/',
-                                                           'include_rbm': 'on',
-                                                           'include_applied_forces': 'on',
-                                                           'minus_m_star': 0}, }
-                                     }
+                                      'n_tsteps': lin_tsteps,
+                                      'dt': ws.dt,
+                                      'postprocessors': ['AerogridPlot'],
+                                      'postprocessors_settings':
+                                          {'AerogridPlot': {'folder': self.route_test_dir + '/output/',
+                                                            'include_rbm': 'on',
+                                                            'include_applied_forces': 'on',
+                                                            'minus_m_star': 0}, }
+                                      }
 
         ws.config.write()
 
         self.data = sharpy.sharpy_main.main(['', ws.route + ws.case_name + '.sharpy'])
 
-    def test_control_surface(self):
+    def test_linear_gust(self):
         self.setup()
 
     def tearDown(self):
