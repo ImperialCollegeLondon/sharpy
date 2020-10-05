@@ -134,7 +134,7 @@ class Static():
                                      VectorVariable('gamma_w', size=self.K_star, index=1),
                                      VectorVariable('gamma_m1', size=self.K, index=2)]
 
-        self.output_variables_list = [VectorVariable('forces', size=3 * self.Kzeta, index=0)]
+        self.output_variables_list = [VectorVariable('forces_v', size=3 * self.Kzeta, index=0)]
 
         # profiling output
         self.prof_out = './asbly.prof'
@@ -643,7 +643,7 @@ class Dynamic(Static):
         if self.integr_order == 1:
             self.state_variables_list.pop(2) # remove time derivative state
 
-        self.output_variables_list = [VectorVariable('forces', size=3 * self.Kzeta, index=0)]
+        self.output_variables_list = [VectorVariable('forces_v', size=3 * self.Kzeta, index=0)]
 
         ### collect statistics
         self.cpu_summary = {'dim': 0.,

@@ -276,10 +276,10 @@ class LinearUVLM(ss_interface.BaseElement):
             remove_list (list): Inputs to remove
         """
 
-        self.input_variables.remove(*remove_list)
+        self.sys.SS.input_variables.remove(*remove_list)
 
         i = 0
-        for variable in self.input_variables:
+        for variable in self.sys.SS.input_variables:
             if i == 0:
                 retain_input_array = variable.cols_loc
             else:
