@@ -202,18 +202,6 @@ class LinearUVLM(ss_interface.BaseElement):
         self.tsaero0 = data.linear.tsaero0
         self.sys = uvlm
 
-        # input_variables_database = {'zeta': {'size': 3*self.sys.Kzeta, 'index': 0},
-        #                             'zeta_dot': [3*self.sys.Kzeta, 6*self.sys.Kzeta],
-        #                             'u_gust': [6*self.sys.Kzeta, 9*self.sys.Kzeta]}
-        input_variables_list = [VectorVariable('zeta', size=3 * self.sys.Kzeta, index=0),
-                                VectorVariable('zeta_dot', size=3 * self.sys.Kzeta, index=1),
-                                VectorVariable('u_gust', size=3 * self.sys.Kzeta, index=2)]
-
-        state_variables_database = {'gamma': [0, self.sys.K],
-                                    'gamma_w': [self.sys.K, self.sys.K_star],
-                                    'dtgamma_dot': [self.sys.K + self.sys.K_star, 2*self.sys.K + self.sys.K_star],
-                                    'gamma_m1': [2*self.sys.K + self.sys.K_star, 3*self.sys.K + self.sys.K_star]}
-
         state_variables_list = [
             VectorVariable('gamma', size=self.sys.K, index=0),
             VectorVariable('gamma_w', size=self.sys.K_star, index=1),
@@ -228,9 +216,6 @@ class LinearUVLM(ss_interface.BaseElement):
                                                               for i_surf in range(self.tsaero0.n_surf)])
         self.linearisation_vectors['forces_aero'] = np.concatenate([self.tsaero0.forces[i_surf][:3].reshape(-1, order='C')
                                                                     for i_surf in range(self.tsaero0.n_surf)])
-
-        self.input_variables = ss_interface.LinearVector(input_variables_list)
-        self.state_variables = ss_interface.LinearVector(state_variables_list)
 
         if data.aero.n_control_surfaces >= 1:
             import sharpy.linear.assembler.lincontrolsurfacedeflector as lincontrolsurfacedeflector
@@ -270,16 +255,14 @@ class LinearUVLM(ss_interface.BaseElement):
         self.ss = self.sys.SS
         self.C_to_vertex_forces = self.ss.C.copy()
 
-        nzeta = 3 * self.sys.Kzeta
-
         if self.settings['remove_inputs']:
             self.remove_inputs(self.settings['remove_inputs'])
 
         if self.gust_assembler is not None:
-            self.ss = self.gust_assembler.apply(self.ss, self.input_variables, self.state_variables)
+            self.ss = self.gust_assembler.apply(self.ss)
 
         if self.control_surface is not None:
-            self.ss = self.control_surface.apply(self.ss, self.input_variables, self.state_variables)
+            self.ss = self.control_surface.apply(self.ss)
             self.gain_cs = self.control_surface.gain_cs
 
     def remove_inputs(self, remove_list=list):
@@ -306,7 +289,7 @@ class LinearUVLM(ss_interface.BaseElement):
         self.sys.SS.B = libsp.csc_matrix(self.sys.SS.B[:, retain_input_array])
         self.sys.SS.D = libsp.csc_matrix(self.sys.SS.D[:, retain_input_array])
 
-        self.input_variables.update_column_locations()
+        self.sys.SS.input_variables.update_column_locations()
 
     def unpack_ss_vector(self, data, x_n, aero_tstep, track_body=False):
         r"""

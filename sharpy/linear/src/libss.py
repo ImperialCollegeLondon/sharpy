@@ -58,6 +58,7 @@ import numpy as np
 import scipy.signal as scsig
 import scipy.linalg as scalg
 import scipy.interpolate as scint
+from sharpy.linear.utils.ss_interface import LinearVector
 
 # dependency
 import sharpy.linear.src.libsparse as libsp
@@ -103,6 +104,11 @@ class ss():
             (self.states, self.inputs) = self.B.shape
 
         self.outputs = self.C.shape[0]
+
+        # vector variable tracking
+        self.input_variables = None  # type: sharpy.linear.utils.ss_interface.LinearVector
+        self.state_variables = None
+        self.output_variables = None
 
         # verify dimensions
         assert self.A.shape == (self.states, self.states), 'A and B rows not matching'
@@ -156,6 +162,14 @@ class ss():
         str_out += 'Outputs: {:g}\n'.format(self.outputs)
         if self.dt is not None:
             str_out += 'dt: {:g}'.format(self.dt)
+
+        if self.input_variables is not None:
+            str_out += '\nInput Variables:\n' + str(self.input_variables)
+        if self.input_variables is not None:
+            str_out += 'State Variables:\n' + str(self.state_variables)
+        if self.output_variables is not None:
+            str_out += 'Output Variables:\n' + str(self.output_variables)
+
         return str_out
 
     def check_types(self):
@@ -915,6 +929,13 @@ def series(SS01, SS02):
     D = libsp.dense(libsp.dot(SS02.D, SS01.D))
 
     SStot = ss(A, B, C, D, dt=SS01.dt)
+
+    SStot.input_variables = SS01.input_variables
+    try:
+        SStot.state_variables = LinearVector.merge(SS01.state_variables, SS02.state_variables)
+    except AttributeError:
+        SStot.state_variables = None
+    SStot.output_variables = SS02.output_variables
 
     return SStot
 

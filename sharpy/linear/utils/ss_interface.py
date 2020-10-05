@@ -3,6 +3,7 @@ import os
 import sharpy.utils.cout_utils as cout
 from abc import ABCMeta, abstractmethod
 import numpy as np
+import copy
 
 dict_of_systems = dict()
 systems_dict_import = dict()
@@ -251,8 +252,29 @@ class LinearVector:
     def update_row_locations(self):
         pass
 
-    def merge(self):
-        pass  # likely a class method that returns a neew object?
+    @classmethod
+    def merge(cls, vec1, vec2):
+        """
+        Merges two instances of LinearVectors
+
+        Args:
+            vec1 (LinearVector): Vector 1
+            vec2 (LinearVector): Vector 2
+
+        Returns:
+            LinearVector: Merged vectors 1 and 2
+        """
+        vec1.update()
+        vec2.update()
+
+        for variable in vec2:
+            variable.index += vec1.num_variables
+
+        list_of_variables_1 = [variable for variable in vec1]
+        list_of_variables_2 = [variable for variable in vec2]
+
+        merged_vector = cls(list_of_variables_1 + list_of_variables_2)
+        return merged_vector
 
     def differentiate(self):
         pass
@@ -271,6 +293,9 @@ class LinearVector:
         self.update_indices()
         self.update_column_locations()
         self.update_row_locations()
+
+    def copy(self):
+        return copy.deepcopy(self)
 
     def __iter__(self):
         return SetIterator(self)
@@ -314,15 +339,23 @@ class TestVariables(unittest.TestCase):
         # initialising with index out of order
         Kzeta = 4
         input_variables_list = [VectorVariable('zeta', size=3 * Kzeta, index=0),
-                                VectorVariable('zeta_dot', size=3 * Kzeta, index=4), # this should be one
+                                VectorVariable('zeta_dot', size=3 * Kzeta, index=1), # this should be one
                                 VectorVariable('u_gust', size=3 * Kzeta, index=2)]
 
         self.input_variables = LinearVector(input_variables_list)
 
     def test_initialisation(self):
+        Kzeta = 4
+        input_variables_list = [VectorVariable('zeta', size=3 * Kzeta, index=0),
+                                VectorVariable('u_gust', size=3 * Kzeta, index=2),
+                                VectorVariable('zeta_dot', size=3 * Kzeta, index=1)]
 
-        sorted_indices = [variable.index for variable in self.input_variables]
+        input_variables = LinearVector(input_variables_list)
+
+        sorted_indices = [variable.index for variable in input_variables]
+        variable_names = [variable.name for variable in input_variables]
         assert sorted_indices == [0, 1, 2], 'Error sorting indices in initialisation'
+        assert variable_names == ['zeta', 'zeta_dot', 'u_gust'], 'Error sorting indices in initialisation'
 
     def test_remove(self):
 
@@ -377,6 +410,23 @@ class TestVariables(unittest.TestCase):
         self.input_variables.update()
 
         assert self.input_variables[-1].name == 'last_var', 'Variable not properly appended'
+
+    def test_merge(self):
+        second_variables_list = [VectorVariable('eta', size=3, index=0),
+                                 VectorVariable('eta_dot', size=3, index=1)]
+
+        second_vector = LinearVector(second_variables_list)
+
+        merged_vector = LinearVector.merge(self.input_variables, second_vector)
+
+        assert merged_vector[-1].name == 'eta_dot', 'Vectors not coupled properly'
+        assert merged_vector[2].name == 'u_gust', 'Vectors not coupled properly'
+
+    def test_copy(self):
+        vec1 = self.input_variables
+        vec2 = vec1.copy()
+
+        assert vec1 is not vec2, 'Object not deep copied'
 
 if __name__ == '__main__':
     unittest.main()

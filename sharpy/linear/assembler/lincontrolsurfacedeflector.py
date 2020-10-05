@@ -190,7 +190,7 @@ class LinControlSurfaceDeflector(object):
         self.Kdzeta_ddelta = Kvel
         return Kdisp, Kvel
 
-    def apply(self, ss, input_variables, state_variables):
+    def apply(self, ss):
 
         Kzeta_delta, Kdzeta_ddelta = self.generate()
         n_zeta, n_ctrl_sfc = Kzeta_delta.shape
@@ -207,9 +207,9 @@ class LinControlSurfaceDeflector(object):
             gain_cs[n_zeta: 2*n_zeta, ss.inputs + n_ctrl_sfc: ss.inputs + 2 * n_ctrl_sfc] = Kdzeta_ddelta
 
         ss.addGain(gain_cs, where='in')
-        input_variables.append('control_surface_deflection', size=n_ctrl_sfc)
-        input_variables.append('dot_control_surface_deflection', size=n_ctrl_sfc)
-        input_variables.update()
+        ss.input_variables.append('control_surface_deflection', size=n_ctrl_sfc)
+        ss.input_variables.append('dot_control_surface_deflection', size=n_ctrl_sfc)
+        ss.input_variables.update()
 
         self.gain_cs = gain_cs
 
