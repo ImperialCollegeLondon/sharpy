@@ -424,13 +424,18 @@ class ss():
 
 class Gain:
 
-    def __init__(self, value):
+    def __init__(self, value, input_vars=None, output_vars=None):
         self.value = value
         self._input_variables = None
         self._output_variables = None
 
         self._inputs = None
         self._outputs = None
+
+        if input_vars is not None:
+            self.input_variables = input_vars
+        if output_vars is not None:
+            self.output_variables = output_vars
 
     @property
     def input_variables(self):
