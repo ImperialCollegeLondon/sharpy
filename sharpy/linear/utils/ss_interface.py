@@ -206,7 +206,7 @@ class LinearVector:
             try:
                 remove_variable_index = list_of_variable_names.index(variable_name)
             except ValueError:
-                cout.cout_wrap('Trying to remove non-existent {:s} variable'.format(variable_name))
+                ValueError('Trying to remove non-existent {:s} variable'.format(variable_name))
             else:
                 self.__remove_variable(remove_variable_index)
 
