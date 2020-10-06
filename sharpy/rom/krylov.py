@@ -10,6 +10,7 @@ import sharpy.utils.rom_interface as rom_interface
 import sharpy.utils.h5utils as h5
 import sharpy.rom.utils.krylovutils as krylovutils
 import warnings as warn
+from sharpy.linear.utils.ss_interface import LinearVector, StateVariable
 
 
 @rom_interface.rom
@@ -180,6 +181,12 @@ class Krylov(rom_interface.BaseRom):
         Ar, Br, Cr = self.__getattribute__(self.algorithm)(self.frequency, self.r)
 
         self.ssrom = libss.ss(Ar, Br, Cr, self.ss.D, self.ss.dt)
+        try:
+            self.ssrom.input_variables = self.ss.input_variables.copy()
+            self.ssrom.output_variables = self.ss.output_variables.copy()
+            self.ssrom.state_variables = LinearVector([StateVariable('krylov', size=self.ssrom.states, index=0)])
+        except AttributeError:
+            pass
 
         self.stable = self.check_stability(restart_arnoldi=self.restart_arnoldi)
 
