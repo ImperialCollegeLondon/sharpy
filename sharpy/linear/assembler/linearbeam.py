@@ -153,7 +153,7 @@ class LinearBeam(BaseElement):
         self.sys = beam
         self.tsstruct0 = data.linear.tsstruct0
 
-        # State variables
+        # State variables - for the purposes of dof removal PRIOR to first order system assembly
         num_dof_flex = self.sys.structure.num_dof.value
         num_dof_rig = self.sys.Mstr.shape[0] - num_dof_flex
 

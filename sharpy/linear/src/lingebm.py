@@ -14,6 +14,7 @@ import sharpy.utils.settings as settings
 import sharpy.utils.cout_utils as cout
 import sharpy.structure.utils.modalutils as modalutils
 import warnings
+from sharpy.linear.utils.ss_interface import LinearVector, StateVariable, OutputVariable, InputVariable
 
 
 class FlexDynamic():
@@ -900,21 +901,11 @@ class FlexDynamic():
         assert self.inout_coords in ['modes', 'nodes'], \
             'inout_coords=%s not implemented!' % self.inout_coords
 
-        # cond_mass_matrix = np.linalg.cond(self.Mstr)
-        # if np.log10(cond_mass_matrix) >= 10.:
-        #     warnings.warn('Mass matrix is poorly conditioned (Cond = 10^%f). Inverse may not be correct.'
-        #                   % np.log10(cond_mass_matrix), 3)
-        # else:
-        #     cout.cout_wrap('Mass matrix condition = %e' % cond_mass_matrix)
-
         dlti = self.dlti
         modal = self.modal
         num_dof = self.num_dof
         if Nmodes is None or Nmodes >= self.num_modes:
             Nmodes = self.num_modes
-        # else:
-        #     # Modal truncation
-        #     self.update_truncated_modes(Nmodes)
 
         if dlti:  # ---------------------------------- assemble discrete time
 
@@ -938,24 +929,32 @@ class FlexDynamic():
                         else:
                             Ccut = np.dot(Phi.T, np.dot(self.Cstr, Phi))
 
-                        # Ass, Bss, Css, Dss = newmark_ss(
-                        #     np.eye(Nmodes),
-                        #     Ccut,
-                        #     np.diag(self.freq_natural[:Nmodes] ** 2),
-                        #     self.dt,
-                        #     self.newmark_damp)
                         Ass, Bss, Css, Dss = newmark_ss(
-                            # Phi.T.dot(self.Mstr.dot(Phi)),
                             np.linalg.inv(np.dot(self.U[:, :Nmodes].T, np.dot(self.Mstr, self.U[:, :Nmodes]))),
-                            # np.eye(Nmodes),
                             Ccut,
                             np.dot(self.U[:, :Nmodes].T, np.dot(self.Kstr, self.U[:, :Nmodes])),
-                            # Phi.T.dot(self.Kstr.dot(Phi)),
-                            # np.diag(self.freq_natural[:Nmodes]**2),
                             self.dt,
                             self.newmark_damp)
-                        self.Kin = Phi.T
-                        self.Kout = sc.linalg.block_diag(*[Phi, Phi])
+
+                        self.Kin = libss.Gain(Phi.T)
+                        self.Kin.input_variables = LinearVector([InputVariable('forces_n',
+                                                                             size=self.Mstr.shape[0],
+                                                                             index=0)])
+                        self.Kin.output_variables = LinearVector([OutputVariable('Q',
+                                                                               size=Nmodes,
+                                                                               index=0)])
+
+                        self.Kout = libss.Gain(sc.linalg.block_diag(*[Phi, Phi]))
+                        self.Kout.input_variables = LinearVector([InputVariable('q', size=Nmodes, index=0),
+                                                                  InputVariable('q_dot', size=Nmodes, index=1)])
+                        output_variables = LinearVector([OutputVariable('eta', size=self.num_dof_flex, index=0),
+                                                         OutputVariable('eta_dot', size=self.num_dof_flex, index=1)])
+                        if not self.clamped:
+                            output_variables.add('beta_bar', size=self.num_dof_rig, index=0.5)
+                            output_variables.append('beta', size=self.num_dof_rig)
+
+                        self.Kout.output_variables = output_variables
+
                     else:
                         raise NameError(
                             'Newmark-beta discretisation not available ' \
@@ -963,6 +962,18 @@ class FlexDynamic():
 
                     # build state-space model
                     self.SSdisc = libss.ss(Ass, Bss, Css, Dss, dt=self.dt)
+                    input_variables = LinearVector([InputVariable('Q', size=Nmodes, index=0)])
+
+                    output_variables = LinearVector([OutputVariable('q', size=Nmodes, index=0),
+                                                     OutputVariable('q_dot', size=Nmodes, index=1)])
+
+                    state_variables = output_variables.transform(output_variables,
+                                                                 to_type=StateVariable)
+
+                    self.SSdisc.input_variables = input_variables
+                    self.SSdisc.output_variables = output_variables
+                    self.SSdisc.state_variables = state_variables
+
                     if self.inout_coords == 'nodes':
                         self.SSdisc = libss.addGain(self.SSdisc, self.Kin, 'in')
                         self.SSdisc = libss.addGain(self.SSdisc, self.Kout, 'out')
@@ -979,6 +990,19 @@ class FlexDynamic():
                     self.Kout = None
                     self.SSdisc = libss.ss(Ass, Bss, Css, Dss, dt=self.dt)
 
+                    input_variables = LinearVector([InputVariable('forces_n',
+                                                                           size=self.Mstr.shape[0],
+                                                                           index=0)])
+
+                    output_variables = LinearVector([OutputVariable('eta', size=self.num_dof_flex, index=0),
+                                                     OutputVariable('eta_dot', size=self.num_dof_flex, index=1)])
+                    if not self.clamped:
+                        output_variables.add('beta_bar', size=self.num_dof_rig, index=0.5)
+                        output_variables.append('beta', size=self.num_dof_rig)
+
+                    self.SSdisc.output_variables = output_variables
+                    self.SSdisc.input_variables = input_variables
+                    self.SSdisc.state_variables = LinearVector.transform(input_variables, to_type=StateVariable)
             else:
                 raise NameError(
                     'Discretisation method %s not available' % self.discr_method)
@@ -1046,6 +1070,7 @@ class FlexDynamic():
                 self.Kin = None
                 self.Kout = None
                 self.SScont = libss.ss(Ass, Bss, Css, Dss)
+
 
     def freqresp(self, wv=None, bode=True):
         """
