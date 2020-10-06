@@ -6,6 +6,7 @@ import warnings
 import sharpy.utils.settings as settings
 import sharpy.utils.cout_utils as cout
 import sharpy.utils.algebra as algebra
+from sharpy.linear.utils.ss_interface import LinearVector, InputVariable, StateVariable, OutputVariable
 
 
 @ss_interface.linear_system
@@ -175,6 +176,12 @@ class LinearAeroelastic(ss_interface.BaseElement):
         if not self.load_uvlm_from_file:
             # Projecting the UVLM inputs and outputs onto the structural degrees of freedom
             Ksa = self.Kforces[:beam.sys.num_dof, :]  # maps aerodynamic grid forces to nodal forces
+            gain_ksa = libss.Gain(Ksa)
+            gain_ksa.input_variables = LinearVector.transform(uvlm.ss.output_variables, to_type=InputVariable)
+            if beam.sys.Kin is not None:
+                gain_ksa.output_variables = LinearVector.transform(beam.sys.Kin.input_variables, to_type=OutputVariable)
+            else:
+                gain_ksa.output_variables = LinearVector.transform(beam.ss.input_variables, to_type=OutputVariable)
 
             # Map the nodal displacement and velocities onto the grid displacements and velocities
             Kas = np.zeros((uvlm.ss.inputs, 2*beam.sys.num_dof + (uvlm.ss.inputs - 2*self.Kdisp.shape[0])))
@@ -185,27 +192,54 @@ class LinearAeroelastic(ss_interface.BaseElement):
             # Retain other inputs
             Kas[2*self.Kdisp.shape[0]:, 2*beam.sys.num_dof:] = np.eye(uvlm.ss.inputs - 2 * self.Kdisp.shape[0])
 
+            gain_kas = libss.Gain(Kas)
+            gain_kas.output_variables = LinearVector.transform(uvlm.ss.input_variables, to_type=OutputVariable)
+            if beam.sys.Kout is not None:
+                kas_in_vars = LinearVector.transform(beam.sys.Kout.output_variables, to_type=InputVariable)
+            else:
+                kas_in_vars = LinearVector.transform(beam.ss.output_variables, to_type=InputVariable)
+            for variable in uvlm.ss.input_variables:
+                if variable.name not in ['zeta', 'zeta_dot']:
+                    kas_in_vars.append(variable)
+            gain_kas.input_variables = kas_in_vars
+
             # Scaling
             if uvlm.scaled:
                 Kas /= uvlm.sys.ScalingFacts['length']
 
-            uvlm.ss.addGain(Ksa, where='out')
-            uvlm.ss.addGain(Kas, where='in')
+            uvlm.ss.addGain(gain_ksa, where='out')
+            uvlm.ss.addGain(gain_kas, where='in')
 
             self.couplings['Ksa'] = Ksa
             self.couplings['Kas'] = Kas
 
-            if self.settings['beam_settings']['modal_projection'] == True and \
+            if self.settings['beam_settings']['modal_projection'] is True and \
                     self.settings['beam_settings']['inout_coords'] == 'modes':
                 # Project UVLM onto modal space
                 phi = beam.sys.U
                 in_mode_matrix = np.zeros((uvlm.ss.inputs, beam.ss.outputs + (uvlm.ss.inputs - 2*beam.sys.num_dof)))
                 in_mode_matrix[:2*beam.sys.num_dof, :2*beam.sys.num_modes] = sclalg.block_diag(phi, phi)
                 in_mode_matrix[2*beam.sys.num_dof:, 2*beam.sys.num_modes:] = np.eye(uvlm.ss.inputs - 2*beam.sys.num_dof)
-                out_mode_matrix = phi.T
 
-                uvlm.ss.addGain(in_mode_matrix, where='in')
-                uvlm.ss.addGain(out_mode_matrix, where='out')
+                in_mode_gain = libss.Gain(in_mode_matrix)
+                in_mode_inputs = LinearVector.transform(beam.ss.output_variables, to_type=InputVariable)
+                for variable in uvlm.ss.input_variables:
+                    if variable.name not in ['eta', 'eta_dot']:
+                        in_mode_inputs.append(variable)
+                in_mode_outputs = LinearVector.transform(uvlm.ss.input_variables, to_type=OutputVariable)
+
+                in_mode_gain.input_variables = in_mode_inputs
+                in_mode_gain.output_variables = in_mode_outputs
+
+                out_mode_matrix = phi.T
+                out_mode_gain = libss.Gain(out_mode_matrix,
+                                           input_vars=LinearVector.transform(uvlm.ss.output_variables,
+                                                                             to_type=InputVariable),
+                                           output_vars=LinearVector.transform(beam.ss.input_variables,
+                                                                              to_type=OutputVariable))
+
+                uvlm.ss.addGain(in_mode_gain, where='in')
+                uvlm.ss.addGain(out_mode_gain, where='out')
 
             # Reduce uvlm projected onto structural coordinates
             if uvlm.rom:
