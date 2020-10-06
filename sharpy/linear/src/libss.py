@@ -247,25 +247,35 @@ class ss():
             - where='out': outputs are projected such that:
                  u -> SS -> y -> y_new=K*y => u -> SSnew -> ynew
 
-        Warning: this is not a wrapper of the addGain method in this module, as
-        the state-space matrices are directly overwritten.
+        Args:
+            K (np.array or Gain): gain matrix or Gain object
+            where (str): ``in`` or ``out``
+
+        Warning:
+            This is not a wrapper of the addGain method in this module, as
+            the state-space matrices are directly overwritten.
         """
 
         assert where in ['in', 'out'], \
             'Specify whether gains are added to input or output'
 
+        with_vars = False
+        if isinstance(K, Gain):
+            gain = K
+            K = K.value
+            with_vars = True
+
         if where == 'in':
             self.B = libsp.dot(self.B, K)
             self.D = libsp.dot(self.D, K)
-            # try:     # No need to update inputs/outputs as they are now properties accessed on demand NG 26/3/19
-            #     self._inputs = K.shape[1]
-            # except IndexError:
-            #     self._inputs = 1
+            if with_vars:
+                self._input_variables = gain.input_variables
 
         if where == 'out':
             self.C = libsp.dot(K, self.C)
             self.D = libsp.dot(K, self.D)
-            # self.outputs = K.shape[0]
+            if with_vars:
+                self._output_variables = gain.output_variables
 
     def scale(self, input_scal=1., output_scal=1., state_scal=1.):
         """
@@ -410,6 +420,84 @@ class ss():
                 self.D = self.D[:, retain_input_array]
 
         self.input_variables.update_locations()
+
+
+class Gain:
+
+    def __init__(self, value):
+        self.value = value
+        self._input_variables = None
+        self._output_variables = None
+
+        self._inputs = None
+        self._outputs = None
+
+    @property
+    def input_variables(self):
+        return self._input_variables
+
+    @input_variables.setter
+    def input_variables(self, variables):
+        if variables.variable_class is not InputVariable:
+            raise TypeError('LinearVector does not include InputVariable s')
+        if variables.size != self.inputs:
+            raise IndexError('Size of LinearVector of InputVariable s ({:g}) is not the same as the number of '
+                             'inputs in the '
+                             'system ({:g})'.format(variables.size, self.inputs))
+        self._input_variables = variables
+
+    @property
+    def output_variables(self):
+        return self._output_variables
+
+    @output_variables.setter
+    def output_variables(self, variables):
+        if variables.variable_class is not OutputVariable:
+            raise TypeError('LinearVector does not include OutputVariable s')
+        if variables.size != self.outputs:
+            raise IndexError('Size of LinearVector of OutputVariable s ({:g}) is not the same as the number of '
+                             'outputs in the '
+                             'system ({:g})'.format(variables.size, self.outputs))
+        self._output_variables = variables
+
+    @property
+    def inputs(self):
+        """Number of inputs :math:`m` to the system."""
+        if self.value.shape.__len__() == 1:
+            self.inputs = 1
+        else:
+            self.inputs = self.value.shape[1]
+
+        return self._inputs
+
+    @inputs.setter
+    def inputs(self, value):
+        # print('Setting Number of inputs')
+        self._inputs = value
+
+    @property
+    def outputs(self):
+        """Number of outputs :math:`p` of the gain."""
+        self.outputs = self.value.shape[0]
+        return self._outputs
+
+    @outputs.setter
+    def outputs(self, value):
+        self._outputs = value
+
+    def __repr__(self):
+        str_out = ''
+        str_out += 'Gain object\n'
+        str_out += 'Inputs: {:g}\n'.format(self.inputs)
+        str_out += 'Outputs: {:g}\n'.format(self.outputs)
+
+        if self.input_variables is not None:
+            str_out += '\nInput Variables:\n' + str(self.input_variables)
+        if self.output_variables is not None:
+            str_out += 'Output Variables:\n' + str(self.output_variables)
+
+        return str_out
+
 
 class ss_block():
     '''
@@ -985,13 +1073,14 @@ def series(SS01, SS02):
 
     # check series connection
     if SS01.output_variables is not None and SS02.input_variables is not None:
-        for i_var in range(SS01.output_variables.num_variables):
-            out1 = SS01.output_variables[i_var]
-            in2 = SS02.input_variables[i_var]
-            if out1.name != in2.name:
-                raise NameError('Series coupling outputs1 and inputs2 have different names')
-            if not (out1.rows_loc == in2.cols_loc).all:
-                raise IndexError('Series coupling. Output1 channels do not line up with input2 channels.')
+        LinearVector.check_connection(SS01.output_variables, SS02.input_variables)
+        # for i_var in range(SS01.output_variables.num_variables):
+        #     out1 = SS01.output_variables[i_var]
+        #     in2 = SS02.input_variables[i_var]
+        #     if out1.name != in2.name:
+        #         raise NameError('Series coupling outputs1 and inputs2 have different names')
+        #     if not (out1.rows_loc == in2.cols_loc).all:
+        #         raise IndexError('Series coupling. Output1 channels do not line up with input2 channels.')
 
     # determine size of total system
     Nst01, Nst02 = SS01.states, SS02.states
@@ -1859,10 +1948,19 @@ if __name__ == '__main__':
             # add gains
             Kin = np.random.rand(Nu, 5)
             Kout = np.random.rand(4, Ny)
-            SS.addGain(Kin, 'in')
-            SS.addGain(Kout, 'out')
-            SSsp.addGain(Kin, 'in')
-            SSsp.addGain(Kout, 'out')
+
+            gain_in = Gain(Kin)
+            gain_in.input_variables = LinearVector([InputVariable('input1', size=5, index=0)])
+            gain_in.output_variables = LinearVector([OutputVariable('output1', size=Nu, index=0)])
+
+            gain_out = Gain(Kout)
+            gain_out.input_variables = LinearVector.transform(self.SS.output_variables, InputVariable)
+            gain_out.output_variables = LinearVector([OutputVariable('final_output', size=gain_out.outputs, index=0 )])
+
+            SS.addGain(gain_in, 'in')
+            SS.addGain(gain_out, 'out')
+            SSsp.addGain(gain_in, 'in')
+            SSsp.addGain(gain_out, 'out')
             compare_ss(SS, SSsp)
 
         def test_freqresp(self):

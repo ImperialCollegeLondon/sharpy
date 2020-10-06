@@ -6,6 +6,7 @@ import numpy as np
 import sharpy.utils.algebra as algebra
 import sharpy.linear.src.libsparse as libsp
 import scipy.sparse as sp
+import sharpy.linear.src.libss as libss
 
 
 @ss_interface.linear_system
@@ -206,9 +207,14 @@ class LinControlSurfaceDeflector(object):
             gain_cs[:n_zeta, ss.inputs: ss.inputs + n_ctrl_sfc] = Kzeta_delta
             gain_cs[n_zeta: 2*n_zeta, ss.inputs + n_ctrl_sfc: ss.inputs + 2 * n_ctrl_sfc] = Kdzeta_ddelta
 
-        ss.addGain(gain_cs, where='in')
-        ss.input_variables.append('control_surface_deflection', size=n_ctrl_sfc)
-        ss.input_variables.append('dot_control_surface_deflection', size=n_ctrl_sfc)
+        control_surface_gain = libss.Gain(gain_cs)
+        in_vars = ss.input_variables.copy()
+        in_vars.append('control_surface_deflection', size=n_ctrl_sfc)
+        in_vars.append('dot_control_surface_deflection', size=n_ctrl_sfc)
+        control_surface_gain.input_variables = in_vars
+        control_surface_gain.output_variables = ss_interface.LinearVector.transform(ss.input_variables,
+                                                                                    to_type=ss_interface.OutputVariable)
+        ss.addGain(control_surface_gain, where='in')
 
         self.gain_cs = gain_cs
 

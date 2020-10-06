@@ -338,6 +338,31 @@ class LinearVector:
 
         return cls(list_of_variables)
 
+    @staticmethod
+    def check_connection(output_vector, input_vector):
+        """
+        Checks an output_vector can be connected to an input channel.
+
+        """
+        with_error = False
+        err_log = ''
+
+        for ith, out_variable in enumerate(output_vector):
+            try:
+                in_variable = input_vector.get_variable_from_name(out_variable.name)
+            except ValueError:
+                err_log += '\nUnable to connect both systems, no input variable named {:s}\n'.format(out_variable.name)
+                with_error = True
+            else:
+                if not (out_variable.rows_loc == in_variable.cols_loc).all:
+                    err_log +='Variable {:s}Output rows not coincident with input columns for variable\n'.format(
+                        out_variable.name)
+                    err_log += out_variable + '\n'
+                    err_log += in_variable + '\n'
+
+        if with_error:
+            raise ValueError(err_log)
+
 
     def differentiate(self):
         pass
