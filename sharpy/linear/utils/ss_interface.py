@@ -87,7 +87,7 @@ def dictionary_of_systems():
 
 
 class VectorVariable:
-
+    # state variable
     def __init__(self, name, size, index, var_system=None):
 
         self.name = name
@@ -98,6 +98,7 @@ class VectorVariable:
         self._first_position = 0
 
         self._rows_loc = None
+        self._cols_loc = None
 
     @property
     def cols_loc(self):
@@ -118,11 +119,45 @@ class VectorVariable:
     @first_position.setter
     def first_position(self, position):
         self._first_position = position
-        self.rows_loc = position
 
     @property
     def end_position(self):
         return self.first_position + self.size
+
+    @property
+    def rows_loc(self):
+        return np.arange(self.first_position, self.end_position, dtype=int)
+
+    def __repr__(self):
+        return '({:s}: {:s}, size: {:g}, index: {:g}, starting at: {:g}, finishing at: {:g})'.format(
+            type(self).__name__,
+            self.name,
+            self.size,
+            self.index,
+            self.first_position,
+            self.end_position)
+
+
+# should have a dedicated class for Input vs Output variables? in the output the columns should not change
+# in the input it is the rows the ones that do not change
+class OutputVariable(VectorVariable):
+
+    @property
+    def cols_loc(self):
+        return self._cols_loc
+
+    @cols_loc.setter
+    def cols_loc(self, value=None):
+        if self._cols_loc is None:
+            self._cols_loc = np.arange(self.first_position, self.end_position, dtype=int) # Original location, should not update
+
+    @property
+    def rows_loc(self):
+        # In the output variables the rows can change, the columns should stay fixed
+        return np.arange(self.first_position, self.end_position, dtype=int)
+
+
+class InputVariable(VectorVariable):
 
     @property
     def rows_loc(self):
@@ -133,13 +168,13 @@ class VectorVariable:
         if self._rows_loc is None:
             self._rows_loc = np.arange(self.first_position, self.end_position, dtype=int) # Original location, should not update
 
-    def __repr__(self):
-        return '(VectorVariable: {:s}, size: {:g}, index: {:g}, starting at: {:g}, finishing: at {:g})'.format(
-            self.name,
-            self.size,
-            self.index,
-            self.first_position,
-            self.end_position)
+    @property
+    def cols_loc(self):
+        return np.arange(self.first_position, self.end_position, dtype=int)
+
+
+class StateVariable(VectorVariable):
+    pass
 
 
 class LinearVector:
@@ -147,9 +182,14 @@ class LinearVector:
     def __init__(self, list_of_vector_variables):
         self.vector_variables = list_of_vector_variables
 
+        # check they are all the same type
+        self.check_sametype_vars_full_vector()
+
         # initialise position of variables
         self.update_indices()
-        self.update_column_locations()
+        self.update_locations()
+
+        self.variable_class = type(self.vector_variables[0])  # class
 
     @property
     def num_variables(self):
@@ -196,23 +236,27 @@ class LinearVector:
 
     def add(self, vector_variable, **kwargs):
 
-        if type(vector_variable) is VectorVariable:
+        if isinstance(vector_variable, self.variable_class):
             self.__add_vector_variable(vector_variable)
         elif type(vector_variable) is str:
-            new_variable = VectorVariable(name=vector_variable, **kwargs)
+            new_variable = self.variable_class(name=vector_variable, **kwargs)
             self.__add_vector_variable(new_variable)
         else:
-            raise TypeError('Only can add a variable from either a VectorVariable object or with name and kwargs')
+            raise TypeError('Only can add a variable from either a {:s} object or with name and kwargs'.format(
+                self.variable_class.__name__
+            ))
 
     def append(self, vector_variable, **kwargs):
         self.update_indices()
         appending_index = self.num_variables
-        if type(vector_variable) is VectorVariable:
+        if isinstance(vector_variable, VectorVariable):
             vector_variable.index = appending_index
         elif type(vector_variable) is str:
             kwargs['index'] = appending_index
         else:
-            raise TypeError('Only can add a variable from either a VectorVariable object or with name and kwargs')
+            raise TypeError('Only can add a variable from either a {:s} object or with name and kwargs'.format(
+                self.variable_class.__name__
+            ))
 
         self.add(vector_variable, **kwargs)
 
@@ -223,6 +267,7 @@ class LinearVector:
             raise IndexError('New variable index is already in use')
         self.vector_variables.append(vector_variable)
         self.update_indices()
+        self.update_locations()
 
     def update_indices(self):
 
@@ -241,7 +286,7 @@ class LinearVector:
 
         self.vector_variables = updated_list
 
-    def update_column_locations(self):
+    def update_locations(self):
         for i_var in range(self.num_variables):
             if i_var == 0:
                 self.vector_variables[i_var].first_position = 0
@@ -249,8 +294,12 @@ class LinearVector:
                 # since end item is not included in range methods, set the first position to last variable end position
                 self.vector_variables[i_var].first_position = self.vector_variables[i_var - 1].end_position
 
-    def update_row_locations(self):
-        pass
+    def check_sametype_vars_full_vector(self):
+        variable_class = type(self.vector_variables[0])
+
+        for var in self.vector_variables:
+            if not isinstance(var, variable_class):
+                raise TypeError('All variables in the vector are not of the same kind.')
 
     @classmethod
     def merge(cls, vec1, vec2):
@@ -264,8 +313,8 @@ class LinearVector:
         Returns:
             LinearVector: Merged vectors 1 and 2
         """
-        vec1.update()
-        vec2.update()
+        if vec1.variable_class is not vec2.variable_class:
+            raise TypeError('Unable to merge two different kinds of vectors')
 
         for variable in vec2:
             variable.index += vec1.num_variables
@@ -275,6 +324,20 @@ class LinearVector:
 
         merged_vector = cls(list_of_variables_1 + list_of_variables_2)
         return merged_vector
+
+    @classmethod
+    def transform(cls, linear_vector, to_type):
+        if not (to_type is InputVariable or to_type is StateVariable or to_type is OutputVariable):
+            raise TypeError('Argument should be the class to which the linear vector should be transformed')
+
+        list_of_variables = []
+        for variable in linear_vector:
+            list_of_variables.append(to_type(name=variable.name,
+                                             size=variable.size,
+                                             index=variable.index))
+
+        return cls(list_of_variables)
+
 
     def differentiate(self):
         pass
@@ -288,11 +351,6 @@ class LinearVector:
             raise ValueError('Variable {:s} is non existent'.format(name))
         else:
             return self.vector_variables[variable_index]
-
-    def update(self):
-        self.update_indices()
-        self.update_column_locations()
-        self.update_row_locations()
 
     def copy(self):
         return copy.deepcopy(self)
@@ -338,17 +396,17 @@ class TestVariables(unittest.TestCase):
     def setUp(self):
         # initialising with index out of order
         Kzeta = 4
-        input_variables_list = [VectorVariable('zeta', size=3 * Kzeta, index=0),
-                                VectorVariable('zeta_dot', size=3 * Kzeta, index=1), # this should be one
-                                VectorVariable('u_gust', size=3 * Kzeta, index=2)]
+        input_variables_list = [InputVariable('zeta', size=3 * Kzeta, index=0),
+                                InputVariable('zeta_dot', size=3 * Kzeta, index=1), # this should be one
+                                InputVariable('u_gust', size=3 * Kzeta, index=2)]
 
         self.input_variables = LinearVector(input_variables_list)
 
     def test_initialisation(self):
         Kzeta = 4
-        input_variables_list = [VectorVariable('zeta', size=3 * Kzeta, index=0),
-                                VectorVariable('u_gust', size=3 * Kzeta, index=2),
-                                VectorVariable('zeta_dot', size=3 * Kzeta, index=1)]
+        input_variables_list = [InputVariable('zeta', size=3 * Kzeta, index=0),
+                                InputVariable('u_gust', size=3 * Kzeta, index=2),
+                                InputVariable('zeta_dot', size=3 * Kzeta, index=1)]
 
         input_variables = LinearVector(input_variables_list)
 
@@ -376,15 +434,15 @@ class TestVariables(unittest.TestCase):
 
     def test_add(self):
 
-        new_variable = VectorVariable('control_surface', size=2, index=3)
+        new_variable = InputVariable('control_surface', size=2, index=3)
 
         self.input_variables.add(new_variable)
-        self.input_variables.update_column_locations()
+        self.input_variables.update_locations()
 
         # test it's properly included - it will raise an error internally if not
         included_var = self.input_variables.get_variable_from_name('control_surface')
 
-        new_variable_repeated_index = VectorVariable('control_surface_2', size=2, index=3)
+        new_variable_repeated_index = InputVariable('control_surface_2', size=2, index=3)
         try:
             self.input_variables.add(new_variable_repeated_index)
         except IndexError:
@@ -393,9 +451,9 @@ class TestVariables(unittest.TestCase):
         else:
             raise IndexError('Variable was added when it should have been rejected because of repeated index')
 
-        new_variable_inbetween = VectorVariable('first_variable', size=2, index=-1)
+        new_variable_inbetween = InputVariable('first_variable', size=2, index=-1)
         self.input_variables.add(new_variable_inbetween)
-        self.input_variables.update_column_locations()
+        self.input_variables.update_locations()
 
         assert self.input_variables[0].name == new_variable_inbetween.name, 'New variable not added at the start of' \
                                                                             ' the list'
@@ -403,17 +461,27 @@ class TestVariables(unittest.TestCase):
         self.input_variables.add('var_from_string', size=3, index=10)
         assert self.input_variables[-1].name == 'var_from_string', 'Variable from string not added correctly'
 
-        self.input_variables.update()
+        self.input_variables.update_indices()
 
     def test_append(self):
         self.input_variables.append('last_var', size=3)
-        self.input_variables.update()
+        self.input_variables.update_indices()
 
         assert self.input_variables[-1].name == 'last_var', 'Variable not properly appended'
 
+        # test adding an incorrect input
+        out_var = OutputVariable('out_var', size=1, index=4)
+
+        try:
+            self.input_variables.append(out_var)
+        except TypeError:
+            pass # this is what should happen
+        else:
+            raise TypeError('Error. Able to append an output variable to an input variable')
+
     def test_merge(self):
-        second_variables_list = [VectorVariable('eta', size=3, index=0),
-                                 VectorVariable('eta_dot', size=3, index=1)]
+        second_variables_list = [InputVariable('eta', size=3, index=0),
+                                 InputVariable('eta_dot', size=3, index=1)]
 
         second_vector = LinearVector(second_variables_list)
 
@@ -427,6 +495,7 @@ class TestVariables(unittest.TestCase):
         vec2 = vec1.copy()
 
         assert vec1 is not vec2, 'Object not deep copied'
+
 
 if __name__ == '__main__':
     unittest.main()

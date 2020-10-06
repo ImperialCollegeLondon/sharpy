@@ -58,7 +58,7 @@ import numpy as np
 import scipy.signal as scsig
 import scipy.linalg as scalg
 import scipy.interpolate as scint
-from sharpy.linear.utils.ss_interface import LinearVector
+from sharpy.linear.utils.ss_interface import LinearVector, StateVariable, InputVariable, OutputVariable
 
 # dependency
 import sharpy.linear.src.libsparse as libsp
@@ -106,9 +106,9 @@ class ss():
         self.outputs = self.C.shape[0]
 
         # vector variable tracking
-        self.input_variables = None  # type: sharpy.linear.utils.ss_interface.LinearVector
-        self.state_variables = None
-        self.output_variables = None
+        self._input_variables = None  # type: sharpy.linear.utils.ss_interface.LinearVector
+        self._state_variables = None
+        self._output_variables = None
 
         # verify dimensions
         assert self.A.shape == (self.states, self.states), 'A and B rows not matching'
@@ -154,6 +154,48 @@ class ss():
     def states(self, value):
         self._states = value
 
+    @property
+    def input_variables(self):
+        return self._input_variables
+
+    @input_variables.setter
+    def input_variables(self, variables):
+        if variables.variable_class is not InputVariable:
+            raise TypeError('LinearVector does not include InputVariable s')
+        if variables.size != self.inputs:
+            raise IndexError('Size of LinearVector of InputVariable s ({:g}) is not the same as the number of '
+                             'inputs in the '
+                             'system ({:g})'.format(variables.size, self.inputs))
+        self._input_variables = variables
+
+    @property
+    def output_variables(self):
+        return self._output_variables
+
+    @output_variables.setter
+    def output_variables(self, variables):
+        if variables.variable_class is not OutputVariable:
+            raise TypeError('LinearVector does not include OutputVariable s')
+        if variables.size != self.outputs:
+            raise IndexError('Size of LinearVector of OutputVariable s ({:g}) is not the same as the number of '
+                             'outputs in the '
+                             'system ({:g})'.format(variables.size, self.outputs))
+        self._output_variables = variables
+
+    @property
+    def state_variables(self):
+        return self._state_variables
+
+    @state_variables.setter
+    def state_variables(self, variables):
+        if variables.variable_class is not StateVariable:
+            raise TypeError('LinearVector does not include StateVariable s')
+        if variables.size != self.states:
+            raise IndexError('Size of LinearVector of StateVariable s ({:g}) is not the same as the number '
+                             'of states in the '
+                             'system ({:g})'.format(variables.size, self.states))
+        self._state_variables = variables
+
     def __repr__(self):
         str_out = ''
         str_out += 'State-space object\n'
@@ -165,7 +207,7 @@ class ss():
 
         if self.input_variables is not None:
             str_out += '\nInput Variables:\n' + str(self.input_variables)
-        if self.input_variables is not None:
+        if self.state_variables is not None:
             str_out += 'State Variables:\n' + str(self.state_variables)
         if self.output_variables is not None:
             str_out += 'Output Variables:\n' + str(self.output_variables)
@@ -334,6 +376,40 @@ class ss():
 
         return c.dot(scalg.inv(s * np.eye(n) - a)).dot(b) + d
 
+    def remove_inputs(self, *input_remove_list):
+        """
+        Removes inputs through their variable names.
+
+        Needs that the ``ss`` attribute ``input_variables`` is defined.
+
+        Args:
+            input_remove_list (list(str)): List of inputs to remove
+
+        """
+        if self.input_variables is None:
+            raise AttributeError('No input variables have been defined for the current state-space object. Define '
+                                 'some variables prior to using the remove_inputs() method.')
+
+        self.input_variables.remove(*input_remove_list)
+
+        i = 0
+        retain_input_array = None
+        for variable in self.input_variables:
+            if i == 0:
+                retain_input_array = variable.cols_loc
+            else:
+                retain_input_array = np.hstack((retain_input_array, variable.cols_loc))
+            i += 1
+
+        if retain_input_array is not None:
+            if type(self.B) is libsp.csc_matrix:
+                self.B = libsp.csc_matrix(self.B[:, retain_input_array])
+                self.D = libsp.csc_matrix(self.D[:, retain_input_array])
+            else:
+                self.B = self.B[:, retain_input_array]
+                self.D = self.D[:, retain_input_array]
+
+        self.input_variables.update_locations()
 
 class ss_block():
     '''
@@ -906,6 +982,16 @@ def series(SS01, SS02):
     if SS01.dt != SS02.dt:
         raise NameError('DLTI systems do not have the same time-step. SS01 dt={:f}, SS02 dt={:f}'.format(
             SS01.dt, SS02.dt))
+
+    # check series connection
+    if SS01.output_variables is not None and SS02.input_variables is not None:
+        for i_var in range(SS01.output_variables.num_variables):
+            out1 = SS01.output_variables[i_var]
+            in2 = SS02.input_variables[i_var]
+            if out1.name != in2.name:
+                raise NameError('Series coupling outputs1 and inputs2 have different names')
+            if not (out1.rows_loc == in2.cols_loc).all:
+                raise IndexError('Series coupling. Output1 channels do not line up with input2 channels.')
 
     # determine size of total system
     Nst01, Nst02 = SS01.states, SS02.states
@@ -1705,13 +1791,23 @@ if __name__ == '__main__':
         def setUp(self):
             # allocate some state-space model (dense and sparse)
             dt = 0.3
-            Ny, Nx, Nu = 4, 3, 2
+            Ny, Nx, Nu = 8, 3, 5
             A = np.random.rand(Nx, Nx)
             B = np.random.rand(Nx, Nu)
             C = np.random.rand(Ny, Nx)
             D = np.random.rand(Ny, Nu)
             self.SS = ss(A, B, C, D, dt=dt)
             self.SSsp = ss(libsp.csc_matrix(A), libsp.csc_matrix(B), C, D, dt=dt)
+
+            self.SS.input_variables = LinearVector([InputVariable('input1', size=3, index=0),
+                                                    InputVariable('input2', size=2, index=1)])
+            self.SS.state_variables = LinearVector([StateVariable('state1', size=3, index=0)])
+            self.SS.output_variables = LinearVector([OutputVariable('output1', size=3, index=0),
+                                                     OutputVariable('output2', size=5, index=1)])
+
+            self.SSsp.input_variables = self.SS.input_variables
+            self.SSsp.output_variables = self.SS.output_variables
+            self.SSsp.state_variables = self.SS.state_variables
 
         def test_SSconv(self):
 
@@ -1845,7 +1941,58 @@ if __name__ == '__main__':
 
             ct_sys = disc2cont(sys)
 
+        def test_remove_inputs(self):
+            dt = 0.3
+            Ny, Nx, Nu = 4, 3, 10
+            A = np.random.rand(Nx, Nx)
+            B = np.random.rand(Nx, Nu)
+            C = np.random.rand(Ny, Nx)
+            D = np.random.rand(Ny, Nu)
+            self.SS = ss(A, B, C, D, dt=dt)
+            self.SSsp = ss(libsp.csc_matrix(A), libsp.csc_matrix(B), C, D, dt=dt)
 
+            self.SS.input_variables = LinearVector([InputVariable('input1', size=3, index=0),
+                                                    InputVariable('input2', size=4, index=1),
+                                                    InputVariable('input3', size=2, index=2),
+                                                    InputVariable('input4', size=1, index=3)])
+            self.SSsp.input_variables = self.SS.input_variables
+
+            rows_loc = self.SS.input_variables.num_variables * [None]
+            for ith, variable in enumerate(self.SS.input_variables):
+                rows_loc[ith] = variable.rows_loc
+
+            self.SS.remove_inputs('input2', 'input4')
+
+            assert self.SS.B.shape == (Nx, self.SS.input_variables.size), 'B matrix not trimmed correctly'
+            assert self.SS.D.shape == (Ny, self.SS.input_variables.size), 'D matrix not trimmed correctly'
+
+            assert self.SS.input_variables[0].rows_loc == rows_loc[0], \
+                'Rows of input 1 not retained correctly'
+            assert self.SS.input_variables[1].rows_loc == rows_loc[2], \
+                'Rows of input 3 not retained correctly'
+
+            # sparse system
+            self.SSsp.remove_inputs('input2', 'input4')
+            assert self.SSsp.B.shape == (Nx, self.SSsp.input_variables.size), 'Bsp matrix not trimmed correctly'
+            assert self.SSsp.D.shape == (Ny, self.SSsp.input_variables.size), 'Dsp matrix not trimmed correctly'
+
+            assert self.SSsp.input_variables[0].rows_loc == rows_loc[0], \
+                'Rows of input 1 not retained correctly in sparse system'
+            assert self.SSsp.input_variables[1].rows_loc == rows_loc[2], \
+                'Rows of input 3 not retained correctly in sparse system'
+
+        def test_series(self):
+            Nx2, Nu2, Ny2 = 4, 3, self.SS.inputs
+            SS2 = random_ss(Nx2, Nu2, Ny2, dt=self.SS.dt)
+            SS2.input_variables = LinearVector([InputVariable('input11', size=3, index=0)])
+            SS2.state_variables = LinearVector([StateVariable('state11', size=4, index=0)])
+            SS2.output_variables = LinearVector([OutputVariable('input1', size=3, index=0),
+                                                 OutputVariable('input2', size=2, index=1)])
+
+            SSnew = series(SS2, self.SS)
+            state_vars = SS2.state_variables.vector_variables + self.SS.state_variables.vector_variables
+            for ith, variable in enumerate(SSnew.state_variables):
+                assert variable == state_vars[ith]
 
     outprint = 'Testing libss'
     print('\n' + 70 * '-')

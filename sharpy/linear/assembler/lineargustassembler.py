@@ -91,22 +91,21 @@ class LeadingEdgeGust(LinearGust):
         D_gust[:6 * Kzeta, :6 * Kzeta] = np.eye(6 * Kzeta)
 
         self.gust_ss = libss.ss(A_gust, B_gust, C_gust, D_gust, dt=self.linuvlm.SS.dt)
-        self.gust_ss.input_variables = self.linuvlm.SS.input_variables.copy()
-        self.gust_ss.input_variables.modify('u_gust', size=1)
+        gust_input_variables = self.linuvlm.SS.input_variables.copy()
+        gust_input_variables.modify('u_gust', size=1)
+        self.gust_ss.input_variables = gust_input_variables
 
         self.gust_ss.state_variables = ss_interface.LinearVector(
-            [ss_interface.VectorVariable('gust', size=self.gust_ss.states, index=0)])
+            [ss_interface.StateVariable('gust', size=self.gust_ss.states, index=0)])
 
-        self.gust_ss.output_variables = self.linuvlm.SS.input_variables.copy()
+        self.gust_ss.output_variables = ss_interface.LinearVector.transform(self.linuvlm.SS.input_variables,
+                                                                            to_type=ss_interface.OutputVariable)
 
     def apply(self, ss):
 
         self.__assemble()
 
         ss = libss.series(self.gust_ss, ss)
-
-        ss.input_variables.update()
-        ss.state_variables.update()
 
         return ss
 

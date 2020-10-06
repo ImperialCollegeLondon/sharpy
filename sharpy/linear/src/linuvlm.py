@@ -35,7 +35,7 @@ import sharpy.utils.settings as settings
 import sharpy.utils.cout_utils as cout
 import sharpy.utils.exceptions as exceptions
 from sharpy.utils.constants import vortex_radius_def
-from sharpy.linear.utils.ss_interface import VectorVariable, LinearVector
+from sharpy.linear.utils.ss_interface import LinearVector, StateVariable, InputVariable, OutputVariable
 
 settings_types_static = dict()
 settings_default_static = dict()
@@ -126,15 +126,15 @@ class Static():
         self.zeta_dot = np.zeros((3 * self.Kzeta))
         self.u_ext = np.zeros((3 * self.Kzeta))
 
-        self.input_variables_list = [VectorVariable('zeta', size=3 * self.Kzeta, index=0),
-                                     VectorVariable('zeta_dot', size=3 * self.Kzeta, index=1),
-                                     VectorVariable('u_gust', size=3 * self.Kzeta, index=2)]
+        self.input_variables_list = [InputVariable('zeta', size=3 * self.Kzeta, index=0),
+                                     InputVariable('zeta_dot', size=3 * self.Kzeta, index=1),
+                                     InputVariable('u_gust', size=3 * self.Kzeta, index=2)]
 
-        self.state_variables_list = [VectorVariable('gamma', size=self.K, index=0),
-                                     VectorVariable('gamma_w', size=self.K_star, index=1),
-                                     VectorVariable('gamma_m1', size=self.K, index=2)]
+        self.state_variables_list = [StateVariable('gamma', size=self.K, index=0),
+                                     StateVariable('gamma_w', size=self.K_star, index=1),
+                                     StateVariable('gamma_m1', size=self.K, index=2)]
 
-        self.output_variables_list = [VectorVariable('forces_v', size=3 * self.Kzeta, index=0)]
+        self.output_variables_list = [OutputVariable('forces_v', size=3 * self.Kzeta, index=0)]
 
         # profiling output
         self.prof_out = './asbly.prof'
@@ -631,19 +631,19 @@ class Dynamic(Static):
         ScalingFacts['force'] = ScalingFacts['dyn_pressure'] * ScalingFacts['length'] ** 2
         self.ScalingFacts = ScalingFacts
 
-        self.input_variables_list = [VectorVariable('zeta', size=3 * self.Kzeta, index=0),
-                                     VectorVariable('zeta_dot', size=3 * self.Kzeta, index=1),
-                                     VectorVariable('u_gust', size=3 * self.Kzeta, index=2)]
+        self.input_variables_list = [InputVariable('zeta', size=3 * self.Kzeta, index=0),
+                                     InputVariable('zeta_dot', size=3 * self.Kzeta, index=1),
+                                     InputVariable('u_gust', size=3 * self.Kzeta, index=2)]
 
-        self.state_variables_list = [VectorVariable('gamma', size=self.K, index=0),
-                                     VectorVariable('gamma_w', size=self.K_star, index=1),
-                                     VectorVariable('dtgamma_dot', size=self.K, index=2),
-                                     VectorVariable('gamma_m1', size=self.K, index=3)]
+        self.state_variables_list = [StateVariable('gamma', size=self.K, index=0),
+                                     StateVariable('gamma_w', size=self.K_star, index=1),
+                                     StateVariable('dtgamma_dot', size=self.K, index=2),
+                                     StateVariable('gamma_m1', size=self.K, index=3)]
+
+        self.output_variables_list = [OutputVariable('forces_v', size=3 * self.Kzeta, index=0)]
 
         if self.integr_order == 1:
             self.state_variables_list.pop(2) # remove time derivative state
-
-        self.output_variables_list = [VectorVariable('forces_v', size=3 * self.Kzeta, index=0)]
 
         ### collect statistics
         self.cpu_summary = {'dim': 0.,

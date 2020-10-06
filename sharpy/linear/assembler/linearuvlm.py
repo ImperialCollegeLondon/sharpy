@@ -275,21 +275,7 @@ class LinearUVLM(ss_interface.BaseElement):
         Args:
             remove_list (list): Inputs to remove
         """
-
-        self.sys.SS.input_variables.remove(*remove_list)
-
-        i = 0
-        for variable in self.sys.SS.input_variables:
-            if i == 0:
-                retain_input_array = variable.cols_loc
-            else:
-                retain_input_array = np.hstack((retain_input_array, variable.cols_loc))
-            i += 1
-
-        self.sys.SS.B = libsp.csc_matrix(self.sys.SS.B[:, retain_input_array])
-        self.sys.SS.D = libsp.csc_matrix(self.sys.SS.D[:, retain_input_array])
-
-        self.sys.SS.input_variables.update_column_locations()
+        self.sys.SS.remove_inputs(*remove_list)
 
     def unpack_ss_vector(self, data, x_n, aero_tstep, track_body=False):
         r"""

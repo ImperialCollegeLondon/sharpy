@@ -209,7 +209,6 @@ class LinControlSurfaceDeflector(object):
         ss.addGain(gain_cs, where='in')
         ss.input_variables.append('control_surface_deflection', size=n_ctrl_sfc)
         ss.input_variables.append('dot_control_surface_deflection', size=n_ctrl_sfc)
-        ss.input_variables.update()
 
         self.gain_cs = gain_cs
 
