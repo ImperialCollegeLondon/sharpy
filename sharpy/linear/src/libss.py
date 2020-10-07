@@ -722,10 +722,23 @@ def couple(ss01, ss02, K12, K21, out_sparse=False):
     """
 
     assert np.abs(ss01.dt - ss02.dt) < 1e-10 * ss01.dt, 'Time-steps not matching!'
-    assert K12.shape == (ss01.inputs, ss02.outputs), \
-        'Gain K12 shape not matching with systems number of inputs/outputs'
-    assert K21.shape == (ss02.inputs, ss01.outputs), \
-        'Gain K21 shape not matching with systems number of inputs/outputs'
+
+    if ss01.input_variables is not None and ss02.input_variables is not None \
+            and isinstance(K12, Gain) and isinstance(K21, Gain):
+        with_enhanced_vars = True
+        LinearVector.check_connection(K12.output_variables, ss01.input_variables)
+        LinearVector.check_connection(ss02.output_variables, K12.input_variables)
+
+        LinearVector.check_connection(K21.output_variables, ss02.input_variables)
+        LinearVector.check_connection(ss01.output_variables, K21.input_variables)
+        K21 = K21.value
+        K12 = K12.value
+    else:
+        with_enhanced_vars = False
+        assert K12.shape == (ss01.inputs, ss02.outputs), \
+            'Gain K12 shape not matching with systems number of inputs/outputs'
+        assert K21.shape == (ss02.inputs, ss01.outputs), \
+            'Gain K21 shape not matching with systems number of inputs/outputs'
 
     A1, B1, C1, D1 = ss01.get_mats()
     A2, B2, C2, D2 = ss02.get_mats()
@@ -785,7 +798,14 @@ def couple(ss01, ss02, K12, K21, out_sparse=False):
             [libsp.dense(libsp.dot(libsp.dot(D2, cpl_21), D1)),
              libsp.dense(D2 + libsp.dot(libsp.dot(D2, cpl_22), D2))]])
 
-    return ss(A, B, C, D, dt=ss01.dt)
+    coupled_ss = ss(A, B, C, D, dt=ss01.dt)
+    if with_enhanced_vars:
+        coupled_ss.state_variables = LinearVector.merge(ss01.state_variables, ss02.state_variables)
+        coupled_ss.input_variables = LinearVector.merge(ss01.input_variables, ss02.input_variables)
+        coupled_ss.output_variables = LinearVector.merge(ss01.output_variables, ss02.output_variables)
+
+    return coupled_ss
+
 
 def disc2cont(sys):
     r"""

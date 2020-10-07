@@ -394,7 +394,7 @@ class LinearVector:
             except TypeError:
                 print('Error printing var {:s}'.format(var.name))
             else:
-                string_out += out_var + '\n'
+                string_out += '\t' + out_var + '\n'
         return string_out
 
 

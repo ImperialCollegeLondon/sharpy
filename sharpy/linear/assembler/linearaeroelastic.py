@@ -253,19 +253,23 @@ class LinearAeroelastic(ss_interface.BaseElement):
             uvlm.ss = self.load_uvlm(self.settings['uvlm_filename'])
 
         # Coupling matrices
-        Tas = np.eye(uvlm.ss.inputs, beam.ss.outputs)
-        Tsa = np.eye(beam.ss.inputs, uvlm.ss.outputs)
+        Tas = libss.Gain(np.eye(uvlm.ss.inputs, beam.ss.outputs),
+                         input_vars=LinearVector.transform(beam.ss.output_variables, to_type=InputVariable),
+                         output_vars=LinearVector.transform(uvlm.ss.input_variables, to_type=OutputVariable))
+        Tsa = libss.Gain(np.eye(beam.ss.inputs, uvlm.ss.outputs),
+                         input_vars=LinearVector.transform(uvlm.ss.output_variables, to_type=InputVariable),
+                         output_vars=LinearVector.transform(beam.ss.input_variables, to_type=OutputVariable))
 
         # Scale coupling matrices
         if uvlm.scaled:
-            Tsa *= uvlm.sys.ScalingFacts['force'] * uvlm.sys.ScalingFacts['time'] ** 2
+            Tsa.value *= uvlm.sys.ScalingFacts['force'] * uvlm.sys.ScalingFacts['time'] ** 2
             if rigid_dof > 0:
                 warnings.warn('Time scaling for problems with rigid body motion under development.')
-                Tas[:flex_nodes + 6, :flex_nodes + 6] /= uvlm.sys.ScalingFacts['length']
-                Tas[total_dof: total_dof + flex_nodes + 6] /= uvlm.sys.ScalingFacts['length']
+                Tas.value[:flex_nodes + 6, :flex_nodes + 6] /= uvlm.sys.ScalingFacts['length']
+                Tas.value[total_dof: total_dof + flex_nodes + 6] /= uvlm.sys.ScalingFacts['length']
             else:
                 if not self.settings['beam_settings']['modal_projection']:
-                    Tas /= uvlm.sys.ScalingFacts['length']
+                    Tas.value /= uvlm.sys.ScalingFacts['length']
 
         ss = libss.couple(ss01=uvlm.ss, ss02=beam.ss, K12=Tas, K21=Tsa)
 
