@@ -1,0 +1,61 @@
+---
+# for_pos needs positions 0 to 2 to get the x,y,z position
+- name: 'for_pos'
+  var_type: 'node'
+  inout: 'out'
+  position: 0
+- name: 'for_pos'
+  var_type: 'node'
+  inout: 'out'
+  position: 1
+- name: 'for_pos'
+  var_type: 'node'
+  inout: 'out'
+  position: 2
+# The quaternion has 4 terms. All are neeeded to carry out
+# the conversion to roll, pitch and yaw
+- name: 'quat'
+  var_type: 'node'
+  inout: 'out'
+  position: 0
+- name: 'quat'
+  var_type: 'node'
+  inout: 'out'
+  position: 1
+- name: 'quat'
+  var_type: 'node'
+  inout: 'out'
+  position: 2
+- name: 'quat'
+  var_type: 'node'
+  inout: 'out'
+  position: 3
+# Valid for simple HALE
+# Vertical tip deflection (In positive y-axis)
+- name: 'pos'
+  var_type: 'node'
+  inout: 'out'
+  # Row
+  position: 16
+  # Column
+  index: 2
+# Horizontal tip deflection
+- name: 'pos'
+  var_type: 'node'
+  inout: 'out'
+  position: 16
+  index: 0
+# # Simple HALE has two control surfaces
+# - name: 'control_surface_deflection' # variable name. those in the timestep_info are supported
+#   var_type: 'control_surface'
+#   inout: 'out'  # either `in`, `out` or `inout`
+#   position: 0  # control surface index
+# - name: 'control_surface_deflection' 
+#   var_type: 'control_surface'
+#   inout: 'out' 
+#   position: 1  
+# - name: 'control_surface_deflection' 
+#   var_type: 'control_surface'
+#   inout: 'out' 
+#   position: 2  
+...

@@ -217,6 +217,10 @@ class StaticCoupledRBM(BaseSolver):
             cout.cout_wrap('StaticCoupled did not converge!', 0)
             # quit(-1)
 
+        # Avoid rerunning UVLM if the structural solver is rigid
+        if "rigid" in self.settings['structural_solver'].lower():
+            return True
+
         if i_iter == 0:
             self.initial_pos = self.data.structure.timestep_info[self.data.ts].pos.copy()
             self.initial_psi = self.data.structure.timestep_info[self.data.ts].psi.copy()

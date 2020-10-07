@@ -125,18 +125,22 @@ class TestGenerateCases(unittest.TestCase):
         SimInfo.solvers['StaticCoupledRBM']['structural_solver_settings'] = SimInfo.solvers['RigidDynamicPrescribedStep']
         # SimInfo.solvers['StaticCoupledRBM']['structural_solver'] = 'NonLinearDynamicPrescribedStep'
         # SimInfo.solvers['StaticCoupledRBM']['structural_solver_settings'] = SimInfo.solvers['NonLinearDynamicPrescribedStep']
-        SimInfo.solvers['StaticCoupledRBM']['aero_solver'] = 'SHWUvlm'
-        SimInfo.solvers['StaticCoupledRBM']['aero_solver_settings'] = SimInfo.solvers['SHWUvlm']
+        SimInfo.solvers['StaticCoupledRBM']['aero_solver'] = 'StaticUvlm'
+        SimInfo.solvers['StaticCoupledRBM']['aero_solver_settings'] = SimInfo.solvers['StaticUvlm']
 
         SimInfo.solvers['StaticCoupledRBM']['tolerance'] = 1e-6
         SimInfo.solvers['StaticCoupledRBM']['n_load_steps'] = 0
         SimInfo.solvers['StaticCoupledRBM']['relaxation_factor'] = 0.
 
-        SimInfo.solvers['SHWUvlm']['convection_scheme'] = 2
-        SimInfo.solvers['SHWUvlm']['rot_vel'] = rotation_velocity
-        SimInfo.solvers['SHWUvlm']['rot_axis'] = np.array([0.,0.,1.])
-        SimInfo.solvers['SHWUvlm']['rot_center'] = np.zeros((3),)
-
+        SimInfo.solvers['StaticUvlm']['horseshoe'] = False
+        SimInfo.solvers['StaticUvlm']['num_cores'] = 8
+        SimInfo.solvers['StaticUvlm']['n_rollup'] = 0
+        SimInfo.solvers['StaticUvlm']['rollup_dt'] = dt
+        SimInfo.solvers['StaticUvlm']['rollup_aic_refresh'] = 1
+        SimInfo.solvers['StaticUvlm']['rollup_tolerance'] = 1e-8
+        SimInfo.solvers['StaticUvlm']['rbm_vel_g'] = np.array([0., 0., 0.,
+                                                               0., 0., rotation_velocity])
+        
         SimInfo.solvers['StepUvlm']['convection_scheme'] = 2
         SimInfo.solvers['StepUvlm']['num_cores'] = 1
         SimInfo.solvers['StepUvlm']['cfl1'] = False
