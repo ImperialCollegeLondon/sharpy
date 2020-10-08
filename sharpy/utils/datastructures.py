@@ -612,7 +612,10 @@ class StructTimeStepInfo(object):
         copied = StructTimeStepInfo(self.num_node, self.num_elem, self.num_node_elem, ct.c_int(len(self.q)-10),
                                     self.mb_quat.shape[0])
 
-        copied.in_global_AFoR = self.in_global_AFoR
+        try:
+            copied.in_global_AFoR = self.in_global_AFoR
+        except:
+            copied.in_global_AFoR = True
         copied.num_node = self.num_node
         copied.num_elem = self.num_elem
         copied.num_node_elem = self.num_node_elem
@@ -654,7 +657,10 @@ class StructTimeStepInfo(object):
         copied.mb_FoR_vel = self.mb_FoR_vel.astype(dtype=ct.c_double, order='F', copy=True)
         copied.mb_FoR_acc = self.mb_FoR_acc.astype(dtype=ct.c_double, order='F', copy=True)
         copied.mb_quat = self.mb_quat.astype(dtype=ct.c_double, order='F', copy=True)
-        copied.mb_dquatdt = self.mb_dquatdt.astype(dtype=ct.c_double, order='F', copy=True)
+        try:
+            copied.mb_dquatdt = self.mb_dquatdt.astype(dtype=ct.c_double, order='F', copy=True)
+        except:
+            copied.mb_dquatdt = np.array([0., 0., 0., 0.])
         copied.forces_constraints_nodes = self.forces_constraints_nodes.astype(dtype=ct.c_double, order='F', copy=True)
         copied.forces_constraints_FoR = self.forces_constraints_FoR.astype(dtype=ct.c_double, order='F', copy=True)
 

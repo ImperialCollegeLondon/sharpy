@@ -214,6 +214,10 @@ class SaveData(BaseSolver):
                 for it in range(len(self.data.structure.timestep_info)):
                     tstep_p = self.data.structure.timestep_info[it]
                     if tstep_p is not None:
+                        try:
+                            tstep_p.in_global_AFoR
+                        except:
+                            tstep_p.in_global_AFoR = True
                         if not tstep_p.in_global_AFoR:
                             tstep_p.whole_structure_to_global_AFoR(self.data.structure)
                 h5utils.add_as_grp(self.data, hdfile, grpname='data',
