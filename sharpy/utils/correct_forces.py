@@ -183,7 +183,6 @@ def polars(data, aero_kstep, structural_kstep, struct_forces, **kwargs):
             # Compute the associated lift
             cl = np.linalg.norm(lift_force)/coef
             cd_sharpy = np.linalg.norm(drag_force)/coef
-            print(cd_sharpy)
 
             if cd_from_cl:
                 # Compute the drag from the lift
