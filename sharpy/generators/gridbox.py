@@ -5,6 +5,7 @@ import sharpy.utils.settings as settings
 import numpy as np
 from tvtk.api import tvtk, write_data
 import ctypes as ct
+import copy
 
 
 @generator_interface.generator
@@ -42,10 +43,12 @@ class GridBox(generator_interface.BaseGenerator):
 
     def __init__(self):
         self.in_dict = dict()
+        self.settings = None
 
     def initialise(self, in_dict):
         self.in_dict = in_dict
         settings.to_custom_types(self.in_dict, self.settings_types, self.settings_default)
+        self.settings = copy.deepcopy(self.in_dict)
 
         self.x0 = self.in_dict['coords_0'][0]
         self.y0 = self.in_dict['coords_0'][1]
