@@ -24,17 +24,21 @@ import sharpy.utils.generator_interface as gen_interface
 @solver
 class DynamicCoupled(BaseSolver):
     """
-    The :class:`~sharpy.solvers.dynamiccoupled.DynamicCoupled` solver couples the aerodynamic and structural solvers of choice to march forward in time
-    the aeroelastic system's solution.
+    The :class:`~sharpy.solvers.dynamiccoupled.DynamicCoupled` solver couples the aerodynamic and structural solvers
+    of choice to march forward in time the aeroelastic system's solution.
 
-    Using the :class:`~sharpy.solvers.dynamiccoupled.DynamicCoupled` solver requires that an instance of the ``StaticCoupled`` solver is called in the
-    SHARPy solution ``flow`` when defining the problem case.
+    Using the :class:`~sharpy.solvers.dynamiccoupled.DynamicCoupled` solver requires that an instance of the
+    ``StaticCoupled`` solver is called in the SHARPy solution ``flow`` when defining the problem case.
 
     Input data (from external controllers) can be received and data sent using the SHARPy network
     interface, specified through the setting ``network_settings`` of this solver. For more detail on how to send
     and receive data see the :class:`~sharpy.io.network_interface.NetworkLoader` documentation.
 
-    External forces that depend on the instantaneous situation of the system can be applied through the ``apply_forces_generators``.
+    Changes to the structural properties or external forces that depend on the instantaneous situation of the system
+    can be applied through ``runtime_generators``. These runtime generators are parsed through dictionaries, with the
+    key being the name of the generator and the value the settings for such generator. The currently available
+    ``runtime_generators`` are :class:`~sharpy.generators.externalforces.ExternalForces` and
+    :class:`~sharpy.generators.modifystructure.ModifyStructure`.
 
     """
     solver_id = 'DynamicCoupled'
@@ -165,11 +169,11 @@ class DynamicCoupled(BaseSolver):
                                                ':class:`~sharpy.io.network_interface.NetworkLoader` for supported ' \
                                                'entries'
 
-    settings_types['apply_forces_generators'] = 'dict'
-    settings_default['apply_forces_generators'] = dict()
-    settings_description['apply_forces_generators'] = 'The dictionary keys are the generator of forces to be used.' \
-                                                      'The dictionary values are dictionaries with the parameters ' \
-                                                      'needed by each generator.'
+    settings_types['runtime_generators'] = 'dict'
+    settings_default['runtime_generators'] = dict()
+    settings_description['runtime_generators'] = 'The dictionary keys are the runtime generators to be used. ' \
+                                                 'The dictionary values are dictionaries with the settings ' \
+                                                 'needed by each generator.'
 
     settings_table = settings.SettingsTable()
     __doc__ += settings_table.generate(settings_types, settings_default, settings_description, settings_options)
@@ -209,8 +213,8 @@ class DynamicCoupled(BaseSolver):
         self.network_loader = None
         self.set_of_variables = None
 
-        self.apply_forces_generators = dict()
-        self.with_apply_forces = False
+        self.runtime_generators = dict()
+        self.with_runtime_generators = False
 
     def get_g(self):
         """
@@ -316,14 +320,14 @@ class DynamicCoupled(BaseSolver):
             self.network_loader = network_interface.NetworkLoader()
             self.network_loader.initialise(in_settings=self.settings['network_settings'])
 
-        # initialise force generators
-        self.apply_forces_generators = dict()
-        if self.settings['apply_forces_generators']:
-            self.with_apply_forces = True
-            for id, param in self.settings['apply_forces_generators'].items():
+        # initialise runtime generators
+        self.runtime_generators = dict()
+        if self.settings['runtime_generators']:
+            self.with_runtime_generators = True
+            for id, param in self.settings['runtime_generators'].items():
                 gen = gen_interface.generator_from_string(id)
-                self.apply_forces_generators[id] = gen()
-                self.apply_forces_generators[id].initialise(param)
+                self.runtime_generators[id] = gen()
+                self.runtime_generators[id].initialise(param, data=self.data)
 
     def cleanup_timestep_info(self):
         if max(len(self.data.aero.timestep_info), len(self.data.structure.timestep_info)) > 1:
@@ -490,13 +494,13 @@ class DynamicCoupled(BaseSolver):
                         state)
 
             # Add external forces
-            if self.with_apply_forces:
+            if self.with_runtime_generators:
                 params = dict()
                 params['data'] = self.data
                 params['struct_tstep'] = structural_kstep
                 params['aero_tstep'] = aero_kstep
-                for id, apply_forces_generator in self.apply_forces_generators.items():
-                    apply_forces_generator.generate(params)
+                for id, runtime_generator in self.runtime_generators.items():
+                    runtime_generator.generate(params)
 
             self.time_aero = 0.0
             self.time_struc = 0.0
