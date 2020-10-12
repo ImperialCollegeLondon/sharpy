@@ -91,6 +91,10 @@ class TestVariables(unittest.TestCase):
         else:
             raise TypeError('Error. Able to append an output variable to an input variable')
 
+        self.input_variables.append(InputVariable(name='last_last_var', size=2, index=0))
+
+        assert self.input_variables[-1].name == 'last_last_var', 'Variable not properly appended'
+
     def test_merge(self):
         second_variables_list = [InputVariable('eta', size=3, index=0),
                                  InputVariable('eta_dot', size=3, index=1)]
@@ -107,6 +111,26 @@ class TestVariables(unittest.TestCase):
         vec2 = vec1.copy()
 
         assert vec1 is not vec2, 'Object not deep copied'
+
+    def test_transform(self):
+
+        new_vector = LinearVector.transform(self.input_variables, to_type=OutputVariable)
+
+        LinearVector.check_same_vectors(new_vector, self.input_variables)
+        assert new_vector.num_variables == self.input_variables.num_variables, 'Number of variables not equal'
+        assert new_vector.size == self.input_variables.size, 'Size not equal'
+
+        for i_var in range(new_vector.num_variables):
+            assert new_vector[i_var].name == self.input_variables[i_var].name, 'Name does not match'
+            assert new_vector[i_var].index == self.input_variables[i_var].index, 'Index does not match'
+            assert new_vector[i_var].size == self.input_variables[i_var].size, 'Size does not match'
+
+        new_vector.append(OutputVariable('last_var', size=2, index=0))
+
+        assert new_vector.num_variables == self.input_variables.num_variables + 1, 'Number of variables got ' \
+                                                                                   'updated in the original object'
+        assert new_vector[-1].name == 'last_var', 'Variable not correctly appended'
+        assert new_vector[-1].index == new_vector.num_variables - 1, 'Variable not correctly appended'
 
 
 if __name__ == '__main__':

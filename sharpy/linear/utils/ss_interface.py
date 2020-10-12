@@ -322,7 +322,7 @@ class LinearVector:
         list_of_variables_1 = [variable for variable in vec1]
         list_of_variables_2 = [variable for variable in vec2]
 
-        merged_vector = cls(list_of_variables_1 + list_of_variables_2)
+        merged_vector = cls(list_of_variables_1.copy() + list_of_variables_2.copy())
         return merged_vector
 
     @classmethod
@@ -331,7 +331,7 @@ class LinearVector:
             raise TypeError('Argument should be the class to which the linear vector should be transformed')
 
         list_of_variables = []
-        for variable in linear_vector:
+        for variable in linear_vector.copy():
             list_of_variables.append(to_type(name=variable.name,
                                              size=variable.size,
                                              index=variable.index))
@@ -355,7 +355,7 @@ class LinearVector:
                 with_error = True
             else:
                 if not (out_variable.rows_loc == in_variable.cols_loc).all:
-                    err_log +='Variable {:s}Output rows not coincident with input columns for variable\n'.format(
+                    err_log += 'Variable {:s}Output rows not coincident with input columns for variable\n'.format(
                         out_variable.name)
                     err_log += out_variable + '\n'
                     err_log += in_variable + '\n'
@@ -363,6 +363,24 @@ class LinearVector:
         if with_error:
             raise ValueError(err_log)
 
+    @staticmethod
+    def check_same_vectors(vec1, vec2):
+        """
+        Checks that two linear vectors contain the same variables, regardless of type
+        Args:
+            vec1 (LinearVector): Vector 1
+            vec2 (LinearVector): Vector 2
+        """
+
+        assert vec1.num_variables == vec2.num_variables, 'Number of variables is not equal'
+        assert vec1.size == vec2.size, 'Size is not equal'
+
+        for i_var in range(vec1.num_variables):
+            assert vec1[i_var].name == vec2[i_var].name, 'Variable name is not the same'
+            assert vec1[i_var].index == vec2[i_var].index, 'Index is not the same'
+            assert vec1[i_var].size == vec2[i_var].size, 'Variable size is not the same'
+            assert vec1[i_var] is not vec2[i_var], 'Variables in LinearVector reference the same object in memory. ' \
+                                                   'Careful!'
 
     def differentiate(self):
         pass

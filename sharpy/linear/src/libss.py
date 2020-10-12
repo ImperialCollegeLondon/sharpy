@@ -500,6 +500,20 @@ class Gain:
 
         return str_out
 
+    def transpose(self):
+        """
+        Transposes the gain, such that the inputs become the outputs and vice-versa.
+        """
+
+        temp_input_var = self.input_variables.copy()
+        input_variables = LinearVector.transform(self.output_variables,
+                                                 to_type=InputVariable)
+        output_variables = LinearVector.transform(temp_input_var,
+                                                  to_type=OutputVariable)
+
+        return Gain(self.value.T,
+                    input_vars=input_variables,
+                    output_vars=output_variables)
 
 class ss_block():
     """
