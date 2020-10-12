@@ -146,7 +146,7 @@ are used for what kind of features have a look at the [Contributing](contributin
     git checkout -b develop --track origin/develop
     git submodule update --remote
     ```
-    This command will check out the `develop` branch and set it to track the remote origin.
+    This command will check out the `develop` branch and set it to track the remote origin. It will also set the submodules (xbeam and UVLM) to the right commit.
 
 2. Create the conda environment that SHARPy will use. Change `environment_linux.yml` to read `environment_macos.yml`
 file if you are installing SHARPy on Mac OS X
@@ -161,7 +161,13 @@ file if you are installing SHARPy on Mac OS X
     conda activate sharpy_env
     ```
 
-4. Run CMake with custom flags:
+4. Create a directory `build` that will be used during CMake's building process and `cd` into it:
+    ```bash
+    mkdir build
+    cd build
+    ```
+
+5. Run CMake with custom flags:
     1. Choose your compilers for Fortran `FC` and C++ `CXX`, for instance
         ```bash
         FC=gfortran CXX=g++ cmake ..
@@ -170,16 +176,22 @@ file if you are installing SHARPy on Mac OS X
         ```bash
         FC=ifort CXX=icpc cmake ..
         ```
-    2. To build the libraries in debug mode:
+    2. Alternatively, you can build the libraries in debug mode with the following flag for cmake:
         ```bash
-        cmake -DCMAKE_BUILD_TYPE=Debug ..
+        -DCMAKE_BUILD_TYPE=Debug
         ```
 
-5. Compile the libraries and parallelise as you prefer
+6. Compile the libraries and parallelise as you prefer
     ```bash
     make install -j 4
     ```
-6. This concludes the installation! Continue reading the [Running SHARPy](#running-sharpy) section.
+
+7. Finally, load the SHARPy variables
+    ```bash
+    source bin/sharpy_vars.sh
+    ```
+
+8. This concludes the installation! Continue reading the [Running SHARPy](#running-sharpy) section.
 
 ## Using SHARPy from a Docker container
 
