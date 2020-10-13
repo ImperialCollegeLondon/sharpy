@@ -65,13 +65,13 @@ class GridBox(generator_interface.BaseGenerator):
             for_pos = params['for_pos']
         else:
             for_pos = np.zeros((3,))
-        nx = np.abs(int((self.x1.value-self.x0.value)/self.dx.value + 1))
-        ny = np.abs(int((self.y1.value-self.y0.value)/self.dy.value + 1))
-        nz = np.abs(int((self.z1.value-self.z0.value)/self.dz.value + 1))
+        nx = np.abs(int((self.x1-self.x0)/self.dx + 1))
+        ny = np.abs(int((self.y1-self.y0)/self.dy + 1))
+        nz = np.abs(int((self.z1-self.z0)/self.dz + 1))
 
-        xarray = np.linspace(self.x0.value, self.x1.value, nx) + for_pos[0]
-        yarray = np.linspace(self.y0.value, self.y1.value, ny) + for_pos[1]
-        zarray = np.linspace(self.z0.value, self.z1.value, nz) + for_pos[2]
+        xarray = np.linspace(self.x0, self.x1, nx) + for_pos[0]
+        yarray = np.linspace(self.y0, self.y1, ny) + for_pos[1]
+        zarray = np.linspace(self.z0, self.z1, nz) + for_pos[2]
         grid = []
         for iz in range(nz):
             grid.append(np.zeros((3, nx, ny), dtype=ct.c_double))
