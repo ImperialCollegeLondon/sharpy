@@ -6,79 +6,96 @@ import sharpy.utils.solver_interface as solver_interface
 import sharpy.utils.cout_utils as cout
 from sharpy.utils.constants import deg2rad
 
+# def compute_xf_zf_nobed(hf, vf, l, w, E, A, cb):
+#
+    # xf = (hf/w*(np.log(vf/hf + np.sqrt(1+(vf/hf)**2)) - np.log((vf - w*l)/hf + np.sqrt(1+((vf - w*l)/hf)**2))) +
+          # hf*l/E/A)
+          # only this eq has been updated
+#
+#
+# def compute_jacobian_nobed(hf, vf, l, w, E, A, cb):
+#
 
-def compute_xf_zf(hf, vf, l, w, E, A, cg):
+def compute_xf_zf(hf, vf, l, w, E, A, cb):
 
-    xf = (l - vf/w + hf/w*np.log(vf/hf + np.sqrt(1 + (vf/hf)**2)) +
-          hf*l/E/A +
-          cg*w/2/E/A*(-(l-vf/w)**2 +
-                      (l-vf/w-hf/cg/w)*np.max(l - vf/w - hf/cg/w, 0)))
+    # Rename some terms for convenience
+    root1 = np.sqrt(1. + (vf/hf)**2)
+    root2 = np.sqrt(1. + ((vf - w*l)/hf)**2)
+    ln1 = np.log(vf/hf + root1)
+    ln2 = np.log((vf - w*l)/hf + root2)
+    lb = l - vf/w
 
-    zf = hf/w*(np.sqrt(1+(vf/hf)**2) - np.sqrt(1 + ((vf-w*l)/hf)**2)) + 1./E/A*(vf*l-w*l**2/2)
+    # Define if there is part of the mooring line on the bed
+    if lb <= 0:
+        nobed = True
+    else:
+        nobed = False
+
+    # Compute the position of the fairlead
+    if nobed:
+        xf = hf/w*(ln1 - ln2) + hf*l/E/A
+    else:
+        xf = lb + hf/w*ln1 + hf*l/E/A
+        xf += cb*w/2/E/A*(-lb**2 + (lb - hf/cb/w)*np.maximum((lb - hf/cb/w), 0))
+
+    zf = hf/w*(root1 - root2) + 1./E/A*(vf*l-w*l**2/2)
 
     return xf, zf
 
-def compute_jacobian(hf, vf, l, w, E, A, cg):
+def compute_jacobian(hf, vf, l, w, E, A, cb):
 
-    der_xf_hf = (1/w*np.log(vf/hf + np.sqrt(1 + (vf/hf)**2)) +
-                 hf/w/(vf/hf + np.sqrt(1 + (vf/hf)**2))*(-vf/hf**2 + 0.5*(1+(vf/hf)**2)**(-0.5)*(2*vf/hf*(-vf/hf**2))) +
-                 l/E/A)
-    arg1_max = l - vf/w - hf/cg/w
-    if arg1_max > 0.:
-        der_xf_hf += cg*w/2/E/A*(2*(arg1_max)*(-1/cg/w))
+    # Rename some terms for convenience
+    root1 = np.sqrt(1. + (vf/hf)**2)
+    root2 = np.sqrt(1. + ((vf - w*l)/hf)**2)
+    ln1 = np.log(vf/hf + root1)
+    ln2 = np.log((vf - w*l)/hf + root2)
+    lb = l - vf/w
 
-    def_xf_vf = (1/w + hf/w/(vf/hf + np.sqrt(1 + (vf/hf)**2))*(1/hf + 0.5*(1+(vf/hf)**2)**(-0.5)*(2*vf/hf/hf)) +
-                 cg*w/2/E/A*(2*(l-vf/w)/w))
-    if arg1_max > 0.:
-        der_xf_vf += cg*w/2/E/A*(2*(arg1_max)*(-1/w))
+    # Compute their deivatives
+    der_root1_hf = 0.5*(1. + (vf/hf)**2)**(-0.5)*(2*vf/hf*(-vf/hf/hf))
+    der_root1_vf = 0.5*(1. + (vf/hf)**2)**(-0.5)*(2*vf/hf/hf)
 
-    der_zf_hf = (1/w*(np.sqrt(1+(vf/hf)**2) - np.sqrt(1 + ((vf-w*l)/hf)**2)) +
-                hf/w*(0.5*(1+(vf/hf)**2)**(-0.5)*(2*vf/hf*(-vf/hf**2)) -
-                0.5*(1 + ((vf-w*l)/hf)**2)**(-0.5)*(2*(vf-w*l)/hf*(vf-w*l)/hf**2)))
+    der_root2_hf = 0.5*(1. + ((vf - w*l)/hf)**2)**(-0.5)*(2.*(vf - w*l)/hf*(-(vf - w*l)/hf/hf))
+    der_root2_vf = 0.5*(1. + ((vf - w*l)/hf)**2)**(-0.5)*(2.*(vf - w*l)/hf/hf)
 
-    der_zf_vf = ((hf/w)*(0.5*(1+(vf/hf)**2)**(-0.5)*(2*vf/hf/hf) -
-                 0.5*(1 + ((vf-w*l)/hf)**2)**(-0.5)*(2*(vf-w*l)/hf/hf)) +
-                 1/E/A*l)
+    der_ln1_hf = 1./(vf/hf + root1)*(vf/hf/hf + der_root1_hf)
+    der_ln1_vf = 1./(vf/hf + root1)*(1./hf + der_root1_vf)
+
+    der_ln2_hf = 1./((vf - w*l)/hf + root2)*(-(vf - w*l)/hf/hf + der_root2_hf)
+    der_ln2_vf = 1./((vf - w*l)/hf + root2)*(1./hf + der_root2_vf)
+
+    der_lb_hf = 0.
+    der_lb_vf = -1./w
+
+    # Define if there is part of the mooring line on the bed
+    if lb <= 0:
+        nobed = True
+    else:
+        nobed = False
+
+    # Compute the Jacobian
+    if nobed:
+        der_xf_hf = 1./w*(ln1 - ln2) + hf/w*(der_ln1_hf + der_ln2_hf) + l/E/A
+        der_xf_vf = hf/w*(der_ln1_vf + der_ln2_vf)
+    else:
+        der_xf_hf = der_lb_hf + 1./w*ln1 + hf/w*der_ln1_hf + l/E/A
+        arg1_max = l - vf/w - hf/cb/w
+        if arg1_max > 0.:
+            der_xf_hf += cb*w/2/E/A*(2*(arg1_max)*(-1/cb/w))
+
+        der_xf_vf = der_lb_vf + hf/w*der_ln1_vf + cb*w/2/E/A*(-2.*lb*der_lb_vf)
+        if arg1_max > 0.:
+            der_xf_vf += cb*w/2/E/A*(2.*(lb - hf/cb/w)*der_lb_vf)
+
+    der_zf_hf = 1./w*(root1 - root2) + hf/w*(der_root1_hf - der_root2_hf)
+
+    der_zf_vf = hf/w*(der_root1_vf - der_root2_vf) + 1./E/A*l
 
     J = np.array([[der_xf_hf, der_xf_vf],[der_zf_hf, der_zf_vf]])
 
     return J
 
-# def test_jacobian:
-#
-#     # Values for OC3
-#     l = 902.2 # Initial length [m]
-#     w = 77.7066*9.81 # Apparent mass per unit length times gravity
-#     E = 384243000 # Extensional stiffness
-#     A = np.pi*(0.09/2)**2 # Cross-section area
-#     cg = 0. # Seabed friction coefficient
-#
-#     xf =
-#     hf =
-#
-#     dist_vec = np.array([1e-1, 1e-2, 1e-3, 1e-4, 1e-5, 1e-6])
-#     for dist in dist_vec:
-#
-#     for a in A:
-#             # perturbed
-#             fv = a * fv1 + (1. - a) * fv0
-#             dfv = fv - fv0
-#
-#             ### Compute relevant quantities
-#             dCab = algebra.crv2rotation(fv0 + dfv) - Cab
-#             T = algebra.crv2tan(fv0)
-#             Tdfv = np.dot(T, dfv)
-#             Tdfv_skew = algebra.skew(Tdfv)
-#             dCab_an = np.dot(Cab, Tdfv_skew)
-#
-#             er_tan_new = np.max(np.abs(dCab - dCab_an)) / np.max(np.abs(dCab_an))
-#             assert er_tan_new < er_tan, 'crv2tan error not converging to 0'
-#             er_tan = er_tan_new
-#
-#         assert er_tan < A[-2], 'crv2tan error too large'
-
-
-def jonkman_mooring(xf, zf, l, w, E, A, cg, hf0=None, vf0=None):
+def jonkman_mooring(xf, zf, l, w, E, A, cb, hf0=None, vf0=None):
 
     # Initialise guess for hf0 and vf0
     if xf == 0:
@@ -95,20 +112,90 @@ def jonkman_mooring(xf, zf, l, w, E, A, cg, hf0=None, vf0=None):
         vf0 = w/2*(zf/np.tanh(lambda0) + l)
 
     # Compute the solution through Newton-Raphson iteration
-    hf = hf0 + 0.
-    vf = vf0 + 0.
-    xf_est, zf_est = compute_xf_zf(hf, vf, l, w, E, A, cg)
+    hf_est = hf0 + 0.
+    vf_est = vf0 + 0.
+    xf_est, zf_est = compute_xf_zf(hf_est, vf_est, l, w, E, A, cb)
+    # print("initial: ", xf_est, zf_est)
     tol = 1e-6
     error = 2*tol
     while error > tol:
-        J = compute_jacobian(hf, vf, l, w, E, A, cg):
-        hf += (xf - xf_est)/J[0, 0] + (zf - zf_est)/J[1, 0]
-        vf += (xf - xf_est)/J[0, 1] + (zf - zf_est)/J[1, 1]
+        J_est = compute_jacobian(hf_est, vf_est, l, w, E, A, cb)
+        inv_J_est = np.linalg.inv(J_est)
+        hf_est += inv_J_est[0, 0]*(xf - xf_est) + inv_J_est[0, 1]*(zf - zf_est)
+        vf_est += inv_J_est[1, 0]*(xf - xf_est) + inv_J_est[1, 1]*(zf - zf_est)
+        # hf += (xf - xf_est)/J[0, 0] + (zf - zf_est)/J[1, 0]
+        # vf += (xf - xf_est)/J[0, 1] + (zf - zf_est)/J[1, 1]
 
-        xf_est, zf_est = compute_xf_zf(hf, vf, l, w, E, A, cg)
-        error = np.max(np.abs(xf - xf_est), np.abs(zf - zf_est))
+        xf_est, zf_est = compute_xf_zf(hf_est, vf_est, l, w, E, A, cb)
+        error = np.maximum(np.abs(xf - xf_est), np.abs(zf - zf_est))
+        # print(error)
 
-    return hf, vf
+    return hf_est, vf_est
+
+def test_jonkman_mooring():
+
+    # Values for OC3
+    l = 902.2 # Initial length [m]
+    w = 77.7066*9.81 # Apparent mass per unit length times gravity
+    E = 384243000. # Extensional stiffness
+    A = np.pi*(0.09/2)**2 # Cross-section area
+    cb = 1e-6 # Seabed friction coefficient
+
+    xf0 = 853.87
+    zf0 = 320. - 70.
+
+    hf0, vf0 = jonkman_mooring(xf0, zf0, l, w, E, A, cb, hf0=2500000, vf0=2500000)
+    print(xf0, zf0, hf0, vf0)
+
+def test_jacobian():
+
+    # Values for OC3
+    l = 902.2 # Initial length [m]
+    w = 77.7066*9.81 # Apparent mass per unit length times gravity
+    E = 384243000. # Extensional stiffness
+    A = np.pi*(0.09/2)**2 # Cross-section area
+    cb = 1e-6 # Seabed friction coefficient
+
+    xf0 = 853.87
+    zf0 = 320. - 70.
+
+    # Compute the initial
+    hf0, vf0 = jonkman_mooring(xf0, zf0, l, w, E, A, cb, hf0=2500000, vf0=2500000)
+    # J0 = compute_jacobian(hf0, vf0, l, w, E, A, cb)
+    # print("initial: ", xf0, zf0, hf0, vf0, J0)
+
+    # Approximate Jacobian
+    # delta_vec = np.array([1e-1, 1e-2, 1e-3, 1e-4, 1e-5, 1e-6])
+    delta_vec = np.array([1e-5, 1e-6])
+    error_vec = np.zeros_like(delta_vec)
+    for i in range(delta_vec.shape[0]):
+        print("delta=%f" % (delta_vec[i]))
+        xf = xf0 + delta_vec[i]
+        zf = zf0 + delta_vec[i]
+        print("xf=%f zf=%f" % (xf, zf))
+        hf, vf = jonkman_mooring(xf, zf, l, w, E, A, cb, hf0=hf0, vf0=vf0)
+        print("hf=%f vf=%f" % (hf, vf))
+
+        J = compute_jacobian(hf, vf, l, w, E, A, cb)
+        print("J:", J)
+
+        approx_J = np.zeros_like(J)
+        approx_J[0, 0] = (xf - xf0)/(hf - hf0)
+        approx_J[0, 1] = (xf - xf0)/(vf - vf0)
+        approx_J[1, 0] = (zf - zf0)/(hf - hf0)
+        approx_J[1, 1] = (zf - zf0)/(vf - vf0)
+        print("approx_J:", approx_J)
+
+        error_vec[i] = np.max(np.abs(J - approx_J))/delta_vec[i]
+        if error_vec[i] > 1e-6:
+            print("ERROR: Large error in the computation of the Jacobian")
+            print("J: ", J)
+            print("approx_J: ", approx_J)
+            print("error: ", error_vec[i])
+
+        if i > 0:
+            if error_vec[i] > error_vec[i-1]:
+                print("ERROR: Errors do not decrease with decreasing delta")
 
 def tri_area(p1, p2, p3):
     # Heron's formula
@@ -142,7 +229,7 @@ def tri_centroid(p1, p2, p3):
 
     return centroid
 
-def tri_mom_inertia_centroid(p1, p2, p3):
+# def tri_mom_inertia_centroid(p1, p2, p3):
     # Compute the moments of inertia around a set of axis with origin the centroid
 
     # First compute it with respect to a set of axis such that:
@@ -155,9 +242,6 @@ def tri_mom_inertia_centroid(p1, p2, p3):
 
 
     # Convert to globla xyz system
-
-
-
 
 def quad_area(p1, p2, p3, p4):
     # p1, p2, p3, p4 are consecutive vertices
@@ -292,13 +376,13 @@ class FloatingForces(generator_interface.BaseGenerator):
         aero_tstep = params['aero_tstep']
 
         # Mooring lines
-        # jonkman_mooring(xf, zf, l, w, E, A, cg, hf0=None, vf0=None):
+        # jonkman_mooring(xf, zf, l, w, E, A, cb, hf0=None, vf0=None):
         base_disp = struct_tstep.for_pos[0:3] - data.beam.ini_info.for_pos[0:3]
 
         base_vel = struct_tstep.for_pos[0:3]
 
         mooring = np.array([[0., 0., 1.],
-                            [0., np.cos(30*deg2rad), -np.sin(30*deg2rad)],)
+                            [0., np.cos(30*deg2rad), -np.sin(30*deg2rad)],
                             [0., -np.cos(30*deg2rad), -np.sin(30*deg2rad)]])
 
         for imooring in range(mooring.shape[0]):
