@@ -36,11 +36,53 @@ def compute_xf_zf(hf, vf, l, w, E, A, cb):
         xf = hf/w*(ln1 - ln2) + hf*l/E/A
     else:
         xf = lb + hf/w*ln1 + hf*l/E/A
-        xf += cb*w/2/E/A*(-lb**2 + (lb - hf/cb/w)*np.maximum((lb - hf/cb/w), 0))
+        if not cb == 0.:
+            xf += cb*w/2/E/A*(-lb**2 + (lb - hf/cb/w)*np.maximum((lb - hf/cb/w), 0))
 
     zf = hf/w*(root1 - root2) + 1./E/A*(vf*l-w*l**2/2)
 
     return xf, zf
+
+def test_compute_xf_zf():
+
+    # Values for OC3
+    l = 902.2 # Initial length [m]
+    w = 698.094 # Aparent weight 77.7066*9.81 # Apparent mass per unit length times gravity
+    A = np.pi*(0.09/2)**2 # Cross-section area
+    E = 384243000./A # Extensional stiffness / area
+    cb = 0.1 # Seabed friction coefficient
+
+    # No mooring line on the Seabed
+    vf = 1.1*l*w # 692802.4475
+    hf = vf
+    xf_byhand = 784.5965853 + 1.626695524
+    zf_byhand = 406.9813526 + 0.887288467
+    xf, zf = compute_xf_zf(hf, vf, l, w, E, A, cb)
+    print("Case without mooring line on the seabed")
+    print("xf=%f and xf_byhand=%f" % (xf, xf_byhand))
+    print("zf=%f and zf_byhand=%f" % (zf, zf_byhand))
+
+    # Some mooring line on the Seabed
+    lb_div_l = 0.1 # 10% of the mooring line on the seabed
+    vf = (1-lb_div_l)*l*w
+    hf = vf
+    xf_byhand = 90.22 + 715.6577252 + 1.330932701 - 7.298744381e-4
+    zf_byhand = 331.3362812 + 0.591525645
+    xf, zf = compute_xf_zf(hf, vf, l, w, E, A, cb)
+    print("Case with %f%% mooring line on the seabed" % (lb_div_l*100))
+    print("xf=%f and xf_byhand=%f" % (xf, xf_byhand))
+    print("zf=%f and zf_byhand=%f" % (zf, zf_byhand))
+
+    # From solution file
+    xf, zf = compute_xf_zf(0.1*1e3, 174.599971*1e3, l, w, E, A, cb)
+    distance = 653.
+    print("Case with mooring line on the seabed from file")
+    print("xf=%f and distance=%f. zf=%f" % (xf, distance, zf))
+    xf, zf = compute_xf_zf(1415.6*1e3, 730.565288*1e3, l, w, E, A, cb)
+    distance = 864.
+    print("Case without mooring line on the seabed from file")
+    print("xf=%f and distance=%f. zf=%f" % (xf, distance, zf))
+
 
 def compute_jacobian(hf, vf, l, w, E, A, cb):
 
@@ -79,13 +121,16 @@ def compute_jacobian(hf, vf, l, w, E, A, cb):
         der_xf_vf = hf/w*(der_ln1_vf + der_ln2_vf)
     else:
         der_xf_hf = der_lb_hf + 1./w*ln1 + hf/w*der_ln1_hf + l/E/A
-        arg1_max = l - vf/w - hf/cb/w
-        if arg1_max > 0.:
-            der_xf_hf += cb*w/2/E/A*(2*(arg1_max)*(-1/cb/w))
+        if not cb == 0.:
+            arg1_max = l - vf/w - hf/cb/w
+            if arg1_max > 0.:
+                der_xf_hf += cb*w/2/E/A*(2*(arg1_max)*(-1/cb/w))
 
         der_xf_vf = der_lb_vf + hf/w*der_ln1_vf + cb*w/2/E/A*(-2.*lb*der_lb_vf)
-        if arg1_max > 0.:
-            der_xf_vf += cb*w/2/E/A*(2.*(lb - hf/cb/w)*der_lb_vf)
+        if not cb == 0.:
+            arg1_max = l - vf/w - hf/cb/w
+            if arg1_max > 0.:
+                der_xf_vf += cb*w/2/E/A*(2.*(lb - hf/cb/w)*der_lb_vf)
 
     der_zf_hf = 1./w*(root1 - root2) + hf/w*(der_root1_hf - der_root2_hf)
 
@@ -116,7 +161,7 @@ def jonkman_mooring(xf, zf, l, w, E, A, cb, hf0=None, vf0=None):
     vf_est = vf0 + 0.
     xf_est, zf_est = compute_xf_zf(hf_est, vf_est, l, w, E, A, cb)
     # print("initial: ", xf_est, zf_est)
-    tol = 1e-6
+    tol = 1e-12
     error = 2*tol
     while error > tol:
         J_est = compute_jacobian(hf_est, vf_est, l, w, E, A, cb)
@@ -132,20 +177,29 @@ def jonkman_mooring(xf, zf, l, w, E, A, cb, hf0=None, vf0=None):
 
     return hf_est, vf_est
 
-def test_jonkman_mooring():
+def generate_mooringlinefd():
 
     # Values for OC3
     l = 902.2 # Initial length [m]
-    w = 77.7066*9.81 # Apparent mass per unit length times gravity
-    E = 384243000. # Extensional stiffness
+    w = 698.094 # Aparent weight 77.7066*9.81 # Apparent mass per unit length times gravity
     A = np.pi*(0.09/2)**2 # Cross-section area
-    cb = 1e-6 # Seabed friction coefficient
+    E = 384243000./A # Extensional stiffness / area
+    cb = 0. # Seabed friction coefficient
 
-    xf0 = 853.87
-    zf0 = 320. - 70.
+    zf = 320. - 70.
 
-    hf0, vf0 = jonkman_mooring(xf0, zf0, l, w, E, A, cb, hf0=2500000, vf0=2500000)
-    print(xf0, zf0, hf0, vf0)
+    # xf0 = 853.87
+    xf_list = np.arange(653.00, 902.50 + 1., 1.)
+    npoints = xf_list.shape[0]
+    output = np.zeros((npoints, 4))
+    for i in range(npoints):
+        hf, vf = jonkman_mooring(xf_list[i], zf, l, w, E, A, cb, hf0=None, vf0=None)
+        # print(xf0, zf0, hf0, vf0)
+        lb = np.maximum(l - vf/w, 0)
+        # print("Suspended lenght = %f" % (l - lb))
+        output[i, :] = np.array([xf_list[i], np.sqrt(vf**2 + hf**2)*1e-3, hf*1e-3, (l - lb)])
+
+    np.savetxt("sharpy_mooringlinefd.txt", output, header="# DISTANCE(m) TENSION(kN) HTENSION(kN) SUSPL(m)")
 
 def test_jacobian():
 
@@ -161,24 +215,30 @@ def test_jacobian():
 
     # Compute the initial
     hf0, vf0 = jonkman_mooring(xf0, zf0, l, w, E, A, cb, hf0=2500000, vf0=2500000)
-    # J0 = compute_jacobian(hf0, vf0, l, w, E, A, cb)
-    # print("initial: ", xf0, zf0, hf0, vf0, J0)
+    J0 = compute_jacobian(hf0, vf0, l, w, E, A, cb)
+    print("xf0=%f zf0=%f" % (xf0, zf0))
+    print("hf0=%f vf0=%f" % (hf0, vf0))
+    print("J0:", J0)
 
     # Approximate Jacobian
     # delta_vec = np.array([1e-1, 1e-2, 1e-3, 1e-4, 1e-5, 1e-6])
-    delta_vec = np.array([1e-5, 1e-6])
+    delta_vec = np.array([1e-1, 1e-2])*hf0
     error_vec = np.zeros_like(delta_vec)
     for i in range(delta_vec.shape[0]):
         print("delta=%f" % (delta_vec[i]))
-        xf = xf0 + delta_vec[i]
-        zf = zf0 + delta_vec[i]
-        print("xf=%f zf=%f" % (xf, zf))
-        hf, vf = jonkman_mooring(xf, zf, l, w, E, A, cb, hf0=hf0, vf0=vf0)
-        print("hf=%f vf=%f" % (hf, vf))
+        # xf = xf0 + delta_vec[i]
+        # zf = zf0 + delta_vec[i]
+        # print("xf=%f zf=%f" % (xf, zf))
+        # hf, vf = jonkman_mooring(xf, zf, l, w, E, A, cb, hf0=hf0, vf0=vf0)
+        # print("hf=%f vf=%f" % (hf, vf))
+        hf = hf0 + delta_vec[i]
+        vf = vf0 + delta_vec[i]
 
         J = compute_jacobian(hf, vf, l, w, E, A, cb)
         print("J:", J)
+        print("J-J0:", J-J0)
 
+        xf, zf = compute_xf_zf(hf, vf, l, w, E, A, cb)
         approx_J = np.zeros_like(J)
         approx_J[0, 0] = (xf - xf0)/(hf - hf0)
         approx_J[0, 1] = (xf - xf0)/(vf - vf0)
@@ -186,7 +246,8 @@ def test_jacobian():
         approx_J[1, 1] = (zf - zf0)/(vf - vf0)
         print("approx_J:", approx_J)
 
-        error_vec[i] = np.max(np.abs(J - approx_J))/delta_vec[i]
+        # error_vec[i] = np.max(np.abs(J - approx_J))/delta_vec[i]
+        error_vec[i] = np.max(np.abs(J - approx_J))
         if error_vec[i] > 1e-6:
             print("ERROR: Large error in the computation of the Jacobian")
             print("J: ", J)
