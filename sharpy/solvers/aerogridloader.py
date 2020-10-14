@@ -69,8 +69,8 @@ class AerogridLoader(BaseSolver):
     settings_default['control_surface_deflection'] = []
     settings_description['control_surface_deflection'] = 'List of control surface generators for each control surface'
 
-    settings_types['control_surface_deflection_generator_settings'] = 'list(dict)'
-    settings_default['control_surface_deflection_generator_settings'] = list(dict())
+    settings_types['control_surface_deflection_generator_settings'] = 'dict'
+    settings_default['control_surface_deflection_generator_settings'] = dict()
     settings_description['control_surface_deflection_generator_settings'] = 'List of dictionaries with the settings ' \
                                                                             'for each generator'
 

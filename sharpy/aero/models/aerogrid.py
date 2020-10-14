@@ -111,15 +111,29 @@ class Aerogrid(object):
             aero_settings['control_surface_deflection'].extend(undef_ctrl_sfcs)
 
         # initialise generators
+        with_error_initialising_cs = False
         for i_cs in range(self.n_control_surfaces):
             if aero_settings['control_surface_deflection'][i_cs] == '':
                 self.cs_generators.append(None)
             else:
+                cout.cout_wrap('Initialising Control Surface {:g} generator'.format(i_cs), 1)
+                # check that the control surface is not static
+                if self.aero_dict['control_surface_type'][i_cs] == 0:
+                    raise TypeError('Control surface {:g} is defined as static but there is a control surface generator'
+                                    'associated with it'.format(i_cs))
                 generator_type = gen_interface.generator_from_string(
                     aero_settings['control_surface_deflection'][i_cs])
                 self.cs_generators.append(generator_type())
-                self.cs_generators[i_cs].initialise(
-                    aero_settings['control_surface_deflection_generator_settings'][i_cs])
+                try:
+                    self.cs_generators[i_cs].initialise(
+                        aero_settings['control_surface_deflection_generator_settings'][str(i_cs)])
+                except KeyError:
+                    with_error_initialising_cs = True
+                    cout.cout_wrap('Error, unable to locate a settings dictionary for control surface '
+                                   '{:g}'.format(i_cs), 4)
+
+        if with_error_initialising_cs:
+            raise KeyError('Unable to locate settings for at least one control surface.')
 
         self.add_timestep()
         self.generate_mapping()
