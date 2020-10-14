@@ -34,12 +34,12 @@ def compute_xf_zf(hf, vf, l, w, E, A, cb):
     # Compute the position of the fairlead
     if nobed:
         xf = hf/w*(ln1 - ln2) + hf*l/E/A
+        zf = hf/w*(root1 - root2) + 1./E/A*(vf*l-w*l**2/2)
     else:
         xf = lb + hf/w*ln1 + hf*l/E/A
         if not cb == 0.:
             xf += cb*w/2/E/A*(-lb**2 + (lb - hf/cb/w)*np.maximum((lb - hf/cb/w), 0))
-
-    zf = hf/w*(root1 - root2) + 1./E/A*(vf*l-w*l**2/2)
+        zf = hf/w*(root1 - 1) + vf**2/2/E/A/w
 
     return xf, zf
 
@@ -119,6 +119,9 @@ def compute_jacobian(hf, vf, l, w, E, A, cb):
     if nobed:
         der_xf_hf = 1./w*(ln1 - ln2) + hf/w*(der_ln1_hf + der_ln2_hf) + l/E/A
         der_xf_vf = hf/w*(der_ln1_vf + der_ln2_vf)
+
+        der_zf_hf = 1./w*(root1 - root2) + hf/w*(der_root1_hf - der_root2_hf)
+        der_zf_vf = hf/w*(der_root1_vf - der_root2_vf) + 1./E/A*l
     else:
         der_xf_hf = der_lb_hf + 1./w*ln1 + hf/w*der_ln1_hf + l/E/A
         if not cb == 0.:
@@ -132,9 +135,8 @@ def compute_jacobian(hf, vf, l, w, E, A, cb):
             if arg1_max > 0.:
                 der_xf_vf += cb*w/2/E/A*(2.*(lb - hf/cb/w)*der_lb_vf)
 
-    der_zf_hf = 1./w*(root1 - root2) + hf/w*(der_root1_hf - der_root2_hf)
-
-    der_zf_vf = hf/w*(der_root1_vf - der_root2_vf) + 1./E/A*l
+        der_zf_hf = 1/w*(root1 - 1) + hf/w*der_root1_hf
+        der_zf_vf = hf/w*der_root1_vf + vf/E/A/w
 
     J = np.array([[der_xf_hf, der_xf_vf],[der_zf_hf, der_zf_vf]])
 
