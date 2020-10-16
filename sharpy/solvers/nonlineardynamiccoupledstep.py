@@ -9,6 +9,7 @@ import sharpy.structure.utils.xbeamlib as xbeamlib
 from sharpy.utils.settings import str2bool
 from sharpy.utils.solver_interface import solver, BaseSolver, solver_from_string
 import sharpy.utils.settings as settings
+import sharpy.utils.algebra as algebra
 import sharpy.utils.cout_utils as cout
 
 
