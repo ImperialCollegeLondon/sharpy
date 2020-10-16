@@ -137,7 +137,7 @@ class SaveData(BaseSolver):
         # create folder for containing files if necessary
         if not os.path.exists(self.settings['folder']):
             os.makedirs(self.settings['folder'])
-        self.folder = self.settings['folder'] + '/' + self.data.settings['SHARPy']['case'] + '/'
+        self.folder = self.settings['folder'] + '/' + self.data.settings['SHARPy']['case'] + '/savedata/'
         if not os.path.exists(self.folder):
             os.makedirs(self.folder)
         self.filename = self.folder + self.data.settings['SHARPy']['case'] + '.data.h5'
@@ -232,6 +232,18 @@ class SaveData(BaseSolver):
                                    ClassesToSave=self.ClassesToSave, SkipAttr=self.settings['skip_attr'],
                                    compress_float=self.settings['compress_float'])
                 linhdffile.close()
+
+            if self.settings['save_linear']:
+                with h5py.File(self.filename.replace('.data.h5', '.linss.h5'), 'a') as linfile:
+                    h5utils.add_as_grp(self.data.linear.linear_system.linearisation_vectors, linfile,
+                                       grpname='linearisation_vectors',
+                                       ClassesToSave=self.ClassesToSave, SkipAttr=self.settings['skip_attr'],
+                                       compress_float=self.settings['compress_float'])
+                    h5utils.add_as_grp(self.data.linear.ss, linfile, grpname='ss',
+                                       ClassesToSave=self.ClassesToSave, SkipAttr=self.settings['skip_attr'],
+                                       compress_float=self.settings['compress_float'])
+
+
 
         elif self.settings['format'] == 'mat':
             from scipy.io import savemat
