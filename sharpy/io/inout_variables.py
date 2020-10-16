@@ -29,6 +29,8 @@ class Variable:
             self.panel = position
         elif var_type == 'control_surface':
             self.cs_index = position
+        elif var_type == 'app_forces':
+            self.node = position
         elif self.name == 'dt' or self.name == 'nt':
             pass
         else:
@@ -117,7 +119,8 @@ class Variable:
             data:
 
         """
-        if self.node is not None: # structural variable then
+        if self.node is not None and self.name != 'app_forces': # structural variable then
+            print('Should not be here')
             variable = getattr(data.structure.timestep_info[-1], self.name)
             try:
                 variable[self.node, self.index] = self.value
@@ -138,6 +141,19 @@ class Variable:
 
             setattr(data.aero.timestep_info[-1], self.name, variable)
             logger.debug('Updated control surface deflection')
+
+        if self.name == 'app_forces' and self.node is not None:
+            logger.debug('Setting thrust variable')
+            variable = data.structure.ini_info.steady_applied_forces
+            try:
+                variable[self.node, self.index] = self.value
+            except IndexError:
+                logger.warning('Unable to set node {}, index {} of variable {}'.format(
+                    self.node, self.index, self.dref_name
+                ))
+            else:
+                data.structure.ini_info.steady_applied_forces = variable
+                logger.debug('Updated timestep')
 
     def set_dref_name(self):
         divider = '_'
@@ -268,6 +284,7 @@ class SetOfVariables:
         logger.debug('Update time step routine')
         self.set_value(values)
         for idx in self.in_variables:
+            print('var', idx)
             self.variables[idx].set_in_timestep(data)
 
     def save_to_file(self, input_variables):
