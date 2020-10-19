@@ -99,6 +99,7 @@ class SaveData(BaseSolver):
 
         self.folder = ''
         self.filename = ''
+        self.filename_linear = ''
         self.ts_max = 0
         self.caller = None
 
