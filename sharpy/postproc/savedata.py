@@ -142,6 +142,7 @@ class SaveData(BaseSolver):
         if not os.path.exists(self.folder):
             os.makedirs(self.folder)
         self.filename = self.folder + self.data.settings['SHARPy']['case'] + '.data.h5'
+        self.filename_linear = self.folder + self.data.settings['SHARPy']['case'] + '.linss.h5'
 
         if os.path.isfile(self.filename):
             os.remove(self.filename)
