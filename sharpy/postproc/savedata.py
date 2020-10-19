@@ -236,7 +236,7 @@ class SaveData(BaseSolver):
                 linhdffile.close()
 
             if self.settings['save_linear']:
-                with h5py.File(self.filename.replace('.data.h5', '.linss.h5'), 'a') as linfile:
+                with h5py.File(self.filename_linear, 'a') as linfile:
                     h5utils.add_as_grp(self.data.linear.linear_system.linearisation_vectors, linfile,
                                        grpname='linearisation_vectors',
                                        ClassesToSave=self.ClassesToSave, SkipAttr=self.settings['skip_attr'],
