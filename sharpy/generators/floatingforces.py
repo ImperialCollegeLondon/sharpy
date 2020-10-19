@@ -218,6 +218,35 @@ def generate_mooringlinefd():
     np.savetxt("sharpy_mooringlinefd.txt", output, header="# DISTANCE(m) TENSION(kN) HTENSION(kN) SUSPL(m)")
 
 
+def wave_radiation_damping(K, qdot, it, dt):
+    """
+        This function computes the wave radiation damping assuming K constant
+    """
+    qdot_int = np.zeros((6,))
+    for idof in range(6):
+        qdot_int[idof] = np.trapz(np.arange(0, it + 1, 1)*dt, qdot[0:it, idof])
+
+    return np.dot(K, qdot_int)
+
+
+def test_change_system():
+    # Wind turbine degrees of freedom: Surge, sway, heave, roll, pitch, yaw.
+    # SHARPy axis associated:              z,    y,     x,    z,     y,   x
+
+    wt_dofs_char = ["surge", "sway", "heave", "roll", "pitch", "yaw"]
+    wt_matrix = np.zeros((6,6), dtype=np.object_)
+    for idof in range(6):
+        for jdof in range(6):
+            wt_matrix[idof, jdof] = ("%s-%s" % (wt_dofs_char[idof], wt_dofs_char[jdof]))
+
+    wt_to_sharpy = [2, 1, 0, 5, 4, 3]
+    sharpy_matrix = wt_matrix[wt_to_sharpy, :]
+    sharpy_matrix = sharpy_matrix[:, wt_to_sharpy]
+
+    print("wt matrix: ", wt_matrix)
+    print("sharpy matrix: ", sharpy_matrix)
+
+
 @generator_interface.generator
 class FloatingForces(generator_interface.BaseGenerator):
     r"""
@@ -245,6 +274,10 @@ class FloatingForces(generator_interface.BaseGenerator):
     settings_types = dict()
     settings_default = dict()
     settings_description = dict()
+
+    settings_types['n_time_steps'] = 'int'
+    settings_default['n_time_steps'] = None
+    settings_description['n_time_steps'] = 'Number of time steps'
 
     settings_types['water_density'] = 'float'
     settings_default['water_density'] = 1.025 # kg/m3
@@ -318,6 +351,18 @@ class FloatingForces(generator_interface.BaseGenerator):
     settings_default['buoy_rest_pitch_pitch'] = -4999180000.
     settings_description['buoy_rest_pitch_pitch'] = 'Buoyancy restoring coefficient of the pitch-pitch motion'
 
+    settings_types['wave_radiation_damping'] = 'list'
+    settings_default['wave_radiation_damping'] = np.zeros((6,6))
+    settings_description['wave_radiation_damping'] = 'Wave radiation damping matrix as a list that will be reshaped as .reshape(3, 3, order="C"). Surge, sway, heave, roll, pitch, yaw.'
+
+    settings_types['hydrodynamic_inertia'] = 'list'
+    settings_default['hydrodynamic_inertia'] = np.zeros((36,))
+    settings_description['hydrodynamic_inertia'] = 'Hydrodynamic inertia matrix. Surge, sway, heave, roll, pitch, yaw.'
+
+    settings_types['additional_damping'] = 'list'
+    settings_default['additional_damping'] = np.zeros((36,))
+    settings_description['additional_damping'] = 'Additional damping matrix. Surge, sway, heave, roll, pitch, yaw.'
+
     setting_table = settings.SettingsTable()
     __doc__ += setting_table.generate(settings_types, settings_default, settings_description)
 
@@ -338,6 +383,10 @@ class FloatingForces(generator_interface.BaseGenerator):
         self.buoyancy_node = None
         self.buoy_F0 = None
         self.buoy_rest_mat = None
+
+        self.q = None
+        self.qdot = None
+        self.qdotdot = None
 
     def initialise(self, in_dict=None):
         self.in_dict = in_dict
@@ -379,6 +428,16 @@ class FloatingForces(generator_interface.BaseGenerator):
         self.buoy_rest_mat[5,5] = self.settings['buoy_rest_roll_roll']
         self.buoy_rest_mat[4,4] = self.settings['buoy_rest_pitch_pitch']
 
+        self.q = np.zeros((self.settings['n_time_steps'], 6))
+        self.qdot = np.zeros_like(self.q)
+        self.qdotdot = np.zeros_like(self.q)
+
+        # Wind turbine degrees of freedom: Surge, sway, heave, roll, pitch, yaw.
+        # SHARPy axis associated:              z,    y,     x,    z,     y,   x
+
+        [2, 1, 0, 5, 4, 3]
+
+        wt_to_sharpy_dofs = np.array()[[]]
 
     def generate(self, params):
         # Renaming for convenience
