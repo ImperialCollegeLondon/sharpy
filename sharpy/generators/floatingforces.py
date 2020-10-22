@@ -1,10 +1,12 @@
 import numpy as np
+import h5
 
 import sharpy.utils.generator_interface as generator_interface
 import sharpy.utils.settings as settings
 import sharpy.utils.solver_interface as solver_interface
 import sharpy.utils.cout_utils as cout
 from sharpy.utils.constants import deg2rad
+import sharpy.utils.h5utils as h5utils
 
 
 def compute_xf_zf(hf, vf, l, w, EA, cb):
@@ -247,6 +249,15 @@ def test_change_system():
     print("sharpy matrix: ", sharpy_matrix)
 
 
+def change_of_to_sharpy(matrix_of):
+
+    of_to_sharpy = [2, 1, 0, 5, 4, 3]
+    matrix_sharpy = matrix_of[of_to_sharpy, :]
+    matrix_sharpy = matrix_sharpy[:, of_to_sharpy]
+
+    return matrix_sharpy
+
+
 @generator_interface.generator
 class FloatingForces(generator_interface.BaseGenerator):
     r"""
@@ -291,65 +302,9 @@ class FloatingForces(generator_interface.BaseGenerator):
     settings_default['gravity_dir'] = np.array([1., 0., 0.])
     settings_description['gravity_dir'] = 'Gravity direction'
 
-    settings_types['mooring_node'] = 'int'
-    settings_default['mooring_node'] = 0
-    settings_description['mooring_node'] = 'Structure node where mooring forces are applied'
-
-    settings_types['n_mooring_lines'] = 'int'
-    settings_default['n_mooring_lines'] = 3
-    settings_description['n_mooring_lines'] = 'Number of equispaced mooring lines'
-
-    settings_types['mooring_anchor_depth'] = 'float'
-    settings_default['mooring_anchor_depth'] = 320.
-    settings_description['mooring_anchor_depth'] = 'Depth of anchors below SWL'
-
-    settings_types['mooring_anchor_radius'] = 'float'
-    settings_default['mooring_anchor_radius'] = 853.87
-    settings_description['mooring_anchor_radius'] = 'Distance from the platform centreline to the anchors'
-
-    settings_types['mooring_fairlead_radius'] = 'float'
-    settings_default['mooring_fairlead_radius'] = 5.2
-    settings_description['mooring_fairlead_radius'] = 'Distance from the platform centreline to the fairleads attachment'
-
-    settings_types['mooring_unstretched_length'] = 'float'
-    settings_default['mooring_unstretched_length'] = 902.2
-    settings_description['mooring_unstretched_length'] = 'Length of the unstretched mooring line'
-
-    settings_types['mooring_apparent_weight'] = 'float'
-    settings_default['mooring_apparent_weight'] = 698.094
-    settings_description['mooring_apparent_weight'] = 'Apparent weight (weight minus buoyancy) of the mooring line per unit length'
-
-    settings_types['mooring_EA'] = 'float'
-    settings_default['mooring_EA'] = 384243000.
-    settings_description['mooring_EA'] = 'Extensional stiffness of the mooring line'
-
-    settings_types['mooring_yaw_spring_stif'] = 'float'
-    settings_default['mooring_yaw_spring_stif'] = 98340000.
-    settings_description['mooring_yaw_spring_stif'] = 'Yaw spring stiffness'
-
-    settings_types['mooring_seabed_drag_coef'] = 'float'
-    settings_default['mooring_seabed_drag_coef'] = 0.
-    settings_description['mooring_seabed_drag_coef'] = 'Drag coefficient between the mooring line and the seabed'
-
-    settings_types['bouyancy_node'] = 'int'
-    settings_default['bouyancy_node'] = 0
-    settings_description['bouyancy_node'] = 'Structure node where buoyancy forces are applied'
-
-    settings_types['V0'] = 'float'
-    settings_default['V0'] = 8026463.788
-    settings_description['V0'] = 'Initial volume submerged'
-
-    settings_types['buoy_rest_heave_heave'] = 'float'
-    settings_default['buoy_rest_heave_heave'] = 332.941
-    settings_description['buoy_rest_heave_heave'] = 'Buoyancy restoring coefficient of the heave-heave motion'
-
-    settings_types['buoy_rest_roll_roll'] = 'float'
-    settings_default['buoy_rest_roll_roll'] = -4999180000.
-    settings_description['buoy_rest_roll_roll'] = 'Buoyancy restoring coefficient of the roll-roll motion'
-
-    settings_types['buoy_rest_pitch_pitch'] = 'float'
-    settings_default['buoy_rest_pitch_pitch'] = -4999180000.
-    settings_description['buoy_rest_pitch_pitch'] = 'Buoyancy restoring coefficient of the pitch-pitch motion'
+    settings_types['floating_file_name'] = 'string'
+    settings_default['floating_file_name'] = './oc3.floating.h5'
+    settings_description['floating_file_name'] = 'File containing the information about the floating dynamics'
 
     settings_types['wave_radiation_damping'] = 'list'
     settings_default['wave_radiation_damping'] = np.zeros((6,6))
@@ -372,6 +327,8 @@ class FloatingForces(generator_interface.BaseGenerator):
         self.water_density = None
         self.gravity = None
         self.gravity_dir = None
+
+        self.floating_data = None
 
         self.mooring_node = None
         self.n_mooring_lines = None
@@ -400,9 +357,14 @@ class FloatingForces(generator_interface.BaseGenerator):
         self.gravity = self.settings['gravity']
         self.gravity_dir = self.settings['gravity_dir']
 
+        # Read the file with the floating information
+        fid = h5.File(self.settings['floating_file_name'], 'r')
+        self.floating_data = h5utils.load_h5_in_dict(fid)
+        fid.close()
+
         # Mooringlines parameters
-        self.mooring_node = self.settings['mooring_node']
-        self.n_mooring_lines = self.settings['n_mooring_lines']
+        self.mooring_node = self.floating_data['mooring']['node']
+        self.n_mooring_lines = self.floating_data['mooring']['n_lines']
         self.anchor_pos = np.zeros((self.n_mooring_lines, 3))
         self.fairlead_pos_A = np.zeros((self.n_mooring_lines, 3))
         self.hf_prev = [None]*self.n_mooring_lines
@@ -410,23 +372,20 @@ class FloatingForces(generator_interface.BaseGenerator):
 
         theta = 2.*np.pi/self.n_mooring_lines
         R = algebra.rotation3d_x(theta)
-        self.anchor_pos[0, 0] = -self.settings['mooring_anchor_depth']
-        self.anchor_pos[0, 2] = self.settings['mooring_anchor_radius']
-        self.fairlead_pos_A[0, 2] = self.settings['mooring_fairlead_radius']
+        self.anchor_pos[0, 0] = -self.floating_data['mooring']['anchor_depth']
+        self.anchor_pos[0, 2] = self.floating_data['mooring']['anchor_radius']
+        self.fairlead_pos_A[0, 2] = self.floating_data['mooring']['fairlead_radius']
         for imoor in range(1, self.n_mooring_lines):
             self.anchor_pos[imoor, :] = np.dot(R, self.anchor_pos[imoor - 1, :])
             self.fairlead_pos_A[imoor, :] = np.dot(R, self.fairlead_pos_A[imoor - 1, :])
 
         # Buoyancy parameters
-        self.buoyancy_node = self.settings['bouyancy_node']
+        self.buoyancy_node = self.floating_data['hydrostatics']['bouyancy_node']
         self.buoy_F0 = np.zeros((6,), dtype=float)
-        self.buoy_F0[0:3] = -(self.settings['V0']*
+        self.buoy_F0[0:3] = -(self.floating_data['hydrostatics']['V0']*
                               self.settings['water_density']*
                               self.settings['gravity']*self.settings['gravity_dir'])
-        self.buoy_rest_mat = np.zeros((6,6), dtype=float)
-        self.buoy_rest_mat[0,0] = self.settings['buoy_rest_heave_heave']
-        self.buoy_rest_mat[5,5] = self.settings['buoy_rest_roll_roll']
-        self.buoy_rest_mat[4,4] = self.settings['buoy_rest_pitch_pitch']
+        self.buoy_rest_mat = self.floating_data['hydrostatics']['buoyancy_restoring_matrix']
 
         self.q = np.zeros((self.settings['n_time_steps'], 6))
         self.qdot = np.zeros_like(self.q)
@@ -457,10 +416,10 @@ class FloatingForces(generator_interface.BaseGenerator):
             zf = np.abs(fl_to_anchor[0])
             hf, vf = quasisteady_mooring(xf,
                                  zf,
-                                 self.settings['mooring_unstretched_length'],
-                                 self.settings['mooring_apparent_weight'],
-                                 self.settings['mooring_EA'],
-                                 self.settings['mooring_seabed_drag_coef'],
+                                 self.floating_data['mooring']['unstretched_length'],
+                                 self.floating_data['mooring']['apparent_weight'],
+                                 self.floating_data['mooring']['EA'],
+                                 self.floating_data['mooring']['seabed_drag_coef'],
                                  hf0=self.hf_prev[imoor],
                                  vf0=self.vf_prev[imoor])
             # Save the results to initialise the computation in the next time step
@@ -483,7 +442,7 @@ class FloatingForces(generator_interface.BaseGenerator):
         # Yaw moment generated by the mooring system
         yaw = algebra.quat2euler(struct_tstpe.quat)[0]
         struct_tstep.unsteady_applied_forces[self.mooring_node, 3:6] += np.dot(cbg,
-                                                                      self.settings['mooring_yaw_spring_stif']*yaw)
+                                                                      self.floating_data['mooring']['yaw_spring_stif']*yaw)
 
         # Hydrostatic model
         q = np.zeros((6,), dtype=int)
