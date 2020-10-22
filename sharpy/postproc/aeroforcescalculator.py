@@ -36,6 +36,10 @@ class AeroForcesCalculator(BaseSolver):
     settings_types['write_text_file'] = 'bool'
     settings_default['write_text_file'] = False
     settings_description['write_text_file'] = 'Write ``txt`` file with results'
+    
+    settings_types['text_file_name'] = 'str'
+    settings_default['text_file_name'] = 'aeroforces.txt'
+    settings_description['text_file_name'] = 'Text file name'
 
     settings_types['screen_output'] = 'bool'
     settings_default['screen_output'] = True
@@ -92,7 +96,7 @@ class AeroForcesCalculator(BaseSolver):
             # create folder for containing files if necessary
             if not os.path.exists(self.folder):
                 os.makedirs(self.folder)
-            self.folder += 'aeroforces.txt'
+            self.folder += self.settings['text_file_name']
             self.file_output()
         if self.settings['screen_output']:
             self.screen_output()

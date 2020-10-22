@@ -99,6 +99,7 @@ class SaveData(BaseSolver):
 
         self.folder = ''
         self.filename = ''
+        self.filename_linear = ''
         self.ts_max = 0
         self.caller = None
 
@@ -141,6 +142,7 @@ class SaveData(BaseSolver):
         if not os.path.exists(self.folder):
             os.makedirs(self.folder)
         self.filename = self.folder + self.data.settings['SHARPy']['case'] + '.data.h5'
+        self.filename_linear = self.folder + self.data.settings['SHARPy']['case'] + '.linss.h5'
 
         if os.path.isfile(self.filename):
             os.remove(self.filename)
@@ -234,7 +236,7 @@ class SaveData(BaseSolver):
                 linhdffile.close()
 
             if self.settings['save_linear']:
-                with h5py.File(self.filename.replace('.data.h5', '.linss.h5'), 'a') as linfile:
+                with h5py.File(self.filename_linear, 'a') as linfile:
                     h5utils.add_as_grp(self.data.linear.linear_system.linearisation_vectors, linfile,
                                        grpname='linearisation_vectors',
                                        ClassesToSave=self.ClassesToSave, SkipAttr=self.settings['skip_attr'],

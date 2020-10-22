@@ -17,23 +17,26 @@ class DynamicControlSurface(generator_interface.BaseGenerator):
     To call this generator, the ``generator_id = DynamicControlSurface`` key shall be used for the setting
     `control_surface_deflection` in the ``AerogridLoader`` solver.
 
-    These generator settings should be parsed as a dictionary to the setting
-    ``control_surface_deflection_generator_settings`` in ``AerogridLoader``, where this dictionary should be the value
-    to another dictionary where the key is the index of the control surface in string format. This is shown better
+   One instance of this generator will be created for each control surface, thus, a group of settings should be defined 
+   for each control surface (``cs0_settings``, ``cs1_settings`` ... in the example below).
+   All of these groups of settings should be collected as values in a dictionary which keys are the associated control surface number in string format. 
+   This dictionary should be parsed to the variable
+    ``control_surface_deflection_generator_settings`` in ``AerogridLoader``. This is shown better
     in the example below:
 
     Examples:
 
         .. code-block:
 
-            cs0_settings = {}  # these are the settings for the desired control surface
+            cs0_settings = {}  # these are the settings for control surface number 0
+            cs1_settings = {}  # these are the settings for control surface number 1
+            dict_of_cs = {'0': cs0_settings,
+                                  '1': cs1_settings} # This dictionary groups all the settings for all the control surfaces
             settings = {}
             settings['AerogridLoader] = {'control_surface_deflection' : ['DynamicControlSurface],
-                                         'control_surface_deflection_generator_settings: {'0': cs_settings},
-                                         }
+                                                         'control_surface_deflection_generator_settings: dict_of_cs}
 
 
-    This is parsed as the value for the ``control_surface_deflection_generator`` key in the aerogridloader solver's settings.
 
     Attributes:
         deflection (np.array): Array of deflection of the control surface
