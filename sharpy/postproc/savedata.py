@@ -99,6 +99,7 @@ class SaveData(BaseSolver):
 
         self.folder = ''
         self.filename = ''
+        self.filename_linear = ''
         self.ts_max = 0
         self.caller = None
 
@@ -137,10 +138,11 @@ class SaveData(BaseSolver):
         # create folder for containing files if necessary
         if not os.path.exists(self.settings['folder']):
             os.makedirs(self.settings['folder'])
-        self.folder = self.settings['folder'] + '/' + self.data.settings['SHARPy']['case'] + '/'
+        self.folder = self.settings['folder'] + '/' + self.data.settings['SHARPy']['case'] + '/savedata/'
         if not os.path.exists(self.folder):
             os.makedirs(self.folder)
         self.filename = self.folder + self.data.settings['SHARPy']['case'] + '.data.h5'
+        self.filename_linear = self.folder + self.data.settings['SHARPy']['case'] + '.linss.h5'
 
         if os.path.isfile(self.filename):
             os.remove(self.filename)
@@ -232,6 +234,18 @@ class SaveData(BaseSolver):
                                    ClassesToSave=self.ClassesToSave, SkipAttr=self.settings['skip_attr'],
                                    compress_float=self.settings['compress_float'])
                 linhdffile.close()
+
+            if self.settings['save_linear']:
+                with h5py.File(self.filename_linear, 'a') as linfile:
+                    h5utils.add_as_grp(self.data.linear.linear_system.linearisation_vectors, linfile,
+                                       grpname='linearisation_vectors',
+                                       ClassesToSave=self.ClassesToSave, SkipAttr=self.settings['skip_attr'],
+                                       compress_float=self.settings['compress_float'])
+                    h5utils.add_as_grp(self.data.linear.ss, linfile, grpname='ss',
+                                       ClassesToSave=self.ClassesToSave, SkipAttr=self.settings['skip_attr'],
+                                       compress_float=self.settings['compress_float'])
+
+
 
         elif self.settings['format'] == 'mat':
             from scipy.io import savemat

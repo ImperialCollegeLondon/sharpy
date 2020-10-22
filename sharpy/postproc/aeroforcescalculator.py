@@ -36,7 +36,7 @@ class AeroForcesCalculator(BaseSolver):
     settings_types['write_text_file'] = 'bool'
     settings_default['write_text_file'] = False
     settings_description['write_text_file'] = 'Write ``txt`` file with results'
-
+    
     settings_types['text_file_name'] = 'str'
     settings_default['text_file_name'] = 'aeroforces.txt'
     settings_description['text_file_name'] = 'Text file name'
