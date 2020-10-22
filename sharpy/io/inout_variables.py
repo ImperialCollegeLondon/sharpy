@@ -84,21 +84,14 @@ class Variable:
                     ini_vel_a = data.structure.timestep_info[0].for_vel[:3]
                     if self.name == 'pos_dot':
                         # not to be commited::: only for MPC one off
-                        print(self.name, '0')
                         for_vel = data.structure.timestep_info[timestep_index].for_vel[:3]
-                        print(self.name, '1')
                         pos_dot = data.structure.timestep_info[timestep_index].pos_dot[self.node, :]
-                        print(self.name, '2')
                         glob_vel_a = for_vel + pos_dot
                         ini_quat_a = data.structure.timestep_info[0].quat
 
-                        print(self.name, '3')
                         perturb_vel_a = glob_vel_a - ini_vel_a
-                        print(perturb_vel_a)
                         value = matrix.dot(perturb_vel_a)[self.index]
-                        print(self.name, '4')
                     elif 'for_' in self.name:
-                        print(self.name)
                         for_vel = data.structure.timestep_info[timestep_index].for_vel[:3]
                         value = matrix.dot(variable[:3] - ini_vel_a)[self.index]
                     else:
@@ -106,7 +99,10 @@ class Variable:
                 elif 'g' in self.frame:
                     quat = data.structure.timestep_info[timestep_index].quat
                     matrix = transformation(quat)
-                    value = matrix.dot(variable[self.node, :])[self.index]
+                    if 'for_pos' in self.name:
+                        value = variable[self.index]
+                    else:
+                        value = matrix.dot(variable[self.node, :])[self.index]
 
         elif self.name == 'dt':
             value = data.settings['DynamicCoupled']['dt'].value
