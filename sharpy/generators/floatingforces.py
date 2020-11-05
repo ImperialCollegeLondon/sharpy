@@ -306,9 +306,17 @@ class FloatingForces(generator_interface.BaseGenerator):
     settings_default['floating_file_name'] = './oc3.floating.h5'
     settings_description['floating_file_name'] = 'File containing the information about the floating dynamics'
 
-    settings_types['wave_radiation_damping'] = 'list'
-    settings_default['wave_radiation_damping'] = np.zeros((6,6))
-    settings_description['wave_radiation_damping'] = 'Wave radiation damping matrix as a list that will be reshaped as .reshape(3, 3, order="C"). Surge, sway, heave, roll, pitch, yaw.'
+    settings_types['wave_amplitude'] = 'float'
+    settings_default['wave_amplitude'] = 0.
+    settings_description['wave_amplitude'] = 'Wave amplitude'
+
+    settings_types['wave_freq'] = 'float'
+    settings_default['wave_freq'] = 0.
+    settings_description['wave_freq'] = 'Wave circular frequency [rad/s]'
+
+    settings_types['wave_incidence'] = 'float'
+    settings_default['wave_incidence'] = 0.
+    settings_description['wave_incidence'] = 'Wave incidence in rad'
 
     settings_types['hydrodynamic_inertia'] = 'list'
     settings_default['hydrodynamic_inertia'] = np.zeros((36,))
@@ -391,12 +399,64 @@ class FloatingForces(generator_interface.BaseGenerator):
         self.qdot = np.zeros_like(self.q)
         self.qdotdot = np.zeros_like(self.q)
 
+        self.wave_freq = self.settings['wave_freq']
+        self.wave_incidence = self.settings['wave_incidence']
+        self.wave_amplitude = self.settings['wave_amplitude']
+
+        xi_matrix2 = interp_1st_dim_matrix(self.floating_data['wave_forces']['xi'],
+                                           self.floating_data['wave_forces']['xi_freq_rads'],
+                                           self.wave_freq)
+        self.xi = interp_1st_dim_matrix(xi_matrix2,
+                                        self.floating_data['wave_forces']['xi_beta_deg']*deg2rad,
+                                           self.wave_incidence)
+
+        self.A = interp_1st_dim_matrix(self.floating_data['hydrodynamics']['added_mass'],
+                                        self.floating_data['hydrodynamics']['ab_freq_rads'],
+                                           self.wave_freq)
+
+        self.B = interp_1st_dim_matrix(self.floating_data['hydrodynamics']['damping'],
+                                        self.floating_data['hydrodynamics']['ab_freq_rads'],
+                                           self.wave_freq)
+
         # Wind turbine degrees of freedom: Surge, sway, heave, roll, pitch, yaw.
         # SHARPy axis associated:              z,    y,     x,    z,     y,   x
 
         [2, 1, 0, 5, 4, 3]
 
         wt_to_sharpy_dofs = np.array()[[]]
+
+    def interp_1st_dim_matrix(A, vec, value):
+
+        # Make sure vec is ordered in strictly ascending order
+        if (np.diff(vec) <= 0).any():
+            print("ERROR: vec should be in strictly increasing order")
+        if not A.shape[0] == vec.shape[0]:
+            print("ERROR: Incoherent vector and matrix size")
+
+        # Compute the positions to interpolate
+        if value <= vec[0]:
+            return A[0, ...]
+        elif value >= vec[-1]:
+            return A[-1, ...]
+        else:
+            i = 0
+            while value < vec[i]:
+                i += 1
+            dist = vec[i + 1] - vec[i]
+            rel_dist_to_i = (value - vec[i])/dist
+            rel_dist_to_ip1 = (vec[i + 1] - value)/dist
+
+            return A[i, ...]*rel_dist_to_ip1 + A[i + 1, ...]*rel_dist_to_i
+
+        # Test
+        # A = np.ones((3, 3, 3))
+        # A[0, :, :] *= 0.
+        # A[2, :, :] *= 2.
+        # interp_1st_dim_matrix(A, vec, 0.6)
+
+    def update_dof_vector(struct_tstep):
+
+
 
     def generate(self, params):
         # Renaming for convenience
@@ -453,6 +513,8 @@ class FloatingForces(generator_interface.BaseGenerator):
         q[3:6] = algebra.quat2euler(struct_tstpe.quat)
 
         hd_forces_g = self.buoy_F0 + np.dot(self.buoy_rest_mat, q)
+        hd_forces_g -= np.dot(self.A, self.qdotdot)
+        hd_forces_g -= np.dot(self.B, self.qdot)
         ielem, inode_in_elem = data.structure.node_master_elem[self.bouyancy_node]
         cab = algebra.crv2rotation(struct_tstep.psi[ielem, inode_in_elem])
         cbg = np.dot(cab.T, cga.T)
@@ -460,4 +522,7 @@ class FloatingForces(generator_interface.BaseGenerator):
         struct_tstep.unsteady_applied_forces[self.bouyancy_node, 0:3] += np.dot(cbg, hd_forces_g[0:3])
         struct_tstep.unsteady_applied_forces[self.bouyancy_node, 3:6] += np.dot(cbg, hd_forces_g[3:6])
 
+
         # Wave loading
+        phase = self.wave_freq*data.it*self.dt
+        np.real(self.wave_amplitude*self.xi*(np.cos(phase) + 1j*np.sin(phase))))
