@@ -90,7 +90,7 @@ def cbeam3_solv_nlnstatic(beam, settings, ts):
     xbopts.MinDelta = settings['min_delta']
     xbopts.gravity_on = settings['gravity_on']
     xbopts.gravity = settings['gravity']
-    gravity_vector = np.array([0.0, 0.0, 1.0])
+    gravity_vector = settings['gravity_dir']
     gravity_vector = np.dot(beam.timestep_info[ts].cag(), gravity_vector)
     xbopts.gravity_dir_x = ct.c_double(gravity_vector[0])
     xbopts.gravity_dir_y = ct.c_double(gravity_vector[1])
@@ -276,9 +276,9 @@ def cbeam3_step_nlndyn(beam, settings, ts, tstep=None, dt=None):
     xbopts.NewmarkDamp = settings['newmark_damp']
     xbopts.gravity_on = settings['gravity_on']
     xbopts.gravity = settings['gravity']
-    xbopts.gravity_dir_x = ct.c_double(tstep.gravity_vector_inertial[0])
-    xbopts.gravity_dir_y = ct.c_double(tstep.gravity_vector_inertial[1])
-    xbopts.gravity_dir_z = ct.c_double(tstep.gravity_vector_inertial[2])
+    xbopts.gravity_dir_x = ct.c_double(settings['gravity_dir'][0])
+    xbopts.gravity_dir_y = ct.c_double(settings['gravity_dir'][1])
+    xbopts.gravity_dir_z = ct.c_double(settings['gravity_dir'][2])
     xbopts.relaxation_factor = settings['relaxation_factor']
 
     # here we only need to set the flags at True, all the forces are follower
@@ -370,9 +370,9 @@ def xbeam_solv_couplednlndyn(beam, settings):
     xbopts.NewmarkDamp = settings['newmark_damp']
     xbopts.gravity_on = settings['gravity_on']
     xbopts.gravity = settings['gravity']
-    xbopts.gravity_dir_x = ct.c_double(beam.ini_info.gravity_vector_inertial[0])
-    xbopts.gravity_dir_y = ct.c_double(beam.ini_info.gravity_vector_inertial[1])
-    xbopts.gravity_dir_z = ct.c_double(beam.ini_info.gravity_vector_inertial[2])
+    xbopts.gravity_dir_x = ct.c_double(settings['gravity_dir'][0])
+    xbopts.gravity_dir_y = ct.c_double(settings['gravity_dir'][1])
+    xbopts.gravity_dir_z = ct.c_double(settings['gravity_dir'][2])
     xbopts.relaxation_factor = settings['relaxation_factor']
 
     pos_def_history = np.zeros((n_tsteps.value, beam.num_node, 3), order='F', dtype=ct.c_double)
@@ -478,9 +478,9 @@ def xbeam_step_couplednlndyn(beam, settings, ts, tstep=None, dt=None):
     xbopts.gravity_on = settings['gravity_on']
     xbopts.gravity = settings['gravity']
     xbopts.balancing = settings['balancing']
-    xbopts.gravity_dir_x = ct.c_double(tstep.gravity_vector_inertial[0])
-    xbopts.gravity_dir_y = ct.c_double(tstep.gravity_vector_inertial[1])
-    xbopts.gravity_dir_z = ct.c_double(tstep.gravity_vector_inertial[2])
+    xbopts.gravity_dir_x = ct.c_double(settings['gravity_dir'][0])
+    xbopts.gravity_dir_y = ct.c_double(settings['gravity_dir'][1])
+    xbopts.gravity_dir_z = ct.c_double(settings['gravity_dir'][2])
     xbopts.relaxation_factor = settings['relaxation_factor']
 
     if dt is None:
@@ -558,9 +558,9 @@ def xbeam_init_couplednlndyn(beam, settings, ts, dt=None):
     xbopts.NewmarkDamp = settings['newmark_damp']
     xbopts.gravity_on = settings['gravity_on']
     xbopts.gravity = settings['gravity']
-    xbopts.gravity_dir_x = ct.c_double(beam.timestep_info[ts].gravity_vector_inertial[0])
-    xbopts.gravity_dir_y = ct.c_double(beam.timestep_info[ts].gravity_vector_inertial[1])
-    xbopts.gravity_dir_z = ct.c_double(beam.timestep_info[ts].gravity_vector_inertial[2])
+    xbopts.gravity_dir_x = ct.c_double(settings['gravity_dir'][0])
+    xbopts.gravity_dir_y = ct.c_double(settings['gravity_dir'][1])
+    xbopts.gravity_dir_z = ct.c_double(settings['gravity_dir'][2])
 
     in_dt = ct.c_double(dt)
 
@@ -890,9 +890,9 @@ def cbeam3_asbly_dynamic(beam, tstep, settings):
     xbopts.NewmarkDamp = settings['newmark_damp']
     xbopts.gravity_on = settings['gravity_on']
     xbopts.gravity = settings['gravity']
-    xbopts.gravity_dir_x = ct.c_double(tstep.gravity_vector_inertial[0])
-    xbopts.gravity_dir_y = ct.c_double(tstep.gravity_vector_inertial[1])
-    xbopts.gravity_dir_z = ct.c_double(tstep.gravity_vector_inertial[2])
+    xbopts.gravity_dir_x = ct.c_double(settings['gravity_dir'][0])
+    xbopts.gravity_dir_y = ct.c_double(settings['gravity_dir'][1])
+    xbopts.gravity_dir_z = ct.c_double(settings['gravity_dir'][2])
 
     # Initialize matrices
     Mglobal = np.zeros((num_dof, num_dof), dtype=ct.c_double, order='F')
@@ -994,9 +994,9 @@ def xbeam3_asbly_dynamic(beam, tstep, settings):
     xbopts.NewmarkDamp = settings['newmark_damp']
     xbopts.gravity_on = settings['gravity_on']
     xbopts.gravity = settings['gravity']
-    xbopts.gravity_dir_x = ct.c_double(tstep.gravity_vector_inertial[0])
-    xbopts.gravity_dir_y = ct.c_double(tstep.gravity_vector_inertial[1])
-    xbopts.gravity_dir_z = ct.c_double(tstep.gravity_vector_inertial[2])
+    xbopts.gravity_dir_x = ct.c_double(settings['gravity_dir'][0])
+    xbopts.gravity_dir_y = ct.c_double(settings['gravity_dir'][1])
+    xbopts.gravity_dir_z = ct.c_double(settings['gravity_dir'][2])
 
     # Initialize matrices
     Mtotal = np.zeros((num_dof+10, num_dof+10), dtype=ct.c_double, order='F')
@@ -1141,9 +1141,11 @@ def cbeam3_asbly_static(beam, tstep, settings, iLoadStep):
     # xbopts.NewmarkDamp = settings['newmark_damp']
     xbopts.gravity_on = settings['gravity_on']
     xbopts.gravity = settings['gravity']
-    xbopts.gravity_dir_x = ct.c_double(tstep.gravity_vector_inertial[0])
-    xbopts.gravity_dir_y = ct.c_double(tstep.gravity_vector_inertial[1])
-    xbopts.gravity_dir_z = ct.c_double(tstep.gravity_vector_inertial[2])
+    gravity_vector = settings['gravity_dir']
+    gravity_vector = np.dot(tstep.cag(), gravity_vector)
+    xbopts.gravity_dir_x = ct.c_double(gravity_vector[0])
+    xbopts.gravity_dir_y = ct.c_double(gravity_vector[1])
+    xbopts.gravity_dir_z = ct.c_double(gravity_vector[2])
 
     # Initialize matrices
     # Mglobal = np.zeros((num_dof, num_dof), dtype=ct.c_double, order='F')
