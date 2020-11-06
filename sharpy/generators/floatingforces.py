@@ -251,6 +251,9 @@ def test_change_system():
 
 def change_of_to_sharpy(matrix_of):
 
+    # Wind turbine degrees of freedom: Surge, sway, heave, roll, pitch, yaw.
+    # SHARPy axis associated:              z,    y,     x,    z,     y,   x
+
     of_to_sharpy = [2, 1, 0, 5, 4, 3]
     matrix_sharpy = matrix_of[of_to_sharpy, :]
     matrix_sharpy = matrix_sharpy[:, of_to_sharpy]
@@ -318,14 +321,6 @@ class FloatingForces(generator_interface.BaseGenerator):
     settings_default['wave_incidence'] = 0.
     settings_description['wave_incidence'] = 'Wave incidence in rad'
 
-    settings_types['hydrodynamic_inertia'] = 'list'
-    settings_default['hydrodynamic_inertia'] = np.zeros((36,))
-    settings_description['hydrodynamic_inertia'] = 'Hydrodynamic inertia matrix. Surge, sway, heave, roll, pitch, yaw.'
-
-    settings_types['additional_damping'] = 'list'
-    settings_default['additional_damping'] = np.zeros((36,))
-    settings_description['additional_damping'] = 'Additional damping matrix. Surge, sway, heave, roll, pitch, yaw.'
-
     setting_table = settings.SettingsTable()
     __doc__ += setting_table.generate(settings_types, settings_default, settings_description)
 
@@ -342,7 +337,7 @@ class FloatingForces(generator_interface.BaseGenerator):
         self.n_mooring_lines = None
         self.anchor_pos = None
         self.fairlead_pos_A = None
-        self.hf_prev = list()
+        self.hf_prev = list() # Previous value of hf just for initialisation
         self.vf_prev = list()
 
         self.buoyancy_node = None
@@ -364,6 +359,11 @@ class FloatingForces(generator_interface.BaseGenerator):
         self.water_density = self.settings['water_density']
         self.gravity = self.settings['gravity']
         self.gravity_dir = self.settings['gravity_dir']
+
+        # Platform dofs
+        self.q = np.zeros((self.settings['n_time_steps'], 6))
+        self.qdot = np.zeros_like(self.q)
+        self.qdotdot = np.zeros_like(self.q)
 
         # Read the file with the floating information
         fid = h5.File(self.settings['floating_file_name'], 'r')
@@ -387,7 +387,7 @@ class FloatingForces(generator_interface.BaseGenerator):
             self.anchor_pos[imoor, :] = np.dot(R, self.anchor_pos[imoor - 1, :])
             self.fairlead_pos_A[imoor, :] = np.dot(R, self.fairlead_pos_A[imoor - 1, :])
 
-        # Buoyancy parameters
+        # Hydrostatics
         self.buoyancy_node = self.floating_data['hydrostatics']['bouyancy_node']
         self.buoy_F0 = np.zeros((6,), dtype=float)
         self.buoy_F0[0:3] = -(self.floating_data['hydrostatics']['V0']*
@@ -395,10 +395,16 @@ class FloatingForces(generator_interface.BaseGenerator):
                               self.settings['gravity']*self.settings['gravity_dir'])
         self.buoy_rest_mat = self.floating_data['hydrostatics']['buoyancy_restoring_matrix']
 
-        self.q = np.zeros((self.settings['n_time_steps'], 6))
-        self.qdot = np.zeros_like(self.q)
-        self.qdotdot = np.zeros_like(self.q)
+        # hydrodynamics
+        self.hd_added_mass = interp_1st_dim_matrix(self.floating_data['hydrodynamics']['added_mass'],
+                                        self.floating_data['hydrodynamics']['ab_freq_rads'],
+                                           self.wave_freq)
 
+        self.hd_damping = interp_1st_dim_matrix(self.floating_data['hydrodynamics']['damping'],
+                                        self.floating_data['hydrodynamics']['ab_freq_rads'],
+                                           self.wave_freq)
+
+        # Wave forces
         self.wave_freq = self.settings['wave_freq']
         self.wave_incidence = self.settings['wave_incidence']
         self.wave_amplitude = self.settings['wave_amplitude']
@@ -408,22 +414,8 @@ class FloatingForces(generator_interface.BaseGenerator):
                                            self.wave_freq)
         self.xi = interp_1st_dim_matrix(xi_matrix2,
                                         self.floating_data['wave_forces']['xi_beta_deg']*deg2rad,
-                                           self.wave_incidence)
+                                        self.wave_incidence)
 
-        self.A = interp_1st_dim_matrix(self.floating_data['hydrodynamics']['added_mass'],
-                                        self.floating_data['hydrodynamics']['ab_freq_rads'],
-                                           self.wave_freq)
-
-        self.B = interp_1st_dim_matrix(self.floating_data['hydrodynamics']['damping'],
-                                        self.floating_data['hydrodynamics']['ab_freq_rads'],
-                                           self.wave_freq)
-
-        # Wind turbine degrees of freedom: Surge, sway, heave, roll, pitch, yaw.
-        # SHARPy axis associated:              z,    y,     x,    z,     y,   x
-
-        [2, 1, 0, 5, 4, 3]
-
-        wt_to_sharpy_dofs = np.array()[[]]
 
     def interp_1st_dim_matrix(A, vec, value):
 
@@ -454,8 +446,20 @@ class FloatingForces(generator_interface.BaseGenerator):
         # A[2, :, :] *= 2.
         # interp_1st_dim_matrix(A, vec, 0.6)
 
-    def update_dof_vector(struct_tstep):
+    def update_dof_vector(struct_tstep, it):
 
+        cga = struct_tstep.cga()
+        self.q[it, 0:3] = (np.dot(cga, struct_tstep.pos[self.bouyancy_node, :]) -
+                  np.dot(data.structure.ini_info.cga, data.structure.ini_info.pos[self.bouyancy_node, :]) +
+                  struct_tstep.for_pos[0:3] -
+                  data.structure.ini_info.for_pos[0:3])
+        self.q[it, 3:6] = algebra.quat2euler(struct_tstpe.quat)
+
+        self.qdot[it, 0:3] = np.dot(cga, struct_tstep.for_vel[0:3])
+        self.qdot[it, 3:6] = np.dot(cga, struct_tstep.for_vel[3:6])
+
+        self.qdotdot[it, 0:3] = np.dot(cga, struct_tstep.for_acc[0:3])
+        self.qdotdot[it, 3:6] = np.dot(cga, struct_tstep.for_acc[3:6])
 
 
     def generate(self, params):
@@ -463,6 +467,8 @@ class FloatingForces(generator_interface.BaseGenerator):
         data = params['data']
         struct_tstep = params['struct_tstep']
         aero_tstep = params['aero_tstep']
+
+        self.update_dof_vector(struct_tstep, data.ts)
 
         # Mooring lines
         cga = struct_tstep.cga()
@@ -500,28 +506,21 @@ class FloatingForces(generator_interface.BaseGenerator):
             struct_tstep.unsteady_applied_forces[self.mooring_node, 3:6] += np.dot(cbg, force_cl[3:6])
 
         # Yaw moment generated by the mooring system
-        yaw = algebra.quat2euler(struct_tstpe.quat)[0]
+        yaw = self.q[data.ts, 3]
         struct_tstep.unsteady_applied_forces[self.mooring_node, 3:6] += np.dot(cbg,
                                                                       self.floating_data['mooring']['yaw_spring_stif']*yaw)
 
         # Hydrostatic model
-        q = np.zeros((6,), dtype=int)
-        q[0:3] = (np.dot(cga, struct_tstep.pos[self.bouyancy_node, :]) -
-                  np.dot(data.structure.ini_info.cga, data.structure.ini_info.pos[self.bouyancy_node, :]) +
-                  struct_tstep.for_pos[0:3] -
-                  data.structure.ini_info.for_pos[0:3])
-        q[3:6] = algebra.quat2euler(struct_tstpe.quat)
-
-        hd_forces_g = self.buoy_F0 + np.dot(self.buoy_rest_mat, q)
-        hd_forces_g -= np.dot(self.A, self.qdotdot)
-        hd_forces_g -= np.dot(self.B, self.qdot)
+        hd_forces_g = self.buoy_F0 + np.dot(self.buoy_rest_mat, self.q[data.ts, :])
+        hd_forces_g -= np.dot(self.hd_damping, self.qdot[data.ts, :])
+        hd_forces_g -= np.dot(self.floating_data['hydrodynamics']['additional_damping'], self.qdot[data.ts, :])
+        hd_forces_g -= np.dot(self.hd_added_mass, self.qdotdot[data.ts, :])
         ielem, inode_in_elem = data.structure.node_master_elem[self.bouyancy_node]
         cab = algebra.crv2rotation(struct_tstep.psi[ielem, inode_in_elem])
         cbg = np.dot(cab.T, cga.T)
 
         struct_tstep.unsteady_applied_forces[self.bouyancy_node, 0:3] += np.dot(cbg, hd_forces_g[0:3])
         struct_tstep.unsteady_applied_forces[self.bouyancy_node, 3:6] += np.dot(cbg, hd_forces_g[3:6])
-
 
         # Wave loading
         phase = self.wave_freq*data.it*self.dt
