@@ -344,6 +344,8 @@ class FloatingForces(generator_interface.BaseGenerator):
         self.buoy_F0 = None
         self.buoy_rest_mat = None
 
+        self.wave_forces_node = None
+
         self.q = None
         self.qdot = None
         self.qdotdot = None
@@ -405,10 +407,7 @@ class FloatingForces(generator_interface.BaseGenerator):
                                            self.wave_freq)
 
         # Wave forces
-        self.wave_freq = self.settings['wave_freq']
-        self.wave_incidence = self.settings['wave_incidence']
-        self.wave_amplitude = self.settings['wave_amplitude']
-
+        self.wave_forces_node = self.floating_data['wave_forces']['node']
         xi_matrix2 = interp_1st_dim_matrix(self.floating_data['wave_forces']['xi'],
                                            self.floating_data['wave_forces']['xi_freq_rads'],
                                            self.wave_freq)
@@ -523,5 +522,12 @@ class FloatingForces(generator_interface.BaseGenerator):
         struct_tstep.unsteady_applied_forces[self.bouyancy_node, 3:6] += np.dot(cbg, hd_forces_g[3:6])
 
         # Wave loading
-        phase = self.wave_freq*data.it*self.dt
-        np.real(self.wave_amplitude*self.xi*(np.cos(phase) + 1j*np.sin(phase))))
+        phase = self.settings['wave_freq']*data.it*self.dt
+        wave_forces_g = np.real(self.settings['wave_amplitude']*self.xi*(np.cos(phase) + 1j*np.sin(phase)))
+
+        ielem, inode_in_elem = data.structure.node_master_elem[self.wave_forces_node]
+        cab = algebra.crv2rotation(struct_tstep.psi[ielem, inode_in_elem])
+        cbg = np.dot(cab.T, cga.T)
+
+        struct_tstep.unsteady_applied_forces[self.wave_forces_node, 0:3] += np.dot(cbg, wave_forces_g[0:3])
+        struct_tstep.unsteady_applied_forces[self.wave_forces_node, 3:6] += np.dot(cbg, wave_forces_g[3:6])
