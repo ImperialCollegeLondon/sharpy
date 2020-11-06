@@ -294,7 +294,7 @@ class FloatingForces(generator_interface.BaseGenerator):
     settings_description['n_time_steps'] = 'Number of time steps'
 
     settings_types['water_density'] = 'float'
-    settings_default['water_density'] = 1.025 # kg/m3
+    settings_default['water_density'] = 1025 # kg/m3
     settings_description['water_density'] = 'Water density'
 
     settings_types['gravity'] = 'float'
