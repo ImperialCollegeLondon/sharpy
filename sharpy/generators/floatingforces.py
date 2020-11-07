@@ -1,5 +1,5 @@
 import numpy as np
-import h5
+import h5py as h5
 
 import sharpy.utils.generator_interface as generator_interface
 import sharpy.utils.settings as settings
@@ -7,6 +7,7 @@ import sharpy.utils.solver_interface as solver_interface
 import sharpy.utils.cout_utils as cout
 from sharpy.utils.constants import deg2rad
 import sharpy.utils.h5utils as h5utils
+import sharpy.utils.algebra as algebra
 
 
 def compute_xf_zf(hf, vf, l, w, EA, cb):
@@ -261,6 +262,36 @@ def change_of_to_sharpy(matrix_of):
     return matrix_sharpy
 
 
+def interp_1st_dim_matrix(A, vec, value):
+
+    # Make sure vec is ordered in strictly ascending order
+    if (np.diff(vec) <= 0).any():
+        print("ERROR: vec should be in strictly increasing order")
+    if not A.shape[0] == vec.shape[0]:
+        print("ERROR: Incoherent vector and matrix size")
+
+    # Compute the positions to interpolate
+    if value <= vec[0]:
+        return A[0, ...]
+    elif value >= vec[-1]:
+        return A[-1, ...]
+    else:
+        i = 0
+        while value < vec[i]:
+            i += 1
+        dist = vec[i + 1] - vec[i]
+        rel_dist_to_i = (value - vec[i])/dist
+        rel_dist_to_ip1 = (vec[i + 1] - value)/dist
+
+    return A[i, ...]*rel_dist_to_ip1 + A[i + 1, ...]*rel_dist_to_i
+
+    # Test
+    # A = np.ones((3, 3, 3))
+    # A[0, :, :] *= 0.
+    # A[2, :, :] *= 2.
+    # interp_1st_dim_matrix(A, vec, 0.6)
+
+
 @generator_interface.generator
 class FloatingForces(generator_interface.BaseGenerator):
     r"""
@@ -293,6 +324,10 @@ class FloatingForces(generator_interface.BaseGenerator):
     settings_default['n_time_steps'] = None
     settings_description['n_time_steps'] = 'Number of time steps'
 
+    settings_types['dt'] = 'float'
+    settings_default['dt'] = None
+    settings_description['dt'] = 'Time step'
+
     settings_types['water_density'] = 'float'
     settings_default['water_density'] = 1025 # kg/m3
     settings_description['water_density'] = 'Water density'
@@ -302,10 +337,10 @@ class FloatingForces(generator_interface.BaseGenerator):
     settings_description['gravity'] = 'Gravity'
 
     settings_types['gravity_dir'] = 'list(float)'
-    settings_default['gravity_dir'] = np.array([1., 0., 0.])
+    settings_default['gravity_dir'] = [-1., 0., 0.]
     settings_description['gravity_dir'] = 'Gravity direction'
 
-    settings_types['floating_file_name'] = 'string'
+    settings_types['floating_file_name'] = 'str'
     settings_default['floating_file_name'] = './oc3.floating.h5'
     settings_description['floating_file_name'] = 'File containing the information about the floating dynamics'
 
@@ -350,7 +385,7 @@ class FloatingForces(generator_interface.BaseGenerator):
         self.qdot = None
         self.qdotdot = None
 
-    def initialise(self, in_dict=None):
+    def initialise(self, in_dict=None, data=None):
         self.in_dict = in_dict
         settings.to_custom_types(self.in_dict,
                                  self.settings_types,
@@ -390,7 +425,7 @@ class FloatingForces(generator_interface.BaseGenerator):
             self.fairlead_pos_A[imoor, :] = np.dot(R, self.fairlead_pos_A[imoor - 1, :])
 
         # Hydrostatics
-        self.buoyancy_node = self.floating_data['hydrostatics']['bouyancy_node']
+        self.buoyancy_node = self.floating_data['hydrostatics']['node']
         self.buoy_F0 = np.zeros((6,), dtype=float)
         self.buoy_F0[0:3] = -(self.floating_data['hydrostatics']['V0']*
                               self.settings['water_density']*
@@ -400,59 +435,30 @@ class FloatingForces(generator_interface.BaseGenerator):
         # hydrodynamics
         self.hd_added_mass = interp_1st_dim_matrix(self.floating_data['hydrodynamics']['added_mass'],
                                         self.floating_data['hydrodynamics']['ab_freq_rads'],
-                                           self.wave_freq)
+                                           self.settings['wave_freq'])
 
         self.hd_damping = interp_1st_dim_matrix(self.floating_data['hydrodynamics']['damping'],
                                         self.floating_data['hydrodynamics']['ab_freq_rads'],
-                                           self.wave_freq)
+                                           self.settings['wave_freq'])
 
         # Wave forces
         self.wave_forces_node = self.floating_data['wave_forces']['node']
         xi_matrix2 = interp_1st_dim_matrix(self.floating_data['wave_forces']['xi'],
                                            self.floating_data['wave_forces']['xi_freq_rads'],
-                                           self.wave_freq)
+                                           self.settings['wave_freq'])
         self.xi = interp_1st_dim_matrix(xi_matrix2,
                                         self.floating_data['wave_forces']['xi_beta_deg']*deg2rad,
-                                        self.wave_incidence)
+                                        self.settings['wave_incidence'])
 
 
-    def interp_1st_dim_matrix(A, vec, value):
-
-        # Make sure vec is ordered in strictly ascending order
-        if (np.diff(vec) <= 0).any():
-            print("ERROR: vec should be in strictly increasing order")
-        if not A.shape[0] == vec.shape[0]:
-            print("ERROR: Incoherent vector and matrix size")
-
-        # Compute the positions to interpolate
-        if value <= vec[0]:
-            return A[0, ...]
-        elif value >= vec[-1]:
-            return A[-1, ...]
-        else:
-            i = 0
-            while value < vec[i]:
-                i += 1
-            dist = vec[i + 1] - vec[i]
-            rel_dist_to_i = (value - vec[i])/dist
-            rel_dist_to_ip1 = (vec[i + 1] - value)/dist
-
-            return A[i, ...]*rel_dist_to_ip1 + A[i + 1, ...]*rel_dist_to_i
-
-        # Test
-        # A = np.ones((3, 3, 3))
-        # A[0, :, :] *= 0.
-        # A[2, :, :] *= 2.
-        # interp_1st_dim_matrix(A, vec, 0.6)
-
-    def update_dof_vector(struct_tstep, it):
+    def update_dof_vector(self, beam, struct_tstep, it):
 
         cga = struct_tstep.cga()
-        self.q[it, 0:3] = (np.dot(cga, struct_tstep.pos[self.bouyancy_node, :]) -
-                  np.dot(data.structure.ini_info.cga, data.structure.ini_info.pos[self.bouyancy_node, :]) +
+        self.q[it, 0:3] = (np.dot(cga, struct_tstep.pos[self.buoyancy_node, :]) -
+                  np.dot(beam.ini_info.cga(), beam.ini_info.pos[self.buoyancy_node, :]) +
                   struct_tstep.for_pos[0:3] -
-                  data.structure.ini_info.for_pos[0:3])
-        self.q[it, 3:6] = algebra.quat2euler(struct_tstpe.quat)
+                  beam.ini_info.for_pos[0:3])
+        self.q[it, 3:6] = algebra.quat2euler(struct_tstep.quat)
 
         self.qdot[it, 0:3] = np.dot(cga, struct_tstep.for_vel[0:3])
         self.qdot[it, 3:6] = np.dot(cga, struct_tstep.for_vel[3:6])
@@ -467,7 +473,7 @@ class FloatingForces(generator_interface.BaseGenerator):
         struct_tstep = params['struct_tstep']
         aero_tstep = params['aero_tstep']
 
-        self.update_dof_vector(struct_tstep, data.ts)
+        self.update_dof_vector(data.structure, struct_tstep, data.ts)
 
         # Mooring lines
         cga = struct_tstep.cga()
@@ -478,7 +484,7 @@ class FloatingForces(generator_interface.BaseGenerator):
             fairlead_pos_G = np.dot(cga, self.fairlead_pos_A[imoor, :])
             fl_to_anchor_G = self.anchor_pos[imoor, :] - fairlead_pos_G
             xf = np.sqrt(fl_to_anchor_G[1]**2 + fl_to_anchor_G[2]**2)
-            zf = np.abs(fl_to_anchor[0])
+            zf = np.abs(fl_to_anchor_G[0])
             hf, vf = quasisteady_mooring(xf,
                                  zf,
                                  self.floating_data['mooring']['unstretched_length'],
@@ -505,7 +511,7 @@ class FloatingForces(generator_interface.BaseGenerator):
             struct_tstep.unsteady_applied_forces[self.mooring_node, 3:6] += np.dot(cbg, force_cl[3:6])
 
         # Yaw moment generated by the mooring system
-        yaw = self.q[data.ts, 3]
+        yaw = np.array([self.q[data.ts, 3], 0., 0.])
         struct_tstep.unsteady_applied_forces[self.mooring_node, 3:6] += np.dot(cbg,
                                                                       self.floating_data['mooring']['yaw_spring_stif']*yaw)
 
@@ -514,15 +520,15 @@ class FloatingForces(generator_interface.BaseGenerator):
         hd_forces_g -= np.dot(self.hd_damping, self.qdot[data.ts, :])
         hd_forces_g -= np.dot(self.floating_data['hydrodynamics']['additional_damping'], self.qdot[data.ts, :])
         hd_forces_g -= np.dot(self.hd_added_mass, self.qdotdot[data.ts, :])
-        ielem, inode_in_elem = data.structure.node_master_elem[self.bouyancy_node]
+        ielem, inode_in_elem = data.structure.node_master_elem[self.buoyancy_node]
         cab = algebra.crv2rotation(struct_tstep.psi[ielem, inode_in_elem])
         cbg = np.dot(cab.T, cga.T)
 
-        struct_tstep.unsteady_applied_forces[self.bouyancy_node, 0:3] += np.dot(cbg, hd_forces_g[0:3])
-        struct_tstep.unsteady_applied_forces[self.bouyancy_node, 3:6] += np.dot(cbg, hd_forces_g[3:6])
+        struct_tstep.unsteady_applied_forces[self.buoyancy_node, 0:3] += np.dot(cbg, hd_forces_g[0:3])
+        struct_tstep.unsteady_applied_forces[self.buoyancy_node, 3:6] += np.dot(cbg, hd_forces_g[3:6])
 
         # Wave loading
-        phase = self.settings['wave_freq']*data.it*self.dt
+        phase = self.settings['wave_freq']*data.ts*self.settings['dt']
         wave_forces_g = np.real(self.settings['wave_amplitude']*self.xi*(np.cos(phase) + 1j*np.sin(phase)))
 
         ielem, inode_in_elem = data.structure.node_master_elem[self.wave_forces_node]
