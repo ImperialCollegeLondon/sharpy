@@ -320,7 +320,6 @@ class SetOfVariables:
         logger.debug('Update time step routine')
         self.set_value(values)
         for idx in self.in_variables:
-            print('var', idx)
             self.variables[idx].set_in_timestep(data)
 
     def save_to_file(self, input_variables):

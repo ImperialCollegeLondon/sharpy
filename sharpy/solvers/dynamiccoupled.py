@@ -511,6 +511,7 @@ class DynamicCoupled(BaseSolver):
             controlled_aero_kstep = aero_kstep.copy()
 
             k = 0
+            converged_fsi = False
             for k in range(self.settings['fsi_substeps'].value + 1):
                 if (k == self.settings['fsi_substeps'].value and
                         self.settings['fsi_substeps']):
@@ -598,6 +599,7 @@ class DynamicCoupled(BaseSolver):
                     self.aero_solver.update_custom_grid(
                         structural_kstep,
                         aero_kstep)
+                    converged_fsi = True
                     break
 
             # move the aerodynamic surface according the the structural one
@@ -632,7 +634,11 @@ class DynamicCoupled(BaseSolver):
             # put result back in queue
             if out_queue:
                 self.logger.debug('Time loop - about to get out variables from data')
-                self.set_of_variables.get_value(self.data)
+                if converged_fsi:
+                    self.set_of_variables.get_value(self.data)
+                else:
+                    self.set_of_variables.get_value(self.data, timestep_index=-2)
+
                 if out_queue.full():
                     # clear the queue such that it always contains the latest time step
                     out_queue.get()  # clear item from queue
