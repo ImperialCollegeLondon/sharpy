@@ -495,6 +495,7 @@ class DynamicCoupled(BaseSolver):
 
             # Add external forces
             if self.with_runtime_generators:
+                structural_kstep.runtime_generated_forces.fill(0.)
                 params = dict()
                 params['data'] = self.data
                 params['struct_tstep'] = structural_kstep
@@ -731,17 +732,15 @@ class DynamicCoupled(BaseSolver):
             #                                                      dynamic_struct_forces)
 
         # prescribed forces + aero forces
+        structural_kstep.steady_applied_forces = (
+            (struct_forces + self.data.structure.ini_info.steady_applied_forces).
+            astype(dtype=ct.c_double, order='F', copy=True))
         try:
-            structural_kstep.steady_applied_forces = (
-                (struct_forces + self.data.structure.ini_info.steady_applied_forces).
-                astype(dtype=ct.c_double, order='F', copy=True))
             structural_kstep.unsteady_applied_forces = (
-                (dynamic_struct_forces + self.data.structure.dynamic_input[max(self.data.ts - 1, 0)]['dynamic_forces']).
+                (dynamic_struct_forces + self.data.structure.dynamic_input[max(self.data.ts - 1, 0)]['dynamic_forces'] +
+                 structural_kstep.runtime_generated_forces).
                 astype(dtype=ct.c_double, order='F', copy=True))
         except KeyError:
-            structural_kstep.steady_applied_forces = (
-                (struct_forces + self.data.structure.ini_info.steady_applied_forces).
-                astype(dtype=ct.c_double, order='F', copy=True))
             structural_kstep.unsteady_applied_forces = dynamic_struct_forces
 
     def relaxation_factor(self, k):
