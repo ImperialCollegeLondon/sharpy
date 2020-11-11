@@ -594,7 +594,9 @@ class DynamicCoupled(BaseSolver):
                 # check convergence
                 if self.convergence(k,
                                     structural_kstep,
-                                    previous_kstep) or self.settings['aero_solver'].lower() == 'noaero':
+                                    previous_kstep,
+                                    self.settings['aero_solver'].lower(),
+                                    self.with_runtime_generators):
                     # move the aerodynamic surface according to the structural one
                     self.aero_solver.update_custom_grid(
                         structural_kstep,
@@ -644,7 +646,7 @@ class DynamicCoupled(BaseSolver):
             finish_event.set()
             self.logger.info('Time loop - Complete')
 
-    def convergence(self, k, tstep, previous_tstep):
+    def convergence(self, k, tstep, previous_tstep, aero_solver, with_runtime_generators):
         r"""
         Check convergence in the FSI loop.
 
@@ -670,6 +672,10 @@ class DynamicCoupled(BaseSolver):
             if self.base_dqdt == 0:
                 self.base_dqdt = 1.
             return False
+
+        # Check the special case of no aero and no runtime generators
+        if aero_solver.lower() == "noaero" and not with_runtime_generators:
+            return True
 
         # relative residuals
         self.res = (np.linalg.norm(tstep.q-
