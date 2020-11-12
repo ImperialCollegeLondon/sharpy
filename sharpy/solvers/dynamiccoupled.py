@@ -522,6 +522,16 @@ class DynamicCoupled(BaseSolver):
                         aero_kstep)
                     break
 
+                # Add external forces
+                if self.with_runtime_generators:
+                    controlled_structural_kstep.runtime_generated_forces.fill(0.)
+                    params = dict()
+                    params['data'] = self.data
+                    params['struct_tstep'] = controlled_structural_kstep
+                    params['aero_tstep'] = aero_kstep
+                    for id, runtime_generator in self.runtime_generators.items():
+                        runtime_generator.generate(params)
+
                 # generate new grid (already rotated)
                 aero_kstep = controlled_aero_kstep.copy()
                 self.aero_solver.update_custom_grid(
