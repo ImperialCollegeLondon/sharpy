@@ -1,6 +1,7 @@
 import numpy as np
 import h5py as h5
 
+import sharpy.utils.cout_utils as cout
 import sharpy.utils.generator_interface as generator_interface
 import sharpy.utils.settings as settings
 import sharpy.utils.solver_interface as solver_interface
@@ -177,9 +178,11 @@ def quasisteady_mooring(xf, zf, l, w, EA, cb, hf0=None, vf0=None):
     vf_est = vf0 + 0.
     xf_est, zf_est = compute_xf_zf(hf_est, vf_est, l, w, EA, cb)
     # print("initial: ", xf_est, zf_est)
-    tol = 1e-12
+    tol = 1e-6
     error = 2*tol
-    while error > tol:
+    max_iter = 100
+    it = 0
+    while ((error > tol) and (it < max_iter)):
         J_est = compute_jacobian(hf_est, vf_est, l, w, EA, cb)
         inv_J_est = np.linalg.inv(J_est)
         hf_est += inv_J_est[0, 0]*(xf - xf_est) + inv_J_est[0, 1]*(zf - zf_est)
@@ -190,6 +193,9 @@ def quasisteady_mooring(xf, zf, l, w, EA, cb, hf0=None, vf0=None):
         xf_est, zf_est = compute_xf_zf(hf_est, vf_est, l, w, EA, cb)
         error = np.maximum(np.abs(xf - xf_est), np.abs(zf - zf_est))
         # print(error)
+        it += 1
+    if ((it == max_iter - 1) and (error > tol)):
+        cout.cout_wrap(("Mooring system did not converge. error %f" % error), 4)
 
     return hf_est, vf_est
 
@@ -266,9 +272,9 @@ def interp_1st_dim_matrix(A, vec, value):
 
     # Make sure vec is ordered in strictly ascending order
     if (np.diff(vec) <= 0).any():
-        print("ERROR: vec should be in strictly increasing order")
+        cout.cout_wrap("ERROR: vec should be in strictly increasing order", 4)
     if not A.shape[0] == vec.shape[0]:
-        print("ERROR: Incoherent vector and matrix size")
+        cout.cout_wrap("ERROR: Incoherent vector and matrix size", 4)
 
     # Compute the positions to interpolate
     if value <= vec[0]:
@@ -465,7 +471,9 @@ class FloatingForces(generator_interface.BaseGenerator):
         self.qdot[it, 3:6] = np.dot(cga, struct_tstep.for_vel[3:6])
 
         self.qdotdot[it, 0:3] = np.dot(cga, struct_tstep.for_acc[0:3])
+        # self.qdotdot[it, 1] = 0.
         self.qdotdot[it, 3:6] = np.dot(cga, struct_tstep.for_acc[3:6])
+        # self.qdotdot[it, 4] = 0.
 
         print("q: ", self.q[it, :])
         print("qdot: ", self.qdot[it, :])
@@ -501,6 +509,8 @@ class FloatingForces(generator_interface.BaseGenerator):
                                  self.floating_data['mooring']['seabed_drag_coef'],
                                  hf0=self.hf_prev[imoor],
                                  vf0=self.vf_prev[imoor])
+                                 # hf0=None,
+                                 # vf0=None)
             # Save the results to initialise the computation in the next time step
             self.hf_prev[imoor] = hf + 0.
             self.vf_prev[imoor] = vf + 0.
@@ -516,7 +526,7 @@ class FloatingForces(generator_interface.BaseGenerator):
             r_fairlead_G = fairlead_pos_G - np.dot(cga, struct_tstep.pos[self.mooring_node, :])
             # print("fairlead_pos_G: ", fairlead_pos_G)
             # print("center pos G: ", np.dot(cga, struct_tstep.pos[self.mooring_node, :]))
-            # print("r_fairlead_G: ", r_fairlead_G)
+            print("r_fairlead_G: ", r_fairlead_G)
             force_cl[3:6] = np.cross(r_fairlead_G, force_fl)
 
             # moor_force_out = -np.dot(cbg, force_cl[0:3])
