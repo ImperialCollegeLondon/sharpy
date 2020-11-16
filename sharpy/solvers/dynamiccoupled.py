@@ -757,7 +757,8 @@ class DynamicCoupled(BaseSolver):
                  structural_kstep.runtime_generated_forces).
                 astype(dtype=ct.c_double, order='F', copy=True))
         except KeyError:
-            structural_kstep.unsteady_applied_forces = dynamic_struct_forces
+            structural_kstep.unsteady_applied_forces = (dynamic_struct_forces +
+                                                        structural_kstep.runtime_generated_forces)
 
     def relaxation_factor(self, k):
         initial = self.settings['relaxation_factor'].value
