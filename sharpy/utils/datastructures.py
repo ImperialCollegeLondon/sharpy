@@ -908,6 +908,65 @@ class StructTimeStepInfo(object):
             self.gravity_forces[ibody_nodes,:] = MB_tstep[ibody].gravity_forces.astype(dtype=ct.c_double, order='F',
                                                                                        copy=True)
 
+    def compute_mass_inertia(self, beam):
+        """
+        This function computes the total mass and centre of gravity of the
+        system
+        """
+    
+        # System size
+        nelem = beam.num_elem
+        nnode = beam.num_node
+        num_node_elem = beam.num_node_elem
+        
+        # Initialisation
+        total_mass = 0.
+        ximi = np.zeros((3))
+    
+        # Element properties
+        for ielem in range(nelem):
+    
+            nodes_associated = beam.connectivities[ielem, [0, 2, 1]]
+            
+            mass_elem = beam.mass_db[beam.elem_mass[ielem], :, :]
+            mass_pul = mass_elem[0, 0] 
+            mass_cg = algebra.matrix2skewvec(mass_elem[3:6, 0:3])
+            mass_cg /= mass_pul
+    
+            xa_total = np.zeros((num_node_elem, 3))
+            xb_local = np.zeros((num_node_elem))
+            for inode_in_elem in range(num_node_elem):
+                cab = algebra.crv2rotation(self.psi[ielem, inode_in_elem])
+                inode_global = nodes_associated[inode_in_elem]
+                xa_total[inode_in_elem, :] = (self.pos[inode_global, :] +
+                                              np.dot(cab, mass_cg))
+                if inode_in_elem == 0:
+                    xb_local[inode_in_elem] = 0.
+                else:
+                    inode_global_prev = nodes_associated[inode_in_elem - 1]
+                    xb_local[inode_in_elem] = np.linalg.norm(self.pos[inode_global, :] -
+                                                             self.pos[inode_global_prev, :])
+            total_mass += np.trapz(mass_pul*np.ones(num_node_elem), xb_local, axis=0)
+            ximi += np.trapz(xa_total*mass_pul, xb_local, axis=0)
+                    
+        # Node properties
+        for ilump in range(beam.n_lumped_mass):
+            inode_global = beam.lumped_mass_nodes[ilump]
+            total_mass += beam.lumped_mass[ilump]
+            
+            ielem, inode_in_elem = beam.node_master_elem[inode_global]
+            cab = algebra.crv2rotation(self.psi[ielem, inode_in_elem])
+            xa_total = (self.pos[inode_global, :] +
+                        np.dot(cab, beam.lumped_mass_position[ilump, :]))
+            
+            ximi += xa_total*beam.lumped_mass[ilump]
+    
+        # Global properties
+        cga = struct_tstep.cga()
+        grav_centre = np.dot(cga, ximi)/total_mass
+
+        return total_mass, grav_centre
+
 
 class LinearTimeStepInfo(object):
     """

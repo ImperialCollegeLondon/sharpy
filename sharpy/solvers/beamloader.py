@@ -138,4 +138,7 @@ class BeamLoader(BaseSolver):
             self.data.structure.ini_info.whole_structure_to_local_AFoR(self.data.structure)
             self.data.structure.timestep_info[0].whole_structure_to_local_AFoR(self.data.structure)
 
+        total_mass, centre_gravity = self.data.structure.timestep_info[0].compute_mass_inertia(self.data.structure)
+        print("total mass: ", total_mass)
+        print("centre_gravity: ", centre_gravity)
         return self.data
