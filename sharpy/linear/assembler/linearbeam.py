@@ -8,6 +8,7 @@ import sharpy.linear.src.lingebm as lingebm
 import numpy as np
 import sharpy.utils.settings as settings
 import sharpy.utils.algebra as algebra
+import sharpy.structure.utils.modalutils as modalutils
 
 
 @linear_system
@@ -146,6 +147,7 @@ class LinearBeam(BaseElement):
         settings.to_custom_types(self.settings, self.settings_types, self.settings_default,
                                  self.settings_options, no_ctype=True)
 
+        self.settings['rigid_modes_cg'] = data.settings['Modal']['rigid_modes_cg']  # use the same value as in Modal solver
         beam = lingebm.FlexDynamic(data.linear.tsstruct0, data.structure, self.settings)
         self.sys = beam
         self.tsstruct0 = data.linear.tsstruct0
@@ -183,6 +185,9 @@ class LinearBeam(BaseElement):
         if self.settings['gravity']:
             self.sys.linearise_gravity_forces()
 
+        # follower force effect
+        self.sys.linearise_applied_forces()
+
         if self.settings['remove_dofs']:
             self.trim_nodes(self.settings['remove_dofs'])
 
@@ -191,14 +196,6 @@ class LinearBeam(BaseElement):
 
         if t_ref is not None:
             self.sys.scale_system_normalised_time(t_ref)
-
-        # import sharpy.linear.assembler.linearthrust as linearthrust
-        # engine = linearthrust.LinearThrust()
-        # engine.initialise()
-
-        # K_thrust = engine.generate(self.tsstruct0, self.sys)
-        #
-        # self.sys.Kstr += K_thrust
 
         self.sys.assemble()
 
@@ -328,11 +325,10 @@ class LinearBeam(BaseElement):
         self.sys.U = modes_sym[:, sym_mode_index]
 
         # make all elastic modes have a positive z component at the wingtip
-        for i in range(self.sys.U.shape[1]):
-            if np.abs(self.sys.U[ind_w1[-1], i]) > 1e-10:
-                self.sys.U[:, i] = np.sign(self.sys.U[ind_w1[-1], i]) * self.sys.U[:, i]
-            elif np.abs(self.sys.U[ind_w1_y, i][-1]) > 1e-4:
-                self.sys.U[:, i] = np.sign(self.sys.U[ind_w1_y[-1], i]) * self.sys.U[:, i]
+        self.sys.U = modalutils.mode_sign_convention(self.sys.structure.boundary_conditions,
+                                                     self.sys.U,
+                                                     rigid_body_motion=not self.clamped,
+                                                     use_euler=self.settings['use_euler'])
 
         self.sys.freq_natural = self.sys.freq_natural[sym_mode_index]
         self.sys.num_modes = len(self.sys.freq_natural)
@@ -458,26 +454,6 @@ class LinearBeam(BaseElement):
         current_time_step.steady_applied_forces = steady_applied_forces + struct_tstep.steady_applied_forces
 
         return current_time_step
-
-    def rigid_aero_forces(self):
-
-        # Debug adding rigid forces from tornado
-        derivatives_alpha = np.zeros((6, 5))
-        derivatives_alpha[0, :] = np.array([0.0511, 0, 0, 0.08758, 0])  # drag derivatives
-        derivatives_alpha[1, :] = np.array([0, 0, -0.05569, 0, 0])  # Y derivatives
-        derivatives_alpha[2, :] = np.array([5.53, 0, 0, 11.35, 0])  # lift derivatives
-        derivatives_alpha[3, :] = np.array([0, 0, -0.609, 0, 0])  # roll derivatives
-        derivatives_alpha[4, :] = np.array([-9.9988, 0, 0, -37.61, 0]) # pitch derivatives
-        derivatives_alpha[5, :] = np.array([0, 0, -0.047, 0, 0])  # yaw derivatives
-
-        Cx0 = -0.0324
-        Cz0 = 0.436
-        Cm0 = -0.78966
-
-
-        quat = self.tsstruct0.quat
-        Cga = algebra.quat2rotation(quat)
-
 
 
 class VectorVariable(object):

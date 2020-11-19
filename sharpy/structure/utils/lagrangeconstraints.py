@@ -1,18 +1,38 @@
 """
 LagrangeConstraints library
 
-Library used to create the matrices associate to boundary conditions through
-the method of Lagrange Multipliers
+Library used to create the matrices associated to boundary conditions through
+the method of Lagrange Multipliers. The source code includes four different sections.
 
-Args:
+* Basic structures: basic functions and variables needed to organise the library with different Lagrange Constraints to enhance the interaction with this library.
 
-Returns:
+* Auxiliar functions: basic queries that are performed repeatedly.
 
-Examples:
-    To use this library: import sharpy.structure.utils.lagrangeconstraints as lagrangeconstraints
+* Equations: functions that generate the equations associated to the constraint of basic degrees of freedom.
+
+* Lagrange Constraints: different available Lagrange Constraints. They tipically use the basic functions in "Equations" to assembly the required set of equations.
+
+Attributes:
+    dict_of_lc (dict): Dictionary including the available Lagrange Contraint identifier
+    (``_lc_id``) and the associated ``BaseLagrangeConstraint`` class
 
 Notes:
+    To use this library: import sharpy.structure.utils.lagrangeconstraints as lagrangeconstraints
 
+Args:
+    lc_list (list): list of all the defined contraints
+    MBdict (dict): dictionary with the MultiBody and LagrangeMultipliers information
+    MB_beam (list): list of :class:`~sharpy.structure.models.beam.Beam` of each of the bodies that form the system
+    MB_tstep (list): list of :class:`~sharpy.utils.datastructures.StructTimeStepInfo` of each of the bodies that form the system
+    num_LM_eq (int): number of new equations needed to define the boundary boundary conditions
+    sys_size (int): total number of degrees of freedom of the multibody system
+    dt (float): time step
+    Lambda (np.ndarray): list of Lagrange multipliers values
+    Lambda_dot (np.ndarray): list of the first derivative of the Lagrange multipliers values
+    dynamic_or_static (str): string defining if the computation is dynamic or static
+    LM_C (np.ndarray): Damping matrix associated to the Lagrange Multipliers equations
+    LM_K (np.ndarray): Stiffness matrix associated to the Lagrange Multipliers equations
+    LM_Q (np.ndarray): Vector of independent terms associated to the Lagrange Multipliers equations
 """
 from abc import ABCMeta, abstractmethod
 import sharpy.utils.cout_utils as cout
@@ -21,13 +41,19 @@ import ctypes as ct
 import numpy as np
 import sharpy.utils.algebra as algebra
 
+###############################################################################
+# Basic structures
+###############################################################################
+
 dict_of_lc = {}
 lc = {}  # for internal working
 
 
 # decorator
 def lagrangeconstraint(arg):
-    # global available_solvers
+    """
+    Decorator used to create the dictionary (``dict_of_lc``) that links constraints id (``_lc_id``) to the associated ``BaseLagrangeConstraint`` class
+    """
     global dict_of_lc
     try:
         arg._lc_id
@@ -37,11 +63,17 @@ def lagrangeconstraint(arg):
     return arg
 
 def print_available_lc():
+    """
+    Prints the available Lagrange Constraints
+    """
     cout.cout_wrap('The available lagrange constraints on this session are:', 2)
     for name, i_lc in dict_of_lc.items():
         cout.cout_wrap('%s ' % i_lc._lc_id, 2)
 
 def lc_from_string(string):
+    """
+    Returns the ``BaseLagrangeConstraint`` class associated to a constraint id (``_lc_id``)
+    """
     return dict_of_lc[string]
 
 def lc_list_from_path(cwd):
@@ -61,6 +93,9 @@ def lc_list_from_path(cwd):
 
 
 def initialise_lc(lc_name, print_info=True):
+    """
+    Initialises the Lagrange Constraints
+    """
     if print_info:
         cout.cout_wrap('Generating an instance of %s' % lc_name, 2)
     cls_type = lc_from_string(lc_name)
@@ -69,42 +104,78 @@ def initialise_lc(lc_name, print_info=True):
 
 
 class BaseLagrangeConstraint(metaclass=ABCMeta):
+    __doc__ = """
+    BaseLagrangeConstraint
+
+    Base class for LagrangeConstraints showing the methods required. They will
+    be inherited by all the Lagrange Constraints
+
+    Attributes:
+        _n_eq (int): Number of equations required by a LagrangeConstraint
+        _ieq (int): Number of the first equation associated to the Lagrange Constraint in the whole set of Lagrange equations
+    """
+    _lc_id = 'BaseLagrangeConstraint'
+
     def __init__(self):
+        """
+        Initialisation
+        """
         self._n_eq = None
         self._ieq = None
 
     @abstractmethod
     def get_n_eq(self):
-        pass
+        """
+        Returns the number of equations required by the Lagrange Constraint
+        """
+        return self._n_eq
 
     @abstractmethod
     #  def initialise(self, **kwargs):
     def initialise(self, MBdict_entry, ieq):
-        pass
+        """
+        Initialisation
+        """
+        self._ieq = ieq
+        return self._ieq + self._n_eq
 
     @abstractmethod
     # def staticmat(self, **kwargs):
     def staticmat(self, LM_C, LM_K, LM_Q, MB_beam, MB_tstep, ts, num_LM_eq,
                   sys_size, dt, Lambda, Lambda_dot,
                   scalingFactor, penaltyFactor):
-        pass
+        """
+        Generates the structural matrices (damping, stiffness) and the independent vector
+        associated to the LagrangeConstraint in a static simulation
+        """
+        return np.zeros((6, 6))
 
     @abstractmethod
     # def dynamicmat(self, **kwargs):
     def dynamicmat(self, LM_C, LM_K, LM_Q, MB_beam, MB_tstep, ts, num_LM_eq,
                    sys_size, dt, Lambda, Lambda_dot,
                   scalingFactor, penaltyFactor):
-        pass
+        """
+        Generates the structural matrices (damping, stiffness) and the independent vector
+        associated to the LagrangeConstraint in a dynamic simulation
+        """
+        return np.zeros((10, 10))
 
     @abstractmethod
     # def staticpost(self, **kwargs):
     def staticpost(self, lc_list, MB_beam, MB_tstep):
-        pass
+        """
+        Postprocess operations needed by the LagrangeConstraint in a static simulation
+        """
+        return
 
     @abstractmethod
     # def dynamicpost(self, **kwargs):
     def dynamicpost(self, lc_list, MB_beam, MB_tstep):
-        pass
+        """
+        Postprocess operations needed by the LagrangeConstraint in a dynamic simulation
+        """
+        return
 
 
 ################################################################################
@@ -117,17 +188,12 @@ def define_node_dof(MB_beam, node_body, num_node):
     Define the position of the first degree of freedom associated to a certain node
 
     Args:
-        MB_beam(list): list of 'Beam'
+        MB_beam(list): list of :class:`~sharpy.structure.models.beam.Beam`
         node_body(int): body to which the node belongs
         num_node(int): number os the node within the body
 
     Returns:
         node_dof(int): first degree of freedom associated to the node
-
-    Examples:
-
-    Notes:
-
     """
     node_dof = 0
     for ibody in range(node_body):
@@ -144,17 +210,12 @@ def define_FoR_dof(MB_beam, FoR_body):
     Define the position of the first degree of freedom associated to a certain frame of reference
 
     Args:
-        MB_beam(list): list of 'Beam'
+        MB_beam(list): list of :class:`~sharpy.structure.models.beam.Beam`
         node_body(int): body to which the node belongs
         num_node(int): number os the node within the body
 
     Returns:
         node_dof(int): first degree of freedom associated to the node
-
-    Examples:
-
-    Notes:
-
     """
     FoR_dof = 0
     for ibody in range(FoR_body):
@@ -169,7 +230,20 @@ def define_FoR_dof(MB_beam, FoR_body):
 # Equations
 ################################################################################
 def equal_lin_vel_node_FoR(MB_tstep, MB_beam, FoR_body, node_body, node_number, node_FoR_dof, node_dof, FoR_dof, sys_size, Lambda_dot, scalingFactor, penaltyFactor, ieq, LM_K, LM_C, LM_Q):
+    """
+    This function generates the stiffness and damping matrices and the independent vector associated to a constraint that
+    imposes equal linear velocities between a node and a frame of reference
 
+    See ``LagrangeConstraints`` for the description of variables
+
+    Args:
+        node_number (int): number of the "node" within its own body
+        node_body (int): body number of the "node"
+        node_FoR_dof (int): position of the first degree of freedom of the FoR to which the "node" belongs
+        node_dof (int): position of the first degree of freedom associated to the "node"
+        FoR_body (int): body number of the "FoR"
+        FoR_dof (int): position of the first degree of freedom associated to the "FoR"
+    """
     # Variables names. The naming of the variables can be quite confusing. The reader should think that
     # the BC relates one "node" and one "FoR" (writen between quotes in these lines).
     # If a variable is related to one of them starts with "node_" or "FoR_" respectively
@@ -219,6 +293,23 @@ def equal_lin_vel_node_FoR(MB_tstep, MB_beam, FoR_body, node_body, node_number, 
 
 
 def def_rot_axis_FoR_wrt_node(MB_tstep, MB_beam, FoR_body, node_body, node_number, node_FoR_dof, node_dof, FoR_dof, sys_size, Lambda_dot, rot_axisB, scalingFactor, penaltyFactor, ieq, LM_K, LM_C, LM_Q, indep):
+    """
+    This function generates the stiffness and damping matrices and the independent vector associated to a joint that
+    forces the rotation axis of a FoR to be parallel to a certain direction. This direction is defined in the
+    B FoR of a node and, thus, might change along the simulation.
+
+    See ``LagrangeConstraints`` for the description of variables
+
+    Args:
+        rot_axisB (np.ndarray): Rotation axis with respect to the node B FoR
+        indep (np.ndarray): Number of the equations that are used as independent
+        node_number (int): number of the "node" within its own body
+        node_body (int): body number of the "node"
+        node_FoR_dof (int): position of the first degree of freedom of the FoR to which the "node" belongs
+        node_dof (int): position of the first degree of freedom associated to the "node"
+        FoR_body (int): body number of the "FoR"
+        FoR_dof (int): position of the first degree of freedom associated to the "FoR"
+    """
 
     # Variables names. The naming of the variables can be quite confusing. The reader should think that
     # the BC relates one "node" and one "FoR" (writen between quotes in these lines).
@@ -254,7 +345,7 @@ def def_rot_axis_FoR_wrt_node(MB_tstep, MB_beam, FoR_body, node_body, node_numbe
             # indep = np.array([0,1], dtype = int)
             indep[:] = [0, 1]
             # new_Lambda_dot = np.array([Lambda_dot[ieq], Lambda_dot[ieq+1], 0.0])
-    
+
     new_Lambda_dot = np.zeros(3)
     new_Lambda_dot[indep[0]] = Lambda_dot[ieq]
     new_Lambda_dot[indep[1]] = Lambda_dot[ieq+1]
@@ -292,13 +383,13 @@ def def_rot_axis_FoR_wrt_node(MB_tstep, MB_beam, FoR_body, node_body, node_numbe
 
     LM_C[FoR_dof+3:FoR_dof+6,FoR_dof+6:FoR_dof+10] += algebra.der_CquatT_by_v(MB_tstep[FoR_body].quat,
                                                                               algebra.multiply_matrices(algebra.quat2rotation(MB_tstep[node_body].quat),
-                                                                                                algebra.crv2rotation(MB_tstep[node_body].psi[ielem,inode_in_elem,:]).T,
+                                                                                                algebra.crv2rotation(MB_tstep[node_body].psi[ielem,inode_in_elem,:]),
                                                                                                 algebra.skew(rot_axisB).T,
                                                                                                 new_Lambda_dot))
 
     LM_K[FoR_dof+3:FoR_dof+6,node_dof+3:node_dof+6] += algebra.multiply_matrices(algebra.quat2rotation(MB_tstep[FoR_body].quat).T,
                                                                          algebra.quat2rotation(MB_tstep[node_body].quat),
-                                                                         algebra.der_Ccrv_by_v(MB_tstep[node_body].psi[ielem,inode_in_elem,:],
+                                                                         algebra.der_CcrvT_by_v(MB_tstep[node_body].psi[ielem,inode_in_elem,:],
                                                                                                 np.dot(algebra.skew(rot_axisB).T,
                                                                                                        new_Lambda_dot)))
 
@@ -307,7 +398,22 @@ def def_rot_axis_FoR_wrt_node(MB_tstep, MB_beam, FoR_body, node_body, node_numbe
 
 
 def def_rot_vel_FoR_wrt_node(MB_tstep, MB_beam, FoR_body, node_body, node_number, node_FoR_dof, node_dof, FoR_dof, sys_size, Lambda_dot, rot_axisB, rot_vel, scalingFactor, penaltyFactor, ieq, LM_K, LM_C, LM_Q):
+    """
+    This function generates the stiffness and damping matrices and the independent vector associated to a joint that
+    forces the rotation velocity of a FoR with respect to a node
 
+    See ``LagrangeConstraints`` for the description of variables
+
+    Args:
+        rot_axisB (np.ndarray): Rotation axis with respect to the node B FoR
+        rot_vel (float): Rotation velocity
+        node_number (int): number of the "node" within its own body
+        node_body (int): body number of the "node"
+        node_FoR_dof (int): position of the first degree of freedom of the FoR to which the "node" belongs
+        node_dof (int): position of the first degree of freedom associated to the "node"
+        FoR_body (int): body number of the "FoR"
+        FoR_dof (int): position of the first degree of freedom associated to the "FoR"
+    """
     # Variables names. The naming of the variables can be quite confusing. The reader should think that
     # the BC relates one "node" and one "FoR" (writen between quotes in these lines).
     # If a variable is related to one of them starts with "node_" or "FoR_" respectively
@@ -366,45 +472,20 @@ def def_rot_vel_FoR_wrt_node(MB_tstep, MB_beam, FoR_body, node_body, node_number
 # Lagrange constraints
 ################################################################################
 @lagrangeconstraint
-class SampleLagrange(BaseLagrangeConstraint):
-    _lc_id = 'SampleLagrange'
-
-    def __init__(self):
-        self._n_eq = 3
-
-    def get_n_eq(self):
-
-        return self._n_eq
-
-    def initialise(self, MBdict_entry, ieq, print_info=True):
-        # if print_info:
-            # cout.cout_wrap('Type of LC: ', self._lc_id)
-            # cout.cout_wrap('Arguments and values:')
-            # for k, v in MBdict_entry.items():
-                # cout.cout_wrap(k, v)
-        self._ieq = ieq
-
-        return self._ieq + self._n_eq
-
-    def staticmat(self, LM_C, LM_K, LM_Q, MB_beam, MB_tstep, ts, num_LM_eq,
-                sys_size, dt, Lambda, Lambda_dot,
-                scalingFactor, penaltyFactor):
-        return np.zeros((6, 6))
-
-    def dynamicmat(self, LM_C, LM_K, LM_Q, MB_beam, MB_tstep, ts, num_LM_eq,
-                sys_size, dt, Lambda, Lambda_dot,
-                scalingFactor, penaltyFactor):
-        return np.zeros((10, 10))
-
-    def staticpost(self, lc_list, MB_beam, MB_tstep):
-        return
-
-    def dynamicpost(self, lc_list, MB_beam, MB_tstep):
-        return
-
-
-@lagrangeconstraint
 class hinge_node_FoR(BaseLagrangeConstraint):
+    __doc__ = """
+    hinge_node_FoR
+
+    This constraint forces a hinge behaviour between a node and a FoR
+
+    See ``LagrangeConstraints`` for the description of variables
+
+    Attributes:
+        node_number (int): number of the "node" within its own body
+        node_body (int): body number of the "node"
+        FoR_body (int): body number of the "FoR"
+        rot_axisB (np.ndarray): Rotation axis with respect to the node B FoR
+    """
     _lc_id = 'hinge_node_FoR'
 
     def __init__(self):
@@ -461,6 +542,21 @@ class hinge_node_FoR(BaseLagrangeConstraint):
 
 @lagrangeconstraint
 class hinge_node_FoR_constant_vel(BaseLagrangeConstraint):
+    __doc__ = """
+    hinge_node_FoR_constant_vel
+
+    This constraint forces a hinge behaviour between a node and a FoR and
+    a constant rotation velocity at the join
+
+    See ``LagrangeConstraints`` for the description of variables
+
+    Attributes:
+        node_number (int): number of the "node" within its own body
+        node_body (int): body number of the "node"
+        FoR_body (int): body number of the "FoR"
+        rot_axisB (np.ndarray): Rotation axis with respect to the node B FoR
+        rot_vel (float): Rotation velocity
+    """
     _lc_id = 'hinge_node_FoR_constant_vel'
 
     def __init__(self):
@@ -518,6 +614,18 @@ class hinge_node_FoR_constant_vel(BaseLagrangeConstraint):
 
 @lagrangeconstraint
 class spherical_node_FoR(BaseLagrangeConstraint):
+    __doc__ = """
+    spherical_node_FoR
+
+    This constraint forces a spherical join between a node and a FoR
+
+    See ``LagrangeConstraints`` for the description of variables
+
+    Attributes:
+        node_number (int): number of the "node" within its own body
+        node_body (int): body number of the "node"
+        FoR_body (int): body number of the "FoR"
+    """
     _lc_id = 'spherical_node_FoR'
 
     def __init__(self):
@@ -572,6 +680,7 @@ class spherical_node_FoR(BaseLagrangeConstraint):
 @lagrangeconstraint
 class free(BaseLagrangeConstraint):
     _lc_id = 'free'
+    __doc__ = _lc_id
 
     def __init__(self):
         self.required_parameters = []
@@ -609,6 +718,16 @@ class free(BaseLagrangeConstraint):
 
 @lagrangeconstraint
 class spherical_FoR(BaseLagrangeConstraint):
+    __doc__ = """
+    spherical_FoR
+
+    This constraint forces a spherical join at a FoR
+
+    See ``LagrangeConstraints`` for the description of variables
+
+    Attributes:
+        body_FoR (int): body number of the "FoR"
+    """
     _lc_id = 'spherical_FoR'
 
     def __init__(self):
@@ -667,6 +786,17 @@ class spherical_FoR(BaseLagrangeConstraint):
 
 @lagrangeconstraint
 class hinge_FoR(BaseLagrangeConstraint):
+    __doc__ = """
+    hinge_FoR
+
+    This constraint forces a hinge at a FoR
+
+    See ``LagrangeConstraints`` for the description of variables
+
+    Attributes:
+        body_FoR (int): body number of the "FoR"
+        rot_axis_AFoR (np.ndarray): Rotation axis with respect to the node A FoR
+    """
     _lc_id = 'hinge_FoR'
 
     def __init__(self):
@@ -744,6 +874,17 @@ class hinge_FoR(BaseLagrangeConstraint):
 
 @lagrangeconstraint
 class hinge_FoR_wrtG(BaseLagrangeConstraint):
+    __doc__ = """
+    hinge_FoR_wrtG
+
+    This constraint forces a hinge at a FoR
+
+    See ``LagrangeConstraints`` for the description of variables
+
+    Attributes:
+        body_FoR (int): body number of the "FoR"
+        rot_axis_AFoR (np.ndarray): Rotation axis with respect to the node G FoR
+    """
     _lc_id = 'hinge_FoR_wrtG'
 
     def __init__(self):
@@ -823,6 +964,19 @@ class hinge_FoR_wrtG(BaseLagrangeConstraint):
 
 @lagrangeconstraint
 class fully_constrained_node_FoR(BaseLagrangeConstraint):
+    __doc__ = """
+    fully_constrained_node_FoR
+
+    This constraint forces linear and angular displacements between a node
+    and a FoR to be the same
+
+    See ``LagrangeConstraints`` for the description of variables
+
+    Attributes:
+        node_number (int): number of the "node" within its own body
+        node_body (int): body number of the "node"
+        FoR_body (int): body number of the "FoR"
+    """
     _lc_id = 'fully_constrained_node_FoR'
 
     def __init__(self):
@@ -839,7 +993,7 @@ class fully_constrained_node_FoR(BaseLagrangeConstraint):
             # for k, v in MBdict_entry.items():
                 # cout.cout_wrap(k, v)
 
-        cout.cout_wrap("WARNING: do not use fully_constrained_node_FoR. It is outdated", 3)
+        cout.cout_wrap("WARNING: do not use fully_constrained_node_FoR. It is outdated. Definetly not working if 'body' has velocity", 3)
         self.node_number = MBdict_entry['node_in_body']
         self.node_body = MBdict_entry['body']
         self.FoR_body = MBdict_entry['body_FoR']
@@ -894,7 +1048,7 @@ class fully_constrained_node_FoR(BaseLagrangeConstraint):
         return
 
     def dynamicpost(self, lc_list, MB_beam, MB_tstep):
-        MB_tstep[self.FoR_body].for_pos[0:3] = np.dot(algebra.quat2rotation(MB_tstep[self.node_body].quat), MB_tstep[self.node_body].pos[self.node_number,:]) + MB_tstep[self.node_body].for_pos[0:3]
+        # MB_tstep[self.FoR_body].for_pos[0:3] = np.dot(algebra.quat2rotation(MB_tstep[self.node_body].quat), MB_tstep[self.node_body].pos[self.node_number,:]) + MB_tstep[self.node_body].for_pos[0:3]
         return
 
 
@@ -935,6 +1089,16 @@ class fully_constrained_node_FoR(BaseLagrangeConstraint):
 
 @lagrangeconstraint
 class constant_rot_vel_FoR(BaseLagrangeConstraint):
+    __doc__ = """
+    constant_rot_vel_FoR
+
+    This constraint forces a constant rotation velocity of a FoR
+
+    See ``LagrangeConstraints`` for the description of variables
+
+    Attributes:
+        FoR_body (int): body number of the "FoR"
+    """
     _lc_id = 'constant_rot_vel_FoR'
 
     def __init__(self):
@@ -992,6 +1156,17 @@ class constant_rot_vel_FoR(BaseLagrangeConstraint):
 
 @lagrangeconstraint
 class constant_vel_FoR(BaseLagrangeConstraint):
+    __doc__ = """
+    constant_vel_FoR
+
+    This constraint forces a constant velocity of a FoR
+
+    See ``LagrangeConstraints`` for the description of variables
+
+    Attributes:
+        FoR_body (int): body number of the "FoR"
+        vel (np.ndarray): 6 components of the desired velocity
+    """
     _lc_id = 'constant_vel_FoR'
 
     def __init__(self):
@@ -1049,6 +1224,19 @@ class constant_vel_FoR(BaseLagrangeConstraint):
 
 @lagrangeconstraint
 class lin_vel_node_wrtA(BaseLagrangeConstraint):
+    __doc__ = """
+    lin_vel_node_wrtA
+
+    This constraint forces the linear velocity of a node to have a
+    certain value with respect to the A FoR
+
+    See ``LagrangeConstraints`` for the description of variables
+
+    Attributes:
+        node_number (int): number of the "node" within its own body
+        body_number (int): body number of the "node"
+        vel (np.ndarray): 6 components of the desired velocity with respect to the A FoR
+    """
     _lc_id = 'lin_vel_node_wrtA'
 
     def __init__(self):
@@ -1133,6 +1321,19 @@ class lin_vel_node_wrtA(BaseLagrangeConstraint):
 
 @lagrangeconstraint
 class lin_vel_node_wrtG(BaseLagrangeConstraint):
+    __doc__ = """
+    lin_vel_node_wrtG
+
+    This constraint forces the linear velocity of a node to have a
+    certain value with respect to the G FoR
+
+    See ``LagrangeConstraints`` for the description of variables
+
+    Attributes:
+        node_number (int): number of the "node" within its own body
+        body_number (int): body number of the "node"
+        vel (np.ndarray): 6 components of the desired velocity with respect to the G FoR
+    """
     _lc_id = 'lin_vel_node_wrtG'
 
     def __init__(self):
@@ -1282,25 +1483,20 @@ def generate_lagrange_matrix(lc_list, MB_beam, MB_tstep, ts, num_LM_eq, sys_size
 
     Args:
         lc_list(): list of all the defined contraints
-        MBdict(MBdict): dictionary with the MultiBody and LagrangeMultipliers information
+        MBdict(dict): dictionary with the MultiBody and LagrangeMultipliers information
         MB_beam(list): list of 'beams' of each of the bodies that form the system
         MB_tstep(list): list of 'StructTimeStepInfo' of each of the bodies that form the system
         num_LM_eq(int): number of new equations needed to define the boundary boundary conditions
         sys_size(int): total number of degrees of freedom of the multibody system
         dt(float): time step
-        Lambda(numpy array): list of Lagrange multipliers values
-        Lambda_dot(numpy array): list of the first derivative of the Lagrange multipliers values
+        Lambda(np.ndarray): list of Lagrange multipliers values
+        Lambda_dot(np.ndarray): list of the first derivative of the Lagrange multipliers values
         dynamic_or_static (str): string defining if the computation is dynamic or static
 
     Returns:
-        LM_C (numpy array): Damping matrix associated to the Lagrange Multipliers equations
-        LM_K (numpy array): Stiffness matrix associated to the Lagrange Multipliers equations
-        LM_Q (numpy array): Vector of independent terms associated to the Lagrange Multipliers equations
-
-    Examples:
-
-    Notes:
-
+        LM_C (np.ndarray): Damping matrix associated to the Lagrange Multipliers equations
+        LM_K (np.ndarray): Stiffness matrix associated to the Lagrange Multipliers equations
+        LM_Q (np.ndarray): Vector of independent terms associated to the Lagrange Multipliers equations
     """
     # Lagrange multipliers parameters
     # TODO: set them as an input variable (at this point they should not be changed)
@@ -1354,7 +1550,9 @@ def generate_lagrange_matrix(lc_list, MB_beam, MB_tstep, ts, num_LM_eq, sys_size
 
 
 def postprocess(lc_list, MB_beam, MB_tstep, dynamic_or_static):
-
+    """
+    Run the postprocess of all the Lagrange Constraints in the system
+    """
     for lc in lc_list:
         if dynamic_or_static.lower() == "static":
             lc.staticpost(lc_list = lc_list,
@@ -1372,6 +1570,11 @@ def postprocess(lc_list, MB_beam, MB_tstep, dynamic_or_static):
 
 
 def remove_constraint(MBdict, constraint):
+    """
+    Removes a constraint from the list.
+    This function is thought to release constraints at some point during
+    a dynamic simulation
+    """
     try:
         del(MBdict[constraint])
         MBdict['num_constraints'] -= 1

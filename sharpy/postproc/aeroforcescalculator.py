@@ -36,9 +36,9 @@ class AeroForcesCalculator(BaseSolver):
     settings_types['write_text_file'] = 'bool'
     settings_default['write_text_file'] = False
     settings_description['write_text_file'] = 'Write ``txt`` file with results'
-
+    
     settings_types['text_file_name'] = 'str'
-    settings_default['text_file_name'] = ''
+    settings_default['text_file_name'] = 'aeroforces.txt'
     settings_description['text_file_name'] = 'Text file name'
 
     settings_types['screen_output'] = 'bool'
@@ -72,8 +72,9 @@ class AeroForcesCalculator(BaseSolver):
         self.ts = 0
 
         self.folder = ''
+        self.caller = None
 
-    def initialise(self, data):
+    def initialise(self, data, custom_settings=None, caller=None):
         self.data = data
         self.settings = data.settings[self.solver_id]
         if self.data.structure.settings['unsteady']:
@@ -82,8 +83,9 @@ class AeroForcesCalculator(BaseSolver):
             self.ts_max = 1
             self.ts_max = len(self.data.structure.timestep_info)
         settings.to_custom_types(self.settings, self.settings_types, self.settings_default)
+        self.caller = caller
 
-    def run(self):
+    def run(self, online=False):
         self.ts = 0
 
         self.calculate_forces()

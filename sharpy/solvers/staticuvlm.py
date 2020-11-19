@@ -7,6 +7,8 @@ import sharpy.utils.cout_utils as cout
 import sharpy.utils.settings as settings
 from sharpy.utils.solver_interface import solver, BaseSolver
 import sharpy.utils.generator_interface as gen_interface
+from sharpy.utils.constants import vortex_radius_def
+
 
 @solver
 class StaticUvlm(BaseSolver):
@@ -88,6 +90,22 @@ class StaticUvlm(BaseSolver):
     settings_default['rho'] = 1.225
     settings_description['rho'] = 'Air density'
 
+    settings_types['cfl1'] = 'bool'
+    settings_default['cfl1'] = True
+    settings_description['cfl1'] = 'If it is ``True``, it assumes that the discretisation complies with CFL=1'
+
+    settings_types['vortex_radius'] = 'float'
+    settings_default['vortex_radius'] = vortex_radius_def
+    settings_description['vortex_radius'] = 'Distance between points below which induction is not computed'
+
+    settings_types['vortex_radius_wake_ind'] = 'float'
+    settings_default['vortex_radius_wake_ind'] = vortex_radius_def
+    settings_description['vortex_radius_wake_ind'] = 'Distance between points below which induction is not computed in the wake convection'
+
+    settings_types['rbm_vel_g'] = 'list(float)'
+    settings_default['rbm_vel_g'] = [0., 0., 0., 0., 0., 0.]
+    settings_description['rbm_vel_g'] = 'Rigid body velocity in G FoR'
+
     settings_table = settings.SettingsTable()
     __doc__ += settings_table.generate(settings_types, settings_default, settings_description)
 
@@ -117,6 +135,15 @@ class StaticUvlm(BaseSolver):
         if not self.data.aero.timestep_info[self.data.ts].zeta:
             return self.data
 
+        # generate the wake because the solid shape might change
+        aero_tstep = self.data.aero.timestep_info[self.data.ts]
+        self.data.aero.wake_shape_generator.generate({'zeta': aero_tstep.zeta,
+                                            'zeta_star': aero_tstep.zeta_star,
+                                            'gamma': aero_tstep.gamma,
+                                            'gamma_star': aero_tstep.gamma_star,
+                                            'dist_to_orig': aero_tstep.dist_to_orig,
+                                            'wake_conv_vel': aero_tstep.wake_conv_vel})
+
         # generate uext
         self.velocity_generator.generate({'zeta': self.data.aero.timestep_info[self.data.ts].zeta,
                                           'override': True,
@@ -141,16 +168,3 @@ class StaticUvlm(BaseSolver):
         # for i_surf in range(self.data.aero.timestep_info[self.data.ts].n_surf):
         #     self.data.aero.timestep_info[self.data.ts].forces[i_surf].fill(0.0)
         #     self.data.aero.timestep_info[self.data.ts].dynamic_forces[i_surf].fill(0.0)
-
-
-
-
-
-
-
-
-
-
-
-
-

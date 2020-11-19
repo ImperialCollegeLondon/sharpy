@@ -92,7 +92,8 @@ class Direct(BaseBalancedRom):
         if in_settings is not None:
             self.settings = in_settings
 
-        settings.to_custom_types(self.settings, self.settings_types, self.settings_default, self.settings_options)
+        settings.to_custom_types(self.settings, self.settings_types, self.settings_default, self.settings_options,
+                                 no_ctype=True)
 
     def run(self, ss):
         if self.print_info:
@@ -124,7 +125,7 @@ class Direct(BaseBalancedRom):
             cout.cout_wrap('\t...completed balancing in %.2fs' % (t1-t0), 1)
 
         if self.settings['tune']:
-            cout.cout_wrap('\t\tTuning ROM to specified tolerance...', 2)
+            cout.cout_wrap('Tuning ROM to specified tolerance...', 1)
             kv = np.linspace(self.settings['rom_tune_freq_range'][0],
                              self.settings['rom_tune_freq_range'][1])
             ssrom = librom.tune_rom(ss_bal,
@@ -134,7 +135,7 @@ class Direct(BaseBalancedRom):
                                     convergence=self.settings['convergence'],
                                     method=self.settings['reduction_method'])
             if librom.check_stability(ssrom.A, dt=True):
-                if self.settings['print_info']:
+                if self.print_info:
                     cout.cout_wrap('ROM by direct balancing is stable')
             t2 = time.time()
             cout.cout_wrap('\t...completed reduction in %.2fs' % (t2-t0), 1)
@@ -276,7 +277,8 @@ class Iterative(BaseBalancedRom):
         if in_settings is not None:
             self.settings = in_settings
 
-        settings.to_custom_types(self.settings, self.settings_types, self.settings_default)
+        settings.to_custom_types(self.settings, self.settings_types, self.settings_default,
+                                 no_ctype=True)
 
     def run(self, ss):
 
@@ -284,8 +286,8 @@ class Iterative(BaseBalancedRom):
 
         s, T, Tinv, rcmax, romax = librom.balreal_iter(A, B, C,
                                                        lowrank=self.settings['lowrank'],
-                                                       tolSmith=self.settings['smith_tol'].value,
-                                                       tolSVD=self.settings['tolSVD'].value)
+                                                       tolSmith=self.settings['smith_tol'],
+                                                       tolSVD=self.settings['tolSVD'])
 
         Ar = Tinv.dot(A.dot(T))
         Br = Tinv.dot(B)
@@ -378,9 +380,3 @@ class Balanced(rom_interface.BaseRom):
                 self.ssrom = libss.ss(Ar, Br, Cr, D)
 
         return self.ssrom
-
-
-if __name__=='__main__':
-    import sharpy.utils.docutils as docutils
-    import sharpy.utils.sharpydir as sharpydir
-    docutils.output_documentation_module_page(sharpydir.SharpyDir + '/sharpy/rom/balanced', '/rom')

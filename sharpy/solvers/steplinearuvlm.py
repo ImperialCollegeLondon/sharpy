@@ -9,6 +9,7 @@ import sharpy.utils.settings as settings
 import sharpy.utils.generator_interface as gen_interface
 import sharpy.utils.algebra as algebra
 import sharpy.linear.src.linuvlm as linuvlm
+from sharpy.utils.constants import vortex_radius_def
 
 
 @solver
@@ -91,6 +92,23 @@ class StepLinearUVLM(BaseSolver):
     settings_default['track_body_number'] = -1
     settings_description['track_body_number'] = 'Frame of reference number to follow. If ``-1`` track ``A`` frame.'
 
+    settings_types['velocity_field_generator'] = 'str'
+    settings_default['velocity_field_generator'] = 'SteadyVelocityField'
+    settings_description['velocity_field_generator'] = 'Name of the velocity field generator to be used in the ' \
+                                                       'simulation'
+
+    settings_types['velocity_field_input'] = 'dict'
+    settings_default['velocity_field_input'] = {}
+    settings_description['velocity_field_input'] = 'Dictionary of settings for the velocity field generator'
+
+    settings_types['vortex_radius'] = 'float'
+    settings_default['vortex_radius'] = vortex_radius_def
+    settings_description['vortex_radius'] = 'Distance between points below which induction is not computed'
+
+    settings_types['vortex_radius_wake_ind'] = 'float'
+    settings_default['vortex_radius_wake_ind'] = vortex_radius_def
+    settings_description['vortex_radius_wake_ind'] = 'Distance between points below which induction is not computed in the wake convection'
+
     settings_table = settings.SettingsTable()
     __doc__ += settings_table.generate(settings_types, settings_default, settings_description)
 
@@ -169,13 +187,13 @@ class StepLinearUVLM(BaseSolver):
 
                 # track A frame
                 if self.num_body_track == -1:
-                    self.quat0 = self.data.structure.timestep_info[0].quat.copy()
-                    self.for_vel0 = self.data.structure.timestep_info[0].for_vel.copy()
+                    self.quat0 = self.data.structure.timestep_info[-1].quat.copy()
+                    self.for_vel0 = self.data.structure.timestep_info[-1].for_vel.copy()
                 else: # track a specific body
                     self.quat0 = \
-                        self.data.structure.timestep_info[0].mb_quat[self.num_body_track,:].copy()
+                        self.data.structure.timestep_info[-1].mb_quat[self.num_body_track,:].copy()
                     self.for_vel0 = \
-                        self.data.structure.timestep_info[0].mb_FoR_vel[self.num_body_track ,:].copy()
+                        self.data.structure.timestep_info[-1].mb_FoR_vel[self.num_body_track ,:].copy()
 
                 # convert to G frame
                 self.Cga0 = algebra.quat2rotation(self.quat0)

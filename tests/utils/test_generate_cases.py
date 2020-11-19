@@ -47,26 +47,38 @@ class TestGenerateCases(unittest.TestCase):
         time_steps = int(revs_to_simulate*2.*np.pi/dphi)
         time_steps = 1 # For the test cases
         mstar = int(revs_in_wake*2.*np.pi/dphi)
-        mstar = 1 # For the test cases
+        mstar = 2 # For the test cases
 
         # Remove screen output
         # if remove_terminal_output:
         #     sys.stdout = open(os.devnull, "w")
 
-        rotor = template_wt.rotor_from_excel_type02(
-                                          chord_panels,
-                                          rotation_velocity,
-                                          pitch_deg,
-                                          excel_file_name = route + '../../docs/source/content/example_notebooks/source/type02_db_NREL5MW_v01.xlsx',
-                                          excel_sheet_parameters = 'parameters',
-                                          excel_sheet_structural_blade = 'structural_blade',
-                                          excel_sheet_discretization_blade = 'discretization_blade',
-                                          excel_sheet_aero_blade = 'aero_blade',
-                                          excel_sheet_airfoil_info = 'airfoil_info',
-                                          excel_sheet_airfoil_coord = 'airfoil_coord',
-                                          m_distribution = 'uniform',
-                                          n_points_camber = 100,
-                                          tol_remove_points = 1e-8)
+        op_params = {'rotation_velocity': rotation_velocity,
+                     'pitch_deg': pitch_deg,
+                     'wsp': WSP,
+                     'dt': dt}
+
+        geom_params = {'chord_panels':chord_panels,
+                    'tol_remove_points': 1e-8,
+                    'n_points_camber': 100,
+                    'm_distribution': 'uniform'}
+
+        excel_description = {'excel_file_name': route + '../../docs/source/content/example_notebooks/source/type02_db_NREL5MW_v01.xlsx',
+                            'excel_sheet_parameters': 'parameters',
+                            'excel_sheet_structural_blade': 'structural_blade',
+                            'excel_sheet_discretization_blade': 'discretization_blade',
+                            'excel_sheet_aero_blade': 'aero_blade',
+                            'excel_sheet_airfoil_info': 'airfoil_info',
+                            'excel_sheet_airfoil_chord': 'airfoil_coord'}
+
+        options = {'camber_effect_on_twist': False,
+                   'user_defined_m_distribution_type': None,
+                   'include_polars': False}
+
+        rotor = template_wt.rotor_from_excel_type03(op_params,
+                                                    geom_params,
+                                                    excel_description,
+                                                    options)
 
         # Return the standard output to the terminal
         # if remove_terminal_output:
@@ -84,6 +96,7 @@ class TestGenerateCases(unittest.TestCase):
                                 'StaticCoupledRBM',
                                 'DynamicCoupled',
                                 'SaveData']
+
         SimInfo.solvers['SHARPy']['case'] = case
         SimInfo.solvers['SHARPy']['write_screen'] = 'off'
         SimInfo.solvers['SHARPy']['route'] = route
@@ -102,22 +115,35 @@ class TestGenerateCases(unittest.TestCase):
         SimInfo.solvers['AerogridLoader']['unsteady'] = 'on'
         SimInfo.solvers['AerogridLoader']['mstar'] = mstar
         SimInfo.solvers['AerogridLoader']['freestream_dir'] = np.array([0.,0.,0.])
+        SimInfo.solvers['AerogridLoader']['wake_shape_generator'] = 'HelicoidalWake'
+        SimInfo.solvers['AerogridLoader']['wake_shape_generator_input'] = {'u_inf': WSP,
+                                                                           'u_inf_direction': np.array([0., 0., 1.]),
+                                                                           'dt': dt,
+                                                                           'rotation_velocity': rotation_velocity*np.array([0., 0., 1.])}
 
         SimInfo.solvers['StaticCoupledRBM']['structural_solver'] = 'RigidDynamicPrescribedStep'
         SimInfo.solvers['StaticCoupledRBM']['structural_solver_settings'] = SimInfo.solvers['RigidDynamicPrescribedStep']
         # SimInfo.solvers['StaticCoupledRBM']['structural_solver'] = 'NonLinearDynamicPrescribedStep'
         # SimInfo.solvers['StaticCoupledRBM']['structural_solver_settings'] = SimInfo.solvers['NonLinearDynamicPrescribedStep']
-        SimInfo.solvers['StaticCoupledRBM']['aero_solver'] = 'SHWUvlm'
-        SimInfo.solvers['StaticCoupledRBM']['aero_solver_settings'] = SimInfo.solvers['SHWUvlm']
+        SimInfo.solvers['StaticCoupledRBM']['aero_solver'] = 'StaticUvlm'
+        SimInfo.solvers['StaticCoupledRBM']['aero_solver_settings'] = SimInfo.solvers['StaticUvlm']
 
         SimInfo.solvers['StaticCoupledRBM']['tolerance'] = 1e-6
         SimInfo.solvers['StaticCoupledRBM']['n_load_steps'] = 0
         SimInfo.solvers['StaticCoupledRBM']['relaxation_factor'] = 0.
 
-        SimInfo.solvers['SHWUvlm']['convection_scheme'] = 2
-        SimInfo.solvers['SHWUvlm']['rot_vel'] = rotation_velocity
-        SimInfo.solvers['SHWUvlm']['rot_axis'] = np.array([0.,0.,1.])
-        SimInfo.solvers['SHWUvlm']['rot_center'] = np.zeros((3),)
+        SimInfo.solvers['StaticUvlm']['horseshoe'] = False
+        SimInfo.solvers['StaticUvlm']['num_cores'] = 8
+        SimInfo.solvers['StaticUvlm']['n_rollup'] = 0
+        SimInfo.solvers['StaticUvlm']['rollup_dt'] = dt
+        SimInfo.solvers['StaticUvlm']['rollup_aic_refresh'] = 1
+        SimInfo.solvers['StaticUvlm']['rollup_tolerance'] = 1e-8
+        SimInfo.solvers['StaticUvlm']['rbm_vel_g'] = np.array([0., 0., 0.,
+                                                               0., 0., rotation_velocity])
+        
+        SimInfo.solvers['StepUvlm']['convection_scheme'] = 2
+        SimInfo.solvers['StepUvlm']['num_cores'] = 1
+        SimInfo.solvers['StepUvlm']['cfl1'] = False
 
         # SimInfo.solvers['DynamicCoupled']['structural_solver'] = 'NonLinearDynamicMultibody'
         # SimInfo.solvers['DynamicCoupled']['structural_solver_settings'] = SimInfo.solvers['NonLinearDynamicMultibody']
@@ -165,7 +191,6 @@ class TestGenerateCases(unittest.TestCase):
 
         solver_path = os.path.abspath(os.path.dirname(os.path.realpath(__file__)) + '/' + case +'.sharpy')
         sharpy.sharpy_main.main(['', solver_path])
-        print('done executing')
 
     def tearDown(self):
         solver_path = os.path.abspath(os.path.dirname(os.path.realpath(__file__)))
@@ -179,4 +204,6 @@ class TestGenerateCases(unittest.TestCase):
         for f in files_to_delete:
             os.remove(solver_path + f)
 
-        shutil.rmtree(solver_path + 'output/')
+        output_path = solver_path + 'output/'
+        if os.path.isdir(output_path):
+            shutil.rmtree(output_path)

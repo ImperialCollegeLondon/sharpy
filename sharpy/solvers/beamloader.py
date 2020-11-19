@@ -49,7 +49,8 @@ class BeamLoader(BaseSolver):
 
     settings_types['unsteady'] = 'bool'
     settings_default['unsteady'] = True
-    settings_description['unsteady'] = 'If ``True`` it will be a dynamic problem. The default is usually good for all simulations'
+    settings_description['unsteady'] = 'If ``True`` it will be a dynamic problem and the solver will look for the' \
+                                       ' ``.dyn.h5`` file that contains the time varying input to the problem.'
 
     settings_types['orientation'] = 'list(float)'
     settings_default['orientation'] = [1., 0, 0, 0]
@@ -131,4 +132,10 @@ class BeamLoader(BaseSolver):
         self.data.structure.ini_mb_dict = self.mb_data_dict
         self.data.structure.generate(self.fem_data_dict, self.settings)
         self.data.structure.dyn_dict = self.dyn_data_dict
+
+        # Change the beam description to the local FoR for multibody
+        if (self.data.structure.num_bodies > 1):
+            self.data.structure.ini_info.whole_structure_to_local_AFoR(self.data.structure)
+            self.data.structure.timestep_info[0].whole_structure_to_local_AFoR(self.data.structure)
+
         return self.data

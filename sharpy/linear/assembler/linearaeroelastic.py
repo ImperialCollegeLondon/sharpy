@@ -149,23 +149,8 @@ class LinearAeroelastic(ss_interface.BaseElement):
         # Linearisation of the aerodynamic forces introduces stiffenning and damping terms into the beam matrices
         flex_nodes = self.beam.sys.num_dof_flex
 
-        stiff_aero = np.zeros_like(beam.sys.Kstr)
-        damping_aero = np.zeros_like(beam.sys.Cstr)
-        stiff_aero[:flex_nodes, :flex_nodes] = self.Kss
-
         rigid_dof = beam.sys.Kstr.shape[0] - flex_nodes
         total_dof = flex_nodes + rigid_dof
-
-        if rigid_dof > 0:
-            rigid_dof = beam.sys.Kstr.shape[0]-self.Kss.shape[0]
-            stiff_aero[flex_nodes:, :flex_nodes] = self.Krs
-
-            damping_aero[:flex_nodes, flex_nodes:] = self.Csr
-            damping_aero[flex_nodes:, flex_nodes:] = self.Crr
-            damping_aero[flex_nodes:, :flex_nodes] = self.Crs
-
-        beam.sys.Cstr += damping_aero
-        beam.sys.Kstr += stiff_aero
 
         if uvlm.scaled:
             beam.assemble(t_ref=uvlm.sys.ScalingFacts['time'])
@@ -192,10 +177,22 @@ class LinearAeroelastic(ss_interface.BaseElement):
             uvlm.ss.addGain(Ksa, where='out')
             uvlm.ss.addGain(Kas, where='in')
 
+            # Stiffenning and damping terms within the uvlm
+            Dmod = np.zeros_like(uvlm.ss.D)
+            Dmod[:flex_nodes, :flex_nodes] -= self.Kss
+            if rigid_dof > 0:
+                Dmod[flex_nodes:, :flex_nodes] -= self.Krs
+                Dmod[flex_nodes:, total_dof: total_dof + flex_nodes] -= self.Crs
+                Dmod[:flex_nodes, total_dof + flex_nodes: 2 * total_dof] -= self.Csr
+                Dmod[flex_nodes:, total_dof + flex_nodes: 2 * total_dof] -= self.Crr
+                if uvlm.scaled:
+                    Dmod /= uvlm.sys.ScalingFacts['force']
+                uvlm.ss.D += Dmod
+
             self.couplings['Ksa'] = Ksa
             self.couplings['Kas'] = Kas
 
-            if self.settings['beam_settings']['modal_projection'] == True and \
+            if self.settings['beam_settings']['modal_projection'] is True and \
                     self.settings['beam_settings']['inout_coords'] == 'modes':
                 # Project UVLM onto modal space
                 phi = beam.sys.U
@@ -226,7 +223,6 @@ class LinearAeroelastic(ss_interface.BaseElement):
         if uvlm.scaled:
             Tsa *= uvlm.sys.ScalingFacts['force'] * uvlm.sys.ScalingFacts['time'] ** 2
             if rigid_dof > 0:
-                warnings.warn('Time scaling for problems with rigid body motion under development.')
                 Tas[:flex_nodes + 6, :flex_nodes + 6] /= uvlm.sys.ScalingFacts['length']
                 Tas[total_dof: total_dof + flex_nodes + 6] /= uvlm.sys.ScalingFacts['length']
             else:
@@ -242,6 +238,8 @@ class LinearAeroelastic(ss_interface.BaseElement):
 
         # Save zero force reference
         self.linearisation_vectors['forces_aero_beam_dof'] = Ksa.dot(self.linearisation_vectors['forces_aero'])
+        if self.settings['beam_settings']['modal_projection']:
+            self.linearisation_vectors['mode_shapes'] = beam.sys.U
 
         if self.settings['beam_settings']['modal_projection'] is True and \
                 self.settings['beam_settings']['inout_coords'] == 'modes':
@@ -254,7 +252,8 @@ class LinearAeroelastic(ss_interface.BaseElement):
         cout.cout_wrap('\tInputs: %g' % ss.inputs, 1)
         cout.cout_wrap('\tOutputs: %g' % ss.outputs, 1)
 
-        return ss
+        self.ss = ss
+        return self.ss
 
     def update(self, u_infty):
         """
@@ -854,6 +853,21 @@ class LinearAeroelastic(ss_interface.BaseElement):
         self.Crs = Crs
         self.Crr = Crr
 
+    def to_nodal_coordinates(self):
+
+        is_modal = self.beam.sys.modal
+
+        if is_modal:
+            phi = self.beam.sys.U
+
+            # these would include control surface deflections, thrust etc.
+            non_structural_inputs = self.uvlm.ss.inputs - self.beam.ss.outputs
+
+            input_gain = sclalg.block_diag(phi.T, phi.T, np.eye(non_structural_inputs), phi.T)
+            output_gain = sclalg.block_diag(phi, phi, phi)
+
+            self.ss.addGain(input_gain, where='in')
+            self.ss.addGain(output_gain, where='out')
 
     @staticmethod
     def load_uvlm(filename):

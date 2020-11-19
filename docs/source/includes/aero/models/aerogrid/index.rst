@@ -9,5 +9,6 @@ grid based on the input dictionaries.
 .. toctree::
 	:glob:
 
+	./AeroTimeStepInfo
 	./Aerogrid
 	./generate_strip

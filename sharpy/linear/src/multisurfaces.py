@@ -7,6 +7,7 @@ import numpy as np
 import sharpy.linear.src.gridmapping as gridmapping
 import sharpy.linear.src.surface as surface
 import sharpy.linear.src.assembly as assembly
+import sharpy.utils.cout_utils as cout
 
 
 class MultiAeroGridSurfaces():
@@ -14,12 +15,13 @@ class MultiAeroGridSurfaces():
     Creates and assembles multiple aerodynamic surfaces from data
     """
 
-    def __init__(self, tsdata, for_vel=np.zeros((6,))):
+    def __init__(self, tsdata, vortex_radius, for_vel=np.zeros((6,))):
         """
         Initialise from data structure at time step.
 
         Args:
             tsdata (sharpy.utils.datastructures.AeroTimeStepInfo): Linearisation time step
+            vortex_radius (np.float): Distance below which induction is not computed
             for_vel (np.ndarray): Frame of reference velocity in the inertial (G) frame, including the angular velocity.
         """
 
@@ -51,9 +53,9 @@ class MultiAeroGridSurfaces():
             #     omega = tsdata.omega[ss]
             # except AttributeError:
             #     omega = for_vel[3:]
-
             Surf = surface.AeroGridSurface(
                 Map, zeta=tsdata.zeta[ss], gamma=tsdata.gamma[ss],
+                vortex_radius=vortex_radius,
                 u_ext=tsdata.u_ext[ss], zeta_dot=tsdata.zeta_dot[ss],
                 gamma_dot=tsdata.gamma_dot[ss],
                 rho=tsdata.rho,
@@ -76,6 +78,7 @@ class MultiAeroGridSurfaces():
             Map = gridmapping.AeroGridMap(M, N)
             Surf = surface.AeroGridSurface(Map,
                                            zeta=tsdata.zeta_star[ss], gamma=tsdata.gamma_star[ss],
+                                           vortex_radius=vortex_radius,
                                            rho=tsdata.rho)
             self.Surfs_star.append(Surf)
             # store size
@@ -215,7 +218,7 @@ class MultiAeroGridSurfaces():
             Surf = self.Surfs[ss]
             Surf.get_joukovski_qs(gammaw_TE=self.Surfs_star[ss].gamma[0, :])
 
-    def verify_non_penetration(self):
+    def verify_non_penetration(self, print_info=False):
         """
         Verify state variables fulfill non-penetration condition at bound
         surfaces
@@ -227,7 +230,8 @@ class MultiAeroGridSurfaces():
                 self.get_normal_ind_velocities_at_collocation_points()
                 break
 
-        print('Verifing non-penetration at bound...')
+        if print_info:
+            print('Verifying non-penetration at bound...')
         for surf in self.Surfs:
             # project input velocities
             if surf.u_input_coll_norm is None:
@@ -235,7 +239,8 @@ class MultiAeroGridSurfaces():
 
             ErMax = np.max(np.abs(
                 surf.u_ind_coll_norm + surf.u_input_coll_norm))
-            print('Surface %.2d max abs error: %.3e' % (ss, ErMax))
+            if print_info:
+                print('Surface %.2d max abs error: %.3e' % (ss, ErMax))
 
             assert ErMax < 1e-12 * np.max(np.abs(self.Surfs[0].u_ext)), \
                 'Linearisation state does not verify the non-penetration condition!'
@@ -244,9 +249,9 @@ class MultiAeroGridSurfaces():
     # assert ErMax<1e-10*np.max(np.abs(self.Surfs[0].u_input_coll)),\
     # 	'Linearisation state does not verify the non-penetration condition! %.3e > %.3e' % (ErMax, 1e-10*np.max(np.abs(self.Surfs[0].u_input_coll)))
 
-    def verify_aic_coll(self):
+    def verify_aic_coll(self, print_info=False):
         """
-        Verify aic at collocaiton points using non-penetration condition
+        Verify aic at collocation points using non-penetration condition
         """
 
         AIC_list, AIC_star_list = assembly.AICs(
@@ -272,7 +277,8 @@ class MultiAeroGridSurfaces():
             Surf_out.u_ind_coll_norm = \
                 Surf_out.u_ind_coll_norm.reshape((Surf_out.maps.M, Surf_out.maps.N))
 
-        print('Verifing AICs at collocation points...')
+        if print_info:
+            print('Verifying AICs at collocation points...')
         i_surf = 0
         for surf in self.Surfs:
             # project input velocities
@@ -281,7 +287,8 @@ class MultiAeroGridSurfaces():
 
             ErMax = np.max(np.abs(
                 surf.u_ind_coll_norm + surf.u_input_coll_norm))
-            print('Surface %.2d max abs error: %.3e' % (i_surf, ErMax))
+            if print_info:
+                print('Surface %.2d max abs error: %.3e' % (i_surf, ErMax))
 
             assert ErMax < 1e-12 * np.max(np.abs(self.Surfs[0].u_ext)), \
                 'Linearisation state does not verify the non-penetration condition!'
@@ -291,12 +298,13 @@ class MultiAeroGridSurfaces():
     # assert ErMax<1e-10*np.max(np.abs(self.Surfs[0].u_input_coll)),\
     # 'Linearisation state does not verify the non-penetration condition! %.3e > %.3e' % (ErMax, 1e-10*np.max(np.abs(self.Surfs[0].u_input_coll)))
 
-    def verify_joukovski_qs(self):
+    def verify_joukovski_qs(self, print_info=False):
         """
         Verify quasi-steady contribution for forces matches against SHARPy.
         """
 
-        print('Verifing joukovski quasi-steady forces...')
+        if print_info:
+            print('Verifying joukovski quasi-steady forces...')
         self.get_joukovski_qs()
 
         for ss in range(self.n_surf):
@@ -309,7 +317,8 @@ class MultiAeroGridSurfaces():
             # print('Check forces: ', Fref_check-Fref)
             ErMax = np.max(np.abs(Fhere - Fref))
 
-            print('Surface %.2d max abs error: %.3e' % (ss, ErMax))
+            if print_info:
+                print('Surface %.2d max abs error: %.3e' % (ss, ErMax))
             assert ErMax < 1e-12, 'Wrong quasi-steady force over surface %.2d!' % ss
     # For rotating cases:
 
@@ -326,7 +335,7 @@ if __name__ == '__main__':
     haero = read.h5file(fname)
     tsdata = haero.ts00000
 
-    MS = MultiAeroGridSurfaces(tsdata)
+    MS = MultiAeroGridSurfaces(tsdata, 1e-6) # vortex_radius
 
     # collocation points
     MS.get_normal_ind_velocities_at_collocation_points()

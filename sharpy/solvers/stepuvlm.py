@@ -9,6 +9,7 @@ import sharpy.utils.settings as settings
 from sharpy.utils.solver_interface import solver, BaseSolver
 import sharpy.utils.generator_interface as gen_interface
 import sharpy.utils.cout_utils as cout
+from sharpy.utils.constants import vortex_radius_def
 
 
 @solver
@@ -92,6 +93,38 @@ class StepUvlm(BaseSolver):
     settings_default['rho'] = 1.225
     settings_description['rho'] = 'Air density'
 
+    settings_types['cfl1'] = 'bool'
+    settings_default['cfl1'] = True
+    settings_description['cfl1'] = 'If it is ``True``, it assumes that the discretisation complies with CFL=1'
+
+    settings_types['vortex_radius'] = 'float'
+    settings_default['vortex_radius'] = vortex_radius_def
+    settings_description['vortex_radius'] = 'Distance between points below which induction is not computed'
+
+    settings_types['vortex_radius_wake_ind'] = 'float'
+    settings_default['vortex_radius_wake_ind'] = vortex_radius_def
+    settings_description['vortex_radius_wake_ind'] = 'Distance between points below which induction is not computed in the wake convection'
+
+    settings_types['interp_coords'] = 'int'
+    settings_default['interp_coords'] = 0
+    settings_description['interp_coords'] = 'Coordinates to use for wake description: cartesian(0) or cylindrical_z(1)'
+    settings_options['interp_coords'] = [0, 1]
+
+    settings_types['filter_method'] = 'int'
+    settings_default['filter_method'] = 0
+    settings_description['filter_method'] = 'Method to filter the points: no filter (0) moving average(2)'
+    settings_options['filter_method'] = [0, 2]
+    # filter_method = 1 was dedicated to a splines filter. If it is needed in the future chack dev_alglib branch
+
+    settings_types['interp_method'] = 'int'
+    settings_default['interp_method'] = 0
+    settings_description['interp_method'] = 'Method of interpolation: linear(0), parabolic(1), splines(2), slerp around z(3), slerp around yaw_slerp(4)'
+    settings_options['interp_method'] = [0, 1, 2, 3, 4]
+
+    settings_types['yaw_slerp'] = 'float'
+    settings_default['yaw_slerp'] = 0
+    settings_description['yaw_slerp'] = 'Yaw angle in radians to be used when interp_metod == 4'
+
     settings_table = settings.SettingsTable()
     __doc__ += settings_table.generate(settings_types, settings_default, settings_description, settings_options)
 
@@ -172,7 +205,8 @@ class StepUvlm(BaseSolver):
                                           't': t,
                                           'ts': self.data.ts,
                                           'dt': dt,
-                                          'for_pos': structure_tstep.for_pos},
+                                          'for_pos': structure_tstep.for_pos,
+                                          'is_wake': False},
                                          aero_tstep.u_ext)
         if self.settings['convection_scheme'].value > 1 and convect_wake:
             # generate uext_star
@@ -181,7 +215,8 @@ class StepUvlm(BaseSolver):
                                               'ts': self.data.ts,
                                               'dt': dt,
                                               't': t,
-                                              'for_pos': structure_tstep.for_pos},
+                                              'for_pos': structure_tstep.for_pos,
+                                              'is_wake': True},
                                              aero_tstep.u_ext_star)
 
         uvlmlib.uvlm_solver(self.data.ts,

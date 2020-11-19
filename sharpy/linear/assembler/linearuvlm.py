@@ -10,6 +10,8 @@ import sharpy.utils.settings as settings
 import scipy.sparse as sp
 import sharpy.utils.rom_interface as rom_interface
 import sharpy.linear.src.libss as libss
+from sharpy.utils.constants import vortex_radius_def
+
 
 @ss_interface.linear_system
 class LinearUVLM(ss_interface.BaseElement):
@@ -121,6 +123,10 @@ class LinearUVLM(ss_interface.BaseElement):
     settings_default['rom_method_settings'] = dict()
     settings_description['rom_method_settings'] = 'Dictionary with settings for the desired ROM methods, ' \
                                                   'where the name of the ROM method is the key to the dictionary'
+
+    settings_types['vortex_radius'] = 'float'
+    settings_default['vortex_radius'] = vortex_radius_def
+    settings_description['vortex_radius'] = 'Distance below which inductions are not computed'
 
     settings_table = settings.SettingsTable()
     __doc__ += settings_table.generate(settings_types, settings_default, settings_description, settings_options)

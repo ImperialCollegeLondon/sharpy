@@ -97,8 +97,9 @@ class AsymptoticStability(BaseSolver):
 
         self.postprocessors = dict()
         self.with_postprocessors = False
+        self.caller = None
 
-    def initialise(self, data, custom_settings=None):
+    def initialise(self, data, custom_settings=None, caller=None):
         self.data = data
 
         if custom_settings is None:
@@ -126,7 +127,9 @@ class AsymptoticStability(BaseSolver):
         # Output dict
         self.data.linear.stability = dict()
 
-    def run(self):
+        self.caller = caller
+
+    def run(self, online=False):
         """
         Computes the eigenvalues and eigenvectors
 
@@ -186,6 +189,9 @@ class AsymptoticStability(BaseSolver):
             self.plot_modes()
 
         if len(self.settings['velocity_analysis']) == 3:
+            assert self.data.linear.linear_system.uvlm.scaled, 'The UVLM system is unscaled, unable to rescale the ' \
+                                                               'structural equations only. Rerun with a normalised ' \
+                                                               'UVLM system.'
             self.velocity_analysis()
 
         self.data.linear.stability['eigenvectors'] = self.eigenvectors

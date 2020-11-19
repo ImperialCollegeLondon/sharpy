@@ -138,22 +138,21 @@ class StaticTrim(BaseSolver):
         self.structural_solver.next_step()
         self.aero_solver.next_step()
 
-    def cleanup_timestep_info(self):
-        if max(len(self.data.aero.timestep_info), len(self.data.structure.timestep_info)) > 1:
-            # copy last info to first
-            self.data.aero.timestep_info[0] = self.data.aero.timestep_info[-1]
-            self.data.structure.timestep_info[0] = self.data.structure.timestep_info[-1]
-            # delete all the rest
-            while len(self.data.aero.timestep_info) - 1:
-                del self.data.aero.timestep_info[-1]
-            while len(self.data.structure.timestep_info) - 1:
-                del self.data.structure.timestep_info[-1]
-
-        self.data.ts = 0
-
     def run(self):
+
+        # In the event the modal solver has been run prior to StaticCoupled (i.e. to get undeformed modes), copy
+        # results and then attach to the resulting timestep
+        try:
+            modal = self.data.structure.timestep_info[-1].modal.copy()
+            modal_exists = True
+        except AttributeError:
+            modal_exists = False
+
         self.trim_algorithm()
-        # TODO modify trimmed values for next solver
+
+        if modal_exists:
+            self.data.structure.timestep_info[-1].modal = modal
+
         return self.data
 
     def convergence(self, fz, m, fx):
