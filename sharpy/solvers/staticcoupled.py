@@ -195,11 +195,12 @@ class StaticCoupled(BaseSolver):
                     params['data'] = self.data
                     params['struct_tstep'] = self.data.structure.timestep_info[self.data.ts]
                     params['aero_tstep'] = self.data.aero.timestep_info[self.data.ts]
+                    params['force_coeff'] = 0.
                     for id, runtime_generator in self.runtime_generators.items():
                         runtime_generator.generate(params)
 
                     struct_forces += self.data.structure.timestep_info[self.data.ts].runtime_generated_forces
-            
+
                 if not self.settings['relaxation_factor'].value == 0.:
                     if i_iter == 0:
                         self.previous_force = struct_forces.copy()
