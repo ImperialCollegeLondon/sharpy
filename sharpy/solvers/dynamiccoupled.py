@@ -500,6 +500,7 @@ class DynamicCoupled(BaseSolver):
                 params['data'] = self.data
                 params['struct_tstep'] = structural_kstep
                 params['aero_tstep'] = aero_kstep
+                params['force_coeff'] = 0.
                 for id, runtime_generator in self.runtime_generators.items():
                     runtime_generator.generate(params)
 
@@ -522,16 +523,6 @@ class DynamicCoupled(BaseSolver):
                         aero_kstep)
                     break
 
-                # Add external forces
-                if self.with_runtime_generators:
-                    controlled_structural_kstep.runtime_generated_forces.fill(0.)
-                    params = dict()
-                    params['data'] = self.data
-                    params['struct_tstep'] = controlled_structural_kstep
-                    params['aero_tstep'] = aero_kstep
-                    for id, runtime_generator in self.runtime_generators.items():
-                        runtime_generator.generate(params)
-
                 # generate new grid (already rotated)
                 aero_kstep = controlled_aero_kstep.copy()
                 self.aero_solver.update_custom_grid(
@@ -548,6 +539,17 @@ class DynamicCoupled(BaseSolver):
                             force_coeff = k/self.settings['pseudosteps_ramp_unsteady_force'].value
                         else:
                             force_coeff = 1.
+
+                # Add external forces
+                if self.with_runtime_generators:
+                    controlled_structural_kstep.runtime_generated_forces.fill(0.)
+                    params = dict()
+                    params['data'] = self.data
+                    params['struct_tstep'] = controlled_structural_kstep
+                    params['aero_tstep'] = aero_kstep
+                    params['force_coeff'] = force_coeff
+                    for id, runtime_generator in self.runtime_generators.items():
+                        runtime_generator.generate(params)
 
                 # run the solver
                 ini_time_aero = time.perf_counter()

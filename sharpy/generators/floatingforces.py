@@ -484,6 +484,7 @@ class FloatingForces(generator_interface.BaseGenerator):
         data = params['data']
         struct_tstep = params['struct_tstep']
         aero_tstep = params['aero_tstep']
+        force_coeff = params['force_coeff']
 
         self.update_dof_vector(data.structure, struct_tstep, data.ts)
 
@@ -561,8 +562,8 @@ class FloatingForces(generator_interface.BaseGenerator):
         cbg = np.dot(cab.T, cga.T)
         print("hydrostatic forces g 2:", hd_forces_g_2)
 
-        struct_tstep.runtime_generated_forces[self.buoyancy_node, 0:3] += np.dot(cbg, hd_forces_g[0:3] + hd_forces_g_2[0:3])
-        struct_tstep.runtime_generated_forces[self.buoyancy_node, 3:6] += np.dot(cbg, hd_forces_g[3:6] + hd_forces_g_2[3:6])
+        struct_tstep.runtime_generated_forces[self.buoyancy_node, 0:3] += np.dot(cbg, hd_forces_g[0:3] + force_coeff*hd_forces_g_2[0:3])
+        struct_tstep.runtime_generated_forces[self.buoyancy_node, 3:6] += np.dot(cbg, hd_forces_g[3:6] + force_coeff*hd_forces_g_2[3:6])
 
         # Wave loading
         phase = self.settings['wave_freq']*data.ts*self.settings['dt']
@@ -573,5 +574,5 @@ class FloatingForces(generator_interface.BaseGenerator):
         cab = algebra.crv2rotation(struct_tstep.psi[ielem, inode_in_elem])
         cbg = np.dot(cab.T, cga.T)
 
-        struct_tstep.runtime_generated_forces[self.wave_forces_node, 0:3] += np.dot(cbg, wave_forces_g[0:3])
-        struct_tstep.runtime_generated_forces[self.wave_forces_node, 3:6] += np.dot(cbg, wave_forces_g[3:6])
+        struct_tstep.runtime_generated_forces[self.wave_forces_node, 0:3] += np.dot(cbg, force_coeff*wave_forces_g[0:3])
+        struct_tstep.runtime_generated_forces[self.wave_forces_node, 3:6] += np.dot(cbg, force_coeff*wave_forces_g[3:6])
