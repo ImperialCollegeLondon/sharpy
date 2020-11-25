@@ -327,6 +327,7 @@ def generate_aero_file():
     wn = 0
     # right wing (surface 0, beam 0)
     i_surf = 0
+    boundary_conditions_aero[wn] = 1 # BC at fuselage junction that Zirkulation = Zirkulation
     airfoil_distribution[we:we + n_elem_main, :] = 0
     surface_distribution[we:we + n_elem_main] = i_surf
     surface_m[i_surf] = m
@@ -347,6 +348,7 @@ def generate_aero_file():
 
     # left wing (surface 1, beam 1)
     i_surf = 1
+    boundary_conditions_aero[wn] = 1 # BC at fuselage junction
     airfoil_distribution[we:we + n_elem_main, :] = 0
     surface_distribution[we:we + n_elem_main] = i_surf
     surface_m[i_surf] = m
@@ -396,6 +398,8 @@ def generate_aero_file():
         aero_node_input = h5file.create_dataset('aero_node', data=aero_node)
         elastic_axis_input = h5file.create_dataset('elastic_axis', data=elastic_axis)
 
+        bocos_handle = h5file.create_dataset(
+            'boundary_conditions', data=boundary_conditions_aero)
 
 def generate_nonlifting_body_file():
     we = 0
