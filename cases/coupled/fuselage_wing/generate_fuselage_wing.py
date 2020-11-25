@@ -183,31 +183,15 @@ radius = np.zeros((n_node,))
 
 # FUNCTIONS-------------------------------------------------------------
 def clean_test_files():
-    fem_file_name = route + '/' + case_name + '.fem.h5'
-    if os.path.isfile(fem_file_name):
-        os.remove(fem_file_name)
-
-    dyn_file_name = route + '/' + case_name + '.dyn.h5'
-    if os.path.isfile(dyn_file_name):
-        os.remove(dyn_file_name)
-
-    aero_file_name = route + '/' + case_name + '.aero.h5'
-    if os.path.isfile(aero_file_name):
-        os.remove(aero_file_name)
-
-    solver_file_name = route + '/' + case_name + '.sharpy'
-    if os.path.isfile(solver_file_name):
-        os.remove(solver_file_name)
-
-    flightcon_file_name = route + '/' + case_name + '.flightcon.txt'
-    if os.path.isfile(flightcon_file_name):
-        os.remove(flightcon_file_name)
-
+    list_file_extension = ['.fem.h5', '.dyn.h5', '.aero.h5',
+                           '.nonlifting_body.h5', '.sharpy', '.flightcon.txt']
+    for file_extension in list_file_extension:
+        file = route + '/' + case_name + file_extension
+        if os.path.isfile(file):
+            os.remove(file)
 
 def find_index_of_closest_entry(array_values, target_value):
     return (np.abs(array_values - target_value)).argmin()
-
-
 
 def generate_fem():
     stiffness[0, ...] = base_stiffness_main
