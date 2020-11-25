@@ -77,7 +77,8 @@ j_bar_main = 0.075
 length_fuselage = 10
 offset_fuselage_vertical = 0
 offset_fuselage_wing = 4
-diameter_fuselage = 1.3333333333333333
+radius_fuselage = 1.3333333333333333/2
+list_cylinder_position_fuselage = [0.3, 0.7] # percent where fuselage has cylinder shape
 sigma_fuselage = 10
 m_bar_fuselage = 0.2
 j_bar_fuselage = 0.08
@@ -167,10 +168,17 @@ surface_distribution = np.zeros((n_elem,), dtype=int) - 1
 surface_m = np.zeros((n_surfaces, ), dtype=int)
 m_distribution = 'uniform'
 aero_node = np.zeros((n_node,), dtype=bool)
+nonlifting_body_node = np.zeros((n_node,), dtype=bool)
 twist = np.zeros((n_elem, n_node_elem))
 sweep = np.zeros((n_elem, n_node_elem))
 chord = np.zeros((n_elem, n_node_elem,))
 elastic_axis = np.zeros((n_elem, n_node_elem,))
+boundary_conditions_aero = np.zeros((n_node, ), dtype=int)
+
+# nonlifting body
+nonlifting_body_distribution = np.zeros((n_elem,), dtype=int) - 1
+nonlifting_body_m = np.zeros((n_nonlifting_bodies, ), dtype=int)
+radius = np.zeros((n_node,))
 
 
 # FUNCTIONS-------------------------------------------------------------
@@ -233,7 +241,7 @@ def generate_fem():
     beam_number[we:we + n_elem_main] = 1
     x[wn:wn + n_node_main] = offset_fuselage_wing
     y[wn:wn + n_node_main] = np.linspace(0, -span_main, n_node_main)
-    y[wn:wn + n_node_main] -= diameter_fuselage
+    y[wn:wn + n_node_main] -= radius_fuselage
     for ielem in range(n_elem_main):
         conn[we + ielem, :] = ((np.ones((3, ))*(we+ielem)*(n_node_elem - 1)) +
                                1 + [0, 2, 1])
@@ -388,6 +396,39 @@ def generate_aero_file():
         aero_node_input = h5file.create_dataset('aero_node', data=aero_node)
         elastic_axis_input = h5file.create_dataset('elastic_axis', data=elastic_axis)
 
+
+def generate_nonlifting_body_file():
+    we = 0
+    wn = 0
+
+    # right wing
+    nonlifting_body_node[wn:wn + n_node_main] = False
+    we += n_elem_main
+    wn += n_node_main
+
+    # left wing
+    nonlifting_body_node[wn:wn + n_node_main] = False
+    we += n_elem_main
+    wn += n_node_main
+
+    #fuselage (beam?, body ID = 0)
+    i_body = 0
+    nonlifting_body_node[wn:wn + n_node_fuselage] = True
+    nonlifting_body_distribution[wn:wn + n_node_fuselage] = i_body
+    nonlifting_body_m[i_body] = m_radial_elem_fuselage
+    radius[wn:wn + n_node_fuselage] = create_fuselage_geometry()
+
+    with h5.File(route + '/' + case_name + '.nonlifting_body.h5', 'a') as h5file:
+        nonlifting_body_m_input = h5file.create_dataset('nonlifting_body_m', data=nonlifting_body_m)
+        nonlifting_body_node_input = h5file.create_dataset('nonlifting_body_node', data=nonlifting_body_node)
+
+        nonlifting_body_distribution_input = h5file.create_dataset('nonlifting_body_distribution', data=nonlifting_body_distribution)
+
+        # radius
+        radius_input = h5file.create_dataset('radius', data=radius)
+        dim_attr = radius_input.attrs['units'] = 'm'
+
+    # right wing (surface 0, beam 0)
 def generate_naca_camber(M=0, P=0):
     mm = M*1e-2
     p = P*1e-1
@@ -404,6 +445,42 @@ def generate_naca_camber(M=0, P=0):
     y_vec = np.array([naca(x, mm, p) for x in x_vec])
     return x_vec, y_vec
 
+def find_index_of_closest_entry(array_values, target_value):
+    return (np.abs(array_values - target_value)).argmin()
+
+def create_ellipsoid(x_geom, a, b, flip):
+    x_geom -= x_geom.min()
+    y = b*np.sqrt(1-(x_geom/a)**2)
+    if flip:
+        y = np.flip(y.tolist())
+    return y
+
+def add_nose_or_tail_shape(idx, array_x, nose = True):
+    if nose:
+        shape = create_ellipsoid(array_x[:idx], array_x[idx] - array_x[0], radius_fuselage, True)
+    if not nose:
+        #TO-DO: Add paraboloid shaped tail
+        shape = create_ellipsoid(array_x[idx:], array_x[-1]-array_x[idx], radius_fuselage, False)
+    return shape
+
+def create_fuselage_geometry():
+    array_radius = np.zeros((sum(nonlifting_body_node)))
+    x_fuselage = x[nonlifting_body_node]
+    fuselage_length = max(x_fuselage)-min(x_fuselage) # useful??
+    idx_cylinder_start = find_index_of_closest_entry(x_fuselage, list_cylinder_position_fuselage[0]*fuselage_length)
+    idx_cylinder_end = find_index_of_closest_entry(x_fuselage,list_cylinder_position_fuselage[1]*fuselage_length)
+    # set constant radius of cylinder
+    array_radius[idx_cylinder_start:idx_cylinder_end] = radius_fuselage
+    # set r(x) for nose and tail region
+    array_radius[:idx_cylinder_start] = add_nose_or_tail_shape(idx_cylinder_start, x_fuselage, nose = True)
+    array_radius[idx_cylinder_end:] = add_nose_or_tail_shape(idx_cylinder_end, x_fuselage, nose = False)
+     # ensure radius = 0 at nose/tail
+    array_radius[0] = 0
+    array_radius[-1] = 0
+    return array_radius
+
+
 clean_test_files()
 generate_fem()
 generate_aero_file()
+generate_nonlifting_body_file()
