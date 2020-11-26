@@ -99,11 +99,13 @@ chord_main = 1.0
 # spatial discretisation
 # chordiwse panels
 m = 4
+m_radial_elem_fuselage = 12
 # spanwise elements
 n_elem_multiplier = 2
 n_elem_main = int(2*n_elem_multiplier) #int(4*n_elem_multiplier)
 n_elem_fuselage = 21
 n_surfaces = 2
+n_nonlifting_bodies = 1
 
 # temporal discretisation
 physical_time = 1
@@ -207,7 +209,7 @@ def generate_fem():
     beam_number[we:we + n_elem_main] = 0
     x[wn:wn + n_node_main] = offset_fuselage_wing
     y[wn:wn + n_node_main] = np.linspace(0, span_main, n_node_main)
-    y[wn:wn + n_node_main] += diameter_fuselage
+    y[wn:wn + n_node_main] += radius_fuselage
     for ielem in range(n_elem_main):
         conn[we + ielem, :] = ((np.ones((3, ))*(we + ielem)*(n_node_elem - 1)) +
                                [0, 2, 1])
