@@ -1643,35 +1643,32 @@ class SimulationInformation():
 
         # TODO: I am sure this can be done in a better way
         for solver in aux_names:
-            self.solvers[solver] = {}
-            if not solver == 'PreSharpy':
-                try:
-                    aux_solver = solver_interface.solver_from_string(solver)
-                except:
-                    aux_solver = generator_interface.generator_from_string(solver)
-                    # TODO: remove this try/except when generators are rewriten as solvers with class attributes instead of instance attributes
-                    aux_solver.__init__(aux_solver)
+            if solver == 'PreSharpy':
+                solver_name = 'SHARPy'
+            else:
+                solver_name = solver
+            self.solvers[solver_name] = {}
+            try:
+                aux_solver = solver_interface.solver_from_string(solver)
+            except:
+                aux_solver = generator_interface.generator_from_string(solver)
+                # TODO: remove this try/except when generators are rewriten as solvers with class attributes instead of instance attributes
+                aux_solver.__init__(aux_solver)
 
-                if aux_solver.settings_default == {}:
-                    aux_solver.__init__(aux_solver)
+            if aux_solver.settings_default == {}:
+                aux_solver.__init__(aux_solver)
 
-                for key, value in aux_solver.settings_default.items():
-                    self.solvers[solver][key] = deepcopy(value)
+            for key, value in aux_solver.settings_default.items():
+                self.solvers[solver_name][key] = deepcopy(value)
 
         # # MAIN
-        self.solvers['SHARPy'] = {'flow': '',
-                                  'case': 'default_case_name',
-                                  'route': '',
-                                  'write_screen': 'on',
-                                  'write_log': 'off',
-                                  'log_folder': './output',
-                                  'log_file': 'log'}
-
-        self.solvers['SaveData'] = {'folder': './output',
-                                   'save_aero': True,
-                                   'save_struct': True,
-                                   # 'skip_attr': dict(),
-                                   'compress_float': False}
+        # self.solvers['SHARPy'] = {'flow': '',
+        #                           'case': 'default_case_name',
+        #                           'route': '',
+        #                           'write_screen': 'on',
+        #                           'write_log': 'off',
+        #                           'log_folder': './output',
+        #                           'log_file': 'log'}
 
     def check(self):
 
