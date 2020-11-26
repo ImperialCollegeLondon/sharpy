@@ -283,13 +283,13 @@ def interp_1st_dim_matrix(A, vec, value):
         return A[-1, ...]
     else:
         i = 0
-        while value < vec[i]:
+        while value > vec[i]:
             i += 1
-        dist = vec[i + 1] - vec[i]
-        rel_dist_to_i = (value - vec[i])/dist
-        rel_dist_to_ip1 = (vec[i + 1] - value)/dist
+        dist = vec[i] - vec[i - 1]
+        rel_dist_to_im1 = (value - vec[i - 1])/dist
+        rel_dist_to_i = (vec[i] - value)/dist
 
-    return A[i, ...]*rel_dist_to_ip1 + A[i + 1, ...]*rel_dist_to_i
+    return A[i - 1, ...]*rel_dist_to_i + A[i, ...]*rel_dist_to_im1
 
     # Test
     # A = np.ones((3, 3, 3))
