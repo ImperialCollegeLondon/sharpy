@@ -58,6 +58,10 @@ class SaveData(BaseSolver):
     settings_description['save_linear_uvlm'] = 'Save linear UVLM state space system. Use with caution when dealing with ' \
                                                'large systems.'
 
+    settings_types['save_wake'] = 'bool'
+    settings_default['save_wake'] = True
+    settings_description['save_wake'] = 'Save aero wake classes.'
+
     settings_types['skip_attr'] = 'list(str)'
     settings_default['skip_attr'] = ['fortran',
                                      'airfoils',
@@ -163,7 +167,13 @@ class SaveData(BaseSolver):
             if self.settings['save_aero']:
                 self.ClassesToSave += (sharpy.aero.models.aerogrid.Aerogrid,
                                        sharpy.utils.datastructures.AeroTimeStepInfo,)
-
+                if not self.settings['save_wake']:
+                    self.settings['skip_attr'].append(['zeta_star',
+                                                       'u_ext_star',
+                                                       'gamma_star',
+                                                       'dist_to_orig',
+                                                       'wake_conv_vel'])
+                    
             if self.settings['save_struct']:
                 self.ClassesToSave += (
                     sharpy.structure.models.beam.Beam,
