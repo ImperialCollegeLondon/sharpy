@@ -279,7 +279,7 @@ def interp_1st_dim_matrix(A, vec, value):
     # Compute the positions to interpolate
     if value <= vec[0]:
         return A[0, ...]
-    elif value >= vec[-1]:
+    elif ((value >= vec[-1]) or (value > vec[-2] and np.isinf(vec[-1]))):
         return A[-1, ...]
     else:
         i = 0
