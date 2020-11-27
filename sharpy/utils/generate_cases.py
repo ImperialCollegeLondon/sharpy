@@ -514,6 +514,7 @@ class StructuralInformation():
         self.mass_db = mass_db
         self.create_frame_of_reference_delta(y_BFoR=frame_of_reference_delta)
         self.structural_twist = from_node_list_to_elem_matrix(vec_node_structural_twist, self.connectivities)
+        self.boundary_conditions = np.zeros((self.num_node,), dtype=int)
         self.beam_number = np.zeros((self.num_elem,), dtype=int)
         self.body_number = np.zeros((self.num_elem,), dtype=int)
         self.app_forces = np.zeros((self.num_node, 6), dtype=float)
