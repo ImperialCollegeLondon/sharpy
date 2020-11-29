@@ -1,5 +1,6 @@
 import numpy as np
 import h5py as h5
+import ctypes as ct
 
 import sharpy.utils.cout_utils as cout
 import sharpy.utils.generator_interface as generator_interface
