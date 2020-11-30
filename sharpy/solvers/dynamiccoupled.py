@@ -540,17 +540,6 @@ class DynamicCoupled(BaseSolver):
                         else:
                             force_coeff = 1.
 
-                # Add external forces
-                if self.with_runtime_generators:
-                    controlled_structural_kstep.runtime_generated_forces.fill(0.)
-                    params = dict()
-                    params['data'] = self.data
-                    params['struct_tstep'] = controlled_structural_kstep
-                    params['aero_tstep'] = aero_kstep
-                    params['force_coeff'] = force_coeff
-                    for id, runtime_generator in self.runtime_generators.items():
-                        runtime_generator.generate(params)
-
                 # run the solver
                 ini_time_aero = time.perf_counter()
                 self.data = self.aero_solver.run(aero_kstep,
@@ -565,6 +554,18 @@ class DynamicCoupled(BaseSolver):
                 # move the aerodynamic surface according the the structural one
                 self.aero_solver.update_custom_grid(structural_kstep,
                                                     aero_kstep)
+
+                # Add external forces
+                if self.with_runtime_generators:
+                    structural_kstep.runtime_generated_forces.fill(0.)
+                    params = dict()
+                    params['data'] = self.data
+                    params['struct_tstep'] = structural_kstep
+                    params['aero_tstep'] = aero_kstep
+                    params['force_coeff'] = force_coeff
+                    for id, runtime_generator in self.runtime_generators.items():
+                        runtime_generator.generate(params)
+
                 self.map_forces(aero_kstep,
                                 structural_kstep,
                                 force_coeff)
