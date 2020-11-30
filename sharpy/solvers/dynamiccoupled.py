@@ -540,21 +540,6 @@ class DynamicCoupled(BaseSolver):
                         else:
                             force_coeff = 1.
 
-                # run the solver
-                ini_time_aero = time.perf_counter()
-                self.data = self.aero_solver.run(aero_kstep,
-                                                 structural_kstep,
-                                                 convect_wake=True,
-                                                 unsteady_contribution=unsteady_contribution)
-                self.time_aero += time.perf_counter() - ini_time_aero
-
-                previous_kstep = structural_kstep.copy()
-                structural_kstep = controlled_structural_kstep.copy()
-
-                # move the aerodynamic surface according the the structural one
-                self.aero_solver.update_custom_grid(structural_kstep,
-                                                    aero_kstep)
-
                 # Add external forces
                 if self.with_runtime_generators:
                     structural_kstep.runtime_generated_forces.fill(0.)
@@ -565,6 +550,22 @@ class DynamicCoupled(BaseSolver):
                     params['force_coeff'] = force_coeff
                     for id, runtime_generator in self.runtime_generators.items():
                         runtime_generator.generate(params)
+
+                # run the solver
+                ini_time_aero = time.perf_counter()
+                self.data = self.aero_solver.run(aero_kstep,
+                                                 structural_kstep,
+                                                 convect_wake=True,
+                                                 unsteady_contribution=unsteady_contribution)
+                self.time_aero += time.perf_counter() - ini_time_aero
+
+                previous_kstep = structural_kstep.copy()
+                structural_kstep = controlled_structural_kstep.copy()
+                structural_kstep.runtime_generated_forces = previous_kstep.runtime_generated_forces.astype(dtype=ct.c_double, order='F', copy=True)
+
+                # move the aerodynamic surface according the the structural one
+                self.aero_solver.update_custom_grid(structural_kstep,
+                                                    aero_kstep)
 
                 self.map_forces(aero_kstep,
                                 structural_kstep,
