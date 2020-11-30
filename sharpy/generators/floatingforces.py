@@ -245,19 +245,27 @@ def test_change_system():
 
     wt_dofs_char = ["surge", "sway", "heave", "roll", "pitch", "yaw"]
     wt_matrix = np.zeros((6,6), dtype=np.object_)
+    wt_matrix_num = np.zeros((6,6),)
     for idof in range(6):
         for jdof in range(6):
             wt_matrix[idof, jdof] = ("%s-%s" % (wt_dofs_char[idof], wt_dofs_char[jdof]))
+            wt_matrix_num[idof, jdof] = 10.*idof + jdof
 
-    wt_to_sharpy = [2, 1, 0, 5, 4, 3]
-    sharpy_matrix = wt_matrix[wt_to_sharpy, :]
-    sharpy_matrix = sharpy_matrix[:, wt_to_sharpy]
+    sharpy_matrix_old = change_of_to_sharpy_old(wt_matrix_num)
+    sharpy_matrix = change_of_to_sharpy(wt_matrix_num)
 
-    print("wt matrix: ", wt_matrix)
+    print("wt matrix: ", wt_matrix_num)
+    print("sharpy matrix old: ", sharpy_matrix_old)
     print("sharpy matrix: ", sharpy_matrix)
 
+    undo_sharpy_matrix_old = change_of_to_sharpy_old(sharpy_matrix_old)
+    undo_sharpy_matrix = change_of_to_sharpy(sharpy_matrix)
 
-def change_of_to_sharpy(matrix_of):
+    print("undo sharpy matrix old: ", undo_sharpy_matrix_old)
+    print("undo sharpy matrix: ", undo_sharpy_matrix)
+
+
+def change_of_to_sharpy_old(matrix_of):
 
     # Wind turbine degrees of freedom: Surge, sway, heave, roll, pitch, yaw.
     # SHARPy axis associated:              z,    y,     x,    z,     y,   x
@@ -266,6 +274,19 @@ def change_of_to_sharpy(matrix_of):
     matrix_sharpy = matrix_of[of_to_sharpy, :]
     matrix_sharpy = matrix_sharpy[:, of_to_sharpy]
 
+    return matrix_sharpy
+
+
+def change_of_to_sharpy(matrix_of):
+
+    sub_mat = np.array([[0., 0, 1],
+                        [0., -1, 0],
+                        [1., 0, 0]])
+    C_of_s = np.zeros((6,6))
+    C_of_s[0:3, 0:3] = sub_mat
+    C_of_s[3:6, 3:6] = sub_mat
+
+    matrix_sharpy = np.dot(C_of_s.T, np.dot(matrix_of, C_of_s))
     return matrix_sharpy
 
 
