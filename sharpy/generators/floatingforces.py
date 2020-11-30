@@ -468,8 +468,8 @@ class FloatingForces(generator_interface.BaseGenerator):
                   beam.ini_info.for_pos[0:3])
         self.q[it, 3:6] = algebra.quat2euler(struct_tstep.quat)
 
-        struct_tstep.for_vel = struct_tstep.dqdt[-6:].astype(dtype=ct.c_double, order='F', copy=True)
-        struct_tstep.for_acc = struct_tstep.dqddt[-6:].astype(dtype=ct.c_double, order='F', copy=True)
+        # struct_tstep.for_vel = struct_tstep.dqdt[-6:].astype(dtype=ct.c_double, order='F', copy=True)
+        # struct_tstep.for_acc = struct_tstep.dqddt[-6:].astype(dtype=ct.c_double, order='F', copy=True)
 
         self.qdot[it, 0:3] = np.dot(cga, struct_tstep.for_vel[0:3])
         self.qdot[it, 3:6] = np.dot(cga, struct_tstep.for_vel[3:6])
