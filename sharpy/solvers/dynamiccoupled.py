@@ -501,6 +501,7 @@ class DynamicCoupled(BaseSolver):
                 params['struct_tstep'] = structural_kstep
                 params['aero_tstep'] = aero_kstep
                 params['force_coeff'] = 0.
+                params['fsi_substep'] = -1
                 for id, runtime_generator in self.runtime_generators.items():
                     runtime_generator.generate(params)
 
@@ -548,6 +549,7 @@ class DynamicCoupled(BaseSolver):
                     params['struct_tstep'] = structural_kstep
                     params['aero_tstep'] = aero_kstep
                     params['force_coeff'] = force_coeff
+                    params['fsi_substep'] = k
                     for id, runtime_generator in self.runtime_generators.items():
                         runtime_generator.generate(params)
 

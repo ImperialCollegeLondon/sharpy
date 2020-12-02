@@ -196,6 +196,7 @@ class StaticCoupled(BaseSolver):
                     params['struct_tstep'] = self.data.structure.timestep_info[self.data.ts]
                     params['aero_tstep'] = self.data.aero.timestep_info[self.data.ts]
                     params['force_coeff'] = 0.
+                    params['fsi_substep'] = -i_iter
                     for id, runtime_generator in self.runtime_generators.items():
                         runtime_generator.generate(params)
 

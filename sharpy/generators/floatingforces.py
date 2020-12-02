@@ -1,6 +1,7 @@
 import numpy as np
 import h5py as h5
 import ctypes as ct
+import os
 
 import sharpy.utils.cout_utils as cout
 import sharpy.utils.generator_interface as generator_interface
@@ -388,6 +389,14 @@ class FloatingForces(generator_interface.BaseGenerator):
     settings_default['wave_incidence'] = 0.
     settings_description['wave_incidence'] = 'Wave incidence in rad'
 
+    settings_types['folder'] = 'str'
+    settings_default['folder'] = 'output'
+    settings_description['folder'] = 'Folder for the output files'
+
+    settings_types['log_filename'] = 'str'
+    settings_default['log_filename'] = 'log_floating_forces'
+    settings_description['log_filename'] = 'Log file name to write outputs'
+
     setting_table = settings.SettingsTable()
     __doc__ += setting_table.generate(settings_types, settings_default, settings_description)
 
@@ -416,6 +425,9 @@ class FloatingForces(generator_interface.BaseGenerator):
         self.q = None
         self.qdot = None
         self.qdotdot = None
+
+        self.log_filename = None
+
 
     def initialise(self, in_dict=None, data=None):
         self.in_dict = in_dict
@@ -490,6 +502,53 @@ class FloatingForces(generator_interface.BaseGenerator):
                                         self.floating_data['wave_forces']['xi_beta_deg']*deg2rad,
                                         self.settings['wave_incidence'])
 
+        # Log file
+        if not os.path.exists(self.settings['folder']):
+            os.makedirs(self.settings['folder'])
+        folder = self.settings['folder'] + '/' + data.settings['SHARPy']['case'] + '/floatingforces/'
+        if not os.path.exists(folder):
+            os.makedirs(folder)
+        self.log_filename = folder + self.settings['log_filename'] + '.h5'
+
+
+    def write_output(self, ts, k, mooring, mooring_yaw, hydrostatic,
+                     hydrodynamic_qdot, hydrodynamic_qdotdot, waves):
+
+        output = dict()
+        output['ts'] = ts
+        output['k'] = k
+        output['q'] = self.q[ts, :]
+        output['qdot'] = self.qdot[ts, :]
+        output['qdotdot'] = self.qdotdot[ts, :]
+        output['mooring_forces'] = mooring
+        output['mooring_yaw'] = mooring_yaw
+        output['hydrostatic'] = hydrostatic
+        output['hydrodynamic_qdot'] = hydrodynamic_qdot
+        output['hydrodynamic_qdotdot'] = hydrodynamic_qdotdot
+        output['waves'] = waves
+
+        fid = h5.File(self.log_filename, 'a')
+        print(ts, k)
+        group = fid.create_group("ts%d_k%d" % (ts, k))
+        for key, value in output.items():
+            group.create_dataset(key, data=value)
+        fid.close()
+
+        debug_output = True
+        if debug_output:
+            print("q: ", self.q[ts, :])
+            print("qdot: ", self.qdot[ts, :])
+            print("qdotdot: ", self.qdotdot[ts, :])
+
+            print("mooring: ", mooring)
+            print("mooring_yaw: ", mooring_yaw)
+            print("hydrostatic: ", hydrostatic)
+            print("hydrodynamic_qdot: ", hydrodynamic_qdot)
+            print("hydrodynamic_qdotdot: ", hydrodynamic_qdotdot)
+            print("waves: ", waves)
+
+        return
+
 
     def update_dof_vector(self, beam, struct_tstep, it):
 
@@ -500,20 +559,13 @@ class FloatingForces(generator_interface.BaseGenerator):
                   beam.ini_info.for_pos[0:3])
         self.q[it, 3:6] = algebra.quat2euler(struct_tstep.quat)
 
-        # struct_tstep.for_vel = struct_tstep.dqdt[-6:].astype(dtype=ct.c_double, order='F', copy=True)
-        # struct_tstep.for_acc = struct_tstep.dqddt[-6:].astype(dtype=ct.c_double, order='F', copy=True)
-
         self.qdot[it, 0:3] = np.dot(cga, struct_tstep.for_vel[0:3])
         self.qdot[it, 3:6] = np.dot(cga, struct_tstep.for_vel[3:6])
 
         self.qdotdot[it, 0:3] = np.dot(cga, struct_tstep.for_acc[0:3])
-        # self.qdotdot[it, 1] = 0.
         self.qdotdot[it, 3:6] = np.dot(cga, struct_tstep.for_acc[3:6])
-        # self.qdotdot[it, 4] = 0.
 
-        print("q: ", self.q[it, :])
-        print("qdot: ", self.qdot[it, :])
-        print("qdotdot: ", self.qdotdot[it, :])
+        return
 
 
     def generate(self, params):
@@ -522,10 +574,13 @@ class FloatingForces(generator_interface.BaseGenerator):
         struct_tstep = params['struct_tstep']
         aero_tstep = params['aero_tstep']
         force_coeff = params['force_coeff']
+        k = params['fsi_substep']
 
+        # Update dof vector
         self.update_dof_vector(data.structure, struct_tstep, data.ts)
 
         # Mooring lines
+        mooring_forces = np.zeros((self.n_mooring_lines, 2))
         cga = struct_tstep.cga()
         ielem, inode_in_elem = data.structure.node_master_elem[self.mooring_node]
         cab = algebra.crv2rotation(struct_tstep.psi[ielem, inode_in_elem])
@@ -549,6 +604,7 @@ class FloatingForces(generator_interface.BaseGenerator):
                                  vf0=self.vf_prev[imoor])
                                  # hf0=None,
                                  # vf0=None)
+            mooring_forces[imoor, :] = np.array([hf, vf])
             # Save the results to initialise the computation in the next time step
             self.hf_prev[imoor] = hf + 0.
             self.vf_prev[imoor] = vf + 0.
@@ -562,50 +618,32 @@ class FloatingForces(generator_interface.BaseGenerator):
             force_cl = np.zeros((6,))
             force_cl[0:3] = force_fl
             r_fairlead_G = fairlead_pos_G - np.dot(cga, struct_tstep.pos[self.mooring_node, :])
-            # print("fairlead_pos_G: ", fairlead_pos_G)
-            # print("center pos G: ", np.dot(cga, struct_tstep.pos[self.mooring_node, :]))
-            # print("r_fairlead_G: ", r_fairlead_G)
             force_cl[3:6] = np.cross(r_fairlead_G, force_fl)
-
-            # moor_force_out = -np.dot(cbg, force_cl[0:3])
-            # print("Mooring force b: ", moor_force_out)
-            # moor_mom_out = -np.dot(cbg, force_cl[3:6])
-            # print("Mooring moment b:  ", moor_mom_out)
-            moor_force_out -= np.dot(cbg, force_cl[0:3])
-            moor_mom_out -= np.dot(cbg, force_cl[3:6])
 
             struct_tstep.runtime_generated_forces[self.mooring_node, 0:3] -= np.dot(cbg, force_cl[0:3])
             struct_tstep.runtime_generated_forces[self.mooring_node, 3:6] -= np.dot(cbg, force_cl[3:6])
 
-        # print("Mooring force b: ", moor_force_out)
-        # print("Mooring moment b:  ", moor_mom_out)
-
         # Yaw moment generated by the mooring system
         yaw = np.array([self.q[data.ts, 3], 0., 0.])
-        # print("Yaw: ", yaw)
-        yaw_mom_out = -np.dot(cbg, self.floating_data['mooring']['yaw_spring_stif']*yaw)
-        # print("Yaw moment b: ", yaw_mom_out)
-        struct_tstep.runtime_generated_forces[self.mooring_node, 3:6] -= np.dot(cbg,
-                                                                      self.floating_data['mooring']['yaw_spring_stif']*yaw)
+        mooring_yaw = -self.floating_data['mooring']['yaw_spring_stif']*yaw
+        struct_tstep.runtime_generated_forces[self.mooring_node, 3:6] += np.dot(cbg,
+                                                                      mooring_yaw)
 
         # Hydrostatic model
-        hd_forces_g = self.buoy_F0 - np.dot(self.buoy_rest_mat, self.q[data.ts, :])
-        # print("hydrostatic forces g :", hd_forces_g)
-        hd_forces_g_2 = -np.dot(self.hd_damping, self.qdot[data.ts, :])
-        hd_forces_g_2 -= np.dot(self.floating_data['hydrodynamics']['additional_damping'], self.qdot[data.ts, :])
-        hd_forces_g_2 -= np.dot(self.hd_added_mass, self.qdotdot[data.ts, :])
+        hs_f_g = self.buoy_F0 - np.dot(self.buoy_rest_mat, self.q[data.ts, :])
+        hd_f_qdot_g = -np.dot(self.hd_damping, self.qdot[data.ts, :])
+        hd_f_qdot_g -= np.dot(self.floating_data['hydrodynamics']['additional_damping'], self.qdot[data.ts, :])
+        hd_f_qdotdot_g = np.dot(self.hd_added_mass, self.qdotdot[data.ts, :])
         ielem, inode_in_elem = data.structure.node_master_elem[self.buoyancy_node]
         cab = algebra.crv2rotation(struct_tstep.psi[ielem, inode_in_elem])
         cbg = np.dot(cab.T, cga.T)
-        print("hydrostatic forces g 2:", hd_forces_g_2)
 
-        struct_tstep.runtime_generated_forces[self.buoyancy_node, 0:3] += np.dot(cbg, hd_forces_g[0:3] + force_coeff*hd_forces_g_2[0:3])
-        struct_tstep.runtime_generated_forces[self.buoyancy_node, 3:6] += np.dot(cbg, hd_forces_g[3:6] + force_coeff*hd_forces_g_2[3:6])
+        struct_tstep.runtime_generated_forces[self.buoyancy_node, 0:3] += np.dot(cbg, hs_f_g[0:3] + force_coeff*(hd_f_qdot_g[0:3] + hd_f_qdotdot_g[0:3]))
+        struct_tstep.runtime_generated_forces[self.buoyancy_node, 3:6] += np.dot(cbg, hs_f_g[3:6] + force_coeff*(hd_f_qdot_g[3:6] + hd_f_qdotdot_g[3:6]))
 
         # Wave loading
         phase = self.settings['wave_freq']*data.ts*self.settings['dt']
         wave_forces_g = np.real(self.settings['wave_amplitude']*self.xi*(np.cos(phase) + 1j*np.sin(phase)))
-        # print("wave_forces_g: ", wave_forces_g)
 
         ielem, inode_in_elem = data.structure.node_master_elem[self.wave_forces_node]
         cab = algebra.crv2rotation(struct_tstep.psi[ielem, inode_in_elem])
@@ -613,3 +651,7 @@ class FloatingForces(generator_interface.BaseGenerator):
 
         struct_tstep.runtime_generated_forces[self.wave_forces_node, 0:3] += np.dot(cbg, force_coeff*wave_forces_g[0:3])
         struct_tstep.runtime_generated_forces[self.wave_forces_node, 3:6] += np.dot(cbg, force_coeff*wave_forces_g[3:6])
+
+        # Write output
+        self.write_output(data.ts, k, mooring_forces, mooring_yaw, hs_f_g,
+                     hd_f_qdot_g, hd_f_qdotdot_g, wave_forces_g)
