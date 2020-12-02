@@ -372,6 +372,10 @@ class FloatingForces(generator_interface.BaseGenerator):
     settings_default['floating_file_name'] = './oc3.floating.h5'
     settings_description['floating_file_name'] = 'File containing the information about the floating dynamics'
 
+    settings_types['added_mass_in_mass_matrix'] = 'bool'
+    settings_default['added_mass_in_mass_matrix'] = True
+    settings_description['added_mass_in_mass_matrix'] = 'Include the platform added mass in the mass matrix of the system'
+
     settings_types['wave_amplitude'] = 'float'
     settings_default['wave_amplitude'] = 0.
     settings_description['wave_amplitude'] = 'Wave amplitude'
@@ -465,6 +469,13 @@ class FloatingForces(generator_interface.BaseGenerator):
         self.hd_added_mass = interp_1st_dim_matrix(self.floating_data['hydrodynamics']['added_mass'],
                                         self.floating_data['hydrodynamics']['ab_freq_rads'],
                                            self.settings['wave_freq'])
+
+        if self.settings['added_mass_in_mass_matrix']:
+            # Include added mass in structure
+            data.structure.add_lumped_mass_to_element(self.buoyancy_node,
+                                                      self.hd_added_mass)
+            data.structure.generate_fortran()
+            self.hd_added_mass *= 0.
 
         self.hd_damping = interp_1st_dim_matrix(self.floating_data['hydrodynamics']['damping'],
                                         self.floating_data['hydrodynamics']['ab_freq_rads'],
