@@ -346,6 +346,8 @@ class StructuralInformation():
         self.lumped_mass = None
         self.lumped_mass_inertia = None
         self.lumped_mass_position = None
+        self.lumped_mass_mat = None
+        self.lumped_mass_mat_nodes = None
 
     def copy(self):
         """
@@ -378,11 +380,15 @@ class StructuralInformation():
             copied.lumped_mass = self.lumped_mass.astype(dtype=float, copy=True)
             copied.lumped_mass_inertia = self.lumped_mass_inertia.astype(dtype=float, copy=True)
             copied.lumped_mass_position = self.lumped_mass_position.astype(dtype=float, copy=True)
+        if isinstance(self.lumped_mass_mat_nodes, np.ndarray):
+            copied.lumped_mass_mat_nodes = self.lumped_mass_mat_nodes.astype(dtype=int, copy=True)
+            copied.lumped_mass_mat = self.lumped_mass_mat.astype(dtype=float, copy=True)
 
         return copied
 
     def set_to_zero(self, num_node_elem, num_node, num_elem,
-                    num_mass_db=None, num_stiffness_db=None, num_lumped_mass=0):
+                    num_mass_db=None, num_stiffness_db=None, num_lumped_mass=0,
+                    num_lumped_mass_mat=0):
         """
         set_to_zero
 
@@ -395,6 +401,7 @@ class StructuralInformation():
             num_mass_db (int): number of different mass matrices in the case
             num_stiffness_db (int): number of different stiffness matrices in the case
             num_lumped_mass (int): number of lumped masses in the case
+            num_lumped_mass_mat (int): number of lumped masses given as matrices
         """
 
         if num_mass_db is None:
@@ -425,6 +432,9 @@ class StructuralInformation():
                                                 dtype=float)
             self.lumped_mass_position = np.zeros((num_lumped_mass, 3),
                                                  dtype=float)
+        if not num_lumped_mass_mat == 0:
+            self.lumped_mass_mat_nodes = np.zeros((num_lumped_mass_mat,), dtype=int)
+            self.lumped_mass_mat = np.zeros((num_lumped_mass_mat, 6, 6), dtype=float)
 
     def generate_full_structure(self,
                                 num_node_elem,
@@ -444,7 +454,9 @@ class StructuralInformation():
                                 lumped_mass_nodes=None,
                                 lumped_mass=None,
                                 lumped_mass_inertia=None,
-                                lumped_mass_position=None):
+                                lumped_mass_position=None,
+                                lumped_mass_mat_nodes=None,
+                                lumped_mass_mat=None):
         """
         generate_full_structure
 
@@ -469,6 +481,8 @@ class StructuralInformation():
             lumped_mass (np.array): value of the lumped masses
             lumped_mass_inertia (np.array): inertia of the lumped masses
             lumped_mass_position (np.array): position of the lumped masses
+            lumped_mass_mat_nodes (np.array): nodes with lumped masses given by matrices
+            lumped_mass_mat (np.array): value of the lumped masses given by matrices
         """
 
         self.num_node_elem = num_node_elem
@@ -491,6 +505,9 @@ class StructuralInformation():
             self.lumped_mass = lumped_mass
             self.lumped_mass_inertia = lumped_mass_inertia
             self.lumped_mass_position = lumped_mass_position
+        if isinstance(self.lumped_mass_mat_nodes, np.ndarray):
+            self.lumped_mass_mat_nodes = lumped_mass_mat_nodes
+            self.lumped_mass_mat = lumped_mass_mat
 
     def generate_1to1_from_vectors(self,
                                     num_node_elem,
@@ -501,7 +518,8 @@ class StructuralInformation():
                                     mass_db,
                                     frame_of_reference_delta,
                                     vec_node_structural_twist,
-                                    num_lumped_mass=0):
+                                    num_lumped_mass=0,
+                                    num_lumped_mass_mat=0):
 
         self.num_node_elem = num_node_elem
         self.num_node = num_node
@@ -523,6 +541,9 @@ class StructuralInformation():
             self.lumped_mass = np.zeros((num_lumped_mass,), dtype=float)
             self.lumped_mass_inertia = np.zeros((num_lumped_mass, 3, 3), dtype=float)
             self.lumped_mass_position = np.zeros((num_lumped_mass, 3), dtype=float)
+        if not num_lumped_mass_mat == 0:
+            self.lumped_mass_mat_nodes = np.zeros((num_lumped_mass_mat,), dtype=int)
+            self.lumped_mass_mat = np.zeros((num_lumped_mass_mat, 6, 6), dtype=float)
 
     def create_frame_of_reference_delta(self, y_BFoR='y_AFoR'):
         """
@@ -687,7 +708,8 @@ class StructuralInformation():
                                   EI,
                                   num_node_elem=3,
                                   y_BFoR='y_AFoR',
-                                  num_lumped_mass=0):
+                                  num_lumped_mass=0,
+                                  num_lumped_mass_mat=0):
         """
         generate_uniform_sym_beam
 
@@ -719,7 +741,8 @@ class StructuralInformation():
                                    EI,
                                    num_node_elem,
                                    y_BFoR,
-                                   num_lumped_mass)
+                                   num_lumped_mass,
+                                   num_lumped_mass_mat)
 
     def generate_uniform_beam(self,
                               node_pos,
@@ -736,7 +759,8 @@ class StructuralInformation():
                               EIz,
                               num_node_elem=3,
                               y_BFoR='y_AFoR',
-                              num_lumped_mass=0):
+                              num_lumped_mass=0,
+                              num_lumped_mass_mat=0):
         """
         generate_uniform_beam
 
@@ -758,12 +782,14 @@ class StructuralInformation():
             num_node_elem (int): number of nodes per element
             y_BFoR (str): orientation of the yB axis
             num_lumped_mass (int): number of lumped masses
+            num_lumped_mass_mat (int): number of lumped masses given as matrices
         """
         self.num_node = len(node_pos)
         self.num_node_elem = num_node_elem
         self.compute_basic_num_elem()
 
-        self.set_to_zero(self.num_node_elem, self.num_node, self.num_elem, 1, 1, num_lumped_mass)
+        self.set_to_zero(self.num_node_elem, self.num_node, self.num_elem, 1, 1,
+                         num_lumped_mass, num_lumped_mass_mat)
         self.coordinates = node_pos
         self.create_simple_connectivities()
         # self.create_mass_db_from_vector(np.ones((num_elem,),)*mass_per_unit_length,
@@ -836,6 +862,12 @@ class StructuralInformation():
                 self.lumped_mass = structure_to_add.lumped_mass
                 self.lumped_mass_inertia = structure_to_add.lumped_mass_inertia
                 self.lumped_mass_position = structure_to_add.lumped_mass_position
+            if isinstance(self.lumped_mass_mat_nodes, np.ndarray) and isinstance(structure_to_add.lumped_mass_mat_nodes, np.ndarray):
+                self.lumped_mass_mat_nodes = np.concatenate((self.lumped_mass_mat_nodes, structure_to_add.lumped_mass_mat_nodes + total_num_node), axis=0)
+                self.lumped_mass_mat = np.concatenate((self.lumped_mass_mat, structure_to_add.lumped_mass_mat), axis=0)
+            elif isinstance(structure_to_add.lumped_mass_mat_nodes, np.ndarray):
+                self.lumped_mass_mat_nodes = structure_to_add.lumped_mass_mat_nodes + total_num_node
+                self.lumped_mass_mat = structure_to_add.lumped_mass_mat
 
             total_num_stiff += structure_to_add.stiffness_db.shape[0]
             total_num_mass += structure_to_add.mass_db.shape[0]
@@ -920,6 +952,9 @@ class StructuralInformation():
                 h5file.create_dataset('lumped_mass', data=self.lumped_mass)
                 h5file.create_dataset('lumped_mass_inertia', data=self.lumped_mass_inertia)
                 h5file.create_dataset('lumped_mass_position', data=self.lumped_mass_position)
+            if isinstance(self.lumped_mass_mat_nodes, np.ndarray):
+                h5file.create_dataset('lumped_mass_mat_nodes', data=self.lumped_mass_mat_nodes)
+                h5file.create_dataset('lumped_mass_mat', data=self.lumped_mass_mat)
 
 
 ######################################################################
