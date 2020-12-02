@@ -305,18 +305,18 @@ class Beam(BaseStructure):
 
                 inertia_tensor = self.generate_mass_matrix(m, r, j)
                 i_lumped_node = self.lumped_mass_nodes[i_lumped]
-                self.assign_lumped_mass_to_element(i_lumped_node,
+                self.add_lumped_mass_to_element(i_lumped_node,
                                                    inertia_tensor)
         if self.lumped_mass_mat is not None:
             for i_lumped in range(self.lumped_mass_mat.shape[0]):
                 inertia_tensor = self.lumped_mass_mat[i_lumped, :, :]
                 i_lumped_node = self.lumped_mass_mat_nodes[i_lumped]
-                self.assign_lumped_mass_to_element(i_lumped_node,
+                self.add_lumped_mass_to_element(i_lumped_node,
                                                    inertia_tensor)
 
         return
 
-    def assign_lumped_mass_to_element(self, i_lumped_node, inertia_tensor):
+    def add_lumped_mass_to_element(self, i_lumped_node, inertia_tensor):
 
             i_lumped_master_elem, i_lumped_master_node_local = self.node_master_elem[i_lumped_node]
 
