@@ -41,6 +41,8 @@ class Beam(BaseStructure):
         self.lumped_mass_nodes = None
         self.lumped_mass_inertia = None
         self.lumped_mass_position = None
+        self.lumped_mass_mat = None
+        self.lumped_mass_mat_nodes = None
         self.n_lumped_mass = 0
 
         self.steady_app_forces = None
@@ -181,6 +183,7 @@ class Beam(BaseStructure):
         self.timestep_info[-1].steady_applied_forces = self.steady_app_forces.astype(dtype=ct.c_double, order='F')
 
         # lumped masses
+        self.n_lumped_mass = 0
         try:
             self.lumped_mass = in_data['lumped_mass'].copy()
         except KeyError:
@@ -189,9 +192,19 @@ class Beam(BaseStructure):
             self.lumped_mass_nodes = in_data['lumped_mass_nodes'].copy()
             self.lumped_mass_inertia = in_data['lumped_mass_inertia'].copy()
             self.lumped_mass_position = in_data['lumped_mass_position'].copy()
-            self.n_lumped_mass, _ = self.lumped_mass_position.shape
+            self.n_lumped_mass += self.lumped_mass_position.shape[0]
+
+        # lumped masses given as matrices
+        try:
+            self.lumped_mass_mat = in_data['lumped_mass_mat'].copy()
+        except KeyError:
+            self.lumped_mass_mat = None
+        else:
+            self.lumped_mass_mat_nodes = in_data['lumped_mass_mat_nodes'].copy()
+            self.n_lumped_mass += self.lumped_mass_mat.shape[0]
+
         # lumped masses to element mass
-        if self.lumped_mass is not None:
+        if self.lumped_mass is not None or self.lumped_mass_mat is not None:
             self.lump_masses()
 
         # self.generate_dof_arrays()
@@ -272,23 +285,40 @@ class Beam(BaseStructure):
 
         self.num_dof = ct.c_int((vcounter + 1)*6)
 
+    def generate_mass_matrix(self, mass, position, inertia):
+
+        inertia_tensor = np.zeros((6, 6))
+        pos_skew = algebra.skew(position)
+        inertia_tensor[0:3, 0:3] = mass*np.eye(3)
+        inertia_tensor[0:3, 3:6] = -mass*pos_skew
+        inertia_tensor[3:6, 0:3] = mass*pos_skew
+        inertia_tensor[3:6, 3:6] = inertia + mass*(np.dot(pos_skew.T, pos_skew))
+
+        return inertia_tensor
+
     def lump_masses(self):
-        for i_lumped in range(self.n_lumped_mass):
-            r = self.lumped_mass_position[i_lumped, :]
-            m = self.lumped_mass[i_lumped]
-            j = self.lumped_mass_inertia[i_lumped, :, :]
+        if self.lumped_mass is not None:
+            for i_lumped in range(self.lumped_mass.shape[0]):
+                r = self.lumped_mass_position[i_lumped, :]
+                m = self.lumped_mass[i_lumped]
+                j = self.lumped_mass_inertia[i_lumped, :, :]
 
-            i_lumped_node = self.lumped_mass_nodes[i_lumped]
+                inertia_tensor = self.generate_mass_matrix(m, r, j)
+                i_lumped_node = self.lumped_mass_nodes[i_lumped]
+                self.assign_lumped_mass_to_element(i_lumped_node,
+                                                   inertia_tensor)
+        if self.lumped_mass_mat is not None:
+            for i_lumped in range(self.lumped_mass_mat.shape[0]):
+                inertia_tensor = self.lumped_mass_mat[i_lumped, :, :]
+                i_lumped_node = self.lumped_mass_mat_nodes[i_lumped]
+                self.assign_lumped_mass_to_element(i_lumped_node,
+                                                   inertia_tensor)
+
+        return
+
+    def assign_lumped_mass_to_element(self, i_lumped_node, inertia_tensor):
+
             i_lumped_master_elem, i_lumped_master_node_local = self.node_master_elem[i_lumped_node]
-
-            # cba = algebra.crv2rot(self.elements[i_lumped_master_elem].psi_def[i_lumped_master_node_local, :]).T
-
-            inertia_tensor = np.zeros((6, 6))
-            r_skew = algebra.skew(r)
-            inertia_tensor[0:3, 0:3] = m*np.eye(3)
-            inertia_tensor[0:3, 3:6] = -m*r_skew
-            inertia_tensor[3:6, 0:3] = m*r_skew
-            inertia_tensor[3:6, 3:6] = j + m*(np.dot(r_skew.T, r_skew))
 
             if self.elements[i_lumped_master_elem].rbmass is None:
                 # allocate memory
