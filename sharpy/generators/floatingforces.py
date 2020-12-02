@@ -528,7 +528,6 @@ class FloatingForces(generator_interface.BaseGenerator):
         output['waves'] = waves
 
         fid = h5.File(self.log_filename, 'a')
-        print(ts, k)
         group = fid.create_group("ts%d_k%d" % (ts, k))
         for key, value in output.items():
             group.create_dataset(key, data=value)
@@ -553,10 +552,12 @@ class FloatingForces(generator_interface.BaseGenerator):
     def update_dof_vector(self, beam, struct_tstep, it):
 
         cga = struct_tstep.cga()
-        self.q[it, 0:3] = (np.dot(cga, struct_tstep.pos[self.buoyancy_node, :]) -
-                  np.dot(beam.ini_info.cga(), beam.ini_info.pos[self.buoyancy_node, :]) +
-                  struct_tstep.for_pos[0:3] -
-                  beam.ini_info.for_pos[0:3])
+        # self.q[it, 0:3] = (np.dot(cga, struct_tstep.pos[self.buoyancy_node, :]) -
+        #           np.dot(beam.ini_info.cga(), beam.ini_info.pos[self.buoyancy_node, :]) +
+        #           struct_tstep.for_pos[0:3] -
+        #           beam.ini_info.for_pos[0:3])
+        self.q[it, 0:3] = (np.dot(cga, struct_tstep.pos[self.buoyancy_node, :]) +
+                  struct_tstep.for_pos[0:3])
         self.q[it, 3:6] = algebra.quat2euler(struct_tstep.quat)
 
         self.qdot[it, 0:3] = np.dot(cga, struct_tstep.for_vel[0:3])
