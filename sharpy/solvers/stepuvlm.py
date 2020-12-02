@@ -208,7 +208,8 @@ class StepUvlm(BaseSolver):
                                           'for_pos': structure_tstep.for_pos,
                                           'is_wake': False},
                                          aero_tstep.u_ext)
-        if self.settings['convection_scheme'].value > 1 and convect_wake:
+        if ((self.settings['convection_scheme'].value > 1 and convect_wake) or 
+           (not self.settings['cfl1'])):
             # generate uext_star
             self.velocity_generator.generate({'zeta': aero_tstep.zeta_star,
                                               'override': True,
