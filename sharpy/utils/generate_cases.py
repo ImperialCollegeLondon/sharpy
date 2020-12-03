@@ -861,7 +861,7 @@ class StructuralInformation():
 
         for structure_to_add in args:
             # Checks
-            if not (structure_to_add.quat == np.array([1., 0, 0, 0])).all():
+            if not (structure_to_add.orientation == np.array([1., 0, 0, 0])).all():
                 cout.cout_wrap("ERROR: structures to be assembled shoud not be rotated. Check quaternion", 4)
             if not (structure_to_add.for_pos[0:3] == np.array([0., 0, 0])).all():
                 cout.cout_wrap("ERROR: structures to be assembled shoud not be displaced. Check for_pos", 4)
