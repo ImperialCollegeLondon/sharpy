@@ -129,7 +129,6 @@ class HelicoidalWake(generator_interface.BaseGenerator):
         gamma = params['gamma']
         gamma_star = params['gamma_star']
         dist_to_orig = params['dist_to_orig']
-        wake_conv_vel = params['wake_conv_vel']
 
         nsurf = len(zeta)
         for isurf in range(nsurf):
@@ -164,8 +163,6 @@ class HelicoidalWake(generator_interface.BaseGenerator):
                                           np.linalg.norm(zeta_star[isurf][:, i, j] -
                                                          zeta_star[isurf][:, i - 1, j]))
                 dist_to_orig[isurf][:, j] /= dist_to_orig[isurf][-1, j]
-            for j in range(0, N - 1):
-                wake_conv_vel[isurf][:, j] = np.linalg.norm(self.rotation_velocity)*0.5*np.linalg.norm(zeta[isurf][:, -1, j] + zeta[isurf][:, -1, j + 1])
 
     @staticmethod
     def get_dphi(i, dphi1, ndphi1, r, dphimax):

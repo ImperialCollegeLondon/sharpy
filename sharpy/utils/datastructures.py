@@ -165,13 +165,6 @@ class AeroTimeStepInfo(object):
                                                dimensions_star[i_surf, 1] + 1),
                                                dtype=ct.c_double))
 
-        self.wake_conv_vel = []
-        for i_surf in range(self.n_surf):
-            self.wake_conv_vel.append(np.zeros((dimensions_star[i_surf, 0],
-                                            dimensions_star[i_surf, 1]),
-                                           dtype=ct.c_double))
-
-
         # total forces
         self.inertial_total_forces = np.zeros((self.n_surf, 6))
         self.body_total_forces = np.zeros((self.n_surf, 6))
@@ -235,9 +228,6 @@ class AeroTimeStepInfo(object):
 
         for i_surf in range(copied.n_surf):
             copied.dist_to_orig[i_surf] = self.dist_to_orig[i_surf].astype(dtype=ct.c_double, copy=True, order='C')
-
-        for i_surf in range(copied.n_surf):
-            copied.wake_conv_vel[i_surf] = self.wake_conv_vel[i_surf].astype(dtype=ct.c_double, copy=True, order='C')
 
         # total forces
         copied.inertial_total_forces = self.inertial_total_forces.astype(dtype=ct.c_double, copy=True, order='C')
@@ -321,10 +311,6 @@ class AeroTimeStepInfo(object):
         for i_surf in range(self.n_surf):
             self.ct_dist_to_orig_list.append(self.dist_to_orig[i_surf][:, :].reshape(-1))
 
-        self.ct_wake_conv_vel_list = []
-        for i_surf in range(self.n_surf):
-            self.ct_wake_conv_vel_list.append(self.wake_conv_vel[i_surf][:, :].reshape(-1))
-
         try:
             self.postproc_cell['incidence_angle']
         except KeyError:
@@ -365,8 +351,6 @@ class AeroTimeStepInfo(object):
                             (* [np.ctypeslib.as_ctypes(array) for array in self.ct_dynamic_forces_list]))
         self.ct_p_dist_to_orig = ((ct.POINTER(ct.c_double)*len(self.ct_dist_to_orig_list))
                            (* [np.ctypeslib.as_ctypes(array) for array in self.ct_dist_to_orig_list]))
-        self.ct_p_wake_conv_vel = ((ct.POINTER(ct.c_double)*len(self.ct_wake_conv_vel_list))
-                           (* [np.ctypeslib.as_ctypes(array) for array in self.ct_wake_conv_vel_list]))
 
         if with_incidence_angle:
             self.postproc_cell['incidence_angle_ct_pointer'] = ((ct.POINTER(ct.c_double)*len(self.ct_incidence_list))
@@ -443,11 +427,6 @@ class AeroTimeStepInfo(object):
 
         try:
             del self.ct_p_dist_to_orig
-        except AttributeError:
-            pass
-
-        try:
-            del self.ct_p_wake_conv_vel
         except AttributeError:
             pass
 
