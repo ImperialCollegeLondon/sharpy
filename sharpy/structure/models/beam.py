@@ -178,7 +178,7 @@ class Beam(BaseStructure):
         self.ini_info.steady_applied_forces = self.steady_app_forces.astype(dtype=ct.c_double, order='F')
         # rigid body rotations
         self.ini_info.quat = self.settings['orientation'].astype(dtype=ct.c_double, order='F')
-        self.ini_info.for_pos[0:3] = self.settings['for_pos'].astype(dtype=ct.c_double, order='F')
+        self.ini_info.for_pos[0:3] = self.settings['for_pos'].astype(dtype=ct.c_double, order='F')            
 
         self.timestep_info.append(self.ini_info.copy())
         self.timestep_info[-1].steady_applied_forces = self.steady_app_forces.astype(dtype=ct.c_double, order='F')

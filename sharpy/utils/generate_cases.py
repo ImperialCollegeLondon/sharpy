@@ -348,8 +348,6 @@ class StructuralInformation():
         self.lumped_mass_position = None
         self.lumped_mass_mat = None
         self.lumped_mass_mat_nodes = None
-        self.orientation = None
-        self.for_pos = None
 
 
     def copy(self):
@@ -386,9 +384,6 @@ class StructuralInformation():
         if isinstance(self.lumped_mass_mat_nodes, np.ndarray):
             copied.lumped_mass_mat_nodes = self.lumped_mass_mat_nodes.astype(dtype=int, copy=True)
             copied.lumped_mass_mat = self.lumped_mass_mat.astype(dtype=float, copy=True)
-
-        copied.orientation = self.orientation.astype(dtype=float, copy=True)
-        copied.for_pos = self.for_pos.astype(dtype=float, copy=True)
 
         return copied
 
@@ -441,9 +436,6 @@ class StructuralInformation():
         if not num_lumped_mass_mat == 0:
             self.lumped_mass_mat_nodes = np.zeros((num_lumped_mass_mat,), dtype=int)
             self.lumped_mass_mat = np.zeros((num_lumped_mass_mat, 6, 6), dtype=float)
-
-        self.orientation = np.array([1., 0., 0., 0.])
-        self.for_pos = np.zeros((6,),)
 
 
     def generate_full_structure(self,
@@ -519,9 +511,6 @@ class StructuralInformation():
             self.lumped_mass_mat_nodes = lumped_mass_mat_nodes
             self.lumped_mass_mat = lumped_mass_mat
 
-        self.orientation = np.array([1., 0., 0., 0.])
-        self.for_pos = np.zeros((6,),)
-
 
     def generate_1to1_from_vectors(self,
                                     num_node_elem,
@@ -558,9 +547,6 @@ class StructuralInformation():
         if not num_lumped_mass_mat == 0:
             self.lumped_mass_mat_nodes = np.zeros((num_lumped_mass_mat,), dtype=int)
             self.lumped_mass_mat = np.zeros((num_lumped_mass_mat, 6, 6), dtype=float)
-
-        self.orientation = np.array([1., 0., 0., 0.])
-        self.for_pos = np.zeros((6,),)
 
 
     def create_frame_of_reference_delta(self, y_BFoR='y_AFoR'):
@@ -835,9 +821,6 @@ class StructuralInformation():
         self.create_frame_of_reference_delta(y_BFoR)
         self.boundary_conditions = np.zeros((self.num_node), dtype=int)
 
-        self.orientation = np.array([1., 0., 0., 0.])
-        self.for_pos = np.zeros((6,),)
-
 
     def assembly_structures(self, *args):
         """
@@ -860,11 +843,6 @@ class StructuralInformation():
         total_num_mass = self.mass_db.shape[0]
 
         for structure_to_add in args:
-            # Checks
-            if not (structure_to_add.orientation == np.array([1., 0, 0, 0])).all():
-                cout.cout_wrap("ERROR: structures to be assembled shoud not be rotated. Check quaternion", 4)
-            if not (structure_to_add.for_pos[0:3] == np.array([0., 0, 0])).all():
-                cout.cout_wrap("ERROR: structures to be assembled shoud not be displaced. Check for_pos", 4)
 
             self.coordinates = np.concatenate((self.coordinates, structure_to_add.coordinates), axis=0)
             self.connectivities = np.concatenate((self.connectivities, structure_to_add.connectivities + total_num_node), axis=0)
@@ -983,8 +961,6 @@ class StructuralInformation():
             if isinstance(self.lumped_mass_mat_nodes, np.ndarray):
                 h5file.create_dataset('lumped_mass_mat_nodes', data=self.lumped_mass_mat_nodes)
                 h5file.create_dataset('lumped_mass_mat', data=self.lumped_mass_mat)
-            h5file.create_dataset('orientation', data=self.orientation)
-            h5file.create_dataset('for_pos', data=self.for_pos)
 
 
 ######################################################################
