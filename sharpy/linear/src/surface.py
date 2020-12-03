@@ -10,13 +10,14 @@ import itertools
 import sharpy.aero.utils.uvlmlib as uvlmlib  # SHARPy's main uvlm interface with cpp
 import sharpy.linear.src.uvlmutils as uvlmutils  # library with UVLM solution methods
 from sharpy.aero.utils.uvlmlib import get_aic3_cpp
+import sharpy.utils.cout_utils as cout
 
 dmver = np.array([0, 1, 1, 0])  # delta to go from (m,n) panel to (m,n) vertices
 dnver = np.array([0, 0, 1, 1])
 
 
 class AeroGridGeo():
-    """
+    r"""
     Allows retrieving geometrical information of a surface. Requires a
     gridmapping.AeroGridMap mapping structure in input and the surface vertices
     coordinates.
@@ -101,13 +102,17 @@ class AeroGridGeo():
     # -------------------------------------------------- get collocation points
 
     def get_panel_wcv(self):
-        """
+        r"""
         Produces a compact array with weights for bilinear interpolation, where
         aN,aM in [0,1] are distances in the chordwise and spanwise directions
         such that:
+
             - (aM,aN)=(0,0) --> quantity at vertex 0
+
             - (aM,aN)=(1,0) --> quantity at vertex 1
+
             - (aM,aN)=(1,1) --> quantity at vertex 2
+
             - (aM,aN)=(0,1) --> quantity at vertex 3
         """
 
@@ -118,13 +123,17 @@ class AeroGridGeo():
         return wcv
 
     def get_panel_collocation(self, zetav_here):
-        """
+        r"""
         Using bilinear interpolation, retrieves panel collocation point, where
         aN,aM in [0,1] are distances in the chordwise and spanwise directions
         such that:
+
             - (aM,aN)=(0,0) --> quantity at vertex 0
+
             - (aM,aN)=(1,0) --> quantity at vertex 1
+
             - (aM,aN)=(1,1) --> quantity at vertex 2
+
             - (aM,aN)=(0,1) --> quantity at vertex 3
         """
 
@@ -246,7 +255,7 @@ class AeroGridGeo():
 
 
 class AeroGridSurface(AeroGridGeo):
-    """
+    r"""
     Contains geometric and aerodynamic information about bound/wake surface.
 
     Compulsory input are those that apply to both bound and wake surfaces:
@@ -263,6 +272,7 @@ class AeroGridSurface(AeroGridGeo):
         Map (gridmapping.AeroGridMap): Map of grid.
         zeta (list(np.ndarray)): Grid vertices coordinates in inertial (G) frame.
         zeta_dot (list(np.ndarray)): Grid vertices velocities in inertial (G) frame. Default is ``None``.
+        vortex_radius (np.float): Distance below which induction is not computed
         u_ext (list(np.ndarray)): Grid external velocities in inertial (G) frame. Default is ``None``.
         gamma_dot (list(np.ndarray)): Panel circulation derivative. Default is ``None``.
         rho (float): Air density. Default is ``1.``
@@ -276,6 +286,7 @@ class AeroGridSurface(AeroGridGeo):
     """
 
     def __init__(self, Map, zeta, gamma,
+                 vortex_radius,
                  u_ext=None,
                  zeta_dot=None,
                  gamma_dot=None,
@@ -287,6 +298,7 @@ class AeroGridSurface(AeroGridGeo):
         super().__init__(Map, zeta, aM, aN)
 
         self.gamma = gamma
+        self.vortex_radius = vortex_radius
         self.zeta_dot = zeta_dot
         self.u_ext = u_ext
         self.gamma_dot = gamma_dot
@@ -295,12 +307,16 @@ class AeroGridSurface(AeroGridGeo):
         self.for_vel_tra = for_vel[:3]
 
         msg_out = 'wrong input shape!'
-        assert self.gamma.shape == (self.maps.M, self.maps.N), msg_out
-        assert self.zeta.shape == (3, self.maps.M + 1, self.maps.N + 1), msg_out
+        assert self.gamma.shape == (self.maps.M, self.maps.N), \
+            'Gamma shape %s not equal to M, N %s' % (str(self.gamma.shape), str((self.maps.M, self.maps.N)))
+        assert self.zeta.shape == (3, self.maps.M + 1, self.maps.N + 1), \
+            'Zeta shape %s not equal to 3, M+1, N+1 %s' % (str(self.zeta.shape), str((3, self.maps.M, self.maps.N)))
         if self.zeta_dot is not None:
-            assert self.zeta_dot.shape == (3, self.maps.M + 1, self.maps.N + 1), msg_out
+            assert self.zeta_dot.shape == (3, self.maps.M + 1, self.maps.N + 1), \
+                'zeta_dot shape %s not equal to 3, M+1, N+1 %s' % (str(self.zeta_dot.shape), str((3, self.maps.M, self.maps.N)))
         if self.u_ext is not None:
-            assert self.u_ext.shape == (3, self.maps.M + 1, self.maps.N + 1), msg_out
+            assert self.u_ext.shape == (3, self.maps.M + 1, self.maps.N + 1), \
+                'u_ext shape %s not equal to 3, M+1, N+1 %s' % (str(self.u_ext.shape), str((3, self.maps.M, self.maps.N)))
         assert for_vel.shape == (6, ), msg_out
         assert self.omega.shape == (3, ), msg_out
         assert self.for_vel_tra.shape == (3, ), msg_out
@@ -311,7 +327,7 @@ class AeroGridSurface(AeroGridGeo):
     # -------------------------------------------------------- input velocities
 
     def get_input_velocities_at_collocation_points(self):
-        """
+        r"""
         Returns velocities at collocation points from nodal values ``u_ext`` and
         ``zeta_dot`` of shape ``(3, M+1, N+1)`` at the collocation points.
 
@@ -319,7 +335,7 @@ class AeroGridSurface(AeroGridGeo):
 
             .. math:: \boldsymbol{u}_{c} = \mathcal{W}_{cv}(\boldsymbol(\nu)_0 - \boldsymbol{\zeta}_0)
 
-            is the input velocity at the collocation point, where :math:`\mathcal{W}_{cv} projects the velocity
+            is the input velocity at the collocation point, where :math:`\mathcal{W}_{cv}` projects the velocity
             from the grid points onto the collocation point. This variable is referred to as
             ``u_input_coll=Wcv*(u_ext-zeta_dot)`` and depends on the coordinates ``zeta`` when the body is rotating.
 
@@ -447,7 +463,9 @@ class AeroGridSurface(AeroGridGeo):
                 # panel info
                 zetav_here = self.get_panel_vertices_coords(mm, nn)
                 uind_target += uvlmlib.biot_panel_cpp(zeta_target,
-                                                      zetav_here, self.gamma[mm, nn])
+                                                      zetav_here,
+                                                      self.vortex_radius,
+                                                      self.gamma[mm, nn])
 
         return uind_target
 
@@ -467,7 +485,9 @@ class AeroGridSurface(AeroGridGeo):
 
             # get panel coordinates
             zetav_here = self.get_panel_vertices_coords(mm, nn)
-            aic3[:, cc] = uvlmlib.biot_panel_cpp(zeta_target, zetav_here, gamma=1.0)
+            aic3[:, cc] = uvlmlib.biot_panel_cpp(zeta_target, zetav_here,
+                                                 self.vortex_radius,
+                                                 gamma=1.0)
 
         return aic3
 
@@ -485,9 +505,13 @@ class AeroGridSurface(AeroGridGeo):
 
         Warning: induced velocities at grid segments are stored in a redundant
         format:
+
             (3,4,M,N)
+
         where the element
+
             (:,ss,mm,nn)
+
         is the induced velocity over the ss-th segment of panel (mm,nn). A fast
         looping is implemented to re-use previously computed velocities
         """
@@ -510,7 +534,8 @@ class AeroGridSurface(AeroGridGeo):
             # loop target points
             for pp in itertools.product(range(M_trg), range(N_trg)):
                 mm, nn = pp
-                uind = uvlmlib.get_induced_velocity_cpp(self.maps, self.zeta, self.gamma, ZetaTarget[:, mm, nn])
+                uind = uvlmlib.get_induced_velocity_cpp(self.maps, self.zeta,
+                          self.gamma, ZetaTarget[:, mm, nn], self.vortex_radius)
                 if Project:
                     Uind[mm, nn] = np.dot(uind, Surf_target.normals[:, mm, nn])
                 else:
@@ -531,7 +556,8 @@ class AeroGridSurface(AeroGridGeo):
             zetav_here = Surf_target.get_panel_vertices_coords(mm, nn)
             for ss, aa, bb in zip(svec, avec, bvec):
                 zeta_mid = 0.5 * (zetav_here[aa, :] + zetav_here[bb, :])
-                Uind[:, ss, mm, nn] = uvlmlib.get_induced_velocity_cpp(self.maps, self.zeta, self.gamma, zeta_mid)
+                Uind[:, ss, mm, nn] = uvlmlib.get_induced_velocity_cpp(self.maps,
+                             self.zeta, self.gamma, zeta_mid, self.vortex_radius)
 
             ##### panels n=0: copy seg.3
             nn = 0
@@ -542,7 +568,8 @@ class AeroGridSurface(AeroGridGeo):
                 zetav_here = Surf_target.get_panel_vertices_coords(mm, nn)
                 for ss, aa, bb in zip(svec, avec, bvec):
                     zeta_mid = 0.5 * (zetav_here[aa, :] + zetav_here[bb, :])
-                    Uind[:, ss, mm, nn] = uvlmlib.get_induced_velocity_cpp(self.maps, self.zeta, self.gamma, zeta_mid)
+                    Uind[:, ss, mm, nn] = uvlmlib.get_induced_velocity_cpp(self.maps,
+                                 self.zeta, self.gamma, zeta_mid, self.vortex_radius)
                 Uind[:, 3, mm, nn] = Uind[:, 1, mm - 1, nn]
 
             ##### panels m=0: copy seg.0
@@ -554,7 +581,8 @@ class AeroGridSurface(AeroGridGeo):
                 zetav_here = Surf_target.get_panel_vertices_coords(mm, nn)
                 for ss, aa, bb in zip(svec, avec, bvec):
                     zeta_mid = 0.5 * (zetav_here[aa, :] + zetav_here[bb, :])
-                    Uind[:, ss, mm, nn] = uvlmlib.get_induced_velocity_cpp(self.maps, self.zeta, self.gamma, zeta_mid)
+                    Uind[:, ss, mm, nn] = uvlmlib.get_induced_velocity_cpp(self.maps,
+                                 self.zeta, self.gamma, zeta_mid, self.vortex_radius)
                 Uind[:, 0, mm, nn] = Uind[:, 2, mm, nn - 1]
 
             ##### all others: copy seg. 0 and 3
@@ -566,7 +594,8 @@ class AeroGridSurface(AeroGridGeo):
                 zetav_here = Surf_target.get_panel_vertices_coords(*pp)
                 for ss, aa, bb in zip(svec, avec, bvec):
                     zeta_mid = 0.5 * (zetav_here[aa, :] + zetav_here[bb, :])
-                    Uind[:, ss, mm, nn] = uvlmlib.get_induced_velocity_cpp(self.maps, self.zeta, self.gamma, zeta_mid)
+                    Uind[:, ss, mm, nn] = uvlmlib.get_induced_velocity_cpp(self.maps,
+                                 self.zeta, self.gamma, zeta_mid, self.vortex_radius)
                 Uind[:, 0, mm, nn] = Uind[:, 2, mm, nn - 1]
                 Uind[:, 3, mm, nn] = Uind[:, 1, mm - 1, nn]
 
@@ -574,23 +603,29 @@ class AeroGridSurface(AeroGridGeo):
 
     def get_aic_over_surface(self, Surf_target,
                              target='collocation', Project=True):
-        """
+        r"""
         Produces influence coefficient matrices such that the velocity induced
         over the Surface_target is given by the product:
 
-        if target=='collocation':
-            if Project:
-                u_ind_coll_norm.rehape(-1)=AIC*self.gamma.reshape(-1,order='C')
-            else:
-                u_ind_coll_norm[ii,:,:].rehape(-1)=
-                                    AIC[ii,:,:]*self.gamma.reshape(-1,order='C')
-                where ii=0,1,2
+        .. code-block:: python
 
-        if targer=='segments':
+            if target=='collocation':
+                if Project:
+                    u_ind_coll_norm.rehape(-1)=AIC*self.gamma.reshape(-1,order='C')
+                else:
+                    u_ind_coll_norm[ii,:,:].rehape(-1)=
+                                        AIC[ii,:,:]*self.gamma.reshape(-1,order='C')
+
+        where ``ii=0,1,2``.
+
+        For the case where ``if target=='segments'``:
+
             - AIC has shape (3,self.maps.K,4,Mout,Nout), such that
-                AIC[:,:,ss,mm,nn]
+
+                ``AIC[:,:,ss,mm,nn]``
+
             is the influence coefficient matrix associated to the induced
-            velocity at segment ss of panel (mm,nn)
+            velocity at segment ss of panel (mm,nn).
         """
 
         K_in = self.maps.K
@@ -616,7 +651,8 @@ class AeroGridSurface(AeroGridGeo):
                 nn = Surf_target.maps.ind_2d_pan_scal[1][cc]
                 # retrieve influence coefficients
                 # ref_aic3=self.get_aic3(ZetaTarget[:,mm,nn])
-                aic3 = get_aic3_cpp(self.maps, self.zeta, ZetaTarget[:, mm, nn])
+                aic3 = get_aic3_cpp(self.maps, self.zeta, ZetaTarget[:, mm, nn],
+                                    self.vortex_radius)
                 # assert np.max(np.abs(aic3-ref_aic3))<1e-13, embed()
 
                 if Project:
@@ -639,7 +675,8 @@ class AeroGridSurface(AeroGridGeo):
             zetav_here = Surf_target.get_panel_vertices_coords(mm, nn)
             for ss, aa, bb in zip(svec, avec, bvec):
                 zeta_mid = 0.5 * (zetav_here[aa, :] + zetav_here[bb, :])
-                AIC[:, :, ss, mm, nn] = get_aic3_cpp(self.maps, self.zeta, zeta_mid)
+                AIC[:, :, ss, mm, nn] = get_aic3_cpp(self.maps, self.zeta,
+                                                     zeta_mid, self.vortex_radius)
 
             ##### panels n=0: copy seg.3
             nn = 0
@@ -650,7 +687,8 @@ class AeroGridSurface(AeroGridGeo):
                 zetav_here = Surf_target.get_panel_vertices_coords(mm, nn)
                 for ss, aa, bb in zip(svec, avec, bvec):
                     zeta_mid = 0.5 * (zetav_here[aa, :] + zetav_here[bb, :])
-                    AIC[:, :, ss, mm, nn] = get_aic3_cpp(self.maps, self.zeta, zeta_mid)
+                    AIC[:, :, ss, mm, nn] = get_aic3_cpp(self.maps, self.zeta,
+                                                         zeta_mid, self.vortex_radius)
                 AIC[:, :, 3, mm, nn] = AIC[:, :, 1, mm - 1, nn]
 
             ##### panels m=0: copy seg.0
@@ -662,7 +700,8 @@ class AeroGridSurface(AeroGridGeo):
                 zetav_here = Surf_target.get_panel_vertices_coords(mm, nn)
                 for ss, aa, bb in zip(svec, avec, bvec):
                     zeta_mid = 0.5 * (zetav_here[aa, :] + zetav_here[bb, :])
-                    AIC[:, :, ss, mm, nn] = get_aic3_cpp(self.maps, self.zeta, zeta_mid)
+                    AIC[:, :, ss, mm, nn] = get_aic3_cpp(self.maps, self.zeta,
+                                                         zeta_mid, self.vortex_radius)
                 AIC[:, :, 0, mm, nn] = AIC[:, :, 2, mm, nn - 1]
 
             ##### all others: copy seg. 0 and 3
@@ -674,7 +713,8 @@ class AeroGridSurface(AeroGridGeo):
                 zetav_here = Surf_target.get_panel_vertices_coords(*pp)
                 for ss, aa, bb in zip(svec, avec, bvec):
                     zeta_mid = 0.5 * (zetav_here[aa, :] + zetav_here[bb, :])
-                    AIC[:, :, ss, mm, nn] = get_aic3_cpp(self.maps, self.zeta, zeta_mid)
+                    AIC[:, :, ss, mm, nn] = get_aic3_cpp(self.maps, self.zeta,
+                                                         zeta_mid, self.vortex_radius)
                 AIC[:, :, 3, mm, nn] = AIC[:, :, 1, mm - 1, nn]
                 AIC[:, :, 0, mm, nn] = AIC[:, :, 2, mm, nn - 1]
 

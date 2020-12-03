@@ -17,6 +17,7 @@ If you feel that a function/class is not well documented and, hence, you cannot 
 	./aero/index
 	./controllers/index
 	./generators/index
+	./io/index
 	./linear/index
 	./rom/index
 	./structure/index

@@ -12,6 +12,7 @@ import sharpy.linear.src.libss as libss
 import sharpy.utils.algebra as algebra
 import sharpy.utils.settings as settings
 import sharpy.utils.cout_utils as cout
+import sharpy.structure.utils.modalutils as modalutils
 import warnings
 
 
@@ -116,13 +117,6 @@ class FlexDynamic():
         self.Cstr = tsinfo.modal.get('C')
         self.Kstr = tsinfo.modal.get('K')
 
-        self.Nmodes = self.settings['num_modes']
-        self._num_modes = None
-        self.num_modes = self.settings['num_modes']
-        self.num_dof = self.U.shape[0]
-        if self.V is not None:
-            self.num_dof = self.num_dof // 2
-
         ### set other flags
         self.modal = self.settings['modal_projection']
         self.inout_coords = self.settings['inout_coords']
@@ -133,12 +127,20 @@ class FlexDynamic():
         else:
             self.dt = None
 
+        self.Nmodes = self.settings['num_modes']
+        self._num_modes = None
+        self.num_modes = self.settings['num_modes']
+        self.num_dof = self.U.shape[0]
+        if self.V is not None:
+            self.num_dof = self.num_dof // 2
+
         self.proj_modes = self.settings['proj_modes']
         if self.V is None:
             self.proj_modes = 'undamped'
         self.discr_method = self.settings['discr_method']
         self.newmark_damp = self.settings['newmark_damp']
         self.use_euler = self.settings['use_euler']
+        self.use_principal_axes = self.settings.get('rigid_modes_cg', False)  # this setting is inherited from the setting in Modal solver
 
         ### set state-space variables
         self.SScont = None
@@ -156,10 +158,6 @@ class FlexDynamic():
         if self.use_euler:
             self.euler_propagation_equations(tsinfo)
 
-        self.update_modal()
-
-        self.U = self.sort_repeated_evecs(self.U, self.eigs)
-
         if self.Mstr.shape[0] == 6*(self.tsstruct0.num_node - 1):
             self.clamped = True
         else:
@@ -169,6 +167,8 @@ class FlexDynamic():
             self.num_dof_rig = 9
         else:
             self.num_dof_rig = 10
+
+        self.update_modal()
 
         self.num_dof_flex = np.sum(structure.vdof >= 0)*6
 
@@ -683,6 +683,189 @@ class FlexDynamic():
         if self.settings['print_info']:
             cout.cout_wrap('\tUpdated the beam C, modal C and K matrices with the terms from the gravity linearisation\n')
 
+    def linearise_applied_forces(self, tsstr=None):
+        r"""
+        Linearise externally applied follower forces given in the local ``B`` reference frame.
+
+        Updates the stiffness matrix with terms arising from this linearisation.
+
+        The linearised beam equations are expressed in the following frames of reference:
+
+            * Nodal forces: :math:`\delta \mathbf{f}_A`
+
+            * Nodal moments: :math:`\delta(T^T \mathbf{m}_B)`
+
+            * Total forces (rigid body equations): :math:`\delta \mathbf{F}_A`
+
+            * Total moments (rigid body equations): :math:`\delta \mathbf{M}_A`
+
+        Thus, when linearising externally applied follower forces projected onto the appropriate frame
+
+        .. math:: \boldsymbol{f}_A^{ext} = C^{AB}(\boldsymbol{\psi})\boldsymbol{f}^{ext}_B
+
+        the following terms appear:
+
+        .. math::
+            \delta\boldsymbol{f}_A^{ext} = \frac{\partial}{\partial\boldsymbol{\psi}}
+            \left(C^{AB}(\boldsymbol{\psi})\boldsymbol{f}^{ext}_{0,B}\right)\delta\boldsymbol{\psi} +
+            C^{AB}_0\delta\boldsymbol f_B^{ext}
+
+        where the :math:`\delta\boldsymbol{\psi}` is a stiffenning term that needs to be included in the stiffness
+        matrix. The terms will appear in the rows relating to the translational degrees of freedom and the columns that
+        correspond to the cartesian rotation vector.
+
+        .. math::
+            K_{ss}^{f,\Psi} \leftarrow -\frac{\partial}{\partial\boldsymbol{\psi}}
+            \left(C^{AB}(\boldsymbol{\psi})\boldsymbol{f}^{ext}_{0,B}\right)
+
+
+        Externally applied moments in the material frame :math:`\boldsymbol{m}_B^{ext}` result in the following
+        linearised expression:
+
+        .. math::
+            \delta(T^\top\boldsymbol{m}_B) = \frac{\partial}{\partial\boldsymbol{\psi}}\left(
+            T^\top(\boldsymbol{\psi})\boldsymbol{m}^{ext}_{0,B}\right)\delta\boldsymbol{\psi} +
+            T_0^\top \delta\boldsymbol{m}_B^{ext}
+
+        Which results in the following stiffenning term:
+
+        .. math::
+            K_{ss}^{m,\Psi} \leftarrow -\frac{\partial}{\partial\boldsymbol{\psi}}\left(
+            T^\top(\boldsymbol{\psi})\boldsymbol{m}^{ext}_{0,B}\right)
+
+        The total contribution of moments must be summed up for the rigid body equations, and include contributions
+        due to externally applied forces as well as moments:
+
+        .. math::
+            \boldsymbol{M}_A^{ext} = \sum_n \tilde{\boldsymbol{R}}_A C^{AB}(\boldsymbol{\psi}) \boldsymbol{f}_B^{ext} +
+            \sum C^{AB}(\boldsymbol{\psi})\boldsymbol{m}_B^{ext}
+
+        The linearisation of this term becomes
+
+        .. math::
+            \delta\boldsymbol{M}_A^{ext} = \sum\left(-\widetilde{C^{AB}_0 \boldsymbol{f}_{0,B}^{ext}}\delta \boldsymbol{R}_A
+            + \widetilde{\boldsymbol{R}}\frac{\partial}{\partial\boldsymbol{\psi}}\left(C^{AB}\boldsymbol{f}_B\right)
+            \delta \boldsymbol{\psi} +
+            \widetilde{\boldsymbol{R}}C^{AB}\delta\boldsymbol{f}^{ext}_B\right) +
+            \sum\left(\frac{\partial}{\partial\boldsymbol{\psi}}\left(C^{AB}\boldsymbol{m}_{0,B}\right)
+            \delta\boldsymbol{\psi} +
+            C^AB\delta\boldsymbol{m}_B^{ext}\right)
+
+        which gives the following stiffenning terms in the rigid-flex partition of the stiffness matrix:
+
+        .. math:: K_{ss}^{M,R} \leftarrow +\sum\widetilde{C^{AB}_0 \boldsymbol{f}_{0,B}^{ext}}
+
+        .. math:: K_{ss}^{M,\Psi} \leftarrow -\sum\widetilde{\boldsymbol{R}}\frac{\partial}{\partial\boldsymbol{\psi}}
+            \left(C^{AB}\boldsymbol{f}_{0,B}\right)
+
+        and
+
+        .. math:: K_{ss}^{M,\Psi} \leftarrow  -\sum\frac{\partial}{\partial\boldsymbol{\psi}}
+            \left(C^{AB}\boldsymbol{m}_{0,B}\right).
+
+
+        Args:
+            tsstr (sharpy.utils.datastructures.StructTimeStepInfo): Linearisation time step.
+        """
+        if tsstr is None:
+            tsstr = self.tsstruct0
+
+        # TODO: Future feature: gains for externally applied forces (i.e. thrust inputs)
+
+        num_node = tsstr.num_node
+        flex_dof = 6 * sum(self.structure.vdof >= 0)
+        if self.use_euler:
+            rig_dof = 9
+            # This is a rotation matrix that rotates a vector from G to A
+            Cag = algebra.euler2rot(tsstr.euler)
+            Cga = Cag.T
+
+            # Projection matrices - this projects the vector in G t to A
+            Pag = Cga
+            Pga = Cag
+        else:
+            rig_dof = 10
+
+        stiff_flex = np.zeros((flex_dof, flex_dof), dtype=float)  # flex-flex partition of K
+        stiff_rig = np.zeros((rig_dof, flex_dof), dtype=float)  # rig-flex partition of K
+
+        for i_node in range(num_node):
+            fext_b = self.structure.steady_app_forces[i_node, :3]
+            mext_b = self.structure.steady_app_forces[i_node, 3:]
+
+            # retrieve element and local index
+            ee, node_loc = self.structure.node_master_elem[i_node, :]
+            psi = tsstr.psi[ee, node_loc, :]
+            Cab = algebra.crv2rotation(psi)
+            Cba = Cab.T
+
+            # Tangential operator for moments calculation
+            Tan = algebra.crv2tan(psi)
+
+            # Get nodal position - in A frame
+            Ra = tsstr.pos[i_node, :]
+
+            jj = 0  # nodal dof index
+            bc_at_node = self.structure.boundary_conditions[i_node]  # Boundary conditions at the node
+
+            if bc_at_node == 1:  # clamp (only rigid-body)
+                dofs_at_node = 0
+                jj_tra, jj_rot = [], []
+
+            elif bc_at_node == -1 or bc_at_node == 0:  # (rigid+flex body)
+                dofs_at_node = 6
+                jj_tra = 6 * self.structure.vdof[i_node] + np.array([0, 1, 2], dtype=int)  # Translations
+                jj_rot = 6 * self.structure.vdof[i_node] + np.array([3, 4, 5], dtype=int)  # Rotations
+            else:
+                raise NameError('Invalid boundary condition ({}) at node {}'.format(bc_at_node, i_node))
+
+            jj += dofs_at_node
+
+            if bc_at_node != 1:
+                # Externally applied follower forces
+                stiff_flex[np.ix_(jj_tra, jj_rot)] -= algebra.der_Ccrv_by_v(psi, fext_b)
+                stiff_rig[:3, jj_rot] -= algebra.der_Ccrv_by_v(psi, fext_b)  # Rigid body contribution
+
+                # Externally applied moments in B frame
+                stiff_flex[np.ix_(jj_rot, jj_rot)] -= algebra.der_TanT_by_xv(psi, mext_b)
+
+                # Total moments
+                # force contribution
+                stiff_rig[3:6, jj_tra] += algebra.skew(Cab.dot(fext_b))  # delta Ra term
+                stiff_rig[3:6, jj_rot] -= algebra.skew(Ra).dot(algebra.der_Ccrv_by_v(psi, fext_b))  # delta psi term
+
+                # moment contribution
+                stiff_rig[3:6, jj_rot] -= algebra.der_Ccrv_by_v(psi, mext_b)
+
+            if bc_at_node == 1:
+                # forces applied at the A-frame (clamped node) need special attention since the
+                # node has an associated CRV to it's master element which may not be zero.
+                # forces applied at this node only appear in the rigid-body equations
+                try:
+                    closest_node = self.structure.connectivities[ee, node_loc + 2]
+                except IndexError:  # node is not in the first position
+                    try:
+                        closest_node = self.structure.connectivities[ee, node_loc + 1]
+                    except IndexError:  # node is the midpoint
+                        closest_node = self.structure.connectivities[ee, node_loc - 1]
+
+                # indices of the node whos CRV applies to the clamped node
+                jj_rot = 6 * self.structure.vdof[closest_node] + np.array([3, 4, 5], dtype=int)
+
+                stiff_rig[:3, jj_rot] -= algebra.der_Ccrv_by_v(psi, fext_b)  # Rigid body contribution
+                # Total moments
+                # force contribution
+                stiff_rig[3:6, jj_rot] += algebra.skew(Cab.dot(fext_b))  # delta Ra term
+                stiff_rig[3:6, jj_rot] -= algebra.skew(Ra).dot(algebra.der_Ccrv_by_v(psi, fext_b))  # delta psi term
+
+                # moment contribution
+                stiff_rig[3:6, jj_rot] -= algebra.der_Ccrv_by_v(psi, mext_b)
+
+        self.Kstr[:flex_dof, :flex_dof] += stiff_flex
+
+        if self.Kstr[:flex_dof, :flex_dof].shape != self.Kstr.shape:  # free flying structure
+            self.Kstr[-rig_dof:, :flex_dof] += stiff_rig
+
     def assemble(self, Nmodes=None):
         r"""
         Assemble state-space model
@@ -965,7 +1148,8 @@ class FlexDynamic():
 
         if self.proj_modes == 'undamped':
             if self.Cstr is not None:
-                print('Warning, projecting system with damping onto undamped modes')
+                if self.settings['print_info']:
+                    cout.cout_wrap('Warning, projecting system with damping onto undamped modes')
 
             # Eigenvalues are purely complex - only the complex part is calculated
             eigenvalues, eigenvectors = np.linalg.eig(np.linalg.solve(self.Mstr, self.Kstr))
@@ -976,12 +1160,24 @@ class FlexDynamic():
 
             phi = eigenvectors[:, order]
 
+            phi = modalutils.mode_sign_convention(self.structure.boundary_conditions,
+                                                  phi,
+                                                  not self.clamped,
+                                                  self.use_euler)
+
+            if not self.clamped and self.use_principal_axes:
+                phi = modalutils.free_modes_principal_axes(phi, self.Mstr, use_euler=self.use_euler)
+
             # Scale modes to have an identity mass matrix
-            dfact = np.diag(np.dot(phi.T, np.dot(self.Mstr, phi)))
-            self.U = (1./np.sqrt(dfact))*phi
+            phi = modalutils.scale_mass_normalised_modes(phi, self.Mstr)
+
+            self.U = phi
 
             # Update
             self.eigs = eigenvalues[order]
+            if not self.use_principal_axes:
+                # in the case of use_principal_axes modes are already ordered
+                self.U = self.sort_repeated_evecs(self.U, self.eigs)
 
             # To do: update SHARPy's timestep info modal results
         else:
@@ -1011,7 +1207,8 @@ class FlexDynamic():
             pass
 
         # Update Ccut matrix
-        self.Ccut = np.dot(self.U.T, np.dot(self.Cstr, self.U))
+        if self.modal:
+            self.Ccut = np.dot(self.U.T, np.dot(self.Cstr, self.U))
 
     def scale_system_normalised_time(self, time_ref):
         r"""
@@ -1057,10 +1254,14 @@ class FlexDynamic():
         except ValueError:
             pass
 
-        self.Kstr = self.scaled_reference_matrices['K'] * time_ref ** 2
-        self.Cstr = self.scaled_reference_matrices['C'] * time_ref
+        try:
+            self.Kstr = self.scaled_reference_matrices['K'] * time_ref ** 2
+            self.Cstr = self.scaled_reference_matrices['C'] * time_ref
 
-        self.freq_natural *= time_ref
+            self.freq_natural *= time_ref
+        except KeyError:
+            raise KeyError('The scaled reference matrices have not been set, most likely because you are trying to '
+                           'rescale a dimensional system. Make sure your system is normalised.')
 
     def cont2disc(self, dt=None):
         """Convert continuous-time SS model into """

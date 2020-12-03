@@ -1,11 +1,5 @@
-import os
-
 import numpy as np
-from tvtk.api import tvtk, write_data
-
-import sharpy.utils.algebra as algebra
 import sharpy.utils.cout_utils as cout
-from sharpy.utils.settings import str2bool
 from sharpy.utils.solver_interface import solver, BaseSolver
 import sharpy.utils.settings as settings
 from sharpy.utils.datastructures import init_matrix_structure, standalone_ctypes_pointer
@@ -15,7 +9,19 @@ import sharpy.aero.utils.uvlmlib as uvlmlib
 @solver
 class StallCheck(BaseSolver):
     """
-    Outputs the incidence angle of every panel of the surface.
+    Outputs the incidence angle of every panel of the surface as cell variables for visualisation in Paraview.
+
+    Note:
+        This postprocessor appends the information to the current SHARPy timestep being run, therefore,
+        in order to visualise the result in Paraview, it must be run prior to `AerogridPlot`. Otherwise, the panel
+        stall check will be performed but the actual angle not produced in the Paraview visualisation.
+
+    It also checks that the angles do not exceed the specified limit, with a warning in the log if the angle of attack
+    exceeds such limits (both positive and negative).
+
+    The limits are set through the setting ``airfoil_stall_angles``, which takes a dictionary where the key is
+    the ID to the airfoil (in string format) and the value is a 2-tuple containing the negative and positive limits
+    in radians.
     """
     solver_id = 'StallCheck'
     solver_classification = 'post-processor'
@@ -30,7 +36,8 @@ class StallCheck(BaseSolver):
 
     settings_types['airfoil_stall_angles'] = 'dict'
     settings_default['airfoil_stall_angles'] = dict()
-    settings_description['airfoil_stall_angles'] = 'Dictionary of stall angles for each airfoil'
+    settings_description['airfoil_stall_angles'] = 'Dictionary of stall angles for each airfoil as per the details ' \
+                                                   'above'
 
     settings_types['output_degrees'] = 'bool'
     settings_default['output_degrees'] = False
@@ -46,8 +53,9 @@ class StallCheck(BaseSolver):
 
         self.ts_max = None
         self.ts = None
+        self.caller = None
 
-    def initialise(self, data, custom_settings=None):
+    def initialise(self, data, custom_settings=None, caller=None):
         self.data = data
         if custom_settings is None:
             self.settings = data.settings[self.solver_id]
@@ -55,6 +63,7 @@ class StallCheck(BaseSolver):
             self.settings = custom_settings
         settings.to_custom_types(self.settings, self.settings_types, self.settings_default)
         self.ts_max = len(self.data.structure.timestep_info)
+        self.caller = caller
 
     def run(self, online=False):
         if not online:
@@ -123,4 +132,3 @@ class StallCheck(BaseSolver):
         if self.settings['output_degrees']:
             for i_surf in range(tstep.n_surf):
                 tstep.postproc_cell['incidence_angle'][i_surf] *= 180/np.pi
-

@@ -6,6 +6,7 @@ import sharpy.utils.settings as settings
 import sharpy.structure.utils.xbeamlib as xbeamlib
 import sharpy.utils.multibody as mb
 import sharpy.structure.utils.lagrangeconstraints as lagrangeconstraints
+import sharpy.utils.cout_utils as cout
 
 
 _BaseStructural = solver_from_string('_BaseStructural')
@@ -74,7 +75,12 @@ class NonLinearStaticMultibody(_BaseStructural):
         pass
 
     def define_sys_size(self):
+        """
+        This function defines the number of degrees of freedom in a multibody systems
 
+        Each body contributes with ``num_dof`` degrees of freedom and 10 more if the
+        associated local FoR can move or has Lagrange Constraints associated
+        """
         MBdict = self.data.structure.ini_mb_dict
         self.sys_size = self.data.structure.num_dof.value
 
@@ -83,6 +89,21 @@ class NonLinearStaticMultibody(_BaseStructural):
                 self.sys_size += 10
 
     def assembly_MB_eq_system(self, MB_beam, MB_tstep, Lambda, MBdict, iLoadStep):
+        """
+        This function generates the matrix and vector associated to the linear system to solve a structural iteration
+        It usses a Newmark-beta scheme for time integration.
+
+        Args:
+            MB_beam (list(:class:`~sharpy.structure.models.beam.Beam`)): each entry represents a body
+            MB_tstep (list(:class:`~sharpy.utils.datastructures.StructTimeStepInfo`)): each entry represents a body
+            Lambda (np.ndarray): Lagrange Multipliers array
+            MBdict (dict): Dictionary including the multibody information
+            iLoadStep (int): load step
+
+        Returns:
+            MB_K (np.ndarray): Matrix of the multibody system
+            MB_Q (np.ndarray): Vector of the systems of equations
+        """
         self.lc_list = lagrangeconstraints.initialize_constraints(MBdict)
         self.num_LM_eq = lagrangeconstraints.define_num_LM_eq(self.lc_list)
 
@@ -180,6 +201,20 @@ class NonLinearStaticMultibody(_BaseStructural):
         xb.xbeam_solv_disp2state(self.data.structure, tstep)
 
     def compute_forces_constraints(self, MB_beam, MB_tstep, Lambda):
+        """
+        This function computes the forces generated at Lagrange Constraints
+
+        Args:
+            MB_beam (list(:class:`~sharpy.structure.models.beam.Beam`)): each entry represents a body
+            MB_tstep (list(:class:`~sharpy.utils.datastructures.StructTimeStepInfo`)): each entry represents a body
+            ts (int): Time step number
+            dt(float): Time step increment
+            Lambda (np.ndarray): Lagrange Multipliers array
+            Lambda_dot (np.ndarray): Time derivarive of ``Lambda``
+
+        Notes:
+            This function is underdevelopment and not fully functional
+        """
         try:
             self.lc_list[0]
         except IndexError:
@@ -227,7 +262,7 @@ class NonLinearStaticMultibody(_BaseStructural):
         q = np.zeros((self.sys_size + self.num_LM_eq,), dtype=ct.c_double, order='F')
         dqdt = np.zeros((self.sys_size + self.num_LM_eq,), dtype=ct.c_double, order='F')
         dqddt = np.zeros((self.sys_size + self.num_LM_eq,), dtype=ct.c_double, order='F')
-        mb.disp2state(MB_beam, MB_tstep, q, dqdt, dqddt)
+        mb.disp_and_accel2state(MB_beam, MB_tstep, q, dqdt, dqddt)
         # Lagrange multipliers parameters
         num_LM_eq = self.num_LM_eq
         Lambda = np.zeros((num_LM_eq,), dtype=ct.c_double, order='F')
@@ -242,8 +277,8 @@ class NonLinearStaticMultibody(_BaseStructural):
             while converged == False:
                 iter += 1
                 if (iter == self.settings['max_iterations'].value - 1):
-                    print("Residual is:", np.amax(np.abs(Dq)))
-                    print("Static equations did not converge")
+                    cout.cout_wrap(("Residual is: %f" % np.amax(np.abs(Dq))), 4)
+                    cout.cout_wrap("Static equations did not converge", 4)
                     break
 
                 MB_K, MB_Q = self.assembly_MB_eq_system(MB_beam, MB_tstep, Lambda, MBdict, iLoadStep)
@@ -251,7 +286,7 @@ class NonLinearStaticMultibody(_BaseStructural):
 
                 # Dq *= 0.7
                 q += Dq
-                mb.state2disp(q, dqdt, dqddt, MB_beam, MB_tstep)
+                mb.state2disp_and_accel(q, dqdt, dqddt, MB_beam, MB_tstep)
 
                 if (iter > 0):
                     if (np.amax(np.abs(Dq)) < Dq_old):

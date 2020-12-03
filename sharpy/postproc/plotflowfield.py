@@ -1,17 +1,3 @@
-"""
-PlotFlowField
-
-Computes the flow velocity at a set of points (grid)
-
-Args:
-
-Returns:
-
-Examples:
-
-Notes:
-
-"""
 import os
 import numpy as np
 from tvtk.api import tvtk, write_data
@@ -20,54 +6,80 @@ import sharpy.utils.generator_interface as gen_interface
 import sharpy.utils.settings as settings
 import sharpy.aero.utils.uvlmlib as uvlmlib
 import ctypes as ct
+from sharpy.utils.constants import vortex_radius_def
 
 
 @solver
 class PlotFlowField(BaseSolver):
+    """
+    Plots the flow field in Paraview and computes the velocity at a set of points in a grid.
+    """
     solver_id = 'PlotFlowField'
+    solver_classification = 'post-processor'
+
+    settings_types = dict()
+    settings_default = dict()
+    settings_description = dict()
+    settings_options = dict()
+
+    settings_types['postproc_grid_generator'] = 'str'
+    settings_default['postproc_grid_generator'] = 'GridBox'
+    settings_description['postproc_grid_generator'] = 'Generator used to create grid and plot flow field'
+    settings_options['postproc_grid_generator'] = ['GridBox']
+
+    settings_types['postproc_grid_input'] = 'dict'
+    settings_default['postproc_grid_input'] = dict()
+    settings_description['postproc_grid_input'] = 'Dictionary containing settings for ``postproc_grid_generator``.'
+
+    settings_types['velocity_field_generator'] = 'str'
+    settings_default['velocity_field_generator'] = 'SteadyVelocityField'
+    settings_description['velocity_field_generator'] = 'Chosen velocity field generator'
+
+    settings_types['velocity_field_input'] = 'dict'
+    settings_default['velocity_field_input'] = dict()
+    settings_description['velocity_field_input'] = 'Dictionary containing settings for the selected ``velocity_field_generator``.'
+
+    settings_types['dt'] = 'float'
+    settings_default['dt'] = 0.1
+    settings_description['dt'] = 'Time step.'
+
+    settings_types['include_external'] = 'bool'
+    settings_default['include_external'] = True
+    settings_description['include_external'] = 'Include external velocities.'
+
+    settings_types['include_induced'] = 'bool'
+    settings_default['include_induced'] = True
+    settings_description['include_induced'] = 'Include induced velocities.'
+
+    settings_types['stride'] = 'int'
+    settings_default['stride'] = 1
+    settings_description['stride'] = 'Number of time steps between plots.'
+
+    settings_types['num_cores'] = 'int'
+    settings_default['num_cores'] = 1
+    settings_description['num_cores'] = 'Number of cores to use.'
+
+    settings_types['vortex_radius'] = 'float'
+    settings_default['vortex_radius'] = vortex_radius_def
+    settings_description['vortex_radius'] = 'Distance below which inductions are not computed.'
+
+    settings_table = settings.SettingsTable()
+    __doc__ += settings_table.generate(settings_types, settings_default, settings_description, settings_options)
 
     def __init__(self):
-        self.settings_types = dict()
-        self.settings_default = dict()
-
-        self.settings_types['postproc_grid_generator'] = 'str'
-        self.settings_default['postproc_grid_generator'] = 'box'
-
-        self.settings_types['postproc_grid_input'] = 'dict'
-        self.settings_default['postproc_grid_input'] = dict()
-
-        self.settings_types['velocity_field_generator'] = 'str'
-        self.settings_default['velocity_field_generator'] = 'SteadyVelocityField'
-
-        self.settings_types['velocity_field_input'] = 'dict'
-        self.settings_default['velocity_field_input'] = dict()
-
-        self.settings_types['dt'] = 'float'
-        self.settings_default['dt'] = 0.1
-
-        self.settings_types['include_external'] = 'bool'
-        self.settings_default['include_external'] = True
-
-        self.settings_types['include_induced'] = 'bool'
-        self.settings_default['include_induced'] = True
-
-        self.settings_types['stride'] = 'int'
-        self.settings_default['stride'] = 1
-
-        self.settings_types['num_cores'] = 'int'
-        self.settings_default['num_cores'] = 1
-
         self.settings = None
         self.data = None
         self.dir = 'output/'
+        self.caller = None
 
-    def initialise(self, data, custom_settings=None):
+    def initialise(self, data, custom_settings=None, caller=None):
         self.data = data
         if custom_settings is None:
             self.settings = data.settings[self.solver_id]
         else:
             self.settings = custom_settings
-        settings.to_custom_types(self.settings, self.settings_types, self.settings_default)
+        settings.to_custom_types(self.settings, self.settings_types, self.settings_default,
+                                 self.settings_options)
 
         self.dir =   self.data.case_route + 'output/' + self.data.case_name + '/' + 'GenerateFlowField/'
         if not os.path.isdir(self.dir):
@@ -84,6 +96,7 @@ class PlotFlowField(BaseSolver):
             self.settings['postproc_grid_generator'])
         self.postproc_grid_generator = postproc_grid_generator_type()
         self.postproc_grid_generator.initialise(self.settings['postproc_grid_input'])
+        self.caller = caller
 
     def output_velocity_field(self, ts):
         # Notice that SHARPy utilities deal with several two-dimensional surfaces
@@ -114,6 +127,7 @@ class PlotFlowField(BaseSolver):
 
             u_ind_points = uvlmlib.uvlm_calculate_total_induced_velocity_at_points(self.data.aero.timestep_info[ts],
                                                                                                       target_triads,
+                                                                                                      self.settings['vortex_radius'],
                                                                                                       self.data.structure.timestep_info[ts].for_pos[0:3],
                                                                                                       self.settings['num_cores'])
             ipoint = -1

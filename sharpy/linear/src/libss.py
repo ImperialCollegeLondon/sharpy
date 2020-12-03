@@ -116,8 +116,6 @@ class ss():
     @property
     def inputs(self):
         """Number of inputs :math:`m` to the system."""
-        # print('Getting number of inputs')
-        # return self._inputs
         if self.B.shape.__len__() == 1:
             self.inputs = 1
         else:
@@ -267,6 +265,51 @@ class ss():
             return np.max(ev.real)
         else:
             return np.max(np.abs(ev))
+
+    def eigvals(self):
+        """
+        Returns:
+            np.ndarray: Eigenvalues of the system
+
+        """
+        if ss.dt:
+            return eigvals(self.A, dlti=True)
+        else:
+            return eigvals(self.A, dlti=False)
+
+    def disc2cont(self):
+        r"""
+        Transform a discrete time system to a continuous time system using a bilinear (Tustin) transformation.
+
+        Wrapper of :func:`~sharpy.linear.src.libss.disc2cont`
+
+        """
+        if self.dt:
+            self = disc2cont(self)
+
+    def remove_inout_channels(self, retain_channels, where):
+        remove_inout_channels(self, retain_channels, where)
+
+    def summary(self):
+        msg = 'State-space system\nStates: %g\nInputs: %g\nOutputs: %g\n' % (self.states, self.inputs, self.outputs)
+        return msg
+
+    def transfer_function_evaluation(self, s):
+        r"""
+        Returns the transfer function of the system evaluated at :math:`s\in\mathbb{C}`.
+
+        Args:
+            s (complex): Point in the complex plane at which to evaluate the transfer function.
+
+        Returns:
+            np.ndarray: Transfer function evaluated at :math:`s`.
+        """
+        a, b, c, d = self.get_mats()
+
+        n = a.shape[0]
+
+        return c.dot(scalg.inv(s * np.eye(n) - a)).dot(b) + d
+
 
 class ss_block():
     '''
@@ -447,6 +490,14 @@ class ss_block():
                     libsp.block_dot(self.C, Vblock))
 
 
+    def solve_step(self, xn, un):
+
+        # TODO: add options about predictor ...
+        xn1 = libsp.block_sum(libsp.block_dot(self.A, xn), libsp.block_dot(self.B, un))
+        yn = libsp.block_sum(libsp.block_dot(self.C, xn), libsp.block_dot(self.D, un))
+
+        return xn1, yn
+
 
 # ---------------------------------------- Methods for state-space manipulation
 def project(ss_here,WT,V):
@@ -544,6 +595,72 @@ def couple(ss01, ss02, K12, K21, out_sparse=False):
              libsp.dense(D2 + libsp.dot(libsp.dot(D2, cpl_22), D2))]])
 
     return ss(A, B, C, D, dt=ss01.dt)
+
+def disc2cont(sys):
+    r"""
+    Transform a discrete time system to a continuous time system using a bilinear (Tustin) transformation.
+
+    Given a discrete time system with time step :math:`\Delta T`, the equivalent continuous time system is given
+    by:
+
+    .. math::
+        \bar{A} &= \omega_0(A-I)(I + A)^{-1}  \\
+        \bar{B} &= \sqrt{2\omega_0}(I+A)^{-1}B  \\
+        \bar{C} &= \sqrt{2\omega_0}C(I+A)^{-1}  \\
+        \bar{D} &= D - C(I+A)^{-1}B
+
+    where :math:`\omega_0 = \frac{2}{\Delta T}`.
+
+    References:
+        MIT OCW 6.245
+
+    Args:
+        sys (libss.ss): SHARPy discrete-time state-space object.
+
+    Returns:
+        libss.ss: Converted continuous-time state-space object.
+    """
+
+    assert sys.dt is not None, 'System to transform is not a discrete-time system.'
+
+    n = sys.A.shape[0]
+    eye = np.eye(n)
+    eye_a_inv = np.linalg.inv(sys.A + eye)
+    omega_0 = 2 / sys.dt
+
+    a = omega_0 * (sys.A - eye).dot(eye_a_inv)
+    b = np.sqrt(2 * omega_0) * eye_a_inv.dot(sys.B)
+    c = np.sqrt(2 * omega_0) * sys.C.dot(eye_a_inv)
+    d = sys.D - sys.C.dot(eye_a_inv.dot(sys.B))
+
+    return ss(a, b, c, d)
+
+
+def remove_inout_channels(sys, retain_channels, where):
+
+    retain_m = len(retain_channels)  # new number of in/out
+
+    if where == 'in':
+        m = sys.inputs  # current number of in/out
+    elif where == 'out':
+        m = sys.outputs
+    else:
+        raise NameError('Argument ``where`` can only be ``in`` or ``out``.')
+
+    gain_matrix = np.zeros((retain_m, m))
+    for ith, channel in enumerate(retain_channels):
+        gain_matrix[ith, channel] = 1
+
+    if where == 'in':
+        sys.addGain(gain_matrix.T, where='in')
+    elif where == 'out':
+        sys.addGain(gain_matrix, where='out')
+    else:
+        raise NameError('Argument ``where`` can only be ``in`` or ``out``.')
+
+    return sys
+
+
 
 
 # def couple_wrong02(ss01, ss02, K12, K21):
@@ -717,7 +834,7 @@ def freqresp(SS, wv, dlti=True):
         wTs = Ts * wv
         zv = np.cos(wTs) + 1.j * np.sin(wTs)
     else:
-        print('Assuming a continuous time system')
+        # print('Assuming a continuous time system')
         zv = 1.j * wv
 
     Nx = SS.A.shape[0]
@@ -1459,6 +1576,26 @@ def get_freq_from_eigs(eigs, dlti=True):
     return fn
 
 
+def eigvals(a, dlti=False):
+    """
+    Ordered eigenvalaues of a matrix.
+
+    Args:
+        a (np.ndarray): Matrix.
+        dlti (bool): If true, the eigenvalues are ordered by modulus, else by real part.
+
+    Returns:
+        np.ndarray: ordered set of eigenvalues.
+    """
+    eigs = np.linalg.eigvals(a)
+
+    if dlti:
+        order = np.argsort(np.abs(eigs))
+    else:
+        order = np.argsort(eigs.real)
+
+    return eigs[order]
+
 # --------------------------------------------------------------------- Testing
 
 
@@ -1660,6 +1797,18 @@ if __name__ == '__main__':
 
             er = np.max(np.abs(Yjoin - Yref))
             assert er<1e-14, 'test_join error %.3e too large' %er
+
+        def test_disc2cont(self):
+            # not the best test given that eigenvalue comparison is not great with random systems. (error grows near
+            # nyquist frequency)
+
+            # this test is for execution purposes only.
+            sys = copy.deepcopy(self.SS)
+            self.SS.disc2cont()
+
+            ct_sys = disc2cont(sys)
+
+
 
     outprint = 'Testing libss'
     print('\n' + 70 * '-')

@@ -3,14 +3,6 @@
 Aerogrid contains all the necessary routines to generate an aerodynamic
 grid based on the input dictionaries.
 """
-# Alfonso del Carre
-
-# alfonso.del-carre14@imperial.ac.uk
-# Imperial College London
-# LoCA lab
-# 29 Sept 2016
-
-
 import ctypes as ct
 import warnings
 
@@ -53,6 +45,9 @@ class Aerogrid(object):
         self.n_control_surfaces = 0
 
         self.cs_generators = []
+
+        self.polars = None
+        self.wake_shape_generator = None
 
     def generate(self, aero_dict, beam, aero_settings, ts):
         self.aero_dict = aero_dict
@@ -116,19 +111,42 @@ class Aerogrid(object):
             aero_settings['control_surface_deflection'].extend(undef_ctrl_sfcs)
 
         # initialise generators
+        with_error_initialising_cs = False
         for i_cs in range(self.n_control_surfaces):
             if aero_settings['control_surface_deflection'][i_cs] == '':
                 self.cs_generators.append(None)
             else:
+                cout.cout_wrap('Initialising Control Surface {:g} generator'.format(i_cs), 1)
+                # check that the control surface is not static
+                if self.aero_dict['control_surface_type'][i_cs] == 0:
+                    raise TypeError('Control surface {:g} is defined as static but there is a control surface generator'
+                                    'associated with it'.format(i_cs))
                 generator_type = gen_interface.generator_from_string(
                     aero_settings['control_surface_deflection'][i_cs])
                 self.cs_generators.append(generator_type())
-                self.cs_generators[i_cs].initialise(
-                    aero_settings['control_surface_deflection_generator_settings'][i_cs])
+                try:
+                    self.cs_generators[i_cs].initialise(
+                        aero_settings['control_surface_deflection_generator_settings'][str(i_cs)])
+                except KeyError:
+                    with_error_initialising_cs = True
+                    cout.cout_wrap('Error, unable to locate a settings dictionary for control surface '
+                                   '{:g}'.format(i_cs), 4)
+
+        if with_error_initialising_cs:
+            raise KeyError('Unable to locate settings for at least one control surface.')
 
         self.add_timestep()
         self.generate_mapping()
         self.generate_zeta(self.beam, self.aero_settings, ts)
+
+        if 'polars' in aero_dict:
+            import sharpy.aero.utils.airfoilpolars as ap
+            self.polars = []
+            nairfoils = np.amax(self.aero_dict['airfoil_distribution']) + 1
+            for iairfoil in range(nairfoils):
+                new_polar = ap.polar()
+                new_polar.initialise(aero_dict['polars'][str(iairfoil)])
+                self.polars.append(new_polar)
 
     def output_info(self):
         cout.cout_wrap('The aerodynamic grid contains %u surfaces' % self.n_surf, 1)
@@ -245,7 +263,7 @@ class Aerogrid(object):
                 # 1) check that this node and elem have a control surface
                     if self.aero_dict['control_surface'][i_elem, i_local_node] >= 0:
                         i_control_surface = self.aero_dict['control_surface'][i_elem, i_local_node]
-                # 2) type of control surface + write info
+                        # 2) type of control surface + write info
                         control_surface_info = dict()
                         if self.aero_dict['control_surface_type'][i_control_surface] == 0:
                             control_surface_info['type'] = 'static'
@@ -295,6 +313,7 @@ class Aerogrid(object):
                                 control_surface_info['hinge_coords'] = self.aero_dict['control_surface_hinge_coords'][i_control_surface]
                             except KeyError:
                                 control_surface_info['hinge_coords'] = None
+
                         else:
                             raise NotImplementedError(str(self.aero_dict['control_surface_type'][i_control_surface]) +
                                 ' control surfaces are not yet implemented')

@@ -87,7 +87,8 @@ class Beam(BaseStructure):
         self.generate_dof_arrays()
 
         # ini info
-        self.ini_info = StructTimeStepInfo(self.num_node, self.num_elem, self.num_node_elem, num_dof = self.num_dof, num_bodies = self.num_bodies)
+        self.ini_info = StructTimeStepInfo(self.num_node, self.num_elem, self.num_node_elem,
+                                           num_dof=self.num_dof, num_bodies=self.num_bodies)
 
         # mutibody: FoR information
         try:
@@ -295,7 +296,7 @@ class Beam(BaseStructure):
                     self.elements[i_lumped_master_elem].max_nodes_elem, 6, 6))
 
             self.elements[i_lumped_master_elem].rbmass[i_lumped_master_node_local, :, :] += (
-                inertia_tensor)
+                inertia_tensor) # += necessary in case multiple masses defined per node
 
     # def generate_master_structure(self):
     #     self.master = np.zeros((self.num_elem, self.num_node_elem, 2), dtype=int) - 1
@@ -453,8 +454,19 @@ class Beam(BaseStructure):
                 dt*np.dot(self.timestep_info[ts].cga(),
                           self.timestep_info[ts].for_vel[0:3]))
 
-
     def nodal_b_for_2_a_for(self, nodal, tstep, filter=np.array([True]*6)):
+        """
+        Projects a nodal variable from the local, body-attached frame (B) to the reference A frame.
+
+        Args:
+            nodal (np.array): Nodal variable of size ``(num_node, 6)``
+            tstep (sharpy.datastructures.StructTimeStepInfo): structural time step info.
+            filter (np.array): optional argument that filters and does not convert a specific degree of
+              freedom. Defaults to ``np.array([True, True, True, True, True, True])``.
+
+        Returns:
+            np.array: the ``nodal`` argument projected onto the reference ``A`` frame.
+        """
         nodal_a = nodal.copy(order='F')
         for i_node in range(self.num_node):
             # get master elem and i_local_node
@@ -491,23 +503,17 @@ class Beam(BaseStructure):
         """
         get_body
 
-        Extract the body number 'ibody' from a multibody system
+        Extract the body number ``ibody`` from a multibody system
 
-        Given 'self' as a Beam class of a multibody system, this
-        function returns another Beam class (ibody_beam)
-        that only includes the body number 'ibody' of the original system
+        This function returns a :class:`~sharpy.structure.models.beam.Beam` class (``ibody_beam``)
+        that only includes the body number ``ibody`` of the original system
 
         Args:
-            self(Beam): structural information of the multibody system
+            self(:class:`~sharpy.structure.models.beam.Beam`): structural information of the multibody system
             ibody(int): body number to be extracted
 
         Returns:
-        	ibody_beam(Beam): structural information of the isolated body
-
-        Examples:
-
-        Notes:
-
+        	ibody_beam(:class:`~sharpy.structure.models.beam.Beam`): structural information of the isolated body
         """
 
         ibody_beam = Beam()

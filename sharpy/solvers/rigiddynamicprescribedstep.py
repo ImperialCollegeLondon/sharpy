@@ -11,16 +11,19 @@ from sharpy.utils.solver_interface import solver, BaseSolver
 import sharpy.utils.settings as settings
 import sharpy.utils.cout_utils as cout
 import sharpy.utils.algebra as algebra
+from sharpy.utils.solver_interface import solver_from_string
+import sharpy.utils.algebra as algebra
 
+_BaseStructural = solver_from_string('_BaseStructural')
 
 @solver
 class RigidDynamicPrescribedStep(BaseSolver):
     solver_id = 'RigidDynamicPrescribedStep'
-    solver_classification = 'Coupled'
+    solver_classification = 'structural'
 
-    settings_types = dict()
-    settings_default = dict()
-    settings_description = dict()
+    settings_types = _BaseStructural.settings_types.copy()
+    settings_default = _BaseStructural.settings_default.copy()
+    settings_description = _BaseStructural.settings_description.copy()
 
     settings_types['dt'] = 'float'
     settings_default['dt'] = 0.01
@@ -48,11 +51,9 @@ class RigidDynamicPrescribedStep(BaseSolver):
 
         # load info from dyn dictionary
         self.data.structure.add_unsteady_information(self.data.structure.dyn_dict, self.settings['num_steps'].value)
-
-
+ 
     def run(self, structural_step=None, dt=None):
 
-        pass
         if structural_step is None:
             structural_step = self.data.structure.timestep_info[-1]
         if dt is None:
@@ -101,10 +102,10 @@ class RigidDynamicPrescribedStep(BaseSolver):
         applied_forces_copy = applied_forces.copy()
         gravity_forces_copy = step.gravity_forces.copy()
         for i_node in range(self.data.structure.num_node):
-            applied_forces_copy[i_node, 3:6] += np.cross(step.pos[i_node, :],
-                                                         applied_forces_copy[i_node, 0:3])
-            gravity_forces_copy[i_node, 3:6] += np.cross(step.pos[i_node, :],
-                                                         gravity_forces_copy[i_node, 0:3])
+            applied_forces_copy[i_node, 3:6] += algebra.cross3(step.pos[i_node, :],
+                                                               applied_forces_copy[i_node, 0:3])
+            gravity_forces_copy[i_node, 3:6] += algebra.cross3(step.pos[i_node, :],
+                                                               gravity_forces_copy[i_node, 0:3])
 
         totals = np.sum(applied_forces_copy + gravity_forces_copy, axis=0)
         step.total_forces = np.sum(applied_forces_copy, axis=0)
