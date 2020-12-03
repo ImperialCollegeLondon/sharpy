@@ -92,7 +92,8 @@ class UVMopts(ct.Structure):
                 ("interp_coords", ct.c_uint),
                 ("filter_method", ct.c_uint),
                 ("interp_method", ct.c_uint),
-                ("yaw_slerp", ct.c_double),]
+                ("yaw_slerp", ct.c_double),
+                ("quasi_steady", ct.c_bool),]
 
     def __init__(self):
         ct.Structure.__init__(self)
@@ -110,6 +111,7 @@ class UVMopts(ct.Structure):
         self.vortex_radius = ct.c_double(vortex_radius_def)
         self.vortex_radius_wake_ind = ct.c_double(vortex_radius_def)
         self.yaw_slerp = ct.c_double(0.)
+        self.quasi_steady = ct.c_bool(False)
 
 
 class FlightConditions(ct.Structure):
@@ -198,6 +200,7 @@ def uvlm_init(ts_info, options):
     vmopts.NumCores = ct.c_uint(options['num_cores'].value)
     vmopts.vortex_radius = ct.c_double(options['vortex_radius'].value)
     vmopts.vortex_radius_wake_ind = ct.c_double(options['vortex_radius_wake_ind'].value)
+    vmopts.quasi_steady = ct.c_bool(options['quasi_steady'])
 
     flightconditions = FlightConditions()
     flightconditions.rho = options['rho']
@@ -250,6 +253,7 @@ def uvlm_solver(i_iter, ts_info, struct_ts_info, options, convect_wake=True, dt=
     uvmopts.filter_method = ct.c_uint(options["filter_method"].value)
     uvmopts.interp_method = ct.c_uint(options["interp_method"].value)
     uvmopts.yaw_slerp = ct.c_double(options["yaw_slerp"].value)
+    uvmopts.quasi_steady = ct.c_bool(options['quasi_steady'])
 
     flightconditions = FlightConditions()
     flightconditions.rho = options['rho']
