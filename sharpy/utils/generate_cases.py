@@ -348,6 +348,9 @@ class StructuralInformation():
         self.lumped_mass_position = None
         self.lumped_mass_mat = None
         self.lumped_mass_mat_nodes = None
+        self.orientation = None
+        self.for_pos = None
+
 
     def copy(self):
         """
@@ -383,6 +386,9 @@ class StructuralInformation():
         if isinstance(self.lumped_mass_mat_nodes, np.ndarray):
             copied.lumped_mass_mat_nodes = self.lumped_mass_mat_nodes.astype(dtype=int, copy=True)
             copied.lumped_mass_mat = self.lumped_mass_mat.astype(dtype=float, copy=True)
+
+        copied.orientation = self.orientation.astype(dtype=float, copy=True)
+        copied.for_pos = self.for_pos.astype(dtype=float, copy=True)
 
         return copied
 
