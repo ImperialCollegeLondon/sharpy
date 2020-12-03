@@ -96,9 +96,9 @@ def rotor_from_excel_type03(in_op_params,
                             in_excel_description,
                             in_options):
     """
-    generate_from_excel_type03_db
+    rotor_from_excel_type03
 
-    Function needed to generate a wind turbine from an excel database type03
+    Function needed to generate a wind turbine rotor from an excel database type03
 
     Args:
         op_param (dict): Dictionary with operating parameters
@@ -495,70 +495,30 @@ def rotor_from_excel_type03(in_op_params,
     return rotor
 
 
-def generate_from_excel_type02(chord_panels,
-                                rotation_velocity,
-                                pitch_deg,
-                                excel_file_name='database_excel_type02.xlsx',
-                                excel_sheet_parameters='parameters',
-                                excel_sheet_structural_blade='structural_blade',
-                                excel_sheet_discretization_blade='discretization_blade',
-                                excel_sheet_aero_blade='aero_blade',
-                                excel_sheet_airfoil_info='airfoil_info',
-                                excel_sheet_airfoil_coord='airfoil_coord',
-                                excel_sheet_structural_tower='structural_tower',
-                                m_distribution='uniform',
-                                h5_cross_sec_prop=None,
-                                n_points_camber=100,
-                                tol_remove_points=1e-3,
-                                user_defined_m_distribution_type=None,
-                                wsp=0.,
-                                dt=0.):
-    """
-    generate_from_excel_type02
+def generate_from_excel_type03(op_params,
+                                   geom_params,
+                                   excel_description,
+                                   options):
 
-    Function needed to generate a wind turbine from an excel database according to OpenFAST inputs
+    """
+    generate_from_excel_type03
+
+    Function needed to generate a wind turbine (tower + rotor) from an excel database type03.
+    See ``rotor_from_excel_type03'' for more information.
 
     Args:
-        chord_panels (int): Number of panels on the blade surface in the chord direction
-        rotation_velocity (float): Rotation velocity of the rotor
-        pitch_deg (float): pitch angle in degrees
-        excel_file_name (str):
-        excel_sheet_structural_blade (str):
-        excel_sheet_aero_blade (str):
-        excel_sheet_airfoil_coord (str):
-        excel_sheet_parameters (str):
-        excel_sheet_structural_tower (str):
-        m_distribution (str):
-        n_points_camber (int): number of points to define the camber of the airfoil,
-        tol_remove_points (float): maximum distance to remove adjacent points
-        user_defined_m_distribution_type (string): type of distribution of the chordwise panels when 'm_distribution' == 'user_defined'
-        camber_effects_on_twist (bool): When true plain airfoils are used and the blade is twisted and preloaded based on thin airfoil theory
-        wsp (float): wind speed (It may be needed for discretisation purposes)
-        dt (float): time step (It may be needed for discretisation purposes)
+        op_param (dict): Dictionary with operating parameters
+        geom_param (dict): Dictionray with geometical parameters
+        excel_description (dict): Dictionary describing the sheets of the excel file
+        option (dict): Dictionary with the different options for the wind turbine generation
 
     Returns:
-        wt (sharpy.utils.generate_cases.AeroelasticInfromation): Aeroelastic infrmation of the wind turbine
-        LC (list): list of all the Lagrange constraints needed in the cases (sharpy.utils.generate_cases.LagrangeConstraint)
-        MB (list): list of the multibody information of each body (sharpy.utils.generate_cases.BodyInfrmation)
+        wt (sharpy.utils.generate_cases.AeroelasticInfromation): Aeroelastic information of the wind turbine (tower + rotor)
     """
-
-    rotor = rotor_from_excel_type02(chord_panels,
-                                  rotation_velocity,
-                                  pitch_deg,
-                                  excel_file_name=excel_file_name,
-                                  excel_sheet_parameters=excel_sheet_parameters,
-                                  excel_sheet_structural_blade=excel_sheet_structural_blade,
-                                  excel_sheet_discretization_blade=excel_sheet_discretization_blade,
-                                  excel_sheet_aero_blade=excel_sheet_aero_blade,
-                                  excel_sheet_airfoil_info=excel_sheet_airfoil_info,
-                                  excel_sheet_airfoil_coord=excel_sheet_airfoil_coord,
-                                  m_distribution=m_distribution,
-                                  h5_cross_sec_prop=h5_cross_sec_prop,
-                                  n_points_camber=n_points_camber,
-                                  tol_remove_points=tol_remove_points,
-                                  user_defined_m_distribution_type=user_defined_m_distribution_type,
-                                  wsp=0.,
-                                  dt=0.)
+    rotor = rotor_from_excel_type03(op_params,
+                                    geom_params,
+                                    excel_description,
+                                    options)
 
     ######################################################################
     ## TOWER
@@ -811,3 +771,63 @@ def rotor_from_excel_type02(chord_panels,
                                    options)
 
     return rotor
+
+
+def generate_from_excel_type02(chord_panels,
+                                rotation_velocity,
+                                pitch_deg,
+                                excel_file_name='database_excel_type02.xlsx',
+                                excel_sheet_parameters='parameters',
+                                excel_sheet_structural_blade='structural_blade',
+                                excel_sheet_discretization_blade='discretization_blade',
+                                excel_sheet_aero_blade='aero_blade',
+                                excel_sheet_airfoil_info='airfoil_info',
+                                excel_sheet_airfoil_coord='airfoil_coord',
+                                excel_sheet_structural_tower='structural_tower',
+                                m_distribution='uniform',
+                                h5_cross_sec_prop=None,
+                                n_points_camber=100,
+                                tol_remove_points=1e-3,
+                                user_defined_m_distribution_type=None,
+                                camber_effect_on_twist=False,
+                                wsp=0.,
+                                dt=0.):
+
+    # Warning for back compatibility
+    cout.cout_wrap('generate_from_excel_type02 is obsolete! rotor_from_excel_type03 instead!', 3)
+
+    # Assign values to dictionaries
+    op_params = {}
+    op_params['rotation_velocity'] = rotation_velocity
+    op_params['pitch_deg'] = pitch_deg
+    op_params['wsp'] = wsp
+    op_params['dt'] = dt
+
+    geom_params = {}
+    geom_params['chord_panels'] = chord_panels
+    geom_params['tol_remove_points'] = tol_remove_points
+    geom_params['n_points_camber'] = n_points_camber
+    geom_params['h5_cross_sec_prop'] = h5_cross_sec_prop
+    geom_params['m_distribution'] = m_distribution
+
+    options = {}
+    options['camber_effect_on_twist'] = camber_effect_on_twist
+    options['user_defined_m_distribution_type'] = user_defined_m_distribution_type
+    options['include_polars'] = False
+
+    excel_description = {}
+    excel_description['excel_file_name'] = excel_file_name
+    excel_description['excel_sheet_parameters'] = excel_sheet_parameters
+    excel_description['excel_sheet_structural_tower'] = excel_sheet_structural_tower
+    excel_description['excel_sheet_structural_blade'] = excel_sheet_structural_blade
+    excel_description['excel_sheet_discretization_blade'] = excel_sheet_discretization_blade
+    excel_description['excel_sheet_aero_blade'] = excel_sheet_aero_blade
+    excel_description['excel_sheet_airfoil_info'] = excel_sheet_airfoil_info
+    excel_description['excel_sheet_airfoil_chord'] = excel_sheet_airfoil_coord
+
+    wt = generate_from_excel_type03(op_params,
+                                   geom_params,
+                                   excel_description,
+                                   options)
+
+    return wt
