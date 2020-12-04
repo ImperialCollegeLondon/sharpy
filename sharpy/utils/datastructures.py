@@ -394,7 +394,8 @@ class NonliftingBodyTimeStepInfo(TimeStepInfo):
             pass
 
 
-class AeroTimeStepInfo(object):
+
+class AeroTimeStepInfo(TimeStepInfo):
     """
     Aerodynamic Time step class.
 
@@ -456,12 +457,10 @@ class AeroTimeStepInfo(object):
           ``[num_surf x streamwise panels x spanwise panels]``
     """
     def __init__(self, dimensions, dimensions_star):
-        self.ct_dimensions = None
+        super().__init__(dimensions)
         self.ct_dimensions_star = None
 
-        self.dimensions = dimensions.copy()
         self.dimensions_star = dimensions_star.copy()
-        self.n_surf = self.dimensions.shape[0]
         # generate placeholder for aero grid zeta coordinates
         self.zeta = []
         for i_surf in range(self.n_surf):
@@ -475,14 +474,6 @@ class AeroTimeStepInfo(object):
                                            dimensions[i_surf, 0] + 1,
                                            dimensions[i_surf, 1] + 1),
                                           dtype=ct.c_double))
-
-        # panel normals
-        self.normals = []
-        for i_surf in range(self.n_surf):
-            self.normals.append(np.zeros((3,
-                                          dimensions[i_surf, 0],
-                                          dimensions[i_surf, 1]),
-                                         dtype=ct.c_double))
 
         # panel forces
         self.forces = []
@@ -548,54 +539,25 @@ class AeroTimeStepInfo(object):
                                                dimensions_star[i_surf, 1] + 1),
                                                dtype=ct.c_double))
 
-        # total forces
-        self.inertial_total_forces = np.zeros((self.n_surf, 6))
-        self.body_total_forces = np.zeros((self.n_surf, 6))
-        self.inertial_steady_forces = np.zeros((self.n_surf, 6))
-        self.body_steady_forces = np.zeros((self.n_surf, 6))
-        self.inertial_unsteady_forces = np.zeros((self.n_surf, 6))
-        self.body_unsteady_forces = np.zeros((self.n_surf, 6))
+        self.wake_conv_vel = []
+        for i_surf in range(self.n_surf):
+            self.wake_conv_vel.append(np.zeros((dimensions_star[i_surf, 0],
+                                            dimensions_star[i_surf, 1]),
+                                           dtype=ct.c_double))
 
-        self.postproc_cell = dict()
-        self.postproc_node = dict()
-
-        # Multibody variables
-        self.in_global_AFoR = True
 
         self.control_surface_deflection = np.array([])
 
     def copy(self):
-        """
-        Returns a copy of a deepcopy of a :class:`~sharpy.utils.datastructures.AeroTimeStepInfo`
-        """
-        copied = AeroTimeStepInfo(self.dimensions, self.dimensions_star)
-        # generate placeholder for aero grid zeta coordinates
-        for i_surf in range(copied.n_surf):
-            copied.zeta[i_surf] = self.zeta[i_surf].astype(dtype=ct.c_double, copy=True, order='C')
+        return self.create_placeholder(AeroTimeStepInfo(self.dimensions, self.dimensions_star))
 
-        for i_surf in range(copied.n_surf):
-            copied.zeta_dot[i_surf] = self.zeta_dot[i_surf].astype(dtype=ct.c_double, copy=True, order='C')
-
-        # panel normals
-        for i_surf in range(copied.n_surf):
-            copied.normals[i_surf] = self.normals[i_surf].astype(dtype=ct.c_double, copy=True, order='C')
-
-        # panel forces
-        for i_surf in range(copied.n_surf):
-            copied.forces[i_surf] = self.forces[i_surf].astype(dtype=ct.c_double, copy=True, order='C')
-
-        # panel forces
-        for i_surf in range(copied.n_surf):
-            copied.dynamic_forces[i_surf] = self.dynamic_forces[i_surf].astype(dtype=ct.c_double, copy=True, order='C')
-
+    def create_placeholder(self, copied):
+        super().create_placeholder(copied)
         # generate placeholder for aero grid zeta_star coordinates
         for i_surf in range(copied.n_surf):
             copied.zeta_star[i_surf] = self.zeta_star[i_surf].astype(dtype=ct.c_double, copy=True, order='C')
 
         # placeholder for external velocity
-        for i_surf in range(copied.n_surf):
-            copied.u_ext[i_surf] = self.u_ext[i_surf].astype(dtype=ct.c_double, copy=True, order='C')
-
         for i_surf in range(copied.n_surf):
             copied.u_ext_star[i_surf] = self.u_ext_star[i_surf].astype(dtype=ct.c_double, copy=True, order='C')
 
@@ -612,51 +574,23 @@ class AeroTimeStepInfo(object):
         for i_surf in range(copied.n_surf):
             copied.dist_to_orig[i_surf] = self.dist_to_orig[i_surf].astype(dtype=ct.c_double, copy=True, order='C')
 
-        # total forces
-        copied.inertial_total_forces = self.inertial_total_forces.astype(dtype=ct.c_double, copy=True, order='C')
-        copied.body_total_forces = self.body_total_forces.astype(dtype=ct.c_double, copy=True, order='C')
-        copied.inertial_steady_forces = self.inertial_steady_forces.astype(dtype=ct.c_double, copy=True, order='C')
-        copied.body_steady_forces = self.body_steady_forces.astype(dtype=ct.c_double, copy=True, order='C')
-        copied.inertial_unsteady_forces = self.inertial_unsteady_forces.astype(dtype=ct.c_double, copy=True, order='C')
-        copied.body_unsteady_forces = self.body_unsteady_forces.astype(dtype=ct.c_double, copy=True, order='C')
-
-        copied.postproc_cell = copy.deepcopy(self.postproc_cell)
-        copied.postproc_node = copy.deepcopy(self.postproc_node)
+        for i_surf in range(copied.n_surf):
+            copied.wake_conv_vel[i_surf] = self.wake_conv_vel[i_surf].astype(dtype=ct.c_double, copy=True, order='C')
 
         copied.control_surface_deflection = self.control_surface_deflection.astype(dtype=ct.c_double, copy=True)
 
         return copied
 
     def generate_ctypes_pointers(self):
-        """
-        Generates the pointers to aerodynamic variables used to interface the C++ library ``uvlmlib``
-        """
-        self.ct_dimensions = self.dimensions.astype(dtype=ct.c_uint, copy=True)
-        self.ct_dimensions_star = self.dimensions_star.astype(dtype=ct.c_uint, copy=True)
-
-        n_surf = len(self.dimensions)
-
         from sharpy.utils.constants import NDIM
-
-        self.ct_zeta_list = []
-        for i_surf in range(self.n_surf):
-            for i_dim in range(NDIM):
-                self.ct_zeta_list.append(self.zeta[i_surf][i_dim, :, :].reshape(-1))
-
-        self.ct_zeta_dot_list = []
-        for i_surf in range(self.n_surf):
-            for i_dim in range(NDIM):
-                self.ct_zeta_dot_list.append(self.zeta_dot[i_surf][i_dim, :, :].reshape(-1))
+        n_surf = len(self.dimensions)
+        super().generate_ctypes_pointers()
+        self.ct_dimensions_star = self.dimensions_star.astype(dtype=ct.c_uint, copy=True)
 
         self.ct_zeta_star_list = []
         for i_surf in range(self.n_surf):
             for i_dim in range(NDIM):
                 self.ct_zeta_star_list.append(self.zeta_star[i_surf][i_dim, :, :].reshape(-1))
-
-        self.ct_u_ext_list = []
-        for i_surf in range(self.n_surf):
-            for i_dim in range(NDIM):
-                self.ct_u_ext_list.append(self.u_ext[i_surf][i_dim, :, :].reshape(-1))
 
         self.ct_u_ext_star_list = []
         for i_surf in range(self.n_surf):
@@ -675,49 +609,18 @@ class AeroTimeStepInfo(object):
         for i_surf in range(self.n_surf):
             self.ct_gamma_star_list.append(self.gamma_star[i_surf][:, :].reshape(-1))
 
-        self.ct_normals_list = []
-        for i_surf in range(self.n_surf):
-            for i_dim in range(NDIM):
-                self.ct_normals_list.append(self.normals[i_surf][i_dim, :, :].reshape(-1))
-
-        self.ct_forces_list = []
-        for i_surf in range(self.n_surf):
-            for i_dim in range(NDIM*2):
-                self.ct_forces_list.append(self.forces[i_surf][i_dim, :, :].reshape(-1))
-
-        self.ct_dynamic_forces_list = []
-        for i_surf in range(self.n_surf):
-            for i_dim in range(NDIM*2):
-                self.ct_dynamic_forces_list.append(self.dynamic_forces[i_surf][i_dim, :, :].reshape(-1))
-
         self.ct_dist_to_orig_list = []
         for i_surf in range(self.n_surf):
             self.ct_dist_to_orig_list.append(self.dist_to_orig[i_surf][:, :].reshape(-1))
 
-        try:
-            self.postproc_cell['incidence_angle']
-        except KeyError:
-            with_incidence_angle = False
-        else:
-            with_incidence_angle = True
+        self.ct_wake_conv_vel_list = []
+        for i_surf in range(self.n_surf):
+            self.ct_wake_conv_vel_list.append(self.wake_conv_vel[i_surf][:, :].reshape(-1))
 
-        if with_incidence_angle:
-            self.ct_incidence_list = []
-            for i_surf in range(self.n_surf):
-                self.ct_incidence_list.append(self.postproc_cell['incidence_angle'][i_surf][:, :].reshape(-1))
-
-        self.ct_p_dimensions = ((ct.POINTER(ct.c_uint)*n_surf)
-                                (* np.ctypeslib.as_ctypes(self.ct_dimensions)))
         self.ct_p_dimensions_star = ((ct.POINTER(ct.c_uint)*n_surf)
                                      (* np.ctypeslib.as_ctypes(self.ct_dimensions_star)))
-        self.ct_p_zeta = ((ct.POINTER(ct.c_double)*len(self.ct_zeta_list))
-                          (* [np.ctypeslib.as_ctypes(array) for array in self.ct_zeta_list]))
-        self.ct_p_zeta_dot = ((ct.POINTER(ct.c_double)*len(self.ct_zeta_dot_list))
-                          (* [np.ctypeslib.as_ctypes(array) for array in self.ct_zeta_dot_list]))
         self.ct_p_zeta_star = ((ct.POINTER(ct.c_double)*len(self.ct_zeta_star_list))
                                (* [np.ctypeslib.as_ctypes(array) for array in self.ct_zeta_star_list]))
-        self.ct_p_u_ext = ((ct.POINTER(ct.c_double)*len(self.ct_u_ext_list))
-                           (* [np.ctypeslib.as_ctypes(array) for array in self.ct_u_ext_list]))
         self.ct_p_u_ext_star = ((ct.POINTER(ct.c_double)*len(self.ct_u_ext_star_list))
                            (* [np.ctypeslib.as_ctypes(array) for array in self.ct_u_ext_star_list]))
         self.ct_p_gamma = ((ct.POINTER(ct.c_double)*len(self.ct_gamma_list))
@@ -726,50 +629,20 @@ class AeroTimeStepInfo(object):
                                (* [np.ctypeslib.as_ctypes(array) for array in self.ct_gamma_dot_list]))
         self.ct_p_gamma_star = ((ct.POINTER(ct.c_double)*len(self.ct_gamma_star_list))
                                 (* [np.ctypeslib.as_ctypes(array) for array in self.ct_gamma_star_list]))
-        self.ct_p_normals = ((ct.POINTER(ct.c_double)*len(self.ct_normals_list))
-                             (* [np.ctypeslib.as_ctypes(array) for array in self.ct_normals_list]))
-        self.ct_p_forces = ((ct.POINTER(ct.c_double)*len(self.ct_forces_list))
-                            (* [np.ctypeslib.as_ctypes(array) for array in self.ct_forces_list]))
-        self.ct_p_dynamic_forces = ((ct.POINTER(ct.c_double)*len(self.ct_dynamic_forces_list))
-                            (* [np.ctypeslib.as_ctypes(array) for array in self.ct_dynamic_forces_list]))
         self.ct_p_dist_to_orig = ((ct.POINTER(ct.c_double)*len(self.ct_dist_to_orig_list))
                            (* [np.ctypeslib.as_ctypes(array) for array in self.ct_dist_to_orig_list]))
-
-        if with_incidence_angle:
-            self.postproc_cell['incidence_angle_ct_pointer'] = ((ct.POINTER(ct.c_double)*len(self.ct_incidence_list))
-                            (* [np.ctypeslib.as_ctypes(array) for array in self.ct_incidence_list]))
+        self.ct_p_wake_conv_vel = ((ct.POINTER(ct.c_double)*len(self.ct_wake_conv_vel_list))
+                           (* [np.ctypeslib.as_ctypes(array) for array in self.ct_wake_conv_vel_list]))
 
     def remove_ctypes_pointers(self):
-        """
-        Removes the pointers to aerodynamic variables used to interface the C++ library ``uvlmlib``
-        """
-        try:
-            del self.ct_p_dimensions
-        except AttributeError:
-            pass
-
+        super().remove_ctypes_pointers()
         try:
             del self.ct_p_dimensions_star
         except AttributeError:
             pass
 
         try:
-            del self.ct_p_zeta
-        except AttributeError:
-            pass
-
-        try:
             del self.ct_p_zeta_star
-        except AttributeError:
-            pass
-
-        try:
-            del self.ct_p_zeta_dot
-        except AttributeError:
-            pass
-
-        try:
-            del self.ct_p_u_ext
         except AttributeError:
             pass
 
@@ -794,30 +667,15 @@ class AeroTimeStepInfo(object):
             pass
 
         try:
-            del self.ct_p_normals
-        except AttributeError:
-            pass
-
-        try:
-            del self.ct_p_forces
-        except AttributeError:
-            pass
-
-        try:
-            del self.ct_p_dynamic_forces
-        except AttributeError:
-            pass
-
-        try:
             del self.ct_p_dist_to_orig
         except AttributeError:
             pass
 
-        for k in list(self.postproc_cell.keys()):
-            if 'ct_list' in k:
-                del self.postproc_cell[k]
-            elif 'ct_pointer' in k:
-                del self.postproc_cell[k]
+        try:
+            del self.ct_p_wake_conv_vel
+        except AttributeError:
+            pass
+
 
 
 def init_matrix_structure(dimensions, with_dim_dimension, added_size=0):
