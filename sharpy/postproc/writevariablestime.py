@@ -302,7 +302,8 @@ class WriteVariablesTime(BaseSolver):
                 self.velocity_generator.generate({'zeta': self.vel_field_points,
                                     'for_pos': tstep.for_pos[0:3],
                                     't': self.data.ts*self.caller.settings['dt'].value,
-                                    'is_wake': False},
+                                    'is_wake': False,
+                                    'override': True},
                                     uext)
                 for ipoint in range(self.n_vel_field_points):
                     filename = self.dir + "vel_field_" + self.settings['vel_field_variables'][ivariable] + "_point" + str(ipoint) + ".dat"
