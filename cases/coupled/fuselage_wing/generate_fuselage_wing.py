@@ -404,7 +404,7 @@ def generate_nonlifting_body_file():
     #fuselage (beam?, body ID = 0)
     i_body = 0
     nonlifting_body_node[wn:wn + n_node_fuselage] = True
-    nonlifting_body_distribution[wn:wn + n_node_fuselage] = i_body
+    nonlifting_body_distribution[we:we + n_elem_fuselage] = i_body
     nonlifting_body_m[i_body] = m_radial_elem_fuselage
     radius[wn:wn + n_node_fuselage] = create_fuselage_geometry()
 
