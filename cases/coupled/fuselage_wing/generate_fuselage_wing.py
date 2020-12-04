@@ -470,7 +470,271 @@ def create_fuselage_geometry():
     return array_radius
 
 
+def generate_dyn_file():
+    global dt
+    global n_tstep
+    global route
+    global case_name
+    global num_elem
+    global num_node_elem
+    global num_node
+    global amplitude
+    global period
+    global free_flight
+
+    dynamic_forces_time = None
+    with_dynamic_forces = False
+    with_forced_vel = False
+    if not free_flight:
+        with_forced_vel = True
+
+    if with_dynamic_forces:
+        f1 = 100
+        dynamic_forces = np.zeros((num_node, 6))
+        app_node = [int(num_node_main - 1), int(num_node_main)]
+        dynamic_forces[app_node, 2] = f1
+        force_time = np.zeros((n_tstep, ))
+        limit = round(0.05/dt)
+        force_time[50:61] = 1
+
+        dynamic_forces_time = np.zeros((n_tstep, num_node, 6))
+        for it in range(n_tstep):
+            dynamic_forces_time[it, :, :] = force_time[it]*dynamic_forces
+
+    forced_for_vel = None
+    if with_forced_vel:
+        forced_for_vel = np.zeros((n_tstep, 6))
+        forced_for_acc = np.zeros((n_tstep, 6))
+        for it in range(n_tstep):
+            # if dt*it < period:
+            # forced_for_vel[it, 2] = 2*np.pi/period*amplitude*np.sin(2*np.pi*dt*it/period)
+            # forced_for_acc[it, 2] = (2*np.pi/period)**2*amplitude*np.cos(2*np.pi*dt*it/period)
+
+            forced_for_vel[it, 3] = 2*np.pi/period*amplitude*np.sin(2*np.pi*dt*it/period)
+            forced_for_acc[it, 3] = (2*np.pi/period)**2*amplitude*np.cos(2*np.pi*dt*it/period)
+
+    if with_dynamic_forces or with_forced_vel:
+        with h5.File(route + '/' + case_name + '.dyn.h5', 'a') as h5file:
+            if with_dynamic_forces:
+                h5file.create_dataset(
+                    'dynamic_forces', data=dynamic_forces_time)
+            if with_forced_vel:
+                h5file.create_dataset(
+                    'for_vel', data=forced_for_vel)
+                h5file.create_dataset(
+                    'for_acc', data=forced_for_acc)
+            h5file.create_dataset(
+                'num_steps', data=n_tstep)
+
+
+def generate_solver_file():
+    file_name = route + '/' + case_name + '.sharpy'
+    settings = dict()
+    settings['SHARPy'] = {'case': case_name,
+                          'route': route,
+                          'flow': flow,
+                          'write_screen': 'on',
+                          'write_log': 'on',
+                          'log_folder': route + '/output/',
+                          'log_file': case_name + '.log'}
+
+    settings['BeamLoader'] = {'unsteady': 'on',
+                              'orientation': algebra.euler2quat(np.array([roll,
+                                                                          alpha,
+                                                                          beta]))}
+    settings['AerogridLoader'] = {'unsteady': 'on',
+                                  'aligned_grid': 'on',
+                                  'mstar': int(20/tstep_factor),
+                                  'freestream_dir': ['1', '0', '0']}
+
+    settings['NonLinearStatic'] = {'print_info': 'off',
+                                   'max_iterations': 150,
+                                   'num_load_steps': 1,
+                                   'delta_curved': 1e-1,
+                                   'min_delta': tolerance,
+                                   'gravity_on': gravity,
+                                   'gravity': 9.81}
+
+    settings['StaticUvlm'] = {'print_info': 'on',
+                              'horseshoe': 'off',
+                              'num_cores': num_cores,
+                              'n_rollup': 0,
+                              'rollup_dt': dt,
+                              'rollup_aic_refresh': 1,
+                              'rollup_tolerance': 1e-4,
+                              'velocity_field_generator': 'SteadyVelocityField',
+                              'velocity_field_input': {'u_inf': u_inf,
+                                                       'u_inf_direction': [1., 0, 0]},
+                              'rho': rho}
+
+    settings['StaticCoupled'] = {'print_info': 'off',
+                                 'structural_solver': 'NonLinearStatic',
+                                 'structural_solver_settings': settings['NonLinearStatic'],
+                                 'aero_solver': 'StaticUvlm',
+                                 'aero_solver_settings': settings['StaticUvlm'],
+                                 'max_iter': 100,
+                                 'n_load_steps': n_step,
+                                 'tolerance': fsi_tolerance,
+                                 'relaxation_factor': structural_relaxation_factor}
+
+    settings['StaticTrim'] = {'solver': 'StaticCoupled',
+                              'solver_settings': settings['StaticCoupled'],
+                              'initial_alpha': alpha,
+                              'initial_deflection': 0,
+                              'initial_thrust': thrust}
+
+    settings['NonLinearDynamicCoupledStep'] = {'print_info': 'off',
+                                               'max_iterations': 950,
+                                               'delta_curved': 1e-1,
+                                               'min_delta': tolerance,
+                                               'newmark_damp': 5e-3,
+                                               'gravity_on': gravity,
+                                               'gravity': 9.81,
+                                               'num_steps': n_tstep,
+                                               'dt': dt,
+                                               'initial_velocity': u_inf}
+
+    settings['NonLinearDynamicPrescribedStep'] = {'print_info': 'off',
+                                           'max_iterations': 950,
+                                           'delta_curved': 1e-1,
+                                           'min_delta': tolerance,
+                                           'newmark_damp': 5e-3,
+                                           'gravity_on': gravity,
+                                           'gravity': 9.81,
+                                           'num_steps': n_tstep,
+                                           'dt': dt,
+                                           'initial_velocity': u_inf*int(free_flight)}
+
+    relative_motion = 'off'
+    if not free_flight:
+        relative_motion = 'on'
+    settings['StepUvlm'] = {'print_info': 'off',
+                            'horseshoe': 'off',
+                            'num_cores': num_cores,
+                            'n_rollup': 0,
+                            'convection_scheme': 2,
+                            'rollup_dt': dt,
+                            'rollup_aic_refresh': 1,
+                            'rollup_tolerance': 1e-4,
+                            'gamma_dot_filtering': 6,
+                            'velocity_field_generator': 'GustVelocityField',
+                            'velocity_field_input': {'u_inf': int(not free_flight)*u_inf,
+                                                     'u_inf_direction': [1., 0, 0],
+                                                     'gust_shape': '1-cos',
+                                                     'gust_length': gust_length,
+                                                     'gust_intensity': gust_intensity*u_inf,
+                                                     'offset': gust_offset,
+                                                     'span': span_main,
+                                                     'relative_motion': relative_motion},
+                            'rho': rho,
+                            'n_time_steps': n_tstep,
+                            'dt': dt}
+
+    if free_flight:
+        solver = 'NonLinearDynamicCoupledStep'
+    else:
+        solver = 'NonLinearDynamicPrescribedStep'
+    settings['DynamicCoupled'] = {'structural_solver': solver,
+                                  'structural_solver_settings': settings[solver],
+                                  'aero_solver': 'StepUvlm',
+                                  'aero_solver_settings': settings['StepUvlm'],
+                                  'fsi_substeps': 200,
+                                  'fsi_tolerance': fsi_tolerance,
+                                  'relaxation_factor': relaxation_factor,
+                                  'minimum_steps': 1,
+                                  'relaxation_steps': 150,
+                                  'final_relaxation_factor': 0.5,
+                                  'n_time_steps': n_tstep,
+                                  'dt': dt,
+                                  'include_unsteady_force_contribution': 'on',
+                                  'postprocessors': ['BeamLoads', 'BeamPlot', 'AerogridPlot'],
+                                  'postprocessors_settings': {'BeamLoads': {'folder': route + '/output/',
+                                                                            'csv_output': 'off'},
+                                                              'BeamPlot': {'folder': route + '/output/',
+                                                                           'include_rbm': 'on',
+                                                                           'include_applied_forces': 'on'},
+                                                              'AerogridPlot': {
+                                                                  'folder': route + '/output/',
+                                                                  'include_rbm': 'on',
+                                                                  'include_applied_forces': 'on',
+                                                                  'minus_m_star': 0},
+                                                              }}
+
+    settings['BeamLoads'] = {'folder': route + '/output/',
+                             'csv_output': 'off'}
+
+    settings['BeamPlot'] = {'folder': route + '/output/',
+                            'include_rbm': 'on',
+                            'include_applied_forces': 'on',
+                            'include_forward_motion': 'on'}
+
+    settings['AerogridPlot'] = {'folder': route + '/output/',
+                                'include_rbm': 'on',
+                                'include_forward_motion': 'off',
+                                'include_applied_forces': 'on',
+                                'minus_m_star': 0,
+                                'u_inf': u_inf,
+                                'dt': dt}
+
+    settings['Modal'] = {'print_info': True,
+                     'use_undamped_modes': True,
+                     'NumLambda': 30,
+                     'rigid_body_modes': True,
+                     'write_modes_vtk': 'on',
+                     'print_matrices': 'on',
+                     'write_data': 'on',
+                     'continuous_eigenvalues': 'off',
+                     'dt': dt,
+                     'plot_eigenvalues': False}
+
+    settings['LinearAssembler'] = {'linear_system': 'LinearAeroelastic',
+                                    'linear_system_settings': {
+                                        'beam_settings': {'modal_projection': False,
+                                                          'inout_coords': 'nodes',
+                                                          'discrete_time': True,
+                                                          'newmark_damp': 0.05,
+                                                          'discr_method': 'newmark',
+                                                          'dt': dt,
+                                                          'proj_modes': 'undamped',
+                                                          'use_euler': 'off',
+                                                          'num_modes': 40,
+                                                          'print_info': 'on',
+                                                          'gravity': 'on',
+                                                          'remove_dofs': []},
+                                        'aero_settings': {'dt': dt,
+                                                          'integr_order': 2,
+                                                          'density': rho,
+                                                          'remove_predictor': False,
+                                                          'use_sparse': True,
+                                                          'rigid_body_motion': free_flight,
+                                                          'use_euler': False,
+                                                          'remove_inputs': ['u_gust']},
+                                        'rigid_body_motion': free_flight}}
+
+    settings['AsymptoticStability'] = {'sys_id': 'LinearAeroelastic',
+                                        'print_info': 'on',
+                                        'modes_to_plot': [],
+                                        'display_root_locus': 'off',
+                                        'frequency_cutoff': 0,
+                                        'export_eigenvalues': 'off',
+                                        'num_evals': 40,
+                                        'folder': route + '/output/'}
+
+
+    import configobj
+    config = configobj.ConfigObj()
+    config.filename = file_name
+    for k, v in settings.items():
+        config[k] = v
+    config.write()
+
+
+
 clean_test_files()
 generate_fem()
 generate_aero_file()
 generate_nonlifting_body_file()
+generate_solver_file()
+generate_dyn_file()
+
+
