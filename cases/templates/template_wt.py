@@ -117,6 +117,9 @@ def spar_from_excel_type04(op_params,
                                     excel_description,
                                     options)
 
+    # Remove base clam
+    wt.StructuralInformation.boundary_conditions[0] = 0
+
     excel_file_name = excel_description['excel_file_name']
     excel_sheet_parameters = excel_description['excel_sheet_parameters']
     excel_sheet_structural_spar = excel_description['excel_sheet_structural_spar']
@@ -201,7 +204,8 @@ def spar_from_excel_type04(op_params,
         vec_node_structural_twist=np.zeros((spar.StructuralInformation.num_node,),),
         num_lumped_mass=1)
 
-    spar.StructuralInformation.boundary_conditions[0] = 1
+    spar.StructuralInformation.boundary_conditions[0] = -1
+    spar.StructuralInformation.boundary_conditions[-1] = 1
 
     # Include ballast mass
     dist = np.abs(coordinates[:, 0] + SparBallastDepth)
@@ -272,7 +276,7 @@ def spar_from_excel_type04(op_params,
     spar.remove_duplicated_points(1e-6)
     wt.StructuralInformation.coordinates[:, 0] += TowerBaseHeight
     spar.assembly(wt)
-    spar.remove_duplicated_points(1e-6)
+    spar.remove_duplicated_points(1e-6) # Careful, this removes the tower rotor join
 
     return spar
 
