@@ -11,6 +11,389 @@ import sharpy.utils.algebra as algebra
 import sharpy.utils.multibody as mb
 
 
+class TimeStepInfo(object):
+    """
+    Time step class.
+
+    It is the parent class of the AeroTimeStepInfo and NonliftingBodyTimeStepInfo, which contain the relevant
+    aerodynamic attributes for a single time step. All variables should be expressed in ``G`` FoR unless
+    otherwise stated.
+
+    Attributes:
+        ct_dimensions: Pointer to ``dimensions`` to interface the C++ library `uvlmlib``
+
+        dimensions (np.ndarray): Matrix defining the dimensions of the vortex grid on solid surfaces
+          ``[num_surf x chordwise panels x spanwise panels]``
+
+        n_surf (int): Number of aerodynamic surfaces on solid bodies. Each aerodynamic surface on solid bodies will
+          have an associted wake.
+
+        zeta (list(np.ndarray): Location of solid grid vertices
+          ``[n_surf][3 x (chordwise nodes + 1) x (spanwise nodes + 1)]``
+        zeta_dot (list(np.ndarray)): Time derivative of ``zeta``
+        normals (list(np.ndarray)): Normal direction to panels at the panel center
+          ``[n_surf][3 x chordwise nodes x spanwise nodes]``
+        forces (list(np.ndarray)): Forces not associated to time derivatives on grid vertices
+          ``[n_surf][3 x (chordwise nodes + 1) x (spanwise nodes + 1)]``
+        dynamic_forces (list(np.ndarray)): Forces associated to time derivatives on grid vertices
+          ``[n_surf][3 x (chordwise nodes + 1) x (spanwise nodes + 1)]``
+        u_ext (list(np.ndarray)): Background flow velocity on solid grid nodes
+          ``[n_surf][3 x (chordwise nodes + 1) x (spanwise nodes + 1)]``
+
+
+        inertial_total_forces (list(np.ndarray)): Total aerodynamic forces in ``G`` FoR ``[n_surf x 6]``
+        body_total_forces (list(np.ndarray)): Total aerodynamic forces in ``A`` FoR ``[n_surf x 6]``
+        inertial_steady_forces (list(np.ndarray)): Total aerodynamic steady forces in ``G`` FoR ``[n_surf x 6]``
+        body_steady_forces (list(np.ndarray)): Total aerodynamic steady forces in ``A`` FoR ``[n_surf x 6]``
+        inertial_unsteady_forces (list(np.ndarray)): Total aerodynamic unsteady forces in ``G`` FoR ``[n_surf x 6]``
+        body_unsteady_forces (list(np.ndarray)): Total aerodynamic unsteady forces in ``A`` FoR ``[n_surf x 6]``
+
+        postproc_cell (dict): Variables associated to cells to be postprocessed
+        postproc_node (dict): Variables associated to nodes to be postprocessed
+
+        in_global_AFoR (bool): ``True`` if the variables are stored in the global A FoR. ``False`` if they are stored
+          in the local A FoR of each body. Always ``True`` for single-body simulations. Currently not used.
+
+
+    Args:
+        dimensions (np.ndarray): Matrix defining the dimensions of the vortex grid on solid surfaces
+          ``[num_surf x chordwise panels x spanwise panels]``
+    """
+    def __init__(self, dimensions):
+        self.ct_dimensions = None
+
+        self.dimensions = dimensions.copy()
+        self.n_surf = self.dimensions.shape[0]
+        # generate placeholder for aero grid zeta coordinates
+        self.zeta = []
+        for i_surf in range(self.n_surf):
+            self.zeta.append(np.zeros((3, #x,y,z
+                                       dimensions[i_surf, 0],
+                                       dimensions[i_surf, 1]),
+                                      dtype=ct.c_double))
+
+        self.zeta_dot = []
+        for i_surf in range(self.n_surf):
+            self.zeta_dot.append(np.zeros((3,
+                                           dimensions[i_surf, 0],
+                                           dimensions[i_surf, 1]),
+                                          dtype=ct.c_double))
+
+        # panel normals
+        self.normals = []
+        for i_surf in range(self.n_surf):
+            self.normals.append(np.zeros((3,
+                                          dimensions[i_surf, 0],
+                                          dimensions[i_surf, 1]),
+                                         dtype=ct.c_double))
+
+        # panel forces
+        self.forces = []
+        for i_surf in range(self.n_surf):
+            self.forces.append(np.zeros((6,
+                                         dimensions[i_surf, 0],
+                                         dimensions[i_surf, 1]),
+                                        dtype=ct.c_double))
+        # panel forces
+        self.dynamic_forces = []
+        for i_surf in range(self.n_surf):
+            self.dynamic_forces.append(np.zeros((6,
+                                                 dimensions[i_surf, 0],
+                                                 dimensions[i_surf, 1]),
+                                                dtype=ct.c_double))
+
+        self.u_ext = []
+        for i_surf in range(self.n_surf):
+            self.u_ext.append(np.zeros((3,
+                                        dimensions[i_surf, 0],
+                                        dimensions[i_surf, 1]),
+                                       dtype=ct.c_double))
+
+        # total forces
+        self.inertial_total_forces = np.zeros((self.n_surf, 6))
+        self.body_total_forces = np.zeros((self.n_surf, 6))
+        self.inertial_steady_forces = np.zeros((self.n_surf, 6))
+        self.body_steady_forces = np.zeros((self.n_surf, 6))
+        self.inertial_unsteady_forces = np.zeros((self.n_surf, 6))
+        self.body_unsteady_forces = np.zeros((self.n_surf, 6))
+
+        self.postproc_cell = dict()
+        self.postproc_node = dict()
+
+        # Multibody variables
+        self.in_global_AFoR = True
+
+
+    def copy(self):
+        """
+        Returns a copy of a deepcopy of a :class:`~sharpy.utils.datastructures.TimeStepInfo`
+        """
+        return create_placeholder(TimeStepInfo(self.dimensions))
+
+    def create_placeholder(self, copied):
+        # generate placeholder for aero grid zeta coordinates
+        for i_surf in range(copied.n_surf):
+            copied.zeta[i_surf] = self.zeta[i_surf].astype(dtype=ct.c_double, copy=True, order='C')
+
+        for i_surf in range(copied.n_surf):
+            copied.zeta_dot[i_surf] = self.zeta_dot[i_surf].astype(dtype=ct.c_double, copy=True, order='C')
+
+        # panel normals
+        for i_surf in range(copied.n_surf):
+            copied.normals[i_surf] = self.normals[i_surf].astype(dtype=ct.c_double, copy=True, order='C')
+
+        # panel forces
+        for i_surf in range(copied.n_surf):
+            copied.forces[i_surf] = self.forces[i_surf].astype(dtype=ct.c_double, copy=True, order='C')
+
+        # panel forces
+        for i_surf in range(copied.n_surf):
+            copied.dynamic_forces[i_surf] = self.dynamic_forces[i_surf].astype(dtype=ct.c_double, copy=True, order='C')
+
+        # placeholder for external velocity
+        for i_surf in range(copied.n_surf):
+            copied.u_ext[i_surf] = self.u_ext[i_surf].astype(dtype=ct.c_double, copy=True, order='C')
+
+        # total forces
+        copied.inertial_total_forces = self.inertial_total_forces.astype(dtype=ct.c_double, copy=True, order='C')
+        copied.body_total_forces = self.body_total_forces.astype(dtype=ct.c_double, copy=True, order='C')
+        copied.inertial_steady_forces = self.inertial_steady_forces.astype(dtype=ct.c_double, copy=True, order='C')
+        copied.body_steady_forces = self.body_steady_forces.astype(dtype=ct.c_double, copy=True, order='C')
+        copied.inertial_unsteady_forces = self.inertial_unsteady_forces.astype(dtype=ct.c_double, copy=True, order='C')
+        copied.body_unsteady_forces = self.body_unsteady_forces.astype(dtype=ct.c_double, copy=True, order='C')
+
+        copied.postproc_cell = copy.deepcopy(self.postproc_cell)
+        copied.postproc_node = copy.deepcopy(self.postproc_node)
+
+        return copied
+
+    def generate_ctypes_pointers(self):
+        """
+        Generates the pointers to aerodynamic variables used to interface the C++ library ``uvlmlib``
+        """
+        self.ct_dimensions = self.dimensions.astype(dtype=ct.c_uint, copy=True)
+
+        n_surf = len(self.dimensions)
+
+        from sharpy.utils.constants import NDIM
+
+        self.ct_zeta_list = []
+        for i_surf in range(self.n_surf):
+            for i_dim in range(NDIM):
+                self.ct_zeta_list.append(self.zeta[i_surf][i_dim, :, :].reshape(-1))
+
+        self.ct_zeta_dot_list = []
+        for i_surf in range(self.n_surf):
+            for i_dim in range(NDIM):
+                self.ct_zeta_dot_list.append(self.zeta_dot[i_surf][i_dim, :, :].reshape(-1))
+
+        self.ct_u_ext_list = []
+        for i_surf in range(self.n_surf):
+            for i_dim in range(NDIM):
+                self.ct_u_ext_list.append(self.u_ext[i_surf][i_dim, :, :].reshape(-1))
+
+        self.ct_normals_list = []
+        for i_surf in range(self.n_surf):
+            for i_dim in range(NDIM):
+                self.ct_normals_list.append(self.normals[i_surf][i_dim, :, :].reshape(-1))
+
+        self.ct_forces_list = []
+        for i_surf in range(self.n_surf):
+            for i_dim in range(NDIM*2):
+                self.ct_forces_list.append(self.forces[i_surf][i_dim, :, :].reshape(-1))
+
+        self.ct_dynamic_forces_list = []
+        for i_surf in range(self.n_surf):
+            for i_dim in range(NDIM*2):
+                self.ct_dynamic_forces_list.append(self.dynamic_forces[i_surf][i_dim, :, :].reshape(-1))
+
+        try:
+            self.postproc_cell['incidence_angle']
+        except KeyError:
+            with_incidence_angle = False
+        else:
+            with_incidence_angle = True
+
+        if with_incidence_angle:
+            self.ct_incidence_list = []
+            for i_surf in range(self.n_surf):
+                self.ct_incidence_list.append(self.postproc_cell['incidence_angle'][i_surf][:, :].reshape(-1))
+
+        self.ct_p_dimensions = ((ct.POINTER(ct.c_uint)*n_surf)
+                                (* np.ctypeslib.as_ctypes(self.ct_dimensions)))
+        self.ct_p_zeta = ((ct.POINTER(ct.c_double)*len(self.ct_zeta_list))
+                          (* [np.ctypeslib.as_ctypes(array) for array in self.ct_zeta_list]))
+        self.ct_p_zeta_dot = ((ct.POINTER(ct.c_double)*len(self.ct_zeta_dot_list))
+                          (* [np.ctypeslib.as_ctypes(array) for array in self.ct_zeta_dot_list]))
+        self.ct_p_u_ext = ((ct.POINTER(ct.c_double)*len(self.ct_u_ext_list))
+                           (* [np.ctypeslib.as_ctypes(array) for array in self.ct_u_ext_list]))
+        self.ct_p_normals = ((ct.POINTER(ct.c_double)*len(self.ct_normals_list))
+                             (* [np.ctypeslib.as_ctypes(array) for array in self.ct_normals_list]))
+        self.ct_p_forces = ((ct.POINTER(ct.c_double)*len(self.ct_forces_list))
+                            (* [np.ctypeslib.as_ctypes(array) for array in self.ct_forces_list]))
+        self.ct_p_dynamic_forces = ((ct.POINTER(ct.c_double)*len(self.ct_dynamic_forces_list))
+                            (* [np.ctypeslib.as_ctypes(array) for array in self.ct_dynamic_forces_list]))
+
+        if with_incidence_angle:
+            self.postproc_cell['incidence_angle_ct_pointer'] = ((ct.POINTER(ct.c_double)*len(self.ct_incidence_list))
+                            (* [np.ctypeslib.as_ctypes(array) for array in self.ct_incidence_list]))
+
+    def remove_ctypes_pointers(self):
+        """
+        Removes the pointers to aerodynamic variables used to interface the C++ library ``uvlmlib``
+        """
+        try:
+            del self.ct_p_dimensions
+        except AttributeError:
+            pass
+
+        try:
+            del self.ct_p_zeta
+        except AttributeError:
+            pass
+
+        try:
+            del self.ct_p_zeta_dot
+        except AttributeError:
+            pass
+
+        try:
+            del self.ct_p_u_ext
+        except AttributeError:
+            pass
+
+        try:
+            del self.ct_p_normals
+        except AttributeError:
+            pass
+
+        try:
+            del self.ct_p_forces
+        except AttributeError:
+            pass
+
+        try:
+            del self.ct_p_dynamic_forces
+        except AttributeError:
+            pass
+
+        for k in list(self.postproc_cell.keys()):
+            if 'ct_list' in k:
+                del self.postproc_cell[k]
+            elif 'ct_pointer' in k:
+                del self.postproc_cell[k]
+
+
+class NonliftingBodyTimeStepInfo(TimeStepInfo):
+    """
+    Nonlifting Body Time step class.
+
+    It is the inheritance from ``TimeStepInfo`` and contains the relevant aerodynamic attributes for
+    a single time step of a nonlifting body. All variables should be expressed in ``G``
+    FoR unless otherwise stated.
+
+    Attributes:
+        ct_dimensions: Pointer to ``dimensions`` to interface the C++ library `uvlmlib``
+
+        dimensions (np.ndarray): Matrix defining the dimensions of the vortex grid on solid surfaces
+        ``[num_surf x radial panels x spanwise panels]``
+
+        n_surf (int): Number of aerodynamic surfaces on nonlifting bodies.
+
+        zeta (list(np.ndarray): Location of solid grid vertices
+          ``[n_surf][3 x (radial panel) x (spanwise panel)]``
+        zeta_dot (list(np.ndarray)): Time derivative of ``zeta``
+        normals (list(np.ndarray)): Normal direction to panels at the panel center
+          ``[n_surf][3 x radial panels x spanwise panels]``
+        forces (list(np.ndarray)): Forces not associated to time derivatives on grid vertices
+          ``[n_surf][3 x (radial panels) x (spanwise panels)]``
+        dynamic_forces (list(np.ndarray)): Forces associated to time derivatives on grid vertices
+          ``[n_surf][3 x (radial panels) x (spanwise panels)]``
+
+        u_ext (list(np.ndarray)): Background flow velocity on solid grid panel
+          ``[n_surf][3 x (radial panels) x (spanwise panel + 1)]``
+        sigma (list(np.ndarray)): Source strength associated to solid panels
+          ``[n_surf][3 x radial panel x spanwise panel]``
+        sigma_dot (list(np.ndarray)): Time derivative of ``sigma``
+
+        inertial_total_forces (list(np.ndarray)): Total aerodynamic forces in ``G`` FoR ``[n_surf x 6]``
+        body_total_forces (list(np.ndarray)): Total aerodynamic forces in ``A`` FoR ``[n_surf x 6]``
+        inertial_steady_forces (list(np.ndarray)): Total aerodynamic steady forces in ``G`` FoR ``[n_surf x 6]``
+        body_steady_forces (list(np.ndarray)): Total aerodynamic steady forces in ``A`` FoR ``[n_surf x 6]``
+        inertial_unsteady_forces (list(np.ndarray)): Total aerodynamic unsteady forces in ``G`` FoR ``[n_surf x 6]``
+        body_unsteady_forces (list(np.ndarray)): Total aerodynamic unsteady forces in ``A`` FoR ``[n_surf x 6]``
+
+        postproc_cell (dict): Variables associated to cells to be postprocessed
+        postproc_node (dict): Variables associated to panel to be postprocessed
+
+        in_global_AFoR (bool): ``True`` if the variables are stored in the global A FoR. ``False`` if they are stored
+          in the local A FoR of each body. Always ``True`` for single-body simulations. Currently not used.
+
+    Args:
+        dimensions (np.ndarray): Matrix defining the dimensions of the vortex grid on solid surfaces
+          ``[num_surf x radial panels x spanwise panels]``
+    """
+    def __init__(self, dimensions): #remove dimensions_star as input
+        super().__init__(dimensions)
+
+        # allocate sigma matrices
+        self.sigma = []
+        for i_surf in range(self.n_surf):
+            self.sigma.append(np.zeros((dimensions[i_surf, 0],
+                                        dimensions[i_surf, 1]),
+                                       dtype=ct.c_double))
+
+        self.sigma_dot = []
+        for i_surf in range(self.n_surf):
+            self.sigma_dot.append(np.zeros((dimensions[i_surf, 0],
+                                            dimensions[i_surf, 1]),
+                                           dtype=ct.c_double))
+    def copy(self):
+        """
+        Returns a copy of a deepcopy of a :class:`~sharpy.utils.datastructures.AeroTimeStepInfo`
+        """
+        return self.create_placeholder(NonliftingBodyTimeStepInfo(self.dimensions))
+
+    def create_placeholder(self, copied):
+        super().create_placeholder(copied)
+
+        # allocate sigma star matrices
+        for i_surf in range(copied.n_surf):
+            copied.sigma[i_surf] = self.sigma[i_surf].astype(dtype=ct.c_double, copy=True, order='C')
+
+        for i_surf in range(copied.n_surf):
+            copied.sigma_dot[i_surf] = self.sigma_dot[i_surf].astype(dtype=ct.c_double, copy=True, order='C')
+
+        return copied
+
+
+    def generate_ctypes_pointers(self):
+        """
+        Generates the pointers to aerodynamic variables used to interface the C++ library ``uvlmlib``
+        """
+        super().generate_ctypes_points()
+        self.ct_p_sigma = ((ct.POINTER(ct.c_double)*len(self.ct_sigma_list))
+                            (* [np.ctypeslib.as_ctypes(array) for array in self.ct_sigma_list]))
+        self.ct_p_sigma_dot = ((ct.POINTER(ct.c_double)*len(self.ct_sigma_dot_list))
+                                (* [np.ctypeslib.as_ctypes(array) for array in self.ct_sigma_dot_list]))
+
+
+    def remove_ctypes_pointers(self):
+        """
+        Removes the pointers to aerodynamic variables used to interface the C++ library ``uvlmlib``
+        """
+        super().remove_ctypes_points()
+        try:
+            del self.ct_p_sigma
+        except AttributeError:
+            pass
+
+        try:
+            del self.ct_p_sigma_dot
+        except AttributeError:
+            pass
+
+
 class AeroTimeStepInfo(object):
     """
     Aerodynamic Time step class.
