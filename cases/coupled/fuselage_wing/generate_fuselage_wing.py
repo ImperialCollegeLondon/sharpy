@@ -4,7 +4,6 @@ import numpy as np
 import os
 import pandas as pd
 import sharpy.utils.algebra as algebra
-import matplotlib.pyplot as plt
 
 
 case_name = 'simple_wing_fuselage'
