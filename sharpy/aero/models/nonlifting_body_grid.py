@@ -6,10 +6,8 @@ Description
 from sharpy.aero.models.grid import Grid
 from sharpy.utils.datastructures import NonliftingBodyTimeStepInfo
 import numpy as np
-import itertools
 from scipy.optimize import fsolve
-
-import pandas as pd
+import sharpy.utils.algebra as algebra
 
 
 class Nonlifting_body_grid(Grid):
@@ -35,14 +33,14 @@ class Nonlifting_body_grid(Grid):
         self.generate_zeta(self.beam, self.aero_settings, ts)
 
     def generate_zeta_timestep_info(self, structure_tstep, nonlifting_body_tstep, beam, aero_settings, it=None, dt=None):
-            super().generate_zeta_timestep_info(structure_tstep, nonlifting_body_tstep, beam, aero_settings, it, dt)
+        super().generate_zeta_timestep_info(structure_tstep, nonlifting_body_tstep, beam, aero_settings, it, dt)
 
-            for i_surf in range(self.n_surf):
-                # Get Zeta (Collocation point positions in A? frame)
-                # TO-DO: Consider fuselage deformation for node position calculations
-                nonlifting_body_tstep.zeta[i_surf] = self.get_collocation_point_pos(i_surf, self.dimensions[i_surf][-1], structure_tstep)
-                # TO-DO: Add Zeta Dot Calculation
-                # aero_tstep.zeta_dot[i_surf]
+        for i_surf in range(self.n_surf):
+            # Get Zeta (Collocation point positions in A? frame)
+            # TO-DO: Consider fuselage deformation for node position calculations
+            nonlifting_body_tstep.zeta[i_surf] = self.get_collocation_point_pos(i_surf, self.dimensions[i_surf][-1], structure_tstep)
+            # TO-DO: Add Zeta Dot Calculation
+            # aero_tstep.zeta_dot[i_surf]
 
     def get_triangle_center(self, p1, p2, p3):
         return (p1+p2+p3)/3
@@ -65,29 +63,33 @@ class Nonlifting_body_grid(Grid):
         matrix_nodes = np.zeros(((self.dimensions[i_surf][1]-1)
                                     *(numb_radial_nodes)+2, 3))
         array_phi_coordinates = np.linspace(0, 2*np.pi, numb_radial_nodes)
-        print(i_surf)
-        print(self.aero2struct_mapping)
-        print(self.struct2aero_mapping)
         # cache sin and cos values
         array_sin_phi = np.sin(array_phi_coordinates)
         array_cos_phi = np.cos(array_phi_coordinates)
+
         phi_counter = 0
         row_idx_start, row_idx_end = 0, 0
         for i_global_node in self.aero2struct_mapping[i_surf]:
             radius = self.data_dict["radius"][i_global_node]
-            # axissymmetric body has only one node at nose and tail (r = 0)
             if radius == 0.0:
+                # axissymmetric body has only one node at nose and tail (r = 0)
+                # position is already in A frame
                 matrix_nodes[row_idx_start, :] = structure_tstep.pos[i_global_node, :]
                 row_idx_start += 1
             else:
                 row_idx_end = row_idx_start + numb_radial_nodes
-                matrix_nodes[row_idx_start:row_idx_end, 0] = structure_tstep.pos[i_global_node, 0]
-                matrix_nodes[row_idx_start:row_idx_end, 1] = np.array(
-                    structure_tstep.pos[i_global_node, 1]
-                    ) + radius*array_cos_phi
-                matrix_nodes[row_idx_start:row_idx_end, 2] = np.array(
-                    structure_tstep.pos[i_global_node, 2]
-                    ) + radius*array_sin_phi
+                # get nodes position in B frame
+                matrix_nodes[row_idx_start:row_idx_end, 0] = 0
+                matrix_nodes[row_idx_start:row_idx_end, 1] = radius*array_cos_phi
+                matrix_nodes[row_idx_start:row_idx_end, 2] = radius*array_sin_phi
+                # convert position from B to A frame
+                psi_node = self.get_psi(i_surf, i_global_node, structure_tstep)
+                if not (psi_node == [0, 0, 0]).all():
+                    # just perform roation from B to A if psi not 0
+                    Cab = algebra.crv2rotation(psi_node)
+                    for idx in range(row_idx_start, row_idx_end):
+                        matrix_nodes[idx,:] = np.dot(Cab, matrix_nodes[idx,:])
+                matrix_nodes[row_idx_start:row_idx_end,:] += structure_tstep.pos[i_global_node,:]
                 row_idx_start += numb_radial_nodes
             phi_counter += 1
 
@@ -99,11 +101,9 @@ class Nonlifting_body_grid(Grid):
         matrix_nodes = self.get_nodes_position(i_surf, structure_tstep, numb_radial_nodes)
         counter, i_row = 0, 0
         matrix_collocation = np.zeros(((numb_spanwise_elements)*(numb_radial_nodes-1),3))
-        print(numb_spanwise_elements, numb_radial_nodes)
         for i in range(0, numb_spanwise_elements):
             if i == 0:
                 for i_rad_node in range(0, numb_radial_nodes-1):
-                    print(i_rad_node, counter)
                     matrix_collocation[i_row] = self.get_triangle_center(
                         matrix_nodes[0],
                         matrix_nodes[i_rad_node+1],
@@ -127,9 +127,17 @@ class Nonlifting_body_grid(Grid):
                     counter+=1
                     i_row+=1
                 counter+=1
-        np.savetxt("./collocation.csv", matrix_collocation, delimiter=",")
         return matrix_collocation
 
+    def get_psi(self, i_surf, i_global_node, structure_tstep):
+        # get beam elements of surface
+        idx_beam_elements_surface = np.where(self.surface_distribution == i_surf)[0]
+        # find element and local node of the global node and return psi
+        for i_elem in idx_beam_elements_surface:
+            if i_global_node in self.beam.elements[i_elem].reordered_global_connectivities:
+                i_local_node = np.where(self.beam.elements[i_elem].reordered_global_connectivities == i_global_node)[0][0]
+                return structure_tstep.psi[i_elem, i_local_node, :]
+        raise Exception("The global node %u could not be assigned to any element of surface %u." % (i_global_node, i_surf))
 
     def find_intersection_points(self, array_points):
         sol_parameter = fsolve(self.intersection_point_equation,
