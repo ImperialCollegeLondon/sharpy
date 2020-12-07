@@ -89,7 +89,7 @@ class Aerogrid(Grid):
                     raise TypeError('Control surface {:g} is defined as static but there is a control surface generator'
                                     'associated with it'.format(i_cs))
                 generator_type = gen_interface.generator_from_string(
-                    aero_settings['control_surface_deflection'][i_cs])
+                    settings['control_surface_deflection'][i_cs])
                 self.cs_generators.append(generator_type())
                 try:
                     self.cs_generators[i_cs].initialise(
@@ -105,9 +105,9 @@ class Aerogrid(Grid):
 
         self.add_timestep()
         self.generate_mapping()
-        self.generate_zeta(self.beam, self.settings, ts)
+        self.generate_zeta(self.beam, self.aero_settings, ts)
 
-      if 'polars' in self.data_dict:
+        if 'polars' in self.data_dict:
             import sharpy.aero.utils.airfoilpolars as ap
             self.polars = []
             nairfoils = np.amax(self.data_dict['airfoil_distribution']) + 1
@@ -139,9 +139,9 @@ class Aerogrid(Grid):
 
         self.dimensions_star = self.dimensions.copy()
         for i_surf in range(self.n_surf):
-            self.dimensions_star[i_surf, 0] = self.settings['mstar'].value
+            self.dimensions_star[i_surf, 0] = self.aero_settings['mstar'].value
 
-    def generate_zeta_timestep_info(self, structure_tstep, aero_tstep, beam, aero_settings, it=None, dt=None):
+    def generate_zeta_timestep_info(self, structure_tstep, aero_tstep, beam, settings, it=None, dt=None):
         if it is None:
             it = len(beam.timestep_info) - 1
         global_node_in_surface = []
@@ -277,8 +277,6 @@ class Aerogrid(Grid):
                 node_info['elem'] = beam.elements[i_elem]
                 node_info['for_pos'] = structure_tstep.for_pos
                 node_info['cga'] = structure_tstep.cga()
-                # print("PSI WING")
-                # print(structure_tstep.psi[i_elem])
                 if node_info['M_distribution'].lower() == 'user_defined':
                     ielem_in_surf = i_elem - np.sum(self.surface_distribution < i_surf)
                     node_info['user_defined_m_distribution'] = self.data_dict['user_defined_m_distribution'][str(i_surf)][:, ielem_in_surf, i_local_node]
@@ -286,8 +284,8 @@ class Aerogrid(Grid):
                  aero_tstep.zeta_dot[i_surf][:, :, i_n]) = (
                     generate_strip(node_info,
                                    self.airfoil_db,
-                                   self.settings['aligned_grid'],
-                                   orientation_in=self.settings['freestream_dir'],
+                                   self.aero_settings['aligned_grid'],
+                                   orientation_in=self.aero_settings['freestream_dir'],
                                    calculate_zeta_dot=True))
 
 
