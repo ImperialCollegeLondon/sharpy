@@ -533,7 +533,7 @@ class FloatingForces(generator_interface.BaseGenerator):
             group.create_dataset(key, data=value)
         fid.close()
 
-        debug_output = True
+        debug_output = False
         if debug_output:
             print("q: ", self.q[ts, :])
             print("qdot: ", self.qdot[ts, :])
