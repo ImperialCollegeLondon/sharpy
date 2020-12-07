@@ -823,8 +823,8 @@ def generate_from_excel_type03(op_params,
     overhang.StructuralInformation.compute_basic_num_elem()
     node_pos = np.zeros((overhang.StructuralInformation.num_node, 3), )
     node_pos[:, 0] += tower.StructuralInformation.coordinates[-1, 0]
-    node_pos[:, 0] += np.linspace(0., overhang_len*np.sin(tilt*deg2rad), overhang.StructuralInformation.num_node)
-    node_pos[:, 2] = np.linspace(0., -overhang_len*np.cos(tilt*deg2rad), overhang.StructuralInformation.num_node)
+    node_pos[:, 0] += np.linspace(0., -overhang_len*np.sin(tilt*deg2rad), overhang.StructuralInformation.num_node)
+    node_pos[:, 2] = np.linspace(0., overhang_len*np.cos(tilt*deg2rad), overhang.StructuralInformation.num_node)
     # TODO: change the following by real values
     # Same properties as the last element of the tower
     cout.cout_wrap("WARNING: Using the structural properties of the last tower section for the overhang", 3)
