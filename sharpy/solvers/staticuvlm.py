@@ -46,6 +46,10 @@ class StaticUvlm(BaseSolver):
     settings_default['horseshoe'] = False
     settings_description['horseshoe'] = 'Horseshoe wake modelling for steady simulations.'
 
+    settings_types['nonlifting_body_interactions'] = 'bool'
+    settings_default['nonlifting_body_interactions'] = False
+    settings_description['nonlifting_body_interactions'] = 'Consider nonlifting body interactions'
+
     settings_types['num_cores'] = 'int'
     settings_default['num_cores'] = 0
     settings_description['num_cores'] = 'Number of cores to use in the VLM lib'
@@ -148,6 +152,16 @@ class StaticUvlm(BaseSolver):
                                           'override': True,
                                           'for_pos': self.data.structure.timestep_info[self.data.ts].for_pos[0:3]},
                                          self.data.aero.timestep_info[self.data.ts].u_ext)
+
+       # check if nonlifting body interactions have to be considered
+        if self.settings['nonlifting_body_interactions']:
+            # generate uext
+            self.velocity_generator.generate({'zeta': self.data.nonlifting_body.timestep_info[self.data.ts].zeta,
+                                              'override': True,
+                                              'for_pos': self.data.structure.timestep_info[self.data.ts].for_pos[0:3]},
+                                             self.data.nonlifting_body.timestep_info[self.data.ts].u_ext)
+            raise NotImplemented('VLM Solver for nonliftng body problems are not yet implemented!')
+
         # grid orientation
         uvlmlib.vlm_solver(self.data.aero.timestep_info[self.data.ts],
                            self.settings)
@@ -158,6 +172,8 @@ class StaticUvlm(BaseSolver):
         """ Updates de aerogrid based on the info of the step, and increases
         the self.ts counter """
         self.data.aero.add_timestep()
+        if self.settings['nonlifting_body_interactions']:
+            self.data.nonlifting_body.add_timestep()
         self.update_step()
 
     def update_step(self):
@@ -167,3 +183,7 @@ class StaticUvlm(BaseSolver):
         # for i_surf in range(self.data.aero.timestep_info[self.data.ts].n_surf):
         #     self.data.aero.timestep_info[self.data.ts].forces[i_surf].fill(0.0)
         #     self.data.aero.timestep_info[self.data.ts].dynamic_forces[i_surf].fill(0.0)
+        if self.settings['nonlifting_body_interactions']:
+            self.data.nonlifting_body.generate_zeta(self.data.structure,
+                                                    self.data.aero.aero_settings,
+                                                    self.data.ts)
