@@ -67,46 +67,45 @@ class TimeStepInfo(object):
         # generate placeholder for aero grid zeta coordinates
         self.zeta = []
         for i_surf in range(self.n_surf):
-            self.zeta.append(np.zeros((3, #x,y,z
-                                       dimensions[i_surf, 0],
-                                       dimensions[i_surf, 1]),
+            self.zeta.append(np.zeros((3,
+                                       dimensions[i_surf, 0] + 1,
+                                       dimensions[i_surf, 1] + 1),
                                       dtype=ct.c_double))
-
         self.zeta_dot = []
         for i_surf in range(self.n_surf):
             self.zeta_dot.append(np.zeros((3,
-                                           dimensions[i_surf, 0],
-                                           dimensions[i_surf, 1]),
+                                           dimensions[i_surf, 0] + 1,
+                                           dimensions[i_surf, 1] + 1),
                                           dtype=ct.c_double))
 
         # panel normals
         self.normals = []
         for i_surf in range(self.n_surf):
-            self.normals.append(np.zeros((3,
-                                          dimensions[i_surf, 0],
-                                          dimensions[i_surf, 1]),
-                                         dtype=ct.c_double))
-
+            self.normals.append(np.zeros((6,
+                                         dimensions[i_surf, 0],
+                                         dimensions[i_surf, 1]),
+                                        dtype=ct.c_double))
         # panel forces
         self.forces = []
         for i_surf in range(self.n_surf):
             self.forces.append(np.zeros((6,
-                                         dimensions[i_surf, 0],
-                                         dimensions[i_surf, 1]),
+                                         dimensions[i_surf, 0] + 1,
+                                         dimensions[i_surf, 1] + 1),
                                         dtype=ct.c_double))
         # panel forces
         self.dynamic_forces = []
         for i_surf in range(self.n_surf):
             self.dynamic_forces.append(np.zeros((6,
-                                                 dimensions[i_surf, 0],
-                                                 dimensions[i_surf, 1]),
+                                                 dimensions[i_surf, 0] + 1,
+                                                 dimensions[i_surf, 1] + 1),
                                                 dtype=ct.c_double))
 
+        # placeholder for external velocity
         self.u_ext = []
         for i_surf in range(self.n_surf):
             self.u_ext.append(np.zeros((3,
-                                        dimensions[i_surf, 0],
-                                        dimensions[i_surf, 1]),
+                                        dimensions[i_surf, 0] + 1,
+                                        dimensions[i_surf, 1] + 1),
                                        dtype=ct.c_double))
 
         # total forces
@@ -394,7 +393,6 @@ class NonliftingBodyTimeStepInfo(TimeStepInfo):
             pass
 
 
-
 class AeroTimeStepInfo(TimeStepInfo):
     """
     Aerodynamic Time step class.
@@ -461,34 +459,6 @@ class AeroTimeStepInfo(TimeStepInfo):
         self.ct_dimensions_star = None
 
         self.dimensions_star = dimensions_star.copy()
-        # generate placeholder for aero grid zeta coordinates
-        self.zeta = []
-        for i_surf in range(self.n_surf):
-            self.zeta.append(np.zeros((3,
-                                       dimensions[i_surf, 0] + 1,
-                                       dimensions[i_surf, 1] + 1),
-                                      dtype=ct.c_double))
-        self.zeta_dot = []
-        for i_surf in range(self.n_surf):
-            self.zeta_dot.append(np.zeros((3,
-                                           dimensions[i_surf, 0] + 1,
-                                           dimensions[i_surf, 1] + 1),
-                                          dtype=ct.c_double))
-
-        # panel forces
-        self.forces = []
-        for i_surf in range(self.n_surf):
-            self.forces.append(np.zeros((6,
-                                         dimensions[i_surf, 0] + 1,
-                                         dimensions[i_surf, 1] + 1),
-                                        dtype=ct.c_double))
-        # panel forces
-        self.dynamic_forces = []
-        for i_surf in range(self.n_surf):
-            self.dynamic_forces.append(np.zeros((6,
-                                                 dimensions[i_surf, 0] + 1,
-                                                 dimensions[i_surf, 1] + 1),
-                                                dtype=ct.c_double))
 
         # generate placeholder for aero grid zeta_star coordinates
         self.zeta_star = []
@@ -497,14 +467,6 @@ class AeroTimeStepInfo(TimeStepInfo):
                                             dimensions_star[i_surf, 0] + 1,
                                             dimensions_star[i_surf, 1] + 1),
                                            dtype=ct.c_double))
-
-        # placeholder for external velocity
-        self.u_ext = []
-        for i_surf in range(self.n_surf):
-            self.u_ext.append(np.zeros((3,
-                                        dimensions[i_surf, 0] + 1,
-                                        dimensions[i_surf, 1] + 1),
-                                       dtype=ct.c_double))
 
         self.u_ext_star = []
         for i_surf in range(self.n_surf):
