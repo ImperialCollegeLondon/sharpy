@@ -6,11 +6,8 @@ import ctypes as ct
 import warnings
 
 import numpy as np
-import scipy.interpolate
 
 import sharpy.utils.algebra as algebra
-import sharpy.utils.cout_utils as cout
-from sharpy.utils.datastructures import AeroTimeStepInfo
 import sharpy.utils.generator_interface as gen_interface
 
 
