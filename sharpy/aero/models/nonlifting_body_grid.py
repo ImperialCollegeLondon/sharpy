@@ -37,7 +37,7 @@ class Nonlifting_body_grid(Grid):
 
         for i_surf in range(self.n_surf):
             # Get Zeta and Zeta_dot (Panel node positions in G frame)
-            nonlifting_body_tstep.zeta[i_surf] = self.get_zeta_and_zeta_dot(i_surf, structure_tstep)
+            nonlifting_body_tstep.zeta[i_surf], nonlifting_body_tstep.zeta_dot[i_surf] = self.get_zeta_and_zeta_dot(i_surf, structure_tstep)
 
     def get_triangle_center(self, p1, p2, p3):
         return (p1+p2+p3)/3
@@ -60,6 +60,7 @@ class Nonlifting_body_grid(Grid):
         numb_radial_nodes = self.dimensions[i_surf][0] +1
         matrix_nodes = np.zeros((3, numb_radial_nodes,
                                  self.dimensions[i_surf][1]+1))
+        matrix_nodes_dot = matrix_nodes.copy()
         array_phi_coordinates = np.linspace(0, 2*np.pi, numb_radial_nodes)
         # cache sin and cos values
         array_sin_phi = np.sin(array_phi_coordinates)
@@ -76,6 +77,8 @@ class Nonlifting_body_grid(Grid):
             # convert position from B to A frame
             i_elem, i_local_node = self.get_elment_and_local_node_id(i_surf, i_global_node)
             psi_node = structure_tstep.psi[i_elem, i_local_node,:]
+            psi_dot_node = structure_tstep.psi_dot[i_elem, i_local_node,:]
+            omega_a = algebra.crv_dot2omega(psi_node, psi_dot_node)
             if not (psi_node == [0, 0, 0]).all():
                 # just perform roation from B to A if psi not 0
                 Cab = algebra.crv2rotation(psi_node)
@@ -84,11 +87,18 @@ class Nonlifting_body_grid(Grid):
             for dim in range(3):
                 matrix_nodes[dim, :, node_counter] += structure_tstep.pos[i_global_node,dim]
 
+                # get zeta dot in A frame (velocity due to pos_dot)
+                matrix_nodes_dot[dim, :numb_radial_nodes, node_counter] += structure_tstep.pos_dot[i_global_node, dim]
+
             for idx in range(numb_radial_nodes):
+                # get zeta dot in A frame (velocity due to psi_dot))
+                matrix_nodes_dot[:, idx, node_counter] += (np.dot(algebra.skew(omega_a), matrix_nodes[:, idx, node_counter]))
                 # convert position from A to G frame
                 matrix_nodes[:, idx, node_counter] = np.dot(cga_rotation_matrix,
                                           matrix_nodes[:, idx, node_counter])
-        return matrix_nodes
+                matrix_nodes_dot[:, idx, node_counter] = np.dot(cga_rotation_matrix,
+                                          matrix_nodes_dot[:, idx, node_counter])
+        return matrix_nodes, matrix_nodes_dot
 
 
     def get_collocation_point_pos(self, i_surf, numb_spanwise_elements, structure_tstep):
