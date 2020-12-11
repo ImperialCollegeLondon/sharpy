@@ -58,6 +58,10 @@ class SaveData(BaseSolver):
     settings_description['save_linear_uvlm'] = 'Save linear UVLM state space system. Use with caution when dealing with ' \
                                                'large systems.'
 
+    settings_types['save_rom'] = 'bool'
+    settings_default['save_rom'] = False
+    settings_description['save_rom'] = 'Saves the ROM matrices and the reduced order model'
+
     settings_types['skip_attr'] = 'list(str)'
     settings_default['skip_attr'] = ['fortran',
                                      'airfoils',
@@ -245,7 +249,12 @@ class SaveData(BaseSolver):
                                        ClassesToSave=self.ClassesToSave, SkipAttr=self.settings['skip_attr'],
                                        compress_float=self.settings['compress_float'])
 
-
+            if self.settings['save_rom']:
+                try:
+                    for k, rom in self.data.linear.linear_system.uvlm.rom.items():
+                        rom.save(self.filename.replace('.data.h5', '_{:s}.rom.h5'.format(k.lower())))
+                except AttributeError:
+                    cout.cout_wrap('Could not locate a reduced order model to save')
 
         elif self.settings['format'] == 'mat':
             from scipy.io import savemat
