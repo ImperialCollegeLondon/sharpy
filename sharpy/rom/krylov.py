@@ -10,7 +10,7 @@ import sharpy.utils.rom_interface as rom_interface
 import sharpy.utils.h5utils as h5
 import sharpy.rom.utils.krylovutils as krylovutils
 import warnings as warn
-
+import h5py
 
 @rom_interface.rom
 class Krylov(rom_interface.BaseRom):
@@ -140,6 +140,29 @@ class Krylov(rom_interface.BaseRom):
             self.nfreq = self.frequency.shape[0]
         except AttributeError:
             self.nfreq = 1
+
+    def save(self, filename):
+        """
+        Saves to an ``.h5`` file of name ``filename`` the left and right projectors and the reduced order model
+
+        Args:
+            filename (str): path and filename to which to save the data
+
+        """
+        rom_projectors = {'right_projector': self.V,
+                          'left_projector': self.W,
+                          }
+
+        if '.h5' not in filename[-3:]:
+            filename += '.h5'
+
+        with h5py.File(filename, 'a') as outfile:
+            h5.add_as_grp(rom_projectors, outfile, grpname='projectors',
+                          compress_float=True)
+            h5.add_as_grp(self.ssrom, outfile,
+                          grpname='ssrom',
+                          ClassesToSave=(libss.ss, ),
+                          compress_float=True)
 
     def run(self, ss):
         """
