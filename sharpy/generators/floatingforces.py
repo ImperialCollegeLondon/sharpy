@@ -427,6 +427,7 @@ class FloatingForces(generator_interface.BaseGenerator):
         self.qdotdot = None
 
         self.log_filename = None
+        self.added_mass_in_mass_matrix = None
 
 
     def initialise(self, in_dict=None, data=None):
@@ -482,12 +483,13 @@ class FloatingForces(generator_interface.BaseGenerator):
                                         self.floating_data['hydrodynamics']['ab_freq_rads'],
                                            self.settings['wave_freq'])
 
-        if self.settings['added_mass_in_mass_matrix']:
+        self.added_mass_in_mass_matrix = self.settings['added_mass_in_mass_matrix']
+        if self.added_mass_in_mass_matrix:
             # Include added mass in structure
             data.structure.add_lumped_mass_to_element(self.buoyancy_node,
                                                       self.hd_added_mass)
             data.structure.generate_fortran()
-            self.hd_added_mass *= 0.
+            # self.hd_added_mass *= 0.
 
         self.hd_damping = interp_1st_dim_matrix(self.floating_data['hydrodynamics']['damping'],
                                         self.floating_data['hydrodynamics']['ab_freq_rads'],
@@ -512,7 +514,7 @@ class FloatingForces(generator_interface.BaseGenerator):
 
 
     def write_output(self, ts, k, mooring, mooring_yaw, hydrostatic,
-                     hydrodynamic_qdot, hydrodynamic_qdotdot, waves):
+                     hydrodynamic_qdot, hydrodynamic_qdotdot, hd_correct_grav, waves):
 
         output = dict()
         output['ts'] = ts
@@ -525,6 +527,7 @@ class FloatingForces(generator_interface.BaseGenerator):
         output['hydrostatic'] = hydrostatic
         output['hydrodynamic_qdot'] = hydrodynamic_qdot
         output['hydrodynamic_qdotdot'] = hydrodynamic_qdotdot
+        output['hydrodynamic_correct_grav'] = hd_correct_grav
         output['waves'] = waves
 
         fid = h5.File(self.log_filename, 'a')
@@ -544,6 +547,7 @@ class FloatingForces(generator_interface.BaseGenerator):
             print("hydrostatic: ", hydrostatic)
             print("hydrodynamic_qdot: ", hydrodynamic_qdot)
             print("hydrodynamic_qdotdot: ", hydrodynamic_qdotdot)
+            print("hydrodynamic_correct_grav: ", hd_correct_grav)
             print("waves: ", waves)
 
         return
@@ -642,6 +646,15 @@ class FloatingForces(generator_interface.BaseGenerator):
         struct_tstep.runtime_generated_forces[self.buoyancy_node, 0:3] += np.dot(cbg, hs_f_g[0:3] + force_coeff*(hd_f_qdot_g[0:3] + hd_f_qdotdot_g[0:3]))
         struct_tstep.runtime_generated_forces[self.buoyancy_node, 3:6] += np.dot(cbg, hs_f_g[3:6] + force_coeff*(hd_f_qdot_g[3:6] + hd_f_qdotdot_g[3:6]))
 
+        # Correct added mass effects on mass matrix
+        if self.added_mass_in_mass_matrix:
+            gravity_b = np.zeros((6,),)
+            gravity_b[0:3] = np.dot(cbg, -self.settings['gravity_dir'])*self.settings['gravity']
+            hd_correct_grav = -np.dot(self.hd_added_mass, gravity_b)
+            struct_tstep.runtime_generated_forces[self.buoyancy_node, :] += hd_correct_grav
+        else:
+            hd_correct_grav = np.zeros((6))
+
         # Wave loading
         phase = self.settings['wave_freq']*data.ts*self.settings['dt']
         wave_forces_g = np.real(self.settings['wave_amplitude']*self.xi*(np.cos(phase) + 1j*np.sin(phase)))
@@ -655,4 +668,4 @@ class FloatingForces(generator_interface.BaseGenerator):
 
         # Write output
         self.write_output(data.ts, k, mooring_forces, mooring_yaw, hs_f_g,
-                     hd_f_qdot_g, hd_f_qdotdot_g, wave_forces_g)
+                     hd_f_qdot_g, hd_f_qdotdot_g, hd_correct_grav, wave_forces_g)
