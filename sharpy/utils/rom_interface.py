@@ -47,7 +47,6 @@ class BaseRom(metaclass=ABCMeta):
         return frequencyutils.freqresp_relative_error(y1, y2, wv, **kwargs)
 
     # Save the ROM matrices to the given filename
-    @abstractmethod
     def save(self, filename):
         raise NotImplementedError('Save method for the currently chosen ROM is not yet supported')
 
