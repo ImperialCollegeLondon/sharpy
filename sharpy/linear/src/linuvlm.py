@@ -42,6 +42,9 @@ settings_default_static = dict()
 settings_types_static['vortex_radius'] = 'float'
 settings_default_static['vortex_radius'] = vortex_radius_def
 
+settings_types_static['cfl1'] = 'bool'
+settings_default_static['cfl1'] = True
+
 settings_types_dynamic = dict()
 settings_default_dynamic = dict()
 
@@ -85,6 +88,9 @@ settings_default_dynamic['track_body_number'] = -1
 
 settings_types_dynamic['vortex_radius'] = 'float'
 settings_default_dynamic['vortex_radius'] = vortex_radius_def
+
+settings_types_dynamic['cfl1'] = 'bool'
+settings_default_dynamic['cfl1'] = True
 
 
 class Static():
@@ -717,7 +723,7 @@ class Dynamic(Static):
 
         self.cpu_summary['dim'] = time.time() - t0
 
-    def assemble_ss(self):
+    def assemble_ss(self, vel_gen=None):
         r"""
         Produces state-space model of the form
 
@@ -797,8 +803,9 @@ class Dynamic(Static):
 
         ### propagation of circ
         # fast and memory efficient with both dense and sparse matrices
-        List_C, List_Cstar = ass.wake_prop(MS.Surfs, MS.Surfs_star,
-                                           self.use_sparse, sparse_format='csc')
+        List_C, List_Cstar = ass.wake_prop(MS,
+                                           self.use_sparse, sparse_format='csc',
+                                           cfl1=self.settings['cfl1'], dt=self.dt, vel_gen=vel_gen)
         if self.use_sparse:
             Cgamma = libsp.csc_matrix(sparse.block_diag(List_C, format='csc'))
             CgammaW = libsp.csc_matrix(sparse.block_diag(List_Cstar, format='csc'))
@@ -1839,7 +1846,7 @@ class DynamicBlock(Dynamic):
         self.SS.dt = self.SS.dt * self.ScalingFacts['time']
         self.cpu_summary['dim'] = time.time() - t0
 
-    def assemble_ss(self):
+    def assemble_ss(self, vel_gen=None):
         r"""
         Produces block-form of state-space model
 
@@ -1923,8 +1930,9 @@ class DynamicBlock(Dynamic):
 
         ### propagation of circ
         # fast and memory efficient with both dense and sparse matrices
-        List_C, List_Cstar = ass.wake_prop(MS.Surfs, MS.Surfs_star,
-                                           self.use_sparse, sparse_format='csc')
+        List_C, List_Cstar = ass.wake_prop(MS,
+                                           self.use_sparse, sparse_format='csc',
+                                           cfl1=self.settings['cfl1'], dt=self.dt, vel_gen=vel_gen)
         if self.use_sparse:
             Cgamma = libsp.csc_matrix(sparse.block_diag(List_C, format='csc'))
             CgammaW = libsp.csc_matrix(sparse.block_diag(List_Cstar, format='csc'))

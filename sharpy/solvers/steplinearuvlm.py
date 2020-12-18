@@ -128,6 +128,10 @@ class StepLinearUVLM(BaseSolver):
     scaling_settings_default['density'] = 1.0
     scaling_settings_description['density'] = 'Reference density to be used for UVLM scaling'
 
+    settings_types['cfl1'] = 'bool'
+    settings_default['cfl1'] = True
+    settings_description['cfl1'] = 'If it is ``True``, it assumes that the discretisation complies with CFL=1'
+
     __doc__ += settings_table.generate(scaling_settings_types,
                                        scaling_settings_default,
                                        scaling_settings_description, header_line='The settings that ``ScalingDict`` '
@@ -170,6 +174,11 @@ class StepLinearUVLM(BaseSolver):
         settings.to_custom_types(self.settings, self.settings_types, self.settings_default, no_ctype=True)
         settings.to_custom_types(self.settings['ScalingDict'], self.scaling_settings_types,
                                  self.scaling_settings_default, no_ctype=True)
+
+        # Initialise velocity generator
+        velocity_generator_type = gen_interface.generator_from_string(self.settings['velocity_field_generator'])
+        self.velocity_generator = velocity_generator_type()
+        self.velocity_generator.initialise(self.settings['velocity_field_input'])
 
         # Check whether linear UVLM has been initialised
         try:
@@ -238,7 +247,7 @@ class StepLinearUVLM(BaseSolver):
                                   for ss in range(aero_tstep.n_surf)])
 
             # Assemble the state space system
-            lin_uvlm_system.assemble_ss()
+            lin_uvlm_system.assemble_ss(vel_gen=self.velocity_generator)
             self.data.aero.linear['System'] = lin_uvlm_system
             self.data.aero.linear['SS'] = lin_uvlm_system.SS
             self.data.aero.linear['x_0'] = x_0
@@ -252,11 +261,6 @@ class StepLinearUVLM(BaseSolver):
             # aero_tstep.linear.x = x_0
             # aero_tstep.linear.u = u_0
             # aero_tstep.linear.y = f_0
-
-        # Initialise velocity generator
-        velocity_generator_type = gen_interface.generator_from_string(self.settings['velocity_field_generator'])
-        self.velocity_generator = velocity_generator_type()
-        self.velocity_generator.initialise(self.settings['velocity_field_input'])
 
     def run(self,
             aero_tstep,

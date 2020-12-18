@@ -99,7 +99,7 @@ class LinearAeroelastic(ss_interface.BaseElement):
         self.uvlm = ss_interface.initialise_system('LinearUVLM')
         self.uvlm.initialise(data, custom_settings=self.settings['aero_settings'])
         if self.settings['uvlm_filename'] == '':
-            self.uvlm.assemble(track_body=self.settings['track_body'])
+            self.uvlm.assemble(track_body=self.settings['track_body'], vel_gen=vel_gen)
         else:
             self.load_uvlm_from_file = True
 

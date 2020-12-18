@@ -128,6 +128,10 @@ class LinearUVLM(ss_interface.BaseElement):
     settings_default['vortex_radius'] = vortex_radius_def
     settings_description['vortex_radius'] = 'Distance below which inductions are not computed'
 
+    settings_types['clf1'] = 'bool'
+    settings_default['cfl1'] = True
+    settings_description['cfl1'] = 'If it is ``True``, it assumes that the discretisation complies with CFL=1'
+
     settings_table = settings.SettingsTable()
     __doc__ += settings_table.generate(settings_types, settings_default, settings_description, settings_options)
 
@@ -238,7 +242,7 @@ class LinearUVLM(ss_interface.BaseElement):
             self.gust_assembler = lineargust.LinearGustGenerator()
             self.gust_assembler.initialise(data.aero)
 
-    def assemble(self, track_body=False):
+    def assemble(self, track_body=False, vel_gen=None):
         r"""
         Assembles the linearised UVLM system, removes the desired inputs and adds linearised control surfaces
         (if present).
@@ -252,7 +256,7 @@ class LinearUVLM(ss_interface.BaseElement):
         .. math:: [\delta_1, \delta_2, \dots, \dot{\delta}_1, \dot{\delta_2}]
         """
 
-        self.sys.assemble_ss()
+        self.sys.assemble_ss(vel_gen=vel_gen)
 
         if self.scaled:
             self.sys.nondimss()

@@ -1155,26 +1155,31 @@ def dfunstdgamma_dot(Surfs):
     return DerList
 
 
-def wake_prop(Surfs, Surfs_star, use_sparse=False, sparse_format='lil'):
+def wake_prop(MS, use_sparse=False, sparse_format='lil',
+              cfl1=True, dt=0., vel_gen=None):
     """
     Assembly of wake propagation matrices, in sparse or dense matrices format
 
     Note: wake propagation matrices are very sparse. Nonetheless, allocation
     in dense format (from numpy.zeros) or sparse does not have important
     differences in terms of cpu time and memory used as numpy.zeros does
-    not allocate memory until this is accessed.
+    not allocate memory until this is accessed
+
+    cfl1 (bool): Defines if the wake shape complies with CFL=1
+    dt (float): time step
+    vel_gen: velocity generetor
     """
 
-    n_surf = len(Surfs)
-    assert len(Surfs_star) == n_surf, 'No. of wake and bound surfaces not matching!'
+    n_surf = len(MS.Surfs)
+    assert len(MS.Surfs_star) == n_surf, 'No. of wake and bound surfaces not matching!'
 
     dimensions = [None]*n_surf
     dimensions_star = [None]*n_surf
 
     for ss in range(n_surf):
 
-        Surf = Surfs[ss]
-        Surf_star = Surfs_star[ss]
+        Surf = MS.Surfs[ss]
+        Surf_star = MS.Surfs_star[ss]
 
         N, M, K = Surf.maps.N, Surf.maps.M, Surf.maps.K
         M_star, K_star = Surf_star.maps.M, Surf_star.maps.K
@@ -1184,10 +1189,66 @@ def wake_prop(Surfs, Surfs_star, use_sparse=False, sparse_format='lil'):
         dimensions[ss] = [M, N, K]
         dimensions_star[ss] = [M_star, N, K_star]
 
-    C_list, Cstar_list = wake_prop_from_dimensions(dimensions,
-                                                   dimensions_star,
-                                                   use_sparse=use_sparse,
-                                                   sparse_format=sparse_format)
+        if not cfl1:
+            # allocate...
+            if use_sparse:
+                if sparse_format == 'csc':
+                    C = libsp.csc_matrix((K_star, K))
+                    C_star = libsp.csc_matrix((K_star, K_star))
+                elif sparse_format == 'lil':
+                    C = sparse.lil_matrix((K_star, K))
+                    C_star = sparse.lil_matrix((K_star, K_star))
+            else:
+                C = np.zeros((K_star, K))
+                C_star = np.zeros((K_star, K_star))
+
+            # Compute flow velocity at wake
+            uext = np.zeros((3,
+                             dimensions_star[0],
+                             dimensions_star[1]))
+            params = {'zeta': Surf_star.,
+                      'override': False}
+            vel_gen.generate(params, uext)
+            # Compute induced velocities in the wake
+            MS.get_ind_velocities_at_target_collocation_points(Surf_star)
+
+            # ... and fill
+            iivec = np.array(range(N), dtype=int)
+            cfl = np.zeros((N))
+            # Compute TE velocities
+            te_vel = Surf.u_input_coll[:, -1, :]
+            # Compute wake velocities
+
+            # Compute colocation points
+            # col = Surf.zetac
+            # col_star = Surf_star.zetac
+            for iin in range(N):
+                conv_dir = Surf_star.zetac[:, 0, iin] - Surf.zetac[:, -1, iin]
+                dist = np.linalg.norm(conv_vec)
+                conv_dir /= dist
+                vel_value = np.dot(, conv_dir)
+                clf[iin] = dt*vel_value/dist
+
+            # propagation from trailing edge
+            C[iivec, N * (M - 1) + iivec] = cfl
+            C_star[iivec, iivec] = 1.0 - cfl
+            # wake propagation
+            for mm in range(1, M_star):
+                cfl = np.zeros((N))
+                for iin in range(N):
+                    dist = np.linalg.norm(Surf_star.zetac[:, mm, :] - Surf.zetac[:, mm - 1, :], axis=0)
+                    clf[iin] = dt*te_vel[ss]/dist
+                C_star[mm * N + iivec, (mm - 1) * N + iivec] = cfl
+                C_star[mm * N + iivec, mm * N + iivec] = 1.0 - cfl
+
+            C_list.append(C)
+            Cstar_list.append(C_star)
+
+    if cfl1:
+        C_list, Cstar_list = wake_prop_from_dimensions(dimensions,
+                                                       dimensions_star,
+                                                       use_sparse=use_sparse,
+                                                       sparse_format=sparse_format)
 
     return C_list, Cstar_list
 

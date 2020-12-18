@@ -87,6 +87,28 @@ class MultiAeroGridSurfaces():
             self.KK_star.append(Map.K)
             self.KKzeta_star.append(Map.Kzeta)
 
+
+    def get_ind_velocities_at_target_collocation_points(self, target):
+        """
+        Computes normal induced velocities at target surface collocation points.
+        """
+        M_out, N_out = target.dimensions
+        target.u_ind_coll = np.zeros((3, M_out, N_out))
+
+        # Loop input surfaces
+        for ss_in in range(self.n_surf):
+            # Bound
+            Surf_in = self.Surfs[ss_in]
+            target.u_ind_coll += \
+                Surf_in.get_induced_velocity_over_surface(target,
+                                                          target='collocation', Project=False)
+
+            # Wake
+            Surf_in = self.Surfs_star[ss_in]
+            target.u_ind_coll += \
+                Surf_in.get_induced_velocity_over_surface(target,
+                                                          target='collocation', Project=False)
+
     def get_ind_velocities_at_collocation_points(self):
         """
         Computes normal induced velocities at collocation points.
@@ -100,19 +122,8 @@ class MultiAeroGridSurfaces():
             M_out, N_out = self.dimensions[ss_out]
             Surf_out.u_ind_coll = np.zeros((3, M_out, N_out))
 
-            # Loop input surfaces
-            for ss_in in range(self.n_surf):
-                # Buond
-                Surf_in = self.Surfs[ss_in]
-                Surf_out.u_ind_coll += \
-                    Surf_in.get_induced_velocity_over_surface(Surf_out,
-                                                              target='collocation', Project=False)
+            self.get_ind_velocities_at_target_collocation_points(Surf_out)
 
-                # Wake
-                Surf_in = self.Surfs_star[ss_in]
-                Surf_out.u_ind_coll += \
-                    Surf_in.get_induced_velocity_over_surface(Surf_out,
-                                                              target='collocation', Project=False)
 
     def get_normal_ind_velocities_at_collocation_points(self):
         """
