@@ -92,9 +92,6 @@ class MultiAeroGridSurfaces():
         """
         Computes normal induced velocities at target surface collocation points.
         """
-        M_out, N_out = target.dimensions
-        target.u_ind_coll = np.zeros((3, M_out, N_out))
-
         # Loop input surfaces
         for ss_in in range(self.n_surf):
             # Bound

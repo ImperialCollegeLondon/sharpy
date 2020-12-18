@@ -111,6 +111,7 @@ class Static():
                                  settings_default_static)
 
         self.vortex_radius = settings_here['vortex_radius']
+        self.cfl1 = settings_here['cfl1']
         MS = multisurfaces.MultiAeroGridSurfaces(tsdata,
                                                  self.vortex_radius,
                                                  for_vel=for_vel)
@@ -805,7 +806,7 @@ class Dynamic(Static):
         # fast and memory efficient with both dense and sparse matrices
         List_C, List_Cstar = ass.wake_prop(MS,
                                            self.use_sparse, sparse_format='csc',
-                                           cfl1=self.settings['cfl1'], dt=self.dt, vel_gen=vel_gen)
+                                           cfl1=self.cfl1, dt=self.dt, vel_gen=vel_gen)
         if self.use_sparse:
             Cgamma = libsp.csc_matrix(sparse.block_diag(List_C, format='csc'))
             CgammaW = libsp.csc_matrix(sparse.block_diag(List_Cstar, format='csc'))
@@ -1932,7 +1933,7 @@ class DynamicBlock(Dynamic):
         # fast and memory efficient with both dense and sparse matrices
         List_C, List_Cstar = ass.wake_prop(MS,
                                            self.use_sparse, sparse_format='csc',
-                                           cfl1=self.settings['cfl1'], dt=self.dt, vel_gen=vel_gen)
+                                           cfl1=self.cfl1, dt=self.dt, vel_gen=vel_gen)
         if self.use_sparse:
             Cgamma = libsp.csc_matrix(sparse.block_diag(List_C, format='csc'))
             CgammaW = libsp.csc_matrix(sparse.block_diag(List_Cstar, format='csc'))

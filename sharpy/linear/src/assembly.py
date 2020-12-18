@@ -1206,17 +1206,16 @@ def wake_prop(MS, use_sparse=False, sparse_format='lil',
             uext = np.zeros((3,
                              dimensions_star[0],
                              dimensions_star[1]))
-            params = {'zeta': Surf_star.,
+            params = {'zeta': Surf_star,
                       'override': False}
             vel_gen.generate(params, uext)
             # Compute induced velocities in the wake
+            Surf_star.u_ind_coll = np.zeros((3, M_star, N))
             MS.get_ind_velocities_at_target_collocation_points(Surf_star)
 
             # ... and fill
             iivec = np.array(range(N), dtype=int)
             cfl = np.zeros((N))
-            # Compute TE velocities
-            te_vel = Surf.u_input_coll[:, -1, :]
             # Compute wake velocities
 
             # Compute colocation points
@@ -1226,7 +1225,8 @@ def wake_prop(MS, use_sparse=False, sparse_format='lil',
                 conv_dir = Surf_star.zetac[:, 0, iin] - Surf.zetac[:, -1, iin]
                 dist = np.linalg.norm(conv_vec)
                 conv_dir /= dist
-                vel_value = np.dot(, conv_dir)
+                vel = uext[:, 0, iin] - Surf_star[:, 0, iin] - Surf.u_input_coll[:, -1, iin]
+                vel_value = np.dot(vel, conv_dir)
                 clf[iin] = dt*vel_value/dist
 
             # propagation from trailing edge
@@ -1236,8 +1236,12 @@ def wake_prop(MS, use_sparse=False, sparse_format='lil',
             for mm in range(1, M_star):
                 cfl = np.zeros((N))
                 for iin in range(N):
-                    dist = np.linalg.norm(Surf_star.zetac[:, mm, :] - Surf.zetac[:, mm - 1, :], axis=0)
-                    clf[iin] = dt*te_vel[ss]/dist
+                    conv_dir = Surf_star.zetac[:, mm, iin] - Surf.zetac[:, mm - 1, iin]
+                    dist = np.linalg.norm(conv_vec)
+                    conv_dir /= dist
+                    vel = uext[:, 0, iin] - Surf_star[:, 0, iin] - Surf.u_input_coll[:, -1, iin]
+                    vel_value = np.dot(vel, conv_dir)
+                    clf[iin] = dt*vel_value/dist
                 C_star[mm * N + iivec, (mm - 1) * N + iivec] = cfl
                 C_star[mm * N + iivec, mm * N + iivec] = 1.0 - cfl
 
