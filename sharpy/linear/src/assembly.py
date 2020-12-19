@@ -1227,7 +1227,7 @@ def wake_prop(MS, use_sparse=False, sparse_format='lil',
                 conv_dir /= dist
                 vel = uext[:, 0, iin] - Surf_star[:, 0, iin] - Surf.u_input_coll[:, -1, iin]
                 vel_value = np.dot(vel, conv_dir)
-                clf[iin] = dt*vel_value/dist
+                cfl[iin] = dt*vel_value/dist
 
             # propagation from trailing edge
             C[iivec, N * (M - 1) + iivec] = cfl
@@ -1241,7 +1241,7 @@ def wake_prop(MS, use_sparse=False, sparse_format='lil',
                     conv_dir /= dist
                     vel = uext[:, 0, iin] - Surf_star[:, 0, iin] - Surf.u_input_coll[:, -1, iin]
                     vel_value = np.dot(vel, conv_dir)
-                    clf[iin] = dt*vel_value/dist
+                    cfl[iin] = dt*vel_value/dist
                 C_star[mm * N + iivec, (mm - 1) * N + iivec] = cfl
                 C_star[mm * N + iivec, mm * N + iivec] = 1.0 - cfl
 

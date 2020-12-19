@@ -1,11 +1,13 @@
-import sharpy.linear.utils.ss_interface as ss_interface
 import numpy as np
-import sharpy.linear.src.libss as libss
 import scipy.linalg as sclalg
 import warnings
+
+import sharpy.linear.utils.ss_interface as ss_interface
+import sharpy.linear.src.libss as libss
 import sharpy.utils.settings as settings
 import sharpy.utils.cout_utils as cout
 import sharpy.utils.algebra as algebra
+import sharpy.utils.generator_interface as gi
 
 
 @ss_interface.linear_system
@@ -98,6 +100,35 @@ class LinearAeroelastic(ss_interface.BaseElement):
         # Create Linear UVLM
         self.uvlm = ss_interface.initialise_system('LinearUVLM')
         self.uvlm.initialise(data, custom_settings=self.settings['aero_settings'])
+
+        # Look for the aerodynamic solver
+        if 'StaticUvlm' in data.settings:
+            aero_solver_name = 'StaticUvlm'
+            aero_solver_settings = data.settings['StaticUvlm']
+        elif 'StaticCoupled' in data.settings:
+            aero_solver_name = data.settings['StaticCoupled']['aero_solver']
+            aero_solver_settings = data.settings['StaticCoupled']['aero_solver_settings']
+        elif 'StaticCoupledRBM' in data.settings:
+            aero_solver_name = data.settings['StaticCoupledRBM']['aero_solver']
+            aero_solver_settings = data.settings['StaticCoupledRBM']['aero_solver_settings']
+        elif 'DynamicCoupled' in data.settings:
+            aero_solver_name = data.settings['DynamicCoupled']['aero_solver']
+            aero_solver_settings = data.settings['DynamicCoupled']['aero_solver_settings']
+        elif 'StepUvlm' in data.settings:
+            aero_solver_name = 'StepUvlm'
+            aero_solver_settings = data.settings['StepUvlm']
+        else:
+            raise RuntimeError("ERROR: aerodynamic solver not found")
+
+        # Velocity generator
+        vel_gen_name = aero_solver_settings['velocity_field_generator']
+        vel_gen_settings = aero_solver_settings['velocity_field_input']
+
+        # Get the minimum parameters needed to define the wake
+        vel_gen_type = gi.generator_from_string(vel_gen_name)
+        vel_gen = vel_gen_type()
+        vel_gen.initialise(vel_gen_settings) 
+
         if self.settings['uvlm_filename'] == '':
             self.uvlm.assemble(track_body=self.settings['track_body'], vel_gen=vel_gen)
         else:

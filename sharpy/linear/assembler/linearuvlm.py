@@ -128,7 +128,7 @@ class LinearUVLM(ss_interface.BaseElement):
     settings_default['vortex_radius'] = vortex_radius_def
     settings_description['vortex_radius'] = 'Distance below which inductions are not computed'
 
-    settings_types['clf1'] = 'bool'
+    settings_types['cfl1'] = 'bool'
     settings_default['cfl1'] = True
     settings_description['cfl1'] = 'If it is ``True``, it assumes that the discretisation complies with CFL=1'
 
