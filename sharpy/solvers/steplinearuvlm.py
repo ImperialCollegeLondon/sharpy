@@ -109,6 +109,10 @@ class StepLinearUVLM(BaseSolver):
     settings_default['vortex_radius_wake_ind'] = vortex_radius_def
     settings_description['vortex_radius_wake_ind'] = 'Distance between points below which induction is not computed in the wake convection'
 
+    settings_types['cfl1'] = 'bool'
+    settings_default['cfl1'] = True
+    settings_description['cfl1'] = 'If it is ``True``, it assumes that the discretisation complies with CFL=1'
+    
     settings_table = settings.SettingsTable()
     __doc__ += settings_table.generate(settings_types, settings_default, settings_description)
 
@@ -127,10 +131,6 @@ class StepLinearUVLM(BaseSolver):
     scaling_settings_types['density'] = 'float'
     scaling_settings_default['density'] = 1.0
     scaling_settings_description['density'] = 'Reference density to be used for UVLM scaling'
-
-    settings_types['cfl1'] = 'bool'
-    settings_default['cfl1'] = True
-    settings_description['cfl1'] = 'If it is ``True``, it assumes that the discretisation complies with CFL=1'
 
     __doc__ += settings_table.generate(scaling_settings_types,
                                        scaling_settings_default,

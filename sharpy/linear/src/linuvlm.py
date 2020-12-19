@@ -1755,7 +1755,7 @@ class DynamicBlock(Dynamic):
             warnings.warn('Individual parsing of settings is deprecated. Please use the settings dictionary',
                           DeprecationWarning)
 
-        super().__init__(tsdata, vortex_radius, dt,
+        super().__init__(tsdata, dt,
                          dynamic_settings=dynamic_settings,
                          integr_order=integr_order,
                          RemovePredictor=RemovePredictor,
