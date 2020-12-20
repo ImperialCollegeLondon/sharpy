@@ -599,7 +599,7 @@ class Dynamic(Static):
             self.settings['remove_predictor'] = RemovePredictor
             self.settings['use_sparse'] = UseSparse
             self.settings['ScalingDict'] = ScalingDict
-    
+
         static_dict = {'vortex_radius': self.settings['vortex_radius'],
                        'cfl1': self.settings['cfl1']}
         super().__init__(tsdata, custom_settings=static_dict, for_vel=for_vel)
@@ -815,7 +815,7 @@ class Dynamic(Static):
         # fast and memory efficient with both dense and sparse matrices
         List_C, List_Cstar = ass.wake_prop(MS,
                                            self.use_sparse, sparse_format='csc',
-                                           settings=wake_prop_settings)                                 
+                                           settings=wake_prop_settings)
         if self.use_sparse:
             Cgamma = libsp.csc_matrix(sparse.block_diag(List_C, format='csc'))
             CgammaW = libsp.csc_matrix(sparse.block_diag(List_Cstar, format='csc'))
@@ -1075,28 +1075,8 @@ class Dynamic(Static):
 
         """
 
-        MS = self.MS
-        K = self.K
-        K_star = self.K_star
+        return get_Cw_cpx(self.MS, self.K, self.K_star, zval)
 
-        jjvec = []
-        iivec = []
-        valvec = []
-
-        K0tot, K0totstar = 0, 0
-        for ss in range(MS.n_surf):
-
-            M, N = self.MS.dimensions[ss]
-            Mstar, N = self.MS.dimensions_star[ss]
-
-            for mm in range(Mstar):
-                jjvec += range(K0tot + N * (M - 1), K0tot + N * M)
-                iivec += range(K0totstar + mm * N, K0totstar + (mm + 1) * N)
-                valvec += N * [zval ** (-mm - 1)]
-            K0tot += MS.KK[ss]
-            K0totstar += MS.KK_star[ss]
-
-        return libsp.csc_matrix((valvec, (iivec, jjvec)), shape=(K_star, K), dtype=np.complex_)
 
     def balfreq(self, DictBalFreq):
         """
@@ -2929,33 +2909,8 @@ class Frequency(Static):
             .. math:: \bar{\goldsymbol{\Gamma}}_w = \bar{\mathbf{C}}(z)  \bar{\boldsymbol{\Gamma}}
 
         """
+        return get_Cw_cpx(self.MS, self.K, self.K_star, zval)
 
-        MS = self.MS
-        K = self.K
-        K_star = self.K_star
-
-        jjvec = []
-        iivec = []
-        valvec = []
-
-        jjvec = []
-        iivec = []
-        valvec = []
-
-        K0tot, K0totstar = 0, 0
-        for ss in range(MS.n_surf):
-
-            M, N = self.MS.dimensions[ss]
-            Mstar, N = self.MS.dimensions_star[ss]
-
-            for mm in range(Mstar):
-                jjvec += range(K0tot + N * (M - 1), K0tot + N * M)
-                iivec += range(K0totstar + mm * N, K0totstar + (mm + 1) * N)
-                valvec += N * [zval ** (-mm - 1)]
-            K0tot += MS.KK[ss]
-            K0totstar += MS.KK_star[ss]
-
-        return libsp.csc_matrix((valvec, (iivec, jjvec)), shape=(K_star, K), dtype=np.complex_)
 
     def assemble_profiling(self):
         """
@@ -2968,6 +2923,42 @@ class Frequency(Static):
 
         import cProfile
         cProfile.runctx('self.assemble()', globals(), locals(), filename=self.prof_out)
+
+
+def get_Cw_cpx(MS, K, K_star, zval):
+    r"""
+    Produces a sparse matrix
+
+        .. math:: \bar{\mathbf{C}}(z)
+
+    where
+
+        .. math:: z = e^{k \Delta t}
+
+    such that the wake circulation frequency response at :math:`z` is
+
+        .. math:: \bar{\boldsymbol{\Gamma}}_w = \bar{\mathbf{C}}(z)  \bar{\mathbf{\Gamma}}
+
+    """
+
+    jjvec = []
+    iivec = []
+    valvec = []
+
+    K0tot, K0totstar = 0, 0
+    for ss in range(MS.n_surf):
+
+        M, N = MS.dimensions[ss]
+        Mstar, N = MS.dimensions_star[ss]
+
+        for mm in range(Mstar):
+            jjvec += range(K0tot + N * (M - 1), K0tot + N * M)
+            iivec += range(K0totstar + mm * N, K0totstar + (mm + 1) * N)
+            valvec += N * [zval ** (-mm - 1)]
+        K0tot += MS.KK[ss]
+        K0totstar += MS.KK_star[ss]
+
+    return libsp.csc_matrix((valvec, (iivec, jjvec)), shape=(K_star, K), dtype=np.complex_)
 
 
 ################################################################################
