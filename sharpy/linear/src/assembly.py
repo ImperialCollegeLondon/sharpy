@@ -24,6 +24,7 @@ import sharpy.linear.src.libsparse as libsp
 import sharpy.linear.src.lib_dbiot as dbiot
 import sharpy.linear.src.lib_ucdncdzeta as lib_ucdncdzeta
 import sharpy.utils.algebra as algebra
+import sharpy.utils.cout_utils as cout
 
 # local indiced panel/vertices as per self.maps
 dmver = [0, 1, 1, 0]  # delta to go from (m,n) panel to (m,n) vertices
@@ -1174,7 +1175,7 @@ def wake_prop(MS, use_sparse=False, sparse_format='lil', settings=None):
     except (KeyError, TypeError):
         # In case the key does not exist or settings=None
         cfl1 = True
-    cout.cout_wrap("Computing wake propagation matrix with CFL1=%s" % cfl1, 1)
+    cout.cout_wrap(("Computing wake propagation matrix with CFL1=%s" % cfl1), 1)
 
     n_surf = len(MS.Surfs)
     assert len(MS.Surfs_star) == n_surf, 'No. of wake and bound surfaces not matching!'
