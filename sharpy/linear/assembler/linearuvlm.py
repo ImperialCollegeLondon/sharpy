@@ -242,7 +242,7 @@ class LinearUVLM(ss_interface.BaseElement):
             self.gust_assembler = lineargust.LinearGustGenerator()
             self.gust_assembler.initialise(data.aero)
 
-    def assemble(self, track_body=False, vel_gen=None):
+    def assemble(self, track_body=False, wake_prop_settings=None):
         r"""
         Assembles the linearised UVLM system, removes the desired inputs and adds linearised control surfaces
         (if present).
@@ -256,7 +256,7 @@ class LinearUVLM(ss_interface.BaseElement):
         .. math:: [\delta_1, \delta_2, \dots, \dot{\delta}_1, \dot{\delta_2}]
         """
 
-        self.sys.assemble_ss(vel_gen=vel_gen)
+        self.sys.assemble_ss(wake_prop_settings=wake_prop_settings)
 
         if self.scaled:
             self.sys.nondimss()

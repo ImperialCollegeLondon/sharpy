@@ -129,8 +129,15 @@ class LinearAeroelastic(ss_interface.BaseElement):
         vel_gen = vel_gen_type()
         vel_gen.initialise(vel_gen_settings) 
 
+        wake_prop_settings = {'dt': self.settings['aero_settings']['dt'],
+                              'ts': data.ts,
+                              't': data.ts*self.settings['aero_settings']['dt'],
+                              'for_pos': data.structure.timestep_info[-1].for_pos,
+                              'cfl1': self.settings['aero_settings']['cfl1'],
+                              'vel_gen': vel_gen}
+
         if self.settings['uvlm_filename'] == '':
-            self.uvlm.assemble(track_body=self.settings['track_body'], vel_gen=vel_gen)
+            self.uvlm.assemble(track_body=self.settings['track_body'], wake_prop_settings=wake_prop_settings)
         else:
             self.load_uvlm_from_file = True
 

@@ -1039,7 +1039,7 @@ class Test_assembly(unittest.TestCase):
     def test_wake_prop(self):
 
         MS = self.MS
-        C_list, Cstar_list = assembly.wake_prop(MS, cfl1=True)
+        C_list, Cstar_list = assembly.wake_prop(MS)
 
         n_surf = len(MS.Surfs)
         for ss in range(n_surf):

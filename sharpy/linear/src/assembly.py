@@ -1155,8 +1155,7 @@ def dfunstdgamma_dot(Surfs):
     return DerList
 
 
-def wake_prop(MS, use_sparse=False, sparse_format='lil',
-              cfl1=True, dt=0., vel_gen=None):
+def wake_prop(MS, use_sparse=False, sparse_format='lil', settings=None):
     """
     Assembly of wake propagation matrices, in sparse or dense matrices format
 
@@ -1169,6 +1168,11 @@ def wake_prop(MS, use_sparse=False, sparse_format='lil',
     dt (float): time step
     vel_gen: velocity generetor
     """
+
+    if not 'cfl1' in settings:
+        cfl1 = True
+    else:
+        cfl1 = settings['cfl1']
 
     n_surf = len(MS.Surfs)
     assert len(MS.Surfs_star) == n_surf, 'No. of wake and bound surfaces not matching!'
@@ -1201,49 +1205,62 @@ def wake_prop(MS, use_sparse=False, sparse_format='lil',
             else:
                 C = np.zeros((K_star, K))
                 C_star = np.zeros((K_star, K_star))
+    
+            C_list = []
+            Cstar_list = []
 
             # Compute flow velocity at wake
-            uext = np.zeros((3,
-                             dimensions_star[0],
-                             dimensions_star[1]))
-            params = {'zeta': Surf_star,
-                      'override': False}
-            vel_gen.generate(params, uext)
+            uext = [np.zeros((3,
+                             dimensions_star[ss][0],
+                             dimensions_star[ss][1]))]
+
+            try:
+                Surf_star.zetac
+            except AttributeError:
+                Surf_star.generate_collocations()
+
+            params = {'zeta': [Surf_star.zetac],
+                      'override': False,
+                      'dt': settings['dt'],
+                      'ts': settings['ts'],
+                      't': settings['t'],
+                      'for_pos': settings['for_pos']}
+            settings['vel_gen'].generate(params, uext)
             # Compute induced velocities in the wake
             Surf_star.u_ind_coll = np.zeros((3, M_star, N))
             MS.get_ind_velocities_at_target_collocation_points(Surf_star)
 
             # ... and fill
-            iivec = np.array(range(N), dtype=int)
-            cfl = np.zeros((N))
+            # iivec = np.array(range(N), dtype=int)
+            # cfl = np.zeros((N))
             # Compute wake velocities
 
             # Compute colocation points
             # col = Surf.zetac
             # col_star = Surf_star.zetac
             for iin in range(N):
-                conv_dir = Surf_star.zetac[:, 0, iin] - Surf.zetac[:, -1, iin]
+                # propagation from trailing edge
+                conv_vec = Surf_star.zetac[:, 0, iin] - Surf.zetac[:, -1, iin]
                 dist = np.linalg.norm(conv_vec)
-                conv_dir /= dist
-                vel = uext[:, 0, iin] - Surf_star[:, 0, iin] - Surf.u_input_coll[:, -1, iin]
-                vel_value = np.dot(vel, conv_dir)
-                cfl[iin] = dt*vel_value/dist
+                conv_dir_te = conv_vec/dist
+                vel = uext[0][:, 0, iin] + Surf_star.u_ind_coll[:, 0, iin] - Surf.u_input_coll[:, -1, iin]
+                vel_value = np.dot(vel, conv_dir_te)
+                cfl = settings['dt']*vel_value/dist
 
-            # propagation from trailing edge
-            C[iivec, N * (M - 1) + iivec] = cfl
-            C_star[iivec, iivec] = 1.0 - cfl
-            # wake propagation
-            for mm in range(1, M_star):
-                cfl = np.zeros((N))
-                for iin in range(N):
-                    conv_dir = Surf_star.zetac[:, mm, iin] - Surf.zetac[:, mm - 1, iin]
+                C[iin, N * (M - 1) + iin] = cfl
+                C_star[iin, iin] = 1.0 - cfl
+                
+                # wake propagation
+                for mm in range(1, M_star):
+                    conv_vec = Surf_star.zetac[:, mm, iin] - Surf_star.zetac[:, mm - 1, iin]
                     dist = np.linalg.norm(conv_vec)
-                    conv_dir /= dist
-                    vel = uext[:, 0, iin] - Surf_star[:, 0, iin] - Surf.u_input_coll[:, -1, iin]
-                    vel_value = np.dot(vel, conv_dir)
-                    cfl[iin] = dt*vel_value/dist
-                C_star[mm * N + iivec, (mm - 1) * N + iivec] = cfl
-                C_star[mm * N + iivec, mm * N + iivec] = 1.0 - cfl
+                    conv_dir = conv_vec/dist
+                    vel_value = np.dot(uext[0][:, mm, iin] + Surf_star.u_ind_coll[:, mm, iin], conv_dir)
+                    vel_value -= np.dot(Surf.u_input_coll[:, -1, iin], conv_dir_te)
+                    cfl = settings['dt']*vel_value/dist
+                    
+                    C_star[mm * N + iin, (mm - 1) * N + iin] = cfl
+                    C_star[mm * N + iin, mm * N + iin] = 1.0 - cfl
 
             C_list.append(C)
             Cstar_list.append(C_star)

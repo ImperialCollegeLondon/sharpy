@@ -247,7 +247,13 @@ class StepLinearUVLM(BaseSolver):
                                   for ss in range(aero_tstep.n_surf)])
 
             # Assemble the state space system
-            lin_uvlm_system.assemble_ss(vel_gen=self.velocity_generator)
+            wake_prop_settings = {'dt': self.settings['dt'],
+                                  'ts': self.data.ts,
+                                  't': self.data.ts*self.settings['dt'],
+                                  'for_pos':self.data.structure.timestep_info[-1].for_pos,
+                                  'cfl1': self.settings['cfl1'],
+                                  'vel_gen': self.velocity_generator}
+            lin_uvlm_system.assemble_ss(wake_prop_settings=wake_prop_settings)
             self.data.aero.linear['System'] = lin_uvlm_system
             self.data.aero.linear['SS'] = lin_uvlm_system.SS
             self.data.aero.linear['x_0'] = x_0

@@ -599,6 +599,7 @@ class Dynamic(Static):
         self.dt = self.settings['dt']
         self.integr_order = self.settings['integr_order']
         self.vortex_radius = self.settings['vortex_radius']
+        self.cfl1 = self.settings['cfl1']
 
         if self.integr_order == 1:
             Nx = 2 * self.K + self.K_star
@@ -724,7 +725,7 @@ class Dynamic(Static):
 
         self.cpu_summary['dim'] = time.time() - t0
 
-    def assemble_ss(self, vel_gen=None):
+    def assemble_ss(self, wake_prop_settings=None):
         r"""
         Produces state-space model of the form
 
@@ -806,7 +807,7 @@ class Dynamic(Static):
         # fast and memory efficient with both dense and sparse matrices
         List_C, List_Cstar = ass.wake_prop(MS,
                                            self.use_sparse, sparse_format='csc',
-                                           cfl1=self.cfl1, dt=self.dt, vel_gen=vel_gen)
+                                           settings=wake_prop_settings)                                 
         if self.use_sparse:
             Cgamma = libsp.csc_matrix(sparse.block_diag(List_C, format='csc'))
             CgammaW = libsp.csc_matrix(sparse.block_diag(List_Cstar, format='csc'))
@@ -1847,7 +1848,7 @@ class DynamicBlock(Dynamic):
         self.SS.dt = self.SS.dt * self.ScalingFacts['time']
         self.cpu_summary['dim'] = time.time() - t0
 
-    def assemble_ss(self, vel_gen=None):
+    def assemble_ss(self, wake_prop_settings=None):
         r"""
         Produces block-form of state-space model
 
@@ -1933,7 +1934,7 @@ class DynamicBlock(Dynamic):
         # fast and memory efficient with both dense and sparse matrices
         List_C, List_Cstar = ass.wake_prop(MS,
                                            self.use_sparse, sparse_format='csc',
-                                           cfl1=self.cfl1, dt=self.dt, vel_gen=vel_gen)
+                                           settings=wake_prop_settings)
         if self.use_sparse:
             Cgamma = libsp.csc_matrix(sparse.block_diag(List_C, format='csc'))
             CgammaW = libsp.csc_matrix(sparse.block_diag(List_Cstar, format='csc'))
