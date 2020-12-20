@@ -582,18 +582,26 @@ class Dynamic(Static):
         self.settings = dict()
         if dynamic_settings:
             self.settings = dynamic_settings
+            settings.to_custom_types(self.settings,
+                                     settings_types_dynamic,
+                                     settings_default_dynamic,
+                                     no_ctype=True)
         else:
             warnings.warn('No settings dictionary found. Using default. Individual parsing of settings is deprecated',
                           DeprecationWarning)
             # Future: remove deprecation warning and make settings the only argument
-            settings.to_custom_types(self.settings, settings_types_dynamic, settings_default_dynamic)
+            settings.to_custom_types(self.settings,
+                                     settings_types_dynamic,
+                                     settings_default_dynamic,
+                                     no_ctype=True)
             self.settings['dt'] = dt
             self.settings['integr_order'] = integr_order
             self.settings['remove_predictor'] = RemovePredictor
             self.settings['use_sparse'] = UseSparse
             self.settings['ScalingDict'] = ScalingDict
-
-        static_dict = {'vortex_radius': self.settings['vortex_radius']}
+    
+        static_dict = {'vortex_radius': self.settings['vortex_radius'],
+                       'cfl1': self.settings['cfl1']}
         super().__init__(tsdata, custom_settings=static_dict, for_vel=for_vel)
 
         self.dt = self.settings['dt']

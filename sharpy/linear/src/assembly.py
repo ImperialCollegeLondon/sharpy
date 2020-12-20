@@ -1169,10 +1169,11 @@ def wake_prop(MS, use_sparse=False, sparse_format='lil', settings=None):
     vel_gen: velocity generetor
     """
 
-    if not 'cfl1' in settings:
-        cfl1 = True
-    else:
+    try:
         cfl1 = settings['cfl1']
+    except (KeyError, TypeError):
+        # In case the key does not exist or settings=None
+        cfl1= True
 
     n_surf = len(MS.Surfs)
     assert len(MS.Surfs_star) == n_surf, 'No. of wake and bound surfaces not matching!'
