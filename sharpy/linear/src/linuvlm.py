@@ -970,7 +970,7 @@ class Dynamic(Static):
         self.cpu_summary['assemble'] = time.time() - t0
         cout.cout_wrap('\t\t\t...done in %.2f sec' % self.cpu_summary['assemble'])
 
-    def freqresp(self, kv):
+    def freqresp(self, kv, wake_prop_settings=None):
         """
         Ad-hoc method for fast UVLM frequency response over the frequencies
         kv. The method, only requires inversion of a K x K matrix at each
@@ -1024,7 +1024,7 @@ class Dynamic(Static):
         for kk in range(Nk):
 
             ###  build Cw complex
-            Cw_cpx = self.get_Cw_cpx(zv[kk])
+            Cw_cpx = self.get_Cw_cpx(zv[kk], settings=wake_prop_settings)
 
             if self.remove_predictor:
                 Ygamma = zv[kk] * \
@@ -1059,7 +1059,7 @@ class Dynamic(Static):
 
         return Yfreq
 
-    def get_Cw_cpx(self, zval):
+    def get_Cw_cpx(self, zval, settings=None):
         r"""
         Produces a sparse matrix
 
@@ -1075,10 +1075,10 @@ class Dynamic(Static):
 
         """
 
-        return get_Cw_cpx(self.MS, self.K, self.K_star, zval)
+        return get_Cw_cpx(self.MS, self.K, self.K_star, zval, settings=settings)
 
 
-    def balfreq(self, DictBalFreq):
+    def balfreq(self, DictBalFreq, wake_prop_settings=None):
         """
         Low-rank method for frequency limited balancing.
         The Observability ad controllability Gramians over the frequencies kv
@@ -1290,7 +1290,7 @@ class Dynamic(Static):
             Intfact = wv[kk]  # integration factor
 
             #  build terms that will be recycled
-            Cw_cpx = self.get_Cw_cpx(zval)
+            Cw_cpx = self.get_Cw_cpx(zval, settings=wake_prop_settings)
             PwCw_T = Cw_cpx.T.dot(Pw.T)
             Kernel = np.linalg.inv(zval * Eye - P - PwCw_T.T)
 
@@ -1396,7 +1396,7 @@ class Dynamic(Static):
             self.Zc = Zc
             self.Zo = Zo
 
-    def balfreq_profiling(self):
+    def balfreq_profiling(self, wake_prop_settings=None):
         """
         Generate profiling report for balfreq function and saves it into ``self.prof_out.``
         The function also returns a ``pstats.Stats`` object.
@@ -1412,7 +1412,7 @@ class Dynamic(Static):
         import cProfile
         def wrap():
             DictBalFreq = {'frequency': 0.5, 'check_stability': False}
-            self.balfreq(DictBalFreq)
+            self.balfreq(DictBalFreq, wake_prop_settings=wake_prop_settings)
 
         cProfile.runctx('wrap()', globals(), locals(), filename=self.prof_out)
 
@@ -2063,7 +2063,7 @@ class DynamicBlock(Dynamic):
         self.cpu_summary['assemble'] = time.time() - t0
         cout.cout_wrap('\t\t\t...done in %.2f sec' % self.cpu_summary['assemble'], 1)
 
-    def freqresp(self, kv):
+    def freqresp(self, kv, wake_prop_settings=None):
         """
         Ad-hoc method for fast UVLM frequency response over the frequencies
         kv. The method, only requires inversion of a K x K matrix at each
@@ -2094,7 +2094,7 @@ class DynamicBlock(Dynamic):
         for kk in range(Nk):
 
             ###  build Cw complex
-            Cw_cpx = self.get_Cw_cpx(zv[kk])
+            Cw_cpx = self.get_Cw_cpx(zv[kk], settings=wake_prop_settings)
 
             Ygamma = libsp.solve(zv[kk] * Eye - P -
                                  libsp.dot(Pw, Cw_cpx, type_out=libsp.csc_matrix),
@@ -2119,7 +2119,7 @@ class DynamicBlock(Dynamic):
 
         return Yfreq
 
-    def balfreq(self, DictBalFreq):
+    def balfreq(self, DictBalFreq, wake_prop_settings=None):
         """
         Low-rank method for frequency limited balancing.
         The Observability ad controllability Gramians over the frequencies kv
@@ -2319,7 +2319,7 @@ class DynamicBlock(Dynamic):
             Intfact = wv[kk]  # integration factor
 
             #  build terms that will be recycled
-            Cw_cpx = self.get_Cw_cpx(zval)
+            Cw_cpx = self.get_Cw_cpx(zval, settings=wake_prop_settings)
             P_PwCw = P + Cw_cpx.T.dot(Pw.T).T
             Kernel = np.linalg.inv(zval * Eye - P_PwCw)
 
@@ -2842,7 +2842,7 @@ class Frequency(Static):
             self.Dss = libsp.dot(K, self.Dss)
             self.outputs = K.shape[0]
 
-    def freqresp(self, kv):
+    def freqresp(self, kv, wake_prop_settings=None):
         """
         Ad-hoc method for fast UVLM frequency response over the frequencies
         kv. The method, only requires inversion of a K x K matrix at each
@@ -2863,7 +2863,7 @@ class Frequency(Static):
         for kk in range(Nk):
 
             ### build Cw complex
-            Cw_cpx = self.get_Cw_cpx(zv[kk])
+            Cw_cpx = self.get_Cw_cpx(zv[kk], settings=wake_prop_settings)
 
             # get bound state freq response
             if self.remove_predictor:
@@ -2894,7 +2894,7 @@ class Frequency(Static):
 
         return Yfreq
 
-    def get_Cw_cpx(self, zval):
+    def get_Cw_cpx(self, zval, settings=None):
         r"""
         Produces a sparse matrix
 
@@ -2909,7 +2909,7 @@ class Frequency(Static):
             .. math:: \bar{\goldsymbol{\Gamma}}_w = \bar{\mathbf{C}}(z)  \bar{\boldsymbol{\Gamma}}
 
         """
-        return get_Cw_cpx(self.MS, self.K, self.K_star, zval)
+        return get_Cw_cpx(self.MS, self.K, self.K_star, zval, settings=settings)
 
 
     def assemble_profiling(self):
@@ -2925,7 +2925,7 @@ class Frequency(Static):
         cProfile.runctx('self.assemble()', globals(), locals(), filename=self.prof_out)
 
 
-def get_Cw_cpx(MS, K, K_star, zval):
+def get_Cw_cpx(MS, K, K_star, zval, settings=None):
     r"""
     Produces a sparse matrix
 
@@ -2940,6 +2940,13 @@ def get_Cw_cpx(MS, K, K_star, zval):
         .. math:: \bar{\boldsymbol{\Gamma}}_w = \bar{\mathbf{C}}(z)  \bar{\mathbf{\Gamma}}
 
     """
+
+    try:
+        cfl1 = settings['cfl1']
+    except (KeyError, TypeError):
+        # In case the key does not exist or settings=None
+        cfl1 = True
+    cout.cout_wrap("Computing wake propagation solution matrix if frequency domain with CFL1=%s" % cfl1, 1)
 
     jjvec = []
     iivec = []

@@ -1173,7 +1173,8 @@ def wake_prop(MS, use_sparse=False, sparse_format='lil', settings=None):
         cfl1 = settings['cfl1']
     except (KeyError, TypeError):
         # In case the key does not exist or settings=None
-        cfl1= True
+        cfl1 = True
+    cout.cout_wrap("Computing wake propagation matrix with CFL1=%s" % cfl1, 1)
 
     n_surf = len(MS.Surfs)
     assert len(MS.Surfs_star) == n_surf, 'No. of wake and bound surfaces not matching!'
@@ -1206,7 +1207,7 @@ def wake_prop(MS, use_sparse=False, sparse_format='lil', settings=None):
             else:
                 C = np.zeros((K_star, K))
                 C_star = np.zeros((K_star, K_star))
-    
+
             C_list = []
             Cstar_list = []
 
@@ -1250,7 +1251,7 @@ def wake_prop(MS, use_sparse=False, sparse_format='lil', settings=None):
 
                 C[iin, N * (M - 1) + iin] = cfl
                 C_star[iin, iin] = 1.0 - cfl
-                
+
                 # wake propagation
                 for mm in range(1, M_star):
                     conv_vec = Surf_star.zetac[:, mm, iin] - Surf_star.zetac[:, mm - 1, iin]
@@ -1259,7 +1260,7 @@ def wake_prop(MS, use_sparse=False, sparse_format='lil', settings=None):
                     vel_value = np.dot(uext[0][:, mm, iin] + Surf_star.u_ind_coll[:, mm, iin], conv_dir)
                     vel_value -= np.dot(Surf.u_input_coll[:, -1, iin], conv_dir_te)
                     cfl = settings['dt']*vel_value/dist
-                    
+
                     C_star[mm * N + iin, (mm - 1) * N + iin] = cfl
                     C_star[mm * N + iin, mm * N + iin] = 1.0 - cfl
 
