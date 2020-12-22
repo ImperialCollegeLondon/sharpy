@@ -2948,25 +2948,102 @@ def get_Cw_cpx(MS, K, K_star, zval, settings=None):
         cfl1 = True
     cout.cout_wrap("Computing wake propagation solution matrix if frequency domain with CFL1=%s" % cfl1, 1)
 
-    jjvec = []
-    iivec = []
-    valvec = []
+    if cfl1:
+        jjvec = []
+        iivec = []
+        valvec = []
 
-    K0tot, K0totstar = 0, 0
-    for ss in range(MS.n_surf):
+        K0tot, K0totstar = 0, 0
+        for ss in range(MS.n_surf):
 
-        M, N = MS.dimensions[ss]
-        Mstar, N = MS.dimensions_star[ss]
+            M, N = MS.dimensions[ss]
+            Mstar, N = MS.dimensions_star[ss]
 
-        for mm in range(Mstar):
-            jjvec += range(K0tot + N * (M - 1), K0tot + N * M)
-            iivec += range(K0totstar + mm * N, K0totstar + (mm + 1) * N)
-            valvec += N * [zval ** (-mm - 1)]
-        K0tot += MS.KK[ss]
-        K0totstar += MS.KK_star[ss]
+            for mm in range(Mstar):
+                jjvec += range(K0tot + N * (M - 1), K0tot + N * M)
+                iivec += range(K0totstar + mm * N, K0totstar + (mm + 1) * N)
+                valvec += N * [zval ** (-mm - 1)]
+            K0tot += MS.KK[ss]
+            K0totstar += MS.KK_star[ss]
+    else:
+        # sum_m_n = 0
+        sum_mstar_n = 0
+        for ss in range(MS.n_surf):
+            # M, N = MS.dimensions[ss]
+            Mstar, N = MS.dimensions_star[ss]
+            # sum_m_n += M*N
+            sum_mstar_n += Mstar*N
+
+            try:
+                MS[ss].Surf_star.zetac
+            except AttributeError:
+                MS[ss].Surf_star.zetac.generate_collocations()
+        jjvec = [None]*sum_mstar_n
+        iivec = [None]*sum_mstar_n
+        valvec = [None]*sum_mstar_n
+
+        K0tot, K0totstar = 0, 0
+        ipoint = 0
+        for ss in range(MS.n_surf):
+            M, N = MS.dimensions[ss]
+            Mstar, N = MS.dimensions_star[ss]
+            for iin in range(N):
+                for mm in range(Mstar):
+                    # Value location in the sparse array
+                    ipoint = K0totstar + mm * N + iin
+                    # Compute CFL
+                    if mm == 0:
+                        conv_vec = Surf_star.zetac[:, 0, iin] - Surf.zetac[:, -1, iin]
+                        dist = np.linalg.norm(conv_vec)
+                        conv_dir_te = conv_vec/dist
+                        vel = Surf.u_input_coll[:, -1, iin]
+                        vel_value = np.dot(vel, conv_dir_te)
+                        cfl = settings['dt']*vel_value/dist
+                    else:
+                        conv_vec = Surf_star.zetac[:, mm, iin] - Surf_star.zetac[:, mm - 1, iin]
+                        dist = np.linalg.norm(conv_vec)
+                        conv_dir = conv_vec/dist
+                        vel = Surf.u_input_coll[:, -1, iin]
+                        vel_value = np.dot(vel, conv_dir_te)
+                        cfl = settings['dt']*vel_value/dist
+                    # Compute coefficient
+                    coef = get_Cw_cpx_coef_cfl_n1(cfl, zval)
+                    # Assign values
+                    jjvec[ipoint] = K0tot + N * (M - 1) + iin
+                    iivec[ipoint] = K0totstar + mm * N + iin
+                    if mm == 0:
+                        # First row
+                        valvec[ipoint] = coef
+                    else:
+                        ipoint_prev = K0totstar + (mm - 1) * N + iin
+                        valuec[ipoint] = coef*value[ipoint_prev]
+                K0tot += MS.KK[ss]
+                K0totstar += MS.KK_star[ss]
 
     return libsp.csc_matrix((valvec, (iivec, jjvec)), shape=(K_star, K), dtype=np.complex_)
 
+
+def get_Cw_cpx_coef_cfl_n1(cfl, zval):
+    # Convergence loop end criteria
+    tol = 1e-12
+    rmax = 100
+
+    # Initial values
+    coef = 0.
+    r = 0
+
+    # Loop
+    error = 2*tol
+    while ((error > tol) and (r < rmax)):
+        delta_coef = ((1 - cfl)**r)*cfl*(zval**(-r-1))
+        coef += delta_coef
+        error = np.abs(delta_coef/coef)
+        r += 1
+    coef /= (1 - (1-cfl)**rmax*(zval**(-1)))
+    if (error > tol):
+        cout.cout_wrap(("WARNING computation of Cw_cpx did not reach desired accuracy. r: %d. error: %d" % (r, error)), 2)
+
+    return coef
 
 ################################################################################
 
