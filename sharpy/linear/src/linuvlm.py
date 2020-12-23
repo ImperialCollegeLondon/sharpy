@@ -2947,6 +2947,7 @@ def get_Cw_cpx(MS, K, K_star, zval, settings=None):
         # In case the key does not exist or settings=None
         cfl1 = True
     cout.cout_wrap("Computing wake propagation solution matrix if frequency domain with CFL1=%s" % cfl1, 1)
+    # print("Computing wake propagation solution matrix if frequency domain with CFL1=%s" % cfl1)
 
     if cfl1:
         jjvec = []
@@ -2975,9 +2976,9 @@ def get_Cw_cpx(MS, K, K_star, zval, settings=None):
             sum_mstar_n += Mstar*N
 
             try:
-                MS[ss].Surf_star.zetac
+                MS.Surfs_star[ss].zetac
             except AttributeError:
-                MS[ss].Surf_star.zetac.generate_collocations()
+                MS.Surfs_star[ss].zetac.generate_collocations()
         jjvec = [None]*sum_mstar_n
         iivec = [None]*sum_mstar_n
         valvec = [None]*sum_mstar_n
@@ -2987,6 +2988,8 @@ def get_Cw_cpx(MS, K, K_star, zval, settings=None):
         for ss in range(MS.n_surf):
             M, N = MS.dimensions[ss]
             Mstar, N = MS.dimensions_star[ss]
+            Surf = MS.Surfs[ss]
+            Surf_star = MS.Surfs_star[ss]
             for iin in range(N):
                 for mm in range(Mstar):
                     # Value location in the sparse array
@@ -3016,9 +3019,9 @@ def get_Cw_cpx(MS, K, K_star, zval, settings=None):
                         valvec[ipoint] = coef
                     else:
                         ipoint_prev = K0totstar + (mm - 1) * N + iin
-                        valuec[ipoint] = coef*value[ipoint_prev]
-                K0tot += MS.KK[ss]
-                K0totstar += MS.KK_star[ss]
+                        valvec[ipoint] = coef*valvec[ipoint_prev]
+            K0tot += MS.KK[ss]
+            K0totstar += MS.KK_star[ss]
 
     return libsp.csc_matrix((valvec, (iivec, jjvec)), shape=(K_star, K), dtype=np.complex_)
 

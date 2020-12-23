@@ -1225,13 +1225,13 @@ def wake_prop(MS, use_sparse=False, sparse_format='lil', settings=None):
             #     print("computing input velocities wake")
             #     Surf_star.get_input_velocities_at_collocation_points()
 
-            params = {'zeta': [Surf_star.zetac],
-                      'override': False,
-                      'dt': settings['dt'],
-                      'ts': settings['ts'],
-                      't': settings['t'],
-                      'for_pos': settings['for_pos']}
-            settings['vel_gen'].generate(params, uext)
+            # params = {'zeta': [Surf_star.zetac],
+            #           'override': False,
+            #           'dt': settings['dt'],
+            #           'ts': settings['ts'],
+            #           't': settings['t'],
+            #           'for_pos': settings['for_pos']}
+            # settings['vel_gen'].generate(params, uext)
             # Compute induced velocities in the wake
             Surf_star.u_ind_coll = np.zeros((3, M_star, N))
             # MS.get_ind_velocities_at_target_collocation_points(Surf_star)
