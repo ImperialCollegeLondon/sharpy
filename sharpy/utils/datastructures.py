@@ -371,6 +371,19 @@ class NonliftingBodyTimeStepInfo(TimeStepInfo):
         Generates the pointers to aerodynamic variables used to interface the C++ library ``uvlmlib``
         """
         super().generate_ctypes_points()
+
+        from sharpy.utils.constants import NDIM
+
+        self.ct_sigma_list = []
+        for i_surf in range(self.n_surf):
+            for i_dim in range(NDIM):
+                self.ct_sigma_list.append(self.sigma[i_surf][:, :].reshape(-1))
+
+        self.ct_sigma_dot_list = []
+        for i_surf in range(self.n_surf):
+            for i_dim in range(NDIM):
+                self.ct_sigma_dot_list.append(self.sigma_dot[i_surf][:, :].reshape(-1))
+
         self.ct_p_sigma = ((ct.POINTER(ct.c_double)*len(self.ct_sigma_list))
                             (* [np.ctypeslib.as_ctypes(array) for array in self.ct_sigma_list]))
         self.ct_p_sigma_dot = ((ct.POINTER(ct.c_double)*len(self.ct_sigma_dot_list))
