@@ -6,7 +6,7 @@ import sharpy.aero.models.aerogrid as aerogrid
 import sharpy.utils.settings as settings_utils
 import sharpy.utils.h5utils as h5utils
 import sharpy.utils.generator_interface as gen_interface
-from sharpy.solves.gridloader import GridLoader
+from sharpy.solvers.gridloader import GridLoader
 
 
 @solver
