@@ -160,7 +160,8 @@ class StaticUvlm(BaseSolver):
                                               'override': True,
                                               'for_pos': self.data.structure.timestep_info[self.data.ts].for_pos[0:3]},
                                              self.data.nonlifting_body.timestep_info[self.data.ts].u_ext)
-            raise NotImplemented('VLM Solver for nonliftng body problems are not yet implemented!')
+            uvlmlib.vlm_solver_nonlifting_body(self.data.nonlifting_body.timestep_info[self.data.ts],
+                                               self.settings)
 
         # grid orientation
         uvlmlib.vlm_solver(self.data.aero.timestep_info[self.data.ts],
