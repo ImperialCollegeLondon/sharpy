@@ -209,7 +209,6 @@ def vlm_solver_nonlifting_body(ts_info, options):
                        ct.byref(flightconditions),
                        ts_info.ct_p_dimensions,
                        ts_info.ct_p_zeta,
-                       ts_info.ct_p_zeta_b_frame,
                        ts_info.ct_p_u_ext,
                        ts_info.ct_p_sigma,
                        ts_info.ct_p_forces)
