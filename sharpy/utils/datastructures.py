@@ -370,7 +370,7 @@ class NonliftingBodyTimeStepInfo(TimeStepInfo):
         """
         Generates the pointers to aerodynamic variables used to interface the C++ library ``uvlmlib``
         """
-        super().generate_ctypes_points()
+        super().generate_ctypes_pointers()
 
         from sharpy.utils.constants import NDIM
 
@@ -394,7 +394,7 @@ class NonliftingBodyTimeStepInfo(TimeStepInfo):
         """
         Removes the pointers to aerodynamic variables used to interface the C++ library ``uvlmlib``
         """
-        super().remove_ctypes_points()
+        super().remove_ctypes_pointers()
         try:
             del self.ct_p_sigma
         except AttributeError:
