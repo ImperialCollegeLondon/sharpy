@@ -180,6 +180,41 @@ def vlm_solver(ts_info, options):
             p_rbm_vel_g)
     ts_info.remove_ctypes_pointers()
 
+def vlm_solver_nonlifting_body(ts_info, options):
+    run_VLM_nonlifting = UvlmLib.run_VLM_nonlifting_body
+    run_VLM_nonliftingrestype = None
+
+
+    vmopts = VMopts()
+    vmopts.Steady = ct.c_bool(True)
+    vmopts.NumSurfaces = ct.c_uint(ts_info.n_surf)
+    vmopts.horseshoe = ct.c_bool(options['horseshoe'].value)
+    vmopts.dt = ct.c_double(options["rollup_dt"].value)
+    vmopts.n_rollup = ct.c_uint(options["n_rollup"].value)
+    vmopts.rollup_tolerance = ct.c_double(options["rollup_tolerance"].value)
+    vmopts.rollup_aic_refresh = ct.c_uint(options['rollup_aic_refresh'].value)
+    vmopts.NumCores = ct.c_uint(options['num_cores'].value)
+    vmopts.iterative_solver = ct.c_bool(options['iterative_solver'].value)
+    vmopts.iterative_tol = ct.c_double(options['iterative_tol'].value)
+    vmopts.iterative_precond = ct.c_bool(options['iterative_precond'].value)
+
+    flightconditions = FlightConditions()
+    flightconditions.rho = options['rho']
+    flightconditions.uinf = np.ctypeslib.as_ctypes(np.linalg.norm(ts_info.u_ext[0][:, 0, 0]))
+    flightconditions.uinf_direction = np.ctypeslib.as_ctypes(ts_info.u_ext[0][:, 0, 0]/flightconditions.uinf)
+
+    ts_info.generate_ctypes_pointers()
+
+    run_VLM_nonlifting(ct.byref(vmopts),
+                       ct.byref(flightconditions),
+                       ts_info.ct_p_dimensions,
+                       ts_info.ct_p_zeta,
+                       ts_info.ct_p_zeta_b_frame,
+                       ts_info.ct_p_u_ext,
+                       ts_info.ct_p_sigma,
+                       ts_info.ct_p_forces)
+    ts_info.remove_ctypes_pointers()
+
 
 def uvlm_init(ts_info, options):
     init_UVLM = UvlmLib.init_UVLM
