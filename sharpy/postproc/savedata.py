@@ -191,9 +191,12 @@ class SaveData(BaseSolver):
                 h5utils.add_as_grp(self.data, hdfile, grpname='data',
                                    ClassesToSave=self.ClassesToSave, SkipAttr=skip_attr_init,
                                    compress_float=self.settings['compress_float'])
+
+            if self.settings['save_struct']:
                 h5utils.add_as_grp(list(),
                                hdfile['data']['structure'],
                                grpname='timestep_info')
+            if self.settings['save_aero']:
                 h5utils.add_as_grp(list(),
                                hdfile['data']['aero'],
                                grpname='timestep_info')
