@@ -55,8 +55,8 @@ class Nonlifting_body_grid(Grid):
             radius = self.data_dict["radius"][i_global_node]
             # get nodes position in B frame
             #matrix_nodes[0, :numb_radial_nodes, node_counter] = 0
-            matrix_nodes[1, :numb_radial_nodes, node_counter] = radius*array_cos_phi
-            matrix_nodes[2, :numb_radial_nodes, node_counter] = radius*array_sin_phi
+            matrix_nodes[1, :, node_counter] = radius*array_cos_phi
+            matrix_nodes[2, :, node_counter] = radius*array_sin_phi
             # convert position from B to A frame
             i_elem, i_local_node = self.get_elment_and_local_node_id(i_surf, i_global_node)
             psi_node = structure_tstep.psi[i_elem, i_local_node,:]
@@ -71,7 +71,7 @@ class Nonlifting_body_grid(Grid):
                 matrix_nodes[dim, :, node_counter] += structure_tstep.pos[i_global_node,dim]
 
                 # get zeta dot in A frame (velocity due to pos_dot)
-                matrix_nodes_dot[dim, :numb_radial_nodes, node_counter] += structure_tstep.pos_dot[i_global_node, dim]
+                matrix_nodes_dot[dim, :, node_counter] += structure_tstep.pos_dot[i_global_node, dim]
 
             for idx in range(numb_radial_nodes):
                 # get zeta dot in A frame (velocity due to psi_dot))
