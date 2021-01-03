@@ -224,6 +224,13 @@ def define_FoR_dof(MB_beam, FoR_body):
     return FoR_dof
 
 
+def set_value_or_default(dict, key, default_val):
+    try:
+        value = MB_dict_entry[key]
+    except KeyError:
+        value = default_value
+    return value
+
 ################################################################################
 # Equations
 ################################################################################
@@ -506,6 +513,8 @@ class hinge_node_FoR(BaseLagrangeConstraint):
         self.rot_axisB = MBdict_entry['rot_axisB']
         self._ieq = ieq
         self.indep = []
+        self.scalingFactor = set_value_or_default(MB_dict_entry, "scalingFactor", 1.)
+        self.penaltyFactor = set_value_or_default(MB_dict_entry, "penaltyFactor", 0.)
 
         return self._ieq + self._n_eq
 
@@ -576,10 +585,8 @@ class hinge_node_FoR_constant_vel(BaseLagrangeConstraint):
         self.rot_vel = MBdict_entry['rot_vel']
         self._ieq = ieq
         self.indep = []
-        try:
-            self.self.scalingFactor = MB_dict_entry['self.scalingFactor']
-        except KeyError:
-            self.self.scalingFactor = 1.
+        self.scalingFactor = set_value_or_default(MB_dict_entry, "scalingFactor", 1.)
+        self.penaltyFactor = set_value_or_default(MB_dict_entry, "penaltyFactor", 0.)
 
         return self._ieq + self._n_eq
 
@@ -644,6 +651,8 @@ class spherical_node_FoR(BaseLagrangeConstraint):
         self.node_body = MBdict_entry['body']
         self.FoR_body = MBdict_entry['body_FoR']
         self._ieq = ieq
+        self.scalingFactor = set_value_or_default(MB_dict_entry, "scalingFactor", 1.)
+        self.penaltyFactor = set_value_or_default(MB_dict_entry, "penaltyFactor", 0.)
 
         return self._ieq + self._n_eq
 
@@ -740,6 +749,8 @@ class spherical_FoR(BaseLagrangeConstraint):
 
         self.body_FoR = MBdict_entry['body_FoR']
         self._ieq = ieq
+        self.scalingFactor = set_value_or_default(MB_dict_entry, "scalingFactor", 1.)
+        self.penaltyFactor = set_value_or_default(MB_dict_entry, "penaltyFactor", 0.)
 
         return self._ieq + self._n_eq
 
@@ -808,6 +819,8 @@ class hinge_FoR(BaseLagrangeConstraint):
         self.body_FoR = MBdict_entry['body_FoR']
         self.rot_axis = MBdict_entry['rot_axis_AFoR']
         self._ieq = ieq
+        self.scalingFactor = set_value_or_default(MB_dict_entry, "scalingFactor", 1.)
+        self.penaltyFactor = set_value_or_default(MB_dict_entry, "penaltyFactor", 0.)
 
         return self._ieq + self._n_eq
 
@@ -894,6 +907,8 @@ class hinge_FoR_wrtG(BaseLagrangeConstraint):
         self.body_FoR = MBdict_entry['body_FoR']
         self.rot_axis = MBdict_entry['rot_axis_AFoR']
         self._ieq = ieq
+        self.scalingFactor = set_value_or_default(MB_dict_entry, "scalingFactor", 1.)
+        self.penaltyFactor = set_value_or_default(MB_dict_entry, "penaltyFactor", 0.)
 
         return self._ieq + self._n_eq
 
@@ -986,6 +1001,9 @@ class fully_constrained_node_FoR(BaseLagrangeConstraint):
         self.node_body = MBdict_entry['body']
         self.FoR_body = MBdict_entry['body_FoR']
         self._ieq = ieq
+        self.scalingFactor = set_value_or_default(MB_dict_entry, "scalingFactor", 1.)
+        self.penaltyFactor = set_value_or_default(MB_dict_entry, "penaltyFactor", 0.)
+
         return self._ieq + self._n_eq
 
     def staticmat(self, LM_C, LM_K, LM_Q, MB_beam, MB_tstep, ts, num_LM_eq,
@@ -1104,6 +1122,8 @@ class constant_rot_vel_FoR(BaseLagrangeConstraint):
         self.rot_vel = MBdict_entry['rot_vel']
         self.FoR_body = MBdict_entry['FoR_body']
         self._ieq = ieq
+        self.scalingFactor = set_value_or_default(MB_dict_entry, "scalingFactor", 1.)
+        self.penaltyFactor = set_value_or_default(MB_dict_entry, "penaltyFactor", 0.)
 
         return self._ieq + self._n_eq
 
@@ -1170,6 +1190,8 @@ class constant_vel_FoR(BaseLagrangeConstraint):
         self.vel = MBdict_entry['vel']
         self.FoR_body = MBdict_entry['FoR_body']
         self._ieq = ieq
+        self.scalingFactor = set_value_or_default(MB_dict_entry, "scalingFactor", 1.)
+        self.penaltyFactor = set_value_or_default(MB_dict_entry, "penaltyFactor", 0.)
 
         return self._ieq + self._n_eq
 
@@ -1239,6 +1261,8 @@ class lin_vel_node_wrtA(BaseLagrangeConstraint):
         self.body_number = MBdict_entry['body_number']
         self.node_number = MBdict_entry['node_number']
         self._ieq = ieq
+        self.scalingFactor = set_value_or_default(MB_dict_entry, "scalingFactor", 1.)
+        self.penaltyFactor = set_value_or_default(MB_dict_entry, "penaltyFactor", 0.)
 
         return self._ieq + self._n_eq
 
@@ -1334,6 +1358,9 @@ class lin_vel_node_wrtG(BaseLagrangeConstraint):
         self.body_number = MBdict_entry['body_number']
         self.node_number = MBdict_entry['node_number']
         self._ieq = ieq
+        self.scalingFactor = set_value_or_default(MB_dict_entry, "scalingFactor", 1.)
+        self.penaltyFactor = set_value_or_default(MB_dict_entry, "penaltyFactor", 0.)
+
         return self._ieq + self._n_eq
 
     def staticmat(self, LM_C, LM_K, LM_Q, MB_beam, MB_tstep, ts, num_LM_eq,
