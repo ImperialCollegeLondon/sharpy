@@ -588,6 +588,9 @@ class hinge_node_FoR_constant_vel(BaseLagrangeConstraint):
         self.scalingFactor = set_value_or_default(MB_dict_entry, "scalingFactor", 1.)
         self.penaltyFactor = set_value_or_default(MB_dict_entry, "penaltyFactor", 0.)
 
+        self.static_constraint = fully_constrained_node_FoR()
+        self.static_constraint.initialise(MBdict_entry, ieq)
+
         return self._ieq + self._n_eq
 
     def staticmat(self, LM_C, LM_K, LM_Q, MB_beam, MB_tstep, ts, num_LM_eq,

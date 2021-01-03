@@ -84,9 +84,9 @@ class NonLinearStaticMultibody(_BaseStructural):
         MBdict = self.data.structure.ini_mb_dict
         self.sys_size = self.data.structure.num_dof.value
 
-        for ibody in range(self.data.structure.num_bodies):
-            if (MBdict['body_%02d' % ibody]['FoR_movement'] == 'free'):
-                self.sys_size += 10
+        # for ibody in range(self.data.structure.num_bodies):
+        #     if (MBdict['body_%02d' % ibody]['FoR_movement'] == 'free'):
+        #         self.sys_size += 10
 
     def assembly_MB_eq_system(self, MB_beam, MB_tstep, Lambda, MBdict, iLoadStep):
         """
@@ -128,7 +128,7 @@ class NonLinearStaticMultibody(_BaseStructural):
             if MB_beam[ibody].FoR_movement == 'prescribed':
                 last_dof = first_dof + MB_beam[ibody].num_dof.value
             elif MB_beam[ibody].FoR_movement == 'free':
-                last_dof = first_dof + MB_beam[ibody].num_dof.value + 10
+                last_dof = first_dof + MB_beam[ibody].num_dof.value
 
             K, Q = xbeamlib.cbeam3_asbly_static(MB_beam[ibody], MB_tstep[ibody], self.settings, iLoadStep)
 
@@ -236,7 +236,7 @@ class NonLinearStaticMultibody(_BaseStructural):
             if MB_beam[ibody].FoR_movement == 'free':
                 # TODO: How are the forces in the quaternion equation interpreted?
                 MB_tstep[ibody].forces_constraints_FoR[ibody, :] = F[last_dof:last_dof+10]
-                last_dof += 10
+                # last_dof += 10
 
             first_dof = last_dof
             # print(MB_tstep[ibody].forces_constraints_nodes)
