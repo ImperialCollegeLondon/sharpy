@@ -142,7 +142,7 @@ class BaseLagrangeConstraint(metaclass=ABCMeta):
     @abstractmethod
     # def staticmat(self, **kwargs):
     def staticmat(self, LM_C, LM_K, LM_Q, MB_beam, MB_tstep, ts, num_LM_eq,
-                  sys_size, dt, Lambda, Lambda_dot)
+                  sys_size, dt, Lambda, Lambda_dot):
         """
         Generates the structural matrices (damping, stiffness) and the independent vector
         associated to the LagrangeConstraint in a static simulation
