@@ -1915,7 +1915,7 @@ class LagrangeConstraint():
             if not param in ['behaviour', 'scalingFactor', 'penaltyFactor']:
                 if param not in required_parameters:
                     raise RuntimeError(("'%s' parameter is not required in '%s' lagrange constraint" % (param, self.behaviour)))
-            else:
+            if param == 'behaviour':
                 has_behaviour = True
 
         if not has_behaviour:
@@ -1949,6 +1949,16 @@ def generate_multibody_file(list_LagrangeConstraints, list_Bodies, route, case_n
             required_parameters = default.required_parameters
             for param in required_parameters:
                 constraint_id.create_dataset(param, data=getattr(constraint, param))
+            try:
+                constraint_id.create_dataset("scalingFactor",
+                                             data=getattr(constraint, "scalingFactor"))
+            except:
+                pass
+            try:
+                constraint_id.create_dataset("penaltyFactor",
+                                             data=getattr(constraint, "penaltyFactor"))
+            except:
+                pass
 
             iconstraint += 1
 
