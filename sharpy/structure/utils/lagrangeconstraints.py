@@ -274,24 +274,24 @@ def equal_lin_vel_node_FoR(MB_tstep, MB_beam, FoR_body, node_body, node_number, 
     LM_C[:sys_size,sys_size+ieq:sys_size+ieq+num_LM_eq_specific] += scalingFactor*np.transpose(Bnh)
 
     LM_Q[:sys_size] += scalingFactor*np.dot(np.transpose(Bnh),Lambda_dot[ieq:ieq+num_LM_eq_specific])
-    LM_Q[sys_size+ieq:sys_size+ieq+num_LM_eq_specific] += (np.dot(algebra.quat2rotation(MB_tstep[FoR_body].quat),MB_tstep[FoR_body].for_vel[0:3]) +
+    LM_Q[sys_size+ieq:sys_size+ieq+num_LM_eq_specific] += scalingFactor*(np.dot(algebra.quat2rotation(MB_tstep[FoR_body].quat),MB_tstep[FoR_body].for_vel[0:3]) +
                                                           -1.0*np.dot(algebra.quat2rotation(MB_tstep[node_body].quat),
                                                                       MB_tstep[node_body].pos_dot[node_number,:] +
                                                                       MB_tstep[node_body].for_vel[0:3] +
                                                                       -1.0*np.dot(algebra.skew(MB_tstep[node_body].pos[node_number,:]),MB_tstep[node_body].for_vel[3:6])))
 
-    LM_C[FoR_dof:FoR_dof+3,FoR_dof+6:FoR_dof+10] += algebra.der_CquatT_by_v(MB_tstep[FoR_body].quat,scalingFactor*Lambda_dot[ieq:ieq+num_LM_eq_specific])
+    LM_C[FoR_dof:FoR_dof+3,FoR_dof+6:FoR_dof+10] += scalingFactor*algebra.der_CquatT_by_v(MB_tstep[FoR_body].quat,Lambda_dot[ieq:ieq+num_LM_eq_specific])
 
     if MB_beam[node_body].FoR_movement == 'free':
-        LM_C[node_dof:node_dof+3,node_FoR_dof+6:node_FoR_dof+10] -= algebra.der_CquatT_by_v(MB_tstep[node_body].quat,scalingFactor*Lambda_dot[ieq:ieq+num_LM_eq_specific])
+        LM_C[node_dof:node_dof+3,node_FoR_dof+6:node_FoR_dof+10] -= scalingFactor*algebra.der_CquatT_by_v(MB_tstep[node_body].quat,Lambda_dot[ieq:ieq+num_LM_eq_specific])
 
-        LM_C[node_FoR_dof:node_FoR_dof+3,node_FoR_dof+6:node_FoR_dof+10] -= algebra.der_CquatT_by_v(MB_tstep[node_body].quat,scalingFactor*Lambda_dot[ieq:ieq+num_LM_eq_specific])
+        LM_C[node_FoR_dof:node_FoR_dof+3,node_FoR_dof+6:node_FoR_dof+10] -= scalingFactor*algebra.der_CquatT_by_v(MB_tstep[node_body].quat,Lambda_dot[ieq:ieq+num_LM_eq_specific])
 
-        LM_C[node_FoR_dof+3:node_FoR_dof+6,node_FoR_dof+6:node_FoR_dof+10] -= np.dot(algebra.skew(MB_tstep[node_body].pos[node_number,:]),
+        LM_C[node_FoR_dof+3:node_FoR_dof+6,node_FoR_dof+6:node_FoR_dof+10] -= scalingFactor*np.dot(algebra.skew(MB_tstep[node_body].pos[node_number,:]),
                                                                                      algebra.der_CquatT_by_v(MB_tstep[node_body].quat,
-                                                                                                             scalingFactor*Lambda_dot[ieq:ieq+num_LM_eq_specific]))
+                                                                                                             Lambda_dot[ieq:ieq+num_LM_eq_specific]))
 
-        LM_K[node_FoR_dof+3:node_FoR_dof+6,node_dof:node_dof+3] += algebra.skew(np.dot(algebra.quat2rotation(MB_tstep[node_body].quat).T,Lambda_dot[ieq:ieq+num_LM_eq_specific]))
+        LM_K[node_FoR_dof+3:node_FoR_dof+6,node_dof:node_dof+3] += scalingFactor*algebra.skew(np.dot(algebra.quat2rotation(MB_tstep[node_body].quat).T,Lambda_dot[ieq:ieq+num_LM_eq_specific]))
 
     ieq += 3
     return ieq
@@ -370,7 +370,7 @@ def def_rot_axis_FoR_wrt_node(MB_tstep, MB_beam, FoR_body, node_body, node_numbe
 
     # Constrain angular velocities
     LM_Q[:sys_size] += scalingFactor*np.dot(np.transpose(Bnh),Lambda_dot[ieq:ieq+num_LM_eq_specific])
-    LM_Q[sys_size+ieq:sys_size+ieq+num_LM_eq_specific] += algebra.multiply_matrices(algebra.skew(rot_axisB),
+    LM_Q[sys_size+ieq:sys_size+ieq+num_LM_eq_specific] += scalingFactor*algebra.multiply_matrices(algebra.skew(rot_axisB),
                                                   algebra.crv2rotation(MB_tstep[node_body].psi[ielem,inode_in_elem,:]).T,
                                                   algebra.quat2rotation(MB_tstep[node_body].quat).T,
                                                   algebra.quat2rotation(MB_tstep[FoR_body].quat),
@@ -380,19 +380,19 @@ def def_rot_axis_FoR_wrt_node(MB_tstep, MB_beam, FoR_body, node_body, node_numbe
     LM_C[:sys_size,sys_size+ieq:sys_size+ieq+num_LM_eq_specific] += scalingFactor*np.transpose(Bnh)
 
     if MB_beam[node_body].FoR_movement == 'free':
-        LM_C[FoR_dof+3:FoR_dof+6,node_FoR_dof+6:node_FoR_dof+10] += np.dot(algebra.quat2rotation(MB_tstep[FoR_body].quat).T,
+        LM_C[FoR_dof+3:FoR_dof+6,node_FoR_dof+6:node_FoR_dof+10] += scalingFactor*np.dot(algebra.quat2rotation(MB_tstep[FoR_body].quat).T,
                                                                            algebra.der_Cquat_by_v(MB_tstep[node_body].quat,
                                                                                                   algebra.multiply_matrices(algebra.crv2rotation(MB_tstep[node_body].psi[ielem,inode_in_elem,:]),
                                                                                                                     algebra.skew(rot_axisB).T,
                                                                                                                     new_Lambda_dot)))
 
-    LM_C[FoR_dof+3:FoR_dof+6,FoR_dof+6:FoR_dof+10] += algebra.der_CquatT_by_v(MB_tstep[FoR_body].quat,
+    LM_C[FoR_dof+3:FoR_dof+6,FoR_dof+6:FoR_dof+10] += scalingFactor*algebra.der_CquatT_by_v(MB_tstep[FoR_body].quat,
                                                                               algebra.multiply_matrices(algebra.quat2rotation(MB_tstep[node_body].quat),
                                                                                                 algebra.crv2rotation(MB_tstep[node_body].psi[ielem,inode_in_elem,:]),
                                                                                                 algebra.skew(rot_axisB).T,
                                                                                                 new_Lambda_dot))
 
-    LM_K[FoR_dof+3:FoR_dof+6,node_dof+3:node_dof+6] += algebra.multiply_matrices(algebra.quat2rotation(MB_tstep[FoR_body].quat).T,
+    LM_K[FoR_dof+3:FoR_dof+6,node_dof+3:node_dof+6] += scalingFactor*algebra.multiply_matrices(algebra.quat2rotation(MB_tstep[FoR_body].quat).T,
                                                                          algebra.quat2rotation(MB_tstep[node_body].quat),
                                                                          algebra.der_CcrvT_by_v(MB_tstep[node_body].psi[ielem,inode_in_elem,:],
                                                                                                 np.dot(algebra.skew(rot_axisB).T,
@@ -444,28 +444,28 @@ def def_rot_vel_FoR_wrt_node(MB_tstep, MB_beam, FoR_body, node_body, node_number
 
     # Constrain angular velocities
     LM_Q[:sys_size] += scalingFactor*np.dot(np.transpose(Bnh),Lambda_dot[ieq:ieq+num_LM_eq_specific])
-    LM_Q[sys_size+ieq:sys_size+ieq+num_LM_eq_specific] += algebra.multiply_matrices(rot_axisB,
+    LM_Q[sys_size+ieq:sys_size+ieq+num_LM_eq_specific] += scalingFactor*algebra.multiply_matrices(rot_axisB,
                                                   algebra.crv2rotation(MB_tstep[node_body].psi[ielem,inode_in_elem,:]).T,
                                                   algebra.quat2rotation(MB_tstep[node_body].quat).T,
                                                   algebra.quat2rotation(MB_tstep[FoR_body].quat),
-                                                  MB_tstep[FoR_body].for_vel[3:6]) - rot_vel
+                                                  MB_tstep[FoR_body].for_vel[3:6]) - scalingFactor*rot_vel
 
     LM_C[sys_size+ieq:sys_size+ieq+num_LM_eq_specific,:sys_size] += scalingFactor*Bnh
     LM_C[:sys_size,sys_size+ieq:sys_size+ieq+num_LM_eq_specific] += scalingFactor*np.transpose(Bnh)
 
     if MB_beam[node_body].FoR_movement == 'free':
-        LM_C[FoR_dof+3:FoR_dof+6,node_FoR_dof+6:node_FoR_dof+10] += np.dot(algebra.quat2rotation(MB_tstep[FoR_body].quat).T,
+        LM_C[FoR_dof+3:FoR_dof+6,node_FoR_dof+6:node_FoR_dof+10] += scalingFactor*np.dot(algebra.quat2rotation(MB_tstep[FoR_body].quat).T,
                                                                            algebra.der_Cquat_by_v(MB_tstep[node_body].quat,
                                                                                                   algebra.multiply_matrices(algebra.crv2rotation(MB_tstep[node_body].psi[ielem,inode_in_elem,:]),
                                                                                                                     # rot_axisB.T,
                                                                                                                     rot_axisB.T*Lambda_dot[ieq:ieq+num_LM_eq_specific])))
 
-    LM_C[FoR_dof+3:FoR_dof+6,FoR_dof+6:FoR_dof+10] += algebra.der_CquatT_by_v(MB_tstep[FoR_body].quat,
+    LM_C[FoR_dof+3:FoR_dof+6,FoR_dof+6:FoR_dof+10] += scalingFactor*algebra.der_CquatT_by_v(MB_tstep[FoR_body].quat,
                                                                               algebra.multiply_matrices(algebra.quat2rotation(MB_tstep[node_body].quat),
                                                                                                 algebra.crv2rotation(MB_tstep[node_body].psi[ielem,inode_in_elem,:]).T,
                                                                                                 rot_axisB.T*Lambda_dot[ieq:ieq+num_LM_eq_specific]))
 
-    LM_K[FoR_dof+3:FoR_dof+6,node_dof+3:node_dof+6] += algebra.multiply_matrices(algebra.quat2rotation(MB_tstep[FoR_body].quat).T,
+    LM_K[FoR_dof+3:FoR_dof+6,node_dof+3:node_dof+6] += scalingFactor*algebra.multiply_matrices(algebra.quat2rotation(MB_tstep[FoR_body].quat).T,
                                                                          algebra.quat2rotation(MB_tstep[node_body].quat),
                                                                          algebra.der_Ccrv_by_v(MB_tstep[node_body].psi[ielem,inode_in_elem,:],
                                                                                                 rot_axisB.T*Lambda_dot[ieq:ieq+num_LM_eq_specific]))
@@ -778,7 +778,7 @@ class spherical_FoR(BaseLagrangeConstraint):
 
         LM_Q[:sys_size] += self.scalingFactor*np.dot(np.transpose(Bnh),Lambda_dot[ieq:ieq+num_LM_eq_specific])
 
-        LM_Q[sys_size+ieq:sys_size+ieq+3] += MB_tstep[self.body_FoR].for_vel[0:3].astype(dtype=ct.c_double, copy=True, order='F')
+        LM_Q[sys_size+ieq:sys_size+ieq+3] += self.scalingFactor*MB_tstep[self.body_FoR].for_vel[0:3].astype(dtype=ct.c_double, copy=True, order='F')
 
         ieq += 3
         return
@@ -865,8 +865,8 @@ class hinge_FoR(BaseLagrangeConstraint):
 
         LM_Q[:sys_size] += self.scalingFactor*np.dot(np.transpose(Bnh),Lambda_dot[ieq:ieq+num_LM_eq_specific])
 
-        LM_Q[sys_size+ieq:sys_size+ieq+3] += MB_tstep[self.body_FoR].for_vel[0:3].astype(dtype=ct.c_double, copy=True, order='F')
-        LM_Q[sys_size+ieq+3:sys_size+ieq+5] += np.dot(skew_rot_axis[[row0,row1],:], MB_tstep[self.body_FoR].for_vel[3:6])
+        LM_Q[sys_size+ieq:sys_size+ieq+3] += self.scalingFactor*MB_tstep[self.body_FoR].for_vel[0:3].astype(dtype=ct.c_double, copy=True, order='F')
+        LM_Q[sys_size+ieq+3:sys_size+ieq+5] += self.scalingFactor*np.dot(skew_rot_axis[[row0,row1],:], MB_tstep[self.body_FoR].for_vel[3:6])
 
         ieq += 5
         return
@@ -951,12 +951,12 @@ class hinge_FoR_wrtG(BaseLagrangeConstraint):
         LM_C[sys_size+ieq:sys_size+ieq+num_LM_eq_specific,:sys_size] += self.scalingFactor*Bnh
         LM_C[:sys_size,sys_size+ieq:sys_size+ieq+num_LM_eq_specific] += self.scalingFactor*np.transpose(Bnh)
 
-        LM_C[FoR_dof:FoR_dof+3,FoR_dof+6:FoR_dof+10] += algebra.der_CquatT_by_v(MB_tstep[self.body_FoR].quat,Lambda_dot[ieq:ieq+3])
+        LM_C[FoR_dof:FoR_dof+3,FoR_dof+6:FoR_dof+10] += self.scalingFactor*algebra.der_CquatT_by_v(MB_tstep[self.body_FoR].quat,Lambda_dot[ieq:ieq+3])
 
         LM_Q[:sys_size] += self.scalingFactor*np.dot(np.transpose(Bnh),Lambda_dot[ieq:ieq+num_LM_eq_specific])
 
-        LM_Q[sys_size+ieq:sys_size+ieq+3] += np.dot(algebra.quat2rotation(MB_tstep[self.body_FoR].quat),MB_tstep[self.body_FoR].for_vel[0:3])
-        LM_Q[sys_size+ieq+3:sys_size+ieq+5] += np.dot(skew_rot_axis[[row0,row1],:], MB_tstep[self.body_FoR].for_vel[3:6])
+        LM_Q[sys_size+ieq:sys_size+ieq+3] += self.scalingFactor*np.dot(algebra.quat2rotation(MB_tstep[self.body_FoR].quat),MB_tstep[self.body_FoR].for_vel[0:3])
+        LM_Q[sys_size+ieq+3:sys_size+ieq+5] += self.scalingFactor*np.dot(skew_rot_axis[[row0,row1],:], MB_tstep[self.body_FoR].for_vel[3:6])
 
         ieq += 5
         return
@@ -1038,15 +1038,15 @@ class fully_constrained_node_FoR(BaseLagrangeConstraint):
         LM_C[:sys_size,sys_size+ieq:sys_size+ieq+num_LM_eq_specific] += self.scalingFactor*np.transpose(Bnh)
 
         LM_Q[:sys_size] += self.scalingFactor*np.dot(np.transpose(Bnh),Lambda_dot[ieq:ieq+num_LM_eq_specific])
-        LM_Q[sys_size+ieq:sys_size+ieq+3] += -MB_tstep[0].pos_dot[-1,:] + np.dot(algebra.quat2rotation(quat),MB_tstep[1].for_vel[0:3])
-        LM_Q[sys_size+ieq+3:sys_size+ieq+6] += (np.dot(algebra.crv2tan(MB_tstep[0].psi[ielem, inode_in_elem, :]),MB_tstep[0].psi_dot[ielem, inode_in_elem, :]) -
+        LM_Q[sys_size+ieq:sys_size+ieq+3] += -self.scalingFactor*MB_tstep[0].pos_dot[-1,:] + np.dot(algebra.quat2rotation(quat),MB_tstep[1].for_vel[0:3])
+        LM_Q[sys_size+ieq+3:sys_size+ieq+6] += self.scalingFactor*(np.dot(algebra.crv2tan(MB_tstep[0].psi[ielem, inode_in_elem, :]),MB_tstep[0].psi_dot[ielem, inode_in_elem, :]) -
                                       np.dot(algebra.quat2rotation(quat), MB_tstep[self.FoR_body].for_vel[3:6]))
 
         #LM_K[FoR_dof:FoR_dof+3,FoR_dof+6:FoR_dof+10] = algebra.der_CquatT_by_v(MB_tstep[body_FoR].quat,Lambda_dot)
-        LM_C[FoR_dof:FoR_dof+3,FoR_dof+6:FoR_dof+10] += algebra.der_CquatT_by_v(quat,self.scalingFactor*Lambda_dot[ieq:ieq+3])
-        LM_C[FoR_dof+3:FoR_dof+6,FoR_dof+6:FoR_dof+10] -= algebra.der_CquatT_by_v(quat,self.scalingFactor*Lambda_dot[ieq+3:ieq+6])
+        LM_C[FoR_dof:FoR_dof+3,FoR_dof+6:FoR_dof+10] += self.scalingFactor*algebra.der_CquatT_by_v(quat,Lambda_dot[ieq:ieq+3])
+        LM_C[FoR_dof+3:FoR_dof+6,FoR_dof+6:FoR_dof+10] -= self.scalingFactor*algebra.der_CquatT_by_v(quat,Lambda_dot[ieq+3:ieq+6])
 
-        LM_K[node_dof+3:node_dof+6,node_dof+3:node_dof+6] += algebra.der_TanT_by_xv(MB_tstep[0].psi[ielem, inode_in_elem, :],self.scalingFactor*Lambda_dot[ieq+3:ieq+6])
+        LM_K[node_dof+3:node_dof+6,node_dof+3:node_dof+6] += self.scalingFactor*algebra.der_TanT_by_xv(MB_tstep[0].psi[ielem, inode_in_elem, :],Lambda_dot[ieq+3:ieq+6])
 
         ieq += 6
         return
@@ -1150,7 +1150,7 @@ class constant_rot_vel_FoR(BaseLagrangeConstraint):
         LM_C[:sys_size,sys_size+ieq:sys_size+ieq+num_LM_eq_specific] += self.scalingFactor*np.transpose(Bnh)
 
         LM_Q[:sys_size] += self.scalingFactor*np.dot(np.transpose(Bnh),Lambda_dot[ieq:ieq+num_LM_eq_specific])
-        LM_Q[sys_size+ieq:sys_size+ieq+num_LM_eq_specific] += MB_tstep[self.FoR_body].for_vel[3:6] - self.rot_vel
+        LM_Q[sys_size+ieq:sys_size+ieq+num_LM_eq_specific] += self.scalingFactor*(MB_tstep[self.FoR_body].for_vel[3:6] - self.rot_vel)
 
         ieq += 3
         return
@@ -1218,7 +1218,7 @@ class constant_vel_FoR(BaseLagrangeConstraint):
         LM_C[:sys_size, sys_size + ieq:sys_size + ieq + num_LM_eq_specific] += self.scalingFactor * np.transpose(Bnh)
 
         LM_Q[:sys_size] += self.scalingFactor * np.dot(np.transpose(Bnh), Lambda_dot[ieq:ieq + num_LM_eq_specific])
-        LM_Q[sys_size + ieq:sys_size + ieq + num_LM_eq_specific] += MB_tstep[self.FoR_body].for_vel - self.vel
+        LM_Q[sys_size + ieq:sys_size + ieq + num_LM_eq_specific] += self.scalingFactor*(MB_tstep[self.FoR_body].for_vel - self.vel)
 
         ieq += 6
         return
@@ -1286,7 +1286,8 @@ class lin_vel_node_wrtA(BaseLagrangeConstraint):
         LM_K[:sys_size, sys_size + ieq:sys_size + ieq + num_LM_eq_specific] += self.scalingFactor * np.transpose(B)
 
         LM_Q[:sys_size] += self.scalingFactor * np.dot(np.transpose(B), Lambda[ieq:ieq + num_LM_eq_specific])
-        LM_Q[sys_size + ieq:sys_size + ieq + num_LM_eq_specific] += MB_tstep[self.body_number].pos[self.node_number,:] - MB_beam[self.body_number].ini_info.pos[self.node_number,:]
+        LM_Q[sys_size + ieq:sys_size + ieq + num_LM_eq_specific] += self.scalingFactor*(MB_tstep[self.body_number].pos[self.node_number,:] -
+                                                                                        MB_beam[self.body_number].ini_info.pos[self.node_number,:])
 
         ieq += 3
 
@@ -1315,7 +1316,7 @@ class lin_vel_node_wrtA(BaseLagrangeConstraint):
         LM_C[:sys_size, sys_size + ieq:sys_size + ieq + num_LM_eq_specific] += self.scalingFactor * np.transpose(Bnh)
 
         LM_Q[:sys_size] += self.scalingFactor * np.dot(np.transpose(Bnh), Lambda_dot[ieq:ieq + num_LM_eq_specific])
-        LM_Q[sys_size + ieq:sys_size + ieq + num_LM_eq_specific] += MB_tstep[self.body_number].pos_dot[self.node_number,:] - current_vel
+        LM_Q[sys_size + ieq:sys_size + ieq + num_LM_eq_specific] += self.scalingFactor*(MB_tstep[self.body_number].pos_dot[self.node_number,:] - current_vel)
 
         ieq += 3
         return
@@ -1383,9 +1384,9 @@ class lin_vel_node_wrtG(BaseLagrangeConstraint):
         LM_K[:sys_size, sys_size + ieq:sys_size + ieq + num_LM_eq_specific] += self.scalingFactor * np.transpose(B)
 
         LM_Q[:sys_size] += self.scalingFactor * np.dot(np.transpose(B), Lambda[ieq:ieq + num_LM_eq_specific])
-        LM_Q[sys_size + ieq:sys_size + ieq + num_LM_eq_specific] += (np.dot(algebra.quat2rotation(MB_tstep[self.body_number].quat), MB_tstep[self.body_number].pos[self.node_number,:]) +
+        LM_Q[sys_size + ieq:sys_size + ieq + num_LM_eq_specific] += self.scalingFactor*(np.dot(algebra.quat2rotation(MB_tstep[self.body_number].quat), MB_tstep[self.body_number].pos[self.node_number,:]) +
                                                                      MB_tstep[self.body_number].for_pos)
-        LM_Q[sys_size + ieq:sys_size + ieq + num_LM_eq_specific] -= (np.dot(algebra.quat2rotation(MB_beam[self.body_number].ini_info.quat), MB_beam[self.body_number].ini_info.pos[self.node_number,:]) +
+        LM_Q[sys_size + ieq:sys_size + ieq + num_LM_eq_specific] -= self.scalingFactor*(np.dot(algebra.quat2rotation(MB_beam[self.body_number].ini_info.quat), MB_beam[self.body_number].ini_info.pos[self.node_number,:]) +
                                                                      MB_beam[self.body_number].ini_info.for_pos)
 
         ieq += 3
@@ -1417,14 +1418,14 @@ class lin_vel_node_wrtG(BaseLagrangeConstraint):
         LM_C[:sys_size, sys_size + ieq:sys_size + ieq + num_LM_eq_specific] += self.scalingFactor * np.transpose(Bnh)
 
         if MB_beam[self.body_number].FoR_movement == 'free':
-            LM_C[FoR_dof:FoR_dof+3, FoR_dof+6:FoR_dof+10] += algebra.der_CquatT_by_v(MB_tstep[self.body_number].quat,Lambda_dot[ieq:ieq + num_LM_eq_specific])
-            LM_C[node_dof:node_dof+3, FoR_dof+6:FoR_dof+10] += algebra.der_CquatT_by_v(MB_tstep[self.body_number].quat,Lambda_dot[ieq:ieq + num_LM_eq_specific])
-            LM_C[FoR_dof+3:FoR_dof+6, FoR_dof+6:FoR_dof+10] += np.dot(algebra.skew(MB_tstep[self.body_number].pos[self.node_number,:]), algebra.der_CquatT_by_v(MB_tstep[self.body_number].quat,Lambda_dot[ieq:ieq + num_LM_eq_specific]))
+            LM_C[FoR_dof:FoR_dof+3, FoR_dof+6:FoR_dof+10] += self.scalingFactor*algebra.der_CquatT_by_v(MB_tstep[self.body_number].quat,Lambda_dot[ieq:ieq + num_LM_eq_specific])
+            LM_C[node_dof:node_dof+3, FoR_dof+6:FoR_dof+10] += self.scalingFactor*algebra.der_CquatT_by_v(MB_tstep[self.body_number].quat,Lambda_dot[ieq:ieq + num_LM_eq_specific])
+            LM_C[FoR_dof+3:FoR_dof+6, FoR_dof+6:FoR_dof+10] += self.scalingFactor*np.dot(algebra.skew(MB_tstep[self.body_number].pos[self.node_number,:]), algebra.der_CquatT_by_v(MB_tstep[self.body_number].quat,Lambda_dot[ieq:ieq + num_LM_eq_specific]))
 
-            LM_K[FoR_dof+3:FoR_dof+6, node_dof:node_dof+3] -= algebra.skew(np.dot(algebra.quat2rotation(MB_tstep[self.body_number].quat).T, Lambda_dot[ieq:ieq + num_LM_eq_specific]))
+            LM_K[FoR_dof+3:FoR_dof+6, node_dof:node_dof+3] -= self.scalingFactor*algebra.skew(np.dot(algebra.quat2rotation(MB_tstep[self.body_number].quat).T, Lambda_dot[ieq:ieq + num_LM_eq_specific]))
 
         LM_Q[:sys_size] += self.scalingFactor * np.dot(np.transpose(Bnh), Lambda_dot[ieq:ieq + num_LM_eq_specific])
-        LM_Q[sys_size + ieq:sys_size + ieq + num_LM_eq_specific] += (np.dot( algebra.quat2rotation(MB_tstep[self.body_number].quat), (
+        LM_Q[sys_size + ieq:sys_size + ieq + num_LM_eq_specific] += self.scalingFactor*(np.dot( algebra.quat2rotation(MB_tstep[self.body_number].quat), (
                 MB_tstep[self.body_number].for_vel[0:3] +
                 np.dot(algebra.skew(MB_tstep[self.body_number].for_vel[3:6]), MB_tstep[self.body_number].pos[self.node_number,:]) +
                 MB_tstep[self.body_number].pos_dot[self.node_number,:])) -
