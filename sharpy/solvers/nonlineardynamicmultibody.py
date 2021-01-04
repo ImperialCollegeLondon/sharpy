@@ -4,6 +4,7 @@ import numpy as np
 from sharpy.utils.solver_interface import solver, BaseSolver, solver_from_string
 import sharpy.utils.settings as settings
 
+import sharpy.utils.cout_utils as cout
 import sharpy.structure.utils.xbeamlib as xbeamlib
 import sharpy.utils.multibody as mb
 import sharpy.structure.utils.lagrangeconstraints as lagrangeconstraints
@@ -28,6 +29,10 @@ class NonLinearDynamicMultibody(_BaseStructural):
     settings_default = _BaseStructural.settings_default.copy()
     settings_description = _BaseStructural.settings_description.copy()
 
+    settings_types['print_cond_number'] = 'bool'
+    settings_default['print_cond_number'] = False
+    settings_description['print_cond_number'] = 'Write condition number to screen'
+    
     settings_table = settings.SettingsTable()
     __doc__ += settings_table.generate(settings_types, settings_default, settings_description)
 
@@ -55,14 +60,14 @@ class NonLinearDynamicMultibody(_BaseStructural):
             self.settings = data.settings[self.solver_id]
         else:
             self.settings = custom_settings
-        settings.to_custom_types(self.settings, self.settings_types, self.settings_default)
+        settings.to_custom_types(self.settings, self.settings_types, self.settings_default, no_ctype=True)
 
         # load info from dyn dictionary
         self.data.structure.add_unsteady_information(
-            self.data.structure.dyn_dict, self.settings['num_steps'].value)
+            self.data.structure.dyn_dict, self.settings['num_steps'])
 
         # Define Newmark constants
-        self.gamma = 0.5 + self.settings['newmark_damp'].value
+        self.gamma = 0.5 + self.settings['newmark_damp']
         self.beta = 0.25*(self.gamma + 0.5)*(self.gamma + 0.5)
 
         # Define the number of equations
@@ -265,7 +270,7 @@ class NonLinearDynamicMultibody(_BaseStructural):
             MBdict = self.data.structure.ini_mb_dict
 
         if dt is None:
-            dt = self.settings['dt'].value
+            dt = self.settings['dt']
         else:
             self.settings['dt'] = ct.c_float(dt)
 
@@ -310,9 +315,9 @@ class NonLinearDynamicMultibody(_BaseStructural):
         LM_old_Dq = 1.0
 
         converged = False
-        for iteration in range(self.settings['max_iterations'].value):
+        for iteration in range(self.settings['max_iterations']):
             # Check if the maximum of iterations has been reached
-            if iteration == self.settings['max_iterations'].value - 1:
+            if iteration == self.settings['max_iterations'] - 1:
                 error = ('Solver did not converge in %d iterations.\n res = %e \n LM_res = %e' %
                         (iteration, res, LM_res))
                 raise exc.NotConvergedSolver(error)
@@ -327,6 +332,11 @@ class NonLinearDynamicMultibody(_BaseStructural):
                                                        Lambda_dot,
                                                        MBdict)
 
+            if self.settings['print_cond_number']:
+                out_string = ("cond(A[:sys_size,:sys_size])=%e cond(A)=%e" % (
+                                 np.linalg.cond(MB_Asys[:self.sys_size, :self.sys_size]),
+                                 np.linalg.cond(MB_Asys)))
+                cout.cout_wrap(out_string, 0)
             # Compute the correction
             # ADC next line not necessary
             # Dq = np.zeros((self.sys_size+num_LM_eq,), dtype=ct.c_double, order='F')
@@ -348,7 +358,7 @@ class NonLinearDynamicMultibody(_BaseStructural):
                     # LM_res = np.max(np.abs(Dq[self.sys_size:self.sys_size+num_LM_eq]))
                 else:
                     LM_res = 0.0
-                if (res < self.settings['min_delta'].value) and (LM_res < self.settings['min_delta'].value):
+                if (res < self.settings['min_delta']) and (LM_res < self.settings['min_delta']):
                     converged = True
 
             # Compute variables from previous values and increments
