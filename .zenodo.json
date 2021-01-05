@@ -1,41 +1,28 @@
 {
-  "metadata": {
-    "title": "SHARPy: a nonlinear aeroelastic simulation toolbox", 
-    "relations": {
-      "version": [
-        {
-          "count": 5, 
-          "index": 4, 
-          "parent": {
-            "pid_type": "recid", 
-            "pid_value": "3531965"
-          }, 
-          "is_last": true, 
-          "last_child": {
-            "pid_type": "recid", 
-            "pid_value": "3634747"
-          }
-        }
-      ]
-    }, 
+    "license": "other-open", 
+    "title": "SHARPy: A dynamic aeroelastic simulation toolbox for very flexible aircraft and wind turbines", 
+    "upload_type": "software", 
     "creators": [
-      {
-        "affiliation": "Imperial College London", 
-        "name": "Alfonso del Carre"
-      }, 
-      {
-        "name": "Norberto Goizueta"
-        "orcid": "0000-0001-7445-5970",
-        "affiliation": "Imperial College London", 
-      }, 
-      {
-        "name": "Arturo Mu\u00f1oz-Sim\u00f3n"
-        "affiliation": "Imperial College London", 
-      }, 
-      {
-        "affiliation": "Imperial College London", 
-        "name": "Rafael Palacios"
-      }
-    ]
-  }
+        {
+            "orcid": "0000-0002-8133-9481", 
+            "affiliation": "Imperial College London", 
+            "name": "Alfonso del Carre"
+        },
+        {
+            "orcid": "0000-0001-7445-5970",
+            "affiliation": "Imperial College London",
+            "name": "Norberto Goizueta"
+        },
+        {
+            "orcid": "0000-0003-4840-5392", 
+            "affiliation": "Imperial College London", 
+            "name": "Arturo Mu\u00f1oz-Sim\u00f3n"
+        }, 
+        {
+            "orcid": "0000-0002-6706-3220", 
+            "affiliation": "Imperial College London",
+            "name": "Rafael Palacios"
+        }
+    ], 
+    "access_right": "open"
 }
