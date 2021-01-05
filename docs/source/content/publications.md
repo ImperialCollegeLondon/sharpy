@@ -3,6 +3,18 @@
 SHARPy has been used in many technical papers that have been both published in Journals and presented at conferences.
 Here we present a list of past papers which have used SHARPy for research purposes:
 
+## 2021
+
+* Artola, M., Goizueta, N., Wynn, A., & Palacios, R. (2021). Proof of Concept for a Hardware-in-the-Loop Nonlinear. 
+In AIAA SciTech Forum (pp. 1–26). [https://doi.org/10.2514/6.2021-1392](https://doi.org/10.2514/6.2021-1392)
+
+* Goizueta, N., Drachinsky, A., Wynn, A., Raveh, D. E., & Palacios, R. (2021). Flutter prediction for a very 
+flexible wing wind tunnel test. In AIAA SciTech Forum (pp. 1–17). 
+[https://doi.org/10.2514/6.2021-1711](https://doi.org/10.2514/6.2021-1711)
+
+* Goizueta, N., Wynn, A., & Palacios, R. (2021). Parametric Krylov-based order reduction of aircraft aeroelastic 
+models. In AIAA SciTech Forum (pp. 1–25). [https://doi.org/10.2514/6.2021-1798](https://doi.org/10.2514/6.2021-1798)
+
 ## 2020
 
 * Muñoz-Simón, A., Palacios, R., & Wynn, A. (2020). Benchmarking different fidelities in wind turbine aerodynamics 
