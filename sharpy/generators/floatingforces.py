@@ -575,7 +575,6 @@ class FloatingForces(generator_interface.BaseGenerator):
         # ams: in my casethe angles are negative in the x and z components
         self.q[it, 3:6] = (algebra.quat2euler(struct_tstep.quat)*
                            np.array([-1., 0., -1.]))
-        print(self.q[it, 3:6])
 
         self.qdot[it, 0:3] = np.dot(cga, struct_tstep.for_vel[0:3])
         self.qdot[it, 3:6] = np.dot(cga, struct_tstep.for_vel[3:6])
@@ -651,7 +650,10 @@ class FloatingForces(generator_interface.BaseGenerator):
         hs_f_g = self.buoy_F0 - np.dot(self.buoy_rest_mat, self.q[data.ts, :])
         hd_f_qdot_g = -np.dot(self.hd_damping, self.qdot[data.ts, :])
         hd_f_qdot_g -= np.dot(self.floating_data['hydrodynamics']['additional_damping'], self.qdot[data.ts, :])
-        hd_f_qdotdot_g = np.dot(self.hd_added_mass, self.qdotdot[data.ts, :])
+        if self.added_mass_in_mass_matrix:
+            hd_f_qdotdot_g = np.zeros((6))
+        else:
+            hd_f_qdotdot_g = np.dot(self.hd_added_mass, self.qdotdot[data.ts, :])
         ielem, inode_in_elem = data.structure.node_master_elem[self.buoyancy_node]
         cab = algebra.crv2rotation(struct_tstep.psi[ielem, inode_in_elem])
         cbg = np.dot(cab.T, cga.T)
@@ -659,8 +661,14 @@ class FloatingForces(generator_interface.BaseGenerator):
         struct_tstep.runtime_generated_forces[self.buoyancy_node, 0:3] += np.dot(cbg, hs_f_g[0:3] + force_coeff*(hd_f_qdot_g[0:3] + hd_f_qdotdot_g[0:3]))
         struct_tstep.runtime_generated_forces[self.buoyancy_node, 3:6] += np.dot(cbg, hs_f_g[3:6] + force_coeff*(hd_f_qdot_g[3:6] + hd_f_qdotdot_g[3:6]))
 
-        # Correct added mass effects on mass matrix
         if self.added_mass_in_mass_matrix:
+            # Compensate added mass            
+            # struct_tstep.runtime_generated_forces[self.buoyancy_node, 0:3] += np.dot(cbg,
+            #                                                             hd_f_qdotdot_g[0:3])
+            # struct_tstep.runtime_generated_forces[self.buoyancy_node, 3:6] += np.dot(cbg,
+            #                                                             hd_f_qdotdot_g[3:6])
+
+            # Correct unreal gravity forces from added mass
             gravity_b = np.zeros((6,),)
             gravity_b[0:3] = np.dot(cbg, -self.settings['gravity_dir'])*self.settings['gravity']
             hd_correct_grav = -np.dot(self.hd_added_mass, gravity_b)
