@@ -502,6 +502,7 @@ class DynamicCoupled(BaseSolver):
                 params['aero_tstep'] = aero_kstep
                 params['force_coeff'] = 0.
                 params['fsi_substep'] = -1
+                params['relax_factor'] = self.relaxation_factor(0)
                 for id, runtime_generator in self.runtime_generators.items():
                     runtime_generator.generate(params)
 
@@ -552,6 +553,7 @@ class DynamicCoupled(BaseSolver):
                     params['aero_tstep'] = aero_kstep
                     params['force_coeff'] = force_coeff
                     params['fsi_substep'] = k
+                    params['relax_factor'] = self.relaxation_factor(k)
                     for id, runtime_generator in self.runtime_generators.items():
                         runtime_generator.generate(params)
 
