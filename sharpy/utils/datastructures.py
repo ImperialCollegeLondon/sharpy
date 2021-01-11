@@ -81,7 +81,7 @@ class TimeStepInfo(object):
         # panel normals
         self.normals = []
         for i_surf in range(self.n_surf):
-            self.normals.append(np.zeros((6,
+            self.normals.append(np.zeros((3,
                                          dimensions[i_surf, 0],
                                          dimensions[i_surf, 1]),
                                         dtype=ct.c_double))
