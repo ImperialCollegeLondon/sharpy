@@ -127,7 +127,7 @@ class TimeStepInfo(object):
         """
         Returns a copy of a deepcopy of a :class:`~sharpy.utils.datastructures.TimeStepInfo`
         """
-        return create_placeholder(TimeStepInfo(self.dimensions))
+        return self.create_placeholder(TimeStepInfo(self.dimensions))
 
     def create_placeholder(self, copied):
         # generate placeholder for aero grid zeta coordinates
