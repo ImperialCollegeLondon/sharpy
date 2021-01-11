@@ -147,12 +147,6 @@ class StaticUvlm(BaseSolver):
                                             'gamma_star': aero_tstep.gamma_star,
                                             'dist_to_orig': aero_tstep.dist_to_orig})
 
-        # generate uext
-        self.velocity_generator.generate({'zeta': self.data.aero.timestep_info[self.data.ts].zeta,
-                                          'override': True,
-                                          'for_pos': self.data.structure.timestep_info[self.data.ts].for_pos[0:3]},
-                                         self.data.aero.timestep_info[self.data.ts].u_ext)
-
        # check if nonlifting body interactions have to be considered
         if self.settings['nonlifting_body_interactions']:
             # generate uext
@@ -162,10 +156,16 @@ class StaticUvlm(BaseSolver):
                                              self.data.nonlifting_body.timestep_info[self.data.ts].u_ext)
             uvlmlib.vlm_solver_nonlifting_body(self.data.nonlifting_body.timestep_info[self.data.ts],
                                                self.settings)
+        else:
+            # generate uext
+            self.velocity_generator.generate({'zeta': self.data.aero.timestep_info[self.data.ts].zeta,
+                                              'override': True,
+                                              'for_pos': self.data.structure.timestep_info[self.data.ts].for_pos[0:3]},
+                                             self.data.aero.timestep_info[self.data.ts].u_ext)
 
-        # grid orientation
-        uvlmlib.vlm_solver(self.data.aero.timestep_info[self.data.ts],
-                           self.settings)
+            # grid orientation
+            uvlmlib.vlm_solver(self.data.aero.timestep_info[self.data.ts],
+                               self.settings)
 
         return self.data
 
