@@ -502,7 +502,6 @@ class DynamicCoupled(BaseSolver):
                 params['aero_tstep'] = aero_kstep
                 params['force_coeff'] = 0.
                 params['fsi_substep'] = -1
-                params['relax_factor'] = self.relaxation_factor(0)
                 for id, runtime_generator in self.runtime_generators.items():
                     runtime_generator.generate(params)
 
@@ -553,7 +552,6 @@ class DynamicCoupled(BaseSolver):
                     params['aero_tstep'] = aero_kstep
                     params['force_coeff'] = force_coeff
                     params['fsi_substep'] = k
-                    params['relax_factor'] = self.relaxation_factor(k)
                     for id, runtime_generator in self.runtime_generators.items():
                         runtime_generator.generate(params)
 
@@ -836,10 +834,12 @@ class DynamicCoupled(BaseSolver):
 
 
 def relax(beam, timestep, previous_timestep, coeff):
-    timestep.steady_applied_forces[:] = ((1.0 - coeff)*timestep.steady_applied_forces +
+    timestep.steady_applied_forces = ((1.0 - coeff)*timestep.steady_applied_forces +
             coeff*previous_timestep.steady_applied_forces)
-    timestep.unsteady_applied_forces[:] = ((1.0 - coeff)*timestep.unsteady_applied_forces +
+    timestep.unsteady_applied_forces = ((1.0 - coeff)*timestep.unsteady_applied_forces +
             coeff*previous_timestep.unsteady_applied_forces)
+    timestep.runtime_generated_forces = ((1.0 - coeff)*timestep.runtime_generated_forces +
+            coeff*previous_timestep.runtime_generated_forces)
 
 
 def normalise_quaternion(tstep):
