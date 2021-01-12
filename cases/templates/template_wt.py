@@ -808,8 +808,8 @@ def generate_from_excel_type03(op_params,
     # Include nacelle mass
     tower.StructuralInformation.lumped_mass_nodes = np.array([tower.StructuralInformation.num_node - 1], dtype=int)
     tower.StructuralInformation.lumped_mass = np.array([NacelleMass], dtype=float)
-    if not NacMass_x is None and not NacMass_z is None:
-        tower.StructuralInformation.lumped_mass_position = np.array([np.array([NacMass_z, 0, NacMass_x])], dtype=float)
+    if not NacelleMass_x is None and not NacelleMass_z is None:
+        tower.StructuralInformation.lumped_mass_position = np.array([np.array([NacelleMass_z, 0, NacelleMass_x])], dtype=float)
     else:
         cout.cout_wrap('WARNING: Nacelle mass placed at tower top', 3)
 
@@ -822,7 +822,7 @@ def generate_from_excel_type03(op_params,
     # numberOfBlades = gc.read_column_sheet_type01(excel_file_name, excel_sheet_parameters, 'NumBl')
     tilt = gc.read_column_sheet_type01(excel_file_name, excel_sheet_parameters, 'ShftTilt')*deg2rad
     # cone = gc.read_column_sheet_type01(excel_file_name, excel_sheet_parameters, 'Cone')*deg2rad
-    HubMass = gc.read_column_sheet_type01(excel_file_name, excel_sheet_nacelle, 'HubMass')
+    HubMass = gc.read_column_sheet_type01(excel_file_name, excel_sheet_parameters, 'HubMass')
 
     overhang = gc.AeroelasticInformation()
     overhang.StructuralInformation.num_node = 3
@@ -863,8 +863,8 @@ def generate_from_excel_type03(op_params,
 
     if not HubMass is None:
         # Include hub mass
-        hub.StructuralInformation.lumped_mass_nodes = np.array([hub.StructuralInformation.num_node - 1], dtype=int)
-        hub.StructuralInformation.lumped_mass = np.array([HubMass], dtype=float)
+        overhang.StructuralInformation.lumped_mass_nodes = np.array([overhang.StructuralInformation.num_node - 1], dtype=int)
+        overhang.StructuralInformation.lumped_mass = np.array([HubMass], dtype=float)
 
     overhang.AerodynamicInformation.set_to_zero(overhang.StructuralInformation.num_node_elem,
                                                 overhang.StructuralInformation.num_node,
