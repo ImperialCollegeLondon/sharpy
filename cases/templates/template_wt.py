@@ -809,7 +809,7 @@ def generate_from_excel_type03(op_params,
     tower.StructuralInformation.lumped_mass_nodes = np.array([tower.StructuralInformation.num_node - 1], dtype=int)
     tower.StructuralInformation.lumped_mass = np.array([NacelleMass], dtype=float)
     if not NacMass_x is None and not NacMass_z is None:
-    tower.StructuralInformation.lumped_mass_position = np.array([np.array([NacMass_z, 0, NacMass_x])], dtype=float)
+        tower.StructuralInformation.lumped_mass_position = np.array([np.array([NacMass_z, 0, NacMass_x])], dtype=float)
     else:
         cout.cout_wrap('WARNING: Nacelle mass placed at tower top', 3)
 
@@ -862,9 +862,9 @@ def generate_from_excel_type03(op_params,
     overhang.StructuralInformation.boundary_conditions[-1] = -1
 
     if not HubMass is None:
-    # Include hub mass
-    hub.StructuralInformation.lumped_mass_nodes = np.array([hub.StructuralInformation.num_node - 1], dtype=int)
-    hub.StructuralInformation.lumped_mass = np.array([HubMass], dtype=float)
+        # Include hub mass
+        hub.StructuralInformation.lumped_mass_nodes = np.array([hub.StructuralInformation.num_node - 1], dtype=int)
+        hub.StructuralInformation.lumped_mass = np.array([HubMass], dtype=float)
 
     overhang.AerodynamicInformation.set_to_zero(overhang.StructuralInformation.num_node_elem,
                                                 overhang.StructuralInformation.num_node,
