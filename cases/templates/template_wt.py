@@ -390,6 +390,7 @@ def rotor_from_excel_type03(in_op_params,
     FlpIner = gc.read_column_sheet_type01(excel_file_name, excel_sheet_structural_blade, 'FlpIner')
     EdgIner = gc.read_column_sheet_type01(excel_file_name, excel_sheet_structural_blade, 'EdgIner')
     FlapEdgeIner = gc.read_column_sheet_type01(excel_file_name, excel_sheet_structural_blade, 'FlapEdgeIner')
+    PolIner = gc.read_column_sheet_type01(excel_file_name, excel_sheet_structural_blade, 'PolIner')
     PrebendRef = gc.read_column_sheet_type01(excel_file_name, excel_sheet_structural_blade, 'PrebendRef')
     PreswpRef = gc.read_column_sheet_type01(excel_file_name, excel_sheet_structural_blade, 'PreswpRef')
     OutPcg = gc.read_column_sheet_type01(excel_file_name, excel_sheet_structural_blade, 'OutPcg')
@@ -479,9 +480,12 @@ def rotor_from_excel_type03(in_op_params,
         elem_mass_iner_z = np.interp(elem_rR, rR_structural, EdgIner)
         elem_mass_iner_yz = np.interp(elem_rR, rR_structural, FlapEdgeIner)
 
-        # Inertia: estimate unknown properties
-        cout.cout_wrap('WARNING: Using perpendicular axis theorem to compute the inertia around xB', 3)
-        elem_mass_iner_x = elem_mass_iner_y + elem_mass_iner_z
+        if not SparPolIner is None:
+            elem_mass_iner_x = np.interp(elem_rR, rR_structural, PolIner)
+        else:
+            # Inertia: estimate unknown properties
+            cout.cout_wrap('WARNING: Using perpendicular axis theorem to compute the inertia around xB', 3)
+            elem_mass_iner_x = elem_mass_iner_y + elem_mass_iner_z
 
         # Generate blade structural properties
         blade.StructuralInformation.create_mass_db_from_vector(elem_mass_per_unit_length, elem_mass_iner_x, elem_mass_iner_y, elem_mass_iner_z, elem_pos_cg_B, elem_mass_iner_yz)
@@ -779,7 +783,7 @@ def generate_from_excel_type03(op_params,
     elem_pos_cg_B[:, 2] = np.interp(elem_r, Elevation, TwFAcgOf)
 
     if not TwPolIner is None:
-        elem_mass_iner_x = np.interp(elem_r, ElevationSpar, SparPolIner)
+        elem_mass_iner_x = np.interp(elem_r, Elevation, PolIner)
     else:
         # Stiffness: estimate unknown properties
         cout.cout_wrap('WARNING: Using perpendicular axis theorem to compute the inertia around xB', 3)
