@@ -145,6 +145,7 @@ def spar_from_excel_type04(op_params,
     SparEAStif = gc.read_column_sheet_type01(excel_file_name, excel_sheet_structural_spar, 'SparEAStif')
     SparFAIner = gc.read_column_sheet_type01(excel_file_name, excel_sheet_structural_spar, 'SparFAIner')
     SparSSIner = gc.read_column_sheet_type01(excel_file_name, excel_sheet_structural_spar, 'SparSSIner')
+    SparPolIner = gc.read_column_sheet_type01(excel_file_name, excel_sheet_structural_spar, 'SparPolIner')
     SparFAcgOf = gc.read_column_sheet_type01(excel_file_name, excel_sheet_structural_spar, 'SparFAcgOf')
     SparSScgOf = gc.read_column_sheet_type01(excel_file_name, excel_sheet_structural_spar, 'SparSScgOf')
 
@@ -182,9 +183,12 @@ def spar_from_excel_type04(op_params,
     elem_pos_cg_B[:, 1] = np.interp(elem_r, ElevationSpar, SparSScgOf)
     elem_pos_cg_B[:, 2] = np.interp(elem_r, ElevationSpar, SparFAcgOf)
 
-    # Stiffness: estimate unknown properties
-    cout.cout_wrap('WARNING: Using perpendicular axis theorem to compute the inertia around xB', 3)
-    elem_mass_iner_x = elem_mass_iner_y + elem_mass_iner_z
+    if not SparPolIner is None:
+        elem_mass_iner_x = np.interp(elem_r, ElevationSpar, SparPolIner)
+    else:
+        # Stiffness: estimate unknown properties
+        cout.cout_wrap('WARNING: Using perpendicular axis theorem to compute the inertia around xB', 3)
+        elem_mass_iner_x = elem_mass_iner_y + elem_mass_iner_z
 
     # Create the tower
     spar.StructuralInformation.create_mass_db_from_vector(elem_mass_per_unit_length, elem_mass_iner_x, elem_mass_iner_y, elem_mass_iner_z, elem_pos_cg_B)
@@ -733,6 +737,7 @@ def generate_from_excel_type03(op_params,
     TwEAStif = gc.read_column_sheet_type01(excel_file_name, excel_sheet_structural_tower, 'TwEAStif')
     TwFAIner = gc.read_column_sheet_type01(excel_file_name, excel_sheet_structural_tower, 'TwFAIner')
     TwSSIner = gc.read_column_sheet_type01(excel_file_name, excel_sheet_structural_tower, 'TwSSIner')
+    TwPolIner = gc.read_column_sheet_type01(excel_file_name, excel_sheet_structural_tower, 'TwPolIner')
     TwFAcgOf = gc.read_column_sheet_type01(excel_file_name, excel_sheet_structural_tower, 'TwFAcgOf')
     TwSScgOf = gc.read_column_sheet_type01(excel_file_name, excel_sheet_structural_tower, 'TwSScgOf')
 
@@ -773,9 +778,12 @@ def generate_from_excel_type03(op_params,
     elem_pos_cg_B[:, 1] = np.interp(elem_r, Elevation, TwSScgOf)
     elem_pos_cg_B[:, 2] = np.interp(elem_r, Elevation, TwFAcgOf)
 
-    # Stiffness: estimate unknown properties
-    cout.cout_wrap('WARNING: Using perpendicular axis theorem to compute the inertia around xB', 3)
-    elem_mass_iner_x = elem_mass_iner_y + elem_mass_iner_z
+    if not TwPolIner is None:
+        elem_mass_iner_x = np.interp(elem_r, ElevationSpar, SparPolIner)
+    else:
+        # Stiffness: estimate unknown properties
+        cout.cout_wrap('WARNING: Using perpendicular axis theorem to compute the inertia around xB', 3)
+        elem_mass_iner_x = elem_mass_iner_y + elem_mass_iner_z
 
     # Create the tower
     tower.StructuralInformation.create_mass_db_from_vector(elem_mass_per_unit_length, elem_mass_iner_x, elem_mass_iner_y, elem_mass_iner_z, elem_pos_cg_B)
