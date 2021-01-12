@@ -812,13 +812,15 @@ def generate_from_excel_type03(op_params,
 
     # Read overhang and nacelle properties from excel file
     overhang_len = gc.read_column_sheet_type01(excel_file_name, excel_sheet_parameters, 'overhang')
-    # HubMass = gc.read_column_sheet_type01(excel_file_name, excel_sheet_nacelle, 'HubMass')
     NacelleMass = gc.read_column_sheet_type01(excel_file_name, excel_sheet_parameters, 'NacMass')
+    NacelleMass_x = gc.read_column_sheet_type01(excel_file_name, excel_sheet_parameters, 'NacMass_x')
+    NacelleMass_z = gc.read_column_sheet_type01(excel_file_name, excel_sheet_parameters, 'NacMass_z')
     # NacelleYawIner = gc.read_column_sheet_type01(excel_file_name, excel_sheet_nacelle, 'NacelleYawIner')
 
     # Include nacelle mass
     tower.StructuralInformation.lumped_mass_nodes = np.array([tower.StructuralInformation.num_node - 1], dtype=int)
     tower.StructuralInformation.lumped_mass = np.array([NacelleMass], dtype=float)
+    tower.StructuralInformation.lumped_mass_position = np.array([np.array([NacMass_z, 0, NacMass_x])], dtype=float)
 
     tower.AerodynamicInformation.set_to_zero(tower.StructuralInformation.num_node_elem,
                                             tower.StructuralInformation.num_node,
@@ -828,6 +830,7 @@ def generate_from_excel_type03(op_params,
     # numberOfBlades = gc.read_column_sheet_type01(excel_file_name, excel_sheet_parameters, 'NumBl')
     tilt = gc.read_column_sheet_type01(excel_file_name, excel_sheet_parameters, 'ShftTilt')*deg2rad
     # cone = gc.read_column_sheet_type01(excel_file_name, excel_sheet_parameters, 'Cone')*deg2rad
+    HubMass = gc.read_column_sheet_type01(excel_file_name, excel_sheet_nacelle, 'HubMass')
 
     overhang = gc.AeroelasticInformation()
     overhang.StructuralInformation.num_node = 3
@@ -855,10 +858,14 @@ def generate_from_excel_type03(op_params,
                                                             oh_EI,
                                                             num_node_elem=3,
                                                             y_BFoR='y_AFoR',
-                                                            num_lumped_mass=0)
+                                                            num_lumped_mass=1)
 
     overhang.StructuralInformation.boundary_conditions = np.zeros((overhang.StructuralInformation.num_node), dtype=int)
     overhang.StructuralInformation.boundary_conditions[-1] = -1
+
+    # Include hub mass
+    hub.StructuralInformation.lumped_mass_nodes = np.array([hub.StructuralInformation.num_node - 1], dtype=int)
+    hub.StructuralInformation.lumped_mass = np.array([HubMass], dtype=float)
 
     overhang.AerodynamicInformation.set_to_zero(overhang.StructuralInformation.num_node_elem,
                                                 overhang.StructuralInformation.num_node,
