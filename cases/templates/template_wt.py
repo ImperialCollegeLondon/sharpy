@@ -808,7 +808,11 @@ def generate_from_excel_type03(op_params,
     # Include nacelle mass
     tower.StructuralInformation.lumped_mass_nodes = np.array([tower.StructuralInformation.num_node - 1], dtype=int)
     tower.StructuralInformation.lumped_mass = np.array([NacelleMass], dtype=float)
+    if not NacMass_x is None and not NacMass_z is None:
     tower.StructuralInformation.lumped_mass_position = np.array([np.array([NacMass_z, 0, NacMass_x])], dtype=float)
+    else:
+        cout.cout_wrap('WARNING: Nacelle mass placed at tower top', 3)
+
 
     tower.AerodynamicInformation.set_to_zero(tower.StructuralInformation.num_node_elem,
                                             tower.StructuralInformation.num_node,
@@ -837,6 +841,12 @@ def generate_from_excel_type03(op_params,
     oh_GA = tower.StructuralInformation.stiffness_db[-1, 1, 1]
     oh_GJ = tower.StructuralInformation.stiffness_db[-1, 3, 3]
     oh_EI = tower.StructuralInformation.stiffness_db[-1, 4, 4]
+    if not HubMass is None:
+        num_lumped_mass_overhang = 1
+    else:
+        cout.cout_wrap('WARNING: HubMass not found', 3)
+        num_lumped_mass_overhang = 0
+
     overhang.StructuralInformation.generate_uniform_sym_beam(node_pos,
                                                             oh_mass_per_unit_length,
                                                             oh_mass_iner,
@@ -846,11 +856,12 @@ def generate_from_excel_type03(op_params,
                                                             oh_EI,
                                                             num_node_elem=3,
                                                             y_BFoR='y_AFoR',
-                                                            num_lumped_mass=1)
+                                                            num_lumped_mass=num_lumped_mass_overhang)
 
     overhang.StructuralInformation.boundary_conditions = np.zeros((overhang.StructuralInformation.num_node), dtype=int)
     overhang.StructuralInformation.boundary_conditions[-1] = -1
 
+    if not HubMass is None:
     # Include hub mass
     hub.StructuralInformation.lumped_mass_nodes = np.array([hub.StructuralInformation.num_node - 1], dtype=int)
     hub.StructuralInformation.lumped_mass = np.array([HubMass], dtype=float)
