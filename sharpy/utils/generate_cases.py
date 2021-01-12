@@ -167,6 +167,11 @@ def read_column_sheet_type01(excel_file_name, excel_sheet, column_name):
     excel_db = pd.read_excel(xls, sheet_name=excel_sheet)
     num_elem = excel_db.index.stop - 2
 
+    try:
+        excel_db[column_name]
+    except KeyError:
+        return None
+
     if excel_db[column_name][1] == 'one_int':
         var = excel_db[column_name][2]
     elif excel_db[column_name][1] == 'one_float':
