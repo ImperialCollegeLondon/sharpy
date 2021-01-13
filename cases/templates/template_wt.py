@@ -245,13 +245,16 @@ def spar_from_excel_type04(op_params,
     vec_node_structural_twist = np.zeros((base.StructuralInformation.num_node,))
 
     for ielem in range(base.StructuralInformation.num_elem):
-        inode_cent = 2*ielem + 1
-        rel_dist_to_spar = node_coord[inode_cent, 0]/TowerBaseHeight
-        rel_dist_to_base = (node_coord[-1, 0] - node_coord[inode_cent, 0])/TowerBaseHeight
-        base_stiffness_db[ielem, :, :] = (spar.StructuralInformation.stiffness_db[0, :, :]*rel_dist_to_base +
-                                      wt.StructuralInformation.stiffness_db[0, :, :]*rel_dist_to_spar)
-        base_mass_db[ielem, :, :] = (spar.StructuralInformation.mass_db[0, :, :]*rel_dist_to_base +
-                                      wt.StructuralInformation.mass_db[0, :, :]*rel_dist_to_spar)
+        base_stiffness_db[ielem, :, :] = spar.StructuralInformation.stiffness_db[-1, :, :]
+        base_mass_db[ielem, :, :] = spar.StructuralInformation.mass_db[-1, :, :]
+    # for ielem in range(base.StructuralInformation.num_elem):
+    #     inode_cent = 2*ielem + 1
+    #     rel_dist_to_spar = node_coord[inode_cent, 0]/TowerBaseHeight
+    #     rel_dist_to_base = (node_coord[-1, 0] - node_coord[inode_cent, 0])/TowerBaseHeight
+    #     base_stiffness_db[ielem, :, :] = (spar.StructuralInformation.stiffness_db[0, :, :]*rel_dist_to_base +
+    #                                   wt.StructuralInformation.stiffness_db[0, :, :]*rel_dist_to_spar)
+    #     base_mass_db[ielem, :, :] = (spar.StructuralInformation.mass_db[0, :, :]*rel_dist_to_base +
+    #                                   wt.StructuralInformation.mass_db[0, :, :]*rel_dist_to_spar)
 
     base.StructuralInformation.generate_1to1_from_vectors(
                             base.StructuralInformation.num_node_elem,
