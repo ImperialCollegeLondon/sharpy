@@ -12,7 +12,7 @@ class TestGolandFlutter(unittest.TestCase):
 
     def run_sharpy(self, alpha_deg, flow, not_run=False):
         # Problem Set up
-        u_inf = 1.
+        u_inf = 10.
         rho = 1.02
         num_modes = 4
 
@@ -165,7 +165,7 @@ class TestGolandFlutter(unittest.TestCase):
 
         ws.config['LinearAssembler'] = {'linear_system': 'LinearAeroelastic',
                                        'linear_system_settings': {
-                                           'track_body': 'on',
+                                           'track_body': 'off',
                                            'beam_settings': {'modal_projection': 'on',
                                                              'inout_coords': 'modes',
                                                              'discrete_time': 'on',
@@ -237,7 +237,6 @@ class TestGolandFlutter(unittest.TestCase):
 
     def test_derivatives(self):
         case_name_db = []
-        u_inf = 1
         not_run = True # for debuigghig
         # Reference Case at 4 degrees
         # Run nonlinear simulation and save linerised ROM
@@ -254,6 +253,7 @@ class TestGolandFlutter(unittest.TestCase):
                                               'SaveData',
                                               'SaveParametricCase'],
                                         not_run=False)
+        u_inf = ref.u_inf
         ref_case_name = ref.case_name
         case_name_db.append(ref_case_name)
         qS = 0.5 * ref.rho * u_inf ** 2 * ref.c_ref * ref.wing_span
@@ -265,15 +265,32 @@ class TestGolandFlutter(unittest.TestCase):
                               'StaticUvlm',
                               'AeroForcesCalculator',
                               'SaveParametricCase']
-        alpha_deg_min = alpha_deg_ref - 0.1
-        alpha_deg_max = alpha_deg_ref + 0.1
-        n_evals = 11
+        alpha_deg_min = alpha_deg_ref - 5e-3
+        alpha_deg_max = alpha_deg_ref + 5e-3
+        n_evals = 21
         alpha_vec = np.linspace(alpha_deg_min, alpha_deg_max, n_evals)
-        for alpha in alpha_vec:
+        nlin_forces = np.zeros((n_evals, 3))
+        for ith, alpha in enumerate(alpha_vec):
             if alpha == alpha_deg_ref:
+                case_name = ref_case_name
                 continue
-            case = self.run_sharpy(alpha, flow=nonlinear_sim_flow, not_run=not_run)
-            case_name_db.append(case.case_name)
+            else:
+                case = self.run_sharpy(alpha, flow=nonlinear_sim_flow, not_run=not_run)
+                case_name_db.append(case.case_name)
+                case_name = case.case_name
+            nlin_forces[ith, :3] = np.loadtxt(self.route_test_dir +
+                                              '/output/{:s}/forces/aeroforces.txt'.format(case_name),
+                                              skiprows=1,
+                                              delimiter=',')[1:4]
+        nlin_forces /= qS
+
+        print('Nonlinear coefficients')
+        lift_poly = np.polyfit(alpha_vec * np.pi/180, nlin_forces[:, 2], deg=1)
+        nonlin_cla = lift_poly[0]
+        print(nonlin_cla)
+        drag_poly = np.polyfit(alpha_vec * np.pi/180, nlin_forces[:, 0], deg=2)
+        nonlin_cda = 2 * drag_poly[0] * alpha0 + drag_poly[1]
+        print(nonlin_cda)
 
         # Get Linear ROM at reference case
         import scipy.io as scio
@@ -322,8 +339,8 @@ class TestGolandFlutter(unittest.TestCase):
             dva2 = cga.T.dot(algebra.euler2rot(deuler).T.dot(V0) - V0)
             dva3 = cga.T.dot(Vp2 - V0)
             #         print('{:.4f}\t'.format((alpha0 + dalpha) * 180 / np.pi), dva2, dva3, dva3-dva2)
-            dvz = dva[2]
-            dvx = dva[0]
+            dvz = dva3[2]
+            dvx = dva3[0]
 
             # Need to scale the mode shapes by the rigid body mode factor
             u[vx_ind] = dvx / linss_data['mode_shapes'][-9, 0]
@@ -357,10 +374,21 @@ class TestGolandFlutter(unittest.TestCase):
         with h5py.File(self.route_test_dir + '/output/' + ref_case_name + '/force_angle.stability.h5', 'r') as f:
             sharpy_force_angle = h5utils.load_h5_in_dict(f)['force_angle']
 
-        np.testing.assert_almost_equal(sharpy_force_angle[2, 1], cla, decimal=5)
-        np.testing.assert_almost_equal(sharpy_force_angle[0, 1], cda, decimal=5)
-        np.testing.assert_almost_equal(sharpy_force_angle[4, 1], cma, decimal=5)
+        try:
+            np.testing.assert_almost_equal(sharpy_force_angle[2, 1], cla, decimal=5)
+            np.testing.assert_almost_equal(sharpy_force_angle[0, 1], cda, decimal=5)
+            np.testing.assert_almost_equal(sharpy_force_angle[4, 1], cma, decimal=5)
+        except AssertionError as e:
+            print('Linear perturbation')
+            print(e)
 
+        try:
+            np.testing.assert_almost_equal(sharpy_force_angle[2, 1], nonlin_cla, decimal=3, verbose=True)
+            np.testing.assert_almost_equal(sharpy_force_angle[0, 1], nonlin_cda, decimal=3, verbose=True)
+        except AssertionError as e:
+            print(e)
+            print(np.abs(sharpy_force_angle[2, 1] - nonlin_cla) / nonlin_cla)
+            print(np.abs(sharpy_force_angle[0, 1] - nonlin_cda) / nonlin_cda)
         return forces, moments
 
 
