@@ -142,10 +142,11 @@ class StabilityDerivatives(solver_interface.BaseSolver):
             rig_dof = 10
 
         A, B, C, D = ss.get_mats()
-        if type(A) == libsp.csc_matrix:
-            H0 = C.dot(scsp.linalg.inv(scsp.eye(ss.states, format='csc') - A).dot(B)) + D
-        else:
-            H0 = C.dot(np.linalg.inv(np.eye(ss.states) - A).dot(B)) + D
+        H0 = ss.freqresp(np.array([0.]))[:, :, 0]
+        # if type(A) == libsp.csc_matrix:
+        #     H0 = C.dot(scsp.linalg.inv(scsp.eye(ss.states, format='csc') - A).dot(B)) + D
+        # else:
+        #     H0 = C.dot(np.linalg.inv(np.eye(ss.states) - A).dot(B)) + D
 
         if modal:
             vel_inputs_variables = ss.input_variables.get_variable_from_name('q_dot')
@@ -208,8 +209,12 @@ class StabilityDerivatives(solver_interface.BaseSolver):
         modal = self.data.linear.linear_system.beam.sys.modal
 
         # Get free stream velocity direction
-        v0 = self.data.settings['StaticUvlm']['velocity_field_input']['u_inf_direction'] * \
-             self.data.settings['StaticUvlm']['velocity_field_input']['u_inf'] * -1 # aircraft moving fwd in a stat fluid
+        try:
+            v0 = self.data.settings['StaticUvlm']['velocity_field_input']['u_inf_direction'] * \
+                 self.data.settings['StaticUvlm']['velocity_field_input']['u_inf'] * -1 # aircraft moving fwd in a stat fluid
+        except TypeError:
+            v0 = self.data.settings['StaticCoupled']['aero_solver_settings']['velocity_field_input']['u_inf_direction'] * \
+                 self.data.settings['StaticCoupled']['aero_solver_settings']['velocity_field_input']['u_inf'] * -1 # aircraft moving fwd in a stat fluid
 
         f0a = self.data.linear.linear_system.linearisation_vectors['forces_aero_beam_dof'][:3].copy()
         m0a = self.data.linear.linear_system.linearisation_vectors['forces_aero_beam_dof'][3:6].copy()
@@ -224,7 +229,7 @@ class StabilityDerivatives(solver_interface.BaseSolver):
         # first term in the stability derivative expression
         stab_der_trans = algebra.der_Ceuler_by_v(euler0, f0a)
         # second term in the stability derivative expression
-        stab_der_trans2 = cga.dot(H0[:3, :3].real.dot(cga.T.dot(algebra.der_Peuler_by_v(euler0*0, v0))))
+        stab_der_trans2 = cga.dot(H0[:3, :3].real.dot(cga.T.dot(algebra.der_Peuler_by_v(euler0 * 0, v0))))
 
         stab_der_mom = algebra.der_Ceuler_by_v(euler0, m0a)
         stab_der_mom2 = cga.dot(H0[3:6, :3].real.dot(cga.T.dot(algebra.der_Peuler_by_v(euler0 * 0, v0))))
@@ -249,13 +254,27 @@ class StabilityDerivatives(solver_interface.BaseSolver):
         angle_derivative_set.labels_out = ['CD', 'CY', 'CL', 'Cl', 'Cm', 'Cn']
         # These are onto the original stability axes at the linearisation
         # The above take the stability axes to rotate with the perturbation!!
-        # If we include stab_der_trans1 Cda goes way off - missing standalone UVLM formulation
-        angles = cga.dot(H0[:3, 6:9]) / self.data.linear.linear_system.linearisation_vectors['mode_shapes'][-9, 0] / self.coefficients['force']
-        mom_angles = cga.dot(H0[3:6, 6:9]) / self.data.linear.linear_system.linearisation_vectors['mode_shapes'][-6, 3]
+        angles = stab_der_trans / self.coefficients['force']
+        angles += cga.dot(H0[:3, 6:9]) / self.data.linear.linear_system.linearisation_vectors['mode_shapes'][-9, 0] / self.coefficients['force']
+        mom_angles = stab_der_mom
+        mom_angles += cga.dot(H0[3:6, 6:9]) / self.data.linear.linear_system.linearisation_vectors['mode_shapes'][-6, 3]
         mom_angles[np.ix_([0, 2]), :] /= self.coefficients['moment_lat']
         mom_angles[1, :] /= self.coefficients['moment_lon']
         angle_derivative_set.matrix = np.vstack((angles, mom_angles))
         angle_derivative_set.print()
+
+        cout.cout_wrap('Body axes')
+        angle_derivative_body = DerivativeSet('body')
+        angle_derivative_body.labels_in = ['phi', 'alpha', 'beta']
+        angle_derivative_body.labels_out = ['C_XA', 'C_YA', 'C_ZA', 'C_LA', 'C_MA', 'C_NA']
+        # These are onto the original stability axes at the linearisation
+        # The above take the stability axes to rotate with the perturbation!!
+        angles = H0[:3, 6:9] / self.data.linear.linear_system.linearisation_vectors['mode_shapes'][-9, 0] / self.coefficients['force']
+        mom_angles = H0[3:6, 6:9] / self.data.linear.linear_system.linearisation_vectors['mode_shapes'][-6, 3]
+        mom_angles[np.ix_([0, 2]), :] /= self.coefficients['moment_lat']
+        mom_angles[1, :] /= self.coefficients['moment_lon']
+        angle_derivative_body.matrix = np.vstack((angles, mom_angles))
+        angle_derivative_body.print()
 
         return derivative_set
 
