@@ -8,7 +8,7 @@ import sharpy.utils.h5utils as h5utils
 import sharpy.utils.algebra as algebra
 
 
-class TestGolandFlutter(unittest.TestCase):
+class TestLinearDerivatives(unittest.TestCase):
 
     def run_sharpy(self, alpha_deg, flow, not_run=False):
         # Problem Set up
@@ -39,8 +39,6 @@ class TestGolandFlutter(unittest.TestCase):
         case_name += case_nlin_info
 
         self.route_test_dir = os.path.abspath(os.path.dirname(os.path.realpath(__file__)))
-        fig_folder = self.route_test_dir + '/figures/'
-        os.makedirs(fig_folder, exist_ok=True)
 
         # SHARPy nonlinear reference solution
         ws = wings.QuasiInfinite(M=M,
@@ -210,6 +208,7 @@ class TestGolandFlutter(unittest.TestCase):
                                           }
 
         ws.config['StabilityDerivatives'] = {'folder': self.route_test_dir + '/output/' + case_name + '/',
+                                             'target_system': 'aerodynamic',
                                              'u_inf': ws.u_inf,
                                              'c_ref': ws.main_chord,
                                              'b_ref': ws.wing_span,
@@ -220,7 +219,7 @@ class TestGolandFlutter(unittest.TestCase):
                                            'save_case': 'off',
                                            'parameters': {'alpha': alpha_deg}}
 
-        ws.config['SaveData'] = {'folder': self.route_test_dir + '/output/' + case_name + '/',
+        ws.config['SaveData'] = {'folder': self.route_test_dir + '/output/',
                                  'save_aero': 'off',
                                  'save_struct': 'off',
                                  'save_linear': 'on',
@@ -237,7 +236,7 @@ class TestGolandFlutter(unittest.TestCase):
 
     def test_derivatives(self):
         case_name_db = []
-        not_run = True # for debuigghig
+        not_run = False # for debuigghig
         # Reference Case at 4 degrees
         # Run nonlinear simulation and save linerised ROM
         alpha_deg_ref = 4
@@ -267,9 +266,10 @@ class TestGolandFlutter(unittest.TestCase):
                               'SaveParametricCase']
         alpha_deg_min = alpha_deg_ref - 5e-3
         alpha_deg_max = alpha_deg_ref + 5e-3
-        n_evals = 21
+        n_evals = 11
         alpha_vec = np.linspace(alpha_deg_min, alpha_deg_max, n_evals)
-        nlin_forces = np.zeros((n_evals, 3))
+        nlin_forces_g = np.zeros((n_evals, 3))
+        nlin_forces_a = np.zeros((n_evals, 3))
         for ith, alpha in enumerate(alpha_vec):
             if alpha == alpha_deg_ref:
                 case_name = ref_case_name
@@ -278,27 +278,36 @@ class TestGolandFlutter(unittest.TestCase):
                 case = self.run_sharpy(alpha, flow=nonlinear_sim_flow, not_run=not_run)
                 case_name_db.append(case.case_name)
                 case_name = case.case_name
-            nlin_forces[ith, :3] = np.loadtxt(self.route_test_dir +
-                                              '/output/{:s}/forces/aeroforces.txt'.format(case_name),
-                                              skiprows=1,
-                                              delimiter=',')[1:4]
-        nlin_forces /= qS
+            nlin_forces = np.loadtxt(self.route_test_dir +
+                                     '/output/{:s}/forces/aeroforces.txt'.format(case_name),
+                                     skiprows=1,
+                                     delimiter=',')
+            nlin_forces_g[ith, :3] = nlin_forces[1:4]
+            nlin_forces_a[ith, :3] = nlin_forces[7:10]
+        nlin_forces_g /= qS
+        nlin_forces_a /= qS
 
         print('Nonlinear coefficients')
-        lift_poly = np.polyfit(alpha_vec * np.pi/180, nlin_forces[:, 2], deg=1)
+        lift_poly = np.polyfit(alpha_vec * np.pi/180, nlin_forces_g[:, 2], deg=1)
         nonlin_cla = lift_poly[0]
-        print(nonlin_cla)
-        drag_poly = np.polyfit(alpha_vec * np.pi/180, nlin_forces[:, 0], deg=2)
+        print('CLa', nonlin_cla)
+        drag_poly = np.polyfit(alpha_vec * np.pi/180, nlin_forces_g[:, 0], deg=2)
         nonlin_cda = 2 * drag_poly[0] * alpha0 + drag_poly[1]
-        print(nonlin_cda)
+        print('CDa', nonlin_cda)
+
+        print('Nonlinear coefficients - body axes')
+        lift_poly = np.polyfit(alpha_vec * np.pi/180, nlin_forces_a[:, 2], deg=1)
+        nonlin_cza = lift_poly[0]
+        print('CZa', nonlin_cza)
+        drag_poly = np.polyfit(alpha_vec * np.pi/180, nlin_forces_a[:, 0], deg=2)
+        nonlin_cxa = 2 * drag_poly[0] * alpha0 + drag_poly[1]
+        print('CXa', nonlin_cxa)
 
         # Get Linear ROM at reference case
         import scipy.io as scio
-        linuvlm_data = scio.loadmat(self.route_test_dir + '/output/{:s}/{:s}/{:s}.uvlmss.mat'.format(ref_case_name,
-                                                                                                     ref_case_name,
+        linuvlm_data = scio.loadmat(self.route_test_dir + '/output/{:s}/savedata/{:s}.uvlmss.mat'.format(ref_case_name,
                                                                                                      ref_case_name))
-        linss_data = scio.loadmat(self.route_test_dir + '/output/{:s}/{:s}/{:s}.linss.mat'.format(ref_case_name,
-                                                                                                  ref_case_name,
+        linss_data = scio.loadmat(self.route_test_dir + '/output/{:s}/savedata/{:s}.linss.mat'.format(ref_case_name,
                                                                                                   ref_case_name))
 
         # Steady State transfer function
@@ -393,11 +402,11 @@ class TestGolandFlutter(unittest.TestCase):
 
 
 
-    # def tearDown(self):
-    #     import shutil
-    #     folders = ['cases', 'figures', 'output']
-    #     for folder in folders:
-    #         shutil.rmtree(self.route_test_dir + '/' + folder)
+    def tearDown(self):
+        import shutil
+        folders = ['cases', 'output']
+        for folder in folders:
+            shutil.rmtree(self.route_test_dir + '/' + folder)
 
 
 if __name__ == '__main__':
