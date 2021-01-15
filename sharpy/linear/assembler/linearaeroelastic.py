@@ -150,23 +150,8 @@ class LinearAeroelastic(ss_interface.BaseElement):
         # Linearisation of the aerodynamic forces introduces stiffenning and damping terms into the beam matrices
         flex_nodes = self.beam.sys.num_dof_flex
 
-        stiff_aero = np.zeros_like(beam.sys.Kstr)
-        damping_aero = np.zeros_like(beam.sys.Cstr)
-        stiff_aero[:flex_nodes, :flex_nodes] = self.Kss
-
         rigid_dof = beam.sys.Kstr.shape[0] - flex_nodes
         total_dof = flex_nodes + rigid_dof
-
-        if rigid_dof > 0:
-            rigid_dof = beam.sys.Kstr.shape[0]-self.Kss.shape[0]
-            stiff_aero[flex_nodes:, :flex_nodes] = self.Krs
-
-            damping_aero[:flex_nodes, flex_nodes:] = self.Csr
-            damping_aero[flex_nodes:, flex_nodes:] = self.Crr
-            damping_aero[flex_nodes:, :flex_nodes] = self.Crs
-
-        beam.sys.Cstr += damping_aero
-        beam.sys.Kstr += stiff_aero
 
         if uvlm.scaled:
             beam.assemble(t_ref=uvlm.sys.ScalingFacts['time'])
@@ -209,6 +194,18 @@ class LinearAeroelastic(ss_interface.BaseElement):
 
             uvlm.ss.addGain(gain_ksa, where='out')
             uvlm.ss.addGain(gain_kas, where='in')
+
+            # Stiffenning and damping terms within the uvlm
+            Dmod = np.zeros_like(uvlm.ss.D)
+            Dmod[:flex_nodes, :flex_nodes] -= self.Kss
+            if rigid_dof > 0:
+                Dmod[flex_nodes:, :flex_nodes] -= self.Krs
+                Dmod[flex_nodes:, total_dof: total_dof + flex_nodes] -= self.Crs
+                Dmod[:flex_nodes, total_dof + flex_nodes: 2 * total_dof] -= self.Csr
+                Dmod[flex_nodes:, total_dof + flex_nodes: 2 * total_dof] -= self.Crr
+                if uvlm.scaled:
+                    Dmod /= uvlm.sys.ScalingFacts['force']
+                uvlm.ss.D += Dmod
 
             self.couplings['Ksa'] = Ksa
             self.couplings['Kas'] = Kas
@@ -265,9 +262,8 @@ class LinearAeroelastic(ss_interface.BaseElement):
         if uvlm.scaled:
             Tsa.value *= uvlm.sys.ScalingFacts['force'] * uvlm.sys.ScalingFacts['time'] ** 2
             if rigid_dof > 0:
-                warnings.warn('Time scaling for problems with rigid body motion under development.')
-                Tas.value[:flex_nodes + 6, :flex_nodes + 6] /= uvlm.sys.ScalingFacts['length']
-                Tas.value[total_dof: total_dof + flex_nodes + 6] /= uvlm.sys.ScalingFacts['length']
+                Tas[:flex_nodes + 6, :flex_nodes + 6] /= uvlm.sys.ScalingFacts['length']
+                Tas[total_dof: total_dof + flex_nodes + 6] /= uvlm.sys.ScalingFacts['length']
             else:
                 if not self.settings['beam_settings']['modal_projection']:
                     Tas.value /= uvlm.sys.ScalingFacts['length']
