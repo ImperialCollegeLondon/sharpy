@@ -320,6 +320,12 @@ def interp_1st_dim_matrix(A, vec, value):
     # A[2, :, :] *= 2.
     # interp_1st_dim_matrix(A, vec, 0.6)
 
+def integrate_one_step_nb(x, xdot, xdotdot, it, dt, newmark_damp):
+
+    gamma = 0.5 + newmark_damp
+    beta = 0.25*(gamma + 0.5)*(gamma + 0.5)
+
+    x[it, :] = x[it - 1, :] + dt*xdot[it - 1, :] + (0.5- beta)*dt**2*xdotdot[it - 1, :] + beta*dt*xdotdot[it, :]
 
 
 @generator_interface.generator
@@ -357,6 +363,10 @@ class FloatingForces(generator_interface.BaseGenerator):
     settings_types['dt'] = 'float'
     settings_default['dt'] = None
     settings_description['dt'] = 'Time step'
+
+    settings_types['newmark_damp'] = 'float'
+    settings_default['newmark_damp'] = 1e-4
+    settings_description['newmark_damp'] = 'Damping of the Newmark-beta time integration scheme'
 
     settings_types['water_density'] = 'float'
     settings_default['water_density'] = 1025 # kg/m3
@@ -573,15 +583,18 @@ class FloatingForces(generator_interface.BaseGenerator):
         self.q[it, 0:3] = (np.dot(cga, struct_tstep.pos[self.buoyancy_node, :]) +
                   struct_tstep.for_pos[0:3])
         # ams: in my casethe angles are negative in the x and z components
-        self.q[it, 3:6] = (algebra.quat2euler(struct_tstep.quat)*
-                           np.array([-1., 0., -1.]))
-                           # np.array([1., 0., 1.]))
+        # self.q[it, 3:6] = (algebra.quat2euler(struct_tstep.quat)*
+        #                    np.array([-1., 0., -1.]))
+        #                    # np.array([1., 0., 1.]))
 
         self.qdot[it, 0:3] = np.dot(cga, struct_tstep.for_vel[0:3])
         self.qdot[it, 3:6] = np.dot(cga, struct_tstep.for_vel[3:6])
 
         self.qdotdot[it, 0:3] = np.dot(cga, struct_tstep.for_acc[0:3])
         self.qdotdot[it, 3:6] = np.dot(cga, struct_tstep.for_acc[3:6])
+
+        integrate_one_step_nb(self.q[:, 3:6], self.qdot[:, 3:6], self.qdotdot[:, 3:6],
+                              it, self.settings['dt'], self.settings['newmark_damp'])
 
         return
 
@@ -608,7 +621,7 @@ class FloatingForces(generator_interface.BaseGenerator):
         moor_mom_out = 0.
 
         for imoor in range(self.n_mooring_lines):
-            fairlead_pos_G = (np.dot(cga, self.fairlead_pos_A[imoor, :]) + 
+            fairlead_pos_G = (np.dot(cga, self.fairlead_pos_A[imoor, :]) +
                               struct_tstep.for_pos[0:3])
             fl_to_anchor_G = self.anchor_pos[imoor, :] - fairlead_pos_G
             xf = np.sqrt(fl_to_anchor_G[1]**2 + fl_to_anchor_G[2]**2)
@@ -639,7 +652,7 @@ class FloatingForces(generator_interface.BaseGenerator):
             # Move the forces to the mooring node
             force_cl = np.zeros((6,))
             force_cl[0:3] = force_fl
-            mooring_node_pos_G = (np.dot(cga, struct_tstep.pos[self.mooring_node, :]) + 
+            mooring_node_pos_G = (np.dot(cga, struct_tstep.pos[self.mooring_node, :]) +
                               struct_tstep.for_pos[0:3])
             r_fairlead_G = fairlead_pos_G - mooring_node_pos_G
             force_cl[3:6] = np.cross(r_fairlead_G, force_fl)
@@ -674,7 +687,7 @@ class FloatingForces(generator_interface.BaseGenerator):
         struct_tstep.runtime_generated_forces[self.buoyancy_node, 3:6] += np.dot(cbg, hs_f_g[3:6] + force_coeff*(hd_f_qdot_g[3:6] + hd_f_qdotdot_g[3:6]))
 
         if self.added_mass_in_mass_matrix:
-            # Compensate added mass            
+            # Compensate added mass
             # struct_tstep.runtime_generated_forces[self.buoyancy_node, 0:3] += np.dot(cbg,
             #                                                             hd_f_qdotdot_g[0:3])
             # struct_tstep.runtime_generated_forces[self.buoyancy_node, 3:6] += np.dot(cbg,
