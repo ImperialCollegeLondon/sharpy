@@ -234,6 +234,38 @@ def set_value_or_default(dictionary, key, default_val):
 ################################################################################
 # Equations
 ################################################################################
+def equal_pos_node_FoR(MB_tstep, MB_beam, FoR_body, node_FoR_dof, node_dof, FoR_dof, sys_size, Lambda, scalingFactor, penaltyFactor, ieq, LM_K, LM_C, LM_Q):
+    """
+    This function generates the stiffness and damping matrices and the independent vector associated to a constraint that
+    imposes equal positions between a node and a frame of reference
+
+    See ``LagrangeConstraints`` for the description of variables
+
+    Args:
+        node_FoR_dof (int): position of the first degree of freedom of the FoR to which the "node" belongs
+        node_dof (int): position of the first degree of freedom associated to the "node"
+        FoR_body (int): body number of the "FoR"
+        FoR_dof (int): position of the first degree of freedom associated to the "FoR"
+    """
+    num_LM_eq_specific = 3
+    Bnh = np.zeros((num_LM_eq_specific, sys_size), dtype=ct.c_double, order = 'F')
+    B = np.zeros((num_LM_eq_specific, sys_size), dtype=ct.c_double, order = 'F')
+
+    B[:, FoR_dof:FoR_dof+3] = np.eye(3)
+    B[:, node_dof:node_dof+3] = algebra.quat2rotation(MB_tstep[FoR_body].quat)
+    B[:, node_FoR_dof:node_FoR_dof+3] = -np.eye(3)
+
+    LM_K[sys_size + ieq : sys_size + ieq + num_LM_eq_specific,                : sys_size                           ] += scalingFactor*B
+    LM_K[               : sys_size                           , sys_size + ieq : sys_size + ieq + num_LM_eq_specific] += scalingFactor*np.transpose(B)
+
+    LM_Q[:sys_size] += scalingFactor*np.dot(np.transpose(B), Lambda[ieq:ieq+num_LM_eq_specific])
+
+    LM_C[node_dof:node_dof+3, FoR_dof+6:FoR_dof+10] = scalingFactor*algebra.der_CquatT_by_v(MB_tstep[FoR_body].quat, Lambda[ieq : ieq + num_LM_eq_specific])
+
+    ieq += 3
+    return ieq
+
+
 def equal_lin_vel_node_FoR(MB_tstep, MB_beam, FoR_body, node_body, node_number, node_FoR_dof, node_dof, FoR_dof, sys_size, Lambda_dot, scalingFactor, penaltyFactor, ieq, LM_K, LM_C, LM_Q):
     """
     This function generates the stiffness and damping matrices and the independent vector associated to a constraint that
@@ -295,7 +327,6 @@ def equal_lin_vel_node_FoR(MB_tstep, MB_beam, FoR_body, node_body, node_number, 
 
     ieq += 3
     return ieq
-
 
 def def_rot_axis_FoR_wrt_node(MB_tstep, MB_beam, FoR_body, node_body, node_number, node_FoR_dof, node_dof, FoR_dof, sys_size, Lambda_dot, rot_axisB, scalingFactor, penaltyFactor, ieq, LM_K, LM_C, LM_Q, indep):
     """
@@ -651,7 +682,8 @@ class hinge_node_FoR_constant_vel(BaseLagrangeConstraint):
         ieq = self._ieq
 
         # Define the equations
-        ieq = equal_lin_vel_node_FoR(MB_tstep, MB_beam, self.FoR_body, self.node_body, self.node_number, node_FoR_dof, node_dof, FoR_dof, sys_size, Lambda_dot, self.scalingFactor, self.penaltyFactor, ieq, LM_K, LM_C, LM_Q)
+        ieq =  equal_pos_node_FoR(MB_tstep, MB_beam, self.FoR_body, node_FoR_dof, node_dof, FoR_dof, sys_size, Lambda, scalingFactor, penaltyFactor, ieq, LM_K, LM_C, LM_Q)
+        #ieq = equal_lin_vel_node_FoR(MB_tstep, MB_beam, self.FoR_body, self.node_body, self.node_number, node_FoR_dof, node_dof, FoR_dof, sys_size, Lambda_dot, self.scalingFactor, self.penaltyFactor, ieq, LM_K, LM_C, LM_Q)
         ieq = def_rot_vect_FoR_wrt_node(MB_tstep, MB_beam, self.FoR_body, self.node_body, self.node_number, node_FoR_dof, node_dof, FoR_dof, sys_size, Lambda_dot, self.rot_vect, self.scalingFactor, self.penaltyFactor, ieq, LM_K, LM_C, LM_Q)
         # ieq = def_rot_axis_FoR_wrt_node(MB_tstep, MB_beam, self.FoR_body, self.node_body, self.node_number, node_FoR_dof, node_dof, FoR_dof, sys_size, Lambda_dot, self.rot_axisB, self.scalingFactor, self.penaltyFactor, ieq, LM_K, LM_C, LM_Q, self.indep)
         # ieq = def_rot_vel_FoR_wrt_node(MB_tstep, MB_beam, self.FoR_body, self.node_body, self.node_number, node_FoR_dof, node_dof, FoR_dof, sys_size, Lambda_dot, self.rot_axisB, self.rot_vel, self.scalingFactor, self.penaltyFactor, ieq, LM_K, LM_C, LM_Q)
