@@ -492,7 +492,7 @@ def def_rot_vect_FoR_wrt_node(MB_tstep, MB_beam, FoR_body, node_body, node_numbe
 
     # Constrain angular velocities
     LM_Q[:sys_size] += scalingFactor*np.dot(np.transpose(Bnh), Lambda_dot[ieq:ieq+num_LM_eq_specific])
-    LM_Q[sys_size+ieq:sys_size+ieq+num_LM_eq_specific] += scalingFactor*(np.dot(Bnh, MB_tstep[FoR_body].for_vel[3:6]) -
+    LM_Q[sys_size+ieq:sys_size+ieq+num_LM_eq_specific] += scalingFactor*(np.dot(Bnh[:, FoR_dof+3:FoR_dof+6], MB_tstep[FoR_body].for_vel[3:6]) -
                                                                          rot_vect)
 
     LM_C[sys_size+ieq:sys_size+ieq+num_LM_eq_specific,:sys_size] += scalingFactor*Bnh
