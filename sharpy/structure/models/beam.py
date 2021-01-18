@@ -178,7 +178,7 @@ class Beam(BaseStructure):
         self.ini_info.steady_applied_forces = self.steady_app_forces.astype(dtype=ct.c_double, order='F')
         # rigid body rotations
         self.ini_info.quat = self.settings['orientation'].astype(dtype=ct.c_double, order='F')
-        self.ini_info.for_pos[0:3] = self.settings['for_pos'].astype(dtype=ct.c_double, order='F')            
+        self.ini_info.for_pos[0:3] = self.settings['for_pos'].astype(dtype=ct.c_double, order='F')
 
         self.timestep_info.append(self.ini_info.copy())
         self.timestep_info[-1].steady_applied_forces = self.steady_app_forces.astype(dtype=ct.c_double, order='F')
@@ -317,7 +317,7 @@ class Beam(BaseStructure):
 
         return
 
-    def add_lumped_mass_to_element(self, i_lumped_node, inertia_tensor):
+    def add_lumped_mass_to_element(self, i_lumped_node, inertia_tensor, replace=False):
 
             i_lumped_master_elem, i_lumped_master_node_local = self.node_master_elem[i_lumped_node]
 
@@ -326,8 +326,12 @@ class Beam(BaseStructure):
                 self.elements[i_lumped_master_elem].rbmass = np.zeros((
                     self.elements[i_lumped_master_elem].max_nodes_elem, 6, 6))
 
-            self.elements[i_lumped_master_elem].rbmass[i_lumped_master_node_local, :, :] += (
-                inertia_tensor) # += necessary in case multiple masses defined per node
+            if replace:
+                self.elements[i_lumped_master_elem].rbmass[i_lumped_master_node_local, :, :] += (
+                    inertia_tensor) # += necessary in case multiple masses defined per node
+            else:
+                self.elements[i_lumped_master_elem].rbmass[i_lumped_master_node_local, :, :] = (
+                    inertia_tensor) # += necessary in case multiple masses defined per node
 
     # def generate_master_structure(self):
     #     self.master = np.zeros((self.num_elem, self.num_node_elem, 2), dtype=int) - 1
