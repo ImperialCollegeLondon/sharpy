@@ -7,7 +7,6 @@ import sharpy.utils.cout_utils as cout
 import sharpy.utils.generator_interface as generator_interface
 import sharpy.utils.settings as settings
 import sharpy.utils.solver_interface as solver_interface
-import sharpy.utils.cout_utils as cout
 from sharpy.utils.constants import deg2rad
 import sharpy.utils.h5utils as h5utils
 import sharpy.utils.algebra as algebra
@@ -321,6 +320,61 @@ def interp_1st_dim_matrix(A, vec, value):
     # interp_1st_dim_matrix(A, vec, 0.6)
 
 
+def rfval(num, den, z):
+    """
+        Evaluate a rational function given by the coefficients of the numerator (num) and
+        denominator (den) at z
+    """
+    return np.polyval(num, z)/np.polyval(den, z)
+
+
+def matrix_from_rf(dict_rf, w):
+
+    H = np.zeros((6, 6))
+    for i in range(6):
+        for j in range(6):
+            pos = "%d_%d" % (i, j)
+            H[i, j] = rfval(dict_rf[pos]['num'], dict_rf[pos]['den'], w)
+
+    return H
+
+
+def response_freq_dep_matrix(H, q, it, dt, omega_h=None):
+    """
+    Compute the frequency response of a system with a transfer function depending on the frequency
+    F(t) = H(omega) * q(t)
+    """
+    omega_fft = np.linspace(0, 1/(2*dt), it//2)[:it//2]
+    fourier_q = fft(q[:it, :], axis=0)
+    fourier_f = np.zeros_like(fourier_q)
+
+    ndof = q.shape[1]
+    f = np.zeros((ndof))
+
+    # Compute the constant component
+    if type(H) is np.ndarray:
+        H_omega = interp_1st_dim_matrix(H, omega_H, omega_fft[0])
+    elif type(H) is dict:
+        H_omega = matrix_from_rf(H, omega_fft[0])
+    else:
+        cout.cout_wrap(("ERROR: Not implemented response_freq_dep_matrix for type(H) %s" % type(H)), 4)
+    fourier_f[0, :] = np.dot(H_omega, fourier_q[0, :])
+
+    # Compute the rest of the terms
+    for iomega in range(1, omega_fft.shape[0]):
+        # Interpolate H at omega
+        if type(H) is np.ndarray:
+            H_omega = interp_1st_dim_matrix(H, omega_H, omega_fft[iomega])
+        elif type(H) is dict:
+            H_omega = matrix_from_rf(H, omega_fft[iomega])
+        fourier_f[iomega, :] = np.dot(H_omega, fourier_q[iomega, :])
+        fourier_f[-iomega, :] = np.dot(H_omega, fourier_q[-iomega, :])
+
+    # Compute the inverse Fourier tranform
+    f[:] = np.real(ifft(fourier_f, axis=0)[-1])
+
+    return f
+
 
 @generator_interface.generator
 class FloatingForces(generator_interface.BaseGenerator):
@@ -378,12 +432,11 @@ class FloatingForces(generator_interface.BaseGenerator):
     settings_types['method_matrices_freq'] = 'str'
     settings_default['method_matrices_freq'] = 'constant'
     settings_description['method_matrices_freq'] = 'Method to compute frequency-dependent matrices'
-    settings_options['method_matrices_freq'] = ['constant', ]
-    # settings_options['method_matrices_freq'] = ['constant', 'interp_matrices', 'rational_function']
+    settings_options['method_matrices_freq'] = ['constant', 'interp_matrices', 'rational_function']
 
     settings_types['matrices_freq'] = 'float'
     settings_default['matrices_freq'] = None
-    settings_description['matrices_freq'] = 'Frequency [rad/s] to interpolate frequency-dependent matrices. Used for ``method_matrices_freq`` == ``constant``'
+    settings_description['matrices_freq'] = 'Frequency [rad/s] to interpolate frequency-dependent matrices'
 
     settings_types['added_mass_in_mass_matrix'] = 'bool'
     settings_default['added_mass_in_mass_matrix'] = True
@@ -496,13 +549,19 @@ class FloatingForces(generator_interface.BaseGenerator):
         self.buoy_rest_mat = self.floating_data['hydrostatics']['buoyancy_restoring_matrix']
 
         # hydrodynamics
+        self.added_mass_in_mass_matrix = self.settings['added_mass_in_mass_matrix']
         if self.settings['method_matrices_freq'] == 'constant':
-            self.hd_added_mass = interp_1st_dim_matrix(self.floating_data['hydrodynamics']['added_mass'],
+            self.hd_added_mass = interp_1st_dim_matrix(self.floating_data['hydrodynamics']['added_mass_matrix'],
+                                        self.floating_data['hydrodynamics']['ab_freq_rads'],
+                                           self.settings['matrices_freq'])
+
+            self.hd_damping = interp_1st_dim_matrix(self.floating_data['hydrodynamics']['damping_matrix'],
                                         self.floating_data['hydrodynamics']['ab_freq_rads'],
                                            self.settings['matrices_freq'])
 
             # self.hd_added_mass *= 0.
-            self.added_mass_in_mass_matrix = self.settings['added_mass_in_mass_matrix']
+            # self.hd_damping *= 0.
+
             if self.added_mass_in_mass_matrix:
                 # Include added mass in structure
                 data.structure.add_lumped_mass_to_element(self.buoyancy_node,
@@ -510,12 +569,15 @@ class FloatingForces(generator_interface.BaseGenerator):
                 data.structure.generate_fortran()
                 # self.hd_added_mass *= 0.
 
-            self.hd_damping = interp_1st_dim_matrix(self.floating_data['hydrodynamics']['damping'],
-                                        self.floating_data['hydrodynamics']['ab_freq_rads'],
-                                           self.settings['matrices_freq'])
+        elif self.settings['method_matrices_freq'] == 'interp_matrices':
+            self.hd_added_mass = self.floating_data['hydrodynamics']['added_mass_matrix']
+            self.hd_damping = self.floating_data['hydrodynamics']['damping_matrix']
+            self.ab_freq_rads = self.floating_data['hydrodynamics']['ab_freq_rads']
 
-            # self.hd_damping *= 0.
-
+        elif self.settings['method_matrices_freq'] == 'rational_function':
+            self.hd_added_mass = self.floating_data['hydrodynamics']['added_mass_rf']
+            self.hd_damping = self.floating_data['hydrodynamics']['damping_rf']
+            self.ab_freq_rads = self.floating_data['hydrodynamics']['ab_freq_rads']
 
         # Wave forces
         self.wave_forces_node = self.floating_data['wave_forces']['node']
@@ -670,39 +732,60 @@ class FloatingForces(generator_interface.BaseGenerator):
         struct_tstep.runtime_generated_forces[self.mooring_node, 3:6] += np.dot(cbg,
                                                                       mooring_yaw)
 
+
+
         # Hydrostatic model
-        # aux_vec = np.zeros((6))
-        # aux_vec[0:3] = self.q[data.ts, 0]
         hs_f_g = self.buoy_F0 - np.dot(self.buoy_rest_mat, self.q[data.ts, :])
-        # hs_f_g = self.buoy_F0 - np.dot(self.buoy_rest_mat, aux_vec)
+
         hd_f_qdot_g -= np.dot(self.floating_data['hydrodynamics']['additional_damping'], self.qdot[data.ts, :])
+
         if self.settings['method_matrices_freq'] == 'constant':
             hd_f_qdot_g = -np.dot(self.hd_damping, self.qdot[data.ts, :])
-        if self.added_mass_in_mass_matrix:
-            hd_f_qdotdot_g = np.zeros((6))
-        else:
             hd_f_qdotdot_g = np.dot(self.hd_added_mass, self.qdotdot[data.ts, :])
-        ielem, inode_in_elem = data.structure.node_master_elem[self.buoyancy_node]
-        cab = algebra.crv2rotation(struct_tstep.psi[ielem, inode_in_elem])
-        cbg = np.dot(cab.T, cga.T)
+            equiv_hd_added_mass = self.hd_added_mass
 
-        struct_tstep.runtime_generated_forces[self.buoyancy_node, 0:3] += np.dot(cbg, hs_f_g[0:3] + force_coeff*(hd_f_qdot_g[0:3] + hd_f_qdotdot_g[0:3]))
-        struct_tstep.runtime_generated_forces[self.buoyancy_node, 3:6] += np.dot(cbg, hs_f_g[3:6] + force_coeff*(hd_f_qdot_g[3:6] + hd_f_qdotdot_g[3:6]))
+        elif self.settings['method_matrices_freq'] in ['interp_matrices', 'rational_function']:
+            hd_f_qdot_g = response_freq_dep_matrix(self.hd_damping, self.ab_freq_rads, self.qdot, data.ts, self.settings['dt'])
+            hd_f_qdotdot_g = response_freq_dep_matrix(self.hd_added_mass, self.ab_freq_rads, self.qdotdot, data.ts, self.settings['dt'])
 
+            if self.added_mass_in_mass_matrix:
+                # Compute the equivalent added mass matrix
+
+                # Update the added mass in the beam
+                cout.cout_wrap("ERROR: added_mass_in_mass_matrix not implemente for interp_matrices or rational_function", 4)
+
+        else:
+            cout.cout_wrap(("ERROR: Unknown method_matrices_freq %s" % self.settings['method_matrices_freq']), 4)
+
+        # Correct gravity forces if needed
         if self.added_mass_in_mass_matrix:
             # Compensate added mass
             # struct_tstep.runtime_generated_forces[self.buoyancy_node, 0:3] += np.dot(cbg,
             #                                                             hd_f_qdotdot_g[0:3])
             # struct_tstep.runtime_generated_forces[self.buoyancy_node, 3:6] += np.dot(cbg,
-            #                                                             hd_f_qdotdot_g[3:6])
+            #                                                              hd_f_qdotdot_g[3:6])
 
             # Correct unreal gravity forces from added mass
             gravity_b = np.zeros((6,),)
             gravity_b[0:3] = np.dot(cbg, -self.settings['gravity_dir'])*self.settings['gravity']
-            hd_correct_grav = -np.dot(self.hd_added_mass, gravity_b)
+            hd_correct_grav = -np.dot(equiv_hd_added_mass, gravity_b)
             struct_tstep.runtime_generated_forces[self.buoyancy_node, :] += hd_correct_grav
+            hd_f_qdotdot_g = np.zeros((6))
         else:
             hd_correct_grav = np.zeros((6))
+
+            # if self.added_mass_in_mass_matrix:
+                # # Include added mass in structure
+                # data.structure.add_lumped_mass_to_element(self.buoyancy_node,
+                                            # self.hd_added_mass)
+                                            # data.structure.generate_fortran()
+                                            # # self.hd_added_mass *= 0.
+
+        ielem, inode_in_elem = data.structure.node_master_elem[self.buoyancy_node]
+        cab = algebra.crv2rotation(struct_tstep.psi[ielem, inode_in_elem])
+        cbg = np.dot(cab.T, cga.T)
+        struct_tstep.runtime_generated_forces[self.buoyancy_node, 0:3] += np.dot(cbg, hs_f_g[0:3] + force_coeff*(hd_f_qdot_g[0:3] + hd_f_qdotdot_g[0:3]))
+        struct_tstep.runtime_generated_forces[self.buoyancy_node, 3:6] += np.dot(cbg, hs_f_g[3:6] + force_coeff*(hd_f_qdot_g[3:6] + hd_f_qdotdot_g[3:6]))
 
         # Wave loading
         phase = self.settings['wave_freq']*data.ts*self.settings['dt']
