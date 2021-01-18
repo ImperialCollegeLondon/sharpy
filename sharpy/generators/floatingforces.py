@@ -2,6 +2,7 @@ import numpy as np
 import h5py as h5
 import ctypes as ct
 import os
+from scipy import fft, ifft
 
 import sharpy.utils.cout_utils as cout
 import sharpy.utils.generator_interface as generator_interface
@@ -339,11 +340,12 @@ def matrix_from_rf(dict_rf, w):
     return H
 
 
-def response_freq_dep_matrix(H, q, it, dt, omega_h=None):
+def response_freq_dep_matrix(H, omega_H, q, it_, dt):
     """
     Compute the frequency response of a system with a transfer function depending on the frequency
     F(t) = H(omega) * q(t)
     """
+    it = max(10, it_)
     omega_fft = np.linspace(0, 1/(2*dt), it//2)[:it//2]
     fourier_q = fft(q[:it, :], axis=0)
     fourier_f = np.zeros_like(fourier_q)
