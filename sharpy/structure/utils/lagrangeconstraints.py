@@ -251,16 +251,17 @@ def equal_pos_node_FoR(MB_tstep, MB_beam, FoR_body, node_FoR_dof, node_dof, FoR_
     Bnh = np.zeros((num_LM_eq_specific, sys_size), dtype=ct.c_double, order = 'F')
     B = np.zeros((num_LM_eq_specific, sys_size), dtype=ct.c_double, order = 'F')
 
-    B[:, FoR_dof:FoR_dof+3] = np.eye(3)
+    # if MB_beam[node_body].FoR_movement == 'free':
+    B[:, node_FoR_dof:node_FoR_dof+3] = np.eye(3)
     B[:, node_dof:node_dof+3] = algebra.quat2rotation(MB_tstep[FoR_body].quat)
-    B[:, node_FoR_dof:node_FoR_dof+3] = -np.eye(3)
+    B[:, FoR_dof:FoR_dof+3] = -np.eye(3)
 
     LM_K[sys_size + ieq : sys_size + ieq + num_LM_eq_specific,                : sys_size                           ] += scalingFactor*B
     LM_K[               : sys_size                           , sys_size + ieq : sys_size + ieq + num_LM_eq_specific] += scalingFactor*np.transpose(B)
 
     LM_Q[:sys_size] += scalingFactor*np.dot(np.transpose(B), Lambda[ieq:ieq+num_LM_eq_specific])
 
-    LM_C[node_dof:node_dof+3, FoR_dof+6:FoR_dof+10] = scalingFactor*algebra.der_CquatT_by_v(MB_tstep[FoR_body].quat, Lambda[ieq : ieq + num_LM_eq_specific])
+    LM_C[node_dof:node_dof+3, node_FoR_dof+6:node_FoR_dof+10] = scalingFactor*algebra.der_CquatT_by_v(MB_tstep[FoR_body].quat, Lambda[ieq : ieq + num_LM_eq_specific])
 
     ieq += 3
     return ieq
