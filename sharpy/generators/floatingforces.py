@@ -737,15 +737,15 @@ class FloatingForces(generator_interface.BaseGenerator):
         # Hydrostatic model
         hs_f_g = self.buoy_F0 - np.dot(self.buoy_rest_mat, self.q[data.ts, :])
 
-        hd_f_qdot_g -= np.dot(self.floating_data['hydrodynamics']['additional_damping'], self.qdot[data.ts, :])
+        hd_f_qdot_g = -np.dot(self.floating_data['hydrodynamics']['additional_damping'], self.qdot[data.ts, :])
 
         if self.settings['method_matrices_freq'] == 'constant':
-            hd_f_qdot_g = -np.dot(self.hd_damping, self.qdot[data.ts, :])
+            hd_f_qdot_g -= np.dot(self.hd_damping, self.qdot[data.ts, :])
             hd_f_qdotdot_g = np.dot(self.hd_added_mass, self.qdotdot[data.ts, :])
             equiv_hd_added_mass = self.hd_added_mass
 
         elif self.settings['method_matrices_freq'] in ['interp_matrices', 'rational_function']:
-            hd_f_qdot_g = response_freq_dep_matrix(self.hd_damping, self.ab_freq_rads, self.qdot, data.ts, self.settings['dt'])
+            hd_f_qdot_g += response_freq_dep_matrix(self.hd_damping, self.ab_freq_rads, self.qdot, data.ts, self.settings['dt'])
             hd_f_qdotdot_g = response_freq_dep_matrix(self.hd_added_mass, self.ab_freq_rads, self.qdotdot, data.ts, self.settings['dt'])
 
             if self.added_mass_in_mass_matrix:
