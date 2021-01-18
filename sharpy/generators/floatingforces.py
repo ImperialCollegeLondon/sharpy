@@ -378,6 +378,35 @@ def response_freq_dep_matrix(H, omega_H, q, it_, dt):
     return f
 
 
+def compute_equiv_hd_added_mass(f, q):
+    """
+        Compute the matrix H that satisfies f = Hq
+        H represents the added mass effects so it has to be
+        symmetric.
+        For the OC3 platfrom the following statements hold:
+            - z-y symmetry
+            - Non-diagonal non-zero terms: (1,5) and (2,4). Zero-indexed
+    """
+
+    q_mat = np.array([[q[0], 0,    0,    0,    0,    0],
+                      [0,    q[1], 0,    0,    q[5], 0],
+                      [0,    q[2], 0,    0,    0,    q[4]],
+                      [0,    0,    q[3], 0,    0,    0],
+                      [0,    0,    0,    q[4], 0,    q[2]],
+                      [0,    0,    0,    q[5], q[1], 0]])
+
+    hv = np.dot(np.linalg.inv(q_mat), f)
+
+    H = np.array([[hv[0], 0,     0,     0,     0,     0],
+                  [0,     hv[1], 0,     0,     0,     hv[4]],
+                  [0,     0,     hv[1], 0,     hv[5], 0],
+                  [0,     0,     0,     hv[2], 0,     0],
+                  [0,     0,     hv[5], 0,     hv[3], 0],
+                  [0,     hv[4], 0,     0,     0,     hv[3]]])
+
+    return H
+
+
 @generator_interface.generator
 class FloatingForces(generator_interface.BaseGenerator):
     r"""
@@ -750,12 +779,16 @@ class FloatingForces(generator_interface.BaseGenerator):
             hd_f_qdot_g += response_freq_dep_matrix(self.hd_damping, self.ab_freq_rads, self.qdot, data.ts, self.settings['dt'])
             hd_f_qdotdot_g = response_freq_dep_matrix(self.hd_added_mass, self.ab_freq_rads, self.qdotdot, data.ts, self.settings['dt'])
 
+            # Compute the equivalent added mass matrix
+            equiv_hd_added_mass = compute_equiv_hd_added_mass(f, q)
+
+            # Update added mass in the beam
             if self.added_mass_in_mass_matrix:
                 # Compute the equivalent added mass matrix
-
-                # Update the added mass in the beam
-                cout.cout_wrap("ERROR: added_mass_in_mass_matrix not implemente for interp_matrices or rational_function", 4)
-
+                data.structure.add_lumped_mass_to_element(self.buoyancy_node,
+                                                      equiv_hd_added_mass,
+                                                      replace=True)
+                data.structure.generate_fortran()
         else:
             cout.cout_wrap(("ERROR: Unknown method_matrices_freq %s" % self.settings['method_matrices_freq']), 4)
 
