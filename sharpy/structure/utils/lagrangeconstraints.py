@@ -264,26 +264,26 @@ def equal_pos_node_FoR(MB_tstep, MB_beam, FoR_body, node_body, inode_in_body, no
     LM_C[node_dof:node_dof+3, node_FoR_dof+6:node_FoR_dof+10] = scalingFactor*algebra.der_CquatT_by_v(MB_tstep[node_body].quat, Lambda[ieq : ieq + num_LM_eq_specific])
 
     if penaltyFactor:
-        q = np.zeros((sys_size, sys_size))
+        q = np.zeros((sys_size, ))
         q[node_FoR_dof:node_FoR_dof+3] = MB_tstep[node_body].for_pos[0:3]
         q[node_dof:node_dof+3] = MB_tstep[node_body].pos[inode_in_body, :]
         q[FoR_dof:FoR_dof+3] = MB_tstep[FoR_body].for_pos[0:3]
 
-        LM_Q += penaltyFactor*np.dot(B.T, np.dot(B, q))
+        LM_Q[:sys_size] += penaltyFactor*np.dot(B.T, np.dot(B, q))
 
         LM_K[node_FoR_dof:node_FoR_dof+3, node_FoR_dof:node_FoR_dof+3] += penaltyFactor*np.eye(3)
-        LM_K[node_FoR_dof:node_FoR_dof+3, node_dof:node_dof+3] += penaltyFactor*algebra.quat2rotation(MB_tstep[node_body])
+        LM_K[node_FoR_dof:node_FoR_dof+3, node_dof:node_dof+3] += penaltyFactor*algebra.quat2rotation(MB_tstep[node_body].quat)
         LM_K[node_FoR_dof:node_FoR_dof+3, FoR_dof:FoR_dof+3] += -penaltyFactor*np.eye(3)
         LM_C[node_FoR_dof:node_FoR_dof+3, node_FoR_dof+6:node_FoR_dof+10] += penaltyFactor*algebra.der_Cquat_by_v(MB_tstep[node_body].quat, MB_tstep[node_body].pos[inode_in_body, :])
 
-        LM_K[node_FoR_dof:node_FoR_dof+3, node_FoR_dof:node_FoR_dof+3] += penaltyFactor*algebra.quat2rotation(MB_tstep[node_body]).T
+        LM_K[node_FoR_dof:node_FoR_dof+3, node_FoR_dof:node_FoR_dof+3] += penaltyFactor*algebra.quat2rotation(MB_tstep[node_body].quat).T
         LM_K[node_FoR_dof:node_FoR_dof+3, node_dof:node_dof+3] += penaltyFactor*np.eye(3)
-        LM_K[node_FoR_dof:node_FoR_dof+3, FoR_dof:FoR_dof+3] += -penaltyFactor*algebra.quat2rotation(MB_tstep[node_body]).T
+        LM_K[node_FoR_dof:node_FoR_dof+3, FoR_dof:FoR_dof+3] += -penaltyFactor*algebra.quat2rotation(MB_tstep[node_body].quat).T
         LM_C[node_FoR_dof:node_FoR_dof+3, node_FoR_dof+6:node_FoR_dof+10] += penaltyFactor*(algebra.der_CquatT_by_v(MB_tstep[node_body].quat, MB_tstep[node_body].for_pos[0:3]) -
                                                                                            algebra.der_CquatT_by_v(MB_tstep[node_body].quat, MB_tstep[FoR_body].for_pos[0:3]))
 
         LM_K[node_FoR_dof:node_FoR_dof+3, node_FoR_dof:node_FoR_dof+3] += -penaltyFactor*np.eye(3)
-        LM_K[node_FoR_dof:node_FoR_dof+3, node_dof:node_dof+3] += -penaltyFactor*algebra.quat2rotation(MB_tstep[node_body]).T
+        LM_K[node_FoR_dof:node_FoR_dof+3, node_dof:node_dof+3] += -penaltyFactor*algebra.quat2rotation(MB_tstep[node_body].quat).T
         LM_K[node_FoR_dof:node_FoR_dof+3, FoR_dof:FoR_dof+3] += penaltyFactor*np.eye(3)
         LM_C[node_FoR_dof:node_FoR_dof+3, node_FoR_dof+6:node_FoR_dof+10] += -penaltyFactor*algebra.der_Cquat_by_v(MB_tstep[node_body].quat, MB_tstep[node_body].pos[inode_in_body, :])
 
@@ -455,12 +455,13 @@ def def_rot_axis_FoR_wrt_node(MB_tstep, MB_beam, FoR_body, node_body, node_numbe
                                                                                                        new_Lambda_dot)))
 
     if penaltyFactor:
-        q = np.zeros((sys_size, sys_size))
+        q = np.zeros((sys_size,))
         q[FoR_dof+3:FoR_dof+6] = MB_tstep[FoR_body].for_vel[3:6]
 
-        LM_Q += penaltyFactor*np.dot(Bnh.T, np.dot(Bnh, q))
+        LM_Q[:sys_size] += penaltyFactor*np.dot(Bnh.T, np.dot(Bnh, q))
 
-        LM_C[FoR_dof+3:FoR_dof+6, FoR_dof+3:FoR_dof+6] += penaltyFactor*np.dot(Bnh.T, Bnh)
+        # LM_C[FoR_dof+3:FoR_dof+6, FoR_dof+3:FoR_dof+6] += penaltyFactor*np.dot(Bnh.T, Bnh)
+        LM_C[:sys_size, :sys_size] += penaltyFactor*np.dot(Bnh.T, Bnh)
 
         sq_rot_axisB = np.dot(algebra.skew(rot_axisB).T, algebra.skew(rot_axisB))
 
@@ -489,7 +490,7 @@ def def_rot_axis_FoR_wrt_node(MB_tstep, MB_beam, FoR_body, node_body, node_numbe
                                         MB_tstep[node_body].cga().T,
                                         MB_tstep[FoR_body].cga(),
                                         MB_tstep[FoR_body].for_vel[3:6])
-        LM_C[FoR_dof+3:FoR_dof+6, FoR_dof+6:FoR_dof+10] += penaltyFactor*algebra.der_CquatT_by_v(MB_tstep[FoR_body].quat, vec))
+        LM_C[FoR_dof+3:FoR_dof+6, FoR_dof+6:FoR_dof+10] += penaltyFactor*algebra.der_CquatT_by_v(MB_tstep[FoR_body].quat, vec)
 
         mat = algebra.multiply_matrices(MB_tstep[FoR_body].cga().T,
                                         MB_tstep[node_body].cga(),
