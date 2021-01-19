@@ -388,6 +388,9 @@ def compute_equiv_hd_added_mass(f, q):
             - Non-diagonal non-zero terms: (1,5) and (2,4). Zero-indexed
     """
 
+    if (q == 0).all():
+        return np.zeros((6,6))
+
     q_mat = np.array([[q[0], 0,    0,    0,    0,    0],
                       [0,    q[1], 0,    0,    q[5], 0],
                       [0,    q[2], 0,    0,    0,    q[4]],
@@ -768,53 +771,58 @@ class FloatingForces(generator_interface.BaseGenerator):
         # Hydrostatic model
         hs_f_g = self.buoy_F0 - np.dot(self.buoy_rest_mat, self.q[data.ts, :])
 
-        hd_f_qdot_g = -np.dot(self.floating_data['hydrodynamics']['additional_damping'], self.qdot[data.ts, :])
+        if not force_coeff == 0.:
+            hd_f_qdot_g = -np.dot(self.floating_data['hydrodynamics']['additional_damping'], self.qdot[data.ts, :])
 
-        if self.settings['method_matrices_freq'] == 'constant':
-            hd_f_qdot_g -= np.dot(self.hd_damping, self.qdot[data.ts, :])
-            hd_f_qdotdot_g = np.dot(self.hd_added_mass, self.qdotdot[data.ts, :])
-            equiv_hd_added_mass = self.hd_added_mass
+            if self.settings['method_matrices_freq'] == 'constant':
+                hd_f_qdot_g -= np.dot(self.hd_damping, self.qdot[data.ts, :])
+                hd_f_qdotdot_g = np.dot(self.hd_added_mass, self.qdotdot[data.ts, :])
+                equiv_hd_added_mass = self.hd_added_mass
 
-        elif self.settings['method_matrices_freq'] in ['interp_matrices', 'rational_function']:
-            hd_f_qdot_g += response_freq_dep_matrix(self.hd_damping, self.ab_freq_rads, self.qdot, data.ts, self.settings['dt'])
-            hd_f_qdotdot_g = response_freq_dep_matrix(self.hd_added_mass, self.ab_freq_rads, self.qdotdot, data.ts, self.settings['dt'])
+            elif self.settings['method_matrices_freq'] in ['interp_matrices', 'rational_function']:
+                hd_f_qdot_g += response_freq_dep_matrix(self.hd_damping, self.ab_freq_rads, self.qdot, data.ts, self.settings['dt'])
+                hd_f_qdotdot_g = response_freq_dep_matrix(self.hd_added_mass, self.ab_freq_rads, self.qdotdot, data.ts, self.settings['dt'])
 
-            # Compute the equivalent added mass matrix
-            equiv_hd_added_mass = compute_equiv_hd_added_mass(f, q)
-
-            # Update added mass in the beam
-            if self.added_mass_in_mass_matrix:
                 # Compute the equivalent added mass matrix
-                data.structure.add_lumped_mass_to_element(self.buoyancy_node,
-                                                      equiv_hd_added_mass,
-                                                      replace=True)
-                data.structure.generate_fortran()
+                equiv_hd_added_mass = compute_equiv_hd_added_mass(hd_f_qdotdot_g, self.qdotdot[data.ts, :])
+
+                # Update added mass in the beam
+                if self.added_mass_in_mass_matrix:
+                    # Compute the equivalent added mass matrix
+                    data.structure.add_lumped_mass_to_element(self.buoyancy_node,
+                                                          equiv_hd_added_mass,
+                                                          replace=True)
+                    data.structure.generate_fortran()
+            else:
+                cout.cout_wrap(("ERROR: Unknown method_matrices_freq %s" % self.settings['method_matrices_freq']), 4)
+
+            # Correct gravity forces if needed
+            if self.added_mass_in_mass_matrix:
+                # Compensate added mass
+                # struct_tstep.runtime_generated_forces[self.buoyancy_node, 0:3] += np.dot(cbg,
+                #                                                             hd_f_qdotdot_g[0:3])
+                # struct_tstep.runtime_generated_forces[self.buoyancy_node, 3:6] += np.dot(cbg,
+                #                                                              hd_f_qdotdot_g[3:6])
+
+                # Correct unreal gravity forces from added mass
+                gravity_b = np.zeros((6,),)
+                gravity_b[0:3] = np.dot(cbg, -self.settings['gravity_dir'])*self.settings['gravity']
+                hd_correct_grav = -np.dot(equiv_hd_added_mass, gravity_b)
+                struct_tstep.runtime_generated_forces[self.buoyancy_node, :] += hd_correct_grav
+                hd_f_qdotdot_g = np.zeros((6))
+            else:
+                hd_correct_grav = np.zeros((6))
+
+                # if self.added_mass_in_mass_matrix:
+                    # # Include added mass in structure
+                    # data.structure.add_lumped_mass_to_element(self.buoyancy_node,
+                                                # self.hd_added_mass)
+                                                # data.structure.generate_fortran()
+                                                # # self.hd_added_mass *= 0.
         else:
-            cout.cout_wrap(("ERROR: Unknown method_matrices_freq %s" % self.settings['method_matrices_freq']), 4)
-
-        # Correct gravity forces if needed
-        if self.added_mass_in_mass_matrix:
-            # Compensate added mass
-            # struct_tstep.runtime_generated_forces[self.buoyancy_node, 0:3] += np.dot(cbg,
-            #                                                             hd_f_qdotdot_g[0:3])
-            # struct_tstep.runtime_generated_forces[self.buoyancy_node, 3:6] += np.dot(cbg,
-            #                                                              hd_f_qdotdot_g[3:6])
-
-            # Correct unreal gravity forces from added mass
-            gravity_b = np.zeros((6,),)
-            gravity_b[0:3] = np.dot(cbg, -self.settings['gravity_dir'])*self.settings['gravity']
-            hd_correct_grav = -np.dot(equiv_hd_added_mass, gravity_b)
-            struct_tstep.runtime_generated_forces[self.buoyancy_node, :] += hd_correct_grav
+            hd_f_qdot_g = np.zeros((6))
             hd_f_qdotdot_g = np.zeros((6))
-        else:
             hd_correct_grav = np.zeros((6))
-
-            # if self.added_mass_in_mass_matrix:
-                # # Include added mass in structure
-                # data.structure.add_lumped_mass_to_element(self.buoyancy_node,
-                                            # self.hd_added_mass)
-                                            # data.structure.generate_fortran()
-                                            # # self.hd_added_mass *= 0.
 
         ielem, inode_in_elem = data.structure.node_master_elem[self.buoyancy_node]
         cab = algebra.crv2rotation(struct_tstep.psi[ielem, inode_in_elem])
