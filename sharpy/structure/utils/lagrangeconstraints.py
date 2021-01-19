@@ -234,7 +234,7 @@ def set_value_or_default(dictionary, key, default_val):
 ################################################################################
 # Equations
 ################################################################################
-def equal_pos_node_FoR(MB_tstep, MB_beam, FoR_body, node_body, node_FoR_dof, node_dof, FoR_dof, sys_size, Lambda, scalingFactor, penaltyFactor, ieq, LM_K, LM_C, LM_Q):
+def equal_pos_node_FoR(MB_tstep, MB_beam, FoR_body, node_body, inode_in_body, node_FoR_dof, node_dof, FoR_dof, sys_size, Lambda, scalingFactor, penaltyFactor, ieq, LM_K, LM_C, LM_Q):
     """
     This function generates the stiffness and damping matrices and the independent vector associated to a constraint that
     imposes equal positions between a node and a frame of reference
@@ -262,6 +262,30 @@ def equal_pos_node_FoR(MB_tstep, MB_beam, FoR_body, node_body, node_FoR_dof, nod
     LM_Q[:sys_size] += scalingFactor*np.dot(np.transpose(B), Lambda[ieq:ieq+num_LM_eq_specific])
 
     LM_C[node_dof:node_dof+3, node_FoR_dof+6:node_FoR_dof+10] = scalingFactor*algebra.der_CquatT_by_v(MB_tstep[node_body].quat, Lambda[ieq : ieq + num_LM_eq_specific])
+
+    if penaltyFactor:
+        q = np.zeros((sys_size, sys_size))
+        q[node_FoR_dof:node_FoR_dof+3] = MB_tstep[node_body].for_pos
+        q[node_dof:node_dof+3] = MB_tstep[node_body].pos[inode_in_body, :]
+        q[FoR_dof:FoR_dof+3] = MB_tstep[FoR_body].for_pos
+
+        LM_Q = penaltyFactor*np.dot(B.T, np.dot(B, q))
+
+        LM_K[node_FoR_dof:node_FoR_dof+3, node_FoR_dof:node_FoR_dof+3] = penaltyFactor*np.eye(3)
+        LM_K[node_FoR_dof:node_FoR_dof+3, node_dof:node_dof+3] = penaltyFactor*algebra.quat2rotation(MB_tstep[node_body])
+        LM_K[node_FoR_dof:node_FoR_dof+3, FoR_dof:FoR_dof+3] = -penaltyFactor*np.eye(3)
+        LM_C[node_FoR_dof:node_FoR_dof+3, node_FoR_dof+6:node_FoR_dof+10] = penaltyFactor*algebra.der_Cquat_by_v(MB_tstep[node_body].quat, MB_tstep[node_body].pos[inode_in_body, :])
+
+        LM_K[node_FoR_dof:node_FoR_dof+3, node_FoR_dof:node_FoR_dof+3] = penaltyFactor*algebra.quat2rotation(MB_tstep[node_body]).T
+        LM_K[node_FoR_dof:node_FoR_dof+3, node_dof:node_dof+3] = penaltyFactor*np.eye(3)
+        LM_K[node_FoR_dof:node_FoR_dof+3, FoR_dof:FoR_dof+3] = -penaltyFactor*algebra.quat2rotation(MB_tstep[node_body]).T
+        LM_C[node_FoR_dof:node_FoR_dof+3, node_FoR_dof+6:node_FoR_dof+10] = penaltyFactor*(algebra.der_CquatT_by_v(MB_tstep[node_body].quat, MB_tstep[node_body].for_pos[0:3]) -
+                                                                                           algebra.der_CquatT_by_v(MB_tstep[node_body].quat, MB_tstep[FoR_body].for_pos[0:3]))
+
+        LM_K[node_FoR_dof:node_FoR_dof+3, node_FoR_dof:node_FoR_dof+3] = -penaltyFactor*np.eye(3)
+        LM_K[node_FoR_dof:node_FoR_dof+3, node_dof:node_dof+3] = -penaltyFactor*algebra.quat2rotation(MB_tstep[node_body]).T
+        LM_K[node_FoR_dof:node_FoR_dof+3, FoR_dof:FoR_dof+3] = penaltyFactor*np.eye(3)
+        LM_C[node_FoR_dof:node_FoR_dof+3, node_FoR_dof+6:node_FoR_dof+10] = -penaltyFactor*algebra.der_Cquat_by_v(MB_tstep[node_body].quat, MB_tstep[node_body].pos[inode_in_body, :])
 
     ieq += 3
     return ieq
@@ -610,8 +634,8 @@ class hinge_node_FoR(BaseLagrangeConstraint):
         ieq = self._ieq
 
         # Define the equations
-        ieq =  equal_pos_node_FoR(MB_tstep, MB_beam, self.FoR_body, self.node_body, node_FoR_dof, node_dof, FoR_dof, sys_size, Lambda, self.scalingFactor, self.penaltyFactor, ieq, LM_K, LM_C, LM_Q)
-        # ieq -= 3 
+        ieq =  equal_pos_node_FoR(MB_tstep, MB_beam, self.FoR_body, self.node_body, self.node_number, node_FoR_dof, node_dof, FoR_dof, sys_size, Lambda, self.scalingFactor, self.penaltyFactor, ieq, LM_K, LM_C, LM_Q)
+        # ieq -= 3
         # ieq = equal_lin_vel_node_FoR(MB_tstep, MB_beam, self.FoR_body, self.node_body, self.node_number, node_FoR_dof, node_dof, FoR_dof, sys_size, Lambda_dot, self.scalingFactor, self.penaltyFactor, ieq, LM_K, LM_C, LM_Q)
         ieq = def_rot_axis_FoR_wrt_node(MB_tstep, MB_beam, self.FoR_body, self.node_body, self.node_number, node_FoR_dof, node_dof, FoR_dof, sys_size, Lambda_dot, self.rot_axisB, self.scalingFactor, self.penaltyFactor, ieq, LM_K, LM_C, LM_Q, self.indep)
 
@@ -685,7 +709,7 @@ class hinge_node_FoR_constant_vel(BaseLagrangeConstraint):
         ieq = self._ieq
 
         # Define the equations
-        ieq =  equal_pos_node_FoR(MB_tstep, MB_beam, self.FoR_body, self.node_body, node_FoR_dof, node_dof, FoR_dof, sys_size, Lambda, self.scalingFactor, self.penaltyFactor, ieq, LM_K, LM_C, LM_Q)
+        ieq =  equal_pos_node_FoR(MB_tstep, MB_beam, self.FoR_body, self.node_body, self.node_number, node_FoR_dof, node_dof, FoR_dof, sys_size, Lambda, self.scalingFactor, self.penaltyFactor, ieq, LM_K, LM_C, LM_Q)
         # ieq -= 3
         # ieq = equal_lin_vel_node_FoR(MB_tstep, MB_beam, self.FoR_body, self.node_body, self.node_number, node_FoR_dof, node_dof, FoR_dof, sys_size, Lambda_dot, self.scalingFactor, self.penaltyFactor, ieq, LM_K, LM_C, LM_Q)
         ieq = def_rot_vect_FoR_wrt_node(MB_tstep, MB_beam, self.FoR_body, self.node_body, self.node_number, node_FoR_dof, node_dof, FoR_dof, sys_size, Lambda_dot, self.rot_vect, self.scalingFactor, self.penaltyFactor, ieq, LM_K, LM_C, LM_Q)
