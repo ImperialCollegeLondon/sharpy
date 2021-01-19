@@ -454,6 +454,69 @@ def def_rot_axis_FoR_wrt_node(MB_tstep, MB_beam, FoR_body, node_body, node_numbe
                                                                                                 np.dot(algebra.skew(rot_axisB).T,
                                                                                                        new_Lambda_dot)))
 
+    if penaltyFactor:
+        q = np.zeros((sys_size, sys_size))
+        q[FoR_dof+3:FoR_dof+6] = MB_tstep[FoR_body].for_vel[3:6]
+
+        LM_Q += penaltyFactor*np.dot(Bnh.T, np.dot(Bnh, q))
+
+        LM_C[FoR_dof+3:FoR_dof+6, FoR_dof+3:FoR_dof+6] += penaltyFactor*np.dot(Bnh.T, Bnh)
+
+        sq_rot_axisB = np.dot(algebra.skew(rot_axisB).T, algebra.skew(rot_axisB))
+
+        # Derivatives with the quaternion of the FoR of the node
+        vec = algebra.multiply_matrices(algebra.crv2rotation(MB_tstep[node_body].psi[ielem,inode_in_elem,:]).T,
+                                        sq_rot_axisB,
+                                        algebra.crv2rotation(MB_tstep[node_body].psi[ielem,inode_in_elem,:]),
+                                        MB_tstep[node_body].cga().T,
+                                        MB_tstep[FoR_body].cga(),
+                                        MB_tstep[FoR_body].for_vel[3:6])
+        LM_C[FoR_dof+3:FoR_dof+6, node_FoR_dof+6:node_FoR_dof+10] += penaltyFactor*np.dot(MB_tstep[FoR_body].cga().T,
+                                                                                          algebra.der_Cquat_by_v(MB_tstep[node_body].quat, vec))
+        mat = algebra.multiply_matrices(MB_tstep[FoR_body].cga().T,
+                                        MB_tstep[node_body].cga(),
+                                        algebra.crv2rotation(MB_tstep[node_body].psi[ielem,inode_in_elem,:]).T,
+                                        sq_rot_axisB,
+                                        algebra.crv2rotation(MB_tstep[node_body].psi[ielem,inode_in_elem,:]))
+        vec = np.dot(MB_tstep[FoR_body].cga(), MB_tstep[FoR_body].for_vel[3:6])
+        LM_C[FoR_dof+3:FoR_dof+6, node_FoR_dof+6:node_FoR_dof+10] += penaltyFactor*np.dot(mat, algebra.der_CquatT_by_v(MB_tstep[node_body].quat, vec))
+
+        # Derivatives with the quaternion of the FoR
+        vec = algebra.multiply_matrices(MB_tstep[node_body].cga(),
+                                        algebra.crv2rotation(MB_tstep[node_body].psi[ielem,inode_in_elem,:]).T,
+                                        sq_rot_axisB,
+                                        algebra.crv2rotation(MB_tstep[node_body].psi[ielem,inode_in_elem,:]),
+                                        MB_tstep[node_body].cga().T,
+                                        MB_tstep[FoR_body].cga(),
+                                        MB_tstep[FoR_body].for_vel[3:6])
+        LM_C[FoR_dof+3:FoR_dof+6, FoR_dof+6:FoR_dof+10] += penaltyFactor*algebra.der_CquatT_by_v(MB_tstep[FoR_body].quat, vec))
+
+        mat = algebra.multiply_matrices(MB_tstep[FoR_body].cga().T,
+                                        MB_tstep[node_body].cga(),
+                                        algebra.crv2rotation(MB_tstep[node_body].psi[ielem,inode_in_elem,:]).T,
+                                        sq_rot_axisB,
+                                        algebra.crv2rotation(MB_tstep[node_body].psi[ielem,inode_in_elem,:]),
+                                        MB_tstep[node_body].cga().T)
+        LM_C[FoR_dof+3:FoR_dof+6, FoR_dof+6:FoR_dof+10] += penaltyFactor*np.dot(mat, algebra.der_Cquat_by_v(MB_tstep[FoR_body].quat, MB_tstep[FoR_body].for_vel[3:6]))
+
+        # Derivatives with the CRV
+        mat = np.dot(MB_tstep[FoR_body].cga().T, MB_tstep[node_body].cga())
+        vec = algebra.multiply_matrices(sq_rot_axisB,
+                                        algebra.crv2rotation(MB_tstep[node_body].psi[ielem,inode_in_elem,:]),
+                                        MB_tstep[node_body].cga().T,
+                                        MB_tstep[FoR_body].cga(),
+                                        MB_tstep[FoR_body].for_vel[3:6])
+        LM_K[FoR_dof+3:FoR_dof+6, node_dof+3:node_dof+6] += penaltyFactor*np.dot(mat, algebra.der_CcrvT_by_v(MB_tstep[node_body].psi[ielem,inode_in_elem,:], vec))
+
+        mat = algebra.multiply_matrices(MB_tstep[FoR_body].cga().T,
+                                        MB_tstep[node_body].cga(),
+                                        algebra.crv2rotation(MB_tstep[node_body].psi[ielem,inode_in_elem,:]).T,
+                                        sq_rot_axisB)
+        vec = algebra.multiply_matrices(MB_tstep[node_body].cga().T,
+                                        MB_tstep[FoR_body].cga(),
+                                        MB_tstep[FoR_body].for_vel[3:6])
+        LM_K[FoR_dof+3:FoR_dof+6, node_dof+3:node_dof+6] += penaltyFactor*np.dot(mat, algebra.der_Ccrv_by_v(MB_tstep[node_body].psi[ielem,inode_in_elem,:], vec))
+
     ieq += 2
     return ieq
 
