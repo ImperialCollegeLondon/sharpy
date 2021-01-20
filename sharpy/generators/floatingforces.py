@@ -601,15 +601,16 @@ class FloatingForces(generator_interface.BaseGenerator):
             # self.hd_damping *= 0.
 
         self.added_mass_in_mass_matrix = self.settings['added_mass_in_mass_matrix']
-        if ((self.settings['method_matrices_freq'] == 'constant') and 
-            self.added_mass_in_mass_matrix):
+        if self.added_mass_in_mass_matrix:
+        # if ((self.settings['method_matrices_freq'] == 'constant') and 
+        #     self.added_mass_in_mass_matrix):
                 # Include added mass in structure
-                data.structure.add_lumped_mass_to_element(self.buoyancy_node,
+            data.structure.add_lumped_mass_to_element(self.buoyancy_node,
                                                       self.hd_added_mass_const)
-                data.structure.generate_fortran()
-                # self.hd_added_mass *= 0.
+            data.structure.generate_fortran()
+            # self.hd_added_mass *= 0.
 
-        elif self.settings['method_matrices_freq'] == 'interp_matrices':
+        if self.settings['method_matrices_freq'] == 'interp_matrices':
             self.hd_added_mass = self.floating_data['hydrodynamics']['added_mass_matrix']
             self.hd_damping = self.floating_data['hydrodynamics']['damping_matrix']
             self.ab_freq_rads = self.floating_data['hydrodynamics']['ab_freq_rads']
