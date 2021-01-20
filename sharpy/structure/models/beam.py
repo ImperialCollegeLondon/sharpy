@@ -327,7 +327,7 @@ class Beam(BaseStructure):
                     self.elements[i_lumped_master_elem].max_nodes_elem, 6, 6))
 
             if replace:
-                self.elements[i_lumped_master_elem].rbmass[i_lumped_master_node_local, :, :] += (
+                self.elements[i_lumped_master_elem].rbmass[i_lumped_master_node_local, :, :] = (
                     inertia_tensor) # += necessary in case multiple masses defined per node
             else:
                 self.elements[i_lumped_master_elem].rbmass[i_lumped_master_node_local, :, :] = (
