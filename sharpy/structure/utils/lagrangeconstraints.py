@@ -994,6 +994,18 @@ class hinge_FoR(BaseLagrangeConstraint):
         self.scalingFactor = set_value_or_default(MBdict_entry, "scalingFactor", 1.)
         self.penaltyFactor = set_value_or_default(MBdict_entry, "penaltyFactor", 0.)
 
+        if (self.rot_axis[1, 2]  == 0).all():
+            self.rot_dir = 'x'
+            self.zero_comp = np.array([1, 2], dtype=int)
+        elif (self.rot_axis[0, 2]  == 0).all():
+            self.rot_dir = 'y'
+            self.zero_comp = np.array([0, 2], dtype=int)
+        elif (self.rot_axis[0, 1]  == 0).all():
+            self.rot_dir = 'z'
+            self.zero_comp = np.array([0, 1], dtype=int)
+        else:
+            self.rot_dir = 'general'
+
         return self._ieq + self._n_eq
 
     def staticmat(self, LM_C, LM_K, LM_Q, MB_beam, MB_tstep, ts, num_LM_eq,
@@ -1012,22 +1024,24 @@ class hinge_FoR(BaseLagrangeConstraint):
 
         Bnh[:3, FoR_dof:FoR_dof+3] = 1.0*np.eye(3)
 
-        # Only two of these equations are linearly independent
-        skew_rot_axis = ag.skew(self.rot_axis)
-        n0 = np.linalg.norm(skew_rot_axis[0,:])
-        n1 = np.linalg.norm(skew_rot_axis[1,:])
-        n2 = np.linalg.norm(skew_rot_axis[2,:])
-        if ((n0 < n1) and (n0 < n2)):
-            row0 = 1
-            row1 = 2
-        elif ((n1 < n0) and (n1 < n2)):
-            row0 = 0
-            row1 = 2
-        elif ((n2 < n0) and (n2 < n1)):
-            row0 = 0
-            row1 = 1
-
-        Bnh[3:5, FoR_dof+3:FoR_dof+6] = skew_rot_axis[[row0,row1],:]
+        if self.rot_dir == 'general':
+            # Only two of these equations are linearly independent
+            skew_rot_axis = ag.skew(self.rot_axis)
+            n0 = np.linalg.norm(skew_rot_axis[0,:])
+            n1 = np.linalg.norm(skew_rot_axis[1,:])
+            n2 = np.linalg.norm(skew_rot_axis[2,:])
+            if ((n0 < n1) and (n0 < n2)):
+                row0 = 1
+                row1 = 2
+            elif ((n1 < n0) and (n1 < n2)):
+                row0 = 0
+                row1 = 2
+            elif ((n2 < n0) and (n2 < n1)):
+                row0 = 0
+                row1 = 1
+            Bnh[3:5, FoR_dof+3:FoR_dof+6] = skew_rot_axis[[row0,row1],:]
+        else:
+            Bnh[3:5, FoR_dof+self.zero_comp] = np.eye(2)
 
         LM_C[sys_size+ieq:sys_size+ieq+num_LM_eq_specific,:sys_size] += self.scalingFactor*Bnh
         LM_C[:sys_size,sys_size+ieq:sys_size+ieq+num_LM_eq_specific] += self.scalingFactor*np.transpose(Bnh)
@@ -1035,7 +1049,10 @@ class hinge_FoR(BaseLagrangeConstraint):
         LM_Q[:sys_size] += self.scalingFactor*np.dot(np.transpose(Bnh),Lambda_dot[ieq:ieq+num_LM_eq_specific])
 
         LM_Q[sys_size+ieq:sys_size+ieq+3] += self.scalingFactor*MB_tstep[self.body_FoR].for_vel[0:3].astype(dtype=ct.c_double, copy=True, order='F')
-        LM_Q[sys_size+ieq+3:sys_size+ieq+5] += self.scalingFactor*np.dot(skew_rot_axis[[row0,row1],:], MB_tstep[self.body_FoR].for_vel[3:6])
+        if self.rot_dir == 'general':
+            LM_Q[sys_size+ieq+3:sys_size+ieq+5] += self.scalingFactor*np.dot(skew_rot_axis[[row0,row1],:], MB_tstep[self.body_FoR].for_vel[3:6])
+        else:
+            LM_Q[sys_size+ieq+3:sys_size+ieq+5] += self.scalingFactor*MB_tstep[self.body_FoR].for_vel[3 + self.zero_comp]
 
         ieq += 5
         return
