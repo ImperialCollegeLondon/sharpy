@@ -605,7 +605,7 @@ class FloatingForces(generator_interface.BaseGenerator):
             self.added_mass_in_mass_matrix):
                 # Include added mass in structure
                 data.structure.add_lumped_mass_to_element(self.buoyancy_node,
-                                                      self.hd_added_mass)
+                                                      self.hd_added_mass_const)
                 data.structure.generate_fortran()
                 # self.hd_added_mass *= 0.
 
