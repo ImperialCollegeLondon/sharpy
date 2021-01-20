@@ -585,7 +585,7 @@ def def_rot_vel_FoR_wrt_node(MB_tstep, MB_beam, FoR_body, node_body, node_number
                                                                                                 ag.crv2rotation(MB_tstep[node_body].psi[ielem,inode_in_elem,:]).T,
                                                                                                 rot_axisB.T*Lambda_dot[ieq:ieq+num_LM_eq_specific]))
 
-    LM_K[FoR_dof+3:FoR_dof+6,node_dof+3:node_dof+6] += scalingFactor*ag.multiply_matrices(MB_tstep[FoR_body].cga()).T,
+    LM_K[FoR_dof+3:FoR_dof+6,node_dof+3:node_dof+6] += scalingFactor*ag.multiply_matrices(MB_tstep[FoR_body].cga().T,
                                                                          MB_tstep[node_body].cga(),
                                                                          ag.der_Ccrv_by_v(MB_tstep[node_body].psi[ielem,inode_in_elem,:],
                                                                                                 rot_axisB.T*Lambda_dot[ieq:ieq+num_LM_eq_specific]))
