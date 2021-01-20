@@ -345,7 +345,7 @@ def response_freq_dep_matrix(H, omega_H, q, it_, dt):
     Compute the frequency response of a system with a transfer function depending on the frequency
     F(t) = H(omega) * q(t)
     """
-    it = max(10, it_ + 1)
+    it = it_ + 1
     omega_fft = np.linspace(0, 1/(2*dt), it//2)[:it//2]
     fourier_q = fft(q[:it, :], axis=0)
     fourier_f = np.zeros_like(fourier_q)
@@ -471,8 +471,12 @@ class FloatingForces(generator_interface.BaseGenerator):
     settings_options['method_matrices_freq'] = ['constant', 'interp_matrices', 'rational_function']
 
     settings_types['matrices_freq'] = 'float'
-    settings_default['matrices_freq'] = None
+    settings_default['matrices_freq'] = 4.8 # Close to the upper limit defined in the oc3 report
     settings_description['matrices_freq'] = 'Frequency [rad/s] to interpolate frequency-dependent matrices'
+
+    settings_types['steps_constant_matrices'] = 'int'
+    settings_default['steps_constant_matrices'] = 8
+    settings_description['steps_constant_matrices'] = 'Time steps to compute with constant matrices computed at ``matrices_freq``. Irrelevant in ``method_matrices_freq``=``constant``'
 
     settings_types['added_mass_in_mass_matrix'] = 'bool'
     settings_default['added_mass_in_mass_matrix'] = True
@@ -585,20 +589,20 @@ class FloatingForces(generator_interface.BaseGenerator):
         self.buoy_rest_mat = self.floating_data['hydrostatics']['buoyancy_restoring_matrix']
 
         # hydrodynamics
-        self.added_mass_in_mass_matrix = self.settings['added_mass_in_mass_matrix']
-        if self.settings['method_matrices_freq'] == 'constant':
-            self.hd_added_mass = interp_1st_dim_matrix(self.floating_data['hydrodynamics']['added_mass_matrix'],
+        self.hd_added_mass_const = interp_1st_dim_matrix(self.floating_data['hydrodynamics']['added_mass_matrix'],
                                         self.floating_data['hydrodynamics']['ab_freq_rads'],
-                                           self.settings['matrices_freq'])
+                                        self.settings['matrices_freq'])
 
-            self.hd_damping = interp_1st_dim_matrix(self.floating_data['hydrodynamics']['damping_matrix'],
+        self.hd_damping_const = interp_1st_dim_matrix(self.floating_data['hydrodynamics']['damping_matrix'],
                                         self.floating_data['hydrodynamics']['ab_freq_rads'],
-                                           self.settings['matrices_freq'])
+                                        self.settings['matrices_freq'])
 
             # self.hd_added_mass *= 0.
             # self.hd_damping *= 0.
 
-            if self.added_mass_in_mass_matrix:
+        self.added_mass_in_mass_matrix = self.settings['added_mass_in_mass_matrix']
+        if ((self.settings['method_matrices_freq'] == 'constant') and 
+            self.added_mass_in_mass_matrix):
                 # Include added mass in structure
                 data.structure.add_lumped_mass_to_element(self.buoyancy_node,
                                                       self.hd_added_mass)
@@ -776,10 +780,11 @@ class FloatingForces(generator_interface.BaseGenerator):
         if not force_coeff == 0.:
             hd_f_qdot_g = -np.dot(self.floating_data['hydrodynamics']['additional_damping'], self.qdot[data.ts, :])
 
-            if self.settings['method_matrices_freq'] == 'constant':
-                hd_f_qdot_g -= np.dot(self.hd_damping, self.qdot[data.ts, :])
-                hd_f_qdotdot_g = -np.dot(self.hd_added_mass, self.qdotdot[data.ts, :])
-                equiv_hd_added_mass = self.hd_added_mass
+            if ((self.settings['method_matrices_freq'] == 'constant') or
+                 (data.ts < self.settings['steps_constant_matrices'])):
+                hd_f_qdot_g -= np.dot(self.hd_damping_const, self.qdot[data.ts, :])
+                hd_f_qdotdot_g = -np.dot(self.hd_added_mass_const, self.qdotdot[data.ts, :])
+                equiv_hd_added_mass = self.hd_added_mass_const
 
             elif self.settings['method_matrices_freq'] in ['interp_matrices', 'rational_function']:
                 hd_f_qdot_g -= response_freq_dep_matrix(self.hd_damping, self.ab_freq_rads, self.qdot, data.ts, self.settings['dt'])
@@ -787,6 +792,12 @@ class FloatingForces(generator_interface.BaseGenerator):
 
                 # Compute the equivalent added mass matrix
                 equiv_hd_added_mass = compute_equiv_hd_added_mass(-hd_f_qdotdot_g, self.qdotdot[data.ts, :])
+                if self.added_mass_in_mass_matrix:
+                    data.structure.add_lumped_mass_to_element(self.buoyancy_node,
+                                                              equiv_hd_added_mass,
+                                                              replace=True)
+                    data.structure.generate_fortran()
+
             else:
                 cout.cout_wrap(("ERROR: Unknown method_matrices_freq %s" % self.settings['method_matrices_freq']), 4)
 
@@ -797,11 +808,6 @@ class FloatingForces(generator_interface.BaseGenerator):
                 #                                                             hd_f_qdotdot_g[0:3])
                 # struct_tstep.runtime_generated_forces[self.buoyancy_node, 3:6] += np.dot(cbg,
                 #                                                              hd_f_qdotdot_g[3:6])
-                data.structure.add_lumped_mass_to_element(self.buoyancy_node,
-                                                          equiv_hd_added_mass,
-                                                          replace=True)
-                data.structure.generate_fortran()
-
                 # Correct unreal gravity forces from added mass
                 gravity_b = np.zeros((6,),)
                 gravity_b[0:3] = np.dot(cbg, -self.settings['gravity_dir'])*self.settings['gravity']
