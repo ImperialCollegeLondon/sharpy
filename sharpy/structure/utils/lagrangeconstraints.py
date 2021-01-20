@@ -1054,6 +1054,19 @@ class hinge_FoR(BaseLagrangeConstraint):
         else:
             LM_Q[sys_size+ieq+3:sys_size+ieq+5] += self.scalingFactor*MB_tstep[self.body_FoR].for_vel[3 + self.zero_comp]
 
+        if penaltyFactor:
+            LM_Q[FoR_dof:FoR_dof+3] += penaltyFactor*MB_tstep[self.body_FoR].for_vel[0:3]
+            LM_C[FoR_dof:FoR_dof+3, FoR_dof:FoR_dof+3] += penaltyFactor*np.eye(3)
+
+            if self.rot_dir = 'general':
+                sq_rot_axis = np.dot(ag.skew(self.rot_axis).T, ag.skew(self.rot_axis))
+                LM_Q[FoR_dof+3:FoR_dof+6] += penaltyFactor*np.dot(sq_rot_axis, MB_tstep[self.body_FoR].for_vel[3:6])
+                LM_C[FoR_dof+3:FoR_dof+6, FoR_dof+3:FoR_dof+6] += penaltyFactor*sq_rot_axis
+            else:
+                LM_Q[FoR_dof+self.zero_comp] += penaltyFactor*np.eye(2)* MB_tstep[self.body_FoR].for_vel[3+self.zero_comp])
+                LM_C[FoR_dof+3+self.zero_comp, FoR_dof+3+self.zero_comp] += penaltyFactor*np.eye(2)
+
+
         ieq += 5
         return
 
