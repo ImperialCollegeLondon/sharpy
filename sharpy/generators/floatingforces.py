@@ -345,7 +345,7 @@ def response_freq_dep_matrix(H, omega_H, q, it_, dt):
     Compute the frequency response of a system with a transfer function depending on the frequency
     F(t) = H(omega) * q(t)
     """
-    it = max(10, it_)
+    it = max(10, it_ + 1)
     omega_fft = np.linspace(0, 1/(2*dt), it//2)[:it//2]
     fourier_q = fft(q[:it, :], axis=0)
     fourier_f = np.zeros_like(fourier_q)
@@ -356,6 +356,8 @@ def response_freq_dep_matrix(H, omega_H, q, it_, dt):
     # Compute the constant component
     if type(H) is np.ndarray:
         H_omega = interp_1st_dim_matrix(H, omega_H, omega_fft[0])
+    # if True:
+    #     H_omega = interp_1st_dim_matrix(H, omega_H, 2.*np.pi/120.)
     elif type(H) is dict:
         H_omega = matrix_from_rf(H, omega_fft[0])
     else:
@@ -373,7 +375,7 @@ def response_freq_dep_matrix(H, omega_H, q, it_, dt):
         fourier_f[-iomega, :] = np.dot(H_omega, fourier_q[-iomega, :])
 
     # Compute the inverse Fourier tranform
-    f[:] = np.real(ifft(fourier_f, axis=0)[-1])
+    f[:] = np.real(ifft(fourier_f, axis=0)[it_, :])
 
     return f
 
@@ -785,14 +787,6 @@ class FloatingForces(generator_interface.BaseGenerator):
 
                 # Compute the equivalent added mass matrix
                 equiv_hd_added_mass = compute_equiv_hd_added_mass(-hd_f_qdotdot_g, self.qdotdot[data.ts, :])
-
-                # Update added mass in the beam
-                if self.added_mass_in_mass_matrix:
-                    # Compute the equivalent added mass matrix
-                    data.structure.add_lumped_mass_to_element(self.buoyancy_node,
-                                                          equiv_hd_added_mass,
-                                                          replace=True)
-                    data.structure.generate_fortran()
             else:
                 cout.cout_wrap(("ERROR: Unknown method_matrices_freq %s" % self.settings['method_matrices_freq']), 4)
 
@@ -803,6 +797,10 @@ class FloatingForces(generator_interface.BaseGenerator):
                 #                                                             hd_f_qdotdot_g[0:3])
                 # struct_tstep.runtime_generated_forces[self.buoyancy_node, 3:6] += np.dot(cbg,
                 #                                                              hd_f_qdotdot_g[3:6])
+                data.structure.add_lumped_mass_to_element(self.buoyancy_node,
+                                                          equiv_hd_added_mass,
+                                                          replace=True)
+                data.structure.generate_fortran()
 
                 # Correct unreal gravity forces from added mass
                 gravity_b = np.zeros((6,),)
