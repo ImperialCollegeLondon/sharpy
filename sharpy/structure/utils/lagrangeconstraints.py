@@ -994,13 +994,13 @@ class hinge_FoR(BaseLagrangeConstraint):
         self.scalingFactor = set_value_or_default(MBdict_entry, "scalingFactor", 1.)
         self.penaltyFactor = set_value_or_default(MBdict_entry, "penaltyFactor", 0.)
 
-        if (self.rot_axis[1, 2]  == 0).all():
+        if (self.rot_axis[[1, 2]]  == 0).all():
             self.rot_dir = 'x'
             self.zero_comp = np.array([1, 2], dtype=int)
-        elif (self.rot_axis[0, 2]  == 0).all():
+        elif (self.rot_axis[[0, 2]]  == 0).all():
             self.rot_dir = 'y'
             self.zero_comp = np.array([0, 2], dtype=int)
-        elif (self.rot_axis[0, 1]  == 0).all():
+        elif (self.rot_axis[[0, 1]]  == 0).all():
             self.rot_dir = 'z'
             self.zero_comp = np.array([0, 1], dtype=int)
         else:
@@ -1054,17 +1054,17 @@ class hinge_FoR(BaseLagrangeConstraint):
         else:
             LM_Q[sys_size+ieq+3:sys_size+ieq+5] += self.scalingFactor*MB_tstep[self.body_FoR].for_vel[3 + self.zero_comp]
 
-        if penaltyFactor:
-            LM_Q[FoR_dof:FoR_dof+3] += penaltyFactor*MB_tstep[self.body_FoR].for_vel[0:3]
-            LM_C[FoR_dof:FoR_dof+3, FoR_dof:FoR_dof+3] += penaltyFactor*np.eye(3)
+        if self.penaltyFactor:
+            LM_Q[FoR_dof:FoR_dof+3] += self.penaltyFactor*MB_tstep[self.body_FoR].for_vel[0:3]
+            LM_C[FoR_dof:FoR_dof+3, FoR_dof:FoR_dof+3] += self.penaltyFactor*np.eye(3)
 
-            if self.rot_dir = 'general':
+            if self.rot_dir == 'general':
                 sq_rot_axis = np.dot(ag.skew(self.rot_axis).T, ag.skew(self.rot_axis))
-                LM_Q[FoR_dof+3:FoR_dof+6] += penaltyFactor*np.dot(sq_rot_axis, MB_tstep[self.body_FoR].for_vel[3:6])
-                LM_C[FoR_dof+3:FoR_dof+6, FoR_dof+3:FoR_dof+6] += penaltyFactor*sq_rot_axis
+                LM_Q[FoR_dof+3:FoR_dof+6] += self.penaltyFactor*np.dot(sq_rot_axis, MB_tstep[self.body_FoR].for_vel[3:6])
+                LM_C[FoR_dof+3:FoR_dof+6, FoR_dof+3:FoR_dof+6] += self.penaltyFactor*sq_rot_axis
             else:
-                LM_Q[FoR_dof+self.zero_comp] += penaltyFactor*np.eye(2)* MB_tstep[self.body_FoR].for_vel[3+self.zero_comp])
-                LM_C[FoR_dof+3+self.zero_comp, FoR_dof+3+self.zero_comp] += penaltyFactor*np.eye(2)
+                LM_Q[FoR_dof+self.zero_comp] += self.penaltyFactor*np.eye(2)*MB_tstep[self.body_FoR].for_vel[3+self.zero_comp]
+                LM_C[FoR_dof+3+self.zero_comp, FoR_dof+3+self.zero_comp] += self.penaltyFactor*np.eye(2)
 
 
         ieq += 5
