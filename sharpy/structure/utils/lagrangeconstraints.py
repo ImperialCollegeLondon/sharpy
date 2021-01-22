@@ -353,7 +353,8 @@ def equal_lin_vel_node_FoR(MB_tstep, MB_beam, FoR_body, node_body, node_number, 
     ieq += 3
     return ieq
 
-def def_rot_axis_FoR_wrt_node(MB_tstep, MB_beam, FoR_body, node_body, node_number, node_FoR_dof, node_dof, FoR_dof, sys_size, Lambda_dot, rot_axisB, scalingFactor, penaltyFactor, ieq, LM_K, LM_C, LM_Q, indep):
+
+def def_rot_axis_FoR_wrt_node_general(MB_tstep, MB_beam, FoR_body, node_body, node_number, node_FoR_dof, node_dof, FoR_dof, sys_size, Lambda_dot, rot_axisB, scalingFactor, penaltyFactor, ieq, LM_K, LM_C, LM_Q, indep):
     """
     This function generates the stiffness and damping matrices and the independent vector associated to a joint that
     forces the rotation axis of a FoR to be parallel to a certain direction. This direction is defined in the
@@ -522,6 +523,128 @@ def def_rot_axis_FoR_wrt_node(MB_tstep, MB_beam, FoR_body, node_body, node_numbe
     return ieq
 
 
+def def_rot_axis_FoR_wrt_node_xyz(MB_tstep, MB_beam, FoR_body, node_body, node_number, node_FoR_dof, node_dof, FoR_dof, sys_size, Lambda_dot, rot_axisB, scalingFactor, penaltyFactor, ieq, LM_K, LM_C, LM_Q, zero_comp):
+    """
+    This function generates the stiffness and damping matrices and the independent vector associated to a joint that
+    forces the rotation axis of a FoR to be parallel to a certain direction. This direction is defined in the
+    B FoR of a node and parallel to x, y or z
+
+    See ``LagrangeConstraints`` for the description of variables
+
+    Args:
+        rot_axisB (np.ndarray): Rotation axis with respect to the node B FoR
+        indep (np.ndarray): Number of the equations that are used as independent
+        node_number (int): number of the "node" within its own body
+        node_body (int): body number of the "node"
+        node_FoR_dof (int): position of the first degree of freedom of the FoR to which the "node" belongs
+        node_dof (int): position of the first degree of freedom associated to the "node"
+        FoR_body (int): body number of the "FoR"
+        FoR_dof (int): position of the first degree of freedom associated to the "FoR"
+    """
+
+    ielem, inode_in_elem = MB_beam[node_body].node_master_elem[node_number]
+
+    num_LM_eq_specific = 2
+    Bnh = np.zeros((num_LM_eq_specific, sys_size), dtype=ct.c_double, order = 'F')
+    B = np.zeros((num_LM_eq_specific, sys_size), dtype=ct.c_double, order = 'F')
+
+    # Simplify notation
+    cba = ag.crv2rotation(MB_tstep[node_body].psi[ielem,inode_in_elem,:])
+    node_cga = MB_tstep[node_body].cga()
+    FoR_cga = MB_tstep[FoR_body].cga()
+    FoR_wa = MB_tstep[FoR_body].for_vel[3:6]
+
+    # Components to be zero
+    Z = np.zeros((2,3))
+    Z[:, zero_comp] = np.eye(2)
+
+    Bnh[:, FoR_dof+3:FoR_dof+6] = ag.multiply_matrices(Z, cba, node_cga.T, FoR_cga)
+
+    # Constrain angular velocities
+    LM_Q[:sys_size] += scalingFactor*np.dot(np.transpose(Bnh), Lambda_dot[ieq:ieq+num_LM_eq_specific])
+    LM_Q[sys_size+ieq:sys_size+ieq+num_LM_eq_specific] += scalingFactor*ag.multiply_matrices(Z, cba, node_cga.T, FoR_cga, FoR_wa)
+
+    LM_C[sys_size+ieq:sys_size+ieq+num_LM_eq_specific,:sys_size] += scalingFactor*Bnh
+    LM_C[:sys_size,sys_size+ieq:sys_size+ieq+num_LM_eq_specific] += scalingFactor*np.transpose(Bnh)
+
+    vec = ag.multiply_matrices(node_cga, cba.T, Z.T, Lambda_dot[ieq:ieq+num_LM_eq_specific])
+    LM_C[FoR_dof+3:FoR_dof+6, FoR_dof+6:FoR_dof+10] += scalingFactor*ag.der_CquatT_by_v(MB_tstep[FoR_body].quat, vec)
+    
+    if MB_beam[node_body].FoR_movement == 'free':
+        vec = ag.multiply_matrices(cba.T, Z.T, Lambda_dot[ieq:ieq+num_LM_eq_specific])
+        LM_C[FoR_dof+3:FoR_dof+6, node_FoR_dof+6:node_FoR_dof+10] += scalingFactor*ag.multiply_matrices(FoR_cga.T, ag.der_Cquat_by_v(MB_tstep[node_body].quat, vec))
+
+    LM_K[FoR_dof+3:FoR_dof+6, node_dof+3:node_dof+6] += scalingFactor*ag.multiply_matrices(FoR_cga.T, node_cga, ag.der_CcrvT_by_v(MB_tstep[node_body].psi[ielem,inode_in_elem,:],
+                                                                                                                                  np.dot(Z.T, Lambda_dot[ieq:ieq+num_LM_eq_specific])))
+
+    # if penaltyFactor:
+    #     q = np.zeros((sys_size,))
+    #     q[FoR_dof+3:FoR_dof+6] = MB_tstep[FoR_body].for_vel[3:6]
+
+    #     LM_Q[:sys_size] += penaltyFactor*np.dot(Bnh.T, np.dot(Bnh, q))
+
+    #     # LM_C[FoR_dof+3:FoR_dof+6, FoR_dof+3:FoR_dof+6] += penaltyFactor*np.dot(Bnh.T, Bnh)
+    #     LM_C[:sys_size, :sys_size] += penaltyFactor*np.dot(Bnh.T, Bnh)
+
+    #     sq_rot_axisB = np.dot(ag.skew(rot_axisB).T, ag.skew(rot_axisB))
+
+    #     # Derivatives with the quaternion of the FoR of the node
+    #     vec = ag.multiply_matrices(ag.crv2rotation(MB_tstep[node_body].psi[ielem,inode_in_elem,:]).T,
+    #                                     sq_rot_axisB,
+    #                                     ag.crv2rotation(MB_tstep[node_body].psi[ielem,inode_in_elem,:]),
+    #                                     MB_tstep[node_body].cga().T,
+    #                                     MB_tstep[FoR_body].cga(),
+    #                                     MB_tstep[FoR_body].for_vel[3:6])
+    #     LM_C[FoR_dof+3:FoR_dof+6, node_FoR_dof+6:node_FoR_dof+10] += penaltyFactor*np.dot(MB_tstep[FoR_body].cga().T,
+    #                                                                                       ag.der_Cquat_by_v(MB_tstep[node_body].quat, vec))
+    #     mat = ag.multiply_matrices(MB_tstep[FoR_body].cga().T,
+    #                                     MB_tstep[node_body].cga(),
+    #                                     ag.crv2rotation(MB_tstep[node_body].psi[ielem,inode_in_elem,:]).T,
+    #                                     sq_rot_axisB,
+    #                                     ag.crv2rotation(MB_tstep[node_body].psi[ielem,inode_in_elem,:]))
+    #     vec = np.dot(MB_tstep[FoR_body].cga(), MB_tstep[FoR_body].for_vel[3:6])
+    #     LM_C[FoR_dof+3:FoR_dof+6, node_FoR_dof+6:node_FoR_dof+10] += penaltyFactor*np.dot(mat, ag.der_CquatT_by_v(MB_tstep[node_body].quat, vec))
+
+    #     # Derivatives with the quaternion of the FoR
+    #     vec = ag.multiply_matrices(MB_tstep[node_body].cga(),
+    #                                     ag.crv2rotation(MB_tstep[node_body].psi[ielem,inode_in_elem,:]).T,
+    #                                     sq_rot_axisB,
+    #                                     ag.crv2rotation(MB_tstep[node_body].psi[ielem,inode_in_elem,:]),
+    #                                     MB_tstep[node_body].cga().T,
+    #                                     MB_tstep[FoR_body].cga(),
+    #                                     MB_tstep[FoR_body].for_vel[3:6])
+    #     LM_C[FoR_dof+3:FoR_dof+6, FoR_dof+6:FoR_dof+10] += penaltyFactor*ag.der_CquatT_by_v(MB_tstep[FoR_body].quat, vec)
+
+    #     mat = ag.multiply_matrices(MB_tstep[FoR_body].cga().T,
+    #                                     MB_tstep[node_body].cga(),
+    #                                     ag.crv2rotation(MB_tstep[node_body].psi[ielem,inode_in_elem,:]).T,
+    #                                     sq_rot_axisB,
+    #                                     ag.crv2rotation(MB_tstep[node_body].psi[ielem,inode_in_elem,:]),
+    #                                     MB_tstep[node_body].cga().T)
+    #     LM_C[FoR_dof+3:FoR_dof+6, FoR_dof+6:FoR_dof+10] += penaltyFactor*np.dot(mat, ag.der_Cquat_by_v(MB_tstep[FoR_body].quat, MB_tstep[FoR_body].for_vel[3:6]))
+
+    #     # Derivatives with the CRV
+    #     mat = np.dot(MB_tstep[FoR_body].cga().T, MB_tstep[node_body].cga())
+    #     vec = ag.multiply_matrices(sq_rot_axisB,
+    #                                     ag.crv2rotation(MB_tstep[node_body].psi[ielem,inode_in_elem,:]),
+    #                                     MB_tstep[node_body].cga().T,
+    #                                     MB_tstep[FoR_body].cga(),
+    #                                     MB_tstep[FoR_body].for_vel[3:6])
+    #     LM_K[FoR_dof+3:FoR_dof+6, node_dof+3:node_dof+6] += penaltyFactor*np.dot(mat, ag.der_CcrvT_by_v(MB_tstep[node_body].psi[ielem,inode_in_elem,:], vec))
+
+    #     mat = ag.multiply_matrices(MB_tstep[FoR_body].cga().T,
+    #                                     MB_tstep[node_body].cga(),
+    #                                     ag.crv2rotation(MB_tstep[node_body].psi[ielem,inode_in_elem,:]).T,
+    #                                     sq_rot_axisB)
+    #     vec = ag.multiply_matrices(MB_tstep[node_body].cga().T,
+    #                                     MB_tstep[FoR_body].cga(),
+    #                                     MB_tstep[FoR_body].for_vel[3:6])
+    #     LM_K[FoR_dof+3:FoR_dof+6, node_dof+3:node_dof+6] += penaltyFactor*np.dot(mat, ag.der_Ccrv_by_v(MB_tstep[node_body].psi[ielem,inode_in_elem,:], vec))
+
+    ieq += 2
+    return ieq
+
+
 def def_rot_vel_FoR_wrt_node(MB_tstep, MB_beam, FoR_body, node_body, node_number, node_FoR_dof, node_dof, FoR_dof, sys_size, Lambda_dot, rot_axisB, rot_vel, scalingFactor, penaltyFactor, ieq, LM_K, LM_C, LM_Q):
     """
     This function generates the stiffness and damping matrices and the independent vector associated to a joint that
@@ -678,9 +801,21 @@ class hinge_node_FoR(BaseLagrangeConstraint):
         self.FoR_body = MBdict_entry['body_FoR']
         self.rot_axisB = MBdict_entry['rot_axisB']
         self._ieq = ieq
-        self.indep = []
         self.scalingFactor = set_value_or_default(MBdict_entry, "scalingFactor", 1.)
         self.penaltyFactor = set_value_or_default(MBdict_entry, "penaltyFactor", 0.)
+        
+        if (self.rot_axisB[[1, 2]]  == 0).all():
+            self.rot_dir = 'x'
+            self.zero_comp = np.array([1, 2], dtype=int)
+        elif (self.rot_axisB[[0, 2]]  == 0).all():
+            self.rot_dir = 'y'
+            self.zero_comp = np.array([0, 2], dtype=int)
+        elif (self.rot_axisB[[0, 1]]  == 0).all():
+            self.rot_dir = 'z'
+            self.zero_comp = np.array([0, 1], dtype=int)
+        else:
+            self.rot_dir = 'general'
+            self.indep = []
 
         return self._ieq + self._n_eq
 
@@ -701,7 +836,10 @@ class hinge_node_FoR(BaseLagrangeConstraint):
         ieq =  equal_pos_node_FoR(MB_tstep, MB_beam, self.FoR_body, self.node_body, self.node_number, node_FoR_dof, node_dof, FoR_dof, sys_size, Lambda, self.scalingFactor, self.penaltyFactor, ieq, LM_K, LM_C, LM_Q)
         # ieq -= 3
         # ieq = equal_lin_vel_node_FoR(MB_tstep, MB_beam, self.FoR_body, self.node_body, self.node_number, node_FoR_dof, node_dof, FoR_dof, sys_size, Lambda_dot, self.scalingFactor, self.penaltyFactor, ieq, LM_K, LM_C, LM_Q)
-        ieq = def_rot_axis_FoR_wrt_node(MB_tstep, MB_beam, self.FoR_body, self.node_body, self.node_number, node_FoR_dof, node_dof, FoR_dof, sys_size, Lambda_dot, self.rot_axisB, self.scalingFactor, self.penaltyFactor, ieq, LM_K, LM_C, LM_Q, self.indep)
+        if self.rot_dir == 'general':
+            ieq = def_rot_axis_FoR_wrt_node_general(MB_tstep, MB_beam, self.FoR_body, self.node_body, self.node_number, node_FoR_dof, node_dof, FoR_dof, sys_size, Lambda_dot, self.rot_axisB, self.scalingFactor, self.penaltyFactor, ieq, LM_K, LM_C, LM_Q, self.indep)
+        else:
+            ieq = def_rot_axis_FoR_wrt_node_xyz(MB_tstep, MB_beam, self.FoR_body, self.node_body, self.node_number, node_FoR_dof, node_dof, FoR_dof, sys_size, Lambda_dot, self.rot_axisB, self.scalingFactor, self.penaltyFactor, ieq, LM_K, LM_C, LM_Q, self.zero_comp)
 
         return
 
@@ -1041,7 +1179,7 @@ class hinge_FoR(BaseLagrangeConstraint):
                 row1 = 1
             Bnh[3:5, FoR_dof+3:FoR_dof+6] = skew_rot_axis[[row0,row1],:]
         else:
-            Bnh[3:5, FoR_dof+self.zero_comp] = np.eye(2)
+            Bnh[3:5, FoR_dof+3+self.zero_comp] = np.eye(2)
 
         LM_C[sys_size+ieq:sys_size+ieq+num_LM_eq_specific,:sys_size] += self.scalingFactor*Bnh
         LM_C[:sys_size,sys_size+ieq:sys_size+ieq+num_LM_eq_specific] += self.scalingFactor*np.transpose(Bnh)
@@ -1063,9 +1201,8 @@ class hinge_FoR(BaseLagrangeConstraint):
                 LM_Q[FoR_dof+3:FoR_dof+6] += self.penaltyFactor*np.dot(sq_rot_axis, MB_tstep[self.body_FoR].for_vel[3:6])
                 LM_C[FoR_dof+3:FoR_dof+6, FoR_dof+3:FoR_dof+6] += self.penaltyFactor*sq_rot_axis
             else:
-                LM_Q[FoR_dof+self.zero_comp] += self.penaltyFactor*np.eye(2)*MB_tstep[self.body_FoR].for_vel[3+self.zero_comp]
-                LM_C[FoR_dof+3+self.zero_comp, FoR_dof+3+self.zero_comp] += self.penaltyFactor*np.eye(2)
-
+                LM_Q[FoR_dof+self.zero_comp] += self.penaltyFactor*MB_tstep[self.body_FoR].for_vel[3+self.zero_comp]
+                LM_C[np.ix_(FoR_dof+3+self.zero_comp, FoR_dof+3+self.zero_comp)] += self.penaltyFactor*np.eye(2)
 
         ieq += 5
         return
