@@ -690,7 +690,7 @@ class FloatingForces(generator_interface.BaseGenerator):
             group.create_dataset(key, data=value)
         fid.close()
 
-        debug_output = True
+        debug_output = False
         if debug_output:
             print("q: ", self.q[ts, :])
             print("qdot: ", self.qdot[ts, :])
@@ -707,25 +707,31 @@ class FloatingForces(generator_interface.BaseGenerator):
         return
 
 
-    def update_dof_vector(self, beam, struct_tstep, it):
+    def update_dof_vector(self, beam, struct_tstep, it, k):
 
-        cga = struct_tstep.cga()
-        # self.q[it, 0:3] = (np.dot(cga, struct_tstep.pos[self.buoyancy_node, :]) -
-        #           np.dot(beam.ini_info.cga(), beam.ini_info.pos[self.buoyancy_node, :]) +
-        #           struct_tstep.for_pos[0:3] -
-        #           beam.ini_info.for_pos[0:3])
-        self.q[it, 0:3] = (np.dot(cga, struct_tstep.pos[self.buoyancy_node, :]) +
-                  struct_tstep.for_pos[0:3])
-        # ams: in my casethe angles are negative in the x and z components
-        self.q[it, 3:6] = (algebra.quat2euler(struct_tstep.quat)*
-                           np.array([-1., 0., -1.]))
-                           # np.array([1., 0., 1.]))
+        if k:
+            cga = struct_tstep.cga()
+            # self.q[it, 0:3] = (np.dot(cga, struct_tstep.pos[self.buoyancy_node, :]) -
+            #           np.dot(beam.ini_info.cga(), beam.ini_info.pos[self.buoyancy_node, :]) +
+            #           struct_tstep.for_pos[0:3] -
+            #           beam.ini_info.for_pos[0:3])
+            self.q[it, 0:3] = (np.dot(cga, struct_tstep.pos[self.buoyancy_node, :]) +
+                      struct_tstep.for_pos[0:3])
+            # ams: in my casethe angles are negative in the x and z components
+            self.q[it, 3:6] = (algebra.quat2euler(struct_tstep.quat)*
+                               np.array([-1., 0., -1.]))
+                               # np.array([1., 0., 1.]))
 
-        self.qdot[it, 0:3] = np.dot(cga, struct_tstep.for_vel[0:3])
-        self.qdot[it, 3:6] = np.dot(cga, struct_tstep.for_vel[3:6])
+            self.qdot[it, 0:3] = np.dot(cga, struct_tstep.for_vel[0:3])
+            self.qdot[it, 3:6] = np.dot(cga, struct_tstep.for_vel[3:6])
 
-        self.qdotdot[it, 0:3] = np.dot(cga, struct_tstep.for_acc[0:3])
-        self.qdotdot[it, 3:6] = np.dot(cga, struct_tstep.for_acc[3:6])
+            self.qdotdot[it, 0:3] = np.dot(cga, struct_tstep.for_acc[0:3])
+            self.qdotdot[it, 3:6] = np.dot(cga, struct_tstep.for_acc[3:6])
+
+        else:
+            self.q[it, :] = self.q[it-1, :]
+            self.qdot[it, :] = self.qdot[it-1, :]
+            self.qdotdot[it, :] = self.qdotdot[it-1, :]
 
         return
 
@@ -739,7 +745,7 @@ class FloatingForces(generator_interface.BaseGenerator):
         k = params['fsi_substep']
 
         # Update dof vector
-        self.update_dof_vector(data.structure, struct_tstep, data.ts)
+        self.update_dof_vector(data.structure, struct_tstep, data.ts, k)
 
         # Mooring lines
         mooring_forces = np.zeros((self.n_mooring_lines, 2))
