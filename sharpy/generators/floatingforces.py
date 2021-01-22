@@ -3,6 +3,7 @@ import h5py as h5
 import ctypes as ct
 import os
 from scipy import fft, ifft
+from scipy.signal import lsim
 
 import sharpy.utils.cout_utils as cout
 import sharpy.utils.generator_interface as generator_interface
@@ -356,9 +357,7 @@ def response_freq_dep_matrix(H, omega_H, q, it_, dt):
     # Compute the constant component
     if type(H) is np.ndarray:
         H_omega = interp_1st_dim_matrix(H, omega_H, omega_fft[0])
-    # if True:
-    #     H_omega = interp_1st_dim_matrix(H, omega_H, 2.*np.pi/120.)
-    elif type(H) is dict:
+    elif type(H) is tuple:
         H_omega = matrix_from_rf(H, omega_fft[0])
     else:
         cout.cout_wrap(("ERROR: Not implemented response_freq_dep_matrix for type(H) %s" % type(H)), 4)
@@ -376,6 +375,8 @@ def response_freq_dep_matrix(H, omega_H, q, it_, dt):
 
     # Compute the inverse Fourier tranform
     f[:] = np.real(ifft(fourier_f, axis=0)[it_, :])
+
+    (T, yout, xout) = lsim(H, q[:it_ + 1, :], T, X0=X0)
 
     return f
 
@@ -468,7 +469,7 @@ class FloatingForces(generator_interface.BaseGenerator):
     settings_types['method_matrices_freq'] = 'str'
     settings_default['method_matrices_freq'] = 'constant'
     settings_description['method_matrices_freq'] = 'Method to compute frequency-dependent matrices'
-    settings_options['method_matrices_freq'] = ['constant', 'interp_matrices', 'rational_function']
+    settings_options['method_matrices_freq'] = ['constant', 'rational_function']
 
     settings_types['matrices_freq'] = 'float'
     settings_default['matrices_freq'] = 4.8 # Close to the upper limit defined in the oc3 report
@@ -602,7 +603,7 @@ class FloatingForces(generator_interface.BaseGenerator):
 
         self.added_mass_in_mass_matrix = self.settings['added_mass_in_mass_matrix']
         if self.added_mass_in_mass_matrix:
-        # if ((self.settings['method_matrices_freq'] == 'constant') and 
+        # if ((self.settings['method_matrices_freq'] == 'constant') and
         #     self.added_mass_in_mass_matrix):
                 # Include added mass in structure
             data.structure.add_lumped_mass_to_element(self.buoyancy_node,
@@ -610,15 +611,34 @@ class FloatingForces(generator_interface.BaseGenerator):
             data.structure.generate_fortran()
             # self.hd_added_mass *= 0.
 
-        if self.settings['method_matrices_freq'] == 'interp_matrices':
-            self.hd_added_mass = self.floating_data['hydrodynamics']['added_mass_matrix']
-            self.hd_damping = self.floating_data['hydrodynamics']['damping_matrix']
-            self.ab_freq_rads = self.floating_data['hydrodynamics']['ab_freq_rads']
+        # if self.settings['method_matrices_freq'] == 'interp_matrices':
+        #     self.hd_added_mass = self.floating_data['hydrodynamics']['added_mass_matrix']
+        #     self.hd_damping = self.floating_data['hydrodynamics']['damping_matrix']
+        #     self.ab_freq_rads = self.floating_data['hydrodynamics']['ab_freq_rads']
 
         elif self.settings['method_matrices_freq'] == 'rational_function':
-            self.hd_added_mass = self.floating_data['hydrodynamics']['added_mass_rf']
-            self.hd_damping = self.floating_data['hydrodynamics']['damping_rf']
+            hd_added_mass_num = [None]*6
+            hd_added_mass_den = [None]*6
+            hd_damping_num = [None]*6
+            hd_damping_den = [None]*6
+            for j in range(6):
+                hd_added_mass_num[j] = [None]*6
+                hd_added_mass_den[j] = [None]*6
+                hd_damping_num[j] = [None]*6
+                hd_damping_den[j] = [None]*6
+                for i in range(6):
+                    pos = "%d_%d" % (i, j)
+                    hd_added_mass_num[i][j] = self.floating_data['hydrodynamics']['added_mass_rf'][pos]['num']
+                    hd_added_mass_den[i][j] = self.floating_data['hydrodynamics']['added_mass_rf'][pos]['den']
+                    hd_damping_num[i][j] = self.floating_data['hydrodynamics']['damping_rf'][pos]['num']
+                    hd_damping_den[i][j] = self.floating_data['hydrodynamics']['damping_rf'][pos]['den']
+
+            self.hd_added_mass = (hd_added_mass_num, hd_added_mass_den)
+            self.hd_damping = (hd_damping_num, hd_damping_den)
             self.ab_freq_rads = self.floating_data['hydrodynamics']['ab_freq_rads']
+
+            self.x0_added_mass = [None]*(self.settings['n_time_steps'] + 1)
+            self.x0_damping = [None]*(self.settings['n_time_steps'] + 1)
 
         # Wave forces
         self.wave_forces_node = self.floating_data['wave_forces']['node']
@@ -787,9 +807,30 @@ class FloatingForces(generator_interface.BaseGenerator):
                 hd_f_qdotdot_g = -np.dot(self.hd_added_mass_const, self.qdotdot[data.ts, :])
                 equiv_hd_added_mass = self.hd_added_mass_const
 
-            elif self.settings['method_matrices_freq'] in ['interp_matrices', 'rational_function']:
-                hd_f_qdot_g -= response_freq_dep_matrix(self.hd_damping, self.ab_freq_rads, self.qdot, data.ts, self.settings['dt'])
-                hd_f_qdotdot_g = -response_freq_dep_matrix(self.hd_added_mass, self.ab_freq_rads, self.qdotdot, data.ts, self.settings['dt'])
+            elif self.settings['method_matrices_freq'] == 'rational_function':
+                # Damping
+                (T, yout, xout) = lsim(self.hd_damping,
+                                       self.qdot[data.ts-1:data.ts+1, :],
+                                       [0, data.ts*self.settings['dt']],
+                                       X0=self.x0_damping[data.ts-1])
+                self.x0_damping[it] = xout[1, :]
+                hd_f_qdot_g -= yout[1, :]
+
+                (T, yout, xout) = lsim(self.hd_added_mass,
+                                       self.qdotdot[data.ts-1:data.ts+1, :],
+                                       [0, data.ts*self.settings['dt']],
+                                       X0=self.x0_added_mass[data.ts-1])
+                self.x0_added_mass[it] = xout[1, :]
+                hd_f_qdotdot_g = -yout[1, :]
+
+                # T[it-1:it+1], yout[it-1:it+1], xout[it-1:it+1, :] = signal.lsim(system,
+                #                                       u[it-1: it+1],
+                #                                       #t[it-1:it+1],
+                #                                       t[0:2],
+                #                                       X0=x1[it-1, :])
+
+                # hd_f_qdot_g -= response_freq_dep_matrix(self.hd_damping, self.ab_freq_rads, self.qdot, data.ts, self.settings['dt'])
+                # hd_f_qdotdot_g = -response_freq_dep_matrix(self.hd_added_mass, self.ab_freq_rads, self.qdotdot, data.ts, self.settings['dt'])
 
                 # Compute the equivalent added mass matrix
                 equiv_hd_added_mass = compute_equiv_hd_added_mass(-hd_f_qdotdot_g, self.qdotdot[data.ts, :])
