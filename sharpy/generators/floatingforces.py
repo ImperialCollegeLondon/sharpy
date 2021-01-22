@@ -822,7 +822,7 @@ class FloatingForces(generator_interface.BaseGenerator):
             elif self.settings['method_matrices_freq'] == 'rational_function':
                 # Damping
                 (T, yout, xout) = forced_response(self.hd_damping,
-                                                  T=[0, data.ts*self.settings['dt']],
+                                                  T=[0, self.settings['dt']],
                                                   U=self.qdot[data.ts-1:data.ts+1, :],
                                                   X0=self.x0_damping[data.ts-1],
                                                   transpose=True)
@@ -830,12 +830,13 @@ class FloatingForces(generator_interface.BaseGenerator):
                 hd_f_qdot_g -= yout[1, :]
 
                 (T, yout, xout) = forced_response(self.hd_added_mass,
-                                                  T=[0, data.ts*self.settings['dt']],
+                                                  T=[0, self.settings['dt']],
                                                   U=self.qdotdot[data.ts-1:data.ts+1, :],
                                                   X0=self.x0_added_mass[data.ts-1],
                                                   transpose=True)
                 self.x0_added_mass[data.ts] = xout[1, :]
                 hd_f_qdotdot_g = -yout[1, :]
+                # hd_f_qdotdot_g = -np.dot(self.hd_added_mass_const, self.qdotdot[data.ts, :])
 
                 # T[it-1:it+1], yout[it-1:it+1], xout[it-1:it+1, :] = signal.lsim(system,
                 #                                       u[it-1: it+1],
