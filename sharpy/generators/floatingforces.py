@@ -636,8 +636,10 @@ class FloatingForces(generator_interface.BaseGenerator):
                     hd_damping_num[ioutput][iinput] = self.floating_data['hydrodynamics']['damping_rf'][pos]['num']
                     hd_damping_den[ioutput][iinput] = self.floating_data['hydrodynamics']['damping_rf'][pos]['den']
 
-            self.hd_added_mass = TransferFunction(hd_added_mass_num, hd_added_mass_den)
-            self.hd_damping = TransferFunction(hd_damping_num, hd_damping_den)
+            self.hd_added_mass = TransferFunction(hd_added_mass_num, hd_added_mass_den, self.settings['dt'])
+            self.hd_damping = TransferFunction(hd_damping_num, hd_damping_den, self.settings['dt'])
+            # self.hd_added_mass = TransferFunction(hd_added_mass_num, hd_added_mass_den)
+            # self.hd_damping = TransferFunction(hd_damping_num, hd_damping_den)
             self.ab_freq_rads = self.floating_data['hydrodynamics']['ab_freq_rads']
 
             self.x0_added_mass = [None]*(self.settings['n_time_steps'] + 1)
@@ -816,8 +818,9 @@ class FloatingForces(generator_interface.BaseGenerator):
             if ((self.settings['method_matrices_freq'] == 'constant') or
                  (data.ts < self.settings['steps_constant_matrices'])):
                 hd_f_qdot_g -= np.dot(self.hd_damping_const, self.qdot[data.ts, :])
-                hd_f_qdotdot_g = -np.dot(self.hd_added_mass_const, self.qdotdot[data.ts, :])
-                equiv_hd_added_mass = self.hd_added_mass_const
+                hd_f_qdotdot_g = np.zeros((6))
+                # hd_f_qdotdot_g = -np.dot(self.hd_added_mass_const, self.qdotdot[data.ts, :])
+                # equiv_hd_added_mass = self.hd_added_mass_const
 
             elif self.settings['method_matrices_freq'] == 'rational_function':
                 # Damping
@@ -838,22 +841,17 @@ class FloatingForces(generator_interface.BaseGenerator):
                 hd_f_qdotdot_g = -yout[1, :]
                 # hd_f_qdotdot_g = -np.dot(self.hd_added_mass_const, self.qdotdot[data.ts, :])
 
-                # T[it-1:it+1], yout[it-1:it+1], xout[it-1:it+1, :] = signal.lsim(system,
-                #                                       u[it-1: it+1],
-                #                                       #t[it-1:it+1],
-                #                                       t[0:2],
-                #                                       X0=x1[it-1, :])
-
                 # hd_f_qdot_g -= response_freq_dep_matrix(self.hd_damping, self.ab_freq_rads, self.qdot, data.ts, self.settings['dt'])
                 # hd_f_qdotdot_g = -response_freq_dep_matrix(self.hd_added_mass, self.ab_freq_rads, self.qdotdot, data.ts, self.settings['dt'])
 
                 # Compute the equivalent added mass matrix
-                equiv_hd_added_mass = compute_equiv_hd_added_mass(-hd_f_qdotdot_g, self.qdotdot[data.ts, :])
+                # equiv_hd_added_mass = compute_equiv_hd_added_mass(-hd_f_qdotdot_g, self.qdotdot[data.ts, :])
                 if self.added_mass_in_mass_matrix:
-                    data.structure.add_lumped_mass_to_element(self.buoyancy_node,
-                                                              equiv_hd_added_mass,
-                                                              replace=True)
-                    data.structure.generate_fortran()
+                    # data.structure.add_lumped_mass_to_element(self.buoyancy_node,
+                    #                                           equiv_hd_added_mass,
+                    #                                           replace=True)
+                    # data.structure.generate_fortran()
+                    hd_f_qdotdot_g += np.dot(self.hd_added_mass_const, self.qdotdot[data.ts, :])
 
             else:
                 cout.cout_wrap(("ERROR: Unknown method_matrices_freq %s" % self.settings['method_matrices_freq']), 4)
@@ -868,9 +866,10 @@ class FloatingForces(generator_interface.BaseGenerator):
                 # Correct unreal gravity forces from added mass
                 gravity_b = np.zeros((6,),)
                 gravity_b[0:3] = np.dot(cbg, -self.settings['gravity_dir'])*self.settings['gravity']
-                hd_correct_grav = -np.dot(equiv_hd_added_mass, gravity_b)
+                # hd_correct_grav = -np.dot(equiv_hd_added_mass, gravity_b)
+                hd_correct_grav = -np.dot(self.hd_added_mass_const, gravity_b)
                 struct_tstep.runtime_generated_forces[self.buoyancy_node, :] += hd_correct_grav
-                hd_f_qdotdot_g = np.zeros((6))
+                # hd_f_qdotdot_g = np.zeros((6))
             else:
                 hd_correct_grav = np.zeros((6))
 
