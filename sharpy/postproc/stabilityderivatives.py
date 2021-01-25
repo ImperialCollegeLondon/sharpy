@@ -70,6 +70,7 @@ class StabilityDerivatives(solver_interface.BaseSolver):
         self.u_inf = 1
         self.inputs = 0
         self.caller = None
+        self.folder = None
 
     def initialise(self, data, custom_settings=None, caller=None):
         self.data = data
@@ -83,6 +84,9 @@ class StabilityDerivatives(solver_interface.BaseSolver):
                                  options=self.settings_options,
                                  no_ctype=True)
         self.caller = caller
+        self.folder = self.settings['folder'] + '/' + self.data.settings['SHARPy']['case'] + '/derivatives/'
+        if not os.path.isdir(self.folder):
+            os.makedirs(self.folder, exist_ok=True)
 
         u_inf = self.settings['u_inf']
         s_ref = self.settings['S_ref']
@@ -97,7 +101,13 @@ class StabilityDerivatives(solver_interface.BaseSolver):
                              'force_angular_vel': 0.5 * rho * u_inf ** 2 * s_ref * c_ref / u_inf,
                              'moment_lon_angular_vel': 0.5 * rho * u_inf ** 2 * s_ref * c_ref * c_ref / u_inf}  # missing rates
 
-        self.data.linear.derivatives = Derivatives(self.coefficients)
+        reference_dimensions = {}
+        for k in ['S_ref', 'b_ref', 'c_ref', 'u_inf']:
+            reference_dimensions[k] = self.settings[k]
+        reference_dimensions['rho'] = rho
+        reference_dimensions['quat'] = self.data.linear.tsstruct0.quat
+
+        self.data.linear.derivatives = Derivatives(reference_dimensions, static_state=self.steady_aero_forces())
 
     def run(self, online=False):
 
@@ -114,7 +124,8 @@ class StabilityDerivatives(solver_interface.BaseSolver):
         # derivatives_dimensional, derivatives_coeff = self.derivatives(Y_freq)
 
         # self.export_derivatives(np.hstack((derivatives_coeff[:, :6], derivatives_coeff[:, -2:])))
-
+        self.data.linear.derivatives.savetxt(self.folder)
+        # angle_derivative_set.print(derivative_filename=self.folder + '/stability_derivatives.txt')
         return self.data
 
     def uvlm_steady_state_transfer_function(self):
@@ -142,7 +153,7 @@ class StabilityDerivatives(solver_interface.BaseSolver):
             rig_dof = 10
 
         A, B, C, D = ss.get_mats()
-        H0 = ss.freqresp(np.array([0.]))[:, :, 0]
+        H0 = ss.freqresp(np.array([1e-5]))[:, :, 0]
         # if type(A) == libsp.csc_matrix:
         #     H0 = C.dot(scsp.linalg.inv(scsp.eye(ss.states, format='csc') - A).dot(B)) + D
         # else:
@@ -207,6 +218,7 @@ class StabilityDerivatives(solver_interface.BaseSolver):
         derivative_set.matrix = np.zeros((6, 3))
 
         modal = self.data.linear.linear_system.beam.sys.modal
+        phi = self.data.linear.linear_system.linearisation_vectors['mode_shapes'].real
 
         # Get free stream velocity direction
         try:
@@ -216,12 +228,12 @@ class StabilityDerivatives(solver_interface.BaseSolver):
             v0 = self.data.settings['StaticCoupled']['aero_solver_settings']['velocity_field_input']['u_inf_direction'] * \
                  self.data.settings['StaticCoupled']['aero_solver_settings']['velocity_field_input']['u_inf'] * -1 # aircraft moving fwd in a stat fluid
 
-        f0a = self.data.linear.linear_system.linearisation_vectors['forces_aero_beam_dof'][:3].copy()
-        m0a = self.data.linear.linear_system.linearisation_vectors['forces_aero_beam_dof'][3:6].copy()
+        f0a = self.data.linear.linear_system.linearisation_vectors['forces_aero_beam_dof'][:3].copy().real
+        m0a = self.data.linear.linear_system.linearisation_vectors['forces_aero_beam_dof'][3:6].copy().real
 
         if modal:
-            f0a /= self.data.linear.linear_system.linearisation_vectors['mode_shapes'][-9, 0]
-            m0a /= self.data.linear.linear_system.linearisation_vectors['mode_shapes'][-6, 3]
+            f0a /= phi[-9, 0]
+            m0a /= phi[-6, 3]
 
         euler0 = self.data.linear.tsstruct0.euler_angles()
         cga = self.data.linear.tsstruct0.cga()
@@ -231,13 +243,14 @@ class StabilityDerivatives(solver_interface.BaseSolver):
         # second term in the stability derivative expression
         stab_der_trans2 = cga.dot(H0[:3, :3].real.dot(cga.T.dot(algebra.der_Peuler_by_v(euler0 * 0, v0))))
 
+
         stab_der_mom = algebra.der_Ceuler_by_v(euler0, m0a)
         stab_der_mom2 = cga.dot(H0[3:6, :3].real.dot(cga.T.dot(algebra.der_Peuler_by_v(euler0 * 0, v0))))
 
         if modal:
-            stab_der_trans2 /= self.data.linear.linear_system.linearisation_vectors['mode_shapes'][-9, 0] ** 2
-            stab_der_mom2 /= (self.data.linear.linear_system.linearisation_vectors['mode_shapes'][-9, 0] *
-                              self.data.linear.linear_system.linearisation_vectors['mode_shapes'][-6, 3])
+            stab_der_trans2 /= phi[-9, 0] ** 2
+            stab_der_mom2 /= (phi[-9, 0] *
+                              phi[-6, 3])
 
         derivative_set.matrix[:3, :] = (stab_der_trans + stab_der_trans2) / self.coefficients['force']
         derivative_set.matrix[3:6, :] = (stab_der_mom + stab_der_mom2)
@@ -245,23 +258,24 @@ class StabilityDerivatives(solver_interface.BaseSolver):
         derivative_set.matrix[4, :] /= self.coefficients['moment_lon']
 
         # for debugging and checking purposes at the moment
-        derivative_set.print()
+        # derivative_set.print()
+        derivative_set.name = 'Force derivatives to angles - velocity perturbation'
         derivative_set.save('force_angle', self.settings['folder'] + '/force_angle')
 
         print('Angle derivatives - using original stability axes')
         angle_derivative_set = DerivativeSet('stability')
+        angle_derivative_set.name = 'Force derivatives to angles - body perturbation'
         angle_derivative_set.labels_in = ['phi', 'alpha', 'beta']
         angle_derivative_set.labels_out = ['CD', 'CY', 'CL', 'Cl', 'Cm', 'Cn']
         # These are onto the original stability axes at the linearisation
         # The above take the stability axes to rotate with the perturbation!!
         angles = stab_der_trans / self.coefficients['force']
-        angles += cga.dot(H0[:3, 6:9]) / self.data.linear.linear_system.linearisation_vectors['mode_shapes'][-9, 0] / self.coefficients['force']
+        angles += cga.dot(H0[:3, 6:9]) / phi[-9, 0] / self.coefficients['force']
         mom_angles = stab_der_mom
-        mom_angles += cga.dot(H0[3:6, 6:9]) / self.data.linear.linear_system.linearisation_vectors['mode_shapes'][-6, 3]
+        mom_angles += cga.dot(H0[3:6, 6:9]) / phi[-6, 3]
         mom_angles[np.ix_([0, 2]), :] /= self.coefficients['moment_lat']
         mom_angles[1, :] /= self.coefficients['moment_lon']
         angle_derivative_set.matrix = np.vstack((angles, mom_angles))
-        angle_derivative_set.print()
 
         cout.cout_wrap('Body axes')
         angle_derivative_body = DerivativeSet('body')
@@ -269,17 +283,18 @@ class StabilityDerivatives(solver_interface.BaseSolver):
         angle_derivative_body.labels_out = ['C_XA', 'C_YA', 'C_ZA', 'C_LA', 'C_MA', 'C_NA']
         # These are onto the original stability axes at the linearisation
         # The above take the stability axes to rotate with the perturbation!!
-        angles = H0[:3, 6:9] / self.data.linear.linear_system.linearisation_vectors['mode_shapes'][-9, 0] / self.coefficients['force']
-        mom_angles = H0[3:6, 6:9] / self.data.linear.linear_system.linearisation_vectors['mode_shapes'][-6, 3]
+        angles = H0[:3, 6:9] / phi[-9, 0] / self.coefficients['force']
+        mom_angles = H0[3:6, 6:9] / phi[-6, 3]
         mom_angles[np.ix_([0, 2]), :] /= self.coefficients['moment_lat']
         mom_angles[1, :] /= self.coefficients['moment_lon']
         angle_derivative_body.matrix = np.vstack((angles, mom_angles))
-        angle_derivative_body.print()
+        # angle_derivative_body.print()
 
         return derivative_set
 
     def body_derivatives(self, H0):
         derivative_set = DerivativeSet('body')
+        derivative_set.name = 'Force derivatives to rigid body velocities - Body derivatives'
         derivative_set.labels_in = ['uA', 'vA', 'wA', 'pA', 'qA', 'rA']
         derivative_set.labels_out = ['C_XA', 'C_YA', 'C_ZA', 'C_LA', 'C_MA', 'C_NA']
         derivative_set.matrix = np.zeros((6, 6))
@@ -289,7 +304,7 @@ class StabilityDerivatives(solver_interface.BaseSolver):
         body_derivatives = H0[:6, :6]
 
         if modal:
-            phi = self.data.linear.linear_system.linearisation_vectors['mode_shapes']
+            phi = self.data.linear.linear_system.linearisation_vectors['mode_shapes'].real
 
             body_derivatives[:3, :3] /= phi[-9, 0] / phi[-9, 0]
             body_derivatives[:3, 3:6] /= phi[-9, 0] / phi[-6, 3]
@@ -300,7 +315,7 @@ class StabilityDerivatives(solver_interface.BaseSolver):
         derivative_set.matrix[:3, :] /= self.coefficients['force']
         derivative_set.matrix[np.ix_([3, 5]), :] /= self.coefficients['moment_lat']
         derivative_set.matrix[4, :] /= self.coefficients['moment_lon']
-        derivative_set.print()
+        # derivative_set.print()
 
         return derivative_set
 
@@ -510,9 +525,10 @@ class StabilityDerivatives(solver_interface.BaseSolver):
 
 class Derivatives:
 
-    def __init__(self, coefficients):
+    def __init__(self, reference_dimensions, static_state):
 
-        self.coefficients = coefficients
+        self.static_state = static_state
+        self.reference_dimensions = reference_dimensions
 
         self.matrix = None
 
@@ -537,10 +553,83 @@ class Derivatives:
         self.angles = None
         self.dict_of_derivatives = {}
 
+        s_ref = self.reference_dimensions['S_ref']
+        b_ref = self.reference_dimensions['b_ref']
+        c_ref = self.reference_dimensions['c_ref']
+        u_inf = self.reference_dimensions['u_inf']
+        rho = self.reference_dimensions['rho']
+        self.dynamic_pressure = 0.5 * rho * u_inf ** 2
+
+        self.coefficients = {'force': self.dynamic_pressure * s_ref,
+                             'moment_lon': self.dynamic_pressure * s_ref * c_ref,
+                             'moment_lat': self.dynamic_pressure * s_ref * b_ref,
+                             'force_angular_vel': self.dynamic_pressure * s_ref * c_ref / u_inf,
+                             'moment_lon_angular_vel': self.dynamic_pressure * s_ref * c_ref * c_ref / u_inf}  # missing rates
+
+        self.steady_coefficients = np.array(self.static_state) / self.coefficients['force']
+
+        self.filename = 'stability_derivatives.txt'
+
     def save(self, output_route):
         with h5py.File(output_route + '/stability.h5', 'w') as f:
             for k, v in self.dict_of_derivatives.items():
                 f.create_dataset(name=k, data=v.matrix)
+
+    def savetxt(self, folder):
+
+        filename = self.filename
+
+        u_inf = self.reference_dimensions['u_inf']
+        s_ref = self.reference_dimensions['S_ref']
+        b_ref = self.reference_dimensions['b_ref']
+        c_ref = self.reference_dimensions['c_ref']
+        rho = self.reference_dimensions['rho']
+        quat = self.reference_dimensions['quat']
+        euler_orient = algebra.quat2euler(quat) * 180/np.pi
+
+        labels_der = {0: 'u',
+                      1: 'v',
+                      2: 'w',
+                      3: 'p',
+                      4: 'q',
+                      5: 'r',
+                      6: 'alpha',
+                      7: 'beta'}
+
+        labels_out = {0: 'C_D',
+                      1: 'C_Y',
+                      2: 'C_L',
+                      3: 'C_l',
+                      4: 'C_m',
+                      5: 'C_n'}
+
+        separator = '\n' + 80*'#' + '\n'
+
+        with open(folder + '/' + filename, mode='w') as outfile:
+            outfile.write('SHARPy Stability Derivatives Analysis\n')
+
+            outfile.write('State:\n')
+            outfile.write('\t{:4f}\t\t\t # Free stream velocity\n'.format(u_inf))
+            outfile.write('\t{:4f}\t\t\t # Free stream density\n'.format(rho))
+            outfile.write('\t{:4f}\t\t\t # Alpha [deg]\n'.format(euler_orient[1]))
+            outfile.write('\t{:4f}\t\t\t # Beta [deg]\n'.format(euler_orient[2]))
+
+            outfile.write(separator)
+            outfile.write('\nReference Dimensions:\n')
+            outfile.write('\t{:4f}\t\t\t # Reference planform area\n'.format(s_ref))
+            outfile.write('\t{:4f}\t\t\t # Reference chord\n'.format(c_ref))
+            outfile.write('\t{:4f}\t\t\t # Reference span\n'.format(b_ref))
+
+            outfile.write(separator)
+            outfile.write('\nCoefficients:\n')
+            for ith, coeff in enumerate(self.steady_coefficients):
+                outfile.write('\t{:4e}\t\t\t # {:s}\n'.format(coeff,  labels_out[ith]))
+
+            outfile.write(separator)
+
+        # this needs to be out of with open as it is done in each of the Derivatives objects
+        for derivative_set in self.dict_of_derivatives.values():
+                derivative_set.print(derivative_filename=folder + '/' + filename)
 
 
 class DerivativeSet:
@@ -553,15 +642,20 @@ class DerivativeSet:
         self.frame_of_reference = frame_of_reference
 
         self.table = None
+        self.name = None
 
-    def print(self):
+    def print(self, derivative_filename=None):
+        if self.name is not None:
+            with open(derivative_filename, 'a') as f:
+                f.write('Derivative set: {:s}\n'.format(self.name))
         self.table = cout.TablePrinter(n_fields=len(self.labels_in)+1,
-                                       field_types=['s']+len(self.labels_in) * ['e'])
+                                       field_types=['s']+len(self.labels_in) * ['e'], filename=derivative_filename)
         self.table.print_header(field_names=list(['der'] + self.labels_in))
         for i in range(len(self.labels_out)):
             out_list = [self.labels_out[i]] + list(self.matrix[i, :])
             self.table.print_line(out_list)
         self.table.print_divider_line()
+        self.table.character_return(n_lines=2)
 
     def save(self, derivative_name, output_name):
         with h5py.File(output_name + '.stability.h5', 'w') as f:
