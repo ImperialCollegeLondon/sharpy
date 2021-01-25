@@ -51,12 +51,12 @@ class AeroTimeStepInfo(object):
           ``[n_surf][3 x streamwise nodes x spanwise nodes]``
         gamma_dot (list(np.ndarray)): Time derivative of ``gamma``
 
-        inertial_total_forces (list(np.ndarray)): Total aerodynamic forces in ``G`` FoR ``[n_surf x 6]``
-        body_total_forces (list(np.ndarray)): Total aerodynamic forces in ``A`` FoR ``[n_surf x 6]``
-        inertial_steady_forces (list(np.ndarray)): Total aerodynamic steady forces in ``G`` FoR ``[n_surf x 6]``
-        body_steady_forces (list(np.ndarray)): Total aerodynamic steady forces in ``A`` FoR ``[n_surf x 6]``
-        inertial_unsteady_forces (list(np.ndarray)): Total aerodynamic unsteady forces in ``G`` FoR ``[n_surf x 6]``
-        body_unsteady_forces (list(np.ndarray)): Total aerodynamic unsteady forces in ``A`` FoR ``[n_surf x 6]``
+        inertial_total_forces (list(np.ndarray)): Total aerodynamic forces in ``G`` FoR ``[n_surf x 6]``, written by ``AeroForcesCalculator``.
+        body_total_forces (list(np.ndarray)): Total aerodynamic forces in ``A`` FoR ``[n_surf x 6]``, written by ``AeroForcesCalculator``.
+        inertial_steady_forces (list(np.ndarray)): Total aerodynamic steady forces in ``G`` FoR ``[n_surf x 6]``, written by ``AeroForcesCalculator``.
+        body_steady_forces (list(np.ndarray)): Total aerodynamic steady forces in ``A`` FoR ``[n_surf x 6]``, written by ``AeroForcesCalculator``.
+        inertial_unsteady_forces (list(np.ndarray)): Total aerodynamic unsteady forces in ``G`` FoR ``[n_surf x 6]``, written by ``AeroForcesCalculator``.
+        body_unsteady_forces (list(np.ndarray)): Total aerodynamic unsteady forces in ``A`` FoR ``[n_surf x 6]``, written by ``AeroForcesCalculator``.
 
         postproc_cell (dict): Variables associated to cells to be postprocessed
         postproc_node (dict): Variables associated to nodes to be postprocessed
