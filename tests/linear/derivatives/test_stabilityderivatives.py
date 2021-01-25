@@ -6,11 +6,12 @@ import sharpy.sharpy_main
 import h5py
 import sharpy.utils.h5utils as h5utils
 import sharpy.utils.algebra as algebra
+import sharpy.linear.src.libss as libss
 
 
 class TestLinearDerivatives(unittest.TestCase):
 
-    def run_sharpy(self, alpha_deg, flow, not_run=False):
+    def run_sharpy(self, alpha_deg, flow, target_system, not_run=False):
         # Problem Set up
         u_inf = 10.
         rho = 1.02
@@ -35,6 +36,13 @@ class TestLinearDerivatives(unittest.TestCase):
 
         # Case Admin - Create results folders
         case_name = 'wing'
+        if target_system == 'aerodynamic':
+            case_name += '_uvlm'
+        elif target_system == 'aeroelastic':
+            case_name += '_coupled'
+        else:
+            NameError('Unrecognised system')
+
         case_nlin_info = '_uinf{:04g}_a{:04g}'.format(u_inf*10, alpha_deg*100)
         case_name += case_nlin_info
 
@@ -161,6 +169,52 @@ class TestLinearDerivatives(unittest.TestCase):
                               'write_data': 'on',
                               'rigid_modes_cg': 'off'}
 
+        settings = {}
+        settings['NonLinearDynamicCoupledStep'] = {'print_info': 'off',
+                                                   'max_iterations': 950,
+                                                   'delta_curved': 1e-1,
+                                                   'min_delta': ws.tolerance,
+                                                   'newmark_damp': 5e-3,
+                                                   'gravity_on': 'on',
+                                                   'gravity': 9.81,
+                                                   'num_steps': 4,
+                                                   'dt': ws.dt,
+                                                   'initial_velocity': u_inf}
+
+        relative_motion = 'off'
+        settings['StepUvlm'] = {'print_info': 'off',
+                                'horseshoe': 'off',
+                                'num_cores': 4,
+                                'n_rollup': 0,
+                                'convection_scheme': 2,
+                                'rollup_dt': ws.dt,
+                                'rollup_aic_refresh': 1,
+                                'rollup_tolerance': 1e-4,
+                                'gamma_dot_filtering': 6,
+                                'vortex_radius': 1e-8,
+                                'velocity_field_generator': 'SteadyVelocityField',
+                                'velocity_field_input': {'u_inf': 0 * u_inf,
+                                                         'u_inf_direction': [1., 0, 0]},
+                                'rho': rho,
+                                'n_time_steps': 1,
+                                'dt': ws.dt}
+
+        solver = 'NonLinearDynamicCoupledStep'
+        ws.config['DynamicCoupled'] = {'structural_solver': solver,
+                                      'structural_solver_settings': settings[solver],
+                                      'aero_solver': 'StepUvlm',
+                                      'aero_solver_settings': settings['StepUvlm'],
+                                      'fsi_substeps': 200,
+                                      'fsi_tolerance': ws.tolerance,
+                                      'relaxation_factor': ws.relaxation_factor,
+                                      'minimum_steps': 1,
+                                      'relaxation_steps': 150,
+                                      'final_relaxation_factor': 0.5,
+                                      'n_time_steps': 1,
+                                      'dt': ws.dt,
+                                      'include_unsteady_force_contribution': 'off',
+                                                                  }
+
         ws.config['LinearAssembler'] = {'linear_system': 'LinearAeroelastic',
                                        'linear_system_settings': {
                                            'track_body': 'off',
@@ -208,12 +262,15 @@ class TestLinearDerivatives(unittest.TestCase):
                                           }
 
         ws.config['StabilityDerivatives'] = {'folder': self.route_test_dir + '/output/' + case_name + '/',
-                                             'target_system': 'aerodynamic',
+                                             'target_system': target_system,
                                              'u_inf': ws.u_inf,
                                              'c_ref': ws.main_chord,
                                              'b_ref': ws.wing_span,
                                              'S_ref': ws.wing_span * ws.main_chord,
                                              }
+
+        ws.config['AsymptoticStability'] = {'folder': self.route_test_dir + '/output/' + case_name + '/',
+                                            'print_info': 'on'}
 
         ws.config['SaveParametricCase'] = {'folder': self.route_test_dir + '/output/' + case_name + '/',
                                            'save_case': 'off',
@@ -235,6 +292,22 @@ class TestLinearDerivatives(unittest.TestCase):
         return ws
 
     def test_derivatives(self):
+        target_system_list = ['aerodynamic']#, 'aeroelastic']
+        # target_system_list = ['aeroelastic']
+        # target_system_list = ['aerodynamic', 'aeroelastic']
+        for system in target_system_list:
+            with self.subTest(target_system=system):
+                self.run_case(target_system=system)
+
+    def run_case(self, target_system):
+
+        if target_system == 'aerodynamic':
+            nonlinear_solver = ['StaticUvlm']
+        elif target_system == 'aeroelastic':
+            nonlinear_solver = ['StaticCoupled', 'DynamicCoupled']
+        else:
+            NameError('Unrecognised system')
+
         case_name_db = []
         not_run = False # for debuigghig
         # Reference Case at 4 degrees
@@ -242,16 +315,18 @@ class TestLinearDerivatives(unittest.TestCase):
         alpha_deg_ref = 4
         alpha0 = alpha_deg_ref * np.pi/180
         ref = self.run_sharpy(alpha_deg=alpha_deg_ref,
-                                        flow=['BeamLoader',
-                                              'AerogridLoader',
-                                              'StaticUvlm',
-                                              'AeroForcesCalculator',
-                                              'Modal',
-                                              'LinearAssembler',
-                                              'StabilityDerivatives',
-                                              'SaveData',
-                                              'SaveParametricCase'],
-                                        not_run=False)
+                              flow=['BeamLoader',
+                                    'AerogridLoader', ] +
+                                   nonlinear_solver +
+                                   ['AeroForcesCalculator',
+                                    'Modal',
+                                    'LinearAssembler',
+                                    # 'AsymptoticStability',
+                                    'StabilityDerivatives',
+                                    'SaveData',
+                                    'SaveParametricCase'],
+                              target_system=target_system,
+                              not_run=False)
         u_inf = ref.u_inf
         ref_case_name = ref.case_name
         case_name_db.append(ref_case_name)
@@ -260,10 +335,7 @@ class TestLinearDerivatives(unittest.TestCase):
 
         # Run nonlinear cases in the vicinity
         nonlinear_sim_flow = ['BeamLoader',
-                              'AerogridLoader',
-                              'StaticUvlm',
-                              'AeroForcesCalculator',
-                              'SaveParametricCase']
+                              'AerogridLoader'] + nonlinear_solver + ['AeroForcesCalculator', 'SaveParametricCase']
         alpha_deg_min = alpha_deg_ref - 5e-3
         alpha_deg_max = alpha_deg_ref + 5e-3
         n_evals = 11
@@ -275,7 +347,7 @@ class TestLinearDerivatives(unittest.TestCase):
                 case_name = ref_case_name
                 continue
             else:
-                case = self.run_sharpy(alpha, flow=nonlinear_sim_flow, not_run=not_run)
+                case = self.run_sharpy(alpha, flow=nonlinear_sim_flow, target_system=target_system, not_run=not_run)
                 case_name_db.append(case.case_name)
                 case_name = case.case_name
             nlin_forces = np.loadtxt(self.route_test_dir +
@@ -309,11 +381,21 @@ class TestLinearDerivatives(unittest.TestCase):
                                                                                                      ref_case_name))
         linss_data = scio.loadmat(self.route_test_dir + '/output/{:s}/savedata/{:s}.linss.mat'.format(ref_case_name,
                                                                                                   ref_case_name))
-
+        
         # Steady State transfer function
-        H0 = linuvlm_data['C'].dot(
-            np.linalg.inv(np.eye(linuvlm_data['A'].shape[0]) - linuvlm_data['A']).dot(linuvlm_data['B'])) + \
-             linuvlm_data['D']
+        if target_system == 'aerodynamic':
+            A, B, C, D, dt = linuvlm_data['A'], linuvlm_data['B'], linuvlm_data['C'], linuvlm_data['D'], linuvlm_data['dt']
+            # H0 = linuvlm_data['C'].dot(
+            #     np.linalg.inv(np.eye(linuvlm_data['A'].shape[0]) - linuvlm_data['A']).dot(linuvlm_data['B'])) + \
+            #      linuvlm_data['D']
+        else:
+            A, B, C, D, dt = linss_data['A'], linss_data['B'], linss_data['C'], linss_data['D'], linss_data['dt']
+            # H0 = linss_data['C'].dot(
+            #     np.linalg.inv(np.eye(linss_data['A'].shape[0]) - linss_data['A']).dot(linss_data['B'])) + \
+            #      linss_data['D']
+
+        ss = libss.ss(A, B, C, D, dt=dt)
+        H0 = ss.freqresp([1e-5])[:, :, 0].real
 
         cga = algebra.quat2rotation(algebra.euler2quat(np.array([0, alpha0, 0])))
 
@@ -324,6 +406,8 @@ class TestLinearDerivatives(unittest.TestCase):
         forces = np.zeros((n_evals, 4))
         moments = np.zeros_like(forces)
 
+        phi = linss_data['mode_shapes'].copy().real
+
         eps = 1e-5
         dalpha_vec = np.array([-eps, +eps])
         for i_alpha, dalpha in enumerate(dalpha_vec):
@@ -332,7 +416,7 @@ class TestLinearDerivatives(unittest.TestCase):
             deuler = np.array([0, dalpha, 0])
             euler0 = np.array([0, alpha0, 0])
 
-            u = np.zeros((linuvlm_data['B'].shape[1]))  # input vector
+            u = np.zeros((B.shape[1]))  # input vector
             V0 = np.array([-1, 0, 0], dtype=float) * u_inf  # G
             Vp = u_inf * np.array([-np.cos(dalpha), 0, -np.sin(dalpha)])  # G
 
@@ -352,14 +436,14 @@ class TestLinearDerivatives(unittest.TestCase):
             dvx = dva3[0]
 
             # Need to scale the mode shapes by the rigid body mode factor
-            u[vx_ind] = dvx / linss_data['mode_shapes'][-9, 0]
-            u[vz_ind] = dvz / linss_data['mode_shapes'][-7, 2]
+            u[vx_ind] = dvx / phi[-9, 0]
+            u[vz_ind] = dvz / phi[-7, 2]
 
             # and the same with the output forces
-            flin = H0.dot(u)[:3].real / linss_data['mode_shapes'][-9, 0]  # A
-            mlin = H0.dot(u)[3:6].real / linss_data['mode_shapes'][-6, 3]  # A
-            F0A = linss_data['forces_aero_beam_dof'][0, :3] / linss_data['mode_shapes'][-9, 0]  # A - forces at the linearisation
-            M0A = linss_data['forces_aero_beam_dof'][0, 3:6] / linss_data['mode_shapes'][-6, 3]  # A - forces at the linearisation
+            flin = H0.dot(u)[:3].real / phi[-9, 0]  # A
+            mlin = H0.dot(u)[3:6].real / phi[-6, 3]  # A
+            F0A = linss_data['forces_aero_beam_dof'][0, :3].real / phi[-9, 0]  # A - forces at the linearisation
+            M0A = linss_data['forces_aero_beam_dof'][0, 3:6].real / phi[-6, 3]  # A - forces at the linearisation
             LD0 = cga.dot(F0A)  # Lift and drag at the linearisation point
             M0G = cga.dot(M0A)
 
@@ -383,24 +467,33 @@ class TestLinearDerivatives(unittest.TestCase):
         with h5py.File(self.route_test_dir + '/output/' + ref_case_name + '/force_angle.stability.h5', 'r') as f:
             sharpy_force_angle = h5utils.load_h5_in_dict(f)['force_angle']
 
-        try:
-            np.testing.assert_almost_equal(sharpy_force_angle[2, 1], cla, decimal=5)
-            np.testing.assert_almost_equal(sharpy_force_angle[0, 1], cda, decimal=5)
-            np.testing.assert_almost_equal(sharpy_force_angle[4, 1], cma, decimal=5)
-        except AssertionError as e:
-            print('Linear perturbation')
-            print(e)
+        linsubtests = ((2, cla, 'lift'),
+                       (0, cda, 'drag'),
+                       (4, cma, 'moment'))
+        for test in linsubtests:
+            with self.subTest(test):
+                try:
+                    np.testing.assert_almost_equal(sharpy_force_angle[test[0], 1], test[1], decimal=5)
+                except AssertionError as e:
+                    print('Error Linear perturbation in {:s}'.format(test[2]))
+                    print(e)
+                    print('Pct error', np.abs(sharpy_force_angle[test[0], 1] - test[1]) / test[1] * 100)
+                    # raise AssertionError
 
-        try:
-            np.testing.assert_almost_equal(sharpy_force_angle[2, 1], nonlin_cla, decimal=3, verbose=True)
-            np.testing.assert_almost_equal(sharpy_force_angle[0, 1], nonlin_cda, decimal=3, verbose=True)
-        except AssertionError as e:
-            print(e)
-            print(np.abs(sharpy_force_angle[2, 1] - nonlin_cla) / nonlin_cla)
-            print(np.abs(sharpy_force_angle[0, 1] - nonlin_cda) / nonlin_cda)
+        nonlinsubtests = ((2, nonlin_cla, 'lift'),
+                          (0, nonlin_cda, 'drag'),
+                          )
+
+        for test in nonlinsubtests:
+            with self.subTest(test):
+                try:
+                    np.testing.assert_almost_equal(sharpy_force_angle[test[0], 1], test[1], decimal=2)
+                except AssertionError as e:
+                    print('Error nonlinear perturbation in {:s}'.format(test[2]))
+                    print(e)
+                    print('Pct error', np.abs(sharpy_force_angle[test[0], 1] - test[1]) / test[1] * 100)
+                    # raise AssertionError
         return forces, moments
-
-
 
     def tearDown(self):
         import shutil
