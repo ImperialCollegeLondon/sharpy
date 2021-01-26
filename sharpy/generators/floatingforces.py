@@ -826,19 +826,20 @@ class FloatingForces(generator_interface.BaseGenerator):
                 # Damping
                 (T, yout, xout) = forced_response(self.hd_damping,
                                                   T=[0, self.settings['dt']],
-                                                  U=self.qdot[data.ts-1:data.ts+1, :],
-                                                  X0=self.x0_damping[data.ts-1],
-                                                  transpose=True)
-                self.x0_damping[data.ts] = xout[1, :]
-                hd_f_qdot_g -= yout[1, :]
+                                                  U=self.qdot[data.ts-1:data.ts+1, :].T,
+                                                  X0=self.x0_damping[data.ts-1])
+                                                  # transpose=True)
+                self.x0_damping[data.ts] = xout[:, 1]
+                hd_f_qdot_g -= yout[:, 1]
+                hd_f_qdotdot_g = np.zeros((6))
 
-                (T, yout, xout) = forced_response(self.hd_added_mass,
-                                                  T=[0, self.settings['dt']],
-                                                  U=self.qdotdot[data.ts-1:data.ts+1, :],
-                                                  X0=self.x0_added_mass[data.ts-1],
-                                                  transpose=True)
-                self.x0_added_mass[data.ts] = xout[1, :]
-                hd_f_qdotdot_g = -yout[1, :]
+                # (T, yout, xout) = forced_response(self.hd_added_mass,
+                #                                   T=[0, self.settings['dt']],
+                #                                   U=self.qdotdot[data.ts-1:data.ts+1, :],
+                #                                   X0=self.x0_added_mass[data.ts-1],
+                #                                   transpose=True)
+                # self.x0_added_mass[data.ts] = xout[1, :]
+                # hd_f_qdotdot_g = -yout[1, :]
                 # hd_f_qdotdot_g = -np.dot(self.hd_added_mass_const, self.qdotdot[data.ts, :])
 
                 # hd_f_qdot_g -= response_freq_dep_matrix(self.hd_damping, self.ab_freq_rads, self.qdot, data.ts, self.settings['dt'])
@@ -846,12 +847,12 @@ class FloatingForces(generator_interface.BaseGenerator):
 
                 # Compute the equivalent added mass matrix
                 # equiv_hd_added_mass = compute_equiv_hd_added_mass(-hd_f_qdotdot_g, self.qdotdot[data.ts, :])
-                if self.added_mass_in_mass_matrix:
+                # if self.added_mass_in_mass_matrix:
                     # data.structure.add_lumped_mass_to_element(self.buoyancy_node,
                     #                                           equiv_hd_added_mass,
                     #                                           replace=True)
                     # data.structure.generate_fortran()
-                    hd_f_qdotdot_g += np.dot(self.hd_added_mass_const, self.qdotdot[data.ts, :])
+                    # hd_f_qdotdot_g += np.dot(self.hd_added_mass_const, self.qdotdot[data.ts, :])
 
             else:
                 cout.cout_wrap(("ERROR: Unknown method_matrices_freq %s" % self.settings['method_matrices_freq']), 4)
