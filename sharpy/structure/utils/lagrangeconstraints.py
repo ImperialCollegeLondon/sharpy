@@ -401,7 +401,7 @@ def def_rot_axis_FoR_wrt_node_general(MB_tstep, MB_beam, FoR_body, node_body, no
 
     if not indep:
         aux_Bnh = ag.multiply_matrices(ag.skew(rot_axisB),
-                                  cba,
+                                  cab.T,
                                   node_cga.T,
                                   FoR_cga)
 
@@ -564,7 +564,7 @@ def def_rot_axis_FoR_wrt_node_xyz(MB_tstep, MB_beam, FoR_body, node_body, node_n
     B = np.zeros((num_LM_eq_specific, sys_size), dtype=ct.c_double, order = 'F')
 
     # Simplify notation
-    cba = ag.crv2rotation(MB_tstep[node_body].psi[ielem,inode_in_elem,:])
+    cab = ag.crv2rotation(MB_tstep[node_body].psi[ielem,inode_in_elem,:])
     node_cga = MB_tstep[node_body].cga()
     FoR_cga = MB_tstep[FoR_body].cga()
     FoR_wa = MB_tstep[FoR_body].for_vel[3:6]
@@ -573,23 +573,23 @@ def def_rot_axis_FoR_wrt_node_xyz(MB_tstep, MB_beam, FoR_body, node_body, node_n
     Z = np.zeros((2,3))
     Z[:, zero_comp] = np.eye(2)
 
-    Bnh[:, FoR_dof+3:FoR_dof+6] = ag.multiply_matrices(Z, cba, node_cga.T, FoR_cga)
+    Bnh[:, FoR_dof+3:FoR_dof+6] = ag.multiply_matrices(Z, cab.T, node_cga.T, FoR_cga)
 
     # Constrain angular velocities
     LM_Q[:sys_size] += scalingFactor*np.dot(np.transpose(Bnh), Lambda_dot[ieq:ieq+num_LM_eq_specific])
-    LM_Q[sys_size+ieq:sys_size+ieq+num_LM_eq_specific] += scalingFactor*ag.multiply_matrices(Z, cba, node_cga.T, FoR_cga, FoR_wa)
+    LM_Q[sys_size+ieq:sys_size+ieq+num_LM_eq_specific] += scalingFactor*ag.multiply_matrices(Z, cab.T, node_cga.T, FoR_cga, FoR_wa)
 
     LM_C[sys_size+ieq:sys_size+ieq+num_LM_eq_specific,:sys_size] += scalingFactor*Bnh
     LM_C[:sys_size,sys_size+ieq:sys_size+ieq+num_LM_eq_specific] += scalingFactor*np.transpose(Bnh)
 
-    vec = ag.multiply_matrices(node_cga, cba.T, Z.T, Lambda_dot[ieq:ieq+num_LM_eq_specific])
+    vec = ag.multiply_matrices(node_cga, cab, Z.T, Lambda_dot[ieq:ieq+num_LM_eq_specific])
     LM_C[FoR_dof+3:FoR_dof+6, FoR_dof+6:FoR_dof+10] += scalingFactor*ag.der_CquatT_by_v(MB_tstep[FoR_body].quat, vec)
 
     if MB_beam[node_body].FoR_movement == 'free':
-        vec = ag.multiply_matrices(cba.T, Z.T, Lambda_dot[ieq:ieq+num_LM_eq_specific])
+        vec = ag.multiply_matrices(cab, Z.T, Lambda_dot[ieq:ieq+num_LM_eq_specific])
         LM_C[FoR_dof+3:FoR_dof+6, node_FoR_dof+6:node_FoR_dof+10] += scalingFactor*ag.multiply_matrices(FoR_cga.T, ag.der_Cquat_by_v(MB_tstep[node_body].quat, vec))
 
-    LM_K[FoR_dof+3:FoR_dof+6, node_dof+3:node_dof+6] += scalingFactor*ag.multiply_matrices(FoR_cga.T, node_cga, ag.der_CcrvT_by_v(MB_tstep[node_body].psi[ielem,inode_in_elem,:],
+    LM_K[FoR_dof+3:FoR_dof+6, node_dof+3:node_dof+6] += scalingFactor*ag.multiply_matrices(FoR_cga.T, node_cga, ag.der_Ccrv_by_v(MB_tstep[node_body].psi[ielem,inode_in_elem,:],
                                                                                                                                   np.dot(Z.T, Lambda_dot[ieq:ieq+num_LM_eq_specific])))
 
     if penaltyFactor:
@@ -604,9 +604,9 @@ def def_rot_axis_FoR_wrt_node_xyz(MB_tstep, MB_beam, FoR_body, node_body, node_n
 
         # Derivatives with the quaternion of the FoR
         vec = ag.multiply_matrices(node_cga,
-                                   cba.T,
+                                   cab,
                                    ZTZ,
-                                   cba,
+                                   cab.T,
                                    node_cga.T,
                                    FoR_cga,
                                    FoR_wa)
@@ -614,17 +614,17 @@ def def_rot_axis_FoR_wrt_node_xyz(MB_tstep, MB_beam, FoR_body, node_body, node_n
 
         mat = ag.multiply_matrices(FoR_cga.T,
                                    node_cga,
-                                   cba.T,
+                                   cab,
                                    ZTZ,
-                                   cba,
+                                   cab.T,
                                    node_cga.T)
         LM_C[FoR_dof+3:FoR_dof+6, FoR_dof+6:FoR_dof+10] += penaltyFactor*np.dot(mat, ag.der_Cquat_by_v(MB_tstep[FoR_body].quat, FoR_wa))
 
         if MB_beam[node_body].FoR_movement == 'free':
             # Derivatives with the quaternion of the FoR of the node
-            vec = ag.multiply_matrices(cba.T,
+            vec = ag.multiply_matrices(cab,
                                        ZTZ,
-                                       cba,
+                                       cab.T,
                                        node_cga.T,
                                        FoR_cga,
                                        FoR_wa)
@@ -633,29 +633,29 @@ def def_rot_axis_FoR_wrt_node_xyz(MB_tstep, MB_beam, FoR_body, node_body, node_n
 
             mat = ag.multiply_matrices(FoR_cga.T,
                                        node_cga,
-                                       cba.T,
+                                       cab,
                                        ZTZ,
-                                       cba)
+                                       cab.T)
             vec = np.dot(FoR_cga, FoR_wa)
             LM_C[FoR_dof+3:FoR_dof+6, node_FoR_dof+6:node_FoR_dof+10] += penaltyFactor*np.dot(mat, ag.der_CquatT_by_v(MB_tstep[node_body].quat, vec))
 
         # Derivatives with the CRV
-        mat = np.dot(FoR_cga(), node_cga)
+        mat = np.dot(FoR_cga.T, node_cga)
         vec = ag.multiply_matrices(ZTZ,
-                                   cba,
+                                   cab.T,
                                    node_cga.T,
                                    FoR_cga,
                                    FoR_wa)
-        LM_K[FoR_dof+3:FoR_dof+6, node_dof+3:node_dof+6] += penaltyFactor*np.dot(mat, ag.der_CcrvT_by_v(MB_tstep[node_body].psi[ielem,inode_in_elem,:], vec))
+        LM_K[FoR_dof+3:FoR_dof+6, node_dof+3:node_dof+6] += penaltyFactor*np.dot(mat, ag.der_Ccrv_by_v(MB_tstep[node_body].psi[ielem,inode_in_elem,:], vec))
 
         mat = ag.multiply_matrices(FoR_cga.T,
                                    node_cga,
-                                   cba.T,
-                                   ZTZ,)
+                                   cab,
+                                   ZTZ)
         vec = ag.multiply_matrices(node_cga.T,
                                    FoR_cga,
                                    FoR_wa)
-        LM_K[FoR_dof+3:FoR_dof+6, node_dof+3:node_dof+6] += penaltyFactor*np.dot(mat, ag.der_Ccrv_by_v(MB_tstep[node_body].psi[ielem,inode_in_elem,:], vec))
+        LM_K[FoR_dof+3:FoR_dof+6, node_dof+3:node_dof+6] += penaltyFactor*np.dot(mat, ag.der_CcrvT_by_v(MB_tstep[node_body].psi[ielem,inode_in_elem,:], vec))
 
     ieq += 2
     return ieq
