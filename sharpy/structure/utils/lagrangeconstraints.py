@@ -797,35 +797,44 @@ def def_rot_vect_FoR_wrt_node(MB_tstep, MB_beam, FoR_body, node_body, node_numbe
     # Lambda_dot[ieq:ieq+num_LM_eq_specific]
     # np.concatenate((Lambda_dot[ieq:ieq+num_LM_eq_specific], np.array([0.])))
 
+    # Simplify notation
     ielem, inode_in_elem = MB_beam[node_body].node_master_elem[node_number]
-    Bnh[:, FoR_dof+3:FoR_dof+6] = ag.multiply_matrices(ag.crv2rotation(MB_tstep[node_body].psi[ielem,inode_in_elem,:]),
-                                                            MB_tstep[FoR_body].cga().T,
-                                                            MB_tstep[node_body].cga())
+    node_cag = MB_tstep[node_body].cag()
+    cab = ag.crv2rotation(MB_tstep[node_body].psi[ielem,inode_in_elem,:])
+    FoR_cag = MB_tstep[FoR_body].cag()
+    FoR_wa = MB_tstep[FoR_body].for_vel[3:6]
+
+    Bnh[:, FoR_dof+3:FoR_dof+6] = ag.multiply_matrices(cab.T,
+                                                       FoR_cga.T,
+                                                       node_cga)
 
     # Constrain angular velocities
     LM_Q[:sys_size] += scalingFactor*np.dot(np.transpose(Bnh), Lambda_dot[ieq:ieq+num_LM_eq_specific])
-    LM_Q[sys_size+ieq:sys_size+ieq+num_LM_eq_specific] += scalingFactor*(np.dot(Bnh[:, FoR_dof+3:FoR_dof+6], MB_tstep[FoR_body].for_vel[3:6]) -
+    LM_Q[sys_size+ieq:sys_size+ieq+num_LM_eq_specific] += scalingFactor*(np.dot(Bnh[:, FoR_dof+3:FoR_dof+6], FoR_wa) -
                                                                          rot_vect)
 
     LM_C[sys_size+ieq:sys_size+ieq+num_LM_eq_specific,:sys_size] += scalingFactor*Bnh
     LM_C[:sys_size,sys_size+ieq:sys_size+ieq+num_LM_eq_specific] += scalingFactor*np.transpose(Bnh)
 
     if MB_beam[node_body].FoR_movement == 'free':
-        LM_C[FoR_dof+3:FoR_dof+6,node_FoR_dof+6:node_FoR_dof+10] += scalingFactor*np.dot(MB_tstep[FoR_body].cga().T,
+        LM_C[FoR_dof+3:FoR_dof+6,node_FoR_dof+6:node_FoR_dof+10] += scalingFactor*np.dot(FoR_cga.T,
                                                                            ag.der_Cquat_by_v(MB_tstep[node_body].quat,
-                                                                                                  np.dot(ag.crv2rotation(MB_tstep[node_body].psi[ielem,inode_in_elem,:]).T,
-                                                                                                         Lambda_dot[ieq:ieq+num_LM_eq_specific])))
+                                                                                                  np.dot(cab, Lambda_dot[ieq:ieq+num_LM_eq_specific])))
 
     LM_C[FoR_dof+3:FoR_dof+6,FoR_dof+6:FoR_dof+10] += scalingFactor*ag.der_CquatT_by_v(MB_tstep[FoR_body].quat,
-                                                                              ag.multiply_matrices(MB_tstep[node_body].cga(),
-                                                                                                ag.crv2rotation(MB_tstep[node_body].psi[ielem,inode_in_elem,:]).T,
+                                                                              ag.multiply_matrices(node_cga, cab, Lambda_dot[ieq:ieq+num_LM_eq_specific]))
+
+    LM_K[FoR_dof+3:FoR_dof+6,node_dof+3:node_dof+6] += scalingFactor*ag.multiply_matrices(FoR_cga.T,
+                                                                         node_cga,
+                                                                         ag.der_Ccrv_by_v(MB_tstep[node_body].psi[ielem,inode_in_elem,:],
                                                                                                 Lambda_dot[ieq:ieq+num_LM_eq_specific]))
 
-    LM_K[FoR_dof+3:FoR_dof+6,node_dof+3:node_dof+6] += scalingFactor*ag.multiply_matrices(MB_tstep[FoR_body].cga().T,
-                                                                         MB_tstep[node_body].cga(),
-                                                                         ag.der_CcrvT_by_v(MB_tstep[node_body].psi[ielem,inode_in_elem,:],
-                                                                                                Lambda_dot[ieq:ieq+num_LM_eq_specific]))
+    if penaltyFactor:
+        LM_C[FoR_dof+3:FoR_dof+6, FoR_dof+3:FoR_dof+6] += penaltyFactor*np.eye(3)
 
+        q = np.zeros((sys_size))
+        q[FoR_dof+3:FoR_dof+6] = FoR_Wa
+        LM_Q[:sys_size] += penaltyFactor*np.dot(np.dot(Bnh.T, Bnh), q)
 
     ieq += 3
     return ieq
