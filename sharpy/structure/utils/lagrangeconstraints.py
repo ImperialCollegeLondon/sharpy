@@ -251,41 +251,49 @@ def equal_pos_node_FoR(MB_tstep, MB_beam, FoR_body, node_body, inode_in_body, no
     Bnh = np.zeros((num_LM_eq_specific, sys_size), dtype=ct.c_double, order = 'F')
     B = np.zeros((num_LM_eq_specific, sys_size), dtype=ct.c_double, order = 'F')
 
+    # Simplify notation
+    node_cga = MB_tstep[node_body].cga()
+    node_pos = MB_tstep[node_body].pos[inode_in_body, :]
+    node_FoR_pos = MB_tstep[node_body].for_pos[0:3]
+    FoR_pos = MB_tstep[FoR_body].for_pos[0:3]
+
     # if MB_beam[node_body].FoR_movement == 'free':
     B[:, node_FoR_dof:node_FoR_dof+3] = np.eye(3)
-    B[:, node_dof:node_dof+3] = MB_tstep[FoR_body].cga()
+    B[:, node_dof:node_dof+3] = node_cga
     B[:, FoR_dof:FoR_dof+3] = -np.eye(3)
 
-    LM_K[sys_size + ieq : sys_size + ieq + num_LM_eq_specific,                : sys_size                           ] += scalingFactor*B
-    LM_K[               : sys_size                           , sys_size + ieq : sys_size + ieq + num_LM_eq_specific] += scalingFactor*np.transpose(B)
+    LM_K[sys_size + ieq : sys_size + ieq + num_LM_eq_specific, :sys_size] += scalingFactor*B
+    LM_K[:sys_size, sys_size + ieq : sys_size + ieq + num_LM_eq_specific] += scalingFactor*np.transpose(B)
 
     LM_Q[:sys_size] += scalingFactor*np.dot(np.transpose(B), Lambda[ieq:ieq+num_LM_eq_specific])
+    LM_Q[sys_size+ieq:sys_size+ieq+num_LM_eq_specific] += scalingFactor*(node_FoR_pos +
+                                                                         np.dot(node_cga, node_pos) -
+                                                                         FoR_pos)
 
-    LM_C[node_dof:node_dof+3, node_FoR_dof+6:node_FoR_dof+10] = scalingFactor*ag.der_CquatT_by_v(MB_tstep[node_body].quat, Lambda[ieq : ieq + num_LM_eq_specific])
+    LM_C[node_dof:node_dof+3, node_FoR_dof+6:node_FoR_dof+10] += scalingFactor*ag.der_CquatT_by_v(MB_tstep[node_body].quat, Lambda[ieq : ieq + num_LM_eq_specific])
 
     if penaltyFactor:
         q = np.zeros((sys_size, ))
-        q[node_FoR_dof:node_FoR_dof+3] = MB_tstep[node_body].for_pos[0:3]
-        q[node_dof:node_dof+3] = MB_tstep[node_body].pos[inode_in_body, :]
-        q[FoR_dof:FoR_dof+3] = MB_tstep[FoR_body].for_pos[0:3]
+        q[node_FoR_dof:node_FoR_dof+3] = node_FoR_pos
+        q[node_dof:node_dof+3] = node_pos
+        q[FoR_dof:FoR_dof+3] = FoR_pos
 
         LM_Q[:sys_size] += penaltyFactor*np.dot(B.T, np.dot(B, q))
 
         LM_K[node_FoR_dof:node_FoR_dof+3, node_FoR_dof:node_FoR_dof+3] += penaltyFactor*np.eye(3)
-        LM_K[node_FoR_dof:node_FoR_dof+3, node_dof:node_dof+3] += penaltyFactor*MB_tstep[node_body].cga()
+        LM_K[node_FoR_dof:node_FoR_dof+3, node_dof:node_dof+3] += penaltyFactor*node_cga
         LM_K[node_FoR_dof:node_FoR_dof+3, FoR_dof:FoR_dof+3] += -penaltyFactor*np.eye(3)
-        LM_C[node_FoR_dof:node_FoR_dof+3, node_FoR_dof+6:node_FoR_dof+10] += penaltyFactor*ag.der_Cquat_by_v(MB_tstep[node_body].quat, MB_tstep[node_body].pos[inode_in_body, :])
+        LM_C[node_FoR_dof:node_FoR_dof+3, node_FoR_dof+6:node_FoR_dof+10] += penaltyFactor*ag.der_Cquat_by_v(MB_tstep[node_body].quat, node_pos)
 
-        LM_K[node_FoR_dof:node_FoR_dof+3, node_FoR_dof:node_FoR_dof+3] += penaltyFactor*MB_tstep[node_body].cga().T
-        LM_K[node_FoR_dof:node_FoR_dof+3, node_dof:node_dof+3] += penaltyFactor*np.eye(3)
-        LM_K[node_FoR_dof:node_FoR_dof+3, FoR_dof:FoR_dof+3] += -penaltyFactor*MB_tstep[node_body].cga().T
-        LM_C[node_FoR_dof:node_FoR_dof+3, node_FoR_dof+6:node_FoR_dof+10] += penaltyFactor*(ag.der_CquatT_by_v(MB_tstep[node_body].quat, MB_tstep[node_body].for_pos[0:3]) -
-                                                                                           ag.der_CquatT_by_v(MB_tstep[node_body].quat, MB_tstep[FoR_body].for_pos[0:3]))
+        LM_K[node_dof:node_dof+3, node_FoR_dof:node_FoR_dof+3] += penaltyFactor*node_cga.T
+        LM_K[node_dof:node_dof+3, node_dof:node_dof+3] += penaltyFactor*np.eye(3)
+        LM_K[node_dof:node_dof+3, FoR_dof:FoR_dof+3] += -penaltyFactor*node_cga.T
+        LM_C[node_dof:node_dof+3, node_FoR_dof+6:node_FoR_dof+10] += penaltyFactor*(ag.der_CquatT_by_v(MB_tstep[node_body].quat, node_FoR_pos - FoR_pos))
 
-        LM_K[node_FoR_dof:node_FoR_dof+3, node_FoR_dof:node_FoR_dof+3] += -penaltyFactor*np.eye(3)
-        LM_K[node_FoR_dof:node_FoR_dof+3, node_dof:node_dof+3] += -penaltyFactor*MB_tstep[node_body].cga().T
-        LM_K[node_FoR_dof:node_FoR_dof+3, FoR_dof:FoR_dof+3] += penaltyFactor*np.eye(3)
-        LM_C[node_FoR_dof:node_FoR_dof+3, node_FoR_dof+6:node_FoR_dof+10] += -penaltyFactor*ag.der_Cquat_by_v(MB_tstep[node_body].quat, MB_tstep[node_body].pos[inode_in_body, :])
+        LM_K[FoR_dof:FoR_dof+3, node_FoR_dof:node_FoR_dof+3] += -penaltyFactor*np.eye(3)
+        LM_K[FoR_dof:FoR_dof+3, node_dof:node_dof+3] += -penaltyFactor*node_cga.T
+        LM_K[FoR_dof:FoR_dof+3, FoR_dof:FoR_dof+3] += penaltyFactor*np.eye(3)
+        LM_C[FoR_dof:FoR_dof+3, node_FoR_dof+6:node_FoR_dof+10] += -penaltyFactor*ag.der_Cquat_by_v(MB_tstep[node_body].quat, node_pos)
 
     ieq += 3
     return ieq
