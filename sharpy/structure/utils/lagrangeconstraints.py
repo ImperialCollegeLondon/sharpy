@@ -396,20 +396,20 @@ def equal_lin_vel_node_FoR(MB_tstep, MB_beam, FoR_body, node_body, node_number, 
         # Derivatives wrt the node quaternion
         if MB_beam[node_body].FoR_movement == 'free':
             vec = -node_dot_Ra - node_FoR_va + np.dot(ag.skew(node_Ra, node_FoR_wa))
-            LM_C[FoR_dof:FoR_dof+3, node_FoR_dof+6:node_FoR_dof+10] += np.dot(FoR_cga.T, ag.der_Cquat_by_v(MB_tstep[node_body].quat, vec))
+            LM_C[FoR_dof:FoR_dof+3, node_FoR_dof+6:node_FoR_dof+10] += penaltyFactor*np.dot(FoR_cga.T, ag.der_Cquat_by_v(MB_tstep[node_body].quat, vec))
 
             derivative = -ag.der_CquatT_by_v(MB_tstep[node_body].quat, np.dot(FoR_cga, FoR_va))
-            LM_C[node_dof:node_dof+3, node_FoR_dof+6:node_FoR_dof+10] += derivative
-            LM_C[node_FoR_dof:node_FoR_dof+3, node_FoR_dof+6:node_FoR_dof+10] += derivative
-            LM_C[node_FoR_dof+3:node_FoR_dof+6, node_FoR_dof+6:node_FoR_dof+10] -= np.dot(ag.skew(node_Ra), derivative)
+            LM_C[node_dof:node_dof+3, node_FoR_dof+6:node_FoR_dof+10] += penaltyFactor*derivative
+            LM_C[node_FoR_dof:node_FoR_dof+3, node_FoR_dof+6:node_FoR_dof+10] += penaltyFactor*derivative
+            LM_C[node_FoR_dof+3:node_FoR_dof+6, node_FoR_dof+6:node_FoR_dof+10] -= penaltyFactor*np.dot(ag.skew(node_Ra), derivative)
 
         # Derivatives wrt the node Ra
-        LM_K[FoR_dof:FoR_dof+3, node_dof:node_dof+3] -= ag.multiply_matrices(FoR_cga.T, node_cga, ag.skew(node_FoR_wa))
-        LM_K[node_dof:node_dof+3, node_dof:node_dof+3] += ag.skew(node_FoR_wa)
-        LM_K[node_FoR_dof:node_FoR_dof+3, node_dof:node_dof+3] += ag.skew(node_FoR_wa)
+        LM_K[FoR_dof:FoR_dof+3, node_dof:node_dof+3] -= penaltyFactor*ag.multiply_matrices(FoR_cga.T, node_cga, ag.skew(node_FoR_wa))
+        LM_K[node_dof:node_dof+3, node_dof:node_dof+3] += penaltyFactor*ag.skew(node_FoR_wa)
+        LM_K[node_FoR_dof:node_FoR_dof+3, node_dof:node_dof+3] += penaltyFactor*ag.skew(node_FoR_wa)
         vec = ag.multiply_matrices(node_cga.T, FoR_cga, FoR_va) - node_dot_Ra - node_FoR_va
-        LM_K[node_FoR_dof+3:node_FoR_dof+6, node_dof:node_dof+3] += ag.skew(vec)
-        LM_K[node_FoR_dof+3:node_FoR_dof+6, node_dof:node_dof+3] -= ag.der_skewp_skewp_v(node_Ra, node_FoR_wa)
+        LM_K[node_FoR_dof+3:node_FoR_dof+6, node_dof:node_dof+3] += penaltyFactor*ag.skew(vec)
+        LM_K[node_FoR_dof+3:node_FoR_dof+6, node_dof:node_dof+3] -= penaltyFactor*ag.der_skewp_skewp_v(node_Ra, node_FoR_wa)
 
     ieq += 3
     return ieq
