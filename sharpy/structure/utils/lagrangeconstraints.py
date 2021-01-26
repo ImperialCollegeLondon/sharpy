@@ -510,7 +510,7 @@ def def_rot_axis_FoR_wrt_node_general(MB_tstep, MB_beam, FoR_body, node_body, no
                                                                                           ag.der_Cquat_by_v(MB_tstep[node_body].quat, vec))
             mat = ag.multiply_matrices(FoR_cga.T,
                                         node_cga,
-                                        cab,,
+                                        cab,
                                         sq_rot_axisB,
                                         cab.T)
             vec = np.dot(FoR_cga, FoR_wa)
@@ -832,7 +832,7 @@ class hinge_node_FoR(BaseLagrangeConstraint):
         else:
             self.rot_dir = 'general'
             self.indep = []
-
+        
         return self._ieq + self._n_eq
 
     def staticmat(self, LM_C, LM_K, LM_Q, MB_beam, MB_tstep, ts, num_LM_eq,
