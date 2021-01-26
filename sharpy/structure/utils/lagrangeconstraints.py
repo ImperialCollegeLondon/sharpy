@@ -569,7 +569,7 @@ def def_rot_axis_FoR_wrt_node_xyz(MB_tstep, MB_beam, FoR_body, node_body, node_n
 
     vec = ag.multiply_matrices(node_cga, cba.T, Z.T, Lambda_dot[ieq:ieq+num_LM_eq_specific])
     LM_C[FoR_dof+3:FoR_dof+6, FoR_dof+6:FoR_dof+10] += scalingFactor*ag.der_CquatT_by_v(MB_tstep[FoR_body].quat, vec)
-    
+
     if MB_beam[node_body].FoR_movement == 'free':
         vec = ag.multiply_matrices(cba.T, Z.T, Lambda_dot[ieq:ieq+num_LM_eq_specific])
         LM_C[FoR_dof+3:FoR_dof+6, node_FoR_dof+6:node_FoR_dof+10] += scalingFactor*ag.multiply_matrices(FoR_cga.T, ag.der_Cquat_by_v(MB_tstep[node_body].quat, vec))
@@ -803,7 +803,7 @@ class hinge_node_FoR(BaseLagrangeConstraint):
         self._ieq = ieq
         self.scalingFactor = set_value_or_default(MBdict_entry, "scalingFactor", 1.)
         self.penaltyFactor = set_value_or_default(MBdict_entry, "penaltyFactor", 0.)
-        
+
         if (self.rot_axisB[[1, 2]]  == 0).all():
             self.rot_dir = 'x'
             self.zero_comp = np.array([1, 2], dtype=int)
@@ -1201,8 +1201,8 @@ class hinge_FoR(BaseLagrangeConstraint):
                 LM_Q[FoR_dof+3:FoR_dof+6] += self.penaltyFactor*np.dot(sq_rot_axis, MB_tstep[self.body_FoR].for_vel[3:6])
                 LM_C[FoR_dof+3:FoR_dof+6, FoR_dof+3:FoR_dof+6] += self.penaltyFactor*sq_rot_axis
             else:
-                LM_Q[FoR_dof+self.zero_comp] += self.penaltyFactor*MB_tstep[self.body_FoR].for_vel[3+self.zero_comp]
-                LM_C[np.ix_(FoR_dof+3+self.zero_comp, FoR_dof+3+self.zero_comp)] += self.penaltyFactor*np.eye(2)
+                LM_Q[FoR_dof+3:FoR_dof+6] += self.penaltyFactor*MB_tstep[self.body_FoR].for_vel[3:6]
+                LM_C[FoR_dof+3:FoR_dof+6, FoR_dof+3:FoR_dof+6] += self.penaltyFactor*np.eye(3)
 
         ieq += 5
         return
