@@ -81,6 +81,7 @@ class TestGolandFlutter(unittest.TestCase):
                  'LinearAssembler',
                  'FrequencyResponse',
                  'AsymptoticStability',
+                 'SaveData',
                  ],
             'case': ws.case_name, 'route': ws.route,
             'write_screen': 'off', 'write_log': 'on',
@@ -234,6 +235,11 @@ class TestGolandFlutter(unittest.TestCase):
                                           'frequency_spacing': 'log',
                                           'target_system': ['aeroelastic'],
                                           }
+
+        ws.config['SaveData'] = {'folder': self.route_test_dir + '/output/',
+                                 'save_aero': 'off',
+                                 'save_struct': 'off',
+                                 'save_rom': 'on'}
 
         ws.config.write()
 
