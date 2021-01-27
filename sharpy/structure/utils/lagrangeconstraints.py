@@ -379,9 +379,9 @@ def equal_lin_vel_node_FoR(MB_tstep, MB_beam, FoR_body, node_body, node_number, 
         LM_C[:sys_size, :sys_size] += penaltyFactor*np.dot(Bnh.T, Bnh)
 
         # Derivatives wrt the FoR quaterion
-        LM_C[FoR_dof:FoR_dof+3, FoR_dof+6:FoR_dof+10] -= penaltyFactor*np.dot(ag.der_CquatT_by_v(MB_tstep[FoR_body].quat,
+        LM_C[FoR_dof:FoR_dof+3, FoR_dof+6:FoR_dof+10] -= penaltyFactor*ag.der_CquatT_by_v(MB_tstep[FoR_body].quat,
                                                                                                  np.dot(node_cga, node_dot_Ra + node_FoR_va +
-                                                                                                         np.dot(ag.skew(node_Ra), node_FoR_wa))))
+                                                                                                         np.dot(ag.skew(node_Ra), node_FoR_wa)))
 
         LM_C[node_dof:node_dof+3, FoR_dof+6:FoR_dof+10] -= penaltyFactor*np.dot(node_cga.T, ag.der_CquatT_by_v(MB_tstep[FoR_body].quat,
                                                                                                                FoR_va))
@@ -395,7 +395,7 @@ def equal_lin_vel_node_FoR(MB_tstep, MB_beam, FoR_body, node_body, node_number, 
 
         # Derivatives wrt the node quaternion
         if MB_beam[node_body].FoR_movement == 'free':
-            vec = -node_dot_Ra - node_FoR_va + np.dot(ag.skew(node_Ra, node_FoR_wa))
+            vec = -node_dot_Ra - node_FoR_va + np.dot(ag.skew(node_Ra), node_FoR_wa)
             LM_C[FoR_dof:FoR_dof+3, node_FoR_dof+6:node_FoR_dof+10] += penaltyFactor*np.dot(FoR_cga.T, ag.der_Cquat_by_v(MB_tstep[node_body].quat, vec))
 
             derivative = -ag.der_CquatT_by_v(MB_tstep[node_body].quat, np.dot(FoR_cga, FoR_va))
