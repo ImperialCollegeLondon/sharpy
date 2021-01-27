@@ -386,12 +386,12 @@ class NonLinearDynamicMultibody(_BaseStructural):
 
             if not iteration:
                 old_Dq = np.max(np.abs(Dq[0:self.sys_size]))
-                if old_Dq < 1.0:
-                    old_Dq = 1.0
+                # if old_Dq < 1.0:
+                #     old_Dq = 1.0
                 if num_LM_eq:
                     LM_old_Dq = np.max(np.abs(Dq[self.sys_size:self.sys_size+num_LM_eq]))
-                else:
-                    LM_old_Dq = 1.0
+                # else:
+                #    LM_old_Dq = 1.0
 
         mb.state2disp_and_accel(q, dqdt, dqddt, MB_beam, MB_tstep)
         # end: comment time stepping
