@@ -707,7 +707,7 @@ class DynamicCoupled(BaseSolver):
             self.data.structure.node_master_elem,
             self.data.structure.connectivities,
             structural_kstep.cag(),
-            self.data.aero.aero_dict)
+            self.data.aero.data_dict)
         dynamic_struct_forces = unsteady_forces_coeff*mapping.aero2struct_force_mapping(
             aero_kstep.dynamic_forces,
             self.data.aero.struct2aero_mapping,
@@ -717,7 +717,7 @@ class DynamicCoupled(BaseSolver):
             self.data.structure.node_master_elem,
             self.data.structure.connectivities,
             structural_kstep.cag(),
-            self.data.aero.aero_dict)
+            self.data.aero.data_dict)
 
         if self.correct_forces:
             struct_forces = self.correct_forces_function(self.data,

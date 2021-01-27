@@ -294,7 +294,7 @@ def solver_wrapper(x, x_info, solver_data, i_dim=-1):
     tstep.quat[:] = orientation_quat
     # control surface deflection
     for i_cs in range(len(x_info['i_control_surfaces'])):
-        solver_data.data.aero.aero_dict['control_surface_deflection'][x_info['control_surfaces_id'][i_cs]] = x[x_info['i_control_surfaces'][i_cs]]
+        solver_data.data.aero.data_dict['control_surface_deflection'][x_info['control_surfaces_id'][i_cs]] = x[x_info['i_control_surfaces'][i_cs]]
     # thrust input
     tstep.steady_applied_forces[:] = 0.0
     try:

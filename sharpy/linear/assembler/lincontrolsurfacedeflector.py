@@ -71,7 +71,7 @@ class LinControlSurfaceDeflector(object):
         tsstruct0 = self.tsstruct0
 
         # Find the vertices corresponding to a control surface from beam coordinates to aerogrid
-        aero_dict = aero.aero_dict
+        data_dict = aero.data_dict
         n_surf = tsaero0.n_surf
         n_control_surfaces = self.n_control_surfaces
 
@@ -109,7 +109,7 @@ class LinControlSurfaceDeflector(object):
 
                         # Although a node may be part of 2 aerodynamic surfaces, we need to ensure that the current
                         # element for the given node is indeed part of that surface.
-                        elems_in_surf = np.where(aero_dict['surface_distribution'] == i_surf)[0]
+                        elems_in_surf = np.where(data_dict['surface_distribution'] == i_surf)[0]
                         if i_elem not in elems_in_surf:
                             continue
 
@@ -120,18 +120,18 @@ class LinControlSurfaceDeflector(object):
                         K_zeta_start = 3 * sum(linuvlm.MS.KKzeta[:i_surf])
                         shape_zeta = (3, M + 1, N + 1)
 
-                        i_control_surface = aero_dict['control_surface'][i_elem, i_local_node]
+                        i_control_surface = data_dict['control_surface'][i_elem, i_local_node]
                         if i_control_surface >= 0:
                             if not with_control_surface:
                                 i_start_of_cs = i_node_span.copy()
                                 with_control_surface = True
 
-                            control_surface_chord = aero_dict['control_surface_chord'][i_control_surface]
+                            control_surface_chord = data_dict['control_surface_chord'][i_control_surface]
 
                             try:
                                 control_surface_hinge_coord = \
-                                    aero_dict['control_surface_hinge_coord'][i_control_surface] * \
-                                    aero_dict['chord'][i_elem, i_local_node]
+                                    data_dict['control_surface_hinge_coord'][i_control_surface] * \
+                                    data_dict['chord'][i_elem, i_local_node]
                             except KeyError:
                                 control_surface_hinge_coord = None
 

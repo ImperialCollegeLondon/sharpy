@@ -161,7 +161,7 @@ class StaticCoupledRBM(BaseSolver):
                     self.data.structure.node_master_elem,
                     self.data.structure.connectivities,
                     self.data.structure.timestep_info[self.data.ts].cag(),
-                    self.data.aero.aero_dict)
+                    self.data.aero.data_dict)
 
                 if self.correct_forces:
                     struct_forces = self.correct_forces_function(self.data,
@@ -318,7 +318,7 @@ class StaticCoupledRBM(BaseSolver):
 
         # tail deflection
         try:
-            self.data.aero.aero_dict['control_surface_deflection'][tail_cs_index] = tail_deflection
+            self.data.aero.data_dict['control_surface_deflection'][tail_cs_index] = tail_deflection
         except KeyError:
             raise Exception('This model has no control surfaces')
         except IndexError:

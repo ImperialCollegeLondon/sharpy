@@ -54,11 +54,11 @@ def efficiency(data, aero_kstep, structural_kstep, struct_forces, **kwargs):
 
     n_node = data.structure.num_node
     n_elem = data.structure.num_elem
-    aero_dict = data.aero.aero_dict
+    data_dict = data.aero.data_dict
     new_struct_forces = np.zeros_like(struct_forces)
 
     # load airfoil efficiency (if it exists); else set to one (to avoid multiple ifs in the loops)
-    airfoil_efficiency = aero_dict['airfoil_efficiency']
+    airfoil_efficiency = data_dict['airfoil_efficiency']
     # force efficiency dimensions [n_elem, n_node_elem, 2, [fx, fy, fz]] - all defined in B frame
     force_efficiency = np.zeros((n_elem, 3, 2, 3))
     force_efficiency[:, :, 0, :] = 1.
@@ -110,7 +110,7 @@ def polars(data, aero_kstep, structural_kstep, struct_forces, **kwargs):
     rho = kwargs.get('rho', 1.225)
     correct_lift = kwargs.get('correct_lift', False)
     cd_from_cl = kwargs.get('cd_from_cl', False)
-    aero_dict = aerogrid.aero_dict
+    data_dict = aerogrid.data_dict
     if aerogrid.polars is None:
         return struct_forces
     new_struct_forces = np.zeros_like(struct_forces)
@@ -118,10 +118,10 @@ def polars(data, aero_kstep, structural_kstep, struct_forces, **kwargs):
     nnode = struct_forces.shape[0]
     for inode in range(nnode):
         new_struct_forces[inode, :] = struct_forces[inode, :].copy()
-        if aero_dict['aero_node'][inode]:
+        if data_dict['aero_node'][inode]:
 
             ielem, inode_in_elem = beam.node_master_elem[inode]
-            iairfoil = aero_dict['airfoil_distribution'][ielem, inode_in_elem]
+            iairfoil = data_dict['airfoil_distribution'][ielem, inode_in_elem]
             isurf = aerogrid.struct2aero_mapping[inode][0]['i_surf']
             i_n = aerogrid.struct2aero_mapping[inode][0]['i_n']
             N = aerogrid.aero_dimensions[isurf, 1]
