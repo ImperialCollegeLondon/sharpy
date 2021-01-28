@@ -225,9 +225,6 @@ class StabilityDerivatives(solver_interface.BaseSolver):
 
         modal = self.data.linear.linear_system.beam.sys.modal
         phi = self.data.linear.linear_system.linearisation_vectors['mode_shapes'].real
-        phi2 = self.data.linear.tsstruct0.modal['eigenvectors']
-
-        import pdb; pdb.set_trace()
 
         # Get free stream velocity direction
         try:
