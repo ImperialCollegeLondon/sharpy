@@ -141,7 +141,7 @@ class FlexDynamic():
         self.discr_method = self.settings['discr_method']
         self.newmark_damp = self.settings['newmark_damp']
         self.use_euler = self.settings['use_euler']
-        self.use_principal_axes = self.settings.get('rigid_modes_cg', False)  # this setting is inherited from the setting in Modal solver
+        self.use_principal_axes = self.settings.get('rigid_modes_ppal_axes', False)  # this setting is inherited from the setting in Modal solver
 
         ### set state-space variables
         self.SScont = None

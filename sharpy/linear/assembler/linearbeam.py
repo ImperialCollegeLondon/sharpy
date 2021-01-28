@@ -148,7 +148,7 @@ class LinearBeam(BaseElement):
         settings.to_custom_types(self.settings, self.settings_types, self.settings_default,
                                  self.settings_options, no_ctype=True)
 
-        self.settings['rigid_modes_cg'] = data.settings['Modal']['rigid_modes_cg']  # use the same value as in Modal solver
+        self.settings['rigid_modes_ppal_axes'] = data.settings['Modal']['rigid_modes_ppal_axes']  # use the same value as in Modal solver
         beam = lingebm.FlexDynamic(data.linear.tsstruct0, data.structure, self.settings)
         self.sys = beam
         self.tsstruct0 = data.linear.tsstruct0
