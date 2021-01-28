@@ -405,6 +405,7 @@ class TestLinearDerivatives(unittest.TestCase):
         n_evals = 2
         forces = np.zeros((n_evals, 4))
         moments = np.zeros_like(forces)
+        body_forces = np.zeros_like(forces)
 
         phi = linss_data['mode_shapes'].copy().real
 
@@ -441,7 +442,7 @@ class TestLinearDerivatives(unittest.TestCase):
 
             # and the same with the output forces
             flin = H0.dot(u)[:3].real / phi[-9, 0]  # A
-            mlin = H0.dot(u)[3:6].real / phi[-6, 3]  # A
+            mlin = np.linalg.inv(phi[-6:-3, 3:6].T).dot(H0.dot(u)[3:6].real)  # A
             F0A = linss_data['forces_aero_beam_dof'][0, :3].real / phi[-9, 0]  # A - forces at the linearisation
             M0A = linss_data['forces_aero_beam_dof'][0, 3:6].real / phi[-6, 3]  # A - forces at the linearisation
             LD0 = cga.dot(F0A)  # Lift and drag at the linearisation point
@@ -450,6 +451,11 @@ class TestLinearDerivatives(unittest.TestCase):
             forces[i_alpha, 0] = (alpha0 + dalpha) * 180 / np.pi  # deg
             LD = LD0 + algebra.der_Ceuler_by_v(euler0, F0A).dot(deuler) + cga.dot(flin)  # stability axes
             forces[i_alpha, 1:] = LD / qS
+
+            u_body = np.zeros_like(u)
+            u_body[vz_ind] = dvz / phi[-7, 2]
+            body_forces[i_alpha, 1:] = H0.dot(u_body)[:3].real / phi[-9, 0] / qS # C_Z_w in A frame
+            print(H0[:3, vx_ind:vx_ind+3].real / phi[-7, 2] / phi[-9, 0] / qS)
 
             MD = M0G + algebra.der_Ceuler_by_v(euler0, M0A).dot(deuler) + cga.dot(mlin)
             moments[i_alpha, 0] = forces[i_alpha, 0]
@@ -463,6 +469,10 @@ class TestLinearDerivatives(unittest.TestCase):
 
         cma = (moments[-1, 2] - moments[0, 2]) / (moments[-1, 0] - moments[0, 0]) * 180 / np.pi
         print('Moment curve slope perturbation {:.6e}'.format(cma))
+
+        # body derivative
+        # czwa = (body_forces[-1, -1] - body_forces[0, -1]) / (forces[-1, 0] - forces[0, 0]) * 180 / np.pi
+        # print('Vertical force with vertical velocity perturbation {:.6e}'.format(czwa))
 
         with h5py.File(self.route_test_dir + '/output/' + ref_case_name + '/force_angle.stability.h5', 'r') as f:
             sharpy_force_angle = h5utils.load_h5_in_dict(f)['force_angle']
