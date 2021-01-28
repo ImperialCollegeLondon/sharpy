@@ -390,10 +390,7 @@ class StabilityDerivatives(solver_interface.BaseSolver):
         derivative_set.labels_in = labels_in_deflection + labels_in_rate
 
         body_derivatives = H0[:6, 9:]
-        try:
-            assert body_derivatives.shape == (6, 2 * self.n_control_surfaces), 'Incorrect TF shape'
-        except AssertionError:
-            import pdb; pdb.set_trace()
+        assert body_derivatives.shape == (6, 2 * self.n_control_surfaces), 'Incorrect TF shape'
         modal = self.data.linear.linear_system.beam.sys.modal
 
         if modal:
