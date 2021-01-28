@@ -73,6 +73,7 @@ class StabilityDerivatives(solver_interface.BaseSolver):
         self.folder = None
 
         self.ppal_axes = None
+        self.n_control_surfaces = None
 
     def initialise(self, data, custom_settings=None, caller=None):
         self.data = data
@@ -124,6 +125,7 @@ class StabilityDerivatives(solver_interface.BaseSolver):
         derivatives.dict_of_derivatives['force_angle'] = angle_ders[1]
         derivatives.dict_of_derivatives['force_angle_body'] = angle_ders[2]
         derivatives.dict_of_derivatives['force_velocity'] = self.body_derivatives(Y_freq)
+        derivatives.dict_of_derivatives['force_cs_body'] = self.control_surface_derivatives(Y_freq)
 
         derivatives.save(self.settings['folder'])
 
@@ -171,13 +173,17 @@ class StabilityDerivatives(solver_interface.BaseSolver):
 
             # look for control surfaces
             try:
-                cs_input_variables = ss.input_variables.get_variable_from_name('delta')
+                cs_input_variables = ss.input_variables.get_variable_from_name('control_surface_deflection')
+                dot_cs_input_variables = ss.input_variables.get_variable_from_name('dot_control_surface_deflection')
             except ValueError:
                 cs_indices = np.array([], dtype=int)
+                dot_cs_indices = np.array([], dtype=int)
             else:
                 cs_indices = cs_input_variables.cols_loc
+                dot_cs_indices = dot_cs_input_variables.cols_loc
+                self.n_control_surfaces = cs_input_variables.size
             finally:
-                input_indices = np.concatenate((rbm_indices, cs_indices))
+                input_indices = np.concatenate((rbm_indices, cs_indices, dot_cs_indices))
 
             output_indices = ss.output_variables.get_variable_from_name('Q').rows_loc[:6]
 
@@ -369,6 +375,41 @@ class StabilityDerivatives(solver_interface.BaseSolver):
 
         return derivative_set
 
+    def control_surface_derivatives(self, H0):
+        derivative_set = DerivativeSet('body')
+        derivative_set.name = 'Force derivatives wrt control surface inputs - Body axes'
+        derivative_set.labels_out = ['C_XA', 'C_YA', 'C_ZA', 'C_LA', 'C_MA', 'C_NA']
+        n_control_surfaces = self.n_control_surfaces
+        if n_control_surfaces == 0:
+            return None
+        labels_in_deflection = []
+        labels_in_rate = []
+        for i in range(n_control_surfaces):
+            labels_in_deflection.append('delta_{:g}'.format(i))
+            labels_in_rate.append('dot(delta)_{:g}'.format(i))
+        derivative_set.labels_in = labels_in_deflection + labels_in_rate
+
+        body_derivatives = H0[:6, 9:]
+        try:
+            assert body_derivatives.shape == (6, 2 * self.n_control_surfaces), 'Incorrect TF shape'
+        except AssertionError:
+            import pdb; pdb.set_trace()
+        modal = self.data.linear.linear_system.beam.sys.modal
+
+        if modal:
+            phi = self.data.linear.linear_system.linearisation_vectors['mode_shapes'].real
+            phirr = phi[-9:-3, :6]
+            inv_phirr = np.linalg.inv(phirr.T)
+
+            body_derivatives = inv_phirr.dot(body_derivatives)
+
+        derivative_set.matrix = body_derivatives
+        derivative_set.matrix[:3, :] /= self.coefficients['force']
+        derivative_set.matrix[np.ix_([3, 5]), :] /= self.coefficients['moment_lat']
+        derivative_set.matrix[4, :] /= self.coefficients['moment_lon']
+        # derivative_set.print()
+
+        return derivative_set
 
         # # Get rigid body + control surface inputs
         # try:
