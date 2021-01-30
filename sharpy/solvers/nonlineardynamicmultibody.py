@@ -358,6 +358,7 @@ class NonLinearDynamicMultibody(_BaseStructural):
                     # LM_res = np.max(np.abs(Dq[self.sys_size:self.sys_size+num_LM_eq]))
                 else:
                     LM_res = 0.0
+                # print("res:", res, "LM_res:", LM_res)
                 if (res < self.settings['min_delta']) and (LM_res < self.settings['min_delta']):
                     converged = True
 
@@ -397,7 +398,7 @@ class NonLinearDynamicMultibody(_BaseStructural):
         # end: comment time stepping
 
         # End of Newmark-beta iterations
-        self.integrate_position(MB_beam, MB_tstep, dt)
+        # self.integrate_position(MB_beam, MB_tstep, dt)
         lagrangeconstraints.postprocess(self.lc_list, MB_beam, MB_tstep, "dynamic")
         self.compute_forces_constraints(MB_beam, MB_tstep, self.data.ts, dt, Lambda, Lambda_dot)
         if self.settings['gravity_on']:
