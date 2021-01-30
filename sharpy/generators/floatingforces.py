@@ -908,7 +908,11 @@ class FloatingForces(generator_interface.BaseGenerator):
             vel_a = (struct_tstep.for_vel[0:3] +
                      np.dot(struct_tstep.for_vel[3:6], struct_tstep.pos[inode, :]) +
                      struct_tstep.pos_dot[inode, :])
-            vel_g = np.dot(cga, vel_a)
+
+            # Remove velocity along the x axis
+            vel_b = np.dot(cab.T, vel_a)
+            vel_b[0] = 0.
+            vel_g = np.dot(cbg.T, vel_b)
 
             drag_force = (-0.5*self.water_density*np.linalg.norm(vel_g)*vel_g*delta_x*
                           self.floating_data['hydrodinamics']['spar_diameter']*
