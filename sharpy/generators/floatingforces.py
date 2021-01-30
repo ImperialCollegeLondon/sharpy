@@ -590,16 +590,20 @@ class FloatingForces(generator_interface.BaseGenerator):
         self.buoy_rest_mat = self.floating_data['hydrostatics']['buoyancy_restoring_matrix']
 
         # hydrodynamics
-        self.hd_added_mass_const = interp_1st_dim_matrix(self.floating_data['hydrodynamics']['added_mass_matrix'],
+        if self.settings['method_matrices_freq'] == 'constant':
+            self.hd_added_mass_const = interp_1st_dim_matrix(self.floating_data['hydrodynamics']['added_mass_matrix'],
                                         self.floating_data['hydrodynamics']['ab_freq_rads'],
                                         self.settings['matrices_freq'])
 
-        self.hd_damping_const = interp_1st_dim_matrix(self.floating_data['hydrodynamics']['damping_matrix'],
+            self.hd_damping_const = interp_1st_dim_matrix(self.floating_data['hydrodynamics']['damping_matrix'],
                                         self.floating_data['hydrodynamics']['ab_freq_rads'],
                                         self.settings['matrices_freq'])
 
             # self.hd_added_mass *= 0.
             # self.hd_damping *= 0.
+        elif self.settings['method_matrices_freq'] == 'rational_function':
+            self.hd_added_mass_const = self.floating_data['hydrodynamics']['added_mass_matrix'][-1, :, :]
+            self.hd_damping_const = self.floating_data['hydrodynamics']['damping_matrix'][-1, :, :]
 
         self.added_mass_in_mass_matrix = self.settings['added_mass_in_mass_matrix']
         if self.added_mass_in_mass_matrix:
@@ -619,33 +623,42 @@ class FloatingForces(generator_interface.BaseGenerator):
         if self.settings['method_matrices_freq'] == 'rational_function':
             ninput = 6
             noutput = 6
-            hd_added_mass_num = [None]*noutput
-            hd_added_mass_den = [None]*noutput
-            hd_damping_num = [None]*noutput
-            hd_damping_den = [None]*noutput
+            # hd_added_mass_num = [None]*noutput
+            # hd_added_mass_den = [None]*noutput
+            # hd_damping_num = [None]*noutput
+            # hd_damping_den = [None]*noutput
+            hd_K_num = [None]*noutput
+            hd_K_den = [None]*noutput
             for ioutput in range(noutput):
-                hd_added_mass_num[ioutput] = [None]*ninput
-                hd_added_mass_den[ioutput] = [None]*ninput
-                hd_damping_num[ioutput] = [None]*ninput
-                hd_damping_den[ioutput] = [None]*ninput
+                # hd_added_mass_num[ioutput] = [None]*ninput
+                # hd_added_mass_den[ioutput] = [None]*ninput
+                # hd_damping_num[ioutput] = [None]*ninput
+                # hd_damping_den[ioutput] = [None]*ninput
+                hd_K_num[ioutput] = [None]*ninput
+                hd_K_den[ioutput] = [None]*ninput
                 for iinput in range(ninput):
                     # pos = "%d_%d" % (i, j)
                     pos = "%d_%d" % (ioutput, iinput)
-                    hd_added_mass_num[ioutput][iinput] = self.floating_data['hydrodynamics']['added_mass_rf'][pos]['num']
-                    hd_added_mass_den[ioutput][iinput] = self.floating_data['hydrodynamics']['added_mass_rf'][pos]['den']
-                    hd_damping_num[ioutput][iinput] = self.floating_data['hydrodynamics']['damping_rf'][pos]['num']
-                    hd_damping_den[ioutput][iinput] = self.floating_data['hydrodynamics']['damping_rf'][pos]['den']
+                    # hd_added_mass_num[ioutput][iinput] = self.floating_data['hydrodynamics']['added_mass_rf'][pos]['num']
+                    # hd_added_mass_den[ioutput][iinput] = self.floating_data['hydrodynamics']['added_mass_rf'][pos]['den']
+                    # hd_damping_num[ioutput][iinput] = self.floating_data['hydrodynamics']['damping_rf'][pos]['num']
+                    # hd_damping_den[ioutput][iinput] = self.floating_data['hydrodynamics']['damping_rf'][pos]['den']
+                    hd_K_num[ioutput][iinput] = self.floating_data['hydrodynamics']['K_rf'][pos]['num']
+                    hd_K_den[ioutput][iinput] = self.floating_data['hydrodynamics']['K_rf'][pos]['den']
 
-            self.hd_added_mass = TransferFunction(hd_added_mass_num, hd_added_mass_den, self.settings['dt'])
-            self.hd_damping = TransferFunction(hd_damping_num, hd_damping_den, self.settings['dt'])
+            # self.hd_added_mass = TransferFunction(hd_added_mass_num, hd_added_mass_den, self.settings['dt'])
+            # self.hd_damping = TransferFunction(hd_damping_num, hd_damping_den, self.settings['dt'])
             # self.hd_added_mass = TransferFunction(hd_added_mass_num, hd_added_mass_den)
             # self.hd_damping = TransferFunction(hd_damping_num, hd_damping_den)
+            self.hd_K = TransferFunction(hd_K_num, hd_K_den)
             self.ab_freq_rads = self.floating_data['hydrodynamics']['ab_freq_rads']
 
-            self.x0_added_mass = [None]*(self.settings['n_time_steps'] + 1)
-            self.x0_damping = [None]*(self.settings['n_time_steps'] + 1)
-            self.x0_added_mass[0] = 0.
-            self.x0_damping[0] = 0.
+            # self.x0_added_mass = [None]*(self.settings['n_time_steps'] + 1)
+            # self.x0_damping = [None]*(self.settings['n_time_steps'] + 1)
+            # self.x0_added_mass[0] = 0.
+            # self.x0_damping[0] = 0.
+            self.x0_K = [None]*(self.settings['n_time_steps'] + 1)
+            self.x0_K[0] = 0.
 
 
         # Wave forces
@@ -824,15 +837,23 @@ class FloatingForces(generator_interface.BaseGenerator):
 
             elif self.settings['method_matrices_freq'] == 'rational_function':
                 # Damping
-                (T, yout, xout) = forced_response(self.hd_damping,
+                (T, yout, xout) = forced_response(self.hd_K,
                                                   T=[0, self.settings['dt']],
                                                   U=self.qdot[data.ts-1:data.ts+1, :].T,
-                                                  X0=self.x0_damping[data.ts-1])
+                                                  X0=self.x0_K[data.ts-1])
                                                   # transpose=True)
-                self.x0_damping[data.ts] = xout[:, 1]
+                self.x0_K[data.ts] = xout[:, 1]
                 hd_f_qdot_g -= yout[:, 1]
                 hd_f_qdotdot_g = np.zeros((6))
 
+                # (T, yout, xout) = forced_response(self.hd_damping,
+                #                                   T=[0, self.settings['dt']],
+                #                                   U=self.qdot[data.ts-1:data.ts+1, :].T,
+                #                                   X0=self.x0_damping[data.ts-1])
+                #                                   # transpose=True)
+                # self.x0_damping[data.ts] = xout[:, 1]
+                # hd_f_qdot_g -= yout[:, 1]
+                # hd_f_qdotdot_g = np.zeros((6))
                 # (T, yout, xout) = forced_response(self.hd_added_mass,
                 #                                   T=[0, self.settings['dt']],
                 #                                   U=self.qdotdot[data.ts-1:data.ts+1, :],
