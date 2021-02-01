@@ -220,7 +220,7 @@ class DerivativeSet:
 
         pass
 
-    def angle_derivatives(self, modal=False):
+    def angle_derivatives(self):
         r"""
         Stability derivatives against aerodynamic angles (angle of attack and sideslip) expressed in stability axes, i.e
         forces are lift, drag...
@@ -267,7 +267,7 @@ class DerivativeSet:
         stab_der_mom = algebra.der_Ceuler_by_v(euler0, m0a)
 
         # second term in the stability derivative expression
-        if modal:
+        if self.modal:
             delta_nodal_vel = np.linalg.inv(self.phi[:3, :3]).dot(cga.T.dot(algebra.der_Peuler_by_v(euler0 * 0, v0)))
             delta_nodal_forces = self.inv_phi_forces.dot(self.transfer_function[:6, :3].real.dot(delta_nodal_vel))
         else:
@@ -282,7 +282,7 @@ class DerivativeSet:
 
         self.apply_coefficients()
 
-    def body_derivatives(self, modal=False):
+    def body_derivatives(self):
         self.name = 'Force derivatives to rigid body velocities - Body derivatives'
         self.labels_in = ['uA', 'vA', 'wA', 'pA', 'qA', 'rA']
         self.labels_out = ['C_XA', 'C_YA', 'C_ZA', 'C_LA', 'C_MA', 'C_NA']
@@ -290,13 +290,13 @@ class DerivativeSet:
 
         body_derivatives = self.transfer_function[:6, :6]
 
-        if modal:
+        if self.modal:
             body_derivatives = self.inv_phi_forces.dot(body_derivatives).dot(self.inv_phi_vel)
 
         self.matrix = body_derivatives
         self.apply_coefficients()
 
-    def control_surface_derivatives(self, modal=False):
+    def control_surface_derivatives(self):
         n_control_surfaces = self.n_control_surfaces
         if n_control_surfaces == 0:
             return None
@@ -311,10 +311,9 @@ class DerivativeSet:
         self.labels_in = labels_in_deflection + labels_in_rate
 
         body_derivatives = self.transfer_function[:6, 9:]
-        # import pdb; pdb.set_trace()
         assert body_derivatives.shape == (6, 2 * self.n_control_surfaces), 'Incorrect TF shape'
 
-        if modal:
+        if self.modal:
             self.matrix = self.inv_phi_forces.dot(body_derivatives)
         else:
             self.matrix = body_derivatives

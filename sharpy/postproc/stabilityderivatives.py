@@ -142,7 +142,7 @@ class StabilityDerivatives(solver_interface.BaseSolver):
 
         state_space = self.get_state_space(self.settings['target_system'])
 
-        import pdb; pdb.set_trace()
+        # import pdb; pdb.set_trace()
         derivatives_utils.DerivativeSet.initialise_derivatives(state_space,
                                                                steady_forces,
                                                                quat,
@@ -215,7 +215,7 @@ class StabilityDerivatives(solver_interface.BaseSolver):
 
         if modal:
             vel_inputs_variables = ss.input_variables.get_variable_from_name('q_dot')
-            rbm_indices = vel_inputs_variables.cols_loc
+            rbm_indices = vel_inputs_variables.cols_loc[:9]
 
             # look for control surfaces
             try:
