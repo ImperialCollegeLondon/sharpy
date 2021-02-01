@@ -910,6 +910,35 @@ class FloatingForces(generator_interface.BaseGenerator):
         struct_tstep.runtime_generated_forces[self.buoyancy_node, 0:3] += np.dot(cbg, hs_f_g[0:3] + force_coeff*(hd_f_qdot_g[0:3] + hd_f_qdotdot_g[0:3]))
         struct_tstep.runtime_generated_forces[self.buoyancy_node, 3:6] += np.dot(cbg, hs_f_g[3:6] + force_coeff*(hd_f_qdot_g[3:6] + hd_f_qdotdot_g[3:6]))
 
+        # Nonlinear drag coefficeint
+        for inode in range(self.floating_data['CD_first_node'], self.floating_data['CD_last_node'] + 1):
+
+            ielem, inode_in_elem = data.structure.node_master_elem[inode]
+            cab = algebra.crv2rotation(struct_tstep.psi[ielem, inode_in_elem])
+            cbg = np.dot(cab.T, cga.T)
+
+            if inode == 0:
+                delta_x = np.linalg.norm(struct_tstep.pos[1, :] - struct_tstep.pos[0, :])
+            elif inode == data.structure.num_node:
+                delta_x = np.linalg.norm(struct_tstep.pos[inode, :] - struct_tstep.pos[inode - 1, :])
+            else:
+                delta_x = 0.5*np.linalg.norm(struct_tstep.pos[inode + 1, :] - struct_tstep.pos[inode - 1, :])
+
+            vel_a = (struct_tstep.for_vel[0:3] +
+                     np.dot(struct_tstep.for_vel[3:6], struct_tstep.pos[inode, :]) +
+                     struct_tstep.pos_dot[inode, :])
+
+            # Remove velocity along the x axis
+            vel_b = np.dot(cab.T, vel_a)
+            vel_b[0] = 0.
+            vel_g = np.dot(cbg.T, vel_b)
+
+            drag_force = (-0.5*self.water_density*np.linalg.norm(vel_g)*vel_g*delta_x*
+                          self.floating_data['hydrodinamics']['spar_diameter']*
+                          self.floating_forces['hydrodynamics']['CD'])
+
+            struct_tstep.runtime_generated_forces[inode, 0:3] += np.dot(cbg, drag_force)
+
         # Wave loading
         phase = self.settings['wave_freq']*data.ts*self.settings['dt']
         wave_forces_g = np.real(self.settings['wave_amplitude']*self.xi*(np.cos(phase) + 1j*np.sin(phase)))
