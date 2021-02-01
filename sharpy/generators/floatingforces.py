@@ -925,7 +925,7 @@ class FloatingForces(generator_interface.BaseGenerator):
                 delta_x = 0.5*np.linalg.norm(struct_tstep.pos[inode + 1, :] - struct_tstep.pos[inode - 1, :])
 
             vel_a = (struct_tstep.for_vel[0:3] +
-                     np.dot(struct_tstep.for_vel[3:6], struct_tstep.pos[inode, :]) +
+                     np.cross(struct_tstep.for_vel[3:6], struct_tstep.pos[inode, :]) +
                      struct_tstep.pos_dot[inode, :])
 
             # Remove velocity along the x axis
