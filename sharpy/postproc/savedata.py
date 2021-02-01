@@ -188,15 +188,15 @@ class SaveData(BaseSolver):
                                    ClassesToSave=self.ClassesToSave, SkipAttr=skip_attr_init,
                                    compress_float=self.settings['compress_float'])
 
-            if self.settings['save_struct']:
-                h5utils.add_as_grp(list(),
+                if self.settings['save_struct']:
+                    h5utils.add_as_grp(list(),
                                hdfile['data']['structure'],
                                grpname='timestep_info')
-            if self.settings['save_aero']:
-                h5utils.add_as_grp(list(),
+                if self.settings['save_aero']:
+                    h5utils.add_as_grp(list(),
                                hdfile['data']['aero'],
                                grpname='timestep_info')
-            
+
                 for it in range(len(self.data.structure.timestep_info)):
                     tstep_p = self.data.structure.timestep_info[it]
                     if tstep_p is not None:
