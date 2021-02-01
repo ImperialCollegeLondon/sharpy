@@ -724,7 +724,7 @@ class FloatingForces(generator_interface.BaseGenerator):
 
     def update_dof_vector(self, beam, struct_tstep, it, k):
 
-        if k:
+        if True:
             cga = struct_tstep.cga()
             # self.q[it, 0:3] = (np.dot(cga, struct_tstep.pos[self.buoyancy_node, :]) -
             #           np.dot(beam.ini_info.cga(), beam.ini_info.pos[self.buoyancy_node, :]) +
@@ -736,7 +736,7 @@ class FloatingForces(generator_interface.BaseGenerator):
             self.q[it, 3:6] = (algebra.quat2euler(struct_tstep.quat)*
                                np.array([-1., 0., -1.]))
                                # np.array([1., 0., 1.]))
-
+            
             self.qdot[it, 0:3] = np.dot(cga, struct_tstep.for_vel[0:3])
             self.qdot[it, 3:6] = np.dot(cga, struct_tstep.for_vel[3:6])
 
@@ -819,8 +819,6 @@ class FloatingForces(generator_interface.BaseGenerator):
         mooring_yaw = -self.floating_data['mooring']['yaw_spring_stif']*yaw
         struct_tstep.runtime_generated_forces[self.mooring_node, 3:6] += np.dot(cbg,
                                                                       mooring_yaw)
-
-
 
         # Hydrostatic model
         hs_f_g = self.buoy_F0 - np.dot(self.buoy_rest_mat, self.q[data.ts, :])

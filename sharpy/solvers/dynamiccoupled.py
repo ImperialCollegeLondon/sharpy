@@ -493,6 +493,16 @@ class DynamicCoupled(BaseSolver):
                     structural_kstep, aero_kstep = self.process_controller_output(
                         state)
 
+            # compute unsteady contribution
+            force_coeff = 0.0
+            unsteady_contribution = False
+            if self.settings['include_unsteady_force_contribution'].value:
+                if self.data.ts > self.settings['steps_without_unsteady_force'].value:
+                    unsteady_contribution = True
+                    if 0 < self.settings['pseudosteps_ramp_unsteady_force'].value:
+                        force_coeff = k/self.settings['pseudosteps_ramp_unsteady_force'].value
+                    else:
+                        force_coeff = 1.
             # Add external forces
             if self.with_runtime_generators:
                 structural_kstep.runtime_generated_forces.fill(0.)
@@ -500,7 +510,7 @@ class DynamicCoupled(BaseSolver):
                 params['data'] = self.data
                 params['struct_tstep'] = structural_kstep
                 params['aero_tstep'] = aero_kstep
-                params['force_coeff'] = 0.
+                params['force_coeff'] = force_coeff
                 params['fsi_substep'] = -1
                 for id, runtime_generator in self.runtime_generators.items():
                     runtime_generator.generate(params)
