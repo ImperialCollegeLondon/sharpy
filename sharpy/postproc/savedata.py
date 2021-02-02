@@ -1,5 +1,6 @@
 import os
 import h5py
+import copy
 import sharpy
 import sharpy.utils.cout_utils as cout
 from sharpy.utils.solver_interface import solver, BaseSolver
@@ -112,31 +113,33 @@ class SaveData(BaseSolver):
         self.ClassesToSave = (sharpy.presharpy.presharpy.PreSharpy,)
 
     def initialise(self, data, custom_settings=None, caller=None):
-
-        # Add these anyway - therefore if you add your own skip_attr you don't have to retype all of these
-        self.settings_default['skip_attr'].append(['fortran',
-                                                   'airfoils',
-                                                   'airfoil_db',
-                                                   'settings_types',
-                                                   'ct_dynamic_forces_list',
-                                                   'ct_forces_list',
-                                                   'ct_gamma_dot_list',
-                                                   'ct_gamma_list',
-                                                   'ct_gamma_star_list',
-                                                   'ct_normals_list',
-                                                   'ct_u_ext_list',
-                                                   'ct_u_ext_star_list',
-                                                   'ct_zeta_dot_list',
-                                                   'ct_zeta_list',
-                                                   'ct_zeta_star_list',
-                                                   'dynamic_input'])
         self.data = data
         if custom_settings is None:
             self.settings = data.settings[self.solver_id]
         else:
             self.settings = custom_settings
+
         settings.to_custom_types(self.settings,
                                  self.settings_types, self.settings_default, options=self.settings_options)
+        
+        # Add these anyway - therefore if you add your own skip_attr you don't have to retype all of these
+        self.settings['skip_attr'].extend(['fortran',
+                                            'airfoils',
+                                            'airfoil_db',
+                                            'settings_types',
+                                            'ct_dynamic_forces_list',
+                                            'ct_forces_list',
+                                            'ct_gamma_dot_list',
+                                            'ct_gamma_list',
+                                            'ct_gamma_star_list',
+                                            'ct_normals_list',
+                                            'ct_u_ext_list',
+                                            'ct_u_ext_star_list',
+                                            'ct_zeta_dot_list',
+                                            'ct_zeta_list',
+                                            'ct_zeta_star_list',
+                                            'dynamic_input'])
+
         self.ts_max = self.data.ts + 1
 
         # create folder for containing files if necessary
@@ -196,35 +199,28 @@ class SaveData(BaseSolver):
             hdfile = h5py.File(self.filename, 'a')
 
             if (online and file_exists):
-                if self.settings['save_aero']:
-                    h5utils.add_as_grp(self.data.aero.timestep_info[self.data.ts],
-                                       hdfile['data']['aero']['timestep_info'],
-                                       grpname=("%05d" % self.data.ts),
-                                       ClassesToSave=(sharpy.utils.datastructures.AeroTimeStepInfo,),
-                                       SkipAttr=self.settings['skip_attr'],
-                                       compress_float=self.settings['compress_float'])
-                if self.settings['save_struct']:
-                    if self.data.structure.timestep_info[self.data.ts].in_global_AFoR:
-                        tstep = self.data.structure.timestep_info[self.data.ts]
-                    else:
-                        tstep = self.data.structure.timestep_info[self.data.ts].copy()
-                        tstep.whole_structure_to_global_AFoR(self.data.structure)
-
-                    h5utils.add_as_grp(tstep,
-                                       hdfile['data']['structure']['timestep_info'],
-                                       grpname=("%05d" % self.data.ts),
-                                       ClassesToSave=(sharpy.utils.datastructures.StructTimeStepInfo,),
-                                       SkipAttr=self.settings['skip_attr'],
-                                       compress_float=self.settings['compress_float'])
+                self.save_timestep(self.data, self.settings, self.data.ts, hdfile)
             else:
+                skip_attr_init = copy.deepcopy(self.settings['skip_attr'])
+                skip_attr_init.append('timestep_info')
+
+                h5utils.add_as_grp(self.data, hdfile, grpname='data',
+                                   ClassesToSave=self.ClassesToSave, SkipAttr=skip_attr_init,
+                                   compress_float=self.settings['compress_float'])
+
+                if self.settings['save_struct']:
+                    h5utils.add_as_grp(list(),
+                               hdfile['data']['structure'],
+                               grpname='timestep_info')
+                if self.settings['save_aero']:
+                    h5utils.add_as_grp(list(),
+                               hdfile['data']['aero'],
+                               grpname='timestep_info')
+
                 for it in range(len(self.data.structure.timestep_info)):
                     tstep_p = self.data.structure.timestep_info[it]
                     if tstep_p is not None:
-                        if not tstep_p.in_global_AFoR:
-                            tstep_p.whole_structure_to_global_AFoR(self.data.structure)
-                h5utils.add_as_grp(self.data, hdfile, grpname='data',
-                                   ClassesToSave=self.ClassesToSave, SkipAttr=self.settings['skip_attr'],
-                                   compress_float=self.settings['compress_float'])
+                        self.save_timestep(self.data, self.settings, it, hdfile)
 
             hdfile.close()
 
@@ -295,3 +291,26 @@ class SaveData(BaseSolver):
                 savemat(matfilename, savedict)
 
         return self.data
+
+    @staticmethod
+    def save_timestep(data, settings, ts, hdfile):
+        if settings['save_aero']:
+            h5utils.add_as_grp(data.aero.timestep_info[ts],
+                               hdfile['data']['aero']['timestep_info'],
+                               grpname=("%05d" % ts),
+                               ClassesToSave=(sharpy.utils.datastructures.AeroTimeStepInfo,),
+                               SkipAttr=settings['skip_attr'],
+                               compress_float=settings['compress_float'])
+        if settings['save_struct']:
+            if data.structure.timestep_info[ts].in_global_AFoR:
+                tstep = data.structure.timestep_info[ts]
+            else:
+                tstep = data.structure.timestep_info[data.ts].copy()
+                tstep.whole_structure_to_global_AFoR(data.structure)
+
+            h5utils.add_as_grp(tstep,
+                               hdfile['data']['structure']['timestep_info'],
+                               grpname=("%05d" % ts),
+                               ClassesToSave=(sharpy.utils.datastructures.StructTimeStepInfo,),
+                               SkipAttr=settings['skip_attr'],
+                               compress_float=settings['compress_float'])
