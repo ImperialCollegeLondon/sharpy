@@ -734,7 +734,7 @@ class FloatingForces(generator_interface.BaseGenerator):
                       struct_tstep.for_pos[0:3])
             # ams: in my casethe angles are negative in the x and z components
             self.q[it, 3:6] = (algebra.quat2euler(struct_tstep.quat)*
-                               np.array([-1., 0., -1.]))
+                               np.array([-1., 1., -1.]))
                                # np.array([1., 0., 1.]))
             
             self.qdot[it, 0:3] = np.dot(cga, struct_tstep.for_vel[0:3])
@@ -918,9 +918,9 @@ class FloatingForces(generator_interface.BaseGenerator):
             cbg = np.dot(cab.T, cga.T)
 
             if inode == 0:
-                delta_x = np.linalg.norm(struct_tstep.pos[1, :] - struct_tstep.pos[0, :])
-            elif inode == data.structure.num_node:
-                delta_x = np.linalg.norm(struct_tstep.pos[inode, :] - struct_tstep.pos[inode - 1, :])
+                delta_x = 0.5*np.linalg.norm(struct_tstep.pos[1, :] - struct_tstep.pos[0, :])
+            elif inode == data.structure.num_node - 1:
+                delta_x = 0.5*np.linalg.norm(struct_tstep.pos[inode, :] - struct_tstep.pos[inode - 1, :])
             else:
                 delta_x = 0.5*np.linalg.norm(struct_tstep.pos[inode + 1, :] - struct_tstep.pos[inode - 1, :])
 
