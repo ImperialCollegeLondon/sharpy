@@ -189,7 +189,7 @@ class WriteVariablesTime(BaseSolver):
 
         # Initialise velocity generator
         self.caller = caller
-        if not self.caller is None and len(self.settings['vel_field_variables']):
+        if ((not self.caller is None) and (not len(self.settings['vel_field_variables']) == 0)):
             if self.caller.solver_classification.lower() == 'aero':
                 # For aerodynamic solvers
                 self.velocity_generator = self.caller.velocity_generator
