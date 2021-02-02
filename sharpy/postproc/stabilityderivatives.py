@@ -117,8 +117,8 @@ class StabilityDerivatives(solver_interface.BaseSolver):
         # i.e: run Modal, Linear Ass
 
         derivatives = self.data.linear.derivatives
-        Y_freq = self.uvlm_steady_state_transfer_function()
-        angle_ders = self.angle_derivatives(Y_freq)
+        # Y_freq = self.uvlm_steady_state_transfer_function()
+        # angle_ders = self.angle_derivatives(Y_freq)
         # derivatives.dict_of_derivatives['force_angle_velocity'] = angle_ders[0]
         # derivatives.dict_of_derivatives['force_angle'] = angle_ders[1]
         # derivatives.dict_of_derivatives['force_angle_body'] = angle_ders[2]
@@ -134,9 +134,12 @@ class StabilityDerivatives(solver_interface.BaseSolver):
 
 
         # >>>>>>>> New methods
-        phi = self.data.linear.linear_system.linearisation_vectors['mode_shapes'].real
+        if self.data.linear.linear_system.beam.sys.modal:
+            phi = self.data.linear.linear_system.linearisation_vectors['mode_shapes'].real
+        else:
+            phi = None
 
-        steady_forces = self.data.linear.linear_system.linearisation_vectors['forces_aero_beam_dof'][:6].copy().real
+        steady_forces = self.data.linear.linear_system.linearisation_vectors['forces_aero_beam_dof']
         v0 = self.get_freestream_velocity()
         quat = self.data.linear.tsstruct0.quat
 

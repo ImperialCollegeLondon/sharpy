@@ -149,6 +149,7 @@ class DerivativeSet:
 
     def print(self, derivative_filename=None):
         if self.name is not None:
+            cout.cout_wrap(self.name)
             with open(derivative_filename, 'a') as f:
                 f.write('Derivative set: {:s}\n'.format(self.name))
                 f.write('Axes {:s}'.format(self.frame_of_reference))
@@ -167,6 +168,18 @@ class DerivativeSet:
 
     @classmethod
     def initialise_derivatives(cls, state_space, steady_forces, quat, v0, phi=None):
+        """
+        Initialises the required class attributes for all derivative calculations/
+
+        Args:
+            state_space (sharpy.linear.src.libss.ss): State-space object for the target system
+            steady_forces (np.array): Array of steady forces (at the linearisation) expressed in the beam degrees of
+              freedom and with size equal to the number of structural degrees of freedom
+            quat (np.array): Quaternion at the linearisation
+            v0 (np.array): Free stream velocity vector at the linearisation condition
+            phi (np.array (optional)): Mode shape matrix for modal systems
+
+        """
         cls.quat = quat
         cls.cga = algebra.quat2rotation(cls.quat)
         cls.v0 = v0
@@ -176,23 +189,26 @@ class DerivativeSet:
             cls.phi = phi[-9:-3, :6]
             cls.inv_phi_forces = np.linalg.inv(phi[-9:-3, :6].T)
             cls.inv_phi_vel = np.linalg.inv(phi[-9:-3, :6])
-            cls.steady_forces = cls.inv_phi_forces.dot(steady_forces)
         else:
             cls.modal = False
-            cls.steady_forces = steady_forces
+        cls.steady_forces = steady_forces
 
         cls.transfer_function = cls.calculate_transfer_function(state_space)
 
     @classmethod
     def calculate_transfer_function(cls, ss):
-        H0 = ss.freqresp(np.array([1e-5]))[:, :, 0]
-
+        H0 = ss.freqresp(np.array([1e-3]))[:, :, 0]
+        # A, B, C, D = ss.get_mats()
+        # H0 = C.dot(np.linalg.inv(np.eye(ss.states) - A).dot(B)) + D
+        # np.savetxt('./nodal_aeroelastic_static_manual.txt', H0.real)
         if cls.modal:
             vel_inputs_variables = ss.input_variables.get_variable_from_name('q_dot')
             output_indices = ss.output_variables.get_variable_from_name('Q').rows_loc[:6]
+            cls.steady_forces = cls.inv_phi_forces.dot(cls.steady_forces[output_indices])
         else:
-            vel_inputs_variables = ss.input_variables.get_variable_from_name('eta_dot')
-            output_indices = ss.output_variables.get_variable_from_name('N').rows_loc[:6]
+            vel_inputs_variables = ss.input_variables.get_variable_from_name('beta')
+            output_indices = ss.output_variables.get_variable_from_name('forces_n').rows_loc[-9:-3]
+            cls.steady_forces = cls.steady_forces[output_indices]
         rbm_indices = vel_inputs_variables.cols_loc[:9]
 
         # look for control surfaces
