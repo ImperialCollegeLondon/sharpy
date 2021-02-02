@@ -116,6 +116,24 @@ class SaveData(BaseSolver):
         else:
             self.settings = custom_settings
 
+        # Add these anyway - therefore if you add your own skip_attr you don't have to retype all of these
+        self.settings['skip_attr'].extend(['fortran',
+                                            'airfoils',
+                                            'airfoil_db',
+                                            'settings_types',
+                                            'ct_dynamic_forces_list',
+                                            'ct_forces_list',
+                                            'ct_gamma_dot_list',
+                                            'ct_gamma_list',
+                                            'ct_gamma_star_list',
+                                            'ct_normals_list',
+                                            'ct_u_ext_list',
+                                            'ct_u_ext_star_list',
+                                            'ct_zeta_dot_list',
+                                            'ct_zeta_list',
+                                            'ct_zeta_star_list',
+                                            'dynamic_input'])
+
         settings.to_custom_types(self.settings,
                                  self.settings_types, self.settings_default, options=self.settings_options)
         self.ts_max = self.data.ts + 1
@@ -200,7 +218,7 @@ class SaveData(BaseSolver):
                 h5utils.add_as_grp(list(),
                                hdfile['data']['aero'],
                                grpname='timestep_info')
-            
+
                 for it in range(len(self.data.structure.timestep_info)):
                     tstep_p = self.data.structure.timestep_info[it]
                     if tstep_p is not None:
