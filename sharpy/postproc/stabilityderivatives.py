@@ -159,7 +159,7 @@ class StabilityDerivatives(solver_interface.BaseSolver):
                                                                                                  'body_derivatives')
         derivatives.dict_of_derivatives['force_cs'] = derivatives_utils.DerivativeSet('body',
                                                                                                  'control_surface_derivatives')
-        # derivatives.save(self.settings['folder'])
+        derivatives.save(self.folder)
         self.data.linear.derivatives.savetxt(self.folder)
         # <<<<<<<<
         return self.data

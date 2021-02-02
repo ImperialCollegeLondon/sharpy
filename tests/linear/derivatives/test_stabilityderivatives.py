@@ -261,7 +261,7 @@ class TestLinearDerivatives(unittest.TestCase):
                                           'target_system': ['aeroelastic'],
                                           }
 
-        ws.config['StabilityDerivatives'] = {'folder': self.route_test_dir + '/output/' + case_name + '/',
+        ws.config['StabilityDerivatives'] = {'folder': self.route_test_dir + '/output/',
                                              'target_system': target_system,
                                              'u_inf': ws.u_inf,
                                              'c_ref': ws.main_chord,
@@ -474,8 +474,8 @@ class TestLinearDerivatives(unittest.TestCase):
         # czwa = (body_forces[-1, -1] - body_forces[0, -1]) / (forces[-1, 0] - forces[0, 0]) * 180 / np.pi
         # print('Vertical force with vertical velocity perturbation {:.6e}'.format(czwa))
 
-        with h5py.File(self.route_test_dir + '/output/' + ref_case_name + '/force_angle.stability.h5', 'r') as f:
-            sharpy_force_angle = h5utils.load_h5_in_dict(f)['force_angle']
+        with h5py.File(self.route_test_dir + '/output/' + ref_case_name + '/stability.h5', 'r') as f:
+            sharpy_force_angle = h5utils.load_h5_in_dict(f)['force_angle_velocity']
 
         linsubtests = ((2, cla, 'lift'),
                        (0, cda, 'drag'),
@@ -505,11 +505,11 @@ class TestLinearDerivatives(unittest.TestCase):
                     # raise AssertionError
         return forces, moments
 
-    def tearDown(self):
-        import shutil
-        folders = ['cases', 'output']
-        for folder in folders:
-            shutil.rmtree(self.route_test_dir + '/' + folder)
+    # def tearDown(self):
+    #     import shutil
+    #     folders = ['cases', 'output']
+    #     for folder in folders:
+    #         shutil.rmtree(self.route_test_dir + '/' + folder)
 
 
 if __name__ == '__main__':

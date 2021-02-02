@@ -54,6 +54,8 @@ class Derivatives:
     def save(self, output_route):
         with h5py.File(output_route + '/stability.h5', 'w') as f:
             for k, v in self.dict_of_derivatives.items():
+                if v.matrix is None:
+                    continue
                 f.create_dataset(name=k, data=v.matrix)
 
     def savetxt(self, folder):
