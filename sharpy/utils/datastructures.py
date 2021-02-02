@@ -376,13 +376,11 @@ class NonliftingBodyTimeStepInfo(TimeStepInfo):
 
         self.ct_sigma_list = []
         for i_surf in range(self.n_surf):
-            for i_dim in range(NDIM):
-                self.ct_sigma_list.append(self.sigma[i_surf][:, :].reshape(-1))
+            self.ct_sigma_list.append(self.sigma[i_surf][:, :].reshape(-1))
 
         self.ct_sigma_dot_list = []
         for i_surf in range(self.n_surf):
-            for i_dim in range(NDIM):
-                self.ct_sigma_dot_list.append(self.sigma_dot[i_surf][:, :].reshape(-1))
+            self.ct_sigma_dot_list.append(self.sigma_dot[i_surf][:, :].reshape(-1))
 
         self.ct_p_sigma = ((ct.POINTER(ct.c_double)*len(self.ct_sigma_list))
                             (* [np.ctypeslib.as_ctypes(array) for array in self.ct_sigma_list]))
