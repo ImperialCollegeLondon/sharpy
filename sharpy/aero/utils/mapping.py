@@ -11,7 +11,7 @@ def aero2struct_force_mapping(aero_forces,
                               master,
                               conn,
                               cag=np.eye(3),
-                              aero_dict=None):
+                              data_dict=None):
     r"""
     Maps the aerodynamic forces at the lattice to the structural nodes
 
@@ -39,7 +39,7 @@ def aero2struct_force_mapping(aero_forces,
         master: Unused
         conn (np.ndarray): Connectivities matrix
         cag (np.ndarray): Transformation matrix between inertial and body-attached reference ``A``
-        aero_dict (dict): Dictionary containing the grid's information.
+        data_dict (dict): Dictionary containing the grid's information.
 
     Returns:
         np.ndarray: structural forces in an ``n_node x 6`` vector
