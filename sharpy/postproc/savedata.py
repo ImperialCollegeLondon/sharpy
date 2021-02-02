@@ -119,6 +119,9 @@ class SaveData(BaseSolver):
         else:
             self.settings = custom_settings
 
+        settings.to_custom_types(self.settings,
+                                 self.settings_types, self.settings_default, options=self.settings_options)
+        
         # Add these anyway - therefore if you add your own skip_attr you don't have to retype all of these
         self.settings['skip_attr'].extend(['fortran',
                                             'airfoils',
@@ -137,8 +140,6 @@ class SaveData(BaseSolver):
                                             'ct_zeta_star_list',
                                             'dynamic_input'])
 
-        settings.to_custom_types(self.settings,
-                                 self.settings_types, self.settings_default, options=self.settings_options)
         self.ts_max = self.data.ts + 1
 
         # create folder for containing files if necessary
