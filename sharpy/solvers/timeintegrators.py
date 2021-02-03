@@ -91,8 +91,9 @@ class NewmarkBeta(_BaseTimeIntegrator):
     def build_matrix(self, M, C, K, Q, q, dqdt, dqddt):
 
         Asys = K + C*self.gamma/(self.beta*self.dt) + M/(self.beta*self.dt*self.dt)
+        Qout = Q.copy()
 
-        return Asys
+        return Asys, Qout
 
     def corrector(self, q, dqdt, dqddt, Dq):
 
