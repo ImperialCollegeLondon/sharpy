@@ -317,7 +317,6 @@ class NonLinearDynamicMultibody(_BaseStructural):
             Lambda = 0
             Lambda_dot = 0
 
-
         # Predictor step
         self.time_integrator.predictor(q, dqdt, dqddt)
 
@@ -343,7 +342,7 @@ class NonLinearDynamicMultibody(_BaseStructural):
                                                                 Lambda_dot,
                                                                 MBdict)
 
-            MB_Asys = self.time_integrator.build_matrix(MB_M, MB_C, MB_K)
+            MB_Asys, MB_Q = self.time_integrator.build_matrix(MB_M, MB_C, MB_K, MB_Q, q, dqdt, dqddt)
 
             if self.settings['print_cond_number']:
                 out_string = ("cond(A[:sys_size,:sys_size])=%e cond(A)=%e" % (
