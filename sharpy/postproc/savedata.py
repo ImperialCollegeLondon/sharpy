@@ -61,6 +61,10 @@ class SaveData(BaseSolver):
     settings_default['save_wake'] = True
     settings_description['save_wake'] = 'Save aero wake classes.'
 
+    settings_types['save_rom'] = 'bool'
+    settings_default['save_rom'] = False
+    settings_description['save_rom'] = 'Saves the ROM matrices and the reduced order model'
+
     settings_types['skip_attr'] = 'list(str)'
     settings_default['skip_attr'] = ['fortran',
                                      'airfoils',
@@ -116,6 +120,9 @@ class SaveData(BaseSolver):
         else:
             self.settings = custom_settings
 
+        settings.to_custom_types(self.settings,
+                                 self.settings_types, self.settings_default, options=self.settings_options)
+        
         # Add these anyway - therefore if you add your own skip_attr you don't have to retype all of these
         self.settings['skip_attr'].extend(['fortran',
                                             'airfoils',
@@ -134,8 +141,6 @@ class SaveData(BaseSolver):
                                             'ct_zeta_star_list',
                                             'dynamic_input'])
 
-        settings.to_custom_types(self.settings,
-                                 self.settings_types, self.settings_default, options=self.settings_options)
         self.ts_max = self.data.ts + 1
 
         # create folder for containing files if necessary
@@ -210,12 +215,12 @@ class SaveData(BaseSolver):
                                    ClassesToSave=self.ClassesToSave, SkipAttr=skip_attr_init,
                                    compress_float=self.settings['compress_float'])
 
-            if self.settings['save_struct']:
-                h5utils.add_as_grp(list(),
+                if self.settings['save_struct']:
+                    h5utils.add_as_grp(list(),
                                hdfile['data']['structure'],
                                grpname='timestep_info')
-            if self.settings['save_aero']:
-                h5utils.add_as_grp(list(),
+                if self.settings['save_aero']:
+                    h5utils.add_as_grp(list(),
                                hdfile['data']['aero'],
                                grpname='timestep_info')
 
@@ -247,7 +252,12 @@ class SaveData(BaseSolver):
                                        ClassesToSave=self.ClassesToSave, SkipAttr=self.settings['skip_attr'],
                                        compress_float=self.settings['compress_float'])
 
-
+            if self.settings['save_rom']:
+                try:
+                    for k, rom in self.data.linear.linear_system.uvlm.rom.items():
+                        rom.save(self.filename.replace('.data.h5', '_{:s}.rom.h5'.format(k.lower())))
+                except AttributeError:
+                    cout.cout_wrap('Could not locate a reduced order model to save')
 
         elif self.settings['format'] == 'mat':
             from scipy.io import savemat

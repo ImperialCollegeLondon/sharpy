@@ -3,6 +3,7 @@ import numpy as np
 
 from sharpy.utils.solver_interface import solver, BaseSolver, solver_from_string
 import sharpy.utils.settings as settings
+import sharpy.utils.solver_interface as solver_interface
 
 import sharpy.utils.cout_utils as cout
 import sharpy.structure.utils.xbeamlib as xbeamlib
@@ -28,11 +29,21 @@ class NonLinearDynamicMultibody(_BaseStructural):
     settings_types = _BaseStructural.settings_types.copy()
     settings_default = _BaseStructural.settings_default.copy()
     settings_description = _BaseStructural.settings_description.copy()
+    settings_options = dict()
 
     settings_types['print_cond_number'] = 'bool'
     settings_default['print_cond_number'] = False
     settings_description['print_cond_number'] = 'Write condition number to screen'
-    
+
+    settings_types['time_integrator'] = 'str'
+    settings_default['time_integrator'] = 'NewmarkBeta'
+    settings_description['time_integrator'] = 'Method to perform time integration'
+    settings_options['time_integrator'] = ['NewmarkBeta']
+
+    settings_types['time_integrator_settings'] = 'dict'
+    settings_default['time_integrator_settings'] = dict()
+    settings_description['time_integrator_settings'] = 'Settings for the time integrator'
+
     settings_table = settings.SettingsTable()
     __doc__ += settings_table.generate(settings_types, settings_default, settings_description)
 
@@ -66,9 +77,11 @@ class NonLinearDynamicMultibody(_BaseStructural):
         self.data.structure.add_unsteady_information(
             self.data.structure.dyn_dict, self.settings['num_steps'])
 
-        # Define Newmark constants
-        self.gamma = 0.5 + self.settings['newmark_damp']
-        self.beta = 0.25*(self.gamma + 0.5)*(self.gamma + 0.5)
+        # Initialise time integrator
+        self.time_integrator = solver_interface.initialise_solver(
+            self.settings['time_integrator'])
+        self.time_integrator.initialise(
+            self.data, self.settings['time_integrator_settings'])
 
         # Define the number of equations
         self.lc_list = lagrangeconstraints.initialize_constraints(self.data.structure.ini_mb_dict)
@@ -182,9 +195,7 @@ class NonLinearDynamicMultibody(_BaseStructural):
         MB_K += LM_K
         MB_Q += LM_Q
 
-        MB_Asys = MB_K + MB_C*self.gamma/(self.beta*dt) + MB_M/(self.beta*dt*dt)
-
-        return MB_Asys, MB_Q
+        return MB_M, MB_C, MB_K, MB_Q
 
     def integrate_position(self, MB_beam, MB_tstep, dt):
         """
@@ -306,11 +317,10 @@ class NonLinearDynamicMultibody(_BaseStructural):
             Lambda = 0
             Lambda_dot = 0
 
-        q += dt*dqdt + (0.5 - self.beta)*dt*dt*dqddt
-        dqdt += (1.0 - self.gamma)*dt*dqddt
-        dqddt = np.zeros((self.sys_size + num_LM_eq,), dtype=ct.c_double, order='F')
+        # Predictor step
+        self.time_integrator.predictor(q, dqdt, dqddt)
 
-        # Newmark-beta iterations
+        # Reference residuals
         old_Dq = 1.0
         LM_old_Dq = 1.0
 
@@ -324,13 +334,15 @@ class NonLinearDynamicMultibody(_BaseStructural):
 
             # Update positions and velocities
             mb.state2disp_and_accel(q, dqdt, dqddt, MB_beam, MB_tstep)
-            MB_Asys, MB_Q = self.assembly_MB_eq_system(MB_beam,
-                                                       MB_tstep,
-                                                       self.data.ts,
-                                                       dt,
-                                                       Lambda,
-                                                       Lambda_dot,
-                                                       MBdict)
+            MB_M, MB_C, MB_K, MB_Q = self.assembly_MB_eq_system(MB_beam,
+                                                                MB_tstep,
+                                                                self.data.ts,
+                                                                dt,
+                                                                Lambda,
+                                                                Lambda_dot,
+                                                                MBdict)
+
+            MB_Asys, MB_Q = self.time_integrator.build_matrix(MB_M, MB_C, MB_K, MB_Q, q, dqdt, dqddt)
 
             if self.settings['print_cond_number']:
                 out_string = ("cond(A[:sys_size,:sys_size])=%e cond(A)=%e" % (
@@ -358,6 +370,7 @@ class NonLinearDynamicMultibody(_BaseStructural):
                     # LM_res = np.max(np.abs(Dq[self.sys_size:self.sys_size+num_LM_eq]))
                 else:
                     LM_res = 0.0
+                # print("res:", res, "LM_res:", LM_res)
                 if (res < self.settings['min_delta']) and (LM_res < self.settings['min_delta']):
                     converged = True
 
@@ -368,10 +381,8 @@ class NonLinearDynamicMultibody(_BaseStructural):
             # dqdt[:, np.newaxis] += self.gamma/(self.beta*dt)*Dq
             # dqddt[:, np.newaxis] += 1.0/(self.beta*dt*dt)*Dq
 
-            # this for direct solver
-            q += Dq
-            dqdt += self.gamma/(self.beta*dt)*Dq
-            dqddt += 1.0/(self.beta*dt*dt)*Dq
+            # Corrector step
+            self.time_integrator.corrector(q, dqdt, dqddt, Dq)
 
             if not num_LM_eq == 0:
                 Lambda = q[-num_LM_eq:].astype(dtype=ct.c_double, copy=True, order='F')
@@ -386,18 +397,18 @@ class NonLinearDynamicMultibody(_BaseStructural):
 
             if not iteration:
                 old_Dq = np.max(np.abs(Dq[0:self.sys_size]))
-                if old_Dq < 1.0:
-                    old_Dq = 1.0
+                # if old_Dq < 1.0:
+                #     old_Dq = 1.0
                 if num_LM_eq:
                     LM_old_Dq = np.max(np.abs(Dq[self.sys_size:self.sys_size+num_LM_eq]))
-                else:
-                    LM_old_Dq = 1.0
+                # else:
+                #    LM_old_Dq = 1.0
 
         mb.state2disp_and_accel(q, dqdt, dqddt, MB_beam, MB_tstep)
         # end: comment time stepping
 
         # End of Newmark-beta iterations
-        self.integrate_position(MB_beam, MB_tstep, dt)
+        # self.integrate_position(MB_beam, MB_tstep, dt)
         lagrangeconstraints.postprocess(self.lc_list, MB_beam, MB_tstep, "dynamic")
         self.compute_forces_constraints(MB_beam, MB_tstep, self.data.ts, dt, Lambda, Lambda_dot)
         if self.settings['gravity_on']:

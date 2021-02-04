@@ -242,8 +242,10 @@ class TestDoublePendulum(unittest.TestCase):
         SimInfo.solvers['WriteVariablesTime']['structure_variables'] = ['pos']
 
         SimInfo.solvers['NonLinearDynamicMultibody']['gravity_on'] = True
-        SimInfo.solvers['NonLinearDynamicMultibody']['newmark_damp'] = 0.15
-        SimInfo.solvers['NonLinearDynamicMultibody']['print_cond_number'] = True
+        SimInfo.solvers['NonLinearDynamicMultibody']['print_cond_number'] = False
+        SimInfo.solvers['NonLinearDynamicMultibody']['time_integrator'] = 'NewmarkBeta'
+        SimInfo.solvers['NonLinearDynamicMultibody']['time_integrator_settings'] = {'newmark_damp': 0.15,
+                                                                                    'dt': dt}
 
         SimInfo.solvers['BeamPlot']['include_FoR'] = True
 
