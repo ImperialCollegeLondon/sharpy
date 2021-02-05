@@ -802,14 +802,14 @@ def def_rot_vect_FoR_wrt_node(MB_tstep, MB_beam, FoR_body, node_body, node_numbe
 
     # Simplify notation
     ielem, inode_in_elem = MB_beam[node_body].node_master_elem[node_number]
-    node_cag = MB_tstep[node_body].cag()
+    node_cga = MB_tstep[node_body].cga()
     cab = ag.crv2rotation(MB_tstep[node_body].psi[ielem,inode_in_elem,:])
-    FoR_cag = MB_tstep[FoR_body].cag()
+    FoR_cga = MB_tstep[FoR_body].cga()
     FoR_wa = MB_tstep[FoR_body].for_vel[3:6]
 
     Bnh[:, FoR_dof+3:FoR_dof+6] = ag.multiply_matrices(cab.T,
-                                                       FoR_cga.T,
-                                                       node_cga)
+                                                       node_cga.T,
+                                                       FoR_cga)
 
     # Constrain angular velocities
     LM_Q[:sys_size] += scalingFactor*np.dot(np.transpose(Bnh), Lambda_dot[ieq:ieq+num_LM_eq_specific])
@@ -836,7 +836,7 @@ def def_rot_vect_FoR_wrt_node(MB_tstep, MB_beam, FoR_body, node_body, node_numbe
         LM_C[FoR_dof+3:FoR_dof+6, FoR_dof+3:FoR_dof+6] += penaltyFactor*np.eye(3)
 
         q = np.zeros((sys_size))
-        q[FoR_dof+3:FoR_dof+6] = FoR_Wa
+        q[FoR_dof+3:FoR_dof+6] = FoR_wa
         LM_Q[:sys_size] += penaltyFactor*np.dot(np.dot(Bnh.T, Bnh), q)
 
     ieq += 3
