@@ -44,6 +44,10 @@ class NonLinearDynamicMultibody(_BaseStructural):
     settings_default['time_integrator_settings'] = dict()
     settings_description['time_integrator_settings'] = 'Settings for the time integrator'
 
+    settings_types['write_lm'] = 'bool'
+    settings_default['write_lm'] = False
+    settings_description['write_lm'] = 'Write lagrange multipliers'
+
     settings_table = settings.SettingsTable()
     __doc__ += settings_table.generate(settings_types, settings_default, settings_description)
 
@@ -90,6 +94,14 @@ class NonLinearDynamicMultibody(_BaseStructural):
         self.Lambda = np.zeros((self.num_LM_eq,), dtype=ct.c_double, order='F')
         self.Lambda_dot = np.zeros((self.num_LM_eq,), dtype=ct.c_double, order='F')
         self.Lambda_ddot = np.zeros((self.num_LM_eq,), dtype=ct.c_double, order='F')
+
+        if self.settings['write_lm']:
+            dire = './output/' + self.data.settings['SHARPy']['case'] + '/NonLinearDynamicMultibody/'
+            if not os.path.isdir(dire):
+                os.makedirs(dire)
+            self.fid_lambda = open(dire + 'lambda.dat', "w")
+            self.fid_lambda_dot = open(dire + 'lambda_dot.dat', "w")
+            self.fid_lambda_ddot = open(dire + 'lambda_ddot.dat', "w")
 
         # Define the number of dofs
         self.define_sys_size()
@@ -391,6 +403,18 @@ class NonLinearDynamicMultibody(_BaseStructural):
             else:
                 Lambda = 0
                 Lambda_dot = 0
+
+            if self.settings['write_lm']:
+                self.fid_lambda.write("%d %d " % (self.data['ts'], k))
+                self.fid_lambda_dot.write("%d %d " % (self.data['ts'], k))
+                self.fid_lambda_ddot.write("%d %d " % (self.data['ts'], k))
+                for ilm in range(num_LM_eq):
+                    self.fid_lambda.write("%f " % Lambda[ilm])
+                    self.fid_lambda_dot.write("%f " % Lambda_dot[ilm])
+                    self.fid_lambda_ddot.write("%f " % Lambda_ddot[ilm])
+                self.fid_lambda.write("\n")
+                self.fid_lambda_dot.write("\n")
+                self.fid_lambda_ddot.write("\n")
 
             if converged:
                 break
