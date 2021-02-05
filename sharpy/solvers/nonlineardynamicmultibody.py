@@ -1,5 +1,6 @@
 import ctypes as ct
 import numpy as np
+import os
 
 from sharpy.utils.solver_interface import solver, BaseSolver, solver_from_string
 import sharpy.utils.settings as settings
@@ -405,9 +406,9 @@ class NonLinearDynamicMultibody(_BaseStructural):
                 Lambda_dot = 0
 
             if self.settings['write_lm']:
-                self.fid_lambda.write("%d %d " % (self.data['ts'], k))
-                self.fid_lambda_dot.write("%d %d " % (self.data['ts'], k))
-                self.fid_lambda_ddot.write("%d %d " % (self.data['ts'], k))
+                self.fid_lambda.write("%d %d " % (self.data.ts, iteration))
+                self.fid_lambda_dot.write("%d %d " % (self.data.ts, iteration))
+                self.fid_lambda_ddot.write("%d %d " % (self.data.ts, iteration))
                 for ilm in range(num_LM_eq):
                     self.fid_lambda.write("%f " % Lambda[ilm])
                     self.fid_lambda_dot.write("%f " % Lambda_dot[ilm])
