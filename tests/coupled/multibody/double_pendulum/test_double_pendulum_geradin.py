@@ -319,9 +319,9 @@ class TestDoublePendulum(unittest.TestCase):
         # read output and compare
         output_path = os.path.abspath(os.path.dirname(os.path.realpath(__file__))) + '/output/double_pendulum_geradin/WriteVariablesTime/'
         pos_tip_data = np.loadtxt(("%sstruct_pos_node%d.dat" % (output_path, nnodes1*2-1)), )
-        self.assertAlmostEqual(pos_tip_data[-1, 1], 1.053074, 4)
+        self.assertAlmostEqual(pos_tip_data[-1, 1], 1.051004, 4)
         self.assertAlmostEqual(pos_tip_data[-1, 2], 0.000000, 4)
-        self.assertAlmostEqual(pos_tip_data[-1, 3], -0.9985906, 4)
+        self.assertAlmostEqual(pos_tip_data[-1, 3], -0.9986984, 4)
 
     def tearDown(self):
         solver_path = os.path.abspath(os.path.dirname(os.path.realpath(__file__)))
