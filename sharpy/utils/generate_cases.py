@@ -1489,7 +1489,7 @@ class AeroelasticInformation():
         self.StructuralInformation.assembly_structures(*list_of_SI)
         self.AerodynamicInformation.assembly_aerodynamics(*list_of_AI)
 
-    def remove_duplicated_points(self, tol):
+    def remove_duplicated_points(self, tol, skip=[]):
         """
         remove_duplicated_points
 
@@ -1497,6 +1497,7 @@ class AeroelasticInformation():
 
         Args:
             tol (float): tolerance. Maximum distance between nodes to be merged
+            skip (list): nodes to keep (do not remove)
 
         Notes:
             This function will not work if an element or an aerdoynamic surface is completely eliminated
@@ -1522,9 +1523,10 @@ class AeroelasticInformation():
         # Fill the first three columns
         for inode in range(self.StructuralInformation.num_node):
             for iprev_node in range(inode):
-                if (np.linalg.norm(
+                if ((np.linalg.norm(
                     self.StructuralInformation.coordinates[inode, :] -
-                    self.StructuralInformation.coordinates[iprev_node, :]) < tol):
+                    self.StructuralInformation.coordinates[iprev_node, :]) < tol) and (
+                       inode not in skip)):
                     cout.cout_wrap(("WARNING: Replacing node %d by node %d" % (inode, iprev_node)), 3)
                     replace_matrix[inode, 0] = iprev_node
                     replace_matrix[inode, 1], replace_matrix[inode, 2] = (

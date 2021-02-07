@@ -112,7 +112,7 @@ def spar_from_excel_type04(op_params,
     """
 
     # Generate the tower + rotor
-    wt, LC, MB = generate_from_excel_type03(op_params,
+    wt, LC, MB, hub_node = generate_from_excel_type03(op_params,
                                     geom_params,
                                     excel_description,
                                     options)
@@ -277,11 +277,17 @@ def spar_from_excel_type04(op_params,
     # Assembly
     spar.assembly(base)
     spar.remove_duplicated_points(1e-6)
+    nodes_spar = spar.StructuralInformation.num_node + 0
+    skip = [hub_node + nodes_spar]
     wt.StructuralInformation.coordinates[:, 0] += TowerBaseHeight
     spar.assembly(wt)
-    spar.remove_duplicated_points(1e-6) # Careful, this removes the tower rotor join
+    spar.remove_duplicated_points(1e-6, skip=skip)
 
-    return spar
+    # Update Lagrange Constraints and Multibody information
+    LC[0].node_in_body += nodes_spar - 1
+    MB[1].FoR_position[:, 0] += TowerBaseHeight
+
+    return spar, LC, MB
 
 ######################################################################
 # FROM excel type03
@@ -875,6 +881,7 @@ def generate_from_excel_type03(op_params,
 
     tower.assembly(overhang)
     tower.remove_duplicated_points(tol_remove_points)
+    hub_node = tower.StructuralInformation.num_node
 
     ######################################################################
     ##  WIND TURBINE
@@ -927,7 +934,7 @@ def generate_from_excel_type03(op_params,
     ######################################################################
     ## RETURN
     ######################################################################
-    return wt, LC, MB
+    return wt, LC, MB, hub_node
 
 
 ######################################################################
