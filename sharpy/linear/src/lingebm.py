@@ -1002,7 +1002,7 @@ class FlexDynamic():
 
                     self.SSdisc.output_variables = output_variables
                     self.SSdisc.input_variables = input_variables
-                    self.SSdisc.state_variables = LinearVector.transform(input_variables, to_type=StateVariable)
+                    self.SSdisc.state_variables = LinearVector.transform(output_variables, to_type=StateVariable)
             else:
                 raise NameError(
                     'Discretisation method %s not available' % self.discr_method)
