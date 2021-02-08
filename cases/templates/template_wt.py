@@ -112,7 +112,7 @@ def spar_from_excel_type04(op_params,
     """
 
     # Generate the tower + rotor
-    wt, LC, MB, hub_node = generate_from_excel_type03(op_params,
+    wt, LC, MB, hub_nodes = generate_from_excel_type03(op_params,
                                     geom_params,
                                     excel_description,
                                     options)
@@ -279,18 +279,22 @@ def spar_from_excel_type04(op_params,
     spar.remove_duplicated_points(1e-6)
     spar.StructuralInformation.body_number *= 0
     nodes_spar = spar.StructuralInformation.num_node + 0
-    skip = [hub_node + nodes_spar]
+    for inode in range(len(hub_nodes)):
+        hub_nodes[inode] += nodes_spar
     wt.StructuralInformation.coordinates[:, 0] += TowerBaseHeight
     spar.assembly(wt)
-    spar.remove_duplicated_points(1e-6, skip=skip)
+    spar.remove_duplicated_points(1e-6, skip=hub_nodes)
     for ielem in range(spar.StructuralInformation.num_elem):
         if not spar.StructuralInformation.body_number[ielem] == 0:
             spar.StructuralInformation.body_number[ielem] -= 1
 
     # Update Lagrange Constraints and Multibody information
-    LC[0].node_in_body += nodes_spar - 1
+    # LC[0].node_in_body += nodes_spar - 1
+    for ilc in range(len(LC)):
+        LC[ilc].node_in_body += nodes_spar - 1
     MB[0].FoR_movement = 'free'
-    MB[1].FoR_position[0] += TowerBaseHeight
+    for ibody in range(1, len(MB)):
+        MB[ibody].FoR_position[0] += TowerBaseHeight
 
     return spar, LC, MB
 
@@ -333,6 +337,7 @@ def rotor_from_excel_type03(in_op_params,
     options['camber_effect_on_twist'] = False # When true plain airfoils are used and the blade is twisted and preloaded based on thin airfoil theory
     options['user_defined_m_distribution_type'] = None # type of distribution of the chordwise panels when 'm_distribution' == 'user_defined'
     options['include_polars'] = False #
+    options['separate_blades'] = False # Keep blades as different bodies
 
     excel_description = {}
     excel_description['excel_file_name'] = 'database_excel_type02.xlsx'
@@ -685,20 +690,23 @@ def rotor_from_excel_type03(in_op_params,
 
     # Build the whole rotor
     rotor = blade.copy()
+    hub_nodes = [0]
     for iblade in range(numberOfBlades-1):
+        hub_nodes.append((iblade + 1)*blade.StructuralInformation.num_node)
         blade2 = blade.copy()
         blade2.StructuralInformation.rotate_around_origin(np.array([0., 0., 1.]), (iblade + 1)*(360.0/numberOfBlades)*deg2rad)
         rotor.assembly(blade2)
         blade2 = None
 
-    rotor.remove_duplicated_points(tol_remove_points)
+    if not options['separate_blades']:
+        rotor.remove_duplicated_points(tol_remove_points)
+        hub_nodes = [0]
+        rotor.StructuralInformation.body_number *= 0
 
     # Apply tilt
     rotor.StructuralInformation.rotate_around_origin(np.array([0., 1., 0.]), tilt)
 
-    rotor.StructuralInformation.body_number *= 0
-
-    return rotor
+    return rotor, hub_nodes
 
 
 def generate_from_excel_type03(op_params,
@@ -721,10 +729,10 @@ def generate_from_excel_type03(op_params,
     Returns:
         wt (sharpy.utils.generate_cases.AeroelasticInfromation): Aeroelastic information of the wind turbine (tower + rotor)
     """
-    rotor = rotor_from_excel_type03(op_params,
-                                    geom_params,
-                                    excel_description,
-                                    options)
+    rotor, hub_nodes = rotor_from_excel_type03(op_params,
+                                               geom_params,
+                                               excel_description,
+                                               options)
 
 
     excel_file_name = excel_description['excel_file_name']
@@ -886,7 +894,8 @@ def generate_from_excel_type03(op_params,
 
     tower.assembly(overhang)
     tower.remove_duplicated_points(tol_remove_points)
-    hub_node = tower.StructuralInformation.num_node
+    for inode in range(len(hub_nodes)):
+        hub_nodes[inode] += tower.StructuralInformation.num_node
     tower.StructuralInformation.body_number *= 0
 
     ######################################################################
@@ -899,24 +908,25 @@ def generate_from_excel_type03(op_params,
     wt.assembly(rotor)
 
     # Redefine the body numbers
-    wt.StructuralInformation.body_number *= 0
-    wt.StructuralInformation.body_number[tower.StructuralInformation.num_elem:wt.StructuralInformation.num_elem] += 1
+    # wt.StructuralInformation.body_number *= 0
+    # wt.StructuralInformation.body_number[tower.StructuralInformation.num_elem:wt.StructuralInformation.num_elem] += 1
 
     ######################################################################
     ## MULTIBODY
     ######################################################################
-    # Define the boundary condition between the rotor and the tower tip
-    LC1 = gc.LagrangeConstraint()
-    LC1.behaviour = 'hinge_node_FoR_constant_vel'
-    LC1.node_in_body = tower.StructuralInformation.num_node - 1
-    LC1.body = 0
-    LC1.body_FoR = 1
-    LC1.rot_vect = np.array([-1., 0., 0.])*rotation_velocity
-
     LC = []
-    LC.append(LC1)
+    for iblade in range(len(hub_nodes)):
+        # Define the boundary condition between the rotor and the tower tip
+        LC1 = gc.LagrangeConstraint()
+        LC1.behaviour = 'hinge_node_FoR_constant_vel'
+        LC1.node_in_body = tower.StructuralInformation.num_node - 1
+        LC1.body = 0
+        LC1.body_FoR = iblade + 1
+        LC1.rot_vect = np.array([-1., 0., 0.])*rotation_velocity
+        LC.append(LC1)
 
     # Define the multibody infromation for the tower and the rotor
+    MB = []
     MB1 = gc.BodyInformation()
     MB1.body_number = 0
     MB1.FoR_position = np.zeros((6,),)
@@ -924,23 +934,26 @@ def generate_from_excel_type03(op_params,
     MB1.FoR_acceleration = np.zeros((6,),)
     MB1.FoR_movement = 'prescribed'
     MB1.quat = np.array([1.0, 0.0, 0.0, 0.0])
-
-    MB2 = gc.BodyInformation()
-    MB2.body_number = 1
-    MB2.FoR_position = np.array([rotor.StructuralInformation.coordinates[0, 0], rotor.StructuralInformation.coordinates[0, 1], rotor.StructuralInformation.coordinates[0, 2], 0.0, 0.0, 0.0])
-    MB2.FoR_velocity = np.array([0., 0., 0., 0., 0., rotation_velocity])
-    MB2.FoR_acceleration = np.zeros((6,),)
-    MB2.FoR_movement = 'free'
-    MB2.quat = algebra.euler2quat(np.array([0.0, tilt, 0.0]))
-
-    MB = []
     MB.append(MB1)
-    MB.append(MB2)
+
+    numberOfBlades = len(hub_nodes)
+    for iblade in range(numberOfBlades):
+        MB2 = gc.BodyInformation()
+        MB2.body_number = iblade + 1
+        MB2.FoR_position = np.array([tower.StructuralInformation.coordinates[-1, 0],
+                                     tower.StructuralInformation.coordinates[-1, 1], tower.StructuralInformation.coordinates[-1, 2],
+                                     0.0, 0.0, 0.0])
+        MB2.FoR_velocity = np.array([0., 0., 0., 0., 0., rotation_velocity])
+        MB2.FoR_acceleration = np.zeros((6,),)
+        MB2.FoR_movement = 'free'
+        blade_azimuth = (iblade*(360.0/numberOfBlades)*deg2rad)
+        MB2.quat = algebra.euler2quat(np.array([0.0, tilt, -blade_azimuth]))
+        MB.append(MB2)
 
     ######################################################################
     ## RETURN
     ######################################################################
-    return wt, LC, MB, hub_node
+    return wt, LC, MB, hub_nodes
 
 
 ######################################################################
