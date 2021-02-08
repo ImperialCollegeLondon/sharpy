@@ -277,15 +277,20 @@ def spar_from_excel_type04(op_params,
     # Assembly
     spar.assembly(base)
     spar.remove_duplicated_points(1e-6)
+    spar.StructuralInformation.body_number *= 0
     nodes_spar = spar.StructuralInformation.num_node + 0
     skip = [hub_node + nodes_spar]
     wt.StructuralInformation.coordinates[:, 0] += TowerBaseHeight
     spar.assembly(wt)
     spar.remove_duplicated_points(1e-6, skip=skip)
+    for ielem in range(spar.StructuralInformation.num_elem):
+        if not spar.StructuralInformation.body_number[ielem] == 0:
+            spar.StructuralInformation.body_number[ielem] -= 1
 
     # Update Lagrange Constraints and Multibody information
     LC[0].node_in_body += nodes_spar - 1
-    MB[1].FoR_position[:, 0] += TowerBaseHeight
+    MB[0].FoR_movement = 'free'
+    MB[1].FoR_position[0] += TowerBaseHeight
 
     return spar, LC, MB
 
@@ -882,6 +887,7 @@ def generate_from_excel_type03(op_params,
     tower.assembly(overhang)
     tower.remove_duplicated_points(tol_remove_points)
     hub_node = tower.StructuralInformation.num_node
+    tower.StructuralInformation.body_number *= 0
 
     ######################################################################
     ##  WIND TURBINE
