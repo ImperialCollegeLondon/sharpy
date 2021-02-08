@@ -6,7 +6,7 @@ from sharpy.utils import algebra as algebra, cout_utils as cout
 
 class Derivatives:
 
-    def __init__(self, reference_dimensions, static_state):
+    def __init__(self, reference_dimensions, static_state, target_system=None):
 
         self.static_state = static_state
         self.reference_dimensions = reference_dimensions
@@ -50,9 +50,11 @@ class Derivatives:
         self.steady_coefficients = np.array(self.static_state) / self.coefficients['force']
 
         self.filename = 'stability_derivatives.txt'
+        if target_system is not None:
+            self.filename = target_system + '_' + self.filename
 
     def save(self, output_route):
-        with h5py.File(output_route + '/stability.h5', 'w') as f:
+        with h5py.File(output_route + '/' + self.filename.replace('.txt', '.h5'), 'w') as f:
             for k, v in self.dict_of_derivatives.items():
                 if v.matrix is None:
                     continue
@@ -154,7 +156,7 @@ class DerivativeSet:
             cout.cout_wrap(self.name)
             with open(derivative_filename, 'a') as f:
                 f.write('Derivative set: {:s}\n'.format(self.name))
-                f.write('Axes {:s}'.format(self.frame_of_reference))
+                f.write('Axes {:s}\n'.format(self.frame_of_reference))
         self.table = cout.TablePrinter(n_fields=len(self.labels_in)+1,
                                        field_types=['s']+len(self.labels_in) * ['e'], filename=derivative_filename)
         self.table.print_header(field_names=list(['der'] + self.labels_in))

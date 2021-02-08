@@ -109,7 +109,8 @@ class StabilityDerivatives(solver_interface.BaseSolver):
         reference_dimensions['rho'] = rho
         reference_dimensions['quat'] = self.data.linear.tsstruct0.quat
 
-        self.data.linear.derivatives = Derivatives(reference_dimensions, static_state=self.steady_aero_forces())
+        self.data.linear.derivatives = Derivatives(reference_dimensions, static_state=self.steady_aero_forces(),
+                                                   target_system=self.settings['target_system'])
 
     def run(self, online=False):
 
@@ -117,10 +118,10 @@ class StabilityDerivatives(solver_interface.BaseSolver):
         # i.e: run Modal, Linear Ass
 
         derivatives = self.data.linear.derivatives
-        # Y_freq = self.uvlm_steady_state_transfer_function()
-        # angle_ders = self.angle_derivatives(Y_freq)
+        Y_freq = self.uvlm_steady_state_transfer_function()
+        angle_ders = self.angle_derivatives(Y_freq)
         # derivatives.dict_of_derivatives['force_angle_velocity'] = angle_ders[0]
-        # derivatives.dict_of_derivatives['force_angle'] = angle_ders[1]
+        derivatives.dict_of_derivatives['force_angle'] = angle_ders[1]
         # derivatives.dict_of_derivatives['force_angle_body'] = angle_ders[2]
         # derivatives.dict_of_derivatives['force_velocity'] = self.body_derivatives(Y_freq)
         # derivatives.dict_of_derivatives['force_cs_body'] = self.control_surface_derivatives(Y_freq)
@@ -167,11 +168,25 @@ class StabilityDerivatives(solver_interface.BaseSolver):
     def get_freestream_velocity(self):
         # Get free stream velocity direction
         try:
-            v0 = self.data.settings['StaticUvlm']['velocity_field_input']['u_inf_direction'] * \
-                 self.data.settings['StaticUvlm']['velocity_field_input']['u_inf'] * -1 # aircraft moving fwd in a stat fluid
+            u_inf = self.data.settings['StaticUvlm']['aero_solver_settings']['u_inf']
+            u_inf_direction = self.data.settings['StaticCoupled']['aero_solver_settings']['u_inf_direction']
+        except KeyError:
+            try:
+                u_inf = self.data.settings['StaticCoupled']['aero_solver_settings']['velocity_field_input']['u_inf']
+                u_inf_direction = self.data.settings['StaticCoupled']['aero_solver_settings']['velocity_field_input']['u_inf_direction']
+            except KeyError:
+                cout.cout_wrap('Unable to find free stream velocity settings in StaticUvlm or StaticCoupled,'
+                               'please ensure these settings are provided in the config .sharpy file. If'
+                               'you are running a restart simulation make sure they are included too, regardless'
+                               'of these solvers being present in the SHARPy flow', 4)
+                raise KeyError
+
+        try:
+            v0 = u_inf * u_inf_direction * -1
         except TypeError:
-            v0 = self.data.settings['StaticCoupled']['aero_solver_settings']['velocity_field_input']['u_inf_direction'] * \
-                 self.data.settings['StaticCoupled']['aero_solver_settings']['velocity_field_input']['u_inf'] * -1 # aircraft moving fwd in a stat fluid
+            # For restart solutions, where the settings may have not been processed and thus may
+            # exist but in string format
+            v0 = np.array(u_inf_direction, dtype=float) * float(u_inf) * -1
 
         return v0
 
@@ -282,13 +297,7 @@ class StabilityDerivatives(solver_interface.BaseSolver):
         phi = self.data.linear.linear_system.linearisation_vectors['mode_shapes'].real
 
         # Get free stream velocity direction
-        try:
-            v0 = self.data.settings['StaticUvlm']['velocity_field_input']['u_inf_direction'] * \
-                 self.data.settings['StaticUvlm']['velocity_field_input']['u_inf'] * -1 # aircraft moving fwd in a stat fluid
-        except TypeError:
-            v0 = self.data.settings['StaticCoupled']['aero_solver_settings']['velocity_field_input']['u_inf_direction'] * \
-                 self.data.settings['StaticCoupled']['aero_solver_settings']['velocity_field_input']['u_inf'] * -1 # aircraft moving fwd in a stat fluid
-
+        v0 = self.get_freestream_velocity()
 
         # Steady Forces
         # in beam dof
