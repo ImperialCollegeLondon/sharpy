@@ -947,7 +947,7 @@ def generate_from_excel_type03(op_params,
         MB2.FoR_acceleration = np.zeros((6,),)
         MB2.FoR_movement = 'free'
         blade_azimuth = (iblade*(360.0/numberOfBlades)*deg2rad)
-        MB2.quat = algebra.euler2quat(np.array([0.0, tilt, -blade_azimuth]))
+        MB2.quat = algebra.euler2quat(np.array([0.0, tilt, blade_azimuth]))
         MB.append(MB2)
 
     ######################################################################
