@@ -56,6 +56,10 @@ class BeamLoader(BaseSolver):
     settings_default['orientation'] = [1., 0, 0, 0]
     settings_description['orientation'] = 'Initial attitude of the structure given as the quaternion that parametrises the rotation from G to A frames of reference.'
 
+    settings_types['for_pos'] = 'list(float)'
+    settings_default['for_pos'] = [0., 0, 0]
+    settings_description['for_pos'] = 'Initial position of the A FoR.'
+
     settings_table = settings.SettingsTable()
     __doc__ += settings_table.generate(settings_types, settings_default, settings_description)
 

@@ -102,8 +102,10 @@ class TestFixNodeVelocitywrtG(unittest.TestCase):
         SimInfo.solvers['NonLinearDynamicMultibody']['relaxation_factor'] = 0.0
         SimInfo.solvers['NonLinearDynamicMultibody']['min_delta'] = 1e-5
         SimInfo.solvers['NonLinearDynamicMultibody']['max_iterations'] = 200
-        SimInfo.solvers['NonLinearDynamicMultibody']['newmark_damp'] = 1e-3
         # SimInfo.solvers['NonLinearDynamicMultibody']['gravity_on'] = 'off'
+        SimInfo.solvers['NonLinearDynamicMultibody']['time_integrator'] = 'NewmarkBeta'
+        SimInfo.solvers['NonLinearDynamicMultibody']['time_integrator_settings'] = {'newmark_damp': 1e-3,
+                                                                                    'dt': 0.1}
 
         SimInfo.solvers['NonLinearDynamicMultibody']['relaxation_factor'] = 0.0
 

@@ -242,7 +242,10 @@ class TestDoublePendulum(unittest.TestCase):
         SimInfo.solvers['WriteVariablesTime']['structure_variables'] = ['pos']
 
         SimInfo.solvers['NonLinearDynamicMultibody']['gravity_on'] = True
-        SimInfo.solvers['NonLinearDynamicMultibody']['newmark_damp'] = 0.15
+        SimInfo.solvers['NonLinearDynamicMultibody']['print_cond_number'] = False
+        SimInfo.solvers['NonLinearDynamicMultibody']['time_integrator'] = 'NewmarkBeta'
+        SimInfo.solvers['NonLinearDynamicMultibody']['time_integrator_settings'] = {'newmark_damp': 0.15,
+                                                                                    'dt': dt}
 
         SimInfo.solvers['BeamPlot']['include_FoR'] = True
 
@@ -266,6 +269,7 @@ class TestDoublePendulum(unittest.TestCase):
         LC1.behaviour = 'hinge_FoR'
         LC1.body_FoR = 0
         LC1.rot_axis_AFoR = np.array([0.0,1.0,0.0])
+        LC1.scalingFactor = 1e6
 
         LC2 = gc.LagrangeConstraint()
         LC2.behaviour = 'hinge_node_FoR'
@@ -273,6 +277,7 @@ class TestDoublePendulum(unittest.TestCase):
         LC2.body = 0
         LC2.body_FoR = 1
         LC2.rot_axisB = np.array([0.0,1.0,0.0])
+        LC2.scalingFactor = 1e6
 
         LC = []
         LC.append(LC1)

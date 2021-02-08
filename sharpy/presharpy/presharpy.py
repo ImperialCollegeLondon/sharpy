@@ -58,7 +58,7 @@ class PreSharpy(object):
     settings_description['write_log'] = 'Write log file'
 
     settings_types['log_folder'] = 'str'
-    settings_default['log_folder'] = ''
+    settings_default['log_folder'] = 'output/'
     settings_description['log_folder'] = 'Log folder destination directory'
 
     settings_types['save_settings'] = 'bool'

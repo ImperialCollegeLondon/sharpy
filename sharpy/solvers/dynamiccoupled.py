@@ -493,12 +493,25 @@ class DynamicCoupled(BaseSolver):
                     structural_kstep, aero_kstep = self.process_controller_output(
                         state)
 
+            # compute unsteady contribution
+            force_coeff = 0.0
+            unsteady_contribution = False
+            if self.settings['include_unsteady_force_contribution'].value:
+                if self.data.ts > self.settings['steps_without_unsteady_force'].value:
+                    unsteady_contribution = True
+                    if 0 < self.settings['pseudosteps_ramp_unsteady_force'].value:
+                        force_coeff = k/self.settings['pseudosteps_ramp_unsteady_force'].value
+                    else:
+                        force_coeff = 1.
             # Add external forces
             if self.with_runtime_generators:
+                structural_kstep.runtime_generated_forces.fill(0.)
                 params = dict()
                 params['data'] = self.data
                 params['struct_tstep'] = structural_kstep
                 params['aero_tstep'] = aero_kstep
+                params['force_coeff'] = force_coeff
+                params['fsi_substep'] = -1
                 for id, runtime_generator in self.runtime_generators.items():
                     runtime_generator.generate(params)
 
@@ -514,8 +527,9 @@ class DynamicCoupled(BaseSolver):
             for k in range(self.settings['fsi_substeps'].value + 1):
                 if (k == self.settings['fsi_substeps'].value and
                         self.settings['fsi_substeps']):
-                    print_res = 0 if self.res_dqdt == 0. else np.log10(self.res_dqdt)
-                    cout.cout_wrap(("The FSI solver did not converge!!! residual: %f" % print_res))
+                    print_res = 0 if self.res == 0. else np.log10(self.res)
+                    print_res_dqdt = 0 if self.res_dqdt == 0. else np.log10(self.res_dqdt)
+                    cout.cout_wrap(("The FSI solver did not converge!!! residuals: %f %f" % (print_res, print_res_dqdt)))
                     self.aero_solver.update_custom_grid(
                         structural_kstep,
                         aero_kstep)
@@ -538,6 +552,19 @@ class DynamicCoupled(BaseSolver):
                         else:
                             force_coeff = 1.
 
+                previous_runtime_generated_forces = structural_kstep.runtime_generated_forces.astype(dtype=ct.c_double, order='F', copy=True)
+                # Add external forces
+                if self.with_runtime_generators:
+                    structural_kstep.runtime_generated_forces.fill(0.)
+                    params = dict()
+                    params['data'] = self.data
+                    params['struct_tstep'] = structural_kstep
+                    params['aero_tstep'] = aero_kstep
+                    params['force_coeff'] = force_coeff
+                    params['fsi_substep'] = k
+                    for id, runtime_generator in self.runtime_generators.items():
+                        runtime_generator.generate(params)
+
                 # run the solver
                 ini_time_aero = time.perf_counter()
                 self.data = self.aero_solver.run(aero_kstep,
@@ -548,10 +575,13 @@ class DynamicCoupled(BaseSolver):
 
                 previous_kstep = structural_kstep.copy()
                 structural_kstep = controlled_structural_kstep.copy()
+                structural_kstep.runtime_generated_forces = previous_kstep.runtime_generated_forces.astype(dtype=ct.c_double, order='F', copy=True)
+                previous_kstep.runtime_generated_forces = previous_runtime_generated_forces.astype(dtype=ct.c_double, order='F', copy=True)
 
                 # move the aerodynamic surface according the the structural one
                 self.aero_solver.update_custom_grid(structural_kstep,
                                                     aero_kstep)
+
                 self.map_forces(aero_kstep,
                                 structural_kstep,
                                 force_coeff)
@@ -593,7 +623,10 @@ class DynamicCoupled(BaseSolver):
                 # check convergence
                 if self.convergence(k,
                                     structural_kstep,
-                                    previous_kstep) or self.settings['aero_solver'].lower() == 'noaero':
+                                    previous_kstep,
+                                    self.settings['structural_solver'].lower(),
+                                    self.settings['aero_solver'].lower(),
+                                    self.with_runtime_generators):
                     # move the aerodynamic surface according to the structural one
                     self.aero_solver.update_custom_grid(
                         structural_kstep,
@@ -643,7 +676,8 @@ class DynamicCoupled(BaseSolver):
             finish_event.set()
             self.logger.info('Time loop - Complete')
 
-    def convergence(self, k, tstep, previous_tstep):
+    def convergence(self, k, tstep, previous_tstep,
+                    struct_solver, aero_solver, with_runtime_generators):
         r"""
         Check convergence in the FSI loop.
 
@@ -668,7 +702,15 @@ class DynamicCoupled(BaseSolver):
             self.base_dqdt = np.linalg.norm(tstep.dqdt.copy())
             if self.base_dqdt == 0:
                 self.base_dqdt = 1.
+            if with_runtime_generators:
+                self.base_res_forces = np.linalg.norm(tstep.runtime_generated_forces)
+                if self.base_res_forces == 0:
+                    self.base_res_forces = 1.
             return False
+
+        # Check the special case of no aero and no runtime generators
+        if aero_solver.lower() == "noaero" and not with_runtime_generators:
+            return True
 
         # relative residuals
         self.res = (np.linalg.norm(tstep.q-
@@ -678,6 +720,13 @@ class DynamicCoupled(BaseSolver):
                                         previous_tstep.dqdt)/
                          self.base_dqdt)
 
+        if with_runtime_generators:
+            res_forces = (np.linalg.norm(tstep.runtime_generated_forces - 
+                                        previous_tstep.runtime_generated_forces)/
+                         self.base_res_forces)
+        else:
+            res_forces = 0.
+        
         # we don't want this to converge before introducing the gamma_dot forces!
         if self.settings['include_unsteady_force_contribution'].value:
             if k < self.settings['pseudosteps_ramp_unsteady_force'].value \
@@ -686,10 +735,11 @@ class DynamicCoupled(BaseSolver):
 
         # convergence
         if k > self.settings['minimum_steps'].value - 1:
-            if self.res < self.settings['fsi_tolerance'].value:
+            if self.res < self.settings['fsi_tolerance'].value or "rigid" in struct_solver.lower():
                 if self.res_dqdt < self.settings['fsi_tolerance'].value:
-                    return True
-
+                    if res_forces < self.settings['fsi_tolerance'].value:
+                        return True
+                    
         return False
 
     def map_forces(self, aero_kstep, structural_kstep, unsteady_forces_coeff=1.0):
@@ -731,18 +781,17 @@ class DynamicCoupled(BaseSolver):
             #                                                      dynamic_struct_forces)
 
         # prescribed forces + aero forces
+        structural_kstep.steady_applied_forces = (
+            (struct_forces + self.data.structure.ini_info.steady_applied_forces).
+            astype(dtype=ct.c_double, order='F', copy=True))
         try:
-            structural_kstep.steady_applied_forces = (
-                (struct_forces + self.data.structure.ini_info.steady_applied_forces).
-                astype(dtype=ct.c_double, order='F', copy=True))
             structural_kstep.unsteady_applied_forces = (
-                (dynamic_struct_forces + self.data.structure.dynamic_input[max(self.data.ts - 1, 0)]['dynamic_forces']).
+                (dynamic_struct_forces + self.data.structure.dynamic_input[max(self.data.ts - 1, 0)]['dynamic_forces'] +
+                 structural_kstep.runtime_generated_forces).
                 astype(dtype=ct.c_double, order='F', copy=True))
         except KeyError:
-            structural_kstep.steady_applied_forces = (
-                (struct_forces + self.data.structure.ini_info.steady_applied_forces).
-                astype(dtype=ct.c_double, order='F', copy=True))
-            structural_kstep.unsteady_applied_forces = dynamic_struct_forces
+            structural_kstep.unsteady_applied_forces = (dynamic_struct_forces +
+                                                        structural_kstep.runtime_generated_forces)
 
     def relaxation_factor(self, k):
         initial = self.settings['relaxation_factor'].value
@@ -795,10 +844,12 @@ class DynamicCoupled(BaseSolver):
 
 
 def relax(beam, timestep, previous_timestep, coeff):
-    timestep.steady_applied_forces[:] = ((1.0 - coeff)*timestep.steady_applied_forces +
+    timestep.steady_applied_forces = ((1.0 - coeff)*timestep.steady_applied_forces +
             coeff*previous_timestep.steady_applied_forces)
-    timestep.unsteady_applied_forces[:] = ((1.0 - coeff)*timestep.unsteady_applied_forces +
+    timestep.unsteady_applied_forces = ((1.0 - coeff)*timestep.unsteady_applied_forces +
             coeff*previous_timestep.unsteady_applied_forces)
+    timestep.runtime_generated_forces = ((1.0 - coeff)*timestep.runtime_generated_forces +
+            coeff*previous_timestep.runtime_generated_forces)
 
 
 def normalise_quaternion(tstep):
