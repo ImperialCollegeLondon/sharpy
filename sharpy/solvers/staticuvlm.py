@@ -51,7 +51,7 @@ class StaticUvlm(BaseSolver):
     settings_description['num_cores'] = 'Number of cores to use in the VLM lib'
 
     settings_types['n_rollup'] = 'int'
-    settings_default['n_rollup'] = 1
+    settings_default['n_rollup'] = 0
     settings_description['n_rollup'] = 'Number of rollup iterations for free wake. Use at least ``n_rollup > 1.1*m_star``'
 
     settings_types['rollup_dt'] = 'float'
