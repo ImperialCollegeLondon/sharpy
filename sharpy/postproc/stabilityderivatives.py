@@ -37,11 +37,6 @@ class StabilityDerivatives(solver_interface.BaseSolver):
     settings_default['folder'] = './output/'
     settings_description['folder'] = 'Output directory'
 
-    settings_types['target_system'] = 'str'
-    settings_default['target_system'] = 'aerodynamic'
-    settings_description['target_system'] = 'Get rigid (``aerodynamic``) or ``aeroelastic`` derivatives.'
-    settings_options['target_system'] = ['aerodynamic', 'aeroelastic']
-
     settings_types['u_inf'] = 'float'
     settings_default['u_inf'] = 1.
     settings_description['u_inf'] = 'Free stream reference velocity'
@@ -109,8 +104,13 @@ class StabilityDerivatives(solver_interface.BaseSolver):
         reference_dimensions['rho'] = rho
         reference_dimensions['quat'] = self.data.linear.tsstruct0.quat
 
-        self.data.linear.derivatives = Derivatives(reference_dimensions, static_state=self.steady_aero_forces(),
-                                                   target_system=self.settings['target_system'])
+        self.data.linear.derivatives = dict()
+        self.data.linear.derivatives['aerodynamic'] = Derivatives(reference_dimensions,
+                                                                  static_state=self.steady_aero_forces(),
+                                                                  target_system='aerodynamic')
+        self.data.linear.derivatives['aeroelastic'] = Derivatives(reference_dimensions,
+                                                                  static_state=self.steady_aero_forces(),
+                                                                  target_system='aeroelastic')
 
     def run(self, online=False):
 
@@ -118,10 +118,10 @@ class StabilityDerivatives(solver_interface.BaseSolver):
         # i.e: run Modal, Linear Ass
 
         derivatives = self.data.linear.derivatives
-        Y_freq = self.uvlm_steady_state_transfer_function()
-        angle_ders = self.angle_derivatives(Y_freq)
+        # Y_freq = self.uvlm_steady_state_transfer_function()
+        # angle_ders = self.angle_derivatives(Y_freq)
         # derivatives.dict_of_derivatives['force_angle_velocity'] = angle_ders[0]
-        derivatives.dict_of_derivatives['force_angle'] = angle_ders[1]
+        # derivatives.dict_of_derivatives['force_angle'] = angle_ders[1]
         # derivatives.dict_of_derivatives['force_angle_body'] = angle_ders[2]
         # derivatives.dict_of_derivatives['force_velocity'] = self.body_derivatives(Y_freq)
         # derivatives.dict_of_derivatives['force_cs_body'] = self.control_surface_derivatives(Y_freq)
@@ -144,29 +144,31 @@ class StabilityDerivatives(solver_interface.BaseSolver):
         v0 = self.get_freestream_velocity()
         quat = self.data.linear.tsstruct0.quat
 
-        state_space = self.get_state_space(self.settings['target_system'])
+        for target_system in ['aerodynamic', 'aeroelastic']:
+            state_space = self.get_state_space(target_system)
+            current_derivative = derivatives[target_system]
 
-        # import pdb; pdb.set_trace()
-        derivatives_utils.DerivativeSet.initialise_derivatives(state_space,
-                                                               steady_forces,
-                                                               quat,
-                                                               v0,
-                                                               phi)
-        derivatives_utils.DerivativeSet.coefficients = self.coefficients
-        derivatives.dict_of_derivatives['force_angle_velocity'] = derivatives_utils.DerivativeSet('stability',
-                                                                                                       'angle_derivatives',
-                                                                                                       'Force/Angle via velocity')
-        derivatives.dict_of_derivatives['force_velocity'] = derivatives_utils.DerivativeSet('body',
-                                                                                                 'body_derivatives')
-        derivatives.dict_of_derivatives['force_cs'] = derivatives_utils.DerivativeSet('body',
-                                                                                                 'control_surface_derivatives')
-        derivatives.save(self.folder)
-        self.data.linear.derivatives.savetxt(self.folder)
-        # <<<<<<<<
+            current_derivative.initialise_derivatives(state_space,
+                                                              steady_forces,
+                                                              quat,
+                                                              v0,
+                                                              phi)
+            current_derivative.dict_of_derivatives['force_angle_velocity'] = current_derivative.new_derivative(
+                'stability',
+                'angle_derivatives',
+                'Force/Angle via velocity')
+            current_derivative.dict_of_derivatives['force_velocity'] = current_derivative.new_derivative(
+                'body',
+                'body_derivatives')
+            current_derivative.dict_of_derivatives['force_cs'] = current_derivative.new_derivative(
+                'body',
+                'control_surface_derivatives')
+            current_derivative.save(self.folder)
+            current_derivative.savetxt(self.folder)
+
         return self.data
 
     def get_freestream_velocity(self):
-        # Get free stream velocity direction
         try:
             u_inf = self.data.settings['StaticUvlm']['aero_solver_settings']['u_inf']
             u_inf_direction = self.data.settings['StaticCoupled']['aero_solver_settings']['u_inf_direction']
@@ -186,7 +188,15 @@ class StabilityDerivatives(solver_interface.BaseSolver):
         except TypeError:
             # For restart solutions, where the settings may have not been processed and thus may
             # exist but in string format
-            v0 = np.array(u_inf_direction, dtype=float) * float(u_inf) * -1
+            try:
+                u_inf_direction = np.array(u_inf_direction, dtype=float)
+            except ValueError:
+                if u_inf_direction.find(',') < 0:
+                    u_inf_direction = np.fromstring(u_inf_direction.strip('[]'), sep=' ', dtype=float)
+                else:
+                    u_inf_direction = np.fromstring(u_inf_direction.strip('[]'), sep=',', dtype=float)
+            finally:
+                v0 = np.array(u_inf_direction, dtype=float) * float(u_inf) * -1
 
         return v0
 
@@ -196,7 +206,7 @@ class StabilityDerivatives(solver_interface.BaseSolver):
         elif target_system == 'aeroelastic':
             ss = self.data.linear.ss
         else:
-            raise NameError('Unknown target system {:s}'.format(self.settings['target_system']))
+            raise NameError('Unknown target system {:s}'.format(target_system))
 
         return ss
 

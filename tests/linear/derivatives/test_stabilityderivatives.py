@@ -230,7 +230,7 @@ class TestLinearDerivatives(unittest.TestCase):
                                                              'print_info': 'on',
                                                              'gravity': 'on',
                                                              'remove_dofs': [],
-                                                             'remove_rigid_states': 'on'},
+                                                             'remove_rigid_states': 'off'},
                                            'aero_settings': {'dt': ws.dt,
                                                              # 'ScalingDict': {'density': rho,
                                                              #                 'length': ws.c_ref * 0.5,
@@ -475,7 +475,8 @@ class TestLinearDerivatives(unittest.TestCase):
         # czwa = (body_forces[-1, -1] - body_forces[0, -1]) / (forces[-1, 0] - forces[0, 0]) * 180 / np.pi
         # print('Vertical force with vertical velocity perturbation {:.6e}'.format(czwa))
 
-        with h5py.File(self.route_test_dir + '/output/' + ref_case_name + '/derivatives/stability.h5', 'r') as f:
+        with h5py.File(self.route_test_dir + '/output/' + ref_case_name +
+                       '/derivatives/aerodynamic_stability_derivatives.h5', 'r') as f:
             sharpy_force_angle = h5utils.load_h5_in_dict(f)['force_angle_velocity']
 
         linsubtests = ((2, cla, 'lift'),

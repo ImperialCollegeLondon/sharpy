@@ -8,31 +8,18 @@ class Derivatives:
 
     def __init__(self, reference_dimensions, static_state, target_system=None):
 
+        self.target_system = target_system
+        self.transfer_function = None
+
         self.static_state = static_state
         self.reference_dimensions = reference_dimensions
 
         self.matrix = None
 
-        self.labels_der = {0: 'phi',
-                      1: 'alpha',
-                      2: 'beta',
-                      3: 'p',
-                      4: 'q',
-                      5: 'r',
-                      6: 'alpha',
-                      7: 'beta'}
-
-        self.labels_out = {0: 'C_D',
-                      1: 'C_Y',
-                      2: 'C_L',
-                      3: 'C_l',
-                      4: 'C_m',
-                      5: 'C_n'}
-
         self.separator = '\n' + 80 * '#' + '\n'
 
         self.angles = None
-        self.dict_of_derivatives = {}
+        self.dict_of_derivatives = {} # Each of the derivative sets DerivativeSet
 
         s_ref = self.reference_dimensions['S_ref']
         b_ref = self.reference_dimensions['b_ref']
@@ -53,6 +40,68 @@ class Derivatives:
         if target_system is not None:
             self.filename = target_system + '_' + self.filename
 
+    def initialise_derivatives(self, state_space, steady_forces, quat, v0, phi=None):
+        """
+        Initialises the required class attributes for all derivative calculations/
+
+        Args:
+            state_space (sharpy.linear.src.libss.ss): State-space object for the target system
+            steady_forces (np.array): Array of steady forces (at the linearisation) expressed in the beam degrees of
+              freedom and with size equal to the number of structural degrees of freedom
+            quat (np.array): Quaternion at the linearisation
+            v0 (np.array): Free stream velocity vector at the linearisation condition
+            phi (np.array (optional)): Mode shape matrix for modal systems
+
+        """
+        cls = DerivativeSet
+        cls.quat = quat
+        cls.cga = algebra.quat2rotation(cls.quat)
+        cls.v0 = v0
+        cls.coefficients = self.coefficients
+
+        if phi is not None:
+            cls.modal = True
+            cls.phi = phi[-9:-3, :6]
+            cls.inv_phi_forces = np.linalg.inv(phi[-9:-3, :6].T)
+            cls.inv_phi_vel = np.linalg.inv(phi[-9:-3, :6])
+        else:
+            cls.modal = False
+        cls.steady_forces = steady_forces
+
+
+        H0 = state_space.freqresp(np.array([1e-4]))[:, :, 0]
+        # A, B, C, D = ss.get_mats()
+        # H0 = C.dot(np.linalg.inv(np.eye(ss.states) - A).dot(B)) + D
+        # np.savetxt('./nodal_aeroelastic_static_manual.txt', H0.real)
+        if cls.modal:
+            vel_inputs_variables = state_space.input_variables.get_variable_from_name('q_dot')
+            output_indices = state_space.output_variables.get_variable_from_name('Q').rows_loc[:6]
+            cls.steady_forces = cls.inv_phi_forces.dot(cls.steady_forces[output_indices])
+        else:
+            vel_inputs_variables = state_space.input_variables.get_variable_from_name('beta')
+            output_indices = state_space.output_variables.get_variable_from_name('forces_n').rows_loc[-9:-3]
+            cls.steady_forces = cls.steady_forces[output_indices]
+        rbm_indices = vel_inputs_variables.cols_loc[:9]
+
+        # look for control surfaces
+        try:
+            cs_input_variables = state_space.input_variables.get_variable_from_name('control_surface_deflection')
+            dot_cs_input_variables = state_space.input_variables.get_variable_from_name('dot_control_surface_deflection')
+        except ValueError:
+            cs_indices = np.array([], dtype=int)
+            dot_cs_indices = np.array([], dtype=int)
+            cls.n_control_surfaces = 0
+        else:
+            cs_indices = cs_input_variables.cols_loc
+            dot_cs_indices = dot_cs_input_variables.cols_loc
+            cls.n_control_surfaces = cs_input_variables.size
+        finally:
+            input_indices = np.concatenate((rbm_indices, cs_indices, dot_cs_indices))
+
+        self.transfer_function = H0[np.ix_(output_indices, input_indices)].real
+
+        # return H0
+
     def save(self, output_route):
         with h5py.File(output_route + '/' + self.filename.replace('.txt', '.h5'), 'w') as f:
             for k, v in self.dict_of_derivatives.items():
@@ -72,21 +121,7 @@ class Derivatives:
         quat = self.reference_dimensions['quat']
         euler_orient = algebra.quat2euler(quat) * 180/np.pi
 
-        labels_der = {0: 'u',
-                      1: 'v',
-                      2: 'w',
-                      3: 'p',
-                      4: 'q',
-                      5: 'r',
-                      6: 'alpha',
-                      7: 'beta'}
-
-        labels_out = {0: 'C_D',
-                      1: 'C_Y',
-                      2: 'C_L',
-                      3: 'C_l',
-                      4: 'C_m',
-                      5: 'C_n'}
+        labels_out = ['CD', 'CY', 'CL', 'Cl', 'Cm', 'Cn']
 
         separator = '\n' + 80*'#' + '\n'
 
@@ -118,10 +153,29 @@ class Derivatives:
                 continue
             derivative_set.print(derivative_filename=folder + '/' + filename)
 
+    def new_derivative(self, frame_of_reference, derivative_calculation=None, name=None):
+        """
+        Returns a DerivativeSet() instance with the appropriate transfer function included
+        for the relevant target system.
+
+        Args:
+            frame_of_reference (str): Output frame of reference. Body or Stability. (Not Yet Implemented)
+            derivative_calculation (str): Name of function used to create derivative set
+            name (str (optional)): Optional custom name to use as title in output.
+
+        Returns:
+            DerivativeSet: Instance of class with the relevant transfer function for the current
+              target system.
+        """
+        new_derivative = DerivativeSet(frame_of_reference, derivative_calculation,
+                                       name,
+                                       transfer_function=self.transfer_function)
+
+        return new_derivative
+
 
 class DerivativeSet:
 
-    transfer_function = None
     steady_forces = None
     coefficients = None
     quat = None
@@ -137,8 +191,10 @@ class DerivativeSet:
     inv_phi_forces = None
     inv_phi_vel = None
 
-    def __init__(self, frame_of_reference, derivative_calculation=None, name=None):
+    def __init__(self, frame_of_reference, derivative_calculation=None, name=None,
+                 transfer_function=None):
 
+        self.transfer_function = transfer_function
         self.matrix = None
         self.labels_in = []
         self.labels_out = []
@@ -170,75 +226,69 @@ class DerivativeSet:
         with h5py.File(output_name + '.stability.h5', 'w') as f:
             f.create_dataset(derivative_name, data=self.matrix)
 
-    @classmethod
-    def initialise_derivatives(cls, state_space, steady_forces, quat, v0, phi=None):
-        """
-        Initialises the required class attributes for all derivative calculations/
-
-        Args:
-            state_space (sharpy.linear.src.libss.ss): State-space object for the target system
-            steady_forces (np.array): Array of steady forces (at the linearisation) expressed in the beam degrees of
-              freedom and with size equal to the number of structural degrees of freedom
-            quat (np.array): Quaternion at the linearisation
-            v0 (np.array): Free stream velocity vector at the linearisation condition
-            phi (np.array (optional)): Mode shape matrix for modal systems
-
-        """
-        cls.quat = quat
-        cls.cga = algebra.quat2rotation(cls.quat)
-        cls.v0 = v0
-
-        if phi is not None:
-            cls.modal = True
-            cls.phi = phi[-9:-3, :6]
-            cls.inv_phi_forces = np.linalg.inv(phi[-9:-3, :6].T)
-            cls.inv_phi_vel = np.linalg.inv(phi[-9:-3, :6])
-        else:
-            cls.modal = False
-        cls.steady_forces = steady_forces
-
-        cls.transfer_function = cls.calculate_transfer_function(state_space)
-
-    @classmethod
-    def calculate_transfer_function(cls, ss):
-        H0 = ss.freqresp(np.array([1e-3]))[:, :, 0]
-        # A, B, C, D = ss.get_mats()
-        # H0 = C.dot(np.linalg.inv(np.eye(ss.states) - A).dot(B)) + D
-        # np.savetxt('./nodal_aeroelastic_static_manual.txt', H0.real)
-        if cls.modal:
-            vel_inputs_variables = ss.input_variables.get_variable_from_name('q_dot')
-            output_indices = ss.output_variables.get_variable_from_name('Q').rows_loc[:6]
-            cls.steady_forces = cls.inv_phi_forces.dot(cls.steady_forces[output_indices])
-        else:
-            vel_inputs_variables = ss.input_variables.get_variable_from_name('beta')
-            output_indices = ss.output_variables.get_variable_from_name('forces_n').rows_loc[-9:-3]
-            cls.steady_forces = cls.steady_forces[output_indices]
-        rbm_indices = vel_inputs_variables.cols_loc[:9]
-
-        # look for control surfaces
-        try:
-            cs_input_variables = ss.input_variables.get_variable_from_name('control_surface_deflection')
-            dot_cs_input_variables = ss.input_variables.get_variable_from_name('dot_control_surface_deflection')
-        except ValueError:
-            cs_indices = np.array([], dtype=int)
-            dot_cs_indices = np.array([], dtype=int)
-            cls.n_control_surfaces = 0
-        else:
-            cs_indices = cs_input_variables.cols_loc
-            dot_cs_indices = dot_cs_input_variables.cols_loc
-            cls.n_control_surfaces = cs_input_variables.size
-        finally:
-            input_indices = np.concatenate((rbm_indices, cs_indices, dot_cs_indices))
-
-        H0 = H0[np.ix_(output_indices, input_indices)].real
-
-        return H0
-
-    @classmethod
-    def new_set(cls):
-        # return a derivative set with the attributes filled in
-
-        pass
+    # @classmethod
+    # def initialise_derivatives(cls, state_space, steady_forces, quat, v0, phi=None):
+    #     """
+    #     Initialises the required class attributes for all derivative calculations/
+    #
+    #     Args:
+    #         state_space (sharpy.linear.src.libss.ss): State-space object for the target system
+    #         steady_forces (np.array): Array of steady forces (at the linearisation) expressed in the beam degrees of
+    #           freedom and with size equal to the number of structural degrees of freedom
+    #         quat (np.array): Quaternion at the linearisation
+    #         v0 (np.array): Free stream velocity vector at the linearisation condition
+    #         phi (np.array (optional)): Mode shape matrix for modal systems
+    #
+    #     """
+    #     cls.quat = quat
+    #     cls.cga = algebra.quat2rotation(cls.quat)
+    #     cls.v0 = v0
+    #
+    #     if phi is not None:
+    #         cls.modal = True
+    #         cls.phi = phi[-9:-3, :6]
+    #         cls.inv_phi_forces = np.linalg.inv(phi[-9:-3, :6].T)
+    #         cls.inv_phi_vel = np.linalg.inv(phi[-9:-3, :6])
+    #     else:
+    #         cls.modal = False
+    #     cls.steady_forces = steady_forces
+    #
+    #     cls.transfer_function = cls.calculate_transfer_function(state_space)
+    #
+    # @classmethod
+    # def calculate_transfer_function(cls, ss):
+    #     H0 = ss.freqresp(np.array([1e-3]))[:, :, 0]
+    #     # A, B, C, D = ss.get_mats()
+    #     # H0 = C.dot(np.linalg.inv(np.eye(ss.states) - A).dot(B)) + D
+    #     # np.savetxt('./nodal_aeroelastic_static_manual.txt', H0.real)
+    #     if cls.modal:
+    #         vel_inputs_variables = ss.input_variables.get_variable_from_name('q_dot')
+    #         output_indices = ss.output_variables.get_variable_from_name('Q').rows_loc[:6]
+    #         cls.steady_forces = cls.inv_phi_forces.dot(cls.steady_forces[output_indices])
+    #     else:
+    #         vel_inputs_variables = ss.input_variables.get_variable_from_name('beta')
+    #         output_indices = ss.output_variables.get_variable_from_name('forces_n').rows_loc[-9:-3]
+    #         cls.steady_forces = cls.steady_forces[output_indices]
+    #     rbm_indices = vel_inputs_variables.cols_loc[:9]
+    #
+    #     # look for control surfaces
+    #     try:
+    #         cs_input_variables = ss.input_variables.get_variable_from_name('control_surface_deflection')
+    #         dot_cs_input_variables = ss.input_variables.get_variable_from_name('dot_control_surface_deflection')
+    #     except ValueError:
+    #         cs_indices = np.array([], dtype=int)
+    #         dot_cs_indices = np.array([], dtype=int)
+    #         cls.n_control_surfaces = 0
+    #     else:
+    #         cs_indices = cs_input_variables.cols_loc
+    #         dot_cs_indices = dot_cs_input_variables.cols_loc
+    #         cls.n_control_surfaces = cs_input_variables.size
+    #     finally:
+    #         input_indices = np.concatenate((rbm_indices, cs_indices, dot_cs_indices))
+    #
+    #     H0 = H0[np.ix_(output_indices, input_indices)].real
+    #
+    #     return H0
 
     def angle_derivatives(self):
         r"""
