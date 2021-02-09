@@ -74,9 +74,10 @@ class TestRotor(unittest.TestCase):
 
         options = {'camber_effect_on_twist': False,
                    'user_defined_m_distribution_type': None,
-                   'include_polars': False}
+                   'include_polars': False,
+                   'separate_blades': False}
 
-        rotor = template_wt.rotor_from_excel_type03(op_params,
+        rotor, hub_nodes = template_wt.rotor_from_excel_type03(op_params,
                                                     geom_params,
                                                     excel_description,
                                                     options)
