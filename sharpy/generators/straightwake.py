@@ -135,7 +135,6 @@ class StraightWake(generator_interface.BaseGenerator):
         gamma = params['gamma']
         gamma_star = params['gamma_star']
         dist_to_orig = params['dist_to_orig']
-        wake_conv_vel = params['wake_conv_vel']
 
         nsurf = len(zeta)
         for isurf in range(nsurf):
@@ -157,8 +156,6 @@ class StraightWake(generator_interface.BaseGenerator):
                                           np.linalg.norm(zeta_star[isurf][:, i, j] -
                                                          zeta_star[isurf][:, i - 1, j]))
                 dist_to_orig[isurf][:, j] /= dist_to_orig[isurf][-1, j]
-            for j in range(0, N - 1):
-                wake_conv_vel[isurf][:, j] = self.u_inf
 
 
     @staticmethod

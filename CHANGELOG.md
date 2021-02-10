@@ -1,8 +1,69 @@
 # Changelog
 
-## [1.1.1](https://github.com/imperialcollegelondon/sharpy/tree/1.1.1) (2020-02-03)
+## [1.2.1](https://github.com/imperialcollegelondon/sharpy/tree/1.2.1) (2021-02-09)
 
-[Full Changelog](https://github.com/imperialcollegelondon/sharpy/compare/v1.1.0...1.1.1)
+[Full Changelog](https://github.com/imperialcollegelondon/sharpy/compare/v1.2...1.2.1)
+
+**Fixed bugs:**
+
+- Bug in beamstructure.py [\#117](https://github.com/ImperialCollegeLondon/sharpy/issues/117)
+
+**Closed issues:**
+
+- examples refer to non-existent solver SHWUvlm [\#119](https://github.com/ImperialCollegeLondon/sharpy/issues/119)
+- Potential bug in xbeam and cbeam interfaces [\#89](https://github.com/ImperialCollegeLondon/sharpy/issues/89)
+- Update packages producing deprecation warnings and tackle other warnings [\#80](https://github.com/ImperialCollegeLondon/sharpy/issues/80)
+
+**Merged pull requests:**
+
+- Rigid coupled solver [\#120](https://github.com/ImperialCollegeLondon/sharpy/pull/120) ([ArturoMS13](https://github.com/ArturoMS13))
+- Support to save ROM projector matrices [\#118](https://github.com/ImperialCollegeLondon/sharpy/pull/118) ([ngoiz](https://github.com/ngoiz))
+
+## [v1.2](https://github.com/imperialcollegelondon/sharpy/tree/v1.2) (2020-12-03)
+
+[Full Changelog](https://github.com/imperialcollegelondon/sharpy/compare/v1.1.1...v1.2)
+
+**Implemented enhancements:**
+
+- Quasi-steady solver in stepuvlm [\#114](https://github.com/ImperialCollegeLondon/sharpy/pull/114) ([ArturoMS13](https://github.com/ArturoMS13))
+- Generator to modify structural mass at runtime [\#107](https://github.com/ImperialCollegeLondon/sharpy/pull/107) ([ngoiz](https://github.com/ngoiz))
+- Sends simulation info to xplane via udp [\#104](https://github.com/ImperialCollegeLondon/sharpy/pull/104) ([wong-hl](https://github.com/wong-hl))
+- Major new aerodynamic features [\#101](https://github.com/ImperialCollegeLondon/sharpy/pull/101) ([ArturoMS13](https://github.com/ArturoMS13))
+- Simple post-processor to save simulation parameters for batch runs [\#91](https://github.com/ImperialCollegeLondon/sharpy/pull/91) ([ngoiz](https://github.com/ngoiz))
+- SHARPy support for external inputs via UDP network [\#90](https://github.com/ImperialCollegeLondon/sharpy/pull/90) ([ngoiz](https://github.com/ngoiz))
+- Vortex radius as input parameter [\#86](https://github.com/ImperialCollegeLondon/sharpy/pull/86) ([ArturoMS13](https://github.com/ArturoMS13))
+
+**Fixed bugs:**
+
+- libss.py disc2cont doesn't accept SISO systems [\#88](https://github.com/ImperialCollegeLondon/sharpy/issues/88)
+- Dimension mismatch when assembling linear UVLM with "shortened" wake [\#71](https://github.com/ImperialCollegeLondon/sharpy/issues/71)
+
+**Closed issues:**
+
+- \[develop\] Documentation for postprocs not rendering in RTD [\#109](https://github.com/ImperialCollegeLondon/sharpy/issues/109)
+- Numerical error in the linear UVLM output matrices when vortex radius is too small [\#105](https://github.com/ImperialCollegeLondon/sharpy/issues/105)
+- fatal error: mkl.h: No such file or directory [\#70](https://github.com/ImperialCollegeLondon/sharpy/issues/70)
+- lingebm.py -\> update\_matrices\_time\_scale [\#69](https://github.com/ImperialCollegeLondon/sharpy/issues/69)
+- Missing node connectivities figure in case files documentation [\#68](https://github.com/ImperialCollegeLondon/sharpy/issues/68)
+
+**Merged pull requests:**
+
+- \[fix\] Fixed bug in Gridbox class [\#111](https://github.com/ImperialCollegeLondon/sharpy/pull/111) ([sduess](https://github.com/sduess))
+- Include linear UVLM stiffening and damping terms in the UVLM D matrix [\#108](https://github.com/ImperialCollegeLondon/sharpy/pull/108) ([ngoiz](https://github.com/ngoiz))
+- Fix accuracy problem in UVLMLin [\#106](https://github.com/ImperialCollegeLondon/sharpy/pull/106) ([ArturoMS13](https://github.com/ArturoMS13))
+- Minor improvements [\#102](https://github.com/ImperialCollegeLondon/sharpy/pull/102) ([ngoiz](https://github.com/ngoiz))
+- Linearisation of externally applied follower forces [\#100](https://github.com/ImperialCollegeLondon/sharpy/pull/100) ([ngoiz](https://github.com/ngoiz))
+- Updated docs for DataStructures and Multibody [\#99](https://github.com/ImperialCollegeLondon/sharpy/pull/99) ([ArturoMS13](https://github.com/ArturoMS13))
+- Support linearised all-moving control surfaces [\#97](https://github.com/ImperialCollegeLondon/sharpy/pull/97) ([ngoiz](https://github.com/ngoiz))
+- Update Linux and minimal environments [\#96](https://github.com/ImperialCollegeLondon/sharpy/pull/96) ([ngoiz](https://github.com/ngoiz))
+- New approach to multibody computations [\#95](https://github.com/ImperialCollegeLondon/sharpy/pull/95) ([ArturoMS13](https://github.com/ArturoMS13))
+- New SHARPy examples in the documentation [\#94](https://github.com/ImperialCollegeLondon/sharpy/pull/94) ([ArturoMS13](https://github.com/ArturoMS13))
+- Add support for offline use of UDPout postproc [\#93](https://github.com/ImperialCollegeLondon/sharpy/pull/93) ([ngoiz](https://github.com/ngoiz))
+- Option to transform rigid modes given at A FoR to centre of gravity and aligned with principal axes of inertia [\#92](https://github.com/ImperialCollegeLondon/sharpy/pull/92) ([ngoiz](https://github.com/ngoiz))
+
+## [v1.1.1](https://github.com/imperialcollegelondon/sharpy/tree/v1.1.1) (2020-02-03)
+
+[Full Changelog](https://github.com/imperialcollegelondon/sharpy/compare/v1.1.0-2...v1.1.1)
 
 **Implemented enhancements:**
 
