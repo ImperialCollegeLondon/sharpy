@@ -188,6 +188,10 @@ class TakeOffTrajectoryController(controller_interface.BaseController):
 
         return controlled_state
 
+    def apply_control(self, struct_tstep, aero_tstep):
+
+        return struct_tstep, aero_tstep
+
     def process_trajectory(self, dxdt=True):
         """
         See https://docs.scipy.org/doc/scipy-0.15.1/reference/generated/scipy.interpolate.UnivariateSpline.html
@@ -230,18 +234,3 @@ class TakeOffTrajectoryController(controller_interface.BaseController):
 
     def __exit__(self, *args):
         self.log.close()
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-

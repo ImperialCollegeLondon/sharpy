@@ -342,7 +342,7 @@ class DynamicCoupled(BaseSolver):
 
         self.data.ts = 0
 
-    def process_controller_output(self, controlled_state):
+    def apply_control_to_solver_settings(self, controller_info):
         """
         This function modified the solver properties and parameters as
         requested from the controller.
@@ -362,10 +362,7 @@ class DynamicCoupled(BaseSolver):
         one specified in settings, while the key not being in the dict
         is ignored, so if any change was made before, it will stay there.
         """
-        try:
-            info = controlled_state['info']
-        except KeyError:
-            return controlled_state['structural'], controlled_state['aero']
+        info = controller_info['info']
 
         # general copy-if-exists, restore if == None
         for info_k, info_v in info.items():
@@ -392,7 +389,6 @@ class DynamicCoupled(BaseSolver):
                         self.structural_solver.initialise(
                             self.data, self.settings['structural_solver_settings'])
 
-        return controlled_state['structural'], controlled_state['aero']
 
     def run(self):
         """
@@ -489,9 +485,12 @@ class DynamicCoupled(BaseSolver):
                          'aero': aero_kstep}
                 for k, v in self.controllers.items():
                     state = v.control(self.data, state)
+                    # Apply control to time step
+                    structural_kstep, aero_kstep = v.apply_control(structural_kstep,
+                                                                   aero_kstep)
                     # this takes care of the changes in options for the solver
-                    structural_kstep, aero_kstep = self.process_controller_output(
-                        state)
+                    if 'info' in state.keys():
+                        self.apply_control_to_solver_settings(state['info'])
 
             # Add external forces
             if self.with_runtime_generators:
@@ -509,8 +508,8 @@ class DynamicCoupled(BaseSolver):
 
             # Copy the controlled states so that the interpolation does not
             # destroy the previous information
-            controlled_structural_kstep = structural_kstep.copy()
-            controlled_aero_kstep = aero_kstep.copy()
+            # controlled_structural_kstep = structural_kstep.copy()
+            # controlled_aero_kstep = aero_kstep.copy()
 
             k = 0
             for k in range(self.settings['fsi_substeps'].value + 1):
@@ -524,7 +523,7 @@ class DynamicCoupled(BaseSolver):
                     break
 
                 # generate new grid (already rotated)
-                aero_kstep = controlled_aero_kstep.copy()
+                # aero_kstep = controlled_aero_kstep.copy()
                 self.aero_solver.update_custom_grid(
                     structural_kstep,
                     aero_kstep)
