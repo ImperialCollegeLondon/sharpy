@@ -893,13 +893,13 @@ class StructTimeStepInfo(object):
                                                                                        copy=True)
 
 
-    def nodal_b_for_2_a_for(self, nodal, beam, filter=np.array([True]*6)):
+    def nodal_b_for_2_a_for(self, nodal, beam, filter=np.array([True]*6), ibody=0):
         """
         Projects a nodal variable from the local, body-attached frame (B) to the reference A frame.
 
         Args:
             nodal (np.array): Nodal variable of size ``(num_node, 6)``
-            beam (sharpy.datastructures.StructTimeStepInfo): structural time step info.
+            beam (sharpy.datastructures.StructTimeStepInfo): beam info.
             filter (np.array): optional argument that filters and does not convert a specific degree of
               freedom. Defaults to ``np.array([True, True, True, True, True, True])``.
 
@@ -910,20 +910,22 @@ class StructTimeStepInfo(object):
         for i_node in range(self.num_node):
             # get master elem and i_local_node
             i_master_elem, i_local_node = beam.node_master_elem[i_node, :]
-            crv = self.psi[i_master_elem, i_local_node, :]
-            cab = algebra.crv2rotation(crv)
-            temp = np.zeros((6,))
-            temp[0:3] = np.dot(cab, nodal[i_node, 0:3])
-            temp[3:6] = np.dot(cab, nodal[i_node, 3:6])
-            for i in range(6):
-                if filter[i]:
-                    nodal_a[i_node, i] = temp[i]
+            if beam.body_number[i_master_elem] == ibody:
+                crv = self.psi[i_master_elem, i_local_node, :]
+                cab = algebra.crv2rotation(crv)
+                temp = np.zeros((6,))
+                temp[0:3] = np.dot(cab, nodal[i_node, 0:3])
+                temp[3:6] = np.dot(cab, nodal[i_node, 3:6])
+                for i in range(6):
+                    if filter[i]:
+                        nodal_a[i_node, i] = temp[i]
 
         return nodal_a
     
     def nodal_type_b_for_2_a_for(self, beam,
                             force_type=['steady', 'unsteady'],
-                            filter=np.array([True]*6)):
+                            filter=np.array([True]*6),
+                            ibody=0):
         forces_output = []
         for ft in force_type:
             if ft == 'steady':
@@ -931,21 +933,21 @@ class StructTimeStepInfo(object):
             elif ft == 'unsteady':
                 fb = self.unsteady_applied_forces
 
-            forces_output.append(self.nodal_b_for_2_a_for(fb, beam, filter))
+            forces_output.append(self.nodal_b_for_2_a_for(fb, beam, filter=filter, ibody=ibody))
 
         return forces_output
 
 
-    def extract_resultants(self, beam, force_type=['steady', 'unsteady', 'grav']):
+    def extract_resultants(self, beam, force_type=['steady', 'unsteady', 'grav'], ibody=0):
 
         forces_output = []
         for ft in force_type:
             if ft == 'steady':
-                fa = self.nodal_type_b_for_2_a_for(beam, force_type=['steady'])
+                fa = self.nodal_type_b_for_2_a_for(beam, force_type=['steady'], ibody=ibody)
             elif ft == 'grav':
                 fa = self.gravity_forces.copy()
             elif ft == 'unsteady':
-                fa = self.nodal_type_b_for_2_a_for(beam, force_type=['unsteady'])
+                fa = self.nodal_type_b_for_2_a_for(beam, force_type=['unsteady'], ibody=ibody)
         
             for i_node in range(beam.num_node):
                 totals[i_node, 3:6] += algebra.cross3(self.pos[i_node, :],
