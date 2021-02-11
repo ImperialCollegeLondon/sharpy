@@ -913,12 +913,9 @@ class StructTimeStepInfo(object):
             if beam.body_number[i_master_elem] == ibody:
                 crv = self.psi[i_master_elem, i_local_node, :]
                 cab = algebra.crv2rotation(crv)
-                temp = np.zeros((6,))
-                temp[0:3] = np.dot(cab, nodal[i_node, 0:3])
-                temp[3:6] = np.dot(cab, nodal[i_node, 3:6])
-                for i in range(6):
-                    if filter[i]:
-                        nodal_a[i_node, i] = temp[i]
+                nodal_a[i_node, 0:3] = np.dot(cab, nodal[i_node, 0:3])
+                nodal_a[i_node, 3:6] = np.dot(cab, nodal[i_node, 3:6])
+                nodal_a *= filter    
 
         return nodal_a
     
