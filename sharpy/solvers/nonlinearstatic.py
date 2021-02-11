@@ -58,18 +58,8 @@ class NonLinearStatic(_BaseStructural):
     def extract_resultants(self, tstep=None):
         if tstep is None:
             tstep = self.data.structure.timestep_info[self.data.ts]
-        applied_forces = self.data.structure.nodal_b_for_2_a_for(tstep.steady_applied_forces,
-                                                                 tstep)
-
-        applied_forces_copy = applied_forces.copy()
-        gravity_forces_copy = tstep.gravity_forces.copy()
-        for i_node in range(self.data.structure.num_node):
-            applied_forces_copy[i_node, 3:6] += algebra.cross3(tstep.pos[i_node, :],
-                                                               applied_forces_copy[i_node, 0:3])
-            gravity_forces_copy[i_node, 3:6] += algebra.cross3(tstep.pos[i_node, :],
-                                                               gravity_forces_copy[i_node, 0:3])
-
-        totals = np.sum(applied_forces_copy + gravity_forces_copy, axis=0)
+        steady, grav = tstep.extract_resultants(self.data.structure, force_type=['steady', 'grav'])
+        totals = np.sum(steady + grav)
         return totals[0:3], totals[3:6]
 
     def update(self, tstep=None):

@@ -186,9 +186,12 @@ class NonLinearStaticMultibody(_BaseStructural):
         # # print("FoR final pos: ", MB_tstep[ibody].for_pos[0:3])
         # # print("pause")
 
-    def extract_resultants(self, tstep):
-        # TODO: code
-        return np.zeros((3,)), np.zeros((3,))
+    def extract_resultants(self, tstep=None):
+        if tstep is None:
+            tstep = self.data.structure.timestep_info[self.data.ts]
+        steady, grav = tstep.extract_resultants(self.data.structure, force_type=['steady', 'grav'])
+        totals = np.sum(steady + grav)
+        return totals[0:3], totals[3:6]
 
     def update(self, tstep=None):
         self.create_q_vector(tstep)

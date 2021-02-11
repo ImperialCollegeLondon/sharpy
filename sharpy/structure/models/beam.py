@@ -489,34 +489,6 @@ class Beam(BaseStructure):
                 dt*np.dot(self.timestep_info[ts].cga(),
                           self.timestep_info[ts].for_vel[0:3]))
 
-    def nodal_b_for_2_a_for(self, nodal, tstep, filter=np.array([True]*6)):
-        """
-        Projects a nodal variable from the local, body-attached frame (B) to the reference A frame.
-
-        Args:
-            nodal (np.array): Nodal variable of size ``(num_node, 6)``
-            tstep (sharpy.datastructures.StructTimeStepInfo): structural time step info.
-            filter (np.array): optional argument that filters and does not convert a specific degree of
-              freedom. Defaults to ``np.array([True, True, True, True, True, True])``.
-
-        Returns:
-            np.array: the ``nodal`` argument projected onto the reference ``A`` frame.
-        """
-        nodal_a = nodal.copy(order='F')
-        for i_node in range(self.num_node):
-            # get master elem and i_local_node
-            i_master_elem, i_local_node = self.node_master_elem[i_node, :]
-            crv = tstep.psi[i_master_elem, i_local_node, :]
-            cab = algebra.crv2rotation(crv)
-            temp = np.zeros((6,))
-            temp[0:3] = np.dot(cab, nodal[i_node, 0:3])
-            temp[3:6] = np.dot(cab, nodal[i_node, 3:6])
-            for i in range(6):
-                if filter[i]:
-                    nodal_a[i_node, i] = temp[i]
-
-        return nodal_a
-
     def nodal_premultiply_inv_T_transpose(self, nodal, tstep, filter=np.array([True]*6)):
         # nodal_t = np.zeros_like(nodal, dtype=ct.c_double, order='F')
         nodal_t = nodal.copy(order='F')

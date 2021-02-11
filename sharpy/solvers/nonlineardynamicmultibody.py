@@ -247,9 +247,12 @@ class NonLinearDynamicMultibody(_BaseStructural):
         # print("FoR final pos: ", MB_tstep[ibody].for_pos[0:3])
         # print("pause")
 
-    def extract_resultants(self):
-        # TODO: code
-        pass
+    def extract_resultants(self, tstep=None):
+        if tstep is None:
+            tstep = self.data.structure.timestep_info[self.data.ts]
+        steady, unsteady, grav = tstep.extract_resultants(self.data.structure, force_type=['steady', 'unsteady', 'grav'])
+        totals = np.sum(steady + unsteady + grav)
+        return totals[0:3], totals[3:6]
 
     def compute_forces_constraints(self, MB_beam, MB_tstep, ts, dt, Lambda, Lambda_dot):
         """

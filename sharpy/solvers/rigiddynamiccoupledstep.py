@@ -78,21 +78,10 @@ class RigidDynamicCoupledStep(_BaseStructural):
     def next_step(self):
         pass
 
-    def extract_resultants(self, step=None):
-        if step is None:
-            step = self.data.structure.timestep_info[-1]
-        applied_forces = self.data.structure.nodal_b_for_2_a_for(step.steady_applied_forces + step.unsteady_applied_forces,
-                                                                 step)
-
-        applied_forces_copy = applied_forces.copy()
-        gravity_forces_copy = step.gravity_forces.copy()
-        for i_node in range(self.data.structure.num_node):
-            applied_forces_copy[i_node, 3:6] += algebra.cross3(step.pos[i_node, :],
-                                                               applied_forces_copy[i_node, 0:3])
-            gravity_forces_copy[i_node, 3:6] += algebra.cross3(step.pos[i_node, :],
-                                                               gravity_forces_copy[i_node, 0:3])
-
-        totals = np.sum(applied_forces_copy + gravity_forces_copy, axis=0)
-        step.total_forces = np.sum(applied_forces_copy, axis=0)
-        step.total_gravity_forces = np.sum(gravity_forces_copy, axis=0)
+    def extract_resultants(self, tstep=None):
+        if tstep is None:
+            tstep = self.data.structure.timestep_info[self.data.ts]
+        steady, unsteady, grav = tstep.extract_resultants(self.data.structure, force_type=['steady', 'unsteady', 'grav'])
+        totals = np.sum(steady + unsteady + grav)
         return totals[0:3], totals[3:6]
+

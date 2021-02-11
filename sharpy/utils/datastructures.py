@@ -893,6 +893,68 @@ class StructTimeStepInfo(object):
                                                                                        copy=True)
 
 
+    def nodal_b_for_2_a_for(self, nodal, beam, filter=np.array([True]*6)):
+        """
+        Projects a nodal variable from the local, body-attached frame (B) to the reference A frame.
+
+        Args:
+            nodal (np.array): Nodal variable of size ``(num_node, 6)``
+            beam (sharpy.datastructures.StructTimeStepInfo): structural time step info.
+            filter (np.array): optional argument that filters and does not convert a specific degree of
+              freedom. Defaults to ``np.array([True, True, True, True, True, True])``.
+
+        Returns:
+            np.array: the ``nodal`` argument projected onto the reference ``A`` frame.
+        """
+        nodal_a = nodal.copy(order='F')
+        for i_node in range(self.num_node):
+            # get master elem and i_local_node
+            i_master_elem, i_local_node = beam.node_master_elem[i_node, :]
+            crv = self.psi[i_master_elem, i_local_node, :]
+            cab = algebra.crv2rotation(crv)
+            temp = np.zeros((6,))
+            temp[0:3] = np.dot(cab, nodal[i_node, 0:3])
+            temp[3:6] = np.dot(cab, nodal[i_node, 3:6])
+            for i in range(6):
+                if filter[i]:
+                    nodal_a[i_node, i] = temp[i]
+
+        return nodal_a
+    
+    def nodal_type_b_for_2_a_for(self, beam,
+                            force_type=['steady', 'unsteady'],
+                            filter=np.array([True]*6)):
+        forces_output = []
+        for ft in force_type:
+            if ft == 'steady':
+                fb = self.steady_applied_forces
+            elif ft == 'unsteady':
+                fb = self.unsteady_applied_forces
+
+            forces_output.append(self.nodal_b_for_2_a_for(fb, beam, filter))
+
+        return forces_output
+
+
+    def extract_resultants(self, beam, force_type=['steady', 'unsteady', 'grav']):
+
+        forces_output = []
+        for ft in force_type:
+            if ft == 'steady':
+                fa = self.nodal_type_b_for_2_a_for(beam, force_type=['steady'])
+            elif ft == 'grav':
+                fa = self.gravity_forces.copy()
+            elif ft == 'unsteady':
+                fa = self.nodal_type_b_for_2_a_for(beam, force_type=['unsteady'])
+        
+            for i_node in range(beam.num_node):
+                totals[i_node, 3:6] += algebra.cross3(self.pos[i_node, :],
+                                                      fa[i_node, 0:3])
+
+            forces_output.append(totals)
+
+        return forces
+
 class LinearTimeStepInfo(object):
     """
     Linear timestep info containing the state, input and output variables for a given timestep
