@@ -862,7 +862,14 @@ def disc2cont(sys):
     c = np.sqrt(2 * omega_0) * sys.C.dot(eye_a_inv)
     d = sys.D - sys.C.dot(eye_a_inv.dot(sys.B))
 
-    return ss(a, b, c, d)
+    sys_ct = ss(a, b, c, d)
+
+    if sys.input_variables is not None:
+        sys_ct.input_variables = sys.input_variables
+        sys_ct.state_variables = sys.state_variables
+        sys_ct.output_variables = sys.output_variables
+
+    return sys_ct
 
 
 def remove_inout_channels(sys, retain_channels, where):
