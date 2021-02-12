@@ -54,24 +54,26 @@ class Derivatives:
 
         """
         cls = DerivativeSet
-        cls.quat = quat
-        cls.cga = algebra.quat2rotation(cls.quat)
-        cls.v0 = v0
-        cls.coefficients = self.coefficients
+        if cls.quat is None:
+            cls.quat = quat
+            cls.cga = algebra.quat2rotation(cls.quat)
+            cls.v0 = v0
+            cls.coefficients = self.coefficients
 
-        if phi is not None:
-            cls.modal = True
-            cls.phi = phi[-9:-3, :6]
-            cls.inv_phi_forces = np.linalg.inv(phi[-9:-3, :6].T)
-            cls.inv_phi_vel = np.linalg.inv(phi[-9:-3, :6])
-        else:
-            cls.modal = False
+            if phi is not None:
+                cls.modal = True
+                cls.phi = phi[-9:-3, :6]
+                cls.inv_phi_forces = np.linalg.inv(phi[-9:-3, :6].T)
+                cls.inv_phi_vel = np.linalg.inv(phi[-9:-3, :6])
+            else:
+                cls.modal = False
         cls.steady_forces = steady_forces
 
 
-        H0 = state_space.freqresp(np.array([1e-4]))[:, :, 0]
-        # A, B, C, D = ss.get_mats()
-        # H0 = C.dot(np.linalg.inv(np.eye(ss.states) - A).dot(B)) + D
+        H0 = state_space.freqresp(np.array([1e-5]))[:, :, 0]
+        # A, B, C, D = state_space.get_mats()
+        # H0 = C.dot(np.linalg.inv(np.eye(state_space.states) - A).dot(B)) + D
+        # H0 = C.dot(-np.linalg.inv(A).dot(B)) + D
         # np.savetxt('./nodal_aeroelastic_static_manual.txt', H0.real)
         if cls.modal:
             vel_inputs_variables = state_space.input_variables.get_variable_from_name('q_dot')
@@ -343,6 +345,42 @@ class DerivativeSet:
         else:
             delta_nodal_vel = cga.T.dot(algebra.der_Peuler_by_v(euler0 * 0, v0))
             delta_nodal_forces = self.transfer_function[:6, :3].real.dot(delta_nodal_vel)
+
+        stab_der_trans2 = cga.dot(delta_nodal_forces[:3, :])
+        stab_der_mom2 = cga.dot(delta_nodal_forces[3:, :])
+
+        self.matrix[:3, :] = stab_der_trans + stab_der_trans2
+        self.matrix[3:6, :] = stab_der_mom + stab_der_mom2
+
+        self.apply_coefficients()
+
+    def angle_derivatives_tb(self):
+        self.name = 'Force/Angle derivatives via angle input'
+        self.labels_in = ['phi', 'alpha', 'beta']
+        self.labels_out = ['CD', 'CY', 'CL', 'Cl', 'Cm', 'Cn']
+        self.matrix = np.zeros((6, 3))
+
+        # Get free stream velocity direction
+        v0 = self.v0
+
+        f0a = self.steady_forces[:3]
+        m0a = self.steady_forces[-3:]
+
+        print(f0a)
+        print(m0a)
+
+        euler0 = algebra.quat2euler(self.quat)
+        cga = self.cga
+
+        # first term in the stability derivative expression
+        stab_der_trans = algebra.der_Ceuler_by_v(euler0, f0a)
+        stab_der_mom = algebra.der_Ceuler_by_v(euler0, m0a)
+
+        # second term in the stability derivative expression
+        if self.modal:
+            delta_nodal_forces = self.inv_phi_forces.dot(self.transfer_function[:6, 6:9].real)
+        else:
+            delta_nodal_forces = self.transfer_function[:6, 6:9].real
 
         stab_der_trans2 = cga.dot(delta_nodal_forces[:3, :])
         stab_der_mom2 = cga.dot(delta_nodal_forces[3:, :])
