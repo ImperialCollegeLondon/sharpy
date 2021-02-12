@@ -129,6 +129,11 @@ class LinearUVLM(ss_interface.BaseElement):
     settings_default['vortex_radius'] = vortex_radius_def
     settings_description['vortex_radius'] = 'Distance below which inductions are not computed'
 
+    settings_types['convert_to_ct'] = 'bool'
+    settings_default['convert_to_ct'] = False
+    settings_description['convert_to_ct'] = 'Convert system to Continuous Time. Note: features above the original ' \
+                                            'Nyquist frequency limit will not be captured.'
+
     settings_table = settings.SettingsTable()
     __doc__ += settings_table.generate(settings_types, settings_default, settings_description, settings_options)
 
@@ -252,6 +257,10 @@ class LinearUVLM(ss_interface.BaseElement):
 
         if self.scaled:
             self.sys.nondimss()
+
+        if self.settings['convert_to_ct']:
+            self.sys.SS = libss.disc2cont(self.sys.SS)
+
         self.ss = self.sys.SS
         self.C_to_vertex_forces = self.ss.C.copy()
 

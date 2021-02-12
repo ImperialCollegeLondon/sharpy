@@ -1026,8 +1026,24 @@ class FlexDynamic():
                     Bss = np.zeros((2 * Nmodes, Nmodes))
                     Dss = np.zeros((2 * Nmodes, Nmodes))
                     Bss[Nmodes + iivec, iivec] = 1.
-                    self.Kin = Phi.T
-                    self.Kout = sc.linalg.block_diag(*(Phi, Phi))
+                    self.Kin = libss.Gain(Phi.T)
+                    self.Kin.input_variables = LinearVector([InputVariable('forces_n',
+                                                                           size=self.Mstr.shape[0],
+                                                                           index=0)])
+                    self.Kin.output_variables = LinearVector([OutputVariable('Q',
+                                                                             size=Nmodes,
+                                                                             index=0)])
+                    self.Kout = libss.Gain(sc.linalg.block_diag(*[Phi, Phi]))
+                    self.Kout.input_variables = LinearVector([InputVariable('q', size=Nmodes, index=0),
+                                                              InputVariable('q_dot', size=Nmodes, index=1)])
+
+                    output_variables = LinearVector([OutputVariable('eta', size=self.num_dof_flex, index=0),
+                                                     OutputVariable('eta_dot', size=self.num_dof_flex, index=1)])
+                    if not self.clamped:
+                        output_variables.add('beta_bar', size=self.num_dof_rig, index=0.5)
+                        output_variables.append('beta', size=self.num_dof_rig)
+
+                    self.Kout.output_variables = output_variables
                 else:  # damped mode shapes
                     # The algorithm assumes that for each couple of complex conj
                     # eigenvalues, only one eigenvalue (and the eigenvectors
@@ -1048,6 +1064,17 @@ class FlexDynamic():
 
                 # build state-space model
                 self.SScont = libss.ss(Ass, Bss, Css, Dss)
+                input_variables = LinearVector([InputVariable('Q', size=Nmodes, index=0)])
+
+                output_variables = LinearVector([OutputVariable('q', size=Nmodes, index=0),
+                                                 OutputVariable('q_dot', size=Nmodes, index=1)])
+
+                state_variables = output_variables.transform(output_variables,
+                                                             to_type=StateVariable)
+
+                self.SScont.input_variables = input_variables
+                self.SScont.output_variables = output_variables
+                self.SScont.state_variables = state_variables
                 if self.inout_coords == 'nodes':
                     self.SScont = libss.addGain(self.SScont, self.Kin, 'in')
                     self.SScont = libss.addGain(self.SScont, self.Kout, 'out')
@@ -1070,6 +1097,20 @@ class FlexDynamic():
                 self.Kin = None
                 self.Kout = None
                 self.SScont = libss.ss(Ass, Bss, Css, Dss)
+
+                input_variables = LinearVector([InputVariable('forces_n',
+                                                              size=self.Mstr.shape[0],
+                                                              index=0)])
+
+                output_variables = LinearVector([OutputVariable('eta', size=self.num_dof_flex, index=0),
+                                                 OutputVariable('eta_dot', size=self.num_dof_flex, index=1)])
+                if not self.clamped:
+                    output_variables.add('beta_bar', size=self.num_dof_rig, index=0.5)
+                    output_variables.append('beta', size=self.num_dof_rig)
+
+                self.SScont.output_variables = output_variables
+                self.SScont.input_variables = input_variables
+                self.SScont.state_variables = LinearVector.transform(output_variables, to_type=StateVariable)
 
 
     def freqresp(self, wv=None, bode=True):

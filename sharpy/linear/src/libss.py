@@ -731,10 +731,15 @@ def couple(ss01, ss02, K12, K21, out_sparse=False):
     K12 transforms the output of ss02 into an input of ss01.
 
     Other inputs:
-    - out_sparse: if True, the output system is stored as sparse (not recommended)
+        - out_sparse: if True, the output system is stored as sparse (not recommended)
     """
-
-    assert np.abs(ss01.dt - ss02.dt) < 1e-10 * ss01.dt, 'Time-steps not matching!'
+    if ss01.dt is None and ss02.dt is None:
+        pass
+    else:
+        try:
+            assert np.abs(ss01.dt - ss02.dt) < 1e-10 * ss01.dt, 'Time-steps not matching!'
+        except TypeError:
+            raise TypeError('One of the systems to couple is discrete and the other continuous')
 
     if ss01.input_variables is not None and ss02.input_variables is not None \
             and isinstance(K12, Gain) and isinstance(K21, Gain):

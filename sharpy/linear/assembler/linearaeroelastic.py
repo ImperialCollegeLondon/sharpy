@@ -262,8 +262,8 @@ class LinearAeroelastic(ss_interface.BaseElement):
         if uvlm.scaled:
             Tsa.value *= uvlm.sys.ScalingFacts['force'] * uvlm.sys.ScalingFacts['time'] ** 2
             if rigid_dof > 0:
-                Tas[:flex_nodes + 6, :flex_nodes + 6] /= uvlm.sys.ScalingFacts['length']
-                Tas[total_dof: total_dof + flex_nodes + 6] /= uvlm.sys.ScalingFacts['length']
+                Tas.value[:flex_nodes + 6, :flex_nodes + 6] /= uvlm.sys.ScalingFacts['length']
+                Tas.value[total_dof: total_dof + flex_nodes + 6] /= uvlm.sys.ScalingFacts['length']
             else:
                 if not self.settings['beam_settings']['modal_projection']:
                     Tas.value /= uvlm.sys.ScalingFacts['length']
