@@ -157,6 +157,12 @@ class StabilityDerivatives(solver_interface.BaseSolver):
                 'stability',
                 'angle_derivatives',
                 'Force/Angle via velocity')
+
+            current_derivative.dict_of_derivatives['force_angle_angle'] = current_derivative.new_derivative(
+                'stability',
+                'angle_derivatives_tb',
+                'Force/Angle via Track Body'
+            )
             current_derivative.dict_of_derivatives['force_velocity'] = current_derivative.new_derivative(
                 'body',
                 'body_derivatives')
