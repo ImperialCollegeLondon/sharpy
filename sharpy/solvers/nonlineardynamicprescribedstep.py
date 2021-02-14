@@ -93,7 +93,7 @@ class NonLinearDynamicPrescribedStep(_BaseStructural):
         if tstep is None:
             tstep = self.data.structure.timestep_info[self.data.ts]
         steady, unsteady, grav = tstep.extract_resultants(self.data.structure, force_type=['steady', 'unsteady', 'grav'])
-        totals = np.sum(steady + unsteady + grav)
+        totals = steady + unsteady + grav
         return totals[0:3], totals[3:6]
 
 

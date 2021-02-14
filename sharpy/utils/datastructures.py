@@ -906,7 +906,7 @@ class StructTimeStepInfo(object):
         Returns:
             np.array: the ``nodal`` argument projected onto the reference ``A`` frame.
         """
-        nodal_a = nodal.copy(order='F')
+        nodal_a = np.zeros_like(nodal)
         for i_node in range(self.num_node):
             # get master elem and i_local_node
             i_master_elem, i_local_node = beam.node_master_elem[i_node, :]
@@ -939,20 +939,22 @@ class StructTimeStepInfo(object):
 
         forces_output = []
         for ft in force_type:
+            totals = np.zeros((6))
             if ft == 'steady':
-                fa = self.nodal_type_b_for_2_a_for(beam, force_type=['steady'], ibody=ibody)
+                fa = self.nodal_type_b_for_2_a_for(beam, force_type=['steady'], ibody=ibody)[0]
             elif ft == 'grav':
                 fa = self.gravity_forces.copy()
             elif ft == 'unsteady':
-                fa = self.nodal_type_b_for_2_a_for(beam, force_type=['unsteady'], ibody=ibody)
-        
+                fa = self.nodal_type_b_for_2_a_for(beam, force_type=['unsteady'], ibody=ibody)[0]
+ 
             for i_node in range(beam.num_node):
-                totals[i_node, 3:6] += algebra.cross3(self.pos[i_node, :],
-                                                      fa[i_node, 0:3])
+                totals += fa[i_node, :]
+                totals[3:6] += algebra.cross3(self.pos[i_node, :],
+                                              fa[i_node, 0:3])
 
             forces_output.append(totals)
 
-        return forces
+        return forces_output
 
 class LinearTimeStepInfo(object):
     """

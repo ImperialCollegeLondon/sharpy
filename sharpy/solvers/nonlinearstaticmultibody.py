@@ -190,7 +190,7 @@ class NonLinearStaticMultibody(_BaseStructural):
         if tstep is None:
             tstep = self.data.structure.timestep_info[self.data.ts]
         steady, grav = tstep.extract_resultants(self.data.structure, force_type=['steady', 'grav'])
-        totals = np.sum(steady + grav)
+        totals = steady + grav
         return totals[0:3], totals[3:6]
 
     def update(self, tstep=None):
