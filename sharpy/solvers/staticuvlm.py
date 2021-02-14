@@ -106,6 +106,10 @@ class StaticUvlm(BaseSolver):
     settings_default['rbm_vel_g'] = [0., 0., 0., 0., 0., 0.]
     settings_description['rbm_vel_g'] = 'Rigid body velocity in G FoR'
 
+    settings_types['centre_rot_g'] = 'list(float)'
+    settings_default['centre_rot_g'] = [0., 0., 0.]
+    settings_description['centre_rot_g'] = 'Centre of rotation in G FoR around which ``rbm_vel_g`` is applied'
+
     settings_table = settings.SettingsTable()
     __doc__ += settings_table.generate(settings_types, settings_default, settings_description)
 
