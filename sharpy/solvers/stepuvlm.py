@@ -125,6 +125,10 @@ class StepUvlm(BaseSolver):
     settings_default['yaw_slerp'] = 0
     settings_description['yaw_slerp'] = 'Yaw angle in radians to be used when interp_metod == 4'
 
+    settings_types['centre_rot'] = 'list(float)'
+    settings_default['centre_rot'] = [0., 0., 0.]
+    settings_description['centre_rot'] = 'Coordinates of the centre of rotation to perform slerp interpolation or cylindrical coordinates'
+
     settings_types['quasi_steady'] = 'bool'
     settings_default['quasi_steady'] = False
     settings_description['quasi_steady'] = 'Use quasi-steady approximation in UVLM'
@@ -212,7 +216,7 @@ class StepUvlm(BaseSolver):
                                           'for_pos': structure_tstep.for_pos,
                                           'is_wake': False},
                                          aero_tstep.u_ext)
-        if ((self.settings['convection_scheme'].value > 1 and convect_wake) or 
+        if ((self.settings['convection_scheme'].value > 1 and convect_wake) or
            (not self.settings['cfl1'])):
             # generate uext_star
             self.velocity_generator.generate({'zeta': aero_tstep.zeta_star,
