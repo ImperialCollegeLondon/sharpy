@@ -131,12 +131,11 @@ class BladePitchPid(controller_interface.BaseController):
         # save input time history
         if self.settings['sp_source'] == 'file':
             self.prescribed_sp_time_history = np.loadtxt(self.settings['sp_time_history_file'])
-
         # Init PID controller
-        self.controller_implementation = control_utils.PID(self.settings['P'].value,
-                                                           self.settings['I'].value,
-                                                           self.settings['D'].value,
-                                                           self.settings['dt'].value)
+        self.controller_implementation = control_utils.PID(self.settings['P'],
+                                                           self.settings['I'],
+                                                           self.settings['D'],
+                                                           self.settings['dt'])
 
 
     def control(self, data, controlled_state):
@@ -156,9 +155,10 @@ class BladePitchPid(controller_interface.BaseController):
         """
         struct_tstep = controlled_state['structural']
         aero_tstep = controlled_state['aero']
+        time = self.settings['dt']*data.ts
 
         prescribed_sp = self.compute_prescribed_sp(time)
-        sys_pv = self.compute_system_pv(struct_tstep)
+        sys_pv = self.compute_system_pv(struct_tstep, data.structure)
         
 
 
@@ -177,30 +177,34 @@ class BladePitchPid(controller_interface.BaseController):
 
         # Apply control order
         # rot_mat = algebra.rotation3d_x(control_command)
-        angle = control_command*np.array([1., 0., 0.])
-        quat = algebra.rotate_quaternion(struct_tstep.quat, angle)
+        quat = algebra.rotate_quaternion(struct_tstep.quat, control_command*np.array([1., 0., 0.]))
 
         # euler = np.array([prescribed_sp[0], 0., 0.])
         struct_tstep.quat = quat
-        struct_tstep.for_vel[3] = angle/self.dt
-        struct_tstep.for_acc[3] = (self.data.structure.timestep_info[self.data.ts - 1].for_vel[3] - struct_tstep.for_vel[3])/self.dt
+        struct_tstep.for_vel[3] = control_command/self.settings['dt']
+        struct_tstep.for_acc[3] = (data.structure.timestep_info[data.ts - 1].for_vel[3] - struct_tstep.for_vel[3])/self.settings['dt']
 
         data.structure.dynamic_input[data.ts - 1]['for_vel'] = struct_tstep.for_vel.copy()
         data.structure.dynamic_input[data.ts - 1]['for_acc'] = struct_tstep.for_acc.copy()
 
+        data.aero.generate_zeta_timestep_info(struct_tstep,
+                                              aero_tstep,
+                                              data.structure,
+                                              data.aero.aero_settings,
+                                              dt=self.settings['dt'])
         # controlled_state['aero'].control_surface_deflection = (
         #     np.array(self.settings['controlled_surfaces_coeff'])*control_command)
 
-        # self.log.write(('{:>6d},'
-        #                 + 6*'{:>12.6f},'
-        #                 + '{:>12.6f}\n').format(i_current,
-        #                                         i_current*self.settings['dt'].value,
-        #                                         self.prescribed_input_time_history[i_current - 1],
-        #                                         self.real_state_input_history[i_current - 1],
-        #                                         detail[0],
-        #                                         detail[1],
-        #                                         detail[2],
-        #                                         control_command))
+        self.log.write(('{:>6d},'
+                        + 6*'{:>12.6f},'
+                        + '{:>12.6f}\n').format(data.ts,
+                                                data.ts*self.settings['dt'],
+                                                self.prescribed_sp[-1],
+                                                self.system_pv[-1],
+                                                detail[0],
+                                                detail[1],
+                                                detail[2],
+                                                control_command))
         return controlled_state
 
     
@@ -223,7 +227,7 @@ class BladePitchPid(controller_interface.BaseController):
         return self.prescribed_sp[-1]
 
 
-    def compute_system_pv(self):
+    def compute_system_pv(self, struct_tstep, beam):
         """
             Compute the process value relevant for the controller
         """
@@ -231,8 +235,8 @@ class BladePitchPid(controller_interface.BaseController):
             pitch = algebra.quat2euler(struct_tstep.quat)[0]
             self.system_pv.append(pitch)
         elif self.settings['sp_type'] == 'rbm':
-            steady, unsteady, grav = controlled_state['structural'].extract_resultants(force_type=['steady', 'unsteady', 'gravity'],
-                                                                                       body=0)
+            steady, unsteady, grav = struct_tstep.extract_resultants(beam, force_type=['steady', 'unsteady', 'gravity'],
+                                                                                       ibody=0)
             rbm = np.linalg.norm(steady[3:6] + unsteady[3:6] + grav[3:6])
             self.system_pv.append(rbm)
             
