@@ -268,7 +268,7 @@ def uvlm_solver(i_iter, ts_info, struct_ts_info, options, convect_wake=True, dt=
     rbm_vel[0:3] = np.dot(struct_ts_info.cga(), rbm_vel[0:3])
     rbm_vel[3:6] = np.dot(struct_ts_info.cga(), rbm_vel[3:6])
     p_rbm_vel = rbm_vel.ctypes.data_as(ct.POINTER(ct.c_double))
-    p_slerp_centre_rot = options['centre_rot'].ctypes.data_as(ct.POINTER(ct.c_double))
+    p_centre_rot = options['centre_rot'].ctypes.data_as(ct.POINTER(ct.c_double))
 
     i = ct.c_uint(i_iter)
     ts_info.generate_ctypes_pointers()
