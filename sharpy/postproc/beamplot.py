@@ -137,11 +137,12 @@ class BeamPlot(BaseSolver):
         forces_constraints_nodes = np.zeros((num_nodes, 3))
         moments_constraints_nodes = np.zeros((num_nodes, 3))
 
-        if self.data.structure.timestep_info[it].in_global_AFoR:
-            tstep = self.data.structure.timestep_info[it]
-        else:
-            tstep = self.data.structure.timestep_info[it].copy()
-            tstep.whole_structure_to_global_AFoR(self.data.structure)
+        # if self.data.structure.timestep_info[it].in_global_AFoR:
+        #     tstep = self.data.structure.timestep_info[it]
+        # else:
+        #     tstep = self.data.structure.timestep_info[it].copy()
+        #     tstep.whole_structure_to_global_AFoR(self.data.structure)
+        tstep = self.data.structure.timestep_info[it]
 
         # aero2inertial rotation
         aero2inertial = tstep.cga()

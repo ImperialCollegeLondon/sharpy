@@ -121,7 +121,7 @@ class SaveData(BaseSolver):
 
         settings.to_custom_types(self.settings,
                                  self.settings_types, self.settings_default, options=self.settings_options)
-        
+
         # Add these anyway - therefore if you add your own skip_attr you don't have to retype all of these
         self.settings['skip_attr'].extend(['fortran',
                                             'airfoils',
@@ -302,11 +302,12 @@ class SaveData(BaseSolver):
                                SkipAttr=settings['skip_attr'],
                                compress_float=settings['compress_float'])
         if settings['save_struct']:
-            if data.structure.timestep_info[ts].in_global_AFoR:
-                tstep = data.structure.timestep_info[ts]
-            else:
-                tstep = data.structure.timestep_info[data.ts].copy()
-                tstep.whole_structure_to_global_AFoR(data.structure)
+            # if data.structure.timestep_info[ts].in_global_AFoR:
+            #     tstep = data.structure.timestep_info[ts]
+            # else:
+            #     tstep = data.structure.timestep_info[data.ts].copy()
+            #     tstep.whole_structure_to_global_AFoR(data.structure)
+            tstep = data.structure.timestep_info[ts]
 
             h5utils.add_as_grp(tstep,
                                hdfile['data']['structure']['timestep_info'],

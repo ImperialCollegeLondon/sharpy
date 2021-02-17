@@ -306,6 +306,12 @@ class NonLinearDynamicMultibody(_BaseStructural):
         else:
             self.settings['dt'] = ct.c_float(dt)
 
+        if self.data.structure.ini_info.in_global_AFoR:
+            self.data.structure.ini_info.whole_structure_to_local_AFoR(self.data.structure)
+
+        if structural_step.in_global_AFoR:
+            structural_step.whole_structure_to_local_AFoR(self.data.structure)
+
         self.num_LM_eq = lagrangeconstraints.define_num_LM_eq(self.lc_list)
 
         # TODO: only working for constant forces
@@ -456,6 +462,9 @@ class NonLinearDynamicMultibody(_BaseStructural):
                 xbeamlib.cbeam3_correct_gravity_forces(MB_beam[ibody], MB_tstep[ibody], self.settings)
         mb.merge_multibody(MB_tstep, MB_beam, self.data.structure, structural_step, MBdict, dt)
 
+        if not structural_step.in_global_AFoR:
+            structural_step.whole_structure_to_global_AFoR(self.data.structure)
+        
         self.Lambda = Lambda.astype(dtype=ct.c_double, copy=True, order='F')
         self.Lambda_dot = Lambda_dot.astype(dtype=ct.c_double, copy=True, order='F')
         self.Lambda_ddot = Lambda_ddot.astype(dtype=ct.c_double, copy=True, order='F')
