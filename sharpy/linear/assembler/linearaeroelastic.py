@@ -311,7 +311,12 @@ class LinearAeroelastic(ss_interface.BaseElement):
 
         self.beam.sys.update_matrices_time_scale(t_ref)
         self.beam.sys.assemble()
-        self.beam.ss = self.beam.sys.SSdisc
+        if self.beam.sys.SSdisc is not None:
+            self.beam.ss = self.beam.sys.SSdisc
+        elif self.beam.sys.SScont is not None:
+            self.beam.ss = self.beam.sys.SScont
+        else:
+            raise AttributeError('Could not find either a continuous or discrete system in Beam')
 
         self.ss = libss.couple(ss01=self.uvlm.ss, ss02=self.beam.ss,
                                K12=self.couplings['Tas'], K21=self.couplings['Tsa'])
