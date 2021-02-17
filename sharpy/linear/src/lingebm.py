@@ -1342,7 +1342,7 @@ class FlexDynamic():
             self.dt = dt
         else:
             assert self.dt is not None, \
-                'Provide time-step for convertion to discrete-time'
+                'Provide time-step for conversion to discrete-time'
 
         SScont = self.SScont
         tpl = scsig.cont2discrete(

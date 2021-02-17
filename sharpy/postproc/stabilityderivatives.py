@@ -144,15 +144,19 @@ class StabilityDerivatives(solver_interface.BaseSolver):
         v0 = self.get_freestream_velocity()
         quat = self.data.linear.tsstruct0.quat
 
+        if self.data.linear.linear_system.uvlm.scaled:
+            raise NotImplementedError('Stability Derivatives not yet implented for scaled system')
+            self.data.linear.linear_system.update(self.settings['u_inf'])
+
         for target_system in ['aerodynamic', 'aeroelastic']:
             state_space = self.get_state_space(target_system)
             current_derivative = derivatives[target_system]
 
             current_derivative.initialise_derivatives(state_space,
-                                                              steady_forces,
-                                                              quat,
-                                                              v0,
-                                                              phi)
+                                                      steady_forces,
+                                                      quat,
+                                                      v0,
+                                                      phi)
             current_derivative.dict_of_derivatives['force_angle_velocity'] = current_derivative.new_derivative(
                 'stability',
                 'angle_derivatives',
@@ -161,11 +165,12 @@ class StabilityDerivatives(solver_interface.BaseSolver):
             current_derivative.dict_of_derivatives['force_angle_angle'] = current_derivative.new_derivative(
                 'stability',
                 'angle_derivatives_tb',
-                'Force/Angle via Track Body'
-            )
+                'Force/Angle via Track Body')
+
             current_derivative.dict_of_derivatives['force_velocity'] = current_derivative.new_derivative(
                 'body',
                 'body_derivatives')
+            
             current_derivative.dict_of_derivatives['force_cs'] = current_derivative.new_derivative(
                 'body',
                 'control_surface_derivatives')
