@@ -27,6 +27,6 @@ Downloadable files
 
 Input data for wind turbine: 
 
-* :download:`./example_notebooks/source/type02_db_NREL5MW_v01.xlsx`
+* :download:`./example_notebooks/source/type02_db_NREL5MW_v02.xlsx`
 
 
