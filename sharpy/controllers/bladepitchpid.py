@@ -67,6 +67,10 @@ class BladePitchPid(controller_interface.BaseController):
     settings_default['blade_num_body'] = [0,]
     settings_description['blade_num_body'] = 'Body number of the blade(s) to pitch'
 
+    settings_types['max_pitch_rate'] = 'float'
+    settings_default['max_pitch_rate'] = 0.1396
+    settings_description['max_pitch_rate'] = 'Maximum pitch rate [rad/s]'
+
     # Output parameters
     settings_types['write_controller_log'] = 'bool'
     settings_default['write_controller_log'] = True
@@ -177,17 +181,27 @@ class BladePitchPid(controller_interface.BaseController):
 
         # Apply control order
         # rot_mat = algebra.rotation3d_x(control_command)
-        quat = algebra.rotate_quaternion(struct_tstep.quat, control_command*np.array([1., 0., 0.]))
+        print("control_command: ", control_command)
+        # print("init euler: ", algebra.quat2euler(struct_tstep.quat))
+        change_quat = False
+        if change_quat:
+            quat = algebra.rotate_quaternion(struct_tstep.quat, control_command*np.array([1., 0., 0.]))
+            # print("final euler: ", algebra.quat2euler(quat))
+            # euler = np.array([prescribed_sp[0], 0., 0.])
+            struct_tstep.quat = quat
+        change_vel = True
+        if change_vel:
+            # struct_tstep.for_vel[3] = control_command/self.settings['dt']
+            # struct_tstep.for_acc[3] = (data.structure.timestep_info[data.ts - 1].for_vel[3] - struct_tstep.for_vel[3])/self.settings['dt']
+            struct_tstep.for_vel[3] = np.sign(control_command)*self.settings['max_pitch_rate']
+            
+            # struct_tstep.for_acc[3] = (data.structure.timestep_info[data.ts - 1].for_vel[3] - struct_tstep.for_vel[3])/self.settings['dt']
 
-        # euler = np.array([prescribed_sp[0], 0., 0.])
-        struct_tstep.quat = quat
-        struct_tstep.for_vel[3] = control_command/self.settings['dt']
-        struct_tstep.for_acc[3] = (data.structure.timestep_info[data.ts - 1].for_vel[3] - struct_tstep.for_vel[3])/self.settings['dt']
+            data.structure.dynamic_input[data.ts - 1]['for_vel'] = struct_tstep.for_vel.copy()
+            data.structure.dynamic_input[data.ts - 1]['for_acc'] = struct_tstep.for_acc.copy()
 
-        data.structure.dynamic_input[data.ts - 1]['for_vel'] = struct_tstep.for_vel.copy()
-        data.structure.dynamic_input[data.ts - 1]['for_acc'] = struct_tstep.for_acc.copy()
-
-        data.aero.generate_zeta_timestep_info(struct_tstep,
+        if True:
+            data.aero.generate_zeta_timestep_info(struct_tstep,
                                               aero_tstep,
                                               data.structure,
                                               data.aero.aero_settings,
@@ -213,9 +227,9 @@ class BladePitchPid(controller_interface.BaseController):
             Compute the set point relevant for the controller
         """
         if self.settings['sp_source'] == 'file':
-            pitch = np.interp(time,
-                               self.prescribed_sp_time_history[:, 0],
-                               self.prescribed_sp_time_history[:, 1])
+            sp = np.interp(time,
+                           self.prescribed_sp_time_history[:, 0],
+                           self.prescribed_sp_time_history[:, 1])
             # vel = np.interp(time,
             #                    self.prescribed_sp_time_history[:, 0],
             #                    self.prescribed_sp_time_history[:, 2])
@@ -223,7 +237,7 @@ class BladePitchPid(controller_interface.BaseController):
             #                    self.prescribed_sp_time_history[:, 0],
             #                    self.prescribed_sp_time_history[:, 3])
             # self.prescribed_sp.append(np.array([pitch, vel, acc]))
-            self.prescribed_sp.append(pitch)
+            self.prescribed_sp.append(sp)
         return self.prescribed_sp[-1]
 
 
@@ -237,8 +251,10 @@ class BladePitchPid(controller_interface.BaseController):
         elif self.settings['sp_type'] == 'rbm':
             steady, unsteady, grav = struct_tstep.extract_resultants(beam, force_type=['steady', 'unsteady', 'gravity'],
                                                                                        ibody=0)
-            rbm = np.linalg.norm(steady[3:6] + unsteady[3:6] + grav[3:6])
+            # rbm = np.linalg.norm(steady[3:6] + unsteady[3:6] + grav[3:6])
+            rbm = steady[4] + unsteady[4] + grav[4]
             self.system_pv.append(rbm)
+            print("rbm: ", rbm)
             
         return self.system_pv[-1]
     # def extract_time_history(self, controlled_state):
