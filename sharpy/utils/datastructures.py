@@ -165,13 +165,15 @@ class AeroTimeStepInfo(object):
                                                dimensions_star[i_surf, 1] + 1),
                                                dtype=ct.c_double))
 
-        # total forces
+        # total forces - written by AeroForcesCalculator
         self.inertial_total_forces = np.zeros((self.n_surf, 6))
         self.body_total_forces = np.zeros((self.n_surf, 6))
         self.inertial_steady_forces = np.zeros((self.n_surf, 6))
         self.body_steady_forces = np.zeros((self.n_surf, 6))
         self.inertial_unsteady_forces = np.zeros((self.n_surf, 6))
         self.body_unsteady_forces = np.zeros((self.n_surf, 6))
+        self.total_inertial_forces = np.zeros((6,))  # G Frame
+        self.total_body_forces = np.zeros((6,))  # A Frame
 
         self.postproc_cell = dict()
         self.postproc_node = dict()
@@ -236,6 +238,8 @@ class AeroTimeStepInfo(object):
         copied.body_steady_forces = self.body_steady_forces.astype(dtype=ct.c_double, copy=True, order='C')
         copied.inertial_unsteady_forces = self.inertial_unsteady_forces.astype(dtype=ct.c_double, copy=True, order='C')
         copied.body_unsteady_forces = self.body_unsteady_forces.astype(dtype=ct.c_double, copy=True, order='C')
+        copied.total_inertial_forces = self.total_inertial_forces.astype(dtype=ct.c_double, copy=True, order='C')
+        copied.total_body_forces = self.total_body_forces.astype(dtype=ct.c_double, copy=True, order='C')
 
         copied.postproc_cell = copy.deepcopy(self.postproc_cell)
         copied.postproc_node = copy.deepcopy(self.postproc_node)
