@@ -55,11 +55,12 @@ class LiftDistribution(BaseSolver):
 
     def lift_distribution(self):
         # add entry to dictionary for postproc
-        if self.data.structure.timestep_info[self.data.ts].in_global_AFoR:
-            tstep = self.data.structure.timestep_info[self.data.ts]
-        else:
-            tstep = self.data.structure.timestep_info[self.data.ts].copy()
-            tstep.whole_structure_to_global_AFoR(self.data.structure)
+        # if self.data.structure.timestep_info[self.data.ts].in_global_AFoR:
+        #     tstep = self.data.structure.timestep_info[self.data.ts]
+        # else:
+        #     tstep = self.data.structure.timestep_info[self.data.ts].copy()
+        #     tstep.whole_structure_to_global_AFoR(self.data.structure)
+        tstep = self.data.structure.timestep_info[self.data.ts]
         tstep.postproc_cell['lift_distribution'] = init_matrix_structure(dimensions=tstep.dimensions,
                                                                            with_dim_dimension=False)
 

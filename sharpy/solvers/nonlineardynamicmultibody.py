@@ -1,5 +1,6 @@
 import ctypes as ct
 import numpy as np
+import os
 
 from sharpy.utils.solver_interface import solver, BaseSolver, solver_from_string
 import sharpy.utils.settings as settings
@@ -48,6 +49,10 @@ class NonLinearDynamicMultibody(_BaseStructural):
     settings_default['write_lm'] = False
     settings_description['write_lm'] = 'Write lagrange multipliers'
 
+    settings_types['relax_factor_lm'] = 'float'
+    settings_default['relax_factor_lm'] = 0.
+    settings_description['relax_factor_lm'] = 'Relaxation factor for Lagrange Multipliers. 0 no relaxation. 1 full relaxation'
+
     settings_table = settings.SettingsTable()
     __doc__ += settings_table.generate(settings_types, settings_default, settings_description)
 
@@ -67,6 +72,8 @@ class NonLinearDynamicMultibody(_BaseStructural):
 
         self.gamma = None
         self.beta = None
+
+        self.prev_Dq = None
 
     def initialise(self, data, custom_settings=None):
 
@@ -105,6 +112,8 @@ class NonLinearDynamicMultibody(_BaseStructural):
 
         # Define the number of dofs
         self.define_sys_size()
+        
+        self.prev_Dq = np.zeros((self.sys_size + self.num_LM_eq))
 
     def add_step(self):
         self.data.structure.next_step()
@@ -297,6 +306,12 @@ class NonLinearDynamicMultibody(_BaseStructural):
         else:
             self.settings['dt'] = ct.c_float(dt)
 
+        if self.data.structure.ini_info.in_global_AFoR:
+            self.data.structure.ini_info.whole_structure_to_local_AFoR(self.data.structure)
+
+        if structural_step.in_global_AFoR:
+            structural_step.whole_structure_to_local_AFoR(self.data.structure)
+
         self.num_LM_eq = lagrangeconstraints.define_num_LM_eq(self.lc_list)
 
         # TODO: only working for constant forces
@@ -393,8 +408,15 @@ class NonLinearDynamicMultibody(_BaseStructural):
             # dqdt[:, np.newaxis] += self.gamma/(self.beta*dt)*Dq
             # dqddt[:, np.newaxis] += 1.0/(self.beta*dt*dt)*Dq
 
+            # Relaxation
+            relax_Dq = np.zeros_like(Dq)
+            relax_Dq[:self.sys_size] = Dq[:self.sys_size].copy()
+            relax_Dq[self.sys_size:] = ((1. - self.settings['relax_factor_lm'])*Dq[self.sys_size:] + 
+                                   self.settings['relax_factor_lm']*self.prev_Dq[self.sys_size:]) 
+            self.prev_Dq = Dq.copy()
+
             # Corrector step
-            self.time_integrator.corrector(q, dqdt, dqddt, Dq)
+            self.time_integrator.corrector(q, dqdt, dqddt, relax_Dq)
 
             if not num_LM_eq == 0:
                 Lambda = q[-num_LM_eq:].astype(dtype=ct.c_double, copy=True, order='F')
@@ -405,9 +427,9 @@ class NonLinearDynamicMultibody(_BaseStructural):
                 Lambda_dot = 0
 
             if self.settings['write_lm']:
-                self.fid_lambda.write("%d %d " % (self.data['ts'], k))
-                self.fid_lambda_dot.write("%d %d " % (self.data['ts'], k))
-                self.fid_lambda_ddot.write("%d %d " % (self.data['ts'], k))
+                self.fid_lambda.write("%d %d " % (self.data.ts, iteration))
+                self.fid_lambda_dot.write("%d %d " % (self.data.ts, iteration))
+                self.fid_lambda_ddot.write("%d %d " % (self.data.ts, iteration))
                 for ilm in range(num_LM_eq):
                     self.fid_lambda.write("%f " % Lambda[ilm])
                     self.fid_lambda_dot.write("%f " % Lambda_dot[ilm])
@@ -440,6 +462,9 @@ class NonLinearDynamicMultibody(_BaseStructural):
                 xbeamlib.cbeam3_correct_gravity_forces(MB_beam[ibody], MB_tstep[ibody], self.settings)
         mb.merge_multibody(MB_tstep, MB_beam, self.data.structure, structural_step, MBdict, dt)
 
+        if not structural_step.in_global_AFoR:
+            structural_step.whole_structure_to_global_AFoR(self.data.structure)
+        
         self.Lambda = Lambda.astype(dtype=ct.c_double, copy=True, order='F')
         self.Lambda_dot = Lambda_dot.astype(dtype=ct.c_double, copy=True, order='F')
         self.Lambda_ddot = Lambda_ddot.astype(dtype=ct.c_double, copy=True, order='F')
