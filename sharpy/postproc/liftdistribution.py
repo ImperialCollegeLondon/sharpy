@@ -80,7 +80,7 @@ class LiftDistribution(BaseSolver):
         # get aero forces
         lift_distribution = np.zeros((self.data.structure.num_node, 5))
         for inode in range(self.data.structure.num_node):
-            lift_distribution[inode,4]=np.sum(forces[inode, 0:3])  # forces
+            lift_distribution[inode,4]=np.linalg.norm(forces[inode, 0:3])  # forces
             lift_distribution[inode,3]=struct_tstep.pos[inode, 2]  #z
             lift_distribution[inode,2]=struct_tstep.pos[inode, 1]  #y
             lift_distribution[inode,1]=struct_tstep.pos[inode, 0]  #x
