@@ -5,6 +5,7 @@ import numpy as np
 import sharpy.utils.cout_utils as cout
 from sharpy.utils.solver_interface import solver, BaseSolver
 import sharpy.utils.settings as settings
+import sharpy.aero.utils.mapping as mapping
 
 
 @solver
@@ -20,19 +21,17 @@ class LiftDistribution(BaseSolver):
 
         self.settings_types['print_info'] = 'bool'
         self.settings_default['print_info'] = True
-        
+
         # TO-DO: implement option for normalization
         self.settings_types['normalise'] = 'bool'
         self.settings_default['normalise'] = True
-        
+
         self.settings_types['folder'] = 'str'
         self.settings_default['folder'] = './output'
 
         self.settings = None
         self.data = None
 
-        self.ts_max = None
-        self.ts = None
         self.caller = None
 
     def initialise(self, data, custom_settings=None, caller=None):
@@ -42,50 +41,51 @@ class LiftDistribution(BaseSolver):
         else:
             self.settings = custom_settings
         settings.to_custom_types(self.settings, self.settings_types, self.settings_default)
-        self.ts_max = len(self.data.structure.timestep_info)
         self.caller = caller
 
     def run(self, online=False):
         if not online:
-            for self.ts in range(self.ts_max):
-                self.lift_distribution()
+            for it in range(len(self.data.structure.timestep_info)):
+                self.lift_distribution(self.data.structure.timestep_info[it],
+                                       self.data.aero.timestep_info[it])
             cout.cout_wrap('...Finished', 1)
         else:
-            self.ts = len(self.data.aero.timestep_info) - 1
-            self.lift_distribution()
+            self.lift_distribution(self.data.structure.timestep_info[self.data.ts],
+                                   self.data.aero.timestep_info[self.data.ts])
         return self.data
 
-    def lift_distribution(self):
-        tstep = self.data.aero.timestep_info[self.data.ts]
-        k_total = 0
-        # get dimensions
-        for i_surf in range(tstep.n_surf):
-            n_dim, n_m, n_n = tstep.zeta[i_surf].shape
-            k_total += n_n
-            
-        # get aero forces
-        lift_distribution = np.zeros((k_total, 5))
-        node_counter = 0
-        for i_surf in range(tstep.n_surf):
-            n_dim, n_m, n_n = tstep.zeta[i_surf].shape
-            forces = tstep.forces[i_surf] + tstep.dynamic_forces[i_surf]
-            abs_forces = np.zeros((n_m, n_n))
-            for i_n in range(n_n):
-                for i_m in range(n_m):
-                    abs_forces[i_m, i_n] = np.abs(forces[2, i_m, i_n])
-                lift_distribution[node_counter,4]=np.sum(abs_forces[:, i_n])  # forces
-                lift_distribution[node_counter,3]=tstep.zeta[i_surf][2, 0, i_n]  #z 
-                lift_distribution[node_counter,2]=tstep.zeta[i_surf][1, 0, i_n]  #y 
-                lift_distribution[node_counter,1]=tstep.zeta[i_surf][0, 0, i_n]  #x 
-                lift_distribution[node_counter,0]=i_surf
-                node_counter += 1
+    def lift_distribution(self, struct_tstep, aero_tstep):
+        # Force mapping
+        forces = mapping.aero2struct_force_mapping(
+            aero_tstep.forces,
+            self.data.aero.struct2aero_mapping,
+            aero_tstep.zeta,
+            structural_tstep.pos,
+            structural_tstep.psi,
+            self.data.structure.node_master_elem,
+            self.data.structure.connectivities,
+            structural_tstep.cag(),
+            self.data.aero.aero_dict)
+        forces += mapping.aero2struct_force_mapping(
+            aero_tstep.dynamic_forces,
+            self.data.aero.struct2aero_mapping,
+            aero_tstep.zeta,
+            structural_tstep.pos,
+            structural_tstep.psi,
+            self.data.structure.node_master_elem,
+            self.data.structure.connectivities,
+            structural_tstep.cag(),
+            self.data.aero.aero_dict)
 
-        # Correct lift at nodes shared from different lifting surfaces
-        for i_row in range(lift_distribution.shape[0]):
-            for j_row in range(i_row+1,lift_distribution.shape[0]):
-                if (np.round(lift_distribution[i_row,1:4],decimals=4) == np.round(lift_distribution[j_row,1:4],decimals=4)).all():
-                    lift_distribution[i_row,4] += lift_distribution[j_row,4]
-                    lift_distribution[j_row,4] = lift_distribution[i_row,4]
+        # get aero forces
+        lift_distribution = np.zeros((self.data.structure.num_node, 5))
+        for inode in range(self.data.structure.num_node):
+            lift_distribution[inode,4]=np.sum(forces[inode, 0:3])  # forces
+            lift_distribution[inode,3]=struct_tstep.pos[inode, 2]  #z
+            lift_distribution[inode,2]=struct_tstep.pos[inode, 1]  #y
+            lift_distribution[inode,1]=struct_tstep.pos[inode, 0]  #x
+            ielem, inode_in_elem = data.structure.node_master_elem[inode]
+            lift_distribution[inode,0]=self.data.aero.surface_distribution[ielem]
+
         # Export lift distribution data
         np.savetxt(self.settings["folder"]+'/lift_distribution.txt', lift_distribution, fmt='%i' + ', %10e'*4, delimiter = ", ", header= "i_surf, x,y,z, fz")
-
