@@ -25,6 +25,9 @@ class LiftDistribution(BaseSolver):
 
         self.settings_types['normalise'] = 'bool'
         self.settings_default['normalise'] = True
+        
+        self.settings_types['folder'] = 'str'
+        self.settings_default['folder'] = './output'
 
         self.settings = None
         self.data = None
@@ -49,35 +52,41 @@ class LiftDistribution(BaseSolver):
                 self.lift_distribution()
             cout.cout_wrap('...Finished', 1)
         else:
-            self.ts = len(self.data.structure.timestep_info) - 1
+            self.ts = len(self.data.aero.timestep_info) - 1
             self.lift_distribution()
         return self.data
 
     def lift_distribution(self):
-        # add entry to dictionary for postproc
-        if self.data.structure.timestep_info[self.data.ts].in_global_AFoR:
-            tstep = self.data.structure.timestep_info[self.data.ts]
-        else:
-            tstep = self.data.structure.timestep_info[self.data.ts].copy()
-            tstep.whole_structure_to_global_AFoR(self.data.structure)
-        tstep.postproc_cell['lift_distribution'] = init_matrix_structure(dimensions=tstep.dimensions,
-                                                                           with_dim_dimension=False)
-
-        norm = 1.0
-
+        tstep = self.data.aero.timestep_info[self.data.ts]
+        k_total = 0
+        # get dimensions
         for i_surf in range(tstep.n_surf):
             n_dim, n_m, n_n = tstep.zeta[i_surf].shape
-
-            forces = tstep.forces[i_surf] + tstep.unsteady_forces[i_surf]
+            k_total += n_n
+            
+        # get aero forces
+        lift_distribution = np.zeros((k_total, 5))
+        node_counter = 0
+        for i_surf in range(tstep.n_surf):
+            n_dim, n_m, n_n = tstep.zeta[i_surf].shape
+            forces = tstep.forces[i_surf] + tstep.dynamic_forces[i_surf]
             abs_forces = np.zeros((n_m, n_n))
-            chord = np.zeros((n_n,))
             for i_n in range(n_n):
-                chord[i_n] = np.abs(tstep[i_surf].zeta[:, -1, i_n] - tstep[i_surf].zeta[:, 0, i_n])
-                if not i_surf and not i_n:
-                    if self.settings['normalise']:
-                        norm = chord[0]
-
                 for i_m in range(n_m):
-                    abs_forces[i_n, i_m] = np.abs(forces[:, i_m, i_n])
+                    abs_forces[i_m, i_n] = np.abs(forces[2, i_m, i_n])
+                lift_distribution[node_counter,4]=np.sum(abs_forces[:, i_n])  # forces
+                lift_distribution[node_counter,3]=tstep.zeta[i_surf][2, 0, i_n]  #z 
+                lift_distribution[node_counter,2]=tstep.zeta[i_surf][1, 0, i_n]  #y 
+                lift_distribution[node_counter,1]=tstep.zeta[i_surf][0, 0, i_n]  #x 
+                lift_distribution[node_counter,0]=i_surf
+                node_counter += 1
 
-                tstep.postproc_cell['lift_distribution'][i_surf][i_n, i_m] = np.sum(abs_forces[i_n, :], axis = 2)/norm
+        # Correct lift at nodes shared from different lifting surfaces
+        for i_row in range(lift_distribution.shape[0]):
+            for j_row in range(i_row+1,lift_distribution.shape[0]):
+                if (np.round(lift_distribution[i_row,1:4],decimals=4) == np.round(lift_distribution[j_row,1:4],decimals=4)).all():
+                    lift_distribution[i_row,4] += lift_distribution[j_row,4]
+                    lift_distribution[j_row,4] = lift_distribution[i_row,4]
+        # Export lift distribution data
+        np.savetxt(self.settings["folder"]+'/lift_distribution.txt', lift_distribution, fmt='%i' + ', %10e'*4, delimiter = ", ", header= "i_surf, x,y,z, fz")
+
