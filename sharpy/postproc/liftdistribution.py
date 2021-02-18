@@ -1,15 +1,10 @@
 import os
 
 import numpy as np
-from tvtk.api import tvtk, write_data
 
-import sharpy.utils.algebra as algebra
 import sharpy.utils.cout_utils as cout
-from sharpy.utils.settings import str2bool
 from sharpy.utils.solver_interface import solver, BaseSolver
 import sharpy.utils.settings as settings
-from sharpy.utils.datastructures import init_matrix_structure, standalone_ctypes_pointer
-import sharpy.aero.utils.uvlmlib as uvlmlib
 
 
 @solver
