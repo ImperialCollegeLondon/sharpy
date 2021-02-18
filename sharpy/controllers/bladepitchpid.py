@@ -178,7 +178,12 @@ class BladePitchPid(controller_interface.BaseController):
                                'I': self.settings['I'],
                                'D': self.settings['D']},
                 i_current=data.ts)
-
+    
+        if control_command < -self.settings['max_pitch_rate']:
+            control_command = -self.settings['max_pitch_rate']
+        elif control_command > self.settings['max_pitch_rate']:
+            control_command = self.settings['max_pitch_rate']
+        
         # Apply control order
         # rot_mat = algebra.rotation3d_x(control_command)
         print("control_command: ", control_command)
@@ -193,14 +198,15 @@ class BladePitchPid(controller_interface.BaseController):
         if change_vel:
             # struct_tstep.for_vel[3] = control_command/self.settings['dt']
             # struct_tstep.for_acc[3] = (data.structure.timestep_info[data.ts - 1].for_vel[3] - struct_tstep.for_vel[3])/self.settings['dt']
-            struct_tstep.for_vel[3] = np.sign(control_command)*self.settings['max_pitch_rate']
-            
+            # struct_tstep.for_vel[3] = np.sign(control_command)*self.settings['max_pitch_rate']
             # struct_tstep.for_acc[3] = (data.structure.timestep_info[data.ts - 1].for_vel[3] - struct_tstep.for_vel[3])/self.settings['dt']
+            struct_tstep.for_vel[3] = control_command
+            struct_tstep.for_acc[3] = (data.structure.timestep_info[data.ts - 1].for_vel[3] - struct_tstep.for_vel[3])/self.settings['dt']
 
             data.structure.dynamic_input[data.ts - 1]['for_vel'] = struct_tstep.for_vel.copy()
             data.structure.dynamic_input[data.ts - 1]['for_acc'] = struct_tstep.for_acc.copy()
 
-        if True:
+        if False:
             data.aero.generate_zeta_timestep_info(struct_tstep,
                                               aero_tstep,
                                               data.structure,
