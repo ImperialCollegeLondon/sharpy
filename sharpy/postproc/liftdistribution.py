@@ -9,6 +9,9 @@ import sharpy.utils.settings as settings
 
 @solver
 class LiftDistribution(BaseSolver):
+    """
+    Exports lift distribution to txt file
+    """
     solver_id = 'LiftDistribution'
 
     def __init__(self):
@@ -17,7 +20,8 @@ class LiftDistribution(BaseSolver):
 
         self.settings_types['print_info'] = 'bool'
         self.settings_default['print_info'] = True
-
+        
+        # TO-DO: implement option for normalization
         self.settings_types['normalise'] = 'bool'
         self.settings_default['normalise'] = True
         
