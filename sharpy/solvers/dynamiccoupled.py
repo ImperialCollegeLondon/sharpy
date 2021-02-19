@@ -662,7 +662,9 @@ class DynamicCoupled(BaseSolver):
                                                 structural_kstep.for_vel[2],
                                                 np.sum(structural_kstep.steady_applied_forces[:, 0]),
                                                 np.sum(structural_kstep.steady_applied_forces[:, 2])])
-            self.structural_solver.extract_resultants()
+            (self.data.structure.timestep_info[self.data.ts].total_forces[0:3],
+             self.data.structure.timestep_info[self.data.ts].total_forces[3:6]) = (
+                        self.structural_solver.extract_resultants(self.data.structure.timestep_info[self.data.ts]))
             # run postprocessors
             if self.with_postprocessors:
                 for postproc in self.postprocessors:
