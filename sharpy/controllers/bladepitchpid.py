@@ -1,4 +1,5 @@
 import numpy as np
+from scipy.signal import StateSpace, lsim
 
 import sharpy.utils.controller_interface as controller_interface
 import sharpy.utils.settings as settings
@@ -32,6 +33,11 @@ class BladePitchPid(controller_interface.BaseController):
     settings_types['D'] = 'float'
     settings_default['D'] = 0.0
     settings_description['D'] = 'Differential gain of the controller'
+
+    # Filter
+    settings_types['lp_cut_freq'] = 'float'
+    settings_default['lp_cut_freq'] = 0.
+    settings_description['lp_cut_freq'] = 'Cutting frequency of the low pass filter of the process value. Choose 0 for no filter'
 
     # Set point parameters
     settings_types['sp_type'] = 'str'
@@ -141,6 +147,12 @@ class BladePitchPid(controller_interface.BaseController):
                                                            self.settings['D'],
                                                            self.settings['dt'])
 
+        if self.settings['lp_cut_freq'] == 0.:
+            self.filter_pv = False
+        else:
+            self.filter_pv = True
+            alpha = np.exp(-self.settings['lp_cut_freq']*self.settings['dt'])
+            self.filter = StateSpace(alpha, (1-alpha), alpha, (1-alpha), self.settings['dt'])
 
     def control(self, data, controlled_state):
         r"""
@@ -164,7 +176,11 @@ class BladePitchPid(controller_interface.BaseController):
         prescribed_sp = self.compute_prescribed_sp(time)
         sys_pv = self.compute_system_pv(struct_tstep, data.structure)
         
-
+        # Apply filter
+        if self.filter_pv:
+            filtered_pv = lsim(self.filter, sys_pv)
+        else:
+            filtered_pv = self.system_pv
 
         # get current state input
         # self.real_state_input_history.append(self.extract_time_history(controlled_state))
@@ -173,7 +189,7 @@ class BladePitchPid(controller_interface.BaseController):
         # # apply it where needed.
         control_command, detail = self.controller_wrapper(
                 required_input=self.prescribed_sp,
-                current_input=self.system_pv,
+                current_input=filtered_pv,
                 control_param={'P': self.settings['P'],
                                'I': self.settings['I'],
                                'D': self.settings['D']},
