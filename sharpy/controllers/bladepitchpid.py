@@ -39,6 +39,10 @@ class BladePitchPid(controller_interface.BaseController):
     settings_default['lp_cut_freq'] = 0.
     settings_description['lp_cut_freq'] = 'Cutting frequency of the low pass filter of the process value. Choose 0 for no filter'
 
+    settings_types['anti_windup_lim'] = 'list(float)'
+    settings_default['anti_windup_lim'] = None
+    settings_description['anti_windup_lim'] = 'Limits of actuation to apply anti windup'
+    
     # Set point parameters
     settings_types['sp_type'] = 'str'
     settings_default['sp_type'] = None
@@ -146,6 +150,8 @@ class BladePitchPid(controller_interface.BaseController):
                                                            self.settings['I'],
                                                            self.settings['D'],
                                                            self.settings['dt'])
+
+        self.controller_implementation.set_anti_windup_lim(self.settings['anti_windup_lim'])
 
         if self.settings['lp_cut_freq'] == 0.:
             self.filter_pv = False
