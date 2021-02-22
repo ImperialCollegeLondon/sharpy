@@ -46,6 +46,10 @@ class BaseRom(metaclass=ABCMeta):
     def compare_fom_rom(y1, y2, wv=None, **kwargs):
         return frequencyutils.freqresp_relative_error(y1, y2, wv, **kwargs)
 
+    # Save the ROM matrices to the given filename
+    def save(self, filename):
+        raise NotImplementedError('Save method for the currently chosen ROM is not yet supported')
+
 
 def rom_from_string(string):
     return dict_of_roms[string]
