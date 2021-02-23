@@ -195,6 +195,29 @@ class ss():
                              'system ({:g})'.format(variables.size, self.states))
         self._state_variables = variables
 
+    def initialise_variables(self, *variable_tuple, var_type='in'):
+        if var_type == 'in' or var_type == 'input':
+            var_class = InputVariable
+        elif var_type == 'out' or var_type == 'output':
+            var_class = OutputVariable
+        elif var_type == 'state':
+            var_class = StateVariable
+        else:
+            raise TypeError('Unknown variable type')
+
+        list_of_variables = []
+        for ith, var_dict in enumerate(variable_tuple):
+            list_of_variables.append(var_class(name=var_dict['name'],
+                                               size=var_dict['size'],
+                                               index=var_dict.get('index', ith)))
+
+        if var_type == 'in' or var_type == 'input':
+            self._input_variables = LinearVector(list_of_variables)
+        elif var_type == 'out' or var_type == 'output':
+            self._output_variables = LinearVector(list_of_variables)
+        elif var_type == 'state':
+            self._state_variables = LinearVector(list_of_variables)
+
     def __repr__(self):
         str_out = ''
         str_out += 'State-space object\n'
@@ -419,6 +442,60 @@ class ss():
 
         self.input_variables.update_locations()
 
+    def remove_outputs(self, *output_remove_list):
+        """
+        Removes outputs through their variable names.
+
+        Needs that the ``ss`` attribute ``output_variables`` is defined.
+
+        Args:
+            output_remove_list (list(str)): List of outputs to remove
+
+        """
+        if self.output_variables is None:
+            raise AttributeError('No output variables have been defined for the current state-space object. Define '
+                                 'some variables prior to using the remove_outputs() method.')
+
+        self.output_variables.remove(*output_remove_list)
+
+        i = 0
+        retain_output_array = None
+        for variable in self.output_variables:
+            if i == 0:
+                retain_output_array = variable.rows_loc
+            else:
+                retain_output_array = np.vstack((retain_output_array, variable.rows_loc))
+            i += 1
+
+        if retain_output_array is not None:
+            if type(self.B) is libsp.csc_matrix:
+                self.C = libsp.csc_matrix(self.C[retain_output_array, :])
+                self.D = libsp.csc_matrix(self.D[retain_output_array, :])
+            else:
+                self.C = self.C[retain_output_array, :]
+                self.D = self.D[retain_output_array, :]
+
+        self.output_variables.update_locations()
+
+    @classmethod
+    def from_scipy(cls, scipy_ss):
+        """
+        Transforms a ``scipy.signal.lti`` or dlti into a ss class
+
+        Args:
+            scipy_ss (scipy.signal.ltisys.StateSpaceContinous or scipy.signal.ltisys.StateSpaceDiscrete): Scipy
+              State Space object.
+
+        Returns:
+            ss: SHARPy state space object
+        """
+        a = scipy_ss.A
+        b = scipy_ss.B
+        c = scipy_ss.C
+        d = scipy_ss.D
+
+        return cls(a, b, c, d, dt=scipy_ss.dt)
+
 
 class Gain:
 
@@ -486,6 +563,9 @@ class Gain:
     @outputs.setter
     def outputs(self, value):
         self._outputs = value
+
+    def dot(self, elem):
+        return self.value.dot(elem)
 
     def __repr__(self):
         str_out = ''

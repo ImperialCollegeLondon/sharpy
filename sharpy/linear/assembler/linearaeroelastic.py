@@ -207,8 +207,8 @@ class LinearAeroelastic(ss_interface.BaseElement):
                     Dmod /= uvlm.sys.ScalingFacts['force']
                 uvlm.ss.D += Dmod
 
-            self.couplings['Ksa'] = Ksa
-            self.couplings['Kas'] = Kas
+            self.couplings['Ksa'] = gain_ksa
+            self.couplings['Kas'] = gain_kas
 
             if self.settings['beam_settings']['modal_projection'] is True and \
                     self.settings['beam_settings']['inout_coords'] == 'modes':
@@ -238,6 +238,8 @@ class LinearAeroelastic(ss_interface.BaseElement):
 
                 uvlm.ss.addGain(in_mode_gain, where='in')
                 uvlm.ss.addGain(out_mode_gain, where='out')
+                self.couplings['in_mode_gain'] = in_mode_gain
+                self.couplings['out_mode_gain'] = out_mode_gain
 
             # Reduce uvlm projected onto structural coordinates
             if uvlm.rom:

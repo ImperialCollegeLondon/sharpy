@@ -40,7 +40,7 @@ class TestGolandControlSurface(unittest.TestCase):
                                         Mstar_fact=M_star_fact,
                                         u_inf=u_inf,
                                         alpha=alpha_deg,
-                                        cs_deflection=[0, 0],
+                                        # cs_deflection=[0, 0],
                                         rho=rho,
                                         sweep=0,
                                         physical_time=2,
@@ -59,11 +59,15 @@ class TestGolandControlSurface(unittest.TestCase):
         ws.generate_fem_file()
 
         x0 = np.zeros(256)
-        lin_tsteps = 10
-        u_vec = np.zeros((lin_tsteps, 8))
+        lin_tsteps = 40
+        u_vec = np.zeros((lin_tsteps, num_modes // 2 * 3 + 1 + 2))
         # elevator
-        u_vec[:, 4] = 10 * np.pi / 180
+        u_vec[5:, 5] = 10 * np.pi / 180
+        # gust
+        u_vec[:, 4] = np.sin(np.linspace(0, 2*np.pi, lin_tsteps))
         ws.create_linear_files(x0, u_vec)
+        np.savetxt(self.route_test_dir + '/elevator.txt', u_vec[:, 5])
+        np.savetxt(self.route_test_dir + '/gust.txt', u_vec[:, 4])
 
         ws.config['SHARPy'] = {
             'flow':
@@ -71,6 +75,7 @@ class TestGolandControlSurface(unittest.TestCase):
                  'StaticCoupled',
                  'Modal',
                  'LinearAssembler',
+                 'LinDynamicSim',
                  ],
             'case': ws.case_name, 'route': ws.route,
             'write_screen': 'on', 'write_log': 'on',
@@ -197,6 +202,14 @@ class TestGolandControlSurface(unittest.TestCase):
         ws.config['LinDynamicSim'] = {'folder': self.route_test_dir + '/output/',
                                       'n_tsteps': lin_tsteps,
                                       'dt': ws.dt,
+                                      'input_generators': [
+                                          {'name': 'control_surface_deflection',
+                                           'index': 0,
+                                           'file_path': self.route_test_dir + '/elevator.txt'},
+                                          {'name': 'u_gust',
+                                           'index': 0,
+                                           'file_path': self.route_test_dir + '/gust.txt'}
+                                      ],
                                       'postprocessors': ['AerogridPlot'],
                                       'postprocessors_settings':
                                           {'AerogridPlot': {'folder': self.route_test_dir + '/output/',

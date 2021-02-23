@@ -11,7 +11,7 @@ import scipy.sparse as sp
 import sharpy.utils.rom_interface as rom_interface
 import sharpy.linear.src.libss as libss
 from sharpy.utils.constants import vortex_radius_def
-from sharpy.linear.utils.ss_interface import VectorVariable
+from sharpy.linear.utils.ss_interface import VectorVariable, LinearVector, StateVariable
 
 
 @ss_interface.linear_system
@@ -227,7 +227,7 @@ class LinearUVLM(ss_interface.BaseElement):
             self.control_surface = lincontrolsurfacedeflector.LinControlSurfaceDeflector()
             self.control_surface.initialise(data, uvlm)
 
-        if self.settings['rom_method'] != '':
+        if self.settings['rom_method']:
             # Initialise ROM
             self.rom = dict()
             for rom_name in self.settings['rom_method']:
@@ -286,7 +286,7 @@ class LinearUVLM(ss_interface.BaseElement):
         """
         self.sys.SS.remove_inputs(*remove_list)
 
-    def unpack_ss_vector(self, data, x_n, aero_tstep, track_body=False):
+    def unpack_ss_vector(self, data, x_n, aero_tstep, track_body=False, state_variables=None):
         r"""
         Transform column vectors used in the state space formulation into SHARPy format
 
@@ -347,8 +347,25 @@ class LinearUVLM(ss_interface.BaseElement):
 
         else:
             Cg_uvlm = np.eye(3)
+
+
+        if self.rom is not None:
+            try:
+                rom = self.rom['Krylov']
+            except KeyError:
+                # raise NotImplementedError('only Krylov ROMS supported')
+                pass
+            else:
+                x_n = rom.projection_gain.dot(x_n).real
+                state_variables = LinearVector.transform(rom.projection_gain.output_variables, StateVariable)
+
+        try:
+            gust_vars_size = state_variables.get_variable_from_name('gust').size
+        except ValueError:
+            gust_vars_size = 0
+
+        x_n = x_n[gust_vars_size:]
         y_n = self.C_to_vertex_forces.dot(x_n)
-        # y_n = np.zeros((3 * self.sys.Kzeta))
 
         gamma_vec, gamma_star_vec, gamma_dot_vec = self.sys.unpack_state(x_n)
 
@@ -384,7 +401,7 @@ class LinearUVLM(ss_interface.BaseElement):
             if track_body:
                 for mm in range(dimensions[1]):
                     for nn in range(dimensions[2]):
-                        forces[i_surf][:,mm,nn] = np.dot(Cg_uvlm, forces[i_surf][:,mm,nn])
+                        forces[i_surf][:,mm,nn] = np.dot(Cg_uvlm, forces[i_surf][:, mm, nn])
 
             # Add the null bottom 3 rows to to the forces entry
             forces[i_surf] = np.concatenate((forces[i_surf], np.zeros(dimensions)))
@@ -405,29 +422,35 @@ class LinearUVLM(ss_interface.BaseElement):
 
         return forces, gamma, gamma_dot, gamma_star
 
-    def unpack_input_vector(self, u_n):
+    def unpack_input_vector(self, u_n, u_ext_gust, input_variables):
         """
         Unpacks the input vector into the corresponding grid coordinates, velocities and external velocities.
 
         Args:
             u_n (np.ndarray): UVLM input vector. May contain control surface deflections and external velocities.
+            u_ext_gust (np.ndarray): Inputs to the Gust system only. Optional, an empty array may be parsed.
+            input_variables (LinearVector): Vector of input variables to the aerodynamic system
 
         Returns:
             tuple: Tuple containing ``zeta``, ``zeta_dot`` and ``u_ext``, accounting for the effect of control surfaces.
         """
 
-        # if self.gust_assembler is not None:
-        #     u_n = self.gust_assembler.ss_gust
-
         if self.control_surface is not None:
             u_n = self.gain_cs.dot(u_n)
 
-        input_vars = self.input_variables.vector_vars
         tsaero0 = self.tsaero0
 
         input_vectors = dict()
-        for var in input_vars:
-            input_vectors[input_vars[var].name] = u_n[input_vars[var].cols_loc]
+        for var in input_variables:
+            try:
+                if var.name == 'u_gust':
+                    if len(u_ext_gust) != var.size:
+                        continue # provided input for external velocities does not match size. will be zero
+                    input_vectors['u_gust'] = u_ext_gust
+                else:
+                    input_vectors[var.name] = u_n[var.cols_loc]
+            except IndexError:
+                break
 
         zeta = []
         zeta_dot = []

@@ -10,7 +10,7 @@ import sharpy.utils.rom_interface as rom_interface
 import sharpy.utils.h5utils as h5
 import sharpy.rom.utils.krylovutils as krylovutils
 import warnings as warn
-from sharpy.linear.utils.ss_interface import LinearVector, StateVariable
+from sharpy.linear.utils.ss_interface import LinearVector, StateVariable, InputVariable, OutputVariable
 
 
 @rom_interface.rom
@@ -694,6 +694,11 @@ class Krylov(rom_interface.BaseRom):
 
         self.W = W
         self.V = V
+
+        # for state recovery purposes
+        self.projection_gain = libss.Gain(V,
+                                          input_vars=LinearVector([InputVariable('krylov', size=V.shape[1], index=0)]),
+                                          output_vars=LinearVector.transform(self.ss.state_variables, OutputVariable))
 
         return Ar, Br, Cr
 
