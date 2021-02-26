@@ -105,7 +105,7 @@ class StateSpace():
         self.outputs = self.C.shape[0]
 
         # vector variable tracking
-        self._input_variables = None  # type: sharpy.linear.utils.ss_interface.LinearVector
+        self._input_variables = None  # type: LinearVector
         self._state_variables = None
         self._output_variables = None
 
@@ -369,7 +369,7 @@ class StateSpace():
             np.ndarray: Eigenvalues of the system
 
         """
-        if ss.dt:
+        if self.dt:
             return eigvals(self.A, dlti=True)
         else:
             return eigvals(self.A, dlti=False)
@@ -1397,7 +1397,7 @@ def join(SS_list, wv=None):
         else:
             D += wv[ii] * SS_list[ii].D
 
-    return ss(A, B, C, D, SS_list[0].dt)
+    return StateSpace(A, B, C, D, SS_list[0].dt)
 
 
 def sum_ss(SS1, SS2, negative=False):
