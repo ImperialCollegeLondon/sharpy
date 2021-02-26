@@ -114,7 +114,11 @@ class LinearUVLM(ss_interface.BaseElement):
     settings_types['gust_assembler'] = 'str'
     settings_default['gust_assembler'] = ''
     settings_description['gust_assembler'] = 'Selected linear gust assembler.'
-    settings_options['gust_assembler'] = ['LeadingEdge']
+    settings_options['gust_assembler'] = ['LeadingEdge', 'MultiLeadingEdge']
+
+    settings_types['gust_assembler_inputs'] = 'dict'
+    settings_default['gust_assembler_inputs'] = dict()
+    settings_description['gust_assembler_inputs'] = 'Selected linear gust assembler parameter inputs.'
 
     settings_types['rom_method'] = 'list(str)'
     settings_default['rom_method'] = []
@@ -237,7 +241,8 @@ class LinearUVLM(ss_interface.BaseElement):
         if 'u_gust' not in self.settings['remove_inputs'] and self.settings['gust_assembler'] != '':
             import sharpy.linear.assembler.lineargustassembler as lineargust
             self.gust_assembler = lineargust.gust_from_string(self.settings['gust_assembler'])
-            self.gust_assembler.initialise(data.aero, self.sys, self.tsaero0)
+            self.gust_assembler.initialise(data.aero, self.sys, self.tsaero0,
+                                           custom_settings=self.settings['gust_assembler_inputs'])
 
     def assemble(self, track_body=False):
         r"""
