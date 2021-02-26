@@ -133,56 +133,6 @@ class LeadingEdge(LinearGust):
         Assembles the gust state space system, creating the (A, B, C and D) matrices that convect the single gust input
         at the leading edge downstream and uniformly across the span
         """
-        return self.leading_edge()
-
-        # Kzeta = self.linuvlm.Kzeta
-        # M = self.linuvlm.MS.MM[0]
-        #
-        # # Create state-space to convect gust downstream
-        # A_gust = np.zeros((M+1, M+1))
-        # A_gust[1:, :-1] = np.eye(M, M)
-        #
-        # B_gust = np.zeros((M+1, 6 * Kzeta + 1))
-        # B_gust[0, 6 * Kzeta] = 1
-        #
-        # C_gust = np.zeros((9 * Kzeta, M+1))
-        #
-        # D_gust = np.zeros((9 * Kzeta, 6 * Kzeta + 1))
-        #
-        # Kout = np.zeros((3 * Kzeta, M+1))
-        #
-        # for i_surf in range(self.aero.n_surf):
-        #
-        #     M_surf, N_surf = self.aero.aero_dimensions[i_surf]
-        #     Kzeta_start = 3 * sum(self.linuvlm.MS.KKzeta[:i_surf])  # number of coordinates up to current surface
-        #     shape_zeta = (3, M_surf + 1, N_surf + 1)
-        #
-        #     for i_node_span in range(N_surf + 1):
-        #         for i_node_chord in range(M_surf + 1):
-        #             i_vertex = [Kzeta_start + np.ravel_multi_index((i_axis, i_node_chord, i_node_span),
-        #                                                            shape_zeta) for i_axis in range(3)]
-        #             Kout[i_vertex, i_node_chord] = np.array([0, 0, 1])
-        #
-        # C_gust[-3 * Kzeta:] = Kout
-        # D_gust[:6 * Kzeta, :6 * Kzeta] = np.eye(6 * Kzeta)
-        #
-        # self.gust_ss = libss.ss(A_gust, B_gust, C_gust, D_gust, dt=self.linuvlm.SS.dt)
-        # gust_input_variables = self.linuvlm.SS.input_variables.copy()
-        # gust_input_variables.modify('u_gust', size=1)
-        # self.gust_ss.input_variables = gust_input_variables
-        #
-        # self.gust_ss.state_variables = ss_interface.LinearVector(
-        #     [ss_interface.StateVariable('gust', size=self.gust_ss.states, index=0)])
-        #
-        # self.gust_ss.output_variables = ss_interface.LinearVector.transform(self.linuvlm.SS.input_variables,
-        #                                                                     to_type=ss_interface.OutputVariable)
-    def leading_edge(self):
-
-        n_inputs = 1
-        # Number of inputs: defined at the leading edge
-        # probably need a tuple of input and spanwise location.
-        # Question arises for swept wings: is the input defined at the same x reference or at the leading edge?
-        # Bi-linear interpolation probably best (nonlinear?) one axis first then the other?
         Kzeta = self.linuvlm.Kzeta
 
         # Convection system: needed for as many inputs (since it carries their time histories)
@@ -196,14 +146,7 @@ class LeadingEdge(LinearGust):
         a_i = np.zeros((N, N))
         a_i[1:, :-1] = np.eye(N-1)
         b_i = np.zeros((N, 1))
-        b_gust = np.zeros((N, 6 * Kzeta + 1))
-        b_gust[0, -1] = 1
         b_i[0, 0] = 1
-
-        # Output Equation
-        # check order of input into the UVLM. is it ux1 uy1 uz1 ux2 uy2 uz2...?
-        c_gust = np.zeros((9 * Kzeta, N))
-        d_gust = np.zeros((9 * Kzeta, 6 * Kzeta + 1))
 
         c_i = np.zeros((3 * Kzeta, N))
         for i_surf in range(self.aero.n_surf):
@@ -217,27 +160,10 @@ class LeadingEdge(LinearGust):
                     i_vertex = [Kzeta_start + np.ravel_multi_index((i_axis, i_node_chord, i_node_span),
                                                                    shape_zeta) for i_axis in range(3)]
                     x_vertex = self.tsaero0.zeta[i_surf][0, i_node_chord, i_node_span]
-                    interpolation_weights, column_indices = chordwise_interpolation(x_vertex, x_domain)
+                    interpolation_weights, column_indices = linear_interpolation_weights(x_vertex, x_domain)
                     c_i[i_vertex, column_indices[0]] = np.array([0, 0, interpolation_weights[0]])
                     c_i[i_vertex, column_indices[1]] = np.array([0, 0, interpolation_weights[1]])
-                    # if i_node_span == 0:
-                    #     print('x vertex', x_vertex)
-                    #     print(column_indices)
-                    #     print(interpolation_weights)
 
-        # c_gust[-3 * Kzeta:] = c_i
-        # d_gust[:6 * Kzeta, :6 * Kzeta] = np.eye(6 * Kzeta)
-        #
-        # self.gust_ss = libss.ss(a_i, b_gust, c_gust, d_gust, dt=self.linuvlm.SS.dt)
-        # gust_input_variables = self.linuvlm.SS.input_variables.copy()
-        # gust_input_variables.modify('u_gust', size=1)
-        # self.gust_ss.input_variables = gust_input_variables
-        #
-        # self.gust_ss.state_variables = ss_interface.LinearVector(
-        #     [ss_interface.StateVariable('gust', size=self.gust_ss.states, index=0)])
-        #
-        # self.gust_ss.output_variables = ss_interface.LinearVector.transform(self.linuvlm.SS.input_variables,
-        #                                                                     to_type=ss_interface.OutputVariable)
         self.state_to_uext = c_i
 
         gustss = libss.ss(a_i, b_i, c_i, np.zeros((c_i.shape[0], b_i.shape[1])),
@@ -321,35 +247,13 @@ class MultiLeadingEdge(LinearGust):
                                                                    shape_zeta) for i_axis in range(3)]
                     x_vertex = self.tsaero0.zeta[i_surf][0, i_node_chord, i_node_span]
                     y_vertex = self.tsaero0.zeta[i_surf][1, i_node_chord, i_node_span]
-                    # print('x', x_vertex)
-                    # print('y', y_vertex)
                     interpolation_weights, column_indices = spanwise_interpolation(y_vertex, span_loc, x_vertex, x_domain)
-                    # print('weights', interpolation_weights)
-                    # print('col ind', column_indices)
                     for i in range(len(column_indices)):
                         gust_c[i_vertex, column_indices[i]] = np.array([0, 0, interpolation_weights[i]])
-                        # print(gust_c[i_vertex, column_indices[i]])
         gustss = libss.ss(gust_a, gust_b, gust_c, gust_d, dt=self.linuvlm.SS.dt)
-        # b_gust = np.zeros((N * n_gust, 6 * Kzeta + n_gust))
-        # c_gust = np.zeros((9 * Kzeta, N * n_gust))
-        # d_gust = np.zeros((9 * Kzeta, 6 * Kzeta + n_gust))
-        # d_gust[:6 * Kzeta, :6 * Kzeta] = np.eye(6 * Kzeta)
-        #
-        # b_gust[:, -gust_b.shape[1]:] = gust_b
-        # c_gust[-3 * Kzeta:, :gust_a.shape[0]] = gust_c
-        # self.gust_ss = libss.ss(gust_a, b_gust, c_gust, d_gust, dt=self.linuvlm.SS.dt)
-        # gust_input_variables = self.linuvlm.SS.input_variables.copy()
-        # gust_input_variables.modify('u_gust', size=n_gust)
-        # self.gust_ss.input_variables = gust_input_variables
-        #
-        # self.gust_ss.state_variables = ss_interface.LinearVector(
-        #     [ss_interface.StateVariable('gust', size=self.gust_ss.states, index=0)])
-        #
-        # self.gust_ss.output_variables = ss_interface.LinearVector.transform(self.linuvlm.SS.input_variables,
-        #                                                                     to_type=ss_interface.OutputVariable)
+
         self.state_to_uext = gust_c
-        # gustss = libss.ss(gust_a, , c_i, np.zeros((c_i.shape[0], b_i.shape[1])),
-        #                   dt=self.linuvlm.SS.dt)
+
         gustss.input_variables = ss_interface.LinearVector(
             [ss_interface.InputVariable('u_gust', size=gustss.inputs, index=0)])
         gustss.state_variables = ss_interface.LinearVector(
@@ -373,6 +277,8 @@ def linear_interpolation_weights(x_vertex, x_domain):
 def chordwise_interpolation(x_vertex, x_domain):
 
     column_ind_left = np.argwhere(x_domain >= x_vertex)[0][0] - 1
+    if column_ind_left == - 1:
+        column_ind_left = 0
     column_indices = (column_ind_left, column_ind_left + 1)
     interpolation_weights = np.array([x_domain[column_ind_left + 1] - x_vertex, x_vertex - x_domain[column_ind_left]])
     interpolation_weights /= (x_domain[column_ind_left + 1] - x_domain[column_ind_left])
@@ -380,27 +286,68 @@ def chordwise_interpolation(x_vertex, x_domain):
 
 
 def spanwise_interpolation(y_vertex, span_loc, x_vertex, x_domain):
-    # span_ind_left = np.argwhere(span_loc >= y_vertex)[0][0] - 1  # will tell which column sets to pick
-    # span_indices = (span_ind_left, span_ind_left + 1)
+    r"""
+    Returns the interpolation weights and indices of said weights for a span wise interpolation. The indices refer to
+    column indices of a row vector containing the gust disturbance at each chordwise control point.
 
+    This is used in non-span uniform gusts with multiple inputs, where each set of chordwise
+    control points in the state vector corresponds to one gust (i.e. its time history).
+
+    The interpolation is performed as follows.
+
+    For an arbitrary point within a grid delimited by ``(0, 0)``, ``(0, 1)``, ``(1, 0)`` and ``(1, 1)``, the velocity
+    at a given point is:
+
+    .. math::
+
+        u_z = \alpha_1 u_1 + \alpha_0 u_0
+
+    where :math:`\alpha_1 = \frac{y - y_0}{y_{1} - y_{0}}` and :math:`\alpha_0 = \frac{y_1-y}{y_1-y_0}`.
+
+    The velocities :math:`u_1` and :math:`u_0` are at the current chordwise point, thus translating into
+
+    .. math::
+
+        u_1 = \beta_{11} u_{11} + \beta_{10} u_{10} \\
+        u_0 = \beta_{01} u_{01} + \beta_{00} u_{00}
+
+    where :math:`\beta_{11} = \frac{x - x_0}{x_1 - x_0}` and the rest follow a similar pattern.
+
+    The resulting interpolation scheme gives
+
+    .. math::
+
+        u_z = \begin{pmatrix}
+        \alpha_1 \beta_{11} u_{11} &  \alpha_1 \beta{10} &  \alpha_0 \beta_{01} & \alpha_0 \beta_{00}
+        \end{pmatrix}
+        \begin{bmatrix} u_{11} \\ u_{10} \\ u_{01} \\ u_{00} \end{bmatrix}.
+
+    The indices returned as part of the output correspond to the column indices above to match with the
+    corresponding interpolation control points.
+
+    Args:
+        y_vertex (np.float): y (span) coordinate of point
+        span_loc (np.array): Domain of y-coordinates
+        x_vertex (np.float): x (chord) coordinate of point
+        x_domain (np.array): Domain of x coordinates
+
+    Returns:
+        tuple: 2-tuple containing i) the 4-array of interpolation weights and ii) the 4-array of column
+          indicies to place such weights.
+    """
     N = len(x_domain)
     span_weights, span_indices = linear_interpolation_weights(y_vertex, span_loc)
-    # print('Span weights', span_weights)
-    # print('Span indices', span_indices)
     interpolation_weights = np.zeros(4)
     interpolation_columns = []
+
     chord_weights, chord_ind = linear_interpolation_weights(x_vertex, x_domain)
-    # print('Chord weights', chord_weights)
-    # print('Chord indices', chord_ind)
+
     for i_span, span_location in enumerate(span_indices):
         interpolation_weights[2 * i_span - 1] = span_weights[i_span] * chord_weights[0]
         interpolation_columns.append(span_location * N + chord_ind[0])
         interpolation_weights[2 * i_span] = span_weights[i_span] * chord_weights[1]
         interpolation_columns.append(span_location * N + chord_ind[1])
 
-    # print('Weights', interpolation_weights)
-    # print('Sum', np.sum(interpolation_weights))
-    # print('Columns', interpolation_columns)
     return interpolation_weights, interpolation_columns
 
 
