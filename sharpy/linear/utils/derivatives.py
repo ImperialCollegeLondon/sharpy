@@ -45,7 +45,7 @@ class Derivatives:
         Initialises the required class attributes for all derivative calculations/
 
         Args:
-            state_space (sharpy.linear.src.libss.ss): State-space object for the target system
+            state_space (sharpy.linear.src.libss.StateSpace): State-space object for the target system
             steady_forces (np.array): Array of steady forces (at the linearisation) expressed in the beam degrees of
               freedom and with size equal to the number of structural degrees of freedom
             quat (np.array): Quaternion at the linearisation
@@ -234,7 +234,7 @@ class DerivativeSet:
     #     Initialises the required class attributes for all derivative calculations/
     #
     #     Args:
-    #         state_space (sharpy.linear.src.libss.ss): State-space object for the target system
+    #         state_space (sharpy.linear.src.libss.StateSpace): State-space object for the target system
     #         steady_forces (np.array): Array of steady forces (at the linearisation) expressed in the beam degrees of
     #           freedom and with size equal to the number of structural degrees of freedom
     #         quat (np.array): Quaternion at the linearisation

@@ -9,7 +9,7 @@ the sparse arrays types defined in libsparse.
 The module includes:
 
 Classes:
-- ss: provides a class to build DLTI/LTI systems with full and/or sparse
+- StateSpace: provides a class to build DLTI/LTI systems with full and/or sparse
 	matrices and wraps many of the methods in these library. Methods include:
 	- freqresp: wraps the freqresp function
 	- addGain: adds gains in input/output. This is not a wrapper of addGain, as
@@ -65,7 +65,7 @@ import sharpy.linear.src.libsparse as libsp
 
 # ------------------------------------------------------------- Dedicated class
 
-class ss():
+class StateSpace():
     """
     Wrap state-space models allocation into a single class and support both
     full and sparse matrices. The class emulates
@@ -411,7 +411,7 @@ class ss():
         """
         Removes inputs through their variable names.
 
-        Needs that the ``ss`` attribute ``input_variables`` is defined.
+        Needs that the ``StateSpace`` attribute ``input_variables`` is defined.
 
         Args:
             input_remove_list (list(str)): List of inputs to remove
@@ -446,7 +446,7 @@ class ss():
         """
         Removes outputs through their variable names.
 
-        Needs that the ``ss`` attribute ``output_variables`` is defined.
+        Needs that the ``StateSpace`` attribute ``output_variables`` is defined.
 
         Args:
             output_remove_list (list(str)): List of outputs to remove
@@ -480,14 +480,14 @@ class ss():
     @classmethod
     def from_scipy(cls, scipy_ss):
         """
-        Transforms a ``scipy.signal.lti`` or dlti into a ss class
+        Transforms a ``scipy.signal.lti`` or dlti into a StateSpace class
 
         Args:
             scipy_ss (scipy.signal.ltisys.StateSpaceContinous or scipy.signal.ltisys.StateSpaceDiscrete): Scipy
               State Space object.
 
         Returns:
-            ss: SHARPy state space object
+            StateSpace: SHARPy state space object
         """
         a = scipy_ss.A
         b = scipy_ss.B
@@ -597,7 +597,7 @@ class Gain:
 
 class ss_block():
     """
-    State-space model in block form. This class has the same purpose as "ss",
+    State-space model in block form. This class has the same purpose as "StateSpace",
     but the A, B, C, D are allocated in the form of nested lists. The format is
     similar to the one used in numpy.block but:
         1. Block matrices can contain both dense and sparse matrices
@@ -802,7 +802,7 @@ def project(ss_here, WT, V):
     Bp = libsp.dot(WT, ss_here.B)
     Cp = libsp.dot(ss_here.C, V)
 
-    return ss(Ap, Bp, Cp, ss_here.D, ss_here.dt)
+    return StateSpace(Ap, Bp, Cp, ss_here.D, ss_here.dt)
 
 
 def couple(ss01, ss02, K12, K21, out_sparse=False):
@@ -896,7 +896,7 @@ def couple(ss01, ss02, K12, K21, out_sparse=False):
             [libsp.dense(libsp.dot(libsp.dot(D2, cpl_21), D1)),
              libsp.dense(D2 + libsp.dot(libsp.dot(D2, cpl_22), D2))]])
 
-    coupled_ss = ss(A, B, C, D, dt=ss01.dt)
+    coupled_ss = StateSpace(A, B, C, D, dt=ss01.dt)
     if with_enhanced_vars:
         coupled_ss.state_variables = LinearVector.merge(ss01.state_variables, ss02.state_variables)
         coupled_ss.input_variables = LinearVector.merge(ss01.input_variables, ss02.input_variables)
@@ -924,10 +924,10 @@ def disc2cont(sys):
         MIT OCW 6.245
 
     Args:
-        sys (libss.ss): SHARPy discrete-time state-space object.
+        sys (libss.StateSpace): SHARPy discrete-time state-space object.
 
     Returns:
-        libss.ss: Converted continuous-time state-space object.
+        libss.StateSpace: Converted continuous-time state-space object.
     """
 
     assert sys.dt is not None, 'System to transform is not a discrete-time system.'
@@ -942,7 +942,7 @@ def disc2cont(sys):
     c = np.sqrt(2 * omega_0) * sys.C.dot(eye_a_inv)
     d = sys.D - sys.C.dot(eye_a_inv.dot(sys.B))
 
-    sys_ct = ss(a, b, c, d)
+    sys_ct = StateSpace(a, b, c, d)
 
     if sys.input_variables is not None:
         sys_ct.input_variables = sys.input_variables
@@ -981,7 +981,7 @@ def freqresp(SS, wv, dlti=True):
     In-house frequency response function supporting dense/sparse types
 
     Inputs:
-    - SS: instance of ss class, or scipy.signal.StateSpace*
+    - SS: instance of StateSpace class, or scipy.signal.StateSpace*
     - wv: frequency range
     - dlti: True if discrete-time system is considered.
 
@@ -994,8 +994,8 @@ def freqresp(SS, wv, dlti=True):
     matrices.
     """
 
-    assert type(SS) == ss, \
-        'Type %s of state-space model not supported. Use libss.ss instead!' % type(SS)
+    assert type(SS) == StateSpace, \
+        'Type %s of state-space model not supported. Use libss.StateSpace instead!' % type(SS)
     SS.check_types()
 
     if hasattr(SS, 'dt') and dlti:
@@ -1039,11 +1039,11 @@ def series(SS01, SS02):
     where the state vector :math:`x` is :math:`[x_1, x_2]`.
 
     Args:
-        SS01 (libss.ss): State Space 1 instance. Can be DLTI/CLTI, dense or sparse.
-        SS02 (libss.ss): State Space 2 instance. Can be DLTI/CLTI, dense or sparse.
+        SS01 (libss.StateSpace): State Space 1 instance. Can be DLTI/CLTI, dense or sparse.
+        SS02 (libss.StateSpace): State Space 2 instance. Can be DLTI/CLTI, dense or sparse.
 
     Returns
-        libss.ss: Combined state space system in series in dense format.
+        libss.StateSpace: Combined state space system in series in dense format.
     """
 
     if type(SS01) is not type(SS02):
@@ -1084,7 +1084,7 @@ def series(SS01, SS02):
     C = np.concatenate((libsp.dense(libsp.dot(SS02.D, SS01.C)), libsp.dense(SS02.C)), axis=1)
     D = libsp.dense(libsp.dot(SS02.D, SS01.D))
 
-    SStot = ss(A, B, C, D, dt=SS01.dt)
+    SStot = StateSpace(A, B, C, D, dt=SS01.dt)
 
     SStot.input_variables = SS01.input_variables
     try:
@@ -1264,9 +1264,9 @@ def addGain(SShere, Kmat, where):
         D = np.block([Kmat, SShere.D])
 
     if SShere.dt == None:
-        SSnew = ss(A, B, C, D)
+        SSnew = StateSpace(A, B, C, D)
     else:
-        SSnew = ss(A, B, C, D, dt=SShere.dt)
+        SSnew = StateSpace(A, B, C, D, dt=SShere.dt)
 
     return SSnew
 
@@ -1362,7 +1362,7 @@ def join2(SS1, SS2):
 
 def join(SS_list, wv=None):
     """
-    Given a list of state-space models belonging to the ss class, creates a
+    Given a list of state-space models belonging to the StateSpace class, creates a
     joined system whose output is the sum of the state-space outputs. If wv is
     not None, this is a list of weights, such that the output is:
 
@@ -1812,13 +1812,13 @@ def random_ss(Nx, Nu, Ny, dt=None, use_sparse=False, stable=True):
     D = np.random.rand(Ny, Nu)
 
     if use_sparse:
-        SS = ss(libsp.csc_matrix(A),
-                libsp.csc_matrix(B),
-                libsp.csc_matrix(C),
-                libsp.csc_matrix(D),
-                dt=dt)
+        SS = StateSpace(libsp.csc_matrix(A),
+                        libsp.csc_matrix(B),
+                        libsp.csc_matrix(C),
+                        libsp.csc_matrix(D),
+                        dt=dt)
     else:
-        SS = ss(A, B, C, D, dt=dt)
+        SS = StateSpace(A, B, C, D, dt=dt)
 
     return SS
 
@@ -1857,7 +1857,7 @@ def ss_to_scipy(ss):
     Converts to a scipy.signal linear time invariant system
 
     Args:
-        ss (libss.ss): SHARPy state space object
+        ss (libss.StateSpace): SHARPy state space object
 
     Returns:
         scipy.signal.dlti

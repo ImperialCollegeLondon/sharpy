@@ -21,7 +21,7 @@ class TestFrequencyUtils(unittest.TestCase):
         c = np.load(self.test_dir + '/src/c.npy')
         d = np.load(self.test_dir + '/src/d.npy')
 
-        self.sys = libss.ss(a, b, c, d, dt=None)
+        self.sys = libss.StateSpace(a, b, c, d, dt=None)
         # self.sys = libss.random_ss(10, 4, 3, dt=0.1, stable=True)
         # self.sys = libss.disc2cont(self.sys)
 

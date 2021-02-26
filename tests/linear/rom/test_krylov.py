@@ -31,7 +31,7 @@ class TestKrylov(unittest.TestCase):
 
         A = A.todense()
 
-        self.ss = libss.ss(A, B, C, D)
+        self.ss = libss.StateSpace(A, B, C, D)
 
         self.rom = krylov.Krylov()
 

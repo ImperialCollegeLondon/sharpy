@@ -4,7 +4,7 @@ import unittest
 import numpy as np
 
 from sharpy.linear.src import libsparse as libsp
-from sharpy.linear.src.libss import ss, SSconv, compare_ss, scale_SS, Gain, random_ss, couple, join, disc2cont, series
+from sharpy.linear.src.libss import StateSpace, SSconv, compare_ss, scale_SS, Gain, random_ss, couple, join, disc2cont, series
 from sharpy.linear.utils.ss_interface import LinearVector, InputVariable, StateVariable, OutputVariable
 
 
@@ -19,8 +19,8 @@ class Test_dlti(unittest.TestCase):
         B = np.random.rand(Nx, Nu)
         C = np.random.rand(Ny, Nx)
         D = np.random.rand(Ny, Nu)
-        self.SS = ss(A, B, C, D, dt=dt)
-        self.SSsp = ss(libsp.csc_matrix(A), libsp.csc_matrix(B), C, D, dt=dt)
+        self.SS = StateSpace(A, B, C, D, dt=dt)
+        self.SSsp = StateSpace(libsp.csc_matrix(A), libsp.csc_matrix(B), C, D, dt=dt)
 
         self.SS.input_variables = LinearVector([InputVariable('input1', size=3, index=0),
                                                 InputVariable('input2', size=2, index=1)])
@@ -41,13 +41,13 @@ class Test_dlti(unittest.TestCase):
 
         # remove predictor: try different scenario
         B1 = np.random.rand(Nx, Nu)
-        SSpr0 = ss(*SSconv(A, B, B1, C, D), dt=0.3)
-        SSpr1 = ss(*SSconv(A, B, libsp.csc_matrix(B1), C, D), dt=0.3)
-        SSpr2 = ss(*SSconv(
+        SSpr0 = StateSpace(*SSconv(A, B, B1, C, D), dt=0.3)
+        SSpr1 = StateSpace(*SSconv(A, B, libsp.csc_matrix(B1), C, D), dt=0.3)
+        SSpr2 = StateSpace(*SSconv(
             libsp.csc_matrix(A), B, libsp.csc_matrix(B1), C, D), dt=0.3)
-        SSpr3 = ss(*SSconv(
+        SSpr3 = StateSpace(*SSconv(
             libsp.csc_matrix(A), libsp.csc_matrix(B), B1, C, D), dt=0.3)
-        SSpr4 = ss(*SSconv(
+        SSpr4 = StateSpace(*SSconv(
             libsp.csc_matrix(A), libsp.csc_matrix(B), libsp.csc_matrix(B1), C, D), dt=0.3)
         compare_ss(SSpr0, SSpr1)
         compare_ss(SSpr0, SSpr2)
@@ -124,14 +124,14 @@ class Test_dlti(unittest.TestCase):
         SS1 = random_ss(Nx1, Nu1, Ny1, dt=.2)
         SS2 = random_ss(Nx2, Nu2, Ny2, dt=.2)
 
-        SS1sp = ss(libsp.csc_matrix(SS1.A),
-                   libsp.csc_matrix(SS1.B),
-                   libsp.csc_matrix(SS1.C),
-                   libsp.csc_matrix(SS1.D), dt=dt)
-        SS2sp = ss(libsp.csc_matrix(SS2.A),
-                   libsp.csc_matrix(SS2.B),
-                   libsp.csc_matrix(SS2.C),
-                   libsp.csc_matrix(SS2.D), dt=dt)
+        SS1sp = StateSpace(libsp.csc_matrix(SS1.A),
+                           libsp.csc_matrix(SS1.B),
+                           libsp.csc_matrix(SS1.C),
+                           libsp.csc_matrix(SS1.D), dt=dt)
+        SS2sp = StateSpace(libsp.csc_matrix(SS2.A),
+                           libsp.csc_matrix(SS2.B),
+                           libsp.csc_matrix(SS2.C),
+                           libsp.csc_matrix(SS2.D), dt=dt)
         K12sp = libsp.csc_matrix(K12)
         K21sp = libsp.csc_matrix(K21)
 
@@ -180,8 +180,8 @@ class Test_dlti(unittest.TestCase):
         B = np.random.rand(Nx, Nu)
         C = np.random.rand(Ny, Nx)
         D = np.random.rand(Ny, Nu)
-        self.SS = ss(A, B, C, D, dt=dt)
-        self.SSsp = ss(libsp.csc_matrix(A), libsp.csc_matrix(B), C, D, dt=dt)
+        self.SS = StateSpace(A, B, C, D, dt=dt)
+        self.SSsp = StateSpace(libsp.csc_matrix(A), libsp.csc_matrix(B), C, D, dt=dt)
 
         self.SS.input_variables = LinearVector([InputVariable('input1', size=3, index=0),
                                                 InputVariable('input2', size=4, index=1),

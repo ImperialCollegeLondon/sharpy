@@ -960,7 +960,7 @@ class Dynamic(Static):
         if self.remove_predictor:
             Ass, Bmod, Css, Dmod = \
                 libss.SSconv(Ass, None, Bss, Css, Dss, Bm1=None)
-            self.SS = libss.ss(Ass, Bmod, Css, Dmod, dt=self.dt)
+            self.SS = libss.StateSpace(Ass, Bmod, Css, Dmod, dt=self.dt)
 
             # Store original B matrix for state unpacking
             self.B_predictor = Bss
@@ -970,7 +970,7 @@ class Dynamic(Static):
                            '\t\th_{n+1} = A h_{n} + B u_{n}\n\t' \
                            '\t\twith:\n\tx_n = h_n + Bp u_n', 1)
         else:
-            self.SS = libss.ss(Ass, Bss, Css, Dss, dt=self.dt)
+            self.SS = libss.StateSpace(Ass, Bss, Css, Dss, dt=self.dt)
             cout.cout_wrap('\tstate-space model produced in form:\n\t' \
                            'x_{n+1} = A x_{n} + Bp u_{n+1}', 1)
 
@@ -1406,7 +1406,7 @@ class Dynamic(Static):
         Ab = libsp.dot(Ti, libsp.dot(self.SS.A, T))
         Bb = libsp.dot(Ti, self.SS.B)
         Cb = libsp.dot(self.SS.C, T)
-        SSb = libss.ss(Ab, Bb, Cb, self.SS.D, dt=self.SS.dt)
+        SSb = libss.StateSpace(Ab, Bb, Cb, self.SS.D, dt=self.SS.dt)
 
         ### Eliminate unstable modes - if any:
         if DictBalFreq['check_stability']:
@@ -2443,10 +2443,10 @@ class DynamicBlock(Dynamic):
             Ab, Bb, Cb, Db = \
                 libss.SSconv(np.block(Ab), None, np.block(Bb),
                              np.block(Cb), np.block(self.SS.D), Bm1=None)
-            SSb = libss.ss(Ab, Bb, Cb, Db, dt=self.dt)
+            SSb = libss.StateSpace(Ab, Bb, Cb, Db, dt=self.dt)
         else:
-            SSb = libss.ss(np.block(Ab), np.block(Bb),
-                           np.block(Cb), np.block(self.SS.D), dt=self.SS.dt)
+            SSb = libss.StateSpace(np.block(Ab), np.block(Bb),
+                                   np.block(Cb), np.block(self.SS.D), dt=self.SS.dt)
 
         ### Eliminate unstable modes - if any:
         if DictBalFreq['check_stability']:
