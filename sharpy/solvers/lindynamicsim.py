@@ -285,11 +285,6 @@ def state_to_timestep(data, x, u=None, y=None):
         modal = True
     else:
         modal = False
-    if data.linear.linear_system.uvlm.gust_assembler:
-        gust_state_size = data.linear.linear_system.uvlm.gust_assembler.gust_ss.states
-        u_ext_gust = data.linear.linear_system.uvlm.gust_assembler.state_to_uext.dot(x[:gust_state_size])
-    else:
-        u_ext_gust = np.array([])
 
     aero_state = x[:-data.linear.linear_system.beam.ss.states]
     beam_state = x[-data.linear.linear_system.beam.ss.states:] # after aero all the rest is beam
@@ -312,19 +307,26 @@ def state_to_timestep(data, x, u=None, y=None):
     else:
         aero_input = Kas.dot(u_q)
 
-    uvlm_input_variables = LinearVector.transform(Kas.output_variables, InputVariable)
-    # Unpack input
-    zeta, zeta_dot, u_ext = data.linear.linear_system.uvlm.unpack_input_vector(aero_input, u_ext_gust,
-                                                                               input_variables=uvlm_input_variables)
 
     # Also add the beam forces. I have a feeling there is a minus there as well....
     # Aero
-    forces, gamma, gamma_dot, gamma_star = data.linear.linear_system.uvlm.unpack_ss_vector(
+    forces, gamma, gamma_dot, gamma_star, gust_state_vec = data.linear.linear_system.uvlm.unpack_ss_vector(
         data,
         x_n=aero_state,
         aero_tstep=data.linear.tsaero0,
         track_body=True,
-        state_variables=data.linear.linear_system.uvlm.ss.state_variables)
+        state_variables=data.linear.linear_system.uvlm.ss.state_variables,
+        gust_in=True)
+
+    if data.linear.linear_system.uvlm.gust_assembler:
+        u_ext_gust = data.linear.linear_system.uvlm.gust_assembler.state_to_uext.dot(gust_state_vec)
+    else:
+        u_ext_gust = np.array([])
+
+    uvlm_input_variables = LinearVector.transform(Kas.output_variables, InputVariable)
+    # Unpack input
+    zeta, zeta_dot, u_ext = data.linear.linear_system.uvlm.unpack_input_vector(aero_input, u_ext_gust,
+                                                                               input_variables=uvlm_input_variables)
 
     current_aero_tstep = data.aero.timestep_info[-1].copy()
     current_aero_tstep.forces = [forces[i_surf] + data.linear.tsaero0.forces[i_surf] for i_surf in

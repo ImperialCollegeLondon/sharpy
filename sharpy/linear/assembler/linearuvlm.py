@@ -262,7 +262,7 @@ class LinearUVLM(ss_interface.BaseElement):
             self.sys.SS = libss.disc2cont(self.sys.SS)
 
         self.ss = self.sys.SS
-        self.C_to_vertex_forces = self.ss.C.copy()
+        self.C_to_vertex_forces = -1 * self.ss.C.copy()  # post-processing issue
 
         if self.settings['remove_inputs']:
             self.remove_inputs(self.settings['remove_inputs'])
@@ -286,7 +286,7 @@ class LinearUVLM(ss_interface.BaseElement):
         """
         self.sys.SS.remove_inputs(*remove_list)
 
-    def unpack_ss_vector(self, data, x_n, aero_tstep, track_body=False, state_variables=None):
+    def unpack_ss_vector(self, data, x_n, aero_tstep, track_body=False, state_variables=None, gust_in=False):
         r"""
         Transform column vectors used in the state space formulation into SHARPy format
 
@@ -361,8 +361,10 @@ class LinearUVLM(ss_interface.BaseElement):
 
         try:
             gust_vars_size = state_variables.get_variable_from_name('gust').size
+            gust_state = x_n[:gust_vars_size]
         except ValueError:
             gust_vars_size = 0
+            gust_state = []
 
         x_n = x_n[gust_vars_size:]
         y_n = self.C_to_vertex_forces.dot(x_n)
@@ -420,7 +422,10 @@ class LinearUVLM(ss_interface.BaseElement):
             worked_panels += panels_in_surface
             worked_wake_panels += panels_in_wake
 
-        return forces, gamma, gamma_dot, gamma_star
+        if gust_in:
+            return forces, gamma, gamma_dot, gamma_star, gust_state
+        else:
+            return forces, gamma, gamma_dot, gamma_star
 
     def unpack_input_vector(self, u_n, u_ext_gust, input_variables):
         """
@@ -444,8 +449,8 @@ class LinearUVLM(ss_interface.BaseElement):
         for var in input_variables:
             try:
                 if var.name == 'u_gust':
-                    if len(u_ext_gust) != var.size:
-                        continue # provided input for external velocities does not match size. will be zero
+                    # if len(u_ext_gust) != var.size:
+                        # continue # provided input for external velocities does not match size. will be zero
                     input_vectors['u_gust'] = u_ext_gust
                 else:
                     input_vectors[var.name] = u_n[var.cols_loc]
