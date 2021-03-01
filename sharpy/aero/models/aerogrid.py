@@ -302,7 +302,6 @@ class Aerogrid(Grid):
                 list_local_nodes.append(self.struct2aero_mapping[i_global_node][i]['i_n'])
                 list_surfaces.append(self.struct2aero_mapping[i_global_node][i]['i_surf'])
         for i_surf in range(self.n_surf):
-            zeta_phantom.append([])
             if i_surf in list_surfaces:
                 idx_local_node = list_surfaces.index(i_surf)
                 # assume that there is only one junction per surface yet
