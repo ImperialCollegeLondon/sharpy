@@ -518,7 +518,11 @@ class AeroTimeStepInfo(TimeStepInfo):
                                             dimensions_star[i_surf, 1]),
                                            dtype=ct.c_double))
 
-
+        # Junction handling
+        self.flag_zeta_phantom = []
+        for i_surf in range(self.n_surf):
+            self.flag_zeta_phantom.append(np.zeros((dimensions[i_surf, 1] + 1),
+                                              dtype=ct.c_bool))
         self.control_surface_deflection = np.array([])
 
     def copy(self):
@@ -551,6 +555,10 @@ class AeroTimeStepInfo(TimeStepInfo):
             copied.wake_conv_vel[i_surf] = self.wake_conv_vel[i_surf].astype(dtype=ct.c_double, copy=True, order='C')
 
         copied.control_surface_deflection = self.control_surface_deflection.astype(dtype=ct.c_double, copy=True)
+
+        # phantom panel flags
+        for i_surf in range(copied.n_surf):
+            copied.flag_zeta_phantom[i_surf] = self.flag_zeta_phantom[i_surf].astype(dtype=ct.c_bool, copy=True, order='C')
 
         return copied
 
@@ -590,6 +598,13 @@ class AeroTimeStepInfo(TimeStepInfo):
         for i_surf in range(self.n_surf):
             self.ct_wake_conv_vel_list.append(self.wake_conv_vel[i_surf][:, :].reshape(-1))
 
+        self.ct_flag_zeta_phantom_list = []
+        for i_surf in range(self.n_surf):
+            self.ct_flag_zeta_phantom_list.append(self.flag_zeta_phantom[i_surf][:].reshape(-1))
+
+
+
+
         self.ct_p_dimensions_star = ((ct.POINTER(ct.c_uint)*n_surf)
                                      (* np.ctypeslib.as_ctypes(self.ct_dimensions_star)))
         self.ct_p_zeta_star = ((ct.POINTER(ct.c_double)*len(self.ct_zeta_star_list))
@@ -606,6 +621,10 @@ class AeroTimeStepInfo(TimeStepInfo):
                            (* [np.ctypeslib.as_ctypes(array) for array in self.ct_dist_to_orig_list]))
         self.ct_p_wake_conv_vel = ((ct.POINTER(ct.c_double)*len(self.ct_wake_conv_vel_list))
                            (* [np.ctypeslib.as_ctypes(array) for array in self.ct_wake_conv_vel_list]))
+        self.ct_p_flag_zeta_phantom = ((ct.POINTER(ct.c_bool)*len(self.ct_flag_zeta_phantom_list))
+                          (* [np.ctypeslib.as_ctypes(array) for array in self.ct_flag_zeta_phantom_list]))
+ 
+
 
     def remove_ctypes_pointers(self):
         super().remove_ctypes_pointers()
@@ -649,6 +668,10 @@ class AeroTimeStepInfo(TimeStepInfo):
         except AttributeError:
             pass
 
+        try:
+            del self.ct_p_flag_zeta_phantom
+        except AttributeError:
+            pass
 
 
 def init_matrix_structure(dimensions, with_dim_dimension, added_size=0):

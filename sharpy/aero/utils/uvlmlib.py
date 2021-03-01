@@ -214,6 +214,60 @@ def vlm_solver_nonlifting_body(ts_info, options):
                        ts_info.ct_p_forces)
     ts_info.remove_ctypes_pointers()
 
+def vlm_solver_lifting_and_nonlifting_bodies(ts_info_lifting, ts_info_nonlifting, options):
+    run_VLM_lifting_and_nonlifting = UvlmLib.run_VLM_lifting_and_nonlifting_bodies
+    run_VLM_lifting_and_nonlifting.restype = None
+
+    vmopts = VMopts()
+    vmopts.Steady = ct.c_bool(True)
+    vmopts.NumSurfaces = ct.c_uint(ts_info_lifting.n_surf)
+    vmopts.horseshoe = ct.c_bool(options['horseshoe'].value)
+    vmopts.dt = ct.c_double(options["rollup_dt"].value)
+    vmopts.n_rollup = ct.c_uint(options["n_rollup"].value)
+    vmopts.rollup_tolerance = ct.c_double(options["rollup_tolerance"].value)
+    vmopts.rollup_aic_refresh = ct.c_uint(options['rollup_aic_refresh'].value)
+    vmopts.NumCores = ct.c_uint(options['num_cores'].value)
+    vmopts.iterative_solver = ct.c_bool(options['iterative_solver'].value)
+    vmopts.iterative_tol = ct.c_double(options['iterative_tol'].value)
+    vmopts.iterative_precond = ct.c_bool(options['iterative_precond'].value)
+    vmopts.cfl1 = ct.c_bool(options['cfl1'])
+    vmopts.vortex_radius = ct.c_double(options['vortex_radius'].value)
+    vmopts.vortex_radius_wake_ind = ct.c_double(options['vortex_radius_wake_ind'].value)
+
+    vmopts_nonlifting = VMopts()
+    vmopts_nonlifting.Steady = ct.c_bool(True)
+    vmopts_nonlifting.NumSurfaces = ct.c_uint(ts_info_nonlifting.n_surf)
+
+    flightconditions = FlightConditions()
+    flightconditions.rho = options['rho']
+    flightconditions.uinf = np.ctypeslib.as_ctypes(np.linalg.norm(ts_info_lifting.u_ext[0][:, 0, 0]))
+    flightconditions.uinf_direction = np.ctypeslib.as_ctypes(ts_info_lifting.u_ext[0][:, 0, 0]/flightconditions.uinf)
+
+    p_rbm_vel_g = options['rbm_vel_g'].ctypes.data_as(ct.POINTER(ct.c_double))
+    ts_info_lifting.generate_ctypes_pointers()
+    ts_info_nonlifting.generate_ctypes_pointers()
+    run_VLM_lifting_and_nonlifting(ct.byref(vmopts),
+            ct.byref(flightconditions),
+            ts_info_lifting.ct_p_dimensions,
+            ts_info_lifting.ct_p_dimensions_star,
+            ts_info_lifting.ct_p_zeta,
+            ts_info_lifting.ct_p_zeta_star,
+            ts_info_lifting.ct_p_zeta_dot,
+            ts_info_lifting.ct_p_u_ext,
+            ts_info_lifting.ct_p_gamma,
+            ts_info_lifting.ct_p_gamma_star,
+            ts_info_lifting.ct_p_forces,
+            ts_info_lifting.ct_p_flag_zeta_phantom,
+            p_rbm_vel_g,
+            ct.byref(vmopts_nonlifting),
+            ts_info_nonlifting.ct_p_dimensions,
+            ts_info_nonlifting.ct_p_zeta,
+            ts_info_nonlifting.ct_p_u_ext,
+            ts_info_nonlifting.ct_p_sigma,
+            ts_info_nonlifting.ct_p_forces)
+
+    ts_info_lifting.remove_ctypes_pointers()
+    ts_info_nonlifting.remove_ctypes_pointers()
 
 def uvlm_init(ts_info, options):
     init_UVLM = UvlmLib.init_UVLM
