@@ -4,6 +4,9 @@ Control surface deflector for linear systems
 import sharpy.linear.utils.ss_interface as ss_interface
 import numpy as np
 import sharpy.utils.algebra as algebra
+import sharpy.linear.src.libsparse as libsp
+import scipy.sparse as sp
+import sharpy.linear.src.libss as libss
 
 
 @ss_interface.linear_system
@@ -30,6 +33,8 @@ class LinControlSurfaceDeflector(object):
 
         self.tsaero0 = None
         self.tsstruct0 = None
+
+        self.gain_cs = None  # type: np.ndarray # input gain to the UVLM
 
     def initialise(self, data, linuvlm):
         # Tasks:
@@ -185,6 +190,39 @@ class LinControlSurfaceDeflector(object):
         self.Kzeta_delta = Kdisp
         self.Kdzeta_ddelta = Kvel
         return Kdisp, Kvel
+
+    def apply(self, ss):
+
+        Kzeta_delta, Kdzeta_ddelta = self.generate()
+        n_zeta, n_ctrl_sfc = Kzeta_delta.shape
+
+        if type(ss.A) is libsp.csc_matrix:
+            gain_cs = sp.eye(ss.inputs, ss.inputs + 2 * self.n_control_surfaces,
+                             format='lil')
+            gain_cs[:n_zeta, ss.inputs: ss.inputs + n_ctrl_sfc] = Kzeta_delta
+            gain_cs[n_zeta: 2*n_zeta, ss.inputs + n_ctrl_sfc: ss.inputs + 2 * n_ctrl_sfc] = Kdzeta_ddelta
+            gain_cs = libsp.csc_matrix(gain_cs)
+        else:
+            gain_cs = np.eye(ss.inputs, ss.inputs + 2 * self.n_control_surfaces)
+            gain_cs[:n_zeta, ss.inputs: ss.inputs + n_ctrl_sfc] = Kzeta_delta
+            gain_cs[n_zeta: 2*n_zeta, ss.inputs + n_ctrl_sfc: ss.inputs + 2 * n_ctrl_sfc] = Kdzeta_ddelta
+
+        control_surface_gain = libss.Gain(gain_cs)
+        in_vars = ss.input_variables.copy()
+        in_vars.append('control_surface_deflection', size=n_ctrl_sfc)
+        in_vars.append('dot_control_surface_deflection', size=n_ctrl_sfc)
+        control_surface_gain.input_variables = in_vars
+        control_surface_gain.output_variables = ss_interface.LinearVector.transform(ss.input_variables,
+                                                                                    to_type=ss_interface.OutputVariable)
+        ss.addGain(control_surface_gain, where='in')
+
+        self.gain_cs = gain_cs
+
+        return ss
+    # def generator():
+    # future feature idea: instead of defining the inputs for the time domain simulations as the whole input vector
+    # etc, we could add a generate() method to these systems that can be called from the LinDynamicSim to apply
+    # the gust and generate the correct input vector.
 
 
 def der_Cx_by_v(delta, v):

@@ -94,9 +94,10 @@ class Modal(BaseSolver):
     settings_default['use_custom_timestep'] = -1
     settings_description['use_custom_timestep'] = 'If > -1, it will use that time step geometry for calculating the modes'
 
-    settings_types['rigid_modes_cg'] = 'bool'
-    settings_default['rigid_modes_cg'] = False
-    settings_description['rigid_modes_cg'] = 'Modify the ridid body modes such that they are defined wrt to the CG'
+    settings_types['rigid_modes_ppal_axes'] = 'bool'
+    settings_default['rigid_modes_ppal_axes'] = False
+    settings_description['rigid_modes_ppal_axes'] = 'Modify the ridid body modes such that they are defined wrt ' \
+                                                    'to the CG and aligned with the principal axes of inertia'
 
     settings_table = settings.SettingsTable()
     __doc__ += settings_table.generate(settings_types, settings_default, settings_description)
@@ -354,11 +355,15 @@ class Modal(BaseSolver):
             eigenvectors_left = eigenvectors_left[:, order].conj()
 
         # Modify rigid body modes for them to be defined wrt the CG
-        eigenvectors = modalutils.mode_sign_convention(self.data.structure.boundary_conditions, eigenvectors, self.rigid_body_motion)
-        if self.settings['rigid_modes_cg']:
-            if not eigenvectors_left:
-                eigenvectors = modalutils.free_modes_principal_axes(eigenvectors, FullMglobal)
-
+        eigenvectors = modalutils.mode_sign_convention(self.data.structure.boundary_conditions, eigenvectors,
+                                                       self.rigid_body_motion)
+        if not eigenvectors_left:
+            if self.settings['rigid_modes_ppal_axes']:
+                eigenvectors, t_pa, r_pa = modalutils.free_modes_principal_axes(eigenvectors, FullMglobal,
+                                                                          return_transform=True)
+            else:
+                t_pa = None  # Transformation matrix from the A frame to the P frame (principal axes of inertia)
+                r_pa = None
         # Scaling
         eigenvectors, eigenvectors_left = self.scale_modes_unit_mass_matrix(eigenvectors, FullMglobal, eigenvectors_left)
 
@@ -412,12 +417,9 @@ class Modal(BaseSolver):
         if self.settings['write_modes_vtk'].value:
             try:
                 self.data.aero
-                aero_model = True
             except AttributeError:
                 warnings.warn('No aerodynamic model found - unable to project the mode onto aerodynamic grid')
-                aero_model = False
-
-            if aero_model:
+            else:
                 modalutils.write_modes_vtk(
                     self.data,
                     eigenvectors[:num_dof],
@@ -455,6 +457,10 @@ class Modal(BaseSolver):
             outdict['M'] = FullMglobal
             outdict['C'] = FullCglobal
             outdict['K'] = FullKglobal
+
+        if t_pa is not None:
+            outdict['t_pa'] = t_pa
+            outdict['r_pa'] = r_pa
         self.data.structure.timestep_info[self.data.ts].modal = outdict
 
         if self.settings['print_info']:

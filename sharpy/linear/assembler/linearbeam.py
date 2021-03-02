@@ -9,6 +9,7 @@ import numpy as np
 import sharpy.utils.settings as settings
 import sharpy.utils.algebra as algebra
 import sharpy.structure.utils.modalutils as modalutils
+from sharpy.linear.utils.ss_interface import VectorVariable
 
 
 @linear_system
@@ -122,6 +123,11 @@ class LinearBeam(BaseElement):
     settings_default['remove_sym_modes'] = False
     settings_description['remove_sym_modes'] = 'Remove symmetric modes if wing is clamped'
 
+    # Temporary - include as part of StabilityDerivatives PostProc
+    settings_types['remove_rigid_states'] = 'bool'
+    settings_default['remove_rigid_states'] = False
+    settings_description['remove_rigid_states'] = 'WIP - For Stability Derivatives - Remove RIGID STATES from SS'
+
     settings_table = settings.SettingsTable()
     __doc__ += settings_table.generate(settings_types, settings_default, settings_description, settings_options)
 
@@ -147,23 +153,28 @@ class LinearBeam(BaseElement):
         settings.to_custom_types(self.settings, self.settings_types, self.settings_default,
                                  self.settings_options, no_ctype=True)
 
-        self.settings['rigid_modes_cg'] = data.settings['Modal']['rigid_modes_cg']  # use the same value as in Modal solver
+        self.settings['rigid_modes_ppal_axes'] = data.settings['Modal']['rigid_modes_ppal_axes']  # use the same value as in Modal solver
         beam = lingebm.FlexDynamic(data.linear.tsstruct0, data.structure, self.settings)
         self.sys = beam
         self.tsstruct0 = data.linear.tsstruct0
 
-        # State variables
+        # State variables - for the purposes of dof removal PRIOR to first order system assembly
         num_dof_flex = self.sys.structure.num_dof.value
         num_dof_rig = self.sys.Mstr.shape[0] - num_dof_flex
-        state_db = {'eta': [0, num_dof_flex],
-                  'V_bar': [num_dof_flex, num_dof_flex + 3],
-                  'W_bar': [num_dof_flex + 3, num_dof_flex + 6],
-                  'orient_bar': [num_dof_flex + 6, num_dof_flex + num_dof_rig],
-                  'dot_eta': [num_dof_flex + num_dof_rig, 2 * num_dof_flex + num_dof_rig],
-                  'V': [2 * num_dof_flex + num_dof_rig, 2 * num_dof_flex + num_dof_rig + 3],
-                  'W': [2 * num_dof_flex + num_dof_rig + 3, 2 * num_dof_flex + num_dof_rig + 6],
-                  'orient': [2 * num_dof_flex + num_dof_rig + 6, 2 * num_dof_flex + 2 * num_dof_rig]}
-        self.state_variables = LinearVector(state_db, self.sys_id)
+
+        if num_dof_rig == 0:
+            state_variable_list = [
+                VectorVariable('eta', size=num_dof_flex, index=0),
+            ]
+        else:
+            state_variable_list = [
+                VectorVariable('eta', size=num_dof_flex, index=0),
+                VectorVariable('V', size=3, index=1),
+                VectorVariable('W', size=3, index=2),
+                VectorVariable('orient', size=num_dof_rig - 6, index=3),
+            ]
+
+        self.state_variables = LinearVector(state_variable_list)
 
         if num_dof_rig == 0:
             self.clamped = True
@@ -210,63 +221,83 @@ class LinearBeam(BaseElement):
         elif self.sys.SScont:
             self.ss = self.sys.SScont
 
+        if self.settings['remove_rigid_states']:
+            # Temporary - should be incorporated into StabilityDerivatives and the coupled system reassembled
+            self.remove_rigid_states()
+
         return self.ss
+
+    def remove_rigid_states(self):
+        if self.sys.clamped:
+            return
+        num_rig_dof = 9
+        if self.sys.modal:
+
+            self.ss.A = self.ss.A[num_rig_dof:, num_rig_dof:]
+            self.ss.B = self.ss.B[num_rig_dof:, :]
+            self.ss.C = self.ss.C[:, num_rig_dof:]
+            self.ss.state_variables.modify('q', size=self.ss.state_variables[0].size - num_rig_dof)
+            self.ss.state_variables.update_locations()
+            #
+            # # import pdb; pdb.set_trace()
+            # # To remove the yaw mode state
+            # # retain_state = np.zeros((self.ss.states - 1, self.ss.states))
+            # # retain_state[:8+11, :8+11] = np.eye(8+11)
+            # # retain_state[8+11:, 9+11:] = np.eye(self.ss.states - 9 - 11)
+            # # self.ss.A = retain_state.dot(self.ss.A.dot(retain_state.T))
+            # # self.ss.B = retain_state.dot(self.ss.B)
+            # # self.ss.C = self.ss.C.dot(retain_state.T)
+            # self.ss.state_variables.modify('q_dot', size=self.ss.state_variables[1].size - 1)
+            # # self.ss.state_variables.update_locations()
+            #
+            retain_state = np.zeros((self.ss.states - 9, self.ss.states))
+            retain_state[:self.ss.state_variables[0].size, :self.ss.state_variables[0].size] = \
+                np.eye(self.ss.state_variables[0].size)
+            retain_state[self.ss.state_variables[0].size:, self.ss.state_variables[0].size + 9:] = \
+                np.eye(self.ss.state_variables[0].size)
+            self.ss.A = retain_state.dot(self.ss.A.dot(retain_state.T))
+            self.ss.B = retain_state.dot(self.ss.B)
+            self.ss.C = self.ss.C.dot(retain_state.T)
+            self.ss.state_variables.modify('q_dot', size=self.ss.state_variables[1].size - 9)
+            self.ss.state_variables.update_locations()
+
+        else:
+            retain_state = np.zeros((self.ss.states - 2 * num_rig_dof, self.ss.states))
+            eta_size = self.ss.state_variables[0].size
+            retain_state[:eta_size, :eta_size] = np.eye(eta_size)
+            retain_state[eta_size: 2 * eta_size, eta_size + 9: 2 * eta_size + 9] = np.eye(eta_size)
+
+            self.ss.A = retain_state.dot(self.ss.A.dot(retain_state.T))
+            self.ss.B = retain_state.dot(self.ss.B)
+            self.ss.C = self.ss.C.dot(retain_state.T)
+            self.ss.state_variables.remove('beta_bar')
+            self.ss.state_variables.remove('beta')
+            self.ss.state_variables.update_locations()
+            np.savetxt('./retain_state_nodal.txt', retain_state)
+
 
     def x0(self):
         x = np.concatenate((self.tsstruct0.q, self.tsstruct0.dqdt))
         return x
 
     def trim_nodes(self, trim_list=list):
+        """
+        Removes degrees of freedom from the second order system.
+
+        Args:
+            trim_list (list): List of degrees of freedom to remove ``eta``, ``V``, ``W`` or ``orient``
+
+        """
 
         num_dof_flex = self.sys.structure.num_dof.value
-        num_dof_rig = self.sys.Mstr.shape[0] - num_dof_flex
 
-        # Dictionary containing DOFs and corresponding equations
-        dof_db = {'eta': [0, num_dof_flex, 1],
-                  'V': [num_dof_flex, num_dof_flex + 3, 2],
-                  'W': [num_dof_flex + 3, num_dof_flex + 6, 3],
-                  'orient': [num_dof_flex + 6, num_dof_flex + num_dof_rig, 4],
-                  'yaw': [num_dof_flex + 8, num_dof_flex + num_dof_rig, 1]}
+        n_dofs = self.state_variables.size
+        self.state_variables.remove(*trim_list)
+        removed_dofs = n_dofs - self.state_variables.size
+        trim_matrix = np.zeros((n_dofs, n_dofs - removed_dofs))
 
-        # -----------------------------------------------------------------------
-        # Better to place in a function available to all elements since it will equally apply
-        # Therefore, the dof_db should be a class attribute
-        # Take away alongside the vector variable class
-
-        # All variables
-        vec_db = dict()
-        for item in dof_db:
-            vector_var = VectorVariable(item, dof_db[item], 'LinearBeam')
-            vec_db[item] = vector_var
-
-        used_vars_db = vec_db.copy()
-
-        # Variables to remove
-        removed_dofs = 0
-        removed_db = dict()
-        for item in trim_list:
-            removed_db[item] = vec_db[item]
-            removed_dofs += vec_db[item].size
-            del used_vars_db[item]
-
-        # Update variables position
-        for rem_item in removed_db:
-            for item in used_vars_db:
-                if used_vars_db[item].rows_loc[0] < removed_db[rem_item].first_pos:
-                    continue
-                else:
-                    # Update order and position
-                    used_vars_db[item].first_pos -= removed_db[rem_item].size
-                    used_vars_db[item].end_pos -= removed_db[rem_item].size
-
-        self.state_variables = used_vars_db
-        # TODO: input and output variables
-        ### ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-
-        # Map dofs to equations
-        trim_matrix = np.zeros((num_dof_rig+num_dof_flex, num_dof_flex+num_dof_rig-removed_dofs))
-        for item in used_vars_db:
-            trim_matrix[used_vars_db[item].rows_loc, used_vars_db[item].cols_loc] = 1
+        for variable in self.state_variables:
+            trim_matrix[variable.rows_loc, variable.cols_loc] = 1
 
         # Update matrices
         self.sys.Mstr = trim_matrix.T.dot(self.sys.Mstr.dot(trim_matrix))
@@ -454,29 +485,3 @@ class LinearBeam(BaseElement):
         current_time_step.steady_applied_forces = steady_applied_forces + struct_tstep.steady_applied_forces
 
         return current_time_step
-
-
-class VectorVariable(object):
-
-    def __init__(self, name, pos_list, var_system):
-
-        self.name = name
-        self.var_system = var_system
-
-        self.first_pos = pos_list[0]
-        self.end_pos = pos_list[1]
-        self.rows_loc = np.arange(self.first_pos, self.end_pos, dtype=int) # Original location, should not update
-
-
-    # add methods to reorganise into SHARPy method?
-
-    @property
-    def cols_loc(self):
-        return np.arange(self.first_pos, self.end_pos, dtype=int)
-
-    @property
-    def size(self):
-        return self.end_pos - self.first_pos
-
-if __name__=='__main__':
-    print(LinearBeam.__doc__)

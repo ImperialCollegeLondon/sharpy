@@ -51,7 +51,7 @@ def transfer_function(SS_list, wv):
           fast on-line evaluation
 
     Args:
-        SS_list (list): List of state-space models instances of :class:`sharpy.linear.src.libss.ss` class.
+        SS_list (list): List of state-space models instances of :class:`sharpy.linear.src.libss.StateSpace` class.
         wv (list): list of interpolatory weights.
 
     Notes:
@@ -86,7 +86,7 @@ def FLB_transfer_function(SS_list, wv, U_list, VT_list, hsv_list=None, M_list=No
 
 
     Args:
-        SS_list (list): List of state-space models instances of :class:`sharpy.linear.src.libss.ss` class.
+        SS_list (list): List of state-space models instances of :class:`sharpy.linear.src.libss.StateSpace` class.
         wv (list): list of interpolatory weights.
         U_list (list): small size, thin SVD factors of Gramians square roots of each state space model (:math:`\mathbf{U}`).
         VT_list (list): small size, thin SVD factors of Gramians square roots of each state space model (:math:`\mathbf{V}^\top`).
@@ -200,7 +200,7 @@ def FLB_transfer_function(SS_list, wv, U_list, VT_list, hsv_list=None, M_list=No
         C_int += wv[ii] * np.dot(SS_list[ii].C, T_int_list[ii])
         D_int += wv[ii] * SS_list[ii].D
 
-    return libss.ss(A_int, B_int, C_int, D_int, dt=SS_list[0].dt), hsv_int
+    return libss.StateSpace(A_int, B_int, C_int, D_int, dt=SS_list[0].dt), hsv_int
 
 
 class InterpROM:
@@ -228,7 +228,7 @@ class InterpROM:
 
     Inputs:
 
-    - SS: list of state-space models (instances of libss.ss class)
+    - SS: list of state-space models (instances of libss.StateSpace class)
 
     - VV: list of V matrices used to produce SS. If None, it is assumed that
       ROMs are defined over the same basis
@@ -342,7 +342,7 @@ class InterpROM:
             Cint += wv[ii] * self.CC[ii]
             Dint += wv[ii] * self.DD[ii]
 
-        return libss.ss(Aint, Bint, Cint, Dint, self.SS[0].dt)
+        return libss.StateSpace(Aint, Bint, Cint, Dint, self.SS[0].dt)
 
     def project(self):
         """
@@ -506,7 +506,7 @@ if __name__ == '__main__':
             B = np.random.rand(Nx, Nu)
             C = np.random.rand(Ny, Nx)
             D = np.random.rand(Ny, Nu)
-            self.SS = libss.ss(A, B, C, D, dt=dt)
+            self.SS = libss.StateSpace(A, B, C, D, dt=dt)
 
 # class Interp1d():
 #     """
@@ -577,7 +577,7 @@ if __name__ == '__main__':
 
 #     def __call__(self, zint):
 #         """
-#         Evaluate at interpolation point zint. Returns a list of classes ss
+#         Evaluate at interpolation point zint. Returns a list of classes StateSpace
 #         """
 
 #         Nint=len(zint)
@@ -619,7 +619,7 @@ if __name__ == '__main__':
 #         # and pack everything
 #         SSint=[]
 #         for ii in range(Nint):
-#             SSint.append( ss( Aint[ii,:,:], Bint[ii,:,:], 
+#             SSint.append( StateSpace( Aint[ii,:,:], Bint[ii,:,:],
 #                               Cint[ii,:,:], Dint[ii,:,:], dt=self.SS[0].dt))
 
 #         return SSint

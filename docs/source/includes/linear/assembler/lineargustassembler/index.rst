@@ -1,4 +1,4 @@
 .. toctree::
 	:glob:
 
-	./LinearGustGenerator
+	./LeadingEdgeGust
