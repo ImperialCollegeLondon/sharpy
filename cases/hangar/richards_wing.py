@@ -135,13 +135,13 @@ class Baseline(HortenWing):
             # Create full cross section
             c_bar = self.c_root * ((1-alpha[i_elem]) + self.taper_ratio * alpha[i_elem])
             x_section = WingCrossSection(c_bar)
-            print(i_elem)
-            print('Section Mass: %.2f ' %x_section.mass)
-            print('Linear Mass: %.2f' % (mu_0 * (1-alpha[i_elem]) + mu_0 * self.taper_ratio * alpha[i_elem]))
-            print('Section Ixx: %.4f' % x_section.ixx)
-            print('Section Iyy: %.4f' % x_section.iyy)
-            print('Section Izz: %.4f' % x_section.izz)
-            print('Linear Ixx: %.2f' % (j_xx * (1-alpha[i_elem]) + j_xx * self.taper_ratio * alpha[i_elem]))
+            # print(i_elem)
+            # print('Section Mass: %.2f ' %x_section.mass)
+            # print('Linear Mass: %.2f' % (mu_0 * (1-alpha[i_elem]) + mu_0 * self.taper_ratio * alpha[i_elem]))
+            # print('Section Ixx: %.4f' % x_section.ixx)
+            # print('Section Iyy: %.4f' % x_section.iyy)
+            # print('Section Izz: %.4f' % x_section.izz)
+            # print('Linear Ixx: %.2f' % (j_xx * (1-alpha[i_elem]) + j_xx * self.taper_ratio * alpha[i_elem]))
             # base_mass[i_elem, :, :] = mass_root_right*(1-alpha[i_elem]) + mass_tip_right*alpha[i_elem]
             # base_mass[i_elem + self.n_elem_wing + self.n_elem_fuselage - 1] = mass_root_left*(1-alpha[i_elem]) + mass_tip_left*alpha[i_elem]
 
