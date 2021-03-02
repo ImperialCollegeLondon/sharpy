@@ -56,7 +56,8 @@ class LinAeroEla():
 
         sharpy.utils.settings.to_custom_types(settings_here,
                                               linuvlm.settings_types_dynamic,
-                                              linuvlm.settings_default_dynamic)
+                                              linuvlm.settings_default_dynamic,
+                                              no_ctype=True)
 
         if chosen_ts is None:
             self.chosen_ts = self.data.ts
@@ -68,6 +69,8 @@ class LinAeroEla():
             self.rigid_body_motions = settings_here['rigid_body_motion']
         except KeyError:
             self.rigid_body_motions = False
+
+        print("rbm:", self.rigid_body_motions)
 
         try:
             self.use_euler = settings_here['use_euler']
@@ -81,7 +84,7 @@ class LinAeroEla():
         ## -------
 
         ### extract aeroelastic info
-        self.dt = settings_here['dt'].value
+        self.dt = settings_here['dt']
 
         ### reference to timestep_info
         # aero
@@ -93,7 +96,7 @@ class LinAeroEla():
 
         # --- backward compatibility
         try:
-            rho = settings_here['density'].value
+            rho = settings_here['density']
         except KeyError:
             warnings.warn(
                 "Key 'density' not found in 'LinearUvlm' solver settings. '\
@@ -102,7 +105,7 @@ class LinAeroEla():
             if type(rho) == str:
                 rho = np.float(rho)
             if hasattr(rho, 'value'):
-                rho = rho.value
+                rho = rho
         self.tsaero.rho = rho
         # --- backward compatibility
 
@@ -127,22 +130,22 @@ class LinAeroEla():
         if uvlm_block:
             self.linuvlm = linuvlm.DynamicBlock(
                 self.tsaero,
-                dt=settings_here['dt'].value,
+                dt=settings_here['dt'],
                 dynamic_settings=settings_here,
-                RemovePredictor=settings_here['remove_predictor'].value,
-                UseSparse=settings_here['use_sparse'].value,
-                integr_order=settings_here['integr_order'].value,
+                RemovePredictor=settings_here['remove_predictor'],
+                UseSparse=settings_here['use_sparse'],
+                integr_order=settings_here['integr_order'],
                 ScalingDict=settings_here['ScalingDict'],
                 for_vel=np.hstack((cga.dot(self.tsstr.for_vel[:3]),
                                    cga.dot(self.tsstr.for_vel[3:]))))
         else:
             self.linuvlm = linuvlm.Dynamic(
                 self.tsaero,
-                dt=settings_here['dt'].value,
+                dt=settings_here['dt'],
                 dynamic_settings=settings_here,
-                RemovePredictor=settings_here['remove_predictor'].value,
-                UseSparse=settings_here['use_sparse'].value,
-                integr_order=settings_here['integr_order'].value,
+                RemovePredictor=settings_here['remove_predictor'],
+                UseSparse=settings_here['use_sparse'],
+                integr_order=settings_here['integr_order'],
                 ScalingDict=settings_here['ScalingDict'],
                 for_vel=np.hstack((cga.dot(self.tsstr.for_vel[:3]),
                                    cga.dot(self.tsstr.for_vel[3:]))))

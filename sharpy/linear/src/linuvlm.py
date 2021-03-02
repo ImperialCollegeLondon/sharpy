@@ -102,7 +102,8 @@ class Static():
 
         settings.to_custom_types(settings_here,
                                  settings_types_static,
-                                 settings_default_static)
+                                 settings_default_static,
+                                 no_ctype=True)
 
         self.vortex_radius = settings_here['vortex_radius']
         MS = multisurfaces.MultiAeroGridSurfaces(tsdata,
@@ -579,7 +580,7 @@ class Dynamic(Static):
             warnings.warn('No settings dictionary found. Using default. Individual parsing of settings is deprecated',
                           DeprecationWarning)
             # Future: remove deprecation warning and make settings the only argument
-            settings.to_custom_types(self.settings, settings_types_dynamic, settings_default_dynamic)
+            settings.to_custom_types(self.settings, settings_types_dynamic, settings_default_dynamic, no_ctype=True)
             self.settings['dt'] = dt
             self.settings['integr_order'] = integr_order
             self.settings['remove_predictor'] = RemovePredictor
@@ -1747,7 +1748,7 @@ class DynamicBlock(Dynamic):
             warnings.warn('Individual parsing of settings is deprecated. Please use the settings dictionary',
                           DeprecationWarning)
 
-        super().__init__(tsdata, vortex_radius, dt,
+        super().__init__(tsdata, dt,
                          dynamic_settings=dynamic_settings,
                          integr_order=integr_order,
                          RemovePredictor=RemovePredictor,
