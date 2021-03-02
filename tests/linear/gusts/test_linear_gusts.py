@@ -3,6 +3,7 @@ import os
 import unittest
 import cases.templates.flying_wings as wings
 import sharpy.sharpy_main
+from sharpy.linear.assembler.lineargustassembler import campbell
 
 
 class TestGolandControlSurface(unittest.TestCase):
@@ -232,5 +233,31 @@ class TestGolandControlSurface(unittest.TestCase):
             shutil.rmtree(self.route_test_dir + '/' + folder)
 
 
+class TestGusts(unittest.TestCase):
+
+    def test_campbell(self):
+        """
+        Test that the Campell approximation to the Von Karman filter is equivalent in continuous and
+        discrete time
+
+        """
+        sigma_w = 1
+        length_scale = 1
+        velocity = 1
+        dt = 1e-1
+        omega_w = np.logspace(-3, 0, 10)
+
+        ss_ct = campbell(sigma_w, length_scale, velocity)
+
+        ss_dt = campbell(sigma_w, length_scale, velocity, dt=dt)
+
+        G_ct = ss_ct.freqresp(omega_w)
+        G_dt = ss_dt.freqresp(omega_w)
+
+        np.testing.assert_array_almost_equal(G_ct[0, 0, :].real, G_dt[0, 0, :].real, decimal=3)
+
+
 if __name__ == '__main__':
     unittest.main()
+
+

@@ -210,7 +210,7 @@ class MultiLeadingEdge(LinearGust):
         self.span_loc = self.settings['span_location']
         self.n_gust = len(self.span_loc)
 
-        assert self.n_gust > 1, 'Use LeadingEdgeGust for single inputs'
+        assert self.n_gust > 1, 'Use LeadingEdge gust for single inputs'
 
     def assemble(self):
 
@@ -373,12 +373,18 @@ def campbell(sigma_w, length_scale, velocity, dt=None):
     time_scale = a * length_scale / velocity
     num_tf = np.array([91/12, 52, 60]) * sigma_w * np.sqrt(time_scale / a / np.pi)
     den_tf = np.array([935/216, 561/12, 102, 60])
-    if dt is None:
-        camp_tf = scsig.ltisys.TransferFunction(num_tf, den_tf)
+    if dt is not None:
+        num_tf, den_tf, dt = scsig.cont2discrete((num_tf, den_tf), dt, method='bilinear')
+        camp_tf = scsig.ltisys.TransferFunctionDiscrete(num_tf, den_tf, dt=dt)
     else:
-        camp_tf = scsig.ltisys.TransferFunction(num_tf, den_tf, dt=dt)
+        camp_tf = scsig.ltisys.TransferFunction(num_tf, den_tf)
+    ss_turb = libss.StateSpace.from_scipy(camp_tf.to_ss())
 
-    return libss.StateSpace.from_scipy(camp_tf.to_ss())
+    ss_turb.initialise_variables(({'name': 'noise_in', 'size': 1}), var_type='in')
+    ss_turb.initialise_variables(({'name': 'u_gust', 'size': 1}), var_type='out')
+    ss_turb.initialise_variables(({'name': 'campbell_state', 'size': ss_turb.states}), var_type='state')
+
+    return ss_turb
 
 
 if __name__ == '__main__':
@@ -414,5 +420,6 @@ if __name__ == '__main__':
                     print('Weights', weights)
                     print('Columns', columns)
                     print('\n')
+
 
     unittest.main()
