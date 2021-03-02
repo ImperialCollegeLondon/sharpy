@@ -1003,7 +1003,18 @@ class hinge_node_FoR_constant_vel(BaseLagrangeConstraint):
 
     def dynamicpost(self, lc_list, MB_beam, MB_tstep):
         MB_tstep[self.FoR_body].for_pos[0:3] = np.dot(MB_tstep[self.node_body].cga(), MB_tstep[self.node_body].pos[self.node_number,:]) + MB_tstep[self.node_body].for_pos[0:3]
-        # MB_tstep[self.FoR_body].for_vel[3:6] = self.rot_vect.copy()
+        
+        ielem, inode_in_elem = MB_beam[self.node_body].node_master_elem[self.node_number]
+        node_cga = MB_tstep[self.node_body].cga()
+        cab = ag.crv2rotation(MB_tstep[self.node_body].psi[ielem,inode_in_elem,:])
+        FoR_cga = MB_tstep[self.FoR_body].cga()
+
+        rot_vect_A = ag.multiply_matrices(FoR_cga.T,
+                                         node_cga,
+                                         cab,
+                                         self.rot_vect) 
+        
+        MB_tstep[self.FoR_body].for_vel[3:6] = rot_vect_A.copy()
         return
 
 

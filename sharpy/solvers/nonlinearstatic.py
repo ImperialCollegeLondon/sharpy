@@ -30,6 +30,9 @@ class NonLinearStatic(_BaseStructural):
 
     settings_types['initial_position'] = 'list(float)'
     settings_default['initial_position'] = np.array([0.0, 0.0, 0.0])
+    
+    settings_types['initial_velocity'] = 'list(float)'
+    settings_default['initial_velocity'] = np.array([0., 0., 0., 0., 0., 0.])
 
     settings_table = settings.SettingsTable()
     __doc__ += settings_table.generate(settings_types, settings_default, settings_description)
@@ -48,6 +51,7 @@ class NonLinearStatic(_BaseStructural):
 
     def run(self):
         self.data.structure.timestep_info[self.data.ts].for_pos[0:3] = self.settings['initial_position']
+        self.data.structure.timestep_info[self.data.ts].for_vel = self.settings['initial_velocity'].copy()
         xbeamlib.cbeam3_solv_nlnstatic(self.data.structure, self.settings, self.data.ts)
         self.extract_resultants()
         return self.data
