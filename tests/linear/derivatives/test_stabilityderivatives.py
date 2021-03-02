@@ -395,7 +395,7 @@ class TestLinearDerivatives(unittest.TestCase):
             #     np.linalg.inv(np.eye(linss_data['A'].shape[0]) - linss_data['A']).dot(linss_data['B'])) + \
             #      linss_data['D']
 
-        ss = libss.ss(A, B, C, D, dt=dt)
+        ss = libss.StateSpace(A, B, C, D, dt=dt)
         H0 = ss.freqresp([1e-5])[:, :, 0].real
 
         cga = algebra.quat2rotation(algebra.euler2quat(np.array([0, alpha0, 0])))

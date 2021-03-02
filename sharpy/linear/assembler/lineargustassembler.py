@@ -33,7 +33,7 @@ class LinearGust:
         self.tsaero0 = None  # timestep info at the linearisation point
 
         self.state_to_uext = None
-        self.gust_ss = None # :libss.ss containing the gust state-space system
+        self.gust_ss = None # :libss.StateSpace containing the gust state-space system
 
         self.settings = None
 
@@ -87,10 +87,10 @@ class LinearGust:
         where the size of :math:`\boldsymbol{u}_{gust} will depend on the chosen gust assembly scheme.
 
         Args:
-            ssuvlm (libss.ss): State space object of the linear UVLM.
+            ssuvlm (libss.StateSpace): State space object of the linear UVLM.
 
         Returns:
-            libss.ss: Coupled gust system with Linear UVLM.
+            libss.StateSpace: Coupled gust system with Linear UVLM.
         """
         ssgust = self.assemble()
         #
@@ -102,7 +102,7 @@ class LinearGust:
         c_aug[-ssgust.outputs:, :] = ssgust.C
         d_aug[:-ssgust.outputs, :-ssgust.inputs] = np.eye(ssuvlm.inputs - ssgust.outputs)
 
-        self.gust_ss = libss.ss(ssgust.A, b_aug, c_aug, d_aug, dt=ssgust.dt)
+        self.gust_ss = libss.StateSpace(ssgust.A, b_aug, c_aug, d_aug, dt=ssgust.dt)
         input_variables = ssuvlm.input_variables.copy()
         input_variables.remove('u_gust')
         self.gust_ss.input_variables = \
@@ -166,8 +166,8 @@ class LeadingEdge(LinearGust):
 
         self.state_to_uext = c_i
 
-        gustss = libss.ss(a_i, b_i, c_i, np.zeros((c_i.shape[0], b_i.shape[1])),
-                          dt=self.linuvlm.SS.dt)
+        gustss = libss.StateSpace(a_i, b_i, c_i, np.zeros((c_i.shape[0], b_i.shape[1])),
+                                  dt=self.linuvlm.SS.dt)
         gustss.input_variables = ss_interface.LinearVector(
             [ss_interface.InputVariable('u_gust', size=1, index=0)])
         gustss.state_variables = ss_interface.LinearVector(
@@ -250,8 +250,8 @@ class MultiLeadingEdge(LinearGust):
                     interpolation_weights, column_indices = spanwise_interpolation(y_vertex, span_loc, x_vertex, x_domain)
                     for i in range(len(column_indices)):
                         gust_c[i_vertex, column_indices[i]] = np.array([0, 0, interpolation_weights[i]])
-        gustss = libss.ss(gust_a, gust_b, gust_c, gust_d, dt=self.linuvlm.SS.dt)
 
+        gustss = libss.StateSpace(gust_a, gust_b, gust_c, gust_d, dt=self.linuvlm.SS.dt)
         self.state_to_uext = gust_c
 
         gustss.input_variables = ss_interface.LinearVector(
@@ -362,7 +362,7 @@ def campbell(sigma_w, length_scale, velocity, dt=None):
         dt (float (optional)): Discrete-time time step for discrete time systems
 
     Returns:
-        libss.ss: SHARPy State space representation of the Campbell approximation to the Von Karman
+        libss.StateSpace: SHARPy State space representation of the Campbell approximation to the Von Karman
           filter
 
     References:
@@ -378,7 +378,7 @@ def campbell(sigma_w, length_scale, velocity, dt=None):
     else:
         camp_tf = scsig.ltisys.TransferFunction(num_tf, den_tf, dt=dt)
 
-    return libss.ss.from_scipy(camp_tf.to_ss())
+    return libss.StateSpace.from_scipy(camp_tf.to_ss())
 
 
 if __name__ == '__main__':

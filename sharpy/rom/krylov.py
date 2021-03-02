@@ -159,10 +159,10 @@ class Krylov(rom_interface.BaseRom):
         =========================  ====================  ==========================================================
 
         Args:
-            ss (sharpy.linear.src.libss.ss): State space to reduce
+            ss (sharpy.linear.src.libss.StateSpace): State space to reduce
 
         Returns:
-            (libss.ss): Reduced state space system
+            (libss.StateSpace): Reduced state space system
         """
         self.ss = ss
 
@@ -180,7 +180,7 @@ class Krylov(rom_interface.BaseRom):
 
         Ar, Br, Cr = self.__getattribute__(self.algorithm)(self.frequency, self.r)
 
-        self.ssrom = libss.ss(Ar, Br, Cr, self.ss.D, self.ss.dt)
+        self.ssrom = libss.StateSpace(Ar, Br, Cr, self.ss.D, self.ss.dt)
         try:
             self.ssrom.input_variables = self.ss.input_variables.copy()
             self.ssrom.output_variables = self.ss.output_variables.copy()

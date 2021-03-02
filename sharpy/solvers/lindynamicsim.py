@@ -125,7 +125,7 @@ class LinDynamicSim(BaseSolver):
         ``input_generators``.
 
         Args:
-            ss (libss.ss): State Space object for which to generate input
+            ss (libss.StateSpace): State Space object for which to generate input
 
         Returns:
             np.array: Input vector.

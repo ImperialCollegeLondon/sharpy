@@ -1,5 +1,5 @@
-ss
+StateSpace
 --
 
-.. autoclass:: sharpy.linear.src.libss.ss
+.. autoclass:: sharpy.linear.src.libss.StateSpace
 	:members:

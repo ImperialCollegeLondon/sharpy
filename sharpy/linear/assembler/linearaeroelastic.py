@@ -306,7 +306,7 @@ class LinearAeroelastic(ss_interface.BaseElement):
               u_infty (float): New reference velocity
 
         Returns:
-            sharpy.linear.src.libss.ss: Updated aeroelastic state-space system
+            sharpy.linear.src.libss.StateSpace: Updated aeroelastic state-space system
 
         """
         t_ref = self.uvlm.sys.ScalingFacts['length'] / u_infty
@@ -939,4 +939,4 @@ class LinearAeroelastic(ss_interface.BaseElement):
         read_data = h5.readh5(filename).ss
         # uvlm_ss_read = read_data.linear.linear_system.uvlm.ss
         uvlm_ss_read = read_data
-        return libss.ss(uvlm_ss_read.A, uvlm_ss_read.B, uvlm_ss_read.C, uvlm_ss_read.D, dt=uvlm_ss_read.dt)
+        return libss.StateSpace(uvlm_ss_read.A, uvlm_ss_read.B, uvlm_ss_read.C, uvlm_ss_read.D, dt=uvlm_ss_read.dt)

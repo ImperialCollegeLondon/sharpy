@@ -961,7 +961,7 @@ class FlexDynamic():
                             'for projection on damped eigenvectors')
 
                     # build state-space model
-                    self.SSdisc = libss.ss(Ass, Bss, Css, Dss, dt=self.dt)
+                    self.SSdisc = libss.StateSpace(Ass, Bss, Css, Dss, dt=self.dt)
                     input_variables = LinearVector([InputVariable('Q', size=Nmodes, index=0)])
 
                     output_variables = LinearVector([OutputVariable('q', size=Nmodes, index=0),
@@ -988,7 +988,7 @@ class FlexDynamic():
                         self.dt, self.newmark_damp)
                     self.Kin = None
                     self.Kout = None
-                    self.SSdisc = libss.ss(Ass, Bss, Css, Dss, dt=self.dt)
+                    self.SSdisc = libss.StateSpace(Ass, Bss, Css, Dss, dt=self.dt)
 
                     input_variables = LinearVector([InputVariable('forces_n',
                                                                            size=self.Mstr.shape[0],
@@ -1063,7 +1063,7 @@ class FlexDynamic():
                     self.Kout = np.block([2. * U.real, (-2.) * U.imag])
 
                 # build state-space model
-                self.SScont = libss.ss(Ass, Bss, Css, Dss)
+                self.SScont = libss.StateSpace(Ass, Bss, Css, Dss)
                 input_variables = LinearVector([InputVariable('Q', size=Nmodes, index=0)])
 
                 output_variables = LinearVector([OutputVariable('q', size=Nmodes, index=0),
@@ -1096,7 +1096,7 @@ class FlexDynamic():
                 Bss[num_dof:, :] = -Minv_neg
                 self.Kin = None
                 self.Kout = None
-                self.SScont = libss.ss(Ass, Bss, Css, Dss)
+                self.SScont = libss.StateSpace(Ass, Bss, Css, Dss)
 
                 input_variables = LinearVector([InputVariable('forces_n',
                                                               size=self.Mstr.shape[0],
@@ -1348,7 +1348,7 @@ class FlexDynamic():
         tpl = scsig.cont2discrete(
             (SScont.A, SScont.B, SScont.C, SScont.D),
             dt=self.dt, method=self.discr_method)
-        self.SSdisc = libss.ss(*tpl[:-1], dt=tpl[-1])
+        self.SSdisc = libss.StateSpace(*tpl[:-1], dt=tpl[-1])
         self.dlti = True
 
 
@@ -1481,7 +1481,7 @@ def newmark_ss(Minv, C, K, dt, num_damp=1e-4):
     MinvK = np.dot(Minv, K)
     MinvC = np.dot(Minv, C)
 
-    # build ss
+    # build StateSpace
     Ass0 = np.block([[Imat - a0 * MinvK, dt * Imat - a0 * MinvC],
                      [-b0 * MinvK, Imat - b0 * MinvC]])
     Ass1 = np.block([[Imat + a1 * MinvK, a1 * MinvC],
