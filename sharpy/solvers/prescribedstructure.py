@@ -8,8 +8,16 @@ import sharpy.utils.h5utils as h5utils
 
 @solver
 class PrescribedStructure(BaseSolver):
+    r"""
+        This solver prescribes pos, pos_dot, psi, psi_dot and for_vel
+        at each time step from a .h5 file
+    """
     solver_id = 'PrescribedStructure'
     solver_classification = 'structural'
+
+    settings_types = dict()
+    settings_default = dict()
+    settings_description = dict()
 
     settings_types['input_file'] = 'str'
     settings_default['input_file'] = None
@@ -44,7 +52,9 @@ class PrescribedStructure(BaseSolver):
                                  no_ctype=True)
 
         # Load simulation data
-        fid = h5.File(self.settings['input_file'], 'r')
+        fid = h5.File(self.settings['input_file'], 'rw')
+        if not "_read_as" in list(fid.keys()):
+            fid.create_dataset('_read_as', data='list'.encode('ascii', 'ignore'))
         self.sim_info = h5utils.read_h5(fid)
         fid.close()
 
