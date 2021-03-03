@@ -456,25 +456,28 @@ class StateSpace:
             raise AttributeError('No output variables have been defined for the current state-space object. Define '
                                  'some variables prior to using the remove_outputs() method.')
 
-        self.output_variables.remove(*output_remove_list)
-
-        i = 0
-        retain_output_array = None
+        new_outputs = 0
         for variable in self.output_variables:
-            if i == 0:
-                retain_output_array = variable.rows_loc
-            else:
-                retain_output_array = np.vstack((retain_output_array, variable.rows_loc))
-            i += 1
+            if variable.name not in output_remove_list:
+                new_outputs += variable.size
 
-        if retain_output_array is not None:
+        out_gain = np.zeros((new_outputs, self.outputs))
+        worked_outputs = 0
+        for variable in self.output_variables:
+            if variable.name not in output_remove_list:
+                index = variable.rows_loc
+                out_gain[worked_outputs:worked_outputs + variable.size, index] = np.eye(variable.size)
+                worked_outputs += variable.size
+
+        if new_outputs != self.outputs:
             if type(self.B) is libsp.csc_matrix:
-                self.C = libsp.csc_matrix(self.C[retain_output_array, :])
-                self.D = libsp.csc_matrix(self.D[retain_output_array, :])
+                self.C = libsp.csc_matrix(out_gain.dot(self.C))
+                self.D = libsp.csc_matrix(out_gain.dot(self.D))
             else:
-                self.C = self.C[retain_output_array, :]
-                self.D = self.D[retain_output_array, :]
+                self.C = out_gain.dot(self.C)
+                self.D = out_gain.dot(self.D)
 
+        self.output_variables.remove(*output_remove_list)
         self.output_variables.update_locations()
 
     @classmethod

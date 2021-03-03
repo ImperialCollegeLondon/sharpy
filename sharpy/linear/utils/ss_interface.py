@@ -395,6 +395,17 @@ class LinearVector:
         else:
             return self.vector_variables[variable_index]
 
+    def __call__(self, variable_name):
+        """
+
+        Args:
+            variable_name (str): Variable name
+
+        Returns:
+            VectorVariable: Vector variable within LinearVector
+        """
+        return self.get_variable_from_name(variable_name)
+
     def copy(self):
         return copy.deepcopy(self)
 

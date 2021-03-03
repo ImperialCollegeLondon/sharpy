@@ -227,5 +227,32 @@ class Test_dlti(unittest.TestCase):
             assert variable == state_vars[ith]
 
 
+class TestStateSpaceManipulation(unittest.TestCase):
+
+    def setUp(self):
+        Ny, Nx, Nu = 6, 3, 10
+        A = np.random.rand(Nx, Nx)
+        B = np.random.rand(Nx, Nu)
+        C = np.random.rand(Ny, Nx)
+        D = np.random.rand(Ny, Nu)
+        self.ss = StateSpace(A, B, C, D)
+        self.SSsp = StateSpace(libsp.csc_matrix(A), libsp.csc_matrix(B), C, D)
+
+        self.ss.input_variables = LinearVector([InputVariable('input1', size=3, index=0),
+                                                InputVariable('input2', size=4, index=1),
+                                                InputVariable('input3', size=2, index=2),
+                                                InputVariable('input4', size=1, index=3)])
+
+        self.ss.state_variables = LinearVector([StateVariable('state1', size=Nx, index=0)])
+        self.ss.output_variables = LinearVector([OutputVariable('output1', size=1, index=0),
+                                                 OutputVariable('output2', size=3, index=1),
+                                                 OutputVariable('output3', size=2, index=2)])
+
+    def test_remove_outputs(self):
+        self.ss.remove_outputs('output1')  # size 1
+        self.ss.remove_outputs('output2')  # size 3
+
+        assert self.ss.outputs == 2, 'Number of outputs not correct'
+
 if __name__ == '__main__':
     unittest.main()
