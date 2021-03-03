@@ -52,18 +52,18 @@ class PrescribedStructure(BaseSolver):
                                  no_ctype=True)
 
         # Load simulation data
-        fid = h5.File(self.settings['input_file'], 'rw')
-        if not "_read_as" in list(fid.keys()):
-            fid.create_dataset('_read_as', data='list'.encode('ascii', 'ignore'))
-        self.sim_info = h5utils.read_h5(fid)
-        fid.close()
+        file_info = h5utils.readh5(self.settings['input_file'])
+        self.sim_info = [None]*(self.settings['num_steps'] + 1)
+        for it in range(self.settings['num_steps'] + 1):
+            self.sim_info[it] = getattr(file_info, '%0.5d' % it)
+    
 
     def run(self, structural_step=None, dt=None):
 
         if structural_step is None:
             structural_step = self.data.structure.timestep_info[-1]
         if dt is None:
-            dt = self.settings['dt'].value
+            dt = self.settings['dt']
 
         # Prescribe the information from file
         structural_step.pos = self.sim_info[self.data.ts].pos
@@ -77,7 +77,7 @@ class PrescribedStructure(BaseSolver):
 
         self.extract_resultants(structural_step)
         if self.data.ts > 0:
-            self.data.structure.integrate_position(structural_step, self.settings['dt'].value)
+            self.data.structure.integrate_position(structural_step, self.settings['dt'])
         return self.data
 
     def add_step(self):
