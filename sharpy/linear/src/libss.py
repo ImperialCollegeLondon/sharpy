@@ -65,7 +65,7 @@ import sharpy.linear.src.libsparse as libsp
 
 # ------------------------------------------------------------- Dedicated class
 
-class StateSpace():
+class StateSpace:
     """
     Wrap state-space models allocation into a single class and support both
     full and sparse matrices. The class emulates
@@ -1796,6 +1796,17 @@ def eigvals(a, dlti=False):
 def random_ss(Nx, Nu, Ny, dt=None, use_sparse=False, stable=True):
     """
     Define random system from number of states (Nx), inputs (Nu) and output (Ny).
+
+    Args:
+        Nx (int): Number of states
+        Nu (int): Number of inputs
+        Ny (int): Number of outputs
+        dt (float (optional)): Time step for discrete systems
+        use_sparse (bool): Use sparse matrices
+        stable (bool): Ensure the system is stable
+
+    Returns:
+        StateSpace: State space object
     """
 
     A = np.random.rand(Nx, Nx)
@@ -1812,15 +1823,19 @@ def random_ss(Nx, Nu, Ny, dt=None, use_sparse=False, stable=True):
     D = np.random.rand(Ny, Nu)
 
     if use_sparse:
-        SS = StateSpace(libsp.csc_matrix(A),
+        ss = StateSpace(libsp.csc_matrix(A),
                         libsp.csc_matrix(B),
                         libsp.csc_matrix(C),
                         libsp.csc_matrix(D),
                         dt=dt)
     else:
-        SS = StateSpace(A, B, C, D, dt=dt)
+        ss = StateSpace(A, B, C, D, dt=dt)
 
-    return SS
+    ss.initialise_variables(({'name': 'input_variable', 'size': Nu}), var_type='in')
+    ss.initialise_variables(({'name': 'output_variable', 'size': Ny}), var_type='out')
+    ss.initialise_variables(({'name': 'state_variable', 'size': Nx}), var_type='state')
+
+    return ss
 
 
 def compare_ss(SS1, SS2, tol=1e-10, Print=False):
