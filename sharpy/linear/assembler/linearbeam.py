@@ -273,8 +273,6 @@ class LinearBeam(BaseElement):
             self.ss.state_variables.remove('beta_bar')
             self.ss.state_variables.remove('beta')
             self.ss.state_variables.update_locations()
-            np.savetxt('./retain_state_nodal.txt', retain_state)
-
 
     def x0(self):
         x = np.concatenate((self.tsstruct0.q, self.tsstruct0.dqdt))
