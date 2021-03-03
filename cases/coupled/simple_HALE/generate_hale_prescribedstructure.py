@@ -110,7 +110,7 @@ chord_fin = 0.5
 # chordiwse panels
 m = 4
 # spanwise elements
-n_elem_multiplier = 2
+n_elem_multiplier = 4
 n_elem_main = int(4*n_elem_multiplier)
 n_elem_tail = int(2*n_elem_multiplier)
 n_elem_fin = int(2*n_elem_multiplier)
@@ -121,7 +121,8 @@ n_surfaces = 5
 physical_time = 30
 tstep_factor = 1.
 dt = 1.0/m/u_inf*tstep_factor
-n_tstep = round(physical_time/dt)
+# n_tstep = round(physical_time/dt)
+n_tstep = 4
 
 # END OF INPUT-----------------------------------------------------------------
 
@@ -672,6 +673,7 @@ def generate_solver_file():
     settings['AerogridLoader'] = {'unsteady': 'on',
                                   'aligned_grid': 'on',
                                   'mstar': int(20/tstep_factor),
+                                  # 'mstar': 1,
                                   'freestream_dir': ['1', '0', '0']}
 
     settings['NonLinearStatic'] = {'print_info': 'off',
@@ -712,7 +714,7 @@ def generate_solver_file():
 
     settings['PrescribedStructure'] = {'num_steps': n_tstep,
                                        'dt': dt,
-                                       'input_file': 'input_info.h5'}
+                                       'input_file': 'simple_HALE_prescribed_case_puma_trial_01.h5'}
 
     relative_motion = 'off'
     if not free_flight:
@@ -753,7 +755,7 @@ def generate_solver_file():
                                   'n_time_steps': n_tstep,
                                   'dt': dt,
                                   'include_unsteady_force_contribution': 'on',
-                                  'postprocessors': ['BeamLoads', 'BeamPlot', 'AerogridPlot'],
+                                  'postprocessors': ['BeamLoads', 'BeamPlot', 'AerogridPlot', 'SaveData'],
                                   'postprocessors_settings': {'BeamLoads': {'folder': route + '/output/',
                                                                             'csv_output': 'off'},
                                                               'BeamPlot': {'folder': route + '/output/',
@@ -764,6 +766,7 @@ def generate_solver_file():
                                                                   'include_rbm': 'on',
                                                                   'include_applied_forces': 'on',
                                                                   'minus_m_star': 0},
+                                                              'SaveData': {'compress_float': True,},
                                                               }}
 
     settings['BeamLoads'] = {'folder': route + '/output/',
@@ -840,4 +843,4 @@ clean_test_files()
 generate_fem()
 generate_aero_file()
 generate_solver_file()
-generate_dyn_file()
+# generate_dyn_file()
