@@ -1,5 +1,5 @@
 import numpy as np
-from scipy.signal import StateSpace, lsim
+from control import ss, forced_response
 
 import sharpy.utils.controller_interface as controller_interface
 import sharpy.utils.settings as settings
@@ -158,7 +158,7 @@ class BladePitchPid(controller_interface.BaseController):
         else:
             self.filter_pv = True
             alpha = np.exp(-self.settings['lp_cut_freq']*self.settings['dt'])
-            self.filter = StateSpace(alpha, (1-alpha), alpha, (1-alpha), self.settings['dt'])
+            self.filter = ss(alpha, 1.-alpha, alpha, 1.-alpha, self.settings['dt'])
 
     def control(self, data, controlled_state):
         r"""
@@ -183,8 +183,13 @@ class BladePitchPid(controller_interface.BaseController):
         sys_pv = self.compute_system_pv(struct_tstep, data.structure)
         
         # Apply filter
-        if self.filter_pv:
-            filtered_pv = lsim(self.filter, sys_pv)
+        if self.filter_pv and (len(self.system_pv) > 1):
+            nit = len(self.system_pv)
+            time = np.linspace(0, (nit - 1)*self.settings['dt'], nit)
+            # print(time.shape, len(self.system_pv))
+            T, filtered_pv, xout = forced_response(self.filter,
+                                        T=time,
+                                        U=self.system_pv)
         else:
             filtered_pv = self.system_pv
 
