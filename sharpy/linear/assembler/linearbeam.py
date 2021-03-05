@@ -230,7 +230,10 @@ class LinearBeam(BaseElement):
     def remove_rigid_states(self):
         if self.sys.clamped:
             return
-        num_rig_dof = 9
+        if self.settings['use_euler']:
+            num_rig_dof = 9
+        else:
+            num_rig_dof = 10
         if self.sys.modal:
 
             self.ss.A = self.ss.A[num_rig_dof:, num_rig_dof:]
