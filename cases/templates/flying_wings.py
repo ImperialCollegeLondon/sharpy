@@ -150,6 +150,7 @@ class FlyingWing():
         self.control_surface_type = np.zeros((self.n_control_surfaces), dtype=int)
         self.control_surface_deflection = np.zeros((self.n_control_surfaces,))
         self.control_surface_chord = np.array([M//2], dtype=int)
+        self.control_surface_hinge_coord = np.zeros_like(self.control_surface_type, dtype=float)
 
     def update_mass_stiff(self):
         '''This method can be substituted to produce different wing configs'''
@@ -686,6 +687,11 @@ class FlyingWing():
                 a_eff_handle = h5file.create_dataset(
                     'airfoil_efficiency', data=airfoil_efficiency)
 
+            if self.control_surface_hinge_coord is not None:
+                cs_hinge = h5file.create_dataset(
+                    'control_surface_hinge_coord', data=self.control_surface_hinge_coord
+                )
+
     def generate_fem_file(self):
 
         assert hasattr(self, 'conn_glob'), \
@@ -963,6 +969,7 @@ class GolandControlSurface(Goland):
             self.control_surface_deflection[i] = cs_deflection[i] * np.pi/180
         self.control_surface_chord = M // 2 * np.ones(self.n_control_surfaces, dtype=int)
         self.control_surface_type = np.zeros(self.n_control_surfaces, dtype=int)
+        self.control_surface_hinge_coord = np.zeros_like(self.control_surface_type, dtype=float)
         # other
         self.c_ref = 1.8288
         self.pct_flap = pct_flap
