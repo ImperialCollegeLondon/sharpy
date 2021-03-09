@@ -32,7 +32,8 @@ class LinearGust:
         self.linuvlm = None # :linuvlm
         self.tsaero0 = None  # timestep info at the linearisation point
 
-        self.state_to_uext = None
+        self.state_to_uext = None #: np.array Gust system C matrix (for unpacking into timestep_info)
+        self.uin_to_uext = None #: np.array Gust system D matrix (for unpacking into timestep_info)
         self.gust_ss = None # :libss.StateSpace containing the gust state-space system
 
         self.settings = None
@@ -110,12 +111,42 @@ class LinearGust:
         self.gust_ss.state_variables = ssgust.state_variables.copy()
         self.gust_ss.output_variables = ss_interface.LinearVector.transform(ssuvlm.input_variables,
                                                                             to_type=ss_interface.OutputVariable)
-        # np.testing.assert_array_equal(b_aug, self.gust_ss.B)
-        # np.testing.assert_array_equal(c_aug, self.gust_ss.C)
-        # np.testing.assert_array_equal(d_aug, self.gust_ss.D)
         ss = libss.series(self.gust_ss, ssuvlm)
 
         return ss
+
+    def assemble_gust_statespace(self, a_i, b_i, c_i, d_i):
+        """
+        Assembles the individual gust system in discrete time and removes the predictor term if that is specified
+        in the linear UVLM settings.
+
+        Args:
+            a_i (np.array): Gust A matrix
+            b_i (np.array): Gust B matrix
+            c_i (np.array): Gust C matrix
+            d_i (np.array): Gust D matrix
+
+        Returns:
+            libss.StateSpace: StateSpace object of the individual gust system
+        """
+        if self.linuvlm.remove_predictor:
+            a_mod, b_mod, c_mod, d_mod = libss.SSconv(a_i, None, b_i, c_i, d_i)
+            gustss = libss.StateSpace(a_mod, b_mod, c_mod, d_mod, dt=self.linuvlm.SS.dt)
+            self.state_to_uext = c_mod
+            self.uin_to_uext = d_mod
+        else:
+            gustss = libss.StateSpace(a_i, b_i, c_i, d_i,
+                                      dt=self.linuvlm.SS.dt)
+            self.state_to_uext = c_i
+            self.uin_to_uext = d_i
+        gustss.input_variables = ss_interface.LinearVector(
+            [ss_interface.InputVariable('u_gust', size=1, index=0)])
+        gustss.state_variables = ss_interface.LinearVector(
+            [ss_interface.StateVariable('gust', size=gustss.states, index=0)])
+        gustss.output_variables = ss_interface.LinearVector(
+            [ss_interface.OutputVariable('u_gust', size=gustss.outputs, index=0)])
+
+        return gustss
 
 
 @linear_gust
@@ -164,16 +195,10 @@ class LeadingEdge(LinearGust):
                     c_i[i_vertex, column_indices[0]] = np.array([0, 0, interpolation_weights[0]])
                     c_i[i_vertex, column_indices[1]] = np.array([0, 0, interpolation_weights[1]])
 
-        self.state_to_uext = c_i
+        d_i = np.zeros((c_i.shape[0], b_i.shape[1]))
 
-        gustss = libss.StateSpace(a_i, b_i, c_i, np.zeros((c_i.shape[0], b_i.shape[1])),
-                                  dt=self.linuvlm.SS.dt)
-        gustss.input_variables = ss_interface.LinearVector(
-            [ss_interface.InputVariable('u_gust', size=1, index=0)])
-        gustss.state_variables = ss_interface.LinearVector(
-            [ss_interface.StateVariable('gust', size=gustss.states, index=0)])
-        gustss.output_variables = ss_interface.LinearVector(
-            [ss_interface.OutputVariable('u_gust', size=gustss.outputs, index=0)])
+        gustss = self.assemble_gust_statespace(a_i, b_i, c_i, d_i)
+
         return gustss
 
 
@@ -251,15 +276,7 @@ class MultiLeadingEdge(LinearGust):
                     for i in range(len(column_indices)):
                         gust_c[i_vertex, column_indices[i]] = np.array([0, 0, interpolation_weights[i]])
 
-        gustss = libss.StateSpace(gust_a, gust_b, gust_c, gust_d, dt=self.linuvlm.SS.dt)
-        self.state_to_uext = gust_c
-
-        gustss.input_variables = ss_interface.LinearVector(
-            [ss_interface.InputVariable('u_gust', size=gustss.inputs, index=0)])
-        gustss.state_variables = ss_interface.LinearVector(
-            [ss_interface.StateVariable('gust', size=gustss.states, index=0)])
-        gustss.output_variables = ss_interface.LinearVector(
-            [ss_interface.OutputVariable('u_gust', size=gustss.outputs, index=0)])
+        gustss = self.assemble_gust_statespace(gust_a, gust_b, gust_c, gust_d)
         return gustss
 
 

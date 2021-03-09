@@ -319,7 +319,10 @@ def state_to_timestep(data, x, u=None, y=None):
         gust_in=True)
 
     if data.linear.linear_system.uvlm.gust_assembler:
-        u_ext_gust = data.linear.linear_system.uvlm.gust_assembler.state_to_uext.dot(gust_state_vec)
+        gust_in_loc = data.linear.ss.input_variables('u_gust').cols_loc
+        u_in_gust = u[gust_in_loc]
+        gust_assembler = data.linear.linear_system.uvlm.gust_assembler
+        u_ext_gust = gust_assembler.state_to_uext.dot(gust_state_vec) + gust_assembler.uin_to_uext.dot(u_in_gust)
     else:
         u_ext_gust = np.array([])
 
