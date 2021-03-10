@@ -5,7 +5,8 @@ from sharpy.utils.solver_interface import solver, BaseSolver, solver_from_string
 import sharpy.utils.settings as settings
 import sharpy.structure.utils.xbeamlib as xbeamlib
 import sharpy.utils.multibody as mb
-import sharpy.structure.utils.lagrangeconstraints as lagrangeconstraints
+import sharpy.utils.algebra as algebra
+# import sharpy.structure.utils.lagrangeconstraints as lagrangeconstraints
 import sharpy.utils.cout_utils as cout
 
 
@@ -43,10 +44,7 @@ class NonLinearStaticMultibody(_BaseStructural):
 
         # Total number of equations associated to the Lagrange multipliers
         self.lc_list = None
-        self.num_LM_eq = None
-
-        # self.gamma = None
-        # self.beta = None
+        # self.num_LM_eq = None
 
     def initialise(self, data, custom_settings=None):
 
@@ -58,11 +56,11 @@ class NonLinearStaticMultibody(_BaseStructural):
         settings.to_custom_types(self.settings,
                                  self.settings_types,
                                  self.settings_default,
-                                 no_ctypes=True)
+                                 no_ctype=True)
 
         # Define the number of equations
-        self.lc_list = lagrangeconstraints.initialize_constraints(self.data.structure.ini_mb_dict)
-        self.num_LM_eq = lagrangeconstraints.define_num_LM_eq(self.lc_list)
+        # self.lc_list = lagrangeconstraints.initialize_constraints(self.data.structure.ini_mb_dict)
+        # self.num_LM_eq = lagrangeconstraints.define_num_LM_eq(self.lc_list)
 
         # Define the number of dofs
         self.define_sys_size()
@@ -87,103 +85,129 @@ class NonLinearStaticMultibody(_BaseStructural):
         #     if (MBdict['body_%02d' % ibody]['FoR_movement'] == 'free'):
         #         self.sys_size += 10
 
-    def assembly_MB_eq_system(self, MB_beam, MB_tstep, Lambda, MBdict, iLoadStep):
+    def dynamic_sys_size(self, MBdict):
+
+        dyn_sys_size = self.sys_size
+
+        for ibody in range(self.data.structure.num_bodies):
+            if (MBdict['body_%02d' % ibody]['FoR_movement'] == 'free'):
+                dyn_sys_size += 10
+
+        return dyn_sys_size
+
+    def body_first_last_dof(self, MB_beam, ibody, dynamic=False):
         """
-        This function generates the matrix and vector associated to the linear system to solve a structural iteration
-        It usses a Newmark-beta scheme for time integration.
-
-        Args:
-            MB_beam (list(:class:`~sharpy.structure.models.beam.Beam`)): each entry represents a body
-            MB_tstep (list(:class:`~sharpy.utils.datastructures.StructTimeStepInfo`)): each entry represents a body
-            Lambda (np.ndarray): Lagrange Multipliers array
-            MBdict (dict): Dictionary including the multibody information
-            iLoadStep (int): load step
-
-        Returns:
-            MB_K (np.ndarray): Matrix of the multibody system
-            MB_Q (np.ndarray): Vector of the systems of equations
+        This function returns the first and the last degree of freedom position
+        in the global q vector
         """
-        self.lc_list = lagrangeconstraints.initialize_constraints(MBdict)
-        self.num_LM_eq = lagrangeconstraints.define_num_LM_eq(self.lc_list)
-
-        # MB_M = np.zeros((self.sys_size+self.num_LM_eq, self.sys_size+self.num_LM_eq), dtype=ct.c_double, order='F')
-        # MB_C = np.zeros((self.sys_size+self.num_LM_eq, self.sys_size+self.num_LM_eq), dtype=ct.c_double, order='F')
-        MB_K = np.zeros((self.sys_size+self.num_LM_eq, self.sys_size+self.num_LM_eq), dtype=ct.c_double, order='F')
-        # MB_Asys = np.zeros((self.sys_size+self.num_LM_eq, self.sys_size+self.num_LM_eq), dtype=ct.c_double, order='F')
-        MB_Q = np.zeros((self.sys_size+self.num_LM_eq,), dtype=ct.c_double, order='F')
-        #ipdb.set_trace()
         first_dof = 0
-        last_dof = 0
-        # Loop through the different bodies
-        for ibody in range(len(MB_beam)):
+        for ii_body in range(ibody):
+            first_dof += MB_beam[ii_body].num_dof.value
+            if dynamic and MB_beam[ii_body].FoR_movement == 'free':
+                first_dof += 10
+        last_dof = first_dof + MB_beam[ibody].num_dof.value
+        if dynamic and MB_beam[ibody].FoR_movement == 'free':
+                last_dof += 10
+    
+        return first_dof, last_dof    
 
-            # Initialize matrices
-            # M = None
-            # C = None
-            K = None
-            Q = None
+    # def assembly_MB_eq_system(self, MB_beam, MB_tstep, Lambda, MBdict, iLoadStep):
+    #     """
+    #     This function generates the matrix and vector associated to the linear system to solve a structural iteration
+    #     It usses a Newmark-beta scheme for time integration.
 
-            # Generate the matrices for each body
-            if MB_beam[ibody].FoR_movement == 'prescribed':
-                last_dof = first_dof + MB_beam[ibody].num_dof.value
-            elif MB_beam[ibody].FoR_movement == 'free':
-                last_dof = first_dof + MB_beam[ibody].num_dof.value
+    #     Args:
+    #         MB_beam (list(:class:`~sharpy.structure.models.beam.Beam`)): each entry represents a body
+    #         MB_tstep (list(:class:`~sharpy.utils.datastructures.StructTimeStepInfo`)): each entry represents a body
+    #         Lambda (np.ndarray): Lagrange Multipliers array
+    #         MBdict (dict): Dictionary including the multibody information
+    #         iLoadStep (int): load step
 
-            K, Q = xbeamlib.cbeam3_asbly_static(MB_beam[ibody], MB_tstep[ibody], self.settings, iLoadStep)
+    #     Returns:
+    #         MB_K (np.ndarray): Matrix of the multibody system
+    #         MB_Q (np.ndarray): Vector of the systems of equations
+    #     """
+    #     self.lc_list = lagrangeconstraints.initialize_constraints(MBdict)
+    #     self.num_LM_eq = lagrangeconstraints.define_num_LM_eq(self.lc_list)
 
-            ############### Assembly into the global matrices
-            # Flexible and RBM contribution to Asys
-            # MB_M[first_dof:last_dof, first_dof:last_dof] = M.astype(dtype=ct.c_double, copy=True, order='F')
-            # MB_C[first_dof:last_dof, first_dof:last_dof] = C.astype(dtype=ct.c_double, copy=True, order='F')
-            MB_K[first_dof:last_dof, first_dof:last_dof] = K.astype(dtype=ct.c_double, copy=True, order='F')
+    #     # MB_M = np.zeros((self.sys_size+self.num_LM_eq, self.sys_size+self.num_LM_eq), dtype=ct.c_double, order='F')
+    #     # MB_C = np.zeros((self.sys_size+self.num_LM_eq, self.sys_size+self.num_LM_eq), dtype=ct.c_double, order='F')
+    #     MB_K = np.zeros((self.sys_size+self.num_LM_eq, self.sys_size+self.num_LM_eq), dtype=ct.c_double, order='F')
+    #     # MB_Asys = np.zeros((self.sys_size+self.num_LM_eq, self.sys_size+self.num_LM_eq), dtype=ct.c_double, order='F')
+    #     MB_Q = np.zeros((self.sys_size+self.num_LM_eq,), dtype=ct.c_double, order='F')
+    #     #ipdb.set_trace()
+    #     first_dof = 0
+    #     last_dof = 0
+    #     # Loop through the different bodies
+    #     for ibody in range(len(MB_beam)):
 
-            #Q
-            MB_Q[first_dof:last_dof] = Q
+    #         # Initialize matrices
+    #         # M = None
+    #         # C = None
+    #         K = None
+    #         Q = None
 
-            first_dof = last_dof
+    #         # Generate the matrices for each body
+    #         if MB_beam[ibody].FoR_movement == 'prescribed':
+    #             last_dof = first_dof + MB_beam[ibody].num_dof.value
+    #         elif MB_beam[ibody].FoR_movement == 'free':
+    #             last_dof = first_dof + MB_beam[ibody].num_dof.value
 
-        # Define the number of equations
-        # Generate matrices associated to Lagrange multipliers
-        LM_C, LM_K, LM_Q = lagrangeconstraints.generate_lagrange_matrix(
-            self.lc_list,
-            MB_beam,
-            MB_tstep,
-            0,
-            self.num_LM_eq,
-            self.sys_size,
-            0.,
-            Lambda,
-            np.zeros_like(Lambda),
-            "static")
+    #         K, Q = xbeamlib.cbeam3_asbly_static(MB_beam[ibody], MB_tstep[ibody], self.settings, iLoadStep)
 
-        # Include the matrices associated to Lagrange Multipliers
-        # MB_C += LM_C
-        MB_K += LM_K
-        MB_Q += LM_Q
+    #         ############### Assembly into the global matrices
+    #         # Flexible and RBM contribution to Asys
+    #         # MB_M[first_dof:last_dof, first_dof:last_dof] = M.astype(dtype=ct.c_double, copy=True, order='F')
+    #         # MB_C[first_dof:last_dof, first_dof:last_dof] = C.astype(dtype=ct.c_double, copy=True, order='F')
+    #         MB_K[first_dof:last_dof, first_dof:last_dof] = K.astype(dtype=ct.c_double, copy=True, order='F')
 
-        # MB_Asys = MB_K + MB_C*self.gamma/(self.beta*dt) + MB_M/(self.beta*dt*dt)
+    #         #Q
+    #         MB_Q[first_dof:last_dof] = Q
 
-        return MB_K, MB_Q
+    #         first_dof = last_dof
 
-    def integrate_position(self, MB_beam, MB_tstep, dt):
-        pass
-        # vel = np.zeros((6,),)
-        # acc = np.zeros((6,),)
-        # for ibody in range(0, len(MB_tstep)):
-        #     # I think this is the right way to do it, but to make it match the rest I change it temporally
-        #     if True:
-        #         # MB_tstep[ibody].mb_quat[ibody,:] =  algebra.quaternion_product(MB_tstep[ibody].quat, MB_tstep[ibody].mb_quat[ibody,:])
-        #         acc[0:3] = (0.5-self.beta)*np.dot(MB_beam[ibody].timestep_info.cga(),MB_beam[ibody].timestep_info.for_acc[0:3])+self.beta*np.dot(MB_tstep[ibody].cga(),MB_tstep[ibody].for_acc[0:3])
-        #         vel[0:3] = np.dot(MB_beam[ibody].timestep_info.cga(),MB_beam[ibody].timestep_info.for_vel[0:3])
-        #         MB_tstep[ibody].for_pos[0:3] += dt*(vel[0:3] + dt*acc[0:3])
-        #     else:
-        #         MB_tstep[ibody].for_pos[0:3] += dt*np.dot(MB_tstep[ibody].cga(),MB_tstep[ibody].for_vel[0:3])
-        #
-        # # Use next line for double pendulum (fix position of the second FoR)
-        # # MB_tstep[ibody].for_pos[0:3] = np.dot(algebra.quat2rotation(MB_tstep[0].quat), MB_tstep[0].pos[-1,:])
-        # # print("tip final pos: ", np.dot(algebra.quat2rotation(MB_tstep[0].quat), MB_tstep[0].pos[-1,:]))
-        # # print("FoR final pos: ", MB_tstep[ibody].for_pos[0:3])
-        # # print("pause")
+    #     # Define the number of equations
+    #     # Generate matrices associated to Lagrange multipliers
+    #     LM_C, LM_K, LM_Q = lagrangeconstraints.generate_lagrange_matrix(
+    #         self.lc_list,
+    #         MB_beam,
+    #         MB_tstep,
+    #         0,
+    #         self.num_LM_eq,
+    #         self.sys_size,
+    #         0.,
+    #         Lambda,
+    #         np.zeros_like(Lambda),
+    #         "static")
+
+    #     # Include the matrices associated to Lagrange Multipliers
+    #     # MB_C += LM_C
+    #     MB_K += LM_K
+    #     MB_Q += LM_Q
+
+    #     # MB_Asys = MB_K + MB_C*self.gamma/(self.beta*dt) + MB_M/(self.beta*dt*dt)
+
+    #     return MB_K, MB_Q
+
+    # def integrate_position(self, MB_beam, MB_tstep, dt):
+    #     pass
+    #     # vel = np.zeros((6,),)
+    #     # acc = np.zeros((6,),)
+    #     # for ibody in range(0, len(MB_tstep)):
+    #     #     # I think this is the right way to do it, but to make it match the rest I change it temporally
+    #     #     if True:
+    #     #         # MB_tstep[ibody].mb_quat[ibody,:] =  algebra.quaternion_product(MB_tstep[ibody].quat, MB_tstep[ibody].mb_quat[ibody,:])
+    #     #         acc[0:3] = (0.5-self.beta)*np.dot(MB_beam[ibody].timestep_info.cga(),MB_beam[ibody].timestep_info.for_acc[0:3])+self.beta*np.dot(MB_tstep[ibody].cga(),MB_tstep[ibody].for_acc[0:3])
+    #     #         vel[0:3] = np.dot(MB_beam[ibody].timestep_info.cga(),MB_beam[ibody].timestep_info.for_vel[0:3])
+    #     #         MB_tstep[ibody].for_pos[0:3] += dt*(vel[0:3] + dt*acc[0:3])
+    #     #     else:
+    #     #         MB_tstep[ibody].for_pos[0:3] += dt*np.dot(MB_tstep[ibody].cga(),MB_tstep[ibody].for_vel[0:3])
+    #     #
+    #     # # Use next line for double pendulum (fix position of the second FoR)
+    #     # # MB_tstep[ibody].for_pos[0:3] = np.dot(algebra.quat2rotation(MB_tstep[0].quat), MB_tstep[0].pos[-1,:])
+    #     # # print("tip final pos: ", np.dot(algebra.quat2rotation(MB_tstep[0].quat), MB_tstep[0].pos[-1,:]))
+    #     # # print("FoR final pos: ", MB_tstep[ibody].for_pos[0:3])
+    #     # # print("pause")
 
     def extract_resultants(self, tstep=None):
         if tstep is None:
@@ -192,57 +216,57 @@ class NonLinearStaticMultibody(_BaseStructural):
         totals = steady + grav
         return totals[0:3], totals[3:6]
 
-    def update(self, tstep=None):
-        self.create_q_vector(tstep)
+#     def update(self, tstep=None):
+#         self.create_q_vector(tstep)
+# 
+#     def create_q_vector(self, tstep=None):
+#         import sharpy.structure.utils.xbeamlib as xb
+#         if tstep is None:
+#             tstep = self.data.structure.timestep_info[-1]
+# 
+#         xb.xbeam_solv_disp2state(self.data.structure, tstep)
+# 
+    # def compute_forces_constraints(self, MB_beam, MB_tstep, Lambda):
+    #     """
+    #     This function computes the forces generated at Lagrange Constraints
 
-    def create_q_vector(self, tstep=None):
-        import sharpy.structure.utils.xbeamlib as xb
-        if tstep is None:
-            tstep = self.data.structure.timestep_info[-1]
+    #     Args:
+    #         MB_beam (list(:class:`~sharpy.structure.models.beam.Beam`)): each entry represents a body
+    #         MB_tstep (list(:class:`~sharpy.utils.datastructures.StructTimeStepInfo`)): each entry represents a body
+    #         ts (int): Time step number
+    #         dt(float): Time step increment
+    #         Lambda (np.ndarray): Lagrange Multipliers array
+    #         Lambda_dot (np.ndarray): Time derivarive of ``Lambda``
 
-        xb.xbeam_solv_disp2state(self.data.structure, tstep)
+    #     Notes:
+    #         This function is underdevelopment and not fully functional
+    #     """
+    #     try:
+    #         self.lc_list[0]
+    #     except IndexError:
+    #         return
 
-    def compute_forces_constraints(self, MB_beam, MB_tstep, Lambda):
-        """
-        This function computes the forces generated at Lagrange Constraints
+    #     # TODO the output of this routine is wrong. check at some point.
+    #     LM_C, LM_K, LM_Q = lagrangeconstraints.generate_lagrange_matrix(self.lc_list, MB_beam, MB_tstep, 0, self.num_LM_eq, self.sys_size, 0., Lambda, np.zeros_like(Lambda), "static")
+    #     F = -np.dot(LM_K[:, -self.num_LM_eq:], Lambda)
 
-        Args:
-            MB_beam (list(:class:`~sharpy.structure.models.beam.Beam`)): each entry represents a body
-            MB_tstep (list(:class:`~sharpy.utils.datastructures.StructTimeStepInfo`)): each entry represents a body
-            ts (int): Time step number
-            dt(float): Time step increment
-            Lambda (np.ndarray): Lagrange Multipliers array
-            Lambda_dot (np.ndarray): Time derivarive of ``Lambda``
+    #     first_dof = 0
+    #     for ibody in range(len(MB_beam)):
+    #         # Forces associated to nodes
+    #         body_numdof = MB_beam[ibody].num_dof.value
+    #         body_freenodes = np.sum(MB_beam[ibody].vdof > -1)
+    #         last_dof = first_dof + body_numdof
+    #         MB_tstep[ibody].forces_constraints_nodes[(MB_beam[ibody].vdof > -1), :] = F[first_dof:last_dof].reshape(body_freenodes, 6, order='C')
 
-        Notes:
-            This function is underdevelopment and not fully functional
-        """
-        try:
-            self.lc_list[0]
-        except IndexError:
-            return
+    #         # Forces associated to the frame of reference
+    #         if MB_beam[ibody].FoR_movement == 'free':
+    #             # TODO: How are the forces in the quaternion equation interpreted?
+    #             MB_tstep[ibody].forces_constraints_FoR[ibody, :] = F[last_dof:last_dof+10]
+    #             # last_dof += 10
 
-        # TODO the output of this routine is wrong. check at some point.
-        LM_C, LM_K, LM_Q = lagrangeconstraints.generate_lagrange_matrix(self.lc_list, MB_beam, MB_tstep, 0, self.num_LM_eq, self.sys_size, 0., Lambda, np.zeros_like(Lambda), "static")
-        F = -np.dot(LM_K[:, -self.num_LM_eq:], Lambda)
-
-        first_dof = 0
-        for ibody in range(len(MB_beam)):
-            # Forces associated to nodes
-            body_numdof = MB_beam[ibody].num_dof.value
-            body_freenodes = np.sum(MB_beam[ibody].vdof > -1)
-            last_dof = first_dof + body_numdof
-            MB_tstep[ibody].forces_constraints_nodes[(MB_beam[ibody].vdof > -1), :] = F[first_dof:last_dof].reshape(body_freenodes, 6, order='C')
-
-            # Forces associated to the frame of reference
-            if MB_beam[ibody].FoR_movement == 'free':
-                # TODO: How are the forces in the quaternion equation interpreted?
-                MB_tstep[ibody].forces_constraints_FoR[ibody, :] = F[last_dof:last_dof+10]
-                # last_dof += 10
-
-            first_dof = last_dof
-            # print(MB_tstep[ibody].forces_constraints_nodes)
-        # TODO: right now, these forces are only used as an output, they are not read when the multibody is splitted
+    #         first_dof = last_dof
+    #         # print(MB_tstep[ibody].forces_constraints_nodes)
+    #     # TODO: right now, these forces are only used as an output, they are not read when the multibody is splitted
 
     def run(self, structural_step=None, dt=None):
         if structural_step is None:
@@ -255,32 +279,37 @@ class NonLinearStaticMultibody(_BaseStructural):
 
         if dt is None:
             dt = ct.c_float(0.)
+        
+        if self.data.structure.ini_info.in_global_AFoR:
+            self.data.structure.ini_info.whole_structure_to_local_AFoR(self.data.structure)
 
-        self.lc_list = lagrangeconstraints.initialize_constraints(MBdict)
-        self.num_LM_eq = lagrangeconstraints.define_num_LM_eq(self.lc_list)
+        if structural_step.in_global_AFoR:
+            structural_step.whole_structure_to_local_AFoR(self.data.structure)
+
+        # self.lc_list = lagrangeconstraints.initialize_constraints(MBdict)
+        # self.num_LM_eq = lagrangeconstraints.define_num_LM_eq(self.lc_list)
 
         # TODO: only working for constant forces
         MB_beam, MB_tstep = mb.split_multibody(self.data.structure, structural_step, MBdict, 0)
-        q = np.zeros((self.sys_size + self.num_LM_eq,), dtype=ct.c_double, order='F')
-        dqdt = np.zeros((self.sys_size + self.num_LM_eq,), dtype=ct.c_double, order='F')
-        dqddt = np.zeros((self.sys_size + self.num_LM_eq,), dtype=ct.c_double, order='F')
+        dyn_sys_size = self.dynamic_sys_size(MBdict)
+        q = np.zeros((dyn_sys_size,),)
+        dqdt = np.zeros((dyn_sys_size,),)
+        dqddt = np.zeros((dyn_sys_size,),)
         mb.disp_and_accel2state(MB_beam, MB_tstep, q, dqdt, dqddt)
+
         # Lagrange multipliers parameters
-        num_LM_eq = self.num_LM_eq
+        # num_LM_eq = self.num_LM_eq
         # Lambda = np.zeros((num_LM_eq,), dtype=ct.c_double, order='F')
         # Lambda_dot = np.zeros((num_LM_eq,), dtype=ct.c_double, order='F')
         # Dq_old = 0.
         # Dq = np.zeros((self.sys_size,))
 
-        first_dof = MB_beam[0].num_dof.value
         resultant_forces_BFoR = np.zeros((6))
         cga_0 = MB_tstep[0].cga()
-        ielem, inode_in_elem = MB_beam[0].node_master_elem[MB_beam[0].num_node]
+        ielem, inode_in_elem = MB_beam[0].node_master_elem[MB_beam[0].num_node - 1]
         cab = algebra.crv2rotation(MB_tstep[0].psi[ielem,inode_in_elem,:])
         for ibody in range(1, self.data.structure.num_bodies):
-            last_dof = first_dof + MB_beam[ibody].num_dof.value
-            self.solve_body(MB_beam, MB_tstep, ibody, first_dof, last_dof)
-            first_dof = last_dof
+            q, dqdt, dqddt = self.solve_body(MBdict, MB_beam, MB_tstep, q, dqdt, dqddt, ibody)
 
             forces = MB_tstep[ibody].extract_resultants(MB_beam[ibody],
                                                     force_type=['steady', 'grav'],
@@ -292,32 +321,39 @@ class NonLinearStaticMultibody(_BaseStructural):
                 resultant_forces_BFoR[3:6] += np.dot(cba_ibody, forces[iforce][3:6])
 
         # Compute first body
-        last_dof = first_dof + MB_beam[0].num_dof.value
         #Transfer resultants from other bodies
         MB_tstep[0].steady_applied_forces[-1, :] += resultant_forces_BFoR.copy()
-        self.solve_body(MB_beam, MB_tstep, ibody, first_dof, last_dof)
+        q, dqdt, dqddt = self.solve_body(MBdict, MB_beam, MB_tstep, q, dqdt, dqddt, ibody)
 
-        self.compute_forces_constraints(MB_beam, MB_tstep, Lambda)
+        # Move the secondary FoR accordingly
+        # node_pos_G = np.dot(cga_0, MB_tstep[0].pos[-1, :])
+        # for ibody in range(1, self.data.structure.num_bodies):
+        #     MB_tstep[ibody].for_pos[0:3] = node_pos_G.copy()
+        #     MB_tstep[ibody].mb_FoR_pos[ibody, 0:3] = node_pos_G.copy()
+
+        # self.compute_forces_constraints(MB_beam, MB_tstep, Lambda)
         if self.settings['gravity_on']:
             for ibody in range(len(MB_beam)):
                 xbeamlib.cbeam3_correct_gravity_forces(MB_beam[ibody], MB_tstep[ibody], self.settings)
         mb.merge_multibody(MB_tstep, MB_beam, self.data.structure, structural_step, MBdict, 0.)
 
+        if not structural_step.in_global_AFoR:
+            structural_step.whole_structure_to_global_AFoR(self.data.structure)
+        
         return self.data
 
-    def solve_body(self, MB_beam, MB_tstep, ibody, first_dof, last_dof):
+    def solve_body(self, MBdict, MB_beam, MB_tstep, q, dqdt, dqddt, ibody):
 
-        q = np.zeros((self.sys_size + self.num_LM_eq,),)
-        dqdt = np.zeros((self.sys_size + self.num_LM_eq,),)
-        dqddt = np.zeros((self.sys_size + self.num_LM_eq,),)
-
-        for iLoadStep in range(0, self.settings['num_load_steps'].value + 1):
+        print("solving ", ibody)
+        first_dof, last_dof = self.body_first_last_dof(MB_beam, ibody, dynamic=True)
+        # Dq = np.zeros((MB_beam[ibody].num_dof),)
+        for iLoadStep in range(0, self.settings['num_load_steps'] + 1):
             iter = -1
             # delta = settings.min_delta + 1.
             converged = False
             while converged == False:
                 iter += 1
-                if (iter == self.settings['max_iterations'].value - 1):
+                if (iter == self.settings['max_iterations'] - 1):
                     cout.cout_wrap(("Residual is: %f" % np.amax(np.abs(Dq))), 4)
                     cout.cout_wrap("Static equations did not converge", 4)
                     break
@@ -326,15 +362,23 @@ class NonLinearStaticMultibody(_BaseStructural):
                 # MB_K, MB_Q = self.assembly_MB_eq_system(MB_beam, MB_tstep, Lambda, MBdict, iLoadStep)
                 Dq = np.linalg.solve(K, -Q)
 
-                q[first_dof:last_dof] += Dq
+                q[first_dof:first_dof + MB_beam[ibody].num_dof.value] += Dq
+                # idof = first_dof
+                # idof_Dq = 0
+                # for inode in range(MB_beam[ibody].num_node):
+                #     if MB_beam[ibody].vdof[inode] >= 0:
+                #         q[idof:idof + 6] += Dq[idof_Dq:idof_Dq + 6]
+                #         idof_Dq += 6
+                #     idof += 6
                 mb.state2disp_and_accel(q, dqdt, dqddt, MB_beam, MB_tstep)
-
+                
                 if iter == 0:
-                    Dq_old = np.amax(np.array([1., np.amax(np.abs(Dq))]))*self.settings['min_delta'].value
+                    Dq_old = np.amax(np.array([1., np.amax(np.abs(Dq))]))*self.settings['min_delta']
                 elif (iter > 0):
                     if (np.amax(np.abs(Dq)) < Dq_old):
                         converged = True
 
+        return q, dqdt, dqddt
                 # lagrangeconstraints.postprocess(self.lc_list, MB_beam, MB_tstep, "static")
 
 
