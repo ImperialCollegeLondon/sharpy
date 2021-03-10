@@ -287,10 +287,11 @@ def state_to_timestep(data, x, u=None, y=None):
         modal = False
 
     aero_state = x[:-data.linear.linear_system.beam.ss.states]
-    beam_state = x[-data.linear.linear_system.beam.ss.states:] # after aero all the rest is beam
+    beam_state = x[-data.linear.linear_system.beam.ss.states:] # after aero all the rest is beam, but should not use
+    # in case it is in DT the state variables do not mean the same!
 
     # Beam output
-    y_beam = beam_state
+    y_beam = y[-data.linear.linear_system.beam.ss.outputs:]
 
     u_q = np.zeros(data.linear.linear_system.uvlm.ss.inputs)
     if u is not None:
@@ -307,12 +308,11 @@ def state_to_timestep(data, x, u=None, y=None):
     else:
         aero_input = Kas.dot(u_q)
 
-
-    # Also add the beam forces. I have a feeling there is a minus there as well....
     # Aero
     forces, gamma, gamma_dot, gamma_star, gust_state_vec = data.linear.linear_system.uvlm.unpack_ss_vector(
         data,
         x_n=aero_state,
+        u_aero=aero_input,
         aero_tstep=data.linear.tsaero0,
         track_body=True,
         state_variables=data.linear.linear_system.uvlm.ss.state_variables,
@@ -356,9 +356,9 @@ def state_to_timestep(data, x, u=None, y=None):
     # Reconstruct the state if modal
     if modal:
         phi = data.linear.linear_system.beam.sys.U
-        x_s = sclalg.block_diag(phi, phi).dot(beam_state)
+        x_s = sclalg.block_diag(phi, phi).dot(y_beam)
     else:
-        x_s = beam_state
+        x_s = y_beam
     y_s = beam_forces #+ phi.dot(u_struct)
     # y_s = self.data.linear.lsys['LinearBeam'].sys.U.T.dot(y_struct)
 
