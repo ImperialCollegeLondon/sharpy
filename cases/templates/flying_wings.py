@@ -152,6 +152,16 @@ class FlyingWing():
         self.control_surface_chord = np.array([M//2], dtype=int)
         self.control_surface_hinge_coord = np.zeros_like(self.control_surface_type, dtype=float)
 
+    def settings_to_config(self, settings):
+        file_name = self.route + '/' + self.case_name + '.sharpy'
+        config = configobj.ConfigObj()
+        config.filename = file_name
+        for k, v in settings.items():
+            config[k] = v
+        config.write()
+
+        return file_name
+
     def update_mass_stiff(self):
         '''This method can be substituted to produce different wing configs'''
         # uniform mass/stiffness
