@@ -379,6 +379,8 @@ class NonLinearStaticMultibody(_BaseStructural):
         # print("solving ", ibody)
         first_dof, last_dof = self.body_first_last_dof(MB_beam, ibody, dynamic=True)
         # Dq = np.zeros((MB_beam[ibody].num_dof),)
+        runtime_generated_forces = MB_tstep[ibody].runtime_generated_forces.copy()
+        MB_tstep[ibody].steady_applied_forces += runtime_generated_forces
         for iLoadStep in range(0, self.settings['num_load_steps'] + 1):
             iter = -1
             # delta = settings.min_delta + 1.
@@ -410,6 +412,7 @@ class NonLinearStaticMultibody(_BaseStructural):
                     if (np.amax(np.abs(Dq)) < Dq_old):
                         converged = True
 
+        MB_tstep[ibody].steady_applied_forces -= runtime_generated_forces
         return q, dqdt, dqddt
                 # lagrangeconstraints.postprocess(self.lc_list, MB_beam, MB_tstep, "static")
 
