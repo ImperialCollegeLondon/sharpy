@@ -568,7 +568,23 @@ class Gain:
         self._outputs = value
 
     def dot(self, elem):
-        return self.value.dot(elem)
+        """
+        Dot product of two Gains
+
+        Args:
+            elem (np.array or Gain):
+
+        Returns:
+            np.array or Gain: new matrix/Gain containing the dot product
+        """
+        if type(elem) is Gain:
+            LinearVector.check_connection(elem.output_variables, self.input_variables)
+            new_gain_value = self.value.dot(elem.value)
+            return Gain(new_gain_value,
+                        input_vars=elem.input_variables.copy(),
+                        output_vars=self.output_variables.copy())
+        else:
+            return self.value.dot(elem)
 
     def __repr__(self):
         str_out = ''

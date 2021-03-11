@@ -354,11 +354,12 @@ class LinearVector:
                 err_log += '\nUnable to connect both systems, no input variable named {:s}\n'.format(out_variable.name)
                 with_error = True
             else:
-                if not (out_variable.rows_loc == in_variable.cols_loc).all:
+                if not np.array_equal(out_variable.rows_loc, in_variable.cols_loc):
                     err_log += 'Variable {:s}Output rows not coincident with input columns for variable\n'.format(
                         out_variable.name)
-                    err_log += out_variable + '\n'
-                    err_log += in_variable + '\n'
+                    err_log += str(out_variable) + '\n'
+                    err_log += str(in_variable) + '\n'
+                    with_error = True
 
         if with_error:
             raise ValueError(err_log)

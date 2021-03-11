@@ -254,5 +254,62 @@ class TestStateSpaceManipulation(unittest.TestCase):
 
         assert self.ss.outputs == 2, 'Number of outputs not correct'
 
+
+class TestGains(unittest.TestCase):
+
+    def test_dot(self):
+        """
+        u ---> K1 ----> K2 ---->y
+        Returns:
+
+        """
+        m1 = 4
+        p1 = 3
+        k1 = np.random.rand(p1, m1)
+        gain1 = Gain(k1,
+                     input_vars=LinearVector([InputVariable('input', size=m1, index=0)]),
+                     output_vars=LinearVector([OutputVariable('output1', size=p1, index=0)]))
+
+        m2 = p1
+        p2 = 5
+        k2 = np.random.rand(p2, m2)
+        gain2 = Gain(k2,
+                     input_vars=LinearVector([InputVariable('output1', size=m2, index=0)]),
+                     output_vars=LinearVector([OutputVariable('output', size=p2, index=0)]))
+
+        gain = gain2.dot(gain1)
+        np.testing.assert_array_almost_equal(gain.value, k2.dot(k1))
+
+    @unittest.expectedFailure
+    def test_fail_connection(self):
+        """
+        This one should fail because of dimension mismatch
+
+        u ---> K1 ----> K2 ---->y
+
+        """
+        m1 = 4
+        p1 = 3
+        k1 = np.random.rand(p1, m1)
+        gain1 = Gain(k1,
+                     input_vars=LinearVector([InputVariable('input', size=m1, index=0)]),
+                     output_vars=LinearVector([OutputVariable('output1', size=p1, index=0)]))
+
+        m2 = 2
+        p2 = 5
+        k2 = np.random.rand(p2, m2)
+        gain2 = Gain(k2,
+                     input_vars=LinearVector([InputVariable('output1', size=m2, index=0)]),
+                     output_vars=LinearVector([OutputVariable('output', size=p2, index=0)]))
+
+        # check the check fails :)
+        with self.subTest('ss_interface_check'):
+            LinearVector.check_connection(gain1.output_variables, gain2.input_variables)
+
+        with self.subTest('connection_check'):
+            gain = gain2.dot(gain1)
+            np.testing.assert_array_almost_equal(gain.value, k2.dot(k1))
+
+
 if __name__ == '__main__':
     unittest.main()
