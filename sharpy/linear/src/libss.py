@@ -579,7 +579,7 @@ class Gain:
         """
         if type(elem) is Gain:
             LinearVector.check_connection(elem.output_variables, self.input_variables)
-            new_gain_value = self.value.dot(elem.value)
+            new_gain_value = libsp.dot(self.value, elem.value)
             return Gain(new_gain_value,
                         input_vars=elem.input_variables.copy(),
                         output_vars=self.output_variables.copy())

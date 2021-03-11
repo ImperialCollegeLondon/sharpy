@@ -354,7 +354,11 @@ class LinearVector:
                 err_log += '\nUnable to connect both systems, no input variable named {:s}\n'.format(out_variable.name)
                 with_error = True
             else:
-                if not np.array_equal(out_variable.rows_loc, in_variable.cols_loc):
+                if not out_variable.size == in_variable.size:
+                    err_log += 'Variable {:s} and {:s} not the same size'
+                    with_error = True
+                if not out_variable.rows_loc[-1] == in_variable.cols_loc[-1]:
+                    # checking the last index should be sufficient (and more efficient than checking the whole array)
                     err_log += 'Variable {:s}Output rows not coincident with input columns for variable\n'.format(
                         out_variable.name)
                     err_log += str(out_variable) + '\n'
