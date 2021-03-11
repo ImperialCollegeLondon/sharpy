@@ -904,7 +904,7 @@ class StructTimeStepInfo(object):
             self.psi_dot[ibody_elems,:,:] = MB_tstep[ibody].psi_dot.astype(dtype=ct.c_double, order='F', copy=True)
 
 
-    def nodal_b_for_2_a_for(self, nodal, beam, filter=np.array([True]*6), ibody=0):
+    def nodal_b_for_2_a_for(self, nodal, beam, filter=np.array([True]*6), ibody=None):
         """
         Projects a nodal variable from the local, body-attached frame (B) to the reference A frame.
 
@@ -921,7 +921,7 @@ class StructTimeStepInfo(object):
         for i_node in range(self.num_node):
             # get master elem and i_local_node
             i_master_elem, i_local_node = beam.node_master_elem[i_node, :]
-            if beam.body_number[i_master_elem] == ibody:
+            if ((ibody is None) or (beam.body_number[i_master_elem] == ibody)):
                 crv = self.psi[i_master_elem, i_local_node, :]
                 cab = algebra.crv2rotation(crv)
                 nodal_a[i_node, 0:3] = np.dot(cab, nodal[i_node, 0:3])
@@ -933,7 +933,7 @@ class StructTimeStepInfo(object):
     def nodal_type_b_for_2_a_for(self, beam,
                             force_type=['steady', 'unsteady'],
                             filter=np.array([True]*6),
-                            ibody=0):
+                            ibody=None):
         forces_output = []
         for ft in force_type:
             if ft == 'steady':
@@ -946,7 +946,7 @@ class StructTimeStepInfo(object):
         return forces_output
 
 
-    def extract_resultants(self, beam, force_type=['steady', 'unsteady', 'grav'], ibody=0):
+    def extract_resultants(self, beam, force_type=['steady', 'unsteady', 'grav'], ibody=None):
 
         forces_output = []
         for ft in force_type:
