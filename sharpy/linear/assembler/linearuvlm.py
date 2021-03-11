@@ -267,7 +267,6 @@ class LinearUVLM(ss_interface.BaseElement):
             self.sys.SS = libss.disc2cont(self.sys.SS)
 
         self.ss = self.sys.SS
-        self.C_to_vertex_forces = self.ss.C.copy()  # post-processing issue
 
         if self.settings['remove_inputs']:
             self.remove_inputs(self.settings['remove_inputs'])
@@ -281,6 +280,7 @@ class LinearUVLM(ss_interface.BaseElement):
 
         self.D_to_vertex_forces = self.ss.D.copy()  # post-processing issue
         self.B_to_vertex_forces = self.ss.B.copy()  # post-processing issue
+        self.C_to_vertex_forces = self.ss.C.copy()  # post-processing issue
 
     def remove_inputs(self, remove_list=list):
         """
@@ -374,12 +374,13 @@ class LinearUVLM(ss_interface.BaseElement):
             gust_vars_size = 0
             gust_state = []
 
-        x_n = x_n[gust_vars_size:]
         y_n = self.C_to_vertex_forces.dot(x_n) + self.D_to_vertex_forces.dot(u_aero)
 
         if self.sys.remove_predictor:
-            x_n += self.B_to_vertex_forces.dot(u_aero)
+            # x_n += self.B_to_vertex_forces.dot(u_aero)
+            pass
 
+        x_n = x_n[gust_vars_size:]
         gamma_vec, gamma_star_vec, gamma_dot_vec = self.sys.unpack_state(x_n)
 
         # Reshape output into forces[i_surface] where forces[i_surface] is a (6,M+1,N+1) matrix and circulation terms
