@@ -268,8 +268,6 @@ class LinearUVLM(ss_interface.BaseElement):
 
         self.ss = self.sys.SS
         self.C_to_vertex_forces = self.ss.C.copy()  # post-processing issue
-        self.D_to_vertex_forces = self.ss.D.copy()  # post-processing issue
-        self.B_to_vertex_forces = self.ss.B.copy()  # post-processing issue
 
         if self.settings['remove_inputs']:
             self.remove_inputs(self.settings['remove_inputs'])
@@ -280,6 +278,9 @@ class LinearUVLM(ss_interface.BaseElement):
         if self.control_surface is not None:
             self.ss = self.control_surface.apply(self.ss)
             self.gain_cs = self.control_surface.gain_cs
+
+        self.D_to_vertex_forces = self.ss.D.copy()  # post-processing issue
+        self.B_to_vertex_forces = self.ss.B.copy()  # post-processing issue
 
     def remove_inputs(self, remove_list=list):
         """
@@ -369,7 +370,6 @@ class LinearUVLM(ss_interface.BaseElement):
         try:
             gust_vars_size = state_variables.get_variable_from_name('gust').size
             gust_state = x_n[:gust_vars_size]
-            u_aero = self.gust_assembler.gust_ss.C.dot(x_n[:gust_vars_size]) + self.gust_assembler.gust_ss.D.dot(u_aero)
         except ValueError:
             gust_vars_size = 0
             gust_state = []
