@@ -16,7 +16,7 @@ class StaticEquilibriumWT(BaseSolver):
     """
     Compute equilibrium equilibrium of a multibody wind turbine
     """
-    solver_id = 'Trim'
+    solver_id = 'StaticEquilibriumWT'
     solver_classification = 'Flight dynamics'
 
     settings_types = dict()
@@ -185,8 +185,8 @@ def solver_wrapper(x, x_info, solver_data, i_dim=-1):
 
     for ibody in range(1, solver_data.data.structure.num_bodies):
         tstep.mb_FoR_pos[ibody, :] += tstep.for_pos
-        tstep.mb_quat[ibody, :] = algebra.quaternion_product(tstep.mb_quat[ibody, :],
-                                                             tstep.mb_quat[0, :])
+        tstep.mb_quat[ibody, :] = algebra.quaternion_product(tstep.mb_quat[0, :],
+                                                             tstep.mb_quat[ibody, :])
 
     # run the solver
     solver_data.solver.run()
