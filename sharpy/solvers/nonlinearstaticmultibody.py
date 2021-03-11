@@ -58,6 +58,8 @@ class NonLinearStaticMultibody(_BaseStructural):
                                  self.settings_default,
                                  no_ctype=True)
 
+        if self.settings['num_load_steps'] == 0:
+            cout.cout_wrap("WARNING: num_load_steps=0 will not apply forces to the structure", 3)
         # Define the number of equations
         # self.lc_list = lagrangeconstraints.initialize_constraints(self.data.structure.ini_mb_dict)
         # self.num_LM_eq = lagrangeconstraints.define_num_LM_eq(self.lc_list)
@@ -216,7 +218,8 @@ class NonLinearStaticMultibody(_BaseStructural):
         totals = steady + grav
         return totals[0:3], totals[3:6]
 
-#     def update(self, tstep=None):
+    def update(self, tstep=None):
+          pass
 #         self.create_q_vector(tstep)
 # 
 #     def create_q_vector(self, tstep=None):
@@ -318,25 +321,46 @@ class NonLinearStaticMultibody(_BaseStructural):
             cba_ibody = algebra.multiply_matrices(cab.T, cga_0.T, cga_ibody)
             for iforce in range(2): # steady and gravity
                 resultant_forces_BFoR[0:3] += np.dot(cba_ibody, forces[iforce][0:3])
-                resultant_forces_BFoR[3:6] += np.dot(cba_ibody, forces[iforce][3:6])
+                resultant_forces_BFoR[4:6] += np.dot(cba_ibody, forces[iforce][3:6])[1:] # Do not transfer Mx
+    
 
         # Compute first body
         #Transfer resultants from other bodies
         MB_tstep[0].steady_applied_forces[-1, :] += resultant_forces_BFoR.copy()
-        q, dqdt, dqddt = self.solve_body(MBdict, MB_beam, MB_tstep, q, dqdt, dqddt, ibody)
-
+        q, dqdt, dqddt = self.solve_body(MBdict, MB_beam, MB_tstep, q, dqdt, dqddt, 0)
+        
         # Move the secondary FoR accordingly
-        # node_pos_G = np.dot(cga_0, MB_tstep[0].pos[-1, :])
-        # for ibody in range(1, self.data.structure.num_bodies):
-        #     MB_tstep[ibody].for_pos[0:3] = node_pos_G.copy()
-        #     MB_tstep[ibody].mb_FoR_pos[ibody, 0:3] = node_pos_G.copy()
+        node_pos_G = np.dot(cga_0, MB_tstep[0].pos[-1, :])
+        for ibody in range(1, self.data.structure.num_bodies):
+            MB_tstep[ibody].for_pos[0:3] = node_pos_G.copy()
+            # MB_tstep[ibody].mb_FoR_pos[ibody, 0:3] = node_pos_G.copy()
+        
+        # Rotate the secondary FoR accordingly
+        ielem, inode_in_elem = MB_beam[0].node_master_elem[MB_beam[0].num_node - 1]
+        cga_ini = MB_beam[0].ini_info.cga()
+        cab_ini = algebra.crv2rotation(MB_beam[0].ini_info.psi[ielem,inode_in_elem,:])
+        orig_vect = algebra.multiply_matrices(cga_ini, cab_ini, np.array([1., 0., 0.]))
 
+        cga = MB_tstep[0].cga()
+        cab = algebra.crv2rotation(MB_tstep[0].psi[ielem,inode_in_elem,:])
+        rot_vect = algebra.multiply_matrices(cga, cab, np.array([1., 0., 0.]))
+
+        rot_dir = algebra.unit_vector(algebra.cross3(orig_vect, rot_vect))
+        rot_module = np.arccos(np.dot(orig_vect, rot_vect)/np.linalg.norm(orig_vect)/np.linalg.norm(rot_vect))    
+
+        quat = algebra.omegadt2quat(rot_module*rot_dir)
+        for ibody in range(1, self.data.structure.num_bodies):
+            quat_body = algebra.quaternion_product(quat, MB_tstep[ibody].quat)
+            MB_tstep[ibody].quat = quat_body.copy()
+            # MB_tstep[ibody].mb_quat[ibody, :] = quat_body.copy()
+        
         # self.compute_forces_constraints(MB_beam, MB_tstep, Lambda)
         if self.settings['gravity_on']:
             for ibody in range(len(MB_beam)):
                 xbeamlib.cbeam3_correct_gravity_forces(MB_beam[ibody], MB_tstep[ibody], self.settings)
         mb.merge_multibody(MB_tstep, MB_beam, self.data.structure, structural_step, MBdict, 0.)
-
+        # print(structural_step.steady_applied_forces[48, :])
+        
         if not structural_step.in_global_AFoR:
             structural_step.whole_structure_to_global_AFoR(self.data.structure)
         
@@ -344,7 +368,7 @@ class NonLinearStaticMultibody(_BaseStructural):
 
     def solve_body(self, MBdict, MB_beam, MB_tstep, q, dqdt, dqddt, ibody):
 
-        print("solving ", ibody)
+        # print("solving ", ibody)
         first_dof, last_dof = self.body_first_last_dof(MB_beam, ibody, dynamic=True)
         # Dq = np.zeros((MB_beam[ibody].num_dof),)
         for iLoadStep in range(0, self.settings['num_load_steps'] + 1):
@@ -361,7 +385,7 @@ class NonLinearStaticMultibody(_BaseStructural):
                 K, Q = xbeamlib.cbeam3_asbly_static(MB_beam[ibody], MB_tstep[ibody], self.settings, iLoadStep)
                 # MB_K, MB_Q = self.assembly_MB_eq_system(MB_beam, MB_tstep, Lambda, MBdict, iLoadStep)
                 Dq = np.linalg.solve(K, -Q)
-
+                
                 q[first_dof:first_dof + MB_beam[ibody].num_dof.value] += Dq
                 # idof = first_dof
                 # idof_Dq = 0
@@ -371,7 +395,7 @@ class NonLinearStaticMultibody(_BaseStructural):
                 #         idof_Dq += 6
                 #     idof += 6
                 mb.state2disp_and_accel(q, dqdt, dqddt, MB_beam, MB_tstep)
-                
+        
                 if iter == 0:
                     Dq_old = np.amax(np.array([1., np.amax(np.abs(Dq))]))*self.settings['min_delta']
                 elif (iter > 0):
