@@ -369,6 +369,9 @@ class NonLinearStaticMultibody(_BaseStructural):
         mb.merge_multibody(MB_tstep, MB_beam, self.data.structure, structural_step, MBdict, 0.)
         # print(structural_step.steady_applied_forces[48, :])
         
+        if not self.data.structure.ini_info.in_global_AFoR:
+            self.data.structure.ini_info.whole_structure_to_global_AFoR(self.data.structure)
+        
         if not structural_step.in_global_AFoR:
             structural_step.whole_structure_to_global_AFoR(self.data.structure)
         

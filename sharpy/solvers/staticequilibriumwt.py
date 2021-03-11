@@ -105,9 +105,10 @@ class StaticEquilibriumWT(BaseSolver):
         self.initial_state[self.x_info['i_euler_z']] = self.settings['initial_orientation'][2]
 
     def increase_ts(self):
-        self.data.ts += 1
-        self.structural_solver.next_step()
-        self.aero_solver.next_step()
+        self.solver.increase_ts()
+        # self.data.ts += 1
+        # self.structural_solver.next_step()
+        # self.aero_solver.next_step()
 
     def cleanup_timestep_info(self):
         if max(len(self.data.aero.timestep_info), len(self.data.structure.timestep_info)) > 1:
@@ -172,8 +173,13 @@ def solver_wrapper(x, x_info, solver_data, i_dim=-1):
     euler = np.array([x[x_info['i_euler_x']],
                       x[x_info['i_euler_y']],
                       x[x_info['i_euler_z']],])
-    # change input data
+
+    # Initialise with the initial information     
     solver_data.data.structure.timestep_info[solver_data.data.ts] = solver_data.data.structure.ini_info.copy()
+    # solver_data.data.aero.timestep_info[solver_data.data.ts] = solver_data.data.aero.ini_info.copy()
+    
+    print(solver_data.data.ts)
+    # Apply the parameters of the optimisation to the new time step
     tstep = solver_data.data.structure.timestep_info[solver_data.data.ts]
     aero_tstep = solver_data.data.aero.timestep_info[solver_data.data.ts]
     tstep.for_pos[0:3] = for_pos.copy()
@@ -207,14 +213,16 @@ def solver_wrapper(x, x_info, solver_data, i_dim=-1):
     # return resultant forces and moments
     # return np.linalg.norm(totals)
     if i_dim >= 0:
-        return totals[i_dim]
+        opt_error = totals[i_dim]
     elif i_dim == -1:
         # return [np.sum(totals[0:3]**2), np.sum(totals[4:6]**2)]
-        return totals
+        opt_error = totals
     elif i_dim == -2:
         # coeffs = np.array([1.0, 1.0, 1.0, 2, 2, 2])
         coeffs = np.ones((6))
         # print('return = ', np.dot(coeffs*totals, coeffs*totals))
         if solver_data.settings['print_info']:
             cout.cout_wrap(' val = ' + str(np.dot(coeffs*totals, coeffs*totals)), 1)
-        return np.dot(coeffs*totals, coeffs*totals)
+        opt_error = np.dot(coeffs*totals, coeffs*totals)
+    
+    return opt_error
