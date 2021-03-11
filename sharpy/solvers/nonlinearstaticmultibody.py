@@ -319,41 +319,49 @@ class NonLinearStaticMultibody(_BaseStructural):
                                                     ibody=ibody)
             cga_ibody = MB_tstep[ibody].cga()
             cba_ibody = algebra.multiply_matrices(cab.T, cga_0.T, cga_ibody)
-            for iforce in range(2): # steady and gravity
-                resultant_forces_BFoR[0:3] += np.dot(cba_ibody, forces[iforce][0:3])
-                resultant_forces_BFoR[4:6] += np.dot(cba_ibody, forces[iforce][3:6])[1:] # Do not transfer Mx
-    
+
+            # Steady forces
+            resultant_forces_BFoR[0:3] += np.dot(cba_ibody, forces[0][0:3])
+            resultant_forces_BFoR[4:6] += np.dot(cba_ibody, forces[0][3:6])[1:] # Do not transfer Mx
+
+            # Gravity forces
+            if self.settings['gravity_on']:
+                resultant_forces_BFoR[0:3] += np.dot(cba_ibody, forces[1][0:3])
+                resultant_forces_BFoR[4:6] += np.dot(cba_ibody, forces[1][3:6])[1:] # Do not transfer Mx
 
         # Compute first body
         #Transfer resultants from other bodies
         MB_tstep[0].steady_applied_forces[-1, :] += resultant_forces_BFoR.copy()
         q, dqdt, dqddt = self.solve_body(MBdict, MB_beam, MB_tstep, q, dqdt, dqddt, 0)
+        MB_tstep[0].steady_applied_forces[-1, :] -= resultant_forces_BFoR.copy()
         
         # Move the secondary FoR accordingly
-        node_pos_G = np.dot(cga_0, MB_tstep[0].pos[-1, :])
+        node_pos_G = np.dot(cga_0, MB_tstep[0].pos[-1, :]) + MB_tstep[0].for_pos[0:3]
         for ibody in range(1, self.data.structure.num_bodies):
             MB_tstep[ibody].for_pos[0:3] = node_pos_G.copy()
             # MB_tstep[ibody].mb_FoR_pos[ibody, 0:3] = node_pos_G.copy()
         
         # Rotate the secondary FoR accordingly
-        ielem, inode_in_elem = MB_beam[0].node_master_elem[MB_beam[0].num_node - 1]
-        cga_ini = MB_beam[0].ini_info.cga()
-        cab_ini = algebra.crv2rotation(MB_beam[0].ini_info.psi[ielem,inode_in_elem,:])
-        orig_vect = algebra.multiply_matrices(cga_ini, cab_ini, np.array([1., 0., 0.]))
+        # ielem, inode_in_elem = MB_beam[0].node_master_elem[MB_beam[0].num_node - 1]
+        # cga_ini = MB_beam[0].ini_info.cga()
+        # cab_ini = algebra.crv2rotation(MB_beam[0].ini_info.psi[ielem,inode_in_elem,:])
+        orig_vect = algebra.multiply_matrices(cga_0, cab, np.array([1., 0., 0.]))
 
-        cga = MB_tstep[0].cga()
-        cab = algebra.crv2rotation(MB_tstep[0].psi[ielem,inode_in_elem,:])
-        rot_vect = algebra.multiply_matrices(cga, cab, np.array([1., 0., 0.]))
+        cga_end = MB_tstep[0].cga()
+        cab_end = algebra.crv2rotation(MB_tstep[0].psi[ielem,inode_in_elem,:])
+        rot_vect = algebra.multiply_matrices(cga_end, cab_end, np.array([1., 0., 0.]))
 
         rot_dir = algebra.unit_vector(algebra.cross3(orig_vect, rot_vect))
         rot_module = np.arccos(np.dot(orig_vect, rot_vect)/np.linalg.norm(orig_vect)/np.linalg.norm(rot_vect))    
+        if rot_module < 0.:
+            rot_module = np.pi + rot_module
 
         quat = algebra.omegadt2quat(rot_module*rot_dir)
         for ibody in range(1, self.data.structure.num_bodies):
             quat_body = algebra.quaternion_product(quat, MB_tstep[ibody].quat)
             MB_tstep[ibody].quat = quat_body.copy()
             # MB_tstep[ibody].mb_quat[ibody, :] = quat_body.copy()
-        
+       
         # self.compute_forces_constraints(MB_beam, MB_tstep, Lambda)
         if self.settings['gravity_on']:
             for ibody in range(len(MB_beam)):
