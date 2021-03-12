@@ -101,7 +101,8 @@ class StaticCoupled(BaseSolver):
         settings.to_custom_types(self.settings,
                                  self.settings_types,
                                  self.settings_default,
-                                 options=self.settings_options)
+                                 options=self.settings_options,
+                                 no_ctype=True)
 
         self.print_info = self.settings['print_info']
 
@@ -151,13 +152,13 @@ class StaticCoupled(BaseSolver):
         self.data.ts = 0
 
     def run(self):
-        for i_step in range(self.settings['n_load_steps'].value + 1):
-            if (i_step == self.settings['n_load_steps'].value and
-                    self.settings['n_load_steps'].value > 0):
+        for i_step in range(self.settings['n_load_steps'] + 1):
+            if (i_step == self.settings['n_load_steps'] and
+                    self.settings['n_load_steps'] > 0):
                 break
             # load step coefficient
-            if not self.settings['n_load_steps'].value == 0:
-                load_step_multiplier = (i_step + 1.0)/self.settings['n_load_steps'].value
+            if not self.settings['n_load_steps'] == 0:
+                load_step_multiplier = (i_step + 1.0)/self.settings['n_load_steps']
             else:
                 load_step_multiplier = 1.0
 
@@ -165,7 +166,7 @@ class StaticCoupled(BaseSolver):
             if i_step > 0:
                 self.increase_ts()
 
-            for i_iter in range(self.settings['max_iter'].value):
+            for i_iter in range(self.settings['max_iter']):
                 # run aero
                 self.data = self.aero_solver.run()
 
@@ -186,7 +187,7 @@ class StaticCoupled(BaseSolver):
                                         self.data.aero.timestep_info[self.data.ts],
                                         self.data.structure.timestep_info[self.data.ts],
                                         struct_forces,
-                                        rho=self.aero_solver.settings['rho'].value)
+                                        rho=self.aero_solver.settings['rho'])
 
                 # Add external forces
                 if self.with_runtime_generators:
@@ -202,23 +203,23 @@ class StaticCoupled(BaseSolver):
 
                     struct_forces += self.data.structure.timestep_info[self.data.ts].runtime_generated_forces
 
-                if not self.settings['relaxation_factor'].value == 0.:
+                if not self.settings['relaxation_factor'] == 0.:
                     if i_iter == 0:
                         self.previous_force = struct_forces.copy()
 
                     temp = struct_forces.copy()
-                    struct_forces = ((1.0 - self.settings['relaxation_factor'].value)*struct_forces +
-                                     self.settings['relaxation_factor'].value*self.previous_force)
+                    struct_forces = ((1.0 - self.settings['relaxation_factor'])*struct_forces +
+                                     self.settings['relaxation_factor']*self.previous_force)
                     self.previous_force = temp
 
                 # copy force in beam
-                old_g = self.structural_solver.settings['gravity'].value
+                old_g = self.structural_solver.settings['gravity']
                 self.structural_solver.settings['gravity'] = old_g*load_step_multiplier
                 temp1 = load_step_multiplier*(struct_forces + self.data.structure.ini_info.steady_applied_forces)
                 self.data.structure.timestep_info[self.data.ts].steady_applied_forces[:] = temp1
                 # run beam
                 self.data = self.structural_solver.run()
-                self.structural_solver.settings['gravity'] = ct.c_double(old_g)
+                self.structural_solver.settings['gravity'] = old_g
                 (self.data.structure.timestep_info[self.data.ts].total_forces[0:3],
                  self.data.structure.timestep_info[self.data.ts].total_forces[3:6]) = (
                         self.extract_resultants(self.data.structure.timestep_info[self.data.ts]))
@@ -236,7 +237,7 @@ class StaticCoupled(BaseSolver):
         return self.data
 
     def convergence(self, i_iter, i_step):
-        if i_iter == self.settings['max_iter'].value - 1:
+        if i_iter == self.settings['max_iter'] - 1:
             cout.cout_wrap('StaticCoupled did not converge!', 0)
             # quit(-1)
 
@@ -279,7 +280,7 @@ class StaticCoupled(BaseSolver):
                     ])
 
         if return_value is None:
-            if np.abs(self.current_residual - self.previous_residual)/self.initial_residual < self.settings['tolerance'].value:
+            if np.abs(self.current_residual - self.previous_residual)/self.initial_residual < self.settings['tolerance']:
                 return_value = True
             else:
                 self.previous_residual = self.current_residual

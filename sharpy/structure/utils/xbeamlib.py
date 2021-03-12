@@ -1136,7 +1136,7 @@ def cbeam3_asbly_static(beam, tstep, settings, iLoadStep):
     xbopts.PrintInfo = ct.c_bool(settings['print_info'])
     # xbopts.Solution = ct.c_int(312)
     # xbopts.MaxIterations = settings['max_iterations']
-    xbopts.NumLoadSteps = ct.c_int(settings['num_load_steps'].value + 1)
+    xbopts.NumLoadSteps = ct.c_int(settings['num_load_steps'] + 1)
     # xbopts.NumGauss = ct.c_int(0)
     # xbopts.DeltaCurved = settings['delta_curved']
     # xbopts.MinDelta = settings['min_delta']
