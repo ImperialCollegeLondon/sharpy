@@ -135,6 +135,9 @@ class StaticUvlm(BaseSolver):
         self.velocity_generator = velocity_generator_type()
         self.velocity_generator.initialise(self.settings['velocity_field_input'])
 
+    def add_step(self):
+        self.data.aero.add_timestep()
+
     def update_grid(self, beam):
         self.data.aero.generate_zeta(beam,
                                      self.data.aero.aero_settings,
