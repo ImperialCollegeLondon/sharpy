@@ -47,7 +47,7 @@ class NonLinearStatic(_BaseStructural):
             self.settings = data.settings[self.solver_id]
         else:
             self.settings = custom_settings
-        settings.to_custom_types(self.settings, self.settings_types, self.settings_default)
+        settings.to_custom_types(self.settings, self.settings_types, self.settings_default, no_ctype=True)
 
     def run(self):
         self.data.structure.timestep_info[self.data.ts].for_pos[0:3] = self.settings['initial_position']
