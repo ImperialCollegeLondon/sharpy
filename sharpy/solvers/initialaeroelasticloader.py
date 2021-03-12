@@ -61,7 +61,7 @@ class InitialAeroelasticLoader(BaseSolver):
                       'steady_applied_forces',
                       'unsteady_applied_forces']
         for att in attributes:
-            getattr(structural_step, att) = getattr(self.file_info.structure, att)
+            getattr(structural_step, att)[...] = getattr(self.file_info.structure, att)
         # structural_step.pos_dot = self.file_info.structure.pos_dot
         # structural_step.pos_ddot = self.file_info.structure.pos_ddot
         # structural_step.psi = self.file_info.structure.psi
@@ -83,6 +83,7 @@ class InitialAeroelasticLoader(BaseSolver):
                       'dynamic_forces', 'forces',]
                       # 'dist_to_orig', 'gamma_dot', 'zeta_dot',
         for att in attributes:
-            getattr(aero_step, att) = getattr(self.file_info.aero, att)
+            for isurf in range(aero_step.n_surf):
+                getattr(aero_step, att)[isurf][...] = getattr(self.file_info.aero, att)[isurf]
 
         return self.data
