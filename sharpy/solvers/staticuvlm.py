@@ -125,7 +125,7 @@ class StaticUvlm(BaseSolver):
             self.settings = data.settings[self.solver_id]
         else:
             self.settings = custom_settings
-        settings.to_custom_types(self.settings, self.settings_types, self.settings_default)
+        settings.to_custom_types(self.settings, self.settings_types, self.settings_default, no_ctype=True)
 
         self.update_step()
 
@@ -135,12 +135,42 @@ class StaticUvlm(BaseSolver):
         self.velocity_generator = velocity_generator_type()
         self.velocity_generator.initialise(self.settings['velocity_field_input'])
 
-    def run(self):
-        if not self.data.aero.timestep_info[self.data.ts].zeta:
+    def update_grid(self, beam):
+        self.data.aero.generate_zeta(beam,
+                                     self.data.aero.aero_settings,
+                                     -1,
+                                     beam_ts=-1)
+
+    def update_custom_grid(self, structure_tstep, aero_tstep):
+        self.data.aero.generate_zeta_timestep_info(structure_tstep,
+                                                   aero_tstep,
+                                                   self.data.structure,
+                                                   self.data.aero.aero_settings,
+                                                   dt=self.settings['rollup_dt'])
+
+    def run(self,
+            aero_tstep=None,
+            structure_tstep=None,
+            convect_wake=False,
+            dt=None,
+            t=None,
+            unsteady_contribution=False):
+
+        if aero_tstep is None:
+            aero_tstep = self.data.aero.timestep_info[self.data.ts]
+        if structure_tstep is None:
+            structure_tstep = self.data.structure.timestep_info[self.data.ts]
+        if dt is None:
+            dt = self.settings['rollup_dt']
+        if t is None:
+            t = self.data.ts*dt
+        unsteady_contribution = False
+        convect_wake = False
+
+        if not aero_tstep.zeta:
             return self.data
 
         # generate the wake because the solid shape might change
-        aero_tstep = self.data.aero.timestep_info[self.data.ts]
         self.data.aero.wake_shape_generator.generate({'zeta': aero_tstep.zeta,
                                             'zeta_star': aero_tstep.zeta_star,
                                             'gamma': aero_tstep.gamma,
@@ -148,12 +178,12 @@ class StaticUvlm(BaseSolver):
                                             'dist_to_orig': aero_tstep.dist_to_orig})
 
         # generate uext
-        self.velocity_generator.generate({'zeta': self.data.aero.timestep_info[self.data.ts].zeta,
+        self.velocity_generator.generate({'zeta': aero_tstep.zeta,
                                           'override': True,
-                                          'for_pos': self.data.structure.timestep_info[self.data.ts].for_pos[0:3]},
-                                         self.data.aero.timestep_info[self.data.ts].u_ext)
+                                          'for_pos': structure_tstep.for_pos[0:3]},
+                                          aero_tstep.u_ext)
         # grid orientation
-        uvlmlib.vlm_solver(self.data.aero.timestep_info[self.data.ts],
+        uvlmlib.vlm_solver(aero_tstep,
                            self.settings)
 
         return self.data
