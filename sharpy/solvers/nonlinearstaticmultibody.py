@@ -55,10 +55,10 @@ class NonLinearStaticMultibody(_BaseStructural):
 
         # load info from dyn dictionary
         # self.data.structure.add_unsteady_information(
-        #     self.data.structure.dyn_dict, self.settings['num_steps'].value)
+        #     self.data.structure.dyn_dict, self.settings['num_steps'])
         #
         # # Define Newmark constants
-        # self.gamma = 0.5 + self.settings['newmark_damp'].value
+        # self.gamma = 0.5 + self.settings['newmark_damp']
         # self.beta = 0.25*(self.gamma + 0.5)*(self.gamma + 0.5)
 
         # Define the number of equations

@@ -301,7 +301,7 @@ class WriteVariablesTime(BaseSolver):
                 uext = [np.zeros((3, self.n_vel_field_points, 1))]
                 self.velocity_generator.generate({'zeta': self.vel_field_points,
                                     'for_pos': tstep.for_pos[0:3],
-                                    't': self.data.ts*self.caller.settings['dt'].value,
+                                    't': self.data.ts*self.caller.settings['dt'],
                                     'is_wake': False,
                                     'override': True},
                                     uext)

@@ -81,7 +81,7 @@ class LinAeroEla():
         ## -------
 
         ### extract aeroelastic info
-        self.dt = settings_here['dt'].value
+        self.dt = settings_here['dt']
 
         ### reference to timestep_info
         # aero
@@ -93,7 +93,7 @@ class LinAeroEla():
 
         # --- backward compatibility
         try:
-            rho = settings_here['density'].value
+            rho = settings_here['density']
         except KeyError:
             warnings.warn(
                 "Key 'density' not found in 'LinearUvlm' solver settings. '\
@@ -127,22 +127,22 @@ class LinAeroEla():
         if uvlm_block:
             self.linuvlm = linuvlm.DynamicBlock(
                 self.tsaero,
-                dt=settings_here['dt'].value,
+                dt=settings_here['dt'],
                 dynamic_settings=settings_here,
-                RemovePredictor=settings_here['remove_predictor'].value,
-                UseSparse=settings_here['use_sparse'].value,
-                integr_order=settings_here['integr_order'].value,
+                RemovePredictor=settings_here['remove_predictor'],
+                UseSparse=settings_here['use_sparse'],
+                integr_order=settings_here['integr_order'],
                 ScalingDict=settings_here['ScalingDict'],
                 for_vel=np.hstack((cga.dot(self.tsstr.for_vel[:3]),
                                    cga.dot(self.tsstr.for_vel[3:]))))
         else:
             self.linuvlm = linuvlm.Dynamic(
                 self.tsaero,
-                dt=settings_here['dt'].value,
+                dt=settings_here['dt'],
                 dynamic_settings=settings_here,
-                RemovePredictor=settings_here['remove_predictor'].value,
-                UseSparse=settings_here['use_sparse'].value,
-                integr_order=settings_here['integr_order'].value,
+                RemovePredictor=settings_here['remove_predictor'],
+                UseSparse=settings_here['use_sparse'],
+                integr_order=settings_here['integr_order'],
                 ScalingDict=settings_here['ScalingDict'],
                 for_vel=np.hstack((cga.dot(self.tsstr.for_vel[:3]),
                                    cga.dot(self.tsstr.for_vel[3:]))))

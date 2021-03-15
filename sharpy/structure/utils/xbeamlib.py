@@ -171,8 +171,8 @@ def cbeam3_solv_nlndyn(beam, settings):
     n_stiff = ct.c_int(beam.n_stiff)
 
 
-    dt = settings['dt'].value
-    n_tsteps = settings['num_steps'].value
+    dt = settings['dt']
+    n_tsteps = settings['num_steps']
     time = np.zeros((n_tsteps,), dtype=ct.c_double, order='F')
     for i in range(n_tsteps):
         time[i] = i*dt
@@ -342,8 +342,8 @@ def xbeam_solv_couplednlndyn(beam, settings):
     n_mass = ct.c_int(beam.n_mass)
     n_stiff = ct.c_int(beam.n_stiff)
 
-    dt = settings['dt'].value
-    n_tsteps = settings['num_steps'].value
+    dt = settings['dt']
+    n_tsteps = settings['num_steps']
     time = np.zeros((n_tsteps,), dtype=ct.c_double, order='F')
     for i in range(n_tsteps):
         time[i] = i*dt
@@ -1134,7 +1134,7 @@ def cbeam3_asbly_static(beam, tstep, settings, iLoadStep):
     xbopts.PrintInfo = ct.c_bool(settings['print_info'])
     # xbopts.Solution = ct.c_int(312)
     # xbopts.MaxIterations = settings['max_iterations']
-    xbopts.NumLoadSteps = ct.c_int(settings['num_load_steps'].value + 1)
+    xbopts.NumLoadSteps = ct.c_int(settings['num_load_steps'] + 1)
     # xbopts.NumGauss = ct.c_int(0)
     # xbopts.DeltaCurved = settings['delta_curved']
     # xbopts.MinDelta = settings['min_delta']

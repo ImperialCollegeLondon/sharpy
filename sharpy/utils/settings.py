@@ -33,7 +33,7 @@ def cast(k, v, pytype, ctype, default):
     return val
 
 
-def to_custom_types(dictionary, types, default, options=dict(), no_ctype=False):
+def to_custom_types(dictionary, types, default, options=dict(), no_ctype=True):
     for k, v in types.items():
         if v == 'int':
             if no_ctype:

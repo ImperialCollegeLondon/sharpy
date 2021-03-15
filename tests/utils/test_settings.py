@@ -54,13 +54,13 @@ class TestSettings(unittest.TestCase):
         # assigned values test
         result = settings.to_custom_types(in_dict, types_dict, default_dict)
         # integer variable
-        self.assertEqual(in_dict['integer_var'].value, 1234, 'Integer test for assigned values not passed')
+        self.assertEqual(in_dict['integer_var'], 1234, 'Integer test for assigned values not passed')
         # float variable
-        self.assertEqual(in_dict['float_var'].value, 1.234, 'Float test for assigned values not passed')
+        self.assertEqual(in_dict['float_var'], 1.234, 'Float test for assigned values not passed')
         # string variable
         self.assertEqual(in_dict['str_var'], 'aaaa', 'String test for assigned values not passed')
         # bool variable
-        self.assertEqual(in_dict['bool_var'].value, True, 'Bool test for assigned values not passed')
+        self.assertEqual(in_dict['bool_var'], True, 'Bool test for assigned values not passed')
         # list variable
         for i in range(4):
             self.assertEqual(in_dict['list_var'][i], split_list[i], 'List test for assigned values not passed')
@@ -72,16 +72,16 @@ class TestSettings(unittest.TestCase):
         in_default_dict = dict()
         result = settings.to_custom_types(in_default_dict, types_dict, default_dict)
         # integer variable
-        self.assertEqual(in_default_dict['integer_var'].value, default_dict['integer_var'],
+        self.assertEqual(in_default_dict['integer_var'], default_dict['integer_var'],
                          'Integer test for default values not passed')
         # float variable
-        self.assertEqual(in_default_dict['float_var'].value, default_dict['float_var'],
+        self.assertEqual(in_default_dict['float_var'], default_dict['float_var'],
                          'Float test for default values not passed')
         # string variable
         self.assertEqual(in_default_dict['str_var'], default_dict['str_var'],
                          'String test for default values not passed')
         # bool variable
-        self.assertEqual(in_default_dict['bool_var'].value, default_dict['bool_var'],
+        self.assertEqual(in_default_dict['bool_var'], default_dict['bool_var'],
                          'Bool test for default values not passed')
         # list(str) variable
         for i in range(2):
@@ -146,5 +146,3 @@ class TestSettings(unittest.TestCase):
             temp_in_dict = deepcopy(original_dict)
             del temp_in_dict['float_list_var']
             result = settings.to_custom_types(temp_in_dict, types_dict, temp_default_dict)
-
-

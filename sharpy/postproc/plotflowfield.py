@@ -152,9 +152,9 @@ class PlotFlowField(BaseSolver):
                 u_ext.append(np.zeros((3, nx, ny), dtype=ct.c_double))
             self.velocity_generator.generate({'zeta': grid,
                                               'override': True,
-                                              't': ts*self.settings['dt'].value,
+                                              't': ts*self.settings['dt'],
                                               'ts': ts,
-                                              'dt': self.settings['dt'].value,
+                                              'dt': self.settings['dt'],
                                               'for_pos': 0*self.data.structure.timestep_info[ts].for_pos},
                                              u_ext)
             for iz in range(nz):
@@ -182,7 +182,7 @@ class PlotFlowField(BaseSolver):
 
     def run(self, online=False):
         if online:
-            if divmod(self.data.ts, self.settings['stride'].value)[1] == 0:
+            if divmod(self.data.ts, self.settings['stride'])[1] == 0:
                 self.output_velocity_field(len(self.data.structure.timestep_info) - 1)
         else:
             for ts in range(0, len(self.data.structure.timestep_info)):
