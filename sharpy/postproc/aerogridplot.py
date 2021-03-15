@@ -71,6 +71,10 @@ class AerogridPlot(BaseSolver):
     settings_default['stride'] = 1
     settings_description['stride'] = 'Number of steps between the execution calls when run online'
     
+    settings_types['save_wake'] = 'bool'
+    settings_default['save_wake'] = True
+    settings_description['save_wake'] = 'Plot the wake'
+    
     table = settings.SettingsTable()
     __doc__ += table.generate(settings_types, settings_default, settings_description)
 
@@ -114,14 +118,16 @@ class AerogridPlot(BaseSolver):
             for self.ts in range(self.ts_max):
                 if self.data.structure.timestep_info[self.ts] is not None:
                     self.plot_body()
-                    self.plot_wake()
+                    if self.settings['save_wake']:
+                        self.plot_wake()
             cout.cout_wrap('...Finished', 1)
         elif (self.data.it % self.settings['stride'] == 0):
             aero_tsteps = len(self.data.aero.timestep_info) - 1
             struct_tsteps = len(self.data.structure.timestep_info) - 1
             self.ts = np.max((aero_tsteps, struct_tsteps))
             self.plot_body()
-            self.plot_wake()
+            if self.settings['save_wake']:
+                self.plot_wake()
         return self.data
 
     def plot_body(self):
