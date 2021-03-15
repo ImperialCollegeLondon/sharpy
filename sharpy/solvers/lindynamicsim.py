@@ -110,7 +110,7 @@ class LinDynamicSim(BaseSolver):
 
         ss = self.data.linear.ss
 
-        n_steps = self.settings['n_tsteps'].value
+        n_steps = self.settings['n_tsteps']
         x0 = self.input_data_dict.get('x0', np.zeros(ss.states))
         u = self.input_data_dict['u']
 
@@ -129,19 +129,19 @@ class LinDynamicSim(BaseSolver):
         try:
             dt = ss.dt
         except AttributeError:
-            dt = self.settings['dt'].value
+            dt = self.settings['dt']
 
         # Total time to run
         T = n_steps*dt
 
-        u_ref = self.settings['reference_velocity'].value
+        u_ref = self.settings['reference_velocity']
         # If the system is scaled:
         if u_ref != 1.:
             scaling_factors = self.data.linear.linear_system.uvlm.sys.ScalingFacts
             dt_dimensional = scaling_factors['length'] / u_ref
             T_dimensional = n_steps * dt_dimensional
             T = T_dimensional / scaling_factors['time']
-            ss = self.data.linear.linear_system.update(self.settings['reference_velocity'].value)
+            ss = self.data.linear.linear_system.update(self.settings['reference_velocity'])
         t_dom = np.linspace(0, T, n_steps)
 
         # Use the scipy linear solver

@@ -59,10 +59,10 @@ class NonLinearDynamicMultibody(_BaseStructural):
 
         # load info from dyn dictionary
         self.data.structure.add_unsteady_information(
-            self.data.structure.dyn_dict, self.settings['num_steps'].value)
+            self.data.structure.dyn_dict, self.settings['num_steps'])
 
         # Define Newmark constants
-        self.gamma = 0.5 + self.settings['newmark_damp'].value
+        self.gamma = 0.5 + self.settings['newmark_damp']
         self.beta = 0.25*(self.gamma + 0.5)*(self.gamma + 0.5)
 
         # Define the number of equations
@@ -265,9 +265,9 @@ class NonLinearDynamicMultibody(_BaseStructural):
             MBdict = self.data.structure.ini_mb_dict
 
         if dt is None:
-            dt = self.settings['dt'].value
+            dt = self.settings['dt']
         else:
-            self.settings['dt'] = ct.c_float(dt)
+            self.settings['dt'] = dt
 
         self.num_LM_eq = lagrangeconstraints.define_num_LM_eq(self.lc_list)
 
@@ -310,9 +310,9 @@ class NonLinearDynamicMultibody(_BaseStructural):
         LM_old_Dq = 1.0
 
         converged = False
-        for iteration in range(self.settings['max_iterations'].value):
+        for iteration in range(self.settings['max_iterations']):
             # Check if the maximum of iterations has been reached
-            if iteration == self.settings['max_iterations'].value - 1:
+            if iteration == self.settings['max_iterations'] - 1:
                 error = ('Solver did not converge in %d iterations.\n res = %e \n LM_res = %e' %
                         (iteration, res, LM_res))
                 raise exc.NotConvergedSolver(error)
@@ -348,7 +348,7 @@ class NonLinearDynamicMultibody(_BaseStructural):
                     # LM_res = np.max(np.abs(Dq[self.sys_size:self.sys_size+num_LM_eq]))
                 else:
                     LM_res = 0.0
-                if (res < self.settings['min_delta'].value) and (LM_res < self.settings['min_delta'].value):
+                if (res < self.settings['min_delta']) and (LM_res < self.settings['min_delta']):
                     converged = True
 
             # Compute variables from previous values and increments
