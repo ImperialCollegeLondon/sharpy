@@ -121,7 +121,7 @@ class AerogridPlot(BaseSolver):
                     if self.settings['save_wake']:
                         self.plot_wake()
             cout.cout_wrap('...Finished', 1)
-        elif (self.data.it % self.settings['stride'] == 0):
+        elif (self.data.ts % self.settings['stride'].value == 0):
             aero_tsteps = len(self.data.aero.timestep_info) - 1
             struct_tsteps = len(self.data.structure.timestep_info) - 1
             self.ts = np.max((aero_tsteps, struct_tsteps))

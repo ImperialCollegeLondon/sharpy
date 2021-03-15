@@ -66,7 +66,7 @@ class PickleData(BaseSolver):
         self.caller = caller
 
     def run(self, online=False):
-        if ((online and (self.data.it % self.settings['stride'] == 0)) or (not online)):
+        if ((online and (self.data.ts % self.settings['stride'].value == 0)) or (not online)):
             with open(self.filename, 'wb') as f:
                 pickle.dump(self.data, f, protocol=pickle.HIGHEST_PROTOCOL)
 
