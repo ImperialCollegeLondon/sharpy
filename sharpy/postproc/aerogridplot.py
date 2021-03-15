@@ -67,6 +67,10 @@ class AerogridPlot(BaseSolver):
     settings_default['vortex_radius'] = vortex_radius_def
     settings_description['vortex_radius'] = 'Distance below which inductions are not computed'
 
+    settings_types['stride'] = 'int'
+    settings_default['stride'] = 1
+    settings_description['stride'] = 'Number of steps between the execution calls when run online'
+    
     table = settings.SettingsTable()
     __doc__ += table.generate(settings_types, settings_default, settings_description)
 
@@ -112,7 +116,7 @@ class AerogridPlot(BaseSolver):
                     self.plot_body()
                     self.plot_wake()
             cout.cout_wrap('...Finished', 1)
-        else:
+        elif (self.data.it % self.settings['stride'] == 0):
             aero_tsteps = len(self.data.aero.timestep_info) - 1
             struct_tsteps = len(self.data.structure.timestep_info) - 1
             self.ts = np.max((aero_tsteps, struct_tsteps))
