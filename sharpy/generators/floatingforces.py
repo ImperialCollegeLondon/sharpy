@@ -732,11 +732,8 @@ class FloatingForces(generator_interface.BaseGenerator):
             #           beam.ini_info.for_pos[0:3])
             self.q[it, 0:3] = (np.dot(cga, struct_tstep.pos[self.buoyancy_node, :]) +
                       struct_tstep.for_pos[0:3])
-            # ams: in my casethe angles are negative in the x and z components
-            self.q[it, 3:6] = (algebra.quat2euler(struct_tstep.quat)*
-                               np.array([-1., 1., -1.]))
-                               # np.array([1., 0., 1.]))
-            
+            self.q[it, 3:6] = algebra.quat2euler(struct_tstep.quat)
+
             self.qdot[it, 0:3] = np.dot(cga, struct_tstep.for_vel[0:3])
             self.qdot[it, 3:6] = np.dot(cga, struct_tstep.for_vel[3:6])
 
