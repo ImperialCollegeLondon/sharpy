@@ -50,12 +50,12 @@ class NonLinearDynamicPrescribedStep(_BaseStructural):
         settings.to_custom_types(self.settings, self.settings_types, self.settings_default)
 
         # load info from dyn dictionary
-        self.data.structure.add_unsteady_information(self.data.structure.dyn_dict, self.settings['num_steps'].value)
+        self.data.structure.add_unsteady_information(self.data.structure.dyn_dict, self.settings['num_steps'])
 
 
     def run(self, structural_step=None, dt=None):
         if dt is None:
-            dt = self.settings['dt'].value
+            dt = self.settings['dt']
         if structural_step is None:
             structural_step = self.data.structure.timestep_info[-1]
 

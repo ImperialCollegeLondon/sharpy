@@ -278,7 +278,7 @@ def write_modes_vtk(data, eigenvectors, NumLambda, filename_root,
 
     # Check whether rigid body motion is selected
     # Skip rigid body modes
-    if data.settings['Modal']['rigid_body_modes'].value:
+    if data.settings['Modal']['rigid_body_modes']:
         num_rigid_body = 10
     else:
         num_rigid_body = 0
@@ -563,96 +563,3 @@ def assert_modes_mass_normalised(phi, m, tolerance, raise_error=False):
             raise e
         else:
             cout.cout_wrap('Eigenvectors are not mass normalised', 3)
-
-
-def modes_to_cg_ref(phi, M, rigid_body_motion=False, use_euler=False):
-    r"""
-
-    Returns the rigid body modes defined with respect to the centre of gravity
-
-    The transformation from the modes defined at the FoR A origin, :math:`\boldsymbol{\Phi}`, to the modes defined
-    using the centre of gravity as a reference is
-
-
-    .. math:: \boldsymbol{\Phi}_{rr,CG}|_{TRA} = \boldsymbol{\Phi}_{RR}|_{TRA} + \tilde{\mathbf{r}}_{CG}
-        \boldsymbol{\Phi}_{RR}|_{ROT}
-
-    .. math:: \boldsymbol{\Phi}_{rr,CG}|_{ROT} = \boldsymbol{\Phi}_{RR}|_{ROT}
-
-    Returns:
-        (np.array): Transformed eigenvectors
-    """
-    # if not rigid_body_motion:
-    #     return phi
-    # NG - 26/7/19 This is the transformation being performed by K_vec
-    # Leaving this here for now in case it becomes necessary
-    # .. math:: \boldsymbol{\Phi}_{ss,CG}|_{TRA} = \boldsymbol{\Phi}_{SS}|_{TRA} +\boldsymbol{\Phi}_{RS}|_{TRA}  -
-    # \tilde{\mathbf{r}}_{A}\boldsymbol{\Phi}_{RS}|_{ROT}
-    #
-    # .. math:: \boldsymbol{\Phi}_{ss,CG}|_{ROT} = \boldsymbol{\Phi}_{SS}|_{ROT}
-    # + (\mathbf{T}(\boldsymbol{\Psi})^\top)^{-1}\boldsymbol{\Phi}_{RS}|_{ROT}
-    # pos = self.data.structure.timestep_info[self.data.ts].pos
-    r_cg = cg(M)
-
-    # jj = 0
-    K_vec = np.zeros((phi.shape[0], phi.shape[0]))
-
-    # jj_for_vel = range(self.data.structure.num_dof.value, self.data.structure.num_dof.value + 3)
-    # jj_for_rot = range(self.data.structure.num_dof.value + 3, self.data.structure.num_dof.value + 6)
-
-    # for node_glob in range(self.data.structure.num_node):
-    #     ### detect bc at node (and no. of dofs)
-    #     bc_here = self.data.structure.boundary_conditions[node_glob]
-    #
-    #     if bc_here == 1:  # clamp (only rigid-body)
-    #         dofs_here = 0
-    #         jj_tra, jj_rot = [], []
-    #         continue
-    #
-    #     elif bc_here == -1 or bc_here == 0:  # (rigid+flex body)
-    #         dofs_here = 6
-    #         jj_tra = 6 * self.data.structure.vdof[node_glob] + np.array([0, 1, 2], dtype=int)
-    #         jj_rot = 6 * self.data.structure.vdof[node_glob] + np.array([3, 4, 5], dtype=int)
-    #     # jj_tra=[jj  ,jj+1,jj+2]
-    #     # jj_rot=[jj+3,jj+4,jj+5]
-    #     else:
-    #         raise NameError('Invalid boundary condition (%d) at node %d!' \
-    #                         % (bc_here, node_glob))
-    #
-    #     jj += dofs_here
-    #
-    #     ee, node_loc = self.data.structure.node_master_elem[node_glob, :]
-    #     psi = self.data.structure.timestep_info[self.data.ts].psi[ee, node_loc, :]
-    #
-    #     Ra = pos[node_glob, :]  # in A FoR with respect to G
-    #
-    #     K_vec[np.ix_(jj_tra, jj_tra)] += np.eye(3)
-    #     K_vec[np.ix_(jj_tra, jj_for_vel)] += np.eye(3)
-    #     K_vec[np.ix_(jj_tra, jj_for_rot)] -= algebra.skew(Ra)
-    #
-    #     K_vec[np.ix_(jj_rot, jj_rot)] += np.eye(3)
-    #     K_vec[np.ix_(jj_rot, jj_for_rot)] += np.linalg.inv(algebra.crv2tan(psi).T)
-    # NG - 26/7/19 - Transformation of the rigid part of the elastic modes ended up not being necessary but leaving
-    # here in case it becomes useful in the future (using K_vec)
-
-    # Rigid-Rigid modes transform
-    if use_euler:
-        num_rig_dof = 9
-    else:
-        num_rig_dof = 10
-    Krr = np.eye(num_rig_dof)
-    Krr[np.ix_([0, 1, 2], [3, 4, 5])] += algebra.skew(r_cg)
-
-    # Assemble transformed modes
-    phirr = Krr.dot(phi[-num_rig_dof:, :num_rig_dof])
-    # phiss = K_vec.dot(phi[:, 10:])
-
-    # Get rigid body modes to be positive in translation and rotation
-    for i in range(num_rig_dof):
-        ind = np.argmax(np.abs(phirr[:, i]))
-        phirr[:, i] = np.sign(phirr[ind, i]) * phirr[:, i]
-
-    phit = np.block([np.zeros((phi.shape[0], num_rig_dof)), phi[:, num_rig_dof:]])
-    phit[-num_rig_dof:, :num_rig_dof] = phirr
-
-    return phit

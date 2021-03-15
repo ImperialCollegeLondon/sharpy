@@ -134,8 +134,8 @@ class Krylov(rom_interface.BaseRom):
                                       % self.algorithm)
 
         self.frequency = np.array(self.settings['frequency'])
-        self.r = self.settings['r'].value
-        self.restart_arnoldi = self.settings['restart_arnoldi'].value
+        self.r = self.settings['r']
+        self.restart_arnoldi = self.settings['restart_arnoldi']
         try:
             self.nfreq = self.frequency.shape[0]
         except AttributeError:

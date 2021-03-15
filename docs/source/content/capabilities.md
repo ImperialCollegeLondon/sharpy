@@ -39,7 +39,7 @@ On the structural side, it accounts for material anisotropy which is needed to c
 geometrically non-linear deformations observed in current blades due to the increasing length and flexibility. Both
 rigid and flexible simulations can be performed and the structural modes can be computed accounting for rotational
 effects (Campbell diagrams). The rotor-tower interaction is modelled through a multibody approach based on the theory
-of Lagrange multipliers. Finally, he tower base can be fixed or subjected to prescribed linear and angular velocities.
+of Lagrange multipliers. Finally, the tower base can be fixed or subjected to prescribed linear and angular velocities.
 
 On the aerodynamic side, the use of potential flow theory allows the characterization of flow unsteadiness at a
 reasonable computational cost. Specifically, steady and dynamic simulations can be performed. The steady simulations

@@ -220,7 +220,7 @@ class DynamicCoupled(BaseSolver):
         """
         Getter for ``g``, the gravity value
         """
-        return self.structural_solver.settings['gravity'].value
+        return self.structural_solver.settings['gravity']
 
     def set_g(self, new_g):
         """
@@ -232,7 +232,7 @@ class DynamicCoupled(BaseSolver):
         """
         Getter for ``rho``, the density value
         """
-        return self.aero_solver.settings['rho'].value
+        return self.aero_solver.settings['rho']
 
     def set_rho(self, new_rho):
         """
@@ -260,8 +260,8 @@ class DynamicCoupled(BaseSolver):
 
         self.dt = self.settings['dt']
         self.substep_dt = (
-            self.dt.value/(self.settings['structural_substeps'].value + 1))
-        self.initial_n_substeps = self.settings['structural_substeps'].value
+            self.dt/(self.settings['structural_substeps'] + 1))
+        self.initial_n_substeps = self.settings['structural_substeps']
 
         self.print_info = self.settings['print_info']
         if self.settings['cleanup_previous_solution']:
@@ -382,8 +382,8 @@ class DynamicCoupled(BaseSolver):
                 if info_k == 'structural_substeps':
                     if info_v is not None:
                         self.substep_dt = (
-                            self.settings['dt'].value/(
-                                self.settings['structural_substeps'].value + 1))
+                            self.settings['dt']/(
+                                self.settings['structural_substeps'] + 1))
 
                 if info_k == 'structural_solver':
                     if info_v is not None:
@@ -468,7 +468,7 @@ class DynamicCoupled(BaseSolver):
         # dynamic simulations start at tstep == 1, 0 is reserved for the initial state
         for self.data.ts in range(
                 len(self.data.structure.timestep_info),
-                self.settings['n_time_steps'].value + 1):
+                self.settings['n_time_steps'] + 1):
             initial_time = time.perf_counter()
 
             # network only
@@ -530,8 +530,8 @@ class DynamicCoupled(BaseSolver):
             controlled_aero_kstep = aero_kstep.copy()
 
             k = 0
-            for k in range(self.settings['fsi_substeps'].value + 1):
-                if (k == self.settings['fsi_substeps'].value and
+            for k in range(self.settings['fsi_substeps'] + 1):
+                if (k == self.settings['fsi_substeps'] and
                         self.settings['fsi_substeps']):
                     print_res = 0 if self.res == 0. else np.log10(self.res)
                     print_res_dqdt = 0 if self.res_dqdt == 0. else np.log10(self.res_dqdt)
@@ -550,11 +550,11 @@ class DynamicCoupled(BaseSolver):
                 # compute unsteady contribution
                 force_coeff = 0.0
                 unsteady_contribution = False
-                if self.settings['include_unsteady_force_contribution'].value:
-                    if self.data.ts > self.settings['steps_without_unsteady_force'].value:
+                if self.settings['include_unsteady_force_contribution']:
+                    if self.data.ts > self.settings['steps_without_unsteady_force']:
                         unsteady_contribution = True
-                        if k < self.settings['pseudosteps_ramp_unsteady_force'].value:
-                            force_coeff = k/self.settings['pseudosteps_ramp_unsteady_force'].value
+                        if k < self.settings['pseudosteps_ramp_unsteady_force']:
+                            force_coeff = k/self.settings['pseudosteps_ramp_unsteady_force']
                         else:
                             force_coeff = 1.
 
@@ -610,10 +610,10 @@ class DynamicCoupled(BaseSolver):
                 copy_structural_kstep = structural_kstep.copy()
                 ini_time_struc = time.perf_counter()
                 for i_substep in range(
-                        self.settings['structural_substeps'].value + 1):
+                        self.settings['structural_substeps'] + 1):
                     # run structural solver
                     coeff = ((i_substep + 1)/
-                             (self.settings['structural_substeps'].value + 1))
+                             (self.settings['structural_substeps'] + 1))
 
                     structural_kstep = self.interpolate_timesteps(
                         step0=self.data.structure.timestep_info[-1],
@@ -653,7 +653,7 @@ class DynamicCoupled(BaseSolver):
             if self.print_info:
                 print_res = 0 if self.res_dqdt == 0. else np.log10(self.res_dqdt)
                 self.residual_table.print_line([self.data.ts,
-                                                self.data.ts*self.dt.value,
+                                                self.data.ts*self.dt,
                                                 k,
                                                 self.time_struc/(self.time_aero + self.time_struc),
                                                 final_time - initial_time,
@@ -730,25 +730,25 @@ class DynamicCoupled(BaseSolver):
                          self.base_dqdt)
 
         if with_runtime_generators:
-            res_forces = (np.linalg.norm(tstep.runtime_generated_forces - 
+            res_forces = (np.linalg.norm(tstep.runtime_generated_forces -
                                         previous_tstep.runtime_generated_forces)/
                          self.base_res_forces)
         else:
             res_forces = 0.
-        
+
         # we don't want this to converge before introducing the gamma_dot forces!
-        if self.settings['include_unsteady_force_contribution'].value:
-            if k < self.settings['pseudosteps_ramp_unsteady_force'].value \
-                    and self.data.ts > self.settings['steps_without_unsteady_force'].value:
+        if self.settings['include_unsteady_force_contribution']:
+            if k < self.settings['pseudosteps_ramp_unsteady_force'] \
+                    and self.data.ts > self.settings['steps_without_unsteady_force']:
                 return False
 
         # convergence
-        if k > self.settings['minimum_steps'].value - 1:
-            if self.res < self.settings['fsi_tolerance'].value or "rigid" in struct_solver.lower():
-                if self.res_dqdt < self.settings['fsi_tolerance'].value:
-                    if res_forces < self.settings['fsi_tolerance'].value:
+        if k > self.settings['minimum_steps'] - 1:
+            if self.res < self.settings['fsi_tolerance'] or "rigid" in struct_solver.lower():
+                if self.res_dqdt < self.settings['fsi_tolerance']:
+                    if res_forces < self.settings['fsi_tolerance']:
                         return True
-                    
+
         return False
 
     def map_forces(self, aero_kstep, structural_kstep, unsteady_forces_coeff=1.0):
@@ -803,15 +803,15 @@ class DynamicCoupled(BaseSolver):
                                                         structural_kstep.runtime_generated_forces)
 
     def relaxation_factor(self, k):
-        initial = self.settings['relaxation_factor'].value
-        if not self.settings['dynamic_relaxation'].value:
+        initial = self.settings['relaxation_factor']
+        if not self.settings['dynamic_relaxation']:
             return initial
 
-        final = self.settings['final_relaxation_factor'].value
-        if k >= self.settings['relaxation_steps'].value:
+        final = self.settings['final_relaxation_factor']
+        if k >= self.settings['relaxation_steps']:
             return final
 
-        value = initial + (final - initial)/self.settings['relaxation_steps'].value*k
+        value = initial + (final - initial)/self.settings['relaxation_steps']*k
         return value
 
     @staticmethod

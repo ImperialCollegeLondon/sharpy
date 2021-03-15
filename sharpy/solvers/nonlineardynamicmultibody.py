@@ -307,7 +307,7 @@ class NonLinearDynamicMultibody(_BaseStructural):
         if dt is None:
             dt = self.settings['dt']
         else:
-            self.settings['dt'] = ct.c_float(dt)
+            self.settings['dt'] = dt
 
         if self.data.structure.ini_info.in_global_AFoR:
             self.data.structure.ini_info.whole_structure_to_local_AFoR(self.data.structure)
@@ -400,7 +400,6 @@ class NonLinearDynamicMultibody(_BaseStructural):
                     # LM_res = np.max(np.abs(Dq[self.sys_size:self.sys_size+num_LM_eq]))
                 else:
                     LM_res = 0.0
-                # print("res:", res, "LM_res:", LM_res)
                 if (res < self.settings['min_delta']) and (LM_res < self.settings['min_delta']):
                     converged = True
 

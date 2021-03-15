@@ -133,10 +133,10 @@ class ControlSurfacePidController(controller_interface.BaseController):
             raise OSError('File {} not found in Controller'.format(self.settings['time_history_input_file']))
 
         # Init PID controller
-        self.controller_implementation = control_utils.PID(self.settings['P'].value,
-                                                           self.settings['I'].value,
-                                                           self.settings['D'].value,
-                                                           self.settings['dt'].value)
+        self.controller_implementation = control_utils.PID(self.settings['P'],
+                                                           self.settings['I'],
+                                                           self.settings['D'],
+                                                           self.settings['dt'])
 
         # check that controlled_surfaces_coeff has the correct number of parameters
         # if len() == 1 and == 1.0, then expand to number of surfaces.
@@ -179,9 +179,9 @@ class ControlSurfacePidController(controller_interface.BaseController):
         control_command, detail = self.controller_wrapper(
                 required_input=self.prescribed_input_time_history,
                 current_input=self.real_state_input_history,
-                control_param={'P': self.settings['P'].value,
-                               'I': self.settings['I'].value,
-                               'D': self.settings['D'].value},
+                control_param={'P': self.settings['P'],
+                               'I': self.settings['I'],
+                               'D': self.settings['D']},
                 i_current=i_current)
 
         controlled_state['aero'].control_surface_deflection = (
@@ -190,7 +190,7 @@ class ControlSurfacePidController(controller_interface.BaseController):
         self.log.write(('{:>6d},'
                         + 6*'{:>12.6f},'
                         + '{:>12.6f}\n').format(i_current,
-                                                i_current*self.settings['dt'].value,
+                                                i_current*self.settings['dt'],
                                                 self.prescribed_input_time_history[i_current - 1],
                                                 self.real_state_input_history[i_current - 1],
                                                 detail[0],
@@ -237,18 +237,3 @@ class ControlSurfacePidController(controller_interface.BaseController):
 
     def __exit__(self, *args):
         self.log.close()
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-

@@ -37,7 +37,7 @@ class AeroForcesCalculator(BaseSolver):
     settings_types['write_text_file'] = 'bool'
     settings_default['write_text_file'] = False
     settings_description['write_text_file'] = 'Write ``txt`` file with results'
-    
+
     settings_types['text_file_name'] = 'str'
     settings_default['text_file_name'] = 'aeroforces.txt'
     settings_description['text_file_name'] = 'Text file name'
@@ -132,38 +132,9 @@ class AeroForcesCalculator(BaseSolver):
                 self.data.aero.timestep_info[self.ts].body_steady_forces[i_surf, 0:3] = np.dot(rot.T, total_steady_force)
                 self.data.aero.timestep_info[self.ts].body_unsteady_forces[i_surf, 0:3] = np.dot(rot.T, total_unsteady_force)
 
-            aero_forces_beam_dof = self.calculate_moments(self.ts)
-            self.data.aero.timestep_info[self.ts].total_body_forces = aero_forces_beam_dof
-            self.data.aero.timestep_info[self.ts].total_inertial_forces = \
-                np.block([[rot, np.zeros((3, 3))],
-                          [np.zeros((3, 3)), rot]]).dot(aero_forces_beam_dof)
-
-    def calculate_moments(self, ts):
-        aero_tstep = self.data.aero.timestep_info[ts]
-        struct_tstep = self.data.structure.timestep_info[ts]
-        aero_steady_forces_beam_dof = mapping.aero2struct_total_force_mapping(aero_tstep.forces,
-                                                                              self.data.aero.struct2aero_mapping,
-                                                                              aero_tstep.zeta,
-                                                                              struct_tstep.pos,
-                                                                              struct_tstep.psi,
-                                                                              self.data.structure.connectivities,
-                                                                              struct_tstep.cag())
-        aero_unsteady_forces_beam_dof = mapping.aero2struct_total_force_mapping(aero_tstep.dynamic_forces,
-                                                                                self.data.aero.struct2aero_mapping,
-                                                                                aero_tstep.zeta,
-                                                                                struct_tstep.pos,
-                                                                                struct_tstep.psi,
-                                                                                self.data.structure.connectivities,
-                                                                                struct_tstep.cag())
-
-        aero_forces_beam_dof = aero_steady_forces_beam_dof + aero_unsteady_forces_beam_dof
-
-        return aero_forces_beam_dof
-
-    def calculate_coefficients(self, fx, fy, fz, mx, my, mz):
-        qS = self.settings['q_ref'].value * self.settings['S_ref'].value
-        return fx/qS, fy/qS, fz/qS, mx/qS/self.settings['b_ref'].value, my/qS/self.settings['c_ref'], \
-               mz/qS/self.settings['b_ref']
+    def calculate_coefficients(self, fx, fy, fz):
+        qS = self.settings['q_ref'] * self.settings['S_ref']
+        return fx/qS, fy/qS, fz/qS
 
     def screen_output(self):
         line = ''

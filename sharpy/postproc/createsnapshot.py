@@ -102,9 +102,9 @@ class CreateSnapshot(BaseSolver):
 
     def run(self, online=True):
         self.ts = self.data.ts
-        if self.ts % self.settings['frequency'].value == 0:
+        if self.ts % self.settings['frequency'] == 0:
             # clean older files
-            if self.settings['keep'].value:
+            if self.settings['keep']:
                 self.delete_previous_snapshots()
 
             # create file
@@ -123,7 +123,7 @@ class CreateSnapshot(BaseSolver):
         return self.data
 
     def delete_previous_snapshots(self):
-        n_keep = self.settings['keep'].value - 1
+        n_keep = self.settings['keep'] - 1
 
         # get list of files in directory
         files = [f for f in os.listdir(self.settings['folder'])

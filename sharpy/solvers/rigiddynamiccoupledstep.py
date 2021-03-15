@@ -53,7 +53,7 @@ class RigidDynamicCoupledStep(_BaseStructural):
         settings.to_custom_types(self.settings, self.settings_types, self.settings_default)
 
         # load info from dyn dictionary
-        self.data.structure.add_unsteady_information(self.data.structure.dyn_dict, self.settings['num_steps'].value)
+        self.data.structure.add_unsteady_information(self.data.structure.dyn_dict, self.settings['num_steps'])
 
         # generate q, dqdt and dqddt
         xbeamlib.xbeam_solv_disp2state(self.data.structure, self.data.structure.timestep_info[-1])
