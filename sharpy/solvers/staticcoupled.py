@@ -185,7 +185,7 @@ class StaticCoupled(BaseSolver):
                 self.data.structure.timestep_info[self.data.ts].steady_applied_forces[:] = temp1
                 # run beam
                 self.data = self.structural_solver.run()
-                self.structural_solver.settings['gravity'] = ct.c_double(old_g)
+                self.structural_solver.settings['gravity'] = old_g
                 (self.data.structure.timestep_info[self.data.ts].total_forces[0:3],
                  self.data.structure.timestep_info[self.data.ts].total_forces[3:6]) = (
                         self.extract_resultants(self.data.structure.timestep_info[self.data.ts]))
