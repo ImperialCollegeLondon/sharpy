@@ -212,11 +212,10 @@ class TestDoublePendulum(unittest.TestCase):
 
         SimInfo.solvers['SHARPy']['flow'] = ['BeamLoader',
                                 'AerogridLoader',
-                                # 'InitializeMultibody',
                                 'DynamicCoupled']
-        global name
-        name = 'double_pendulum_geradin'
-        SimInfo.solvers['SHARPy']['case'] = 'double_pendulum_geradin'
+        global name_hinge
+        name_hinge = 'dpg_hinge'
+        SimInfo.solvers['SHARPy']['case'] = name_hinge
         SimInfo.solvers['SHARPy']['write_screen'] = 'off'
         SimInfo.solvers['SHARPy']['route'] = os.path.abspath(os.path.dirname(os.path.realpath(__file__))) + '/'
         SimInfo.solvers['SHARPy']['log_folder'] = os.path.abspath(os.path.dirname(os.path.realpath(__file__))) + '/'
@@ -270,6 +269,7 @@ class TestDoublePendulum(unittest.TestCase):
         LC1.body_FoR = 0
         LC1.rot_axis_AFoR = np.array([0.0,1.0,0.0])
         LC1.scalingFactor = 1e6
+        LC1.penaltyFactor = 1e-12
 
         LC2 = gc.LagrangeConstraint()
         LC2.behaviour = 'hinge_node_FoR'
@@ -278,6 +278,7 @@ class TestDoublePendulum(unittest.TestCase):
         LC2.body_FoR = 1
         LC2.rot_axisB = np.array([0.0,1.0,0.0])
         LC2.scalingFactor = 1e6
+        LC2.penaltyFactor = 1e-12
 
         LC = []
         LC.append(LC1)
@@ -310,28 +311,58 @@ class TestDoublePendulum(unittest.TestCase):
         beam1.generate_h5_files(SimInfo.solvers['SHARPy']['route'], SimInfo.solvers['SHARPy']['case'])
         gc.generate_multibody_file(LC, MB,SimInfo.solvers['SHARPy']['route'], SimInfo.solvers['SHARPy']['case'])
 
-    def test_doublependulum(self):
+        # Same case with spherical joints
+        global name_spherical
+        name_spherical = 'dpg_spherical'
+        SimInfo.solvers['SHARPy']['case'] = name_spherical
+
+        LC1 = gc.LagrangeConstraint()
+        LC1.behaviour = 'spherical_FoR'
+        LC1.body_FoR = 0
+        LC1.scalingFactor = 1e6
+
+        LC2 = gc.LagrangeConstraint()
+        LC2.behaviour = 'spherical_node_FoR'
+        LC2.node_in_body = nnodes1-1
+        LC2.body = 0
+        LC2.body_FoR = 1
+        LC2.scalingFactor = 1e6
+
+        gc.clean_test_files(SimInfo.solvers['SHARPy']['route'], SimInfo.solvers['SHARPy']['case'])
+        SimInfo.generate_solver_file()
+        SimInfo.generate_dyn_file(numtimesteps)
+        beam1.generate_h5_files(SimInfo.solvers['SHARPy']['route'], SimInfo.solvers['SHARPy']['case'])
+        gc.generate_multibody_file(LC, MB,SimInfo.solvers['SHARPy']['route'], SimInfo.solvers['SHARPy']['case'])
+
+    def run_and_assert(self, name):
         import sharpy.sharpy_main
 
-        solver_path = os.path.abspath(os.path.dirname(os.path.realpath(__file__)) + '/double_pendulum_geradin.sharpy')
+        solver_path = os.path.abspath(os.path.dirname(os.path.realpath(__file__)) + '/' + name + '.sharpy')
         sharpy.sharpy_main.main(['', solver_path])
 
         # read output and compare
-        output_path = os.path.abspath(os.path.dirname(os.path.realpath(__file__))) + '/output/double_pendulum_geradin/WriteVariablesTime/'
+        output_path = os.path.abspath(os.path.dirname(os.path.realpath(__file__))) + '/output/' + name + '/WriteVariablesTime/'
         pos_tip_data = np.loadtxt(("%sstruct_pos_node%d.dat" % (output_path, nnodes1*2-1)), )
         self.assertAlmostEqual(pos_tip_data[-1, 1], 1.051004, 4)
         self.assertAlmostEqual(pos_tip_data[-1, 2], 0.000000, 4)
         self.assertAlmostEqual(pos_tip_data[-1, 3], -0.9986984, 4)
 
+    def test_doublependulum_hinge(self):
+        self.run_and_assert(name_hinge)
+
+    def test_doublependulum_spherical(self):
+        self.run_and_assert(name_spherical)
+
     def tearDown(self):
         solver_path = os.path.abspath(os.path.dirname(os.path.realpath(__file__)))
         solver_path += '/'
-        files_to_delete = [name + '.aero.h5',
-                           name + '.dyn.h5',
-                           name + '.fem.h5',
-                           name + '.mb.h5',
-                           name + '.sharpy']
-        for f in files_to_delete:
-            os.remove(solver_path + f)
+        for name in [name_hinge, name_spherical]:
+            files_to_delete = [name + '.aero.h5',
+                               name + '.dyn.h5',
+                               name + '.fem.h5',
+                               name + '.mb.h5',
+                               name + '.sharpy']
+            for f in files_to_delete:
+                os.remove(solver_path + f)
 
         shutil.rmtree(solver_path + 'output/')
