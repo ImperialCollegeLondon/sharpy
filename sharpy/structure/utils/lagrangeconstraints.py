@@ -925,8 +925,8 @@ class hinge_node_FoR_constant_vel(BaseLagrangeConstraint):
         self.scalingFactor = set_value_or_default(MBdict_entry, "scalingFactor", 1.)
         self.penaltyFactor = set_value_or_default(MBdict_entry, "penaltyFactor", 0.)
 
-        self.static_constraint = fully_constrained_node_FoR()
-        self.static_constraint.initialise(MBdict_entry, ieq)
+        # self.static_constraint = fully_constrained_node_FoR()
+        # self.static_constraint.initialise(MBdict_entry, ieq)
 
         return self._ieq + self._n_eq
 
