@@ -112,7 +112,7 @@ class NonLinearDynamicMultibody(_BaseStructural):
 
         # Define the number of dofs
         self.define_sys_size()
-        
+
         self.prev_Dq = np.zeros((self.sys_size + self.num_LM_eq))
 
     def add_step(self):
@@ -241,12 +241,6 @@ class NonLinearDynamicMultibody(_BaseStructural):
             else:
                 MB_tstep[ibody].for_pos[0:3] += dt*np.dot(MB_tstep[ibody].cga(),MB_tstep[ibody].for_vel[0:3])
 
-        # Use next line for double pendulum (fix position of the second FoR)
-        # MB_tstep[ibody].for_pos[0:3] = np.dot(algebra.quat2rotation(MB_tstep[0].quat), MB_tstep[0].pos[-1,:])
-        # print("tip final pos: ", np.dot(algebra.quat2rotation(MB_tstep[0].quat), MB_tstep[0].pos[-1,:]))
-        # print("FoR final pos: ", MB_tstep[ibody].for_pos[0:3])
-        # print("pause")
-
     def extract_resultants(self):
         # TODO: code
         pass
@@ -314,7 +308,6 @@ class NonLinearDynamicMultibody(_BaseStructural):
 
         self.num_LM_eq = lagrangeconstraints.define_num_LM_eq(self.lc_list)
 
-        # TODO: only working for constant forces
         MB_beam, MB_tstep = mb.split_multibody(
             self.data.structure,
             structural_step,
@@ -376,16 +369,8 @@ class NonLinearDynamicMultibody(_BaseStructural):
                                  np.linalg.cond(MB_Asys[:self.sys_size, :self.sys_size]),
                                  np.linalg.cond(MB_Asys)))
                 cout.cout_wrap(out_string, 0)
-            # Compute the correction
-            # ADC next line not necessary
-            # Dq = np.zeros((self.sys_size+num_LM_eq,), dtype=ct.c_double, order='F')
-            # MB_Asys_balanced, T = scipy.linalg.matrix_balance(MB_Asys)
-            # invT = np.matrix(T).I
-            # MB_Q_balanced = np.dot(invT, MB_Q).T
 
             Dq = np.linalg.solve(MB_Asys, -MB_Q)
-            # least squares solver
-            # Dq = np.linalg.lstsq(np.dot(MB_Asys_balanced, invT), -MB_Q_balanced, rcond=None)[0]
 
             # Evaluate convergence
             if iteration:
@@ -394,25 +379,16 @@ class NonLinearDynamicMultibody(_BaseStructural):
                     raise exc.NotConvergedSolver('Multibody res = NaN')
                 if num_LM_eq:
                     LM_res = np.max(np.abs(Dq[self.sys_size:self.sys_size+num_LM_eq]))/LM_old_Dq
-                    # LM_res = np.max(np.abs(Dq[self.sys_size:self.sys_size+num_LM_eq]))
                 else:
                     LM_res = 0.0
-                # print("res:", res, "LM_res:", LM_res)
                 if (res < self.settings['min_delta']) and (LM_res < self.settings['min_delta']):
                     converged = True
-
-            # Compute variables from previous values and increments
-            # TODO:decide If I want other way of updating lambda
-            # this for least sq
-            # q[:, np.newaxis] += Dq
-            # dqdt[:, np.newaxis] += self.gamma/(self.beta*dt)*Dq
-            # dqddt[:, np.newaxis] += 1.0/(self.beta*dt*dt)*Dq
 
             # Relaxation
             relax_Dq = np.zeros_like(Dq)
             relax_Dq[:self.sys_size] = Dq[:self.sys_size].copy()
-            relax_Dq[self.sys_size:] = ((1. - self.settings['relax_factor_lm'])*Dq[self.sys_size:] + 
-                                   self.settings['relax_factor_lm']*self.prev_Dq[self.sys_size:]) 
+            relax_Dq[self.sys_size:] = ((1. - self.settings['relax_factor_lm'])*Dq[self.sys_size:] +
+                                   self.settings['relax_factor_lm']*self.prev_Dq[self.sys_size:])
             self.prev_Dq = Dq.copy()
 
             # Corrector step
@@ -443,12 +419,8 @@ class NonLinearDynamicMultibody(_BaseStructural):
 
             if not iteration:
                 old_Dq = np.max(np.abs(Dq[0:self.sys_size]))
-                # if old_Dq < 1.0:
-                #     old_Dq = 1.0
                 if num_LM_eq:
                     LM_old_Dq = np.max(np.abs(Dq[self.sys_size:self.sys_size+num_LM_eq]))
-                # else:
-                #    LM_old_Dq = 1.0
 
         mb.state2disp_and_accel(q, dqdt, dqddt, MB_beam, MB_tstep)
         # end: comment time stepping
@@ -464,7 +436,7 @@ class NonLinearDynamicMultibody(_BaseStructural):
 
         if not structural_step.in_global_AFoR:
             structural_step.whole_structure_to_global_AFoR(self.data.structure)
-        
+
         self.Lambda = Lambda.astype(dtype=ct.c_double, copy=True, order='F')
         self.Lambda_dot = Lambda_dot.astype(dtype=ct.c_double, copy=True, order='F')
         self.Lambda_ddot = Lambda_ddot.astype(dtype=ct.c_double, copy=True, order='F')
