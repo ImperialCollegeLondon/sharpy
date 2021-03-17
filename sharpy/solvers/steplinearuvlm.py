@@ -214,11 +214,11 @@ class StepLinearUVLM(BaseSolver):
             # Generate instance of linuvlm.Dynamic()
             lin_uvlm_system = linuvlm.DynamicBlock(aero_tstep,
                                                    dynamic_settings=self.settings,
-                                              # dt=self.settings['dt'].value,
-                                              # integr_order=self.settings['integr_order'].value,
+                                              # dt=self.settings['dt'],
+                                              # integr_order=self.settings['integr_order'],
                                               # ScalingDict=self.settings['ScalingDict'],
-                                              # RemovePredictor=self.settings['remove_predictor'].value,
-                                              # UseSparse=self.settings['use_sparse'].value,
+                                              # RemovePredictor=self.settings['remove_predictor'],
+                                              # UseSparse=self.settings['use_sparse'],
                                               for_vel=self.for_vel0)
 
             # add rotational speed

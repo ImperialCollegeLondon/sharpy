@@ -121,7 +121,7 @@ def tangent_vector(in_coord, ordering=None):
     for inode in range(n_nodes):
         if np.dot(tangent[inode, :], fake_tangent[inode, :]) < 0:
             tangent[inode, :] *= -1
-    
+
     return tangent, polyfit_vec
 
 
@@ -898,9 +898,9 @@ def quat2euler(quat):
     if np.abs(delta) > 0.9 * 0.5:
         warn('Warning, approaching singularity. Delta {:.3f} for singularity at Delta=0.5'.format(np.abs(delta)))
 
-    yaw = -np.arctan(2*(q0*q3+q1*q2)/(1-2*(q2**2+q3**2)))
+    yaw = np.arctan(2*(q0*q3+q1*q2)/(1-2*(q2**2+q3**2)))
     pitch = np.arcsin(2*delta)
-    roll = -np.arctan(2*(q0*q1+q2*q3)/(1-2*(q1**2+q2**2)))
+    roll = np.arctan(2*(q0*q1+q2*q3)/(1-2*(q1**2+q2**2)))
 
     return np.array([roll, pitch, yaw])
 

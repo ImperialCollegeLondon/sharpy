@@ -159,9 +159,9 @@ class Trim(BaseSolver):
 
         # initial state vector
         self.initial_state = np.zeros(self.x_info['n_variables'])
-        self.initial_state[self.x_info['i_alpha']] = self.settings['initial_alpha'].value
-        self.initial_state[self.x_info['i_beta']] = self.settings['initial_beta'].value
-        self.initial_state[self.x_info['i_roll']] = self.settings['initial_roll'].value
+        self.initial_state[self.x_info['i_alpha']] = self.settings['initial_alpha']
+        self.initial_state[self.x_info['i_beta']] = self.settings['initial_beta']
+        self.initial_state[self.x_info['i_roll']] = self.settings['initial_roll']
         for i_cs in range(n_control_surfaces):
             self.initial_state[self.x_info['i_control_surfaces'][i_cs]] = self.settings['initial_cs_deflection'][i_cs]
         for i_thrust in range(n_thrust_nodes):
@@ -230,7 +230,7 @@ class Trim(BaseSolver):
 
         # call optimiser
         self.optimise(solver_wrapper,
-                      tolerance=self.settings['tolerance'].value,
+                      tolerance=self.settings['tolerance'],
                       print_info=True,
                       # method='BFGS')
                       method='Nelder-Mead',

@@ -168,7 +168,7 @@ class AerogridPlot(BaseSolver):
                     if self.settings['include_rbm']:
                         coords[counter, :] += struct_tstep.for_pos[0:3]
                     if self.settings['include_forward_motion']:
-                        coords[counter, 0] -= self.settings['dt'].value*self.ts*self.settings['u_inf'].value
+                        coords[counter, 0] -= self.settings['dt']*self.ts*self.settings['u_inf']
 
             if self.settings['include_incidence_angle']:
                 incidence_angle = np.zeros_like(panel_gamma)
@@ -281,7 +281,7 @@ class AerogridPlot(BaseSolver):
                     if self.settings['include_rbm']:
                         coords[counter, :] += self.data.structure.timestep_info[self.ts].for_pos[0:3]
                     if self.settings['include_forward_motion']:
-                        coords[counter, 0] -= self.settings['dt'].value*self.ts*self.settings['u_inf'].value
+                        coords[counter, 0] -= self.settings['dt']*self.ts*self.settings['u_inf']
 
             counter = -1
             node_counter = -1
