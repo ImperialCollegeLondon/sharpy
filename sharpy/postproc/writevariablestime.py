@@ -301,7 +301,7 @@ class WriteVariablesTime(BaseSolver):
                 uext = [np.zeros((3, self.n_vel_field_points, 1))]
                 self.velocity_generator.generate({'zeta': self.vel_field_points,
                                     'for_pos': tstep.for_pos[0:3],
-                                    't': self.data.ts*self.caller.settings['dt'].value,
+                                    't': self.data.ts*self.caller.settings['dt'],
                                     'is_wake': False,
                                     'override': True},
                                     uext)
@@ -315,13 +315,13 @@ class WriteVariablesTime(BaseSolver):
     def write_nparray_to_file(self, fid, ts, nparray, delimiter):
 
         fid.write("%d%s" % (ts,delimiter))
-        for idim in range(np.shape(nparray)[0]):
+        for idim in range(nparray.shape[0]):
             try:
-                for jdim in range(np.shape(nparray)[1]):
+                for jdim in range(nparray.shape[1] - 1):
                     fid.write("%e%s" % (nparray[idim, jdim],delimiter))
+                fid.write("%e" % (nparray[idim, -1]))
             except IndexError:
                 fid.write("%e%s" % (nparray[idim],delimiter))
-
 
         fid.write("\n")
 
