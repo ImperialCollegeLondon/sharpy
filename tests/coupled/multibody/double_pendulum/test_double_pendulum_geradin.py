@@ -245,6 +245,7 @@ class TestDoublePendulum(unittest.TestCase):
         SimInfo.solvers['NonLinearDynamicMultibody']['time_integrator'] = 'NewmarkBeta'
         SimInfo.solvers['NonLinearDynamicMultibody']['time_integrator_settings'] = {'newmark_damp': 0.15,
                                                                                     'dt': dt}
+        SimInfo.solvers['NonLinearDynamicMultibody']['write_lm'] = True
 
         SimInfo.solvers['BeamPlot']['include_FoR'] = True
 
@@ -311,10 +312,44 @@ class TestDoublePendulum(unittest.TestCase):
         beam1.generate_h5_files(SimInfo.solvers['SHARPy']['route'], SimInfo.solvers['SHARPy']['case'])
         gc.generate_multibody_file(LC, MB,SimInfo.solvers['SHARPy']['route'], SimInfo.solvers['SHARPy']['case'])
 
+        # Same case without dissipation
+        global name_nb_zero_dis
+        name_nb_zero_dis = 'dpg_nb_zero_dis'
+        SimInfo.solvers['SHARPy']['case'] = name_nb_zero_dis
+
+        SimInfo.solvers['NonLinearDynamicMultibody']['time_integrator_settings'] = {'newmark_damp': 0.,
+                                                                                    'dt': dt}
+
+        gc.clean_test_files(SimInfo.solvers['SHARPy']['route'], SimInfo.solvers['SHARPy']['case'])
+        SimInfo.generate_solver_file()
+        SimInfo.generate_dyn_file(numtimesteps)
+        beam1.generate_h5_files(SimInfo.solvers['SHARPy']['route'], SimInfo.solvers['SHARPy']['case'])
+        gc.generate_multibody_file(LC, MB,SimInfo.solvers['SHARPy']['route'], SimInfo.solvers['SHARPy']['case'])
+
+        # Same case with generalised alpha
+        global name_ga
+        name_ga = 'dpg_ga'
+        SimInfo.solvers['SHARPy']['case'] = name_ga
+
+        SimInfo.solvers['NonLinearDynamicMultibody']['time_integrator'] = 'GeneralisedAlpha'
+        SimInfo.solvers['NonLinearDynamicMultibody']['time_integrator_settings'] = {'am': 0.5,
+                                                                                    'af': 0.5,
+                                                                                    'dt': dt}
+
+        gc.clean_test_files(SimInfo.solvers['SHARPy']['route'], SimInfo.solvers['SHARPy']['case'])
+        SimInfo.generate_solver_file()
+        SimInfo.generate_dyn_file(numtimesteps)
+        beam1.generate_h5_files(SimInfo.solvers['SHARPy']['route'], SimInfo.solvers['SHARPy']['case'])
+        gc.generate_multibody_file(LC, MB,SimInfo.solvers['SHARPy']['route'], SimInfo.solvers['SHARPy']['case'])
+
         # Same case with spherical joints
         global name_spherical
         name_spherical = 'dpg_spherical'
         SimInfo.solvers['SHARPy']['case'] = name_spherical
+
+        SimInfo.solvers['NonLinearDynamicMultibody']['time_integrator'] = 'NewmarkBeta'
+        SimInfo.solvers['NonLinearDynamicMultibody']['time_integrator_settings'] = {'newmark_damp': 0.15,
+                                                                                    'dt': dt}
 
         LC1 = gc.LagrangeConstraint()
         LC1.behaviour = 'spherical_FoR'
@@ -353,16 +388,36 @@ class TestDoublePendulum(unittest.TestCase):
     def test_doublependulum_spherical(self):
         self.run_and_assert(name_spherical)
 
+    def test_doublependulum_ga(self):
+        import sharpy.sharpy_main
+
+        nb_solver_path = os.path.abspath(os.path.dirname(os.path.realpath(__file__)) + '/' + name_nb_zero_dis + '.sharpy')
+        sharpy.sharpy_main.main(['', nb_solver_path])
+
+        ga_solver_path = os.path.abspath(os.path.dirname(os.path.realpath(__file__)) + '/' + name_ga + '.sharpy')
+        sharpy.sharpy_main.main(['', ga_solver_path])
+
+        # read output and compare
+        nb_output_path = os.path.abspath(os.path.dirname(os.path.realpath(__file__))) + '/output/' + name_nb_zero_dis + '/WriteVariablesTime/'
+        nb_pos_tip_data = np.loadtxt(("%sstruct_pos_node%d.dat" % (nb_output_path, nnodes1*2-1)), )
+
+        ga_output_path = os.path.abspath(os.path.dirname(os.path.realpath(__file__))) + '/output/' + name_ga + '/WriteVariablesTime/'
+        ga_pos_tip_data = np.loadtxt(("%sstruct_pos_node%d.dat" % (ga_output_path, nnodes1*2-1)), )
+
+        self.assertAlmostEqual(nb_pos_tip_data[-1, 1], ga_pos_tip_data[-1, 1], 4)
+        self.assertAlmostEqual(nb_pos_tip_data[-1, 2], ga_pos_tip_data[-1, 2], 4)
+        self.assertAlmostEqual(nb_pos_tip_data[-1, 3], ga_pos_tip_data[-1, 3], 4)
+
     def tearDown(self):
         solver_path = os.path.abspath(os.path.dirname(os.path.realpath(__file__)))
         solver_path += '/'
-        for name in [name_hinge, name_spherical]:
+        for name in [name_hinge, name_spherical, name_ga, name_nb_zero_dis]:
             files_to_delete = [name + '.aero.h5',
                                name + '.dyn.h5',
                                name + '.fem.h5',
                                name + '.mb.h5',
                                name + '.sharpy']
             for f in files_to_delete:
-                os.remove(solver_path + f)
-
-        shutil.rmtree(solver_path + 'output/')
+                # os.remove(solver_path + f)
+                pass
+        #shutil.rmtree(solver_path + 'output/')
