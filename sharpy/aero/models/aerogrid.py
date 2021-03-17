@@ -209,12 +209,6 @@ class Aerogrid(object):
         for i_surf in range(self.n_surf):
             global_node_in_surface.append([])
 
-        # Change beam to Global FoR for multibody computations
-        # if structure_tstep.in_global_AFoR:
-        #     global_tstep = structure_tstep
-        # else:
-        #     global_tstep = structure_tstep.copy()
-        #     global_tstep.whole_structure_to_global_AFoR(beam)
         global_tstep = structure_tstep
 
         # check that we have control surface information
