@@ -1182,3 +1182,81 @@ def cbeam3_asbly_static(beam, tstep, settings, iLoadStep):
                             ct.byref(ct.c_int(iLoadStep)))
 
     return Kglobal, Qglobal
+
+
+def xbeam_step_coupledrigid(beam, settings, ts, tstep=None, dt=None):
+    # library load
+    f_xbeam_solv_rigid_step_python = xbeamlib.xbeam_solv_coupledrigid_step_python
+    f_xbeam_solv_rigid_step_python.restype = None
+
+    if tstep is None:
+        tstep = beam.timestep_info[-1]
+
+    # initialisation
+    n_elem = ct.c_int(beam.num_elem)
+    n_nodes = ct.c_int(beam.num_node)
+    n_mass = ct.c_int(beam.n_mass)
+    n_stiff = ct.c_int(beam.n_stiff)
+
+    xbopts = Xbopts()
+    xbopts.PrintInfo = ct.c_bool(settings['print_info'])
+    xbopts.MaxIterations = settings['max_iterations']
+    xbopts.NumLoadSteps = settings['num_load_steps']
+    xbopts.DeltaCurved = settings['delta_curved']
+    xbopts.MinDelta = settings['min_delta']
+    xbopts.NewmarkDamp = settings['newmark_damp']
+    xbopts.gravity_on = settings['gravity_on']
+    xbopts.gravity = settings['gravity']
+    xbopts.balancing = settings['balancing']
+    xbopts.gravity_dir_x = ct.c_double(tstep.gravity_vector_inertial[0])
+    xbopts.gravity_dir_y = ct.c_double(tstep.gravity_vector_inertial[1])
+    xbopts.gravity_dir_z = ct.c_double(tstep.gravity_vector_inertial[2])
+    xbopts.relaxation_factor = settings['relaxation_factor']
+
+    if dt is None:
+        try:
+            in_dt = ct.c_double(settings['dt'])
+        except TypeError:
+            in_dt = settings['dt']
+    else:
+        try:
+            in_dt = ct.c_double(dt)
+        except TypeError:
+            in_dt = dt
+
+    ctypes_ts = ct.c_int(ts)
+    numdof = ct.c_int(beam.num_dof.value)
+
+    f_xbeam_solv_rigid_step_python(ct.byref(numdof),
+                                    ct.byref(ctypes_ts),
+                                    ct.byref(n_elem),
+                                    ct.byref(n_nodes),
+                                    ct.byref(in_dt),
+                                    beam.fortran['num_nodes'].ctypes.data_as(intP),
+                                    beam.fortran['num_mem'].ctypes.data_as(intP),
+                                    beam.fortran['connectivities'].ctypes.data_as(intP),
+                                    beam.fortran['master'].ctypes.data_as(intP),
+                                    ct.byref(n_mass),
+                                    beam.fortran['mass'].ctypes.data_as(doubleP),
+                                    beam.fortran['mass_indices'].ctypes.data_as(intP),
+                                    ct.byref(n_stiff),
+                                    beam.fortran['stiffness'].ctypes.data_as(doubleP),
+                                    beam.fortran['inv_stiffness'].ctypes.data_as(doubleP),
+                                    beam.fortran['stiffness_indices'].ctypes.data_as(intP),
+                                    beam.fortran['frame_of_reference_delta'].ctypes.data_as(doubleP),
+                                    beam.fortran['rbmass'].ctypes.data_as(doubleP),
+                                    beam.fortran['node_master_elem'].ctypes.data_as(intP),
+                                    beam.fortran['vdof'].ctypes.data_as(intP),
+                                    beam.fortran['fdof'].ctypes.data_as(intP),
+                                    ct.byref(xbopts),
+                                    tstep.pos.ctypes.data_as(doubleP),
+                                    tstep.psi.ctypes.data_as(doubleP),
+                                    tstep.steady_applied_forces.ctypes.data_as(doubleP),
+                                    tstep.unsteady_applied_forces.ctypes.data_as(doubleP),
+                                    tstep.gravity_forces.ctypes.data_as(doubleP),
+                                    tstep.quat.ctypes.data_as(doubleP),
+                                    tstep.for_vel.ctypes.data_as(doubleP),
+                                    tstep.for_acc.ctypes.data_as(doubleP),
+                                    tstep.q[-10:].ctypes.data_as(doubleP),
+                                    tstep.dqdt[-10:].ctypes.data_as(doubleP),
+                                    tstep.dqddt[-10:].ctypes.data_as(doubleP))

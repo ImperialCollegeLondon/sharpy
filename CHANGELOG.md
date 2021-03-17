@@ -1,8 +1,27 @@
 # Changelog
 
-## [1.2](https://github.com/imperialcollegelondon/sharpy/tree/1.2) (2020-12-03)
+## [1.2.1](https://github.com/imperialcollegelondon/sharpy/tree/1.2.1) (2021-02-09)
 
-[Full Changelog](https://github.com/imperialcollegelondon/sharpy/compare/v1.1.1...1.2)
+[Full Changelog](https://github.com/imperialcollegelondon/sharpy/compare/v1.2...1.2.1)
+
+**Fixed bugs:**
+
+- Bug in beamstructure.py [\#117](https://github.com/ImperialCollegeLondon/sharpy/issues/117)
+
+**Closed issues:**
+
+- examples refer to non-existent solver SHWUvlm [\#119](https://github.com/ImperialCollegeLondon/sharpy/issues/119)
+- Potential bug in xbeam and cbeam interfaces [\#89](https://github.com/ImperialCollegeLondon/sharpy/issues/89)
+- Update packages producing deprecation warnings and tackle other warnings [\#80](https://github.com/ImperialCollegeLondon/sharpy/issues/80)
+
+**Merged pull requests:**
+
+- Rigid coupled solver [\#120](https://github.com/ImperialCollegeLondon/sharpy/pull/120) ([ArturoMS13](https://github.com/ArturoMS13))
+- Support to save ROM projector matrices [\#118](https://github.com/ImperialCollegeLondon/sharpy/pull/118) ([ngoiz](https://github.com/ngoiz))
+
+## [v1.2](https://github.com/imperialcollegelondon/sharpy/tree/v1.2) (2020-12-03)
+
+[Full Changelog](https://github.com/imperialcollegelondon/sharpy/compare/v1.1.1...v1.2)
 
 **Implemented enhancements:**
 
