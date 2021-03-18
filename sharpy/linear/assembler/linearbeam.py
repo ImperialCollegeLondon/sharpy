@@ -9,7 +9,8 @@ import numpy as np
 import sharpy.utils.settings as settings
 import sharpy.utils.algebra as algebra
 import sharpy.structure.utils.modalutils as modalutils
-from sharpy.linear.utils.ss_interface import VectorVariable
+from sharpy.linear.utils.ss_interface import VectorVariable, OutputVariable, InputVariable
+import sharpy.linear.src.libss as libss
 
 
 @linear_system
@@ -421,15 +422,17 @@ class LinearBeam(BaseElement):
         # Missing the forces
         # dqddt = self.sys.Minv.dot(-self.sys.Cstr.dot(dqdt) - self.sys.Kstr.dot(q))
 
-        for i_node in vdof[vdof >= 0]:
-            pos[i_node + 1, :] = q[6*i_node: 6*i_node + 3]
-            pos_dot[i_node + 1, :] = dqdt[6*i_node + 0: 6*i_node + 3]
-
+        # for i_node in vdof[vdof >= 0]:
+        #     pos[i_node + 1, :] = q[6*i_node: 6*i_node + 3]
+        #     pos_dot[i_node + 1, :] = dqdt[6*i_node + 0: 6*i_node + 3]
+        #
         # TODO: CRV of clamped node and double check that the CRV takes this form
-        for i_elem in range(struct_tstep.num_elem):
-            for i_node in range(struct_tstep.num_node_elem):
-                psi[i_elem, i_node, :] = np.linalg.inv(algebra.crv2tan(struct_tstep.psi[i_elem, i_node]).T).dot(q[i_node + 3: i_node + 6])
-                psi_dot[i_elem, i_node, :] = dqdt[i_node + 3: i_node + 6]
+        # for i_elem in range(struct_tstep.num_elem):
+        #     for i_node in range(struct_tstep.num_node_elem):
+        #         psi[i_elem, i_node, :] = np.linalg.inv(algebra.crv2tan(struct_tstep.psi[i_elem, i_node]).T).dot(q[i_node + 3: i_node + 6])
+        #         psi_dot[i_elem, i_node, :] = dqdt[i_node + 3: i_node + 6]
+
+        pos, pos_dot, psi, psi_dot = self.unpack_flex_dof(q, dqdt)
 
         if not clamped:
             for_vel = dqdt[-rig_dof: -rig_dof + 6]
@@ -483,3 +486,97 @@ class LinearBeam(BaseElement):
         current_time_step.steady_applied_forces = steady_applied_forces + struct_tstep.steady_applied_forces
 
         return current_time_step
+
+    def unpack_flex_dof(self, eta, eta_dot=None):
+        """
+        Unpacks a vector of structural displacements and velocities into a SHARPy familiar
+        form of pos, psi and their time derivatives
+
+        Args:
+            eta (np.array): Vector of structural displacements
+            eta_dot (np.array (Optional): Vector of structural velocities
+
+        Returns:
+            tuple: Containing ``pos``, ``psi``, ``pos_dot``, ``psi_dot`` if ``eta_dot`` is provided, else
+              only the displacements are returned
+        """
+        vdof = self.sys.structure.vdof
+        if np.max(np.abs(eta.imag)) > 0:
+            dtype=complex
+        else:
+            dtype=float
+        pos = np.zeros_like(self.tsstruct0.pos, dtype=dtype)
+        psi = np.zeros_like(self.tsstruct0.psi, dtype=dtype)
+        pos_dot = np.zeros_like(self.tsstruct0.pos_dot, dtype=dtype)
+        psi_dot = np.zeros_like(self.tsstruct0.psi_dot, dtype=dtype)
+
+        return_vels = True
+        if eta_dot is None:
+            return_vels = False
+            eta_dot = np.zeros_like(eta)
+
+        for i_node in vdof[vdof >= 0]:
+            pos[i_node + 1, :] = eta[6*i_node: 6*i_node + 3]
+            pos_dot[i_node + 1, :] = eta_dot[6*i_node + 0: 6*i_node + 3]
+
+        # TODO: CRV of clamped node and double check that the CRV takes this form
+        for i_elem in range(self.tsstruct0.num_elem):
+            for i_node in range(self.tsstruct0.num_node_elem):
+                psi[i_elem, i_node, :] = np.linalg.inv(
+                    algebra.crv2tan(self.tsstruct0.psi[i_elem, i_node]).T).dot(eta[i_node + 3: i_node + 6])
+                psi_dot[i_elem, i_node, :] = eta_dot[i_node + 3: i_node + 6]
+
+        if return_vels:
+            return pos, psi, pos_dot, psi_dot
+        else:
+            return pos, psi
+
+    def recover_accelerations(self, full_ss):
+        """
+        For a system with displacement and velocity outputs (``full_ss``), recover the accelerations and append them
+        as new output channels.
+
+        This function produces an output gain that should then be connected in series to the desired system
+
+        Args:
+            full_ss (libss.StateSpace): State space for which to provide output gain to recover accelerations
+
+        Returns:
+            libss.Gain: Gain adding the accelerations as new output channels
+        """
+        n_in = full_ss.outputs
+        n_out = full_ss.outputs + self.ss.states // 2
+
+        acc_gain = np.zeros((n_out, n_in))
+
+        input_variables = LinearVector.transform(full_ss.output_variables, to_type=InputVariable)
+
+        output_variables = full_ss.output_variables.copy()
+        acceleration_variables = []
+        for var in self.ss.output_variables[self.ss.output_variables.num_variables//2:]:
+            new_var = var.copy()
+            new_var.name += '_dot'
+            output_variables.append(new_var)
+            acceleration_variables.append(new_var)
+
+        acc_gain[:n_in, :n_in] = np.eye(n_in)
+        acc_gain[-self.ss.states//2:, :self.ss.inputs] = self.ss.B[self.ss.states//2:]
+        acc_gain[-self.ss.states//2:, self.ss.inputs:] = self.ss.A[self.ss.states//2:, :]
+
+        acceleration_recovery = libss.Gain(acc_gain,
+                                           input_vars=input_variables,
+                                           output_vars=output_variables)
+
+        if self.sys.modal:
+            output_variables = []
+            for var in self.sys.Kout.output_variables[self.sys.Kout.output_variables.num_variables//2:]:
+                new_var = var.copy()
+                new_var.name += '_dot'
+                output_variables.append(new_var)
+            modal_gain = libss.Gain(self.sys.U,
+                                    input_vars=LinearVector.transform(LinearVector(acceleration_variables),
+                                                                      to_type=InputVariable),
+                                    output_vars=LinearVector(output_variables))
+            self.sys.acceleration_modal_gain = modal_gain
+
+        return acceleration_recovery
