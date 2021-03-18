@@ -42,7 +42,7 @@ class BladePitchPid(controller_interface.BaseController):
     settings_types['anti_windup_lim'] = 'list(float)'
     settings_default['anti_windup_lim'] = None
     settings_description['anti_windup_lim'] = 'Limits of actuation to apply anti windup'
-    
+
     # Set point parameters
     settings_types['sp_type'] = 'str'
     settings_default['sp_type'] = None
@@ -57,11 +57,11 @@ class BladePitchPid(controller_interface.BaseController):
             'Source used to define the' +
             ' set point')
     settings_options['sp_source'] = ['file']
-    
+
     settings_types['sp_time_history_file'] = 'str'
     settings_default['sp_time_history_file'] = None
     settings_description['sp_time_history_file'] = ('Route and file name of the time ' +
-                                                    'history of the desired set point.' + 
+                                                    'history of the desired set point.' +
                                                     'Used for ``sp_source = file``')
 
     # Other parameters
@@ -80,6 +80,23 @@ class BladePitchPid(controller_interface.BaseController):
     settings_types['max_pitch_rate'] = 'float'
     settings_default['max_pitch_rate'] = 0.1396
     settings_description['max_pitch_rate'] = 'Maximum pitch rate [rad/s]'
+
+    # Generator and drive train model
+    settings_types['target_power'] = 'float'
+    settings_default['target_power'] = 5e6
+    settings_description['target_power'] = 'Target power in operation'
+
+    settings_types['GBR'] = 'float'
+    settings_default['GBR'] = 97.
+    settings_description['GBR'] = 'Gear box ratio'
+
+    settings_types['inertia_dt'] = 'float'
+    settings_default['inertia_dt'] =
+    settings_description['inertia_dt'] = 'Drive train inertia'
+
+    settings_types['newmark_damp'] = 'float'
+    settings_default['newmark_damp'] = 1e-4
+    settings_description['newmark_damp'] = 'Damping of the time integration newmark-beta scheme'
 
     # Output parameters
     settings_types['write_controller_log'] = 'bool'
@@ -132,6 +149,7 @@ class BladePitchPid(controller_interface.BaseController):
                                  no_ctype=True)
 
         self.settings = self.in_dict
+        self.newmark_damp = 0.5 + self.settings['newmark_damp']
         # self.controller_id = controller_id
 
         # self.nblades = len(self.settings['blade_num_body'])
@@ -181,7 +199,7 @@ class BladePitchPid(controller_interface.BaseController):
 
         prescribed_sp = self.compute_prescribed_sp(time)
         sys_pv = self.compute_system_pv(struct_tstep, data.structure)
-        
+
         # Apply filter
         if self.filter_pv and (len(self.system_pv) > 1):
             nit = len(self.system_pv)
@@ -205,12 +223,12 @@ class BladePitchPid(controller_interface.BaseController):
                                'I': self.settings['I'],
                                'D': self.settings['D']},
                 i_current=data.ts)
-    
+
         if control_command < -self.settings['max_pitch_rate']:
             control_command = -self.settings['max_pitch_rate']
         elif control_command > self.settings['max_pitch_rate']:
             control_command = self.settings['max_pitch_rate']
-        
+
         # Apply control order
         # rot_mat = algebra.rotation3d_x(control_command)
         print("control_command: ", control_command)
@@ -254,7 +272,7 @@ class BladePitchPid(controller_interface.BaseController):
                                                 control_command))
         return controlled_state
 
-    
+
     def compute_prescribed_sp(self, time):
         """
             Compute the set point relevant for the controller
@@ -288,7 +306,7 @@ class BladePitchPid(controller_interface.BaseController):
             rbm = steady[4] + unsteady[4] + grav[4]
             self.system_pv.append(rbm)
             print("rbm: ", rbm)
-            
+
         return self.system_pv[-1]
     # def extract_time_history(self, controlled_state):
     #     output = 0.0
@@ -330,17 +348,16 @@ class BladePitchPid(controller_interface.BaseController):
         # self.log.close()
         pass
 
+    def generator_model(aero_torque, ini_rot_vel, ini_rot_acc):
 
+        gen_torque = self.settings['target_power']*ini_rot_vel
 
+        delta_rot_acc = (aero_torque - self.settings['GBR']*gen_torque)/self.settings['inertia_dt']
+        rot_acc = ini_tor_acc + delta_rot_acc
 
+        # Integrate according to newmark-beta scheme
+        rot_vel = (ini_rot_vel +
+                   (1. - self.newmark_beta)*self.settings['dt'] +
+                   self.newmark_beta*self.settings['dt']*rot_acc)
 
-
-
-
-
-
-
-
-
-
-
+        return rot_vel, rot_acc
