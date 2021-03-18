@@ -137,6 +137,9 @@ class VectorVariable:
             self.first_position,
             self.end_position)
 
+    def copy(self):
+        return copy.deepcopy(self)
+
 
 # should have a dedicated class for Input vs Output variables? in the output the columns should not change
 # in the input it is the rows the ones that do not change
@@ -316,13 +319,13 @@ class LinearVector:
         if vec1.variable_class is not vec2.variable_class:
             raise TypeError('Unable to merge two different kinds of vectors')
 
-        for variable in vec2:
-            variable.index += vec1.num_variables
+        list_of_variables_1 = [variable.copy() for variable in vec1]
+        list_of_variables_2 = [variable.copy() for variable in vec2]
 
-        list_of_variables_1 = [variable for variable in vec1]
-        list_of_variables_2 = [variable for variable in vec2]
+        for ith, variable in enumerate(list_of_variables_1 + list_of_variables_2):
+            variable.index = ith
 
-        merged_vector = cls(list_of_variables_1.copy() + list_of_variables_2.copy())
+        merged_vector = cls(list_of_variables_1 + list_of_variables_2)
         return merged_vector
 
     @classmethod
