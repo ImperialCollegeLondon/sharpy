@@ -917,17 +917,55 @@ class LinearAeroelastic(ss_interface.BaseElement):
         self.Crr = Crr
 
     def to_nodal_coordinates(self):
+        """
+        Transforms the outputs of the system to nodal coordinates if they were previously expressed in modal space
+        """
 
         is_modal = self.beam.sys.modal
 
         if is_modal:
-            phi = self.beam.sys.U
+            beam_kin = self.beam.sys.Kin    # N to Q
+            beam_kout = self.beam.sys.Kout  # q to eta
 
-            # these would include control surface deflections, thrust etc.
-            non_structural_inputs = self.uvlm.ss.inputs - self.beam.ss.outputs
-
-            input_gain = sclalg.block_diag(phi.T, phi.T, np.eye(non_structural_inputs), phi.T)
-            output_gain = sclalg.block_diag(phi, phi, phi)
+            aug_in_gain = sclalg.block_diag(self.couplings['in_mode_gain'].value.T, beam_kin.value)
+            input_gain = libss.Gain(aug_in_gain,
+                                    input_vars=LinearVector.merge(
+                                        LinearVector.transform(
+                                            self.couplings['in_mode_gain'].output_variables, to_type=InputVariable),
+                                        beam_kin.input_variables),
+                                    output_vars=LinearVector.merge(
+                                        LinearVector.transform(
+                                            self.couplings['in_mode_gain'].input_variables, to_type=OutputVariable),
+                                        beam_kin.output_variables)
+                                    )
+            try:
+                acceleration_gain = self.beam.sys.acceleration_modal_gain
+            except AttributeError:
+                aug_out_gain = sclalg.block_diag(self.couplings['out_mode_gain'].value.T, beam_kout.value)
+                output_gain = libss.Gain(aug_out_gain,
+                                         input_vars=LinearVector.merge(
+                                             LinearVector.transform(
+                                                 self.couplings['out_mode_gain'].output_variables, to_type=InputVariable),
+                                             beam_kout.input_variables),
+                                         output_vars=LinearVector.merge(
+                                             LinearVector.transform(
+                                                 self.couplings['out_mode_gain'].input_variables, to_type=OutputVariable),
+                                             beam_kout.output_variables)
+                                         )
+            else:
+                aug_out_gain = sclalg.block_diag(self.couplings['out_mode_gain'].value.T, beam_kout.value,
+                                                 acceleration_gain.value)
+                output_gain = libss.Gain(aug_out_gain,
+                                         input_vars=LinearVector.merge(
+                                             LinearVector.transform(
+                                                 self.couplings['out_mode_gain'].output_variables, to_type=InputVariable),
+                                             LinearVector.merge(beam_kout.input_variables, acceleration_gain.input_variables),
+                                         ),
+                                         output_vars=LinearVector.merge(
+                                             LinearVector.transform(
+                                                 self.couplings['out_mode_gain'].input_variables, to_type=OutputVariable),
+                                             LinearVector.merge(beam_kout.output_variables, acceleration_gain.output_variables))
+                                         )
 
             self.ss.addGain(input_gain, where='in')
             self.ss.addGain(output_gain, where='out')
