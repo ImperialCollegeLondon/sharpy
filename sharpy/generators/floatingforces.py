@@ -832,6 +832,9 @@ class FloatingForces(generator_interface.BaseGenerator):
 
             elif self.settings['method_matrices_freq'] == 'rational_function':
                 # Damping
+                if self.x0_K[data.ts - 1] is None:
+                    # This loop is needed when computations are restarted
+                    self.x0_K[data.ts - 1] = 0
                 (T, yout, xout) = forced_response(self.hd_K,
                                                   T=[0, self.settings['dt']],
                                                   U=self.qdot[data.ts-1:data.ts+1, :].T,
