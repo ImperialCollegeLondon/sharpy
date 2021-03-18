@@ -502,11 +502,11 @@ class DynamicCoupled(BaseSolver):
             # compute unsteady contribution
             force_coeff = 0.0
             unsteady_contribution = False
-            if self.settings['include_unsteady_force_contribution'].value:
-                if self.data.ts > self.settings['steps_without_unsteady_force'].value:
+            if self.settings['include_unsteady_force_contribution']:
+                if self.data.ts > self.settings['steps_without_unsteady_force']:
                     unsteady_contribution = True
-                    if 0 < self.settings['pseudosteps_ramp_unsteady_force'].value:
-                        force_coeff = k/self.settings['pseudosteps_ramp_unsteady_force'].value
+                    if 0 < self.settings['pseudosteps_ramp_unsteady_force']:
+                        force_coeff = k/self.settings['pseudosteps_ramp_unsteady_force']
                     else:
                         force_coeff = 1.
             # Add external forces
