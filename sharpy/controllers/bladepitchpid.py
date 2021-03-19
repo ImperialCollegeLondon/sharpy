@@ -91,7 +91,7 @@ class BladePitchPid(controller_interface.BaseController):
     settings_description['GBR'] = 'Gear box ratio'
 
     settings_types['inertia_dt'] = 'float'
-    settings_default['inertia_dt'] =
+    settings_default['inertia_dt'] = 43776046.25
     settings_description['inertia_dt'] = 'Drive train inertia'
 
     settings_types['newmark_damp'] = 'float'
