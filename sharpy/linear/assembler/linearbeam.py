@@ -432,7 +432,7 @@ class LinearBeam(BaseElement):
         #         psi[i_elem, i_node, :] = np.linalg.inv(algebra.crv2tan(struct_tstep.psi[i_elem, i_node]).T).dot(q[i_node + 3: i_node + 6])
         #         psi_dot[i_elem, i_node, :] = dqdt[i_node + 3: i_node + 6]
 
-        pos, pos_dot, psi, psi_dot = self.unpack_flex_dof(q, dqdt)
+        pos, psi, pos_dot, psi_dot = self.unpack_flex_dof(q, dqdt)
 
         if not clamped:
             for_vel = dqdt[-rig_dof: -rig_dof + 6]
