@@ -42,9 +42,9 @@ class Cleanup(BaseSolver):
 
     def run(self, online=False):
         if self.settings['clean_structure']:
-            self.clean(self.data.structure.timestep_info, self.settings['remaining_steps'].value)
+            self.clean(self.data.structure.timestep_info, self.settings['remaining_steps'])
         if self.settings['clean_aero']:
-            self.clean(self.data.aero.timestep_info, self.settings['remaining_steps'].value)
+            self.clean(self.data.aero.timestep_info, self.settings['remaining_steps'])
 
         return self.data
 

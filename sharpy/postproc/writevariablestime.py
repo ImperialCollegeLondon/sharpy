@@ -189,7 +189,7 @@ class WriteVariablesTime(BaseSolver):
 
         # Initialise velocity generator
         self.caller = caller
-        if not self.caller is None:
+        if ((not self.caller is None) and (not len(self.settings['vel_field_variables']) == 0)):
             if self.caller.solver_classification.lower() == 'aero':
                 # For aerodynamic solvers
                 self.velocity_generator = self.caller.velocity_generator
@@ -301,7 +301,7 @@ class WriteVariablesTime(BaseSolver):
                 uext = [np.zeros((3, self.n_vel_field_points, 1))]
                 self.velocity_generator.generate({'zeta': self.vel_field_points,
                                     'for_pos': tstep.for_pos[0:3],
-                                    't': self.data.ts*self.caller.settings['dt'].value,
+                                    't': self.data.ts*self.caller.settings['dt'],
                                     'is_wake': False,
                                     'override': True},
                                     uext)

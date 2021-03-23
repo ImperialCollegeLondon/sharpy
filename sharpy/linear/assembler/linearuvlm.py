@@ -133,6 +133,10 @@ class LinearUVLM(ss_interface.BaseElement):
     settings_default['vortex_radius'] = vortex_radius_def
     settings_description['vortex_radius'] = 'Distance below which inductions are not computed'
 
+    settings_types['cfl1'] = 'bool'
+    settings_default['cfl1'] = True
+    settings_description['cfl1'] = 'If it is ``True``, it assumes that the discretisation complies with CFL=1'
+
     settings_types['convert_to_ct'] = 'bool'
     settings_default['convert_to_ct'] = False
     settings_description['convert_to_ct'] = 'Convert system to Continuous Time. Note: features above the original ' \
@@ -244,7 +248,7 @@ class LinearUVLM(ss_interface.BaseElement):
             self.gust_assembler.initialise(data.aero, self.sys, self.tsaero0,
                                            custom_settings=self.settings['gust_assembler_inputs'])
 
-    def assemble(self, track_body=False):
+    def assemble(self, track_body=False, wake_prop_settings=None):
         r"""
         Assembles the linearised UVLM system, removes the desired inputs and adds linearised control surfaces
         (if present).
@@ -258,7 +262,7 @@ class LinearUVLM(ss_interface.BaseElement):
         .. math:: [\delta_1, \delta_2, \dots, \dot{\delta}_1, \dot{\delta_2}]
         """
 
-        self.sys.assemble_ss()
+        self.sys.assemble_ss(wake_prop_settings=wake_prop_settings)
 
         if self.scaled:
             self.sys.nondimss()
