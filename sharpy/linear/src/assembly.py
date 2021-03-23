@@ -1160,14 +1160,20 @@ def wake_prop(MS, use_sparse=False, sparse_format='lil', settings=None):
     """
     Assembly of wake propagation matrices, in sparse or dense matrices format
 
-    Note: wake propagation matrices are very sparse. Nonetheless, allocation
-    in dense format (from numpy.zeros) or sparse does not have important
-    differences in terms of cpu time and memory used as numpy.zeros does
-    not allocate memory until this is accessed
+    Note:
+        Wake propagation matrices are very sparse. Nonetheless, allocation
+        in dense format (from numpy.zeros) or sparse does not have important
+        differences in terms of cpu time and memory used as numpy.zeros does
+        not allocate memory until this is accessed
 
-    cfl1 (bool): Defines if the wake shape complies with CFL=1
-    dt (float): time step
-    vel_gen: velocity generetor
+    Args:
+        MS (MultiSurface): MultiSurface instance
+        use_sparse (bool (optional)): Use sparse matrices
+        sparse_format (str (optional)): Use either ``csc`` or ``lil`` format
+        settings (dict (optional)): Dictionary with aerodynamic settings containing:
+            cfl1 (bool): Defines if the wake shape complies with CFL=1
+            dt (float): time step
+            vel_gen: velocity generator
     """
 
     try:
@@ -1175,7 +1181,7 @@ def wake_prop(MS, use_sparse=False, sparse_format='lil', settings=None):
     except (KeyError, TypeError):
         # In case the key does not exist or settings=None
         cfl1 = True
-    cout.cout_wrap(("Computing wake propagation matrix with CFL1=%s" % cfl1), 1)
+    cout.cout_wrap("Computing wake propagation matrix with CFL1={}".format(cfl1), 1)
 
     n_surf = len(MS.Surfs)
     assert len(MS.Surfs_star) == n_surf, 'No. of wake and bound surfaces not matching!'
