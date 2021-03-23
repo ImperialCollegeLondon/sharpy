@@ -389,6 +389,172 @@ def compute_equiv_hd_added_mass(f, q):
     return H
 
 
+def jonswap_spectrum(Tp, Hs, w):
+    """
+    This function computes the one-sided spectrum of the JONSWAP wave data
+    [2] Jonkman, J. M. Dynamics modeling and loads analysis of an offshore floating wind turbine. 2007. NREL/TP-500-41958
+    """
+    nomega = w.shape[0]
+    spectrum = np.zeros((nomega))
+    for iomega in range(nomega):
+        # Compute the scaling factor
+        if w[iomega] <= 2*np.pi/Tp:
+            sigma = 0.07
+        else:
+            sigma = 0.09
+        # Compute the peak shape parameter
+        param = Tp/np.sqrt(Hs)
+        if param <= 3.6:
+            gamma = 5.
+        elif param > 5:
+            gamma = 1.
+        else:
+            gamma = np.exp(5.75 - 1.15*param)
+        # Compute one-sided spectrum
+        omega = w[iomega]
+        param = omega*Tp/2/np.pi
+        spectrum[iomega] = (1./2/np.pi)*(5./16)*(Hs**2*Tp)*param**(-5)
+        spectrum[iomega] *= np.exp(-5./4*param**(-4))
+        spectrum[iomega] *= (1. - 0.287*np.log(gamma))
+        spectrum[iomega] *= gamma**np.exp(-0.5*((param - 1.)/sigma)**2)
+
+    return spectrum
+
+
+def noise_spectrum(Tp, Hs, w):
+    """
+    Apply a white noise to the spectrum to get different realisation
+    every run
+    """
+    nomega = w.shape[0]
+    nomega_2s = (nomega - 1)*2 + 1
+    spectrum_1s = jonswap_spectrum(Tp, Hs, w) + 0j
+    # Compute the two sided spectrum
+    omega_2s = np.zeros((nomega_2s,))
+    spectrum_2s = np.zeros((nomega_2s,), dtype=np.complex)
+    for iomega in range(nomega):
+        omega_2s[nomega - 1 - iomega] = -w[iomega]
+        omega_2s[nomega - 1 + iomega] = w[iomega]
+        spectrum_2s[nomega - 1 - iomega] = 0.5*spectrum_1s[iomega]
+        spectrum_2s[nomega - 1 + iomega] = 0.5*spectrum_1s[iomega]
+    # Compute a random signal with random noise
+    u1 = np.random.random(size=nomega) + 0j
+    u2 = np.random.random(size=nomega) + 0j
+
+    fft_wn_2s = np.zeros((nomega_2s,), dtype=np.complex)
+    # Keep zero freq to zero
+    for iomega in range(1, nomega):
+        u1w = u1[iomega]
+        u2w = u2[iomega]
+        fft_wn_2s[nomega - 1 + iomega] = np.sqrt(-2.*np.log(u1w))*(np.cos(2*np.pi*u2w) + 1j*np.sin(2*np.pi*u2w))
+        fft_wn_2s[nomega - 1 - iomega] = np.sqrt(-2.*np.log(u1w))*(np.cos(2*np.pi*u2w) - 1j*np.sin(2*np.pi*u2w))
+
+    import matplotlib.pyplot as plt
+    fig, ax = plt.subplots(2, 1, figsize=(4, 3*2))
+    ax[0].grid()
+    ax[0].set_xlabel("omega [rad/s]")
+    ax[0].set_ylabel("abs white noise")
+    ax[0].plot(omega_2s, np.abs(fft_wn_2s), '-')
+    ax[1].grid()
+    ax[1].set_xlabel("omega [rad/s]")
+    ax[1].set_ylabel("phase white noise")
+    ax[1].plot(omega_2s, np.angle(fft_wn_2s, deg=True), '-')
+
+    fig.legend()
+    fig.tight_layout()
+    fig.savefig("white_noise.png")
+
+    ns = fft_wn_2s*np.sqrt(2*np.pi*spectrum_2s)
+    return ns
+
+
+def time_wave_forces(Tp, Hs, w, time, xi, w_xi):
+    """
+    Compute the time evolution of wave forces
+    """
+
+    wave_force = np.zeros((time.shape[0], 6), dtype=np.complex)
+    ns = noise_spectrum(Tp, Hs, w)
+    nomega = w.shape[0]
+    omega_2s = np.zeros(((nomega - 1)*2 + 1))
+    for idim in range(6):
+        refine_xi = np.interp(w, w_xi, xi[:, idim]) + 0j
+        refine_xi_2s = np.zeros((ns.shape[0],), dtype=np.complex)
+        for iomega in range(nomega):
+            refine_xi_2s[nomega - 1 - iomega] = refine_xi[iomega]
+            refine_xi_2s[nomega - 1 + iomega] = refine_xi[iomega]
+            omega_2s[nomega - 1 + iomega] = w[iomega]
+            omega_2s[nomega - 1 - iomega] = -w[iomega]
+        for it in range(time.shape[0]):
+            function = ns*refine_xi_2s*np.exp(1j*omega_2s*time[it])
+            wf = (1./2/np.pi)*np.trapz(omega_2s, function)
+            wave_force[it, idim] = wf.copy()
+
+    return wave_force
+
+
+def test_time_wave_forces():
+    Tp = 14.656 #10.
+    Hs = 5.49 #6.
+    nrealisations = 10
+    dt = 1./20 # To get max freq equal to 10Hz
+    w = 2.*np.pi*np.arange(0.005, 10 + 0.005, 0.005)
+    ntime_steps = 2*w.shape[0]
+    time = np.linspace(0, (ntime_steps - 1)*dt, ntime_steps)
+
+    # Get the zero-noise specturm
+    zero_noise_spectrum = jonswap_spectrum(Tp, Hs, w)
+
+    # Compute different realisations
+    xi = np.ones((2, 6), dtype=complex)
+    w_xi = np.array([0.005, 10.])
+    wave_force = np.zeros((ntime_steps, nrealisations), dtype=np.complex)
+    for ireal in range(nrealisations):
+        wave_force[:, ireal] = time_wave_forces(Tp, Hs, w, time, xi, w_xi)[:, 0] # Keep only on dimension
+
+    # Compute the spectrum of the realisations
+    ns = np.zeros((w.shape[0], nrealisations), dtype=np.complex)
+    for ireal in range(nrealisations):
+        ns[:, ireal] = fft(wave_force[:, ireal])[:ntime_steps//2]
+        # ns[:, ireal] = noise_spectrum(Tp, Hs, w)[ntime_steps//2 - 1:]
+
+    # Compare the zero noise with the realisations average
+    avg_noise_spectrum = np.average(np.abs(ns), axis=1)
+    #avg_noise_spectrum = np.abs(ns)
+    print(np.angle(avg_noise_spectrum, deg=True))
+
+    import matplotlib.pyplot as plt
+    # Plot JONSWAP spectum
+    fig, ax = plt.subplots(1, 1, figsize=(4, 3))
+    ax.grid()
+    ax.set_xlabel("omega [rad/s]")
+    ax.set_ylabel("specturm")
+    ax.set_xlim(0, 1.3)
+    ax.set_ylim(0, 12)
+    ax.plot(w, zero_noise_spectrum, '--', label='JONSWAP')
+    fig.legend()
+    fig.tight_layout()
+    fig.savefig("jonswap.png")
+
+    fig, ax = plt.subplots(1, 1, figsize=(4, 3))
+    ax.grid()
+    ax.set_xlabel("omega [rad/s]")
+    ax.set_ylabel("specturm")
+    #ax.set_xlim(0, 1.3)
+    ax.set_xlim(0, 13)
+    #ax.set_ylim(0, 12)
+    for ireal in range(nrealisations):
+        ax.plot(w, np.abs(ns[:, ireal]), 'bo')
+    ax.plot(w, avg_noise_spectrum, '-', label="avg")
+    ax.plot(w, zero_noise_spectrum, '--', label="JONSWAP")
+    fig.legend()
+    fig.tight_layout()
+    fig.show()
+    #plt.pause(30)
+    fig.savefig("spectrum.png")
+    print("DONE!")
+
+
 @generator_interface.generator
 class FloatingForces(generator_interface.BaseGenerator):
     r"""
