@@ -81,25 +81,47 @@ class NewmarkBeta(_BaseTimeIntegrator):
         self.gamma = 0.5 + self.settings['newmark_damp']
         self.beta = 0.25*(self.gamma + 0.5)*(self.gamma + 0.5)
 
+        self.sys_size = self.settings['sys_size']
+        self.num_LM_eq = self.settings['num_LM_eq']
 
     def predictor(self, q, dqdt, dqddt):
 
-        q += self.dt*dqdt + (0.5 - self.beta)*self.dt*self.dt*dqddt
-        dqdt += (1.0 - self.gamma)*self.dt*dqddt
+        sys_size = self.sys_size
+        q[:sys_size] += self.dt*dqdt[:sys_size] + (0.5 - self.beta)*self.dt*self.dt*dqddt[:sys_size]
+        dqdt[:sys_size] += (1.0 - self.gamma)*self.dt*dqddt[:sys_size]
         dqddt *= 0.
 
-    def build_matrix(self, M, C, K, Q, q, dqdt, dqddt):
+        # q[sys_size:] = q[sys_size:]
+        dqdt[sys_size:] = dqdt[sys_size:]
 
-        Asys = K + C*self.gamma/(self.beta*self.dt) + M/(self.beta*self.dt*self.dt)
-        Qout = Q.copy()
+    def build_matrix(self, M, C, K, Q, kBnh, LM_Q):
+
+        sys_size = self.sys_size
+        num_LM_eq = self.num_LM_eq
+
+        Asys = np.zeros((sys_size + num_LM_eq, sys_size + num_LM_eq),
+                         dtype=ct.c_double, order='F')
+        Q_out = np.zeros((sys_size + num_LM_eq), dtype=ct.c_double, order='F')
+
+        Asys[:sys_size, :sys_size] = K + C*self.gamma/(self.beta*self.dt) + M/(self.beta*self.dt*self.dt)
+        Qout[:sys_size] = Q.copy()
+
+        Asys[sys_size:, :sys_size] = (self.gamma/self.beta/self.dt)*kBnh
+        Asys[:sys_size, sys_size:] = kBnh.T
+        Qout[sys_size:] = LM_Q.copy()
 
         return Asys, Qout
 
     def corrector(self, q, dqdt, dqddt, Dq):
 
-        q += Dq
-        dqdt += self.gamma/(self.beta*self.dt)*Dq
-        dqddt += 1.0/(self.beta*self.dt*self.dt)*Dq
+        sys_size = self.sys_size
+        num_LM_eq = self.num_LM_eq
+
+        q[:sys_size] += Dq[:sys_size]
+        dqdt[:sys_size] += self.gamma/(self.beta*self.dt)*Dq[:sys_size]
+        dqddt[:sys_size] += 1.0/(self.beta*self.dt*self.dt)*Dq[:sys_size]
+
+        dqdt[sys_size:] += Dq[sys_size:]
 
 
 @solver
@@ -166,7 +188,7 @@ class GeneralisedAlpha(_BaseTimeIntegrator):
         dqddt *= 0.
 
 
-    def build_matrix(self, M, C, K, Q, q, dqdt, dqddt):
+    def build_matrix(self, M, C, K, Q):
 
         Asys = (self.om_af*K +
                 self.gamma*self.om_af/self.beta/self.dt*C +

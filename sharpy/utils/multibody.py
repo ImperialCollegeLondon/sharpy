@@ -138,7 +138,7 @@ def update_mb_dB_before_merge(tstep, MB_tstep):
         tstep.mb_dquatdt[ibody, :] = MB_tstep[ibody].dqddt[-4:].astype(dtype=ct.c_double, order='F', copy=True)
 
 
-def disp_and_accel2state(MB_beam, MB_tstep, q, dqdt, dqddt):
+def disp_and_accel2state(MB_beam, MB_tstep, Lambda, Lambda_dot, q, dqdt, dqddt):
     """
     disp2state
 
@@ -147,6 +147,8 @@ def disp_and_accel2state(MB_beam, MB_tstep, q, dqdt, dqddt):
     Args:
         MB_beam (list(:class:`~sharpy.structure.models.beam.Beam`)): each entry represents a body
         MB_tstep (list(:class:`~sharpy.utils.datastructures.StructTimeStepInfo`)): each entry represents a body
+        Lambda(np.ndarray): Lagrange multipliers of holonomic constraints
+        Lambda_dot(np.ndarray): Lagrange multipliers of non-holonomic constraints
         q(np.ndarray): Vector of states
     	dqdt(np.ndarray): Time derivatives of states
         dqddt(np.ndarray): Second time derivatives of states
@@ -174,8 +176,10 @@ def disp_and_accel2state(MB_beam, MB_tstep, q, dqdt, dqddt):
             dqddt[first_dof+ibody_num_dof+6:first_dof+ibody_num_dof+10]=dquatdt.astype(dtype=ct.c_double, order='F', copy=True)
             first_dof += ibody_num_dof + 10
 
+    q[first_dof:] = Lambda
+    dqdt[first_dof:] = Lambda_dot
 
-def state2disp_and_accel(q, dqdt, dqddt, MB_beam, MB_tstep):
+def state2disp_and_accel(q, dqdt, dqddt, MB_beam, MB_tstep, Lambda, Lambda_dot):
     """
     state2disp
 
@@ -189,6 +193,8 @@ def state2disp_and_accel(q, dqdt, dqddt, MB_beam, MB_tstep):
         q(np.ndarray): Vector of states
     	dqdt(np.ndarray): Time derivatives of states
         dqddt(np.ndarray): Second time derivatives of states
+        Lambda(np.ndarray): Lagrange multipliers of holonomic constraints
+        Lambda_dot(np.ndarray): Lagrange multipliers of non-holonomic constraints
 
     """
 
@@ -213,6 +219,8 @@ def state2disp_and_accel(q, dqdt, dqddt, MB_beam, MB_tstep):
             xbeamlib.xbeam_solv_state2accel(MB_beam[ibody], MB_tstep[ibody])
             first_dof += ibody_num_dof + 10
 
+    Lambda = q[first_dof:]
+    Lambda_dot = dqdt[first_dof:]
 
 def get_elems_nodes_list(beam, ibody):
     """
