@@ -162,7 +162,7 @@ class Krylov(rom_interface.BaseRom):
                           compress_float=True)
             h5.add_as_grp(self.ssrom, outfile,
                           grpname='ssrom',
-                          ClassesToSave=(libss.ss, ),
+                          ClassesToSave=(libss.StateSpace, ),
                           compress_float=True)
 
     def run(self, ss):
