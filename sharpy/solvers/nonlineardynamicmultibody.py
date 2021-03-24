@@ -32,10 +32,6 @@ class NonLinearDynamicMultibody(_BaseStructural):
     settings_description = _BaseStructural.settings_description.copy()
     settings_options = dict()
 
-    settings_types['print_cond_number'] = 'bool'
-    settings_default['print_cond_number'] = False
-    settings_description['print_cond_number'] = 'Write condition number to screen'
-
     settings_types['time_integrator'] = 'str'
     settings_default['time_integrator'] = 'NewmarkBeta'
     settings_description['time_integrator'] = 'Method to perform time integration'
@@ -109,6 +105,7 @@ class NonLinearDynamicMultibody(_BaseStructural):
             self.fid_lambda = open(dire + 'lambda.dat', "w")
             self.fid_lambda_dot = open(dire + 'lambda_dot.dat', "w")
             self.fid_lambda_ddot = open(dire + 'lambda_ddot.dat', "w")
+            self.fid_cond_num = open(dire + 'cond_num.dat', "w")
 
         # Define the number of dofs
         self.define_sys_size()
@@ -364,11 +361,9 @@ class NonLinearDynamicMultibody(_BaseStructural):
 
             MB_Asys, MB_Q = self.time_integrator.build_matrix(MB_M, MB_C, MB_K, MB_Q, q, dqdt, dqddt)
 
-            if self.settings['print_cond_number']:
-                out_string = ("cond(A[:sys_size,:sys_size])=%e cond(A)=%e" % (
-                                 np.linalg.cond(MB_Asys[:self.sys_size, :self.sys_size]),
-                                 np.linalg.cond(MB_Asys)))
-                cout.cout_wrap(out_string, 0)
+            if self.settings['write_lm']:
+                cond_num = np.linalg.cond(MB_Asys[:self.sys_size, :self.sys_size])
+                cond_num_lm = np.linalg.cond(MB_Asys)
 
             Dq = np.linalg.solve(MB_Asys, -MB_Q)
 
@@ -406,6 +401,7 @@ class NonLinearDynamicMultibody(_BaseStructural):
                 self.fid_lambda.write("%d %d " % (self.data.ts, iteration))
                 self.fid_lambda_dot.write("%d %d " % (self.data.ts, iteration))
                 self.fid_lambda_ddot.write("%d %d " % (self.data.ts, iteration))
+                self.fid_cond_num.write("%d %d " % (self.data.ts, iteration))
                 for ilm in range(num_LM_eq):
                     self.fid_lambda.write("%f " % Lambda[ilm])
                     self.fid_lambda_dot.write("%f " % Lambda_dot[ilm])
@@ -413,6 +409,7 @@ class NonLinearDynamicMultibody(_BaseStructural):
                 self.fid_lambda.write("\n")
                 self.fid_lambda_dot.write("\n")
                 self.fid_lambda_ddot.write("\n")
+                self.fid_cond_num.write("%e %e\n" % (cond_num, cond_num_lm))
 
             if converged:
                 break
