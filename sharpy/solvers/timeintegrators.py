@@ -1,4 +1,6 @@
 import numpy as np
+import ctypes as ct
+
 import sharpy.utils.settings as settings
 from sharpy.utils.solver_interface import solver
 
@@ -101,7 +103,7 @@ class NewmarkBeta(_BaseTimeIntegrator):
 
         Asys = np.zeros((sys_size + num_LM_eq, sys_size + num_LM_eq),
                          dtype=ct.c_double, order='F')
-        Q_out = np.zeros((sys_size + num_LM_eq), dtype=ct.c_double, order='F')
+        Qout = np.zeros((sys_size + num_LM_eq), dtype=ct.c_double, order='F')
 
         Asys[:sys_size, :sys_size] = K + C*self.gamma/(self.beta*self.dt) + M/(self.beta*self.dt*self.dt)
         Qout[:sys_size] = Q.copy()

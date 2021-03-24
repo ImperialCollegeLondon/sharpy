@@ -106,8 +106,8 @@ class NonLinearDynamicMultibody(_BaseStructural):
 
         self.prev_Dq = np.zeros((self.sys_size + self.num_LM_eq))
 
-        self.settings['time_integrator']['sys_size'] = self.sys_size
-        self.settings['time_integrator']['num_LM_eq'] = self.num_LM_eq
+        self.settings['time_integrator_settings']['sys_size'] = self.sys_size
+        self.settings['time_integrator_settings']['num_LM_eq'] = self.num_LM_eq
 
         # Initialise time integrator
         self.time_integrator = solver_interface.initialise_solver(
@@ -217,9 +217,9 @@ class NonLinearDynamicMultibody(_BaseStructural):
 
         # Only working for non-holonomic constratints
         kBnh = LM_C[self.sys_size:, :self.sys_size]
-        LM_Q = LM[self.sys_size:]
+        strict_LM_Q = LM_Q[self.sys_size:]
 
-        return MB_M, MB_C, MB_K, MB_Q, kBnh, LM_Q
+        return MB_M, MB_C, MB_K, MB_Q, kBnh, strict_LM_Q
 
     def integrate_position(self, MB_beam, MB_tstep, dt):
         """
@@ -363,8 +363,8 @@ class NonLinearDynamicMultibody(_BaseStructural):
                                                         kBnh, LM_Q)
 
             if self.settings['write_lm']:
-                cond_num = np.linalg.cond(MB_Asys[:self.sys_size, :self.sys_size])
-                cond_num_lm = np.linalg.cond(MB_Asys)
+                cond_num = np.linalg.cond(Asys[:self.sys_size, :self.sys_size])
+                cond_num_lm = np.linalg.cond(Asys)
 
             Dq = np.linalg.solve(Asys, -Q)
 
