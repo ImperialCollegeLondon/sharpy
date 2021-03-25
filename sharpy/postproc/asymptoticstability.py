@@ -32,10 +32,6 @@ class AsymptoticStability(BaseSolver):
     settings_default = dict()
     settings_description = dict()
 
-    settings_types['folder'] = 'str'
-    settings_default['folder'] = './output'
-    settings_description['folder'] = 'Output folder'
-
     settings_types['print_info'] = 'bool'
     settings_default['print_info'] = False
     settings_description['print_info'] = 'Print information and table of eigenvalues'
@@ -111,7 +107,7 @@ class AsymptoticStability(BaseSolver):
 
         self.num_evals = self.settings['num_evals']
 
-        stability_folder_path = self.settings['folder'] + '/' + self.data.settings['SHARPy']['case'] + '/stability'
+        stability_folder_path = data.output_folder + '/stability/'
         if not os.path.exists(stability_folder_path):
             os.makedirs(stability_folder_path)
         self.folder = stability_folder_path

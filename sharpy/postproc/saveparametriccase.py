@@ -74,11 +74,7 @@ class SaveParametricCase(BaseSolver):
                                  no_ctype=True)
 
         # create folder for containing files if necessary
-        if not os.path.exists(self.settings['folder']):
-            os.makedirs(self.settings['folder'])
-        self.folder = self.settings['folder'] + '/'
-        if not os.path.exists(self.folder):
-            os.makedirs(self.folder)
+        self.folder = data.output_folder
 
     def run(self):
 
@@ -98,9 +94,9 @@ class SaveParametricCase(BaseSolver):
             pickle_solver = initialise_solver('PickleData')
             pickle_solver.initialise(self.data)
             self.data = pickle_solver.run()
-            sim_info['path_to_data'] = os.path.abspath(self.settings['folder'])
+            sim_info['path_to_data'] = os.path.abspath(self.folder)
         else:
-            sim_info['path_to_data'] = os.path.abspath(self.settings['folder'])
+            sim_info['path_to_data'] = os.path.abspath(self.folder)
 
         config['sim_info'] = sim_info
         config.write()

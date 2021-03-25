@@ -102,7 +102,7 @@ class WriteVariablesTime(BaseSolver):
     def __init__(self):
         self.settings = None
         self.data = None
-        self.dir = 'output/'
+        self.dir = None
 
         self.n_velocity_field_points = None
         self.velocity_field_points = None
@@ -117,7 +117,7 @@ class WriteVariablesTime(BaseSolver):
             self.settings = custom_settings
         settings.to_custom_types(self.settings, self.settings_types, self.settings_default)
 
-        self.dir = self.settings['folder'] + '/' + self.data.settings['SHARPy']['case'] + '/WriteVariablesTime/'
+        self.dir = data.output_folder + '/WriteVariablesTime/'
         if not os.path.isdir(self.dir):
             os.makedirs(self.dir)
 

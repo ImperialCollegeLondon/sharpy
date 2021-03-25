@@ -116,6 +116,7 @@ class StaticTrim(BaseSolver):
         self.trimmed_values = np.zeros((3,))
 
         self.table = None
+        self.folder = None
 
     def initialise(self, data):
         self.data = data
@@ -125,12 +126,12 @@ class StaticTrim(BaseSolver):
         self.solver = solver_interface.initialise_solver(self.settings['solver'])
         self.solver.initialise(self.data, self.settings['solver_settings'])
 
-        folder = self.settings['folder'] + '/' + self.data.settings['SHARPy']['case'] + '/statictrim/'
-        if not os.path.exists(folder):
-            os.makedirs(folder)
+        self.folder = data.output_folder + '/statictrim/'
+        if not os.path.exists(self.folder):
+            os.makedirs(self.folder)
 
         self.table = cout.TablePrinter(10, 8, ['g', 'f', 'f', 'f', 'f', 'f', 'f', 'f', 'f', 'f'],
-                                       filename=folder+'trim_iterations.txt')
+                                       filename=self.folder+'trim_iterations.txt')
         self.table.print_header(['iter', 'alpha[deg]', 'elev[deg]', 'thrust', 'Fx', 'Fy', 'Fz', 'Mx', 'My', 'Mz'])
 
     def increase_ts(self):
@@ -152,6 +153,9 @@ class StaticTrim(BaseSolver):
 
         if modal_exists:
             self.data.structure.timestep_info[-1].modal = modal
+
+        if self.settings['save_info']:
+            np.savetxt(self.folder + '/trim_values.txt', self.trimmed_values)
 
         return self.data
 
