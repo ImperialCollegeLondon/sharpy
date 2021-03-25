@@ -69,7 +69,7 @@ class PlotFlowField(BaseSolver):
     def __init__(self):
         self.settings = None
         self.data = None
-        self.dir = 'output/'
+        self.dir = None
         self.caller = None
 
     def initialise(self, data, custom_settings=None, caller=None):
@@ -81,7 +81,7 @@ class PlotFlowField(BaseSolver):
         settings.to_custom_types(self.settings, self.settings_types, self.settings_default,
                                  self.settings_options)
 
-        self.dir =   self.data.case_route + 'output/' + self.data.case_name + '/' + 'GenerateFlowField/'
+        self.dir = data.output_folder + '/' + 'GenerateFlowField/'
         if not os.path.isdir(self.dir):
             os.makedirs(self.dir)
 
