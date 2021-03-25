@@ -7,7 +7,6 @@ from sharpy.linear.src import libsparse as libsp
 from sharpy.linear.src.libss import StateSpace, SSconv, compare_ss, scale_SS, Gain, random_ss, couple, join, disc2cont, series
 from sharpy.linear.utils.ss_interface import LinearVector, InputVariable, StateVariable, OutputVariable
 
-
 class Test_dlti(unittest.TestCase):
     """ Test methods into this module for DLTI systems """
 
@@ -214,6 +213,11 @@ class Test_dlti(unittest.TestCase):
             'Rows of input 3 not retained correctly in sparse system'
 
     def test_series(self):
+        """
+        Test Series connection
+
+        input11 -- >>> SS2 ----> input1, input2 -----> self.SS ----> y
+        """
         Nx2, Nu2, Ny2 = 4, 3, self.SS.inputs
         SS2 = random_ss(Nx2, Nu2, Ny2, dt=self.SS.dt)
         SS2.input_variables = LinearVector([InputVariable('input11', size=3, index=0)])
@@ -222,9 +226,12 @@ class Test_dlti(unittest.TestCase):
                                              OutputVariable('input2', size=2, index=1)])
 
         SSnew = series(SS2, self.SS)
-        state_vars = SS2.state_variables.vector_variables + self.SS.state_variables.vector_variables
-        for ith, variable in enumerate(SSnew.state_variables):
-            assert variable == state_vars[ith]
+        state_vars = LinearVector.merge(SS2.state_variables, self.SS.state_variables)
+
+        LinearVector.check_same_vectors(SSnew.state_variables, state_vars)
+
+        assert SSnew.outputs == self.SS.outputs, 'Number of outputs not the same as self.SS'
+        assert SSnew.inputs == SS2.inputs, 'Number of inputs not the same as SS2'
 
 
 class TestStateSpaceManipulation(unittest.TestCase):
