@@ -58,7 +58,7 @@ options['include_polars'] = False
 options['separate_blades'] = False
 
 excel_description = {}
-excel_description['excel_file_name'] = '../../../docs/source/content/example_notebooks/source/type02_db_NREL5MW_v01.xlsx'
+excel_description['excel_file_name'] = '../../../docs/source/content/example_notebooks/source/type02_db_NREL5MW_v02.xlsx'
 excel_description['excel_sheet_parameters'] = 'parameters'
 excel_description['excel_sheet_structural_blade'] = 'structural_blade'
 excel_description['excel_sheet_discretization_blade'] = 'discretization_blade'
