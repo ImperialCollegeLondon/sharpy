@@ -1173,7 +1173,6 @@ def wake_prop(MS, use_sparse=False, sparse_format='lil', settings=None):
         settings (dict (optional)): Dictionary with aerodynamic settings containing:
             cfl1 (bool): Defines if the wake shape complies with CFL=1
             dt (float): time step
-            vel_gen: velocity generator
     """
 
     try:
@@ -1227,35 +1226,14 @@ def wake_prop(MS, use_sparse=False, sparse_format='lil', settings=None):
                 Surf_star.zetac
             except AttributeError:
                 Surf_star.generate_collocations()
-            # if Surf_star.u_input_coll is None:
-            #     print("computing input velocities wake")
-            #     Surf_star.get_input_velocities_at_collocation_points()
-
-            # params = {'zeta': [Surf_star.zetac],
-            #           'override': False,
-            #           'dt': settings['dt'],
-            #           'ts': settings['ts'],
-            #           't': settings['t'],
-            #           'for_pos': settings['for_pos']}
-            # settings['vel_gen'].generate(params, uext)
             # Compute induced velocities in the wake
             Surf_star.u_ind_coll = np.zeros((3, M_star, N))
-            # MS.get_ind_velocities_at_target_collocation_points(Surf_star)
 
-            # ... and fill
-            # iivec = np.array(range(N), dtype=int)
-            # cfl = np.zeros((N))
-            # Compute wake velocities
-
-            # Compute colocation points
-            # col = Surf.zetac
-            # col_star = Surf_star.zetac
             for iin in range(N):
                 # propagation from trailing edge
                 conv_vec = Surf_star.zetac[:, 0, iin] - Surf.zetac[:, -1, iin]
                 dist = np.linalg.norm(conv_vec)
                 conv_dir_te = conv_vec/dist
-                # vel = uext[0][:, 0, iin] + Surf_star.u_ind_coll[:, 0, iin] - Surf.u_input_coll[:, -1, iin]
                 vel = Surf.u_input_coll[:, -1, iin]
                 vel_value = np.dot(vel, conv_dir_te)
                 cfl = settings['dt']*vel_value/dist
@@ -1268,10 +1246,6 @@ def wake_prop(MS, use_sparse=False, sparse_format='lil', settings=None):
                     conv_vec = Surf_star.zetac[:, mm, iin] - Surf_star.zetac[:, mm - 1, iin]
                     dist = np.linalg.norm(conv_vec)
                     conv_dir = conv_vec/dist
-                    # vel_value = np.dot(uext[0][:, mm, iin] + Surf_star.u_ind_coll[:, mm, iin], conv_dir)
-                    # vel_value -= np.dot(Surf.u_input_coll[:, -1, iin], conv_dir_te)
-                    # vel = Surf_star.u_input_coll[:, mm, iin]
-                    # vel_value = np.dot(vel, conv_dir)
                     cfl = settings['dt']*vel_value/dist
 
                     C_star[mm * N + iin, (mm - 1) * N + iin] = cfl
