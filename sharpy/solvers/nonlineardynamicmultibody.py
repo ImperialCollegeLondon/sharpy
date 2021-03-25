@@ -334,7 +334,7 @@ class NonLinearDynamicMultibody(_BaseStructural):
             Lambda_dot = 0
 
         # Predictor step
-        mb.disp_and_accel2state(MB_beam, MB_tstep, Lambda, Lambda_dot, q, dqdt, dqddt)
+        q, dqdt, dqddt = mb.disp_and_accel2state(MB_beam, MB_tstep, Lambda, Lambda_dot, self.sys_size, num_LM_eq)
         self.time_integrator.predictor(q, dqdt, dqddt)
 
         # Reference residuals
@@ -350,7 +350,7 @@ class NonLinearDynamicMultibody(_BaseStructural):
                 raise exc.NotConvergedSolver(error)
 
             # Update positions and velocities
-            mb.state2disp_and_accel(q, dqdt, dqddt, MB_beam, MB_tstep, Lambda, Lambda_dot)
+            Lambda, Lambda_dot = mb.state2disp_and_accel(q, dqdt, dqddt, MB_beam, MB_tstep, num_LM_eq)
             
             MB_M, MB_C, MB_K, MB_Q, kBnh, LM_Q = self.assembly_MB_eq_system(MB_beam,
                                                                 MB_tstep,
@@ -418,7 +418,6 @@ class NonLinearDynamicMultibody(_BaseStructural):
                 self.fid_lambda_dot.write("\n")
                 self.fid_lambda_ddot.write("\n")
                 self.fid_cond_num.write("%e %e\n" % (cond_num, cond_num_lm))
-
             if converged:
                 break
 
@@ -427,7 +426,7 @@ class NonLinearDynamicMultibody(_BaseStructural):
                 if num_LM_eq:
                     LM_old_Dq = np.max(np.abs(Dq[self.sys_size:self.sys_size+num_LM_eq]))
 
-        mb.state2disp_and_accel(q, dqdt, dqddt, MB_beam, MB_tstep, Lambda, Lambda_dot)
+        Lambda, Lambda_dot = mb.state2disp_and_accel(q, dqdt, dqddt, MB_beam, MB_tstep, num_LM_eq)
         # end: comment time stepping
 
         # End of Newmark-beta iterations
