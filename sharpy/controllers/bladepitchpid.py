@@ -110,6 +110,7 @@ class BladePitchPid(controller_interface.BaseController):
     settings_description['controller_log_route'] = (
             'Directory where the log will be stored')
 
+    #test comment
     settings_table = settings.SettingsTable()
     __doc__ += settings_table.generate(settings_types,
                                        settings_default,
