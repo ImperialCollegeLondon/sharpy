@@ -53,11 +53,7 @@ class PickleData(BaseSolver):
                                  self.settings_types, self.settings_default)
 
         # create folder for containing files if necessary
-        if not os.path.exists(self.settings['folder']):
-            os.makedirs(self.settings['folder'])
-        self.folder = self.settings['folder'] + '/'
-        if not os.path.exists(self.folder):
-            os.makedirs(self.folder)
+        self.folder = data.output_folder
         self.filename = self.folder + self.data.settings['SHARPy']['case']+'.pkl'
         self.caller = caller
 

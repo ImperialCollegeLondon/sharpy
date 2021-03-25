@@ -126,9 +126,7 @@ class FrequencyResponse(solver_interface.BaseSolver):
         else:
             raise NotImplementedError('Unrecognised frequency spacing setting %s' % self.settings['frequency_spacing'])
 
-        if not os.path.exists(self.settings['folder']):
-            os.makedirs(self.settings['folder'])
-        self.folder = self.settings['folder'] + '/' + self.data.settings['SHARPy']['case'] + '/frequencyresponse/'
+        self.folder = data.output_folder + '/frequencyresponse/'
         if not os.path.exists(self.folder):
             os.makedirs(self.folder)
         self.caller = caller
