@@ -182,7 +182,7 @@ class LinearBeam(BaseElement):
 
         self.linearisation_vectors['eta'] = self.tsstruct0.q
         self.linearisation_vectors['eta_dot'] = self.tsstruct0.dqdt
-        self.linearisation_vectors['forces_struct'] = self.tsstruct0.steady_applied_forces.reshape(-1, order='C')
+        self.linearisation_vectors['forces_struct'] = self.tsstruct0.steady_applied_forces.reshape(-1, order='C') # B frame
 
     def assemble(self, t_ref=None):
         """
@@ -445,9 +445,18 @@ class LinearBeam(BaseElement):
             for_acc = dqddt[-rig_dof:-rig_dof + 6]
 
         if u_n is not None:
+            cba_m = algebra.get_transformation_matrix('ba')
             for i_node in vdof[vdof >= 0]:
-                steady_applied_forces[i_node+1] = u_n[6*i_node: 6*i_node + 6]
-            steady_applied_forces[0] = u_n[-10:-4] - np.sum(steady_applied_forces[1:, :], 0)
+                i_elem = self.sys.structure.node_master_elem[i_node, 0]
+                i_local_node = self.sys.structure.node_master_elem[i_node, 1]
+                cba = cba_m(struct_tstep.psi[i_elem, i_local_node])
+                steady_applied_forces[i_node+1, :3] = cba.dot(u_n[6*i_node: 6*i_node + 3])
+                steady_applied_forces[i_node+1, 3:] = cba.dot(u_n[6*i_node + 3: 6*i_node + 6])
+            i_elem = self.sys.structure.node_master_elem[0, 0]
+            i_local_node = self.sys.structure.node_master_elem[0, 1]
+            cba = cba_m(struct_tstep.psi[i_elem, i_local_node])
+            steady_applied_forces[0, :3] = cba.dot(u_n[-10:-7]) - np.sum(steady_applied_forces[1:, :3], 0)
+            steady_applied_forces[0, 3:] = cba.dot(u_n[-7:-4]) - np.sum(steady_applied_forces[1:, 3:], 0)
 
         # gravity forces - careful - debug
         C_grav = np.zeros((q.shape[0], q.shape[0]))

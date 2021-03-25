@@ -194,7 +194,7 @@ class Aerogrid(object):
 
         self.aero_dimensions_star = self.aero_dimensions.copy()
         for i_surf in range(self.n_surf):
-            self.aero_dimensions_star[i_surf, 0] = self.aero_settings['mstar'].value
+            self.aero_dimensions_star[i_surf, 0] = self.aero_settings['mstar']
 
     def add_timestep(self):
         try:

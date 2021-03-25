@@ -37,7 +37,7 @@ class AeroForcesCalculator(BaseSolver):
     settings_types['write_text_file'] = 'bool'
     settings_default['write_text_file'] = False
     settings_description['write_text_file'] = 'Write ``txt`` file with results'
-    
+
     settings_types['text_file_name'] = 'str'
     settings_default['text_file_name'] = 'aeroforces.txt'
     settings_description['text_file_name'] = 'Text file name'
@@ -161,8 +161,8 @@ class AeroForcesCalculator(BaseSolver):
         return aero_forces_beam_dof
 
     def calculate_coefficients(self, fx, fy, fz, mx, my, mz):
-        qS = self.settings['q_ref'].value * self.settings['S_ref'].value
-        return fx/qS, fy/qS, fz/qS, mx/qS/self.settings['b_ref'].value, my/qS/self.settings['c_ref'], \
+        qS = self.settings['q_ref'] * self.settings['S_ref']
+        return fx/qS, fy/qS, fz/qS, mx/qS/self.settings['b_ref'], my/qS/self.settings['c_ref'], \
                mz/qS/self.settings['b_ref']
 
     def screen_output(self):

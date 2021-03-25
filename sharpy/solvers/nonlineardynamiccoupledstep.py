@@ -66,7 +66,7 @@ class NonLinearDynamicCoupledStep(_BaseStructural):
         settings.to_custom_types(self.settings, self.settings_types, self.settings_default)
 
         # load info from dyn dictionary
-        self.data.structure.add_unsteady_information(self.data.structure.dyn_dict, self.settings['num_steps'].value)
+        self.data.structure.add_unsteady_information(self.data.structure.dyn_dict, self.settings['num_steps'])
 
         # add initial speed to RBM
         if self.settings['initial_velocity']:
