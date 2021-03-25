@@ -28,10 +28,6 @@ class WriteVariablesTime(BaseSolver):
     settings_default = dict()
     settings_description = dict()
 
-    settings_types['folder'] = 'str'
-    settings_default['folder'] = './output/'
-    settings_description['folder'] = 'Output folder directory'
-
     settings_types['delimiter'] = 'str'
     settings_default['delimiter'] = ' '
     settings_description['delimiter'] = 'Delimiter to be used in the output file'

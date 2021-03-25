@@ -40,10 +40,6 @@ class SaveParametricCase(BaseSolver):
     settings_default = dict()
     settings_description = dict()
 
-    settings_types['folder'] = 'str'
-    settings_default['folder'] = './output/'
-    settings_description['folder'] = 'Folder to save parametric case.'
-
     settings_types['save_case'] = 'bool'
     settings_default['save_case'] = True
     settings_description['save_case'] = 'Save a .pkl of the SHARPy case. Required for PMOR.'
