@@ -351,6 +351,7 @@ class NonLinearDynamicMultibody(_BaseStructural):
 
             # Update positions and velocities
             mb.state2disp_and_accel(q, dqdt, dqddt, MB_beam, MB_tstep, Lambda, Lambda_dot)
+            
             MB_M, MB_C, MB_K, MB_Q, kBnh, LM_Q = self.assembly_MB_eq_system(MB_beam,
                                                                 MB_tstep,
                                                                 self.data.ts,
@@ -366,6 +367,11 @@ class NonLinearDynamicMultibody(_BaseStructural):
                 cond_num = np.linalg.cond(Asys[:self.sys_size, :self.sys_size])
                 cond_num_lm = np.linalg.cond(Asys)
 
+            # print(np.linalg.det(Asys), np.linalg.det(Asys[:self.sys_size, :self.sys_size]))
+            # norm = np.zeros((self.num_LM_eq))
+            # for ilm in range(num_LM_eq):
+            #     norm[ilm] = np.linalg.norm(Asys[self.sys_size + ilm, :])
+            # print(norm)
             Dq = np.linalg.solve(Asys, -Q)
 
             # Evaluate convergence
@@ -378,6 +384,7 @@ class NonLinearDynamicMultibody(_BaseStructural):
                 else:
                     LM_res = 0.0
                 if (res < self.settings['min_delta']) and (LM_res < self.settings['min_delta']):
+                # if (res < self.settings['min_delta']):
                     converged = True
 
             # Relaxation
