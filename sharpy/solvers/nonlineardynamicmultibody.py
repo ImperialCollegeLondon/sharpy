@@ -385,11 +385,6 @@ class NonLinearDynamicMultibody(_BaseStructural):
                 cond_num = np.linalg.cond(Asys[:self.sys_size, :self.sys_size])
                 cond_num_lm = np.linalg.cond(Asys)
 
-            # print(np.linalg.det(Asys), np.linalg.det(Asys[:self.sys_size, :self.sys_size]))
-            # norm = np.zeros((self.num_LM_eq))
-            # for ilm in range(num_LM_eq):
-            #     norm[ilm] = np.linalg.norm(Asys[self.sys_size + ilm, :])
-            # print(norm)
             Dq = np.linalg.solve(Asys, -Q)
 
             # Evaluate convergence
@@ -402,7 +397,6 @@ class NonLinearDynamicMultibody(_BaseStructural):
                 else:
                     LM_res = 0.0
                 if (res < self.settings['min_delta']) and (LM_res < self.settings['min_delta']):
-                # if (res < self.settings['min_delta']):
                     converged = True
 
             # Relaxation
